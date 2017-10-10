@@ -10,6 +10,8 @@ namespace dxvk {
     m_vkd           (vkd),
     m_memory        (adapter, vkd),
     m_renderPassPool(vkd) {
+    TRACE(this, adapter);
+    
     m_vkd->vkGetDeviceQueue(m_vkd->device(),
       m_adapter->graphicsQueueFamily(), 0,
       &m_graphicsQueue);
@@ -20,6 +22,7 @@ namespace dxvk {
   
   
   DxvkDevice::~DxvkDevice() {
+    TRACE(this);
     m_vkd->vkDeviceWaitIdle(m_vkd->device());
     m_vkd->vkDestroyDevice(m_vkd->device(), nullptr);
   }
@@ -74,6 +77,8 @@ namespace dxvk {
     const Rc<DxvkCommandList>&      commandList,
     const Rc<DxvkSemaphore>&        waitSync,
     const Rc<DxvkSemaphore>&        wakeSync) {
+    TRACE(this, commandList, waitSync, wakeSync);
+    
     Rc<DxvkFence> fence = new DxvkFence(m_vkd);
     
     VkCommandBuffer commandBuffer = commandList->handle();
@@ -107,11 +112,15 @@ namespace dxvk {
     if (m_vkd->vkQueueSubmit(m_graphicsQueue, 1, &info, fence->handle()) != VK_SUCCESS)
       throw DxvkError("DxvkDevice::submitCommandList: Command submission failed");
     
+    // TODO Store fence + command list pairs in a ring buffer
+    fence->wait(std::numeric_limits<uint64_t>::max());
+    commandList->reset();
     return fence;
   }
   
   
   void DxvkDevice::waitForIdle() const {
+    TRACE(this);
     if (m_vkd->vkDeviceWaitIdle(m_vkd->device()) != VK_SUCCESS)
       throw DxvkError("DxvkDevice::waitForIdle: Operation failed");
   }

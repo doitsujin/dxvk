@@ -13,6 +13,7 @@ namespace dxvk {
   : m_instance      (instance),
     m_vki           (instance->vki()),
     m_handle        (handle) {
+    TRACE(this, instance, handle);
     uint32_t numQueueFamilies = 0;
     m_vki->vkGetPhysicalDeviceQueueFamilyProperties(
       m_handle, &numQueueFamilies, nullptr);
@@ -24,7 +25,7 @@ namespace dxvk {
   
   
   DxvkAdapter::~DxvkAdapter() {
-    
+    TRACE(this);
   }
   
   
@@ -94,6 +95,8 @@ namespace dxvk {
   
   
   Rc<DxvkDevice> DxvkAdapter::createDevice() {
+    TRACE(this);
+    
     auto enabledExtensions = this->enableExtensions();
     auto enabledFeatures   = this->enableFeatures();
     

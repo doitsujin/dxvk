@@ -124,3 +124,8 @@ namespace dxvk {
   };
   
 }
+
+template<typename T>
+std::ostream& operator << (std::ostream& os, const dxvk::Rc<T>& rc) {
+  return os << rc.ptr();
+}

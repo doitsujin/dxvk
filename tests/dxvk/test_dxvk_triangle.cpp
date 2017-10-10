@@ -45,7 +45,6 @@ public:
       m_dxvkCommandList, sync1, sync2);
     m_dxvkSwapchain->present(sync2);
     m_dxvkDevice->waitForIdle();
-    m_dxvkCommandList->reset();
   }
   
 private:

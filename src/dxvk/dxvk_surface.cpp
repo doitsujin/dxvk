@@ -13,11 +13,12 @@ namespace dxvk {
     m_handle          (createSurface(instance, window)),
     m_surfaceFormats  (getSurfaceFormats()),
     m_presentModes    (getPresentModes()) {
-    
+    TRACE(this, adapter, instance, window);
   }
   
   
   DxvkSurface::~DxvkSurface() {
+    TRACE(this);
     m_vki->vkDestroySurfaceKHR(
       m_vki->instance(), m_handle, nullptr);
   }

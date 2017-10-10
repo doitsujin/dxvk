@@ -1,5 +1,8 @@
 #pragma once
 
+#include "../util/log/log.h"
+#include "../util/log/log_debug.h"
+
 #include "../util/util_error.h"
 #include "../util/util_string.h"
 
@@ -8,3 +11,4 @@
 
 #include "./vulkan/dxvk_vulkan_extensions.h"
 #include "./vulkan/dxvk_vulkan_loader.h"
+#include "./vulkan/dxvk_vulkan_names.h"

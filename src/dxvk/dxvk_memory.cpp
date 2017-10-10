@@ -90,6 +90,7 @@ namespace dxvk {
   
   VkDeviceMemory DxvkMemoryAllocator::allocMemory(
     VkDeviceSize blockSize, uint32_t memoryType) {
+    TRACE(blockSize, memoryType);
     
     VkMemoryAllocateInfo info;
     info.sType            = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;

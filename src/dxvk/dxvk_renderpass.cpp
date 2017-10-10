@@ -44,6 +44,7 @@ namespace dxvk {
           VkImageLayout         initialLayout,
           VkImageLayout         finalLayout)
   : m_vkd(vkd), m_format(fmt) {
+    TRACE(this, initialLayout, finalLayout);
     std::vector<VkAttachmentDescription> attachments;
     
     VkAttachmentReference                                 depthRef;
@@ -127,17 +128,20 @@ namespace dxvk {
   
   
   DxvkRenderPass::~DxvkRenderPass() {
+    TRACE(this);
     m_vkd->vkDestroyRenderPass(
       m_vkd->device(), m_renderPass, nullptr);
   }
   
   
   DxvkRenderPassPool::DxvkRenderPassPool(const Rc<vk::DeviceFn>& vkd)
-  : m_vkd(vkd) { }
+  : m_vkd(vkd) {
+    TRACE(this);
+  }
   
   
   DxvkRenderPassPool::~DxvkRenderPassPool() {
-    
+    TRACE(this);
   }
   
   

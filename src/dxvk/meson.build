@@ -18,6 +18,7 @@ dxvk_src = files([
   
   'vulkan/dxvk_vulkan_extensions.cpp',
   'vulkan/dxvk_vulkan_loader.cpp',
+  'vulkan/dxvk_vulkan_names.cpp',
 ])
 
 thread_dep = dependency('threads')

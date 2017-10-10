@@ -4,22 +4,26 @@
 namespace dxvk {
   
   DxvkContext::DxvkContext(const Rc<vk::DeviceFn>& vkd)
-  : m_vkd(vkd) { }
+  : m_vkd(vkd) {
+    TRACE(this);
+  }
   
   
   DxvkContext::~DxvkContext() {
-    
+    TRACE(this);
   }
   
   
   void DxvkContext::beginRecording(
     const Rc<DxvkCommandList>& cmdList) {
+    TRACE(this, cmdList);
     m_commandList = cmdList;
     m_commandList->beginRecording();
   }
   
   
   bool DxvkContext::endRecording() {
+    TRACE(this);
     m_commandList->endRecording();
     m_commandList = nullptr;
     return true;
@@ -28,6 +32,8 @@ namespace dxvk {
   
   void DxvkContext::setFramebuffer(
     const Rc<DxvkFramebuffer>& fb) {
+    TRACE(this, fb);
+    
     const DxvkFramebufferSize fbSize = fb->size();
     // TODO implement properly
     VkRect2D renderArea;

@@ -69,6 +69,7 @@ namespace dxvk {
     m_renderPass      (renderPass),
     m_renderTargets   (renderTargets),
     m_framebufferSize (renderTargets.getImageSize()) {
+    TRACE(this, renderPass);
     auto views = renderTargets.getAttachments();
     
     VkFramebufferCreateInfo info;
@@ -88,6 +89,7 @@ namespace dxvk {
   
   
   DxvkFramebuffer::~DxvkFramebuffer() {
+    TRACE(this);
     m_vkd->vkDestroyFramebuffer(
       m_vkd->device(), m_framebuffer, nullptr);
   }

@@ -1,16 +1,16 @@
 #include "dxvk_instance.h"
-#include "dxvk_main.h"
 
 namespace dxvk {
   
   DxvkInstance::DxvkInstance()
   : m_vkl(new vk::LibraryFn()),
     m_vki(new vk::InstanceFn(this->createInstance())) {
-    
+    TRACE(this);
   }
   
   
   DxvkInstance::~DxvkInstance() {
+    TRACE(this);
     m_vki->vkDestroyInstance(
       m_vki->instance(), nullptr);
   }
@@ -35,6 +35,11 @@ namespace dxvk {
   VkInstance DxvkInstance::createInstance() {
     auto enabledLayers     = this->getLayers();
     auto enabledExtensions = this->getExtensions(enabledLayers);
+    
+    Logger::info("Enabled instance layers:");
+    this->logNameList(enabledLayers);
+    Logger::info("Enabled instance extensions:");
+    this->logNameList(enabledExtensions);
     
     VkApplicationInfo appInfo;
     appInfo.sType                 = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -103,6 +108,12 @@ namespace dxvk {
     }
     
     return extensionsEnabled;
+  }
+  
+  
+  void DxvkInstance::logNameList(const vk::NameList& names) {
+    for (uint32_t i = 0; i < names.count(); i++)
+      Logger::info(str::format("  ", names.name(i)));
   }
   
 }

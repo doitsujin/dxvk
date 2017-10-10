@@ -51,6 +51,8 @@ namespace dxvk {
     vk::NameList getLayers();
     vk::NameList getExtensions(const vk::NameList& layers);
     
+    void logNameList(const vk::NameList& names);
+    
   };
   
 }
