@@ -112,7 +112,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
       }
     }
   } catch (const dxvk::DxvkError& e) {
-    dxvk::log(e.message());
+    Logger::err(e.message());
     return msg.wParam;
   }
 }

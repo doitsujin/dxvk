@@ -2,10 +2,10 @@
 
 namespace dxvk {
   
-  Log g_logger("dxvk.log");
+  Logger g_logger("dxvk.log");
   
-  void log(const std::string& message) {
-    g_logger.log(message);
+  Logger* getGlobalLogger() {
+    return &g_logger;
   }
   
 }
