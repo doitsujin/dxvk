@@ -1,6 +1,8 @@
 #pragma once
 
-#include "dxgi_private_data.h"
+#include "dxgi_include.h"
+
+#include "../util/com/com_private_data.h"
 
 namespace dxvk {
   
@@ -34,7 +36,7 @@ namespace dxvk {
     
   private:
     
-    DxgiPrivateData m_privateData;
+    ComPrivateData m_privateData;
     
   };
   

@@ -35,18 +35,6 @@ namespace dxvk {
   public:
     
     /**
-     * \brief Creates a new image
-     * 
-     * \param [in] vkd Vulkan device functions
-     * \param [in] info Image properties
-     * \param [in] memory Image memory
-     */
-//     DxvkImage(
-//       const Rc<vk::DeviceFn>&     vkd,
-//       const DxvkImageCreateInfo&  info,
-//             DxvkMemory&&          memory);
-    
-    /**
      * \brief Creates image object from existing image
      * 
      * This can be used to create an image object for

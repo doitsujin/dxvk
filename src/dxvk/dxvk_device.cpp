@@ -50,7 +50,7 @@ namespace dxvk {
   Rc<DxvkImage> DxvkDevice::createImage(
     const DxvkImageCreateInfo&  createInfo,
           VkMemoryPropertyFlags memoryType) {
-    
+    // TODO implement
   }
   
   
@@ -112,7 +112,7 @@ namespace dxvk {
     if (m_vkd->vkQueueSubmit(m_graphicsQueue, 1, &info, fence->handle()) != VK_SUCCESS)
       throw DxvkError("DxvkDevice::submitCommandList: Command submission failed");
     
-    // TODO Store fence + command list pairs in a ring buffer
+    // TODO Delay synchronization by putting these into a ring buffer
     fence->wait(std::numeric_limits<uint64_t>::max());
     commandList->reset();
     return fence;
