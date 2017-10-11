@@ -36,9 +36,28 @@ public:
     auto sync1 = m_dxvkDevice->createSemaphore();
     auto sync2 = m_dxvkDevice->createSemaphore();
     
+    auto fb = m_dxvkSwapchain->getFramebuffer(sync1);
+    auto fbSize = fb->size();
+    
     m_dxvkContext->beginRecording(m_dxvkCommandList);
-    m_dxvkContext->setFramebuffer(
-      m_dxvkSwapchain->getFramebuffer(sync1));
+    m_dxvkContext->setFramebuffer(fb);
+    
+    VkClearAttachment clearAttachment;
+    clearAttachment.aspectMask      = VK_IMAGE_ASPECT_COLOR_BIT;
+    clearAttachment.colorAttachment = 0;
+    clearAttachment.clearValue.color.float32[0] = 1.0f;
+    clearAttachment.clearValue.color.float32[1] = 1.0f;
+    clearAttachment.clearValue.color.float32[2] = 1.0f;
+    clearAttachment.clearValue.color.float32[3] = 1.0f;
+    
+    VkClearRect clearArea;
+    clearArea.rect           = VkRect2D { { 0, 0 }, fbSize.width, fbSize.height };
+    clearArea.baseArrayLayer = 0;
+    clearArea.layerCount     = fbSize.layers;
+    
+    m_dxvkContext->clearRenderTarget(
+      clearAttachment,
+      clearArea);
     m_dxvkContext->endRecording();
     
     auto fence = m_dxvkDevice->submitCommandList(
@@ -57,7 +76,8 @@ private:
   Rc<DxvkContext>     m_dxvkContext;
   Rc<DxvkCommandList> m_dxvkCommandList;
   
-  Rc<DxvkBuffer>      m_vertexBuffer;
+  Rc<DxvkShader>      m_vertShader;
+  Rc<DxvkShader>      m_fragShader;
   
 };
 

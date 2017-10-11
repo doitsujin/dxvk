@@ -6,6 +6,7 @@
 #include "dxvk_framebuffer.h"
 #include "dxvk_memory.h"
 #include "dxvk_renderpass.h"
+#include "dxvk_shader.h"
 #include "dxvk_swapchain.h"
 #include "dxvk_sync.h"
 
@@ -110,6 +111,15 @@ namespace dxvk {
      * \returns Newly created semaphore
      */
     Rc<DxvkSemaphore> createSemaphore();
+    
+    /**
+     * \brief Creates a shader module
+     * 
+     * \param [in] code SPIR-V code
+     * \returns Shader module
+     */
+    Rc<DxvkShader> createShader(
+      const SpirvCodeBuffer&      code);
     
     /**
      * \brief Creates a swap chain

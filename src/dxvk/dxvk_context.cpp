@@ -24,56 +24,128 @@ namespace dxvk {
   
   bool DxvkContext::endRecording() {
     TRACE(this);
+    
+    if (m_state.fb.flags.test(DxvkFbStateFlags::InsideRenderPass))
+      this->endRenderPass();
+    
+    // Finalize the command list
     m_commandList->endRecording();
     m_commandList = nullptr;
     return true;
   }
+  
+  
+  void DxvkContext::clearRenderTarget(
+    const VkClearAttachment&  attachment,
+    const VkClearRect&        clearArea) {
+    if (!m_state.fb.flags.test(DxvkFbStateFlags::InsideRenderPass))
+      this->beginRenderPass();
     
+    m_vkd->vkCmdClearAttachments(
+      m_commandList->handle(),
+      1, &attachment,
+      1, &clearArea);
+  }
+  
+  
+  void DxvkContext::draw(
+          uint32_t vertexCount,
+          uint32_t instanceCount,
+          uint32_t firstVertex,
+          uint32_t firstInstance) {
+    this->prepareDraw();
+    m_vkd->vkCmdDraw(
+      m_commandList->handle(),
+      vertexCount,
+      instanceCount,
+      firstVertex,
+      firstInstance);
+  }
+  
+  
+  void DxvkContext::drawIndexed(
+          uint32_t indexCount,
+          uint32_t instanceCount,
+          uint32_t firstIndex,
+          uint32_t vertexOffset,
+          uint32_t firstInstance) {
+    this->prepareDraw();
+    m_vkd->vkCmdDrawIndexed(
+      m_commandList->handle(),
+      indexCount,
+      instanceCount,
+      firstIndex,
+      vertexOffset,
+      firstInstance);
+  }
+  
   
   void DxvkContext::setFramebuffer(
     const Rc<DxvkFramebuffer>& fb) {
     TRACE(this, fb);
     
-    const DxvkFramebufferSize fbSize = fb->size();
-    // TODO implement properly
-    VkRect2D renderArea;
-    renderArea.offset.x       = 0;
-    renderArea.offset.y       = 0;
-    renderArea.extent.width   = fbSize.width;
-    renderArea.extent.height  = fbSize.height;
+    // When changing the framebuffer binding, we end the
+    // current render pass, but beginning the new render
+    // pass is deferred until a draw command is called.
+    if (m_state.fb.framebuffer != fb) {
+      if (m_state.fb.flags.test(DxvkFbStateFlags::InsideRenderPass))
+        this->endRenderPass();
+      
+      m_state.fb.framebuffer = fb;
+      m_commandList->trackResource(fb);
+    }
     
+  }
+    
+  
+  void DxvkContext::setShader(
+          VkShaderStageFlagBits stage,
+    const Rc<DxvkShader>&       shader) {
+    TRACE(this, stage, shader);
+    
+  }
+  
+  
+  void DxvkContext::flushGraphicsState() {
+    
+  }
+  
+  
+  void DxvkContext::prepareDraw() {
+    this->flushGraphicsState();
+    
+    if (!m_state.fb.flags.test(DxvkFbStateFlags::InsideRenderPass))
+      this->beginRenderPass();
+  }
+  
+  
+  void DxvkContext::beginRenderPass() {
+    TRACE(this);
+    
+    const DxvkFramebufferSize fbsize
+      = m_state.fb.framebuffer->size();
+      
     VkRenderPassBeginInfo info;
     info.sType            = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     info.pNext            = nullptr;
-    info.renderPass       = fb->renderPass();
-    info.framebuffer      = fb->handle();
-    info.renderArea       = renderArea;
+    info.renderPass       = m_state.fb.framebuffer->renderPass();
+    info.framebuffer      = m_state.fb.framebuffer->handle();
+    info.renderArea       = VkRect2D { { 0, 0 }, { fbsize.width, fbsize.height } };
     info.clearValueCount  = 0;
     info.pClearValues     = nullptr;
     
-    // This is for testing purposes only.
-    VkClearAttachment attachment;
-    attachment.aspectMask       = VK_IMAGE_ASPECT_COLOR_BIT;
-    attachment.colorAttachment  = 0;
-    attachment.clearValue.color.float32[0] = 1.0f;
-    attachment.clearValue.color.float32[1] = 1.0f;
-    attachment.clearValue.color.float32[2] = 1.0f;
-    attachment.clearValue.color.float32[3] = 1.0f;
-    
-    VkClearRect clearRect;
-    clearRect.rect           = renderArea;
-    clearRect.baseArrayLayer = 0;
-    clearRect.layerCount     = fbSize.layers;
-    
     m_vkd->vkCmdBeginRenderPass(
-      m_commandList->handle(), &info,
-      VK_SUBPASS_CONTENTS_INLINE);
-    m_vkd->vkCmdClearAttachments(
       m_commandList->handle(),
-      1, &attachment,
-      1, &clearRect);
-    m_vkd->vkCmdEndRenderPass(
-      m_commandList->handle());
+      &info, VK_SUBPASS_CONTENTS_INLINE);
+    m_state.fb.flags.set(DxvkFbStateFlags::InsideRenderPass);
+  }
+  
+  
+  void DxvkContext::endRenderPass() {
+    TRACE(this);
+    
+    m_vkd->vkCmdEndRenderPass(m_commandList->handle());
+    m_state.fb.flags.clr(DxvkFbStateFlags::InsideRenderPass);
   }
   
 }

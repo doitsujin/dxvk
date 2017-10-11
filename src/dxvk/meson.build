@@ -2,7 +2,6 @@ dxvk_src = files([
   'dxvk_adapter.cpp',
   'dxvk_cmdlist.cpp',
   'dxvk_context.cpp',
-  'dxvk_context_state.cpp',
   'dxvk_device.cpp',
   'dxvk_framebuffer.cpp',
   'dxvk_image.cpp',
@@ -12,9 +11,12 @@ dxvk_src = files([
   'dxvk_memory.cpp',
   'dxvk_renderpass.cpp',
   'dxvk_resource.cpp',
+  'dxvk_shader.cpp',
   'dxvk_surface.cpp',
   'dxvk_swapchain.cpp',
   'dxvk_sync.cpp',
+  
+  'spirv/dxvk_spirv_code_buffer.cpp',
   
   'vulkan/dxvk_vulkan_extensions.cpp',
   'vulkan/dxvk_vulkan_loader.cpp',

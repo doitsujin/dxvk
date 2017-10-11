@@ -1,7 +1,9 @@
 #pragma once
 
+#define DXVK_ERROR_CHECKING 1
+
 #include "dxvk_cmdlist.h"
-#include "dxvk_framebuffer.h"
+#include "dxvk_context_state.h"
 
 namespace dxvk {
   
@@ -50,16 +52,85 @@ namespace dxvk {
     bool endRecording();
     
     /**
+     * \brief Clears an active render target
+     * 
+     * \param [in] attachment Attachment to clear
+     * \param [in] clearArea Rectangular area to clear
+     */
+    void clearRenderTarget(
+      const VkClearAttachment&  attachment,
+      const VkClearRect&        clearArea);
+    
+    /**
+     * \brief Draws primitive without using an index buffer
+     * 
+     * \param [in] vertexCount Number of vertices to draw
+     * \param [in] instanceCount Number of instances to render
+     * \param [in] firstVertex First vertex in vertex buffer
+     * \param [in] firstInstance First instance ID
+     */
+    void draw(
+            uint32_t vertexCount,
+            uint32_t instanceCount,
+            uint32_t firstVertex,
+            uint32_t firstInstance);
+    
+    /**
+     * \brief Draws primitives using an index buffer
+     * 
+     * \param [in] indexCount Number of indices to draw
+     * \param [in] instanceCount Number of instances to render
+     * \param [in] firstIndex First index within the index buffer
+     * \param [in] vertexOffset Vertex ID that corresponds to index 0
+     * \param [in] firstInstance First instance ID
+     */
+    void drawIndexed(
+            uint32_t indexCount,
+            uint32_t instanceCount,
+            uint32_t firstIndex,
+            uint32_t vertexOffset,
+            uint32_t firstInstance);
+    
+    /**
      * \brief Sets framebuffer
      * \param [in] fb Framebuffer
      */
     void setFramebuffer(
       const Rc<DxvkFramebuffer>& fb);
     
+    /**
+     * \brief Sets shader for a given shader stage
+     * 
+     * Binds a shader to a given stage, while unbinding the
+     * existing one. If \c nullptr is passed as the shader
+     * to bind, the given shader stage will be disabled.
+     * When drawing, at least a vertex shader must be bound.
+     * \param [in] stage The shader stage
+     * \param [in] shader The shader to set
+     */
+    void setShader(
+            VkShaderStageFlagBits stage,
+      const Rc<DxvkShader>&       shader);
+    
   private:
     
     Rc<vk::DeviceFn>    m_vkd;
     Rc<DxvkCommandList> m_commandList;
+    DxvkContextState    m_state;
+    
+    /**
+     * \brief Forces a graphics pipeline state flush
+     * 
+     * Applies current shader bindings, resource bindings
+     * etc. to the command buffer so that draw calls can
+     * be executed. Called whenever the need arises.
+     */
+    void flushGraphicsState();
+    
+    void prepareDraw();
+    
+    void beginRenderPass();
+    void endRenderPass();
     
   };
   
