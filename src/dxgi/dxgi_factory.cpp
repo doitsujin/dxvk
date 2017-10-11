@@ -46,7 +46,17 @@ namespace dxvk {
           DXGI_SWAP_CHAIN_DESC* pDesc,
           IDXGISwapChain**      ppSwapChain) {
     TRACE(this, pDevice, pDesc, ppSwapChain);
-    return DXGI_ERROR_UNSUPPORTED;
+    
+    if (ppSwapChain == nullptr || pDesc == nullptr)
+      return E_INVALIDARG;
+    
+    try {
+      *ppSwapChain = ref(new DxgiSwapChain(this, pDevice, pDesc));
+      return S_OK;
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return E_FAIL;
+    }
   }
   
   

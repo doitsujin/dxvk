@@ -28,6 +28,26 @@ public:
     
     if (FAILED(status))
       throw DxvkError("Failed to create D3D11 device");
+    
+    DXGI_SWAP_CHAIN_DESC swapDesc;
+    swapDesc.BufferDesc.Width             = 1024;
+    swapDesc.BufferDesc.Height            = 600;
+    swapDesc.BufferDesc.RefreshRate       = { 60, 0 };
+    swapDesc.BufferDesc.Format            = DXGI_FORMAT_R8G8B8A8_UNORM;
+    swapDesc.BufferDesc.ScanlineOrdering  = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+    swapDesc.BufferDesc.Scaling           = DXGI_MODE_SCALING_UNSPECIFIED;
+    swapDesc.SampleDesc.Count             = 1;
+    swapDesc.SampleDesc.Quality           = 0;
+    swapDesc.BufferUsage                  = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    swapDesc.BufferCount                  = 1;
+    swapDesc.OutputWindow                 = window;
+    swapDesc.Windowed                     = true;
+    swapDesc.SwapEffect                   = DXGI_SWAP_EFFECT_DISCARD;
+    swapDesc.Flags                        = 0;
+    
+    if (FAILED(m_factory->CreateSwapChain(m_device.ptr(), &swapDesc, &m_swapChain)))
+      throw DxvkError("Failed to create DXGI swap chain");
+    
   }
   
   ~TriangleApp() {
@@ -44,6 +64,7 @@ private:
   Com<IDXGIAdapter>         m_adapter;
   Com<ID3D11Device>         m_device;
   Com<ID3D11DeviceContext>  m_context;
+  Com<IDXGISwapChain>       m_swapChain;
   
   D3D_FEATURE_LEVEL       m_featureLevel;
   
@@ -84,9 +105,9 @@ int WINAPI WinMain(HINSTANCE hInstance,
 
   MSG msg;
   
-  TriangleApp app(hInstance, hWnd);
-  
   try {
+    TriangleApp app(hInstance, hWnd);
+  
     while (true) {
       if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
         TranslateMessage(&msg);
