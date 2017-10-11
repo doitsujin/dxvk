@@ -6,28 +6,37 @@
 namespace dxvk {
   
   D3D11Device::D3D11Device(
+          IDXVKDevice*        dxgiDevice,
           D3D_FEATURE_LEVEL   featureLevel,
           UINT                featureFlags)
-  : m_featureLevel(featureLevel),
-    m_featureFlags(featureFlags) {
-    TRACE(this, featureLevel, featureFlags);
+  : m_dxgiDevice  (dxgiDevice),
+    m_featureLevel(featureLevel),
+    m_featureFlags(featureFlags),
+    m_dxvkDevice  (m_dxgiDevice->GetDXVKDevice()),
+    m_dxvkAdapter (m_dxvkDevice->adapter()) {
+    TRACE(this, dxgiDevice, featureLevel, featureFlags);
+    m_dxgiDevice->SetDeviceLayer(this);
+    m_context = new D3D11DeviceContext(this, m_dxvkDevice);
   }
   
   
   D3D11Device::~D3D11Device() {
     TRACE(this);
+    m_dxgiDevice->SetDeviceLayer(nullptr);
   }
   
   
-  HRESULT D3D11Device::QueryInterface(
-          REFIID riid,
-          void **ppvObject) {
+  HRESULT D3D11Device::QueryInterface(REFIID riid, void** ppvObject) {
     COM_QUERY_IFACE(riid, ppvObject, ID3D11Device);
+    
+    if (riid == __uuidof(IDXVKDevice)
+     || riid == __uuidof(IDXGIDevice))
+      return m_dxgiDevice->QueryInterface(riid, ppvObject);
     
     Logger::warn("D3D11Device::QueryInterface: Unknown interface query");
     return E_NOINTERFACE;
   }
-  
+    
   
   HRESULT D3D11Device::CreateBuffer(
     const D3D11_BUFFER_DESC*      pDesc,
@@ -314,19 +323,19 @@ namespace dxvk {
   
   HRESULT D3D11Device::GetPrivateData(
           REFGUID guid, UINT* pDataSize, void* pData) {
-    return m_privateData.getData(guid, pDataSize, pData);
+    return m_dxgiDevice->GetPrivateData(guid, pDataSize, pData);
   }
   
   
   HRESULT D3D11Device::SetPrivateData(
           REFGUID guid, UINT DataSize, const void* pData) {
-    return m_privateData.setData(guid, DataSize, pData);
+    return m_dxgiDevice->SetPrivateData(guid, DataSize, pData);
   }
   
   
   HRESULT D3D11Device::SetPrivateDataInterface(
           REFGUID guid, const IUnknown* pData) {
-    return m_privateData.setInterface(guid, pData);
+    return m_dxgiDevice->SetPrivateDataInterface(guid, pData);
   }
   
   
@@ -347,7 +356,7 @@ namespace dxvk {
   
   
   void D3D11Device::GetImmediateContext(ID3D11DeviceContext** ppImmediateContext) {
-    Logger::err("D3D11Device::GetImmediateContext: Not implemented");
+    *ppImmediateContext = m_context.ref();
   }
   
   
@@ -360,6 +369,12 @@ namespace dxvk {
   UINT D3D11Device::GetExceptionMode() {
     Logger::err("D3D11Device::GetExceptionMode: Not implemented");
     return 0;
+  }
+  
+  
+  bool D3D11Device::CheckFeatureLevelSupport(
+          D3D_FEATURE_LEVEL featureLevel) {
+    return featureLevel <= D3D_FEATURE_LEVEL_11_0;
   }
   
 }

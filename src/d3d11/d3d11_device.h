@@ -1,5 +1,8 @@
 #pragma once
 
+#include <dxgi_object.h>
+#include <dxgi_interfaces.h>
+
 #include "d3d11_include.h"
 
 #include "../util/com/com_private_data.h"
@@ -14,13 +17,14 @@ namespace dxvk {
   public:
     
     D3D11Device(
-            D3D_FEATURE_LEVEL   featureLevel,
-            UINT                featureFlags);
+            IDXVKDevice*            dxgiDevice,
+            D3D_FEATURE_LEVEL       featureLevel,
+            UINT                    featureFlags);
     ~D3D11Device();
     
     HRESULT QueryInterface(
-            REFIID riid,
-            void **ppvObject) final;
+            REFIID                  riid,
+            void**                  ppvObject) final;
     
     HRESULT CreateBuffer(
       const D3D11_BUFFER_DESC*      pDesc,
@@ -185,18 +189,18 @@ namespace dxvk {
             UINT          FeatureSupportDataSize) final;
     
     HRESULT GetPrivateData(
-            REFGUID   guid,
-            UINT*     pDataSize,
-            void*     pData) final;
+            REFGUID Name,
+            UINT    *pDataSize,
+            void    *pData) final;
     
     HRESULT SetPrivateData(
-            REFGUID   guid,
-            UINT      DataSize,
-      const void*     pData) final;
+            REFGUID Name,
+            UINT    DataSize,
+      const void    *pData) final;
     
     HRESULT SetPrivateDataInterface(
-            REFGUID   guid,
-      const IUnknown* pData) final;
+            REFGUID  Name,
+      const IUnknown *pUnknown) final;
     
     D3D_FEATURE_LEVEL GetFeatureLevel() final;
     
@@ -211,12 +215,19 @@ namespace dxvk {
     
     UINT GetExceptionMode() final;
     
+    static bool CheckFeatureLevelSupport(
+            D3D_FEATURE_LEVEL featureLevel);
+    
   private:
     
-    const D3D_FEATURE_LEVEL m_featureLevel;
-    const UINT              m_featureFlags;
+    const Com<IDXVKDevice>    m_dxgiDevice;
+    const D3D_FEATURE_LEVEL   m_featureLevel;
+    const UINT                m_featureFlags;
     
-    ComPrivateData m_privateData;
+    const Rc<DxvkDevice>      m_dxvkDevice;
+    const Rc<DxvkAdapter>     m_dxvkAdapter;
+    
+    Com<ID3D11DeviceContext>  m_context;
     
   };
   

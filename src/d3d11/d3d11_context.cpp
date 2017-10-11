@@ -3,8 +3,12 @@
 
 namespace dxvk {
   
-  D3D11DeviceContext::D3D11DeviceContext() {
-    TRACE(this);
+  D3D11DeviceContext::D3D11DeviceContext(
+      ID3D11Device*   parent,
+      Rc<DxvkDevice>  device)
+  : m_parent(parent),
+    m_device(device) {
+    TRACE(this, parent, device);
   }
   
   
@@ -24,7 +28,7 @@ namespace dxvk {
   
   
   void D3D11DeviceContext::GetDevice(ID3D11Device **ppDevice) {
-    Logger::warn("D3D11DeviceContext::GetDevice: Not implemented");
+    *ppDevice = ref(m_parent);
   }
   
   

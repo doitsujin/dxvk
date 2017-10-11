@@ -13,9 +13,10 @@ namespace dxvk {
     
   public:
     
-    D3D11DeviceContext();
+    D3D11DeviceContext(
+      ID3D11Device*   parent,
+      Rc<DxvkDevice>  device);
     ~D3D11DeviceContext();
-
     
     HRESULT QueryInterface(
             REFIID  riid,
@@ -535,6 +536,11 @@ namespace dxvk {
             ID3D11Buffer**                    ppSOTargets) final;
     
   private:
+    
+    ID3D11Device* const m_parent;
+    
+    Rc<DxvkDevice>  m_device;
+    Rc<DxvkContext> m_context;
     
   };
   
