@@ -3,7 +3,6 @@ dxgi_src = [
   'dxgi_factory.cpp',
   'dxgi_main.cpp',
   'dxgi_output.cpp',
-  'dxgi_private_data.cpp',
   'dxgi_swapchain.cpp',
 ]
 

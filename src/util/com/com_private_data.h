@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "dxgi_include.h"
+#include "com_include.h"
 
 namespace dxvk {
   
@@ -10,22 +10,22 @@ namespace dxvk {
    * \brief Data entry for private storage
    * Stores a single private storage item.
    */
-  class DxgiPrivateDataEntry {
+  class ComPrivateDataEntry {
     
   public:
     
-    DxgiPrivateDataEntry();
-    DxgiPrivateDataEntry(
+    ComPrivateDataEntry();
+    ComPrivateDataEntry(
             REFGUID   guid,
             UINT      size,
       const void*     data);
-    DxgiPrivateDataEntry(
+    ComPrivateDataEntry(
             REFGUID   guid,
       const IUnknown* iface);
-    ~DxgiPrivateDataEntry();
+    ~ComPrivateDataEntry();
     
-    DxgiPrivateDataEntry             (DxgiPrivateDataEntry&& other);
-    DxgiPrivateDataEntry& operator = (DxgiPrivateDataEntry&& other);
+    ComPrivateDataEntry             (ComPrivateDataEntry&& other);
+    ComPrivateDataEntry& operator = (ComPrivateDataEntry&& other);
     
     /**
      * \brief The entry's GUID
@@ -75,7 +75,7 @@ namespace dxvk {
    * byte arrays or COM interfaces that can be
    * retrieved using GUIDs.
    */
-  class DxgiPrivateData {
+  class ComPrivateData {
     
   public:
     
@@ -95,10 +95,10 @@ namespace dxvk {
     
   private:
     
-    std::vector<DxgiPrivateDataEntry> m_entries;
+    std::vector<ComPrivateDataEntry> m_entries;
     
-    DxgiPrivateDataEntry* findEntry(REFGUID guid);
-    void insertEntry(DxgiPrivateDataEntry&& entry);
+    ComPrivateDataEntry* findEntry(REFGUID guid);
+    void insertEntry(ComPrivateDataEntry&& entry);
     
   };
   

@@ -2,12 +2,12 @@
 #include <cstring>
 #include <cstdlib>
 
-#include "dxgi_private_data.h"
+#include "com_private_data.h"
 
 namespace dxvk {
   
-  DxgiPrivateDataEntry::DxgiPrivateDataEntry() { }
-  DxgiPrivateDataEntry::DxgiPrivateDataEntry(
+  ComPrivateDataEntry::ComPrivateDataEntry() { }
+  ComPrivateDataEntry::ComPrivateDataEntry(
           REFGUID   guid,
           UINT      size,
     const void*     data)
@@ -18,7 +18,7 @@ namespace dxvk {
   }
   
   
-  DxgiPrivateDataEntry::DxgiPrivateDataEntry(
+  ComPrivateDataEntry::ComPrivateDataEntry(
           REFGUID   guid,
     const IUnknown* iface)
   : m_guid  (guid),
@@ -27,12 +27,12 @@ namespace dxvk {
   }
   
   
-  DxgiPrivateDataEntry::~DxgiPrivateDataEntry() {
+  ComPrivateDataEntry::~ComPrivateDataEntry() {
     this->destroy();
   }
   
   
-  DxgiPrivateDataEntry::DxgiPrivateDataEntry(DxgiPrivateDataEntry&& other)
+  ComPrivateDataEntry::ComPrivateDataEntry(ComPrivateDataEntry&& other)
   : m_guid  (other.m_guid),
     m_size  (other.m_size),
     m_data  (other.m_data),
@@ -44,7 +44,7 @@ namespace dxvk {
   }
   
   
-  DxgiPrivateDataEntry& DxgiPrivateDataEntry::operator = (DxgiPrivateDataEntry&& other) {
+  ComPrivateDataEntry& ComPrivateDataEntry::operator = (ComPrivateDataEntry&& other) {
     this->destroy();
     this->m_guid  = other.m_guid;
     this->m_size  = other.m_size;
@@ -59,7 +59,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiPrivateDataEntry::get(UINT& size, void* data) const {
+  HRESULT ComPrivateDataEntry::get(UINT& size, void* data) const {
     if (size != 0 && data == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
@@ -85,7 +85,7 @@ namespace dxvk {
   }
   
   
-  void DxgiPrivateDataEntry::destroy() {
+  void ComPrivateDataEntry::destroy() {
     if (m_data != nullptr)
       std::free(m_data);
     if (m_iface != nullptr)
@@ -93,24 +93,24 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiPrivateData::setData(
+  HRESULT ComPrivateData::setData(
           REFGUID   guid,
           UINT      size,
     const void*     data) {
-    this->insertEntry(DxgiPrivateDataEntry(guid, size, data));
+    this->insertEntry(ComPrivateDataEntry(guid, size, data));
     return S_OK;
   }
   
   
-  HRESULT DxgiPrivateData::setInterface(
+  HRESULT ComPrivateData::setInterface(
           REFGUID   guid,
     const IUnknown* iface) {
-    this->insertEntry(DxgiPrivateDataEntry(guid, iface));
+    this->insertEntry(ComPrivateDataEntry(guid, iface));
     return S_OK;
   }
   
   
-  HRESULT DxgiPrivateData::getData(
+  HRESULT ComPrivateData::getData(
           REFGUID   guid,
           UINT*     size,
           void*     data) {
@@ -126,8 +126,8 @@ namespace dxvk {
   }
   
   
-  DxgiPrivateDataEntry* DxgiPrivateData::findEntry(REFGUID guid) {
-    for (DxgiPrivateDataEntry& e : m_entries) {
+  ComPrivateDataEntry* ComPrivateData::findEntry(REFGUID guid) {
+    for (ComPrivateDataEntry& e : m_entries) {
       if (e.hasGuid(guid))
         return &e;
     }
@@ -136,9 +136,9 @@ namespace dxvk {
   }
   
   
-  void DxgiPrivateData::insertEntry(DxgiPrivateDataEntry&& entry) {
-    DxgiPrivateDataEntry  srcEntry = std::move(entry);
-    DxgiPrivateDataEntry* dstEntry = this->findEntry(srcEntry.guid());
+  void ComPrivateData::insertEntry(ComPrivateDataEntry&& entry) {
+    ComPrivateDataEntry  srcEntry = std::move(entry);
+    ComPrivateDataEntry* dstEntry = this->findEntry(srcEntry.guid());
     
     if (dstEntry != nullptr)
       *dstEntry = std::move(srcEntry);
