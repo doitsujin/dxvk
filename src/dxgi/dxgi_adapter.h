@@ -5,6 +5,7 @@
 
 #include <dxvk_adapter.h>
 
+#include "dxgi_interfaces.h"
 #include "dxgi_object.h"
 
 namespace dxvk {
@@ -12,7 +13,7 @@ namespace dxvk {
   class DxgiFactory;
   class DxgiOutput;
   
-  class DxgiAdapter : public DxgiObject<IDXGIAdapter> {
+  class DxgiAdapter : public DxgiObject<IDXVKAdapter> {
     
   public:
     
@@ -40,10 +41,12 @@ namespace dxvk {
     HRESULT GetDesc(
             DXGI_ADAPTER_DESC *pDesc) final;
     
+    Rc<DxvkAdapter> GetDXVKAdapter() final;
+    
   private:
     
-    DxgiFactory*    m_factory;
-    Rc<DxvkAdapter> m_adapter;
+    Com<DxgiFactory>  m_factory;
+    Rc<DxvkAdapter>   m_adapter;
     
   };
 

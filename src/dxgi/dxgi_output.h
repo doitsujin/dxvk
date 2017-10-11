@@ -66,8 +66,8 @@ namespace dxvk {
     
   private:
     
-    DxgiAdapter*  m_adapter;
-    UINT          m_display;
+    Com<DxgiAdapter>  m_adapter;
+    UINT              m_display;
     
   };
 

@@ -24,6 +24,7 @@ namespace dxvk {
   HRESULT DxgiAdapter::QueryInterface(
           REFIID riid,
           void **ppvObject) {
+    COM_QUERY_IFACE(riid, ppvObject, IDXVKAdapter);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIAdapter);
     
     Logger::warn("DxgiAdapter::QueryInterface: Unknown interface query");
@@ -100,6 +101,11 @@ namespace dxvk {
     pDesc->SharedSystemMemory     = sharedMemory;
     pDesc->AdapterLuid            = LUID { 0, 0 };  // TODO implement
     return S_OK;
+  }
+  
+  
+  Rc<DxvkAdapter> DxgiAdapter::GetDXVKAdapter() {
+    return m_adapter;
   }
   
 }

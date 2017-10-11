@@ -46,7 +46,7 @@ namespace dxvk {
   private:
     
     Rc<DxvkInstance>              m_instance;
-    std::vector<Com<DxgiAdapter>> m_adapters;
+    std::vector<Rc<DxvkAdapter>>  m_adapters;
     
     HWND m_associatedWindow = nullptr;
     

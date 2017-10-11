@@ -1,0 +1,106 @@
+#include "dxgi_device.h"
+#include "dxgi_factory.h"
+
+namespace dxvk {
+  
+  DxgiDevice::DxgiDevice(IDXVKAdapter* adapter)
+  : m_adapter(adapter) {
+    TRACE(this, adapter);
+    m_device = m_adapter->GetDXVKAdapter()->createDevice();
+  }
+  
+  
+  DxgiDevice::~DxgiDevice() {
+    TRACE(this);
+  }
+  
+  
+  HRESULT DxgiDevice::QueryInterface(REFIID riid, void** ppvObject) {
+    COM_QUERY_IFACE(riid, ppvObject, IDXVKDevice);
+    COM_QUERY_IFACE(riid, ppvObject, IDXGIDevice);
+    
+    if (m_layer != nullptr)
+      return m_layer->QueryInterface(riid, ppvObject);
+    
+    Logger::warn("DxgiDevice::QueryInterface: Unknown interface query");
+    return E_NOINTERFACE;
+  }
+  
+  
+  HRESULT DxgiDevice::GetParent(REFIID riid, void** ppParent) {
+    return m_adapter->QueryInterface(riid, ppParent);
+  }
+  
+  
+  HRESULT DxgiDevice::CreateSurface(
+    const DXGI_SURFACE_DESC*    pDesc,
+          UINT                  NumSurfaces,
+          DXGI_USAGE            Usage,
+    const DXGI_SHARED_RESOURCE* pSharedResource,
+          IDXGISurface**        ppSurface) {
+    Logger::err("DxgiDevice::CreateSurface: Not implemented");
+    return E_NOTIMPL;
+  }
+  
+  
+  HRESULT DxgiDevice::GetAdapter(
+          IDXGIAdapter**        pAdapter) {
+    *pAdapter = static_cast<IDXGIAdapter*>(m_adapter.ref());
+    return S_OK;
+  }
+  
+  
+  HRESULT DxgiDevice::GetGPUThreadPriority(
+          INT*                  pPriority) {
+    *pPriority = 0;
+    return S_OK;
+  }
+  
+  
+  HRESULT DxgiDevice::QueryResourceResidency(
+          IUnknown* const*      ppResources,
+          DXGI_RESIDENCY*       pResidencyStatus,
+          UINT                  NumResources) {
+    Logger::err("DxgiDevice::QueryResourceResidency: Not implemented");
+    return E_NOTIMPL;
+  }
+  
+  
+  HRESULT DxgiDevice::SetGPUThreadPriority(
+          INT                   Priority) {
+    if (Priority < -7 || Priority > 7)
+      return E_INVALIDARG;
+    
+    Logger::err("DxgiDevice::SetGPUThreadPriority: Ignoring");
+    return S_OK;
+  }
+  
+  
+  void DxgiDevice::SetDeviceLayer(IUnknown* layer) {
+    TRACE(this, layer);
+    m_layer = layer;
+  }
+  
+  
+  Rc<DxvkDevice> DxgiDevice::GetDXVKDevice() {
+    return m_device;
+  }
+  
+}
+
+
+extern "C" {
+  
+  DLLEXPORT HRESULT __stdcall DXGICreateDXVKDevice(
+          IDXVKAdapter*   pAdapter,
+          IDXVKDevice**   ppDevice) {
+    try {
+      *ppDevice = dxvk::ref(new dxvk::DxgiDevice(pAdapter));
+      return S_OK;
+    } catch (const dxvk::DxvkError& e) {
+      dxvk::Logger::err(e.message());
+      return DXGI_ERROR_UNSUPPORTED;
+    }
+  }
+  
+}
