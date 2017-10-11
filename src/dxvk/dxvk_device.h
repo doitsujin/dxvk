@@ -47,6 +47,17 @@ namespace dxvk {
     }
     
     /**
+     * \brief The adapter
+     * 
+     * The physical device that the
+     * device has been created for.
+     * \returns Adapter
+     */
+    Rc<DxvkAdapter> adapter() const {
+      return m_adapter;
+    }
+    
+    /**
      * \brief Creates a command list
      * \returns The command list
      */
