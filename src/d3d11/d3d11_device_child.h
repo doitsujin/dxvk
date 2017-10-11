@@ -1,0 +1,43 @@
+#pragma once
+
+#include "d3d11_include.h"
+
+#include "../util/com/com_private_data.h"
+
+namespace dxvk {
+  
+  template<typename Base>
+  class D3D11DeviceChild : public ComObject<Base> {
+    
+  public:
+    
+    HRESULT GetPrivateData(
+            REFGUID guid,
+            UINT    *pDataSize,
+            void    *pData) final {
+      return m_privateData.getData(
+        guid, pDataSize, pData);
+    }
+    
+    HRESULT SetPrivateData(
+            REFGUID guid,
+            UINT    DataSize,
+      const void    *pData) final {
+      return m_privateData.setData(
+        guid, DataSize, pData);
+    }
+    
+    HRESULT SetPrivateDataInterface(
+            REFGUID  guid,
+      const IUnknown *pUnknown) final {
+      return m_privateData.setInterface(
+        guid, pUnknown);
+    }
+    
+  private:
+    
+    ComPrivateData m_privateData;
+    
+  };
+  
+}
