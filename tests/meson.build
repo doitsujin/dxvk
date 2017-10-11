@@ -1,1 +1,2 @@
+subdir('dxgi')
 subdir('dxvk')
