@@ -19,13 +19,30 @@ namespace dxvk {
     TRACE(this, cmdList);
     m_commandList = cmdList;
     m_commandList->beginRecording();
+    
+    // Make sure that we apply the current context state
+    // to the command buffer when recording draw commands.
+    m_state.g.flags.clr(
+      DxvkGraphicsPipelineBit::RenderPassBound);
+    m_state.g.flags.set(
+      DxvkGraphicsPipelineBit::PipelineDirty,
+      DxvkGraphicsPipelineBit::PipelineStateDirty,
+      DxvkGraphicsPipelineBit::DirtyResources,
+      DxvkGraphicsPipelineBit::DirtyVertexBuffers,
+      DxvkGraphicsPipelineBit::DirtyIndexBuffer);
+    
+    m_state.c.flags.set(
+      DxvkComputePipelineBit::PipelineDirty,
+      DxvkComputePipelineBit::DirtyResources);
   }
   
   
   bool DxvkContext::endRecording() {
     TRACE(this);
     
-    if (m_state.fb.flags.test(DxvkFbStateFlags::InsideRenderPass))
+    // Any currently active render pass must be
+    // ended before finalizing the command buffer.
+    if (m_state.g.flags.test(DxvkGraphicsPipelineBit::RenderPassBound))
       this->endRenderPass();
     
     // Finalize the command list
@@ -38,8 +55,7 @@ namespace dxvk {
   void DxvkContext::clearRenderTarget(
     const VkClearAttachment&  attachment,
     const VkClearRect&        clearArea) {
-    if (!m_state.fb.flags.test(DxvkFbStateFlags::InsideRenderPass))
-      this->beginRenderPass();
+    this->flushGraphicsState();
     
     m_vkd->vkCmdClearAttachments(
       m_commandList->handle(),
@@ -48,12 +64,25 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::dispatch(
+          uint32_t wgCountX,
+          uint32_t wgCountY,
+          uint32_t wgCountZ) {
+    this->flushComputeState();
+    
+    m_vkd->vkCmdDispatch(
+      m_commandList->handle(),
+      wgCountX, wgCountY, wgCountZ);
+  }
+  
+  
   void DxvkContext::draw(
           uint32_t vertexCount,
           uint32_t instanceCount,
           uint32_t firstVertex,
           uint32_t firstInstance) {
-    this->prepareDraw();
+    this->flushGraphicsState();
+    
     m_vkd->vkCmdDraw(
       m_commandList->handle(),
       vertexCount,
@@ -69,7 +98,8 @@ namespace dxvk {
           uint32_t firstIndex,
           uint32_t vertexOffset,
           uint32_t firstInstance) {
-    this->prepareDraw();
+    this->flushGraphicsState();
+    
     m_vkd->vkCmdDrawIndexed(
       m_commandList->handle(),
       indexCount,
@@ -84,37 +114,57 @@ namespace dxvk {
     const Rc<DxvkFramebuffer>& fb) {
     TRACE(this, fb);
     
-    // When changing the framebuffer binding, we end the
-    // current render pass, but beginning the new render
-    // pass is deferred until a draw command is called.
-    if (m_state.fb.framebuffer != fb) {
-      if (m_state.fb.flags.test(DxvkFbStateFlags::InsideRenderPass))
-        this->endRenderPass();
+    if (m_state.g.fb != fb) {
+      m_state.g.fb = fb;
       
-      m_state.fb.framebuffer = fb;
-      m_commandList->trackResource(fb);
+      if (m_state.g.flags.test(
+          DxvkGraphicsPipelineBit::RenderPassBound))
+        this->endRenderPass();
     }
-    
   }
-    
+  
   
   void DxvkContext::setShader(
           VkShaderStageFlagBits stage,
     const Rc<DxvkShader>&       shader) {
     TRACE(this, stage, shader);
     
+    DxvkShaderState* state = this->getShaderState(stage);
+    
+    if (state->shader != shader) {
+      state->shader = shader;
+      
+      if (stage == VK_SHADER_STAGE_COMPUTE_BIT) {
+        m_state.c.flags.set(
+          DxvkComputePipelineBit::PipelineDirty,
+          DxvkComputePipelineBit::DirtyResources);
+      } else {
+        m_state.g.flags.set(
+          DxvkGraphicsPipelineBit::PipelineDirty,
+          DxvkGraphicsPipelineBit::DirtyResources);
+      }
+    }
+  }
+  
+  
+  void DxvkContext::flushComputeState() {
+    VkCommandBuffer cmd = m_commandList->handle();
+    
+    if (m_state.c.flags.test(DxvkComputePipelineBit::PipelineDirty)
+     && m_state.c.pipeline != nullptr) {
+      m_vkd->vkCmdBindPipeline(cmd,
+        VK_PIPELINE_BIND_POINT_COMPUTE,
+        m_state.c.pipeline->handle());
+    }
+    
+    m_state.c.flags.clr(
+      DxvkComputePipelineBit::PipelineDirty,
+      DxvkComputePipelineBit::DirtyResources);
   }
   
   
   void DxvkContext::flushGraphicsState() {
-    
-  }
-  
-  
-  void DxvkContext::prepareDraw() {
-    this->flushGraphicsState();
-    
-    if (!m_state.fb.flags.test(DxvkFbStateFlags::InsideRenderPass))
+    if (!m_state.g.flags.test(DxvkGraphicsPipelineBit::RenderPassBound))
       this->beginRenderPass();
   }
   
@@ -122,22 +172,20 @@ namespace dxvk {
   void DxvkContext::beginRenderPass() {
     TRACE(this);
     
-    const DxvkFramebufferSize fbsize
-      = m_state.fb.framebuffer->size();
+    DxvkFramebufferSize fbsize
+      = m_state.g.fb->size();
       
     VkRenderPassBeginInfo info;
     info.sType            = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     info.pNext            = nullptr;
-    info.renderPass       = m_state.fb.framebuffer->renderPass();
-    info.framebuffer      = m_state.fb.framebuffer->handle();
+    info.renderPass       = m_state.g.fb->renderPass();
+    info.framebuffer      = m_state.g.fb->handle();
     info.renderArea       = VkRect2D { { 0, 0 }, { fbsize.width, fbsize.height } };
     info.clearValueCount  = 0;
     info.pClearValues     = nullptr;
     
-    m_vkd->vkCmdBeginRenderPass(
-      m_commandList->handle(),
-      &info, VK_SUBPASS_CONTENTS_INLINE);
-    m_state.fb.flags.set(DxvkFbStateFlags::InsideRenderPass);
+    m_vkd->vkCmdBeginRenderPass(m_commandList->handle(), &info, VK_SUBPASS_CONTENTS_INLINE);
+    m_state.g.flags.set(DxvkGraphicsPipelineBit::RenderPassBound);
   }
   
   
@@ -145,7 +193,33 @@ namespace dxvk {
     TRACE(this);
     
     m_vkd->vkCmdEndRenderPass(m_commandList->handle());
-    m_state.fb.flags.clr(DxvkFbStateFlags::InsideRenderPass);
+    m_state.g.flags.clr(DxvkGraphicsPipelineBit::RenderPassBound);
+  }
+  
+  
+  DxvkShaderState* DxvkContext::getShaderState(VkShaderStageFlagBits stage) {
+    switch (stage) {
+      case VK_SHADER_STAGE_VERTEX_BIT:
+        return &m_state.g.vs;
+        
+      case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
+        return &m_state.g.tcs;
+        
+      case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
+        return &m_state.g.tes;
+      
+      case VK_SHADER_STAGE_GEOMETRY_BIT:
+        return &m_state.g.gs;
+        
+      case VK_SHADER_STAGE_FRAGMENT_BIT:
+        return &m_state.g.fs;
+        
+      case VK_SHADER_STAGE_COMPUTE_BIT:
+        return &m_state.c.cs;
+        
+      default:
+        return nullptr;
+    }
   }
   
 }

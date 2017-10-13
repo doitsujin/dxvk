@@ -21,8 +21,8 @@ namespace dxvk {
       return m_useCount != 0;
     }
     
-    void incUseCount() { m_useCount += 1; }
-    void decUseCount() { m_useCount -= 1; }
+    void acquire() { m_useCount += 1; }
+    void release() { m_useCount -= 1; }
     
   private:
     

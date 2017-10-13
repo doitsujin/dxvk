@@ -1,7 +1,5 @@
 #pragma once
 
-#define DXVK_ERROR_CHECKING 1
-
 #include "dxvk_cmdlist.h"
 #include "dxvk_context_state.h"
 
@@ -62,6 +60,18 @@ namespace dxvk {
       const VkClearRect&        clearArea);
     
     /**
+     * \brief Dispatches compute operations
+     * 
+     * \param [in] wgCountX Number of X work groups
+     * \param [in] wgCountY Number of Y work groups
+     * \param [in] wgCountZ Number of Z work groups
+     */
+    void dispatch(
+            uint32_t wgCountX,
+            uint32_t wgCountY,
+            uint32_t wgCountZ);
+    
+    /**
      * \brief Draws primitive without using an index buffer
      * 
      * \param [in] vertexCount Number of vertices to draw
@@ -118,19 +128,14 @@ namespace dxvk {
     Rc<DxvkCommandList> m_commandList;
     DxvkContextState    m_state;
     
-    /**
-     * \brief Forces a graphics pipeline state flush
-     * 
-     * Applies current shader bindings, resource bindings
-     * etc. to the command buffer so that draw calls can
-     * be executed. Called whenever the need arises.
-     */
+    void flushComputeState();
     void flushGraphicsState();
-    
-    void prepareDraw();
     
     void beginRenderPass();
     void endRenderPass();
+    
+    DxvkShaderState* getShaderState(
+      VkShaderStageFlagBits stage);
     
   };
   
