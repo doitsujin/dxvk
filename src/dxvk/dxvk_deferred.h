@@ -8,13 +8,12 @@
 namespace dxvk {
   
   /**
-   * \brief DXVK command list
+   * \brief DXVK deferred command list
    * 
-   * Stores a command buffer that a context can use to record Vulkan
-   * commands. The command list shall also reference the resources
-   * used by the recorded commands for automatic lifetime tracking.
-   * When the command list has completed execution, resources that
-   * are no longer used may get destroyed.
+   * Buffers Vulkan commands so that they can be recorded
+   * into an actual Vulkan command buffer later. This is
+   * used to implement D3D11 Deferred Contexts, which do
+   * not map particularly well to Vulkan's command buffers.
    */
   class DxvkDeferredCommands : public DxvkRecorder {
     

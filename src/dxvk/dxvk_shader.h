@@ -15,10 +15,11 @@ namespace dxvk {
    * that can be accessed by shaders.
    */
   enum class DxvkResourceType : uint32_t {
-    UniformBuffer = 0x00,
-    ImageSampler  = 0x01,
-    SampledImage  = 0x02,
-    StorageBuffer = 0x03,
+    UniformBuffer = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+    ImageSampler  = VK_DESCRIPTOR_TYPE_SAMPLER,
+    SampledImage  = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
+    StorageBuffer = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+    StorageImage  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
   };
   
   
@@ -28,32 +29,6 @@ namespace dxvk {
   struct DxvkResourceSlot{
     DxvkResourceType type;
     uint32_t         slot;
-  };
-  
-  
-  /**
-   * \brief Shader interface
-   * 
-   * Stores a list of resource bindings in the
-   * order they are defined in the shader module.
-   */
-  class DxvkShaderInterface {
-    
-  public:
-    
-    DxvkShaderInterface();
-    ~DxvkShaderInterface();
-    
-    auto size() const { return m_slots.size(); }
-    auto data() const { return m_slots.data(); }
-    
-    void enableResourceSlot(
-      const DxvkResourceSlot& slot);
-    
-  private:
-    
-    std::vector<DxvkResourceSlot> m_slots;
-    
   };
   
   
@@ -70,24 +45,63 @@ namespace dxvk {
   public:
     
     DxvkShader(
-      const Rc<vk::DeviceFn>&     vkd,
-      const DxvkShaderInterface&  iface,
-      const SpirvCodeBuffer&      code);
+            VkShaderStageFlagBits stage,
+            DxvkSpirvCodeBuffer&& code,
+            uint32_t              numResourceSlots,
+      const DxvkResourceSlot*     resourceSlots);
     ~DxvkShader();
     
     /**
-     * \brief Shader module handle
-     * \returns Shader module handle
+     * \brief Retrieves shader code
+     * 
+     * Since the exact binding IDs are not known by the
+     * time the shader is created, we need to offset them
+     * by the first binding index reserved for the shader
+     * stage that this shader belongs to.
+     * \param [in] bindingOffset First binding ID
+     * \returns Modified code buffer
      */
-    VkShaderModule handle() const {
-      return m_shader;
-    }
+    DxvkSpirvCodeBuffer code(
+      uint32_t bindingOffset) const;
+    
+    /**
+     * \brief Number of resource slots
+     * \returns Number of enabled slots
+     */
+    uint32_t slotCount() const;
+    
+    /**
+     * \brief Retrieves resource slot properties
+     * 
+     * Resource slots store which resources that are bound
+     * to a DXVK context are used by the shader. The slot
+     * ID corresponds to the binding index relative to the
+     * first binding index within the shader.
+     * \param [in] slotId Slot index
+     * \returns The resource slot
+     */
+    DxvkResourceSlot slot(
+      uint32_t slotId) const;
+    
+    /**
+     * \brief Descriptor set layout binding
+     * 
+     * Creates Vulkan-compatible binding information for
+     * a single resource slot. Each resource slot used
+     * by the shader corresponds to one binding in Vulkan.
+     * \param [in] slotId Shader binding slot ID
+     * \param [in] bindingOffset Binding index offset
+     * \returns Binding info
+     */
+    VkDescriptorSetLayoutBinding slotBinding(
+      uint32_t slotId, uint32_t bindingOffset) const;
     
   private:
     
-    Rc<vk::DeviceFn>      m_vkd;
-    DxvkShaderInterface   m_iface;
-    VkShaderModule        m_shader;
+    VkShaderStageFlagBits m_stage;
+    DxvkSpirvCodeBuffer   m_code;
+    
+    std::vector<DxvkResourceSlot> m_slots;
     
   };
   

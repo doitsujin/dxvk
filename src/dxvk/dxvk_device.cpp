@@ -35,7 +35,7 @@ namespace dxvk {
   
   
   Rc<DxvkContext> DxvkDevice::createContext() {
-    return new DxvkContext();
+    return new DxvkContext(this);
   }
   
   
@@ -63,6 +63,18 @@ namespace dxvk {
   
   Rc<DxvkSemaphore> DxvkDevice::createSemaphore() {
     return new DxvkSemaphore(m_vkd);
+  }
+  
+  
+  Rc<DxvkShader> DxvkDevice::createShader(
+          VkShaderStageFlagBits stage,
+          DxvkSpirvCodeBuffer&& code,
+          uint32_t              numResourceSlots,
+    const DxvkResourceSlot*     resourceSlots) {
+    return new DxvkShader(stage,
+      std::move(code),
+      numResourceSlots,
+      resourceSlots);
   }
   
   

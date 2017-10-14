@@ -16,20 +16,20 @@ namespace dxvk {
    * Stores arbitrary SPIR-V instructions in a
    * format that can be read by Vulkan drivers.
    */
-  class SpirvCodeBuffer {
+  class DxvkSpirvCodeBuffer {
     
   public:
     
-    SpirvCodeBuffer();
-    SpirvCodeBuffer(
+    DxvkSpirvCodeBuffer();
+    DxvkSpirvCodeBuffer(
       std::basic_istream<uint32_t>& stream);
-    ~SpirvCodeBuffer();
+    ~DxvkSpirvCodeBuffer();
     
     /**
-     * \brief Code
-     * \returns Code
+     * \brief Code data
+     * \returns Code data
      */
-    const uint32_t* code() const {
+    const uint32_t* data() const {
       return m_code.data();
     }
     
@@ -49,7 +49,7 @@ namespace dxvk {
      * code when doing so in advance is impossible.
      * \param [in] other Code buffer to append
      */
-    void append(const SpirvCodeBuffer& other);
+    void append(const DxvkSpirvCodeBuffer& other);
     
     /**
      * \brief Appends an 32-bit word to the buffer

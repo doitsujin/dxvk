@@ -1,10 +1,12 @@
+#include "dxvk_device.h"
 #include "dxvk_context.h"
 #include "dxvk_main.h"
 
 namespace dxvk {
   
-  DxvkContext::DxvkContext() {
-    TRACE(this);
+  DxvkContext::DxvkContext(const Rc<DxvkDevice>& device)
+  : m_device(device) {
+    TRACE(this, device);
   }
   
   

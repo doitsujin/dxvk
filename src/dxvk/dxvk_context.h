@@ -17,7 +17,8 @@ namespace dxvk {
     
   public:
     
-    DxvkContext();
+    DxvkContext(
+      const Rc<DxvkDevice>& device);
     ~DxvkContext();
     
     /**
@@ -124,6 +125,8 @@ namespace dxvk {
       const Rc<DxvkShader>&       shader);
     
   private:
+    
+    const Rc<DxvkDevice> m_device;
     
     Rc<DxvkRecorder> m_cmd;
     DxvkContextState m_state;

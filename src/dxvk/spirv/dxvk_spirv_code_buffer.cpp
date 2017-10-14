@@ -5,18 +5,18 @@
 
 namespace dxvk {
   
-  SpirvCodeBuffer:: SpirvCodeBuffer() { }
-  SpirvCodeBuffer::~SpirvCodeBuffer() { }
+  DxvkSpirvCodeBuffer:: DxvkSpirvCodeBuffer() { }
+  DxvkSpirvCodeBuffer::~DxvkSpirvCodeBuffer() { }
   
   
-  SpirvCodeBuffer::SpirvCodeBuffer(
+  DxvkSpirvCodeBuffer::DxvkSpirvCodeBuffer(
     std::basic_istream<uint32_t>& stream)
   : m_code(
     std::istreambuf_iterator<uint32_t>(stream),
     std::istreambuf_iterator<uint32_t>()) { }
   
   
-  void SpirvCodeBuffer::append(const SpirvCodeBuffer& other) {
+  void DxvkSpirvCodeBuffer::append(const DxvkSpirvCodeBuffer& other) {
     const size_t size = m_code.size();
     m_code.resize(size + other.m_code.size());
     
@@ -27,30 +27,30 @@ namespace dxvk {
   }
   
   
-  void SpirvCodeBuffer::putWord(uint32_t word) {
+  void DxvkSpirvCodeBuffer::putWord(uint32_t word) {
     m_code.push_back(word);
   }
   
   
-  void SpirvCodeBuffer::putIns(spv::Op opCode, uint16_t wordCount) {
+  void DxvkSpirvCodeBuffer::putIns(spv::Op opCode, uint16_t wordCount) {
     this->putWord(
         (static_cast<uint32_t>(opCode)    <<  0)
       | (static_cast<uint32_t>(wordCount) << 16));
   }
   
   
-  void SpirvCodeBuffer::putInt32(uint32_t word) {
+  void DxvkSpirvCodeBuffer::putInt32(uint32_t word) {
     this->putWord(word);
   }
   
   
-  void SpirvCodeBuffer::putInt64(uint64_t value) {
+  void DxvkSpirvCodeBuffer::putInt64(uint64_t value) {
     this->putWord(value >>  0);
     this->putWord(value >> 32);
   }
   
   
-  void SpirvCodeBuffer::putFloat32(float value) {
+  void DxvkSpirvCodeBuffer::putFloat32(float value) {
     uint32_t tmp;
     static_assert(sizeof(tmp) == sizeof(value));
     std::memcpy(&tmp, &value, sizeof(value));
@@ -58,7 +58,7 @@ namespace dxvk {
   }
   
   
-  void SpirvCodeBuffer::putFloat64(double value) {
+  void DxvkSpirvCodeBuffer::putFloat64(double value) {
     uint64_t tmp;
     static_assert(sizeof(tmp) == sizeof(value));
     std::memcpy(&tmp, &value, sizeof(value));
@@ -66,7 +66,7 @@ namespace dxvk {
   }
   
   
-  void SpirvCodeBuffer::putStr(const char* str) {
+  void DxvkSpirvCodeBuffer::putStr(const char* str) {
     uint32_t word = 0;
     uint32_t nbit = 0;
     
@@ -85,7 +85,7 @@ namespace dxvk {
   }
   
   
-  void SpirvCodeBuffer::putHeader(uint32_t boundIds) {
+  void DxvkSpirvCodeBuffer::putHeader(uint32_t boundIds) {
     this->putWord(spv::MagicNumber);
     this->putWord(spv::Version);
     this->putWord(0); // Generator
@@ -94,13 +94,13 @@ namespace dxvk {
   }
   
   
-  uint32_t SpirvCodeBuffer::strLen(const char* str) {
+  uint32_t DxvkSpirvCodeBuffer::strLen(const char* str) {
     // Null-termination plus padding
     return (std::strlen(str) + 4) / 4;
   }
   
   
-  void SpirvCodeBuffer::store(std::basic_ostream<uint32_t>& stream) const {
+  void DxvkSpirvCodeBuffer::store(std::basic_ostream<uint32_t>& stream) const {
     stream.write(m_code.data(), m_code.size());
   }
   

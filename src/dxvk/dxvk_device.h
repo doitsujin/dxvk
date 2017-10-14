@@ -2,6 +2,7 @@
 
 #include "dxvk_adapter.h"
 #include "dxvk_buffer.h"
+#include "dxvk_compute.h"
 #include "dxvk_context.h"
 #include "dxvk_framebuffer.h"
 #include "dxvk_memory.h"
@@ -115,13 +116,17 @@ namespace dxvk {
     /**
      * \brief Creates a shader module
      * 
-     * \param [in] iface Shader interface
+     * \param [in] stage Shader stage
      * \param [in] code SPIR-V code
+     * \param [in] numResourceSlots Resource slot count
+     * \param [in] resourceSlots Resource slot array
      * \returns Shader module
      */
     Rc<DxvkShader> createShader(
-      const DxvkShaderInterface&  iface,
-      const SpirvCodeBuffer&      code);
+            VkShaderStageFlagBits stage,
+            DxvkSpirvCodeBuffer&& code,
+            uint32_t              numResourceSlots,
+      const DxvkResourceSlot*     resourceSlots);
     
     /**
      * \brief Creates a swap chain
