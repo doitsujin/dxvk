@@ -3,6 +3,7 @@
 #include <unordered_set>
 
 #include "dxvk_lifetime.h"
+#include "dxvk_recorder.h"
 
 namespace dxvk {
   
@@ -15,7 +16,7 @@ namespace dxvk {
    * When the command list has completed execution, resources that
    * are no longer used may get destroyed.
    */
-  class DxvkCommandList : public RcObject {
+  class DxvkCommandList : public DxvkRecorder {
     
   public:
     
@@ -32,8 +33,21 @@ namespace dxvk {
       return m_buffer;
     }
     
-    void beginRecording();
-    void endRecording();
+    /**
+     * \brief Begins recording
+     * 
+     * Resets the command buffer and
+     * begins command buffer recording.
+     */
+    void beginRecording() final;
+    
+    /**
+     * \brief Ends recording
+     * 
+     * Ends command buffer recording, making
+     * the command list ready for submission.
+     */
+    void endRecording() final;
     
     /**
      * \brief Adds a resource to track
@@ -44,7 +58,7 @@ namespace dxvk {
      * completed.
      */
     void trackResource(
-      const Rc<DxvkResource>& rc);
+      const Rc<DxvkResource>& rc) final;
     
     /**
      * \brief Resets the command list
@@ -54,7 +68,41 @@ namespace dxvk {
      * command list to the device, this method will be called once
      * the command list completes execution.
      */
-    void reset();
+    void reset() final;
+    
+    void cmdBeginRenderPass(
+      const VkRenderPassBeginInfo*  pRenderPassBegin,
+            VkSubpassContents       contents) final;
+    
+    void cmdBindPipeline(
+            VkPipelineBindPoint     pipelineBindPoint,
+            VkPipeline              pipeline) final;
+    
+    void cmdClearAttachments(
+            uint32_t                attachmentCount,
+      const VkClearAttachment*      pAttachments,
+            uint32_t                rectCount,
+      const VkClearRect*            pRects) final;
+    
+    void cmdDispatch(
+            uint32_t                x,
+            uint32_t                y,
+            uint32_t                z) final;
+    
+    void cmdDraw(
+            uint32_t                vertexCount,
+            uint32_t                instanceCount,
+            uint32_t                firstVertex,
+            uint32_t                firstInstance) final;
+    
+    void cmdDrawIndexed(
+            uint32_t                indexCount,
+            uint32_t                instanceCount,
+            uint32_t                firstIndex,
+            uint32_t                vertexOffset,
+            uint32_t                firstInstance) final;
+    
+    void cmdEndRenderPass() final;
     
   private:
     

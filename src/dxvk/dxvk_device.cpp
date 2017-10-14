@@ -35,7 +35,7 @@ namespace dxvk {
   
   
   Rc<DxvkContext> DxvkDevice::createContext() {
-    return new DxvkContext(m_vkd);
+    return new DxvkContext();
   }
   
   

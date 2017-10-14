@@ -3,8 +3,7 @@
 
 namespace dxvk {
   
-  DxvkContext::DxvkContext(const Rc<vk::DeviceFn>& vkd)
-  : m_vkd(vkd) {
+  DxvkContext::DxvkContext() {
     TRACE(this);
   }
   
@@ -15,10 +14,10 @@ namespace dxvk {
   
   
   void DxvkContext::beginRecording(
-    const Rc<DxvkCommandList>& cmdList) {
-    TRACE(this, cmdList);
-    m_commandList = cmdList;
-    m_commandList->beginRecording();
+    const Rc<DxvkRecorder>& recorder) {
+    TRACE(this, recorder);
+    m_cmd = recorder;
+    m_cmd->beginRecording();
     
     // Make sure that we apply the current context state
     // to the command buffer when recording draw commands.
@@ -46,8 +45,8 @@ namespace dxvk {
       this->endRenderPass();
     
     // Finalize the command list
-    m_commandList->endRecording();
-    m_commandList = nullptr;
+    m_cmd->endRecording();
+    m_cmd = nullptr;
     return true;
   }
   
@@ -57,10 +56,8 @@ namespace dxvk {
     const VkClearRect&        clearArea) {
     this->flushGraphicsState();
     
-    m_vkd->vkCmdClearAttachments(
-      m_commandList->handle(),
-      1, &attachment,
-      1, &clearArea);
+    m_cmd->cmdClearAttachments(
+      1, &attachment, 1, &clearArea);
   }
   
   
@@ -70,8 +67,7 @@ namespace dxvk {
           uint32_t wgCountZ) {
     this->flushComputeState();
     
-    m_vkd->vkCmdDispatch(
-      m_commandList->handle(),
+    m_cmd->cmdDispatch(
       wgCountX, wgCountY, wgCountZ);
   }
   
@@ -83,12 +79,9 @@ namespace dxvk {
           uint32_t firstInstance) {
     this->flushGraphicsState();
     
-    m_vkd->vkCmdDraw(
-      m_commandList->handle(),
-      vertexCount,
-      instanceCount,
-      firstVertex,
-      firstInstance);
+    m_cmd->cmdDraw(
+      vertexCount, instanceCount,
+      firstVertex, firstInstance);
   }
   
   
@@ -100,12 +93,9 @@ namespace dxvk {
           uint32_t firstInstance) {
     this->flushGraphicsState();
     
-    m_vkd->vkCmdDrawIndexed(
-      m_commandList->handle(),
-      indexCount,
-      instanceCount,
-      firstIndex,
-      vertexOffset,
+    m_cmd->cmdDrawIndexed(
+      indexCount, instanceCount,
+      firstIndex, vertexOffset,
       firstInstance);
   }
   
@@ -148,11 +138,9 @@ namespace dxvk {
   
   
   void DxvkContext::flushComputeState() {
-    VkCommandBuffer cmd = m_commandList->handle();
-    
     if (m_state.c.flags.test(DxvkComputePipelineBit::PipelineDirty)
      && m_state.c.pipeline != nullptr) {
-      m_vkd->vkCmdBindPipeline(cmd,
+      m_cmd->cmdBindPipeline(
         VK_PIPELINE_BIND_POINT_COMPUTE,
         m_state.c.pipeline->handle());
     }
@@ -184,7 +172,7 @@ namespace dxvk {
     info.clearValueCount  = 0;
     info.pClearValues     = nullptr;
     
-    m_vkd->vkCmdBeginRenderPass(m_commandList->handle(), &info, VK_SUBPASS_CONTENTS_INLINE);
+    m_cmd->cmdBeginRenderPass(&info, VK_SUBPASS_CONTENTS_INLINE);
     m_state.g.flags.set(DxvkGraphicsPipelineBit::RenderPassBound);
   }
   
@@ -192,7 +180,7 @@ namespace dxvk {
   void DxvkContext::endRenderPass() {
     TRACE(this);
     
-    m_vkd->vkCmdEndRenderPass(m_commandList->handle());
+    m_cmd->cmdEndRenderPass();
     m_state.g.flags.clr(DxvkGraphicsPipelineBit::RenderPassBound);
   }
   

@@ -22,6 +22,11 @@ namespace dxvk {
     virtual void beginRecording() = 0;
     virtual void endRecording() = 0;
     
+    virtual void trackResource(
+      const Rc<DxvkResource>&       rc) = 0;
+      
+    virtual void reset() = 0;
+    
     virtual void cmdBeginRenderPass(
       const VkRenderPassBeginInfo*  pRenderPassBegin,
             VkSubpassContents       contents) = 0;
@@ -54,12 +59,7 @@ namespace dxvk {
             uint32_t                vertexOffset,
             uint32_t                firstInstance) = 0;
     
-    virtual void cmdEndRenderPass();
-    
-    virtual void trackResource(
-      const Rc<DxvkResource>&       rc) = 0;
-      
-    virtual void reset() = 0;
+    virtual void cmdEndRenderPass() = 0;
     
   };
   

@@ -2,6 +2,7 @@
 
 #include "dxvk_cmdlist.h"
 #include "dxvk_context_state.h"
+#include "dxvk_deferred.h"
 
 namespace dxvk {
   
@@ -16,7 +17,7 @@ namespace dxvk {
     
   public:
     
-    DxvkContext(const Rc<vk::DeviceFn>& vkd);
+    DxvkContext();
     ~DxvkContext();
     
     /**
@@ -25,10 +26,10 @@ namespace dxvk {
      * Begins recording a command list. This does
      * not alter any context state other than the
      * active command list.
-     * \param [in] cmdList Target command list
+     * \param [in] recorder Target recorder
      */
     void beginRecording(
-      const Rc<DxvkCommandList>& cmdList);
+      const Rc<DxvkRecorder>& recorder);
     
     /**
      * \brief Ends command buffer recording
@@ -124,9 +125,8 @@ namespace dxvk {
     
   private:
     
-    Rc<vk::DeviceFn>    m_vkd;
-    Rc<DxvkCommandList> m_commandList;
-    DxvkContextState    m_state;
+    Rc<DxvkRecorder> m_cmd;
+    DxvkContextState m_state;
     
     void flushComputeState();
     void flushGraphicsState();
