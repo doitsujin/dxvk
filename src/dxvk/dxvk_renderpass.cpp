@@ -3,7 +3,7 @@
 namespace dxvk {
   
   DxvkRenderPassFormat::DxvkRenderPassFormat() {
-    for (uint32_t i = 0; i < MaxNumColorTargets; i++)
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++)
       m_color.at(i) = VK_FORMAT_UNDEFINED;
     m_depth   = VK_FORMAT_UNDEFINED;
     m_samples = VK_SAMPLE_COUNT_1_BIT;
@@ -15,7 +15,7 @@ namespace dxvk {
     std::hash<VkFormat>              fhash;
     std::hash<VkSampleCountFlagBits> shash;
     
-    for (uint32_t i = 0; i < MaxNumColorTargets; i++)
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++)
       result.add(fhash(m_color.at(i)));
     
     result.add(fhash(m_depth));
@@ -27,7 +27,7 @@ namespace dxvk {
   bool DxvkRenderPassFormat::operator == (const DxvkRenderPassFormat& other) const {
     bool equal = m_depth   == other.m_depth
               && m_samples == other.m_samples;
-    for (uint32_t i = 0; i < MaxNumColorTargets && !equal; i++)
+    for (uint32_t i = 0; i < MaxNumRenderTargets && !equal; i++)
       equal = m_color.at(i) == other.m_color.at(i);
     return equal;
   }
@@ -48,7 +48,7 @@ namespace dxvk {
     std::vector<VkAttachmentDescription> attachments;
     
     VkAttachmentReference                                 depthRef;
-    std::array<VkAttachmentReference, MaxNumColorTargets> colorRef;
+    std::array<VkAttachmentReference, MaxNumRenderTargets> colorRef;
     
     // Render passes may not require the previous
     // contents of the attachments to be preserved.
@@ -76,7 +76,7 @@ namespace dxvk {
       attachments.push_back(desc);
     }
     
-    for (uint32_t i = 0; i < MaxNumColorTargets; i++) {
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       colorRef.at(i).attachment = VK_ATTACHMENT_UNUSED;
       colorRef.at(i).layout     = VK_IMAGE_LAYOUT_UNDEFINED;
       

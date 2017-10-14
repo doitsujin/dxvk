@@ -9,7 +9,7 @@ namespace dxvk {
   DxvkRenderPassFormat DxvkRenderTargets::renderPassFormat() const {
     DxvkRenderPassFormat result;
     
-    for (uint32_t i = 0; i < MaxNumColorTargets; i++) {
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       if (m_colorTargets.at(i) != nullptr) {
         result.setColorFormat(i, m_colorTargets.at(i)->info().format);
         result.setSampleCount(m_colorTargets.at(i)->imageInfo().sampleCount);
@@ -31,7 +31,7 @@ namespace dxvk {
     if (m_depthTarget != nullptr)
       result.push_back(m_depthTarget->handle());
     
-    for (uint32_t i = 0; i < MaxNumColorTargets; i++) {
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       if (m_colorTargets.at(i) != nullptr)
         result.push_back(m_colorTargets.at(i)->handle());
     }
@@ -44,7 +44,7 @@ namespace dxvk {
     if (m_depthTarget != nullptr)
       return this->renderTargetSize(m_depthTarget);
     
-    for (uint32_t i = 0; i < MaxNumColorTargets; i++) {
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       if (m_colorTargets.at(i) != nullptr)
         return this->renderTargetSize(m_colorTargets.at(i));
     }

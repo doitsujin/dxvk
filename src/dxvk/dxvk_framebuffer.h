@@ -96,8 +96,8 @@ namespace dxvk {
     
   private:
     
-    std::array<Rc<DxvkImageView>, MaxNumColorTargets> m_colorTargets;
-    Rc<DxvkImageView>                                 m_depthTarget;
+    std::array<Rc<DxvkImageView>, MaxNumRenderTargets> m_colorTargets;
+    Rc<DxvkImageView>                                  m_depthTarget;
     
     DxvkFramebufferSize renderTargetSize(
       const Rc<DxvkImageView>& renderTarget) const;

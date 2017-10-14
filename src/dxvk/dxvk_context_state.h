@@ -2,26 +2,10 @@
 
 #include "dxvk_compute.h"
 #include "dxvk_framebuffer.h"
+#include "dxvk_limits.h"
 #include "dxvk_shader.h"
 
 namespace dxvk {
-  
-  /**
-   * \brief Limits of the DXVK API
-   * 
-   * Stores the number of binding slots
-   * available for all resource types.
-   */
-  enum DxvkLimits : size_t {
-    MaxNumRenderTargets  =   8,
-    MaxNumUniformBuffers =  16,
-    MaxNumSampledImages  =  16,
-    MaxNumStorageBuffers = 128,
-    MaxNumStorageImages  = 128,
-    MaxNumVertexBuffers  =  32,
-    MaxNumOutputStreams  =   4,
-  };
-  
   
   /**
    * \brief Graphics pipeline state flags

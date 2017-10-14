@@ -5,10 +5,9 @@
 
 #include "dxvk_hash.h"
 #include "dxvk_include.h"
+#include "dxvk_limits.h"
 
 namespace dxvk {
-  
-  constexpr uint32_t MaxNumColorTargets = 8;
   
   /**
    * \brief Render pass format
@@ -92,9 +91,9 @@ namespace dxvk {
     
   private:
     
-    std::array<VkFormat, MaxNumColorTargets> m_color;
-    VkFormat                                 m_depth;
-    VkSampleCountFlagBits                    m_samples;
+    std::array<VkFormat, MaxNumRenderTargets> m_color;
+    VkFormat                                  m_depth;
+    VkSampleCountFlagBits                     m_samples;
     
   };
   
