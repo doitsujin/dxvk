@@ -2,10 +2,20 @@
 
 namespace dxvk {
   
+  DxvkShaderInterface:: DxvkShaderInterface() { }
+  DxvkShaderInterface::~DxvkShaderInterface() { }
+  
+  void DxvkShaderInterface::enableResourceSlot(
+    const DxvkResourceSlot& slot) {
+    m_slots.push_back(slot);
+  }
+  
+  
   DxvkShader::DxvkShader(
     const Rc<vk::DeviceFn>&     vkd,
+    const DxvkShaderInterface&  iface,
     const SpirvCodeBuffer&      code)
-  : m_vkd(vkd) {
+  : m_vkd(vkd), m_iface(iface) {
     TRACE(this);
     
     VkShaderModuleCreateInfo info;
