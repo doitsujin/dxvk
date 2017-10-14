@@ -7,7 +7,10 @@ namespace dxvk {
   /**
    * \brief Compute pipeline
    * 
-   * Stores a pipeline object 
+   * Stores a compute pipeline object and the corresponding
+   * pipeline layout. Unlike graphics pipelines, compute
+   * pipelines do not need to be recompiled against any sort
+   * of pipeline state.
    */
   class DxvkComputePipeline : public RcObject {
     

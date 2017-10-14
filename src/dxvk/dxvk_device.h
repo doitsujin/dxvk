@@ -115,10 +115,12 @@ namespace dxvk {
     /**
      * \brief Creates a shader module
      * 
+     * \param [in] iface Shader interface
      * \param [in] code SPIR-V code
      * \returns Shader module
      */
     Rc<DxvkShader> createShader(
+      const DxvkShaderInterface&  iface,
       const SpirvCodeBuffer&      code);
     
     /**
