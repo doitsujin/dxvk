@@ -215,6 +215,10 @@ namespace dxvk {
     
     UINT GetExceptionMode() final;
     
+    DxvkDevice* GetDXVKDevice() {
+      return m_dxvkDevice.ptr();
+    }
+    
     static bool CheckFeatureLevelSupport(
             D3D_FEATURE_LEVEL featureLevel);
     

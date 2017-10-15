@@ -1,4 +1,5 @@
 d3d11_src = [
+  'd3d11_buffer.cpp',
   'd3d11_context.cpp',
   'd3d11_device.cpp',
   'd3d11_main.cpp',

@@ -1,5 +1,6 @@
 #include <cstring>
 
+#include "d3d11_buffer.h"
 #include "d3d11_context.h"
 #include "d3d11_device.h"
 
@@ -42,8 +43,21 @@ namespace dxvk {
     const D3D11_BUFFER_DESC*      pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
           ID3D11Buffer**          ppBuffer) {
-    Logger::err("D3D11Device::CreateBuffer: Not implemented");
-    return E_NOTIMPL;
+    if (ppBuffer == nullptr)
+      return S_OK;
+    
+    if (pInitialData != nullptr) {
+      Logger::err("D3D11Device::CreateBuffer: pInitialData != NULL not supported");
+      return E_FAIL;
+    }
+    
+    try {
+      *ppBuffer = ref(new D3D11Buffer(this, *pDesc));
+      return S_OK;
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return E_FAIL;
+    }
   }
   
   
