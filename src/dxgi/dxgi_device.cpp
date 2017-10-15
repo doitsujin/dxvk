@@ -16,8 +16,10 @@ namespace dxvk {
   
   
   HRESULT DxgiDevice::QueryInterface(REFIID riid, void** ppvObject) {
-    COM_QUERY_IFACE(riid, ppvObject, IDXVKDevice);
+    COM_QUERY_IFACE(riid, ppvObject, IUnknown);
+    COM_QUERY_IFACE(riid, ppvObject, IDXGIObject);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIDevice);
+    COM_QUERY_IFACE(riid, ppvObject, IDXVKDevice);
     
     if (m_layer != nullptr)
       return m_layer->QueryInterface(riid, ppvObject);

@@ -18,6 +18,8 @@ namespace dxvk {
   HRESULT DxgiFactory::QueryInterface(
           REFIID  riid,
           void**  ppvObject) {
+    COM_QUERY_IFACE(riid, ppvObject, IUnknown);
+    COM_QUERY_IFACE(riid, ppvObject, IDXGIObject);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIFactory);
     
     Logger::warn("DxgiFactory::QueryInterface: Unknown interface query");

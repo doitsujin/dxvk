@@ -23,9 +23,9 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiOutput::QueryInterface(
-          REFIID riid,
-          void **ppvObject) {
+  HRESULT DxgiOutput::QueryInterface(REFIID riid, void** ppvObject) {
+    COM_QUERY_IFACE(riid, ppvObject, IUnknown);
+    COM_QUERY_IFACE(riid, ppvObject, IDXGIObject);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIOutput);
     
     Logger::warn("DxgiOutput::QueryInterface: Unknown interface query");
