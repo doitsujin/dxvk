@@ -47,6 +47,14 @@ namespace dxvk {
   }
   
   
+  Rc<DxvkBuffer> DxvkDevice::createBuffer(
+    const DxvkBufferCreateInfo& createInfo,
+          VkMemoryPropertyFlags memoryType) {
+    return new DxvkBuffer(m_vkd,
+      createInfo, m_memory, memoryType);
+  }
+  
+  
   Rc<DxvkImage> DxvkDevice::createImage(
     const DxvkImageCreateInfo&  createInfo,
           VkMemoryPropertyFlags memoryType) {

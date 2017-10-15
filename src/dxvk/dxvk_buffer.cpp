@@ -1,0 +1,38 @@
+#include "dxvk_buffer.h"
+
+namespace dxvk {
+  
+  DxvkBuffer::DxvkBuffer(
+    const Rc<vk::DeviceFn>&     vkd,
+    const DxvkBufferCreateInfo& createInfo,
+          DxvkMemoryAllocator&  memAlloc,
+          VkMemoryPropertyFlags memFlags)
+  : m_vkd(vkd), m_info(createInfo) {
+    
+    VkBufferCreateInfo info;
+    info.sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    info.pNext                 = nullptr;
+    info.flags                 = 0;
+    info.size                  = createInfo.size;
+    info.usage                 = createInfo.usage;
+    info.sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
+    info.queueFamilyIndexCount = 0;
+    info.pQueueFamilyIndices   = nullptr;
+    
+    if (m_vkd->vkCreateBuffer(m_vkd->device(),
+          &info, nullptr, &m_buffer) != VK_SUCCESS)
+      throw DxvkError("DxvkBuffer::DxvkBuffer: Failed to create buffer");
+    
+    VkMemoryRequirements memReq;
+    m_vkd->vkGetBufferMemoryRequirements(
+      m_vkd->device(), m_buffer, &memReq);
+    m_memory = memAlloc.alloc(memReq, memFlags);
+  }
+  
+  
+  DxvkBuffer::~DxvkBuffer() {
+    if (m_buffer != VK_NULL_HANDLE)
+      m_vkd->vkDestroyBuffer(m_vkd->device(), m_buffer, nullptr);
+  }
+  
+}

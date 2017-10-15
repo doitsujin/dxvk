@@ -86,6 +86,17 @@ namespace dxvk {
       const DxvkRenderTargets& renderTargets);
     
     /**
+     * \brief Creates a buffer object
+     * 
+     * \param [in] createInfo Buffer create info
+     * \param [in] memoryType Memory type flags
+     * \returns The buffer object
+     */
+    Rc<DxvkBuffer> createBuffer(
+      const DxvkBufferCreateInfo& createInfo,
+            VkMemoryPropertyFlags memoryType);
+    
+    /**
      * \brief Creates an image object
      * 
      * \param [in] createInfo Image create info
