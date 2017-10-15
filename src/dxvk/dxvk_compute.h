@@ -34,6 +34,17 @@ namespace dxvk {
     }
     
     /**
+     * \brief Pipeline layout layout
+     * 
+     * The pipeline layout for this pipeline.
+     * Use this to bind descriptor sets.
+     * \returns The descriptor set layout
+     */
+    VkPipelineLayout pipelineLayout() const {
+      return m_pipelineLayout;
+    }
+    
+    /**
      * \brief Pipeline handle
      * \returns Pipeline handle
      */

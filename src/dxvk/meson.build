@@ -6,6 +6,7 @@ dxvk_src = files([
   'dxvk_compute.cpp',
   'dxvk_context.cpp',
   'dxvk_deferred.cpp',
+  'dxvk_descriptor.cpp',
   'dxvk_device.cpp',
   'dxvk_framebuffer.cpp',
   'dxvk_graphics.cpp',

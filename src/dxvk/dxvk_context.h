@@ -165,9 +165,10 @@ namespace dxvk {
     
     DxvkShaderState* getShaderState(
       VkShaderStageFlagBits stage);
-    
-    VkPipelineStageFlags pipelineStage(
-      VkShaderStageFlags shaderStage) const;
+      
+    uint32_t addResourceBindingInfo(
+            std::vector<DxvkResourceBinding>& bindings,
+      const DxvkShaderState&                  stageInfo) const;
     
   };
   

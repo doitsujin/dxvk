@@ -27,6 +27,10 @@ namespace dxvk {
     m_vkd->vkGetBufferMemoryRequirements(
       m_vkd->device(), m_buffer, &memReq);
     m_memory = memAlloc.alloc(memReq, memFlags);
+    
+    if (m_vkd->vkBindBufferMemory(m_vkd->device(),
+          m_buffer, m_memory.memory(), m_memory.offset()) != VK_SUCCESS)
+      throw DxvkError("DxvkBuffer::DxvkBuffer: Failed to bind device memory");
   }
   
   

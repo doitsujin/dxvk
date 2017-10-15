@@ -127,6 +127,8 @@ namespace dxvk {
     
     m_cmd->cmdDispatch(
       wgCountX, wgCountY, wgCountZ);
+    
+    // TODO resource barriers
   }
   
   
@@ -171,6 +173,18 @@ namespace dxvk {
           VK_PIPELINE_BIND_POINT_COMPUTE,
           m_state.c.pipeline->getPipelineHandle());
       }
+    }
+    
+    if (m_state.c.flags.test(DxvkComputePipelineBit::DirtyResources)
+     && m_state.c.pipeline != nullptr) {
+      std::vector<DxvkResourceBinding> bindings;
+      this->addResourceBindingInfo(bindings, m_state.c.cs);
+      
+      m_cmd->bindShaderResources(
+        VK_PIPELINE_BIND_POINT_COMPUTE,
+        m_state.c.pipeline->pipelineLayout(),
+        m_state.c.pipeline->descriptorSetLayout(),
+        bindings.size(), bindings.data());
     }
     
     m_state.c.flags.clr(
@@ -257,6 +271,46 @@ namespace dxvk {
       default:
         return nullptr;
     }
+  }
+  
+  
+  uint32_t DxvkContext::addResourceBindingInfo(
+          std::vector<DxvkResourceBinding>& bindings,
+    const DxvkShaderState&                  stageInfo) const {
+    const uint32_t slotCount = stageInfo.shader->slotCount();
+    
+    for (uint32_t i = 0; i < slotCount; i++) {
+      DxvkResourceSlot slot = stageInfo.shader->slot(i);
+      DxvkResourceBinding binding;
+      
+      switch (slot.type) {
+        case DxvkResourceType::ImageSampler:
+          binding.type = VK_DESCRIPTOR_TYPE_SAMPLER;
+          break;
+          
+        case DxvkResourceType::SampledImage:
+          binding.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+          break;
+          
+        case DxvkResourceType::StorageImage:
+          binding.type   = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+          break;
+          
+        case DxvkResourceType::UniformBuffer:
+          binding.type   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+          binding.buffer = stageInfo.boundUniformBuffers.at(slot.slot).descriptorInfo();
+          break;
+          
+        case DxvkResourceType::StorageBuffer:
+          binding.type   = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+          binding.buffer = stageInfo.boundStorageBuffers.at(slot.slot).descriptorInfo();
+          break;
+      }
+      
+      bindings.push_back(binding);
+    }
+    
+    return slotCount;
   }
   
 }

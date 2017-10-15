@@ -105,6 +105,9 @@ public:
       m_dxvkCommandList, sync1, sync2);
     m_dxvkSwapchain->present(sync2);
     m_dxvkDevice->waitForIdle();
+    
+    std::memcpy(m_testData, m_testBuffer->mapPtr(), sizeof(m_testData));
+    std::cout << m_testData[0] << std::endl;
   }
   
 private:

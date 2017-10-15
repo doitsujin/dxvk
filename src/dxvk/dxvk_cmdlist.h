@@ -2,6 +2,7 @@
 
 #include <unordered_set>
 
+#include "dxvk_descriptor.h"
 #include "dxvk_lifetime.h"
 #include "dxvk_recorder.h"
 
@@ -70,6 +71,13 @@ namespace dxvk {
      */
     void reset() final;
     
+    void bindShaderResources(
+            VkPipelineBindPoint     pipeline,
+            VkPipelineLayout        pipelineLayout,
+            VkDescriptorSetLayout   descriptorLayout,
+            uint32_t                bindingCount,
+      const DxvkResourceBinding*    bindings) final;
+    
     void cmdBeginRenderPass(
       const VkRenderPassBeginInfo*  pRenderPassBegin,
             VkSubpassContents       contents) final;
@@ -123,6 +131,9 @@ namespace dxvk {
     VkCommandBuffer     m_buffer;
     
     DxvkLifetimeTracker m_resources;
+    DxvkDescriptorAlloc m_descAlloc;
+    
+    std::vector<VkWriteDescriptorSet> m_descriptorSetWrites;
     
   };
   

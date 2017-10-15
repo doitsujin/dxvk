@@ -5,7 +5,7 @@ namespace dxvk {
   DxvkCommandList::DxvkCommandList(
     const Rc<vk::DeviceFn>& vkd,
           uint32_t          queueFamily)
-  : m_vkd(vkd) {
+  : m_vkd(vkd), m_descAlloc(vkd) {
     TRACE(this, queueFamily);
     
     VkCommandPoolCreateInfo poolInfo;
@@ -71,7 +71,43 @@ namespace dxvk {
   
   void DxvkCommandList::reset() {
     TRACE(this);
+    
+    m_descAlloc.reset();
     m_resources.reset();
+  }
+  
+  
+  void DxvkCommandList::bindShaderResources(
+          VkPipelineBindPoint     pipeline,
+          VkPipelineLayout        pipelineLayout,
+          VkDescriptorSetLayout   descriptorLayout,
+          uint32_t                bindingCount,
+    const DxvkResourceBinding*    bindings) {
+    VkDescriptorSet dset = m_descAlloc.alloc(descriptorLayout);
+    
+    if (bindingCount > m_descriptorSetWrites.size())
+      m_descriptorSetWrites.resize(bindingCount);
+    
+    for (uint32_t i = 0; i < bindingCount; i++) {
+      VkWriteDescriptorSet& info = m_descriptorSetWrites.at(i);
+      
+      info.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      info.pNext            = nullptr;
+      info.dstSet           = dset;
+      info.dstBinding       = i;
+      info.dstArrayElement  = 0;
+      info.descriptorCount  = 1;
+      info.descriptorType   = bindings[i].type;
+      info.pImageInfo       = &bindings[i].image;
+      info.pBufferInfo      = &bindings[i].buffer;
+      info.pTexelBufferView = nullptr;
+    }
+    
+    m_vkd->vkUpdateDescriptorSets(m_vkd->device(),
+      bindingCount, m_descriptorSetWrites.data(), 0, nullptr);
+    
+    m_vkd->vkCmdBindDescriptorSets(m_buffer,
+      pipeline, pipelineLayout, 0, 1, &dset, 0, nullptr);
   }
   
   

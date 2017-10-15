@@ -1,5 +1,6 @@
 #pragma once
 
+#include "dxvk_descriptor.h"
 #include "dxvk_lifetime.h"
 
 namespace dxvk {
@@ -26,6 +27,13 @@ namespace dxvk {
       const Rc<DxvkResource>&       rc) = 0;
       
     virtual void reset() = 0;
+    
+    virtual void bindShaderResources(
+            VkPipelineBindPoint     pipeline,
+            VkPipelineLayout        pipelineLayout,
+            VkDescriptorSetLayout   descriptorLayout,
+            uint32_t                bindingCount,
+      const DxvkResourceBinding*    bindings) = 0;
     
     virtual void cmdBeginRenderPass(
       const VkRenderPassBeginInfo*  pRenderPassBegin,
