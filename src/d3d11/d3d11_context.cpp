@@ -20,6 +20,8 @@ namespace dxvk {
   HRESULT D3D11DeviceContext::QueryInterface(
           REFIID  riid,
           void**  ppvObject) {
+    COM_QUERY_IFACE(riid, ppvObject, IUnknown);
+    COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceChild);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceContext);
     
     Logger::warn("D3D11DeviceContext::QueryInterface: Unknown interface query");

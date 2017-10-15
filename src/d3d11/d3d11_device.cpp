@@ -28,6 +28,7 @@ namespace dxvk {
   
   
   HRESULT D3D11Device::QueryInterface(REFIID riid, void** ppvObject) {
+    COM_QUERY_IFACE(riid, ppvObject, IUnknown);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11Device);
     
     if (riid == __uuidof(IDXVKDevice)
