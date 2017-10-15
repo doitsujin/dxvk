@@ -37,7 +37,7 @@ namespace dxvk {
      * \brief Pipeline handle
      * \returns Pipeline handle
      */
-    VkPipeline handle() const {
+    VkPipeline getPipelineHandle() const {
       return m_pipeline;
     }
     

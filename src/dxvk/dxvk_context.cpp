@@ -144,7 +144,7 @@ namespace dxvk {
      && m_state.c.pipeline != nullptr) {
       m_cmd->cmdBindPipeline(
         VK_PIPELINE_BIND_POINT_COMPUTE,
-        m_state.c.pipeline->handle());
+        m_state.c.pipeline->getPipelineHandle());
     }
     
     m_state.c.flags.clr(
