@@ -61,6 +61,17 @@ namespace dxvk {
     
     virtual void cmdEndRenderPass() = 0;
     
+    virtual void cmdPipelineBarrier(
+            VkPipelineStageFlags    srcStageMask,
+            VkPipelineStageFlags    dstStageMask,
+            VkDependencyFlags       dependencyFlags,
+            uint32_t                memoryBarrierCount,
+      const VkMemoryBarrier*        pMemoryBarriers,
+            uint32_t                bufferMemoryBarrierCount,
+      const VkBufferMemoryBarrier*  pBufferMemoryBarriers,
+            uint32_t                imageMemoryBarrierCount,
+      const VkImageMemoryBarrier*   pImageMemoryBarriers) = 0;
+    
   };
   
 }

@@ -4,8 +4,11 @@
 
 namespace dxvk {
   
-  DxvkContext::DxvkContext(const Rc<DxvkDevice>& device)
-  : m_device(device) {
+  DxvkContext::DxvkContext(
+    const Rc<DxvkDevice>&           device,
+    const Rc<DxvkPipelineManager>&  pipeMgr)
+  : m_device  (device),
+    m_pipeMgr (pipeMgr) {
     TRACE(this, device);
   }
   
@@ -53,6 +56,57 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::bindFramebuffer(
+    const Rc<DxvkFramebuffer>& fb) {
+    TRACE(this, fb);
+    
+    if (m_state.g.fb != fb) {
+      m_state.g.fb = fb;
+      
+      if (m_state.g.flags.test(
+          DxvkGraphicsPipelineBit::RenderPassBound))
+        this->endRenderPass();
+    }
+  }
+  
+  
+  void DxvkContext::bindShader(
+          VkShaderStageFlagBits stage,
+    const Rc<DxvkShader>&       shader) {
+    TRACE(this, stage, shader);
+    
+    DxvkShaderState* state = this->getShaderState(stage);
+    
+    if (state->shader != shader) {
+      state->shader = shader;
+      this->setPipelineDirty(stage);
+    }
+  }
+  
+  
+  void DxvkContext::bindStorageBuffer(
+          VkShaderStageFlagBits stage,
+          uint32_t              slot,
+    const Rc<DxvkBuffer>&       buffer,
+          VkDeviceSize          offset,
+          VkDeviceSize          length) {
+    TRACE(this, stage, slot);
+    
+    DxvkBufferBinding binding(buffer, offset, length);
+    DxvkShaderState* state = this->getShaderState(stage);
+    
+    // TODO investigate whether it is worth checking whether
+    // the shader actually uses the resource. However, if the
+    // application is not completely retarded, always setting
+    // the 'resources dirty' flag should be the best option.
+    if (state->boundStorageBuffers.at(slot) != binding) {
+      state->boundStorageBuffers.at(slot) = binding;
+      this->setResourcesDirty(stage);
+      m_cmd->trackResource(binding.resource());
+    }
+  }
+  
+  
   void DxvkContext::clearRenderTarget(
     const VkClearAttachment&  attachment,
     const VkClearRect&        clearArea) {
@@ -67,6 +121,8 @@ namespace dxvk {
           uint32_t wgCountX,
           uint32_t wgCountY,
           uint32_t wgCountZ) {
+    TRACE(this, wgCountX, wgCountY, wgCountZ);
+    this->endRenderPass();
     this->flushComputeState();
     
     m_cmd->cmdDispatch(
@@ -79,6 +135,8 @@ namespace dxvk {
           uint32_t instanceCount,
           uint32_t firstVertex,
           uint32_t firstInstance) {
+    TRACE(this, vertexCount, instanceCount,
+      firstVertex, firstInstance);
     this->flushGraphicsState();
     
     m_cmd->cmdDraw(
@@ -93,6 +151,8 @@ namespace dxvk {
           uint32_t firstIndex,
           uint32_t vertexOffset,
           uint32_t firstInstance) {
+    TRACE(this, indexCount, instanceCount,
+      firstIndex, vertexOffset, firstInstance);
     this->flushGraphicsState();
     
     m_cmd->cmdDrawIndexed(
@@ -102,49 +162,15 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::setFramebuffer(
-    const Rc<DxvkFramebuffer>& fb) {
-    TRACE(this, fb);
-    
-    if (m_state.g.fb != fb) {
-      m_state.g.fb = fb;
-      
-      if (m_state.g.flags.test(
-          DxvkGraphicsPipelineBit::RenderPassBound))
-        this->endRenderPass();
-    }
-  }
-  
-  
-  void DxvkContext::setShader(
-          VkShaderStageFlagBits stage,
-    const Rc<DxvkShader>&       shader) {
-    TRACE(this, stage, shader);
-    
-    DxvkShaderState* state = this->getShaderState(stage);
-    
-    if (state->shader != shader) {
-      state->shader = shader;
-      
-      if (stage == VK_SHADER_STAGE_COMPUTE_BIT) {
-        m_state.c.flags.set(
-          DxvkComputePipelineBit::PipelineDirty,
-          DxvkComputePipelineBit::DirtyResources);
-      } else {
-        m_state.g.flags.set(
-          DxvkGraphicsPipelineBit::PipelineDirty,
-          DxvkGraphicsPipelineBit::DirtyResources);
-      }
-    }
-  }
-  
-  
   void DxvkContext::flushComputeState() {
-    if (m_state.c.flags.test(DxvkComputePipelineBit::PipelineDirty)
-     && m_state.c.pipeline != nullptr) {
-      m_cmd->cmdBindPipeline(
-        VK_PIPELINE_BIND_POINT_COMPUTE,
-        m_state.c.pipeline->getPipelineHandle());
+    if (m_state.c.flags.test(DxvkComputePipelineBit::PipelineDirty)) {
+      m_state.c.pipeline = m_pipeMgr->getComputePipeline(m_state.c.cs.shader);
+      
+      if (m_state.c.pipeline != nullptr) {
+        m_cmd->cmdBindPipeline(
+          VK_PIPELINE_BIND_POINT_COMPUTE,
+          m_state.c.pipeline->getPipelineHandle());
+      }
     }
     
     m_state.c.flags.clr(
@@ -184,6 +210,27 @@ namespace dxvk {
     
     m_cmd->cmdEndRenderPass();
     m_state.g.flags.clr(DxvkGraphicsPipelineBit::RenderPassBound);
+  }
+  
+  
+  void DxvkContext::setPipelineDirty(VkShaderStageFlagBits stage) {
+    if (stage == VK_SHADER_STAGE_COMPUTE_BIT) {
+      m_state.c.flags.set(
+        DxvkComputePipelineBit::PipelineDirty,
+        DxvkComputePipelineBit::DirtyResources);
+    } else {
+      m_state.g.flags.set(
+        DxvkGraphicsPipelineBit::PipelineDirty,
+        DxvkGraphicsPipelineBit::DirtyResources);
+    }
+  }
+  
+  
+  void DxvkContext::setResourcesDirty(VkShaderStageFlagBits stage) {
+    if (stage == VK_SHADER_STAGE_COMPUTE_BIT)
+      m_state.c.flags.set(DxvkComputePipelineBit::DirtyResources);
+    else
+      m_state.g.flags.set(DxvkGraphicsPipelineBit::DirtyResources);
   }
   
   

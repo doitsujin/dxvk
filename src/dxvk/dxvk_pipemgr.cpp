@@ -14,8 +14,9 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkComputePipeline> DxvkPipelineManager::getComputePipeline(
-    const Rc<DxvkShader>& cs) {
+  Rc<DxvkComputePipeline> DxvkPipelineManager::getComputePipeline(const Rc<DxvkShader>& cs) {
+    if (cs == nullptr)
+      return nullptr;
     
     DxvkPipelineKey<1> key;
     key.setShader(0, cs);
@@ -38,6 +39,8 @@ namespace dxvk {
     const Rc<DxvkShader>& tes,
     const Rc<DxvkShader>& gs,
     const Rc<DxvkShader>& fs) {
+    if (vs == nullptr)
+      return nullptr;
     
     DxvkPipelineKey<5> key;
     key.setShader(0, vs);

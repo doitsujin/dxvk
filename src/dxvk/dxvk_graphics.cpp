@@ -2,17 +2,17 @@
 
 namespace dxvk {
   
-  size_t DxvkGraphicsPipelineState::hash() const {
+  size_t DxvkGraphicsPipelineStateInfo::hash() const {
     // TODO implement
   }
   
   
-  bool DxvkGraphicsPipelineState::operator == (const DxvkGraphicsPipelineState& other) const {
+  bool DxvkGraphicsPipelineStateInfo::operator == (const DxvkGraphicsPipelineStateInfo& other) const {
     // TODO implement
   }
   
   
-  bool DxvkGraphicsPipelineState::operator != (const DxvkGraphicsPipelineState& other) const {
+  bool DxvkGraphicsPipelineStateInfo::operator != (const DxvkGraphicsPipelineStateInfo& other) const {
     return !this->operator == (other);
   }
   
@@ -36,7 +36,7 @@ namespace dxvk {
   
   
   VkPipeline DxvkGraphicsPipeline::getPipelineHandle(
-    const DxvkGraphicsPipelineState& state) {
+    const DxvkGraphicsPipelineStateInfo& state) {
     std::lock_guard<std::mutex> lock(m_mutex);
     
     auto pair = m_pipelines.find(state);
@@ -50,7 +50,7 @@ namespace dxvk {
   
   
   VkPipeline DxvkGraphicsPipeline::compilePipeline(
-    const DxvkGraphicsPipelineState& state) const {
+    const DxvkGraphicsPipelineStateInfo& state) const {
     
   }
   

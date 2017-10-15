@@ -73,6 +73,7 @@ namespace dxvk {
      * shader. If no such pipeline object exists, a new
      * one will be created.
      * \param [in] cs Compute shader
+     * \returns Compute pipeline
      */
     Rc<DxvkComputePipeline> getComputePipeline(
       const Rc<DxvkShader>& cs);

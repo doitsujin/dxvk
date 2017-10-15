@@ -19,6 +19,13 @@ namespace dxvk {
     /// Buffer usage flags
     VkBufferUsageFlags usage;
     
+    /// Pipeline stages that can access
+    /// the contents of the buffer.
+    VkPipelineStageFlags stages;
+    
+    /// Allowed access patterns
+    VkAccessFlags access;
+    
   };
   
   
@@ -74,6 +81,59 @@ namespace dxvk {
     DxvkBufferCreateInfo  m_info;
     DxvkMemory            m_memory;
     VkBuffer              m_buffer = VK_NULL_HANDLE;
+    
+  };
+  
+  
+  /**
+   * \brief Buffer binding
+   * 
+   * Stores the buffer and the sub-range of the buffer
+   * to bind. Bindings are considered equal if all three
+   * parameters are the same.
+   */
+  class DxvkBufferBinding {
+    
+  public:
+    
+    DxvkBufferBinding() { }
+    DxvkBufferBinding(
+      const Rc<DxvkBuffer>& buffer,
+            VkDeviceSize    rangeOffset,
+            VkDeviceSize    rangeLength)
+    : m_buffer(buffer),
+      m_offset(rangeOffset),
+      m_length(rangeLength) { }
+    
+    Rc<DxvkResource> resource() const {
+      return m_buffer;
+    }
+    
+    VkDescriptorBufferInfo descriptorInfo() const {
+      VkDescriptorBufferInfo info;
+      info.buffer = m_buffer->handle();
+      info.offset = m_offset;
+      info.range  = m_length;
+      return info;
+    }
+    
+    bool operator == (const DxvkBufferBinding& other) const {
+      return this->m_buffer == other.m_buffer
+          && this->m_offset == other.m_offset
+          && this->m_length == other.m_length;
+    }
+    
+    bool operator != (const DxvkBufferBinding& other) const {
+      return this->m_buffer != other.m_buffer
+          || this->m_offset != other.m_offset
+          || this->m_length != other.m_length;
+    }
+    
+  private:
+    
+    Rc<DxvkBuffer> m_buffer = nullptr;
+    VkDeviceSize   m_offset = 0;
+    VkDeviceSize   m_length = 0;
     
   };
   

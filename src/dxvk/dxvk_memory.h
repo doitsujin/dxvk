@@ -68,7 +68,7 @@ namespace dxvk {
    * Allocates device memory for Vulkan resources.
    * Memory objects will be destroyed automatically.
    */
-  class DxvkMemoryAllocator {
+  class DxvkMemoryAllocator : public RcObject {
     friend class DxvkMemory;
   public:
     

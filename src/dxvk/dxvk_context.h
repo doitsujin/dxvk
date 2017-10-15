@@ -1,8 +1,11 @@
 #pragma once
 
+#include "dxvk_barrier.h"
 #include "dxvk_cmdlist.h"
 #include "dxvk_context_state.h"
 #include "dxvk_deferred.h"
+#include "dxvk_pipemgr.h"
+#include "dxvk_util.h"
 
 namespace dxvk {
   
@@ -18,7 +21,8 @@ namespace dxvk {
   public:
     
     DxvkContext(
-      const Rc<DxvkDevice>& device);
+      const Rc<DxvkDevice>&           device,
+      const Rc<DxvkPipelineManager>&  pipeMgr);
     ~DxvkContext();
     
     /**
@@ -50,6 +54,41 @@ namespace dxvk {
      * \returns \c true if any commands were recorded
      */
     bool endRecording();
+    
+    /**
+     * \brief Sets framebuffer
+     * \param [in] fb Framebuffer
+     */
+    void bindFramebuffer(
+      const Rc<DxvkFramebuffer>& fb);
+    
+    /**
+     * \brief Sets shader for a given shader stage
+     * 
+     * Binds a shader to a given stage, while unbinding the
+     * existing one. If \c nullptr is passed as the shader
+     * to bind, the given shader stage will be disabled.
+     * When drawing, at least a vertex shader must be bound.
+     * \param [in] stage The shader stage
+     * \param [in] shader The shader to set
+     */
+    void bindShader(
+            VkShaderStageFlagBits stage,
+      const Rc<DxvkShader>&       shader);
+    
+    /**
+     * \brief Binds a storage buffer
+     * 
+     * \param [in] stage Shader stage for this binding
+     * \param [in] slot Binding slot index
+     * \param [in] buffer Buffer binding info
+     */
+    void bindStorageBuffer(
+            VkShaderStageFlagBits stage,
+            uint32_t              slot,
+      const Rc<DxvkBuffer>&       buffer,
+            VkDeviceSize          offset,
+            VkDeviceSize          length);
     
     /**
      * \brief Clears an active render target
@@ -103,30 +142,10 @@ namespace dxvk {
             uint32_t vertexOffset,
             uint32_t firstInstance);
     
-    /**
-     * \brief Sets framebuffer
-     * \param [in] fb Framebuffer
-     */
-    void setFramebuffer(
-      const Rc<DxvkFramebuffer>& fb);
-    
-    /**
-     * \brief Sets shader for a given shader stage
-     * 
-     * Binds a shader to a given stage, while unbinding the
-     * existing one. If \c nullptr is passed as the shader
-     * to bind, the given shader stage will be disabled.
-     * When drawing, at least a vertex shader must be bound.
-     * \param [in] stage The shader stage
-     * \param [in] shader The shader to set
-     */
-    void setShader(
-            VkShaderStageFlagBits stage,
-      const Rc<DxvkShader>&       shader);
-    
   private:
     
-    const Rc<DxvkDevice> m_device;
+    const Rc<DxvkDevice>          m_device;
+    const Rc<DxvkPipelineManager> m_pipeMgr;
     
     Rc<DxvkRecorder> m_cmd;
     DxvkContextState m_state;
@@ -137,8 +156,18 @@ namespace dxvk {
     void beginRenderPass();
     void endRenderPass();
     
+    void setPipelineDirty(VkShaderStageFlagBits stage);
+    void setResourcesDirty(VkShaderStageFlagBits stage);
+    
+    void shaderResourceBarriers(
+      DxvkBarrierSet&       barriers,
+      VkShaderStageFlagBits stage);
+    
     DxvkShaderState* getShaderState(
       VkShaderStageFlagBits stage);
+    
+    VkPipelineStageFlags pipelineStage(
+      VkShaderStageFlags shaderStage) const;
     
   };
   

@@ -6,6 +6,7 @@
 #include "dxvk_context.h"
 #include "dxvk_framebuffer.h"
 #include "dxvk_memory.h"
+#include "dxvk_pipemgr.h"
 #include "dxvk_renderpass.h"
 #include "dxvk_shader.h"
 #include "dxvk_swapchain.h"
@@ -179,12 +180,12 @@ namespace dxvk {
     Rc<DxvkAdapter>   m_adapter;
     Rc<vk::DeviceFn>  m_vkd;
     
-    DxvkMemoryAllocator m_memory;
-    DxvkRenderPassPool  m_renderPassPool;
+    Rc<DxvkMemoryAllocator> m_memory;
+    Rc<DxvkRenderPassPool>  m_renderPassPool;
+    Rc<DxvkPipelineManager> m_pipelineManager;
     
     VkQueue m_graphicsQueue;
     VkQueue m_presentQueue;
-    
     
   };
   

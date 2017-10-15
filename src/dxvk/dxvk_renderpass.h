@@ -140,7 +140,7 @@ namespace dxvk {
    * Thread-safe class that manages the render pass
    * objects that are used within an application.
    */
-  class DxvkRenderPassPool {
+  class DxvkRenderPassPool : public RcObject {
     
   public:
     

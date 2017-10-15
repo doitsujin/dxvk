@@ -138,4 +138,22 @@ namespace dxvk {
     m_vkd->vkCmdEndRenderPass(m_buffer);
   }
   
+  
+  void DxvkCommandList::cmdPipelineBarrier(
+          VkPipelineStageFlags    srcStageMask,
+          VkPipelineStageFlags    dstStageMask,
+          VkDependencyFlags       dependencyFlags,
+          uint32_t                memoryBarrierCount,
+    const VkMemoryBarrier*        pMemoryBarriers,
+          uint32_t                bufferMemoryBarrierCount,
+    const VkBufferMemoryBarrier*  pBufferMemoryBarriers,
+          uint32_t                imageMemoryBarrierCount,
+    const VkImageMemoryBarrier*   pImageMemoryBarriers) {
+    m_vkd->vkCmdPipelineBarrier(m_buffer,
+      dstStageMask, srcStageMask, dependencyFlags,
+      memoryBarrierCount, pMemoryBarriers,
+      bufferMemoryBarrierCount, pBufferMemoryBarriers,
+      imageMemoryBarrierCount, pImageMemoryBarriers);
+  }
+  
 }

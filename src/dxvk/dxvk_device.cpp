@@ -6,10 +6,11 @@ namespace dxvk {
   DxvkDevice::DxvkDevice(
     const Rc<DxvkAdapter>&  adapter,
     const Rc<vk::DeviceFn>& vkd)
-  : m_adapter       (adapter),
-    m_vkd           (vkd),
-    m_memory        (adapter, vkd),
-    m_renderPassPool(vkd) {
+  : m_adapter         (adapter),
+    m_vkd             (vkd),
+    m_memory          (new DxvkMemoryAllocator(adapter, vkd)),
+    m_renderPassPool  (new DxvkRenderPassPool (vkd)),
+    m_pipelineManager (new DxvkPipelineManager(vkd)) {
     TRACE(this, adapter);
     
     m_vkd->vkGetDeviceQueue(m_vkd->device(),
@@ -23,6 +24,10 @@ namespace dxvk {
   
   DxvkDevice::~DxvkDevice() {
     TRACE(this);
+    m_pipelineManager = nullptr;
+    m_renderPassPool  = nullptr;
+    m_memory          = nullptr;
+    
     m_vkd->vkDeviceWaitIdle(m_vkd->device());
     m_vkd->vkDestroyDevice(m_vkd->device(), nullptr);
   }
@@ -35,14 +40,14 @@ namespace dxvk {
   
   
   Rc<DxvkContext> DxvkDevice::createContext() {
-    return new DxvkContext(this);
+    return new DxvkContext(this, m_pipelineManager);
   }
   
   
   Rc<DxvkFramebuffer> DxvkDevice::createFramebuffer(
     const DxvkRenderTargets& renderTargets) {
     auto format = renderTargets.renderPassFormat();
-    auto renderPass = m_renderPassPool.getRenderPass(format);
+    auto renderPass = m_renderPassPool->getRenderPass(format);
     return new DxvkFramebuffer(m_vkd, renderPass, renderTargets);
   }
   
@@ -51,7 +56,7 @@ namespace dxvk {
     const DxvkBufferCreateInfo& createInfo,
           VkMemoryPropertyFlags memoryType) {
     return new DxvkBuffer(m_vkd,
-      createInfo, m_memory, memoryType);
+      createInfo, *m_memory, memoryType);
   }
   
   

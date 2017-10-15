@@ -1,7 +1,9 @@
 #pragma once
 
+#include "dxvk_buffer.h"
 #include "dxvk_compute.h"
 #include "dxvk_framebuffer.h"
+#include "dxvk_image.h"
 #include "dxvk_limits.h"
 #include "dxvk_shader.h"
 
@@ -48,7 +50,10 @@ namespace dxvk {
    * buffers, storage buffers and storage images.
    */
   struct DxvkShaderState {
-    Rc<DxvkShader>  shader;
+    Rc<DxvkShader> shader;
+    
+    std::array<DxvkBufferBinding, MaxNumStorageBuffers> boundStorageBuffers;
+    std::array<DxvkBufferBinding, MaxNumUniformBuffers> boundUniformBuffers;
   };
   
   

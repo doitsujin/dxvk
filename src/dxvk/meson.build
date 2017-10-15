@@ -1,5 +1,6 @@
 dxvk_src = files([
   'dxvk_adapter.cpp',
+  'dxvk_barrier.cpp',
   'dxvk_buffer.cpp',
   'dxvk_cmdlist.cpp',
   'dxvk_compute.cpp',
@@ -21,6 +22,7 @@ dxvk_src = files([
   'dxvk_surface.cpp',
   'dxvk_swapchain.cpp',
   'dxvk_sync.cpp',
+  'dxvk_util.cpp',
   
   'spirv/dxvk_spirv_code_buffer.cpp',
   

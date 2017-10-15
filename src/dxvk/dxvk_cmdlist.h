@@ -104,6 +104,17 @@ namespace dxvk {
     
     void cmdEndRenderPass() final;
     
+    void cmdPipelineBarrier(
+            VkPipelineStageFlags    srcStageMask,
+            VkPipelineStageFlags    dstStageMask,
+            VkDependencyFlags       dependencyFlags,
+            uint32_t                memoryBarrierCount,
+      const VkMemoryBarrier*        pMemoryBarriers,
+            uint32_t                bufferMemoryBarrierCount,
+      const VkBufferMemoryBarrier*  pBufferMemoryBarriers,
+            uint32_t                imageMemoryBarrierCount,
+      const VkImageMemoryBarrier*   pImageMemoryBarriers) final;
+    
   private:
     
     Rc<vk::DeviceFn>    m_vkd;

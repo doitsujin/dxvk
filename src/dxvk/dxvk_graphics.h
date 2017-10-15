@@ -9,13 +9,13 @@
 
 namespace dxvk {
   
-  struct DxvkGraphicsPipelineState {
+  struct DxvkGraphicsPipelineStateInfo {
     VkRenderPass renderPass;
     
     size_t hash() const;
     
-    bool operator == (const DxvkGraphicsPipelineState& other) const;
-    bool operator != (const DxvkGraphicsPipelineState& other) const;
+    bool operator == (const DxvkGraphicsPipelineStateInfo& other) const;
+    bool operator != (const DxvkGraphicsPipelineStateInfo& other) const;
   };
   
   /**
@@ -43,7 +43,7 @@ namespace dxvk {
     }
     
     VkPipeline getPipelineHandle(
-      const DxvkGraphicsPipelineState& state);
+      const DxvkGraphicsPipelineStateInfo& state);
     
   private:
     
@@ -60,11 +60,11 @@ namespace dxvk {
     std::mutex m_mutex;
     
     std::unordered_map<
-      DxvkGraphicsPipelineState,
+      DxvkGraphicsPipelineStateInfo,
       VkPipeline, DxvkHash> m_pipelines;
     
     VkPipeline compilePipeline(
-      const DxvkGraphicsPipelineState& state) const;
+      const DxvkGraphicsPipelineStateInfo& state) const;
     
   };
   

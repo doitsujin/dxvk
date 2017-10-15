@@ -6,6 +6,7 @@ namespace dxvk {
     const Rc<vk::DeviceFn>& vkd,
     const Rc<DxvkShader>&   shader)
   : m_vkd(vkd) {
+    TRACE(this, shader);
     
     std::vector<VkDescriptorSetLayoutBinding> bindings;
     
@@ -80,6 +81,7 @@ namespace dxvk {
   
   
   DxvkComputePipeline::~DxvkComputePipeline() {
+    TRACE(this);
     this->destroyObjects();
   }
   

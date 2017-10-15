@@ -21,8 +21,7 @@ namespace dxvk {
   public:
     
     DxvkSpirvCodeBuffer();
-    DxvkSpirvCodeBuffer(
-      std::basic_istream<uint32_t>& stream);
+    DxvkSpirvCodeBuffer(std::istream&& stream);
     ~DxvkSpirvCodeBuffer();
     
     /**
@@ -38,7 +37,7 @@ namespace dxvk {
      * \returns Code size, in bytes
      */
     size_t size() const {
-      return m_code.size();
+      return m_code.size() * sizeof(uint32_t);
     }
     
     /**
@@ -120,7 +119,7 @@ namespace dxvk {
      * exists mostly for debugging purposes.
      * \param [in] stream Output stream
      */
-    void store(std::basic_ostream<uint32_t>& stream) const;
+    void store(std::ostream&& stream) const;
     
   private:
     

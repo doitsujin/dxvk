@@ -9,6 +9,19 @@
 namespace dxvk {
   
   /**
+   * \brief Resource access mode
+   * 
+   * Defines whether a resource will be
+   * used for reading, writing, or both.
+   */
+  enum class DxvkResourceModeBit : uint32_t {
+    Read  = 0,
+    Write = 1,
+  };
+  
+  using DxvkResourceMode = Flags<DxvkResourceModeBit>;
+  
+  /**
    * \brief Shader resource type
    * 
    * Enumerates the types of resources
@@ -27,6 +40,7 @@ namespace dxvk {
    * \brief Resource slot
    */
   struct DxvkResourceSlot{
+    DxvkResourceMode mode;
     DxvkResourceType type;
     uint32_t         slot;
   };

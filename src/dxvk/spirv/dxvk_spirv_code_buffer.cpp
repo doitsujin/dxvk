@@ -9,11 +9,20 @@ namespace dxvk {
   DxvkSpirvCodeBuffer::~DxvkSpirvCodeBuffer() { }
   
   
-  DxvkSpirvCodeBuffer::DxvkSpirvCodeBuffer(
-    std::basic_istream<uint32_t>& stream)
-  : m_code(
-    std::istreambuf_iterator<uint32_t>(stream),
-    std::istreambuf_iterator<uint32_t>()) { }
+  DxvkSpirvCodeBuffer::DxvkSpirvCodeBuffer(std::istream&& stream) {
+    stream.ignore(std::numeric_limits<std::streamsize>::max());
+    std::streamsize length = stream.gcount();
+    stream.clear();
+    stream.seekg(0, std::ios_base::beg);
+    
+    std::vector<char> buffer(length);
+    stream.read(buffer.data(), length);
+    buffer.resize(stream.gcount());
+    
+    m_code.resize(buffer.size() / sizeof(uint32_t));
+    std::memcpy(reinterpret_cast<char*>(m_code.data()),
+      buffer.data(), m_code.size() * sizeof(uint32_t));
+  }
   
   
   void DxvkSpirvCodeBuffer::append(const DxvkSpirvCodeBuffer& other) {
@@ -100,8 +109,10 @@ namespace dxvk {
   }
   
   
-  void DxvkSpirvCodeBuffer::store(std::basic_ostream<uint32_t>& stream) const {
-    stream.write(m_code.data(), m_code.size());
+  void DxvkSpirvCodeBuffer::store(std::ostream&& stream) const {
+    stream.write(
+      reinterpret_cast<const char*>(m_code.data()),
+      sizeof(uint32_t) * m_code.size());
   }
   
 }
