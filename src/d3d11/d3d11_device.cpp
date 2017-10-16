@@ -47,13 +47,12 @@ namespace dxvk {
     if (ppBuffer == nullptr)
       return S_OK;
     
-    if (pInitialData != nullptr) {
-      Logger::err("D3D11Device::CreateBuffer: pInitialData != NULL not supported");
-      return E_FAIL;
-    }
-    
     try {
       *ppBuffer = ref(new D3D11Buffer(this, *pDesc));
+      
+      if (pInitialData != nullptr)
+        Logger::warn("D3D11Device::CreateBuffer: pInitialData != NULL not supported");
+      
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());

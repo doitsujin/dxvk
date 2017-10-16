@@ -34,6 +34,9 @@ namespace dxvk {
     
     Com<D3D11Device>  m_device;
     D3D11_BUFFER_DESC m_desc;
+    Rc<DxvkBuffer>    m_buffer;
+    
+    Rc<DxvkBuffer> createBuffer();
     
   };
   
