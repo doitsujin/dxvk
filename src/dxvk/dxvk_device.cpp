@@ -79,18 +79,6 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkShader> DxvkDevice::createShader(
-          VkShaderStageFlagBits stage,
-          DxvkSpirvCodeBuffer&& code,
-          uint32_t              numResourceSlots,
-    const DxvkResourceSlot*     resourceSlots) {
-    return new DxvkShader(stage,
-      std::move(code),
-      numResourceSlots,
-      resourceSlots);
-  }
-  
-  
   Rc<DxvkSwapchain> DxvkDevice::createSwapchain(
     const Rc<DxvkSurface>&          surface,
     const DxvkSwapchainProperties&  properties) {

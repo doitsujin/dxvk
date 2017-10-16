@@ -57,7 +57,7 @@ public:
     DxvkSpirvCodeBuffer code(std::ifstream("comp.spv", std::ios::binary));
     code.store(std::ofstream("comp.2.spv", std::ios::binary));
     
-    m_compShader = m_dxvkDevice->createShader(
+    m_compShader = new DxvkShader(
       VK_SHADER_STAGE_COMPUTE_BIT, std::move(code),
       1, &computeBufferSlot);
   }

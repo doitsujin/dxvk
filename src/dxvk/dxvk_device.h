@@ -126,21 +126,6 @@ namespace dxvk {
     Rc<DxvkSemaphore> createSemaphore();
     
     /**
-     * \brief Creates a shader module
-     * 
-     * \param [in] stage Shader stage
-     * \param [in] code SPIR-V code
-     * \param [in] numResourceSlots Resource slot count
-     * \param [in] resourceSlots Resource slot array
-     * \returns Shader module
-     */
-    Rc<DxvkShader> createShader(
-            VkShaderStageFlagBits stage,
-            DxvkSpirvCodeBuffer&& code,
-            uint32_t              numResourceSlots,
-      const DxvkResourceSlot*     resourceSlots);
-    
-    /**
      * \brief Creates a swap chain
      * 
      * \param [in] surface The target surface
