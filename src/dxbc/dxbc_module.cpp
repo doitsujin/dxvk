@@ -1,0 +1,43 @@
+#include "dxbc_compiler.h"
+#include "dxbc_module.h"
+
+namespace dxvk {
+  
+  DxbcModule::DxbcModule(DxbcReader& reader)
+  : m_header(reader) {
+    for (uint32_t i = 0; i < m_header.numChunks(); i++) {
+      
+      // The chunk tag is stored at the beginning of each chunk
+      auto chunkReader = reader.clone(m_header.chunkOffset(i));
+      auto tag         = chunkReader.readTag();
+      
+      // The chunk size follows right after the four-character
+      // code. This does not include the eight bytes that are
+      // consumed by the FourCC and chunk length entry.
+      auto chunkLength = chunkReader.readu32() + 8;
+           chunkReader = chunkReader.resize(chunkLength);
+      
+      if ((tag == "SHDR") || (tag == "SHEX"))
+        m_shexChunk = new DxbcShex(chunkReader);
+      
+    }
+  }
+  
+  
+  DxbcModule::~DxbcModule() {
+    
+  }
+  
+  
+  Rc<DxvkShader> DxbcModule::compile() const {
+    if (m_shexChunk == nullptr)
+      throw DxvkError("DxbcModule::compile: No SHDR/SHEX chunk");
+    
+    DxbcCompiler compiler(m_shexChunk->version());
+    
+    for (auto ins : *m_shexChunk)
+      compiler.processInstruction(ins);
+    return compiler.finalize();
+  }
+  
+}

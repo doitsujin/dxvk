@@ -1,4 +1,5 @@
 subdir('util')
 subdir('dxvk')
 subdir('dxgi')
+subdir('dxbc')
 subdir('d3d11')
