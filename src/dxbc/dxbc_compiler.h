@@ -1,5 +1,7 @@
 #pragma once
 
+#include <unordered_set>
+
 #include "../dxvk/dxvk_shader.h"
 
 #include "dxbc_chunk_shex.h"
@@ -33,6 +35,18 @@ namespace dxvk {
     Rc<DxvkShader> finalize();
     
   private:
+    
+    DxbcProgramVersion  m_version;
+    DxvkSpirvIdCounter  m_counter;
+    
+    std::unordered_set<spv::Capability> m_capabilities;
+    
+    DxvkSpirvCodeBuffer m_spirvCapabilities;
+    DxvkSpirvCodeBuffer m_spirvProgramCode;
+    
+    VkShaderStageFlagBits shaderStage() const;
+    
+    void enableCapability(spv::Capability cap);
     
   };
   
