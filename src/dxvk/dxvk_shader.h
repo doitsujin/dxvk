@@ -5,6 +5,7 @@
 #include "dxvk_include.h"
 
 #include "./spirv/dxvk_spirv_code_buffer.h"
+#include "./spirv/dxvk_spirv_id_counter.h"
 
 namespace dxvk {
   

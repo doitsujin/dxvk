@@ -26,13 +26,15 @@ namespace dxvk {
   
   
   void DxvkSpirvCodeBuffer::append(const DxvkSpirvCodeBuffer& other) {
-    const size_t size = m_code.size();
-    m_code.resize(size + other.m_code.size());
-    
-          uint32_t* dst = this->m_code.data();
-    const uint32_t* src = other.m_code.data();
-    
-    std::memcpy(dst + size, src, sizeof(uint32_t) * size);
+    if (other.size() != 0) {
+      const size_t size = m_code.size();
+      m_code.resize(size + other.m_code.size());
+      
+            uint32_t* dst = this->m_code.data();
+      const uint32_t* src = other.m_code.data();
+      
+      std::memcpy(dst + size, src, sizeof(uint32_t) * size);
+    }
   }
   
   
