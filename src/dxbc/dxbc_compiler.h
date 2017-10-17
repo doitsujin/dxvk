@@ -1,10 +1,9 @@
 #pragma once
 
-#include <unordered_set>
-
-#include "../dxvk/dxvk_shader.h"
-
+#include "dxbc_capability.h"
 #include "dxbc_chunk_shex.h"
+#include "dxbc_entrypoint.h"
+#include "dxbc_typeinfo.h"
 
 namespace dxvk {
   
@@ -39,14 +38,12 @@ namespace dxvk {
     DxbcProgramVersion  m_version;
     DxvkSpirvIdCounter  m_counter;
     
-    std::unordered_set<spv::Capability> m_capabilities;
+    DxbcCapabilities    m_spvCapabilities;
+    DxbcEntryPoint      m_spvEntryPoints;
+    DxbcTypeInfo        m_spvTypeInfo;
+    DxvkSpirvCodeBuffer m_spvCode;
     
-    DxvkSpirvCodeBuffer m_spirvCapabilities;
-    DxvkSpirvCodeBuffer m_spirvProgramCode;
-    
-    VkShaderStageFlagBits shaderStage() const;
-    
-    void enableCapability(spv::Capability cap);
+    uint32_t m_entryPointId = 0;
     
   };
   

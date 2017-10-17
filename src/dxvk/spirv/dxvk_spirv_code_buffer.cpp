@@ -33,7 +33,7 @@ namespace dxvk {
             uint32_t* dst = this->m_code.data();
       const uint32_t* src = other.m_code.data();
       
-      std::memcpy(dst + size, src, sizeof(uint32_t) * size);
+      std::memcpy(dst + size, src, other.size());
     }
   }
   

@@ -5,7 +5,7 @@
 #include <iostream>
 #include <vector>
 
-#include "../dxvk_include.h"
+#include "dxvk_spirv_instruction.h"
 
 namespace dxvk {
   
@@ -38,6 +38,27 @@ namespace dxvk {
      */
     size_t size() const {
       return m_code.size() * sizeof(uint32_t);
+    }
+    
+    /**
+     * \brief Begin instruction iterator
+     * 
+     * Points to the first instruction in the instruction
+     * block. The header, if any, will be skipped over.
+     * \returns Instruction iterator
+     */
+    DxvkSpirvInstructionIterator begin() const {
+      return DxvkSpirvInstructionIterator(m_code.data(), m_code.size());
+    }
+    
+    /**
+     * \brief End instruction iterator
+     * 
+     * Points to the end of the instruction block.
+     * \returns Instruction iterator
+     */
+    DxvkSpirvInstructionIterator end() const {
+      return DxvkSpirvInstructionIterator(nullptr, 0);
     }
     
     /**

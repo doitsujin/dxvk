@@ -59,6 +59,24 @@ namespace dxvk {
       return m_type;
     }
     
+    /**
+     * \brief Vulkan shader stage
+     * 
+     * The \c VkShaderStageFlagBits constant
+     * that corresponds to the program type.
+     * \returns Vulkan shaer stage
+     */
+    VkShaderStageFlagBits shaderStage() const;
+    
+    /**
+     * \brief SPIR-V execution model
+     * 
+     * The execution model that corresponds
+     * to the Vulkan shader stage.
+     * \returns SPIR-V execution model
+     */
+    spv::ExecutionModel executionModel() const;
+    
   private:
     
     uint8_t         m_major = 0;

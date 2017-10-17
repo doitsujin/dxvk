@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../dxvk/dxvk_shader.h"
+
 #include "../util/com/com_guid.h"
 #include "../util/com/com_object.h"
 #include "../util/com/com_pointer.h"

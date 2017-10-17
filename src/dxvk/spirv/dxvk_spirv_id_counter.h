@@ -15,8 +15,8 @@ namespace dxvk {
     
   public:
     
-    uint32_t nexId() {
-      return m_id++;
+    uint32_t nextId() {
+      return ++m_id;
     }
     
     uint32_t numIds() const {
