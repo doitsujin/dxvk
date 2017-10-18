@@ -1,4 +1,5 @@
 subdir('util')
+subdir('spirv')
 subdir('dxvk')
 subdir('dxgi')
 subdir('dxbc')

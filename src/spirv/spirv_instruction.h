@@ -2,7 +2,7 @@
 
 #include <spirv/spirv.hpp>
 
-#include "../dxvk_include.h"
+#include "spirv_include.h"
 
 namespace dxvk {
   

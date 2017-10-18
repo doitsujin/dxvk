@@ -1,7 +1,7 @@
 #include <array>
 #include <cstring>
 
-#include "dxvk_spirv_code_buffer.h"
+#include "spirv_code_buffer.h"
 
 namespace dxvk {
   

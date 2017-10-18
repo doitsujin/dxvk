@@ -4,26 +4,8 @@ namespace dxvk {
   
   DxbcCompiler::DxbcCompiler(DxbcProgramVersion version)
   : m_version(version) {
-    m_spvCapabilities.enable(spv::CapabilityShader);
-    
-    m_spvEntryPoints.setMemoryModel(
-      spv::AddressingModelLogical,
-      spv::MemoryModelGLSL450);
-    
-    auto id = m_counter.nextId();
-    m_spvEntryPoints.addEntryPoint(id,
-      spv::ExecutionModelGLCompute,
-      "main", 0, nullptr);
-    m_spvEntryPoints.setLocalSize(id, 64, 1, 1);
-    auto ft = m_spvTypeInfo.typeFunction(m_counter,
-      m_spvTypeInfo.typeVoid(m_counter), 0, nullptr);
-    m_spvCode.putIns  (spv::OpFunction, 5);
-    m_spvCode.putWord (m_spvTypeInfo.typeVoid(m_counter));
-    m_spvCode.putWord (id);
-    m_spvCode.putWord (0);
-    m_spvCode.putWord (ft);
-    m_spvCode.putIns  (spv::OpFunctionEnd, 1);
-    m_entryPointId = m_counter.nextId();
+    this->declareCapabilities();
+    this->declareMemoryModel();
   }
   
   
@@ -48,6 +30,32 @@ namespace dxvk {
     
     return new DxvkShader(m_version.shaderStage(),
       std::move(codeBuffer), 0, nullptr);
+  }
+  
+  
+  void DxbcCompiler::declareCapabilities() {
+    m_spvCapabilities.enable(spv::CapabilityShader);
+    
+    switch (m_version.type()) {
+      case DxbcProgramType::GeometryShader:
+        m_spvCapabilities.enable(spv::CapabilityGeometry);
+        break;
+        
+      case DxbcProgramType::HullShader:
+      case DxbcProgramType::DomainShader:
+        m_spvCapabilities.enable(spv::CapabilityTessellation);
+        break;
+        
+      default:
+        break;
+    }
+  }
+  
+  
+  void DxbcCompiler::declareMemoryModel() {
+    m_spvEntryPoints.setMemoryModel(
+      spv::AddressingModelLogical,
+      spv::MemoryModelGLSL450);
   }
   
 }

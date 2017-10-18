@@ -25,8 +25,6 @@ dxvk_src = files([
   'dxvk_sync.cpp',
   'dxvk_util.cpp',
   
-  'spirv/dxvk_spirv_code_buffer.cpp',
-  
   'vulkan/dxvk_vulkan_extensions.cpp',
   'vulkan/dxvk_vulkan_loader.cpp',
   'vulkan/dxvk_vulkan_names.cpp',
@@ -35,7 +33,7 @@ dxvk_src = files([
 thread_dep = dependency('threads')
 
 dxvk_lib = static_library('dxvk', dxvk_src,
-  link_with           : [ util_lib ],
+  link_with           : [ util_lib, spirv_lib ],
   dependencies        : [ thread_dep, lib_vulkan, lib_sdl2 ],
   include_directories : [ dxvk_include_path ])
 

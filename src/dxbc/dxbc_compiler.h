@@ -43,7 +43,8 @@ namespace dxvk {
     DxbcTypeInfo        m_spvTypeInfo;
     DxvkSpirvCodeBuffer m_spvCode;
     
-    uint32_t m_entryPointId = 0;
+    void declareCapabilities();
+    void declareMemoryModel();
     
   };
   

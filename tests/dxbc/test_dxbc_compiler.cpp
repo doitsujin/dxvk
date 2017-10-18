@@ -1,8 +1,8 @@
 #include <iterator>
 #include <fstream>
 
-#include <spirv/dxvk_spirv_code_buffer.h>
 #include <dxbc_module.h>
+#include <dxvk_shader.h>
 
 #include <shellapi.h>
 #include <windows.h>

@@ -5,7 +5,7 @@
 #include <iostream>
 #include <vector>
 
-#include "dxvk_spirv_instruction.h"
+#include "spirv_instruction.h"
 
 namespace dxvk {
   
