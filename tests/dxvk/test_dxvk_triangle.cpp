@@ -54,7 +54,7 @@ public:
     computeBufferSlot.type = DxvkResourceType::StorageBuffer;
     computeBufferSlot.slot = 0;
     
-    DxvkSpirvCodeBuffer code(std::ifstream("comp.spv", std::ios::binary));
+    SpirvCodeBuffer code(std::ifstream("comp.spv", std::ios::binary));
     code.store(std::ofstream("comp.2.spv", std::ios::binary));
     
     m_compShader = new DxvkShader(

@@ -39,7 +39,7 @@ namespace dxvk {
       throw DxvkError("DxvkComputePipeline::DxvkComputePipeline: Failed to create pipeline layout");
     }
     
-    DxvkSpirvCodeBuffer code = shader->code(0);
+    SpirvCodeBuffer code = shader->code(0);
     
     VkShaderModuleCreateInfo minfo;
     minfo.sType               = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;

@@ -1,9 +1,10 @@
 #pragma once
 
-#include "dxbc_capability.h"
 #include "dxbc_chunk_shex.h"
-#include "dxbc_entrypoint.h"
-#include "dxbc_typeinfo.h"
+
+#include "../spirv/gen/spirv_gen_capability.h"
+#include "../spirv/gen/spirv_gen_entrypoint.h"
+#include "../spirv/gen/spirv_gen_typeinfo.h"
 
 namespace dxvk {
   
@@ -36,12 +37,12 @@ namespace dxvk {
   private:
     
     DxbcProgramVersion  m_version;
-    DxvkSpirvIdCounter  m_counter;
+    SpirvIdCounter      m_counter;
     
-    DxbcCapabilities    m_spvCapabilities;
-    DxbcEntryPoint      m_spvEntryPoints;
-    DxbcTypeInfo        m_spvTypeInfo;
-    DxvkSpirvCodeBuffer m_spvCode;
+    SpirvCapabilities   m_spvCapabilities;
+    SpirvEntryPoint     m_spvEntryPoints;
+    SpirvTypeInfo       m_spvTypeInfo;
+    SpirvCodeBuffer     m_spvCode;
     
     void declareCapabilities();
     void declareMemoryModel();

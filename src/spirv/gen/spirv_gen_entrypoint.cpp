@@ -1,13 +1,13 @@
-#include "dxbc_entrypoint.h"
+#include "spirv_gen_entrypoint.h"
 
 namespace dxvk {
   
-  DxbcEntryPoint:: DxbcEntryPoint() { }
-  DxbcEntryPoint::~DxbcEntryPoint() { }
+  SpirvEntryPoint:: SpirvEntryPoint() { }
+  SpirvEntryPoint::~SpirvEntryPoint() { }
   
   
-  DxvkSpirvCodeBuffer DxbcEntryPoint::code() const {
-    DxvkSpirvCodeBuffer code;
+  SpirvCodeBuffer SpirvEntryPoint::code() const {
+    SpirvCodeBuffer code;
     code.append(m_memoryModel);
     code.append(m_entryPoints);
     code.append(m_execModeInfo);
@@ -15,7 +15,7 @@ namespace dxvk {
   }
   
   
-  void DxbcEntryPoint::setMemoryModel(
+  void SpirvEntryPoint::setMemoryModel(
           spv::AddressingModel  addressModel,
           spv::MemoryModel      memoryModel) {
     m_memoryModel.putIns  (spv::OpMemoryModel, 3);
@@ -24,7 +24,7 @@ namespace dxvk {
   }
   
   
-  void DxbcEntryPoint::addEntryPoint(
+  void SpirvEntryPoint::addEntryPoint(
           uint32_t              functionId,
           spv::ExecutionModel   execModel,
     const char*                 name,
@@ -40,7 +40,7 @@ namespace dxvk {
   }
   
   
-  void DxbcEntryPoint::setLocalSize(
+  void SpirvEntryPoint::setLocalSize(
           uint32_t              functionId,
           uint32_t              x,
           uint32_t              y,

@@ -16,13 +16,13 @@ namespace dxvk {
    * Stores arbitrary SPIR-V instructions in a
    * format that can be read by Vulkan drivers.
    */
-  class DxvkSpirvCodeBuffer {
+  class SpirvCodeBuffer {
     
   public:
     
-    DxvkSpirvCodeBuffer();
-    DxvkSpirvCodeBuffer(std::istream&& stream);
-    ~DxvkSpirvCodeBuffer();
+    SpirvCodeBuffer();
+    SpirvCodeBuffer(std::istream&& stream);
+    ~SpirvCodeBuffer();
     
     /**
      * \brief Code data
@@ -47,8 +47,8 @@ namespace dxvk {
      * block. The header, if any, will be skipped over.
      * \returns Instruction iterator
      */
-    DxvkSpirvInstructionIterator begin() const {
-      return DxvkSpirvInstructionIterator(m_code.data(), m_code.size());
+    SpirvInstructionIterator begin() const {
+      return SpirvInstructionIterator(m_code.data(), m_code.size());
     }
     
     /**
@@ -57,8 +57,8 @@ namespace dxvk {
      * Points to the end of the instruction block.
      * \returns Instruction iterator
      */
-    DxvkSpirvInstructionIterator end() const {
-      return DxvkSpirvInstructionIterator(nullptr, 0);
+    SpirvInstructionIterator end() const {
+      return SpirvInstructionIterator(nullptr, 0);
     }
     
     /**
@@ -69,7 +69,7 @@ namespace dxvk {
      * code when doing so in advance is impossible.
      * \param [in] other Code buffer to append
      */
-    void append(const DxvkSpirvCodeBuffer& other);
+    void append(const SpirvCodeBuffer& other);
     
     /**
      * \brief Appends an 32-bit word to the buffer

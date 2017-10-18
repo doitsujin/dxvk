@@ -5,7 +5,6 @@
 #include "dxvk_include.h"
 
 #include "../spirv/spirv_code_buffer.h"
-#include "../spirv/spirv_id_counter.h"
 
 namespace dxvk {
   
@@ -61,7 +60,7 @@ namespace dxvk {
     
     DxvkShader(
             VkShaderStageFlagBits stage,
-            DxvkSpirvCodeBuffer&& code,
+            SpirvCodeBuffer&&     code,
             uint32_t              numResourceSlots,
       const DxvkResourceSlot*     resourceSlots);
     ~DxvkShader();
@@ -76,7 +75,7 @@ namespace dxvk {
      * \param [in] bindingOffset First binding ID
      * \returns Modified code buffer
      */
-    DxvkSpirvCodeBuffer code(
+    SpirvCodeBuffer code(
       uint32_t bindingOffset) const;
     
     /**
@@ -114,7 +113,7 @@ namespace dxvk {
   private:
     
     VkShaderStageFlagBits m_stage;
-    DxvkSpirvCodeBuffer   m_code;
+    SpirvCodeBuffer       m_code;
     
     std::vector<DxvkResourceSlot> m_slots;
     

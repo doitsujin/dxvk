@@ -21,7 +21,7 @@ namespace dxvk {
   
   
   Rc<DxvkShader> DxbcCompiler::finalize() {
-    DxvkSpirvCodeBuffer codeBuffer;
+    SpirvCodeBuffer codeBuffer;
     codeBuffer.putHeader(m_counter.numIds());
     codeBuffer.append(m_spvCapabilities.code());
     codeBuffer.append(m_spvEntryPoints.code());

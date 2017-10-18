@@ -4,7 +4,7 @@ namespace dxvk {
   
   DxvkShader::DxvkShader(
           VkShaderStageFlagBits stage,
-          DxvkSpirvCodeBuffer&& code,
+          SpirvCodeBuffer&&     code,
           uint32_t              numResourceSlots,
     const DxvkResourceSlot*     resourceSlots)
   : m_stage (stage),
@@ -21,7 +21,7 @@ namespace dxvk {
   }
   
   
-  DxvkSpirvCodeBuffer DxvkShader::code(
+  SpirvCodeBuffer DxvkShader::code(
     uint32_t bindingOffset) const {
     // TODO implement properly
     if (bindingOffset != 0)

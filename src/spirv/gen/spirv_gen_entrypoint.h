@@ -1,6 +1,6 @@
 #pragma once
 
-#include "dxbc_include.h"
+#include "../spirv_code_buffer.h"
 
 namespace dxvk {
   
@@ -11,18 +11,18 @@ namespace dxvk {
    * point of the generated shader module,
    * including execution mode info.
    */
-  class DxbcEntryPoint {
+  class SpirvEntryPoint {
     
   public:
     
-    DxbcEntryPoint();
-    ~DxbcEntryPoint();
+    SpirvEntryPoint();
+    ~SpirvEntryPoint();
     
     /**
      * \brief Generates SPIR-V code
      * \returns SPIR-V code buffer
      */
-    DxvkSpirvCodeBuffer code() const;
+    SpirvCodeBuffer code() const;
     
     /**
      * \brief Sets memory model
@@ -73,9 +73,9 @@ namespace dxvk {
     
   private:
     
-    DxvkSpirvCodeBuffer m_memoryModel;
-    DxvkSpirvCodeBuffer m_entryPoints;
-    DxvkSpirvCodeBuffer m_execModeInfo;
+    SpirvCodeBuffer m_memoryModel;
+    SpirvCodeBuffer m_entryPoints;
+    SpirvCodeBuffer m_execModeInfo;
     
   };
   

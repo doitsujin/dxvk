@@ -1,6 +1,6 @@
 #pragma once
 
-#include "spirv_include.h"
+#include "../spirv_include.h"
 
 namespace dxvk {
   
@@ -11,7 +11,7 @@ namespace dxvk {
    * to be used to allocate unique IDs during code
    * generation.
    */
-  class DxvkSpirvIdCounter {
+  class SpirvIdCounter {
     
   public:
     

@@ -1,8 +1,6 @@
 #pragma once
 
-#include <unordered_set>
-
-#include "dxbc_include.h"
+#include "../spirv_code_buffer.h"
 
 namespace dxvk {
   
@@ -12,12 +10,12 @@ namespace dxvk {
    * Holds a code buffer solely for the \c OpCapability
    * instructions in the generated SPIR-V shader module.
    */
-  class DxbcCapabilities {
+  class SpirvCapabilities {
     
   public:
     
-    DxbcCapabilities();
-    ~DxbcCapabilities();
+    SpirvCapabilities();
+    ~SpirvCapabilities();
     
     /**
      * \brief Code buffer
@@ -26,7 +24,7 @@ namespace dxvk {
      * \c OpCapability instructions.
      * \returns Code buffer
      */
-    DxvkSpirvCodeBuffer code() const;
+    SpirvCodeBuffer code() const;
     
     /**
      * \brief Enables a capability
@@ -40,7 +38,7 @@ namespace dxvk {
     
   private:
     
-    std::unordered_set<spv::Capability> m_caps;
+    SpirvCodeBuffer m_code;
     
   };
   

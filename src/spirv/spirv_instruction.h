@@ -13,12 +13,12 @@ namespace dxvk {
    * access to the op code, instruction length and
    * instruction arguments.
    */
-  class DxvkSpirvInstruction {
+  class SpirvInstruction {
     
   public:
     
-    DxvkSpirvInstruction() { }
-    DxvkSpirvInstruction(
+    SpirvInstruction() { }
+    SpirvInstruction(
       const uint32_t* code, uint32_t size)
     : m_code(code), m_size(size) { }
     
@@ -67,32 +67,32 @@ namespace dxvk {
    * Convenient iterator that can be used
    * to process raw SPIR-V shader code.
    */
-  class DxvkSpirvInstructionIterator {
+  class SpirvInstructionIterator {
     
   public:
     
-    DxvkSpirvInstructionIterator() { }
-    DxvkSpirvInstructionIterator(const uint32_t* code, uint32_t size)
+    SpirvInstructionIterator() { }
+    SpirvInstructionIterator(const uint32_t* code, uint32_t size)
     : m_code(size != 0 ? code : nullptr), m_size(size) {
       if ((size >= 5) && (m_code[0] == spv::MagicNumber))
         this->advance(5);
     }
     
-    DxvkSpirvInstructionIterator& operator ++ () {
-      this->advance(DxvkSpirvInstruction(m_code, m_size).length());
+    SpirvInstructionIterator& operator ++ () {
+      this->advance(SpirvInstruction(m_code, m_size).length());
       return *this;
     }
     
-    DxvkSpirvInstruction operator * () const {
-      return DxvkSpirvInstruction(m_code, m_size);
+    SpirvInstruction operator * () const {
+      return SpirvInstruction(m_code, m_size);
     }
     
-    bool operator == (const DxvkSpirvInstructionIterator& other) const {
+    bool operator == (const SpirvInstructionIterator& other) const {
       return this->m_code == other.m_code
           && this->m_size == other.m_size;
     }
     
-    bool operator != (const DxvkSpirvInstructionIterator& other) const {
+    bool operator != (const SpirvInstructionIterator& other) const {
       return this->m_code != other.m_code
           && this->m_size != other.m_size;
     }
