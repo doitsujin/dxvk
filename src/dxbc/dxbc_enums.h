@@ -217,4 +217,80 @@ namespace dxvk {
     DclGsInstanceCount                   = 206,
   };
   
+  
+  enum class DxbcOperandNumComponents : uint32_t {
+    Component0 = 0,
+    Component1 = 1,
+    Component4 = 2,
+  };
+  
+  
+  enum class DxbcOperandComponentSelectionMode : uint32_t {
+    Mask    = 0,
+    Swizzle = 1,
+    Select1 = 2,
+  };
+  
+  enum class DxbcOperandType : uint32_t {
+    Temp                    = 0,
+    Input                   = 1,
+    Output                  = 2,
+    IndexableTemp           = 3,
+    Imm32                   = 4,
+    Imm64                   = 5,
+    Sampler                 = 6,
+    Resource                = 7,
+    ConstantBuffer          = 8,
+    ImmediateConstantBuffer = 9,
+    Label                   = 10,
+    InputPrimitiveId        = 11,
+    OutputDepth             = 12,
+    Null                    = 13,
+    Rasterizer              = 14,
+    OutputCoverageMask      = 15,
+    Stream                  = 16,
+    FunctionBody            = 17,
+    FunctionTable           = 18,
+    Interface               = 19,
+    FunctionInput           = 20,
+    FunctionOutput          = 21,
+    OutputControlPointId    = 22,
+    InputForkInstanceId     = 23,
+    InputJoinInstanceId     = 24,
+    InputControlPoint       = 25,
+    OutputControlPoint      = 26,
+    InputPatchConstant      = 27,
+    InputDomainPoint        = 28,
+    ThisPointer             = 29,
+    UnorderedAccessView     = 30,
+    ThreadGroupSharedMemory = 31,
+    InputThreadId           = 32,
+    InputThreadGroupId      = 33,
+    InputThreadIdInGroup    = 34,
+    InputCoverageMask       = 35,
+    InputThreadIndexInGroup = 36,
+    InputGsInstanceId       = 37,
+    OutputDepthGe           = 38,
+    OutputDepthLe           = 39,
+    CycleCounter            = 40,
+  };
+  
+  enum class DxbcOperandComponentName : uint32_t {
+    X = 0, R = 0, Y = 1, G = 1,
+    Z = 2, B = 2, W = 3, A = 3,
+  };
+  
+  
+  enum class DxbcOperandIndexRepresentation : uint32_t {
+    Imm32         = 0,
+    Imm64         = 1,
+    Relative      = 2,
+    Imm32Relative = 3,
+    Imm64Relative = 3,
+  };
+  
+  enum class DxbcOperandExt : uint32_t {
+    OperandModifier = 1,
+  };
+  
 }

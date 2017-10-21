@@ -4,6 +4,8 @@ namespace dxvk {
   
   DxbcCompiler::DxbcCompiler(DxbcProgramVersion version)
   : m_version(version) {
+    m_entryPointId = m_counter.nextId();
+    
     this->declareCapabilities();
     this->declareMemoryModel();
   }
@@ -14,9 +16,8 @@ namespace dxvk {
   }
   
   
-  void DxbcCompiler::processInstruction(DxbcInstruction ins) {
-    Logger::info(str::format(
-      static_cast<uint32_t>(ins.opcode())));
+  bool DxbcCompiler::processInstruction(DxbcInstruction ins) {
+    return false;
   }
   
   

@@ -6,11 +6,6 @@ namespace dxvk {
   SpirvCapabilities::~SpirvCapabilities() { }
   
   
-  SpirvCodeBuffer SpirvCapabilities::code() const {
-    return m_code;
-  }
-  
-  
   void SpirvCapabilities::enable(spv::Capability cap) {
     // Scan the generated instructions to check
     // whether we already enabled the capability.

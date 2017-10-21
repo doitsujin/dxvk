@@ -56,6 +56,12 @@ namespace dxvk {
       const uint32_t*             interfaceIds);
     
     /**
+     * \brief Enables early fragment tests
+     */
+    void enableEarlyFragmentTests(
+            uint32_t              functionId);
+    
+    /**
      * \brief Sets local work group size for a compute shader
      * 
      * Adds a \c OpExecutionMode instruction that sets

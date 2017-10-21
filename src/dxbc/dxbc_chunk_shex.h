@@ -1,7 +1,7 @@
 #pragma once
 
 #include "dxbc_common.h"
-#include "dxbc_instruction.h"
+#include "dxbc_decoder.h"
 #include "dxbc_reader.h"
 
 namespace dxvk {
@@ -24,12 +24,12 @@ namespace dxvk {
       return m_version;
     }
     
-    DxbcInstructionIterator begin() const {
-      return DxbcInstructionIterator(m_code.data());
+    DxbcDecoder begin() const {
+      return DxbcDecoder(m_code.data(), m_code.size());
     }
     
-    DxbcInstructionIterator end() const {
-      return DxbcInstructionIterator(m_code.data() + m_code.size());
+    DxbcDecoder end() const {
+      return DxbcDecoder();
     }
     
   private:

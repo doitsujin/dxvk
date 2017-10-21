@@ -103,7 +103,7 @@ namespace dxvk {
     uint32_t        m_size = 0;
     
     void advance(uint32_t n) {
-      if (m_size >= n) {
+      if (n < m_size) {
         m_code += n;
         m_size -= n;
       } else {

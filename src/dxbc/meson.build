@@ -2,6 +2,7 @@ dxbc_src = files([
   'dxbc_chunk_shex.cpp',
   'dxbc_common.cpp',
   'dxbc_compiler.cpp',
+  'dxbc_decoder.cpp',
   'dxbc_header.cpp',
   'dxbc_module.cpp',
   'dxbc_reader.cpp',

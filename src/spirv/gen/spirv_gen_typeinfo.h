@@ -19,7 +19,9 @@ namespace dxvk {
     SpirvTypeInfo();
     ~SpirvTypeInfo();
     
-    SpirvCodeBuffer code() const;
+    const SpirvCodeBuffer& code() const {
+      return m_code;
+    }
     
     uint32_t typeVoid(
             SpirvIdCounter&     ids);

@@ -24,7 +24,9 @@ namespace dxvk {
      * \c OpCapability instructions.
      * \returns Code buffer
      */
-    SpirvCodeBuffer code() const;
+    const SpirvCodeBuffer& code() const {
+      return m_code;
+    }
     
     /**
      * \brief Enables a capability

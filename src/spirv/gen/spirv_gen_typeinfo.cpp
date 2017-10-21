@@ -8,11 +8,6 @@ namespace dxvk {
   SpirvTypeInfo::~SpirvTypeInfo() { }
   
   
-  SpirvCodeBuffer SpirvTypeInfo::code() const {
-    return m_code;
-  }
-  
-  
   uint32_t SpirvTypeInfo::typeVoid(SpirvIdCounter& ids) {
     return this->getTypeId(ids,
       spv::OpTypeVoid, 0, nullptr);
