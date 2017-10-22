@@ -17,7 +17,7 @@ namespace dxvk {
   
   
   bool DxbcCompiler::processInstruction(DxbcInstruction ins) {
-    return false;
+    
   }
   
   

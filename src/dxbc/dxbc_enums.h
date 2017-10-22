@@ -218,19 +218,23 @@ namespace dxvk {
   };
   
   
-  enum class DxbcOperandNumComponents : uint32_t {
-    Component0 = 0,
-    Component1 = 1,
-    Component4 = 2,
+  /**
+   * \brief Extended opcode
+   */
+  enum class DxbcExtOpcode : uint32_t {
+    Empty                                = 0,
+    SampleControls                       = 1,
+    ResourceDim                          = 2,
+    ResourceReturnType                   = 3,
   };
   
   
-  enum class DxbcOperandComponentSelectionMode : uint32_t {
-    Mask    = 0,
-    Swizzle = 1,
-    Select1 = 2,
-  };
-  
+  /**
+   * \brief Operand type
+   * 
+   * Selects the 'register file' from which
+   * to retrieve an operand's value.
+   */
   enum class DxbcOperandType : uint32_t {
     Temp                    = 0,
     Input                   = 1,
@@ -275,22 +279,122 @@ namespace dxvk {
     CycleCounter            = 40,
   };
   
+  
+  /**
+   * \brief Number of components
+   * 
+   * Used by operands to determine whether the
+   * operand has one, four or zero components.
+   */
+  enum class DxbcOperandNumComponents : uint32_t {
+    Component0 = 0,
+    Component1 = 1,
+    Component4 = 2,
+  };
+  
+  
+  /**
+   * \brief Component selection mode
+   * 
+   * When an operand has four components, the
+   * component selection mode deterines which
+   * components are used for the operation.
+   */
+  enum class DxbcOperandComponentSelectionMode : uint32_t {
+    Mask    = 0,
+    Swizzle = 1,
+    Select1 = 2,
+  };
+  
+  
+  /**
+   * \brief Component name
+   * Used for component selection.
+   */
   enum class DxbcOperandComponentName : uint32_t {
-    X = 0, R = 0, Y = 1, G = 1,
-    Z = 2, B = 2, W = 3, A = 3,
+    X = 0, Y = 1, Z = 2, W = 3,
   };
   
   
+  /**
+   * \brief Index representation
+   * 
+   * Determines how an operand
+   * register index is stored.
+   */
   enum class DxbcOperandIndexRepresentation : uint32_t {
-    Imm32         = 0,
-    Imm64         = 1,
-    Relative      = 2,
-    Imm32Relative = 3,
-    Imm64Relative = 3,
+    Imm32             = 0,
+    Imm64             = 1,
+    Relative          = 2,
+    Imm32Relative     = 3,
+    Imm64Relative     = 4,
   };
   
+  
+  /**
+   * \brief Extended operand type
+   */
   enum class DxbcOperandExt : uint32_t {
-    OperandModifier = 1,
+    OperandModifier   = 1,
+  };
+  
+  
+  /**
+   * \brief Resource dimension
+   * The type of a resource.
+   */
+  enum class DxbcResourceDim : uint32_t {
+    Unknown           = 0,
+    Buffer            = 1,
+    Texture1D         = 2,
+    Texture2D         = 3,
+    Texture2DMs       = 4,
+    Texture3D         = 5,
+    TextureCube       = 6,
+    Texture1DArr      = 7,
+    Texture2DArr      = 8,
+    Texture2DMsArr    = 9,
+    TextureCubeArr    = 10,
+    RawBuffer         = 11,
+    StructuredBuffer  = 12,
+  };
+  
+  
+  /**
+   * \brief Resource return type
+   * Data type for resource read ops.
+   */
+  enum class DxbcResourceReturnType : uint32_t {
+    Unorm             = 1,
+    Snorm             = 2,
+    Sint              = 3,
+    Uint              = 4,
+    Float             = 5,
+    Mixed             = 6,  /// ?
+    Double            = 7,
+    Continued         = 8,  /// ?
+    Unused            = 9,  /// ?
+  };
+  
+  
+  /**
+   * \brief Register component type
+   * Data type of a register component.
+   */
+  enum class DxbcRegisterComponentType : uint32_t {
+    Unknown           = 0,
+    Uint32            = 1,
+    Sint32            = 2,
+    Float32           = 3,
+  };
+  
+  
+  /**
+   * \brief Instruction return type
+   */
+  enum class DxbcInstructionReturnType : uint32_t {
+    Float             = 0,
+    Uint              = 1,
   };
   
 }

@@ -90,6 +90,15 @@ namespace dxvk {
     : m_token(token) { }
     
     /**
+     * \brief Extended opcode
+     * \returns Extended opcode
+     */
+    DxbcExtOpcode opcode() const {
+      return static_cast<DxbcExtOpcode>(
+        bit::extract(m_token, 0, 5));
+    }
+    
+    /**
      * \brief Control info
      * 
      * Instruction-specific control info. Undefined
@@ -309,6 +318,39 @@ namespace dxvk {
     const uint32_t* m_code = nullptr;
           uint32_t  m_size = 0;
     
+  };
+  
+  
+  struct DxbcInstructionSampleControls {
+    int32_t uoffset;
+    int32_t voffset;
+    int32_t woffset;
+  };
+  
+  
+  struct DxbcInstructionResourceDim {
+    DxbcResourceDim dim;
+  };
+  
+  
+  struct DxbcInstructionResourceRet {
+    DxbcResourceReturnType x;
+    DxbcResourceReturnType y;
+    DxbcResourceReturnType z;
+    DxbcResourceReturnType w;
+  };
+  
+  
+  union DxbcInstructionModifierInfo {
+    DxbcInstructionSampleControls sampleControls;
+    DxbcInstructionResourceDim    resourceDim;
+    DxbcInstructionResourceRet    resourceRet;
+  };
+  
+  
+  struct DxbcInstructionModifier {
+    DxbcExtOpcode               code;
+    DxbcInstructionModifierInfo info;
   };
   
   

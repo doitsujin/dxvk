@@ -59,8 +59,6 @@ namespace dxvk {
     
     uint32_t m_entryPointId = 0;
     
-    bool handleDcl(DxbcInstruction ins);
-    
     void declareCapabilities();
     void declareMemoryModel();
     
