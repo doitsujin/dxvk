@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstring>
+#include <optional>
 
 #include "dxbc_enums.h"
 
@@ -281,37 +282,34 @@ namespace dxvk {
   
   
   /**
-   * \brief DXBC instruction
+   * \brief DXBC code DxbcCodeReader
    * 
-   * Provides convenience methods to extract the
-   * opcode, instruction length, and instruction
-   * arguments from an instruction.
+   * Helper class that can read DWORDs from a sized slice.
+   * Returns undefined numbers on out-of-bounds access, but
+   * makes sure not to access memory locations outside the
+   * original code array.
    */
-  class DxbcInstruction {
+  class DxbcCodeReader {
     
   public:
     
-    DxbcInstruction() { }
-    DxbcInstruction(
+    DxbcCodeReader() { }
+    DxbcCodeReader(
       const uint32_t* code,
-            uint32_t  size);
+            uint32_t  size)
+    : m_code(size != 0 ? code : nullptr),
+      m_size(size) { }
     
-    /**
-     * \brief Retrieves instruction word
-     * 
-     * \param [in] Instruction word ID
-     * \returns The instruction word
-     */
-    uint32_t getWord(uint32_t id) const;
+    uint32_t getWord(uint32_t id) const {
+      return id < m_size ? m_code[id] : 0;
+    }
     
-    /**
-     * \brief Instruction length
-     * 
-     * Number of DWORDs for this instruction,
-     * including the initial opcode token.
-     * \returns Instruction length
-     */
-    uint32_t length() const;
+    DxbcCodeReader& operator ++ ();
+    DxbcCodeReader& operator += (uint32_t n);
+    DxbcCodeReader operator + (uint32_t n) const;
+    
+    bool operator == (const DxbcCodeReader& other) const;
+    bool operator != (const DxbcCodeReader& other) const;
     
   private:
     
@@ -321,133 +319,120 @@ namespace dxvk {
   };
   
   
-  struct DxbcInstructionSampleControls {
-    int32_t uoffset;
-    int32_t voffset;
-    int32_t woffset;
-  };
-  
-  
-  struct DxbcInstructionResourceDim {
-    DxbcResourceDim dim;
-  };
-  
-  
-  struct DxbcInstructionResourceRet {
-    DxbcResourceReturnType x;
-    DxbcResourceReturnType y;
-    DxbcResourceReturnType z;
-    DxbcResourceReturnType w;
-  };
-  
-  
-  union DxbcInstructionModifierInfo {
-    DxbcInstructionSampleControls sampleControls;
-    DxbcInstructionResourceDim    resourceDim;
-    DxbcInstructionResourceRet    resourceRet;
-  };
-  
-  
-  struct DxbcInstructionModifier {
-    DxbcExtOpcode               code;
-    DxbcInstructionModifierInfo info;
+  /**
+   * \brief DXBC operand
+   * 
+   * Provides methods to query the operand token
+   * including extended operand tokens, which may
+   * modify the operand's return value.
+   */
+  class DxbcOperand {
+    
+  public:
+    
+    DxbcOperand() { }
+    DxbcOperand(const DxbcCodeReader& code);
+    
+    /**
+     * \brief Operand token
+     * \returns Operand token
+     */
+    DxbcOperandToken token() const {
+      return DxbcOperandToken(m_info.getWord(0));
+    }
+    
+    /**
+     * \brief Queries an operand extension
+     * 
+     * If an extended operand token with the given
+     * operand extension exists, return that token.
+     * \param [in] ext The operand extension
+     * \returns The extended operand token
+     */
+    std::optional<DxbcOperandTokenExt> queryOperandExt(
+            DxbcOperandExt ext) const;
+    
+    /**
+     * \brief Operand length, in DWORDs
+     * \returns Number of DWORDs
+     */
+    uint32_t length() const;
+    
+  private:
+    
+    DxbcCodeReader m_info;
+    DxbcCodeReader m_data;
+    
   };
   
   
   /**
-   * \brief Instruction decoder
+   * \brief DXBC instruction
    * 
-   * Helper class that provides methods to read typed
-   * tokens and immediate values from the instruction
-   * stream. This will read instructions word by word.
+   * Provides methods to query the opcode token
+   * including extended opcode tokens, as well
+   * as convenience methods to read operands.
    */
-  class DxbcInstructionDecoder {
+  class DxbcInstruction {
     
   public:
     
-    DxbcInstructionDecoder() { }
-    DxbcInstructionDecoder(
-      const DxbcInstruction& inst)
-    : m_inst(inst) { }
+    DxbcInstruction() { }
+    DxbcInstruction(const DxbcCodeReader& code);
     
     /**
-     * \brief Reads opcode token
-     * 
-     * Must be the very first call.
-     * \returns The opcode token
+     * \brief Opcode token
+     * \returns Opcode token
      */
-    DxbcOpcodeToken readOpcode() {
-      return DxbcOpcodeToken(m_inst.getWord(m_word++));
+    DxbcOpcodeToken token() const {
+      return DxbcOpcodeToken(m_op.getWord(0));
     }
     
     /**
-     * \brief Reads extended opcode token
+     * \brief Instruction length, in DWORDs
+     * \returns Instruction length, in DWORDs
+     */
+    uint32_t length() const;
+    
+    /**
+     * \brief Queries an opcode extension
+     * 
+     * If an extended opcode token with the given
+     * opcode exists, the token will be returned.
+     * \param extOpcode Extended opcode
      * \returns Extended opcode token
      */
-    DxbcOpcodeTokenExt readOpcodeExt() {
-      return DxbcOpcodeTokenExt(m_inst.getWord(m_word++));
+    std::optional<DxbcOpcodeTokenExt> queryOpcodeExt(
+            DxbcExtOpcode extOpcode) const;
+    
+    /**
+     * \brief Retrieves argument word
+     * 
+     * Instruction arguments immediately follow the opcode
+     * tokens, including the extended opcodes. Argument 0
+     * will therefore be the first DWORD that is part of
+     * an instruction operand or an immediate number.
+     * \param [in] idx Argument word index
+     * \returns The word at the given index
+     */
+    uint32_t getArgWord(uint32_t idx) const {
+      return m_args.getWord(idx);
     }
     
     /**
-     * \brief Reads operand token
-     * \returns Next operand token
+     * \brief Retrieves an operand
+     * 
+     * \param [in] idx Argument word index
+     * \returns The operand object
      */
-    DxbcOperandToken readOperand() {
-      return DxbcOperandToken(m_inst.getWord(m_word++));
-    }
-    
-    /**
-     * \brief Reads extended operand token
-     * \returns Extended operand token
-     */
-    DxbcOperandTokenExt readOperandExt() {
-      return DxbcOperandTokenExt(m_inst.getWord(m_word++));
-    }
-    
-    /**
-     * \brief Reads immediate 32-bit integer
-     * \returns The 32-bit integer constant
-     */
-    uint32_t readu32() {
-      return m_inst.getWord(m_word++);
-    }
-    
-    /**
-     * \brief Reads immediate 64-bit integer
-     * \returns The 64-bit integer constant
-     */
-    uint64_t readu64() {
-      uint64_t hi = readu32();
-      uint64_t lo = readu32();
-      return (hi << 32) | lo;
-    }
-    
-    /**
-     * \brief Reads immediate 32-bit float
-     * \returns The 32-bit float constant
-     */
-    float readf32() {
-      float result;
-      uint32_t integer = readu32();
-      std::memcpy(&result, &integer, sizeof(float));
-      return result;
-    }
-    
-    /**
-     * \brief Reads immediate 64-bit float
-     * \returns The 64-bit float constant
-     */
-    double readf64() {
-      double result;
-      uint64_t integer = readu64();
-      std::memcpy(&result, &integer, sizeof(double));
-      return result;
+    DxbcOperand getOperand(uint32_t idx) const {
+      return DxbcOperand(m_args + idx);
     }
     
   private:
     
-    DxbcInstruction m_inst = { nullptr, 0u };
-    uint32_t        m_word = 0;
+    DxbcCodeReader m_op;
+    DxbcCodeReader m_args;
     
   };
   
@@ -465,19 +450,24 @@ namespace dxvk {
   public:
     
     DxbcDecoder() { }
-    DxbcDecoder(const uint32_t* code, uint32_t size);
+    DxbcDecoder(const uint32_t* code, uint32_t size)
+    : m_code(code, size) { }
     
-    DxbcDecoder& operator ++ ();
+    DxbcDecoder& operator ++ () {
+      m_code += DxbcInstruction(m_code).length();
+      return *this;
+    }
     
-    DxbcInstruction operator * () const;
+    DxbcInstruction operator * () const {
+      return DxbcInstruction(m_code);
+    }
     
     bool operator == (const DxbcDecoder& other) const { return m_code == other.m_code; }
     bool operator != (const DxbcDecoder& other) const { return m_code != other.m_code; }
     
   private:
     
-    const uint32_t* m_code = nullptr;
-          uint32_t  m_size = 0;
+    DxbcCodeReader m_code;
     
   };
   

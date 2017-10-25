@@ -33,7 +33,8 @@ namespace dxvk {
      * \param [in] ins The instruction
      * \returns \c true on success
      */
-    bool processInstruction(DxbcInstruction ins);
+    bool processInstruction(
+      const DxbcInstruction& ins);
     
     /**
      * \brief Creates actual shader object

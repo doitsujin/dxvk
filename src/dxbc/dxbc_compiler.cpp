@@ -16,8 +16,23 @@ namespace dxvk {
   }
   
   
-  bool DxbcCompiler::processInstruction(DxbcInstruction ins) {
+  bool DxbcCompiler::processInstruction(const DxbcInstruction& ins) {
+    const DxbcOpcodeToken token = ins.token();
     
+    switch (token.opcode()) {
+      case DxbcOpcode::DclThreadGroup: {
+        m_spvEntryPoints.setLocalSize(
+          m_entryPointId,
+          ins.getArgWord(0),
+          ins.getArgWord(1),
+          ins.getArgWord(2));
+      } return true;
+      
+      default:
+        Logger::err(str::format("DXBC: unhandled instruction: ",
+          static_cast<uint32_t>(token.opcode())));
+        return false;
+    }
   }
   
   
@@ -26,7 +41,11 @@ namespace dxvk {
     codeBuffer.putHeader(m_counter.numIds());
     codeBuffer.append(m_spvCapabilities.code());
     codeBuffer.append(m_spvEntryPoints.code());
+    codeBuffer.append(m_spvDebugInfo.code());
+    codeBuffer.append(m_spvDecorations.code());
     codeBuffer.append(m_spvTypeInfo.code());
+    codeBuffer.append(m_spvConstants.code());
+    codeBuffer.append(m_spvVariables.code());
     codeBuffer.append(m_spvCode);
     
     return new DxvkShader(m_version.shaderStage(),
