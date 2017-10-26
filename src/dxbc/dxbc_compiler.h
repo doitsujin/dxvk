@@ -6,6 +6,12 @@
 
 namespace dxvk {
   
+  struct DxbcRegTypeR {
+    uint32_t varType;
+    uint32_t ptrType;
+    uint32_t varId;
+  };
+  
   /**
    * \brief DXBC to SPIR-V compiler
    * 
@@ -43,10 +49,17 @@ namespace dxvk {
     DxbcProgramVersion  m_version;
     SpirvModule         m_module;
     
+    std::vector<DxbcRegTypeR> m_rRegs;
+    
     uint32_t m_entryPointId = 0;
+    
+    uint32_t m_typeVoid     = 0;
+    uint32_t m_typeFunction = 0;
     
     void declareCapabilities();
     void declareMemoryModel();
+    
+    void dclTemps(uint32_t n);
     
   };
   

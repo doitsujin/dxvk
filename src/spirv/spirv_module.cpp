@@ -55,7 +55,9 @@ namespace dxvk {
   void SpirvModule::setMemoryModel(
           spv::AddressingModel    addressModel,
           spv::MemoryModel        memoryModel) {
-    
+    m_memoryModel.putIns  (spv::OpMemoryModel, 3);
+    m_memoryModel.putWord (addressModel);
+    m_memoryModel.putWord (memoryModel);
   }
   
   
@@ -77,7 +79,9 @@ namespace dxvk {
   void SpirvModule::setDebugName(
           uint32_t                expressionId,
     const char*                   debugName) {
-    
+    m_debugNames.putIns (spv::OpName, 2 + m_debugNames.strLen(debugName));
+    m_debugNames.putWord(expressionId);
+    m_debugNames.putStr (debugName);
   }
   
   
@@ -286,12 +290,25 @@ namespace dxvk {
           uint32_t                variableType,
           spv::StorageClass       storageClass) {
     std::array<uint32_t, 2> args = {
-      variableType,
       storageClass,
+      variableType,
     };
     
     return this->defType(spv::OpTypePointer,
       args.size(), args.data());
+  }
+  
+  
+  uint32_t SpirvModule::newVar(
+          uint32_t                pointerType,
+          spv::StorageClass       storageClass) {
+    uint32_t resultId = this->allocateId();
+    
+    m_variables.putIns  (spv::OpVariable, 4);
+    m_variables.putWord (pointerType);
+    m_variables.putWord (resultId);
+    m_variables.putWord (storageClass);
+    return resultId;
   }
   
   

@@ -415,7 +415,7 @@ namespace dxvk {
      * \param [in] idx Argument word index
      * \returns The word at the given index
      */
-    uint32_t getArgWord(uint32_t idx) const {
+    uint32_t arg(uint32_t idx) const {
       return m_args.getWord(idx);
     }
     
@@ -425,7 +425,7 @@ namespace dxvk {
      * \param [in] idx Argument word index
      * \returns The operand object
      */
-    DxbcOperand getOperand(uint32_t idx) const {
+    DxbcOperand operand(uint32_t idx) const {
       return DxbcOperand(m_args + idx);
     }
     
