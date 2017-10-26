@@ -2,13 +2,7 @@
 
 #include "dxbc_chunk_shex.h"
 
-#include "../spirv/gen/spirv_gen_capability.h"
-#include "../spirv/gen/spirv_gen_constant.h"
-#include "../spirv/gen/spirv_gen_debuginfo.h"
-#include "../spirv/gen/spirv_gen_decoration.h"
-#include "../spirv/gen/spirv_gen_entrypoint.h"
-#include "../spirv/gen/spirv_gen_typeinfo.h"
-#include "../spirv/gen/spirv_gen_variable.h"
+#include "../spirv/spirv_module.h"
 
 namespace dxvk {
   
@@ -47,16 +41,7 @@ namespace dxvk {
   private:
     
     DxbcProgramVersion  m_version;
-    SpirvIdCounter      m_counter;
-    
-    SpirvCapabilities   m_spvCapabilities;
-    SpirvEntryPoint     m_spvEntryPoints;
-    SpirvDebugInfo      m_spvDebugInfo;
-    SpirvDecorations    m_spvDecorations;
-    SpirvTypeInfo       m_spvTypeInfo;
-    SpirvConstants      m_spvConstants;
-    SpirvVariables      m_spvVariables;
-    SpirvCodeBuffer     m_spvCode;
+    SpirvModule         m_module;
     
     uint32_t m_entryPointId = 0;
     
