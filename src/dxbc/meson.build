@@ -5,6 +5,7 @@ dxbc_src = files([
   'dxbc_decoder.cpp',
   'dxbc_header.cpp',
   'dxbc_module.cpp',
+  'dxbc_names.cpp',
   'dxbc_reader.cpp',
 ])
 

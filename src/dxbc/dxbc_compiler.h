@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dxbc_chunk_shex.h"
+#include "dxbc_names.h"
 
 #include "../spirv/spirv_module.h"
 
@@ -11,6 +12,22 @@ namespace dxvk {
     uint32_t ptrType;
     uint32_t varId;
   };
+  
+  
+  struct DxbcValueType {
+    spv::Op           componentType   = spv::OpTypeVoid;
+    uint32_t          componentWidth  = 0;
+    uint32_t          componentSigned = 0;
+    uint32_t          componentCount  = 0;
+  };
+  
+  
+  struct DxbcValue {
+    DxbcValueType type;
+    uint32_t      typeId;
+    uint32_t      valueId;
+  };
+  
   
   /**
    * \brief DXBC to SPIR-V compiler
@@ -49,6 +66,7 @@ namespace dxvk {
     DxbcProgramVersion  m_version;
     SpirvModule         m_module;
     
+    std::vector<uint32_t>     m_interfaces;
     std::vector<DxbcRegTypeR> m_rRegs;
     
     uint32_t m_entryPointId = 0;
@@ -56,10 +74,15 @@ namespace dxvk {
     uint32_t m_typeVoid     = 0;
     uint32_t m_typeFunction = 0;
     
+    bool m_useRestrictedMath = false;
+    
+    
     void declareCapabilities();
     void declareMemoryModel();
     
-    void dclTemps(uint32_t n);
+    bool dclGlobalFlags(DxbcGlobalFlags flags);
+    bool dclInput(const DxbcInstruction& ins);
+    bool dclTemps(uint32_t n);
     
   };
   

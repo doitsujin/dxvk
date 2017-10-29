@@ -4,8 +4,11 @@
 #include <optional>
 
 #include "dxbc_enums.h"
+#include "dxbc_names.h"
 
 namespace dxvk {
+  
+  class DxbcOperand;
   
   /**
    * \brief DXBC instruction token
@@ -320,6 +323,39 @@ namespace dxvk {
   
   
   /**
+   * \brief DXBC operand index
+   * 
+   * Represents an index into an indexable register file.
+   * For each register file dimension, one operand index
+   * must be read from the encoded instruction.
+   */
+  class DxbcOperandIndex {
+    
+  public:
+    
+    DxbcOperandIndex() { }
+    DxbcOperandIndex(
+      const DxbcCodeReader&                 code,
+            DxbcOperandIndexRepresentation  rep)
+    : m_code(code), m_rep(rep) { }
+    
+    uint32_t length() const;
+    
+    bool hasImmPart() const;
+    bool hasRelPart() const;
+    
+    uint64_t    immPart() const;
+    DxbcOperand relPart() const;
+    
+  private:
+    
+    DxbcCodeReader                  m_code;
+    DxbcOperandIndexRepresentation  m_rep;
+    
+  };
+  
+  
+  /**
    * \brief DXBC operand
    * 
    * Provides methods to query the operand token
@@ -342,6 +378,22 @@ namespace dxvk {
     }
     
     /**
+     * \brief Operand length, in DWORDs
+     * \returns Number of DWORDs
+     */
+    uint32_t length() const {
+      return m_length;
+    }
+    
+    /**
+     * \brief Operand index for a single dimension
+     * 
+     * \param [in] dim Dimension to query
+     * \returns Operand index
+     */
+    DxbcOperandIndex index(uint32_t dim) const;
+    
+    /**
      * \brief Queries an operand extension
      * 
      * If an extended operand token with the given
@@ -352,16 +404,13 @@ namespace dxvk {
     std::optional<DxbcOperandTokenExt> queryOperandExt(
             DxbcOperandExt ext) const;
     
-    /**
-     * \brief Operand length, in DWORDs
-     * \returns Number of DWORDs
-     */
-    uint32_t length() const;
-    
   private:
     
     DxbcCodeReader m_info;
     DxbcCodeReader m_data;
+    
+    uint32_t                m_length       = 0;
+    std::array<uint32_t, 3> m_indexOffsets = { 0, 0, 0 };
     
   };
   

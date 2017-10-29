@@ -24,7 +24,7 @@ namespace dxvk {
   
   
   uint32_t SpirvModule::allocateId() {
-    return ++m_id;
+    return m_id++;
   }
   
   
@@ -48,7 +48,13 @@ namespace dxvk {
     const char*                   name,
           uint32_t                interfaceCount,
     const uint32_t*               interfaceIds) {
+    m_entryPoints.putIns  (spv::OpEntryPoint, 3 + m_entryPoints.strLen(name) + interfaceCount);
+    m_entryPoints.putWord (executionModel);
+    m_entryPoints.putWord (entryPointId);
+    m_entryPoints.putStr  (name);
     
+    for (uint32_t i = 0; i < interfaceCount; i++)
+      m_entryPoints.putWord(interfaceIds[i]);
   }
   
   
@@ -63,7 +69,9 @@ namespace dxvk {
   
   void SpirvModule::enableEarlyFragmentTests(
           uint32_t                entryPointId) {
-    
+    m_execModeInfo.putIns (spv::OpExecutionMode, 3);
+    m_execModeInfo.putWord(entryPointId);
+    m_execModeInfo.putWord(spv::ExecutionModeEarlyFragmentTests);
   }
   
   
@@ -72,7 +80,12 @@ namespace dxvk {
           uint32_t                x,
           uint32_t                y,
           uint32_t                z) {
-    
+    m_execModeInfo.putIns  (spv::OpExecutionMode, 6);
+    m_execModeInfo.putWord (entryPointId);
+    m_execModeInfo.putWord (spv::ExecutionModeLocalSize);
+    m_execModeInfo.putInt32(x);
+    m_execModeInfo.putInt32(y);
+    m_execModeInfo.putInt32(z);
   }
   
   

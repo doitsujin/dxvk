@@ -138,7 +138,7 @@ namespace dxvk {
     
   private:
     
-    uint32_t m_id = 0;
+    uint32_t m_id = 1;
     
     SpirvCodeBuffer m_capabilities;
     SpirvCodeBuffer m_memoryModel;

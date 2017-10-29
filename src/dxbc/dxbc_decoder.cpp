@@ -36,18 +36,109 @@ namespace dxvk {
   }
   
   
+  uint32_t DxbcOperandIndex::length() const {
+    switch (m_rep) {
+      case DxbcOperandIndexRepresentation::Imm32:         return 1;
+      case DxbcOperandIndexRepresentation::Imm64:         return 2;
+      case DxbcOperandIndexRepresentation::Relative:      return this->relPart().length();
+      case DxbcOperandIndexRepresentation::Imm32Relative: return this->relPart().length() + 1;
+      case DxbcOperandIndexRepresentation::Imm64Relative: return this->relPart().length() + 2;
+    }
+    
+    throw DxvkError(str::format("DXBC: Unknown index representation: ", m_rep));
+  }
+  
+  
+  bool DxbcOperandIndex::hasImmPart() const {
+    return m_rep == DxbcOperandIndexRepresentation::Imm32
+        || m_rep == DxbcOperandIndexRepresentation::Imm64
+        || m_rep == DxbcOperandIndexRepresentation::Imm32Relative
+        || m_rep == DxbcOperandIndexRepresentation::Imm64Relative;
+  }
+  
+  
+  bool DxbcOperandIndex::hasRelPart() const {
+    return m_rep == DxbcOperandIndexRepresentation::Relative
+        || m_rep == DxbcOperandIndexRepresentation::Imm32Relative
+        || m_rep == DxbcOperandIndexRepresentation::Imm64Relative;
+  }
+  
+  
+  uint64_t DxbcOperandIndex::immPart() const {
+    switch (m_rep) {
+      case DxbcOperandIndexRepresentation::Imm32:
+      case DxbcOperandIndexRepresentation::Imm32Relative:
+        return m_code.getWord(0);
+      
+      case DxbcOperandIndexRepresentation::Imm64:
+      case DxbcOperandIndexRepresentation::Imm64Relative:
+        return (static_cast<uint64_t>(m_code.getWord(0)) << 32)
+             | (static_cast<uint64_t>(m_code.getWord(1)));
+      
+      default:
+        return 0;
+    }
+  }
+  
+  
+  DxbcOperand DxbcOperandIndex::relPart() const {
+    switch (m_rep) {
+      case DxbcOperandIndexRepresentation::Relative:
+        return DxbcOperand(m_code);
+        
+      case DxbcOperandIndexRepresentation::Imm32Relative:
+        return DxbcOperand(m_code + 1);
+        
+      case DxbcOperandIndexRepresentation::Imm64Relative:
+        return DxbcOperand(m_code + 2);
+        
+      default:
+        throw DxvkError("DXBC: Operand index is not relative");
+    }
+  }
+  
+  
   DxbcOperand::DxbcOperand(const DxbcCodeReader& code)
   : m_info(code) {
-    DxbcOperandToken token(m_info.getWord(0));
+    const DxbcOperandToken token(m_info.getWord(0));
     
-    uint32_t numOperandTokens = 1;
+    uint32_t numTokens = 1;
     
+    // Count extended operand tokens
     if (token.isExtended()) {
-      while (DxbcOperandTokenExt(m_info.getWord(numOperandTokens++)).isExtended())
+      while (DxbcOperandTokenExt(m_info.getWord(numTokens++)).isExtended())
         continue;
     }
     
-    m_data = m_info + numOperandTokens;
+    m_data = m_info + numTokens;
+    
+    // Immediate operands
+    uint32_t length = 0;
+    uint32_t componentCount = 0;
+    
+    switch (token.numComponents()) {
+      case DxbcOperandNumComponents::Component0: componentCount = 0; break;
+      case DxbcOperandNumComponents::Component1: componentCount = 1; break;
+      case DxbcOperandNumComponents::Component4: componentCount = 4; break;
+    }
+    
+    if (token.type() == DxbcOperandType::Imm32) length += 1 * componentCount;
+    if (token.type() == DxbcOperandType::Imm64) length += 2 * componentCount;
+    
+    // Indices into the register file, may contain additional operands
+    for (uint32_t i = 0; i < token.indexDimension(); i++) {
+      m_indexOffsets[i] = length;
+      length += this->index(i).length();
+    }
+    
+    m_length = length + numTokens;
+  }
+  
+  
+  DxbcOperandIndex DxbcOperand::index(uint32_t dim) const {
+    return DxbcOperandIndex(
+      m_data + m_indexOffsets.at(dim),
+      this->token().indexRepresentation(dim));
   }
   
   
@@ -66,11 +157,6 @@ namespace dxvk {
     } while (extToken.isExtended());
     
     return { };
-  }
-  
-  
-  uint32_t DxbcOperand::length() const {
-    
   }
   
   

@@ -1,7 +1,7 @@
 #pragma once
 
 #define ENUM_NAME(name) \
-  case name: os << #name; break
+  case name: return os << #name
 
 #define ENUM_DEFAULT(name) \
-  default: os << e
+  default: return os << static_cast<int32_t>(e)

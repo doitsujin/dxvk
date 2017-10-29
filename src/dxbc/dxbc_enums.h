@@ -397,4 +397,14 @@ namespace dxvk {
     Uint              = 1,
   };
   
+  
+  enum class DxbcGlobalFlag : uint32_t {
+    RefactoringAllowed    = 0,
+    DoublePrecision       = 1,
+    EarlyFragmentTests    = 2,
+    RawStructuredBuffers  = 3,
+  };
+  
+  using DxbcGlobalFlags = Flags<DxbcGlobalFlag>;
+  
 }

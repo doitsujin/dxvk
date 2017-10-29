@@ -13,6 +13,9 @@ namespace dxvk {
     
     Flags() { }
     
+    Flags(IntType t)
+    : m_bits(t) { }
+    
     template<typename... Tx>
     Flags(T f, Tx... fx) {
       this->set(f, fx...);
