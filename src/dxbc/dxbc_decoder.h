@@ -11,6 +11,21 @@ namespace dxvk {
   class DxbcOperand;
   
   /**
+   * \brief Component swizzle
+   */
+  struct DxbcComponentSwizzle {
+    DxbcComponentName x;
+    DxbcComponentName y;
+    DxbcComponentName z;
+    DxbcComponentName w;
+  };
+  
+  /**
+   * \brief Component mask
+   */
+  using DxbcComponentMask = Flags<DxbcComponentName>;
+  
+  /**
    * \brief DXBC instruction token
    * 
    * Initial token at the beginning of each instruction.
@@ -161,9 +176,9 @@ namespace dxvk {
      * has. Can be zero, one, or four.
      * \returns Number of components
      */
-    DxbcOperandNumComponents numComponents() const {
-      return static_cast<DxbcOperandNumComponents>(
-        bit::extract(m_token, 0, 1));
+    uint32_t numComponents() const {
+      std::array<uint32_t, 3> count = { 0, 1, 4 };
+      return count.at(bit::extract(m_token, 0, 1));
     }
     
     /**
@@ -174,9 +189,46 @@ namespace dxvk {
      * a given set of components is used.
      * \returns Component selection mode
      */
-    DxbcOperandComponentSelectionMode selectionMode() const {
-      return static_cast<DxbcOperandComponentSelectionMode>(
+    DxbcComponentSelectionMode selectionMode() const {
+      return static_cast<DxbcComponentSelectionMode>(
         bit::extract(m_token, 2, 3));
+    }
+    
+    /**
+     * \brief Component mask
+     * 
+     * Used when the component selection mode is
+     * \c DxbcComponentSelectionMode::Mask.
+     * \returns The component mask
+     */
+    DxbcComponentMask componentMask() const {
+      return DxbcComponentMask(bit::extract(m_token, 4, 7));
+    }
+    
+    /**
+     * \brief Component swizzle
+     * 
+     * Used when the component selection mode is
+     * \c DxbcComponentSelectionMode::Swizzle.
+     * \returns The component swizzle
+     */
+    DxbcComponentSwizzle componentSwizzle() const {
+      return DxbcComponentSwizzle {
+        static_cast<DxbcComponentName>(bit::extract(m_token,  4,  5)),
+        static_cast<DxbcComponentName>(bit::extract(m_token,  6,  7)),
+        static_cast<DxbcComponentName>(bit::extract(m_token,  8,  9)),
+        static_cast<DxbcComponentName>(bit::extract(m_token, 10, 11)) };
+    }
+    
+    /**
+     * \brief Component selection
+     * 
+     * Used when the component selection mode is
+     * \c DxbcComponentSelectionMode::Select1.
+     */
+    DxbcComponentName componentSelection() const {
+      return static_cast<DxbcComponentName>(
+        bit::extract(m_token, 4, 5));
     }
     
     /**
@@ -403,6 +455,28 @@ namespace dxvk {
      */
     std::optional<DxbcOperandTokenExt> queryOperandExt(
             DxbcOperandExt ext) const;
+    
+    /**
+     * \brief Reads 32-bit immediate integer
+     * 
+     * \param [in] idx Component index
+     * \returns The immediate operand
+     */
+    uint32_t imm32(uint32_t idx) const {
+      return m_data.getWord(idx);
+    }
+    
+    /**
+     * \brief Reads 64-bit immediate integer
+     * 
+     * \param [in] idx Component index
+     * \returns The immediate operand
+     */
+    uint64_t imm64(uint32_t idx) const {
+      uint64_t hi = m_data.getWord(2 * idx + 0);
+      uint64_t lo = m_data.getWord(2 * idx + 1);
+      return (hi << 32) | (lo);
+    }
     
   private:
     

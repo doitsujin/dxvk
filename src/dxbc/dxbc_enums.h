@@ -164,9 +164,9 @@ namespace dxvk {
     DclHsForkPhaseInstanceCount          = 153,
     DclHsJoinPhaseInstanceCount          = 154,
     DclThreadGroup                       = 155,
-    DclUnorderedAccessViewTyped          = 156,
-    DclUnorderedAccessViewRaw            = 157,
-    DclUnorderedAccessViewStructured     = 158,
+    DclUavTyped                          = 156,
+    DclUavRaw                            = 157,
+    DclUavStructured                     = 158,
     DclThreadGroupSharedMemoryRaw        = 159,
     DclThreadGroupSharedMemoryStructured = 160,
     DclResourceRaw                       = 161,
@@ -286,7 +286,7 @@ namespace dxvk {
    * Used by operands to determine whether the
    * operand has one, four or zero components.
    */
-  enum class DxbcOperandNumComponents : uint32_t {
+  enum class DxbcComponentCount : uint32_t {
     Component0 = 0,
     Component1 = 1,
     Component4 = 2,
@@ -300,7 +300,7 @@ namespace dxvk {
    * component selection mode deterines which
    * components are used for the operation.
    */
-  enum class DxbcOperandComponentSelectionMode : uint32_t {
+  enum class DxbcComponentSelectionMode : uint32_t {
     Mask    = 0,
     Swizzle = 1,
     Select1 = 2,
@@ -311,7 +311,7 @@ namespace dxvk {
    * \brief Component name
    * Used for component selection.
    */
-  enum class DxbcOperandComponentName : uint32_t {
+  enum class DxbcComponentName : uint32_t {
     X = 0, Y = 1, Z = 2, W = 3,
   };
   
@@ -395,6 +395,32 @@ namespace dxvk {
   enum class DxbcInstructionReturnType : uint32_t {
     Float             = 0,
     Uint              = 1,
+  };
+  
+  
+  enum class DxbcSystemValue : uint32_t {
+    None                        = 0,
+    Position                    = 1,
+    ClipDistance                = 2,
+    CullDistance                = 3,
+    RenderTargetId              = 4,
+    ViewportId                  = 5,
+    VertexId                    = 6,
+    PrimitiveId                 = 7,
+    InstanceId                  = 8,
+    IsFrontFace                 = 9,
+    SampleIndex                 = 10,
+    FinalQuadEdgeTessFactor     = 11,
+    FinalQuadInsideTessFactor   = 12,
+    FinalTriEdgeTessFactor      = 13,
+    FinalTriInsideTessFactor    = 14,
+    FinalLineDetailTessFactor   = 15,
+    FinalLineDensityTessFactor  = 16,
+    Target                      = 64,
+    Depth                       = 65,
+    Coverage                    = 66,
+    DepthGe                     = 67,
+    DepthLe                     = 68
   };
   
   

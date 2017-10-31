@@ -2,6 +2,7 @@
 
 #include "../dxvk/dxvk_shader.h"
 
+#include "dxbc_chunk_isgn.h"
 #include "dxbc_chunk_shex.h"
 #include "dxbc_header.h"
 #include "dxbc_reader.h"
@@ -36,6 +37,8 @@ namespace dxvk {
     
     DxbcHeader m_header;
     
+    Rc<DxbcIsgn> m_isgnChunk;
+    Rc<DxbcIsgn> m_osgnChunk;
     Rc<DxbcShex> m_shexChunk;
     
   };

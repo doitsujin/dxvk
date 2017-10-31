@@ -160,9 +160,9 @@ std::ostream& operator << (std::ostream& os, DxbcOpcode e) {
     ENUM_NAME(DxbcOpcode::DclHsForkPhaseInstanceCount);
     ENUM_NAME(DxbcOpcode::DclHsJoinPhaseInstanceCount);
     ENUM_NAME(DxbcOpcode::DclThreadGroup);
-    ENUM_NAME(DxbcOpcode::DclUnorderedAccessViewTyped);
-    ENUM_NAME(DxbcOpcode::DclUnorderedAccessViewRaw);
-    ENUM_NAME(DxbcOpcode::DclUnorderedAccessViewStructured);
+    ENUM_NAME(DxbcOpcode::DclUavTyped);
+    ENUM_NAME(DxbcOpcode::DclUavRaw);
+    ENUM_NAME(DxbcOpcode::DclUavStructured);
     ENUM_NAME(DxbcOpcode::DclThreadGroupSharedMemoryRaw);
     ENUM_NAME(DxbcOpcode::DclThreadGroupSharedMemoryStructured);
     ENUM_NAME(DxbcOpcode::DclResourceRaw);
@@ -275,32 +275,32 @@ std::ostream& operator << (std::ostream& os, DxbcOperandType e) {
 }
 
 
-std::ostream& operator << (std::ostream& os, DxbcOperandNumComponents e) {
+std::ostream& operator << (std::ostream& os, DxbcComponentCount e) {
   switch (e) {
-    ENUM_NAME(DxbcOperandNumComponents::Component0);
-    ENUM_NAME(DxbcOperandNumComponents::Component1);
-    ENUM_NAME(DxbcOperandNumComponents::Component4);
+    ENUM_NAME(DxbcComponentCount::Component0);
+    ENUM_NAME(DxbcComponentCount::Component1);
+    ENUM_NAME(DxbcComponentCount::Component4);
     ENUM_DEFAULT(e);
   }
 }
 
 
-std::ostream& operator << (std::ostream& os, DxbcOperandComponentSelectionMode e) {
+std::ostream& operator << (std::ostream& os, DxbcComponentSelectionMode e) {
   switch (e) {
-    ENUM_NAME(DxbcOperandComponentSelectionMode::Mask);
-    ENUM_NAME(DxbcOperandComponentSelectionMode::Swizzle);
-    ENUM_NAME(DxbcOperandComponentSelectionMode::Select1);
+    ENUM_NAME(DxbcComponentSelectionMode::Mask);
+    ENUM_NAME(DxbcComponentSelectionMode::Swizzle);
+    ENUM_NAME(DxbcComponentSelectionMode::Select1);
     ENUM_DEFAULT(e);
   }
 }
 
 
-std::ostream& operator << (std::ostream& os, DxbcOperandComponentName e) {
+std::ostream& operator << (std::ostream& os, DxbcComponentName e) {
   switch (e) {
-    ENUM_NAME(DxbcOperandComponentName::X);
-    ENUM_NAME(DxbcOperandComponentName::Y);
-    ENUM_NAME(DxbcOperandComponentName::Z);
-    ENUM_NAME(DxbcOperandComponentName::W);
+    ENUM_NAME(DxbcComponentName::X);
+    ENUM_NAME(DxbcComponentName::Y);
+    ENUM_NAME(DxbcComponentName::Z);
+    ENUM_NAME(DxbcComponentName::W);
     ENUM_DEFAULT(e);
   }
 }
@@ -369,6 +369,35 @@ std::ostream& operator << (std::ostream& os, DxbcInstructionReturnType e) {
   switch (e) {
     ENUM_NAME(DxbcInstructionReturnType::Float);
     ENUM_NAME(DxbcInstructionReturnType::Uint);
+    ENUM_DEFAULT(e);
+  }
+}
+
+
+std::ostream& operator << (std::ostream& os, DxbcSystemValue e) {
+  switch (e) {
+    ENUM_NAME(DxbcSystemValue::None);
+    ENUM_NAME(DxbcSystemValue::Position);
+    ENUM_NAME(DxbcSystemValue::ClipDistance);
+    ENUM_NAME(DxbcSystemValue::CullDistance);
+    ENUM_NAME(DxbcSystemValue::RenderTargetId);
+    ENUM_NAME(DxbcSystemValue::ViewportId);
+    ENUM_NAME(DxbcSystemValue::VertexId);
+    ENUM_NAME(DxbcSystemValue::PrimitiveId);
+    ENUM_NAME(DxbcSystemValue::InstanceId);
+    ENUM_NAME(DxbcSystemValue::IsFrontFace);
+    ENUM_NAME(DxbcSystemValue::SampleIndex);
+    ENUM_NAME(DxbcSystemValue::FinalQuadEdgeTessFactor);
+    ENUM_NAME(DxbcSystemValue::FinalQuadInsideTessFactor);
+    ENUM_NAME(DxbcSystemValue::FinalTriEdgeTessFactor);
+    ENUM_NAME(DxbcSystemValue::FinalTriInsideTessFactor);
+    ENUM_NAME(DxbcSystemValue::FinalLineDetailTessFactor);
+    ENUM_NAME(DxbcSystemValue::FinalLineDensityTessFactor);
+    ENUM_NAME(DxbcSystemValue::Target);
+    ENUM_NAME(DxbcSystemValue::Depth);
+    ENUM_NAME(DxbcSystemValue::Coverage);
+    ENUM_NAME(DxbcSystemValue::DepthGe);
+    ENUM_NAME(DxbcSystemValue::DepthLe);
     ENUM_DEFAULT(e);
   }
 }

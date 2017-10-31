@@ -1,44 +1,25 @@
 #pragma once
 
+#include "dxbc_chunk_isgn.h"
 #include "dxbc_chunk_shex.h"
 #include "dxbc_names.h"
+#include "dxbc_type.h"
 
 #include "../spirv/spirv_module.h"
 
 namespace dxvk {
   
-  struct DxbcRegTypeR {
-    uint32_t varType;
-    uint32_t ptrType;
-    uint32_t varId;
-  };
-  
-  
-  struct DxbcValueType {
-    spv::Op           componentType   = spv::OpTypeVoid;
-    uint32_t          componentWidth  = 0;
-    uint32_t          componentSigned = 0;
-    uint32_t          componentCount  = 0;
-  };
-  
-  
-  struct DxbcValue {
-    DxbcValueType type;
-    uint32_t      typeId;
-    uint32_t      valueId;
-  };
-  
-  
   /**
    * \brief DXBC to SPIR-V compiler
-   * 
-   * 
    */
   class DxbcCompiler {
     
   public:
     
-    DxbcCompiler(DxbcProgramVersion version);
+    DxbcCompiler(
+            DxbcProgramVersion  version,
+      const Rc<DxbcIsgn>&       inputSig,
+      const Rc<DxbcIsgn>&       outputSig);
     ~DxbcCompiler();
     
     DxbcCompiler             (DxbcCompiler&&) = delete;
@@ -50,7 +31,7 @@ namespace dxvk {
      * \param [in] ins The instruction
      * \returns \c true on success
      */
-    bool processInstruction(
+    void processInstruction(
       const DxbcInstruction& ins);
     
     /**
@@ -66,8 +47,13 @@ namespace dxvk {
     DxbcProgramVersion  m_version;
     SpirvModule         m_module;
     
+    Rc<DxbcIsgn>        m_inputSig;
+    Rc<DxbcIsgn>        m_outputSig;
+    
     std::vector<uint32_t>     m_interfaces;
-    std::vector<DxbcRegTypeR> m_rRegs;
+    std::vector<DxbcPointer>  m_rRegs;  // Temps
+    std::vector<DxbcPointer>  m_vRegs;  // Input registers
+    std::vector<DxbcPointer>  m_oRegs;  // Output registers
     
     uint32_t m_entryPointId = 0;
     
@@ -76,13 +62,37 @@ namespace dxvk {
     
     bool m_useRestrictedMath = false;
     
-    
     void declareCapabilities();
     void declareMemoryModel();
     
-    bool dclGlobalFlags(DxbcGlobalFlags flags);
-    bool dclInput(const DxbcInstruction& ins);
-    bool dclTemps(uint32_t n);
+    void dclGlobalFlags(const DxbcInstruction& ins);
+    void dclInput(const DxbcInstruction& ins);
+    void dclOutputSiv(const DxbcInstruction& ins);
+    void dclTemps(const DxbcInstruction& ins);
+    void dclThreadGroup(const DxbcInstruction& ins);
+    
+    void opMov(const DxbcInstruction& ins);
+    void opRet(const DxbcInstruction& ins);
+    
+    uint32_t getScalarTypeId(const DxbcScalarType& type);
+    uint32_t getValueTypeId(const DxbcValueType& type);
+    uint32_t getPointerTypeId(const DxbcPointerType& type);
+    
+    DxbcValue loadPointer(
+      const DxbcPointer&        pointer);
+    
+    DxbcValue loadOperand(
+      const DxbcOperand&        operand,
+      const DxbcValueType&      type);
+    
+    void storePointer(
+      const DxbcPointer&        pointer,
+      const DxbcValue&          value);
+    
+    void storeOperand(
+      const DxbcOperand&        operand,
+      const DxbcValueType&      srcType,
+            uint32_t            srcValue);
     
   };
   

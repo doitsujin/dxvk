@@ -114,16 +114,10 @@ namespace dxvk {
     
     // Immediate operands
     uint32_t length = 0;
-    uint32_t componentCount = 0;
     
-    switch (token.numComponents()) {
-      case DxbcOperandNumComponents::Component0: componentCount = 0; break;
-      case DxbcOperandNumComponents::Component1: componentCount = 1; break;
-      case DxbcOperandNumComponents::Component4: componentCount = 4; break;
-    }
-    
-    if (token.type() == DxbcOperandType::Imm32) length += 1 * componentCount;
-    if (token.type() == DxbcOperandType::Imm64) length += 2 * componentCount;
+    if (token.type() == DxbcOperandType::Imm32
+     || token.type() == DxbcOperandType::Imm64)
+      length += token.numComponents();
     
     // Indices into the register file, may contain additional operands
     for (uint32_t i = 0; i < token.indexDimension(); i++) {
