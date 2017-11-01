@@ -244,16 +244,6 @@ namespace dxvk {
         result = this->loadPointer(m_rRegs.at(index.immPart()));
       } break;
       
-      case DxbcOperandType::Input: {
-        const DxbcOperandIndex index = operand.index(0);
-        result = this->loadPointer(m_vRegs.at(index.immPart()));
-      } break;
-      
-      case DxbcOperandType::Output: {
-        const DxbcOperandIndex index = operand.index(0);
-        result = this->loadPointer(m_oRegs.at(index.immPart()));
-      } break;
-      
       default:
         throw DxvkError(str::format(
           "DxbcCompiler::loadOperandRegister: Unhandled operand type: ",

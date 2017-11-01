@@ -20,13 +20,6 @@ namespace dxvk {
       entry.registerId      = reader.readu32();
       entry.componentMask   = bit::extract(reader.readu32(), 0, 3);
       
-      Logger::info(str::format(
-        entry.semanticName, ",",
-        entry.semanticIndex, ",",
-        entry.systemValue, ",",
-//         entry.componentType, ",",
-        entry.registerId));
-      
       m_entries.push_back(entry);
     }
   }
@@ -34,6 +27,16 @@ namespace dxvk {
   
   DxbcIsgn::~DxbcIsgn() {
     
+  }
+  
+  
+  uint32_t DxbcIsgn::entryCount() const {
+    return m_entries.size();
+  }
+  
+  
+  const DxbcSgnEntry& DxbcIsgn::entry(uint32_t id) const {
+    return m_entries.at(id);
   }
   
 }

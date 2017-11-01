@@ -36,6 +36,10 @@ namespace dxvk {
     DxbcIsgn(DxbcReader reader);
     ~DxbcIsgn();
     
+    uint32_t entryCount() const;
+    
+    const DxbcSgnEntry& entry(uint32_t id) const;
+    
   private:
     
     std::vector<DxbcSgnEntry> m_entries;

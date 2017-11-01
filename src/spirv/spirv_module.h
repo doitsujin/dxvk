@@ -136,6 +136,19 @@ namespace dxvk {
             uint32_t                argCount,
       const uint32_t*               argIds);
     
+    void opLabel(
+            uint32_t                labelId);
+    
+    uint32_t opLoad(
+            uint32_t                typeId,
+            uint32_t                pointerId);
+    
+    void opStore(
+            uint32_t                pointerId,
+            uint32_t                valueId);
+    
+    void opReturn();
+    
   private:
     
     uint32_t m_id = 1;

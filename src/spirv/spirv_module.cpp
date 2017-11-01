@@ -372,6 +372,39 @@ namespace dxvk {
   }
   
   
+  void SpirvModule::opLabel(uint32_t labelId) {
+    m_code.putIns (spv::OpReturn, 2);
+    m_code.putWord(labelId);
+  }
+  
+  
+  uint32_t SpirvModule::opLoad(
+          uint32_t                typeId,
+          uint32_t                pointerId) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpLoad, 4);
+    m_code.putWord(typeId);
+    m_code.putWord(resultId);
+    m_code.putWord(pointerId);
+    return resultId;
+  }
+  
+  
+  void SpirvModule::opStore(
+          uint32_t                pointerId,
+          uint32_t                valueId) {
+    m_code.putIns (spv::OpStore, 3);
+    m_code.putWord(pointerId);
+    m_code.putWord(valueId);
+  }
+  
+  
+  void SpirvModule::opReturn() {
+    m_code.putIns (spv::OpReturn, 1);
+  }
+  
+  
   uint32_t SpirvModule::defType(
           spv::Op                 op, 
           uint32_t                argCount,

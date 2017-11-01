@@ -52,8 +52,10 @@ namespace dxvk {
     
     std::vector<uint32_t>     m_interfaces;
     std::vector<DxbcPointer>  m_rRegs;  // Temps
-    std::vector<DxbcPointer>  m_vRegs;  // Input registers
-    std::vector<DxbcPointer>  m_oRegs;  // Output registers
+    
+    DxbcPointer               m_svPosition;
+    std::vector<DxbcPointer>  m_svClipDistance;
+    std::vector<DxbcPointer>  m_svCullDistance;
     
     uint32_t m_entryPointId = 0;
     
@@ -62,21 +64,42 @@ namespace dxvk {
     
     bool m_useRestrictedMath = false;
     
+    
+    
     void declareCapabilities();
     void declareMemoryModel();
     
-    void dclGlobalFlags(const DxbcInstruction& ins);
-    void dclInput(const DxbcInstruction& ins);
-    void dclOutputSiv(const DxbcInstruction& ins);
-    void dclTemps(const DxbcInstruction& ins);
-    void dclThreadGroup(const DxbcInstruction& ins);
+    void dclGlobalFlags(
+      const DxbcInstruction& ins);
     
-    void opMov(const DxbcInstruction& ins);
-    void opRet(const DxbcInstruction& ins);
+    void dclInput(
+      const DxbcInstruction& ins);
     
-    uint32_t getScalarTypeId(const DxbcScalarType& type);
-    uint32_t getValueTypeId(const DxbcValueType& type);
-    uint32_t getPointerTypeId(const DxbcPointerType& type);
+    void dclOutputSiv(
+      const DxbcInstruction& ins);
+    
+    void dclTemps(
+      const DxbcInstruction& ins);
+    
+    void dclThreadGroup(
+      const DxbcInstruction& ins);
+    
+    
+    void opMov(
+      const DxbcInstruction& ins);
+    
+    void opRet(
+      const DxbcInstruction& ins);
+    
+    uint32_t getScalarTypeId(
+      const DxbcScalarType& type);
+    
+    uint32_t getValueTypeId(
+      const DxbcValueType& type);
+    
+    uint32_t getPointerTypeId(
+      const DxbcPointerType& type);
+    
     
     DxbcValue loadPointer(
       const DxbcPointer&        pointer);
@@ -84,6 +107,7 @@ namespace dxvk {
     DxbcValue loadOperand(
       const DxbcOperand&        operand,
       const DxbcValueType&      type);
+    
     
     void storePointer(
       const DxbcPointer&        pointer,
