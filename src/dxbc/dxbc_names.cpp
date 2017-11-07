@@ -295,17 +295,6 @@ std::ostream& operator << (std::ostream& os, DxbcComponentSelectionMode e) {
 }
 
 
-std::ostream& operator << (std::ostream& os, DxbcComponentName e) {
-  switch (e) {
-    ENUM_NAME(DxbcComponentName::X);
-    ENUM_NAME(DxbcComponentName::Y);
-    ENUM_NAME(DxbcComponentName::Z);
-    ENUM_NAME(DxbcComponentName::W);
-    ENUM_DEFAULT(e);
-  }
-}
-
-
 std::ostream& operator << (std::ostream& os, DxbcOperandIndexRepresentation e) {
   switch (e) {
     ENUM_NAME(DxbcOperandIndexRepresentation::Imm32);

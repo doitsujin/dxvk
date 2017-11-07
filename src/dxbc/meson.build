@@ -8,6 +8,7 @@ dxbc_src = files([
   'dxbc_module.cpp',
   'dxbc_names.cpp',
   'dxbc_reader.cpp',
+  'dxbc_type.cpp',
 ])
 
 dxbc_lib = static_library('dxbc', dxbc_src,

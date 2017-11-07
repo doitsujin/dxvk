@@ -5,25 +5,11 @@
 
 #include "dxbc_enums.h"
 #include "dxbc_names.h"
+#include "dxbc_type.h"
 
 namespace dxvk {
   
   class DxbcOperand;
-  
-  /**
-   * \brief Component swizzle
-   */
-  struct DxbcComponentSwizzle {
-    DxbcComponentName x;
-    DxbcComponentName y;
-    DxbcComponentName z;
-    DxbcComponentName w;
-  };
-  
-  /**
-   * \brief Component mask
-   */
-  using DxbcComponentMask = Flags<DxbcComponentName>;
   
   /**
    * \brief DXBC instruction token
@@ -213,11 +199,11 @@ namespace dxvk {
      * \returns The component swizzle
      */
     DxbcComponentSwizzle componentSwizzle() const {
-      return DxbcComponentSwizzle {
-        static_cast<DxbcComponentName>(bit::extract(m_token,  4,  5)),
-        static_cast<DxbcComponentName>(bit::extract(m_token,  6,  7)),
-        static_cast<DxbcComponentName>(bit::extract(m_token,  8,  9)),
-        static_cast<DxbcComponentName>(bit::extract(m_token, 10, 11)) };
+      return DxbcComponentSwizzle(
+        bit::extract(m_token,  4,  5),
+        bit::extract(m_token,  6,  7),
+        bit::extract(m_token,  8,  9),
+        bit::extract(m_token, 10, 11));
     }
     
     /**
@@ -226,9 +212,8 @@ namespace dxvk {
      * Used when the component selection mode is
      * \c DxbcComponentSelectionMode::Select1.
      */
-    DxbcComponentName componentSelection() const {
-      return static_cast<DxbcComponentName>(
-        bit::extract(m_token, 4, 5));
+    DxbcComponentMask componentSelection() const {
+      return DxbcComponentMask(bit::extract(m_token, 4, 5));
     }
     
     /**

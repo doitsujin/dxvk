@@ -29,14 +29,4 @@ namespace dxvk {
     
   }
   
-  
-  uint32_t DxbcIsgn::entryCount() const {
-    return m_entries.size();
-  }
-  
-  
-  const DxbcSgnEntry& DxbcIsgn::entry(uint32_t id) const {
-    return m_entries.at(id);
-  }
-  
 }

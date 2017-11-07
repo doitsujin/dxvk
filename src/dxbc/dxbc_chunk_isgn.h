@@ -36,9 +36,8 @@ namespace dxvk {
     DxbcIsgn(DxbcReader reader);
     ~DxbcIsgn();
     
-    uint32_t entryCount() const;
-    
-    const DxbcSgnEntry& entry(uint32_t id) const;
+    auto begin() const { return m_entries.cbegin(); }
+    auto end  () const { return m_entries.cend();   }
     
   private:
     

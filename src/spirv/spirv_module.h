@@ -76,6 +76,18 @@ namespace dxvk {
             uint32_t                constCount,
       const uint32_t*               constIds);
     
+    void decorateBuiltIn(
+            uint32_t                object,
+            spv::BuiltIn            builtIn);
+    
+    void decorateComponent(
+            uint32_t                object,
+            uint32_t                location);
+    
+    void decorateLocation(
+            uint32_t                object,
+            uint32_t                location);
+    
     uint32_t defVoidType();
     
     uint32_t defBoolType();
@@ -129,6 +141,23 @@ namespace dxvk {
             uint32_t                parameterType);
     
     void functionEnd();
+    
+    uint32_t opBitcast(
+            uint32_t                resultType,
+            uint32_t                operand);
+    
+    uint32_t opCompositeExtract(
+            uint32_t                resultType,
+            uint32_t                composite,
+            uint32_t                indexCount,
+      const uint32_t*               indexArray);
+    
+    uint32_t opVectorShuffle(
+            uint32_t                resultType,
+            uint32_t                vectorLeft,
+            uint32_t                vectorRight,
+            uint32_t                indexCount,
+      const uint32_t*               indexArray);
     
     uint32_t opFunctionCall(
             uint32_t                resultType,

@@ -2,6 +2,8 @@
 
 #include <type_traits>
 
+#include "util_bit.h"
+
 namespace dxvk {
   
   template<typename T>
@@ -52,6 +54,10 @@ namespace dxvk {
     
     void clrAll() {
       m_bits = 0;
+    }
+    
+    uint32_t raw() const {
+      return m_bits;
     }
     
   private:

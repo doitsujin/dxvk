@@ -204,6 +204,36 @@ namespace dxvk {
   }
   
   
+  void SpirvModule::decorateBuiltIn(
+          uint32_t                object,
+          spv::BuiltIn            builtIn) {
+    m_annotations.putIns  (spv::OpDecorate, 4);
+    m_annotations.putWord (object);
+    m_annotations.putWord (spv::DecorationBuiltIn);
+    m_annotations.putWord (builtIn);
+  }
+  
+  
+  void SpirvModule::decorateComponent(
+          uint32_t                object,
+          uint32_t                location) {
+    m_annotations.putIns  (spv::OpDecorate, 4);
+    m_annotations.putWord (object);
+    m_annotations.putWord (spv::DecorationComponent);
+    m_annotations.putInt32(location);
+  }
+  
+  
+  void SpirvModule::decorateLocation(
+          uint32_t                object,
+          uint32_t                location) {
+    m_annotations.putIns  (spv::OpDecorate, 4);
+    m_annotations.putWord (object);
+    m_annotations.putWord (spv::DecorationLocation);
+    m_annotations.putInt32(location);
+  }
+  
+  
   uint32_t SpirvModule::defVoidType() {
     return this->defType(spv::OpTypeVoid, 0, nullptr);
   }
@@ -354,6 +384,57 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opBitcast(
+          uint32_t                resultType,
+          uint32_t                operand) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpBitcast, 4);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(operand);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opCompositeExtract(
+          uint32_t                resultType,
+          uint32_t                composite,
+          uint32_t                indexCount,
+    const uint32_t*               indexArray) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpCompositeExtract, 4 + indexCount);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(composite);
+    
+    for (uint32_t i = 0; i < indexCount; i++)
+      m_code.putInt32(indexArray[i]);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opVectorShuffle(
+          uint32_t                resultType,
+          uint32_t                vectorLeft,
+          uint32_t                vectorRight,
+          uint32_t                indexCount,
+    const uint32_t*               indexArray) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpVectorShuffle, 5 + indexCount);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(vectorLeft);
+    m_code.putWord(vectorRight);
+    
+    for (uint32_t i = 0; i < indexCount; i++)
+      m_code.putInt32(indexArray[i]);
+    return resultId;
+  }
+  
+  
   uint32_t SpirvModule::opFunctionCall(
           uint32_t                resultType,
           uint32_t                functionId,
@@ -373,7 +454,7 @@ namespace dxvk {
   
   
   void SpirvModule::opLabel(uint32_t labelId) {
-    m_code.putIns (spv::OpReturn, 2);
+    m_code.putIns (spv::OpLabel, 2);
     m_code.putWord(labelId);
   }
   

@@ -308,15 +308,6 @@ namespace dxvk {
   
   
   /**
-   * \brief Component name
-   * Used for component selection.
-   */
-  enum class DxbcComponentName : uint32_t {
-    X = 0, Y = 1, Z = 2, W = 3,
-  };
-  
-  
-  /**
    * \brief Index representation
    * 
    * Determines how an operand

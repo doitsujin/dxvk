@@ -101,4 +101,83 @@ namespace dxvk {
     uint32_t        valueId = 0;
   };
   
+  /**
+   * \brief Component mask
+   */
+  class DxbcComponentMask {
+    
+  public:
+    
+    DxbcComponentMask() { }
+    DxbcComponentMask(uint32_t mask)
+    : m_mask(mask) { }
+    DxbcComponentMask(bool x, bool y, bool z, bool w)
+    : m_mask((x ? 1 : 0) | (y ? 2 : 0) | (z ? 4 : 0) | (w ? 8 : 0)) { }
+    
+    void set(uint32_t id) { m_mask |=  bit(id); }
+    void clr(uint32_t id) { m_mask &= ~bit(id); }
+    
+    bool test(uint32_t id) const {
+      return !!(m_mask & bit(id));
+    }
+    
+    uint32_t componentCount() const {
+      return bit::popcnt(m_mask);
+    }
+    
+    uint32_t firstComponent() const {
+      return bit::tzcnt(m_mask);
+    }
+    
+    DxbcComponentMask operator ~ () const { return (~m_mask) & 0xF; }
+    
+    DxbcComponentMask operator & (const DxbcComponentMask& other) const { return m_mask & other.m_mask; }
+    DxbcComponentMask operator | (const DxbcComponentMask& other) const { return m_mask | other.m_mask; }
+    
+    bool operator == (const DxbcComponentMask& other) const { return m_mask == other.m_mask; }
+    bool operator != (const DxbcComponentMask& other) const { return m_mask != other.m_mask; }
+    
+    operator bool () const {
+      return m_mask != 0;
+    }
+    
+  private:
+    
+    uint32_t m_mask = 0;
+    
+    uint32_t bit(uint32_t id) const {
+      return 1u << id;
+    }
+    
+  };
+  
+  /**
+   * \brief Component swizzle
+   */
+  class DxbcComponentSwizzle {
+    
+  public:
+    
+    DxbcComponentSwizzle()
+    : DxbcComponentSwizzle(0, 1, 2, 3) { }
+    DxbcComponentSwizzle(uint32_t x, uint32_t y, uint32_t z, uint32_t w)
+    : m_components {{ x, y, z, w }} { }
+    
+    uint32_t  operator [] (uint32_t id) const { return m_components.at(id); }
+    uint32_t& operator [] (uint32_t id)       { return m_components.at(id); }
+    
+    const uint32_t* operator & () const {
+      return m_components.data();
+    }
+    
+    DxbcComponentSwizzle extract(DxbcComponentMask mask) const;
+    
+    DxbcComponentMask mask(uint32_t n) const;
+    
+  private:
+    
+    std::array<uint32_t, 4> m_components;
+    
+  };
+  
 }
