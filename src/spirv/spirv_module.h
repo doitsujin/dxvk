@@ -50,6 +50,11 @@ namespace dxvk {
             uint32_t                expressionId,
       const char*                   debugName);
     
+    void setDebugMemberName(
+            uint32_t                structId,
+            uint32_t                memberId,
+      const char*                   debugName);
+    
     uint32_t constBool(
             bool                    v);
     
@@ -76,6 +81,9 @@ namespace dxvk {
             uint32_t                constCount,
       const uint32_t*               constIds);
     
+    void decorateBlock(
+            uint32_t                object);
+    
     void decorateBuiltIn(
             uint32_t                object,
             spv::BuiltIn            builtIn);
@@ -87,6 +95,11 @@ namespace dxvk {
     void decorateLocation(
             uint32_t                object,
             uint32_t                location);
+    
+    void memberDecorateBuiltIn(
+            uint32_t                structId,
+            uint32_t                memberId,
+            spv::BuiltIn            builtIn);
     
     uint32_t defVoidType();
     
@@ -188,8 +201,7 @@ namespace dxvk {
     SpirvCodeBuffer m_execModeInfo;
     SpirvCodeBuffer m_debugNames;
     SpirvCodeBuffer m_annotations;
-    SpirvCodeBuffer m_typeDefs;
-    SpirvCodeBuffer m_constDefs;
+    SpirvCodeBuffer m_typeConstDefs;
     SpirvCodeBuffer m_variables;
     SpirvCodeBuffer m_code;
     

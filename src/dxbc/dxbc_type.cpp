@@ -14,12 +14,4 @@ namespace dxvk {
     return result;
   }
   
-  
-  DxbcComponentMask DxbcComponentSwizzle::mask(uint32_t n) const {
-    DxbcComponentMask mask;
-    for (uint32_t i = 0; i < n; i++)
-      mask.set(m_components.at(i));
-    return mask;
-  }
-  
 }

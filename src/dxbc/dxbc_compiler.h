@@ -1,49 +1,43 @@
 #pragma once
 
-#include "dxbc_chunk_isgn.h"
-#include "dxbc_chunk_shex.h"
-#include "dxbc_names.h"
-#include "dxbc_type.h"
-
-#include "../spirv/spirv_module.h"
+#include "./gen/dxbc_gen_common.h"
 
 namespace dxvk {
   
   /**
-   * \brief DXBC to SPIR-V compiler
+   * \brief DXBC compiler
+   * 
+   * Interprets DXBC instructions and generates
+   * SPIR-V code for the appropriate shader type.
    */
   class DxbcCompiler {
     
   public:
     
     DxbcCompiler(
-            DxbcProgramVersion  version);
+      const DxbcProgramVersion& version);
     ~DxbcCompiler();
     
-    DxbcCompiler             (DxbcCompiler&&) = delete;
-    DxbcCompiler& operator = (DxbcCompiler&&) = delete;
-    
-    /**
-     * \brief Processes a single instruction
-     * 
-     * \param [in] ins The instruction
-     * \returns \c true on success
-     */
     void processInstruction(
-      const DxbcInstruction&  ins);
+      const DxbcInstruction& ins);
     
-    /**
-     * \brief Creates actual shader object
-     * 
-     * Combines all information gatherd during the
-     * shader compilation into one shader object.
-     */
     Rc<DxvkShader> finalize();
     
   private:
     
-    DxbcProgramVersion  m_version;
-    SpirvModule         m_module;
+    Rc<DxbcCodeGen> m_gen;
+    
+    void dclGlobalFlags(
+      const DxbcInstruction& ins);
+    
+    void dclInput(
+      const DxbcInstruction& ins);
+    
+    void dclOutput(
+      const DxbcInstruction& ins);
+    
+    void dclTemps(
+      const DxbcInstruction& ins);
     
   };
   

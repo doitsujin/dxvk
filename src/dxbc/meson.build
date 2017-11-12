@@ -9,6 +9,9 @@ dxbc_src = files([
   'dxbc_names.cpp',
   'dxbc_reader.cpp',
   'dxbc_type.cpp',
+  
+  'gen/dxbc_gen_common.cpp',
+  'gen/dxbc_gen_vertex.cpp',
 ])
 
 dxbc_lib = static_library('dxbc', dxbc_src,

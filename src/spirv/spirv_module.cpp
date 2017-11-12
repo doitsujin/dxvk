@@ -15,8 +15,7 @@ namespace dxvk {
     result.append(m_execModeInfo);
     result.append(m_debugNames);
     result.append(m_annotations);
-    result.append(m_typeDefs);
-    result.append(m_constDefs);
+    result.append(m_typeConstDefs);
     result.append(m_variables);
     result.append(m_code);
     return result;
@@ -98,14 +97,25 @@ namespace dxvk {
   }
   
   
+  void SpirvModule::setDebugMemberName(
+          uint32_t                structId,
+          uint32_t                memberId,
+    const char*                   debugName) {
+    m_debugNames.putIns (spv::OpMemberName, 3 + m_debugNames.strLen(debugName));
+    m_debugNames.putWord(structId);
+    m_debugNames.putWord(memberId);
+    m_debugNames.putStr (debugName);
+  }
+  
+  
   uint32_t SpirvModule::constBool(
           bool                    v) {
     uint32_t typeId   = this->defBoolType();
     uint32_t resultId = this->allocateId();
     
-    m_constDefs.putIns  (v ? spv::OpConstantTrue : spv::OpConstantFalse, 3);
-    m_constDefs.putWord (typeId);
-    m_constDefs.putWord (resultId);
+    m_typeConstDefs.putIns  (v ? spv::OpConstantTrue : spv::OpConstantFalse, 3);
+    m_typeConstDefs.putWord (typeId);
+    m_typeConstDefs.putWord (resultId);
     return resultId;
   }
   
@@ -115,10 +125,10 @@ namespace dxvk {
     uint32_t typeId   = this->defIntType(32, 1);
     uint32_t resultId = this->allocateId();
     
-    m_constDefs.putIns  (spv::OpConstant, 4);
-    m_constDefs.putWord (typeId);
-    m_constDefs.putWord (resultId);
-    m_constDefs.putInt32(v);
+    m_typeConstDefs.putIns  (spv::OpConstant, 4);
+    m_typeConstDefs.putWord (typeId);
+    m_typeConstDefs.putWord (resultId);
+    m_typeConstDefs.putInt32(v);
     return resultId;
   }
   
@@ -128,10 +138,10 @@ namespace dxvk {
     uint32_t typeId   = this->defIntType(64, 1);
     uint32_t resultId = this->allocateId();
     
-    m_constDefs.putIns  (spv::OpConstant, 5);
-    m_constDefs.putWord (typeId);
-    m_constDefs.putWord (resultId);
-    m_constDefs.putInt64(v);
+    m_typeConstDefs.putIns  (spv::OpConstant, 5);
+    m_typeConstDefs.putWord (typeId);
+    m_typeConstDefs.putWord (resultId);
+    m_typeConstDefs.putInt64(v);
     return resultId;
   }
   
@@ -141,10 +151,10 @@ namespace dxvk {
     uint32_t typeId   = this->defIntType(32, 0);
     uint32_t resultId = this->allocateId();
     
-    m_constDefs.putIns  (spv::OpConstant, 4);
-    m_constDefs.putWord (typeId);
-    m_constDefs.putWord (resultId);
-    m_constDefs.putInt32(v);
+    m_typeConstDefs.putIns  (spv::OpConstant, 4);
+    m_typeConstDefs.putWord (typeId);
+    m_typeConstDefs.putWord (resultId);
+    m_typeConstDefs.putInt32(v);
     return resultId;
   }
   
@@ -154,10 +164,10 @@ namespace dxvk {
     uint32_t typeId   = this->defIntType(64, 0);
     uint32_t resultId = this->allocateId();
     
-    m_constDefs.putIns  (spv::OpConstant, 5);
-    m_constDefs.putWord (typeId);
-    m_constDefs.putWord (resultId);
-    m_constDefs.putInt64(v);
+    m_typeConstDefs.putIns  (spv::OpConstant, 5);
+    m_typeConstDefs.putWord (typeId);
+    m_typeConstDefs.putWord (resultId);
+    m_typeConstDefs.putInt64(v);
     return resultId;
   }
   
@@ -167,10 +177,10 @@ namespace dxvk {
     uint32_t typeId   = this->defFloatType(32);
     uint32_t resultId = this->allocateId();
     
-    m_constDefs.putIns  (spv::OpConstant, 4);
-    m_constDefs.putWord (typeId);
-    m_constDefs.putWord (resultId);
-    m_constDefs.putFloat32(v);
+    m_typeConstDefs.putIns  (spv::OpConstant, 4);
+    m_typeConstDefs.putWord (typeId);
+    m_typeConstDefs.putWord (resultId);
+    m_typeConstDefs.putFloat32(v);
     return resultId;
   }
   
@@ -180,10 +190,10 @@ namespace dxvk {
     uint32_t typeId   = this->defFloatType(64);
     uint32_t resultId = this->allocateId();
     
-    m_constDefs.putIns  (spv::OpConstant, 5);
-    m_constDefs.putWord (typeId);
-    m_constDefs.putWord (resultId);
-    m_constDefs.putFloat64(v);
+    m_typeConstDefs.putIns  (spv::OpConstant, 5);
+    m_typeConstDefs.putWord (typeId);
+    m_typeConstDefs.putWord (resultId);
+    m_typeConstDefs.putFloat64(v);
     return resultId;
   }
   
@@ -194,13 +204,20 @@ namespace dxvk {
     const uint32_t*               constIds) {
     uint32_t resultId = this->allocateId();
     
-    m_constDefs.putIns  (spv::OpConstantComposite, 3 + constCount);
-    m_constDefs.putWord (typeId);
-    m_constDefs.putWord (resultId);
+    m_typeConstDefs.putIns  (spv::OpConstantComposite, 3 + constCount);
+    m_typeConstDefs.putWord (typeId);
+    m_typeConstDefs.putWord (resultId);
     
     for (uint32_t i = 0; i < constCount; i++)
-      m_constDefs.putWord(constIds[i]);
+      m_typeConstDefs.putWord(constIds[i]);
     return resultId;
+  }
+  
+  
+  void SpirvModule::decorateBlock(uint32_t object) {
+    m_annotations.putIns  (spv::OpDecorate, 3);
+    m_annotations.putWord (object);
+    m_annotations.putWord (spv::DecorationBlock);
   }
   
   
@@ -231,6 +248,18 @@ namespace dxvk {
     m_annotations.putWord (object);
     m_annotations.putWord (spv::DecorationLocation);
     m_annotations.putInt32(location);
+  }
+  
+  
+  void SpirvModule::memberDecorateBuiltIn(
+          uint32_t                structId,
+          uint32_t                memberId,
+          spv::BuiltIn            builtIn) {
+    m_annotations.putIns  (spv::OpMemberDecorate, 5);
+    m_annotations.putWord (structId);
+    m_annotations.putWord (memberId);
+    m_annotations.putWord (spv::DecorationBuiltIn);
+    m_annotations.putWord (builtIn);
   }
   
   
@@ -493,7 +522,7 @@ namespace dxvk {
     // Since the type info is stored in the code buffer,
     // we can use the code buffer to look up type IDs as
     // well. Result IDs are always stored as argument 1.
-    for (auto ins : m_typeDefs) {
+    for (auto ins : m_typeConstDefs) {
       bool match = ins.opCode() == op;
       
       for (uint32_t i = 0; i < argCount && match; i++)
@@ -505,11 +534,11 @@ namespace dxvk {
     
     // Type not yet declared, create a new one.
     uint32_t resultId = this->allocateId();
-    m_typeDefs.putIns (op, 2 + argCount);
-    m_typeDefs.putWord(resultId);
+    m_typeConstDefs.putIns (op, 2 + argCount);
+    m_typeConstDefs.putWord(resultId);
     
     for (uint32_t i = 0; i < argCount; i++)
-      m_typeDefs.putWord(argIds[i]);
+      m_typeConstDefs.putWord(argIds[i]);
     return resultId;
   }
   

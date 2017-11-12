@@ -528,6 +528,19 @@ namespace dxvk {
     }
     
     /**
+     * \brief Reads an argument enum
+     * 
+     * Casts the word at the given location to an enum.
+     * Some instructions take name tokens as operands.
+     * \param [in] idx Argument word index
+     * \returns The enum value of the given word
+     */
+    template<typename T>
+    T readEnum(uint32_t idx) const {
+      return static_cast<T>(arg(idx));
+    }
+    
+    /**
      * \brief Retrieves an operand
      * 
      * \param [in] idx Argument word index

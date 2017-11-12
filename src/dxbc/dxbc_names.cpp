@@ -390,3 +390,16 @@ std::ostream& operator << (std::ostream& os, DxbcSystemValue e) {
     ENUM_DEFAULT(e);
   }
 }
+
+
+std::ostream& operator << (std::ostream& os, dxvk::DxbcProgramType e) {
+  switch (e) {
+    ENUM_NAME(DxbcProgramType::PixelShader);
+    ENUM_NAME(DxbcProgramType::VertexShader);
+    ENUM_NAME(DxbcProgramType::GeometryShader);
+    ENUM_NAME(DxbcProgramType::HullShader);
+    ENUM_NAME(DxbcProgramType::DomainShader);
+    ENUM_NAME(DxbcProgramType::ComputeShader);
+    ENUM_DEFAULT(e);
+  }
+}

@@ -1,13 +1,10 @@
 #include "dxbc_compiler.h"
-#include "dxbc_names.h"
 
 namespace dxvk {
   
   DxbcCompiler::DxbcCompiler(
-          DxbcProgramVersion  version)
-  : m_version(version) {
-    
-  }
+    const DxbcProgramVersion& version)
+  : m_gen(DxbcCodeGen::create(version)) { }
   
   
   DxbcCompiler::~DxbcCompiler() {
@@ -16,13 +13,58 @@ namespace dxvk {
   
   
   void DxbcCompiler::processInstruction(const DxbcInstruction& ins) {
+    const DxbcOpcodeToken token = ins.token();
     
+    switch (token.opcode()) {
+      case DxbcOpcode::DclGlobalFlags:
+        return this->dclGlobalFlags(ins);
+      
+      case DxbcOpcode::DclInput:
+      case DxbcOpcode::DclInputSiv:
+      case DxbcOpcode::DclInputSgv:
+      case DxbcOpcode::DclInputPs:
+      case DxbcOpcode::DclInputPsSiv:
+      case DxbcOpcode::DclInputPsSgv:
+        return this->dclInput(ins);
+      
+      case DxbcOpcode::DclOutput:
+      case DxbcOpcode::DclOutputSiv:
+      case DxbcOpcode::DclOutputSgv:
+        return this->dclOutput(ins);
+      
+      case DxbcOpcode::DclTemps:
+        return this->dclTemps(ins);
+      
+      default:
+        Logger::err(str::format(
+          "DxbcCompiler::processInstruction: Unhandled opcode: ",
+          token.opcode()));
+    }
   }
   
   
   Rc<DxvkShader> DxbcCompiler::finalize() {
-    return new DxvkShader(m_version.shaderStage(),
-      m_module.compile(), 0, nullptr);
+    return m_gen->finalize();
+  }
+  
+  
+  void DxbcCompiler::dclGlobalFlags(const DxbcInstruction& ins) {
+    
+  }
+  
+  
+  void DxbcCompiler::dclInput(const DxbcInstruction& ins) {
+    
+  }
+  
+  
+  void DxbcCompiler::dclOutput(const DxbcInstruction& ins) {
+    
+  }
+  
+  
+  void DxbcCompiler::dclTemps(const DxbcInstruction& ins) {
+    m_gen->dclTemps(ins.arg(0));
   }
   
 }

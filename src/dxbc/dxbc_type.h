@@ -30,10 +30,13 @@ namespace dxvk {
   struct DxbcValueType {
     DxbcValueType() { }
     DxbcValueType(DxbcScalarType s, uint32_t c)
-    : componentType(s), componentCount(c) { }
+    : DxbcValueType(s, c, 0) { }
+    DxbcValueType(DxbcScalarType s, uint32_t c, uint32_t e)
+    : componentType(s), componentCount(c), elementCount(e) { }
     
     DxbcScalarType componentType  = DxbcScalarType::Uint32;
     uint32_t       componentCount = 0;
+    uint32_t       elementCount   = 0;
   };
   
   
@@ -44,17 +47,7 @@ namespace dxvk {
    * result that can be used as an operand value.
    */
   struct DxbcValue {
-    DxbcValue() { }
-    DxbcValue(
-      DxbcValueType p_type,
-      uint32_t      p_typeId,
-      uint32_t      p_valueId)
-    : type    (p_type),
-      typeId  (p_typeId),
-      valueId (p_valueId) { }
-    
     DxbcValueType type;
-    uint32_t      typeId  = 0;
     uint32_t      valueId = 0;
   };
   
@@ -87,19 +80,10 @@ namespace dxvk {
    * class. Can be used as a memory operand.
    */
   struct DxbcPointer {
-    DxbcPointer() { }
-    DxbcPointer(
-      DxbcPointerType   p_type,
-      uint32_t          p_typeId,
-      uint32_t          p_valueId)
-    : type    (p_type),
-      typeId  (p_typeId),
-      valueId (p_valueId) { }
-    
     DxbcPointerType type;
-    uint32_t        typeId  = 0;
     uint32_t        valueId = 0;
   };
+  
   
   /**
    * \brief Component mask
@@ -171,8 +155,6 @@ namespace dxvk {
     }
     
     DxbcComponentSwizzle extract(DxbcComponentMask mask) const;
-    
-    DxbcComponentMask mask(uint32_t n) const;
     
   private:
     
