@@ -30,10 +30,7 @@ namespace dxvk {
     void dclGlobalFlags(
       const DxbcInstruction& ins);
     
-    void dclInput(
-      const DxbcInstruction& ins);
-    
-    void dclOutput(
+    void dclInterfaceVar(
       const DxbcInstruction& ins);
     
     void dclTemps(

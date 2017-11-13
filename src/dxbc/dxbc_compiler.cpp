@@ -25,12 +25,10 @@ namespace dxvk {
       case DxbcOpcode::DclInputPs:
       case DxbcOpcode::DclInputPsSiv:
       case DxbcOpcode::DclInputPsSgv:
-        return this->dclInput(ins);
-      
       case DxbcOpcode::DclOutput:
       case DxbcOpcode::DclOutputSiv:
       case DxbcOpcode::DclOutputSgv:
-        return this->dclOutput(ins);
+        return this->dclInterfaceVar(ins);
       
       case DxbcOpcode::DclTemps:
         return this->dclTemps(ins);
@@ -53,12 +51,7 @@ namespace dxvk {
   }
   
   
-  void DxbcCompiler::dclInput(const DxbcInstruction& ins) {
-    
-  }
-  
-  
-  void DxbcCompiler::dclOutput(const DxbcInstruction& ins) {
+  void DxbcCompiler::dclInterfaceVar(const DxbcInstruction& ins) {
     
   }
   

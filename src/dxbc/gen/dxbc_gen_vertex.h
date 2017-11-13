@@ -21,6 +21,15 @@ namespace dxvk {
             DxbcComponentMask regMask,
             DxbcSystemValue   sv);
     
+    void ptrInterfaceVar(
+            DxbcOperandType   regType,
+            uint32_t          regId);
+    
+    void ptrInterfaceVarIndexed(
+            DxbcOperandType   regType,
+            uint32_t          regId,
+      const DxbcValue&        index);
+    
     Rc<DxvkShader> finalize() final;
     
   private:

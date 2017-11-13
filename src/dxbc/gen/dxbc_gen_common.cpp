@@ -41,6 +41,84 @@ namespace dxvk {
   }
   
   
+  DxbcPointer DxbcCodeGen::ptrTempReg(uint32_t regId) {
+    return m_rRegs.at(regId);
+  }
+  
+  
+  DxbcValue DxbcCodeGen::vecStore(
+    const DxbcValue&        dst,
+    const DxbcValue&        src,
+          DxbcComponentMask mask) {
+    DxbcValue result;
+    result.type = dst.type;
+    
+    if (dst.type.componentCount == 1) {
+      // Both values are scalar, so the first component
+      // of the write mask decides which one to take.
+      result.valueId = mask.test(0)
+        ? src.valueId : dst.valueId;
+    } else if (src.type.componentCount == 1) {
+      // The source value is scalar. Since OpVectorShuffle
+      // requires both arguments to be vectors, we have to
+      // use OpCompositeInsert to modify the vector instead.
+      const uint32_t componentId = mask.firstComponent();
+      
+      result.valueId = m_module.opCompositeInsert(
+        this->defValueType(result.type),
+        src.valueId, dst.valueId,
+        1, &componentId);
+    } else {
+      // Both arguments are vectors. We can determine which
+      // components to take from which vector and use the
+      // OpVectorShuffle instruction.
+      std::array<uint32_t, 4> components;
+      uint32_t srcComponentId = dst.type.componentCount;
+      
+      for (uint32_t i = 0; i < dst.type.componentCount; i++)
+        components[i] = mask.test(i) ? srcComponentId++ : i;
+      
+      result.valueId = m_module.opVectorShuffle(
+        this->defValueType(result.type),
+        dst.valueId, src.valueId,
+        dst.type.componentCount,
+        components.data());
+    }
+    
+    return result;
+  }
+  
+  
+  DxbcValue DxbcCodeGen::regLoad(const DxbcPointer& ptr) {
+    DxbcValue result;
+    result.type    = ptr.type.valueType;
+    result.valueId = m_module.opLoad(
+      this->defValueType(result.type),
+      ptr.valueId);
+    return result;
+  }
+  
+  
+  void DxbcCodeGen::regStore(
+    const DxbcPointer&      ptr,
+    const DxbcValue&        val,
+          DxbcComponentMask mask) {
+    if (ptr.type.valueType.componentCount != val.type.componentCount) {
+      // In case we write to only a part of the destination
+      // register, we need to load the previous value first
+      // and then update the given components.
+      DxbcValue tmp = this->regLoad(ptr);
+                tmp = this->vecStore(tmp, val, mask);
+                
+      m_module.opStore(ptr.valueId, tmp.valueId);
+    } else {
+      // All destination components get written, so we don't
+      // need to load and modify the target register first.
+      m_module.opStore(ptr.valueId, val.valueId);
+    }
+  }
+  
+  
   Rc<DxbcCodeGen> DxbcCodeGen::create(
     const DxbcProgramVersion& version) {
     switch (version.type()) {

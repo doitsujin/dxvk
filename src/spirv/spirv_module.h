@@ -165,6 +165,13 @@ namespace dxvk {
             uint32_t                indexCount,
       const uint32_t*               indexArray);
     
+    uint32_t opCompositeInsert(
+            uint32_t                resultType,
+            uint32_t                object,
+            uint32_t                composite,
+            uint32_t                indexCount,
+      const uint32_t*               indexArray);
+    
     uint32_t opVectorShuffle(
             uint32_t                resultType,
             uint32_t                vectorLeft,

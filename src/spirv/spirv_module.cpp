@@ -444,6 +444,26 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opCompositeInsert(
+          uint32_t                resultType,
+          uint32_t                object,
+          uint32_t                composite,
+          uint32_t                indexCount,
+    const uint32_t*               indexArray) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpCompositeInsert, 5 + indexCount);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(object);
+    m_code.putWord(composite);
+    
+    for (uint32_t i = 0; i < indexCount; i++)
+      m_code.putInt32(indexArray[i]);
+    return resultId;
+  }
+  
+  
   uint32_t SpirvModule::opVectorShuffle(
           uint32_t                resultType,
           uint32_t                vectorLeft,

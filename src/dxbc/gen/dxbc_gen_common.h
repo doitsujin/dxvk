@@ -38,12 +38,6 @@ namespace dxvk {
     virtual ~DxbcCodeGen();
     
     /**
-     * \brief Declares temporary registers
-     * \param [in] n Number of temp registers
-     */
-    void dclTemps(uint32_t n);
-    
-    /**
      * \brief Declares an interface variable
      * 
      * \param [in] regType Register type
@@ -58,6 +52,86 @@ namespace dxvk {
             uint32_t          regDim,
             DxbcComponentMask regMask,
             DxbcSystemValue   sv) = 0;
+    
+    /**
+     * \brief Declares temporary registers
+     * \param [in] n Number of temp registers
+     */
+    void dclTemps(uint32_t n);
+    
+    /**
+     * \brief Retrieves temporary register pointer
+     * 
+     * Provides access to a temporary register.
+     * \param [in] regId Register index
+     * \returns Register pointer
+     */
+    DxbcPointer ptrTempReg(
+            uint32_t          regId);
+    
+    /**
+     * \brief Writes to parts of a vector register
+     * 
+     * Note that the source value must not have the
+     * same number of components as the write mask.
+     * \param [in] dst Destination value ID
+     * \param [in] src Source value ID
+     * \param [in] mask Write mask
+     * \returns New destination value ID
+     */
+    DxbcValue vecStore(
+      const DxbcValue&        dst,
+      const DxbcValue&        src,
+            DxbcComponentMask mask);
+    
+    /**
+     * \brief Loads register
+     * 
+     * \param [in] ptr Register pointer
+     * \returns The register value ID
+     */
+    DxbcValue regLoad(
+      const DxbcPointer&      ptr);
+    
+    /**
+     * \brief Stores register
+     * 
+     * \param [in] ptr Register pointer
+     * \param [in] val Value ID to store
+     * \param [in] mask Write mask
+     */
+    void regStore(
+      const DxbcPointer&      ptr,
+      const DxbcValue&        val,
+            DxbcComponentMask mask);
+    
+    /**
+     * \brief Pointer to an interface variable
+     * 
+     * Provides access to an interface variable.
+     * \param [in] regType Register type
+     * \param [in] regId Register index
+     * \returns Register pointer
+     */
+    virtual void ptrInterfaceVar(
+            DxbcOperandType   regType,
+            uint32_t          regId) = 0;
+    
+    /**
+     * \brief Pointer to an interface variable
+     * 
+     * Provides access to an indexed interface variable.
+     * Some shader types may have indexed input or output
+     * variables that can be accesswed via an array index.
+     * \param [in] regType Register type
+     * \param [in] regId Register index
+     * \param [in] index Array index
+     * \returns Register pointer
+     */
+    virtual void ptrInterfaceVarIndexed(
+            DxbcOperandType   regType,
+            uint32_t          regId,
+      const DxbcValue&        index) = 0;
     
     /**
      * \brief Finalizes shader
