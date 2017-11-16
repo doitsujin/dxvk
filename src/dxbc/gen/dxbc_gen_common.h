@@ -38,6 +38,12 @@ namespace dxvk {
     virtual ~DxbcCodeGen();
     
     /**
+     * \brief Declares temporary registers
+     * \param [in] n Number of temp registers
+     */
+    void dclTemps(uint32_t n);
+    
+    /**
      * \brief Declares an interface variable
      * 
      * \param [in] regType Register type
@@ -54,10 +60,36 @@ namespace dxvk {
             DxbcSystemValue   sv) = 0;
     
     /**
-     * \brief Declares temporary registers
-     * \param [in] n Number of temp registers
+     * \brief Defines 32-bit constant
+     * 
+     * The constant will be declared as a 32-bit
+     * unsigned integer. Cast the resulting value
+     * to the required type.
+     * \param [in] v Constant value
+     * \returns The constant value ID
      */
-    void dclTemps(uint32_t n);
+    DxbcValue defConstScalar(uint32_t v);
+    
+    /**
+     * \brief Defines 32-bit constant vector
+     * 
+     * Defines a four-component vector of 32-bit
+     * unsigned integer values. Cast the resulting
+     * value to the required type as needed.
+     * \param [in] x First vector component
+     * \param [in] y Second vector component
+     * \param [in] z Third vector component
+     * \param [in] w Fourth vector component
+     * \returns The constant value ID
+     */
+    DxbcValue defConstVector(
+            uint32_t x, uint32_t y,
+            uint32_t z, uint32_t w);
+    
+    /**
+     * \brief Returns from function
+     */
+    void fnReturn();
     
     /**
      * \brief Retrieves temporary register pointer
@@ -70,42 +102,6 @@ namespace dxvk {
             uint32_t          regId);
     
     /**
-     * \brief Writes to parts of a vector register
-     * 
-     * Note that the source value must not have the
-     * same number of components as the write mask.
-     * \param [in] dst Destination value ID
-     * \param [in] src Source value ID
-     * \param [in] mask Write mask
-     * \returns New destination value ID
-     */
-    DxbcValue vecStore(
-      const DxbcValue&        dst,
-      const DxbcValue&        src,
-            DxbcComponentMask mask);
-    
-    /**
-     * \brief Loads register
-     * 
-     * \param [in] ptr Register pointer
-     * \returns The register value ID
-     */
-    DxbcValue regLoad(
-      const DxbcPointer&      ptr);
-    
-    /**
-     * \brief Stores register
-     * 
-     * \param [in] ptr Register pointer
-     * \param [in] val Value ID to store
-     * \param [in] mask Write mask
-     */
-    void regStore(
-      const DxbcPointer&      ptr,
-      const DxbcValue&        val,
-            DxbcComponentMask mask);
-    
-    /**
      * \brief Pointer to an interface variable
      * 
      * Provides access to an interface variable.
@@ -113,9 +109,9 @@ namespace dxvk {
      * \param [in] regId Register index
      * \returns Register pointer
      */
-    virtual void ptrInterfaceVar(
-            DxbcOperandType   regType,
-            uint32_t          regId) = 0;
+    virtual DxbcPointer ptrInterfaceVar(
+            DxbcOperandType       regType,
+            uint32_t              regId) = 0;
     
     /**
      * \brief Pointer to an interface variable
@@ -128,10 +124,93 @@ namespace dxvk {
      * \param [in] index Array index
      * \returns Register pointer
      */
-    virtual void ptrInterfaceVarIndexed(
-            DxbcOperandType   regType,
-            uint32_t          regId,
-      const DxbcValue&        index) = 0;
+    virtual DxbcPointer ptrInterfaceVarIndexed(
+            DxbcOperandType       regType,
+            uint32_t              regId,
+      const DxbcValue&            index) = 0;
+    
+    DxbcValue opAbs(
+      const DxbcValue&            src);
+    
+    DxbcValue opNeg(
+      const DxbcValue&            src);
+    
+    /**
+     * \brief Casts register value to another type
+     * 
+     * Type cast that does not change the bit pattern
+     * of the value. This is required as DXBC values
+     * are not statically typed, but SPIR-V is.
+     * \param [in] src Source value
+     * \param [in] type Destination type
+     * \returns Resulting register value
+     */
+    DxbcValue regCast(
+      const DxbcValue&            src,
+      const DxbcValueType&        type);
+    
+    /**
+     * \brief Extracts vector components
+     * 
+     * Extracts the given set of components.
+     * \param [in] src Source vector
+     * \param [in] mask Component mask
+     * \returns Resulting register value
+     */
+    DxbcValue regExtract(
+      const DxbcValue&            src,
+            DxbcComponentMask     mask);
+    
+    /**
+     * \brief Swizzles a vector register
+     * 
+     * Swizzles the vector and extracts
+     * the given set of vector components.
+     * \param [in] src Source vector to swizzle
+     * \param [in] swizzle The component swizzle
+     * \param [in] mask Components to extract
+     * \returns Resulting register value
+     */
+    DxbcValue regSwizzle(
+      const DxbcValue&            src,
+      const DxbcComponentSwizzle& swizzle,
+            DxbcComponentMask     mask);
+    
+    /**
+     * \brief Writes to parts of a vector register
+     * 
+     * Note that the source value must have the same
+     * number of components as the write mask.
+     * \param [in] dst Destination value ID
+     * \param [in] src Source value ID
+     * \param [in] mask Write mask
+     * \returns New destination value ID
+     */
+    DxbcValue regInsert(
+      const DxbcValue&            dst,
+      const DxbcValue&            src,
+            DxbcComponentMask     mask);
+    
+    /**
+     * \brief Loads register
+     * 
+     * \param [in] ptr Register pointer
+     * \returns The register value ID
+     */
+    DxbcValue regLoad(
+      const DxbcPointer&          ptr);
+    
+    /**
+     * \brief Stores register
+     * 
+     * \param [in] ptr Register pointer
+     * \param [in] val Value ID to store
+     * \param [in] mask Write mask
+     */
+    void regStore(
+      const DxbcPointer&          ptr,
+      const DxbcValue&            val,
+            DxbcComponentMask     mask);
     
     /**
      * \brief Finalizes shader
@@ -176,6 +255,10 @@ namespace dxvk {
       const DxbcPointerType&        type);
     
     uint32_t defPerVertexBlock();
+    
+    DxbcPointer defVar(
+      const DxbcValueType&          type,
+            spv::StorageClass       storageClass);
     
   };
   

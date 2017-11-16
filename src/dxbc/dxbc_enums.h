@@ -424,4 +424,12 @@ namespace dxvk {
   
   using DxbcGlobalFlags = Flags<DxbcGlobalFlag>;
   
+  
+  enum class DxbcOperandModifier : uint32_t {
+    Neg         = 0,
+    Abs         = 1,
+  };
+  
+  using DxbcOperandModifiers = Flags<DxbcOperandModifier>;
+  
 }

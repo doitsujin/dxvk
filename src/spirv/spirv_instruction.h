@@ -1,6 +1,7 @@
 #pragma once
 
 #include <spirv/spirv.hpp>
+#include <spirv/GLSL.std.450.hpp>
 
 #include "spirv_include.h"
 

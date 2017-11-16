@@ -275,6 +275,14 @@ std::ostream& operator << (std::ostream& os, DxbcOperandType e) {
 }
 
 
+std::ostream& operator << (std::ostream& os, dxvk::DxbcOperandExt e) {
+  switch (e) {
+    ENUM_NAME(DxbcOperandExt::OperandModifier);
+    ENUM_DEFAULT(e);
+  }
+}
+
+
 std::ostream& operator << (std::ostream& os, DxbcComponentCount e) {
   switch (e) {
     ENUM_NAME(DxbcComponentCount::Component0);

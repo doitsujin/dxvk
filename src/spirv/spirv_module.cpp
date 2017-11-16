@@ -2,14 +2,21 @@
 
 namespace dxvk {
   
-  SpirvModule:: SpirvModule() { }
-  SpirvModule::~SpirvModule() { }
+  SpirvModule:: SpirvModule() {
+    this->instImportGlsl450();
+  }
+  
+  
+  SpirvModule::~SpirvModule() {
+    
+  }
   
   
   SpirvCodeBuffer SpirvModule::compile() const {
     SpirvCodeBuffer result;
     result.putHeader(m_id);
     result.append(m_capabilities);
+    result.append(m_instExt);
     result.append(m_memoryModel);
     result.append(m_entryPoints);
     result.append(m_execModeInfo);
@@ -413,6 +420,24 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opAccessChain(
+          uint32_t                resultType,
+          uint32_t                composite,
+          uint32_t                indexCount,
+    const uint32_t*               indexArray) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpAccessChain, 4 + indexCount);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(composite);
+    
+    for (uint32_t i = 0; i < indexCount; i++)
+      m_code.putInt32(indexArray[i]);
+    return resultId;
+  }
+  
+  
   uint32_t SpirvModule::opBitcast(
           uint32_t                resultType,
           uint32_t                operand) {
@@ -480,6 +505,62 @@ namespace dxvk {
     
     for (uint32_t i = 0; i < indexCount; i++)
       m_code.putInt32(indexArray[i]);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opSNegate(
+          uint32_t                resultType,
+          uint32_t                operand) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpSNegate, 4);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(operand);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opFNegate(
+          uint32_t                resultType,
+          uint32_t                operand) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpFNegate, 4);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(operand);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opSAbs(
+          uint32_t                resultType,
+          uint32_t                operand) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpExtInst, 6);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(m_instExtGlsl450);
+    m_code.putWord(spv::GLSLstd450SAbs);
+    m_code.putWord(operand);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opFAbs(
+          uint32_t                resultType,
+          uint32_t                operand) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpExtInst, 6);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(m_instExtGlsl450);
+    m_code.putWord(spv::GLSLstd450FAbs);
+    m_code.putWord(operand);
     return resultId;
   }
   
@@ -560,6 +641,16 @@ namespace dxvk {
     for (uint32_t i = 0; i < argCount; i++)
       m_typeConstDefs.putWord(argIds[i]);
     return resultId;
+  }
+  
+  
+  void SpirvModule::instImportGlsl450() {
+    m_instExtGlsl450 = this->allocateId();
+    const char* name = "GLSL.std.450";
+    
+    m_instExt.putIns (spv::OpExtInstImport, 2 + m_instExt.strLen(name));
+    m_instExt.putWord(m_instExtGlsl450);
+    m_instExt.putStr (name);
   }
   
 }

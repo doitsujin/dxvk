@@ -155,6 +155,12 @@ namespace dxvk {
     
     void functionEnd();
     
+    uint32_t opAccessChain(
+            uint32_t                resultType,
+            uint32_t                composite,
+            uint32_t                indexCount,
+      const uint32_t*               indexArray);
+    
     uint32_t opBitcast(
             uint32_t                resultType,
             uint32_t                operand);
@@ -179,6 +185,22 @@ namespace dxvk {
             uint32_t                indexCount,
       const uint32_t*               indexArray);
     
+    uint32_t opSNegate(
+            uint32_t                resultType,
+            uint32_t                operand);
+    
+    uint32_t opFNegate(
+            uint32_t                resultType,
+            uint32_t                operand);
+    
+    uint32_t opSAbs(
+            uint32_t                resultType,
+            uint32_t                operand);
+    
+    uint32_t opFAbs(
+            uint32_t                resultType,
+            uint32_t                operand);
+    
     uint32_t opFunctionCall(
             uint32_t                resultType,
             uint32_t                functionId,
@@ -200,9 +222,11 @@ namespace dxvk {
     
   private:
     
-    uint32_t m_id = 1;
+    uint32_t m_id             = 1;
+    uint32_t m_instExtGlsl450 = 0;
     
     SpirvCodeBuffer m_capabilities;
+    SpirvCodeBuffer m_instExt;
     SpirvCodeBuffer m_memoryModel;
     SpirvCodeBuffer m_entryPoints;
     SpirvCodeBuffer m_execModeInfo;
@@ -216,6 +240,8 @@ namespace dxvk {
             spv::Op                 op, 
             uint32_t                argCount,
       const uint32_t*               argIds);
+    
+    void instImportGlsl450();
     
   };
   
