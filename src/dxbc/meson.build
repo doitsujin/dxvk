@@ -11,6 +11,7 @@ dxbc_src = files([
   'dxbc_type.cpp',
   
   'gen/dxbc_gen_common.cpp',
+  'gen/dxbc_gen_pixel.cpp',
   'gen/dxbc_gen_vertex.cpp',
 ])
 

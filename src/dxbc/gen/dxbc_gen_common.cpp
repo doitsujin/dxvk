@@ -1,4 +1,5 @@
 #include "dxbc_gen_common.h"
+#include "dxbc_gen_pixel.h"
 #include "dxbc_gen_vertex.h"
 
 #include "../dxbc_names.h"
@@ -145,7 +146,8 @@ namespace dxvk {
   DxbcValue DxbcCodeGen::regExtract(
     const DxbcValue&            src,
           DxbcComponentMask     mask) {
-    // TODO implement
+    return this->regSwizzle(src,
+      DxbcComponentSwizzle(), mask);
   }
   
   
@@ -263,6 +265,9 @@ namespace dxvk {
   Rc<DxbcCodeGen> DxbcCodeGen::create(
     const DxbcProgramVersion& version) {
     switch (version.type()) {
+      case DxbcProgramType::PixelShader:
+        return new DxbcPsCodeGen();
+      
       case DxbcProgramType::VertexShader:
         return new DxbcVsCodeGen();
       

@@ -112,7 +112,6 @@ namespace dxvk {
   void DxbcCompiler::opMov(const DxbcInstruction& ins) {
     auto dstOp = ins.operand(0);
     auto srcOp = ins.operand(dstOp.length());
-    
     DxbcComponentMask mask = this->getDstOperandMask(dstOp);
     
     DxbcValue value = this->loadOperand(srcOp, mask, DxbcScalarType::Float32);
@@ -229,9 +228,13 @@ namespace dxvk {
         return m_gen->regExtract(opValue,
           opToken.componentSelection());
         
+      case DxbcComponentSelectionMode::Mask:
+        return m_gen->regExtract(opValue,
+          opToken.componentMask());
+      
       default:
         throw DxvkError(str::format(
-          "DxbcCompiler::loadOperand: Invalid component selection mode: ",
+          "DxbcCompiler::selectOperandComponents: Invalid selection mode: ",
           opToken.selectionMode()));
     }
   }
@@ -257,38 +260,35 @@ namespace dxvk {
     
     DxbcValue result;
     
-    switch (token.type()) {
-      case DxbcOperandType::Imm32: {
-        if (token.numComponents() == 1) {
-          result = m_gen->defConstScalar(operand.imm32(0));
-        } else if (token.numComponents() == 4) {
-          result = m_gen->defConstVector(
-            operand.imm32(0), operand.imm32(1),
-            operand.imm32(2), operand.imm32(3));
-        } else {
-          throw DxvkError(str::format(
-            "DxbcCompiler::loadOperand [imm32]: Invalid number of components: ",
-            token.numComponents()));
-        }
-      } break;
+    if (token.type() == DxbcOperandType::Imm32) {
+      if (token.numComponents() == 1) {
+        result = m_gen->defConstScalar(operand.imm32(0));
+      } else if (token.numComponents() == 4) {
+        result = m_gen->defConstVector(
+          operand.imm32(0), operand.imm32(1),
+          operand.imm32(2), operand.imm32(3));
+      } else {
+        throw DxvkError(str::format(
+          "DxbcCompiler::loadOperand [imm32]: Invalid number of components: ",
+          token.numComponents()));
+      }
       
-      default: {
-        result = m_gen->regLoad(
-          this->getOperandPtr(operand));
-      };
-    }
-    
-    // Apply the source operand swizzle
-    if (token.numComponents() == 4)
-      result = this->selectOperandComponents(token, result, dstMask);
-    
-    // Apply source operand modifiers, if any
-    auto operandModifiers = operand.queryOperandExt(
-      DxbcOperandExt::OperandModifier);
-    
-    if (operandModifiers) {
-      result = this->applyOperandModifiers(
-        result, operandModifiers->data());
+      result = m_gen->regExtract(result, dstMask);
+    } else {
+      result = m_gen->regLoad(this->getOperandPtr(operand));
+      
+      // Apply the source operand swizzle
+      if (token.numComponents() == 4)
+        result = this->selectOperandComponents(token, result, dstMask);
+      
+      // Apply source operand modifiers, if any
+      auto operandModifiers = operand.queryOperandExt(
+        DxbcOperandExt::OperandModifier);
+      
+      if (operandModifiers) {
+        result = this->applyOperandModifiers(
+          result, operandModifiers->data());
+      }
     }
     
     return result;
