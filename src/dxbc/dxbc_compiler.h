@@ -36,6 +36,9 @@ namespace dxvk {
     void dclTemps(
       const DxbcInstruction&  ins);
     
+    void opAdd(
+      const DxbcInstruction&  ins);
+    
     void opMov(
       const DxbcInstruction&  ins);
     
@@ -63,6 +66,10 @@ namespace dxvk {
             DxbcValue             value,
             DxbcOperandModifiers  modifiers);
     
+    DxbcValue applyResultModifiers(
+            DxbcValue             value,
+            DxbcOpcodeControl     control);
+            
     DxbcValue loadOperand(
       const DxbcOperand&      operand,
             DxbcComponentMask dstMask,

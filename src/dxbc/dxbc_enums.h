@@ -432,4 +432,24 @@ namespace dxvk {
   
   using DxbcOperandModifiers = Flags<DxbcOperandModifier>;
   
+  enum class DxbcZeroTest : uint32_t {
+    TestZ   = 0,
+    TestNz  = 1,
+  };
+  
+  enum class DxbcResinfoType : uint32_t {
+    Float     = 0,
+    RcpFloat  = 1,  // ?
+    Uint      = 2,
+  };
+  
+  enum class DxbcSyncFlag : uint32_t {
+    ThreadsInGroup                = 0,
+    ThreadGroupSharedMemory       = 1,
+    UavMemoryGroup                = 2,
+    UavMemoryGlobal               = 3,
+  };
+  
+  using DxbcSyncFlags = Flags<DxbcSyncFlag>;
+  
 }

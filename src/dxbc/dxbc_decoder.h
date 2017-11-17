@@ -12,6 +12,77 @@ namespace dxvk {
   class DxbcOperand;
   
   /**
+   * \brief Basic control info
+   * 
+   * Parses instruction-specific control bits. Whether
+   * these are well defined depends on the instruction.
+   */
+  class DxbcOpcodeControl {
+    
+  public:
+    
+    DxbcOpcodeControl() { }
+    DxbcOpcodeControl(uint32_t control)
+    : m_control(control) { }
+    
+    /**
+     * \brief Saturation hint
+     * 
+     * If set, the result of the given instruction
+     * is clamped to the [0..1] range.
+     */
+    bool saturateBit() const {
+      return bit::extract(m_control, 2, 2) != 0;
+    }
+    
+    /**
+     * \brief Precision hint
+     */
+    bool preciseBit() const {
+      return bit::extract(m_control, 8, 11) != 0;
+    }
+    
+    /**
+     * \brief Zero test
+     * 
+     * For conditional instructions, this defines
+     * whether the test shall pass when the given
+     * operand is zero or non-zero.
+     */
+    DxbcZeroTest zeroTest() const {
+      return static_cast<DxbcZeroTest>(
+        bit::extract(m_control, 7, 7));
+    }
+    
+    /**
+     * \brief Resinfo return type
+     * 
+     * Control bits specifically for
+     * the \c resinfo instruction.
+     */
+    DxbcResinfoType resinfoType() const {
+      return static_cast<DxbcResinfoType>(
+        bit::extract(m_control, 0, 1));
+    }
+    
+    /**
+     * \brief Sync flags
+     * 
+     * Defines the exact operation of sync
+     * instructions in compute shaders.
+     */
+    DxbcSyncFlags syncFlags() const {
+      return bit::extract(m_control, 0, 3);
+    }
+    
+  private:
+    
+    uint32_t m_control = 0;
+    
+  };
+  
+  
+  /**
    * \brief DXBC instruction token
    * 
    * Initial token at the beginning of each instruction.

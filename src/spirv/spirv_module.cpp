@@ -565,6 +565,55 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opIAdd(
+          uint32_t                resultType,
+          uint32_t                a,
+          uint32_t                b) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpIAdd, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(a);
+    m_code.putWord(b);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opFAdd(
+          uint32_t                resultType,
+          uint32_t                a,
+          uint32_t                b) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpFAdd, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(a);
+    m_code.putWord(b);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opFClamp(
+          uint32_t                resultType,
+          uint32_t                x,
+          uint32_t                minVal,
+          uint32_t                maxVal) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpExtInst, 8);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(m_instExtGlsl450);
+    m_code.putWord(spv::GLSLstd450FClamp);
+    m_code.putWord(x);
+    m_code.putWord(minVal);
+    m_code.putWord(maxVal);
+    return resultId;
+  }
+  
+  
   uint32_t SpirvModule::opFunctionCall(
           uint32_t                resultType,
           uint32_t                functionId,

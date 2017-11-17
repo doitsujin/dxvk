@@ -201,6 +201,22 @@ namespace dxvk {
             uint32_t                resultType,
             uint32_t                operand);
     
+    uint32_t opIAdd(
+            uint32_t                resultType,
+            uint32_t                a,
+            uint32_t                b);
+    
+    uint32_t opFAdd(
+            uint32_t                resultType,
+            uint32_t                a,
+            uint32_t                b);
+    
+    uint32_t opFClamp(
+            uint32_t                resultType,
+            uint32_t                x,
+            uint32_t                minVal,
+            uint32_t                maxVal);
+    
     uint32_t opFunctionCall(
             uint32_t                resultType,
             uint32_t                functionId,

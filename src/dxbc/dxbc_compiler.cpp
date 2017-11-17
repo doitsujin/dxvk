@@ -33,6 +33,9 @@ namespace dxvk {
       case DxbcOpcode::DclTemps:
         return this->dclTemps(ins);
       
+      case DxbcOpcode::Add:
+        return this->opAdd(ins);
+      
       case DxbcOpcode::Mov:
         return this->opMov(ins);
       
@@ -109,13 +112,27 @@ namespace dxvk {
   }
   
   
+  void DxbcCompiler::opAdd(const DxbcInstruction& ins) {
+    auto dstOp  = ins.operand(0);
+    auto srcOp1 = ins.operand(dstOp.length());
+    auto srcOp2 = ins.operand(dstOp.length() + srcOp1.length());
+    DxbcComponentMask mask = this->getDstOperandMask(dstOp);
+    
+    DxbcValue src1 = this->loadOperand(srcOp1, mask, DxbcScalarType::Float32);
+    DxbcValue src2 = this->loadOperand(srcOp2, mask, DxbcScalarType::Float32);
+    DxbcValue val  = m_gen->opAdd(src1, src2);
+              val  = this->applyResultModifiers(val, ins.token().control());
+    this->storeOperand(dstOp, val, mask);
+  }
+  
+  
   void DxbcCompiler::opMov(const DxbcInstruction& ins) {
     auto dstOp = ins.operand(0);
     auto srcOp = ins.operand(dstOp.length());
     DxbcComponentMask mask = this->getDstOperandMask(dstOp);
     
     DxbcValue value = this->loadOperand(srcOp, mask, DxbcScalarType::Float32);
-    
+              value = this->applyResultModifiers(value, ins.token().control());
     this->storeOperand(dstOp, value, mask);
   }
   
@@ -252,6 +269,15 @@ namespace dxvk {
   }
   
   
+  DxbcValue DxbcCompiler::applyResultModifiers(
+          DxbcValue             value,
+          DxbcOpcodeControl     control) {
+    if (control.saturateBit())
+      value = m_gen->opSaturate(value);
+    return value;
+  }
+  
+  
   DxbcValue DxbcCompiler::loadOperand(
     const DxbcOperand&      operand,
           DxbcComponentMask dstMask,
@@ -267,15 +293,21 @@ namespace dxvk {
         result = m_gen->defConstVector(
           operand.imm32(0), operand.imm32(1),
           operand.imm32(2), operand.imm32(3));
+        result = m_gen->regExtract(result, dstMask);
       } else {
         throw DxvkError(str::format(
           "DxbcCompiler::loadOperand [imm32]: Invalid number of components: ",
           token.numComponents()));
       }
       
-      result = m_gen->regExtract(result, dstMask);
+      result = m_gen->regCast(result, DxbcValueType(
+        dstType, result.type.componentCount));
     } else {
       result = m_gen->regLoad(this->getOperandPtr(operand));
+      
+      // Cast register to requested type
+      result = m_gen->regCast(result, DxbcValueType(
+        dstType, result.type.componentCount));
       
       // Apply the source operand swizzle
       if (token.numComponents() == 4)
