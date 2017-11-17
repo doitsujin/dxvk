@@ -18,11 +18,12 @@ namespace dxvk {
       spv::FunctionControlMaskNone);
     m_module.opLabel(m_module.allocateId());
     
-    m_outPerVertex = m_module.newVar(
+    // Declare per-vertex builtin output block
+    m_vsPerVertex = m_module.newVar(
       m_module.defPointerType(this->defPerVertexBlock(), spv::StorageClassOutput),
       spv::StorageClassOutput);
-    m_entryPointInterfaces.push_back(m_outPerVertex);
-    m_module.setDebugName(m_outPerVertex, "vs_out");
+    m_entryPointInterfaces.push_back(m_vsPerVertex);
+    m_module.setDebugName(m_vsPerVertex, "vs_per_vertex");
   }
   
   
@@ -39,26 +40,12 @@ namespace dxvk {
           DxbcSystemValue   sv) {
     switch (regType) {
       case DxbcOperandType::Input: {
-        if (sv == DxbcSystemValue::None) {
-          if (m_vRegs.at(regId).valueId == 0) {
-            m_vRegs.at(regId) = this->defVar(
-              DxbcValueType(DxbcScalarType::Float32, 4),
-              spv::StorageClassInput);
-            m_module.setDebugName(m_vRegs.at(regId).valueId,
-              str::format("v", regId).c_str());
-            m_module.decorateLocation(
-              m_vRegs.at(regId).valueId, regId);
-            m_entryPointInterfaces.push_back(
-              m_vRegs.at(regId).valueId);
-          }
-        } else {
-          if (m_vRegsSv.at(regId).valueId == 0) {
-            m_vRegsSv.at(regId) = this->defVar(
-              DxbcValueType(DxbcScalarType::Float32, 4),
-              spv::StorageClassPrivate);
-            m_module.setDebugName(m_vRegsSv.at(regId).valueId,
-              str::format("sv", regId).c_str());
-          }
+        if (m_vRegs.at(regId).valueId == 0) {
+          m_vRegs.at(regId) = this->defVar(
+            DxbcValueType(DxbcScalarType::Float32, 4),
+            spv::StorageClassPrivate);
+          m_module.setDebugName(m_vRegs.at(regId).valueId,
+            str::format("v", regId).c_str());
         }
       } break;
       
@@ -66,18 +53,9 @@ namespace dxvk {
         if (m_oRegs.at(regId).valueId == 0) {
           m_oRegs.at(regId) = this->defVar(
             DxbcValueType(DxbcScalarType::Float32, 4),
-            spv::StorageClassOutput);
+            spv::StorageClassPrivate);
           m_module.setDebugName(m_oRegs.at(regId).valueId,
             str::format("o", regId).c_str());
-          m_module.decorateLocation(
-            m_oRegs.at(regId).valueId, regId);
-          m_entryPointInterfaces.push_back(
-            m_oRegs.at(regId).valueId);
-        }
-        
-        if (sv != DxbcSystemValue::None) {
-          m_svOutputs.push_back(DxbcSvMapping {
-            regId, regMask, sv });
         }
       } break;
       
@@ -94,9 +72,7 @@ namespace dxvk {
           uint32_t          regId) {
     switch (regType) {
       case DxbcOperandType::Input:
-        return m_vRegsSv.at(regId).valueId != 0
-          ? m_vRegsSv.at(regId)
-          : m_vRegs  .at(regId);
+        return m_vRegs.at(regId);
       
       case DxbcOperandType::Output:
         return m_oRegs.at(regId);
@@ -148,34 +124,18 @@ namespace dxvk {
   }
   
   
+  void DxbcVsCodeGen::dclSvInputReg(DxbcSystemValue sv) {
+    
+  }
+  
+  
   void DxbcVsCodeGen::prepareSvInputs() {
-    // TODO implement
+    
   }
   
   
   void DxbcVsCodeGen::prepareSvOutputs() {
-    for (const auto& sv : m_svOutputs) {
-      DxbcValue val = this->regLoad(m_oRegs.at(sv.regId));
-//                 val = this->regExtract(val, sv.regMask);
-      
-      DxbcPointer dst;
-      
-      switch (sv.sv) {
-        case DxbcSystemValue::Position:
-          dst = this->ptrBuiltInPosition();
-          break;
-        
-        default:
-          Logger::err(str::format(
-            "DxbcVsCodeGen::prepareSvOutputs: Unsupported system value: ",
-            sv.sv));
-      }
-      
-      if (dst.valueId != 0) {
-//         val = this->regCast(val, dst.type.valueType);
-        this->regStore(dst, val, DxbcComponentMask());
-      }
-    }
+    
   }
   
   
@@ -188,7 +148,7 @@ namespace dxvk {
       spv::StorageClassOutput);
     result.valueId = m_module.opAccessChain(
       this->defPointerType(result.type),
-      m_outPerVertex, 1, &memberId);
+      m_vsPerVertex, 1, &memberId);
     return result;
   }
   

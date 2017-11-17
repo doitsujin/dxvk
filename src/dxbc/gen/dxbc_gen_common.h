@@ -132,7 +132,18 @@ namespace dxvk {
     DxbcValue opAbs(
       const DxbcValue&            src);
     
+    DxbcValue opAdd(
+      const DxbcValue&            a,
+      const DxbcValue&            b);
+    
+    DxbcValue opMul(
+      const DxbcValue&            a,
+      const DxbcValue&            b);
+    
     DxbcValue opNeg(
+      const DxbcValue&            src);
+    
+    DxbcValue opSaturate(
       const DxbcValue&            src);
     
     /**

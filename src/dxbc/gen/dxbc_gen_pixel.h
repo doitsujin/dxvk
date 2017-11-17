@@ -35,14 +35,14 @@ namespace dxvk {
   private:
     
     uint32_t m_function = 0;
+    uint32_t m_psIn     = 0;
     
     DxbcPointer m_svPosition;
     
     std::array<DxbcPointer, 32> m_vRegs;
-    std::array<DxbcPointer, 32> m_vRegsSv;
-    std::array<DxbcPointer, 32> m_oRegs;
+    std::array<DxbcPointer, 8>  m_oRegs;
     
-    std::vector<DxbcSvMapping> m_svInputs;
+    void dclSvInputReg(DxbcSystemValue sv);
     
     void prepareSvInputs();
     void prepareSvOutputs();

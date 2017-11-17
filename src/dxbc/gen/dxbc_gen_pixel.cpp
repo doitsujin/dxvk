@@ -33,46 +33,22 @@ namespace dxvk {
           DxbcSystemValue   sv) {
     switch (regType) {
       case DxbcOperandType::Input: {
-        if (sv == DxbcSystemValue::None) {
-          if (m_vRegs.at(regId).valueId == 0) {
-            m_vRegs.at(regId) = this->defVar(
-              DxbcValueType(DxbcScalarType::Float32, 4),
-              spv::StorageClassInput);
-            m_module.setDebugName(m_vRegs.at(regId).valueId,
-              str::format("v", regId).c_str());
-            m_module.decorateLocation(
-              m_vRegs.at(regId).valueId, regId);
-            m_entryPointInterfaces.push_back(
-              m_vRegs.at(regId).valueId);
-          }
-        } else {
-          if (m_vRegsSv.at(regId).valueId == 0) {
-            m_vRegsSv.at(regId) = this->defVar(
-              DxbcValueType(DxbcScalarType::Float32, 4),
-              spv::StorageClassPrivate);
-            m_module.setDebugName(m_vRegsSv.at(regId).valueId,
-              str::format("sv", regId).c_str());
-          }
+        if (m_vRegs.at(regId).valueId == 0) {
+          m_vRegs.at(regId) = this->defVar(
+            DxbcValueType(DxbcScalarType::Float32, 4),
+            spv::StorageClassPrivate);
+          m_module.setDebugName(m_vRegs.at(regId).valueId,
+            str::format("v", regId).c_str());
         }
       } break;
       
       case DxbcOperandType::Output: {
-        if (sv != DxbcSystemValue::None) {
-          throw DxvkError(str::format(
-            "DxbcPsCodeGen::dclInterfaceVar: Cannot map output register to system value: ",
-            sv));
-        }
-        
         if (m_oRegs.at(regId).valueId == 0) {
           m_oRegs.at(regId) = this->defVar(
             DxbcValueType(DxbcScalarType::Float32, 4),
-            spv::StorageClassOutput);
+            spv::StorageClassPrivate);
           m_module.setDebugName(m_oRegs.at(regId).valueId,
             str::format("o", regId).c_str());
-          m_module.decorateLocation(
-            m_oRegs.at(regId).valueId, regId);
-          m_entryPointInterfaces.push_back(
-            m_oRegs.at(regId).valueId);
         }
       } break;
       
@@ -89,13 +65,11 @@ namespace dxvk {
           uint32_t          regId) {
     switch (regType) {
       case DxbcOperandType::Input:
-        return m_vRegsSv.at(regId).valueId != 0
-          ? m_vRegsSv.at(regId)
-          : m_vRegs  .at(regId);
+        return m_vRegs.at(regId);
       
       case DxbcOperandType::Output:
         return m_oRegs.at(regId);
-        
+      
       default:
         throw DxvkError(str::format(
           "DxbcPsCodeGen::ptrInterfaceVar: Unhandled operand type: ",
@@ -140,6 +114,26 @@ namespace dxvk {
     
     return new DxvkShader(VK_SHADER_STAGE_FRAGMENT_BIT,
       m_module.compile(), 0, nullptr);
+  }
+  
+  
+  void DxbcPsCodeGen::dclSvInputReg(DxbcSystemValue sv) {
+    switch (sv) {
+      case DxbcSystemValue::Position: {
+        m_svPosition = this->defVar(
+          DxbcValueType(DxbcScalarType::Float32, 4),
+          spv::StorageClassInput);
+        m_entryPointInterfaces.push_back(
+          m_svPosition.valueId);
+        
+        m_module.setDebugName(m_svPosition.valueId, "sv_position");
+        m_module.decorateBuiltIn(m_svPosition.valueId, spv::BuiltInFragCoord);
+      } break;
+      
+      default:
+        throw DxvkError(str::format(
+          "DxbcPsCodeGen::dclSvInputReg: Unhandled SV: ", sv));
+    }
   }
   
   

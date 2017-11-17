@@ -102,6 +102,33 @@ namespace dxvk {
     return result;
   }
   
+  
+  DxbcValue DxbcCodeGen::opAdd(const DxbcValue& a, const DxbcValue& b) {
+    DxbcValue result;
+    result.type = a.type;
+    
+    switch (result.type.componentType) {
+      case DxbcScalarType::Sint32:
+      case DxbcScalarType::Sint64:
+      case DxbcScalarType::Uint32:
+      case DxbcScalarType::Uint64:
+        result.valueId = m_module.opIAdd(
+          this->defValueType(result.type),
+          a.valueId, b.valueId);
+        break;
+      
+      case DxbcScalarType::Float32:
+      case DxbcScalarType::Float64:
+        result.valueId = m_module.opFAdd(
+          this->defValueType(result.type),
+          a.valueId, b.valueId);
+        break;
+    }
+    
+    return result;
+  }
+  
+  
   DxbcValue DxbcCodeGen::opNeg(const DxbcValue& src) {
     DxbcValue result;
     result.type = src.type;
@@ -124,6 +151,41 @@ namespace dxvk {
         break;
     }
     
+    return result;
+  }
+  
+  
+  DxbcValue DxbcCodeGen::opSaturate(const DxbcValue& src) {
+    const uint32_t typeId = this->defValueType(src.type);
+    
+    std::array<uint32_t, 4> const0;
+    std::array<uint32_t, 4> const1;
+    
+    uint32_t const0Id = 0;
+    uint32_t const1Id = 0;
+    
+    if (src.type.componentType == DxbcScalarType::Float32) {
+      const0Id = m_module.constf32(0.0f);
+      const1Id = m_module.constf32(1.0f);
+    } else if (src.type.componentType == DxbcScalarType::Float64) {
+      const0Id = m_module.constf64(0.0);
+      const1Id = m_module.constf64(1.0);
+    } 
+    
+    for (uint32_t i = 0; i < src.type.componentCount; i++) {
+      const0.at(i) = const0Id;
+      const1.at(i) = const1Id;
+    }
+    
+    if (src.type.componentCount > 1) {
+      const0Id = m_module.constComposite(typeId, src.type.componentCount, const0.data());
+      const1Id = m_module.constComposite(typeId, src.type.componentCount, const1.data());
+    }
+    
+    DxbcValue result;
+    result.type    = src.type;
+    result.valueId = m_module.opFClamp(
+      typeId, src.valueId, const0Id, const1Id);
     return result;
   }
   
@@ -163,6 +225,8 @@ namespace dxvk {
         indices[dstIndex++] = swizzle[i];
     }
     
+    // If the swizzle combined with the mask can be reduced
+    // to a no-op, we don't need to insert any instructions.
     bool isIdentitySwizzle = dstIndex == src.type.componentCount;
     
     for (uint32_t i = 0; i < dstIndex && isIdentitySwizzle; i++)
@@ -171,6 +235,8 @@ namespace dxvk {
     if (isIdentitySwizzle)
       return src;
     
+    // Use OpCompositeExtract if the resulting vector contains
+    // only one component, and OpVectorShuffle if it is a vector.
     DxbcValue result;
     result.type = DxbcValueType(src.type.componentType, dstIndex);
     
