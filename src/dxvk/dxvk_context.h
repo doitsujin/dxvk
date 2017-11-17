@@ -43,17 +43,10 @@ namespace dxvk {
      * The command list can then be submitted to
      * the device.
      * 
-     * The return value of this method can be used to
-     * determine whether the command list needs to be
-     * submitted. In case the command list is empty,
-     * \c false will be returned and it shall not be
-     * submitted to the device.
-     * 
      * This will not change any context state
      * other than the active command list.
-     * \returns \c true if any commands were recorded
      */
-    bool endRecording();
+    void endRecording();
     
     /**
      * \brief Sets framebuffer
@@ -77,20 +70,6 @@ namespace dxvk {
       const Rc<DxvkShader>&       shader);
     
     /**
-     * \brief Binds a storage buffer
-     * 
-     * \param [in] stage Shader stage for this binding
-     * \param [in] slot Binding slot index
-     * \param [in] buffer Buffer binding info
-     */
-    void bindStorageBuffer(
-            VkShaderStageFlagBits stage,
-            uint32_t              slot,
-      const Rc<DxvkBuffer>&       buffer,
-            VkDeviceSize          offset,
-            VkDeviceSize          length);
-    
-    /**
      * \brief Clears an active render target
      * 
      * \param [in] attachment Attachment to clear
@@ -99,18 +78,6 @@ namespace dxvk {
     void clearRenderTarget(
       const VkClearAttachment&  attachment,
       const VkClearRect&        clearArea);
-    
-    /**
-     * \brief Dispatches compute operations
-     * 
-     * \param [in] wgCountX Number of X work groups
-     * \param [in] wgCountY Number of Y work groups
-     * \param [in] wgCountZ Number of Z work groups
-     */
-    void dispatch(
-            uint32_t wgCountX,
-            uint32_t wgCountY,
-            uint32_t wgCountZ);
     
     /**
      * \brief Draws primitive without using an index buffer
@@ -150,25 +117,16 @@ namespace dxvk {
     Rc<DxvkRecorder> m_cmd;
     DxvkContextState m_state;
     
-    void flushComputeState();
+    void renderPassBegin();
+    
+    void renderPassEnd();
+    
+    void bindGraphicsPipeline();
+    
     void flushGraphicsState();
     
-    void beginRenderPass();
-    void endRenderPass();
-    
-    void setPipelineDirty(VkShaderStageFlagBits stage);
-    void setResourcesDirty(VkShaderStageFlagBits stage);
-    
-    void shaderResourceBarriers(
-      DxvkBarrierSet&       barriers,
-      VkShaderStageFlagBits stage);
-    
-    DxvkShaderState* getShaderState(
-      VkShaderStageFlagBits stage);
-      
-    uint32_t addResourceBindingInfo(
-            std::vector<DxvkResourceBinding>& bindings,
-      const DxvkShaderState&                  stageInfo) const;
+    DxvkShaderStageState* getShaderStage(
+            VkShaderStageFlagBits     stage);
     
   };
   

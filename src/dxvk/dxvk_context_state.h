@@ -3,6 +3,7 @@
 #include "dxvk_buffer.h"
 #include "dxvk_compute.h"
 #include "dxvk_framebuffer.h"
+#include "dxvk_graphics.h"
 #include "dxvk_image.h"
 #include "dxvk_limits.h"
 #include "dxvk_shader.h"
@@ -16,87 +17,64 @@ namespace dxvk {
    * graphics pipeline has changed and/or needs to
    * be updated.
    */
-  enum class DxvkGraphicsPipelineBit : uint64_t  {
-    RenderPassBound     =  0, ///< If set, a render pass instance is currently active
-    PipelineDirty       =  1, ///< If set, the shader pipeline binding is out of date
-    PipelineStateDirty  =  2, ///< If set, another pipeline variant needs to be bound
-    DirtyResources      =  3, ///< If set, the descriptor set must be updated
-    DirtyVertexBuffers  =  4, ///< If set, the vertex buffer bindings need to be updated
-    DirtyIndexBuffer    =  5, ///< If set, the index buffer binding needs to be updated
+  enum class DxvkContextFlag : uint64_t  {
+    GpRenderPassBound,      ///< Render pass is currently bound
+    GpDirtyPipeline,        ///< Graphics pipeline binding are out of date
+    GpDirtyPipelineState,   ///< Graphics pipeline state (blending etc.) is dirty
+    GpDirtyResources,       ///< Graphics pipeline resource bindings are out of date
+    GpDirtyVertexBuffers,   ///< Vertex buffer bindings are out of date
+    GpDirtyIndexBuffers,    ///< Index buffer binding are out of date
+    
+    CpDirtyPipeline,        ///< Compute pipeline binding are out of date
+    CpDirtyResources,       ///< Compute pipeline resource bindings are out of date
   };
   
-  using DxvkGraphicsPipelineFlags = Flags<DxvkGraphicsPipelineBit>;
-  
-  
-  /**
-   * \brief Compute pipeline state flags
-   * 
-   * Stores information on whether the compute shader
-   * or any of its resource bindings have been updated.
-   */
-  enum class DxvkComputePipelineBit : uint64_t {
-    PipelineDirty       =  0, ///< If set, the shader pipeline binding is out of date
-    DirtyResources      =  1, ///< If set, the descriptor set must be updated
-  };
-  
-  using DxvkComputePipelineFlags = Flags<DxvkComputePipelineBit>;
+  using DxvkContextFlags = Flags<DxvkContextFlag>;
   
   
   /**
    * \brief Shader state
    * 
-   * Stores the active shader and resources for a single
-   * shader stage. This includes sampled textures, uniform
-   * buffers, storage buffers and storage images.
+   * Stores the active shader and resources
+   * for a single shader stage. All stages
+   * support the same types of resources.
    */
-  struct DxvkShaderState {
-    Rc<DxvkShader> shader;
-    
-    std::array<DxvkBufferBinding, MaxNumStorageBuffers> boundStorageBuffers;
-    std::array<DxvkBufferBinding, MaxNumUniformBuffers> boundUniformBuffers;
+  struct DxvkShaderStageState {
+    Rc<DxvkShader>            shader;
   };
   
   
   /**
-   * \brief Graphics pipeline state
+   * \brief Output merger state
    * 
-   * Stores everything related to graphics
-   * operations, including bound resources.
+   * Stores the active framebuffer and the current
+   * blend state, as well as the depth stencil state.
    */
-  struct DxvkGraphicsPipelineState {
-    DxvkShaderState           vs;
-    DxvkShaderState           tcs;
-    DxvkShaderState           tes;
-    DxvkShaderState           gs;
-    DxvkShaderState           fs;
-    Rc<DxvkFramebuffer>       fb;
-    DxvkGraphicsPipelineFlags flags;
+  struct DxvkOutputMergerState {
+    Rc<DxvkFramebuffer>       framebuffer;
   };
   
   
   /**
-   * \brief Compute pipeline state
+   * \brief Pipeline state
    * 
-   * Stores the active compute pipeline and
-   * resources bound to the compute shader.
-   */
-  struct DxvkComputePipelineState {
-    DxvkShaderState           cs;
-    Rc<DxvkComputePipeline>   pipeline;
-    DxvkComputePipelineFlags  flags;
-  };
-  
-  
-  /**
-   * \brief DXVK context state
-   * 
-   * Stores all graphics pipeline state known
-   * to DXVK. As in Vulkan, graphics and compute
-   * pipeline states are strictly separated.
+   * Stores all bound shaders, resources,
+   * and constant pipeline state objects.
    */
   struct DxvkContextState {
-    DxvkGraphicsPipelineState g;
-    DxvkComputePipelineState  c;
+    DxvkShaderStageState      vs;
+    DxvkShaderStageState      tcs;
+    DxvkShaderStageState      tes;
+    DxvkShaderStageState      gs;
+    DxvkShaderStageState      fs;
+    DxvkShaderStageState      cs;
+    
+    DxvkOutputMergerState     om;
+    
+    Rc<DxvkGraphicsPipeline>  activeGraphicsPipeline;
+    Rc<DxvkComputePipeline>   activeComputePipeline;
+    
+    DxvkContextFlags          flags;
   };
   
 }

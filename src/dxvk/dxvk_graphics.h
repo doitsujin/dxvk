@@ -9,6 +9,11 @@
 
 namespace dxvk {
   
+  /**
+   * \brief Graphics pipeline state info
+   * 
+   * 
+   */
   struct DxvkGraphicsPipelineStateInfo {
     VkRenderPass renderPass;
     
@@ -17,6 +22,7 @@ namespace dxvk {
     bool operator == (const DxvkGraphicsPipelineStateInfo& other) const;
     bool operator != (const DxvkGraphicsPipelineStateInfo& other) const;
   };
+  
   
   /**
    * \brief Graphics pipeline

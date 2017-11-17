@@ -28,38 +28,6 @@ public:
       })),
     m_dxvkContext     (m_dxvkDevice->createContext()),
     m_dxvkCommandList (m_dxvkDevice->createCommandList()) {
-    
-    DxvkBufferCreateInfo bufferInfo;
-    bufferInfo.size   = sizeof(m_testData);
-    bufferInfo.usage  = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
-    bufferInfo.stages = VK_PIPELINE_STAGE_HOST_BIT
-                      | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-    bufferInfo.access = VK_ACCESS_HOST_WRITE_BIT
-                      | VK_ACCESS_HOST_READ_BIT
-                      | VK_ACCESS_SHADER_WRITE_BIT
-                      | VK_ACCESS_SHADER_READ_BIT;
-    
-    m_testBuffer = m_dxvkDevice->createBuffer(bufferInfo,
-      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-    for (size_t i = 0; i < 64; i++)
-      m_testData[i] = static_cast<int>(i);
-    std::memcpy(m_testBuffer->mapPtr(),
-      m_testData, sizeof(m_testData));
-    
-    DxvkResourceSlot computeBufferSlot;
-    computeBufferSlot.mode.set(
-      DxvkResourceModeBit::Read,
-      DxvkResourceModeBit::Write);
-    computeBufferSlot.type = DxvkResourceType::StorageBuffer;
-    computeBufferSlot.slot = 0;
-    
-    SpirvCodeBuffer code(std::ifstream("comp.spv", std::ios::binary));
-    code.store(std::ofstream("comp.2.spv", std::ios::binary));
-    
-    m_compShader = new DxvkShader(
-      VK_SHADER_STAGE_COMPUTE_BIT, std::move(code),
-      1, &computeBufferSlot);
   }
   
   ~TriangleApp() {
@@ -92,22 +60,12 @@ public:
     m_dxvkContext->clearRenderTarget(
       clearAttachment,
       clearArea);
-    m_dxvkContext->bindShader(
-      VK_SHADER_STAGE_COMPUTE_BIT,
-      m_compShader);
-    m_dxvkContext->bindStorageBuffer(
-      VK_SHADER_STAGE_COMPUTE_BIT, 0,
-      m_testBuffer, 0, sizeof(m_testData));
-    m_dxvkContext->dispatch(1, 1, 1);
     m_dxvkContext->endRecording();
     
     auto fence = m_dxvkDevice->submitCommandList(
       m_dxvkCommandList, sync1, sync2);
     m_dxvkSwapchain->present(sync2);
     m_dxvkDevice->waitForIdle();
-    
-    std::memcpy(m_testData, m_testBuffer->mapPtr(), sizeof(m_testData));
-    std::cout << m_testData[0] << std::endl;
   }
   
 private:
@@ -119,13 +77,6 @@ private:
   Rc<DxvkSwapchain>   m_dxvkSwapchain;
   Rc<DxvkContext>     m_dxvkContext;
   Rc<DxvkCommandList> m_dxvkCommandList;
-  
-  Rc<DxvkBuffer>      m_testBuffer;
-  Rc<DxvkShader>      m_compShader;
-  Rc<DxvkShader>      m_vertShader;
-  Rc<DxvkShader>      m_fragShader;
-  
-  int m_testData[64];
   
 };
 

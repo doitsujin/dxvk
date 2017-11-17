@@ -8,7 +8,7 @@ namespace dxvk {
   
   
   bool DxvkGraphicsPipelineStateInfo::operator == (const DxvkGraphicsPipelineStateInfo& other) const {
-    // TODO implement
+    return this->renderPass == other.renderPass;
   }
   
   
