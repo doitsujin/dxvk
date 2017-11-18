@@ -56,15 +56,17 @@ namespace dxvk {
     TRACE(this);
     
     // TODO tune these values, if necessary
-    constexpr uint32_t MaxSets = 256;
+    constexpr uint32_t MaxSets = 64;
     constexpr uint32_t MaxDesc = 256;
     
-    std::array<VkDescriptorPoolSize, 5> pools = {{
-      { VK_DESCRIPTOR_TYPE_SAMPLER,         MaxDesc },
-      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,   MaxDesc },
-      { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,   MaxDesc },
-      { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,  MaxDesc },
-      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,  MaxDesc } }};
+    std::array<VkDescriptorPoolSize, 7> pools = {{
+      { VK_DESCRIPTOR_TYPE_SAMPLER,               MaxDesc },
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,         MaxDesc },
+      { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,         MaxDesc },
+      { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,        MaxDesc },
+      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,        MaxDesc },
+      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,  MaxDesc },
+      { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,  MaxDesc } }};
     
     VkDescriptorPoolCreateInfo info;
     info.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;

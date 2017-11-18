@@ -23,7 +23,7 @@ namespace dxvk {
     GpDirtyPipelineState,   ///< Graphics pipeline state (blending etc.) is dirty
     GpDirtyResources,       ///< Graphics pipeline resource bindings are out of date
     GpDirtyVertexBuffers,   ///< Vertex buffer bindings are out of date
-    GpDirtyIndexBuffers,    ///< Index buffer binding are out of date
+    GpDirtyIndexBuffer,     ///< Index buffer binding are out of date
     
     CpDirtyPipeline,        ///< Compute pipeline binding are out of date
     CpDirtyResources,       ///< Compute pipeline resource bindings are out of date
@@ -41,6 +41,40 @@ namespace dxvk {
    */
   struct DxvkShaderStageState {
     Rc<DxvkShader>            shader;
+  };
+  
+  
+  /**
+   * \brief Input assembly state
+   * 
+   * Stores the primitive topology
+   * and the vertex input layout.
+   */
+  struct DxvkInputAssemblyState {
+    VkPrimitiveTopology       primitiveTopology;
+    VkBool32                  primitiveRestart;
+    
+    uint32_t                  numVertexBindings   = 0;
+    uint32_t                  numVertexAttributes = 0;
+    
+    std::array<VkVertexInputBindingDescription,
+      DxvkLimits::MaxNumVertexBuffers> vertexBindings;
+    
+    std::array<VkVertexInputAttributeDescription,
+      DxvkLimits::MaxNumVertexBuffers> vertexAttributes;
+  };
+  
+  
+  /**
+   * \brief Vertex input state
+   * 
+   * Stores the currently bound index
+   * buffer and vertex buffers.
+   */
+  struct DxvkVertexInputState {
+    Rc<DxvkBuffer>                      indexBuffer;
+    std::array<Rc<DxvkBuffer>,
+      DxvkLimits::MaxNumVertexBuffers>  vertexBuffers;
   };
   
   
@@ -69,6 +103,8 @@ namespace dxvk {
     DxvkShaderStageState      fs;
     DxvkShaderStageState      cs;
     
+    DxvkInputAssemblyState    ia;
+    DxvkVertexInputState      vi;
     DxvkOutputMergerState     om;
     
     Rc<DxvkGraphicsPipeline>  activeGraphicsPipeline;

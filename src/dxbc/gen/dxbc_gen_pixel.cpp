@@ -112,8 +112,9 @@ namespace dxvk {
       m_entryPointInterfaces.data());
     m_module.setDebugName(m_entryPointId, "main");
     
-    return new DxvkShader(VK_SHADER_STAGE_FRAGMENT_BIT,
-      m_module.compile(), 0, nullptr);
+    return new DxvkShader(
+      VK_SHADER_STAGE_FRAGMENT_BIT,
+      m_module.compile());
   }
   
   

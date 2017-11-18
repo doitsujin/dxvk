@@ -9,9 +9,10 @@ namespace dxvk {
     TRACE(this, shader);
     
     std::vector<VkDescriptorSetLayoutBinding> bindings;
-    
-    for (uint32_t i = 0; i < shader->slotCount(); i++)
-      bindings.push_back(shader->slotBinding(0, i));
+
+    // TODO re-implement shader slots and bindings
+//     for (uint32_t i = 0; i < shader->slotCount(); i++)
+//       bindings.push_back(shader->slotBinding(0, i));
     
     VkDescriptorSetLayoutCreateInfo dlayout;
     dlayout.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -39,7 +40,7 @@ namespace dxvk {
       throw DxvkError("DxvkComputePipeline::DxvkComputePipeline: Failed to create pipeline layout");
     }
     
-    SpirvCodeBuffer code = shader->code(0);
+    SpirvCodeBuffer code = shader->code();
     
     VkShaderModuleCreateInfo minfo;
     minfo.sType               = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
