@@ -126,6 +126,17 @@ namespace dxvk {
     Rc<DxvkSemaphore> createSemaphore();
     
     /**
+     * \brief Creates a shader module
+     * 
+     * \param [in] stage Shader stage
+     * \param [in] code Shader code
+     * \returns New shader module
+     */
+    Rc<DxvkShader> createShader(
+            VkShaderStageFlagBits     stage,
+      const SpirvCodeBuffer&          code);
+    
+    /**
      * \brief Creates a swap chain
      * 
      * \param [in] surface The target surface

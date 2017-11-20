@@ -79,6 +79,13 @@ namespace dxvk {
   }
   
   
+  Rc<DxvkShader> DxvkDevice::createShader(
+          VkShaderStageFlagBits     stage,
+    const SpirvCodeBuffer&          code) {
+    return new DxvkShader(m_vkd, stage, code);
+  }
+  
+  
   Rc<DxvkSwapchain> DxvkDevice::createSwapchain(
     const Rc<DxvkSurface>&          surface,
     const DxvkSwapchainProperties&  properties) {

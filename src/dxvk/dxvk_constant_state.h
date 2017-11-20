@@ -152,7 +152,8 @@ namespace dxvk {
     
   private:
     
-    std::vector<VkPipelineColorBlendAttachmentState> m_attachments;
+    std::array<VkPipelineColorBlendAttachmentState,
+      DxvkLimits::MaxNumRenderTargets> m_attachments;
     
     VkPipelineColorBlendStateCreateInfo m_info;
     

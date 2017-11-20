@@ -47,7 +47,7 @@ namespace dxvk {
     TRACE(this, initialLayout, finalLayout);
     std::vector<VkAttachmentDescription> attachments;
     
-    VkAttachmentReference                                 depthRef;
+    VkAttachmentReference                                  depthRef;
     std::array<VkAttachmentReference, MaxNumRenderTargets> colorRef;
     
     // Render passes may not require the previous

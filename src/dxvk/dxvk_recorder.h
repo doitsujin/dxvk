@@ -85,6 +85,16 @@ namespace dxvk {
             uint32_t                imageMemoryBarrierCount,
       const VkImageMemoryBarrier*   pImageMemoryBarriers) = 0;
     
+    virtual void cmdSetScissor(
+            uint32_t                firstScissor,
+            uint32_t                scissorCount,
+      const VkRect2D*               scissors) = 0;
+    
+    virtual void cmdSetViewport(
+            uint32_t                firstViewport,
+            uint32_t                viewportCount,
+      const VkViewport*             viewports) = 0;
+    
   };
   
 }

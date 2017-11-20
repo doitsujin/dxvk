@@ -9,6 +9,12 @@ namespace dxvk {
   SpirvCodeBuffer::~SpirvCodeBuffer() { }
   
   
+  SpirvCodeBuffer::SpirvCodeBuffer(uint32_t size, const uint32_t* data) {
+    m_code.resize(size);
+    std::memcpy(m_code.data(), data, size * sizeof(uint32_t));
+  }
+  
+  
   SpirvCodeBuffer::SpirvCodeBuffer(std::istream&& stream) {
     stream.ignore(std::numeric_limits<std::streamsize>::max());
     std::streamsize length = stream.gcount();

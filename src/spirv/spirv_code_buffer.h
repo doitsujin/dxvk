@@ -21,6 +21,7 @@ namespace dxvk {
   public:
     
     SpirvCodeBuffer();
+    SpirvCodeBuffer(uint32_t size, const uint32_t* data);
     SpirvCodeBuffer(std::istream&& stream);
     ~SpirvCodeBuffer();
     

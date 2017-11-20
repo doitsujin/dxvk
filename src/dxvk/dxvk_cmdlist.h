@@ -128,6 +128,16 @@ namespace dxvk {
             uint32_t                imageMemoryBarrierCount,
       const VkImageMemoryBarrier*   pImageMemoryBarriers) final;
     
+    void cmdSetScissor(
+            uint32_t                firstScissor,
+            uint32_t                scissorCount,
+      const VkRect2D*               scissors) final;
+    
+    void cmdSetViewport(
+            uint32_t                firstViewport,
+            uint32_t                viewportCount,
+      const VkViewport*             viewports) final;
+    
   private:
     
     Rc<vk::DeviceFn>    m_vkd;

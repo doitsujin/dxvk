@@ -133,6 +133,10 @@ namespace dxvk {
       firstVertex, firstInstance);
     
     this->commitGraphicsState();
+    
+    m_cmd->cmdDraw(
+      vertexCount, instanceCount,
+      firstVertex, firstInstance);
   }
   
   
@@ -146,6 +150,30 @@ namespace dxvk {
       firstIndex, vertexOffset, firstInstance);
     
     this->commitGraphicsState();
+    
+    m_cmd->cmdDrawIndexed(
+      indexCount, instanceCount,
+      firstIndex, vertexOffset,
+      firstInstance);
+  }
+  
+  
+  void DxvkContext::setViewports(
+          uint32_t            viewportCount,
+    const VkViewport*         viewports,
+    const VkRect2D*           scissorRects) {
+    if (m_state.vp.viewportCount != viewportCount) {
+      m_state.vp.viewportCount = viewportCount;
+      m_state.flags.set(DxvkContextFlag::GpDirtyPipelineState);
+    }
+    
+    for (uint32_t i = 0; i < viewportCount; i++) {
+      m_state.vp.viewports.at(i) = viewports[i];
+      m_state.vp.scissorRects.at(i) = scissorRects[i];
+    }
+    
+    m_cmd->cmdSetViewport(0, viewportCount, viewports);
+    m_cmd->cmdSetScissor (0, viewportCount, scissorRects);
   }
   
   
@@ -281,12 +309,14 @@ namespace dxvk {
     if (m_state.flags.test(DxvkContextFlag::GpDirtyIndexBuffer)) {
       m_state.flags.clr(DxvkContextFlag::GpDirtyIndexBuffer);
       
-      m_cmd->cmdBindIndexBuffer(
-        m_state.vi.indexBuffer.bufferHandle(),
-        m_state.vi.indexBuffer.bufferOffset(),
-        VK_INDEX_TYPE_UINT32);
-      m_cmd->trackResource(
-        m_state.vi.indexBuffer.resource());
+      if (m_state.vi.indexBuffer.bufferHandle() != VK_NULL_HANDLE) {
+        m_cmd->cmdBindIndexBuffer(
+          m_state.vi.indexBuffer.bufferHandle(),
+          m_state.vi.indexBuffer.bufferOffset(),
+          VK_INDEX_TYPE_UINT32);
+        m_cmd->trackResource(
+          m_state.vi.indexBuffer.resource());
+      }
     }
   }
   

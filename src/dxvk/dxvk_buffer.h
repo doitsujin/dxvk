@@ -110,7 +110,9 @@ namespace dxvk {
     }
     
     VkBuffer bufferHandle() const {
-      return m_buffer->handle();
+      return m_buffer != nullptr
+        ? m_buffer->handle()
+        : VK_NULL_HANDLE;
     }
     
     size_t bufferOffset() const {

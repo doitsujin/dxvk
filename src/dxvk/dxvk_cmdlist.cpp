@@ -201,4 +201,22 @@ namespace dxvk {
       imageMemoryBarrierCount, pImageMemoryBarriers);
   }
   
+  
+  void DxvkCommandList::cmdSetScissor(
+          uint32_t                firstScissor,
+          uint32_t                scissorCount,
+    const VkRect2D*               scissors) {
+    m_vkd->vkCmdSetScissor(m_buffer,
+      firstScissor, scissorCount, scissors);
+  }
+  
+  
+  void DxvkCommandList::cmdSetViewport(
+          uint32_t                firstViewport,
+          uint32_t                viewportCount,
+    const VkViewport*             viewports) {
+    m_vkd->vkCmdSetViewport(m_buffer,
+      firstViewport, viewportCount, viewports);
+  }
+  
 }
