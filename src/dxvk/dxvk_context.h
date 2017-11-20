@@ -126,6 +126,48 @@ namespace dxvk {
             uint32_t vertexOffset,
             uint32_t firstInstance);
     
+    /**
+     * \brief Sets input assembly state
+     * \param [in] state New state object
+     */
+    void setInputAssemblyState(
+      const Rc<DxvkInputAssemblyState>& state);
+    
+    /**
+     * \brief Sets input layout state
+     * \param [in] state New state object
+     */
+    void setInputLayout(
+      const Rc<DxvkInputLayout>& state);
+    
+    /**
+     * \brief Sets rasterizer state
+     * \param [in] state New state object
+     */
+    void setRasterizerState(
+      const Rc<DxvkRasterizerState>& state);
+    
+    /**
+     * \brief Sets multisample state
+     * \param [in] state New state object
+     */
+    void setMultisampleState(
+      const Rc<DxvkMultisampleState>& state);
+    
+    /**
+     * \brief Sets depth stencil state
+     * \param [in] state New state object
+     */
+    void setDepthStencilState(
+      const Rc<DxvkDepthStencilState>& state);
+    
+    /**
+     * \brief Sets color blend state
+     * \param [in] state New state object
+     */
+    void setBlendState(
+      const Rc<DxvkBlendState>& state);
+    
   private:
     
     const Rc<DxvkDevice>          m_device;

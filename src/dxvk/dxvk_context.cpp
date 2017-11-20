@@ -145,6 +145,60 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::setInputAssemblyState(
+    const Rc<DxvkInputAssemblyState>& state) {
+    if (m_state.co.inputAssemblyState != state) {
+      m_state.co.inputAssemblyState = state;
+      m_state.flags.set(DxvkContextFlag::GpDirtyPipelineState);
+    }
+  }
+  
+  
+  void DxvkContext::setInputLayout(
+    const Rc<DxvkInputLayout>& state) {
+    if (m_state.co.inputLayout != state) {
+      m_state.co.inputLayout = state;
+      m_state.flags.set(DxvkContextFlag::GpDirtyPipelineState);
+    }
+  }
+  
+  
+  void DxvkContext::setRasterizerState(
+    const Rc<DxvkRasterizerState>& state) {
+    if (m_state.co.rasterizerState != state) {
+      m_state.co.rasterizerState = state;
+      m_state.flags.set(DxvkContextFlag::GpDirtyPipelineState);
+    }
+  }
+  
+  
+  void DxvkContext::setMultisampleState(
+    const Rc<DxvkMultisampleState>& state) {
+    if (m_state.co.multisampleState != state) {
+      m_state.co.multisampleState = state;
+      m_state.flags.set(DxvkContextFlag::GpDirtyPipelineState);
+    }
+  }
+  
+  
+  void DxvkContext::setDepthStencilState(
+    const Rc<DxvkDepthStencilState>& state) {
+    if (m_state.co.depthStencilState != state) {
+      m_state.co.depthStencilState = state;
+      m_state.flags.set(DxvkContextFlag::GpDirtyPipelineState);
+    }
+  }
+  
+  
+  void DxvkContext::setBlendState(
+    const Rc<DxvkBlendState>& state) {
+    if (m_state.co.blendState != state) {
+      m_state.co.blendState = state;
+      m_state.flags.set(DxvkContextFlag::GpDirtyPipelineState);
+    }
+  }
+  
+  
   void DxvkContext::renderPassBegin() {
     if (!m_state.flags.test(DxvkContextFlag::GpRenderPassBound)
      && (m_state.om.framebuffer != nullptr)) {
@@ -194,7 +248,14 @@ namespace dxvk {
       m_state.flags.clr(DxvkContextFlag::GpDirtyPipelineState);
       
       DxvkGraphicsPipelineStateInfo gpState;
-      // TODO fill state object
+      gpState.inputAssemblyState  = m_state.co.inputAssemblyState;
+      gpState.inputLayout         = m_state.co.inputLayout;
+      gpState.rasterizerState     = m_state.co.rasterizerState;
+      gpState.multisampleState    = m_state.co.multisampleState;
+      gpState.depthStencilState   = m_state.co.depthStencilState;
+      gpState.blendState          = m_state.co.blendState;
+      gpState.renderPass          = m_state.om.framebuffer->renderPass();
+      gpState.viewportCount       = m_state.vp.viewportCount;
       
       m_cmd->cmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,
         m_state.activeGraphicsPipeline->getPipelineHandle(gpState));

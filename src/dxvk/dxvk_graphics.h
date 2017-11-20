@@ -19,7 +19,7 @@ namespace dxvk {
    * the current pipeline state vector.
    */
   struct DxvkGraphicsPipelineStateInfo {
-    Rc<DxvkInputAssemblyState>  inputAssembly;
+    Rc<DxvkInputAssemblyState>  inputAssemblyState;
     Rc<DxvkInputLayout>         inputLayout;
     Rc<DxvkRasterizerState>     rasterizerState;
     Rc<DxvkMultisampleState>    multisampleState;

@@ -9,7 +9,7 @@ namespace dxvk {
   
   size_t DxvkGraphicsPipelineStateInfo::hash() const {
     DxvkHashState state;
-    state.add(hashPtr(this->inputAssembly.ptr()));
+    state.add(hashPtr(this->inputAssemblyState.ptr()));
     state.add(hashPtr(this->inputLayout.ptr()));
     state.add(hashPtr(this->rasterizerState.ptr()));
     state.add(hashPtr(this->multisampleState.ptr()));
@@ -22,7 +22,7 @@ namespace dxvk {
   
   
   bool DxvkGraphicsPipelineStateInfo::operator == (const DxvkGraphicsPipelineStateInfo& other) const {
-    return this->inputAssembly      == other.inputAssembly
+    return this->inputAssemblyState == other.inputAssemblyState
         && this->inputLayout        == other.inputLayout
         && this->rasterizerState    == other.rasterizerState
         && this->multisampleState   == other.multisampleState
