@@ -2,6 +2,7 @@
 
 #include "dxvk_buffer.h"
 #include "dxvk_compute.h"
+#include "dxvk_constant_state.h"
 #include "dxvk_framebuffer.h"
 #include "dxvk_graphics.h"
 #include "dxvk_image.h"
@@ -21,6 +22,7 @@ namespace dxvk {
     GpRenderPassBound,      ///< Render pass is currently bound
     GpDirtyPipeline,        ///< Graphics pipeline binding are out of date
     GpDirtyPipelineState,   ///< Graphics pipeline state (blending etc.) is dirty
+    GpDirtyDynamicState,    ///< Dynamic state needs to be reapplied
     GpDirtyResources,       ///< Graphics pipeline resource bindings are out of date
     GpDirtyVertexBuffers,   ///< Vertex buffer bindings are out of date
     GpDirtyIndexBuffer,     ///< Index buffer binding are out of date
@@ -32,58 +34,25 @@ namespace dxvk {
   using DxvkContextFlags = Flags<DxvkContextFlag>;
   
   
-  /**
-   * \brief Shader state
-   * 
-   * Stores the active shader and resources
-   * for a single shader stage. All stages
-   * support the same types of resources.
-   */
   struct DxvkShaderStageState {
     Rc<DxvkShader>            shader;
   };
   
   
-  /**
-   * \brief Input assembly state
-   * 
-   * Stores the primitive topology
-   * and the vertex input layout.
-   */
-  struct DxvkInputAssemblyState {
-    VkPrimitiveTopology       primitiveTopology;
-    VkBool32                  primitiveRestart;
-    
-    uint32_t                  numVertexBindings   = 0;
-    uint32_t                  numVertexAttributes = 0;
-    
-    std::array<VkVertexInputBindingDescription,
-      DxvkLimits::MaxNumVertexBuffers> vertexBindings;
-    
-    std::array<VkVertexInputAttributeDescription,
-      DxvkLimits::MaxNumVertexBuffers> vertexAttributes;
-  };
-  
-  
-  /**
-   * \brief Vertex input state
-   * 
-   * Stores the currently bound index
-   * buffer and vertex buffers.
-   */
   struct DxvkVertexInputState {
-    Rc<DxvkBuffer>                      indexBuffer;
-    std::array<Rc<DxvkBuffer>,
-      DxvkLimits::MaxNumVertexBuffers>  vertexBuffers;
+    DxvkBufferBinding                   indexBuffer;
+    std::array<DxvkBufferBinding,
+      DxvkLimits::MaxNumVertexBindings> vertexBuffers;
   };
   
   
-  /**
-   * \brief Output merger state
-   * 
-   * Stores the active framebuffer and the current
-   * blend state, as well as the depth stencil state.
-   */
+  struct DxvkViewportState {
+    uint32_t                                            viewportCount = 0;
+    std::array<VkViewport, DxvkLimits::MaxNumViewports> viewports;
+    std::array<VkRect2D,   DxvkLimits::MaxNumViewports> scissorRects;
+  };
+  
+  
   struct DxvkOutputMergerState {
     Rc<DxvkFramebuffer>       framebuffer;
   };
@@ -103,9 +72,10 @@ namespace dxvk {
     DxvkShaderStageState      fs;
     DxvkShaderStageState      cs;
     
-    DxvkInputAssemblyState    ia;
     DxvkVertexInputState      vi;
+    DxvkViewportState         vp;
     DxvkOutputMergerState     om;
+    DxvkConstantStateObjects  co;
     
     Rc<DxvkGraphicsPipeline>  activeGraphicsPipeline;
     Rc<DxvkComputePipeline>   activeComputePipeline;

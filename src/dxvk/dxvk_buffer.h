@@ -109,6 +109,18 @@ namespace dxvk {
       return m_buffer;
     }
     
+    VkBuffer bufferHandle() const {
+      return m_buffer->handle();
+    }
+    
+    size_t bufferOffset() const {
+      return m_offset;
+    }
+    
+    size_t bufferRange() const {
+      return m_length;
+    }
+    
     VkDescriptorBufferInfo descriptorInfo() const {
       VkDescriptorBufferInfo info;
       info.buffer = m_buffer->handle();

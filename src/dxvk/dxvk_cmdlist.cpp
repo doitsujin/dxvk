@@ -119,6 +119,15 @@ namespace dxvk {
   }
   
   
+  void DxvkCommandList::cmdBindIndexBuffer(
+          VkBuffer                buffer,
+          VkDeviceSize            offset,
+          VkIndexType             indexType) {
+    m_vkd->vkCmdBindIndexBuffer(m_buffer,
+      buffer, offset, indexType);
+  }
+  
+  
   void DxvkCommandList::cmdBindPipeline(
           VkPipelineBindPoint     pipelineBindPoint,
           VkPipeline              pipeline) {

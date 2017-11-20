@@ -133,7 +133,6 @@ namespace dxvk {
     DxvkImageViewCreateInfo m_info;
     VkImageView             m_view;
     
-    
   };
   
 }

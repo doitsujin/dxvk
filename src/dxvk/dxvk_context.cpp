@@ -34,6 +34,7 @@ namespace dxvk {
     m_state.flags.set(
       DxvkContextFlag::GpDirtyPipeline,
       DxvkContextFlag::GpDirtyPipelineState,
+      DxvkContextFlag::GpDirtyDynamicState,
       DxvkContextFlag::GpDirtyResources,
       DxvkContextFlag::GpDirtyIndexBuffer,
       DxvkContextFlag::GpDirtyVertexBuffers,
@@ -63,6 +64,15 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::bindIndexBuffer(
+    const DxvkBufferBinding&    buffer) {
+    if (m_state.vi.indexBuffer != buffer) {
+      m_state.vi.indexBuffer = buffer;
+      m_state.flags.set(DxvkContextFlag::GpDirtyIndexBuffer);
+    }
+  }
+  
+  
   void DxvkContext::bindShader(
           VkShaderStageFlagBits stage,
     const Rc<DxvkShader>&       shader) {
@@ -85,6 +95,16 @@ namespace dxvk {
           DxvkContextFlag::GpDirtyVertexBuffers,
           DxvkContextFlag::GpDirtyIndexBuffer);
       }
+    }
+  }
+  
+  
+  void DxvkContext::bindVertexBuffer(
+          uint32_t              binding,
+    const DxvkBufferBinding&    buffer) {
+    if (m_state.vi.vertexBuffers.at(binding) != buffer) {
+      m_state.vi.vertexBuffers.at(binding) = buffer;
+      m_state.flags.set(DxvkContextFlag::GpDirtyVertexBuffers);
     }
   }
   
@@ -174,7 +194,7 @@ namespace dxvk {
       m_state.flags.clr(DxvkContextFlag::GpDirtyPipelineState);
       
       DxvkGraphicsPipelineStateInfo gpState;
-      gpState.renderPass = m_state.om.framebuffer->renderPass();
+      // TODO fill state object
       
       m_cmd->cmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,
         m_state.activeGraphicsPipeline->getPipelineHandle(gpState));
@@ -182,9 +202,44 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::bindDynamicState() {
+    if (m_state.flags.test(DxvkContextFlag::GpDirtyDynamicState)) {
+      m_state.flags.clr(DxvkContextFlag::GpDirtyDynamicState);
+      
+      // TODO implement
+    }
+  }
+  
+  
+  void DxvkContext::bindIndexBuffer() {
+    if (m_state.flags.test(DxvkContextFlag::GpDirtyIndexBuffer)) {
+      m_state.flags.clr(DxvkContextFlag::GpDirtyIndexBuffer);
+      
+      m_cmd->cmdBindIndexBuffer(
+        m_state.vi.indexBuffer.bufferHandle(),
+        m_state.vi.indexBuffer.bufferOffset(),
+        VK_INDEX_TYPE_UINT32);
+      m_cmd->trackResource(
+        m_state.vi.indexBuffer.resource());
+    }
+  }
+  
+  
+  void DxvkContext::bindVertexBuffers() {
+    if (m_state.flags.test(DxvkContextFlag::GpDirtyVertexBuffers)) {
+      m_state.flags.clr(DxvkContextFlag::GpDirtyVertexBuffers);
+      
+      // TODO implement
+    }
+  }
+  
+  
   void DxvkContext::flushGraphicsState() {
     this->renderPassBegin();
     this->bindGraphicsPipeline();
+    this->bindDynamicState();
+    this->bindIndexBuffer();
+    this->bindVertexBuffers();
   }
   
   

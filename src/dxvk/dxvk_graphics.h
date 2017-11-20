@@ -3,6 +3,7 @@
 #include <mutex>
 #include <unordered_map>
 
+#include "dxvk_constant_state.h"
 #include "dxvk_hash.h"
 #include "dxvk_shader.h"
 #include "dxvk_resource.h"
@@ -12,10 +13,21 @@ namespace dxvk {
   /**
    * \brief Graphics pipeline state info
    * 
-   * 
+   * Stores all information that is required to create
+   * a graphics pipeline, except the shader objects
+   * themselves. Also used to identify pipelines using
+   * the current pipeline state vector.
    */
   struct DxvkGraphicsPipelineStateInfo {
-    VkRenderPass renderPass;
+    Rc<DxvkInputAssemblyState>  inputAssembly;
+    Rc<DxvkInputLayout>         inputLayout;
+    Rc<DxvkRasterizerState>     rasterizerState;
+    Rc<DxvkMultisampleState>    multisampleState;
+    Rc<DxvkDepthStencilState>   depthStencilState;
+    Rc<DxvkBlendState>          blendState;
+    
+    VkRenderPass                renderPass;
+    uint32_t                    viewportCount;
     
     size_t hash() const;
     

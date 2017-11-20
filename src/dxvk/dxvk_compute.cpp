@@ -76,7 +76,7 @@ namespace dxvk {
     if (m_vkd->vkCreateComputePipelines(m_vkd->device(),
           VK_NULL_HANDLE, 1, &info, nullptr, &m_pipeline) != VK_SUCCESS) {
       this->destroyObjects();
-      throw DxvkError("DxvkComputePipeline::DxvkComputePipeline: Failed to compipe pipeline");
+      throw DxvkError("DxvkComputePipeline::DxvkComputePipeline: Failed to compile pipeline");
     }
   }
   

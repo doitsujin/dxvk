@@ -2,13 +2,34 @@
 
 namespace dxvk {
   
+  template<typename T>
+  size_t hashPtr(T* ptr) {
+    return reinterpret_cast<size_t>(ptr);
+  }
+  
   size_t DxvkGraphicsPipelineStateInfo::hash() const {
-    // TODO implement
+    DxvkHashState state;
+    state.add(hashPtr(this->inputAssembly.ptr()));
+    state.add(hashPtr(this->inputLayout.ptr()));
+    state.add(hashPtr(this->rasterizerState.ptr()));
+    state.add(hashPtr(this->multisampleState.ptr()));
+    state.add(hashPtr(this->depthStencilState.ptr()));
+    state.add(hashPtr(this->blendState.ptr()));
+    state.add(std::hash<VkRenderPass>()(this->renderPass));
+    state.add(viewportCount);
+    return state;
   }
   
   
   bool DxvkGraphicsPipelineStateInfo::operator == (const DxvkGraphicsPipelineStateInfo& other) const {
-    return this->renderPass == other.renderPass;
+    return this->inputAssembly      == other.inputAssembly
+        && this->inputLayout        == other.inputLayout
+        && this->rasterizerState    == other.rasterizerState
+        && this->multisampleState   == other.multisampleState
+        && this->depthStencilState  == other.depthStencilState
+        && this->blendState         == other.blendState
+        && this->renderPass         == other.renderPass
+        && this->viewportCount      == other.viewportCount;
   }
   
   

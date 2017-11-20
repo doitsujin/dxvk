@@ -82,6 +82,11 @@ namespace dxvk {
       const VkRenderPassBeginInfo*  pRenderPassBegin,
             VkSubpassContents       contents) final;
     
+    void cmdBindIndexBuffer(
+            VkBuffer                buffer,
+            VkDeviceSize            offset,
+            VkIndexType             indexType) final;
+    
     void cmdBindPipeline(
             VkPipelineBindPoint     pipelineBindPoint,
             VkPipeline              pipeline) final;

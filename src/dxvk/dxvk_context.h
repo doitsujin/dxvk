@@ -56,6 +56,13 @@ namespace dxvk {
       const Rc<DxvkFramebuffer>& fb);
     
     /**
+     * \brief Binds index buffer
+     * \param [in] buffer New index buffer
+     */
+    void bindIndexBuffer(
+      const DxvkBufferBinding&    buffer);
+    
+    /**
      * \brief Sets shader for a given shader stage
      * 
      * Binds a shader to a given stage, while unbinding the
@@ -68,6 +75,16 @@ namespace dxvk {
     void bindShader(
             VkShaderStageFlagBits stage,
       const Rc<DxvkShader>&       shader);
+    
+    /**
+     * \brief Binds vertex buffer
+     * 
+     * \param [in] binding Vertex buffer binding
+     * \param [in] buffer New vertex buffer
+     */
+    void bindVertexBuffer(
+            uint32_t              binding,
+      const DxvkBufferBinding&    buffer);
     
     /**
      * \brief Clears an active render target
@@ -118,10 +135,12 @@ namespace dxvk {
     DxvkContextState m_state;
     
     void renderPassBegin();
-    
     void renderPassEnd();
     
     void bindGraphicsPipeline();
+    void bindDynamicState();
+    void bindIndexBuffer();
+    void bindVertexBuffers();
     
     void flushGraphicsState();
     
