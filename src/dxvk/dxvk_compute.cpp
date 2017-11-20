@@ -40,20 +40,11 @@ namespace dxvk {
       throw DxvkError("DxvkComputePipeline::DxvkComputePipeline: Failed to create pipeline layout");
     }
     
-    VkPipelineShaderStageCreateInfo sinfo;
-    sinfo.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    sinfo.pNext               = nullptr;
-    sinfo.flags               = 0;
-    sinfo.stage               = VK_SHADER_STAGE_COMPUTE_BIT;
-    sinfo.module              = m_shader->module();
-    sinfo.pName               = "main";
-    sinfo.pSpecializationInfo = nullptr;
-    
     VkComputePipelineCreateInfo info;
     info.sType                = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
     info.pNext                = nullptr;
     info.flags                = 0;
-    info.stage                = sinfo;
+    info.stage                = m_shader->stageInfo();
     info.layout               = m_pipelineLayout;
     info.basePipelineHandle   = VK_NULL_HANDLE;
     info.basePipelineIndex    = 0;

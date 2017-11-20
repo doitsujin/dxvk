@@ -47,12 +47,43 @@ namespace dxvk {
       const Rc<DxvkShader>&   fs)
   : m_vkd(vkd), m_vs(vs), m_tcs(tcs),
     m_tes(tes), m_gs(gs), m_fs(fs) {
+    TRACE(this, vs, tcs, tes, gs, fs);
     
+    std::vector<VkDescriptorSetLayoutBinding> bindings;
+    
+    VkDescriptorSetLayoutCreateInfo dlayout;
+    dlayout.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    dlayout.pNext        = nullptr;
+    dlayout.flags        = 0;
+    dlayout.bindingCount = bindings.size();
+    dlayout.pBindings    = bindings.data();
+    
+    if (m_vkd->vkCreateDescriptorSetLayout(m_vkd->device(),
+          &dlayout, nullptr, &m_descriptorSetLayout) != VK_SUCCESS)
+      throw DxvkError("DxvkComputePipeline::DxvkComputePipeline: Failed to create descriptor set layout");
+    
+    VkPipelineLayoutCreateInfo playout;
+    playout.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    playout.pNext                  = nullptr;
+    playout.flags                  = 0;
+    playout.setLayoutCount         = 1;
+    playout.pSetLayouts            = &m_descriptorSetLayout;
+    playout.pushConstantRangeCount = 0;
+    playout.pPushConstantRanges    = nullptr;
+    
+    if (m_vkd->vkCreatePipelineLayout(m_vkd->device(),
+          &playout, nullptr, &m_pipelineLayout) != VK_SUCCESS) {
+      this->destroyObjects();
+      throw DxvkError("DxvkComputePipeline::DxvkComputePipeline: Failed to create pipeline layout");
+    }
   }
   
   
   DxvkGraphicsPipeline::~DxvkGraphicsPipeline() {
+    TRACE(this);
     
+    this->destroyPipelines();
+    this->destroyObjects();
   }
   
   
@@ -138,6 +169,14 @@ namespace dxvk {
     
     if (m_descriptorSetLayout != VK_NULL_HANDLE)
       m_vkd->vkDestroyDescriptorSetLayout(m_vkd->device(), m_descriptorSetLayout, nullptr);
+  }
+  
+  
+  void DxvkGraphicsPipeline::destroyPipelines() {
+    for (const auto& pair : m_pipelines) {
+      m_vkd->vkDestroyPipeline(
+        m_vkd->device(), pair.second, nullptr);
+    }
   }
   
 }

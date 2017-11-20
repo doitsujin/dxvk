@@ -56,10 +56,32 @@ namespace dxvk {
       const Rc<DxvkShader>&   fs);
     ~DxvkGraphicsPipeline();
     
+    /**
+     * \brief Descriptor set layout
+     * 
+     * The descriptor set layout for this pipeline.
+     * Use this to allocate new descriptor sets.
+     * \returns The descriptor set layout
+     */
     VkDescriptorSetLayout descriptorSetLayout() const {
       return m_descriptorSetLayout;
     }
     
+    /**
+     * \brief Pipeline layout layout
+     * 
+     * The pipeline layout for this pipeline.
+     * Use this to bind descriptor sets.
+     * \returns The descriptor set layout
+     */
+    VkPipelineLayout pipelineLayout() const {
+      return m_pipelineLayout;
+    }
+    
+    /**
+     * \brief Pipeline handle
+     * \returns Pipeline handle
+     */
     VkPipeline getPipelineHandle(
       const DxvkGraphicsPipelineStateInfo& state);
     
@@ -85,6 +107,7 @@ namespace dxvk {
       const DxvkGraphicsPipelineStateInfo& state) const;
     
     void destroyObjects();
+    void destroyPipelines();
     
   };
   

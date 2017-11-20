@@ -131,6 +131,8 @@ namespace dxvk {
           uint32_t firstInstance) {
     TRACE(this, vertexCount, instanceCount,
       firstVertex, firstInstance);
+    
+    this->commitGraphicsState();
   }
   
   
@@ -142,6 +144,8 @@ namespace dxvk {
           uint32_t firstInstance) {
     TRACE(this, indexCount, instanceCount,
       firstIndex, vertexOffset, firstInstance);
+    
+    this->commitGraphicsState();
   }
   
   
@@ -259,6 +263,7 @@ namespace dxvk {
       
       m_cmd->cmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,
         m_state.activeGraphicsPipeline->getPipelineHandle(gpState));
+      m_cmd->trackResource(m_state.activeGraphicsPipeline);
     }
   }
   
@@ -295,7 +300,7 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::flushGraphicsState() {
+  void DxvkContext::commitGraphicsState() {
     this->renderPassBegin();
     this->bindGraphicsPipeline();
     this->bindDynamicState();

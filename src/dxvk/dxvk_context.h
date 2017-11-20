@@ -184,7 +184,7 @@ namespace dxvk {
     void bindIndexBuffer();
     void bindVertexBuffers();
     
-    void flushGraphicsState();
+    void commitGraphicsState();
     
     DxvkShaderStageState* getShaderStage(
             VkShaderStageFlagBits     stage);
