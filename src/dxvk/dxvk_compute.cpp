@@ -5,7 +5,7 @@ namespace dxvk {
   DxvkComputePipeline::DxvkComputePipeline(
     const Rc<vk::DeviceFn>& vkd,
     const Rc<DxvkShader>&   shader)
-  : m_vkd(vkd) {
+  : m_vkd(vkd), m_shader(shader) {
     TRACE(this, shader);
     
     std::vector<VkDescriptorSetLayoutBinding> bindings;
@@ -40,27 +40,12 @@ namespace dxvk {
       throw DxvkError("DxvkComputePipeline::DxvkComputePipeline: Failed to create pipeline layout");
     }
     
-    SpirvCodeBuffer code = shader->code();
-    
-    VkShaderModuleCreateInfo minfo;
-    minfo.sType               = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    minfo.pNext               = nullptr;
-    minfo.flags               = 0;
-    minfo.codeSize            = code.size();
-    minfo.pCode               = code.data();
-    
-    if (m_vkd->vkCreateShaderModule(m_vkd->device(),
-          &minfo, nullptr, &m_module) != VK_SUCCESS) {
-      this->destroyObjects();
-      throw DxvkError("DxvkComputePipeline::DxvkComputePipeline: Failed to create shader module");
-    }
-    
     VkPipelineShaderStageCreateInfo sinfo;
     sinfo.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     sinfo.pNext               = nullptr;
     sinfo.flags               = 0;
     sinfo.stage               = VK_SHADER_STAGE_COMPUTE_BIT;
-    sinfo.module              = m_module;
+    sinfo.module              = m_shader->module();
     sinfo.pName               = "main";
     sinfo.pSpecializationInfo = nullptr;
     
@@ -90,9 +75,6 @@ namespace dxvk {
   void DxvkComputePipeline::destroyObjects() {
     if (m_pipeline != VK_NULL_HANDLE)
       m_vkd->vkDestroyPipeline(m_vkd->device(), m_pipeline, nullptr);
-    
-    if (m_module != VK_NULL_HANDLE)
-      m_vkd->vkDestroyShaderModule(m_vkd->device(), m_module, nullptr);
     
     if (m_pipelineLayout != VK_NULL_HANDLE)
       m_vkd->vkDestroyPipelineLayout(m_vkd->device(), m_pipelineLayout, nullptr);

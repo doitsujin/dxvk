@@ -30,7 +30,7 @@ namespace dxvk {
             uint32_t          regId,
       const DxbcValue&        index);
     
-    Rc<DxvkShader> finalize() final;
+    SpirvCodeBuffer finalize() final;
     
   private:
     

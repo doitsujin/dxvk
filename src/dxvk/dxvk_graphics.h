@@ -84,6 +84,8 @@ namespace dxvk {
     VkPipeline compilePipeline(
       const DxvkGraphicsPipelineStateInfo& state) const;
     
+    void destroyObjects();
+    
   };
   
 }

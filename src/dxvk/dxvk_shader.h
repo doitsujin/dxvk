@@ -38,22 +38,22 @@ namespace dxvk {
   public:
     
     DxvkShader(
+      const Rc<vk::DeviceFn>&     vkd,
             VkShaderStageFlagBits stage,
-            SpirvCodeBuffer&&     code);
+      const SpirvCodeBuffer&      code);
     ~DxvkShader();
     
-    /**
-     * \brief Retrieves shader code
-     * \returns Shader code buffer
-     */
-    const SpirvCodeBuffer& code() const {
-      return m_code;
+    VkShaderModule module() const {
+      return m_module;
     }
+    
+    VkPipelineShaderStageCreateInfo stageInfo() const;
     
   private:
     
+    Rc<vk::DeviceFn>      m_vkd;
     VkShaderStageFlagBits m_stage;
-    SpirvCodeBuffer       m_code;
+    VkShaderModule        m_module;
     
   };
   

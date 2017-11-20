@@ -40,7 +40,7 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkShader> DxbcModule::compile() const {
+  SpirvCodeBuffer DxbcModule::compile() const {
     if (m_shexChunk == nullptr)
       throw DxvkError("DxbcModule::compile: No SHDR/SHEX chunk");
     

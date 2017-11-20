@@ -50,7 +50,7 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkShader> DxbcCompiler::finalize() {
+  SpirvCodeBuffer DxbcCompiler::finalize() {
     return m_gen->finalize();
   }
   

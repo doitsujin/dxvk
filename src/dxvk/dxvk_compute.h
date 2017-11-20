@@ -55,9 +55,10 @@ namespace dxvk {
   private:
     
     Rc<vk::DeviceFn>      m_vkd;
+    Rc<DxvkShader>        m_shader;
+    
     VkDescriptorSetLayout m_descriptorSetLayout = VK_NULL_HANDLE;
     VkPipelineLayout      m_pipelineLayout      = VK_NULL_HANDLE;
-    VkShaderModule        m_module              = VK_NULL_HANDLE;
     VkPipeline            m_pipeline            = VK_NULL_HANDLE;
     
     void destroyObjects();

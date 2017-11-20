@@ -109,7 +109,7 @@ namespace dxvk {
             uint32_t              regId,
       const DxbcValue&            index) = 0;
     
-    virtual Rc<DxvkShader> finalize() = 0;
+    virtual SpirvCodeBuffer finalize() = 0;
     
     static Rc<DxbcCodeGen> create(
       const DxbcProgramVersion& version);

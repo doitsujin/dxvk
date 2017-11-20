@@ -72,7 +72,72 @@ namespace dxvk {
   
   VkPipeline DxvkGraphicsPipeline::compilePipeline(
     const DxvkGraphicsPipelineStateInfo& state) const {
+    std::array<VkDynamicState, 4> dynamicStates = {
+      VK_DYNAMIC_STATE_VIEWPORT,
+      VK_DYNAMIC_STATE_SCISSOR,
+      VK_DYNAMIC_STATE_BLEND_CONSTANTS,
+      VK_DYNAMIC_STATE_STENCIL_REFERENCE,
+    };
     
+    std::vector<VkPipelineShaderStageCreateInfo> stages;
+    
+    if (m_vs  != nullptr) stages.push_back(m_vs->stageInfo());
+    if (m_tcs != nullptr) stages.push_back(m_tcs->stageInfo());
+    if (m_tes != nullptr) stages.push_back(m_tes->stageInfo());
+    if (m_gs  != nullptr) stages.push_back(m_gs->stageInfo());
+    if (m_fs  != nullptr) stages.push_back(m_fs->stageInfo());
+    
+    VkPipelineViewportStateCreateInfo vpInfo;
+    vpInfo.sType                = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    vpInfo.pNext                = nullptr;
+    vpInfo.flags                = 0;
+    vpInfo.viewportCount        = state.viewportCount;
+    vpInfo.pViewports           = nullptr;
+    vpInfo.scissorCount         = state.viewportCount;
+    vpInfo.pViewports           = nullptr;
+    
+    VkPipelineDynamicStateCreateInfo dsInfo;
+    dsInfo.sType                = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dsInfo.pNext                = nullptr;
+    dsInfo.flags                = 0;
+    dsInfo.dynamicStateCount    = dynamicStates.size();
+    dsInfo.pDynamicStates       = dynamicStates.data();
+    
+    VkGraphicsPipelineCreateInfo info;
+    info.sType                  = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    info.pNext                  = nullptr;
+    info.flags                  = 0;
+    info.stageCount             = stages.size();
+    info.pStages                = stages.data();
+    info.pVertexInputState      = &state.inputLayout->info();
+    info.pInputAssemblyState    = &state.inputAssemblyState->info();
+    info.pTessellationState     = nullptr;  // TODO implement
+    info.pViewportState         = &vpInfo;
+    info.pRasterizationState    = &state.rasterizerState->info();
+    info.pMultisampleState      = &state.multisampleState->info();
+    info.pDepthStencilState     = &state.depthStencilState->info();
+    info.pColorBlendState       = &state.blendState->info();
+    info.pDynamicState          = &dsInfo;
+    info.layout                 = m_pipelineLayout;
+    info.renderPass             = state.renderPass;
+    info.subpass                = 0;
+    info.basePipelineHandle     = VK_NULL_HANDLE;
+    info.basePipelineIndex      = 0;
+    
+    VkPipeline pipeline = VK_NULL_HANDLE;
+    if (m_vkd->vkCreateGraphicsPipelines(m_vkd->device(),
+          VK_NULL_HANDLE, 1, &info, nullptr, &pipeline) != VK_SUCCESS)
+      throw DxvkError("DxvkGraphicsPipeline::DxvkGraphicsPipeline: Failed to compile pipeline");
+    return pipeline;
+  }
+  
+  
+  void DxvkGraphicsPipeline::destroyObjects() {
+    if (m_pipelineLayout != VK_NULL_HANDLE)
+      m_vkd->vkDestroyPipelineLayout(m_vkd->device(), m_pipelineLayout, nullptr);
+    
+    if (m_descriptorSetLayout != VK_NULL_HANDLE)
+      m_vkd->vkDestroyDescriptorSetLayout(m_vkd->device(), m_descriptorSetLayout, nullptr);
   }
   
 }
