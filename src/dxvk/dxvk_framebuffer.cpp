@@ -12,13 +12,13 @@ namespace dxvk {
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       if (m_colorTargets.at(i) != nullptr) {
         result.setColorFormat(i, m_colorTargets.at(i)->info().format);
-        result.setSampleCount(m_colorTargets.at(i)->imageInfo().sampleCount);
+        result.setSampleCount(m_colorTargets.at(i)->image()->info().sampleCount);
       }
     }
     
     if (m_depthTarget != nullptr) {
       result.setDepthFormat(m_depthTarget->info().format);
-      result.setSampleCount(m_depthTarget->imageInfo().sampleCount);
+      result.setSampleCount(m_depthTarget->image()->info().sampleCount);
     }
     
     return result;
@@ -55,7 +55,7 @@ namespace dxvk {
   
   DxvkFramebufferSize DxvkRenderTargets::renderTargetSize(
     const Rc<DxvkImageView>& renderTarget) const {
-    auto extent = renderTarget->imageInfo().extent;
+    auto extent = renderTarget->image()->info().extent;
     auto layers = renderTarget->info().numLayers;
     return DxvkFramebufferSize { extent.width, extent.height, layers };
   }

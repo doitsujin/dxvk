@@ -60,6 +60,13 @@ namespace dxvk {
   }
   
   
+  Rc<DxvkBufferView> DxvkDevice::createBufferView(
+    const Rc<DxvkBuffer>&           buffer,
+    const DxvkBufferViewCreateInfo& createInfo) {
+    return new DxvkBufferView(m_vkd, buffer, createInfo);
+  }
+  
+  
   Rc<DxvkImage> DxvkDevice::createImage(
     const DxvkImageCreateInfo&  createInfo,
           VkMemoryPropertyFlags memoryType) {

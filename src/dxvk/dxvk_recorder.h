@@ -48,6 +48,12 @@ namespace dxvk {
             VkPipelineBindPoint     pipelineBindPoint,
             VkPipeline              pipeline) = 0;
     
+    virtual void cmdBindVertexBuffers(
+            uint32_t                firstBinding,
+            uint32_t                bindingCount,
+      const VkBuffer*               pBuffers,
+      const VkDeviceSize*           pOffsets) = 0;
+    
     virtual void cmdClearAttachments(
             uint32_t                attachmentCount,
       const VkClearAttachment*      pAttachments,

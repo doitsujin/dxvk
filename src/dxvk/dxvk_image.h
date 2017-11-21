@@ -118,11 +118,11 @@ namespace dxvk {
     }
     
     /**
-     * \brief Image properties
-     * \returns Image properties
+     * \brief Image
+     * \returns Image
      */
-    const DxvkImageCreateInfo& imageInfo() const {
-      return m_image->info();
+    Rc<DxvkImage> image() const {
+      return m_image;
     }
     
   private:

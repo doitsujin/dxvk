@@ -3,6 +3,7 @@
 #include "dxvk_adapter.h"
 #include "dxvk_buffer.h"
 #include "dxvk_compute.h"
+#include "dxvk_constant_state.h"
 #include "dxvk_context.h"
 #include "dxvk_framebuffer.h"
 #include "dxvk_memory.h"
@@ -96,6 +97,17 @@ namespace dxvk {
     Rc<DxvkBuffer> createBuffer(
       const DxvkBufferCreateInfo& createInfo,
             VkMemoryPropertyFlags memoryType);
+    
+    /**
+     * \brief Creates a buffer view
+     * 
+     * \param [in] buffer The buffer to view
+     * \param [in] createInfo Buffer view properties
+     * \returns The buffer view object
+     */
+    Rc<DxvkBufferView> createBufferView(
+      const Rc<DxvkBuffer>&           buffer,
+      const DxvkBufferViewCreateInfo& createInfo);
     
     /**
      * \brief Creates an image object

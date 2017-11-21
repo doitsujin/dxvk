@@ -136,6 +136,16 @@ namespace dxvk {
   }
   
   
+  void DxvkCommandList::cmdBindVertexBuffers(
+          uint32_t                firstBinding,
+          uint32_t                bindingCount,
+    const VkBuffer*               pBuffers,
+    const VkDeviceSize*           pOffsets) {
+    m_vkd->vkCmdBindVertexBuffers(m_buffer,
+      firstBinding, bindingCount, pBuffers, pOffsets);
+  }
+  
+  
   void DxvkCommandList::cmdClearAttachments(
           uint32_t                attachmentCount,
     const VkClearAttachment*      pAttachments,

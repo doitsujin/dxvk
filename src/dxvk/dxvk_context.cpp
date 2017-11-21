@@ -172,8 +172,7 @@ namespace dxvk {
       m_state.vp.scissorRects.at(i) = scissorRects[i];
     }
     
-    m_cmd->cmdSetViewport(0, viewportCount, viewports);
-    m_cmd->cmdSetScissor (0, viewportCount, scissorRects);
+    this->updateViewports();
   }
   
   
@@ -296,16 +295,22 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::bindDynamicState() {
+  void DxvkContext::updateDynamicState() {
     if (m_state.flags.test(DxvkContextFlag::GpDirtyDynamicState)) {
       m_state.flags.clr(DxvkContextFlag::GpDirtyDynamicState);
       
-      // TODO implement
+      this->updateViewports();
     }
   }
   
   
-  void DxvkContext::bindIndexBuffer() {
+  void DxvkContext::updateViewports() {
+    m_cmd->cmdSetViewport(0, m_state.vp.viewportCount, m_state.vp.viewports.data());
+    m_cmd->cmdSetScissor (0, m_state.vp.viewportCount, m_state.vp.scissorRects.data());
+  }
+  
+  
+  void DxvkContext::updateIndexBufferBinding() {
     if (m_state.flags.test(DxvkContextFlag::GpDirtyIndexBuffer)) {
       m_state.flags.clr(DxvkContextFlag::GpDirtyIndexBuffer);
       
@@ -321,11 +326,21 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::bindVertexBuffers() {
+  void DxvkContext::updateVertexBufferBindings() {
     if (m_state.flags.test(DxvkContextFlag::GpDirtyVertexBuffers)) {
       m_state.flags.clr(DxvkContextFlag::GpDirtyVertexBuffers);
       
-      // TODO implement
+      for (uint32_t i = 0; i < m_state.vi.vertexBuffers.size(); i++) {
+        const DxvkBufferBinding vbo = m_state.vi.vertexBuffers.at(i);
+        
+        VkBuffer     handle = vbo.bufferHandle();
+        VkDeviceSize offset = vbo.bufferOffset();
+        
+        if (handle != VK_NULL_HANDLE) {
+          m_cmd->cmdBindVertexBuffers(i, 1, &handle, &offset);
+          m_cmd->trackResource(vbo.resource());
+        }
+      }
     }
   }
   
@@ -333,9 +348,9 @@ namespace dxvk {
   void DxvkContext::commitGraphicsState() {
     this->renderPassBegin();
     this->bindGraphicsPipeline();
-    this->bindDynamicState();
-    this->bindIndexBuffer();
-    this->bindVertexBuffers();
+    this->updateDynamicState();
+    this->updateIndexBufferBinding();
+    this->updateVertexBufferBindings();
   }
   
   

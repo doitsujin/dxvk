@@ -192,9 +192,12 @@ namespace dxvk {
     void renderPassEnd();
     
     void bindGraphicsPipeline();
-    void bindDynamicState();
-    void bindIndexBuffer();
-    void bindVertexBuffers();
+    
+    void updateDynamicState();
+    void updateViewports();
+    
+    void updateIndexBufferBinding();
+    void updateVertexBufferBindings();
     
     void commitGraphicsState();
     

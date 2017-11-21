@@ -30,6 +30,25 @@ namespace dxvk {
   
   
   /**
+   * \brief Buffer view create info
+   * 
+   * The properties of a buffer view that
+   * are to \ref DxvkDevice::createBufferView
+   */
+  struct DxvkBufferViewCreateInfo {
+    
+    /// Buffer data format, like image data
+    VkFormat format;
+    
+    /// Offset of the buffer region to include in the view
+    VkDeviceSize rangeOffset;
+    
+    /// Size of the buffer region to include in the view
+    VkDeviceSize rangeLength;
+  };
+  
+  
+  /**
    * \brief DXVK buffer
    * 
    * A simple buffer resource that stores
@@ -81,6 +100,59 @@ namespace dxvk {
     DxvkBufferCreateInfo  m_info;
     DxvkMemory            m_memory;
     VkBuffer              m_buffer = VK_NULL_HANDLE;
+    
+  };
+  
+  
+  /**
+   * \brief Buffer view
+   * 
+   * Allows the application to interpret buffer
+   * contents like formatted pixel data. These
+   * buffer views are used as texel buffers.
+   */
+  class DxvkBufferView : public DxvkResource {
+    
+  public:
+    
+    DxvkBufferView(
+      const Rc<vk::DeviceFn>&         vkd,
+      const Rc<DxvkBuffer>&           buffer,
+      const DxvkBufferViewCreateInfo& info);
+    
+    ~DxvkBufferView();
+    
+    /**
+     * \brief Buffer view handle
+     * \returns Buffer view handle
+     */
+    VkBufferView handle() const {
+      return m_view;
+    }
+    
+    /**
+     * \brief Buffer view properties
+     * \returns Buffer view properties
+     */
+    const DxvkBufferViewCreateInfo& info() const {
+      return m_info;
+    }
+    
+    /**
+     * \brief Underlying buffer object
+     * \returns Underlying buffer object
+     */
+    Rc<DxvkBuffer> buffer() const {
+      return m_buffer;
+    }
+    
+  private:
+    
+    Rc<vk::DeviceFn>  m_vkd;
+    Rc<DxvkBuffer>    m_buffer;
+    
+    DxvkBufferViewCreateInfo m_info;
+    VkBufferView             m_view;
     
   };
   
