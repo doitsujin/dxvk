@@ -97,6 +97,18 @@ namespace dxvk {
       const VkClearRect&        clearArea);
     
     /**
+     * \brief Starts compute jobs
+     * 
+     * \param [in] x Number of threads in X direction
+     * \param [in] y Number of threads in Y direction
+     * \param [in] z Number of threads in Z direction
+     */
+    void dispatch(
+            uint32_t x,
+            uint32_t y,
+            uint32_t z);
+    
+    /**
      * \brief Draws primitive without using an index buffer
      * 
      * \param [in] vertexCount Number of vertices to draw
@@ -191,6 +203,7 @@ namespace dxvk {
     void renderPassBegin();
     void renderPassEnd();
     
+    void bindComputePipeline();
     void bindGraphicsPipeline();
     
     void updateDynamicState();
@@ -199,6 +212,7 @@ namespace dxvk {
     void updateIndexBufferBinding();
     void updateVertexBufferBindings();
     
+    void commitComputeState();
     void commitGraphicsState();
     
     DxvkShaderStageState* getShaderStage(

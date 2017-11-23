@@ -124,6 +124,16 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::dispatch(
+          uint32_t x,
+          uint32_t y,
+          uint32_t z) {
+    TRACE(this, x, y, z);
+    
+    m_cmd->cmdDispatch(x, y, z);
+  }
+  
+  
   void DxvkContext::draw(
           uint32_t vertexCount,
           uint32_t instanceCount,
@@ -265,6 +275,11 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::bindComputePipeline() {
+    // TODO implement
+  }
+  
+  
   void DxvkContext::bindGraphicsPipeline() {
     if (m_state.flags.test(DxvkContextFlag::GpDirtyPipeline)) {
       m_state.flags.clr(DxvkContextFlag::GpDirtyPipeline);
@@ -342,6 +357,11 @@ namespace dxvk {
         }
       }
     }
+  }
+  
+  
+  void DxvkContext::commitComputeState() {
+    this->bindComputePipeline();
   }
   
   
