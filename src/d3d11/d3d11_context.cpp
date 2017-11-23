@@ -226,7 +226,11 @@ namespace dxvk {
   void D3D11DeviceContext::Draw(
           UINT            VertexCount,
           UINT            StartVertexLocation) {
-    Logger::err("D3D11DeviceContext::Draw: Not implemented");
+    TRACE(this, VertexCount, StartVertexLocation);
+    
+    m_context->draw(
+      VertexCount, 1,
+      StartVertexLocation, 0);
   }
   
   
@@ -234,7 +238,12 @@ namespace dxvk {
           UINT            IndexCount,
           UINT            StartIndexLocation,
           INT             BaseVertexLocation) {
-    Logger::err("D3D11DeviceContext::DrawIndexed: Not implemented");
+    TRACE(this, IndexCount, StartIndexLocation, BaseVertexLocation);
+    
+    m_context->drawIndexed(
+      IndexCount, 1,
+      StartIndexLocation,
+      BaseVertexLocation, 0);
   }
   
   
@@ -243,7 +252,14 @@ namespace dxvk {
           UINT            InstanceCount,
           UINT            StartVertexLocation,
           UINT            StartInstanceLocation) {
-    Logger::err("D3D11DeviceContext::DrawInstanced: Not implemented");
+    TRACE(this, VertexCountPerInstance, InstanceCount,
+      StartVertexLocation, StartInstanceLocation);
+    
+    m_context->draw(
+      VertexCountPerInstance,
+      InstanceCount,
+      StartVertexLocation,
+      StartInstanceLocation);
   }
   
   
@@ -253,7 +269,15 @@ namespace dxvk {
           UINT            StartIndexLocation,
           INT             BaseVertexLocation,
           UINT            StartInstanceLocation) {
-    Logger::err("D3D11DeviceContext::DrawIndexedInstanced: Not implemented");
+    TRACE(this, IndexCountPerInstance, InstanceCount,
+      StartIndexLocation, BaseVertexLocation, StartInstanceLocation);
+    
+    m_context->drawIndexed(
+      IndexCountPerInstance,
+      InstanceCount,
+      StartIndexLocation,
+      BaseVertexLocation,
+      StartInstanceLocation);
   }
   
   
@@ -275,7 +299,12 @@ namespace dxvk {
           UINT            ThreadGroupCountX,
           UINT            ThreadGroupCountY,
           UINT            ThreadGroupCountZ) {
-    Logger::err("D3D11DeviceContext::Dispatch: Not implemented");
+    TRACE(this, ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
+    
+    m_context->dispatch(
+      ThreadGroupCountX,
+      ThreadGroupCountY,
+      ThreadGroupCountZ);
   }
   
   
