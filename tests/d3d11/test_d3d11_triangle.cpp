@@ -32,7 +32,7 @@ public:
     DXGI_SWAP_CHAIN_DESC swapDesc;
     swapDesc.BufferDesc.Width             = 1024;
     swapDesc.BufferDesc.Height            = 600;
-    swapDesc.BufferDesc.RefreshRate       = { 60, 0 };
+    swapDesc.BufferDesc.RefreshRate       = { 60, 1 };
     swapDesc.BufferDesc.Format            = DXGI_FORMAT_R8G8B8A8_UNORM;
     swapDesc.BufferDesc.ScanlineOrdering  = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
     swapDesc.BufferDesc.Scaling           = DXGI_MODE_SCALING_UNSPECIFIED;
