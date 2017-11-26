@@ -97,6 +97,22 @@ namespace dxvk {
       const VkClearRect&        clearArea);
     
     /**
+     * \brief Copies data from one buffer to another
+     * 
+     * \param [in] dstBuffer Destination buffer
+     * \param [in] dstOffset Destination data offset
+     * \param [in] srcBuffer Source buffer
+     * \param [in] srcOffset Source data offset
+     * \param [in] numBytes Number of bytes to copy
+     */
+    void copyBuffer(
+      const Rc<DxvkBuffer>&       dstBuffer,
+            VkDeviceSize          dstOffset,
+      const Rc<DxvkBuffer>&       srcBuffer,
+            VkDeviceSize          srcOffset,
+            VkDeviceSize          numBytes);
+    
+    /**
      * \brief Starts compute jobs
      * 
      * \param [in] x Number of threads in X direction
@@ -199,6 +215,7 @@ namespace dxvk {
     
     Rc<DxvkRecorder> m_cmd;
     DxvkContextState m_state;
+    DxvkBarrierSet   m_barriers;
     
     void renderPassBegin();
     void renderPassEnd();
@@ -217,6 +234,8 @@ namespace dxvk {
     
     DxvkShaderStageState* getShaderStage(
             VkShaderStageFlagBits     stage);
+    
+    
     
   };
   

@@ -13,6 +13,8 @@ namespace dxvk {
     uint32_t numLayers;
     uint32_t mipLevels;
     VkImageUsageFlags usage;
+    VkPipelineStageFlags stages;
+    VkAccessFlags access;
     VkImageTiling tiling;
   };
   

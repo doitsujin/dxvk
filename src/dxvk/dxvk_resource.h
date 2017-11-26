@@ -4,6 +4,13 @@
 
 namespace dxvk {
   
+  enum class DxvkResourceAccessType {
+    Read    = 0,
+    Write   = 1,
+  };
+  
+  using DxvkResourceAccessTypes = Flags<DxvkResourceAccessType>;
+  
   /**
    * \brief DXVK resource
    * 

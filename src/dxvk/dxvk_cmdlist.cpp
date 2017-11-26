@@ -157,6 +157,17 @@ namespace dxvk {
   }
   
   
+  void DxvkCommandList::cmdCopyBuffer(
+          VkBuffer                srcBuffer,
+          VkBuffer                dstBuffer,
+          uint32_t                regionCount,
+    const VkBufferCopy*           pRegions) {
+    m_vkd->vkCmdCopyBuffer(m_buffer,
+      srcBuffer, dstBuffer,
+      regionCount, pRegions);
+  }
+  
+  
   void DxvkCommandList::cmdDispatch(
           uint32_t                x,
           uint32_t                y,

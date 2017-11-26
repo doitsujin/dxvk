@@ -102,6 +102,8 @@ namespace dxvk {
   void DxvkContext::bindVertexBuffer(
           uint32_t              binding,
     const DxvkBufferBinding&    buffer) {
+    TRACE(this, binding);
+    
     if (m_state.vi.vertexBuffers.at(binding) != buffer) {
       m_state.vi.vertexBuffers.at(binding) = buffer;
       m_state.flags.set(DxvkContextFlag::GpDirtyVertexBuffers);
@@ -121,6 +123,43 @@ namespace dxvk {
     
     m_cmd->cmdClearAttachments(
       1, &attachment, 1, &clearArea);
+  }
+  
+  
+  void DxvkContext::copyBuffer(
+    const Rc<DxvkBuffer>&       dstBuffer,
+          VkDeviceSize          dstOffset,
+    const Rc<DxvkBuffer>&       srcBuffer,
+          VkDeviceSize          srcOffset,
+          VkDeviceSize          numBytes) {
+    TRACE(this, dstBuffer, dstOffset, srcBuffer, srcOffset, numBytes);
+    
+    if (numBytes != 0) {
+      VkBufferCopy bufferRegion;
+      bufferRegion.srcOffset = srcOffset;
+      bufferRegion.dstOffset = dstOffset;
+      bufferRegion.size      = numBytes;
+      
+      m_cmd->cmdCopyBuffer(
+        srcBuffer->handle(),
+        dstBuffer->handle(),
+        1, &bufferRegion);
+      
+      m_barriers.accessBuffer(
+        srcBuffer, srcOffset, numBytes,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_TRANSFER_READ_BIT);
+      
+      m_barriers.accessBuffer(
+        dstBuffer, dstOffset, numBytes,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_TRANSFER_WRITE_BIT);
+      
+      m_barriers.recordCommands(*m_cmd);
+      
+      m_cmd->trackResource(dstBuffer);
+      m_cmd->trackResource(srcBuffer);
+    }
   }
   
   
@@ -361,6 +400,7 @@ namespace dxvk {
   
   
   void DxvkContext::commitComputeState() {
+    this->renderPassEnd();
     this->bindComputePipeline();
   }
   

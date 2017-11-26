@@ -103,6 +103,12 @@ namespace dxvk {
             uint32_t                rectCount,
       const VkClearRect*            pRects) final;
     
+    void cmdCopyBuffer(
+            VkBuffer                srcBuffer,
+            VkBuffer                dstBuffer,
+            uint32_t                regionCount,
+      const VkBufferCopy*           pRegions) final;
+    
     void cmdDispatch(
             uint32_t                x,
             uint32_t                y,

@@ -177,6 +177,14 @@ namespace dxvk {
             uint32_t                           bindingCount,
       const VkVertexInputBindingDescription*   bindingInfo);
     
+    uint32_t vertexAttributeCount() const {
+      return m_attributes.size();
+    }
+    
+    uint32_t vertexBindingCount() const {
+      return m_bindings.size();
+    }
+    
     const VkPipelineVertexInputStateCreateInfo& info() const {
       return m_info;
     }

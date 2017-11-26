@@ -1,5 +1,7 @@
 #pragma once
 
+#include "dxvk_buffer.h"
+#include "dxvk_image.h"
 #include "dxvk_recorder.h"
 
 namespace dxvk {
@@ -17,37 +19,29 @@ namespace dxvk {
     
     DxvkBarrierSet();
     ~DxvkBarrierSet();
-    
-    bool hasBarriers() const;
-    
-    void addMemoryBarrier(
-            VkPipelineStageFlags    srcFlags,
-            VkPipelineStageFlags    dstFlags,
-      const VkMemoryBarrier&        barrier);
-    
-    void addBufferBarrier(
-            VkPipelineStageFlags    srcFlags,
-            VkPipelineStageFlags    dstFlags,
-      const VkBufferMemoryBarrier&  barrier);
-    
-    void addImageBarrier(
-            VkPipelineStageFlags    srcFlags,
-            VkPipelineStageFlags    dstFlags,
-      const VkImageMemoryBarrier&   barrier);
+        
+    void accessBuffer(
+      const Rc<DxvkBuffer>&           buffer,
+            VkDeviceSize              offset,
+            VkDeviceSize              size,
+            VkPipelineStageFlags      stages,
+            VkAccessFlags             access);
     
     void recordCommands(
-            DxvkRecorder&           recorder);
+            DxvkRecorder&             recorder);
     
     void reset();
     
   private:
     
-    VkPipelineStageFlags m_srcFlags = 0;
-    VkPipelineStageFlags m_dstFlags = 0;
+    VkPipelineStageFlags m_srcStages = 0;
+    VkPipelineStageFlags m_dstStages = 0;
     
-    std::vector<VkMemoryBarrier>        m_memory;
-    std::vector<VkBufferMemoryBarrier>  m_buffer;
-    std::vector<VkImageMemoryBarrier>   m_image;
+    std::vector<VkMemoryBarrier>        m_memBarriers;
+    std::vector<VkBufferMemoryBarrier>  m_bufBarriers;
+    std::vector<VkImageMemoryBarrier>   m_imgBarriers;
+    
+    DxvkResourceAccessTypes getAccessTypes(VkAccessFlags flags) const;
     
   };
   
