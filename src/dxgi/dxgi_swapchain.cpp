@@ -8,19 +8,26 @@ namespace dxvk {
   DxgiSwapChain::DxgiSwapChain(
           DxgiFactory*          factory,
           IUnknown*             pDevice,
-          DXGI_SWAP_CHAIN_DESC* pDesc) {
-    TRACE(this, factory, pDevice);
+          DXGI_SWAP_CHAIN_DESC* pDesc)
+  : m_factory (factory),
+    m_desc    (*pDesc) {
+    
+    if (FAILED(pDevice->QueryInterface(__uuidof(IDXVKDevice),
+        reinterpret_cast<void**>(&m_device))))
+      throw DxvkError("DxgiSwapChain::DxgiSwapChain: Invalid device");
+    
   }
   
   
   DxgiSwapChain::~DxgiSwapChain() {
-    TRACE(this);
+    
   }
   
   
   HRESULT DxgiSwapChain::QueryInterface(REFIID riid, void** ppvObject) {
     COM_QUERY_IFACE(riid, ppvObject, IUnknown);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIObject);
+    COM_QUERY_IFACE(riid, ppvObject, IDXGIDeviceSubObject);
     COM_QUERY_IFACE(riid, ppvObject, IDXGISwapChain);
     
     Logger::warn("DxgiSwapChain::QueryInterface: Unknown interface query");
@@ -29,14 +36,12 @@ namespace dxvk {
   
   
   HRESULT DxgiSwapChain::GetParent(REFIID riid, void** ppParent) {
-    Logger::err("DxgiSwapChain::GetParent: Not implemented");
-    return E_NOTIMPL;
+    return m_factory->QueryInterface(riid, ppParent);
   }
   
   
   HRESULT DxgiSwapChain::GetDevice(REFIID riid, void** ppDevice) {
-    Logger::err("DxgiSwapChain::GetDevice: Not implemented");
-    return E_NOTIMPL;
+    return m_device->QueryInterface(riid, ppDevice);
   }
   
   

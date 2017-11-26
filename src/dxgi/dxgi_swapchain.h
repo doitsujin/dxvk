@@ -73,7 +73,10 @@ namespace dxvk {
 
   private:
     
+    Com<DxgiFactory> m_factory;
+    Com<IDXVKDevice> m_device;
     
+    DXGI_SWAP_CHAIN_DESC m_desc;
     
   };
   
