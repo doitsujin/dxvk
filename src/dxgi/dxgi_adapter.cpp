@@ -27,6 +27,7 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, IUnknown);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIObject);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIAdapter);
+    COM_QUERY_IFACE(riid, ppvObject, IDXGIAdapter1);
     COM_QUERY_IFACE(riid, ppvObject, IDXVKAdapter);
     
     Logger::warn("DxgiAdapter::QueryInterface: Unknown interface query");
@@ -71,6 +72,25 @@ namespace dxvk {
   
   
   HRESULT DxgiAdapter::GetDesc(DXGI_ADAPTER_DESC* pDesc) {
+    DXGI_ADAPTER_DESC1 desc1;
+    HRESULT hr = this->GetDesc1(&desc1);
+    
+    if (SUCCEEDED(hr)) {
+      pDesc->VendorId               = desc1.VendorId;
+      pDesc->DeviceId               = desc1.DeviceId;
+      pDesc->SubSysId               = desc1.SubSysId;
+      pDesc->Revision               = desc1.Revision;
+      pDesc->DedicatedVideoMemory   = desc1.DedicatedVideoMemory;
+      pDesc->DedicatedSystemMemory  = desc1.DedicatedSystemMemory;
+      pDesc->SharedSystemMemory     = desc1.SharedSystemMemory;
+      pDesc->AdapterLuid            = desc1.AdapterLuid;
+    }
+    
+    return hr;
+  }
+  
+  
+  HRESULT DxgiAdapter::GetDesc1(DXGI_ADAPTER_DESC1* pDesc) {
     if (pDesc == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
@@ -100,6 +120,7 @@ namespace dxvk {
     pDesc->DedicatedSystemMemory  = 0;
     pDesc->SharedSystemMemory     = sharedMemory;
     pDesc->AdapterLuid            = LUID { 0, 0 };  // TODO implement
+    pDesc->Flags                  = 0;
     return S_OK;
   }
   

@@ -16,7 +16,7 @@ namespace dxvk {
  * this interface.
  */
 MIDL_INTERFACE("907bf281-ea3c-43b4-a8e4-9f231107b4ff")
-IDXVKAdapter : public IDXGIAdapter {
+IDXVKAdapter : public IDXGIAdapter1 {
   static const GUID guid;
   
   virtual dxvk::Rc<dxvk::DxvkAdapter> GetDXVKAdapter() = 0;

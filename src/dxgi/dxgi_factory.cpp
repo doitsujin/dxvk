@@ -21,6 +21,7 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, IUnknown);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIObject);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIFactory);
+    COM_QUERY_IFACE(riid, ppvObject, IDXGIFactory1);
     
     Logger::warn("DxgiFactory::QueryInterface: Unknown interface query");
     return E_NOINTERFACE;
@@ -66,6 +67,20 @@ namespace dxvk {
     if (ppAdapter == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
+    IDXGIAdapter1* handle = nullptr;
+    HRESULT hr = this->EnumAdapters1(Adapter, &handle);
+    if (SUCCEEDED(hr))
+      *ppAdapter = handle;
+    return hr;
+  }
+  
+  
+  HRESULT DxgiFactory::EnumAdapters1(
+          UINT            Adapter,
+          IDXGIAdapter1** ppAdapter) {
+    if (ppAdapter == nullptr)
+      return DXGI_ERROR_INVALID_CALL;
+    
     if (Adapter >= m_adapters.size())
       return DXGI_ERROR_NOT_FOUND;
     
@@ -88,6 +103,12 @@ namespace dxvk {
     Logger::warn("DxgiFactory::MakeWindowAssociation: Ignoring flags");
     m_associatedWindow = WindowHandle;
     return S_OK;
+  }
+  
+  
+  BOOL DxgiFactory::IsCurrent() {
+    Logger::warn("DxgiFactory::IsCurrent: Stub");
+    return TRUE;
   }
   
 }

@@ -8,7 +8,7 @@
 
 namespace dxvk {
     
-  class DxgiFactory : public DxgiObject<IDXGIFactory> {
+  class DxgiFactory : public DxgiObject<IDXGIFactory1> {
     
   public:
     
@@ -36,12 +36,18 @@ namespace dxvk {
             UINT            Adapter,
             IDXGIAdapter**  ppAdapter) final;
     
+    HRESULT EnumAdapters1(
+            UINT            Adapter,
+            IDXGIAdapter1** ppAdapter) final;
+    
     HRESULT GetWindowAssociation(
             HWND *pWindowHandle) final;
     
     HRESULT MakeWindowAssociation(
             HWND WindowHandle,
             UINT Flags) final;
+    
+    BOOL IsCurrent();
     
   private:
     

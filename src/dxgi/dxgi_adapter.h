@@ -41,6 +41,9 @@ namespace dxvk {
     HRESULT GetDesc(
             DXGI_ADAPTER_DESC *pDesc) final;
     
+    HRESULT GetDesc1(
+            DXGI_ADAPTER_DESC1 *pDesc) final;
+    
     Rc<DxvkAdapter> GetDXVKAdapter() final;
     
   private:
