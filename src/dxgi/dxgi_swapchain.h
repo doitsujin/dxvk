@@ -3,6 +3,9 @@
 #include <memory>
 #include <mutex>
 
+#include <dxvk_surface.h>
+#include <dxvk_swapchain.h>
+
 #include "dxgi_interfaces.h"
 #include "dxgi_object.h"
 
@@ -82,6 +85,14 @@ namespace dxvk {
     DXGI_FRAME_STATISTICS m_stats;
     
     SDL_Window* m_window = nullptr;
+    
+    Rc<DxvkContext>     m_context;
+    Rc<DxvkCommandList> m_commandList;
+    Rc<DxvkSurface>     m_surface;
+    Rc<DxvkSwapchain>   m_swapchain;
+    
+    Rc<DxvkSemaphore>   m_acquireSync;
+    Rc<DxvkSemaphore>   m_presentSync;
     
   };
   

@@ -55,7 +55,7 @@ public:
   }
   
   void run() {
-    
+    m_swapChain->Present(0, 0);
   }
   
 private:

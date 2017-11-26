@@ -1,5 +1,3 @@
-#include <dxvk_swapchain.h>
-
 #include "dxgi_factory.h"
 #include "dxgi_swapchain.h"
 
@@ -40,6 +38,33 @@ namespace dxvk {
     
     if (FAILED(this->SetFullscreenState(!pDesc->Windowed, nullptr)))
       throw DxvkError("DxgiSwapChain::DxgiSwapChain: Failed to set initial fullscreen state");
+    
+    // Create swap chain
+    Rc<DxvkDevice>  dxvkDevice  = m_device->GetDXVKDevice();
+    Rc<DxvkAdapter> dxvkAdapter = dxvkDevice->adapter();
+    
+    m_context = dxvkDevice->createContext();
+    m_commandList = dxvkDevice->createCommandList();
+    
+    m_acquireSync = dxvkDevice->createSemaphore();
+    m_presentSync = dxvkDevice->createSemaphore();
+    
+    HINSTANCE instance = reinterpret_cast<HINSTANCE>(
+      GetWindowLongPtr(m_desc.OutputWindow, GWLP_HINSTANCE));
+    
+    m_surface = dxvkAdapter->createSurface(
+      instance, m_desc.OutputWindow);
+    
+    DxvkSwapchainProperties swapchainProperties;
+    swapchainProperties.preferredSurfaceFormat.format     = VK_FORMAT_B8G8R8A8_SNORM;
+    swapchainProperties.preferredSurfaceFormat.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+    swapchainProperties.preferredPresentMode              = VK_PRESENT_MODE_FIFO_KHR;
+    swapchainProperties.preferredBufferSize.width         = m_desc.BufferDesc.Width;
+    swapchainProperties.preferredBufferSize.height        = m_desc.BufferDesc.Height;
+    
+    m_swapchain = dxvkDevice->createSwapchain(
+      m_surface, swapchainProperties);
+    
   }
   
   
@@ -72,6 +97,11 @@ namespace dxvk {
   
   HRESULT DxgiSwapChain::GetBuffer(UINT Buffer, REFIID riid, void** ppSurface) {
     std::lock_guard<std::mutex> lock(m_mutex);
+    
+    if (Buffer > 0) {
+      Logger::err("DxgiSwapChain::GetBuffer: Buffer > 0 not supported");
+      return DXGI_ERROR_INVALID_CALL;
+    }
     
     Logger::err("DxgiSwapChain::GetBuffer: Not implemented");
     return E_NOTIMPL;
@@ -152,8 +182,47 @@ namespace dxvk {
   HRESULT DxgiSwapChain::Present(UINT SyncInterval, UINT Flags) {
     std::lock_guard<std::mutex> lock(m_mutex);
     
-    Logger::err("DxgiSwapChain::Present: Not implemented");
-    return E_NOTIMPL;
+    // TODO implement sync interval
+    // TODO implement flags
+    
+    auto dxvkDevice = m_device->GetDXVKDevice();
+    
+    auto framebuffer = m_swapchain->getFramebuffer(m_acquireSync);
+    auto framebufferSize = framebuffer->size();
+    
+    m_context->beginRecording(m_commandList);
+    m_context->bindFramebuffer(framebuffer);
+    
+    // TODO render back buffer into the swap image,
+    // the clear operation is only a placeholder.
+    VkClearAttachment clearAttachment;
+    clearAttachment.aspectMask      = VK_IMAGE_ASPECT_COLOR_BIT;
+    clearAttachment.colorAttachment = 0;
+    clearAttachment.clearValue.color.float32[0] = 1.0f;
+    clearAttachment.clearValue.color.float32[1] = 1.0f;
+    clearAttachment.clearValue.color.float32[2] = 1.0f;
+    clearAttachment.clearValue.color.float32[3] = 1.0f;
+    
+    VkClearRect clearArea;
+    clearArea.rect           = VkRect2D { { 0, 0 }, framebufferSize.width, framebufferSize.height };
+    clearArea.baseArrayLayer = 0;
+    clearArea.layerCount     = framebufferSize.layers;
+    
+    m_context->clearRenderTarget(
+      clearAttachment,
+      clearArea);
+    
+    m_context->endRecording();
+    
+    dxvkDevice->submitCommandList(m_commandList,
+      m_acquireSync, m_presentSync);
+    
+    m_swapchain->present( m_presentSync);
+    
+    // FIXME Make sure that the semaphores and the command
+    // list can be safely used without stalling the device.
+    dxvkDevice->waitForIdle();
+    return S_OK;
   }
   
   
@@ -165,8 +234,19 @@ namespace dxvk {
           UINT        SwapChainFlags) {
     std::lock_guard<std::mutex> lock(m_mutex);
     
-    Logger::err("DxgiSwapChain::ResizeBuffers: Not implemented");
-    return E_NOTIMPL;
+    m_desc.BufferDesc.Width  = Width;
+    m_desc.BufferDesc.Height = Height;
+    m_desc.BufferDesc.Format = NewFormat;
+    m_desc.BufferCount       = BufferCount;
+    m_desc.Flags             = SwapChainFlags;
+    
+    try {
+      // TODO implement
+      return S_OK;
+    } catch (const DxvkError& err) {
+      Logger::err(err.message());
+      return DXGI_ERROR_DRIVER_INTERNAL_ERROR;
+    }
   }
   
   
@@ -175,7 +255,6 @@ namespace dxvk {
       return DXGI_ERROR_INVALID_CALL;
     
     std::lock_guard<std::mutex> lock(m_mutex);
-    m_desc.BufferDesc = *pNewTargetParameters;
     
     // Applies to windowed mode
     SDL_SetWindowSize(m_window,
