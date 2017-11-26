@@ -73,10 +73,15 @@ namespace dxvk {
 
   private:
     
+    std::mutex m_mutex;
+    
     Com<DxgiFactory> m_factory;
     Com<IDXVKDevice> m_device;
     
-    DXGI_SWAP_CHAIN_DESC m_desc;
+    DXGI_SWAP_CHAIN_DESC  m_desc;
+    DXGI_FRAME_STATISTICS m_stats;
+    
+    SDL_Window* m_window = nullptr;
     
   };
   

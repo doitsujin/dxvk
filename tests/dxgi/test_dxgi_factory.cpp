@@ -11,7 +11,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
                    HINSTANCE hPrevInstance,
                    LPSTR lpCmdLine,
                    int nCmdShow) {
-  Com<IDXGIFactory> factory = nullptr;
+  Com<IDXGIFactory> factory;
   
   if (CreateDXGIFactory(__uuidof(IDXGIFactory),
       reinterpret_cast<void**>(&factory)) != S_OK) {
@@ -19,7 +19,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
     return 1;
   }
   
-  Com<IDXGIAdapter> adapter = nullptr;
+  Com<IDXGIAdapter> adapter;
   
   for (UINT i = 0; factory->EnumAdapters(i, &adapter) == S_OK; i++) {
     DXGI_ADAPTER_DESC adapterDesc;
