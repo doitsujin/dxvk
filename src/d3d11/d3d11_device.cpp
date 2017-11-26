@@ -15,14 +15,12 @@ namespace dxvk {
     m_featureFlags(featureFlags),
     m_dxvkDevice  (m_dxgiDevice->GetDXVKDevice()),
     m_dxvkAdapter (m_dxvkDevice->adapter()) {
-    TRACE(this, dxgiDevice, featureLevel, featureFlags);
     m_dxgiDevice->SetDeviceLayer(this);
     m_context = new D3D11DeviceContext(this, m_dxvkDevice);
   }
   
   
   D3D11Device::~D3D11Device() {
-    TRACE(this);
     m_dxgiDevice->SetDeviceLayer(nullptr);
   }
   

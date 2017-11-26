@@ -6,8 +6,6 @@ namespace dxvk {
     const Rc<vk::DeviceFn>& vkd,
           uint32_t          queueFamily)
   : m_vkd(vkd), m_descAlloc(vkd) {
-    TRACE(this, queueFamily);
-    
     VkCommandPoolCreateInfo poolInfo;
     poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     poolInfo.pNext            = nullptr;
@@ -30,7 +28,6 @@ namespace dxvk {
   
   
   DxvkCommandList::~DxvkCommandList() {
-    TRACE(this);
     m_resources.reset();
     
     m_vkd->vkDestroyCommandPool(
@@ -39,8 +36,6 @@ namespace dxvk {
   
   
   void DxvkCommandList::beginRecording() {
-    TRACE(this);
-    
     VkCommandBufferBeginInfo info;
     info.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     info.pNext            = nullptr;
@@ -56,22 +51,17 @@ namespace dxvk {
   
   
   void DxvkCommandList::endRecording() {
-    TRACE(this);
-    
     if (m_vkd->vkEndCommandBuffer(m_buffer) != VK_SUCCESS)
       throw DxvkError("DxvkCommandList::endRecording: Failed to record command buffer");
   }
   
   
   void DxvkCommandList::trackResource(const Rc<DxvkResource>& rc) {
-    TRACE(this, rc);
     m_resources.trackResource(rc);
   }
   
   
   void DxvkCommandList::reset() {
-    TRACE(this);
-    
     m_descAlloc.reset();
     m_resources.reset();
   }

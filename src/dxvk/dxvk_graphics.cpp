@@ -47,8 +47,6 @@ namespace dxvk {
       const Rc<DxvkShader>&   fs)
   : m_vkd(vkd), m_vs(vs), m_tcs(tcs),
     m_tes(tes), m_gs(gs), m_fs(fs) {
-    TRACE(this, vs, tcs, tes, gs, fs);
-    
     std::vector<VkDescriptorSetLayoutBinding> bindings;
     
     VkDescriptorSetLayoutCreateInfo dlayout;
@@ -80,8 +78,6 @@ namespace dxvk {
   
   
   DxvkGraphicsPipeline::~DxvkGraphicsPipeline() {
-    TRACE(this);
-    
     this->destroyPipelines();
     this->destroyObjects();
   }

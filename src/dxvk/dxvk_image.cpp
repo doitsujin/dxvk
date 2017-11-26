@@ -16,12 +16,11 @@ namespace dxvk {
     const DxvkImageCreateInfo&  info,
           VkImage               image)
   : m_vkd(vkd), m_info(info), m_image(image) {
-    TRACE(this, image);
+    
   }
   
   
   DxvkImage::~DxvkImage() {
-    TRACE(this);
     // This is a bit of a hack to determine whether
     // the image is implementation-handled or not
     if (m_memory.memory() != VK_NULL_HANDLE)
@@ -34,7 +33,6 @@ namespace dxvk {
     const Rc<DxvkImage>&            image,
     const DxvkImageViewCreateInfo&  info)
   : m_vkd(vkd), m_image(image), m_info(info) {
-    TRACE(this, image);
     VkComponentMapping componentMapping;
     componentMapping.r = VK_COMPONENT_SWIZZLE_IDENTITY;
     componentMapping.g = VK_COMPONENT_SWIZZLE_IDENTITY;
@@ -64,7 +62,6 @@ namespace dxvk {
   
   
   DxvkImageView::~DxvkImageView() {
-    TRACE(this);
     m_vkd->vkDestroyImageView(
       m_vkd->device(), m_view, nullptr);
   }

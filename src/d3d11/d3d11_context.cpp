@@ -8,12 +8,12 @@ namespace dxvk {
       Rc<DxvkDevice>  device)
   : m_parent(parent),
     m_device(device) {
-    TRACE(this, parent, device);
+    
   }
   
   
   D3D11DeviceContext::~D3D11DeviceContext() {
-    TRACE(this);
+    
   }
   
   
@@ -226,8 +226,6 @@ namespace dxvk {
   void D3D11DeviceContext::Draw(
           UINT            VertexCount,
           UINT            StartVertexLocation) {
-    TRACE(this, VertexCount, StartVertexLocation);
-    
     m_context->draw(
       VertexCount, 1,
       StartVertexLocation, 0);
@@ -238,8 +236,6 @@ namespace dxvk {
           UINT            IndexCount,
           UINT            StartIndexLocation,
           INT             BaseVertexLocation) {
-    TRACE(this, IndexCount, StartIndexLocation, BaseVertexLocation);
-    
     m_context->drawIndexed(
       IndexCount, 1,
       StartIndexLocation,
@@ -252,9 +248,6 @@ namespace dxvk {
           UINT            InstanceCount,
           UINT            StartVertexLocation,
           UINT            StartInstanceLocation) {
-    TRACE(this, VertexCountPerInstance, InstanceCount,
-      StartVertexLocation, StartInstanceLocation);
-    
     m_context->draw(
       VertexCountPerInstance,
       InstanceCount,
@@ -269,9 +262,6 @@ namespace dxvk {
           UINT            StartIndexLocation,
           INT             BaseVertexLocation,
           UINT            StartInstanceLocation) {
-    TRACE(this, IndexCountPerInstance, InstanceCount,
-      StartIndexLocation, BaseVertexLocation, StartInstanceLocation);
-    
     m_context->drawIndexed(
       IndexCountPerInstance,
       InstanceCount,
@@ -299,8 +289,6 @@ namespace dxvk {
           UINT            ThreadGroupCountX,
           UINT            ThreadGroupCountY,
           UINT            ThreadGroupCountZ) {
-    TRACE(this, ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ);
-    
     m_context->dispatch(
       ThreadGroupCountX,
       ThreadGroupCountY,

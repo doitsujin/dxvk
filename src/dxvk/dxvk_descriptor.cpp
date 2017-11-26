@@ -5,13 +5,11 @@ namespace dxvk {
   DxvkDescriptorAlloc::DxvkDescriptorAlloc(
     const Rc<vk::DeviceFn>& vkd)
   : m_vkd(vkd) {
-    TRACE(this);
+    
   }
   
   
   DxvkDescriptorAlloc::~DxvkDescriptorAlloc() {
-    TRACE(this);
-    
     for (auto p : m_pools) {
       m_vkd->vkDestroyDescriptorPool(
         m_vkd->device(), p, nullptr);
@@ -20,8 +18,6 @@ namespace dxvk {
   
   
   VkDescriptorSet DxvkDescriptorAlloc::alloc(VkDescriptorSetLayout layout) {
-    TRACE(this, layout);
-    
     VkDescriptorSet set = VK_NULL_HANDLE;
     
     if (m_poolId < m_pools.size())
@@ -53,8 +49,6 @@ namespace dxvk {
   
   
   VkDescriptorPool DxvkDescriptorAlloc::createDescriptorPool() {
-    TRACE(this);
-    
     // TODO tune these values, if necessary
     constexpr uint32_t MaxSets = 64;
     constexpr uint32_t MaxDesc = 256;

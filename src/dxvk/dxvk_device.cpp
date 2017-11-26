@@ -11,8 +11,6 @@ namespace dxvk {
     m_memory          (new DxvkMemoryAllocator(adapter, vkd)),
     m_renderPassPool  (new DxvkRenderPassPool (vkd)),
     m_pipelineManager (new DxvkPipelineManager(vkd)) {
-    TRACE(this, adapter);
-    
     m_vkd->vkGetDeviceQueue(m_vkd->device(),
       m_adapter->graphicsQueueFamily(), 0,
       &m_graphicsQueue);
@@ -23,7 +21,6 @@ namespace dxvk {
   
   
   DxvkDevice::~DxvkDevice() {
-    TRACE(this);
     m_pipelineManager = nullptr;
     m_renderPassPool  = nullptr;
     m_memory          = nullptr;
@@ -104,8 +101,6 @@ namespace dxvk {
     const Rc<DxvkCommandList>&      commandList,
     const Rc<DxvkSemaphore>&        waitSync,
     const Rc<DxvkSemaphore>&        wakeSync) {
-    TRACE(this, commandList, waitSync, wakeSync);
-    
     Rc<DxvkFence> fence = new DxvkFence(m_vkd);
     
     VkCommandBuffer commandBuffer = commandList->handle();
@@ -147,7 +142,6 @@ namespace dxvk {
   
   
   void DxvkDevice::waitForIdle() const {
-    TRACE(this);
     if (m_vkd->vkDeviceWaitIdle(m_vkd->device()) != VK_SUCCESS)
       throw DxvkError("DxvkDevice::waitForIdle: Operation failed");
   }

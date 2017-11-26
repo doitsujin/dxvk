@@ -6,12 +6,12 @@ namespace dxvk {
   DxgiFactory::DxgiFactory()
   : m_instance(new DxvkInstance()),
     m_adapters(m_instance->enumAdapters()) {
-    TRACE(this);
+    
   }
   
   
   DxgiFactory::~DxgiFactory() {
-    TRACE(this);
+    
   }
   
   
@@ -47,8 +47,6 @@ namespace dxvk {
           IUnknown*             pDevice,
           DXGI_SWAP_CHAIN_DESC* pDesc,
           IDXGISwapChain**      ppSwapChain) {
-    TRACE(this, pDevice, pDesc, ppSwapChain);
-    
     if (ppSwapChain == nullptr || pDesc == nullptr)
       return E_INVALIDARG;
     
@@ -65,8 +63,6 @@ namespace dxvk {
   HRESULT DxgiFactory::EnumAdapters(
           UINT            Adapter,
           IDXGIAdapter**  ppAdapter) {
-    TRACE(this, Adapter, ppAdapter);
-    
     if (ppAdapter == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
@@ -89,7 +85,6 @@ namespace dxvk {
   
   
   HRESULT DxgiFactory::MakeWindowAssociation(HWND WindowHandle, UINT Flags) {
-    TRACE(this, WindowHandle, Flags);
     Logger::warn("DxgiFactory::MakeWindowAssociation: Ignoring flags");
     m_associatedWindow = WindowHandle;
     return S_OK;

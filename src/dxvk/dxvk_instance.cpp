@@ -5,12 +5,11 @@ namespace dxvk {
   DxvkInstance::DxvkInstance()
   : m_vkl(new vk::LibraryFn()),
     m_vki(new vk::InstanceFn(this->createInstance())) {
-    TRACE(this);
+    
   }
   
   
   DxvkInstance::~DxvkInstance() {
-    TRACE(this);
     m_vki->vkDestroyInstance(
       m_vki->instance(), nullptr);
   }

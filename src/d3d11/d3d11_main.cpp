@@ -19,11 +19,6 @@ extern "C" {
           ID3D11Device        **ppDevice,
           D3D_FEATURE_LEVEL   *pFeatureLevel,
           ID3D11DeviceContext **ppImmediateContext) {
-    TRACE(pAdapter, DriverType, Software,
-          Flags, pFeatureLevels, FeatureLevels,
-          SDKVersion, ppDevice, pFeatureLevel,
-          ppImmediateContext);
-    
     Com<IDXGIAdapter> dxgiAdapter = pAdapter;
     Com<IDXVKAdapter> dxvkAdapter = nullptr;
     
@@ -147,11 +142,6 @@ extern "C" {
           ID3D11Device         **ppDevice,
           D3D_FEATURE_LEVEL    *pFeatureLevel,
           ID3D11DeviceContext  **ppImmediateContext) {
-    TRACE(pAdapter, DriverType, Software,
-          Flags, pFeatureLevels, FeatureLevels,
-          SDKVersion, pSwapChainDesc, ppSwapChain,
-          ppDevice, pFeatureLevel, ppImmediateContext);
-    
     // Try to create a device first.
     HRESULT status = D3D11CreateDevice(pAdapter, DriverType,
       Software, Flags, pFeatureLevels, FeatureLevels,

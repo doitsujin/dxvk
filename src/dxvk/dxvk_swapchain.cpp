@@ -17,13 +17,11 @@ namespace dxvk {
     m_surface   (surface),
     m_queue     (queue),
     m_properties(properties) {
-    TRACE(this, device, surface, queue);
     this->recreateSwapchain();
   }
   
   
   DxvkSwapchain::~DxvkSwapchain() {
-    TRACE(this);
     m_device->waitForIdle();
     m_vkd->vkDestroySwapchainKHR(
       m_vkd->device(), m_handle, nullptr);
@@ -32,8 +30,6 @@ namespace dxvk {
   
   Rc<DxvkFramebuffer> DxvkSwapchain::getFramebuffer(
     const Rc<DxvkSemaphore>& wakeSync) {
-    TRACE(this, wakeSync);
-    
     VkResult status = this->acquireNextImage(wakeSync);
     
     if (status == VK_ERROR_OUT_OF_DATE_KHR) {
@@ -50,8 +46,6 @@ namespace dxvk {
   
   
   void DxvkSwapchain::present(const Rc<DxvkSemaphore>& waitSync) {
-    TRACE(this, waitSync);
-    
     const VkSemaphore waitSemaphore = waitSync->handle();
     
     VkPresentInfoKHR info;
@@ -75,7 +69,6 @@ namespace dxvk {
   
   void DxvkSwapchain::changeProperties(
     const DxvkSwapchainProperties& props) {
-    TRACE(this);
     m_properties = props;
     this->recreateSwapchain();
   }
@@ -93,7 +86,6 @@ namespace dxvk {
   
   
   void DxvkSwapchain::recreateSwapchain() {
-    TRACE(this);
     VkSwapchainKHR oldSwapchain = m_handle;
     
     // Wait until we can be certain that none of our

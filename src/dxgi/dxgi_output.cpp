@@ -14,12 +14,12 @@ namespace dxvk {
               UINT          display)
   : m_adapter (adapter),
     m_display (display) {
-    TRACE(this, adapter);
+    
   }
   
   
   DxgiOutput::~DxgiOutput() {
-    TRACE(this);
+    
   }
   
   
@@ -90,8 +90,6 @@ namespace dxvk {
           UINT           Flags,
           UINT           *pNumModes,
           DXGI_MODE_DESC *pDesc) {
-    TRACE(this, EnumFormat, Flags, pNumModes, pDesc);
-    
     if (pNumModes == nullptr)
       return DXGI_ERROR_INVALID_CALL;
       

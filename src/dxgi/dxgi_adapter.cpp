@@ -12,12 +12,12 @@ namespace dxvk {
     const Rc<DxvkAdapter>&  adapter)
   : m_factory (factory),
     m_adapter (adapter) {
-    TRACE(this, factory, adapter);
+    
   }
   
   
   DxgiAdapter::~DxgiAdapter() {
-    TRACE(this);
+    
   }
   
   
@@ -52,8 +52,6 @@ namespace dxvk {
   HRESULT DxgiAdapter::EnumOutputs(
           UINT        Output,
           IDXGIOutput **ppOutput) {
-    TRACE(this, Output, ppOutput);
-    
     if (ppOutput == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     

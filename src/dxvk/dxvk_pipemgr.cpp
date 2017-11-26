@@ -5,12 +5,12 @@ namespace dxvk {
   DxvkPipelineManager::DxvkPipelineManager(
     const Rc<vk::DeviceFn>& vkd)
   : m_vkd(vkd) {
-    TRACE(this);
+    
   }
   
   
   DxvkPipelineManager::~DxvkPipelineManager() {
-    TRACE(this);
+    
   }
   
   

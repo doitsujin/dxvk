@@ -45,8 +45,6 @@ namespace dxvk {
     const Rc<DxvkBuffer>&           buffer,
     const DxvkBufferViewCreateInfo& info)
   : m_vkd(vkd), m_buffer(buffer), m_info(info) {
-    TRACE(this, buffer);
-    
     VkBufferViewCreateInfo viewInfo;
     viewInfo.sType  = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
     viewInfo.pNext  = nullptr;
@@ -62,7 +60,7 @@ namespace dxvk {
   
   
   DxvkBufferView::~DxvkBufferView() {
-    TRACE(this);
+    
   }
   
 }

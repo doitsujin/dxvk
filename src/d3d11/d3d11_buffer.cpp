@@ -8,12 +8,12 @@ namespace dxvk {
     const D3D11_BUFFER_DESC&  desc)
   : m_device(device), m_desc(desc),
     m_buffer(this->createBuffer()) {
-    TRACE(this, device);
+    
   }
   
   
   D3D11Buffer::~D3D11Buffer() {
-    TRACE(this);
+    
   }
   
   

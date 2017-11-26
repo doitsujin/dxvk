@@ -5,8 +5,6 @@ namespace dxvk {
   DxvkSemaphore::DxvkSemaphore(
     const Rc<vk::DeviceFn>& vkd)
   : m_vkd(vkd) {
-    TRACE(this);
-    
     VkSemaphoreCreateInfo info;
     info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
     info.pNext = nullptr;
@@ -18,7 +16,6 @@ namespace dxvk {
   
   
   DxvkSemaphore::~DxvkSemaphore() {
-    TRACE(this);
     m_vkd->vkDestroySemaphore(
       m_vkd->device(), m_semaphore, nullptr);
   }
@@ -26,8 +23,6 @@ namespace dxvk {
   
   DxvkFence::DxvkFence(const Rc<vk::DeviceFn>& vkd)
   : m_vkd(vkd) {
-    TRACE(this);
-    
     VkFenceCreateInfo info;
     info.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     info.pNext = nullptr;
@@ -39,15 +34,12 @@ namespace dxvk {
   
   
   DxvkFence::~DxvkFence() {
-    TRACE(this);
     m_vkd->vkDestroyFence(
       m_vkd->device(), m_fence, nullptr);
   }
   
   
   bool DxvkFence::wait(uint64_t timeout) const {
-    TRACE(this, timeout);
-    
     VkResult status = m_vkd->vkWaitForFences(
       m_vkd->device(), 1, &m_fence, VK_FALSE, timeout);
     
@@ -58,7 +50,6 @@ namespace dxvk {
   
   
   void DxvkFence::reset() {
-    TRACE(this);
     if (m_vkd->vkResetFences(m_vkd->device(), 1, &m_fence) != VK_SUCCESS)
       throw DxvkError("DxvkFence::reset: Failed to reset fence");
   }

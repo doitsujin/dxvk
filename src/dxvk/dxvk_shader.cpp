@@ -7,8 +7,6 @@ namespace dxvk {
           VkShaderStageFlagBits stage,
     const SpirvCodeBuffer&      code)
   : m_vkd(vkd), m_stage(stage) {
-    TRACE(this, stage);
-    
     VkShaderModuleCreateInfo info;
     info.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     info.pNext    = nullptr;
@@ -23,8 +21,6 @@ namespace dxvk {
   
   
   DxvkShader::~DxvkShader() {
-    TRACE(this);
-    
     m_vkd->vkDestroyShaderModule(
       m_vkd->device(), m_module, nullptr);
   }

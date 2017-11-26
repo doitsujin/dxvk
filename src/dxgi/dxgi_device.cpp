@@ -5,13 +5,12 @@ namespace dxvk {
   
   DxgiDevice::DxgiDevice(IDXVKAdapter* adapter)
   : m_adapter(adapter) {
-    TRACE(this, adapter);
     m_device = m_adapter->GetDXVKAdapter()->createDevice();
   }
   
   
   DxgiDevice::~DxgiDevice() {
-    TRACE(this);
+    
   }
   
   
@@ -79,7 +78,6 @@ namespace dxvk {
   
   
   void DxgiDevice::SetDeviceLayer(IUnknown* layer) {
-    TRACE(this, layer);
     m_layer = layer;
   }
   

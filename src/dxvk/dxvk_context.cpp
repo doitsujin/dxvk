@@ -9,19 +9,17 @@ namespace dxvk {
     const Rc<DxvkPipelineManager>&  pipeMgr)
   : m_device  (device),
     m_pipeMgr (pipeMgr) {
-    TRACE(this, device);
+    
   }
   
   
   DxvkContext::~DxvkContext() {
-    TRACE(this);
+    
   }
   
   
   void DxvkContext::beginRecording(
     const Rc<DxvkRecorder>& recorder) {
-    TRACE(this, recorder);
-    
     m_cmd = recorder;
     m_cmd->beginRecording();
     
@@ -44,8 +42,6 @@ namespace dxvk {
   
   
   void DxvkContext::endRecording() {
-    TRACE(this);
-    
     this->renderPassEnd();
     
     m_cmd->endRecording();
@@ -55,8 +51,6 @@ namespace dxvk {
   
   void DxvkContext::bindFramebuffer(
     const Rc<DxvkFramebuffer>& fb) {
-    TRACE(this, fb);
-    
     if (m_state.om.framebuffer != fb) {
       m_state.om.framebuffer = fb;
       this->renderPassEnd();
@@ -76,8 +70,6 @@ namespace dxvk {
   void DxvkContext::bindShader(
           VkShaderStageFlagBits stage,
     const Rc<DxvkShader>&       shader) {
-    TRACE(this, stage, shader);
-    
     DxvkShaderStageState* stageState = this->getShaderStage(stage);
     
     if (stageState->shader != shader) {
@@ -102,8 +94,6 @@ namespace dxvk {
   void DxvkContext::bindVertexBuffer(
           uint32_t              binding,
     const DxvkBufferBinding&    buffer) {
-    TRACE(this, binding);
-    
     if (m_state.vi.vertexBuffers.at(binding) != buffer) {
       m_state.vi.vertexBuffers.at(binding) = buffer;
       m_state.flags.set(DxvkContextFlag::GpDirtyVertexBuffers);
@@ -114,8 +104,6 @@ namespace dxvk {
   void DxvkContext::clearRenderTarget(
     const VkClearAttachment&  attachment,
     const VkClearRect&        clearArea) {
-    TRACE(this);
-    
     // We only need the framebuffer to be bound. Flushing the
     // entire pipeline state is not required and might actually
     // cause problems if the current pipeline state is invalid.
@@ -132,8 +120,6 @@ namespace dxvk {
     const Rc<DxvkBuffer>&       srcBuffer,
           VkDeviceSize          srcOffset,
           VkDeviceSize          numBytes) {
-    TRACE(this, dstBuffer, dstOffset, srcBuffer, srcOffset, numBytes);
-    
     if (numBytes != 0) {
       VkBufferCopy bufferRegion;
       bufferRegion.srcOffset = srcOffset;
@@ -167,7 +153,7 @@ namespace dxvk {
           uint32_t x,
           uint32_t y,
           uint32_t z) {
-    TRACE(this, x, y, z);
+    this->commitComputeState();
     
     m_cmd->cmdDispatch(x, y, z);
   }
@@ -178,9 +164,6 @@ namespace dxvk {
           uint32_t instanceCount,
           uint32_t firstVertex,
           uint32_t firstInstance) {
-    TRACE(this, vertexCount, instanceCount,
-      firstVertex, firstInstance);
-    
     this->commitGraphicsState();
     
     m_cmd->cmdDraw(
@@ -195,9 +178,6 @@ namespace dxvk {
           uint32_t firstIndex,
           uint32_t vertexOffset,
           uint32_t firstInstance) {
-    TRACE(this, indexCount, instanceCount,
-      firstIndex, vertexOffset, firstInstance);
-    
     this->commitGraphicsState();
     
     m_cmd->cmdDrawIndexed(
