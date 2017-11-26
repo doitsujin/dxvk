@@ -76,6 +76,11 @@ namespace dxvk {
     HRESULT hr = this->GetDesc1(&desc1);
     
     if (SUCCEEDED(hr)) {
+      std::memcpy(
+        pDesc->Description,
+        desc1.Description,
+        sizeof(pDesc->Description));
+      
       pDesc->VendorId               = desc1.VendorId;
       pDesc->DeviceId               = desc1.DeviceId;
       pDesc->SubSysId               = desc1.SubSysId;
