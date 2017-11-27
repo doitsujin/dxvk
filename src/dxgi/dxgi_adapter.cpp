@@ -28,7 +28,7 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, IDXGIObject);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIAdapter);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIAdapter1);
-    COM_QUERY_IFACE(riid, ppvObject, IDXVKAdapter);
+    COM_QUERY_IFACE(riid, ppvObject, IDXGIAdapterPrivate);
     
     Logger::warn("DxgiAdapter::QueryInterface: Unknown interface query");
     return E_NOINTERFACE;

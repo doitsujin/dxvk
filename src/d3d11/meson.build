@@ -3,6 +3,7 @@ d3d11_src = [
   'd3d11_context.cpp',
   'd3d11_device.cpp',
   'd3d11_main.cpp',
+  'd3d11_texture.cpp',
 ]
 
 d3d11_dll = shared_library('d3d11', d3d11_src,

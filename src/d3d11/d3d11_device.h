@@ -17,7 +17,7 @@ namespace dxvk {
   public:
     
     D3D11Device(
-            IDXVKDevice*            dxgiDevice,
+            IDXGIDevicePrivate*     dxgiDevice,
             D3D_FEATURE_LEVEL       featureLevel,
             UINT                    featureFlags);
     ~D3D11Device();
@@ -224,14 +224,14 @@ namespace dxvk {
     
   private:
     
-    const Com<IDXVKDevice>    m_dxgiDevice;
-    const D3D_FEATURE_LEVEL   m_featureLevel;
-    const UINT                m_featureFlags;
+    const Com<IDXGIDevicePrivate> m_dxgiDevice;
+    const D3D_FEATURE_LEVEL       m_featureLevel;
+    const UINT                    m_featureFlags;
     
-    const Rc<DxvkDevice>      m_dxvkDevice;
-    const Rc<DxvkAdapter>     m_dxvkAdapter;
+    const Rc<DxvkDevice>          m_dxvkDevice;
+    const Rc<DxvkAdapter>         m_dxvkAdapter;
     
-    Com<ID3D11DeviceContext>  m_context;
+    Com<ID3D11DeviceContext>      m_context;
     
   };
   

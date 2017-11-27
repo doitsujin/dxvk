@@ -3,7 +3,7 @@
 
 namespace dxvk {
   
-  DxgiDevice::DxgiDevice(IDXVKAdapter* adapter)
+  DxgiDevice::DxgiDevice(IDXGIAdapterPrivate* adapter)
   : m_adapter(adapter) {
     m_device = m_adapter->GetDXVKAdapter()->createDevice();
   }
@@ -18,7 +18,7 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, IUnknown);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIObject);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIDevice);
-    COM_QUERY_IFACE(riid, ppvObject, IDXVKDevice);
+    COM_QUERY_IFACE(riid, ppvObject, IDXGIDevicePrivate);
     
     if (m_layer != nullptr)
       return m_layer->QueryInterface(riid, ppvObject);
@@ -92,8 +92,8 @@ namespace dxvk {
 extern "C" {
   
   DLLEXPORT HRESULT __stdcall DXGICreateDXVKDevice(
-          IDXVKAdapter*   pAdapter,
-          IDXVKDevice**   ppDevice) {
+          IDXGIAdapterPrivate*   pAdapter,
+          IDXGIDevicePrivate**   ppDevice) {
     try {
       *ppDevice = dxvk::ref(new dxvk::DxgiDevice(pAdapter));
       return S_OK;

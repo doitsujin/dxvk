@@ -7,7 +7,7 @@
 namespace dxvk {
   
   D3D11Device::D3D11Device(
-          IDXVKDevice*        dxgiDevice,
+          IDXGIDevicePrivate* dxgiDevice,
           D3D_FEATURE_LEVEL   featureLevel,
           UINT                featureFlags)
   : m_dxgiDevice  (dxgiDevice),
@@ -29,7 +29,7 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, IUnknown);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11Device);
     
-    if (riid == __uuidof(IDXVKDevice)
+    if (riid == __uuidof(IDXGIDevicePrivate)
      || riid == __uuidof(IDXGIDevice))
       return m_dxgiDevice->QueryInterface(riid, ppvObject);
     

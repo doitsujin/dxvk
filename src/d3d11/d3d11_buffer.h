@@ -28,13 +28,14 @@ namespace dxvk {
             D3D11_RESOURCE_DIMENSION *pResourceDimension) final;
     
     void GetDesc(
-            D3D11_BUFFER_DESC *pDesc);
+            D3D11_BUFFER_DESC *pDesc) final;
     
   private:
     
-    Com<D3D11Device>  m_device;
-    D3D11_BUFFER_DESC m_desc;
-    Rc<DxvkBuffer>    m_buffer;
+    Com<D3D11Device>    m_device;
+    
+    D3D11_BUFFER_DESC   m_desc;
+    Rc<DxvkBuffer>      m_buffer;
     
     Rc<DxvkBuffer> createBuffer();
     

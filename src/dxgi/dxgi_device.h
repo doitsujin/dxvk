@@ -9,11 +9,11 @@ namespace dxvk {
   
   class DxgiFactory;
   
-  class DxgiDevice : public DxgiObject<IDXVKDevice> {
+  class DxgiDevice : public DxgiObject<IDXGIDevicePrivate> {
     
   public:
     
-    DxgiDevice(IDXVKAdapter* adapter);
+    DxgiDevice(IDXGIAdapterPrivate* adapter);
     ~DxgiDevice();
     
     HRESULT QueryInterface(
@@ -52,10 +52,10 @@ namespace dxvk {
     
   private:
     
-    Com<IDXVKAdapter> m_adapter;
-    Rc<DxvkDevice>    m_device;
+    Com<IDXGIAdapterPrivate> m_adapter;
+    Rc<DxvkDevice>           m_device;
     
-    IUnknown*         m_layer = nullptr;
+    IUnknown* m_layer = nullptr;
     
   };
 
@@ -65,7 +65,7 @@ namespace dxvk {
 extern "C" {
   
   DLLEXPORT HRESULT __stdcall DXGICreateDXVKDevice(
-          IDXVKAdapter*   pAdapter,
-          IDXVKDevice**   ppDevice);
+          IDXGIAdapterPrivate*   pAdapter,
+          IDXGIDevicePrivate**   ppDevice);
   
 }

@@ -16,7 +16,7 @@ namespace dxvk {
  * this interface.
  */
 MIDL_INTERFACE("907bf281-ea3c-43b4-a8e4-9f231107b4ff")
-IDXVKAdapter : public IDXGIAdapter1 {
+IDXGIAdapterPrivate : public IDXGIAdapter1 {
   static const GUID guid;
   
   virtual dxvk::Rc<dxvk::DxvkAdapter> GetDXVKAdapter() = 0;
@@ -31,7 +31,7 @@ IDXVKAdapter : public IDXGIAdapter1 {
  * this interface.
  */
 MIDL_INTERFACE("7a622cf6-627a-46b2-b52f-360ef3da831c")
-IDXVKDevice : public IDXGIDevice {
+IDXGIDevicePrivate : public IDXGIDevice {
   static const GUID guid;
   
   virtual void SetDeviceLayer(
@@ -41,5 +41,5 @@ IDXVKDevice : public IDXGIDevice {
 };
 
 
-template<> inline GUID const& __mingw_uuidof<IDXVKAdapter>() { return IDXVKAdapter::guid; }
-template<> inline GUID const& __mingw_uuidof<IDXVKDevice> () { return IDXVKDevice ::guid; }
+template<> inline GUID const& __mingw_uuidof<IDXGIAdapterPrivate>() { return IDXGIAdapterPrivate::guid; }
+template<> inline GUID const& __mingw_uuidof<IDXGIDevicePrivate> () { return IDXGIDevicePrivate ::guid; }
