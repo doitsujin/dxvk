@@ -31,10 +31,20 @@ namespace dxvk {
   
   /**
    * \brief DXVK image
+   * 
+   * An image resource consisting of various subresources.
+   * Cannot be mapped to host memory, the only way to access
+   * image data is through buffer transfer operations.
    */
   class DxvkImage : public DxvkResource {
     
   public:
+    
+    DxvkImage(
+      const Rc<vk::DeviceFn>&     vkd,
+      const DxvkImageCreateInfo&  createInfo,
+            DxvkMemoryAllocator&  memAlloc,
+            VkMemoryPropertyFlags memFlags);
     
     /**
      * \brief Creates image object from existing image
@@ -82,7 +92,7 @@ namespace dxvk {
     Rc<vk::DeviceFn>    m_vkd;
     DxvkImageCreateInfo m_info;
     DxvkMemory          m_memory;
-    VkImage             m_image;
+    VkImage             m_image = VK_NULL_HANDLE;
     
   };
   

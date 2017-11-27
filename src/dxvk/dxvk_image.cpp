@@ -2,13 +2,44 @@
 
 namespace dxvk {
   
-//   DxvkImage::DxvkImage(
-//     const Rc<vk::DeviceFn>&     vkd,
-//     const DxvkImageCreateInfo&  info,
-//           DxvkMemory&&          memory)
-//   : m_vkd(vkd), m_info(info), m_memory(std::move(memory)) {
-//     
-//   }
+  DxvkImage::DxvkImage(
+    const Rc<vk::DeviceFn>&     vkd,
+    const DxvkImageCreateInfo&  createInfo,
+          DxvkMemoryAllocator&  memAlloc,
+          VkMemoryPropertyFlags memFlags)
+  : m_vkd(vkd), m_info(createInfo) {
+    
+    VkImageCreateInfo info;
+    info.sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    info.pNext                 = nullptr;
+    // TODO VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT if appropriate
+    info.flags                 = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+    info.imageType             = createInfo.type;
+    info.format                = createInfo.format;
+    info.extent                = createInfo.extent;
+    info.mipLevels             = createInfo.mipLevels;
+    info.arrayLayers           = createInfo.numLayers;
+    info.samples               = createInfo.sampleCount;
+    info.tiling                = createInfo.tiling;
+    info.usage                 = createInfo.usage;
+    info.sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
+    info.queueFamilyIndexCount = 0;
+    info.pQueueFamilyIndices   = nullptr;
+    info.initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED;
+    
+    if (m_vkd->vkCreateImage(m_vkd->device(),
+          &info, nullptr, &m_image) != VK_SUCCESS)
+      throw DxvkError("DxvkImage::DxvkImage: Failed to create image");
+    
+    VkMemoryRequirements memReq;
+    m_vkd->vkGetImageMemoryRequirements(
+      m_vkd->device(), m_image, &memReq);
+    m_memory = memAlloc.alloc(memReq, memFlags);
+    
+    if (m_vkd->vkBindImageMemory(m_vkd->device(),
+          m_image, m_memory.memory(), m_memory.offset()) != VK_SUCCESS)
+      throw DxvkError("DxvkImage::DxvkImage: Failed to bind device memory");
+  }
   
   
   DxvkImage::DxvkImage(
