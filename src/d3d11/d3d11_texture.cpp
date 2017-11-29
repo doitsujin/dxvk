@@ -24,6 +24,7 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceChild);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11Resource);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11Texture2D);
+    COM_QUERY_IFACE(riid, ppvObject, ID3D11Texture2DPrivate);
     
     if (riid == __uuidof(IDXGIResource)
      || riid == __uuidof(IDXGIImageResourcePrivate))
@@ -58,6 +59,11 @@ namespace dxvk {
   
   void D3D11Texture2D::GetDesc(D3D11_TEXTURE2D_DESC *pDesc) {
     *pDesc = m_desc;
+  }
+  
+  
+  Rc<DxvkImage> D3D11Texture2D::GetDXVKImage() {
+    return m_resource->GetDXVKImage();
   }
   
 }

@@ -282,6 +282,8 @@ namespace dxvk {
       
       m_cmd->cmdBeginRenderPass(&info,
         VK_SUBPASS_CONTENTS_INLINE);
+      m_cmd->trackResource(
+        m_state.om.framebuffer);
     }
   }
   

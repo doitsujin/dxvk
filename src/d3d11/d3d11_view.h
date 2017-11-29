@@ -8,13 +8,15 @@ namespace dxvk {
   
   class D3D11Device;
   
-  class D3D11RenderTargetView : public D3D11DeviceChild<ID3D11RenderTargetView> {
+  class D3D11RenderTargetView : public D3D11DeviceChild<ID3D11RenderTargetViewPrivate> {
     
   public:
     
     D3D11RenderTargetView(
             D3D11Device*                    device,
-      const D3D11_RENDER_TARGET_VIEW_DESC&  desc);
+            ID3D11Resource*                 resource,
+      const D3D11_RENDER_TARGET_VIEW_DESC&  desc,
+            Rc<DxvkImageView>               view);
     ~D3D11RenderTargetView();
     
     HRESULT QueryInterface(
@@ -30,10 +32,15 @@ namespace dxvk {
     void GetDesc(
             D3D11_RENDER_TARGET_VIEW_DESC* pDesc) final;
     
+    Rc<DxvkImageView> GetDXVKImageView() final;
+    
   private:
     
     Com<D3D11Device>              m_device;
+    Com<ID3D11Resource>           m_resource;
+    
     D3D11_RENDER_TARGET_VIEW_DESC m_desc;
+    Rc<DxvkImageView>             m_view;
     
   };
   

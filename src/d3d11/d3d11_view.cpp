@@ -5,9 +5,13 @@ namespace dxvk {
   
   D3D11RenderTargetView::D3D11RenderTargetView(
           D3D11Device*                    device,
-    const D3D11_RENDER_TARGET_VIEW_DESC&  desc)
+          ID3D11Resource*                 resource,
+    const D3D11_RENDER_TARGET_VIEW_DESC&  desc,
+          Rc<DxvkImageView>               view)
   : m_device  (device),
-    m_desc    (desc) {
+    m_resource(resource),
+    m_desc    (desc),
+    m_view    (view) {
     
   }
   
@@ -22,6 +26,7 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceChild);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11View);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11RenderTargetView);
+    COM_QUERY_IFACE(riid, ppvObject, ID3D11RenderTargetViewPrivate);
     
     Logger::warn("D3D11RenderTargetView::QueryInterface: Unknown interface query");
     return E_NOINTERFACE;
@@ -34,12 +39,17 @@ namespace dxvk {
   
   
   void D3D11RenderTargetView::GetResource(ID3D11Resource **ppResource) {
-    
+    *ppResource = m_resource.ref();
   }
   
   
   void D3D11RenderTargetView::GetDesc(D3D11_RENDER_TARGET_VIEW_DESC* pDesc) {
     *pDesc = m_desc;
+  }
+  
+  
+  Rc<DxvkImageView> D3D11RenderTargetView::GetDXVKImageView() {
+    return m_view;
   }
   
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "d3d11_context_state.h"
 #include "d3d11_device_child.h"
 
 #include <dxvk_adapter.h>
@@ -471,7 +472,7 @@ namespace dxvk {
             UINT                              UAVStartSlot,
             UINT                              NumUAVs,
             ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
-      const UINT* pUAVInitialCounts) final;
+      const UINT*                             pUAVInitialCounts) final;
     
     void OMSetBlendState(
             ID3D11BlendState*                 pBlendState,
@@ -545,6 +546,8 @@ namespace dxvk {
     Rc<DxvkDevice>      m_device;
     Rc<DxvkContext>     m_context;
     Rc<DxvkCommandList> m_cmdList;
+    
+    D3D11ContextState   m_state;
     
   };
   

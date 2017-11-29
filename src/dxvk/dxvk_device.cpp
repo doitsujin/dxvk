@@ -67,6 +67,7 @@ namespace dxvk {
   Rc<DxvkImage> DxvkDevice::createImage(
     const DxvkImageCreateInfo&  createInfo,
           VkMemoryPropertyFlags memoryType) {
+    // TODO record image initialization commands
     return new DxvkImage(m_vkd,
       createInfo, *m_memory, memoryType);
   }

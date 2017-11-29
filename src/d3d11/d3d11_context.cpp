@@ -1,3 +1,5 @@
+#include <cstring>
+
 #include "d3d11_context.h"
 #include "d3d11_device.h"
 
@@ -168,7 +170,53 @@ namespace dxvk {
   void D3D11DeviceContext::ClearRenderTargetView(
           ID3D11RenderTargetView*           pRenderTargetView,
     const FLOAT                             ColorRGBA[4]) {
-    Logger::err("D3D11DeviceContext::ClearRenderTargetView: Not implemented");
+    Com<ID3D11RenderTargetViewPrivate> rtv;
+    pRenderTargetView->QueryInterface(
+      __uuidof(ID3D11RenderTargetViewPrivate),
+      reinterpret_cast<void**>(&rtv));
+    
+    // Find out whether the given attachment is currently bound
+    // or not, and if it is, which attachment index it has.
+    int32_t attachmentIndex = -1;
+    
+    for (uint32_t i = 0; i < m_state.omRenderTargetViews.size(); i++) {
+      if (rtv.ptr() == m_state.omRenderTargetViews.at(i).ptr())
+        attachmentIndex = static_cast<int32_t>(i);
+    }
+    
+    if (attachmentIndex < 0) {
+      // FIXME bind render target, then restore framebuffer or mark dirty
+      Logger::err("D3D11DeviceContext::ClearRenderTargetView: Render target not bound. This is currently not supported.");
+      return;
+    }
+    
+    // Retrieve image info, which we will need in
+    // order to determine the size of the clear area
+    const Rc<DxvkImage> image = rtv->GetDXVKImageView()->image();
+    
+    // Set up attachment info and copy the clear color
+    VkClearAttachment clearInfo;
+    clearInfo.aspectMask      = VK_IMAGE_ASPECT_COLOR_BIT;
+    clearInfo.colorAttachment = static_cast<uint32_t>(attachmentIndex);
+    
+    std::memcpy(clearInfo.clearValue.color.float32, ColorRGBA,
+      sizeof(clearInfo.clearValue.color.float32));
+    
+    // Clear the full area. On FL 9.x, only the first array
+    // layer will be cleared, rather than all array layers.
+    VkClearRect clearRect;
+    clearRect.rect.offset.x       = 0;
+    clearRect.rect.offset.y       = 0;
+    clearRect.rect.extent.width   = image->info().extent.width;
+    clearRect.rect.extent.height  = image->info().extent.height;
+    clearRect.baseArrayLayer      = 0;
+    clearRect.layerCount          = image->info().numLayers;
+    
+    if (m_parent->GetFeatureLevel() < D3D_FEATURE_LEVEL_10_0)
+      clearRect.layerCount        = 1;
+    
+    // Record the clear operation
+    m_context->clearRenderTarget(clearInfo, clearRect);
   }
   
   
@@ -780,7 +828,37 @@ namespace dxvk {
           UINT                              NumViews,
           ID3D11RenderTargetView* const*    ppRenderTargetViews,
           ID3D11DepthStencilView*           pDepthStencilView) {
-    Logger::err("D3D11DeviceContext::OMSetRenderTargets: Not implemented");
+    // Update state vector for OMGetRenderTargets
+    for (UINT i = 0; i < m_state.omRenderTargetViews.size(); i++) {
+      Com<ID3D11RenderTargetViewPrivate> view = nullptr;
+      
+      if ((i < NumViews) && (ppRenderTargetViews[i] != nullptr)) {
+        ppRenderTargetViews[i]->QueryInterface(
+          __uuidof(ID3D11RenderTargetViewPrivate),
+          reinterpret_cast<void**>(&view));
+      }
+      
+      m_state.omRenderTargetViews.at(i) = view;
+    }
+    
+    // TODO unbind overlapping shader resource views
+    
+    // D3D11 doesn't have the concept of a framebuffer object,
+    // so we'll just create a new one every time the render
+    // target bindings are updated. Set up the attachments.
+    DxvkRenderTargets attachments;
+    
+    for (UINT i = 0; i < m_state.omRenderTargetViews.size(); i++) {
+      if (m_state.omRenderTargetViews.at(i) != nullptr)
+        attachments.setColorTarget(i, m_state.omRenderTargetViews.at(i)->GetDXVKImageView());
+    }
+    
+    // TODO implement depth-stencil views
+    if (pDepthStencilView != nullptr)
+      Logger::err("D3D11DeviceContext::OMSetRenderTargets: Depth-stencil view not supported");
+    
+    // Create and bind the framebuffer object using the given attachments
+    m_context->bindFramebuffer(m_device->createFramebuffer(attachments));
   }
   
   
@@ -791,7 +869,7 @@ namespace dxvk {
           UINT                              UAVStartSlot,
           UINT                              NumUAVs,
           ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
-    const UINT* pUAVInitialCounts) {
+    const UINT*                             pUAVInitialCounts) {
     Logger::err("D3D11DeviceContext::OMSetRenderTargetsAndUnorderedAccessViews: Not implemented");
   }
   
@@ -815,7 +893,17 @@ namespace dxvk {
           UINT                              NumViews,
           ID3D11RenderTargetView**          ppRenderTargetViews,
           ID3D11DepthStencilView**          ppDepthStencilView) {
-    Logger::err("D3D11DeviceContext::OMGetRenderTargets: Not implemented");
+    if (ppRenderTargetViews != nullptr) {
+      for (UINT i = 0; i < NumViews; i++)
+        ppRenderTargetViews[i] = i < m_state.omRenderTargetViews.size()
+          ? m_state.omRenderTargetViews.at(i).ref()
+          : nullptr;
+    }
+    
+    if (ppDepthStencilView != nullptr) {
+      Logger::err("D3D11DeviceContext::OMGetRenderTargets: Stencil view not supported");
+      *ppDepthStencilView = nullptr;
+    }
   }
   
   
