@@ -25,6 +25,9 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, IDXGIResource);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIImageResourcePrivate);
     
+    if (m_layer != nullptr)
+      return m_layer->QueryInterface(riid, ppvObject);
+    
     Logger::err("DxgiImageResource::QueryInterface: Unknown interface query");
     return E_NOINTERFACE;
   }
@@ -70,6 +73,9 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, IDXGIDeviceSubObject);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIResource);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIBufferResourcePrivate);
+    
+    if (m_layer != nullptr)
+      return m_layer->QueryInterface(riid, ppvObject);
     
     Logger::err("DxgiBufferResource::QueryInterface: Unknown interface query");
     return E_NOINTERFACE;
