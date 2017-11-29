@@ -5,22 +5,60 @@
 
 namespace dxvk {
   
+  /**
+   * \brief Image create info
+   * 
+   * The properties of an image that are
+   * passed to \ref DxvkDevice::createImage
+   */
   struct DxvkImageCreateInfo {
+    /// Image dimension
     VkImageType type;
+    
+    /// Pixel format
     VkFormat format;
+    
+    /// Sample count for MSAA
     VkSampleCountFlagBits sampleCount;
+    
+    /// Image size, in texels
     VkExtent3D extent;
+    
+    /// Number of image array layers
     uint32_t numLayers;
+    
+    /// Number of mip levels
     uint32_t mipLevels;
+    
+    /// Image usage flags
     VkImageUsageFlags usage;
+    
+    /// Pipeline stages that can access
+    /// the contents of the image
     VkPipelineStageFlags stages;
+    
+    /// Allowed access pattern
     VkAccessFlags access;
+    
+    /// Image tiling mode
     VkImageTiling tiling;
   };
   
+  
+  /**
+   * \brief Image create info
+   * 
+   * The properties of an image view that are
+   * passed to \ref DxvkDevice::createImageView
+   */
   struct DxvkImageViewCreateInfo {
+    /// Image view dimension
     VkImageViewType type;
+    
+    /// Pixel format
     VkFormat format;
+    
+    /// Subresources to use in the view
     VkImageAspectFlags aspect;
     uint32_t minLevel;
     uint32_t numLevels;
