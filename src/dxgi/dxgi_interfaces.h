@@ -9,7 +9,7 @@ namespace dxvk {
 }
   
 /**
- * \brief DXVK adapter
+ * \brief Private DXGI adapter interface
  * 
  * The implementation of \c IDXGIAdapter holds a
  * \ref DxvkAdapter which can be retrieved using
@@ -24,7 +24,7 @@ IDXGIAdapterPrivate : public IDXGIAdapter1 {
 
 
 /**
- * \brief DXVK device
+ * \brief Private DXGI device interface
  * 
  * The implementation of \c IDXGIDevice stores a
  * \ref DxvkDevice which can be retrieved using

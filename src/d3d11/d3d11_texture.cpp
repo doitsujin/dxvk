@@ -5,8 +5,11 @@ namespace dxvk {
   
   D3D11Texture2D::D3D11Texture2D(
           D3D11Device*          device,
-    const D3D11_TEXTURE2D_DESC& desc)
-  : m_device(device), m_desc(desc) {
+    const D3D11_TEXTURE2D_DESC& desc,
+    const Rc<DxvkImage>&        image)
+  : m_device(device),
+    m_desc  (desc),
+    m_image (image) {
     
   }
   
@@ -36,7 +39,7 @@ namespace dxvk {
     *pResourceDimension = D3D11_RESOURCE_DIMENSION_TEXTURE2D;
   }
   
-    
+  
   void D3D11Texture2D::GetDesc(D3D11_TEXTURE2D_DESC *pDesc) {
     *pDesc = m_desc;
   }

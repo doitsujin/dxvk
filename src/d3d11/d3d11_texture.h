@@ -14,7 +14,8 @@ namespace dxvk {
     
     D3D11Texture2D(
             D3D11Device*          device,
-      const D3D11_TEXTURE2D_DESC& desc);
+      const D3D11_TEXTURE2D_DESC& desc,
+      const Rc<DxvkImage>&        image);
     ~D3D11Texture2D();
     
     HRESULT QueryInterface(

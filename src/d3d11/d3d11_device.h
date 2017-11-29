@@ -3,7 +3,7 @@
 #include <dxgi_object.h>
 #include <dxgi_interfaces.h>
 
-#include "d3d11_include.h"
+#include "d3d11_interfaces.h"
 
 #include "../util/com/com_private_data.h"
 
@@ -12,7 +12,7 @@ namespace dxvk {
   class DxgiAdapter;
   class D3D11DeviceContext;
   
-  class D3D11Device : public ComObject<ID3D11Device> {
+  class D3D11Device : public ComObject<ID3D11DevicePrivate> {
     
   public:
     
@@ -215,9 +215,14 @@ namespace dxvk {
     
     UINT GetExceptionMode() final;
     
-    DxvkDevice* GetDXVKDevice() {
-      return m_dxvkDevice.ptr();
-    }
+    HRESULT WrapSwapChainBackBuffer(
+      const Rc<DxvkImage>&          image,
+      const DXGI_SWAP_CHAIN_DESC*   pSwapChainDesc,
+            IUnknown**              ppInterface) final;
+    
+    HRESULT FlushRenderingCommands() final;
+    
+    Rc<DxvkDevice> GetDXVKDevice() final;
     
     static bool CheckFeatureLevelSupport(
             D3D_FEATURE_LEVEL featureLevel);

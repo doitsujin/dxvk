@@ -3,6 +3,7 @@
 #include "d3d11_buffer.h"
 #include "d3d11_context.h"
 #include "d3d11_device.h"
+#include "d3d11_texture.h"
 
 namespace dxvk {
   
@@ -28,6 +29,7 @@ namespace dxvk {
   HRESULT D3D11Device::QueryInterface(REFIID riid, void** ppvObject) {
     COM_QUERY_IFACE(riid, ppvObject, IUnknown);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11Device);
+    COM_QUERY_IFACE(riid, ppvObject, ID3D11DevicePrivate);
     
     if (riid == __uuidof(IDXGIDevicePrivate)
      || riid == __uuidof(IDXGIDevice))
@@ -42,20 +44,8 @@ namespace dxvk {
     const D3D11_BUFFER_DESC*      pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
           ID3D11Buffer**          ppBuffer) {
-    if (ppBuffer == nullptr)
-      return S_OK;
-    
-    try {
-      *ppBuffer = ref(new D3D11Buffer(this, *pDesc));
-      
-      if (pInitialData != nullptr)
-        Logger::warn("D3D11Device::CreateBuffer: pInitialData != NULL not supported");
-      
-      return S_OK;
-    } catch (const DxvkError& e) {
-      Logger::err(e.message());
-      return E_FAIL;
-    }
+    Logger::err("D3D11Device::CreateBuffer: Not implemented");
+    return E_NOTIMPL;
   }
   
   
@@ -381,6 +371,46 @@ namespace dxvk {
   UINT D3D11Device::GetExceptionMode() {
     Logger::err("D3D11Device::GetExceptionMode: Not implemented");
     return 0;
+  }
+  
+  
+  HRESULT D3D11Device::WrapSwapChainBackBuffer(
+    const Rc<DxvkImage>&          image,
+    const DXGI_SWAP_CHAIN_DESC*   pSwapChainDesc,
+          IUnknown**              ppInterface) {
+    UINT bindFlags = 0;
+    
+    if (pSwapChainDesc->BufferUsage & DXGI_USAGE_RENDER_TARGET_OUTPUT)
+      bindFlags |= D3D11_BIND_RENDER_TARGET;
+    
+    if (pSwapChainDesc->BufferUsage & DXGI_USAGE_SHADER_INPUT)
+      bindFlags |= D3D11_BIND_SHADER_RESOURCE;
+    
+    D3D11_TEXTURE2D_DESC desc;
+    desc.Width              = pSwapChainDesc->BufferDesc.Width;
+    desc.Height             = pSwapChainDesc->BufferDesc.Height;
+    desc.MipLevels          = 1;
+    desc.ArraySize          = 1;
+    desc.Format             = pSwapChainDesc->BufferDesc.Format;
+    desc.SampleDesc         = pSwapChainDesc->SampleDesc;
+    desc.Usage              = D3D11_USAGE_DEFAULT;
+    desc.BindFlags          = bindFlags;
+    desc.CPUAccessFlags     = 0;
+    desc.MiscFlags          = 0;
+    
+    *ppInterface = ref(new D3D11Texture2D(this, desc, image));
+    return S_OK;
+  }
+  
+  
+  HRESULT D3D11Device::FlushRenderingCommands() {
+    m_context->Flush();
+    return S_OK;
+  }
+  
+  
+  Rc<DxvkDevice> D3D11Device::GetDXVKDevice() {
+    return m_dxvkDevice;
   }
   
   

@@ -6,6 +6,7 @@
 #include "dxvk_constant_state.h"
 #include "dxvk_context.h"
 #include "dxvk_framebuffer.h"
+#include "dxvk_image.h"
 #include "dxvk_memory.h"
 #include "dxvk_pipemgr.h"
 #include "dxvk_renderpass.h"

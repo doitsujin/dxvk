@@ -12,9 +12,20 @@ namespace dxvk {
     
     // Retrieve a device pointer that allows us to
     // communicate with the underlying D3D device
-    if (FAILED(pDevice->QueryInterface(__uuidof(IDXGIDevicePrivate),
+    if (FAILED(pDevice->QueryInterface(__uuidof(ID3D11DevicePrivate),
         reinterpret_cast<void**>(&m_device))))
       throw DxvkError("DxgiSwapChain::DxgiSwapChain: Invalid device");
+    
+    // Retrieve the adapter, which is going
+    // to be used to enumerate displays.
+    Com<IDXGIDevice> device;
+    
+    if (FAILED(pDevice->QueryInterface(__uuidof(IDXGIDevice),
+        reinterpret_cast<void**>(&device))))
+      throw DxvkError("DxgiSwapChain::DxgiSwapChain: Invalid device");
+    
+    if (FAILED(device->GetAdapter(&m_adapter)))
+      throw DxvkError("DxgiSwapChain::DxgiSwapChain: Failed to retrieve adapter");
     
     // Initialize frame statistics
     m_stats.PresentCount         = 0;
@@ -39,7 +50,7 @@ namespace dxvk {
     if (FAILED(this->SetFullscreenState(!pDesc->Windowed, nullptr)))
       throw DxvkError("DxgiSwapChain::DxgiSwapChain: Failed to set initial fullscreen state");
     
-    // Create swap chain
+    // TODO clean up here
     Rc<DxvkDevice>  dxvkDevice  = m_device->GetDXVKDevice();
     Rc<DxvkAdapter> dxvkAdapter = dxvkDevice->adapter();
     
@@ -65,6 +76,7 @@ namespace dxvk {
     m_swapchain = dxvkDevice->createSwapchain(
       m_surface, swapchainProperties);
     
+    this->createBackBuffer();
   }
   
   
@@ -103,8 +115,7 @@ namespace dxvk {
       return DXGI_ERROR_INVALID_CALL;
     }
     
-    Logger::err("DxgiSwapChain::GetBuffer: Not implemented");
-    return E_NOTIMPL;
+    return m_backBufferIface->QueryInterface(riid, ppSurface);
   }
   
   
@@ -123,12 +134,7 @@ namespace dxvk {
       return DXGI_ERROR_DRIVER_INTERNAL_ERROR;
     }
     
-    Com<IDXGIAdapter> adapter;
-    
-    if (FAILED(m_device->GetAdapter(&adapter)))
-      return DXGI_ERROR_DRIVER_INTERNAL_ERROR;
-    
-    return adapter->EnumOutputs(displayId, ppOutput);
+    return m_adapter->EnumOutputs(displayId, ppOutput);
   }
   
   
@@ -182,47 +188,56 @@ namespace dxvk {
   HRESULT DxgiSwapChain::Present(UINT SyncInterval, UINT Flags) {
     std::lock_guard<std::mutex> lock(m_mutex);
     
-    // TODO implement sync interval
-    // TODO implement flags
+    try {
+      // Submit pending rendering commands
+      // before recording the present code.
+      m_device->FlushRenderingCommands();
     
-    auto dxvkDevice = m_device->GetDXVKDevice();
-    
-    auto framebuffer = m_swapchain->getFramebuffer(m_acquireSync);
-    auto framebufferSize = framebuffer->size();
-    
-    m_context->beginRecording(m_commandList);
-    m_context->bindFramebuffer(framebuffer);
-    
-    // TODO render back buffer into the swap image,
-    // the clear operation is only a placeholder.
-    VkClearAttachment clearAttachment;
-    clearAttachment.aspectMask      = VK_IMAGE_ASPECT_COLOR_BIT;
-    clearAttachment.colorAttachment = 0;
-    clearAttachment.clearValue.color.float32[0] = 1.0f;
-    clearAttachment.clearValue.color.float32[1] = 1.0f;
-    clearAttachment.clearValue.color.float32[2] = 1.0f;
-    clearAttachment.clearValue.color.float32[3] = 1.0f;
-    
-    VkClearRect clearArea;
-    clearArea.rect           = VkRect2D { { 0, 0 }, framebufferSize.width, framebufferSize.height };
-    clearArea.baseArrayLayer = 0;
-    clearArea.layerCount     = framebufferSize.layers;
-    
-    m_context->clearRenderTarget(
-      clearAttachment,
-      clearArea);
-    
-    m_context->endRecording();
-    
-    dxvkDevice->submitCommandList(m_commandList,
-      m_acquireSync, m_presentSync);
-    
-    m_swapchain->present( m_presentSync);
-    
-    // FIXME Make sure that the semaphores and the command
-    // list can be safely used without stalling the device.
-    dxvkDevice->waitForIdle();
-    return S_OK;
+      // TODO implement sync interval
+      // TODO implement flags
+      
+      auto dxvkDevice = m_device->GetDXVKDevice();
+      
+      auto framebuffer = m_swapchain->getFramebuffer(m_acquireSync);
+      auto framebufferSize = framebuffer->size();
+      
+      m_context->beginRecording(m_commandList);
+      m_context->bindFramebuffer(framebuffer);
+      
+      // TODO render back buffer into the swap image,
+      // the clear operation is only a placeholder.
+      VkClearAttachment clearAttachment;
+      clearAttachment.aspectMask      = VK_IMAGE_ASPECT_COLOR_BIT;
+      clearAttachment.colorAttachment = 0;
+      clearAttachment.clearValue.color.float32[0] = 1.0f;
+      clearAttachment.clearValue.color.float32[1] = 1.0f;
+      clearAttachment.clearValue.color.float32[2] = 1.0f;
+      clearAttachment.clearValue.color.float32[3] = 1.0f;
+      
+      VkClearRect clearArea;
+      clearArea.rect           = VkRect2D { { 0, 0 }, framebufferSize.width, framebufferSize.height };
+      clearArea.baseArrayLayer = 0;
+      clearArea.layerCount     = framebufferSize.layers;
+      
+      m_context->clearRenderTarget(
+        clearAttachment,
+        clearArea);
+      
+      m_context->endRecording();
+      
+      dxvkDevice->submitCommandList(m_commandList,
+        m_acquireSync, m_presentSync);
+      
+      m_swapchain->present(m_presentSync);
+      
+      // FIXME Make sure that the semaphores and the command
+      // list can be safely used without stalling the device.
+      dxvkDevice->waitForIdle();
+      return S_OK;
+    } catch (const DxvkError& err) {
+      Logger::err(err.message());
+      return DXGI_ERROR_DRIVER_INTERNAL_ERROR;
+    }
   }
   
   
@@ -237,8 +252,10 @@ namespace dxvk {
     m_desc.BufferDesc.Width  = Width;
     m_desc.BufferDesc.Height = Height;
     m_desc.BufferDesc.Format = NewFormat;
-    m_desc.BufferCount       = BufferCount;
     m_desc.Flags             = SwapChainFlags;
+    
+    if (BufferCount != 0)
+      m_desc.BufferCount     = BufferCount;
     
     try {
       // TODO implement
@@ -326,6 +343,14 @@ namespace dxvk {
     }
     
     return S_OK;
+  }
+  
+  
+  void DxgiSwapChain::createBackBuffer() {
+    // TODO create DXVK image and image virw
+    
+    if (FAILED(m_device->WrapSwapChainBackBuffer(m_backBuffer, &m_desc, &m_backBufferIface)))
+      throw DxvkError("DxgiSwapChain::createBackBuffer: Failed to create back buffer");
   }
   
 }

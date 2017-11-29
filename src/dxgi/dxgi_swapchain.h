@@ -9,6 +9,8 @@
 #include "dxgi_interfaces.h"
 #include "dxgi_object.h"
 
+#include "../d3d11/d3d11_interfaces.h"
+
 namespace dxvk {
   
   class DxgiFactory;
@@ -78,8 +80,9 @@ namespace dxvk {
     
     std::mutex m_mutex;
     
-    Com<DxgiFactory>        m_factory;
-    Com<IDXGIDevicePrivate> m_device;
+    Com<DxgiFactory>         m_factory;
+    Com<IDXGIAdapter>        m_adapter;
+    Com<ID3D11DevicePrivate> m_device;
     
     DXGI_SWAP_CHAIN_DESC  m_desc;
     DXGI_FRAME_STATISTICS m_stats;
@@ -93,6 +96,12 @@ namespace dxvk {
     
     Rc<DxvkSemaphore>   m_acquireSync;
     Rc<DxvkSemaphore>   m_presentSync;
+    
+    Rc<DxvkImage>       m_backBuffer;
+    Rc<DxvkImageView>   m_backBufferView;
+    Com<IUnknown>       m_backBufferIface;
+    
+    void createBackBuffer();
     
   };
   
