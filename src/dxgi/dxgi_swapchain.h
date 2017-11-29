@@ -8,8 +8,11 @@
 
 #include "dxgi_interfaces.h"
 #include "dxgi_object.h"
+#include "dxgi_presenter.h"
 
 #include "../d3d11/d3d11_interfaces.h"
+
+#include "../spirv/spirv_module.h"
 
 namespace dxvk {
   
@@ -87,7 +90,8 @@ namespace dxvk {
     DXGI_SWAP_CHAIN_DESC  m_desc;
     DXGI_FRAME_STATISTICS m_stats;
     
-    SDL_Window* m_window = nullptr;
+    SDL_Window*         m_window = nullptr;
+    
     
     Rc<DxvkContext>     m_context;
     Rc<DxvkCommandList> m_commandList;
@@ -97,11 +101,16 @@ namespace dxvk {
     Rc<DxvkSemaphore>   m_acquireSync;
     Rc<DxvkSemaphore>   m_presentSync;
     
+    Rc<DxgiPresenter>   m_presenter;
+    
     Rc<DxvkImage>       m_backBuffer;
     Rc<DxvkImageView>   m_backBufferView;
     Com<IUnknown>       m_backBufferIface;
     
+    void createPresenter();
     void createBackBuffer();
+    
+    void createContext();
     
   };
   

@@ -595,6 +595,21 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opFMul(
+          uint32_t                resultType,
+          uint32_t                a,
+          uint32_t                b) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpFMul, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(a);
+    m_code.putWord(b);
+    return resultId;
+  }
+  
+  
   uint32_t SpirvModule::opFClamp(
           uint32_t                resultType,
           uint32_t                x,

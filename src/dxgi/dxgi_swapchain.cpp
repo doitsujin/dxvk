@@ -51,36 +51,7 @@ namespace dxvk {
     if (FAILED(this->SetFullscreenState(!pDesc->Windowed, nullptr)))
       throw DxvkError("DxgiSwapChain::DxgiSwapChain: Failed to set initial fullscreen state");
     
-    // TODO clean up here
-    Com<IDXGIDevicePrivate> dxgiDevice;
-    m_device->GetDevice(__uuidof(IDXGIDevicePrivate),
-      reinterpret_cast<void**>(&dxgiDevice));
-    
-    Rc<DxvkDevice>  dxvkDevice  = dxgiDevice->GetDXVKDevice();
-    Rc<DxvkAdapter> dxvkAdapter = dxvkDevice->adapter();
-    
-    m_context = dxvkDevice->createContext();
-    m_commandList = dxvkDevice->createCommandList();
-    
-    m_acquireSync = dxvkDevice->createSemaphore();
-    m_presentSync = dxvkDevice->createSemaphore();
-    
-    HINSTANCE instance = reinterpret_cast<HINSTANCE>(
-      GetWindowLongPtr(m_desc.OutputWindow, GWLP_HINSTANCE));
-    
-    m_surface = dxvkAdapter->createSurface(
-      instance, m_desc.OutputWindow);
-    
-    DxvkSwapchainProperties swapchainProperties;
-    swapchainProperties.preferredSurfaceFormat.format     = VK_FORMAT_B8G8R8A8_SNORM;
-    swapchainProperties.preferredSurfaceFormat.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-    swapchainProperties.preferredPresentMode              = VK_PRESENT_MODE_FIFO_KHR;
-    swapchainProperties.preferredBufferSize.width         = m_desc.BufferDesc.Width;
-    swapchainProperties.preferredBufferSize.height        = m_desc.BufferDesc.Height;
-    
-    m_swapchain = dxvkDevice->createSwapchain(
-      m_surface, swapchainProperties);
-    
+    this->createPresenter();
     this->createBackBuffer();
   }
   
@@ -206,43 +177,7 @@ namespace dxvk {
     
       // TODO implement sync interval
       // TODO implement flags
-      auto dxvkDevice = dxgiDevice->GetDXVKDevice();
-      
-      auto framebuffer = m_swapchain->getFramebuffer(m_acquireSync);
-      auto framebufferSize = framebuffer->size();
-      
-      m_context->beginRecording(m_commandList);
-      m_context->bindFramebuffer(framebuffer);
-      
-      // TODO render back buffer into the swap image,
-      // the clear operation is only a placeholder.
-      VkClearAttachment clearAttachment;
-      clearAttachment.aspectMask      = VK_IMAGE_ASPECT_COLOR_BIT;
-      clearAttachment.colorAttachment = 0;
-      clearAttachment.clearValue.color.float32[0] = 1.0f;
-      clearAttachment.clearValue.color.float32[1] = 1.0f;
-      clearAttachment.clearValue.color.float32[2] = 1.0f;
-      clearAttachment.clearValue.color.float32[3] = 1.0f;
-      
-      VkClearRect clearArea;
-      clearArea.rect           = VkRect2D { { 0, 0 }, framebufferSize.width, framebufferSize.height };
-      clearArea.baseArrayLayer = 0;
-      clearArea.layerCount     = framebufferSize.layers;
-      
-      m_context->clearRenderTarget(
-        clearAttachment,
-        clearArea);
-      
-      m_context->endRecording();
-      
-      dxvkDevice->submitCommandList(m_commandList,
-        m_acquireSync, m_presentSync);
-      
-      m_swapchain->present(m_presentSync);
-      
-      // FIXME Make sure that the semaphores and the command
-      // list can be safely used without stalling the device.
-      dxvkDevice->waitForIdle();
+      m_presenter->presentImage(m_backBufferView);
       return S_OK;
     } catch (const DxvkError& err) {
       Logger::err(err.message());
@@ -353,6 +288,19 @@ namespace dxvk {
     }
     
     return S_OK;
+  }
+  
+  
+  void DxgiSwapChain::createPresenter() {
+    Com<IDXGIDevicePrivate> dxgiDevice;
+    m_device->GetDevice(__uuidof(IDXGIDevicePrivate),
+      reinterpret_cast<void**>(&dxgiDevice));
+    
+    m_presenter = new DxgiPresenter(
+      dxgiDevice->GetDXVKDevice(),
+      m_desc.OutputWindow,
+      m_desc.BufferDesc.Width,
+      m_desc.BufferDesc.Height);
   }
   
   
