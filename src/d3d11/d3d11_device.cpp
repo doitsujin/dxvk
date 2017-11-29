@@ -3,6 +3,7 @@
 #include "d3d11_buffer.h"
 #include "d3d11_context.h"
 #include "d3d11_device.h"
+#include "d3d11_present.h"
 #include "d3d11_texture.h"
 #include "d3d11_view.h"
 
@@ -12,17 +13,21 @@ namespace dxvk {
           IDXGIDevicePrivate* dxgiDevice,
           D3D_FEATURE_LEVEL   featureLevel,
           UINT                featureFlags)
-  : m_dxgiDevice  (dxgiDevice),
-    m_featureLevel(featureLevel),
-    m_featureFlags(featureFlags),
-    m_dxvkDevice  (m_dxgiDevice->GetDXVKDevice()),
-    m_dxvkAdapter (m_dxvkDevice->adapter()) {
+  : m_dxgiDevice    (dxgiDevice),
+    m_presentDevice (ref(new D3D11PresentDevice())),
+    m_featureLevel  (featureLevel),
+    m_featureFlags  (featureFlags),
+    m_dxvkDevice    (m_dxgiDevice->GetDXVKDevice()),
+    m_dxvkAdapter   (m_dxvkDevice->adapter()) {
     m_dxgiDevice->SetDeviceLayer(this);
+    m_presentDevice->SetDeviceLayer(this);
+    
     m_context = new D3D11DeviceContext(this, m_dxvkDevice);
   }
   
   
   D3D11Device::~D3D11Device() {
+    m_presentDevice->SetDeviceLayer(nullptr);
     m_dxgiDevice->SetDeviceLayer(nullptr);
   }
   
@@ -30,11 +35,13 @@ namespace dxvk {
   HRESULT D3D11Device::QueryInterface(REFIID riid, void** ppvObject) {
     COM_QUERY_IFACE(riid, ppvObject, IUnknown);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11Device);
-    COM_QUERY_IFACE(riid, ppvObject, ID3D11DevicePrivate);
     
     if (riid == __uuidof(IDXGIDevice)
      || riid == __uuidof(IDXGIDevicePrivate))
       return m_dxgiDevice->QueryInterface(riid, ppvObject);
+    
+    if (riid == __uuidof(IDXGIPresentDevicePrivate))
+      return m_presentDevice->QueryInterface(riid, ppvObject);
     
     Logger::warn("D3D11Device::QueryInterface: Unknown interface query");
     return E_NOINTERFACE;
@@ -387,39 +394,6 @@ namespace dxvk {
   UINT D3D11Device::GetExceptionMode() {
     Logger::err("D3D11Device::GetExceptionMode: Not implemented");
     return 0;
-  }
-  
-  
-  HRESULT D3D11Device::WrapSwapChainBackBuffer(
-          IDXGIImageResourcePrivate*  pResource,
-    const DXGI_SWAP_CHAIN_DESC*       pSwapChainDesc,
-          IUnknown**                  ppInterface) {
-    D3D11_TEXTURE2D_DESC desc;
-    desc.Width              = pSwapChainDesc->BufferDesc.Width;
-    desc.Height             = pSwapChainDesc->BufferDesc.Height;
-    desc.MipLevels          = 1;
-    desc.ArraySize          = 1;
-    desc.Format             = pSwapChainDesc->BufferDesc.Format;
-    desc.SampleDesc         = pSwapChainDesc->SampleDesc;
-    desc.Usage              = D3D11_USAGE_DEFAULT;
-    desc.BindFlags          = D3D11_BIND_RENDER_TARGET
-                            | D3D11_BIND_SHADER_RESOURCE;
-    desc.CPUAccessFlags     = 0;
-    desc.MiscFlags          = 0;
-    
-    *ppInterface = ref(new D3D11Texture2D(this, pResource, desc));
-    return S_OK;
-  }
-  
-  
-  HRESULT D3D11Device::FlushRenderingCommands() {
-    m_context->Flush();
-    return S_OK;
-  }
-  
-  
-  Rc<DxvkDevice> D3D11Device::GetDXVKDevice() {
-    return m_dxvkDevice;
   }
   
   

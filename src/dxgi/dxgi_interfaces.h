@@ -73,7 +73,58 @@ IDXGIImageResourcePrivate : public IDXGIResource {
 };
 
 
+/**
+ * \brief Private presentation device interface
+ * 
+ * Allows a swap chain to communicate with the device
+ * in order to flush pending commands or create the
+ * back buffer interface.
+ */
+MIDL_INTERFACE("79352328-16f2-4f81-9746-9c2e2ccd43cf")
+IDXGIPresentDevicePrivate : public IUnknown {
+  static const GUID guid;
+  
+  /**
+   * \brief Wraps swap chain image into a texture interface
+   * 
+   * Creates an interface to the back buffer image of a
+   * swap chain. This interface will be returned by the
+   * swap chain's \c GetBuffer method.
+   * \param [in] image Image to wrap
+   * \param [in] pSwapChainDesc Swap chain properties
+   * \param [in] ppInterface Target interface
+   * \returns \c S_OK on success
+   */
+  virtual HRESULT WrapSwapChainBackBuffer(
+          IDXGIImageResourcePrivate*  pResource,
+    const DXGI_SWAP_CHAIN_DESC*       pSwapChainDesc,
+          IUnknown**                  ppInterface) = 0;
+  
+  /**
+   * \brief Flushes the immediate context
+   * 
+   * Used by the swap chain's \c Present method to
+   * ensure that all rendering commands get dispatched
+   * before presenting the swap chain's back buffer.
+   * \returns \c S_OK on success
+   */
+  virtual HRESULT FlushRenderingCommands() = 0;
+  
+  /**
+   * \brief Underlying DXVK device
+   * 
+   * \param [in] riid Device type
+   * \param [in] ppDevice device
+   * \returns DXVK device handle
+   */
+  virtual HRESULT GetDevice(
+          REFGUID     riid,
+          void**      ppDevice) = 0;
+};
+
+
 DXVK_DEFINE_GUID(IDXGIAdapterPrivate);
 DXVK_DEFINE_GUID(IDXGIDevicePrivate);
+DXVK_DEFINE_GUID(IDXGIPresentDevicePrivate);
 DXVK_DEFINE_GUID(IDXGIBufferResourcePrivate);
 DXVK_DEFINE_GUID(IDXGIImageResourcePrivate);

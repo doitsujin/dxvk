@@ -3,6 +3,7 @@
 #include <dxvk_device.h>
 
 #include "d3d11_device_child.h"
+#include "d3d11_interfaces.h"
 
 namespace dxvk {
   
@@ -14,8 +15,9 @@ namespace dxvk {
   public:
     
     D3D11Buffer(
-            D3D11Device*        device,
-      const D3D11_BUFFER_DESC&  desc);
+            D3D11Device*                device,
+            IDXGIImageResourcePrivate*  resource,
+      const D3D11_BUFFER_DESC&          desc);
     ~D3D11Buffer();
     
     HRESULT QueryInterface(
@@ -33,12 +35,9 @@ namespace dxvk {
     
   private:
     
-    Com<D3D11Device>    m_device;
-    
-    D3D11_BUFFER_DESC   m_desc;
-    Rc<DxvkBuffer>      m_buffer;
-    
-    Rc<DxvkBuffer> createBuffer();
+    Com<D3D11Device>                m_device;
+    Com<IDXGIImageResourcePrivate>  m_resource;
+    D3D11_BUFFER_DESC               m_desc;
     
   };
   

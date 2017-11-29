@@ -11,8 +11,9 @@ namespace dxvk {
   
   class DxgiAdapter;
   class D3D11DeviceContext;
+  class D3D11PresentDevice;
   
-  class D3D11Device : public ComObject<ID3D11DevicePrivate> {
+  class D3D11Device : public ComObject<ID3D11Device> {
     
   public:
     
@@ -215,14 +216,9 @@ namespace dxvk {
     
     UINT GetExceptionMode() final;
     
-    HRESULT WrapSwapChainBackBuffer(
-            IDXGIImageResourcePrivate*  pResource,
-      const DXGI_SWAP_CHAIN_DESC*       pSwapChainDesc,
-            IUnknown**                  ppInterface) final;
-    
-    HRESULT FlushRenderingCommands() final;
-    
-    Rc<DxvkDevice> GetDXVKDevice() final;
+    Rc<DxvkDevice> GetDXVKDevice() {
+      return m_dxvkDevice;
+    }
     
     static bool CheckFeatureLevelSupport(
             D3D_FEATURE_LEVEL featureLevel);
@@ -230,6 +226,8 @@ namespace dxvk {
   private:
     
     const Com<IDXGIDevicePrivate> m_dxgiDevice;
+    const Com<D3D11PresentDevice> m_presentDevice;
+    
     const D3D_FEATURE_LEVEL       m_featureLevel;
     const UINT                    m_featureFlags;
     

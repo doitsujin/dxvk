@@ -21,6 +21,7 @@ namespace dxvk {
   
   HRESULT D3D11Texture2D::QueryInterface(REFIID riid, void** ppvObject) {
     COM_QUERY_IFACE(riid, ppvObject, IUnknown);
+    COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceChild);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11Resource);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11Texture2D);
     
