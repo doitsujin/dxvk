@@ -4,6 +4,7 @@
 #include "d3d11_context.h"
 #include "d3d11_device.h"
 #include "d3d11_texture.h"
+#include "d3d11_view.h"
 
 namespace dxvk {
   
@@ -31,8 +32,8 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, ID3D11Device);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11DevicePrivate);
     
-    if (riid == __uuidof(IDXGIDevicePrivate)
-     || riid == __uuidof(IDXGIDevice))
+    if (riid == __uuidof(IDXGIDevice)
+     || riid == __uuidof(IDXGIDevicePrivate))
       return m_dxgiDevice->QueryInterface(riid, ppvObject);
     
     Logger::warn("D3D11Device::QueryInterface: Unknown interface query");
@@ -98,8 +99,12 @@ namespace dxvk {
           ID3D11Resource*                   pResource,
     const D3D11_RENDER_TARGET_VIEW_DESC*    pDesc,
           ID3D11RenderTargetView**          ppRTView) {
-    Logger::err("D3D11Device::CreateRenderTargetView: Not implemented");
-    return E_NOTIMPL;
+    // TODO fill desc
+    // TODO create view
+    D3D11_RENDER_TARGET_VIEW_DESC desc;
+    
+    *ppRTView = ref(new D3D11RenderTargetView(this, desc));
+    return S_OK;
   }
   
   
@@ -107,6 +112,17 @@ namespace dxvk {
           ID3D11Resource*                   pResource,
     const D3D11_DEPTH_STENCIL_VIEW_DESC*    pDesc,
           ID3D11DepthStencilView**          ppDepthStencilView) {
+    D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+    pResource->GetType(&resourceDim);
+    
+    // Only 2D textures and 2D texture arrays are allowed
+    if (resourceDim != D3D11_RESOURCE_DIMENSION_TEXTURE2D) {
+      Logger::err("D3D11Device::CreateRenderTargetView: Unsupported resource type");
+      return E_INVALIDARG;
+    }
+    
+    
+    
     Logger::err("D3D11Device::CreateRenderTargetView: Not implemented");
     return E_NOTIMPL;
   }
@@ -375,9 +391,9 @@ namespace dxvk {
   
   
   HRESULT D3D11Device::WrapSwapChainBackBuffer(
-    const Rc<DxvkImage>&          image,
-    const DXGI_SWAP_CHAIN_DESC*   pSwapChainDesc,
-          IUnknown**              ppInterface) {
+          IDXGIImageResourcePrivate*  pResource,
+    const DXGI_SWAP_CHAIN_DESC*       pSwapChainDesc,
+          IUnknown**                  ppInterface) {
     D3D11_TEXTURE2D_DESC desc;
     desc.Width              = pSwapChainDesc->BufferDesc.Width;
     desc.Height             = pSwapChainDesc->BufferDesc.Height;
@@ -391,7 +407,7 @@ namespace dxvk {
     desc.CPUAccessFlags     = 0;
     desc.MiscFlags          = 0;
     
-    *ppInterface = ref(new D3D11Texture2D(this, desc, image));
+    *ppInterface = ref(new D3D11Texture2D(this, pResource, desc));
     return S_OK;
   }
   

@@ -105,7 +105,7 @@ extern "C" {
       if (ppDevice != nullptr) {
         Com<IDXGIDevicePrivate> dxvkDevice = nullptr;
         
-        if (FAILED(DXGICreateDXVKDevice(dxvkAdapter.ptr(), &dxvkDevice))) {
+        if (FAILED(DXGICreateDevicePrivate(dxvkAdapter.ptr(), &dxvkDevice))) {
           Logger::err("D3D11CreateDevice: Failed to create DXGI device");
           return E_FAIL;
         }

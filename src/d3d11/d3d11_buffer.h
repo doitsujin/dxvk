@@ -2,13 +2,14 @@
 
 #include <dxvk_device.h>
 
-#include "d3d11_resource.h"
+#include "d3d11_device_child.h"
 
 namespace dxvk {
   
   class D3D11Device;
   
-  class D3D11Buffer : public D3D11Resource<ID3D11Buffer> {
+  
+  class D3D11Buffer : public D3D11DeviceChild<ID3D11Buffer> {
     
   public:
     

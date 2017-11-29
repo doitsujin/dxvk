@@ -1,4 +1,5 @@
 #include "dxgi_factory.h"
+#include "dxgi_resource.h"
 #include "dxgi_swapchain.h"
 
 namespace dxvk {
@@ -12,7 +13,7 @@ namespace dxvk {
     
     // Retrieve a device pointer that allows us to
     // communicate with the underlying D3D device
-    if (FAILED(pDevice->QueryInterface(__uuidof(ID3D11DevicePrivate),
+    if (FAILED(pDevice->QueryInterface(__uuidof(IDXGIDevicePrivate),
         reinterpret_cast<void**>(&m_device))))
       throw DxvkError("DxgiSwapChain::DxgiSwapChain: Invalid device");
     
@@ -188,15 +189,24 @@ namespace dxvk {
   HRESULT DxgiSwapChain::Present(UINT SyncInterval, UINT Flags) {
     std::lock_guard<std::mutex> lock(m_mutex);
     
+    // TODO implement generic swap chain client interface
+    Com<ID3D11DevicePrivate> d3d11device;
+    
+    if (FAILED(m_device->QueryInterface(__uuidof(ID3D11DevicePrivate),
+          reinterpret_cast<void**>(&d3d11device)))) {
+      Logger::err("DxgiSwapChain::Present: Invalid swap chain client interface");
+      return E_INVALIDARG;
+    }
+    
     try {
       // Submit pending rendering commands
       // before recording the present code.
-      m_device->FlushRenderingCommands();
+      d3d11device->FlushRenderingCommands();
     
       // TODO implement sync interval
       // TODO implement flags
       
-      auto dxvkDevice = m_device->GetDXVKDevice();
+      auto dxvkDevice = d3d11device->GetDXVKDevice();
       
       auto framebuffer = m_swapchain->getFramebuffer(m_acquireSync);
       auto framebufferSize = framebuffer->size();
@@ -351,8 +361,17 @@ namespace dxvk {
     // TODO support proper multi-sampling
     const Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
     
+    // TODO implement generic swap chain client interface
+    Com<ID3D11DevicePrivate> d3d11device;
+    
+    if (FAILED(m_device->QueryInterface(__uuidof(ID3D11DevicePrivate),
+          reinterpret_cast<void**>(&d3d11device))))
+      throw DxvkError("DxgiSwapChain::Present: Invalid swap chain client interface");
+    
     // Create an image that can be rendered to
     // and that can be used as a sampled texture.
+    Com<IDXGIImageResourcePrivate> resource;
+    
     DxvkImageCreateInfo imageInfo;
     imageInfo.type          = VK_IMAGE_TYPE_2D;
     imageInfo.format        = VK_FORMAT_R8G8B8A8_SNORM;
@@ -380,8 +399,12 @@ namespace dxvk {
                             | VK_ACCESS_SHADER_READ_BIT;
     imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
     
-    m_backBuffer = dxvkDevice->createImage(imageInfo,
-      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    if (FAILED(DXGICreateImageResourcePrivate(m_device.ptr(), &imageInfo,
+          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, DXGI_USAGE_BACK_BUFFER | m_desc.BufferUsage,
+          &resource)))
+      throw DxvkError("DxgiSwapChain::createBackBuffer: Failed to create back buffer");
+      
+    m_backBuffer = resource->GetDXVKImage();
     
     // Create an image view that allows the
     // image to be bound as a shader resource.
@@ -398,8 +421,8 @@ namespace dxvk {
     
     // Wrap the back buffer image into an interface
     // that the device can use to access the image.
-    if (FAILED(m_device->WrapSwapChainBackBuffer(m_backBuffer, &m_desc, &m_backBufferIface)))
-      throw DxvkError("DxgiSwapChain::createBackBuffer: Failed to create back buffer");
+    if (FAILED(d3d11device->WrapSwapChainBackBuffer(resource.ptr(), &m_desc, &m_backBufferIface)))
+      throw DxvkError("DxgiSwapChain::createBackBuffer: Failed to create back buffer interface");
   }
   
 }

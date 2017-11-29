@@ -1,8 +1,10 @@
 #pragma once
 
-#include "../dxvk/dxvk_device.h"
-
 #include "d3d11_include.h"
+
+#include "../dxgi/dxgi_interfaces.h"
+
+#include "../dxvk/dxvk_device.h"
 
 /**
  * \brief Private device interface
@@ -26,7 +28,7 @@ ID3D11DevicePrivate : public ID3D11Device {
    * \returns \c S_OK on success
    */
   virtual HRESULT WrapSwapChainBackBuffer(
-    const dxvk::Rc<dxvk::DxvkImage>&  image,
+          IDXGIImageResourcePrivate*  pResource,
     const DXGI_SWAP_CHAIN_DESC*       pSwapChainDesc,
           IUnknown**                  ppInterface) = 0;
   
@@ -46,5 +48,6 @@ ID3D11DevicePrivate : public ID3D11Device {
    */
   virtual dxvk::Rc<dxvk::DxvkDevice> GetDXVKDevice() = 0;
 };
+
 
 DXVK_DEFINE_GUID(ID3D11DevicePrivate);

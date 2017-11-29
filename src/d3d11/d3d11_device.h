@@ -1,7 +1,7 @@
 #pragma once
 
 #include <dxgi_object.h>
-#include <dxgi_interfaces.h>
+#include <dxgi_resource.h>
 
 #include "d3d11_interfaces.h"
 
@@ -216,9 +216,9 @@ namespace dxvk {
     UINT GetExceptionMode() final;
     
     HRESULT WrapSwapChainBackBuffer(
-      const Rc<DxvkImage>&          image,
-      const DXGI_SWAP_CHAIN_DESC*   pSwapChainDesc,
-            IUnknown**              ppInterface) final;
+            IDXGIImageResourcePrivate*  pResource,
+      const DXGI_SWAP_CHAIN_DESC*       pSwapChainDesc,
+            IUnknown**                  ppInterface) final;
     
     HRESULT FlushRenderingCommands() final;
     

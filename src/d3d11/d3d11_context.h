@@ -539,8 +539,12 @@ namespace dxvk {
     
     ID3D11Device* const m_parent;
     
-    Rc<DxvkDevice>  m_device;
-    Rc<DxvkContext> m_context;
+    const D3D11_DEVICE_CONTEXT_TYPE m_type  = D3D11_DEVICE_CONTEXT_IMMEDIATE;
+    const UINT                      m_flags = 0;
+    
+    Rc<DxvkDevice>      m_device;
+    Rc<DxvkContext>     m_context;
+    Rc<DxvkCommandList> m_cmdList;
     
   };
   

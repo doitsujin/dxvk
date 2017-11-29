@@ -5,7 +5,9 @@
 namespace dxvk {
   class DxgiAdapter;
   class DxvkAdapter;
+  class DxvkBuffer;
   class DxvkDevice;
+  class DxvkImage;
 }
   
 /**
@@ -41,5 +43,37 @@ IDXGIDevicePrivate : public IDXGIDevice {
 };
 
 
-template<> inline GUID const& __mingw_uuidof<IDXGIAdapterPrivate>() { return IDXGIAdapterPrivate::guid; }
-template<> inline GUID const& __mingw_uuidof<IDXGIDevicePrivate> () { return IDXGIDevicePrivate ::guid; }
+/**
+ * \brief Private buffer resource interface
+ * Provides access to a raw DXVK buffer.
+ */
+MIDL_INTERFACE("5679becd-8547-4d93-96a1-e61a1ce7ef37")
+IDXGIBufferResourcePrivate : public IDXGIResource {
+  static const GUID guid;
+  
+  virtual dxvk::Rc<dxvk::DxvkBuffer> GetDXVKBuffer() = 0;
+  
+  virtual void SetResourceLayer(
+          IUnknown* pLayer) = 0;
+};
+
+
+/**
+ * \brief Private image resource interface
+ * Provides access to a raw DXVK image.
+ */
+MIDL_INTERFACE("1cfe6592-7de0-4a07-8dcb-4543cbbc6a7d")
+IDXGIImageResourcePrivate : public IDXGIResource {
+  static const GUID guid;
+  
+  virtual dxvk::Rc<dxvk::DxvkImage> GetDXVKImage() = 0;
+  
+  virtual void SetResourceLayer(
+          IUnknown* pLayer) = 0;
+};
+
+
+DXVK_DEFINE_GUID(IDXGIAdapterPrivate);
+DXVK_DEFINE_GUID(IDXGIDevicePrivate);
+DXVK_DEFINE_GUID(IDXGIBufferResourcePrivate);
+DXVK_DEFINE_GUID(IDXGIImageResourcePrivate);

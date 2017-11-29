@@ -22,11 +22,11 @@ namespace dxvk {
     
     virtual ~ComObject() { }
     
-    ULONG AddRef() final {
+    ULONG AddRef() {
       return ++m_refCount;
     }
     
-    ULONG Release() final {
+    ULONG Release() {
       ULONG refCount = --m_refCount;
       if (refCount == 0)
         delete this;

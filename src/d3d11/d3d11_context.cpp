@@ -8,7 +8,9 @@ namespace dxvk {
       Rc<DxvkDevice>  device)
   : m_parent(parent),
     m_device(device) {
-    
+    m_context = m_device->createContext();
+    m_cmdList = m_device->createCommandList();
+    m_context->beginRecording(m_cmdList);
   }
   
   
@@ -35,12 +37,12 @@ namespace dxvk {
   
   
   D3D11_DEVICE_CONTEXT_TYPE D3D11DeviceContext::GetType() {
-    return D3D11_DEVICE_CONTEXT_IMMEDIATE;
+    return m_type;
   }
   
   
   UINT D3D11DeviceContext::GetContextFlags() {
-    return 0;
+    return m_flags;
   }
   
   
@@ -50,7 +52,16 @@ namespace dxvk {
   
   
   void D3D11DeviceContext::Flush() {
-    Logger::err("D3D11DeviceContext::Flush: Not implemented");
+    if (m_type == D3D11_DEVICE_CONTEXT_IMMEDIATE) {
+      m_context->endRecording();
+      m_device->submitCommandList(
+        m_cmdList, nullptr, nullptr);
+      
+      m_cmdList = m_device->createCommandList();
+      m_context->beginRecording(m_cmdList);
+    } else {
+      Logger::err("D3D11DeviceContext::Flush: Not supported on deferred context");
+    }
   }
   
   
@@ -64,8 +75,13 @@ namespace dxvk {
   HRESULT D3D11DeviceContext::FinishCommandList(
           WINBOOL             RestoreDeferredContextState,
           ID3D11CommandList   **ppCommandList) {
-    Logger::err("D3D11DeviceContext::FinishCommandList: Not implemented");
-    return E_NOTIMPL;
+    if (m_type == D3D11_DEVICE_CONTEXT_DEFERRED) {
+      Logger::err("D3D11DeviceContext::FinishCommandList: Not implemented");
+      return E_NOTIMPL;
+    } else {
+      Logger::err("D3D11DeviceContext::FinishCommandList: Not supported on immediate context");
+      return DXGI_ERROR_INVALID_CALL;
+    }
   }
   
   
