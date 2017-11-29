@@ -378,14 +378,6 @@ namespace dxvk {
     const Rc<DxvkImage>&          image,
     const DXGI_SWAP_CHAIN_DESC*   pSwapChainDesc,
           IUnknown**              ppInterface) {
-    UINT bindFlags = 0;
-    
-    if (pSwapChainDesc->BufferUsage & DXGI_USAGE_RENDER_TARGET_OUTPUT)
-      bindFlags |= D3D11_BIND_RENDER_TARGET;
-    
-    if (pSwapChainDesc->BufferUsage & DXGI_USAGE_SHADER_INPUT)
-      bindFlags |= D3D11_BIND_SHADER_RESOURCE;
-    
     D3D11_TEXTURE2D_DESC desc;
     desc.Width              = pSwapChainDesc->BufferDesc.Width;
     desc.Height             = pSwapChainDesc->BufferDesc.Height;
@@ -394,7 +386,8 @@ namespace dxvk {
     desc.Format             = pSwapChainDesc->BufferDesc.Format;
     desc.SampleDesc         = pSwapChainDesc->SampleDesc;
     desc.Usage              = D3D11_USAGE_DEFAULT;
-    desc.BindFlags          = bindFlags;
+    desc.BindFlags          = D3D11_BIND_RENDER_TARGET
+                            | D3D11_BIND_SHADER_RESOURCE;
     desc.CPUAccessFlags     = 0;
     desc.MiscFlags          = 0;
     

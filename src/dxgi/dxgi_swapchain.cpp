@@ -258,7 +258,7 @@ namespace dxvk {
       m_desc.BufferCount     = BufferCount;
     
     try {
-      // TODO implement
+      this->createBackBuffer();
       return S_OK;
     } catch (const DxvkError& err) {
       Logger::err(err.message());
@@ -347,8 +347,57 @@ namespace dxvk {
   
   
   void DxgiSwapChain::createBackBuffer() {
-    // TODO create DXVK image and image virw
+    // TODO select format based on DXGI format
+    // TODO support proper multi-sampling
+    const Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
     
+    // Create an image that can be rendered to
+    // and that can be used as a sampled texture.
+    DxvkImageCreateInfo imageInfo;
+    imageInfo.type          = VK_IMAGE_TYPE_2D;
+    imageInfo.format        = VK_FORMAT_R8G8B8A8_SNORM;
+    imageInfo.sampleCount   = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.extent.width  = m_desc.BufferDesc.Width;
+    imageInfo.extent.height = m_desc.BufferDesc.Height;
+    imageInfo.extent.depth  = 1;
+    imageInfo.numLayers     = 1;
+    imageInfo.mipLevels     = 1;
+    imageInfo.usage         = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+                            | VK_IMAGE_USAGE_SAMPLED_BIT
+                            | VK_IMAGE_USAGE_TRANSFER_DST_BIT
+                            | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    imageInfo.stages        = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
+                            | VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT
+                            | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+                            | VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+                            | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+                            | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
+                            | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+                            | VK_PIPELINE_STAGE_TRANSFER_BIT;
+    imageInfo.access        = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+                            | VK_ACCESS_TRANSFER_WRITE_BIT
+                            | VK_ACCESS_TRANSFER_READ_BIT
+                            | VK_ACCESS_SHADER_READ_BIT;
+    imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+    
+    m_backBuffer = dxvkDevice->createImage(imageInfo,
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    
+    // Create an image view that allows the
+    // image to be bound as a shader resource.
+    DxvkImageViewCreateInfo viewInfo;
+    viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format     = imageInfo.format;
+    viewInfo.aspect     = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.minLevel   = 0;
+    viewInfo.numLevels  = 1;
+    viewInfo.minLayer   = 0;
+    viewInfo.numLayers  = 1;
+    
+    m_backBufferView = dxvkDevice->createImageView(m_backBuffer, viewInfo);
+    
+    // Wrap the back buffer image into an interface
+    // that the device can use to access the image.
     if (FAILED(m_device->WrapSwapChainBackBuffer(m_backBuffer, &m_desc, &m_backBufferIface)))
       throw DxvkError("DxgiSwapChain::createBackBuffer: Failed to create back buffer");
   }
