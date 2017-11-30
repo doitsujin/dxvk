@@ -101,6 +101,23 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::clearColorImage(
+    const Rc<DxvkImage>&            image,
+    const VkClearColorValue&        value,
+    const VkImageSubresourceRange&  subresources) {
+    this->renderPassEnd();
+    
+    m_cmd->cmdClearColorImage(
+      image->handle(),
+      VK_IMAGE_LAYOUT_GENERAL,
+      &value, 1, &subresources);
+    
+    // TODO memory barrier
+    
+    m_cmd->trackResource(image);
+  }
+  
+  
   void DxvkContext::clearRenderTarget(
     const VkClearAttachment&  attachment,
     const VkClearRect&        clearArea) {

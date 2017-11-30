@@ -103,6 +103,13 @@ namespace dxvk {
             uint32_t                rectCount,
       const VkClearRect*            pRects) final;
     
+    void cmdClearColorImage(
+            VkImage                 image,
+            VkImageLayout           imageLayout,
+      const VkClearColorValue*      pColor,
+            uint32_t                rangeCount,
+      const VkImageSubresourceRange* pRanges) final;
+    
     void cmdCopyBuffer(
             VkBuffer                srcBuffer,
             VkBuffer                dstBuffer,

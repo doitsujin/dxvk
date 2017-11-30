@@ -87,6 +87,18 @@ namespace dxvk {
       const DxvkBufferBinding&    buffer);
     
     /**
+     * \brief Clears subresources of an image
+     * 
+     * \param [in] image The image to clear
+     * \param [in] value Clear value
+     * \param [in] subresources Subresources to clear
+     */
+    void clearColorImage(
+      const Rc<DxvkImage>&            image,
+      const VkClearColorValue&        value,
+      const VkImageSubresourceRange&  subresources);
+    
+    /**
      * \brief Clears an active render target
      * 
      * \param [in] attachment Attachment to clear

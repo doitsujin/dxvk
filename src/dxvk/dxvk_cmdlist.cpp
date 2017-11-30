@@ -147,6 +147,18 @@ namespace dxvk {
   }
   
   
+  void DxvkCommandList::cmdClearColorImage(
+          VkImage                 image,
+          VkImageLayout           imageLayout,
+    const VkClearColorValue*      pColor,
+          uint32_t                rangeCount,
+    const VkImageSubresourceRange* pRanges) {
+    m_vkd->vkCmdClearColorImage(m_buffer,
+      image, imageLayout, pColor,
+      rangeCount, pRanges);
+  }
+  
+  
   void DxvkCommandList::cmdCopyBuffer(
           VkBuffer                srcBuffer,
           VkBuffer                dstBuffer,

@@ -175,6 +175,20 @@ namespace dxvk {
       return m_image;
     }
     
+    /**
+     * \brief Subresource range
+     * \returns Subresource range
+     */
+    VkImageSubresourceRange subresources() const {
+      VkImageSubresourceRange result;
+      result.aspectMask     = m_info.aspect;
+      result.baseMipLevel   = m_info.minLevel;
+      result.levelCount     = m_info.numLevels;
+      result.baseArrayLayer = m_info.minLayer;
+      result.layerCount     = m_info.numLayers;
+      return result;
+    }
+    
   private:
     
     Rc<vk::DeviceFn>  m_vkd;
