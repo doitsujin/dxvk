@@ -171,9 +171,13 @@ namespace dxvk {
           ID3D11RenderTargetView*           pRenderTargetView,
     const FLOAT                             ColorRGBA[4]) {
     Com<ID3D11RenderTargetViewPrivate> rtv;
+    
     pRenderTargetView->QueryInterface(
       __uuidof(ID3D11RenderTargetViewPrivate),
       reinterpret_cast<void**>(&rtv));
+    
+    const Rc<DxvkImageView> dxvkView  = rtv->GetDXVKImageView();
+    const Rc<DxvkImage>     dxvkImage = dxvkView->image();
     
     // Find out whether the given attachment is currently bound
     // or not, and if it is, which attachment index it has.
@@ -184,39 +188,42 @@ namespace dxvk {
         attachmentIndex = static_cast<int32_t>(i);
     }
     
-    if (attachmentIndex < 0) {
-      // FIXME bind render target, then restore framebuffer or mark dirty
-      Logger::err("D3D11DeviceContext::ClearRenderTargetView: Render target not bound. This is currently not supported.");
-      return;
+    // Copy the clear color into a clear value structure.
+    // This should also work for images that don nott have
+    // a floating point format.
+    VkClearColorValue clearValue;
+    std::memcpy(clearValue.float32, ColorRGBA,
+      sizeof(clearValue.float32));
+    
+    if (attachmentIndex >= 0) {
+      // Image is bound to the pipeline for rendering. We can
+      // use the clear function that operates on attachments.
+      VkClearAttachment clearInfo;
+      clearInfo.aspectMask          = VK_IMAGE_ASPECT_COLOR_BIT;
+      clearInfo.colorAttachment     = static_cast<uint32_t>(attachmentIndex);
+      clearInfo.clearValue.color    = clearValue;
+      
+      // Clear the full area. On FL 9.x, only the first array
+      // layer will be cleared, rather than all array layers.
+      VkClearRect clearRect;
+      clearRect.rect.offset.x       = 0;
+      clearRect.rect.offset.y       = 0;
+      clearRect.rect.extent.width   = dxvkImage->info().extent.width;
+      clearRect.rect.extent.height  = dxvkImage->info().extent.height;
+      clearRect.baseArrayLayer      = 0;
+      clearRect.layerCount          = dxvkImage->info().numLayers;
+      
+      if (m_parent->GetFeatureLevel() < D3D_FEATURE_LEVEL_10_0)
+        clearRect.layerCount        = 1;
+      
+      // Record the clear operation
+      m_context->clearRenderTarget(clearInfo, clearRect);
+    } else {
+      // Image is not bound to the pipeline. We can still clear
+      // it, but we'll have to use a generic clear function.
+      m_context->clearColorImage(dxvkImage,
+        clearValue, dxvkView->subresources());
     }
-    
-    // Retrieve image info, which we will need in
-    // order to determine the size of the clear area
-    const Rc<DxvkImage> image = rtv->GetDXVKImageView()->image();
-    
-    // Set up attachment info and copy the clear color
-    VkClearAttachment clearInfo;
-    clearInfo.aspectMask      = VK_IMAGE_ASPECT_COLOR_BIT;
-    clearInfo.colorAttachment = static_cast<uint32_t>(attachmentIndex);
-    
-    std::memcpy(clearInfo.clearValue.color.float32, ColorRGBA,
-      sizeof(clearInfo.clearValue.color.float32));
-    
-    // Clear the full area. On FL 9.x, only the first array
-    // layer will be cleared, rather than all array layers.
-    VkClearRect clearRect;
-    clearRect.rect.offset.x       = 0;
-    clearRect.rect.offset.y       = 0;
-    clearRect.rect.extent.width   = image->info().extent.width;
-    clearRect.rect.extent.height  = image->info().extent.height;
-    clearRect.baseArrayLayer      = 0;
-    clearRect.layerCount          = image->info().numLayers;
-    
-    if (m_parent->GetFeatureLevel() < D3D_FEATURE_LEVEL_10_0)
-      clearRect.layerCount        = 1;
-    
-    // Record the clear operation
-    m_context->clearRenderTarget(clearInfo, clearRect);
   }
   
   
