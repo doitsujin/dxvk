@@ -18,9 +18,8 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::beginRecording(
-    const Rc<DxvkRecorder>& recorder) {
-    m_cmd = recorder;
+  void DxvkContext::beginRecording(const Rc<DxvkCommandList>& cmdList) {
+    m_cmd = cmdList;
     m_cmd->beginRecording();
     
     // The current state of the internal command buffer is

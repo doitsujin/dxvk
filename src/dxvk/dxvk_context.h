@@ -3,7 +3,6 @@
 #include "dxvk_barrier.h"
 #include "dxvk_cmdlist.h"
 #include "dxvk_context_state.h"
-#include "dxvk_deferred.h"
 #include "dxvk_pipemgr.h"
 #include "dxvk_util.h"
 
@@ -31,10 +30,10 @@ namespace dxvk {
      * Begins recording a command list. This does
      * not alter any context state other than the
      * active command list.
-     * \param [in] recorder Target recorder
+     * \param [in] cmdList Target command list
      */
     void beginRecording(
-      const Rc<DxvkRecorder>& recorder);
+      const Rc<DxvkCommandList>& cmdList);
     
     /**
      * \brief Ends command buffer recording
@@ -225,9 +224,9 @@ namespace dxvk {
     const Rc<DxvkDevice>          m_device;
     const Rc<DxvkPipelineManager> m_pipeMgr;
     
-    Rc<DxvkRecorder> m_cmd;
-    DxvkContextState m_state;
-    DxvkBarrierSet   m_barriers;
+    Rc<DxvkCommandList> m_cmd;
+    DxvkContextState    m_state;
+    DxvkBarrierSet      m_barriers;
     
     void renderPassBegin();
     void renderPassEnd();

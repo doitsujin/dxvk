@@ -1,8 +1,8 @@
 #pragma once
 
 #include "dxvk_buffer.h"
+#include "dxvk_cmdlist.h"
 #include "dxvk_image.h"
-#include "dxvk_recorder.h"
 
 namespace dxvk {
   
@@ -28,7 +28,7 @@ namespace dxvk {
             VkAccessFlags             access);
     
     void recordCommands(
-            DxvkRecorder&             recorder);
+            DxvkCommandList&          commandList);
     
     void reset();
     

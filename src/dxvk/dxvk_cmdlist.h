@@ -4,7 +4,6 @@
 
 #include "dxvk_descriptor.h"
 #include "dxvk_lifetime.h"
-#include "dxvk_recorder.h"
 
 namespace dxvk {
   
@@ -17,7 +16,7 @@ namespace dxvk {
    * When the command list has completed execution, resources that
    * are no longer used may get destroyed.
    */
-  class DxvkCommandList : public DxvkRecorder {
+  class DxvkCommandList : public RcObject {
     
   public:
     
@@ -40,7 +39,7 @@ namespace dxvk {
      * Resets the command buffer and
      * begins command buffer recording.
      */
-    void beginRecording() final;
+    void beginRecording();
     
     /**
      * \brief Ends recording
@@ -48,7 +47,7 @@ namespace dxvk {
      * Ends command buffer recording, making
      * the command list ready for submission.
      */
-    void endRecording() final;
+    void endRecording();
     
     /**
      * \brief Adds a resource to track
@@ -59,7 +58,7 @@ namespace dxvk {
      * completed.
      */
     void trackResource(
-      const Rc<DxvkResource>& rc) final;
+      const Rc<DxvkResource>& rc);
     
     /**
      * \brief Resets the command list
@@ -69,72 +68,72 @@ namespace dxvk {
      * command list to the device, this method will be called once
      * the command list completes execution.
      */
-    void reset() final;
+    void reset();
     
     void bindShaderResources(
             VkPipelineBindPoint     pipeline,
             VkPipelineLayout        pipelineLayout,
             VkDescriptorSetLayout   descriptorLayout,
             uint32_t                bindingCount,
-      const DxvkResourceBinding*    bindings) final;
+      const DxvkResourceBinding*    bindings);
     
     void cmdBeginRenderPass(
       const VkRenderPassBeginInfo*  pRenderPassBegin,
-            VkSubpassContents       contents) final;
+            VkSubpassContents       contents);
     
     void cmdBindIndexBuffer(
             VkBuffer                buffer,
             VkDeviceSize            offset,
-            VkIndexType             indexType) final;
+            VkIndexType             indexType);
     
     void cmdBindPipeline(
             VkPipelineBindPoint     pipelineBindPoint,
-            VkPipeline              pipeline) final;
+            VkPipeline              pipeline);
     
     void cmdBindVertexBuffers(
             uint32_t                firstBinding,
             uint32_t                bindingCount,
       const VkBuffer*               pBuffers,
-      const VkDeviceSize*           pOffsets) final;
+      const VkDeviceSize*           pOffsets);
     
     void cmdClearAttachments(
             uint32_t                attachmentCount,
       const VkClearAttachment*      pAttachments,
             uint32_t                rectCount,
-      const VkClearRect*            pRects) final;
+      const VkClearRect*            pRects);
     
     void cmdClearColorImage(
             VkImage                 image,
             VkImageLayout           imageLayout,
       const VkClearColorValue*      pColor,
             uint32_t                rangeCount,
-      const VkImageSubresourceRange* pRanges) final;
+      const VkImageSubresourceRange* pRanges);
     
     void cmdCopyBuffer(
             VkBuffer                srcBuffer,
             VkBuffer                dstBuffer,
             uint32_t                regionCount,
-      const VkBufferCopy*           pRegions) final;
+      const VkBufferCopy*           pRegions);
     
     void cmdDispatch(
             uint32_t                x,
             uint32_t                y,
-            uint32_t                z) final;
+            uint32_t                z);
     
     void cmdDraw(
             uint32_t                vertexCount,
             uint32_t                instanceCount,
             uint32_t                firstVertex,
-            uint32_t                firstInstance) final;
+            uint32_t                firstInstance);
     
     void cmdDrawIndexed(
             uint32_t                indexCount,
             uint32_t                instanceCount,
             uint32_t                firstIndex,
             uint32_t                vertexOffset,
-            uint32_t                firstInstance) final;
+            uint32_t                firstInstance);
     
-    void cmdEndRenderPass() final;
+    void cmdEndRenderPass();
     
     void cmdPipelineBarrier(
             VkPipelineStageFlags    srcStageMask,
@@ -145,17 +144,17 @@ namespace dxvk {
             uint32_t                bufferMemoryBarrierCount,
       const VkBufferMemoryBarrier*  pBufferMemoryBarriers,
             uint32_t                imageMemoryBarrierCount,
-      const VkImageMemoryBarrier*   pImageMemoryBarriers) final;
+      const VkImageMemoryBarrier*   pImageMemoryBarriers);
     
     void cmdSetScissor(
             uint32_t                firstScissor,
             uint32_t                scissorCount,
-      const VkRect2D*               scissors) final;
+      const VkRect2D*               scissors);
     
     void cmdSetViewport(
             uint32_t                firstViewport,
             uint32_t                viewportCount,
-      const VkViewport*             viewports) final;
+      const VkViewport*             viewports);
     
   private:
     
