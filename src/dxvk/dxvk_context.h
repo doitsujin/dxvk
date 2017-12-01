@@ -44,8 +44,9 @@ namespace dxvk {
      * 
      * This will not change any context state
      * other than the active command list.
+     * \returns Active command list
      */
-    void endRecording();
+    Rc<DxvkCommandList> endRecording();
     
     /**
      * \brief Sets framebuffer

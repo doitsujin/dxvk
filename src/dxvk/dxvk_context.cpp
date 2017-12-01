@@ -40,11 +40,11 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::endRecording() {
+  Rc<DxvkCommandList> DxvkContext::endRecording() {
     this->renderPassEnd();
     
     m_cmd->endRecording();
-    m_cmd = nullptr;
+    return std::exchange(m_cmd, nullptr);
   }
   
   

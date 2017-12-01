@@ -545,7 +545,6 @@ namespace dxvk {
     
     Rc<DxvkDevice>      m_device;
     Rc<DxvkContext>     m_context;
-    Rc<DxvkCommandList> m_cmdList;
     
     D3D11ContextState   m_state;
     

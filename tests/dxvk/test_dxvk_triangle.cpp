@@ -76,8 +76,7 @@ public:
         VK_PRESENT_MODE_FIFO_KHR,
         VkExtent2D { 640, 480 },
       })),
-    m_dxvkContext     (m_dxvkDevice->createContext()),
-    m_dxvkCommandList (m_dxvkDevice->createCommandList()) {
+    m_dxvkContext     (m_dxvkDevice->createContext()) {
     
     m_dxvkContext->setInputAssemblyState(
       new DxvkInputAssemblyState(
@@ -135,7 +134,8 @@ public:
     auto fb = m_dxvkSwapchain->getFramebuffer(sync1);
     auto fbSize = fb->size();
     
-    m_dxvkContext->beginRecording(m_dxvkCommandList);
+    m_dxvkContext->beginRecording(
+      m_dxvkDevice->createCommandList());
     m_dxvkContext->bindFramebuffer(fb);
     
     VkViewport viewport;
@@ -171,10 +171,9 @@ public:
       clearAttachment,
       clearArea);
     m_dxvkContext->draw(3, 1, 0, 0);
-    m_dxvkContext->endRecording();
     
     auto fence = m_dxvkDevice->submitCommandList(
-      m_dxvkCommandList, sync1, sync2);
+      m_dxvkContext->endRecording(), sync1, sync2);
     m_dxvkSwapchain->present(sync2);
     m_dxvkDevice->waitForIdle();
   }
@@ -187,7 +186,6 @@ private:
   Rc<DxvkSurface>     m_dxvkSurface;
   Rc<DxvkSwapchain>   m_dxvkSwapchain;
   Rc<DxvkContext>     m_dxvkContext;
-  Rc<DxvkCommandList> m_dxvkCommandList;
   
   Rc<DxvkShader>      m_dxvkVertexShader;
   Rc<DxvkShader>      m_dxvkFragmentShader;

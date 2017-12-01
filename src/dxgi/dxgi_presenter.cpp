@@ -9,7 +9,8 @@ namespace dxvk {
           HWND            window,
           UINT            bufferWidth,
           UINT            bufferHeight)
-  : m_device(device) {
+  : m_device  (device),
+    m_context (device->createContext()) {
     
     // Create Vulkan surface for the window
     HINSTANCE instance = reinterpret_cast<HINSTANCE>(
@@ -31,10 +32,6 @@ namespace dxvk {
     // Synchronization semaphores for swap chain operations
     m_acquireSync = m_device->createSemaphore();
     m_presentSync = m_device->createSemaphore();
-    
-    // Create context and a command list
-    m_context     = m_device->createContext();
-    m_commandList = m_device->createCommandList();
     
     // Set up context state. The shader bindings and the
     // constant state objects will never be modified.
@@ -104,10 +101,11 @@ namespace dxvk {
   
   
   void DxgiPresenter::presentImage(const Rc<DxvkImageView>& view) {
+    m_context->beginRecording(
+      m_device->createCommandList());
+    
     auto framebuffer = m_swapchain->getFramebuffer(m_acquireSync);
     auto framebufferSize = framebuffer->size();
-    
-    m_context->beginRecording(m_commandList);
     m_context->bindFramebuffer(framebuffer);
     
     VkViewport viewport;
@@ -128,9 +126,9 @@ namespace dxvk {
     
     // TODO bind back buffer as a shader resource
     m_context->draw(4, 1, 0, 0);
-    m_context->endRecording();
     
-    m_device->submitCommandList(m_commandList,
+    m_device->submitCommandList(
+      m_context->endRecording(),
       m_acquireSync, m_presentSync);
     
     m_swapchain->present(m_presentSync);

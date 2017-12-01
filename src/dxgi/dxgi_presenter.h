@@ -37,15 +37,13 @@ namespace dxvk {
   private:
     
     Rc<DxvkDevice>      m_device;
+    Rc<DxvkContext>     m_context;
     
     Rc<DxvkSurface>     m_surface;
     Rc<DxvkSwapchain>   m_swapchain;
     
     Rc<DxvkSemaphore>   m_acquireSync;
     Rc<DxvkSemaphore>   m_presentSync;
-    
-    Rc<DxvkContext>     m_context;
-    Rc<DxvkCommandList> m_commandList;
     
     Rc<DxvkShader> createVertexShader();
     Rc<DxvkShader> createFragmentShader();

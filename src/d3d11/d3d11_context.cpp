@@ -11,8 +11,8 @@ namespace dxvk {
   : m_parent(parent),
     m_device(device) {
     m_context = m_device->createContext();
-    m_cmdList = m_device->createCommandList();
-    m_context->beginRecording(m_cmdList);
+    m_context->beginRecording(
+      m_device->createCommandList());
   }
   
   
@@ -55,12 +55,12 @@ namespace dxvk {
   
   void D3D11DeviceContext::Flush() {
     if (m_type == D3D11_DEVICE_CONTEXT_IMMEDIATE) {
-      m_context->endRecording();
       m_device->submitCommandList(
-        m_cmdList, nullptr, nullptr);
+        m_context->endRecording(),
+        nullptr, nullptr);
       
-      m_cmdList = m_device->createCommandList();
-      m_context->beginRecording(m_cmdList);
+      m_context->beginRecording(
+        m_device->createCommandList());
     } else {
       Logger::err("D3D11DeviceContext::Flush: Not supported on deferred context");
     }
