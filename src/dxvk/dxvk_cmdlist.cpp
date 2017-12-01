@@ -35,6 +35,30 @@ namespace dxvk {
   }
   
   
+  void DxvkCommandList::submit(
+          VkQueue         queue,
+          VkSemaphore     waitSemaphore,
+          VkSemaphore     wakeSemaphore,
+          VkFence         fence) {
+    const VkPipelineStageFlags waitStageMask
+      = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+    
+    VkSubmitInfo info;
+    info.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    info.pNext                = nullptr;
+    info.waitSemaphoreCount   = waitSemaphore == VK_NULL_HANDLE ? 0 : 1;
+    info.pWaitSemaphores      = &waitSemaphore;
+    info.pWaitDstStageMask    = &waitStageMask;
+    info.commandBufferCount   = 1;
+    info.pCommandBuffers      = &m_buffer;
+    info.signalSemaphoreCount = wakeSemaphore == VK_NULL_HANDLE ? 0 : 1;
+    info.pSignalSemaphores    = &wakeSemaphore;
+    
+    if (m_vkd->vkQueueSubmit(queue, 1, &info, fence) != VK_SUCCESS)
+      throw DxvkError("DxvkDevice::submitCommandList: Command submission failed");
+  }
+  
+  
   void DxvkCommandList::beginRecording() {
     VkCommandBufferBeginInfo info;
     info.sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;

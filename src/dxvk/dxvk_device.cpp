@@ -105,9 +105,8 @@ namespace dxvk {
     const Rc<DxvkSemaphore>&        wakeSync) {
     Rc<DxvkFence> fence = new DxvkFence(m_vkd);
     
-    VkCommandBuffer commandBuffer = commandList->handle();
-    VkSemaphore     waitSemaphore = VK_NULL_HANDLE;
-    VkSemaphore     wakeSemaphore = VK_NULL_HANDLE;
+    VkSemaphore waitSemaphore = VK_NULL_HANDLE;
+    VkSemaphore wakeSemaphore = VK_NULL_HANDLE;
     
     if (waitSync != nullptr) {
       waitSemaphore = waitSync->handle();
@@ -119,22 +118,8 @@ namespace dxvk {
       commandList->trackResource(wakeSync);
     }
     
-    const VkPipelineStageFlags waitStageMask
-      = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
-    
-    VkSubmitInfo info;
-    info.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    info.pNext                = nullptr;
-    info.waitSemaphoreCount   = waitSemaphore == VK_NULL_HANDLE ? 0 : 1;
-    info.pWaitSemaphores      = &waitSemaphore;
-    info.pWaitDstStageMask    = &waitStageMask;
-    info.commandBufferCount   = commandBuffer == VK_NULL_HANDLE ? 0 : 1;
-    info.pCommandBuffers      = &commandBuffer;
-    info.signalSemaphoreCount = wakeSemaphore == VK_NULL_HANDLE ? 0 : 1;
-    info.pSignalSemaphores    = &wakeSemaphore;
-    
-    if (m_vkd->vkQueueSubmit(m_graphicsQueue, 1, &info, fence->handle()) != VK_SUCCESS)
-      throw DxvkError("DxvkDevice::submitCommandList: Command submission failed");
+    commandList->submit(m_graphicsQueue,
+      waitSemaphore, wakeSemaphore, fence->handle());
     
     // TODO Delay synchronization by putting these into a ring buffer
     fence->wait(std::numeric_limits<uint64_t>::max());

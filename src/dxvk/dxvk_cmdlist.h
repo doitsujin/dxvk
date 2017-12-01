@@ -26,12 +26,18 @@ namespace dxvk {
     ~DxvkCommandList();
     
     /**
-     * \brief Command buffer handle
-     * \returns Command buffer handle
+     * \brief Submits command list
+     * 
+     * \param [in] queue Device queue
+     * \param [in] waitSemaphore Semaphore to wait on
+     * \param [in] wakeSemaphore Semaphore to signal
+     * \param [in] fence Fence to signal
      */
-    VkCommandBuffer handle() const {
-      return m_buffer;
-    }
+    void submit(
+            VkQueue         queue,
+            VkSemaphore     waitSemaphore,
+            VkSemaphore     wakeSemaphore,
+            VkFence         fence);
     
     /**
      * \brief Begins recording
