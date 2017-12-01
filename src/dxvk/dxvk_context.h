@@ -3,6 +3,7 @@
 #include "dxvk_barrier.h"
 #include "dxvk_cmdlist.h"
 #include "dxvk_context_state.h"
+#include "dxvk_data.h"
 #include "dxvk_pipemgr.h"
 #include "dxvk_util.h"
 
@@ -165,6 +166,33 @@ namespace dxvk {
             uint32_t firstIndex,
             uint32_t vertexOffset,
             uint32_t firstInstance);
+    
+    /**
+     * \brief Initializes a buffer
+     * 
+     * Uploads initial data to the buffer so that it
+     * can be used for read-only operations. Unlike
+     * \ref initImage, calling this is optional.
+     * \param [in] buffer The buffer to initialize
+     * \param [in] data Initial data buffer
+     */
+    void initBuffer(
+      const Rc<DxvkBuffer>&     buffer,
+      const Rc<DxvkDataBuffer>& data);
+    
+    /**
+     * \brief Initializes an image
+     * 
+     * Sets up the image layout for future operations
+     * and uploads data to the image. Note that this
+     * method \e must be executed on the GPU before
+     * the image can be used for any other operations.
+     * \param [in] image The image to initialize
+     * \param [in] data Initial data. Can be omitted.
+     */
+    void initImage(
+      const Rc<DxvkImage>&      image,
+      const Rc<DxvkDataBuffer>& data);
     
     /**
      * \brief Sets viewports

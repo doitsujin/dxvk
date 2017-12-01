@@ -33,6 +33,29 @@ namespace dxvk {
   }
   
   
+  void DxvkBarrierSet::initImage(
+    const Rc<DxvkImage>&            image,
+    const VkImageSubresourceRange&  subresources,
+          VkImageLayout             dstLayout,
+          VkPipelineStageFlags      dstStages,
+          VkAccessFlags             dstAccess) {
+    m_dstStages |= dstStages;
+    
+    VkImageMemoryBarrier barrier;
+    barrier.sType                 = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.pNext                 = nullptr;
+    barrier.srcAccessMask         = 0;
+    barrier.dstAccessMask         = dstAccess;
+    barrier.oldLayout             = VK_IMAGE_LAYOUT_UNDEFINED;
+    barrier.newLayout             = dstLayout;
+    barrier.srcQueueFamilyIndex   = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex   = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image                 = image->handle();
+    barrier.subresourceRange      = subresources;
+    m_imgBarriers.push_back(barrier);
+  }
+  
+  
   void DxvkBarrierSet::recordCommands(const Rc<DxvkCommandList>& commandList) {
     if ((m_srcStages | m_dstStages) != 0) {
       VkPipelineStageFlags srcFlags = m_srcStages;

@@ -27,6 +27,13 @@ namespace dxvk {
             VkPipelineStageFlags      stages,
             VkAccessFlags             access);
     
+    void initImage(
+      const Rc<DxvkImage>&            image,
+      const VkImageSubresourceRange&  subresources,
+            VkImageLayout             dstLayout,
+            VkPipelineStageFlags      dstStages,
+            VkAccessFlags             dstAccess);
+    
     void recordCommands(
       const Rc<DxvkCommandList>&      commandList);
     

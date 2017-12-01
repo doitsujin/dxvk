@@ -203,6 +203,35 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::initBuffer(
+    const Rc<DxvkBuffer>&     buffer,
+    const Rc<DxvkDataBuffer>& data) {
+    // TODO implement
+  }
+  
+  
+  void DxvkContext::initImage(
+    const Rc<DxvkImage>&      image,
+    const Rc<DxvkDataBuffer>& data) {
+    const DxvkImageCreateInfo& info = image->info();
+    
+    VkImageSubresourceRange sr;
+    sr.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+    sr.baseMipLevel   = 0;
+    sr.levelCount     = info.mipLevels;
+    sr.baseArrayLayer = 0;
+    sr.levelCount     = info.numLayers;
+    
+    m_barriers.initImage(image, sr,
+      VK_IMAGE_LAYOUT_GENERAL,
+      info.stages,
+      info.access);
+    m_barriers.recordCommands(m_cmd);
+    
+    // TODO implement data upload
+  }
+  
+  
   void DxvkContext::setViewports(
           uint32_t            viewportCount,
     const VkViewport*         viewports,
