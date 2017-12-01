@@ -28,7 +28,7 @@ namespace dxvk {
             VkAccessFlags             access);
     
     void recordCommands(
-            DxvkCommandList&          commandList);
+      const Rc<DxvkCommandList>&      commandList);
     
     void reset();
     

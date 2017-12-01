@@ -33,7 +33,7 @@ namespace dxvk {
   }
   
   
-  void DxvkBarrierSet::recordCommands(DxvkCommandList& commandList) {
+  void DxvkBarrierSet::recordCommands(const Rc<DxvkCommandList>& commandList) {
     if ((m_srcStages | m_dstStages) != 0) {
       VkPipelineStageFlags srcFlags = m_srcStages;
       VkPipelineStageFlags dstFlags = m_dstStages;
@@ -41,7 +41,7 @@ namespace dxvk {
       if (srcFlags == 0) srcFlags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
       if (dstFlags == 0) dstFlags = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
       
-      commandList.cmdPipelineBarrier(
+      commandList->cmdPipelineBarrier(
         srcFlags, dstFlags, 0,
         m_memBarriers.size(), m_memBarriers.data(),
         m_bufBarriers.size(), m_bufBarriers.data(),

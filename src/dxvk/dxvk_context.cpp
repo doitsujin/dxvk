@@ -157,7 +157,7 @@ namespace dxvk {
         VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_ACCESS_TRANSFER_WRITE_BIT);
       
-      m_barriers.recordCommands(*m_cmd);
+      m_barriers.recordCommands(m_cmd);
       
       m_cmd->trackResource(dstBuffer);
       m_cmd->trackResource(srcBuffer);
