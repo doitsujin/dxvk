@@ -79,8 +79,6 @@ namespace dxvk {
     
     Rc<DxvkGraphicsPipeline>  activeGraphicsPipeline;
     Rc<DxvkComputePipeline>   activeComputePipeline;
-    
-    DxvkContextFlags          flags;
   };
   
 }

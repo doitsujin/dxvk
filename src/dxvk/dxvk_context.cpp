@@ -25,10 +25,10 @@ namespace dxvk {
     // The current state of the internal command buffer is
     // undefined, so we have to bind and set up everything
     // before any draw or dispatch command is recorded.
-    m_state.flags.clr(
+    m_flags.clr(
       DxvkContextFlag::GpRenderPassBound);
     
-    m_state.flags.set(
+    m_flags.set(
       DxvkContextFlag::GpDirtyPipeline,
       DxvkContextFlag::GpDirtyPipelineState,
       DxvkContextFlag::GpDirtyDynamicState,
@@ -61,7 +61,7 @@ namespace dxvk {
     const DxvkBufferBinding&    buffer) {
     if (m_state.vi.indexBuffer != buffer) {
       m_state.vi.indexBuffer = buffer;
-      m_state.flags.set(DxvkContextFlag::GpDirtyIndexBuffer);
+      m_flags.set(DxvkContextFlag::GpDirtyIndexBuffer);
     }
   }
   
@@ -75,11 +75,11 @@ namespace dxvk {
       stageState->shader = shader;
       
       if (stage == VK_SHADER_STAGE_COMPUTE_BIT) {
-        m_state.flags.set(
+        m_flags.set(
           DxvkContextFlag::CpDirtyPipeline,
           DxvkContextFlag::CpDirtyResources);
       } else {
-        m_state.flags.set(
+        m_flags.set(
           DxvkContextFlag::GpDirtyPipeline,
           DxvkContextFlag::GpDirtyPipelineState,
           DxvkContextFlag::GpDirtyResources,
@@ -95,7 +95,7 @@ namespace dxvk {
     const DxvkBufferBinding&    buffer) {
     if (m_state.vi.vertexBuffers.at(binding) != buffer) {
       m_state.vi.vertexBuffers.at(binding) = buffer;
-      m_state.flags.set(DxvkContextFlag::GpDirtyVertexBuffers);
+      m_flags.set(DxvkContextFlag::GpDirtyVertexBuffers);
     }
   }
   
@@ -209,7 +209,7 @@ namespace dxvk {
     const VkRect2D*           scissorRects) {
     if (m_state.vp.viewportCount != viewportCount) {
       m_state.vp.viewportCount = viewportCount;
-      m_state.flags.set(DxvkContextFlag::GpDirtyPipelineState);
+      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     }
     
     for (uint32_t i = 0; i < viewportCount; i++) {
@@ -225,7 +225,7 @@ namespace dxvk {
     const Rc<DxvkInputAssemblyState>& state) {
     if (m_state.co.inputAssemblyState != state) {
       m_state.co.inputAssemblyState = state;
-      m_state.flags.set(DxvkContextFlag::GpDirtyPipelineState);
+      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     }
   }
   
@@ -234,7 +234,7 @@ namespace dxvk {
     const Rc<DxvkInputLayout>& state) {
     if (m_state.co.inputLayout != state) {
       m_state.co.inputLayout = state;
-      m_state.flags.set(DxvkContextFlag::GpDirtyPipelineState);
+      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     }
   }
   
@@ -243,7 +243,7 @@ namespace dxvk {
     const Rc<DxvkRasterizerState>& state) {
     if (m_state.co.rasterizerState != state) {
       m_state.co.rasterizerState = state;
-      m_state.flags.set(DxvkContextFlag::GpDirtyPipelineState);
+      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     }
   }
   
@@ -252,7 +252,7 @@ namespace dxvk {
     const Rc<DxvkMultisampleState>& state) {
     if (m_state.co.multisampleState != state) {
       m_state.co.multisampleState = state;
-      m_state.flags.set(DxvkContextFlag::GpDirtyPipelineState);
+      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     }
   }
   
@@ -261,7 +261,7 @@ namespace dxvk {
     const Rc<DxvkDepthStencilState>& state) {
     if (m_state.co.depthStencilState != state) {
       m_state.co.depthStencilState = state;
-      m_state.flags.set(DxvkContextFlag::GpDirtyPipelineState);
+      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     }
   }
   
@@ -270,15 +270,15 @@ namespace dxvk {
     const Rc<DxvkBlendState>& state) {
     if (m_state.co.blendState != state) {
       m_state.co.blendState = state;
-      m_state.flags.set(DxvkContextFlag::GpDirtyPipelineState);
+      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     }
   }
   
   
   void DxvkContext::renderPassBegin() {
-    if (!m_state.flags.test(DxvkContextFlag::GpRenderPassBound)
+    if (!m_flags.test(DxvkContextFlag::GpRenderPassBound)
      && (m_state.om.framebuffer != nullptr)) {
-      m_state.flags.set(DxvkContextFlag::GpRenderPassBound);
+      m_flags.set(DxvkContextFlag::GpRenderPassBound);
       
       const DxvkFramebufferSize fbSize
         = m_state.om.framebuffer->size();
@@ -305,8 +305,8 @@ namespace dxvk {
   
   
   void DxvkContext::renderPassEnd() {
-    if (m_state.flags.test(DxvkContextFlag::GpRenderPassBound)) {
-      m_state.flags.clr(DxvkContextFlag::GpRenderPassBound);
+    if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
+      m_flags.clr(DxvkContextFlag::GpRenderPassBound);
       m_cmd->cmdEndRenderPass();
     }
   }
@@ -318,17 +318,17 @@ namespace dxvk {
   
   
   void DxvkContext::bindGraphicsPipeline() {
-    if (m_state.flags.test(DxvkContextFlag::GpDirtyPipeline)) {
-      m_state.flags.clr(DxvkContextFlag::GpDirtyPipeline);
+    if (m_flags.test(DxvkContextFlag::GpDirtyPipeline)) {
+      m_flags.clr(DxvkContextFlag::GpDirtyPipeline);
       
       m_state.activeGraphicsPipeline = m_pipeMgr->getGraphicsPipeline(
         m_state.vs.shader, m_state.tcs.shader, m_state.tes.shader,
         m_state.gs.shader, m_state.fs.shader);
     }
     
-    if (m_state.flags.test(DxvkContextFlag::GpDirtyPipelineState)
+    if (m_flags.test(DxvkContextFlag::GpDirtyPipelineState)
      && m_state.activeGraphicsPipeline != nullptr) {
-      m_state.flags.clr(DxvkContextFlag::GpDirtyPipelineState);
+      m_flags.clr(DxvkContextFlag::GpDirtyPipelineState);
       
       DxvkGraphicsPipelineStateInfo gpState;
       gpState.inputAssemblyState  = m_state.co.inputAssemblyState;
@@ -348,8 +348,8 @@ namespace dxvk {
   
   
   void DxvkContext::updateDynamicState() {
-    if (m_state.flags.test(DxvkContextFlag::GpDirtyDynamicState)) {
-      m_state.flags.clr(DxvkContextFlag::GpDirtyDynamicState);
+    if (m_flags.test(DxvkContextFlag::GpDirtyDynamicState)) {
+      m_flags.clr(DxvkContextFlag::GpDirtyDynamicState);
       
       this->updateViewports();
     }
@@ -363,8 +363,8 @@ namespace dxvk {
   
   
   void DxvkContext::updateIndexBufferBinding() {
-    if (m_state.flags.test(DxvkContextFlag::GpDirtyIndexBuffer)) {
-      m_state.flags.clr(DxvkContextFlag::GpDirtyIndexBuffer);
+    if (m_flags.test(DxvkContextFlag::GpDirtyIndexBuffer)) {
+      m_flags.clr(DxvkContextFlag::GpDirtyIndexBuffer);
       
       if (m_state.vi.indexBuffer.bufferHandle() != VK_NULL_HANDLE) {
         m_cmd->cmdBindIndexBuffer(
@@ -379,8 +379,8 @@ namespace dxvk {
   
   
   void DxvkContext::updateVertexBufferBindings() {
-    if (m_state.flags.test(DxvkContextFlag::GpDirtyVertexBuffers)) {
-      m_state.flags.clr(DxvkContextFlag::GpDirtyVertexBuffers);
+    if (m_flags.test(DxvkContextFlag::GpDirtyVertexBuffers)) {
+      m_flags.clr(DxvkContextFlag::GpDirtyVertexBuffers);
       
       for (uint32_t i = 0; i < m_state.vi.vertexBuffers.size(); i++) {
         const DxvkBufferBinding vbo = m_state.vi.vertexBuffers.at(i);

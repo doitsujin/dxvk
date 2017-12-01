@@ -226,6 +226,7 @@ namespace dxvk {
     const Rc<DxvkPipelineManager> m_pipeMgr;
     
     Rc<DxvkCommandList> m_cmd;
+    DxvkContextFlags    m_flags;
     DxvkContextState    m_state;
     DxvkBarrierSet      m_barriers;
     
@@ -246,8 +247,6 @@ namespace dxvk {
     
     DxvkShaderStageState* getShaderStage(
             VkShaderStageFlagBits     stage);
-    
-    
     
   };
   
