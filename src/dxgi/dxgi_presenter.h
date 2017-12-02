@@ -28,6 +28,13 @@ namespace dxvk {
     ~DxgiPresenter();
     
     /**
+     * \brief Initializes back buffer image
+     * \param [in] image Back buffer image
+     */
+    void initBackBuffer(
+      const Rc<DxvkImage>& image);
+    
+    /**
      * \brief Renders image to the screen
      * \param [in] view Source image view
      */

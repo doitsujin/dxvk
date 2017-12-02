@@ -100,6 +100,16 @@ namespace dxvk {
   }
   
   
+  void DxgiPresenter::initBackBuffer(const Rc<DxvkImage>& image) {
+    m_context->beginRecording(
+      m_device->createCommandList());
+    m_context->initImage(image, nullptr);
+    m_device->submitCommandList(
+      m_context->endRecording(),
+      nullptr, nullptr);
+  }
+  
+  
   void DxgiPresenter::presentImage(const Rc<DxvkImageView>& view) {
     m_context->beginRecording(
       m_device->createCommandList());

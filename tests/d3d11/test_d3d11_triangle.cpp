@@ -48,23 +48,38 @@ public:
     if (FAILED(m_factory->CreateSwapChain(m_device.ptr(), &swapDesc, &m_swapChain)))
       throw DxvkError("Failed to create DXGI swap chain");
     
+    if (FAILED(m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&m_buffer))))
+      throw DxvkError("Failed to get swap chain back buffer");
+    
+    if (FAILED(m_device->CreateRenderTargetView(m_buffer.ptr(), nullptr, &m_bufferView)))
+      throw DxvkError("Failed to create render target view");
+    
   }
+  
   
   ~TriangleApp() {
     
   }
   
+  
   void run() {
+    FLOAT color[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    
+    m_context->OMSetRenderTargets(1, &m_bufferView, nullptr);
+    m_context->ClearRenderTargetView(m_bufferView.ptr(), color);
     m_swapChain->Present(0, 0);
   }
   
 private:
   
-  Com<IDXGIFactory>         m_factory;
-  Com<IDXGIAdapter>         m_adapter;
-  Com<ID3D11Device>         m_device;
-  Com<ID3D11DeviceContext>  m_context;
-  Com<IDXGISwapChain>       m_swapChain;
+  Com<IDXGIFactory>           m_factory;
+  Com<IDXGIAdapter>           m_adapter;
+  Com<ID3D11Device>           m_device;
+  Com<ID3D11DeviceContext>    m_context;
+  Com<IDXGISwapChain>         m_swapChain;
+    
+  Com<ID3D11Texture2D>        m_buffer;
+  Com<ID3D11RenderTargetView> m_bufferView;
   
   D3D_FEATURE_LEVEL       m_featureLevel;
   

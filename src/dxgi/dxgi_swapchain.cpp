@@ -331,14 +331,15 @@ namespace dxvk {
                             | VK_IMAGE_USAGE_TRANSFER_DST_BIT
                             | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
     imageInfo.stages        = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
-                            | VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT
-                            | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
-                            | VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
+//                             | VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT
+//                             | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
+//                             | VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
                             | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
                             | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
                             | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
                             | VK_PIPELINE_STAGE_TRANSFER_BIT;
     imageInfo.access        = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+                            | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
                             | VK_ACCESS_TRANSFER_WRITE_BIT
                             | VK_ACCESS_TRANSFER_READ_BIT
                             | VK_ACCESS_SHADER_READ_BIT;
@@ -368,6 +369,10 @@ namespace dxvk {
     // that the device can use to access the image.
     if (FAILED(m_device->WrapSwapChainBackBuffer(resource.ptr(), &m_desc, &m_backBufferIface)))
       throw DxvkError("DxgiSwapChain::createBackBuffer: Failed to create back buffer interface");
+    
+    // Initialize the image properly so that
+    // it can be used in a DXVK context
+    m_presenter->initBackBuffer(m_backBuffer);
   }
   
 }

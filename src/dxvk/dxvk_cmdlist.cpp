@@ -242,10 +242,10 @@ namespace dxvk {
           uint32_t                imageMemoryBarrierCount,
     const VkImageMemoryBarrier*   pImageMemoryBarriers) {
     m_vkd->vkCmdPipelineBarrier(m_buffer,
-      dstStageMask, srcStageMask, dependencyFlags,
-      memoryBarrierCount, pMemoryBarriers,
+      srcStageMask, dstStageMask, dependencyFlags,
+      memoryBarrierCount,       pMemoryBarriers,
       bufferMemoryBarrierCount, pBufferMemoryBarriers,
-      imageMemoryBarrierCount, pImageMemoryBarriers);
+      imageMemoryBarrierCount,  pImageMemoryBarriers);
   }
   
   

@@ -220,7 +220,7 @@ namespace dxvk {
     sr.baseMipLevel   = 0;
     sr.levelCount     = info.mipLevels;
     sr.baseArrayLayer = 0;
-    sr.levelCount     = info.numLayers;
+    sr.layerCount     = info.numLayers;
     
     m_barriers.initImage(image, sr,
       VK_IMAGE_LAYOUT_GENERAL,
