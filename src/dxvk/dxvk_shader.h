@@ -9,19 +9,14 @@
 namespace dxvk {
   
   /**
-   * \brief Shader resource type
+   * \brief Resource slot
    * 
-   * Enumerates the types of resources
-   * that can be accessed by shaders.
+   * Describes the type of a single resource
+   * binding that a shader can access.
    */
-  enum class DxvkResourceType : uint32_t {
-    ImageSampler       = VK_DESCRIPTOR_TYPE_SAMPLER,
-    SampledImage       = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
-    StorageImage       = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-    UniformBuffer      = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-    StorageBuffer      = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-    UniformTexelBuffer = VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,
-    StorageTexelBuffer = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
+  struct DxvkResourceSlot {
+    uint32_t         binding;
+    VkDescriptorType type;
   };
   
   

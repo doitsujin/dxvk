@@ -137,28 +137,33 @@ namespace dxvk {
     auto swapImages = this->retrieveSwapImages();
     m_framebuffers.resize(swapImages.size());
     
+    DxvkImageCreateInfo imageInfo;
+    imageInfo.type          = VK_IMAGE_TYPE_2D;
+    imageInfo.format        = fmt.format;
+    imageInfo.sampleCount   = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.extent.width  = swapInfo.imageExtent.width;
+    imageInfo.extent.height = swapInfo.imageExtent.height;
+    imageInfo.extent.depth  = 1;
+    imageInfo.numLayers     = swapInfo.imageArrayLayers;
+    imageInfo.mipLevels     = 1;
+    imageInfo.usage         = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+    imageInfo.stages        = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    imageInfo.access        = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
+                            | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+                            | VK_ACCESS_MEMORY_READ_BIT;
+    imageInfo.layout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    
+    DxvkImageViewCreateInfo viewInfo;
+    viewInfo.type         = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format       = fmt.format;
+    viewInfo.aspect       = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.minLevel     = 0;
+    viewInfo.numLevels    = 1;
+    viewInfo.minLayer     = 0;
+    viewInfo.numLayers    = swapInfo.imageArrayLayers;
+    
     for (size_t i = 0; i < swapImages.size(); i++) {
-      DxvkImageCreateInfo imageInfo;
-      imageInfo.type          = VK_IMAGE_TYPE_2D;
-      imageInfo.format        = fmt.format;
-      imageInfo.sampleCount   = VK_SAMPLE_COUNT_1_BIT;
-      imageInfo.extent.width  = swapInfo.imageExtent.width;
-      imageInfo.extent.height = swapInfo.imageExtent.height;
-      imageInfo.extent.depth  = 1;
-      imageInfo.numLayers     = swapInfo.imageArrayLayers;
-      imageInfo.mipLevels     = 1;
-      imageInfo.usage         = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-      imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
-      
-      DxvkImageViewCreateInfo viewInfo;
-      viewInfo.type         = VK_IMAGE_VIEW_TYPE_2D;
-      viewInfo.format       = fmt.format;
-      viewInfo.aspect       = VK_IMAGE_ASPECT_COLOR_BIT;
-      viewInfo.minLevel     = 0;
-      viewInfo.numLevels    = 1;
-      viewInfo.minLayer     = 0;
-      viewInfo.numLayers    = swapInfo.imageArrayLayers;
-      
       Rc<DxvkImage> image = new DxvkImage(m_vkd, imageInfo, swapImages.at(i));
       Rc<DxvkImageView> iview = m_device->createImageView(image, viewInfo);
       

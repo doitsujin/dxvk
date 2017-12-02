@@ -4,11 +4,8 @@
 
 namespace dxvk {
   
-  DxvkContext::DxvkContext(
-    const Rc<DxvkDevice>&           device,
-    const Rc<DxvkPipelineManager>&  pipeMgr)
-  : m_device  (device),
-    m_pipeMgr (pipeMgr) {
+  DxvkContext::DxvkContext(const Rc<DxvkDevice>& device)
+  : m_device(device) {
     
   }
   
@@ -30,7 +27,6 @@ namespace dxvk {
     
     m_flags.set(
       DxvkContextFlag::GpDirtyPipeline,
-      DxvkContextFlag::GpDirtyPipelineState,
       DxvkContextFlag::GpDirtyDynamicState,
       DxvkContextFlag::GpDirtyResources,
       DxvkContextFlag::GpDirtyIndexBuffer,
@@ -66,27 +62,25 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::bindShader(
-          VkShaderStageFlagBits stage,
-    const Rc<DxvkShader>&       shader) {
-    DxvkShaderStageState* stageState = this->getShaderStage(stage);
+  void DxvkContext::bindComputePipeline(
+    const Rc<DxvkComputePipeline>& pipeline) {
+    m_state.cp = pipeline;
     
-    if (stageState->shader != shader) {
-      stageState->shader = shader;
-      
-      if (stage == VK_SHADER_STAGE_COMPUTE_BIT) {
-        m_flags.set(
-          DxvkContextFlag::CpDirtyPipeline,
-          DxvkContextFlag::CpDirtyResources);
-      } else {
-        m_flags.set(
-          DxvkContextFlag::GpDirtyPipeline,
-          DxvkContextFlag::GpDirtyPipelineState,
-          DxvkContextFlag::GpDirtyResources,
-          DxvkContextFlag::GpDirtyVertexBuffers,
-          DxvkContextFlag::GpDirtyIndexBuffer);
-      }
-    }
+    m_flags.set(
+      DxvkContextFlag::CpDirtyPipeline,
+      DxvkContextFlag::CpDirtyResources);
+  }
+  
+  
+  void DxvkContext::bindGraphicsPipeline(
+    const Rc<DxvkGraphicsPipeline>& pipeline) {
+    m_state.gp = pipeline;
+    
+    m_flags.set(
+      DxvkContextFlag::GpDirtyPipeline,
+      DxvkContextFlag::GpDirtyResources,
+      DxvkContextFlag::GpDirtyVertexBuffers,
+      DxvkContextFlag::GpDirtyIndexBuffer);
   }
   
   
@@ -238,7 +232,7 @@ namespace dxvk {
     const VkRect2D*           scissorRects) {
     if (m_state.vp.viewportCount != viewportCount) {
       m_state.vp.viewportCount = viewportCount;
-      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+      m_flags.set(DxvkContextFlag::GpDirtyPipeline);
     }
     
     for (uint32_t i = 0; i < viewportCount; i++) {
@@ -254,7 +248,7 @@ namespace dxvk {
     const Rc<DxvkInputAssemblyState>& state) {
     if (m_state.co.inputAssemblyState != state) {
       m_state.co.inputAssemblyState = state;
-      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+      m_flags.set(DxvkContextFlag::GpDirtyPipeline);
     }
   }
   
@@ -263,7 +257,7 @@ namespace dxvk {
     const Rc<DxvkInputLayout>& state) {
     if (m_state.co.inputLayout != state) {
       m_state.co.inputLayout = state;
-      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+      m_flags.set(DxvkContextFlag::GpDirtyPipeline);
     }
   }
   
@@ -272,7 +266,7 @@ namespace dxvk {
     const Rc<DxvkRasterizerState>& state) {
     if (m_state.co.rasterizerState != state) {
       m_state.co.rasterizerState = state;
-      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+      m_flags.set(DxvkContextFlag::GpDirtyPipeline);
     }
   }
   
@@ -281,7 +275,7 @@ namespace dxvk {
     const Rc<DxvkMultisampleState>& state) {
     if (m_state.co.multisampleState != state) {
       m_state.co.multisampleState = state;
-      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+      m_flags.set(DxvkContextFlag::GpDirtyPipeline);
     }
   }
   
@@ -290,7 +284,7 @@ namespace dxvk {
     const Rc<DxvkDepthStencilState>& state) {
     if (m_state.co.depthStencilState != state) {
       m_state.co.depthStencilState = state;
-      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+      m_flags.set(DxvkContextFlag::GpDirtyPipeline);
     }
   }
   
@@ -299,7 +293,7 @@ namespace dxvk {
     const Rc<DxvkBlendState>& state) {
     if (m_state.co.blendState != state) {
       m_state.co.blendState = state;
-      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+      m_flags.set(DxvkContextFlag::GpDirtyPipeline);
     }
   }
   
@@ -350,15 +344,6 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpDirtyPipeline)) {
       m_flags.clr(DxvkContextFlag::GpDirtyPipeline);
       
-      m_state.activeGraphicsPipeline = m_pipeMgr->getGraphicsPipeline(
-        m_state.vs.shader, m_state.tcs.shader, m_state.tes.shader,
-        m_state.gs.shader, m_state.fs.shader);
-    }
-    
-    if (m_flags.test(DxvkContextFlag::GpDirtyPipelineState)
-     && m_state.activeGraphicsPipeline != nullptr) {
-      m_flags.clr(DxvkContextFlag::GpDirtyPipelineState);
-      
       DxvkGraphicsPipelineStateInfo gpState;
       gpState.inputAssemblyState  = m_state.co.inputAssemblyState;
       gpState.inputLayout         = m_state.co.inputLayout;
@@ -370,8 +355,8 @@ namespace dxvk {
       gpState.viewportCount       = m_state.vp.viewportCount;
       
       m_cmd->cmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,
-        m_state.activeGraphicsPipeline->getPipelineHandle(gpState));
-      m_cmd->trackResource(m_state.activeGraphicsPipeline);
+        m_state.gp->getPipelineHandle(gpState));
+      m_cmd->trackResource(m_state.gp);
     }
   }
   
@@ -438,23 +423,6 @@ namespace dxvk {
     this->updateDynamicState();
     this->updateIndexBufferBinding();
     this->updateVertexBufferBindings();
-  }
-  
-  
-  DxvkShaderStageState* DxvkContext::getShaderStage(VkShaderStageFlagBits stage) {
-    switch (stage) {
-      case VK_SHADER_STAGE_VERTEX_BIT:                  return &m_state.vs;
-      case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:    return &m_state.tcs;
-      case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT: return &m_state.tes;
-      case VK_SHADER_STAGE_GEOMETRY_BIT:                return &m_state.gs;
-      case VK_SHADER_STAGE_FRAGMENT_BIT:                return &m_state.fs;
-      case VK_SHADER_STAGE_COMPUTE_BIT:                 return &m_state.cs;
-      
-      default:
-        throw DxvkError(str::format(
-          "DxvkContext::getShaderStage: Invalid stage bit: ",
-          static_cast<uint32_t>(stage)));
-    }
   }
   
 }

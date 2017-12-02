@@ -5,8 +5,9 @@
 
 #include "dxvk_constant_state.h"
 #include "dxvk_hash.h"
-#include "dxvk_shader.h"
+#include "dxvk_pipeline.h"
 #include "dxvk_resource.h"
+#include "dxvk_shader.h"
 
 namespace dxvk {
   
@@ -48,12 +49,13 @@ namespace dxvk {
   public:
     
     DxvkGraphicsPipeline(
-      const Rc<vk::DeviceFn>& vkd,
-      const Rc<DxvkShader>&   vs,
-      const Rc<DxvkShader>&   tcs,
-      const Rc<DxvkShader>&   tes,
-      const Rc<DxvkShader>&   gs,
-      const Rc<DxvkShader>&   fs);
+      const Rc<vk::DeviceFn>&      vkd,
+      const Rc<DxvkBindingLayout>& layout,
+      const Rc<DxvkShader>&        vs,
+      const Rc<DxvkShader>&        tcs,
+      const Rc<DxvkShader>&        tes,
+      const Rc<DxvkShader>&        gs,
+      const Rc<DxvkShader>&        fs);
     ~DxvkGraphicsPipeline();
     
     /**
@@ -64,18 +66,18 @@ namespace dxvk {
      * \returns The descriptor set layout
      */
     VkDescriptorSetLayout descriptorSetLayout() const {
-      return m_descriptorSetLayout;
+      return m_layout->descriptorSetLayout();
     }
     
     /**
-     * \brief Pipeline layout layout
+     * \brief Pipeline layout
      * 
      * The pipeline layout for this pipeline.
      * Use this to bind descriptor sets.
      * \returns The descriptor set layout
      */
     VkPipelineLayout pipelineLayout() const {
-      return m_pipelineLayout;
+      return m_layout->pipelineLayout();
     }
     
     /**
@@ -88,14 +90,13 @@ namespace dxvk {
   private:
     
     Rc<vk::DeviceFn>      m_vkd;
-    Rc<DxvkShader>        m_vs;
-    Rc<DxvkShader>        m_tcs;
-    Rc<DxvkShader>        m_tes;
-    Rc<DxvkShader>        m_gs;
-    Rc<DxvkShader>        m_fs;
+    Rc<DxvkBindingLayout> m_layout;
     
-    VkDescriptorSetLayout m_descriptorSetLayout = VK_NULL_HANDLE;
-    VkPipelineLayout      m_pipelineLayout      = VK_NULL_HANDLE;
+    Rc<DxvkShader> m_vs;
+    Rc<DxvkShader> m_tcs;
+    Rc<DxvkShader> m_tes;
+    Rc<DxvkShader> m_gs;
+    Rc<DxvkShader> m_fs;
     
     std::mutex m_mutex;
     
@@ -106,7 +107,6 @@ namespace dxvk {
     VkPipeline compilePipeline(
       const DxvkGraphicsPipelineStateInfo& state) const;
     
-    void destroyObjects();
     void destroyPipelines();
     
   };

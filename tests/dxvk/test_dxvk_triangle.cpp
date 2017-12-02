@@ -115,12 +115,12 @@ public:
       VK_SHADER_STAGE_FRAGMENT_BIT,
       SpirvCodeBuffer(_countof(fsCode), fsCode));
     
-    m_dxvkContext->bindShader(
-      VK_SHADER_STAGE_VERTEX_BIT,
-      m_dxvkVertexShader);
-    m_dxvkContext->bindShader(
-      VK_SHADER_STAGE_FRAGMENT_BIT,
-      m_dxvkFragmentShader);
+    m_dxvkBindingLayout = m_dxvkDevice->createBindingLayout(0, nullptr);
+    
+    m_dxvkPipeline = m_dxvkDevice->createGraphicsPipeline(m_dxvkBindingLayout,
+      m_dxvkVertexShader, nullptr, nullptr, nullptr, m_dxvkFragmentShader);
+    
+    m_dxvkContext->bindGraphicsPipeline(m_dxvkPipeline);
   }
   
   ~TriangleApp() {
@@ -194,8 +194,10 @@ private:
   Rc<DxvkSwapchain>   m_dxvkSwapchain;
   Rc<DxvkContext>     m_dxvkContext;
   
-  Rc<DxvkShader>      m_dxvkVertexShader;
-  Rc<DxvkShader>      m_dxvkFragmentShader;
+  Rc<DxvkShader>            m_dxvkVertexShader;
+  Rc<DxvkShader>            m_dxvkFragmentShader;
+  Rc<DxvkBindingLayout>     m_dxvkBindingLayout;
+  Rc<DxvkGraphicsPipeline>  m_dxvkPipeline;
   
 };
 

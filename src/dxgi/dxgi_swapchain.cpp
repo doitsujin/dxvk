@@ -341,6 +341,7 @@ namespace dxvk {
                             | VK_ACCESS_TRANSFER_READ_BIT
                             | VK_ACCESS_SHADER_READ_BIT;
     imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+    imageInfo.layout        = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     
     if (dxvkDevice->features().geometryShader)
       imageInfo.stages      |= VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;

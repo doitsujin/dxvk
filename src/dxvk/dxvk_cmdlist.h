@@ -76,13 +76,6 @@ namespace dxvk {
      */
     void reset();
     
-    void bindShaderResources(
-            VkPipelineBindPoint     pipeline,
-            VkPipelineLayout        pipelineLayout,
-            VkDescriptorSetLayout   descriptorLayout,
-            uint32_t                bindingCount,
-      const DxvkResourceBinding*    bindings);
-    
     void cmdBeginRenderPass(
       const VkRenderPassBeginInfo*  pRenderPassBegin,
             VkSubpassContents       contents);

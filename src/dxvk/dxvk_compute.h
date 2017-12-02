@@ -1,7 +1,8 @@
 #pragma once
 
-#include "dxvk_shader.h"
+#include "dxvk_pipeline.h"
 #include "dxvk_resource.h"
+#include "dxvk_shader.h"
 
 namespace dxvk {
   
@@ -18,8 +19,9 @@ namespace dxvk {
   public:
     
     DxvkComputePipeline(
-      const Rc<vk::DeviceFn>& vkd,
-      const Rc<DxvkShader>&   shader);
+      const Rc<vk::DeviceFn>&      vkd,
+      const Rc<DxvkBindingLayout>& layout,
+      const Rc<DxvkShader>&        cs);
     ~DxvkComputePipeline();
     
     /**
@@ -30,7 +32,7 @@ namespace dxvk {
      * \returns The descriptor set layout
      */
     VkDescriptorSetLayout descriptorSetLayout() const {
-      return m_descriptorSetLayout;
+      return m_layout->descriptorSetLayout();
     }
     
     /**
@@ -41,7 +43,7 @@ namespace dxvk {
      * \returns The descriptor set layout
      */
     VkPipelineLayout pipelineLayout() const {
-      return m_pipelineLayout;
+      return m_layout->pipelineLayout();
     }
     
     /**
@@ -55,13 +57,10 @@ namespace dxvk {
   private:
     
     Rc<vk::DeviceFn>      m_vkd;
-    Rc<DxvkShader>        m_shader;
+    Rc<DxvkBindingLayout> m_layout;
+    Rc<DxvkShader>        m_cs;
     
-    VkDescriptorSetLayout m_descriptorSetLayout = VK_NULL_HANDLE;
-    VkPipelineLayout      m_pipelineLayout      = VK_NULL_HANDLE;
-    VkPipeline            m_pipeline            = VK_NULL_HANDLE;
-    
-    void destroyObjects();
+    VkPipeline m_pipeline = VK_NULL_HANDLE;
     
   };
   

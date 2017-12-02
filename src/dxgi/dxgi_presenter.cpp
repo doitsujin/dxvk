@@ -35,8 +35,7 @@ namespace dxvk {
     
     // Set up context state. The shader bindings and the
     // constant state objects will never be modified.
-    m_context->bindShader(VK_SHADER_STAGE_VERTEX_BIT,   createVertexShader());
-    m_context->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, createFragmentShader());
+    m_context->bindGraphicsPipeline(createPipeline());
     
     m_context->setInputAssemblyState(
       new DxvkInputAssemblyState(
@@ -135,6 +134,8 @@ namespace dxvk {
     m_context->setViewports(1, &viewport, &scissor);
     
     // TODO bind back buffer as a shader resource
+//     m_context->bindSampler(0, m_sampler);
+//     m_context->bindSampledImage(1, view);
     m_context->draw(4, 1, 0, 0);
     
     m_device->submitCommandList(
@@ -320,6 +321,29 @@ namespace dxvk {
     // Create the actual shader module
     return m_device->createShader(
       VK_SHADER_STAGE_FRAGMENT_BIT, module.compile());
+  }
+  
+  
+  Rc<DxvkBindingLayout> DxgiPresenter::createBindingLayout() {
+    std::array<DxvkBindingInfo, 2> bindings;
+    bindings.at(0).type   = VK_DESCRIPTOR_TYPE_SAMPLER;
+    bindings.at(0).stages = VK_SHADER_STAGE_FRAGMENT_BIT;
+    
+    bindings.at(1).type   = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    bindings.at(1).stages = VK_SHADER_STAGE_FRAGMENT_BIT;
+    
+    return m_device->createBindingLayout(
+      bindings.size(), bindings.data());
+  }
+  
+  
+  Rc<DxvkGraphicsPipeline> DxgiPresenter::createPipeline() {
+    const Rc<DxvkShader> vs = this->createVertexShader();
+    const Rc<DxvkShader> fs = this->createFragmentShader();
+    
+    return m_device->createGraphicsPipeline(
+      this->createBindingLayout(),
+      vs, nullptr, nullptr, nullptr, fs);
   }
   
 }

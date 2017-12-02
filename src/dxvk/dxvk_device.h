@@ -8,7 +8,6 @@
 #include "dxvk_framebuffer.h"
 #include "dxvk_image.h"
 #include "dxvk_memory.h"
-#include "dxvk_pipemgr.h"
 #include "dxvk_renderpass.h"
 #include "dxvk_shader.h"
 #include "dxvk_swapchain.h"
@@ -160,6 +159,47 @@ namespace dxvk {
       const SpirvCodeBuffer&          code);
     
     /**
+     * \brief Creates binding layout
+     * 
+     * \param [in] bindingCount Number of bindings
+     * \param [in] bindingInfos Binding descriptions
+     * \returns New binding layout
+     */
+    Rc<DxvkBindingLayout> createBindingLayout(
+            uint32_t         bindingCount,
+      const DxvkBindingInfo* bindingInfos);
+    
+    /**
+     * \brief Creates a compute  pipeline
+     * 
+     * \param [in] layout Pipeline binding layout
+     * \param [in] cs Compute shader
+     * \returns New compute pipeline
+     */
+    Rc<DxvkComputePipeline> createComputePipeline(
+      const Rc<DxvkBindingLayout>& layout,
+      const Rc<DxvkShader>&        cs);
+    
+    /**
+     * \brief Creates a graphics pipeline
+     * 
+     * \param [in] layout Pipeline binding layout
+     * \param [in] vs Vertex shader
+     * \param [in] tcs Tessellation control shader
+     * \param [in] tes Tessellation evaluation shader
+     * \param [in] gs Geometry shader
+     * \param [in] fs Fragment shader
+     * \returns New graphics pipeline
+     */
+    Rc<DxvkGraphicsPipeline> createGraphicsPipeline(
+      const Rc<DxvkBindingLayout>& layout,
+      const Rc<DxvkShader>&        vs,
+      const Rc<DxvkShader>&        tcs,
+      const Rc<DxvkShader>&        tes,
+      const Rc<DxvkShader>&        gs,
+      const Rc<DxvkShader>&        fs);
+    
+    /**
      * \brief Creates a swap chain
      * 
      * \param [in] surface The target surface
@@ -202,7 +242,6 @@ namespace dxvk {
     
     Rc<DxvkMemoryAllocator> m_memory;
     Rc<DxvkRenderPassPool>  m_renderPassPool;
-    Rc<DxvkPipelineManager> m_pipelineManager;
     
     VkQueue m_graphicsQueue;
     VkQueue m_presentQueue;

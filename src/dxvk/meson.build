@@ -16,7 +16,7 @@ dxvk_src = files([
   'dxvk_lifetime.cpp',
   'dxvk_main.cpp',
   'dxvk_memory.cpp',
-  'dxvk_pipemgr.cpp',
+  'dxvk_pipeline.cpp',
   'dxvk_renderpass.cpp',
   'dxvk_resource.cpp',
   'dxvk_shader.cpp',

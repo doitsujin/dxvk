@@ -4,12 +4,6 @@
 
 namespace dxvk {
   
-  struct DxvkResourceBinding {
-    VkDescriptorType        type;
-    VkDescriptorImageInfo   image;
-    VkDescriptorBufferInfo  buffer;
-  };
-  
   /**
    * \brief Descriptor set allocator
    * 

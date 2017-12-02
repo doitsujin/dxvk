@@ -39,47 +39,21 @@ namespace dxvk {
   
   
   DxvkGraphicsPipeline::DxvkGraphicsPipeline(
-      const Rc<vk::DeviceFn>& vkd,
-      const Rc<DxvkShader>&   vs,
-      const Rc<DxvkShader>&   tcs,
-      const Rc<DxvkShader>&   tes,
-      const Rc<DxvkShader>&   gs,
-      const Rc<DxvkShader>&   fs)
-  : m_vkd(vkd), m_vs(vs), m_tcs(tcs),
-    m_tes(tes), m_gs(gs), m_fs(fs) {
-    std::vector<VkDescriptorSetLayoutBinding> bindings;
+      const Rc<vk::DeviceFn>&      vkd,
+      const Rc<DxvkBindingLayout>& layout,
+      const Rc<DxvkShader>&        vs,
+      const Rc<DxvkShader>&        tcs,
+      const Rc<DxvkShader>&        tes,
+      const Rc<DxvkShader>&        gs,
+      const Rc<DxvkShader>&        fs)
+  : m_vkd(vkd), m_layout(layout),
+    m_vs(vs), m_tcs(tcs), m_tes(tes), m_gs(gs), m_fs(fs) {
     
-    VkDescriptorSetLayoutCreateInfo dlayout;
-    dlayout.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    dlayout.pNext        = nullptr;
-    dlayout.flags        = 0;
-    dlayout.bindingCount = bindings.size();
-    dlayout.pBindings    = bindings.data();
-    
-    if (m_vkd->vkCreateDescriptorSetLayout(m_vkd->device(),
-          &dlayout, nullptr, &m_descriptorSetLayout) != VK_SUCCESS)
-      throw DxvkError("DxvkComputePipeline::DxvkComputePipeline: Failed to create descriptor set layout");
-    
-    VkPipelineLayoutCreateInfo playout;
-    playout.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    playout.pNext                  = nullptr;
-    playout.flags                  = 0;
-    playout.setLayoutCount         = 1;
-    playout.pSetLayouts            = &m_descriptorSetLayout;
-    playout.pushConstantRangeCount = 0;
-    playout.pPushConstantRanges    = nullptr;
-    
-    if (m_vkd->vkCreatePipelineLayout(m_vkd->device(),
-          &playout, nullptr, &m_pipelineLayout) != VK_SUCCESS) {
-      this->destroyObjects();
-      throw DxvkError("DxvkComputePipeline::DxvkComputePipeline: Failed to create pipeline layout");
-    }
   }
   
   
   DxvkGraphicsPipeline::~DxvkGraphicsPipeline() {
     this->destroyPipelines();
-    this->destroyObjects();
   }
   
   
@@ -145,7 +119,7 @@ namespace dxvk {
     info.pDepthStencilState     = &state.depthStencilState->info();
     info.pColorBlendState       = &state.blendState->info();
     info.pDynamicState          = &dsInfo;
-    info.layout                 = m_pipelineLayout;
+    info.layout                 = this->pipelineLayout();
     info.renderPass             = state.renderPass;
     info.subpass                = 0;
     info.basePipelineHandle     = VK_NULL_HANDLE;
@@ -156,15 +130,6 @@ namespace dxvk {
           VK_NULL_HANDLE, 1, &info, nullptr, &pipeline) != VK_SUCCESS)
       throw DxvkError("DxvkGraphicsPipeline::DxvkGraphicsPipeline: Failed to compile pipeline");
     return pipeline;
-  }
-  
-  
-  void DxvkGraphicsPipeline::destroyObjects() {
-    if (m_pipelineLayout != VK_NULL_HANDLE)
-      m_vkd->vkDestroyPipelineLayout(m_vkd->device(), m_pipelineLayout, nullptr);
-    
-    if (m_descriptorSetLayout != VK_NULL_HANDLE)
-      m_vkd->vkDestroyDescriptorSetLayout(m_vkd->device(), m_descriptorSetLayout, nullptr);
   }
   
   

@@ -4,7 +4,6 @@
 #include "dxvk_cmdlist.h"
 #include "dxvk_context_state.h"
 #include "dxvk_data.h"
-#include "dxvk_pipemgr.h"
 #include "dxvk_util.h"
 
 namespace dxvk {
@@ -20,9 +19,7 @@ namespace dxvk {
     
   public:
     
-    DxvkContext(
-      const Rc<DxvkDevice>&           device,
-      const Rc<DxvkPipelineManager>&  pipeMgr);
+    DxvkContext(const Rc<DxvkDevice>& device);
     ~DxvkContext();
     
     /**
@@ -64,18 +61,26 @@ namespace dxvk {
       const DxvkBufferBinding&    buffer);
     
     /**
-     * \brief Sets shader for a given shader stage
+     * \brief Binds compute pipeline
      * 
-     * Binds a shader to a given stage, while unbinding the
-     * existing one. If \c nullptr is passed as the shader
-     * to bind, the given shader stage will be disabled.
-     * When drawing, at least a vertex shader must be bound.
-     * \param [in] stage The shader stage
-     * \param [in] shader The shader to set
+     * Note that binding a new pipeline implicitly
+     * invalidates all resource bindings that are
+     * used by the pipeline.
+     * \param [in] pipeline The pipeline to bind
      */
-    void bindShader(
-            VkShaderStageFlagBits stage,
-      const Rc<DxvkShader>&       shader);
+    void bindComputePipeline(
+      const Rc<DxvkComputePipeline>& pipeline);
+    
+    /**
+     * \brief Binds graphics pipeline
+     * 
+     * Note that binding a new pipeline implicitly
+     * invalidates all bindings that are used by
+     * the pipeline.
+     * \param [in] pipeline The pipeline to bind
+     */
+    void bindGraphicsPipeline(
+      const Rc<DxvkGraphicsPipeline>& pipeline);
     
     /**
      * \brief Binds vertex buffer
@@ -250,13 +255,14 @@ namespace dxvk {
     
   private:
     
-    const Rc<DxvkDevice>          m_device;
-    const Rc<DxvkPipelineManager> m_pipeMgr;
+    const Rc<DxvkDevice> m_device;
     
     Rc<DxvkCommandList> m_cmd;
     DxvkContextFlags    m_flags;
     DxvkContextState    m_state;
     DxvkBarrierSet      m_barriers;
+    
+    std::vector<VkWriteDescriptorSet> m_descriptorSetWrites;
     
     void renderPassBegin();
     void renderPassEnd();
@@ -272,10 +278,6 @@ namespace dxvk {
     
     void commitComputeState();
     void commitGraphicsState();
-    
-    DxvkShaderStageState* getShaderStage(
-            VkShaderStageFlagBits     stage);
-    
   };
   
 }

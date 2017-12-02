@@ -20,8 +20,7 @@ namespace dxvk {
    */
   enum class DxvkContextFlag : uint64_t  {
     GpRenderPassBound,      ///< Render pass is currently bound
-    GpDirtyPipeline,        ///< Graphics pipeline binding are out of date
-    GpDirtyPipelineState,   ///< Graphics pipeline state (blending etc.) is dirty
+    GpDirtyPipeline,        ///< Graphics pipeline binding or state is out of date
     GpDirtyDynamicState,    ///< Dynamic state needs to be reapplied
     GpDirtyResources,       ///< Graphics pipeline resource bindings are out of date
     GpDirtyVertexBuffers,   ///< Vertex buffer bindings are out of date
@@ -32,11 +31,6 @@ namespace dxvk {
   };
   
   using DxvkContextFlags = Flags<DxvkContextFlag>;
-  
-  
-  struct DxvkShaderStageState {
-    Rc<DxvkShader>            shader;
-  };
   
   
   struct DxvkVertexInputState {
@@ -65,20 +59,13 @@ namespace dxvk {
    * and constant pipeline state objects.
    */
   struct DxvkContextState {
-    DxvkShaderStageState      vs;
-    DxvkShaderStageState      tcs;
-    DxvkShaderStageState      tes;
-    DxvkShaderStageState      gs;
-    DxvkShaderStageState      fs;
-    DxvkShaderStageState      cs;
-    
     DxvkVertexInputState      vi;
     DxvkViewportState         vp;
     DxvkOutputMergerState     om;
     DxvkConstantStateObjects  co;
     
-    Rc<DxvkGraphicsPipeline>  activeGraphicsPipeline;
-    Rc<DxvkComputePipeline>   activeComputePipeline;
+    Rc<DxvkGraphicsPipeline>  gp;
+    Rc<DxvkComputePipeline>   cp;
   };
   
 }

@@ -42,6 +42,9 @@ namespace dxvk {
     
     /// Image tiling mode
     VkImageTiling tiling;
+    
+    /// Common image layout
+    VkImageLayout layout;
   };
   
   
