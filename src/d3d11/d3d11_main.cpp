@@ -81,6 +81,8 @@ extern "C" {
     
     UINT flId;
     for (flId = 0 ; flId < FeatureLevels; flId++) {
+      Logger::info(str::format("D3D11CreateDevice: Probing ", pFeatureLevels[flId]));
+      
       if (D3D11Device::CheckFeatureLevelSupport(adapter, pFeatureLevels[flId]))
         break;
     }
@@ -94,7 +96,6 @@ extern "C" {
     const D3D_FEATURE_LEVEL fl = pFeatureLevels[flId];
     
     try {
-      
       Logger::info(str::format("D3D11CreateDevice: Using feature level ", fl));
       
       // Write back the actual feature level
