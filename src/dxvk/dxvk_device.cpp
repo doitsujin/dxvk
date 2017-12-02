@@ -4,10 +4,12 @@
 namespace dxvk {
   
   DxvkDevice::DxvkDevice(
-    const Rc<DxvkAdapter>&  adapter,
-    const Rc<vk::DeviceFn>& vkd)
+    const Rc<DxvkAdapter>&          adapter,
+    const Rc<vk::DeviceFn>&         vkd,
+    const VkPhysicalDeviceFeatures& features)
   : m_adapter         (adapter),
     m_vkd             (vkd),
+    m_features        (features),
     m_memory          (new DxvkMemoryAllocator(adapter, vkd)),
     m_renderPassPool  (new DxvkRenderPassPool (vkd)),
     m_pipelineManager (new DxvkPipelineManager(vkd)) {
@@ -67,7 +69,6 @@ namespace dxvk {
   Rc<DxvkImage> DxvkDevice::createImage(
     const DxvkImageCreateInfo&  createInfo,
           VkMemoryPropertyFlags memoryType) {
-    // TODO record image initialization commands
     return new DxvkImage(m_vkd,
       createInfo, *m_memory, memoryType);
   }

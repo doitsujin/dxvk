@@ -93,9 +93,70 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkDevice> DxvkAdapter::createDevice() {
+  bool DxvkAdapter::checkFeatureSupport(
+    const VkPhysicalDeviceFeatures& required) const {
+    const VkPhysicalDeviceFeatures supported = this->features();
+    
+    return (supported.robustBufferAccess || !required.robustBufferAccess)
+        && (supported.fullDrawIndexUint32 || !required.fullDrawIndexUint32)
+        && (supported.imageCubeArray || !required.imageCubeArray)
+        && (supported.independentBlend || !required.independentBlend)
+        && (supported.geometryShader || !required.geometryShader)
+        && (supported.tessellationShader || !required.tessellationShader)
+        && (supported.sampleRateShading || !required.sampleRateShading)
+        && (supported.dualSrcBlend || !required.dualSrcBlend)
+        && (supported.logicOp || !required.logicOp)
+        && (supported.multiDrawIndirect || !required.multiDrawIndirect)
+        && (supported.drawIndirectFirstInstance || !required.drawIndirectFirstInstance)
+        && (supported.depthClamp || !required.depthClamp)
+        && (supported.depthBiasClamp || !required.depthBiasClamp)
+        && (supported.fillModeNonSolid || !required.fillModeNonSolid)
+        && (supported.depthBounds || !required.depthBounds)
+        && (supported.wideLines || !required.wideLines)
+        && (supported.largePoints || !required.largePoints)
+        && (supported.alphaToOne || !required.alphaToOne)
+        && (supported.multiViewport || !required.multiViewport)
+        && (supported.samplerAnisotropy || !required.samplerAnisotropy)
+        && (supported.textureCompressionETC2 || !required.textureCompressionETC2)
+        && (supported.textureCompressionASTC_LDR || !required.textureCompressionASTC_LDR)
+        && (supported.textureCompressionBC || !required.textureCompressionBC)
+        && (supported.occlusionQueryPrecise || !required.occlusionQueryPrecise)
+        && (supported.pipelineStatisticsQuery || !required.pipelineStatisticsQuery)
+        && (supported.vertexPipelineStoresAndAtomics || !required.vertexPipelineStoresAndAtomics)
+        && (supported.fragmentStoresAndAtomics || !required.fragmentStoresAndAtomics)
+        && (supported.shaderTessellationAndGeometryPointSize || !required.shaderTessellationAndGeometryPointSize)
+        && (supported.shaderImageGatherExtended || !required.shaderImageGatherExtended)
+        && (supported.shaderStorageImageExtendedFormats || !required.shaderStorageImageExtendedFormats)
+        && (supported.shaderStorageImageMultisample || !required.shaderStorageImageMultisample)
+        && (supported.shaderStorageImageReadWithoutFormat || !required.shaderStorageImageReadWithoutFormat)
+        && (supported.shaderStorageImageWriteWithoutFormat || !required.shaderStorageImageWriteWithoutFormat)
+        && (supported.shaderUniformBufferArrayDynamicIndexing || !required.shaderUniformBufferArrayDynamicIndexing)
+        && (supported.shaderSampledImageArrayDynamicIndexing || !required.shaderSampledImageArrayDynamicIndexing)
+        && (supported.shaderStorageBufferArrayDynamicIndexing || !required.shaderStorageBufferArrayDynamicIndexing)
+        && (supported.shaderStorageImageArrayDynamicIndexing || !required.shaderStorageImageArrayDynamicIndexing)
+        && (supported.shaderClipDistance || !required.shaderClipDistance)
+        && (supported.shaderCullDistance || !required.shaderCullDistance)
+        && (supported.shaderFloat64 || !required.shaderFloat64)
+        && (supported.shaderInt64 || !required.shaderInt64)
+        && (supported.shaderInt16 || !required.shaderInt16)
+        && (supported.shaderResourceResidency || !required.shaderResourceResidency)
+        && (supported.shaderResourceMinLod || !required.shaderResourceMinLod)
+        && (supported.sparseBinding || !required.sparseBinding)
+        && (supported.sparseResidencyBuffer || !required.sparseResidencyBuffer)
+        && (supported.sparseResidencyImage2D || !required.sparseResidencyImage2D)
+        && (supported.sparseResidencyImage3D || !required.sparseResidencyImage3D)
+        && (supported.sparseResidency2Samples || !required.sparseResidency2Samples)
+        && (supported.sparseResidency4Samples || !required.sparseResidency4Samples)
+        && (supported.sparseResidency8Samples || !required.sparseResidency8Samples)
+        && (supported.sparseResidency16Samples || !required.sparseResidency16Samples)
+        && (supported.sparseResidencyAliased || !required.sparseResidencyAliased)
+        && (supported.variableMultisampleRate || !required.variableMultisampleRate)
+        && (supported.inheritedQueries || !required.inheritedQueries);
+  }
+  
+  
+  Rc<DxvkDevice> DxvkAdapter::createDevice(const VkPhysicalDeviceFeatures& enabledFeatures) {
     auto enabledExtensions = this->enableExtensions();
-    auto enabledFeatures   = this->enableFeatures();
     
     float queuePriority = 1.0f;
     std::vector<VkDeviceQueueCreateInfo> queueInfos;
@@ -134,7 +195,7 @@ namespace dxvk {
     
     if (m_vki->vkCreateDevice(m_handle, &info, nullptr, &device) != VK_SUCCESS)
       throw DxvkError("DxvkDevice::createDevice: Failed to create device");
-    return new DxvkDevice(this, new vk::DeviceFn(m_vki->instance(), device));
+    return new DxvkDevice(this, new vk::DeviceFn(m_vki->instance(), device), enabledFeatures);
   }
   
   
@@ -165,13 +226,6 @@ namespace dxvk {
     }
     
     return extensionsEnabled;
-  }
-  
-  
-  VkPhysicalDeviceFeatures DxvkAdapter::enableFeatures() {
-    VkPhysicalDeviceFeatures features;
-    std::memset(&features, 0, sizeof(features));
-    return features;
   }
   
 }

@@ -319,7 +319,7 @@ namespace dxvk {
     
     DxvkImageCreateInfo imageInfo;
     imageInfo.type          = VK_IMAGE_TYPE_2D;
-    imageInfo.format        = VK_FORMAT_R8G8B8A8_SNORM;
+    imageInfo.format        = VK_FORMAT_R8G8B8A8_UNORM;
     imageInfo.sampleCount   = VK_SAMPLE_COUNT_1_BIT;
     imageInfo.extent.width  = m_desc.BufferDesc.Width;
     imageInfo.extent.height = m_desc.BufferDesc.Height;
@@ -331,9 +331,6 @@ namespace dxvk {
                             | VK_IMAGE_USAGE_TRANSFER_DST_BIT
                             | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
     imageInfo.stages        = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
-//                             | VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT
-//                             | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
-//                             | VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
                             | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
                             | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
                             | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
@@ -344,6 +341,14 @@ namespace dxvk {
                             | VK_ACCESS_TRANSFER_READ_BIT
                             | VK_ACCESS_SHADER_READ_BIT;
     imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+    
+    if (dxvkDevice->features().geometryShader)
+      imageInfo.stages      |= VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
+    
+    if (dxvkDevice->features().tessellationShader) {
+      imageInfo.stages      |= VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT
+                            |  VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
+    }
     
     if (FAILED(DXGICreateImageResourcePrivate(dxgiDevice.ptr(), &imageInfo,
           VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, DXGI_USAGE_BACK_BUFFER | m_desc.BufferUsage,

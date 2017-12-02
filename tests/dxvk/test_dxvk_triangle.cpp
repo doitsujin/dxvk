@@ -68,7 +68,7 @@ public:
   TriangleApp(HINSTANCE instance, HWND window)
   : m_dxvkInstance    (new DxvkInstance()),
     m_dxvkAdapter     (m_dxvkInstance->enumAdapters().at(0)),
-    m_dxvkDevice      (m_dxvkAdapter->createDevice()),
+    m_dxvkDevice      (m_dxvkAdapter->createDevice(getDeviceFeatures())),
     m_dxvkSurface     (m_dxvkAdapter->createSurface(instance, window)),
     m_dxvkSwapchain   (m_dxvkDevice->createSwapchain(m_dxvkSurface,
       DxvkSwapchainProperties {
@@ -176,6 +176,13 @@ public:
       m_dxvkContext->endRecording(), sync1, sync2);
     m_dxvkSwapchain->present(sync2);
     m_dxvkDevice->waitForIdle();
+  }
+  
+  
+  VkPhysicalDeviceFeatures getDeviceFeatures() const {
+    VkPhysicalDeviceFeatures features;
+    std::memset(&features, 0, sizeof(features));
+    return features;
   }
   
 private:

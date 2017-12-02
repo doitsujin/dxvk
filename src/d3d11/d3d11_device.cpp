@@ -516,8 +516,74 @@ namespace dxvk {
   
   
   bool D3D11Device::CheckFeatureLevelSupport(
+    const Rc<DxvkAdapter>&  adapter,
           D3D_FEATURE_LEVEL featureLevel) {
-    return featureLevel <= D3D_FEATURE_LEVEL_11_0;
+    // We currently only support 11_0 interfaces
+    if (featureLevel > D3D_FEATURE_LEVEL_11_0)
+      return false;
+    
+    // Check whether all features are supported
+    const VkPhysicalDeviceFeatures features
+      = GetDeviceFeatures(adapter, featureLevel);
+    
+    if (!adapter->checkFeatureSupport(features))
+      return false;
+    
+    // TODO also check for required limits
+    return true;
+  }
+  
+  
+  VkPhysicalDeviceFeatures D3D11Device::GetDeviceFeatures(
+    const Rc<DxvkAdapter>&  adapter,
+          D3D_FEATURE_LEVEL featureLevel) {
+    VkPhysicalDeviceFeatures supported = adapter->features();
+    VkPhysicalDeviceFeatures enabled;
+    std::memset(&enabled, 0, sizeof(enabled));
+    
+    if (featureLevel >= D3D_FEATURE_LEVEL_9_1) {
+      enabled.alphaToOne                      = VK_TRUE;
+      enabled.depthClamp                      = VK_TRUE;
+      enabled.depthBiasClamp                  = VK_TRUE;
+      enabled.depthBounds                     = VK_TRUE;
+      enabled.fillModeNonSolid                = VK_TRUE;
+      enabled.pipelineStatisticsQuery         = supported.pipelineStatisticsQuery;
+      enabled.samplerAnisotropy               = VK_TRUE;
+      enabled.shaderClipDistance              = VK_TRUE;
+      enabled.shaderCullDistance              = VK_TRUE;
+    }
+    
+    if (featureLevel >= D3D_FEATURE_LEVEL_9_2) {
+      enabled.occlusionQueryPrecise           = VK_TRUE;
+    }
+    
+    if (featureLevel >= D3D_FEATURE_LEVEL_9_3) {
+      enabled.multiViewport                   = VK_TRUE;
+      enabled.independentBlend                = VK_TRUE;
+    }
+    
+    if (featureLevel >= D3D_FEATURE_LEVEL_10_0) {
+      enabled.fullDrawIndexUint32             = VK_TRUE;
+      enabled.fragmentStoresAndAtomics        = VK_TRUE;
+      enabled.geometryShader                  = VK_TRUE;
+      enabled.logicOp                         = supported.logicOp;
+      enabled.shaderImageGatherExtended       = VK_TRUE;
+      enabled.textureCompressionBC            = VK_TRUE;
+      enabled.vertexPipelineStoresAndAtomics  = VK_TRUE;
+    }
+    
+    if (featureLevel >= D3D_FEATURE_LEVEL_10_1) {
+      enabled.imageCubeArray                  = VK_TRUE;
+    }
+    
+    if (featureLevel >= D3D_FEATURE_LEVEL_11_0) {
+      enabled.shaderFloat64                   = supported.shaderFloat64;
+      enabled.shaderInt64                     = supported.shaderInt64;
+      enabled.tessellationShader              = VK_TRUE;
+      enabled.variableMultisampleRate         = VK_TRUE;
+    }
+    
+    return enabled;
   }
   
 }

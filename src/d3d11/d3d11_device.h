@@ -221,6 +221,11 @@ namespace dxvk {
     }
     
     static bool CheckFeatureLevelSupport(
+      const Rc<DxvkAdapter>&  adapter,
+            D3D_FEATURE_LEVEL featureLevel);
+    
+    static VkPhysicalDeviceFeatures GetDeviceFeatures(
+      const Rc<DxvkAdapter>&  adapter,
             D3D_FEATURE_LEVEL featureLevel);
     
   private:

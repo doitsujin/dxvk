@@ -108,12 +108,23 @@ namespace dxvk {
     uint32_t presentQueueFamily() const;
     
     /**
+     * \brief Tests whether all required features are supported
+     * 
+     * \param [in] features Required device features
+     * \returns \c true if all features are supported
+     */
+    bool checkFeatureSupport(
+      const VkPhysicalDeviceFeatures& required) const;
+    
+    /**
      * \brief Creates a DXVK device
      * 
      * Creates a logical device for this adapter.
+     * \param [in] enabledFeatures Device features
      * \returns Device handle
      */
-    Rc<DxvkDevice> createDevice();
+    Rc<DxvkDevice> createDevice(
+      const VkPhysicalDeviceFeatures& enabledFeatures);
     
     /**
      * \brief Creates a surface
@@ -135,8 +146,6 @@ namespace dxvk {
     std::vector<VkQueueFamilyProperties> m_queueFamilies;
     
     vk::NameList enableExtensions();
-    
-    VkPhysicalDeviceFeatures enableFeatures();
     
   };
   

@@ -4,6 +4,7 @@
 #include <dxgi_device.h>
 
 #include "d3d11_device.h"
+#include "d3d11_enums.h"
 
 extern "C" {
   using namespace dxvk;
@@ -76,9 +77,11 @@ extern "C" {
     
     // Find the highest feature level supported by the device.
     // This works because the feature level array is ordered.
+    const Rc<DxvkAdapter> adapter = dxvkAdapter->GetDXVKAdapter();
+    
     UINT flId;
     for (flId = 0 ; flId < FeatureLevels; flId++) {
-      if (D3D11Device::CheckFeatureLevelSupport(pFeatureLevels[flId]))
+      if (D3D11Device::CheckFeatureLevelSupport(adapter, pFeatureLevels[flId]))
         break;
     }
     
@@ -91,6 +94,8 @@ extern "C" {
     const D3D_FEATURE_LEVEL fl = pFeatureLevels[flId];
     
     try {
+      
+      Logger::info(str::format("D3D11CreateDevice: Using feature level ", fl));
       
       // Write back the actual feature level
       // if the application requested it.
@@ -105,7 +110,10 @@ extern "C" {
       if (ppDevice != nullptr) {
         Com<IDXGIDevicePrivate> dxvkDevice = nullptr;
         
-        if (FAILED(DXGICreateDevicePrivate(dxvkAdapter.ptr(), &dxvkDevice))) {
+        const VkPhysicalDeviceFeatures deviceFeatures
+          = D3D11Device::GetDeviceFeatures(adapter, fl);
+        
+        if (FAILED(DXGICreateDevicePrivate(dxvkAdapter.ptr(), &deviceFeatures, &dxvkDevice))) {
           Logger::err("D3D11CreateDevice: Failed to create DXGI device");
           return E_FAIL;
         }

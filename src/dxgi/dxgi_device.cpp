@@ -3,9 +3,11 @@
 
 namespace dxvk {
   
-  DxgiDevice::DxgiDevice(IDXGIAdapterPrivate* adapter)
+  DxgiDevice::DxgiDevice(
+          IDXGIAdapterPrivate*      adapter,
+    const VkPhysicalDeviceFeatures* features)
   : m_adapter(adapter) {
-    m_device = m_adapter->GetDXVKAdapter()->createDevice();
+    m_device = m_adapter->GetDXVKAdapter()->createDevice(*features);
   }
   
   
@@ -92,10 +94,11 @@ namespace dxvk {
 extern "C" {
   
   DLLEXPORT HRESULT __stdcall DXGICreateDevicePrivate(
-          IDXGIAdapterPrivate*   pAdapter,
-          IDXGIDevicePrivate**   ppDevice) {
+          IDXGIAdapterPrivate*      pAdapter,
+    const VkPhysicalDeviceFeatures* features,
+          IDXGIDevicePrivate**      ppDevice) {
     try {
-      *ppDevice = dxvk::ref(new dxvk::DxgiDevice(pAdapter));
+      *ppDevice = dxvk::ref(new dxvk::DxgiDevice(pAdapter, features));
       return S_OK;
     } catch (const dxvk::DxvkError& e) {
       dxvk::Logger::err(e.message());
