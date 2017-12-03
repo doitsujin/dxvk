@@ -33,6 +33,26 @@ namespace dxvk {
     m_acquireSync = m_device->createSemaphore();
     m_presentSync = m_device->createSemaphore();
     
+    // Sampler for presentation
+    DxvkSamplerCreateInfo samplerInfo;
+    samplerInfo.magFilter       = VK_FILTER_NEAREST;
+    samplerInfo.minFilter       = VK_FILTER_NEAREST;
+    samplerInfo.mipmapMode      = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    samplerInfo.mipmapLodBias   = 0.0f;
+    samplerInfo.mipmapLodMin    = 0.0f;
+    samplerInfo.mipmapLodMax    = 0.0f;
+    samplerInfo.useAnisotropy   = VK_FALSE;
+    samplerInfo.maxAnisotropy   = 1.0f;
+    samplerInfo.addressModeU    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+    samplerInfo.addressModeV    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+    samplerInfo.addressModeW    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+    samplerInfo.compareToDepth  = VK_FALSE;
+    samplerInfo.compareOp       = VK_COMPARE_OP_ALWAYS;
+    samplerInfo.borderColor     = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+    samplerInfo.usePixelCoord   = VK_FALSE;
+    
+    m_sampler = m_device->createSampler(samplerInfo);
+    
     // Set up context state. The shader bindings and the
     // constant state objects will never be modified.
     m_context->bindGraphicsPipeline(createPipeline());
@@ -133,9 +153,12 @@ namespace dxvk {
     
     m_context->setViewports(1, &viewport, &scissor);
     
-    // TODO bind back buffer as a shader resource
-//     m_context->bindSampler(0, m_sampler);
-//     m_context->bindSampledImage(1, view);
+    m_context->bindResourceSampler(
+      VK_PIPELINE_BIND_POINT_GRAPHICS,
+      BindingIds::Sampler, m_sampler);
+    m_context->bindResourceImage(
+      VK_PIPELINE_BIND_POINT_GRAPHICS,
+      BindingIds::Texture, view);
     m_context->draw(4, 1, 0, 0);
     
     m_device->submitCommandList(
@@ -279,10 +302,26 @@ namespace dxvk {
     uint32_t typeVec2       = module.defVectorType(typeF32, 2);
     uint32_t typeVec4       = module.defVectorType(typeF32, 4);
     uint32_t typeFn         = module.defFunctionType(typeVoid, 0, nullptr);
+    uint32_t typeSampler    = module.defSamplerType();
+    uint32_t typeTexture    = module.defImageType(
+      typeF32, spv::Dim2D, 0, 0, 0, 1, spv::ImageFormatUnknown);
+    uint32_t typeSampledTex = module.defSampledImageType(typeTexture);
     
     // Pointer type definitions
     uint32_t ptrInputVec2   = module.defPointerType(typeVec2, spv::StorageClassInput);
     uint32_t ptrOutputVec4  = module.defPointerType(typeVec4, spv::StorageClassOutput);
+    uint32_t ptrSampler     = module.defPointerType(typeSampler, spv::StorageClassUniformConstant);
+    uint32_t ptrTexture     = module.defPointerType(typeTexture, spv::StorageClassUniformConstant);
+    
+    // Sampler
+    uint32_t rcSampler = module.newVar(ptrSampler, spv::StorageClassUniformConstant);
+    module.decorateDescriptorSet(rcSampler, 0);
+    module.decorateBinding(rcSampler, BindingIds::Sampler);
+    
+    // Texture
+    uint32_t rcTexture = module.newVar(ptrTexture, spv::StorageClassUniformConstant);
+    module.decorateDescriptorSet(rcTexture, 0);
+    module.decorateBinding(rcTexture, BindingIds::Texture);
     
     // Input variable: Texture coordinates
     uint32_t inTexCoord = module.newVar(
@@ -299,13 +338,14 @@ namespace dxvk {
     module.opLabel(module.allocateId());
     
     // Load texture coordinates
-    uint32_t tmpTexCoord = module.opLoad(typeVec2, inTexCoord);
-    
-    // Compute final color
-    uint32_t swizzleIndices[4] = { 0, 1, 2, 3 };
-    uint32_t tmpColor = module.opVectorShuffle(
-      typeVec4, tmpTexCoord, tmpTexCoord, 4, swizzleIndices);
-    module.opStore(outColor, tmpColor);
+    module.opStore(outColor,
+      module.opImageSampleImplicitLod(
+        typeVec4,
+        module.opSampledImage(
+          typeSampledTex,
+          module.opLoad(typeTexture, rcTexture),
+          module.opLoad(typeSampler, rcSampler)),
+        module.opLoad(typeVec2, inTexCoord)));
     
     module.opReturn();
     module.functionEnd();
@@ -325,12 +365,14 @@ namespace dxvk {
   
   
   Rc<DxvkBindingLayout> DxgiPresenter::createBindingLayout() {
-    std::array<DxvkBindingInfo, 2> bindings;
-    bindings.at(0).type   = VK_DESCRIPTOR_TYPE_SAMPLER;
-    bindings.at(0).stages = VK_SHADER_STAGE_FRAGMENT_BIT;
+    std::array<DxvkDescriptorSlot, 2> bindings;
+    bindings.at(BindingIds::Sampler).slot   = BindingIds::Sampler;
+    bindings.at(BindingIds::Sampler).type   = VK_DESCRIPTOR_TYPE_SAMPLER;
+    bindings.at(BindingIds::Sampler).stages = VK_SHADER_STAGE_FRAGMENT_BIT;
     
-    bindings.at(1).type   = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-    bindings.at(1).stages = VK_SHADER_STAGE_FRAGMENT_BIT;
+    bindings.at(BindingIds::Texture).slot   = BindingIds::Texture;
+    bindings.at(BindingIds::Texture).type   = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    bindings.at(BindingIds::Texture).stages = VK_SHADER_STAGE_FRAGMENT_BIT;
     
     return m_device->createBindingLayout(
       bindings.size(), bindings.data());

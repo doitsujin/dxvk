@@ -11,9 +11,10 @@ namespace dxvk {
    * Vulkan. DXVK does not use descriptor arrays.
    * Instead, each binding stores one descriptor.
    */
-  struct DxvkBindingInfo {
-    VkDescriptorType   type;
-    VkShaderStageFlags stages;
+  struct DxvkDescriptorSlot {
+    uint32_t           slot;    ///< Resource slot index for the context
+    VkDescriptorType   type;    ///< Descriptor type (aka resource type)
+    VkShaderStageFlags stages;  ///< Stages that can use the resource
   };
   
   
@@ -28,9 +29,9 @@ namespace dxvk {
   public:
     
     DxvkBindingLayout(
-      const Rc<vk::DeviceFn>& vkd,
-            uint32_t          bindingCount,
-      const DxvkBindingInfo*  bindingInfos);
+      const Rc<vk::DeviceFn>&   vkd,
+            uint32_t            bindingCount,
+      const DxvkDescriptorSlot* bindingInfos);
     
     ~DxvkBindingLayout();
     
@@ -38,17 +39,17 @@ namespace dxvk {
      * \brief Number of resource bindings
      * \returns Resource binding count
      */
-    uint32_t numBindings() const {
-      return m_bindings.size();
+    uint32_t bindingCount() const {
+      return m_bindingSlots.size();
     }
     
     /**
-     * \brief Retrieves binding info
-     * 
-     * \param [in] binding ID
-     * \returns Binding info
+     * \brief Resource binding info
+     * \returns Resource binding info
      */
-    DxvkBindingInfo binding(uint32_t id) const;
+    const DxvkDescriptorSlot* bindings() const {
+      return m_bindingSlots.data();
+    }
     
     /**
      * \brief Descriptor set layout handle
@@ -73,7 +74,7 @@ namespace dxvk {
     VkDescriptorSetLayout m_descriptorSetLayout = VK_NULL_HANDLE;
     VkPipelineLayout      m_pipelineLayout      = VK_NULL_HANDLE;
     
-    std::vector<VkDescriptorSetLayoutBinding> m_bindings;
+    std::vector<DxvkDescriptorSlot> m_bindingSlots;
     
   };
   

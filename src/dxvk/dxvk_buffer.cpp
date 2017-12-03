@@ -60,7 +60,8 @@ namespace dxvk {
   
   
   DxvkBufferView::~DxvkBufferView() {
-    
+    m_vkd->vkDestroyBufferView(
+      m_vkd->device(), m_view, nullptr);
   }
   
 }

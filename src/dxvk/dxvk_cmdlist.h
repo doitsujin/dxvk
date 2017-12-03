@@ -4,6 +4,7 @@
 
 #include "dxvk_descriptor.h"
 #include "dxvk_lifetime.h"
+#include "dxvk_pipeline.h"
 
 namespace dxvk {
   
@@ -75,6 +76,14 @@ namespace dxvk {
      * the command list completes execution.
      */
     void reset();
+    
+    void bindResourceDescriptors(
+            VkPipelineBindPoint     pipeline,
+            VkPipelineLayout        pipelineLayout,
+            VkDescriptorSetLayout   descriptorLayout,
+            uint32_t                descriptorCount,
+      const DxvkDescriptorSlot*     descriptorSlots,
+      const DxvkDescriptorInfo*     descriptorInfos);
     
     void cmdBeginRenderPass(
       const VkRenderPassBeginInfo*  pRenderPassBegin,

@@ -1,29 +1,37 @@
+#include <cstring>
+
 #include "dxvk_pipeline.h"
 
 namespace dxvk {
   
   DxvkBindingLayout::DxvkBindingLayout(
-    const Rc<vk::DeviceFn>& vkd,
-          uint32_t          bindingCount,
-    const DxvkBindingInfo*  bindingInfos)
+    const Rc<vk::DeviceFn>&   vkd,
+          uint32_t            bindingCount,
+    const DxvkDescriptorSlot* bindingInfos)
   : m_vkd(vkd) {
+    
+    m_bindingSlots.resize(bindingCount);
+    std::memcpy(m_bindingSlots.data(), bindingInfos,
+      bindingCount * sizeof(DxvkDescriptorSlot));
+    
+    std::vector<VkDescriptorSetLayoutBinding> bindings;
     
     for (uint32_t i = 0; i < bindingCount; i++) {
       VkDescriptorSetLayoutBinding binding;
       binding.binding            = i;
       binding.descriptorType     = bindingInfos[i].type;
-      binding.descriptorCount    = bindingInfos[i].stages == 0 ? 0 : 1;
+      binding.descriptorCount    = 1;
       binding.stageFlags         = bindingInfos[i].stages;
       binding.pImmutableSamplers = nullptr;
-      m_bindings.push_back(binding);
+      bindings.push_back(binding);
     }
     
     VkDescriptorSetLayoutCreateInfo dsetInfo;
     dsetInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     dsetInfo.pNext        = nullptr;
     dsetInfo.flags        = 0;
-    dsetInfo.bindingCount = m_bindings.size();
-    dsetInfo.pBindings    = m_bindings.data();
+    dsetInfo.bindingCount = bindings.size();
+    dsetInfo.pBindings    = bindings.data();
     
     if (m_vkd->vkCreateDescriptorSetLayout(m_vkd->device(),
           &dsetInfo, nullptr, &m_descriptorSetLayout) != VK_SUCCESS)
@@ -57,16 +65,6 @@ namespace dxvk {
       m_vkd->vkDestroyDescriptorSetLayout(
         m_vkd->device(), m_descriptorSetLayout, nullptr);
     }
-  }
-  
-  
-  DxvkBindingInfo DxvkBindingLayout::binding(uint32_t id) const {
-    const VkDescriptorSetLayoutBinding& bindingInfo = m_bindings.at(id);
-    
-    DxvkBindingInfo result;
-    result.type   = bindingInfo.descriptorType;
-    result.stages = bindingInfo.stageFlags;
-    return result;
   }
   
 }

@@ -91,6 +91,51 @@ namespace dxvk {
   }
   
   
+  void DxvkCommandList::bindResourceDescriptors(
+          VkPipelineBindPoint     pipeline,
+          VkPipelineLayout        pipelineLayout,
+          VkDescriptorSetLayout   descriptorLayout,
+          uint32_t                descriptorCount,
+    const DxvkDescriptorSlot*     descriptorSlots,
+    const DxvkDescriptorInfo*     descriptorInfos) {
+    
+    // Allocate a new descriptor set
+    VkDescriptorSet dset = m_descAlloc.alloc(descriptorLayout);
+    
+    // Write data to the descriptor set
+    // TODO recycle vector as a class member
+    std::vector<VkWriteDescriptorSet> descriptorWrites;
+    descriptorWrites.resize(descriptorCount);
+    
+    for (uint32_t i = 0; i < descriptorCount; i++) {
+      auto& curr = descriptorWrites.at(i);
+      auto& binding = descriptorSlots[i];
+      
+      curr.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      curr.pNext            = nullptr;
+      curr.dstSet           = dset;
+      curr.dstBinding       = i;
+      curr.dstArrayElement  = 0;
+      curr.descriptorCount  = 1;
+      curr.descriptorType   = binding.type;
+      curr.pImageInfo       = &descriptorInfos[binding.slot].image;
+      curr.pBufferInfo      = &descriptorInfos[binding.slot].buffer;
+      curr.pTexelBufferView = &descriptorInfos[binding.slot].texelBuffer;
+    }
+    
+    m_vkd->vkUpdateDescriptorSets(
+      m_vkd->device(),
+      descriptorWrites.size(),
+      descriptorWrites.data(),
+      0, nullptr);
+    
+    // Bind descriptor set to the pipeline
+    m_vkd->vkCmdBindDescriptorSets(m_buffer,
+      pipeline, pipelineLayout, 0, 1,
+      &dset, 0, nullptr);
+  }
+  
+  
   void DxvkCommandList::cmdBeginRenderPass(
     const VkRenderPassBeginInfo*  pRenderPassBegin,
           VkSubpassContents       contents) {

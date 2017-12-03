@@ -7,6 +7,8 @@
 #include "dxvk_graphics.h"
 #include "dxvk_image.h"
 #include "dxvk_limits.h"
+#include "dxvk_pipeline.h"
+#include "dxvk_sampler.h"
 #include "dxvk_shader.h"
 
 namespace dxvk {
@@ -64,8 +66,8 @@ namespace dxvk {
     DxvkOutputMergerState     om;
     DxvkConstantStateObjects  co;
     
-    Rc<DxvkGraphicsPipeline>  gp;
-    Rc<DxvkComputePipeline>   cp;
+    Rc<DxvkGraphicsPipeline>  gPipe;
+    Rc<DxvkComputePipeline>   cPipe;
   };
   
 }

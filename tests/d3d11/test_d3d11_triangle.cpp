@@ -63,7 +63,7 @@ public:
   
   
   void run() {
-    FLOAT color[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    FLOAT color[4] = { 0.8f, 0.2f, 0.2f, 1.0f };
     
     m_context->OMSetRenderTargets(1, &m_bufferView, nullptr);
     m_context->ClearRenderTargetView(m_bufferView.ptr(), color);

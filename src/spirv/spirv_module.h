@@ -81,6 +81,10 @@ namespace dxvk {
             uint32_t                constCount,
       const uint32_t*               constIds);
     
+    void decorateBinding(
+            uint32_t                object,
+            uint32_t                binding);
+    
     void decorateBlock(
             uint32_t                object);
     
@@ -91,6 +95,10 @@ namespace dxvk {
     void decorateComponent(
             uint32_t                object,
             uint32_t                location);
+    
+    void decorateDescriptorSet(
+            uint32_t                object,
+            uint32_t                set);
     
     void decorateLocation(
             uint32_t                object,
@@ -139,6 +147,20 @@ namespace dxvk {
     uint32_t defPointerType(
             uint32_t                variableType,
             spv::StorageClass       storageClass);
+    
+    uint32_t defSamplerType();
+    
+    uint32_t defImageType(
+            uint32_t                sampledType,
+            spv::Dim                dimensionality,
+            uint32_t                depth,
+            uint32_t                arrayed,
+            uint32_t                multisample,
+            uint32_t                sampled,
+            spv::ImageFormat        format);
+    
+    uint32_t defSampledImageType(
+            uint32_t                imageType);
     
     uint32_t newVar(
             uint32_t                pointerType,
@@ -238,6 +260,16 @@ namespace dxvk {
     void opStore(
             uint32_t                pointerId,
             uint32_t                valueId);
+    
+    uint32_t opSampledImage(
+            uint32_t                resultType,
+            uint32_t                image,
+            uint32_t                sampler);
+    
+    uint32_t opImageSampleImplicitLod(
+            uint32_t                resultType,
+            uint32_t                sampledImage,
+            uint32_t                coordinates);
     
     void opReturn();
     

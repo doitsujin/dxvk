@@ -119,7 +119,7 @@ namespace dxvk {
     info.pDepthStencilState     = &state.depthStencilState->info();
     info.pColorBlendState       = &state.blendState->info();
     info.pDynamicState          = &dsInfo;
-    info.layout                 = this->pipelineLayout();
+    info.layout                 = m_layout->pipelineLayout();
     info.renderPass             = state.renderPass;
     info.subpass                = 0;
     info.basePipelineHandle     = VK_NULL_HANDLE;

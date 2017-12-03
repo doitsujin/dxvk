@@ -59,25 +59,15 @@ namespace dxvk {
     ~DxvkGraphicsPipeline();
     
     /**
-     * \brief Descriptor set layout
-     * 
-     * The descriptor set layout for this pipeline.
-     * Use this to allocate new descriptor sets.
-     * \returns The descriptor set layout
-     */
-    VkDescriptorSetLayout descriptorSetLayout() const {
-      return m_layout->descriptorSetLayout();
-    }
-    
-    /**
      * \brief Pipeline layout
      * 
-     * The pipeline layout for this pipeline.
-     * Use this to bind descriptor sets.
-     * \returns The descriptor set layout
+     * Stores the pipeline layout and the descriptor set
+     * layout, as well as information on the resource
+     * slots used by the pipeline.
+     * \returns Pipeline layout
      */
-    VkPipelineLayout pipelineLayout() const {
-      return m_layout->pipelineLayout();
+    Rc<DxvkBindingLayout> layout() const {
+      return m_layout;
     }
     
     /**

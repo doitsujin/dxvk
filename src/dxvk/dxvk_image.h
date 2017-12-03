@@ -179,6 +179,14 @@ namespace dxvk {
     }
     
     /**
+     * \brief Image layout
+     * \returns Image layout
+     */
+    VkImageLayout imageLayout() const {
+      return m_image->info().layout;
+    }
+    
+    /**
      * \brief Subresource range
      * \returns Subresource range
      */

@@ -221,6 +221,16 @@ namespace dxvk {
   }
   
   
+  void SpirvModule::decorateBinding(
+          uint32_t                object,
+          uint32_t                binding) {
+    m_annotations.putIns  (spv::OpDecorate, 4);
+    m_annotations.putWord (object);
+    m_annotations.putWord (spv::DecorationBinding);
+    m_annotations.putInt32(binding);
+  }
+  
+  
   void SpirvModule::decorateBlock(uint32_t object) {
     m_annotations.putIns  (spv::OpDecorate, 3);
     m_annotations.putWord (object);
@@ -245,6 +255,16 @@ namespace dxvk {
     m_annotations.putWord (object);
     m_annotations.putWord (spv::DecorationComponent);
     m_annotations.putInt32(location);
+  }
+  
+  
+  void SpirvModule::decorateDescriptorSet(
+          uint32_t                object,
+          uint32_t                set) {
+    m_annotations.putIns  (spv::OpDecorate, 4);
+    m_annotations.putWord (object);
+    m_annotations.putWord (spv::DecorationDescriptorSet);
+    m_annotations.putInt32(set);
   }
   
   
@@ -375,6 +395,36 @@ namespace dxvk {
     
     return this->defType(spv::OpTypePointer,
       args.size(), args.data());
+  }
+  
+  
+  uint32_t SpirvModule::defSamplerType() {
+    return this->defType(spv::OpTypeSampler, 0, nullptr);
+  }
+  
+  
+  uint32_t SpirvModule::defImageType(
+          uint32_t                sampledType,
+          spv::Dim                dimensionality,
+          uint32_t                depth,
+          uint32_t                arrayed,
+          uint32_t                multisample,
+          uint32_t                sampled,
+          spv::ImageFormat        format) {
+    std::array<uint32_t, 7> args = {
+      sampledType, dimensionality,
+      depth, arrayed, multisample,
+      sampled, format
+    };
+    
+    return this->defType(spv::OpTypeImage,
+      args.size(), args.data());
+  }
+  
+  
+  uint32_t SpirvModule::defSampledImageType(
+          uint32_t                imageType) {
+    return this->defType(spv::OpTypeSampledImage, 1, &imageType);
   }
   
   
@@ -672,6 +722,36 @@ namespace dxvk {
     m_code.putIns (spv::OpStore, 3);
     m_code.putWord(pointerId);
     m_code.putWord(valueId);
+  }
+  
+  
+  uint32_t SpirvModule::opSampledImage(
+          uint32_t                resultType,
+          uint32_t                image,
+          uint32_t                sampler) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpSampledImage, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(image);
+    m_code.putWord(sampler);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opImageSampleImplicitLod(
+          uint32_t                resultType,
+          uint32_t                sampledImage,
+          uint32_t                coordinates) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpImageSampleImplicitLod, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(sampledImage);
+    m_code.putWord(coordinates);
+    return resultId;
   }
   
   

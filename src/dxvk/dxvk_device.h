@@ -9,6 +9,7 @@
 #include "dxvk_image.h"
 #include "dxvk_memory.h"
 #include "dxvk_renderpass.h"
+#include "dxvk_sampler.h"
 #include "dxvk_shader.h"
 #include "dxvk_swapchain.h"
 #include "dxvk_sync.h"
@@ -142,6 +143,15 @@ namespace dxvk {
       const DxvkImageViewCreateInfo&  createInfo);
     
     /**
+     * \brief Creates a sampler object
+     * 
+     * \param [in] createInfo Sampler parameters
+     * \returns Newly created sampler object
+     */
+    Rc<DxvkSampler> createSampler(
+      const DxvkSamplerCreateInfo&  createInfo);
+    
+    /**
      * \brief Creates a semaphore object
      * \returns Newly created semaphore
      */
@@ -166,8 +176,8 @@ namespace dxvk {
      * \returns New binding layout
      */
     Rc<DxvkBindingLayout> createBindingLayout(
-            uint32_t         bindingCount,
-      const DxvkBindingInfo* bindingInfos);
+            uint32_t            bindingCount,
+      const DxvkDescriptorSlot* bindingInfos);
     
     /**
      * \brief Creates a compute  pipeline

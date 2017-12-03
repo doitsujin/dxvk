@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dxvk_barrier.h"
+#include "dxvk_binding.h"
 #include "dxvk_cmdlist.h"
 #include "dxvk_context_state.h"
 #include "dxvk_data.h"
@@ -54,18 +55,7 @@ namespace dxvk {
       const Rc<DxvkFramebuffer>& fb);
     
     /**
-     * \brief Binds index buffer
-     * \param [in] buffer New index buffer
-     */
-    void bindIndexBuffer(
-      const DxvkBufferBinding&    buffer);
-    
-    /**
      * \brief Binds compute pipeline
-     * 
-     * Note that binding a new pipeline implicitly
-     * invalidates all resource bindings that are
-     * used by the pipeline.
      * \param [in] pipeline The pipeline to bind
      */
     void bindComputePipeline(
@@ -73,14 +63,75 @@ namespace dxvk {
     
     /**
      * \brief Binds graphics pipeline
-     * 
-     * Note that binding a new pipeline implicitly
-     * invalidates all bindings that are used by
-     * the pipeline.
      * \param [in] pipeline The pipeline to bind
      */
     void bindGraphicsPipeline(
       const Rc<DxvkGraphicsPipeline>& pipeline);
+    
+    /**
+     * \brief Binds index buffer
+     * 
+     * The index buffer will be used when
+     * issuing \c drawIndexed commands.
+     * \param [in] buffer New index buffer
+     */
+    void bindIndexBuffer(
+      const DxvkBufferBinding&    buffer);
+    
+    /**
+     * \brief Binds buffer as a shader resource
+     * 
+     * Can be used for uniform and storage buffers.
+     * \param [in] pipe Target pipeline
+     * \param [in] slot Resource binding slot
+     * \param [in] buffer Buffer to bind
+     */
+    void bindResourceBuffer(
+            VkPipelineBindPoint   pipe,
+            uint32_t              slot,
+      const DxvkBufferBinding&    buffer);
+    
+    /**
+     * \brief Binds texel buffer view
+     * 
+     * Can be used for both uniform texel
+     * buffers and storage texel buffers.
+     * \param [in] pipe Target pipeline
+     * \param [in] slot Resource binding slot
+     * \param [in] bufferView Buffer view to bind
+     */
+    void bindResourceTexelBuffer(
+            VkPipelineBindPoint   pipe,
+            uint32_t              slot,
+      const Rc<DxvkBufferView>&   bufferView);
+    
+    /**
+     * \brief Binds image view
+     * 
+     * Can be used for sampled images with a
+     * dedicated sampler and storage images.
+     * \param [in] pipe Target pipeline
+     * \param [in] slot Resource binding slot
+     * \param [in] imageView Image view to bind
+     */
+    void bindResourceImage(
+            VkPipelineBindPoint   pipe,
+            uint32_t              slot,
+      const Rc<DxvkImageView>&    image);
+    
+    /**
+     * \brief Binds image sampler
+     * 
+     * Binds a sampler that can be used together with
+     * an image in order to read from a texture.
+     * \param [in] pipe Target pipeline
+     * \param [in] slot Resource binding slot
+     * \param [in] sampler Sampler view to bind
+     */
+    void bindResourceSampler(
+            VkPipelineBindPoint   pipe,
+            uint32_t              slot,
+      const Rc<DxvkSampler>&      sampler);
     
     /**
      * \brief Binds vertex buffer
@@ -262,13 +313,17 @@ namespace dxvk {
     DxvkContextState    m_state;
     DxvkBarrierSet      m_barriers;
     
-    std::vector<VkWriteDescriptorSet> m_descriptorSetWrites;
+    DxvkShaderResourceSlots m_cResources = { 1024 };
+    DxvkShaderResourceSlots m_gResources = { 4096 };
     
     void renderPassBegin();
     void renderPassEnd();
     
-    void bindComputePipeline();
-    void bindGraphicsPipeline();
+    void updateComputePipeline();
+    void updateGraphicsPipeline();
+    
+    void updateComputeShaderResources();
+    void updateGraphicsShaderResources();
     
     void updateDynamicState();
     void updateViewports();
@@ -278,6 +333,15 @@ namespace dxvk {
     
     void commitComputeState();
     void commitGraphicsState();
+    
+    void commitComputeBarriers();
+    
+    DxvkShaderResourceSlots* getShaderResourceSlots(
+            VkPipelineBindPoint pipe);
+    
+    DxvkContextFlag getResourceDirtyFlag(
+            VkPipelineBindPoint pipe) const;
+    
   };
   
 }

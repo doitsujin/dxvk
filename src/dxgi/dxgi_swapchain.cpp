@@ -45,9 +45,6 @@ namespace dxvk {
     }
     
     // Set initial window mode and fullscreen state
-    if (FAILED(this->ResizeTarget(&pDesc->BufferDesc)))
-      throw DxvkError("DxgiSwapChain::DxgiSwapChain: Failed to set initial display mode");
-    
     if (FAILED(this->SetFullscreenState(!pDesc->Windowed, nullptr)))
       throw DxvkError("DxgiSwapChain::DxgiSwapChain: Failed to set initial fullscreen state");
     
@@ -319,7 +316,7 @@ namespace dxvk {
     
     DxvkImageCreateInfo imageInfo;
     imageInfo.type          = VK_IMAGE_TYPE_2D;
-    imageInfo.format        = VK_FORMAT_R8G8B8A8_UNORM;
+    imageInfo.format        = VK_FORMAT_R8G8B8A8_SRGB;
     imageInfo.sampleCount   = VK_SAMPLE_COUNT_1_BIT;
     imageInfo.extent.width  = m_desc.BufferDesc.Width;
     imageInfo.extent.height = m_desc.BufferDesc.Height;

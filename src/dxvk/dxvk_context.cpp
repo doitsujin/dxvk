@@ -53,6 +53,32 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::bindComputePipeline(
+    const Rc<DxvkComputePipeline>& pipeline) {
+    if (m_state.cPipe != pipeline) {
+      m_state.cPipe = pipeline;
+      
+      m_flags.set(
+        DxvkContextFlag::CpDirtyPipeline,
+        DxvkContextFlag::CpDirtyResources);
+    }
+  }
+  
+  
+  void DxvkContext::bindGraphicsPipeline(
+    const Rc<DxvkGraphicsPipeline>& pipeline) {
+    if (m_state.gPipe != pipeline) {
+      m_state.gPipe = pipeline;
+      
+      m_flags.set(
+        DxvkContextFlag::GpDirtyPipeline,
+        DxvkContextFlag::GpDirtyResources,
+        DxvkContextFlag::GpDirtyVertexBuffers,
+        DxvkContextFlag::GpDirtyIndexBuffer);
+    }
+  }
+  
+  
   void DxvkContext::bindIndexBuffer(
     const DxvkBufferBinding&    buffer) {
     if (m_state.vi.indexBuffer != buffer) {
@@ -62,25 +88,93 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::bindComputePipeline(
-    const Rc<DxvkComputePipeline>& pipeline) {
-    m_state.cp = pipeline;
+  void DxvkContext::bindResourceBuffer(
+          VkPipelineBindPoint   pipe,
+          uint32_t              slot,
+    const DxvkBufferBinding&    buffer) {
+    auto rc = this->getShaderResourceSlots(pipe);
     
-    m_flags.set(
-      DxvkContextFlag::CpDirtyPipeline,
-      DxvkContextFlag::CpDirtyResources);
+    if (rc->getShaderResource(slot).bufferSlice != buffer) {
+      m_flags.set(this->getResourceDirtyFlag(pipe));
+      
+      DxvkShaderResourceSlot resource;
+      resource.bufferSlice = buffer;
+      
+      DxvkDescriptorInfo descriptor;
+      
+      if (buffer.bufferHandle() != VK_NULL_HANDLE)
+        descriptor.buffer = buffer.descriptorInfo();
+      
+      rc->bindShaderResource(slot, resource, descriptor);
+    }
   }
   
   
-  void DxvkContext::bindGraphicsPipeline(
-    const Rc<DxvkGraphicsPipeline>& pipeline) {
-    m_state.gp = pipeline;
+  void DxvkContext::bindResourceTexelBuffer(
+          VkPipelineBindPoint   pipe,
+          uint32_t              slot,
+    const Rc<DxvkBufferView>&   bufferView) {
+    auto rc = this->getShaderResourceSlots(pipe);
     
-    m_flags.set(
-      DxvkContextFlag::GpDirtyPipeline,
-      DxvkContextFlag::GpDirtyResources,
-      DxvkContextFlag::GpDirtyVertexBuffers,
-      DxvkContextFlag::GpDirtyIndexBuffer);
+    if (rc->getShaderResource(slot).bufferView != bufferView) {
+      m_flags.set(this->getResourceDirtyFlag(pipe));
+      
+      DxvkShaderResourceSlot resource;
+      resource.bufferView = bufferView;
+      
+      DxvkDescriptorInfo descriptor;
+      
+      if (bufferView != nullptr)
+        descriptor.texelBuffer = bufferView->handle();
+      
+      rc->bindShaderResource(slot, resource, descriptor);
+    }
+  }
+  
+  
+  void DxvkContext::bindResourceImage(
+          VkPipelineBindPoint   pipe,
+          uint32_t              slot,
+    const Rc<DxvkImageView>&    image) {
+    auto rc = this->getShaderResourceSlots(pipe);
+    
+    if (rc->getShaderResource(slot).imageView != image) {
+      m_flags.set(this->getResourceDirtyFlag(pipe));
+      
+      DxvkShaderResourceSlot resource;
+      resource.imageView = image;
+      
+      DxvkDescriptorInfo descriptor;
+      
+      if (image != nullptr) {
+        descriptor.image.imageView   = image->handle();
+        descriptor.image.imageLayout = image->imageLayout();
+      }
+      
+      rc->bindShaderResource(slot, resource, descriptor);
+    }
+  }
+  
+  
+  void DxvkContext::bindResourceSampler(
+          VkPipelineBindPoint   pipe,
+          uint32_t              slot,
+    const Rc<DxvkSampler>&      sampler) {
+    auto rc = this->getShaderResourceSlots(pipe);
+    
+    if (rc->getShaderResource(slot).sampler != sampler) {
+      m_flags.set(this->getResourceDirtyFlag(pipe));
+      
+      DxvkShaderResourceSlot resource;
+      resource.sampler = sampler;
+      
+      DxvkDescriptorInfo descriptor;
+      
+      if (sampler != nullptr)
+        descriptor.image.sampler = sampler->handle();
+      
+      rc->bindShaderResource(slot, resource, descriptor);
+    }
   }
   
   
@@ -166,6 +260,8 @@ namespace dxvk {
     this->commitComputeState();
     
     m_cmd->cmdDispatch(x, y, z);
+    
+    this->commitComputeBarriers();
   }
   
   
@@ -335,12 +431,18 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::bindComputePipeline() {
-    // TODO implement
+  void DxvkContext::updateComputePipeline() {
+    if (m_flags.test(DxvkContextFlag::CpDirtyPipeline)) {
+      m_flags.clr(DxvkContextFlag::CpDirtyPipeline);
+      
+      m_cmd->cmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,
+        m_state.cPipe->getPipelineHandle());
+      m_cmd->trackResource(m_state.cPipe);
+    }
   }
   
   
-  void DxvkContext::bindGraphicsPipeline() {
+  void DxvkContext::updateGraphicsPipeline() {
     if (m_flags.test(DxvkContextFlag::GpDirtyPipeline)) {
       m_flags.clr(DxvkContextFlag::GpDirtyPipeline);
       
@@ -355,8 +457,42 @@ namespace dxvk {
       gpState.viewportCount       = m_state.vp.viewportCount;
       
       m_cmd->cmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,
-        m_state.gp->getPipelineHandle(gpState));
-      m_cmd->trackResource(m_state.gp);
+        m_state.gPipe->getPipelineHandle(gpState));
+      m_cmd->trackResource(m_state.gPipe);
+    }
+  }
+  
+  
+  void DxvkContext::updateComputeShaderResources() {
+    if (m_flags.test(DxvkContextFlag::CpDirtyResources)) {
+      m_flags.clr(DxvkContextFlag::CpDirtyResources);
+      
+      auto layout = m_state.cPipe->layout();
+      
+      m_cmd->bindResourceDescriptors(
+        VK_PIPELINE_BIND_POINT_COMPUTE,
+        layout->pipelineLayout(),
+        layout->descriptorSetLayout(),
+        layout->bindingCount(),
+        layout->bindings(),
+        m_cResources.descriptors());
+    }
+  }
+  
+  
+  void DxvkContext::updateGraphicsShaderResources() {
+    if (m_flags.test(DxvkContextFlag::GpDirtyResources)) {
+      m_flags.clr(DxvkContextFlag::GpDirtyResources);
+      
+      auto layout = m_state.gPipe->layout();
+      
+      m_cmd->bindResourceDescriptors(
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        layout->pipelineLayout(),
+        layout->descriptorSetLayout(),
+        layout->bindingCount(),
+        layout->bindings(),
+        m_gResources.descriptors());
     }
   }
   
@@ -413,16 +549,41 @@ namespace dxvk {
   
   void DxvkContext::commitComputeState() {
     this->renderPassEnd();
-    this->bindComputePipeline();
+    this->updateComputePipeline();
+    this->updateComputeShaderResources();
   }
   
   
   void DxvkContext::commitGraphicsState() {
     this->renderPassBegin();
-    this->bindGraphicsPipeline();
+    this->updateGraphicsPipeline();
     this->updateDynamicState();
     this->updateIndexBufferBinding();
     this->updateVertexBufferBindings();
+    this->updateGraphicsShaderResources();
+  }
+  
+  
+  void DxvkContext::commitComputeBarriers() {
+    // TODO implement
+  }
+  
+  
+  DxvkShaderResourceSlots* DxvkContext::getShaderResourceSlots(VkPipelineBindPoint pipe) {
+    switch (pipe) {
+      case VK_PIPELINE_BIND_POINT_GRAPHICS: return &m_gResources;
+      case VK_PIPELINE_BIND_POINT_COMPUTE : return &m_cResources;
+      default: return nullptr;
+    }
+  }
+  
+  
+  DxvkContextFlag DxvkContext::getResourceDirtyFlag(VkPipelineBindPoint pipe) const {
+    switch (pipe) {
+      default:
+      case VK_PIPELINE_BIND_POINT_GRAPHICS: return DxvkContextFlag::GpDirtyResources;
+      case VK_PIPELINE_BIND_POINT_COMPUTE : return DxvkContextFlag::CpDirtyResources;
+    }
   }
   
 }

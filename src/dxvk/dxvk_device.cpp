@@ -79,6 +79,12 @@ namespace dxvk {
   }
   
   
+  Rc<DxvkSampler> DxvkDevice::createSampler(
+    const DxvkSamplerCreateInfo&  createInfo) {
+    return new DxvkSampler(m_vkd, createInfo);
+  }
+  
+  
   Rc<DxvkSemaphore> DxvkDevice::createSemaphore() {
     return new DxvkSemaphore(m_vkd);
   }
@@ -92,8 +98,8 @@ namespace dxvk {
   
   
   Rc<DxvkBindingLayout> DxvkDevice::createBindingLayout(
-          uint32_t         bindingCount,
-    const DxvkBindingInfo* bindingInfos) {
+          uint32_t            bindingCount,
+    const DxvkDescriptorSlot* bindingInfos) {
     return new DxvkBindingLayout(m_vkd, bindingCount, bindingInfos);
   }
   

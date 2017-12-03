@@ -12,7 +12,6 @@ namespace dxvk {
    * passed to \ref DxvkDevice::createBuffer
    */
   struct DxvkBufferCreateInfo {
-    
     /// Size of the buffer, in bytes
     VkDeviceSize size;
     
@@ -25,7 +24,6 @@ namespace dxvk {
     
     /// Allowed access patterns
     VkAccessFlags access;
-    
   };
   
   
@@ -36,7 +34,6 @@ namespace dxvk {
    * are to \ref DxvkDevice::createBufferView
    */
   struct DxvkBufferViewCreateInfo {
-    
     /// Buffer data format, like image data
     VkFormat format;
     

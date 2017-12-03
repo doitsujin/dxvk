@@ -14,7 +14,7 @@ namespace dxvk {
     info.pNext                = nullptr;
     info.flags                = 0;
     info.stage                = cs->stageInfo();
-    info.layout               = this->pipelineLayout();
+    info.layout               = m_layout->pipelineLayout();
     info.basePipelineHandle   = VK_NULL_HANDLE;
     info.basePipelineIndex    = 0;
     

@@ -43,6 +43,11 @@ namespace dxvk {
     
   private:
     
+    enum BindingIds : uint32_t {
+      Sampler = 0,
+      Texture = 1,
+    };
+    
     Rc<DxvkDevice>      m_device;
     Rc<DxvkContext>     m_context;
     
@@ -51,6 +56,8 @@ namespace dxvk {
     
     Rc<DxvkSemaphore>   m_acquireSync;
     Rc<DxvkSemaphore>   m_presentSync;
+    
+    Rc<DxvkSampler>     m_sampler;
     
     Rc<DxvkShader> createVertexShader();
     Rc<DxvkShader> createFragmentShader();
