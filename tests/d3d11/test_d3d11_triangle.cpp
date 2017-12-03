@@ -33,7 +33,7 @@ public:
     swapDesc.BufferDesc.Width             = 1024;
     swapDesc.BufferDesc.Height            = 600;
     swapDesc.BufferDesc.RefreshRate       = { 60, 1 };
-    swapDesc.BufferDesc.Format            = DXGI_FORMAT_R8G8B8A8_UNORM;
+    swapDesc.BufferDesc.Format            = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
     swapDesc.BufferDesc.ScanlineOrdering  = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
     swapDesc.BufferDesc.Scaling           = DXGI_MODE_SCALING_UNSPECIFIED;
     swapDesc.SampleDesc.Count             = 1;
@@ -63,7 +63,7 @@ public:
   
   
   void run() {
-    FLOAT color[4] = { 0.8f, 0.2f, 0.2f, 1.0f };
+    FLOAT color[4] = { 0.5f, 0.5f, 0.5f, 1.0f };
     
     m_context->OMSetRenderTargets(1, &m_bufferView, nullptr);
     m_context->ClearRenderTargetView(m_bufferView.ptr(), color);
