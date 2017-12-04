@@ -19,6 +19,14 @@ namespace dxvk {
     m_featureFlags  (featureFlags),
     m_dxvkDevice    (m_dxgiDevice->GetDXVKDevice()),
     m_dxvkAdapter   (m_dxvkDevice->adapter()) {
+    
+    Com<IDXGIAdapter> adapter;
+    
+    if (FAILED(m_dxgiDevice->GetAdapter(&adapter))
+     || FAILED(adapter->QueryInterface(__uuidof(IDXGIAdapterPrivate),
+          reinterpret_cast<void**>(&m_dxgiAdapter))))
+      throw DxvkError("D3D11Device: Failed to query adapter");
+    
     m_dxgiDevice->SetDeviceLayer(this);
     m_presentDevice->SetDeviceLayer(this);
     
@@ -179,9 +187,8 @@ namespace dxvk {
     
     // Fill in Vulkan image view info
     DxvkImageViewCreateInfo viewInfo;
-    // FIXME look up Vulkan format for DXGI format
-    viewInfo.format     = image->info().format;
-    viewInfo.aspect     = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.format = m_dxgiAdapter->LookupFormat(desc.Format).actual;
+    viewInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
     
     switch (desc.ViewDimension) {
       case D3D11_RTV_DIMENSION_TEXTURE2D:
