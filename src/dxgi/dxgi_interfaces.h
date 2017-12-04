@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../dxvk/dxvk_include.h"
+
 #include "dxgi_include.h"
 
 namespace dxvk {
@@ -8,6 +10,20 @@ namespace dxvk {
   class DxvkBuffer;
   class DxvkDevice;
   class DxvkImage;
+  
+  /**
+   * \brief Format pair
+   * 
+   * For a DXGI format, this stores two Vulkan formats:
+   * The format that directly corresponds to the DXGI
+   * format, and a similar format that the device can
+   * use. If the device supports the desired format,
+   * both formats will be equal.
+   */
+  struct DxgiFormatPair {
+    VkFormat wanted = VK_FORMAT_UNDEFINED;
+    VkFormat actual = VK_FORMAT_UNDEFINED;
+  };
 }
   
 /**
@@ -22,6 +38,9 @@ IDXGIAdapterPrivate : public IDXGIAdapter1 {
   static const GUID guid;
   
   virtual dxvk::Rc<dxvk::DxvkAdapter> GetDXVKAdapter() = 0;
+  
+  virtual dxvk::DxgiFormatPair LookupFormat(
+          DXGI_FORMAT format) = 0;
 };
 
 

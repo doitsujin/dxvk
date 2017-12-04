@@ -1,6 +1,8 @@
 #pragma once
 
+#include <initializer_list>
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 #include <dxvk_adapter.h>
@@ -46,10 +48,27 @@ namespace dxvk {
     
     Rc<DxvkAdapter> GetDXVKAdapter() final;
     
+    DxgiFormatPair LookupFormat(
+            DXGI_FORMAT format) final;
+    
   private:
     
     Com<DxgiFactory>  m_factory;
     Rc<DxvkAdapter>   m_adapter;
+    
+    std::unordered_map<DXGI_FORMAT, DxgiFormatPair> m_formats;
+    
+    void AddFormat(
+            DXGI_FORMAT                       srcFormat,
+            VkFormat                          dstFormat,
+      const std::initializer_list<VkFormat>&  fallbacks,
+            VkFormatFeatureFlags              features);
+    
+    void SetupFormatTable();
+    
+    bool HasFormatSupport(
+            VkFormat                          format,
+            VkFormatFeatureFlags              features) const;
     
   };
 

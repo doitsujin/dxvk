@@ -84,8 +84,9 @@ namespace dxvk {
     std::mutex m_mutex;
     
     Com<DxgiFactory>                m_factory;
-    Com<IDXGIAdapter>               m_adapter;
-    Com<IDXGIPresentDevicePrivate>  m_device;
+    Com<IDXGIAdapterPrivate>        m_adapter;
+    Com<IDXGIDevicePrivate>         m_device;
+    Com<IDXGIPresentDevicePrivate>  m_presentDevice;
     
     DXGI_SWAP_CHAIN_DESC  m_desc;
     DXGI_FRAME_STATISTICS m_stats;

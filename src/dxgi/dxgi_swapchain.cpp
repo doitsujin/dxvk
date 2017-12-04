@@ -14,18 +14,20 @@ namespace dxvk {
     // Retrieve a device pointer that allows us to
     // communicate with the underlying D3D device
     if (FAILED(pDevice->QueryInterface(__uuidof(IDXGIPresentDevicePrivate),
-        reinterpret_cast<void**>(&m_device))))
+        reinterpret_cast<void**>(&m_presentDevice))))
       throw DxvkError("DxgiSwapChain::DxgiSwapChain: Invalid device");
     
     // Retrieve the adapter, which is going
     // to be used to enumerate displays.
-    Com<IDXGIDevice> device;
+    Com<IDXGIAdapter> adapter;
     
-    if (FAILED(pDevice->QueryInterface(__uuidof(IDXGIDevice),
-        reinterpret_cast<void**>(&device))))
+    if (FAILED(pDevice->QueryInterface(__uuidof(IDXGIDevicePrivate),
+        reinterpret_cast<void**>(&m_device))))
       throw DxvkError("DxgiSwapChain::DxgiSwapChain: Invalid device");
     
-    if (FAILED(device->GetAdapter(&m_adapter)))
+    if (FAILED(m_device->GetAdapter(&adapter))
+     || FAILED(adapter->QueryInterface(__uuidof(IDXGIAdapterPrivate),
+        reinterpret_cast<void**>(&m_adapter))))
       throw DxvkError("DxgiSwapChain::DxgiSwapChain: Failed to retrieve adapter");
     
     // Initialize frame statistics
@@ -161,16 +163,10 @@ namespace dxvk {
   HRESULT DxgiSwapChain::Present(UINT SyncInterval, UINT Flags) {
     std::lock_guard<std::mutex> lock(m_mutex);
     
-    // Query DXGI device to retrieve DXVK device
-    Com<IDXGIDevicePrivate> dxgiDevice;
-    
-    m_device->GetDevice(__uuidof(IDXGIDevicePrivate),
-      reinterpret_cast<void**>(&dxgiDevice));
-    
     try {
       // Submit pending rendering commands
       // before recording the present code.
-      m_device->FlushRenderingCommands();
+      m_presentDevice->FlushRenderingCommands();
     
       // TODO implement sync interval
       // TODO implement flags
@@ -289,12 +285,8 @@ namespace dxvk {
   
   
   void DxgiSwapChain::createPresenter() {
-    Com<IDXGIDevicePrivate> dxgiDevice;
-    m_device->GetDevice(__uuidof(IDXGIDevicePrivate),
-      reinterpret_cast<void**>(&dxgiDevice));
-    
     m_presenter = new DxgiPresenter(
-      dxgiDevice->GetDXVKDevice(),
+      m_device->GetDXVKDevice(),
       m_desc.OutputWindow,
       m_desc.BufferDesc.Width,
       m_desc.BufferDesc.Height);
@@ -302,13 +294,12 @@ namespace dxvk {
   
   
   void DxgiSwapChain::createBackBuffer() {
-    // TODO select format based on DXGI format
-    // TODO support proper multi-sampling
-    Com<IDXGIDevicePrivate> dxgiDevice;
-    m_device->GetDevice(__uuidof(IDXGIDevicePrivate),
-      reinterpret_cast<void**>(&dxgiDevice));
+    // Pick the back buffer format based on the requested swap chain format
+    DxgiFormatPair bufferFormat = m_adapter->LookupFormat(m_desc.BufferDesc.Format);
+    Logger::info(str::format("DxgiSwapChain: Creating back buffer with ", bufferFormat.actual));
     
-    const Rc<DxvkDevice> dxvkDevice = dxgiDevice->GetDXVKDevice();
+    // TODO support proper multi-sampling
+    const Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
     
     // Create an image that can be rendered to
     // and that can be used as a sampled texture.
@@ -316,7 +307,7 @@ namespace dxvk {
     
     DxvkImageCreateInfo imageInfo;
     imageInfo.type          = VK_IMAGE_TYPE_2D;
-    imageInfo.format        = VK_FORMAT_R8G8B8A8_SRGB;
+    imageInfo.format        = bufferFormat.actual;
     imageInfo.sampleCount   = VK_SAMPLE_COUNT_1_BIT;
     imageInfo.extent.width  = m_desc.BufferDesc.Width;
     imageInfo.extent.height = m_desc.BufferDesc.Height;
@@ -348,7 +339,7 @@ namespace dxvk {
                             |  VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
     }
     
-    if (FAILED(DXGICreateImageResourcePrivate(dxgiDevice.ptr(), &imageInfo,
+    if (FAILED(DXGICreateImageResourcePrivate(m_device.ptr(), &imageInfo,
           VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, DXGI_USAGE_BACK_BUFFER | m_desc.BufferUsage,
           &resource)))
       throw DxvkError("DxgiSwapChain::createBackBuffer: Failed to create back buffer");
@@ -370,7 +361,7 @@ namespace dxvk {
     
     // Wrap the back buffer image into an interface
     // that the device can use to access the image.
-    if (FAILED(m_device->WrapSwapChainBackBuffer(resource.ptr(), &m_desc, &m_backBufferIface)))
+    if (FAILED(m_presentDevice->WrapSwapChainBackBuffer(resource.ptr(), &m_desc, &m_backBufferIface)))
       throw DxvkError("DxgiSwapChain::createBackBuffer: Failed to create back buffer interface");
     
     // Initialize the image properly so that
