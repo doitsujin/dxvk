@@ -32,18 +32,24 @@ namespace dxvk {
   }
   
   
-  VkSurfaceFormatKHR DxvkSurface::pickSurfaceFormat(VkSurfaceFormatKHR preferred) const {
-    // If the implementation allows us to freely choose
-    // the format, we'll just use the preferred format.
-    if (m_surfaceFormats.size() == 1 && m_surfaceFormats.at(0).format == VK_FORMAT_UNDEFINED)
-      return preferred;
-    
-    // If the preferred format is explicitly listed in
-    // the array of supported surface formats, use it
-    for (auto fmt : m_surfaceFormats) {
-      if (fmt.format     == preferred.format
-       && fmt.colorSpace == preferred.colorSpace)
-        return fmt;
+  VkSurfaceFormatKHR DxvkSurface::pickSurfaceFormat(
+          uint32_t            preferredCount,
+    const VkSurfaceFormatKHR* preferred) const {
+    if (preferredCount > 0) {
+      // If the implementation allows us to freely choose
+      // the format, we'll just use the preferred format.
+      if (m_surfaceFormats.size() == 1 && m_surfaceFormats.at(0).format == VK_FORMAT_UNDEFINED)
+        return preferred[0];
+      
+      // If the preferred format is explicitly listed in
+      // the array of supported surface formats, use it
+      for (uint32_t i = 0; i < preferredCount; i++) {
+        for (auto fmt : m_surfaceFormats) {
+          if (fmt.format     == preferred[i].format
+           && fmt.colorSpace == preferred[i].colorSpace)
+            return fmt;
+        }
+      }
     }
     
     // Otherwise, fall back to the first format
@@ -51,10 +57,14 @@ namespace dxvk {
   }
   
   
-  VkPresentModeKHR DxvkSurface::pickPresentMode(VkPresentModeKHR preferred) const {
-    for (auto mode : m_presentModes) {
-      if (mode == preferred)
-        return mode;
+  VkPresentModeKHR DxvkSurface::pickPresentMode(
+          uint32_t            preferredCount,
+    const VkPresentModeKHR*   preferred) const {
+    for (uint32_t i = 0; i < preferredCount; i++) {
+      for (auto mode : m_presentModes) {
+        if (mode == preferred[i])
+          return mode;
+      }
     }
     
     // This mode is guaranteed to be available

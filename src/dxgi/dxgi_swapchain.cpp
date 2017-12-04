@@ -46,6 +46,13 @@ namespace dxvk {
         SDL_GetError()));
     }
     
+    // Adjust initial back buffer size. If zero, these
+    // shall be set to the current window size.
+    VkExtent2D windowSize = this->getWindowSize();
+    
+    if (m_desc.BufferDesc.Width  == 0) m_desc.BufferDesc.Width  = windowSize.width;
+    if (m_desc.BufferDesc.Height == 0) m_desc.BufferDesc.Height = windowSize.height;
+    
     // Set initial window mode and fullscreen state
     if (FAILED(this->SetFullscreenState(!pDesc->Windowed, nullptr)))
       throw DxvkError("DxgiSwapChain::DxgiSwapChain: Failed to set initial fullscreen state");
@@ -187,15 +194,24 @@ namespace dxvk {
           UINT        SwapChainFlags) {
     std::lock_guard<std::mutex> lock(m_mutex);
     
-    m_desc.BufferDesc.Width  = Width;
-    m_desc.BufferDesc.Height = Height;
-    m_desc.BufferDesc.Format = NewFormat;
-    m_desc.Flags             = SwapChainFlags;
+    VkExtent2D windowSize = this->getWindowSize();
+    
+    m_desc.BufferDesc.Width = Width != 0 ? Width : windowSize.width;
+    m_desc.BufferDesc.Height = Height != 0 ? Height : windowSize.height;
+    
+    m_desc.Flags = SwapChainFlags;
     
     if (BufferCount != 0)
-      m_desc.BufferCount     = BufferCount;
+      m_desc.BufferCount = BufferCount;
+    
+    if (NewFormat != DXGI_FORMAT_UNKNOWN)
+      m_desc.BufferDesc.Format = NewFormat;
     
     try {
+      m_presenter->recreateSwapchain(
+        m_desc.BufferDesc.Width,
+        m_desc.BufferDesc.Height,
+        m_desc.BufferDesc.Format);
       this->createBackBuffer();
       return S_OK;
     } catch (const DxvkError& err) {
@@ -289,7 +305,8 @@ namespace dxvk {
       m_device->GetDXVKDevice(),
       m_desc.OutputWindow,
       m_desc.BufferDesc.Width,
-      m_desc.BufferDesc.Height);
+      m_desc.BufferDesc.Height,
+      m_desc.BufferDesc.Format);
   }
   
   
@@ -367,6 +384,19 @@ namespace dxvk {
     // Initialize the image properly so that
     // it can be used in a DXVK context
     m_presenter->initBackBuffer(m_backBuffer);
+  }
+  
+  
+  VkExtent2D DxgiSwapChain::getWindowSize() const {
+    int winWidth = 0;
+    int winHeight = 0;
+    
+    SDL_GetWindowSize(m_window, &winWidth, &winHeight);
+    
+    VkExtent2D result;
+    result.width  = winWidth;
+    result.height = winHeight;
+    return result;
   }
   
 }

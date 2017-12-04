@@ -7,8 +7,9 @@ namespace dxvk {
   DxgiPresenter::DxgiPresenter(
     const Rc<DxvkDevice>& device,
           HWND            window,
-          UINT            bufferWidth,
-          UINT            bufferHeight)
+          uint32_t        bufferWidth,
+          uint32_t        bufferHeight,
+          DXGI_FORMAT     bufferFormat)
   : m_device  (device),
     m_context (device->createContext()) {
     
@@ -20,11 +21,10 @@ namespace dxvk {
     
     // Create swap chain for the surface
     DxvkSwapchainProperties swapchainProperties;
-    swapchainProperties.preferredSurfaceFormat.format     = VK_FORMAT_B8G8R8A8_SRGB;
-    swapchainProperties.preferredSurfaceFormat.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-    swapchainProperties.preferredPresentMode              = VK_PRESENT_MODE_FIFO_KHR;
-    swapchainProperties.preferredBufferSize.width         = bufferWidth;
-    swapchainProperties.preferredBufferSize.height        = bufferHeight;
+    swapchainProperties.preferredSurfaceFormat      = this->pickFormat(bufferFormat);
+    swapchainProperties.preferredPresentMode        = VK_PRESENT_MODE_FIFO_KHR;
+    swapchainProperties.preferredBufferSize.width   = bufferWidth;
+    swapchainProperties.preferredBufferSize.height  = bufferHeight;
     
     m_swapchain = m_device->createSwapchain(
       m_surface, swapchainProperties);
@@ -170,6 +170,45 @@ namespace dxvk {
     // FIXME Make sure that the semaphores and the command
     // list can be safely used without stalling the device.
     m_device->waitForIdle();
+  }
+  
+  
+  void DxgiPresenter::recreateSwapchain(
+        uint32_t        bufferWidth,
+        uint32_t        bufferHeight,
+        DXGI_FORMAT     bufferFormat) {
+    DxvkSwapchainProperties swapchainProperties;
+    swapchainProperties.preferredSurfaceFormat      = this->pickFormat(bufferFormat);
+    swapchainProperties.preferredPresentMode        = VK_PRESENT_MODE_FIFO_KHR;
+    swapchainProperties.preferredBufferSize.width   = bufferWidth;
+    swapchainProperties.preferredBufferSize.height  = bufferHeight;
+    
+    m_swapchain->changeProperties(swapchainProperties);
+  }
+  
+  
+  VkSurfaceFormatKHR DxgiPresenter::pickFormat(DXGI_FORMAT fmt) const {
+    std::vector<VkSurfaceFormatKHR> formats;
+    
+    switch (fmt) {
+      case DXGI_FORMAT_R8G8B8A8_UNORM:
+      case DXGI_FORMAT_B8G8R8A8_UNORM: {
+        formats.push_back({ VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR });
+        formats.push_back({ VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR });
+      } break;
+      
+      case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
+      case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB: {
+        formats.push_back({ VK_FORMAT_R8G8B8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR });
+        formats.push_back({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR });
+      } break;
+      
+      default:
+        Logger::warn(str::format("DxgiPresenter: Unknown format: ", fmt));
+    }
+    
+    return m_surface->pickSurfaceFormat(
+      formats.size(), formats.data());
   }
   
   

@@ -4,6 +4,8 @@
 #include <dxvk_surface.h>
 #include <dxvk_swapchain.h>
 
+#include "dxgi_include.h"
+
 #include "../spirv/spirv_module.h"
 
 namespace dxvk {
@@ -22,8 +24,9 @@ namespace dxvk {
     DxgiPresenter(
       const Rc<DxvkDevice>& device,
             HWND            window,
-            UINT            bufferWidth,
-            UINT            bufferHeight);
+            uint32_t        bufferWidth,
+            uint32_t        bufferHeight,
+            DXGI_FORMAT     bufferFormat);
     
     ~DxgiPresenter();
     
@@ -40,6 +43,15 @@ namespace dxvk {
      */
     void presentImage(
       const Rc<DxvkImageView>& view);
+    
+    /**
+     * \brief Renders image to the screen
+     * \param [in] view Source image view
+     */
+    void recreateSwapchain(
+          uint32_t        bufferWidth,
+          uint32_t        bufferHeight,
+          DXGI_FORMAT     bufferFormat);
     
   private:
     
@@ -58,6 +70,8 @@ namespace dxvk {
     Rc<DxvkSemaphore>   m_presentSync;
     
     Rc<DxvkSampler>     m_sampler;
+    
+    VkSurfaceFormatKHR pickFormat(DXGI_FORMAT fmt) const;
     
     Rc<DxvkShader> createVertexShader();
     Rc<DxvkShader> createFragmentShader();

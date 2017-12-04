@@ -41,20 +41,24 @@ namespace dxvk {
     /**
      * \brief Picks a suitable surface format
      * 
-     * \param [in] preferred Preferred surface format
+     * \param [in] preferredCount Number of formats to probe
+     * \param [in] preferred Preferred surface formats
      * \returns The actual surface format
      */
     VkSurfaceFormatKHR pickSurfaceFormat(
-      VkSurfaceFormatKHR preferred) const;
+            uint32_t            preferredCount,
+      const VkSurfaceFormatKHR* preferred) const;
     
     /**
      * \brief Picks a supported present mode
      * 
-     * \param [in] preferred The preferred present mode
+     * \param [in] preferredCount Number of modes to probe
+     * \param [in] preferred Preferred present modes
      * \returns The actual present mode
      */
     VkPresentModeKHR pickPresentMode(
-      VkPresentModeKHR preferred) const;
+            uint32_t            preferredCount,
+      const VkPresentModeKHR*   preferred) const;
     
     /**
      * \brief Picks a suitable image count for a swap chain

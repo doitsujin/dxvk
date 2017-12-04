@@ -94,8 +94,8 @@ namespace dxvk {
     
     // Recreate the actual swapchain object
     auto caps = m_surface->getSurfaceCapabilities();
-    auto fmt  = m_surface->pickSurfaceFormat(m_properties.preferredSurfaceFormat);
-    auto mode = m_surface->pickPresentMode  (m_properties.preferredPresentMode);
+    auto fmt  = m_surface->pickSurfaceFormat(1, &m_properties.preferredSurfaceFormat);
+    auto mode = m_surface->pickPresentMode  (1, &m_properties.preferredPresentMode);
     
     VkSwapchainCreateInfoKHR swapInfo;
     swapInfo.sType                  = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;

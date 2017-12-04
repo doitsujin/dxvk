@@ -113,6 +113,8 @@ namespace dxvk {
     
     void createContext();
     
+    VkExtent2D getWindowSize() const;
+        
   };
   
 }
