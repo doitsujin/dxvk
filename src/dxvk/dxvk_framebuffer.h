@@ -94,6 +94,18 @@ namespace dxvk {
      */
     DxvkFramebufferSize getImageSize() const;
     
+    /**
+     * \brief Retrieves the ID of an attachment
+     * 
+     * This can be used to locate a color attachment
+     * or the depth-stencil attachment. Returns -1
+     * if the given view is not an attachment.
+     * \param [in] view View to find
+     * \returns Attachment ID, or \c -1
+     */
+    int32_t getAttachmentId(
+      const Rc<DxvkImageView>& view) const;
+    
   private:
     
     std::array<Rc<DxvkImageView>, MaxNumRenderTargets> m_colorTargets;
@@ -145,6 +157,14 @@ namespace dxvk {
      */
     DxvkFramebufferSize size() const {
       return m_framebufferSize;
+    }
+    
+    /**
+     * \brief Render target info
+     * \returns Render target info
+     */
+    const DxvkRenderTargets& renderTargets() const {
+      return m_renderTargets;
     }
     
   private:

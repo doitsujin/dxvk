@@ -53,6 +53,26 @@ namespace dxvk {
   }
   
   
+  int32_t DxvkRenderTargets::getAttachmentId(
+    const Rc<DxvkImageView>& view) const {
+    if (view == nullptr)
+      return -1;
+    
+    if (m_depthTarget == view)
+      return 0;
+    
+    uint32_t colorAttachmentBaseId =
+      m_depthTarget == nullptr ? 0 : 1;
+    
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+      if (m_colorTargets.at(i) == view)
+        return i + colorAttachmentBaseId;
+    }
+    
+    return -1;
+  }
+  
+  
   DxvkFramebufferSize DxvkRenderTargets::renderTargetSize(
     const Rc<DxvkImageView>& renderTarget) const {
     auto extent = renderTarget->image()->info().extent;
