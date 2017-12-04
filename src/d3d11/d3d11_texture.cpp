@@ -24,7 +24,6 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceChild);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11Resource);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11Texture2D);
-    COM_QUERY_IFACE(riid, ppvObject, ID3D11Texture2DPrivate);
     
     if (riid == __uuidof(IDXGIResource)
      || riid == __uuidof(IDXGIImageResourcePrivate))

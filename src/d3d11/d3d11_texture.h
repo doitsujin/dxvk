@@ -10,7 +10,7 @@ namespace dxvk {
   class D3D11Device;
   
   
-  class D3D11Texture2D : public D3D11DeviceChild<ID3D11Texture2DPrivate> {
+  class D3D11Texture2D : public D3D11DeviceChild<ID3D11Texture2D> {
     
   public:
     
@@ -37,7 +37,7 @@ namespace dxvk {
     void GetDesc(
             D3D11_TEXTURE2D_DESC *pDesc) final;
     
-    Rc<DxvkImage> GetDXVKImage() final;
+    Rc<DxvkImage> GetDXVKImage();
     
   private:
     

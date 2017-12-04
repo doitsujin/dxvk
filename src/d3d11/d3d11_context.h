@@ -2,6 +2,7 @@
 
 #include "d3d11_context_state.h"
 #include "d3d11_device_child.h"
+#include "d3d11_view.h"
 
 #include <dxvk_adapter.h>
 #include <dxvk_device.h>

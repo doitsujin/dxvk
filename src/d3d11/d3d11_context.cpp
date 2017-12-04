@@ -170,11 +170,7 @@ namespace dxvk {
   void D3D11DeviceContext::ClearRenderTargetView(
           ID3D11RenderTargetView*           pRenderTargetView,
     const FLOAT                             ColorRGBA[4]) {
-    Com<ID3D11RenderTargetViewPrivate> rtv;
-    
-    pRenderTargetView->QueryInterface(
-      __uuidof(ID3D11RenderTargetViewPrivate),
-      reinterpret_cast<void**>(&rtv));
+    auto rtv = static_cast<D3D11RenderTargetView*>(pRenderTargetView);
     
     const Rc<DxvkImageView> dxvkView  = rtv->GetDXVKImageView();
     const Rc<DxvkImage>     dxvkImage = dxvkView->image();
@@ -183,9 +179,9 @@ namespace dxvk {
     // or not, and if it is, which attachment index it has.
     int32_t attachmentIndex = -1;
     
-    for (uint32_t i = 0; i < m_state.omRenderTargetViews.size(); i++) {
-      if (rtv.ptr() == m_state.omRenderTargetViews.at(i).ptr())
-        attachmentIndex = static_cast<int32_t>(i);
+    if (m_state.om.framebuffer != nullptr) {
+      attachmentIndex = m_state.om.framebuffer
+        ->renderTargets().getAttachmentId(dxvkView);
     }
     
     // Copy the clear color into a clear value structure.
@@ -216,7 +212,6 @@ namespace dxvk {
       if (m_parent->GetFeatureLevel() < D3D_FEATURE_LEVEL_10_0)
         clearRect.layerCount        = 1;
       
-      // Record the clear operation
       m_context->clearRenderTarget(clearInfo, clearRect);
     } else {
       // Image is not bound to the pipeline. We can still clear
@@ -837,13 +832,10 @@ namespace dxvk {
           ID3D11DepthStencilView*           pDepthStencilView) {
     // Update state vector for OMGetRenderTargets
     for (UINT i = 0; i < m_state.omRenderTargetViews.size(); i++) {
-      Com<ID3D11RenderTargetViewPrivate> view = nullptr;
+      D3D11RenderTargetView* view = nullptr;
       
-      if ((i < NumViews) && (ppRenderTargetViews[i] != nullptr)) {
-        ppRenderTargetViews[i]->QueryInterface(
-          __uuidof(ID3D11RenderTargetViewPrivate),
-          reinterpret_cast<void**>(&view));
-      }
+      if ((i < NumViews) && (ppRenderTargetViews[i] != nullptr))
+        view = static_cast<D3D11RenderTargetView*>(ppRenderTargetViews[i]);
       
       m_state.omRenderTargetViews.at(i) = view;
     }
@@ -865,7 +857,9 @@ namespace dxvk {
       Logger::err("D3D11DeviceContext::OMSetRenderTargets: Depth-stencil view not supported");
     
     // Create and bind the framebuffer object using the given attachments
-    m_context->bindFramebuffer(m_device->createFramebuffer(attachments));
+    auto fbo = m_device->createFramebuffer(attachments);
+    m_state.om.framebuffer = fbo;
+    m_context->bindFramebuffer(fbo);
   }
   
   

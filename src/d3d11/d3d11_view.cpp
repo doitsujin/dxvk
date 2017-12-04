@@ -26,7 +26,6 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceChild);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11View);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11RenderTargetView);
-    COM_QUERY_IFACE(riid, ppvObject, ID3D11RenderTargetViewPrivate);
     
     Logger::warn("D3D11RenderTargetView::QueryInterface: Unknown interface query");
     return E_NOINTERFACE;

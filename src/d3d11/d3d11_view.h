@@ -8,7 +8,7 @@ namespace dxvk {
   
   class D3D11Device;
   
-  class D3D11RenderTargetView : public D3D11DeviceChild<ID3D11RenderTargetViewPrivate> {
+  class D3D11RenderTargetView : public D3D11DeviceChild<ID3D11RenderTargetView> {
     
   public:
     
@@ -32,7 +32,7 @@ namespace dxvk {
     void GetDesc(
             D3D11_RENDER_TARGET_VIEW_DESC* pDesc) final;
     
-    Rc<DxvkImageView> GetDXVKImageView() final;
+    Rc<DxvkImageView> GetDXVKImageView();
     
   private:
     

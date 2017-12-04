@@ -14,7 +14,7 @@ namespace dxvk {
           D3D_FEATURE_LEVEL   featureLevel,
           UINT                featureFlags)
   : m_dxgiDevice    (dxgiDevice),
-    m_presentDevice (ref(new D3D11PresentDevice())),
+    m_presentDevice (new D3D11PresentDevice()),
     m_featureLevel  (featureLevel),
     m_featureFlags  (featureFlags),
     m_dxvkDevice    (m_dxgiDevice->GetDXVKDevice()),
@@ -116,13 +116,7 @@ namespace dxvk {
     }
     
     // Make sure we can retrieve the image object
-    Com<ID3D11Texture2DPrivate> texture = nullptr;
-    
-    if (FAILED(pResource->QueryInterface(__uuidof(ID3D11Texture2DPrivate),
-          reinterpret_cast<void**>(&texture)))) {
-      Logger::err("D3D11Device::CreateRenderTargetView: Invalid texture");
-      return E_INVALIDARG;
-    }
+    auto texture = static_cast<D3D11Texture2D*>(pResource);
     
     // Image that we are going to create the view for
     const Rc<DxvkImage> image = texture->GetDXVKImage();
