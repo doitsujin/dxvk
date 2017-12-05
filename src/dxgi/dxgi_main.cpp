@@ -17,7 +17,8 @@ namespace dxvk {
   SdlInstance sdl;
   
   HRESULT createDxgiFactory(REFIID riid, void **ppFactory) {
-    if (riid != __uuidof(IDXGIFactory)) {
+    if (riid != __uuidof(IDXGIFactory)
+     && riid != __uuidof(IDXGIFactory1)) {
       Logger::err("CreateDXGIFactory: Requested version of IDXGIFactory not supported");
       return DXGI_ERROR_UNSUPPORTED;
     }
