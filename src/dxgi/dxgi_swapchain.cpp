@@ -241,14 +241,25 @@ namespace dxvk {
                              / pNewTargetParameters->RefreshRate.Denominator;
     displayMode.driverdata   = nullptr;
     
+    // TODO test mode change flag
+    
     if (SDL_SetWindowDisplayMode(m_window, &displayMode)) {
-      throw DxvkError(str::format(
+      Logger::err(str::format(
         "DxgiSwapChain::ResizeTarget: Failed to set display mode:\n",
         SDL_GetError()));
       return DXGI_ERROR_DRIVER_INTERNAL_ERROR;
     }
     
-    return S_OK;
+    try {
+      m_presenter->recreateSwapchain(
+        m_desc.BufferDesc.Width,
+        m_desc.BufferDesc.Height,
+        m_desc.BufferDesc.Format);
+      return S_OK;
+    } catch (const DxvkError& err) {
+      Logger::err(err.message());
+      return DXGI_ERROR_DRIVER_INTERNAL_ERROR;
+    }
   }
   
   
