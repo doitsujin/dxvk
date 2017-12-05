@@ -120,9 +120,16 @@ namespace dxvk {
   
   
   void DxgiPresenter::initBackBuffer(const Rc<DxvkImage>& image) {
+    VkImageSubresourceRange sr;
+    sr.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
+    sr.baseMipLevel   = 0;
+    sr.levelCount     = image->info().mipLevels;
+    sr.baseArrayLayer = 0;
+    sr.layerCount     = image->info().numLayers;
+    
     m_context->beginRecording(
       m_device->createCommandList());
-    m_context->initImage(image, nullptr);
+    m_context->initImage(image, sr);
     m_device->submitCommandList(
       m_context->endRecording(),
       nullptr, nullptr);
@@ -133,8 +140,9 @@ namespace dxvk {
     m_context->beginRecording(
       m_device->createCommandList());
     
-    auto framebuffer = m_swapchain->getFramebuffer(m_acquireSync);
+    auto framebuffer     = m_swapchain->getFramebuffer(m_acquireSync);
     auto framebufferSize = framebuffer->size();
+    
     m_context->bindFramebuffer(framebuffer);
     
     VkViewport viewport;

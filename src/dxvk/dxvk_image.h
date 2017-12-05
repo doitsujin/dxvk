@@ -171,19 +171,19 @@ namespace dxvk {
     }
     
     /**
+     * \brief Image properties
+     * \returns Image properties
+     */
+    const DxvkImageCreateInfo& imageInfo() const {
+      return m_image->info();
+    }
+    
+    /**
      * \brief Image
      * \returns Image
      */
     Rc<DxvkImage> image() const {
       return m_image;
-    }
-    
-    /**
-     * \brief Image layout
-     * \returns Image layout
-     */
-    VkImageLayout imageLayout() const {
-      return m_image->info().layout;
     }
     
     /**

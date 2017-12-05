@@ -9,20 +9,22 @@ namespace dxvk {
     const Rc<DxvkBuffer>&           buffer,
           VkDeviceSize              offset,
           VkDeviceSize              size,
-          VkPipelineStageFlags      stages,
-          VkAccessFlags             access) {
+          VkPipelineStageFlags      srcStages,
+          VkAccessFlags             srcAccess,
+          VkPipelineStageFlags      dstStages,
+          VkAccessFlags             dstAccess) {
     const DxvkResourceAccessTypes accessTypes
-      = this->getAccessTypes(access);
+      = this->getAccessTypes(srcAccess);
     
-    m_srcStages |= stages;
-    m_dstStages |= buffer->info().stages;
+    m_srcStages |= srcStages;
+    m_dstStages |= dstStages;
     
     if (accessTypes.test(DxvkResourceAccessType::Write)) {
       VkBufferMemoryBarrier barrier;
       barrier.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
       barrier.pNext               = nullptr;
-      barrier.srcAccessMask       = access;
-      barrier.dstAccessMask       = buffer->info().access;
+      barrier.srcAccessMask       = srcAccess;
+      barrier.dstAccessMask       = dstAccess;
       barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
       barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
       barrier.buffer              = buffer->handle();
@@ -33,26 +35,35 @@ namespace dxvk {
   }
   
   
-  void DxvkBarrierSet::initImage(
+  void DxvkBarrierSet::accessImage(
     const Rc<DxvkImage>&            image,
     const VkImageSubresourceRange&  subresources,
+          VkImageLayout             srcLayout,
+          VkPipelineStageFlags      srcStages,
+          VkAccessFlags             srcAccess,
           VkImageLayout             dstLayout,
           VkPipelineStageFlags      dstStages,
           VkAccessFlags             dstAccess) {
+    const DxvkResourceAccessTypes accessTypes
+      = this->getAccessTypes(srcAccess);
+    
+    m_srcStages |= srcStages;
     m_dstStages |= dstStages;
     
-    VkImageMemoryBarrier barrier;
-    barrier.sType                 = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    barrier.pNext                 = nullptr;
-    barrier.srcAccessMask         = 0;
-    barrier.dstAccessMask         = dstAccess;
-    barrier.oldLayout             = VK_IMAGE_LAYOUT_UNDEFINED;
-    barrier.newLayout             = dstLayout;
-    barrier.srcQueueFamilyIndex   = VK_QUEUE_FAMILY_IGNORED;
-    barrier.dstQueueFamilyIndex   = VK_QUEUE_FAMILY_IGNORED;
-    barrier.image                 = image->handle();
-    barrier.subresourceRange      = subresources;
-    m_imgBarriers.push_back(barrier);
+    if ((srcLayout != dstLayout) || accessTypes.test(DxvkResourceAccessType::Write)) {
+      VkImageMemoryBarrier barrier;
+      barrier.sType                 = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+      barrier.pNext                 = nullptr;
+      barrier.srcAccessMask         = srcAccess;
+      barrier.dstAccessMask         = dstAccess;
+      barrier.oldLayout             = srcLayout;
+      barrier.newLayout             = dstLayout;
+      barrier.srcQueueFamilyIndex   = VK_QUEUE_FAMILY_IGNORED;
+      barrier.dstQueueFamilyIndex   = VK_QUEUE_FAMILY_IGNORED;
+      barrier.image                 = image->handle();
+      barrier.subresourceRange      = subresources;
+      m_imgBarriers.push_back(barrier);
+    }
   }
   
   

@@ -110,9 +110,7 @@ namespace dxvk {
     
     DxvkRenderPass(
       const Rc<vk::DeviceFn>&     vkd,
-      const DxvkRenderPassFormat& fmt,
-            VkImageLayout         initialLayout,
-            VkImageLayout         finalLayout);
+      const DxvkRenderPassFormat& fmt);
     ~DxvkRenderPass();
     
     /**

@@ -148,7 +148,7 @@ namespace dxvk {
       
       if (image != nullptr) {
         descriptor.image.imageView   = image->handle();
-        descriptor.image.imageLayout = image->imageLayout();
+        descriptor.image.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
       }
       
       rc->bindShaderResource(slot, resource, descriptor);
@@ -194,12 +194,27 @@ namespace dxvk {
     const VkImageSubresourceRange&  subresources) {
     this->renderPassEnd();
     
-    m_cmd->cmdClearColorImage(
-      image->handle(),
-      VK_IMAGE_LAYOUT_GENERAL,
+    if (image->info().layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+      m_barriers.accessImage(image, subresources,
+        VK_IMAGE_LAYOUT_UNDEFINED, 0, 0,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_TRANSFER_WRITE_BIT);
+      m_barriers.recordCommands(m_cmd);
+    }
+    
+    m_cmd->cmdClearColorImage(image->handle(),
+      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
       &value, 1, &subresources);
     
-    // TODO memory barrier
+    m_barriers.accessImage(image, subresources,
+      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT,
+      image->info().layout,
+      image->info().stages,
+      image->info().access);
+    m_barriers.recordCommands(m_cmd);
     
     m_cmd->trackResource(image);
   }
@@ -215,6 +230,8 @@ namespace dxvk {
     
     m_cmd->cmdClearAttachments(
       1, &attachment, 1, &clearArea);
+    
+    // FIXME add barriers if required
   }
   
   
@@ -238,12 +255,16 @@ namespace dxvk {
       m_barriers.accessBuffer(
         srcBuffer, srcOffset, numBytes,
         VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VK_ACCESS_TRANSFER_READ_BIT);
+        VK_ACCESS_TRANSFER_READ_BIT,
+        srcBuffer->info().stages,
+        srcBuffer->info().access);
       
       m_barriers.accessBuffer(
         dstBuffer, dstOffset, numBytes,
         VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VK_ACCESS_TRANSFER_WRITE_BIT);
+        VK_ACCESS_TRANSFER_WRITE_BIT,
+        dstBuffer->info().stages,
+        dstBuffer->info().access);
       
       m_barriers.recordCommands(m_cmd);
       
@@ -293,32 +314,15 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::initBuffer(
-    const Rc<DxvkBuffer>&     buffer,
-    const Rc<DxvkDataBuffer>& data) {
-    // TODO implement
-  }
-  
-  
   void DxvkContext::initImage(
-    const Rc<DxvkImage>&      image,
-    const Rc<DxvkDataBuffer>& data) {
-    const DxvkImageCreateInfo& info = image->info();
-    
-    VkImageSubresourceRange sr;
-    sr.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-    sr.baseMipLevel   = 0;
-    sr.levelCount     = info.mipLevels;
-    sr.baseArrayLayer = 0;
-    sr.layerCount     = info.numLayers;
-    
-    m_barriers.initImage(image, sr,
-      VK_IMAGE_LAYOUT_GENERAL,
-      info.stages,
-      info.access);
+    const Rc<DxvkImage>&           image,
+    const VkImageSubresourceRange& subresources) {
+    m_barriers.accessImage(image, subresources,
+      VK_IMAGE_LAYOUT_UNDEFINED, 0, 0,
+      image->info().layout,
+      image->info().stages,
+      image->info().access);
     m_barriers.recordCommands(m_cmd);
-    
-    // TODO implement data upload
   }
   
   
@@ -399,6 +403,9 @@ namespace dxvk {
      && (m_state.om.framebuffer != nullptr)) {
       m_flags.set(DxvkContextFlag::GpRenderPassBound);
       
+      this->transformLayoutsRenderPassBegin(
+        m_state.om.framebuffer->renderTargets());
+      
       const DxvkFramebufferSize fbSize
         = m_state.om.framebuffer->size();
       
@@ -427,6 +434,9 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
       m_flags.clr(DxvkContextFlag::GpRenderPassBound);
       m_cmd->cmdEndRenderPass();
+      
+      this->transformLayoutsRenderPassEnd(
+        m_state.om.framebuffer->renderTargets());
     }
   }
   
@@ -569,6 +579,99 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::transformLayoutsRenderPassBegin(
+    const DxvkRenderTargets& renderTargets) {
+    // Ensure that all color attachments are in the optimal layout.
+    // Any image that is used as a present source requires special
+    // care as we cannot use it for reading.
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+      const Rc<DxvkImageView> target = renderTargets.getColorTarget(i);
+      
+      if ((target != nullptr)
+       && (target->imageInfo().layout != VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)) {
+        VkImageLayout srcLayout = target->imageInfo().layout;
+        
+        if (srcLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
+          srcLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        
+        m_barriers.accessImage(
+          target->image(),
+          target->subresources(),
+          srcLayout,
+          target->imageInfo().stages,
+          target->imageInfo().access,
+          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+          VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+      }
+    }
+    
+    // Transform the depth-stencil view to the optimal layout
+    const Rc<DxvkImageView> dsTarget = renderTargets.getDepthTarget();
+    
+    if ((dsTarget != nullptr)
+     && (dsTarget->imageInfo().layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)) {
+      m_barriers.accessImage(
+        dsTarget->image(),
+        dsTarget->subresources(),
+        dsTarget->imageInfo().layout,
+        dsTarget->imageInfo().stages,
+        dsTarget->imageInfo().access,
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+        VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
+    }
+    
+    m_barriers.recordCommands(m_cmd);
+  }
+  
+  
+  void DxvkContext::transformLayoutsRenderPassEnd(
+    const DxvkRenderTargets& renderTargets) {
+    // Transform color attachments back to their original layouts and
+    // make sure that they can be used for subsequent draw or compute
+    // operations. Swap chain images are treated like any other image.
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+      const Rc<DxvkImageView> target = renderTargets.getColorTarget(i);
+      
+      if (target != nullptr) {
+        m_barriers.accessImage(
+          target->image(),
+          target->subresources(),
+          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+          VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+          target->imageInfo().layout,
+          target->imageInfo().stages,
+          target->imageInfo().access);
+      }
+    }
+    
+    // Transform the depth-stencil attachment back to its original layout.
+    const Rc<DxvkImageView> dsTarget = renderTargets.getDepthTarget();
+    
+    if (dsTarget != nullptr) {
+      m_barriers.accessImage(
+        dsTarget->image(),
+        dsTarget->subresources(),
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+        VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        dsTarget->imageInfo().layout,
+        dsTarget->imageInfo().stages,
+        dsTarget->imageInfo().access);
+    }
+    
+    m_barriers.recordCommands(m_cmd);
+  }
+  
+    
   DxvkShaderResourceSlots* DxvkContext::getShaderResourceSlots(VkPipelineBindPoint pipe) {
     switch (pipe) {
       case VK_PIPELINE_BIND_POINT_GRAPHICS: return &m_gResources;

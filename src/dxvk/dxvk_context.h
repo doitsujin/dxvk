@@ -144,7 +144,7 @@ namespace dxvk {
       const DxvkBufferBinding&    buffer);
     
     /**
-     * \brief Clears subresources of an image
+     * \brief Clears subresources of a color image
      * 
      * \param [in] image The image to clear
      * \param [in] value Clear value
@@ -224,31 +224,16 @@ namespace dxvk {
             uint32_t firstInstance);
     
     /**
-     * \brief Initializes a buffer
-     * 
-     * Uploads initial data to the buffer so that it
-     * can be used for read-only operations. Unlike
-     * \ref initImage, calling this is optional.
-     * \param [in] buffer The buffer to initialize
-     * \param [in] data Initial data buffer
-     */
-    void initBuffer(
-      const Rc<DxvkBuffer>&     buffer,
-      const Rc<DxvkDataBuffer>& data);
-    
-    /**
-     * \brief Initializes an image
+     * \brief Initializes or invalidates an image
      * 
      * Sets up the image layout for future operations
-     * and uploads data to the image. Note that this
-     * method \e must be executed on the GPU before
-     * the image can be used for any other operations.
+     * while discarding any previous contents.
      * \param [in] image The image to initialize
-     * \param [in] data Initial data. Can be omitted.
+     * \param [in] subresources Image subresources
      */
     void initImage(
-      const Rc<DxvkImage>&      image,
-      const Rc<DxvkDataBuffer>& data);
+      const Rc<DxvkImage>&           image,
+      const VkImageSubresourceRange& subresources);
     
     /**
      * \brief Sets viewports
@@ -335,6 +320,12 @@ namespace dxvk {
     void commitGraphicsState();
     
     void commitComputeBarriers();
+    
+    void transformLayoutsRenderPassBegin(
+      const DxvkRenderTargets& renderTargets);
+    
+    void transformLayoutsRenderPassEnd(
+      const DxvkRenderTargets& renderTargets);
     
     DxvkShaderResourceSlots* getShaderResourceSlots(
             VkPipelineBindPoint pipe);

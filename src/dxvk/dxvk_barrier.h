@@ -24,12 +24,17 @@ namespace dxvk {
       const Rc<DxvkBuffer>&           buffer,
             VkDeviceSize              offset,
             VkDeviceSize              size,
-            VkPipelineStageFlags      stages,
-            VkAccessFlags             access);
+            VkPipelineStageFlags      srcStages,
+            VkAccessFlags             srcAccess,
+            VkPipelineStageFlags      dstStages,
+            VkAccessFlags             dstAccess);
     
-    void initImage(
+    void accessImage(
       const Rc<DxvkImage>&            image,
       const VkImageSubresourceRange&  subresources,
+            VkImageLayout             srcLayout,
+            VkPipelineStageFlags      srcStages,
+            VkAccessFlags             srcAccess,
             VkImageLayout             dstLayout,
             VkPipelineStageFlags      dstStages,
             VkAccessFlags             dstAccess);

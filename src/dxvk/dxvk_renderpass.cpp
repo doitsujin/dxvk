@@ -40,9 +40,7 @@ namespace dxvk {
   
   DxvkRenderPass::DxvkRenderPass(
     const Rc<vk::DeviceFn>&     vkd,
-    const DxvkRenderPassFormat& fmt,
-          VkImageLayout         initialLayout,
-          VkImageLayout         finalLayout)
+    const DxvkRenderPassFormat& fmt)
   : m_vkd(vkd), m_format(fmt) {
     std::vector<VkAttachmentDescription> attachments;
     
@@ -51,23 +49,17 @@ namespace dxvk {
     
     // Render passes may not require the previous
     // contents of the attachments to be preserved.
-    VkAttachmentLoadOp  loadOp  = VK_ATTACHMENT_LOAD_OP_LOAD;
-    VkAttachmentStoreOp storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    
-    if (initialLayout == VK_IMAGE_LAYOUT_UNDEFINED)
-      loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    
     if (fmt.getDepthFormat() != VK_FORMAT_UNDEFINED) {
       VkAttachmentDescription desc;
       desc.flags          = 0;
       desc.format         = fmt.getDepthFormat();
       desc.samples        = fmt.getSampleCount();
-      desc.loadOp         = loadOp;
-      desc.storeOp        = storeOp;
-      desc.stencilLoadOp  = loadOp;
-      desc.stencilStoreOp = storeOp;
-      desc.initialLayout  = initialLayout;
-      desc.finalLayout    = finalLayout;
+      desc.loadOp         = VK_ATTACHMENT_LOAD_OP_LOAD;
+      desc.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
+      desc.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_LOAD;
+      desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+      desc.initialLayout  = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+      desc.finalLayout    = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
       
       depthRef.attachment = attachments.size();
       depthRef.layout     = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -81,15 +73,15 @@ namespace dxvk {
       
       if (fmt.getColorFormat(i) != VK_FORMAT_UNDEFINED) {
         VkAttachmentDescription desc;
-        desc.flags          = 0;
-        desc.format         = fmt.getColorFormat(i);
-        desc.samples        = fmt.getSampleCount();
-        desc.loadOp         = loadOp;
-        desc.storeOp        = storeOp;
-        desc.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-        desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        desc.initialLayout  = initialLayout;
-        desc.finalLayout    = finalLayout;
+        desc.flags            = 0;
+        desc.format           = fmt.getColorFormat(i);
+        desc.samples          = fmt.getSampleCount();
+        desc.loadOp           = VK_ATTACHMENT_LOAD_OP_LOAD;
+        desc.storeOp          = VK_ATTACHMENT_STORE_OP_STORE;
+        desc.stencilLoadOp    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        desc.stencilStoreOp   = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        desc.initialLayout    = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        desc.finalLayout      = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         
         colorRef.at(i).attachment = attachments.size();
         colorRef.at(i).layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -160,9 +152,7 @@ namespace dxvk {
   
   Rc<DxvkRenderPass> DxvkRenderPassPool::createRenderPass(
     const DxvkRenderPassFormat& fmt) {
-    return new DxvkRenderPass(m_vkd, fmt,
-      VK_IMAGE_LAYOUT_GENERAL,
-      VK_IMAGE_LAYOUT_GENERAL);
+    return new DxvkRenderPass(m_vkd, fmt);
   }
   
 }

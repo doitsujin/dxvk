@@ -129,9 +129,7 @@ namespace dxvk {
     renderTargetFormat.setColorFormat(0, fmt.format);
     
     m_renderPass = new DxvkRenderPass(
-      m_vkd, renderTargetFormat,
-      VK_IMAGE_LAYOUT_UNDEFINED,
-      VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+      m_vkd, renderTargetFormat);
     
     // Retrieve swap images
     auto swapImages = this->retrieveSwapImages();
@@ -152,7 +150,7 @@ namespace dxvk {
     imageInfo.access        = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
                             | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
                             | VK_ACCESS_MEMORY_READ_BIT;
-    imageInfo.layout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    imageInfo.layout        = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
     
     DxvkImageViewCreateInfo viewInfo;
     viewInfo.type         = VK_IMAGE_VIEW_TYPE_2D;
