@@ -54,9 +54,6 @@ public:
     if (FAILED(m_device->CreateRenderTargetView(m_buffer.ptr(), nullptr, &m_bufferView)))
       throw DxvkError("Failed to create render target view");
     
-    if (FAILED(m_swapChain->ResizeTarget(&swapDesc.BufferDesc)))
-      throw DxvkError("Failed to resize window");
-    
   }
   
   

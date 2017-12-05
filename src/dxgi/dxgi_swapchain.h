@@ -91,6 +91,9 @@ namespace dxvk {
     DXGI_SWAP_CHAIN_DESC  m_desc;
     DXGI_FRAME_STATISTICS m_stats;
     
+    SDL_Window*         m_window = nullptr;
+    
+    
     Rc<DxvkContext>     m_context;
     Rc<DxvkCommandList> m_commandList;
     Rc<DxvkSurface>     m_surface;
