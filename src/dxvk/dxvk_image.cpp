@@ -12,8 +12,7 @@ namespace dxvk {
     VkImageCreateInfo info;
     info.sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     info.pNext                 = nullptr;
-    // TODO VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT if appropriate
-    info.flags                 = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+    info.flags                 = createInfo.flags;
     info.imageType             = createInfo.type;
     info.format                = createInfo.format;
     info.extent                = createInfo.extent;

@@ -18,6 +18,9 @@ namespace dxvk {
     /// Pixel format
     VkFormat format;
     
+    /// Flags
+    VkImageCreateFlags flags;
+    
     /// Sample count for MSAA
     VkSampleCountFlagBits sampleCount;
     
