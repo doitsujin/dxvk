@@ -831,13 +831,13 @@ namespace dxvk {
           ID3D11RenderTargetView* const*    ppRenderTargetViews,
           ID3D11DepthStencilView*           pDepthStencilView) {
     // Update state vector for OMGetRenderTargets
-    for (UINT i = 0; i < m_state.omRenderTargetViews.size(); i++) {
+    for (UINT i = 0; i < m_state.om.renderTargetViews.size(); i++) {
       D3D11RenderTargetView* view = nullptr;
       
       if ((i < NumViews) && (ppRenderTargetViews[i] != nullptr))
         view = static_cast<D3D11RenderTargetView*>(ppRenderTargetViews[i]);
       
-      m_state.omRenderTargetViews.at(i) = view;
+      m_state.om.renderTargetViews.at(i) = view;
     }
     
     // TODO unbind overlapping shader resource views
@@ -847,9 +847,9 @@ namespace dxvk {
     // target bindings are updated. Set up the attachments.
     DxvkRenderTargets attachments;
     
-    for (UINT i = 0; i < m_state.omRenderTargetViews.size(); i++) {
-      if (m_state.omRenderTargetViews.at(i) != nullptr)
-        attachments.setColorTarget(i, m_state.omRenderTargetViews.at(i)->GetDXVKImageView());
+    for (UINT i = 0; i < m_state.om.renderTargetViews.size(); i++) {
+      if (m_state.om.renderTargetViews.at(i) != nullptr)
+        attachments.setColorTarget(i, m_state.om.renderTargetViews.at(i)->GetDXVKImageView());
     }
     
     // TODO implement depth-stencil views
@@ -896,8 +896,8 @@ namespace dxvk {
           ID3D11DepthStencilView**          ppDepthStencilView) {
     if (ppRenderTargetViews != nullptr) {
       for (UINT i = 0; i < NumViews; i++)
-        ppRenderTargetViews[i] = i < m_state.omRenderTargetViews.size()
-          ? m_state.omRenderTargetViews.at(i).ref()
+        ppRenderTargetViews[i] = i < m_state.om.renderTargetViews.size()
+          ? m_state.om.renderTargetViews.at(i).ref()
           : nullptr;
     }
     
