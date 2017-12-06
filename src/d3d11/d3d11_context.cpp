@@ -1003,7 +1003,7 @@ namespace dxvk {
       // state is not explicitly defined.
       m_context->setRasterizerState(
         rasterizerState != nullptr
-          ? rasterizerState->GetDXVKStateObject()
+          ? rasterizerState->GetDXVKRasterizerState()
           : m_defaultRsState);
       
       // In D3D11, the rasterizer state defines
