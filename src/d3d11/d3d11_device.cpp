@@ -582,7 +582,6 @@ namespace dxvk {
     std::memset(&enabled, 0, sizeof(enabled));
     
     if (featureLevel >= D3D_FEATURE_LEVEL_9_1) {
-      enabled.alphaToOne                      = VK_TRUE;
       enabled.depthClamp                      = VK_TRUE;
       enabled.depthBiasClamp                  = VK_TRUE;
       enabled.depthBounds                     = VK_TRUE;
