@@ -1,7 +1,9 @@
-#include <d3d11_include.h>
+#include <d3d11.h>
 
 #include <windows.h>
 #include <windowsx.h>
+
+#include "../test_utils.h"
 
 using namespace dxvk;
 
@@ -138,7 +140,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
       }
     }
   } catch (const dxvk::DxvkError& e) {
-    Logger::err(e.message());
+    std::cerr << e.message() << std::endl;
     return msg.wParam;
   }
 }

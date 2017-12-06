@@ -11,3 +11,6 @@ util_src = files([
 
 util_lib = static_library('util', util_src,
   include_directories : [ dxvk_include_path ])
+
+util_dep = declare_dependency(
+  link_with           : [ util_lib ])

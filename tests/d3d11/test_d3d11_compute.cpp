@@ -1,7 +1,9 @@
-#include <d3d11_include.h>
+#include <d3d11.h>
 
 #include <windows.h>
 #include <windowsx.h>
+
+#include "../test_utils.h"
 
 using namespace dxvk;
 
@@ -15,7 +17,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
   if (FAILED(D3D11CreateDevice(nullptr,
         D3D_DRIVER_TYPE_HARDWARE, nullptr, 0,
         nullptr, 0, 0, &device, nullptr, &context))) {
-    Logger::err("Failed to create D3D11 device");
+    std::cerr << "Failed to create D3D11 device" << std::endl;
     return 1;
   }
   

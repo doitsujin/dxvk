@@ -1,14 +1,13 @@
-#include <iterator>
+#include <cstring>
 #include <fstream>
 
 #include <d3dcompiler.h>
 
-#include <dxbc_module.h>
-#include <dxvk_shader.h>
-
 #include <shellapi.h>
 #include <windows.h>
 #include <windowsx.h>
+
+#include "../test_utils.h"
 
 using namespace dxvk;
 
