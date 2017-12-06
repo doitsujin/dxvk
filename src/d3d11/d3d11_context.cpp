@@ -995,19 +995,22 @@ namespace dxvk {
   
   void D3D11DeviceContext::RSSetState(ID3D11RasterizerState* pRasterizerState) {
     auto rasterizerState = static_cast<D3D11RasterizerState*>(pRasterizerState);
-    m_state.rs.state = rasterizerState;
     
-    // Use default state if the rasterizer
-    // state is not explicitly defined.
-    m_context->setRasterizerState(
-      rasterizerState != nullptr
-        ? rasterizerState->GetDXVKStateObject()
-        : m_defaultRsState);
-    
-    // In D3D11, the rasterizer state defines
-    // whether the scissor test is enabled, so
-    // we have to update the scissor rectangles.
-    this->ApplyViewportState();
+    if (m_state.rs.state != rasterizerState) {
+      m_state.rs.state = rasterizerState;
+      
+      // Use default state if the rasterizer
+      // state is not explicitly defined.
+      m_context->setRasterizerState(
+        rasterizerState != nullptr
+          ? rasterizerState->GetDXVKStateObject()
+          : m_defaultRsState);
+      
+      // In D3D11, the rasterizer state defines
+      // whether the scissor test is enabled, so
+      // we have to update the scissor rectangles.
+      this->ApplyViewportState();
+    }
   }
   
   

@@ -1,42 +1,63 @@
 #pragma once
 
-#include <dxvk_device.h>
+#include <unordered_map>
 
-#include "d3d11_device_child.h"
+#include "d3d11_state_rs.h"
 
 namespace dxvk {
   
   class D3D11Device;
   
-  class D3D11RasterizerState : public D3D11DeviceChild<ID3D11RasterizerState> {
-    
+  struct D3D11StateDescHash {
+    size_t operator () (const D3D11_RASTERIZER_DESC& desc) const;
+  };
+  
+  
+  struct D3D11StateDescEqual {
+    bool operator () (const D3D11_RASTERIZER_DESC& a, const D3D11_RASTERIZER_DESC& b) const;
+  };
+  
+  
+  /**
+   * \brief Unique state object set
+   * 
+   * When creating state objects, D3D11 first checks if
+   * an object with the same description already exists
+   * and returns it if that is the case. This class
+   * implements that behaviour.
+   */
+  template<typename T>
+  class D3D11StateObjectSet {
+    using DescType = typename T::DescType;
   public:
     
-    D3D11RasterizerState(
-            D3D11Device*                    device,
-      const D3D11_RASTERIZER_DESC&          desc);
-    ~D3D11RasterizerState();
-    
-    HRESULT QueryInterface(
-            REFIID  riid,
-            void**  ppvObject) final;
-    
-    void GetDevice(
-            ID3D11Device **ppDevice) final;
-    
-    void GetDesc(
-            D3D11_RASTERIZER_DESC* pDesc) final;
-    
-    Rc<DxvkRasterizerState> GetDXVKStateObject() {
-      return m_state;
+    /**
+     * \brief Retrieves a state object
+     * 
+     * Returns an object with the same description or
+     * creates a new one if no such object exists.
+     * \param [in] device The calling D3D11 device
+     * \param [in] desc State object description
+     * \returns Pointer to the state object
+     */
+    T* Create(D3D11Device* device, const DescType& desc) {
+      std::lock_guard<std::mutex> lock(m_mutex);
+      
+      auto pair = m_objects.find(desc);
+      
+      if (pair != m_objects.end())
+        return pair->second.ptr();
+      
+      Com<T> result = new T(device, desc);
+      m_objects.insert({ desc, result });
+      return result.ptr();
     }
     
   private:
     
-    Com<D3D11Device>        m_device;
-    
-    D3D11_RASTERIZER_DESC   m_desc;
-    Rc<DxvkRasterizerState> m_state;
+    std::mutex                                 m_mutex;
+    std::unordered_map<DescType, Com<T>,
+      D3D11StateDescHash, D3D11StateDescEqual> m_objects;
     
   };
   

@@ -6,6 +6,7 @@ d3d11_src = [
   'd3d11_main.cpp',
   'd3d11_present.cpp',
   'd3d11_state.cpp',
+  'd3d11_state_rs.cpp',
   'd3d11_texture.cpp',
   'd3d11_view.cpp',
 ]

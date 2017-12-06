@@ -4,6 +4,7 @@
 #include <dxgi_resource.h>
 
 #include "d3d11_interfaces.h"
+#include "d3d11_state.h"
 
 #include "../util/com/com_private_data.h"
 
@@ -241,6 +242,8 @@ namespace dxvk {
     const Rc<DxvkAdapter>           m_dxvkAdapter;
     
     Com<ID3D11DeviceContext>        m_context;
+    
+    D3D11StateObjectSet<D3D11RasterizerState> m_rsStateObjects;
     
   };
   

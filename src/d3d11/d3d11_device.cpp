@@ -365,8 +365,26 @@ namespace dxvk {
   HRESULT D3D11Device::CreateRasterizerState(
     const D3D11_RASTERIZER_DESC*      pRasterizerDesc,
           ID3D11RasterizerState**     ppRasterizerState) {
-    Logger::err("D3D11Device::CreateRasterizerState: Not implemented");
-    return E_NOTIMPL;
+    D3D11_RASTERIZER_DESC desc;
+    
+    if (pRasterizerDesc != nullptr) {
+      desc = *pRasterizerDesc;
+    } else {
+      desc.FillMode = D3D11_FILL_SOLID;
+      desc.CullMode = D3D11_CULL_BACK;
+      desc.FrontCounterClockwise = FALSE;
+      desc.DepthBias = 0;
+      desc.SlopeScaledDepthBias = 0.0f;
+      desc.DepthBiasClamp = 0.0f;
+      desc.DepthClipEnable = TRUE;
+      desc.ScissorEnable = FALSE;
+      desc.MultisampleEnable = FALSE;
+      desc.AntialiasedLineEnable = FALSE;
+    }
+    
+    if (ppRasterizerState != nullptr)
+      *ppRasterizerState = m_rsStateObjects.Create(this, desc);
+    return S_OK;
   }
   
   
