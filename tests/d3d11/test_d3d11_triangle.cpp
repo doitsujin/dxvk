@@ -23,7 +23,8 @@ public:
       m_adapter.ptr(),
       D3D_DRIVER_TYPE_UNKNOWN,
       nullptr, 0,
-      nullptr, 0, 0,
+      nullptr, 0,
+      D3D11_SDK_VERSION,
       &m_device,
       &m_featureLevel,
       &m_context);

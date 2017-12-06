@@ -14,9 +14,10 @@ int WINAPI WinMain(HINSTANCE hInstance,
   Com<ID3D11Device>         device;
   Com<ID3D11DeviceContext>  context;
   
-  if (FAILED(D3D11CreateDevice(nullptr,
-        D3D_DRIVER_TYPE_HARDWARE, nullptr, 0,
-        nullptr, 0, 0, &device, nullptr, &context))) {
+  if (FAILED(D3D11CreateDevice(
+        nullptr, D3D_DRIVER_TYPE_HARDWARE,
+        nullptr, 0, nullptr, 0, D3D11_SDK_VERSION,
+        &device, nullptr, &context))) {
     std::cerr << "Failed to create D3D11 device" << std::endl;
     return 1;
   }
