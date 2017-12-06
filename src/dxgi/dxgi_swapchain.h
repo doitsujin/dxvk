@@ -93,15 +93,6 @@ namespace dxvk {
     
     SDL_Window*         m_window = nullptr;
     
-    
-    Rc<DxvkContext>     m_context;
-    Rc<DxvkCommandList> m_commandList;
-    Rc<DxvkSurface>     m_surface;
-    Rc<DxvkSwapchain>   m_swapchain;
-    
-    Rc<DxvkSemaphore>   m_acquireSync;
-    Rc<DxvkSemaphore>   m_presentSync;
-    
     Rc<DxgiPresenter>   m_presenter;
     
     Rc<DxvkImage>       m_backBuffer;
