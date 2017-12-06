@@ -13,6 +13,15 @@ namespace dxvk {
     m_context = m_device->createContext();
     m_context->beginRecording(
       m_device->createCommandList());
+    
+    m_defaultRsState = new DxvkRasterizerState(
+      VK_FALSE, VK_FALSE,
+      VK_POLYGON_MODE_FILL,
+      VK_CULL_MODE_BACK_BIT,
+      VK_FRONT_FACE_CLOCKWISE,
+      VK_FALSE, 0.0f, 0.0f, 0.0f, 1.0f);
+    
+    this->ClearState();
   }
   
   
@@ -49,7 +58,52 @@ namespace dxvk {
   
   
   void D3D11DeviceContext::ClearState() {
-    Logger::err("D3D11DeviceContext::ClearState: Not implemented");
+//     this->IASetInputLayout(nullptr);
+//     this->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED);
+//     this->IASetVertexBuffers(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT, nullptr, nullptr, nullptr);
+//     this->IASetIndexBuffer(nullptr, DXGI_FORMAT_UNKNOWN, 0);
+    
+//     this->VSSetShader(nullptr, nullptr, 0);
+//     this->VSSetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, nullptr);
+//     this->VSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, nullptr);
+//     this->VSSetSamplers       (0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT, nullptr);
+    
+//     this->HSSetShader(nullptr, nullptr, 0);
+//     this->HSSetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, nullptr);
+//     this->HSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, nullptr);
+//     this->HSSetSamplers       (0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT, nullptr);
+    
+//     this->DSSetShader(nullptr, nullptr, 0);
+//     this->DSSetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, nullptr);
+//     this->DSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, nullptr);
+//     this->DSSetSamplers       (0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT, nullptr);
+    
+//     this->GSSetShader(nullptr, nullptr, 0);
+//     this->GSSetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, nullptr);
+//     this->GSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, nullptr);
+//     this->GSSetSamplers       (0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT, nullptr);
+    
+//     this->PSSetShader(nullptr, nullptr, 0);
+//     this->PSSetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, nullptr);
+//     this->PSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, nullptr);
+//     this->PSSetSamplers       (0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT, nullptr);
+    
+//     this->CSSetShader(nullptr, nullptr, 0);
+//     this->CSSetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, nullptr);
+//     this->CSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, nullptr);
+//     this->CSSetSamplers       (0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT, nullptr);
+    
+    this->OMSetRenderTargets(0, nullptr, nullptr);
+//     this->OMSetBlendState(nullptr, nullptr, D3D11_DEFAULT_SAMPLE_MASK);
+//     this->OMSetDepthStencilState(nullptr, 0);
+    
+    this->RSSetState(nullptr);
+    this->RSSetViewports(0, nullptr);
+    this->RSSetScissorRects(0, nullptr);
+    
+//     this->SOSetTargets(0, nullptr, nullptr);
+    
+//     this->SetPredication(nullptr, FALSE);
   }
   
   
@@ -842,24 +896,29 @@ namespace dxvk {
     
     // TODO unbind overlapping shader resource views
     
-    // D3D11 doesn't have the concept of a framebuffer object,
-    // so we'll just create a new one every time the render
-    // target bindings are updated. Set up the attachments.
-    DxvkRenderTargets attachments;
+    Rc<DxvkFramebuffer> framebuffer = nullptr;
     
-    for (UINT i = 0; i < m_state.om.renderTargetViews.size(); i++) {
-      if (m_state.om.renderTargetViews.at(i) != nullptr)
-        attachments.setColorTarget(i, m_state.om.renderTargetViews.at(i)->GetDXVKImageView());
+    if (ppRenderTargetViews != nullptr || pDepthStencilView != nullptr) {
+      // D3D11 doesn't have the concept of a framebuffer object,
+      // so we'll just create a new one every time the render
+      // target bindings are updated. Set up the attachments.
+      DxvkRenderTargets attachments;
+      
+      for (UINT i = 0; i < m_state.om.renderTargetViews.size(); i++) {
+        if (m_state.om.renderTargetViews.at(i) != nullptr)
+          attachments.setColorTarget(i, m_state.om.renderTargetViews.at(i)->GetDXVKImageView());
+      }
+      
+      // TODO implement depth-stencil views
+      if (pDepthStencilView != nullptr)
+        Logger::err("D3D11DeviceContext::OMSetRenderTargets: Depth-stencil view not supported");
+      
+      framebuffer = m_device->createFramebuffer(attachments);
     }
     
-    // TODO implement depth-stencil views
-    if (pDepthStencilView != nullptr)
-      Logger::err("D3D11DeviceContext::OMSetRenderTargets: Depth-stencil view not supported");
-    
-    // Create and bind the framebuffer object using the given attachments
-    auto fbo = m_device->createFramebuffer(attachments);
-    m_state.om.framebuffer = fbo;
-    m_context->bindFramebuffer(fbo);
+    // Bind the framebuffer object to the context
+    m_state.om.framebuffer = framebuffer;
+    m_context->bindFramebuffer(framebuffer);
   }
   
   
@@ -935,40 +994,97 @@ namespace dxvk {
   
   
   void D3D11DeviceContext::RSSetState(ID3D11RasterizerState* pRasterizerState) {
-    Logger::err("D3D11DeviceContext::RSSetState: Not implemented");
+    auto rasterizerState = static_cast<D3D11RasterizerState*>(pRasterizerState);
+    m_state.rs.state = rasterizerState;
+    
+    // Use default state if the rasterizer
+    // state is not explicitly defined.
+    m_context->setRasterizerState(
+      rasterizerState != nullptr
+        ? rasterizerState->GetDXVKStateObject()
+        : m_defaultRsState);
+    
+    // In D3D11, the rasterizer state defines
+    // whether the scissor test is enabled, so
+    // we have to update the scissor rectangles.
+    this->ApplyViewportState();
   }
   
   
   void D3D11DeviceContext::RSSetViewports(
           UINT                              NumViewports,
     const D3D11_VIEWPORT*                   pViewports) {
-    Logger::err("D3D11DeviceContext::RSSetViewports: Not implemented");
+    m_state.rs.numViewports = NumViewports;
+    
+    for (uint32_t i = 0; i < NumViewports; i++)
+      m_state.rs.viewports.at(i) = pViewports[i];
+    
+    this->ApplyViewportState();
   }
   
   
   void D3D11DeviceContext::RSSetScissorRects(
           UINT                              NumRects,
     const D3D11_RECT*                       pRects) {
-    Logger::err("D3D11DeviceContext::RSSetScissorRects: Not implemented");
+    m_state.rs.numScissors = NumRects;
+    
+    for (uint32_t i = 0; i < NumRects; i++)
+      m_state.rs.scissors.at(i) = pRects[i];
+    
+    if (m_state.rs.state != nullptr) {
+      D3D11_RASTERIZER_DESC rsDesc;
+      m_state.rs.state->GetDesc(&rsDesc);
+      
+      if (rsDesc.ScissorEnable)
+        this->ApplyViewportState();
+    }
   }
   
   
   void D3D11DeviceContext::RSGetState(ID3D11RasterizerState** ppRasterizerState) {
-    Logger::err("D3D11DeviceContext::RSGetState: Not implemented");
+    *ppRasterizerState = m_state.rs.state.ref();
   }
   
   
   void D3D11DeviceContext::RSGetViewports(
           UINT*                             pNumViewports,
           D3D11_VIEWPORT*                   pViewports) {
-    Logger::err("D3D11DeviceContext::RSGetViewports: Not implemented");
+    if (pViewports != nullptr) {
+      for (uint32_t i = 0; i < *pNumViewports; i++) {
+        if (i < m_state.rs.numViewports) {
+          pViewports[i] = m_state.rs.viewports.at(i);
+        } else {
+          pViewports[i].TopLeftX = 0.0f;
+          pViewports[i].TopLeftY = 0.0f;
+          pViewports[i].Width    = 0.0f;
+          pViewports[i].Height   = 0.0f;
+          pViewports[i].MinDepth = 0.0f;
+          pViewports[i].MaxDepth = 0.0f;
+        }
+      }
+    }
+    
+    *pNumViewports = m_state.rs.numViewports;
   }
   
   
   void D3D11DeviceContext::RSGetScissorRects(
           UINT*                             pNumRects,
           D3D11_RECT*                       pRects) {
-    Logger::err("D3D11DeviceContext::RSGetScissorRects: Not implemented");
+    if (pRects != nullptr) {
+      for (uint32_t i = 0; i < *pNumRects; i++) {
+        if (i < m_state.rs.numScissors) {
+          pRects[i] = m_state.rs.scissors.at(i);
+        } else {
+          pRects[i].left   = 0;
+          pRects[i].top    = 0;
+          pRects[i].right  = 0;
+          pRects[i].bottom = 0;
+        }
+      }
+    }
+    
+    *pNumRects = m_state.rs.numScissors;
   }
   
   
@@ -984,6 +1100,65 @@ namespace dxvk {
           UINT                              NumBuffers,
           ID3D11Buffer**                    ppSOTargets) {
     Logger::err("D3D11DeviceContext::SOGetTargets: Not implemented");
+  }
+  
+  
+  void D3D11DeviceContext::ApplyViewportState() {
+    // We cannot set less than one viewport in Vulkan, and
+    // rendering with no active viewport is illegal anyway.
+    if (m_state.rs.numViewports == 0)
+      return;
+    
+    std::array<VkViewport, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> viewports;
+    std::array<VkRect2D,   D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> scissors;
+    
+    // TODO find out if we need to flip the viewports vertically
+    for (uint32_t i = 0; i < m_state.rs.numViewports; i++) {
+      const D3D11_VIEWPORT& vp = m_state.rs.viewports.at(i);
+      
+      viewports.at(i) = VkViewport {
+        vp.TopLeftX, vp.TopLeftY,
+        vp.Width,    vp.Height,
+        vp.MaxDepth, vp.MinDepth,
+      };
+    }
+    
+    // Scissor rectangles. Vulkan does not provide an easy way
+    // to disable the scissor test, so we'll have to set scissor
+    // rects that are at least as large as the framebuffer.
+    bool enableScissorTest = false;
+    
+    if (m_state.rs.state != nullptr) {
+      D3D11_RASTERIZER_DESC rsDesc;
+      m_state.rs.state->GetDesc(&rsDesc);
+      enableScissorTest = rsDesc.ScissorEnable;
+    }
+    
+    for (uint32_t i = 0; i < m_state.rs.numViewports; i++) {
+      // TODO D3D11 docs aren't clear about what should happen
+      // when there are undefined scissor rects for a viewport.
+      // Figure out what it does on Windows.
+      if (enableScissorTest && (i < m_state.rs.numScissors)) {
+        const D3D11_RECT& sr = m_state.rs.scissors.at(i);
+        
+        scissors.at(i) = VkRect2D {
+          VkOffset2D { sr.left, sr.top },
+          VkExtent2D {
+            static_cast<uint32_t>(sr.right  - sr.left),
+            static_cast<uint32_t>(sr.bottom - sr.top) } };
+      } else {
+        scissors.at(i) = VkRect2D {
+          VkOffset2D { 0, 0 },
+          VkExtent2D {
+            D3D11_VIEWPORT_BOUNDS_MAX,
+            D3D11_VIEWPORT_BOUNDS_MAX } };
+      }
+    }
+    
+    m_context->setViewports(
+      m_state.rs.numViewports,
+      viewports.data(),
+      scissors.data());
   }
   
 }

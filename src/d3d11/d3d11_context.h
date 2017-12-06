@@ -547,7 +547,11 @@ namespace dxvk {
     Rc<DxvkDevice>      m_device;
     Rc<DxvkContext>     m_context;
     
+    Rc<DxvkRasterizerState> m_defaultRsState;
+    
     D3D11ContextState   m_state;
+    
+    void ApplyViewportState();
     
   };
   
