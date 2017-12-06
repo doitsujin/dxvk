@@ -4,6 +4,9 @@ util_src = files([
   
   'log/log.cpp',
   'log/log_debug.cpp',
+  
+  'sha1/sha1.c',
+  'sha1/sha1_util.cpp',
 ])
 
 util_lib = static_library('util', util_src,

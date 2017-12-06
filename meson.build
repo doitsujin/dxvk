@@ -1,4 +1,4 @@
-project('dxvk', ['cpp'])
+project('dxvk', ['c', 'cpp'])
 
 dxvk_compiler = meson.get_compiler('cpp')
 dxvk_library_path = meson.source_root() + '/lib'
