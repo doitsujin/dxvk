@@ -36,7 +36,7 @@ namespace dxvk {
     
   private:
     
-    Com<D3D11Device>              m_device;
+    D3D11Device* const            m_device;
     Com<ID3D11Resource>           m_resource;
     
     D3D11_RENDER_TARGET_VIEW_DESC m_desc;
