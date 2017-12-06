@@ -5,6 +5,4 @@
 
 namespace dxvk {
   
-  Logger* getGlobalLogger();
-  
 }

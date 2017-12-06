@@ -29,6 +29,8 @@ namespace dxvk {
     
   private:
     
+    static Logger s_instance;
+    
     std::mutex    m_mutex;
     std::ofstream m_fileStream;
     

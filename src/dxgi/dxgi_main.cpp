@@ -3,6 +3,8 @@
 
 namespace dxvk {
   
+  Logger Logger::s_instance("dxgi.log");
+  
   struct SdlInstance {
     SdlInstance() {
       if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE))

@@ -9,6 +9,10 @@
 #include <windows.h>
 #include <windowsx.h>
 
+namespace dxvk {
+  Logger Logger::s_instance("dxvk-triangle.log");
+}
+
 using namespace dxvk;
 
 const uint32_t vsCode[] = {

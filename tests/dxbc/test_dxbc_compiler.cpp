@@ -8,6 +8,10 @@
 #include <windows.h>
 #include <windowsx.h>
 
+namespace dxvk {
+  Logger Logger::s_instance("dxbc-compiler.log");
+}
+
 using namespace dxvk;
 
 int WINAPI WinMain(HINSTANCE hInstance,

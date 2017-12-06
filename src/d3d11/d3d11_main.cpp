@@ -6,6 +6,10 @@
 #include "d3d11_device.h"
 #include "d3d11_enums.h"
 
+namespace dxvk {
+  Logger Logger::s_instance("d3d11.log");
+}
+  
 extern "C" {
   using namespace dxvk;
   

@@ -10,22 +10,22 @@ namespace dxvk {
   
   
   void Logger::trace(const std::string& message) {
-    getGlobalLogger()->log(std::string("trace:  ") + message);
+    s_instance.log(std::string("trace:  ") + message);
   }
   
   
   void Logger::info(const std::string& message) {
-    getGlobalLogger()->log(std::string("info:   ") + message);
+    s_instance.log(std::string("info:   ") + message);
   }
   
   
   void Logger::warn(const std::string& message) {
-    getGlobalLogger()->log(std::string("warn:   ") + message);
+    s_instance.log(std::string("warn:   ") + message);
   }
   
   
   void Logger::err(const std::string& message) {
-    getGlobalLogger()->log(std::string("err:    ") + message);
+    s_instance.log(std::string("err:    ") + message);
   }
   
   
