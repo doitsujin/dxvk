@@ -59,7 +59,7 @@ namespace dxvk {
   
   void D3D11DeviceContext::ClearState() {
 //     this->IASetInputLayout(nullptr);
-//     this->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED);
+    this->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED);
 //     this->IASetVertexBuffers(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT, nullptr, nullptr, nullptr);
 //     this->IASetIndexBuffer(nullptr, DXGI_FORMAT_UNKNOWN, 0);
     
@@ -429,7 +429,77 @@ namespace dxvk {
   
   
   void D3D11DeviceContext::IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY Topology) {
-    Logger::err("D3D11DeviceContext::IASetPrimitiveTopology: Not implemented");
+    if (m_state.ia.primitiveTopology != Topology) {
+      m_state.ia.primitiveTopology = Topology;
+      
+      Rc<DxvkInputAssemblyState> iaState;
+      
+      switch (Topology) {
+        case D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED:
+          break;
+        
+        case D3D11_PRIMITIVE_TOPOLOGY_POINTLIST:
+          iaState = new DxvkInputAssemblyState(
+            VK_PRIMITIVE_TOPOLOGY_POINT_LIST,
+            VK_FALSE);
+          break;
+        
+        case D3D11_PRIMITIVE_TOPOLOGY_LINELIST:
+          iaState = new DxvkInputAssemblyState(
+            VK_PRIMITIVE_TOPOLOGY_LINE_LIST,
+            VK_FALSE);
+          break;
+        
+        case D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP:
+          iaState = new DxvkInputAssemblyState(
+            VK_PRIMITIVE_TOPOLOGY_LINE_STRIP,
+            VK_TRUE);
+          break;
+        
+        case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST:
+          iaState = new DxvkInputAssemblyState(
+            VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+            VK_FALSE);
+          break;
+        
+        case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP:
+          iaState = new DxvkInputAssemblyState(
+            VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+            VK_TRUE);
+          break;
+        
+        case D3D11_PRIMITIVE_TOPOLOGY_LINELIST_ADJ:
+          iaState = new DxvkInputAssemblyState(
+            VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY,
+            VK_FALSE);
+          break;
+        
+        case D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP_ADJ:
+          iaState = new DxvkInputAssemblyState(
+            VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY,
+            VK_TRUE);
+          break;
+        
+        case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST_ADJ:
+          iaState = new DxvkInputAssemblyState(
+            VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY,
+            VK_FALSE);
+          break;
+        
+        case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ:
+          iaState = new DxvkInputAssemblyState(
+            VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY,
+            VK_TRUE);
+          break;
+        
+        default:
+          Logger::err(str::format(
+            "D3D11DeviceContext::IASetPrimitiveTopology: Unknown primitive topology: ",
+            Topology));
+      }
+      
+      m_context->setInputAssemblyState(iaState);
+    }
   }
   
   
@@ -457,7 +527,7 @@ namespace dxvk {
   
   
   void D3D11DeviceContext::IAGetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY* pTopology) {
-    Logger::err("D3D11DeviceContext::IAGetPrimitiveTopology: Not implemented");
+    *pTopology = m_state.ia.primitiveTopology;
   }
   
   

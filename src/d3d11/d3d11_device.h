@@ -13,6 +13,7 @@ namespace dxvk {
   class DxgiAdapter;
   class D3D11DeviceContext;
   class D3D11PresentDevice;
+  class D3D11ShaderModule;
   
   class D3D11Device : public ComObject<ID3D11Device> {
     
@@ -244,6 +245,12 @@ namespace dxvk {
     Com<ID3D11DeviceContext>        m_context;
     
     D3D11StateObjectSet<D3D11RasterizerState> m_rsStateObjects;
+    
+    HRESULT CreateShaderModule(
+            D3D11ShaderModule*      pShaderModule,
+      const void*                   pShaderBytecode,
+            size_t                  BytecodeLength,
+            ID3D11ClassLinkage*     pClassLinkage);
     
   };
   

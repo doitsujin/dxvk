@@ -61,7 +61,7 @@ namespace dxvk {
   
   
   struct D3D11ContextStateIA {
-    
+    D3D11_PRIMITIVE_TOPOLOGY primitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
   };
   
   

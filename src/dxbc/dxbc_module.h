@@ -28,6 +28,14 @@ namespace dxvk {
     ~DxbcModule();
     
     /**
+     * \brief Shader type and version
+     * \returns Shader type and version
+     */
+    DxbcProgramVersion version() const {
+      return m_shexChunk->version();
+    }
+    
+    /**
      * \brief Compiles DXBC shader to SPIR-V module
      * \returns The compiled DXVK shader object
      */

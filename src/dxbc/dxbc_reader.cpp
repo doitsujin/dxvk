@@ -50,4 +50,9 @@ namespace dxvk {
     return DxbcReader(m_data, size, m_pos);
   }
   
+  
+  void DxbcReader::store(std::ostream&& stream) const {
+    stream.write(m_data, m_size);
+  }
+  
 }

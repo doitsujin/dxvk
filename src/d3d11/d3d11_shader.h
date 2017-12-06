@@ -1,6 +1,9 @@
 #pragma once
 
+#include <dxbc_module.h>
 #include <dxvk_device.h>
+
+#include "../util/sha1/sha1_util.h"
 
 #include "d3d11_device_child.h"
 #include "d3d11_interfaces.h"
@@ -8,6 +11,36 @@
 namespace dxvk {
   
   class D3D11Device;
+  
+  /**
+   * \brief Shader module
+   * 
+   * 
+   */
+  class D3D11ShaderModule {
+    
+  public:
+    
+    D3D11ShaderModule();
+    D3D11ShaderModule(
+      const void*   pShaderBytecode,
+            size_t  BytecodeLength);
+    ~D3D11ShaderModule();
+    
+  private:
+    
+    
+    SpirvCodeBuffer m_code;
+    
+    Sha1Hash ComputeShaderHash(
+      const void*   pShaderBytecode,
+            size_t  BytecodeLength) const;
+    
+    std::string ConstructFileName(
+      const Sha1Hash&         hash,
+      const DxbcProgramType&  type) const;
+    
+  };
   
   
   /**
@@ -22,8 +55,8 @@ namespace dxvk {
     
   public:
     
-    D3D11Shader(D3D11Device* device)
-    : m_device(device) { }
+    D3D11Shader(D3D11Device* device, D3D11ShaderModule&& module)
+    : m_device(device), m_module(std::move(module)) { }
     
     ~D3D11Shader() { }
     
@@ -40,9 +73,14 @@ namespace dxvk {
       *ppDevice = m_device.ref();
     }
     
+    const D3D11ShaderModule& GetShaderModule() const {
+      return m_module;
+    }
+    
   private:
     
-    Com<D3D11Device> m_device;
+    Com<D3D11Device>  m_device;
+    D3D11ShaderModule m_module;
     
   };
   

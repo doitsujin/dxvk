@@ -553,6 +553,8 @@ namespace dxvk {
     
     void ApplyViewportState();
     
+    void SetupIAStateObjects();
+    
   };
   
 }

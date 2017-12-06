@@ -55,6 +55,8 @@ namespace dxvk {
       return m_pos >= m_size;
     }
     
+    void store(std::ostream&& stream) const;
+    
   private:
     
     DxbcReader(const char* data, size_t size, size_t pos)

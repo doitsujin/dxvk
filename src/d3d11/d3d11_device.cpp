@@ -4,6 +4,7 @@
 #include "d3d11_context.h"
 #include "d3d11_device.h"
 #include "d3d11_present.h"
+#include "d3d11_shader.h"
 #include "d3d11_texture.h"
 #include "d3d11_view.h"
 
@@ -270,8 +271,18 @@ namespace dxvk {
           SIZE_T                      BytecodeLength,
           ID3D11ClassLinkage*         pClassLinkage,
           ID3D11VertexShader**        ppVertexShader) {
-    Logger::err("D3D11Device::CreateVertexShader: Not implemented");
-    return E_NOTIMPL;
+    D3D11ShaderModule module;
+    
+    if (FAILED(this->CreateShaderModule(&module,
+        pShaderBytecode, BytecodeLength, pClassLinkage)))
+      return E_INVALIDARG;
+    
+    if (ppVertexShader != nullptr) {
+      *ppVertexShader = ref(new D3D11VertexShader(
+        this, std::move(module)));
+    }
+    
+    return S_OK;
   }
   
   
@@ -305,8 +316,18 @@ namespace dxvk {
           SIZE_T                      BytecodeLength,
           ID3D11ClassLinkage*         pClassLinkage,
           ID3D11PixelShader**         ppPixelShader) {
-    Logger::err("D3D11Device::CreatePixelShader: Not implemented");
-    return E_NOTIMPL;
+    D3D11ShaderModule module;
+    
+    if (FAILED(this->CreateShaderModule(&module,
+        pShaderBytecode, BytecodeLength, pClassLinkage)))
+      return E_INVALIDARG;
+    
+    if (ppPixelShader != nullptr) {
+      *ppPixelShader = ref(new D3D11PixelShader(
+        this, std::move(module)));
+    }
+    
+    return S_OK;
   }
   
   
@@ -603,6 +624,27 @@ namespace dxvk {
     }
     
     return enabled;
+  }
+  
+  
+  HRESULT D3D11Device::CreateShaderModule(
+          D3D11ShaderModule*      pShaderModule,
+    const void*                   pShaderBytecode,
+          size_t                  BytecodeLength,
+          ID3D11ClassLinkage*     pClassLinkage) {
+    if (pClassLinkage != nullptr) {
+      Logger::err("D3D11Device::CreateShaderModule: Class linkage not supported");
+      return E_INVALIDARG;
+    }
+    
+    try {
+      *pShaderModule = D3D11ShaderModule(
+        pShaderBytecode, BytecodeLength);
+      return S_OK;
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return E_INVALIDARG;
+    }
   }
   
 }
