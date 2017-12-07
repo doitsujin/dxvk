@@ -179,10 +179,16 @@ namespace dxvk {
   
   void DxvkContext::bindVertexBuffer(
           uint32_t              binding,
-    const DxvkBufferBinding&    buffer) {
+    const DxvkBufferBinding&    buffer,
+          uint32_t              stride) {
     if (m_state.vi.vertexBuffers.at(binding) != buffer) {
       m_state.vi.vertexBuffers.at(binding) = buffer;
       m_flags.set(DxvkContextFlag::GpDirtyVertexBuffers);
+    }
+    
+    if (m_state.vi.vertexStrides.at(binding) != stride) {
+      m_state.vi.vertexStrides.at(binding) = stride;
+      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     }
   }
   
@@ -475,6 +481,7 @@ namespace dxvk {
       gpState.blendState          = m_state.co.blendState;
       gpState.renderPass          = m_state.om.framebuffer->renderPass();
       gpState.viewportCount       = m_state.vp.viewportCount;
+      // TODO add vertex buffer strides
       
       m_cmd->cmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,
         m_state.gp.pipeline->getPipelineHandle(gpState));
