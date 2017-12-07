@@ -54,9 +54,13 @@ namespace dxvk {
   
   
   void DxvkContext::bindIndexBuffer(
-    const DxvkBufferBinding&    buffer) {
-    if (m_state.vi.indexBuffer != buffer) {
+    const DxvkBufferBinding&    buffer,
+          VkIndexType           indexType) {
+    if (m_state.vi.indexBuffer != buffer
+     || m_state.vi.indexType   != indexType) {
       m_state.vi.indexBuffer = buffer;
+      m_state.vi.indexType   = indexType;
+      
       m_flags.set(DxvkContextFlag::GpDirtyIndexBuffer);
     }
   }
@@ -547,7 +551,7 @@ namespace dxvk {
         m_cmd->cmdBindIndexBuffer(
           m_state.vi.indexBuffer.bufferHandle(),
           m_state.vi.indexBuffer.bufferOffset(),
-          VK_INDEX_TYPE_UINT32);
+          m_state.vi.indexType);
         m_cmd->trackResource(
           m_state.vi.indexBuffer.resource());
       }

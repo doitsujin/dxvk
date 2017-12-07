@@ -60,9 +60,11 @@ namespace dxvk {
      * The index buffer will be used when
      * issuing \c drawIndexed commands.
      * \param [in] buffer New index buffer
+     * \param [in] indexType Index type
      */
     void bindIndexBuffer(
-      const DxvkBufferBinding&    buffer);
+      const DxvkBufferBinding&    buffer,
+            VkIndexType           indexType);
     
     /**
      * \brief Binds buffer as a shader resource

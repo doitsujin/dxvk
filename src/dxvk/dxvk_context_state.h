@@ -38,6 +38,8 @@ namespace dxvk {
   
   struct DxvkVertexInputState {
     DxvkBufferBinding                   indexBuffer;
+    VkIndexType                         indexType = VK_INDEX_TYPE_UINT32;
+    
     std::array<DxvkBufferBinding,
       DxvkLimits::MaxNumVertexBindings> vertexBuffers;
     std::array<uint32_t,
