@@ -74,32 +74,30 @@ namespace dxvk {
   
   
   /**
-   * \brief Blend state
-   * 
-   * Stores the color blend state for each
-   * available framebuffer attachment.
+   * \brief Logic op state
+   * Defines a logic op.
    */
-  class DxvkBlendState : public RcObject {
-    
-  public:
-    
-    DxvkBlendState(
-            VkBool32                             enableLogicOp,
-            VkLogicOp                            logicOp,
-            uint32_t                             attachmentCount,
-      const VkPipelineColorBlendAttachmentState* attachmentState);
-    
-    const VkPipelineColorBlendStateCreateInfo& info() const {
-      return m_info;
-    }
-    
-  private:
-    
-    std::array<VkPipelineColorBlendAttachmentState,
-      DxvkLimits::MaxNumRenderTargets> m_attachments;
-    
-    VkPipelineColorBlendStateCreateInfo m_info;
-    
+  struct DxvkLogicOpState {
+    VkBool32  enableLogicOp;
+    VkLogicOp logicOp;
+  };
+  
+  
+  /**
+   * \brief Blend mode for a single attachment
+   * 
+   * Stores the blend state for a single color attachment.
+   * Blend modes can be set separately for each attachment.
+   */
+  struct DxvkBlendMode {
+    VkBool32              blendEnable;
+    VkBlendFactor         srcColorBlendFactor;
+    VkBlendFactor         dstColorBlendFactor;
+    VkBlendOp             colorBlendOp;
+    VkBlendFactor         srcAlphaBlendFactor;
+    VkBlendFactor         dstAlphaBlendFactor;
+    VkBlendOp             alphaBlendOp;
+    VkColorComponentFlags colorWriteMask;
   };
   
   

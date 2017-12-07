@@ -427,12 +427,18 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::setBlendState(
-    const Rc<DxvkBlendState>& state) {
-    if (m_state.co.blendState != state) {
-      m_state.co.blendState = state;
-      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
-    }
+  void DxvkContext::setLogicOpState(
+    const DxvkLogicOpState& state) {
+    m_state.lo = state;
+    m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+  }
+  
+  
+  void DxvkContext::setBlendMode(
+          uint32_t            attachment,
+    const DxvkBlendMode&      blendMode) {
+    m_state.om.blendModes.at(attachment) = blendMode;
+    m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
   }
   
   

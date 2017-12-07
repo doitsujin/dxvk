@@ -305,11 +305,21 @@ namespace dxvk {
       const DxvkDepthStencilState& state);
     
     /**
-     * \brief Sets color blend state
+     * \brief Sets logic op state
      * \param [in] state New state object
      */
-    void setBlendState(
-      const Rc<DxvkBlendState>& state);
+    void setLogicOpState(
+      const DxvkLogicOpState&   state);
+    
+    /**
+     * \brief Sets blend mode for an attachment
+     * 
+     * \param [in] attachment The attachment index
+     * \param [in] blendMode The blend mode
+     */
+    void setBlendMode(
+            uint32_t            attachment,
+      const DxvkBlendMode&      blendMode);
     
   private:
     
