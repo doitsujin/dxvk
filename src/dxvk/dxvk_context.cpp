@@ -331,7 +331,7 @@ namespace dxvk {
     const VkRect2D*           scissorRects) {
     if (m_state.vp.viewportCount != viewportCount) {
       m_state.vp.viewportCount = viewportCount;
-      m_flags.set(DxvkContextFlag::GpDirtyPipeline);
+      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     }
     
     for (uint32_t i = 0; i < viewportCount; i++) {
@@ -347,7 +347,7 @@ namespace dxvk {
     const Rc<DxvkInputAssemblyState>& state) {
     if (m_state.co.inputAssemblyState != state) {
       m_state.co.inputAssemblyState = state;
-      m_flags.set(DxvkContextFlag::GpDirtyPipeline);
+      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     }
   }
   
@@ -356,7 +356,7 @@ namespace dxvk {
     const Rc<DxvkInputLayout>& state) {
     if (m_state.co.inputLayout != state) {
       m_state.co.inputLayout = state;
-      m_flags.set(DxvkContextFlag::GpDirtyPipeline);
+      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     }
   }
   
@@ -365,7 +365,7 @@ namespace dxvk {
     const Rc<DxvkRasterizerState>& state) {
     if (m_state.co.rasterizerState != state) {
       m_state.co.rasterizerState = state;
-      m_flags.set(DxvkContextFlag::GpDirtyPipeline);
+      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     }
   }
   
@@ -374,7 +374,7 @@ namespace dxvk {
     const Rc<DxvkMultisampleState>& state) {
     if (m_state.co.multisampleState != state) {
       m_state.co.multisampleState = state;
-      m_flags.set(DxvkContextFlag::GpDirtyPipeline);
+      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     }
   }
   
@@ -383,7 +383,7 @@ namespace dxvk {
     const Rc<DxvkDepthStencilState>& state) {
     if (m_state.co.depthStencilState != state) {
       m_state.co.depthStencilState = state;
-      m_flags.set(DxvkContextFlag::GpDirtyPipeline);
+      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     }
   }
   
@@ -392,7 +392,7 @@ namespace dxvk {
     const Rc<DxvkBlendState>& state) {
     if (m_state.co.blendState != state) {
       m_state.co.blendState = state;
-      m_flags.set(DxvkContextFlag::GpDirtyPipeline);
+      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     }
   }
   
@@ -455,12 +455,16 @@ namespace dxvk {
   
   
   void DxvkContext::updateGraphicsPipeline() {
-    if (m_flags.test(DxvkContextFlag::GpDirtyPipeline)) {
-      m_flags.clr(DxvkContextFlag::GpDirtyPipeline);
+    if (m_flags.any(DxvkContextFlag::GpDirtyPipeline, DxvkContextFlag::GpDirtyPipelineState)) {
+      m_flags.clr(DxvkContextFlag::GpDirtyPipelineState);
       
-      m_state.gp.pipeline = m_device->createGraphicsPipeline(
-        m_state.gp.vs.shader, m_state.gp.tcs.shader, m_state.gp.tes.shader,
-        m_state.gp.gs.shader, m_state.gp.fs.shader);
+      if (m_flags.test(DxvkContextFlag::GpDirtyPipeline)) {
+        m_flags.clr(DxvkContextFlag::GpDirtyPipeline);
+        
+        m_state.gp.pipeline = m_device->createGraphicsPipeline(
+          m_state.gp.vs.shader, m_state.gp.tcs.shader, m_state.gp.tes.shader,
+          m_state.gp.gs.shader, m_state.gp.fs.shader);
+      }
       
       DxvkGraphicsPipelineStateInfo gpState;
       gpState.inputAssemblyState  = m_state.co.inputAssemblyState;
