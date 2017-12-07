@@ -5,7 +5,7 @@ namespace dxvk {
   
   D3D11Buffer::D3D11Buffer(
           D3D11Device*                device,
-          IDXGIImageResourcePrivate*  resource,
+          IDXGIBufferResourcePrivate* resource,
     const D3D11_BUFFER_DESC&          desc)
   : m_device  (device),
     m_resource(resource),

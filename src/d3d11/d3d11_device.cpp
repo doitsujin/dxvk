@@ -62,8 +62,69 @@ namespace dxvk {
     const D3D11_BUFFER_DESC*      pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
           ID3D11Buffer**          ppBuffer) {
-    Logger::err("D3D11Device::CreateBuffer: Not implemented");
-    return E_NOTIMPL;
+    // Gather usage information
+    DxvkBufferCreateInfo  info;
+    info.size   = pDesc->ByteWidth;
+    info.usage  = VK_BUFFER_USAGE_TRANSFER_DST_BIT
+                | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    info.access = VK_ACCESS_TRANSFER_READ_BIT
+                | VK_ACCESS_TRANSFER_WRITE_BIT;
+    
+    if (pDesc->BindFlags & D3D11_BIND_VERTEX_BUFFER) {
+      info.usage  |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+      info.stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+      info.access |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+    }
+    
+    if (pDesc->BindFlags & D3D11_BIND_INDEX_BUFFER) {
+      info.usage  |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+      info.stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+      info.access |= VK_ACCESS_INDEX_READ_BIT;
+    }
+    
+    if (pDesc->BindFlags & D3D11_BIND_CONSTANT_BUFFER) {
+      info.usage  |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+      info.stages |= enabledShaderPipelineStages;
+      info.access |= VK_ACCESS_SHADER_READ_BIT;
+    }
+    
+    if (pDesc->BindFlags & D3D11_BIND_SHADER_RESOURCE) {
+      info.usage  |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+                  |  VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+      info.stages |= enabledShaderPipelineStages;
+      info.access |= VK_ACCESS_SHADER_READ_BIT;
+    }
+    
+    if (pDesc->BindFlags & D3D11_BIND_STREAM_OUTPUT) {
+      Logger::err("D3D11Device::CreateBuffer: D3D11_BIND_STREAM_OUTPUT not supported");
+      return E_INVALIDARG;
+    }
+    
+    if (pDesc->BindFlags & D3D11_BIND_UNORDERED_ACCESS) {
+      info.usage  |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+                  |  VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
+      info.stages |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+                  |  VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+      info.access |= VK_ACCESS_SHADER_READ_BIT
+                  |  VK_ACCESS_SHADER_WRITE_BIT;
+    }
+    
+    if (info.MiscFlags & D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS) {
+      info.usage  |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+      info.stages |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+      info.access |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
+    }
+    
+    // Find the optimal memory type for the
+    // resource based on the usage pattern.
+    
+    
+    if (ppBuffer != nullptr) {
+      DXGICreateBufferResourcePrivate
+    }
+    
+    return S_OK;
   }
   
   
@@ -735,6 +796,31 @@ namespace dxvk {
       Logger::err(e.message());
       return E_INVALIDARG;
     }
+  }
+  
+  
+  VkMemoryPropertyFlags D3D11Device::GetMemoryFlagsForUsage(D3D11_USAGE usage) const {
+    VkMemoryPropertyFlags memoryFlags = 0;
+    
+    switch (usage) {
+      case D3D11_USAGE_DEFAULT:
+      case D3D11_USAGE_IMMUTABLE:
+        memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+        break;
+      
+      case D3D11_USAGE_DYNAMIC:
+        memoryFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                    |  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+        break;
+      
+      case D3D11_USAGE_STAGING:
+        memoryFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                    |  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+                    |  VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+        break;
+    }
+    
+    return memoryFlags;
   }
   
 }

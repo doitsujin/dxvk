@@ -16,7 +16,7 @@ namespace dxvk {
     
     D3D11Buffer(
             D3D11Device*                device,
-            IDXGIImageResourcePrivate*  resource,
+            IDXGIBufferResourcePrivate* resource,
       const D3D11_BUFFER_DESC&          desc);
     ~D3D11Buffer();
     
@@ -36,7 +36,7 @@ namespace dxvk {
   private:
     
     D3D11Device* const              m_device;
-    Com<IDXGIImageResourcePrivate>  m_resource;
+    Com<IDXGIBufferResourcePrivate> m_resource;
     D3D11_BUFFER_DESC               m_desc;
     
   };

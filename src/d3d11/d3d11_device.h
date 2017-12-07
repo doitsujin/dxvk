@@ -252,6 +252,9 @@ namespace dxvk {
             size_t                  BytecodeLength,
             ID3D11ClassLinkage*     pClassLinkage);
     
+    VkMemoryPropertyFlags GetMemoryFlagsForUsage(
+            D3D11_USAGE             usage) const;
+    
   };
   
 }
