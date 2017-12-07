@@ -267,7 +267,7 @@ namespace dxvk {
      * \param [in] state New state object
      */
     void setInputAssemblyState(
-      const Rc<DxvkInputAssemblyState>& state);
+      const DxvkInputAssemblyState& state);
     
     /**
      * \brief Sets input layout state
@@ -281,21 +281,21 @@ namespace dxvk {
      * \param [in] state New state object
      */
     void setRasterizerState(
-      const Rc<DxvkRasterizerState>& state);
+      const DxvkRasterizerState& state);
     
     /**
      * \brief Sets multisample state
      * \param [in] state New state object
      */
     void setMultisampleState(
-      const Rc<DxvkMultisampleState>& state);
+      const DxvkMultisampleState& state);
     
     /**
      * \brief Sets depth stencil state
      * \param [in] state New state object
      */
     void setDepthStencilState(
-      const Rc<DxvkDepthStencilState>& state);
+      const DxvkDepthStencilState& state);
     
     /**
      * \brief Sets color blend state

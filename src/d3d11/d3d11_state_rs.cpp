@@ -8,13 +8,17 @@ namespace dxvk {
     const D3D11_RASTERIZER_DESC&          desc)
   : m_device(device), m_desc(desc) {
     
+    // State that is not supported in D3D11
+    m_state.enableDepthClamp  = VK_FALSE;
+    m_state.enableDiscard     = VK_FALSE;
+    
     // Polygon mode. Determines whether the rasterizer fills
     // a polygon or renders lines connecting the vertices.
-    VkPolygonMode polygonMode = VK_POLYGON_MODE_FILL;
+    m_state.polygonMode = VK_POLYGON_MODE_FILL;
     
     switch (desc.FillMode) {
-      case D3D11_FILL_WIREFRAME: polygonMode = VK_POLYGON_MODE_LINE; break;
-      case D3D11_FILL_SOLID:     polygonMode = VK_POLYGON_MODE_FILL; break;
+      case D3D11_FILL_WIREFRAME: m_state.polygonMode = VK_POLYGON_MODE_LINE; break;
+      case D3D11_FILL_SOLID:     m_state.polygonMode = VK_POLYGON_MODE_FILL; break;
       
       default:
         Logger::err(str::format(
@@ -25,12 +29,12 @@ namespace dxvk {
     // Face culling properties. The rasterizer may discard
     // polygons that are facing towards or away from the
     // viewer, depending on the options below.
-    VkCullModeFlags cullMode = 0;
+    m_state.cullMode = VK_CULL_MODE_NONE;
     
     switch (desc.CullMode) {
-      case D3D11_CULL_NONE:  cullMode = 0;                      break;
-      case D3D11_CULL_FRONT: cullMode = VK_CULL_MODE_FRONT_BIT; break;
-      case D3D11_CULL_BACK:  cullMode = VK_CULL_MODE_BACK_BIT;  break;
+      case D3D11_CULL_NONE:  m_state.cullMode = VK_CULL_MODE_NONE;      break;
+      case D3D11_CULL_FRONT: m_state.cullMode = VK_CULL_MODE_FRONT_BIT; break;
+      case D3D11_CULL_BACK:  m_state.cullMode = VK_CULL_MODE_BACK_BIT;  break;
       
       default:
         Logger::err(str::format(
@@ -38,25 +42,23 @@ namespace dxvk {
           desc.CullMode));
     }
     
-    VkFrontFace frontFace = desc.FrontCounterClockwise
+    m_state.frontFace = desc.FrontCounterClockwise
       ? VK_FRONT_FACE_COUNTER_CLOCKWISE
       : VK_FRONT_FACE_CLOCKWISE;
     
-    // TODO implement depth bias
-    if (desc.DepthBias != 0)
-      Logger::err("D3D11RasterizerState: Depth bias not supported");
+    // Let's treat the depth bias as enabled by default
+    m_state.depthBiasEnable   = VK_TRUE;
+    m_state.depthBiasConstant = static_cast<float>(desc.DepthBias);
+    m_state.depthBiasClamp    = desc.DepthBiasClamp;
+    m_state.depthBiasSlope    = desc.SlopeScaledDepthBias;
     
-    // TODO implement depth clamp
+    // TODO implement depth clamp. Note that there are differences
+    // between D3D11 depth clip (disabled) and Vulkan depth clamp.
     if (!desc.DepthClipEnable)
-      Logger::err("D3D11RasterizerState: Depth clip not supported");
+      Logger::err("D3D11RasterizerState: Depth clamp not supported");
     
     if (desc.AntialiasedLineEnable)
       Logger::err("D3D11RasterizerState: Antialiased lines not supported");
-    
-    m_state = new DxvkRasterizerState(
-      VK_FALSE, VK_FALSE,
-      polygonMode, cullMode, frontFace,
-      VK_FALSE, 0.0f, 0.0f, 0.0f, 1.0f);
   }
   
   

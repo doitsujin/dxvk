@@ -15,22 +15,9 @@ namespace dxvk {
    * whether or not primitive restart
    * is enabled.
    */
-  class DxvkInputAssemblyState : public RcObject {
-    
-  public:
-    
-    DxvkInputAssemblyState(
-      VkPrimitiveTopology primitiveTopology,
-      VkBool32            primitiveRestart);
-    
-    const VkPipelineInputAssemblyStateCreateInfo& info() const {
-      return m_info;
-    }
-    
-  private:
-    
-    VkPipelineInputAssemblyStateCreateInfo m_info;
-    
+  struct DxvkInputAssemblyState {
+    VkPrimitiveTopology primitiveTopology;
+    VkBool32            primitiveRestart;
   };
   
   
@@ -40,61 +27,30 @@ namespace dxvk {
    * Stores the operating mode of the
    * rasterizer, including the depth bias.
    */
-  class DxvkRasterizerState : public RcObject {
-    
-  public:
-    
-    DxvkRasterizerState(
-      VkBool32          enableDepthClamp,
-      VkBool32          enableDiscard,
-      VkPolygonMode     polygonMode,
-      VkCullModeFlags   cullMode,
-      VkFrontFace       frontFace,
-      VkBool32          depthBiasEnable,
-      float             depthBiasConstant,
-      float             depthBiasClamp,
-      float             depthBiasSlope,
-      float             lineWidth);
-    
-    const VkPipelineRasterizationStateCreateInfo& info() const {
-      return m_info;
-    }
-    
-  private:
-    
-    VkPipelineRasterizationStateCreateInfo m_info;
-    
+  struct DxvkRasterizerState {
+    VkBool32            enableDepthClamp;
+    VkBool32            enableDiscard;
+    VkPolygonMode       polygonMode;
+    VkCullModeFlags     cullMode;
+    VkFrontFace         frontFace;
+    VkBool32            depthBiasEnable;
+    float               depthBiasConstant;
+    float               depthBiasClamp;
+    float               depthBiasSlope;
   };
   
   
   /**
    * \brief Multisample state
    * 
-   * Defines details on how to handle
-   * multisampling, including the alpha
-   * coverage mode.
+   * Defines how to handle certain
+   * aspects of multisampling.
    */
-  class DxvkMultisampleState : public RcObject {
-    
-  public:
-    
-    DxvkMultisampleState(
-      VkSampleCountFlagBits   sampleCount,
-      uint32_t                sampleMask,
-      VkBool32                enableAlphaToCoverage,
-      VkBool32                enableAlphaToOne,
-      VkBool32                enableSampleShading,
-      float                   minSampleShading);
-    
-    const VkPipelineMultisampleStateCreateInfo& info() const {
-      return m_info;
-    }
-    
-  private:
-    
-    VkPipelineMultisampleStateCreateInfo m_info;
-    uint32_t                             m_mask;
-    
+  struct DxvkMultisampleState {
+    VkBool32                enableAlphaToCoverage;
+    VkBool32                enableAlphaToOne;
+    VkBool32                enableSampleShading;
+    float                   minSampleShading;
   };
   
   
@@ -104,29 +60,16 @@ namespace dxvk {
    * Defines the depth test and stencil
    * operations for the graphics pipeline.
    */
-  class DxvkDepthStencilState : public RcObject {
-    
-  public:
-    
-    DxvkDepthStencilState(
-      VkBool32            enableDepthTest,
-      VkBool32            enableDepthWrite,
-      VkBool32            enableDepthBounds,
-      VkBool32            enableStencilTest,
-      VkCompareOp         depthCompareOp,
-      VkStencilOpState    stencilOpFront,
-      VkStencilOpState    stencilOpBack,
-      float               depthBoundsMin,
-      float               depthBoundsMax);
-    
-    const VkPipelineDepthStencilStateCreateInfo& info() const {
-      return m_info;
-    }
-    
-  private:
-    
-    VkPipelineDepthStencilStateCreateInfo m_info;
-    
+  struct DxvkDepthStencilState {
+    VkBool32            enableDepthTest;
+    VkBool32            enableDepthWrite;
+    VkBool32            enableDepthBounds;
+    VkBool32            enableStencilTest;
+    VkCompareOp         depthCompareOp;
+    VkStencilOpState    stencilOpFront;
+    VkStencilOpState    stencilOpBack;
+    float               depthBoundsMin;
+    float               depthBoundsMax;
   };
   
   
@@ -200,11 +143,7 @@ namespace dxvk {
   
   
   struct DxvkConstantStateObjects {
-    Rc<DxvkInputAssemblyState>  inputAssemblyState;
     Rc<DxvkInputLayout>         inputLayout;
-    Rc<DxvkRasterizerState>     rasterizerState;
-    Rc<DxvkMultisampleState>    multisampleState;
-    Rc<DxvkDepthStencilState>   depthStencilState;
     Rc<DxvkBlendState>          blendState;
   };
   

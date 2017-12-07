@@ -55,27 +55,33 @@ namespace dxvk {
     
     // Set up context state. The shader bindings and the
     // constant state objects will never be modified.
-    m_context->setInputAssemblyState(
-      new DxvkInputAssemblyState(
-        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
-        VK_FALSE));
+    DxvkInputAssemblyState iaState;
+    iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+    iaState.primitiveRestart  = VK_FALSE;
+    m_context->setInputAssemblyState(iaState);
     
     m_context->setInputLayout(
       new DxvkInputLayout(
         0, nullptr, 0, nullptr));
     
-    m_context->setRasterizerState(
-      new DxvkRasterizerState(
-        VK_FALSE, VK_FALSE,
-        VK_POLYGON_MODE_FILL,
-        VK_CULL_MODE_NONE,
-        VK_FRONT_FACE_COUNTER_CLOCKWISE,
-        VK_FALSE, 0.0f, 0.0f, 0.0f, 1.0f));
+    DxvkRasterizerState rsState;
+    rsState.enableDepthClamp   = VK_FALSE;
+    rsState.enableDiscard      = VK_FALSE;
+    rsState.polygonMode        = VK_POLYGON_MODE_FILL;
+    rsState.cullMode           = VK_CULL_MODE_BACK_BIT;
+    rsState.frontFace          = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    rsState.depthBiasEnable    = VK_FALSE;
+    rsState.depthBiasConstant  = 0.0f;
+    rsState.depthBiasClamp     = 0.0f;
+    rsState.depthBiasSlope     = 0.0f;
+    m_context->setRasterizerState(rsState);
     
-    m_context->setMultisampleState(
-      new DxvkMultisampleState(
-        VK_SAMPLE_COUNT_1_BIT, 0xFFFFFFFF,
-        VK_FALSE, VK_FALSE, VK_FALSE, 0.0f));
+    DxvkMultisampleState msState;
+    msState.enableAlphaToCoverage = VK_FALSE;
+    msState.enableAlphaToOne      = VK_FALSE;
+    msState.enableSampleShading   = VK_FALSE;
+    msState.minSampleShading      = 0.0f;
+    m_context->setMultisampleState(msState);
     
     VkStencilOpState stencilOp;
     stencilOp.failOp      = VK_STENCIL_OP_KEEP;
@@ -86,11 +92,16 @@ namespace dxvk {
     stencilOp.writeMask   = 0xFFFFFFFF;
     stencilOp.reference   = 0;
     
-    m_context->setDepthStencilState(
-      new DxvkDepthStencilState(
-        VK_FALSE, VK_FALSE, VK_FALSE, VK_FALSE,
-        VK_COMPARE_OP_ALWAYS, stencilOp, stencilOp,
-        0.0f, 1.0f));
+    DxvkDepthStencilState dsState;
+    dsState.enableDepthTest       = VK_FALSE;
+    dsState.enableDepthWrite      = VK_FALSE;
+    dsState.enableDepthBounds     = VK_FALSE;
+    dsState.enableStencilTest     = VK_FALSE;
+    dsState.depthCompareOp        = VK_COMPARE_OP_ALWAYS;
+    dsState.stencilOpFront        = stencilOp;
+    dsState.stencilOpBack         = stencilOp;
+    dsState.depthBoundsMin        = 0.0f;
+    dsState.depthBoundsMax        = 1.0f;
     
     VkPipelineColorBlendAttachmentState blendAttachment;
     blendAttachment.blendEnable         = VK_FALSE;

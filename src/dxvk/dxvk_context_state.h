@@ -55,6 +55,7 @@ namespace dxvk {
   
   
   struct DxvkOutputMergerState {
+    uint32_t                  sampleMask = 0xFFFFFFFFu;
     Rc<DxvkFramebuffer>       framebuffer;
   };
   
@@ -88,6 +89,11 @@ namespace dxvk {
    * and constant pipeline state objects.
    */
   struct DxvkContextState {
+    DxvkInputAssemblyState    ia;
+    DxvkRasterizerState       rs;
+    DxvkMultisampleState      ms;
+    DxvkDepthStencilState     ds;
+    
     DxvkVertexInputState      vi;
     DxvkViewportState         vp;
     DxvkOutputMergerState     om;

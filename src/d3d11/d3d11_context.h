@@ -544,12 +544,12 @@ namespace dxvk {
     const D3D11_DEVICE_CONTEXT_TYPE m_type  = D3D11_DEVICE_CONTEXT_IMMEDIATE;
     const UINT                      m_flags = 0;
     
-    Rc<DxvkDevice>      m_device;
-    Rc<DxvkContext>     m_context;
+    Rc<DxvkDevice>        m_device;
+    Rc<DxvkContext>       m_context;
     
-    Rc<DxvkRasterizerState>   m_defaultRsState;
-    Rc<DxvkDepthStencilState> m_defaultDsState;
-    Rc<DxvkMultisampleState>  m_defaultMsState;
+    DxvkRasterizerState   m_defaultRsState;
+    DxvkDepthStencilState m_defaultDsState;
+    DxvkMultisampleState  m_defaultMsState;
     Rc<DxvkBlendState>        m_defaultCbState;
     
     D3D11ContextState   m_state;

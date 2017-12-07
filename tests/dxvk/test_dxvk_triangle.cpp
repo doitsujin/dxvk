@@ -82,31 +82,45 @@ public:
       })),
     m_dxvkContext     (m_dxvkDevice->createContext()) {
     
-    m_dxvkContext->setInputAssemblyState(
-      new DxvkInputAssemblyState(
-        VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-        VK_FALSE));
+    DxvkInputAssemblyState iaState;
+    iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    iaState.primitiveRestart  = VK_FALSE;
+    m_dxvkContext->setInputAssemblyState(iaState);
+    
     m_dxvkContext->setInputLayout(
       new DxvkInputLayout(0, nullptr, 0, nullptr));
-    m_dxvkContext->setRasterizerState(
-      new DxvkRasterizerState(
-        VK_FALSE, VK_FALSE,
-        VK_POLYGON_MODE_FILL,
-        VK_CULL_MODE_NONE,
-        VK_FRONT_FACE_COUNTER_CLOCKWISE,
-        VK_FALSE, 0.0f, 0.0f, 0.0f,
-        1.0f));
-    m_dxvkContext->setMultisampleState(
-      new DxvkMultisampleState(
-        VK_SAMPLE_COUNT_1_BIT, 0xFFFFFFFF,
-        VK_FALSE, VK_FALSE, VK_FALSE, 1.0f));
-    m_dxvkContext->setDepthStencilState(
-      new DxvkDepthStencilState(
-        VK_FALSE, VK_FALSE, VK_FALSE, VK_FALSE,
-        VK_COMPARE_OP_ALWAYS,
-        VkStencilOpState(),
-        VkStencilOpState(),
-        0.0f, 1.0f));
+    
+    DxvkRasterizerState rsState;
+    rsState.enableDepthClamp   = VK_FALSE;
+    rsState.enableDiscard      = VK_FALSE;
+    rsState.polygonMode        = VK_POLYGON_MODE_FILL;
+    rsState.cullMode           = VK_CULL_MODE_BACK_BIT;
+    rsState.frontFace          = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    rsState.depthBiasEnable    = VK_FALSE;
+    rsState.depthBiasConstant  = 0.0f;
+    rsState.depthBiasClamp     = 0.0f;
+    rsState.depthBiasSlope     = 0.0f;
+    m_dxvkContext->setRasterizerState(rsState);
+    
+    DxvkMultisampleState msState;
+    msState.enableAlphaToCoverage = VK_FALSE;
+    msState.enableAlphaToOne      = VK_FALSE;
+    msState.enableSampleShading   = VK_FALSE;
+    msState.minSampleShading      = 0.0f;
+    m_dxvkContext->setMultisampleState(msState);
+    
+    DxvkDepthStencilState dsState;
+    dsState.enableDepthTest       = VK_FALSE;
+    dsState.enableDepthWrite      = VK_FALSE;
+    dsState.enableDepthBounds     = VK_FALSE;
+    dsState.enableStencilTest     = VK_FALSE;
+    dsState.depthCompareOp        = VK_COMPARE_OP_ALWAYS;
+    dsState.stencilOpFront        = VkStencilOpState();
+    dsState.stencilOpBack         = VkStencilOpState();
+    dsState.depthBoundsMin        = 0.0f;
+    dsState.depthBoundsMax        = 1.0f;
+    m_dxvkContext->setDepthStencilState(dsState);
+    
     m_dxvkContext->setBlendState(
       new DxvkBlendState(
         VK_FALSE, VK_LOGIC_OP_COPY,

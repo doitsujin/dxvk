@@ -6,7 +6,7 @@ namespace dxvk {
   
   DxvkContext::DxvkContext(const Rc<DxvkDevice>& device)
   : m_device(device) {
-    Logger::info(str::format(sizeof(DxvkGraphicsPipelineStateInfo)));
+    
   }
   
   
@@ -382,11 +382,9 @@ namespace dxvk {
   
   
   void DxvkContext::setInputAssemblyState(
-    const Rc<DxvkInputAssemblyState>& state) {
-    if (m_state.co.inputAssemblyState != state) {
-      m_state.co.inputAssemblyState = state;
-      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
-    }
+    const DxvkInputAssemblyState& state) {
+    m_state.ia = state;
+    m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
   }
   
   
@@ -400,29 +398,23 @@ namespace dxvk {
   
   
   void DxvkContext::setRasterizerState(
-    const Rc<DxvkRasterizerState>& state) {
-    if (m_state.co.rasterizerState != state) {
-      m_state.co.rasterizerState = state;
-      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
-    }
+    const DxvkRasterizerState& state) {
+    m_state.rs = state;
+    m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
   }
   
   
   void DxvkContext::setMultisampleState(
-    const Rc<DxvkMultisampleState>& state) {
-    if (m_state.co.multisampleState != state) {
-      m_state.co.multisampleState = state;
-      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
-    }
+    const DxvkMultisampleState& state) {
+    m_state.ms = state;
+    m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
   }
   
   
   void DxvkContext::setDepthStencilState(
-    const Rc<DxvkDepthStencilState>& state) {
-    if (m_state.co.depthStencilState != state) {
-      m_state.co.depthStencilState = state;
-      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
-    }
+    const DxvkDepthStencilState& state) {
+    m_state.ds = state;
+    m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
   }
   
   
@@ -506,9 +498,8 @@ namespace dxvk {
       
       DxvkGraphicsPipelineStateInfo gpState;
       
-      const auto& ia = m_state.co.inputAssemblyState->info();
-      gpState.iaPrimitiveTopology      = ia.topology;
-      gpState.iaPrimitiveRestart       = ia.primitiveRestartEnable;
+      gpState.iaPrimitiveTopology      = m_state.ia.primitiveTopology;
+      gpState.iaPrimitiveRestart       = m_state.ia.primitiveRestart;
       
       const auto& il = m_state.co.inputLayout->info();
       gpState.ilAttributeCount         = il.vertexAttributeDescriptionCount;
@@ -522,37 +513,34 @@ namespace dxvk {
         gpState.ilBindings[i].stride = m_state.vi.vertexStrides.at(i);
       }
       
-      const auto& rs = m_state.co.rasterizerState->info();
-      gpState.rsEnableDepthClamp       = rs.depthClampEnable;
-      gpState.rsEnableDiscard          = rs.rasterizerDiscardEnable;
-      gpState.rsPolygonMode            = rs.polygonMode;
-      gpState.rsCullMode               = rs.cullMode;
-      gpState.rsFrontFace              = rs.frontFace;
-      gpState.rsDepthBiasEnable        = rs.depthBiasEnable;
-      gpState.rsDepthBiasConstant      = rs.depthBiasConstantFactor;
-      gpState.rsDepthBiasClamp         = rs.depthBiasClamp;
-      gpState.rsDepthBiasSlope         = rs.depthBiasSlopeFactor;
+      gpState.rsEnableDepthClamp       = m_state.rs.enableDepthClamp;
+      gpState.rsEnableDiscard          = m_state.rs.enableDiscard;
+      gpState.rsPolygonMode            = m_state.rs.polygonMode;
+      gpState.rsCullMode               = m_state.rs.cullMode;
+      gpState.rsFrontFace              = m_state.rs.frontFace;
+      gpState.rsDepthBiasEnable        = m_state.rs.depthBiasEnable;
+      gpState.rsDepthBiasConstant      = m_state.rs.depthBiasConstant;
+      gpState.rsDepthBiasClamp         = m_state.rs.depthBiasClamp;
+      gpState.rsDepthBiasSlope         = m_state.rs.depthBiasSlope;
       gpState.rsViewportCount          = m_state.vp.viewportCount;
       
       // TODO implement multisampling support properly
-      const auto& ms = m_state.co.multisampleState->info();
       gpState.msSampleCount            = VK_SAMPLE_COUNT_1_BIT;
-      gpState.msSampleMask             = *ms.pSampleMask;
-      gpState.msEnableAlphaToCoverage  = ms.alphaToCoverageEnable;
-      gpState.msEnableAlphaToOne       = ms.alphaToOneEnable;
-      gpState.msEnableSampleShading    = ms.sampleShadingEnable;
-      gpState.msMinSampleShading       = ms.minSampleShading;
+      gpState.msSampleMask             = m_state.om.sampleMask;
+      gpState.msEnableAlphaToCoverage  = m_state.ms.enableAlphaToCoverage;
+      gpState.msEnableAlphaToOne       = m_state.ms.enableAlphaToOne;
+      gpState.msEnableSampleShading    = m_state.ms.enableSampleShading;
+      gpState.msMinSampleShading       = m_state.ms.minSampleShading;
       
-      const auto& ds = m_state.co.depthStencilState->info();
-      gpState.dsEnableDepthTest        = ds.depthTestEnable;
-      gpState.dsEnableDepthWrite       = ds.depthWriteEnable;
-      gpState.dsEnableDepthBounds      = ds.depthBoundsTestEnable;
-      gpState.dsEnableStencilTest      = ds.stencilTestEnable;
-      gpState.dsDepthCompareOp         = ds.depthCompareOp;
-      gpState.dsStencilOpFront         = ds.front;
-      gpState.dsStencilOpBack          = ds.back;
-      gpState.dsDepthBoundsMin         = ds.minDepthBounds;
-      gpState.dsDepthBoundsMax         = ds.maxDepthBounds;
+      gpState.dsEnableDepthTest        = m_state.ds.enableDepthTest;
+      gpState.dsEnableDepthWrite       = m_state.ds.enableDepthWrite;
+      gpState.dsEnableDepthBounds      = m_state.ds.enableDepthBounds;
+      gpState.dsEnableStencilTest      = m_state.ds.enableStencilTest;
+      gpState.dsDepthCompareOp         = m_state.ds.depthCompareOp;
+      gpState.dsStencilOpFront         = m_state.ds.stencilOpFront;
+      gpState.dsStencilOpBack          = m_state.ds.stencilOpBack;
+      gpState.dsDepthBoundsMin         = m_state.ds.depthBoundsMin;
+      gpState.dsDepthBoundsMax         = m_state.ds.depthBoundsMax;
       
       const auto& om = m_state.co.blendState->info();
       gpState.omEnableLogicOp          = om.logicOpEnable;

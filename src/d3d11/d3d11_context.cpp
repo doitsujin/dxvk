@@ -14,12 +14,16 @@ namespace dxvk {
     m_context->beginRecording(
       m_device->createCommandList());
     
-    m_defaultRsState = new DxvkRasterizerState(
-      VK_FALSE, VK_FALSE,
-      VK_POLYGON_MODE_FILL,
-      VK_CULL_MODE_BACK_BIT,
-      VK_FRONT_FACE_CLOCKWISE,
-      VK_FALSE, 0.0f, 0.0f, 0.0f, 1.0f);
+    m_defaultRsState.enableDepthClamp   = VK_FALSE;
+    m_defaultRsState.enableDiscard      = VK_FALSE;
+    m_defaultRsState.polygonMode        = VK_POLYGON_MODE_FILL;
+    m_defaultRsState.cullMode           = VK_CULL_MODE_BACK_BIT;
+    m_defaultRsState.frontFace          = VK_FRONT_FACE_CLOCKWISE;
+    m_defaultRsState.depthBiasEnable    = VK_FALSE;
+    m_defaultRsState.depthBiasConstant  = 0.0f;
+    m_defaultRsState.depthBiasClamp     = 0.0f;
+    m_defaultRsState.depthBiasSlope     = 0.0f;
+    m_context->setRasterizerState(m_defaultRsState);
     
     VkStencilOpState stencilOp;
     stencilOp.failOp      = VK_STENCIL_OP_KEEP;
@@ -30,20 +34,26 @@ namespace dxvk {
     stencilOp.writeMask   = D3D11_DEFAULT_STENCIL_WRITE_MASK;
     stencilOp.reference   = 0;
     
-    m_defaultDsState = new DxvkDepthStencilState(
-      VK_TRUE, VK_TRUE, VK_FALSE, VK_FALSE,
-      VK_COMPARE_OP_LESS, stencilOp, stencilOp,
-      0.0f, 1.0f);
+    m_defaultDsState.enableDepthTest    = VK_TRUE;
+    m_defaultDsState.enableDepthWrite   = VK_TRUE;
+    m_defaultDsState.enableDepthBounds  = VK_FALSE;
+    m_defaultDsState.enableStencilTest  = VK_FALSE;
+    m_defaultDsState.depthCompareOp     = VK_COMPARE_OP_LESS;
+    m_defaultDsState.stencilOpFront     = stencilOp;
+    m_defaultDsState.stencilOpBack      = stencilOp;
+    m_defaultDsState.depthBoundsMin     = 0.0f;
+    m_defaultDsState.depthBoundsMax     = 1.0f;
+    m_context->setDepthStencilState(m_defaultDsState);
     
-    m_defaultMsState = new DxvkMultisampleState(
-      VK_SAMPLE_COUNT_1_BIT, 0xFFFFFFFFu,
-      VK_FALSE, VK_FALSE, VK_FALSE, 0.0f);
+    m_defaultMsState.enableAlphaToCoverage = VK_FALSE;
+    m_defaultMsState.enableAlphaToOne      = VK_FALSE;
+    m_defaultMsState.enableSampleShading   = VK_FALSE;
+    m_defaultMsState.minSampleShading      = 0.0f;
+    m_context->setMultisampleState(m_defaultMsState);
     
     m_defaultCbState = new DxvkBlendState(
       VK_FALSE, VK_LOGIC_OP_CLEAR, 0, nullptr);
     
-    m_context->setRasterizerState(m_defaultRsState);
-    m_context->setMultisampleState(m_defaultMsState);
     m_context->setDepthStencilState(m_defaultDsState);
     m_context->setBlendState(m_defaultCbState);
   }
@@ -464,64 +474,55 @@ namespace dxvk {
     if (m_state.ia.primitiveTopology != Topology) {
       m_state.ia.primitiveTopology = Topology;
       
-      Rc<DxvkInputAssemblyState> iaState;
+      DxvkInputAssemblyState iaState;
       
       switch (Topology) {
         case D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED:
-          break;
+          return;
         
         case D3D11_PRIMITIVE_TOPOLOGY_POINTLIST:
-          iaState = new DxvkInputAssemblyState(
-            VK_PRIMITIVE_TOPOLOGY_POINT_LIST,
-            VK_FALSE);
+          iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+          iaState.primitiveRestart  = VK_FALSE;
           break;
         
         case D3D11_PRIMITIVE_TOPOLOGY_LINELIST:
-          iaState = new DxvkInputAssemblyState(
-            VK_PRIMITIVE_TOPOLOGY_LINE_LIST,
-            VK_FALSE);
+          iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+          iaState.primitiveRestart  = VK_FALSE;
           break;
         
         case D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP:
-          iaState = new DxvkInputAssemblyState(
-            VK_PRIMITIVE_TOPOLOGY_LINE_STRIP,
-            VK_TRUE);
+          iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
+          iaState.primitiveRestart  = VK_TRUE;
           break;
         
         case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST:
-          iaState = new DxvkInputAssemblyState(
-            VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-            VK_FALSE);
+          iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+          iaState.primitiveRestart  = VK_FALSE;
           break;
         
         case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP:
-          iaState = new DxvkInputAssemblyState(
-            VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
-            VK_TRUE);
+          iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+          iaState.primitiveRestart  = VK_TRUE;
           break;
         
         case D3D11_PRIMITIVE_TOPOLOGY_LINELIST_ADJ:
-          iaState = new DxvkInputAssemblyState(
-            VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY,
-            VK_FALSE);
+          iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY;
+          iaState.primitiveRestart  = VK_FALSE;
           break;
         
         case D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP_ADJ:
-          iaState = new DxvkInputAssemblyState(
-            VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY,
-            VK_TRUE);
+          iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY;
+          iaState.primitiveRestart  = VK_TRUE;
           break;
         
         case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST_ADJ:
-          iaState = new DxvkInputAssemblyState(
-            VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY,
-            VK_FALSE);
+          iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY;
+          iaState.primitiveRestart  = VK_FALSE;
           break;
         
         case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ:
-          iaState = new DxvkInputAssemblyState(
-            VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY,
-            VK_TRUE);
+          iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY;
+          iaState.primitiveRestart  = VK_TRUE;
           break;
         
         default:

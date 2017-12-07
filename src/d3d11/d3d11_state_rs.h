@@ -29,7 +29,7 @@ namespace dxvk {
     void GetDesc(
             D3D11_RASTERIZER_DESC* pDesc) final;
     
-    Rc<DxvkRasterizerState> GetDXVKRasterizerState() {
+    const DxvkRasterizerState& GetDXVKRasterizerState() const {
       return m_state;
     }
     
@@ -37,7 +37,7 @@ namespace dxvk {
     
     D3D11Device* const      m_device;
     D3D11_RASTERIZER_DESC   m_desc;
-    Rc<DxvkRasterizerState> m_state;
+    DxvkRasterizerState     m_state;
     
   };
   
