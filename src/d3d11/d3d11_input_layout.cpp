@@ -5,9 +5,19 @@ namespace dxvk {
   
   D3D11InputLayout::D3D11InputLayout(
           D3D11Device*                pDevice,
-    const Rc<DxvkInputLayout>&        inputLayout)
-  : m_device(pDevice), m_inputLayout(inputLayout) {
+          uint32_t                    numAttributes,
+    const DxvkVertexAttribute*        pAttributes,
+          uint32_t                    numBindings,
+    const DxvkVertexBinding*          pBindings)
+  : m_device(pDevice) {
+    m_attributes.resize(numAttributes);
+    m_bindings.resize(numBindings);
     
+    for (uint32_t i = 0; i < numAttributes; i++)
+      m_attributes.at(i) = pAttributes[i];
+    
+    for (uint32_t i = 0; i < numBindings; i++)
+      m_bindings.at(i) = pBindings[i];
   }
   
   
@@ -28,6 +38,15 @@ namespace dxvk {
   
   void D3D11InputLayout::GetDevice(ID3D11Device** ppDevice) {
     *ppDevice = ref(m_device);
+  }
+  
+  
+  void D3D11InputLayout::BindToContext(const Rc<DxvkContext>& ctx) {
+    ctx->setInputLayout(
+      m_attributes.size(),
+      m_attributes.data(),
+      m_bindings.size(),
+      m_bindings.data());
   }
   
 }

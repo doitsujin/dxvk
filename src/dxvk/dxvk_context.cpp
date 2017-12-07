@@ -389,11 +389,20 @@ namespace dxvk {
   
   
   void DxvkContext::setInputLayout(
-    const Rc<DxvkInputLayout>& state) {
-    if (m_state.co.inputLayout != state) {
-      m_state.co.inputLayout = state;
-      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
-    }
+          uint32_t             attributeCount,
+    const DxvkVertexAttribute* attributes,
+          uint32_t             bindingCount,
+    const DxvkVertexBinding*   bindings) {
+    m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+    
+    m_state.il.numAttributes = attributeCount;
+    m_state.il.numBindings   = bindingCount;
+    
+    for (uint32_t i = 0; i < attributeCount; i++)
+      m_state.il.attributes.at(i) = attributes[i];
+    
+    for (uint32_t i = 0; i < bindingCount; i++)
+      m_state.il.bindings.at(i) = bindings[i];
   }
   
   
@@ -501,16 +510,20 @@ namespace dxvk {
       gpState.iaPrimitiveTopology      = m_state.ia.primitiveTopology;
       gpState.iaPrimitiveRestart       = m_state.ia.primitiveRestart;
       
-      const auto& il = m_state.co.inputLayout->info();
-      gpState.ilAttributeCount         = il.vertexAttributeDescriptionCount;
-      gpState.ilBindingCount           = il.vertexBindingDescriptionCount;
+      gpState.ilAttributeCount         = m_state.il.numAttributes;
+      gpState.ilBindingCount           = m_state.il.numBindings;
       
-      for (uint32_t i = 0; i < gpState.ilAttributeCount; i++)
-        gpState.ilAttributes[i] = il.pVertexAttributeDescriptions[i];
+      for (uint32_t i = 0; i < m_state.il.numAttributes; i++) {
+        gpState.ilAttributes[i].location = m_state.il.attributes[i].location;
+        gpState.ilAttributes[i].binding  = m_state.il.attributes[i].binding;
+        gpState.ilAttributes[i].format   = m_state.il.attributes[i].format;
+        gpState.ilAttributes[i].offset   = m_state.il.attributes[i].offset;
+      }
       
-      for (uint32_t i = 0; i < gpState.ilBindingCount; i++) {
-        gpState.ilBindings[i] = il.pVertexBindingDescriptions[i];
-        gpState.ilBindings[i].stride = m_state.vi.vertexStrides.at(i);
+      for (uint32_t i = 0; i < m_state.il.numBindings; i++) {
+        gpState.ilBindings[i].binding    = m_state.il.bindings[i].binding;
+        gpState.ilBindings[i].inputRate  = m_state.il.bindings[i].inputRate;
+        gpState.ilBindings[i].stride     = m_state.vi.vertexStrides.at(i);
       }
       
       gpState.rsEnableDepthClamp       = m_state.rs.enableDepthClamp;

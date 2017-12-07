@@ -41,30 +41,4 @@ namespace dxvk {
       m_info.blendConstants[i]    = 0.0f;
   }
   
-  
-  DxvkInputLayout::DxvkInputLayout(
-          uint32_t                           attributeCount,
-    const VkVertexInputAttributeDescription* attributeInfo,
-          uint32_t                           bindingCount,
-    const VkVertexInputBindingDescription*   bindingInfo) {
-    // Copy vertex attribute info to a persistent array
-    m_attributes.resize(attributeCount);
-    for (uint32_t i = 0; i < attributeCount; i++)
-      m_attributes.at(i) = attributeInfo[i];
-    
-    // Copy vertex binding info to a persistent array
-    m_bindings.resize(bindingCount);
-    for (uint32_t i = 0; i < bindingCount; i++)
-      m_bindings.at(i) = bindingInfo[i];
-    
-    // Create info structure referencing those arrays
-    m_info.sType                            = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    m_info.pNext                            = nullptr;
-    m_info.flags                            = 0;
-    m_info.vertexBindingDescriptionCount    = m_bindings.size();
-    m_info.pVertexBindingDescriptions       = m_bindings.data();
-    m_info.vertexAttributeDescriptionCount  = m_attributes.size();
-    m_info.pVertexAttributeDescriptions     = m_attributes.data();
-  }
-  
 }

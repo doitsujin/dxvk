@@ -12,7 +12,10 @@ namespace dxvk {
     
     D3D11InputLayout(
             D3D11Device*                pDevice,
-      const Rc<DxvkInputLayout>&        inputLayout);
+            uint32_t                    numAttributes,
+      const DxvkVertexAttribute*        pAttributes,
+            uint32_t                    numBindings,
+      const DxvkVertexBinding*          pBindings);
     
     ~D3D11InputLayout();
     
@@ -23,14 +26,15 @@ namespace dxvk {
     void GetDevice(
             ID3D11Device **ppDevice) final;
     
-    Rc<DxvkInputLayout> GetDXVKInputLayout() const {
-      return m_inputLayout;
-    }
+    void BindToContext(
+      const Rc<DxvkContext>& ctx);
     
   private:
     
     D3D11Device* const  m_device;
-    Rc<DxvkInputLayout> m_inputLayout;
+    
+    std::vector<DxvkVertexAttribute> m_attributes;
+    std::vector<DxvkVertexBinding>   m_bindings;
     
   };
   

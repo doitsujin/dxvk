@@ -87,8 +87,7 @@ public:
     iaState.primitiveRestart  = VK_FALSE;
     m_dxvkContext->setInputAssemblyState(iaState);
     
-    m_dxvkContext->setInputLayout(
-      new DxvkInputLayout(0, nullptr, 0, nullptr));
+    m_dxvkContext->setInputLayout(0, nullptr, 0, nullptr);
     
     DxvkRasterizerState rsState;
     rsState.enableDepthClamp   = VK_FALSE;

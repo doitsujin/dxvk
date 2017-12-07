@@ -61,8 +61,7 @@ namespace dxvk {
     m_context->setInputAssemblyState(iaState);
     
     m_context->setInputLayout(
-      new DxvkInputLayout(
-        0, nullptr, 0, nullptr));
+      0, nullptr, 0, nullptr);
     
     DxvkRasterizerState rsState;
     rsState.enableDepthClamp   = VK_FALSE;

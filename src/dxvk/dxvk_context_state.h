@@ -90,6 +90,7 @@ namespace dxvk {
    */
   struct DxvkContextState {
     DxvkInputAssemblyState    ia;
+    DxvkInputLayout           il;
     DxvkRasterizerState       rs;
     DxvkMultisampleState      ms;
     DxvkDepthStencilState     ds;

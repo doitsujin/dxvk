@@ -104,46 +104,47 @@ namespace dxvk {
   
   
   /**
+   * \brief Vertex attribute description
+   * 
+   * Stores information about a
+   * single vertex attribute.
+   */
+  struct DxvkVertexAttribute {
+    uint32_t location;
+    uint32_t binding;
+    VkFormat format;
+    uint32_t offset;
+  };
+  
+  
+  /**
+   * \brief Vertex binding description
+   * 
+   * Stores information about a
+   * single vertex binding slot.
+   */
+  struct DxvkVertexBinding {
+    uint32_t          binding;
+    VkVertexInputRate inputRate;
+  };
+  
+  
+  /**
    * \brief Input layout
    * 
-   * Stores the attributes and vertex buffer binding
-   * descriptions that the vertex shader will take
-   * its input values from.
+   * Stores the description of all active
+   * vertex attributes and vertex bindings.
    */
-  class DxvkInputLayout : public RcObject {
+  struct DxvkInputLayout {
+    uint32_t numAttributes;
+    uint32_t numBindings;
     
-  public:
-    
-    DxvkInputLayout(
-            uint32_t                           attributeCount,
-      const VkVertexInputAttributeDescription* attributeInfo,
-            uint32_t                           bindingCount,
-      const VkVertexInputBindingDescription*   bindingInfo);
-    
-    uint32_t vertexAttributeCount() const {
-      return m_attributes.size();
-    }
-    
-    uint32_t vertexBindingCount() const {
-      return m_bindings.size();
-    }
-    
-    const VkPipelineVertexInputStateCreateInfo& info() const {
-      return m_info;
-    }
-    
-  private:
-    
-    std::vector<VkVertexInputAttributeDescription> m_attributes;
-    std::vector<VkVertexInputBindingDescription>   m_bindings;
-    
-    VkPipelineVertexInputStateCreateInfo m_info;
-    
+    std::array<DxvkVertexAttribute, DxvkLimits::MaxNumVertexAttributes> attributes;
+    std::array<DxvkVertexBinding,   DxvkLimits::MaxNumVertexBindings>   bindings;
   };
   
   
   struct DxvkConstantStateObjects {
-    Rc<DxvkInputLayout>         inputLayout;
     Rc<DxvkBlendState>          blendState;
   };
   

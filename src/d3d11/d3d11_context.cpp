@@ -463,9 +463,10 @@ namespace dxvk {
     if (m_state.ia.inputLayout != inputLayout) {
       m_state.ia.inputLayout = inputLayout;
       
-      m_context->setInputLayout(inputLayout != nullptr
-        ? inputLayout->GetDXVKInputLayout()
-        : nullptr);
+      if (inputLayout != nullptr)
+        inputLayout->BindToContext(m_context);
+      else
+        m_context->setInputLayout(0, nullptr, 0, nullptr);
     }
   }
   

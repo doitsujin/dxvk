@@ -342,8 +342,8 @@ namespace dxvk {
       
       Rc<DxbcIsgn> inputSignature = dxbcModule.isgn();
       
-      std::vector<VkVertexInputAttributeDescription> attributes;
-      std::vector<VkVertexInputBindingDescription>   bindings;
+      std::vector<DxvkVertexAttribute> attributes;
+      std::vector<DxvkVertexBinding>   bindings;
       
       for (uint32_t i = 0; i < NumElements; i++) {
         const DxbcSgnEntry* entry = inputSignature->find(
@@ -359,7 +359,7 @@ namespace dxvk {
         }
         
         // Create vertex input attribute description
-        VkVertexInputAttributeDescription attrib;
+        DxvkVertexAttribute attrib;
         attrib.location = entry->registerId;
         attrib.binding  = pInputElementDescs[i].InputSlot;
         attrib.format   = m_dxgiAdapter->LookupFormat(
@@ -376,9 +376,8 @@ namespace dxvk {
         // Create vertex input binding description. The
         // stride is dynamic state in D3D11 and will be
         // set by D3D11DeviceContext::IASetVertexBuffers.
-        VkVertexInputBindingDescription binding;
+        DxvkVertexBinding binding;
         binding.binding   = pInputElementDescs[i].InputSlot;
-        binding.stride    = 0;
         binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         
         if (pInputElementDescs[i].InputSlotClass == D3D11_INPUT_PER_INSTANCE_DATA) {
@@ -417,11 +416,10 @@ namespace dxvk {
       if (ppInputLayout != nullptr) {
         *ppInputLayout = ref(
           new D3D11InputLayout(this,
-            new DxvkInputLayout(
-              attributes.size(),
-              attributes.data(),
-              bindings.size(),
-              bindings.data())));
+            attributes.size(),
+            attributes.data(),
+            bindings.size(),
+            bindings.data()));
       }
       
       return S_OK;

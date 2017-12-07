@@ -270,11 +270,18 @@ namespace dxvk {
       const DxvkInputAssemblyState& state);
     
     /**
-     * \brief Sets input layout state
-     * \param [in] state New state object
+     * \brief Sets input layout
+     * 
+     * \param [in] attributeCount Number of vertex attributes
+     * \param [in] attributes The vertex attributes
+     * \param [in] bindingCount Number of buffer bindings
+     * \param [in] bindings Vertex buffer bindigs
      */
     void setInputLayout(
-      const Rc<DxvkInputLayout>& state);
+            uint32_t             attributeCount,
+      const DxvkVertexAttribute* attributes,
+            uint32_t             bindingCount,
+      const DxvkVertexBinding*   bindings);
     
     /**
      * \brief Sets rasterizer state
