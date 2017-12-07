@@ -58,7 +58,7 @@ namespace dxvk {
   
   
   void D3D11DeviceContext::ClearState() {
-//     this->IASetInputLayout(nullptr);
+    this->IASetInputLayout(nullptr);
     this->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED);
 //     this->IASetVertexBuffers(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT, nullptr, nullptr, nullptr);
 //     this->IASetIndexBuffer(nullptr, DXGI_FORMAT_UNKNOWN, 0);
@@ -424,7 +424,15 @@ namespace dxvk {
   
   
   void D3D11DeviceContext::IASetInputLayout(ID3D11InputLayout* pInputLayout) {
-    Logger::err("D3D11DeviceContext::IASetInputLayout: Not implemented");
+    auto inputLayout = static_cast<D3D11InputLayout*>(pInputLayout);
+    
+    if (m_state.ia.inputLayout != inputLayout) {
+      m_state.ia.inputLayout = inputLayout;
+      
+      m_context->setInputLayout(inputLayout != nullptr
+        ? inputLayout->GetDXVKInputLayout()
+        : nullptr);
+    }
   }
   
   
@@ -522,7 +530,7 @@ namespace dxvk {
   
   
   void D3D11DeviceContext::IAGetInputLayout(ID3D11InputLayout** ppInputLayout) {
-    Logger::err("D3D11DeviceContext::IAGetInputLayout: Not implemented");
+    *ppInputLayout = m_state.ia.inputLayout.ref();
   }
   
   
@@ -822,7 +830,7 @@ namespace dxvk {
     auto shader = static_cast<D3D11PixelShader*>(pPixelShader);
     
     if (NumClassInstances != 0)
-      Logger::err("D3D11DeviceContext::VSSetShader: Class instances not supported");
+      Logger::err("D3D11DeviceContext::PSSetShader: Class instances not supported");
     
     if (m_state.ps.shader != shader) {
       m_state.ps.shader = shader;

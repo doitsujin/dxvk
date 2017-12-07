@@ -29,4 +29,17 @@ namespace dxvk {
     
   }
   
+  
+  const DxbcSgnEntry* DxbcIsgn::find(
+    const std::string& semanticName,
+          uint32_t     semanticIndex) const {
+    for (auto e = this->begin(); e != this->end(); e++) {
+      if (e->semanticName  == semanticName
+       && e->semanticIndex == semanticIndex)
+        return &(*e);
+    }
+    
+    return nullptr;
+  }
+  
 }

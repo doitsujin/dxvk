@@ -3,6 +3,7 @@
 #include <array>
 
 #include "d3d11_buffer.h"
+#include "d3d11_input_layout.h"
 #include "d3d11_shader.h"
 #include "d3d11_state.h"
 #include "d3d11_view.h"
@@ -61,6 +62,7 @@ namespace dxvk {
   
   
   struct D3D11ContextStateIA {
+    Com<D3D11InputLayout>    inputLayout;
     D3D11_PRIMITIVE_TOPOLOGY primitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
   };
   

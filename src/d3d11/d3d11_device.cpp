@@ -3,6 +3,7 @@
 #include "d3d11_buffer.h"
 #include "d3d11_context.h"
 #include "d3d11_device.h"
+#include "d3d11_input_layout.h"
 #include "d3d11_present.h"
 #include "d3d11_shader.h"
 #include "d3d11_texture.h"
@@ -261,8 +262,98 @@ namespace dxvk {
     const void*                       pShaderBytecodeWithInputSignature,
           SIZE_T                      BytecodeLength,
           ID3D11InputLayout**         ppInputLayout) {
-    Logger::err("D3D11Device::CreateInputLayout: Not implemented");
-    return E_NOTIMPL;
+    try {
+      DxbcReader dxbcReader(reinterpret_cast<const char*>(
+        pShaderBytecodeWithInputSignature), BytecodeLength);
+      DxbcModule dxbcModule(dxbcReader);
+      
+      Rc<DxbcIsgn> inputSignature = dxbcModule.isgn();
+      
+      std::vector<VkVertexInputAttributeDescription> attributes;
+      std::vector<VkVertexInputBindingDescription>   bindings;
+      
+      for (uint32_t i = 0; i < NumElements; i++) {
+        const DxbcSgnEntry* entry = inputSignature->find(
+          pInputElementDescs[i].SemanticName,
+          pInputElementDescs[i].SemanticIndex);
+        
+        if (entry == nullptr) {
+          Logger::err(str::format(
+            "D3D11Device::CreateInputLayout: No such semantic: ",
+            pInputElementDescs[i].SemanticName,
+            pInputElementDescs[i].SemanticIndex));
+          return E_INVALIDARG;
+        }
+        
+        // Create vertex input attribute description
+        VkVertexInputAttributeDescription attrib;
+        attrib.location = entry->registerId;
+        attrib.binding  = pInputElementDescs[i].InputSlot;
+        attrib.format   = m_dxgiAdapter->LookupFormat(
+          pInputElementDescs[i].Format).actual;
+        attrib.offset   = pInputElementDescs[i].AlignedByteOffset;
+        
+        if (attrib.offset == D3D11_APPEND_ALIGNED_ELEMENT) {
+          Logger::err("D3D11Device::CreateInputLayout: D3D11_APPEND_ALIGNED_ELEMENT not supported yet");
+          return E_INVALIDARG;
+        }
+        
+        attributes.push_back(attrib);
+        
+        // Create vertex input binding description. 
+        VkVertexInputBindingDescription binding;
+        binding.binding   = pInputElementDescs[i].InputSlot;
+        binding.stride    = 0;
+        binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        
+        if (pInputElementDescs[i].InputSlotClass == D3D11_INPUT_PER_INSTANCE_DATA) {
+          binding.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
+          
+          if (pInputElementDescs[i].InstanceDataStepRate != 1) {
+            Logger::err(str::format(
+              "D3D11Device::CreateInputLayout: Unsupported instance data step rate: ",
+              pInputElementDescs[i].InstanceDataStepRate));
+          }
+        }
+        
+        // Check if the binding was already defined. If so, the
+        // parameters must be identical (namely, the input rate).
+        bool bindingDefined = false;
+        
+        for (const auto& existingBinding : bindings) {
+          if (binding.binding == existingBinding.binding) {
+            bindingDefined = true;
+            
+            if (binding.inputRate != existingBinding.inputRate) {
+              Logger::err(str::format(
+                "D3D11Device::CreateInputLayout: Conflicting input rate for binding ",
+                binding.binding));
+              return E_INVALIDARG;
+            }
+          }
+        }
+        
+        if (!bindingDefined)
+          bindings.push_back(binding);
+      }
+      
+      // Create the actual input layout object
+      // if the application requests it.
+      if (ppInputLayout != nullptr) {
+        *ppInputLayout = ref(
+          new D3D11InputLayout(this,
+            new DxvkInputLayout(
+              attributes.size(),
+              attributes.data(),
+              bindings.size(),
+              bindings.data())));
+      }
+      
+      return S_OK;
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return E_INVALIDARG;
+    }
   }
   
   

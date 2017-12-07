@@ -36,6 +36,15 @@ namespace dxvk {
     }
     
     /**
+     * \brief Input and output signature chunks
+     * 
+     * Parts of the D3D11 API need access to the
+     * input or output signature of the shader.
+     */
+    Rc<DxbcIsgn> isgn() const { return m_isgnChunk; }
+    Rc<DxbcIsgn> osgn() const { return m_osgnChunk; }
+    
+    /**
      * \brief Compiles DXBC shader to SPIR-V module
      * \returns The compiled DXVK shader object
      */
