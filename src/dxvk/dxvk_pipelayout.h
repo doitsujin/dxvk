@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include "dxvk_include.h"
 
 namespace dxvk {
@@ -15,6 +17,69 @@ namespace dxvk {
     uint32_t           slot;    ///< Resource slot index for the context
     VkDescriptorType   type;    ///< Descriptor type (aka resource type)
     VkShaderStageFlags stages;  ///< Stages that can use the resource
+  };
+  
+  
+  /**
+   * \brief Descriptor slot mapping
+   * 
+   * Convenience class that generates descriptor slot
+   * index to binding index mappings. This is required
+   * when generating Vulkan pipeline and descriptor set
+   * layouts.
+   */
+  class DxvkDescriptorSlotMapping {
+    constexpr static uint32_t InvalidBinding = 0xFFFFFFFFu;
+  public:
+    
+    DxvkDescriptorSlotMapping();
+    ~DxvkDescriptorSlotMapping();
+    
+    /**
+     * \brief Number of descriptor bindings
+     * \returns Descriptor binding count
+     */
+    uint32_t bindingCount() const {
+      return m_descriptorSlots.size();
+    }
+    
+    /**
+     * \brief Descriptor binding infos
+     * \returns Descriptor binding infos
+     */
+    const DxvkDescriptorSlot* bindingInfos() const {
+      return m_descriptorSlots.data();
+    }
+    
+    /**
+     * \brief Defines a new slot
+     * 
+     * Adds a slot to the mapping. If the slot is already
+     * defined by another shader stage, this will extend
+     * the stage mask by the given stage. Otherwise, an
+     * entirely new binding is added.
+     * \param [in] slot Resource slot
+     * \param [in] type Resource type
+     * \param [in] stage Shader stage
+     */
+    void defineSlot(
+            uint32_t              slot,
+            VkDescriptorType      type,
+            VkShaderStageFlagBits stage);
+    
+    /**
+     * \brief Gets binding ID for a slot
+     * 
+     * \param [in] slot Resource slot
+     * \returns Binding index, or \c InvalidBinding
+     */
+    uint32_t getBindingId(
+            uint32_t              slot);
+    
+  private:
+    
+    std::vector<DxvkDescriptorSlot> m_descriptorSlots;
+    
   };
   
   

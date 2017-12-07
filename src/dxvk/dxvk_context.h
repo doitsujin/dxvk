@@ -55,20 +55,6 @@ namespace dxvk {
       const Rc<DxvkFramebuffer>& fb);
     
     /**
-     * \brief Binds compute pipeline
-     * \param [in] pipeline The pipeline to bind
-     */
-    void bindComputePipeline(
-      const Rc<DxvkComputePipeline>& pipeline);
-    
-    /**
-     * \brief Binds graphics pipeline
-     * \param [in] pipeline The pipeline to bind
-     */
-    void bindGraphicsPipeline(
-      const Rc<DxvkGraphicsPipeline>& pipeline);
-    
-    /**
      * \brief Binds index buffer
      * 
      * The index buffer will be used when
@@ -132,6 +118,16 @@ namespace dxvk {
             VkPipelineBindPoint   pipe,
             uint32_t              slot,
       const Rc<DxvkSampler>&      sampler);
+    
+    /**
+     * \brief Binds a shader to a given state
+     * 
+     * \param [in] stage Target shader stage
+     * \param [in] shader The shader to bind
+     */
+    void bindShader(
+            VkShaderStageFlagBits stage,
+      const Rc<DxvkShader>&       shader);
     
     /**
      * \brief Binds vertex buffer

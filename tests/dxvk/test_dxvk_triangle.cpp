@@ -113,18 +113,12 @@ public:
         0, nullptr));
     
     m_dxvkVertexShader = m_dxvkDevice->createShader(
-      VK_SHADER_STAGE_VERTEX_BIT,
+      VK_SHADER_STAGE_VERTEX_BIT, 0, nullptr,
       SpirvCodeBuffer(_countof(vsCode), vsCode));
+    
     m_dxvkFragmentShader = m_dxvkDevice->createShader(
-      VK_SHADER_STAGE_FRAGMENT_BIT,
+      VK_SHADER_STAGE_FRAGMENT_BIT, 0, nullptr,
       SpirvCodeBuffer(_countof(fsCode), fsCode));
-    
-    m_dxvkBindingLayout = m_dxvkDevice->createBindingLayout(0, nullptr);
-    
-    m_dxvkPipeline = m_dxvkDevice->createGraphicsPipeline(m_dxvkBindingLayout,
-      m_dxvkVertexShader, nullptr, nullptr, nullptr, m_dxvkFragmentShader);
-    
-    m_dxvkContext->bindGraphicsPipeline(m_dxvkPipeline);
   }
   
   ~TriangleApp() {
@@ -157,6 +151,14 @@ public:
     scissor.extent.height = 480;
     
     m_dxvkContext->setViewports(1, &viewport, &scissor);
+    
+    m_dxvkContext->bindShader(
+      VK_SHADER_STAGE_VERTEX_BIT,
+      m_dxvkVertexShader);
+    
+    m_dxvkContext->bindShader(
+      VK_SHADER_STAGE_FRAGMENT_BIT,
+      m_dxvkFragmentShader);
     
     VkClearAttachment clearAttachment;
     clearAttachment.aspectMask      = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -198,10 +200,8 @@ private:
   Rc<DxvkSwapchain>   m_dxvkSwapchain;
   Rc<DxvkContext>     m_dxvkContext;
   
-  Rc<DxvkShader>            m_dxvkVertexShader;
-  Rc<DxvkShader>            m_dxvkFragmentShader;
-  Rc<DxvkBindingLayout>     m_dxvkBindingLayout;
-  Rc<DxvkGraphicsPipeline>  m_dxvkPipeline;
+  Rc<DxvkShader>      m_dxvkVertexShader;
+  Rc<DxvkShader>      m_dxvkFragmentShader;
   
 };
 

@@ -2,7 +2,7 @@
 
 namespace dxvk {
   
-  DxvkShader::DxvkShader(
+  DxvkShaderModule::DxvkShaderModule(
     const Rc<vk::DeviceFn>&     vkd,
           VkShaderStageFlagBits stage,
     const SpirvCodeBuffer&      code)
@@ -20,13 +20,13 @@ namespace dxvk {
   }
   
   
-  DxvkShader::~DxvkShader() {
+  DxvkShaderModule::~DxvkShaderModule() {
     m_vkd->vkDestroyShaderModule(
       m_vkd->device(), m_module, nullptr);
   }
   
   
-  VkPipelineShaderStageCreateInfo DxvkShader::stageInfo() const {
+  VkPipelineShaderStageCreateInfo DxvkShaderModule::stageInfo() const {
     VkPipelineShaderStageCreateInfo info;
     
     info.sType                = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -37,6 +37,37 @@ namespace dxvk {
     info.pName                = "main";
     info.pSpecializationInfo  = nullptr;
     return info;
+  }
+  
+  
+  DxvkShader::DxvkShader(
+    const Rc<vk::DeviceFn>&     vkd,
+          VkShaderStageFlagBits stage,
+          uint32_t              slotCount,
+    const DxvkResourceSlot*     slotInfos,
+    const SpirvCodeBuffer&      code)
+  : m_vkd(vkd), m_stage(stage), m_code(code) {
+    for (uint32_t i = 0; i < slotCount; i++)
+      m_slots.push_back(slotInfos[i]);
+  }
+  
+  
+  DxvkShader::~DxvkShader() {
+    
+  }
+  
+  
+  void DxvkShader::defineResourceSlots(
+          DxvkDescriptorSlotMapping& mapping) const {
+    for (const auto& slot : m_slots)
+      mapping.defineSlot(slot.slot, slot.type, m_stage);
+  }
+  
+  
+  Rc<DxvkShaderModule> DxvkShader::createShaderModule(
+    const DxvkDescriptorSlotMapping& mapping) const {
+    // TODO apply mapping
+    return new DxvkShaderModule(m_vkd, m_stage, m_code);
   }
   
 }

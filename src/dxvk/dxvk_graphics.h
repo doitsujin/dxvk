@@ -5,7 +5,7 @@
 
 #include "dxvk_constant_state.h"
 #include "dxvk_hash.h"
-#include "dxvk_pipeline.h"
+#include "dxvk_pipelayout.h"
 #include "dxvk_resource.h"
 #include "dxvk_shader.h"
 
@@ -49,13 +49,12 @@ namespace dxvk {
   public:
     
     DxvkGraphicsPipeline(
-      const Rc<vk::DeviceFn>&      vkd,
-      const Rc<DxvkBindingLayout>& layout,
-      const Rc<DxvkShader>&        vs,
-      const Rc<DxvkShader>&        tcs,
-      const Rc<DxvkShader>&        tes,
-      const Rc<DxvkShader>&        gs,
-      const Rc<DxvkShader>&        fs);
+      const Rc<vk::DeviceFn>& vkd,
+      const Rc<DxvkShader>&   vs,
+      const Rc<DxvkShader>&   tcs,
+      const Rc<DxvkShader>&   tes,
+      const Rc<DxvkShader>&   gs,
+      const Rc<DxvkShader>&   fs);
     ~DxvkGraphicsPipeline();
     
     /**
@@ -82,11 +81,11 @@ namespace dxvk {
     Rc<vk::DeviceFn>      m_vkd;
     Rc<DxvkBindingLayout> m_layout;
     
-    Rc<DxvkShader> m_vs;
-    Rc<DxvkShader> m_tcs;
-    Rc<DxvkShader> m_tes;
-    Rc<DxvkShader> m_gs;
-    Rc<DxvkShader> m_fs;
+    Rc<DxvkShaderModule>  m_vs;
+    Rc<DxvkShaderModule>  m_tcs;
+    Rc<DxvkShaderModule>  m_tes;
+    Rc<DxvkShaderModule>  m_gs;
+    Rc<DxvkShaderModule>  m_fs;
     
     std::mutex m_mutex;
     

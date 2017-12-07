@@ -8,6 +8,7 @@
 #include "dxvk_framebuffer.h"
 #include "dxvk_image.h"
 #include "dxvk_memory.h"
+#include "dxvk_pipemanager.h"
 #include "dxvk_renderpass.h"
 #include "dxvk_sampler.h"
 #include "dxvk_shader.h"
@@ -166,48 +167,36 @@ namespace dxvk {
      */
     Rc<DxvkShader> createShader(
             VkShaderStageFlagBits     stage,
+            uint32_t                  slotCount,
+      const DxvkResourceSlot*         slotInfos,
       const SpirvCodeBuffer&          code);
     
     /**
-     * \brief Creates binding layout
-     * 
-     * \param [in] bindingCount Number of bindings
-     * \param [in] bindingInfos Binding descriptions
-     * \returns New binding layout
-     */
-    Rc<DxvkBindingLayout> createBindingLayout(
-            uint32_t            bindingCount,
-      const DxvkDescriptorSlot* bindingInfos);
-    
-    /**
-     * \brief Creates a compute  pipeline
+     * \brief Retrieves a compute pipeline
      * 
      * \param [in] layout Pipeline binding layout
      * \param [in] cs Compute shader
-     * \returns New compute pipeline
+     * \returns The compute pipeline
      */
     Rc<DxvkComputePipeline> createComputePipeline(
-      const Rc<DxvkBindingLayout>& layout,
-      const Rc<DxvkShader>&        cs);
+      const Rc<DxvkShader>&           cs);
     
     /**
-     * \brief Creates a graphics pipeline
+     * \brief Retrieves a graphics pipeline object
      * 
-     * \param [in] layout Pipeline binding layout
      * \param [in] vs Vertex shader
      * \param [in] tcs Tessellation control shader
      * \param [in] tes Tessellation evaluation shader
      * \param [in] gs Geometry shader
      * \param [in] fs Fragment shader
-     * \returns New graphics pipeline
+     * \returns The graphics pipeline
      */
     Rc<DxvkGraphicsPipeline> createGraphicsPipeline(
-      const Rc<DxvkBindingLayout>& layout,
-      const Rc<DxvkShader>&        vs,
-      const Rc<DxvkShader>&        tcs,
-      const Rc<DxvkShader>&        tes,
-      const Rc<DxvkShader>&        gs,
-      const Rc<DxvkShader>&        fs);
+      const Rc<DxvkShader>&           vs,
+      const Rc<DxvkShader>&           tcs,
+      const Rc<DxvkShader>&           tes,
+      const Rc<DxvkShader>&           gs,
+      const Rc<DxvkShader>&           fs);
     
     /**
      * \brief Creates a swap chain
@@ -252,6 +241,7 @@ namespace dxvk {
     
     Rc<DxvkMemoryAllocator> m_memory;
     Rc<DxvkRenderPassPool>  m_renderPassPool;
+    Rc<DxvkPipelineManager> m_pipelineManager;
     
     VkQueue m_graphicsQueue;
     VkQueue m_presentQueue;

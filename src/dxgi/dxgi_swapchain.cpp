@@ -336,6 +336,7 @@ namespace dxvk {
     DxvkImageCreateInfo imageInfo;
     imageInfo.type          = VK_IMAGE_TYPE_2D;
     imageInfo.format        = bufferFormat.actual;
+    imageInfo.flags         = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
     imageInfo.sampleCount   = VK_SAMPLE_COUNT_1_BIT;
     imageInfo.extent.width  = m_desc.BufferDesc.Width;
     imageInfo.extent.height = m_desc.BufferDesc.Height;

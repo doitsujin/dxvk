@@ -11,7 +11,8 @@ namespace dxvk {
     m_vkd             (vkd),
     m_features        (features),
     m_memory          (new DxvkMemoryAllocator(adapter, vkd)),
-    m_renderPassPool  (new DxvkRenderPassPool (vkd)) {
+    m_renderPassPool  (new DxvkRenderPassPool (vkd)),
+    m_pipelineManager (new DxvkPipelineManager(vkd)) {
     m_vkd->vkGetDeviceQueue(m_vkd->device(),
       m_adapter->graphicsQueueFamily(), 0,
       &m_graphicsQueue);
@@ -23,6 +24,7 @@ namespace dxvk {
   
   DxvkDevice::~DxvkDevice() {
     m_renderPassPool  = nullptr;
+    m_pipelineManager = nullptr;
     m_memory          = nullptr;
     
     m_vkd->vkDeviceWaitIdle(m_vkd->device());
@@ -92,34 +94,27 @@ namespace dxvk {
   
   Rc<DxvkShader> DxvkDevice::createShader(
           VkShaderStageFlagBits     stage,
+          uint32_t                  slotCount,
+    const DxvkResourceSlot*         slotInfos,
     const SpirvCodeBuffer&          code) {
-    return new DxvkShader(m_vkd, stage, code);
-  }
-  
-  
-  Rc<DxvkBindingLayout> DxvkDevice::createBindingLayout(
-          uint32_t            bindingCount,
-    const DxvkDescriptorSlot* bindingInfos) {
-    return new DxvkBindingLayout(m_vkd, bindingCount, bindingInfos);
+    return new DxvkShader(m_vkd, stage,
+      slotCount, slotInfos, code);
   }
   
   
   Rc<DxvkComputePipeline> DxvkDevice::createComputePipeline(
-    const Rc<DxvkBindingLayout>& layout,
-    const Rc<DxvkShader>&        cs) {
-    return new DxvkComputePipeline(m_vkd, layout, cs);
+    const Rc<DxvkShader>&           cs) {
+    return m_pipelineManager->createComputePipeline(cs);
   }
   
   
   Rc<DxvkGraphicsPipeline> DxvkDevice::createGraphicsPipeline(
-    const Rc<DxvkBindingLayout>& layout,
-    const Rc<DxvkShader>&        vs,
-    const Rc<DxvkShader>&        tcs,
-    const Rc<DxvkShader>&        tes,
-    const Rc<DxvkShader>&        gs,
-    const Rc<DxvkShader>&        fs) {
-    return new DxvkGraphicsPipeline(m_vkd,
-      layout, vs, tcs, tes, gs, fs);
+    const Rc<DxvkShader>&           vs,
+    const Rc<DxvkShader>&           tcs,
+    const Rc<DxvkShader>&           tes,
+    const Rc<DxvkShader>&           gs,
+    const Rc<DxvkShader>&           fs) {
+    return m_pipelineManager->createGraphicsPipeline(vs, tcs, tes, gs, fs);
   }
   
   

@@ -7,7 +7,7 @@
 #include "dxvk_graphics.h"
 #include "dxvk_image.h"
 #include "dxvk_limits.h"
-#include "dxvk_pipeline.h"
+#include "dxvk_pipelayout.h"
 #include "dxvk_sampler.h"
 #include "dxvk_shader.h"
 
@@ -54,6 +54,28 @@ namespace dxvk {
   };
   
   
+  struct DxvkShaderStage {
+    Rc<DxvkShader> shader;
+  };
+  
+  
+  struct DxvkGraphicsPipelineState {
+    DxvkShaderStage vs;
+    DxvkShaderStage tcs;
+    DxvkShaderStage tes;
+    DxvkShaderStage gs;
+    DxvkShaderStage fs;
+    
+    Rc<DxvkGraphicsPipeline> pipeline;
+  };
+  
+  
+  struct DxvkComputePipelineState {
+    DxvkShaderStage         cs;
+    Rc<DxvkComputePipeline> pipeline;
+  };
+  
+  
   /**
    * \brief Pipeline state
    * 
@@ -66,8 +88,8 @@ namespace dxvk {
     DxvkOutputMergerState     om;
     DxvkConstantStateObjects  co;
     
-    Rc<DxvkGraphicsPipeline>  gPipe;
-    Rc<DxvkComputePipeline>   cPipe;
+    DxvkGraphicsPipelineState gp;
+    DxvkComputePipelineState  cp;
   };
   
 }

@@ -29,7 +29,7 @@ namespace dxvk {
      */
     spv::Op opCode() const {
       return static_cast<spv::Op>(
-        m_code[0] & spv::OpCodeMask);
+        this->arg(0) & spv::OpCodeMask);
     }
     
     /**
@@ -37,7 +37,7 @@ namespace dxvk {
      * \returns Number of DWORDs
      */
     uint32_t length() const {
-      return m_code[0] >> spv::WordCountShift;
+      return this->arg(0) >> spv::WordCountShift;
     }
     
     /**

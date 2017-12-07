@@ -53,32 +53,6 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::bindComputePipeline(
-    const Rc<DxvkComputePipeline>& pipeline) {
-    if (m_state.cPipe != pipeline) {
-      m_state.cPipe = pipeline;
-      
-      m_flags.set(
-        DxvkContextFlag::CpDirtyPipeline,
-        DxvkContextFlag::CpDirtyResources);
-    }
-  }
-  
-  
-  void DxvkContext::bindGraphicsPipeline(
-    const Rc<DxvkGraphicsPipeline>& pipeline) {
-    if (m_state.gPipe != pipeline) {
-      m_state.gPipe = pipeline;
-      
-      m_flags.set(
-        DxvkContextFlag::GpDirtyPipeline,
-        DxvkContextFlag::GpDirtyResources,
-        DxvkContextFlag::GpDirtyVertexBuffers,
-        DxvkContextFlag::GpDirtyIndexBuffer);
-    }
-  }
-  
-  
   void DxvkContext::bindIndexBuffer(
     const DxvkBufferBinding&    buffer) {
     if (m_state.vi.indexBuffer != buffer) {
@@ -174,6 +148,31 @@ namespace dxvk {
         descriptor.image.sampler = sampler->handle();
       
       rc->bindShaderResource(slot, resource, descriptor);
+    }
+  }
+  
+  
+  void DxvkContext::bindShader(
+          VkShaderStageFlagBits stage,
+    const Rc<DxvkShader>&       shader) {
+    DxvkShaderStage* shaderStage = nullptr;
+    
+    switch (stage) {
+      case VK_SHADER_STAGE_VERTEX_BIT:                  shaderStage = &m_state.gp.vs;  break;
+      case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:    shaderStage = &m_state.gp.tcs; break;
+      case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT: shaderStage = &m_state.gp.tes; break;
+      case VK_SHADER_STAGE_GEOMETRY_BIT:                shaderStage = &m_state.gp.gs;  break;
+      case VK_SHADER_STAGE_FRAGMENT_BIT:                shaderStage = &m_state.gp.fs;  break;
+      case VK_SHADER_STAGE_COMPUTE_BIT:                 shaderStage = &m_state.cp.cs;  break;
+      default: return;
+    }
+    
+    if (shaderStage->shader != shader) {
+      shaderStage->shader = shader;
+      
+      m_flags.set(stage == VK_SHADER_STAGE_COMPUTE_BIT
+        ? DxvkContextFlag::CpDirtyPipeline
+        : DxvkContextFlag::GpDirtyPipeline);
     }
   }
   
@@ -445,9 +444,12 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::CpDirtyPipeline)) {
       m_flags.clr(DxvkContextFlag::CpDirtyPipeline);
       
+      m_state.cp.pipeline = m_device->createComputePipeline(
+        m_state.cp.cs.shader);
+      
       m_cmd->cmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,
-        m_state.cPipe->getPipelineHandle());
-      m_cmd->trackResource(m_state.cPipe);
+        m_state.cp.pipeline->getPipelineHandle());
+      m_cmd->trackResource(m_state.cp.pipeline);
     }
   }
   
@@ -455,6 +457,10 @@ namespace dxvk {
   void DxvkContext::updateGraphicsPipeline() {
     if (m_flags.test(DxvkContextFlag::GpDirtyPipeline)) {
       m_flags.clr(DxvkContextFlag::GpDirtyPipeline);
+      
+      m_state.gp.pipeline = m_device->createGraphicsPipeline(
+        m_state.gp.vs.shader, m_state.gp.tcs.shader, m_state.gp.tes.shader,
+        m_state.gp.gs.shader, m_state.gp.fs.shader);
       
       DxvkGraphicsPipelineStateInfo gpState;
       gpState.inputAssemblyState  = m_state.co.inputAssemblyState;
@@ -467,8 +473,8 @@ namespace dxvk {
       gpState.viewportCount       = m_state.vp.viewportCount;
       
       m_cmd->cmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,
-        m_state.gPipe->getPipelineHandle(gpState));
-      m_cmd->trackResource(m_state.gPipe);
+        m_state.gp.pipeline->getPipelineHandle(gpState));
+      m_cmd->trackResource(m_state.gp.pipeline);
     }
   }
   
@@ -477,7 +483,7 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::CpDirtyResources)) {
       m_flags.clr(DxvkContextFlag::CpDirtyResources);
       
-      auto layout = m_state.cPipe->layout();
+      auto layout = m_state.cp.pipeline->layout();
       
       m_cmd->bindResourceDescriptors(
         VK_PIPELINE_BIND_POINT_COMPUTE,
@@ -494,7 +500,7 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpDirtyResources)) {
       m_flags.clr(DxvkContextFlag::GpDirtyResources);
       
-      auto layout = m_state.gPipe->layout();
+      auto layout = m_state.gp.pipeline->layout();
       
       m_cmd->bindResourceDescriptors(
         VK_PIPELINE_BIND_POINT_GRAPHICS,

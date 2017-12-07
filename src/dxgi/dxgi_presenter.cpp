@@ -55,8 +55,6 @@ namespace dxvk {
     
     // Set up context state. The shader bindings and the
     // constant state objects will never be modified.
-    m_context->bindGraphicsPipeline(createPipeline());
-    
     m_context->setInputAssemblyState(
       new DxvkInputAssemblyState(
         VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
@@ -111,6 +109,14 @@ namespace dxvk {
       new DxvkBlendState(
         VK_FALSE, VK_LOGIC_OP_NO_OP,
         1, &blendAttachment));
+    
+    m_context->bindShader(
+      VK_SHADER_STAGE_VERTEX_BIT,
+      this->createVertexShader());
+    
+    m_context->bindShader(
+      VK_SHADER_STAGE_FRAGMENT_BIT,
+      this->createFragmentShader());
   }
   
   
@@ -329,7 +335,8 @@ namespace dxvk {
     
     // Create the actual shader module
     return m_device->createShader(
-      VK_SHADER_STAGE_VERTEX_BIT, module.compile());
+      VK_SHADER_STAGE_VERTEX_BIT,
+      0, nullptr, module.compile());
   }
   
   
@@ -397,42 +404,24 @@ namespace dxvk {
     module.opReturn();
     module.functionEnd();
     
-    
     // Register function entry point
     std::array<uint32_t, 2> interfaces = { inTexCoord, outColor };
     
     module.addEntryPoint(entryPointId, spv::ExecutionModelFragment,
       "main", interfaces.size(), interfaces.data());
     
+    // Shader resource slots
+    std::array<DxvkResourceSlot, 2> resourceSlots = {{
+      { BindingIds::Sampler, VK_DESCRIPTOR_TYPE_SAMPLER       },
+      { BindingIds::Texture, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE },
+    }};
     
     // Create the actual shader module
     return m_device->createShader(
-      VK_SHADER_STAGE_FRAGMENT_BIT, module.compile());
-  }
-  
-  
-  Rc<DxvkBindingLayout> DxgiPresenter::createBindingLayout() {
-    std::array<DxvkDescriptorSlot, 2> bindings;
-    bindings.at(BindingIds::Sampler).slot   = BindingIds::Sampler;
-    bindings.at(BindingIds::Sampler).type   = VK_DESCRIPTOR_TYPE_SAMPLER;
-    bindings.at(BindingIds::Sampler).stages = VK_SHADER_STAGE_FRAGMENT_BIT;
-    
-    bindings.at(BindingIds::Texture).slot   = BindingIds::Texture;
-    bindings.at(BindingIds::Texture).type   = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-    bindings.at(BindingIds::Texture).stages = VK_SHADER_STAGE_FRAGMENT_BIT;
-    
-    return m_device->createBindingLayout(
-      bindings.size(), bindings.data());
-  }
-  
-  
-  Rc<DxvkGraphicsPipeline> DxgiPresenter::createPipeline() {
-    const Rc<DxvkShader> vs = this->createVertexShader();
-    const Rc<DxvkShader> fs = this->createFragmentShader();
-    
-    return m_device->createGraphicsPipeline(
-      this->createBindingLayout(),
-      vs, nullptr, nullptr, nullptr, fs);
+      VK_SHADER_STAGE_FRAGMENT_BIT,
+      resourceSlots.size(),
+      resourceSlots.data(),
+      module.compile());
   }
   
 }

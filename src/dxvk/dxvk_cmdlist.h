@@ -4,7 +4,7 @@
 
 #include "dxvk_descriptor.h"
 #include "dxvk_lifetime.h"
-#include "dxvk_pipeline.h"
+#include "dxvk_pipelayout.h"
 
 namespace dxvk {
   

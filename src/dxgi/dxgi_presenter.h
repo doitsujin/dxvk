@@ -76,10 +76,6 @@ namespace dxvk {
     Rc<DxvkShader> createVertexShader();
     Rc<DxvkShader> createFragmentShader();
     
-    Rc<DxvkBindingLayout> createBindingLayout();
-    
-    Rc<DxvkGraphicsPipeline> createPipeline();
-    
   };
   
 }

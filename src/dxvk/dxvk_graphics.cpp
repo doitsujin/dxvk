@@ -39,16 +39,29 @@ namespace dxvk {
   
   
   DxvkGraphicsPipeline::DxvkGraphicsPipeline(
-      const Rc<vk::DeviceFn>&      vkd,
-      const Rc<DxvkBindingLayout>& layout,
-      const Rc<DxvkShader>&        vs,
-      const Rc<DxvkShader>&        tcs,
-      const Rc<DxvkShader>&        tes,
-      const Rc<DxvkShader>&        gs,
-      const Rc<DxvkShader>&        fs)
-  : m_vkd(vkd), m_layout(layout),
-    m_vs(vs), m_tcs(tcs), m_tes(tes), m_gs(gs), m_fs(fs) {
+      const Rc<vk::DeviceFn>& vkd,
+      const Rc<DxvkShader>&   vs,
+      const Rc<DxvkShader>&   tcs,
+      const Rc<DxvkShader>&   tes,
+      const Rc<DxvkShader>&   gs,
+      const Rc<DxvkShader>&   fs)
+  : m_vkd(vkd) {
+    DxvkDescriptorSlotMapping slotMapping;
+    if (vs  != nullptr) vs ->defineResourceSlots(slotMapping);
+    if (tcs != nullptr) tcs->defineResourceSlots(slotMapping);
+    if (tes != nullptr) tes->defineResourceSlots(slotMapping);
+    if (gs  != nullptr) gs ->defineResourceSlots(slotMapping);
+    if (fs  != nullptr) fs ->defineResourceSlots(slotMapping);
     
+    m_layout = new DxvkBindingLayout(vkd,
+      slotMapping.bindingCount(),
+      slotMapping.bindingInfos());
+    
+    if (vs  != nullptr) m_vs  = vs ->createShaderModule(slotMapping);
+    if (tcs != nullptr) m_tcs = tcs->createShaderModule(slotMapping);
+    if (tes != nullptr) m_tes = tes->createShaderModule(slotMapping);
+    if (gs  != nullptr) m_gs  = gs ->createShaderModule(slotMapping);
+    if (fs  != nullptr) m_fs  = fs ->createShaderModule(slotMapping);
   }
   
   

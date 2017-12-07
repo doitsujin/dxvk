@@ -1,6 +1,6 @@
 #pragma once
 
-#include "dxvk_pipeline.h"
+#include "dxvk_pipelayout.h"
 #include "dxvk_resource.h"
 #include "dxvk_shader.h"
 
@@ -19,9 +19,8 @@ namespace dxvk {
   public:
     
     DxvkComputePipeline(
-      const Rc<vk::DeviceFn>&      vkd,
-      const Rc<DxvkBindingLayout>& layout,
-      const Rc<DxvkShader>&        cs);
+      const Rc<vk::DeviceFn>& vkd,
+      const Rc<DxvkShader>&   cs);
     ~DxvkComputePipeline();
     
     /**
@@ -48,9 +47,11 @@ namespace dxvk {
     
     Rc<vk::DeviceFn>      m_vkd;
     Rc<DxvkBindingLayout> m_layout;
-    Rc<DxvkShader>        m_cs;
+    Rc<DxvkShaderModule>  m_cs;
     
     VkPipeline m_pipeline = VK_NULL_HANDLE;
+    
+    void compilePipeline();
     
   };
   

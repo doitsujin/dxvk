@@ -1,8 +1,43 @@
 #include <cstring>
 
-#include "dxvk_pipeline.h"
+#include "dxvk_pipelayout.h"
 
 namespace dxvk {
+  
+  DxvkDescriptorSlotMapping:: DxvkDescriptorSlotMapping() { }
+  DxvkDescriptorSlotMapping::~DxvkDescriptorSlotMapping() { }
+  
+  
+  void DxvkDescriptorSlotMapping::defineSlot(
+          uint32_t              slot,
+          VkDescriptorType      type,
+          VkShaderStageFlagBits stage) {
+    uint32_t bindingId = this->getBindingId(slot);
+    
+    if (bindingId != InvalidBinding) {
+      m_descriptorSlots.at(bindingId).stages |= stage;
+    } else {
+      DxvkDescriptorSlot slotInfo;
+      slotInfo.slot   = slot;
+      slotInfo.type   = type;
+      slotInfo.stages = stage;
+      m_descriptorSlots.push_back(slotInfo);
+    }
+  }
+  
+  
+  uint32_t DxvkDescriptorSlotMapping::getBindingId(uint32_t slot) {
+    // This won't win a performance competition, but the number
+    // of bindings used by a shader is usually much smaller than
+    // the number of resource slots available to the system.
+    for (uint32_t i = 0; i < m_descriptorSlots.size(); i++) {
+      if (m_descriptorSlots.at(i).slot == slot)
+        return i;
+    }
+    
+    return InvalidBinding;
+  }
+  
   
   DxvkBindingLayout::DxvkBindingLayout(
     const Rc<vk::DeviceFn>&   vkd,
