@@ -62,6 +62,7 @@ namespace dxvk {
     const D3D11_BUFFER_DESC*      pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
           ID3D11Buffer**          ppBuffer) {
+    
     // Gather usage information
     DxvkBufferCreateInfo  info;
     info.size   = pDesc->ByteWidth;
@@ -85,14 +86,14 @@ namespace dxvk {
     
     if (pDesc->BindFlags & D3D11_BIND_CONSTANT_BUFFER) {
       info.usage  |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-      info.stages |= enabledShaderPipelineStages;
+      info.stages |= GetEnabledShaderStages();
       info.access |= VK_ACCESS_SHADER_READ_BIT;
     }
     
     if (pDesc->BindFlags & D3D11_BIND_SHADER_RESOURCE) {
       info.usage  |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
                   |  VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
-      info.stages |= enabledShaderPipelineStages;
+      info.stages |= GetEnabledShaderStages();
       info.access |= VK_ACCESS_SHADER_READ_BIT;
     }
     
@@ -110,18 +111,26 @@ namespace dxvk {
                   |  VK_ACCESS_SHADER_WRITE_BIT;
     }
     
-    if (info.MiscFlags & D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS) {
+    if (pDesc->MiscFlags & D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS) {
       info.usage  |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
       info.stages |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
       info.access |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
     }
     
-    // Find the optimal memory type for the
-    // resource based on the usage pattern.
-    
-    
+    // Create the buffer if the application requests it
     if (ppBuffer != nullptr) {
-      DXGICreateBufferResourcePrivate
+      Com<IDXGIBufferResourcePrivate> buffer;
+      
+      HRESULT hr = DXGICreateBufferResourcePrivate(
+        m_dxgiDevice.ptr(), &info,
+        GetMemoryFlagsForUsage(pDesc->Usage), 0,
+        &buffer);
+      
+      if (FAILED(hr))
+        return hr;
+      
+      *ppBuffer = ref(new D3D11Buffer(
+        this, buffer.ptr(), *pDesc));
     }
     
     return S_OK;
@@ -796,6 +805,24 @@ namespace dxvk {
       Logger::err(e.message());
       return E_INVALIDARG;
     }
+  }
+  
+  
+  VkPipelineStageFlags D3D11Device::GetEnabledShaderStages() const {
+    VkPipelineStageFlags enabledShaderPipelineStages
+      = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
+      | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+      | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+    
+    if (m_dxvkDevice->features().geometryShader)
+      enabledShaderPipelineStages |= VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
+    
+    if (m_dxvkDevice->features().tessellationShader) {
+      enabledShaderPipelineStages |= VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT
+                                  |  VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
+    }
+    
+    return enabledShaderPipelineStages;
   }
   
   

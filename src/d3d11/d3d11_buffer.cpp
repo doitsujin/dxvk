@@ -39,6 +39,18 @@ namespace dxvk {
   }
   
   
+  UINT D3D11Buffer::GetEvictionPriority() {
+    UINT EvictionPriority = DXGI_RESOURCE_PRIORITY_NORMAL;
+    m_resource->GetEvictionPriority(&EvictionPriority);
+    return EvictionPriority;
+  }
+  
+  
+  void D3D11Buffer::SetEvictionPriority(UINT EvictionPriority) {
+    m_resource->SetEvictionPriority(EvictionPriority);
+  }
+  
+  
   void D3D11Buffer::GetType(D3D11_RESOURCE_DIMENSION* pResourceDimension) {
     *pResourceDimension = D3D11_RESOURCE_DIMENSION_BUFFER;
   }

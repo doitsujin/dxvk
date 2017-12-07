@@ -30,6 +30,10 @@ namespace dxvk {
     void GetType(
             D3D11_RESOURCE_DIMENSION *pResourceDimension) final;
     
+    UINT GetEvictionPriority() final;
+    
+    void SetEvictionPriority(UINT EvictionPriority) final;
+    
     void GetDesc(
             D3D11_BUFFER_DESC *pDesc) final;
     

@@ -252,6 +252,8 @@ namespace dxvk {
             size_t                  BytecodeLength,
             ID3D11ClassLinkage*     pClassLinkage);
     
+    VkPipelineStageFlags GetEnabledShaderStages() const;
+    
     VkMemoryPropertyFlags GetMemoryFlagsForUsage(
             D3D11_USAGE             usage) const;
     
