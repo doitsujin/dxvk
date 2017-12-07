@@ -1,3 +1,4 @@
+#include "d3d11_device.h"
 #include "d3d11_shader.h"
 
 namespace dxvk {
@@ -23,17 +24,20 @@ namespace dxvk {
   
   
   D3D11ShaderModule::D3D11ShaderModule(
-    const void*   pShaderBytecode,
-          size_t  BytecodeLength) {
+          D3D11Device*  pDevice,
+    const void*         pShaderBytecode,
+          size_t        BytecodeLength) {
     
     DxbcReader reader(
       reinterpret_cast<const char*>(pShaderBytecode),
       BytecodeLength);
     
     DxbcModule module(reader);
-    m_code = module.compile();
+    
+    SpirvCodeBuffer spirvCode = module.compile();
     
     // TODO pre-process shader bindings
+    std::vector<DxvkResourceSlot> resourceSlots;
     
     // If requested by the user, dump both the raw DXBC
     // shader and the compiled SPIR-V module to a file.
@@ -47,9 +51,15 @@ namespace dxvk {
       reader.store(std::ofstream(str::format(baseName, ".dxbc"),
         std::ios_base::binary | std::ios_base::trunc));
       
-      m_code.store(std::ofstream(str::format(baseName, ".spv"),
+      spirvCode.store(std::ofstream(str::format(baseName, ".spv"),
         std::ios_base::binary | std::ios_base::trunc));
     }
+    
+    m_shader = pDevice->GetDXVKDevice()->createShader(
+      module.version().shaderStage(),
+      resourceSlots.size(),
+      resourceSlots.data(),
+      spirvCode);
   }
   
   

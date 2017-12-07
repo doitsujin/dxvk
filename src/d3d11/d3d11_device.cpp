@@ -638,7 +638,7 @@ namespace dxvk {
     
     try {
       *pShaderModule = D3D11ShaderModule(
-        pShaderBytecode, BytecodeLength);
+        this, pShaderBytecode, BytecodeLength);
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());

@@ -63,7 +63,7 @@ namespace dxvk {
 //     this->IASetVertexBuffers(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT, nullptr, nullptr, nullptr);
 //     this->IASetIndexBuffer(nullptr, DXGI_FORMAT_UNKNOWN, 0);
     
-//     this->VSSetShader(nullptr, nullptr, 0);
+    this->VSSetShader(nullptr, nullptr, 0);
 //     this->VSSetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, nullptr);
 //     this->VSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, nullptr);
 //     this->VSSetSamplers       (0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT, nullptr);
@@ -83,7 +83,7 @@ namespace dxvk {
 //     this->GSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, nullptr);
 //     this->GSSetSamplers       (0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT, nullptr);
     
-//     this->PSSetShader(nullptr, nullptr, 0);
+    this->PSSetShader(nullptr, nullptr, 0);
 //     this->PSSetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, nullptr);
 //     this->PSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, nullptr);
 //     this->PSSetSamplers       (0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT, nullptr);
@@ -553,7 +553,17 @@ namespace dxvk {
           ID3D11VertexShader*               pVertexShader,
           ID3D11ClassInstance* const*       ppClassInstances,
           UINT                              NumClassInstances) {
-    Logger::err("D3D11DeviceContext::VSSetShader: Not implemented");
+    auto shader = static_cast<D3D11VertexShader*>(pVertexShader);
+    
+    if (NumClassInstances != 0)
+      Logger::err("D3D11DeviceContext::VSSetShader: Class instances not supported");
+    
+    if (m_state.vs.shader != shader) {
+      m_state.vs.shader = shader;
+      
+      m_context->bindShader(VK_SHADER_STAGE_VERTEX_BIT,
+        shader != nullptr ? shader->GetShader() : nullptr);
+    }
   }
   
   
@@ -809,7 +819,17 @@ namespace dxvk {
           ID3D11PixelShader*                pPixelShader,
           ID3D11ClassInstance* const*       ppClassInstances,
           UINT                              NumClassInstances) {
-    Logger::err("D3D11DeviceContext::PSSetShader: Not implemented");
+    auto shader = static_cast<D3D11PixelShader*>(pPixelShader);
+    
+    if (NumClassInstances != 0)
+      Logger::err("D3D11DeviceContext::VSSetShader: Class instances not supported");
+    
+    if (m_state.ps.shader != shader) {
+      m_state.ps.shader = shader;
+      
+      m_context->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT,
+        shader != nullptr ? shader->GetShader() : nullptr);
+    }
   }
   
   

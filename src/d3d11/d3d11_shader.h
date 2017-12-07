@@ -23,14 +23,18 @@ namespace dxvk {
     
     D3D11ShaderModule();
     D3D11ShaderModule(
-      const void*   pShaderBytecode,
-            size_t  BytecodeLength);
+            D3D11Device*  pDevice,
+      const void*         pShaderBytecode,
+            size_t        BytecodeLength);
     ~D3D11ShaderModule();
+    
+    Rc<DxvkShader> GetShader() const {
+      return m_shader;
+    }
     
   private:
     
-    
-    SpirvCodeBuffer m_code;
+    Rc<DxvkShader> m_shader;
     
     Sha1Hash ComputeShaderHash(
       const void*   pShaderBytecode,
@@ -73,8 +77,8 @@ namespace dxvk {
       *ppDevice = ref(m_device);
     }
     
-    const D3D11ShaderModule& GetShaderModule() const {
-      return m_module;
+    Rc<DxvkShader> GetShader() const {
+      return m_module.GetShader();
     }
     
   private:
