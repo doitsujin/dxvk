@@ -61,9 +61,26 @@ namespace dxvk {
   };
   
   
+  struct D3D11VertexBufferBinding {
+    Com<D3D11Buffer> buffer = nullptr;
+    UINT             offset = 0;
+    UINT             stride = 0;
+  };
+  
+  
+  struct D3D11IndexBufferBinding {
+    Com<D3D11Buffer> buffer = nullptr;
+    UINT             offset = 0;
+    DXGI_FORMAT      format = DXGI_FORMAT_UNKNOWN;
+  };
+  
+  
   struct D3D11ContextStateIA {
     Com<D3D11InputLayout>    inputLayout;
     D3D11_PRIMITIVE_TOPOLOGY primitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
+    
+    std::array<D3D11VertexBufferBinding, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> vertexBuffers;
+    D3D11IndexBufferBinding                                                         indexBuffer;
   };
   
   

@@ -60,4 +60,9 @@ namespace dxvk {
     *pDesc = m_desc;
   }
   
+  
+  Rc<DxvkBuffer> D3D11Buffer::GetDXVKBuffer() {
+    return m_resource->GetDXVKBuffer();
+  }
+  
 }

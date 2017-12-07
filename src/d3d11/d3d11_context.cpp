@@ -517,7 +517,29 @@ namespace dxvk {
           ID3D11Buffer* const*              ppVertexBuffers,
     const UINT*                             pStrides,
     const UINT*                             pOffsets) {
-    Logger::err("D3D11DeviceContext::IASetVertexBuffers: Not implemented");
+    // TODO check if any of these buffers
+    // are bound as UAVs or stream outputs
+    for (uint32_t i = 0; i < NumBuffers; i++) {
+      D3D11VertexBufferBinding binding;
+      binding.buffer = static_cast<D3D11Buffer*>(ppVertexBuffers[i]);
+      binding.offset = pOffsets[i];
+      binding.stride = pStrides[i];
+      m_state.ia.vertexBuffers.at(StartSlot + i) = binding;
+      
+      DxvkBufferBinding dxvkBinding;
+      
+      if (binding.buffer != nullptr) {
+        Rc<DxvkBuffer> dxvkBuffer = binding.buffer->GetDXVKBuffer();
+        
+        dxvkBinding = DxvkBufferBinding(
+          dxvkBuffer, binding.offset,
+          dxvkBuffer->info().size - binding.offset);
+      }
+      
+      m_context->bindVertexBuffer(
+        StartSlot + i, dxvkBinding,
+        binding.stride);
+    }
   }
   
   

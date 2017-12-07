@@ -37,6 +37,8 @@ namespace dxvk {
     void GetDesc(
             D3D11_BUFFER_DESC *pDesc) final;
     
+    Rc<DxvkBuffer> GetDXVKBuffer();
+    
   private:
     
     D3D11Device* const              m_device;
