@@ -42,7 +42,10 @@ namespace dxvk {
     m_defaultCbState = new DxvkBlendState(
       VK_FALSE, VK_LOGIC_OP_CLEAR, 0, nullptr);
     
-    this->ClearState();
+    m_context->setRasterizerState(m_defaultRsState);
+    m_context->setMultisampleState(m_defaultMsState);
+    m_context->setDepthStencilState(m_defaultDsState);
+    m_context->setBlendState(m_defaultCbState);
   }
   
   
@@ -115,8 +118,8 @@ namespace dxvk {
 //     this->CSSetSamplers       (0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT, nullptr);
     
     this->OMSetRenderTargets(0, nullptr, nullptr);
-    this->OMSetBlendState(nullptr, nullptr, D3D11_DEFAULT_SAMPLE_MASK);
-    this->OMSetDepthStencilState(nullptr, 0);
+//     this->OMSetBlendState(nullptr, nullptr, D3D11_DEFAULT_SAMPLE_MASK);
+//     this->OMSetDepthStencilState(nullptr, 0);
     
     this->RSSetState(nullptr);
     this->RSSetViewports(0, nullptr);
@@ -1080,8 +1083,6 @@ namespace dxvk {
     const FLOAT                             BlendFactor[4],
           UINT                              SampleMask) {
     Logger::err("D3D11DeviceContext::OMSetBlendState: Not implemented");
-    m_context->setBlendState(m_defaultCbState);
-    m_context->setMultisampleState(m_defaultMsState);
   }
   
   
@@ -1089,7 +1090,6 @@ namespace dxvk {
           ID3D11DepthStencilState*          pDepthStencilState,
           UINT                              StencilRef) {
     Logger::err("D3D11DeviceContext::OMSetDepthStencilState: Not implemented");
-    m_context->setDepthStencilState(m_defaultDsState);
   }
   
   
@@ -1259,14 +1259,13 @@ namespace dxvk {
     std::array<VkViewport, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> viewports;
     std::array<VkRect2D,   D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> scissors;
     
-    // TODO find out if we need to flip the viewports vertically
     for (uint32_t i = 0; i < m_state.rs.numViewports; i++) {
       const D3D11_VIEWPORT& vp = m_state.rs.viewports.at(i);
       
       viewports.at(i) = VkViewport {
-        vp.TopLeftX, vp.TopLeftY,
-        vp.Width,    vp.Height,
-        vp.MaxDepth, vp.MinDepth,
+        vp.TopLeftX, vp.Height - vp.TopLeftY,
+        vp.Width,   -vp.Height,
+        vp.MinDepth, vp.MaxDepth,
       };
     }
     
