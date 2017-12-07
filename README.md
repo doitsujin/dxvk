@@ -29,4 +29,9 @@ In order to run `executable.exe` with DXVK,
 * Copy `dxgi.dll`, `d3d11.dll` and `SDL2.dll` into the same directory as the executable
 * Run `WINEDLLOVERRIDES=d3d11,dxgi=n wine executable.exe`
 
-DXVK will create a file `dxvk.log` in the current working directory and may print out messages to stderr.
+DXVK will create a file `dxgi.log` in the current working directory and may print out messages to stderr.
+
+### Environment variables
+The behaviour of DXVK can be modified with environment variables.
+
+- `DXVK_SHADER_DUMP_PATH=directory` Writes all DXBC and SPIR-V shaders to `directory`
