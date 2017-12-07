@@ -183,16 +183,10 @@ namespace dxvk {
   
   void DxvkContext::bindVertexBuffer(
           uint32_t              binding,
-    const DxvkBufferBinding&    buffer,
-          uint32_t              stride) {
+    const DxvkBufferBinding&    buffer) {
     if (m_state.vi.vertexBuffers.at(binding) != buffer) {
       m_state.vi.vertexBuffers.at(binding) = buffer;
       m_flags.set(DxvkContextFlag::GpDirtyVertexBuffers);
-    }
-    
-    if (m_state.vi.vertexStrides.at(binding) != stride) {
-      m_state.vi.vertexStrides.at(binding) = stride;
-      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     }
   }
   

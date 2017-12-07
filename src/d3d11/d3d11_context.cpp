@@ -561,8 +561,7 @@ namespace dxvk {
       }
       
       m_context->bindVertexBuffer(
-        StartSlot + i, dxvkBinding,
-        binding.stride);
+        StartSlot + i, dxvkBinding);
     }
   }
   
@@ -1286,6 +1285,7 @@ namespace dxvk {
       // TODO D3D11 docs aren't clear about what should happen
       // when there are undefined scissor rects for a viewport.
       // Figure out what it does on Windows.
+      // FIXME Compute correct vertical position
       if (enableScissorTest && (i < m_state.rs.numScissors)) {
         const D3D11_RECT& sr = m_state.rs.scissors.at(i);
         

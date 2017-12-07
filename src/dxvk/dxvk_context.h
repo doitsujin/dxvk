@@ -140,8 +140,7 @@ namespace dxvk {
      */
     void bindVertexBuffer(
             uint32_t              binding,
-      const DxvkBufferBinding&    buffer,
-            uint32_t              stride);
+      const DxvkBufferBinding&    buffer);
     
     /**
      * \brief Clears subresources of a color image

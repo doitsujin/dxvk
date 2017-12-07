@@ -373,10 +373,12 @@ namespace dxvk {
         
         attributes.push_back(attrib);
         
-        // Create vertex input binding description. 
+        // Create vertex input binding description. The
+        // stride is dynamic state in D3D11 and will be
+        // set by D3D11DeviceContext::IASetVertexBuffers.
         VkVertexInputBindingDescription binding;
         binding.binding   = pInputElementDescs[i].InputSlot;
-        binding.stride    = 12;
+        binding.stride    = 0;
         binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         
         if (pInputElementDescs[i].InputSlotClass == D3D11_INPUT_PER_INSTANCE_DATA) {
