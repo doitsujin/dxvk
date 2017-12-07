@@ -2,7 +2,8 @@
 
 namespace dxvk {
   
-  DxbcPsCodeGen::DxbcPsCodeGen() {
+  DxbcPsCodeGen::DxbcPsCodeGen(
+    const Rc<DxbcIsgn>& osgn) {
     m_module.enableCapability(spv::CapabilityShader);
     m_module.enableCapability(spv::CapabilityCullDistance);
     m_module.enableCapability(spv::CapabilityClipDistance);
@@ -17,6 +18,22 @@ namespace dxvk {
         m_module.defVoidType(), 0, nullptr),
       spv::FunctionControlMaskNone);
     m_module.opLabel(m_module.allocateId());
+    
+    // Declare outputs based on the input signature
+    for (auto e = osgn->begin(); e != osgn->end(); e++) {
+      if (e->systemValue == DxbcSystemValue::None) {
+        m_psOut.at(e->registerId) = this->defVar(
+          DxbcValueType(e->componentType, e->componentMask.componentCount()),
+          spv::StorageClassOutput);
+        m_module.decorateLocation(
+          m_psOut.at(e->registerId).valueId,
+          e->registerId);
+        m_module.setDebugName(m_psOut.at(e->registerId).valueId,
+          str::format("ps_out", e->registerId).c_str());
+        m_entryPointInterfaces.push_back(
+          m_psOut.at(e->registerId).valueId);
+      }
+    }
   }
   
   
@@ -142,7 +159,17 @@ namespace dxvk {
   
   
   void DxbcPsCodeGen::prepareSvOutputs() {
+    // TODO properly re-implement this
+    std::array<uint32_t, 5> masks = { 0x0, 0x1, 0x3, 0x7, 0xF };
     
+    for (uint32_t i = 0; i < m_psOut.size(); i++) {
+      if ((m_psOut.at(i).valueId != 0) && (m_oRegs.at(i).valueId != 0)) {
+        DxbcValue srcValue = this->regLoad(m_oRegs.at(i));
+                  srcValue = this->regCast(srcValue, m_psOut.at(i).type.valueType);
+        this->regStore(m_psOut.at(i), srcValue, DxbcComponentMask(
+          masks.at(m_psOut.at(i).type.valueType.componentCount)));
+      }
+    }
   }
   
 }

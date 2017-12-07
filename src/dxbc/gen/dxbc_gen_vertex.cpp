@@ -2,7 +2,7 @@
 
 namespace dxvk {
   
-  DxbcVsCodeGen::DxbcVsCodeGen() {
+  DxbcVsCodeGen::DxbcVsCodeGen(const Rc<DxbcIsgn>& isgn) {
     m_module.enableCapability(spv::CapabilityShader);
     m_module.enableCapability(spv::CapabilityCullDistance);
     m_module.enableCapability(spv::CapabilityClipDistance);
@@ -24,6 +24,22 @@ namespace dxvk {
       spv::StorageClassOutput);
     m_entryPointInterfaces.push_back(m_vsPerVertex);
     m_module.setDebugName(m_vsPerVertex, "vs_per_vertex");
+    
+    // Declare vertex inputs based on the input signature
+    for (auto e = isgn->begin(); e != isgn->end(); e++) {
+      if (e->systemValue == DxbcSystemValue::None) {
+        m_vsIn.at(e->registerId) = this->defVar(
+          DxbcValueType(e->componentType, 4),
+          spv::StorageClassInput);
+        m_module.decorateLocation(
+          m_vsIn.at(e->registerId).valueId,
+          e->registerId);
+        m_module.setDebugName(m_vsIn.at(e->registerId).valueId,
+          str::format("vs_in", e->registerId).c_str());
+        m_entryPointInterfaces.push_back(
+          m_vsIn.at(e->registerId).valueId);
+      }
+    }
   }
   
   
@@ -47,6 +63,11 @@ namespace dxvk {
           m_module.setDebugName(m_vRegs.at(regId).valueId,
             str::format("v", regId).c_str());
         }
+        
+        if (sv != DxbcSystemValue::None) {
+          m_svIn.push_back(DxbcSvMapping {
+            regId, regMask, sv });
+        }
       } break;
       
       case DxbcOperandType::Output: {
@@ -56,6 +77,11 @@ namespace dxvk {
             spv::StorageClassPrivate);
           m_module.setDebugName(m_oRegs.at(regId).valueId,
             str::format("o", regId).c_str());
+        }
+        
+        if (sv != DxbcSystemValue::None) {
+          m_svOut.push_back(DxbcSvMapping {
+            regId, regMask, sv });
         }
       } break;
       
@@ -129,12 +155,35 @@ namespace dxvk {
   
   
   void DxbcVsCodeGen::prepareSvInputs() {
+    DxbcValueType targetType(DxbcScalarType::Float32, 4);
     
+    // Copy vertex inputs to the actual shader input registers
+    for (uint32_t i = 0; i < m_vsIn.size(); i++) {
+      if ((m_vsIn.at(i).valueId != 0) && (m_vRegs.at(i).valueId != 0)) {
+        DxbcValue srcValue = this->regLoad(m_vsIn.at(i));
+                  srcValue = this->regCast(srcValue, targetType);
+        this->regStore(m_vRegs.at(i), srcValue,
+          DxbcComponentMask(true, true, true, true));
+      }
+    }
+    
+    // TODO system values
   }
   
   
   void DxbcVsCodeGen::prepareSvOutputs() {
+    // TODO add user-defined shader outputs
     
+    for (const auto& mapping : m_svOut) {
+      DxbcValue srcValue = this->regLoad(m_oRegs.at(mapping.regId));
+      
+      switch (mapping.sv) {
+        case DxbcSystemValue::Position: {
+          this->regStore(this->ptrBuiltInPosition(), srcValue,
+            DxbcComponentMask(true, true, true, true));
+        } break;
+      }
+    }
   }
   
   

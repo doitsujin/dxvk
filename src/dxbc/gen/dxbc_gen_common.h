@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../dxbc_chunk_isgn.h"
 #include "../dxbc_common.h"
 #include "../dxbc_decoder.h"
 #include "../dxbc_type.h"
@@ -112,7 +113,9 @@ namespace dxvk {
     virtual SpirvCodeBuffer finalize() = 0;
     
     static Rc<DxbcCodeGen> create(
-      const DxbcProgramVersion& version);
+      const DxbcProgramVersion& version,
+      const Rc<DxbcIsgn>&       isgn,
+      const Rc<DxbcIsgn>&       osgn);
     
   protected:
     

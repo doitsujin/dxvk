@@ -3,8 +3,10 @@
 namespace dxvk {
   
   DxbcCompiler::DxbcCompiler(
-    const DxbcProgramVersion& version)
-  : m_gen(DxbcCodeGen::create(version)) { }
+    const DxbcProgramVersion& version,
+    const Rc<DxbcIsgn>&       isgn,
+    const Rc<DxbcIsgn>&       osgn)
+  : m_gen(DxbcCodeGen::create(version, isgn, osgn)) { }
   
   
   DxbcCompiler::~DxbcCompiler() {

@@ -11,7 +11,8 @@ namespace dxvk {
     
   public:
     
-    DxbcPsCodeGen();
+    DxbcPsCodeGen(
+      const Rc<DxbcIsgn>& osgn);
     ~DxbcPsCodeGen();
     
     void dclInterfaceVar(
@@ -41,6 +42,7 @@ namespace dxvk {
     
     std::array<DxbcPointer, 32> m_vRegs;
     std::array<DxbcPointer, 8>  m_oRegs;
+    std::array<DxbcPointer, 8>  m_psOut;
     
     void dclSvInputReg(DxbcSystemValue sv);
     

@@ -329,13 +329,15 @@ namespace dxvk {
   
   
   Rc<DxbcCodeGen> DxbcCodeGen::create(
-    const DxbcProgramVersion& version) {
+    const DxbcProgramVersion& version,
+    const Rc<DxbcIsgn>&       isgn,
+    const Rc<DxbcIsgn>&       osgn) {
     switch (version.type()) {
       case DxbcProgramType::PixelShader:
-        return new DxbcPsCodeGen();
+        return new DxbcPsCodeGen(osgn);
       
       case DxbcProgramType::VertexShader:
-        return new DxbcVsCodeGen();
+        return new DxbcVsCodeGen(isgn);
       
       default:
         throw DxvkError(str::format(

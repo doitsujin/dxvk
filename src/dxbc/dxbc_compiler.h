@@ -15,11 +15,13 @@ namespace dxvk {
   public:
     
     DxbcCompiler(
-      const DxbcProgramVersion& version);
+      const DxbcProgramVersion& version,
+      const Rc<DxbcIsgn>&       isgn,
+      const Rc<DxbcIsgn>&       osgn);
     ~DxbcCompiler();
     
     void processInstruction(
-      const DxbcInstruction& ins);
+      const DxbcInstruction&  ins);
     
     SpirvCodeBuffer finalize();
     
