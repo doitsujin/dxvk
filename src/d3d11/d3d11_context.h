@@ -547,7 +547,10 @@ namespace dxvk {
     Rc<DxvkDevice>      m_device;
     Rc<DxvkContext>     m_context;
     
-    Rc<DxvkRasterizerState> m_defaultRsState;
+    Rc<DxvkRasterizerState>   m_defaultRsState;
+    Rc<DxvkDepthStencilState> m_defaultDsState;
+    Rc<DxvkMultisampleState>  m_defaultMsState;
+    Rc<DxvkBlendState>        m_defaultCbState;
     
     D3D11ContextState   m_state;
     

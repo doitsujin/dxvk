@@ -21,6 +21,27 @@ namespace dxvk {
       VK_FRONT_FACE_CLOCKWISE,
       VK_FALSE, 0.0f, 0.0f, 0.0f, 1.0f);
     
+    VkStencilOpState stencilOp;
+    stencilOp.failOp      = VK_STENCIL_OP_KEEP;
+    stencilOp.passOp      = VK_STENCIL_OP_KEEP;
+    stencilOp.depthFailOp = VK_STENCIL_OP_KEEP;
+    stencilOp.compareOp   = VK_COMPARE_OP_ALWAYS;
+    stencilOp.compareMask = D3D11_DEFAULT_STENCIL_READ_MASK;
+    stencilOp.writeMask   = D3D11_DEFAULT_STENCIL_WRITE_MASK;
+    stencilOp.reference   = 0;
+    
+    m_defaultDsState = new DxvkDepthStencilState(
+      VK_TRUE, VK_TRUE, VK_FALSE, VK_FALSE,
+      VK_COMPARE_OP_LESS, stencilOp, stencilOp,
+      0.0f, 1.0f);
+    
+    m_defaultMsState = new DxvkMultisampleState(
+      VK_SAMPLE_COUNT_1_BIT, 0xFFFFFFFFu,
+      VK_FALSE, VK_FALSE, VK_FALSE, 0.0f);
+    
+    m_defaultCbState = new DxvkBlendState(
+      VK_FALSE, VK_LOGIC_OP_CLEAR, 0, nullptr);
+    
     this->ClearState();
   }
   
@@ -94,8 +115,8 @@ namespace dxvk {
 //     this->CSSetSamplers       (0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT, nullptr);
     
     this->OMSetRenderTargets(0, nullptr, nullptr);
-//     this->OMSetBlendState(nullptr, nullptr, D3D11_DEFAULT_SAMPLE_MASK);
-//     this->OMSetDepthStencilState(nullptr, 0);
+    this->OMSetBlendState(nullptr, nullptr, D3D11_DEFAULT_SAMPLE_MASK);
+    this->OMSetDepthStencilState(nullptr, 0);
     
     this->RSSetState(nullptr);
     this->RSSetViewports(0, nullptr);
@@ -1059,6 +1080,8 @@ namespace dxvk {
     const FLOAT                             BlendFactor[4],
           UINT                              SampleMask) {
     Logger::err("D3D11DeviceContext::OMSetBlendState: Not implemented");
+    m_context->setBlendState(m_defaultCbState);
+    m_context->setMultisampleState(m_defaultMsState);
   }
   
   
@@ -1066,6 +1089,7 @@ namespace dxvk {
           ID3D11DepthStencilState*          pDepthStencilState,
           UINT                              StencilRef) {
     Logger::err("D3D11DeviceContext::OMSetDepthStencilState: Not implemented");
+    m_context->setDepthStencilState(m_defaultDsState);
   }
   
   
