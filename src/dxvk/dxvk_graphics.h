@@ -20,20 +20,65 @@ namespace dxvk {
    * the current pipeline state vector.
    */
   struct DxvkGraphicsPipelineStateInfo {
-    Rc<DxvkInputAssemblyState>  inputAssemblyState;
-    Rc<DxvkInputLayout>         inputLayout;
-    Rc<DxvkRasterizerState>     rasterizerState;
-    Rc<DxvkMultisampleState>    multisampleState;
-    Rc<DxvkDepthStencilState>   depthStencilState;
-    Rc<DxvkBlendState>          blendState;
+    DxvkGraphicsPipelineStateInfo();
+    DxvkGraphicsPipelineStateInfo(
+      const DxvkGraphicsPipelineStateInfo& other);
     
-    VkRenderPass                renderPass;
-    uint32_t                    viewportCount;
+    DxvkGraphicsPipelineStateInfo& operator = (
+      const DxvkGraphicsPipelineStateInfo& other);
     
-    size_t hash() const;
+    VkPrimitiveTopology                 iaPrimitiveTopology;
+    VkBool32                            iaPrimitiveRestart;
     
-    bool operator == (const DxvkGraphicsPipelineStateInfo& other) const;
-    bool operator != (const DxvkGraphicsPipelineStateInfo& other) const;
+    uint32_t                            ilAttributeCount;
+    uint32_t                            ilBindingCount;
+    VkVertexInputAttributeDescription   ilAttributes[DxvkLimits::MaxNumVertexAttributes];
+    VkVertexInputBindingDescription     ilBindings[DxvkLimits::MaxNumVertexBindings];
+    
+    VkBool32                            rsEnableDepthClamp;
+    VkBool32                            rsEnableDiscard;
+    VkPolygonMode                       rsPolygonMode;
+    VkCullModeFlags                     rsCullMode;
+    VkFrontFace                         rsFrontFace;
+    VkBool32                            rsDepthBiasEnable;
+    float                               rsDepthBiasConstant;
+    float                               rsDepthBiasClamp;
+    float                               rsDepthBiasSlope;
+    uint32_t                            rsViewportCount;
+    
+    VkSampleCountFlagBits               msSampleCount;
+    uint32_t                            msSampleMask;
+    VkBool32                            msEnableAlphaToCoverage;
+    VkBool32                            msEnableAlphaToOne;
+    VkBool32                            msEnableSampleShading;
+    float                               msMinSampleShading;
+    
+    VkBool32                            dsEnableDepthTest;
+    VkBool32                            dsEnableDepthWrite;
+    VkBool32                            dsEnableDepthBounds;
+    VkBool32                            dsEnableStencilTest;
+    VkCompareOp                         dsDepthCompareOp;
+    VkStencilOpState                    dsStencilOpFront;
+    VkStencilOpState                    dsStencilOpBack;
+    float                               dsDepthBoundsMin;
+    float                               dsDepthBoundsMax;
+    
+    VkBool32                            omEnableLogicOp;
+    VkLogicOp                           omLogicOp;
+    VkRenderPass                        omRenderPass;
+    VkPipelineColorBlendAttachmentState omBlendAttachments[DxvkLimits::MaxNumRenderTargets];
+  };
+  
+  
+  struct DxvkGraphicsPipelineStateHash {
+    size_t operator () (const DxvkGraphicsPipelineStateInfo& state) const;
+  };
+  
+  
+  struct DxvkGraphicsPipelineStateEq {
+    size_t operator () (
+      const DxvkGraphicsPipelineStateInfo& a,
+      const DxvkGraphicsPipelineStateInfo& b) const;
   };
   
   
@@ -91,7 +136,9 @@ namespace dxvk {
     
     std::unordered_map<
       DxvkGraphicsPipelineStateInfo,
-      VkPipeline, DxvkHash> m_pipelines;
+      VkPipeline,
+      DxvkGraphicsPipelineStateHash,
+      DxvkGraphicsPipelineStateEq> m_pipelines;
     
     VkPipeline compilePipeline(
       const DxvkGraphicsPipelineStateInfo& state) const;

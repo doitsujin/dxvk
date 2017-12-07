@@ -1,3 +1,5 @@
+#include <cstring>
+
 #include "dxvk_constant_state.h"
 
 namespace dxvk {

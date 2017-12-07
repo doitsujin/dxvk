@@ -561,7 +561,8 @@ namespace dxvk {
       }
       
       m_context->bindVertexBuffer(
-        StartSlot + i, dxvkBinding);
+        StartSlot + i, dxvkBinding,
+        binding.stride);
     }
   }
   

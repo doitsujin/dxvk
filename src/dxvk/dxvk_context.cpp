@@ -6,7 +6,7 @@ namespace dxvk {
   
   DxvkContext::DxvkContext(const Rc<DxvkDevice>& device)
   : m_device(device) {
-    
+    Logger::info(str::format(sizeof(DxvkGraphicsPipelineStateInfo)));
   }
   
   
@@ -183,10 +183,16 @@ namespace dxvk {
   
   void DxvkContext::bindVertexBuffer(
           uint32_t              binding,
-    const DxvkBufferBinding&    buffer) {
+    const DxvkBufferBinding&    buffer,
+          uint32_t              stride) {
     if (m_state.vi.vertexBuffers.at(binding) != buffer) {
       m_state.vi.vertexBuffers.at(binding) = buffer;
       m_flags.set(DxvkContextFlag::GpDirtyVertexBuffers);
+    }
+    
+    if (m_state.vi.vertexStrides.at(binding) != stride) {
+      m_state.vi.vertexStrides.at(binding) = stride;
+      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     }
   }
   
@@ -499,15 +505,65 @@ namespace dxvk {
       }
       
       DxvkGraphicsPipelineStateInfo gpState;
-      gpState.inputAssemblyState  = m_state.co.inputAssemblyState;
-      gpState.inputLayout         = m_state.co.inputLayout;
-      gpState.rasterizerState     = m_state.co.rasterizerState;
-      gpState.multisampleState    = m_state.co.multisampleState;
-      gpState.depthStencilState   = m_state.co.depthStencilState;
-      gpState.blendState          = m_state.co.blendState;
-      gpState.renderPass          = m_state.om.framebuffer->renderPass();
-      gpState.viewportCount       = m_state.vp.viewportCount;
-      // TODO add vertex buffer strides
+      
+      const auto& ia = m_state.co.inputAssemblyState->info();
+      gpState.iaPrimitiveTopology      = ia.topology;
+      gpState.iaPrimitiveRestart       = ia.primitiveRestartEnable;
+      
+      const auto& il = m_state.co.inputLayout->info();
+      gpState.ilAttributeCount         = il.vertexAttributeDescriptionCount;
+      gpState.ilBindingCount           = il.vertexBindingDescriptionCount;
+      
+      for (uint32_t i = 0; i < gpState.ilAttributeCount; i++)
+        gpState.ilAttributes[i] = il.pVertexAttributeDescriptions[i];
+      
+      for (uint32_t i = 0; i < gpState.ilBindingCount; i++) {
+        gpState.ilBindings[i] = il.pVertexBindingDescriptions[i];
+        gpState.ilBindings[i].stride = m_state.vi.vertexStrides.at(i);
+      }
+      
+      const auto& rs = m_state.co.rasterizerState->info();
+      gpState.rsEnableDepthClamp       = rs.depthClampEnable;
+      gpState.rsEnableDiscard          = rs.rasterizerDiscardEnable;
+      gpState.rsPolygonMode            = rs.polygonMode;
+      gpState.rsCullMode               = rs.cullMode;
+      gpState.rsFrontFace              = rs.frontFace;
+      gpState.rsDepthBiasEnable        = rs.depthBiasEnable;
+      gpState.rsDepthBiasConstant      = rs.depthBiasConstantFactor;
+      gpState.rsDepthBiasClamp         = rs.depthBiasClamp;
+      gpState.rsDepthBiasSlope         = rs.depthBiasSlopeFactor;
+      gpState.rsViewportCount          = m_state.vp.viewportCount;
+      
+      // TODO implement multisampling support properly
+      const auto& ms = m_state.co.multisampleState->info();
+      gpState.msSampleCount            = VK_SAMPLE_COUNT_1_BIT;
+      gpState.msSampleMask             = *ms.pSampleMask;
+      gpState.msEnableAlphaToCoverage  = ms.alphaToCoverageEnable;
+      gpState.msEnableAlphaToOne       = ms.alphaToOneEnable;
+      gpState.msEnableSampleShading    = ms.sampleShadingEnable;
+      gpState.msMinSampleShading       = ms.minSampleShading;
+      
+      const auto& ds = m_state.co.depthStencilState->info();
+      gpState.dsEnableDepthTest        = ds.depthTestEnable;
+      gpState.dsEnableDepthWrite       = ds.depthWriteEnable;
+      gpState.dsEnableDepthBounds      = ds.depthBoundsTestEnable;
+      gpState.dsEnableStencilTest      = ds.stencilTestEnable;
+      gpState.dsDepthCompareOp         = ds.depthCompareOp;
+      gpState.dsStencilOpFront         = ds.front;
+      gpState.dsStencilOpBack          = ds.back;
+      gpState.dsDepthBoundsMin         = ds.minDepthBounds;
+      gpState.dsDepthBoundsMax         = ds.maxDepthBounds;
+      
+      const auto& om = m_state.co.blendState->info();
+      gpState.omEnableLogicOp          = om.logicOpEnable;
+      gpState.omLogicOp                = om.logicOp;
+      gpState.omRenderPass             = m_state.om.framebuffer->renderPass();
+      
+      const auto& rt = m_state.om.framebuffer->renderTargets();
+      for (uint32_t i = 0; i < DxvkLimits::MaxNumRenderTargets; i++) {
+        if (rt.getColorTarget(i) != nullptr)
+          gpState.omBlendAttachments[i] = om.pAttachments[i];
+      }
       
       m_cmd->cmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,
         m_state.gp.pipeline->getPipelineHandle(gpState));

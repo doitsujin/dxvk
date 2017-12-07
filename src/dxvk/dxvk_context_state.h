@@ -42,6 +42,8 @@ namespace dxvk {
     
     std::array<DxvkBufferBinding,
       DxvkLimits::MaxNumVertexBindings> vertexBuffers;
+    std::array<uint32_t,
+      DxvkLimits::MaxNumVertexBindings> vertexStrides;
   };
   
   

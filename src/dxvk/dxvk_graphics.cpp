@@ -1,40 +1,38 @@
+#include <cstring>
+
 #include "dxvk_graphics.h"
 
 namespace dxvk {
   
-  template<typename T>
-  size_t hashPtr(T* ptr) {
-    return reinterpret_cast<size_t>(ptr);
-  }
-  
-  size_t DxvkGraphicsPipelineStateInfo::hash() const {
-    DxvkHashState state;
-    state.add(hashPtr(this->inputAssemblyState.ptr()));
-    state.add(hashPtr(this->inputLayout.ptr()));
-    state.add(hashPtr(this->rasterizerState.ptr()));
-    state.add(hashPtr(this->multisampleState.ptr()));
-    state.add(hashPtr(this->depthStencilState.ptr()));
-    state.add(hashPtr(this->blendState.ptr()));
-    state.add(std::hash<VkRenderPass>()(this->renderPass));
-    state.add(viewportCount);
-    return state;
+  DxvkGraphicsPipelineStateInfo::DxvkGraphicsPipelineStateInfo() {
+    std::memset(this, 0, sizeof(DxvkGraphicsPipelineStateInfo));
   }
   
   
-  bool DxvkGraphicsPipelineStateInfo::operator == (const DxvkGraphicsPipelineStateInfo& other) const {
-    return this->inputAssemblyState == other.inputAssemblyState
-        && this->inputLayout        == other.inputLayout
-        && this->rasterizerState    == other.rasterizerState
-        && this->multisampleState   == other.multisampleState
-        && this->depthStencilState  == other.depthStencilState
-        && this->blendState         == other.blendState
-        && this->renderPass         == other.renderPass
-        && this->viewportCount      == other.viewportCount;
+  DxvkGraphicsPipelineStateInfo::DxvkGraphicsPipelineStateInfo(
+    const DxvkGraphicsPipelineStateInfo& other) {
+    std::memcpy(this, &other, sizeof(DxvkGraphicsPipelineStateInfo));
   }
   
   
-  bool DxvkGraphicsPipelineStateInfo::operator != (const DxvkGraphicsPipelineStateInfo& other) const {
-    return !this->operator == (other);
+  DxvkGraphicsPipelineStateInfo& DxvkGraphicsPipelineStateInfo::operator = (
+    const DxvkGraphicsPipelineStateInfo& other) {
+    std::memcpy(this, &other, sizeof(DxvkGraphicsPipelineStateInfo));
+    return *this;
+  }
+  
+  
+  size_t DxvkGraphicsPipelineStateHash::operator () (
+    const DxvkGraphicsPipelineStateInfo& state) const {
+    // TODO implement hash
+    return 0;
+  }
+  
+  
+  size_t DxvkGraphicsPipelineStateEq::operator () (
+    const DxvkGraphicsPipelineStateInfo& a,
+    const DxvkGraphicsPipelineStateInfo& b) const {
+    return std::memcmp(&a, &b, sizeof(DxvkGraphicsPipelineStateInfo)) == 0;
   }
   
   
@@ -101,42 +99,110 @@ namespace dxvk {
     if (m_gs  != nullptr) stages.push_back(m_gs->stageInfo());
     if (m_fs  != nullptr) stages.push_back(m_fs->stageInfo());
     
-    VkPipelineViewportStateCreateInfo vpInfo;
-    vpInfo.sType                = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-    vpInfo.pNext                = nullptr;
-    vpInfo.flags                = 0;
-    vpInfo.viewportCount        = state.viewportCount;
-    vpInfo.pViewports           = nullptr;
-    vpInfo.scissorCount         = state.viewportCount;
-    vpInfo.pScissors            = nullptr;
+    VkPipelineVertexInputStateCreateInfo viInfo;
+    viInfo.sType                            = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    viInfo.pNext                            = nullptr;
+    viInfo.flags                            = 0;
+    viInfo.vertexBindingDescriptionCount    = state.ilBindingCount;
+    viInfo.pVertexBindingDescriptions       = state.ilBindings;
+    viInfo.vertexAttributeDescriptionCount  = state.ilAttributeCount;
+    viInfo.pVertexAttributeDescriptions     = state.ilAttributes;
     
-    VkPipelineDynamicStateCreateInfo dsInfo;
-    dsInfo.sType                = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dsInfo.pNext                = nullptr;
-    dsInfo.flags                = 0;
-    dsInfo.dynamicStateCount    = dynamicStates.size();
-    dsInfo.pDynamicStates       = dynamicStates.data();
+    VkPipelineInputAssemblyStateCreateInfo iaInfo;
+    iaInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    iaInfo.pNext                  = nullptr;
+    iaInfo.flags                  = 0;
+    iaInfo.topology               = state.iaPrimitiveTopology;
+    iaInfo.primitiveRestartEnable = state.iaPrimitiveRestart;
+    
+    VkPipelineViewportStateCreateInfo vpInfo;
+    vpInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    vpInfo.pNext                  = nullptr;
+    vpInfo.flags                  = 0;
+    vpInfo.viewportCount          = state.rsViewportCount;
+    vpInfo.pViewports             = nullptr;
+    vpInfo.scissorCount           = state.rsViewportCount;
+    vpInfo.pScissors              = nullptr;
+    
+    VkPipelineRasterizationStateCreateInfo rsInfo;
+    rsInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rsInfo.pNext                  = nullptr;
+    rsInfo.flags                  = 0;
+    rsInfo.depthClampEnable       = state.rsEnableDepthClamp;
+    rsInfo.rasterizerDiscardEnable= state.rsEnableDiscard;
+    rsInfo.polygonMode            = state.rsPolygonMode;
+    rsInfo.cullMode               = state.rsCullMode;
+    rsInfo.frontFace              = state.rsFrontFace;
+    rsInfo.depthBiasEnable        = state.rsDepthBiasEnable;
+    rsInfo.depthBiasConstantFactor= state.rsDepthBiasConstant;
+    rsInfo.depthBiasClamp         = state.rsDepthBiasClamp;
+    rsInfo.depthBiasSlopeFactor   = state.rsDepthBiasSlope;
+    rsInfo.lineWidth              = 1.0f;
+    
+    VkPipelineMultisampleStateCreateInfo msInfo;
+    msInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    msInfo.pNext                  = nullptr;
+    msInfo.flags                  = 0;
+    msInfo.rasterizationSamples   = state.msSampleCount;
+    msInfo.sampleShadingEnable    = state.msEnableSampleShading;
+    msInfo.minSampleShading       = state.msMinSampleShading;
+    msInfo.pSampleMask            = &state.msSampleMask;
+    msInfo.alphaToCoverageEnable  = state.msEnableAlphaToCoverage;
+    msInfo.alphaToOneEnable       = state.msEnableAlphaToOne;
+    
+    VkPipelineDepthStencilStateCreateInfo dsInfo;
+    dsInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    dsInfo.pNext                  = nullptr;
+    dsInfo.flags                  = 0;
+    dsInfo.depthTestEnable        = state.dsEnableDepthTest;
+    dsInfo.depthWriteEnable       = state.dsEnableDepthWrite;
+    dsInfo.depthCompareOp         = state.dsDepthCompareOp;
+    dsInfo.depthBoundsTestEnable  = state.dsEnableDepthBounds;
+    dsInfo.stencilTestEnable      = state.dsEnableStencilTest;
+    dsInfo.front                  = state.dsStencilOpFront;
+    dsInfo.back                   = state.dsStencilOpBack;
+    dsInfo.minDepthBounds         = state.dsDepthBoundsMin;
+    dsInfo.maxDepthBounds         = state.dsDepthBoundsMax;
+    
+    VkPipelineColorBlendStateCreateInfo cbInfo;
+    cbInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    cbInfo.pNext                  = nullptr;
+    cbInfo.flags                  = 0;
+    cbInfo.logicOpEnable          = state.omEnableLogicOp;
+    cbInfo.logicOp                = state.omLogicOp;
+    cbInfo.attachmentCount        = DxvkLimits::MaxNumRenderTargets;
+    cbInfo.pAttachments           = state.omBlendAttachments;
+    
+    for (uint32_t i = 0; i < 4; i++)
+      cbInfo.blendConstants[i] = 0.0f;
+    
+    VkPipelineDynamicStateCreateInfo dyInfo;
+    dyInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dyInfo.pNext                  = nullptr;
+    dyInfo.flags                  = 0;
+    dyInfo.dynamicStateCount      = dynamicStates.size();
+    dyInfo.pDynamicStates         = dynamicStates.data();
     
     VkGraphicsPipelineCreateInfo info;
-    info.sType                  = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    info.pNext                  = nullptr;
-    info.flags                  = 0;
-    info.stageCount             = stages.size();
-    info.pStages                = stages.data();
-    info.pVertexInputState      = &state.inputLayout->info();
-    info.pInputAssemblyState    = &state.inputAssemblyState->info();
-    info.pTessellationState     = nullptr;  // TODO implement
-    info.pViewportState         = &vpInfo;
-    info.pRasterizationState    = &state.rasterizerState->info();
-    info.pMultisampleState      = &state.multisampleState->info();
-    info.pDepthStencilState     = &state.depthStencilState->info();
-    info.pColorBlendState       = &state.blendState->info();
-    info.pDynamicState          = &dsInfo;
-    info.layout                 = m_layout->pipelineLayout();
-    info.renderPass             = state.renderPass;
-    info.subpass                = 0;
-    info.basePipelineHandle     = VK_NULL_HANDLE;
-    info.basePipelineIndex      = 0;
+    info.sType                    = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    info.pNext                    = nullptr;
+    info.flags                    = 0;
+    info.stageCount               = stages.size();
+    info.pStages                  = stages.data();
+    info.pVertexInputState        = &viInfo;
+    info.pInputAssemblyState      = &iaInfo;
+    info.pTessellationState       = nullptr;  // TODO implement
+    info.pViewportState           = &vpInfo;
+    info.pRasterizationState      = &rsInfo;
+    info.pMultisampleState        = &msInfo;
+    info.pDepthStencilState       = &dsInfo;
+    info.pColorBlendState         = &cbInfo;
+    info.pDynamicState            = &dyInfo;
+    info.layout                   = m_layout->pipelineLayout();
+    info.renderPass               = state.omRenderPass;
+    info.subpass                  = 0;
+    info.basePipelineHandle       = VK_NULL_HANDLE; // TODO use this
+    info.basePipelineIndex        = 0;
     
     VkPipeline pipeline = VK_NULL_HANDLE;
     if (m_vkd->vkCreateGraphicsPipelines(m_vkd->device(),
