@@ -108,7 +108,7 @@ namespace dxvk {
     vpInfo.viewportCount        = state.viewportCount;
     vpInfo.pViewports           = nullptr;
     vpInfo.scissorCount         = state.viewportCount;
-    vpInfo.pViewports           = nullptr;
+    vpInfo.pScissors            = nullptr;
     
     VkPipelineDynamicStateCreateInfo dsInfo;
     dsInfo.sType                = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;

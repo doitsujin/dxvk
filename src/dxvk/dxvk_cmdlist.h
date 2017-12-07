@@ -154,6 +154,12 @@ namespace dxvk {
             uint32_t                imageMemoryBarrierCount,
       const VkImageMemoryBarrier*   pImageMemoryBarriers);
     
+    void cmdUpdateBuffer(
+            VkBuffer                dstBuffer,
+            VkDeviceSize            dstOffset,
+            VkDeviceSize            dataSize,
+      const void*                   pData);
+    
     void cmdSetScissor(
             uint32_t                firstScissor,
             uint32_t                scissorCount,

@@ -208,6 +208,7 @@ namespace dxvk {
     std::vector<const char*> extOptional = { };
     std::vector<const char*> extRequired = {
       VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+      VK_KHR_MAINTENANCE1_EXTENSION_NAME,
     };
     
     const vk::NameSet extensionsAvailable

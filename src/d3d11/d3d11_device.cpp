@@ -33,6 +33,7 @@ namespace dxvk {
     m_presentDevice->SetDeviceLayer(this);
     
     m_context = new D3D11DeviceContext(this, m_dxvkDevice);
+    m_resourceInitContext = m_dxvkDevice->createContext();
   }
   
   
@@ -131,6 +132,8 @@ namespace dxvk {
       
       *ppBuffer = ref(new D3D11Buffer(
         this, buffer.ptr(), *pDesc));
+      
+      InitBuffer(buffer.ptr(), pInitialData);
     }
     
     return S_OK;
@@ -373,7 +376,7 @@ namespace dxvk {
         // Create vertex input binding description. 
         VkVertexInputBindingDescription binding;
         binding.binding   = pInputElementDescs[i].InputSlot;
-        binding.stride    = 0;
+        binding.stride    = 12;
         binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
         
         if (pInputElementDescs[i].InputSlotClass == D3D11_INPUT_PER_INSTANCE_DATA) {
@@ -804,6 +807,25 @@ namespace dxvk {
     } catch (const DxvkError& e) {
       Logger::err(e.message());
       return E_INVALIDARG;
+    }
+  }
+  
+  
+  void D3D11Device::InitBuffer(
+          IDXGIBufferResourcePrivate* pBuffer,
+    const D3D11_SUBRESOURCE_DATA*     pInitialData) {
+    const Rc<DxvkBuffer> buffer = pBuffer->GetDXVKBuffer();
+    
+    if (pInitialData != nullptr) {
+      std::lock_guard<std::mutex> lock(m_resourceInitMutex);;
+      m_resourceInitContext->beginRecording(
+        m_dxvkDevice->createCommandList());
+      m_resourceInitContext->updateBuffer(
+        buffer, 0, buffer->info().size,
+        pInitialData->pSysMem);
+      m_dxvkDevice->submitCommandList(
+        m_resourceInitContext->endRecording(),
+        nullptr, nullptr);
     }
   }
   

@@ -244,6 +244,9 @@ namespace dxvk {
     
     Com<ID3D11DeviceContext>        m_context;
     
+    std::mutex                      m_resourceInitMutex;
+    Rc<DxvkContext>                 m_resourceInitContext;
+    
     D3D11StateObjectSet<D3D11RasterizerState> m_rsStateObjects;
     
     HRESULT CreateShaderModule(
@@ -251,6 +254,10 @@ namespace dxvk {
       const void*                   pShaderBytecode,
             size_t                  BytecodeLength,
             ID3D11ClassLinkage*     pClassLinkage);
+    
+    void InitBuffer(
+            IDXGIBufferResourcePrivate* pBuffer,
+      const D3D11_SUBRESOURCE_DATA*     pInitialData);
     
     VkPipelineStageFlags GetEnabledShaderStages() const;
     

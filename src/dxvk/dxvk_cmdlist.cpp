@@ -260,6 +260,16 @@ namespace dxvk {
   }
   
   
+  void DxvkCommandList::cmdUpdateBuffer(
+          VkBuffer                dstBuffer,
+          VkDeviceSize            dstOffset,
+          VkDeviceSize            dataSize,
+    const void*                   pData) {
+    m_vkd->vkCmdUpdateBuffer(m_buffer,
+      dstBuffer, dstOffset, dataSize, pData);
+  }
+  
+  
   void DxvkCommandList::cmdSetScissor(
           uint32_t                firstScissor,
           uint32_t                scissorCount,

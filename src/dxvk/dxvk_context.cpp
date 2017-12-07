@@ -335,6 +335,34 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::updateBuffer(
+    const Rc<DxvkBuffer>&           buffer,
+          VkDeviceSize              offset,
+          VkDeviceSize              size,
+    const void*                     data) {
+    
+    if (size == 0)
+      return;
+    
+    if (size <= 65536) {
+      m_cmd->cmdUpdateBuffer(
+        buffer->handle(),
+        offset, size, data);
+    } else {
+      // TODO implement
+      Logger::err("DxvkContext::updateBuffer: Large updates not yet supported");
+    }
+    
+    m_barriers.accessBuffer(
+      buffer, offset, size,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT,
+      buffer->info().stages,
+      buffer->info().access);
+    m_barriers.recordCommands(m_cmd);
+  }
+  
+  
   void DxvkContext::setViewports(
           uint32_t            viewportCount,
     const VkViewport*         viewports,

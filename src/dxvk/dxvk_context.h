@@ -236,6 +236,21 @@ namespace dxvk {
       const VkImageSubresourceRange& subresources);
     
     /**
+     * \brief Updates a buffer
+     * 
+     * Copies data from the host into a buffer.
+     * \param [in] buffer Destination buffer
+     * \param [in] offset Offset of sub range to update
+     * \param [in] size Length of sub range to update
+     * \param [in] data Data to upload
+     */
+    void updateBuffer(
+      const Rc<DxvkBuffer>&           buffer,
+            VkDeviceSize              offset,
+            VkDeviceSize              size,
+      const void*                     data);
+    
+    /**
      * \brief Sets viewports
      * 
      * \param [in] viewportCount Number of viewports

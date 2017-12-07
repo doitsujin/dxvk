@@ -1259,6 +1259,8 @@ namespace dxvk {
     std::array<VkViewport, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> viewports;
     std::array<VkRect2D,   D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> scissors;
     
+    // FIXME compute proper viewport coordinates (vertical origin).
+    // D3D11's coordinate system has its origin in the bottom left.
     for (uint32_t i = 0; i < m_state.rs.numViewports; i++) {
       const D3D11_VIEWPORT& vp = m_state.rs.viewports.at(i);
       

@@ -42,6 +42,7 @@ namespace dxvk {
     // If requested by the user, dump both the raw DXBC
     // shader and the compiled SPIR-V module to a file.
     const std::string dumpPath = GetEnvVar(L"DXVK_SHADER_DUMP_PATH");
+    const std::string readPath = GetEnvVar(L"DXVK_SHADER_READ_PATH");
     
     if (dumpPath.size() != 0) {
       const std::string baseName = str::format(dumpPath, "/",
@@ -53,6 +54,16 @@ namespace dxvk {
       
       spirvCode.store(std::ofstream(str::format(baseName, ".spv"),
         std::ios_base::binary | std::ios_base::trunc));
+    }
+    
+    if (readPath.size() != 0) {
+      const std::string baseName = str::format(readPath, "/",
+        ConstructFileName(ComputeShaderHash(pShaderBytecode, BytecodeLength),
+        module.version().type()));
+      
+      spirvCode = SpirvCodeBuffer(std::ifstream(
+        str::format(baseName, ".spv"),
+        std::ios_base::binary));
     }
     
     m_shader = pDevice->GetDXVKDevice()->createShader(
