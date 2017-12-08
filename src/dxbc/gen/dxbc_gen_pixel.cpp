@@ -22,16 +22,16 @@ namespace dxvk {
     // Declare outputs based on the input signature
     for (auto e = osgn->begin(); e != osgn->end(); e++) {
       if (e->systemValue == DxbcSystemValue::None) {
-        m_psOut.at(e->registerId) = this->defVar(
+        const DxbcPointer var = this->defVar(
           DxbcValueType(e->componentType, e->componentMask.componentCount()),
           spv::StorageClassOutput);
-        m_module.decorateLocation(
-          m_psOut.at(e->registerId).valueId,
-          e->registerId);
-        m_module.setDebugName(m_psOut.at(e->registerId).valueId,
+        
+        m_psOut.at(e->registerId) = var;
+        
+        m_module.decorateLocation(var.valueId, e->registerId);
+        m_module.setDebugName(var.valueId,
           str::format("ps_out", e->registerId).c_str());
-        m_entryPointInterfaces.push_back(
-          m_psOut.at(e->registerId).valueId);
+        m_entryPointInterfaces.push_back(var.valueId);
       }
     }
   }
@@ -52,44 +52,44 @@ namespace dxvk {
     switch (regType) {
       case DxbcOperandType::Input: {
         if (m_vRegs.at(regId).valueId == 0) {
-          m_vRegs.at(regId) = this->defVar(
+          const DxbcPointer var = this->defVar(
             DxbcValueType(DxbcScalarType::Float32, 4),
             spv::StorageClassInput);
-          m_module.decorateLocation(m_vRegs.at(regId).valueId, regId);
-          m_module.setDebugName(m_vRegs.at(regId).valueId,
+          
+          m_vRegs.at(regId) = var;
+          m_module.decorateLocation(var.valueId, regId);
+          m_module.setDebugName(var.valueId,
             str::format("v", regId).c_str());
           
           switch (im) {
             case DxbcInterpolationMode::Undefined:
-              Logger::err("Undefined interpolation mode");
-              break;
             case DxbcInterpolationMode::Linear:
-              Logger::err("Linear interpolation mode");
               break;
               
             case DxbcInterpolationMode::Constant:
-              m_module.decorate(m_vRegs.at(regId).valueId, spv::DecorationFlat);
+              m_module.decorate(var.valueId, spv::DecorationFlat);
               break;
               
             case DxbcInterpolationMode::LinearCentroid:
-              m_module.decorate(m_vRegs.at(regId).valueId, spv::DecorationCentroid);
+              m_module.decorate(var.valueId, spv::DecorationCentroid);
               break;
               
             case DxbcInterpolationMode::LinearNoPerspective:
-              m_module.decorate(m_vRegs.at(regId).valueId, spv::DecorationNoPerspective);
+              m_module.decorate(var.valueId, spv::DecorationNoPerspective);
               break;
+              
             case DxbcInterpolationMode::LinearNoPerspectiveCentroid:
-              m_module.decorate(m_vRegs.at(regId).valueId, spv::DecorationNoPerspective);
-              m_module.decorate(m_vRegs.at(regId).valueId, spv::DecorationCentroid);
+              m_module.decorate(var.valueId, spv::DecorationNoPerspective);
+              m_module.decorate(var.valueId, spv::DecorationCentroid);
               break;
               
             case DxbcInterpolationMode::LinearSample:
-              m_module.decorate(m_vRegs.at(regId).valueId, spv::DecorationSample);
+              m_module.decorate(var.valueId, spv::DecorationSample);
               break;
               
             case DxbcInterpolationMode::LinearNoPerspectiveSample:
-              m_module.decorate(m_vRegs.at(regId).valueId, spv::DecorationNoPerspective);
-              m_module.decorate(m_vRegs.at(regId).valueId, spv::DecorationSample);
+              m_module.decorate(var.valueId, spv::DecorationNoPerspective);
+              m_module.decorate(var.valueId, spv::DecorationSample);
               break;
           }
         }
