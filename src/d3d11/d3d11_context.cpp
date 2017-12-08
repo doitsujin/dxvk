@@ -3,6 +3,8 @@
 #include "d3d11_context.h"
 #include "d3d11_device.h"
 
+#include "../dxbc/dxbc_util.h"
+
 namespace dxvk {
   
   D3D11DeviceContext::D3D11DeviceContext(
@@ -638,6 +640,7 @@ namespace dxvk {
     switch (binding.format) {
       case DXGI_FORMAT_R16_UINT: indexType = VK_INDEX_TYPE_UINT16; break;
       case DXGI_FORMAT_R32_UINT: indexType = VK_INDEX_TYPE_UINT32; break;
+      default: Logger::err(str::format("D3D11: Invalid index format: ", binding.format));
     }
     
     m_context->bindIndexBuffer(
@@ -696,7 +699,7 @@ namespace dxvk {
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppConstantBuffers) {
     this->BindConstantBuffers(
-      D3D11ShaderStage::VertexShader,
+      DxbcProgramType::VertexShader,
       &m_state.vs.constantBuffers,
       StartSlot, NumBuffers,
       ppConstantBuffers);
@@ -966,7 +969,7 @@ namespace dxvk {
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppConstantBuffers) {
     this->BindConstantBuffers(
-      D3D11ShaderStage::PixelShader,
+      DxbcProgramType::PixelShader,
       &m_state.vs.constantBuffers,
       StartSlot, NumBuffers,
       ppConstantBuffers);
@@ -1329,7 +1332,7 @@ namespace dxvk {
   
   
   void D3D11DeviceContext::BindConstantBuffers(
-          D3D11ShaderStage                  ShaderStage,
+          DxbcProgramType                   ShaderStage,
           D3D11ConstantBufferBindings*      pBindings,
           UINT                              StartSlot,
           UINT                              NumBuffers,
@@ -1343,18 +1346,25 @@ namespace dxvk {
       if (pBindings->at(StartSlot + i) != buffer) {
         pBindings->at(StartSlot + i) = buffer;
         
-        DxvkBufferBinding dxvkBinding;
+        DxvkBufferBinding bindingInfo;
         
         if (buffer != nullptr) {
-          dxvkBinding = DxvkBufferBinding(
+          bindingInfo = DxvkBufferBinding(
             buffer->GetDXVKBuffer(),
             0, VK_WHOLE_SIZE);
         }
         
-        // TODO compute actual slot index
+        VkPipelineBindPoint bindPoint
+          = ShaderStage == DxbcProgramType::ComputeShader
+            ? VK_PIPELINE_BIND_POINT_COMPUTE
+            : VK_PIPELINE_BIND_POINT_GRAPHICS;
+        
+        uint32_t slotId = computeResourceSlotId(
+          ShaderStage, DxbcBindingType::ConstantBuffer,
+          StartSlot + i);
+        
         m_context->bindResourceBuffer(
-          VK_PIPELINE_BIND_POINT_GRAPHICS, 0,
-          dxvkBinding);
+          bindPoint, slotId, bindingInfo);
       }
     }
   }
@@ -1369,8 +1379,9 @@ namespace dxvk {
     std::array<VkViewport, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> viewports;
     std::array<VkRect2D,   D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> scissors;
     
-    // FIXME compute proper viewport coordinates (vertical origin).
-    // D3D11's coordinate system has its origin in the bottom left.
+    // D3D11's coordinate system has its origin in the bottom left,
+    // but the viewport coordinates are aligned to the top-left
+    // corner so we can get away with flipping the viewport.
     for (uint32_t i = 0; i < m_state.rs.numViewports; i++) {
       const D3D11_VIEWPORT& vp = m_state.rs.viewports.at(i);
       
@@ -1396,7 +1407,6 @@ namespace dxvk {
       // TODO D3D11 docs aren't clear about what should happen
       // when there are undefined scissor rects for a viewport.
       // Figure out what it does on Windows.
-      // FIXME Compute correct vertical position
       if (enableScissorTest && (i < m_state.rs.numScissors)) {
         const D3D11_RECT& sr = m_state.rs.scissors.at(i);
         

@@ -66,8 +66,21 @@ namespace dxvk {
   Rc<DxvkShaderModule> DxvkShader::createShaderModule(
     const Rc<vk::DeviceFn>&          vkd,
     const DxvkDescriptorSlotMapping& mapping) const {
-    // TODO apply mapping
-    return new DxvkShaderModule(vkd, m_stage, m_code);
+    // Iterate over the code and replace every resource slot
+    // index with the corresponding mapped binding index.
+    SpirvCodeBuffer spirvCode = m_code;
+    
+    for (auto ins : spirvCode) {
+      if (ins.opCode() == spv::OpDecorate
+       && ins.arg(2)   == spv::DecorationBinding) {
+        
+        const uint32_t oldBinding = ins.arg(3);
+        const uint32_t newBinding = mapping.getBindingId(oldBinding);
+        ins.setArg(3, newBinding);
+      }
+    }
+    
+    return new DxvkShaderModule(vkd, m_stage, spirvCode);
   }
   
   

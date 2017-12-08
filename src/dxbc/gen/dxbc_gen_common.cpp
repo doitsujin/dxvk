@@ -6,7 +6,8 @@
 
 namespace dxvk {
   
-  DxbcCodeGen::DxbcCodeGen() {
+  DxbcCodeGen::DxbcCodeGen(DxbcProgramType shaderStage)
+  : m_shaderStage(shaderStage) {
     m_module.setMemoryModel(
       spv::AddressingModelLogical,
       spv::MemoryModelGLSL450);
@@ -52,14 +53,20 @@ namespace dxvk {
       m_module.defPointerType(structType, spv::StorageClassUniform),
       spv::StorageClassUniform);
     
+    uint32_t bindingId = computeResourceSlotId(m_shaderStage,
+      DxbcBindingType::ConstantBuffer, bufferId);
+    
     m_module.setDebugName(varIndex, str::format("cb", bufferId).c_str());
     m_module.decorateDescriptorSet(varIndex, 0);
-    m_module.decorateBinding(varIndex, 0);
+    m_module.decorateBinding(varIndex, bindingId);
     m_constantBuffers.at(bufferId).varId = varIndex;
     m_constantBuffers.at(bufferId).size  = elementCount;
     
     // TODO compute resource slot index
-    m_resourceSlots.push_back({ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER });
+    DxvkResourceSlot resource;
+    resource.slot = bindingId;
+    resource.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    m_resourceSlots.push_back(resource);
   }
   
   

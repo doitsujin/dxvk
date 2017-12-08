@@ -9,6 +9,7 @@ dxbc_src = files([
   'dxbc_names.cpp',
   'dxbc_reader.cpp',
   'dxbc_type.cpp',
+  'dxbc_util.cpp',
   
   'gen/dxbc_gen_common.cpp',
   'gen/dxbc_gen_pixel.cpp',

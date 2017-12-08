@@ -330,8 +330,8 @@ namespace dxvk {
     DxvkContextState    m_state;
     DxvkBarrierSet      m_barriers;
     
-    DxvkShaderResourceSlots m_cResources = { 1024 };
-    DxvkShaderResourceSlots m_gResources = { 4096 };
+    DxvkShaderResourceSlots m_cResources = {  256 };
+    DxvkShaderResourceSlots m_gResources = { 1024 };
     
     void renderPassBegin();
     void renderPassEnd();

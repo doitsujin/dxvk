@@ -2,8 +2,8 @@
 
 namespace dxvk {
   
-  DxbcPsCodeGen::DxbcPsCodeGen(
-    const Rc<DxbcIsgn>& osgn) {
+  DxbcPsCodeGen::DxbcPsCodeGen(const Rc<DxbcIsgn>& osgn)
+  : DxbcCodeGen(DxbcProgramType::PixelShader) {
     m_module.enableCapability(spv::CapabilityShader);
     m_module.enableCapability(spv::CapabilityCullDistance);
     m_module.enableCapability(spv::CapabilityClipDistance);

@@ -48,7 +48,7 @@ namespace dxvk {
      * block. The header, if any, will be skipped over.
      * \returns Instruction iterator
      */
-    SpirvInstructionIterator begin() const {
+    SpirvInstructionIterator begin() {
       return SpirvInstructionIterator(m_code.data(), m_code.size());
     }
     
@@ -58,7 +58,7 @@ namespace dxvk {
      * Points to the end of the instruction block.
      * \returns Instruction iterator
      */
-    SpirvInstructionIterator end() const {
+    SpirvInstructionIterator end() {
       return SpirvInstructionIterator(nullptr, 0);
     }
     

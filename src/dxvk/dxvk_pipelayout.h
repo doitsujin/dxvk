@@ -74,7 +74,7 @@ namespace dxvk {
      * \returns Binding index, or \c InvalidBinding
      */
     uint32_t getBindingId(
-            uint32_t              slot);
+            uint32_t              slot) const;
     
   private:
     

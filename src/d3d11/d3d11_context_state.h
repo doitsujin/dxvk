@@ -10,15 +10,6 @@
 
 namespace dxvk {
   
-  enum class D3D11ShaderStage {
-    VertexShader      = 0,
-    HullShader        = 1,
-    DomainShader      = 2,
-    GeometryShader    = 3,
-    PixelShader       = 4,
-    ComputeShader     = 5,
-  };
-  
   using D3D11ConstantBufferBindings = std::array<
     Com<D3D11Buffer>, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT>;
   

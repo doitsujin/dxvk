@@ -26,7 +26,7 @@ namespace dxvk {
   }
   
   
-  uint32_t DxvkDescriptorSlotMapping::getBindingId(uint32_t slot) {
+  uint32_t DxvkDescriptorSlotMapping::getBindingId(uint32_t slot) const {
     // This won't win a performance competition, but the number
     // of bindings used by a shader is usually much smaller than
     // the number of resource slots available to the system.

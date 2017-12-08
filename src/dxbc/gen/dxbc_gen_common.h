@@ -4,6 +4,7 @@
 #include "../dxbc_common.h"
 #include "../dxbc_decoder.h"
 #include "../dxbc_type.h"
+#include "../dxbc_util.h"
 
 #include "../../spirv/spirv_module.h"
 
@@ -46,7 +47,7 @@ namespace dxvk {
     
   public:
     
-    DxbcCodeGen();
+    DxbcCodeGen(DxbcProgramType shaderStage);
     
     virtual ~DxbcCodeGen();
     
@@ -148,6 +149,8 @@ namespace dxvk {
     constexpr static uint32_t PerVertex_PointSize = 1;
     constexpr static uint32_t PerVertex_CullDist  = 2;
     constexpr static uint32_t PerVertex_ClipDist  = 3;
+    
+    const DxbcProgramType m_shaderStage;
     
     SpirvModule m_module;
     

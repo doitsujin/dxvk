@@ -19,8 +19,7 @@ namespace dxvk {
   public:
     
     SpirvInstruction() { }
-    SpirvInstruction(
-      const uint32_t* code, uint32_t size)
+    SpirvInstruction(uint32_t* code, uint32_t size)
     : m_code(code), m_size(size) { }
     
     /**
@@ -54,10 +53,21 @@ namespace dxvk {
       return id < m_size ? m_code[id] : 0;
     }
     
+    /**
+     * \brief Changes the value of an argument
+     * 
+     * \param [in] id Argument index, starting at 1
+     * \param [in] word New argument word
+     */
+    void setArg(uint32_t id, uint32_t word) const {
+      if (id < m_size)
+        m_code[id] = word;
+    }
+    
   private:
     
-    uint32_t const* m_code = nullptr;
-    uint32_t        m_size = 0;
+    uint32_t* m_code = nullptr;
+    uint32_t  m_size = 0;
     
   };
   
@@ -73,7 +83,7 @@ namespace dxvk {
   public:
     
     SpirvInstructionIterator() { }
-    SpirvInstructionIterator(const uint32_t* code, uint32_t size)
+    SpirvInstructionIterator(uint32_t* code, uint32_t size)
     : m_code(size != 0 ? code : nullptr), m_size(size) {
       if ((size >= 5) && (m_code[0] == spv::MagicNumber))
         this->advance(5);
@@ -100,8 +110,8 @@ namespace dxvk {
     
   private:
     
-    uint32_t const* m_code = nullptr;
-    uint32_t        m_size = 0;
+    uint32_t* m_code = nullptr;
+    uint32_t  m_size = 0;
     
     void advance(uint32_t n) {
       if (n < m_size) {

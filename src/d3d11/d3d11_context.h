@@ -555,7 +555,7 @@ namespace dxvk {
     D3D11ContextState   m_state;
     
     void BindConstantBuffers(
-            D3D11ShaderStage                  ShaderStage,
+            DxbcProgramType                   ShaderStage,
             D3D11ConstantBufferBindings*      pBindings,
             UINT                              StartSlot,
             UINT                              NumBuffers,
