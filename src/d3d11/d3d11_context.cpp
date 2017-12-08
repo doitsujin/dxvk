@@ -588,7 +588,41 @@ namespace dxvk {
           ID3D11Buffer*                     pIndexBuffer,
           DXGI_FORMAT                       Format,
           UINT                              Offset) {
-    Logger::err("D3D11DeviceContext::IASetIndexBuffer: Not implemented");
+    D3D11IndexBufferBinding binding;
+    binding.buffer = static_cast<D3D11Buffer*>(pIndexBuffer);
+    binding.offset = Offset;
+    binding.format = Format;
+    m_state.ia.indexBuffer = binding;
+    
+    DxvkBufferBinding dxvkBinding;
+    
+    if (binding.buffer != nullptr) {
+      Rc<DxvkBuffer> dxvkBuffer = binding.buffer->GetDXVKBuffer();
+      
+      dxvkBinding = DxvkBufferBinding(
+        dxvkBuffer, binding.offset,
+        dxvkBuffer->info().size - binding.offset);
+    }
+    
+    
+    // As in Vulkan, the index format can be either a 32-bit
+    // unsigned integer or a 16-bit unsigned integer, no other
+    // formats are allowed.
+    VkIndexType indexType = VK_INDEX_TYPE_UINT32;
+    
+    switch (binding.format) {
+      case DXGI_FORMAT_R16_UINT: indexType = VK_INDEX_TYPE_UINT16; break;
+      case DXGI_FORMAT_R32_UINT: indexType = VK_INDEX_TYPE_UINT32; break;
+      
+      default:
+        Logger::err(str::format(
+          "D3D11DeviceContext::IASetIndexBuffer: Invalid index format: ",
+          binding.format));
+    }
+    
+    m_context->bindIndexBuffer(
+      dxvkBinding, indexType);
+      
   }
   
   
