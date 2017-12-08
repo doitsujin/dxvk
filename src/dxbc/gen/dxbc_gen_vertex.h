@@ -38,7 +38,6 @@ namespace dxvk {
     
     uint32_t m_function     = 0;
     uint32_t m_vsPerVertex  = 0;
-    uint32_t m_vsOut        = 0;
     
     std::array<DxbcPointer, 32> m_vsIn;
     std::array<DxbcPointer, 32> m_vRegs;

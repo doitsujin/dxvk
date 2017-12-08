@@ -19,19 +19,6 @@ namespace dxvk {
       spv::FunctionControlMaskNone);
     m_module.opLabel(m_module.allocateId());
     
-    // Declare user input block
-    m_psIn = m_module.newVar(
-      m_module.defPointerType(
-        m_module.defArrayType(
-          m_module.defVectorType(
-            m_module.defFloatType(32), 4),
-          m_module.constu32(32)),
-        spv::StorageClassInput),
-      spv::StorageClassInput);
-    m_entryPointInterfaces.push_back(m_psIn);
-    m_module.decorateLocation(m_psIn, 0);
-    m_module.setDebugName(m_psIn, "ps_in");
-    
     // Declare outputs based on the input signature
     for (auto e = osgn->begin(); e != osgn->end(); e++) {
       if (e->systemValue == DxbcSystemValue::None) {
@@ -67,7 +54,8 @@ namespace dxvk {
         if (m_vRegs.at(regId).valueId == 0) {
           m_vRegs.at(regId) = this->defVar(
             DxbcValueType(DxbcScalarType::Float32, 4),
-            spv::StorageClassPrivate);
+            spv::StorageClassInput);
+          m_module.decorateLocation(m_vRegs.at(regId).valueId, regId);
           m_module.setDebugName(m_vRegs.at(regId).valueId,
             str::format("v", regId).c_str());
         }
@@ -169,14 +157,7 @@ namespace dxvk {
   
   
   void DxbcPsCodeGen::prepareSvInputs() {
-    for (uint32_t i = 0; i < m_vRegs.size(); i++) {
-      if (m_vRegs.at(i).valueId != 0) {
-        this->regStore(
-          m_vRegs.at(i),
-          this->regLoad(this->getPsInPtr(i)),
-          DxbcComponentMask(true, true, true, true));
-      }
-    }
+    
   }
   
   
@@ -192,20 +173,6 @@ namespace dxvk {
           masks.at(m_psOut.at(i).type.valueType.componentCount)));
       }
     }
-  }
-  
-  
-  DxbcPointer DxbcPsCodeGen::getPsInPtr(uint32_t id) {
-    const uint32_t memberId = m_module.constu32(id);
-    
-    DxbcPointer result;
-    result.type = DxbcPointerType(
-      DxbcValueType(DxbcScalarType::Float32, 4),
-      spv::StorageClassInput);
-    result.valueId = m_module.opAccessChain(
-      this->defPointerType(result.type),
-      m_psIn, 1, &memberId);
-    return result;
   }
   
 }

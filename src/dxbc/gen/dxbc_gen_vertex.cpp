@@ -25,19 +25,6 @@ namespace dxvk {
     m_entryPointInterfaces.push_back(m_vsPerVertex);
     m_module.setDebugName(m_vsPerVertex, "vs_per_vertex");
     
-    // Declare per-vertex user output block
-    m_vsOut = m_module.newVar(
-      m_module.defPointerType(
-        m_module.defArrayType(
-          m_module.defVectorType(
-            m_module.defFloatType(32), 4),
-          m_module.constu32(32)),
-        spv::StorageClassOutput),
-      spv::StorageClassOutput);
-    m_entryPointInterfaces.push_back(m_vsOut);
-    m_module.decorateLocation(m_vsOut, 0);
-    m_module.setDebugName(m_vsOut, "vs_out");
-    
     // Declare vertex inputs based on the input signature
     for (auto e = isgn->begin(); e != isgn->end(); e++) {
       if (e->systemValue == DxbcSystemValue::None) {
@@ -88,7 +75,8 @@ namespace dxvk {
         if (m_oRegs.at(regId).valueId == 0) {
           m_oRegs.at(regId) = this->defVar(
             DxbcValueType(DxbcScalarType::Float32, 4),
-            spv::StorageClassPrivate);
+            spv::StorageClassOutput);
+          m_module.decorateLocation(m_oRegs.at(regId).valueId, regId);
           m_module.setDebugName(m_oRegs.at(regId).valueId,
             str::format("o", regId).c_str());
         }
@@ -186,15 +174,6 @@ namespace dxvk {
   
   
   void DxbcVsCodeGen::prepareSvOutputs() {
-    for (uint32_t i = 0; i < m_oRegs.size(); i++) {
-      if (m_oRegs.at(i).valueId != 0) {
-        this->regStore(
-          this->getVsOutPtr(i),
-          this->regLoad(m_oRegs.at(i)),
-          DxbcComponentMask(true, true, true, true));
-      }
-    }
-    
     for (const auto& mapping : m_svOut) {
       DxbcValue srcValue = this->regLoad(m_oRegs.at(mapping.regId));
       
@@ -218,20 +197,6 @@ namespace dxvk {
     result.valueId = m_module.opAccessChain(
       this->defPointerType(result.type),
       m_vsPerVertex, 1, &memberId);
-    return result;
-  }
-  
-  
-  DxbcPointer DxbcVsCodeGen::getVsOutPtr(uint32_t id) {
-    const uint32_t memberId = m_module.constu32(id);
-    
-    DxbcPointer result;
-    result.type = DxbcPointerType(
-      DxbcValueType(DxbcScalarType::Float32, 4),
-      spv::StorageClassOutput);
-    result.valueId = m_module.opAccessChain(
-      this->defPointerType(result.type),
-      m_vsOut, 1, &memberId);
     return result;
   }
   

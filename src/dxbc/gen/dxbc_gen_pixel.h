@@ -37,7 +37,6 @@ namespace dxvk {
   private:
     
     uint32_t m_function = 0;
-    uint32_t m_psIn     = 0;
     
     DxbcPointer m_svPosition;
     
@@ -49,8 +48,6 @@ namespace dxvk {
     
     void prepareSvInputs();
     void prepareSvOutputs();
-    
-    DxbcPointer getPsInPtr(uint32_t id);
     
   };
   
