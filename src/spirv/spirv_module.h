@@ -46,6 +46,9 @@ namespace dxvk {
             uint32_t                y,
             uint32_t                z);
     
+    void setOriginUpperLeft(
+            uint32_t                entryPointId);
+    
     void setDebugName(
             uint32_t                expressionId,
       const char*                   debugName);

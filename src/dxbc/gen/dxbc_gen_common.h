@@ -95,11 +95,12 @@ namespace dxvk {
             DxbcComponentMask     mask);
     
     virtual void dclInterfaceVar(
-            DxbcOperandType   regType,
-            uint32_t          regId,
-            uint32_t          regDim,
-            DxbcComponentMask regMask,
-            DxbcSystemValue   sv) = 0;
+            DxbcOperandType       regType,
+            uint32_t              regId,
+            uint32_t              regDim,
+            DxbcComponentMask     regMask,
+            DxbcSystemValue       sv,
+            DxbcInterpolationMode im) = 0;
     
     virtual DxbcPointer ptrInterfaceVar(
             DxbcOperandType       regType,

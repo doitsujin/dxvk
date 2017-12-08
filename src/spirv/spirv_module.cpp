@@ -95,6 +95,14 @@ namespace dxvk {
   }
   
   
+  void SpirvModule::setOriginUpperLeft(
+          uint32_t                entryPointId) {
+    m_execModeInfo.putIns (spv::OpExecutionMode, 3);
+    m_execModeInfo.putWord(entryPointId);
+    m_execModeInfo.putWord(spv::ExecutionModeOriginUpperLeft);
+  }
+  
+  
   void SpirvModule::setDebugName(
           uint32_t                expressionId,
     const char*                   debugName) {

@@ -56,11 +56,12 @@ namespace dxvk {
   
   
   void DxbcPsCodeGen::dclInterfaceVar(
-          DxbcOperandType   regType,
-          uint32_t          regId,
-          uint32_t          regDim,
-          DxbcComponentMask regMask,
-          DxbcSystemValue   sv) {
+          DxbcOperandType       regType,
+          uint32_t              regId,
+          uint32_t              regDim,
+          DxbcComponentMask     regMask,
+          DxbcSystemValue       sv,
+          DxbcInterpolationMode im) {
     switch (regType) {
       case DxbcOperandType::Input: {
         if (m_vRegs.at(regId).valueId == 0) {
@@ -91,8 +92,8 @@ namespace dxvk {
   
   
   DxbcPointer DxbcPsCodeGen::ptrInterfaceVar(
-          DxbcOperandType   regType,
-          uint32_t          regId) {
+          DxbcOperandType       regType,
+          uint32_t              regId) {
     switch (regType) {
       case DxbcOperandType::Input:
         return m_vRegs.at(regId);
@@ -109,9 +110,9 @@ namespace dxvk {
   
   
   DxbcPointer DxbcPsCodeGen::ptrInterfaceVarIndexed(
-          DxbcOperandType   regType,
-          uint32_t          regId,
-    const DxbcValue&        index) {
+          DxbcOperandType       regType,
+          uint32_t              regId,
+    const DxbcValue&            index) {
     throw DxvkError(str::format(
       "DxbcPsCodeGen::ptrInterfaceVarIndexed:\n",
       "Pixel shaders do not support indexed interface variables"));
@@ -140,6 +141,7 @@ namespace dxvk {
       spv::ExecutionModelFragment, "main",
       m_entryPointInterfaces.size(),
       m_entryPointInterfaces.data());
+    m_module.setOriginUpperLeft(m_entryPointId);
     m_module.setDebugName(m_entryPointId, "main");
     
     return m_module.compile();

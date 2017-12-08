@@ -62,11 +62,12 @@ namespace dxvk {
   
   
   void DxbcVsCodeGen::dclInterfaceVar(
-          DxbcOperandType   regType,
-          uint32_t          regId,
-          uint32_t          regDim,
-          DxbcComponentMask regMask,
-          DxbcSystemValue   sv) {
+          DxbcOperandType       regType,
+          uint32_t              regId,
+          uint32_t              regDim,
+          DxbcComponentMask     regMask,
+          DxbcSystemValue       sv,
+          DxbcInterpolationMode im) {
     switch (regType) {
       case DxbcOperandType::Input: {
         if (m_vRegs.at(regId).valueId == 0) {
@@ -107,8 +108,8 @@ namespace dxvk {
   
   
   DxbcPointer DxbcVsCodeGen::ptrInterfaceVar(
-          DxbcOperandType   regType,
-          uint32_t          regId) {
+          DxbcOperandType       regType,
+          uint32_t              regId) {
     switch (regType) {
       case DxbcOperandType::Input:
         return m_vRegs.at(regId);
@@ -125,9 +126,9 @@ namespace dxvk {
   
   
   DxbcPointer DxbcVsCodeGen::ptrInterfaceVarIndexed(
-          DxbcOperandType   regType,
-          uint32_t          regId,
-    const DxbcValue&        index) {
+          DxbcOperandType       regType,
+          uint32_t              regId,
+    const DxbcValue&            index) {
     throw DxvkError(str::format(
       "DxbcVsCodeGen::ptrInterfaceVarIndexed:\n",
       "Vertex shaders do not support indexed interface variables"));

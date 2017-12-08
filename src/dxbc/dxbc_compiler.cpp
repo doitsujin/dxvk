@@ -96,9 +96,18 @@ namespace dxvk {
         if (hasSv)
           sv = ins.readEnum<DxbcSystemValue>(op.length());
         
+        const bool hasInterpolationMode =
+            opcode == DxbcOpcode::DclInputPs
+         || opcode == DxbcOpcode::DclInputPsSiv;
+        
+        DxbcInterpolationMode im = DxbcInterpolationMode::Undefined;
+        
+        if (hasInterpolationMode)
+          im = op.token().interpolationMode();
+        
         m_gen->dclInterfaceVar(
           op.token().type(), regId, regDim,
-          op.token().componentMask(), sv);
+          op.token().componentMask(), sv, im);
       } break;
       
       default:

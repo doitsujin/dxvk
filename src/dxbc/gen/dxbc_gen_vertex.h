@@ -16,20 +16,21 @@ namespace dxvk {
     ~DxbcVsCodeGen();
     
     void dclInterfaceVar(
-            DxbcOperandType   regType,
-            uint32_t          regId,
-            uint32_t          regDim,
-            DxbcComponentMask regMask,
-            DxbcSystemValue   sv);
+            DxbcOperandType       regType,
+            uint32_t              regId,
+            uint32_t              regDim,
+            DxbcComponentMask     regMask,
+            DxbcSystemValue       sv,
+            DxbcInterpolationMode im);
     
     DxbcPointer ptrInterfaceVar(
-            DxbcOperandType   regType,
-            uint32_t          regId);
+            DxbcOperandType       regType,
+            uint32_t              regId);
     
     DxbcPointer ptrInterfaceVarIndexed(
-            DxbcOperandType   regType,
-            uint32_t          regId,
-      const DxbcValue&        index);
+            DxbcOperandType       regType,
+            uint32_t              regId,
+      const DxbcValue&            index);
     
     SpirvCodeBuffer finalize() final;
     

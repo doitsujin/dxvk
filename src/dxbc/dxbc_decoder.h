@@ -288,6 +288,17 @@ namespace dxvk {
     }
     
     /**
+     * \brief Interpolatin mode
+     * 
+     * Used by input declarations in pixel shaders.
+     * Undefined for all other instructions.
+     */
+    DxbcInterpolationMode interpolationMode() const {
+      return static_cast<DxbcInterpolationMode>(
+        bit::extract(m_token, 11, 14));
+    }
+    
+    /**
      * \brief Operand type
      * 
      * Selects the type of the operand, i.e. whether the

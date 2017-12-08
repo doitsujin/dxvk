@@ -415,6 +415,18 @@ namespace dxvk {
   };
   
   
+  enum class DxbcInterpolationMode : uint32_t {
+    Undefined                   = 0,
+    Constant                    = 1,
+    Linear                      = 2,
+    LinearCentroid              = 3,
+    LinearNoPerspective         = 4,
+    LinearNoperspectiveCentroid = 5,
+    LinearSample                = 6,
+    LinearNoPerspectiveSample   = 7,
+  };
+  
+  
   enum class DxbcGlobalFlag : uint32_t {
     RefactoringAllowed    = 0,
     DoublePrecision       = 1,
