@@ -46,9 +46,9 @@ namespace dxvk {
     
     /**
      * \brief Compiles DXBC shader to SPIR-V module
-     * \returns The compiled DXVK shader object
+     * \returns The compiled shader object
      */
-    SpirvCodeBuffer compile() const;
+    Rc<DxvkShader> compile() const;
     
   private:
     

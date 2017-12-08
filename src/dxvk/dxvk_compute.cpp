@@ -13,7 +13,7 @@ namespace dxvk {
       slotMapping.bindingCount(),
       slotMapping.bindingInfos());
     
-    m_cs = cs->createShaderModule(slotMapping);
+    m_cs = cs->createShaderModule(vkd, slotMapping);
     
     this->compilePipeline();
   }

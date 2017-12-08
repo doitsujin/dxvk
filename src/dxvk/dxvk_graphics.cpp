@@ -55,11 +55,11 @@ namespace dxvk {
       slotMapping.bindingCount(),
       slotMapping.bindingInfos());
     
-    if (vs  != nullptr) m_vs  = vs ->createShaderModule(slotMapping);
-    if (tcs != nullptr) m_tcs = tcs->createShaderModule(slotMapping);
-    if (tes != nullptr) m_tes = tes->createShaderModule(slotMapping);
-    if (gs  != nullptr) m_gs  = gs ->createShaderModule(slotMapping);
-    if (fs  != nullptr) m_fs  = fs ->createShaderModule(slotMapping);
+    if (vs  != nullptr) m_vs  = vs ->createShaderModule(vkd, slotMapping);
+    if (tcs != nullptr) m_tcs = tcs->createShaderModule(vkd, slotMapping);
+    if (tes != nullptr) m_tes = tes->createShaderModule(vkd, slotMapping);
+    if (gs  != nullptr) m_gs  = gs ->createShaderModule(vkd, slotMapping);
+    if (fs  != nullptr) m_fs  = fs ->createShaderModule(vkd, slotMapping);
   }
   
   

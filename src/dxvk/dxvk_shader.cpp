@@ -41,12 +41,11 @@ namespace dxvk {
   
   
   DxvkShader::DxvkShader(
-    const Rc<vk::DeviceFn>&     vkd,
-          VkShaderStageFlagBits stage,
-          uint32_t              slotCount,
-    const DxvkResourceSlot*     slotInfos,
-    const SpirvCodeBuffer&      code)
-  : m_vkd(vkd), m_stage(stage), m_code(code) {
+          VkShaderStageFlagBits   stage,
+          uint32_t                slotCount,
+    const DxvkResourceSlot*       slotInfos,
+    const SpirvCodeBuffer&        code)
+  : m_stage(stage), m_code(code) {
     for (uint32_t i = 0; i < slotCount; i++)
       m_slots.push_back(slotInfos[i]);
   }
@@ -65,9 +64,15 @@ namespace dxvk {
   
   
   Rc<DxvkShaderModule> DxvkShader::createShaderModule(
+    const Rc<vk::DeviceFn>&          vkd,
     const DxvkDescriptorSlotMapping& mapping) const {
     // TODO apply mapping
-    return new DxvkShaderModule(m_vkd, m_stage, m_code);
+    return new DxvkShaderModule(vkd, m_stage, m_code);
+  }
+  
+  
+  void DxvkShader::dump(std::ostream&& outputStream) const {
+    m_code.store(std::move(outputStream));
   }
   
 }

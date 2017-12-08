@@ -35,7 +35,6 @@ DXVK will create a file `dxgi.log` in the current working directory and may prin
 The behaviour of DXVK can be modified with environment variables.
 
 - `DXVK_SHADER_DUMP_PATH=directory` Writes all DXBC and SPIR-V shaders to the given directory
-- `DXVK_SHADER_READS_PATH=directory` Reads SPIR-V shaders from the given directory instead of compiling the DXBC shader.
 - `DXVK_DEBUG_LAYERS=1` Enables Vulkan debug layers. Highly recommended for troubleshooting and debugging purposes.
 
 ## Samples and executables

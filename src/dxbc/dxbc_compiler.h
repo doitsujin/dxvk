@@ -23,7 +23,7 @@ namespace dxvk {
     void processInstruction(
       const DxbcInstruction&  ins);
     
-    SpirvCodeBuffer finalize();
+    Rc<DxvkShader> finalize();
     
   private:
     

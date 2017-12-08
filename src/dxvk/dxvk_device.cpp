@@ -97,7 +97,7 @@ namespace dxvk {
           uint32_t                  slotCount,
     const DxvkResourceSlot*         slotInfos,
     const SpirvCodeBuffer&          code) {
-    return new DxvkShader(m_vkd, stage,
+    return new DxvkShader(stage,
       slotCount, slotInfos, code);
   }
   

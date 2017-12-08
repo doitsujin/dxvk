@@ -68,15 +68,19 @@ namespace dxvk {
   public:
     
     DxvkShader(
-      const Rc<vk::DeviceFn>&       vkd,
             VkShaderStageFlagBits   stage,
             uint32_t                slotCount,
       const DxvkResourceSlot*       slotInfos,
       const SpirvCodeBuffer&        code);
+    
     ~DxvkShader();
     
     /**
-     * \brief 
+     * \brief Adds resource slots definitions to a mapping
+     * 
+     * Used to generate the exact descriptor set layout when
+     * compiling a graphics or compute pipeline. Slot indices
+     * have to be mapped to actual binding numbers.
      */
     void defineResourceSlots(
             DxvkDescriptorSlotMapping& mapping) const;
@@ -85,15 +89,24 @@ namespace dxvk {
      * \brief Creates a shader module
      * 
      * Maps the binding slot numbers 
+     * \param [in] vkd Vulkan device functions
      * \param [in] mapping Resource slot mapping
      * \returns The shader module
      */
     Rc<DxvkShaderModule> createShaderModule(
+      const Rc<vk::DeviceFn>&          vkd,
       const DxvkDescriptorSlotMapping& mapping) const;
+    
+    /**
+     * \brief Dumps SPIR-V shader
+     * 
+     * Can be used to store the SPIR-V code in a file.
+     * \param [in] outputStream Stream to write to 
+     */
+    void dump(std::ostream&& outputStream) const;
     
   private:
     
-    Rc<vk::DeviceFn>      m_vkd;
     VkShaderStageFlagBits m_stage;
     SpirvCodeBuffer       m_code;
     

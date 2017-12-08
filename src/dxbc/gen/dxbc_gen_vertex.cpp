@@ -108,7 +108,7 @@ namespace dxvk {
   }
   
   
-  SpirvCodeBuffer DxbcVsCodeGen::finalize() {
+  Rc<DxvkShader> DxbcVsCodeGen::finalize() {
     m_module.functionBegin(
       m_module.defVoidType(),
       m_entryPointId,
@@ -132,7 +132,10 @@ namespace dxvk {
       m_entryPointInterfaces.data());
     m_module.setDebugName(m_entryPointId, "main");
     
-    return m_module.compile();
+    return new DxvkShader(
+      VK_SHADER_STAGE_VERTEX_BIT,
+      0, nullptr,
+      m_module.compile());
   }
   
   

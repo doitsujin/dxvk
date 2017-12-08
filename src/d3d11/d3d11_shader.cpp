@@ -17,16 +17,12 @@ namespace dxvk {
       BytecodeLength);
     
     DxbcModule module(reader);
-    
-    SpirvCodeBuffer spirvCode = module.compile();
-    
-    // TODO pre-process shader bindings
-    std::vector<DxvkResourceSlot> resourceSlots;
+    m_shader = module.compile();
     
     // If requested by the user, dump both the raw DXBC
     // shader and the compiled SPIR-V module to a file.
-    const std::string dumpPath = env::getEnvVar(L"DXVK_SHADER_DUMP_PATH");
-    const std::string readPath = env::getEnvVar(L"DXVK_SHADER_READ_PATH");
+    const std::string dumpPath
+      = env::getEnvVar(L"DXVK_SHADER_DUMP_PATH");
     
     if (dumpPath.size() != 0) {
       const std::string baseName = str::format(dumpPath, "/",
@@ -36,25 +32,9 @@ namespace dxvk {
       reader.store(std::ofstream(str::format(baseName, ".dxbc"),
         std::ios_base::binary | std::ios_base::trunc));
       
-      spirvCode.store(std::ofstream(str::format(baseName, ".spv"),
+      m_shader->dump(std::ofstream(str::format(baseName, ".spv"),
         std::ios_base::binary | std::ios_base::trunc));
     }
-    
-    if (readPath.size() != 0) {
-      const std::string baseName = str::format(readPath, "/",
-        ConstructFileName(ComputeShaderHash(pShaderBytecode, BytecodeLength),
-        module.version().type()));
-      
-      spirvCode = SpirvCodeBuffer(std::ifstream(
-        str::format(baseName, ".spv"),
-        std::ios_base::binary));
-    }
-    
-    m_shader = pDevice->GetDXVKDevice()->createShader(
-      module.version().shaderStage(),
-      resourceSlots.size(),
-      resourceSlots.data(),
-      spirvCode);
   }
   
   

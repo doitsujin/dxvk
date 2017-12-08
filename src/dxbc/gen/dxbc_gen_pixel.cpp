@@ -141,7 +141,7 @@ namespace dxvk {
   }
   
   
-  SpirvCodeBuffer DxbcPsCodeGen::finalize() {
+  Rc<DxvkShader> DxbcPsCodeGen::finalize() {
     m_module.functionBegin(
       m_module.defVoidType(),
       m_entryPointId,
@@ -166,7 +166,10 @@ namespace dxvk {
     m_module.setOriginUpperLeft(m_entryPointId);
     m_module.setDebugName(m_entryPointId, "main");
     
-    return m_module.compile();
+    return new DxvkShader(
+      VK_SHADER_STAGE_FRAGMENT_BIT,
+      0, nullptr,
+      m_module.compile());
   }
   
   

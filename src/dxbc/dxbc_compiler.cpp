@@ -64,7 +64,7 @@ namespace dxvk {
   }
   
   
-  SpirvCodeBuffer DxbcCompiler::finalize() {
+  Rc<DxvkShader> DxbcCompiler::finalize() {
     return m_gen->finalize();
   }
   
