@@ -51,11 +51,26 @@ namespace dxvk {
     m_defaultMsState.minSampleShading      = 0.0f;
     m_context->setMultisampleState(m_defaultMsState);
     
-    m_defaultCbState = new DxvkBlendState(
-      VK_FALSE, VK_LOGIC_OP_CLEAR, 0, nullptr);
+    DxvkLogicOpState loState;
+    loState.enableLogicOp = VK_FALSE;
+    loState.logicOp       = VK_LOGIC_OP_CLEAR;
+    m_context->setLogicOpState(loState);
     
-    m_context->setDepthStencilState(m_defaultDsState);
-    m_context->setBlendState(m_defaultCbState);
+    m_defaultBlendMode.enableBlending = VK_FALSE;
+    m_defaultBlendMode.colorSrcFactor = VK_BLEND_FACTOR_ONE;
+    m_defaultBlendMode.colorDstFactor = VK_BLEND_FACTOR_ZERO;
+    m_defaultBlendMode.colorBlendOp   = VK_BLEND_OP_ADD;
+    m_defaultBlendMode.alphaSrcFactor = VK_BLEND_FACTOR_ONE;
+    m_defaultBlendMode.alphaDstFactor = VK_BLEND_FACTOR_ZERO;
+    m_defaultBlendMode.alphaBlendOp   = VK_BLEND_OP_ADD;
+    m_defaultBlendMode.writeMask      = VK_COLOR_COMPONENT_R_BIT
+                                      | VK_COLOR_COMPONENT_G_BIT
+                                      | VK_COLOR_COMPONENT_B_BIT
+                                      | VK_COLOR_COMPONENT_A_BIT;
+    
+    for (uint32_t i = 0; i < DxvkLimits::MaxNumRenderTargets; i++)
+      m_context->setBlendMode(i, m_defaultBlendMode);
+    
   }
   
   

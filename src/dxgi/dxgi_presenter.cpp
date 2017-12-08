@@ -92,33 +92,36 @@ namespace dxvk {
     stencilOp.reference   = 0;
     
     DxvkDepthStencilState dsState;
-    dsState.enableDepthTest       = VK_FALSE;
-    dsState.enableDepthWrite      = VK_FALSE;
-    dsState.enableDepthBounds     = VK_FALSE;
-    dsState.enableStencilTest     = VK_FALSE;
-    dsState.depthCompareOp        = VK_COMPARE_OP_ALWAYS;
-    dsState.stencilOpFront        = stencilOp;
-    dsState.stencilOpBack         = stencilOp;
-    dsState.depthBoundsMin        = 0.0f;
-    dsState.depthBoundsMax        = 1.0f;
+    dsState.enableDepthTest   = VK_FALSE;
+    dsState.enableDepthWrite  = VK_FALSE;
+    dsState.enableDepthBounds = VK_FALSE;
+    dsState.enableStencilTest = VK_FALSE;
+    dsState.depthCompareOp    = VK_COMPARE_OP_ALWAYS;
+    dsState.stencilOpFront    = stencilOp;
+    dsState.stencilOpBack     = stencilOp;
+    dsState.depthBoundsMin    = 0.0f;
+    dsState.depthBoundsMax    = 1.0f;
     
-    VkPipelineColorBlendAttachmentState blendAttachment;
-    blendAttachment.blendEnable         = VK_FALSE;
-    blendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-    blendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
-    blendAttachment.colorBlendOp        = VK_BLEND_OP_ADD;
-    blendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-    blendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-    blendAttachment.alphaBlendOp        = VK_BLEND_OP_ADD;
-    blendAttachment.colorWriteMask      = VK_COLOR_COMPONENT_R_BIT
-                                        | VK_COLOR_COMPONENT_G_BIT
-                                        | VK_COLOR_COMPONENT_B_BIT
-                                        | VK_COLOR_COMPONENT_A_BIT;
+    DxvkLogicOpState loState;
+    loState.enableLogicOp = VK_FALSE;
+    loState.logicOp       = VK_LOGIC_OP_NO_OP;
+    m_context->setLogicOpState(loState);
     
-    m_context->setBlendState(
-      new DxvkBlendState(
-        VK_FALSE, VK_LOGIC_OP_NO_OP,
-        1, &blendAttachment));
+    DxvkBlendMode blendMode;
+    blendMode.enableBlending  = VK_FALSE;
+    blendMode.colorSrcFactor  = VK_BLEND_FACTOR_ONE;
+    blendMode.colorDstFactor  = VK_BLEND_FACTOR_ZERO;
+    blendMode.colorBlendOp    = VK_BLEND_OP_ADD;
+    blendMode.alphaSrcFactor  = VK_BLEND_FACTOR_ONE;
+    blendMode.alphaDstFactor  = VK_BLEND_FACTOR_ZERO;
+    blendMode.alphaBlendOp    = VK_BLEND_OP_ADD;
+    blendMode.writeMask       = VK_COLOR_COMPONENT_R_BIT
+                              | VK_COLOR_COMPONENT_G_BIT
+                              | VK_COLOR_COMPONENT_B_BIT
+                              | VK_COLOR_COMPONENT_A_BIT;
+    
+    for (uint32_t i = 0; i < DxvkLimits::MaxNumRenderTargets; i++)
+      m_context->setBlendMode(i, blendMode);
     
     m_context->bindShader(
       VK_SHADER_STAGE_VERTEX_BIT,

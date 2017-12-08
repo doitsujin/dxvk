@@ -93,15 +93,13 @@ namespace dxvk {
   struct DxvkContextState {
     DxvkInputAssemblyState    ia;
     DxvkInputLayout           il;
+    DxvkVertexInputState      vi;
+    DxvkViewportState         vp;
     DxvkRasterizerState       rs;
     DxvkMultisampleState      ms;
     DxvkDepthStencilState     ds;
     DxvkLogicOpState          lo;
-    
-    DxvkVertexInputState      vi;
-    DxvkViewportState         vp;
     DxvkOutputMergerState     om;
-    DxvkConstantStateObjects  co;
     
     DxvkGraphicsPipelineState gp;
     DxvkComputePipelineState  cp;

@@ -4,7 +4,6 @@ dxvk_src = files([
   'dxvk_buffer.cpp',
   'dxvk_cmdlist.cpp',
   'dxvk_compute.cpp',
-  'dxvk_constant_state.cpp',
   'dxvk_context.cpp',
   'dxvk_data.cpp',
   'dxvk_descriptor.cpp',

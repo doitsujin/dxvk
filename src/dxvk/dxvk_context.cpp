@@ -561,15 +561,25 @@ namespace dxvk {
       gpState.dsDepthBoundsMin         = m_state.ds.depthBoundsMin;
       gpState.dsDepthBoundsMax         = m_state.ds.depthBoundsMax;
       
-      const auto& om = m_state.co.blendState->info();
-      gpState.omEnableLogicOp          = om.logicOpEnable;
-      gpState.omLogicOp                = om.logicOp;
+      gpState.omEnableLogicOp          = m_state.lo.enableLogicOp;
+      gpState.omLogicOp                = m_state.lo.logicOp;
       gpState.omRenderPass             = m_state.om.framebuffer->renderPass();
       
       const auto& rt = m_state.om.framebuffer->renderTargets();
+      
       for (uint32_t i = 0; i < DxvkLimits::MaxNumRenderTargets; i++) {
-        if (rt.getColorTarget(i) != nullptr)
-          gpState.omBlendAttachments[i] = om.pAttachments[i];
+        if (rt.getColorTarget(i) != nullptr) {
+          const DxvkBlendMode& mode = m_state.om.blendModes.at(i);
+          
+          gpState.omBlendAttachments[i].blendEnable         = mode.enableBlending;
+          gpState.omBlendAttachments[i].srcColorBlendFactor = mode.colorSrcFactor;
+          gpState.omBlendAttachments[i].dstColorBlendFactor = mode.colorDstFactor;
+          gpState.omBlendAttachments[i].colorBlendOp        = mode.colorBlendOp;
+          gpState.omBlendAttachments[i].srcAlphaBlendFactor = mode.alphaSrcFactor;
+          gpState.omBlendAttachments[i].dstAlphaBlendFactor = mode.alphaDstFactor;
+          gpState.omBlendAttachments[i].alphaBlendOp        = mode.alphaBlendOp;
+          gpState.omBlendAttachments[i].colorWriteMask      = mode.writeMask;
+        }
       }
       
       m_cmd->cmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,

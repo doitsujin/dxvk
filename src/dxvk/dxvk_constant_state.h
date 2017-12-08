@@ -90,14 +90,14 @@ namespace dxvk {
    * Blend modes can be set separately for each attachment.
    */
   struct DxvkBlendMode {
-    VkBool32              blendEnable;
-    VkBlendFactor         srcColorBlendFactor;
-    VkBlendFactor         dstColorBlendFactor;
+    VkBool32              enableBlending;
+    VkBlendFactor         colorSrcFactor;
+    VkBlendFactor         colorDstFactor;
     VkBlendOp             colorBlendOp;
-    VkBlendFactor         srcAlphaBlendFactor;
-    VkBlendFactor         dstAlphaBlendFactor;
+    VkBlendFactor         alphaSrcFactor;
+    VkBlendFactor         alphaDstFactor;
     VkBlendOp             alphaBlendOp;
-    VkColorComponentFlags colorWriteMask;
+    VkColorComponentFlags writeMask;
   };
   
   
@@ -139,11 +139,6 @@ namespace dxvk {
     
     std::array<DxvkVertexAttribute, DxvkLimits::MaxNumVertexAttributes> attributes;
     std::array<DxvkVertexBinding,   DxvkLimits::MaxNumVertexBindings>   bindings;
-  };
-  
-  
-  struct DxvkConstantStateObjects {
-    Rc<DxvkBlendState>          blendState;
   };
   
 }

@@ -550,7 +550,7 @@ namespace dxvk {
     DxvkRasterizerState   m_defaultRsState;
     DxvkDepthStencilState m_defaultDsState;
     DxvkMultisampleState  m_defaultMsState;
-    Rc<DxvkBlendState>        m_defaultCbState;
+    DxvkBlendMode         m_defaultBlendMode;
     
     D3D11ContextState   m_state;
     

@@ -120,10 +120,26 @@ public:
     dsState.depthBoundsMax        = 1.0f;
     m_dxvkContext->setDepthStencilState(dsState);
     
-    m_dxvkContext->setBlendState(
-      new DxvkBlendState(
-        VK_FALSE, VK_LOGIC_OP_COPY,
-        0, nullptr));
+    DxvkLogicOpState loState;
+    loState.enableLogicOp = VK_FALSE;
+    loState.logicOp       = VK_LOGIC_OP_NO_OP;
+    m_dxvkContext->setLogicOpState(loState);
+    
+    DxvkBlendMode blendMode;
+    blendMode.enableBlending  = VK_FALSE;
+    blendMode.colorSrcFactor  = VK_BLEND_FACTOR_ONE;
+    blendMode.colorDstFactor  = VK_BLEND_FACTOR_ZERO;
+    blendMode.colorBlendOp    = VK_BLEND_OP_ADD;
+    blendMode.alphaSrcFactor  = VK_BLEND_FACTOR_ONE;
+    blendMode.alphaDstFactor  = VK_BLEND_FACTOR_ZERO;
+    blendMode.alphaBlendOp    = VK_BLEND_OP_ADD;
+    blendMode.writeMask       = VK_COLOR_COMPONENT_R_BIT
+                              | VK_COLOR_COMPONENT_G_BIT
+                              | VK_COLOR_COMPONENT_B_BIT
+                              | VK_COLOR_COMPONENT_A_BIT;
+    
+    for (uint32_t i = 0; i < DxvkLimits::MaxNumRenderTargets; i++)
+      m_dxvkContext->setBlendMode(i, blendMode);
     
     m_dxvkVertexShader = m_dxvkDevice->createShader(
       VK_SHADER_STAGE_VERTEX_BIT, 0, nullptr,
