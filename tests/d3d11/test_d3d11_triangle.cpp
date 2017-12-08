@@ -1,3 +1,4 @@
+#include <d3dcompiler.h>
 #include <d3d11.h>
 
 #include <windows.h>
@@ -7,11 +8,46 @@
 
 using namespace dxvk;
 
+struct Extent2D {
+  uint32_t w, h;
+};
+
+struct Vertex {
+  float x, y, z, w;
+  float r, g, b, a;
+};
+
+const std::string g_vertexShaderCode =
+  "struct VsInput {\n"
+  "  float4 position : IN_POSITION;\n"
+  "  float4 color    : IN_COLOR;\n"
+  "};\n"
+  "struct VsOutput {\n"
+  "  float4 position : SV_POSITION;\n"
+  "  float4 color    : PS_COLOR;\n"
+  "};\n"
+  "VsOutput main(VsInput vsIn) {\n"
+  "  VsOutput vsOut;\n"
+  "  vsOut.position = vsIn.position;\n"
+  "  vsOut.color    = vsIn.color;\n"
+  "  return vsOut;\n"
+  "}\n";
+
+const std::string g_pixelShaderCode =
+  "struct PsInput {\n"
+  "  float4 position : SV_POSITION;\n"
+  "  float4 color : PS_COLOR;\n"
+  "};\n"
+  "float4 main(PsInput psIn) : SV_TARGET {\n"
+  "  return psIn.color;\n"
+  "}\n";
+
 class TriangleApp {
   
 public:
   
-  TriangleApp(HINSTANCE instance, HWND window) {
+  TriangleApp(HINSTANCE instance, HWND window)
+  : m_window(window) {
     if (FAILED(CreateDXGIFactory(__uuidof(IDXGIFactory),
         reinterpret_cast<void**>(&m_factory))))
       throw DxvkError("Failed to create DXGI factory");
@@ -33,8 +69,8 @@ public:
       throw DxvkError("Failed to create D3D11 device");
     
     DXGI_SWAP_CHAIN_DESC swapDesc;
-    swapDesc.BufferDesc.Width             = 1024;
-    swapDesc.BufferDesc.Height            = 600;
+    swapDesc.BufferDesc.Width             = m_windowSize.w;
+    swapDesc.BufferDesc.Height            = m_windowSize.h;
     swapDesc.BufferDesc.RefreshRate       = { 60, 1 };
     swapDesc.BufferDesc.Format            = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
     swapDesc.BufferDesc.ScanlineOrdering  = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
@@ -42,7 +78,7 @@ public:
     swapDesc.SampleDesc.Count             = 1;
     swapDesc.SampleDesc.Quality           = 0;
     swapDesc.BufferUsage                  = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-    swapDesc.BufferCount                  = 1;
+    swapDesc.BufferCount                  = 2;
     swapDesc.OutputWindow                 = window;
     swapDesc.Windowed                     = true;
     swapDesc.SwapEffect                   = DXGI_SWAP_EFFECT_DISCARD;
@@ -60,6 +96,77 @@ public:
     if (FAILED(m_swapChain->ResizeTarget(&swapDesc.BufferDesc)))
       throw DxvkError("Failed to resize window");
     
+    std::array<Vertex, 3> vertexData = {{
+      { -0.5f, -0.5f, 0.0f, 1.0f, 0.03f, 0.03f, 0.03f, 1.0f },
+      {  0.0f,  0.5f, 0.0f, 1.0f, 0.03f, 0.03f, 0.03f, 1.0f },
+      {  0.5f, -0.5f, 0.0f, 1.0f, 0.03f, 0.03f, 0.03f, 1.0f },
+    }};
+    
+    D3D11_BUFFER_DESC vertexDesc;
+    vertexDesc.ByteWidth            = sizeof(Vertex) * vertexData.size();
+    vertexDesc.Usage                = D3D11_USAGE_IMMUTABLE;
+    vertexDesc.BindFlags            = D3D11_BIND_VERTEX_BUFFER;
+    vertexDesc.CPUAccessFlags       = 0;
+    vertexDesc.MiscFlags            = 0;
+    vertexDesc.StructureByteStride  = 0;
+    
+    D3D11_SUBRESOURCE_DATA vertexDataInfo;
+    vertexDataInfo.pSysMem          = vertexData.data();
+    vertexDataInfo.SysMemPitch      = 0;
+    vertexDataInfo.SysMemSlicePitch = 0;
+    
+    Com<ID3DBlob> vertexShaderBlob;
+    Com<ID3DBlob> pixelShaderBlob;
+    
+    if (FAILED(D3DCompile(
+          g_vertexShaderCode.data(),
+          g_vertexShaderCode.size(),
+          "Vertex shader",
+          nullptr, nullptr,
+          "main", "vs_5_0", 0, 0,
+          &vertexShaderBlob,
+          nullptr)))
+      throw DxvkError("Failed to compile vertex shader");
+    
+    if (FAILED(D3DCompile(
+          g_pixelShaderCode.data(),
+          g_pixelShaderCode.size(),
+          "Pixel shader",
+          nullptr, nullptr,
+          "main", "ps_5_0", 0, 0,
+          &pixelShaderBlob,
+          nullptr)))
+      throw DxvkError("Failed to compile pixel shader");
+    
+    if (FAILED(m_device->CreateVertexShader(
+          vertexShaderBlob->GetBufferPointer(),
+          vertexShaderBlob->GetBufferSize(),
+          nullptr, &m_vertexShader)))
+      throw DxvkError("Failed to create vertex shader");
+    
+    if (FAILED(m_device->CreatePixelShader(
+          pixelShaderBlob->GetBufferPointer(),
+          pixelShaderBlob->GetBufferSize(),
+          nullptr, &m_pixelShader)))
+      throw DxvkError("Failed to create pixel shader");
+      
+    
+    if (FAILED(m_device->CreateBuffer(&vertexDesc, &vertexDataInfo, &m_vertexBuffer)))
+      throw DxvkError("Failed to create vertex buffer");
+    
+    std::array<D3D11_INPUT_ELEMENT_DESC, 2> vertexFormatDesc = {{
+      { "IN_POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, offsetof(Vertex, x), D3D11_INPUT_PER_VERTEX_DATA, 0 },
+      { "IN_COLOR", 0,    DXGI_FORMAT_R32G32B32A32_FLOAT, 0, offsetof(Vertex, r), D3D11_INPUT_PER_VERTEX_DATA, 0 },
+    }};
+    
+    if (FAILED(m_device->CreateInputLayout(
+          vertexFormatDesc.data(),
+          vertexFormatDesc.size(),
+          vertexShaderBlob->GetBufferPointer(),
+          vertexShaderBlob->GetBufferSize(),
+          &m_vertexFormat)))
+      throw DxvkError("Failed to create input layout");
+    
   }
   
   
@@ -69,14 +176,68 @@ public:
   
   
   void run() {
-    FLOAT color[4] = { 0.5f, 0.5f, 0.5f, 1.0f };
+    this->adjustBackBuffer();
     
+    D3D11_VIEWPORT viewport;
+    viewport.TopLeftX     = 0.0f;
+    viewport.TopLeftY     = 0.0f;
+    viewport.Width        = static_cast<float>(m_windowSize.w);
+    viewport.Height       = static_cast<float>(m_windowSize.h);
+    viewport.MinDepth     = 0.0f;
+    viewport.MaxDepth     = 1.0f;
+    m_context->RSSetViewports(1, &viewport);
+    
+    FLOAT color[4] = { 0.5f, 0.5f, 0.5f, 1.0f };
     m_context->OMSetRenderTargets(1, &m_bufferView, nullptr);
     m_context->ClearRenderTargetView(m_bufferView.ptr(), color);
+    
+    m_context->VSSetShader(m_vertexShader.ptr(), nullptr, 0);
+    m_context->PSSetShader(m_pixelShader.ptr(), nullptr, 0);
+    
+    UINT vsStride = sizeof(Vertex);
+    UINT vsOffset = 0;
+    
+    m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    m_context->IASetInputLayout(m_vertexFormat.ptr());
+    m_context->IASetVertexBuffers(0, 1, &m_vertexBuffer, &vsStride, &vsOffset);
+    m_context->Draw(3, 0);
+    m_context->OMSetRenderTargets(0, nullptr, nullptr);
+    
     m_swapChain->Present(0, 0);
   }
   
+  
+  void adjustBackBuffer() {
+    RECT windowRect = { 0, 0, 1024, 600 };
+    GetClientRect(m_window, &windowRect);
+    
+    Extent2D newWindowSize = {
+      static_cast<uint32_t>(windowRect.right - windowRect.left),
+      static_cast<uint32_t>(windowRect.bottom - windowRect.top),
+    };
+    
+    if (m_windowSize.w != newWindowSize.w
+     || m_windowSize.h != newWindowSize.h) {
+      m_buffer     = nullptr;
+      m_bufferView = nullptr;
+      
+      if (FAILED(m_swapChain->ResizeBuffers(0,
+            newWindowSize.w, newWindowSize.h, DXGI_FORMAT_UNKNOWN, 0)))
+        throw DxvkError("Failed to resize back buffers");
+      
+      if (FAILED(m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&m_buffer))))
+        throw DxvkError("Failed to get swap chain back buffer");
+      
+      if (FAILED(m_device->CreateRenderTargetView(m_buffer.ptr(), nullptr, &m_bufferView)))
+        throw DxvkError("Failed to create render target view");
+      m_windowSize = newWindowSize;
+    }
+  }
+    
 private:
+  
+  HWND                        m_window;
+  Extent2D                    m_windowSize = { 1024, 600 };
   
   Com<IDXGIFactory>           m_factory;
   Com<IDXGIAdapter>           m_adapter;
@@ -86,8 +247,13 @@ private:
     
   Com<ID3D11Texture2D>        m_buffer;
   Com<ID3D11RenderTargetView> m_bufferView;
+  Com<ID3D11Buffer>           m_vertexBuffer;
+  Com<ID3D11InputLayout>      m_vertexFormat;
   
-  D3D_FEATURE_LEVEL       m_featureLevel;
+  Com<ID3D11VertexShader>     m_vertexShader;
+  Com<ID3D11PixelShader>      m_pixelShader;
+  
+  D3D_FEATURE_LEVEL           m_featureLevel;
   
 };
 

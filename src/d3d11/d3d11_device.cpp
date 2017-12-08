@@ -366,6 +366,7 @@ namespace dxvk {
           pInputElementDescs[i].Format).actual;
         attrib.offset   = pInputElementDescs[i].AlignedByteOffset;
         
+        // TODO implement D3D11_APPEND_ALIGNED_ELEMENT
         if (attrib.offset == D3D11_APPEND_ALIGNED_ELEMENT) {
           Logger::err("D3D11Device::CreateInputLayout: D3D11_APPEND_ALIGNED_ELEMENT not supported yet");
           return E_INVALIDARG;

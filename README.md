@@ -37,3 +37,12 @@ The behaviour of DXVK can be modified with environment variables.
 - `DXVK_SHADER_DUMP_PATH=directory` Writes all DXBC and SPIR-V shaders to the given directory
 - `DXVK_SHADER_READS_PATH=directory` Reads SPIR-V shaders from the given directory instead of compiling the DXBC shader.
 - `DXVK_DEBUG_LAYERS=1` Enables Vulkan debug layers. Highly recommended for troubleshooting and debugging purposes.
+
+## Samples and executables
+In addition to the DLLs, the following standalone programs are included in the project:
+
+- `d3d11-triangle`: Renders a triangle using D3D11. Requires native `d3dcompiler_47.dll`.
+- `dxgi-factory`: Enumerates DXGI adapters and outputs for debugging purposes.
+- `dxbc-dcompiler`: Compiles a DXBC shader to SPIR-V.
+- `dxbc-disasm`: Disassembles a DXBC shader. Requires native `d3dcompiler_47.dll`.
+- `dxvk-triangle`: Renders a triangle using pure DXVK, which is the Vulkan-based state tracker that the D3D11 implementation is based on.
