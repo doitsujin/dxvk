@@ -44,4 +44,42 @@ namespace dxvk {
     
   };
   
+  class D3D11DepthStencilView : public D3D11DeviceChild<ID3D11DepthStencilView> {
+    
+  public:
+    
+    D3D11DepthStencilView(
+            D3D11Device*                    device,
+            ID3D11Resource*                 resource,
+      const D3D11_DEPTH_STENCIL_VIEW_DESC&  desc,
+            Rc<DxvkImageView>               view);
+    ~D3D11DepthStencilView();
+    
+    HRESULT QueryInterface(
+            REFIID  riid,
+            void**  ppvObject) final;
+    
+    void GetDevice(
+            ID3D11Device **ppDevice) final;
+    
+    void GetResource(
+            ID3D11Resource **ppResource) final;
+    
+    void GetDesc(
+            D3D11_DEPTH_STENCIL_VIEW_DESC* pDesc) final;
+    
+    Rc<DxvkImageView> GetDXVKImageView();
+    
+  private:
+    
+    D3D11Device* const            m_device;
+    Com<ID3D11Resource>           m_resource;
+    
+    D3D11_DEPTH_STENCIL_VIEW_DESC m_desc;
+    Rc<DxvkImageView>             m_view;
+    
+  };
+  
+  
+  
 }

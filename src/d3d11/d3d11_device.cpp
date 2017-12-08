@@ -266,18 +266,16 @@ namespace dxvk {
     
     // Only 2D textures and 2D texture arrays are allowed
     if (resourceDim != D3D11_RESOURCE_DIMENSION_TEXTURE2D) {
-      Logger::err("D3D11Device::CreateRenderTargetView: Unsupported resource type");
+      Logger::err("D3D11: Unsupported resource type for render target views");
       return E_INVALIDARG;
     }
     
-    // Make sure we can retrieve the image object
+    // Retrieve the image that we are going to create the view for
     auto texture = static_cast<D3D11Texture2D*>(pResource);
-    
-    // Image that we are going to create the view for
     const Rc<DxvkImage> image = texture->GetDXVKImage();
     
     // The view description is optional. If not defined, it
-    // will use the resource's format and all subresources.
+    // will use the resource's format and all array layers.
     D3D11_RENDER_TARGET_VIEW_DESC desc;
     
     if (pDesc != nullptr) {
@@ -372,7 +370,7 @@ namespace dxvk {
       
       default:
         Logger::err(str::format(
-          "D3D11Device::CreateRenderTargetView: pDesc->ViewDimension not supported: ",
+          "D3D11: pDesc->ViewDimension not supported for render target views: ",
           desc.ViewDimension));
         return E_INVALIDARG;
     }
@@ -396,8 +394,134 @@ namespace dxvk {
           ID3D11Resource*                   pResource,
     const D3D11_DEPTH_STENCIL_VIEW_DESC*    pDesc,
           ID3D11DepthStencilView**          ppDepthStencilView) {
-    Logger::err("D3D11Device::CreateDepthStencilView: Not implemented");
-    return E_NOTIMPL;
+    D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+    pResource->GetType(&resourceDim);
+    
+    // Only 2D textures and 2D texture arrays are allowed
+    if (resourceDim != D3D11_RESOURCE_DIMENSION_TEXTURE2D) {
+      Logger::err("D3D11: Unsupported resource type for depth-stencil views");
+      return E_INVALIDARG;
+    }
+    
+    // Retrieve the image that we are going to create the view for
+    auto texture = static_cast<D3D11Texture2D*>(pResource);
+    const Rc<DxvkImage> image = texture->GetDXVKImage();
+    
+    // The view description is optional. If not defined, it
+    // will use the resource's format and all array layers.
+    D3D11_DEPTH_STENCIL_VIEW_DESC desc;
+    
+    if (pDesc != nullptr) {
+      desc = *pDesc;
+    } else {
+      D3D11_TEXTURE2D_DESC texDesc;
+      texture->GetDesc(&texDesc);
+      
+      // Select the view dimension based on the
+      // texture's array size and sample count.
+      const std::array<D3D11_DSV_DIMENSION, 4> viewDims = {
+        D3D11_DSV_DIMENSION_TEXTURE2D,
+        D3D11_DSV_DIMENSION_TEXTURE2DARRAY,
+        D3D11_DSV_DIMENSION_TEXTURE2DMS,
+        D3D11_DSV_DIMENSION_TEXTURE2DMSARRAY,
+      };
+      
+      uint32_t viewDimIndex = 0;
+      
+      if (texDesc.ArraySize > 1)
+        viewDimIndex |= 0x1;
+      
+      if (texDesc.SampleDesc.Count > 1)
+        viewDimIndex |= 0x2;
+      
+      // Fill the correct union member
+      desc.ViewDimension = viewDims.at(viewDimIndex);
+      desc.Format = texDesc.Format;
+      
+      switch (desc.ViewDimension) {
+        case D3D11_DSV_DIMENSION_TEXTURE2D:
+          desc.Texture2D.MipSlice = 0;
+          break;
+          
+        case D3D11_DSV_DIMENSION_TEXTURE2DARRAY:
+          desc.Texture2DArray.MipSlice        = 0;
+          desc.Texture2DArray.FirstArraySlice = 0;
+          desc.Texture2DArray.ArraySize       = texDesc.ArraySize;
+          break;
+        
+        case D3D11_DSV_DIMENSION_TEXTURE2DMS:
+          break;
+          
+        case D3D11_DSV_DIMENSION_TEXTURE2DMSARRAY:
+          desc.Texture2DMSArray.FirstArraySlice = 0;
+          desc.Texture2DMSArray.ArraySize       = texDesc.ArraySize;
+          break;
+        
+        default: 
+          Logger::err("D3D11Device::CreateDepthStencilView: Internal error");
+          return DXGI_ERROR_DRIVER_INTERNAL_ERROR;
+      }
+    }
+    
+    // Fill in Vulkan image view info
+    // TODO Implement some sort of format reflection
+    DxvkImageViewCreateInfo viewInfo;
+    viewInfo.format = m_dxgiAdapter->LookupFormat(desc.Format).actual;
+    viewInfo.aspect = VK_IMAGE_ASPECT_DEPTH_BIT
+                    | VK_IMAGE_ASPECT_STENCIL_BIT;
+    
+    switch (desc.ViewDimension) {
+      case D3D11_DSV_DIMENSION_TEXTURE2D:
+        viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.minLevel   = desc.Texture2D.MipSlice;
+        viewInfo.numLevels  = 1;
+        viewInfo.minLayer   = 0;
+        viewInfo.numLayers  = 1;
+        break;
+        
+      case D3D11_DSV_DIMENSION_TEXTURE2DARRAY:
+        viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+        viewInfo.minLevel   = desc.Texture2DArray.MipSlice;
+        viewInfo.numLevels  = 1;
+        viewInfo.minLayer   = desc.Texture2DArray.FirstArraySlice;
+        viewInfo.numLayers  = desc.Texture2DArray.ArraySize;
+        break;
+        
+      case D3D11_DSV_DIMENSION_TEXTURE2DMS:
+        viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D;
+        viewInfo.minLevel   = 0;
+        viewInfo.numLevels  = 1;
+        viewInfo.minLayer   = 0;
+        viewInfo.numLayers  = 1;
+        break;
+      
+      case D3D11_DSV_DIMENSION_TEXTURE2DMSARRAY:
+        viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+        viewInfo.minLevel   = 0;
+        viewInfo.numLevels  = 1;
+        viewInfo.minLayer   = desc.Texture2DArray.FirstArraySlice;
+        viewInfo.numLayers  = desc.Texture2DArray.ArraySize;
+        break;
+      
+      default:
+        Logger::err(str::format(
+          "D3D11: pDesc->ViewDimension not supported for depth-stencil views: ",
+          desc.ViewDimension));
+        return E_INVALIDARG;
+    }
+    
+    // Create the actual image view if requested
+    if (ppDepthStencilView == nullptr)
+      return S_OK;
+    
+    try {
+      Rc<DxvkImageView> view = m_dxvkDevice->createImageView(image, viewInfo);
+      *ppDepthStencilView = ref(new D3D11DepthStencilView(this, pResource, desc, view));
+      return S_OK;
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return DXGI_ERROR_DRIVER_INTERNAL_ERROR;
+    }
   }
   
   
