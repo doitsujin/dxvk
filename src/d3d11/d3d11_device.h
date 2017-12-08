@@ -259,6 +259,14 @@ namespace dxvk {
             IDXGIBufferResourcePrivate* pBuffer,
       const D3D11_SUBRESOURCE_DATA*     pInitialData);
     
+    void InitTexture(
+            IDXGIImageResourcePrivate*  pImage,
+      const D3D11_SUBRESOURCE_DATA*     pInitialData);
+    
+    HRESULT GetSampleCount(
+            UINT                    Count,
+            VkSampleCountFlagBits*  pCount) const;
+    
     VkPipelineStageFlags GetEnabledShaderStages() const;
     
     VkMemoryPropertyFlags GetMemoryFlagsForUsage(

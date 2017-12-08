@@ -118,7 +118,6 @@ namespace dxvk {
       info.access |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
     }
     
-    // Create the buffer if the application requests it
     if (ppBuffer != nullptr) {
       Com<IDXGIBufferResourcePrivate> buffer;
       
@@ -153,8 +152,81 @@ namespace dxvk {
     const D3D11_TEXTURE2D_DESC*   pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
           ID3D11Texture2D**       ppTexture2D) {
-    Logger::err("D3D11Device::CreateTexture2D: Not implemented");
-    return E_NOTIMPL;
+    DxvkImageCreateInfo info;
+    info.type           = VK_IMAGE_TYPE_2D;
+    info.format         = m_dxgiAdapter->LookupFormat(pDesc->Format).actual;
+    info.flags          = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+    info.sampleCount    = VK_SAMPLE_COUNT_1_BIT;
+    info.extent.width   = pDesc->Width;
+    info.extent.height  = pDesc->Height;
+    info.extent.depth   = 1;
+    info.numLayers      = pDesc->ArraySize;
+    info.mipLevels      = pDesc->MipLevels;
+    info.usage          = VK_IMAGE_USAGE_TRANSFER_SRC_BIT
+                        | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    info.stages         = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    info.access         = VK_ACCESS_TRANSFER_READ_BIT
+                        | VK_ACCESS_TRANSFER_WRITE_BIT;
+    info.tiling         = VK_IMAGE_TILING_OPTIMAL;
+    info.layout         = VK_IMAGE_LAYOUT_GENERAL;
+    
+    if (FAILED(GetSampleCount(pDesc->SampleDesc.Count, &info.sampleCount))) {
+      Logger::err(str::format("D3D11: Invalid sample count: ", pDesc->SampleDesc.Count));
+      return E_INVALIDARG;
+    }
+    
+    if (pDesc->BindFlags & D3D11_BIND_SHADER_RESOURCE) {
+      info.usage  |= VK_IMAGE_USAGE_SAMPLED_BIT;
+      info.stages |= GetEnabledShaderStages();
+      info.access |= VK_ACCESS_SHADER_READ_BIT;
+    }
+    
+    if (pDesc->BindFlags & D3D11_BIND_RENDER_TARGET) {
+      info.usage  |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+      info.stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+      info.access |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
+                  |  VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    }
+    
+    if (pDesc->BindFlags & D3D11_BIND_DEPTH_STENCIL) {
+      info.usage  |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+      info.stages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+                  |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+      info.access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT
+                  |  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    }
+    
+    if (pDesc->BindFlags & D3D11_BIND_UNORDERED_ACCESS) {
+      info.usage  |= VK_IMAGE_USAGE_STORAGE_BIT;
+      info.stages |= GetEnabledShaderStages();
+      info.access |= VK_ACCESS_SHADER_READ_BIT
+                  |  VK_ACCESS_SHADER_WRITE_BIT;
+    }
+    
+    if (pDesc->CPUAccessFlags != 0)
+      info.tiling = VK_IMAGE_TILING_LINEAR;
+    
+    if (pDesc->MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE)
+      info.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+    
+    if (ppTexture2D != nullptr) {
+      Com<IDXGIImageResourcePrivate> image;
+      
+      HRESULT hr = DXGICreateImageResourcePrivate(
+        m_dxgiDevice.ptr(), &info,
+        GetMemoryFlagsForUsage(pDesc->Usage), 0,
+        &image);
+      
+      if (FAILED(hr))
+        return hr;
+      
+      *ppTexture2D = ref(new D3D11Texture2D(
+        this, image.ptr(), *pDesc));
+      
+      InitTexture(image.ptr(), pInitialData);
+    }
+    
+    return S_OK;
   }
   
   
@@ -828,6 +900,47 @@ namespace dxvk {
         m_resourceInitContext->endRecording(),
         nullptr, nullptr);
     }
+  }
+  
+  
+  void D3D11Device::InitTexture(
+          IDXGIImageResourcePrivate*  pImage,
+    const D3D11_SUBRESOURCE_DATA*     pInitialData) {
+    std::lock_guard<std::mutex> lock(m_resourceInitMutex);;
+    m_resourceInitContext->beginRecording(
+      m_dxvkDevice->createCommandList());
+    
+    const Rc<DxvkImage> image = pImage->GetDXVKImage();
+    
+    // TODO implement some sort of format info
+    VkImageSubresourceRange subresources;
+    subresources.aspectMask     = VK_IMAGE_ASPECT_DEPTH_BIT
+                                | VK_IMAGE_ASPECT_STENCIL_BIT;
+    subresources.baseMipLevel   = 0;
+    subresources.levelCount     = image->info().mipLevels;
+    subresources.baseArrayLayer = 0;
+    subresources.layerCount     = image->info().numLayers;
+    m_resourceInitContext->initImage(image, subresources);
+    
+    if (pInitialData != nullptr)
+      Logger::err("D3D11: InitTexture cannot upload image data yet");
+    
+    m_dxvkDevice->submitCommandList(
+      m_resourceInitContext->endRecording(),
+      nullptr, nullptr);
+  }
+  
+  
+  HRESULT D3D11Device::GetSampleCount(UINT Count, VkSampleCountFlagBits* pCount) const {
+    switch (Count) {
+      case  1: *pCount = VK_SAMPLE_COUNT_1_BIT;  return S_OK;
+      case  2: *pCount = VK_SAMPLE_COUNT_2_BIT;  return S_OK;
+      case  4: *pCount = VK_SAMPLE_COUNT_4_BIT;  return S_OK;
+      case  8: *pCount = VK_SAMPLE_COUNT_8_BIT;  return S_OK;
+      case 16: *pCount = VK_SAMPLE_COUNT_16_BIT; return S_OK;
+    }
+    
+    return E_INVALIDARG;
   }
   
   
