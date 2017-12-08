@@ -148,7 +148,14 @@ namespace dxvk {
             uint32_t                typeId,
             uint32_t                length);
     
+    uint32_t defArrayTypeUnique(
+            uint32_t                typeId,
+            uint32_t                length);
+    
     uint32_t defRuntimeArrayType(
+            uint32_t                typeId);
+    
+    uint32_t defRuntimeArrayTypeUnique(
             uint32_t                typeId);
     
     uint32_t defFunctionType(
@@ -157,6 +164,10 @@ namespace dxvk {
       const uint32_t*               argTypes);
     
     uint32_t defStructType(
+            uint32_t                memberCount,
+      const uint32_t*               memberTypes);
+    
+    uint32_t defStructTypeUnique(
             uint32_t                memberCount,
       const uint32_t*               memberTypes);
     

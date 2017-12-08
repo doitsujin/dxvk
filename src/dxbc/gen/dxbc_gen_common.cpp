@@ -39,9 +39,10 @@ namespace dxvk {
   void DxbcCodeGen::dclConstantBuffer(
           uint32_t              bufferId,
           uint32_t              elementCount) {
-    uint32_t arrayType = this->defValueType(
-      DxbcValueType(DxbcScalarType::Float32, 4, elementCount));
-    uint32_t structType = m_module.defStructType(1, &arrayType);
+    uint32_t arrayType = m_module.defArrayTypeUnique(
+      this->defValueType(DxbcValueType(DxbcScalarType::Float32, 4)),
+      m_module.constu32(elementCount));
+    uint32_t structType = m_module.defStructTypeUnique(1, &arrayType);
     
     m_module.decorateArrayStride(arrayType, 16);
     m_module.memberDecorateOffset(structType, 0, 0);
@@ -448,7 +449,7 @@ namespace dxvk {
     members[PerVertex_CullDist]  = a2f32;
     members[PerVertex_ClipDist]  = a2f32;
     
-    uint32_t typeId = m_module.defStructType(
+    uint32_t typeId = m_module.defStructTypeUnique(
       members.size(), members.data());
     
     m_module.memberDecorateBuiltIn(typeId, PerVertex_Position, spv::BuiltInPosition);

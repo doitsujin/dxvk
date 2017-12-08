@@ -392,12 +392,36 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::defArrayTypeUnique(
+          uint32_t                typeId,
+          uint32_t                length) {
+    uint32_t resultId = this->allocateId();
+    
+    m_typeConstDefs.putIns (spv::OpTypeArray, 4);
+    m_typeConstDefs.putWord(resultId);
+    m_typeConstDefs.putWord(typeId);
+    m_typeConstDefs.putWord(length);
+    return resultId;
+  }
+  
+  
   uint32_t SpirvModule::defRuntimeArrayType(
           uint32_t                typeId) {
     std::array<uint32_t, 1> args = { typeId };
     
     return this->defType(spv::OpTypeRuntimeArray,
       args.size(), args.data());
+  }
+  
+  
+  uint32_t SpirvModule::defRuntimeArrayTypeUnique(
+          uint32_t                typeId) {
+    uint32_t resultId = this->allocateId();
+    
+    m_typeConstDefs.putIns (spv::OpTypeRuntimeArray, 3);
+    m_typeConstDefs.putWord(resultId);
+    m_typeConstDefs.putWord(typeId);
+    return resultId;
   }
   
   
@@ -421,6 +445,20 @@ namespace dxvk {
     const uint32_t*               memberTypes) {
     return this->defType(spv::OpTypeStruct,
       memberCount, memberTypes);
+  }
+  
+  
+  uint32_t SpirvModule::defStructTypeUnique(
+          uint32_t                memberCount,
+    const uint32_t*               memberTypes) {
+    uint32_t resultId = this->allocateId();
+    
+    m_typeConstDefs.putIns (spv::OpTypeStruct, 2 + memberCount);
+    m_typeConstDefs.putWord(resultId);
+    
+    for (uint32_t i = 0; i < memberCount; i++)
+      m_typeConstDefs.putWord(memberTypes[i]);
+    return resultId;
   }
   
   
