@@ -67,9 +67,11 @@ namespace dxvk {
   
   
   vk::NameList DxvkInstance::getLayers() {
-    std::vector<const char*> layers = {
-      "VK_LAYER_LUNARG_standard_validation"
-    };
+    std::vector<const char*> layers = { };
+    
+    if (env::getEnvVar(L"DXVK_DEBUG_LAYERS") == "1")
+      layers.push_back("VK_LAYER_LUNARG_standard_validation");
+
     
     const vk::NameSet layersAvailable
       = vk::NameSet::enumerateInstanceLayers(*m_vkl);

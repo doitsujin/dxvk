@@ -1,4 +1,6 @@
 util_src = files([
+  'util_env.cpp',
+  
   'com/com_guid.cpp',
   'com/com_private_data.cpp',
   

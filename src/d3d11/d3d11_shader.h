@@ -5,6 +5,8 @@
 
 #include "../util/sha1/sha1_util.h"
 
+#include "../util/util_env.h"
+
 #include "d3d11_device_child.h"
 #include "d3d11_interfaces.h"
 

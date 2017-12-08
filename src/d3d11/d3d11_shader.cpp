@@ -3,22 +3,6 @@
 
 namespace dxvk {
   
-  static std::string GetEnvVar(LPCWSTR name) {
-    DWORD len = ::GetEnvironmentVariableW(name, nullptr, 0);
-    
-    std::wstring result;
-    
-    while (len > result.size()) {
-      result.resize(len);
-      len = ::GetEnvironmentVariableW(
-        name, result.data(), result.size());
-    }
-    
-    result.resize(len);
-    return str::fromws(result);
-  }
-  
-  
   D3D11ShaderModule:: D3D11ShaderModule() { }
   D3D11ShaderModule::~D3D11ShaderModule() { }
   
@@ -41,8 +25,8 @@ namespace dxvk {
     
     // If requested by the user, dump both the raw DXBC
     // shader and the compiled SPIR-V module to a file.
-    const std::string dumpPath = GetEnvVar(L"DXVK_SHADER_DUMP_PATH");
-    const std::string readPath = GetEnvVar(L"DXVK_SHADER_READ_PATH");
+    const std::string dumpPath = env::getEnvVar(L"DXVK_SHADER_DUMP_PATH");
+    const std::string readPath = env::getEnvVar(L"DXVK_SHADER_READ_PATH");
     
     if (dumpPath.size() != 0) {
       const std::string baseName = str::format(dumpPath, "/",
