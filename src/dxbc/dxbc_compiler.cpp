@@ -21,6 +21,9 @@ namespace dxvk {
       case DxbcOpcode::DclGlobalFlags:
         return this->dclGlobalFlags(ins);
       
+      case DxbcOpcode::DclConstantBuffer:
+        return this->dclConstantBuffer(ins);
+        
       case DxbcOpcode::DclInput:
       case DxbcOpcode::DclInputSiv:
       case DxbcOpcode::DclInputSgv:
@@ -41,6 +44,15 @@ namespace dxvk {
       case DxbcOpcode::Mov:
         return this->opMov(ins);
       
+      case DxbcOpcode::Dp2:
+        return this->opDpx(ins, 2);
+      
+      case DxbcOpcode::Dp3:
+        return this->opDpx(ins, 3);
+      
+      case DxbcOpcode::Dp4:
+        return this->opDpx(ins, 4);
+      
       case DxbcOpcode::Ret:
         return this->opRet(ins);
       
@@ -58,7 +70,20 @@ namespace dxvk {
   
   
   void DxbcCompiler::dclGlobalFlags(const DxbcInstruction& ins) {
+    // TODO fill with life
+  }
+  
+  
+  void DxbcCompiler::dclConstantBuffer(const DxbcInstruction& ins) {
+    auto op = ins.operand(0);
     
+    if (op.token().indexDimension() != 2)
+      throw DxvkError("DxbcCompiler::dclConstantBuffer: Invalid index dimension");
+    
+    const uint32_t index = op.index(0).immPart();
+    const uint32_t size  = op.index(1).immPart();
+    
+    m_gen->dclConstantBuffer(index, size);
   }
   
   
@@ -139,6 +164,22 @@ namespace dxvk {
   }
   
   
+  void DxbcCompiler::opDpx(const DxbcInstruction& ins, uint32_t n) {
+    auto dstOp  = ins.operand(0);
+    auto srcOp1 = ins.operand(dstOp.length());
+    auto srcOp2 = ins.operand(dstOp.length() + srcOp1.length());
+    
+    DxbcComponentMask dstMask = this->getDstOperandMask(dstOp);
+    DxbcComponentMask srcMask(n >= 1, n >= 2, n >= 3, n == 4);
+    
+    DxbcValue src1 = this->loadOperand(srcOp1, srcMask, DxbcScalarType::Float32);
+    DxbcValue src2 = this->loadOperand(srcOp2, srcMask, DxbcScalarType::Float32);
+    DxbcValue val  = m_gen->opDot(src1, src2);
+              val  = this->applyResultModifiers(val, ins.token().control());
+    this->storeOperand(dstOp, val, dstMask);
+  }
+  
+  
   void DxbcCompiler::opMov(const DxbcInstruction& ins) {
     auto dstOp = ins.operand(0);
     auto srcOp = ins.operand(dstOp.length());
@@ -152,6 +193,28 @@ namespace dxvk {
   
   void DxbcCompiler::opRet(const DxbcInstruction& ins) {
     m_gen->fnReturn();
+  }
+  
+  
+  DxbcValue DxbcCompiler::getDynamicIndexValue(const DxbcOperandIndex& index) {
+    DxbcValue immPart;
+    DxbcValue relPart;
+    
+    if (index.hasImmPart())
+      immPart = m_gen->defConstScalar(index.immPart());
+    
+    if (index.hasRelPart()) {
+      relPart = this->loadOperand(index.relPart(),
+        DxbcComponentMask(true, false, false, false),
+        DxbcScalarType::Uint32);
+    }
+    
+    if (immPart.valueId == 0)
+      return relPart;
+    else if (relPart.valueId == 0)
+      return immPart;
+    else
+      return m_gen->opAdd(relPart, immPart);
   }
   
   
@@ -225,6 +288,16 @@ namespace dxvk {
   }
   
   
+  DxbcPointer DxbcCompiler::getConstantBufferPtr(const DxbcOperand& operand) {
+    if (operand.token().indexDimension() != 2)
+      throw DxvkError("DxbcCompiler::getConstantBufferPtr: Invalid index dimension");
+    
+    return m_gen->ptrConstantBuffer(
+      operand.index(0).immPart(),
+      this->getDynamicIndexValue(operand.index(1)));
+  }
+  
+  
   DxbcPointer DxbcCompiler::getOperandPtr(const DxbcOperand& operand) {
     switch (operand.token().type()) {
       case DxbcOperandType::Temp:
@@ -233,6 +306,9 @@ namespace dxvk {
       case DxbcOperandType::Input:
       case DxbcOperandType::Output:
         return this->getInterfaceOperandPtr(operand);
+      
+      case DxbcOperandType::ConstantBuffer:
+        return this->getConstantBufferPtr(operand);
       
       default:
         throw DxvkError(str::format(

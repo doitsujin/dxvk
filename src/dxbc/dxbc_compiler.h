@@ -32,6 +32,9 @@ namespace dxvk {
     void dclGlobalFlags(
       const DxbcInstruction&  ins);
     
+    void dclConstantBuffer(
+      const DxbcInstruction&  ins);
+    
     void dclInterfaceVar(
       const DxbcInstruction&  ins);
     
@@ -41,11 +44,18 @@ namespace dxvk {
     void opAdd(
       const DxbcInstruction&  ins);
     
+    void opDpx(
+      const DxbcInstruction&  ins,
+            uint32_t          n);
+    
     void opMov(
       const DxbcInstruction&  ins);
     
     void opRet(
       const DxbcInstruction&  ins);
+    
+    DxbcValue getDynamicIndexValue(
+      const DxbcOperandIndex& index);
     
     DxbcComponentMask getDstOperandMask(
       const DxbcOperand&      operand);
@@ -54,6 +64,9 @@ namespace dxvk {
       const DxbcOperand&      operand);
     
     DxbcPointer getInterfaceOperandPtr(
+      const DxbcOperand&      operand);
+    
+    DxbcPointer getConstantBufferPtr(
       const DxbcOperand&      operand);
     
     DxbcPointer getOperandPtr(

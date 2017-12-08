@@ -307,6 +307,18 @@ namespace dxvk {
   }
   
   
+  void SpirvModule::memberDecorateOffset(
+          uint32_t                structId,
+          uint32_t                memberId,
+          uint32_t                offset) {
+    m_annotations.putIns  (spv::OpMemberDecorate, 5);
+    m_annotations.putWord (structId);
+    m_annotations.putWord (memberId);
+    m_annotations.putWord (spv::DecorationOffset);
+    m_annotations.putWord (offset);
+  }
+  
+  
   uint32_t SpirvModule::defVoidType() {
     return this->defType(spv::OpTypeVoid, 0, nullptr);
   }
@@ -692,6 +704,21 @@ namespace dxvk {
     m_code.putWord(x);
     m_code.putWord(minVal);
     m_code.putWord(maxVal);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opDot(
+          uint32_t                resultType,
+          uint32_t                vector1,
+          uint32_t                vector2) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpDot, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(vector1);
+    m_code.putWord(vector2);
     return resultId;
   }
   

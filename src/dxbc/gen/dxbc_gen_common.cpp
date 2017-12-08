@@ -36,6 +36,25 @@ namespace dxvk {
   }
   
   
+  void DxbcCodeGen::dclConstantBuffer(
+          uint32_t              bufferId,
+          uint32_t              elementCount) {
+    uint32_t arrayType = this->defValueType(
+      DxbcValueType(DxbcScalarType::Float32, 4, elementCount));
+    uint32_t structType = m_module.defStructType(1, &arrayType);
+    
+    m_module.memberDecorateOffset(structType, 0, 0);
+    m_module.decorateBlock(structType);
+    
+    uint32_t varIndex = m_module.newVar(
+      m_module.defPointerType(structType, spv::StorageClassUniform),
+      spv::StorageClassUniform);
+    
+    m_constantBuffers.at(bufferId).varId = varIndex;
+    m_constantBuffers.at(bufferId).size  = elementCount;
+  }
+  
+  
   DxbcValue DxbcCodeGen::defConstScalar(uint32_t v) {
     DxbcValue result;
     result.type    = DxbcValueType(DxbcScalarType::Uint32, 1);
@@ -71,6 +90,26 @@ namespace dxvk {
   
   DxbcPointer DxbcCodeGen::ptrTempReg(uint32_t regId) {
     return m_rRegs.at(regId);
+  }
+  
+  
+  DxbcPointer DxbcCodeGen::ptrConstantBuffer(
+          uint32_t              regId,
+    const DxbcValue&            index) {
+    // The first index selects the struct member,
+    // the second one selects the array element.
+    std::array<uint32_t, 2> indices = { 
+      m_module.constu32(0), index.valueId };
+    
+    DxbcPointer result;
+    result.type = DxbcPointerType(
+      DxbcValueType(DxbcScalarType::Float32, 4),
+      spv::StorageClassUniform);
+    result.valueId = m_module.opAccessChain(
+      this->defPointerType(result.type),
+      m_constantBuffers.at(regId).varId,
+      2, indices.data());
+    return result;
   }
   
   
@@ -125,6 +164,16 @@ namespace dxvk {
         break;
     }
     
+    return result;
+  }
+  
+  
+  DxbcValue DxbcCodeGen::opDot(const DxbcValue& a, const DxbcValue& b) {
+    DxbcValue result;
+    result.type    = DxbcValueType(a.type.componentType, 1);
+    result.valueId = m_module.opDot(
+      this->defValueType(result.type),
+      a.valueId, b.valueId);
     return result;
   }
   

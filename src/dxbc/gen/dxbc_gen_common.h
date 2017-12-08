@@ -23,6 +23,18 @@ namespace dxvk {
   
   
   /**
+   * \brief Constant buffer binding
+   * 
+   * Stores information about
+   * a constant buffer.
+   */
+  struct DxbcConstantBuffer {
+    uint32_t varId = 0;
+    uint32_t size  = 0;
+  };
+  
+  
+  /**
    * \brief DXBC code generator
    * 
    * SPIR-V code generator. Implements simple micro ops that are
@@ -40,6 +52,10 @@ namespace dxvk {
     
     void dclTemps(uint32_t n);
     
+    void dclConstantBuffer(
+            uint32_t              bufferId,
+            uint32_t              elementCount);
+    
     DxbcValue defConstScalar(uint32_t v);
     
     DxbcValue defConstVector(
@@ -49,7 +65,11 @@ namespace dxvk {
     void fnReturn();
     
     DxbcPointer ptrTempReg(
-            uint32_t          regId);
+            uint32_t              regId);
+    
+    DxbcPointer ptrConstantBuffer(
+            uint32_t              regId,
+      const DxbcValue&            index);
     
     DxbcValue opAbs(
       const DxbcValue&            src);
@@ -59,6 +79,10 @@ namespace dxvk {
       const DxbcValue&            b);
     
     DxbcValue opMul(
+      const DxbcValue&            a,
+      const DxbcValue&            b);
+    
+    DxbcValue opDot(
       const DxbcValue&            a,
       const DxbcValue&            b);
     
@@ -131,6 +155,8 @@ namespace dxvk {
     uint32_t              m_entryPointId = 0;
     
     std::vector<DxbcPointer> m_rRegs;
+    
+    std::array<DxbcConstantBuffer, 16> m_constantBuffers;
     
     uint32_t defScalarType(
             DxbcScalarType          type);

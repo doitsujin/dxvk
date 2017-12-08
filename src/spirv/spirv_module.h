@@ -116,6 +116,11 @@ namespace dxvk {
             uint32_t                memberId,
             spv::BuiltIn            builtIn);
     
+    void memberDecorateOffset(
+            uint32_t                structId,
+            uint32_t                memberId,
+            uint32_t                offset);
+    
     uint32_t defVoidType();
     
     uint32_t defBoolType();
@@ -250,6 +255,11 @@ namespace dxvk {
             uint32_t                x,
             uint32_t                minVal,
             uint32_t                maxVal);
+    
+    uint32_t opDot(
+            uint32_t                resultType,
+            uint32_t                vector1,
+            uint32_t                vector2);
     
     uint32_t opFunctionCall(
             uint32_t                resultType,
