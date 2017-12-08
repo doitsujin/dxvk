@@ -47,8 +47,8 @@ namespace dxvk {
   void DxvkContext::bindFramebuffer(
     const Rc<DxvkFramebuffer>& fb) {
     if (m_state.om.framebuffer != fb) {
-      m_state.om.framebuffer = fb;
       this->renderPassEnd();
+      m_state.om.framebuffer = fb;
     }
   }
   
