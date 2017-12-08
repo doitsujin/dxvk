@@ -49,6 +49,8 @@ namespace dxvk {
     void prepareSvInputs();
     void prepareSvOutputs();
     
+    DxbcPointer getPsInPtr(uint32_t id);
+    
   };
   
 }

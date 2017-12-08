@@ -53,6 +53,8 @@ namespace dxvk {
     
     DxbcPointer ptrBuiltInPosition();
     
+    DxbcPointer getVsOutPtr(uint32_t id);
+    
   };
   
 }
