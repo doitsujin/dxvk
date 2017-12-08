@@ -227,6 +227,15 @@ namespace dxvk {
       m_typeConstDefs.putWord(constIds[i]);
     return resultId;
   }
+    
+  
+  void SpirvModule::decorate(
+          uint32_t                object,
+          spv::Decoration         decoration) {
+    m_annotations.putIns  (spv::OpDecorate, 3);
+    m_annotations.putWord (object);
+    m_annotations.putWord (decoration);
+  }
   
   
   void SpirvModule::decorateBinding(

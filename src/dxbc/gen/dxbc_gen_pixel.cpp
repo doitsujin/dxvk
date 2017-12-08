@@ -58,6 +58,40 @@ namespace dxvk {
           m_module.decorateLocation(m_vRegs.at(regId).valueId, regId);
           m_module.setDebugName(m_vRegs.at(regId).valueId,
             str::format("v", regId).c_str());
+          
+          switch (im) {
+            case DxbcInterpolationMode::Undefined:
+              Logger::err("Undefined interpolation mode");
+              break;
+            case DxbcInterpolationMode::Linear:
+              Logger::err("Linear interpolation mode");
+              break;
+              
+            case DxbcInterpolationMode::Constant:
+              m_module.decorate(m_vRegs.at(regId).valueId, spv::DecorationFlat);
+              break;
+              
+            case DxbcInterpolationMode::LinearCentroid:
+              m_module.decorate(m_vRegs.at(regId).valueId, spv::DecorationCentroid);
+              break;
+              
+            case DxbcInterpolationMode::LinearNoPerspective:
+              m_module.decorate(m_vRegs.at(regId).valueId, spv::DecorationNoPerspective);
+              break;
+            case DxbcInterpolationMode::LinearNoPerspectiveCentroid:
+              m_module.decorate(m_vRegs.at(regId).valueId, spv::DecorationNoPerspective);
+              m_module.decorate(m_vRegs.at(regId).valueId, spv::DecorationCentroid);
+              break;
+              
+            case DxbcInterpolationMode::LinearSample:
+              m_module.decorate(m_vRegs.at(regId).valueId, spv::DecorationSample);
+              break;
+              
+            case DxbcInterpolationMode::LinearNoPerspectiveSample:
+              m_module.decorate(m_vRegs.at(regId).valueId, spv::DecorationNoPerspective);
+              m_module.decorate(m_vRegs.at(regId).valueId, spv::DecorationSample);
+              break;
+          }
         }
       } break;
       

@@ -421,7 +421,7 @@ namespace dxvk {
     Linear                      = 2,
     LinearCentroid              = 3,
     LinearNoPerspective         = 4,
-    LinearNoperspectiveCentroid = 5,
+    LinearNoPerspectiveCentroid = 5,
     LinearSample                = 6,
     LinearNoPerspectiveSample   = 7,
   };

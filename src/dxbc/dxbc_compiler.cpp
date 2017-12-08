@@ -102,8 +102,10 @@ namespace dxvk {
         
         DxbcInterpolationMode im = DxbcInterpolationMode::Undefined;
         
-        if (hasInterpolationMode)
-          im = op.token().interpolationMode();
+        if (hasInterpolationMode) {
+          im = static_cast<DxbcInterpolationMode>(
+            bit::extract(ins.token().control(), 0, 3));
+        }
         
         m_gen->dclInterfaceVar(
           op.token().type(), regId, regDim,

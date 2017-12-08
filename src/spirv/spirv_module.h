@@ -84,6 +84,10 @@ namespace dxvk {
             uint32_t                constCount,
       const uint32_t*               constIds);
     
+    void decorate(
+            uint32_t                object,
+            spv::Decoration         decoration);
+    
     void decorateBinding(
             uint32_t                object,
             uint32_t                binding);
