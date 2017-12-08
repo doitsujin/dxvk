@@ -60,6 +60,7 @@ namespace dxvk {
           m_module.decorateLocation(var.valueId, regId);
           m_module.setDebugName(var.valueId,
             str::format("v", regId).c_str());
+          m_entryPointInterfaces.push_back(var.valueId);
           
           switch (im) {
             case DxbcInterpolationMode::Undefined:
@@ -168,7 +169,8 @@ namespace dxvk {
     
     return new DxvkShader(
       VK_SHADER_STAGE_FRAGMENT_BIT,
-      0, nullptr,
+      m_resourceSlots.size(),
+      m_resourceSlots.data(),
       m_module.compile());
   }
   

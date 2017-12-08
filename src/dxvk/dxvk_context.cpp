@@ -340,26 +340,29 @@ namespace dxvk {
           VkDeviceSize              offset,
           VkDeviceSize              size,
     const void*                     data) {
+    this->renderPassEnd();
     
-    if (size == 0)
-      return;
+    if (size == VK_WHOLE_SIZE)
+      size = buffer->info().size;
     
-    if (size <= 65536) {
-      m_cmd->cmdUpdateBuffer(
-        buffer->handle(),
-        offset, size, data);
-    } else {
-      // TODO implement
-      Logger::err("DxvkContext::updateBuffer: Large updates not yet supported");
+    if (size != 0) {
+      if (size <= 65536) {
+        m_cmd->cmdUpdateBuffer(
+          buffer->handle(),
+          offset, size, data);
+      } else {
+        // TODO implement
+        Logger::err("DxvkContext::updateBuffer: Large updates not yet supported");
+      }
+      
+      m_barriers.accessBuffer(
+        buffer, offset, size,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_TRANSFER_WRITE_BIT,
+        buffer->info().stages,
+        buffer->info().access);
+      m_barriers.recordCommands(m_cmd);
     }
-    
-    m_barriers.accessBuffer(
-      buffer, offset, size,
-      VK_PIPELINE_STAGE_TRANSFER_BIT,
-      VK_ACCESS_TRANSFER_WRITE_BIT,
-      buffer->info().stages,
-      buffer->info().access);
-    m_barriers.recordCommands(m_cmd);
   }
   
   

@@ -554,6 +554,13 @@ namespace dxvk {
     
     D3D11ContextState   m_state;
     
+    void BindConstantBuffers(
+            D3D11ShaderStage                  ShaderStage,
+            D3D11ConstantBufferBindings*      pBindings,
+            UINT                              StartSlot,
+            UINT                              NumBuffers,
+            ID3D11Buffer* const*              ppConstantBuffers);
+    
     void ApplyViewportState();
     
     void SetupIAStateObjects();

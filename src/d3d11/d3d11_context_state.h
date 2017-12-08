@@ -10,54 +10,51 @@
 
 namespace dxvk {
   
-  struct D3D11ComputePipelineBindings {
-    std::array<Com<D3D11Buffer>,              D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT> constantBuffers;
-//     std::array<Com<D3D11ShaderResourceView>,  D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT>      shaderResourceViews;
-//     std::array<Com<D3D11UnorderedAccessView>, D3D11_1_UAV_SLOT_COUNT>                            uniformAccessViews;
-//     std::array<Com<D3D11SamplerState>,        D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT>             samplers;
+  enum class D3D11ShaderStage {
+    VertexShader      = 0,
+    HullShader        = 1,
+    DomainShader      = 2,
+    GeometryShader    = 3,
+    PixelShader       = 4,
+    ComputeShader     = 5,
   };
   
-  
-  struct D3D11GraphicsPipelineBindings {
-    std::array<Com<D3D11Buffer>,              D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT> constantBuffers;
-//     std::array<Com<D3D11ShaderResourceView>,  D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT>      shaderResourceViews;
-//     std::array<Com<D3D11SamplerState>,        D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT>             samplers;
-  };
-  
+  using D3D11ConstantBufferBindings = std::array<
+    Com<D3D11Buffer>, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT>;
   
   struct D3D11ContextStateVS {
     Com<D3D11VertexShader>        shader;
-    D3D11GraphicsPipelineBindings bindings;
+    D3D11ConstantBufferBindings   constantBuffers;
   };
   
   
   struct D3D11ContextStateHS {
     Com<D3D11HullShader>          shader;
-    D3D11GraphicsPipelineBindings bindings;
+    D3D11ConstantBufferBindings   constantBuffers;
   };
   
   
   struct D3D11ContextStateDS {
     Com<D3D11DomainShader>        shader;
-    D3D11GraphicsPipelineBindings bindings;
+    D3D11ConstantBufferBindings   constantBuffers;
   };
   
   
   struct D3D11ContextStateGS {
     Com<D3D11GeometryShader>      shader;
-    D3D11GraphicsPipelineBindings bindings;
+    D3D11ConstantBufferBindings   constantBuffers;
   };
   
   
   struct D3D11ContextStatePS {
     Com<D3D11PixelShader>         shader;
-    D3D11GraphicsPipelineBindings bindings;
+    D3D11ConstantBufferBindings   constantBuffers;
   };
   
   
   struct D3D11ContextStateCS {
     Com<D3D11ComputeShader>      shader;
-    D3D11ComputePipelineBindings bindings;
+    D3D11ConstantBufferBindings   constantBuffers;
   };
   
   

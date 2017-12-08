@@ -88,6 +88,10 @@ namespace dxvk {
             uint32_t                object,
             spv::Decoration         decoration);
     
+    void decorateArrayStride(
+            uint32_t                object,
+            uint32_t                stride);
+    
     void decorateBinding(
             uint32_t                object,
             uint32_t                binding);

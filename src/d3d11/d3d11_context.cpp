@@ -113,7 +113,7 @@ namespace dxvk {
 //     this->IASetIndexBuffer(nullptr, DXGI_FORMAT_UNKNOWN, 0);
     
     this->VSSetShader(nullptr, nullptr, 0);
-//     this->VSSetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, nullptr);
+    this->VSSetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, nullptr);
 //     this->VSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, nullptr);
 //     this->VSSetSamplers       (0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT, nullptr);
     
@@ -133,7 +133,7 @@ namespace dxvk {
 //     this->GSSetSamplers       (0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT, nullptr);
     
     this->PSSetShader(nullptr, nullptr, 0);
-//     this->PSSetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, nullptr);
+    this->PSSetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, nullptr);
 //     this->PSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, nullptr);
 //     this->PSSetSamplers       (0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT, nullptr);
     
@@ -360,7 +360,32 @@ namespace dxvk {
     const void*                             pSrcData,
           UINT                              SrcRowPitch,
           UINT                              SrcDepthPitch) {
-    Logger::err("D3D11DeviceContext::UpdateSubresource: Not implemented");
+    // We need a different code path for buffers
+    D3D11_RESOURCE_DIMENSION resourceType;
+    pDstResource->GetType(&resourceType);
+    
+    if (resourceType == D3D11_RESOURCE_DIMENSION_BUFFER) {
+      Com<IDXGIBufferResourcePrivate> bufferResource;
+      
+      pDstResource->QueryInterface(
+        __uuidof(IDXGIBufferResourcePrivate),
+        reinterpret_cast<void**>(&bufferResource));
+      
+      VkDeviceSize offset = 0;
+      VkDeviceSize size = VK_WHOLE_SIZE;
+      
+      if (pDstBox != nullptr) {
+        offset = pDstBox->left;
+        size   = pDstBox->right - pDstBox->left;
+      }
+      
+      m_context->updateBuffer(
+        bufferResource->GetDXVKBuffer(),
+        offset, size, pSrcData);
+    } else {
+      Logger::err("D3D11DeviceContext::UpdateSubresource: Images not yet supported");
+    }
+    
   }
   
   
@@ -613,16 +638,10 @@ namespace dxvk {
     switch (binding.format) {
       case DXGI_FORMAT_R16_UINT: indexType = VK_INDEX_TYPE_UINT16; break;
       case DXGI_FORMAT_R32_UINT: indexType = VK_INDEX_TYPE_UINT32; break;
-      
-      default:
-        Logger::err(str::format(
-          "D3D11DeviceContext::IASetIndexBuffer: Invalid index format: ",
-          binding.format));
     }
     
     m_context->bindIndexBuffer(
       dxvkBinding, indexType);
-      
   }
   
   
@@ -676,7 +695,11 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppConstantBuffers) {
-    Logger::err("D3D11DeviceContext::VSSetConstantBuffers: Not implemented");
+    this->BindConstantBuffers(
+      D3D11ShaderStage::VertexShader,
+      &m_state.vs.constantBuffers,
+      StartSlot, NumBuffers,
+      ppConstantBuffers);
   }
   
   
@@ -942,7 +965,11 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppConstantBuffers) {
-    Logger::err("D3D11DeviceContext::PSSetConstantBuffers: Not implemented");
+    this->BindConstantBuffers(
+      D3D11ShaderStage::PixelShader,
+      &m_state.vs.constantBuffers,
+      StartSlot, NumBuffers,
+      ppConstantBuffers);
   }
   
   
@@ -1298,6 +1325,38 @@ namespace dxvk {
           UINT                              NumBuffers,
           ID3D11Buffer**                    ppSOTargets) {
     Logger::err("D3D11DeviceContext::SOGetTargets: Not implemented");
+  }
+  
+  
+  void D3D11DeviceContext::BindConstantBuffers(
+          D3D11ShaderStage                  ShaderStage,
+          D3D11ConstantBufferBindings*      pBindings,
+          UINT                              StartSlot,
+          UINT                              NumBuffers,
+          ID3D11Buffer* const*              ppConstantBuffers) {
+    for (uint32_t i = 0; i < NumBuffers; i++) {
+      D3D11Buffer* buffer = nullptr;
+      
+      if (ppConstantBuffers != nullptr)
+        buffer = static_cast<D3D11Buffer*>(ppConstantBuffers[i]);
+      
+      if (pBindings->at(StartSlot + i) != buffer) {
+        pBindings->at(StartSlot + i) = buffer;
+        
+        DxvkBufferBinding dxvkBinding;
+        
+        if (buffer != nullptr) {
+          dxvkBinding = DxvkBufferBinding(
+            buffer->GetDXVKBuffer(),
+            0, VK_WHOLE_SIZE);
+        }
+        
+        // TODO compute actual slot index
+        m_context->bindResourceBuffer(
+          VK_PIPELINE_BIND_POINT_GRAPHICS, 0,
+          dxvkBinding);
+      }
+    }
   }
   
   

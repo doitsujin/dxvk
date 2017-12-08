@@ -48,6 +48,7 @@ namespace dxvk {
           m_module.decorateLocation(m_vRegs.at(regId).valueId, regId);
           m_module.setDebugName(m_vRegs.at(regId).valueId,
             str::format("v", regId).c_str());
+          m_entryPointInterfaces.push_back(m_vRegs.at(regId).valueId);
         }
         
         if (sv != DxbcSystemValue::None) {
@@ -64,6 +65,7 @@ namespace dxvk {
           m_module.decorateLocation(m_oRegs.at(regId).valueId, regId);
           m_module.setDebugName(m_oRegs.at(regId).valueId,
             str::format("o", regId).c_str());
+          m_entryPointInterfaces.push_back(m_oRegs.at(regId).valueId);
         }
         
         if (sv != DxbcSystemValue::None) {
@@ -134,7 +136,8 @@ namespace dxvk {
     
     return new DxvkShader(
       VK_SHADER_STAGE_VERTEX_BIT,
-      0, nullptr,
+      m_resourceSlots.size(),
+      m_resourceSlots.data(),
       m_module.compile());
   }
   
@@ -160,6 +163,7 @@ namespace dxvk {
           this->regStore(this->ptrBuiltInPosition(), srcValue,
             DxbcComponentMask(true, true, true, true));
         } break;
+        default: ;
       }
     }
   }

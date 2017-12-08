@@ -14,32 +14,17 @@ struct Extent2D {
 
 struct Vertex {
   float x, y, z, w;
-  float r, g, b, a;
 };
 
 const std::string g_vertexShaderCode =
-  "struct VsInput {\n"
-  "  float4 position : IN_POSITION;\n"
-  "  float4 color    : IN_COLOR;\n"
-  "};\n"
-  "struct VsOutput {\n"
-  "  float4 position : SV_POSITION;\n"
-  "  float4 color    : PS_COLOR;\n"
-  "};\n"
-  "VsOutput main(VsInput vsIn) {\n"
-  "  VsOutput vsOut;\n"
-  "  vsOut.position = vsIn.position;\n"
-  "  vsOut.color    = vsIn.color;\n"
-  "  return vsOut;\n"
+  "float4 main(float4 vsIn : IN_POSITION) : SV_POSITION {\n"
+  "  return vsIn;\n"
   "}\n";
 
 const std::string g_pixelShaderCode =
-  "struct PsInput {\n"
-  "  float4 position : SV_POSITION;\n"
-  "  float4 color : PS_COLOR;\n"
-  "};\n"
-  "float4 main(PsInput psIn) : SV_TARGET {\n"
-  "  return psIn.color;\n"
+  "cbuffer c_buffer { float4 ccolor[2]; };\n"
+  "float4 main() : SV_TARGET {\n"
+  "  return ccolor[0];\n"
   "}\n";
 
 class TriangleApp {
@@ -97,9 +82,9 @@ public:
       throw DxvkError("Failed to resize window");
     
     std::array<Vertex, 3> vertexData = {{
-      { -0.5f, -0.5f, 0.0f, 1.0f, 0.03f, 0.03f, 0.03f, 1.0f },
-      {  0.0f,  0.5f, 0.0f, 1.0f, 0.03f, 0.03f, 0.03f, 1.0f },
-      {  0.5f, -0.5f, 0.0f, 1.0f, 0.03f, 0.03f, 0.03f, 1.0f },
+      { -0.5f, -0.5f, 0.0f, 1.0f },
+      {  0.0f,  0.5f, 0.0f, 1.0f },
+      {  0.5f, -0.5f, 0.0f, 1.0f },
     }};
     
     D3D11_BUFFER_DESC vertexDesc;
@@ -114,6 +99,30 @@ public:
     vertexDataInfo.pSysMem          = vertexData.data();
     vertexDataInfo.SysMemPitch      = 0;
     vertexDataInfo.SysMemSlicePitch = 0;
+    
+    if (FAILED(m_device->CreateBuffer(&vertexDesc, &vertexDataInfo, &m_vertexBuffer)))
+      throw DxvkError("Failed to create vertex buffer");
+    
+    std::array<Vertex, 2> constantData = {{
+      { 0.03f, 0.03f, 0.03f, 1.0f },
+      { 1.00f, 1.00f, 1.00f, 1.0f },
+    }};
+    
+    D3D11_BUFFER_DESC constantDesc;
+    constantDesc.ByteWidth            = sizeof(Vertex) * constantData.size();
+    constantDesc.Usage                = D3D11_USAGE_IMMUTABLE;
+    constantDesc.BindFlags            = D3D11_BIND_CONSTANT_BUFFER;
+    constantDesc.CPUAccessFlags       = 0;
+    constantDesc.MiscFlags            = 0;
+    constantDesc.StructureByteStride  = 0;
+    
+    D3D11_SUBRESOURCE_DATA constantDataInfo;
+    constantDataInfo.pSysMem          = constantData.data();
+    constantDataInfo.SysMemPitch      = 0;
+    constantDataInfo.SysMemSlicePitch = 0;
+    
+    if (FAILED(m_device->CreateBuffer(&constantDesc, &constantDataInfo, &m_constantBuffer)))
+      throw DxvkError("Failed to create constant buffer");
     
     Com<ID3DBlob> vertexShaderBlob;
     Com<ID3DBlob> pixelShaderBlob;
@@ -150,13 +159,8 @@ public:
           nullptr, &m_pixelShader)))
       throw DxvkError("Failed to create pixel shader");
       
-    
-    if (FAILED(m_device->CreateBuffer(&vertexDesc, &vertexDataInfo, &m_vertexBuffer)))
-      throw DxvkError("Failed to create vertex buffer");
-    
-    std::array<D3D11_INPUT_ELEMENT_DESC, 2> vertexFormatDesc = {{
+    std::array<D3D11_INPUT_ELEMENT_DESC, 1> vertexFormatDesc = {{
       { "IN_POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, offsetof(Vertex, x), D3D11_INPUT_PER_VERTEX_DATA, 0 },
-      { "IN_COLOR", 0,    DXGI_FORMAT_R32G32B32A32_FLOAT, 0, offsetof(Vertex, r), D3D11_INPUT_PER_VERTEX_DATA, 0 },
     }};
     
     if (FAILED(m_device->CreateInputLayout(
@@ -193,6 +197,7 @@ public:
     
     m_context->VSSetShader(m_vertexShader.ptr(), nullptr, 0);
     m_context->PSSetShader(m_pixelShader.ptr(), nullptr, 0);
+    m_context->PSSetConstantBuffers(0, 1, &m_constantBuffer);
     
     UINT vsStride = sizeof(Vertex);
     UINT vsOffset = 0;
@@ -247,6 +252,7 @@ private:
     
   Com<ID3D11Texture2D>        m_buffer;
   Com<ID3D11RenderTargetView> m_bufferView;
+  Com<ID3D11Buffer>           m_constantBuffer;
   Com<ID3D11Buffer>           m_vertexBuffer;
   Com<ID3D11InputLayout>      m_vertexFormat;
   

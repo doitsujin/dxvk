@@ -156,7 +156,8 @@ namespace dxvk {
     
     std::vector<DxbcPointer> m_rRegs;
     
-    std::array<DxbcConstantBuffer, 16> m_constantBuffers;
+    std::array<DxbcConstantBuffer, 16>  m_constantBuffers;
+    std::vector<DxvkResourceSlot>       m_resourceSlots;
     
     uint32_t defScalarType(
             DxbcScalarType          type);

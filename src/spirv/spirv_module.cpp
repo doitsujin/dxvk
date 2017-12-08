@@ -238,6 +238,16 @@ namespace dxvk {
   }
   
   
+  void SpirvModule::decorateArrayStride(
+          uint32_t                object,
+          uint32_t                stride) {
+    m_annotations.putIns  (spv::OpDecorate, 4);
+    m_annotations.putWord (object);
+    m_annotations.putWord (spv::DecorationArrayStride);
+    m_annotations.putInt32(stride);
+  }
+  
+  
   void SpirvModule::decorateBinding(
           uint32_t                object,
           uint32_t                binding) {

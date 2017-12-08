@@ -43,6 +43,7 @@ namespace dxvk {
       DxbcValueType(DxbcScalarType::Float32, 4, elementCount));
     uint32_t structType = m_module.defStructType(1, &arrayType);
     
+    m_module.decorateArrayStride(arrayType, 16);
     m_module.memberDecorateOffset(structType, 0, 0);
     m_module.decorateBlock(structType);
     
@@ -50,8 +51,14 @@ namespace dxvk {
       m_module.defPointerType(structType, spv::StorageClassUniform),
       spv::StorageClassUniform);
     
+    m_module.setDebugName(varIndex, str::format("cb", bufferId).c_str());
+    m_module.decorateDescriptorSet(varIndex, 0);
+    m_module.decorateBinding(varIndex, 0);
     m_constantBuffers.at(bufferId).varId = varIndex;
     m_constantBuffers.at(bufferId).size  = elementCount;
+    
+    // TODO compute resource slot index
+    m_resourceSlots.push_back({ 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER });
   }
   
   
