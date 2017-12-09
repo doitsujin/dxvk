@@ -12,7 +12,7 @@
       return S_OK;                              \
     }                                           \
   } while (0)
-
+#include <iostream>
 namespace dxvk {
   
   template<typename... Base>
@@ -28,8 +28,10 @@ namespace dxvk {
     
     ULONG Release() {
       ULONG refCount = --m_refCount;
-      if (refCount == 0)
+      if (refCount == 0) {
+        refCount += 0x80000000u;
         delete this;
+      }
       return refCount;
     }
     
