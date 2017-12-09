@@ -88,7 +88,7 @@ namespace dxvk {
     if (pDesc->BindFlags & D3D11_BIND_CONSTANT_BUFFER) {
       info.usage  |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
       info.stages |= GetEnabledShaderStages();
-      info.access |= VK_ACCESS_SHADER_READ_BIT;
+      info.access |= VK_ACCESS_UNIFORM_READ_BIT;
     }
     
     if (pDesc->BindFlags & D3D11_BIND_SHADER_RESOURCE) {
