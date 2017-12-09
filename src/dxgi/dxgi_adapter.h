@@ -60,6 +60,10 @@ namespace dxvk {
     
     void AddFormat(
             DXGI_FORMAT                       srcFormat,
+            VkFormat                          dstFormat);
+    
+    void AddFormat(
+            DXGI_FORMAT                       srcFormat,
             VkFormat                          dstFormat,
       const std::initializer_list<VkFormat>&  fallbacks,
             VkFormatFeatureFlags              features);

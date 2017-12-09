@@ -27,6 +27,7 @@ namespace dxvk {
     
     m_flags.set(
       DxvkContextFlag::GpDirtyPipeline,
+      DxvkContextFlag::GpDirtyPipelineState,
       DxvkContextFlag::GpDirtyDynamicState,
       DxvkContextFlag::GpDirtyResources,
       DxvkContextFlag::GpDirtyIndexBuffer,

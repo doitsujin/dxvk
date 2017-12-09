@@ -1,7 +1,5 @@
 #pragma once
 
-#include <optional>
-
 #include "./vulkan/dxvk_vulkan_extensions.h"
 
 #include "dxvk_include.h"
@@ -86,14 +84,16 @@ namespace dxvk {
      * \param [in] tiling Image tiling
      * \param [in] usage Image usage flags
      * \param [in] flags Image create flags
-     * \returns Image format support info
+     * \param [out] properties Format properties
+     * \returns \c VK_SUCCESS or \c VK_ERROR_FORMAT_NOT_SUPPORTED
      */
-    std::optional<VkImageFormatProperties> imageFormatProperties(
-      VkFormat            format,
-      VkImageType         type,
-      VkImageTiling       tiling,
-      VkImageUsageFlags   usage,
-      VkImageCreateFlags  flags) const;
+    VkResult imageFormatProperties(
+      VkFormat                  format,
+      VkImageType               type,
+      VkImageTiling             tiling,
+      VkImageUsageFlags         usage,
+      VkImageCreateFlags        flags,
+      VkImageFormatProperties&  properties) const;
     
     /**
      * \brief Graphics queue family index

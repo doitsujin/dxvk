@@ -56,24 +56,15 @@ namespace dxvk {
   }
   
     
-  std::optional<VkImageFormatProperties> DxvkAdapter::imageFormatProperties(
-    VkFormat            format,
-    VkImageType         type,
-    VkImageTiling       tiling,
-    VkImageUsageFlags   usage,
-    VkImageCreateFlags  flags) const {
-    VkImageFormatProperties formatProperties;
-    
-    VkResult status = m_vki->vkGetPhysicalDeviceImageFormatProperties(
-      m_handle, format, type, tiling, usage, flags, &formatProperties);
-    
-    switch (status) {
-      case VK_SUCCESS:                    return formatProperties;
-      case VK_ERROR_FORMAT_NOT_SUPPORTED: return { };
-      
-      default:
-        throw DxvkError("DxvkAdapter::imageFormatProperties: Failed to query format properties");
-    }
+  VkResult DxvkAdapter::imageFormatProperties(
+    VkFormat                  format,
+    VkImageType               type,
+    VkImageTiling             tiling,
+    VkImageUsageFlags         usage,
+    VkImageCreateFlags        flags,
+    VkImageFormatProperties&  properties) const {
+    return m_vki->vkGetPhysicalDeviceImageFormatProperties(
+      m_handle, format, type, tiling, usage, flags, &properties);
   }
   
     
