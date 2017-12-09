@@ -30,10 +30,8 @@ extern "C" {
     if (dxgiAdapter == nullptr) {
       // We'll treat everything as hardware, even if the
       // Vulkan device is actually a software device.
-      if (DriverType != D3D_DRIVER_TYPE_HARDWARE) {
-        Logger::err("D3D11CreateDevice: Unsupported driver type");
-        return DXGI_ERROR_UNSUPPORTED;
-      }
+      if (DriverType != D3D_DRIVER_TYPE_HARDWARE)
+        Logger::warn("D3D11CreateDevice: Unsupported driver type");
       
       // We'll use the first adapter returned by a DXGI factory
       Com<IDXGIFactory> factory = nullptr;
@@ -63,7 +61,7 @@ extern "C" {
     if (FAILED(dxgiAdapter->QueryInterface(__uuidof(IDXGIAdapterPrivate),
         reinterpret_cast<void**>(&dxvkAdapter)))) {
       Logger::err("D3D11CreateDevice: Adapter is not a DXVK adapter");
-      return E_FAIL;
+      return E_INVALIDARG;
     }
     
     // Feature levels to probe if the
@@ -93,7 +91,7 @@ extern "C" {
     
     if (flId == FeatureLevels) {
       Logger::err("D3D11CreateDevice: Requested feature level not supported");
-      return DXGI_ERROR_UNSUPPORTED;
+      return E_INVALIDARG;
     }
     
     // Try to create the device with the given parameters.
