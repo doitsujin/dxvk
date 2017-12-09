@@ -47,6 +47,12 @@ namespace dxvk {
     HRESULT SetGPUThreadPriority(
             INT                   Priority) final;
     
+    HRESULT GetMaximumFrameLatency(
+            UINT*                 pMaxLatency) final;
+    
+    HRESULT SetMaximumFrameLatency(
+            UINT                  MaxLatency) final;
+    
     void SetDeviceLayer(
             IUnknown*             layer) final;
     

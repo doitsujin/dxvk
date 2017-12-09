@@ -20,6 +20,7 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, IUnknown);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIObject);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIDevice);
+    COM_QUERY_IFACE(riid, ppvObject, IDXGIDevice1);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIDevicePrivate);
     
     if (m_layer != nullptr)
@@ -75,6 +76,21 @@ namespace dxvk {
       return E_INVALIDARG;
     
     Logger::err("DxgiDevice::SetGPUThreadPriority: Ignoring");
+    return S_OK;
+  }
+  
+  
+  HRESULT DxgiDevice::GetMaximumFrameLatency(
+          UINT*                 pMaxLatency) {
+    Logger::warn("DxgiDevice::GetMaximumFrameLatency: Stub");
+    *pMaxLatency = 1;
+    return S_OK;
+  }
+  
+  
+  HRESULT DxgiDevice::SetMaximumFrameLatency(
+          UINT                  MaxLatency) {
+    Logger::warn("DxgiDevice::SetMaximumFrameLatency: Stub");
     return S_OK;
   }
   
