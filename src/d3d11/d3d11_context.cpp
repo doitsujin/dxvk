@@ -970,7 +970,7 @@ namespace dxvk {
           ID3D11Buffer* const*              ppConstantBuffers) {
     this->BindConstantBuffers(
       DxbcProgramType::PixelShader,
-      &m_state.vs.constantBuffers,
+      &m_state.ps.constantBuffers,
       StartSlot, NumBuffers,
       ppConstantBuffers);
   }
