@@ -8,6 +8,7 @@ dxvk_src = files([
   'dxvk_data.cpp',
   'dxvk_descriptor.cpp',
   'dxvk_device.cpp',
+  'dxvk_format.cpp',
   'dxvk_framebuffer.cpp',
   'dxvk_graphics.cpp',
   'dxvk_image.cpp',

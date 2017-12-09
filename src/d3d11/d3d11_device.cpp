@@ -333,7 +333,7 @@ namespace dxvk {
     // Fill in Vulkan image view info
     DxvkImageViewCreateInfo viewInfo;
     viewInfo.format = m_dxgiAdapter->LookupFormat(desc.Format).actual;
-    viewInfo.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.aspect = imageFormatInfo(viewInfo.format)->aspectMask;
     
     switch (desc.ViewDimension) {
       case D3D11_RTV_DIMENSION_TEXTURE2D:
@@ -465,11 +465,9 @@ namespace dxvk {
     }
     
     // Fill in Vulkan image view info
-    // TODO Implement some sort of format reflection
     DxvkImageViewCreateInfo viewInfo;
     viewInfo.format = m_dxgiAdapter->LookupFormat(desc.Format).actual;
-    viewInfo.aspect = VK_IMAGE_ASPECT_DEPTH_BIT
-                    | VK_IMAGE_ASPECT_STENCIL_BIT;
+    viewInfo.aspect = imageFormatInfo(viewInfo.format)->aspectMask;
     
     switch (desc.ViewDimension) {
       case D3D11_DSV_DIMENSION_TEXTURE2D:
@@ -1038,10 +1036,8 @@ namespace dxvk {
     
     const Rc<DxvkImage> image = pImage->GetDXVKImage();
     
-    // TODO implement some sort of format info
     VkImageSubresourceRange subresources;
-    subresources.aspectMask     = VK_IMAGE_ASPECT_DEPTH_BIT
-                                | VK_IMAGE_ASPECT_STENCIL_BIT;
+    subresources.aspectMask     = imageFormatInfo(image->info().format)->aspectMask;
     subresources.baseMipLevel   = 0;
     subresources.levelCount     = image->info().mipLevels;
     subresources.baseArrayLayer = 0;

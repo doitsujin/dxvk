@@ -1,5 +1,6 @@
 #pragma once
 
+#include "dxvk_format.h"
 #include "dxvk_memory.h"
 #include "dxvk_resource.h"
 
