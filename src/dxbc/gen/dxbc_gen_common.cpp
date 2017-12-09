@@ -183,6 +183,32 @@ namespace dxvk {
   }
   
   
+  DxbcValue DxbcCodeGen::opMul(const DxbcValue& a, const DxbcValue& b) {
+    DxbcValue result;
+    result.type = a.type;
+    
+    switch (result.type.componentType) {
+      case DxbcScalarType::Sint32:
+      case DxbcScalarType::Sint64:
+      case DxbcScalarType::Uint32:
+      case DxbcScalarType::Uint64:
+        result.valueId = m_module.opIMul(
+          this->defValueType(result.type),
+          a.valueId, b.valueId);
+        break;
+      
+      case DxbcScalarType::Float32:
+      case DxbcScalarType::Float64:
+        result.valueId = m_module.opFMul(
+          this->defValueType(result.type),
+          a.valueId, b.valueId);
+        break;
+    }
+    
+    return result;
+  }
+  
+  
   DxbcValue DxbcCodeGen::opDot(const DxbcValue& a, const DxbcValue& b) {
     DxbcValue result;
     result.type    = DxbcValueType(a.type.componentType, 1);

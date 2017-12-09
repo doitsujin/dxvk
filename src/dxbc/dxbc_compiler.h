@@ -44,6 +44,9 @@ namespace dxvk {
     void opAdd(
       const DxbcInstruction&  ins);
     
+    void opMul(
+      const DxbcInstruction&  ins);
+    
     void opDpx(
       const DxbcInstruction&  ins,
             uint32_t          n);

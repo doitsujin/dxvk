@@ -260,6 +260,11 @@ namespace dxvk {
             uint32_t                a,
             uint32_t                b);
     
+    uint32_t opIMul(
+            uint32_t                resultType,
+            uint32_t                a,
+            uint32_t                b);
+    
     uint32_t opFMul(
             uint32_t                resultType,
             uint32_t                a,
