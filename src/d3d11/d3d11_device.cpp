@@ -5,6 +5,7 @@
 #include "d3d11_device.h"
 #include "d3d11_input_layout.h"
 #include "d3d11_present.h"
+#include "d3d11_sampler.h"
 #include "d3d11_shader.h"
 #include "d3d11_texture.h"
 #include "d3d11_view.h"
@@ -822,8 +823,54 @@ namespace dxvk {
   HRESULT D3D11Device::CreateSamplerState(
     const D3D11_SAMPLER_DESC*         pSamplerDesc,
           ID3D11SamplerState**        ppSamplerState) {
-    Logger::err("D3D11Device::CreateSamplerState: Not implemented");
-    return E_NOTIMPL;
+    DxvkSamplerCreateInfo info;
+    
+    // While D3D11_FILTER is technically an enum, its value bits
+    // can be used to decode the filter properties more efficiently.
+    const uint32_t filterBits = static_cast<uint32_t>(pSamplerDesc->Filter);
+    
+    info.magFilter      = (filterBits & 0x04) ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
+    info.minFilter      = (filterBits & 0x10) ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
+    info.mipmapMode     = (filterBits & 0x01) ? VK_SAMPLER_MIPMAP_MODE_LINEAR : VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    info.useAnisotropy  = (filterBits & 0x40) ? VK_TRUE : VK_FALSE;
+    info.compareToDepth = (filterBits & 0x80) ? VK_TRUE : VK_FALSE;
+    
+    // Check for any unknown flags
+    if (filterBits & 0xFFFFFF2A) {
+      Logger::err(str::format("D3D11: Unsupported filter bits: ", filterBits));
+      return E_INVALIDARG;
+    }
+    
+    // Set up the remaining properties, which are
+    // stored directly in the sampler description
+    info.mipmapLodBias = pSamplerDesc->MipLODBias;
+    info.mipmapLodMin  = pSamplerDesc->MinLOD;
+    info.mipmapLodMax  = pSamplerDesc->MaxLOD;
+    info.maxAnisotropy = pSamplerDesc->MaxAnisotropy;
+    info.addressModeU  = DecodeAddressMode(pSamplerDesc->AddressU);
+    info.addressModeV  = DecodeAddressMode(pSamplerDesc->AddressV);
+    info.addressModeW  = DecodeAddressMode(pSamplerDesc->AddressW);
+    info.compareOp     = DecodeCompareOp(pSamplerDesc->ComparisonFunc);
+    info.borderColor   = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+    info.usePixelCoord = VK_FALSE;
+    
+    if (info.addressModeU == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER
+     || info.addressModeV == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER
+     || info.addressModeW == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER)
+      Logger::warn("D3D11: Border color not supported yet");
+    
+    // Create sampler object if the application requests it
+    if (ppSamplerState == nullptr)
+      return S_OK;
+    
+    try {
+      *ppSamplerState = ref(new D3D11SamplerState(this,
+        *pSamplerDesc, m_dxvkDevice->createSampler(info)));
+      return S_OK;
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return S_OK;
+    }
   }
   
   
@@ -1325,6 +1372,65 @@ namespace dxvk {
     }
     
     return memoryFlags;
+  }
+  
+  
+  VkSamplerAddressMode D3D11Device::DecodeAddressMode(
+          D3D11_TEXTURE_ADDRESS_MODE  mode) const {
+    switch (mode) {
+      case D3D11_TEXTURE_ADDRESS_WRAP:
+        return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        
+      case D3D11_TEXTURE_ADDRESS_MIRROR:
+        return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+      
+      case D3D11_TEXTURE_ADDRESS_CLAMP:
+        return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        
+      case D3D11_TEXTURE_ADDRESS_BORDER:
+        return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+        
+      case D3D11_TEXTURE_ADDRESS_MIRROR_ONCE:
+        return VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
+      
+      default:
+        Logger::err(str::format("D3D11: Unsupported address mode: ", mode));
+        return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    }
+  }
+  
+  
+  VkCompareOp D3D11Device::DecodeCompareOp(
+          D3D11_COMPARISON_FUNC mode) const {
+    switch (mode) {
+      case D3D11_COMPARISON_NEVER:
+        return VK_COMPARE_OP_NEVER;
+        
+      case D3D11_COMPARISON_LESS:
+        return VK_COMPARE_OP_LESS;
+        
+      case D3D11_COMPARISON_EQUAL:
+        return VK_COMPARE_OP_EQUAL;
+        
+      case D3D11_COMPARISON_LESS_EQUAL:
+        return VK_COMPARE_OP_LESS_OR_EQUAL;
+        
+      case D3D11_COMPARISON_GREATER:
+        return VK_COMPARE_OP_GREATER;
+        
+      case D3D11_COMPARISON_NOT_EQUAL:
+        return VK_COMPARE_OP_NOT_EQUAL;
+        
+      case D3D11_COMPARISON_GREATER_EQUAL:
+        return VK_COMPARE_OP_GREATER_OR_EQUAL;
+        
+      case D3D11_COMPARISON_ALWAYS:
+        return VK_COMPARE_OP_ALWAYS;
+        
+      default:
+        Logger::err(str::format("D3D11: Unsupported compare op: ", mode));
+        return VK_COMPARE_OP_ALWAYS;
+    }
   }
   
 }

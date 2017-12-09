@@ -35,7 +35,7 @@ namespace dxvk {
     
   private:
     
-    D3D11Device* const      m_device;
+    Com<D3D11Device>        m_device;
     D3D11_RASTERIZER_DESC   m_desc;
     DxvkRasterizerState     m_state;
     

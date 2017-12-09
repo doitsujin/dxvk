@@ -288,6 +288,11 @@ namespace dxvk {
     VkMemoryPropertyFlags GetMemoryFlagsForUsage(
             D3D11_USAGE             usage) const;
     
+    VkSamplerAddressMode DecodeAddressMode(
+            D3D11_TEXTURE_ADDRESS_MODE  mode) const;
+    
+    VkCompareOp DecodeCompareOp(
+            D3D11_COMPARISON_FUNC mode) const;
     
   };
   
