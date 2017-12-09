@@ -880,8 +880,12 @@ namespace dxvk {
           DXGI_FORMAT Format,
           UINT        SampleCount,
           UINT*       pNumQualityLevels) {
+    // There are many error conditions, so we'll just assume
+    // that we will fail and return a non-zero value in case
+    // the device does actually support the format.
     *pNumQualityLevels = 0;
     
+    // We need to check whether the format is 
     VkFormat format = m_dxgiAdapter->LookupFormat(Format).actual;
     
     if (format == VK_FORMAT_UNDEFINED) {
@@ -889,11 +893,15 @@ namespace dxvk {
       return E_INVALIDARG;
     }
     
+    // D3D may legally query non-power-of-two sample counts as well
     VkSampleCountFlagBits sampleCountFlag = VK_SAMPLE_COUNT_1_BIT;
     
     if (FAILED(GetSampleCount(SampleCount, &sampleCountFlag)))
-      return E_INVALIDARG;
+      return S_OK;
     
+    // Check if the device supports the given combination of format
+    // and sample count. D3D exposes the opaque concept of quality
+    // levels to the application, we'll just define one such level.
     VkImageFormatProperties formatProps;
     
     VkResult status = m_dxvkAdapter->imageFormatProperties(
