@@ -381,7 +381,8 @@ namespace dxvk {
     
     try {
       Rc<DxvkImageView> view = m_dxvkDevice->createImageView(image, viewInfo);
-      *ppRTView = ref(new D3D11RenderTargetView(this, pResource, desc, view));
+      *ppRTView = ref(new D3D11RenderTargetView(
+        this, pResource, desc, nullptr, view));
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
@@ -516,7 +517,8 @@ namespace dxvk {
     
     try {
       Rc<DxvkImageView> view = m_dxvkDevice->createImageView(image, viewInfo);
-      *ppDepthStencilView = ref(new D3D11DepthStencilView(this, pResource, desc, view));
+      *ppDepthStencilView = ref(new D3D11DepthStencilView(
+        this, pResource, desc, nullptr, view));
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
