@@ -12,7 +12,7 @@
       return S_OK;                              \
     }                                           \
   } while (0)
-#include <iostream>
+  
 namespace dxvk {
   
   template<typename... Base>

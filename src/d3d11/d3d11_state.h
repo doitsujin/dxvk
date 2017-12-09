@@ -50,7 +50,7 @@ namespace dxvk {
       
       Com<T> result = new T(device, desc);
       m_objects.insert({ desc, result });
-      return result.ptr();
+      return result.ref();
     }
     
   private:
