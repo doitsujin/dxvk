@@ -239,8 +239,6 @@ namespace dxvk {
     
     m_cmd->cmdClearAttachments(
       1, &attachment, 1, &clearArea);
-    
-    // FIXME add barriers if required
   }
   
   
