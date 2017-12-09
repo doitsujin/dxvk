@@ -48,6 +48,7 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, ID3D11Device);
     
     if (riid == __uuidof(IDXGIDevice)
+     || riid == __uuidof(IDXGIDevice1)
      || riid == __uuidof(IDXGIDevicePrivate))
       return m_dxgiDevice->QueryInterface(riid, ppvObject);
     
@@ -243,6 +244,9 @@ namespace dxvk {
           ID3D11Resource*                   pResource,
     const D3D11_SHADER_RESOURCE_VIEW_DESC*  pDesc,
           ID3D11ShaderResourceView**        ppSRView) {
+    // Shader resource views can access pretty much anything
+    D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+    pResource->GetType(&resourceDim);
     Logger::err("D3D11Device::CreateShaderResourceView: Not implemented");
     return E_NOTIMPL;
   }
@@ -261,10 +265,10 @@ namespace dxvk {
           ID3D11Resource*                   pResource,
     const D3D11_RENDER_TARGET_VIEW_DESC*    pDesc,
           ID3D11RenderTargetView**          ppRTView) {
+    // Only 2D textures and 2D texture arrays are allowed
     D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resourceDim);
     
-    // Only 2D textures and 2D texture arrays are allowed
     if (resourceDim != D3D11_RESOURCE_DIMENSION_TEXTURE2D) {
       Logger::err("D3D11: Unsupported resource type for render target views");
       return E_INVALIDARG;
@@ -395,10 +399,10 @@ namespace dxvk {
           ID3D11Resource*                   pResource,
     const D3D11_DEPTH_STENCIL_VIEW_DESC*    pDesc,
           ID3D11DepthStencilView**          ppDepthStencilView) {
+    // Only 2D textures and 2D texture arrays are allowed
     D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resourceDim);
     
-    // Only 2D textures and 2D texture arrays are allowed
     if (resourceDim != D3D11_RESOURCE_DIMENSION_TEXTURE2D) {
       Logger::err("D3D11: Unsupported resource type for depth-stencil views");
       return E_INVALIDARG;
@@ -831,8 +835,29 @@ namespace dxvk {
           DXGI_FORMAT Format,
           UINT        SampleCount,
           UINT*       pNumQualityLevels) {
-    Logger::err("D3D11Device::CheckMultisampleQualityLevels: Not implemented");
-    return E_NOTIMPL;
+    *pNumQualityLevels = 0;
+    
+    VkFormat format = m_dxgiAdapter->LookupFormat(Format).actual;
+    
+    if (format == VK_FORMAT_UNDEFINED) {
+      Logger::err(str::format("D3D11: Unsupported format: ", Format));
+      return E_INVALIDARG;
+    }
+    
+    VkSampleCountFlagBits sampleCountFlag = VK_SAMPLE_COUNT_1_BIT;
+    
+    if (FAILED(GetSampleCount(SampleCount, &sampleCountFlag)))
+      return E_INVALIDARG;
+    
+    VkImageFormatProperties formatProps;
+    
+    VkResult status = m_dxvkAdapter->imageFormatProperties(
+      format, VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL,
+      VK_IMAGE_USAGE_SAMPLED_BIT, 0, formatProps);
+    
+    if ((status == VK_SUCCESS) && (formatProps.sampleCounts & sampleCountFlag))
+      *pNumQualityLevels = 1;
+    return S_OK;
   }
   
   
