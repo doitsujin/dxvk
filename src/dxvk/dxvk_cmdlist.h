@@ -117,6 +117,13 @@ namespace dxvk {
             uint32_t                rangeCount,
       const VkImageSubresourceRange* pRanges);
     
+    void cmdClearDepthStencilImage(
+            VkImage                 image,
+            VkImageLayout           imageLayout,
+      const VkClearDepthStencilValue* pDepthStencil,
+            uint32_t                rangeCount,
+      const VkImageSubresourceRange* pRanges);
+    
     void cmdCopyBuffer(
             VkBuffer                srcBuffer,
             VkBuffer                dstBuffer,

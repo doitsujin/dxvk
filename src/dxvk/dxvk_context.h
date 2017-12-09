@@ -156,6 +156,18 @@ namespace dxvk {
       const VkImageSubresourceRange&  subresources);
     
     /**
+     * \brief Clears subresources of a depth-stencil image
+     * 
+     * \param [in] image The image to clear
+     * \param [in] value Clear value
+     * \param [in] subresources Subresources to clear
+     */
+    void clearDepthStencilImage(
+      const Rc<DxvkImage>&            image,
+      const VkClearDepthStencilValue& value,
+      const VkImageSubresourceRange&  subresources);
+    
+    /**
      * \brief Clears an active render target
      * 
      * \param [in] attachment Attachment to clear

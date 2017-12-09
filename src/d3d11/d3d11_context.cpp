@@ -276,17 +276,15 @@ namespace dxvk {
           ID3D11RenderTargetView*           pRenderTargetView,
     const FLOAT                             ColorRGBA[4]) {
     auto rtv = static_cast<D3D11RenderTargetView*>(pRenderTargetView);
-    
-    const Rc<DxvkImageView> dxvkView  = rtv->GetDXVKImageView();
-    const Rc<DxvkImage>     dxvkImage = dxvkView->image();
+    const Rc<DxvkImageView> dxvkView = rtv->GetDXVKImageView();
     
     // Find out whether the given attachment is currently bound
     // or not, and if it is, which attachment index it has.
     int32_t attachmentIndex = -1;
     
-    if (m_state.om.framebuffer != nullptr) {
-      attachmentIndex = m_state.om.framebuffer
-        ->renderTargets().getAttachmentId(dxvkView);
+    for (uint32_t i = 0; i < m_state.om.renderTargetViews.size(); i++) {
+      if (m_state.om.renderTargetViews.at(i) == rtv)
+        attachmentIndex = i;
     }
     
     // Copy the clear color into a clear value structure.
@@ -309,10 +307,10 @@ namespace dxvk {
       VkClearRect clearRect;
       clearRect.rect.offset.x       = 0;
       clearRect.rect.offset.y       = 0;
-      clearRect.rect.extent.width   = dxvkImage->info().extent.width;
-      clearRect.rect.extent.height  = dxvkImage->info().extent.height;
+      clearRect.rect.extent.width   = dxvkView->imageInfo().extent.width;
+      clearRect.rect.extent.height  = dxvkView->imageInfo().extent.height;
       clearRect.baseArrayLayer      = 0;
-      clearRect.layerCount          = dxvkImage->info().numLayers;
+      clearRect.layerCount          = dxvkView->imageInfo().numLayers;
       
       if (m_parent->GetFeatureLevel() < D3D_FEATURE_LEVEL_10_0)
         clearRect.layerCount        = 1;
@@ -321,7 +319,7 @@ namespace dxvk {
     } else {
       // Image is not bound to the pipeline. We can still clear
       // it, but we'll have to use a generic clear function.
-      m_context->clearColorImage(dxvkImage,
+      m_context->clearColorImage(dxvkView->image(),
         clearValue, dxvkView->subresources());
     }
   }
@@ -346,7 +344,45 @@ namespace dxvk {
           UINT                              ClearFlags,
           FLOAT                             Depth,
           UINT8                             Stencil) {
-    Logger::err("D3D11DeviceContext::ClearDepthStencilView: Not implemented");
+    auto dsv = static_cast<D3D11DepthStencilView*>(pDepthStencilView);
+    const Rc<DxvkImageView> dxvkView = dsv->GetDXVKImageView();
+    
+    VkClearDepthStencilValue clearValue;
+    clearValue.depth   = Depth;
+    clearValue.stencil = Stencil;
+    
+    if (m_state.om.depthStencilView == dsv) {
+      // Image is bound to the pipeline for rendering. We can
+      // use the clear function that operates on attachments.
+      VkClearAttachment clearInfo;
+      clearInfo.aspectMask              = 0;
+      clearInfo.colorAttachment         = 0;
+      clearInfo.clearValue.depthStencil = clearValue;
+      
+      if (ClearFlags & D3D11_CLEAR_DEPTH)
+        clearInfo.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
+      
+      if (ClearFlags & D3D11_CLEAR_STENCIL)
+        clearInfo.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+      
+      // Clear the full area
+      VkClearRect clearRect;
+      clearRect.rect.offset.x       = 0;
+      clearRect.rect.offset.y       = 0;
+      clearRect.rect.extent.width   = dxvkView->imageInfo().extent.width;
+      clearRect.rect.extent.height  = dxvkView->imageInfo().extent.height;
+      clearRect.baseArrayLayer      = 0;
+      clearRect.layerCount          = dxvkView->imageInfo().numLayers;
+      
+      // FIXME Is this correct? Docs don't say anything
+      if (m_parent->GetFeatureLevel() < D3D_FEATURE_LEVEL_10_0)
+        clearRect.layerCount        = 1;
+      
+      m_context->clearRenderTarget(clearInfo, clearRect);
+    } else {
+      m_context->clearDepthStencilImage(dxvkView->image(),
+        clearValue, dxvkView->subresources());
+    }
   }
   
   
@@ -1109,7 +1145,6 @@ namespace dxvk {
           UINT                              NumViews,
           ID3D11RenderTargetView* const*    ppRenderTargetViews,
           ID3D11DepthStencilView*           pDepthStencilView) {
-    // Update state vector for OMGetRenderTargets
     for (UINT i = 0; i < m_state.om.renderTargetViews.size(); i++) {
       D3D11RenderTargetView* view = nullptr;
       
@@ -1118,6 +1153,9 @@ namespace dxvk {
       
       m_state.om.renderTargetViews.at(i) = view;
     }
+    
+    m_state.om.depthStencilView = static_cast<D3D11DepthStencilView*>(pDepthStencilView);
+    
     
     // TODO unbind overlapping shader resource views
     
@@ -1134,15 +1172,13 @@ namespace dxvk {
           attachments.setColorTarget(i, m_state.om.renderTargetViews.at(i)->GetDXVKImageView());
       }
       
-      // TODO implement depth-stencil views
-      if (pDepthStencilView != nullptr)
-        Logger::err("D3D11DeviceContext::OMSetRenderTargets: Depth-stencil view not supported");
+      if (m_state.om.depthStencilView != nullptr)
+        attachments.setDepthTarget(m_state.om.depthStencilView->GetDXVKImageView());
       
       framebuffer = m_device->createFramebuffer(attachments);
     }
     
     // Bind the framebuffer object to the context
-    m_state.om.framebuffer = framebuffer;
     m_context->bindFramebuffer(framebuffer);
   }
   

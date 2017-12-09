@@ -74,8 +74,7 @@ namespace dxvk {
   
   struct D3D11ContextStateOM {
     std::array<Com<D3D11RenderTargetView>, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> renderTargetViews;
-    
-    Rc<DxvkFramebuffer> framebuffer;
+    Com<D3D11DepthStencilView>                                                     depthStencilView;
   };
   
   

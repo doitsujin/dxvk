@@ -194,6 +194,18 @@ namespace dxvk {
   }
   
   
+  void DxvkCommandList::cmdClearDepthStencilImage(
+          VkImage                 image,
+          VkImageLayout           imageLayout,
+    const VkClearDepthStencilValue* pDepthStencil,
+          uint32_t                rangeCount,
+    const VkImageSubresourceRange* pRanges) {
+    m_vkd->vkCmdClearDepthStencilImage(m_buffer,
+      image, imageLayout, pDepthStencil,
+      rangeCount, pRanges);
+  }
+  
+  
   void DxvkCommandList::cmdCopyBuffer(
           VkBuffer                srcBuffer,
           VkBuffer                dstBuffer,
