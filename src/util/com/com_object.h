@@ -29,7 +29,7 @@ namespace dxvk {
     ULONG Release() {
       ULONG refCount = --m_refCount;
       if (refCount == 0) {
-        refCount += 0x80000000u;
+        m_refCount += 0x80000000u;
         delete this;
       }
       return refCount;
