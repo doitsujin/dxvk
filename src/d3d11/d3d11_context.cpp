@@ -762,7 +762,11 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState* const*        ppSamplers) {
-    Logger::err("D3D11DeviceContext::VSSetSamplers: Not implemented");
+    this->BindSamplers(
+      DxbcProgramType::VertexShader,
+      &m_state.vs.samplers,
+      StartSlot, NumSamplers,
+      ppSamplers);
   }
   
   
@@ -1032,7 +1036,11 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState* const*        ppSamplers) {
-    Logger::err("D3D11DeviceContext::PSSetSamplers: Not implemented");
+    this->BindSamplers(
+      DxbcProgramType::PixelShader,
+      &m_state.ps.samplers,
+      StartSlot, NumSamplers,
+      ppSamplers);
   }
   
   
@@ -1390,6 +1398,7 @@ namespace dxvk {
       if (pBindings->at(StartSlot + i) != buffer) {
         pBindings->at(StartSlot + i) = buffer;
         
+        // Figure out which part of the buffer to bind
         DxvkBufferBinding bindingInfo;
         
         if (buffer != nullptr) {
@@ -1398,17 +1407,56 @@ namespace dxvk {
             0, VK_WHOLE_SIZE);
         }
         
-        VkPipelineBindPoint bindPoint
+        // Bind buffer to the DXVK resource slot
+        const VkPipelineBindPoint bindPoint
           = ShaderStage == DxbcProgramType::ComputeShader
             ? VK_PIPELINE_BIND_POINT_COMPUTE
             : VK_PIPELINE_BIND_POINT_GRAPHICS;
         
-        uint32_t slotId = computeResourceSlotId(
+        const uint32_t slotId = computeResourceSlotId(
           ShaderStage, DxbcBindingType::ConstantBuffer,
           StartSlot + i);
         
         m_context->bindResourceBuffer(
           bindPoint, slotId, bindingInfo);
+      }
+    }
+  }
+  
+  
+  void D3D11DeviceContext::BindSamplers(
+          DxbcProgramType                   ShaderStage,
+          D3D11SamplerBindings*             pBindings,
+          UINT                              StartSlot,
+          UINT                              NumSamplers,
+          ID3D11SamplerState* const*        ppSamplers) {
+    for (uint32_t i = 0; i < NumSamplers; i++) {
+      D3D11SamplerState* sampler = nullptr;
+      
+      if (ppSamplers != nullptr)
+        sampler = static_cast<D3D11SamplerState*>(ppSamplers[i]);
+      
+      if (pBindings->at(StartSlot + i) != sampler) {
+        pBindings->at(StartSlot + i) = sampler;
+        
+        // Retrieve the DXVK sampler object
+        Rc<DxvkSampler> samplerInfo = nullptr;
+        
+        if (sampler != nullptr)
+          samplerInfo = sampler->GetDXVKSampler();
+        
+        // Bind sampler to the DXVK resource slot
+        const VkPipelineBindPoint bindPoint
+          = ShaderStage == DxbcProgramType::ComputeShader
+            ? VK_PIPELINE_BIND_POINT_COMPUTE
+            : VK_PIPELINE_BIND_POINT_GRAPHICS;
+        
+        const uint32_t slotId = computeResourceSlotId(
+          ShaderStage, DxbcBindingType::ImageSampler,
+          StartSlot + i);
+        
+        m_context->bindResourceSampler(
+          bindPoint, slotId, samplerInfo);
       }
     }
   }
