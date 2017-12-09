@@ -248,11 +248,131 @@ namespace dxvk {
     D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resourceDim);
     
-    if (ppSRView != nullptr)
-      *ppSRView = nullptr;
+    // Retrieve a usable resource view description
+    D3D11_SHADER_RESOURCE_VIEW_DESC desc;
     
-    Logger::err("D3D11Device::CreateShaderResourceView: Not implemented");
-    return E_NOTIMPL;
+    if (pDesc == nullptr) {
+      if (FAILED(GetShaderResourceViewDescFromResource(pResource, &desc)))
+        return E_INVALIDARG;
+    } else {
+      desc = *pDesc;
+    }
+    
+    if (resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER) {
+      Logger::err("D3D11: Shader resource views for buffers not yet supported");
+      return E_INVALIDARG;
+    } else {
+      // Create an image view. View type and accessed subresources
+      // are determined by the view dimension field in the shader
+      // resource view description.
+      DxvkImageViewCreateInfo info;
+      info.format = m_dxgiAdapter->LookupFormat(desc.Format).actual;
+      info.aspect = imageFormatInfo(info.format)->aspectMask;
+      
+      switch (desc.ViewDimension) {
+        case D3D11_SRV_DIMENSION_TEXTURE1D:
+          info.type      = VK_IMAGE_VIEW_TYPE_1D;
+          info.minLevel  = desc.Texture1D.MostDetailedMip;
+          info.numLevels = desc.Texture1D.MipLevels;
+          info.minLayer  = 0;
+          info.numLayers = 1;
+          break;
+          
+        case D3D11_SRV_DIMENSION_TEXTURE1DARRAY:
+          info.type      = VK_IMAGE_VIEW_TYPE_1D_ARRAY;
+          info.minLevel  = desc.Texture1DArray.MostDetailedMip;
+          info.numLevels = desc.Texture1DArray.MipLevels;
+          info.minLayer  = desc.Texture1DArray.FirstArraySlice;
+          info.numLayers = desc.Texture1DArray.ArraySize;
+          break;
+          
+        case D3D11_SRV_DIMENSION_TEXTURE2D:
+          info.type      = VK_IMAGE_VIEW_TYPE_2D;
+          info.minLevel  = desc.Texture2D.MostDetailedMip;
+          info.numLevels = desc.Texture2D.MipLevels;
+          info.minLayer  = 0;
+          info.numLayers = 1;
+          break;
+          
+        case D3D11_SRV_DIMENSION_TEXTURE2DARRAY:
+          info.type      = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+          info.minLevel  = desc.Texture2DArray.MostDetailedMip;
+          info.numLevels = desc.Texture2DArray.MipLevels;
+          info.minLayer  = desc.Texture2DArray.FirstArraySlice;
+          info.numLayers = desc.Texture2DArray.ArraySize;
+          break;
+          
+        case D3D11_SRV_DIMENSION_TEXTURE2DMS:
+          info.type      = VK_IMAGE_VIEW_TYPE_2D;
+          info.minLevel  = 0;
+          info.numLevels = 1;
+          info.minLayer  = 0;
+          info.numLayers = 1;
+          break;
+          
+        case D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY:
+          info.type      = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+          info.minLevel  = 0;
+          info.numLevels = 1;
+          info.minLayer  = desc.Texture2DMSArray.FirstArraySlice;
+          info.numLayers = desc.Texture2DMSArray.ArraySize;
+          break;
+          
+        case D3D11_SRV_DIMENSION_TEXTURE3D:
+          info.type      = VK_IMAGE_VIEW_TYPE_3D;
+          info.minLevel  = desc.Texture3D.MostDetailedMip;
+          info.numLevels = desc.Texture3D.MipLevels;
+          info.minLayer  = 0;
+          info.numLayers = 1;
+          break;
+          
+        case D3D11_SRV_DIMENSION_TEXTURECUBE:
+          info.type      = VK_IMAGE_VIEW_TYPE_CUBE;
+          info.minLevel  = desc.TextureCube.MostDetailedMip;
+          info.numLevels = desc.TextureCube.MipLevels;
+          info.minLayer  = 0;
+          info.numLayers = 6;
+          break;
+          
+        case D3D11_SRV_DIMENSION_TEXTURECUBEARRAY:
+          info.type      = VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
+          info.minLevel  = desc.TextureCubeArray.MostDetailedMip;
+          info.numLevels = desc.TextureCubeArray.MipLevels;
+          info.minLayer  = desc.TextureCubeArray.First2DArrayFace;
+          info.numLayers = desc.TextureCubeArray.NumCubes * 6;
+          break;
+          
+        default:
+          Logger::err(str::format(
+            "D3D11: View dimension not supported for SRV: ",
+            desc.ViewDimension));
+          return E_INVALIDARG;
+      }
+      
+      Com<IDXGIImageResourcePrivate> imageResource;
+      
+      if (FAILED(pResource->QueryInterface(
+            __uuidof(IDXGIImageResourcePrivate),
+            reinterpret_cast<void**>(&imageResource)))) {
+        Logger::err("D3D11: Invalid image for SRV");
+        return E_INVALIDARG;
+      }
+      
+      try {
+        if (ppSRView != nullptr) {
+          *ppSRView = ref(new D3D11ShaderResourceView(
+            this, pResource, desc, nullptr,
+            m_dxvkDevice->createImageView(
+              imageResource->GetDXVKImage(),
+              info)));
+        }
+        
+        return S_OK;
+      } catch (const DxvkError& e) {
+        Logger::err(e.message());
+        return E_FAIL;
+      }
+    }
   }
   
   
@@ -1079,6 +1199,79 @@ namespace dxvk {
     m_dxvkDevice->submitCommandList(
       m_resourceInitContext->endRecording(),
       nullptr, nullptr);
+  }
+  
+  
+  HRESULT D3D11Device::GetShaderResourceViewDescFromResource(
+          ID3D11Resource*                   pResource,
+          D3D11_SHADER_RESOURCE_VIEW_DESC*  pDesc) {
+    D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+    pResource->GetType(&resourceDim);
+    
+    switch (resourceDim) {
+      
+      case D3D11_RESOURCE_DIMENSION_TEXTURE2D: {
+        D3D11_TEXTURE2D_DESC resourceDesc;
+        static_cast<D3D11Texture2D*>(pResource)->GetDesc(&resourceDesc);
+        
+        pDesc->Format = resourceDesc.Format;
+        
+        if (resourceDesc.SampleDesc.Count == 1) {
+          if (resourceDesc.ArraySize == 1) {
+            pDesc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+            pDesc->Texture2D.MostDetailedMip = 0;
+            pDesc->Texture2D.MipLevels       = resourceDesc.MipLevels;
+          } else {
+            pDesc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DARRAY;
+            pDesc->Texture2DArray.MostDetailedMip = 0;
+            pDesc->Texture2DArray.MipLevels       = resourceDesc.MipLevels;
+            pDesc->Texture2DArray.FirstArraySlice = 0;
+            pDesc->Texture2DArray.ArraySize       = resourceDesc.ArraySize;
+          }
+        } else {
+          if (resourceDesc.ArraySize == 1) {
+            pDesc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DMS;
+          } else {
+            pDesc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY;
+            pDesc->Texture2DMSArray.FirstArraySlice = 0;
+            pDesc->Texture2DMSArray.ArraySize       = resourceDesc.ArraySize;
+          }
+        }
+      } return S_OK;
+      
+      default:
+        Logger::err(str::format(
+          "D3D11: Unsupported dimension for shader resource view: ",
+          resourceDim));
+        return E_INVALIDARG;
+    }
+  }
+  
+  
+  HRESULT D3D11Device::GetUnorderedAccessViewDescFromResource(
+          ID3D11Resource*                   pResource,
+          D3D11_UNORDERED_ACCESS_VIEW_DESC* pDesc) {
+    D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+    pResource->GetType(&resourceDim);
+    
+  }
+  
+  
+  HRESULT D3D11Device::GetRenderTargetViewDescFromResource(
+          ID3D11Resource*                   pResource,
+          D3D11_RENDER_TARGET_VIEW_DESC*    pDesc) {
+    D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+    pResource->GetType(&resourceDim);
+    
+  }
+  
+  
+  HRESULT D3D11Device::GetDepthStencilViewDescFromResource(
+          ID3D11Resource*                   pResource,
+          D3D11_DEPTH_STENCIL_VIEW_DESC*    pDesc) {
+    D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+    pResource->GetType(&resourceDim);
+    
   }
   
   

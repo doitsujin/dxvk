@@ -263,6 +263,22 @@ namespace dxvk {
             IDXGIImageResourcePrivate*  pImage,
       const D3D11_SUBRESOURCE_DATA*     pInitialData);
     
+    HRESULT GetShaderResourceViewDescFromResource(
+            ID3D11Resource*                   pResource,
+            D3D11_SHADER_RESOURCE_VIEW_DESC*  pDesc);
+    
+    HRESULT GetUnorderedAccessViewDescFromResource(
+            ID3D11Resource*                   pResource,
+            D3D11_UNORDERED_ACCESS_VIEW_DESC* pDesc);
+    
+    HRESULT GetRenderTargetViewDescFromResource(
+            ID3D11Resource*                   pResource,
+            D3D11_RENDER_TARGET_VIEW_DESC*    pDesc);
+    
+    HRESULT GetDepthStencilViewDescFromResource(
+            ID3D11Resource*                   pResource,
+            D3D11_DEPTH_STENCIL_VIEW_DESC*    pDesc);
+    
     HRESULT GetSampleCount(
             UINT                    Count,
             VkSampleCountFlagBits*  pCount) const;
@@ -271,6 +287,7 @@ namespace dxvk {
     
     VkMemoryPropertyFlags GetMemoryFlagsForUsage(
             D3D11_USAGE             usage) const;
+    
     
   };
   
