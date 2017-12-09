@@ -76,7 +76,7 @@ namespace dxvk {
     }
     
     void GetDevice(ID3D11Device **ppDevice) final {
-      *ppDevice = ref(m_device);
+      *ppDevice = m_device.ref();
     }
     
     Rc<DxvkShader> GetShader() const {
@@ -85,8 +85,8 @@ namespace dxvk {
     
   private:
     
-    D3D11Device* const m_device;
-    D3D11ShaderModule  m_module;
+    Com<D3D11Device>  m_device;
+    D3D11ShaderModule m_module;
     
   };
   

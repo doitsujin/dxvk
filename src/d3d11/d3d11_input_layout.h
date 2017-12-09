@@ -31,7 +31,7 @@ namespace dxvk {
     
   private:
     
-    D3D11Device* const  m_device;
+    Com<D3D11Device> m_device;
     
     std::vector<DxvkVertexAttribute> m_attributes;
     std::vector<DxvkVertexBinding>   m_bindings;

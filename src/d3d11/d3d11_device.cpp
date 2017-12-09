@@ -21,7 +21,6 @@ namespace dxvk {
     m_featureFlags  (featureFlags),
     m_dxvkDevice    (m_dxgiDevice->GetDXVKDevice()),
     m_dxvkAdapter   (m_dxvkDevice->adapter()) {
-    
     Com<IDXGIAdapter> adapter;
     
     if (FAILED(m_dxgiDevice->GetAdapter(&adapter))
@@ -56,6 +55,7 @@ namespace dxvk {
       return m_presentDevice->QueryInterface(riid, ppvObject);
     
     Logger::warn("D3D11Device::QueryInterface: Unknown interface query");
+    Logger::warn(str::format(riid));
     return E_NOINTERFACE;
   }
     
@@ -247,6 +247,10 @@ namespace dxvk {
     // Shader resource views can access pretty much anything
     D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resourceDim);
+    
+    if (ppSRView != nullptr)
+      *ppSRView = nullptr;
+    
     Logger::err("D3D11Device::CreateShaderResourceView: Not implemented");
     return E_NOTIMPL;
   }

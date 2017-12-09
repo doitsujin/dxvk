@@ -42,7 +42,7 @@ namespace dxvk {
     }
     
     void GetDevice(ID3D11Device** ppDevice) final {
-      *ppDevice = ref(m_device);
+      *ppDevice = m_device.ref();
     }
     
     void GetResource(ID3D11Resource** ppResource) final {
@@ -63,7 +63,7 @@ namespace dxvk {
     
   private:
     
-    D3D11Device* const  m_device;
+    Com<D3D11Device>    m_device;
     Com<ID3D11Resource> m_resource;
     DescType            m_desc;
     Rc<DxvkBufferView>  m_bufferView;

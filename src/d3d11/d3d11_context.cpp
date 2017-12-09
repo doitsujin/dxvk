@@ -111,8 +111,8 @@ namespace dxvk {
   void D3D11DeviceContext::ClearState() {
     this->IASetInputLayout(nullptr);
     this->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED);
-//     this->IASetVertexBuffers(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT, nullptr, nullptr, nullptr);
-//     this->IASetIndexBuffer(nullptr, DXGI_FORMAT_UNKNOWN, 0);
+    this->IASetVertexBuffers(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT, nullptr, nullptr, nullptr);
+    this->IASetIndexBuffer(nullptr, DXGI_FORMAT_UNKNOWN, 0);
     
     this->VSSetShader(nullptr, nullptr, 0);
     this->VSSetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, nullptr);
@@ -625,10 +625,16 @@ namespace dxvk {
     // are bound as UAVs or stream outputs
     for (uint32_t i = 0; i < NumBuffers; i++) {
       D3D11VertexBufferBinding binding;
-      binding.buffer = static_cast<D3D11Buffer*>(ppVertexBuffers[i]);
-      binding.offset = pOffsets[i];
-      binding.stride = pStrides[i];
+      binding.buffer = nullptr;
+      binding.offset = 0;
+      binding.stride = 0;
       m_state.ia.vertexBuffers.at(StartSlot + i) = binding;
+      
+      if (ppVertexBuffers != nullptr) {
+        binding.buffer = static_cast<D3D11Buffer*>(ppVertexBuffers[i]);
+        binding.offset = pOffsets[i];
+        binding.stride = pStrides[i];
+      }
       
       DxvkBufferBinding dxvkBinding;
       
@@ -673,10 +679,12 @@ namespace dxvk {
     // formats are allowed.
     VkIndexType indexType = VK_INDEX_TYPE_UINT32;
     
-    switch (binding.format) {
-      case DXGI_FORMAT_R16_UINT: indexType = VK_INDEX_TYPE_UINT16; break;
-      case DXGI_FORMAT_R32_UINT: indexType = VK_INDEX_TYPE_UINT32; break;
-      default: Logger::err(str::format("D3D11: Invalid index format: ", binding.format));
+    if (binding.buffer != nullptr) {
+      switch (binding.format) {
+        case DXGI_FORMAT_R16_UINT: indexType = VK_INDEX_TYPE_UINT16; break;
+        case DXGI_FORMAT_R32_UINT: indexType = VK_INDEX_TYPE_UINT32; break;
+        default: Logger::err(str::format("D3D11: Invalid index format: ", binding.format));
+      }
     }
     
     m_context->bindIndexBuffer(

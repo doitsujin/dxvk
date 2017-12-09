@@ -175,7 +175,7 @@ public:
   
   
   ~TriangleApp() {
-    
+    m_context->ClearState();
   }
   
   
