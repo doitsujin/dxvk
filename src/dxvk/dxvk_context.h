@@ -263,6 +263,27 @@ namespace dxvk {
       const void*                     data);
     
     /**
+     * \brief Updates an image
+     * 
+     * Copies data from the host into an image.
+     * \param [in] image Destination image
+     * \param [in] subsresources Image subresources to update
+     * \param [in] imageOffset Offset of the image area to update
+     * \param [in] imageExtent Size of the image area to update
+     * \param [in] data Source data
+     * \param [in] pitchPerRow Row pitch of the source data
+     * \param [in] pitchPerLayer Layer pitch of the source data
+     */
+    void updateImage(
+      const Rc<DxvkImage>&            image,
+      const VkImageSubresourceLayers& subresources,
+            VkOffset3D                imageOffset,
+            VkExtent3D                imageExtent,
+      const void*                     data,
+            VkDeviceSize              pitchPerRow,
+            VkDeviceSize              pitchPerLayer);
+    
+    /**
      * \brief Sets viewports
      * 
      * \param [in] viewportCount Number of viewports

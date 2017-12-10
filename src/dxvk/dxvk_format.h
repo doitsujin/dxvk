@@ -12,7 +12,7 @@ namespace dxvk {
    */
   struct DxvkFormatInfo {
     /// Size of an element in this format
-    uint32_t byteSize;
+    VkDeviceSize elementSize;
     
     /// Available image aspect flags
     VkImageAspectFlags aspectMask;

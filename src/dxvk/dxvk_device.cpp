@@ -32,8 +32,34 @@ namespace dxvk {
   }
   
   
+  Rc<DxvkStagingBuffer> DxvkDevice::allocStagingBuffer(VkDeviceSize size) {
+    // TODO actually recycle old buffers
+    const VkDeviceSize baseSize = 64 * 1024 * 1024;
+    const VkDeviceSize bufferSize = std::max(baseSize, size);
+    
+    DxvkBufferCreateInfo info;
+    info.size   = bufferSize;
+    info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT
+                | VK_PIPELINE_STAGE_HOST_BIT;
+    info.access = VK_ACCESS_TRANSFER_READ_BIT
+                | VK_ACCESS_HOST_WRITE_BIT;
+    
+    VkMemoryPropertyFlags memFlags
+      = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+      | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    
+    return new DxvkStagingBuffer(this->createBuffer(info, memFlags));
+  }
+  
+  
+  void DxvkDevice::recycleStagingBuffer(const Rc<DxvkStagingBuffer>& buffer) {
+    // TODO implement
+  }
+  
+  
   Rc<DxvkCommandList> DxvkDevice::createCommandList() {
-    return new DxvkCommandList(m_vkd,
+    return new DxvkCommandList(m_vkd, this,
       m_adapter->graphicsQueueFamily());
   }
   

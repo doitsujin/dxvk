@@ -4,8 +4,9 @@ namespace dxvk {
     
   DxvkCommandList::DxvkCommandList(
     const Rc<vk::DeviceFn>& vkd,
+          DxvkDevice*       device,
           uint32_t          queueFamily)
-  : m_vkd(vkd), m_descAlloc(vkd) {
+  : m_vkd(vkd), m_descAlloc(vkd), m_stagingAlloc(device) {
     VkCommandPoolCreateInfo poolInfo;
     poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     poolInfo.pNext            = nullptr;
@@ -28,7 +29,7 @@ namespace dxvk {
   
   
   DxvkCommandList::~DxvkCommandList() {
-    m_resources.reset();
+    this->reset();
     
     m_vkd->vkDestroyCommandPool(
       m_vkd->device(), m_pool, nullptr);
@@ -86,6 +87,7 @@ namespace dxvk {
   
   
   void DxvkCommandList::reset() {
+    m_stagingAlloc.reset();
     m_descAlloc.reset();
     m_resources.reset();
   }
@@ -297,6 +299,37 @@ namespace dxvk {
     const VkViewport*             viewports) {
     m_vkd->vkCmdSetViewport(m_buffer,
       firstViewport, viewportCount, viewports);
+  }
+  
+  
+  DxvkStagingBufferSlice DxvkCommandList::stagedAlloc(VkDeviceSize size) {
+    return m_stagingAlloc.alloc(size);
+  }
+  
+  
+  void DxvkCommandList::stagedBufferCopy(
+          VkBuffer                dstBuffer,
+          VkDeviceSize            dstOffset,
+          VkDeviceSize            dataSize,
+    const DxvkStagingBufferSlice& dataSlice) {
+    VkBufferCopy region;
+    region.srcOffset = dataSlice.offset;
+    region.dstOffset = dstOffset;
+    region.size      = dataSize;
+    
+    m_vkd->vkCmdCopyBuffer(m_buffer,
+      dataSlice.buffer, dstBuffer, 1, &region);
+  }
+  
+  
+  void DxvkCommandList::stagedBufferImageCopy(
+          VkImage                 dstImage,
+          VkImageLayout           dstImageLayout,
+    const VkBufferImageCopy&      dstImageRegion,
+    const DxvkStagingBufferSlice& dataSlice) {
+    m_vkd->vkCmdCopyBufferToImage(m_buffer,
+      dataSlice.buffer, dstImage, dstImageLayout,
+      1, &dstImageRegion);
   }
   
 }

@@ -74,6 +74,29 @@ namespace dxvk {
     }
     
     /**
+     * \brief Allocates a staging buffer
+     * 
+     * Returns a staging buffer that is at least as large
+     * as the requested size. It is usually bigger so that
+     * a single staging buffer may serve multiple allocations.
+     * \param [in] size Minimum buffer size
+     * \returns The staging buffer
+     */
+    Rc<DxvkStagingBuffer> allocStagingBuffer(
+            VkDeviceSize size);
+    
+    /**
+     * \brief Recycles a staging buffer
+     * 
+     * When a staging buffer is no longer needed, it should
+     * be returned to the device so that it can be reused
+     * for subsequent allocations.
+     * \param [in] buffer The buffer
+     */
+    void recycleStagingBuffer(
+      const Rc<DxvkStagingBuffer>& buffer);
+    
+    /**
      * \brief Creates a command list
      * \returns The command list
      */

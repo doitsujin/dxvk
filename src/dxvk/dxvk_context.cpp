@@ -1,3 +1,5 @@
+#include <cstring>
+
 #include "dxvk_device.h"
 #include "dxvk_context.h"
 #include "dxvk_main.h"
@@ -374,16 +376,23 @@ namespace dxvk {
     this->renderPassEnd();
     
     if (size == VK_WHOLE_SIZE)
-      size = buffer->info().size;
+      size = buffer->info().size - offset;
     
     if (size != 0) {
+      // Vulkan specifies that small amounts of data (up to 64kB)
+      // can be copied to a buffer directly. Anything larger than
+      // that must be copied through a staging buffer.
       if (size <= 65536) {
         m_cmd->cmdUpdateBuffer(
           buffer->handle(),
           offset, size, data);
       } else {
-        // TODO implement
-        Logger::err("DxvkContext::updateBuffer: Large updates not yet supported");
+        auto slice = m_cmd->stagedAlloc(size);
+        std::memcpy(slice.mapPtr, data, size);
+        
+        m_cmd->stagedBufferCopy(
+          buffer->handle(),
+          offset, size, slice);
       }
       
       m_barriers.accessBuffer(
@@ -393,7 +402,100 @@ namespace dxvk {
         buffer->info().stages,
         buffer->info().access);
       m_barriers.recordCommands(m_cmd);
+      
+      m_cmd->trackResource(buffer);
     }
+  }
+  
+  
+  void DxvkContext::updateImage(
+    const Rc<DxvkImage>&            image,
+    const VkImageSubresourceLayers& subresources,
+          VkOffset3D                imageOffset,
+          VkExtent3D                imageExtent,
+    const void*                     data,
+          VkDeviceSize              pitchPerRow,
+          VkDeviceSize              pitchPerLayer) {
+    if (subresources.layerCount == 0) {
+      Logger::warn("DxvkContext::updateImage: Layer count is zero");
+      return;
+    }
+    
+    VkImageSubresourceRange subresourceRange;
+    subresourceRange.aspectMask     = subresources.aspectMask;
+    subresourceRange.baseMipLevel   = subresources.mipLevel;
+    subresourceRange.levelCount     = 1;
+    subresourceRange.baseArrayLayer = subresources.baseArrayLayer;
+    subresourceRange.layerCount     = subresources.layerCount;
+    
+    m_barriers.accessImage(
+      image, subresourceRange,
+      image->info().extent == imageExtent
+        ? VK_IMAGE_LAYOUT_UNDEFINED
+        : image->info().layout,
+      image->info().stages,
+      image->info().access,
+      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT);
+    m_barriers.recordCommands(m_cmd);
+    
+    // TODO support block formats properly
+    const DxvkFormatInfo* formatInfo
+      = imageFormatInfo(image->info().format);
+    
+    const VkDeviceSize layerCount = imageExtent.depth * subresources.layerCount;
+    VkDeviceSize bytesPerRow   = imageExtent.width  * formatInfo->elementSize;
+    VkDeviceSize bytesPerLayer = imageExtent.height * bytesPerRow;
+    VkDeviceSize bytesTotal    = layerCount * bytesPerLayer;
+    
+    auto slice   = m_cmd->stagedAlloc(bytesTotal);
+    auto dstData = reinterpret_cast<char*>(slice.mapPtr);
+    auto srcData = reinterpret_cast<const char*>(data);
+    
+    bool useDirectCopy = true;
+    useDirectCopy &= (pitchPerLayer == bytesPerLayer) || layerCount == 1;
+    useDirectCopy &= (pitchPerRow   == bytesPerRow)   || imageExtent.height == 1;
+    
+    if (useDirectCopy) {
+      std::memcpy(dstData, srcData, bytesTotal);
+    } else {
+      for (uint32_t i = 0; i < layerCount; i++) {
+        for (uint32_t j = 0; j < imageExtent.height; j++) {
+          std::memcpy(dstData, srcData, bytesPerRow);
+          
+          dstData += bytesPerRow;
+          srcData += pitchPerRow;
+        }
+        
+        dstData += bytesPerLayer;
+        srcData += pitchPerLayer;
+      }
+    }
+    
+    VkBufferImageCopy region;
+    region.bufferOffset       = slice.offset;
+    region.bufferRowLength    = 0;
+    region.bufferImageHeight  = 0;
+    region.imageSubresource   = subresources;
+    region.imageOffset        = imageOffset;
+    region.imageExtent        = imageExtent;
+    
+    m_cmd->stagedBufferImageCopy(image->handle(),
+      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      region, slice);
+    
+    m_barriers.accessImage(
+      image, subresourceRange,
+      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT,
+      image->info().layout,
+      image->info().stages,
+      image->info().access);
+    m_barriers.recordCommands(m_cmd);
+    
+    m_cmd->trackResource(image);
   }
   
   

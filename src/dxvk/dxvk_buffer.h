@@ -47,11 +47,11 @@ namespace dxvk {
   
   
   /**
-   * \brief DXVK buffer
+   * \brief Buffer resource
    * 
-   * A simple buffer resource that stores
-   * linear data. Can be mapped to host
-   * memory.
+   * A simple buffer resource that stores linear,
+   * unformatted data. Can be accessed by the host
+   * if allocated on an appropriate memory type.
    */
   class DxvkBuffer : public DxvkResource {
     
@@ -86,10 +86,11 @@ namespace dxvk {
      * If the buffer has been created on a host-visible
      * memory type, the buffer memory is mapped and can
      * be accessed by the host.
+     * \param [in] offset Byte offset into mapped region
      * \returns Pointer to mapped memory region
      */
-    void* mapPtr() const {
-      return m_memory.mapPtr();
+    void* mapPtr(VkDeviceSize offset) const {
+      return m_memory.mapPtr(offset);
     }
     
   private:

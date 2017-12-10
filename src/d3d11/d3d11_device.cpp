@@ -1169,8 +1169,21 @@ namespace dxvk {
     subresources.layerCount     = image->info().numLayers;
     m_resourceInitContext->initImage(image, subresources);
     
-    if (pInitialData != nullptr)
-      Logger::err("D3D11: InitTexture cannot upload image data yet");
+    if (pInitialData != nullptr) {
+      VkImageSubresourceLayers subresourceLayers;
+      subresourceLayers.aspectMask     = subresources.aspectMask;
+      subresourceLayers.mipLevel       = 0;
+      subresourceLayers.baseArrayLayer = 0;
+      subresourceLayers.layerCount     = subresources.layerCount;
+      
+      m_resourceInitContext->updateImage(
+        image, subresourceLayers,
+        VkOffset3D { 0, 0, 0 },
+        image->info().extent,
+        pInitialData->pSysMem,
+        pInitialData->SysMemPitch,
+        pInitialData->SysMemSlicePitch);
+    }
     
     m_dxvkDevice->submitCommandList(
       m_resourceInitContext->endRecording(),

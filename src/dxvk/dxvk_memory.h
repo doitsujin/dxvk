@@ -47,10 +47,12 @@ namespace dxvk {
     
     /**
      * \brief Pointer to mapped data
+     * 
+     * \param [in] offset Byte offset
      * \returns Pointer to mapped data
      */
-    void* mapPtr() const {
-      return m_mapPtr;
+    void* mapPtr(VkDeviceSize offset) const {
+      return reinterpret_cast<char*>(m_mapPtr) + offset;
     }
     
   private:

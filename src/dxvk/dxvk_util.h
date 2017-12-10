@@ -13,4 +13,8 @@ namespace dxvk::util {
   VkPipelineStageFlags pipelineStages(
           VkShaderStageFlags shaderStages);
   
+  
 }
+
+bool operator == (VkExtent3D a, VkExtent3D b);
+bool operator != (VkExtent3D a, VkExtent3D b);

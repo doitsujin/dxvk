@@ -5,6 +5,7 @@
 #include "dxvk_descriptor.h"
 #include "dxvk_lifetime.h"
 #include "dxvk_pipelayout.h"
+#include "dxvk_staging.h"
 
 namespace dxvk {
   
@@ -23,6 +24,7 @@ namespace dxvk {
     
     DxvkCommandList(
       const Rc<vk::DeviceFn>& vkd,
+            DxvkDevice*       device,
             uint32_t          queueFamily);
     ~DxvkCommandList();
     
@@ -177,6 +179,21 @@ namespace dxvk {
             uint32_t                viewportCount,
       const VkViewport*             viewports);
     
+    DxvkStagingBufferSlice stagedAlloc(
+            VkDeviceSize            size);
+    
+    void stagedBufferCopy(
+            VkBuffer                dstBuffer,
+            VkDeviceSize            dstOffset,
+            VkDeviceSize            dataSize,
+      const DxvkStagingBufferSlice& dataSlice);
+    
+    void stagedBufferImageCopy(
+            VkImage                 dstImage,
+            VkImageLayout           dstImageLayout,
+      const VkBufferImageCopy&      dstImageRegion,
+      const DxvkStagingBufferSlice& dataSlice);
+    
   private:
     
     Rc<vk::DeviceFn>    m_vkd;
@@ -186,8 +203,7 @@ namespace dxvk {
     
     DxvkLifetimeTracker m_resources;
     DxvkDescriptorAlloc m_descAlloc;
-    
-    std::vector<VkWriteDescriptorSet> m_descriptorSetWrites;
+    DxvkStagingAlloc    m_stagingAlloc;
     
   };
   

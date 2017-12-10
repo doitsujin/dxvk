@@ -78,8 +78,8 @@ namespace dxvk {
    * \brief DXVK image
    * 
    * An image resource consisting of various subresources.
-   * Cannot be mapped to host memory, the only way to access
-   * image data is through buffer transfer operations.
+   * Can be accessed by the host if allocated on a suitable
+   * memory type and if created with the linear tiling option.
    */
   class DxvkImage : public DxvkResource {
     
