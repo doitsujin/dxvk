@@ -61,8 +61,8 @@ namespace dxvk {
     
     this->VSSetShader(nullptr, nullptr, 0);
     this->VSSetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, nullptr);
-//     this->VSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, nullptr);
-//     this->VSSetSamplers       (0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT, nullptr);
+    this->VSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, nullptr);
+    this->VSSetSamplers       (0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT, nullptr);
     
 //     this->HSSetShader(nullptr, nullptr, 0);
 //     this->HSSetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, nullptr);
@@ -81,8 +81,8 @@ namespace dxvk {
     
     this->PSSetShader(nullptr, nullptr, 0);
     this->PSSetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, nullptr);
-//     this->PSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, nullptr);
-//     this->PSSetSamplers       (0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT, nullptr);
+    this->PSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, nullptr);
+    this->PSSetSamplers       (0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT, nullptr);
     
 //     this->CSSetShader(nullptr, nullptr, 0);
 //     this->CSSetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, nullptr);
@@ -90,8 +90,8 @@ namespace dxvk {
 //     this->CSSetSamplers       (0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT, nullptr);
     
     this->OMSetRenderTargets(0, nullptr, nullptr);
-//     this->OMSetBlendState(nullptr, nullptr, D3D11_DEFAULT_SAMPLE_MASK);
-//     this->OMSetDepthStencilState(nullptr, 0);
+    this->OMSetBlendState(nullptr, nullptr, D3D11_DEFAULT_SAMPLE_MASK);
+    this->OMSetDepthStencilState(nullptr, 0);
     
     this->RSSetState(nullptr);
     this->RSSetViewports(0, nullptr);
@@ -699,7 +699,11 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
-    Logger::err("D3D11DeviceContext::VSSetShaderResources: Not implemented");
+    this->BindShaderResources(
+      DxbcProgramType::VertexShader,
+      &m_state.vs.shaderResources,
+      StartSlot, NumViews,
+      ppShaderResourceViews);
   }
   
   
@@ -973,7 +977,11 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
-    Logger::err("D3D11DeviceContext::PSSetShaderResources: Not implemented");
+    this->BindShaderResources(
+      DxbcProgramType::PixelShader,
+      &m_state.ps.shaderResources,
+      StartSlot, NumViews,
+      ppShaderResourceViews);
   }
   
   
@@ -1403,6 +1411,53 @@ namespace dxvk {
         
         m_context->bindResourceSampler(
           bindPoint, slotId, samplerInfo);
+      }
+    }
+  }
+  
+  
+  void D3D11DeviceContext::BindShaderResources(
+          DxbcProgramType                   ShaderStage,
+          D3D11ShaderResourceBindings*      pBindings,
+          UINT                              StartSlot,
+          UINT                              NumResources,
+          ID3D11ShaderResourceView* const*  ppResources) {
+    for (uint32_t i = 0; i < NumResources; i++) {
+      D3D11ShaderResourceView* resView = nullptr;
+      
+      if (ppResources != nullptr)
+        resView = static_cast<D3D11ShaderResourceView*>(ppResources[i]);
+      
+      if (pBindings->at(StartSlot + i) != resView) {
+        pBindings->at(StartSlot + i) = resView;
+        
+        // Bind sampler to the DXVK resource slot
+        const VkPipelineBindPoint bindPoint
+          = ShaderStage == DxbcProgramType::ComputeShader
+            ? VK_PIPELINE_BIND_POINT_COMPUTE
+            : VK_PIPELINE_BIND_POINT_GRAPHICS;
+        
+        const uint32_t slotId = computeResourceSlotId(
+          ShaderStage, DxbcBindingType::ImageSampler,
+          StartSlot + i);
+        
+        if (resView != nullptr) {
+          // Figure out what we have to bind based on the resource type
+          if (resView->GetResourceType() == D3D11_RESOURCE_DIMENSION_BUFFER) {
+            Logger::warn("D3D11: Texel buffers not yet supported");
+            m_context->bindResourceTexelBuffer(
+              bindPoint, slotId, nullptr);
+          } else {
+            m_context->bindResourceImage(bindPoint,
+              slotId, resView->GetDXVKImageView());
+          }
+        } else {
+          // When unbinding a resource, it doesn't really matter if
+          // the resource type is correct, so we'll just bind a null
+          // image to the given resource slot
+          m_context->bindResourceImage(
+            bindPoint, slotId, nullptr);
+        }
       }
     }
   }

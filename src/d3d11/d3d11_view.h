@@ -53,6 +53,12 @@ namespace dxvk {
       *pDesc = m_desc;
     }
     
+    D3D11_RESOURCE_DIMENSION GetResourceType() {
+      D3D11_RESOURCE_DIMENSION type;
+      m_resource->GetType(&type);
+      return type;
+    }
+    
     Rc<DxvkBufferView> GetDXVKBufferView() {
       return m_bufferView;
     }

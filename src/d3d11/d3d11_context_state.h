@@ -14,15 +14,20 @@ namespace dxvk {
   using D3D11ConstantBufferBindings = std::array<
     Com<D3D11Buffer>, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT>;
   
-    
+  
   using D3D11SamplerBindings = std::array<
     Com<D3D11SamplerState>, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT>;
+    
+  
+  using D3D11ShaderResourceBindings = std::array<
+    Com<D3D11ShaderResourceView>, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT>;
     
   
   struct D3D11ContextStateVS {
     Com<D3D11VertexShader>        shader;
     D3D11ConstantBufferBindings   constantBuffers;
     D3D11SamplerBindings          samplers;
+    D3D11ShaderResourceBindings   shaderResources;
   };
   
   
@@ -30,6 +35,7 @@ namespace dxvk {
     Com<D3D11HullShader>          shader;
     D3D11ConstantBufferBindings   constantBuffers;
     D3D11SamplerBindings          samplers;
+    D3D11ShaderResourceBindings   shaderResources;
   };
   
   
@@ -37,6 +43,7 @@ namespace dxvk {
     Com<D3D11DomainShader>        shader;
     D3D11ConstantBufferBindings   constantBuffers;
     D3D11SamplerBindings          samplers;
+    D3D11ShaderResourceBindings   shaderResources;
   };
   
   
@@ -44,6 +51,7 @@ namespace dxvk {
     Com<D3D11GeometryShader>      shader;
     D3D11ConstantBufferBindings   constantBuffers;
     D3D11SamplerBindings          samplers;
+    D3D11ShaderResourceBindings   shaderResources;
   };
   
   
@@ -51,6 +59,7 @@ namespace dxvk {
     Com<D3D11PixelShader>         shader;
     D3D11ConstantBufferBindings   constantBuffers;
     D3D11SamplerBindings          samplers;
+    D3D11ShaderResourceBindings   shaderResources;
   };
   
   
@@ -58,6 +67,7 @@ namespace dxvk {
     Com<D3D11ComputeShader>       shader;
     D3D11ConstantBufferBindings   constantBuffers;
     D3D11SamplerBindings          samplers;
+    D3D11ShaderResourceBindings   shaderResources;
   };
   
   

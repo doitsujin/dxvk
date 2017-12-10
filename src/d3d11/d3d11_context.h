@@ -563,6 +563,13 @@ namespace dxvk {
             UINT                              NumSamplers,
             ID3D11SamplerState* const*        ppSamplers);
     
+    void BindShaderResources(
+            DxbcProgramType                   ShaderStage,
+            D3D11ShaderResourceBindings*      pBindings,
+            UINT                              StartSlot,
+            UINT                              NumResources,
+            ID3D11ShaderResourceView* const*  ppResources);
+    
     void ApplyViewportState();
     
     void SetupIAStateObjects();
