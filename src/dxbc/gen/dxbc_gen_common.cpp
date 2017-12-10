@@ -533,6 +533,24 @@ namespace dxvk {
   }
   
   
+  DxbcValue DxbcCodeGen::regVector(
+    const DxbcValue&            src,
+          uint32_t              size) {
+    if (size == 1)
+      return src;
+    
+    std::array<uint32_t, 4> ids = {
+      src.valueId, src.valueId, src.valueId, src.valueId, 
+    };
+    
+    DxbcValue result;
+    result.type = DxbcValueType(src.type.componentType, size);
+    result.valueId = m_module.opCompositeConstruct(
+      this->defValueType(result.type), size, ids.data());
+    return result;
+  }
+  
+  
   DxbcValue DxbcCodeGen::regLoad(const DxbcPointer& ptr) {
     DxbcValue result;
     result.type    = ptr.type.valueType;

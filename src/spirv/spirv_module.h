@@ -214,6 +214,11 @@ namespace dxvk {
             uint32_t                resultType,
             uint32_t                operand);
     
+    uint32_t opCompositeConstruct(
+            uint32_t                resultType,
+            uint32_t                valueCount,
+      const uint32_t*               valueArray);
+    
     uint32_t opCompositeExtract(
             uint32_t                resultType,
             uint32_t                composite,

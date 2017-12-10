@@ -578,6 +578,22 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opCompositeConstruct(
+          uint32_t                resultType,
+          uint32_t                valueCount,
+    const uint32_t*               valueArray) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpCompositeConstruct, 3 + valueCount);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    
+    for (uint32_t i = 0; i < valueCount; i++)
+      m_code.putWord(valueArray[i]);
+    return resultId;
+  }
+  
+  
   uint32_t SpirvModule::opCompositeExtract(
           uint32_t                resultType,
           uint32_t                composite,

@@ -145,6 +145,10 @@ namespace dxvk {
       const DxbcValue&            src,
             DxbcComponentMask     mask);
     
+    DxbcValue regVector(
+      const DxbcValue&            src,
+            uint32_t              size);
+    
     DxbcValue regLoad(
       const DxbcPointer&          ptr);
     

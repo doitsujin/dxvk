@@ -545,11 +545,16 @@ namespace dxvk {
           DxbcComponentMask mask) {
     const DxbcPointer ptr = this->getOperandPtr(operand);
     
+    // The value to store is actually allowed to be scalar,
+    // so we might need to create a vector from it.
+    if (value.type.componentCount == 1)
+      value = m_gen->regVector(value, mask.componentCount());
+    
     // Cast source value to destination register type.
     // TODO verify that this actually works as intended.
     DxbcValueType dstType;
     dstType.componentType  = ptr.type.valueType.componentType;
-    dstType.componentCount = mask.componentCount();
+    dstType.componentCount = value.type.componentCount;
     value = m_gen->regCast(value, dstType);
     
     m_gen->regStore(ptr, value, mask);
