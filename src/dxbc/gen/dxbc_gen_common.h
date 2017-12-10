@@ -118,6 +118,9 @@ namespace dxvk {
       const DxbcValue&            a,
       const DxbcValue&            b);
     
+    DxbcValue opRsqrt(
+      const DxbcValue&            src);
+    
     DxbcValue opNeg(
       const DxbcValue&            src);
     

@@ -281,6 +281,10 @@ namespace dxvk {
             uint32_t                vector1,
             uint32_t                vector2);
     
+    uint32_t opInverseSqrt(
+            uint32_t                resultType,
+            uint32_t                x);
+    
     uint32_t opFunctionCall(
             uint32_t                resultType,
             uint32_t                functionId,

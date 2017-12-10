@@ -354,6 +354,16 @@ namespace dxvk {
   }
   
   
+  DxbcValue DxbcCodeGen::opRsqrt(const DxbcValue& src) {
+    DxbcValue result;
+    result.type    = src.type;
+    result.valueId = m_module.opInverseSqrt(
+      this->defValueType(result.type),
+      src.valueId);
+    return result;
+  }
+  
+  
   DxbcValue DxbcCodeGen::opNeg(const DxbcValue& src) {
     DxbcValue result;
     result.type = src.type;

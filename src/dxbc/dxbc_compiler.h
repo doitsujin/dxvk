@@ -57,6 +57,9 @@ namespace dxvk {
       const DxbcInstruction&  ins,
             uint32_t          n);
     
+    void opRsq(
+      const DxbcInstruction&  ins);
+    
     void opMov(
       const DxbcInstruction&  ins);
     

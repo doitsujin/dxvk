@@ -62,6 +62,9 @@ namespace dxvk {
       case DxbcOpcode::Dp4:
         return this->opDpx(ins, 4);
       
+      case DxbcOpcode::Rsq:
+        return this->opRsq(ins);
+      
       case DxbcOpcode::Ret:
         return this->opRet(ins);
       
@@ -261,6 +264,17 @@ namespace dxvk {
     this->storeOperand(dstOp, val, dstMask);
   }
   
+  
+  void DxbcCompiler::opRsq(const DxbcInstruction& ins) {
+    auto dstOp = ins.operand(0);
+    auto srcOp = ins.operand(dstOp.length());
+    DxbcComponentMask mask = this->getDstOperandMask(dstOp);
+    
+    DxbcValue src = this->loadOperand(srcOp, mask, DxbcScalarType::Float32);
+    DxbcValue val = m_gen->opRsqrt(src);
+              val = this->applyResultModifiers(val, ins.token().control());
+    this->storeOperand(dstOp, val, mask);
+  }
   
   void DxbcCompiler::opMov(const DxbcInstruction& ins) {
     auto dstOp = ins.operand(0);
