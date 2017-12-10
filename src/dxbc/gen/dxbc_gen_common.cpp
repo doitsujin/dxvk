@@ -80,6 +80,99 @@ namespace dxvk {
   }
   
   
+  void DxbcCodeGen::dclResource(
+          uint32_t              registerId,
+          DxbcResourceDim       resourceType,
+          DxbcResourceReturnType returnType) {
+    uint32_t sampledTypeId = 0;
+    
+    switch (returnType) {
+      default: Logger::err(str::format("DXBC: Invalid sampled type: ", returnType));
+      case DxbcResourceReturnType::Float: sampledTypeId = m_module.defFloatType(32);    break;
+      case DxbcResourceReturnType::Sint:  sampledTypeId = m_module.defIntType  (32, 1); break;
+      case DxbcResourceReturnType::Uint:  sampledTypeId = m_module.defIntType  (32, 0); break;
+    }
+    
+    uint32_t resourceTypeId = 0;
+    
+    switch (resourceType) {
+      default:
+        Logger::err(str::format(
+          "DXBC: Invalid resource type: ",
+          resourceType));
+        
+      case DxbcResourceDim::Texture1D:
+        resourceTypeId = m_module.defImageType(
+          sampledTypeId, spv::Dim1D, 2, 0, 0, 1,
+          spv::ImageFormatUnknown);
+        break;
+      
+      case DxbcResourceDim::Texture1DArr:
+        resourceTypeId = m_module.defImageType(
+          sampledTypeId, spv::Dim1D, 2, 1, 0, 1,
+          spv::ImageFormatUnknown);
+        break;
+      
+      case DxbcResourceDim::Texture2D:
+        resourceTypeId = m_module.defImageType(
+          sampledTypeId, spv::Dim2D, 2, 0, 0, 1,
+          spv::ImageFormatUnknown);
+        break;
+      
+      case DxbcResourceDim::Texture2DArr:
+        resourceTypeId = m_module.defImageType(
+          sampledTypeId, spv::Dim2D, 2, 1, 0, 1,
+          spv::ImageFormatUnknown);
+        break;
+      
+      case DxbcResourceDim::Texture3D:
+        resourceTypeId = m_module.defImageType(
+          sampledTypeId, spv::Dim3D, 2, 0, 0, 1,
+          spv::ImageFormatUnknown);
+        break;
+      
+      case DxbcResourceDim::TextureCube:
+        resourceTypeId = m_module.defImageType(
+          sampledTypeId, spv::DimCube, 2, 0, 0, 1,
+          spv::ImageFormatUnknown);
+        break;
+      
+      case DxbcResourceDim::TextureCubeArr:
+        resourceTypeId = m_module.defImageType(
+          sampledTypeId, spv::DimCube, 2, 1, 0, 1,
+          spv::ImageFormatUnknown);
+        break;
+    }
+    
+    uint32_t resourcePtrType = m_module.defPointerType(
+      resourceTypeId, spv::StorageClassUniformConstant);
+    
+    uint32_t varId = m_module.newVar(resourcePtrType,
+      spv::StorageClassUniformConstant);
+    
+    m_module.setDebugName(varId,
+      str::format("t", registerId).c_str());
+    
+    m_resources.at(registerId).varId          = varId;
+    m_resources.at(registerId).sampledTypeId  = sampledTypeId;
+    m_resources.at(registerId).resourceTypeId = resourceTypeId;
+    
+    // Compute the DXVK binding slot index for the resource.
+    // D3D11 needs to bind the actual resource to this slot.
+    uint32_t bindingId = computeResourceSlotId(m_shaderStage,
+      DxbcBindingType::ShaderResource, registerId);
+    
+    m_module.decorateDescriptorSet(varId, 0);
+    m_module.decorateBinding(varId, bindingId);
+    
+    // Store descriptor info for the shader interface
+    DxvkResourceSlot resource;
+    resource.slot = bindingId;
+    resource.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    m_resourceSlots.push_back(resource);
+  }
+  
+  
   void DxbcCodeGen::dclSampler(uint32_t samplerId) {
     // The sampler type is opaque, but we still have to
     // define a pointer and a variable in oder to use it

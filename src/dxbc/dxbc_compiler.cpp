@@ -24,6 +24,9 @@ namespace dxvk {
       case DxbcOpcode::DclConstantBuffer:
         return this->dclConstantBuffer(ins);
         
+      case DxbcOpcode::DclResource:
+        return this->dclResource(ins);
+        
       case DxbcOpcode::DclSampler:
         return this->dclSampler(ins);
         
@@ -39,7 +42,7 @@ namespace dxvk {
         return this->dclInterfaceVar(ins);
       
       case DxbcOpcode::DclTemps:
-        return this->dclTemps(ins);
+          return this->dclTemps(ins);
       
       case DxbcOpcode::Add:
         return this->opAdd(ins);
@@ -81,6 +84,9 @@ namespace dxvk {
   
   
   void DxbcCompiler::dclConstantBuffer(const DxbcInstruction& ins) {
+    // dclConstantBuffer takes two operands:
+    // 1. The buffer register ID
+    // 2. The number of 4x32-bit constants
     auto op = ins.operand(0);
     
     if (op.token().indexDimension() != 2)
@@ -93,7 +99,46 @@ namespace dxvk {
   }
   
   
-  void DxbcCompiler::dclSampler(const DxbcInstruction&  ins) {
+  void DxbcCompiler::dclResource(const DxbcInstruction& ins) {
+    // dclResource takes two operands:
+    // 1. The resource register ID
+    // 2. The resource return type
+    auto op = ins.operand(0);
+    
+    if (op.token().indexDimension() != 1)
+      throw DxvkError("DXBC: dclResource: Invalid index dimension");
+    
+    const uint32_t index = op.index(0).immPart();
+    
+    // Defines the type of the resource (texture2D, ...)
+    auto resourceDim = static_cast<DxbcResourceDim>(
+      bit::extract(ins.token().control(), 0, 4));
+    
+    // Defines the type of a read operation. DXBC has the ability
+    // to define four different types whereas SPIR-V only allows
+    // one, but in practice this should not be much of a problem.
+    const uint32_t ofs = op.length();
+    
+    auto xType = static_cast<DxbcResourceReturnType>(
+      bit::extract(ins.arg(ofs), 0, 3));
+    auto yType = static_cast<DxbcResourceReturnType>(
+      bit::extract(ins.arg(ofs), 4, 7));
+    auto zType = static_cast<DxbcResourceReturnType>(
+      bit::extract(ins.arg(ofs), 8, 11));
+    auto wType = static_cast<DxbcResourceReturnType>(
+      bit::extract(ins.arg(ofs), 12, 15));
+    
+    if ((xType != yType) || (xType != zType) || (xType != wType))
+      Logger::warn("DXBC: dclResource: Ignoring resource return types");
+    
+    m_gen->dclResource(index, resourceDim, xType);
+  }
+  
+  
+  void DxbcCompiler::dclSampler(const DxbcInstruction& ins) {
+    // dclSampler takes one operand:
+    // 1. The sampler register ID
+    // TODO implement sampler mode (default / comparison / mono)
     auto op = ins.operand(0);
     
     if (op.token().indexDimension() != 1)
@@ -163,6 +208,9 @@ namespace dxvk {
   
   
   void DxbcCompiler::dclTemps(const DxbcInstruction& ins) {
+    // dclTemps takes one operand:
+    // 1. The number of temporary registers to
+    //    declare, as an immediate 32-bit integer.
     m_gen->dclTemps(ins.arg(0));
   }
   

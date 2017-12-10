@@ -46,6 +46,18 @@ namespace dxvk {
   
   
   /**
+   * \brief Shader resource binding
+   * 
+   * Stores the sampler variable as well as 
+   */
+  struct DxbcShaderResource {
+    uint32_t varId          = 0;
+    uint32_t sampledTypeId  = 0;
+    uint32_t resourceTypeId = 0;
+  };
+  
+  
+  /**
    * \brief DXBC code generator
    * 
    * SPIR-V code generator. Implements simple micro ops that are
@@ -64,11 +76,16 @@ namespace dxvk {
     void dclTemps(uint32_t n);
     
     void dclConstantBuffer(
-            uint32_t              bufferId,
+            uint32_t              registerId,
             uint32_t              elementCount);
     
+    void dclResource(
+            uint32_t              registerId,
+            DxbcResourceDim       resourceType,
+            DxbcResourceReturnType returnType);
+    
     void dclSampler(
-            uint32_t              samplerId);
+            uint32_t              registerId);
     
     DxbcValue defConstScalar(uint32_t v);
     
@@ -172,8 +189,9 @@ namespace dxvk {
     
     std::vector<DxbcPointer> m_rRegs;
     
-    std::array<DxbcConstantBuffer, 16>  m_constantBuffers;
-    std::array<DxbcSampler,        16>  m_samplers;
+    std::array<DxbcConstantBuffer,  16> m_constantBuffers;
+    std::array<DxbcSampler,         16> m_samplers;
+    std::array<DxbcShaderResource, 128> m_resources;
     
     std::vector<DxvkResourceSlot>       m_resourceSlots;
     

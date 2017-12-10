@@ -1438,7 +1438,7 @@ namespace dxvk {
             : VK_PIPELINE_BIND_POINT_GRAPHICS;
         
         const uint32_t slotId = computeResourceSlotId(
-          ShaderStage, DxbcBindingType::ImageSampler,
+          ShaderStage, DxbcBindingType::ShaderResource,
           StartSlot + i);
         
         if (resView != nullptr) {
