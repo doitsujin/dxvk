@@ -480,7 +480,7 @@ namespace dxvk {
     
     m_barriers.accessImage(
       image, subresourceRange,
-      image->info().extent == imageExtent
+      image->mipLevelExtent(subresources.mipLevel) == imageExtent
         ? VK_IMAGE_LAYOUT_UNDEFINED
         : image->info().layout,
       image->info().stages,

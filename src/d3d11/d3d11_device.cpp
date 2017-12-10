@@ -229,6 +229,9 @@ namespace dxvk {
     if (pDesc->MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE)
       info.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
     
+    if (pDesc->MipLevels == 0)
+      info.mipLevels = util::computeMipLevelCount(info.extent);
+    
     if (ppTexture2D != nullptr) {
       Com<IDXGIImageResourcePrivate> image;
       
@@ -1178,29 +1181,44 @@ namespace dxvk {
       m_dxvkDevice->createCommandList());
     
     const Rc<DxvkImage> image = pImage->GetDXVKImage();
-    
-    VkImageSubresourceRange subresources;
-    subresources.aspectMask     = imageFormatInfo(image->info().format)->aspectMask;
-    subresources.baseMipLevel   = 0;
-    subresources.levelCount     = image->info().mipLevels;
-    subresources.baseArrayLayer = 0;
-    subresources.layerCount     = image->info().numLayers;
-    m_resourceInitContext->initImage(image, subresources);
+    const DxvkFormatInfo* formatInfo = imageFormatInfo(image->info().format);
     
     if (pInitialData != nullptr) {
+      // pInitialData is an array that stores an entry for
+      // every single subresource. Since we will define all
+      // subresources, this counts as initialization.
       VkImageSubresourceLayers subresourceLayers;
-      subresourceLayers.aspectMask     = subresources.aspectMask;
+      subresourceLayers.aspectMask     = formatInfo->aspectMask;
       subresourceLayers.mipLevel       = 0;
       subresourceLayers.baseArrayLayer = 0;
-      subresourceLayers.layerCount     = subresources.layerCount;
+      subresourceLayers.layerCount     = 1;
       
-      m_resourceInitContext->updateImage(
-        image, subresourceLayers,
-        VkOffset3D { 0, 0, 0 },
-        image->info().extent,
-        pInitialData->pSysMem,
-        pInitialData->SysMemPitch,
-        pInitialData->SysMemSlicePitch);
+      for (uint32_t layer = 0; layer < image->info().numLayers; layer++) {
+        for (uint32_t level = 0; level < image->info().mipLevels; level++) {
+          subresourceLayers.baseArrayLayer = layer;
+          subresourceLayers.mipLevel       = level;
+          
+          const uint32_t id = D3D11CalcSubresource(
+            level, layer, image->info().mipLevels);
+          
+          m_resourceInitContext->updateImage(
+            image, subresourceLayers,
+            VkOffset3D { 0, 0, 0 },
+            image->mipLevelExtent(level),
+            pInitialData[id].pSysMem,
+            pInitialData[id].SysMemPitch,
+            pInitialData[id].SysMemSlicePitch);
+        }
+      }
+    } else {
+      // Leave the image contents undefined
+      VkImageSubresourceRange subresources;
+      subresources.aspectMask     = formatInfo->aspectMask;
+      subresources.baseMipLevel   = 0;
+      subresources.levelCount     = image->info().mipLevels;
+      subresources.baseArrayLayer = 0;
+      subresources.layerCount     = image->info().numLayers;
+      m_resourceInitContext->initImage(image, subresources);
     }
     
     m_dxvkDevice->submitCommandList(

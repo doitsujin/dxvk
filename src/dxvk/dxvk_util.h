@@ -13,6 +13,13 @@ namespace dxvk::util {
   VkPipelineStageFlags pipelineStages(
           VkShaderStageFlags shaderStages);
   
+  /**
+   * \brief Computes number of mip levels for an image
+   * 
+   * \param [in] imageSize Size of the image
+   * \returns Number of mipmap layers
+   */
+  uint32_t computeMipLevelCount(VkExtent3D imageSize);
   
 }
 

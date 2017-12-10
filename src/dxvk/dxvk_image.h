@@ -132,6 +132,14 @@ namespace dxvk {
       return m_info;
     }
     
+    VkExtent3D mipLevelExtent(uint32_t level) const {
+      VkExtent3D size = m_info.extent;
+      size.width  = std::max(1u, size.width  >> level);
+      size.height = std::max(1u, size.height >> level);
+      size.depth  = std::max(1u, size.depth  >> level);
+      return size;
+    }
+    
   private:
     
     Rc<vk::DeviceFn>    m_vkd;

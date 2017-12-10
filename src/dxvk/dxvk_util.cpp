@@ -20,6 +20,20 @@ namespace dxvk::util {
     return result;
   }
   
+  
+  uint32_t computeMipLevelCount(VkExtent3D imageSize) {
+    uint32_t maxDim = std::max(imageSize.width, imageSize.height);
+             maxDim = std::max(imageSize.depth, maxDim);
+    uint32_t mipCnt = 0;
+    
+    while (maxDim > 0) {
+      mipCnt += 1;
+      maxDim /= 2;
+    }
+    
+    return mipCnt;
+  }
+  
 }
 
 bool operator == (VkExtent3D a, VkExtent3D b) {
