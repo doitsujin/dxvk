@@ -63,6 +63,9 @@ namespace dxvk {
     void opRet(
       const DxbcInstruction&  ins);
     
+    void opSample(
+      const DxbcInstruction&  ins);
+    
     DxbcValue getDynamicIndexValue(
       const DxbcOperandIndex& index);
     

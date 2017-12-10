@@ -93,7 +93,7 @@ namespace dxvk {
       case DxbcResourceReturnType::Uint:  sampledTypeId = m_module.defIntType  (32, 0); break;
     }
     
-    uint32_t resourceTypeId = 0;
+    uint32_t textureTypeId = 0;
     
     switch (resourceType) {
       default:
@@ -102,50 +102,50 @@ namespace dxvk {
           resourceType));
         
       case DxbcResourceDim::Texture1D:
-        resourceTypeId = m_module.defImageType(
-          sampledTypeId, spv::Dim1D, 2, 0, 0, 1,
+        textureTypeId = m_module.defImageType(
+          sampledTypeId, spv::Dim1D, 0, 0, 0, 1,
           spv::ImageFormatUnknown);
         break;
       
       case DxbcResourceDim::Texture1DArr:
-        resourceTypeId = m_module.defImageType(
-          sampledTypeId, spv::Dim1D, 2, 1, 0, 1,
+        textureTypeId = m_module.defImageType(
+          sampledTypeId, spv::Dim1D, 0, 1, 0, 1,
           spv::ImageFormatUnknown);
         break;
       
       case DxbcResourceDim::Texture2D:
-        resourceTypeId = m_module.defImageType(
-          sampledTypeId, spv::Dim2D, 2, 0, 0, 1,
+        textureTypeId = m_module.defImageType(
+          sampledTypeId, spv::Dim2D, 0, 0, 0, 1,
           spv::ImageFormatUnknown);
         break;
       
       case DxbcResourceDim::Texture2DArr:
-        resourceTypeId = m_module.defImageType(
-          sampledTypeId, spv::Dim2D, 2, 1, 0, 1,
+        textureTypeId = m_module.defImageType(
+          sampledTypeId, spv::Dim2D, 0, 1, 0, 1,
           spv::ImageFormatUnknown);
         break;
       
       case DxbcResourceDim::Texture3D:
-        resourceTypeId = m_module.defImageType(
-          sampledTypeId, spv::Dim3D, 2, 0, 0, 1,
+        textureTypeId = m_module.defImageType(
+          sampledTypeId, spv::Dim3D, 0, 0, 0, 1,
           spv::ImageFormatUnknown);
         break;
       
       case DxbcResourceDim::TextureCube:
-        resourceTypeId = m_module.defImageType(
-          sampledTypeId, spv::DimCube, 2, 0, 0, 1,
+        textureTypeId = m_module.defImageType(
+          sampledTypeId, spv::DimCube, 0, 0, 0, 1,
           spv::ImageFormatUnknown);
         break;
       
       case DxbcResourceDim::TextureCubeArr:
-        resourceTypeId = m_module.defImageType(
-          sampledTypeId, spv::DimCube, 2, 1, 0, 1,
+        textureTypeId = m_module.defImageType(
+          sampledTypeId, spv::DimCube, 0, 1, 0, 1,
           spv::ImageFormatUnknown);
         break;
     }
     
     uint32_t resourcePtrType = m_module.defPointerType(
-      resourceTypeId, spv::StorageClassUniformConstant);
+      textureTypeId, spv::StorageClassUniformConstant);
     
     uint32_t varId = m_module.newVar(resourcePtrType,
       spv::StorageClassUniformConstant);
@@ -153,9 +153,9 @@ namespace dxvk {
     m_module.setDebugName(varId,
       str::format("t", registerId).c_str());
     
-    m_resources.at(registerId).varId          = varId;
-    m_resources.at(registerId).sampledTypeId  = sampledTypeId;
-    m_resources.at(registerId).resourceTypeId = resourceTypeId;
+    m_textures.at(registerId).varId         = varId;
+    m_textures.at(registerId).sampledTypeId = sampledTypeId;
+    m_textures.at(registerId).textureTypeId = textureTypeId;
     
     // Compute the DXVK binding slot index for the resource.
     // D3D11 needs to bind the actual resource to this slot.
@@ -187,7 +187,8 @@ namespace dxvk {
     m_module.setDebugName(varId,
       str::format("s", samplerId).c_str());
     
-    m_samplers.at(samplerId).varId = varId;
+    m_samplers.at(samplerId).varId  = varId;
+    m_samplers.at(samplerId).typeId = samplerType;
     
     // Compute binding slot index for the sampler
     uint32_t bindingId = computeResourceSlotId(m_shaderStage,
@@ -549,6 +550,36 @@ namespace dxvk {
       // need to load and modify the target register first.
       m_module.opStore(ptr.valueId, val.valueId);
     }
+  }
+  
+  
+  DxbcValue DxbcCodeGen::texSample(
+    const uint32_t              textureId,
+    const uint32_t              samplerId,
+    const DxbcValue&            coordinates) {
+    // Combine the texture and the sampler into a sampled image
+    uint32_t sampledImageType = m_module.defSampledImageType(
+      m_textures.at(textureId).textureTypeId);
+    
+    uint32_t sampledImageId = m_module.opSampledImage(
+      sampledImageType,
+      m_module.opLoad(
+        m_textures.at(textureId).textureTypeId,
+        m_textures.at(textureId).varId),
+      m_module.opLoad(
+        m_samplers.at(samplerId).typeId,
+        m_samplers.at(samplerId).varId));
+    
+    // Sampling an image in SPIR-V always returns a four-component
+    // vector, so we need to declare the corresponding type here
+    // TODO infer sampled type properly
+    DxbcValue result;
+    result.type = DxbcValueType(DxbcScalarType::Float32, 4);
+    result.valueId = m_module.opImageSampleImplicitLod(
+      this->defValueType(result.type),
+      sampledImageId,
+      this->regExtract(coordinates, DxbcComponentMask(true, true, false, false)).valueId);
+    return result;
   }
   
   

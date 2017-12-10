@@ -41,7 +41,8 @@ namespace dxvk {
    * Stores a sampler variable.
    */
   struct DxbcSampler {
-    uint32_t varId = 0;
+    uint32_t varId  = 0;
+    uint32_t typeId = 0;
   };
   
   
@@ -51,9 +52,9 @@ namespace dxvk {
    * Stores the sampler variable as well as 
    */
   struct DxbcShaderResource {
-    uint32_t varId          = 0;
-    uint32_t sampledTypeId  = 0;
-    uint32_t resourceTypeId = 0;
+    uint32_t varId         = 0;
+    uint32_t sampledTypeId = 0;
+    uint32_t textureTypeId = 0;
   };
   
   
@@ -149,6 +150,11 @@ namespace dxvk {
       const DxbcValue&            val,
             DxbcComponentMask     mask);
     
+    DxbcValue texSample(
+      const uint32_t              textureId,
+      const uint32_t              samplerId,
+      const DxbcValue&            coordinates);
+    
     virtual void dclInterfaceVar(
             DxbcOperandType       regType,
             uint32_t              regId,
@@ -191,7 +197,7 @@ namespace dxvk {
     
     std::array<DxbcConstantBuffer,  16> m_constantBuffers;
     std::array<DxbcSampler,         16> m_samplers;
-    std::array<DxbcShaderResource, 128> m_resources;
+    std::array<DxbcShaderResource, 128> m_textures;
     
     std::vector<DxvkResourceSlot>       m_resourceSlots;
     

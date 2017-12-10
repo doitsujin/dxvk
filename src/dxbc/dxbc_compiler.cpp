@@ -65,6 +65,9 @@ namespace dxvk {
       case DxbcOpcode::Ret:
         return this->opRet(ins);
       
+      case DxbcOpcode::Sample:
+        return this->opSample(ins);
+      
       default:
         Logger::err(str::format(
           "DxbcCompiler::processInstruction: Unhandled opcode: ",
@@ -272,6 +275,33 @@ namespace dxvk {
   
   void DxbcCompiler::opRet(const DxbcInstruction& ins) {
     m_gen->fnReturn();
+  }
+  
+  
+  void DxbcCompiler::opSample(const DxbcInstruction& ins) {
+    // TODO support address offset
+    // TODO support more sample ops
+    auto dstOp   = ins.operand(0);
+    auto coordOp = ins.operand(dstOp.length());
+    auto texture = ins.operand(dstOp.length() + coordOp.length());
+    auto sampler = ins.operand(dstOp.length() + coordOp.length() + texture.length());
+    
+    if ((texture.token().indexDimension() != 1)
+     || (sampler.token().indexDimension() != 1))
+      throw DxvkError("DXBC: opSample: Invalid operand index dimensions");
+    
+    uint32_t textureId = texture.index(0).immPart();
+    uint32_t samplerId = sampler.index(0).immPart();
+    
+    DxbcValue coord = this->loadOperand(coordOp,
+      DxbcComponentMask(true, true, true, true),
+      DxbcScalarType::Float32);
+    
+    DxbcComponentMask mask = this->getDstOperandMask(dstOp);
+    
+    DxbcValue value = m_gen->texSample(textureId, samplerId, coord);
+              value = this->selectOperandComponents(texture.token(), value, mask);
+    this->storeOperand(dstOp, value, mask);
   }
   
   
