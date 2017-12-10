@@ -4,7 +4,7 @@ namespace dxvk {
   
   const std::array<DxvkFormatInfo, 147> g_formatInfos = {{
     // VK_FORMAT_UNDEFINED
-    { 0, 0 },
+    { },
     
     // VK_FORMAT_R4G4_UNORM_PACK8
     { 1, VK_IMAGE_ASPECT_COLOR_BIT },
@@ -397,52 +397,84 @@ namespace dxvk {
     { 0, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT },
     
     // VK_FORMAT_BC1_RGB_UNORM_BLOCK
-    { 0, VK_IMAGE_ASPECT_COLOR_BIT },
+    { 8, VK_IMAGE_ASPECT_COLOR_BIT,
+      DxvkFormatFlag::BlockCompressed,
+      VkExtent3D { 4, 4, 1 } },
     
     // VK_FORMAT_BC1_RGB_SRGB_BLOCK
-    { 0, VK_IMAGE_ASPECT_COLOR_BIT },
+    { 8, VK_IMAGE_ASPECT_COLOR_BIT,
+      DxvkFormatFlag::BlockCompressed,
+      VkExtent3D { 4, 4, 1 } },
     
     // VK_FORMAT_BC1_RGBA_UNORM_BLOCK
-    { 0, VK_IMAGE_ASPECT_COLOR_BIT },
+    { 8, VK_IMAGE_ASPECT_COLOR_BIT,
+      DxvkFormatFlag::BlockCompressed,
+      VkExtent3D { 4, 4, 1 } },
     
     // VK_FORMAT_BC1_RGBA_SRGB_BLOCK
-    { 0, VK_IMAGE_ASPECT_COLOR_BIT },
+    { 8, VK_IMAGE_ASPECT_COLOR_BIT,
+      DxvkFormatFlag::BlockCompressed,
+      VkExtent3D { 4, 4, 1 } },
     
     // VK_FORMAT_BC2_UNORM_BLOCK
-    { 0, VK_IMAGE_ASPECT_COLOR_BIT },
+    { 16, VK_IMAGE_ASPECT_COLOR_BIT,
+      DxvkFormatFlag::BlockCompressed,
+      VkExtent3D { 4, 4, 1 } },
     
     // VK_FORMAT_BC2_SRGB_BLOCK
-    { 0, VK_IMAGE_ASPECT_COLOR_BIT },
+    { 16, VK_IMAGE_ASPECT_COLOR_BIT,
+      DxvkFormatFlag::BlockCompressed,
+      VkExtent3D { 4, 4, 1 } },
     
     // VK_FORMAT_BC3_UNORM_BLOCK
-    { 0, VK_IMAGE_ASPECT_COLOR_BIT },
+    { 16, VK_IMAGE_ASPECT_COLOR_BIT,
+      DxvkFormatFlag::BlockCompressed,
+      VkExtent3D { 4, 4, 1 } },
     
     // VK_FORMAT_BC3_SRGB_BLOCK
-    { 0, VK_IMAGE_ASPECT_COLOR_BIT },
+    { 16, VK_IMAGE_ASPECT_COLOR_BIT,
+      DxvkFormatFlag::BlockCompressed,
+      VkExtent3D { 4, 4, 1 } },
     
     // VK_FORMAT_BC4_UNORM_BLOCK
-    { 0, VK_IMAGE_ASPECT_COLOR_BIT },
+    { 8, VK_IMAGE_ASPECT_COLOR_BIT,
+      DxvkFormatFlag::BlockCompressed,
+      VkExtent3D { 4, 4, 1 } },
     
     // VK_FORMAT_BC4_SNORM_BLOCK
-    { 0, VK_IMAGE_ASPECT_COLOR_BIT },
+    { 8, VK_IMAGE_ASPECT_COLOR_BIT,
+      DxvkFormatFlag::BlockCompressed,
+      VkExtent3D { 4, 4, 1 } },
     
     // VK_FORMAT_BC5_UNORM_BLOCK
-    { 0, VK_IMAGE_ASPECT_COLOR_BIT },
+    { 16, VK_IMAGE_ASPECT_COLOR_BIT,
+      DxvkFormatFlag::BlockCompressed,
+      VkExtent3D { 4, 4, 1 } },
     
     // VK_FORMAT_BC5_SNORM_BLOCK
-    { 0, VK_IMAGE_ASPECT_COLOR_BIT },
+    { 16, VK_IMAGE_ASPECT_COLOR_BIT,
+      DxvkFormatFlag::BlockCompressed,
+      VkExtent3D { 4, 4, 1 } },
     
     // VK_FORMAT_BC6H_UFLOAT_BLOCK
-    { 0, VK_IMAGE_ASPECT_COLOR_BIT },
+    { 16, VK_IMAGE_ASPECT_COLOR_BIT,
+      DxvkFormatFlag::BlockCompressed,
+      VkExtent3D { 4, 4, 1 } },
     
     // VK_FORMAT_BC6H_SFLOAT_BLOCK
-    { 0, VK_IMAGE_ASPECT_COLOR_BIT },
+    { 16, VK_IMAGE_ASPECT_COLOR_BIT,
+      DxvkFormatFlag::BlockCompressed,
+      VkExtent3D { 4, 4, 1 } },
     
     // VK_FORMAT_BC7_UNORM_BLOCK
-    { 0, VK_IMAGE_ASPECT_COLOR_BIT },
+    { 16, VK_IMAGE_ASPECT_COLOR_BIT,
+      DxvkFormatFlag::BlockCompressed,
+      VkExtent3D { 4, 4, 1 } },
     
     // VK_FORMAT_BC7_SRGB_BLOCK
-    { 0, VK_IMAGE_ASPECT_COLOR_BIT },
+    { 16, VK_IMAGE_ASPECT_COLOR_BIT,
+      DxvkFormatFlag::BlockCompressed,
+      VkExtent3D { 4, 4, 1 } },
   }};
   
   const DxvkFormatInfo* imageFormatInfo(VkFormat format) {

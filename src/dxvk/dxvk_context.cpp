@@ -421,6 +421,56 @@ namespace dxvk {
       return;
     }
     
+    // Upload data through a staging buffer. Special care needs to
+    // be taken when dealing with compressed image formats: Rather
+    // than copying pixels, we'll be copying blocks of pixels.
+    const DxvkFormatInfo* formatInfo
+      = imageFormatInfo(image->info().format);
+    
+    VkExtent3D elementCount = imageExtent;
+    elementCount.depth *= subresources.layerCount;
+    
+    elementCount.width  /= formatInfo->blockSize.width;
+    elementCount.height /= formatInfo->blockSize.height;
+    elementCount.depth  /= formatInfo->blockSize.depth;
+    
+    VkDeviceSize bytesPerRow   = elementCount.width  * formatInfo->elementSize;
+    VkDeviceSize bytesPerLayer = elementCount.height * bytesPerRow;
+    VkDeviceSize bytesTotal    = elementCount.depth  * bytesPerLayer;
+    
+    // Allocate staging buffer memory for the image data. The
+    // pixels or blocks will be tightly packed within the buffer.
+    DxvkStagingBufferSlice slice = m_cmd->stagedAlloc(bytesTotal);
+    
+    auto dstData = reinterpret_cast<char*>(slice.mapPtr);
+    auto srcData = reinterpret_cast<const char*>(data);
+    
+    // If the application provides tightly packed data as well,
+    // we can minimize the number of memcpy calls in order to
+    // improve performance.
+    bool useDirectCopy = true;
+    
+    useDirectCopy &= (pitchPerLayer == bytesPerLayer) || (elementCount.depth  == 1);
+    useDirectCopy &= (pitchPerRow   == bytesPerRow)   || (elementCount.height == 1);
+    
+    if (useDirectCopy) {
+      std::memcpy(dstData, srcData, bytesTotal);
+    } else {
+      for (uint32_t i = 0; i < elementCount.depth; i++) {
+        for (uint32_t j = 0; j < elementCount.height; j++) {
+          std::memcpy(dstData, srcData, bytesPerRow);
+          
+          dstData += bytesPerRow;
+          srcData += pitchPerRow;
+        }
+        
+        dstData += bytesPerLayer;
+        srcData += pitchPerLayer;
+      }
+    }
+    
+    // Prepare the image layout. If the given extent covers
+    // the entire image, we may discard its previous contents.
     VkImageSubresourceRange subresourceRange;
     subresourceRange.aspectMask     = subresources.aspectMask;
     subresourceRange.baseMipLevel   = subresources.mipLevel;
@@ -440,39 +490,9 @@ namespace dxvk {
       VK_ACCESS_TRANSFER_WRITE_BIT);
     m_barriers.recordCommands(m_cmd);
     
-    // TODO support block formats properly
-    const DxvkFormatInfo* formatInfo
-      = imageFormatInfo(image->info().format);
-    
-    const VkDeviceSize layerCount = imageExtent.depth * subresources.layerCount;
-    VkDeviceSize bytesPerRow   = imageExtent.width  * formatInfo->elementSize;
-    VkDeviceSize bytesPerLayer = imageExtent.height * bytesPerRow;
-    VkDeviceSize bytesTotal    = layerCount * bytesPerLayer;
-    
-    auto slice   = m_cmd->stagedAlloc(bytesTotal);
-    auto dstData = reinterpret_cast<char*>(slice.mapPtr);
-    auto srcData = reinterpret_cast<const char*>(data);
-    
-    bool useDirectCopy = true;
-    useDirectCopy &= (pitchPerLayer == bytesPerLayer) || layerCount == 1;
-    useDirectCopy &= (pitchPerRow   == bytesPerRow)   || imageExtent.height == 1;
-    
-    if (useDirectCopy) {
-      std::memcpy(dstData, srcData, bytesTotal);
-    } else {
-      for (uint32_t i = 0; i < layerCount; i++) {
-        for (uint32_t j = 0; j < imageExtent.height; j++) {
-          std::memcpy(dstData, srcData, bytesPerRow);
-          
-          dstData += bytesPerRow;
-          srcData += pitchPerRow;
-        }
-        
-        dstData += bytesPerLayer;
-        srcData += pitchPerLayer;
-      }
-    }
-    
+    // Copy contents of the staging buffer into the image.
+    // Since our source data is tightly packed, we do not
+    // need to specify any strides.
     VkBufferImageCopy region;
     region.bufferOffset       = slice.offset;
     region.bufferRowLength    = 0;
@@ -485,6 +505,7 @@ namespace dxvk {
       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
       region, slice);
     
+    // Transition image back into its optimal layout
     m_barriers.accessImage(
       image, subresourceRange,
       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
