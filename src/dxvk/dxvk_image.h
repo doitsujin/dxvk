@@ -60,17 +60,26 @@ namespace dxvk {
    */
   struct DxvkImageViewCreateInfo {
     /// Image view dimension
-    VkImageViewType type;
+    VkImageViewType type = VK_IMAGE_VIEW_TYPE_2D;
     
     /// Pixel format
-    VkFormat format;
+    VkFormat format = VK_FORMAT_UNDEFINED;
     
     /// Subresources to use in the view
-    VkImageAspectFlags aspect;
-    uint32_t minLevel;
-    uint32_t numLevels;
-    uint32_t minLayer;
-    uint32_t numLayers;
+    VkImageAspectFlags aspect = 0;
+    
+    uint32_t minLevel  = 0;
+    uint32_t numLevels = 0;
+    uint32_t minLayer  = 0;
+    uint32_t numLayers = 0;
+    
+    /// Component mapping. Defaults to identity.
+    VkComponentMapping swizzle = {
+      VK_COMPONENT_SWIZZLE_IDENTITY,
+      VK_COMPONENT_SWIZZLE_IDENTITY,
+      VK_COMPONENT_SWIZZLE_IDENTITY,
+      VK_COMPONENT_SWIZZLE_IDENTITY,
+    };
   };
   
   

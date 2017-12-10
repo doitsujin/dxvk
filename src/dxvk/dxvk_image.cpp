@@ -63,12 +63,6 @@ namespace dxvk {
     const Rc<DxvkImage>&            image,
     const DxvkImageViewCreateInfo&  info)
   : m_vkd(vkd), m_image(image), m_info(info) {
-    VkComponentMapping componentMapping;
-    componentMapping.r = VK_COMPONENT_SWIZZLE_IDENTITY;
-    componentMapping.g = VK_COMPONENT_SWIZZLE_IDENTITY;
-    componentMapping.b = VK_COMPONENT_SWIZZLE_IDENTITY;
-    componentMapping.a = VK_COMPONENT_SWIZZLE_IDENTITY;
-    
     VkImageSubresourceRange subresourceRange;
     subresourceRange.aspectMask     = info.aspect;
     subresourceRange.baseMipLevel   = info.minLevel;
@@ -83,7 +77,7 @@ namespace dxvk {
     viewInfo.image            = image->handle();
     viewInfo.viewType         = info.type;
     viewInfo.format           = info.format;
-    viewInfo.components       = componentMapping;
+    viewInfo.components       = info.swizzle;
     viewInfo.subresourceRange = subresourceRange;
     
     if (m_vkd->vkCreateImageView(m_vkd->device(), &viewInfo, nullptr, &m_view) != VK_SUCCESS)
