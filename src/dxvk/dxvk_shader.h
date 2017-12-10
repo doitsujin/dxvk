@@ -105,6 +105,14 @@ namespace dxvk {
      */
     void dump(std::ostream&& outputStream) const;
     
+    /**
+     * \brief Reads SPIR-V shader
+     * 
+     * Can be used to replace the compiled SPIR-V code.
+     * \param [in] inputStream Stream to read from
+     */
+    void read(std::istream&& inputStream);
+    
   private:
     
     VkShaderStageFlagBits m_stage;

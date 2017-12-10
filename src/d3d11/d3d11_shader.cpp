@@ -35,6 +35,22 @@ namespace dxvk {
       m_shader->dump(std::ofstream(str::format(baseName, ".spv"),
         std::ios_base::binary | std::ios_base::trunc));
     }
+    
+    
+    // If requested by the user, replace
+    // the shader with another file.
+    const std::string readPath
+      = env::getEnvVar(L"DXVK_SHADER_READ_PATH");
+    
+    if (readPath.size() != 0) {
+      const std::string baseName = str::format(readPath, "/",
+        ConstructFileName(ComputeShaderHash(pShaderBytecode, BytecodeLength),
+        module.version().type()));
+      
+      m_shader->read(std::ifstream(
+        str::format(baseName, ".spv"),
+        std::ios_base::binary));
+    }
   }
   
   
