@@ -143,15 +143,48 @@ namespace dxvk {
           D3D11_MAP                   MapType,
           UINT                        MapFlags,
           D3D11_MAPPED_SUBRESOURCE*   pMappedResource) {
-    Logger::err("D3D11DeviceContext::Map: Not implemented");
-    return E_NOTIMPL;
+    D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+    pResource->GetType(&resourceDim);
+    
+    if (resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER) {
+      D3D11Buffer* resource = static_cast<D3D11Buffer*>(pResource);
+      
+      const Rc<DxvkBuffer> buffer = resource->GetDXVKBuffer();
+      
+      if (buffer->mapPtr(0) == nullptr) {
+        Logger::err("D3D11: Cannot map a device-local buffer");
+        return E_FAIL;
+      }
+      
+      if (pMappedResource == nullptr)
+        return S_OK;
+      
+      if (buffer->isInUse()) {
+        if (MapFlags & D3D11_MAP_FLAG_DO_NOT_WAIT)
+          return DXGI_ERROR_WAS_STILL_DRAWING;
+        
+        this->Flush();
+        m_device->waitForIdle();
+        // TODO properly synchronize
+      }
+      
+      pMappedResource->pData      = buffer->mapPtr(0);
+      pMappedResource->RowPitch   = buffer->info().size;
+      pMappedResource->DepthPitch = buffer->info().size;
+      return E_FAIL;
+    } else {
+      Logger::err("D3D11: Mapping of image resources currently not supported");
+      return E_NOTIMPL;
+    }
   }
   
   
   void D3D11DeviceContext::Unmap(
           ID3D11Resource*             pResource,
           UINT                        Subresource) {
-    Logger::err("D3D11DeviceContext::Unmap: Not implemented");
+    // There's literally nothing we have to do here at the moment
+    this->Flush();
+    m_device->waitForIdle();
   }
   
   
