@@ -40,32 +40,73 @@ namespace dxvk {
   void DxbcCodeGen::dclConstantBuffer(
           uint32_t              bufferId,
           uint32_t              elementCount) {
+    // Uniform buffer data is stored as a fixed-size array
+    // of 4x32-bit vectors. SPIR-V requires explicit strides.
     uint32_t arrayType = m_module.defArrayTypeUnique(
       this->defValueType(DxbcValueType(DxbcScalarType::Float32, 4)),
       m_module.constu32(elementCount));
-    uint32_t structType = m_module.defStructTypeUnique(1, &arrayType);
-    
     m_module.decorateArrayStride(arrayType, 16);
+    
+    // SPIR-V requires us to put that array into a
+    // struct and decorate that struct as a block.
+    uint32_t structType = m_module.defStructTypeUnique(1, &arrayType);
     m_module.memberDecorateOffset(structType, 0, 0);
     m_module.decorateBlock(structType);
     
-    uint32_t varIndex = m_module.newVar(
+    // Variable that we'll use to access the buffer
+    uint32_t varId = m_module.newVar(
       m_module.defPointerType(structType, spv::StorageClassUniform),
       spv::StorageClassUniform);
     
+    m_module.setDebugName(varId,
+      str::format("cb", bufferId).c_str());
+    
+    m_constantBuffers.at(bufferId).varId = varId;
+    m_constantBuffers.at(bufferId).size  = elementCount;
+    
+    // Compute the DXVK binding slot index for the buffer.
+    // D3D11 needs to bind the actual buffers to this slot.
     uint32_t bindingId = computeResourceSlotId(m_shaderStage,
       DxbcBindingType::ConstantBuffer, bufferId);
     
-    m_module.setDebugName(varIndex, str::format("cb", bufferId).c_str());
-    m_module.decorateDescriptorSet(varIndex, 0);
-    m_module.decorateBinding(varIndex, bindingId);
-    m_constantBuffers.at(bufferId).varId = varIndex;
-    m_constantBuffers.at(bufferId).size  = elementCount;
+    m_module.decorateDescriptorSet(varId, 0);
+    m_module.decorateBinding(varId, bindingId);
     
-    // TODO compute resource slot index
+    // Store descriptor info for the shader interface
     DxvkResourceSlot resource;
     resource.slot = bindingId;
     resource.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    m_resourceSlots.push_back(resource);
+  }
+  
+  
+  void DxbcCodeGen::dclSampler(uint32_t samplerId) {
+    // The sampler type is opaque, but we still have to
+    // define a pointer and a variable in oder to use it
+    uint32_t samplerType = m_module.defSamplerType();
+    uint32_t samplerPtrType = m_module.defPointerType(
+      samplerType, spv::StorageClassUniformConstant);
+    
+    // Define the sampler variable
+    uint32_t varId = m_module.newVar(samplerPtrType,
+      spv::StorageClassUniformConstant);
+    
+    m_module.setDebugName(varId,
+      str::format("s", samplerId).c_str());
+    
+    m_samplers.at(samplerId).varId = varId;
+    
+    // Compute binding slot index for the sampler
+    uint32_t bindingId = computeResourceSlotId(m_shaderStage,
+      DxbcBindingType::ImageSampler, samplerId);
+    
+    m_module.decorateDescriptorSet(varId, 0);
+    m_module.decorateBinding(varId, bindingId);
+    
+    // Store descriptor info for the shader interface
+    DxvkResourceSlot resource;
+    resource.slot = bindingId;
+    resource.type = VK_DESCRIPTOR_TYPE_SAMPLER;
     m_resourceSlots.push_back(resource);
   }
   

@@ -35,6 +35,9 @@ namespace dxvk {
     void dclConstantBuffer(
       const DxbcInstruction&  ins);
     
+    void dclSampler(
+      const DxbcInstruction&  ins);
+    
     void dclInterfaceVar(
       const DxbcInstruction&  ins);
     

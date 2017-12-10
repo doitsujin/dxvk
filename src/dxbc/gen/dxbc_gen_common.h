@@ -26,12 +26,22 @@ namespace dxvk {
   /**
    * \brief Constant buffer binding
    * 
-   * Stores information about
-   * a constant buffer.
+   * Stores information required to
+   * access a constant buffer.
    */
   struct DxbcConstantBuffer {
     uint32_t varId = 0;
     uint32_t size  = 0;
+  };
+  
+  
+  /**
+   * \brief Sampler binding
+   * 
+   * Stores a sampler variable.
+   */
+  struct DxbcSampler {
+    uint32_t varId = 0;
   };
   
   
@@ -56,6 +66,9 @@ namespace dxvk {
     void dclConstantBuffer(
             uint32_t              bufferId,
             uint32_t              elementCount);
+    
+    void dclSampler(
+            uint32_t              samplerId);
     
     DxbcValue defConstScalar(uint32_t v);
     
@@ -160,6 +173,8 @@ namespace dxvk {
     std::vector<DxbcPointer> m_rRegs;
     
     std::array<DxbcConstantBuffer, 16>  m_constantBuffers;
+    std::array<DxbcSampler,        16>  m_samplers;
+    
     std::vector<DxvkResourceSlot>       m_resourceSlots;
     
     uint32_t defScalarType(

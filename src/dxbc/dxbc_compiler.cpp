@@ -24,6 +24,9 @@ namespace dxvk {
       case DxbcOpcode::DclConstantBuffer:
         return this->dclConstantBuffer(ins);
         
+      case DxbcOpcode::DclSampler:
+        return this->dclSampler(ins);
+        
       case DxbcOpcode::DclInput:
       case DxbcOpcode::DclInputSiv:
       case DxbcOpcode::DclInputSgv:
@@ -87,6 +90,17 @@ namespace dxvk {
     const uint32_t size  = op.index(1).immPart();
     
     m_gen->dclConstantBuffer(index, size);
+  }
+  
+  
+  void DxbcCompiler::dclSampler(const DxbcInstruction&  ins) {
+    auto op = ins.operand(0);
+    
+    if (op.token().indexDimension() != 1)
+      throw DxvkError("DxbcCompiler::dclSampler: Invalid index dimension");
+    
+    const uint32_t index = op.index(0).immPart();
+    m_gen->dclSampler(index);
   }
   
   
