@@ -168,8 +168,9 @@ namespace dxvk {
       uint32_t numOpcodeTokens = 1;
       
       if (token.isExtended()) {
-        while (DxbcOpcodeTokenExt(m_op.getWord(numOpcodeTokens++)).isExtended())
-          continue;
+        numOpcodeTokens += 1;
+        while (DxbcOpcodeTokenExt(m_op.getWord(numOpcodeTokens)).isExtended())
+          numOpcodeTokens += 1;
       }
       
       m_args = m_op + numOpcodeTokens;

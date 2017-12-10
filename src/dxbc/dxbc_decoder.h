@@ -284,7 +284,8 @@ namespace dxvk {
      * \c DxbcComponentSelectionMode::Select1.
      */
     DxbcComponentMask componentSelection() const {
-      return DxbcComponentMask(bit::extract(m_token, 4, 5));
+      uint32_t id = bit::extract(m_token, 4, 5);
+      return DxbcComponentMask(id == 0, id == 1, id == 2, id == 3);
     }
     
     /**
