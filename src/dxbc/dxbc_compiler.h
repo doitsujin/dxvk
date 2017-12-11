@@ -50,6 +50,9 @@ namespace dxvk {
     void opAdd(
       const DxbcInstruction&  ins);
     
+    void opMad(
+      const DxbcInstruction&  ins);
+    
     void opMul(
       const DxbcInstruction&  ins);
     

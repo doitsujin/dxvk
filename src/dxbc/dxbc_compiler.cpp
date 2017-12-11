@@ -47,6 +47,9 @@ namespace dxvk {
       case DxbcOpcode::Add:
         return this->opAdd(ins);
       
+      case DxbcOpcode::Mad:
+        return this->opMad(ins);
+      
       case DxbcOpcode::Mul:
         return this->opMul(ins);
       
@@ -230,6 +233,24 @@ namespace dxvk {
     DxbcValue src1 = this->loadOperand(srcOp1, mask, DxbcScalarType::Float32);
     DxbcValue src2 = this->loadOperand(srcOp2, mask, DxbcScalarType::Float32);
     DxbcValue val  = m_gen->opAdd(src1, src2);
+              val  = this->applyResultModifiers(val, ins.token().control());
+    this->storeOperand(dstOp, val, mask);
+  }
+  
+  
+  void DxbcCompiler::opMad(const DxbcInstruction& ins) {
+    auto dstOp  = ins.operand(0);
+    auto srcOp1 = ins.operand(dstOp.length());
+    auto srcOp2 = ins.operand(dstOp.length() + srcOp1.length());
+    auto srcOp3 = ins.operand(dstOp.length() + srcOp1.length() + srcOp2.length());
+    DxbcComponentMask mask = this->getDstOperandMask(dstOp);
+    
+    DxbcValue src1 = this->loadOperand(srcOp1, mask, DxbcScalarType::Float32);
+    DxbcValue src2 = this->loadOperand(srcOp2, mask, DxbcScalarType::Float32);
+    DxbcValue src3 = this->loadOperand(srcOp3, mask, DxbcScalarType::Float32);
+    // TODO implement with native FMA instruction
+    DxbcValue val  = m_gen->opMul(src1, src2);
+              val  = m_gen->opAdd(val,  src3);
               val  = this->applyResultModifiers(val, ins.token().control());
     this->storeOperand(dstOp, val, mask);
   }
