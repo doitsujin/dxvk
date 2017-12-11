@@ -777,7 +777,13 @@ namespace dxvk {
           ID3D11VertexShader**              ppVertexShader,
           ID3D11ClassInstance**             ppClassInstances,
           UINT*                             pNumClassInstances) {
-    Logger::err("D3D11DeviceContext::VSGetShader: Not implemented");
+    if (ppVertexShader != nullptr)
+      *ppVertexShader = m_state.vs.shader.ref();
+    
+    if (pNumClassInstances != nullptr) {
+      Logger::err("D3D11: VSGetShader: Class instances not implemented");
+      *pNumClassInstances = 0;
+    }
   }
   
   
@@ -1055,7 +1061,13 @@ namespace dxvk {
           ID3D11PixelShader**               ppPixelShader,
           ID3D11ClassInstance**             ppClassInstances,
           UINT*                             pNumClassInstances) {
-    Logger::err("D3D11DeviceContext::PSGetShader: Not implemented");
+    if (ppPixelShader != nullptr)
+      *ppPixelShader = m_state.ps.shader.ref();
+    
+    if (pNumClassInstances != nullptr) {
+      Logger::err("D3D11: PSGetShader: Class instances not implemented");
+      *pNumClassInstances = 0;
+    }
   }
   
   
@@ -1063,7 +1075,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer**                    ppConstantBuffers) {
-    Logger::err("D3D11DeviceContext::PSGetConstantBuffers: Not implemented");
+    for (uint32_t i = 0; i < NumBuffers; i++)
+      ppConstantBuffers[i] = m_state.ps.constantBuffers.at(StartSlot + i).ref();
   }
   
   
@@ -1071,7 +1084,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView**        ppShaderResourceViews) {
-    Logger::err("D3D11DeviceContext::PSGetShaderResources: Not implemented");
+    for (uint32_t i = 0; i < NumViews; i++)
+      ppShaderResourceViews[i] = m_state.ps.shaderResources.at(StartSlot + i).ref();
   }
   
   
@@ -1079,7 +1093,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState**              ppSamplers) {
-    Logger::err("D3D11DeviceContext::PSGetSamplers: Not implemented");
+    for (uint32_t i = 0; i < NumSamplers; i++)
+      ppSamplers[i] = m_state.ps.samplers.at(StartSlot + i).ref();
   }
   
   
@@ -1296,14 +1311,25 @@ namespace dxvk {
           ID3D11BlendState**                ppBlendState,
           FLOAT                             BlendFactor[4],
           UINT*                             pSampleMask) {
-    Logger::err("D3D11DeviceContext::OMGetBlendState: Not implemented");
+    if (ppBlendState != nullptr)
+      *ppBlendState = m_state.om.cbState.ref();
+    
+    if (BlendFactor != nullptr)
+      std::memcpy(BlendFactor, m_state.om.blendFactor, sizeof(FLOAT) * 4);
+    
+    if (pSampleMask != nullptr)
+      *pSampleMask = m_state.om.sampleMask;
   }
   
   
   void D3D11DeviceContext::OMGetDepthStencilState(
           ID3D11DepthStencilState**         ppDepthStencilState,
           UINT*                             pStencilRef) {
-    Logger::err("D3D11DeviceContext::OMGetDepthStencilState: Not implemented");
+    if (ppDepthStencilState != nullptr)
+      *ppDepthStencilState = m_state.om.dsState.ref();
+    
+    if (pStencilRef != nullptr)
+      *pStencilRef = m_state.om.stencilRef;
   }
   
   
@@ -1357,7 +1383,8 @@ namespace dxvk {
   
   
   void D3D11DeviceContext::RSGetState(ID3D11RasterizerState** ppRasterizerState) {
-    *ppRasterizerState = m_state.rs.state.ref();
+    if (ppRasterizerState != nullptr)
+      *ppRasterizerState = m_state.rs.state.ref();
   }
   
   
