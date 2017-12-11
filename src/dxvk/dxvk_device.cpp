@@ -23,12 +23,9 @@ namespace dxvk {
   
   
   DxvkDevice::~DxvkDevice() {
-    m_renderPassPool  = nullptr;
-    m_pipelineManager = nullptr;
-    m_memory          = nullptr;
-    
+    // Wait for all pending Vulkan commands to be
+    // executed before we destroy any resources.
     m_vkd->vkDeviceWaitIdle(m_vkd->device());
-    m_vkd->vkDestroyDevice(m_vkd->device(), nullptr);
   }
   
   

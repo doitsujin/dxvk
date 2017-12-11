@@ -10,8 +10,7 @@ namespace dxvk {
   
   
   DxvkInstance::~DxvkInstance() {
-    m_vki->vkDestroyInstance(
-      m_vki->instance(), nullptr);
+    
   }
   
   

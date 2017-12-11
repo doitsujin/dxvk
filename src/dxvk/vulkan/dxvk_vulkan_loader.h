@@ -28,7 +28,7 @@ namespace dxvk::vk {
     InstanceLoader(VkInstance instance);
     PFN_vkVoidFunction sym(const char* name) const;
     VkInstance instance() const { return m_instance; }
-  private:
+  protected:
     const VkInstance m_instance;
   };
   
@@ -43,7 +43,7 @@ namespace dxvk::vk {
     DeviceLoader(VkInstance instance, VkDevice device);
     PFN_vkVoidFunction sym(const char* name) const;
     VkDevice device() const { return m_device; }
-  private:
+  protected:
     const PFN_vkGetDeviceProcAddr m_getDeviceProcAddr;
     const VkDevice                m_device;
   };

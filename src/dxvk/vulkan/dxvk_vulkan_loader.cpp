@@ -33,11 +33,15 @@ namespace dxvk::vk {
   
   InstanceFn::InstanceFn(VkInstance instance)
   : InstanceLoader(instance) { }
-  InstanceFn::~InstanceFn() { }
+  InstanceFn::~InstanceFn() {
+    this->vkDestroyInstance(m_instance, nullptr);
+  }
   
   
   DeviceFn::DeviceFn(VkInstance instance, VkDevice device)
   : DeviceLoader(instance, device) { }
-  DeviceFn::~DeviceFn() { }
+  DeviceFn::~DeviceFn() {
+    this->vkDestroyDevice(m_device, nullptr);
+  }
   
 }
