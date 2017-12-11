@@ -589,7 +589,7 @@ namespace dxvk {
           break;
         
         case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP:
-          iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+          iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
           iaState.primitiveRestart  = VK_TRUE;
           break;
         
