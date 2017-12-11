@@ -538,6 +538,23 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::setBlendConstants(
+    const float               blendConstants[4]) {
+    for (uint32_t i = 0; i < 4; i++)
+      m_state.om.blendConstants[i] = blendConstants[i];
+    
+    this->updateBlendConstants();
+  }
+  
+  
+  void DxvkContext::setStencilReference(
+    const uint32_t            reference) {
+    m_state.om.stencilReference = reference;
+    
+    this->updateStencilReference();
+  }
+  
+  
   void DxvkContext::setInputAssemblyState(
     const DxvkInputAssemblyState& state) {
     m_state.ia = state;
@@ -785,6 +802,8 @@ namespace dxvk {
       m_flags.clr(DxvkContextFlag::GpDirtyDynamicState);
       
       this->updateViewports();
+      this->updateBlendConstants();
+      this->updateStencilReference();
     }
   }
   
@@ -792,6 +811,18 @@ namespace dxvk {
   void DxvkContext::updateViewports() {
     m_cmd->cmdSetViewport(0, m_state.vp.viewportCount, m_state.vp.viewports.data());
     m_cmd->cmdSetScissor (0, m_state.vp.viewportCount, m_state.vp.scissorRects.data());
+  }
+  
+  
+  void DxvkContext::updateBlendConstants() {
+    m_cmd->cmdSetBlendConstants(m_state.om.blendConstants);
+  }
+  
+  
+  void DxvkContext::updateStencilReference() {
+    m_cmd->cmdSetStencilReference(
+      VK_STENCIL_FRONT_AND_BACK,
+      m_state.om.stencilReference);
   }
   
   

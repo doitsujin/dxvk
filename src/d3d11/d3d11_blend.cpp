@@ -23,6 +23,11 @@ namespace dxvk {
     m_msState.enableAlphaToOne      = VK_FALSE;
     m_msState.enableSampleShading   = VK_FALSE;
     m_msState.minSampleShading      = 0.0f;
+    
+    // In 11_0, there is no logic op state. Later versions
+    // of D3D11 however put it into the blend state object.
+    m_loState.enableLogicOp         = VK_FALSE;
+    m_loState.logicOp               = VK_LOGIC_OP_NO_OP;
   }
   
   
@@ -64,6 +69,11 @@ namespace dxvk {
     DxvkMultisampleState msState = m_msState;
     msState.sampleMask = sampleMask;
     ctx->setMultisampleState(msState);
+    
+    // Set up logic op state as well
+    ctx->setLogicOpState(m_loState);
+    
+    // TODO set blend factor
   }
   
   

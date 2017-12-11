@@ -57,7 +57,10 @@ namespace dxvk {
   struct DxvkOutputMergerState {
     Rc<DxvkFramebuffer>       framebuffer;
     
-    std::array<DxvkBlendMode, DxvkLimits::MaxNumRenderTargets> blendModes;
+    std::array<DxvkBlendMode,
+      DxvkLimits::MaxNumRenderTargets> blendModes;
+    float                              blendConstants[4];
+    uint32_t                           stencilReference;
   };
   
   

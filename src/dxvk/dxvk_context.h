@@ -296,6 +296,26 @@ namespace dxvk {
       const VkRect2D*           scissorRects);
     
     /**
+     * \brief Sets blend constants
+     * 
+     * Blend constants are a set of four floating
+     * point numbers that may be used as an input
+     * for blending operations.
+     * \param [in] blendConstants Blend constants
+     */
+    void setBlendConstants(
+      const float               blendConstants[4]);
+    
+    /**
+     * \brief Sets stencil reference
+     * 
+     * Sets the reference value for stencil compare operations.
+     * \param [in] reference Reference value
+     */
+    void setStencilReference(
+      const uint32_t            reference);
+    
+    /**
      * \brief Sets input assembly state
      * \param [in] state New state object
      */
@@ -377,6 +397,8 @@ namespace dxvk {
     
     void updateDynamicState();
     void updateViewports();
+    void updateBlendConstants();
+    void updateStencilReference();
     
     void updateIndexBufferBinding();
     void updateVertexBufferBindings();

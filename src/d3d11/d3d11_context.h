@@ -547,6 +547,10 @@ namespace dxvk {
     Rc<DxvkDevice>        m_device;
     Rc<DxvkContext>       m_context;
     
+    Com<D3D11BlendState>        m_defaultBlendState;
+    Com<D3D11DepthStencilState> m_defaultDepthStencilState;
+    Com<D3D11RasterizerState>   m_defaultRasterizerState;
+    
     D3D11ContextState   m_state;
     
     void BindConstantBuffers(
@@ -571,14 +575,6 @@ namespace dxvk {
             ID3D11ShaderResourceView* const*  ppResources);
     
     void ApplyViewportState();
-    
-    void SetupIAStateObjects();
-    
-    void SetDefaultBlendState();
-    
-    void SetDefaultDepthStencilState();
-    
-    void SetDefaultRasterizerState();
     
   };
   

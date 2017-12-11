@@ -284,12 +284,26 @@ namespace dxvk {
   }
   
   
+  void DxvkCommandList::cmdSetBlendConstants(
+          float                   blendConstants[4]) {
+    m_vkd->vkCmdSetBlendConstants(m_buffer, blendConstants);
+  }
+  
+  
   void DxvkCommandList::cmdSetScissor(
           uint32_t                firstScissor,
           uint32_t                scissorCount,
     const VkRect2D*               scissors) {
     m_vkd->vkCmdSetScissor(m_buffer,
       firstScissor, scissorCount, scissors);
+  }
+  
+  
+  void DxvkCommandList::cmdSetStencilReference(
+          VkStencilFaceFlags      faceMask,
+          uint32_t                reference) {
+    m_vkd->vkCmdSetStencilReference(m_buffer,
+      faceMask, reference);
   }
   
   

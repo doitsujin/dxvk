@@ -169,10 +169,17 @@ namespace dxvk {
             VkDeviceSize            dataSize,
       const void*                   pData);
     
+    void cmdSetBlendConstants(
+            float                   blendConstants[4]);
+    
     void cmdSetScissor(
             uint32_t                firstScissor,
             uint32_t                scissorCount,
       const VkRect2D*               scissors);
+    
+    void cmdSetStencilReference(
+            VkStencilFaceFlags      faceMask,
+            uint32_t                reference);
     
     void cmdSetViewport(
             uint32_t                firstViewport,

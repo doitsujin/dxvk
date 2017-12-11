@@ -15,9 +15,30 @@ namespace dxvk {
     m_context = m_device->createContext();
     m_context->beginRecording(
       m_device->createCommandList());
-    this->SetDefaultBlendState();
-    this->SetDefaultDepthStencilState();
-    this->SetDefaultRasterizerState();
+    // Create default state objects. We won't ever return them
+    // to the application, but we'll use them to apply state.
+    Com<ID3D11BlendState>         defaultBlendState;
+    Com<ID3D11DepthStencilState>  defaultDepthStencilState;
+    Com<ID3D11RasterizerState>    defaultRasterizerState;
+    
+    if (FAILED(m_parent->CreateBlendState       (nullptr, &defaultBlendState))
+     || FAILED(m_parent->CreateDepthStencilState(nullptr, &defaultDepthStencilState))
+     || FAILED(m_parent->CreateRasterizerState  (nullptr, &defaultRasterizerState)))
+      throw DxvkError("D3D11DeviceContext: Failed to create default state objects");
+    
+    // Apply default state to the context. This is required
+    // in order to initialize the DXVK contex properly.
+    m_defaultBlendState = static_cast<D3D11BlendState*>(defaultBlendState.ptr());
+    m_defaultBlendState->BindToContext(m_context, 0xFFFFFFFF);
+    
+    m_defaultDepthStencilState = static_cast<D3D11DepthStencilState*>(defaultDepthStencilState.ptr());
+    m_defaultDepthStencilState->BindToContext(m_context);
+    
+    m_defaultRasterizerState = static_cast<D3D11RasterizerState*>(defaultRasterizerState.ptr());
+    m_defaultRasterizerState->BindToContext(m_context);
+    
+    m_context->setBlendConstants(m_state.om.blendFactor);
+    m_context->setStencilReference(m_state.om.stencilRef);
   }
   
   
@@ -1201,14 +1222,44 @@ namespace dxvk {
           ID3D11BlendState*                 pBlendState,
     const FLOAT                             BlendFactor[4],
           UINT                              SampleMask) {
-    Logger::err("D3D11DeviceContext::OMSetBlendState: Not implemented");
+    auto blendState = static_cast<D3D11BlendState*>(pBlendState);
+    
+    if (m_state.om.cbState    != blendState
+     || m_state.om.sampleMask != SampleMask) {
+      m_state.om.cbState    = blendState;
+      m_state.om.sampleMask = SampleMask;
+      
+      if (blendState == nullptr)
+        blendState = m_defaultBlendState.ptr();
+      
+      blendState->BindToContext(m_context, SampleMask);
+    }
+    
+    if ((BlendFactor != nullptr) && (!std::memcmp(m_state.om.blendFactor, BlendFactor, 4 * sizeof(FLOAT)))) {
+      std::memcpy(m_state.om.blendFactor, BlendFactor, 4 * sizeof(FLOAT));
+      m_context->setBlendConstants(BlendFactor);
+    }
   }
   
   
   void D3D11DeviceContext::OMSetDepthStencilState(
           ID3D11DepthStencilState*          pDepthStencilState,
           UINT                              StencilRef) {
-    Logger::err("D3D11DeviceContext::OMSetDepthStencilState: Not implemented");
+    auto depthStencilState = static_cast<D3D11DepthStencilState*>(pDepthStencilState);
+    
+    if (m_state.om.dsState != depthStencilState) {
+      m_state.om.dsState = depthStencilState;
+      
+      if (depthStencilState == nullptr)
+        depthStencilState = m_defaultDepthStencilState.ptr();
+      
+      depthStencilState->BindToContext(m_context);
+    }
+    
+    if (m_state.om.stencilRef != StencilRef) {
+      m_state.om.stencilRef = StencilRef;
+      m_context->setStencilReference(StencilRef);
+    }
   }
   
   
@@ -1262,10 +1313,10 @@ namespace dxvk {
     if (m_state.rs.state != rasterizerState) {
       m_state.rs.state = rasterizerState;
       
-      if (rasterizerState != nullptr)
-        rasterizerState->BindToContext(m_context);
-      else
-        this->SetDefaultRasterizerState();
+      if (rasterizerState == nullptr)
+        rasterizerState = m_defaultRasterizerState.ptr();
+      
+      rasterizerState->BindToContext(m_context);
       
       // In D3D11, the rasterizer state defines
       // whether the scissor test is enabled, so
@@ -1551,77 +1602,6 @@ namespace dxvk {
       m_state.rs.numViewports,
       viewports.data(),
       scissors.data());
-  }
-  
-  
-  void D3D11DeviceContext::SetDefaultBlendState() {
-    DxvkMultisampleState msState;
-    msState.sampleMask            = 0xffffffff;
-    msState.enableAlphaToCoverage = VK_FALSE;
-    msState.enableAlphaToOne      = VK_FALSE;
-    msState.enableSampleShading   = VK_FALSE;
-    msState.minSampleShading      = 0.0f;
-    m_context->setMultisampleState(msState);
-    
-    DxvkLogicOpState loState;
-    loState.enableLogicOp = VK_FALSE;
-    loState.logicOp       = VK_LOGIC_OP_CLEAR;
-    m_context->setLogicOpState(loState);
-    
-    DxvkBlendMode blendMode;
-    blendMode.enableBlending = VK_FALSE;
-    blendMode.colorSrcFactor = VK_BLEND_FACTOR_ONE;
-    blendMode.colorDstFactor = VK_BLEND_FACTOR_ZERO;
-    blendMode.colorBlendOp   = VK_BLEND_OP_ADD;
-    blendMode.alphaSrcFactor = VK_BLEND_FACTOR_ONE;
-    blendMode.alphaDstFactor = VK_BLEND_FACTOR_ZERO;
-    blendMode.alphaBlendOp   = VK_BLEND_OP_ADD;
-    blendMode.writeMask      = VK_COLOR_COMPONENT_R_BIT
-                             | VK_COLOR_COMPONENT_G_BIT
-                             | VK_COLOR_COMPONENT_B_BIT
-                             | VK_COLOR_COMPONENT_A_BIT;
-    
-    for (uint32_t i = 0; i < DxvkLimits::MaxNumRenderTargets; i++)
-      m_context->setBlendMode(i, blendMode);
-  }
-  
-  
-  void D3D11DeviceContext::SetDefaultDepthStencilState() {
-    VkStencilOpState stencilOp;
-    stencilOp.failOp      = VK_STENCIL_OP_KEEP;
-    stencilOp.passOp      = VK_STENCIL_OP_KEEP;
-    stencilOp.depthFailOp = VK_STENCIL_OP_KEEP;
-    stencilOp.compareOp   = VK_COMPARE_OP_ALWAYS;
-    stencilOp.compareMask = D3D11_DEFAULT_STENCIL_READ_MASK;
-    stencilOp.writeMask   = D3D11_DEFAULT_STENCIL_WRITE_MASK;
-    stencilOp.reference   = 0;
-    
-    DxvkDepthStencilState dsState;
-    dsState.enableDepthTest    = VK_TRUE;
-    dsState.enableDepthWrite   = VK_TRUE;
-    dsState.enableDepthBounds  = VK_FALSE;
-    dsState.enableStencilTest  = VK_FALSE;
-    dsState.depthCompareOp     = VK_COMPARE_OP_LESS;
-    dsState.stencilOpFront     = stencilOp;
-    dsState.stencilOpBack      = stencilOp;
-    dsState.depthBoundsMin     = 0.0f;
-    dsState.depthBoundsMax     = 1.0f;
-    m_context->setDepthStencilState(dsState);
-  }
-  
-  
-  void D3D11DeviceContext::SetDefaultRasterizerState() {
-    DxvkRasterizerState rsState;
-    rsState.enableDepthClamp   = VK_FALSE;
-    rsState.enableDiscard      = VK_FALSE;
-    rsState.polygonMode        = VK_POLYGON_MODE_FILL;
-    rsState.cullMode           = VK_CULL_MODE_BACK_BIT;
-    rsState.frontFace          = VK_FRONT_FACE_CLOCKWISE;
-    rsState.depthBiasEnable    = VK_FALSE;
-    rsState.depthBiasConstant  = 0.0f;
-    rsState.depthBiasClamp     = 0.0f;
-    rsState.depthBiasSlope     = 0.0f;
-    m_context->setRasterizerState(rsState);
   }
   
 }

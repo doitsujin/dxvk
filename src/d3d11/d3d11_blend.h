@@ -32,7 +32,7 @@ namespace dxvk {
     
     void BindToContext(
       const Rc<DxvkContext>&  ctx,
-            uint32_t          sampleMask) const;
+            UINT              sampleMask) const;
     
   private:
     
@@ -41,6 +41,7 @@ namespace dxvk {
     
     std::array<DxvkBlendMode, 8>  m_blendModes;
     DxvkMultisampleState          m_msState;
+    DxvkLogicOpState              m_loState;
     
     static DxvkBlendMode DecodeBlendMode(
       const D3D11_RENDER_TARGET_BLEND_DESC& blendDesc);

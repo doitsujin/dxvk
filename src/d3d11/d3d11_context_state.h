@@ -97,6 +97,13 @@ namespace dxvk {
   struct D3D11ContextStateOM {
     std::array<Com<D3D11RenderTargetView>, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT> renderTargetViews;
     Com<D3D11DepthStencilView>                                                     depthStencilView;
+    
+    Com<D3D11BlendState>        cbState = nullptr;
+    Com<D3D11DepthStencilState> dsState = nullptr;
+    
+    FLOAT blendFactor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    UINT  sampleMask     = 0xFFFFFFFFu;
+    UINT  stencilRef     = 0u;
   };
   
   
