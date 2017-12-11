@@ -56,7 +56,7 @@ namespace dxvk {
       auto pair = m_objects.find(desc);
       
       if (pair != m_objects.end())
-        return pair->second.ptr();
+        return pair->second.ref();
       
       Com<T> result = new T(device, desc);
       m_objects.insert({ desc, result });

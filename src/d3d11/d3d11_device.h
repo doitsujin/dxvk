@@ -10,7 +10,6 @@
 #include "../util/com/com_private_data.h"
 
 namespace dxvk {
-  
   class DxgiAdapter;
   class D3D11DeviceContext;
   class D3D11PresentDevice;
@@ -243,7 +242,7 @@ namespace dxvk {
     const Rc<DxvkDevice>            m_dxvkDevice;
     const Rc<DxvkAdapter>           m_dxvkAdapter;
     
-    Com<ID3D11DeviceContext>        m_context;
+    D3D11DeviceContext*             m_context = nullptr;
     
     std::mutex                      m_resourceInitMutex;
     Rc<DxvkContext>                 m_resourceInitContext;

@@ -78,7 +78,7 @@ namespace dxvk {
   
   
   void D3D11RasterizerState::GetDevice(ID3D11Device** ppDevice) {
-    *ppDevice = m_device;
+    *ppDevice = ref(m_device);
   }
   
   

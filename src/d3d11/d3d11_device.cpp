@@ -40,6 +40,7 @@ namespace dxvk {
   D3D11Device::~D3D11Device() {
     m_presentDevice->SetDeviceLayer(nullptr);
     m_dxgiDevice->SetDeviceLayer(nullptr);
+    delete m_context;
   }
   
   
@@ -1092,7 +1093,7 @@ namespace dxvk {
   
   
   void D3D11Device::GetImmediateContext(ID3D11DeviceContext** ppImmediateContext) {
-    *ppImmediateContext = m_context.ref();
+    *ppImmediateContext = ref(m_context);
   }
   
   

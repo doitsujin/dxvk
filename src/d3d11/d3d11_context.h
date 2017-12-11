@@ -20,6 +20,10 @@ namespace dxvk {
       Rc<DxvkDevice>  device);
     ~D3D11DeviceContext();
     
+    ULONG AddRef() final;
+    
+    ULONG Release() final;
+    
     HRESULT QueryInterface(
             REFIID  riid,
             void**  ppvObject) final;

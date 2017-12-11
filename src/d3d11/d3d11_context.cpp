@@ -47,6 +47,16 @@ namespace dxvk {
   }
   
   
+  ULONG D3D11DeviceContext::AddRef() {
+    return m_parent->AddRef();
+  }
+  
+  
+  ULONG D3D11DeviceContext::Release() {
+    return m_parent->Release();
+  }
+  
+  
   HRESULT D3D11DeviceContext::QueryInterface(
           REFIID  riid,
           void**  ppvObject) {
@@ -815,7 +825,8 @@ namespace dxvk {
           ID3D11HullShader*                 pHullShader,
           ID3D11ClassInstance* const*       ppClassInstances,
           UINT                              NumClassInstances) {
-    Logger::err("D3D11DeviceContext::HSSetShader: Not implemented");
+    if (m_state.hs.shader.ptr() != pHullShader)
+      Logger::err("D3D11DeviceContext::HSSetShader: Not implemented");
   }
   
   
@@ -879,7 +890,8 @@ namespace dxvk {
           ID3D11DomainShader*               pDomainShader,
           ID3D11ClassInstance* const*       ppClassInstances,
           UINT                              NumClassInstances) {
-    Logger::err("D3D11DeviceContext::DSSetShader: Not implemented");
+    if (m_state.ds.shader.ptr() != pDomainShader)
+      Logger::err("D3D11DeviceContext::DSSetShader: Not implemented");
   }
   
   
@@ -943,7 +955,8 @@ namespace dxvk {
           ID3D11GeometryShader*             pShader,
           ID3D11ClassInstance* const*       ppClassInstances,
           UINT                              NumClassInstances) {
-    Logger::err("D3D11DeviceContext::GSSetShader: Not implemented");
+    if (m_state.gs.shader.ptr() != pShader)
+      Logger::err("D3D11DeviceContext::GSSetShader: Not implemented");
   }
   
   

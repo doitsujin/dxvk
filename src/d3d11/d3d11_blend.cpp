@@ -72,8 +72,6 @@ namespace dxvk {
     
     // Set up logic op state as well
     ctx->setLogicOpState(m_loState);
-    
-    // TODO set blend factor
   }
   
   
