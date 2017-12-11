@@ -702,7 +702,7 @@ namespace dxvk {
       
       // TODO implement multisampling support properly
       gpState.msSampleCount            = VK_SAMPLE_COUNT_1_BIT;
-      gpState.msSampleMask             = m_state.om.sampleMask;
+      gpState.msSampleMask             = m_state.ms.sampleMask;
       gpState.msEnableAlphaToCoverage  = m_state.ms.enableAlphaToCoverage;
       gpState.msEnableAlphaToOne       = m_state.ms.enableAlphaToOne;
       gpState.msEnableSampleShading    = m_state.ms.enableSampleShading;

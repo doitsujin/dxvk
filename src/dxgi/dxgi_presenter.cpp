@@ -76,6 +76,7 @@ namespace dxvk {
     m_context->setRasterizerState(rsState);
     
     DxvkMultisampleState msState;
+    msState.sampleMask            = 0xffffffff;
     msState.enableAlphaToCoverage = VK_FALSE;
     msState.enableAlphaToOne      = VK_FALSE;
     msState.enableSampleShading   = VK_FALSE;

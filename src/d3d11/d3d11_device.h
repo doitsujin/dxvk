@@ -248,6 +248,7 @@ namespace dxvk {
     std::mutex                      m_resourceInitMutex;
     Rc<DxvkContext>                 m_resourceInitContext;
     
+    D3D11StateObjectSet<D3D11BlendState>        m_bsStateObjects;
     D3D11StateObjectSet<D3D11DepthStencilState> m_dsStateObjects;
     D3D11StateObjectSet<D3D11RasterizerState>   m_rsStateObjects;
     

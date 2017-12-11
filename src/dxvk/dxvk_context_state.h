@@ -55,7 +55,6 @@ namespace dxvk {
   
   
   struct DxvkOutputMergerState {
-    uint32_t                  sampleMask = 0xFFFFFFFFu;
     Rc<DxvkFramebuffer>       framebuffer;
     
     std::array<DxvkBlendMode, DxvkLimits::MaxNumRenderTargets> blendModes;

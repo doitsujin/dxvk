@@ -47,6 +47,7 @@ namespace dxvk {
    * aspects of multisampling.
    */
   struct DxvkMultisampleState {
+    uint32_t                sampleMask;
     VkBool32                enableAlphaToCoverage;
     VkBool32                enableAlphaToOne;
     VkBool32                enableSampleShading;

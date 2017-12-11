@@ -1559,6 +1559,7 @@ namespace dxvk {
   
   void D3D11DeviceContext::SetDefaultBlendState() {
     DxvkMultisampleState msState;
+    msState.sampleMask            = 0xffffffff;
     msState.enableAlphaToCoverage = VK_FALSE;
     msState.enableAlphaToOne      = VK_FALSE;
     msState.enableSampleShading   = VK_FALSE;
@@ -1579,9 +1580,9 @@ namespace dxvk {
     blendMode.alphaDstFactor = VK_BLEND_FACTOR_ZERO;
     blendMode.alphaBlendOp   = VK_BLEND_OP_ADD;
     blendMode.writeMask      = VK_COLOR_COMPONENT_R_BIT
-                                      | VK_COLOR_COMPONENT_G_BIT
-                                      | VK_COLOR_COMPONENT_B_BIT
-                                      | VK_COLOR_COMPONENT_A_BIT;
+                             | VK_COLOR_COMPONENT_G_BIT
+                             | VK_COLOR_COMPONENT_B_BIT
+                             | VK_COLOR_COMPONENT_A_BIT;
     
     for (uint32_t i = 0; i < DxvkLimits::MaxNumRenderTargets; i++)
       m_context->setBlendMode(i, blendMode);

@@ -2,6 +2,7 @@
 
 #include <unordered_map>
 
+#include "d3d11_blend.h"
 #include "d3d11_depth_stencil.h"
 #include "d3d11_rasterizer.h"
 
@@ -10,16 +11,20 @@ namespace dxvk {
   class D3D11Device;
   
   struct D3D11StateDescHash {
+    size_t operator () (const D3D11_BLEND_DESC& desc) const;
     size_t operator () (const D3D11_DEPTH_STENCILOP_DESC& desc) const;
     size_t operator () (const D3D11_DEPTH_STENCIL_DESC& desc) const;
     size_t operator () (const D3D11_RASTERIZER_DESC& desc) const;
+    size_t operator () (const D3D11_RENDER_TARGET_BLEND_DESC& desc) const;
   };
   
   
   struct D3D11StateDescEqual {
+    bool operator () (const D3D11_BLEND_DESC& a, const D3D11_BLEND_DESC& b) const;
     bool operator () (const D3D11_DEPTH_STENCILOP_DESC& a, const D3D11_DEPTH_STENCILOP_DESC& b) const;
     bool operator () (const D3D11_DEPTH_STENCIL_DESC& a, const D3D11_DEPTH_STENCIL_DESC& b) const;
     bool operator () (const D3D11_RASTERIZER_DESC& a, const D3D11_RASTERIZER_DESC& b) const;
+    bool operator () (const D3D11_RENDER_TARGET_BLEND_DESC& a, const D3D11_RENDER_TARGET_BLEND_DESC& b) const;
   };
   
   
