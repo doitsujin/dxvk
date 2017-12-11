@@ -94,9 +94,6 @@ namespace dxvk {
     SDL_Window*         m_window = nullptr;
     
     Rc<DxgiPresenter>   m_presenter;
-    
-    Rc<DxvkImage>       m_backBuffer;
-    Rc<DxvkImageView>   m_backBufferView;
     Com<IUnknown>       m_backBufferIface;
     
     void createPresenter();
@@ -105,6 +102,10 @@ namespace dxvk {
     void createContext();
     
     VkExtent2D getWindowSize() const;
+    
+    HRESULT GetSampleCount(
+            UINT                    Count,
+            VkSampleCountFlagBits*  pCount) const;
         
   };
   

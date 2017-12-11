@@ -70,6 +70,11 @@ namespace dxvk {
     
     DxgiImageResource(
             IDXGIDevicePrivate*             pDevice,
+      const Rc<DxvkImage>&                  image,
+            UINT                            usageFlags);
+    
+    DxgiImageResource(
+            IDXGIDevicePrivate*             pDevice,
       const dxvk::DxvkImageCreateInfo*      pCreateInfo,
             VkMemoryPropertyFlags           memoryFlags,
             UINT                            usageFlags);

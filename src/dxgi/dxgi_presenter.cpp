@@ -156,9 +156,21 @@ namespace dxvk {
   }
   
   
-  void DxgiPresenter::presentImage(const Rc<DxvkImageView>& view) {
+  void DxgiPresenter::presentImage() {
     m_context->beginRecording(
       m_device->createCommandList());
+    
+    VkImageSubresourceLayers resolveSubresources;
+    resolveSubresources.aspectMask      = VK_IMAGE_ASPECT_COLOR_BIT;
+    resolveSubresources.mipLevel        = 0;
+    resolveSubresources.baseArrayLayer  = 0;
+    resolveSubresources.layerCount      = 1;
+    
+    if (m_backBufferResolve != nullptr) {
+      m_context->resolveImage(
+        m_backBufferResolve, resolveSubresources,
+        m_backBuffer,        resolveSubresources);
+    }
     
     auto framebuffer     = m_swapchain->getFramebuffer(m_acquireSync);
     auto framebufferSize = framebuffer->size();
@@ -186,7 +198,7 @@ namespace dxvk {
       BindingIds::Sampler, m_sampler);
     m_context->bindResourceImage(
       VK_PIPELINE_BIND_POINT_GRAPHICS,
-      BindingIds::Texture, view);
+      BindingIds::Texture, m_backBufferView);
     m_context->draw(4, 1, 0, 0);
     
     m_device->submitCommandList(
@@ -198,6 +210,108 @@ namespace dxvk {
     // FIXME Make sure that the semaphores and the command
     // list can be safely used without stalling the device.
     m_device->waitForIdle();
+  }
+  
+  
+  Rc<DxvkImage> DxgiPresenter::createBackBuffer(
+          uint32_t              bufferWidth,
+          uint32_t              bufferHeight,
+          VkFormat              bufferFormat,
+          VkSampleCountFlagBits sampleCount) {
+    Logger::info(str::format("DxgiPresenter: Creating back buffer with ", bufferFormat));
+    
+    // Explicitly destroy the old stuff
+    m_backBuffer        = nullptr;
+    m_backBufferResolve = nullptr;
+    m_backBufferView    = nullptr;
+    
+    // Create an image that can be rendered to
+    // and that can be used as a sampled texture.
+    DxvkImageCreateInfo imageInfo;
+    imageInfo.type          = VK_IMAGE_TYPE_2D;
+    imageInfo.format        = bufferFormat;
+    imageInfo.flags         = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+    imageInfo.sampleCount   = sampleCount;
+    imageInfo.extent.width  = bufferWidth;
+    imageInfo.extent.height = bufferHeight;
+    imageInfo.extent.depth  = 1;
+    imageInfo.numLayers     = 1;
+    imageInfo.mipLevels     = 1;
+    imageInfo.usage         = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+                            | VK_IMAGE_USAGE_SAMPLED_BIT
+                            | VK_IMAGE_USAGE_TRANSFER_DST_BIT
+                            | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    imageInfo.stages        = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
+                            | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+                            | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
+                            | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+                            | VK_PIPELINE_STAGE_TRANSFER_BIT;
+    imageInfo.access        = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+                            | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
+                            | VK_ACCESS_TRANSFER_WRITE_BIT
+                            | VK_ACCESS_TRANSFER_READ_BIT
+                            | VK_ACCESS_SHADER_READ_BIT;
+    imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+    imageInfo.layout        = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    
+    if (m_device->features().geometryShader)
+      imageInfo.stages      |= VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
+    
+    if (m_device->features().tessellationShader) {
+      imageInfo.stages      |= VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT
+                            |  VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
+    }
+    
+    m_backBuffer = m_device->createImage(imageInfo,
+      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    
+    // If a multisampled back buffer was requested, we also need to
+    // create a resolve image with otherwise identical properties.
+    // Multisample images cannot be sampled from.
+    if (sampleCount != VK_SAMPLE_COUNT_1_BIT) {
+      DxvkImageCreateInfo resolveInfo;
+      resolveInfo.type          = VK_IMAGE_TYPE_2D;
+      resolveInfo.format        = bufferFormat;
+      resolveInfo.flags         = 0;
+      resolveInfo.sampleCount   = VK_SAMPLE_COUNT_1_BIT;
+      resolveInfo.extent.width  = bufferWidth;
+      resolveInfo.extent.height = bufferHeight;
+      resolveInfo.extent.depth  = 1;
+      resolveInfo.numLayers     = 1;
+      resolveInfo.mipLevels     = 1;
+      resolveInfo.usage         = VK_IMAGE_USAGE_SAMPLED_BIT
+                                | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+      resolveInfo.stages        = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+                                | VK_PIPELINE_STAGE_TRANSFER_BIT;
+      resolveInfo.access        = VK_ACCESS_SHADER_READ_BIT
+                                | VK_ACCESS_TRANSFER_WRITE_BIT;
+      resolveInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+      resolveInfo.layout        = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+      
+      m_backBufferResolve = m_device->createImage(
+        resolveInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    }
+    
+    // Create an image view that allows the
+    // image to be bound as a shader resource.
+    DxvkImageViewCreateInfo viewInfo;
+    viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format     = imageInfo.format;
+    viewInfo.aspect     = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.minLevel   = 0;
+    viewInfo.numLevels  = 1;
+    viewInfo.minLayer   = 0;
+    viewInfo.numLayers  = 1;
+    
+    m_backBufferView = m_device->createImageView(
+      m_backBufferResolve != nullptr
+        ? m_backBufferResolve
+        : m_backBuffer,
+      viewInfo);
+    
+    // TODO move this elsewhere
+    this->initBackBuffer(m_backBuffer);
+    return m_backBuffer;
   }
   
   

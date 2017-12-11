@@ -163,6 +163,14 @@ namespace dxvk {
             uint32_t                imageMemoryBarrierCount,
       const VkImageMemoryBarrier*   pImageMemoryBarriers);
     
+    void cmdResolveImage(
+            VkImage                 srcImage,
+            VkImageLayout           srcImageLayout,
+            VkImage                 dstImage,
+            VkImageLayout           dstImageLayout,
+            uint32_t                regionCount,
+      const VkImageResolve*         pRegions);
+    
     void cmdUpdateBuffer(
             VkBuffer                dstBuffer,
             VkDeviceSize            dstOffset,

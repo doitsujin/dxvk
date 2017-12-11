@@ -29,7 +29,7 @@ namespace dxvk {
             DXGI_FORMAT     bufferFormat);
     
     ~DxgiPresenter();
-    
+      
     /**
      * \brief Initializes back buffer image
      * \param [in] image Back buffer image
@@ -38,20 +38,32 @@ namespace dxvk {
       const Rc<DxvkImage>& image);
     
     /**
-     * \brief Renders image to the screen
-     * \param [in] view Source image view
+     * \brief Renders back buffer to the screen
      */
-    void presentImage(
-      const Rc<DxvkImageView>& view);
+    void presentImage();
+    
+    /**
+     * \brief Recreates back buffer
+     * 
+     * \param [in] bufferWidth Buffer width
+     * \param [in] bufferHeight Buffer height
+     * \param [in] bufferFormat Buffer format
+     * \returns Back buffer image
+     */
+    Rc<DxvkImage> createBackBuffer(
+            uint32_t              bufferWidth,
+            uint32_t              bufferHeight,
+            VkFormat              bufferFormat,
+            VkSampleCountFlagBits sampleCount);
     
     /**
      * \brief Renders image to the screen
      * \param [in] view Source image view
      */
     void recreateSwapchain(
-          uint32_t        bufferWidth,
-          uint32_t        bufferHeight,
-          DXGI_FORMAT     bufferFormat);
+            uint32_t        bufferWidth,
+            uint32_t        bufferHeight,
+            DXGI_FORMAT     bufferFormat);
     
   private:
     
@@ -70,6 +82,10 @@ namespace dxvk {
     Rc<DxvkSemaphore>   m_presentSync;
     
     Rc<DxvkSampler>     m_sampler;
+    
+    Rc<DxvkImage>       m_backBuffer;
+    Rc<DxvkImage>       m_backBufferResolve;
+    Rc<DxvkImageView>   m_backBufferView;
     
     VkSurfaceFormatKHR pickFormat(DXGI_FORMAT fmt) const;
     

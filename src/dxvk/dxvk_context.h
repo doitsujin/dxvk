@@ -248,6 +248,23 @@ namespace dxvk {
       const VkImageSubresourceRange& subresources);
     
     /**
+     * \brief Resolves a multisampled image resource
+     * 
+     * Resolves a multisampled image into a non-multisampled
+     * image. The subresources of both images must have the
+     * same size and compatible formats
+     * \param [in] dstImage Destination image
+     * \param [in] dstSubresources Subresources to write to
+     * \param [in] srcImage Source image
+     * \param [in] srcSubresources Subresources to read from
+     */
+    void resolveImage(
+      const Rc<DxvkImage>&            dstImage,
+      const VkImageSubresourceLayers& dstSubresources,
+      const Rc<DxvkImage>&            srcImage,
+      const VkImageSubresourceLayers& srcSubresources);
+    
+    /**
      * \brief Updates a buffer
      * 
      * Copies data from the host into a buffer.

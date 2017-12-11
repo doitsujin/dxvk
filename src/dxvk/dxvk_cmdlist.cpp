@@ -274,6 +274,20 @@ namespace dxvk {
   }
   
   
+  void DxvkCommandList::cmdResolveImage(
+          VkImage                 srcImage,
+          VkImageLayout           srcImageLayout,
+          VkImage                 dstImage,
+          VkImageLayout           dstImageLayout,
+          uint32_t                regionCount,
+    const VkImageResolve*         pRegions) {
+    m_vkd->vkCmdResolveImage(m_buffer,
+      srcImage, srcImageLayout,
+      dstImage, dstImageLayout,
+      regionCount, pRegions);
+  }
+  
+  
   void DxvkCommandList::cmdUpdateBuffer(
           VkBuffer                dstBuffer,
           VkDeviceSize            dstOffset,

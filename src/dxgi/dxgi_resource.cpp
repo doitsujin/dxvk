@@ -4,6 +4,15 @@ namespace dxvk {
   
   DxgiImageResource::DxgiImageResource(
           IDXGIDevicePrivate*             pDevice,
+    const Rc<DxvkImage>&                  image,
+          UINT                            usageFlags)
+  : Base(pDevice, usageFlags), m_image(image) {
+    
+  }
+  
+  
+  DxgiImageResource::DxgiImageResource(
+          IDXGIDevicePrivate*             pDevice,
     const dxvk::DxvkImageCreateInfo*      pCreateInfo,
           VkMemoryPropertyFlags           memoryFlags,
           UINT                            usageFlags)

@@ -123,6 +123,14 @@ namespace dxvk {
       return m_renderPass;
     }
     
+    /**
+     * \brief Render pass sample count
+     * \returns Render pass sample count
+     */
+    VkSampleCountFlagBits sampleCount() const {
+      return m_format.getSampleCount();
+    }
+    
   private:
     
     Rc<vk::DeviceFn>      m_vkd;

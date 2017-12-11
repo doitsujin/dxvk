@@ -155,6 +155,14 @@ namespace dxvk {
       return m_renderTargets;
     }
     
+    /**
+     * \brief Sample count
+     * \returns Sample count
+     */
+    VkSampleCountFlagBits sampleCount() const {
+      return m_renderPass->sampleCount();
+    }
+    
   private:
     
     Rc<vk::DeviceFn>    m_vkd;

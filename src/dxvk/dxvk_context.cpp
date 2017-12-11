@@ -129,7 +129,7 @@ namespace dxvk {
       
       if (image != nullptr) {
         descriptor.image.imageView   = image->handle();
-        descriptor.image.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+        descriptor.image.imageLayout = image->imageInfo().layout;
       }
       
       rc->bindShaderResource(slot, resource, descriptor);
@@ -364,6 +364,77 @@ namespace dxvk {
       image->info().layout,
       image->info().stages,
       image->info().access);
+    m_barriers.recordCommands(m_cmd);
+  }
+  
+  
+  void DxvkContext::resolveImage(
+    const Rc<DxvkImage>&            dstImage,
+    const VkImageSubresourceLayers& dstSubresources,
+    const Rc<DxvkImage>&            srcImage,
+    const VkImageSubresourceLayers& srcSubresources) {
+    VkImageSubresourceRange dstSubresourceRange = {
+      dstSubresources.aspectMask,
+      dstSubresources.mipLevel, 1,
+      dstSubresources.baseArrayLayer,
+      dstSubresources.layerCount,
+    };
+    
+    VkImageSubresourceRange srcSubresourceRange = {
+      srcSubresources.aspectMask,
+      srcSubresources.mipLevel, 1,
+      srcSubresources.baseArrayLayer,
+      srcSubresources.layerCount,
+    };
+    
+    // We only support resolving to the entire image
+    // area, so we might as well discard its contents
+    m_barriers.accessImage(
+      dstImage, dstSubresourceRange,
+      VK_IMAGE_LAYOUT_UNDEFINED, 0, 0,
+      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT);
+    m_barriers.accessImage(
+      srcImage, srcSubresourceRange,
+      srcImage->info().layout,
+      srcImage->info().stages,
+      srcImage->info().access,
+      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_READ_BIT);
+    m_barriers.recordCommands(m_cmd);
+    
+    VkImageResolve imageRegion;
+    imageRegion.srcSubresource = srcSubresources;
+    imageRegion.srcOffset      = VkOffset3D { 0, 0, 0 };
+    imageRegion.dstSubresource = dstSubresources;
+    imageRegion.dstOffset      = VkOffset3D { 0, 0, 0 };
+    imageRegion.extent         = srcImage->mipLevelExtent(srcSubresources.mipLevel);
+    
+    m_cmd->cmdResolveImage(
+      srcImage->handle(),
+      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+      dstImage->handle(),
+      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      1, &imageRegion);
+    
+    m_barriers.accessImage(
+      dstImage, dstSubresourceRange,
+      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT,
+      dstImage->info().layout,
+      dstImage->info().stages,
+      dstImage->info().access);
+    m_barriers.accessImage(
+      srcImage, srcSubresourceRange,
+      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_READ_BIT,
+      srcImage->info().layout,
+      srcImage->info().stages,
+      srcImage->info().access);
     m_barriers.recordCommands(m_cmd);
   }
   
@@ -718,7 +789,7 @@ namespace dxvk {
       gpState.rsViewportCount          = m_state.vp.viewportCount;
       
       // TODO implement multisampling support properly
-      gpState.msSampleCount            = VK_SAMPLE_COUNT_1_BIT;
+      gpState.msSampleCount            = m_state.om.framebuffer->sampleCount();
       gpState.msSampleMask             = m_state.ms.sampleMask;
       gpState.msEnableAlphaToCoverage  = m_state.ms.enableAlphaToCoverage;
       gpState.msEnableAlphaToOne       = m_state.ms.enableAlphaToOne;
