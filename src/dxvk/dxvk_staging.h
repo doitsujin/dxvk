@@ -22,6 +22,8 @@ namespace dxvk {
     
     ~DxvkStagingBuffer();
     
+    VkDeviceSize size() const;
+    
     VkDeviceSize freeBytes() const;
     
     bool alloc(

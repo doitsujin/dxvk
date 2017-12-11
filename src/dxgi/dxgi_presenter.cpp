@@ -22,7 +22,7 @@ namespace dxvk {
     // Create swap chain for the surface
     DxvkSwapchainProperties swapchainProperties;
     swapchainProperties.preferredSurfaceFormat      = this->pickFormat(bufferFormat);
-    swapchainProperties.preferredPresentMode        = VK_PRESENT_MODE_FIFO_KHR;
+    swapchainProperties.preferredPresentMode        = VK_PRESENT_MODE_IMMEDIATE_KHR;
     swapchainProperties.preferredBufferSize.width   = bufferWidth;
     swapchainProperties.preferredBufferSize.height  = bufferHeight;
     
@@ -207,7 +207,7 @@ namespace dxvk {
         DXGI_FORMAT     bufferFormat) {
     DxvkSwapchainProperties swapchainProperties;
     swapchainProperties.preferredSurfaceFormat      = this->pickFormat(bufferFormat);
-    swapchainProperties.preferredPresentMode        = VK_PRESENT_MODE_FIFO_KHR;
+    swapchainProperties.preferredPresentMode        = VK_PRESENT_MODE_IMMEDIATE_KHR;
     swapchainProperties.preferredBufferSize.width   = bufferWidth;
     swapchainProperties.preferredBufferSize.height  = bufferHeight;
     

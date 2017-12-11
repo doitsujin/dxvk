@@ -9,6 +9,7 @@
 #include "dxvk_image.h"
 #include "dxvk_memory.h"
 #include "dxvk_pipemanager.h"
+#include "dxvk_recycler.h"
 #include "dxvk_renderpass.h"
 #include "dxvk_sampler.h"
 #include "dxvk_shader.h"
@@ -28,7 +29,7 @@ namespace dxvk {
    * contexts. Multiple contexts can be created for a device.
    */
   class DxvkDevice : public RcObject {
-    
+    constexpr static VkDeviceSize DefaultStagingBufferSize = 64 * 1024 * 1024;
   public:
     
     DxvkDevice(
@@ -266,8 +267,12 @@ namespace dxvk {
     Rc<DxvkRenderPassPool>  m_renderPassPool;
     Rc<DxvkPipelineManager> m_pipelineManager;
     
-    VkQueue m_graphicsQueue;
-    VkQueue m_presentQueue;
+    VkQueue m_graphicsQueue = VK_NULL_HANDLE;
+    VkQueue m_presentQueue  = VK_NULL_HANDLE;
+    
+    // TODO fine-tune buffer sizes
+    DxvkRecycler<DxvkCommandList,  16> m_recycledCommandLists;
+    DxvkRecycler<DxvkStagingBuffer, 4> m_recycledStagingBuffers;
     
   };
   

@@ -33,12 +33,20 @@ namespace dxvk {
   
   
   Rc<DxvkStagingBuffer> DxvkDevice::allocStagingBuffer(VkDeviceSize size) {
-    // TODO actually recycle old buffers
-    const VkDeviceSize baseSize = 64 * 1024 * 1024;
-    const VkDeviceSize bufferSize = std::max(baseSize, size);
+    // In case we need a standard-size staging buffer, try
+    // to recycle an old one that has been returned earlier
+    if (size <= DefaultStagingBufferSize) {
+      const Rc<DxvkStagingBuffer> buffer
+        = m_recycledStagingBuffers.retrieveObject();
+      
+      if (buffer != nullptr)
+        return buffer;
+    }
     
+    // Staging buffers only need to be able to handle transfer
+    // operations, and they need to be in host-visible memory.
     DxvkBufferCreateInfo info;
-    info.size   = bufferSize;
+    info.size   = size;
     info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
     info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT
                 | VK_PIPELINE_STAGE_HOST_BIT;
@@ -49,18 +57,32 @@ namespace dxvk {
       = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
       | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
     
+    // Don't create buffers that are too small. A staging
+    // buffer should be able to serve multiple uploads.
+    if (info.size < DefaultStagingBufferSize)
+      info.size = DefaultStagingBufferSize;
+    
     return new DxvkStagingBuffer(this->createBuffer(info, memFlags));
   }
   
   
   void DxvkDevice::recycleStagingBuffer(const Rc<DxvkStagingBuffer>& buffer) {
-    // TODO implement
+    // Drop staging buffers that are bigger than the
+    // standard ones to save memory, recycle the rest
+    if (buffer->size() == DefaultStagingBufferSize)
+      m_recycledStagingBuffers.returnObject(buffer);
   }
   
   
   Rc<DxvkCommandList> DxvkDevice::createCommandList() {
-    return new DxvkCommandList(m_vkd, this,
-      m_adapter->graphicsQueueFamily());
+    Rc<DxvkCommandList> cmdList = m_recycledCommandLists.retrieveObject();
+    
+    if (cmdList == nullptr) {
+      cmdList = new DxvkCommandList(m_vkd,
+        this, m_adapter->graphicsQueueFamily());
+    }
+    
+    return cmdList;
   }
   
   
@@ -176,6 +198,9 @@ namespace dxvk {
     // TODO Delay synchronization by putting these into a ring buffer
     fence->wait(std::numeric_limits<uint64_t>::max());
     commandList->reset();
+    
+    // FIXME this must go away once the ring buffer is implemented
+    m_recycledCommandLists.returnObject(commandList);
     return fence;
   }
   

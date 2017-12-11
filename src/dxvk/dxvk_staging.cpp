@@ -15,6 +15,11 @@ namespace dxvk {
   }
   
   
+  VkDeviceSize DxvkStagingBuffer::size() const {
+    return m_bufferSize;
+  }
+  
+  
   VkDeviceSize DxvkStagingBuffer::freeBytes() const {
     return m_bufferSize - m_bufferOffset;
   }
