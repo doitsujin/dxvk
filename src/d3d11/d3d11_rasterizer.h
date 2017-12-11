@@ -29,9 +29,8 @@ namespace dxvk {
     void GetDesc(
             D3D11_RASTERIZER_DESC* pDesc) final;
     
-    const DxvkRasterizerState& GetDXVKRasterizerState() const {
-      return m_state;
-    }
+    void BindToContext(
+      const Rc<DxvkContext>&  ctx);
     
   private:
     

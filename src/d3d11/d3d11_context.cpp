@@ -1262,13 +1262,10 @@ namespace dxvk {
     if (m_state.rs.state != rasterizerState) {
       m_state.rs.state = rasterizerState;
       
-      if (rasterizerState != nullptr) {
-        m_context->setRasterizerState(
-          rasterizerState->GetDXVKRasterizerState());
-      } else {
-        // Restore the initial state
+      if (rasterizerState != nullptr)
+        rasterizerState->BindToContext(m_context);
+      else
         this->SetDefaultRasterizerState();
-      }
       
       // In D3D11, the rasterizer state defines
       // whether the scissor test is enabled, so

@@ -86,4 +86,9 @@ namespace dxvk {
     *pDesc = m_desc;
   }
   
+  
+  void D3D11RasterizerState::BindToContext(const Rc<DxvkContext>& ctx) {
+    ctx->setRasterizerState(m_state);
+  }
+  
 }
