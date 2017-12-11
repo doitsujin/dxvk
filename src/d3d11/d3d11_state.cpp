@@ -2,6 +2,30 @@
 
 namespace dxvk {
   
+  size_t D3D11StateDescHash::operator () (const D3D11_DEPTH_STENCILOP_DESC& desc) const {
+    DxvkHashState hash;
+    hash.add(desc.StencilFunc);
+    hash.add(desc.StencilDepthFailOp);
+    hash.add(desc.StencilPassOp);
+    hash.add(desc.StencilFailOp);
+    return hash;
+  }
+  
+  
+  size_t D3D11StateDescHash::operator () (const D3D11_DEPTH_STENCIL_DESC& desc) const {
+    DxvkHashState hash;
+    hash.add(desc.DepthEnable);
+    hash.add(desc.DepthWriteMask);
+    hash.add(desc.DepthFunc);
+    hash.add(desc.StencilEnable);
+    hash.add(desc.StencilReadMask);
+    hash.add(desc.StencilWriteMask);
+    hash.add(this->operator () (desc.FrontFace));
+    hash.add(this->operator () (desc.BackFace));
+    return hash;
+  }
+  
+  
   size_t D3D11StateDescHash::operator () (const D3D11_RASTERIZER_DESC& desc) const {
     DxvkHashState hash;
     hash.add(desc.FillMode);
@@ -15,6 +39,26 @@ namespace dxvk {
     hash.add(desc.MultisampleEnable);
     hash.add(desc.AntialiasedLineEnable);
     return hash;
+  }
+  
+  
+  bool D3D11StateDescEqual::operator () (const D3D11_DEPTH_STENCILOP_DESC& a, const D3D11_DEPTH_STENCILOP_DESC& b) const {
+    return a.StencilFunc           == b.StencilFunc
+        && a.StencilDepthFailOp    == b.StencilDepthFailOp
+        && a.StencilPassOp         == b.StencilPassOp
+        && a.StencilFailOp         == b.StencilFailOp;
+  }
+  
+  
+  bool D3D11StateDescEqual::operator () (const D3D11_DEPTH_STENCIL_DESC& a, const D3D11_DEPTH_STENCIL_DESC& b) const {
+    return a.DepthEnable           == b.DepthEnable
+        && a.DepthWriteMask        == b.DepthWriteMask
+        && a.DepthFunc             == b.DepthFunc
+        && a.StencilEnable         == b.StencilEnable
+        && a.StencilReadMask       == b.StencilReadMask
+        && a.StencilWriteMask      == b.StencilWriteMask
+        && this->operator () (a.FrontFace, b.FrontFace)
+        && this->operator () (a.BackFace, b.BackFace);
   }
   
   

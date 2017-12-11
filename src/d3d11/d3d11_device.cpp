@@ -810,8 +810,30 @@ namespace dxvk {
   HRESULT D3D11Device::CreateDepthStencilState(
     const D3D11_DEPTH_STENCIL_DESC*   pDepthStencilDesc,
           ID3D11DepthStencilState**   ppDepthStencilState) {
-    Logger::err("D3D11Device::CreateDepthStencilState: Not implemented");
-    return E_NOTIMPL;
+    D3D11_DEPTH_STENCIL_DESC desc;
+    
+    if (pDepthStencilDesc != nullptr) {
+      desc = *pDepthStencilDesc;
+    } else {
+      D3D11_DEPTH_STENCILOP_DESC stencilOp;
+      stencilOp.StencilFunc        = D3D11_COMPARISON_ALWAYS;
+      stencilOp.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+      stencilOp.StencilPassOp      = D3D11_STENCIL_OP_KEEP;
+      stencilOp.StencilFailOp      = D3D11_STENCIL_OP_KEEP;
+      
+      desc.DepthEnable      = TRUE;
+      desc.DepthWriteMask   = D3D11_DEPTH_WRITE_MASK_ALL;
+      desc.DepthFunc        = D3D11_COMPARISON_LESS;
+      desc.StencilEnable    = FALSE;
+      desc.StencilReadMask  = D3D11_DEFAULT_STENCIL_READ_MASK;
+      desc.StencilWriteMask = D3D11_DEFAULT_STENCIL_WRITE_MASK;
+      desc.FrontFace        = stencilOp;
+      desc.BackFace         = stencilOp;
+    }
+    
+    if (ppDepthStencilState != nullptr)
+      *ppDepthStencilState = m_dsStateObjects.Create(this, desc);
+    return S_OK;
   }
   
   
@@ -1445,40 +1467,6 @@ namespace dxvk {
       default:
         Logger::err(str::format("D3D11: Unsupported address mode: ", mode));
         return VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    }
-  }
-  
-  
-  VkCompareOp D3D11Device::DecodeCompareOp(
-          D3D11_COMPARISON_FUNC mode) const {
-    switch (mode) {
-      case D3D11_COMPARISON_NEVER:
-        return VK_COMPARE_OP_NEVER;
-        
-      case D3D11_COMPARISON_LESS:
-        return VK_COMPARE_OP_LESS;
-        
-      case D3D11_COMPARISON_EQUAL:
-        return VK_COMPARE_OP_EQUAL;
-        
-      case D3D11_COMPARISON_LESS_EQUAL:
-        return VK_COMPARE_OP_LESS_OR_EQUAL;
-        
-      case D3D11_COMPARISON_GREATER:
-        return VK_COMPARE_OP_GREATER;
-        
-      case D3D11_COMPARISON_NOT_EQUAL:
-        return VK_COMPARE_OP_NOT_EQUAL;
-        
-      case D3D11_COMPARISON_GREATER_EQUAL:
-        return VK_COMPARE_OP_GREATER_OR_EQUAL;
-        
-      case D3D11_COMPARISON_ALWAYS:
-        return VK_COMPARE_OP_ALWAYS;
-        
-      default:
-        Logger::err(str::format("D3D11: Unsupported compare op: ", mode));
-        return VK_COMPARE_OP_ALWAYS;
     }
   }
   

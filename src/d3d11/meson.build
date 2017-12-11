@@ -1,6 +1,7 @@
 d3d11_src = [
   'd3d11_buffer.cpp',
   'd3d11_context.cpp',
+  'd3d11_depth_stencil.cpp',
   'd3d11_device.cpp',
   'd3d11_enums.cpp',
   'd3d11_input_layout.cpp',
@@ -11,6 +12,7 @@ d3d11_src = [
   'd3d11_shader.cpp',
   'd3d11_state.cpp',
   'd3d11_texture.cpp',
+  'd3d11_util.cpp',
 ]
 
 d3d11_dll = shared_library('d3d11', d3d11_src,

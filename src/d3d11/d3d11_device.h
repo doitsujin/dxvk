@@ -5,6 +5,7 @@
 
 #include "d3d11_interfaces.h"
 #include "d3d11_state.h"
+#include "d3d11_util.h"
 
 #include "../util/com/com_private_data.h"
 
@@ -247,7 +248,8 @@ namespace dxvk {
     std::mutex                      m_resourceInitMutex;
     Rc<DxvkContext>                 m_resourceInitContext;
     
-    D3D11StateObjectSet<D3D11RasterizerState> m_rsStateObjects;
+    D3D11StateObjectSet<D3D11DepthStencilState> m_dsStateObjects;
+    D3D11StateObjectSet<D3D11RasterizerState>   m_rsStateObjects;
     
     HRESULT CreateShaderModule(
             D3D11ShaderModule*      pShaderModule,
@@ -290,9 +292,6 @@ namespace dxvk {
     
     VkSamplerAddressMode DecodeAddressMode(
             D3D11_TEXTURE_ADDRESS_MODE  mode) const;
-    
-    VkCompareOp DecodeCompareOp(
-            D3D11_COMPARISON_FUNC mode) const;
     
   };
   
