@@ -192,7 +192,7 @@ namespace dxvk {
       pMappedResource->pData      = buffer->mapPtr(0);
       pMappedResource->RowPitch   = buffer->info().size;
       pMappedResource->DepthPitch = buffer->info().size;
-      return E_FAIL;
+      return S_OK;
     } else {
       Logger::err("D3D11: Mapping of image resources currently not supported");
       return E_NOTIMPL;
