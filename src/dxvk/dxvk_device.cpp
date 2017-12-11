@@ -66,8 +66,10 @@ namespace dxvk {
   void DxvkDevice::recycleStagingBuffer(const Rc<DxvkStagingBuffer>& buffer) {
     // Drop staging buffers that are bigger than the
     // standard ones to save memory, recycle the rest
-    if (buffer->size() == DefaultStagingBufferSize)
+    if (buffer->size() == DefaultStagingBufferSize) {
       m_recycledStagingBuffers.returnObject(buffer);
+      buffer->reset();
+    }
   }
   
   

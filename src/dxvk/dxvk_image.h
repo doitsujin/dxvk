@@ -141,6 +141,12 @@ namespace dxvk {
       return m_info;
     }
     
+    /**
+     * \brief Size of a mipmap level
+     * 
+     * \param [in] level Mip level
+     * \returns Size of that level
+     */
     VkExtent3D mipLevelExtent(uint32_t level) const {
       VkExtent3D size = m_info.extent;
       size.width  = std::max(1u, size.width  >> level);
