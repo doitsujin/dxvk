@@ -15,14 +15,16 @@ For the current status of the project, please refer to the [project wiki](https:
 ### Building DLLs
 Inside the dxvk directory, run:
 ```
+# 64-bit build. For 32-bit builds, replace
+# build-win64.txt with build-win32.txt
 meson --cross-file build-win64.txt build.w64
 cd build.w64
-meson configure -Dprefix=/your/directory
+meson configure -Dprefix=/target/directory
 ninja
 ninja install
 ```
 
-Both `dxgi.dll` and `d3d11.dll`as well as some demo executables will be located in `/your/directory/bin`. 32-bit builds are currently not supported.
+Both `dxgi.dll` and `d3d11.dll`as well as some demo executables will be located in `/your/directory/bin`.
 
 ## How to use
 In order to run `executable.exe` with DXVK,
