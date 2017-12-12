@@ -18,7 +18,7 @@ namespace dxvk {
     m_state.depthBoundsMax    = 1.0f;
     
     if (desc.DepthEnable)
-      DecodeCompareOp(desc.DepthFunc);
+      m_state.depthCompareOp = DecodeCompareOp(desc.DepthFunc);
   }
   
   
