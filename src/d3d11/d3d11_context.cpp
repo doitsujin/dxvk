@@ -214,8 +214,6 @@ namespace dxvk {
           ID3D11Resource*             pResource,
           UINT                        Subresource) {
     // There's literally nothing we have to do here at the moment
-    this->Flush();
-    m_device->waitForIdle();
   }
   
   
