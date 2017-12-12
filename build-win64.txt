@@ -9,7 +9,7 @@ exe_wrapper = 'wine'
 c_args = ['-Og', '-ggdb']
 c_link_args = ['-static', '-static-libgcc']
 
-cpp_args = ['-std=c++17', '-Og', '-gstabs']
+cpp_args = ['-Og', '-gstabs']
 cpp_link_args = ['-static', '-static-libgcc', '-static-libstdc++']
 
 [host_machine]

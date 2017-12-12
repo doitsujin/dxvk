@@ -1,4 +1,4 @@
-project('dxvk', ['c', 'cpp'])
+project('dxvk', ['c', 'cpp'], default_options : ['cpp_std=c++17'])
 
 cpu_family = target_machine.cpu_family()
 
