@@ -17,6 +17,8 @@ namespace dxvk {
     
     DxvkDataBuffer();
     DxvkDataBuffer(
+            size_t  size);
+    DxvkDataBuffer(
       const void*   data,
             size_t  size);
     ~DxvkDataBuffer();
