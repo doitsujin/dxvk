@@ -101,6 +101,8 @@ namespace dxvk {
   Rc<DxvkBuffer> DxvkDevice::createBuffer(
     const DxvkBufferCreateInfo& createInfo,
           VkMemoryPropertyFlags memoryType) {
+    m_statCounters.increment(DxvkStat::ResBufferCreations, 1);
+    
     return new DxvkBuffer(m_vkd,
       createInfo, *m_memory, memoryType);
   }
@@ -116,6 +118,8 @@ namespace dxvk {
   Rc<DxvkImage> DxvkDevice::createImage(
     const DxvkImageCreateInfo&  createInfo,
           VkMemoryPropertyFlags memoryType) {
+    m_statCounters.increment(DxvkStat::ResImageCreations, 1);
+    
     return new DxvkImage(m_vkd,
       createInfo, *m_memory, memoryType);
   }
@@ -200,11 +204,14 @@ namespace dxvk {
     
     // FIXME this must go away once the ring buffer is implemented
     m_recycledCommandLists.returnObject(commandList);
+    m_statCounters.increment(DxvkStat::DevQueueSubmissions, 1);
     return fence;
   }
   
   
-  void DxvkDevice::waitForIdle() const {
+  void DxvkDevice::waitForIdle() {
+    m_statCounters.increment(DxvkStat::DevSynchronizations, 1);
+    
     if (m_vkd->vkDeviceWaitIdle(m_vkd->device()) != VK_SUCCESS)
       throw DxvkError("DxvkDevice::waitForIdle: Operation failed");
   }

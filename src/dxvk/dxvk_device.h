@@ -13,6 +13,7 @@
 #include "dxvk_renderpass.h"
 #include "dxvk_sampler.h"
 #include "dxvk_shader.h"
+#include "dxvk_stats.h"
 #include "dxvk_swapchain.h"
 #include "dxvk_sync.h"
 
@@ -255,7 +256,15 @@ namespace dxvk {
      * used to ensure that resources that were previously
      * used by the GPU can be safely destroyed.
      */
-    void waitForIdle() const;
+    void waitForIdle();
+    
+    /**
+     * \brief Retrieves stat counters
+     * \returns Stat counters
+     */
+    DxvkStatCounters queryCounters() const {
+      return m_statCounters;
+    }
     
   private:
     
@@ -273,6 +282,8 @@ namespace dxvk {
     // TODO fine-tune buffer sizes
     DxvkRecycler<DxvkCommandList,  16> m_recycledCommandLists;
     DxvkRecycler<DxvkStagingBuffer, 4> m_recycledStagingBuffers;
+    
+    DxvkStatCounters m_statCounters;
     
   };
   
