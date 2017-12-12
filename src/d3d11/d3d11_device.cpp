@@ -1,6 +1,7 @@
 #include <cstring>
 
 #include "d3d11_buffer.h"
+#include "d3d11_class_linkage.h"
 #include "d3d11_context.h"
 #include "d3d11_device.h"
 #include "d3d11_input_layout.h"
@@ -795,8 +796,8 @@ namespace dxvk {
   
   
   HRESULT D3D11Device::CreateClassLinkage(ID3D11ClassLinkage** ppLinkage) {
-    Logger::err("D3D11Device::CreateClassLinkage: Not implemented");
-    return E_NOTIMPL;
+    *ppLinkage = ref(new D3D11ClassLinkage(this));
+    return S_OK;
   }
   
   
@@ -1185,10 +1186,8 @@ namespace dxvk {
     const void*                   pShaderBytecode,
           size_t                  BytecodeLength,
           ID3D11ClassLinkage*     pClassLinkage) {
-    if (pClassLinkage != nullptr) {
-      Logger::err("D3D11Device::CreateShaderModule: Class linkage not supported");
-      return E_INVALIDARG;
-    }
+    if (pClassLinkage != nullptr)
+      Logger::warn("D3D11Device::CreateShaderModule: Class linkage not supported");
     
     try {
       *pShaderModule = D3D11ShaderModule(
