@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstring>
-#include <optional>
 
 #include "dxbc_enums.h"
 #include "dxbc_names.h"
@@ -508,10 +507,12 @@ namespace dxvk {
      * If an extended operand token with the given
      * operand extension exists, return that token.
      * \param [in] ext The operand extension
-     * \returns The extended operand token
+     * \param [out] token The extended token
+     * \returns \c true if the token was defined
      */
-    std::optional<DxbcOperandTokenExt> queryOperandExt(
-            DxbcOperandExt ext) const;
+    bool queryOperandExt(
+            DxbcOperandExt        ext,
+            DxbcOperandTokenExt&  token) const;
     
     /**
      * \brief Reads 32-bit immediate integer
@@ -579,11 +580,13 @@ namespace dxvk {
      * 
      * If an extended opcode token with the given
      * opcode exists, the token will be returned.
-     * \param extOpcode Extended opcode
-     * \returns Extended opcode token
+     * \param [in] extOpcode Extended opcode
+     * \param [out] token The extended token
+     * \returns \c true if the token was defined
      */
-    std::optional<DxbcOpcodeTokenExt> queryOpcodeExt(
-            DxbcExtOpcode extOpcode) const;
+    bool queryOpcodeExt(
+            DxbcExtOpcode       extOpcode,
+            DxbcOpcodeTokenExt& token) const;
     
     /**
      * \brief Retrieves argument word

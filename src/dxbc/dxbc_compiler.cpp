@@ -547,13 +547,10 @@ namespace dxvk {
         result = this->selectOperandComponents(token, result, dstMask);
       
       // Apply source operand modifiers, if any
-      auto operandModifiers = operand.queryOperandExt(
-        DxbcOperandExt::OperandModifier);
+      DxbcOperandTokenExt token;
       
-      if (operandModifiers) {
-        result = this->applyOperandModifiers(
-          result, operandModifiers->data());
-      }
+      if (operand.queryOperandExt(DxbcOperandExt::OperandModifier, token))
+        result = this->applyOperandModifiers(result, token.data());
     }
     
     return result;

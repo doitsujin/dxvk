@@ -136,9 +136,9 @@ namespace dxvk {
   }
   
   
-  std::optional<DxbcOperandTokenExt> DxbcOperand::queryOperandExt(DxbcOperandExt ext) const {
+  bool DxbcOperand::queryOperandExt(DxbcOperandExt ext, DxbcOperandTokenExt& token) const {
     if (!this->token().isExtended())
-      return { };
+      return false;
     
     uint32_t extTokenId = 1;
     DxbcOperandTokenExt extToken;
@@ -146,11 +146,13 @@ namespace dxvk {
     do {
       extToken = m_info.getWord(extTokenId++);
       
-      if (extToken.type() == ext)
-        return extToken;
+      if (extToken.type() == ext) {
+        token = extToken;
+        return true;
+      }
     } while (extToken.isExtended());
     
-    return { };
+    return false;
   }
   
   
@@ -185,9 +187,9 @@ namespace dxvk {
   }
   
   
-  std::optional<DxbcOpcodeTokenExt> DxbcInstruction::queryOpcodeExt(DxbcExtOpcode extOpcode) const {
+  bool DxbcInstruction::queryOpcodeExt(DxbcExtOpcode extOpcode, DxbcOpcodeTokenExt& token) const {
     if (!this->token().isExtended())
-      return { };
+      return false;
     
     uint32_t extTokenId = 1;
     DxbcOpcodeTokenExt extToken;
@@ -195,11 +197,13 @@ namespace dxvk {
     do {
       extToken = m_op.getWord(extTokenId++);
       
-      if (extToken.opcode() == extOpcode)
-        return extToken;
+      if (extToken.opcode() == extOpcode) {
+        token = extToken;
+        return true;
+      }
     } while (extToken.isExtended());
     
-    return { };
+    return false;
   }
   
 }
