@@ -20,62 +20,62 @@ namespace dxvk {
       Rc<DxvkDevice>  device);
     ~D3D11DeviceContext();
     
-    ULONG AddRef() final;
+    ULONG STDMETHODCALLTYPE AddRef() final;
     
-    ULONG Release() final;
+    ULONG STDMETHODCALLTYPE Release() final;
     
-    HRESULT QueryInterface(
+    HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID  riid,
             void**  ppvObject) final;
     
-    void GetDevice(ID3D11Device **ppDevice) final;
+    void STDMETHODCALLTYPE GetDevice(ID3D11Device **ppDevice) final;
     
-    D3D11_DEVICE_CONTEXT_TYPE GetType() final;
+    D3D11_DEVICE_CONTEXT_TYPE STDMETHODCALLTYPE GetType() final;
     
-    UINT GetContextFlags() final;
+    UINT STDMETHODCALLTYPE GetContextFlags() final;
     
-    void ClearState() final;
+    void STDMETHODCALLTYPE ClearState() final;
     
-    void Flush() final;
+    void STDMETHODCALLTYPE Flush() final;
     
-    void ExecuteCommandList(
+    void STDMETHODCALLTYPE ExecuteCommandList(
             ID3D11CommandList*  pCommandList,
             WINBOOL             RestoreContextState) final;
     
-    HRESULT FinishCommandList(
+    HRESULT STDMETHODCALLTYPE FinishCommandList(
             WINBOOL             RestoreDeferredContextState,
             ID3D11CommandList   **ppCommandList) final;
     
-    HRESULT Map(
+    HRESULT STDMETHODCALLTYPE Map(
             ID3D11Resource*             pResource,
             UINT                        Subresource,
             D3D11_MAP                   MapType,
             UINT                        MapFlags,
             D3D11_MAPPED_SUBRESOURCE*   pMappedResource) final;
     
-    void Unmap(
+    void STDMETHODCALLTYPE Unmap(
             ID3D11Resource*             pResource,
             UINT                        Subresource) final;
     
-    void Begin(ID3D11Asynchronous *pAsync) final;
+    void STDMETHODCALLTYPE Begin(ID3D11Asynchronous *pAsync) final;
     
-    void End(ID3D11Asynchronous *pAsync) final;
+    void STDMETHODCALLTYPE End(ID3D11Asynchronous *pAsync) final;
     
-    HRESULT GetData(
+    HRESULT STDMETHODCALLTYPE GetData(
             ID3D11Asynchronous*               pAsync,
             void*                             pData,
             UINT                              DataSize,
             UINT                              GetDataFlags) final;
     
-    void SetPredication(
+    void STDMETHODCALLTYPE SetPredication(
             ID3D11Predicate*                  pPredicate,
             WINBOOL                           PredicateValue) final;
     
-    void GetPredication(
+    void STDMETHODCALLTYPE GetPredication(
             ID3D11Predicate**                 ppPredicate,
             WINBOOL*                          pPredicateValue) final;
     
-    void CopySubresourceRegion(
+    void STDMETHODCALLTYPE CopySubresourceRegion(
             ID3D11Resource*                   pDstResource,
             UINT                              DstSubresource,
             UINT                              DstX,
@@ -85,37 +85,37 @@ namespace dxvk {
             UINT                              SrcSubresource,
       const D3D11_BOX*                        pSrcBox) final;
     
-    void CopyResource(
+    void STDMETHODCALLTYPE CopyResource(
             ID3D11Resource*                   pDstResource,
             ID3D11Resource*                   pSrcResource) final;
     
-    void CopyStructureCount(
+    void STDMETHODCALLTYPE CopyStructureCount(
             ID3D11Buffer*                     pDstBuffer,
             UINT                              DstAlignedByteOffset,
             ID3D11UnorderedAccessView*        pSrcView) final;
     
-    void ClearRenderTargetView(
+    void STDMETHODCALLTYPE ClearRenderTargetView(
             ID3D11RenderTargetView*           pRenderTargetView,
       const FLOAT                             ColorRGBA[4]) final;
     
-    void ClearUnorderedAccessViewUint(
+    void STDMETHODCALLTYPE ClearUnorderedAccessViewUint(
             ID3D11UnorderedAccessView*        pUnorderedAccessView,
       const UINT                              Values[4]) final;
     
-    void ClearUnorderedAccessViewFloat(
+    void STDMETHODCALLTYPE ClearUnorderedAccessViewFloat(
             ID3D11UnorderedAccessView*        pUnorderedAccessView,
       const FLOAT                             Values[4]) final;
     
-    void ClearDepthStencilView(
+    void STDMETHODCALLTYPE ClearDepthStencilView(
             ID3D11DepthStencilView*           pDepthStencilView,
             UINT                              ClearFlags,
             FLOAT                             Depth,
             UINT8                             Stencil) final;
     
-    void GenerateMips(
+    void STDMETHODCALLTYPE GenerateMips(
             ID3D11ShaderResourceView*         pShaderResourceView) final;
     
-    void UpdateSubresource(
+    void STDMETHODCALLTYPE UpdateSubresource(
             ID3D11Resource*                   pDstResource,
             UINT                              DstSubresource,
       const D3D11_BOX*                        pDstBox,
@@ -123,354 +123,354 @@ namespace dxvk {
             UINT                              SrcRowPitch,
             UINT                              SrcDepthPitch) final;
     
-    void SetResourceMinLOD(
+    void STDMETHODCALLTYPE SetResourceMinLOD(
             ID3D11Resource*                   pResource,
             FLOAT                             MinLOD) final;
     
-    FLOAT GetResourceMinLOD(
+    FLOAT STDMETHODCALLTYPE GetResourceMinLOD(
             ID3D11Resource*                   pResource) final;
     
-    void ResolveSubresource(
+    void STDMETHODCALLTYPE ResolveSubresource(
             ID3D11Resource*                   pDstResource,
             UINT                              DstSubresource,
             ID3D11Resource*                   pSrcResource,
             UINT                              SrcSubresource,
             DXGI_FORMAT                       Format) final;
     
-    void DrawAuto() final;
+    void STDMETHODCALLTYPE DrawAuto() final;
     
-    void Draw(
+    void STDMETHODCALLTYPE Draw(
             UINT            VertexCount,
             UINT            StartVertexLocation) final;
     
-    void DrawIndexed(
+    void STDMETHODCALLTYPE DrawIndexed(
             UINT            IndexCount,
             UINT            StartIndexLocation,
             INT             BaseVertexLocation) final;
     
-    void DrawInstanced(
+    void STDMETHODCALLTYPE DrawInstanced(
             UINT            VertexCountPerInstance,
             UINT            InstanceCount,
             UINT            StartVertexLocation,
             UINT            StartInstanceLocation) final;
     
-    void DrawIndexedInstanced(
+    void STDMETHODCALLTYPE DrawIndexedInstanced(
             UINT            IndexCountPerInstance,
             UINT            InstanceCount,
             UINT            StartIndexLocation,
             INT             BaseVertexLocation,
             UINT            StartInstanceLocation) final;
     
-    void DrawIndexedInstancedIndirect(
+    void STDMETHODCALLTYPE DrawIndexedInstancedIndirect(
             ID3D11Buffer*   pBufferForArgs,
             UINT            AlignedByteOffsetForArgs) final;
     
-    void DrawInstancedIndirect(
+    void STDMETHODCALLTYPE DrawInstancedIndirect(
             ID3D11Buffer*   pBufferForArgs,
             UINT            AlignedByteOffsetForArgs) final;
     
-    void Dispatch(
+    void STDMETHODCALLTYPE Dispatch(
             UINT            ThreadGroupCountX,
             UINT            ThreadGroupCountY,
             UINT            ThreadGroupCountZ) final;
     
-    void DispatchIndirect(
+    void STDMETHODCALLTYPE DispatchIndirect(
             ID3D11Buffer*   pBufferForArgs,
             UINT            AlignedByteOffsetForArgs) final;
     
-    void IASetInputLayout(
+    void STDMETHODCALLTYPE IASetInputLayout(
             ID3D11InputLayout*                pInputLayout) final;
     
-    void IASetPrimitiveTopology(
+    void STDMETHODCALLTYPE IASetPrimitiveTopology(
             D3D11_PRIMITIVE_TOPOLOGY          Topology) final;
     
-    void IASetVertexBuffers(
+    void STDMETHODCALLTYPE IASetVertexBuffers(
             UINT                              StartSlot,
             UINT                              NumBuffers,
             ID3D11Buffer* const*              ppVertexBuffers,
       const UINT*                             pStrides,
       const UINT*                             pOffsets) final;
     
-    void IASetIndexBuffer(
+    void STDMETHODCALLTYPE IASetIndexBuffer(
             ID3D11Buffer*                     pIndexBuffer,
             DXGI_FORMAT                       Format,
             UINT                              Offset) final;
     
-    void IAGetInputLayout(
+    void STDMETHODCALLTYPE IAGetInputLayout(
             ID3D11InputLayout**               ppInputLayout) final;
     
-    void IAGetPrimitiveTopology(
+    void STDMETHODCALLTYPE IAGetPrimitiveTopology(
             D3D11_PRIMITIVE_TOPOLOGY*         pTopology) final;
     
-    void IAGetVertexBuffers(
+    void STDMETHODCALLTYPE IAGetVertexBuffers(
             UINT                              StartSlot,
             UINT                              NumBuffers,
             ID3D11Buffer**                    ppVertexBuffers,
             UINT*                             pStrides,
             UINT*                             pOffsets) final;
     
-    void IAGetIndexBuffer(
+    void STDMETHODCALLTYPE IAGetIndexBuffer(
             ID3D11Buffer**                    pIndexBuffer,
             DXGI_FORMAT*                      Format,
             UINT*                             Offset) final;
     
-    void VSSetShader(
+    void STDMETHODCALLTYPE VSSetShader(
             ID3D11VertexShader*               pVertexShader,
             ID3D11ClassInstance* const*       ppClassInstances,
             UINT                              NumClassInstances) final;
     
-    void VSSetConstantBuffers(
+    void STDMETHODCALLTYPE VSSetConstantBuffers(
             UINT                              StartSlot,
             UINT                              NumBuffers,
             ID3D11Buffer* const*              ppConstantBuffers) final;
     
-    void VSSetShaderResources(
+    void STDMETHODCALLTYPE VSSetShaderResources(
             UINT                              StartSlot,
             UINT                              NumViews,
             ID3D11ShaderResourceView* const*  ppShaderResourceViews) final;
     
-    void VSSetSamplers(
+    void STDMETHODCALLTYPE VSSetSamplers(
             UINT                              StartSlot,
             UINT                              NumSamplers,
             ID3D11SamplerState* const*        ppSamplers) final;
     
-    void VSGetShader(
+    void STDMETHODCALLTYPE VSGetShader(
             ID3D11VertexShader**              ppVertexShader,
             ID3D11ClassInstance**             ppClassInstances,
             UINT*                             pNumClassInstances) final;
     
-    void VSGetConstantBuffers(
+    void STDMETHODCALLTYPE VSGetConstantBuffers(
             UINT                              StartSlot,
             UINT                              NumBuffers,
             ID3D11Buffer**                    ppConstantBuffers) final;
     
-    void VSGetShaderResources(
+    void STDMETHODCALLTYPE VSGetShaderResources(
             UINT                              StartSlot,
             UINT                              NumViews,
             ID3D11ShaderResourceView**        ppShaderResourceViews) final;
     
-    void VSGetSamplers(
+    void STDMETHODCALLTYPE VSGetSamplers(
             UINT                              StartSlot,
             UINT                              NumSamplers,
             ID3D11SamplerState**              ppSamplers) final;
     
-    void HSSetShader(
+    void STDMETHODCALLTYPE HSSetShader(
             ID3D11HullShader*                 pHullShader,
             ID3D11ClassInstance* const*       ppClassInstances,
             UINT                              NumClassInstances) final;
     
-    void HSSetShaderResources(
+    void STDMETHODCALLTYPE HSSetShaderResources(
             UINT                              StartSlot,
             UINT                              NumViews,
             ID3D11ShaderResourceView* const*  ppShaderResourceViews) final;
     
-    void HSSetConstantBuffers(
+    void STDMETHODCALLTYPE HSSetConstantBuffers(
             UINT                              StartSlot,
             UINT                              NumBuffers,
             ID3D11Buffer* const*              ppConstantBuffers) final;
     
-    void HSSetSamplers(
+    void STDMETHODCALLTYPE HSSetSamplers(
             UINT                              StartSlot,
             UINT                              NumSamplers,
             ID3D11SamplerState* const*        ppSamplers) final;
     
-    void HSGetShader(
+    void STDMETHODCALLTYPE HSGetShader(
             ID3D11HullShader**                ppHullShader,
             ID3D11ClassInstance**             ppClassInstances,
             UINT*                             pNumClassInstances) final;
     
-    void HSGetConstantBuffers(
+    void STDMETHODCALLTYPE HSGetConstantBuffers(
             UINT                              StartSlot,
             UINT                              NumBuffers,
             ID3D11Buffer**                    ppConstantBuffers) final;
     
-    void HSGetShaderResources(
+    void STDMETHODCALLTYPE HSGetShaderResources(
             UINT                              StartSlot,
             UINT                              NumViews,
             ID3D11ShaderResourceView**        ppShaderResourceViews) final;
     
-    void HSGetSamplers(
+    void STDMETHODCALLTYPE HSGetSamplers(
             UINT                              StartSlot,
             UINT                              NumSamplers,
             ID3D11SamplerState**              ppSamplers) final;
     
-    void DSSetShader(
+    void STDMETHODCALLTYPE DSSetShader(
             ID3D11DomainShader*               pDomainShader,
             ID3D11ClassInstance* const*       ppClassInstances,
             UINT                              NumClassInstances) final;
     
-    void DSSetShaderResources(
+    void STDMETHODCALLTYPE DSSetShaderResources(
             UINT                              StartSlot,
             UINT                              NumViews,
             ID3D11ShaderResourceView* const*  ppShaderResourceViews) final;
     
-    void DSSetConstantBuffers(
+    void STDMETHODCALLTYPE DSSetConstantBuffers(
             UINT                              StartSlot,
             UINT                              NumBuffers,
             ID3D11Buffer* const*              ppConstantBuffers) final;
     
-    void DSSetSamplers(
+    void STDMETHODCALLTYPE DSSetSamplers(
             UINT                              StartSlot,
             UINT                              NumSamplers,
             ID3D11SamplerState* const*        ppSamplers) final;
     
-    void DSGetShader(
+    void STDMETHODCALLTYPE DSGetShader(
             ID3D11DomainShader**              ppDomainShader,
             ID3D11ClassInstance**             ppClassInstances,
             UINT*                             pNumClassInstances) final;
     
-    void DSGetConstantBuffers(
+    void STDMETHODCALLTYPE DSGetConstantBuffers(
             UINT                              StartSlot,
             UINT                              NumBuffers,
             ID3D11Buffer**                    ppConstantBuffers) final;
     
-    void DSGetShaderResources(
+    void STDMETHODCALLTYPE DSGetShaderResources(
             UINT                              StartSlot,
             UINT                              NumViews,
             ID3D11ShaderResourceView**        ppShaderResourceViews) final;
     
-    void DSGetSamplers(
+    void STDMETHODCALLTYPE DSGetSamplers(
             UINT                              StartSlot,
             UINT                              NumSamplers,
             ID3D11SamplerState**              ppSamplers) final;
     
-    void GSSetShader(
+    void STDMETHODCALLTYPE GSSetShader(
             ID3D11GeometryShader*             pShader,
             ID3D11ClassInstance* const*       ppClassInstances,
             UINT                              NumClassInstances) final;
     
-    void GSSetConstantBuffers(
+    void STDMETHODCALLTYPE GSSetConstantBuffers(
             UINT                              StartSlot,
             UINT                              NumBuffers,
             ID3D11Buffer* const*              ppConstantBuffers) final;
     
-    void GSSetShaderResources(
+    void STDMETHODCALLTYPE GSSetShaderResources(
             UINT                              StartSlot,
             UINT                              NumViews,
             ID3D11ShaderResourceView* const*  ppShaderResourceViews) final;
     
-    void GSSetSamplers(
+    void STDMETHODCALLTYPE GSSetSamplers(
             UINT                              StartSlot,
             UINT                              NumSamplers,
             ID3D11SamplerState* const*        ppSamplers) final;
     
-    void GSGetShader(
+    void STDMETHODCALLTYPE GSGetShader(
             ID3D11GeometryShader**            ppGeometryShader,
             ID3D11ClassInstance**             ppClassInstances,
             UINT*                             pNumClassInstances) final;
     
-    void GSGetConstantBuffers(
+    void STDMETHODCALLTYPE GSGetConstantBuffers(
             UINT                              StartSlot,
             UINT                              NumBuffers,
             ID3D11Buffer**                    ppConstantBuffers) final;
     
-    void GSGetShaderResources(
+    void STDMETHODCALLTYPE GSGetShaderResources(
             UINT                              StartSlot,
             UINT                              NumViews,
             ID3D11ShaderResourceView**        ppShaderResourceViews) final;
     
-    void GSGetSamplers(
+    void STDMETHODCALLTYPE GSGetSamplers(
             UINT                              StartSlot,
             UINT                              NumSamplers,
             ID3D11SamplerState**              ppSamplers) final;
     
-    void PSSetShader(
+    void STDMETHODCALLTYPE PSSetShader(
             ID3D11PixelShader*                pPixelShader,
             ID3D11ClassInstance* const*       ppClassInstances,
             UINT                              NumClassInstances) final;
     
-    void PSSetConstantBuffers(
+    void STDMETHODCALLTYPE PSSetConstantBuffers(
             UINT                              StartSlot,
             UINT                              NumBuffers,
             ID3D11Buffer* const*              ppConstantBuffers) final;
     
-    void PSSetShaderResources(
+    void STDMETHODCALLTYPE PSSetShaderResources(
             UINT                              StartSlot,
             UINT                              NumViews,
             ID3D11ShaderResourceView* const*  ppShaderResourceViews) final;
     
-    void PSSetSamplers(
+    void STDMETHODCALLTYPE PSSetSamplers(
             UINT                              StartSlot,
             UINT                              NumSamplers,
             ID3D11SamplerState* const*        ppSamplers) final;
     
-    void PSGetShader(
+    void STDMETHODCALLTYPE PSGetShader(
             ID3D11PixelShader**               ppPixelShader,
             ID3D11ClassInstance**             ppClassInstances,
             UINT*                             pNumClassInstances) final;
     
-    void PSGetConstantBuffers(
+    void STDMETHODCALLTYPE PSGetConstantBuffers(
             UINT                              StartSlot,
             UINT                              NumBuffers,
             ID3D11Buffer**                    ppConstantBuffers) final;
     
-    void PSGetShaderResources(
+    void STDMETHODCALLTYPE PSGetShaderResources(
             UINT                              StartSlot,
             UINT                              NumViews,
             ID3D11ShaderResourceView**        ppShaderResourceViews) final;
     
-    void PSGetSamplers(
+    void STDMETHODCALLTYPE PSGetSamplers(
             UINT                              StartSlot,
             UINT                              NumSamplers,
             ID3D11SamplerState**              ppSamplers) final;
     
-    void CSSetShader(
+    void STDMETHODCALLTYPE CSSetShader(
             ID3D11ComputeShader*              pComputeShader,
             ID3D11ClassInstance* const*       ppClassInstances,
             UINT                              NumClassInstances) final;
     
-    void CSSetConstantBuffers(
+    void STDMETHODCALLTYPE CSSetConstantBuffers(
             UINT                              StartSlot,
             UINT                              NumBuffers,
             ID3D11Buffer* const*              ppConstantBuffers) final;
     
-    void CSSetShaderResources(
+    void STDMETHODCALLTYPE CSSetShaderResources(
             UINT                              StartSlot,
             UINT                              NumViews,
             ID3D11ShaderResourceView* const*  ppShaderResourceViews) final;
     
-    void CSSetSamplers(
+    void STDMETHODCALLTYPE CSSetSamplers(
             UINT                              StartSlot,
             UINT                              NumSamplers,
             ID3D11SamplerState* const*        ppSamplers) final;
     
-    void CSSetUnorderedAccessViews(
+    void STDMETHODCALLTYPE CSSetUnorderedAccessViews(
             UINT                              StartSlot,
             UINT                              NumUAVs,
             ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
       const UINT*                             pUAVInitialCounts) final;
     
-    void CSGetShader(
+    void STDMETHODCALLTYPE CSGetShader(
             ID3D11ComputeShader**             ppComputeShader,
             ID3D11ClassInstance**             ppClassInstances,
             UINT*                             pNumClassInstances) final;
     
-    void CSGetConstantBuffers(
+    void STDMETHODCALLTYPE CSGetConstantBuffers(
             UINT                              StartSlot,
             UINT                              NumBuffers,
             ID3D11Buffer**                    ppConstantBuffers) final;
     
-    void CSGetShaderResources(
+    void STDMETHODCALLTYPE CSGetShaderResources(
             UINT                              StartSlot,
             UINT                              NumViews,
             ID3D11ShaderResourceView**        ppShaderResourceViews) final;
     
-    void CSGetSamplers(
+    void STDMETHODCALLTYPE CSGetSamplers(
             UINT                              StartSlot,
             UINT                              NumSamplers,
             ID3D11SamplerState**              ppSamplers) final;
     
-    void CSGetUnorderedAccessViews(
+    void STDMETHODCALLTYPE CSGetUnorderedAccessViews(
             UINT                              StartSlot,
             UINT                              NumUAVs,
             ID3D11UnorderedAccessView**       ppUnorderedAccessViews) final;
     
-    void OMSetRenderTargets(
+    void STDMETHODCALLTYPE OMSetRenderTargets(
             UINT                              NumViews,
             ID3D11RenderTargetView* const*    ppRenderTargetViews,
             ID3D11DepthStencilView*           pDepthStencilView) final;
     
-    void OMSetRenderTargetsAndUnorderedAccessViews(
+    void STDMETHODCALLTYPE OMSetRenderTargetsAndUnorderedAccessViews(
             UINT                              NumRTVs,
             ID3D11RenderTargetView* const*    ppRenderTargetViews,
             ID3D11DepthStencilView*           pDepthStencilView,
@@ -479,21 +479,21 @@ namespace dxvk {
             ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
       const UINT*                             pUAVInitialCounts) final;
     
-    void OMSetBlendState(
+    void STDMETHODCALLTYPE OMSetBlendState(
             ID3D11BlendState*                 pBlendState,
       const FLOAT                             BlendFactor[4],
             UINT                              SampleMask) final;
     
-    void OMSetDepthStencilState(
+    void STDMETHODCALLTYPE OMSetDepthStencilState(
             ID3D11DepthStencilState*          pDepthStencilState,
             UINT                              StencilRef) final;
     
-    void OMGetRenderTargets(
+    void STDMETHODCALLTYPE OMGetRenderTargets(
             UINT                              NumViews,
             ID3D11RenderTargetView**          ppRenderTargetViews,
             ID3D11DepthStencilView**          ppDepthStencilView) final;
     
-    void OMGetRenderTargetsAndUnorderedAccessViews(
+    void STDMETHODCALLTYPE OMGetRenderTargetsAndUnorderedAccessViews(
             UINT                              NumRTVs,
             ID3D11RenderTargetView**          ppRenderTargetViews,
             ID3D11DepthStencilView**          ppDepthStencilView,
@@ -501,43 +501,43 @@ namespace dxvk {
             UINT                              NumUAVs,
             ID3D11UnorderedAccessView**       ppUnorderedAccessViews) final;
     
-    void OMGetBlendState(
+    void STDMETHODCALLTYPE OMGetBlendState(
             ID3D11BlendState**                ppBlendState,
             FLOAT                             BlendFactor[4],
             UINT*                             pSampleMask) final;
     
-    void OMGetDepthStencilState(
+    void STDMETHODCALLTYPE OMGetDepthStencilState(
             ID3D11DepthStencilState**         ppDepthStencilState,
             UINT*                             pStencilRef) final;
     
-    void RSSetState(
+    void STDMETHODCALLTYPE RSSetState(
             ID3D11RasterizerState*            pRasterizerState) final;
     
-    void RSSetViewports(
+    void STDMETHODCALLTYPE RSSetViewports(
             UINT                              NumViewports,
       const D3D11_VIEWPORT*                   pViewports) final;
     
-    void RSSetScissorRects(
+    void STDMETHODCALLTYPE RSSetScissorRects(
             UINT                              NumRects,
       const D3D11_RECT*                       pRects) final;
     
-    void RSGetState(
+    void STDMETHODCALLTYPE RSGetState(
             ID3D11RasterizerState**           ppRasterizerState) final;
     
-    void RSGetViewports(
+    void STDMETHODCALLTYPE RSGetViewports(
             UINT*                             pNumViewports,
             D3D11_VIEWPORT*                   pViewports) final;
     
-    void RSGetScissorRects(
+    void STDMETHODCALLTYPE RSGetScissorRects(
             UINT*                             pNumRects,
             D3D11_RECT*                       pRects) final;
     
-    void SOSetTargets(
+    void STDMETHODCALLTYPE SOSetTargets(
             UINT                              NumBuffers,
             ID3D11Buffer* const*              ppSOTargets,
       const UINT*                             pOffsets) final;
     
-    void SOGetTargets(
+    void STDMETHODCALLTYPE SOGetTargets(
             UINT                              NumBuffers,
             ID3D11Buffer**                    ppSOTargets) final;
     

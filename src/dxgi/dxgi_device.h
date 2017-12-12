@@ -18,45 +18,45 @@ namespace dxvk {
       const VkPhysicalDeviceFeatures* features);
     ~DxgiDevice();
     
-    HRESULT QueryInterface(
+    HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID riid,
             void **ppvObject) final;
     
-    HRESULT GetParent(
+    HRESULT STDMETHODCALLTYPE GetParent(
             REFIID riid,
             void   **ppParent) final;
     
-    HRESULT CreateSurface(
+    HRESULT STDMETHODCALLTYPE CreateSurface(
       const DXGI_SURFACE_DESC*    pDesc,
             UINT                  NumSurfaces,
             DXGI_USAGE            Usage,
       const DXGI_SHARED_RESOURCE* pSharedResource,
             IDXGISurface**        ppSurface) final;
     
-    HRESULT GetAdapter(
+    HRESULT STDMETHODCALLTYPE GetAdapter(
             IDXGIAdapter**        pAdapter) final;
     
-    HRESULT GetGPUThreadPriority(
+    HRESULT STDMETHODCALLTYPE GetGPUThreadPriority(
             INT*                  pPriority) final;
     
-    HRESULT QueryResourceResidency(
+    HRESULT STDMETHODCALLTYPE QueryResourceResidency(
             IUnknown* const*      ppResources,
             DXGI_RESIDENCY*       pResidencyStatus,
             UINT                  NumResources) final;
     
-    HRESULT SetGPUThreadPriority(
+    HRESULT STDMETHODCALLTYPE SetGPUThreadPriority(
             INT                   Priority) final;
     
-    HRESULT GetMaximumFrameLatency(
+    HRESULT STDMETHODCALLTYPE GetMaximumFrameLatency(
             UINT*                 pMaxLatency) final;
     
-    HRESULT SetMaximumFrameLatency(
+    HRESULT STDMETHODCALLTYPE SetMaximumFrameLatency(
             UINT                  MaxLatency) final;
     
-    void SetDeviceLayer(
+    void STDMETHODCALLTYPE SetDeviceLayer(
             IUnknown*             layer) final;
     
-    Rc<DxvkDevice> GetDXVKDevice() final;
+    Rc<DxvkDevice> STDMETHODCALLTYPE GetDXVKDevice() final;
     
   private:
     

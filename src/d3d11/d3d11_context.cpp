@@ -47,17 +47,17 @@ namespace dxvk {
   }
   
   
-  ULONG D3D11DeviceContext::AddRef() {
+  ULONG STDMETHODCALLTYPE D3D11DeviceContext::AddRef() {
     return m_parent->AddRef();
   }
   
   
-  ULONG D3D11DeviceContext::Release() {
+  ULONG STDMETHODCALLTYPE D3D11DeviceContext::Release() {
     return m_parent->Release();
   }
   
   
-  HRESULT D3D11DeviceContext::QueryInterface(
+  HRESULT STDMETHODCALLTYPE D3D11DeviceContext::QueryInterface(
           REFIID  riid,
           void**  ppvObject) {
     COM_QUERY_IFACE(riid, ppvObject, IUnknown);
@@ -69,22 +69,22 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::GetDevice(ID3D11Device **ppDevice) {
+  void STDMETHODCALLTYPE D3D11DeviceContext::GetDevice(ID3D11Device **ppDevice) {
     *ppDevice = ref(m_parent);
   }
   
   
-  D3D11_DEVICE_CONTEXT_TYPE D3D11DeviceContext::GetType() {
+  D3D11_DEVICE_CONTEXT_TYPE STDMETHODCALLTYPE D3D11DeviceContext::GetType() {
     return m_type;
   }
   
   
-  UINT D3D11DeviceContext::GetContextFlags() {
+  UINT STDMETHODCALLTYPE D3D11DeviceContext::GetContextFlags() {
     return m_flags;
   }
   
   
-  void D3D11DeviceContext::ClearState() {
+  void STDMETHODCALLTYPE D3D11DeviceContext::ClearState() {
     this->IASetInputLayout(nullptr);
     this->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED);
     this->IASetVertexBuffers(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT, nullptr, nullptr, nullptr);
@@ -134,7 +134,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::Flush() {
+  void STDMETHODCALLTYPE D3D11DeviceContext::Flush() {
     if (m_type == D3D11_DEVICE_CONTEXT_IMMEDIATE) {
       m_device->submitCommandList(
         m_context->endRecording(),
@@ -148,14 +148,14 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::ExecuteCommandList(
+  void STDMETHODCALLTYPE D3D11DeviceContext::ExecuteCommandList(
           ID3D11CommandList*  pCommandList,
           WINBOOL             RestoreContextState) {
     Logger::err("D3D11DeviceContext::ExecuteCommandList: Not implemented");
   }
   
   
-  HRESULT D3D11DeviceContext::FinishCommandList(
+  HRESULT STDMETHODCALLTYPE D3D11DeviceContext::FinishCommandList(
           WINBOOL             RestoreDeferredContextState,
           ID3D11CommandList   **ppCommandList) {
     if (m_type == D3D11_DEVICE_CONTEXT_DEFERRED) {
@@ -168,7 +168,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11DeviceContext::Map(
+  HRESULT STDMETHODCALLTYPE D3D11DeviceContext::Map(
           ID3D11Resource*             pResource,
           UINT                        Subresource,
           D3D11_MAP                   MapType,
@@ -210,7 +210,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::Unmap(
+  void STDMETHODCALLTYPE D3D11DeviceContext::Unmap(
           ID3D11Resource*             pResource,
           UINT                        Subresource) {
     // There's literally nothing we have to do here at the moment
@@ -219,17 +219,17 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::Begin(ID3D11Asynchronous *pAsync) {
+  void STDMETHODCALLTYPE D3D11DeviceContext::Begin(ID3D11Asynchronous *pAsync) {
     Logger::err("D3D11DeviceContext::Begin: Not implemented");
   }
   
   
-  void D3D11DeviceContext::End(ID3D11Asynchronous *pAsync) {
+  void STDMETHODCALLTYPE D3D11DeviceContext::End(ID3D11Asynchronous *pAsync) {
     Logger::err("D3D11DeviceContext::End: Not implemented");
   }
   
   
-  HRESULT D3D11DeviceContext::GetData(
+  HRESULT STDMETHODCALLTYPE D3D11DeviceContext::GetData(
           ID3D11Asynchronous*               pAsync,
           void*                             pData,
           UINT                              DataSize,
@@ -239,21 +239,21 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::SetPredication(
+  void STDMETHODCALLTYPE D3D11DeviceContext::SetPredication(
           ID3D11Predicate*                  pPredicate,
           WINBOOL                           PredicateValue) {
     Logger::err("D3D11DeviceContext::SetPredication: Not implemented");
   }
   
   
-  void D3D11DeviceContext::GetPredication(
+  void STDMETHODCALLTYPE D3D11DeviceContext::GetPredication(
           ID3D11Predicate**                 ppPredicate,
           WINBOOL*                          pPredicateValue) {
     Logger::err("D3D11DeviceContext::GetPredication: Not implemented");
   }
   
   
-  void D3D11DeviceContext::CopySubresourceRegion(
+  void STDMETHODCALLTYPE D3D11DeviceContext::CopySubresourceRegion(
           ID3D11Resource*                   pDstResource,
           UINT                              DstSubresource,
           UINT                              DstX,
@@ -266,14 +266,14 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::CopyResource(
+  void STDMETHODCALLTYPE D3D11DeviceContext::CopyResource(
           ID3D11Resource*                   pDstResource,
           ID3D11Resource*                   pSrcResource) {
     Logger::err("D3D11DeviceContext::CopyResource: Not implemented");
   }
   
   
-  void D3D11DeviceContext::CopyStructureCount(
+  void STDMETHODCALLTYPE D3D11DeviceContext::CopyStructureCount(
           ID3D11Buffer*                     pDstBuffer,
           UINT                              DstAlignedByteOffset,
           ID3D11UnorderedAccessView*        pSrcView) {
@@ -281,7 +281,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::ClearRenderTargetView(
+  void STDMETHODCALLTYPE D3D11DeviceContext::ClearRenderTargetView(
           ID3D11RenderTargetView*           pRenderTargetView,
     const FLOAT                             ColorRGBA[4]) {
     auto rtv = static_cast<D3D11RenderTargetView*>(pRenderTargetView);
@@ -334,21 +334,21 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::ClearUnorderedAccessViewUint(
+  void STDMETHODCALLTYPE D3D11DeviceContext::ClearUnorderedAccessViewUint(
           ID3D11UnorderedAccessView*        pUnorderedAccessView,
     const UINT                              Values[4]) {
     Logger::err("D3D11DeviceContext::ClearUnorderedAccessViewUint: Not implemented");
   }
   
   
-  void D3D11DeviceContext::ClearUnorderedAccessViewFloat(
+  void STDMETHODCALLTYPE D3D11DeviceContext::ClearUnorderedAccessViewFloat(
           ID3D11UnorderedAccessView*        pUnorderedAccessView,
     const FLOAT                             Values[4]) {
     Logger::err("D3D11DeviceContext::ClearUnorderedAccessViewFloat: Not implemented");
   }
   
   
-  void D3D11DeviceContext::ClearDepthStencilView(
+  void STDMETHODCALLTYPE D3D11DeviceContext::ClearDepthStencilView(
           ID3D11DepthStencilView*           pDepthStencilView,
           UINT                              ClearFlags,
           FLOAT                             Depth,
@@ -395,12 +395,12 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::GenerateMips(ID3D11ShaderResourceView* pShaderResourceView) {
+  void STDMETHODCALLTYPE D3D11DeviceContext::GenerateMips(ID3D11ShaderResourceView* pShaderResourceView) {
     Logger::err("D3D11DeviceContext::GenerateMips: Not implemented");
   }
   
   
-  void D3D11DeviceContext::UpdateSubresource(
+  void STDMETHODCALLTYPE D3D11DeviceContext::UpdateSubresource(
           ID3D11Resource*                   pDstResource,
           UINT                              DstSubresource,
     const D3D11_BOX*                        pDstBox,
@@ -436,20 +436,20 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::SetResourceMinLOD(
+  void STDMETHODCALLTYPE D3D11DeviceContext::SetResourceMinLOD(
           ID3D11Resource*                   pResource,
           FLOAT                             MinLOD) {
     Logger::err("D3D11DeviceContext::SetResourceMinLOD: Not implemented");
   }
   
   
-  FLOAT D3D11DeviceContext::GetResourceMinLOD(ID3D11Resource* pResource) {
+  FLOAT STDMETHODCALLTYPE D3D11DeviceContext::GetResourceMinLOD(ID3D11Resource* pResource) {
     Logger::err("D3D11DeviceContext::GetResourceMinLOD: Not implemented");
     return 0.0f;
   }
   
   
-  void D3D11DeviceContext::ResolveSubresource(
+  void STDMETHODCALLTYPE D3D11DeviceContext::ResolveSubresource(
           ID3D11Resource*                   pDstResource,
           UINT                              DstSubresource,
           ID3D11Resource*                   pSrcResource,
@@ -459,12 +459,12 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::DrawAuto() {
+  void STDMETHODCALLTYPE D3D11DeviceContext::DrawAuto() {
     Logger::err("D3D11DeviceContext::DrawAuto: Not implemented");
   }
   
   
-  void D3D11DeviceContext::Draw(
+  void STDMETHODCALLTYPE D3D11DeviceContext::Draw(
           UINT            VertexCount,
           UINT            StartVertexLocation) {
     m_context->draw(
@@ -473,7 +473,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::DrawIndexed(
+  void STDMETHODCALLTYPE D3D11DeviceContext::DrawIndexed(
           UINT            IndexCount,
           UINT            StartIndexLocation,
           INT             BaseVertexLocation) {
@@ -484,7 +484,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::DrawInstanced(
+  void STDMETHODCALLTYPE D3D11DeviceContext::DrawInstanced(
           UINT            VertexCountPerInstance,
           UINT            InstanceCount,
           UINT            StartVertexLocation,
@@ -497,7 +497,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::DrawIndexedInstanced(
+  void STDMETHODCALLTYPE D3D11DeviceContext::DrawIndexedInstanced(
           UINT            IndexCountPerInstance,
           UINT            InstanceCount,
           UINT            StartIndexLocation,
@@ -512,21 +512,21 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::DrawIndexedInstancedIndirect(
+  void STDMETHODCALLTYPE D3D11DeviceContext::DrawIndexedInstancedIndirect(
           ID3D11Buffer*   pBufferForArgs,
           UINT            AlignedByteOffsetForArgs) {
     Logger::err("D3D11DeviceContext::DrawIndexedInstancedIndirect: Not implemented");
   }
   
   
-  void D3D11DeviceContext::DrawInstancedIndirect(
+  void STDMETHODCALLTYPE D3D11DeviceContext::DrawInstancedIndirect(
           ID3D11Buffer*   pBufferForArgs,
           UINT            AlignedByteOffsetForArgs) {
     Logger::err("D3D11DeviceContext::DrawInstancedIndirect: Not implemented");
   }
   
   
-  void D3D11DeviceContext::Dispatch(
+  void STDMETHODCALLTYPE D3D11DeviceContext::Dispatch(
           UINT            ThreadGroupCountX,
           UINT            ThreadGroupCountY,
           UINT            ThreadGroupCountZ) {
@@ -537,14 +537,14 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::DispatchIndirect(
+  void STDMETHODCALLTYPE D3D11DeviceContext::DispatchIndirect(
           ID3D11Buffer*   pBufferForArgs,
           UINT            AlignedByteOffsetForArgs) {
     Logger::err("D3D11DeviceContext::DispatchIndirect: Not implemented");
   }
   
   
-  void D3D11DeviceContext::IASetInputLayout(ID3D11InputLayout* pInputLayout) {
+  void STDMETHODCALLTYPE D3D11DeviceContext::IASetInputLayout(ID3D11InputLayout* pInputLayout) {
     auto inputLayout = static_cast<D3D11InputLayout*>(pInputLayout);
     
     if (m_state.ia.inputLayout != inputLayout) {
@@ -558,7 +558,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY Topology) {
+  void STDMETHODCALLTYPE D3D11DeviceContext::IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY Topology) {
     if (m_state.ia.primitiveTopology != Topology) {
       m_state.ia.primitiveTopology = Topology;
       
@@ -624,7 +624,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::IASetVertexBuffers(
+  void STDMETHODCALLTYPE D3D11DeviceContext::IASetVertexBuffers(
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppVertexBuffers,
@@ -662,7 +662,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::IASetIndexBuffer(
+  void STDMETHODCALLTYPE D3D11DeviceContext::IASetIndexBuffer(
           ID3D11Buffer*                     pIndexBuffer,
           DXGI_FORMAT                       Format,
           UINT                              Offset) {
@@ -701,17 +701,17 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::IAGetInputLayout(ID3D11InputLayout** ppInputLayout) {
+  void STDMETHODCALLTYPE D3D11DeviceContext::IAGetInputLayout(ID3D11InputLayout** ppInputLayout) {
     *ppInputLayout = m_state.ia.inputLayout.ref();
   }
   
   
-  void D3D11DeviceContext::IAGetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY* pTopology) {
+  void STDMETHODCALLTYPE D3D11DeviceContext::IAGetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY* pTopology) {
     *pTopology = m_state.ia.primitiveTopology;
   }
   
   
-  void D3D11DeviceContext::IAGetVertexBuffers(
+  void STDMETHODCALLTYPE D3D11DeviceContext::IAGetVertexBuffers(
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer**                    ppVertexBuffers,
@@ -721,7 +721,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::IAGetIndexBuffer(
+  void STDMETHODCALLTYPE D3D11DeviceContext::IAGetIndexBuffer(
           ID3D11Buffer**                    pIndexBuffer,
           DXGI_FORMAT*                      Format,
           UINT*                             Offset) {
@@ -729,7 +729,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::VSSetShader(
+  void STDMETHODCALLTYPE D3D11DeviceContext::VSSetShader(
           ID3D11VertexShader*               pVertexShader,
           ID3D11ClassInstance* const*       ppClassInstances,
           UINT                              NumClassInstances) {
@@ -747,7 +747,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::VSSetConstantBuffers(
+  void STDMETHODCALLTYPE D3D11DeviceContext::VSSetConstantBuffers(
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppConstantBuffers) {
@@ -759,7 +759,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::VSSetShaderResources(
+  void STDMETHODCALLTYPE D3D11DeviceContext::VSSetShaderResources(
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
@@ -771,7 +771,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::VSSetSamplers(
+  void STDMETHODCALLTYPE D3D11DeviceContext::VSSetSamplers(
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState* const*        ppSamplers) {
@@ -783,7 +783,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::VSGetShader(
+  void STDMETHODCALLTYPE D3D11DeviceContext::VSGetShader(
           ID3D11VertexShader**              ppVertexShader,
           ID3D11ClassInstance**             ppClassInstances,
           UINT*                             pNumClassInstances) {
@@ -797,7 +797,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::VSGetConstantBuffers(
+  void STDMETHODCALLTYPE D3D11DeviceContext::VSGetConstantBuffers(
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer**                    ppConstantBuffers) {
@@ -805,7 +805,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::VSGetShaderResources(
+  void STDMETHODCALLTYPE D3D11DeviceContext::VSGetShaderResources(
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView**        ppShaderResourceViews) {
@@ -813,7 +813,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::VSGetSamplers(
+  void STDMETHODCALLTYPE D3D11DeviceContext::VSGetSamplers(
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState**              ppSamplers) {
@@ -821,7 +821,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::HSSetShader(
+  void STDMETHODCALLTYPE D3D11DeviceContext::HSSetShader(
           ID3D11HullShader*                 pHullShader,
           ID3D11ClassInstance* const*       ppClassInstances,
           UINT                              NumClassInstances) {
@@ -830,7 +830,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::HSSetShaderResources(
+  void STDMETHODCALLTYPE D3D11DeviceContext::HSSetShaderResources(
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
@@ -838,7 +838,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::HSSetConstantBuffers(
+  void STDMETHODCALLTYPE D3D11DeviceContext::HSSetConstantBuffers(
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppConstantBuffers) {
@@ -846,7 +846,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::HSSetSamplers(
+  void STDMETHODCALLTYPE D3D11DeviceContext::HSSetSamplers(
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState* const*        ppSamplers) {
@@ -854,7 +854,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::HSGetShader(
+  void STDMETHODCALLTYPE D3D11DeviceContext::HSGetShader(
           ID3D11HullShader**                ppHullShader,
           ID3D11ClassInstance**             ppClassInstances,
           UINT*                             pNumClassInstances) {
@@ -862,7 +862,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::HSGetConstantBuffers(
+  void STDMETHODCALLTYPE D3D11DeviceContext::HSGetConstantBuffers(
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer**                    ppConstantBuffers) {
@@ -870,7 +870,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::HSGetShaderResources(
+  void STDMETHODCALLTYPE D3D11DeviceContext::HSGetShaderResources(
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView**        ppShaderResourceViews) {
@@ -878,7 +878,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::HSGetSamplers(
+  void STDMETHODCALLTYPE D3D11DeviceContext::HSGetSamplers(
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState**              ppSamplers) {
@@ -886,7 +886,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::DSSetShader(
+  void STDMETHODCALLTYPE D3D11DeviceContext::DSSetShader(
           ID3D11DomainShader*               pDomainShader,
           ID3D11ClassInstance* const*       ppClassInstances,
           UINT                              NumClassInstances) {
@@ -895,7 +895,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::DSSetShaderResources(
+  void STDMETHODCALLTYPE D3D11DeviceContext::DSSetShaderResources(
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
@@ -903,7 +903,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::DSSetConstantBuffers(
+  void STDMETHODCALLTYPE D3D11DeviceContext::DSSetConstantBuffers(
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppConstantBuffers) {
@@ -911,7 +911,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::DSSetSamplers(
+  void STDMETHODCALLTYPE D3D11DeviceContext::DSSetSamplers(
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState* const*        ppSamplers) {
@@ -919,7 +919,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::DSGetShader(
+  void STDMETHODCALLTYPE D3D11DeviceContext::DSGetShader(
           ID3D11DomainShader**              ppDomainShader,
           ID3D11ClassInstance**             ppClassInstances,
           UINT*                             pNumClassInstances) {
@@ -927,7 +927,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::DSGetConstantBuffers(
+  void STDMETHODCALLTYPE D3D11DeviceContext::DSGetConstantBuffers(
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer**                    ppConstantBuffers) {
@@ -935,7 +935,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::DSGetShaderResources(
+  void STDMETHODCALLTYPE D3D11DeviceContext::DSGetShaderResources(
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView**        ppShaderResourceViews) {
@@ -943,7 +943,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::DSGetSamplers(
+  void STDMETHODCALLTYPE D3D11DeviceContext::DSGetSamplers(
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState**              ppSamplers) {
@@ -951,7 +951,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::GSSetShader(
+  void STDMETHODCALLTYPE D3D11DeviceContext::GSSetShader(
           ID3D11GeometryShader*             pShader,
           ID3D11ClassInstance* const*       ppClassInstances,
           UINT                              NumClassInstances) {
@@ -960,7 +960,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::GSSetConstantBuffers(
+  void STDMETHODCALLTYPE D3D11DeviceContext::GSSetConstantBuffers(
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppConstantBuffers) {
@@ -968,7 +968,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::GSSetShaderResources(
+  void STDMETHODCALLTYPE D3D11DeviceContext::GSSetShaderResources(
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
@@ -976,7 +976,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::GSSetSamplers(
+  void STDMETHODCALLTYPE D3D11DeviceContext::GSSetSamplers(
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState* const*        ppSamplers) {
@@ -984,7 +984,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::GSGetShader(
+  void STDMETHODCALLTYPE D3D11DeviceContext::GSGetShader(
           ID3D11GeometryShader**            ppGeometryShader,
           ID3D11ClassInstance**             ppClassInstances,
           UINT*                             pNumClassInstances) {
@@ -992,7 +992,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::GSGetConstantBuffers(
+  void STDMETHODCALLTYPE D3D11DeviceContext::GSGetConstantBuffers(
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer**                    ppConstantBuffers) {
@@ -1000,7 +1000,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::GSGetShaderResources(
+  void STDMETHODCALLTYPE D3D11DeviceContext::GSGetShaderResources(
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView**        ppShaderResourceViews) {
@@ -1008,7 +1008,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::GSGetSamplers(
+  void STDMETHODCALLTYPE D3D11DeviceContext::GSGetSamplers(
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState**              ppSamplers) {
@@ -1016,7 +1016,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::PSSetShader(
+  void STDMETHODCALLTYPE D3D11DeviceContext::PSSetShader(
           ID3D11PixelShader*                pPixelShader,
           ID3D11ClassInstance* const*       ppClassInstances,
           UINT                              NumClassInstances) {
@@ -1034,7 +1034,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::PSSetConstantBuffers(
+  void STDMETHODCALLTYPE D3D11DeviceContext::PSSetConstantBuffers(
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppConstantBuffers) {
@@ -1046,7 +1046,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::PSSetShaderResources(
+  void STDMETHODCALLTYPE D3D11DeviceContext::PSSetShaderResources(
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
@@ -1058,7 +1058,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::PSSetSamplers(
+  void STDMETHODCALLTYPE D3D11DeviceContext::PSSetSamplers(
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState* const*        ppSamplers) {
@@ -1070,7 +1070,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::PSGetShader(
+  void STDMETHODCALLTYPE D3D11DeviceContext::PSGetShader(
           ID3D11PixelShader**               ppPixelShader,
           ID3D11ClassInstance**             ppClassInstances,
           UINT*                             pNumClassInstances) {
@@ -1084,7 +1084,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::PSGetConstantBuffers(
+  void STDMETHODCALLTYPE D3D11DeviceContext::PSGetConstantBuffers(
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer**                    ppConstantBuffers) {
@@ -1093,7 +1093,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::PSGetShaderResources(
+  void STDMETHODCALLTYPE D3D11DeviceContext::PSGetShaderResources(
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView**        ppShaderResourceViews) {
@@ -1102,7 +1102,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::PSGetSamplers(
+  void STDMETHODCALLTYPE D3D11DeviceContext::PSGetSamplers(
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState**              ppSamplers) {
@@ -1111,7 +1111,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::CSSetShader(
+  void STDMETHODCALLTYPE D3D11DeviceContext::CSSetShader(
           ID3D11ComputeShader*              pComputeShader,
           ID3D11ClassInstance* const*       ppClassInstances,
           UINT                              NumClassInstances) {
@@ -1119,7 +1119,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::CSSetConstantBuffers(
+  void STDMETHODCALLTYPE D3D11DeviceContext::CSSetConstantBuffers(
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppConstantBuffers) {
@@ -1127,7 +1127,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::CSSetShaderResources(
+  void STDMETHODCALLTYPE D3D11DeviceContext::CSSetShaderResources(
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
@@ -1135,7 +1135,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::CSSetSamplers(
+  void STDMETHODCALLTYPE D3D11DeviceContext::CSSetSamplers(
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState* const*        ppSamplers) {
@@ -1143,7 +1143,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::CSSetUnorderedAccessViews(
+  void STDMETHODCALLTYPE D3D11DeviceContext::CSSetUnorderedAccessViews(
           UINT                              StartSlot,
           UINT                              NumUAVs,
           ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
@@ -1152,7 +1152,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::CSGetShader(
+  void STDMETHODCALLTYPE D3D11DeviceContext::CSGetShader(
           ID3D11ComputeShader**             ppComputeShader,
           ID3D11ClassInstance**             ppClassInstances,
           UINT*                             pNumClassInstances) {
@@ -1160,7 +1160,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::CSGetConstantBuffers(
+  void STDMETHODCALLTYPE D3D11DeviceContext::CSGetConstantBuffers(
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer**                    ppConstantBuffers) {
@@ -1168,7 +1168,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::CSGetShaderResources(
+  void STDMETHODCALLTYPE D3D11DeviceContext::CSGetShaderResources(
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView**        ppShaderResourceViews) {
@@ -1176,7 +1176,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::CSGetSamplers(
+  void STDMETHODCALLTYPE D3D11DeviceContext::CSGetSamplers(
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState**              ppSamplers) {
@@ -1184,7 +1184,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::CSGetUnorderedAccessViews(
+  void STDMETHODCALLTYPE D3D11DeviceContext::CSGetUnorderedAccessViews(
           UINT                              StartSlot,
           UINT                              NumUAVs,
           ID3D11UnorderedAccessView**       ppUnorderedAccessViews) {
@@ -1192,7 +1192,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::OMSetRenderTargets(
+  void STDMETHODCALLTYPE D3D11DeviceContext::OMSetRenderTargets(
           UINT                              NumViews,
           ID3D11RenderTargetView* const*    ppRenderTargetViews,
           ID3D11DepthStencilView*           pDepthStencilView) {
@@ -1234,7 +1234,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::OMSetRenderTargetsAndUnorderedAccessViews(
+  void STDMETHODCALLTYPE D3D11DeviceContext::OMSetRenderTargetsAndUnorderedAccessViews(
           UINT                              NumRTVs,
           ID3D11RenderTargetView* const*    ppRenderTargetViews,
           ID3D11DepthStencilView*           pDepthStencilView,
@@ -1246,7 +1246,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::OMSetBlendState(
+  void STDMETHODCALLTYPE D3D11DeviceContext::OMSetBlendState(
           ID3D11BlendState*                 pBlendState,
     const FLOAT                             BlendFactor[4],
           UINT                              SampleMask) {
@@ -1270,7 +1270,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::OMSetDepthStencilState(
+  void STDMETHODCALLTYPE D3D11DeviceContext::OMSetDepthStencilState(
           ID3D11DepthStencilState*          pDepthStencilState,
           UINT                              StencilRef) {
     auto depthStencilState = static_cast<D3D11DepthStencilState*>(pDepthStencilState);
@@ -1291,7 +1291,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::OMGetRenderTargets(
+  void STDMETHODCALLTYPE D3D11DeviceContext::OMGetRenderTargets(
           UINT                              NumViews,
           ID3D11RenderTargetView**          ppRenderTargetViews,
           ID3D11DepthStencilView**          ppDepthStencilView) {
@@ -1309,7 +1309,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::OMGetRenderTargetsAndUnorderedAccessViews(
+  void STDMETHODCALLTYPE D3D11DeviceContext::OMGetRenderTargetsAndUnorderedAccessViews(
           UINT                              NumRTVs,
           ID3D11RenderTargetView**          ppRenderTargetViews,
           ID3D11DepthStencilView**          ppDepthStencilView,
@@ -1320,7 +1320,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::OMGetBlendState(
+  void STDMETHODCALLTYPE D3D11DeviceContext::OMGetBlendState(
           ID3D11BlendState**                ppBlendState,
           FLOAT                             BlendFactor[4],
           UINT*                             pSampleMask) {
@@ -1335,7 +1335,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::OMGetDepthStencilState(
+  void STDMETHODCALLTYPE D3D11DeviceContext::OMGetDepthStencilState(
           ID3D11DepthStencilState**         ppDepthStencilState,
           UINT*                             pStencilRef) {
     if (ppDepthStencilState != nullptr)
@@ -1346,7 +1346,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::RSSetState(ID3D11RasterizerState* pRasterizerState) {
+  void STDMETHODCALLTYPE D3D11DeviceContext::RSSetState(ID3D11RasterizerState* pRasterizerState) {
     auto rasterizerState = static_cast<D3D11RasterizerState*>(pRasterizerState);
     
     if (m_state.rs.state != rasterizerState) {
@@ -1365,7 +1365,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::RSSetViewports(
+  void STDMETHODCALLTYPE D3D11DeviceContext::RSSetViewports(
           UINT                              NumViewports,
     const D3D11_VIEWPORT*                   pViewports) {
     m_state.rs.numViewports = NumViewports;
@@ -1377,7 +1377,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::RSSetScissorRects(
+  void STDMETHODCALLTYPE D3D11DeviceContext::RSSetScissorRects(
           UINT                              NumRects,
     const D3D11_RECT*                       pRects) {
     m_state.rs.numScissors = NumRects;
@@ -1395,13 +1395,13 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::RSGetState(ID3D11RasterizerState** ppRasterizerState) {
+  void STDMETHODCALLTYPE D3D11DeviceContext::RSGetState(ID3D11RasterizerState** ppRasterizerState) {
     if (ppRasterizerState != nullptr)
       *ppRasterizerState = m_state.rs.state.ref();
   }
   
   
-  void D3D11DeviceContext::RSGetViewports(
+  void STDMETHODCALLTYPE D3D11DeviceContext::RSGetViewports(
           UINT*                             pNumViewports,
           D3D11_VIEWPORT*                   pViewports) {
     if (pViewports != nullptr) {
@@ -1423,7 +1423,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::RSGetScissorRects(
+  void STDMETHODCALLTYPE D3D11DeviceContext::RSGetScissorRects(
           UINT*                             pNumRects,
           D3D11_RECT*                       pRects) {
     if (pRects != nullptr) {
@@ -1443,7 +1443,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::SOSetTargets(
+  void STDMETHODCALLTYPE D3D11DeviceContext::SOSetTargets(
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppSOTargets,
     const UINT*                             pOffsets) {
@@ -1451,7 +1451,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::SOGetTargets(
+  void STDMETHODCALLTYPE D3D11DeviceContext::SOGetTargets(
           UINT                              NumBuffers,
           ID3D11Buffer**                    ppSOTargets) {
     Logger::err("D3D11DeviceContext::SOGetTargets: Not implemented");

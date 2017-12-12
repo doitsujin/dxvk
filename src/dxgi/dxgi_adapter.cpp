@@ -24,7 +24,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiAdapter::QueryInterface(
+  HRESULT STDMETHODCALLTYPE DxgiAdapter::QueryInterface(
           REFIID riid,
           void **ppvObject) {
     COM_QUERY_IFACE(riid, ppvObject, IUnknown);
@@ -38,14 +38,14 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiAdapter::GetParent(
+  HRESULT STDMETHODCALLTYPE DxgiAdapter::GetParent(
           REFIID riid,
           void   **ppParent) {
     return m_factory->QueryInterface(riid, ppParent);
   }
   
   
-  HRESULT DxgiAdapter::CheckInterfaceSupport(
+  HRESULT STDMETHODCALLTYPE DxgiAdapter::CheckInterfaceSupport(
           REFGUID       InterfaceName,
           LARGE_INTEGER *pUMDVersion) {
     Logger::err("DxgiAdapter::CheckInterfaceSupport: No D3D10 support");
@@ -53,7 +53,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiAdapter::EnumOutputs(
+  HRESULT STDMETHODCALLTYPE DxgiAdapter::EnumOutputs(
           UINT        Output,
           IDXGIOutput **ppOutput) {
     if (ppOutput == nullptr)
@@ -74,7 +74,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiAdapter::GetDesc(DXGI_ADAPTER_DESC* pDesc) {
+  HRESULT STDMETHODCALLTYPE DxgiAdapter::GetDesc(DXGI_ADAPTER_DESC* pDesc) {
     DXGI_ADAPTER_DESC1 desc1;
     HRESULT hr = this->GetDesc1(&desc1);
     
@@ -98,7 +98,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiAdapter::GetDesc1(DXGI_ADAPTER_DESC1* pDesc) {
+  HRESULT STDMETHODCALLTYPE DxgiAdapter::GetDesc1(DXGI_ADAPTER_DESC1* pDesc) {
     if (pDesc == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
@@ -133,12 +133,12 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkAdapter> DxgiAdapter::GetDXVKAdapter() {
+  Rc<DxvkAdapter> STDMETHODCALLTYPE DxgiAdapter::GetDXVKAdapter() {
     return m_adapter;
   }
   
   
-  DxgiFormatPair DxgiAdapter::LookupFormat(DXGI_FORMAT format) {
+  DxgiFormatPair STDMETHODCALLTYPE DxgiAdapter::LookupFormat(DXGI_FORMAT format) {
     auto pair = m_formats.find(format);
     
     return pair != m_formats.end()

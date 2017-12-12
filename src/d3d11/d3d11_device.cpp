@@ -45,7 +45,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Device::QueryInterface(REFIID riid, void** ppvObject) {
+  HRESULT STDMETHODCALLTYPE D3D11Device::QueryInterface(REFIID riid, void** ppvObject) {
     COM_QUERY_IFACE(riid, ppvObject, IUnknown);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11Device);
     
@@ -63,7 +63,7 @@ namespace dxvk {
   }
     
   
-  HRESULT D3D11Device::CreateBuffer(
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateBuffer(
     const D3D11_BUFFER_DESC*      pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
           ID3D11Buffer**          ppBuffer) {
@@ -153,7 +153,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Device::CreateTexture1D(
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateTexture1D(
     const D3D11_TEXTURE1D_DESC*   pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
           ID3D11Texture1D**       ppTexture1D) {
@@ -162,7 +162,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Device::CreateTexture2D(
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateTexture2D(
     const D3D11_TEXTURE2D_DESC*   pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
           ID3D11Texture2D**       ppTexture2D) {
@@ -255,7 +255,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Device::CreateTexture3D(
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateTexture3D(
     const D3D11_TEXTURE3D_DESC*   pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
           ID3D11Texture3D**       ppTexture3D) {
@@ -264,7 +264,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Device::CreateShaderResourceView(
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateShaderResourceView(
           ID3D11Resource*                   pResource,
     const D3D11_SHADER_RESOURCE_VIEW_DESC*  pDesc,
           ID3D11ShaderResourceView**        ppSRView) {
@@ -399,7 +399,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Device::CreateUnorderedAccessView(
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateUnorderedAccessView(
           ID3D11Resource*                   pResource,
     const D3D11_UNORDERED_ACCESS_VIEW_DESC* pDesc,
           ID3D11UnorderedAccessView**       ppUAView) {
@@ -408,7 +408,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Device::CreateRenderTargetView(
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateRenderTargetView(
           ID3D11Resource*                   pResource,
     const D3D11_RENDER_TARGET_VIEW_DESC*    pDesc,
           ID3D11RenderTargetView**          ppRTView) {
@@ -503,7 +503,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Device::CreateDepthStencilView(
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateDepthStencilView(
           ID3D11Resource*                   pResource,
     const D3D11_DEPTH_STENCIL_VIEW_DESC*    pDesc,
           ID3D11DepthStencilView**          ppDepthStencilView) {
@@ -598,7 +598,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Device::CreateInputLayout(
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateInputLayout(
     const D3D11_INPUT_ELEMENT_DESC*   pInputElementDescs,
           UINT                        NumElements,
     const void*                       pShaderBytecodeWithInputSignature,
@@ -645,7 +645,7 @@ namespace dxvk {
         
         // Create vertex input binding description. The
         // stride is dynamic state in D3D11 and will be
-        // set by D3D11DeviceContext::IASetVertexBuffers.
+        // set by STDMETHODCALLTYPE D3D11DeviceContext::IASetVertexBuffers.
         DxvkVertexBinding binding;
         binding.binding   = pInputElementDescs[i].InputSlot;
         binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
@@ -700,7 +700,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Device::CreateVertexShader(
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateVertexShader(
     const void*                       pShaderBytecode,
           SIZE_T                      BytecodeLength,
           ID3D11ClassLinkage*         pClassLinkage,
@@ -720,7 +720,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Device::CreateGeometryShader(
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateGeometryShader(
     const void*                       pShaderBytecode,
           SIZE_T                      BytecodeLength,
           ID3D11ClassLinkage*         pClassLinkage,
@@ -730,7 +730,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Device::CreateGeometryShaderWithStreamOutput(
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateGeometryShaderWithStreamOutput(
     const void*                       pShaderBytecode,
           SIZE_T                      BytecodeLength,
     const D3D11_SO_DECLARATION_ENTRY* pSODeclaration,
@@ -745,7 +745,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Device::CreatePixelShader(
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreatePixelShader(
     const void*                       pShaderBytecode,
           SIZE_T                      BytecodeLength,
           ID3D11ClassLinkage*         pClassLinkage,
@@ -765,7 +765,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Device::CreateHullShader(
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateHullShader(
     const void*                       pShaderBytecode,
           SIZE_T                      BytecodeLength,
           ID3D11ClassLinkage*         pClassLinkage,
@@ -775,7 +775,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Device::CreateDomainShader(
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateDomainShader(
     const void*                       pShaderBytecode,
           SIZE_T                      BytecodeLength,
           ID3D11ClassLinkage*         pClassLinkage,
@@ -785,7 +785,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Device::CreateComputeShader(
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateComputeShader(
     const void*                       pShaderBytecode,
           SIZE_T                      BytecodeLength,
           ID3D11ClassLinkage*         pClassLinkage,
@@ -795,13 +795,13 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Device::CreateClassLinkage(ID3D11ClassLinkage** ppLinkage) {
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateClassLinkage(ID3D11ClassLinkage** ppLinkage) {
     *ppLinkage = ref(new D3D11ClassLinkage(this));
     return S_OK;
   }
   
   
-  HRESULT D3D11Device::CreateBlendState(
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateBlendState(
     const D3D11_BLEND_DESC*           pBlendStateDesc,
           ID3D11BlendState**          ppBlendState) {
     D3D11_BLEND_DESC desc;
@@ -833,7 +833,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Device::CreateDepthStencilState(
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateDepthStencilState(
     const D3D11_DEPTH_STENCIL_DESC*   pDepthStencilDesc,
           ID3D11DepthStencilState**   ppDepthStencilState) {
     D3D11_DEPTH_STENCIL_DESC desc;
@@ -863,7 +863,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Device::CreateRasterizerState(
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateRasterizerState(
     const D3D11_RASTERIZER_DESC*      pRasterizerDesc,
           ID3D11RasterizerState**     ppRasterizerState) {
     D3D11_RASTERIZER_DESC desc;
@@ -889,7 +889,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Device::CreateSamplerState(
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateSamplerState(
     const D3D11_SAMPLER_DESC*         pSamplerDesc,
           ID3D11SamplerState**        ppSamplerState) {
     DxvkSamplerCreateInfo info;
@@ -943,7 +943,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Device::CreateQuery(
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateQuery(
     const D3D11_QUERY_DESC*           pQueryDesc,
           ID3D11Query**               ppQuery) {
     Logger::err("D3D11Device::CreateQuery: Not implemented");
@@ -951,7 +951,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Device::CreatePredicate(
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreatePredicate(
     const D3D11_QUERY_DESC*           pPredicateDesc,
           ID3D11Predicate**           ppPredicate) {
     Logger::err("D3D11Device::CreatePredicate: Not implemented");
@@ -959,7 +959,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Device::CreateCounter(
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateCounter(
     const D3D11_COUNTER_DESC*         pCounterDesc,
           ID3D11Counter**             ppCounter) {
     Logger::err("D3D11Device::CreateCounter: Not implemented");
@@ -967,7 +967,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Device::CreateDeferredContext(
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateDeferredContext(
           UINT                        ContextFlags,
           ID3D11DeviceContext**       ppDeferredContext) {
     Logger::err("D3D11Device::CreateDeferredContext: Not implemented");
@@ -975,7 +975,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Device::OpenSharedResource(
+  HRESULT STDMETHODCALLTYPE D3D11Device::OpenSharedResource(
           HANDLE      hResource,
           REFIID      ReturnedInterface,
           void**      ppResource) {
@@ -984,7 +984,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Device::CheckFormatSupport(
+  HRESULT STDMETHODCALLTYPE D3D11Device::CheckFormatSupport(
           DXGI_FORMAT Format,
           UINT*       pFormatSupport) {
     Logger::err("D3D11Device::CheckFormatSupport: Not implemented");
@@ -992,7 +992,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Device::CheckMultisampleQualityLevels(
+  HRESULT STDMETHODCALLTYPE D3D11Device::CheckMultisampleQualityLevels(
           DXGI_FORMAT Format,
           UINT        SampleCount,
           UINT*       pNumQualityLevels) {
@@ -1030,12 +1030,12 @@ namespace dxvk {
   }
   
   
-  void D3D11Device::CheckCounterInfo(D3D11_COUNTER_INFO* pCounterInfo) {
+  void STDMETHODCALLTYPE D3D11Device::CheckCounterInfo(D3D11_COUNTER_INFO* pCounterInfo) {
     Logger::err("D3D11Device::CheckCounterInfo: Not implemented");
   }
   
   
-  HRESULT D3D11Device::CheckCounter(
+  HRESULT STDMETHODCALLTYPE D3D11Device::CheckCounter(
     const D3D11_COUNTER_DESC* pDesc,
           D3D11_COUNTER_TYPE* pType,
           UINT*               pActiveCounters,
@@ -1050,7 +1050,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Device::CheckFeatureSupport(
+  HRESULT STDMETHODCALLTYPE D3D11Device::CheckFeatureSupport(
           D3D11_FEATURE Feature,
           void*         pFeatureSupportData,
           UINT          FeatureSupportDataSize) {
@@ -1059,52 +1059,52 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Device::GetPrivateData(
+  HRESULT STDMETHODCALLTYPE D3D11Device::GetPrivateData(
           REFGUID guid, UINT* pDataSize, void* pData) {
     return m_dxgiDevice->GetPrivateData(guid, pDataSize, pData);
   }
   
   
-  HRESULT D3D11Device::SetPrivateData(
+  HRESULT STDMETHODCALLTYPE D3D11Device::SetPrivateData(
           REFGUID guid, UINT DataSize, const void* pData) {
     return m_dxgiDevice->SetPrivateData(guid, DataSize, pData);
   }
   
   
-  HRESULT D3D11Device::SetPrivateDataInterface(
+  HRESULT STDMETHODCALLTYPE D3D11Device::SetPrivateDataInterface(
           REFGUID guid, const IUnknown* pData) {
     return m_dxgiDevice->SetPrivateDataInterface(guid, pData);
   }
   
   
-  D3D_FEATURE_LEVEL D3D11Device::GetFeatureLevel() {
+  D3D_FEATURE_LEVEL STDMETHODCALLTYPE D3D11Device::GetFeatureLevel() {
     return m_featureLevel;
   }
   
   
-  UINT D3D11Device::GetCreationFlags() {
+  UINT STDMETHODCALLTYPE D3D11Device::GetCreationFlags() {
     return m_featureFlags;
   }
   
   
-  HRESULT D3D11Device::GetDeviceRemovedReason() {
+  HRESULT STDMETHODCALLTYPE D3D11Device::GetDeviceRemovedReason() {
     Logger::err("D3D11Device::GetDeviceRemovedReason: Not implemented");
     return E_NOTIMPL;
   }
   
   
-  void D3D11Device::GetImmediateContext(ID3D11DeviceContext** ppImmediateContext) {
+  void STDMETHODCALLTYPE D3D11Device::GetImmediateContext(ID3D11DeviceContext** ppImmediateContext) {
     *ppImmediateContext = ref(m_context);
   }
   
   
-  HRESULT D3D11Device::SetExceptionMode(UINT RaiseFlags) {
+  HRESULT STDMETHODCALLTYPE D3D11Device::SetExceptionMode(UINT RaiseFlags) {
     Logger::err("D3D11Device::SetExceptionMode: Not implemented");
     return E_NOTIMPL;
   }
   
   
-  UINT D3D11Device::GetExceptionMode() {
+  UINT STDMETHODCALLTYPE D3D11Device::GetExceptionMode() {
     Logger::err("D3D11Device::GetExceptionMode: Not implemented");
     return 0;
   }

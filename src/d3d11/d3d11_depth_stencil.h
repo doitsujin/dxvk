@@ -20,14 +20,14 @@ namespace dxvk {
       const D3D11_DEPTH_STENCIL_DESC& desc);
     ~D3D11DepthStencilState();
     
-    HRESULT QueryInterface(
+    HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID  riid,
             void**  ppvObject) final;
     
-    void GetDevice(
+    void STDMETHODCALLTYPE GetDevice(
             ID3D11Device **ppDevice) final;
     
-    void GetDesc(
+    void STDMETHODCALLTYPE GetDesc(
             D3D11_DEPTH_STENCIL_DESC* pDesc) final;
     
     void BindToContext(

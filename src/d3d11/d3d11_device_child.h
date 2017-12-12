@@ -11,7 +11,7 @@ namespace dxvk {
     
   public:
     
-    HRESULT GetPrivateData(
+    HRESULT STDMETHODCALLTYPE GetPrivateData(
             REFGUID guid,
             UINT    *pDataSize,
             void    *pData) final {
@@ -19,7 +19,7 @@ namespace dxvk {
         guid, pDataSize, pData);
     }
     
-    HRESULT SetPrivateData(
+    HRESULT STDMETHODCALLTYPE SetPrivateData(
             REFGUID guid,
             UINT    DataSize,
       const void    *pData) final {
@@ -27,7 +27,7 @@ namespace dxvk {
         guid, DataSize, pData);
     }
     
-    HRESULT SetPrivateDataInterface(
+    HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(
             REFGUID  guid,
       const IUnknown *pUnknown) final {
       return m_privateData.setInterface(

@@ -15,39 +15,39 @@ namespace dxvk {
     DxgiFactory();
     ~DxgiFactory();
     
-    HRESULT QueryInterface(
+    HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID  riid,
             void**  ppvObject) final;
     
-    HRESULT GetParent(
+    HRESULT STDMETHODCALLTYPE GetParent(
             REFIID  riid,
             void**  ppParent) final;
     
-    HRESULT CreateSoftwareAdapter(
+    HRESULT STDMETHODCALLTYPE CreateSoftwareAdapter(
             HMODULE         Module,
             IDXGIAdapter**  ppAdapter) final;
     
-    HRESULT CreateSwapChain(
+    HRESULT STDMETHODCALLTYPE CreateSwapChain(
             IUnknown*             pDevice,
             DXGI_SWAP_CHAIN_DESC* pDesc,
             IDXGISwapChain**      ppSwapChain) final;
     
-    HRESULT EnumAdapters(
+    HRESULT STDMETHODCALLTYPE EnumAdapters(
             UINT            Adapter,
             IDXGIAdapter**  ppAdapter) final;
     
-    HRESULT EnumAdapters1(
+    HRESULT STDMETHODCALLTYPE EnumAdapters1(
             UINT            Adapter,
             IDXGIAdapter1** ppAdapter) final;
     
-    HRESULT GetWindowAssociation(
+    HRESULT STDMETHODCALLTYPE GetWindowAssociation(
             HWND *pWindowHandle) final;
     
-    HRESULT MakeWindowAssociation(
+    HRESULT STDMETHODCALLTYPE MakeWindowAssociation(
             HWND WindowHandle,
             UINT Flags) final;
     
-    BOOL IsCurrent();
+    BOOL STDMETHODCALLTYPE IsCurrent();
     
   private:
     

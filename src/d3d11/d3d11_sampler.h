@@ -18,14 +18,14 @@ namespace dxvk {
       const Rc<DxvkSampler>&    sampler);
     ~D3D11SamplerState();
     
-    HRESULT QueryInterface(
+    HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID  riid,
             void**  ppvObject) final;
     
-    void GetDevice(
+    void STDMETHODCALLTYPE GetDevice(
             ID3D11Device **ppDevice) final;
     
-    void GetDesc(
+    void STDMETHODCALLTYPE GetDesc(
             D3D11_SAMPLER_DESC* pDesc) final;
     
     Rc<DxvkSampler> GetDXVKSampler() const {

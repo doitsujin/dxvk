@@ -24,31 +24,31 @@ namespace dxvk {
       const Rc<DxvkAdapter>&  adapter);
     ~DxgiAdapter();
     
-    HRESULT QueryInterface(
+    HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID riid,
             void **ppvObject) final;
     
-    HRESULT GetParent(
+    HRESULT STDMETHODCALLTYPE GetParent(
             REFIID riid,
             void   **ppParent) final;
     
-    HRESULT CheckInterfaceSupport(
+    HRESULT STDMETHODCALLTYPE CheckInterfaceSupport(
             REFGUID       InterfaceName,
             LARGE_INTEGER *pUMDVersion) final;
     
-    HRESULT EnumOutputs(
+    HRESULT STDMETHODCALLTYPE EnumOutputs(
             UINT        Output,
             IDXGIOutput **ppOutput) final;
     
-    HRESULT GetDesc(
+    HRESULT STDMETHODCALLTYPE GetDesc(
             DXGI_ADAPTER_DESC *pDesc) final;
     
-    HRESULT GetDesc1(
+    HRESULT STDMETHODCALLTYPE GetDesc1(
             DXGI_ADAPTER_DESC1 *pDesc) final;
     
-    Rc<DxvkAdapter> GetDXVKAdapter() final;
+    Rc<DxvkAdapter> STDMETHODCALLTYPE GetDXVKAdapter() final;
     
-    DxgiFormatPair LookupFormat(
+    DxgiFormatPair STDMETHODCALLTYPE LookupFormat(
             DXGI_FORMAT format) final;
     
   private:

@@ -70,7 +70,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiSwapChain::QueryInterface(REFIID riid, void** ppvObject) {
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::QueryInterface(REFIID riid, void** ppvObject) {
     COM_QUERY_IFACE(riid, ppvObject, IUnknown);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIObject);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIDeviceSubObject);
@@ -81,17 +81,17 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiSwapChain::GetParent(REFIID riid, void** ppParent) {
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetParent(REFIID riid, void** ppParent) {
     return m_factory->QueryInterface(riid, ppParent);
   }
   
   
-  HRESULT DxgiSwapChain::GetDevice(REFIID riid, void** ppDevice) {
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetDevice(REFIID riid, void** ppDevice) {
     return m_device->QueryInterface(riid, ppDevice);
   }
   
   
-  HRESULT DxgiSwapChain::GetBuffer(UINT Buffer, REFIID riid, void** ppSurface) {
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetBuffer(UINT Buffer, REFIID riid, void** ppSurface) {
     std::lock_guard<std::mutex> lock(m_mutex);
     
     if (Buffer > 0) {
@@ -103,7 +103,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiSwapChain::GetContainingOutput(IDXGIOutput** ppOutput) {
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetContainingOutput(IDXGIOutput** ppOutput) {
     if (ppOutput != nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
@@ -122,7 +122,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiSwapChain::GetDesc(DXGI_SWAP_CHAIN_DESC* pDesc) {
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetDesc(DXGI_SWAP_CHAIN_DESC* pDesc) {
     if (pDesc == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
@@ -132,7 +132,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiSwapChain::GetFrameStatistics(DXGI_FRAME_STATISTICS* pStats) {
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetFrameStatistics(DXGI_FRAME_STATISTICS* pStats) {
     if (pStats == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
@@ -142,7 +142,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiSwapChain::GetFullscreenState(
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetFullscreenState(
           BOOL*         pFullscreen,
           IDXGIOutput** ppTarget) {
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -159,7 +159,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiSwapChain::GetLastPresentCount(UINT* pLastPresentCount) {
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetLastPresentCount(UINT* pLastPresentCount) {
     if (pLastPresentCount == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
@@ -169,7 +169,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiSwapChain::Present(UINT SyncInterval, UINT Flags) {
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::Present(UINT SyncInterval, UINT Flags) {
     std::lock_guard<std::mutex> lock(m_mutex);
     
     try {
@@ -188,7 +188,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiSwapChain::ResizeBuffers(
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::ResizeBuffers(
           UINT        BufferCount,
           UINT        Width,
           UINT        Height,
@@ -223,7 +223,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiSwapChain::ResizeTarget(const DXGI_MODE_DESC* pNewTargetParameters) {
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::ResizeTarget(const DXGI_MODE_DESC* pNewTargetParameters) {
     if (pNewTargetParameters == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
@@ -265,7 +265,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiSwapChain::SetFullscreenState(
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::SetFullscreenState(
           BOOL          Fullscreen,
           IDXGIOutput*  pTarget) {
     std::lock_guard<std::mutex> lock(m_mutex);

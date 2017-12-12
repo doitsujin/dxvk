@@ -22,11 +22,11 @@ namespace dxvk {
     
     virtual ~ComObject() { }
     
-    ULONG AddRef() {
+    ULONG STDMETHODCALLTYPE AddRef() {
       return ++m_refCount;
     }
     
-    ULONG Release() {
+    ULONG STDMETHODCALLTYPE Release() {
       ULONG refCount = --m_refCount;
       if (refCount == 0) {
         m_refCount += 0x80000000u;

@@ -16,7 +16,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiDevice::QueryInterface(REFIID riid, void** ppvObject) {
+  HRESULT STDMETHODCALLTYPE DxgiDevice::QueryInterface(REFIID riid, void** ppvObject) {
     COM_QUERY_IFACE(riid, ppvObject, IUnknown);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIObject);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIDevice);
@@ -31,12 +31,12 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiDevice::GetParent(REFIID riid, void** ppParent) {
+  HRESULT STDMETHODCALLTYPE DxgiDevice::GetParent(REFIID riid, void** ppParent) {
     return m_adapter->QueryInterface(riid, ppParent);
   }
   
   
-  HRESULT DxgiDevice::CreateSurface(
+  HRESULT STDMETHODCALLTYPE DxgiDevice::CreateSurface(
     const DXGI_SURFACE_DESC*    pDesc,
           UINT                  NumSurfaces,
           DXGI_USAGE            Usage,
@@ -47,21 +47,21 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiDevice::GetAdapter(
+  HRESULT STDMETHODCALLTYPE DxgiDevice::GetAdapter(
           IDXGIAdapter**        pAdapter) {
     *pAdapter = static_cast<IDXGIAdapter*>(m_adapter.ref());
     return S_OK;
   }
   
   
-  HRESULT DxgiDevice::GetGPUThreadPriority(
+  HRESULT STDMETHODCALLTYPE DxgiDevice::GetGPUThreadPriority(
           INT*                  pPriority) {
     *pPriority = 0;
     return S_OK;
   }
   
   
-  HRESULT DxgiDevice::QueryResourceResidency(
+  HRESULT STDMETHODCALLTYPE DxgiDevice::QueryResourceResidency(
           IUnknown* const*      ppResources,
           DXGI_RESIDENCY*       pResidencyStatus,
           UINT                  NumResources) {
@@ -70,7 +70,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiDevice::SetGPUThreadPriority(
+  HRESULT STDMETHODCALLTYPE DxgiDevice::SetGPUThreadPriority(
           INT                   Priority) {
     if (Priority < -7 || Priority > 7)
       return E_INVALIDARG;
@@ -80,7 +80,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiDevice::GetMaximumFrameLatency(
+  HRESULT STDMETHODCALLTYPE DxgiDevice::GetMaximumFrameLatency(
           UINT*                 pMaxLatency) {
     Logger::warn("DxgiDevice::GetMaximumFrameLatency: Stub");
     *pMaxLatency = 1;
@@ -88,19 +88,19 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiDevice::SetMaximumFrameLatency(
+  HRESULT STDMETHODCALLTYPE DxgiDevice::SetMaximumFrameLatency(
           UINT                  MaxLatency) {
     Logger::warn("DxgiDevice::SetMaximumFrameLatency: Stub");
     return S_OK;
   }
   
   
-  void DxgiDevice::SetDeviceLayer(IUnknown* layer) {
+  void STDMETHODCALLTYPE DxgiDevice::SetDeviceLayer(IUnknown* layer) {
     m_layer = layer;
   }
   
   
-  Rc<DxvkDevice> DxgiDevice::GetDXVKDevice() {
+  Rc<DxvkDevice> STDMETHODCALLTYPE DxgiDevice::GetDXVKDevice() {
     return m_device;
   }
   

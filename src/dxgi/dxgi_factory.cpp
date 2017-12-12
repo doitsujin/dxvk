@@ -15,7 +15,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiFactory::QueryInterface(
+  HRESULT STDMETHODCALLTYPE DxgiFactory::QueryInterface(
           REFIID  riid,
           void**  ppvObject) {
     COM_QUERY_IFACE(riid, ppvObject, IUnknown);
@@ -28,7 +28,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiFactory::GetParent(
+  HRESULT STDMETHODCALLTYPE DxgiFactory::GetParent(
           REFIID  riid,
           void**  ppParent) {
     Logger::warn("DxgiFactory::GetParent: Unknown interface query");
@@ -36,7 +36,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiFactory::CreateSoftwareAdapter(
+  HRESULT STDMETHODCALLTYPE DxgiFactory::CreateSoftwareAdapter(
           HMODULE         Module,
           IDXGIAdapter**  ppAdapter) {
     Logger::err("DxgiFactory::CreateSoftwareAdapter: Software adapters not supported");
@@ -44,7 +44,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiFactory::CreateSwapChain(
+  HRESULT STDMETHODCALLTYPE DxgiFactory::CreateSwapChain(
           IUnknown*             pDevice,
           DXGI_SWAP_CHAIN_DESC* pDesc,
           IDXGISwapChain**      ppSwapChain) {
@@ -61,7 +61,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiFactory::EnumAdapters(
+  HRESULT STDMETHODCALLTYPE DxgiFactory::EnumAdapters(
           UINT            Adapter,
           IDXGIAdapter**  ppAdapter) {
     if (ppAdapter == nullptr)
@@ -75,7 +75,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiFactory::EnumAdapters1(
+  HRESULT STDMETHODCALLTYPE DxgiFactory::EnumAdapters1(
           UINT            Adapter,
           IDXGIAdapter1** ppAdapter) {
     if (ppAdapter == nullptr)
@@ -90,7 +90,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiFactory::GetWindowAssociation(HWND *pWindowHandle) {
+  HRESULT STDMETHODCALLTYPE DxgiFactory::GetWindowAssociation(HWND *pWindowHandle) {
     if (pWindowHandle == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
@@ -99,14 +99,14 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiFactory::MakeWindowAssociation(HWND WindowHandle, UINT Flags) {
+  HRESULT STDMETHODCALLTYPE DxgiFactory::MakeWindowAssociation(HWND WindowHandle, UINT Flags) {
     Logger::warn("DxgiFactory::MakeWindowAssociation: Ignoring flags");
     m_associatedWindow = WindowHandle;
     return S_OK;
   }
   
   
-  BOOL DxgiFactory::IsCurrent() {
+  BOOL STDMETHODCALLTYPE DxgiFactory::IsCurrent() {
     Logger::warn("DxgiFactory::IsCurrent: Stub");
     return TRUE;
   }

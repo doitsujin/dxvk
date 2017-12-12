@@ -31,8 +31,7 @@ namespace dxvk {
     DxvkSwapchain(
       const Rc<DxvkDevice>&           device,
       const Rc<DxvkSurface>&          surface,
-      const DxvkSwapchainProperties&  properties,
-            VkQueue                   queue);
+      const DxvkSwapchainProperties&  properties);
     ~DxvkSwapchain();
     
     /**
@@ -73,8 +72,6 @@ namespace dxvk {
     Rc<DxvkDevice>          m_device;
     Rc<vk::DeviceFn>        m_vkd;
     Rc<DxvkSurface>         m_surface;
-    
-    VkQueue                 m_queue;
     
     DxvkSwapchainProperties m_properties;
     VkSwapchainKHR          m_handle     = VK_NULL_HANDLE;

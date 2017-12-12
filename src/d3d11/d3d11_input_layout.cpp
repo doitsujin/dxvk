@@ -26,7 +26,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11InputLayout::QueryInterface(REFIID riid, void** ppvObject) {
+  HRESULT STDMETHODCALLTYPE D3D11InputLayout::QueryInterface(REFIID riid, void** ppvObject) {
     COM_QUERY_IFACE(riid, ppvObject, IUnknown);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceChild);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11InputLayout);
@@ -36,7 +36,7 @@ namespace dxvk {
   }
   
   
-  void D3D11InputLayout::GetDevice(ID3D11Device** ppDevice) {
+  void STDMETHODCALLTYPE D3D11InputLayout::GetDevice(ID3D11Device** ppDevice) {
     *ppDevice = m_device.ref();
   }
   

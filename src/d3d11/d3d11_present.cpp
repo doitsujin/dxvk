@@ -8,7 +8,7 @@ namespace dxvk {
   D3D11PresentDevice::~D3D11PresentDevice() { }
   
   
-  HRESULT D3D11PresentDevice::QueryInterface(
+  HRESULT STDMETHODCALLTYPE D3D11PresentDevice::QueryInterface(
           REFIID                  riid,
           void**                  ppvObject) {
     COM_QUERY_IFACE(riid, ppvObject, IUnknown);
@@ -17,7 +17,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11PresentDevice::WrapSwapChainBackBuffer(
+  HRESULT STDMETHODCALLTYPE D3D11PresentDevice::WrapSwapChainBackBuffer(
           IDXGIImageResourcePrivate*  pResource,
     const DXGI_SWAP_CHAIN_DESC*       pSwapChainDesc,
           IUnknown**                  ppInterface) {
@@ -40,7 +40,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11PresentDevice::FlushRenderingCommands() {
+  HRESULT STDMETHODCALLTYPE D3D11PresentDevice::FlushRenderingCommands() {
     Com<ID3D11DeviceContext> deviceContext = nullptr;
     m_device->GetImmediateContext(&deviceContext);
     
@@ -49,7 +49,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11PresentDevice::GetDevice(REFGUID riid, void** ppvDevice) {
+  HRESULT STDMETHODCALLTYPE D3D11PresentDevice::GetDevice(REFGUID riid, void** ppvDevice) {
     return m_device->QueryInterface(riid, ppvDevice);
   }
   

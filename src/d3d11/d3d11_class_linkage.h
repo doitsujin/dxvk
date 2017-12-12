@@ -16,14 +16,14 @@ namespace dxvk {
     
     ~D3D11ClassLinkage();
     
-    HRESULT QueryInterface(
+    HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID  riid,
             void**  ppvObject) final;
     
-    void GetDevice(
+    void STDMETHODCALLTYPE GetDevice(
             ID3D11Device **ppDevice) final;
     
-    HRESULT CreateClassInstance(
+    HRESULT STDMETHODCALLTYPE CreateClassInstance(
             LPCSTR              pClassTypeName,
             UINT                ConstantBufferOffset,
             UINT                ConstantVectorOffset,
@@ -31,7 +31,7 @@ namespace dxvk {
             UINT                SamplerOffset,
             ID3D11ClassInstance **ppInstance);
     
-    HRESULT GetClassInstance(
+    HRESULT STDMETHODCALLTYPE GetClassInstance(
             LPCSTR              pClassInstanceName,
             UINT                InstanceIndex,
             ID3D11ClassInstance **ppInstance);  

@@ -1,11 +1,10 @@
 #pragma once
 
-#include <dxgi_device.h>
-
-#include "d3d11_include.h"
-
+#include "../dxgi/dxgi_device.h"
 #include "../dxgi/dxgi_interfaces.h"
 #include "../dxgi/dxgi_resource.h"
+
+#include "d3d11_include.h"
 
 namespace dxvk {
   
@@ -18,18 +17,18 @@ namespace dxvk {
     D3D11PresentDevice();
     ~D3D11PresentDevice();
     
-    HRESULT QueryInterface(
+    HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID                  riid,
             void**                  ppvObject) final;
     
-    HRESULT WrapSwapChainBackBuffer(
+    HRESULT STDMETHODCALLTYPE WrapSwapChainBackBuffer(
             IDXGIImageResourcePrivate*  pResource,
       const DXGI_SWAP_CHAIN_DESC*       pSwapChainDesc,
             IUnknown**                  ppInterface) final;
     
-    HRESULT FlushRenderingCommands() final;
+    HRESULT STDMETHODCALLTYPE FlushRenderingCommands() final;
     
-    HRESULT GetDevice(
+    HRESULT STDMETHODCALLTYPE GetDevice(
             REFGUID                 riid,
             void**                  ppvDevice) final;
     

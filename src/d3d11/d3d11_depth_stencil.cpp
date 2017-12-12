@@ -27,7 +27,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11DepthStencilState::QueryInterface(REFIID riid, void** ppvObject) {
+  HRESULT STDMETHODCALLTYPE D3D11DepthStencilState::QueryInterface(REFIID riid, void** ppvObject) {
     COM_QUERY_IFACE(riid, ppvObject, IUnknown);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceChild);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11DepthStencilState);
@@ -37,12 +37,12 @@ namespace dxvk {
   }
   
   
-  void D3D11DepthStencilState::GetDevice(ID3D11Device** ppDevice) {
+  void STDMETHODCALLTYPE D3D11DepthStencilState::GetDevice(ID3D11Device** ppDevice) {
     *ppDevice = ref(m_device);
   }
   
   
-  void D3D11DepthStencilState::GetDesc(D3D11_DEPTH_STENCIL_DESC* pDesc) {
+  void STDMETHODCALLTYPE D3D11DepthStencilState::GetDesc(D3D11_DEPTH_STENCIL_DESC* pDesc) {
     *pDesc = m_desc;
   }
   

@@ -27,7 +27,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiImageResource::QueryInterface(REFIID riid, void** ppvObject) {
+  HRESULT STDMETHODCALLTYPE DxgiImageResource::QueryInterface(REFIID riid, void** ppvObject) {
     COM_QUERY_IFACE(riid, ppvObject, IUnknown);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIObject);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIDeviceSubObject);
@@ -42,18 +42,18 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiImageResource::GetParent(REFIID riid, void** ppParent) {
+  HRESULT STDMETHODCALLTYPE DxgiImageResource::GetParent(REFIID riid, void** ppParent) {
     Logger::err("DxgiImageResource::GetParent: Unknown interface query");
     return E_NOINTERFACE;
   }
   
   
-  Rc<DxvkImage> DxgiImageResource::GetDXVKImage() {
+  Rc<DxvkImage> STDMETHODCALLTYPE DxgiImageResource::GetDXVKImage() {
     return m_image;
   }
   
   
-  void DxgiImageResource::SetResourceLayer(IUnknown* pLayer) {
+  void STDMETHODCALLTYPE DxgiImageResource::SetResourceLayer(IUnknown* pLayer) {
     m_layer = pLayer;
   }
   
@@ -76,7 +76,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiBufferResource::QueryInterface(REFIID riid, void** ppvObject) {
+  HRESULT STDMETHODCALLTYPE DxgiBufferResource::QueryInterface(REFIID riid, void** ppvObject) {
     COM_QUERY_IFACE(riid, ppvObject, IUnknown);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIObject);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIDeviceSubObject);
@@ -91,18 +91,18 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiBufferResource::GetParent(REFIID riid, void** ppParent) {
+  HRESULT STDMETHODCALLTYPE DxgiBufferResource::GetParent(REFIID riid, void** ppParent) {
     Logger::err("DxgiBufferResource::GetParent: Unknown interface query");
     return E_NOINTERFACE;
   }
   
   
-  Rc<DxvkBuffer> DxgiBufferResource::GetDXVKBuffer() {
+  Rc<DxvkBuffer> STDMETHODCALLTYPE DxgiBufferResource::GetDXVKBuffer() {
     return m_buffer;
   }
   
   
-  void DxgiBufferResource::SetResourceLayer(IUnknown* pLayer) {
+  void STDMETHODCALLTYPE DxgiBufferResource::SetResourceLayer(IUnknown* pLayer) {
     m_layer = pLayer;
   }
   

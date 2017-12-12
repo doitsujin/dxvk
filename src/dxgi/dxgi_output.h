@@ -16,53 +16,53 @@ namespace dxvk {
     
     ~DxgiOutput();
     
-    HRESULT QueryInterface(
+    HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID riid,
             void **ppvObject) final;
     
-    HRESULT GetParent(
+    HRESULT STDMETHODCALLTYPE GetParent(
             REFIID riid,
             void   **ppParent) final;
     
-    HRESULT FindClosestMatchingMode(
+    HRESULT STDMETHODCALLTYPE FindClosestMatchingMode(
       const DXGI_MODE_DESC *pModeToMatch,
             DXGI_MODE_DESC *pClosestMatch,
             IUnknown       *pConcernedDevice) final;
     
-    HRESULT GetDesc(
+    HRESULT STDMETHODCALLTYPE GetDesc(
             DXGI_OUTPUT_DESC *pDesc) final;
     
-    HRESULT GetDisplayModeList(
+    HRESULT STDMETHODCALLTYPE GetDisplayModeList(
             DXGI_FORMAT    EnumFormat,
             UINT           Flags,
             UINT           *pNumModes,
             DXGI_MODE_DESC *pDesc) final;
     
-    HRESULT GetDisplaySurfaceData(
+    HRESULT STDMETHODCALLTYPE GetDisplaySurfaceData(
             IDXGISurface *pDestination) final;
     
-    HRESULT GetFrameStatistics(
+    HRESULT STDMETHODCALLTYPE GetFrameStatistics(
             DXGI_FRAME_STATISTICS *pStats) final;
     
-    HRESULT GetGammaControl(
+    HRESULT STDMETHODCALLTYPE GetGammaControl(
             DXGI_GAMMA_CONTROL *pArray) final;    
     
-    HRESULT GetGammaControlCapabilities(
+    HRESULT STDMETHODCALLTYPE GetGammaControlCapabilities(
             DXGI_GAMMA_CONTROL_CAPABILITIES *pGammaCaps) final;
     
-    void ReleaseOwnership() final;
+    void STDMETHODCALLTYPE ReleaseOwnership() final;
     
-    HRESULT SetDisplaySurface(
+    HRESULT STDMETHODCALLTYPE SetDisplaySurface(
             IDXGISurface *pScanoutSurface) final;
     
-    HRESULT SetGammaControl(
+    HRESULT STDMETHODCALLTYPE SetGammaControl(
       const DXGI_GAMMA_CONTROL *pArray) final;
     
-    HRESULT TakeOwnership(
+    HRESULT STDMETHODCALLTYPE TakeOwnership(
             IUnknown *pDevice,
             BOOL     Exclusive) final;
     
-    HRESULT WaitForVBlank() final;
+    HRESULT STDMETHODCALLTYPE WaitForVBlank() final;
     
   private:
     

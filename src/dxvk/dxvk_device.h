@@ -235,6 +235,17 @@ namespace dxvk {
       const DxvkSwapchainProperties&  properties);
     
     /**
+     * \brief Presents a swap chain image
+     * 
+     * This is implicitly called by the swap chain class
+     * when presenting an image. Do not use this directly.
+     * \param [in] presentInfo Swap image present info
+     * \returns Present status
+     */
+    VkResult presentSwapImage(
+      const VkPresentInfoKHR&         presentInfo);
+    
+    /**
      * \brief Submits a command list
      * 
      * Synchronization arguments are optional. 
@@ -276,6 +287,7 @@ namespace dxvk {
     Rc<DxvkRenderPassPool>  m_renderPassPool;
     Rc<DxvkPipelineManager> m_pipelineManager;
     
+    std::mutex m_submissionLock;
     VkQueue m_graphicsQueue = VK_NULL_HANDLE;
     VkQueue m_presentQueue  = VK_NULL_HANDLE;
     

@@ -18,7 +18,7 @@ namespace dxvk {
     : m_device    (pDevice),
       m_usageFlags(usage) { }
     
-    HRESULT GetDevice(REFIID riid, void** ppDevice) {
+    HRESULT STDMETHODCALLTYPE GetDevice(REFIID riid, void** ppDevice) {
       return m_device->QueryInterface(riid, ppDevice);
     }
     
@@ -81,17 +81,17 @@ namespace dxvk {
     
     ~DxgiImageResource();
     
-    HRESULT QueryInterface(
+    HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID riid,
             void **ppvObject) final;
     
-    HRESULT GetParent(
+    HRESULT STDMETHODCALLTYPE GetParent(
             REFIID riid,
             void   **ppParent) final;
     
-    Rc<DxvkImage> GetDXVKImage() final;
+    Rc<DxvkImage> STDMETHODCALLTYPE GetDXVKImage() final;
     
-    void SetResourceLayer(
+    void STDMETHODCALLTYPE SetResourceLayer(
             IUnknown*         pLayer) final;
     
   private:
@@ -120,17 +120,17 @@ namespace dxvk {
     
     ~DxgiBufferResource();
     
-    HRESULT QueryInterface(
+    HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID riid,
             void **ppvObject) final;
     
-    HRESULT GetParent(
+    HRESULT STDMETHODCALLTYPE GetParent(
             REFIID riid,
             void   **ppParent) final;
     
-    Rc<DxvkBuffer> GetDXVKBuffer() final;
+    Rc<DxvkBuffer> STDMETHODCALLTYPE GetDXVKBuffer() final;
     
-    void SetResourceLayer(
+    void STDMETHODCALLTYPE SetResourceLayer(
             IUnknown*         pLayer) final;
     
   private:

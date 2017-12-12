@@ -19,11 +19,11 @@ namespace dxvk {
     
     ~D3D11InputLayout();
     
-    HRESULT QueryInterface(
+    HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID  riid,
             void**  ppvObject) final;
     
-    void GetDevice(
+    void STDMETHODCALLTYPE GetDevice(
             ID3D11Device **ppDevice) final;
     
     void BindToContext(

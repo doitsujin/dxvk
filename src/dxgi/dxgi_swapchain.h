@@ -28,54 +28,54 @@ namespace dxvk {
           DXGI_SWAP_CHAIN_DESC* pDesc);
     ~DxgiSwapChain();
     
-    HRESULT QueryInterface(
+    HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID  riid,
             void**  ppvObject) final;
             
-    HRESULT GetParent(
+    HRESULT STDMETHODCALLTYPE GetParent(
             REFIID  riid,
             void**  ppParent) final;
     
-    HRESULT GetDevice(
+    HRESULT STDMETHODCALLTYPE GetDevice(
             REFIID  riid,
             void**  ppDevice) final;
     
-    HRESULT GetBuffer(
+    HRESULT STDMETHODCALLTYPE GetBuffer(
             UINT    Buffer,
             REFIID  riid,
             void**  ppSurface) final;
     
-    HRESULT GetContainingOutput(
+    HRESULT STDMETHODCALLTYPE GetContainingOutput(
             IDXGIOutput **ppOutput) final;
     
-    HRESULT GetDesc(
+    HRESULT STDMETHODCALLTYPE GetDesc(
             DXGI_SWAP_CHAIN_DESC *pDesc) final;
     
-    HRESULT GetFrameStatistics(
+    HRESULT STDMETHODCALLTYPE GetFrameStatistics(
             DXGI_FRAME_STATISTICS *pStats) final;
     
-    HRESULT GetFullscreenState(
+    HRESULT STDMETHODCALLTYPE GetFullscreenState(
             BOOL        *pFullscreen,
             IDXGIOutput **ppTarget) final;
     
-    HRESULT GetLastPresentCount(
+    HRESULT STDMETHODCALLTYPE GetLastPresentCount(
             UINT *pLastPresentCount) final;
     
-    HRESULT Present(
+    HRESULT STDMETHODCALLTYPE Present(
             UINT SyncInterval,
             UINT Flags) final;
     
-    HRESULT ResizeBuffers(
+    HRESULT STDMETHODCALLTYPE ResizeBuffers(
             UINT        BufferCount,
             UINT        Width,
             UINT        Height,
             DXGI_FORMAT NewFormat,
             UINT        SwapChainFlags) final;
     
-    HRESULT ResizeTarget(
+    HRESULT STDMETHODCALLTYPE ResizeTarget(
       const DXGI_MODE_DESC *pNewTargetParameters) final;
     
-    HRESULT SetFullscreenState(
+    HRESULT STDMETHODCALLTYPE SetFullscreenState(
             BOOL        Fullscreen,
             IDXGIOutput *pTarget) final;
 

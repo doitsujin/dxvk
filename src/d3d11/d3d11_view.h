@@ -31,7 +31,7 @@ namespace dxvk {
     : m_device(device), m_resource(resource), m_desc(desc),
       m_bufferView(bufferView), m_imageView(imageView) { }
     
-    HRESULT QueryInterface(REFIID riid, void** ppvObject) final {
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) final {
       COM_QUERY_IFACE(riid, ppvObject, IUnknown);
       COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceChild);
       COM_QUERY_IFACE(riid, ppvObject, ID3D11View);
@@ -41,15 +41,15 @@ namespace dxvk {
       return E_NOINTERFACE;
     }
     
-    void GetDevice(ID3D11Device** ppDevice) final {
+    void STDMETHODCALLTYPE GetDevice(ID3D11Device** ppDevice) final {
       *ppDevice = m_device.ref();
     }
     
-    void GetResource(ID3D11Resource** ppResource) final {
+    void STDMETHODCALLTYPE GetResource(ID3D11Resource** ppResource) final {
       *ppResource = m_resource.ref();
     }
     
-    void GetDesc(DescType* pDesc) final {
+    void STDMETHODCALLTYPE GetDesc(DescType* pDesc) final {
       *pDesc = m_desc;
     }
     

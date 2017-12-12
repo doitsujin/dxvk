@@ -36,7 +36,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11BlendState::QueryInterface(REFIID riid, void** ppvObject) {
+  HRESULT STDMETHODCALLTYPE D3D11BlendState::QueryInterface(REFIID riid, void** ppvObject) {
     COM_QUERY_IFACE(riid, ppvObject, IUnknown);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceChild);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11BlendState);
@@ -46,12 +46,12 @@ namespace dxvk {
   }
   
   
-  void D3D11BlendState::GetDevice(ID3D11Device** ppDevice) {
+  void STDMETHODCALLTYPE D3D11BlendState::GetDevice(ID3D11Device** ppDevice) {
     *ppDevice = ref(m_device);
   }
   
   
-  void D3D11BlendState::GetDesc(D3D11_BLEND_DESC* pDesc) {
+  void STDMETHODCALLTYPE D3D11BlendState::GetDesc(D3D11_BLEND_DESC* pDesc) {
     *pDesc = m_desc;
   }
   

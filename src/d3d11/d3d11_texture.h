@@ -20,21 +20,21 @@ namespace dxvk {
       const D3D11_TEXTURE2D_DESC&       desc);
     ~D3D11Texture2D();
     
-    HRESULT QueryInterface(
+    HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID  riid,
             void**  ppvObject) final;
     
-    void GetDevice(
+    void STDMETHODCALLTYPE GetDevice(
             ID3D11Device **ppDevice) final;
     
-    void GetType(
+    void STDMETHODCALLTYPE GetType(
             D3D11_RESOURCE_DIMENSION *pResourceDimension) final;
     
-    UINT GetEvictionPriority() final;
+    UINT STDMETHODCALLTYPE GetEvictionPriority() final;
     
-    void SetEvictionPriority(UINT EvictionPriority) final;
+    void STDMETHODCALLTYPE SetEvictionPriority(UINT EvictionPriority) final;
     
-    void GetDesc(
+    void STDMETHODCALLTYPE GetDesc(
             D3D11_TEXTURE2D_DESC *pDesc) final;
     
     Rc<DxvkImage> GetDXVKImage();

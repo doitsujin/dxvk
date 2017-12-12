@@ -10,12 +10,10 @@ namespace dxvk {
   DxvkSwapchain::DxvkSwapchain(
     const Rc<DxvkDevice>&           device,
     const Rc<DxvkSurface>&          surface,
-    const DxvkSwapchainProperties&  properties,
-          VkQueue                   queue)
+    const DxvkSwapchainProperties&  properties)
   : m_device    (device),
     m_vkd       (device->vkd()),
     m_surface   (surface),
-    m_queue     (queue),
     m_properties(properties) {
     this->recreateSwapchain();
   }
@@ -58,7 +56,7 @@ namespace dxvk {
     info.pImageIndices      = &m_imageIndex;
     info.pResults           = nullptr;
     
-    VkResult status = m_vkd->vkQueuePresentKHR(m_queue, &info);
+    VkResult status = m_device->presentSwapImage(info);
     
     if (status != VK_SUCCESS
      && status != VK_SUBOPTIMAL_KHR

@@ -23,7 +23,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiOutput::QueryInterface(REFIID riid, void** ppvObject) {
+  HRESULT STDMETHODCALLTYPE DxgiOutput::QueryInterface(REFIID riid, void** ppvObject) {
     COM_QUERY_IFACE(riid, ppvObject, IUnknown);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIObject);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIOutput);
@@ -33,14 +33,14 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiOutput::GetParent(
+  HRESULT STDMETHODCALLTYPE DxgiOutput::GetParent(
           REFIID riid,
           void   **ppParent) {
     return m_adapter->QueryInterface(riid, ppParent);
   }
   
   
-  HRESULT DxgiOutput::FindClosestMatchingMode(
+  HRESULT STDMETHODCALLTYPE DxgiOutput::FindClosestMatchingMode(
     const DXGI_MODE_DESC *pModeToMatch,
           DXGI_MODE_DESC *pClosestMatch,
           IUnknown       *pConcernedDevice) {
@@ -49,7 +49,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiOutput::GetDesc(DXGI_OUTPUT_DESC *pDesc) {
+  HRESULT STDMETHODCALLTYPE DxgiOutput::GetDesc(DXGI_OUTPUT_DESC *pDesc) {
     if (pDesc == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
@@ -85,7 +85,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiOutput::GetDisplayModeList(
+  HRESULT STDMETHODCALLTYPE DxgiOutput::GetDisplayModeList(
           DXGI_FORMAT    EnumFormat,
           UINT           Flags,
           UINT           *pNumModes,
@@ -185,48 +185,48 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiOutput::GetDisplaySurfaceData(IDXGISurface *pDestination) {
+  HRESULT STDMETHODCALLTYPE DxgiOutput::GetDisplaySurfaceData(IDXGISurface *pDestination) {
     Logger::err("DxgiOutput::GetDisplaySurfaceData: Not implemented");
     return E_NOTIMPL;
   }
   
   
-  HRESULT DxgiOutput::GetFrameStatistics(DXGI_FRAME_STATISTICS *pStats) {
+  HRESULT STDMETHODCALLTYPE DxgiOutput::GetFrameStatistics(DXGI_FRAME_STATISTICS *pStats) {
     Logger::err("DxgiOutput::GetFrameStatistics: Not implemented");
     return E_NOTIMPL;
   }
   
   
-  HRESULT DxgiOutput::GetGammaControl(DXGI_GAMMA_CONTROL *pArray) {
+  HRESULT STDMETHODCALLTYPE DxgiOutput::GetGammaControl(DXGI_GAMMA_CONTROL *pArray) {
     Logger::err("DxgiOutput::GetGammaControl: Not implemented");
     return E_NOTIMPL;
   }
   
   
-  HRESULT DxgiOutput::GetGammaControlCapabilities(DXGI_GAMMA_CONTROL_CAPABILITIES *pGammaCaps) {
+  HRESULT STDMETHODCALLTYPE DxgiOutput::GetGammaControlCapabilities(DXGI_GAMMA_CONTROL_CAPABILITIES *pGammaCaps) {
     Logger::err("DxgiOutput::GetGammaControlCapabilities: Not implemented");
     return E_NOTIMPL;
   }
   
   
-  void DxgiOutput::ReleaseOwnership() {
+  void STDMETHODCALLTYPE DxgiOutput::ReleaseOwnership() {
     Logger::warn("DxgiOutput::ReleaseOwnership: Stub");
   }
   
   
-  HRESULT DxgiOutput::SetDisplaySurface(IDXGISurface *pScanoutSurface) {
+  HRESULT STDMETHODCALLTYPE DxgiOutput::SetDisplaySurface(IDXGISurface *pScanoutSurface) {
     Logger::err("DxgiOutput::SetDisplaySurface: Not implemented");
     return E_NOTIMPL;
   }
   
   
-  HRESULT DxgiOutput::SetGammaControl(const DXGI_GAMMA_CONTROL *pArray) {
+  HRESULT STDMETHODCALLTYPE DxgiOutput::SetGammaControl(const DXGI_GAMMA_CONTROL *pArray) {
     Logger::err("DxgiOutput::SetGammaControl: Not implemented");
     return E_NOTIMPL;
   }
   
   
-  HRESULT DxgiOutput::TakeOwnership(
+  HRESULT STDMETHODCALLTYPE DxgiOutput::TakeOwnership(
           IUnknown *pDevice,
           BOOL     Exclusive) {
     Logger::warn("DxgiOutput::TakeOwnership: Stub");
@@ -234,7 +234,7 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiOutput::WaitForVBlank() {
+  HRESULT STDMETHODCALLTYPE DxgiOutput::WaitForVBlank() {
     Logger::warn("DxgiOutput::WaitForVBlank: Stub");
     return S_OK;
   }

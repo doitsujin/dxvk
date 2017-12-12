@@ -66,7 +66,7 @@ namespace dxvk {
     
     ~D3D11Shader() { }
     
-    HRESULT QueryInterface(REFIID riid, void** ppvObject) final {
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) final {
       COM_QUERY_IFACE(riid, ppvObject, IUnknown);
       COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceChild);
       COM_QUERY_IFACE(riid, ppvObject, Base);
@@ -75,11 +75,11 @@ namespace dxvk {
       return E_NOINTERFACE;
     }
     
-    void GetDevice(ID3D11Device **ppDevice) final {
+    void STDMETHODCALLTYPE GetDevice(ID3D11Device **ppDevice) final {
       *ppDevice = m_device.ref();
     }
     
-    Rc<DxvkShader> GetShader() const {
+    Rc<DxvkShader> STDMETHODCALLTYPE GetShader() const {
       return m_module.GetShader();
     }
     

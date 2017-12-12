@@ -172,7 +172,16 @@ namespace dxvk {
   Rc<DxvkSwapchain> DxvkDevice::createSwapchain(
     const Rc<DxvkSurface>&          surface,
     const DxvkSwapchainProperties&  properties) {
-    return new DxvkSwapchain(this, surface, properties, m_presentQueue);
+    return new DxvkSwapchain(this, surface, properties);
+  }
+  
+  
+  VkResult DxvkDevice::presentSwapImage(
+    const VkPresentInfoKHR&         presentInfo) {
+    m_statCounters.increment(DxvkStat::DevQueuePresents, 1);
+    
+    std::lock_guard<std::mutex> lock(m_submissionLock);
+    return m_vkd->vkQueuePresentKHR(m_presentQueue, &presentInfo);
   }
   
   
@@ -195,8 +204,11 @@ namespace dxvk {
       commandList->trackResource(wakeSync);
     }
     
-    commandList->submit(m_graphicsQueue,
-      waitSemaphore, wakeSemaphore, fence->handle());
+    { // Queue submissions are not thread safe
+      std::lock_guard<std::mutex> lock(m_submissionLock);
+      commandList->submit(m_graphicsQueue,
+        waitSemaphore, wakeSemaphore, fence->handle());
+    }
     
     // TODO Delay synchronization by putting these into a ring buffer
     fence->wait(std::numeric_limits<uint64_t>::max());

@@ -67,7 +67,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11RasterizerState::QueryInterface(REFIID riid, void** ppvObject) {
+  HRESULT STDMETHODCALLTYPE D3D11RasterizerState::QueryInterface(REFIID riid, void** ppvObject) {
     COM_QUERY_IFACE(riid, ppvObject, IUnknown);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceChild);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11RasterizerState);
@@ -77,12 +77,12 @@ namespace dxvk {
   }
   
   
-  void D3D11RasterizerState::GetDevice(ID3D11Device** ppDevice) {
+  void STDMETHODCALLTYPE D3D11RasterizerState::GetDevice(ID3D11Device** ppDevice) {
     *ppDevice = ref(m_device);
   }
   
   
-  void D3D11RasterizerState::GetDesc(D3D11_RASTERIZER_DESC* pDesc) {
+  void STDMETHODCALLTYPE D3D11RasterizerState::GetDesc(D3D11_RASTERIZER_DESC* pDesc) {
     *pDesc = m_desc;
   }
   

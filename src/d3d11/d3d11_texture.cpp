@@ -19,7 +19,7 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Texture2D::QueryInterface(REFIID riid, void** ppvObject) {
+  HRESULT STDMETHODCALLTYPE D3D11Texture2D::QueryInterface(REFIID riid, void** ppvObject) {
     COM_QUERY_IFACE(riid, ppvObject, IUnknown);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceChild);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11Resource);
@@ -34,29 +34,29 @@ namespace dxvk {
   }
   
     
-  void D3D11Texture2D::GetDevice(ID3D11Device** ppDevice) {
+  void STDMETHODCALLTYPE D3D11Texture2D::GetDevice(ID3D11Device** ppDevice) {
     *ppDevice = m_device.ref();
   }
   
   
-  void D3D11Texture2D::GetType(D3D11_RESOURCE_DIMENSION *pResourceDimension) {
+  void STDMETHODCALLTYPE D3D11Texture2D::GetType(D3D11_RESOURCE_DIMENSION *pResourceDimension) {
     *pResourceDimension = D3D11_RESOURCE_DIMENSION_TEXTURE2D;
   }
   
   
-  UINT D3D11Texture2D::GetEvictionPriority() {
+  UINT STDMETHODCALLTYPE D3D11Texture2D::GetEvictionPriority() {
     UINT EvictionPriority = DXGI_RESOURCE_PRIORITY_NORMAL;
     m_resource->GetEvictionPriority(&EvictionPriority);
     return EvictionPriority;
   }
   
   
-  void D3D11Texture2D::SetEvictionPriority(UINT EvictionPriority) {
+  void STDMETHODCALLTYPE D3D11Texture2D::SetEvictionPriority(UINT EvictionPriority) {
     m_resource->SetEvictionPriority(EvictionPriority);
   }
   
   
-  void D3D11Texture2D::GetDesc(D3D11_TEXTURE2D_DESC *pDesc) {
+  void STDMETHODCALLTYPE D3D11Texture2D::GetDesc(D3D11_TEXTURE2D_DESC *pDesc) {
     *pDesc = m_desc;
   }
   

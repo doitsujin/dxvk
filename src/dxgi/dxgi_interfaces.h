@@ -37,9 +37,9 @@ MIDL_INTERFACE("907bf281-ea3c-43b4-a8e4-9f231107b4ff")
 IDXGIAdapterPrivate : public IDXGIAdapter1 {
   static const GUID guid;
   
-  virtual dxvk::Rc<dxvk::DxvkAdapter> GetDXVKAdapter() = 0;
+  virtual dxvk::Rc<dxvk::DxvkAdapter> STDMETHODCALLTYPE GetDXVKAdapter() = 0;
   
-  virtual dxvk::DxgiFormatPair LookupFormat(
+  virtual dxvk::DxgiFormatPair STDMETHODCALLTYPE LookupFormat(
           DXGI_FORMAT format) = 0;
 };
 
@@ -55,10 +55,10 @@ MIDL_INTERFACE("7a622cf6-627a-46b2-b52f-360ef3da831c")
 IDXGIDevicePrivate : public IDXGIDevice1 {
   static const GUID guid;
   
-  virtual void SetDeviceLayer(
+  virtual void STDMETHODCALLTYPE SetDeviceLayer(
           IUnknown* layer) = 0;
   
-  virtual dxvk::Rc<dxvk::DxvkDevice> GetDXVKDevice() = 0;
+  virtual dxvk::Rc<dxvk::DxvkDevice> STDMETHODCALLTYPE GetDXVKDevice() = 0;
 };
 
 
@@ -70,9 +70,9 @@ MIDL_INTERFACE("5679becd-8547-4d93-96a1-e61a1ce7ef37")
 IDXGIBufferResourcePrivate : public IDXGIResource {
   static const GUID guid;
   
-  virtual dxvk::Rc<dxvk::DxvkBuffer> GetDXVKBuffer() = 0;
+  virtual dxvk::Rc<dxvk::DxvkBuffer> STDMETHODCALLTYPE GetDXVKBuffer() = 0;
   
-  virtual void SetResourceLayer(
+  virtual void STDMETHODCALLTYPE SetResourceLayer(
           IUnknown* pLayer) = 0;
 };
 
@@ -85,9 +85,9 @@ MIDL_INTERFACE("1cfe6592-7de0-4a07-8dcb-4543cbbc6a7d")
 IDXGIImageResourcePrivate : public IDXGIResource {
   static const GUID guid;
   
-  virtual dxvk::Rc<dxvk::DxvkImage> GetDXVKImage() = 0;
+  virtual dxvk::Rc<dxvk::DxvkImage> STDMETHODCALLTYPE GetDXVKImage() = 0;
   
-  virtual void SetResourceLayer(
+  virtual void STDMETHODCALLTYPE SetResourceLayer(
           IUnknown* pLayer) = 0;
 };
 
@@ -114,7 +114,7 @@ IDXGIPresentDevicePrivate : public IUnknown {
    * \param [in] ppInterface Target interface
    * \returns \c S_OK on success
    */
-  virtual HRESULT WrapSwapChainBackBuffer(
+  virtual HRESULT STDMETHODCALLTYPE WrapSwapChainBackBuffer(
           IDXGIImageResourcePrivate*  pResource,
     const DXGI_SWAP_CHAIN_DESC*       pSwapChainDesc,
           IUnknown**                  ppInterface) = 0;
@@ -127,7 +127,7 @@ IDXGIPresentDevicePrivate : public IUnknown {
    * before presenting the swap chain's back buffer.
    * \returns \c S_OK on success
    */
-  virtual HRESULT FlushRenderingCommands() = 0;
+  virtual HRESULT STDMETHODCALLTYPE FlushRenderingCommands() = 0;
   
   /**
    * \brief Underlying DXVK device
@@ -136,7 +136,7 @@ IDXGIPresentDevicePrivate : public IUnknown {
    * \param [in] ppDevice device
    * \returns DXVK device handle
    */
-  virtual HRESULT GetDevice(
+  virtual HRESULT STDMETHODCALLTYPE GetDevice(
           REFGUID     riid,
           void**      ppDevice) = 0;
 };
