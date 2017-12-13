@@ -768,6 +768,25 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opFFma(
+          uint32_t                resultType,
+          uint32_t                a,
+          uint32_t                b,
+          uint32_t                c) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpExtInst, 8);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(m_instExtGlsl450);
+    m_code.putWord(spv::GLSLstd450Fma);
+    m_code.putWord(a);
+    m_code.putWord(b);
+    m_code.putWord(c);
+    return resultId;
+  }
+  
+  
   uint32_t SpirvModule::opFClamp(
           uint32_t                resultType,
           uint32_t                x,

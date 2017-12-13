@@ -275,6 +275,12 @@ namespace dxvk {
             uint32_t                a,
             uint32_t                b);
     
+    uint32_t opFFma(
+            uint32_t                resultType,
+            uint32_t                a,
+            uint32_t                b,
+            uint32_t                c);
+    
     uint32_t opFClamp(
             uint32_t                resultType,
             uint32_t                x,

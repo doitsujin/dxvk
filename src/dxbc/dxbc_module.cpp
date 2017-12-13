@@ -44,12 +44,20 @@ namespace dxvk {
     if (m_shexChunk == nullptr)
       throw DxvkError("DxbcModule::compile: No SHDR/SHEX chunk");
     
-    DxbcCompiler compiler(
+    DxbcCompiler2 compiler(
       m_shexChunk->version(),
       m_isgnChunk, m_osgnChunk);
     
-    for (auto ins : *m_shexChunk)
-      compiler.processInstruction(ins);
+    for (auto ins : *m_shexChunk) {
+      const DxbcError error = compiler.processInstruction(ins);
+      
+      if (error != DxbcError::sOk) {
+        Logger::err(str::format(
+          "dxbc: Error while processing ",
+          ins.token().opcode(), ": Error ",
+          static_cast<uint32_t>(error)));
+      }
+    }
     
     return compiler.finalize();
   }

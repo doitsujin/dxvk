@@ -11,6 +11,72 @@ namespace dxvk {
   class DxbcOperand;
   
   /**
+   * \brief Component swizzle
+   * 
+   * Maps vector components to
+   * other vector components.
+   * TODO remove old class
+   */
+  class DxbcRegSwizzle {
+    
+  public:
+    
+    DxbcRegSwizzle() { }
+    DxbcRegSwizzle(uint32_t x, uint32_t y, uint32_t z, uint32_t w)
+    : m_data((x << 0) | (y << 2) | (z << 4) | (w << 6)) { }
+    
+    uint32_t operator [] (uint32_t id) const {
+      return (m_data >> (id + id)) & 0x3;
+    }
+    
+  private:
+    
+    uint8_t m_data = 0;
+    
+  };
+  
+  
+  /**
+   * \brief Component mask
+   * 
+   * Enables access to certain
+   * subset of vector components.
+   * TODO remove old class
+   */
+  class DxbcRegMask {
+    
+  public:
+    
+    DxbcRegMask() { }
+    DxbcRegMask(uint32_t mask) : m_data(mask) { }
+    DxbcRegMask(bool x, bool y, bool z, bool w)
+    : m_data((x ? 0x1 : 0) | (y ? 0x2 : 0)
+           | (z ? 0x4 : 0) | (w ? 0x8 : 0)) { }
+    
+    bool operator [] (uint32_t id) const {
+      return (m_data >> id) & 1;
+    }
+    
+    uint32_t setCount() const {
+      const uint8_t n[16] = { 0, 1, 1, 2, 1, 2, 2, 3,
+                              1, 2, 2, 3, 2, 3, 3, 4 };
+      return n[m_data & 0xF];
+    }
+    
+    uint32_t firstSet() const {
+      const uint8_t n[16] = { 4, 0, 1, 0, 2, 0, 1, 0,
+                              3, 0, 1, 0, 2, 0, 1, 0 };
+      return n[m_data & 0xF];
+    }
+    
+  private:
+    
+    uint8_t m_data = 0;
+    
+  };
+  
+  
+  /**
    * \brief Basic control info
    * 
    * Parses instruction-specific control bits. Whether
@@ -72,6 +138,17 @@ namespace dxvk {
      */
     DxbcSyncFlags syncFlags() const {
       return bit::extract(m_control, 0, 3);
+    }
+    
+    /**
+     * \brief Resource dimension
+     * 
+     * Defines the type of a resource.
+     * Only valid for dcl_resource etc.
+     */
+    DxbcResourceDim resourceDim() const {
+      return static_cast<DxbcResourceDim>(
+        bit::extract(m_control, 0, 4));
     }
     
   private:
@@ -233,7 +310,7 @@ namespace dxvk {
      * \returns Number of components
      */
     uint32_t numComponents() const {
-      std::array<uint32_t, 3> count = { 0, 1, 4 };
+      std::array<uint32_t, 4> count = { 0, 1, 4, 0 };
       return count.at(bit::extract(m_token, 0, 1));
     }
     
@@ -262,6 +339,17 @@ namespace dxvk {
     }
     
     /**
+     * \brief Component mask
+     * 
+     * Used when the component selection mode is
+     * \c DxbcComponentSelectionMode::Mask.
+     * \returns The component mask
+     */
+    DxbcRegMask mask() const {
+      return DxbcRegMask(bit::extract(m_token, 4, 7));
+    }
+    
+    /**
      * \brief Component swizzle
      * 
      * Used when the component selection mode is
@@ -274,6 +362,29 @@ namespace dxvk {
         bit::extract(m_token,  6,  7),
         bit::extract(m_token,  8,  9),
         bit::extract(m_token, 10, 11));
+    }
+    
+    /**
+     * \brief Component swizzle
+     * 
+     * Used when the component selection mode is
+     * \c DxbcComponentSelectionMode::Swizzle.
+     * \returns The component swizzle
+     */
+    DxbcRegSwizzle swizzle() const {
+      return DxbcRegSwizzle(
+        bit::extract(m_token,  4,  5),
+        bit::extract(m_token,  6,  7),
+        bit::extract(m_token,  8,  9),
+        bit::extract(m_token, 10, 11));
+    }
+    
+    /**
+     * \brief Single component selection
+     * \returns The component index
+     */
+    uint32_t select1() const {
+      return bit::extract(m_token, 4, 5);
     }
     
     /**

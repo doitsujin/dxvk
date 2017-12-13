@@ -3,6 +3,7 @@ dxbc_src = files([
   'dxbc_chunk_shex.cpp',
   'dxbc_common.cpp',
   'dxbc_compiler.cpp',
+  'dxbc_defs.cpp',
   'dxbc_decoder.cpp',
   'dxbc_header.cpp',
   'dxbc_module.cpp',
@@ -10,10 +11,6 @@ dxbc_src = files([
   'dxbc_reader.cpp',
   'dxbc_type.cpp',
   'dxbc_util.cpp',
-  
-  'gen/dxbc_gen_common.cpp',
-  'gen/dxbc_gen_pixel.cpp',
-  'gen/dxbc_gen_vertex.cpp',
 ])
 
 dxbc_lib = static_library('dxbc', dxbc_src,
