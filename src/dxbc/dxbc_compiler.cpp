@@ -61,6 +61,7 @@ namespace dxvk {
       case DxbcInstClass::TextureSample:  return this->handleTextureSample(parsedInst);
       case DxbcInstClass::VectorAlu:      return this->handleVectorAlu    (parsedInst);
       case DxbcInstClass::VectorDot:      return this->handleVectorDot    (parsedInst);
+      case DxbcInstClass::VectorSinCos:   return this->handleVectorSinCos (parsedInst);
       default:                            return DxbcError::eUnhandledOpcode;
     }
   }
@@ -676,6 +677,20 @@ namespace dxvk {
           arguments[2].valueId);
         break;
       
+      case DxbcOpcode::Max:
+        result.valueId = m_module.opFMax(
+          resultTypeId,
+          arguments[0].valueId,
+          arguments[1].valueId);
+        break;
+      
+      case DxbcOpcode::Min:
+        result.valueId = m_module.opFMin(
+          resultTypeId,
+          arguments[0].valueId,
+          arguments[1].valueId);
+        break;
+      
       case DxbcOpcode::Mov:
         result.valueId = arguments[0].valueId;
         break;
@@ -743,6 +758,58 @@ namespace dxvk {
     // Apply result modifiers to floating-point results
     result = this->applyResultModifiers(result, ins.control);
     this->storeOp(ins.operands[0], result);
+    return DxbcError::sOk;
+  }
+  
+  
+  DxbcError DxbcCompiler2::handleVectorSinCos(const DxbcInst& ins) {
+    // sincos has three operands:
+    //  (1) Destination register for sin(x)
+    //  (2) Destination register for cos(x)
+    //  (3) Source operand x
+    const DxbcInstOp dstSinOp = ins.operands[0];
+    const DxbcInstOp dstCosOp = ins.operands[1];
+    const DxbcInstOp srcOp    = ins.operands[2];
+    
+    // Load source operand as 32-bit float vector
+    const DxbcValue2 srcValue = this->loadOp(srcOp,
+      DxbcRegMask(true, true, true, true),
+      DxbcScalarType::Float32);
+    
+    // Either output may be DxbcOperandType::Null, in
+    // which case we don't have to generate any code
+    if (dstSinOp.type != DxbcOperandType::Null) {
+      const DxbcValue2 sinInput = this->extractReg(
+        srcValue, dstSinOp.mask);
+      
+      DxbcValue2 sinValue;
+      sinValue.componentType  = srcValue.componentType;
+      sinValue.componentCount = srcValue.componentCount;
+      sinValue.valueId = m_module.opSin(
+        this->defineVectorType(
+          sinInput.componentType,
+          sinInput.componentCount),
+        sinInput.valueId);
+      
+      this->storeOp(dstSinOp, sinValue);
+    }
+    
+    if (dstCosOp.type != DxbcOperandType::Null) {
+      const DxbcValue2 cosInput = this->extractReg(
+        srcValue, dstCosOp.mask);
+      
+      DxbcValue2 cosValue;
+      cosValue.componentType  = srcValue.componentType;
+      cosValue.componentCount = srcValue.componentCount;
+      cosValue.valueId = m_module.opCos(
+        this->defineVectorType(
+          cosInput.componentType,
+          cosInput.componentCount),
+        cosInput.valueId);
+      
+      this->storeOp(dstCosOp, cosValue);
+    }
+    
     return DxbcError::sOk;
   }
   

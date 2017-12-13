@@ -280,6 +280,9 @@ namespace dxvk {
     DxbcError handleVectorDot(
       const DxbcInst& ins);
     
+    DxbcError handleVectorSinCos(
+      const DxbcInst& ins);
+    
     ///////////////////////
     // Declaration methods
     DxbcError declareGlobalFlags(

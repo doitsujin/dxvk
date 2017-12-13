@@ -20,6 +20,7 @@ namespace dxvk {
     VectorAlu,        ///< Component-wise vector instructions
     VectorCmp,        ///< Component-wise vector comparison
     VectorDot,        ///< Dot product instruction
+    VectorSinCos,     ///< Sine and Cosine instruction
     ControlFlow,      ///< Control flow instructions
     Undefined,        ///< Instruction code not defined
   };

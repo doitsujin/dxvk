@@ -785,6 +785,40 @@ namespace dxvk {
     m_code.putWord(c);
     return resultId;
   }
+    
+  
+  uint32_t SpirvModule::opFMax(
+          uint32_t                resultType,
+          uint32_t                a,
+          uint32_t                b) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpExtInst, 7);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(m_instExtGlsl450);
+    m_code.putWord(spv::GLSLstd450FMax);
+    m_code.putWord(a);
+    m_code.putWord(b);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opFMin(
+          uint32_t                resultType,
+          uint32_t                a,
+          uint32_t                b) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpExtInst, 7);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(m_instExtGlsl450);
+    m_code.putWord(spv::GLSLstd450FMin);
+    m_code.putWord(a);
+    m_code.putWord(b);
+    return resultId;
+  }
   
   
   uint32_t SpirvModule::opFClamp(
@@ -817,6 +851,36 @@ namespace dxvk {
     m_code.putWord(resultId);
     m_code.putWord(vector1);
     m_code.putWord(vector2);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opSin(
+          uint32_t                resultType,
+          uint32_t                vector) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpExtInst, 6);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(m_instExtGlsl450);
+    m_code.putWord(spv::GLSLstd450Sin);
+    m_code.putWord(vector);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opCos(
+          uint32_t                resultType,
+          uint32_t                vector) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpExtInst, 6);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(m_instExtGlsl450);
+    m_code.putWord(spv::GLSLstd450Cos);
+    m_code.putWord(vector);
     return resultId;
   }
   

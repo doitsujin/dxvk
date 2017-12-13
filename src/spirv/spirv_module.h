@@ -281,6 +281,16 @@ namespace dxvk {
             uint32_t                b,
             uint32_t                c);
     
+    uint32_t opFMax(
+            uint32_t                resultType,
+            uint32_t                a,
+            uint32_t                b);
+    
+    uint32_t opFMin(
+            uint32_t                resultType,
+            uint32_t                a,
+            uint32_t                b);
+    
     uint32_t opFClamp(
             uint32_t                resultType,
             uint32_t                x,
@@ -291,6 +301,14 @@ namespace dxvk {
             uint32_t                resultType,
             uint32_t                vector1,
             uint32_t                vector2);
+    
+    uint32_t opSin(
+            uint32_t                resultType,
+            uint32_t                vector);
+    
+    uint32_t opCos(
+            uint32_t                resultType,
+            uint32_t                vector);
     
     uint32_t opInverseSqrt(
             uint32_t                resultType,
