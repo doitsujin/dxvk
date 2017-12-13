@@ -541,6 +541,12 @@ namespace dxvk {
             UINT                              NumBuffers,
             ID3D11Buffer**                    ppSOTargets) final;
     
+    void Synchronize();
+    
+    Rc<DxvkContext> GetDXVKContext() const {
+      return m_context;
+    }
+    
   private:
     
     ID3D11Device* const m_parent;

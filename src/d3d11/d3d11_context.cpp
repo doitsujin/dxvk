@@ -179,30 +179,7 @@ namespace dxvk {
     
     if (resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER) {
       D3D11Buffer* resource = static_cast<D3D11Buffer*>(pResource);
-      
-      const Rc<DxvkBuffer> buffer = resource->GetDXVKBuffer();
-      
-      if (buffer->mapPtr(0) == nullptr) {
-        Logger::err("D3D11: Cannot map a device-local buffer");
-        return E_FAIL;
-      }
-      
-      if (pMappedResource == nullptr)
-        return S_OK;
-      
-      if (buffer->isInUse()) {
-        if (MapFlags & D3D11_MAP_FLAG_DO_NOT_WAIT)
-          return DXGI_ERROR_WAS_STILL_DRAWING;
-        
-        this->Flush();
-        m_device->waitForIdle();
-        // TODO properly synchronize
-      }
-      
-      pMappedResource->pData      = buffer->mapPtr(0);
-      pMappedResource->RowPitch   = buffer->info().size;
-      pMappedResource->DepthPitch = buffer->info().size;
-      return S_OK;
+      return resource->Map(this, MapType, MapFlags, pMappedResource);
     } else {
       Logger::err("D3D11: Mapping of image resources currently not supported");
       return E_NOTIMPL;
@@ -213,7 +190,15 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeviceContext::Unmap(
           ID3D11Resource*             pResource,
           UINT                        Subresource) {
-    // There's literally nothing we have to do here at the moment
+    D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+    pResource->GetType(&resourceDim);
+    
+    if (resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER) {
+      D3D11Buffer* resource = static_cast<D3D11Buffer*>(pResource);
+      return resource->Unmap(this);
+    } else {
+      // We already displayed an error on Map()
+    }
   }
   
   
@@ -1453,6 +1438,11 @@ namespace dxvk {
           UINT                              NumBuffers,
           ID3D11Buffer**                    ppSOTargets) {
     Logger::err("D3D11DeviceContext::SOGetTargets: Not implemented");
+  }
+  
+  
+  void D3D11DeviceContext::Synchronize() {
+    m_device->waitForIdle();
   }
   
   

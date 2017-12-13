@@ -8,6 +8,7 @@
 namespace dxvk {
   
   class D3D11Device;
+  class D3D11DeviceContext;
   
   
   class D3D11Buffer : public D3D11DeviceChild<ID3D11Buffer> {
@@ -37,6 +38,15 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc(
             D3D11_BUFFER_DESC *pDesc) final;
     
+    HRESULT Map(
+            D3D11DeviceContext*       pContext,
+            D3D11_MAP                 MapType,
+            UINT                      MapFlags,
+            D3D11_MAPPED_SUBRESOURCE* pMappedSubresource);
+    
+    void Unmap(
+            D3D11DeviceContext*       pContext);
+    
     Rc<DxvkBuffer> GetDXVKBuffer();
     
   private:
@@ -44,6 +54,8 @@ namespace dxvk {
     Com<D3D11Device>                m_device;
     Com<IDXGIBufferResourcePrivate> m_resource;
     D3D11_BUFFER_DESC               m_desc;
+    
+    Rc<DxvkDataBuffer>              m_mapData;
     
   };
   
