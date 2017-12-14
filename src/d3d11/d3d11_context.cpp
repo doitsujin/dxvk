@@ -414,7 +414,7 @@ namespace dxvk {
       if (size != 0) {
         m_context->updateBuffer(
           bufferSlice.buffer(),
-          bufferSlice.bufferOffset() + offset,
+          bufferSlice.offset() + offset,
           size, pSrcData);
       }
     } else {
@@ -641,8 +641,8 @@ namespace dxvk {
         
         bufferSlice = DxvkBufferSlice(
           baseSlice.buffer(),
-          baseSlice.bufferOffset() + binding.offset,
-          baseSlice.bufferRange() - binding.offset);
+          baseSlice.offset() + binding.offset,
+          baseSlice.length() - binding.offset);
       }
       
       m_context->bindVertexBuffer(
@@ -670,8 +670,8 @@ namespace dxvk {
       
       bufferSlice = DxvkBufferSlice(
         baseSlice.buffer(),
-        baseSlice.bufferOffset() + binding.offset,
-        baseSlice.bufferRange() - binding.offset);
+        baseSlice.offset() + binding.offset,
+        baseSlice.length() - binding.offset);
     }
     
     // As in Vulkan, the index format can be either a 32-bit

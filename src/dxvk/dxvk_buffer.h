@@ -180,17 +180,17 @@ namespace dxvk {
       return m_buffer;
     }
     
-    VkBuffer bufferHandle() const {
+    VkBuffer handle() const {
       return m_buffer != nullptr
         ? m_buffer->handle()
         : VK_NULL_HANDLE;
     }
     
-    size_t bufferOffset() const {
+    size_t offset() const {
       return m_offset;
     }
     
-    size_t bufferRange() const {
+    size_t length() const {
       return m_length;
     }
     

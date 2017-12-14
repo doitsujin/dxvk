@@ -1156,8 +1156,8 @@ namespace dxvk {
         m_dxvkDevice->createCommandList());
       m_resourceInitContext->updateBuffer(
         bufferSlice.buffer(),
-        bufferSlice.bufferOffset(),
-        bufferSlice.bufferRange(),
+        bufferSlice.offset(),
+        bufferSlice.length(),
         pInitialData->pSysMem);
       m_dxvkDevice->submitCommandList(
         m_resourceInitContext->endRecording(),

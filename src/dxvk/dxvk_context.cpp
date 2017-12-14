@@ -898,10 +898,10 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpDirtyIndexBuffer)) {
       m_flags.clr(DxvkContextFlag::GpDirtyIndexBuffer);
       
-      if (m_state.vi.indexBuffer.bufferHandle() != VK_NULL_HANDLE) {
+      if (m_state.vi.indexBuffer.handle() != VK_NULL_HANDLE) {
         m_cmd->cmdBindIndexBuffer(
-          m_state.vi.indexBuffer.bufferHandle(),
-          m_state.vi.indexBuffer.bufferOffset(),
+          m_state.vi.indexBuffer.handle(),
+          m_state.vi.indexBuffer.offset(),
           m_state.vi.indexType);
         m_cmd->trackResource(
           m_state.vi.indexBuffer.buffer());
@@ -917,8 +917,8 @@ namespace dxvk {
       for (uint32_t i = 0; i < m_state.vi.vertexBuffers.size(); i++) {
         const DxvkBufferSlice vbo = m_state.vi.vertexBuffers.at(i);
         
-        VkBuffer     handle = vbo.bufferHandle();
-        VkDeviceSize offset = vbo.bufferOffset();
+        VkBuffer     handle = vbo.handle();
+        VkDeviceSize offset = vbo.offset();
         
         if (handle != VK_NULL_HANDLE) {
           m_cmd->cmdBindVertexBuffers(i, 1, &handle, &offset);
