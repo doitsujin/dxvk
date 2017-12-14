@@ -67,86 +67,12 @@ namespace dxvk {
     const D3D11_BUFFER_DESC*      pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
           ID3D11Buffer**          ppBuffer) {
-    
-    // Gather usage information
-    DxvkBufferCreateInfo  info;
-    info.size   = pDesc->ByteWidth;
-    info.usage  = VK_BUFFER_USAGE_TRANSFER_DST_BIT
-                | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-    info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    info.access = VK_ACCESS_TRANSFER_READ_BIT
-                | VK_ACCESS_TRANSFER_WRITE_BIT;
-    
-    if (pDesc->BindFlags & D3D11_BIND_VERTEX_BUFFER) {
-      info.usage  |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-      info.stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-      info.access |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
-    }
-    
-    if (pDesc->BindFlags & D3D11_BIND_INDEX_BUFFER) {
-      info.usage  |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-      info.stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-      info.access |= VK_ACCESS_INDEX_READ_BIT;
-    }
-    
-    if (pDesc->BindFlags & D3D11_BIND_CONSTANT_BUFFER) {
-      info.usage  |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-      info.stages |= GetEnabledShaderStages();
-      info.access |= VK_ACCESS_UNIFORM_READ_BIT;
-    }
-    
-    if (pDesc->BindFlags & D3D11_BIND_SHADER_RESOURCE) {
-      info.usage  |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
-                  |  VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
-      info.stages |= GetEnabledShaderStages();
-      info.access |= VK_ACCESS_SHADER_READ_BIT;
-    }
-    
-    if (pDesc->BindFlags & D3D11_BIND_STREAM_OUTPUT) {
-      Logger::err("D3D11Device::CreateBuffer: D3D11_BIND_STREAM_OUTPUT not supported");
-      return E_INVALIDARG;
-    }
-    
-    if (pDesc->BindFlags & D3D11_BIND_UNORDERED_ACCESS) {
-      info.usage  |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-                  |  VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
-      info.stages |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
-                  |  VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-      info.access |= VK_ACCESS_SHADER_READ_BIT
-                  |  VK_ACCESS_SHADER_WRITE_BIT;
-    }
-    
-    if (pDesc->CPUAccessFlags & D3D11_CPU_ACCESS_WRITE) {
-      info.stages |= VK_PIPELINE_STAGE_HOST_BIT;
-      info.access |= VK_ACCESS_HOST_WRITE_BIT;
-    }
-    
-    if (pDesc->CPUAccessFlags & D3D11_CPU_ACCESS_READ) {
-      info.stages |= VK_PIPELINE_STAGE_HOST_BIT;
-      info.access |= VK_ACCESS_HOST_READ_BIT;
-    }
-    
-    if (pDesc->MiscFlags & D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS) {
-      info.usage  |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
-      info.stages |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
-      info.access |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
-    }
-    
     if (ppBuffer != nullptr) {
-      Com<IDXGIBufferResourcePrivate> buffer;
+      const Com<D3D11Buffer> buffer
+        = new D3D11Buffer(this, pDesc);
       
-      HRESULT hr = DXGICreateBufferResourcePrivate(
-        m_dxgiDevice.ptr(), &info,
-        GetMemoryFlagsForUsage(pDesc->Usage), 0,
-        &buffer);
-      
-      if (FAILED(hr))
-        return hr;
-      
-      *ppBuffer = ref(new D3D11Buffer(
-        this, buffer.ptr(), *pDesc));
-      
-      InitBuffer(buffer.ptr(), pInitialData);
+      this->InitBuffer(buffer.ptr(), pInitialData);
+      *ppBuffer = buffer.ref();
     }
     
     return S_OK;
@@ -1110,6 +1036,24 @@ namespace dxvk {
   }
   
   
+  VkPipelineStageFlags D3D11Device::GetEnabledShaderStages() const {
+    VkPipelineStageFlags enabledShaderPipelineStages
+      = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
+      | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+      | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+    
+    if (m_dxvkDevice->features().geometryShader)
+      enabledShaderPipelineStages |= VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
+    
+    if (m_dxvkDevice->features().tessellationShader) {
+      enabledShaderPipelineStages |= VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT
+                                  |  VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
+    }
+    
+    return enabledShaderPipelineStages;
+  }
+  
+  
   bool D3D11Device::CheckFeatureLevelSupport(
     const Rc<DxvkAdapter>&  adapter,
           D3D_FEATURE_LEVEL featureLevel) {
@@ -1201,7 +1145,7 @@ namespace dxvk {
   
   
   void D3D11Device::InitBuffer(
-          IDXGIBufferResourcePrivate* pBuffer,
+          D3D11Buffer*                pBuffer,
     const D3D11_SUBRESOURCE_DATA*     pInitialData) {
     const Rc<DxvkBuffer> buffer = pBuffer->GetDXVKBuffer();
     
@@ -1424,49 +1368,6 @@ namespace dxvk {
     }
     
     return E_INVALIDARG;
-  }
-  
-  
-  VkPipelineStageFlags D3D11Device::GetEnabledShaderStages() const {
-    VkPipelineStageFlags enabledShaderPipelineStages
-      = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
-      | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
-      | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-    
-    if (m_dxvkDevice->features().geometryShader)
-      enabledShaderPipelineStages |= VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
-    
-    if (m_dxvkDevice->features().tessellationShader) {
-      enabledShaderPipelineStages |= VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT
-                                  |  VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
-    }
-    
-    return enabledShaderPipelineStages;
-  }
-  
-  
-  VkMemoryPropertyFlags D3D11Device::GetMemoryFlagsForUsage(D3D11_USAGE usage) const {
-    VkMemoryPropertyFlags memoryFlags = 0;
-    
-    switch (usage) {
-      case D3D11_USAGE_DEFAULT:
-      case D3D11_USAGE_IMMUTABLE:
-        memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-        break;
-      
-      case D3D11_USAGE_DYNAMIC:
-        memoryFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-                    |  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-        break;
-      
-      case D3D11_USAGE_STAGING:
-        memoryFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-                    |  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-                    |  VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
-        break;
-    }
-    
-    return memoryFlags;
   }
   
   

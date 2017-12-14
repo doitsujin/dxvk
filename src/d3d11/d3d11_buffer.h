@@ -16,9 +16,8 @@ namespace dxvk {
   public:
     
     D3D11Buffer(
-            D3D11Device*                device,
-            IDXGIBufferResourcePrivate* resource,
-      const D3D11_BUFFER_DESC&          desc);
+            D3D11Device*                pDevice,
+      const D3D11_BUFFER_DESC*          pDesc);
     ~D3D11Buffer();
     
     HRESULT STDMETHODCALLTYPE QueryInterface(
@@ -52,8 +51,12 @@ namespace dxvk {
   private:
     
     Com<D3D11Device>                m_device;
-    Com<IDXGIBufferResourcePrivate> m_resource;
     D3D11_BUFFER_DESC               m_desc;
+    
+    Rc<DxvkBuffer>                  m_buffer;
+    
+    Rc<DxvkBuffer> CreateBuffer(
+      const D3D11_BUFFER_DESC* pDesc) const;
     
   };
   

@@ -9,5 +9,7 @@ namespace dxvk {
   VkCompareOp DecodeCompareOp(
           D3D11_COMPARISON_FUNC mode);
   
+  VkMemoryPropertyFlags GetMemoryFlagsForUsage(
+          D3D11_USAGE             usage);
   
 }

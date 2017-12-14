@@ -35,4 +35,29 @@ namespace dxvk {
     }
   }
   
+  
+  VkMemoryPropertyFlags GetMemoryFlagsForUsage(D3D11_USAGE usage) {
+    VkMemoryPropertyFlags memoryFlags = 0;
+    
+    switch (usage) {
+      case D3D11_USAGE_DEFAULT:
+      case D3D11_USAGE_IMMUTABLE:
+        memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+        break;
+      
+      case D3D11_USAGE_DYNAMIC:
+        memoryFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                    |  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+        break;
+      
+      case D3D11_USAGE_STAGING:
+        memoryFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                    |  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+                    |  VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+        break;
+    }
+    
+    return memoryFlags;
+  }
+  
 }

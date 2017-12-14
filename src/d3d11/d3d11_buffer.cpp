@@ -7,12 +7,10 @@
 namespace dxvk {
   
   D3D11Buffer::D3D11Buffer(
-          D3D11Device*                device,
-          IDXGIBufferResourcePrivate* resource,
-    const D3D11_BUFFER_DESC&          desc)
-  : m_device  (device),
-    m_resource(resource),
-    m_desc    (desc) {
+          D3D11Device*                pDevice,
+    const D3D11_BUFFER_DESC*          pDesc)
+  : m_device  (pDevice),
+    m_desc    (*pDesc) {
     
   }
   
@@ -28,10 +26,6 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, ID3D11Resource);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11Buffer);
     
-    if (riid == __uuidof(IDXGIResource)
-     || riid == __uuidof(IDXGIBufferResourcePrivate))
-      return m_resource->QueryInterface(riid, ppvObject);
-      
     Logger::warn("D3D11Buffer::QueryInterface: Unknown interface query");
     return E_NOINTERFACE;
   }
@@ -43,14 +37,13 @@ namespace dxvk {
   
   
   UINT STDMETHODCALLTYPE D3D11Buffer::GetEvictionPriority() {
-    UINT EvictionPriority = DXGI_RESOURCE_PRIORITY_NORMAL;
-    m_resource->GetEvictionPriority(&EvictionPriority);
-    return EvictionPriority;
+    Logger::warn("D3D11Buffer::GetEvictionPriority: Stub");
+    return DXGI_RESOURCE_PRIORITY_NORMAL;
   }
   
   
   void STDMETHODCALLTYPE D3D11Buffer::SetEvictionPriority(UINT EvictionPriority) {
-    m_resource->SetEvictionPriority(EvictionPriority);
+    Logger::warn("D3D11Buffer::SetEvictionPriority: Stub");
   }
   
   
@@ -130,7 +123,76 @@ namespace dxvk {
   
   
   Rc<DxvkBuffer> D3D11Buffer::GetDXVKBuffer() {
-    return m_resource->GetDXVKBuffer();
+    return m_buffer;
+  }
+  
+  
+  Rc<DxvkBuffer> D3D11Buffer::CreateBuffer(
+    const D3D11_BUFFER_DESC* pDesc) const {
+    // Gather usage information
+    DxvkBufferCreateInfo  info;
+    info.size   = pDesc->ByteWidth;
+    info.usage  = VK_BUFFER_USAGE_TRANSFER_DST_BIT
+                | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    info.access = VK_ACCESS_TRANSFER_READ_BIT
+                | VK_ACCESS_TRANSFER_WRITE_BIT;
+    
+    if (pDesc->BindFlags & D3D11_BIND_VERTEX_BUFFER) {
+      info.usage  |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+      info.stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+      info.access |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+    }
+    
+    if (pDesc->BindFlags & D3D11_BIND_INDEX_BUFFER) {
+      info.usage  |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+      info.stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+      info.access |= VK_ACCESS_INDEX_READ_BIT;
+    }
+    
+    if (pDesc->BindFlags & D3D11_BIND_CONSTANT_BUFFER) {
+      info.usage  |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+      info.stages |= m_device->GetEnabledShaderStages();
+      info.access |= VK_ACCESS_UNIFORM_READ_BIT;
+    }
+    
+    if (pDesc->BindFlags & D3D11_BIND_SHADER_RESOURCE) {
+      info.usage  |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+                  |  VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+      info.stages |= m_device->GetEnabledShaderStages();
+      info.access |= VK_ACCESS_SHADER_READ_BIT;
+    }
+    
+    if (pDesc->BindFlags & D3D11_BIND_STREAM_OUTPUT)
+      throw DxvkError("D3D11Device::CreateBuffer: D3D11_BIND_STREAM_OUTPUT not supported");
+    
+    if (pDesc->BindFlags & D3D11_BIND_UNORDERED_ACCESS) {
+      info.usage  |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+                  |  VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
+      info.stages |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+                  |  VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+      info.access |= VK_ACCESS_SHADER_READ_BIT
+                  |  VK_ACCESS_SHADER_WRITE_BIT;
+    }
+    
+    if (pDesc->CPUAccessFlags & D3D11_CPU_ACCESS_WRITE) {
+      info.stages |= VK_PIPELINE_STAGE_HOST_BIT;
+      info.access |= VK_ACCESS_HOST_WRITE_BIT;
+    }
+    
+    if (pDesc->CPUAccessFlags & D3D11_CPU_ACCESS_READ) {
+      info.stages |= VK_PIPELINE_STAGE_HOST_BIT;
+      info.access |= VK_ACCESS_HOST_READ_BIT;
+    }
+    
+    if (pDesc->MiscFlags & D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS) {
+      info.usage  |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+      info.stages |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+      info.access |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
+    }
+    
+    return m_device->GetDXVKDevice()->createBuffer(
+      info, GetMemoryFlagsForUsage(pDesc->Usage));
   }
   
 }

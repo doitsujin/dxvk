@@ -11,6 +11,8 @@
 
 namespace dxvk {
   class DxgiAdapter;
+  
+  class D3D11Buffer;
   class D3D11DeviceContext;
   class D3D11PresentDevice;
   class D3D11ShaderModule;
@@ -222,6 +224,8 @@ namespace dxvk {
       return m_dxvkDevice;
     }
     
+    VkPipelineStageFlags GetEnabledShaderStages() const;
+    
     static bool CheckFeatureLevelSupport(
       const Rc<DxvkAdapter>&  adapter,
             D3D_FEATURE_LEVEL featureLevel);
@@ -258,7 +262,7 @@ namespace dxvk {
             ID3D11ClassLinkage*     pClassLinkage);
     
     void InitBuffer(
-            IDXGIBufferResourcePrivate* pBuffer,
+            D3D11Buffer*                pBuffer,
       const D3D11_SUBRESOURCE_DATA*     pInitialData);
     
     void InitTexture(
@@ -284,11 +288,6 @@ namespace dxvk {
     HRESULT GetSampleCount(
             UINT                    Count,
             VkSampleCountFlagBits*  pCount) const;
-    
-    VkPipelineStageFlags GetEnabledShaderStages() const;
-    
-    VkMemoryPropertyFlags GetMemoryFlagsForUsage(
-            D3D11_USAGE             usage) const;
     
     VkSamplerAddressMode DecodeAddressMode(
             D3D11_TEXTURE_ADDRESS_MODE  mode) const;
