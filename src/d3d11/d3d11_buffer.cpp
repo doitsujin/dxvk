@@ -91,44 +91,41 @@ namespace dxvk {
       if (MapFlags & D3D11_MAP_FLAG_DO_NOT_WAIT)
         return DXGI_ERROR_WAS_STILL_DRAWING;
       
-      if (MapType == D3D11_MAP_WRITE_DISCARD) {
-        // Instead of synchronizing with the device, which is
-        // highly inefficient, return a host-local buffer to
-        // the application and upload its contents on unmap()
-        // TODO evaluate whether this improves performance
-        m_mapData = new DxvkDataBuffer(buffer->info().size);
-        
-        pMappedSubresource->pData      = m_mapData->data();
-        pMappedSubresource->RowPitch   = buffer->info().size;
-        pMappedSubresource->DepthPitch = buffer->info().size;
-        return S_OK;
-      } else {
-        // We have to wait for the device to complete
-        pContext->Flush();
-        pContext->Synchronize();
-        
-        pMappedSubresource->pData      = buffer->mapPtr(0);
-        pMappedSubresource->RowPitch   = buffer->info().size;
-        pMappedSubresource->DepthPitch = buffer->info().size;
-        return S_OK;
-      }
+      // TODO optimize this. In order to properly cover common use cases
+      // like frequent constant buffer updates, we must implement buffer
+      // renaming techniques. The current approach is inefficient as it
+      // leads to a lot of Flush() and Synchronize() calls.
+      // 
+      // Possible solution:
+      //  (1) Create buffers with a significantly larger size if they
+      //      can be mapped by the host for writing. If mapping the
+      //      buffer would stall on D3D11_MAP_WRITE_DISCARD, map the
+      //      next slice. on D3D11_MAP_WRITE_NO_OVERWRITE, return the
+      //      current slice. If the buffer is bound, update bindings.
+      //  (2) If no more slices are available, create a new buffer.
+      //      Limit the number of buffers to a small, fixed number.
+      //  (3) If no more buffers are available, flush and synchronize.
+      //  (4) When renaming the buffer internally, all active bindings
+      //      need to be updated internally as well.
+      // 
+      // In order to support deferred contexts, the immediate context
+      // must commit all changes to the initial buffer slice prior to
+      // executing a command list. When mapping on deferred contexts,
+      // the deferred context shall create local buffer objects.
+      pContext->Flush();
+      pContext->Synchronize();
+      
+      pMappedSubresource->pData      = buffer->mapPtr(0);
+      pMappedSubresource->RowPitch   = buffer->info().size;
+      pMappedSubresource->DepthPitch = buffer->info().size;
+      return S_OK;
     }
   }
   
   
   void D3D11Buffer::Unmap(
           D3D11DeviceContext*       pContext) {
-    if (m_mapData != nullptr) {
-      const Rc<DxvkContext> context
-        = pContext->GetDXVKContext();
-        
-      context->updateBuffer(
-        m_resource->GetDXVKBuffer(),
-        0, m_mapData->size(),
-        m_mapData->data());
-      
-      m_mapData = nullptr;
-    }
+    // Nothing to see here, folks
   }
   
   

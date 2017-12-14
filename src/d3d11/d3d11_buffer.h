@@ -55,8 +55,6 @@ namespace dxvk {
     Com<IDXGIBufferResourcePrivate> m_resource;
     D3D11_BUFFER_DESC               m_desc;
     
-    Rc<DxvkDataBuffer>              m_mapData;
-    
   };
   
 }
