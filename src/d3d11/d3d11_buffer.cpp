@@ -9,8 +9,9 @@ namespace dxvk {
   D3D11Buffer::D3D11Buffer(
           D3D11Device*                pDevice,
     const D3D11_BUFFER_DESC*          pDesc)
-  : m_device  (pDevice),
-    m_desc    (*pDesc) {
+  : m_device    (pDevice),
+    m_desc      (*pDesc),
+    m_buffer    (CreateBuffer(pDesc)) {
     
   }
   
@@ -62,7 +63,7 @@ namespace dxvk {
           D3D11_MAP                 MapType,
           UINT                      MapFlags,
           D3D11_MAPPED_SUBRESOURCE* pMappedSubresource) {
-    const Rc<DxvkBuffer> buffer = GetDXVKBuffer();
+    const Rc<DxvkBuffer> buffer = m_buffer;
     
     if (buffer->mapPtr(0) == nullptr) {
       Logger::err("D3D11: Cannot map a device-local buffer");
@@ -122,8 +123,13 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkBuffer> D3D11Buffer::GetDXVKBuffer() {
-    return m_buffer;
+  DxvkBufferSlice D3D11Buffer::GetCurrentBufferSlice() const {
+    return DxvkBufferSlice(m_buffer, 0, m_desc.ByteWidth);
+  }
+  
+  
+  DxvkBufferSlice D3D11Buffer::GetInitialBufferSlice() const {
+    return DxvkBufferSlice(m_buffer, 0, m_desc.ByteWidth);
   }
   
   

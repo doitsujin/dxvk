@@ -9,4 +9,9 @@ namespace dxvk {
     return n;
   }
   
+  template<typename T>
+  T align(T what, T to) {
+    return (what + to - 1) & ~(to - 1);
+  }
+  
 }

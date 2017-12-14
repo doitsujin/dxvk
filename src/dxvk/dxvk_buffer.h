@@ -176,7 +176,7 @@ namespace dxvk {
       m_offset(rangeOffset),
       m_length(rangeLength) { }
     
-    Rc<DxvkResource> resource() const {
+    Rc<DxvkBuffer> buffer() const {
       return m_buffer;
     }
     

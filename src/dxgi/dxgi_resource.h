@@ -100,45 +100,6 @@ namespace dxvk {
     IUnknown*     m_layer = nullptr;
     
   };
-  
-  
-  /**
-   * \brief Buffer resource
-   * 
-   * Stores a DXVK buffer and provides a method to retrieve
-   * it. D3D buffers will be backed by a buffer resource.
-   */
-  class DxgiBufferResource : public DxgiResource<IDXGIBufferResourcePrivate> {
-    using Base = DxgiResource<IDXGIBufferResourcePrivate>;
-  public:
-    
-    DxgiBufferResource(
-            IDXGIDevicePrivate*             pDevice,
-      const dxvk::DxvkBufferCreateInfo*     pCreateInfo,
-            VkMemoryPropertyFlags           memoryFlags,
-            UINT                            usageFlags);
-    
-    ~DxgiBufferResource();
-    
-    HRESULT STDMETHODCALLTYPE QueryInterface(
-            REFIID riid,
-            void **ppvObject) final;
-    
-    HRESULT STDMETHODCALLTYPE GetParent(
-            REFIID riid,
-            void   **ppParent) final;
-    
-    Rc<DxvkBuffer> STDMETHODCALLTYPE GetDXVKBuffer() final;
-    
-    void STDMETHODCALLTYPE SetResourceLayer(
-            IUnknown*         pLayer) final;
-    
-  private:
-    
-    Rc<DxvkBuffer> m_buffer;
-    IUnknown*      m_layer = nullptr;
-    
-  };
 
 }
 
@@ -151,12 +112,5 @@ extern "C" {
           VkMemoryPropertyFlags           memoryFlags,
           UINT                            usageFlags,
           IDXGIImageResourcePrivate**     ppResource);
-  
-  DLLEXPORT HRESULT __stdcall DXGICreateBufferResourcePrivate(
-          IDXGIDevicePrivate*             pDevice,
-    const dxvk::DxvkBufferCreateInfo*     pCreateInfo,
-          VkMemoryPropertyFlags           memoryFlags,
-          UINT                            usageFlags,
-          IDXGIBufferResourcePrivate**    ppResource);
   
 }

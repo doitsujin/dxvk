@@ -1147,14 +1147,17 @@ namespace dxvk {
   void D3D11Device::InitBuffer(
           D3D11Buffer*                pBuffer,
     const D3D11_SUBRESOURCE_DATA*     pInitialData) {
-    const Rc<DxvkBuffer> buffer = pBuffer->GetDXVKBuffer();
+    const DxvkBufferSlice bufferSlice
+      = pBuffer->GetCurrentBufferSlice();
     
     if (pInitialData != nullptr) {
       std::lock_guard<std::mutex> lock(m_resourceInitMutex);;
       m_resourceInitContext->beginRecording(
         m_dxvkDevice->createCommandList());
       m_resourceInitContext->updateBuffer(
-        buffer, 0, buffer->info().size,
+        bufferSlice.buffer(),
+        bufferSlice.bufferOffset(),
+        bufferSlice.bufferRange(),
         pInitialData->pSysMem);
       m_dxvkDevice->submitCommandList(
         m_resourceInitContext->endRecording(),

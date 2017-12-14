@@ -395,23 +395,28 @@ namespace dxvk {
     pDstResource->GetType(&resourceType);
     
     if (resourceType == D3D11_RESOURCE_DIMENSION_BUFFER) {
-      Com<IDXGIBufferResourcePrivate> bufferResource;
-      
-      pDstResource->QueryInterface(
-        __uuidof(IDXGIBufferResourcePrivate),
-        reinterpret_cast<void**>(&bufferResource));
+      const auto bufferResource = static_cast<D3D11Buffer*>(pDstResource);
+      const auto bufferSlice = bufferResource->GetCurrentBufferSlice();
       
       VkDeviceSize offset = 0;
-      VkDeviceSize size = VK_WHOLE_SIZE;
+      VkDeviceSize size = bufferSlice.bufferRange();
       
       if (pDstBox != nullptr) {
         offset = pDstBox->left;
         size   = pDstBox->right - pDstBox->left;
       }
       
-      m_context->updateBuffer(
-        bufferResource->GetDXVKBuffer(),
-        offset, size, pSrcData);
+      if (offset + size > bufferSlice.bufferRange()) {
+        Logger::err("D3D11: UpdateSubresource: Buffer size out of bounds");
+        return;
+      }
+      
+      if (size != 0) {
+        m_context->updateBuffer(
+          bufferSlice.buffer(),
+          bufferSlice.bufferOffset() + offset,
+          size, pSrcData);
+      }
     } else {
       Logger::err("D3D11DeviceContext::UpdateSubresource: Images not yet supported");
     }
@@ -628,18 +633,20 @@ namespace dxvk {
         binding.stride = pStrides[i];
       }
       
-      DxvkBufferSlice dxvkBinding;
+      DxvkBufferSlice bufferSlice;
       
       if (binding.buffer != nullptr) {
-        Rc<DxvkBuffer> dxvkBuffer = binding.buffer->GetDXVKBuffer();
+        const DxvkBufferSlice baseSlice =
+          binding.buffer->GetCurrentBufferSlice();
         
-        dxvkBinding = DxvkBufferSlice(
-          dxvkBuffer, binding.offset,
-          dxvkBuffer->info().size - binding.offset);
+        bufferSlice = DxvkBufferSlice(
+          baseSlice.buffer(),
+          baseSlice.bufferOffset() + binding.offset,
+          baseSlice.bufferRange() - binding.offset);
       }
       
       m_context->bindVertexBuffer(
-        StartSlot + i, dxvkBinding,
+        StartSlot + i, bufferSlice,
         binding.stride);
     }
   }
@@ -655,16 +662,17 @@ namespace dxvk {
     binding.format = Format;
     m_state.ia.indexBuffer = binding;
     
-    DxvkBufferSlice dxvkBinding;
+    DxvkBufferSlice bufferSlice;
     
     if (binding.buffer != nullptr) {
-      Rc<DxvkBuffer> dxvkBuffer = binding.buffer->GetDXVKBuffer();
+      const DxvkBufferSlice baseSlice =
+        binding.buffer->GetCurrentBufferSlice();
       
-      dxvkBinding = DxvkBufferSlice(
-        dxvkBuffer, binding.offset,
-        dxvkBuffer->info().size - binding.offset);
+      bufferSlice = DxvkBufferSlice(
+        baseSlice.buffer(),
+        baseSlice.bufferOffset() + binding.offset,
+        baseSlice.bufferRange() - binding.offset);
     }
-    
     
     // As in Vulkan, the index format can be either a 32-bit
     // unsigned integer or a 16-bit unsigned integer, no other
@@ -680,7 +688,7 @@ namespace dxvk {
     }
     
     m_context->bindIndexBuffer(
-      dxvkBinding, indexType);
+      bufferSlice, indexType);
   }
   
   
@@ -1462,13 +1470,10 @@ namespace dxvk {
         pBindings->at(StartSlot + i) = buffer;
         
         // Figure out which part of the buffer to bind
-        DxvkBufferSlice bindingInfo;
+        DxvkBufferSlice bufferSlice;
         
-        if (buffer != nullptr) {
-          bindingInfo = DxvkBufferSlice(
-            buffer->GetDXVKBuffer(),
-            0, VK_WHOLE_SIZE);
-        }
+        if (buffer != nullptr)
+          bufferSlice = buffer->GetCurrentBufferSlice();
         
         // Bind buffer to the DXVK resource slot
         const VkPipelineBindPoint bindPoint
@@ -1481,7 +1486,7 @@ namespace dxvk {
           StartSlot + i);
         
         m_context->bindResourceBuffer(
-          bindPoint, slotId, bindingInfo);
+          bindPoint, slotId, bufferSlice);
       }
     }
   }

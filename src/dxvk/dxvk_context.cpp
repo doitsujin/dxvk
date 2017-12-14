@@ -446,9 +446,6 @@ namespace dxvk {
     const void*                     data) {
     this->renderPassEnd();
     
-    if (size == VK_WHOLE_SIZE)
-      size = buffer->info().size - offset;
-    
     if (size != 0) {
       // Vulkan specifies that small amounts of data (up to 64kB)
       // can be copied to a buffer directly. Anything larger than
@@ -907,7 +904,7 @@ namespace dxvk {
           m_state.vi.indexBuffer.bufferOffset(),
           m_state.vi.indexType);
         m_cmd->trackResource(
-          m_state.vi.indexBuffer.resource());
+          m_state.vi.indexBuffer.buffer());
       }
     }
   }
@@ -925,7 +922,7 @@ namespace dxvk {
         
         if (handle != VK_NULL_HANDLE) {
           m_cmd->cmdBindVertexBuffers(i, 1, &handle, &offset);
-          m_cmd->trackResource(vbo.resource());
+          m_cmd->trackResource(vbo.buffer());
         }
       }
     }

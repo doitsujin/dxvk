@@ -57,55 +57,6 @@ namespace dxvk {
     m_layer = pLayer;
   }
   
-  
-  
-  
-  DxgiBufferResource::DxgiBufferResource(
-          IDXGIDevicePrivate*             pDevice,
-    const dxvk::DxvkBufferCreateInfo*     pCreateInfo,
-          VkMemoryPropertyFlags           memoryFlags,
-          UINT                            usageFlags)
-  : Base(pDevice, usageFlags) {
-    m_buffer = pDevice->GetDXVKDevice()->createBuffer(
-      *pCreateInfo, memoryFlags);
-  }
-  
-  
-  DxgiBufferResource::~DxgiBufferResource() {
-    
-  }
-  
-  
-  HRESULT STDMETHODCALLTYPE DxgiBufferResource::QueryInterface(REFIID riid, void** ppvObject) {
-    COM_QUERY_IFACE(riid, ppvObject, IUnknown);
-    COM_QUERY_IFACE(riid, ppvObject, IDXGIObject);
-    COM_QUERY_IFACE(riid, ppvObject, IDXGIDeviceSubObject);
-    COM_QUERY_IFACE(riid, ppvObject, IDXGIResource);
-    COM_QUERY_IFACE(riid, ppvObject, IDXGIBufferResourcePrivate);
-    
-    if (m_layer != nullptr)
-      return m_layer->QueryInterface(riid, ppvObject);
-    
-    Logger::err("DxgiBufferResource::QueryInterface: Unknown interface query");
-    return E_NOINTERFACE;
-  }
-  
-  
-  HRESULT STDMETHODCALLTYPE DxgiBufferResource::GetParent(REFIID riid, void** ppParent) {
-    Logger::err("DxgiBufferResource::GetParent: Unknown interface query");
-    return E_NOINTERFACE;
-  }
-  
-  
-  Rc<DxvkBuffer> STDMETHODCALLTYPE DxgiBufferResource::GetDXVKBuffer() {
-    return m_buffer;
-  }
-  
-  
-  void STDMETHODCALLTYPE DxgiBufferResource::SetResourceLayer(IUnknown* pLayer) {
-    m_layer = pLayer;
-  }
-  
 }
 
 
@@ -119,23 +70,6 @@ extern "C" {
           IDXGIImageResourcePrivate**     ppResource) {
     try {
       *ppResource = dxvk::ref(new dxvk::DxgiImageResource(
-        pDevice, pCreateInfo, memoryFlags, usageFlags));
-      return S_OK;
-    } catch (const dxvk::DxvkError& e) {
-      dxvk::Logger::err(e.message());
-      return DXGI_ERROR_UNSUPPORTED;
-    }
-  }
-  
-  
-  DLLEXPORT HRESULT __stdcall DXGICreateBufferResourcePrivate(
-          IDXGIDevicePrivate*             pDevice,
-    const dxvk::DxvkBufferCreateInfo*     pCreateInfo,
-          VkMemoryPropertyFlags           memoryFlags,
-          UINT                            usageFlags,
-          IDXGIBufferResourcePrivate**    ppResource) {
-    try {
-      *ppResource = dxvk::ref(new dxvk::DxgiBufferResource(
         pDevice, pCreateInfo, memoryFlags, usageFlags));
       return S_OK;
     } catch (const dxvk::DxvkError& e) {
