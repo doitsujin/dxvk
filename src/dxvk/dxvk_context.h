@@ -63,7 +63,7 @@ namespace dxvk {
      * \param [in] indexType Index type
      */
     void bindIndexBuffer(
-      const DxvkBufferBinding&    buffer,
+      const DxvkBufferSlice&      buffer,
             VkIndexType           indexType);
     
     /**
@@ -77,7 +77,7 @@ namespace dxvk {
     void bindResourceBuffer(
             VkPipelineBindPoint   pipe,
             uint32_t              slot,
-      const DxvkBufferBinding&    buffer);
+      const DxvkBufferSlice&      buffer);
     
     /**
      * \brief Binds texel buffer view
@@ -140,7 +140,7 @@ namespace dxvk {
      */
     void bindVertexBuffer(
             uint32_t              binding,
-      const DxvkBufferBinding&    buffer,
+      const DxvkBufferSlice&      buffer,
             uint32_t              stride);
     
     /**

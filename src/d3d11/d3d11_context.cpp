@@ -628,12 +628,12 @@ namespace dxvk {
         binding.stride = pStrides[i];
       }
       
-      DxvkBufferBinding dxvkBinding;
+      DxvkBufferSlice dxvkBinding;
       
       if (binding.buffer != nullptr) {
         Rc<DxvkBuffer> dxvkBuffer = binding.buffer->GetDXVKBuffer();
         
-        dxvkBinding = DxvkBufferBinding(
+        dxvkBinding = DxvkBufferSlice(
           dxvkBuffer, binding.offset,
           dxvkBuffer->info().size - binding.offset);
       }
@@ -655,12 +655,12 @@ namespace dxvk {
     binding.format = Format;
     m_state.ia.indexBuffer = binding;
     
-    DxvkBufferBinding dxvkBinding;
+    DxvkBufferSlice dxvkBinding;
     
     if (binding.buffer != nullptr) {
       Rc<DxvkBuffer> dxvkBuffer = binding.buffer->GetDXVKBuffer();
       
-      dxvkBinding = DxvkBufferBinding(
+      dxvkBinding = DxvkBufferSlice(
         dxvkBuffer, binding.offset,
         dxvkBuffer->info().size - binding.offset);
     }
@@ -1462,10 +1462,10 @@ namespace dxvk {
         pBindings->at(StartSlot + i) = buffer;
         
         // Figure out which part of the buffer to bind
-        DxvkBufferBinding bindingInfo;
+        DxvkBufferSlice bindingInfo;
         
         if (buffer != nullptr) {
-          bindingInfo = DxvkBufferBinding(
+          bindingInfo = DxvkBufferSlice(
             buffer->GetDXVKBuffer(),
             0, VK_WHOLE_SIZE);
         }

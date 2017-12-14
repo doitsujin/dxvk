@@ -57,7 +57,7 @@ namespace dxvk {
   
   
   void DxvkContext::bindIndexBuffer(
-    const DxvkBufferBinding&    buffer,
+    const DxvkBufferSlice&      buffer,
           VkIndexType           indexType) {
     if (m_state.vi.indexBuffer != buffer
      || m_state.vi.indexType   != indexType) {
@@ -72,7 +72,7 @@ namespace dxvk {
   void DxvkContext::bindResourceBuffer(
           VkPipelineBindPoint   pipe,
           uint32_t              slot,
-    const DxvkBufferBinding&    buffer) {
+    const DxvkBufferSlice&      buffer) {
     auto rc = this->getShaderResourceSlots(pipe);
     
     if (rc->getShaderResource(slot).bufferSlice != buffer) {
@@ -186,7 +186,7 @@ namespace dxvk {
   
   void DxvkContext::bindVertexBuffer(
           uint32_t              binding,
-    const DxvkBufferBinding&    buffer,
+    const DxvkBufferSlice&      buffer,
           uint32_t              stride) {
     if (m_state.vi.vertexBuffers.at(binding) != buffer) {
       m_state.vi.vertexBuffers.at(binding) = buffer;
@@ -918,7 +918,7 @@ namespace dxvk {
       m_flags.clr(DxvkContextFlag::GpDirtyVertexBuffers);
       
       for (uint32_t i = 0; i < m_state.vi.vertexBuffers.size(); i++) {
-        const DxvkBufferBinding vbo = m_state.vi.vertexBuffers.at(i);
+        const DxvkBufferSlice vbo = m_state.vi.vertexBuffers.at(i);
         
         VkBuffer     handle = vbo.bufferHandle();
         VkDeviceSize offset = vbo.bufferOffset();

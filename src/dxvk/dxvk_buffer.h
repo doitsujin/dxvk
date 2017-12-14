@@ -157,18 +157,18 @@ namespace dxvk {
   
   
   /**
-   * \brief Buffer binding
+   * \brief Buffer slice
    * 
-   * Stores the buffer and the sub-range of the buffer
-   * to bind. Bindings are considered equal if all three
-   * parameters are the same.
+   * Stores the buffer and a sub-range of the buffer.
+   * Slices are considered equal if the buffer and
+   * the buffer range are the same.
    */
-  class DxvkBufferBinding {
+  class DxvkBufferSlice {
     
   public:
     
-    DxvkBufferBinding() { }
-    DxvkBufferBinding(
+    DxvkBufferSlice() { }
+    DxvkBufferSlice(
       const Rc<DxvkBuffer>& buffer,
             VkDeviceSize    rangeOffset,
             VkDeviceSize    rangeLength)
@@ -202,13 +202,13 @@ namespace dxvk {
       return info;
     }
     
-    bool operator == (const DxvkBufferBinding& other) const {
+    bool operator == (const DxvkBufferSlice& other) const {
       return this->m_buffer == other.m_buffer
           && this->m_offset == other.m_offset
           && this->m_length == other.m_length;
     }
     
-    bool operator != (const DxvkBufferBinding& other) const {
+    bool operator != (const DxvkBufferSlice& other) const {
       return this->m_buffer != other.m_buffer
           || this->m_offset != other.m_offset
           || this->m_length != other.m_length;

@@ -14,7 +14,7 @@ namespace dxvk {
     Rc<DxvkSampler>    sampler;
     Rc<DxvkImageView>  imageView;
     Rc<DxvkBufferView> bufferView;
-    DxvkBufferBinding  bufferSlice;
+    DxvkBufferSlice    bufferSlice;
   };
   
   
