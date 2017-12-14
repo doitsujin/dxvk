@@ -83,7 +83,7 @@ namespace dxvk {
       
       DxvkDescriptorInfo descriptor;
       
-      if (buffer.bufferHandle() != VK_NULL_HANDLE)
+      if (buffer.handle() != VK_NULL_HANDLE)
         descriptor.buffer = buffer.descriptorInfo();
       
       rc->bindShaderResource(slot, resource, descriptor);

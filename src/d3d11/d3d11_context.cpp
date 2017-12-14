@@ -399,14 +399,14 @@ namespace dxvk {
       const auto bufferSlice = bufferResource->GetCurrentBufferSlice();
       
       VkDeviceSize offset = 0;
-      VkDeviceSize size = bufferSlice.bufferRange();
+      VkDeviceSize size = bufferSlice.length();
       
       if (pDstBox != nullptr) {
         offset = pDstBox->left;
         size   = pDstBox->right - pDstBox->left;
       }
       
-      if (offset + size > bufferSlice.bufferRange()) {
+      if (offset + size > bufferSlice.length()) {
         Logger::err("D3D11: UpdateSubresource: Buffer size out of bounds");
         return;
       }
