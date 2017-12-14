@@ -10,7 +10,7 @@ namespace dxvk {
   constexpr uint32_t PerVertex_ClipDist  = 3;
   
   
-  DxbcCompiler2::DxbcCompiler2(
+  DxbcCompiler::DxbcCompiler(
     const DxbcProgramVersion& version,
     const Rc<DxbcIsgn>&       isgn,
     const Rc<DxbcIsgn>&       osgn)
@@ -43,12 +43,12 @@ namespace dxvk {
   }
   
   
-  DxbcCompiler2::~DxbcCompiler2() {
+  DxbcCompiler::~DxbcCompiler() {
     
   }
   
   
-  DxbcError DxbcCompiler2::processInstruction(const DxbcInstruction& ins) {
+  DxbcError DxbcCompiler::processInstruction(const DxbcInstruction& ins) {
     DxbcInst parsedInst;
     DxbcError parseError = this->parseInstruction(ins, parsedInst);
     
@@ -67,7 +67,7 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkShader> DxbcCompiler2::finalize() {
+  Rc<DxvkShader> DxbcCompiler::finalize() {
     // Define the actual 'main' function of the shader
     m_module.functionBegin(
       m_module.defVoidType(),
@@ -106,7 +106,7 @@ namespace dxvk {
   }
   
   
-  DxbcError DxbcCompiler2::handleDeclaration(const DxbcInst& ins) {
+  DxbcError DxbcCompiler::handleDeclaration(const DxbcInst& ins) {
     switch (ins.opcode) {
       case DxbcOpcode::DclGlobalFlags:
         return this->declareGlobalFlags(ins);
@@ -140,14 +140,14 @@ namespace dxvk {
   }
   
   
-  DxbcError DxbcCompiler2::declareGlobalFlags(const DxbcInst& ins) {
+  DxbcError DxbcCompiler::declareGlobalFlags(const DxbcInst& ins) {
     // TODO add support for double-precision floats
     // TODO add support for early depth-stencil
     return DxbcError::sOk;
   }
   
   
-  DxbcError DxbcCompiler2::declareTemps(const DxbcInst& ins) {
+  DxbcError DxbcCompiler::declareTemps(const DxbcInst& ins) {
     if (ins.operands[0].type != DxbcOperandType::Imm32) {
       Logger::err("dxbc: Number of temps not a contant");
       return DxbcError::eInvalidOperand;
@@ -181,7 +181,7 @@ namespace dxvk {
   }
   
   
-  DxbcError DxbcCompiler2::declareInterfaceVar(const DxbcInst& ins) {
+  DxbcError DxbcCompiler::declareInterfaceVar(const DxbcInst& ins) {
     const DxbcInstOp& op = ins.operands[0];
     
     // In the vertex and fragment shader stage, the
@@ -266,7 +266,7 @@ namespace dxvk {
   }
   
   
-  DxbcError DxbcCompiler2::declareConstantBuffer(const DxbcInst& ins) {
+  DxbcError DxbcCompiler::declareConstantBuffer(const DxbcInst& ins) {
     const DxbcInstOp& op = ins.operands[0];
     
     // This instruction has one operand with two indices:
@@ -322,7 +322,7 @@ namespace dxvk {
   }
   
   
-  DxbcError DxbcCompiler2::declareSampler(const DxbcInst& ins) {
+  DxbcError DxbcCompiler::declareSampler(const DxbcInst& ins) {
     // dclSampler takes one operand:
     //  (1) The sampler register ID
     // TODO implement sampler mode (default / comparison / mono)
@@ -365,7 +365,7 @@ namespace dxvk {
   }
   
   
-  DxbcError DxbcCompiler2::declareResource(const DxbcInst& ins) {
+  DxbcError DxbcCompiler::declareResource(const DxbcInst& ins) {
     // dclResource takes two operands:
     //  (1) The resource register ID
     //  (2) The resource return type
@@ -489,7 +489,7 @@ namespace dxvk {
   }
   
   
-  DxbcError DxbcCompiler2::declareInputVar(
+  DxbcError DxbcCompiler::declareInputVar(
           uint32_t              regId,
           uint32_t              regDim,
           DxbcRegMask           regMask,
@@ -523,7 +523,7 @@ namespace dxvk {
   }
   
   
-  DxbcError DxbcCompiler2::declareOutputVar(
+  DxbcError DxbcCompiler::declareOutputVar(
           uint32_t              regId,
           uint32_t              regDim,
           DxbcRegMask           regMask,
@@ -567,7 +567,7 @@ namespace dxvk {
   }
   
   
-  DxbcError DxbcCompiler2::handleControlFlow(const DxbcInst& ins) {
+  DxbcError DxbcCompiler::handleControlFlow(const DxbcInst& ins) {
     switch (ins.opcode) {
       case DxbcOpcode::Ret:
         m_module.opReturn();
@@ -580,7 +580,7 @@ namespace dxvk {
   }
   
   
-  DxbcError DxbcCompiler2::handleTextureSample(const DxbcInst& ins) {
+  DxbcError DxbcCompiler::handleTextureSample(const DxbcInst& ins) {
     // TODO support address offset
     // TODO support more sample ops
     
@@ -605,7 +605,7 @@ namespace dxvk {
     
     // Load the texture coordinates. SPIR-V allows these
     // to be float4 even if not all components are used.
-    const DxbcValue2 coord = this->loadOp(coordOp,
+    const DxbcValue coord = this->loadOp(coordOp,
       DxbcRegMask(true, true, true, true),
       DxbcScalarType::Float32);
     
@@ -625,7 +625,7 @@ namespace dxvk {
     // Sampling an image in SPIR-V always returns a four-component
     // vector, so we need to declare the corresponding type here
     // TODO infer sampled type properly
-    DxbcValue2 result;
+    DxbcValue result;
     result.componentType  = DxbcScalarType::Float32;
     result.componentCount = 4;
     result.valueId = m_module.opImageSampleImplicitLod(
@@ -641,10 +641,10 @@ namespace dxvk {
   }
   
   
-  DxbcError DxbcCompiler2::handleVectorAlu(const DxbcInst& ins) {
+  DxbcError DxbcCompiler::handleVectorAlu(const DxbcInst& ins) {
     // Load input operands. Operands that are floating
     // point types will be affected by modifiers.
-    DxbcValue2 arguments[DxbcMaxOperandCount - 1];
+    DxbcValue arguments[DxbcMaxOperandCount - 1];
     
     for (uint32_t i = 1; i < ins.format.operandCount; i++) {
       arguments[i - 1] = this->loadOp(
@@ -654,7 +654,7 @@ namespace dxvk {
     }
     
     // Result that we will write to the destination operand
-    DxbcValue2 result;
+    DxbcValue result;
     result.componentType  = arguments[0].componentType;
     result.componentCount = arguments[0].componentCount;
     
@@ -718,7 +718,7 @@ namespace dxvk {
   }
   
   
-  DxbcError DxbcCompiler2::handleVectorDot(const DxbcInst& ins) {
+  DxbcError DxbcCompiler::handleVectorDot(const DxbcInst& ins) {
     // Determine the component count and the source
     // operand mask. Since the result is scalar, we
     // cannot use the destination register mask.
@@ -737,7 +737,7 @@ namespace dxvk {
       numComponents >= 3, numComponents >= 4);
     
     // Load input operands as floatig point numbers
-    DxbcValue2 arguments[2];
+    DxbcValue arguments[2];
     
     for (uint32_t i = 1; i <= 2; i++) {
       arguments[i - 1] = this->loadOp(
@@ -745,7 +745,7 @@ namespace dxvk {
         DxbcScalarType::Float32);
     }
     
-    DxbcValue2 result;
+    DxbcValue result;
     result.componentType  = DxbcScalarType::Float32;
     result.componentCount = 1;
     result.valueId        = m_module.opDot(
@@ -762,7 +762,7 @@ namespace dxvk {
   }
   
   
-  DxbcError DxbcCompiler2::handleVectorSinCos(const DxbcInst& ins) {
+  DxbcError DxbcCompiler::handleVectorSinCos(const DxbcInst& ins) {
     // sincos has three operands:
     //  (1) Destination register for sin(x)
     //  (2) Destination register for cos(x)
@@ -772,17 +772,17 @@ namespace dxvk {
     const DxbcInstOp srcOp    = ins.operands[2];
     
     // Load source operand as 32-bit float vector
-    const DxbcValue2 srcValue = this->loadOp(srcOp,
+    const DxbcValue srcValue = this->loadOp(srcOp,
       DxbcRegMask(true, true, true, true),
       DxbcScalarType::Float32);
     
     // Either output may be DxbcOperandType::Null, in
     // which case we don't have to generate any code
     if (dstSinOp.type != DxbcOperandType::Null) {
-      const DxbcValue2 sinInput = this->extractReg(
+      const DxbcValue sinInput = this->extractReg(
         srcValue, dstSinOp.mask);
       
-      DxbcValue2 sinValue;
+      DxbcValue sinValue;
       sinValue.componentType  = srcValue.componentType;
       sinValue.componentCount = srcValue.componentCount;
       sinValue.valueId = m_module.opSin(
@@ -795,10 +795,10 @@ namespace dxvk {
     }
     
     if (dstCosOp.type != DxbcOperandType::Null) {
-      const DxbcValue2 cosInput = this->extractReg(
+      const DxbcValue cosInput = this->extractReg(
         srcValue, dstCosOp.mask);
       
-      DxbcValue2 cosValue;
+      DxbcValue cosValue;
       cosValue.componentType  = srcValue.componentType;
       cosValue.componentCount = srcValue.componentCount;
       cosValue.valueId = m_module.opCos(
@@ -814,8 +814,8 @@ namespace dxvk {
   }
   
   
-  DxbcValue2 DxbcCompiler2::bitcastReg(
-    const DxbcValue2&           src,
+  DxbcValue DxbcCompiler::bitcastReg(
+    const DxbcValue&            src,
           DxbcScalarType        type) {
     if (src.componentType == type)
       return src;
@@ -823,7 +823,7 @@ namespace dxvk {
     // TODO support 64-bit types by adjusting the component count
     uint32_t typeId = this->defineVectorType(type, src.componentCount);
     
-    DxbcValue2 result;
+    DxbcValue result;
     result.componentType  = type;
     result.componentCount = src.componentCount;
     result.valueId = m_module.opBitcast(typeId, src.valueId);
@@ -831,11 +831,11 @@ namespace dxvk {
   }
   
   
-  DxbcValue2 DxbcCompiler2::insertReg(
-    const DxbcValue2&           dst,
-    const DxbcValue2&           src,
+  DxbcValue DxbcCompiler::insertReg(
+    const DxbcValue&            dst,
+    const DxbcValue&            src,
           DxbcRegMask           mask) {
-    DxbcValue2 result;
+    DxbcValue result;
     result.componentType  = dst.componentType;
     result.componentCount = dst.componentCount;
     
@@ -874,16 +874,16 @@ namespace dxvk {
   }
   
   
-  DxbcValue2 DxbcCompiler2::extractReg(
-    const DxbcValue2&           src,
+  DxbcValue DxbcCompiler::extractReg(
+    const DxbcValue&            src,
           DxbcRegMask           mask) {
     return this->swizzleReg(src,
       DxbcRegSwizzle(0, 1, 2, 3), mask);
   }
   
   
-  DxbcValue2 DxbcCompiler2::swizzleReg(
-    const DxbcValue2&           src,
+  DxbcValue DxbcCompiler::swizzleReg(
+    const DxbcValue&            src,
     const DxbcRegSwizzle&       swizzle,
           DxbcRegMask           mask) {
     std::array<uint32_t, 4> indices;
@@ -906,7 +906,7 @@ namespace dxvk {
     
     // Use OpCompositeExtract if the resulting vector contains
     // only one component, and OpVectorShuffle if it is a vector.
-    DxbcValue2 result;
+    DxbcValue result;
     result.componentType  = src.componentType;
     result.componentCount = dstIndex;
     
@@ -926,8 +926,8 @@ namespace dxvk {
   }
   
   
-  DxbcValue2 DxbcCompiler2::extendReg(
-    const DxbcValue2&           src,
+  DxbcValue DxbcCompiler::extendReg(
+    const DxbcValue&            src,
           uint32_t              size) {
     if (size == 1)
       return src;
@@ -940,7 +940,7 @@ namespace dxvk {
     uint32_t typeId = this->defineVectorType(
       src.componentType, size);
     
-    DxbcValue2 result;
+    DxbcValue result;
     result.componentType  = src.componentType;
     result.componentCount = size;
     result.valueId = m_module.opCompositeConstruct(
@@ -949,8 +949,8 @@ namespace dxvk {
   }
   
   
-  DxbcValue2 DxbcCompiler2::applyOperandModifiers(
-        DxbcValue2            value,
+  DxbcValue DxbcCompiler::applyOperandModifiers(
+        DxbcValue             value,
         DxbcOperandModifiers  modifiers) {
     uint32_t typeId = this->defineVectorType(
       value.componentType, value.componentCount);
@@ -967,8 +967,8 @@ namespace dxvk {
   }
   
   
-  DxbcValue2 DxbcCompiler2::applyResultModifiers(
-        DxbcValue2            value,
+  DxbcValue DxbcCompiler::applyResultModifiers(
+        DxbcValue             value,
         DxbcOpcodeControl     control) {
     uint32_t typeId = this->defineVectorType(
       value.componentType, value.componentCount);
@@ -984,7 +984,7 @@ namespace dxvk {
   }
   
   
-  DxbcValue2 DxbcCompiler2::loadOp(
+  DxbcValue DxbcCompiler::loadOp(
     const DxbcInstOp&           srcOp,
           DxbcRegMask           srcMask,
           DxbcScalarType        dstType) {
@@ -992,7 +992,7 @@ namespace dxvk {
       return this->loadImm32(srcOp, srcMask, dstType);
     } else {
       // Load operand value from the operand pointer
-      DxbcValue2 result = this->loadRegister(srcOp, srcMask, dstType);
+      DxbcValue result = this->loadRegister(srcOp, srcMask, dstType);
       
       // Apply the component swizzle or the selection,
       // depending on which mode the operand is in.
@@ -1022,13 +1022,13 @@ namespace dxvk {
   }
   
   
-  DxbcValue2 DxbcCompiler2::loadImm32(
+  DxbcValue DxbcCompiler::loadImm32(
     const DxbcInstOp&           srcOp,
           DxbcRegMask           srcMask,
           DxbcScalarType        dstType) {
     // We will generate Uint32 constants because at this
     // point we don't know how they are going to be used.
-    DxbcValue2 result;
+    DxbcValue result;
     result.componentType  = DxbcScalarType::Uint32;
     result.componentCount = srcMask.setCount();
     
@@ -1070,7 +1070,7 @@ namespace dxvk {
   }
   
   
-  DxbcValue2 DxbcCompiler2::loadRegister(
+  DxbcValue DxbcCompiler::loadRegister(
     const DxbcInstOp&           srcOp,
           DxbcRegMask           srcMask,
           DxbcScalarType        dstType) {
@@ -1079,20 +1079,20 @@ namespace dxvk {
   }
   
   
-  void DxbcCompiler2::storeOp(
+  void DxbcCompiler::storeOp(
     const DxbcInstOp&           dstOp,
-    const DxbcValue2&           srcValue) {
+    const DxbcValue&            srcValue) {
     this->storePtr(
       this->getOperandPtr(dstOp),
       srcValue, dstOp.mask);
   }
   
   
-  DxbcValue2 DxbcCompiler2::loadPtr(const DxbcPointer2& ptr) {
+  DxbcValue DxbcCompiler::loadPtr(const DxbcPointer& ptr) {
     const uint32_t typeId = this->defineVectorType(
       ptr.componentType, ptr.componentCount);
     
-    DxbcValue2 result;
+    DxbcValue result;
     result.componentType  = ptr.componentType;
     result.componentCount = ptr.componentCount;
     result.valueId = m_module.opLoad(typeId, ptr.pointerId);
@@ -1100,11 +1100,11 @@ namespace dxvk {
   }
   
   
-  void DxbcCompiler2::storePtr(
-    const DxbcPointer2&         ptr,
-    const DxbcValue2&           value,
+  void DxbcCompiler::storePtr(
+    const DxbcPointer&          ptr,
+    const DxbcValue&            value,
           DxbcRegMask           mask) {
-    DxbcValue2 srcValue = value;
+    DxbcValue srcValue = value;
     
     // If the source value consists of only one component,
     // it is stored in all destination register components.
@@ -1122,7 +1122,7 @@ namespace dxvk {
     } else {
       // We only write to part of the destination
       // register, so we need to load and modify it
-      DxbcValue2 tmp = this->loadPtr(ptr);
+      DxbcValue tmp = this->loadPtr(ptr);
                  tmp = this->insertReg(tmp, srcValue, mask);
       
       m_module.opStore(ptr.pointerId, tmp.valueId);
@@ -1131,9 +1131,9 @@ namespace dxvk {
   }
   
   
-  DxbcValue2 DxbcCompiler2::loadIndex(const DxbcInstOpIndex& idx) {
-    DxbcValue2 constantPart;
-    DxbcValue2 relativePart;
+  DxbcValue DxbcCompiler::loadIndex(const DxbcInstOpIndex& idx) {
+    DxbcValue constantPart;
+    DxbcValue relativePart;
     
     if ((idx.type == DxbcIndexType::Immediate) || (idx.immediate != 0)) {
       constantPart.componentType  = DxbcScalarType::Sint32;
@@ -1160,7 +1160,7 @@ namespace dxvk {
     if (relativePart.valueId == 0) return constantPart;
     if (constantPart.valueId == 0) return relativePart;
     
-    DxbcValue2 result;
+    DxbcValue result;
     result.componentType  = DxbcScalarType::Sint32;
     result.componentCount = 1;
     result.valueId        = m_module.opIAdd(
@@ -1170,8 +1170,8 @@ namespace dxvk {
   }
   
   
-  DxbcPointer2 DxbcCompiler2::getOperandPtr(const DxbcInstOp& op) {
-    DxbcPointer2 result;
+  DxbcPointer DxbcCompiler::getOperandPtr(const DxbcInstOp& op) {
+    DxbcPointer result;
     
     switch (op.type) {
       case DxbcOperandType::Temp:
@@ -1208,24 +1208,24 @@ namespace dxvk {
   }
   
   
-  DxbcPointer2 DxbcCompiler2::getConstantBufferPtr(const DxbcInstOp& op) {
+  DxbcPointer DxbcCompiler::getConstantBufferPtr(const DxbcInstOp& op) {
     if (op.indexDim != 2) {
       Logger::err("dxbc: Constant buffer reference needs two indices");
-      return DxbcPointer2();
+      return DxbcPointer();
     }
     
     // The operand itself has two indices:
     //  (1) The constant buffer ID (immediate)
     //  (2) The constant offset (relative)
     const uint32_t bufferId = op.index[0].immediate;
-    const DxbcValue2 offset = this->loadIndex(op.index[1]);
+    const DxbcValue offset = this->loadIndex(op.index[1]);
     
     // The first index selects the struct member,
     // the second one selects the array element.
     std::array<uint32_t, 2> indices = { 
       m_module.constu32(0), offset.valueId };
     
-    DxbcPointer2 result;
+    DxbcPointer result;
     result.componentType  = DxbcScalarType::Float32;
     result.componentCount = 4;
     result.pointerId = m_module.opAccessChain(
@@ -1239,7 +1239,7 @@ namespace dxvk {
   }
   
   
-  void DxbcCompiler2::beginVertexShader(const Rc<DxbcIsgn>& isgn) {
+  void DxbcCompiler::beginVertexShader(const Rc<DxbcIsgn>& isgn) {
     m_module.enableCapability(spv::CapabilityShader);
     m_module.enableCapability(spv::CapabilityCullDistance);
     m_module.enableCapability(spv::CapabilityClipDistance);
@@ -1269,7 +1269,7 @@ namespace dxvk {
   }
   
   
-  void DxbcCompiler2::beginPixelShader(const Rc<DxbcIsgn>& osgn) {
+  void DxbcCompiler::beginPixelShader(const Rc<DxbcIsgn>& osgn) {
     m_module.enableCapability(spv::CapabilityShader);
     m_module.setOriginUpperLeft(m_entryPointId);
     
@@ -1279,7 +1279,7 @@ namespace dxvk {
     for (auto e = m_osgn->begin(); e != m_osgn->end(); e++) {
       if (e->systemValue == DxbcSystemValue::None) {
         uint32_t regTypeId = this->defineVectorType(
-          e->componentType, e->componentMask.componentCount());
+          e->componentType, e->componentMask.setCount());
         
         uint32_t ptrTypeId = m_module.defPointerType(
           regTypeId, spv::StorageClassOutput);
@@ -1292,7 +1292,7 @@ namespace dxvk {
         m_entryPointInterfaces.push_back(varId);
         
         m_ps.oregs.at(e->registerId).componentType  = e->componentType;
-        m_ps.oregs.at(e->registerId).componentCount = e->componentMask.componentCount();
+        m_ps.oregs.at(e->registerId).componentCount = e->componentMask.setCount();
         m_ps.oregs.at(e->registerId).pointerId      = varId;
       }
     }
@@ -1311,21 +1311,21 @@ namespace dxvk {
   }
   
   
-  void DxbcCompiler2::prepareVertexInputs() {
+  void DxbcCompiler::prepareVertexInputs() {
     // TODO implement
   }
   
   
-  void DxbcCompiler2::preparePixelInputs() {
+  void DxbcCompiler::preparePixelInputs() {
     // TODO implement
   }
   
   
-  void DxbcCompiler2::prepareVertexOutputs() {
-    for (const DxbcSvMapping2& svMapping : m_oSvs) {
+  void DxbcCompiler::prepareVertexOutputs() {
+    for (const DxbcSvMapping& svMapping : m_oSvs) {
       switch (svMapping.sv) {
         case DxbcSystemValue::Position: {
-          DxbcPointer2 dstPtr;
+          DxbcPointer dstPtr;
           dstPtr.componentType  = DxbcScalarType::Float32;
           dstPtr.componentCount = 4;
           
@@ -1340,7 +1340,7 @@ namespace dxvk {
           dstPtr.pointerId = m_module.opAccessChain(
             ptrTypeId, m_perVertexOut, 1, &memberId);
           
-          DxbcPointer2 srcPtr;
+          DxbcPointer srcPtr;
           srcPtr.componentType  = DxbcScalarType::Float32;
           srcPtr.componentCount = 4;
           srcPtr.pointerId      = m_oRegs.at(svMapping.regId);
@@ -1358,12 +1358,12 @@ namespace dxvk {
   }
   
   
-  void DxbcCompiler2::preparePixelOutputs() {
+  void DxbcCompiler::preparePixelOutputs() {
     // TODO implement
   }
   
   
-  void DxbcCompiler2::endVertexShader() {
+  void DxbcCompiler::endVertexShader() {
     this->prepareVertexInputs();
     m_module.opFunctionCall(
       m_module.defVoidType(),
@@ -1372,7 +1372,7 @@ namespace dxvk {
   }
   
   
-  void DxbcCompiler2::endPixelShader() {
+  void DxbcCompiler::endPixelShader() {
     this->preparePixelInputs();
     m_module.opFunctionCall(
       m_module.defVoidType(),
@@ -1381,7 +1381,7 @@ namespace dxvk {
   }
   
   
-  uint32_t DxbcCompiler2::definePerVertexBlock() {
+  uint32_t DxbcCompiler::definePerVertexBlock() {
     uint32_t t_f32    = m_module.defFloatType(32);
     uint32_t t_f32_v4 = m_module.defVectorType(t_f32, 4);
     uint32_t t_f32_a2 = m_module.defArrayType(t_f32, m_module.constu32(2));
@@ -1410,7 +1410,7 @@ namespace dxvk {
   }
   
   
-  uint32_t DxbcCompiler2::defineScalarType(
+  uint32_t DxbcCompiler::defineScalarType(
           DxbcScalarType        componentType) {
     switch (componentType) {
       case DxbcScalarType::Float32: return m_module.defFloatType(32);
@@ -1426,7 +1426,7 @@ namespace dxvk {
   }
   
   
-  uint32_t DxbcCompiler2::defineVectorType(
+  uint32_t DxbcCompiler::defineVectorType(
           DxbcScalarType        componentType,
           uint32_t              componentCount) {
     uint32_t typeId = this->defineScalarType(componentType);
@@ -1440,7 +1440,7 @@ namespace dxvk {
   }
   
   
-  uint32_t DxbcCompiler2::definePointerType(
+  uint32_t DxbcCompiler::definePointerType(
           DxbcScalarType        componentType,
           uint32_t              componentCount,
           spv::StorageClass     storageClass) {
@@ -1451,7 +1451,7 @@ namespace dxvk {
   }
   
   
-  DxbcError DxbcCompiler2::parseInstruction(const DxbcInstruction& ins, DxbcInst& out) {
+  DxbcError DxbcCompiler::parseInstruction(const DxbcInstruction& ins, DxbcInst& out) {
     out.opcode  = ins.token().opcode();
     out.control = ins.token().control();
     out.format  = dxbcInstructionFormat(out.opcode);

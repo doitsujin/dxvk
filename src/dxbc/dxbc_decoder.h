@@ -4,7 +4,6 @@
 
 #include "dxbc_enums.h"
 #include "dxbc_names.h"
-#include "dxbc_type.h"
 
 namespace dxvk {
   
@@ -15,7 +14,6 @@ namespace dxvk {
    * 
    * Maps vector components to
    * other vector components.
-   * TODO remove old class
    */
   class DxbcRegSwizzle {
     
@@ -41,7 +39,6 @@ namespace dxvk {
    * 
    * Enables access to certain
    * subset of vector components.
-   * TODO remove old class
    */
   class DxbcRegMask {
     
@@ -322,27 +319,16 @@ namespace dxvk {
      * a given set of components is used.
      * \returns Component selection mode
      */
-    DxbcComponentSelectionMode selectionMode() const {
-      return static_cast<DxbcComponentSelectionMode>(
+    DxbcRegMode selectionMode() const {
+      return static_cast<DxbcRegMode>(
         bit::extract(m_token, 2, 3));
     }
     
     /**
      * \brief Component mask
      * 
-     * Used when the component selection mode is
-     * \c DxbcComponentSelectionMode::Mask.
-     * \returns The component mask
-     */
-    DxbcComponentMask componentMask() const {
-      return DxbcComponentMask(bit::extract(m_token, 4, 7));
-    }
-    
-    /**
-     * \brief Component mask
-     * 
-     * Used when the component selection mode is
-     * \c DxbcComponentSelectionMode::Mask.
+     * Used when the component selection
+     * mode is \c DxbcRegMode::Mask.
      * \returns The component mask
      */
     DxbcRegMask mask() const {
@@ -352,23 +338,8 @@ namespace dxvk {
     /**
      * \brief Component swizzle
      * 
-     * Used when the component selection mode is
-     * \c DxbcComponentSelectionMode::Swizzle.
-     * \returns The component swizzle
-     */
-    DxbcComponentSwizzle componentSwizzle() const {
-      return DxbcComponentSwizzle(
-        bit::extract(m_token,  4,  5),
-        bit::extract(m_token,  6,  7),
-        bit::extract(m_token,  8,  9),
-        bit::extract(m_token, 10, 11));
-    }
-    
-    /**
-     * \brief Component swizzle
-     * 
-     * Used when the component selection mode is
-     * \c DxbcComponentSelectionMode::Swizzle.
+     * Used when the component selection
+     * mode is \c DxbcRegMode::Swizzle.
      * \returns The component swizzle
      */
     DxbcRegSwizzle swizzle() const {
@@ -381,21 +352,13 @@ namespace dxvk {
     
     /**
      * \brief Single component selection
+     * 
+     * Used when the component selection
+     * mode is \c DxbcRegMode::Select1.
      * \returns The component index
      */
     uint32_t select1() const {
       return bit::extract(m_token, 4, 5);
-    }
-    
-    /**
-     * \brief Component selection
-     * 
-     * Used when the component selection mode is
-     * \c DxbcComponentSelectionMode::Select1.
-     */
-    DxbcComponentMask componentSelection() const {
-      uint32_t id = bit::extract(m_token, 4, 5);
-      return DxbcComponentMask(id == 0, id == 1, id == 2, id == 3);
     }
     
     /**

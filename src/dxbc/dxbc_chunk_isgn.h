@@ -4,7 +4,6 @@
 #include "dxbc_decoder.h"
 #include "dxbc_enums.h"
 #include "dxbc_reader.h"
-#include "dxbc_type.h"
 
 namespace dxvk {
   
@@ -18,7 +17,7 @@ namespace dxvk {
     std::string       semanticName;
     uint32_t          semanticIndex;
     uint32_t          registerId;
-    DxbcComponentMask componentMask;
+    DxbcRegMask       componentMask;
     DxbcScalarType    componentType;
     DxbcSystemValue   systemValue;
   };

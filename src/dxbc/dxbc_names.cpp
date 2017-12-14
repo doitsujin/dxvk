@@ -293,11 +293,11 @@ std::ostream& operator << (std::ostream& os, DxbcComponentCount e) {
 }
 
 
-std::ostream& operator << (std::ostream& os, DxbcComponentSelectionMode e) {
+std::ostream& operator << (std::ostream& os, DxbcRegMode e) {
   switch (e) {
-    ENUM_NAME(DxbcComponentSelectionMode::Mask);
-    ENUM_NAME(DxbcComponentSelectionMode::Swizzle);
-    ENUM_NAME(DxbcComponentSelectionMode::Select1);
+    ENUM_NAME(DxbcRegMode::Mask);
+    ENUM_NAME(DxbcRegMode::Swizzle);
+    ENUM_NAME(DxbcRegMode::Select1);
     ENUM_DEFAULT(e);
   }
 }

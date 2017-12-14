@@ -8,16 +8,26 @@
 
 namespace dxvk {
   
-  // TODO deprecate DxbcComponentSelectionMode
-  using DxbcRegMode = DxbcComponentSelectionMode;
-  
-  struct DxbcValue2 {
+  /**
+   * \brief Expression value
+   * 
+   * Tracks the type and the SPIR-V variable
+   * ID when evaluating DXBC instructions.
+   */
+  struct DxbcValue {
     DxbcScalarType componentType  = DxbcScalarType::Float32;
     uint32_t       componentCount = 0;
     uint32_t       valueId        = 0;
   };
   
-  struct DxbcPointer2 {
+  /**
+   * \brief Variable pointer 
+   * 
+   * Stores the SPIR-V pointer ID and the
+   * type of the referenced variable. Used
+   * to access variables and resources.
+   */
+  struct DxbcPointer {
     DxbcScalarType componentType  = DxbcScalarType::Float32;
     uint32_t       componentCount = 0;
     uint32_t       pointerId      = 0;
@@ -29,7 +39,7 @@ namespace dxvk {
    * Stores information required to
    * access a constant buffer.
    */
-  struct DxbcConstantBuffer2 {
+  struct DxbcConstantBuffer {
     uint32_t varId = 0;
     uint32_t size  = 0;
   };
@@ -40,7 +50,7 @@ namespace dxvk {
    * Stores a sampler variable that can be
    * used together with a texture resource.
    */
-  struct DxbcSampler2 {
+  struct DxbcSampler {
     uint32_t varId  = 0;
     uint32_t typeId = 0;
   };
@@ -52,7 +62,7 @@ namespace dxvk {
    * Stores a resource variable
    * and associated type IDs.
    */
-  struct DxbcShaderResource2 {
+  struct DxbcShaderResource {
     uint32_t varId         = 0;
     uint32_t sampledTypeId = 0;
     uint32_t textureTypeId = 0;
@@ -64,7 +74,7 @@ namespace dxvk {
    * Maps a system value to a given set of
    * components of an input or output register.
    */
-  struct DxbcSvMapping2 {
+  struct DxbcSvMapping {
     uint32_t        regId;
     DxbcRegMask     regMask;
     DxbcSystemValue sv;
@@ -164,7 +174,7 @@ namespace dxvk {
   struct DxbcPsSpecifics {
     uint32_t  functionId = 0;
     
-    std::array<DxbcPointer2, DxbcMaxInterfaceRegs> oregs;
+    std::array<DxbcPointer, DxbcMaxInterfaceRegs> oregs;
   };
   
   
@@ -175,15 +185,15 @@ namespace dxvk {
    * a DXVK shader object, which contains the SPIR-V module
    * and information about the shader resource bindings.
    */
-  class DxbcCompiler2 {
+  class DxbcCompiler {
     
   public:
     
-    DxbcCompiler2(
+    DxbcCompiler(
       const DxbcProgramVersion& version,
       const Rc<DxbcIsgn>&       isgn,
       const Rc<DxbcIsgn>&       osgn);
-    ~DxbcCompiler2();
+    ~DxbcCompiler();
     
     /**
      * \brief Processes a single instruction
@@ -231,15 +241,15 @@ namespace dxvk {
     //////////////////////////////////////////////////////
     // Shader resource variables. These provide access to
     // constant buffers, samplers, textures, and UAVs.
-    std::array<DxbcConstantBuffer2,  16> m_constantBuffers;
-    std::array<DxbcSampler2,         16> m_samplers;
-    std::array<DxbcShaderResource2, 128> m_textures;
+    std::array<DxbcConstantBuffer,  16> m_constantBuffers;
+    std::array<DxbcSampler,         16> m_samplers;
+    std::array<DxbcShaderResource, 128> m_textures;
     
     ////////////////////////////////////////////////////////
     // Input/Output system value mappings. These will need
     // to be set up before or after the main function runs.
-    std::vector<DxbcSvMapping2> m_vSvs;
-    std::vector<DxbcSvMapping2> m_oSvs;
+    std::vector<DxbcSvMapping> m_vSvs;
+    std::vector<DxbcSvMapping> m_oSvs;
     
     ///////////////////////////////////////////////////////////
     // Array of input values. Since v# registers are indexable
@@ -319,80 +329,80 @@ namespace dxvk {
     
     ////////////////////////////////////
     // Register manipulation operations
-    DxbcValue2 bitcastReg(
-      const DxbcValue2&           src,
+    DxbcValue bitcastReg(
+      const DxbcValue&            src,
             DxbcScalarType        type);
     
-    DxbcValue2 insertReg(
-      const DxbcValue2&           dst,
-      const DxbcValue2&           src,
+    DxbcValue insertReg(
+      const DxbcValue&            dst,
+      const DxbcValue&            src,
             DxbcRegMask           mask);
     
-    DxbcValue2 extractReg(
-      const DxbcValue2&           src,
+    DxbcValue extractReg(
+      const DxbcValue&            src,
             DxbcRegMask           mask);
     
-    DxbcValue2 swizzleReg(
-      const DxbcValue2&           src,
+    DxbcValue swizzleReg(
+      const DxbcValue&            src,
       const DxbcRegSwizzle&       swizzle,
             DxbcRegMask           mask);
     
-    DxbcValue2 regVector(
-      const DxbcValue2&           src,
+    DxbcValue regVector(
+      const DxbcValue&            src,
             uint32_t              size);
     
-    DxbcValue2 extendReg(
-      const DxbcValue2&           src,
+    DxbcValue extendReg(
+      const DxbcValue&            src,
             uint32_t              size);
     
     ////////////////////////////
     // Operand modifier methods
-    DxbcValue2 applyOperandModifiers(
-          DxbcValue2            value,
+    DxbcValue applyOperandModifiers(
+          DxbcValue             value,
           DxbcOperandModifiers  modifiers);
     
-    DxbcValue2 applyResultModifiers(
-          DxbcValue2            value,
+    DxbcValue applyResultModifiers(
+          DxbcValue             value,
           DxbcOpcodeControl     control);
     
     /////////////////////////
     // Load/Store operations
-    DxbcValue2 loadOp(
+    DxbcValue loadOp(
       const DxbcInstOp&           srcOp,
             DxbcRegMask           srcMask,
             DxbcScalarType        dstType);
     
-    DxbcValue2 loadImm32(
+    DxbcValue loadImm32(
       const DxbcInstOp&           srcOp,
             DxbcRegMask           srcMask,
             DxbcScalarType        dstType);
     
-    DxbcValue2 loadRegister(
+    DxbcValue loadRegister(
       const DxbcInstOp&           srcOp,
             DxbcRegMask           srcMask,
             DxbcScalarType        dstType);
     
     void storeOp(
       const DxbcInstOp&           dstOp,
-      const DxbcValue2&           srcValue);
+      const DxbcValue&            srcValue);
     
-    DxbcValue2 loadPtr(
-      const DxbcPointer2&         ptr);
+    DxbcValue loadPtr(
+      const DxbcPointer&          ptr);
     
     void storePtr(
-      const DxbcPointer2&         ptr,
-      const DxbcValue2&           value,
+      const DxbcPointer&          ptr,
+      const DxbcValue&            value,
             DxbcRegMask           mask);
     
-    DxbcValue2 loadIndex(
+    DxbcValue loadIndex(
       const DxbcInstOpIndex&      idx);
     
     ///////////////////////////
     // Operand pointer methods
-    DxbcPointer2 getOperandPtr(
+    DxbcPointer getOperandPtr(
       const DxbcInstOp&           op);
     
-    DxbcPointer2 getConstantBufferPtr(
+    DxbcPointer getConstantBufferPtr(
       const DxbcInstOp&           op);
     
     /////////////////////////////////

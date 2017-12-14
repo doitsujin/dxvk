@@ -300,7 +300,7 @@ namespace dxvk {
    * component selection mode deterines which
    * components are used for the operation.
    */
-  enum class DxbcComponentSelectionMode : uint32_t {
+  enum class DxbcRegMode : uint32_t {
     Mask    = 0,
     Swizzle = 1,
     Select1 = 2,
@@ -463,5 +463,21 @@ namespace dxvk {
   };
   
   using DxbcSyncFlags = Flags<DxbcSyncFlag>;
+  
+  /**
+   * \brief Scalar value type
+   * 
+   * Enumerates possible register component
+   * types. Scalar types are represented as
+   * a one-component vector type.
+   */
+  enum class DxbcScalarType {
+    Uint32    = 0,
+    Uint64    = 1,
+    Sint32    = 2,
+    Sint64    = 3,
+    Float32   = 4,
+    Float64   = 5,
+  };
   
 }
