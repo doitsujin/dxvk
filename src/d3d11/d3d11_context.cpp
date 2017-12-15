@@ -8,7 +8,7 @@
 namespace dxvk {
   
   D3D11DeviceContext::D3D11DeviceContext(
-      ID3D11Device*   parent,
+      D3D11Device*    parent,
       Rc<DxvkDevice>  device)
   : m_parent(parent),
     m_device(device) {
@@ -190,15 +190,7 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeviceContext::Unmap(
           ID3D11Resource*             pResource,
           UINT                        Subresource) {
-    D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
-    pResource->GetType(&resourceDim);
-    
-    if (resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER) {
-      D3D11Buffer* resource = static_cast<D3D11Buffer*>(pResource);
-      return resource->Unmap(this);
-    } else {
-      // We already displayed an error on Map()
-    }
+    // Nothing to do here, resources are persistently mapped
   }
   
   
@@ -396,7 +388,7 @@ namespace dxvk {
     
     if (resourceType == D3D11_RESOURCE_DIMENSION_BUFFER) {
       const auto bufferResource = static_cast<D3D11Buffer*>(pDstResource);
-      const auto bufferSlice = bufferResource->GetCurrentBufferSlice();
+      const auto bufferSlice = bufferResource->GetBufferSlice();
       
       VkDeviceSize offset = 0;
       VkDeviceSize size = bufferSlice.length();
@@ -621,33 +613,37 @@ namespace dxvk {
     // TODO check if any of these buffers
     // are bound as UAVs or stream outputs
     for (uint32_t i = 0; i < NumBuffers; i++) {
-      D3D11VertexBufferBinding binding;
-      binding.buffer = nullptr;
-      binding.offset = 0;
-      binding.stride = 0;
-      m_state.ia.vertexBuffers.at(StartSlot + i) = binding;
+      const D3D11VertexBufferBinding oldSlice
+        = m_state.ia.vertexBuffers.at(StartSlot + i);
+      
+      D3D11VertexBufferBinding newSlice;
+      newSlice.buffer = nullptr;
+      newSlice.offset = 0;
+      newSlice.stride = 0;
       
       if (ppVertexBuffers != nullptr) {
-        binding.buffer = static_cast<D3D11Buffer*>(ppVertexBuffers[i]);
-        binding.offset = pOffsets[i];
-        binding.stride = pStrides[i];
+        newSlice.buffer = static_cast<D3D11Buffer*>(ppVertexBuffers[i]);
+        newSlice.offset = pOffsets[i];
+        newSlice.stride = pStrides[i];
       }
+      
+      m_state.ia.vertexBuffers.at(StartSlot + i) = newSlice;
       
       DxvkBufferSlice bufferSlice;
       
-      if (binding.buffer != nullptr) {
+      if (newSlice.buffer != nullptr) {
         const DxvkBufferSlice baseSlice =
-          binding.buffer->GetCurrentBufferSlice();
+          newSlice.buffer->GetBufferSlice();
         
         bufferSlice = DxvkBufferSlice(
           baseSlice.buffer(),
-          baseSlice.offset() + binding.offset,
-          baseSlice.length() - binding.offset);
+          baseSlice.offset() + newSlice.offset,
+          baseSlice.length() - newSlice.offset);
       }
       
       m_context->bindVertexBuffer(
         StartSlot + i, bufferSlice,
-        binding.stride);
+        newSlice.stride);
     }
   }
   
@@ -666,7 +662,7 @@ namespace dxvk {
     
     if (binding.buffer != nullptr) {
       const DxvkBufferSlice baseSlice =
-        binding.buffer->GetCurrentBufferSlice();
+        binding.buffer->GetBufferSlice();
       
       bufferSlice = DxvkBufferSlice(
         baseSlice.buffer(),
@@ -1198,7 +1194,6 @@ namespace dxvk {
     
     m_state.om.depthStencilView = static_cast<D3D11DepthStencilView*>(pDepthStencilView);
     
-    
     // TODO unbind overlapping shader resource views
     
     Rc<DxvkFramebuffer> framebuffer = nullptr;
@@ -1461,19 +1456,19 @@ namespace dxvk {
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppConstantBuffers) {
     for (uint32_t i = 0; i < NumBuffers; i++) {
-      D3D11Buffer* buffer = nullptr;
+      D3D11Buffer* oldBuffer = pBindings->at(StartSlot + i).ptr();
+      D3D11Buffer* newBuffer = nullptr;
       
       if (ppConstantBuffers != nullptr)
-        buffer = static_cast<D3D11Buffer*>(ppConstantBuffers[i]);
+        newBuffer = static_cast<D3D11Buffer*>(ppConstantBuffers[i]);
       
-      if (pBindings->at(StartSlot + i) != buffer) {
-        pBindings->at(StartSlot + i) = buffer;
+      if (oldBuffer != newBuffer) {
+        pBindings->at(StartSlot + i) = newBuffer;
         
-        // Figure out which part of the buffer to bind
         DxvkBufferSlice bufferSlice;
         
-        if (buffer != nullptr)
-          bufferSlice = buffer->GetCurrentBufferSlice();
+        if (newBuffer != nullptr)
+          bufferSlice = newBuffer->GetBufferSlice();
         
         // Bind buffer to the DXVK resource slot
         const VkPipelineBindPoint bindPoint

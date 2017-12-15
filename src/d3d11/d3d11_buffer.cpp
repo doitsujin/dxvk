@@ -58,6 +58,11 @@ namespace dxvk {
   }
   
   
+  DxvkBufferSlice D3D11Buffer::GetBufferSlice() const {
+    return DxvkBufferSlice(m_buffer, 0, m_desc.ByteWidth);
+  }
+  
+  
   HRESULT D3D11Buffer::Map(
           D3D11DeviceContext*       pContext,
           D3D11_MAP                 MapType,
@@ -114,22 +119,6 @@ namespace dxvk {
       pMappedSubresource->DepthPitch = buffer->info().size;
       return S_OK;
     }
-  }
-  
-  
-  void D3D11Buffer::Unmap(
-          D3D11DeviceContext*       pContext) {
-    // Nothing to see here, folks
-  }
-  
-  
-  DxvkBufferSlice D3D11Buffer::GetCurrentBufferSlice() const {
-    return DxvkBufferSlice(m_buffer, 0, m_desc.ByteWidth);
-  }
-  
-  
-  DxvkBufferSlice D3D11Buffer::GetInitialBufferSlice() const {
-    return DxvkBufferSlice(m_buffer, 0, m_desc.ByteWidth);
   }
   
   

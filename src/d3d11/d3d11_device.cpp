@@ -1148,7 +1148,7 @@ namespace dxvk {
           D3D11Buffer*                pBuffer,
     const D3D11_SUBRESOURCE_DATA*     pInitialData) {
     const DxvkBufferSlice bufferSlice
-      = pBuffer->GetCurrentBufferSlice();
+      = pBuffer->GetBufferSlice();
     
     if (pInitialData != nullptr) {
       std::lock_guard<std::mutex> lock(m_resourceInitMutex);;

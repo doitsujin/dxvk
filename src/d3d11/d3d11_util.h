@@ -1,6 +1,8 @@
 #pragma once
 
-#include <dxvk_device.h>
+#include "../dxvk/dxvk_device.h"
+
+#include "../dxbc/dxbc_util.h"
 
 #include "d3d11_include.h"
 

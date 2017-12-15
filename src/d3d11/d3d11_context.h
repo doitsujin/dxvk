@@ -16,7 +16,7 @@ namespace dxvk {
   public:
     
     D3D11DeviceContext(
-      ID3D11Device*   parent,
+      D3D11Device*    parent,
       Rc<DxvkDevice>  device);
     ~D3D11DeviceContext();
     
@@ -549,7 +549,7 @@ namespace dxvk {
     
   private:
     
-    ID3D11Device* const m_parent;
+    D3D11Device* const m_parent;
     
     const D3D11_DEVICE_CONTEXT_TYPE m_type  = D3D11_DEVICE_CONTEXT_IMMEDIATE;
     const UINT                      m_flags = 0;
@@ -561,7 +561,7 @@ namespace dxvk {
     Com<D3D11DepthStencilState> m_defaultDepthStencilState;
     Com<D3D11RasterizerState>   m_defaultRasterizerState;
     
-    D3D11ContextState   m_state;
+    D3D11ContextState     m_state;
     
     void BindConstantBuffers(
             DxbcProgramType                   ShaderStage,

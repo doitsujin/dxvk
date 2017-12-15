@@ -194,6 +194,10 @@ namespace dxvk {
       return m_length;
     }
     
+    void* mapPtr(VkDeviceSize offset) const  {
+      return m_buffer->mapPtr(m_offset + offset);
+    }
+    
     VkDescriptorBufferInfo descriptorInfo() const {
       VkDescriptorBufferInfo info;
       info.buffer = m_buffer->handle();
