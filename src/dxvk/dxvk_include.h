@@ -6,6 +6,7 @@
 #include "../util/util_env.h"
 #include "../util/util_error.h"
 #include "../util/util_flags.h"
+#include "../util/util_math.h"
 #include "../util/util_string.h"
 
 #include "../util/rc/util_rc.h"
