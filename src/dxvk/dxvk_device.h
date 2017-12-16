@@ -76,6 +76,17 @@ namespace dxvk {
     }
     
     /**
+     * \brief Allocates buffer resource
+     * 
+     * \param [in] createInfo Buffer create info
+     * \param [in] memoryType Memory property flags
+     * \returns The buffer resource object
+     */
+    Rc<DxvkBufferResource> allocBufferResource(
+      const DxvkBufferCreateInfo& createInfo,
+            VkMemoryPropertyFlags memoryType);
+    
+    /**
      * \brief Allocates a staging buffer
      * 
      * Returns a staging buffer that is at least as large

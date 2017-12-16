@@ -78,47 +78,27 @@ namespace dxvk {
     if (pMappedSubresource == nullptr)
       return S_OK;
     
-    if (!buffer->isInUse()) {
-      // Simple case: The buffer is currently not being
-      // used by the device, we can return the pointer.
-      pMappedSubresource->pData      = buffer->mapPtr(0);
-      pMappedSubresource->RowPitch   = buffer->info().size;
-      pMappedSubresource->DepthPitch = buffer->info().size;
-      return S_OK;
-    } else {
+    if (buffer->isInUse()) {
       // Don't wait if the application tells us not to
       if (MapFlags & D3D11_MAP_FLAG_DO_NOT_WAIT)
         return DXGI_ERROR_WAS_STILL_DRAWING;
       
-      // TODO optimize this. In order to properly cover common use cases
-      // like frequent constant buffer updates, we must implement buffer
-      // renaming techniques. The current approach is inefficient as it
-      // leads to a lot of Flush() and Synchronize() calls.
-      // 
-      // Possible solution:
-      //  (1) Create buffers with a significantly larger size if they
-      //      can be mapped by the host for writing. If mapping the
-      //      buffer would stall on D3D11_MAP_WRITE_DISCARD, map the
-      //      next slice. on D3D11_MAP_WRITE_NO_OVERWRITE, return the
-      //      current slice. If the buffer is bound, update bindings.
-      //  (2) If no more slices are available, create a new buffer.
-      //      Limit the number of buffers to a small, fixed number.
-      //  (3) If no more buffers are available, flush and synchronize.
-      //  (4) When renaming the buffer internally, all active bindings
-      //      need to be updated internally as well.
-      // 
-      // In order to support deferred contexts, the immediate context
-      // must commit all changes to the initial buffer slice prior to
-      // executing a command list. When mapping on deferred contexts,
-      // the deferred context shall create local buffer objects.
-      pContext->Flush();
-      pContext->Synchronize();
-      
-      pMappedSubresource->pData      = buffer->mapPtr(0);
-      pMappedSubresource->RowPitch   = buffer->info().size;
-      pMappedSubresource->DepthPitch = buffer->info().size;
-      return S_OK;
+      // Invalidate the buffer in order to avoid synchronization
+      // if the application does not need the buffer contents to
+      // be preserved. The No Overwrite mode does not require any
+      // sort of synchronization, but should be used with care.
+      if (MapType == D3D11_MAP_WRITE_DISCARD) {
+        pContext->GetDXVKContext()->invalidateBuffer(m_buffer);
+      } else if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE) {
+        pContext->Flush();
+        pContext->Synchronize();
+      }
     }
+    
+    pMappedSubresource->pData      = buffer->mapPtr(0);
+    pMappedSubresource->RowPitch   = buffer->info().size;
+    pMappedSubresource->DepthPitch = buffer->info().size;
+    return S_OK;
   }
   
   

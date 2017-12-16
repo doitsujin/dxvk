@@ -244,8 +244,23 @@ namespace dxvk {
      * \param [in] subresources Image subresources
      */
     void initImage(
-      const Rc<DxvkImage>&           image,
-      const VkImageSubresourceRange& subresources);
+      const Rc<DxvkImage>&            image,
+      const VkImageSubresourceRange&  subresources);
+    
+    /**
+     * \brief Invalidates a buffer's contents
+     * 
+     * Discards a buffer's contents by allocating a new
+     * backing resource. This allows the host to access
+     * the buffer while the GPU is still accessing the
+     * original backing resource.
+     * 
+     * \warning If the buffer is used by another context,
+     * invalidating it will result in undefined behaviour.
+     * \param [in] buffer The buffer to invalidate
+     */
+    void invalidateBuffer(
+      const Rc<DxvkBuffer>&           buffer);
     
     /**
      * \brief Resolves a multisampled image resource

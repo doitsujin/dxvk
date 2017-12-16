@@ -47,30 +47,54 @@ namespace dxvk {
   
   
   /**
-   * \brief Buffer resource
+   * \brief Physical buffer resource
+   * 
+   * 
+   */
+  class DxvkBufferResource : public DxvkResource {
+    
+  public:
+    
+    DxvkBufferResource(
+      const Rc<vk::DeviceFn>&     vkd,
+      const DxvkBufferCreateInfo& createInfo,
+            DxvkMemoryAllocator&  memAlloc,
+            VkMemoryPropertyFlags memFlags);
+    
+    ~DxvkBufferResource();
+    
+    VkBuffer handle() const {
+      return m_buffer;
+    }
+    
+    void* mapPtr(VkDeviceSize offset) const {
+      return m_memory.mapPtr(offset);
+    }
+    
+  private:
+    
+    Rc<vk::DeviceFn>        m_vkd;
+    DxvkMemory              m_memory;
+    VkBuffer                m_buffer;
+    
+  };
+  
+  
+  /**
+   * \brief Virtual buffer resource
    * 
    * A simple buffer resource that stores linear,
    * unformatted data. Can be accessed by the host
    * if allocated on an appropriate memory type.
    */
-  class DxvkBuffer : public DxvkResource {
+  class DxvkBuffer : public RcObject {
     
   public:
     
     DxvkBuffer(
-      const Rc<vk::DeviceFn>&     vkd,
+            DxvkDevice*           device,
       const DxvkBufferCreateInfo& createInfo,
-            DxvkMemoryAllocator&  memAlloc,
-            VkMemoryPropertyFlags memFlags);
-    ~DxvkBuffer();
-    
-    /**
-     * \brief Buffer handle
-     * \returns Buffer handle
-     */
-    VkBuffer handle() const {
-      return m_buffer;
-    }
+            VkMemoryPropertyFlags memoryType);
     
     /**
      * \brief Buffer properties
@@ -78,6 +102,14 @@ namespace dxvk {
      */
     const DxvkBufferCreateInfo& info() const {
       return m_info;
+    }
+    
+    /**
+     * \brief Buffer handle
+     * \returns Buffer handle
+     */
+    VkBuffer handle() const {
+      return m_resource->handle();;
     }
     
     /**
@@ -90,15 +122,49 @@ namespace dxvk {
      * \returns Pointer to mapped memory region
      */
     void* mapPtr(VkDeviceSize offset) const {
-      return m_memory.mapPtr(offset);
+      return m_resource->mapPtr(offset);
     }
+    
+    /**
+     * \brief Checks whether the buffer is in use
+     * 
+     * Returns \c true if the underlying buffer resource
+     * is in use. If it is, it should not be accessed by
+     * the host for reading or writing, but reallocating
+     * the buffer is a valid strategy to overcome this.
+     * \returns \c true if the buffer is in use
+     */
+    bool isInUse() const {
+      return m_resource->isInUse();
+    }
+    
+    /**
+     * \brief Underlying buffer resource
+     * 
+     * Use this for lifetime tracking.
+     * \returns The resource object
+     */
+    Rc<DxvkResource> resource() const {
+      return m_resource;
+    }
+    
+    /**
+     * \brief Allocates new backing resource
+     * 
+     * Replaces the underlying buffer and implicitly marks
+     * any buffer views using this resource as dirty. Do
+     * not call this directly as this is called implicitly
+     * by the context's \c invalidateBuffer method.
+     */
+    void allocateResource();
     
   private:
     
-    Rc<vk::DeviceFn>      m_vkd;
-    DxvkBufferCreateInfo  m_info;
-    DxvkMemory            m_memory;
-    VkBuffer              m_buffer = VK_NULL_HANDLE;
+    DxvkDevice*             m_device;
+    DxvkBufferCreateInfo    m_info;
+    VkMemoryPropertyFlags   m_memFlags;
+    
+    Rc<DxvkBufferResource>  m_resource;
     
   };
   

@@ -29,6 +29,14 @@ namespace dxvk {
   }
   
   
+  Rc<DxvkBufferResource> DxvkDevice::allocBufferResource(
+    const DxvkBufferCreateInfo& createInfo,
+          VkMemoryPropertyFlags memoryType) {
+    return new DxvkBufferResource(m_vkd,
+      createInfo, *m_memory, memoryType);
+  }
+  
+  
   Rc<DxvkStagingBuffer> DxvkDevice::allocStagingBuffer(VkDeviceSize size) {
     // In case we need a standard-size staging buffer, try
     // to recycle an old one that has been returned earlier
@@ -102,9 +110,7 @@ namespace dxvk {
     const DxvkBufferCreateInfo& createInfo,
           VkMemoryPropertyFlags memoryType) {
     m_statCounters.increment(DxvkStat::ResBufferCreations, 1);
-    
-    return new DxvkBuffer(m_vkd,
-      createInfo, *m_memory, memoryType);
+    return new DxvkBuffer(this, createInfo, memoryType);
   }
   
   
@@ -119,9 +125,7 @@ namespace dxvk {
     const DxvkImageCreateInfo&  createInfo,
           VkMemoryPropertyFlags memoryType) {
     m_statCounters.increment(DxvkStat::ResImageCreations, 1);
-    
-    return new DxvkImage(m_vkd,
-      createInfo, *m_memory, memoryType);
+    return new DxvkImage(m_vkd, createInfo, *m_memory, memoryType);
   }
   
   

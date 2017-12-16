@@ -310,8 +310,8 @@ namespace dxvk {
       
       m_barriers.recordCommands(m_cmd);
       
-      m_cmd->trackResource(dstBuffer);
-      m_cmd->trackResource(srcBuffer);
+      m_cmd->trackResource(dstBuffer->resource());
+      m_cmd->trackResource(srcBuffer->resource());
     }
   }
   
@@ -365,6 +365,29 @@ namespace dxvk {
       image->info().stages,
       image->info().access);
     m_barriers.recordCommands(m_cmd);
+  }
+  
+  
+  void DxvkContext::invalidateBuffer(const Rc<DxvkBuffer>& buffer) {
+    // Allocate new backing resource
+    buffer->allocateResource();
+    
+    // We also need to update all bindings that the buffer
+    // may be bound to either directly or through views.
+    const VkBufferUsageFlags usage = buffer->info().usage;
+    
+    if (usage & VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
+      m_flags.set(DxvkContextFlag::GpDirtyIndexBuffer);
+    
+    if (usage & VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
+      m_flags.set(DxvkContextFlag::GpDirtyVertexBuffers);
+    
+    if (usage & (VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+               | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
+               | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT
+               | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT))
+      m_flags.set(DxvkContextFlag::GpDirtyResources,
+                  DxvkContextFlag::CpDirtyResources);
   }
   
   
@@ -471,7 +494,7 @@ namespace dxvk {
         buffer->info().access);
       m_barriers.recordCommands(m_cmd);
       
-      m_cmd->trackResource(buffer);
+      m_cmd->trackResource(buffer->resource());
     }
   }
   
@@ -785,7 +808,6 @@ namespace dxvk {
       gpState.rsDepthBiasSlope         = m_state.rs.depthBiasSlope;
       gpState.rsViewportCount          = m_state.vp.viewportCount;
       
-      // TODO implement multisampling support properly
       gpState.msSampleCount            = m_state.om.framebuffer->sampleCount();
       gpState.msSampleMask             = m_state.ms.sampleMask;
       gpState.msEnableAlphaToCoverage  = m_state.ms.enableAlphaToCoverage;
@@ -836,6 +858,8 @@ namespace dxvk {
       m_flags.clr(DxvkContextFlag::CpDirtyResources);
       
       auto layout = m_state.cp.pipeline->layout();
+      
+      // TODO refcount used resources
       
       m_cmd->bindResourceDescriptors(
         VK_PIPELINE_BIND_POINT_COMPUTE,
@@ -904,7 +928,7 @@ namespace dxvk {
           m_state.vi.indexBuffer.offset(),
           m_state.vi.indexType);
         m_cmd->trackResource(
-          m_state.vi.indexBuffer.buffer());
+          m_state.vi.indexBuffer.buffer()->resource());
       }
     }
   }
@@ -922,7 +946,7 @@ namespace dxvk {
         
         if (handle != VK_NULL_HANDLE) {
           m_cmd->cmdBindVertexBuffers(i, 1, &handle, &offset);
-          m_cmd->trackResource(vbo.buffer());
+          m_cmd->trackResource(vbo.buffer()->resource());
         }
       }
     }

@@ -1,13 +1,14 @@
 #include "dxvk_buffer.h"
+#include "dxvk_device.h"
 
 namespace dxvk {
   
-  DxvkBuffer::DxvkBuffer(
+  DxvkBufferResource::DxvkBufferResource(
     const Rc<vk::DeviceFn>&     vkd,
     const DxvkBufferCreateInfo& createInfo,
           DxvkMemoryAllocator&  memAlloc,
           VkMemoryPropertyFlags memFlags)
-  : m_vkd(vkd), m_info(createInfo) {
+  : m_vkd(vkd) {
     
     VkBufferCreateInfo info;
     info.sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -34,9 +35,25 @@ namespace dxvk {
   }
   
   
-  DxvkBuffer::~DxvkBuffer() {
+  DxvkBufferResource::~DxvkBufferResource() {
     if (m_buffer != VK_NULL_HANDLE)
       m_vkd->vkDestroyBuffer(m_vkd->device(), m_buffer, nullptr);
+  }
+  
+  
+  DxvkBuffer::DxvkBuffer(
+          DxvkDevice*           device,
+    const DxvkBufferCreateInfo& createInfo,
+          VkMemoryPropertyFlags memoryType)
+  : m_device  (device),
+    m_info    (createInfo),
+    m_memFlags(memoryType) {
+    this->allocateResource();
+  }
+  
+  
+  void DxvkBuffer::allocateResource() {
+    m_resource = m_device->allocBufferResource(m_info, m_memFlags);
   }
   
   
