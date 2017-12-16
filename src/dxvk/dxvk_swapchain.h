@@ -10,7 +10,19 @@ namespace dxvk {
   class DxvkSurface;
   
   /**
-   * \brief 
+   * \brief Swap chain semaphore pair
+   * 
+   * Holds the two semaphores requires for
+   * synchronizing swap chain operations.
+   */
+  struct DxvkSwapSemaphores {
+    Rc<DxvkSemaphore> acquireSync; ///< Post-acquire semaphore
+    Rc<DxvkSemaphore> presentSync; ///< Pre-present semaphore
+  };
+  
+  
+  /**
+   * \brief Swap chain properties
    */
   struct DxvkSwapchainProperties {
     VkSurfaceFormatKHR preferredSurfaceFormat;
@@ -22,7 +34,9 @@ namespace dxvk {
   /**
    * \brief DXVK swapchain
    * 
-   * Manages a Vulkan swapchain object.
+   * Manages a Vulkan swap chain object. Implements
+   * acquire and present methods and recreates the
+   * underlying swap chain object as necessary.
    */
   class DxvkSwapchain : public RcObject {
     
@@ -33,6 +47,16 @@ namespace dxvk {
       const Rc<DxvkSurface>&          surface,
       const DxvkSwapchainProperties&  properties);
     ~DxvkSwapchain();
+    
+    /**
+     * \brief Acquires a pair of semaphores
+     * 
+     * Retrieves a set of semaphores for the acquire
+     * and present operations. This must be called
+     * \e before \c getFramebuffer.
+     * \returns Semaphore pair
+     */
+    DxvkSwapSemaphores getSemaphorePair();
     
     /**
      * \brief Retrieves the framebuffer for the current frame
@@ -78,8 +102,9 @@ namespace dxvk {
     uint32_t                m_imageIndex = 0;
     uint32_t                m_frameIndex = 0;
     
-    Rc<DxvkRenderPass>               m_renderPass;
-    std::vector<Rc<DxvkFramebuffer>> m_framebuffers;
+    Rc<DxvkRenderPass>                m_renderPass;
+    std::vector<Rc<DxvkFramebuffer>>  m_framebuffers;
+    std::vector<DxvkSwapSemaphores>   m_semaphoreSet;
     
     VkResult acquireNextImage(
       const Rc<DxvkSemaphore>& wakeSync);

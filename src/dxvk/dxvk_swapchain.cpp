@@ -26,6 +26,14 @@ namespace dxvk {
   }
   
   
+  DxvkSwapSemaphores DxvkSwapchain::getSemaphorePair() {
+    // It doesn't really matter that we increment the
+    // counter *before* returning the semaphore pair
+    m_frameIndex = (m_frameIndex + 1) % m_semaphoreSet.size();
+    return m_semaphoreSet.at(m_frameIndex);
+  }
+  
+  
   Rc<DxvkFramebuffer> DxvkSwapchain::getFramebuffer(
     const Rc<DxvkSemaphore>& wakeSync) {
     VkResult status = this->acquireNextImage(wakeSync);
@@ -131,7 +139,9 @@ namespace dxvk {
     
     // Retrieve swap images
     auto swapImages = this->retrieveSwapImages();
+    
     m_framebuffers.resize(swapImages.size());
+    m_semaphoreSet.resize(swapImages.size());
     
     DxvkImageCreateInfo imageInfo;
     imageInfo.type          = VK_IMAGE_TYPE_2D;
@@ -169,6 +179,9 @@ namespace dxvk {
       
       m_framebuffers.at(i) = new DxvkFramebuffer(
         m_vkd, m_renderPass, renderTargets);
+      
+      m_semaphoreSet.at(i).acquireSync = m_device->createSemaphore();
+      m_semaphoreSet.at(i).presentSync = m_device->createSemaphore();
     }
   }
   

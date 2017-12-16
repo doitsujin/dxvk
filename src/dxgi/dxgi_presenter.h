@@ -78,9 +78,6 @@ namespace dxvk {
     Rc<DxvkSurface>     m_surface;
     Rc<DxvkSwapchain>   m_swapchain;
     
-    Rc<DxvkSemaphore>   m_acquireSync;
-    Rc<DxvkSemaphore>   m_presentSync;
-    
     Rc<DxvkSampler>     m_sampler;
     
     Rc<DxvkImage>       m_backBuffer;

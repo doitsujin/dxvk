@@ -29,10 +29,6 @@ namespace dxvk {
     m_swapchain = m_device->createSwapchain(
       m_surface, swapchainProperties);
     
-    // Synchronization semaphores for swap chain operations
-    m_acquireSync = m_device->createSemaphore();
-    m_presentSync = m_device->createSemaphore();
-    
     // Sampler for presentation
     DxvkSamplerCreateInfo samplerInfo;
     samplerInfo.magFilter       = VK_FILTER_NEAREST;
@@ -172,7 +168,9 @@ namespace dxvk {
         m_backBuffer,        resolveSubresources);
     }
     
-    auto framebuffer     = m_swapchain->getFramebuffer(m_acquireSync);
+    const DxvkSwapSemaphores sem = m_swapchain->getSemaphorePair();
+    
+    auto framebuffer     = m_swapchain->getFramebuffer(sem.acquireSync);
     auto framebufferSize = framebuffer->size();
     
     m_context->bindFramebuffer(framebuffer);
@@ -203,13 +201,9 @@ namespace dxvk {
     
     m_device->submitCommandList(
       m_context->endRecording(),
-      m_acquireSync, m_presentSync);
+      sem.acquireSync, sem.presentSync);
     
-    m_swapchain->present(m_presentSync);
-    
-    // FIXME Make sure that the semaphores and the command
-    // list can be safely used without stalling the device.
-    m_device->waitForIdle();
+    m_swapchain->present(sem.presentSync);
   }
   
   
