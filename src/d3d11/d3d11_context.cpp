@@ -178,8 +178,38 @@ namespace dxvk {
     pResource->GetType(&resourceDim);
     
     if (resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER) {
-      D3D11Buffer* resource = static_cast<D3D11Buffer*>(pResource);
-      return resource->Map(this, MapType, MapFlags, pMappedResource);
+      const D3D11Buffer* resource = static_cast<D3D11Buffer*>(pResource);
+      const Rc<DxvkBuffer> buffer = resource->GetBufferSlice().buffer();
+      
+      if (buffer->mapPtr(0) == nullptr) {
+        Logger::err("D3D11: Cannot map a device-local buffer");
+        return E_FAIL;
+      }
+      
+      if (pMappedResource == nullptr)
+        return S_OK;
+      
+      if (buffer->isInUse()) {
+        // Don't wait if the application tells us not to
+        if (MapFlags & D3D11_MAP_FLAG_DO_NOT_WAIT)
+          return DXGI_ERROR_WAS_STILL_DRAWING;
+        
+        // Invalidate the buffer in order to avoid synchronization
+        // if the application does not need the buffer contents to
+        // be preserved. The No Overwrite mode does not require any
+        // sort of synchronization, but should be used with care.
+        if (MapType == D3D11_MAP_WRITE_DISCARD) {
+          m_context->invalidateBuffer(buffer);
+        } else if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE) {
+          this->Flush();
+          this->Synchronize();
+        }
+      }
+      
+      pMappedResource->pData      = buffer->mapPtr(0);
+      pMappedResource->RowPitch   = buffer->info().size;
+      pMappedResource->DepthPitch = buffer->info().size;
+      return S_OK;
     } else {
       Logger::err("D3D11: Mapping of image resources currently not supported");
       return E_NOTIMPL;

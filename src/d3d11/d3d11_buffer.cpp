@@ -58,53 +58,8 @@ namespace dxvk {
   }
   
   
-  DxvkBufferSlice D3D11Buffer::GetBufferSlice() const {
-    return DxvkBufferSlice(m_buffer, 0, m_desc.ByteWidth);
-  }
-  
-  
-  HRESULT D3D11Buffer::Map(
-          D3D11DeviceContext*       pContext,
-          D3D11_MAP                 MapType,
-          UINT                      MapFlags,
-          D3D11_MAPPED_SUBRESOURCE* pMappedSubresource) {
-    const Rc<DxvkBuffer> buffer = m_buffer;
-    
-    if (buffer->mapPtr(0) == nullptr) {
-      Logger::err("D3D11: Cannot map a device-local buffer");
-      return E_FAIL;
-    }
-    
-    if (pMappedSubresource == nullptr)
-      return S_OK;
-    
-    if (buffer->isInUse()) {
-      // Don't wait if the application tells us not to
-      if (MapFlags & D3D11_MAP_FLAG_DO_NOT_WAIT)
-        return DXGI_ERROR_WAS_STILL_DRAWING;
-      
-      // Invalidate the buffer in order to avoid synchronization
-      // if the application does not need the buffer contents to
-      // be preserved. The No Overwrite mode does not require any
-      // sort of synchronization, but should be used with care.
-      if (MapType == D3D11_MAP_WRITE_DISCARD) {
-        pContext->GetDXVKContext()->invalidateBuffer(m_buffer);
-      } else if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE) {
-        pContext->Flush();
-        pContext->Synchronize();
-      }
-    }
-    
-    pMappedSubresource->pData      = buffer->mapPtr(0);
-    pMappedSubresource->RowPitch   = buffer->info().size;
-    pMappedSubresource->DepthPitch = buffer->info().size;
-    return S_OK;
-  }
-  
-  
   Rc<DxvkBuffer> D3D11Buffer::CreateBuffer(
     const D3D11_BUFFER_DESC* pDesc) const {
-    // Gather usage information
     DxvkBufferCreateInfo  info;
     info.size   = pDesc->ByteWidth;
     info.usage  = VK_BUFFER_USAGE_TRANSFER_DST_BIT
