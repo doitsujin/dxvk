@@ -58,23 +58,20 @@ namespace dxvk {
   : m_heap  (heap),
     m_memory(memory),
     m_mapPtr(mapPtr),
-    m_size  (size),
-    m_free  (size) {
-    TRACE(this);
+    m_size  (size) {
     // Mark the entire chunk as free
     m_freeList.push_back(FreeSlice { 0, size });
   }
   
   
   DxvkMemoryChunk::~DxvkMemoryChunk() {
-    TRACE(this);
     m_heap->freeDeviceMemory(m_memory);
   }
   
   
   DxvkMemory DxvkMemoryChunk::alloc(VkDeviceSize size, VkDeviceSize align) {
-    // Fast exit if the chunk is full already
-    if (size > m_free)
+    // If the chunk is full, return
+    if (m_freeList.size() == 0)
       return DxvkMemory();
     
     // Select the slice to allocate from in a worst-fit
@@ -82,8 +79,12 @@ namespace dxvk {
     auto bestSlice = m_freeList.begin();
     
     for (auto slice = m_freeList.begin(); slice != m_freeList.end(); slice++) {
-      if (slice->length > bestSlice->length)
+      if (slice->length == size) {
         bestSlice = slice;
+        break;
+      } else if (slice->length > bestSlice->length) {
+        bestSlice = slice;
+      }
     }
     
     // We need to align the allocation to the requested alignment
@@ -99,7 +100,6 @@ namespace dxvk {
     // We can use this slice, but we'll have to add
     // the unused parts of it back to the free list.
     m_freeList.erase(bestSlice);
-    m_free -= size;
     
     if (allocStart != sliceStart)
       m_freeList.push_back({ sliceStart, allocStart - sliceStart });
@@ -108,6 +108,7 @@ namespace dxvk {
       m_freeList.push_back({ allocEnd, sliceEnd - allocEnd });
     
     // Create the memory object with the aligned slice
+    m_delta++;
     return DxvkMemory(this, m_heap,
       m_memory, allocStart, allocEnd - allocStart,
       reinterpret_cast<char*>(m_mapPtr) + allocStart);
@@ -117,8 +118,6 @@ namespace dxvk {
   void DxvkMemoryChunk::free(
           VkDeviceSize  offset,
           VkDeviceSize  length) {
-    m_free += length;
-    
     // Remove adjacent entries from the free list and then add
     // a new slice that covers all those entries. Without doing
     // so, the slice could not be reused for larger allocations.
@@ -137,6 +136,7 @@ namespace dxvk {
       }
     }
     
+    m_delta--;
     m_freeList.push_back({ offset, length });
   }
   

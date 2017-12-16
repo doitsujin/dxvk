@@ -9,6 +9,7 @@
 #include "dxvk_image.h"
 #include "dxvk_memory.h"
 #include "dxvk_pipemanager.h"
+#include "dxvk_queue.h"
 #include "dxvk_recycler.h"
 #include "dxvk_renderpass.h"
 #include "dxvk_sampler.h"
@@ -30,6 +31,8 @@ namespace dxvk {
    * contexts. Multiple contexts can be created for a device.
    */
   class DxvkDevice : public RcObject {
+    friend class DxvkSubmissionQueue;
+    
     constexpr static VkDeviceSize DefaultStagingBufferSize = 64 * 1024 * 1024;
   public:
     
@@ -307,6 +310,11 @@ namespace dxvk {
     DxvkRecycler<DxvkStagingBuffer, 4> m_recycledStagingBuffers;
     
     DxvkStatCounters m_statCounters;
+    
+    DxvkSubmissionQueue m_submissionQueue;
+    
+    void recycleCommandList(
+      const Rc<DxvkCommandList>& cmdList);
     
   };
   

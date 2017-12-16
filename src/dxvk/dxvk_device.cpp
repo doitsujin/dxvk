@@ -12,7 +12,8 @@ namespace dxvk {
     m_features        (features),
     m_memory          (new DxvkMemoryAllocator(adapter, vkd)),
     m_renderPassPool  (new DxvkRenderPassPool (vkd)),
-    m_pipelineManager (new DxvkPipelineManager(vkd)) {
+    m_pipelineManager (new DxvkPipelineManager(vkd)),
+    m_submissionQueue (this) {
     m_vkd->vkGetDeviceQueue(m_vkd->device(),
       m_adapter->graphicsQueueFamily(), 0,
       &m_graphicsQueue);
@@ -214,12 +215,8 @@ namespace dxvk {
         waitSemaphore, wakeSemaphore, fence->handle());
     }
     
-    // TODO Delay synchronization by putting these into a ring buffer
-    fence->wait(std::numeric_limits<uint64_t>::max());
-    commandList->reset();
-    
-    // FIXME this must go away once the ring buffer is implemented
-    m_recycledCommandLists.returnObject(commandList);
+    // Add this to the set of running submissions
+    m_submissionQueue.submit(fence, commandList);
     m_statCounters.increment(DxvkStat::DevQueueSubmissions, 1);
     return fence;
   }
@@ -230,6 +227,11 @@ namespace dxvk {
     
     if (m_vkd->vkDeviceWaitIdle(m_vkd->device()) != VK_SUCCESS)
       throw DxvkError("DxvkDevice::waitForIdle: Operation failed");
+  }
+  
+  
+  void DxvkDevice::recycleCommandList(const Rc<DxvkCommandList>& cmdList) {
+    m_recycledCommandLists.returnObject(cmdList);
   }
   
 }
