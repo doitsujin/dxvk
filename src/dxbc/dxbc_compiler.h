@@ -34,53 +34,6 @@ namespace dxvk {
   };
   
   /**
-   * \brief Constant buffer binding
-   * 
-   * Stores information required to
-   * access a constant buffer.
-   */
-  struct DxbcConstantBuffer {
-    uint32_t varId = 0;
-    uint32_t size  = 0;
-  };
-  
-  /**
-   * \brief Sampler binding
-   * 
-   * Stores a sampler variable that can be
-   * used together with a texture resource.
-   */
-  struct DxbcSampler {
-    uint32_t varId  = 0;
-    uint32_t typeId = 0;
-  };
-  
-  
-  /**
-   * \brief Shader resource binding
-   * 
-   * Stores a resource variable
-   * and associated type IDs.
-   */
-  struct DxbcShaderResource {
-    uint32_t varId         = 0;
-    uint32_t sampledTypeId = 0;
-    uint32_t textureTypeId = 0;
-  };
-  
-  /**
-   * \brief System value mapping
-   * 
-   * Maps a system value to a given set of
-   * components of an input or output register.
-   */
-  struct DxbcSvMapping {
-    uint32_t        regId;
-    DxbcRegMask     regMask;
-    DxbcSystemValue sv;
-  };
-  
-  /**
    * \brief Compiler error code
    * 
    * Helps identify the type of error

@@ -296,6 +296,16 @@ namespace dxvk {
             uint32_t                a,
             uint32_t                b);
     
+    uint32_t opSMax(
+            uint32_t                resultType,
+            uint32_t                a,
+            uint32_t                b);
+    
+    uint32_t opSMin(
+            uint32_t                resultType,
+            uint32_t                a,
+            uint32_t                b);
+    
     uint32_t opFClamp(
             uint32_t                resultType,
             uint32_t                x,
@@ -308,6 +318,26 @@ namespace dxvk {
             uint32_t                vector2);
     
     uint32_t opINotEqual(
+            uint32_t                resultType,
+            uint32_t                vector1,
+            uint32_t                vector2);
+    
+    uint32_t opSLessThan(
+            uint32_t                resultType,
+            uint32_t                vector1,
+            uint32_t                vector2);
+    
+    uint32_t opSLessThanEqual(
+            uint32_t                resultType,
+            uint32_t                vector1,
+            uint32_t                vector2);
+    
+    uint32_t opSGreaterThan(
+            uint32_t                resultType,
+            uint32_t                vector1,
+            uint32_t                vector2);
+    
+    uint32_t opSGreaterThanEqual(
             uint32_t                resultType,
             uint32_t                vector1,
             uint32_t                vector2);
@@ -355,9 +385,21 @@ namespace dxvk {
             uint32_t                resultType,
             uint32_t                vector);
     
+    uint32_t opSqrt(
+            uint32_t                resultType,
+            uint32_t                operand);
+    
     uint32_t opInverseSqrt(
             uint32_t                resultType,
-            uint32_t                x);
+            uint32_t                operand);
+    
+    uint32_t opExp2(
+            uint32_t                resultType,
+            uint32_t                operand);
+    
+    uint32_t opLog2(
+            uint32_t                resultType,
+            uint32_t                operand);
     
     uint32_t opSelect(
             uint32_t                resultType,

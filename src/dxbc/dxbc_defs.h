@@ -34,6 +34,7 @@ namespace dxvk {
     VectorCmov,       ///< Component-wise conditional move
     VectorCmp,        ///< Component-wise vector comparison
     VectorDot,        ///< Dot product instruction
+    VectorImul,       ///< Component-wise integer multiplication
     VectorSinCos,     ///< Sine and Cosine instruction
     ControlFlow,      ///< Control flow instructions
     Undefined,        ///< Instruction code not defined

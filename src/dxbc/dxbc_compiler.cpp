@@ -1263,7 +1263,7 @@ namespace dxvk {
       // We only write to part of the destination
       // register, so we need to load and modify it
       DxbcValue tmp = this->loadPtr(ptr);
-                 tmp = this->insertReg(tmp, srcValue, mask);
+                tmp = this->insertReg(tmp, srcValue, mask);
       
       m_module.opStore(ptr.pointerId, tmp.valueId);
     }

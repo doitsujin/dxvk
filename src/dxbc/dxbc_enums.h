@@ -451,7 +451,7 @@ namespace dxvk {
   
   enum class DxbcResinfoType : uint32_t {
     Float     = 0,
-    RcpFloat  = 1,  // ?
+    RcpFloat  = 1,
     Uint      = 2,
   };
   

@@ -78,7 +78,10 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
     } },
     /* Exp                                  */
-    { },
+    { 2, DxbcInstClass::VectorAlu, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* Frc                                  */
     { },
     /* FtoI                                 */
@@ -92,27 +95,68 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
     } },
     /* IAdd                                 */
-    { },
+    { 3, DxbcInstClass::VectorAlu, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+    } },
     /* If                                   */
     { },
     /* IEq                                  */
-    { },
+    { 3, DxbcInstClass::VectorCmp, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+    } },
     /* IGe                                  */
-    { },
+    { 3, DxbcInstClass::VectorCmp, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+    } },
     /* ILt                                  */
-    { },
+    { 3, DxbcInstClass::VectorCmp, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+    } },
     /* IMad                                 */
-    { },
+    { 4, DxbcInstClass::VectorAlu, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+    } },
     /* IMax                                 */
-    { },
+    { 3, DxbcInstClass::VectorAlu, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+    } },
     /* IMin                                 */
-    { },
+    { 3, DxbcInstClass::VectorAlu, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+    } },
     /* IMul                                 */
-    { },
+    { 4, DxbcInstClass::VectorImul, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* INe                                  */
-    { },
+    { 3, DxbcInstClass::VectorCmp, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+    } },
     /* INeg                                 */
-    { },
+    { 2, DxbcInstClass::VectorAlu, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+    } },
     /* IShl                                 */
     { },
     /* IShr                                 */
@@ -126,7 +170,10 @@ namespace dxvk {
     /* LdMs                                 */
     { },
     /* Log                                  */
-    { },
+    { 2, DxbcInstClass::VectorAlu, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* Loop                                 */
     { },
     /* Lt                                   */
@@ -223,7 +270,10 @@ namespace dxvk {
     /* SampleB                              */
     { },
     /* Sqrt                                 */
-    { },
+    { 2, DxbcInstClass::VectorAlu, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* Switch                               */
     { },
     /* SinCos                               */

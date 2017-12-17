@@ -836,6 +836,40 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opSMax(
+          uint32_t                resultType,
+          uint32_t                a,
+          uint32_t                b) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpExtInst, 7);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(m_instExtGlsl450);
+    m_code.putWord(spv::GLSLstd450SMax);
+    m_code.putWord(a);
+    m_code.putWord(b);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opSMin(
+          uint32_t                resultType,
+          uint32_t                a,
+          uint32_t                b) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpExtInst, 7);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(m_instExtGlsl450);
+    m_code.putWord(spv::GLSLstd450SMin);
+    m_code.putWord(a);
+    m_code.putWord(b);
+    return resultId;
+  }
+  
+  
   uint32_t SpirvModule::opFClamp(
           uint32_t                resultType,
           uint32_t                x,
@@ -877,6 +911,66 @@ namespace dxvk {
     uint32_t resultId = this->allocateId();
     
     m_code.putIns (spv::OpINotEqual, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(vector1);
+    m_code.putWord(vector2);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opSLessThan(
+          uint32_t                resultType,
+          uint32_t                vector1,
+          uint32_t                vector2) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpSLessThan, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(vector1);
+    m_code.putWord(vector2);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opSLessThanEqual(
+          uint32_t                resultType,
+          uint32_t                vector1,
+          uint32_t                vector2) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpSLessThanEqual, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(vector1);
+    m_code.putWord(vector2);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opSGreaterThan(
+          uint32_t                resultType,
+          uint32_t                vector1,
+          uint32_t                vector2) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpSGreaterThan, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(vector1);
+    m_code.putWord(vector2);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opSGreaterThanEqual(
+          uint32_t                resultType,
+          uint32_t                vector1,
+          uint32_t                vector2) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpSGreaterThanEqual, 5);
     m_code.putWord(resultType);
     m_code.putWord(resultId);
     m_code.putWord(vector1);
@@ -1020,9 +1114,24 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opSqrt(
+          uint32_t                resultType,
+          uint32_t                operand) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpExtInst, 6);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(m_instExtGlsl450);
+    m_code.putWord(spv::GLSLstd450Sqrt);
+    m_code.putWord(operand);
+    return resultId;
+  }
+  
+  
   uint32_t SpirvModule::opInverseSqrt(
           uint32_t                resultType,
-          uint32_t                x) {
+          uint32_t                operand) {
     uint32_t resultId = this->allocateId();
     
     m_code.putIns (spv::OpExtInst, 6);
@@ -1030,7 +1139,37 @@ namespace dxvk {
     m_code.putWord(resultId);
     m_code.putWord(m_instExtGlsl450);
     m_code.putWord(spv::GLSLstd450InverseSqrt);
-    m_code.putWord(x);
+    m_code.putWord(operand);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opExp2(
+          uint32_t                resultType,
+          uint32_t                operand) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpExtInst, 6);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(m_instExtGlsl450);
+    m_code.putWord(spv::GLSLstd450Exp2);
+    m_code.putWord(operand);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opLog2(
+          uint32_t                resultType,
+          uint32_t                operand) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpExtInst, 6);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(m_instExtGlsl450);
+    m_code.putWord(spv::GLSLstd450Log2);
+    m_code.putWord(operand);
     return resultId;
   }
   

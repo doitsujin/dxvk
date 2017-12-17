@@ -1,4 +1,5 @@
 #include "dxbc_compiler.h"
+#include "dxbc_compiler_2.h"
 #include "dxbc_module.h"
 
 namespace dxvk {
@@ -44,19 +45,19 @@ namespace dxvk {
     if (m_shexChunk == nullptr)
       throw DxvkError("DxbcModule::compile: No SHDR/SHEX chunk");
     
-    DxbcCompiler compiler(
+    DxbcCodeSlice slice = m_shexChunk->slice();
+    
+    DxbcCompiler2 compiler(
       m_shexChunk->version(),
       m_isgnChunk, m_osgnChunk);
     
-    for (auto ins : *m_shexChunk) {
-      const DxbcError error = compiler.processInstruction(ins);
+    DxbcDecodeContext decoder;
+    
+    while (!slice.atEnd()) {
+      decoder.decodeInstruction(slice);
       
-      if (error != DxbcError::sOk) {
-        Logger::err(str::format(
-          "dxbc: Error while processing ",
-          ins.token().opcode(), ": Error ",
-          static_cast<uint32_t>(error)));
-      }
+      compiler.processInstruction(
+        decoder.getInstruction());
     }
     
     return compiler.finalize();
