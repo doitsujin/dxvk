@@ -31,6 +31,7 @@ namespace dxvk {
     Declaration,      ///< Interface or resource declaration
     TextureSample,    ///< Texture sampling instruction
     VectorAlu,        ///< Component-wise vector instructions
+    VectorCmov,       ///< Component-wise conditional move
     VectorCmp,        ///< Component-wise vector comparison
     VectorDot,        ///< Dot product instruction
     VectorSinCos,     ///< Sine and Cosine instruction

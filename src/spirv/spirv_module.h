@@ -265,6 +265,11 @@ namespace dxvk {
             uint32_t                a,
             uint32_t                b);
     
+    uint32_t opFDiv(
+            uint32_t                resultType,
+            uint32_t                a,
+            uint32_t                b);
+    
     uint32_t opIMul(
             uint32_t                resultType,
             uint32_t                a,
@@ -297,6 +302,46 @@ namespace dxvk {
             uint32_t                minVal,
             uint32_t                maxVal);
     
+    uint32_t opIEqual(
+            uint32_t                resultType,
+            uint32_t                vector1,
+            uint32_t                vector2);
+    
+    uint32_t opINotEqual(
+            uint32_t                resultType,
+            uint32_t                vector1,
+            uint32_t                vector2);
+    
+    uint32_t opFOrdEqual(
+            uint32_t                resultType,
+            uint32_t                vector1,
+            uint32_t                vector2);
+    
+    uint32_t opFOrdNotEqual(
+            uint32_t                resultType,
+            uint32_t                vector1,
+            uint32_t                vector2);
+    
+    uint32_t opFOrdLessThan(
+            uint32_t                resultType,
+            uint32_t                vector1,
+            uint32_t                vector2);
+    
+    uint32_t opFOrdLessThanEqual(
+            uint32_t                resultType,
+            uint32_t                vector1,
+            uint32_t                vector2);
+    
+    uint32_t opFOrdGreaterThan(
+            uint32_t                resultType,
+            uint32_t                vector1,
+            uint32_t                vector2);
+    
+    uint32_t opFOrdGreaterThanEqual(
+            uint32_t                resultType,
+            uint32_t                vector1,
+            uint32_t                vector2);
+    
     uint32_t opDot(
             uint32_t                resultType,
             uint32_t                vector1,
@@ -313,6 +358,12 @@ namespace dxvk {
     uint32_t opInverseSqrt(
             uint32_t                resultType,
             uint32_t                x);
+    
+    uint32_t opSelect(
+            uint32_t                resultType,
+            uint32_t                condition,
+            uint32_t                operand1,
+            uint32_t                operand2);
     
     uint32_t opFunctionCall(
             uint32_t                resultType,

@@ -36,7 +36,11 @@ namespace dxvk {
     /* Discard                              */
     { },
     /* Div                                  */
-    { },
+    { 3, DxbcInstClass::VectorAlu, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* Dp2                                  */
     { 3, DxbcInstClass::VectorDot, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
@@ -68,7 +72,11 @@ namespace dxvk {
     /* EndSwitch                            */
     { },
     /* Eq                                   */
-    { },
+    { 3, DxbcInstClass::VectorCmp, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32  },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* Exp                                  */
     { },
     /* Frc                                  */
@@ -78,7 +86,11 @@ namespace dxvk {
     /* FtoU                                 */
     { },
     /* Ge                                   */
-    { },
+    { 3, DxbcInstClass::VectorCmp, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32  },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* IAdd                                 */
     { },
     /* If                                   */
@@ -118,7 +130,11 @@ namespace dxvk {
     /* Loop                                 */
     { },
     /* Lt                                   */
-    { },
+    { 3, DxbcInstClass::VectorCmp, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32  },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* Mad                                  */
     { 4, DxbcInstClass::VectorAlu, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
@@ -146,7 +162,12 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
     } },
     /* Movc                                 */
-    { },
+    { 4, DxbcInstClass::VectorCmov, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32  },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* Mul                                  */
     { 3, DxbcInstClass::VectorAlu, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
@@ -154,7 +175,11 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
     } },
     /* Ne                                   */
-    { },
+    { 3, DxbcInstClass::VectorCmp, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32  },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* Nop                                  */
     { },
     /* Not                                  */

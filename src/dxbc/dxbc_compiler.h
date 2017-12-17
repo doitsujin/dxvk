@@ -287,6 +287,12 @@ namespace dxvk {
     DxbcError handleVectorAlu(
       const DxbcInst& ins);
     
+    DxbcError handleVectorCmov(
+      const DxbcInst& ins);
+    
+    DxbcError handleVectorCmp(
+      const DxbcInst& ins);
+    
     DxbcError handleVectorDot(
       const DxbcInst& ins);
     

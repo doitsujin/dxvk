@@ -60,6 +60,8 @@ namespace dxvk {
       case DxbcInstClass::ControlFlow:    return this->handleControlFlow  (parsedInst);
       case DxbcInstClass::TextureSample:  return this->handleTextureSample(parsedInst);
       case DxbcInstClass::VectorAlu:      return this->handleVectorAlu    (parsedInst);
+      case DxbcInstClass::VectorCmov:     return this->handleVectorCmov   (parsedInst);
+      case DxbcInstClass::VectorCmp:      return this->handleVectorCmp    (parsedInst);
       case DxbcInstClass::VectorDot:      return this->handleVectorDot    (parsedInst);
       case DxbcInstClass::VectorSinCos:   return this->handleVectorSinCos (parsedInst);
       default:                            return DxbcError::eUnhandledOpcode;
@@ -669,6 +671,13 @@ namespace dxvk {
           arguments[1].valueId);
         break;
       
+      case DxbcOpcode::Div:
+        result.valueId = m_module.opFDiv(
+          resultTypeId,
+          arguments[0].valueId,
+          arguments[1].valueId);
+        break;
+      
       case DxbcOpcode::Mad:
         result.valueId = m_module.opFFma(
           resultTypeId,
@@ -713,6 +722,137 @@ namespace dxvk {
     
     // Apply result modifiers to floating-point results
     result = this->applyResultModifiers(result, ins.control);
+    this->storeOp(ins.operands[0], result);
+    return DxbcError::sOk;
+  }
+  
+  
+  DxbcError DxbcCompiler::handleVectorCmov(const DxbcInst& ins) {
+    // movc has four operands:
+    //  (1) The destination register
+    //  (2) The condition vector
+    //  (3) Vector to select from if the condition is not 0
+    //  (4) Vector to select from if the condition is 0
+    const DxbcValue condition   = this->loadOp(ins.operands[1], ins.operands[0].mask, ins.format.operands[1].type);
+    const DxbcValue selectTrue  = this->loadOp(ins.operands[2], ins.operands[0].mask, ins.format.operands[2].type);
+    const DxbcValue selectFalse = this->loadOp(ins.operands[3], ins.operands[0].mask, ins.format.operands[3].type);
+    
+    const uint32_t componentCount = ins.operands[0].mask.setCount();
+    
+    // We'll compare against a vector of zeroes to generate a
+    // boolean vector, which in turn will be used by OpSelect
+    uint32_t zeroType = m_module.defIntType(32, 0);
+    uint32_t boolType = m_module.defBoolType();
+    
+    uint32_t zero = m_module.constu32(0);
+    
+    if (componentCount > 1) {
+      zeroType = m_module.defVectorType(zeroType, componentCount);
+      boolType = m_module.defVectorType(boolType, componentCount);
+      
+      const std::array<uint32_t, 4> zeroVec = { zero, zero, zero, zero };
+      zero = m_module.constComposite(zeroType, componentCount, zeroVec.data());
+    }
+    
+    // Use the component mask to select the vector components
+    DxbcValue result;
+    result.componentType  = ins.format.operands[0].type;
+    result.componentCount = componentCount;
+    result.valueId        = m_module.opSelect(
+      this->defineVectorType(result.componentType, result.componentCount),
+      m_module.opINotEqual(boolType, condition.valueId, zero),
+      selectTrue.valueId, selectFalse.valueId);
+    
+    // Apply result modifiers to floating-point results
+    result = this->applyResultModifiers(result, ins.control);
+    this->storeOp(ins.operands[0], result);
+    return DxbcError::sOk;
+  }
+  
+  
+  DxbcError DxbcCompiler::handleVectorCmp(const DxbcInst& ins) {
+    // Compare instructions have three operands:
+    //  (1) The destination register
+    //  (2) The first vector to compare
+    //  (3) The second vector to compare
+    DxbcValue arguments[2];
+    
+    if (ins.format.operandCount != 3)
+      return DxbcError::eInvalidOperand;
+    
+    for (uint32_t i = 0; i < 2; i++) {
+      arguments[i] = this->loadOp(
+        ins.operands[i + 1],
+        ins.operands[0].mask,
+        ins.format.operands[i + 1].type);
+    }
+    
+    const uint32_t componentCount = ins.operands[0].mask.setCount();
+    
+    // Condition, which is a boolean vector used
+    // to select between the ~0u and 0u vectors.
+    uint32_t condition     = 0;
+    uint32_t conditionType = m_module.defBoolType();
+    
+    if (componentCount > 1)
+      conditionType = m_module.defVectorType(conditionType, componentCount);
+    
+    switch (ins.opcode) {
+      case DxbcOpcode::Eq:
+        condition = m_module.opFOrdEqual(
+          conditionType,
+          arguments[0].valueId,
+          arguments[1].valueId);
+        break;
+      
+      case DxbcOpcode::Ge:
+        condition = m_module.opFOrdGreaterThanEqual(
+          conditionType,
+          arguments[0].valueId,
+          arguments[1].valueId);
+        break;
+      
+      case DxbcOpcode::Lt:
+        condition = m_module.opFOrdLessThan(
+          conditionType,
+          arguments[0].valueId,
+          arguments[1].valueId);
+        break;
+      
+      case DxbcOpcode::Ne:
+        condition = m_module.opFOrdNotEqual(
+          conditionType,
+          arguments[0].valueId,
+          arguments[1].valueId);
+        break;
+      
+      default:
+        return DxbcError::eUnhandledOpcode;
+    }
+    
+    // Generate constant vectors for selection
+    uint32_t sFalse = m_module.constu32( 0u);
+    uint32_t sTrue  = m_module.constu32(~0u);
+    
+    const uint32_t maskType = this->defineVectorType(
+      DxbcScalarType::Uint32, componentCount);
+    
+    if (componentCount > 1) {
+      const std::array<uint32_t, 4> vFalse = { sFalse, sFalse, sFalse, sFalse };
+      const std::array<uint32_t, 4> vTrue  = { sTrue,  sTrue,  sTrue,  sTrue  };
+      
+      sFalse = m_module.constComposite(maskType, componentCount, vFalse.data());
+      sTrue  = m_module.constComposite(maskType, componentCount, vTrue .data());
+    }
+    
+    // Perform component-wise mask selection
+    // based on the condition evaluated above.
+    DxbcValue result;
+    result.componentType  = DxbcScalarType::Uint32;
+    result.componentCount = componentCount;
+    result.valueId        = m_module.opSelect(
+      maskType, condition, sTrue, sFalse);
+    
     this->storeOp(ins.operands[0], result);
     return DxbcError::sOk;
   }
