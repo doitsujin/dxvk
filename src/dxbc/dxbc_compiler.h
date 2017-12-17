@@ -1,133 +1,84 @@
 #pragma once
 
+#include <array>
+#include <vector>
+
 #include "../spirv/spirv_module.h"
 
 #include "dxbc_chunk_isgn.h"
 #include "dxbc_decoder.h"
 #include "dxbc_defs.h"
+#include "dxbc_names.h"
+#include "dxbc_util.h"
 
 namespace dxvk {
   
   /**
-   * \brief Expression value
+   * \brief Vector type
    * 
-   * Tracks the type and the SPIR-V variable
-   * ID when evaluating DXBC instructions.
+   * Convenience struct that stores a scalar
+   * type and a component count. The compiler
+   * can use this to generate SPIR-V types.
    */
-  struct DxbcValue {
-    DxbcScalarType componentType  = DxbcScalarType::Float32;
-    uint32_t       componentCount = 0;
-    uint32_t       valueId        = 0;
+  struct DxbcVectorType {
+    DxbcScalarType    ctype;
+    uint32_t          ccount;
   };
   
+  
   /**
-   * \brief Variable pointer 
+   * \brief Register info
    * 
-   * Stores the SPIR-V pointer ID and the
-   * type of the referenced variable. Used
-   * to access variables and resources.
+   * Stores the vector type of a register and
+   * its storage class. The compiler can use
+   * this to generate SPIR-V pointer types.
    */
-  struct DxbcPointer {
-    DxbcScalarType componentType  = DxbcScalarType::Float32;
-    uint32_t       componentCount = 0;
-    uint32_t       pointerId      = 0;
+  struct DxbcRegisterInfo {
+    DxbcVectorType    type;
+    spv::StorageClass sclass;
   };
   
+  
   /**
-   * \brief Compiler error code
+   * \brief Register value
    * 
-   * Helps identify the type of error
-   * that may occur during compilation.
+   * Stores a vector type and a SPIR-V ID that
+   * represents an intermediate value. This is
+   * used to track the type of such values.
    */
-  enum class DxbcError {
-    sOk,
-    eInternal,
-    eInstructionFormat,
-    eInvalidOperand,
-    eInvalidOperandIndex,
-    eTypeMismatch,
-    eUnhandledOpcode,
-    eUnsupported,
+  struct DxbcRegisterValue {
+    DxbcVectorType    type;
+    uint32_t          id;
   };
   
   
   /**
-   * \brief Operand index type
+   * \brief Register pointer
    * 
-   * Defines whether a register index
-   * is relative or constant.
+   * Stores a vector type and a SPIR-V ID that
+   * represents a pointer to such a vector. This
+   * can be used to load registers conveniently.
    */
-  enum class DxbcIndexType {
-    Immediate,  ///< Index is a constant value
-    Relative,   ///< Index depends on a r# register
+  struct DxbcRegisterPointer {
+    DxbcVectorType    type;
+    uint32_t          id;
   };
   
   
   /**
-   * \brief Instruction operand index
-   * 
-   * Stores the type of the index as well as the
-   * register (if relative) and the constant offset.
+   * \brief Vertex shader-specific structure
    */
-  struct DxbcInstOpIndex {
-    DxbcIndexType   type = DxbcIndexType::Immediate;
-    uint32_t        immediate = 0;
-    uint32_t        tempRegId = 0;
-    uint32_t        tempRegComponent = 0;
-  };
-  
-  /**
-   * \brief Instruction operand
-   * 
-   * Stores all information about a single
-   * operand, including the register index.
-   */
-  struct DxbcInstOp {
-    DxbcOperandType       type = DxbcOperandType::Temp;
-    DxbcOperandModifiers  modifiers     = 0;
-    uint32_t              immediates[4] = { 0u, 0u, 0u, 0u };
-    
-    uint32_t              indexDim = 0;
-    DxbcInstOpIndex       index[3];
-    
-    uint32_t              componentCount = 0;
-    DxbcRegMode           componentMode  = DxbcRegMode::Mask;
-    
-    DxbcRegMask           mask    = { false, false, false, false };
-    DxbcRegSwizzle        swizzle = { 0, 0, 0, 0 };
-    uint32_t              select1 = 0;
+  struct DxbcCompilerVsPart {
+    uint32_t functionId;
   };
   
   
   /**
-   * \brief Decoded instruction
-   * 
-   * Stores all information about a single
-   * instruction, including its operands.
+   * \brief Pixel shader-specific structure
    */
-  struct DxbcInst {
-    DxbcOpcode            opcode = DxbcOpcode::Nop;
-    DxbcOpcodeControl     control = 0;
-    DxbcInstFormat        format;
-    DxbcInstOp            operands[DxbcMaxOperandCount];
-  };
-  
-  
-  /**
-   * \brief Vertex shader-specific data
-   */
-  struct DxbcVsSpecifics {
-    uint32_t  functionId = 0;
-  };
-  
-  
-  /**
-   * \brief Pixel shader-specific data
-   */
-  struct DxbcPsSpecifics {
-    uint32_t  functionId = 0;
-    
-    std::array<DxbcPointer, DxbcMaxInterfaceRegs> oregs;
+  struct DxbcCompilerPsPart {
+    uint32_t functionId;
+    std::array<DxbcVectorType, DxbcMaxInterfaceRegs> oTypes;
   };
   
   
@@ -150,12 +101,10 @@ namespace dxvk {
     
     /**
      * \brief Processes a single instruction
-     * 
      * \param [in] ins The instruction
-     * \returns An error code, or \c sOK
      */
-    DxbcError processInstruction(
-      const DxbcInstruction&  ins);
+    void processInstruction(
+      const DxbcShaderInstruction&  ins);
     
     /**
      * \brief Finalizes the shader
@@ -184,12 +133,14 @@ namespace dxvk {
     // v# registers as defined by the shader. The type of each
     // of these inputs is either float4 or an array of float4.
     std::array<uint32_t, DxbcMaxInterfaceRegs> m_vRegs;
+    std::vector<DxbcSvMapping>                 m_vMappings;
     
     //////////////////////////////////////////////////////////
     // o# registers as defined by the shader. In the fragment
     // shader stage, these registers are typed by the signature,
     // in all other stages, they are float4 registers or arrays.
     std::array<uint32_t, DxbcMaxInterfaceRegs> m_oRegs;
+    std::vector<DxbcSvMapping>                 m_oMappings;
     
     //////////////////////////////////////////////////////
     // Shader resource variables. These provide access to
@@ -197,12 +148,6 @@ namespace dxvk {
     std::array<DxbcConstantBuffer,  16> m_constantBuffers;
     std::array<DxbcSampler,         16> m_samplers;
     std::array<DxbcShaderResource, 128> m_textures;
-    
-    ////////////////////////////////////////////////////////
-    // Input/Output system value mappings. These will need
-    // to be set up before or after the main function runs.
-    std::vector<DxbcSvMapping> m_vSvs;
-    std::vector<DxbcSvMapping> m_oSvs;
     
     ///////////////////////////////////////////////////////////
     // Array of input values. Since v# registers are indexable
@@ -221,190 +166,185 @@ namespace dxvk {
     std::vector<uint32_t> m_entryPointInterfaces;
     uint32_t              m_entryPointId = 0;
     
-    ////////////////////////////////////////
-    // Data structures for each shader type
-    DxbcVsSpecifics m_vs;
-    DxbcPsSpecifics m_ps;
+    ///////////////////////////////////
+    // Shader-specific data structures
+    DxbcCompilerVsPart m_vs;
+    DxbcCompilerPsPart m_ps;
+    
+    /////////////////////////////////////////////////////
+    // Shader interface and metadata declaration methods
+    void emitDclGlobalFlags(
+      const DxbcShaderInstruction& ins);
+    
+    void emitDclTemps(
+      const DxbcShaderInstruction& ins);
+    
+    void emitDclInterfaceReg(
+      const DxbcShaderInstruction& ins);
+    
+    void emitDclInput(
+            uint32_t                regIdx,
+            uint32_t                regDim,
+            DxbcRegMask             regMask,
+            DxbcSystemValue         sv,
+            DxbcInterpolationMode   im);
+    
+    void emitDclOutput(
+            uint32_t                regIdx,
+            uint32_t                regDim,
+            DxbcRegMask             regMask,
+            DxbcSystemValue         sv,
+            DxbcInterpolationMode   im);
+    
+    void emitDclConstantBuffer(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitDclSampler(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitDclResource(
+      const DxbcShaderInstruction&  ins);
     
     //////////////////////////////
     // Instruction class handlers
-    DxbcError handleDeclaration(
-      const DxbcInst& ins);
+    void emitVectorAlu(
+      const DxbcShaderInstruction&  ins);
     
-    DxbcError handleControlFlow(
-      const DxbcInst& ins);
+    void emitVectorCmov(
+      const DxbcShaderInstruction&  ins);
     
-    DxbcError handleTextureSample(
-      const DxbcInst& ins);
+    void emitVectorCmp(
+      const DxbcShaderInstruction&  ins);
     
-    DxbcError handleVectorAlu(
-      const DxbcInst& ins);
+    void emitVectorDot(
+      const DxbcShaderInstruction&  ins);
     
-    DxbcError handleVectorCmov(
-      const DxbcInst& ins);
+    void emitVectorImul(
+      const DxbcShaderInstruction&  ins);
     
-    DxbcError handleVectorCmp(
-      const DxbcInst& ins);
+    void emitVectorSinCos(
+      const DxbcShaderInstruction&  ins);
     
-    DxbcError handleVectorDot(
-      const DxbcInst& ins);
+    void emitSample(
+      const DxbcShaderInstruction&  ins);
     
-    DxbcError handleVectorSinCos(
-      const DxbcInst& ins);
+    void emitRet(
+      const DxbcShaderInstruction&  ins);
     
-    ///////////////////////
-    // Declaration methods
-    DxbcError declareGlobalFlags(
-      const DxbcInst& ins);
     
-    DxbcError declareTemps(
-      const DxbcInst& ins);
+    /////////////////////////////////////////
+    // Generic register manipulation methods
+    DxbcRegisterValue emitRegisterBitcast(
+            DxbcRegisterValue       srcValue,
+            DxbcScalarType          dstType);
     
-    DxbcError declareInterfaceVar(
-      const DxbcInst& ins);
+    DxbcRegisterValue emitRegisterSwizzle(
+            DxbcRegisterValue       value,
+            DxbcRegSwizzle          swizzle,
+            DxbcRegMask             writeMask);
     
-    DxbcError declareConstantBuffer(
-      const DxbcInst& ins);
+    DxbcRegisterValue emitRegisterExtract(
+            DxbcRegisterValue       value,
+            DxbcRegMask             mask);
     
-    DxbcError declareSampler(
-      const DxbcInst& ins);
+    DxbcRegisterValue emitRegisterInsert(
+            DxbcRegisterValue       dstValue,
+            DxbcRegisterValue       srcValue,
+            DxbcRegMask             srcMask);
     
-    DxbcError declareResource(
-      const DxbcInst& ins);
+    DxbcRegisterValue emitRegisterExtend(
+            DxbcRegisterValue       value,
+            uint32_t                size);
     
-    DxbcError declareInputVar(
-            uint32_t              regId,
-            uint32_t              regDim,
-            DxbcRegMask           regMask,
-            DxbcSystemValue       sv,
-            DxbcInterpolationMode im);
+    DxbcRegisterValue emitRegisterAbsolute(
+            DxbcRegisterValue       value);
     
-    DxbcError declareOutputVar(
-            uint32_t              regId,
-            uint32_t              regDim,
-            DxbcRegMask           regMask,
-            DxbcSystemValue       sv,
-            DxbcInterpolationMode im);
+    DxbcRegisterValue emitRegisterNegate(
+            DxbcRegisterValue       value);
     
-    ////////////////////////////////////
-    // Register manipulation operations
-    DxbcValue bitcastReg(
-      const DxbcValue&            src,
-            DxbcScalarType        type);
+    DxbcRegisterValue emitSrcOperandModifiers(
+            DxbcRegisterValue       value,
+            DxbcRegModifiers        modifiers);
     
-    DxbcValue insertReg(
-      const DxbcValue&            dst,
-      const DxbcValue&            src,
-            DxbcRegMask           mask);
+    DxbcRegisterValue emitDstOperandModifiers(
+            DxbcRegisterValue       value,
+            DxbcOpModifiers         modifiers);
     
-    DxbcValue extractReg(
-      const DxbcValue&            src,
-            DxbcRegMask           mask);
+    ////////////////////////
+    // Address load methods
+    DxbcRegisterPointer emitGetTempPtr(
+      const DxbcRegister&           operand);
     
-    DxbcValue swizzleReg(
-      const DxbcValue&            src,
-      const DxbcRegSwizzle&       swizzle,
-            DxbcRegMask           mask);
+    DxbcRegisterPointer emitGetInputPtr(
+      const DxbcRegister&           operand);
     
-    DxbcValue regVector(
-      const DxbcValue&            src,
-            uint32_t              size);
+    DxbcRegisterPointer emitGetOutputPtr(
+      const DxbcRegister&           operand);
     
-    DxbcValue extendReg(
-      const DxbcValue&            src,
-            uint32_t              size);
+    DxbcRegisterPointer emitGetConstBufPtr(
+      const DxbcRegister&           operand);
     
-    ////////////////////////////
-    // Operand modifier methods
-    DxbcValue applyOperandModifiers(
-          DxbcValue             value,
-          DxbcOperandModifiers  modifiers);
+    DxbcRegisterPointer emitGetOperandPtr(
+      const DxbcRegister&           operand);
     
-    DxbcValue applyResultModifiers(
-          DxbcValue             value,
-          DxbcOpcodeControl     control);
+    //////////////////////////////
+    // Operand load/store methods
+    DxbcRegisterValue emitIndexLoad(
+            DxbcRegIndex            index);
     
-    /////////////////////////
-    // Load/Store operations
-    DxbcValue loadOp(
-      const DxbcInstOp&           srcOp,
-            DxbcRegMask           srcMask,
-            DxbcScalarType        dstType);
+    DxbcRegisterValue emitValueLoad(
+            DxbcRegisterPointer     ptr);
     
-    DxbcValue loadImm32(
-      const DxbcInstOp&           srcOp,
-            DxbcRegMask           srcMask,
-            DxbcScalarType        dstType);
+    void emitValueStore(
+            DxbcRegisterPointer     ptr,
+            DxbcRegisterValue       value,
+            DxbcRegMask             writeMask);
     
-    DxbcValue loadRegister(
-      const DxbcInstOp&           srcOp,
-            DxbcRegMask           srcMask,
-            DxbcScalarType        dstType);
+    DxbcRegisterValue emitRegisterLoad(
+      const DxbcRegister&           reg,
+            DxbcRegMask             writeMask);
     
-    void storeOp(
-      const DxbcInstOp&           dstOp,
-      const DxbcValue&            srcValue);
-    
-    DxbcValue loadPtr(
-      const DxbcPointer&          ptr);
-    
-    void storePtr(
-      const DxbcPointer&          ptr,
-      const DxbcValue&            value,
-            DxbcRegMask           mask);
-    
-    DxbcValue loadIndex(
-      const DxbcInstOpIndex&      idx);
-    
-    ///////////////////////////
-    // Operand pointer methods
-    DxbcPointer getOperandPtr(
-      const DxbcInstOp&           op);
-    
-    DxbcPointer getConstantBufferPtr(
-      const DxbcInstOp&           op);
-    
-    /////////////////////////////////
-    // Shader initialization methods
-    void beginVertexShader(const Rc<DxbcIsgn>& isgn);
-    void beginPixelShader (const Rc<DxbcIsgn>& osgn);
+    void emitRegisterStore(
+      const DxbcRegister&           reg,
+            DxbcRegisterValue       value);
     
     /////////////////////////////
     // Input preparation methods
-    void prepareVertexInputs();
-    void preparePixelInputs();
+    void emitVsInputSetup();
+    void emitPsInputSetup();
     
     //////////////////////////////
     // Output preparation methods
-    void prepareVertexOutputs();
-    void preparePixelOutputs();
+    void emitVsOutputSetup();
+    void emitPsOutputSetup();
+    
+    /////////////////////////////////
+    // Shader initialization methods
+    void emitVsInit();
+    void emitPsInit();
     
     ///////////////////////////////
     // Shader finalization methods
-    void endVertexShader();
-    void endPixelShader();
+    void emitVsFinalize();
+    void emitPsFinalize();
+    
+    ///////////////////////////////
+    // Variable definition methods
+    uint32_t emitNewVariable(
+      const DxbcRegisterInfo& info);
     
     ///////////////////////////
     // Type definition methods
-    uint32_t definePerVertexBlock();
+    uint32_t getScalarTypeId(
+            DxbcScalarType type);
     
-    uint32_t defineScalarType(
-            DxbcScalarType        componentType);
+    uint32_t getVectorTypeId(
+      const DxbcVectorType& type);
     
-    uint32_t defineVectorType(
-            DxbcScalarType        componentType,
-            uint32_t              componentCount);
+    uint32_t getPointerTypeId(
+      const DxbcRegisterInfo& type);
     
-    uint32_t definePointerType(
-            DxbcScalarType        componentType,
-            uint32_t              componentCount,
-            spv::StorageClass     storageClass);
-    
-    /////////////////////////
-    // DXBC decoding methods
-    DxbcError parseInstruction(
-      const DxbcInstruction& ins,
-            DxbcInst&        out);
+    uint32_t getPerVertexBlockId();
     
   };
   

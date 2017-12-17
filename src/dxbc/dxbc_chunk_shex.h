@@ -2,7 +2,6 @@
 
 #include "dxbc_common.h"
 #include "dxbc_decoder.h"
-#include "dxbc_decoder_2.h"
 #include "dxbc_reader.h"
 
 namespace dxvk {
@@ -28,14 +27,6 @@ namespace dxvk {
     DxbcCodeSlice slice() const {
       return DxbcCodeSlice(m_code.data(),
         m_code.data() + m_code.size());
-    }
-    
-    DxbcDecoder begin() const {
-      return DxbcDecoder(m_code.data(), m_code.size());
-    }
-    
-    DxbcDecoder end() const {
-      return DxbcDecoder();
     }
     
   private:

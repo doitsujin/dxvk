@@ -436,14 +436,6 @@ namespace dxvk {
   
   using DxbcGlobalFlags = Flags<DxbcGlobalFlag>;
   
-  
-  enum class DxbcOperandModifier : uint32_t {
-    Neg         = 0,
-    Abs         = 1,
-  };
-  
-  using DxbcOperandModifiers = Flags<DxbcOperandModifier>;
-  
   enum class DxbcZeroTest : uint32_t {
     TestZ   = 0,
     TestNz  = 1,
