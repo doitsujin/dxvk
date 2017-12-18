@@ -651,8 +651,18 @@ namespace dxvk {
           SIZE_T                      BytecodeLength,
           ID3D11ClassLinkage*         pClassLinkage,
           ID3D11GeometryShader**      ppGeometryShader) {
-    Logger::err("D3D11Device::CreateGeometryShader: Not implemented");
-    return E_NOTIMPL;
+    D3D11ShaderModule module;
+    
+    if (FAILED(this->CreateShaderModule(&module,
+        pShaderBytecode, BytecodeLength, pClassLinkage)))
+      return E_INVALIDARG;
+    
+    if (ppGeometryShader != nullptr) {
+      *ppGeometryShader = ref(new D3D11GeometryShader(
+        this, std::move(module)));
+    }
+    
+    return S_OK;
   }
   
   

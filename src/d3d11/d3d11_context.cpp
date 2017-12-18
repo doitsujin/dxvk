@@ -105,10 +105,10 @@ namespace dxvk {
 //     this->DSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, nullptr);
 //     this->DSSetSamplers       (0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT, nullptr);
     
-//     this->GSSetShader(nullptr, nullptr, 0);
-//     this->GSSetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, nullptr);
-//     this->GSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, nullptr);
-//     this->GSSetSamplers       (0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT, nullptr);
+    this->GSSetShader(nullptr, nullptr, 0);
+    this->GSSetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, nullptr);
+    this->GSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, nullptr);
+    this->GSSetSamplers       (0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT, nullptr);
     
     this->PSSetShader(nullptr, nullptr, 0);
     this->PSSetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, nullptr);
@@ -972,8 +972,17 @@ namespace dxvk {
           ID3D11GeometryShader*             pShader,
           ID3D11ClassInstance* const*       ppClassInstances,
           UINT                              NumClassInstances) {
-    if (m_state.gs.shader.ptr() != pShader)
-      Logger::err("D3D11DeviceContext::GSSetShader: Not implemented");
+    auto shader = static_cast<D3D11GeometryShader*>(pShader);
+    
+    if (NumClassInstances != 0)
+      Logger::err("D3D11DeviceContext::GSSetShader: Class instances not supported");
+    
+    if (m_state.gs.shader != shader) {
+      m_state.gs.shader = shader;
+      
+      m_context->bindShader(VK_SHADER_STAGE_GEOMETRY_BIT,
+        shader != nullptr ? shader->GetShader() : nullptr);
+    }
   }
   
   
@@ -981,7 +990,11 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppConstantBuffers) {
-    Logger::err("D3D11DeviceContext::GSSetConstantBuffers: Not implemented");
+    this->BindConstantBuffers(
+      DxbcProgramType::GeometryShader,
+      &m_state.gs.constantBuffers,
+      StartSlot, NumBuffers,
+      ppConstantBuffers);
   }
   
   
@@ -989,7 +1002,11 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
-    Logger::err("D3D11DeviceContext::GSSetShaderResources: Not implemented");
+    this->BindShaderResources(
+      DxbcProgramType::GeometryShader,
+      &m_state.gs.shaderResources,
+      StartSlot, NumViews,
+      ppShaderResourceViews);
   }
   
   
@@ -997,7 +1014,11 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState* const*        ppSamplers) {
-    Logger::err("D3D11DeviceContext::GSSetSamplers: Not implemented");
+    this->BindSamplers(
+      DxbcProgramType::GeometryShader,
+      &m_state.gs.samplers,
+      StartSlot, NumSamplers,
+      ppSamplers);
   }
   
   
@@ -1005,7 +1026,13 @@ namespace dxvk {
           ID3D11GeometryShader**            ppGeometryShader,
           ID3D11ClassInstance**             ppClassInstances,
           UINT*                             pNumClassInstances) {
-    Logger::err("D3D11DeviceContext::GSGetShader: Not implemented");
+    if (ppGeometryShader != nullptr)
+      *ppGeometryShader = m_state.gs.shader.ref();
+    
+    if (pNumClassInstances != nullptr) {
+      Logger::err("D3D11: GSGetShader: Class instances not implemented");
+      *pNumClassInstances = 0;
+    }
   }
   
   
@@ -1013,7 +1040,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer**                    ppConstantBuffers) {
-    Logger::err("D3D11DeviceContext::GSGetConstantBuffers: Not implemented");
+    for (uint32_t i = 0; i < NumBuffers; i++)
+      ppConstantBuffers[i] = m_state.gs.constantBuffers.at(StartSlot + i).ref();
   }
   
   
@@ -1021,7 +1049,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView**        ppShaderResourceViews) {
-    Logger::err("D3D11DeviceContext::GSGetShaderResources: Not implemented");
+    for (uint32_t i = 0; i < NumViews; i++)
+      ppShaderResourceViews[i] = m_state.gs.shaderResources.at(StartSlot + i).ref();
   }
   
   
@@ -1029,7 +1058,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState**              ppSamplers) {
-    Logger::err("D3D11DeviceContext::GSGetSamplers: Not implemented");
+    for (uint32_t i = 0; i < NumSamplers; i++)
+      ppSamplers[i] = m_state.gs.samplers.at(StartSlot + i).ref();
   }
   
   
