@@ -122,6 +122,7 @@ namespace dxvk {
     // operands. Doing this mostly automatically means that
     // the compiler can rely on the operands being valid.
     const DxbcInstFormat format = dxbcInstructionFormat(m_instruction.op);
+    m_instruction.opClass = format.instructionClass;
     
     for (uint32_t i = 0; i < format.operandCount; i++)
       this->decodeOperand(code, format.operands[i]);

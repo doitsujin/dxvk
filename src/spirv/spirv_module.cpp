@@ -1267,6 +1267,44 @@ namespace dxvk {
   }
   
   
+  void SpirvModule::opLoopMerge(
+          uint32_t                mergeBlock,
+          uint32_t                continueTarget,
+          uint32_t                loopControl) {
+    m_code.putIns (spv::OpLoopMerge, 4);
+    m_code.putWord(mergeBlock);
+    m_code.putWord(continueTarget);
+    m_code.putWord(loopControl);
+  }
+  
+  
+  void SpirvModule::opSelectionMerge(
+          uint32_t                mergeBlock,
+          uint32_t                selectionControl) {
+    m_code.putIns (spv::OpSelectionMerge, 3);
+    m_code.putWord(mergeBlock);
+    m_code.putWord(selectionControl);
+  }
+  
+  
+  void SpirvModule::opBranch(
+          uint32_t                label) {
+    m_code.putIns (spv::OpBranch, 2);
+    m_code.putWord(label);
+  }
+  
+  
+  void SpirvModule::opBranchConditional(
+          uint32_t                condition,
+          uint32_t                trueLabel,
+          uint32_t                falseLabel) {
+    m_code.putIns (spv::OpBranchConditional, 4);
+    m_code.putWord(condition);
+    m_code.putWord(trueLabel);
+    m_code.putWord(falseLabel);
+  }
+  
+    
   void SpirvModule::opReturn() {
     m_code.putIns (spv::OpReturn, 1);
   }

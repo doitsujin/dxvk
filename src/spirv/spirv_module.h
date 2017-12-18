@@ -434,6 +434,23 @@ namespace dxvk {
             uint32_t                sampledImage,
             uint32_t                coordinates);
     
+    void opLoopMerge(
+            uint32_t                mergeBlock,
+            uint32_t                continueTarget,
+            uint32_t                loopControl);
+    
+    void opSelectionMerge(
+            uint32_t                mergeBlock,
+            uint32_t                selectionControl);
+    
+    void opBranch(
+            uint32_t                label);
+    
+    void opBranchConditional(
+            uint32_t                condition,
+            uint32_t                trueLabel,
+            uint32_t                falseLabel);
+    
     void opReturn();
     
   private:

@@ -12,19 +12,27 @@ namespace dxvk {
     /* And                                  */
     { },
     /* Break                                */
-    { },
+    { 0, DxbcInstClass::ControlFlow },
     /* Breakc                               */
-    { },
+    { 1, DxbcInstClass::ControlFlow, {
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* Call                                 */
-    { },
+    { 1, DxbcInstClass::ControlFlow, {
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* Callc                                */
-    { },
+    { 2, DxbcInstClass::ControlFlow, {
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* Case                                 */
     { },
     /* Continue                             */
-    { },
+    { 0, DxbcInstClass::ControlFlow },
     /* Continuec                            */
-    { },
+    { 1, DxbcInstClass::ControlFlow, {
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* Cut                                  */
     { },
     /* Default                              */
@@ -60,15 +68,15 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
     } },
     /* Else                                 */
-    { },
+    { 0, DxbcInstClass::ControlFlow },
     /* Emit                                 */
     { },
     /* EmitThenCut                          */
     { },
     /* EndIf                                */
-    { },
+    { 0, DxbcInstClass::ControlFlow },
     /* EndLoop                              */
-    { },
+    { 0, DxbcInstClass::ControlFlow },
     /* EndSwitch                            */
     { },
     /* Eq                                   */
@@ -101,7 +109,9 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
     } },
     /* If                                   */
-    { },
+    { 1, DxbcInstClass::ControlFlow, {
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* IEq                                  */
     { 3, DxbcInstClass::VectorCmp, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Sint32 },
@@ -175,7 +185,7 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
     } },
     /* Loop                                 */
-    { },
+    { 0, DxbcInstClass::ControlFlow },
     /* Lt                                   */
     { 3, DxbcInstClass::VectorCmp, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Uint32  },
@@ -238,7 +248,9 @@ namespace dxvk {
     /* Ret                                  */
     { 0, DxbcInstClass::ControlFlow },
     /* Retc                                 */
-    { },
+    { 1, DxbcInstClass::ControlFlow, {
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* RoundNe                              */
     { },
     /* RoundNi                              */

@@ -29,6 +29,7 @@ namespace dxvk {
    */
   enum class DxbcInstClass {
     Declaration,      ///< Interface or resource declaration
+    ControlFlow,      ///< Control flow instructions
     TextureSample,    ///< Texture sampling instruction
     VectorAlu,        ///< Component-wise vector instructions
     VectorCmov,       ///< Component-wise conditional move
@@ -36,7 +37,6 @@ namespace dxvk {
     VectorDot,        ///< Dot product instruction
     VectorImul,       ///< Component-wise integer multiplication
     VectorSinCos,     ///< Sine and Cosine instruction
-    ControlFlow,      ///< Control flow instructions
     Undefined,        ///< Instruction code not defined
   };
   

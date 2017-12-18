@@ -48,84 +48,37 @@ namespace dxvk {
   
   
   void DxbcCompiler::processInstruction(const DxbcShaderInstruction& ins) {
-    switch (ins.op) {
-      case DxbcOpcode::DclGlobalFlags:
-        return this->emitDclGlobalFlags(ins);
+    switch (ins.opClass) {
+      case DxbcInstClass::Declaration:
+        return this->emitDcl(ins);
         
-      case DxbcOpcode::DclTemps:
-        return this->emitDclTemps(ins);
+      case DxbcInstClass::ControlFlow:
+        return this->emitControlFlow(ins);
         
-      case DxbcOpcode::DclInput:
-      case DxbcOpcode::DclInputSgv:
-      case DxbcOpcode::DclInputSiv:
-      case DxbcOpcode::DclInputPs:
-      case DxbcOpcode::DclInputPsSgv:
-      case DxbcOpcode::DclInputPsSiv:
-      case DxbcOpcode::DclOutput:
-      case DxbcOpcode::DclOutputSgv:
-      case DxbcOpcode::DclOutputSiv:
-        return this->emitDclInterfaceReg(ins);
-        
-      case DxbcOpcode::DclConstantBuffer:
-        return this->emitDclConstantBuffer(ins);
-        
-      case DxbcOpcode::DclSampler:
-        return this->emitDclSampler(ins);
-        
-      case DxbcOpcode::DclResource:
-        return this->emitDclResource(ins);
-        
-      case DxbcOpcode::Add:
-      case DxbcOpcode::Div:
-      case DxbcOpcode::Exp:
-      case DxbcOpcode::Log:
-      case DxbcOpcode::Mad:
-      case DxbcOpcode::Max:
-      case DxbcOpcode::Min:
-      case DxbcOpcode::Mul:
-      case DxbcOpcode::Mov:
-      case DxbcOpcode::Rsq:
-      case DxbcOpcode::Sqrt:
-      case DxbcOpcode::IAdd:
-      case DxbcOpcode::IMad:
-      case DxbcOpcode::IMax:
-      case DxbcOpcode::IMin:
-      case DxbcOpcode::INeg:
-        return this->emitVectorAlu(ins);
-      
-      case DxbcOpcode::Movc:
-        return this->emitVectorCmov(ins);
-        
-      case DxbcOpcode::Eq:
-      case DxbcOpcode::Ge:
-      case DxbcOpcode::Lt:
-      case DxbcOpcode::Ne:
-      case DxbcOpcode::IEq:
-      case DxbcOpcode::IGe:
-      case DxbcOpcode::ILt:
-      case DxbcOpcode::INe:
-        return this->emitVectorCmp(ins);
-      
-      case DxbcOpcode::Dp2:
-      case DxbcOpcode::Dp3:
-      case DxbcOpcode::Dp4:
-        return this->emitVectorDot(ins);
-      
-      case DxbcOpcode::IMul:
-        return this->emitVectorImul(ins);
-        
-      case DxbcOpcode::SinCos:
-        return this->emitVectorSinCos(ins);
-        
-      case DxbcOpcode::Sample:
+      case DxbcInstClass::TextureSample:
         return this->emitSample(ins);
         
-      case DxbcOpcode::Ret:
-        return this->emitRet(ins);
+      case DxbcInstClass::VectorAlu:
+        return this->emitVectorAlu(ins);
+        
+      case DxbcInstClass::VectorCmov:
+        return this->emitVectorCmov(ins);
+        
+      case DxbcInstClass::VectorCmp:
+        return this->emitVectorCmp(ins);
+        
+      case DxbcInstClass::VectorDot:
+        return this->emitVectorDot(ins);
+        
+      case DxbcInstClass::VectorImul:
+        return this->emitVectorImul(ins);
+        
+      case DxbcInstClass::VectorSinCos:
+        return this->emitVectorSinCos(ins);
         
       default:
         Logger::warn(
-          str::format("DxbcCompiler: Unhandled opcode: ",
+          str::format("DxbcCompiler: Unhandled opcode class: ",
           ins.op));
     }
   }
@@ -168,6 +121,42 @@ namespace dxvk {
       m_resourceSlots.size(),
       m_resourceSlots.data(),
       m_module.compile());
+  }
+  
+  
+  void DxbcCompiler::emitDcl(const DxbcShaderInstruction& ins) {
+    switch (ins.op) {
+      case DxbcOpcode::DclGlobalFlags:
+        return this->emitDclGlobalFlags(ins);
+        
+      case DxbcOpcode::DclTemps:
+        return this->emitDclTemps(ins);
+        
+      case DxbcOpcode::DclInput:
+      case DxbcOpcode::DclInputSgv:
+      case DxbcOpcode::DclInputSiv:
+      case DxbcOpcode::DclInputPs:
+      case DxbcOpcode::DclInputPsSgv:
+      case DxbcOpcode::DclInputPsSiv:
+      case DxbcOpcode::DclOutput:
+      case DxbcOpcode::DclOutputSgv:
+      case DxbcOpcode::DclOutputSiv:
+        return this->emitDclInterfaceReg(ins);
+        
+      case DxbcOpcode::DclConstantBuffer:
+        return this->emitDclConstantBuffer(ins);
+        
+      case DxbcOpcode::DclSampler:
+        return this->emitDclSampler(ins);
+        
+      case DxbcOpcode::DclResource:
+        return this->emitDclResource(ins);
+      
+      default:
+        Logger::warn(
+          str::format("DxbcCompiler: Unhandled opcode: ",
+          ins.op));
+    }
   }
   
   
@@ -962,11 +951,189 @@ namespace dxvk {
     emitRegisterStore(ins.dst[0], result);
   }
   
+  
+  void DxbcCompiler::emitControlFlowIf(const DxbcShaderInstruction& ins) {
+    // Load the first component of the condition
+    // operand and perform a zero test on it.
+    const DxbcRegisterValue condition = emitRegisterLoad(
+      ins.src[0], DxbcRegMask(true, false, false, false));
     
-  void DxbcCompiler::emitRet(const DxbcShaderInstruction& ins) {
+    const DxbcRegisterValue zeroTest = emitRegisterZeroTest(
+      condition, ins.controls.zeroTest);
+    
+    // Declare the 'if' block. We do not know if there
+    // will be an 'else' block or not, so we'll assume
+    // that there is one and leave it empty otherwise.
+    DxbcCfgBlock block;
+    block.type = DxbcCfgBlockType::If;
+    block.b_if.labelIf   = m_module.allocateId();
+    block.b_if.labelElse = m_module.allocateId();
+    block.b_if.labelEnd  = m_module.allocateId();
+    block.b_if.hadElse   = false;
+    m_controlFlowBlocks.push_back(block);
+    
+    m_module.opSelectionMerge(
+      block.b_if.labelEnd,
+      spv::SelectionControlMaskNone);
+    
+    m_module.opBranchConditional(
+      zeroTest.id,
+      block.b_if.labelIf,
+      block.b_if.labelElse);
+    
+    m_module.opLabel(block.b_if.labelIf);
+  }
+  
+  
+  void DxbcCompiler::emitControlFlowElse(const DxbcShaderInstruction& ins) {
+    if (m_controlFlowBlocks.size() == 0
+     || m_controlFlowBlocks.back().type != DxbcCfgBlockType::If
+     || m_controlFlowBlocks.back().b_if.hadElse)
+      throw DxvkError("DxbcCompiler: 'Else' without 'If' found");
+    
+    // Set the 'Else' flag so that we do
+    // not insert a dummy block on 'EndIf'
+    DxbcCfgBlock& block = m_controlFlowBlocks.back();
+    block.b_if.hadElse = true;
+    
+    // Close the 'If' block by branching to
+    // the merge block we declared earlier
+    m_module.opBranch(block.b_if.labelEnd);
+    m_module.opLabel (block.b_if.labelElse);
+  }
+  
+  
+  void DxbcCompiler::emitControlFlowEndIf(const DxbcShaderInstruction& ins) {
+    if (m_controlFlowBlocks.size() == 0
+     || m_controlFlowBlocks.back().type != DxbcCfgBlockType::If)
+      throw DxvkError("DxbcCompiler: 'EndIf' without 'If' found");
+    
+    // Remove the block from the stack, it's closed
+    const DxbcCfgBlock block = m_controlFlowBlocks.back();
+    m_controlFlowBlocks.pop_back();
+    
+    // End the active 'if' or 'else' block
+    m_module.opBranch(block.b_if.labelEnd);
+    
+    // If there was no 'else' block in this construct, we still
+    // have to declare it because we used it as a branch target.
+    if (!block.b_if.hadElse) {
+      m_module.opLabel (block.b_if.labelElse);
+      m_module.opBranch(block.b_if.labelEnd);
+    }
+    
+    // Declare the merge block
+    m_module.opLabel(block.b_if.labelEnd);
+  }
+  
+  
+  void DxbcCompiler::emitControlFlowLoop(const DxbcShaderInstruction& ins) {
+    // Declare the 'loop' block
+    DxbcCfgBlock block;
+    block.type = DxbcCfgBlockType::Loop;
+    block.b_loop.labelHeader   = m_module.allocateId();
+    block.b_loop.labelBegin    = m_module.allocateId();
+    block.b_loop.labelContinue = m_module.allocateId();
+    block.b_loop.labelBreak    = m_module.allocateId();
+    m_controlFlowBlocks.push_back(block);
+    
+    m_module.opBranch(block.b_loop.labelHeader);
+    m_module.opLabel (block.b_loop.labelHeader);
+    
+    m_module.opLoopMerge(
+      block.b_loop.labelBreak,
+      block.b_loop.labelContinue,
+      spv::LoopControlMaskNone);
+    
+    m_module.opBranch(block.b_loop.labelBegin);
+    m_module.opLabel (block.b_loop.labelBegin);
+  }
+  
+  
+  void DxbcCompiler::emitControlFlowEndLoop(const DxbcShaderInstruction& ins) {
+    if (m_controlFlowBlocks.size() == 0
+     || m_controlFlowBlocks.back().type != DxbcCfgBlockType::Loop)
+      throw DxvkError("DxbcCompiler: 'EndLoop' without 'Loop' found");
+    
+    // Remove the block from the stack, it's closed
+    const DxbcCfgBlock block = m_controlFlowBlocks.back();
+    m_controlFlowBlocks.pop_back();
+    
+    // Declare the continue block
+    m_module.opBranch(block.b_loop.labelContinue);
+    m_module.opLabel (block.b_loop.labelContinue);
+    
+    // Declare the merge block
+    m_module.opBranch(block.b_loop.labelHeader);
+    m_module.opLabel (block.b_loop.labelBreak);
+  }
+  
+  
+  void DxbcCompiler::emitControlFlowBreakc(const DxbcShaderInstruction& ins) {
+    DxbcCfgBlock* loopBlock = cfgFindLoopBlock();
+    
+    if (loopBlock == nullptr)
+      throw DxvkError("DxbcCompiler: 'Breakc' outside 'Loop' found");
+    
+    // Perform zero test on the first component of the condition
+    const DxbcRegisterValue condition = emitRegisterLoad(
+      ins.src[0], DxbcRegMask(true, false, false, false));
+    
+    const DxbcRegisterValue zeroTest = emitRegisterZeroTest(
+      condition, ins.controls.zeroTest);
+    
+    // We basically have to wrap this into an 'if' block
+    const uint32_t breakBlock = m_module.allocateId();
+    const uint32_t mergeBlock = m_module.allocateId();
+    
+    m_module.opSelectionMerge(mergeBlock,
+      spv::SelectionControlMaskNone);
+    
+    m_module.opBranchConditional(
+      zeroTest.id, breakBlock, mergeBlock);
+    
+    m_module.opLabel(breakBlock);
+    m_module.opBranch(loopBlock->b_loop.labelBreak);
+    
+    m_module.opLabel(mergeBlock);
+  }
+  
+  
+  void DxbcCompiler::emitControlFlowRet(const DxbcShaderInstruction& ins) {
     // TODO implement properly
     m_module.opReturn();
     m_module.functionEnd();
+  }
+  
+    
+  void DxbcCompiler::emitControlFlow(const DxbcShaderInstruction& ins) {
+    switch (ins.op) {
+      case DxbcOpcode::If:
+        return this->emitControlFlowIf(ins);
+        
+      case DxbcOpcode::Else:
+        return this->emitControlFlowElse(ins);
+        
+      case DxbcOpcode::EndIf:
+        return this->emitControlFlowEndIf(ins);
+        
+      case DxbcOpcode::Loop:
+        return this->emitControlFlowLoop(ins);
+        
+      case DxbcOpcode::EndLoop:
+        return this->emitControlFlowEndLoop(ins);
+        
+      case DxbcOpcode::Breakc:
+        return this->emitControlFlowBreakc(ins);
+        
+      case DxbcOpcode::Ret:
+        return this->emitControlFlowRet(ins);
+      
+      default:
+        Logger::warn(str::format(
+          "DxbcCompiler: Unhandled instruction: ",
+          ins.op));
+    }
   }
   
   
@@ -1128,6 +1295,23 @@ namespace dxvk {
     }
     
     return value;
+  }
+  
+  
+  DxbcRegisterValue DxbcCompiler::emitRegisterZeroTest(
+          DxbcRegisterValue       value,
+          DxbcZeroTest            test) {
+    DxbcRegisterValue result;
+    result.type.ctype  = DxbcScalarType::Bool;
+    result.type.ccount = 1;
+    
+    const uint32_t zeroId = m_module.constu32(0u);
+    const uint32_t typeId = getVectorTypeId(result.type);
+    
+    result.id = test == DxbcZeroTest::TestZ
+      ? m_module.opIEqual   (typeId, value.id, zeroId)
+      : m_module.opINotEqual(typeId, value.id, zeroId);
+    return result;
   }
   
   
@@ -1433,7 +1617,7 @@ namespace dxvk {
         
         default:
           Logger::warn(str::format(
-            "dxbc: Unhandled vertex sv output: ",
+            "DxbcCompiler: Unhandled vertex sv output: ",
             svMapping.sv));
       }
     }
@@ -1538,14 +1722,26 @@ namespace dxvk {
   }
   
   
+  DxbcCfgBlock* DxbcCompiler::cfgFindLoopBlock() {
+    for (auto cur =  m_controlFlowBlocks.rbegin();
+              cur != m_controlFlowBlocks.rend(); cur++) {
+      if (cur->type == DxbcCfgBlockType::Loop)
+        return &(*cur);
+    }
+    
+    return nullptr;
+  }
+  
+  
   uint32_t DxbcCompiler::getScalarTypeId(DxbcScalarType type) {
     switch (type) {
-      case DxbcScalarType::Uint32: return m_module.defIntType(32, 0);
-      case DxbcScalarType::Uint64: return m_module.defIntType(64, 0);
-      case DxbcScalarType::Sint32: return m_module.defIntType(32, 1);
-      case DxbcScalarType::Sint64: return m_module.defIntType(64, 1);
+      case DxbcScalarType::Uint32:  return m_module.defIntType(32, 0);
+      case DxbcScalarType::Uint64:  return m_module.defIntType(64, 0);
+      case DxbcScalarType::Sint32:  return m_module.defIntType(32, 1);
+      case DxbcScalarType::Sint64:  return m_module.defIntType(64, 1);
       case DxbcScalarType::Float32: return m_module.defFloatType(32);
       case DxbcScalarType::Float64: return m_module.defFloatType(64);
+      case DxbcScalarType::Bool:    return m_module.defBoolType();
     }
     
     throw DxvkError("DxbcCompiler: Invalid scalar type");

@@ -154,7 +154,7 @@ namespace dxvk {
   struct DxbcRegister {
     DxbcOperandType       type;
     DxbcScalarType        dataType;
-    DxbcComponentCount componentCount;
+    DxbcComponentCount    componentCount;
     
     uint32_t              idxDim;
     DxbcRegIndex          idx[DxbcMaxRegIndexDim];
@@ -225,6 +225,7 @@ namespace dxvk {
    */
   struct DxbcShaderInstruction {
     DxbcOpcode                op;
+    DxbcInstClass             opClass;
     DxbcOpModifiers           modifiers;
     DxbcShaderOpcodeControls  controls;
     DxbcShaderSampleControls  sampleControls;

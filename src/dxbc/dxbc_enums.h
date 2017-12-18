@@ -470,6 +470,7 @@ namespace dxvk {
     Sint64    = 3,
     Float32   = 4,
     Float64   = 5,
+    Bool      = 6,
   };
   
 }

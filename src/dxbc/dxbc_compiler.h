@@ -82,6 +82,37 @@ namespace dxvk {
   };
   
   
+  enum class DxbcCfgBlockType : uint32_t {
+    If, Loop,
+  };
+  
+  
+  struct DxbcCfgBlockIf {
+    uint32_t labelIf;
+    uint32_t labelElse;
+    uint32_t labelEnd;
+    bool     hadElse;
+  };
+  
+  
+  struct DxbcCfgBlockLoop {
+    uint32_t labelHeader;
+    uint32_t labelBegin;
+    uint32_t labelContinue;
+    uint32_t labelBreak;
+  };
+  
+  
+  struct DxbcCfgBlock {
+    DxbcCfgBlockType type;
+    
+    union {
+      DxbcCfgBlockIf   b_if;
+      DxbcCfgBlockLoop b_loop;
+    };
+  };
+  
+  
   /**
    * \brief DXBC to SPIR-V shader compiler
    * 
@@ -149,6 +180,11 @@ namespace dxvk {
     std::array<DxbcSampler,         16> m_samplers;
     std::array<DxbcShaderResource, 128> m_textures;
     
+    ///////////////////////////////////////////////
+    // Control flow information. Stores labels for
+    // currently active if-else blocks and loops.
+    std::vector<DxbcCfgBlock> m_controlFlowBlocks;
+    
     ///////////////////////////////////////////////////////////
     // Array of input values. Since v# registers are indexable
     // in DXBC, we need to copy them into an array first.
@@ -173,14 +209,17 @@ namespace dxvk {
     
     /////////////////////////////////////////////////////
     // Shader interface and metadata declaration methods
+    void emitDcl(
+      const DxbcShaderInstruction&  ins);
+    
     void emitDclGlobalFlags(
-      const DxbcShaderInstruction& ins);
+      const DxbcShaderInstruction&  ins);
     
     void emitDclTemps(
-      const DxbcShaderInstruction& ins);
+      const DxbcShaderInstruction&  ins);
     
     void emitDclInterfaceReg(
-      const DxbcShaderInstruction& ins);
+      const DxbcShaderInstruction&  ins);
     
     void emitDclInput(
             uint32_t                regIdx,
@@ -228,9 +267,31 @@ namespace dxvk {
     void emitSample(
       const DxbcShaderInstruction&  ins);
     
-    void emitRet(
+    /////////////////////////////////////
+    // Control flow instruction handlers
+    void emitControlFlowIf(
       const DxbcShaderInstruction&  ins);
     
+    void emitControlFlowElse(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitControlFlowEndIf(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitControlFlowLoop(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitControlFlowEndLoop(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitControlFlowBreakc(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitControlFlowRet(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitControlFlow(
+      const DxbcShaderInstruction&  ins);
     
     /////////////////////////////////////////
     // Generic register manipulation methods
@@ -261,6 +322,10 @@ namespace dxvk {
     
     DxbcRegisterValue emitRegisterNegate(
             DxbcRegisterValue       value);
+    
+    DxbcRegisterValue emitRegisterZeroTest(
+            DxbcRegisterValue       value,
+            DxbcZeroTest            test);
     
     DxbcRegisterValue emitSrcOperandModifiers(
             DxbcRegisterValue       value,
@@ -332,6 +397,10 @@ namespace dxvk {
     // Variable definition methods
     uint32_t emitNewVariable(
       const DxbcRegisterInfo& info);
+    
+    /////////////////////////////////////
+    // Control flow block search methods
+    DxbcCfgBlock* cfgFindLoopBlock();
     
     ///////////////////////////
     // Type definition methods
