@@ -177,9 +177,15 @@ namespace dxvk {
     if (shaderStage->shader != shader) {
       shaderStage->shader = shader;
       
-      m_flags.set(stage == VK_SHADER_STAGE_COMPUTE_BIT
-        ? DxvkContextFlag::CpDirtyPipeline
-        : DxvkContextFlag::GpDirtyPipeline);
+      if (stage == VK_SHADER_STAGE_COMPUTE_BIT) {
+        m_flags.set(
+          DxvkContextFlag::CpDirtyPipeline,
+          DxvkContextFlag::CpDirtyResources);
+      } else {
+        m_flags.set(
+          DxvkContextFlag::GpDirtyPipeline,
+          DxvkContextFlag::GpDirtyResources);
+      }
     }
   }
   
