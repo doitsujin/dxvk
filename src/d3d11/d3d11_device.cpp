@@ -561,10 +561,22 @@ namespace dxvk {
           pInputElementDescs[i].Format).actual;
         attrib.offset   = pInputElementDescs[i].AlignedByteOffset;
         
-        // TODO implement D3D11_APPEND_ALIGNED_ELEMENT
+        // The application may choose to let the implementation
+        // generate the exact vertex layout. In that case we'll
+        // pack attributes on the same binding in the order they
+        // are declared, aligning each attribute to four bytes.
         if (attrib.offset == D3D11_APPEND_ALIGNED_ELEMENT) {
-          Logger::err("D3D11Device::CreateInputLayout: D3D11_APPEND_ALIGNED_ELEMENT not supported yet");
-          return E_INVALIDARG;
+          attrib.offset = 0;
+          
+          for (uint32_t j = 1; j <= i; j++) {
+            const DxvkVertexAttribute& prev = attributes.at(i - j);
+            
+            if (prev.binding == attrib.binding) {
+              const DxvkFormatInfo* formatInfo = imageFormatInfo(prev.format);
+              attrib.offset = align(prev.offset + formatInfo->elementSize, 4);
+              break;
+            }
+          }
         }
         
         attributes.push_back(attrib);
