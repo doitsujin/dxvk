@@ -27,14 +27,29 @@ namespace dxvk {
   
   
   /**
+   * \brief Array type
+   * 
+   * Convenience struct that stores a scalar type, a
+   * component count and an array size. An array of
+   * length 0 will be evaluated to a vector type. The
+   * compiler can use this to generate SPIR-V types.
+   */
+  struct DxbcArrayType {
+    DxbcScalarType    ctype;
+    uint32_t          ccount;
+    uint32_t          alength;
+  };
+  
+  
+  /**
    * \brief Register info
    * 
-   * Stores the vector type of a register and
+   * Stores the array type of a register and
    * its storage class. The compiler can use
    * this to generate SPIR-V pointer types.
    */
   struct DxbcRegisterInfo {
-    DxbcVectorType    type;
+    DxbcArrayType     type;
     spv::StorageClass sclass;
   };
   
@@ -69,7 +84,18 @@ namespace dxvk {
    * \brief Vertex shader-specific structure
    */
   struct DxbcCompilerVsPart {
-    uint32_t functionId;
+    uint32_t functionId = 0;
+  };
+  
+  
+  /**
+   * \brief Geometry shader-specific structure
+   */
+  struct DxbcCompilerGsPart {
+    DxbcPrimitive         inputPrimitive      = DxbcPrimitive::Undefined;
+    DxbcPrimitiveTopology outputTopology      = DxbcPrimitiveTopology::Undefined;
+    uint32_t              outputVertexCount   = 0;
+    uint32_t              functionId          = 0;
   };
   
   
@@ -77,7 +103,8 @@ namespace dxvk {
    * \brief Pixel shader-specific structure
    */
   struct DxbcCompilerPsPart {
-    uint32_t functionId;
+    uint32_t functionId = 0;
+    
     std::array<DxbcVectorType, DxbcMaxInterfaceRegs> oTypes;
   };
   
@@ -205,6 +232,7 @@ namespace dxvk {
     ///////////////////////////////////
     // Shader-specific data structures
     DxbcCompilerVsPart m_vs;
+    DxbcCompilerGsPart m_gs;
     DxbcCompilerPsPart m_ps;
     
     /////////////////////////////////////////////////////
@@ -244,6 +272,15 @@ namespace dxvk {
     void emitDclResource(
       const DxbcShaderInstruction&  ins);
     
+    void emitDclGsInputPrimitive(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitDclGsOutputTopology(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitDclMaxOutputVertexCount(
+      const DxbcShaderInstruction&  ins);
+    
     //////////////////////////////
     // Instruction class handlers
     void emitVectorAlu(
@@ -258,10 +295,16 @@ namespace dxvk {
     void emitVectorDot(
       const DxbcShaderInstruction&  ins);
     
+    void emitVectorIdiv(
+      const DxbcShaderInstruction&  ins);
+    
     void emitVectorImul(
       const DxbcShaderInstruction&  ins);
     
     void emitVectorSinCos(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitGeometryEmit(
       const DxbcShaderInstruction&  ins);
     
     void emitSample(
@@ -288,6 +331,9 @@ namespace dxvk {
       const DxbcShaderInstruction&  ins);
     
     void emitControlFlowRet(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitControlFlowDiscard(
       const DxbcShaderInstruction&  ins);
     
     void emitControlFlow(
@@ -376,21 +422,25 @@ namespace dxvk {
     /////////////////////////////
     // Input preparation methods
     void emitVsInputSetup();
+    void emitGsInputSetup();
     void emitPsInputSetup();
     
     //////////////////////////////
     // Output preparation methods
     void emitVsOutputSetup();
+    void emitGsOutputSetup();
     void emitPsOutputSetup();
     
     /////////////////////////////////
     // Shader initialization methods
     void emitVsInit();
+    void emitGsInit();
     void emitPsInit();
     
     ///////////////////////////////
     // Shader finalization methods
     void emitVsFinalize();
+    void emitGsFinalize();
     void emitPsFinalize();
     
     ///////////////////////////////
@@ -409,6 +459,9 @@ namespace dxvk {
     
     uint32_t getVectorTypeId(
       const DxbcVectorType& type);
+    
+    uint32_t getArrayTypeId(
+      const DxbcArrayType& type);
     
     uint32_t getPointerTypeId(
       const DxbcRegisterInfo& type);

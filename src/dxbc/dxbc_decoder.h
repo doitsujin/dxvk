@@ -75,15 +75,18 @@ namespace dxvk {
     
     DxbcRegSwizzle() { }
     DxbcRegSwizzle(uint32_t x, uint32_t y, uint32_t z, uint32_t w)
-    : m_data((x << 0) | (y << 2) | (z << 4) | (w << 6)) { }
+    : m_mask((x << 0) | (y << 2) | (z << 4) | (w << 6)) { }
     
     uint32_t operator [] (uint32_t id) const {
-      return (m_data >> (id + id)) & 0x3;
+      return (m_mask >> (id + id)) & 0x3;
     }
+    
+    bool operator == (const DxbcRegSwizzle& other) const { return m_mask == other.m_mask; }
+    bool operator != (const DxbcRegSwizzle& other) const { return m_mask != other.m_mask; }
     
   private:
     
-    uint8_t m_data = 0;
+    uint8_t m_mask = 0;
     
   };
   
@@ -99,30 +102,33 @@ namespace dxvk {
   public:
     
     DxbcRegMask() { }
-    DxbcRegMask(uint32_t mask) : m_data(mask) { }
+    DxbcRegMask(uint32_t mask) : m_mask(mask) { }
     DxbcRegMask(bool x, bool y, bool z, bool w)
-    : m_data((x ? 0x1 : 0) | (y ? 0x2 : 0)
+    : m_mask((x ? 0x1 : 0) | (y ? 0x2 : 0)
            | (z ? 0x4 : 0) | (w ? 0x8 : 0)) { }
     
     bool operator [] (uint32_t id) const {
-      return (m_data >> id) & 1;
+      return (m_mask >> id) & 1;
     }
     
     uint32_t setCount() const {
       const uint8_t n[16] = { 0, 1, 1, 2, 1, 2, 2, 3,
                               1, 2, 2, 3, 2, 3, 3, 4 };
-      return n[m_data & 0xF];
+      return n[m_mask & 0xF];
     }
     
     uint32_t firstSet() const {
       const uint8_t n[16] = { 4, 0, 1, 0, 2, 0, 1, 0,
                               3, 0, 1, 0, 2, 0, 1, 0 };
-      return n[m_data & 0xF];
+      return n[m_mask & 0xF];
     }
+    
+    bool operator == (const DxbcRegMask& other) const { return m_mask == other.m_mask; }
+    bool operator != (const DxbcRegMask& other) const { return m_mask != other.m_mask; }
     
   private:
     
-    uint8_t m_data = 0;
+    uint8_t m_mask = 0;
     
   };
   
@@ -194,6 +200,9 @@ namespace dxvk {
     DxbcResourceDim       resourceDim;
     DxbcResinfoType       resinfoType;
     DxbcInterpolationMode interpolation;
+    DxbcSamplerMode       samplerMode;
+    DxbcPrimitiveTopology primitiveTopology;
+    DxbcPrimitive         primitive;
   };
   
   

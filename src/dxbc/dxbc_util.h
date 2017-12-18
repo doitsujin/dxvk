@@ -1,6 +1,7 @@
 #pragma once
 
 #include "dxbc_common.h"
+#include "dxbc_enums.h"
 
 namespace dxvk {
   
@@ -31,5 +32,14 @@ namespace dxvk {
           DxbcProgramType shaderStage,
           DxbcBindingType bindingType,
           uint32_t        bindingIndex);
+  
+  /**
+   * \brief Primitive vertex count
+   * 
+   * Calculates the number of vertices
+   * for a given primitive type.
+   */
+  uint32_t primitiveVertexCount(
+          DxbcPrimitive   primitive);
   
 }

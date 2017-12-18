@@ -17,7 +17,6 @@ namespace dxvk {
       BytecodeLength);
     
     DxbcModule module(reader);
-    m_shader = module.compile();
     
     // If requested by the user, dump both the raw DXBC
     // shader and the compiled SPIR-V module to a file.
@@ -31,11 +30,19 @@ namespace dxvk {
       
       reader.store(std::ofstream(str::format(baseName, ".dxbc"),
         std::ios_base::binary | std::ios_base::trunc));
+    }
+    
+    
+    m_shader = module.compile();
+      
+    if (dumpPath.size() != 0) {
+      const std::string baseName = str::format(dumpPath, "/",
+        ConstructFileName(ComputeShaderHash(pShaderBytecode, BytecodeLength),
+        module.version().type()));
       
       m_shader->dump(std::ofstream(str::format(baseName, ".spv"),
         std::ios_base::binary | std::ios_base::trunc));
     }
-    
     
     // If requested by the user, replace
     // the shader with another file.

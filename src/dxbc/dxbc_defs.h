@@ -30,11 +30,13 @@ namespace dxvk {
   enum class DxbcInstClass {
     Declaration,      ///< Interface or resource declaration
     ControlFlow,      ///< Control flow instructions
+    GeometryEmit,     ///< Special geometry shader instructions
     TextureSample,    ///< Texture sampling instruction
     VectorAlu,        ///< Component-wise vector instructions
     VectorCmov,       ///< Component-wise conditional move
     VectorCmp,        ///< Component-wise vector comparison
     VectorDot,        ///< Dot product instruction
+    VectorIdiv,       ///< Component-wise integer division
     VectorImul,       ///< Component-wise integer multiplication
     VectorSinCos,     ///< Sine and Cosine instruction
     Undefined,        ///< Instruction code not defined

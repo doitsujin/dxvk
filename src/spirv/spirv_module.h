@@ -37,8 +37,9 @@ namespace dxvk {
             spv::AddressingModel    addressModel,
             spv::MemoryModel        memoryModel);
     
-    void enableEarlyFragmentTests(
-            uint32_t                entryPointId);
+    void setExecutionMode(
+            uint32_t                entryPointId,
+            spv::ExecutionMode      executionMode);
     
     void setLocalSize(
             uint32_t                entryPointId,
@@ -46,8 +47,9 @@ namespace dxvk {
             uint32_t                y,
             uint32_t                z);
     
-    void setOriginUpperLeft(
-            uint32_t                entryPointId);
+    void setOutputVertices(
+            uint32_t                entryPointId,
+            uint32_t                vertexCount);
     
     void setDebugName(
             uint32_t                expressionId,
@@ -265,6 +267,26 @@ namespace dxvk {
             uint32_t                a,
             uint32_t                b);
     
+    uint32_t opSDiv(
+            uint32_t                resultType,
+            uint32_t                a,
+            uint32_t                b);
+    
+    uint32_t opUDiv(
+            uint32_t                resultType,
+            uint32_t                a,
+            uint32_t                b);
+    
+    uint32_t opSRem(
+            uint32_t                resultType,
+            uint32_t                a,
+            uint32_t                b);
+    
+    uint32_t opUMod(
+            uint32_t                resultType,
+            uint32_t                a,
+            uint32_t                b);
+    
     uint32_t opFDiv(
             uint32_t                resultType,
             uint32_t                a,
@@ -452,6 +474,12 @@ namespace dxvk {
             uint32_t                falseLabel);
     
     void opReturn();
+    
+    void opKill();
+    
+    void opEmitVertex();
+    
+    void opEndPrimitive();
     
   private:
     

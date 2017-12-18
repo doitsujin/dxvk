@@ -72,12 +72,13 @@ namespace dxvk {
     m_memoryModel.putWord (memoryModel);
   }
   
-  
-  void SpirvModule::enableEarlyFragmentTests(
-          uint32_t                entryPointId) {
+    
+  void SpirvModule::setExecutionMode(
+          uint32_t                entryPointId,
+          spv::ExecutionMode      executionMode) {
     m_execModeInfo.putIns (spv::OpExecutionMode, 3);
     m_execModeInfo.putWord(entryPointId);
-    m_execModeInfo.putWord(spv::ExecutionModeEarlyFragmentTests);
+    m_execModeInfo.putWord(executionMode);
   }
   
   
@@ -95,11 +96,13 @@ namespace dxvk {
   }
   
   
-  void SpirvModule::setOriginUpperLeft(
-          uint32_t                entryPointId) {
-    m_execModeInfo.putIns (spv::OpExecutionMode, 3);
+  void SpirvModule::setOutputVertices(
+          uint32_t                entryPointId,
+          uint32_t                vertexCount) {
+    m_execModeInfo.putIns (spv::OpExecutionMode, 4);
     m_execModeInfo.putWord(entryPointId);
-    m_execModeInfo.putWord(spv::ExecutionModeOriginUpperLeft);
+    m_execModeInfo.putWord(spv::ExecutionModeOutputVertices);
+    m_execModeInfo.putWord(vertexCount);
   }
   
   
@@ -738,6 +741,66 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opSDiv(
+          uint32_t                resultType,
+          uint32_t                a,
+          uint32_t                b) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpSDiv, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(a);
+    m_code.putWord(b);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opUDiv(
+          uint32_t                resultType,
+          uint32_t                a,
+          uint32_t                b) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpUDiv, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(a);
+    m_code.putWord(b);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opSRem(
+          uint32_t                resultType,
+          uint32_t                a,
+          uint32_t                b) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpSRem, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(a);
+    m_code.putWord(b);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opUMod(
+          uint32_t                resultType,
+          uint32_t                a,
+          uint32_t                b) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpUMod, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(a);
+    m_code.putWord(b);
+    return resultId;
+  }
+  
+  
   uint32_t SpirvModule::opFDiv(
           uint32_t                resultType,
           uint32_t                a,
@@ -1307,6 +1370,21 @@ namespace dxvk {
     
   void SpirvModule::opReturn() {
     m_code.putIns (spv::OpReturn, 1);
+  }
+  
+  
+  void SpirvModule::opKill() {
+    m_code.putIns (spv::OpKill, 1);
+  }
+  
+  
+  void SpirvModule::opEmitVertex() {
+    m_code.putIns (spv::OpEmitVertex, 1);
+  }
+  
+  
+  void SpirvModule::opEndPrimitive() {
+    m_code.putIns (spv::OpEndPrimitive, 1);
   }
   
   

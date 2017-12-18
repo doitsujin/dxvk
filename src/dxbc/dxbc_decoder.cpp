@@ -80,11 +80,22 @@ namespace dxvk {
     m_instruction.modifiers.precise  = !!bit::extract(token, 19, 22);
     
     // Opcode controls. It will depend on the opcode itself which ones are valid.
-    m_instruction.controls.zeroTest      = static_cast<DxbcZeroTest>         (bit::extract(token, 18, 18));
-    m_instruction.controls.syncFlags     = static_cast<DxbcSyncFlags>        (bit::extract(token, 11, 14));
-    m_instruction.controls.resourceDim   = static_cast<DxbcResourceDim>      (bit::extract(token, 11, 15));
-    m_instruction.controls.resinfoType   = static_cast<DxbcResinfoType>      (bit::extract(token, 11, 12));
-    m_instruction.controls.interpolation = static_cast<DxbcInterpolationMode>(bit::extract(token, 11, 14));
+    m_instruction.controls.zeroTest =
+      static_cast<DxbcZeroTest>(bit::extract(token, 18, 18));
+    m_instruction.controls.syncFlags =
+      static_cast<DxbcSyncFlags>(bit::extract(token, 11, 14));
+    m_instruction.controls.resourceDim =
+      static_cast<DxbcResourceDim>(bit::extract(token, 11, 15));
+    m_instruction.controls.resinfoType =
+      static_cast<DxbcResinfoType>(bit::extract(token, 11, 12));
+    m_instruction.controls.interpolation =
+      static_cast<DxbcInterpolationMode>(bit::extract(token, 11, 14));
+    m_instruction.controls.samplerMode =
+      static_cast<DxbcSamplerMode>(bit::extract(token, 11, 14));
+    m_instruction.controls.primitiveTopology =
+      static_cast<DxbcPrimitiveTopology>(bit::extract(token, 11, 17));
+    m_instruction.controls.primitive =
+      static_cast<DxbcPrimitive>(bit::extract(token, 11, 16));
     
     // Process extended opcode tokens
     while (bit::extract(token, 31, 31)) {

@@ -34,7 +34,7 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
     } },
     /* Cut                                  */
-    { },
+    { 0, DxbcInstClass::GeometryEmit },
     /* Default                              */
     { },
     /* DerivRtx                             */
@@ -42,7 +42,9 @@ namespace dxvk {
     /* DerivRty                             */
     { },
     /* Discard                              */
-    { },
+    { 1, DxbcInstClass::ControlFlow, {
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* Div                                  */
     { 3, DxbcInstClass::VectorAlu, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
@@ -70,7 +72,7 @@ namespace dxvk {
     /* Else                                 */
     { 0, DxbcInstClass::ControlFlow },
     /* Emit                                 */
-    { },
+    { 0, DxbcInstClass::GeometryEmit },
     /* EmitThenCut                          */
     { },
     /* EndIf                                */
@@ -295,13 +297,23 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
     } },
     /* UDiv                                 */
-    { },
+    { 4, DxbcInstClass::VectorIdiv, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* ULt                                  */
     { },
     /* UGe                                  */
     { },
     /* UMul                                 */
-    { },
+    { 4, DxbcInstClass::VectorImul, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* UMad                                 */
     { },
     /* UMax                                 */
@@ -330,11 +342,13 @@ namespace dxvk {
     /* DclIndexRange                        */
     { },
     /* DclGsOutputPrimitiveTopology         */
-    { },
+    { 0, DxbcInstClass::Declaration },
     /* DclGsInputPrimitive                  */
-    { },
+    { 0, DxbcInstClass::Declaration },
     /* DclMaxOutputVertexCount              */
-    { },
+    { 1, DxbcInstClass::Declaration, {
+      { DxbcOperandKind::Imm32,  DxbcScalarType::Uint32 },
+    } },
     /* DclInput                             */
     { 1, DxbcInstClass::Declaration, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },

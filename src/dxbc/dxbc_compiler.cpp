@@ -35,8 +35,9 @@ namespace dxvk {
     // Initialize the shader module with capabilities
     // etc. Each shader type has its own peculiarities.
     switch (m_version.type()) {
-      case DxbcProgramType::VertexShader: this->emitVsInit(); break;
-      case DxbcProgramType::PixelShader:  this->emitPsInit(); break;
+      case DxbcProgramType::VertexShader:   this->emitVsInit(); break;
+      case DxbcProgramType::GeometryShader: this->emitGsInit(); break;
+      case DxbcProgramType::PixelShader:    this->emitPsInit(); break;
       default: throw DxvkError("DxbcCompiler: Unsupported program type");
     }
   }
@@ -55,6 +56,9 @@ namespace dxvk {
       case DxbcInstClass::ControlFlow:
         return this->emitControlFlow(ins);
         
+      case DxbcInstClass::GeometryEmit:
+        return this->emitGeometryEmit(ins);
+        
       case DxbcInstClass::TextureSample:
         return this->emitSample(ins);
         
@@ -69,6 +73,9 @@ namespace dxvk {
         
       case DxbcInstClass::VectorDot:
         return this->emitVectorDot(ins);
+        
+      case DxbcInstClass::VectorIdiv:
+        return this->emitVectorIdiv(ins);
         
       case DxbcInstClass::VectorImul:
         return this->emitVectorImul(ins);
@@ -98,8 +105,9 @@ namespace dxvk {
     // input registers, call various shader functions
     // and write back the output registers.
     switch (m_version.type()) {
-      case DxbcProgramType::VertexShader: this->emitVsFinalize(); break;
-      case DxbcProgramType::PixelShader:  this->emitPsFinalize(); break;
+      case DxbcProgramType::VertexShader:   this->emitVsFinalize(); break;
+      case DxbcProgramType::GeometryShader: this->emitGsFinalize(); break;
+      case DxbcProgramType::PixelShader:    this->emitPsFinalize(); break;
       default: throw DxvkError("DxbcCompiler: Unsupported program type");
     }
     
@@ -152,6 +160,15 @@ namespace dxvk {
       case DxbcOpcode::DclResource:
         return this->emitDclResource(ins);
       
+      case DxbcOpcode::DclGsInputPrimitive:
+        return this->emitDclGsInputPrimitive(ins);
+        
+      case DxbcOpcode::DclGsOutputPrimitiveTopology:
+        return this->emitDclGsOutputTopology(ins);
+        
+      case DxbcOpcode::DclMaxOutputVertexCount:
+        return this->emitDclMaxOutputVertexCount(ins);
+      
       default:
         Logger::warn(
           str::format("DxbcCompiler: Unhandled opcode: ",
@@ -175,9 +192,10 @@ namespace dxvk {
       m_rRegs.resize(newCount);
       
       DxbcRegisterInfo info;
-      info.type.ctype  = DxbcScalarType::Float32;
-      info.type.ccount = 4;
-      info.sclass      = spv::StorageClassPrivate;
+      info.type.ctype   = DxbcScalarType::Float32;
+      info.type.ccount  = 4;
+      info.type.alength = 0;
+      info.sclass       = spv::StorageClassPrivate;
       
       for (uint32_t i = oldCount; i < newCount; i++) {
         const uint32_t varId = this->emitNewVariable(info);
@@ -274,21 +292,17 @@ namespace dxvk {
           DxbcRegMask             regMask,
           DxbcSystemValue         sv,
           DxbcInterpolationMode   im) {
-    if (regDim != 0) {
-      Logger::err("DxbcCompiler: Input arrays not yet supported");
-      return;
-    }
-    
     // Avoid declaring the same variable multiple times.
     // This may happen when multiple system values are
     // mapped to different parts of the same register.
     if (m_vRegs.at(regIdx) == 0) {
       DxbcRegisterInfo info;
-      info.type.ctype  = DxbcScalarType::Float32;
-      info.type.ccount = 4;
+      info.type.ctype   = DxbcScalarType::Float32;
+      info.type.ccount  = 4;
+      info.type.alength = regDim;
       info.sclass = spv::StorageClassInput;
       
-      const uint32_t varId = this->emitNewVariable(info);
+      uint32_t varId = this->emitNewVariable(info);
       
       m_module.decorateLocation(varId, regIdx);
       m_module.setDebugName(varId, str::format("v", regIdx).c_str());
@@ -327,18 +341,14 @@ namespace dxvk {
           DxbcRegMask             regMask,
           DxbcSystemValue         sv,
           DxbcInterpolationMode   im) {
-    if (regDim != 0) {
-      Logger::err("DxbcCompiler: Output arrays not yet supported");
-      return;
-    }
-    
     // Avoid declaring the same variable multiple times.
     // This may happen when multiple system values are
     // mapped to different parts of the same register.
     if (m_oRegs.at(regIdx) == 0) {
       DxbcRegisterInfo info;
-      info.type.ctype  = DxbcScalarType::Float32;
-      info.type.ccount = 4;
+      info.type.ctype   = DxbcScalarType::Float32;
+      info.type.ccount  = 4;
+      info.type.alength = regDim;
       info.sclass = spv::StorageClassOutput;
       
       const uint32_t varId = this->emitNewVariable(info);
@@ -552,6 +562,50 @@ namespace dxvk {
     resource.slot = bindingId;
     resource.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
     m_resourceSlots.push_back(resource);
+  }
+  
+  
+  void DxbcCompiler::emitDclGsInputPrimitive(const DxbcShaderInstruction& ins) {
+    // The input primitive type is stored within in the
+    // control bits of the opcode token. In SPIR-V, we
+    // have to define an execution mode.
+    const spv::ExecutionMode mode = [&] {
+      switch (ins.controls.primitive) {
+        case DxbcPrimitive::Point:       return spv::ExecutionModeInputPoints;
+        case DxbcPrimitive::Line:        return spv::ExecutionModeInputLines;
+        case DxbcPrimitive::Triangle:    return spv::ExecutionModeTriangles;
+        case DxbcPrimitive::LineAdj:     return spv::ExecutionModeInputLinesAdjacency;
+        case DxbcPrimitive::TriangleAdj: return spv::ExecutionModeInputTrianglesAdjacency;
+        default: throw DxvkError("DxbcCompiler: Unsupported primitive type");
+      }
+    }();
+    
+    m_module.setExecutionMode(m_entryPointId, mode);
+  }
+  
+  
+  void DxbcCompiler::emitDclGsOutputTopology(const DxbcShaderInstruction& ins) {
+    // The input primitive topology is stored within in the
+    // control bits of the opcode token. In SPIR-V, we have
+    // to define an execution mode.
+    const spv::ExecutionMode mode = [&] {
+      switch (ins.controls.primitiveTopology) {
+        case DxbcPrimitiveTopology::PointList:     return spv::ExecutionModeOutputPoints;
+        case DxbcPrimitiveTopology::LineStrip:     return spv::ExecutionModeOutputLineStrip;
+        case DxbcPrimitiveTopology::TriangleStrip: return spv::ExecutionModeOutputTriangleStrip;
+        default: throw DxvkError("DxbcCompiler: Unsupported primitive topology");
+      }
+    }();
+    
+    m_module.setExecutionMode(m_entryPointId, mode);
+  }
+  
+  
+  void DxbcCompiler::emitDclMaxOutputVertexCount(const DxbcShaderInstruction& ins) {
+    // dcl_max_output_vertex_count has one operand:
+    //    (imm0) The maximum number of vertices
+    m_gs.outputVertexCount = ins.imm[0].u32;
+    m_module.setOutputVertices(m_entryPointId, m_gs.outputVertexCount);
   }
   
   
@@ -824,6 +878,66 @@ namespace dxvk {
   }
   
   
+  void DxbcCompiler::emitVectorIdiv(const DxbcShaderInstruction& ins) {
+    // udiv has four operands:
+    //    (dst0) Quotient destination register
+    //    (dst1) Remainder destination register
+    //    (src0) The first vector to compare
+    //    (src1) The second vector to compare
+    if (ins.dst[0].type == DxbcOperandType::Null
+     && ins.dst[1].type == DxbcOperandType::Null)
+      return;
+    
+    // FIXME support this if applications require it
+    if (ins.dst[0].type != DxbcOperandType::Null
+     && ins.dst[1].type != DxbcOperandType::Null
+     && ins.dst[0].mask != ins.dst[1].mask) {
+      Logger::warn("DxbcCompiler: Umul with different destination masks not supported");
+      return;
+    }
+    
+    // Load source operands as integers with the
+    // mask of one non-NULL destination operand
+    const DxbcRegMask srcMask =
+      ins.dst[0].type != DxbcOperandType::Null
+        ? ins.dst[0].mask
+        : ins.dst[1].mask;
+    
+    const std::array<DxbcRegisterValue, 2> src = {
+      emitRegisterLoad(ins.src[0], srcMask),
+      emitRegisterLoad(ins.src[1], srcMask),
+    };
+    
+    // Compute results only if the destination
+    // operands are not NULL.
+    if (ins.dst[0].type != DxbcOperandType::Null) {
+      DxbcRegisterValue quotient;
+      quotient.type.ctype  = ins.dst[0].dataType;
+      quotient.type.ccount = ins.dst[0].mask.setCount();
+      
+      quotient.id = m_module.opUDiv(
+        getVectorTypeId(quotient.type),
+        src.at(0).id, src.at(1).id);
+      
+      quotient = emitDstOperandModifiers(quotient, ins.modifiers);
+      emitRegisterStore(ins.dst[0], quotient);
+    }
+    
+    if (ins.dst[1].type != DxbcOperandType::Null) {
+      DxbcRegisterValue remainder;
+      remainder.type.ctype  = ins.dst[1].dataType;
+      remainder.type.ccount = ins.dst[1].mask.setCount();
+      
+      remainder.id = m_module.opUMod(
+        getVectorTypeId(remainder.type),
+        src.at(0).id, src.at(1).id);
+      
+      remainder = emitDstOperandModifiers(remainder, ins.modifiers);
+      emitRegisterStore(ins.dst[1], remainder);
+    }
+  }
+  
+  
   void DxbcCompiler::emitVectorImul(const DxbcShaderInstruction& ins) {
     // imul and umul have four operands:
     //    (dst0) High destination register
@@ -835,7 +949,7 @@ namespace dxvk {
         return;
       
       // If dst0 is NULL, this instruction behaves just
-      // like any other three -operand ALU instruction
+      // like any other three-operand ALU instruction
       const std::array<DxbcRegisterValue, 2> src = {
         emitRegisterLoad(ins.src[0], ins.dst[1].mask),
         emitRegisterLoad(ins.src[1], ins.dst[1].mask),
@@ -897,8 +1011,26 @@ namespace dxvk {
   }
   
   
-  void DxbcCompiler::emitSample(
-    const DxbcShaderInstruction&  ins) {
+  void DxbcCompiler::emitGeometryEmit(const DxbcShaderInstruction& ins) {
+    switch (ins.op) {
+      case DxbcOpcode::Emit: {
+        emitGsOutputSetup();
+        m_module.opEmitVertex();
+      } break;
+      
+      case DxbcOpcode::Cut: {
+        m_module.opEndPrimitive();
+      } break;
+      
+      default:
+        Logger::warn(str::format(
+          "DxbcCompiler: Unhandled instruction: ",
+          ins.op));
+    }
+  }
+  
+  
+  void DxbcCompiler::emitSample(const DxbcShaderInstruction& ins) {
     // TODO support address offset
     // TODO support more sample ops
     
@@ -1106,6 +1238,33 @@ namespace dxvk {
   }
   
     
+  void DxbcCompiler::emitControlFlowDiscard(const DxbcShaderInstruction& ins) {
+    // Discard actually has an operand that determines
+    // whether or not the fragment should be discarded
+    const DxbcRegisterValue condition = emitRegisterLoad(
+      ins.src[0], DxbcRegMask(true, false, false, false));
+    
+    const DxbcRegisterValue zeroTest = emitRegisterZeroTest(
+      condition, ins.controls.zeroTest);
+    
+    // Insert a Pseudo-'If' block
+    const uint32_t discardBlock = m_module.allocateId();
+    const uint32_t mergeBlock   = m_module.allocateId();
+    
+    m_module.opSelectionMerge(mergeBlock,
+      spv::SelectionControlMaskNone);
+    
+    m_module.opBranchConditional(
+      zeroTest.id, discardBlock, mergeBlock);
+    
+    // OpKill terminates the block
+    m_module.opLabel(discardBlock);
+    m_module.opKill();
+    
+    m_module.opLabel(mergeBlock);
+  }
+  
+  
   void DxbcCompiler::emitControlFlow(const DxbcShaderInstruction& ins) {
     switch (ins.op) {
       case DxbcOpcode::If:
@@ -1128,6 +1287,9 @@ namespace dxvk {
         
       case DxbcOpcode::Ret:
         return this->emitControlFlowRet(ins);
+        
+      case DxbcOpcode::Discard:
+        return this->emitControlFlowDiscard(ins);
       
       default:
         Logger::warn(str::format(
@@ -1368,16 +1530,30 @@ namespace dxvk {
     // stages, the index has two dimensions:
     //    (0) vertex index (relative)
     //    (1) register index (relative)
-    if (operand.idxDim != 1)
-      throw DxvkError("DxbcCompiler: 2D index for v# not yet supported");
-    
-    // We don't support two-dimensional indices yet
-    const uint32_t registerId = operand.idx[0].offset;
-    
     DxbcRegisterPointer result;
     result.type.ctype  = DxbcScalarType::Float32;
     result.type.ccount = 4;
-    result.id = m_vRegs.at(registerId);
+    
+    if (operand.idxDim == 1) {
+      // TODO add support for relative register index
+      result.id = m_vRegs.at(operand.idx[0].offset);
+      return result;
+    } else {
+      // TODO add support for relative register index
+      const DxbcRegisterValue vertexId = emitIndexLoad(operand.idx[0]);
+      
+      DxbcRegisterInfo info;
+      info.type.ctype   = result.type.ctype;
+      info.type.ccount  = result.type.ccount;
+      info.type.alength = 0;
+      info.sclass = spv::StorageClassInput;
+      
+      result.id = m_module.opAccessChain(
+        getPointerTypeId(info),
+        m_vRegs.at(operand.idx[1].offset),
+        1, &vertexId.id);
+    }
+    
     return result;
   }
   
@@ -1415,8 +1591,9 @@ namespace dxvk {
     //    (0) register index (immediate)
     //    (1) constant offset (relative)
     DxbcRegisterInfo info;
-    info.type.ctype  = DxbcScalarType::Float32;
-    info.type.ccount = 4;
+    info.type.ctype   = DxbcScalarType::Float32;
+    info.type.ccount  = 4;
+    info.type.alength = 0;
     info.sclass = spv::StorageClassUniform;
     
     const uint32_t regId = operand.idx[0].offset;
@@ -1429,7 +1606,8 @@ namespace dxvk {
     };
     
     DxbcRegisterPointer result;
-    result.type = info.type;
+    result.type.ctype  = info.type.ctype;
+    result.type.ccount = info.type.ccount;
     result.id = m_module.opAccessChain(ptrTypeId,
       m_constantBuffers.at(regId).varId,
       indices.size(), indices.data());
@@ -1585,6 +1763,11 @@ namespace dxvk {
   }
   
   
+  void DxbcCompiler::emitGsInputSetup() {
+    
+  }
+  
+  
   void DxbcCompiler::emitPsInputSetup() {
     
   }
@@ -1595,21 +1778,61 @@ namespace dxvk {
       switch (svMapping.sv) {
         case DxbcSystemValue::Position: {
           DxbcRegisterInfo info;
-          info.type.ctype  = DxbcScalarType::Float32;
-          info.type.ccount = 4;
+          info.type.ctype   = DxbcScalarType::Float32;
+          info.type.ccount  = 4;
+          info.type.alength = 0;
           info.sclass = spv::StorageClassOutput;
           
           const uint32_t ptrTypeId = getPointerTypeId(info);
           const uint32_t memberId = m_module.constu32(PerVertex_Position);
           
           DxbcRegisterPointer dstPtr;
-          dstPtr.type = info.type;
-          dstPtr.id   = m_module.opAccessChain(
+          dstPtr.type.ctype  = info.type.ctype;
+          dstPtr.type.ccount = info.type.ccount;
+          dstPtr.id = m_module.opAccessChain(
             ptrTypeId, m_perVertexOut, 1, &memberId);
           
           DxbcRegisterPointer srcPtr;
-          srcPtr.type = info.type;
-          srcPtr.id   = m_oRegs.at(svMapping.regId);
+          srcPtr.type.ctype  = info.type.ctype;
+          srcPtr.type.ccount = info.type.ccount;
+          srcPtr.id = m_oRegs.at(svMapping.regId);
+          
+          emitValueStore(dstPtr, emitValueLoad(srcPtr),
+            DxbcRegMask(true, true, true, true));
+        } break;
+        
+        default:
+          Logger::warn(str::format(
+            "DxbcCompiler: Unhandled vertex sv output: ",
+            svMapping.sv));
+      }
+    }
+  }
+  
+  
+  void DxbcCompiler::emitGsOutputSetup() {
+    for (const DxbcSvMapping& svMapping : m_oMappings) {
+      switch (svMapping.sv) {
+        case DxbcSystemValue::Position: {
+          DxbcRegisterInfo info;
+          info.type.ctype   = DxbcScalarType::Float32;
+          info.type.ccount  = 4;
+          info.type.alength = 0;
+          info.sclass = spv::StorageClassOutput;
+          
+          const uint32_t ptrTypeId = getPointerTypeId(info);
+          const uint32_t memberId = m_module.constu32(PerVertex_Position);
+          
+          DxbcRegisterPointer dstPtr;
+          dstPtr.type.ctype  = info.type.ctype;
+          dstPtr.type.ccount = info.type.ccount;
+          dstPtr.id = m_module.opAccessChain(
+            ptrTypeId, m_perVertexOut, 1, &memberId);
+          
+          DxbcRegisterPointer srcPtr;
+          srcPtr.type.ctype  = info.type.ctype;
+          srcPtr.type.ccount = info.type.ccount;
+          srcPtr.id = m_oRegs.at(svMapping.regId);
           
           emitValueStore(dstPtr, emitValueLoad(srcPtr),
             DxbcRegMask(true, true, true, true));
@@ -1659,9 +1882,41 @@ namespace dxvk {
   }
   
   
+  void DxbcCompiler::emitGsInit() {
+    m_module.enableCapability(spv::CapabilityGeometry);
+    m_module.enableCapability(spv::CapabilityClipDistance);
+    m_module.enableCapability(spv::CapabilityCullDistance);
+    
+    // Declare the per-vertex output block. Outputs are not
+    // declared as arrays, instead they will be flushed when
+    // calling EmitVertex.
+    const uint32_t perVertexStruct = this->getPerVertexBlockId();
+    const uint32_t perVertexPointer = m_module.defPointerType(
+      perVertexStruct, spv::StorageClassOutput);
+    
+    m_perVertexOut = m_module.newVar(
+      perVertexPointer, spv::StorageClassOutput);
+    m_entryPointInterfaces.push_back(m_perVertexOut);
+    m_module.setDebugName(m_perVertexOut, "gs_vertex_out");
+    
+    // Main function of the vertex shader
+    m_gs.functionId = m_module.allocateId();
+    m_module.setDebugName(m_gs.functionId, "gs_main");
+    
+    m_module.functionBegin(
+      m_module.defVoidType(),
+      m_gs.functionId,
+      m_module.defFunctionType(
+        m_module.defVoidType(), 0, nullptr),
+      spv::FunctionControlMaskNone);
+    m_module.opLabel(m_module.allocateId());
+  }
+  
+  
   void DxbcCompiler::emitPsInit() {
     m_module.enableCapability(spv::CapabilityShader);
-    m_module.setOriginUpperLeft(m_entryPointId);
+    m_module.setExecutionMode(m_entryPointId,
+      spv::ExecutionModeOriginUpperLeft);
     
     // Declare pixel shader outputs. According to the Vulkan
     // documentation, they are required to match the type of
@@ -1669,8 +1924,9 @@ namespace dxvk {
     for (auto e = m_osgn->begin(); e != m_osgn->end(); e++) {
       if (e->systemValue == DxbcSystemValue::None) {
         DxbcRegisterInfo info;
-        info.type.ctype  = e->componentType;
-        info.type.ccount = e->componentMask.setCount();
+        info.type.ctype   = e->componentType;
+        info.type.ccount  = e->componentMask.setCount();
+        info.type.alength = 0;
         info.sclass = spv::StorageClassOutput;
         
         const uint32_t varId = emitNewVariable(info);
@@ -1680,7 +1936,8 @@ namespace dxvk {
         m_entryPointInterfaces.push_back(varId);
         
         m_oRegs.at(e->registerId) = varId;
-        m_ps.oTypes.at(e->registerId) = info.type;
+        m_ps.oTypes.at(e->registerId).ctype  = info.type.ctype;
+        m_ps.oTypes.at(e->registerId).ccount = info.type.ccount;
       }
     }
     
@@ -1704,6 +1961,16 @@ namespace dxvk {
       m_module.defVoidType(),
       m_vs.functionId, 0, nullptr);
     this->emitVsOutputSetup();
+  }
+  
+  
+  void DxbcCompiler::emitGsFinalize() {
+    this->emitGsInputSetup();
+    m_module.opFunctionCall(
+      m_module.defVoidType(),
+      m_gs.functionId, 0, nullptr);
+    // No output setup at this point as that was
+    // already done during the EmitVertex step
   }
   
   
@@ -1758,9 +2025,25 @@ namespace dxvk {
   }
   
   
+  uint32_t DxbcCompiler::getArrayTypeId(const DxbcArrayType& type) {
+    DxbcVectorType vtype;
+    vtype.ctype  = type.ctype;
+    vtype.ccount = type.ccount;
+    
+    uint32_t typeId = this->getVectorTypeId(vtype);
+    
+    if (type.alength != 0) {
+      typeId = m_module.defArrayType(typeId,
+        m_module.constu32(type.alength));
+    }
+    
+    return typeId;
+  }
+  
+  
   uint32_t DxbcCompiler::getPointerTypeId(const DxbcRegisterInfo& type) {
     return m_module.defPointerType(
-      this->getVectorTypeId(type.type),
+      this->getArrayTypeId(type.type),
       type.sclass);
   }
   

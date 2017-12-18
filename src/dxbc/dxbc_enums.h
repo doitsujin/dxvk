@@ -456,6 +456,79 @@ namespace dxvk {
   
   using DxbcSyncFlags = Flags<DxbcSyncFlag>;
   
+  
+  /**
+   * \brief Geometry shader input primitive
+   */
+  enum class DxbcPrimitive : uint32_t {
+    Undefined         =  0,
+    Point             =  1,
+    Line              =  2,
+    Triangle          =  3,
+    LineAdj           =  6,
+    TriangleAdj       =  7,
+    Patch1            =  8,
+    Patch2            =  9,
+    Patch3            = 10,
+    Patch4            = 11,
+    Patch5            = 12,
+    Patch6            = 13,
+    Patch7            = 14,
+    Patch8            = 15,
+    Patch9            = 16,
+    Patch10           = 17,
+    Patch11           = 18,
+    Patch12           = 19,
+    Patch13           = 20,
+    Patch14           = 21,
+    Patch15           = 22,
+    Patch16           = 23,
+    Patch17           = 24,
+    Patch18           = 25,
+    Patch19           = 26,
+    Patch20           = 27,
+    Patch21           = 28,
+    Patch22           = 29,
+    Patch23           = 30,
+    Patch24           = 31,
+    Patch25           = 32,
+    Patch26           = 33,
+    Patch27           = 34,
+    Patch28           = 35,
+    Patch29           = 36,
+    Patch30           = 37,
+    Patch31           = 38,
+    Patch32           = 39,
+  };
+  
+  
+  /**
+   * \brief Geometry shader output topology
+   */
+  enum class DxbcPrimitiveTopology : uint32_t {
+    Undefined         = 0,
+    PointList         = 1,
+    LineList          = 2,
+    LineStrip         = 3,
+    TriangleList      = 4,
+    TriangleStrip     = 5,
+    LineListAdj       = 10,
+    LineStripAdj      = 11,
+    TriangleListAdj   = 12,
+    TriangleStripAdj  = 13,
+  };
+  
+  
+  /**
+   * \brief Sampler operation mode
+   */
+  enum class DxbcSamplerMode : uint32_t {
+    Default           = 0,
+    Comparison        = 1,
+    Mono              = 2,
+  };
+  
+  
   /**
    * \brief Scalar value type
    * 
