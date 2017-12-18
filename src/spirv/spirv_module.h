@@ -216,6 +216,25 @@ namespace dxvk {
             uint32_t                resultType,
             uint32_t                operand);
     
+    uint32_t opBitwiseAnd(
+            uint32_t                resultType,
+            uint32_t                operand1,
+            uint32_t                operand2);
+    
+    uint32_t opBitwiseOr(
+            uint32_t                resultType,
+            uint32_t                operand1,
+            uint32_t                operand2);
+    
+    uint32_t opBitwiseXor(
+            uint32_t                resultType,
+            uint32_t                operand1,
+            uint32_t                operand2);
+    
+    uint32_t opNot(
+            uint32_t                resultType,
+            uint32_t                operand);
+    
     uint32_t opCompositeConstruct(
             uint32_t                resultType,
             uint32_t                valueCount,

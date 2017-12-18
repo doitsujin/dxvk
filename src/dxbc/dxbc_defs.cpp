@@ -10,7 +10,11 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
     } },
     /* And                                  */
-    { },
+    { 3, DxbcInstClass::VectorAlu, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* Break                                */
     { 0, DxbcInstClass::ControlFlow },
     /* Breakc                               */
@@ -242,9 +246,16 @@ namespace dxvk {
     /* Nop                                  */
     { },
     /* Not                                  */
-    { },
+    { 2, DxbcInstClass::VectorAlu, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* Or                                   */
-    { },
+    { 3, DxbcInstClass::VectorAlu, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* ResInfo                              */
     { },
     /* Ret                                  */
@@ -325,7 +336,11 @@ namespace dxvk {
     /* UtoF                                 */
     { },
     /* Xor                                  */
-    { },
+    { 3, DxbcInstClass::VectorAlu, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* DclResource                          */
     { 2, DxbcInstClass::Declaration, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },

@@ -581,6 +581,64 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opBitwiseAnd(
+          uint32_t                resultType,
+          uint32_t                operand1,
+          uint32_t                operand2) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpBitwiseAnd, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(operand1);
+    m_code.putWord(operand2);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opBitwiseOr(
+          uint32_t                resultType,
+          uint32_t                operand1,
+          uint32_t                operand2) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpBitwiseOr, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(operand1);
+    m_code.putWord(operand2);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opBitwiseXor(
+          uint32_t                resultType,
+          uint32_t                operand1,
+          uint32_t                operand2) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpBitwiseXor, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(operand1);
+    m_code.putWord(operand2);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opNot(
+          uint32_t                resultType,
+          uint32_t                operand) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpNot, 4);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(operand);
+    return resultId;
+  }
+  
+  
   uint32_t SpirvModule::opCompositeConstruct(
           uint32_t                resultType,
           uint32_t                valueCount,

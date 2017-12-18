@@ -622,6 +622,14 @@ namespace dxvk {
     const uint32_t typeId = getVectorTypeId(dst.type);
     
     switch (ins.op) {
+      /////////////////////
+      // Move instructions
+      case DxbcOpcode::Mov:
+        dst.id = src.at(0).id;
+        break;
+        
+      /////////////////////////////////////
+      // ALU operations on float32 numbers
       case DxbcOpcode::Add:
         dst.id = m_module.opFAdd(typeId,
           src.at(0).id, src.at(1).id);
@@ -662,10 +670,6 @@ namespace dxvk {
           src.at(0).id, src.at(1).id);
         break;
       
-      case DxbcOpcode::Mov:
-        dst.id = src.at(0).id;
-        break;
-      
       case DxbcOpcode::Sqrt:
         dst.id = m_module.opSqrt(
           typeId, src.at(0).id);
@@ -676,6 +680,8 @@ namespace dxvk {
           typeId, src.at(0).id);
         break;
       
+      /////////////////////////////////////
+      // ALU operations on signed integers
       case DxbcOpcode::IAdd:
         dst.id = m_module.opIAdd(typeId,
           src.at(0).id, src.at(1).id);
@@ -702,7 +708,29 @@ namespace dxvk {
         dst.id = m_module.opSNegate(
           typeId, src.at(0).id);
         break;
+      
+      ///////////////////////////////////////
+      // Bit operations on unsigned integers
+      case DxbcOpcode::And:
+        dst.id = m_module.opBitwiseAnd(typeId,
+          src.at(0).id, src.at(1).id);
+        break;
         
+      case DxbcOpcode::Not:
+        dst.id = m_module.opNot(
+          typeId, src.at(0).id);
+        break;
+        
+      case DxbcOpcode::Or:
+        dst.id = m_module.opBitwiseOr(typeId,
+          src.at(0).id, src.at(1).id);
+        break;
+      
+      case DxbcOpcode::Xor:
+        dst.id = m_module.opBitwiseXor(typeId,
+          src.at(0).id, src.at(1).id);
+        break;
+      
       default:
         Logger::warn(str::format(
           "DxbcCompiler: Unhandled instruction: ",
