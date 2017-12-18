@@ -1712,19 +1712,27 @@ namespace dxvk {
         result.type.ccount = 1;
         result.id = m_module.constu32(reg.imm.u32_1);
       } else if (reg.componentCount == DxbcComponentCount::Component4) {
-        // Create a four-component u32 vector
-        std::array<uint32_t, 4> indices = {
-          m_module.constu32(reg.imm.u32_4[0]),
-          m_module.constu32(reg.imm.u32_4[1]),
-          m_module.constu32(reg.imm.u32_4[2]),
-          m_module.constu32(reg.imm.u32_4[3]),
-        };
+        // Create a u32 vector with as many components as needed
+        std::array<uint32_t, 4> indices;
+        uint32_t indexId = 0;
+        
+        for (uint32_t i = 0; i < indices.size(); i++) {
+          if (writeMask[i]) {
+            indices.at(indexId++) =
+              m_module.constu32(reg.imm.u32_4[i]);
+          }
+        }
         
         result.type.ctype  = DxbcScalarType::Uint32;
-        result.type.ccount = 4;
-        result.id = m_module.constComposite(
-          getVectorTypeId(result.type),
-          indices.size(), indices.data());
+        result.type.ccount = writeMask.setCount();
+        result.id = indices.at(0);
+        
+        if (indexId > 1) {
+          result.id = m_module.constComposite(
+            getVectorTypeId(result.type),
+            result.type.ccount, indices.data());
+        }
+        
       } else {
         // Something went horribly wrong in the decoder or the shader is broken
         throw DxvkError("DxbcCompiler: Invalid component count for immediate operand");
