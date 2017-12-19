@@ -305,6 +305,9 @@ namespace dxvk {
     void emitVectorCmp(
       const DxbcShaderInstruction&  ins);
     
+    void emitVectorDeriv(
+      const DxbcShaderInstruction&  ins);
+    
     void emitVectorDot(
       const DxbcShaderInstruction&  ins);
     

@@ -59,12 +59,14 @@ namespace dxvk {
     m_memory(memory),
     m_mapPtr(mapPtr),
     m_size  (size) {
+    TRACE(this, heap, size);
     // Mark the entire chunk as free
     m_freeList.push_back(FreeSlice { 0, size });
   }
   
   
   DxvkMemoryChunk::~DxvkMemoryChunk() {
+    TRACE(this);
     m_heap->freeDeviceMemory(m_memory);
   }
   

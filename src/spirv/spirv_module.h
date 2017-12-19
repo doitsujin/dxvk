@@ -236,6 +236,10 @@ namespace dxvk {
             uint32_t                operand1,
             uint32_t                operand2);
     
+    uint32_t opNot(
+            uint32_t                resultType,
+            uint32_t                operand);
+    
     uint32_t opConvertFtoS(
             uint32_t                resultType,
             uint32_t                operand);
@@ -249,10 +253,6 @@ namespace dxvk {
             uint32_t                operand);
     
     uint32_t opConvertUtoF(
-            uint32_t                resultType,
-            uint32_t                operand);
-    
-    uint32_t opNot(
             uint32_t                resultType,
             uint32_t                operand);
     
@@ -273,6 +273,30 @@ namespace dxvk {
             uint32_t                composite,
             uint32_t                indexCount,
       const uint32_t*               indexArray);
+    
+    uint32_t opDpdx(
+            uint32_t                resultType,
+            uint32_t                operand);
+    
+    uint32_t opDpdy(
+            uint32_t                resultType,
+            uint32_t                operand);
+    
+    uint32_t opDpdxCoarse(
+            uint32_t                resultType,
+            uint32_t                operand);
+    
+    uint32_t opDpdyCoarse(
+            uint32_t                resultType,
+            uint32_t                operand);
+    
+    uint32_t opDpdxFine(
+            uint32_t                resultType,
+            uint32_t                operand);
+    
+    uint32_t opDpdyFine(
+            uint32_t                resultType,
+            uint32_t                operand);
     
     uint32_t opVectorShuffle(
             uint32_t                resultType,

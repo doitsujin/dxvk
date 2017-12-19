@@ -42,9 +42,15 @@ namespace dxvk {
     /* Default                              */
     { },
     /* DerivRtx                             */
-    { },
+    { 2, DxbcInstClass::VectorDeriv, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* DerivRty                             */
-    { },
+    { 2, DxbcInstClass::VectorDeriv, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* Discard                              */
     { 1, DxbcInstClass::ControlFlow, {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
@@ -457,13 +463,25 @@ namespace dxvk {
     /* BufInfo                              */
     { },
     /* DerivRtxCoarse                       */
-    { },
+    { 2, DxbcInstClass::VectorDeriv, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* DerivRtxFine                         */
-    { },
+    { 2, DxbcInstClass::VectorDeriv, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* DerivRtyCoarse                       */
-    { },
+    { 2, DxbcInstClass::VectorDeriv, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* DerivRtyFine                         */
-    { },
+    { 2, DxbcInstClass::VectorDeriv, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* Gather4C                             */
     { },
     /* Gather4Po                            */

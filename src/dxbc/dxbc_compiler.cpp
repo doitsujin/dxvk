@@ -74,6 +74,9 @@ namespace dxvk {
       case DxbcInstClass::VectorCmp:
         return this->emitVectorCmp(ins);
         
+      case DxbcInstClass::VectorDeriv:
+        return this->emitVectorDeriv(ins);
+        
       case DxbcInstClass::VectorDot:
         return this->emitVectorDot(ins);
         
@@ -978,6 +981,50 @@ namespace dxvk {
       typeId, condition, sTrue, sFalse);
     
     emitRegisterStore(ins.dst[0], result);
+  }
+  
+  
+  void DxbcCompiler::emitVectorDeriv(const DxbcShaderInstruction& ins) {
+    // Derivative instructions have two operands:
+    //    (dst0) Destination register for the derivative
+    //    (src0) The operand to compute the derivative of
+    DxbcRegisterValue value = emitRegisterLoad(ins.src[0], ins.dst[0].mask);
+    const uint32_t typeId = getVectorTypeId(value.type);
+    
+    switch (ins.op) {
+      case DxbcOpcode::DerivRtx:
+        value.id = m_module.opDpdx(typeId, value.id);
+        break;
+        
+      case DxbcOpcode::DerivRty:
+        value.id = m_module.opDpdy(typeId, value.id);
+        break;
+        
+      case DxbcOpcode::DerivRtxCoarse:
+        value.id = m_module.opDpdxCoarse(typeId, value.id);
+        break;
+        
+      case DxbcOpcode::DerivRtyCoarse:
+        value.id = m_module.opDpdyCoarse(typeId, value.id);
+        break;
+        
+      case DxbcOpcode::DerivRtxFine:
+        value.id = m_module.opDpdxFine(typeId, value.id);
+        break;
+        
+      case DxbcOpcode::DerivRtyFine:
+        value.id = m_module.opDpdyFine(typeId, value.id);
+        break;
+      
+      default:
+        Logger::warn(str::format(
+          "DxbcCompiler: Unhandled instruction: ",
+          ins.op));
+        return;
+    }
+    
+    value = emitDstOperandModifiers(value, ins.modifiers);
+    emitRegisterStore(ins.dst[0], value);
   }
   
   

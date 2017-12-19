@@ -36,6 +36,7 @@ namespace dxvk {
     VectorAlu,        ///< Component-wise vector instructions
     VectorCmov,       ///< Component-wise conditional move
     VectorCmp,        ///< Component-wise vector comparison
+    VectorDeriv,      ///< Vector derivatives
     VectorDot,        ///< Dot product instruction
     VectorIdiv,       ///< Component-wise integer division
     VectorImul,       ///< Component-wise integer multiplication
