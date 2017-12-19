@@ -2,6 +2,13 @@
 
 namespace dxvk {
   
+  const uint32_t* DxbcCodeSlice::ptrAt(uint32_t id) const {
+    if (m_ptr + id >= m_end)
+      throw DxvkError("DxbcCodeSlice: End of stream");
+    return m_ptr + id;
+  }
+  
+  
   uint32_t DxbcCodeSlice::at(uint32_t id) const {
     if (m_ptr + id >= m_end)
       throw DxvkError("DxbcCodeSlice: End of stream");
@@ -37,6 +44,7 @@ namespace dxvk {
     // Initialize the instruction structure. Some of these values
     // may not get written otherwise while decoding the instruction.
     m_instruction.op             = static_cast<DxbcOpcode>(bit::extract(token0, 0, 10));
+    m_instruction.opClass        = DxbcInstClass::Undefined;
     m_instruction.sampleControls = { 0, 0, 0 };
     m_instruction.dstCount       = 0;
     m_instruction.srcCount       = 0;
@@ -44,6 +52,9 @@ namespace dxvk {
     m_instruction.dst            = m_dstOperands.data();
     m_instruction.src            = m_srcOperands.data();
     m_instruction.imm            = m_immOperands.data();
+    m_instruction.customDataType = DxbcCustomDataClass::Comment;
+    m_instruction.customDataSize = 0;
+    m_instruction.customData     = nullptr;
     
     // Reset the index pointer, which may still contain
     // a non-zero value from the previous iteration
@@ -68,7 +79,22 @@ namespace dxvk {
   
   
   void DxbcDecodeContext::decodeCustomData(DxbcCodeSlice code) {
-    Logger::warn("DxbcDecodeContext::decodeCustomData: Not implemented");
+    const uint32_t blockLength = code.at(1);
+    
+    if (blockLength < 2) {
+      Logger::err("DxbcDecodeContext: Invalid custom data block");
+      return;
+    }
+    
+    // Custom data blocks have their own instruction class
+    m_instruction.op      = DxbcOpcode::CustomData;
+    m_instruction.opClass = DxbcInstClass::CustomData;
+    
+    // We'll point into the code buffer rather than making a copy
+    m_instruction.customDataType = static_cast<DxbcCustomDataClass>(
+      bit::extract(code.at(0), 11, 31));
+    m_instruction.customDataSize = blockLength - 2;
+    m_instruction.customData     = code.ptrAt(2);
   }
   
   

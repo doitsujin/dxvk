@@ -231,6 +231,14 @@ namespace dxvk {
   
   /**
    * \brief Shader instruction
+   * 
+   * Note that this structure may store pointer to
+   * external structures, such as the original code
+   * buffer. This is safe to use if and only if:
+   * - The \ref DxbcDecodeContext that created it
+   *   still exists and was not moved
+   * - The code buffer that was being decoded
+   *   still exists and was not moved.
    */
   struct DxbcShaderInstruction {
     DxbcOpcode                op;
@@ -246,6 +254,10 @@ namespace dxvk {
     const DxbcRegister*       dst;
     const DxbcRegister*       src;
     const DxbcImmediate*      imm;
+    
+    DxbcCustomDataClass       customDataType;
+    uint32_t                  customDataSize;
+    const uint32_t*           customData;
   };
   
   
@@ -263,6 +275,8 @@ namespace dxvk {
       const uint32_t* ptr,
       const uint32_t* end)
     : m_ptr(ptr), m_end(end) { }
+    
+    const uint32_t* ptrAt(uint32_t id) const;
     
     uint32_t at(uint32_t id) const;
     uint32_t read();

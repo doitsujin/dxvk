@@ -223,6 +223,11 @@ namespace dxvk {
     uint32_t m_perVertexIn  = 0;
     uint32_t m_perVertexOut = 0;
     
+    //////////////////////////////////////////////////
+    // Immediate constant buffer. If defined, this is
+    // an array of four-component uint32 vectors.
+    uint32_t m_immConstBuf = 0;
+    
     ///////////////////////////////////////////////////
     // Entry point description - we'll need to declare
     // the function ID and all input/output variables.
@@ -279,6 +284,14 @@ namespace dxvk {
       const DxbcShaderInstruction&  ins);
     
     void emitDclMaxOutputVertexCount(
+      const DxbcShaderInstruction&  ins);
+    
+    ////////////////////////
+    // Custom data handlers
+    void emitDclImmediateConstantBuffer(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitCustomData(
       const DxbcShaderInstruction&  ins);
     
     //////////////////////////////
@@ -393,6 +406,9 @@ namespace dxvk {
       const DxbcRegister&           operand);
     
     DxbcRegisterPointer emitGetConstBufPtr(
+      const DxbcRegister&           operand);
+    
+    DxbcRegisterPointer emitGetImmConstBufPtr(
       const DxbcRegister&           operand);
     
     DxbcRegisterPointer emitGetOperandPtr(

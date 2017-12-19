@@ -218,7 +218,7 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
     } },
     /* CustomData                           */
-    { },
+    { 0, DxbcInstClass::CustomData },
     /* Mov                                  */
     { 2, DxbcInstClass::VectorAlu, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },

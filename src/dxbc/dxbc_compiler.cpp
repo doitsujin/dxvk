@@ -52,6 +52,9 @@ namespace dxvk {
     switch (ins.opClass) {
       case DxbcInstClass::Declaration:
         return this->emitDcl(ins);
+      
+      case DxbcInstClass::CustomData:
+        return this->emitCustomData(ins);
         
       case DxbcInstClass::ControlFlow:
         return this->emitControlFlow(ins);
@@ -617,6 +620,70 @@ namespace dxvk {
     //    (imm0) The maximum number of vertices
     m_gs.outputVertexCount = ins.imm[0].u32;
     m_module.setOutputVertices(m_entryPointId, m_gs.outputVertexCount);
+  }
+  
+  
+  void DxbcCompiler::emitDclImmediateConstantBuffer(const DxbcShaderInstruction& ins) {
+    if (m_immConstBuf != 0)
+      throw DxvkError("DxbcCompiler: Immediate constant buffer already declared");
+    
+    if ((ins.customDataSize & 0x3) != 0)
+      throw DxvkError("DxbcCompiler: Immediate constant buffer size not a multiple of four DWORDs");
+    
+    // Declare individual vector constants as 4x32-bit vectors
+    std::array<uint32_t, 4096> vectorIds;
+    
+    DxbcVectorType vecType;
+    vecType.ctype  = DxbcScalarType::Uint32;
+    vecType.ccount = 4;
+    
+    const uint32_t vectorTypeId = getVectorTypeId(vecType);
+    const uint32_t vectorCount  = ins.customDataSize / 4;
+    
+    for (uint32_t i = 0; i < vectorCount; i++) {
+      std::array<uint32_t, 4> scalarIds = {
+        m_module.constu32(ins.customData[4 * i + 0]),
+        m_module.constu32(ins.customData[4 * i + 1]),
+        m_module.constu32(ins.customData[4 * i + 2]),
+        m_module.constu32(ins.customData[4 * i + 3]),
+      };
+      
+      vectorIds.at(i) = m_module.constComposite(
+        vectorTypeId, scalarIds.size(), scalarIds.data());
+    }
+    
+    // Declare the array that contains all the vectors
+    DxbcArrayType arrInfo;
+    arrInfo.ctype   = DxbcScalarType::Uint32;
+    arrInfo.ccount  = 4;
+    arrInfo.alength = vectorCount;
+    
+    const uint32_t arrayTypeId = getArrayTypeId(arrInfo);
+    const uint32_t arrayId = m_module.constComposite(
+      arrayTypeId, vectorCount, vectorIds.data());
+    
+    // Declare the variable that will hold the constant
+    // data and initialize it with the constant array.
+    const uint32_t pointerTypeId = m_module.defPointerType(
+      arrayTypeId, spv::StorageClassPrivate);
+    
+    m_immConstBuf = m_module.newVarInit(
+      pointerTypeId, spv::StorageClassPrivate,
+      arrayId);
+    m_module.setDebugName(m_immConstBuf, "icb");
+  }
+  
+  
+  void DxbcCompiler::emitCustomData(const DxbcShaderInstruction& ins) {
+    switch (ins.customDataType) {
+      case DxbcCustomDataClass::ImmConstBuf:
+        return emitDclImmediateConstantBuffer(ins);
+      
+      default:
+        Logger::warn(str::format(
+          "DxbcCompiler: Unsupported custom data block: ",
+          ins.customDataType));
+    }
   }
   
   
@@ -1654,6 +1721,30 @@ namespace dxvk {
   }
   
   
+  DxbcRegisterPointer DxbcCompiler::emitGetImmConstBufPtr(
+    const DxbcRegister&           operand) {
+    if (m_immConstBuf == 0)
+      throw DxvkError("DxbcCompiler: Immediate constant buffer not defined");
+    
+    const DxbcRegisterValue constId
+      = emitIndexLoad(operand.idx[0]);
+    
+    DxbcRegisterInfo ptrInfo;
+    ptrInfo.type.ctype   = DxbcScalarType::Uint32;
+    ptrInfo.type.ccount  = 4;
+    ptrInfo.type.alength = 0;
+    ptrInfo.sclass = spv::StorageClassPrivate;
+    
+    DxbcRegisterPointer result;
+    result.type.ctype  = ptrInfo.type.ctype;
+    result.type.ccount = ptrInfo.type.ccount;
+    result.id = m_module.opAccessChain(
+      getPointerTypeId(ptrInfo),
+      m_immConstBuf, 1, &constId.id);
+    return result;
+  }
+  
+  
   DxbcRegisterPointer DxbcCompiler::emitGetOperandPtr(
     const DxbcRegister&           operand) {
     switch (operand.type) {
@@ -1668,6 +1759,9 @@ namespace dxvk {
       
       case DxbcOperandType::ConstantBuffer:
         return emitGetConstBufPtr(operand);
+      
+      case DxbcOperandType::ImmediateConstantBuffer:
+        return emitGetImmConstBufPtr(operand);
       
       default:
         throw DxvkError(str::format(

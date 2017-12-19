@@ -521,6 +521,21 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::newVarInit(
+          uint32_t                pointerType,
+          spv::StorageClass       storageClass,
+          uint32_t                initialValue) {
+    uint32_t resultId = this->allocateId();
+    
+    m_variables.putIns  (spv::OpVariable, 5);
+    m_variables.putWord (pointerType);
+    m_variables.putWord (resultId);
+    m_variables.putWord (storageClass);
+    m_variables.putWord (initialValue);
+    return resultId;
+  }
+  
+  
   void SpirvModule::functionBegin(
           uint32_t                returnType,
           uint32_t                functionId,

@@ -536,7 +536,7 @@ namespace dxvk {
    * types. Scalar types are represented as
    * a one-component vector type.
    */
-  enum class DxbcScalarType {
+  enum class DxbcScalarType : uint32_t {
     Uint32    = 0,
     Uint64    = 1,
     Sint32    = 2,
@@ -544,6 +544,20 @@ namespace dxvk {
     Float32   = 4,
     Float64   = 5,
     Bool      = 6,
+  };
+  
+  
+  /**
+   * \brief Custom data class
+   * 
+   * Stores which type of custom data is
+   * referenced by the instruction.
+   */
+  enum class DxbcCustomDataClass : uint32_t {
+    Comment       = 0,
+    DebugInfo     = 1,
+    Opaque        = 2,
+    ImmConstBuf   = 3,
   };
   
 }

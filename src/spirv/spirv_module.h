@@ -195,6 +195,11 @@ namespace dxvk {
             uint32_t                pointerType,
             spv::StorageClass       storageClass);
     
+    uint32_t newVarInit(
+            uint32_t                pointerType,
+            spv::StorageClass       storageClass,
+            uint32_t                initialValue);
+    
     void functionBegin(
             uint32_t                returnType,
             uint32_t                functionId,

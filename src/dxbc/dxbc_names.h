@@ -18,3 +18,4 @@ std::ostream& operator << (std::ostream& os, dxvk::DxbcRegisterComponentType e);
 std::ostream& operator << (std::ostream& os, dxvk::DxbcInstructionReturnType e);
 std::ostream& operator << (std::ostream& os, dxvk::DxbcSystemValue e);
 std::ostream& operator << (std::ostream& os, dxvk::DxbcProgramType e);
+std::ostream& operator << (std::ostream& os, dxvk::DxbcCustomDataClass e);

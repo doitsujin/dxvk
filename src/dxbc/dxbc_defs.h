@@ -29,6 +29,7 @@ namespace dxvk {
    */
   enum class DxbcInstClass {
     Declaration,      ///< Interface or resource declaration
+    CustomData,       ///< Immediate constant buffer
     ControlFlow,      ///< Control flow instructions
     GeometryEmit,     ///< Special geometry shader instructions
     TextureSample,    ///< Texture sampling instruction

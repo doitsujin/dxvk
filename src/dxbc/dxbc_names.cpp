@@ -411,3 +411,13 @@ std::ostream& operator << (std::ostream& os, dxvk::DxbcProgramType e) {
     ENUM_DEFAULT(e);
   }
 }
+
+std::ostream& operator << (std::ostream& os, dxvk::DxbcCustomDataClass e) {
+  switch (e) {
+    ENUM_NAME(DxbcCustomDataClass::Comment);
+    ENUM_NAME(DxbcCustomDataClass::DebugInfo);
+    ENUM_NAME(DxbcCustomDataClass::Opaque);
+    ENUM_NAME(DxbcCustomDataClass::ImmConstBuf);
+    ENUM_DEFAULT(e);
+  }
+}
