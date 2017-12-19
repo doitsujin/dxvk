@@ -99,9 +99,15 @@ namespace dxvk {
     /* Frc                                  */
     { },
     /* FtoI                                 */
-    { },
+    { 2, DxbcInstClass::VectorAlu, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Sint32  },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* FtoU                                 */
-    { },
+    { 2, DxbcInstClass::VectorAlu, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32  },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* Ge                                   */
     { 3, DxbcInstClass::VectorCmp, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Uint32  },
@@ -178,7 +184,10 @@ namespace dxvk {
     /* IShr                                 */
     { },
     /* ItoF                                 */
-    { },
+    { 2, DxbcInstClass::VectorAlu, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32  },
+    } },
     /* Label                                */
     { },
     /* Ld                                   */
@@ -334,7 +343,10 @@ namespace dxvk {
     /* UShr                                 */
     { },
     /* UtoF                                 */
-    { },
+    { 2, DxbcInstClass::VectorAlu, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32  },
+    } },
     /* Xor                                  */
     { 3, DxbcInstClass::VectorAlu, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },

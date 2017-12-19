@@ -1272,7 +1272,8 @@ namespace dxvk {
       if (m_state.om.depthStencilView != nullptr)
         attachments.setDepthTarget(m_state.om.depthStencilView->GetDXVKImageView());
       
-      framebuffer = m_device->createFramebuffer(attachments);
+      if (attachments.hasAttachments())
+        framebuffer = m_device->createFramebuffer(attachments);
     }
     
     // Bind the framebuffer object to the context

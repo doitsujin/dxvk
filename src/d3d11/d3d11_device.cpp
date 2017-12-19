@@ -338,8 +338,8 @@ namespace dxvk {
         viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
         viewInfo.minLevel   = 0;
         viewInfo.numLevels  = 1;
-        viewInfo.minLayer   = desc.Texture2DArray.FirstArraySlice;
-        viewInfo.numLayers  = desc.Texture2DArray.ArraySize;
+        viewInfo.minLayer   = desc.Texture2DMSArray.FirstArraySlice;
+        viewInfo.numLayers  = desc.Texture2DMSArray.ArraySize;
         break;
       
       default:
@@ -432,8 +432,8 @@ namespace dxvk {
         viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
         viewInfo.minLevel   = 0;
         viewInfo.numLevels  = 1;
-        viewInfo.minLayer   = desc.Texture2DArray.FirstArraySlice;
-        viewInfo.numLayers  = desc.Texture2DArray.ArraySize;
+        viewInfo.minLayer   = desc.Texture2DMSArray.FirstArraySlice;
+        viewInfo.numLayers  = desc.Texture2DMSArray.ArraySize;
         break;
       
       default:

@@ -809,6 +809,28 @@ namespace dxvk {
           src.at(0).id, src.at(1).id);
         break;
       
+      ///////////////////////////
+      // Conversion instructions
+      case DxbcOpcode::ItoF:
+        dst.id = m_module.opConvertStoF(
+          typeId, src.at(0).id);
+        break;
+      
+      case DxbcOpcode::UtoF:
+        dst.id = m_module.opConvertUtoF(
+          typeId, src.at(0).id);
+        break;
+      
+      case DxbcOpcode::FtoI:
+        dst.id = m_module.opConvertFtoS(
+          typeId, src.at(0).id);
+        break;
+      
+      case DxbcOpcode::FtoU:
+        dst.id = m_module.opConvertFtoU(
+          typeId, src.at(0).id);
+        break;
+      
       default:
         Logger::warn(str::format(
           "DxbcCompiler: Unhandled instruction: ",

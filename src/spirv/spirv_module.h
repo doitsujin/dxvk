@@ -236,6 +236,22 @@ namespace dxvk {
             uint32_t                operand1,
             uint32_t                operand2);
     
+    uint32_t opConvertFtoS(
+            uint32_t                resultType,
+            uint32_t                operand);
+    
+    uint32_t opConvertFtoU(
+            uint32_t                resultType,
+            uint32_t                operand);
+    
+    uint32_t opConvertStoF(
+            uint32_t                resultType,
+            uint32_t                operand);
+    
+    uint32_t opConvertUtoF(
+            uint32_t                resultType,
+            uint32_t                operand);
+    
     uint32_t opNot(
             uint32_t                resultType,
             uint32_t                operand);

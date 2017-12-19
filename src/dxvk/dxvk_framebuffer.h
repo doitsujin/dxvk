@@ -94,6 +94,12 @@ namespace dxvk {
      */
     DxvkFramebufferSize getImageSize() const;
     
+    /**
+     * \brief Checks whether any attachments are defined
+     * \returns \c false if no attachments are defined
+     */
+    bool hasAttachments() const;
+    
   private:
     
     std::array<Rc<DxvkImageView>, MaxNumRenderTargets> m_colorTargets;
