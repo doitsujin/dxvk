@@ -11,6 +11,21 @@
 #include "d3d11_texture.h"
 #include "d3d11_view.h"
 
+// These were copied from d3d11.h
+// For some ridiculous reason, we cannot use the structures
+// directly, although others from the same header work.
+typedef struct D3D11_FEATURE_DATA_THREADING {
+    BOOL DriverConcurrentCreates;
+    BOOL DriverCommandLists;
+} D3D11_FEATURE_DATA_THREADING;
+typedef struct D3D11_FEATURE_DATA_DOUBLES {
+    BOOL DoublePrecisionFloatShaderOps;
+} D3D11_FEATURE_DATA_DOUBLES;
+typedef struct D3D11_FEATURE_DATA_FORMAT_SUPPORT {
+    DXGI_FORMAT InFormat;
+    UINT OutFormatSupport;
+} D3D11_FEATURE_DATA_FORMAT_SUPPORT;
+
 namespace dxvk {
   
   D3D11Device::D3D11Device(
@@ -935,8 +950,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11Device::CheckFormatSupport(
           DXGI_FORMAT Format,
           UINT*       pFormatSupport) {
-    Logger::err("D3D11Device::CheckFormatSupport: Not implemented");
-    return E_NOTIMPL;
+    return GetFormatSupportFlags(Format, pFormatSupport);
   }
   
   
@@ -1002,8 +1016,38 @@ namespace dxvk {
           D3D11_FEATURE Feature,
           void*         pFeatureSupportData,
           UINT          FeatureSupportDataSize) {
-    Logger::err("D3D11Device::CheckFeatureSupport: Not implemented");
-    return E_NOTIMPL;
+    switch (Feature) {
+      case D3D11_FEATURE_THREADING: {
+        if (FeatureSupportDataSize != sizeof(D3D11_FEATURE_DATA_THREADING))
+          return E_INVALIDARG;
+        
+        auto info = static_cast<D3D11_FEATURE_DATA_THREADING*>(pFeatureSupportData);
+        info->DriverConcurrentCreates = TRUE;
+        info->DriverCommandLists      = FALSE;
+      } return S_OK;
+      
+      case D3D11_FEATURE_DOUBLES: {
+        if (FeatureSupportDataSize != sizeof(D3D11_FEATURE_DATA_DOUBLES))
+          return E_INVALIDARG;
+        
+        auto info = static_cast<D3D11_FEATURE_DATA_DOUBLES*>(pFeatureSupportData);
+        info->DoublePrecisionFloatShaderOps = FALSE;
+      } return S_OK;
+      
+      case D3D11_FEATURE_FORMAT_SUPPORT: {
+        if (FeatureSupportDataSize != sizeof(D3D11_FEATURE_DATA_FORMAT_SUPPORT))
+          return E_INVALIDARG;
+        
+        auto info = static_cast<D3D11_FEATURE_DATA_FORMAT_SUPPORT*>(pFeatureSupportData);
+        return GetFormatSupportFlags(info->InFormat, &info->OutFormatSupport);
+      } return S_OK;
+      
+      default:
+        Logger::err(str::format(
+          "D3D11Device: CheckFeatureSupport: Unknown feature",
+          Feature));
+        return E_INVALIDARG;
+    }
   }
   
   
@@ -1418,6 +1462,88 @@ namespace dxvk {
         Logger::err(str::format("D3D11: Unsupported address mode: ", mode));
         return VK_SAMPLER_ADDRESS_MODE_REPEAT;
     }
+  }
+  
+  
+  HRESULT D3D11Device::GetFormatSupportFlags(DXGI_FORMAT Format, UINT* pFlags) const {
+    const VkFormat           fmt     = m_dxgiAdapter->LookupFormat(Format).actual;
+    const VkFormatProperties fmtInfo = m_dxvkAdapter->formatProperties(fmt);
+    
+    if (fmt == VK_FORMAT_UNDEFINED)
+      return E_FAIL;
+    
+    UINT flags = 0;
+    
+    if (fmtInfo.bufferFeatures & VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT)
+      flags |= D3D11_FORMAT_SUPPORT_BUFFER;
+    
+    if (fmtInfo.bufferFeatures & VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT)
+      flags |= D3D11_FORMAT_SUPPORT_IA_VERTEX_BUFFER;
+    
+    if (Format == DXGI_FORMAT_R16_UINT || Format == DXGI_FORMAT_R32_UINT)
+      flags |= D3D11_FORMAT_SUPPORT_IA_INDEX_BUFFER;
+    
+    // TODO implement stream output
+    // D3D11_FORMAT_SUPPORT_SO_BUFFER
+    
+    if (fmtInfo.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT) {
+      flags |= D3D11_FORMAT_SUPPORT_TEXTURE1D
+            |  D3D11_FORMAT_SUPPORT_TEXTURE2D
+            |  D3D11_FORMAT_SUPPORT_TEXTURE3D
+            |  D3D11_FORMAT_SUPPORT_TEXTURECUBE
+            |  D3D11_FORMAT_SUPPORT_SHADER_LOAD
+            |  D3D11_FORMAT_SUPPORT_SHADER_GATHER
+            |  D3D11_FORMAT_SUPPORT_SHADER_GATHER_COMPARISON
+            |  D3D11_FORMAT_SUPPORT_SHADER_SAMPLE
+            |  D3D11_FORMAT_SUPPORT_SHADER_SAMPLE_COMPARISON
+            |  D3D11_FORMAT_SUPPORT_MIP
+            |  D3D11_FORMAT_SUPPORT_MIP_AUTOGEN
+            |  D3D11_FORMAT_SUPPORT_MULTISAMPLE_RESOLVE
+            |  D3D11_FORMAT_SUPPORT_CAST_WITHIN_BIT_LAYOUT;
+    }
+    
+    if (fmtInfo.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)
+      flags |= D3D11_FORMAT_SUPPORT_RENDER_TARGET;
+    
+    if (fmtInfo.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT)
+      flags |= D3D11_FORMAT_SUPPORT_BLENDABLE;
+    
+    if (fmtInfo.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
+      flags |= D3D11_FORMAT_SUPPORT_DEPTH_STENCIL;
+    
+    if (fmtInfo.optimalTilingFeatures)
+      flags |= D3D11_FORMAT_SUPPORT_CPU_LOCKABLE;
+    
+    if ((fmtInfo.bufferFeatures & VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT)
+     || (fmtInfo.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT))
+      flags |= D3D11_FORMAT_SUPPORT_TYPED_UNORDERED_ACCESS_VIEW;
+    
+    // FIXME implement properly. This would require a VkSurface.
+    if (Format == DXGI_FORMAT_R8G8B8A8_UNORM
+     || Format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB
+     || Format == DXGI_FORMAT_B8G8R8A8_UNORM
+     || Format == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB
+     || Format == DXGI_FORMAT_R16G16B16A16_FLOAT
+     || Format == DXGI_FORMAT_R10G10B10A2_UNORM
+     || Format == DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM)
+      flags |= D3D11_FORMAT_SUPPORT_DISPLAY;
+    
+    // Query multisampling info
+    VkImageFormatProperties imgInfo;
+    
+    VkResult status = m_dxvkAdapter->imageFormatProperties(fmt,
+      VK_IMAGE_TYPE_2D,
+      VK_IMAGE_TILING_OPTIMAL,
+      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+      0, imgInfo);
+    
+    if (status == VK_SUCCESS && imgInfo.sampleCounts > VK_SAMPLE_COUNT_1_BIT) {
+      flags |= D3D11_FORMAT_SUPPORT_MULTISAMPLE_RENDERTARGET
+            |  D3D11_FORMAT_SUPPORT_MULTISAMPLE_LOAD;
+    }
+    
+    *pFlags = flags;
+    return S_OK;
   }
   
 }

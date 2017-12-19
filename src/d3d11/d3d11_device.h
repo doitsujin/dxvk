@@ -292,6 +292,8 @@ namespace dxvk {
     VkSamplerAddressMode DecodeAddressMode(
             D3D11_TEXTURE_ADDRESS_MODE  mode) const;
     
+    HRESULT GetFormatSupportFlags(DXGI_FORMAT Format, UINT* pFlags) const;
+    
   };
   
 }
