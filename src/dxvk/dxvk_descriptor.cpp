@@ -5,7 +5,10 @@ namespace dxvk {
   DxvkDescriptorAlloc::DxvkDescriptorAlloc(
     const Rc<vk::DeviceFn>& vkd)
   : m_vkd(vkd) {
-    
+    // Allocate one pool right away so that there
+    // is always at least one pool available when
+    // allocating a descriptor set
+    m_pools.push_back(createDescriptorPool());
   }
   
   
@@ -18,22 +21,15 @@ namespace dxvk {
   
   
   VkDescriptorSet DxvkDescriptorAlloc::alloc(VkDescriptorSetLayout layout) {
-    VkDescriptorSet set = VK_NULL_HANDLE;
-    
-    if (m_poolId < m_pools.size())
-      set = this->allocFrom(m_pools.at(m_poolId), layout);
+    VkDescriptorSet set = allocFrom(m_pools.at(m_poolId), layout);
     
     if (set == VK_NULL_HANDLE) {
-      VkDescriptorPool pool = this->createDescriptorPool();
-      set = this->allocFrom(pool, layout);
+      if (++m_poolId >= m_pools.size())
+        m_pools.push_back(createDescriptorPool());
       
-      if (set == VK_NULL_HANDLE)
-        throw DxvkError("DxvkDescriptorAlloc::alloc: Failed to allocate descriptor set");
-      
-      m_pools.push_back(pool);
-      m_poolId += 1;
+      set = allocFrom(m_pools.at(m_poolId), layout);
     }
-      
+    
     return set;
   }
   
@@ -73,7 +69,7 @@ namespace dxvk {
     VkDescriptorPool pool = VK_NULL_HANDLE;
     if (m_vkd->vkCreateDescriptorPool(m_vkd->device(),
           &info, nullptr, &pool) != VK_SUCCESS)
-      throw DxvkError("DxvkDescriptorAlloc::createDescriptorPool: Failed to create descriptor pool");
+      throw DxvkError("DxvkDescriptorAlloc: Failed to create descriptor pool");
     return pool;
   }
   
