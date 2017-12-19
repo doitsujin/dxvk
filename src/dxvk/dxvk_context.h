@@ -418,6 +418,8 @@ namespace dxvk {
     DxvkShaderResourceSlots m_cResources = {  256 };
     DxvkShaderResourceSlots m_gResources = { 1024 };
     
+    std::array<DxvkDescriptorInfo, MaxNumResourceSlots> descriptors;
+    
     void renderPassBegin();
     void renderPassEnd();
     

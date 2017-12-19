@@ -866,8 +866,6 @@ namespace dxvk {
       // resource was marked as dirty after invalidation
       // TODO move this into a separate method so that
       // compute can use this code as well
-      std::vector<DxvkDescriptorInfo> descriptors;
-      
       for (uint32_t i = 0; i < layout->bindingCount(); i++) {
         const uint32_t slot = layout->binding(i).slot;
         const auto& res = m_gResources.getShaderResource(slot);
@@ -897,7 +895,7 @@ namespace dxvk {
           descriptor.buffer = res.bufferSlice.descriptorInfo();
         }
         
-        descriptors.push_back(descriptor);
+        descriptors.at(i) = descriptor;
       }
       
       m_cmd->bindResourceDescriptors(

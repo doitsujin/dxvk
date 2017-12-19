@@ -105,9 +105,7 @@ namespace dxvk {
     VkDescriptorSet dset = m_descAlloc.alloc(descriptorLayout);
     
     // Write data to the descriptor set
-    // TODO recycle vector as a class member
-    std::vector<VkWriteDescriptorSet> descriptorWrites;
-    descriptorWrites.resize(descriptorCount);
+    std::array<VkWriteDescriptorSet, MaxNumResourceSlots> descriptorWrites;
     
     for (uint32_t i = 0; i < descriptorCount; i++) {
       auto& curr = descriptorWrites.at(i);
@@ -127,7 +125,7 @@ namespace dxvk {
     
     m_vkd->vkUpdateDescriptorSets(
       m_vkd->device(),
-      descriptorWrites.size(),
+      descriptorCount,
       descriptorWrites.data(),
       0, nullptr);
     

@@ -4,6 +4,7 @@
 
 #include "dxvk_descriptor.h"
 #include "dxvk_lifetime.h"
+#include "dxvk_limits.h"
 #include "dxvk_pipelayout.h"
 #include "dxvk_staging.h"
 
