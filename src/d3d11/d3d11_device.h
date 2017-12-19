@@ -1,7 +1,6 @@
 #pragma once
 
 #include "../dxgi/dxgi_object.h"
-#include "../dxgi/dxgi_resource.h"
 
 #include "d3d11_interfaces.h"
 #include "d3d11_state.h"
@@ -16,6 +15,9 @@ namespace dxvk {
   class D3D11DeviceContext;
   class D3D11PresentDevice;
   class D3D11ShaderModule;
+  class D3D11Texture1D;
+  class D3D11Texture2D;
+  class D3D11Texture3D;
   
   class D3D11Device : public ComObject<ID3D11Device> {
     
@@ -226,6 +228,10 @@ namespace dxvk {
     
     VkPipelineStageFlags GetEnabledShaderStages() const;
     
+    DxgiFormatPair STDMETHODCALLTYPE LookupFormat(
+            DXGI_FORMAT           format,
+            DxgiFormatMode        mode) const;
+    
     static bool CheckFeatureLevelSupport(
       const Rc<DxvkAdapter>&  adapter,
             D3D_FEATURE_LEVEL featureLevel);
@@ -266,7 +272,7 @@ namespace dxvk {
       const D3D11_SUBRESOURCE_DATA*     pInitialData);
     
     void InitTexture(
-            IDXGIImageResourcePrivate*  pImage,
+            D3D11Texture2D*             pImage,
       const D3D11_SUBRESOURCE_DATA*     pInitialData);
     
     HRESULT GetShaderResourceViewDescFromResource(
@@ -284,10 +290,6 @@ namespace dxvk {
     HRESULT GetDepthStencilViewDescFromResource(
             ID3D11Resource*                   pResource,
             D3D11_DEPTH_STENCIL_VIEW_DESC*    pDesc);
-    
-    HRESULT GetSampleCount(
-            UINT                    Count,
-            VkSampleCountFlagBits*  pCount) const;
     
     VkSamplerAddressMode DecodeAddressMode(
             D3D11_TEXTURE_ADDRESS_MODE  mode) const;

@@ -1,8 +1,17 @@
 #include "d3d11_device.h"
 #include "d3d11_present.h"
-#include "d3d11_texture.h"
 
 namespace dxvk {
+  
+  HRESULT STDMETHODCALLTYPE D3D11PresentBackBuffer::QueryInterface(REFIID riid, void** ppvObject) {
+    return m_texture->QueryInterface(riid, ppvObject);
+  }
+  
+  
+  Rc<DxvkImage> D3D11PresentBackBuffer::GetDXVKImage() {
+    return m_texture->GetDXVKImage();
+  }
+  
   
   D3D11PresentDevice:: D3D11PresentDevice() { }
   D3D11PresentDevice::~D3D11PresentDevice() { }
@@ -17,10 +26,9 @@ namespace dxvk {
   }
   
   
-  HRESULT STDMETHODCALLTYPE D3D11PresentDevice::WrapSwapChainBackBuffer(
-          IDXGIImageResourcePrivate*  pResource,
+  HRESULT STDMETHODCALLTYPE D3D11PresentDevice::CreateSwapChainBackBuffer(
     const DXGI_SWAP_CHAIN_DESC*       pSwapChainDesc,
-          IUnknown**                  ppInterface) {
+          IDXGIPresentBackBuffer**    ppInterface) {
     D3D11_TEXTURE2D_DESC desc;
     desc.Width              = pSwapChainDesc->BufferDesc.Width;
     desc.Height             = pSwapChainDesc->BufferDesc.Height;
@@ -34,9 +42,14 @@ namespace dxvk {
     desc.CPUAccessFlags     = 0;
     desc.MiscFlags          = 0;
     
-    *ppInterface = ref(new D3D11Texture2D(
-      m_device, pResource, DxgiFormatMode::Color, desc));
-    return S_OK;
+    try {
+      *ppInterface = ref(new D3D11PresentBackBuffer(
+        new D3D11Texture2D(m_device, &desc)));
+      return S_OK;
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return E_FAIL;
+    }
   }
   
   

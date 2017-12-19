@@ -43,18 +43,14 @@ namespace dxvk {
     void presentImage();
     
     /**
-     * \brief Recreates back buffer
+     * \brief Sets new back buffer
      * 
-     * \param [in] bufferWidth Buffer width
-     * \param [in] bufferHeight Buffer height
-     * \param [in] bufferFormat Buffer format
-     * \returns Back buffer image
+     * Recreates internal structures when
+     * the back buffer image was replaced.
+     * \param [in] image Back buffer image
      */
-    Rc<DxvkImage> createBackBuffer(
-            uint32_t              bufferWidth,
-            uint32_t              bufferHeight,
-            VkFormat              bufferFormat,
-            VkSampleCountFlagBits sampleCount);
+    void updateBackBuffer(
+      const Rc<DxvkImage>&  image);
     
     /**
      * \brief Renders image to the screen

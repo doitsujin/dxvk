@@ -2,6 +2,19 @@
 
 namespace dxvk {
   
+  HRESULT GetSampleCount(UINT Count, VkSampleCountFlagBits* pCount) {
+    switch (Count) {
+      case  1: *pCount = VK_SAMPLE_COUNT_1_BIT;  return S_OK;
+      case  2: *pCount = VK_SAMPLE_COUNT_2_BIT;  return S_OK;
+      case  4: *pCount = VK_SAMPLE_COUNT_4_BIT;  return S_OK;
+      case  8: *pCount = VK_SAMPLE_COUNT_8_BIT;  return S_OK;
+      case 16: *pCount = VK_SAMPLE_COUNT_16_BIT; return S_OK;
+    }
+    
+    return E_INVALIDARG;
+  }
+  
+  
   VkCompareOp DecodeCompareOp(
           D3D11_COMPARISON_FUNC mode) {
     switch (mode) {

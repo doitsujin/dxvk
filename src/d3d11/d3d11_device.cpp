@@ -107,97 +107,12 @@ namespace dxvk {
     const D3D11_TEXTURE2D_DESC*   pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
           ID3D11Texture2D**       ppTexture2D) {
-    DxgiFormatMode formatMode = DxgiFormatMode::Any;
-    
-    if (pDesc->BindFlags & D3D11_BIND_RENDER_TARGET)
-      formatMode = DxgiFormatMode::Color;
-    
-    if (pDesc->BindFlags & D3D11_BIND_DEPTH_STENCIL)
-      formatMode = DxgiFormatMode::Depth;
-    
-    DxvkImageCreateInfo info;
-    info.type           = VK_IMAGE_TYPE_2D;
-    info.format         = m_dxgiAdapter->LookupFormat(pDesc->Format, formatMode).actual;
-    info.flags          = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
-    info.sampleCount    = VK_SAMPLE_COUNT_1_BIT;
-    info.extent.width   = pDesc->Width;
-    info.extent.height  = pDesc->Height;
-    info.extent.depth   = 1;
-    info.numLayers      = pDesc->ArraySize;
-    info.mipLevels      = pDesc->MipLevels;
-    info.usage          = VK_IMAGE_USAGE_TRANSFER_SRC_BIT
-                        | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    info.stages         = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    info.access         = VK_ACCESS_TRANSFER_READ_BIT
-                        | VK_ACCESS_TRANSFER_WRITE_BIT;
-    info.tiling         = VK_IMAGE_TILING_OPTIMAL;
-    info.layout         = VK_IMAGE_LAYOUT_GENERAL;
-    
-    if (FAILED(GetSampleCount(pDesc->SampleDesc.Count, &info.sampleCount))) {
-      Logger::err(str::format("D3D11: Invalid sample count: ", pDesc->SampleDesc.Count));
-      return E_INVALIDARG;
-    }
-    
-    if (pDesc->BindFlags & D3D11_BIND_SHADER_RESOURCE) {
-      info.usage  |= VK_IMAGE_USAGE_SAMPLED_BIT;
-      info.stages |= GetEnabledShaderStages();
-      info.access |= VK_ACCESS_SHADER_READ_BIT;
-    }
-    
-    if (pDesc->BindFlags & D3D11_BIND_RENDER_TARGET) {
-      info.usage  |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-      info.stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-      info.access |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
-                  |  VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    }
-    
-    if (pDesc->BindFlags & D3D11_BIND_DEPTH_STENCIL) {
-      info.usage  |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-      info.stages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-                  |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-      info.access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT
-                  |  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-    }
-    
-    if (pDesc->BindFlags & D3D11_BIND_UNORDERED_ACCESS) {
-      info.usage  |= VK_IMAGE_USAGE_STORAGE_BIT;
-      info.stages |= GetEnabledShaderStages();
-      info.access |= VK_ACCESS_SHADER_READ_BIT
-                  |  VK_ACCESS_SHADER_WRITE_BIT;
-    }
-    
-    if (pDesc->CPUAccessFlags != 0) {
-      info.tiling  = VK_IMAGE_TILING_LINEAR;
-      info.stages |= VK_PIPELINE_STAGE_HOST_BIT;
-      
-      if (pDesc->CPUAccessFlags & D3D11_CPU_ACCESS_WRITE)
-        info.access |= VK_ACCESS_HOST_WRITE_BIT;
-      
-      if (pDesc->CPUAccessFlags & D3D11_CPU_ACCESS_READ)
-        info.access |= VK_ACCESS_HOST_READ_BIT;
-    }
-    
-    if (pDesc->MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE)
-      info.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
-    
-    if (pDesc->MipLevels == 0)
-      info.mipLevels = util::computeMipLevelCount(info.extent);
-    
     if (ppTexture2D != nullptr) {
-      Com<IDXGIImageResourcePrivate> image;
+      const Com<D3D11Texture2D> texture
+        = new D3D11Texture2D(this, pDesc);
       
-      HRESULT hr = DXGICreateImageResourcePrivate(
-        m_dxgiDevice.ptr(), &info,
-        GetMemoryFlagsForUsage(pDesc->Usage), 0,
-        &image);
-      
-      if (FAILED(hr))
-        return hr;
-      
-      *ppTexture2D = ref(new D3D11Texture2D(
-        this, image.ptr(), formatMode, *pDesc));
-      
-      InitTexture(image.ptr(), pInitialData);
+      this->InitTexture(texture.ptr(), pInitialData);
+      *ppTexture2D = texture.ref();
     }
     
     return S_OK;
@@ -235,28 +150,20 @@ namespace dxvk {
       Logger::err("D3D11: Shader resource views for buffers not yet supported");
       return E_INVALIDARG;
     } else {
-      // Retrieve the image that we are going to create a view for
-      Com<IDXGIImageResourcePrivate> imageResource;
+      // Retrieve info about the image
+      D3D11TextureInfo textureInfo;
       
-      if (FAILED(pResource->QueryInterface(
-            __uuidof(IDXGIImageResourcePrivate),
-            reinterpret_cast<void**>(&imageResource))))
+      if (FAILED(GetCommonTextureInfo(pResource, &textureInfo))) {
+        Logger::err("D3D11Device: Cannot create shader resource view: Invalid texture");
         return E_INVALIDARG;
-      
-      // TODO fix this properly
-      DxgiFormatMode formatMode = DxgiFormatMode::Any;
-      
-      Com<D3D11Texture2D> texture2D;
-      if (SUCCEEDED(pResource->QueryInterface(
-            __uuidof(ID3D11Texture2D),
-            reinterpret_cast<void**>(&texture2D))))
-        formatMode = texture2D->GetFormatMode();
+      }
       
       // Fill in the view info. The view type depends solely
       // on the view dimension field in the view description,
       // not on the resource type.
       DxvkImageViewCreateInfo viewInfo;
-      viewInfo.format = m_dxgiAdapter->LookupFormat(desc.Format, formatMode).actual;
+      viewInfo.format = m_dxgiAdapter->LookupFormat(
+        desc.Format, textureInfo.formatMode).actual;
       viewInfo.aspect = imageFormatInfo(viewInfo.format)->aspectMask;
       
       switch (desc.ViewDimension) {
@@ -346,8 +253,7 @@ namespace dxvk {
         *ppSRView = ref(new D3D11ShaderResourceView(
           this, pResource, desc, nullptr,
           m_dxvkDevice->createImageView(
-            imageResource->GetDXVKImage(),
-            viewInfo)));
+            textureInfo.image, viewInfo)));
         return S_OK;
       } catch (const DxvkError& e) {
         Logger::err(e.message());
@@ -391,12 +297,12 @@ namespace dxvk {
     }
     
     // Retrieve the image that we are going to create the view for
-    Com<IDXGIImageResourcePrivate> imageResource;
+    D3D11TextureInfo textureInfo;
     
-    if (FAILED(pResource->QueryInterface(
-        __uuidof(IDXGIImageResourcePrivate),
-        reinterpret_cast<void**>(&imageResource))))
+    if (FAILED(GetCommonTextureInfo(pResource, &textureInfo))) {
+      Logger::err("D3D11Device: Cannot create shader resource view: Invalid texture");
       return E_INVALIDARG;
+    }
     
     // Fill in Vulkan image view info
     DxvkImageViewCreateInfo viewInfo;
@@ -451,8 +357,7 @@ namespace dxvk {
       *ppRTView = ref(new D3D11RenderTargetView(
         this, pResource, desc, nullptr,
         m_dxvkDevice->createImageView(
-          imageResource->GetDXVKImage(),
-          viewInfo)));
+          textureInfo.image, viewInfo)));
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
@@ -486,12 +391,12 @@ namespace dxvk {
     }
     
     // Retrieve the image that we are going to create the view for
-    Com<IDXGIImageResourcePrivate> imageResource;
+    D3D11TextureInfo textureInfo;
     
-    if (FAILED(pResource->QueryInterface(
-        __uuidof(IDXGIImageResourcePrivate),
-        reinterpret_cast<void**>(&imageResource))))
+    if (FAILED(GetCommonTextureInfo(pResource, &textureInfo))) {
+      Logger::err("D3D11Device: Cannot create shader resource view: Invalid texture");
       return E_INVALIDARG;
+    }
     
     // Fill in Vulkan image view info
     DxvkImageViewCreateInfo viewInfo;
@@ -546,8 +451,7 @@ namespace dxvk {
       *ppDepthStencilView = ref(new D3D11DepthStencilView(
         this, pResource, desc, nullptr,
         m_dxvkDevice->createImageView(
-          imageResource->GetDXVKImage(),
-          viewInfo)));
+          textureInfo.image, viewInfo)));
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
@@ -1120,6 +1024,13 @@ namespace dxvk {
   }
   
   
+  DxgiFormatPair STDMETHODCALLTYPE D3D11Device::LookupFormat(
+          DXGI_FORMAT           format,
+          DxgiFormatMode        mode) const {
+    return m_dxgiAdapter->LookupFormat(format, mode);
+  }
+  
+  
   VkPipelineStageFlags D3D11Device::GetEnabledShaderStages() const {
     VkPipelineStageFlags enabledShaderPipelineStages
       = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
@@ -1251,7 +1162,7 @@ namespace dxvk {
   
   
   void D3D11Device::InitTexture(
-          IDXGIImageResourcePrivate*  pImage,
+          D3D11Texture2D*             pImage,
     const D3D11_SUBRESOURCE_DATA*     pInitialData) {
     std::lock_guard<std::mutex> lock(m_resourceInitMutex);;
     m_resourceInitContext->beginRecording(
@@ -1442,19 +1353,6 @@ namespace dxvk {
           resourceDim));
         return E_INVALIDARG;
     }
-  }
-  
-  
-  HRESULT D3D11Device::GetSampleCount(UINT Count, VkSampleCountFlagBits* pCount) const {
-    switch (Count) {
-      case  1: *pCount = VK_SAMPLE_COUNT_1_BIT;  return S_OK;
-      case  2: *pCount = VK_SAMPLE_COUNT_2_BIT;  return S_OK;
-      case  4: *pCount = VK_SAMPLE_COUNT_4_BIT;  return S_OK;
-      case  8: *pCount = VK_SAMPLE_COUNT_8_BIT;  return S_OK;
-      case 16: *pCount = VK_SAMPLE_COUNT_16_BIT; return S_OK;
-    }
-    
-    return E_INVALIDARG;
   }
   
   

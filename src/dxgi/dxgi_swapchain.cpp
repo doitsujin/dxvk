@@ -1,5 +1,4 @@
 #include "dxgi_factory.h"
-#include "dxgi_resource.h"
 #include "dxgi_swapchain.h"
 
 namespace dxvk {
@@ -99,7 +98,7 @@ namespace dxvk {
       return DXGI_ERROR_INVALID_CALL;
     }
     
-    return m_backBufferIface->QueryInterface(riid, ppSurface);
+    return m_backBuffer->QueryInterface(riid, ppSurface);
   }
   
   
@@ -327,21 +326,12 @@ namespace dxvk {
     VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT;
     
     if (FAILED(GetSampleCount(m_desc.SampleDesc.Count, &sampleCount)))
-      throw DxvkError("DxgiSwapChain::createBackBuffer: Invalid sample count");
+      throw DxvkError("DxgiSwapChain: Invalid sample count");
     
-    const Rc<DxvkImage> backBuffer = m_presenter->createBackBuffer(
-      m_desc.BufferDesc.Width, m_desc.BufferDesc.Height,
-      m_adapter->LookupFormat(m_desc.BufferDesc.Format, DxgiFormatMode::Color).actual,
-      sampleCount);
+    if (FAILED(m_presentDevice->CreateSwapChainBackBuffer(&m_desc, &m_backBuffer)))
+      throw DxvkError("DxgiSwapChain: Failed to create back buffer");
     
-    const Com<IDXGIImageResourcePrivate> resource
-      = new DxgiImageResource(m_device.ptr(), backBuffer,
-          DXGI_USAGE_BACK_BUFFER | m_desc.BufferUsage);
-    
-    // Wrap the back buffer image into an interface
-    // that the device can use to access the image.
-    if (FAILED(m_presentDevice->WrapSwapChainBackBuffer(resource.ptr(), &m_desc, &m_backBufferIface)))
-      throw DxvkError("DxgiSwapChain::createBackBuffer: Failed to create back buffer interface");
+    m_presenter->updateBackBuffer(m_backBuffer->GetDXVKImage());
   }
   
   

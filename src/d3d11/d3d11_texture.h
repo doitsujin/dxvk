@@ -9,16 +9,14 @@ namespace dxvk {
   
   class D3D11Device;
   
-  
   class D3D11Texture2D : public D3D11DeviceChild<ID3D11Texture2D> {
     
   public:
     
     D3D11Texture2D(
-            D3D11Device*                device,
-            IDXGIImageResourcePrivate*  resource,
-            DxgiFormatMode              formatMode,
-      const D3D11_TEXTURE2D_DESC&       desc);
+            D3D11Device*                pDevice,
+      const D3D11_TEXTURE2D_DESC*       pDesc);
+    
     ~D3D11Texture2D();
     
     HRESULT STDMETHODCALLTYPE QueryInterface(
@@ -43,16 +41,40 @@ namespace dxvk {
     }
     
     Rc<DxvkImage> GetDXVKImage() const {
-      return m_resource->GetDXVKImage();
+      return m_image;
     }
     
   private:
     
     Com<D3D11Device>                m_device;
-    Com<IDXGIImageResourcePrivate>  m_resource;
     DxgiFormatMode                  m_formatMode;
     D3D11_TEXTURE2D_DESC            m_desc;
+    Rc<DxvkImage>                   m_image;
     
   };
+  
+  
+  /**
+   * \brief Common texture info
+   * 
+   * Stores the image and the image format
+   * mode for a texture of any type.
+   */
+  struct D3D11TextureInfo {
+    DxgiFormatMode  formatMode;
+    Rc<DxvkImage>   image;
+  };
+  
+  
+  /**
+   * \brief Retrieves common info about a texture
+   * 
+   * \param [in] pResource The resource. Must be a texture.
+   * \param [out] pTextureInfo Pointer to the texture info struct.
+   * \returns E_INVALIDARG if the resource is not a texture
+   */
+  HRESULT GetCommonTextureInfo(
+          ID3D11Resource*   pResource,
+          D3D11TextureInfo* pTextureInfo);
   
 }

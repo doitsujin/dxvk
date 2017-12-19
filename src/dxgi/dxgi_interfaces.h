@@ -89,32 +89,17 @@ IDXGIDevicePrivate : public IDXGIDevice1 {
 
 
 /**
- * \brief Private buffer resource interface
- * Provides access to a raw DXVK buffer.
+ * \brief Swap chain back buffer interface
+ * 
+ * Allows the swap chain and presenter to query
+ * the underlying image while it is embedded in
+ * a texture object specified by the client API.
  */
 MIDL_INTERFACE("5679becd-8547-4d93-96a1-e61a1ce7ef37")
-IDXGIBufferResourcePrivate : public IDXGIResource {
+IDXGIPresentBackBuffer : public IUnknown {
   static const GUID guid;
   
-  virtual dxvk::Rc<dxvk::DxvkBuffer> STDMETHODCALLTYPE GetDXVKBuffer() = 0;
-  
-  virtual void STDMETHODCALLTYPE SetResourceLayer(
-          IUnknown* pLayer) = 0;
-};
-
-
-/**
- * \brief Private image resource interface
- * Provides access to a raw DXVK image.
- */
-MIDL_INTERFACE("1cfe6592-7de0-4a07-8dcb-4543cbbc6a7d")
-IDXGIImageResourcePrivate : public IDXGIResource {
-  static const GUID guid;
-  
-  virtual dxvk::Rc<dxvk::DxvkImage> STDMETHODCALLTYPE GetDXVKImage() = 0;
-  
-  virtual void STDMETHODCALLTYPE SetResourceLayer(
-          IUnknown* pLayer) = 0;
+  virtual dxvk::Rc<dxvk::DxvkImage> GetDXVKImage() = 0;
 };
 
 
@@ -130,20 +115,13 @@ IDXGIPresentDevicePrivate : public IUnknown {
   static const GUID guid;
   
   /**
-   * \brief Wraps swap chain image into a texture interface
+   * \brief Creates a swap chain back buffer
    * 
-   * Creates an interface to the back buffer image of a
-   * swap chain. This interface will be returned by the
-   * swap chain's \c GetBuffer method.
-   * \param [in] image Image to wrap
-   * \param [in] pSwapChainDesc Swap chain properties
-   * \param [in] ppInterface Target interface
    * \returns \c S_OK on success
    */
-  virtual HRESULT STDMETHODCALLTYPE WrapSwapChainBackBuffer(
-          IDXGIImageResourcePrivate*  pResource,
+  virtual HRESULT STDMETHODCALLTYPE CreateSwapChainBackBuffer(
     const DXGI_SWAP_CHAIN_DESC*       pSwapChainDesc,
-          IUnknown**                  ppInterface) = 0;
+          IDXGIPresentBackBuffer**    ppBackBuffer) = 0;
   
   /**
    * \brief Flushes the immediate context
@@ -170,6 +148,5 @@ IDXGIPresentDevicePrivate : public IUnknown {
 
 DXVK_DEFINE_GUID(IDXGIAdapterPrivate);
 DXVK_DEFINE_GUID(IDXGIDevicePrivate);
+DXVK_DEFINE_GUID(IDXGIPresentBackBuffer);
 DXVK_DEFINE_GUID(IDXGIPresentDevicePrivate);
-DXVK_DEFINE_GUID(IDXGIBufferResourcePrivate);
-DXVK_DEFINE_GUID(IDXGIImageResourcePrivate);

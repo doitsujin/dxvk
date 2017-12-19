@@ -94,7 +94,7 @@ namespace dxvk {
     SDL_Window*         m_window = nullptr;
     
     Rc<DxgiPresenter>   m_presenter;
-    Com<IUnknown>       m_backBufferIface;
+    Com<IDXGIPresentBackBuffer> m_backBuffer;
     
     void createPresenter();
     void createBackBuffer();

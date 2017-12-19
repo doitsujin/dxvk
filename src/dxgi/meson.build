@@ -6,7 +6,6 @@ dxgi_src = [
   'dxgi_main.cpp',
   'dxgi_output.cpp',
   'dxgi_presenter.cpp',
-  'dxgi_resource.cpp',
   'dxgi_swapchain.cpp',
 ]
 

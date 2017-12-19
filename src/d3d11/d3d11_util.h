@@ -8,10 +8,14 @@
 
 namespace dxvk {
   
+  HRESULT GetSampleCount(
+          UINT                      Count,
+          VkSampleCountFlagBits*    pCount);
+  
   VkCompareOp DecodeCompareOp(
-          D3D11_COMPARISON_FUNC mode);
+          D3D11_COMPARISON_FUNC     mode);
   
   VkMemoryPropertyFlags GetMemoryFlagsForUsage(
-          D3D11_USAGE             usage);
+          D3D11_USAGE               usage);
   
 }
