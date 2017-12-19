@@ -49,24 +49,25 @@ namespace dxvk {
     Rc<DxvkAdapter> STDMETHODCALLTYPE GetDXVKAdapter() final;
     
     DxgiFormatPair STDMETHODCALLTYPE LookupFormat(
-            DXGI_FORMAT format) final;
+            DXGI_FORMAT format, DxgiFormatMode mode) final;
     
   private:
+    
+    using FormatMap = std::unordered_map<DXGI_FORMAT, DxgiFormatPair>;
     
     Com<DxgiFactory>  m_factory;
     Rc<DxvkAdapter>   m_adapter;
     
-    std::unordered_map<DXGI_FORMAT, DxgiFormatPair> m_formats;
+    FormatMap         m_colorFormats;
+    FormatMap         m_depthFormats;
     
-    void AddFormat(
+    void AddColorFormat(
             DXGI_FORMAT                       srcFormat,
             VkFormat                          dstFormat);
     
-    void AddFormat(
+    void AddDepthFormat(
             DXGI_FORMAT                       srcFormat,
-            VkFormat                          dstFormat,
-      const std::initializer_list<VkFormat>&  fallbacks,
-            VkFormatFeatureFlags              features);
+            VkFormat                          dstFormat);
     
     void SetupFormatTable();
     

@@ -107,9 +107,17 @@ namespace dxvk {
     const D3D11_TEXTURE2D_DESC*   pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
           ID3D11Texture2D**       ppTexture2D) {
+    DxgiFormatMode formatMode = DxgiFormatMode::Any;
+    
+    if (pDesc->BindFlags & D3D11_BIND_RENDER_TARGET)
+      formatMode = DxgiFormatMode::Color;
+    
+    if (pDesc->BindFlags & D3D11_BIND_DEPTH_STENCIL)
+      formatMode = DxgiFormatMode::Depth;
+    
     DxvkImageCreateInfo info;
     info.type           = VK_IMAGE_TYPE_2D;
-    info.format         = m_dxgiAdapter->LookupFormat(pDesc->Format).actual;
+    info.format         = m_dxgiAdapter->LookupFormat(pDesc->Format, formatMode).actual;
     info.flags          = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
     info.sampleCount    = VK_SAMPLE_COUNT_1_BIT;
     info.extent.width   = pDesc->Width;
@@ -187,7 +195,7 @@ namespace dxvk {
         return hr;
       
       *ppTexture2D = ref(new D3D11Texture2D(
-        this, image.ptr(), *pDesc));
+        this, image.ptr(), formatMode, *pDesc));
       
       InitTexture(image.ptr(), pInitialData);
     }
@@ -235,11 +243,20 @@ namespace dxvk {
             reinterpret_cast<void**>(&imageResource))))
         return E_INVALIDARG;
       
+      // TODO fix this properly
+      DxgiFormatMode formatMode = DxgiFormatMode::Any;
+      
+      Com<D3D11Texture2D> texture2D;
+      if (SUCCEEDED(pResource->QueryInterface(
+            __uuidof(ID3D11Texture2D),
+            reinterpret_cast<void**>(&texture2D))))
+        formatMode = texture2D->GetFormatMode();
+      
       // Fill in the view info. The view type depends solely
       // on the view dimension field in the view description,
       // not on the resource type.
       DxvkImageViewCreateInfo viewInfo;
-      viewInfo.format = m_dxgiAdapter->LookupFormat(desc.Format).actual;
+      viewInfo.format = m_dxgiAdapter->LookupFormat(desc.Format, formatMode).actual;
       viewInfo.aspect = imageFormatInfo(viewInfo.format)->aspectMask;
       
       switch (desc.ViewDimension) {
@@ -383,7 +400,7 @@ namespace dxvk {
     
     // Fill in Vulkan image view info
     DxvkImageViewCreateInfo viewInfo;
-    viewInfo.format = m_dxgiAdapter->LookupFormat(desc.Format).actual;
+    viewInfo.format = m_dxgiAdapter->LookupFormat(desc.Format, DxgiFormatMode::Color).actual;
     viewInfo.aspect = imageFormatInfo(viewInfo.format)->aspectMask;
     
     switch (desc.ViewDimension) {
@@ -478,7 +495,7 @@ namespace dxvk {
     
     // Fill in Vulkan image view info
     DxvkImageViewCreateInfo viewInfo;
-    viewInfo.format = m_dxgiAdapter->LookupFormat(desc.Format).actual;
+    viewInfo.format = m_dxgiAdapter->LookupFormat(desc.Format, DxgiFormatMode::Depth).actual;
     viewInfo.aspect = imageFormatInfo(viewInfo.format)->aspectMask;
     
     switch (desc.ViewDimension) {
@@ -573,7 +590,7 @@ namespace dxvk {
         attrib.location = entry->registerId;
         attrib.binding  = pInputElementDescs[i].InputSlot;
         attrib.format   = m_dxgiAdapter->LookupFormat(
-          pInputElementDescs[i].Format).actual;
+          pInputElementDescs[i].Format, DxgiFormatMode::Color).actual;
         attrib.offset   = pInputElementDescs[i].AlignedByteOffset;
         
         // The application may choose to let the implementation
@@ -964,7 +981,8 @@ namespace dxvk {
     *pNumQualityLevels = 0;
     
     // We need to check whether the format is 
-    VkFormat format = m_dxgiAdapter->LookupFormat(Format).actual;
+    VkFormat format = m_dxgiAdapter->LookupFormat(
+      Format, DxgiFormatMode::Any).actual;
     
     if (format == VK_FORMAT_UNDEFINED) {
       Logger::err(str::format("D3D11: Unsupported format: ", Format));
@@ -1466,7 +1484,7 @@ namespace dxvk {
   
   
   HRESULT D3D11Device::GetFormatSupportFlags(DXGI_FORMAT Format, UINT* pFlags) const {
-    const VkFormat           fmt     = m_dxgiAdapter->LookupFormat(Format).actual;
+    const VkFormat fmt = m_dxgiAdapter->LookupFormat(Format, DxgiFormatMode::Any).actual;
     const VkFormatProperties fmtInfo = m_dxvkAdapter->formatProperties(fmt);
     
     if (fmt == VK_FORMAT_UNDEFINED)

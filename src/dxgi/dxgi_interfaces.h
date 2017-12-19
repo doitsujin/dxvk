@@ -24,6 +24,20 @@ namespace dxvk {
     VkFormat wanted = VK_FORMAT_UNDEFINED;
     VkFormat actual = VK_FORMAT_UNDEFINED;
   };
+  
+  /**
+   * \brief Format lookup mode
+   * 
+   * When looking up an image format, additional information
+   * might be needed on how the image is going to be used.
+   * This is used to properly map typeless formats and color
+   * formats to depth formats if they are used on depth images.
+   */
+  enum class DxgiFormatMode : uint32_t {
+    Any   = 0,
+    Color = 1,
+    Depth = 2,
+  };
 }
   
 /**
@@ -39,8 +53,20 @@ IDXGIAdapterPrivate : public IDXGIAdapter1 {
   
   virtual dxvk::Rc<dxvk::DxvkAdapter> STDMETHODCALLTYPE GetDXVKAdapter() = 0;
   
+  /**
+   * \brief Maps a DXGI format to a compatible Vulkan format
+   * 
+   * For color formats, the returned Vulkan format has the
+   * same memory layout as the DXGI format so that it can
+   * be mapped and copied to buffers. For depth-stencil
+   * formats, this is not guaranteed.
+   * \param [in] format The DXGI format
+   * \param [in] mode Format lookup mode
+   * \returns Vulkan format pair
+   */
   virtual dxvk::DxgiFormatPair STDMETHODCALLTYPE LookupFormat(
-          DXGI_FORMAT format) = 0;
+          DXGI_FORMAT          format,
+          dxvk::DxgiFormatMode mode) = 0;
 };
 
 

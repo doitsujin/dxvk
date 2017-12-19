@@ -331,7 +331,7 @@ namespace dxvk {
     
     const Rc<DxvkImage> backBuffer = m_presenter->createBackBuffer(
       m_desc.BufferDesc.Width, m_desc.BufferDesc.Height,
-      m_adapter->LookupFormat(m_desc.BufferDesc.Format).actual,
+      m_adapter->LookupFormat(m_desc.BufferDesc.Format, DxgiFormatMode::Color).actual,
       sampleCount);
     
     const Com<IDXGIImageResourcePrivate> resource

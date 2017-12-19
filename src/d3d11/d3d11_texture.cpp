@@ -6,10 +6,12 @@ namespace dxvk {
   D3D11Texture2D::D3D11Texture2D(
           D3D11Device*                device,
           IDXGIImageResourcePrivate*  resource,
+          DxgiFormatMode              formatMode,
     const D3D11_TEXTURE2D_DESC&       desc)
-  : m_device  (device),
-    m_resource(resource),
-    m_desc    (desc) {
+  : m_device    (device),
+    m_resource  (resource),
+    m_formatMode(formatMode),
+    m_desc      (desc) {
     
   }
   
@@ -58,11 +60,6 @@ namespace dxvk {
   
   void STDMETHODCALLTYPE D3D11Texture2D::GetDesc(D3D11_TEXTURE2D_DESC *pDesc) {
     *pDesc = m_desc;
-  }
-  
-  
-  Rc<DxvkImage> D3D11Texture2D::GetDXVKImage() {
-    return m_resource->GetDXVKImage();
   }
   
 }

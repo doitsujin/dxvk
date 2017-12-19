@@ -35,7 +35,7 @@ namespace dxvk {
     desc.MiscFlags          = 0;
     
     *ppInterface = ref(new D3D11Texture2D(
-      m_device, pResource, desc));
+      m_device, pResource, DxgiFormatMode::Color, desc));
     return S_OK;
   }
   
