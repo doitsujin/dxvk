@@ -520,6 +520,13 @@ namespace dxvk {
             uint32_t                sampledImage,
             uint32_t                coordinates);
     
+    uint32_t opImageSampleDrefExplicitLod(
+            uint32_t                resultType,
+            uint32_t                sampledImage,
+            uint32_t                coordinates,
+            uint32_t                reference,
+            uint32_t                lod);
+    
     void opLoopMerge(
             uint32_t                mergeBlock,
             uint32_t                continueTarget,

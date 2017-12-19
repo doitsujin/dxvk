@@ -1209,7 +1209,7 @@ namespace dxvk {
     // TODO support address offset
     // TODO support more sample ops
     
-    // sample has four operands:
+    // All sample instructions have at least these operands:
     //  (dst0) The destination register
     //  (src0) Texture coordinates
     //  (src1) The texture itself
@@ -1227,6 +1227,12 @@ namespace dxvk {
     const DxbcRegisterValue coord = emitRegisterLoad(
       texCoordReg, DxbcRegMask(true, true, true, true));
     
+    // Load reference value for depth-compare operations
+    DxbcRegisterValue referenceValue;
+    
+    if (ins.op == DxbcOpcode::SampleC || ins.op == DxbcOpcode::SampleClz)
+      referenceValue = emitRegisterLoad(ins.src[3], DxbcRegMask(true, false, false, false));
+    
     // Combine the texture and the sampler into a sampled image
     const uint32_t sampledImageType = m_module.defSampledImageType(
       m_textures.at(textureId).textureTypeId);
@@ -1242,18 +1248,41 @@ namespace dxvk {
     
     // Sampling an image in SPIR-V always returns a four-component
     // vector, so we need to declare the corresponding type here
-    // TODO infer sampled type properly
+    // TODO infer sampled types properly
     DxbcRegisterValue result;
-    result.type.ctype  = DxbcScalarType::Float32;
-    result.type.ccount = 4;
-    result.id = m_module.opImageSampleImplicitLod(
-      getVectorTypeId(result.type),
-      sampledImageId, coord.id);
+    
+    switch (ins.op) {
+      case DxbcOpcode::Sample: {
+        result.type.ctype  = DxbcScalarType::Float32;
+        result.type.ccount = 4;
+        result.id = m_module.opImageSampleImplicitLod(
+          getVectorTypeId(result.type),
+          sampledImageId, coord.id);
+      } break;
+      
+      case DxbcOpcode::SampleClz: {
+        result.type.ctype  = DxbcScalarType::Float32;
+        result.type.ccount = 1;
+        result.id = m_module.opImageSampleDrefExplicitLod(
+          getVectorTypeId(result.type),
+          sampledImageId, coord.id,
+          referenceValue.id,
+          m_module.constf32(0.0f));
+      } break;
+      
+      default:
+        Logger::warn(str::format(
+          "DxbcCompiler: Unhandled instruction: ",
+          ins.op));
+        return;
+    }
     
     // Swizzle components using the texture swizzle
     // and the destination operand's write mask
-    result = emitRegisterSwizzle(result,
-      textureReg.swizzle, ins.dst[0].mask);
+    if (result.type.ccount != 1) {
+      result = emitRegisterSwizzle(result,
+        textureReg.swizzle, ins.dst[0].mask);
+    }
     
     emitRegisterStore(ins.dst[0], result);
   }

@@ -169,10 +169,10 @@ namespace dxvk {
     } },
     /* IMul                                 */
     { 4, DxbcInstClass::VectorImul, {
-      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
-      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
-      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
-      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::DstReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::DstReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
     } },
     /* INe                                  */
     { 3, DxbcInstClass::VectorCmp, {
@@ -300,9 +300,21 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
     } },
     /* SampleC                              */
-    { },
+    { 5, DxbcInstClass::TextureSample, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* SampleClz                            */
-    { },
+    { 5, DxbcInstClass::TextureSample, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* SampleL                              */
     { },
     /* SampleD                              */
@@ -335,10 +347,10 @@ namespace dxvk {
     { },
     /* UMul                                 */
     { 4, DxbcInstClass::VectorImul, {
-      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
-      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
-      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
-      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
     } },
     /* UMad                                 */
     { },
