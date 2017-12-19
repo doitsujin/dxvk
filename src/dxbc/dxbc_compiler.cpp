@@ -207,81 +207,92 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitDclInterfaceReg(const DxbcShaderInstruction& ins) {
-    // dcl_input and dcl_output instructions
-    // have the following operands:
-    //    (dst0) The register to declare
-    //    (imm0) The system value (optional)
-    uint32_t regDim = 0;
-    uint32_t regIdx = 0;
-    
-    // In the vertex and fragment shader stage, the
-    // operand indices will have the following format:
-    //    (0) Register index
-    // 
-    // In other stages, the input and output registers
-    // may be declared as arrays of a fixed size:
-    //    (0) Array length
-    //    (1) Register index
-    if (ins.dst[0].idxDim == 2) {
-      regDim = ins.dst[0].idx[0].offset;
-      regIdx = ins.dst[0].idx[1].offset;
-    } else if (ins.dst[0].idxDim == 1) {
-      regIdx = ins.dst[0].idx[0].offset;
-    } else {
-      Logger::err(str::format(
-        "DxbcCompiler: ", ins.op,
-        ": Invalid index dimension"));
-      return;
-    }
-    
-    // This declaration may map an output register to a system
-    // value. If that is the case, the system value type will
-    // be stored in the second operand.
-    const bool hasSv =
-         ins.op == DxbcOpcode::DclInputSgv
-      || ins.op == DxbcOpcode::DclInputSiv
-      || ins.op == DxbcOpcode::DclInputPsSgv
-      || ins.op == DxbcOpcode::DclInputPsSiv
-      || ins.op == DxbcOpcode::DclOutputSgv
-      || ins.op == DxbcOpcode::DclOutputSiv;
-    
-    DxbcSystemValue sv = DxbcSystemValue::None;
-    
-    if (hasSv)
-      sv = static_cast<DxbcSystemValue>(ins.imm[0].u32);
-    
-    // In the pixel shader, inputs are declared with an
-    // interpolation mode that is part of the op token.
-    const bool hasInterpolationMode =
-         ins.op == DxbcOpcode::DclInputPs
-      || ins.op == DxbcOpcode::DclInputPsSiv;
-    
-    DxbcInterpolationMode im = DxbcInterpolationMode::Undefined;
-    
-    if (hasInterpolationMode)
-      im = ins.controls.interpolation;
-    
-    // Declare the actual input/output variable
-    switch (ins.op) {
-      case DxbcOpcode::DclInput:
-      case DxbcOpcode::DclInputSgv:
-      case DxbcOpcode::DclInputSiv:
-      case DxbcOpcode::DclInputPs:
-      case DxbcOpcode::DclInputPsSgv:
-      case DxbcOpcode::DclInputPsSiv:
-        this->emitDclInput(regIdx, regDim, ins.dst[0].mask, sv, im);
-        break;
-      
-      case DxbcOpcode::DclOutput:
-      case DxbcOpcode::DclOutputSgv:
-      case DxbcOpcode::DclOutputSiv:
-        this->emitDclOutput(regIdx, regDim, ins.dst[0].mask, sv, im);
-        break;
+    switch (ins.dst[0].type) {
+      case DxbcOperandType::Input:
+      case DxbcOperandType::Output: {
+        // dcl_input and dcl_output instructions
+        // have the following operands:
+        //    (dst0) The register to declare
+        //    (imm0) The system value (optional)
+        uint32_t regDim = 0;
+        uint32_t regIdx = 0;
+        
+        // In the vertex and fragment shader stage, the
+        // operand indices will have the following format:
+        //    (0) Register index
+        // 
+        // In other stages, the input and output registers
+        // may be declared as arrays of a fixed size:
+        //    (0) Array length
+        //    (1) Register index
+        if (ins.dst[0].idxDim == 2) {
+          regDim = ins.dst[0].idx[0].offset;
+          regIdx = ins.dst[0].idx[1].offset;
+        } else if (ins.dst[0].idxDim == 1) {
+          regIdx = ins.dst[0].idx[0].offset;
+        } else {
+          Logger::err(str::format(
+            "DxbcCompiler: ", ins.op,
+            ": Invalid index dimension"));
+          return;
+        }
+        
+        // This declaration may map an output register to a system
+        // value. If that is the case, the system value type will
+        // be stored in the second operand.
+        const bool hasSv =
+            ins.op == DxbcOpcode::DclInputSgv
+          || ins.op == DxbcOpcode::DclInputSiv
+          || ins.op == DxbcOpcode::DclInputPsSgv
+          || ins.op == DxbcOpcode::DclInputPsSiv
+          || ins.op == DxbcOpcode::DclOutputSgv
+          || ins.op == DxbcOpcode::DclOutputSiv;
+        
+        DxbcSystemValue sv = DxbcSystemValue::None;
+        
+        if (hasSv)
+          sv = static_cast<DxbcSystemValue>(ins.imm[0].u32);
+        
+        // In the pixel shader, inputs are declared with an
+        // interpolation mode that is part of the op token.
+        const bool hasInterpolationMode =
+            ins.op == DxbcOpcode::DclInputPs
+          || ins.op == DxbcOpcode::DclInputPsSiv;
+        
+        DxbcInterpolationMode im = DxbcInterpolationMode::Undefined;
+        
+        if (hasInterpolationMode)
+          im = ins.controls.interpolation;
+        
+        // Declare the actual input/output variable
+        switch (ins.op) {
+          case DxbcOpcode::DclInput:
+          case DxbcOpcode::DclInputSgv:
+          case DxbcOpcode::DclInputSiv:
+          case DxbcOpcode::DclInputPs:
+          case DxbcOpcode::DclInputPsSgv:
+          case DxbcOpcode::DclInputPsSiv:
+            this->emitDclInput(regIdx, regDim, ins.dst[0].mask, sv, im);
+            break;
+          
+          case DxbcOpcode::DclOutput:
+          case DxbcOpcode::DclOutputSgv:
+          case DxbcOpcode::DclOutputSiv:
+            this->emitDclOutput(regIdx, regDim, ins.dst[0].mask, sv, im);
+            break;
+          
+          default:
+            Logger::err(str::format(
+              "DxbcCompiler: Unexpected opcode: ",
+              ins.op));
+        }
+      } break;
       
       default:
         Logger::err(str::format(
-          "DxbcCompiler: Unexpected opcode: ",
-          ins.op));
+          "DxbcCompiler: Unsupported operand type declaration: ",
+          ins.dst[0].type));
+        
     }
   }
   
@@ -1958,7 +1969,8 @@ namespace dxvk {
     // documentation, they are required to match the type of
     // the render target.
     for (auto e = m_osgn->begin(); e != m_osgn->end(); e++) {
-      if (e->systemValue == DxbcSystemValue::None) {
+      if (e->systemValue == DxbcSystemValue::None
+       && e->registerId  != 0xFFFFFFFF /* depth */) {
         DxbcRegisterInfo info;
         info.type.ctype   = e->componentType;
         info.type.ccount  = e->componentMask.setCount();
