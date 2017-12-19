@@ -110,6 +110,16 @@ namespace dxvk {
     
     /**
      * \brief Resource binding info
+     * 
+     * \param [in] id Binding index
+     * \returns Resource binding info
+     */
+    const DxvkDescriptorSlot& binding(uint32_t id) const {
+      return m_bindingSlots.at(id);
+    }
+    
+    /**
+     * \brief Resource binding info
      * \returns Resource binding info
      */
     const DxvkDescriptorSlot* bindings() const {

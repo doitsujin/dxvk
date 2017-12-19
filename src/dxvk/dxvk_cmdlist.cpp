@@ -120,9 +120,9 @@ namespace dxvk {
       curr.dstArrayElement  = 0;
       curr.descriptorCount  = 1;
       curr.descriptorType   = binding.type;
-      curr.pImageInfo       = &descriptorInfos[binding.slot].image;
-      curr.pBufferInfo      = &descriptorInfos[binding.slot].buffer;
-      curr.pTexelBufferView = &descriptorInfos[binding.slot].texelBuffer;
+      curr.pImageInfo       = &descriptorInfos[i].image;
+      curr.pBufferInfo      = &descriptorInfos[i].buffer;
+      curr.pTexelBufferView = &descriptorInfos[i].texelBuffer;
     }
     
     m_vkd->vkUpdateDescriptorSets(

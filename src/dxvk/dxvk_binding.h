@@ -27,16 +27,7 @@ namespace dxvk {
     
     DxvkShaderResourceSlots() { }
     DxvkShaderResourceSlots(size_t n) {
-      m_resources  .resize(n);
-      m_descriptors.resize(n);
-    }
-    
-    uint32_t descriptorCount() const {
-      return m_descriptors.size();
-    }
-    
-    const DxvkDescriptorInfo* descriptors() const {
-      return m_descriptors.data();
+      m_resources.resize(n);
     }
     
     const DxvkShaderResourceSlot& getShaderResource(uint32_t slot) const {
@@ -45,16 +36,13 @@ namespace dxvk {
     
     void bindShaderResource(
             uint32_t                slot,
-      const DxvkShaderResourceSlot& resource,
-      const DxvkDescriptorInfo&     descriptor) {
-      m_resources   .at(slot) = resource;
-      m_descriptors .at(slot) = descriptor;
+      const DxvkShaderResourceSlot& resource) {
+      m_resources.at(slot) = resource;
     }
     
   private:
     
     std::vector<DxvkShaderResourceSlot> m_resources;
-    std::vector<DxvkDescriptorInfo>     m_descriptors;
     
   };
   

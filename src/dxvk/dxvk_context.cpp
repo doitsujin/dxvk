@@ -81,12 +81,7 @@ namespace dxvk {
       DxvkShaderResourceSlot resource;
       resource.bufferSlice = buffer;
       
-      DxvkDescriptorInfo descriptor;
-      
-      if (buffer.handle() != VK_NULL_HANDLE)
-        descriptor.buffer = buffer.descriptorInfo();
-      
-      rc->bindShaderResource(slot, resource, descriptor);
+      rc->bindShaderResource(slot, resource);
     }
   }
   
@@ -103,12 +98,7 @@ namespace dxvk {
       DxvkShaderResourceSlot resource;
       resource.bufferView = bufferView;
       
-      DxvkDescriptorInfo descriptor;
-      
-      if (bufferView != nullptr)
-        descriptor.texelBuffer = bufferView->handle();
-      
-      rc->bindShaderResource(slot, resource, descriptor);
+      rc->bindShaderResource(slot, resource);
     }
   }
   
@@ -125,14 +115,7 @@ namespace dxvk {
       DxvkShaderResourceSlot resource;
       resource.imageView = image;
       
-      DxvkDescriptorInfo descriptor;
-      
-      if (image != nullptr) {
-        descriptor.image.imageView   = image->handle();
-        descriptor.image.imageLayout = image->imageInfo().layout;
-      }
-      
-      rc->bindShaderResource(slot, resource, descriptor);
+      rc->bindShaderResource(slot, resource);
     }
   }
   
@@ -149,12 +132,7 @@ namespace dxvk {
       DxvkShaderResourceSlot resource;
       resource.sampler = sampler;
       
-      DxvkDescriptorInfo descriptor;
-      
-      if (sampler != nullptr)
-        descriptor.image.sampler = sampler->handle();
-      
-      rc->bindShaderResource(slot, resource, descriptor);
+      rc->bindShaderResource(slot, resource);
     }
   }
   
@@ -867,13 +845,13 @@ namespace dxvk {
       
       // TODO refcount used resources
       
-      m_cmd->bindResourceDescriptors(
-        VK_PIPELINE_BIND_POINT_COMPUTE,
-        layout->pipelineLayout(),
-        layout->descriptorSetLayout(),
-        layout->bindingCount(),
-        layout->bindings(),
-        m_cResources.descriptors());
+//       m_cmd->bindResourceDescriptors(
+//         VK_PIPELINE_BIND_POINT_COMPUTE,
+//         layout->pipelineLayout(),
+//         layout->descriptorSetLayout(),
+//         layout->bindingCount(),
+//         layout->bindings(),
+//         m_cResources.descriptors());
     }
   }
   
@@ -884,13 +862,51 @@ namespace dxvk {
       
       auto layout = m_state.gp.pipeline->layout();
       
+      // TODO recreate resource views if the underlying
+      // resource was marked as dirty after invalidation
+      // TODO move this into a separate method so that
+      // compute can use this code as well
+      std::vector<DxvkDescriptorInfo> descriptors;
+      
+      for (uint32_t i = 0; i < layout->bindingCount(); i++) {
+        const uint32_t slot = layout->binding(i).slot;
+        const auto& res = m_gResources.getShaderResource(slot);
+        
+        DxvkDescriptorInfo descriptor;
+        
+        if (res.sampler != nullptr) {
+          m_cmd->trackResource(res.sampler);
+          descriptor.image.sampler = res.sampler->handle();
+        }
+        
+        if (res.imageView != nullptr) {
+          m_cmd->trackResource(res.imageView);
+          m_cmd->trackResource(res.imageView->image());
+          descriptor.image.imageView   = res.imageView->handle();
+          descriptor.image.imageLayout = res.imageView->imageInfo().layout;
+        }
+        
+        if (res.bufferView != nullptr) {
+          m_cmd->trackResource(res.bufferView);
+          m_cmd->trackResource(res.bufferView->buffer()->resource());
+          descriptor.texelBuffer = res.bufferView->handle();
+        }
+        
+        if (res.bufferSlice.handle() != VK_NULL_HANDLE) {
+          m_cmd->trackResource(res.bufferSlice.buffer()->resource());
+          descriptor.buffer = res.bufferSlice.descriptorInfo();
+        }
+        
+        descriptors.push_back(descriptor);
+      }
+      
       m_cmd->bindResourceDescriptors(
         VK_PIPELINE_BIND_POINT_GRAPHICS,
         layout->pipelineLayout(),
         layout->descriptorSetLayout(),
         layout->bindingCount(),
         layout->bindings(),
-        m_gResources.descriptors());
+        descriptors.data());
     }
   }
   
@@ -1073,7 +1089,7 @@ namespace dxvk {
     m_barriers.recordCommands(m_cmd);
   }
   
-    
+  
   DxvkShaderResourceSlots* DxvkContext::getShaderResourceSlots(VkPipelineBindPoint pipe) {
     switch (pipe) {
       case VK_PIPELINE_BIND_POINT_GRAPHICS: return &m_gResources;
