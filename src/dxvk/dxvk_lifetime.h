@@ -1,6 +1,6 @@
 #pragma once
 
-#include <unordered_set>
+#include <vector>
 
 #include "dxvk_resource.h"
 
@@ -25,8 +25,10 @@ namespace dxvk {
      * \brief Adds a resource to track
      * \param [in] rc The resource to track
      */
-    void trackResource(
-      const Rc<DxvkResource>& rc);
+    void trackResource(const Rc<DxvkResource>& rc) {
+      m_resources.push_back(rc);
+      rc->acquire();
+    }
     
     /**
      * \brief Resets the command list
@@ -38,7 +40,7 @@ namespace dxvk {
     
   private:
     
-    std::unordered_set<Rc<DxvkResource>, RcHash<DxvkResource>> m_resources;
+    std::vector<Rc<DxvkResource>> m_resources;
     
   };
   
