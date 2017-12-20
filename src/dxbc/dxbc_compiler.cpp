@@ -494,67 +494,52 @@ namespace dxvk {
       Logger::warn("DxbcCompiler: dcl_resource: Ignoring resource return types");
     
     // Declare the actual sampled type
-    uint32_t sampledTypeId = 0;
+    const DxbcScalarType sampledType = [xType] {
+      switch (xType) {
+        case DxbcResourceReturnType::Float: return DxbcScalarType::Float32;
+        case DxbcResourceReturnType::Sint:  return DxbcScalarType::Sint32;
+        case DxbcResourceReturnType::Uint:  return DxbcScalarType::Uint32;
+        default: throw DxvkError(str::format("DxbcCompiler: Invalid sampled type: ", xType));
+      }
+    }();
     
-    switch (xType) {
-      case DxbcResourceReturnType::Float: sampledTypeId = m_module.defFloatType(32);    break;
-      case DxbcResourceReturnType::Sint:  sampledTypeId = m_module.defIntType  (32, 1); break;
-      case DxbcResourceReturnType::Uint:  sampledTypeId = m_module.defIntType  (32, 0); break;
-      default: throw DxvkError(str::format("DxbcCompiler: Invalid sampled type: ", xType));
-    }
+    const uint32_t sampledTypeId = getScalarTypeId(sampledType);
     
     // Declare the resource type
-    uint32_t textureTypeId = 0;
+    struct ImageTypeInfo {
+      spv::Dim dim;
+      uint32_t array;
+      uint32_t ms;
+      uint32_t sampled;
+    };
     
-    switch (resourceType) {
-      case DxbcResourceDim::Texture1D:
-        textureTypeId = m_module.defImageType(
-          sampledTypeId, spv::Dim1D, 0, 0, 0, 1,
-          spv::ImageFormatUnknown);
-        break;
-      
-      case DxbcResourceDim::Texture1DArr:
-        textureTypeId = m_module.defImageType(
-          sampledTypeId, spv::Dim1D, 0, 1, 0, 1,
-          spv::ImageFormatUnknown);
-        break;
-      
-      case DxbcResourceDim::Texture2D:
-        textureTypeId = m_module.defImageType(
-          sampledTypeId, spv::Dim2D, 0, 0, 0, 1,
-          spv::ImageFormatUnknown);
-        break;
-      
-      case DxbcResourceDim::Texture2DArr:
-        textureTypeId = m_module.defImageType(
-          sampledTypeId, spv::Dim2D, 0, 1, 0, 1,
-          spv::ImageFormatUnknown);
-        break;
-      
-      case DxbcResourceDim::Texture3D:
-        textureTypeId = m_module.defImageType(
-          sampledTypeId, spv::Dim3D, 0, 0, 0, 1,
-          spv::ImageFormatUnknown);
-        break;
-      
-      case DxbcResourceDim::TextureCube:
-        textureTypeId = m_module.defImageType(
-          sampledTypeId, spv::DimCube, 0, 0, 0, 1,
-          spv::ImageFormatUnknown);
-        break;
-      
-      case DxbcResourceDim::TextureCubeArr:
-        textureTypeId = m_module.defImageType(
-          sampledTypeId, spv::DimCube, 0, 1, 0, 1,
-          spv::ImageFormatUnknown);
-        break;
-        
-      default:
-        throw DxvkError(str::format("DxbcCompiler: Unsupported resource type: ", resourceType));
-    }
+    const ImageTypeInfo typeInfo = [resourceType] () -> ImageTypeInfo {
+      switch (resourceType) {
+        case DxbcResourceDim::Texture1D:      return { spv::Dim1D, 0, 0, 1 };
+        case DxbcResourceDim::Texture1DArr:   return { spv::Dim1D, 1, 0, 1 };
+        case DxbcResourceDim::Texture2D:      return { spv::Dim2D, 0, 0, 1 };
+        case DxbcResourceDim::Texture2DArr:   return { spv::Dim2D, 1, 0, 1 };
+        case DxbcResourceDim::Texture3D:      return { spv::Dim3D, 0, 0, 1 };
+        case DxbcResourceDim::TextureCube:    return { spv::Dim3D, 0, 0, 1 };
+        case DxbcResourceDim::TextureCubeArr: return { spv::Dim3D, 1, 0, 1 };
+        default: throw DxvkError(str::format("DxbcCompiler: Unsupported resource type: ", resourceType));
+      }
+    }();
     
+    // We do not know whether the image is going to be used as a color
+    // image or a depth image yet, so we'll declare types for both.
+    const uint32_t colorTypeId = m_module.defImageType(sampledTypeId,
+      typeInfo.dim, 0, typeInfo.array, typeInfo.ms, typeInfo.sampled,
+      spv::ImageFormatUnknown);
+    
+    const uint32_t depthTypeId = m_module.defImageType(sampledTypeId,
+      typeInfo.dim, 1, typeInfo.array, typeInfo.ms, typeInfo.sampled,
+      spv::ImageFormatUnknown);
+    
+    // We'll declare the texture variable with the color type
+    // and decide which one to use when the texture is sampled.
     const uint32_t resourcePtrType = m_module.defPointerType(
-      textureTypeId, spv::StorageClassUniformConstant);
+      colorTypeId, spv::StorageClassUniformConstant);
     
     const uint32_t varId = m_module.newVar(resourcePtrType,
       spv::StorageClassUniformConstant);
@@ -563,8 +548,10 @@ namespace dxvk {
       str::format("t", registerId).c_str());
     
     m_textures.at(registerId).varId         = varId;
+    m_textures.at(registerId).sampledType   = sampledType;
     m_textures.at(registerId).sampledTypeId = sampledTypeId;
-    m_textures.at(registerId).textureTypeId = textureTypeId;
+    m_textures.at(registerId).colorTypeId   = colorTypeId;
+    m_textures.at(registerId).depthTypeId   = depthTypeId;
     
     // Compute the DXVK binding slot index for the resource.
     // D3D11 needs to bind the actual resource to this slot.
@@ -1227,42 +1214,46 @@ namespace dxvk {
     const DxbcRegisterValue coord = emitRegisterLoad(
       texCoordReg, DxbcRegMask(true, true, true, true));
     
-    // Load reference value for depth-compare operations
-    DxbcRegisterValue referenceValue;
+    // Determine whether this is a depth-compare op
+    const bool isDepthCompare = ins.op == DxbcOpcode::SampleC
+                             || ins.op == DxbcOpcode::SampleClz;
     
-    if (ins.op == DxbcOpcode::SampleC || ins.op == DxbcOpcode::SampleClz)
-      referenceValue = emitRegisterLoad(ins.src[3], DxbcRegMask(true, false, false, false));
+    // Load reference value for depth-compare operations
+    const DxbcRegisterValue referenceValue = isDepthCompare
+      ? emitRegisterLoad(ins.src[3], DxbcRegMask(true, false, false, false))
+      : DxbcRegisterValue();
+    
+    // Determine the sampled image type based on the opcode.
+    // FIXME while this is in line what the officla glsl compiler
+    // does, this might actually violate the SPIR-V specification.
+    const uint32_t sampledImageType = isDepthCompare
+      ? m_module.defSampledImageType(m_textures.at(textureId).depthTypeId)
+      : m_module.defSampledImageType(m_textures.at(textureId).colorTypeId);
     
     // Combine the texture and the sampler into a sampled image
-    const uint32_t sampledImageType = m_module.defSampledImageType(
-      m_textures.at(textureId).textureTypeId);
-    
     const uint32_t sampledImageId = m_module.opSampledImage(
       sampledImageType,
       m_module.opLoad(
-        m_textures.at(textureId).textureTypeId,
+        m_textures.at(textureId).colorTypeId,
         m_textures.at(textureId).varId),
       m_module.opLoad(
         m_samplers.at(samplerId).typeId,
         m_samplers.at(samplerId).varId));
     
-    // Sampling an image in SPIR-V always returns a four-component
-    // vector, so we need to declare the corresponding type here
-    // TODO infer sampled types properly
+    // Sampling an image always returns a four-component
+    // vector, whereas depth-compare ops return a scalar.
     DxbcRegisterValue result;
+    result.type.ctype  = m_textures.at(textureId).sampledType;
+    result.type.ccount = isDepthCompare ? 1 : 4;
     
     switch (ins.op) {
       case DxbcOpcode::Sample: {
-        result.type.ctype  = DxbcScalarType::Float32;
-        result.type.ccount = 4;
         result.id = m_module.opImageSampleImplicitLod(
           getVectorTypeId(result.type),
           sampledImageId, coord.id);
       } break;
       
       case DxbcOpcode::SampleClz: {
-        result.type.ctype  = DxbcScalarType::Float32;
-        result.type.ccount = 1;
         result.id = m_module.opImageSampleDrefExplicitLod(
           getVectorTypeId(result.type),
           sampledImageId, coord.id,

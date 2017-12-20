@@ -58,9 +58,11 @@ namespace dxvk {
    * and associated type IDs.
    */
   struct DxbcShaderResource {
-    uint32_t varId         = 0;
-    uint32_t sampledTypeId = 0;
-    uint32_t textureTypeId = 0;
+    uint32_t       varId         = 0;
+    DxbcScalarType sampledType   = DxbcScalarType::Float32;
+    uint32_t       sampledTypeId = 0;
+    uint32_t       colorTypeId   = 0;
+    uint32_t       depthTypeId   = 0;
   };
   
   /**
