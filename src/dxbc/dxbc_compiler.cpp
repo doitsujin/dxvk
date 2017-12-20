@@ -86,6 +86,9 @@ namespace dxvk {
       case DxbcInstClass::VectorImul:
         return this->emitVectorImul(ins);
         
+      case DxbcInstClass::VectorShift:
+        return this->emitVectorShift(ins);
+        
       case DxbcInstClass::VectorSinCos:
         return this->emitVectorSinCos(ins);
         
@@ -780,6 +783,7 @@ namespace dxvk {
         break;
       
       case DxbcOpcode::IMad:
+      case DxbcOpcode::UMad:
         dst.id = m_module.opIAdd(typeId,
           m_module.opIMul(typeId,
             src.at(0).id, src.at(1).id),
@@ -799,6 +803,18 @@ namespace dxvk {
       case DxbcOpcode::INeg:
         dst.id = m_module.opSNegate(
           typeId, src.at(0).id);
+        break;
+      
+      ///////////////////////////////////////
+      // ALU operations on unsigned integers
+      case DxbcOpcode::UMax:
+        dst.id = m_module.opUMax(typeId,
+          src.at(0).id, src.at(1).id);
+        break;
+        
+      case DxbcOpcode::UMin:
+        dst.id = m_module.opUMin(typeId,
+          src.at(0).id, src.at(1).id);
         break;
       
       ///////////////////////////////////////
@@ -1157,6 +1173,57 @@ namespace dxvk {
   }
   
   
+  void DxbcCompiler::emitVectorShift(const DxbcShaderInstruction& ins) {
+    // Shift operations have three operands:
+    //    (dst0) The destination register
+    //    (src0) The register to shift
+    //    (src1) The shift amount (scalar)
+    const DxbcRegisterValue shiftReg = emitRegisterLoad(
+      ins.src[0], ins.dst[0].mask);
+    
+    DxbcRegisterValue countReg = emitRegisterLoad(
+      ins.src[1], DxbcRegMask(true, false, false, false));
+    
+    // Unlike in DXBC, SPIR-V shift operations allow different
+    // shift amounts per component, so we'll extend the count
+    // register to a vector.
+    countReg = emitRegisterExtend(countReg, shiftReg.type.ccount);
+    
+    DxbcRegisterValue result;
+    result.type.ctype  = ins.dst[0].dataType;
+    result.type.ccount = ins.dst[0].mask.setCount();
+    
+    switch (ins.op) {
+      case DxbcOpcode::IShl:
+        result.id = m_module.opShiftLeftLogical(
+          getVectorTypeId(result.type),
+          shiftReg.id, countReg.id);
+        break;
+      
+      case DxbcOpcode::IShr:
+        result.id = m_module.opShiftRightArithmetic(
+          getVectorTypeId(result.type),
+          shiftReg.id, countReg.id);
+        break;
+      
+      case DxbcOpcode::UShr:
+        result.id = m_module.opShiftRightLogical(
+          getVectorTypeId(result.type),
+          shiftReg.id, countReg.id);
+        break;
+      
+      default:
+        Logger::warn(str::format(
+          "DxbcCompiler: Unhandled instruction: ",
+          ins.op));
+        return;
+    }
+    
+    result = emitDstOperandModifiers(result, ins.modifiers);
+    emitRegisterStore(ins.dst[0], result);
+  }
+  
+    
   void DxbcCompiler::emitVectorSinCos(const DxbcShaderInstruction& ins) {
     // sincos has three operands:
     //    (dst0) Destination register for sin(x)
@@ -1232,18 +1299,31 @@ namespace dxvk {
     const uint32_t textureId = textureReg.idx[0].offset;
     const uint32_t samplerId = samplerReg.idx[0].offset;
     
+    // FIXME implement properly
+    DxbcRegMask coordArrayMask(true, true, true, true);
+    DxbcRegMask coordLayerMask(true, true, true, true);
+    
     // Load the texture coordinates. SPIR-V allows these
     // to be float4 even if not all components are used.
-    const DxbcRegisterValue coord = emitRegisterLoad(
-      texCoordReg, DxbcRegMask(true, true, true, true));
+    const DxbcRegisterValue coord = emitRegisterLoad(texCoordReg, coordArrayMask);
     
-    // Determine whether this is a depth-compare op
+    // Load reference value for depth-compare operations
     const bool isDepthCompare = ins.op == DxbcOpcode::SampleC
                              || ins.op == DxbcOpcode::SampleClz;
     
-    // Load reference value for depth-compare operations
     const DxbcRegisterValue referenceValue = isDepthCompare
       ? emitRegisterLoad(ins.src[3], DxbcRegMask(true, false, false, false))
+      : DxbcRegisterValue();
+    
+    // Load explicit gradients for sample operations that require them
+    const bool explicitGradients = ins.op == DxbcOpcode::SampleD;
+    
+    const DxbcRegisterValue explicitGradientX = explicitGradients
+      ? emitRegisterLoad(ins.src[3], coordLayerMask)
+      : DxbcRegisterValue();
+    
+    const DxbcRegisterValue explicitGradientY = explicitGradients
+      ? emitRegisterLoad(ins.src[4], coordLayerMask)
       : DxbcRegisterValue();
     
     // Determine the sampled image type based on the opcode.
@@ -1298,6 +1378,17 @@ namespace dxvk {
         result.id = m_module.opImageSampleDrefExplicitLod(
           getVectorTypeId(result.type), sampledImageId, coord.id,
           referenceValue.id, imageOperands);
+      } break;
+      
+      // Sample operation with explicit gradients
+      case DxbcOpcode::SampleD: {
+        imageOperands.flags |= spv::ImageOperandsGradMask;
+        imageOperands.sGradX = explicitGradientX.id;
+        imageOperands.sGradY = explicitGradientY.id;
+        
+        result.id = m_module.opImageSampleExplicitLod(
+          getVectorTypeId(result.type), sampledImageId, coord.id,
+          imageOperands);
       } break;
       
       default:

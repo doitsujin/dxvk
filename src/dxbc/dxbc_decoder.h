@@ -332,8 +332,8 @@ namespace dxvk {
     
     DxbcShaderInstruction m_instruction;
     
-    std::array<DxbcRegister,  4> m_dstOperands;
-    std::array<DxbcRegister,  4> m_srcOperands;
+    std::array<DxbcRegister,  8> m_dstOperands;
+    std::array<DxbcRegister,  8> m_srcOperands;
     std::array<DxbcImmediate, 4> m_immOperands;
     std::array<DxbcRegister, 12> m_indices;
     

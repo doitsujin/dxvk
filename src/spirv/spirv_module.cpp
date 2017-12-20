@@ -654,6 +654,51 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opShiftLeftLogical(
+          uint32_t                resultType,
+          uint32_t                base,
+          uint32_t                shift) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpShiftLeftLogical, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(base);
+    m_code.putWord(shift);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opShiftRightArithmetic(
+          uint32_t                resultType,
+          uint32_t                base,
+          uint32_t                shift) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpShiftRightArithmetic, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(base);
+    m_code.putWord(shift);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opShiftRightLogical(
+          uint32_t                resultType,
+          uint32_t                base,
+          uint32_t                shift) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpShiftRightLogical, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(base);
+    m_code.putWord(shift);
+    return resultId;
+  }
+  
+  
   uint32_t SpirvModule::opConvertFtoS(
           uint32_t                resultType,
           uint32_t                operand) {
@@ -1136,6 +1181,40 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opUMax(
+          uint32_t                resultType,
+          uint32_t                a,
+          uint32_t                b) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpExtInst, 7);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(m_instExtGlsl450);
+    m_code.putWord(spv::GLSLstd450UMax);
+    m_code.putWord(a);
+    m_code.putWord(b);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opUMin(
+          uint32_t                resultType,
+          uint32_t                a,
+          uint32_t                b) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpExtInst, 7);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(m_instExtGlsl450);
+    m_code.putWord(spv::GLSLstd450UMin);
+    m_code.putWord(a);
+    m_code.putWord(b);
+    return resultId;
+  }
+  
+  
   uint32_t SpirvModule::opFClamp(
           uint32_t                resultType,
           uint32_t                x,
@@ -1550,7 +1629,6 @@ namespace dxvk {
     m_code.putWord(resultId);
     m_code.putWord(sampledImage);
     m_code.putWord(coordinates);
-    m_code.putWord(spv::ImageOperandsLodMask);
     
     putImageOperands(operands);
     return resultId;

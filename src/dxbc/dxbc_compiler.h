@@ -328,6 +328,9 @@ namespace dxvk {
     void emitVectorImul(
       const DxbcShaderInstruction&  ins);
     
+    void emitVectorShift(
+      const DxbcShaderInstruction&  ins);
+    
     void emitVectorSinCos(
       const DxbcShaderInstruction&  ins);
     

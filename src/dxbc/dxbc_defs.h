@@ -40,6 +40,7 @@ namespace dxvk {
     VectorDot,        ///< Dot product instruction
     VectorIdiv,       ///< Component-wise integer division
     VectorImul,       ///< Component-wise integer multiplication
+    VectorShift,      ///< Bit shift operations on vectors
     VectorSinCos,     ///< Sine and Cosine instruction
     Undefined,        ///< Instruction code not defined
   };

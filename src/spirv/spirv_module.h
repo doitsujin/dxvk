@@ -253,6 +253,21 @@ namespace dxvk {
             uint32_t                resultType,
             uint32_t                operand);
     
+    uint32_t opShiftLeftLogical(
+            uint32_t                resultType,
+            uint32_t                base,
+            uint32_t                shift);
+    
+    uint32_t opShiftRightArithmetic(
+            uint32_t                resultType,
+            uint32_t                base,
+            uint32_t                shift);
+    
+    uint32_t opShiftRightLogical(
+            uint32_t                resultType,
+            uint32_t                base,
+            uint32_t                shift);
+    
     uint32_t opConvertFtoS(
             uint32_t                resultType,
             uint32_t                operand);
@@ -401,6 +416,16 @@ namespace dxvk {
             uint32_t                b);
     
     uint32_t opSMin(
+            uint32_t                resultType,
+            uint32_t                a,
+            uint32_t                b);
+    
+    uint32_t opUMax(
+            uint32_t                resultType,
+            uint32_t                a,
+            uint32_t                b);
+    
+    uint32_t opUMin(
             uint32_t                resultType,
             uint32_t                a,
             uint32_t                b);
