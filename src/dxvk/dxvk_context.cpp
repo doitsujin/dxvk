@@ -354,7 +354,8 @@ namespace dxvk {
   
   void DxvkContext::invalidateBuffer(const Rc<DxvkBuffer>& buffer) {
     // Allocate new backing resource
-    buffer->allocateResource();
+    buffer->renameResource(
+      buffer->allocateResource());
     
     // We also need to update all bindings that the buffer
     // may be bound to either directly or through views.

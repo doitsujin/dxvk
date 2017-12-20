@@ -149,14 +149,22 @@ namespace dxvk {
     }
     
     /**
-     * \brief Allocates new backing resource
+     * \brief Replaces backing resource
      * 
      * Replaces the underlying buffer and implicitly marks
      * any buffer views using this resource as dirty. Do
      * not call this directly as this is called implicitly
      * by the context's \c invalidateBuffer method.
+     * \param [in] resource The new backing resource
      */
-    void allocateResource();
+    void renameResource(
+      const Rc<DxvkBufferResource>& resource);
+    
+    /**
+     * \brief Allocates new backing resource
+     * \returns The new buffer
+     */
+    Rc<DxvkBufferResource> allocateResource();
     
   private:
     

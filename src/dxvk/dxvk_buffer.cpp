@@ -47,13 +47,20 @@ namespace dxvk {
           VkMemoryPropertyFlags memoryType)
   : m_device  (device),
     m_info    (createInfo),
-    m_memFlags(memoryType) {
-    this->allocateResource();
+    m_memFlags(memoryType),
+    m_resource(allocateResource()) {
+    
   }
   
   
-  void DxvkBuffer::allocateResource() {
-    m_resource = m_device->allocBufferResource(m_info, m_memFlags);
+  void DxvkBuffer::renameResource(
+    const Rc<DxvkBufferResource>& resource) {
+    m_resource = resource;
+  }
+  
+  
+  Rc<DxvkBufferResource> DxvkBuffer::allocateResource() {
+    return m_device->allocBufferResource(m_info, m_memFlags);
   }
   
   
