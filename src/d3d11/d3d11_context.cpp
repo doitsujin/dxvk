@@ -87,38 +87,55 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeviceContext::ClearState() {
     this->IASetInputLayout(nullptr);
     this->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED);
-    this->IASetVertexBuffers(0, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT, nullptr, nullptr, nullptr);
     this->IASetIndexBuffer(nullptr, DXGI_FORMAT_UNKNOWN, 0);
     
+    for (uint32_t i = 0; i < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT; i++) {
+      ID3D11Buffer* buffer = nullptr;
+      const UINT    offset = 0;
+      const UINT    stride = 0;
+      
+      this->IASetVertexBuffers(i, 1, &buffer, &offset, &stride);
+    }
+    
     this->VSSetShader(nullptr, nullptr, 0);
-    this->VSSetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, nullptr);
-    this->VSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, nullptr);
-    this->VSSetSamplers       (0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT, nullptr);
-    
-//     this->HSSetShader(nullptr, nullptr, 0);
-//     this->HSSetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, nullptr);
-//     this->HSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, nullptr);
-//     this->HSSetSamplers       (0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT, nullptr);
-    
-//     this->DSSetShader(nullptr, nullptr, 0);
-//     this->DSSetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, nullptr);
-//     this->DSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, nullptr);
-//     this->DSSetSamplers       (0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT, nullptr);
-    
+    this->HSSetShader(nullptr, nullptr, 0);
+    this->DSSetShader(nullptr, nullptr, 0);
     this->GSSetShader(nullptr, nullptr, 0);
-    this->GSSetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, nullptr);
-    this->GSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, nullptr);
-    this->GSSetSamplers       (0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT, nullptr);
-    
     this->PSSetShader(nullptr, nullptr, 0);
-    this->PSSetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, nullptr);
-    this->PSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, nullptr);
-    this->PSSetSamplers       (0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT, nullptr);
+    this->CSSetShader(nullptr, nullptr, 0);
     
-//     this->CSSetShader(nullptr, nullptr, 0);
-//     this->CSSetConstantBuffers(0, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT, nullptr);
-//     this->CSSetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, nullptr);
-//     this->CSSetSamplers       (0, D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT, nullptr);
+    for (uint32_t i = 0; i < D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT; i++) {
+      ID3D11Buffer* buffer = nullptr;
+      
+      this->VSSetConstantBuffers(i, 1, &buffer);
+      this->HSSetConstantBuffers(i, 1, &buffer);
+      this->DSSetConstantBuffers(i, 1, &buffer);
+      this->GSSetConstantBuffers(i, 1, &buffer);
+      this->PSSetConstantBuffers(i, 1, &buffer);
+      this->CSSetConstantBuffers(i, 1, &buffer);
+    }
+    
+    for (uint32_t i = 0; i < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT; i++) {
+      ID3D11ShaderResourceView* view = nullptr;
+      
+      this->VSSetShaderResources(i, 1, &view);
+      this->HSSetShaderResources(i, 1, &view);
+      this->DSSetShaderResources(i, 1, &view);
+      this->GSSetShaderResources(i, 1, &view);
+      this->PSSetShaderResources(i, 1, &view);
+      this->CSSetShaderResources(i, 1, &view);
+    }
+    
+    for (uint32_t i = 0; i < D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT; i++) {
+      ID3D11SamplerState* sampler = nullptr;
+      
+      this->VSSetSamplers(i, 1, &sampler);
+      this->HSSetSamplers(i, 1, &sampler);
+      this->DSSetSamplers(i, 1, &sampler);
+      this->GSSetSamplers(i, 1, &sampler);
+      this->PSSetSamplers(i, 1, &sampler);
+      this->CSSetSamplers(i, 1, &sampler);
+    }
     
     this->OMSetRenderTargets(0, nullptr, nullptr);
     this->OMSetBlendState(nullptr, nullptr, D3D11_DEFAULT_SAMPLE_MASK);
@@ -643,37 +660,20 @@ namespace dxvk {
     // TODO check if any of these buffers
     // are bound as UAVs or stream outputs
     for (uint32_t i = 0; i < NumBuffers; i++) {
-      const D3D11VertexBufferBinding oldSlice
-        = m_state.ia.vertexBuffers.at(StartSlot + i);
+      auto newBuffer = static_cast<D3D11Buffer*>(ppVertexBuffers[i]);
       
-      D3D11VertexBufferBinding newSlice;
-      newSlice.buffer = nullptr;
-      newSlice.offset = 0;
-      newSlice.stride = 0;
+      m_state.ia.vertexBuffers[i].buffer = newBuffer;
+      m_state.ia.vertexBuffers[i].offset = pOffsets[i];
+      m_state.ia.vertexBuffers[i].stride = pStrides[i];
       
-      if (ppVertexBuffers != nullptr) {
-        newSlice.buffer = static_cast<D3D11Buffer*>(ppVertexBuffers[i]);
-        newSlice.offset = pOffsets[i];
-        newSlice.stride = pStrides[i];
+      if (newBuffer != nullptr) {
+        m_context->bindVertexBuffer(StartSlot + i,
+          newBuffer->GetBufferSlice(pOffsets[i]),
+          pStrides[i]);
+      } else {
+        m_context->bindVertexBuffer(StartSlot + i,
+          DxvkBufferSlice(), 0);
       }
-      
-      m_state.ia.vertexBuffers.at(StartSlot + i) = newSlice;
-      
-      DxvkBufferSlice bufferSlice;
-      
-      if (newSlice.buffer != nullptr) {
-        const DxvkBufferSlice baseSlice =
-          newSlice.buffer->GetBufferSlice();
-        
-        bufferSlice = DxvkBufferSlice(
-          baseSlice.buffer(),
-          baseSlice.offset() + newSlice.offset,
-          baseSlice.length() - newSlice.offset);
-      }
-      
-      m_context->bindVertexBuffer(
-        StartSlot + i, bufferSlice,
-        newSlice.stride);
     }
   }
   
@@ -682,39 +682,28 @@ namespace dxvk {
           ID3D11Buffer*                     pIndexBuffer,
           DXGI_FORMAT                       Format,
           UINT                              Offset) {
-    D3D11IndexBufferBinding binding;
-    binding.buffer = static_cast<D3D11Buffer*>(pIndexBuffer);
-    binding.offset = Offset;
-    binding.format = Format;
-    m_state.ia.indexBuffer = binding;
+    auto newBuffer = static_cast<D3D11Buffer*>(pIndexBuffer);
     
-    DxvkBufferSlice bufferSlice;
-    
-    if (binding.buffer != nullptr) {
-      const DxvkBufferSlice baseSlice =
-        binding.buffer->GetBufferSlice();
-      
-      bufferSlice = DxvkBufferSlice(
-        baseSlice.buffer(),
-        baseSlice.offset() + binding.offset,
-        baseSlice.length() - binding.offset);
-    }
+    m_state.ia.indexBuffer.buffer = newBuffer;
+    m_state.ia.indexBuffer.offset = Offset;
+    m_state.ia.indexBuffer.format = Format;
     
     // As in Vulkan, the index format can be either a 32-bit
     // unsigned integer or a 16-bit unsigned integer, no other
     // formats are allowed.
-    VkIndexType indexType = VK_INDEX_TYPE_UINT32;
-    
-    if (binding.buffer != nullptr) {
-      switch (binding.format) {
+    if (newBuffer != nullptr) {
+      VkIndexType indexType = VK_INDEX_TYPE_UINT32;
+      
+      switch (Format) {
         case DXGI_FORMAT_R16_UINT: indexType = VK_INDEX_TYPE_UINT16; break;
         case DXGI_FORMAT_R32_UINT: indexType = VK_INDEX_TYPE_UINT32; break;
-        default: Logger::err(str::format("D3D11: Invalid index format: ", binding.format));
+        default: Logger::err(str::format("D3D11: Invalid index format: ", Format));
       }
+      
+      m_context->bindIndexBuffer(
+        newBuffer->GetBufferSlice(Offset),
+        indexType);
     }
-    
-    m_context->bindIndexBuffer(
-      bufferSlice, indexType);
   }
   
   
@@ -770,7 +759,7 @@ namespace dxvk {
           ID3D11Buffer* const*              ppConstantBuffers) {
     this->BindConstantBuffers(
       DxbcProgramType::VertexShader,
-      &m_state.vs.constantBuffers,
+      m_state.vs.constantBuffers,
       StartSlot, NumBuffers,
       ppConstantBuffers);
   }
@@ -782,7 +771,7 @@ namespace dxvk {
           ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
     this->BindShaderResources(
       DxbcProgramType::VertexShader,
-      &m_state.vs.shaderResources,
+      m_state.vs.shaderResources,
       StartSlot, NumViews,
       ppShaderResourceViews);
   }
@@ -794,7 +783,7 @@ namespace dxvk {
           ID3D11SamplerState* const*        ppSamplers) {
     this->BindSamplers(
       DxbcProgramType::VertexShader,
-      &m_state.vs.samplers,
+      m_state.vs.samplers,
       StartSlot, NumSamplers,
       ppSamplers);
   }
@@ -818,7 +807,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer**                    ppConstantBuffers) {
-    Logger::err("D3D11DeviceContext::VSGetConstantBuffers: Not implemented");
+    for (uint32_t i = 0; i < NumBuffers; i++)
+      ppConstantBuffers[i] = m_state.vs.constantBuffers.at(StartSlot + i).ref();
   }
   
   
@@ -826,7 +816,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView**        ppShaderResourceViews) {
-    Logger::err("D3D11DeviceContext::VSGetShaderResources: Not implemented");
+    for (uint32_t i = 0; i < NumViews; i++)
+      ppShaderResourceViews[i] = m_state.vs.shaderResources.at(StartSlot + i).ref();
   }
   
   
@@ -834,7 +825,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState**              ppSamplers) {
-    Logger::err("D3D11DeviceContext::VSGetSamplers: Not implemented");
+    for (uint32_t i = 0; i < NumSamplers; i++)
+      ppSamplers[i] = m_state.vs.samplers.at(StartSlot + i).ref();
   }
   
   
@@ -851,7 +843,11 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
-    Logger::err("D3D11DeviceContext::HSSetShaderResources: Not implemented");
+    this->BindShaderResources(
+      DxbcProgramType::HullShader,
+      m_state.hs.shaderResources,
+      StartSlot, NumViews,
+      ppShaderResourceViews);
   }
   
   
@@ -859,7 +855,11 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppConstantBuffers) {
-    Logger::err("D3D11DeviceContext::HSSetConstantBuffers: Not implemented");
+    this->BindConstantBuffers(
+      DxbcProgramType::HullShader,
+      m_state.hs.constantBuffers,
+      StartSlot, NumBuffers,
+      ppConstantBuffers);
   }
   
   
@@ -867,7 +867,11 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState* const*        ppSamplers) {
-    Logger::err("D3D11DeviceContext::HSSetSamplers: Not implemented");
+    this->BindSamplers(
+      DxbcProgramType::HullShader,
+      m_state.hs.samplers,
+      StartSlot, NumSamplers,
+      ppSamplers);
   }
   
   
@@ -875,7 +879,13 @@ namespace dxvk {
           ID3D11HullShader**                ppHullShader,
           ID3D11ClassInstance**             ppClassInstances,
           UINT*                             pNumClassInstances) {
-    Logger::err("D3D11DeviceContext::HSGetShader: Not implemented");
+    if (ppHullShader != nullptr)
+      *ppHullShader = m_state.hs.shader.ref();
+    
+    if (pNumClassInstances != nullptr) {
+      Logger::err("D3D11: HSGetShader: Class instances not implemented");
+      *pNumClassInstances = 0;
+    }
   }
   
   
@@ -883,7 +893,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer**                    ppConstantBuffers) {
-    Logger::err("D3D11DeviceContext::HSGetConstantBuffers: Not implemented");
+    for (uint32_t i = 0; i < NumBuffers; i++)
+      ppConstantBuffers[i] = m_state.hs.constantBuffers.at(StartSlot + i).ref();
   }
   
   
@@ -891,7 +902,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView**        ppShaderResourceViews) {
-    Logger::err("D3D11DeviceContext::HSGetShaderResources: Not implemented");
+    for (uint32_t i = 0; i < NumViews; i++)
+      ppShaderResourceViews[i] = m_state.hs.shaderResources.at(StartSlot + i).ref();
   }
   
   
@@ -899,7 +911,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState**              ppSamplers) {
-    Logger::err("D3D11DeviceContext::HSGetSamplers: Not implemented");
+    for (uint32_t i = 0; i < NumSamplers; i++)
+      ppSamplers[i] = m_state.hs.samplers.at(StartSlot + i).ref();
   }
   
   
@@ -916,7 +929,11 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
-    Logger::err("D3D11DeviceContext::DSSetShaderResources: Not implemented");
+    this->BindShaderResources(
+      DxbcProgramType::DomainShader,
+      m_state.ds.shaderResources,
+      StartSlot, NumViews,
+      ppShaderResourceViews);
   }
   
   
@@ -924,7 +941,11 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppConstantBuffers) {
-    Logger::err("D3D11DeviceContext::DSSetConstantBuffers: Not implemented");
+    this->BindConstantBuffers(
+      DxbcProgramType::DomainShader,
+      m_state.ds.constantBuffers,
+      StartSlot, NumBuffers,
+      ppConstantBuffers);
   }
   
   
@@ -932,7 +953,11 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState* const*        ppSamplers) {
-    Logger::err("D3D11DeviceContext::DSSetSamplers: Not implemented");
+    this->BindSamplers(
+      DxbcProgramType::DomainShader,
+      m_state.ds.samplers,
+      StartSlot, NumSamplers,
+      ppSamplers);
   }
   
   
@@ -940,7 +965,13 @@ namespace dxvk {
           ID3D11DomainShader**              ppDomainShader,
           ID3D11ClassInstance**             ppClassInstances,
           UINT*                             pNumClassInstances) {
-    Logger::err("D3D11DeviceContext::DSGetShader: Not implemented");
+    if (ppDomainShader != nullptr)
+      *ppDomainShader = m_state.ds.shader.ref();
+    
+    if (pNumClassInstances != nullptr) {
+      Logger::err("D3D11: DSGetShader: Class instances not implemented");
+      *pNumClassInstances = 0;
+    }
   }
   
   
@@ -948,7 +979,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer**                    ppConstantBuffers) {
-    Logger::err("D3D11DeviceContext::DSGetConstantBuffers: Not implemented");
+    for (uint32_t i = 0; i < NumBuffers; i++)
+      ppConstantBuffers[i] = m_state.ds.constantBuffers.at(StartSlot + i).ref();
   }
   
   
@@ -956,7 +988,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView**        ppShaderResourceViews) {
-    Logger::err("D3D11DeviceContext::DSGetShaderResources: Not implemented");
+    for (uint32_t i = 0; i < NumViews; i++)
+      ppShaderResourceViews[i] = m_state.ds.shaderResources.at(StartSlot + i).ref();
   }
   
   
@@ -964,7 +997,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState**              ppSamplers) {
-    Logger::err("D3D11DeviceContext::DSGetSamplers: Not implemented");
+    for (uint32_t i = 0; i < NumSamplers; i++)
+      ppSamplers[i] = m_state.ds.samplers.at(StartSlot + i).ref();
   }
   
   
@@ -992,7 +1026,7 @@ namespace dxvk {
           ID3D11Buffer* const*              ppConstantBuffers) {
     this->BindConstantBuffers(
       DxbcProgramType::GeometryShader,
-      &m_state.gs.constantBuffers,
+      m_state.gs.constantBuffers,
       StartSlot, NumBuffers,
       ppConstantBuffers);
   }
@@ -1004,7 +1038,7 @@ namespace dxvk {
           ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
     this->BindShaderResources(
       DxbcProgramType::GeometryShader,
-      &m_state.gs.shaderResources,
+      m_state.gs.shaderResources,
       StartSlot, NumViews,
       ppShaderResourceViews);
   }
@@ -1016,7 +1050,7 @@ namespace dxvk {
           ID3D11SamplerState* const*        ppSamplers) {
     this->BindSamplers(
       DxbcProgramType::GeometryShader,
-      &m_state.gs.samplers,
+      m_state.gs.samplers,
       StartSlot, NumSamplers,
       ppSamplers);
   }
@@ -1087,7 +1121,7 @@ namespace dxvk {
           ID3D11Buffer* const*              ppConstantBuffers) {
     this->BindConstantBuffers(
       DxbcProgramType::PixelShader,
-      &m_state.ps.constantBuffers,
+      m_state.ps.constantBuffers,
       StartSlot, NumBuffers,
       ppConstantBuffers);
   }
@@ -1099,7 +1133,7 @@ namespace dxvk {
           ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
     this->BindShaderResources(
       DxbcProgramType::PixelShader,
-      &m_state.ps.shaderResources,
+      m_state.ps.shaderResources,
       StartSlot, NumViews,
       ppShaderResourceViews);
   }
@@ -1111,7 +1145,7 @@ namespace dxvk {
           ID3D11SamplerState* const*        ppSamplers) {
     this->BindSamplers(
       DxbcProgramType::PixelShader,
-      &m_state.ps.samplers,
+      m_state.ps.samplers,
       StartSlot, NumSamplers,
       ppSamplers);
   }
@@ -1170,7 +1204,11 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppConstantBuffers) {
-    Logger::err("D3D11DeviceContext::CSSetConstantBuffers: Not implemented");
+    this->BindConstantBuffers(
+      DxbcProgramType::ComputeShader,
+      m_state.cs.constantBuffers,
+      StartSlot, NumBuffers,
+      ppConstantBuffers);
   }
   
   
@@ -1178,7 +1216,11 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
-    Logger::err("D3D11DeviceContext::CSSetShaderResources: Not implemented");
+    this->BindShaderResources(
+      DxbcProgramType::ComputeShader,
+      m_state.cs.shaderResources,
+      StartSlot, NumViews,
+      ppShaderResourceViews);
   }
   
   
@@ -1186,7 +1228,11 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState* const*        ppSamplers) {
-    Logger::err("D3D11DeviceContext::CSSetSamplers: Not implemented");
+    this->BindSamplers(
+      DxbcProgramType::ComputeShader,
+      m_state.cs.samplers,
+      StartSlot, NumSamplers,
+      ppSamplers);
   }
   
   
@@ -1203,7 +1249,13 @@ namespace dxvk {
           ID3D11ComputeShader**             ppComputeShader,
           ID3D11ClassInstance**             ppClassInstances,
           UINT*                             pNumClassInstances) {
-    Logger::err("D3D11DeviceContext::CSGetShader: Not implemented");
+    if (ppComputeShader != nullptr)
+      *ppComputeShader = m_state.cs.shader.ref();
+    
+    if (pNumClassInstances != nullptr) {
+      Logger::err("D3D11: CSGetShader: Class instances not implemented");
+      *pNumClassInstances = 0;
+    }
   }
   
   
@@ -1211,7 +1263,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer**                    ppConstantBuffers) {
-    Logger::err("D3D11DeviceContext::CSGetConstantBuffers: Not implemented");
+    for (uint32_t i = 0; i < NumBuffers; i++)
+      ppConstantBuffers[i] = m_state.cs.constantBuffers.at(StartSlot + i).ref();
   }
   
   
@@ -1219,7 +1272,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView**        ppShaderResourceViews) {
-    Logger::err("D3D11DeviceContext::CSGetShaderResources: Not implemented");
+    for (uint32_t i = 0; i < NumViews; i++)
+      ppShaderResourceViews[i] = m_state.cs.shaderResources.at(StartSlot + i).ref();
   }
   
   
@@ -1227,7 +1281,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState**              ppSamplers) {
-    Logger::err("D3D11DeviceContext::CSGetSamplers: Not implemented");
+    for (uint32_t i = 0; i < NumSamplers; i++)
+      ppSamplers[i] = m_state.cs.samplers.at(StartSlot + i).ref();
   }
   
   
@@ -1512,37 +1567,32 @@ namespace dxvk {
   
   void D3D11DeviceContext::BindConstantBuffers(
           DxbcProgramType                   ShaderStage,
-          D3D11ConstantBufferBindings*      pBindings,
+          D3D11ConstantBufferBindings&      Bindings,
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppConstantBuffers) {
+    const VkPipelineBindPoint bindPoint
+      = ShaderStage == DxbcProgramType::ComputeShader
+        ? VK_PIPELINE_BIND_POINT_COMPUTE
+        : VK_PIPELINE_BIND_POINT_GRAPHICS;
+    
+    const uint32_t slotId = computeResourceSlotId(
+      ShaderStage, DxbcBindingType::ConstantBuffer,
+      StartSlot);
+    
     for (uint32_t i = 0; i < NumBuffers; i++) {
-      D3D11Buffer* oldBuffer = pBindings->at(StartSlot + i).ptr();
-      D3D11Buffer* newBuffer = nullptr;
+      auto newBuffer = static_cast<D3D11Buffer*>(ppConstantBuffers[i]);
       
-      if (ppConstantBuffers != nullptr)
-        newBuffer = static_cast<D3D11Buffer*>(ppConstantBuffers[i]);
-      
-      if (oldBuffer != newBuffer) {
-        pBindings->at(StartSlot + i) = newBuffer;
+      if (Bindings[StartSlot + i] != newBuffer) {
+        Bindings[StartSlot + i] = newBuffer;
         
-        DxvkBufferSlice bufferSlice;
-        
-        if (newBuffer != nullptr)
-          bufferSlice = newBuffer->GetBufferSlice();
-        
-        // Bind buffer to the DXVK resource slot
-        const VkPipelineBindPoint bindPoint
-          = ShaderStage == DxbcProgramType::ComputeShader
-            ? VK_PIPELINE_BIND_POINT_COMPUTE
-            : VK_PIPELINE_BIND_POINT_GRAPHICS;
-        
-        const uint32_t slotId = computeResourceSlotId(
-          ShaderStage, DxbcBindingType::ConstantBuffer,
-          StartSlot + i);
-        
-        m_context->bindResourceBuffer(
-          bindPoint, slotId, bufferSlice);
+        if (newBuffer != nullptr) {
+          m_context->bindResourceBuffer(
+            bindPoint, slotId + i, newBuffer->GetBufferSlice(0));
+        } else {
+          m_context->bindResourceBuffer(
+            bindPoint, slotId + i, DxvkBufferSlice());
+        }
       }
     }
   }
@@ -1550,37 +1600,32 @@ namespace dxvk {
   
   void D3D11DeviceContext::BindSamplers(
           DxbcProgramType                   ShaderStage,
-          D3D11SamplerBindings*             pBindings,
+          D3D11SamplerBindings&             Bindings,
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState* const*        ppSamplers) {
+    const VkPipelineBindPoint bindPoint
+      = ShaderStage == DxbcProgramType::ComputeShader
+        ? VK_PIPELINE_BIND_POINT_COMPUTE
+        : VK_PIPELINE_BIND_POINT_GRAPHICS;
+    
+    const uint32_t slotId = computeResourceSlotId(
+      ShaderStage, DxbcBindingType::ImageSampler,
+      StartSlot);
+    
     for (uint32_t i = 0; i < NumSamplers; i++) {
-      D3D11SamplerState* sampler = nullptr;
+      auto sampler = static_cast<D3D11SamplerState*>(ppSamplers[i]);
       
-      if (ppSamplers != nullptr)
-        sampler = static_cast<D3D11SamplerState*>(ppSamplers[i]);
-      
-      if (pBindings->at(StartSlot + i) != sampler) {
-        pBindings->at(StartSlot + i) = sampler;
+      if (Bindings[StartSlot + i] != sampler) {
+        Bindings[StartSlot + i] = sampler;
         
-        // Retrieve the DXVK sampler object
-        Rc<DxvkSampler> samplerInfo = nullptr;
-        
-        if (sampler != nullptr)
-          samplerInfo = sampler->GetDXVKSampler();
-        
-        // Bind sampler to the DXVK resource slot
-        const VkPipelineBindPoint bindPoint
-          = ShaderStage == DxbcProgramType::ComputeShader
-            ? VK_PIPELINE_BIND_POINT_COMPUTE
-            : VK_PIPELINE_BIND_POINT_GRAPHICS;
-        
-        const uint32_t slotId = computeResourceSlotId(
-          ShaderStage, DxbcBindingType::ImageSampler,
-          StartSlot + i);
-        
-        m_context->bindResourceSampler(
-          bindPoint, slotId, samplerInfo);
+        if (sampler != nullptr) {
+          m_context->bindResourceSampler(
+            bindPoint, slotId + i, sampler->GetDXVKSampler());
+        } else {
+          m_context->bindResourceSampler(
+            bindPoint, slotId + i, nullptr);
+        }
       }
     }
   }
@@ -1588,45 +1633,41 @@ namespace dxvk {
   
   void D3D11DeviceContext::BindShaderResources(
           DxbcProgramType                   ShaderStage,
-          D3D11ShaderResourceBindings*      pBindings,
+          D3D11ShaderResourceBindings&      Bindings,
           UINT                              StartSlot,
           UINT                              NumResources,
           ID3D11ShaderResourceView* const*  ppResources) {
+    const VkPipelineBindPoint bindPoint
+      = ShaderStage == DxbcProgramType::ComputeShader
+        ? VK_PIPELINE_BIND_POINT_COMPUTE
+        : VK_PIPELINE_BIND_POINT_GRAPHICS;
+    
+    const uint32_t slotId = computeResourceSlotId(
+      ShaderStage, DxbcBindingType::ShaderResource,
+      StartSlot);
+    
     for (uint32_t i = 0; i < NumResources; i++) {
-      D3D11ShaderResourceView* resView = nullptr;
+      auto resView = static_cast<D3D11ShaderResourceView*>(ppResources[i]);
       
-      if (ppResources != nullptr)
-        resView = static_cast<D3D11ShaderResourceView*>(ppResources[i]);
-      
-      if (pBindings->at(StartSlot + i) != resView) {
-        pBindings->at(StartSlot + i) = resView;
-        
-        // Bind sampler to the DXVK resource slot
-        const VkPipelineBindPoint bindPoint
-          = ShaderStage == DxbcProgramType::ComputeShader
-            ? VK_PIPELINE_BIND_POINT_COMPUTE
-            : VK_PIPELINE_BIND_POINT_GRAPHICS;
-        
-        const uint32_t slotId = computeResourceSlotId(
-          ShaderStage, DxbcBindingType::ShaderResource,
-          StartSlot + i);
+      if (Bindings[StartSlot + i] != resView) {
+        Bindings[StartSlot + i] = resView;
         
         if (resView != nullptr) {
           // Figure out what we have to bind based on the resource type
           if (resView->GetResourceType() == D3D11_RESOURCE_DIMENSION_BUFFER) {
             Logger::warn("D3D11: Texel buffers not yet supported");
             m_context->bindResourceTexelBuffer(
-              bindPoint, slotId, nullptr);
+              bindPoint, slotId + i, nullptr);
           } else {
             m_context->bindResourceImage(bindPoint,
-              slotId, resView->GetDXVKImageView());
+              slotId + i, resView->GetDXVKImageView());
           }
         } else {
           // When unbinding a resource, it doesn't really matter if
           // the resource type is correct, so we'll just bind a null
           // image to the given resource slot
           m_context->bindResourceImage(
-            bindPoint, slotId, nullptr);
+            bindPoint, slotId + i, nullptr);
         }
       }
     }

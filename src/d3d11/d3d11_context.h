@@ -565,21 +565,21 @@ namespace dxvk {
     
     void BindConstantBuffers(
             DxbcProgramType                   ShaderStage,
-            D3D11ConstantBufferBindings*      pBindings,
+            D3D11ConstantBufferBindings&      Bindings,
             UINT                              StartSlot,
             UINT                              NumBuffers,
             ID3D11Buffer* const*              ppConstantBuffers);
     
     void BindSamplers(
             DxbcProgramType                   ShaderStage,
-            D3D11SamplerBindings*             pBindings,
+            D3D11SamplerBindings&             Bindings,
             UINT                              StartSlot,
             UINT                              NumSamplers,
             ID3D11SamplerState* const*        ppSamplers);
     
     void BindShaderResources(
             DxbcProgramType                   ShaderStage,
-            D3D11ShaderResourceBindings*      pBindings,
+            D3D11ShaderResourceBindings&      Bindings,
             UINT                              StartSlot,
             UINT                              NumResources,
             ID3D11ShaderResourceView* const*  ppResources);
