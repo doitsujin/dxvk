@@ -481,7 +481,7 @@ namespace dxvk {
     const uint32_t formatId = static_cast<uint32_t>(format);
     
     if (formatId < g_formatInfos.size())
-      return &g_formatInfos.at(formatId);
+      return &g_formatInfos[formatId];
     
     return nullptr;
   }

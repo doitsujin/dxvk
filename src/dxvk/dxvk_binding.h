@@ -17,33 +17,4 @@ namespace dxvk {
     DxvkBufferSlice    bufferSlice;
   };
   
-  
-  /**
-   * \brief Shader resource slots
-   */
-  class DxvkShaderResourceSlots {
-    
-  public:
-    
-    DxvkShaderResourceSlots() { }
-    DxvkShaderResourceSlots(size_t n) {
-      m_resources.resize(n);
-    }
-    
-    const DxvkShaderResourceSlot& getShaderResource(uint32_t slot) const {
-      return m_resources.at(slot);
-    }
-    
-    void bindShaderResource(
-            uint32_t                slot,
-      const DxvkShaderResourceSlot& resource) {
-      m_resources.at(slot) = resource;
-    }
-    
-  private:
-    
-    std::vector<DxvkShaderResourceSlot> m_resources;
-    
-  };
-  
 }

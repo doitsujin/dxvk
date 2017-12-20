@@ -263,7 +263,7 @@ namespace dxvk {
       const bool adequate  = (m_memProps.memoryTypes[i].propertyFlags & flags) == flags;
       
       if (supported && adequate) {
-        DxvkMemory memory = m_heaps.at(i)->alloc(req.size, req.alignment);
+        DxvkMemory memory = m_heaps[i]->alloc(req.size, req.alignment);
         
         if (memory.memory() != VK_NULL_HANDLE)
           return memory;

@@ -415,10 +415,8 @@ namespace dxvk {
     DxvkContextState    m_state;
     DxvkBarrierSet      m_barriers;
     
-    DxvkShaderResourceSlots m_cResources = {  256 };
-    DxvkShaderResourceSlots m_gResources = { 1024 };
-    
-    std::array<DxvkDescriptorInfo, MaxNumResourceSlots> descriptors;
+    std::array<DxvkShaderResourceSlot, MaxNumResourceSlots> m_rc;
+    std::array<DxvkDescriptorInfo,     MaxNumResourceSlots> m_descriptors;
     
     void renderPassBegin();
     void renderPassEnd();
@@ -447,9 +445,6 @@ namespace dxvk {
     
     void transformLayoutsRenderPassEnd(
       const DxvkRenderTargets& renderTargets);
-    
-    DxvkShaderResourceSlots* getShaderResourceSlots(
-            VkPipelineBindPoint pipe);
     
     DxvkContextFlag getResourceDirtyFlag(
             VkPipelineBindPoint pipe) const;

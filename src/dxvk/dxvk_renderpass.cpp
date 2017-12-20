@@ -4,7 +4,7 @@ namespace dxvk {
   
   DxvkRenderPassFormat::DxvkRenderPassFormat() {
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++)
-      m_color.at(i) = VK_FORMAT_UNDEFINED;
+      m_color[i] = VK_FORMAT_UNDEFINED;
     m_depth   = VK_FORMAT_UNDEFINED;
     m_samples = VK_SAMPLE_COUNT_1_BIT;
   }
@@ -16,7 +16,7 @@ namespace dxvk {
     std::hash<VkSampleCountFlagBits> shash;
     
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++)
-      result.add(fhash(m_color.at(i)));
+      result.add(fhash(m_color[i]));
     
     result.add(fhash(m_depth));
     result.add(shash(m_samples));
@@ -28,7 +28,7 @@ namespace dxvk {
     bool equal = m_depth   == other.m_depth
               && m_samples == other.m_samples;
     for (uint32_t i = 0; i < MaxNumRenderTargets && !equal; i++)
-      equal = m_color.at(i) == other.m_color.at(i);
+      equal = m_color[i] == other.m_color[i];
     return equal;
   }
   
@@ -68,8 +68,8 @@ namespace dxvk {
     }
     
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-      colorRef.at(i).attachment = VK_ATTACHMENT_UNUSED;
-      colorRef.at(i).layout     = VK_IMAGE_LAYOUT_UNDEFINED;
+      colorRef[i].attachment = VK_ATTACHMENT_UNUSED;
+      colorRef[i].layout     = VK_IMAGE_LAYOUT_UNDEFINED;
       
       if (fmt.getColorFormat(i) != VK_FORMAT_UNDEFINED) {
         VkAttachmentDescription desc;
@@ -83,8 +83,8 @@ namespace dxvk {
         desc.initialLayout    = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         desc.finalLayout      = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         
-        colorRef.at(i).attachment = attachments.size();
-        colorRef.at(i).layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        colorRef[i].attachment = attachments.size();
+        colorRef[i].layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         
         attachments.push_back(desc);
       }

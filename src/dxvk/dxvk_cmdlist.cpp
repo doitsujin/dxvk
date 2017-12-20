@@ -108,7 +108,7 @@ namespace dxvk {
     std::array<VkWriteDescriptorSet, MaxNumResourceSlots> descriptorWrites;
     
     for (uint32_t i = 0; i < descriptorCount; i++) {
-      auto& curr = descriptorWrites.at(i);
+      auto& curr    = descriptorWrites[i];
       auto& binding = descriptorSlots[i];
       
       curr.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

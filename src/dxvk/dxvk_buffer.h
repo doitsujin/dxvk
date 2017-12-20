@@ -254,6 +254,10 @@ namespace dxvk {
       return m_buffer;
     }
     
+    Rc<DxvkResource> resource() const {
+      return m_buffer->resource();
+    }
+    
     VkBuffer handle() const {
       return m_buffer != nullptr
         ? m_buffer->handle()

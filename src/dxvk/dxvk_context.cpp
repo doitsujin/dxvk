@@ -73,15 +73,9 @@ namespace dxvk {
           VkPipelineBindPoint   pipe,
           uint32_t              slot,
     const DxvkBufferSlice&      buffer) {
-    auto rc = this->getShaderResourceSlots(pipe);
-    
-    if (rc->getShaderResource(slot).bufferSlice != buffer) {
+    if (m_rc[slot].bufferSlice != buffer) {
       m_flags.set(this->getResourceDirtyFlag(pipe));
-      
-      DxvkShaderResourceSlot resource;
-      resource.bufferSlice = buffer;
-      
-      rc->bindShaderResource(slot, resource);
+      m_rc[slot].bufferSlice = buffer;
     }
   }
   
@@ -90,15 +84,9 @@ namespace dxvk {
           VkPipelineBindPoint   pipe,
           uint32_t              slot,
     const Rc<DxvkBufferView>&   bufferView) {
-    auto rc = this->getShaderResourceSlots(pipe);
-    
-    if (rc->getShaderResource(slot).bufferView != bufferView) {
+    if (m_rc[slot].bufferView != bufferView) {
       m_flags.set(this->getResourceDirtyFlag(pipe));
-      
-      DxvkShaderResourceSlot resource;
-      resource.bufferView = bufferView;
-      
-      rc->bindShaderResource(slot, resource);
+      m_rc[slot].bufferView = bufferView;
     }
   }
   
@@ -107,15 +95,9 @@ namespace dxvk {
           VkPipelineBindPoint   pipe,
           uint32_t              slot,
     const Rc<DxvkImageView>&    image) {
-    auto rc = this->getShaderResourceSlots(pipe);
-    
-    if (rc->getShaderResource(slot).imageView != image) {
+    if (m_rc[slot].imageView != image) {
       m_flags.set(this->getResourceDirtyFlag(pipe));
-      
-      DxvkShaderResourceSlot resource;
-      resource.imageView = image;
-      
-      rc->bindShaderResource(slot, resource);
+      m_rc[slot].imageView = image;
     }
   }
   
@@ -124,15 +106,9 @@ namespace dxvk {
           VkPipelineBindPoint   pipe,
           uint32_t              slot,
     const Rc<DxvkSampler>&      sampler) {
-    auto rc = this->getShaderResourceSlots(pipe);
-    
-    if (rc->getShaderResource(slot).sampler != sampler) {
+    if (m_rc[slot].sampler != sampler) {
       m_flags.set(this->getResourceDirtyFlag(pipe));
-      
-      DxvkShaderResourceSlot resource;
-      resource.sampler = sampler;
-      
-      rc->bindShaderResource(slot, resource);
+      m_rc[slot].sampler = sampler;
     }
   }
   
@@ -172,13 +148,13 @@ namespace dxvk {
           uint32_t              binding,
     const DxvkBufferSlice&      buffer,
           uint32_t              stride) {
-    if (m_state.vi.vertexBuffers.at(binding) != buffer) {
-      m_state.vi.vertexBuffers.at(binding) = buffer;
+    if (m_state.vi.vertexBuffers[binding] != buffer) {
+      m_state.vi.vertexBuffers[binding] = buffer;
       m_flags.set(DxvkContextFlag::GpDirtyVertexBuffers);
     }
     
-    if (m_state.vi.vertexStrides.at(binding) != stride) {
-      m_state.vi.vertexStrides.at(binding) = stride;
+    if (m_state.vi.vertexStrides[binding] != stride) {
+      m_state.vi.vertexStrides[binding] = stride;
       m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     }
   }
@@ -606,8 +582,8 @@ namespace dxvk {
     }
     
     for (uint32_t i = 0; i < viewportCount; i++) {
-      m_state.vp.viewports.at(i) = viewports[i];
-      m_state.vp.scissorRects.at(i) = scissorRects[i];
+      m_state.vp.viewports[i]    = viewports[i];
+      m_state.vp.scissorRects[i] = scissorRects[i];
     }
     
     this->updateViewports();
@@ -649,10 +625,10 @@ namespace dxvk {
     m_state.il.numBindings   = bindingCount;
     
     for (uint32_t i = 0; i < attributeCount; i++)
-      m_state.il.attributes.at(i) = attributes[i];
+      m_state.il.attributes[i] = attributes[i];
     
     for (uint32_t i = 0; i < bindingCount; i++)
-      m_state.il.bindings.at(i) = bindings[i];
+      m_state.il.bindings[i] = bindings[i];
   }
   
   
@@ -687,7 +663,7 @@ namespace dxvk {
   void DxvkContext::setBlendMode(
           uint32_t            attachment,
     const DxvkBlendMode&      blendMode) {
-    m_state.om.blendModes.at(attachment) = blendMode;
+    m_state.om.blendModes[attachment] = blendMode;
     m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
   }
   
@@ -779,7 +755,7 @@ namespace dxvk {
       for (uint32_t i = 0; i < m_state.il.numBindings; i++) {
         gpState.ilBindings[i].binding    = m_state.il.bindings[i].binding;
         gpState.ilBindings[i].inputRate  = m_state.il.bindings[i].inputRate;
-        gpState.ilBindings[i].stride     = m_state.vi.vertexStrides.at(i);
+        gpState.ilBindings[i].stride     = m_state.vi.vertexStrides[i];
       }
       
       gpState.rsEnableDepthClamp       = m_state.rs.enableDepthClamp;
@@ -818,7 +794,7 @@ namespace dxvk {
       
       for (uint32_t i = 0; i < DxvkLimits::MaxNumRenderTargets; i++) {
         if (rt.getColorTarget(i) != nullptr) {
-          const DxvkBlendMode& mode = m_state.om.blendModes.at(i);
+          const DxvkBlendMode& mode = m_state.om.blendModes[i];
           
           gpState.omBlendAttachments[i].blendEnable         = mode.enableBlending;
           gpState.omBlendAttachments[i].srcColorBlendFactor = mode.colorSrcFactor;
@@ -869,34 +845,30 @@ namespace dxvk {
       // compute can use this code as well
       for (uint32_t i = 0; i < layout->bindingCount(); i++) {
         const uint32_t slot = layout->binding(i).slot;
-        const auto& res = m_gResources.getShaderResource(slot);
-        
-        DxvkDescriptorInfo descriptor;
+        const auto& res = m_rc[slot];
         
         if (res.sampler != nullptr) {
+          m_descriptors[i].image.sampler     = res.sampler->handle();
+          m_descriptors[i].image.imageView   = VK_NULL_HANDLE;
+          m_descriptors[i].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+          
           m_cmd->trackResource(res.sampler);
-          descriptor.image.sampler = res.sampler->handle();
-        }
-        
-        if (res.imageView != nullptr) {
+        } else if (res.imageView != nullptr) {
+          m_descriptors[i].image.sampler     = VK_NULL_HANDLE;
+          m_descriptors[i].image.imageView   = res.imageView->handle();
+          m_descriptors[i].image.imageLayout = res.imageView->imageInfo().layout;
+          
           m_cmd->trackResource(res.imageView);
           m_cmd->trackResource(res.imageView->image());
-          descriptor.image.imageView   = res.imageView->handle();
-          descriptor.image.imageLayout = res.imageView->imageInfo().layout;
-        }
-        
-        if (res.bufferView != nullptr) {
+        } else if (res.bufferView != nullptr) {
+          m_descriptors[i].texelBuffer = res.bufferView->handle();
+          
           m_cmd->trackResource(res.bufferView);
           m_cmd->trackResource(res.bufferView->buffer()->resource());
-          descriptor.texelBuffer = res.bufferView->handle();
+        } else if (res.bufferSlice.handle() != VK_NULL_HANDLE) {
+          m_descriptors[i].buffer = res.bufferSlice.descriptorInfo();
+          m_cmd->trackResource(res.bufferSlice.resource());
         }
-        
-        if (res.bufferSlice.handle() != VK_NULL_HANDLE) {
-          m_cmd->trackResource(res.bufferSlice.buffer()->resource());
-          descriptor.buffer = res.bufferSlice.descriptorInfo();
-        }
-        
-        descriptors.at(i) = descriptor;
       }
       
       m_cmd->bindResourceDescriptors(
@@ -905,7 +877,7 @@ namespace dxvk {
         layout->descriptorSetLayout(),
         layout->bindingCount(),
         layout->bindings(),
-        descriptors.data());
+        m_descriptors.data());
     }
   }
   
@@ -949,7 +921,7 @@ namespace dxvk {
           m_state.vi.indexBuffer.offset(),
           m_state.vi.indexType);
         m_cmd->trackResource(
-          m_state.vi.indexBuffer.buffer()->resource());
+          m_state.vi.indexBuffer.resource());
       }
     }
   }
@@ -959,15 +931,15 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpDirtyVertexBuffers)) {
       m_flags.clr(DxvkContextFlag::GpDirtyVertexBuffers);
       
-      for (uint32_t i = 0; i < m_state.vi.vertexBuffers.size(); i++) {
-        const DxvkBufferSlice vbo = m_state.vi.vertexBuffers.at(i);
+      for (uint32_t i = 0; i < m_state.il.numBindings; i++) {
+        const DxvkBufferSlice& vbo = m_state.vi.vertexBuffers[i];
         
-        VkBuffer     handle = vbo.handle();
-        VkDeviceSize offset = vbo.offset();
+        const VkBuffer     handle = vbo.handle();
+        const VkDeviceSize offset = vbo.offset();
         
         if (handle != VK_NULL_HANDLE) {
           m_cmd->cmdBindVertexBuffers(i, 1, &handle, &offset);
-          m_cmd->trackResource(vbo.buffer()->resource());
+          m_cmd->trackResource(vbo.resource());
         }
       }
     }
@@ -1086,15 +1058,6 @@ namespace dxvk {
     }
     
     m_barriers.recordCommands(m_cmd);
-  }
-  
-  
-  DxvkShaderResourceSlots* DxvkContext::getShaderResourceSlots(VkPipelineBindPoint pipe) {
-    switch (pipe) {
-      case VK_PIPELINE_BIND_POINT_GRAPHICS: return &m_gResources;
-      case VK_PIPELINE_BIND_POINT_COMPUTE : return &m_cResources;
-      default: return nullptr;
-    }
   }
   
   

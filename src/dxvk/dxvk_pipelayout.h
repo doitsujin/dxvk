@@ -115,7 +115,7 @@ namespace dxvk {
      * \returns Resource binding info
      */
     const DxvkDescriptorSlot& binding(uint32_t id) const {
-      return m_bindingSlots.at(id);
+      return m_bindingSlots[id];
     }
     
     /**

@@ -53,7 +53,7 @@ namespace dxvk {
      * \param [in] amount Number to add to the counter
      */
     void increment(DxvkStat counter, uint32_t amount) {
-      m_counters.at(counterId(counter)) += amount;
+      m_counters[counterId(counter)] += amount;
     }
     
     /**
@@ -63,7 +63,7 @@ namespace dxvk {
      * \returns Current value of the counter
      */
     uint32_t get(DxvkStat counter) const {
-      return m_counters.at(counterId(counter));
+      return m_counters[counterId(counter)];
     }
     
     /**

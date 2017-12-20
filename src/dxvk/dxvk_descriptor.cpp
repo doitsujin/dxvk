@@ -21,13 +21,13 @@ namespace dxvk {
   
   
   VkDescriptorSet DxvkDescriptorAlloc::alloc(VkDescriptorSetLayout layout) {
-    VkDescriptorSet set = allocFrom(m_pools.at(m_poolId), layout);
+    VkDescriptorSet set = allocFrom(m_pools[m_poolId], layout);
     
     if (set == VK_NULL_HANDLE) {
       if (++m_poolId >= m_pools.size())
         m_pools.push_back(createDescriptorPool());
       
-      set = allocFrom(m_pools.at(m_poolId), layout);
+      set = allocFrom(m_pools[m_poolId], layout);
     }
     
     return set;

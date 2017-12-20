@@ -15,7 +15,7 @@ namespace dxvk {
     uint32_t bindingId = this->getBindingId(slot);
     
     if (bindingId != InvalidBinding) {
-      m_descriptorSlots.at(bindingId).stages |= stage;
+      m_descriptorSlots[bindingId].stages |= stage;
     } else {
       DxvkDescriptorSlot slotInfo;
       slotInfo.slot   = slot;
@@ -31,7 +31,7 @@ namespace dxvk {
     // of bindings used by a shader is usually much smaller than
     // the number of resource slots available to the system.
     for (uint32_t i = 0; i < m_descriptorSlots.size(); i++) {
-      if (m_descriptorSlots.at(i).slot == slot)
+      if (m_descriptorSlots[i].slot == slot)
         return i;
     }
     

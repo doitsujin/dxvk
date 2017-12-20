@@ -10,10 +10,10 @@ namespace dxvk {
    * Stores information that is required to
    * update a single resource descriptor.
    */
-  struct DxvkDescriptorInfo {
-    VkDescriptorImageInfo  image       = { VK_NULL_HANDLE, VK_NULL_HANDLE, VK_IMAGE_LAYOUT_UNDEFINED };
-    VkDescriptorBufferInfo buffer      = { VK_NULL_HANDLE, 0, 0 };
-    VkBufferView           texelBuffer = VK_NULL_HANDLE;
+  union DxvkDescriptorInfo {
+    VkDescriptorImageInfo  image;
+    VkDescriptorBufferInfo buffer;
+    VkBufferView           texelBuffer;
   };
   
   
