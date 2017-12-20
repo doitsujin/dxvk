@@ -441,7 +441,11 @@ namespace dxvk {
       { DxbcOperandKind::Imm32, DxbcScalarType::Uint32 },
     } },
     /* DclIndexableTemp                     */
-    { },
+    { 3, DxbcInstClass::Declaration, {
+      { DxbcOperandKind::Imm32, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::Imm32, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::Imm32, DxbcScalarType::Uint32 },
+    } },
     /* DclGlobalFlags                       */
     { 0, DxbcInstClass::Declaration },
     /* Reserved0                            */

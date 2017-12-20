@@ -80,6 +80,12 @@ namespace dxvk {
   };
   
   
+  struct DxbcXreg {
+    uint32_t ccount = 0;
+    uint32_t varId  = 0;
+  };
+  
+  
   /**
    * \brief Vertex shader-specific structure
    */
@@ -183,9 +189,11 @@ namespace dxvk {
     // be used to map D3D11 bindings to DXVK bindings.
     std::vector<DxvkResourceSlot> m_resourceSlots;
     
-    ///////////////////////////////
-    // r# registers of type float4
+    ////////////////////////////////////////////////
+    // Temporary r# vector registers with immediate
+    // indexing, and x# vector array registers.
     std::vector<uint32_t> m_rRegs;
+    std::vector<DxbcXreg> m_xRegs;
     
     ///////////////////////////////////////////////////////////
     // v# registers as defined by the shader. The type of each
@@ -249,6 +257,9 @@ namespace dxvk {
       const DxbcShaderInstruction&  ins);
     
     void emitDclTemps(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitDclIndexableTemp(
       const DxbcShaderInstruction&  ins);
     
     void emitDclInterfaceReg(
@@ -400,6 +411,9 @@ namespace dxvk {
     ////////////////////////
     // Address load methods
     DxbcRegisterPointer emitGetTempPtr(
+      const DxbcRegister&           operand);
+    
+    DxbcRegisterPointer emitGetIndexableTempPtr(
       const DxbcRegister&           operand);
     
     DxbcRegisterPointer emitGetInputPtr(

@@ -146,6 +146,9 @@ namespace dxvk {
       case DxbcOpcode::DclTemps:
         return this->emitDclTemps(ins);
         
+      case DxbcOpcode::DclIndexableTemp:
+        return this->emitDclIndexableTemp(ins);
+        
       case DxbcOpcode::DclInput:
       case DxbcOpcode::DclInputSgv:
       case DxbcOpcode::DclInputSiv:
@@ -209,6 +212,27 @@ namespace dxvk {
         m_rRegs.at(i) = varId;
       }
     }
+  }
+  
+  
+  void DxbcCompiler::emitDclIndexableTemp(const DxbcShaderInstruction& ins) {
+    // dcl_indexable_temps has three operands:
+    //    (imm0) Array register index (x#)
+    //    (imm1) Number of vectors stored in the array
+    //    (imm2) Component count of each individual vector
+    DxbcRegisterInfo info;
+    info.type.ctype   = DxbcScalarType::Float32;
+    info.type.ccount  = ins.imm[2].u32;
+    info.type.alength = ins.imm[1].u32;
+    info.sclass       = spv::StorageClassPrivate;
+    
+    const uint32_t regId = ins.imm[0].u32;
+    
+    if (regId >= m_xRegs.size())
+      m_xRegs.resize(regId + 1);
+    
+    m_xRegs.at(regId).ccount = info.type.ccount;
+    m_xRegs.at(regId).varId  = emitNewVariable(info);
   }
   
   
@@ -1719,13 +1743,40 @@ namespace dxvk {
   
   
   DxbcRegisterPointer DxbcCompiler::emitGetTempPtr(
-    const DxbcRegister& operand) {
+    const DxbcRegister&           operand) {
     // r# regs are indexed as follows:
     //    (0) register index (immediate)
     DxbcRegisterPointer result;
     result.type.ctype  = DxbcScalarType::Float32;
     result.type.ccount = 4;
     result.id = m_rRegs.at(operand.idx[0].offset);
+    return result;
+  }
+  
+  
+  DxbcRegisterPointer DxbcCompiler::emitGetIndexableTempPtr(
+    const DxbcRegister&           operand) {
+    // x# regs are indexed as follows:
+    //    (0) register index (immediate)
+    //    (1) element index (relative)
+    const uint32_t regId = operand.idx[0].offset;
+    
+    const DxbcRegisterValue vectorId
+      = emitIndexLoad(operand.idx[1]);
+    
+    DxbcRegisterInfo info;
+    info.type.ctype   = DxbcScalarType::Float32;
+    info.type.ccount  = m_xRegs[regId].ccount;
+    info.type.alength = 0;
+    info.sclass       = spv::StorageClassPrivate;
+    
+    DxbcRegisterPointer result;
+    result.type.ctype  = info.type.ctype;
+    result.type.ccount = info.type.ccount;
+    result.id = m_module.opAccessChain(
+      getPointerTypeId(info),
+      m_xRegs.at(regId).varId,
+      1, &vectorId.id);
     return result;
   }
   
@@ -1854,6 +1905,9 @@ namespace dxvk {
     switch (operand.type) {
       case DxbcOperandType::Temp:
         return emitGetTempPtr(operand);
+      
+      case DxbcOperandType::IndexableTemp:
+        return emitGetIndexableTempPtr(operand);
       
       case DxbcOperandType::Input:
         return emitGetInputPtr(operand);
