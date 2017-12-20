@@ -4,6 +4,19 @@
 
 namespace dxvk {
   
+  struct SpirvImageOperands {
+    uint32_t flags         = 0;
+    uint32_t sLodBias      = 0;
+    uint32_t sLod          = 0;
+    uint32_t sConstOffset  = 0;
+    uint32_t sGradX        = 0;
+    uint32_t sGradY        = 0;
+    uint32_t gOffset       = 0;
+    uint32_t gConstOffsets = 0;
+    uint32_t sSampleId     = 0;
+    uint32_t sMinLod       = 0;
+  };
+  
   /**
    * \brief SPIR-V module
    * 
@@ -518,26 +531,28 @@ namespace dxvk {
     uint32_t opImageSampleImplicitLod(
             uint32_t                resultType,
             uint32_t                sampledImage,
-            uint32_t                coordinates);
+            uint32_t                coordinates,
+      const SpirvImageOperands&     operands);
     
     uint32_t opImageSampleExplicitLod(
             uint32_t                resultType,
             uint32_t                sampledImage,
             uint32_t                coordinates,
-            uint32_t                lod);
+      const SpirvImageOperands&     operands);
     
     uint32_t opImageSampleDrefImplicitLod(
             uint32_t                resultType,
             uint32_t                sampledImage,
             uint32_t                coordinates,
-            uint32_t                reference);
+            uint32_t                reference,
+      const SpirvImageOperands&     operands);
     
     uint32_t opImageSampleDrefExplicitLod(
             uint32_t                resultType,
             uint32_t                sampledImage,
             uint32_t                coordinates,
             uint32_t                reference,
-            uint32_t                lod);
+      const SpirvImageOperands&     operands);
     
     void opLoopMerge(
             uint32_t                mergeBlock,
@@ -586,6 +601,12 @@ namespace dxvk {
       const uint32_t*               argIds);
     
     void instImportGlsl450();
+    
+    uint32_t getImageOperandWordCount(
+      const SpirvImageOperands&     op) const;
+    
+    void putImageOperands(
+      const SpirvImageOperands&     op);
     
   };
   

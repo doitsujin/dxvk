@@ -1193,7 +1193,6 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitSample(const DxbcShaderInstruction& ins) {
-    // TODO support address offset
     // TODO support more sample ops
     
     // All sample instructions have at least these operands:
@@ -1240,6 +1239,11 @@ namespace dxvk {
         m_samplers.at(samplerId).typeId,
         m_samplers.at(samplerId).varId));
     
+    // Accumulate additional image operands. These are
+    // not part of the actual operand token in SPIR-V.
+    SpirvImageOperands imageOperands;
+    // TODO implement sample controls
+    
     // Sampling an image always returns a four-component
     // vector, whereas depth-compare ops return a scalar.
     DxbcRegisterValue result;
@@ -1247,25 +1251,29 @@ namespace dxvk {
     result.type.ccount = isDepthCompare ? 1 : 4;
     
     switch (ins.op) {
+      // Simple image sample operation
       case DxbcOpcode::Sample: {
         result.id = m_module.opImageSampleImplicitLod(
           getVectorTypeId(result.type),
-          sampledImageId, coord.id);
+          sampledImageId, coord.id,
+          imageOperands);
       } break;
       
+      // Depth-compare operation
       case DxbcOpcode::SampleC: {
         result.id = m_module.opImageSampleDrefImplicitLod(
-          getVectorTypeId(result.type),
-          sampledImageId, coord.id,
-          referenceValue.id);
+          getVectorTypeId(result.type), sampledImageId, coord.id,
+          referenceValue.id, imageOperands);
       } break;
       
+      // Depth-compare operation on mip level zero
       case DxbcOpcode::SampleClz: {
+        imageOperands.flags |= spv::ImageOperandsLodMask;
+        imageOperands.sLod = m_module.constf32(0.0f);
+        
         result.id = m_module.opImageSampleDrefExplicitLod(
-          getVectorTypeId(result.type),
-          sampledImageId, coord.id,
-          referenceValue.id,
-          m_module.constf32(0.0f));
+          getVectorTypeId(result.type), sampledImageId, coord.id,
+          referenceValue.id, imageOperands);
       } break;
       
       default:

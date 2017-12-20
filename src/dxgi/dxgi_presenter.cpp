@@ -472,7 +472,8 @@ namespace dxvk {
           typeSampledTex,
           module.opLoad(typeTexture, rcTexture),
           module.opLoad(typeSampler, rcSampler)),
-        module.opLoad(typeVec2, inTexCoord)));
+        module.opLoad(typeVec2, inTexCoord),
+        SpirvImageOperands()));
     
     module.opReturn();
     module.functionEnd();

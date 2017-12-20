@@ -1521,14 +1521,18 @@ namespace dxvk {
   uint32_t SpirvModule::opImageSampleImplicitLod(
           uint32_t                resultType,
           uint32_t                sampledImage,
-          uint32_t                coordinates) {
+          uint32_t                coordinates,
+    const SpirvImageOperands&     operands) {
     uint32_t resultId = this->allocateId();
     
-    m_code.putIns (spv::OpImageSampleImplicitLod, 5);
+    m_code.putIns(spv::OpImageSampleImplicitLod,
+      5 + getImageOperandWordCount(operands));
     m_code.putWord(resultType);
     m_code.putWord(resultId);
     m_code.putWord(sampledImage);
     m_code.putWord(coordinates);
+    
+    putImageOperands(operands);
     return resultId;
   }
   
@@ -1537,16 +1541,18 @@ namespace dxvk {
           uint32_t                resultType,
           uint32_t                sampledImage,
           uint32_t                coordinates,
-          uint32_t                lod) {
+    const SpirvImageOperands&     operands) {
     uint32_t resultId = this->allocateId();
     
-    m_code.putIns (spv::OpImageSampleExplicitLod, 7);
+    m_code.putIns(spv::OpImageSampleExplicitLod,
+      5 + getImageOperandWordCount(operands));
     m_code.putWord(resultType);
     m_code.putWord(resultId);
     m_code.putWord(sampledImage);
     m_code.putWord(coordinates);
     m_code.putWord(spv::ImageOperandsLodMask);
-    m_code.putWord(lod);
+    
+    putImageOperands(operands);
     return resultId;
   }
   
@@ -1555,15 +1561,19 @@ namespace dxvk {
           uint32_t                resultType,
           uint32_t                sampledImage,
           uint32_t                coordinates,
-          uint32_t                reference) {
+          uint32_t                reference,
+    const SpirvImageOperands&     operands) {
     uint32_t resultId = this->allocateId();
     
-    m_code.putIns (spv::OpImageSampleDrefImplicitLod, 6);
+    m_code.putIns(spv::OpImageSampleDrefImplicitLod,
+      6 + getImageOperandWordCount(operands));
     m_code.putWord(resultType);
     m_code.putWord(resultId);
     m_code.putWord(sampledImage);
     m_code.putWord(coordinates);
     m_code.putWord(reference);
+    
+    putImageOperands(operands);
     return resultId;
   }
   
@@ -1573,17 +1583,18 @@ namespace dxvk {
           uint32_t                sampledImage,
           uint32_t                coordinates,
           uint32_t                reference,
-          uint32_t                lod) {
+    const SpirvImageOperands&     operands) {
     uint32_t resultId = this->allocateId();
     
-    m_code.putIns (spv::OpImageSampleDrefExplicitLod, 8);
+    m_code.putIns(spv::OpImageSampleDrefExplicitLod,
+      6 + getImageOperandWordCount(operands));
     m_code.putWord(resultType);
     m_code.putWord(resultId);
     m_code.putWord(sampledImage);
     m_code.putWord(coordinates);
     m_code.putWord(reference);
-    m_code.putWord(spv::ImageOperandsLodMask);
-    m_code.putWord(lod);
+    
+    putImageOperands(operands);
     return resultId;
   }
   
@@ -1681,6 +1692,56 @@ namespace dxvk {
     m_instExt.putIns (spv::OpExtInstImport, 2 + m_instExt.strLen(name));
     m_instExt.putWord(m_instExtGlsl450);
     m_instExt.putStr (name);
+  }
+  
+  
+  uint32_t SpirvModule::getImageOperandWordCount(const SpirvImageOperands& op) const {
+    // Each flag may add one or more operands
+    const uint32_t result
+      = ((op.flags & spv::ImageOperandsBiasMask)        ? 1 : 0)
+      + ((op.flags & spv::ImageOperandsLodMask)         ? 1 : 0)
+      + ((op.flags & spv::ImageOperandsConstOffsetMask) ? 1 : 0)
+      + ((op.flags & spv::ImageOperandsGradMask)        ? 2 : 0)
+      + ((op.flags & spv::ImageOperandsOffsetMask)      ? 1 : 0)
+      + ((op.flags & spv::ImageOperandsConstOffsetsMask)? 1 : 0)
+      + ((op.flags & spv::ImageOperandsSampleMask)      ? 1 : 0)
+      + ((op.flags & spv::ImageOperandsMinLodMask)      ? 1 : 0);
+    
+    // Add a DWORD for the operand mask if it is non-zero
+    return result != 0 ? result + 1 : 0;
+  }
+  
+  
+  void SpirvModule::putImageOperands(const SpirvImageOperands& op) {
+    if (op.flags != 0) {
+      m_code.putWord(op.flags);
+      
+      if (op.flags & spv::ImageOperandsBiasMask)
+        m_code.putWord(op.sLodBias);
+      
+      if (op.flags & spv::ImageOperandsLodMask)
+        m_code.putWord(op.sLod);
+      
+      if (op.flags & spv::ImageOperandsConstOffsetMask)
+        m_code.putWord(op.sConstOffset);
+      
+      if (op.flags & spv::ImageOperandsGradMask) {
+        m_code.putWord(op.sGradX);
+        m_code.putWord(op.sGradY);
+      }
+      
+      if (op.flags & spv::ImageOperandsOffsetMask)
+        m_code.putWord(op.gOffset);
+      
+      if (op.flags & spv::ImageOperandsConstOffsetsMask)
+        m_code.putWord(op.gConstOffsets);
+      
+      if (op.flags & spv::ImageOperandsSampleMask)
+        m_code.putWord(op.sSampleId);
+      
+      if (op.flags & spv::ImageOperandsMinLodMask)
+        m_code.putWord(op.sMinLod);
+    }
   }
   
 }
