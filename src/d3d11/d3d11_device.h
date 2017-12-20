@@ -228,7 +228,7 @@ namespace dxvk {
     
     VkPipelineStageFlags GetEnabledShaderStages() const;
     
-    DxgiFormatPair STDMETHODCALLTYPE LookupFormat(
+    DxgiFormatInfo STDMETHODCALLTYPE LookupFormat(
             DXGI_FORMAT           format,
             DxgiFormatMode        mode) const;
     

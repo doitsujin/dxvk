@@ -138,7 +138,7 @@ namespace dxvk {
   }
   
   
-  DxgiFormatPair STDMETHODCALLTYPE DxgiAdapter::LookupFormat(DXGI_FORMAT format, DxgiFormatMode mode) {
+  DxgiFormatInfo STDMETHODCALLTYPE DxgiAdapter::LookupFormat(DXGI_FORMAT format, DxgiFormatMode mode) {
     // If the mode is 'Any', probe color formats first
     if (mode != DxgiFormatMode::Depth) {
       auto color = m_colorFormats.find(format);
@@ -153,26 +153,52 @@ namespace dxvk {
         return depth->second;
     }
     
-    return DxgiFormatPair();
+    Logger::err(str::format("DxgiAdapter: No format mapping for ", format));
+    return DxgiFormatInfo();
   }
   
   
   void DxgiAdapter::AddColorFormat(
           DXGI_FORMAT                       srcFormat,
           VkFormat                          dstFormat) {
-    DxgiFormatPair formatPair;
-    formatPair.wanted = dstFormat;
-    formatPair.actual = dstFormat;
+    DxgiFormatInfo formatPair;
+    formatPair.format = dstFormat;
+    formatPair.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+    formatPair.swizzle = {
+      VK_COMPONENT_SWIZZLE_IDENTITY,
+      VK_COMPONENT_SWIZZLE_IDENTITY,
+      VK_COMPONENT_SWIZZLE_IDENTITY,
+      VK_COMPONENT_SWIZZLE_IDENTITY,
+    };
+    m_colorFormats.insert(std::make_pair(srcFormat, formatPair));
+  }
+  
+  
+  void DxgiAdapter::AddColorFormat(
+          DXGI_FORMAT                       srcFormat,
+          VkFormat                          dstFormat,
+          VkComponentMapping                swizzle) {
+    DxgiFormatInfo formatPair;
+    formatPair.format = dstFormat;
+    formatPair.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
+    formatPair.swizzle = swizzle;
     m_colorFormats.insert(std::make_pair(srcFormat, formatPair));
   }
   
   
   void DxgiAdapter::AddDepthFormat(
           DXGI_FORMAT                       srcFormat,
-          VkFormat                          dstFormat) {
-    DxgiFormatPair formatPair;
-    formatPair.wanted = dstFormat;
-    formatPair.actual = dstFormat;
+          VkFormat                          dstFormat,
+          VkImageAspectFlags                srvAspect) {
+    DxgiFormatInfo formatPair;
+    formatPair.format = dstFormat;
+    formatPair.aspect = srvAspect;
+    formatPair.swizzle = {
+      VK_COMPONENT_SWIZZLE_IDENTITY,
+      VK_COMPONENT_SWIZZLE_IDENTITY,
+      VK_COMPONENT_SWIZZLE_IDENTITY,
+      VK_COMPONENT_SWIZZLE_IDENTITY,
+    };
     m_depthFormats.insert(std::make_pair(srcFormat, formatPair));
   }
   
@@ -263,10 +289,18 @@ namespace dxvk {
     AddColorFormat(DXGI_FORMAT_B8G8R8A8_UNORM,              VK_FORMAT_B8G8R8A8_UNORM);
     AddColorFormat(DXGI_FORMAT_B8G8R8A8_UNORM_SRGB,         VK_FORMAT_B8G8R8A8_SRGB);
     
-    // TODO implement component swizzle
-    AddColorFormat(DXGI_FORMAT_B8G8R8X8_UNORM,              VK_FORMAT_B8G8R8A8_UNORM);
-    AddColorFormat(DXGI_FORMAT_B8G8R8X8_TYPELESS,           VK_FORMAT_B8G8R8A8_UNORM);
-    AddColorFormat(DXGI_FORMAT_B8G8R8X8_UNORM_SRGB,         VK_FORMAT_B8G8R8A8_SRGB);
+    AddColorFormat(DXGI_FORMAT_B8G8R8X8_UNORM, VK_FORMAT_B8G8R8A8_UNORM,
+      { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G,
+        VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_ONE });
+    
+    AddColorFormat(DXGI_FORMAT_B8G8R8X8_TYPELESS, VK_FORMAT_B8G8R8A8_UNORM,
+      { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G,
+        VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_ONE });
+    
+    AddColorFormat(DXGI_FORMAT_B8G8R8X8_UNORM_SRGB, VK_FORMAT_B8G8R8A8_SRGB,
+      { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G,
+        VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_ONE });
+    
 //     AddColorFormat(DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM,  VK_FORMAT_UNDEFINED);
     
     /***********************************************************************************/
@@ -301,30 +335,32 @@ namespace dxvk {
     
     /***********************************************************************************/
     /*                           D E P T H     F O R M A T S                           */
-    AddDepthFormat(DXGI_FORMAT_D16_UNORM,                   VK_FORMAT_D16_UNORM);
-    AddDepthFormat(DXGI_FORMAT_R16_UNORM,                   VK_FORMAT_D16_UNORM);
-    AddDepthFormat(DXGI_FORMAT_R16_TYPELESS,                VK_FORMAT_D16_UNORM);
+    AddDepthFormat(DXGI_FORMAT_D16_UNORM,                   VK_FORMAT_D16_UNORM, 0);
+    AddDepthFormat(DXGI_FORMAT_R16_TYPELESS,                VK_FORMAT_D16_UNORM, 0);
+    AddDepthFormat(DXGI_FORMAT_R16_UNORM,                   VK_FORMAT_D16_UNORM, VK_IMAGE_ASPECT_DEPTH_BIT);
     
-    AddDepthFormat(DXGI_FORMAT_D32_FLOAT,                   VK_FORMAT_D32_SFLOAT);
-    AddDepthFormat(DXGI_FORMAT_R32_FLOAT,                   VK_FORMAT_D32_SFLOAT);
-    AddDepthFormat(DXGI_FORMAT_R32_TYPELESS,                VK_FORMAT_D32_SFLOAT);
+    AddDepthFormat(DXGI_FORMAT_D32_FLOAT,                   VK_FORMAT_D32_SFLOAT, 0);
+    AddDepthFormat(DXGI_FORMAT_R32_TYPELESS,                VK_FORMAT_D32_SFLOAT, 0);
+    AddDepthFormat(DXGI_FORMAT_R32_FLOAT,                   VK_FORMAT_D32_SFLOAT, VK_IMAGE_ASPECT_DEPTH_BIT);
     
-    AddDepthFormat(DXGI_FORMAT_D32_FLOAT_S8X24_UINT,        VK_FORMAT_D32_SFLOAT_S8_UINT);
-    AddDepthFormat(DXGI_FORMAT_R32G8X24_TYPELESS,           VK_FORMAT_D32_SFLOAT_S8_UINT);
-    AddDepthFormat(DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS,    VK_FORMAT_D32_SFLOAT_S8_UINT);
-    AddDepthFormat(DXGI_FORMAT_X32_TYPELESS_G8X24_UINT,     VK_FORMAT_D32_SFLOAT_S8_UINT);
+    AddDepthFormat(DXGI_FORMAT_D32_FLOAT_S8X24_UINT,        VK_FORMAT_D32_SFLOAT_S8_UINT, 0);
+    AddDepthFormat(DXGI_FORMAT_R32G8X24_TYPELESS,           VK_FORMAT_D32_SFLOAT_S8_UINT, 0);
+    AddDepthFormat(DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS,    VK_FORMAT_D32_SFLOAT_S8_UINT, VK_IMAGE_ASPECT_DEPTH_BIT);
+    AddDepthFormat(DXGI_FORMAT_X32_TYPELESS_G8X24_UINT,     VK_FORMAT_D32_SFLOAT_S8_UINT, VK_IMAGE_ASPECT_STENCIL_BIT);
     
     // Vulkan implementations are not required to support 24-bit depth buffers natively
     // and AMD decided to not implement them, so we'll fall back to 32-bit depth buffers
     if (HasFormatSupport(VK_FORMAT_D24_UNORM_S8_UINT, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
-      AddDepthFormat(DXGI_FORMAT_D24_UNORM_S8_UINT,         VK_FORMAT_D24_UNORM_S8_UINT);
-      AddDepthFormat(DXGI_FORMAT_R24_UNORM_X8_TYPELESS,     VK_FORMAT_D24_UNORM_S8_UINT);
-      AddDepthFormat(DXGI_FORMAT_X24_TYPELESS_G8_UINT,      VK_FORMAT_D24_UNORM_S8_UINT);
+      AddDepthFormat(DXGI_FORMAT_D24_UNORM_S8_UINT,         VK_FORMAT_D24_UNORM_S8_UINT, 0);
+      AddDepthFormat(DXGI_FORMAT_R24G8_TYPELESS,            VK_FORMAT_D24_UNORM_S8_UINT, 0);
+      AddDepthFormat(DXGI_FORMAT_R24_UNORM_X8_TYPELESS,     VK_FORMAT_D24_UNORM_S8_UINT, VK_IMAGE_ASPECT_DEPTH_BIT);
+      AddDepthFormat(DXGI_FORMAT_X24_TYPELESS_G8_UINT,      VK_FORMAT_D24_UNORM_S8_UINT, VK_IMAGE_ASPECT_STENCIL_BIT);
     } else {
       Logger::warn("DxgiAdapter: DXGI_FORMAT_D24_UNORM_S8_UINT -> VK_FORMAT_D32_SFLOAT_S8_UINT");
-      AddDepthFormat(DXGI_FORMAT_D24_UNORM_S8_UINT,         VK_FORMAT_D32_SFLOAT_S8_UINT);
-      AddDepthFormat(DXGI_FORMAT_R24_UNORM_X8_TYPELESS,     VK_FORMAT_D32_SFLOAT_S8_UINT);
-      AddDepthFormat(DXGI_FORMAT_X24_TYPELESS_G8_UINT,      VK_FORMAT_D32_SFLOAT_S8_UINT);
+      AddDepthFormat(DXGI_FORMAT_D24_UNORM_S8_UINT,         VK_FORMAT_D32_SFLOAT_S8_UINT, 0);
+      AddDepthFormat(DXGI_FORMAT_R24G8_TYPELESS,            VK_FORMAT_D32_SFLOAT_S8_UINT, 0);
+      AddDepthFormat(DXGI_FORMAT_R24_UNORM_X8_TYPELESS,     VK_FORMAT_D32_SFLOAT_S8_UINT, VK_IMAGE_ASPECT_DEPTH_BIT);
+      AddDepthFormat(DXGI_FORMAT_X24_TYPELESS_G8_UINT,      VK_FORMAT_D32_SFLOAT_S8_UINT, VK_IMAGE_ASPECT_STENCIL_BIT);
     }
   }
   
@@ -332,7 +368,7 @@ namespace dxvk {
   bool DxgiAdapter::HasFormatSupport(
           VkFormat                          format,
           VkFormatFeatureFlags              features) const {
-    VkFormatProperties info = m_adapter->formatProperties(format);
+    const VkFormatProperties info = m_adapter->formatProperties(format);
     return ((info.optimalTilingFeatures | info.bufferFeatures) & features) == features;
   }
   

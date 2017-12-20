@@ -1253,6 +1253,13 @@ namespace dxvk {
           sampledImageId, coord.id);
       } break;
       
+      case DxbcOpcode::SampleC: {
+        result.id = m_module.opImageSampleDrefImplicitLod(
+          getVectorTypeId(result.type),
+          sampledImageId, coord.id,
+          referenceValue.id);
+      } break;
+      
       case DxbcOpcode::SampleClz: {
         result.id = m_module.opImageSampleDrefExplicitLod(
           getVectorTypeId(result.type),

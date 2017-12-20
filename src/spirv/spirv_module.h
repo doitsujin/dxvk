@@ -520,6 +520,18 @@ namespace dxvk {
             uint32_t                sampledImage,
             uint32_t                coordinates);
     
+    uint32_t opImageSampleExplicitLod(
+            uint32_t                resultType,
+            uint32_t                sampledImage,
+            uint32_t                coordinates,
+            uint32_t                lod);
+    
+    uint32_t opImageSampleDrefImplicitLod(
+            uint32_t                resultType,
+            uint32_t                sampledImage,
+            uint32_t                coordinates,
+            uint32_t                reference);
+    
     uint32_t opImageSampleDrefExplicitLod(
             uint32_t                resultType,
             uint32_t                sampledImage,

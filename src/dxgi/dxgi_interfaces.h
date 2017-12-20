@@ -12,17 +12,17 @@ namespace dxvk {
   class DxvkImage;
   
   /**
-   * \brief Format pair
+   * \brief Format info
    * 
-   * For a DXGI format, this stores two Vulkan formats:
-   * The format that directly corresponds to the DXGI
-   * format, and a similar format that the device can
-   * use. If the device supports the desired format,
-   * both formats will be equal.
+   * Stores a Vulkan image format for a given
+   * DXGI format and some additional information
+   * on how resources with the particular format
+   * are supposed to be used.
    */
-  struct DxgiFormatPair {
-    VkFormat wanted = VK_FORMAT_UNDEFINED;
-    VkFormat actual = VK_FORMAT_UNDEFINED;
+  struct DxgiFormatInfo {
+    VkFormat            format;
+    VkImageAspectFlags  aspect;
+    VkComponentMapping  swizzle;
   };
   
   /**
@@ -64,7 +64,7 @@ IDXGIAdapterPrivate : public IDXGIAdapter1 {
    * \param [in] mode Format lookup mode
    * \returns Vulkan format pair
    */
-  virtual dxvk::DxgiFormatPair STDMETHODCALLTYPE LookupFormat(
+  virtual dxvk::DxgiFormatInfo STDMETHODCALLTYPE LookupFormat(
           DXGI_FORMAT          format,
           dxvk::DxgiFormatMode mode) = 0;
 };

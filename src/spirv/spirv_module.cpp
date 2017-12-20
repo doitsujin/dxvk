@@ -1533,6 +1533,41 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opImageSampleExplicitLod(
+          uint32_t                resultType,
+          uint32_t                sampledImage,
+          uint32_t                coordinates,
+          uint32_t                lod) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpImageSampleExplicitLod, 7);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(sampledImage);
+    m_code.putWord(coordinates);
+    m_code.putWord(spv::ImageOperandsLodMask);
+    m_code.putWord(lod);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opImageSampleDrefImplicitLod(
+          uint32_t                resultType,
+          uint32_t                sampledImage,
+          uint32_t                coordinates,
+          uint32_t                reference) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpImageSampleDrefImplicitLod, 6);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(sampledImage);
+    m_code.putWord(coordinates);
+    m_code.putWord(reference);
+    return resultId;
+  }
+  
+  
   uint32_t SpirvModule::opImageSampleDrefExplicitLod(
           uint32_t                resultType,
           uint32_t                sampledImage,

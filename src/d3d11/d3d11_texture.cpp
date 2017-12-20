@@ -24,7 +24,7 @@ namespace dxvk {
     DxvkImageCreateInfo info;
     info.type           = VK_IMAGE_TYPE_2D;
     info.format         = pDevice->LookupFormat(
-      pDesc->Format, m_formatMode).actual;
+      pDesc->Format, m_formatMode).format;
     info.flags          = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
     info.sampleCount    = VK_SAMPLE_COUNT_1_BIT;
     info.extent.width   = pDesc->Width;
