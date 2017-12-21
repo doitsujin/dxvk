@@ -975,6 +975,16 @@ namespace dxvk {
           conditionType, src.at(0).id, src.at(1).id);
         break;
       
+      case DxbcOpcode::UGe:
+        condition = m_module.opUGreaterThanEqual(
+          conditionType, src.at(0).id, src.at(1).id);
+        break;
+      
+      case DxbcOpcode::ULt:
+        condition = m_module.opULessThan(
+          conditionType, src.at(0).id, src.at(1).id);
+        break;
+      
       default:
         Logger::warn(str::format(
           "DxbcCompiler: Unhandled instruction: ",
@@ -1331,14 +1341,21 @@ namespace dxvk {
       : DxbcRegisterValue();
     
     // Load explicit gradients for sample operations that require them
-    const bool explicitGradients = ins.op == DxbcOpcode::SampleD;
+    const bool hasExplicitGradients = ins.op == DxbcOpcode::SampleD;
     
-    const DxbcRegisterValue explicitGradientX = explicitGradients
+    const DxbcRegisterValue explicitGradientX = hasExplicitGradients
       ? emitRegisterLoad(ins.src[3], coordLayerMask)
       : DxbcRegisterValue();
     
-    const DxbcRegisterValue explicitGradientY = explicitGradients
+    const DxbcRegisterValue explicitGradientY = hasExplicitGradients
       ? emitRegisterLoad(ins.src[4], coordLayerMask)
+      : DxbcRegisterValue();
+    
+    // Explicit LOD value for certain sample operations
+    const bool hasExplicitLod = ins.op == DxbcOpcode::SampleL;
+    
+    const DxbcRegisterValue explicitLod = hasExplicitLod
+      ? emitRegisterLoad(ins.src[3], DxbcRegMask(true, false, false, false))
       : DxbcRegisterValue();
     
     // Determine the sampled image type based on the opcode.
@@ -1412,6 +1429,16 @@ namespace dxvk {
         imageOperands.flags |= spv::ImageOperandsGradMask;
         imageOperands.sGradX = explicitGradientX.id;
         imageOperands.sGradY = explicitGradientY.id;
+        
+        result.id = m_module.opImageSampleExplicitLod(
+          getVectorTypeId(result.type), sampledImageId, coord.id,
+          imageOperands);
+      } break;
+      
+      // Sample operation with explicit LOD
+      case DxbcOpcode::SampleL: {
+        imageOperands.flags |= spv::ImageOperandsLodMask;
+        imageOperands.sLod = m_module.constf32(explicitLod.id);
         
         result.id = m_module.opImageSampleExplicitLod(
           getVectorTypeId(result.type), sampledImageId, coord.id,

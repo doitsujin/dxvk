@@ -324,7 +324,13 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
     } },
     /* SampleL                              */
-    { },
+    { 5, DxbcInstClass::TextureSample, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* SampleD                              */
     { 6, DxbcInstClass::TextureSample, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },

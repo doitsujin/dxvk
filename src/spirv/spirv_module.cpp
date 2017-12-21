@@ -1324,6 +1324,66 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opULessThan(
+          uint32_t                resultType,
+          uint32_t                vector1,
+          uint32_t                vector2) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpULessThan, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(vector1);
+    m_code.putWord(vector2);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opULessThanEqual(
+          uint32_t                resultType,
+          uint32_t                vector1,
+          uint32_t                vector2) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpULessThanEqual, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(vector1);
+    m_code.putWord(vector2);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opUGreaterThan(
+          uint32_t                resultType,
+          uint32_t                vector1,
+          uint32_t                vector2) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpUGreaterThan, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(vector1);
+    m_code.putWord(vector2);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opUGreaterThanEqual(
+          uint32_t                resultType,
+          uint32_t                vector1,
+          uint32_t                vector2) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpUGreaterThanEqual, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(vector1);
+    m_code.putWord(vector2);
+    return resultId;
+  }
+  
+  
   uint32_t SpirvModule::opFOrdEqual(
           uint32_t                resultType,
           uint32_t                vector1,

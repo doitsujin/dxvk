@@ -466,6 +466,26 @@ namespace dxvk {
             uint32_t                vector1,
             uint32_t                vector2);
     
+    uint32_t opULessThan(
+            uint32_t                resultType,
+            uint32_t                vector1,
+            uint32_t                vector2);
+    
+    uint32_t opULessThanEqual(
+            uint32_t                resultType,
+            uint32_t                vector1,
+            uint32_t                vector2);
+    
+    uint32_t opUGreaterThan(
+            uint32_t                resultType,
+            uint32_t                vector1,
+            uint32_t                vector2);
+    
+    uint32_t opUGreaterThanEqual(
+            uint32_t                resultType,
+            uint32_t                vector1,
+            uint32_t                vector2);
+    
     uint32_t opFOrdEqual(
             uint32_t                resultType,
             uint32_t                vector1,

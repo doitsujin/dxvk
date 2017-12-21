@@ -1404,10 +1404,8 @@ namespace dxvk {
           : nullptr;
     }
     
-    if (ppDepthStencilView != nullptr) {
-      Logger::err("D3D11DeviceContext::OMGetRenderTargets: Stencil view not supported");
-      *ppDepthStencilView = nullptr;
-    }
+    if (ppDepthStencilView != nullptr)
+      *ppDepthStencilView = m_state.om.depthStencilView.ref();
   }
   
   
