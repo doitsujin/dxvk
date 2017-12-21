@@ -121,6 +121,14 @@ namespace dxvk {
   };
   
   
+  /**
+   * \brief Compute shader-specific structure
+   */
+  struct DxbcCompilerCsPart {
+    uint32_t functionId = 0;
+  };
+  
+  
   enum class DxbcCfgBlockType : uint32_t {
     If, Loop,
   };
@@ -253,6 +261,7 @@ namespace dxvk {
     DxbcCompilerVsPart m_vs;
     DxbcCompilerGsPart m_gs;
     DxbcCompilerPsPart m_ps;
+    DxbcCompilerCsPart m_cs;
     
     /////////////////////////////////////////////////////
     // Shader interface and metadata declaration methods
@@ -500,18 +509,21 @@ namespace dxvk {
     void emitVsInitBuiltins();
     void emitGsInitBuiltins(uint32_t vertexCount);
     void emitPsInitBuiltins();
+    void emitCsInitBuiltins();
     
     /////////////////////////////////
     // Shader initialization methods
     void emitVsInit();
     void emitGsInit();
     void emitPsInit();
+    void emitCsInit();
     
     ///////////////////////////////
     // Shader finalization methods
     void emitVsFinalize();
     void emitGsFinalize();
     void emitPsFinalize();
+    void emitCsFinalize();
     
     //////////////
     // Misc stuff

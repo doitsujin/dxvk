@@ -1196,7 +1196,17 @@ namespace dxvk {
           ID3D11ComputeShader*              pComputeShader,
           ID3D11ClassInstance* const*       ppClassInstances,
           UINT                              NumClassInstances) {
-    Logger::err("D3D11DeviceContext::CSSetShader: Not implemented");
+    auto shader = static_cast<D3D11ComputeShader*>(pComputeShader);
+    
+    if (NumClassInstances != 0)
+      Logger::err("D3D11DeviceContext::CSSetShader: Class instances not supported");
+    
+    if (m_state.cs.shader != shader) {
+      m_state.cs.shader = shader;
+      
+      m_context->bindShader(VK_SHADER_STAGE_COMPUTE_BIT,
+        shader != nullptr ? shader->GetShader() : nullptr);
+    }
   }
   
   

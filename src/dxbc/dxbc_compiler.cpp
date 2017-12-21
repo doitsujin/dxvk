@@ -37,6 +37,7 @@ namespace dxvk {
       case DxbcProgramType::VertexShader:   this->emitVsInit(); break;
       case DxbcProgramType::GeometryShader: this->emitGsInit(); break;
       case DxbcProgramType::PixelShader:    this->emitPsInit(); break;
+      case DxbcProgramType::ComputeShader:  this->emitCsInit(); break;
       default: throw DxvkError("DxbcCompiler: Unsupported program type");
     }
   }
@@ -116,6 +117,7 @@ namespace dxvk {
       case DxbcProgramType::VertexShader:   this->emitVsFinalize(); break;
       case DxbcProgramType::GeometryShader: this->emitGsFinalize(); break;
       case DxbcProgramType::PixelShader:    this->emitPsFinalize(); break;
+      case DxbcProgramType::ComputeShader:  this->emitCsFinalize(); break;
       default: throw DxvkError("DxbcCompiler: Unsupported program type");
     }
     
@@ -2447,7 +2449,7 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitGsInitBuiltins(uint32_t vertexCount) {
-    
+    // TODO implement
   }
   
   
@@ -2457,6 +2459,11 @@ namespace dxvk {
       spv::StorageClassInput },
       spv::BuiltInFragCoord,
       "ps_frag_coord");
+  }
+  
+  
+  void DxbcCompiler::emitCsInitBuiltins() {
+    // TODO implement
   }
   
   
@@ -2572,6 +2579,27 @@ namespace dxvk {
   }
   
   
+  void DxbcCompiler::emitCsInit() {
+    m_module.enableCapability(spv::CapabilityShader);
+    
+    // There are no input or output
+    // variables for compute shaders
+    emitCsInitBuiltins();
+    
+    // Main function of the compute shader
+    m_cs.functionId = m_module.allocateId();
+    m_module.setDebugName(m_ps.functionId, "cs_main");
+    
+    m_module.functionBegin(
+      m_module.defVoidType(),
+      m_cs.functionId,
+      m_module.defFunctionType(
+        m_module.defVoidType(), 0, nullptr),
+      spv::FunctionControlMaskNone);
+    m_module.opLabel(m_module.allocateId());
+  }
+  
+  
   void DxbcCompiler::emitVsFinalize() {
     this->emitInputSetup();
     m_module.opFunctionCall(
@@ -2598,6 +2626,13 @@ namespace dxvk {
       m_module.defVoidType(),
       m_ps.functionId, 0, nullptr);
     this->emitOutputSetup();
+  }
+  
+  
+  void DxbcCompiler::emitCsFinalize() {
+    m_module.opFunctionCall(
+      m_module.defVoidType(),
+      m_cs.functionId, 0, nullptr);
   }
   
   
