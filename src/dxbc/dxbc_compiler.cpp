@@ -2379,7 +2379,6 @@ namespace dxvk {
         emitValueStore(ptr, value, mask);
       } break;
       
-        
       default:
         Logger::warn(str::format(
           "DxbcCompiler: Unhandled VS SV output: ", sv));
@@ -2706,12 +2705,12 @@ namespace dxvk {
   uint32_t DxbcCompiler::getPerVertexBlockId() {
     uint32_t t_f32    = m_module.defFloatType(32);
     uint32_t t_f32_v4 = m_module.defVectorType(t_f32, 4);
-    uint32_t t_f32_a2 = m_module.defArrayType(t_f32, m_module.constu32(2));
+    uint32_t t_f32_a4 = m_module.defArrayType(t_f32, m_module.constu32(4));
     
     std::array<uint32_t, 3> members;
-    members[PerVertex_Position]  = t_f32_v4;
-    members[PerVertex_CullDist]  = t_f32_a2;
-    members[PerVertex_ClipDist]  = t_f32_a2;
+    members[PerVertex_Position] = t_f32_v4;
+    members[PerVertex_CullDist] = t_f32_a4;
+    members[PerVertex_ClipDist] = t_f32_a4;
     
     uint32_t typeId = m_module.defStructTypeUnique(
       members.size(), members.data());
