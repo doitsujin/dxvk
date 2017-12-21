@@ -808,12 +808,13 @@ namespace dxvk {
     info.addressModeW  = DecodeAddressMode(pSamplerDesc->AddressW);
     info.compareOp     = DecodeCompareOp(pSamplerDesc->ComparisonFunc);
     info.borderColor   = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
-    info.usePixelCoord = VK_FALSE;
+    info.usePixelCoord = VK_FALSE;  // Not supported in D3D11
     
+    // Try to find a matching border color if clamp to border is enabled
     if (info.addressModeU == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER
      || info.addressModeV == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER
      || info.addressModeW == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER)
-      Logger::warn("D3D11: Border color not supported yet");
+      info.borderColor = DecodeBorderColor(pSamplerDesc->BorderColor);
     
     // Create sampler object if the application requests it
     if (ppSamplerState == nullptr)

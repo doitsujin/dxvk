@@ -15,44 +15,56 @@ namespace dxvk {
   }
   
   
-  VkCompareOp DecodeCompareOp(
-          D3D11_COMPARISON_FUNC mode) {
-    switch (mode) {
-      case D3D11_COMPARISON_NEVER:
-        return VK_COMPARE_OP_NEVER;
-        
-      case D3D11_COMPARISON_LESS:
-        return VK_COMPARE_OP_LESS;
-        
-      case D3D11_COMPARISON_EQUAL:
-        return VK_COMPARE_OP_EQUAL;
-        
-      case D3D11_COMPARISON_LESS_EQUAL:
-        return VK_COMPARE_OP_LESS_OR_EQUAL;
-        
-      case D3D11_COMPARISON_GREATER:
-        return VK_COMPARE_OP_GREATER;
-        
-      case D3D11_COMPARISON_NOT_EQUAL:
-        return VK_COMPARE_OP_NOT_EQUAL;
-        
-      case D3D11_COMPARISON_GREATER_EQUAL:
-        return VK_COMPARE_OP_GREATER_OR_EQUAL;
-        
-      case D3D11_COMPARISON_ALWAYS:
-        return VK_COMPARE_OP_ALWAYS;
+  VkBorderColor DecodeBorderColor(const FLOAT BorderColor[4]) {
+    struct BorderColorEntry {
+      float r, g, b, a;
+      VkBorderColor bc;
+    };
+    
+    // Vulkan only supports a very limited set of border colors
+    const std::array<BorderColorEntry, 3> borderColorMap = {{
+      { 0.0f, 0.0f, 0.0f, 0.0f, VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK },
+      { 0.0f, 0.0f, 0.0f, 1.0f, VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK },
+      { 1.0f, 1.0f, 1.0f, 1.0f, VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK },
+    }};
+    
+    for (const auto& e : borderColorMap) {
+      if (e.r == BorderColor[0] && e.g == BorderColor[1]
+       && e.b == BorderColor[2] && e.a == BorderColor[3])
+        return e.bc;
+    }
+      
+    Logger::warn(str::format(
+      "D3D11Device: No matching border color found for (",
+      BorderColor[0], ",", BorderColor[1], ",",
+      BorderColor[2], ",", BorderColor[3], ")"));
+    
+    return VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+  }
+  
+  
+  VkCompareOp DecodeCompareOp(D3D11_COMPARISON_FUNC Mode) {
+    switch (Mode) {
+      case D3D11_COMPARISON_NEVER:          return VK_COMPARE_OP_NEVER;
+      case D3D11_COMPARISON_LESS:           return VK_COMPARE_OP_LESS;
+      case D3D11_COMPARISON_EQUAL:          return VK_COMPARE_OP_EQUAL;
+      case D3D11_COMPARISON_LESS_EQUAL:     return VK_COMPARE_OP_LESS_OR_EQUAL;
+      case D3D11_COMPARISON_GREATER:        return VK_COMPARE_OP_GREATER;
+      case D3D11_COMPARISON_NOT_EQUAL:      return VK_COMPARE_OP_NOT_EQUAL;
+      case D3D11_COMPARISON_GREATER_EQUAL:  return VK_COMPARE_OP_GREATER_OR_EQUAL;
+      case D3D11_COMPARISON_ALWAYS:         return VK_COMPARE_OP_ALWAYS;
         
       default:
-        Logger::err(str::format("D3D11: Unsupported compare op: ", mode));
+        Logger::err(str::format("D3D11: Unsupported compare op: ", Mode));
         return VK_COMPARE_OP_ALWAYS;
     }
   }
   
   
-  VkMemoryPropertyFlags GetMemoryFlagsForUsage(D3D11_USAGE usage) {
+  VkMemoryPropertyFlags GetMemoryFlagsForUsage(D3D11_USAGE Usage) {
     VkMemoryPropertyFlags memoryFlags = 0;
     
-    switch (usage) {
+    switch (Usage) {
       case D3D11_USAGE_DEFAULT:
       case D3D11_USAGE_IMMUTABLE:
         memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
