@@ -3,9 +3,8 @@
 namespace dxvk {
   
   constexpr uint32_t PerVertex_Position  = 0;
-  constexpr uint32_t PerVertex_PointSize = 1;
-  constexpr uint32_t PerVertex_CullDist  = 2;
-  constexpr uint32_t PerVertex_ClipDist  = 3;
+  constexpr uint32_t PerVertex_CullDist  = 1;
+  constexpr uint32_t PerVertex_ClipDist  = 2;
   
   DxbcCompiler::DxbcCompiler(
     const DxbcProgramVersion& version,
@@ -609,6 +608,7 @@ namespace dxvk {
       = primitiveVertexCount(m_gs.inputPrimitive);
     
     emitDclInputArray(vertexCount);
+    emitDclInputPerVertex(vertexCount, "gs_vertex_in");
     emitGsInitBuiltins(vertexCount);
   }
   
@@ -1265,7 +1265,7 @@ namespace dxvk {
   void DxbcCompiler::emitGeometryEmit(const DxbcShaderInstruction& ins) {
     switch (ins.op) {
       case DxbcOpcode::Emit: {
-        emitOutputSetup(0);
+        emitOutputSetup();
         m_module.opEmitVertex();
       } break;
       
@@ -1364,9 +1364,9 @@ namespace dxvk {
     
     if (ins.sampleControls.u != 0 || ins.sampleControls.v != 0 || ins.sampleControls.w != 0) {
       const std::array<uint32_t, 3> offsetIds = {
-        imageLayerDim >= 1 ? m_module.constu32(ins.sampleControls.u) : 0,
-        imageLayerDim >= 2 ? m_module.constu32(ins.sampleControls.v) : 0,
-        imageLayerDim >= 3 ? m_module.constu32(ins.sampleControls.w) : 0,
+        imageLayerDim >= 1 ? m_module.consti32(ins.sampleControls.u) : 0,
+        imageLayerDim >= 2 ? m_module.consti32(ins.sampleControls.v) : 0,
+        imageLayerDim >= 3 ? m_module.consti32(ins.sampleControls.w) : 0,
       };
       
       imageOperands.flags |= spv::ImageOperandsConstOffsetMask;
@@ -2170,16 +2170,14 @@ namespace dxvk {
   }
   
   
-  void DxbcCompiler::emitInputSetup(uint32_t vertexCount) {
-    const uint32_t vecTypeId = m_module.defVectorType(
-      m_module.defFloatType(32), 4);
-    const uint32_t ptrTypeId = m_module.defPointerType(
-      vecTypeId, spv::StorageClassPrivate);
+  void DxbcCompiler::emitInputSetup() {
+    // Copy all defined v# registers into the input array
+    const uint32_t vecTypeId = m_module.defVectorType(m_module.defFloatType(32), 4);
+    const uint32_t ptrTypeId = m_module.defPointerType(vecTypeId, spv::StorageClassPrivate);
     
-    // Copy all defined user input registers into the array
     for (uint32_t i = 0; i < m_vRegs.size(); i++) {
       if (m_vRegs.at(i) != 0) {
-        const uint32_t registerId = m_module.constu32(i);
+        const uint32_t registerId = m_module.consti32(i);
         m_module.opStore(
           m_module.opAccessChain(ptrTypeId, m_vArray, 1, &registerId),
           m_module.opLoad(vecTypeId, m_vRegs.at(i)));
@@ -2188,94 +2186,221 @@ namespace dxvk {
     
     // Copy all system value registers into the array,
     // preserving any previously written contents.
-    for (const DxbcSvMapping& svMapping : m_vMappings) {
-      const uint32_t registerId = m_module.constu32(svMapping.regId);
+    for (const DxbcSvMapping& map : m_vMappings) {
+      const uint32_t registerId = m_module.consti32(map.regId);
       
-      DxbcRegisterPointer ptrOut;
-      ptrOut.type.ctype   = DxbcScalarType::Float32;
-      ptrOut.type.ccount  = 4;
-      ptrOut.id = m_module.opAccessChain(ptrTypeId,
-        m_vArray, 1, &registerId);
+      const DxbcRegisterValue value = [&] {
+        switch (m_version.type()) {
+          case DxbcProgramType::VertexShader: return emitVsSystemValueLoad(map.sv, map.regMask);
+          case DxbcProgramType::PixelShader:  return emitPsSystemValueLoad(map.sv, map.regMask);
+          default: throw DxvkError(str::format("DxbcCompiler: Unexpected stage: ", m_version.type()));
+        }
+      }();
       
-      switch (svMapping.sv) {
-        case DxbcSystemValue::Position: {
-          if (m_version.type() == DxbcProgramType::PixelShader) {
-            DxbcRegisterPointer ptrIn;
-            ptrIn.type.ctype   = DxbcScalarType::Float32;
-            ptrIn.type.ccount  = 4;
-            ptrIn.id = m_ps.builtinFragCoord;
-            
-            emitValueStore(ptrOut,
-              emitRegisterExtract(
-                emitValueLoad(ptrIn),
-                svMapping.regMask),
-              svMapping.regMask);
-          } else {
-            Logger::warn(str::format(
-              "DxbcCompiler: SV_POSITION input not yet supported: ",
-              m_version.type()));
-          }
-        } break;
+      DxbcRegisterPointer inputReg;
+      inputReg.type.ctype  = DxbcScalarType::Float32;
+      inputReg.type.ccount = 4;
+      inputReg.id = m_module.opAccessChain(
+        ptrTypeId, m_vArray, 1, &registerId);
+      emitValueStore(inputReg, value, map.regMask);
+    }
+  }
+  
+  
+  void DxbcCompiler::emitInputSetup(uint32_t vertexCount) {
+    // Copy all defined v# registers into the input array. Note
+    // that the outer index of the array is the vertex index.
+    const uint32_t vecTypeId    = m_module.defVectorType(m_module.defFloatType(32), 4);
+    const uint32_t dstPtrTypeId = m_module.defPointerType(vecTypeId, spv::StorageClassPrivate);
+    const uint32_t srcPtrTypeId = m_module.defPointerType(vecTypeId, spv::StorageClassInput);
+    
+    for (uint32_t i = 0; i < m_vRegs.size(); i++) {
+      if (m_vRegs.at(i) != 0) {
+        const uint32_t registerId = m_module.consti32(i);
         
-        case DxbcSystemValue::VertexId: {
-          if (m_version.type() == DxbcProgramType::VertexShader) {
-            DxbcRegisterPointer ptrIn;
-            ptrIn.type.ctype   = DxbcScalarType::Uint32;
-            ptrIn.type.ccount  = 1;
-            ptrIn.id = m_vs.builtinVertexId;
-            
-            emitValueStore(ptrOut,
-              emitValueLoad(ptrIn),
-              svMapping.regMask);
-          } else {
-            Logger::warn(str::format(
-              "DxbcCompiler: SV_VERTEXID input not yet supported: ",
-              m_version.type()));
+        for (uint32_t v = 0; v < vertexCount; v++) {
+          std::array<uint32_t, 2> indices = {
+            m_module.consti32(v), registerId,
+          };
+          
+          m_module.opStore(
+            m_module.opAccessChain(dstPtrTypeId,
+              m_vArray, indices.size(), indices.data()),
+            m_module.opLoad(vecTypeId,
+              m_module.opAccessChain(srcPtrTypeId,
+                m_vRegs.at(i), 1, indices.data())));
+        }
+      }
+    }
+    
+    // Copy all system value registers into the array,
+    // preserving any previously written contents.
+    for (const DxbcSvMapping& map : m_vMappings) {
+      const uint32_t registerId = m_module.consti32(map.regId);
+      
+      for (uint32_t v = 0; v < vertexCount; v++) {
+        const DxbcRegisterValue value = [&] {
+          switch (m_version.type()) {
+            case DxbcProgramType::GeometryShader: return emitGsSystemValueLoad(map.sv, map.regMask, v);
+            default: throw DxvkError(str::format("DxbcCompiler: Unexpected stage: ", m_version.type()));
           }
-        } break;
+        }();
         
-        default:
-          Logger::warn(str::format(
-            "DxbcCompiler: Unhandled sv input: ",
-            svMapping.sv));
+        std::array<uint32_t, 2> indices = {
+          m_module.consti32(v), registerId,
+        };
+        
+        DxbcRegisterPointer inputReg;
+        inputReg.type.ctype  = DxbcScalarType::Float32;
+        inputReg.type.ccount = 4;
+        inputReg.id = m_module.opAccessChain(dstPtrTypeId,
+          m_vArray, indices.size(), indices.data());
+        emitValueStore(inputReg, value, map.regMask);
       }
     }
   }
   
   
-  void DxbcCompiler::emitOutputSetup(uint32_t vertexCount) {
+  void DxbcCompiler::emitOutputSetup() {
     for (const DxbcSvMapping& svMapping : m_oMappings) {
-      switch (svMapping.sv) {
-        case DxbcSystemValue::Position: {
-          DxbcRegisterInfo info;
-          info.type.ctype   = DxbcScalarType::Float32;
-          info.type.ccount  = 4;
-          info.type.alength = 0;
-          info.sclass = spv::StorageClassOutput;
-          
-          const uint32_t ptrTypeId = getPointerTypeId(info);
-          const uint32_t memberId = m_module.constu32(PerVertex_Position);
-          
-          DxbcRegisterPointer dstPtr;
-          dstPtr.type.ctype  = info.type.ctype;
-          dstPtr.type.ccount = info.type.ccount;
-          dstPtr.id = m_module.opAccessChain(
-            ptrTypeId, m_perVertexOut, 1, &memberId);
-          
-          DxbcRegisterPointer srcPtr;
-          srcPtr.type.ctype  = info.type.ctype;
-          srcPtr.type.ccount = info.type.ccount;
-          srcPtr.id = m_oRegs.at(svMapping.regId);
-          
-          emitValueStore(dstPtr, emitValueLoad(srcPtr),
-            DxbcRegMask(true, true, true, true));
-        } break;
+      DxbcRegisterPointer outputReg;
+      outputReg.type.ctype  = DxbcScalarType::Float32;
+      outputReg.type.ccount = 4;
+      outputReg.id = m_oRegs.at(svMapping.regId);
+      
+      emitVsSystemValueStore(
+        svMapping.sv,
+        svMapping.regMask,
+        emitValueLoad(outputReg));
+    }
+  }
+  
+  
+  DxbcRegisterValue DxbcCompiler::emitVsSystemValueLoad(
+          DxbcSystemValue         sv,
+          DxbcRegMask             mask) {
+    switch (sv) {
+      case DxbcSystemValue::VertexId: {
+        DxbcRegisterPointer ptrIn;
+        ptrIn.type.ctype   = DxbcScalarType::Uint32;
+        ptrIn.type.ccount  = 1;
+        ptrIn.id = m_vs.builtinVertexId;
+        return emitValueLoad(ptrIn);
+      } break;
+      
+      case DxbcSystemValue::InstanceId: {
+        DxbcRegisterPointer ptrIn;
+        ptrIn.type.ctype   = DxbcScalarType::Uint32;
+        ptrIn.type.ccount  = 1;
+        ptrIn.id = m_vs.builtinInstanceId;
+        return emitValueLoad(ptrIn);
+      } break;
+      
+      default:
+        throw DxvkError(str::format(
+          "DxbcCompiler: Unhandled VS SV input: ", sv));
+    }
+  }
+  
+  
+  DxbcRegisterValue DxbcCompiler::emitGsSystemValueLoad(
+          DxbcSystemValue         sv,
+          DxbcRegMask             mask,
+          uint32_t                vertexId) {
+    switch (sv) {
+      case DxbcSystemValue::Position: {
+        const std::array<uint32_t, 2> indices = {
+          m_module.consti32(vertexId),
+          m_module.consti32(PerVertex_Position),
+        };
         
-        default:
-          Logger::warn(str::format(
-            "DxbcCompiler: Unhandled sv output: ",
-            svMapping.sv));
-      }
+        DxbcRegisterPointer ptrIn;
+        ptrIn.type.ctype  = DxbcScalarType::Float32;
+        ptrIn.type.ccount = 4;
+        
+        ptrIn.id = m_module.opAccessChain(
+          m_module.defPointerType(
+            getVectorTypeId(ptrIn.type),
+            spv::StorageClassInput),
+          m_perVertexIn,
+          indices.size(),
+          indices.data());
+        
+        return emitRegisterExtract(
+          emitValueLoad(ptrIn), mask);
+      } break;
+      
+      default:
+        throw DxvkError(str::format(
+          "DxbcCompiler: Unhandled GS SV input: ", sv));
+    }
+  }
+  
+  
+  DxbcRegisterValue DxbcCompiler::emitPsSystemValueLoad(
+          DxbcSystemValue         sv,
+          DxbcRegMask             mask) {
+    switch (sv) {
+      case DxbcSystemValue::Position: {
+        DxbcRegisterPointer ptrIn;
+        ptrIn.type.ctype   = DxbcScalarType::Float32;
+        ptrIn.type.ccount  = 4;
+        ptrIn.id = m_ps.builtinFragCoord;
+        
+        return emitRegisterExtract(
+          emitValueLoad(ptrIn), mask);
+      } break;
+      
+      default:
+        throw DxvkError(str::format(
+          "DxbcCompiler: Unhandled PS SV input: ", sv));
+    }
+  }
+  
+  
+  void DxbcCompiler::emitVsSystemValueStore(
+          DxbcSystemValue         sv,
+          DxbcRegMask             mask,
+    const DxbcRegisterValue&      value) {
+    switch (sv) {
+      case DxbcSystemValue::Position: {
+        const uint32_t memberId = m_module.consti32(PerVertex_Position);
+        
+        DxbcRegisterPointer ptr;
+        ptr.type.ctype  = DxbcScalarType::Float32;
+        ptr.type.ccount = 4;
+        
+        ptr.id = m_module.opAccessChain(
+          m_module.defPointerType(
+            getVectorTypeId(ptr.type),
+            spv::StorageClassOutput),
+          m_perVertexOut, 1, &memberId);
+        
+        emitValueStore(ptr, value, mask);
+      } break;
+      
+        
+      default:
+        Logger::warn(str::format(
+          "DxbcCompiler: Unhandled VS SV output: ", sv));
+    }
+  }
+  
+  
+  void DxbcCompiler::emitGsSystemValueStore(
+          DxbcSystemValue         sv,
+          DxbcRegMask             mask,
+    const DxbcRegisterValue&      value) {
+    switch (sv) {
+      case DxbcSystemValue::Position:
+      case DxbcSystemValue::CullDistance:
+      case DxbcSystemValue::ClipDistance:
+        emitVsSystemValueStore(sv, mask, value);
+        break;
+      
+      default:
+        Logger::warn(str::format(
+          "DxbcCompiler: Unhandled GS SV output: ", sv));
     }
   }
   
@@ -2422,11 +2547,11 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitVsFinalize() {
-    this->emitInputSetup(0);
+    this->emitInputSetup();
     m_module.opFunctionCall(
       m_module.defVoidType(),
       m_vs.functionId, 0, nullptr);
-    this->emitOutputSetup(0);
+    this->emitOutputSetup();
   }
   
   
@@ -2442,11 +2567,11 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitPsFinalize() {
-    this->emitInputSetup(0);
+    this->emitInputSetup();
     m_module.opFunctionCall(
       m_module.defVoidType(),
       m_ps.functionId, 0, nullptr);
-    this->emitOutputSetup(0);
+    this->emitOutputSetup();
   }
   
   
@@ -2477,6 +2602,25 @@ namespace dxvk {
     
     m_module.setDebugName(varId, "shader_in");
     m_vArray = varId;
+  }
+  
+  
+  void DxbcCompiler::emitDclInputPerVertex(
+          uint32_t          vertexCount,
+    const char*             varName) {
+    uint32_t typeId = getPerVertexBlockId();
+    
+    if (vertexCount != 0) {
+      typeId = m_module.defArrayType(typeId,
+        m_module.constu32(vertexCount));
+    }
+    
+    const uint32_t ptrTypeId = m_module.defPointerType(
+      typeId, spv::StorageClassInput);
+    
+    m_perVertexIn = m_module.newVar(
+      ptrTypeId, spv::StorageClassInput);
+    m_module.setDebugName(m_perVertexIn, varName);
   }
   
   
@@ -2564,9 +2708,8 @@ namespace dxvk {
     uint32_t t_f32_v4 = m_module.defVectorType(t_f32, 4);
     uint32_t t_f32_a2 = m_module.defArrayType(t_f32, m_module.constu32(2));
     
-    std::array<uint32_t, 4> members;
+    std::array<uint32_t, 3> members;
     members[PerVertex_Position]  = t_f32_v4;
-    members[PerVertex_PointSize] = t_f32;
     members[PerVertex_CullDist]  = t_f32_a2;
     members[PerVertex_ClipDist]  = t_f32_a2;
     
@@ -2574,14 +2717,12 @@ namespace dxvk {
       members.size(), members.data());
     
     m_module.memberDecorateBuiltIn(typeId, PerVertex_Position, spv::BuiltInPosition);
-    m_module.memberDecorateBuiltIn(typeId, PerVertex_PointSize, spv::BuiltInPointSize);
     m_module.memberDecorateBuiltIn(typeId, PerVertex_CullDist, spv::BuiltInCullDistance);
     m_module.memberDecorateBuiltIn(typeId, PerVertex_ClipDist, spv::BuiltInClipDistance);
     m_module.decorateBlock(typeId);
     
     m_module.setDebugName(typeId, "per_vertex");
     m_module.setDebugMemberName(typeId, PerVertex_Position, "position");
-    m_module.setDebugMemberName(typeId, PerVertex_PointSize, "point_size");
     m_module.setDebugMemberName(typeId, PerVertex_CullDist, "cull_dist");
     m_module.setDebugMemberName(typeId, PerVertex_ClipDist, "clip_dist");
     return typeId;

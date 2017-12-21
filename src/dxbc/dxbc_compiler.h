@@ -463,8 +463,37 @@ namespace dxvk {
     
     ////////////////////////////
     // Input/output preparation
+    void emitInputSetup();
     void emitInputSetup(uint32_t vertexCount);
-    void emitOutputSetup(uint32_t vertexCount);
+    
+    void emitOutputSetup();
+    
+    //////////////////////////////////////////
+    // System value load methods (per shader)
+    DxbcRegisterValue emitVsSystemValueLoad(
+            DxbcSystemValue         sv,
+            DxbcRegMask             mask);
+    
+    DxbcRegisterValue emitGsSystemValueLoad(
+            DxbcSystemValue         sv,
+            DxbcRegMask             mask,
+            uint32_t                vertexId);
+    
+    DxbcRegisterValue emitPsSystemValueLoad(
+            DxbcSystemValue         sv,
+            DxbcRegMask             mask);
+    
+    ///////////////////////////////////////////
+    // System value store methods (per shader)
+    void emitVsSystemValueStore(
+            DxbcSystemValue         sv,
+            DxbcRegMask             mask,
+      const DxbcRegisterValue&      value);
+    
+    void emitGsSystemValueStore(
+            DxbcSystemValue         sv,
+            DxbcRegMask             mask,
+      const DxbcRegisterValue&      value);
     
     ////////////////////////////////////////
     // Builtin variable declaration methods
@@ -488,6 +517,10 @@ namespace dxvk {
     // Misc stuff
     void emitDclInputArray(
             uint32_t          vertexCount);
+    
+    void emitDclInputPerVertex(
+            uint32_t          vertexCount,
+      const char*             varName);
     
     ///////////////////////////////
     // Variable definition methods
