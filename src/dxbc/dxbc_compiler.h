@@ -91,6 +91,9 @@ namespace dxvk {
    */
   struct DxbcCompilerVsPart {
     uint32_t functionId = 0;
+    
+    uint32_t builtinVertexId   = 0;
+    uint32_t builtinInstanceId = 0;
   };
   
   
@@ -110,6 +113,9 @@ namespace dxvk {
    */
   struct DxbcCompilerPsPart {
     uint32_t functionId = 0;
+    
+    uint32_t builtinFragCoord = 0;
+    uint32_t builtinDepth     = 0;
     
     std::array<DxbcVectorType, DxbcMaxInterfaceRegs> oTypes;
   };
@@ -455,17 +461,16 @@ namespace dxvk {
       const DxbcRegister&           reg,
             DxbcRegisterValue       value);
     
-    /////////////////////////////
-    // Input preparation methods
-    void emitVsInputSetup();
-    void emitGsInputSetup();
-    void emitPsInputSetup();
+    ////////////////////////////
+    // Input/output preparation
+    void emitInputSetup(uint32_t vertexCount);
+    void emitOutputSetup(uint32_t vertexCount);
     
-    //////////////////////////////
-    // Output preparation methods
-    void emitVsOutputSetup();
-    void emitGsOutputSetup();
-    void emitPsOutputSetup();
+    ////////////////////////////////////////
+    // Builtin variable declaration methods
+    void emitVsInitBuiltins();
+    void emitGsInitBuiltins(uint32_t vertexCount);
+    void emitPsInitBuiltins();
     
     /////////////////////////////////
     // Shader initialization methods
@@ -479,10 +484,20 @@ namespace dxvk {
     void emitGsFinalize();
     void emitPsFinalize();
     
+    //////////////
+    // Misc stuff
+    void emitDclInputArray(
+            uint32_t          vertexCount);
+    
     ///////////////////////////////
     // Variable definition methods
     uint32_t emitNewVariable(
       const DxbcRegisterInfo& info);
+    
+    uint32_t emitNewBuiltinVariable(
+      const DxbcRegisterInfo& info,
+            spv::BuiltIn      builtIn,
+      const char*             name);
     
     /////////////////////////////////////
     // Control flow block search methods

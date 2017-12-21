@@ -52,17 +52,29 @@ namespace dxvk {
   
   
   /**
+   * \brief Image type information
+   */
+  struct DxbcImageInfo {
+    spv::Dim dim      = spv::Dim1D;
+    uint32_t array    = 0;
+    uint32_t ms       = 0;
+    uint32_t sampled  = 0;
+  };
+  
+  
+  /**
    * \brief Shader resource binding
    * 
    * Stores a resource variable
    * and associated type IDs.
    */
   struct DxbcShaderResource {
-    uint32_t       varId         = 0;
-    DxbcScalarType sampledType   = DxbcScalarType::Float32;
-    uint32_t       sampledTypeId = 0;
-    uint32_t       colorTypeId   = 0;
-    uint32_t       depthTypeId   = 0;
+    DxbcImageInfo   imageInfo;
+    uint32_t        varId         = 0;
+    DxbcScalarType  sampledType   = DxbcScalarType::Float32;
+    uint32_t        sampledTypeId = 0;
+    uint32_t        colorTypeId   = 0;
+    uint32_t        depthTypeId   = 0;
   };
   
   /**
@@ -127,6 +139,10 @@ namespace dxvk {
     
     bool operator == (const DxbcRegMask& other) const { return m_mask == other.m_mask; }
     bool operator != (const DxbcRegMask& other) const { return m_mask != other.m_mask; }
+    
+    static DxbcRegMask firstN(uint32_t n) {
+      return DxbcRegMask(n >= 1, n >= 2, n >= 3, n >= 4);
+    }
     
   private:
     
