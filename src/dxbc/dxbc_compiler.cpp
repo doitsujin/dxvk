@@ -538,7 +538,7 @@ namespace dxvk {
         case DxbcResourceDim::Texture2D:      return { spv::Dim2D, 0, 0, 1 };
         case DxbcResourceDim::Texture2DArr:   return { spv::Dim2D, 1, 0, 1 };
         case DxbcResourceDim::Texture3D:      return { spv::Dim3D, 0, 0, 1 };
-        case DxbcResourceDim::TextureCube:    return { spv::Dim3D, 0, 0, 1 };
+        case DxbcResourceDim::TextureCube:    return { spv::DimCube, 0, 0, 1 };
         case DxbcResourceDim::TextureCubeArr: return { spv::Dim3D, 1, 0, 1 };
         default: throw DxvkError(str::format("DxbcCompiler: Unsupported resource type: ", resourceType));
       }
@@ -2588,7 +2588,7 @@ namespace dxvk {
     
     // Main function of the compute shader
     m_cs.functionId = m_module.allocateId();
-    m_module.setDebugName(m_ps.functionId, "cs_main");
+    m_module.setDebugName(m_cs.functionId, "cs_main");
     
     m_module.functionBegin(
       m_module.defVoidType(),
