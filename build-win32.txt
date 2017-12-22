@@ -6,7 +6,7 @@ strip = '/usr/bin/i686-w64-mingw32-strip'
 exe_wrapper = 'wine'
 
 [properties]
-c_args = ['-Og', '-ggdb']
+c_args = ['-Og', '-gstabs']
 c_link_args = ['-static', '-static-libgcc']
 
 cpp_args = ['-Og', '-gstabs']
