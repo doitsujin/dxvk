@@ -70,45 +70,53 @@ namespace dxvk {
   
   
   void DxvkContext::bindResourceBuffer(
-          VkPipelineBindPoint   pipe,
           uint32_t              slot,
     const DxvkBufferSlice&      buffer) {
     if (m_rc[slot].bufferSlice != buffer) {
-      m_flags.set(getResourceDirtyFlag(pipe));
       m_rc[slot].bufferSlice = buffer;
+      
+      m_flags.set(
+        DxvkContextFlag::CpDirtyResources,
+        DxvkContextFlag::GpDirtyResources);
     }
   }
   
   
   void DxvkContext::bindResourceTexelBuffer(
-          VkPipelineBindPoint   pipe,
           uint32_t              slot,
     const Rc<DxvkBufferView>&   bufferView) {
     if (m_rc[slot].bufferView != bufferView) {
-      m_flags.set(getResourceDirtyFlag(pipe));
       m_rc[slot].bufferView = bufferView;
+      
+      m_flags.set(
+        DxvkContextFlag::CpDirtyResources,
+        DxvkContextFlag::GpDirtyResources);
     }
   }
   
   
   void DxvkContext::bindResourceImage(
-          VkPipelineBindPoint   pipe,
           uint32_t              slot,
     const Rc<DxvkImageView>&    image) {
     if (m_rc[slot].imageView != image) {
-      m_flags.set(getResourceDirtyFlag(pipe));
       m_rc[slot].imageView = image;
+      
+      m_flags.set(
+        DxvkContextFlag::CpDirtyResources,
+        DxvkContextFlag::GpDirtyResources);
     }
   }
   
   
   void DxvkContext::bindResourceSampler(
-          VkPipelineBindPoint   pipe,
           uint32_t              slot,
     const Rc<DxvkSampler>&      sampler) {
     if (m_rc[slot].sampler != sampler) {
-      m_flags.set(getResourceDirtyFlag(pipe));
       m_rc[slot].sampler = sampler;
+      
+      m_flags.set(
+        DxvkContextFlag::CpDirtyResources,
+        DxvkContextFlag::GpDirtyResources);
     }
   }
   
@@ -818,17 +826,9 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::CpDirtyResources)) {
       m_flags.clr(DxvkContextFlag::CpDirtyResources);
       
-      auto layout = m_state.cp.pipeline->layout();
-      
-      // TODO refcount used resources
-      
-//       m_cmd->bindResourceDescriptors(
-//         VK_PIPELINE_BIND_POINT_COMPUTE,
-//         layout->pipelineLayout(),
-//         layout->descriptorSetLayout(),
-//         layout->bindingCount(),
-//         layout->bindings(),
-//         m_cResources.descriptors());
+      this->updateShaderResources(
+        VK_PIPELINE_BIND_POINT_COMPUTE,
+        m_state.cp.pipeline->layout());
     }
   }
   
@@ -837,48 +837,53 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpDirtyResources)) {
       m_flags.clr(DxvkContextFlag::GpDirtyResources);
       
-      auto layout = m_state.gp.pipeline->layout();
-      
-      // TODO recreate resource views if the underlying
-      // resource was marked as dirty after invalidation
-      // TODO move this into a separate method so that
-      // compute can use this code as well
-      for (uint32_t i = 0; i < layout->bindingCount(); i++) {
-        const uint32_t slot = layout->binding(i).slot;
-        const auto& res = m_rc[slot];
-        
-        if (res.sampler != nullptr) {
-          m_descriptors[i].image.sampler     = res.sampler->handle();
-          m_descriptors[i].image.imageView   = VK_NULL_HANDLE;
-          m_descriptors[i].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-          
-          m_cmd->trackResource(res.sampler);
-        } else if (res.imageView != nullptr) {
-          m_descriptors[i].image.sampler     = VK_NULL_HANDLE;
-          m_descriptors[i].image.imageView   = res.imageView->handle();
-          m_descriptors[i].image.imageLayout = res.imageView->imageInfo().layout;
-          
-          m_cmd->trackResource(res.imageView);
-          m_cmd->trackResource(res.imageView->image());
-        } else if (res.bufferView != nullptr) {
-          m_descriptors[i].texelBuffer = res.bufferView->handle();
-          
-          m_cmd->trackResource(res.bufferView);
-          m_cmd->trackResource(res.bufferView->buffer()->resource());
-        } else if (res.bufferSlice.handle() != VK_NULL_HANDLE) {
-          m_descriptors[i].buffer = res.bufferSlice.descriptorInfo();
-          m_cmd->trackResource(res.bufferSlice.resource());
-        }
-      }
-      
-      m_cmd->bindResourceDescriptors(
+      this->updateShaderResources(
         VK_PIPELINE_BIND_POINT_GRAPHICS,
-        layout->pipelineLayout(),
-        layout->descriptorSetLayout(),
-        layout->bindingCount(),
-        layout->bindings(),
-        m_descriptors.data());
+        m_state.gp.pipeline->layout());
     }
+  }
+  
+  
+  void DxvkContext::updateShaderResources(
+          VkPipelineBindPoint     bindPoint,
+    const Rc<DxvkBindingLayout>&  layout) {
+    // TODO recreate resource views if the underlying
+    // resource was marked as dirty after invalidation
+    for (uint32_t i = 0; i < layout->bindingCount(); i++) {
+      const uint32_t slot = layout->binding(i).slot;
+      const auto& res = m_rc[slot];
+      
+      if (res.sampler != nullptr) {
+        m_descriptors[i].image.sampler     = res.sampler->handle();
+        m_descriptors[i].image.imageView   = VK_NULL_HANDLE;
+        m_descriptors[i].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        
+        m_cmd->trackResource(res.sampler);
+      } else if (res.imageView != nullptr) {
+        m_descriptors[i].image.sampler     = VK_NULL_HANDLE;
+        m_descriptors[i].image.imageView   = res.imageView->handle();
+        m_descriptors[i].image.imageLayout = res.imageView->imageInfo().layout;
+        
+        m_cmd->trackResource(res.imageView);
+        m_cmd->trackResource(res.imageView->image());
+      } else if (res.bufferView != nullptr) {
+        m_descriptors[i].texelBuffer = res.bufferView->handle();
+        
+        m_cmd->trackResource(res.bufferView);
+        m_cmd->trackResource(res.bufferView->buffer()->resource());
+      } else if (res.bufferSlice.handle() != VK_NULL_HANDLE) {
+        m_descriptors[i].buffer = res.bufferSlice.descriptorInfo();
+        m_cmd->trackResource(res.bufferSlice.resource());
+      }
+    }
+    
+    m_cmd->bindResourceDescriptors(
+      bindPoint,
+      layout->pipelineLayout(),
+      layout->descriptorSetLayout(),
+      layout->bindingCount(),
+      layout->bindings(),
+      m_descriptors.data());
   }
   
   
@@ -1058,15 +1063,6 @@ namespace dxvk {
     }
     
     m_barriers.recordCommands(m_cmd);
-  }
-  
-  
-  DxvkContextFlag DxvkContext::getResourceDirtyFlag(VkPipelineBindPoint pipe) const {
-    switch (pipe) {
-      default:
-      case VK_PIPELINE_BIND_POINT_GRAPHICS: return DxvkContextFlag::GpDirtyResources;
-      case VK_PIPELINE_BIND_POINT_COMPUTE : return DxvkContextFlag::CpDirtyResources;
-    }
   }
   
 }

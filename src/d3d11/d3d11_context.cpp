@@ -1579,11 +1579,6 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppConstantBuffers) {
-    const VkPipelineBindPoint bindPoint
-      = ShaderStage == DxbcProgramType::ComputeShader
-        ? VK_PIPELINE_BIND_POINT_COMPUTE
-        : VK_PIPELINE_BIND_POINT_GRAPHICS;
-    
     const uint32_t slotId = computeResourceSlotId(
       ShaderStage, DxbcBindingType::ConstantBuffer,
       StartSlot);
@@ -1596,10 +1591,10 @@ namespace dxvk {
         
         if (newBuffer != nullptr) {
           m_context->bindResourceBuffer(
-            bindPoint, slotId + i, newBuffer->GetBufferSlice(0));
+            slotId + i, newBuffer->GetBufferSlice(0));
         } else {
           m_context->bindResourceBuffer(
-            bindPoint, slotId + i, DxvkBufferSlice());
+            slotId + i, DxvkBufferSlice());
         }
       }
     }
@@ -1612,11 +1607,6 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState* const*        ppSamplers) {
-    const VkPipelineBindPoint bindPoint
-      = ShaderStage == DxbcProgramType::ComputeShader
-        ? VK_PIPELINE_BIND_POINT_COMPUTE
-        : VK_PIPELINE_BIND_POINT_GRAPHICS;
-    
     const uint32_t slotId = computeResourceSlotId(
       ShaderStage, DxbcBindingType::ImageSampler,
       StartSlot);
@@ -1629,10 +1619,10 @@ namespace dxvk {
         
         if (sampler != nullptr) {
           m_context->bindResourceSampler(
-            bindPoint, slotId + i, sampler->GetDXVKSampler());
+            slotId + i, sampler->GetDXVKSampler());
         } else {
           m_context->bindResourceSampler(
-            bindPoint, slotId + i, nullptr);
+            slotId + i, nullptr);
         }
       }
     }
@@ -1645,11 +1635,6 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumResources,
           ID3D11ShaderResourceView* const*  ppResources) {
-    const VkPipelineBindPoint bindPoint
-      = ShaderStage == DxbcProgramType::ComputeShader
-        ? VK_PIPELINE_BIND_POINT_COMPUTE
-        : VK_PIPELINE_BIND_POINT_GRAPHICS;
-    
     const uint32_t slotId = computeResourceSlotId(
       ShaderStage, DxbcBindingType::ShaderResource,
       StartSlot);
@@ -1665,17 +1650,16 @@ namespace dxvk {
           if (resView->GetResourceType() == D3D11_RESOURCE_DIMENSION_BUFFER) {
             Logger::warn("D3D11: Texel buffers not yet supported");
             m_context->bindResourceTexelBuffer(
-              bindPoint, slotId + i, nullptr);
+              slotId + i, nullptr);
           } else {
-            m_context->bindResourceImage(bindPoint,
+            m_context->bindResourceImage(
               slotId + i, resView->GetDXVKImageView());
           }
         } else {
           // When unbinding a resource, it doesn't really matter if
           // the resource type is correct, so we'll just bind a null
           // image to the given resource slot
-          m_context->bindResourceImage(
-            bindPoint, slotId + i, nullptr);
+          m_context->bindResourceImage(slotId + i, nullptr);
         }
       }
     }

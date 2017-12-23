@@ -191,12 +191,8 @@ namespace dxvk {
     
     m_context->setViewports(1, &viewport, &scissor);
     
-    m_context->bindResourceSampler(
-      VK_PIPELINE_BIND_POINT_GRAPHICS,
-      BindingIds::Sampler, m_sampler);
-    m_context->bindResourceImage(
-      VK_PIPELINE_BIND_POINT_GRAPHICS,
-      BindingIds::Texture, m_backBufferView);
+    m_context->bindResourceSampler(BindingIds::Sampler, m_sampler);
+    m_context->bindResourceImage  (BindingIds::Texture, m_backBufferView);
     m_context->draw(4, 1, 0, 0);
     
     m_device->submitCommandList(

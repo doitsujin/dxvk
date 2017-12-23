@@ -70,12 +70,10 @@ namespace dxvk {
      * \brief Binds buffer as a shader resource
      * 
      * Can be used for uniform and storage buffers.
-     * \param [in] pipe Target pipeline
      * \param [in] slot Resource binding slot
      * \param [in] buffer Buffer to bind
      */
     void bindResourceBuffer(
-            VkPipelineBindPoint   pipe,
             uint32_t              slot,
       const DxvkBufferSlice&      buffer);
     
@@ -84,12 +82,10 @@ namespace dxvk {
      * 
      * Can be used for both uniform texel
      * buffers and storage texel buffers.
-     * \param [in] pipe Target pipeline
      * \param [in] slot Resource binding slot
      * \param [in] bufferView Buffer view to bind
      */
     void bindResourceTexelBuffer(
-            VkPipelineBindPoint   pipe,
             uint32_t              slot,
       const Rc<DxvkBufferView>&   bufferView);
     
@@ -98,12 +94,10 @@ namespace dxvk {
      * 
      * Can be used for sampled images with a
      * dedicated sampler and storage images.
-     * \param [in] pipe Target pipeline
      * \param [in] slot Resource binding slot
      * \param [in] imageView Image view to bind
      */
     void bindResourceImage(
-            VkPipelineBindPoint   pipe,
             uint32_t              slot,
       const Rc<DxvkImageView>&    image);
     
@@ -112,12 +106,10 @@ namespace dxvk {
      * 
      * Binds a sampler that can be used together with
      * an image in order to read from a texture.
-     * \param [in] pipe Target pipeline
      * \param [in] slot Resource binding slot
      * \param [in] sampler Sampler view to bind
      */
     void bindResourceSampler(
-            VkPipelineBindPoint   pipe,
             uint32_t              slot,
       const Rc<DxvkSampler>&      sampler);
     
@@ -427,6 +419,10 @@ namespace dxvk {
     void updateComputeShaderResources();
     void updateGraphicsShaderResources();
     
+    void updateShaderResources(
+            VkPipelineBindPoint     bindPoint,
+      const Rc<DxvkBindingLayout>&  layout);
+    
     void updateDynamicState();
     void updateViewports();
     void updateBlendConstants();
@@ -445,9 +441,6 @@ namespace dxvk {
     
     void transformLayoutsRenderPassEnd(
       const DxvkRenderTargets& renderTargets);
-    
-    DxvkContextFlag getResourceDirtyFlag(
-            VkPipelineBindPoint pipe) const;
     
   };
   
