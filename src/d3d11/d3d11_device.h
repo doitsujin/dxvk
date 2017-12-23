@@ -272,7 +272,7 @@ namespace dxvk {
       const D3D11_SUBRESOURCE_DATA*     pInitialData);
     
     void InitTexture(
-            D3D11Texture2D*             pImage,
+      const Rc<DxvkImage>&              image,
       const D3D11_SUBRESOURCE_DATA*     pInitialData);
     
     HRESULT GetShaderResourceViewDescFromResource(

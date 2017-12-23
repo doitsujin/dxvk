@@ -9,6 +9,55 @@ namespace dxvk {
   
   class D3D11Device;
   
+  ///////////////////////////////////////////
+  //      D 3 D 1 1 T E X T U R E 1 D
+  class D3D11Texture1D : public D3D11DeviceChild<ID3D11Texture1D> {
+    
+  public:
+    
+    D3D11Texture1D(
+            D3D11Device*                pDevice,
+      const D3D11_TEXTURE1D_DESC*       pDesc);
+    
+    ~D3D11Texture1D();
+    
+    HRESULT STDMETHODCALLTYPE QueryInterface(
+            REFIID  riid,
+            void**  ppvObject) final;
+    
+    void STDMETHODCALLTYPE GetDevice(
+            ID3D11Device **ppDevice) final;
+    
+    void STDMETHODCALLTYPE GetType(
+            D3D11_RESOURCE_DIMENSION *pResourceDimension) final;
+    
+    UINT STDMETHODCALLTYPE GetEvictionPriority() final;
+    
+    void STDMETHODCALLTYPE SetEvictionPriority(UINT EvictionPriority) final;
+    
+    void STDMETHODCALLTYPE GetDesc(
+            D3D11_TEXTURE1D_DESC *pDesc) final;
+    
+    DxgiFormatMode GetFormatMode() const {
+      return m_formatMode;
+    }
+    
+    Rc<DxvkImage> GetDXVKImage() const {
+      return m_image;
+    }
+    
+  private:
+    
+    Com<D3D11Device>                m_device;
+    DxgiFormatMode                  m_formatMode;
+    D3D11_TEXTURE1D_DESC            m_desc;
+    Rc<DxvkImage>                   m_image;
+    
+  };
+  
+  
+  ///////////////////////////////////////////
+  //      D 3 D 1 1 T E X T U R E 2 D
   class D3D11Texture2D : public D3D11DeviceChild<ID3D11Texture2D> {
     
   public:
@@ -54,6 +103,53 @@ namespace dxvk {
   };
   
   
+  ///////////////////////////////////////////
+  //      D 3 D 1 1 T E X T U R E 3 D
+  class D3D11Texture3D : public D3D11DeviceChild<ID3D11Texture3D> {
+    
+  public:
+    
+    D3D11Texture3D(
+            D3D11Device*                pDevice,
+      const D3D11_TEXTURE3D_DESC*       pDesc);
+    
+    ~D3D11Texture3D();
+    
+    HRESULT STDMETHODCALLTYPE QueryInterface(
+            REFIID  riid,
+            void**  ppvObject) final;
+    
+    void STDMETHODCALLTYPE GetDevice(
+            ID3D11Device **ppDevice) final;
+    
+    void STDMETHODCALLTYPE GetType(
+            D3D11_RESOURCE_DIMENSION *pResourceDimension) final;
+    
+    UINT STDMETHODCALLTYPE GetEvictionPriority() final;
+    
+    void STDMETHODCALLTYPE SetEvictionPriority(UINT EvictionPriority) final;
+    
+    void STDMETHODCALLTYPE GetDesc(
+            D3D11_TEXTURE3D_DESC *pDesc) final;
+    
+    DxgiFormatMode GetFormatMode() const {
+      return m_formatMode;
+    }
+    
+    Rc<DxvkImage> GetDXVKImage() const {
+      return m_image;
+    }
+    
+  private:
+    
+    Com<D3D11Device>                m_device;
+    DxgiFormatMode                  m_formatMode;
+    D3D11_TEXTURE3D_DESC            m_desc;
+    Rc<DxvkImage>                   m_image;
+    
+  };
+  
+  
   /**
    * \brief Common texture info
    * 
@@ -74,7 +170,7 @@ namespace dxvk {
    * \returns E_INVALIDARG if the resource is not a texture
    */
   HRESULT GetCommonTextureInfo(
-          ID3D11Resource*   pResource,
-          D3D11TextureInfo* pTextureInfo);
+          ID3D11Resource*       pResource,
+          D3D11TextureInfo*     pTextureInfo);
   
 }

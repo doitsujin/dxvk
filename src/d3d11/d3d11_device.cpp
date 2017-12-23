@@ -98,8 +98,15 @@ namespace dxvk {
     const D3D11_TEXTURE1D_DESC*   pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
           ID3D11Texture1D**       ppTexture1D) {
-    Logger::err("D3D11Device::CreateTexture1D: Not implemented");
-    return E_NOTIMPL;
+    if (ppTexture1D != nullptr) {
+      const Com<D3D11Texture1D> texture
+        = new D3D11Texture1D(this, pDesc);
+      
+      this->InitTexture(texture->GetDXVKImage(), pInitialData);
+      *ppTexture1D = texture.ref();
+    }
+    
+    return S_OK;
   }
   
   
@@ -111,7 +118,7 @@ namespace dxvk {
       const Com<D3D11Texture2D> texture
         = new D3D11Texture2D(this, pDesc);
       
-      this->InitTexture(texture.ptr(), pInitialData);
+      this->InitTexture(texture->GetDXVKImage(), pInitialData);
       *ppTexture2D = texture.ref();
     }
     
@@ -123,8 +130,15 @@ namespace dxvk {
     const D3D11_TEXTURE3D_DESC*   pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
           ID3D11Texture3D**       ppTexture3D) {
-    Logger::err("D3D11Device::CreateTexture3D: Not implemented");
-    return E_NOTIMPL;
+    if (ppTexture3D != nullptr) {
+      const Com<D3D11Texture3D> texture
+        = new D3D11Texture3D(this, pDesc);
+      
+      this->InitTexture(texture->GetDXVKImage(), pInitialData);
+      *ppTexture3D = texture.ref();
+    }
+    
+    return S_OK;
   }
   
   
@@ -1176,13 +1190,12 @@ namespace dxvk {
   
   
   void D3D11Device::InitTexture(
-          D3D11Texture2D*             pImage,
+    const Rc<DxvkImage>&              image,
     const D3D11_SUBRESOURCE_DATA*     pInitialData) {
     std::lock_guard<std::mutex> lock(m_resourceInitMutex);;
     m_resourceInitContext->beginRecording(
       m_dxvkDevice->createCommandList());
     
-    const Rc<DxvkImage> image = pImage->GetDXVKImage();
     const DxvkFormatInfo* formatInfo = imageFormatInfo(image->info().format);
     
     if (pInitialData != nullptr) {
