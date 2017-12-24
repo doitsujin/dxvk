@@ -31,6 +31,9 @@ namespace dxvk {
       m_oRegs.at(i) = 0;
     }
     
+    // Set up common capabilities for all shaders
+    m_module.enableCapability(spv::CapabilityShader);
+    
     // Initialize the shader module with capabilities
     // etc. Each shader type has its own peculiarities.
     switch (m_version.type()) {
@@ -533,16 +536,29 @@ namespace dxvk {
     // Declare the resource type
     const DxbcImageInfo typeInfo = [resourceType] () -> DxbcImageInfo {
       switch (resourceType) {
+        case DxbcResourceDim::Buffer:         return { spv::DimBuffer, 0, 0, 1 };
         case DxbcResourceDim::Texture1D:      return { spv::Dim1D, 0, 0, 1 };
         case DxbcResourceDim::Texture1DArr:   return { spv::Dim1D, 1, 0, 1 };
         case DxbcResourceDim::Texture2D:      return { spv::Dim2D, 0, 0, 1 };
         case DxbcResourceDim::Texture2DArr:   return { spv::Dim2D, 1, 0, 1 };
+        case DxbcResourceDim::Texture2DMs:    return { spv::Dim2D, 0, 1, 0 };
+        case DxbcResourceDim::Texture2DMsArr: return { spv::Dim2D, 1, 1, 0 };
         case DxbcResourceDim::Texture3D:      return { spv::Dim3D, 0, 0, 1 };
         case DxbcResourceDim::TextureCube:    return { spv::DimCube, 0, 0, 1 };
-        case DxbcResourceDim::TextureCubeArr: return { spv::Dim3D, 1, 0, 1 };
+        case DxbcResourceDim::TextureCubeArr: return { spv::DimCube, 1, 0, 1 };
         default: throw DxvkError(str::format("DxbcCompiler: Unsupported resource type: ", resourceType));
       }
     }();
+    
+    // Declare additional capabilities if necessary
+    switch (resourceType) {
+      case DxbcResourceDim::Buffer:         m_module.enableCapability(spv::CapabilityImageBuffer);    break;
+      case DxbcResourceDim::Texture1D:      m_module.enableCapability(spv::CapabilityImage1D);        break;
+      case DxbcResourceDim::Texture1DArr:   m_module.enableCapability(spv::CapabilityImage1D);        break;
+      case DxbcResourceDim::TextureCubeArr: m_module.enableCapability(spv::CapabilityImageCubeArray); break;
+      case DxbcResourceDim::Texture2DMsArr: m_module.enableCapability(spv::CapabilityImageMSArray);   break;
+      default: break; // No additional capabilities required
+    }
     
     // We do not know whether the image is going to be used as a color
     // image or a depth image yet, so we'll declare types for both.
@@ -2468,7 +2484,6 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitVsInit() {
-    m_module.enableCapability(spv::CapabilityShader);
     m_module.enableCapability(spv::CapabilityClipDistance);
     m_module.enableCapability(spv::CapabilityCullDistance);
     
@@ -2533,7 +2548,6 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitPsInit() {
-    m_module.enableCapability(spv::CapabilityShader);
     m_module.setExecutionMode(m_entryPointId,
       spv::ExecutionModeOriginUpperLeft);
     
@@ -2580,8 +2594,6 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitCsInit() {
-    m_module.enableCapability(spv::CapabilityShader);
-    
     // There are no input or output
     // variables for compute shaders
     emitCsInitBuiltins();
