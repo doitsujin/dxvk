@@ -1302,7 +1302,7 @@ namespace dxvk {
         static_cast<D3D11Texture3D*>(pResource)->GetDesc(&resourceDesc);
         
         pDesc->Format = resourceDesc.Format;
-        pDesc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURE1D;
+        pDesc->ViewDimension = D3D11_SRV_DIMENSION_TEXTURE3D;
         pDesc->Texture3D.MostDetailedMip = 0;
         pDesc->Texture3D.MipLevels       = resourceDesc.MipLevels;
       } return S_OK;

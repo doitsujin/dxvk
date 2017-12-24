@@ -518,14 +518,14 @@ namespace dxvk {
     } else {
       for (uint32_t i = 0; i < elementCount.depth; i++) {
         for (uint32_t j = 0; j < elementCount.height; j++) {
-          std::memcpy(dstData, srcData, bytesPerRow);
-          
-          dstData += bytesPerRow;
-          srcData += pitchPerRow;
+          std::memcpy(
+            dstData + j * bytesPerRow,
+            srcData + j * pitchPerRow,
+            bytesPerRow);
         }
         
-        dstData += bytesPerLayer;
         srcData += pitchPerLayer;
+        dstData += bytesPerLayer;
       }
     }
     
