@@ -1,8 +1,6 @@
 #include "dxvk_device.h"
 #include "dxvk_queue.h"
 
-using namespace std::chrono_literals;
-
 namespace dxvk {
   
   DxvkSubmissionQueue::DxvkSubmissionQueue(DxvkDevice* device)
