@@ -155,6 +155,36 @@ namespace dxvk {
       return size;
     }
     
+    /**
+     * \brief Queries memory layout of a subresource
+     * 
+     * Can be used to retrieve the exact pointer to a
+     * subresource of a mapped image with linear tiling.
+     * \param [in] subresource The image subresource
+     * \returns Memory layout of that subresource
+     */
+    VkSubresourceLayout querySubresourceLayout(
+      const VkImageSubresource& subresource) const {
+      VkSubresourceLayout result;
+      m_vkd->vkGetImageSubresourceLayout(
+        m_vkd->device(), m_image,
+        &subresource, &result);
+      return result;
+    }
+    
+    /**
+     * \brief Map pointer
+     * 
+     * If the image has been created on a host-visible
+     * memory type, its memory is mapped and can be
+     * accessed by the host.
+     * \param [in] offset Byte offset into mapped region
+     * \returns Pointer to mapped memory region
+     */
+    void* mapPtr(VkDeviceSize offset) const {
+      return m_memory.mapPtr(offset);
+    }
+    
   private:
     
     Rc<vk::DeviceFn>    m_vkd;

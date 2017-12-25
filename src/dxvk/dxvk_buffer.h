@@ -48,8 +48,6 @@ namespace dxvk {
   
   /**
    * \brief Physical buffer resource
-   * 
-   * 
    */
   class DxvkBufferResource : public DxvkResource {
     

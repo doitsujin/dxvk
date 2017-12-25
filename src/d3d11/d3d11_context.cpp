@@ -2,6 +2,7 @@
 
 #include "d3d11_context.h"
 #include "d3d11_device.h"
+#include "d3d11_texture.h"
 
 #include "../dxbc/dxbc_util.h"
 
@@ -228,8 +229,44 @@ namespace dxvk {
       pMappedResource->DepthPitch = buffer->info().size;
       return S_OK;
     } else {
-      Logger::err("D3D11: Mapping of image resources currently not supported");
-      return E_NOTIMPL;
+      D3D11TextureInfo textureInfo;
+      
+      if (FAILED(GetCommonTextureInfo(pResource, &textureInfo))) {
+        Logger::err("D3D11DeviceContext: Cannot map a device-local image");
+        return E_FAIL;
+      }
+      
+      if (textureInfo.image->mapPtr(0) == nullptr) {
+        Logger::err("D3D11DeviceContext: Cannot map a device-local image");
+        return E_FAIL;
+      }
+      
+      if (pMappedResource == nullptr)
+        return S_OK;
+      
+      if (textureInfo.image->isInUse()) {
+        // Don't wait if the application tells us not to
+        if (MapFlags & D3D11_MAP_FLAG_DO_NOT_WAIT)
+          return DXGI_ERROR_WAS_STILL_DRAWING;
+        
+        this->Flush();
+        this->Synchronize();
+      }
+      
+      const DxvkImageCreateInfo imageInfo = textureInfo.image->info();
+      
+      const VkImageSubresource imageSubresource =
+        GetSubresourceFromIndex(VK_IMAGE_ASPECT_COLOR_BIT,
+          imageInfo.mipLevels, Subresource);
+      
+      const VkSubresourceLayout layout =
+        textureInfo.image->querySubresourceLayout(imageSubresource);
+      
+      // TODO handle undefined stuff
+      pMappedResource->pData      = textureInfo.image->mapPtr(layout.offset);
+      pMappedResource->RowPitch   = layout.rowPitch;
+      pMappedResource->DepthPitch = layout.depthPitch;
+      return S_OK;
     }
   }
   
@@ -446,7 +483,7 @@ namespace dxvk {
       }
       
       if (offset + size > bufferSlice.length()) {
-        Logger::err("D3D11: UpdateSubresource: Buffer size out of bounds");
+        Logger::err("D3D11DeviceContext: Buffer update range out of bounds");
         return;
       }
       
@@ -457,9 +494,46 @@ namespace dxvk {
           size, pSrcData);
       }
     } else {
-      Logger::err("D3D11DeviceContext::UpdateSubresource: Images not yet supported");
+      D3D11TextureInfo textureInfo;
+      
+      if (FAILED(GetCommonTextureInfo(pDstResource, &textureInfo))) {
+        Logger::err("D3D11DeviceContext: Failed to retrieve DXVK image");
+        return;
+      }
+      
+      VkOffset3D offset = { 0, 0, 0 };
+      VkExtent3D extent = textureInfo.image->info().extent;
+      
+      if (pDstBox != nullptr) {
+        if (pDstBox->left >= pDstBox->right
+         || pDstBox->top >= pDstBox->bottom
+         || pDstBox->front >= pDstBox->back)
+          return;  // no-op, but legal
+        
+        offset.x = pDstBox->left;
+        offset.y = pDstBox->top;
+        offset.z = pDstBox->front;
+        
+        extent.width  = pDstBox->right - pDstBox->left;
+        extent.height = pDstBox->bottom - pDstBox->top;
+        extent.depth  = pDstBox->back - pDstBox->front;
+      }
+      
+      const VkImageSubresource imageSubresource =
+        GetSubresourceFromIndex(VK_IMAGE_ASPECT_COLOR_BIT,
+          textureInfo.image->info().mipLevels, DstSubresource);
+      
+      VkImageSubresourceLayers layers;
+      layers.aspectMask     = imageSubresource.aspectMask;
+      layers.mipLevel       = imageSubresource.mipLevel;
+      layers.baseArrayLayer = imageSubresource.arrayLayer;
+      layers.layerCount     = 1;
+      
+      m_context->updateImage(
+        textureInfo.image, layers,
+        offset, extent, pSrcData,
+        SrcRowPitch, SrcDepthPitch);
     }
-    
   }
   
   

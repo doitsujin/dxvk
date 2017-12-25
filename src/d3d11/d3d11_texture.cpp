@@ -363,4 +363,16 @@ namespace dxvk {
     }
   }
   
+  
+  VkImageSubresource GetSubresourceFromIndex(
+          VkImageAspectFlags    Aspect,
+          UINT                  MipLevels,
+          UINT                  Subresource) {
+    VkImageSubresource result;
+    result.aspectMask     = Aspect;
+    result.mipLevel       = Subresource % MipLevels;
+    result.arrayLayer     = Subresource / MipLevels;
+    return result;
+  }
+  
 }

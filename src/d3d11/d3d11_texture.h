@@ -173,4 +173,9 @@ namespace dxvk {
           ID3D11Resource*       pResource,
           D3D11TextureInfo*     pTextureInfo);
   
+  VkImageSubresource GetSubresourceFromIndex(
+          VkImageAspectFlags    Aspect,
+          UINT                  MipLevels,
+          UINT                  Subresource);
+  
 }
