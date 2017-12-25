@@ -1,17 +1,22 @@
 #include "dxvk_device.h"
 #include "dxvk_queue.h"
 
+using namespace std::chrono_literals;
+
 namespace dxvk {
   
   DxvkSubmissionQueue::DxvkSubmissionQueue(DxvkDevice* device)
   : m_device(device),
-    m_thread([this] () { this->threadFunc(); }) {
+    m_thread([this] () { threadFunc(); }) {
     
   }
   
   
   DxvkSubmissionQueue::~DxvkSubmissionQueue() {
-    m_stopped.store(true);
+    { std::unique_lock<std::mutex> lock(m_mutex);
+      m_stopped.store(true);
+    }
+    
     m_condOnAdd.notify_one();
     m_thread.join();
   }

@@ -33,14 +33,17 @@ namespace dxvk {
   
   
   DxvkCsThread::~DxvkCsThread() {
-    m_stopped.store(true);
+    { std::unique_lock<std::mutex> lock(m_mutex);
+      m_stopped.store(true);
+    }
+    
     m_condOnAdd.notify_one();
     m_thread.join();
   }
   
   
   void DxvkCsThread::dispatchChunk(Rc<DxvkCsChunk>&& chunk) {
-    { std::lock_guard<std::mutex> lock(m_mutex);
+    { std::unique_lock<std::mutex> lock(m_mutex);
       m_chunks.push(std::move(m_curChunk));
     }
     
