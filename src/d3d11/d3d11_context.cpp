@@ -663,62 +663,36 @@ namespace dxvk {
     if (m_state.ia.primitiveTopology != Topology) {
       m_state.ia.primitiveTopology = Topology;
       
-      DxvkInputAssemblyState iaState;
-      
-      switch (Topology) {
-        case D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED:
-          return;
+      if (Topology == D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED)
+        return;
         
-        case D3D11_PRIMITIVE_TOPOLOGY_POINTLIST:
-          iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
-          iaState.primitiveRestart  = VK_FALSE;
-          break;
+      const DxvkInputAssemblyState iaState = [&] () -> DxvkInputAssemblyState {
+        switch (Topology) {
+          case D3D11_PRIMITIVE_TOPOLOGY_POINTLIST:
+            return { VK_PRIMITIVE_TOPOLOGY_POINT_LIST, VK_FALSE };
+          case D3D11_PRIMITIVE_TOPOLOGY_LINELIST:
+            return { VK_PRIMITIVE_TOPOLOGY_LINE_LIST, VK_FALSE };
+          case D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP:
+            return { VK_PRIMITIVE_TOPOLOGY_LINE_STRIP, VK_TRUE };
+          case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST:
+            return { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_FALSE };
+          case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP:
+            return { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, VK_TRUE };
+          case D3D11_PRIMITIVE_TOPOLOGY_LINELIST_ADJ:
+            return { VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY, VK_FALSE };
+          case D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP_ADJ:
+            return { VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY, VK_TRUE };
+          case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST_ADJ:
+            return { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY, VK_FALSE };
+          case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ:
+            return { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY, VK_TRUE };
+          
+          default:
+            Logger::err(str::format("D3D11DeviceContext::IASetPrimitiveTopology: Unknown primitive topology: ", Topology));
+            return { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_FALSE };
+        }
         
-        case D3D11_PRIMITIVE_TOPOLOGY_LINELIST:
-          iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-          iaState.primitiveRestart  = VK_FALSE;
-          break;
-        
-        case D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP:
-          iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_LINE_STRIP;
-          iaState.primitiveRestart  = VK_TRUE;
-          break;
-        
-        case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST:
-          iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-          iaState.primitiveRestart  = VK_FALSE;
-          break;
-        
-        case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP:
-          iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
-          iaState.primitiveRestart  = VK_TRUE;
-          break;
-        
-        case D3D11_PRIMITIVE_TOPOLOGY_LINELIST_ADJ:
-          iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY;
-          iaState.primitiveRestart  = VK_FALSE;
-          break;
-        
-        case D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP_ADJ:
-          iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY;
-          iaState.primitiveRestart  = VK_TRUE;
-          break;
-        
-        case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST_ADJ:
-          iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY;
-          iaState.primitiveRestart  = VK_FALSE;
-          break;
-        
-        case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ:
-          iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY;
-          iaState.primitiveRestart  = VK_TRUE;
-          break;
-        
-        default:
-          Logger::err(str::format(
-            "D3D11DeviceContext::IASetPrimitiveTopology: Unknown primitive topology: ",
-            Topology));
-      }
+      }();
       
       m_context->setInputAssemblyState(iaState);
     }
