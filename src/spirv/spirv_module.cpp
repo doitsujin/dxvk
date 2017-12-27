@@ -974,6 +974,21 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opISub(
+          uint32_t                resultType,
+          uint32_t                a,
+          uint32_t                b) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpISub, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(a);
+    m_code.putWord(b);
+    return resultId;
+  }
+  
+  
   uint32_t SpirvModule::opFAdd(
           uint32_t                resultType,
           uint32_t                a,
@@ -981,6 +996,21 @@ namespace dxvk {
     uint32_t resultId = this->allocateId();
     
     m_code.putIns (spv::OpFAdd, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(a);
+    m_code.putWord(b);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opFSub(
+          uint32_t                resultType,
+          uint32_t                a,
+          uint32_t                b) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpFSub, 5);
     m_code.putWord(resultType);
     m_code.putWord(resultId);
     m_code.putWord(a);

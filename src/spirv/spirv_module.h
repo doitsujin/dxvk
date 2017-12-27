@@ -354,7 +354,17 @@ namespace dxvk {
             uint32_t                a,
             uint32_t                b);
     
+    uint32_t opISub(
+            uint32_t                resultType,
+            uint32_t                a,
+            uint32_t                b);
+    
     uint32_t opFAdd(
+            uint32_t                resultType,
+            uint32_t                a,
+            uint32_t                b);
+    
+    uint32_t opFSub(
             uint32_t                resultType,
             uint32_t                a,
             uint32_t                b);

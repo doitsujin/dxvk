@@ -2536,19 +2536,27 @@ namespace dxvk {
           DxbcRegMask             mask) {
     switch (sv) {
       case DxbcSystemValue::VertexId: {
-        DxbcRegisterPointer ptrIn;
-        ptrIn.type.ctype   = DxbcScalarType::Uint32;
-        ptrIn.type.ccount  = 1;
-        ptrIn.id = m_vs.builtinVertexId;
-        return emitValueLoad(ptrIn);
+        const uint32_t typeId = getScalarTypeId(DxbcScalarType::Uint32);
+        
+        DxbcRegisterValue result;
+        result.type.ctype   = DxbcScalarType::Uint32;
+        result.type.ccount  = 1;
+        result.id = m_module.opISub(typeId,
+          m_module.opLoad(typeId, m_vs.builtinVertexId),
+          m_module.opLoad(typeId, m_vs.builtinBaseVertex));
+        return result;
       } break;
       
       case DxbcSystemValue::InstanceId: {
-        DxbcRegisterPointer ptrIn;
-        ptrIn.type.ctype   = DxbcScalarType::Uint32;
-        ptrIn.type.ccount  = 1;
-        ptrIn.id = m_vs.builtinInstanceId;
-        return emitValueLoad(ptrIn);
+        const uint32_t typeId = getScalarTypeId(DxbcScalarType::Uint32);
+        
+        DxbcRegisterValue result;
+        result.type.ctype   = DxbcScalarType::Uint32;
+        result.type.ccount  = 1;
+        result.id = m_module.opISub(typeId,
+          m_module.opLoad(typeId, m_vs.builtinInstanceId),
+          m_module.opLoad(typeId, m_vs.builtinBaseInstance));
+        return result;
       } break;
       
       default:
@@ -2663,14 +2671,26 @@ namespace dxvk {
     m_vs.builtinVertexId = emitNewBuiltinVariable({
       { DxbcScalarType::Uint32, 1, 0 },
       spv::StorageClassInput },
-      spv::BuiltInVertexId,    // TODO test
+      spv::BuiltInVertexIndex,
       "vs_vertex_index");
     
     m_vs.builtinInstanceId = emitNewBuiltinVariable({
       { DxbcScalarType::Uint32, 1, 0 },
       spv::StorageClassInput },
-      spv::BuiltInInstanceId,  // TODO test
+      spv::BuiltInInstanceIndex,  // TODO test
       "vs_instance_index");
+    
+    m_vs.builtinBaseVertex = emitNewBuiltinVariable({
+      { DxbcScalarType::Uint32, 1, 0 },
+      spv::StorageClassInput },
+      spv::BuiltInBaseVertex,
+      "vs_base_vertex");
+    
+    m_vs.builtinBaseInstance = emitNewBuiltinVariable({
+      { DxbcScalarType::Uint32, 1, 0 },
+      spv::StorageClassInput },
+      spv::BuiltInBaseInstance,
+      "vs_base_instance");
   }
   
   

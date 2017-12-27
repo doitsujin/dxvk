@@ -19,25 +19,28 @@ struct Vertex {
 const std::string g_vertexShaderCode =
   "struct vs_out {\n"
   "  float4 pos   : SV_POSITION;\n"
-  "  float2 coord : COORD;\n"
+  "  uint   vid   : VID;\n"
+  "  uint   iid   : IID;\n"
   "};\n"
-  "vs_out main(float4 vsIn : IN_POSITION) {\n"
+  "vs_out main(float4 vsIn : IN_POSITION,\n"
+  "    uint vid : SV_VERTEXID,\n"
+  "    uint iid : SV_INSTANCEID) {\n"
   "  vs_out result;\n"
   "  result.pos = vsIn;\n"
-  "  result.coord = result.pos.xy;\n"
+  "  result.vid = vid;\n"
+  "  result.iid = iid;\n"
   "  return result;\n"
   "}\n";
 
 const std::string g_pixelShaderCode =
   "struct vs_out {\n"
   "  float4 pos   : SV_POSITION;\n"
-  "  float2 coord : COORD;\n"
+  "  uint   vid   : VID;\n"
+  "  uint   iid   : IID;\n"
   "};\n"
-  "Texture1D t : register(t0);\n"
-  "sampler   s : register(s0);\n"
   "cbuffer c_buffer { float4 ccolor[2]; };\n"
   "float4 main(vs_out ps_in) : SV_TARGET {\n"
-  "  return ccolor[0] * t.Sample(s, 0.5f + 0.5f * ps_in.coord.y);\n"
+  "  return 0.5f * (ccolor[min(ps_in.vid, 1u)] + ccolor[min(ps_in.iid, 1u)]);\n"
   "}\n";
 
 class TriangleApp {
@@ -73,7 +76,7 @@ public:
     swapDesc.BufferDesc.Format            = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
     swapDesc.BufferDesc.ScanlineOrdering  = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
     swapDesc.BufferDesc.Scaling           = DXGI_MODE_SCALING_UNSPECIFIED;
-    swapDesc.SampleDesc.Count             = 1;
+    swapDesc.SampleDesc.Count             = 8;
     swapDesc.SampleDesc.Quality           = 0;
     swapDesc.BufferUsage                  = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     swapDesc.BufferCount                  = 2;
@@ -94,10 +97,28 @@ public:
     if (FAILED(m_swapChain->ResizeTarget(&swapDesc.BufferDesc)))
       throw DxvkError("Failed to resize window");
     
-    std::array<Vertex, 3> vertexData = {{
-      { -0.5f, -0.5f, 0.0f, 1.0f },
-      {  0.0f,  0.5f, 0.0f, 1.0f },
-      {  0.5f, -0.5f, 0.0f, 1.0f },
+    std::array<Vertex, 21> vertexData = {{
+      { -0.25f, -0.15f, 0.0f, 1.0f },
+      { -0.50f, -0.65f, 0.0f, 1.0f },
+      { -0.75f, -0.15f, 0.0f, 1.0f },
+      {  0.75f, -0.15f, 0.0f, 1.0f },
+      {  0.50f, -0.65f, 0.0f, 1.0f },
+      {  0.25f, -0.15f, 0.0f, 1.0f },
+      { -0.75f,  0.15f, 0.0f, 1.0f },
+      { -0.50f,  0.65f, 0.0f, 1.0f },
+      { -0.25f,  0.15f, 0.0f, 1.0f },
+      {  0.25f,  0.15f, 0.0f, 1.0f },
+      {  0.50f,  0.65f, 0.0f, 1.0f },
+      {  0.75f,  0.15f, 0.0f, 1.0f },
+      {  0.25f,  0.75f, 0.0f, 1.0f },
+      {  0.00f,  0.25f, 0.0f, 1.0f },
+      { -0.25f,  0.75f, 0.0f, 1.0f },
+      { -0.25f, -0.75f, 0.0f, 1.0f },
+      {  0.00f, -0.25f, 0.0f, 1.0f },
+      {  0.25f, -0.75f, 0.0f, 1.0f },
+      { -0.25f, -0.25f, 0.0f, 1.0f },
+      {  0.00f,  0.25f, 0.0f, 1.0f },
+      {  0.25f, -0.25f, 0.0f, 1.0f },
     }};
     
     D3D11_BUFFER_DESC vertexDesc;
@@ -116,9 +137,29 @@ public:
     if (FAILED(m_device->CreateBuffer(&vertexDesc, &vertexDataInfo, &m_vertexBuffer)))
       throw DxvkError("Failed to create vertex buffer");
     
+    std::array<uint32_t, 9> indexData = {{
+      0, 1, 2, 0, 1, 2, 2, 1, 0
+    }};
+    
+    D3D11_BUFFER_DESC indexDesc;
+    indexDesc.ByteWidth            = sizeof(uint32_t) * indexData.size();
+    indexDesc.Usage                = D3D11_USAGE_IMMUTABLE;
+    indexDesc.BindFlags            = D3D11_BIND_INDEX_BUFFER;
+    indexDesc.CPUAccessFlags       = 0;
+    indexDesc.MiscFlags            = 0;
+    indexDesc.StructureByteStride  = 0;
+    
+    D3D11_SUBRESOURCE_DATA indexDataInfo;
+    indexDataInfo.pSysMem          = indexData.data();
+    indexDataInfo.SysMemPitch      = 0;
+    indexDataInfo.SysMemSlicePitch = 0;
+    
+    if (FAILED(m_device->CreateBuffer(&indexDesc, &indexDataInfo, &m_indexBuffer)))
+      throw DxvkError("Failed to create index buffer");
+    
     std::array<Vertex, 2> constantData = {{
       { 0.03f, 0.03f, 0.03f, 1.0f },
-      { 1.00f, 1.00f, 1.00f, 1.0f },
+      { 1.00f, 0.00f, 0.00f, 1.0f },
     }};
     
     D3D11_BUFFER_DESC constantDesc;
@@ -184,58 +225,6 @@ public:
           &m_vertexFormat)))
       throw DxvkError("Failed to create input layout");
     
-    D3D11_SAMPLER_DESC samplerDesc;
-    samplerDesc.Filter          = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
-    samplerDesc.AddressU        = D3D11_TEXTURE_ADDRESS_CLAMP;
-    samplerDesc.AddressV        = D3D11_TEXTURE_ADDRESS_CLAMP;
-    samplerDesc.AddressW        = D3D11_TEXTURE_ADDRESS_CLAMP;
-    samplerDesc.MipLODBias      = 0.0f;
-    samplerDesc.MaxAnisotropy   = 1.0f;
-    samplerDesc.ComparisonFunc  = D3D11_COMPARISON_NEVER;
-    samplerDesc.BorderColor[0]  = 0.0f;
-    samplerDesc.BorderColor[1]  = 0.0f;
-    samplerDesc.BorderColor[2]  = 0.0f;
-    samplerDesc.BorderColor[3]  = 0.0f;
-    samplerDesc.MinLOD          = 0.0f;
-    samplerDesc.MaxLOD          = 0.0f;
-    
-    if (FAILED(m_device->CreateSamplerState(
-          &samplerDesc,
-          &m_sampler)))
-      throw DxvkError("Failed to create sampler");
-    
-    D3D11_TEXTURE1D_DESC colorBufferDesc;
-    colorBufferDesc.Width     = 4;
-    colorBufferDesc.MipLevels = 1;
-    colorBufferDesc.ArraySize = 1;
-    colorBufferDesc.Format    = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-    colorBufferDesc.Usage     = D3D11_USAGE_IMMUTABLE;
-    colorBufferDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-    colorBufferDesc.CPUAccessFlags  = 0;
-    colorBufferDesc.MiscFlags       = 0;
-    
-    const std::array<uint8_t, 16> colorBufferContents = {
-      0x00, 0x00, 0x00, 0xFF,
-      0x80, 0x00, 0x00, 0xFF,
-      0x80, 0xFF, 0xFF, 0xFF,
-      0xFF, 0xFF, 0xFF, 0xFF,
-    };
-    
-    D3D11_SUBRESOURCE_DATA colorBufferData;
-    colorBufferData.pSysMem          = colorBufferContents.data();
-    colorBufferData.SysMemPitch      = 0;
-    colorBufferData.SysMemSlicePitch = 0;
-    
-    if (FAILED(m_device->CreateTexture1D(
-          &colorBufferDesc,
-          &colorBufferData,
-          &m_colorBuffer)))
-      throw DxvkError("Failed to create 1D texture");
-    
-    if (FAILED(m_device->CreateShaderResourceView(
-          m_colorBuffer.ptr(), nullptr, &m_colorBufferSrv)))
-      throw DxvkError("Failed to create 1D texture view");
-
   }
   
   
@@ -263,16 +252,35 @@ public:
     m_context->VSSetShader(m_vertexShader.ptr(), nullptr, 0);
     m_context->PSSetShader(m_pixelShader.ptr(), nullptr, 0);
     m_context->PSSetConstantBuffers(0, 1, &m_constantBuffer);
-    m_context->PSSetShaderResources(0, 1, &m_colorBufferSrv);
-    m_context->PSSetSamplers(0, 1, &m_sampler);
     
     UINT vsStride = sizeof(Vertex);
     UINT vsOffset = 0;
     
+    // Test normal draws with base vertex
     m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     m_context->IASetInputLayout(m_vertexFormat.ptr());
     m_context->IASetVertexBuffers(0, 1, &m_vertexBuffer, &vsStride, &vsOffset);
     m_context->Draw(3, 0);
+    m_context->Draw(3, 3);
+    
+    // Test instanced draws with base instance and base vertex
+    vsOffset = 6 * sizeof(Vertex);
+    m_context->IASetVertexBuffers(0, 1, &m_vertexBuffer, &vsStride, &vsOffset);
+    m_context->DrawInstanced(3, 1, 0, 1);
+    m_context->DrawInstanced(3, 1, 3, 1);
+    
+    // Test indexed draws with base vertex and base index
+    vsOffset = 12 * sizeof(Vertex);
+    m_context->IASetVertexBuffers(0, 1, &m_vertexBuffer, &vsStride, &vsOffset);
+    m_context->IASetIndexBuffer(m_indexBuffer.ptr(), DXGI_FORMAT_R32_UINT, 0);
+    m_context->DrawIndexed(3, 0, 0);
+    m_context->DrawIndexed(3, 3, 3);
+    
+    // Test default backface culling
+    vsOffset = 18 * sizeof(Vertex);
+    m_context->IASetVertexBuffers(0, 1, &m_vertexBuffer, &vsStride, &vsOffset);
+    m_context->DrawIndexed(3, 6, 0);
+    
     m_context->OMSetRenderTargets(0, nullptr, nullptr);
     
     m_swapChain->Present(0, 0);
@@ -320,12 +328,9 @@ private:
   Com<ID3D11Texture2D>          m_buffer;
   Com<ID3D11RenderTargetView>   m_bufferView;
   Com<ID3D11Buffer>             m_constantBuffer;
+  Com<ID3D11Buffer>             m_indexBuffer;
   Com<ID3D11Buffer>             m_vertexBuffer;
   Com<ID3D11InputLayout>        m_vertexFormat;
-  
-  Com<ID3D11SamplerState>       m_sampler;
-  Com<ID3D11Texture1D>          m_colorBuffer;
-  Com<ID3D11ShaderResourceView> m_colorBufferSrv;
   
   Com<ID3D11VertexShader>       m_vertexShader;
   Com<ID3D11PixelShader>        m_pixelShader;

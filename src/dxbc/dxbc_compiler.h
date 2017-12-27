@@ -92,8 +92,10 @@ namespace dxvk {
   struct DxbcCompilerVsPart {
     uint32_t functionId = 0;
     
-    uint32_t builtinVertexId   = 0;
-    uint32_t builtinInstanceId = 0;
+    uint32_t builtinVertexId     = 0;
+    uint32_t builtinInstanceId   = 0;
+    uint32_t builtinBaseVertex   = 0;
+    uint32_t builtinBaseInstance = 0;
   };
   
   
