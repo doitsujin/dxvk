@@ -26,10 +26,17 @@ namespace dxvk {
             D3D11Device*                      device,
             ID3D11Resource*                   resource,
       const DescType&                         desc,
-      const Rc<DxvkBufferView>&               bufferView,
+      const Rc<DxvkBufferView>&               bufferView)
+    : m_device(device), m_resource(resource),
+      m_desc(desc), m_bufferView(bufferView) { }
+    
+    D3D11ResourceView(
+            D3D11Device*                      device,
+            ID3D11Resource*                   resource,
+      const DescType&                         desc,
       const Rc<DxvkImageView>&                imageView)
-    : m_device(device), m_resource(resource), m_desc(desc),
-      m_bufferView(bufferView), m_imageView(imageView) { }
+    : m_device(device), m_resource(resource),
+      m_desc(desc), m_imageView(imageView) { }
     
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) final {
       COM_QUERY_IFACE(riid, ppvObject, IUnknown);

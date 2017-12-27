@@ -11,21 +11,6 @@
 #include "d3d11_texture.h"
 #include "d3d11_view.h"
 
-// These were copied from d3d11.h
-// For some ridiculous reason, we cannot use the structures
-// directly, although others from the same header work.
-typedef struct D3D11_FEATURE_DATA_THREADING {
-    BOOL DriverConcurrentCreates;
-    BOOL DriverCommandLists;
-} D3D11_FEATURE_DATA_THREADING;
-typedef struct D3D11_FEATURE_DATA_DOUBLES {
-    BOOL DoublePrecisionFloatShaderOps;
-} D3D11_FEATURE_DATA_DOUBLES;
-typedef struct D3D11_FEATURE_DATA_FORMAT_SUPPORT {
-    DXGI_FORMAT InFormat;
-    UINT OutFormatSupport;
-} D3D11_FEATURE_DATA_FORMAT_SUPPORT;
-
 namespace dxvk {
   
   D3D11Device::D3D11Device(
@@ -268,7 +253,7 @@ namespace dxvk {
       
       try {
         *ppSRView = ref(new D3D11ShaderResourceView(
-          this, pResource, desc, nullptr,
+          this, pResource, desc,
           m_dxvkDevice->createImageView(
             textureInfo.image, viewInfo)));
         return S_OK;
@@ -372,7 +357,7 @@ namespace dxvk {
     
     try {
       *ppRTView = ref(new D3D11RenderTargetView(
-        this, pResource, desc, nullptr,
+        this, pResource, desc,
         m_dxvkDevice->createImageView(
           textureInfo.image, viewInfo)));
       return S_OK;
@@ -466,7 +451,7 @@ namespace dxvk {
     
     try {
       *ppDepthStencilView = ref(new D3D11DepthStencilView(
-        this, pResource, desc, nullptr,
+        this, pResource, desc,
         m_dxvkDevice->createImageView(
           textureInfo.image, viewInfo)));
       return S_OK;

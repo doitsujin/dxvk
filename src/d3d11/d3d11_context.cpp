@@ -232,7 +232,7 @@ namespace dxvk {
       D3D11TextureInfo textureInfo;
       
       if (FAILED(GetCommonTextureInfo(pResource, &textureInfo))) {
-        Logger::err("D3D11DeviceContext: Cannot map a device-local image");
+        Logger::err("D3D11DeviceContext: Failed to retrieve texture info");
         return E_FAIL;
       }
       
