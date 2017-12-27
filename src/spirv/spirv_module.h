@@ -39,6 +39,9 @@ namespace dxvk {
     void enableCapability(
             spv::Capability         capability);
     
+    void enableExtension(
+      const char*                   extensionName);
+    
     void addEntryPoint(
             uint32_t                entryPointId,
             spv::ExecutionModel     executionModel,
@@ -659,6 +662,7 @@ namespace dxvk {
     uint32_t m_instExtGlsl450 = 0;
     
     SpirvCodeBuffer m_capabilities;
+    SpirvCodeBuffer m_extensions;
     SpirvCodeBuffer m_instExt;
     SpirvCodeBuffer m_memoryModel;
     SpirvCodeBuffer m_entryPoints;

@@ -606,7 +606,9 @@ namespace dxvk {
     // Store descriptor info for the shader interface
     DxvkResourceSlot resource;
     resource.slot = bindingId;
-    resource.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    resource.type = resourceType == DxbcResourceDim::Buffer
+      ? VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER
+      : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
     m_resourceSlots.push_back(resource);
   }
   
@@ -2716,6 +2718,9 @@ namespace dxvk {
   void DxbcCompiler::emitVsInit() {
     m_module.enableCapability(spv::CapabilityClipDistance);
     m_module.enableCapability(spv::CapabilityCullDistance);
+    m_module.enableCapability(spv::CapabilityDrawParameters);
+    
+    m_module.enableExtension("SPV_KHR_shader_draw_parameters");
     
     // Declare the per-vertex output block. This is where
     // the vertex shader will write the vertex position.

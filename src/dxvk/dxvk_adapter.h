@@ -147,6 +147,8 @@ namespace dxvk {
     
     vk::NameList enableExtensions();
     
+    static void logNameList(const vk::NameList& names);
+    
   };
   
 }

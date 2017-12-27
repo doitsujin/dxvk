@@ -16,6 +16,7 @@ namespace dxvk {
     SpirvCodeBuffer result;
     result.putHeader(m_id);
     result.append(m_capabilities);
+    result.append(m_extensions);
     result.append(m_instExt);
     result.append(m_memoryModel);
     result.append(m_entryPoints);
@@ -45,6 +46,13 @@ namespace dxvk {
     
     m_capabilities.putIns (spv::OpCapability, 2);
     m_capabilities.putWord(capability);
+  }
+  
+  
+  void SpirvModule::enableExtension(
+    const char*                   extensionName) {
+    m_extensions.putIns (spv::OpExtension, 1 + m_extensions.strLen(extensionName));
+    m_extensions.putStr (extensionName);
   }
   
   

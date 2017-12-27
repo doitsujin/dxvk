@@ -149,6 +149,9 @@ namespace dxvk {
   Rc<DxvkDevice> DxvkAdapter::createDevice(const VkPhysicalDeviceFeatures& enabledFeatures) {
     auto enabledExtensions = this->enableExtensions();
     
+    Logger::info("Enabled device extensions:");
+    this->logNameList(enabledExtensions);
+    
     float queuePriority = 1.0f;
     std::vector<VkDeviceQueueCreateInfo> queueInfos;
     
@@ -198,6 +201,7 @@ namespace dxvk {
   vk::NameList DxvkAdapter::enableExtensions() {
     std::vector<const char*> extOptional = { };
     std::vector<const char*> extRequired = {
+      VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME,
       VK_KHR_SWAPCHAIN_EXTENSION_NAME,
       VK_KHR_MAINTENANCE1_EXTENSION_NAME,
     };
@@ -218,6 +222,12 @@ namespace dxvk {
     }
     
     return extensionsEnabled;
+  }
+  
+  
+  void DxvkAdapter::logNameList(const vk::NameList& names) {
+    for (uint32_t i = 0; i < names.count(); i++)
+      Logger::info(str::format("  ", names.name(i)));
   }
   
 }
