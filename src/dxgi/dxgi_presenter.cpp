@@ -131,7 +131,7 @@ namespace dxvk {
   
   
   DxgiPresenter::~DxgiPresenter() {
-    
+    m_device->waitForIdle();
   }
   
   
