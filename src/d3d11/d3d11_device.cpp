@@ -146,8 +146,42 @@ namespace dxvk {
     }
     
     if (resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER) {
-      Logger::err("D3D11: Shader resource views for buffers not yet supported");
-      return E_INVALIDARG;
+      auto resource = static_cast<D3D11Buffer*>(pResource);
+      
+      // TODO implement raw and structured buffers
+      if (pDesc->Format == DXGI_FORMAT_UNKNOWN) {
+        Logger::err("D3D11Device: Raw and structured buffers not yet supported");
+        return E_INVALIDARG;
+      }
+      
+      // Typed buffer views support uncompressed color formats only
+      const VkFormat format = m_dxgiAdapter->LookupFormat(
+        pDesc->Format, DxgiFormatMode::Color).format;
+      const DxvkFormatInfo* formatInfo = imageFormatInfo(format);
+      
+      if (formatInfo->flags.test(DxvkFormatFlag::BlockCompressed)) {
+        Logger::err("D3D11Device: Compressed formats for buffer views not supported");
+        return E_INVALIDARG;
+      }
+      
+      DxvkBufferViewCreateInfo viewInfo;
+      viewInfo.format      = format;
+      viewInfo.rangeOffset = formatInfo->elementSize * pDesc->Buffer.FirstElement;
+      viewInfo.rangeLength = formatInfo->elementSize * pDesc->Buffer.NumElements;
+      
+      if (ppSRView == nullptr)
+        return S_FALSE;
+      
+      try {
+        *ppSRView = ref(new D3D11ShaderResourceView(
+          this, pResource, desc,
+          m_dxvkDevice->createBufferView(
+            resource->GetBufferSlice().buffer(), viewInfo)));
+        return S_OK;
+      } catch (const DxvkError& e) {
+        Logger::err(e.message());
+        return E_FAIL;
+      }
     } else {
       // Retrieve info about the image
       D3D11TextureInfo textureInfo;
@@ -249,7 +283,7 @@ namespace dxvk {
       }
       
       if (ppSRView == nullptr)
-        return S_OK;
+        return S_FALSE;
       
       try {
         *ppSRView = ref(new D3D11ShaderResourceView(
@@ -353,7 +387,7 @@ namespace dxvk {
     
     // Create the actual image view if requested
     if (ppRTView == nullptr)
-      return S_OK;
+      return S_FALSE;
     
     try {
       *ppRTView = ref(new D3D11RenderTargetView(
@@ -363,7 +397,7 @@ namespace dxvk {
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
-      return DXGI_ERROR_DRIVER_INTERNAL_ERROR;
+      return E_FAIL;
     }
   }
   
@@ -447,7 +481,7 @@ namespace dxvk {
     
     // Create the actual image view if requested
     if (ppDepthStencilView == nullptr)
-      return S_OK;
+      return S_FALSE;
     
     try {
       *ppDepthStencilView = ref(new D3D11DepthStencilView(
@@ -457,7 +491,7 @@ namespace dxvk {
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
-      return DXGI_ERROR_DRIVER_INTERNAL_ERROR;
+      return E_FAIL;
     }
   }
   
@@ -571,7 +605,7 @@ namespace dxvk {
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
-      return E_INVALIDARG;
+      return E_FAIL;
     }
   }
   
@@ -723,9 +757,10 @@ namespace dxvk {
       }
     }
     
-    if (ppBlendState != nullptr)
+    if (ppBlendState != nullptr) {
       *ppBlendState = m_bsStateObjects.Create(this, desc);
-    return S_OK;
+      return S_OK;
+    } return S_FALSE;
   }
   
   
@@ -753,9 +788,10 @@ namespace dxvk {
       desc.BackFace         = stencilOp;
     }
     
-    if (ppDepthStencilState != nullptr)
+    if (ppDepthStencilState != nullptr) {
       *ppDepthStencilState = m_dsStateObjects.Create(this, desc);
-    return S_OK;
+      return S_OK;
+    } return S_FALSE;
   }
   
   
@@ -779,9 +815,10 @@ namespace dxvk {
       desc.AntialiasedLineEnable = FALSE;
     }
     
-    if (ppRasterizerState != nullptr)
+    if (ppRasterizerState != nullptr) {
       *ppRasterizerState = m_rsStateObjects.Create(this, desc);
-    return S_OK;
+      return S_OK;
+    } return S_FALSE;
   }
   
   
@@ -827,7 +864,7 @@ namespace dxvk {
     
     // Create sampler object if the application requests it
     if (ppSamplerState == nullptr)
-      return S_OK;
+      return S_FALSE;
     
     try {
       *ppSamplerState = ref(new D3D11SamplerState(this,
@@ -835,7 +872,7 @@ namespace dxvk {
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
-      return S_OK;
+      return E_FAIL;
     }
   }
   
@@ -1147,7 +1184,7 @@ namespace dxvk {
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
-      return E_INVALIDARG;
+      return E_FAIL;
     }
   }
   

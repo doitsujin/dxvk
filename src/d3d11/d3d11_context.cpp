@@ -1696,9 +1696,9 @@ namespace dxvk {
         if (resView != nullptr) {
           // Figure out what we have to bind based on the resource type
           if (resView->GetResourceType() == D3D11_RESOURCE_DIMENSION_BUFFER) {
-            Logger::warn("D3D11: Texel buffers not yet supported");
+            // TODO support raw and structured buffers
             m_context->bindResourceTexelBuffer(
-              slotId + i, nullptr);
+              slotId + i, resView->GetDXVKBufferView());
           } else {
             m_context->bindResourceImage(
               slotId + i, resView->GetDXVKImageView());

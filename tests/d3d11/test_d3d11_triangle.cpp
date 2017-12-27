@@ -17,8 +17,10 @@ struct Vertex {
 };
 
 const std::string g_vertexShaderCode =
+  "Buffer<float4> buf : register(t0);\n"
   "struct vs_out {\n"
   "  float4 pos   : SV_POSITION;\n"
+  "  float4 color : COLOR;\n"
   "  uint   vid   : VID;\n"
   "  uint   iid   : IID;\n"
   "};\n"
@@ -27,6 +29,7 @@ const std::string g_vertexShaderCode =
   "    uint iid : SV_INSTANCEID) {\n"
   "  vs_out result;\n"
   "  result.pos = vsIn;\n"
+  "  result.color = buf[vid];\n"
   "  result.vid = vid;\n"
   "  result.iid = iid;\n"
   "  return result;\n"
@@ -35,12 +38,14 @@ const std::string g_vertexShaderCode =
 const std::string g_pixelShaderCode =
   "struct vs_out {\n"
   "  float4 pos   : SV_POSITION;\n"
+  "  float4 color : COLOR;\n"
   "  uint   vid   : VID;\n"
   "  uint   iid   : IID;\n"
   "};\n"
   "cbuffer c_buffer { float4 ccolor[2]; };\n"
   "float4 main(vs_out ps_in) : SV_TARGET {\n"
-  "  return 0.5f * (ccolor[min(ps_in.vid, 1u)] + ccolor[min(ps_in.iid, 1u)]);\n"
+  "  return ps_in.color;\n"
+//   "  return 0.5f * (ccolor[min(ps_in.vid, 1u)] + ccolor[min(ps_in.iid, 1u)]);\n"
   "}\n";
 
 class TriangleApp {
@@ -157,15 +162,17 @@ public:
     if (FAILED(m_device->CreateBuffer(&indexDesc, &indexDataInfo, &m_indexBuffer)))
       throw DxvkError("Failed to create index buffer");
     
-    std::array<Vertex, 2> constantData = {{
+    std::array<Vertex, 3> constantData = {{
       { 0.03f, 0.03f, 0.03f, 1.0f },
       { 1.00f, 0.00f, 0.00f, 1.0f },
+      { 1.00f, 1.00f, 0.00f, 1.0f },
     }};
     
     D3D11_BUFFER_DESC constantDesc;
     constantDesc.ByteWidth            = sizeof(Vertex) * constantData.size();
     constantDesc.Usage                = D3D11_USAGE_IMMUTABLE;
-    constantDesc.BindFlags            = D3D11_BIND_CONSTANT_BUFFER;
+    constantDesc.BindFlags            = D3D11_BIND_CONSTANT_BUFFER
+                                      | D3D11_BIND_SHADER_RESOURCE;
     constantDesc.CPUAccessFlags       = 0;
     constantDesc.MiscFlags            = 0;
     constantDesc.StructureByteStride  = 0;
@@ -177,6 +184,15 @@ public:
     
     if (FAILED(m_device->CreateBuffer(&constantDesc, &constantDataInfo, &m_constantBuffer)))
       throw DxvkError("Failed to create constant buffer");
+    
+    D3D11_SHADER_RESOURCE_VIEW_DESC constantViewDesc;
+    constantViewDesc.Format        = DXGI_FORMAT_R32G32B32A32_FLOAT;
+    constantViewDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+    constantViewDesc.Buffer.FirstElement = 0;
+    constantViewDesc.Buffer.NumElements  = 3;
+    
+    if (FAILED(m_device->CreateShaderResourceView(m_constantBuffer.ptr(), &constantViewDesc, &m_constantView)))
+      throw DxvkError("Failed to create texel buffer view");
     
     Com<ID3DBlob> vertexShaderBlob;
     Com<ID3DBlob> pixelShaderBlob;
@@ -250,6 +266,7 @@ public:
     m_context->ClearRenderTargetView(m_bufferView.ptr(), color);
     
     m_context->VSSetShader(m_vertexShader.ptr(), nullptr, 0);
+    m_context->VSSetShaderResources(0, 1, &m_constantView);
     m_context->PSSetShader(m_pixelShader.ptr(), nullptr, 0);
     m_context->PSSetConstantBuffers(0, 1, &m_constantBuffer);
     
@@ -328,6 +345,7 @@ private:
   Com<ID3D11Texture2D>          m_buffer;
   Com<ID3D11RenderTargetView>   m_bufferView;
   Com<ID3D11Buffer>             m_constantBuffer;
+  Com<ID3D11ShaderResourceView> m_constantView;
   Com<ID3D11Buffer>             m_indexBuffer;
   Com<ID3D11Buffer>             m_vertexBuffer;
   Com<ID3D11InputLayout>        m_vertexFormat;
