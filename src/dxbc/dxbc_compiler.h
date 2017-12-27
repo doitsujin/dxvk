@@ -352,7 +352,13 @@ namespace dxvk {
     void emitGeometryEmit(
       const DxbcShaderInstruction&  ins);
     
-    void emitSample(
+    void emitTextureQuery(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitTextureFetch(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitTextureSample(
       const DxbcShaderInstruction&  ins);
     
     /////////////////////////////////////

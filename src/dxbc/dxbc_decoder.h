@@ -144,6 +144,10 @@ namespace dxvk {
       return DxbcRegMask(n >= 1, n >= 2, n >= 3, n >= 4);
     }
     
+    static DxbcRegMask select(uint32_t n) {
+      return DxbcRegMask(n == 0, n == 1, n == 2, n == 3);
+    }
+    
   private:
     
     uint8_t m_mask = 0;

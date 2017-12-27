@@ -33,6 +33,7 @@ namespace dxvk {
     
     // Set up common capabilities for all shaders
     m_module.enableCapability(spv::CapabilityShader);
+    m_module.enableCapability(spv::CapabilityImageQuery);
     
     // Initialize the shader module with capabilities
     // etc. Each shader type has its own peculiarities.
@@ -65,8 +66,14 @@ namespace dxvk {
       case DxbcInstClass::GeometryEmit:
         return this->emitGeometryEmit(ins);
         
+      case DxbcInstClass::TextureQuery:
+        return this->emitTextureQuery(ins);
+        
+      case DxbcInstClass::TextureFetch:
+        return this->emitTextureFetch(ins);
+        
       case DxbcInstClass::TextureSample:
-        return this->emitSample(ins);
+        return this->emitTextureSample(ins);
         
       case DxbcInstClass::VectorAlu:
         return this->emitVectorAlu(ins);
@@ -1309,8 +1316,212 @@ namespace dxvk {
   }
   
   
-  void DxbcCompiler::emitSample(const DxbcShaderInstruction& ins) {
-    // TODO support more sample ops
+  void DxbcCompiler::emitTextureQuery(const DxbcShaderInstruction& ins) {
+    // resinfo has three operands:
+    //  (dst0) The destination register
+    //  (src0) Resource LOD to query
+    //  (src1) Resource to query
+    const DxbcResinfoType resinfoType = ins.controls.resinfoType;
+    
+    if (ins.src[1].type != DxbcOperandType::Resource) {
+      Logger::err("DxbcCompiler: resinfo: UAVs not yet supported");
+      return;
+    }
+    
+    // TODO support UAVs
+    const uint32_t textureId = ins.src[1].idx[0].offset;
+    const uint32_t imageId = m_module.opLoad(
+      m_textures.at(textureId).colorTypeId,
+      m_textures.at(textureId).varId);
+    
+    // Read the exact LOD for the image query
+    const DxbcRegisterValue mipLod = emitRegisterLoad(
+      ins.src[0], DxbcRegMask(true, false, false, false));
+    
+    // Image type, which stores the image dimensions etc.
+    const DxbcImageInfo imageType = m_textures.at(textureId).imageInfo;
+    
+    const uint32_t imageDim = [&] {
+      switch (imageType.dim) {
+        case spv::Dim1D:      return 1;
+        case spv::Dim2D:      return 2;
+        case spv::Dim3D:      return 3;
+        case spv::DimCube:    return 2;
+        default: throw DxvkError("DxbcCompiler: resinfo: Unsupported image dim");
+      }
+    }();
+    
+    const DxbcScalarType returnType = resinfoType == DxbcResinfoType::Uint
+      ? DxbcScalarType::Uint32 : DxbcScalarType::Float32;
+    
+    // Query image size. This will be written to the
+    // first components of the destination register.
+    DxbcRegisterValue imageSize;
+    imageSize.type.ctype  = DxbcScalarType::Uint32;
+    imageSize.type.ccount = imageDim + imageType.array;
+    imageSize.id = m_module.opImageQuerySizeLod(
+      getVectorTypeId(imageSize.type),
+      imageId, mipLod.id);
+    
+    // Query image levels. This will be written to
+    // the w component of the destination register.
+    DxbcRegisterValue imageLevels;
+    imageLevels.type.ctype  = DxbcScalarType::Uint32;
+    imageLevels.type.ccount = 1;
+    imageLevels.id = m_module.opImageQueryLevels(
+      getVectorTypeId(imageLevels.type),
+      imageId);
+    
+    // Convert intermediates to the requested type
+    if (returnType == DxbcScalarType::Float32) {
+      imageSize.type.ctype = DxbcScalarType::Float32;
+      imageSize.id = m_module.opConvertUtoF(
+        getVectorTypeId(imageSize.type),
+        imageSize.id);
+      
+      imageLevels.type.ctype = DxbcScalarType::Float32;
+      imageLevels.id = m_module.opConvertUtoF(
+        getVectorTypeId(imageLevels.type),
+        imageLevels.id);
+    }
+    
+    // If the selected return type is rcpFloat, we need
+    // to compute the reciprocal of the image dimensions,
+    // but not the array size, so we need to separate it.
+    DxbcRegisterValue imageLayers;
+    imageLayers.type = imageSize.type;
+    imageLayers.id   = 0;
+    
+    if (resinfoType == DxbcResinfoType::RcpFloat && imageType.array) {
+      imageLayers = emitRegisterExtract(imageSize, DxbcRegMask::select(imageDim));
+      imageSize   = emitRegisterExtract(imageSize, DxbcRegMask::firstN(imageDim));
+    }
+    
+    if (resinfoType == DxbcResinfoType::RcpFloat) {
+      const uint32_t typeId = getVectorTypeId(imageSize.type);
+      
+      const uint32_t one = m_module.constf32(1.0f);
+      std::array<uint32_t, 4> constIds = { one, one, one, one };
+      
+      imageSize.id = m_module.opFDiv(typeId,
+        m_module.constComposite(typeId,
+          imageSize.type.ccount, constIds.data()),
+        imageSize.id);
+    }
+    
+    // Concatenate result vectors and scalars to form a
+    // 4D vector. Unused components will be set to zero.
+    std::array<uint32_t, 4> vectorIds = { imageSize.id, 0, 0, 0 };
+    uint32_t numVectorIds = 1;
+    
+    if (imageLayers.id != 0)
+      vectorIds[numVectorIds++] = imageLayers.id;
+    
+    if (imageDim + imageType.array < 3) {
+      const uint32_t zero = returnType == DxbcScalarType::Uint32
+        ? m_module.constu32(0)
+        : m_module.constf32(0.0f);
+      
+      for (uint32_t i = imageDim + imageType.array; i < 3; i++)
+        vectorIds[numVectorIds++] = zero;
+    }
+    
+    vectorIds[numVectorIds++] = imageLevels.id;
+    
+    // Create the actual result vector
+    DxbcRegisterValue result;
+    result.type.ctype  = returnType;
+    result.type.ccount = 4;
+    
+    result.id = m_module.opCompositeConstruct(
+      getVectorTypeId(result.type),
+      numVectorIds, vectorIds.data());
+    
+    // Swizzle components using the resource swizzle
+    // and the destination operand's write mask
+    result = emitRegisterSwizzle(result,
+      ins.src[1].swizzle, ins.dst[0].mask);
+    emitRegisterStore(ins.dst[0], result);
+  }
+  
+  
+  void DxbcCompiler::emitTextureFetch(const DxbcShaderInstruction& ins) {
+    // ld has three operands:
+    //  (dst0) The destination register
+    //  (src0) Source address
+    //  (src1) Source texture
+    const uint32_t textureId = ins.src[1].idx[0].offset;
+    
+    // Image type, which stores the image dimensions etc.
+    const DxbcImageInfo imageType = m_textures.at(textureId).imageInfo;
+    
+    const uint32_t imageLayerDim = [&] {
+      switch (imageType.dim) {
+        case spv::DimBuffer:  return 1;
+        case spv::Dim1D:      return 1;
+        case spv::Dim2D:      return 2;
+        case spv::Dim3D:      return 3;
+        default: throw DxvkError("DxbcCompiler: ld: Unsupported image dim");
+      }
+    }();
+    
+    const DxbcRegMask coordArrayMask =
+      DxbcRegMask::firstN(imageLayerDim + imageType.array);
+    
+    // Load the texture coordinates. The last component
+    // contains the LOD if the resource is an image.
+    const DxbcRegisterValue coord = emitRegisterLoad(
+      ins.src[0], DxbcRegMask(true, true, true, true));
+    
+    // Additional image operands. This will store
+    // the LOD and the address offset if present.
+    SpirvImageOperands imageOperands;
+    
+    if (ins.sampleControls.u != 0 || ins.sampleControls.v != 0 || ins.sampleControls.w != 0) {
+      const std::array<uint32_t, 3> offsetIds = {
+        imageLayerDim >= 1 ? m_module.consti32(ins.sampleControls.u) : 0,
+        imageLayerDim >= 2 ? m_module.consti32(ins.sampleControls.v) : 0,
+        imageLayerDim >= 3 ? m_module.consti32(ins.sampleControls.w) : 0,
+      };
+      
+      imageOperands.flags |= spv::ImageOperandsConstOffsetMask;
+      imageOperands.sConstOffset = m_module.constComposite(
+        getVectorTypeId({ DxbcScalarType::Sint32, imageLayerDim }),
+        imageLayerDim, offsetIds.data());
+    }
+    
+    if (imageType.dim != spv::DimBuffer) {
+      imageOperands.flags |= spv::ImageOperandsLodMask;
+      imageOperands.sLod = emitRegisterExtract(coord,
+        DxbcRegMask(false, false, false, true)).id;
+    }
+    
+    // Load image variable, no sampler needed
+    const uint32_t imageId = m_module.opLoad(
+      m_textures.at(textureId).colorTypeId,
+      m_textures.at(textureId).varId);
+    
+    // Reading a typed image or buffer view
+    // always returns a four-component vector.
+    DxbcRegisterValue result;
+    result.type.ctype  = m_textures.at(textureId).sampledType;
+    result.type.ccount = 4;
+    
+    result.id = m_module.opImageFetch(
+      getVectorTypeId(result.type), imageId,
+      emitRegisterExtract(coord, coordArrayMask).id,
+      imageOperands);
+    
+    // Swizzle components using the texture swizzle
+    // and the destination operand's write mask
+    result = emitRegisterSwizzle(result,
+      ins.src[1].swizzle, ins.dst[0].mask);
+    emitRegisterStore(ins.dst[0], result);
+  }
+  
+  
+  void DxbcCompiler::emitTextureSample(const DxbcShaderInstruction& ins) {
+    // TODO support remaining sample ops
     
     // All sample instructions have at least these operands:
     //  (dst0) The destination register
@@ -1328,7 +1539,6 @@ namespace dxvk {
     // Image type, which stores the image dimensions etc.
     const DxbcImageInfo imageType = m_textures.at(textureId).imageInfo;
     
-    // FIXME implement properly
     const uint32_t imageLayerDim = [&] {
       switch (imageType.dim) {
         case spv::DimBuffer:  return 1;
@@ -2453,13 +2663,13 @@ namespace dxvk {
     m_vs.builtinVertexId = emitNewBuiltinVariable({
       { DxbcScalarType::Uint32, 1, 0 },
       spv::StorageClassInput },
-      spv::BuiltInVertexIndex,    // TODO test
+      spv::BuiltInVertexId,    // TODO test
       "vs_vertex_index");
     
     m_vs.builtinInstanceId = emitNewBuiltinVariable({
       { DxbcScalarType::Uint32, 1, 0 },
       spv::StorageClassInput },
-      spv::BuiltInInstanceIndex,  // TODO test
+      spv::BuiltInInstanceId,  // TODO test
       "vs_instance_index");
   }
   
@@ -2548,6 +2758,9 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitPsInit() {
+    m_module.enableCapability(
+      spv::CapabilityDerivativeControl);
+    
     m_module.setExecutionMode(m_entryPointId,
       spv::ExecutionModeOriginUpperLeft);
     

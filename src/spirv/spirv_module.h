@@ -573,6 +573,25 @@ namespace dxvk {
             uint32_t                image,
             uint32_t                sampler);
     
+    uint32_t opImageQuerySizeLod(
+            uint32_t                resultType,
+            uint32_t                image,
+            uint32_t                lod);
+    
+    uint32_t opImageQuerySize(
+            uint32_t                resultType,
+            uint32_t                image);
+    
+    uint32_t opImageQueryLevels(
+            uint32_t                resultType,
+            uint32_t                image);
+    
+    uint32_t opImageFetch(
+            uint32_t                resultType,
+            uint32_t                image,
+            uint32_t                coordinates,
+      const SpirvImageOperands&     operands);
+    
     uint32_t opImageSampleImplicitLod(
             uint32_t                resultType,
             uint32_t                sampledImage,

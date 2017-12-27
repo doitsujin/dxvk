@@ -205,7 +205,11 @@ namespace dxvk {
     /* Label                                */
     { },
     /* Ld                                   */
-    { },
+    { 3, DxbcInstClass::TextureFetch, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32  },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* LdMs                                 */
     { },
     /* Log                                  */
@@ -280,7 +284,11 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
     } },
     /* ResInfo                              */
-    { },
+    { 3, DxbcInstClass::TextureQuery, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32  },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* Ret                                  */
     { 0, DxbcInstClass::ControlFlow },
     /* Retc                                 */

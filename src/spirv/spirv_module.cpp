@@ -1657,6 +1657,66 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opImageQuerySizeLod(
+          uint32_t                resultType,
+          uint32_t                image,
+          uint32_t                lod) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpImageQuerySizeLod, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(image);
+    m_code.putWord(lod);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opImageQuerySize(
+          uint32_t                resultType,
+          uint32_t                image) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpImageQuerySize, 4);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(image);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opImageQueryLevels(
+          uint32_t                resultType,
+          uint32_t                image) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpImageQueryLevels, 4);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(image);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opImageFetch(
+          uint32_t                resultType,
+          uint32_t                image,
+          uint32_t                coordinates,
+    const SpirvImageOperands&     operands) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns(spv::OpImageFetch,
+      5 + getImageOperandWordCount(operands));
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(image);
+    m_code.putWord(coordinates);
+    
+    putImageOperands(operands);
+    return resultId;
+  }
+  
+    
   uint32_t SpirvModule::opImageSampleImplicitLod(
           uint32_t                resultType,
           uint32_t                sampledImage,
