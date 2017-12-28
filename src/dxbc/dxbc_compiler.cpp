@@ -1494,7 +1494,36 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitBufferStore(const DxbcShaderInstruction& ins) {
-    Logger::err("DxbcCompiler: emitBufferStore not implemented");
+    // store_raw takes three arguments:
+    //    (dst0) Destination register
+    //    (src0) Byte offset
+    //    (src1) Source register
+    // store_structured takes four arguments:
+    //    (dst0) Destination register
+    //    (src0) Structure index
+    //    (src1) Byte offset
+    //    (src2) Source register
+    const bool isStructured = ins.op == DxbcOpcode::StoreStructured;
+    
+    // Source register. The exact way we access
+    // the data depends on the register type.
+    const DxbcRegister& dstReg = ins.dst[0];
+    const DxbcRegister& srcReg = isStructured ? ins.src[2] : ins.src[1];
+    
+    // Retrieve common info about the buffer
+    const DxbcBufferInfo bufferInfo = getBufferInfo(dstReg);
+    
+    // Compute element index
+    const DxbcRegisterValue elementIndex = isStructured
+      ? emitCalcBufferIndexStructured(
+          emitRegisterLoad(ins.src[0], DxbcRegMask(true, false, false, false)),
+          emitRegisterLoad(ins.src[1], DxbcRegMask(true, false, false, false)),
+          bufferInfo.stride)
+      : emitCalcBufferIndexRaw(
+          emitRegisterLoad(ins.src[0], DxbcRegMask(true, false, false, false)));
+    
+    emitRawBufferStore(dstReg, elementIndex,
+      emitRegisterLoad(srcReg, dstReg.mask));
   }
   
   
@@ -2562,7 +2591,49 @@ namespace dxvk {
           DxbcRegisterValue       elementIndex,
           DxbcRegisterValue       value) {
     const DxbcBufferInfo bufferInfo = getBufferInfo(operand);
-    // TODO implement
+    
+    // Cast source value to the expected data type
+    value = emitRegisterBitcast(value, DxbcScalarType::Uint32);
+    
+    // Shared memory is not accessed through a texel buffer view
+    const bool isTgsm = operand.type == DxbcOperandType::ThreadGroupSharedMemory;
+    
+    const uint32_t bufferId = isTgsm
+      ? 0 : m_module.opLoad(bufferInfo.typeId, bufferInfo.varId);
+    
+    const uint32_t scalarTypeId = getScalarTypeId(DxbcScalarType::Uint32);
+    
+    uint32_t srcComponentIndex = 0;
+    
+    for (uint32_t i = 0; i < 4; i++) {
+      if (operand.mask[i]) {
+        const uint32_t srcComponentId = value.type.ccount > 1
+          ? m_module.opCompositeExtract(scalarTypeId,
+              value.id, 1, &srcComponentIndex)
+          : value.id;
+        
+        // Add the component offset to the element index
+        const uint32_t elementIndexAdjusted = i != 0
+          ? m_module.opIAdd(getVectorTypeId(elementIndex.type),
+              elementIndex.id, m_module.consti32(i))
+          : elementIndex.id;
+        
+        switch (operand.type) {
+          case DxbcOperandType::UnorderedAccessView:
+            m_module.opImageWrite(
+              bufferId, elementIndexAdjusted,
+              srcComponentId,
+              SpirvImageOperands());
+            break;
+          
+          default:
+            throw DxvkError("DxbcCompiler: Invalid operand type for strucured/raw store");
+        }
+        
+        // Write next component
+        srcComponentIndex += 1;
+      }
+    }
   }
   
   
@@ -2576,12 +2647,9 @@ namespace dxvk {
     
     const uint32_t typeId = getVectorTypeId(result.type);
     
-    result.id = m_module.opShiftRightArithmetic(typeId,
-      m_module.opIAdd(typeId,
-        m_module.opIMul(typeId, structId.id,
-          m_module.consti32(structStride)),
-        structOffset.id),
-      m_module.consti32(2));
+    result.id = m_module.opIAdd(typeId,
+        m_module.opIMul(typeId, structId.id, m_module.consti32(structStride / 4)),
+        m_module.opSDiv(typeId, structOffset.id, m_module.consti32(4)));
     return result;
   }
   
@@ -2591,10 +2659,10 @@ namespace dxvk {
     DxbcRegisterValue result;
     result.type.ctype  = DxbcScalarType::Sint32;
     result.type.ccount = 1;
-    result.id = m_module.opShiftRightArithmetic(
+    result.id = m_module.opSDiv(
       getVectorTypeId(result.type),
       byteOffset.id,
-      m_module.consti32(2));
+      m_module.consti32(4));
     return result;
   }
   
