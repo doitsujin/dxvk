@@ -32,6 +32,9 @@ namespace dxvk {
     CustomData,       ///< Immediate constant buffer
     ControlFlow,      ///< Control flow instructions
     GeometryEmit,     ///< Special geometry shader instructions
+    Atomic,           ///< Atomic operations
+    BufferLoad,       ///< Structured or raw buffer load
+    BufferStore,      ///< Structured or raw buffer store
     TextureQuery,     ///< Texture query instruction
     TextureFetch,     ///< Texture fetch instruction
     TextureSample,    ///< Texture sampling instruction

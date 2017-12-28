@@ -581,6 +581,18 @@ namespace dxvk {
             uint32_t                pointerId,
             uint32_t                valueId);
     
+    uint32_t opImageRead(
+            uint32_t                resultType,
+            uint32_t                image,
+            uint32_t                coordinates,
+      const SpirvImageOperands&     operands);
+    
+    void opImageWrite(
+            uint32_t                image,
+            uint32_t                coordinates,
+            uint32_t                texel,
+      const SpirvImageOperands&     operands);
+    
     uint32_t opSampledImage(
             uint32_t                resultType,
             uint32_t                image,

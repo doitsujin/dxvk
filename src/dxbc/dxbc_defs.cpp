@@ -611,75 +611,205 @@ namespace dxvk {
     /* DclHsJoinPhaseInstanceCount          */
     { },
     /* DclThreadGroup                       */
-    { },
+    { 3, DxbcInstClass::Declaration, {
+      { DxbcOperandKind::Imm32, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::Imm32, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::Imm32, DxbcScalarType::Uint32 },
+    } },
     /* DclUavTyped                          */
-    { },
+    { 2, DxbcInstClass::Declaration, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::Imm32,  DxbcScalarType::Uint32  },
+    } },
     /* DclUavRaw                            */
-    { },
+    { 1, DxbcInstClass::Declaration, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+    } },
     /* DclUavStructured                     */
-    { },
+    { 2, DxbcInstClass::Declaration, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::Imm32,  DxbcScalarType::Uint32  },
+    } },
     /* DclThreadGroupSharedMemoryRaw        */
-    { },
+    { 2, DxbcInstClass::Declaration, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::Imm32,  DxbcScalarType::Uint32  },
+    } },
     /* DclThreadGroupSharedMemoryStructured */
-    { },
+    { 3, DxbcInstClass::Declaration, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::Imm32,  DxbcScalarType::Uint32  },
+      { DxbcOperandKind::Imm32,  DxbcScalarType::Uint32  },
+    } },
     /* DclResourceRaw                       */
-    { },
+    { 1, DxbcInstClass::Declaration, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+    } },
     /* DclResourceStructured                */
-    { },
+    { 2, DxbcInstClass::Declaration, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::Imm32,  DxbcScalarType::Uint32  },
+    } },
     /* LdUavTyped                           */
     { },
     /* StoreUavTyped                        */
     { },
     /* LdRaw                                */
-    { },
+    { 3, DxbcInstClass::BufferLoad, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* StoreRaw                             */
-    { },
+    { 3, DxbcInstClass::BufferStore, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* LdStructured                         */
-    { },
+    { 4, DxbcInstClass::BufferLoad, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* StoreStructured                      */
-    { },
+    { 4, DxbcInstClass::BufferStore, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* AtomicAnd                            */
-    { },
+    { 3, DxbcInstClass::Atomic, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* AtomicOr                             */
-    { },
+    { 3, DxbcInstClass::Atomic, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* AtomicXor                            */
-    { },
+    { 3, DxbcInstClass::Atomic, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* AtomicCmpStore                       */
-    { },
+    { 4, DxbcInstClass::Atomic, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* AtomicIAdd                           */
-    { },
+    { 3, DxbcInstClass::Atomic, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* AtomicIMax                           */
-    { },
+    { 3, DxbcInstClass::Atomic, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+    } },
     /* AtomicIMin                           */
-    { },
+    { 3, DxbcInstClass::Atomic, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+    } },
     /* AtomicUMax                           */
-    { },
+    { 3, DxbcInstClass::Atomic, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* AtomicUMin                           */
-    { },
+    { 3, DxbcInstClass::Atomic, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* ImmAtomicAlloc                       */
     { },
     /* ImmAtomicConsume                     */
     { },
     /* ImmAtomicIAdd                        */
-    { },
+    { 4, DxbcInstClass::Atomic, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* ImmAtomicAnd                         */
-    { },
+    { 4, DxbcInstClass::Atomic, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* ImmAtomicOr                          */
-    { },
+    { 4, DxbcInstClass::Atomic, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* ImmAtomicXor                         */
-    { },
+    { 4, DxbcInstClass::Atomic, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* ImmAtomicExch                        */
-    { },
+    { 4, DxbcInstClass::Atomic, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* ImmAtomicCmpExch                     */
-    { },
+    { 5, DxbcInstClass::Atomic, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* ImmAtomicImax                        */
-    { },
+    { 4, DxbcInstClass::Atomic, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::DstReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+    } },
     /* ImmAtomicImin                        */
-    { },
+    { 4, DxbcInstClass::Atomic, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::DstReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+    } },
     /* ImmAtomicUmax                        */
-    { },
+    { 4, DxbcInstClass::Atomic, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* ImmAtomicUmin                        */
-    { },
+    { 4, DxbcInstClass::Atomic, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* Sync                                 */
     { },
     /* DAdd                                 */

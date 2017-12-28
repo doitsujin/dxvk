@@ -128,6 +128,13 @@ namespace dxvk {
    */
   struct DxbcCompilerCsPart {
     uint32_t functionId = 0;
+    
+    uint32_t builtinGlobalInvocationId    = 0;
+    uint32_t builtinLocalInvocationId     = 0;
+    uint32_t builtinLocalInvocationIndex  = 0;
+    uint32_t builtinWorkgroupId           = 0;
+    uint32_t builtinWorkgroupSize         = 0;
+    uint32_t builtinWorkgroupCount        = 0;
   };
   
   
@@ -159,6 +166,14 @@ namespace dxvk {
       DxbcCfgBlockIf   b_if;
       DxbcCfgBlockLoop b_loop;
     };
+  };
+  
+  
+  struct DxbcBufferInfo {
+    DxbcResourceType type;
+    uint32_t typeId;
+    uint32_t varId;
+    uint32_t stride;
   };
   
   
@@ -230,6 +245,7 @@ namespace dxvk {
     std::array<DxbcConstantBuffer,  16> m_constantBuffers;
     std::array<DxbcSampler,         16> m_samplers;
     std::array<DxbcShaderResource, 128> m_textures;
+    std::array<DxbcUav,             64> m_uavs;
     
     ///////////////////////////////////////////////
     // Control flow information. Stores labels for
@@ -302,7 +318,13 @@ namespace dxvk {
     void emitDclSampler(
       const DxbcShaderInstruction&  ins);
     
-    void emitDclResource(
+    void emitDclResourceTyped(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitDclResourceRawStructured(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitDclThreadGroupSharedMemory(
       const DxbcShaderInstruction&  ins);
     
     void emitDclGsInputPrimitive(
@@ -312,6 +334,9 @@ namespace dxvk {
       const DxbcShaderInstruction&  ins);
     
     void emitDclMaxOutputVertexCount(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitDclThreadGroup(
       const DxbcShaderInstruction&  ins);
     
     ////////////////////////
@@ -352,6 +377,15 @@ namespace dxvk {
       const DxbcShaderInstruction&  ins);
     
     void emitGeometryEmit(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitAtomic(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitBufferLoad(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitBufferStore(
       const DxbcShaderInstruction&  ins);
     
     void emitTextureQuery(
@@ -457,6 +491,28 @@ namespace dxvk {
     DxbcRegisterPointer emitGetOperandPtr(
       const DxbcRegister&           operand);
     
+    ///////////////////////////////
+    // Resource load/store methods
+    DxbcRegisterValue emitRawBufferLoad(
+      const DxbcRegister&           operand,
+            DxbcRegisterValue       elementIndex,
+            DxbcRegMask             writeMask);
+    
+    void emitRawBufferStore(
+      const DxbcRegister&           operand,
+            DxbcRegisterValue       elementIndex,
+            DxbcRegisterValue       value);
+    
+    ////////////////////////////////////
+    // Buffer index calculation methods
+    DxbcRegisterValue emitCalcBufferIndexStructured(
+            DxbcRegisterValue       structId,
+            DxbcRegisterValue       structOffset,
+            uint32_t                structStride);
+    
+    DxbcRegisterValue emitCalcBufferIndexRaw(
+            DxbcRegisterValue       byteOffset);
+    
     //////////////////////////////
     // Operand load/store methods
     DxbcRegisterValue emitIndexLoad(
@@ -497,6 +553,10 @@ namespace dxvk {
             uint32_t                vertexId);
     
     DxbcRegisterValue emitPsSystemValueLoad(
+            DxbcSystemValue         sv,
+            DxbcRegMask             mask);
+    
+    DxbcRegisterValue emitCsSystemValueLoad(
             DxbcSystemValue         sv,
             DxbcRegMask             mask);
     
@@ -552,9 +612,12 @@ namespace dxvk {
             spv::BuiltIn      builtIn,
       const char*             name);
     
-    /////////////////////////////////////
-    // Control flow block search methods
+    ////////////////
+    // Misc methods
     DxbcCfgBlock* cfgFindLoopBlock();
+    
+    DxbcBufferInfo getBufferInfo(
+      const DxbcRegister& reg);
     
     ///////////////////////////
     // Type definition methods

@@ -69,13 +69,33 @@ namespace dxvk {
    * and associated type IDs.
    */
   struct DxbcShaderResource {
-    DxbcImageInfo   imageInfo;
-    uint32_t        varId         = 0;
-    DxbcScalarType  sampledType   = DxbcScalarType::Float32;
-    uint32_t        sampledTypeId = 0;
-    uint32_t        colorTypeId   = 0;
-    uint32_t        depthTypeId   = 0;
+    DxbcResourceType  type          = DxbcResourceType::Typed;
+    DxbcImageInfo     imageInfo;
+    uint32_t          varId         = 0;
+    DxbcScalarType    sampledType   = DxbcScalarType::Float32;
+    uint32_t          sampledTypeId = 0;
+    uint32_t          colorTypeId   = 0;
+    uint32_t          depthTypeId   = 0;
+    uint32_t          structStride  = 0;
   };
+  
+  
+  /**
+   * \brief Unordered access binding
+   * 
+   * Stores a resource variable that is provided
+   * by a UAV, as well as associated type IDs.
+   */
+  struct DxbcUav {
+    DxbcResourceType  type          = DxbcResourceType::Typed;
+    DxbcImageInfo     imageInfo;
+    uint32_t          varId         = 0;
+    DxbcScalarType    sampledType   = DxbcScalarType::Float32;
+    uint32_t          sampledTypeId = 0;
+    uint32_t          imageTypeId   = 0;
+    uint32_t          structStride  = 0;
+  };
+  
   
   /**
    * \brief Component swizzle

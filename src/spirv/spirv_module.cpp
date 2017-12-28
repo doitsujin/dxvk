@@ -1680,6 +1680,40 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opImageRead(
+          uint32_t                resultType,
+          uint32_t                image,
+          uint32_t                coordinates,
+    const SpirvImageOperands&     operands) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpImageRead,
+      5 + getImageOperandWordCount(operands));
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(image);
+    m_code.putWord(coordinates);
+    
+    putImageOperands(operands);
+    return resultId;
+  }
+  
+  
+  void SpirvModule::opImageWrite(
+          uint32_t                image,
+          uint32_t                coordinates,
+          uint32_t                texel,
+    const SpirvImageOperands&     operands) {
+    m_code.putIns (spv::OpImageWrite,
+      4 + getImageOperandWordCount(operands));
+    m_code.putWord(image);
+    m_code.putWord(coordinates);
+    m_code.putWord(texel);
+    
+    putImageOperands(operands);
+  }
+  
+  
   uint32_t SpirvModule::opSampledImage(
           uint32_t                resultType,
           uint32_t                image,

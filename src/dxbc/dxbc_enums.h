@@ -560,4 +560,11 @@ namespace dxvk {
     ImmConstBuf   = 3,
   };
   
+  
+  enum class DxbcResourceType : uint32_t {
+    Typed      = 0,
+    Raw        = 1,
+    Structured = 2,
+  };
+  
 }

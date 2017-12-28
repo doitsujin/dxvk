@@ -66,6 +66,15 @@ namespace dxvk {
       case DxbcInstClass::GeometryEmit:
         return this->emitGeometryEmit(ins);
         
+      case DxbcInstClass::Atomic:
+        return this->emitAtomic(ins);
+        
+      case DxbcInstClass::BufferLoad:
+        return this->emitBufferLoad(ins);
+        
+      case DxbcInstClass::BufferStore:
+        return this->emitBufferStore(ins);
+        
       case DxbcInstClass::TextureQuery:
         return this->emitTextureQuery(ins);
         
@@ -180,9 +189,20 @@ namespace dxvk {
       case DxbcOpcode::DclSampler:
         return this->emitDclSampler(ins);
         
+//       case DxbcOpcode::DclUavTyped:
       case DxbcOpcode::DclResource:
-        return this->emitDclResource(ins);
+        return this->emitDclResourceTyped(ins);
+        
+      case DxbcOpcode::DclUavRaw:
+      case DxbcOpcode::DclResourceRaw:
+      case DxbcOpcode::DclUavStructured:
+      case DxbcOpcode::DclResourceStructured:
+        return this->emitDclResourceRawStructured(ins);
       
+      case DxbcOpcode::DclThreadGroupSharedMemoryRaw:
+      case DxbcOpcode::DclThreadGroupSharedMemoryStructured:
+        return this->emitDclThreadGroupSharedMemory(ins);
+        
       case DxbcOpcode::DclGsInputPrimitive:
         return this->emitDclGsInputPrimitive(ins);
         
@@ -191,6 +211,9 @@ namespace dxvk {
         
       case DxbcOpcode::DclMaxOutputVertexCount:
         return this->emitDclMaxOutputVertexCount(ins);
+        
+      case DxbcOpcode::DclThreadGroup:
+        return this->emitDclThreadGroup(ins);
       
       default:
         Logger::warn(
@@ -471,7 +494,6 @@ namespace dxvk {
   void DxbcCompiler::emitDclSampler(const DxbcShaderInstruction& ins) {
     // dclSampler takes one operand:
     //    (dst0) The sampler register to declare
-    // TODO implement sampler mode (default / comparison / mono)
     const uint32_t samplerId = ins.dst[0].idx[0].offset;
     
     // The sampler type is opaque, but we still have to
@@ -504,10 +526,10 @@ namespace dxvk {
   }
   
   
-  void DxbcCompiler::emitDclResource(const DxbcShaderInstruction& ins) {
+  void DxbcCompiler::emitDclResourceTyped(const DxbcShaderInstruction& ins) {
     // dclResource takes two operands:
-    //  (dst0) The resource register ID
-    //  (imm0) The resource return type
+    //    (dst0) The resource register ID
+    //    (imm0) The resource return type
     const uint32_t registerId = ins.dst[0].idx[0].offset;
     
     // Defines the type of the resource (texture2D, ...)
@@ -588,12 +610,17 @@ namespace dxvk {
     m_module.setDebugName(varId,
       str::format("t", registerId).c_str());
     
-    m_textures.at(registerId).imageInfo     = typeInfo;
-    m_textures.at(registerId).varId         = varId;
-    m_textures.at(registerId).sampledType   = sampledType;
-    m_textures.at(registerId).sampledTypeId = sampledTypeId;
-    m_textures.at(registerId).colorTypeId   = colorTypeId;
-    m_textures.at(registerId).depthTypeId   = depthTypeId;
+    DxbcShaderResource res;
+    res.type          = DxbcResourceType::Typed;
+    res.imageInfo     = typeInfo;
+    res.varId         = varId;
+    res.sampledType   = sampledType;
+    res.sampledTypeId = sampledTypeId;
+    res.colorTypeId   = colorTypeId;
+    res.depthTypeId   = depthTypeId;
+    res.structStride  = 0;
+    
+    m_textures.at(registerId) = res;
     
     // Compute the DXVK binding slot index for the resource.
     // D3D11 needs to bind the actual resource to this slot.
@@ -610,6 +637,105 @@ namespace dxvk {
       ? VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER
       : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
     m_resourceSlots.push_back(resource);
+  }
+  
+  
+  void DxbcCompiler::emitDclResourceRawStructured(const DxbcShaderInstruction& ins) {
+    // dcl_resource_raw and dcl_uav_raw take one argument:
+    //    (dst0) The resource register ID
+    // dcl_resource_structured and dcl_uav_structured take two arguments:
+    //    (dst0) The resource register ID
+    //    (imm0) Structure stride, in bytes
+    const uint32_t registerId = ins.dst[0].idx[0].offset;
+    
+    const bool isUav = ins.op == DxbcOpcode::DclUavRaw
+                    || ins.op == DxbcOpcode::DclUavStructured;
+    
+    const bool isStructured = ins.op == DxbcOpcode::DclUavStructured
+                           || ins.op == DxbcOpcode::DclResourceStructured;
+    
+    // Structured and raw buffers are represented as
+    // texel buffers consisting of 32-bit integers.
+    m_module.enableCapability(spv::CapabilityImageBuffer);
+    
+    const DxbcScalarType sampledType = DxbcScalarType::Uint32;
+    const uint32_t sampledTypeId = getScalarTypeId(sampledType);
+    
+    const DxbcImageInfo typeInfo = { spv::DimBuffer, 0, 0, isUav ? 2u : 1u };
+    
+    // Declare the resource type
+    const uint32_t resTypeId = m_module.defImageType(sampledTypeId,
+      typeInfo.dim, 0, typeInfo.array, typeInfo.ms, typeInfo.sampled,
+      spv::ImageFormatR32ui);
+    
+    const uint32_t varId = m_module.newVar(
+      m_module.defPointerType(resTypeId, spv::StorageClassUniformConstant),
+      spv::StorageClassUniformConstant);
+    
+    m_module.setDebugName(varId,
+      str::format(isUav ? "u" : "t", registerId).c_str());
+    
+    // Write back resource info
+    const DxbcResourceType resType = isStructured
+      ? DxbcResourceType::Structured
+      : DxbcResourceType::Raw;
+    
+    const uint32_t resStride = isStructured
+      ? ins.imm[0].u32
+      : 0;
+    
+    if (isUav) {
+      DxbcUav uav;
+      uav.type          = resType;
+      uav.imageInfo     = typeInfo;
+      uav.varId         = varId;
+      uav.sampledType   = sampledType;
+      uav.sampledTypeId = sampledTypeId;
+      uav.imageTypeId   = resTypeId;
+      uav.structStride  = resStride;
+      m_uavs.at(registerId) = uav;
+    } else {
+      DxbcShaderResource res;
+      res.type          = resType;
+      res.imageInfo     = typeInfo;
+      res.varId         = varId;
+      res.sampledType   = sampledType;
+      res.sampledTypeId = sampledTypeId;
+      res.colorTypeId   = resTypeId;
+      res.depthTypeId   = resTypeId;
+      res.structStride  = resStride;
+      m_textures.at(registerId) = res;
+    }
+    
+    // Compute the DXVK binding slot index for the resource.
+    const uint32_t bindingId = computeResourceSlotId(
+      m_version.type(), isUav
+        ? DxbcBindingType::UnorderedAccessView
+        : DxbcBindingType::ShaderResource,
+      registerId);
+    
+    m_module.decorateDescriptorSet(varId, 0);
+    m_module.decorateBinding(varId, bindingId);
+    
+    // Store descriptor info for the shader interface
+    DxvkResourceSlot resource;
+    resource.slot = bindingId;
+    resource.type = isUav
+      ? VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
+      : VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+    m_resourceSlots.push_back(resource);
+  }
+  
+  
+  void DxbcCompiler::emitDclThreadGroupSharedMemory(const DxbcShaderInstruction& ins) {
+    // dcl_tgsm_raw takes two arguments:
+    //    (dst0) The resource register ID
+    //    (imm0) Block size, in DWORDs
+    // dcl_tgsm_structured takes three arguments:
+    //    (dst0) The resource register ID
+    //    (imm0) Structure stride, in bytes
+    //    (imm0) Structure count
+    Logger::err("DxbcCompiler: emitDclThreadGroupSharedMemory not implemented");
   }
   
   
@@ -664,6 +790,16 @@ namespace dxvk {
     m_module.setOutputVertices(m_entryPointId, m_gs.outputVertexCount);
   }
   
+  
+  void DxbcCompiler::emitDclThreadGroup(const DxbcShaderInstruction& ins) {
+    // dcl_thread_group has three operands:
+    //    (imm0) Number of threads in X dimension
+    //    (imm1) Number of threads in Y dimension
+    //    (imm2) Number of threads in Z dimension
+    m_module.setLocalSize(m_entryPointId,
+      ins.imm[0].u32, ins.imm[1].u32, ins.imm[2].u32);
+  }
+    
   
   void DxbcCompiler::emitDclImmediateConstantBuffer(const DxbcShaderInstruction& ins) {
     if (m_immConstBuf != 0)
@@ -1318,11 +1454,55 @@ namespace dxvk {
   }
   
   
+  void DxbcCompiler::emitAtomic(const DxbcShaderInstruction& ins) {
+    Logger::err("DxbcCompiler: emitAtomic not implemented");
+  }
+  
+  
+  void DxbcCompiler::emitBufferLoad(const DxbcShaderInstruction& ins) {
+    // ld_raw takes three arguments:
+    //    (dst0) Destination register
+    //    (src0) Byte offset
+    //    (src1) Source register
+    // ld_structured takes four arguments:
+    //    (dst0) Destination register
+    //    (src0) Structure index
+    //    (src1) Byte offset
+    //    (src2) Source register
+    const bool isStructured = ins.op == DxbcOpcode::LdStructured;
+    
+    // Source register. The exact way we access
+    // the data depends on the register type.
+    const DxbcRegister& dstReg = ins.dst[0];
+    const DxbcRegister& srcReg = isStructured ? ins.src[2] : ins.src[1];
+    
+    // Retrieve common info about the buffer
+    const DxbcBufferInfo bufferInfo = getBufferInfo(srcReg);
+    
+    // Compute element index
+    const DxbcRegisterValue elementIndex = isStructured
+      ? emitCalcBufferIndexStructured(
+          emitRegisterLoad(ins.src[0], DxbcRegMask(true, false, false, false)),
+          emitRegisterLoad(ins.src[1], DxbcRegMask(true, false, false, false)),
+          bufferInfo.stride)
+      : emitCalcBufferIndexRaw(
+          emitRegisterLoad(ins.src[0], DxbcRegMask(true, false, false, false)));
+    
+    emitRegisterStore(dstReg,
+      emitRawBufferLoad(srcReg, elementIndex, dstReg.mask));
+  }
+  
+  
+  void DxbcCompiler::emitBufferStore(const DxbcShaderInstruction& ins) {
+    Logger::err("DxbcCompiler: emitBufferStore not implemented");
+  }
+  
+  
   void DxbcCompiler::emitTextureQuery(const DxbcShaderInstruction& ins) {
     // resinfo has three operands:
-    //  (dst0) The destination register
-    //  (src0) Resource LOD to query
-    //  (src1) Resource to query
+    //    (dst0) The destination register
+    //    (src0) Resource LOD to query
+    //    (src1) Resource to query
     const DxbcResinfoType resinfoType = ins.controls.resinfoType;
     
     if (ins.src[1].type != DxbcOperandType::Resource) {
@@ -1449,9 +1629,9 @@ namespace dxvk {
   
   void DxbcCompiler::emitTextureFetch(const DxbcShaderInstruction& ins) {
     // ld has three operands:
-    //  (dst0) The destination register
-    //  (src0) Source address
-    //  (src1) Source texture
+    //    (dst0) The destination register
+    //    (src0) Source address
+    //    (src1) Source texture
     const uint32_t textureId = ins.src[1].idx[0].offset;
     
     // Image type, which stores the image dimensions etc.
@@ -1526,10 +1706,10 @@ namespace dxvk {
     // TODO support remaining sample ops
     
     // All sample instructions have at least these operands:
-    //  (dst0) The destination register
-    //  (src0) Texture coordinates
-    //  (src1) The texture itself
-    //  (src2) The sampler object
+    //    (dst0) The destination register
+    //    (src0) Texture coordinates
+    //    (src1) The texture itself
+    //    (src2) The sampler object
     const DxbcRegister& texCoordReg = ins.src[0];
     const DxbcRegister& textureReg  = ins.src[1];
     const DxbcRegister& samplerReg  = ins.src[2];
@@ -1589,7 +1769,7 @@ namespace dxvk {
       : DxbcRegisterValue();
     
     // Determine the sampled image type based on the opcode.
-    // FIXME while this is in line what the officla glsl compiler
+    // FIXME while this is in line what the offical glsl compiler
     // does, this might actually violate the SPIR-V specification.
     const uint32_t sampledImageType = isDepthCompare
       ? m_module.defSampledImageType(m_textures.at(textureId).depthTypeId)
@@ -2299,6 +2479,126 @@ namespace dxvk {
   }
   
   
+  DxbcRegisterValue DxbcCompiler::emitRawBufferLoad(
+    const DxbcRegister&           operand,
+          DxbcRegisterValue       elementIndex,
+          DxbcRegMask             writeMask) {
+    const DxbcBufferInfo bufferInfo = getBufferInfo(operand);
+    
+    // Shared memory is the only type of buffer that
+    // is not accessed through a texel buffer view
+    const bool isTgsm = operand.type == DxbcOperandType::ThreadGroupSharedMemory;
+    
+    const uint32_t bufferId = isTgsm
+      ? 0 : m_module.opLoad(bufferInfo.typeId, bufferInfo.varId);
+    
+    // Since all data is represented as a sequence of 32-bit
+    // integers, we have to load each component individually.
+    std::array<uint32_t, 4> componentIds = { 0, 0, 0, 0 };
+    std::array<uint32_t, 4> swizzleIds   = { 0, 0, 0, 0 };
+    
+    uint32_t componentIndex = 0;
+    
+    const uint32_t vectorTypeId = getVectorTypeId({ DxbcScalarType::Uint32, 4 });
+    const uint32_t scalarTypeId = getVectorTypeId({ DxbcScalarType::Uint32, 1 });
+    
+    for (uint32_t i = 0; i < 4; i++) {
+      // We'll apply both the write mask and the source operand swizzle
+      // immediately. Unused components are not loaded, and the scalar
+      // IDs are written to the array in the order they are requested.
+      if (writeMask[i]) {
+        const uint32_t swizzleIndex = operand.swizzle[i];
+        
+        if (componentIds[swizzleIndex] == 0) {
+          // Add the component offset to the element index
+          const uint32_t elementIndexAdjusted = swizzleIndex != 0
+            ? m_module.opIAdd(getVectorTypeId(elementIndex.type),
+                elementIndex.id, m_module.consti32(swizzleIndex))
+            : elementIndex.id;
+          
+          // Load requested component from the buffer
+          componentIds[swizzleIndex] = [&] {
+            const uint32_t zero = 0;
+            
+            switch (operand.type) {
+              case DxbcOperandType::Resource:
+                return m_module.opCompositeExtract(scalarTypeId,
+                  m_module.opImageFetch(vectorTypeId,
+                    bufferId, elementIndexAdjusted,
+                    SpirvImageOperands()), 1, &zero);
+              
+              case DxbcOperandType::UnorderedAccessView:
+                return m_module.opImageRead(
+                  scalarTypeId, bufferId, elementIndexAdjusted,
+                  SpirvImageOperands());
+              
+              default:
+                throw DxvkError("DxbcCompiler: Invalid operand type for strucured/raw load");
+            }
+          }();
+        }
+        
+        // Append current component to the list of scalar IDs.
+        // These will be used to construct the resulting vector.
+        swizzleIds[componentIndex++] = componentIds[swizzleIndex];
+      }
+    }
+    
+    // Create result vector
+    DxbcRegisterValue result;
+    result.type.ctype  = DxbcScalarType::Uint32;
+    result.type.ccount = writeMask.setCount();
+    
+    result.id = result.type.ccount > 1
+      ? m_module.opCompositeConstruct(getVectorTypeId(result.type),
+          result.type.ccount, swizzleIds.data())
+      : swizzleIds[0];
+    return result;
+  }
+  
+  
+  void DxbcCompiler::emitRawBufferStore(
+    const DxbcRegister&           operand,
+          DxbcRegisterValue       elementIndex,
+          DxbcRegisterValue       value) {
+    const DxbcBufferInfo bufferInfo = getBufferInfo(operand);
+    // TODO implement
+  }
+  
+  
+  DxbcRegisterValue DxbcCompiler::emitCalcBufferIndexStructured(
+          DxbcRegisterValue       structId,
+          DxbcRegisterValue       structOffset,
+          uint32_t                structStride) {
+    DxbcRegisterValue result;
+    result.type.ctype  = DxbcScalarType::Sint32;
+    result.type.ccount = 1;
+    
+    const uint32_t typeId = getVectorTypeId(result.type);
+    
+    result.id = m_module.opShiftRightArithmetic(typeId,
+      m_module.opIAdd(typeId,
+        m_module.opIMul(typeId, structId.id,
+          m_module.consti32(structStride)),
+        structOffset.id),
+      m_module.consti32(2));
+    return result;
+  }
+  
+  
+  DxbcRegisterValue DxbcCompiler::emitCalcBufferIndexRaw(
+          DxbcRegisterValue       byteOffset) {
+    DxbcRegisterValue result;
+    result.type.ctype  = DxbcScalarType::Sint32;
+    result.type.ccount = 1;
+    result.id = m_module.opShiftRightArithmetic(
+      getVectorTypeId(result.type),
+      byteOffset.id,
+      m_module.consti32(2));
+    return result;
+  }
+  
+  
   DxbcRegisterValue DxbcCompiler::emitIndexLoad(
           DxbcRegIndex            index) {
     if (index.relReg != nullptr) {
@@ -2448,8 +2748,9 @@ namespace dxvk {
       
       const DxbcRegisterValue value = [&] {
         switch (m_version.type()) {
-          case DxbcProgramType::VertexShader: return emitVsSystemValueLoad(map.sv, map.regMask);
-          case DxbcProgramType::PixelShader:  return emitPsSystemValueLoad(map.sv, map.regMask);
+          case DxbcProgramType::VertexShader:   return emitVsSystemValueLoad(map.sv, map.regMask);
+          case DxbcProgramType::PixelShader:    return emitPsSystemValueLoad(map.sv, map.regMask);
+          case DxbcProgramType::ComputeShader:  return emitCsSystemValueLoad(map.sv, map.regMask);
           default: throw DxvkError(str::format("DxbcCompiler: Unexpected stage: ", m_version.type()));
         }
       }();
@@ -2623,6 +2924,17 @@ namespace dxvk {
   }
   
   
+  DxbcRegisterValue DxbcCompiler::emitCsSystemValueLoad(
+          DxbcSystemValue         sv,
+          DxbcRegMask             mask) {
+    switch (sv) {
+      default:
+        throw DxvkError(str::format(
+          "DxbcCompiler: Unhandled CS SV input: ", sv));
+    }
+  }
+  
+  
   void DxbcCompiler::emitVsSystemValueStore(
           DxbcSystemValue         sv,
           DxbcRegMask             mask,
@@ -2711,7 +3023,42 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitCsInitBuiltins() {
-    // TODO implement
+    m_cs.builtinGlobalInvocationId = emitNewBuiltinVariable({
+      { DxbcScalarType::Uint32, 3, 0 },
+      spv::StorageClassInput },
+      spv::BuiltInGlobalInvocationId,
+      "cs_global_invocation_id");
+    
+    m_cs.builtinLocalInvocationId = emitNewBuiltinVariable({
+      { DxbcScalarType::Uint32, 3, 0 },
+      spv::StorageClassInput },
+      spv::BuiltInLocalInvocationId,
+      "cs_local_invocation_id");
+    
+    // FIXME Vulkan might not support this? not documented
+    m_cs.builtinLocalInvocationIndex = emitNewBuiltinVariable({
+      { DxbcScalarType::Uint32, 1, 0 },
+      spv::StorageClassInput },
+      spv::BuiltInLocalInvocationIndex,
+      "cs_local_invocation_index");
+    
+    m_cs.builtinWorkgroupId = emitNewBuiltinVariable({
+      { DxbcScalarType::Uint32, 3, 0 },
+      spv::StorageClassInput },
+      spv::BuiltInWorkgroupId,
+      "cs_workgroup_id");
+    
+    m_cs.builtinWorkgroupSize = emitNewBuiltinVariable({
+      { DxbcScalarType::Uint32, 3, 0 },
+      spv::StorageClassInput },
+      spv::BuiltInWorkgroupSize,
+      "cs_workgroup_size");
+    
+    m_cs.builtinWorkgroupCount = emitNewBuiltinVariable({
+      { DxbcScalarType::Uint32, 3, 0 },
+      spv::StorageClassInput },
+      spv::BuiltInNumWorkgroups,
+      "cs_workgroup_count");
   }
   
   
@@ -2963,6 +3310,38 @@ namespace dxvk {
     }
     
     return nullptr;
+  }
+  
+  
+  DxbcBufferInfo DxbcCompiler::getBufferInfo(const DxbcRegister& reg) {
+    const uint32_t registerId = reg.idx[0].offset;
+    
+    switch (reg.type) {
+      case DxbcOperandType::Resource: {
+        DxbcBufferInfo result;
+        result.type   = m_textures.at(registerId).type;
+        result.typeId = m_textures.at(registerId).colorTypeId;
+        result.varId  = m_textures.at(registerId).varId;
+        result.stride = m_textures.at(registerId).structStride;
+        return result;
+      } break;
+        
+      case DxbcOperandType::UnorderedAccessView: {
+        DxbcBufferInfo result;
+        result.type   = m_uavs.at(registerId).type;
+        result.typeId = m_uavs.at(registerId).imageTypeId;
+        result.varId  = m_uavs.at(registerId).varId;
+        result.stride = m_uavs.at(registerId).structStride;
+        return result;
+      } break;
+        
+      // TODO implement
+//       case DxbcOperandType::ThreadGroupSharedMemory: {
+//       } break;
+        
+      default:
+        throw DxvkError(str::format("DxbcCompiler: Invalid operand type for buffer: ", reg.type));
+    }
   }
   
   
