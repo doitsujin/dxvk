@@ -42,8 +42,9 @@ The behaviour of DXVK can be modified with environment variables.
 ## Samples and executables
 In addition to the DLLs, the following standalone programs are included in the project:
 
-- `d3d11-triangle`: Renders a triangle using D3D11. Requires native `d3dcompiler_47.dll`.
+- `d3d11-compute`: Runs a simple compute shader demo. Requires native `d3dcompiler_47.dll`.
+- `d3d11-triangle`: Renders a bunch of triangles using D3D11. Requires native `d3dcompiler_47.dll`.
 - `dxgi-factory`: Enumerates DXGI adapters and outputs for debugging purposes.
-- `dxbc-dcompiler`: Compiles a DXBC shader to SPIR-V.
+- `dxbc-compiler`: Compiles a DXBC shader to SPIR-V.
 - `dxbc-disasm`: Disassembles a DXBC shader. Requires native `d3dcompiler_47.dll`.
-- `dxvk-triangle`: Renders a triangle using pure DXVK, which is the Vulkan-based state tracker that the D3D11 implementation is based on.
+- `hlsl-compiler`: Compiles a HLSL shader to DXBC. Requires native `d3dcompiler_47.dll`.
