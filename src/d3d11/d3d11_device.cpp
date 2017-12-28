@@ -148,26 +148,37 @@ namespace dxvk {
     if (resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER) {
       auto resource = static_cast<D3D11Buffer*>(pResource);
       
-      // TODO implement raw and structured buffers
-      if (pDesc->Format == DXGI_FORMAT_UNKNOWN) {
-        Logger::err("D3D11Device: Raw and structured buffers not yet supported");
-        return E_INVALIDARG;
-      }
-      
-      // Typed buffer views support uncompressed color formats only
-      const VkFormat format = m_dxgiAdapter->LookupFormat(
-        pDesc->Format, DxgiFormatMode::Color).format;
-      const DxvkFormatInfo* formatInfo = imageFormatInfo(format);
-      
-      if (formatInfo->flags.test(DxvkFormatFlag::BlockCompressed)) {
-        Logger::err("D3D11Device: Compressed formats for buffer views not supported");
-        return E_INVALIDARG;
-      }
+      D3D11_BUFFER_DESC resourceDesc;
+      resource->GetDesc(&resourceDesc);
       
       DxvkBufferViewCreateInfo viewInfo;
-      viewInfo.format      = format;
-      viewInfo.rangeOffset = formatInfo->elementSize * pDesc->Buffer.FirstElement;
-      viewInfo.rangeLength = formatInfo->elementSize * pDesc->Buffer.NumElements;
+      
+      if (desc.ViewDimension == D3D11_SRV_DIMENSION_BUFFEREX) {
+        // Raw or structured view. We'll represent this
+        // as a uniform texel buffer with UINT32 elements.
+        viewInfo.format = VK_FORMAT_R32_UINT;
+        
+        if (desc.BufferEx.Flags & D3D11_BUFFEREX_SRV_FLAG_RAW) {
+          viewInfo.rangeOffset = sizeof(uint32_t) * desc.BufferEx.FirstElement;
+          viewInfo.rangeLength = sizeof(uint32_t) * desc.BufferEx.NumElements;
+        } else {
+          viewInfo.rangeOffset = resourceDesc.StructureByteStride * desc.BufferEx.FirstElement;
+          viewInfo.rangeLength = resourceDesc.StructureByteStride * desc.BufferEx.NumElements;
+        }
+      } else {
+        // Typed buffer view - must use an uncompressed color format
+        viewInfo.format = m_dxgiAdapter->LookupFormat(
+          desc.Format, DxgiFormatMode::Color).format;
+        
+        const DxvkFormatInfo* formatInfo = imageFormatInfo(viewInfo.format);
+        viewInfo.rangeOffset = formatInfo->elementSize * desc.Buffer.FirstElement;
+        viewInfo.rangeLength = formatInfo->elementSize * desc.Buffer.NumElements;
+        
+        if (formatInfo->flags.test(DxvkFormatFlag::BlockCompressed)) {
+          Logger::err("D3D11Device: Compressed formats for buffer views not supported");
+          return E_INVALIDARG;
+        }
+      }
       
       if (ppSRView == nullptr)
         return S_FALSE;
