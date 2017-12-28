@@ -87,8 +87,7 @@ namespace dxvk {
     }
     
     if (pDesc->BindFlags & D3D11_BIND_SHADER_RESOURCE) {
-      info.usage  |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
-                  |  VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+      info.usage  |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
       info.stages |= m_device->GetEnabledShaderStages();
       info.access |= VK_ACCESS_SHADER_READ_BIT;
     }
@@ -97,8 +96,7 @@ namespace dxvk {
       throw DxvkError("D3D11Device::CreateBuffer: D3D11_BIND_STREAM_OUTPUT not supported");
     
     if (pDesc->BindFlags & D3D11_BIND_UNORDERED_ACCESS) {
-      info.usage  |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-                  |  VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
+      info.usage  |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
       info.stages |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
                   |  VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
       info.access |= VK_ACCESS_SHADER_READ_BIT
