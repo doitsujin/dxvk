@@ -138,6 +138,12 @@ namespace dxvk {
       this->CSSetSamplers(i, 1, &sampler);
     }
     
+    for (uint32_t i = 0; i < D3D11_1_UAV_SLOT_COUNT; i++) {
+      ID3D11UnorderedAccessView* uav = nullptr;
+      
+      this->CSSetUnorderedAccessViews(i, 1, &uav, nullptr);
+    }
+    
     this->OMSetRenderTargets(0, nullptr, nullptr);
     this->OMSetBlendState(nullptr, nullptr, D3D11_DEFAULT_SAMPLE_MASK);
     this->OMSetDepthStencilState(nullptr, 0);
@@ -328,7 +334,35 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeviceContext::CopyResource(
           ID3D11Resource*                   pDstResource,
           ID3D11Resource*                   pSrcResource) {
-    Logger::err("D3D11DeviceContext::CopyResource: Not implemented");
+    D3D11_RESOURCE_DIMENSION dstResourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+    D3D11_RESOURCE_DIMENSION srcResourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+    
+    pDstResource->GetType(&dstResourceDim);
+    pSrcResource->GetType(&srcResourceDim);
+    
+    if (dstResourceDim != srcResourceDim) {
+      Logger::err("D3D11DeviceContext: CopyResource: Mismatched resource types");
+      return;
+    }
+    
+    if (dstResourceDim == D3D11_RESOURCE_DIMENSION_BUFFER) {
+      auto dstBuffer = static_cast<D3D11Buffer*>(pDstResource)->GetBufferSlice();
+      auto srcBuffer = static_cast<D3D11Buffer*>(pSrcResource)->GetBufferSlice();
+      
+      if (dstBuffer.length() != srcBuffer.length()) {
+        Logger::err("D3D11DeviceContext: CopyResource: Mismatched buffer size");
+        return;
+      }
+      
+      m_context->copyBuffer(
+        dstBuffer.buffer(),
+        dstBuffer.offset(),
+        srcBuffer.buffer(),
+        srcBuffer.offset(),
+        srcBuffer.length());
+    } else {
+      Logger::err("D3D11DeviceContext::CopyResource: Images not supported");
+    }
   }
   
   
@@ -1299,7 +1333,15 @@ namespace dxvk {
           UINT                              NumUAVs,
           ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
     const UINT*                             pUAVInitialCounts) {
-    Logger::err("D3D11DeviceContext::CSSetUnorderedAccessViews: Not implemented");
+    // TODO implement append-consume buffers
+    if (pUAVInitialCounts != nullptr)
+      Logger::err("D3D11DeviceContext: pUAVInitialCounts not supported");
+    
+    this->BindUnorderedAccessViews(
+      DxbcProgramType::ComputeShader,
+      m_state.cs.unorderedAccessViews,
+      StartSlot, NumUAVs,
+      ppUnorderedAccessViews);
   }
   
   
@@ -1696,12 +1738,47 @@ namespace dxvk {
         if (resView != nullptr) {
           // Figure out what we have to bind based on the resource type
           if (resView->GetResourceType() == D3D11_RESOURCE_DIMENSION_BUFFER) {
-            // TODO support raw and structured buffers
             m_context->bindResourceTexelBuffer(
               slotId + i, resView->GetDXVKBufferView());
           } else {
             m_context->bindResourceImage(
               slotId + i, resView->GetDXVKImageView());
+          }
+        } else {
+          // When unbinding a resource, it doesn't really matter if
+          // the resource type is correct, so we'll just bind a null
+          // image to the given resource slot
+          m_context->bindResourceImage(slotId + i, nullptr);
+        }
+      }
+    }
+  }
+  
+  
+  void D3D11DeviceContext::BindUnorderedAccessViews(
+          DxbcProgramType                   ShaderStage,
+          D3D11UnorderedAccessBindings&     Bindings,
+          UINT                              StartSlot,
+          UINT                              NumUAVs,
+          ID3D11UnorderedAccessView* const* ppUnorderedAccessViews) {
+    const uint32_t slotId = computeResourceSlotId(
+      ShaderStage, DxbcBindingType::UnorderedAccessView,
+      StartSlot);
+    
+    for (uint32_t i = 0; i < NumUAVs; i++) {
+      auto uav = static_cast<D3D11UnorderedAccessView*>(ppUnorderedAccessViews[i]);
+      
+      if (Bindings[StartSlot + i] != uav) {
+        Bindings[StartSlot + i] = uav;
+        
+        if (uav != nullptr) {
+          // Figure out what we have to bind based on the resource type
+          if (uav->GetResourceType() == D3D11_RESOURCE_DIMENSION_BUFFER) {
+            m_context->bindResourceTexelBuffer(
+              slotId + i, uav->GetDXVKBufferView());
+          } else {
+            m_context->bindResourceImage(
+              slotId + i, uav->GetDXVKImageView());
           }
         } else {
           // When unbinding a resource, it doesn't really matter if

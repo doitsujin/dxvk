@@ -584,6 +584,13 @@ namespace dxvk {
             UINT                              NumResources,
             ID3D11ShaderResourceView* const*  ppResources);
     
+    void BindUnorderedAccessViews(
+            DxbcProgramType                   ShaderStage,
+            D3D11UnorderedAccessBindings&     Bindings,
+            UINT                              StartSlot,
+            UINT                              NumUAVs,
+            ID3D11UnorderedAccessView* const* ppUnorderedAccessViews);
+    
     void ApplyViewportState();
     
   };

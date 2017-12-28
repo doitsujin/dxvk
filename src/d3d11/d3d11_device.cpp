@@ -314,8 +314,68 @@ namespace dxvk {
           ID3D11Resource*                   pResource,
     const D3D11_UNORDERED_ACCESS_VIEW_DESC* pDesc,
           ID3D11UnorderedAccessView**       ppUAView) {
-    Logger::err("D3D11Device::CreateUnorderedAccessView: Not implemented");
-    return E_NOTIMPL;
+    D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+    pResource->GetType(&resourceDim);
+    
+    // The description is optional. If omitted, we'll create
+    // a view that covers all subresources of the image.
+    D3D11_UNORDERED_ACCESS_VIEW_DESC desc;
+    
+    if (pDesc == nullptr) {
+      if (FAILED(GetUnorderedAccessViewDescFromResource(pResource, &desc)))
+        return E_INVALIDARG;
+    } else {
+      desc = *pDesc;
+    }
+    
+    if (resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER) {
+      auto resource = static_cast<D3D11Buffer*>(pResource);
+      
+      D3D11_BUFFER_DESC resourceDesc;
+      resource->GetDesc(&resourceDesc);
+      
+      DxvkBufferViewCreateInfo viewInfo;
+      
+      if (desc.Buffer.Flags & D3D11_BUFFEREX_SRV_FLAG_RAW) {
+        viewInfo.format      = VK_FORMAT_R32_UINT;
+        viewInfo.rangeOffset = sizeof(uint32_t) * desc.Buffer.FirstElement;
+        viewInfo.rangeLength = sizeof(uint32_t) * desc.Buffer.NumElements;
+      } else if (desc.Format == DXGI_FORMAT_UNKNOWN) {
+        viewInfo.format      = VK_FORMAT_R32_UINT;
+        viewInfo.rangeOffset = resourceDesc.StructureByteStride * desc.Buffer.FirstElement;
+        viewInfo.rangeLength = resourceDesc.StructureByteStride * desc.Buffer.NumElements;
+      } else {
+        // Typed buffer view - must use an uncompressed color format
+        viewInfo.format = m_dxgiAdapter->LookupFormat(
+          desc.Format, DxgiFormatMode::Color).format;
+        
+        const DxvkFormatInfo* formatInfo = imageFormatInfo(viewInfo.format);
+        viewInfo.rangeOffset = formatInfo->elementSize * desc.Buffer.FirstElement;
+        viewInfo.rangeLength = formatInfo->elementSize * desc.Buffer.NumElements;
+        
+        if (formatInfo->flags.test(DxvkFormatFlag::BlockCompressed)) {
+          Logger::err("D3D11Device: Compressed formats for buffer views not supported");
+          return E_INVALIDARG;
+        }
+      }
+      
+      if (ppUAView == nullptr)
+        return S_FALSE;
+      
+      try {
+        *ppUAView = ref(new D3D11UnorderedAccessView(
+          this, pResource, desc,
+          m_dxvkDevice->createBufferView(
+            resource->GetBufferSlice().buffer(), viewInfo)));
+        return S_OK;
+      } catch (const DxvkError& e) {
+        Logger::err(e.message());
+        return E_FAIL;
+      }
+    } else {
+      Logger::err("D3D11Device::CreateUnorderedAccessView: Images not supported yet");
+      return E_NOTIMPL;
+    }
   }
   
   
@@ -1352,6 +1412,7 @@ namespace dxvk {
   HRESULT D3D11Device::GetUnorderedAccessViewDescFromResource(
           ID3D11Resource*                   pResource,
           D3D11_UNORDERED_ACCESS_VIEW_DESC* pDesc) {
+    Logger::err("D3D11Device::GetUnorderedAccessViewDescFromResource: Not implemented");
     return E_NOTIMPL;
   }
   
