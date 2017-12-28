@@ -643,6 +643,15 @@ namespace dxvk {
             uint32_t                reference,
       const SpirvImageOperands&     operands);
     
+    void opControlBarrier(
+            uint32_t                execution,
+            uint32_t                memory,
+            uint32_t                semantics);
+    
+    void opMemoryBarrier(
+            uint32_t                memory,
+            uint32_t                semantics);
+    
     void opLoopMerge(
             uint32_t                mergeBlock,
             uint32_t                continueTarget,

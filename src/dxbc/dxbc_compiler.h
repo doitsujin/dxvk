@@ -86,6 +86,14 @@ namespace dxvk {
   };
   
   
+  struct DxbcGreg {
+    DxbcResourceType type  = DxbcResourceType::Raw;
+    uint32_t elementStride = 0;
+    uint32_t elementCount  = 0;
+    uint32_t varId         = 0;
+  };
+  
+  
   /**
    * \brief Vertex shader-specific structure
    */
@@ -133,8 +141,6 @@ namespace dxvk {
     uint32_t builtinLocalInvocationId     = 0;
     uint32_t builtinLocalInvocationIndex  = 0;
     uint32_t builtinWorkgroupId           = 0;
-    uint32_t builtinWorkgroupSize         = 0;
-    uint32_t builtinWorkgroupCount        = 0;
   };
   
   
@@ -225,6 +231,10 @@ namespace dxvk {
     // indexing, and x# vector array registers.
     std::vector<uint32_t> m_rRegs;
     std::vector<DxbcXreg> m_xRegs;
+    
+    /////////////////////////////////////////////
+    // Thread group shared memory (g#) registers
+    std::vector<DxbcGreg> m_gRegs;
     
     ///////////////////////////////////////////////////////////
     // v# registers as defined by the shader. The type of each
@@ -380,6 +390,9 @@ namespace dxvk {
       const DxbcShaderInstruction&  ins);
     
     void emitAtomic(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitBarrier(
       const DxbcShaderInstruction&  ins);
     
     void emitBufferLoad(
@@ -577,7 +590,6 @@ namespace dxvk {
     void emitVsInitBuiltins();
     void emitGsInitBuiltins(uint32_t vertexCount);
     void emitPsInitBuiltins();
-    void emitCsInitBuiltins();
     
     /////////////////////////////////
     // Shader initialization methods

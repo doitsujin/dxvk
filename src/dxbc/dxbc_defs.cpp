@@ -811,7 +811,7 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
     } },
     /* Sync                                 */
-    { },
+    { 0, DxbcInstClass::Barrier },
     /* DAdd                                 */
     { },
     /* DMax                                 */

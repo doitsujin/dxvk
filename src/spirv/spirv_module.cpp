@@ -1869,6 +1869,26 @@ namespace dxvk {
   }
   
   
+  void SpirvModule::opControlBarrier(
+          uint32_t                execution,
+          uint32_t                memory,
+          uint32_t                semantics) {
+    m_code.putIns (spv::OpControlBarrier, 4);
+    m_code.putWord(execution);
+    m_code.putWord(memory);
+    m_code.putWord(semantics);
+  }
+  
+  
+  void SpirvModule::opMemoryBarrier(
+          uint32_t                memory,
+          uint32_t                semantics) {
+    m_code.putIns (spv::OpMemoryBarrier, 3);
+    m_code.putWord(memory);
+    m_code.putWord(semantics);
+  }
+  
+  
   void SpirvModule::opLoopMerge(
           uint32_t                mergeBlock,
           uint32_t                continueTarget,

@@ -69,6 +69,9 @@ namespace dxvk {
       case DxbcInstClass::Atomic:
         return this->emitAtomic(ins);
         
+      case DxbcInstClass::Barrier:
+        return this->emitBarrier(ins);
+        
       case DxbcInstClass::BufferLoad:
         return this->emitBufferLoad(ins);
         
@@ -353,6 +356,39 @@ namespace dxvk {
               "DxbcCompiler: Unexpected opcode: ",
               ins.op));
         }
+      } break;
+  
+      case DxbcOperandType::InputThreadId: {
+        m_cs.builtinGlobalInvocationId = emitNewBuiltinVariable({
+          { DxbcScalarType::Uint32, 3, 0 },
+          spv::StorageClassInput },
+          spv::BuiltInGlobalInvocationId,
+          "vThreadId");
+      } break;
+  
+      case DxbcOperandType::InputThreadGroupId: {
+        m_cs.builtinWorkgroupId = emitNewBuiltinVariable({
+          { DxbcScalarType::Uint32, 3, 0 },
+          spv::StorageClassInput },
+          spv::BuiltInWorkgroupId,
+          "vThreadGroupId");
+      } break;
+  
+      case DxbcOperandType::InputThreadIdInGroup: {
+        m_cs.builtinLocalInvocationId = emitNewBuiltinVariable({
+          { DxbcScalarType::Uint32, 3, 0 },
+          spv::StorageClassInput },
+          spv::BuiltInLocalInvocationId,
+          "vThreadIdInGroup");
+      } break;
+  
+      case DxbcOperandType::InputThreadIndexInGroup: {
+        // FIXME this might not be supported by Vulkan?
+        m_cs.builtinLocalInvocationIndex = emitNewBuiltinVariable({
+          { DxbcScalarType::Uint32, 1, 0 },
+          spv::StorageClassInput },
+          spv::BuiltInLocalInvocationIndex,
+          "vThreadIndexInGroup");
       } break;
       
       default:
@@ -734,8 +770,34 @@ namespace dxvk {
     // dcl_tgsm_structured takes three arguments:
     //    (dst0) The resource register ID
     //    (imm0) Structure stride, in bytes
-    //    (imm0) Structure count
-    Logger::err("DxbcCompiler: emitDclThreadGroupSharedMemory not implemented");
+    //    (imm1) Structure count
+    const bool isStructured = ins.op == DxbcOpcode::DclThreadGroupSharedMemoryStructured;
+    
+    const uint32_t regId = ins.dst[0].idx[0].offset;
+    
+    if (regId >= m_gRegs.size())
+      m_gRegs.resize(regId + 1);
+    
+    const uint32_t elementStride = isStructured ? ins.imm[0].u32 : 0;
+    const uint32_t elementCount  = isStructured ? ins.imm[1].u32 : ins.imm[0].u32;
+    
+    DxbcRegisterInfo varInfo;
+    varInfo.type.ctype   = DxbcScalarType::Uint32;
+    varInfo.type.ccount  = 1;
+    varInfo.type.alength = isStructured
+      ? elementCount * elementStride / 4
+      : elementCount;
+    varInfo.sclass = spv::StorageClassWorkgroup;
+    
+    m_gRegs[regId].type = isStructured
+      ? DxbcResourceType::Structured
+      : DxbcResourceType::Raw;
+    m_gRegs[regId].elementStride = elementStride;
+    m_gRegs[regId].elementCount  = elementCount;
+    m_gRegs[regId].varId = emitNewVariable(varInfo);
+    
+    m_module.setDebugName(m_gRegs[regId].varId,
+      str::format("g", regId).c_str());
   }
   
   
@@ -1459,6 +1521,48 @@ namespace dxvk {
   }
   
   
+  void DxbcCompiler::emitBarrier(const DxbcShaderInstruction& ins) {
+    // sync takes no operands. Instead, the synchronization
+    // scope is defined by the operand control bits.
+    const DxbcSyncFlags flags = ins.controls.syncFlags;
+    
+    uint32_t executionScope   = 0;
+    uint32_t memoryScope      = 0;
+    uint32_t memorySemantics  = 0;
+    
+    if (flags.test(DxbcSyncFlag::ThreadsInGroup))
+      executionScope   = spv::ScopeWorkgroup;
+    
+    if (flags.test(DxbcSyncFlag::ThreadGroupSharedMemory)) {
+      memoryScope      = spv::ScopeWorkgroup;
+      memorySemantics |= spv::MemorySemanticsWorkgroupMemoryMask;
+    }
+    
+    if (flags.test(DxbcSyncFlag::UavMemoryGroup)) {
+      memoryScope      = spv::ScopeWorkgroup;
+      memorySemantics |= spv::MemorySemanticsUniformMemoryMask;
+    }
+    
+    if (flags.test(DxbcSyncFlag::UavMemoryGlobal)) {
+      memoryScope      = spv::ScopeDevice;
+      memorySemantics |= spv::MemorySemanticsUniformMemoryMask;
+    }
+    
+    if (executionScope != 0) {
+      m_module.opControlBarrier(
+        m_module.constu32(executionScope),
+        m_module.constu32(memoryScope),
+        m_module.constu32(memorySemantics));
+    } else if (memorySemantics != spv::MemorySemanticsMaskNone) {
+      m_module.opMemoryBarrier(
+        m_module.constu32(memoryScope),
+        m_module.constu32(memorySemantics));
+    } else {
+      Logger::warn("DxbcCompiler: sync instruction has no effect");
+    }
+  }
+  
+  
   void DxbcCompiler::emitBufferLoad(const DxbcShaderInstruction& ins) {
     // ld_raw takes three arguments:
     //    (dst0) Destination register
@@ -2142,7 +2246,7 @@ namespace dxvk {
     
     uint32_t dstIndex = 0;
     
-    for (uint32_t i = 0; i < value.type.ccount; i++) {
+    for (uint32_t i = 0; i < 4; i++) {
       if (writeMask[i])
         indices[dstIndex++] = swizzle[i];
     }
@@ -2500,6 +2604,26 @@ namespace dxvk {
       case DxbcOperandType::ImmediateConstantBuffer:
         return emitGetImmConstBufPtr(operand);
       
+      case DxbcOperandType::InputThreadId:
+        return DxbcRegisterPointer {
+          { DxbcScalarType::Uint32, 3 },
+          m_cs.builtinGlobalInvocationId };
+      
+      case DxbcOperandType::InputThreadGroupId:
+        return DxbcRegisterPointer {
+          { DxbcScalarType::Uint32, 3 },
+          m_cs.builtinWorkgroupId };
+      
+      case DxbcOperandType::InputThreadIdInGroup:
+        return DxbcRegisterPointer {
+          { DxbcScalarType::Uint32, 3 },
+          m_cs.builtinLocalInvocationId };
+      
+      case DxbcOperandType::InputThreadIndexInGroup:
+        return DxbcRegisterPointer {
+          { DxbcScalarType::Uint32, 1 },
+          m_cs.builtinLocalInvocationIndex };
+        
       default:
         throw DxvkError(str::format(
           "DxbcCompiler: Unhandled operand type: ",
@@ -2561,6 +2685,11 @@ namespace dxvk {
                   scalarTypeId, bufferId, elementIndexAdjusted,
                   SpirvImageOperands());
               
+              case DxbcOperandType::ThreadGroupSharedMemory:
+                return m_module.opLoad(scalarTypeId,
+                  m_module.opAccessChain(bufferInfo.typeId,
+                    bufferInfo.varId, 1, &elementIndexAdjusted));
+                
               default:
                 throw DxvkError("DxbcCompiler: Invalid operand type for strucured/raw load");
             }
@@ -2624,6 +2753,13 @@ namespace dxvk {
               bufferId, elementIndexAdjusted,
               srcComponentId,
               SpirvImageOperands());
+            break;
+          
+          case DxbcOperandType::ThreadGroupSharedMemory:
+            m_module.opStore(
+              m_module.opAccessChain(bufferInfo.typeId,
+                bufferInfo.varId, 1, &elementIndexAdjusted),
+              srcComponentId);
             break;
           
           default:
@@ -3090,46 +3226,6 @@ namespace dxvk {
   }
   
   
-  void DxbcCompiler::emitCsInitBuiltins() {
-    m_cs.builtinGlobalInvocationId = emitNewBuiltinVariable({
-      { DxbcScalarType::Uint32, 3, 0 },
-      spv::StorageClassInput },
-      spv::BuiltInGlobalInvocationId,
-      "cs_global_invocation_id");
-    
-    m_cs.builtinLocalInvocationId = emitNewBuiltinVariable({
-      { DxbcScalarType::Uint32, 3, 0 },
-      spv::StorageClassInput },
-      spv::BuiltInLocalInvocationId,
-      "cs_local_invocation_id");
-    
-    // FIXME Vulkan might not support this? not documented
-    m_cs.builtinLocalInvocationIndex = emitNewBuiltinVariable({
-      { DxbcScalarType::Uint32, 1, 0 },
-      spv::StorageClassInput },
-      spv::BuiltInLocalInvocationIndex,
-      "cs_local_invocation_index");
-    
-    m_cs.builtinWorkgroupId = emitNewBuiltinVariable({
-      { DxbcScalarType::Uint32, 3, 0 },
-      spv::StorageClassInput },
-      spv::BuiltInWorkgroupId,
-      "cs_workgroup_id");
-    
-    m_cs.builtinWorkgroupSize = emitNewBuiltinVariable({
-      { DxbcScalarType::Uint32, 3, 0 },
-      spv::StorageClassInput },
-      spv::BuiltInWorkgroupSize,
-      "cs_workgroup_size");
-    
-    m_cs.builtinWorkgroupCount = emitNewBuiltinVariable({
-      { DxbcScalarType::Uint32, 3, 0 },
-      spv::StorageClassInput },
-      spv::BuiltInNumWorkgroups,
-      "cs_workgroup_count");
-  }
-  
-  
   void DxbcCompiler::emitVsInit() {
     m_module.enableCapability(spv::CapabilityClipDistance);
     m_module.enableCapability(spv::CapabilityCullDistance);
@@ -3247,10 +3343,6 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitCsInit() {
-    // There are no input or output
-    // variables for compute shaders
-    emitCsInitBuiltins();
-    
     // Main function of the compute shader
     m_cs.functionId = m_module.allocateId();
     m_module.setDebugName(m_cs.functionId, "cs_main");
@@ -3403,9 +3495,16 @@ namespace dxvk {
         return result;
       } break;
         
-      // TODO implement
-//       case DxbcOperandType::ThreadGroupSharedMemory: {
-//       } break;
+      case DxbcOperandType::ThreadGroupSharedMemory: {
+        DxbcBufferInfo result;
+        result.type   = m_gRegs.at(registerId).type;
+        result.typeId = m_module.defPointerType(
+          getScalarTypeId(DxbcScalarType::Uint32),
+          spv::StorageClassWorkgroup);
+        result.varId  = m_gRegs.at(registerId).varId;
+        result.stride = m_gRegs.at(registerId).elementStride;
+        return result;
+      } break;
         
       default:
         throw DxvkError(str::format("DxbcCompiler: Invalid operand type for buffer: ", reg.type));

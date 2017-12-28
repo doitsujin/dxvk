@@ -33,6 +33,7 @@ namespace dxvk {
     ControlFlow,      ///< Control flow instructions
     GeometryEmit,     ///< Special geometry shader instructions
     Atomic,           ///< Atomic operations
+    Barrier,          ///< Execution or memory barrier
     BufferLoad,       ///< Structured or raw buffer load
     BufferStore,      ///< Structured or raw buffer store
     TextureQuery,     ///< Texture query instruction

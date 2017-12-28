@@ -13,9 +13,21 @@ using namespace dxvk;
 const std::string g_computeShaderCode =
   "StructuredBuffer<uint> buf_in : register(t0);\n"
   "RWStructuredBuffer<uint> buf_out : register(u0);\n"
-  "[numthreads(1,1,1)]\n"
-  "void main() {\n"
-  "  buf_out[0] = buf_in[0] * buf_in[1];\n"
+  "groupshared uint tmp[64];\n"
+  "[numthreads(64,1,1)]\n"
+  "void main(uint localId : SV_GroupIndex, uint3 globalId : SV_DispatchThreadID) {\n"
+  "  tmp[localId] = buf_in[2 * globalId.x + 0]\n"
+  "               + buf_in[2 * globalId.x + 1];\n"
+  "  GroupMemoryBarrierWithGroupSync();\n"
+  "  uint activeGroups = 32;\n"
+  "  while (activeGroups != 0) {\n"
+  "    if (localId < activeGroups)\n"
+  "      tmp[localId] += tmp[localId + activeGroups];\n"
+  "    GroupMemoryBarrierWithGroupSync();\n"
+  "    activeGroups >>= 1;\n"
+  "  }\n"
+  "  if (localId == 0)\n"
+  "    buf_out[0] = tmp[0];\n"
   "}\n";
   
 int WINAPI WinMain(HINSTANCE hInstance,
@@ -63,7 +75,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
     return 1;
   }
   
-  std::array<uint32_t, 64> srcData;
+  std::array<uint32_t, 128> srcData;
   for (uint32_t i = 0; i < srcData.size(); i++)
     srcData[i] = i + 1;
   
@@ -93,7 +105,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
   dstBufferDesc.MiscFlags            = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
   dstBufferDesc.StructureByteStride  = sizeof(uint32_t);
   
-  if (FAILED(device->CreateBuffer(&dstBufferDesc, nullptr, &dstBuffer))) {
+  if (FAILED(device->CreateBuffer(&dstBufferDesc, &srcDataInfo, &dstBuffer))) {
     std::cerr << "Failed to create destination buffer" << std::endl;
     return 1;
   }
