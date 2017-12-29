@@ -9,9 +9,10 @@
 #define D3D11_1_UAV_SLOT_COUNT 64
 #endif
 
-// These were copied from d3d11.h
+// Most of these were copied from d3d11.h
 // For some strange reason, we cannot use the structures
 // directly, although others from the same header work.
+// Some structures are missing from the mingw headers.
 typedef struct D3D11_FEATURE_DATA_THREADING {
     BOOL DriverConcurrentCreates;
     BOOL DriverCommandLists;
@@ -29,3 +30,16 @@ typedef struct D3D11_FEATURE_DATA_D3D10_X_HARDWARE_OPTIONS {
 typedef enum D3D11_BUFFEREX_SRV_FLAG { 
   D3D11_BUFFEREX_SRV_FLAG_RAW = 1
 } D3D11_BUFFEREX_SRV_FLAG;
+typedef struct D3D11_QUERY_DATA_PIPELINE_STATISTICS {
+  UINT64 IAVertices;
+  UINT64 IAPrimitives;
+  UINT64 VSInvocations;
+  UINT64 GSInvocations;
+  UINT64 GSPrimitives;
+  UINT64 CInvocations;
+  UINT64 CPrimitives;
+  UINT64 PSInvocations;
+  UINT64 HSInvocations;
+  UINT64 DSInvocations;
+  UINT64 CSInvocations;
+} D3D11_QUERY_DATA_PIPELINE_STATISTICS;

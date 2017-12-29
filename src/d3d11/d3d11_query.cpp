@@ -1,0 +1,79 @@
+#include "d3d11_device.h"
+#include "d3d11_query.h"
+
+namespace dxvk {
+  
+  D3D11Query::D3D11Query(
+          D3D11Device*      device,
+    const D3D11_QUERY_DESC& desc)
+  : m_device(device), m_desc(desc) {
+    Logger::warn("D3D11Query: Stub");
+  }
+  
+  
+  D3D11Query::~D3D11Query() {
+    
+  }
+  
+    
+  HRESULT STDMETHODCALLTYPE D3D11Query::QueryInterface(REFIID  riid, void** ppvObject) {
+    COM_QUERY_IFACE(riid, ppvObject, IUnknown);
+    COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceChild);
+    COM_QUERY_IFACE(riid, ppvObject, ID3D11Asynchronous);
+    COM_QUERY_IFACE(riid, ppvObject, ID3D11Query);
+    
+    Logger::warn("D3D11Query: Unknown interface query");
+    return E_NOINTERFACE;
+  }
+  
+  
+  void STDMETHODCALLTYPE D3D11Query::GetDevice(ID3D11Device **ppDevice) {
+    *ppDevice = ref(m_device);
+  }
+  
+  
+  UINT STDMETHODCALLTYPE D3D11Query::GetDataSize() {
+    switch (m_desc.Query) {
+      case D3D11_QUERY_EVENT:
+        return sizeof(BOOL);
+      
+      case D3D11_QUERY_OCCLUSION:
+        return sizeof(UINT64);
+      
+      case D3D11_QUERY_TIMESTAMP:
+        return sizeof(UINT64);
+      
+      case D3D11_QUERY_TIMESTAMP_DISJOINT:
+        return sizeof(D3D11_QUERY_DATA_TIMESTAMP_DISJOINT);
+      
+      case D3D11_QUERY_PIPELINE_STATISTICS:
+        return sizeof(D3D11_QUERY_DATA_PIPELINE_STATISTICS);
+      
+      case D3D11_QUERY_OCCLUSION_PREDICATE:
+        return sizeof(BOOL);
+      
+      case D3D11_QUERY_SO_STATISTICS:
+      case D3D11_QUERY_SO_STATISTICS_STREAM0:
+      case D3D11_QUERY_SO_STATISTICS_STREAM1:
+      case D3D11_QUERY_SO_STATISTICS_STREAM2:
+      case D3D11_QUERY_SO_STATISTICS_STREAM3:
+        return sizeof(D3D11_QUERY_DATA_SO_STATISTICS);
+      
+      case D3D11_QUERY_SO_OVERFLOW_PREDICATE:
+      case D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM0:
+      case D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM1:
+      case D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM2:
+      case D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM3:
+        return sizeof(BOOL);
+    }
+    
+    Logger::err("D3D11Query: Failed to query data size");
+    return 0;
+  }
+  
+    
+  void STDMETHODCALLTYPE D3D11Query::GetDesc(D3D11_QUERY_DESC *pDesc) {
+    *pDesc = m_desc;
+  }
+  
+}

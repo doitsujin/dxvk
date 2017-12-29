@@ -12,8 +12,11 @@ namespace dxvk {
   class DxgiAdapter;
   
   class D3D11Buffer;
+  class D3D11Counter;
   class D3D11DeviceContext;
+  class D3D11Predicate;
   class D3D11PresentDevice;
+  class D3D11Query;
   class D3D11ShaderModule;
   class D3D11Texture1D;
   class D3D11Texture2D;

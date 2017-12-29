@@ -6,6 +6,7 @@
 #include "d3d11_device.h"
 #include "d3d11_input_layout.h"
 #include "d3d11_present.h"
+#include "d3d11_query.h"
 #include "d3d11_sampler.h"
 #include "d3d11_shader.h"
 #include "d3d11_texture.h"
@@ -965,8 +966,23 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11Device::CreateQuery(
     const D3D11_QUERY_DESC*           pQueryDesc,
           ID3D11Query**               ppQuery) {
-    Logger::err("D3D11Device::CreateQuery: Not implemented");
-    return E_NOTIMPL;
+    // Other query types are currently unsupported
+    if (pQueryDesc->Query != D3D11_QUERY_OCCLUSION
+     && pQueryDesc->Query != D3D11_QUERY_OCCLUSION_PREDICATE) {
+      Logger::err(str::format("D3D11Device: Unsupported query type: ", pQueryDesc->Query));
+      return E_INVALIDARG;
+    }
+    
+    if (ppQuery == nullptr)
+      return S_FALSE;
+    
+    try {
+      *ppQuery = new D3D11Query(this, *pQueryDesc);
+      return S_OK;
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return E_FAIL;
+    }
   }
   
   
