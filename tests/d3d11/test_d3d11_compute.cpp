@@ -167,5 +167,6 @@ int WINAPI WinMain(HINSTANCE hInstance,
   context->Unmap(readBuffer.ptr(), 0);
   
   std::cout << "Sum of the numbers 1 to " << srcData.size() << " = " << result << std::endl;
+  context->ClearState();
   return 0;
 }
