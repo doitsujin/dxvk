@@ -166,6 +166,6 @@ int WINAPI WinMain(HINSTANCE hInstance,
   std::memcpy(&result, mappedResource.pData, sizeof(result));
   context->Unmap(readBuffer.ptr(), 0);
   
-  std::cout << "Sum: " << result << std::endl;
+  std::cout << "Sum of the numbers 1 to " << srcData.size() << " = " << result << std::endl;
   return 0;
 }

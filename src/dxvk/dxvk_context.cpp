@@ -969,7 +969,40 @@ namespace dxvk {
   
   
   void DxvkContext::commitComputeBarriers() {
-    // TODO implement
+    // TODO optimize. Each pipeline layout should
+    // hold a list of resource that can be written.
+    // TODO generalize so that this can be used for
+    // graphics pipelines as well
+    auto layout = m_state.cp.pipeline->layout();
+    
+    for (uint32_t i = 0; i < layout->bindingCount(); i++) {
+      const DxvkDescriptorSlot binding = layout->binding(i);
+      const DxvkShaderResourceSlot& slot = m_rc[binding.slot];
+      
+      if (binding.type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER) {
+        m_barriers.accessBuffer(
+          slot.bufferSlice.buffer(),
+          slot.bufferSlice.offset(),
+          slot.bufferSlice.length(),
+          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+          VK_ACCESS_SHADER_READ_BIT | 
+          VK_ACCESS_SHADER_WRITE_BIT,
+          slot.bufferSlice.buffer()->info().stages,
+          slot.bufferSlice.buffer()->info().access);
+      } else if (binding.type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {
+        m_barriers.accessBuffer(
+          slot.bufferView->buffer(),
+          slot.bufferView->info().rangeOffset,
+          slot.bufferView->info().rangeLength,
+          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+          VK_ACCESS_SHADER_READ_BIT | 
+          VK_ACCESS_SHADER_WRITE_BIT,
+          slot.bufferView->buffer()->info().stages,
+          slot.bufferView->buffer()->info().access);
+      }
+    }
+    
+    m_barriers.recordCommands(m_cmd);
   }
   
   
