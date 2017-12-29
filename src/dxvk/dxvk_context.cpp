@@ -850,30 +850,44 @@ namespace dxvk {
     // TODO recreate resource views if the underlying
     // resource was marked as dirty after invalidation
     for (uint32_t i = 0; i < layout->bindingCount(); i++) {
-      const uint32_t slot = layout->binding(i).slot;
-      const auto& res = m_rc[slot];
+      const auto& binding = layout->binding(i);
+      const auto& res     = m_rc[binding.slot];
       
-      if (res.sampler != nullptr) {
-        m_descriptors[i].image.sampler     = res.sampler->handle();
-        m_descriptors[i].image.imageView   = VK_NULL_HANDLE;
-        m_descriptors[i].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+      switch (binding.type) {
+        case VK_DESCRIPTOR_TYPE_SAMPLER:
+          m_descriptors[i].image.sampler     = res.sampler->handle();
+          m_descriptors[i].image.imageView   = VK_NULL_HANDLE;
+          m_descriptors[i].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+          
+          m_cmd->trackResource(res.sampler);
+          break;
         
-        m_cmd->trackResource(res.sampler);
-      } else if (res.imageView != nullptr) {
-        m_descriptors[i].image.sampler     = VK_NULL_HANDLE;
-        m_descriptors[i].image.imageView   = res.imageView->handle();
-        m_descriptors[i].image.imageLayout = res.imageView->imageInfo().layout;
+        case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+        case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+          m_descriptors[i].image.sampler     = VK_NULL_HANDLE;
+          m_descriptors[i].image.imageView   = res.imageView->handle();
+          m_descriptors[i].image.imageLayout = res.imageView->imageInfo().layout;
+          
+          m_cmd->trackResource(res.imageView);
+          m_cmd->trackResource(res.imageView->image());
+          break;
         
-        m_cmd->trackResource(res.imageView);
-        m_cmd->trackResource(res.imageView->image());
-      } else if (res.bufferView != nullptr) {
-        m_descriptors[i].texelBuffer = res.bufferView->handle();
+        case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+        case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+          m_descriptors[i].texelBuffer = res.bufferView->handle();
+          
+          m_cmd->trackResource(res.bufferView);
+          m_cmd->trackResource(res.bufferView->buffer()->resource());
+          break;
         
-        m_cmd->trackResource(res.bufferView);
-        m_cmd->trackResource(res.bufferView->buffer()->resource());
-      } else if (res.bufferSlice.handle() != VK_NULL_HANDLE) {
-        m_descriptors[i].buffer = res.bufferSlice.descriptorInfo();
-        m_cmd->trackResource(res.bufferSlice.resource());
+        case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+        case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+          m_descriptors[i].buffer = res.bufferSlice.descriptorInfo();
+          m_cmd->trackResource(res.bufferSlice.resource());
+          break;
+        
+        default:
+          Logger::err(str::format("DxvkContext: Unhandled descriptor type: ", binding.type));
       }
     }
     
