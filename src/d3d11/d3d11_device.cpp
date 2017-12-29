@@ -1006,7 +1006,6 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11Device::CheckFormatSupport(
           DXGI_FORMAT Format,
           UINT*       pFormatSupport) {
-    TRACE(this, Format);
     return GetFormatSupportFlags(Format, pFormatSupport);
   }
   
@@ -1100,9 +1099,17 @@ namespace dxvk {
         return GetFormatSupportFlags(info->InFormat, &info->OutFormatSupport);
       } return S_OK;
       
+      case D3D11_FEATURE_D3D10_X_HARDWARE_OPTIONS: {
+        if (FeatureSupportDataSize != sizeof(D3D11_FEATURE_DATA_D3D10_X_HARDWARE_OPTIONS))
+          return E_INVALIDARG;
+        
+        auto info = static_cast<D3D11_FEATURE_DATA_D3D10_X_HARDWARE_OPTIONS*>(pFeatureSupportData);
+        info->ComputeShaders_Plus_RawAndStructuredBuffers_Via_Shader_4_x = TRUE;
+      } return S_OK;
+      
       default:
         Logger::err(str::format(
-          "D3D11Device: CheckFeatureSupport: Unknown feature",
+          "D3D11Device: CheckFeatureSupport: Unknown feature: ",
           Feature));
         return E_INVALIDARG;
     }
