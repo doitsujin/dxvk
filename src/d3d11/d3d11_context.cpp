@@ -1334,8 +1334,8 @@ namespace dxvk {
           ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
     const UINT*                             pUAVInitialCounts) {
     // TODO implement append-consume buffers
-    if (pUAVInitialCounts != nullptr)
-      Logger::err("D3D11DeviceContext: pUAVInitialCounts not supported");
+//     if (pUAVInitialCounts != nullptr)
+//       Logger::err("D3D11DeviceContext: pUAVInitialCounts not supported");
     
     this->BindUnorderedAccessViews(
       DxbcProgramType::ComputeShader,
