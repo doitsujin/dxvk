@@ -66,7 +66,6 @@ namespace dxvk {
     TRACE(this);
     // We do not release the SDL window handle here since
     // that would destroy the underlying window as well.
-    SDL_DestroyWindow(m_window);
   }
   
   
