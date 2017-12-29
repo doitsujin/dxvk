@@ -148,6 +148,10 @@ namespace dxvk {
           m_instruction.sampleControls.w = aoffimmi.w;
         } break;
         
+        case DxbcExtOpcode::ResourceDim:
+        case DxbcExtOpcode::ResourceReturnType:
+          break;  // part of resource description
+        
         default:
           Logger::warn(str::format(
             "DxbcDecodeContext: Unhandled extended opcode: ",

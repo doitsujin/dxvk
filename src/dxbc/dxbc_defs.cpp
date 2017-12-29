@@ -30,7 +30,9 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
     } },
     /* Case                                 */
-    { },
+    { 1, DxbcInstClass::ControlFlow, {
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* Continue                             */
     { 0, DxbcInstClass::ControlFlow },
     /* Continuec                            */
@@ -90,7 +92,7 @@ namespace dxvk {
     /* EndLoop                              */
     { 0, DxbcInstClass::ControlFlow },
     /* EndSwitch                            */
-    { },
+    { 0, DxbcInstClass::ControlFlow },
     /* Eq                                   */
     { 3, DxbcInstClass::VectorCmp, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Uint32  },
@@ -371,7 +373,9 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
     } },
     /* Switch                               */
-    { },
+    { 1, DxbcInstClass::ControlFlow, {
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* SinCos                               */
     { 3, DxbcInstClass::VectorSinCos, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },

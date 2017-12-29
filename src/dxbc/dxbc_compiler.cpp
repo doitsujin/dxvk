@@ -2148,11 +2148,28 @@ namespace dxvk {
   }
   
   
-  void DxbcCompiler::emitControlFlowBreakc(const DxbcShaderInstruction& ins) {
+  void DxbcCompiler::emitControlFlowBreak(const DxbcShaderInstruction& ins) {
+    const bool isBreak = ins.op == DxbcOpcode::Break;
+    
     DxbcCfgBlock* loopBlock = cfgFindLoopBlock();
     
     if (loopBlock == nullptr)
-      throw DxvkError("DxbcCompiler: 'Breakc' outside 'Loop' found");
+      throw DxvkError("DxbcCompiler: 'Break' or 'Continue' outside 'Loop' found");
+    
+    m_module.opBranch(isBreak
+      ? loopBlock->b_loop.labelBreak
+      : loopBlock->b_loop.labelContinue);
+    m_module.opLabel (m_module.allocateId());
+  }
+  
+    
+  void DxbcCompiler::emitControlFlowBreakc(const DxbcShaderInstruction& ins) {
+    const bool isBreak = ins.op == DxbcOpcode::Breakc;
+    
+    DxbcCfgBlock* loopBlock = cfgFindLoopBlock();
+    
+    if (loopBlock == nullptr)
+      throw DxvkError("DxbcCompiler: 'Breakc' or 'Continuec' outside 'Loop' found");
     
     // Perform zero test on the first component of the condition
     const DxbcRegisterValue condition = emitRegisterLoad(
@@ -2172,7 +2189,9 @@ namespace dxvk {
       zeroTest.id, breakBlock, mergeBlock);
     
     m_module.opLabel(breakBlock);
-    m_module.opBranch(loopBlock->b_loop.labelBreak);
+    m_module.opBranch(isBreak
+      ? loopBlock->b_loop.labelBreak
+      : loopBlock->b_loop.labelContinue);
     
     m_module.opLabel(mergeBlock);
   }
@@ -2229,7 +2248,12 @@ namespace dxvk {
       case DxbcOpcode::EndLoop:
         return this->emitControlFlowEndLoop(ins);
         
+      case DxbcOpcode::Break:
+      case DxbcOpcode::Continue:
+        return this->emitControlFlowBreak(ins);
+        
       case DxbcOpcode::Breakc:
+      case DxbcOpcode::Continuec:
         return this->emitControlFlowBreakc(ins);
         
       case DxbcOpcode::Ret:

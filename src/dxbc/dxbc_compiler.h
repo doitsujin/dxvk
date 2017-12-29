@@ -427,6 +427,9 @@ namespace dxvk {
     void emitControlFlowEndLoop(
       const DxbcShaderInstruction&  ins);
     
+    void emitControlFlowBreak(
+      const DxbcShaderInstruction&  ins);
+    
     void emitControlFlowBreakc(
       const DxbcShaderInstruction&  ins);
     
