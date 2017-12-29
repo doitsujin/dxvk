@@ -153,26 +153,40 @@ namespace dxvk {
       
       DxvkBufferViewCreateInfo viewInfo;
       
+      D3D11_BUFFEREX_SRV bufInfo;
+      
       if (desc.ViewDimension == D3D11_SRV_DIMENSION_BUFFEREX) {
-        // Raw or structured view. We'll represent this
-        // as a uniform texel buffer with UINT32 elements.
+        bufInfo.FirstElement = desc.BufferEx.FirstElement;
+        bufInfo.NumElements  = desc.BufferEx.NumElements;
+        bufInfo.Flags        = desc.BufferEx.Flags;
+      } else if (desc.ViewDimension == D3D11_SRV_DIMENSION_BUFFER) {
+        bufInfo.FirstElement = desc.Buffer.FirstElement;
+        bufInfo.NumElements  = desc.Buffer.NumElements;
+        bufInfo.Flags        = 0;
+      } else {
+        Logger::err("D3D11Device: Invalid buffer view dimension");
+        return E_INVALIDARG;
+      }
+      
+      if (bufInfo.Flags & D3D11_BUFFEREX_SRV_FLAG_RAW) {
+        // Raw buffer view. We'll represent this as a
+        // uniform texel buffer with UINT32 elements.
         viewInfo.format = VK_FORMAT_R32_UINT;
-        
-        if (desc.BufferEx.Flags & D3D11_BUFFEREX_SRV_FLAG_RAW) {
-          viewInfo.rangeOffset = sizeof(uint32_t) * desc.BufferEx.FirstElement;
-          viewInfo.rangeLength = sizeof(uint32_t) * desc.BufferEx.NumElements;
-        } else {
-          viewInfo.rangeOffset = resourceDesc.StructureByteStride * desc.BufferEx.FirstElement;
-          viewInfo.rangeLength = resourceDesc.StructureByteStride * desc.BufferEx.NumElements;
-        }
+        viewInfo.rangeOffset = sizeof(uint32_t) * bufInfo.FirstElement;
+        viewInfo.rangeLength = sizeof(uint32_t) * bufInfo.NumElements;
+      } else if (desc.Format == DXGI_FORMAT_UNKNOWN) {
+        // Structured buffer view
+        viewInfo.format = VK_FORMAT_R32_UINT;
+        viewInfo.rangeOffset = resourceDesc.StructureByteStride * bufInfo.FirstElement;
+        viewInfo.rangeLength = resourceDesc.StructureByteStride * bufInfo.NumElements;
       } else {
         // Typed buffer view - must use an uncompressed color format
         viewInfo.format = m_dxgiAdapter->LookupFormat(
           desc.Format, DxgiFormatMode::Color).format;
         
         const DxvkFormatInfo* formatInfo = imageFormatInfo(viewInfo.format);
-        viewInfo.rangeOffset = formatInfo->elementSize * desc.Buffer.FirstElement;
-        viewInfo.rangeLength = formatInfo->elementSize * desc.Buffer.NumElements;
+        viewInfo.rangeOffset = formatInfo->elementSize * bufInfo.FirstElement;
+        viewInfo.rangeLength = formatInfo->elementSize * bufInfo.NumElements;
         
         if (formatInfo->flags.test(DxvkFormatFlag::BlockCompressed)) {
           Logger::err("D3D11Device: Compressed formats for buffer views not supported");
@@ -992,6 +1006,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11Device::CheckFormatSupport(
           DXGI_FORMAT Format,
           UINT*       pFormatSupport) {
+    TRACE(this, Format);
     return GetFormatSupportFlags(Format, pFormatSupport);
   }
   
