@@ -2681,9 +2681,10 @@ namespace dxvk {
                     SpirvImageOperands()), 1, &zero);
               
               case DxbcOperandType::UnorderedAccessView:
-                return m_module.opImageRead(
-                  scalarTypeId, bufferId, elementIndexAdjusted,
-                  SpirvImageOperands());
+                return m_module.opCompositeExtract(scalarTypeId,
+                  m_module.opImageRead(vectorTypeId,
+                    bufferId, elementIndexAdjusted,
+                    SpirvImageOperands()), 1, &zero);
               
               case DxbcOperandType::ThreadGroupSharedMemory:
                 return m_module.opLoad(scalarTypeId,
@@ -2730,7 +2731,8 @@ namespace dxvk {
     const uint32_t bufferId = isTgsm
       ? 0 : m_module.opLoad(bufferInfo.typeId, bufferInfo.varId);
     
-    const uint32_t scalarTypeId = getScalarTypeId(DxbcScalarType::Uint32);
+    const uint32_t scalarTypeId = getVectorTypeId({ DxbcScalarType::Uint32, 1 });
+    const uint32_t vectorTypeId = getVectorTypeId({ DxbcScalarType::Uint32, 4 });
     
     uint32_t srcComponentIndex = 0;
     
@@ -2748,12 +2750,18 @@ namespace dxvk {
           : elementIndex.id;
         
         switch (operand.type) {
-          case DxbcOperandType::UnorderedAccessView:
+          case DxbcOperandType::UnorderedAccessView: {
+            const std::array<uint32_t, 4> srcVectorIds = {
+              srcComponentId, srcComponentId,
+              srcComponentId, srcComponentId,
+            };
+        
             m_module.opImageWrite(
               bufferId, elementIndexAdjusted,
-              srcComponentId,
+              m_module.opCompositeConstruct(vectorTypeId,
+                4, srcVectorIds.data()),
               SpirvImageOperands());
-            break;
+          } break;
           
           case DxbcOperandType::ThreadGroupSharedMemory:
             m_module.opStore(
