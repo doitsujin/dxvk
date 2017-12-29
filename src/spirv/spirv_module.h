@@ -413,12 +413,12 @@ namespace dxvk {
             uint32_t                b,
             uint32_t                c);
     
-    uint32_t opFMax(
+    uint32_t opNMax(
             uint32_t                resultType,
             uint32_t                a,
             uint32_t                b);
     
-    uint32_t opFMin(
+    uint32_t opNMin(
             uint32_t                resultType,
             uint32_t                a,
             uint32_t                b);
@@ -443,7 +443,7 @@ namespace dxvk {
             uint32_t                a,
             uint32_t                b);
     
-    uint32_t opFClamp(
+    uint32_t opNClamp(
             uint32_t                resultType,
             uint32_t                x,
             uint32_t                minVal,
@@ -555,6 +555,30 @@ namespace dxvk {
             uint32_t                operand);
     
     uint32_t opLog2(
+            uint32_t                resultType,
+            uint32_t                operand);
+    
+    uint32_t opFract(
+            uint32_t                resultType,
+            uint32_t                operand);
+    
+    uint32_t opCeil(
+            uint32_t                resultType,
+            uint32_t                operand);
+    
+    uint32_t opFloor(
+            uint32_t                resultType,
+            uint32_t                operand);
+    
+    uint32_t opRound(
+            uint32_t                resultType,
+            uint32_t                operand);
+    
+    uint32_t opRoundEven(
+            uint32_t                resultType,
+            uint32_t                operand);
+    
+    uint32_t opTrunc(
             uint32_t                resultType,
             uint32_t                operand);
     

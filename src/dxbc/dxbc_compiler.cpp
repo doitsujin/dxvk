@@ -963,6 +963,11 @@ namespace dxvk {
           typeId, src.at(0).id);
         break;
       
+      case DxbcOpcode::Frc:
+        dst.id = m_module.opFract(
+          typeId, src.at(0).id);
+        break;
+      
       case DxbcOpcode::Log:
         dst.id = m_module.opLog2(
           typeId, src.at(0).id);
@@ -974,12 +979,12 @@ namespace dxvk {
         break;
       
       case DxbcOpcode::Max:
-        dst.id = m_module.opFMax(typeId,
+        dst.id = m_module.opNMax(typeId,
           src.at(0).id, src.at(1).id);
         break;
       
       case DxbcOpcode::Min:
-        dst.id = m_module.opFMin(typeId,
+        dst.id = m_module.opNMin(typeId,
           src.at(0).id, src.at(1).id);
         break;
       
@@ -988,13 +993,33 @@ namespace dxvk {
           src.at(0).id, src.at(1).id);
         break;
       
-      case DxbcOpcode::Sqrt:
-        dst.id = m_module.opSqrt(
+      case DxbcOpcode::RoundNe:
+        dst.id = m_module.opRoundEven(
+          typeId, src.at(0).id);
+        break;
+      
+      case DxbcOpcode::RoundNi:
+        dst.id = m_module.opFloor(
+          typeId, src.at(0).id);
+        break;
+      
+      case DxbcOpcode::RoundPi:
+        dst.id = m_module.opCeil(
+          typeId, src.at(0).id);
+        break;
+      
+      case DxbcOpcode::RoundZ:
+        dst.id = m_module.opTrunc(
           typeId, src.at(0).id);
         break;
       
       case DxbcOpcode::Rsq:
         dst.id = m_module.opInverseSqrt(
+          typeId, src.at(0).id);
+        break;
+      
+      case DxbcOpcode::Sqrt:
+        dst.id = m_module.opSqrt(
           typeId, src.at(0).id);
         break;
       
@@ -2419,7 +2444,7 @@ namespace dxvk {
     if (value.type.ctype == DxbcScalarType::Float32) {
       // Saturating only makes sense on floats
       if (modifiers.saturate) {
-        value.id = m_module.opFClamp(
+        value.id = m_module.opNClamp(
           typeId, value.id,
           m_module.constf32(0.0f),
           m_module.constf32(1.0f));
