@@ -586,9 +586,15 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
     } },
     /* F32toF16                             */
-    { },
+    { 2, DxbcInstClass::ConvertFloat16, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32  },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* F16toF32                             */
-    { },
+    { 2, DxbcInstClass::ConvertFloat16, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32  },
+    } },
     /* UAddc                                */
     { },
     /* USubb                                */

@@ -601,6 +601,14 @@ namespace dxvk {
             uint32_t                resultType,
             uint32_t                operand);
     
+    uint32_t opPackHalf2x16(
+            uint32_t                resultType,
+            uint32_t                operand);
+    
+    uint32_t opUnpackHalf2x16(
+            uint32_t                resultType,
+            uint32_t                operand);
+    
     uint32_t opSelect(
             uint32_t                resultType,
             uint32_t                condition,

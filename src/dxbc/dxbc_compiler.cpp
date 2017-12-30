@@ -60,12 +60,6 @@ namespace dxvk {
       case DxbcInstClass::CustomData:
         return this->emitCustomData(ins);
         
-      case DxbcInstClass::ControlFlow:
-        return this->emitControlFlow(ins);
-        
-      case DxbcInstClass::GeometryEmit:
-        return this->emitGeometryEmit(ins);
-        
       case DxbcInstClass::Atomic:
         return this->emitAtomic(ins);
         
@@ -86,6 +80,15 @@ namespace dxvk {
         
       case DxbcInstClass::BufferStore:
         return this->emitBufferStore(ins);
+        
+      case DxbcInstClass::ConvertFloat16:
+        return this->emitConvertFloat16(ins);
+        
+      case DxbcInstClass::ControlFlow:
+        return this->emitControlFlow(ins);
+        
+      case DxbcInstClass::GeometryEmit:
+        return this->emitGeometryEmit(ins);
         
       case DxbcInstClass::TextureQuery:
         return this->emitTextureQuery(ins);
@@ -1368,7 +1371,7 @@ namespace dxvk {
     if (ins.dst[0].type != DxbcOperandType::Null
      && ins.dst[1].type != DxbcOperandType::Null
      && ins.dst[0].mask != ins.dst[1].mask) {
-      Logger::warn("DxbcCompiler: Umul with different destination masks not supported");
+      Logger::warn("DxbcCompiler: Idiv with different destination masks not supported");
       return;
     }
     
@@ -1558,7 +1561,12 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitAtomic(const DxbcShaderInstruction& ins) {
-    Logger::err("DxbcCompiler: emitAtomic not implemented");
+    switch (ins.op) {
+      default:
+        Logger::warn(str::format(
+          "DxbcCompiler: Unhandled instruction: ",
+          ins.op));
+    }
   }
   
   
@@ -1750,6 +1758,75 @@ namespace dxvk {
     
     emitRawBufferStore(dstReg, elementIndex,
       emitRegisterLoad(srcReg, dstReg.mask));
+  }
+  
+  
+  void DxbcCompiler::emitConvertFloat16(const DxbcShaderInstruction& ins) {
+    // f32tof16 takes two operands:
+    //    (dst0) Destination register as a uint32 vector
+    //    (src0) Source register as a float32 vector
+    // f16tof32 takes two operands:
+    //    (dst0) Destination register as a float32 vector
+    //    (src0) Source register as a uint32 vector
+    const DxbcRegisterValue src = emitRegisterLoad(ins.src[0], ins.dst[0].mask);
+    
+    // We handle both packing and unpacking here
+    const bool isPack = ins.op == DxbcOpcode::F32toF16;
+    
+    // The conversion instructions do not map very well to the
+    // SPIR-V pack instructions, which operate on 2D vectors.
+    std::array<uint32_t, 4> scalarIds  = {{ 0, 0, 0, 0 }};
+    std::array<uint32_t, 4> swizzleIds = {{ 0, 0, 0, 0 }};
+    
+    uint32_t componentIndex = 0;
+    
+    // These types are used in both pack and unpack operations
+    const uint32_t t_u32   = getVectorTypeId({ DxbcScalarType::Uint32,  1 });
+    const uint32_t t_f32   = getVectorTypeId({ DxbcScalarType::Float32, 1 });
+    const uint32_t t_f32v2 = getVectorTypeId({ DxbcScalarType::Float32, 2 });
+    
+    // Constant zero-bit pattern, used for packing
+    const uint32_t zerof32 = isPack ? m_module.constf32(0.0f) : 0;
+    
+    for (uint32_t i = 0; i < 4; i++) {
+      if (ins.dst[0].mask[i]) {
+        const uint32_t swizzleIndex = ins.src[0].swizzle[i];
+        
+        // When extracting components from the source register, we must
+        // take into account that it it already swizzled and masked.
+        if (scalarIds[swizzleIndex] == 0) {
+          if (isPack) {  // f32tof16
+            const std::array<uint32_t, 2> packIds =
+              {{ m_module.opCompositeExtract(t_f32, src.id, 1, &componentIndex), zerof32 }};
+            
+            scalarIds[swizzleIndex] = m_module.opPackHalf2x16(t_u32,
+              m_module.opCompositeConstruct(t_f32v2, packIds.size(), packIds.data()));
+          } else {  // f16tof32
+            const uint32_t zeroIndex = 0;
+            
+            scalarIds[swizzleIndex] = m_module.opCompositeExtract(t_f32,
+              m_module.opUnpackHalf2x16(t_f32v2,
+                m_module.opCompositeExtract(t_u32, src.id, 1, &componentIndex)),
+              1, &zeroIndex);
+          }
+        }
+        
+        // Apply write mask and source swizzle at the same time
+        swizzleIds[componentIndex++] = scalarIds[swizzleIndex];
+      }
+    }
+    
+    // Store result in the destination register
+    DxbcRegisterValue result;
+    result.type.ctype  = ins.dst[0].dataType;
+    result.type.ccount = componentIndex;
+    result.id = componentIndex > 1
+      ? m_module.opCompositeConstruct(
+          getVectorTypeId(result.type),
+          componentIndex, swizzleIds.data())
+      : swizzleIds[0];
+    
+    emitRegisterStore(ins.dst[0], result);
   }
   
   
@@ -2833,10 +2910,9 @@ namespace dxvk {
         
         if (componentIds[swizzleIndex] == 0) {
           // Add the component offset to the element index
-          const uint32_t elementIndexAdjusted = swizzleIndex != 0
-            ? m_module.opIAdd(getVectorTypeId(elementIndex.type),
-                elementIndex.id, m_module.consti32(swizzleIndex))
-            : elementIndex.id;
+          const uint32_t elementIndexAdjusted = m_module.opIAdd(
+            getVectorTypeId(elementIndex.type), elementIndex.id,
+            m_module.consti32(swizzleIndex));
           
           // Load requested component from the buffer
           componentIds[swizzleIndex] = [&] {
@@ -2876,7 +2952,6 @@ namespace dxvk {
     DxbcRegisterValue result;
     result.type.ctype  = DxbcScalarType::Uint32;
     result.type.ccount = writeMask.setCount();
-    
     result.id = result.type.ccount > 1
       ? m_module.opCompositeConstruct(getVectorTypeId(result.type),
           result.type.ccount, swizzleIds.data())

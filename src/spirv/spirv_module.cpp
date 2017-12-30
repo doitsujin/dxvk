@@ -1760,6 +1760,36 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opPackHalf2x16(
+          uint32_t                resultType,
+          uint32_t                operand) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpExtInst, 6);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(m_instExtGlsl450);
+    m_code.putWord(spv::GLSLstd450PackHalf2x16);
+    m_code.putWord(operand);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opUnpackHalf2x16(
+          uint32_t                resultType,
+          uint32_t                operand) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpExtInst, 6);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(m_instExtGlsl450);
+    m_code.putWord(spv::GLSLstd450UnpackHalf2x16);
+    m_code.putWord(operand);
+    return resultId;
+  }
+  
+  
   uint32_t SpirvModule::opSelect(
           uint32_t                resultType,
           uint32_t                condition,

@@ -410,6 +410,9 @@ namespace dxvk {
     void emitBufferStore(
       const DxbcShaderInstruction&  ins);
     
+    void emitConvertFloat16(
+      const DxbcShaderInstruction&  ins);
+    
     void emitTextureQuery(
       const DxbcShaderInstruction&  ins);
     
