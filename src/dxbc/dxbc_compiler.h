@@ -395,6 +395,12 @@ namespace dxvk {
     void emitBarrier(
       const DxbcShaderInstruction&  ins);
     
+    void emitBitExtract(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitBitInsert(
+      const DxbcShaderInstruction&  ins);
+    
     void emitBufferQuery(
       const DxbcShaderInstruction&  ins);
     
@@ -444,6 +450,14 @@ namespace dxvk {
     
     void emitControlFlow(
       const DxbcShaderInstruction&  ins);
+    
+    ////////////////////////////////////////////////
+    // Constant building methods. These are used to
+    // generate constant vectors that store the same
+    // value in each component.
+    DxbcRegisterValue emitBuildConstVecf32(
+      const float                   values[4],
+      const DxbcRegMask&            writeMask);
     
     /////////////////////////////////////////
     // Generic register manipulation methods

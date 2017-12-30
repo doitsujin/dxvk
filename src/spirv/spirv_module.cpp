@@ -604,6 +604,59 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opBitFieldInsert(
+          uint32_t                resultType,
+          uint32_t                base,
+          uint32_t                insert,
+          uint32_t                offset,
+          uint32_t                count) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpBitFieldInsert, 7);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(base);
+    m_code.putWord(insert);
+    m_code.putWord(offset);
+    m_code.putWord(count);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opBitFieldSExtract(
+          uint32_t                resultType,
+          uint32_t                base,
+          uint32_t                offset,
+          uint32_t                count) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpBitFieldSExtract, 6);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(base);
+    m_code.putWord(offset);
+    m_code.putWord(count);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opBitFieldUExtract(
+          uint32_t                resultType,
+          uint32_t                base,
+          uint32_t                offset,
+          uint32_t                count) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpBitFieldUExtract, 6);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(base);
+    m_code.putWord(offset);
+    m_code.putWord(count);
+    return resultId;
+  }
+  
+  
   uint32_t SpirvModule::opBitwiseAnd(
           uint32_t                resultType,
           uint32_t                operand1,

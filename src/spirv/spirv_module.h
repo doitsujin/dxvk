@@ -237,6 +237,25 @@ namespace dxvk {
             uint32_t                resultType,
             uint32_t                operand);
     
+    uint32_t opBitFieldInsert(
+            uint32_t                resultType,
+            uint32_t                base,
+            uint32_t                insert,
+            uint32_t                offset,
+            uint32_t                count);
+    
+    uint32_t opBitFieldSExtract(
+            uint32_t                resultType,
+            uint32_t                base,
+            uint32_t                offset,
+            uint32_t                count);
+    
+    uint32_t opBitFieldUExtract(
+            uint32_t                resultType,
+            uint32_t                base,
+            uint32_t                offset,
+            uint32_t                count);
+    
     uint32_t opBitwiseAnd(
             uint32_t                resultType,
             uint32_t                operand1,

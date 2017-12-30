@@ -47,7 +47,8 @@ int WINAPI WinMain(HINSTANCE hInstance,
     "Shader", nullptr, nullptr,
     str::fromws(entryPoint).c_str(),
     str::fromws(target).c_str(),
-    0, 0, &binary, &errors);
+    D3DCOMPILE_OPTIMIZATION_LEVEL3,
+    0, &binary, &errors);
   
   if (FAILED(hr)) {
     if (errors != nullptr)

@@ -72,6 +72,12 @@ namespace dxvk {
       case DxbcInstClass::Barrier:
         return this->emitBarrier(ins);
         
+      case DxbcInstClass::BitExtract:
+        return this->emitBitExtract(ins);
+        
+      case DxbcInstClass::BitInsert:
+        return this->emitBitInsert(ins);
+        
       case DxbcInstClass::BufferQuery:
         return this->emitBufferQuery(ins);
         
@@ -996,6 +1002,13 @@ namespace dxvk {
           src.at(0).id, src.at(1).id);
         break;
       
+      case DxbcOpcode::Rcp: {
+        const std::array<float, 4> ones = {{ 1.0f, 1.0f, 1.0f, 1.0f }};
+        dst.id = m_module.opFDiv(typeId,
+          emitBuildConstVecf32(ones.data(), ins.dst[0].mask).id,
+          src.at(0).id);
+      } break;
+      
       case DxbcOpcode::RoundNe:
         dst.id = m_module.opRoundEven(
           typeId, src.at(0).id);
@@ -1591,6 +1604,53 @@ namespace dxvk {
   }
   
   
+  void DxbcCompiler::emitBitExtract(const DxbcShaderInstruction& ins) {
+    // ibfe and ubfe take the following arguments:
+    //    (dst0) The destination register
+    //    (src0) Number of bits to extact
+    //    (src1) Offset of the bits to extract
+    //    (src2) Register to extract bits from
+    const bool isSigned = ins.op == DxbcOpcode::IBfe;
+    
+    const DxbcRegisterValue bitCnt = emitRegisterLoad(ins.src[0], ins.dst[0].mask);
+    const DxbcRegisterValue bitOfs = emitRegisterLoad(ins.src[1], ins.dst[0].mask);
+    
+    const DxbcRegisterValue src = emitRegisterLoad(ins.src[2], ins.dst[0].mask);
+    const uint32_t typeId = getVectorTypeId(src.type);
+    
+    DxbcRegisterValue result;
+    result.type = src.type;
+    result.id = isSigned
+      ? m_module.opBitFieldSExtract(typeId, result.id, bitOfs.id, bitCnt.id)
+      : m_module.opBitFieldUExtract(typeId, result.id, bitOfs.id, bitCnt.id);
+    
+    emitRegisterStore(ins.dst[0], result);
+  }
+  
+  
+  void DxbcCompiler::emitBitInsert(const DxbcShaderInstruction& ins) {
+    // ibfe and ubfe take the following arguments:
+    //    (dst0) The destination register
+    //    (src0) Number of bits to extact
+    //    (src1) Offset of the bits to extract
+    //    (src2) Register to take bits from
+    //    (src3) Register to replace bits in
+    const DxbcRegisterValue bitCnt = emitRegisterLoad(ins.src[0], ins.dst[0].mask);
+    const DxbcRegisterValue bitOfs = emitRegisterLoad(ins.src[1], ins.dst[0].mask);
+    
+    const DxbcRegisterValue insert = emitRegisterLoad(ins.src[2], ins.dst[0].mask);
+    const DxbcRegisterValue base   = emitRegisterLoad(ins.src[3], ins.dst[0].mask);
+    
+    DxbcRegisterValue result;
+    result.type = base.type;
+    result.id = m_module.opBitFieldInsert(
+      getVectorTypeId(result.type),
+      base.id, insert.id, bitOfs.id, bitCnt.id);
+    
+    emitRegisterStore(ins.dst[0], result);
+  }
+  
+    
   void DxbcCompiler::emitBufferQuery(const DxbcShaderInstruction& ins) {
     // bufinfo takes two arguments
     //    (dst0) The destination register
@@ -2304,6 +2364,29 @@ namespace dxvk {
           "DxbcCompiler: Unhandled instruction: ",
           ins.op));
     }
+  }
+  
+  
+  DxbcRegisterValue DxbcCompiler::emitBuildConstVecf32(
+    const float                   values[4],
+    const DxbcRegMask&            writeMask) {
+    std::array<uint32_t, 4> ids = { 0, 0, 0, 0 };
+    uint32_t componentIndex = 0;
+    
+    for (uint32_t i = 0; i < 4; i++) {
+      if (writeMask[i])
+        ids[componentIndex++] = m_module.constf32(values[i]);
+    }
+    
+    DxbcRegisterValue result;
+    result.type.ctype  = DxbcScalarType::Float32;
+    result.type.ccount = componentIndex;
+    result.id = componentIndex > 1
+      ? m_module.constComposite(
+          getVectorTypeId(result.type),
+          componentIndex, ids.data())
+      : ids[0];
+    return result;
   }
   
   

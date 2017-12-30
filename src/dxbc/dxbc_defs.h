@@ -34,6 +34,8 @@ namespace dxvk {
     GeometryEmit,     ///< Special geometry shader instructions
     Atomic,           ///< Atomic operations
     Barrier,          ///< Execution or memory barrier
+    BitExtract,       ///< Bit field extract operations
+    BitInsert,        ///< Bit field insert operations
     BufferQuery,      ///< Buffer query instruction
     BufferLoad,       ///< Structured or raw buffer load
     BufferStore,      ///< Structured or raw buffer store
