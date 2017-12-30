@@ -252,6 +252,8 @@ namespace dxvk {
           VkDeviceSize          srcOffset,
           VkDeviceSize          numBytes) {
     if (numBytes != 0) {
+      this->renderPassEnd();
+      
       VkBufferCopy bufferRegion;
       bufferRegion.srcOffset = srcOffset;
       bufferRegion.dstOffset = dstOffset;
@@ -281,6 +283,89 @@ namespace dxvk {
       m_cmd->trackResource(dstBuffer->resource());
       m_cmd->trackResource(srcBuffer->resource());
     }
+  }
+  
+  
+  void DxvkContext::copyImage(
+    const Rc<DxvkImage>&        dstImage,
+          VkImageSubresourceLayers dstSubresource,
+          VkOffset3D            dstOffset,
+    const Rc<DxvkImage>&        srcImage,
+          VkImageSubresourceLayers srcSubresource,
+          VkOffset3D            srcOffset,
+          VkExtent3D            extent) {
+    this->renderPassEnd();
+    
+    VkImageSubresourceRange dstSubresourceRange;
+    dstSubresourceRange.aspectMask     = dstSubresource.aspectMask;
+    dstSubresourceRange.baseMipLevel   = dstSubresource.mipLevel;
+    dstSubresourceRange.levelCount     = 1;
+    dstSubresourceRange.baseArrayLayer = dstSubresource.baseArrayLayer;
+    dstSubresourceRange.layerCount     = dstSubresource.layerCount;
+    
+    VkImageSubresourceRange srcSubresourceRange;
+    srcSubresourceRange.aspectMask     = srcSubresource.aspectMask;
+    srcSubresourceRange.baseMipLevel   = srcSubresource.mipLevel;
+    srcSubresourceRange.levelCount     = 1;
+    srcSubresourceRange.baseArrayLayer = srcSubresource.baseArrayLayer;
+    srcSubresourceRange.layerCount     = srcSubresource.layerCount;
+    
+    // TODO if the entire destination resource
+    // gets overwritten, discard the contents.
+    m_barriers.accessImage(
+      dstImage, dstSubresourceRange,
+      dstImage->info().layout,
+      dstImage->info().stages,
+      dstImage->info().access,
+      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT);
+    
+    m_barriers.accessImage(
+      srcImage, srcSubresourceRange,
+      srcImage->info().layout,
+      srcImage->info().stages,
+      srcImage->info().access,
+      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_READ_BIT);
+    
+    m_barriers.recordCommands(m_cmd);
+    
+    VkImageCopy imageRegion;
+    imageRegion.srcSubresource = srcSubresource;
+    imageRegion.srcOffset      = srcOffset;
+    imageRegion.dstSubresource = dstSubresource;
+    imageRegion.dstOffset      = dstOffset;
+    imageRegion.extent         = extent;
+    
+    m_cmd->cmdCopyImage(
+      srcImage->handle(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+      dstImage->handle(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      1, &imageRegion);
+    
+    m_barriers.accessImage(
+      dstImage, dstSubresourceRange,
+      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT,
+      dstImage->info().layout,
+      dstImage->info().stages,
+      dstImage->info().access);
+    
+    m_barriers.accessImage(
+      srcImage, srcSubresourceRange,
+      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_READ_BIT,
+      srcImage->info().layout,
+      srcImage->info().stages,
+      srcImage->info().access);
+    
+    m_barriers.recordCommands(m_cmd);
+    
+    m_cmd->trackResource(dstImage);
+    m_cmd->trackResource(srcImage);
   }
   
   

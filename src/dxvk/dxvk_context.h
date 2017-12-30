@@ -186,6 +186,26 @@ namespace dxvk {
             VkDeviceSize          numBytes);
     
     /**
+     * \brief Copies data from one image to another
+     * 
+     * \param [in] dstImage Destination image
+     * \param [in] dstSubresource Destination subresource
+     * \param [in] dstOffset Destination area offset
+     * \param [in] srcImage Source image
+     * \param [in] srcSubresource Source subresource
+     * \param [in] srcOffset Source area offset
+     * \param [in] extent Size of the area to copy
+     */
+    void copyImage(
+      const Rc<DxvkImage>&        dstImage,
+            VkImageSubresourceLayers dstSubresource,
+            VkOffset3D            dstOffset,
+      const Rc<DxvkImage>&        srcImage,
+            VkImageSubresourceLayers srcSubresource,
+            VkOffset3D            srcOffset,
+            VkExtent3D            extent);
+    
+    /**
      * \brief Starts compute jobs
      * 
      * \param [in] x Number of threads in X direction

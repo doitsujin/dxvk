@@ -217,6 +217,20 @@ namespace dxvk {
   }
   
   
+  void DxvkCommandList::cmdCopyImage(
+          VkImage                 srcImage,
+          VkImageLayout           srcImageLayout,
+          VkImage                 dstImage,
+          VkImageLayout           dstImageLayout,
+          uint32_t                regionCount,
+    const VkImageCopy*            pRegions) {
+    m_vkd->vkCmdCopyImage(m_buffer,
+      srcImage, srcImageLayout,
+      dstImage, dstImageLayout,
+      regionCount, pRegions);
+  }
+  
+  
   void DxvkCommandList::cmdDispatch(
           uint32_t                x,
           uint32_t                y,

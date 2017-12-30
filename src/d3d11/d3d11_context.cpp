@@ -327,7 +327,82 @@ namespace dxvk {
           ID3D11Resource*                   pSrcResource,
           UINT                              SrcSubresource,
     const D3D11_BOX*                        pSrcBox) {
-    Logger::err("D3D11DeviceContext::CopySubresourceRegion: Not implemented");
+    D3D11_RESOURCE_DIMENSION dstResourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+    D3D11_RESOURCE_DIMENSION srcResourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+    
+    pDstResource->GetType(&dstResourceDim);
+    pSrcResource->GetType(&srcResourceDim);
+    
+    if (dstResourceDim != srcResourceDim) {
+      Logger::err("D3D11DeviceContext: CopySubresourceRegion: Mismatched resource types");
+      return;
+    }
+    
+    if (dstResourceDim == D3D11_RESOURCE_DIMENSION_BUFFER) {
+      Logger::err("D3D11DeviceContext::CopySubresourceRegion: Buffers not supported");
+    } else {
+      D3D11TextureInfo dstTextureInfo;
+      D3D11TextureInfo srcTextureInfo;
+      
+      if (FAILED(GetCommonTextureInfo(pDstResource, &dstTextureInfo))
+       || FAILED(GetCommonTextureInfo(pSrcResource, &srcTextureInfo))) {
+        Logger::err("D3D11DeviceContext: Failed to retrieve DXVK images");
+        return;
+      }
+      
+      VkOffset3D srcOffset = { 0, 0, 0 };
+      VkOffset3D dstOffset = {
+        static_cast<int32_t>(DstX),
+        static_cast<int32_t>(DstY),
+        static_cast<int32_t>(DstZ) };
+      
+      VkExtent3D extent = srcTextureInfo.image->info().extent;
+      
+      if (pSrcBox != nullptr) {
+        if (pSrcBox->left  >= pSrcBox->right
+         || pSrcBox->top   >= pSrcBox->bottom
+         || pSrcBox->front >= pSrcBox->back)
+          return;  // no-op, but legal
+        
+        srcOffset.x = pSrcBox->left;
+        srcOffset.y = pSrcBox->top;
+        srcOffset.z = pSrcBox->front;
+        
+        extent.width  = pSrcBox->right -  pSrcBox->left;
+        extent.height = pSrcBox->bottom - pSrcBox->top;
+        extent.depth  = pSrcBox->back -   pSrcBox->front;
+      }
+      
+      const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(dstTextureInfo.image->info().format);
+      const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcTextureInfo.image->info().format);
+      
+      const VkImageSubresource dstSubresource =
+        GetSubresourceFromIndex(
+          dstFormatInfo->aspectMask & srcFormatInfo->aspectMask,
+          dstTextureInfo.image->info().mipLevels, DstSubresource);
+      
+      const VkImageSubresource srcSubresource =
+        GetSubresourceFromIndex(
+          dstFormatInfo->aspectMask & srcFormatInfo->aspectMask,
+          srcTextureInfo.image->info().mipLevels, SrcSubresource);
+      
+      VkImageSubresourceLayers dstLayers;
+      dstLayers.aspectMask     = dstSubresource.aspectMask;
+      dstLayers.mipLevel       = dstSubresource.mipLevel;
+      dstLayers.baseArrayLayer = dstSubresource.arrayLayer;
+      dstLayers.layerCount     = 1;
+      
+      VkImageSubresourceLayers srcLayers;
+      srcLayers.aspectMask     = srcSubresource.aspectMask;
+      srcLayers.mipLevel       = srcSubresource.mipLevel;
+      srcLayers.baseArrayLayer = srcSubresource.arrayLayer;
+      srcLayers.layerCount     = 1;
+      
+      m_context->copyImage(
+        dstTextureInfo.image, dstLayers, dstOffset,
+        srcTextureInfo.image, srcLayers, srcOffset,
+        extent);
+    }
   }
   
   
