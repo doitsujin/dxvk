@@ -308,6 +308,9 @@ namespace dxvk {
           return E_INVALIDARG;
       }
       
+      if (viewInfo.numLayers == 0 || viewInfo.numLayers == 0xFFFFFFFF)
+        viewInfo.numLevels = textureInfo.image->info().mipLevels - viewInfo.minLevel;
+      
       if (ppSRView == nullptr)
         return S_FALSE;
       
@@ -608,7 +611,7 @@ namespace dxvk {
             "D3D11Device::CreateInputLayout: No such semantic: ",
             pInputElementDescs[i].SemanticName,
             pInputElementDescs[i].SemanticIndex));
-          return E_INVALIDARG;
+          continue;
         }
         
         // Create vertex input attribute description
