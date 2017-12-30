@@ -550,7 +550,10 @@ namespace dxvk {
     /* InterfaceCall                        */
     { },
     /* BufInfo                              */
-    { },
+    { 2, DxbcInstClass::BufferQuery, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32  },
+    } },
     /* DerivRtxCoarse                       */
     { 2, DxbcInstClass::VectorDeriv, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },

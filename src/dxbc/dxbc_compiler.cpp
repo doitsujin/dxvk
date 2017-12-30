@@ -72,6 +72,9 @@ namespace dxvk {
       case DxbcInstClass::Barrier:
         return this->emitBarrier(ins);
         
+      case DxbcInstClass::BufferQuery:
+        return this->emitBufferQuery(ins);
+        
       case DxbcInstClass::BufferLoad:
         return this->emitBufferLoad(ins);
         
@@ -1588,6 +1591,40 @@ namespace dxvk {
   }
   
   
+  void DxbcCompiler::emitBufferQuery(const DxbcShaderInstruction& ins) {
+    // bufinfo takes two arguments
+    //    (dst0) The destination register
+    //    (src0) The buffer register to query
+    const DxbcBufferInfo bufferInfo = getBufferInfo(ins.src[0]);
+    
+    // This instruction can only be used with t# and u#
+    // registers, which are all mapped to texel buffers
+    const uint32_t bufferId = m_module.opLoad(
+        bufferInfo.typeId, bufferInfo.varId);
+    
+    // We'll store this as a scalar unsigned integer
+    DxbcRegisterValue result;
+    result.type.ctype  = DxbcScalarType::Uint32;
+    result.type.ccount = 1;
+    
+    const uint32_t typeId = getVectorTypeId(result.type);
+    result.id = m_module.opImageQuerySize(typeId, bufferId);
+    
+    if (bufferInfo.type == DxbcResourceType::Raw) {
+      result.id = m_module.opIMul(typeId,
+        result.id, m_module.constu32(4));
+    } else if (bufferInfo.type == DxbcResourceType::Structured) {
+      result.id = m_module.opUDiv(typeId, result.id,
+        m_module.constu32(bufferInfo.stride / 4));
+    }
+    
+    // Store the result. The scalar will be extended to a
+    // vector if the write mask consists of more than one
+    // component, which is the desired behaviour.
+    emitRegisterStore(ins.dst[0], result);
+  }
+  
+    
   void DxbcCompiler::emitBufferLoad(const DxbcShaderInstruction& ins) {
     // ld_raw takes three arguments:
     //    (dst0) Destination register

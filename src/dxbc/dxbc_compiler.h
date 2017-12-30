@@ -395,6 +395,9 @@ namespace dxvk {
     void emitBarrier(
       const DxbcShaderInstruction&  ins);
     
+    void emitBufferQuery(
+      const DxbcShaderInstruction&  ins);
+    
     void emitBufferLoad(
       const DxbcShaderInstruction&  ins);
     

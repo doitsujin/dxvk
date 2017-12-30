@@ -274,7 +274,9 @@ namespace dxvk {
     AddColorFormat(DXGI_FORMAT_R8_SNORM,                    VK_FORMAT_R8_SNORM);
     AddColorFormat(DXGI_FORMAT_R8_SINT,                     VK_FORMAT_R8_SINT);
     
-//     AddColorFormat(DXGI_FORMAT_A8_UNORM,                    VK_FORMAT_UNDEFINED);
+    AddColorFormat(DXGI_FORMAT_A8_UNORM,                    VK_FORMAT_R8_UNORM,
+      { VK_COMPONENT_SWIZZLE_ONE, VK_COMPONENT_SWIZZLE_ONE,
+        VK_COMPONENT_SWIZZLE_ONE, VK_COMPONENT_SWIZZLE_R });
     
 //     AddColorFormat(DXGI_FORMAT_R1_UNORM,                    VK_FORMAT_UNDEFINED);
     
