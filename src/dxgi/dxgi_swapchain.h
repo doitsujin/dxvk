@@ -88,20 +88,16 @@ namespace dxvk {
     Com<IDXGIDevicePrivate>         m_device;
     Com<IDXGIPresentDevicePrivate>  m_presentDevice;
     
-    DXGI_SWAP_CHAIN_DESC  m_desc;
-    DXGI_FRAME_STATISTICS m_stats;
+    DXGI_SWAP_CHAIN_DESC            m_desc;
+    DXGI_FRAME_STATISTICS           m_stats;
     
-    SDL_Window*         m_window = nullptr;
+    Rc<DxgiPresenter>               m_presenter;
+    Com<IDXGIPresentBackBuffer>     m_backBuffer;
     
-    Rc<DxgiPresenter>   m_presenter;
-    Com<IDXGIPresentBackBuffer> m_backBuffer;
+    HRESULT CreatePresenter();
+    HRESULT CreateBackBuffer();
     
-    void createPresenter();
-    void createBackBuffer();
-    
-    void createContext();
-    
-    VkExtent2D getWindowSize() const;
+    VkExtent2D GetWindowSize() const;
     
     HRESULT GetSampleCount(
             UINT                    Count,

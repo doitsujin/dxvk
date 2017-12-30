@@ -137,30 +137,23 @@ namespace dxvk {
         }
         
         hasMode = testMode.w            == currMode.w
-                && testMode.h            == currMode.h
-                && testMode.refresh_rate == currMode.refresh_rate;
+               && testMode.h            == currMode.h
+               && testMode.refresh_rate == currMode.refresh_rate;
       }
       
       // Convert the SDL display mode to a DXGI display mode info
       // structure and filter out any unwanted modes based on the
       // supplied flags.
       if (!hasMode) {
-        bool isNativeMode = (currMode.w == desktopMode.w)
-                          && (currMode.h == desktopMode.h);
-        
-        if (isNativeMode || (Flags & DXGI_ENUM_MODES_SCALING)) {
-          DXGI_MODE_DESC mode;
-          mode.Width                      = currMode.w;
-          mode.Height                     = currMode.h;
-          mode.RefreshRate.Numerator      = currMode.refresh_rate;
-          mode.RefreshRate.Denominator    = 1;
-          mode.Format                     = EnumFormat;
-          mode.ScanlineOrdering           = DXGI_MODE_SCANLINE_ORDER_PROGRESSIVE;
-          mode.Scaling                    = isNativeMode
-            ? DXGI_MODE_SCALING_CENTERED
-            : DXGI_MODE_SCALING_STRETCHED;
-          modes.push_back(mode);
-        }
+        DXGI_MODE_DESC mode;
+        mode.Width                      = currMode.w;
+        mode.Height                     = currMode.h;
+        mode.RefreshRate.Numerator      = currMode.refresh_rate;
+        mode.RefreshRate.Denominator    = 1;
+        mode.Format                     = EnumFormat;
+        mode.ScanlineOrdering           = DXGI_MODE_SCANLINE_ORDER_PROGRESSIVE;
+        mode.Scaling                    = DXGI_MODE_SCALING_CENTERED;
+        modes.push_back(mode);
       }
     }
     

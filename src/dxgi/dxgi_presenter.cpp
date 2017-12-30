@@ -5,11 +5,8 @@
 namespace dxvk {
   
   DxgiPresenter::DxgiPresenter(
-    const Rc<DxvkDevice>& device,
-          HWND            window,
-          uint32_t        bufferWidth,
-          uint32_t        bufferHeight,
-          DXGI_FORMAT     bufferFormat)
+    const Rc<DxvkDevice>&          device,
+          HWND                     window)
   : m_device  (device),
     m_context (device->createContext()) {
     
@@ -19,15 +16,11 @@ namespace dxvk {
     
     m_surface = m_device->adapter()->createSurface(instance, window);
     
-    // Create swap chain for the surface
-    DxvkSwapchainProperties swapchainProperties;
-    swapchainProperties.preferredSurfaceFormat      = this->pickFormat(bufferFormat);
-    swapchainProperties.preferredPresentMode        = VK_PRESENT_MODE_IMMEDIATE_KHR;
-    swapchainProperties.preferredBufferSize.width   = bufferWidth;
-    swapchainProperties.preferredBufferSize.height  = bufferHeight;
-    
-    m_swapchain = m_device->createSwapchain(
-      m_surface, swapchainProperties);
+    // Reset options for the swap chain itself. We will
+    // create a swap chain object before presentation.
+    m_options.preferredSurfaceFormat = { VK_FORMAT_UNDEFINED, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+    m_options.preferredPresentMode   = VK_PRESENT_MODE_FIFO_KHR;
+    m_options.preferredBufferSize    = { 0u, 0u };
     
     // Sampler for presentation
     DxvkSamplerCreateInfo samplerInfo;
@@ -46,8 +39,11 @@ namespace dxvk {
     samplerInfo.compareOp       = VK_COMPARE_OP_ALWAYS;
     samplerInfo.borderColor     = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
     samplerInfo.usePixelCoord   = VK_FALSE;
+    m_samplerFitting = m_device->createSampler(samplerInfo);
     
-    m_sampler = m_device->createSampler(samplerInfo);
+    samplerInfo.magFilter       = VK_FILTER_LINEAR;
+    samplerInfo.minFilter       = VK_FILTER_LINEAR;
+    m_samplerScaling = m_device->createSampler(samplerInfo);
     
     // Set up context state. The shader bindings and the
     // constant state objects will never be modified.
@@ -153,6 +149,10 @@ namespace dxvk {
   
   
   void DxgiPresenter::presentImage() {
+    const bool fitSize =
+        m_backBuffer->info().extent.width  == m_options.preferredBufferSize.width
+     && m_backBuffer->info().extent.height == m_options.preferredBufferSize.height;
+    
     m_context->beginRecording(
       m_device->createCommandList());
     
@@ -191,8 +191,10 @@ namespace dxvk {
     
     m_context->setViewports(1, &viewport, &scissor);
     
-    m_context->bindResourceSampler(BindingIds::Sampler, m_sampler);
-    m_context->bindResourceImage  (BindingIds::Texture, m_backBufferView);
+    m_context->bindResourceSampler(BindingIds::Sampler,
+      fitSize ? m_samplerFitting : m_samplerScaling);
+    
+    m_context->bindResourceImage(BindingIds::Texture, m_backBufferView);
     m_context->draw(4, 1, 0, 0);
     
     m_device->submitCommandList(
@@ -256,21 +258,34 @@ namespace dxvk {
   }
   
   
-  void DxgiPresenter::recreateSwapchain(
-        uint32_t        bufferWidth,
-        uint32_t        bufferHeight,
-        DXGI_FORMAT     bufferFormat) {
-    DxvkSwapchainProperties swapchainProperties;
-    swapchainProperties.preferredSurfaceFormat      = this->pickFormat(bufferFormat);
-    swapchainProperties.preferredPresentMode        = VK_PRESENT_MODE_IMMEDIATE_KHR;
-    swapchainProperties.preferredBufferSize.width   = bufferWidth;
-    swapchainProperties.preferredBufferSize.height  = bufferHeight;
+  void DxgiPresenter::recreateSwapchain(const DxvkSwapchainProperties& options) {
+    const bool doRecreate =
+         options.preferredSurfaceFormat.format      != m_options.preferredSurfaceFormat.format
+      || options.preferredSurfaceFormat.colorSpace  != m_options.preferredSurfaceFormat.colorSpace
+      || options.preferredPresentMode               != m_options.preferredPresentMode
+      || options.preferredBufferSize.width          != m_options.preferredBufferSize.width
+      || options.preferredBufferSize.height         != m_options.preferredBufferSize.height;
     
-    m_swapchain->changeProperties(swapchainProperties);
+    if (doRecreate) {
+      Logger::info(str::format(
+        "DxgiPresenter: Recreating swap chain: ",
+        "\n  Format:       ", options.preferredSurfaceFormat.format,
+        "\n  Present mode: ", options.preferredPresentMode,
+        "\n  Buffer size:  ", options.preferredBufferSize.width, "x", options.preferredBufferSize.height));
+      
+      m_options = options;
+      
+      if (m_swapchain == nullptr) {
+        m_swapchain = m_device->createSwapchain(
+          m_surface, options);
+      } else {
+        m_swapchain->changeProperties(options);
+      }
+    }
   }
   
   
-  VkSurfaceFormatKHR DxgiPresenter::pickFormat(DXGI_FORMAT fmt) const {
+  VkSurfaceFormatKHR DxgiPresenter::pickSurfaceFormat(DXGI_FORMAT fmt) const {
     std::vector<VkSurfaceFormatKHR> formats;
     
     switch (fmt) {
@@ -292,6 +307,11 @@ namespace dxvk {
     
     return m_surface->pickSurfaceFormat(
       formats.size(), formats.data());
+  }
+  
+  
+  VkPresentModeKHR DxgiPresenter::pickPresentMode(VkPresentModeKHR preferred) const {
+    return m_surface->pickPresentMode(1, &preferred);
   }
   
   

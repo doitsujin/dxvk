@@ -36,36 +36,24 @@ namespace dxvk {
     m_stats.SyncQPCTime.QuadPart = 0;
     m_stats.SyncGPUTime.QuadPart = 0;
     
-    // Create SDL window handle
-    m_window = SDL_CreateWindowFrom(m_desc.OutputWindow);
-    
-    if (m_window == nullptr) {
-      throw DxvkError(str::format(
-        "DxgiSwapChain::DxgiSwapChain: Failed to create window:\n",
-        SDL_GetError()));
-    }
-    
     // Adjust initial back buffer size. If zero, these
     // shall be set to the current window size.
-    VkExtent2D windowSize = this->getWindowSize();
+    const VkExtent2D windowSize = GetWindowSize();
     
     if (m_desc.BufferDesc.Width  == 0) m_desc.BufferDesc.Width  = windowSize.width;
     if (m_desc.BufferDesc.Height == 0) m_desc.BufferDesc.Height = windowSize.height;
     
     // Set initial window mode and fullscreen state
-    if (FAILED(this->SetFullscreenState(!pDesc->Windowed, nullptr)))
-      throw DxvkError("DxgiSwapChain::DxgiSwapChain: Failed to set initial fullscreen state");
+//     if (FAILED(this->SetFullscreenState(!pDesc->Windowed, nullptr)))
+//       throw DxvkError("DxgiSwapChain: Failed to set initial fullscreen state");
     
-    this->createPresenter();
-    this->createBackBuffer();
-    TRACE(this);
+    if (FAILED(CreatePresenter()) || FAILED(CreateBackBuffer()))
+      throw DxvkError("DxgiSwapChain: Failed to create presenter or back buffer");
   }
   
   
   DxgiSwapChain::~DxgiSwapChain() {
-    TRACE(this);
-    // We do not release the SDL window handle here since
-    // that would destroy the underlying window as well.
+    
   }
   
   
@@ -106,18 +94,8 @@ namespace dxvk {
     if (ppOutput != nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
-    // We can use the display index returned by SDL to query the
-    // containing output, since DxgiAdapter::EnumOutputs uses the
-    // same output IDs.
-    std::lock_guard<std::mutex> lock(m_mutex);
-    int32_t displayId = SDL_GetWindowDisplayIndex(m_window);
-    
-    if (displayId < 0) {
-      Logger::err("DxgiSwapChain::GetContainingOutput: Failed to query window display index");
-      return DXGI_ERROR_DRIVER_INTERNAL_ERROR;
-    }
-    
-    return m_adapter->EnumOutputs(displayId, ppOutput);
+    Logger::err("DxgiSwapChain::GetContainingOutput: Not implemented");
+    return E_NOTIMPL;
   }
   
   
@@ -175,10 +153,23 @@ namespace dxvk {
       // Submit pending rendering commands
       // before recording the present code.
       m_presentDevice->FlushRenderingCommands();
-    
-      // TODO implement sync interval
-      // TODO implement flags
-      m_presenter->presentImage();
+      
+      // Update swap chain properties. This will not only set
+      // up vertical synchronization properly, but also apply
+      // changes that were made to the window size even if the
+      // Vulkan swap chain itself remains valid.
+      DxvkSwapchainProperties swapchainProps;
+      swapchainProps.preferredSurfaceFormat
+        = m_presenter->pickSurfaceFormat(m_desc.BufferDesc.Format);
+      swapchainProps.preferredPresentMode = SyncInterval == 0
+        ? m_presenter->pickPresentMode(VK_PRESENT_MODE_IMMEDIATE_KHR)
+        : m_presenter->pickPresentMode(VK_PRESENT_MODE_MAILBOX_KHR);
+      swapchainProps.preferredBufferSize = GetWindowSize();
+      
+      m_presenter->recreateSwapchain(swapchainProps);
+      
+      for (uint32_t i = 0; i < SyncInterval || i < 1; i++)
+        m_presenter->presentImage();
       return S_OK;
     } catch (const DxvkError& err) {
       Logger::err(err.message());
@@ -195,9 +186,9 @@ namespace dxvk {
           UINT        SwapChainFlags) {
     std::lock_guard<std::mutex> lock(m_mutex);
     
-    VkExtent2D windowSize = this->getWindowSize();
+    const VkExtent2D windowSize = GetWindowSize();
     
-    m_desc.BufferDesc.Width = Width != 0 ? Width : windowSize.width;
+    m_desc.BufferDesc.Width  = Width  != 0 ? Width  : windowSize.width;
     m_desc.BufferDesc.Height = Height != 0 ? Height : windowSize.height;
     
     m_desc.Flags = SwapChainFlags;
@@ -208,17 +199,7 @@ namespace dxvk {
     if (NewFormat != DXGI_FORMAT_UNKNOWN)
       m_desc.BufferDesc.Format = NewFormat;
     
-    try {
-      m_presenter->recreateSwapchain(
-        m_desc.BufferDesc.Width,
-        m_desc.BufferDesc.Height,
-        m_desc.BufferDesc.Format);
-      this->createBackBuffer();
-      return S_OK;
-    } catch (const DxvkError& err) {
-      Logger::err(err.message());
-      return DXGI_ERROR_DRIVER_INTERNAL_ERROR;
-    }
+    return CreateBackBuffer();
   }
   
   
@@ -228,39 +209,21 @@ namespace dxvk {
     
     std::lock_guard<std::mutex> lock(m_mutex);
     
-    // Applies to windowed mode
-    SDL_SetWindowSize(m_window,
-      pNewTargetParameters->Width,
-      pNewTargetParameters->Height);
+    // TODO support fullscreen mode
+    RECT newRect = { 0, 0, 0, 0 };
+    RECT oldRect = { 0, 0, 0, 0 };
     
-    // Applies to fullscreen mode
-    SDL_DisplayMode displayMode;
-    displayMode.format       = SDL_PIXELFORMAT_RGBA32;
-    displayMode.w            = pNewTargetParameters->Width;
-    displayMode.h            = pNewTargetParameters->Height;
-    displayMode.refresh_rate = pNewTargetParameters->RefreshRate.Numerator
-                             / pNewTargetParameters->RefreshRate.Denominator;
-    displayMode.driverdata   = nullptr;
+    ::GetWindowRect(m_desc.OutputWindow, &oldRect);
+    ::SetRect(&newRect, 0, 0, pNewTargetParameters->Width, pNewTargetParameters->Height);
+    ::AdjustWindowRectEx(&newRect,
+      ::GetWindowLongW(m_desc.OutputWindow, GWL_STYLE), FALSE,
+      ::GetWindowLongW(m_desc.OutputWindow, GWL_EXSTYLE));
+    ::SetRect(&newRect, 0, 0, newRect.right - newRect.left, newRect.bottom - newRect.top);
+    ::OffsetRect(&newRect, oldRect.left, oldRect.top);    
+    ::MoveWindow(m_desc.OutputWindow, newRect.left, newRect.top,
+        newRect.right - newRect.left, newRect.bottom - newRect.top, TRUE);
     
-    // TODO test mode change flag
-    
-    if (SDL_SetWindowDisplayMode(m_window, &displayMode)) {
-      Logger::err(str::format(
-        "DxgiSwapChain::ResizeTarget: Failed to set display mode:\n",
-        SDL_GetError()));
-      return DXGI_ERROR_DRIVER_INTERNAL_ERROR;
-    }
-    
-    try {
-      m_presenter->recreateSwapchain(
-        m_desc.BufferDesc.Width,
-        m_desc.BufferDesc.Height,
-        m_desc.BufferDesc.Format);
-      return S_OK;
-    } catch (const DxvkError& err) {
-      Logger::err(err.message());
-      return DXGI_ERROR_DRIVER_INTERNAL_ERROR;
-    }
+    return S_OK;
   }
   
   
@@ -269,81 +232,54 @@ namespace dxvk {
           IDXGIOutput*  pTarget) {
     std::lock_guard<std::mutex> lock(m_mutex);
     
-    // Unconditionally reset the swap chain to windowed mode first.
-    // This required if the application wants to move the window to
-    // a different display while remaining in fullscreen mode.
-    if (SDL_SetWindowFullscreen(m_window, 0)) {
-      Logger::err(str::format(
-        "DxgiSwapChain::SetFullscreenState: Failed to set windowed mode:\n",
-        SDL_GetError()));
-      return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
-    }
-    
-    m_desc.Windowed = !Fullscreen;
-    
-    if (Fullscreen) {
-      // If a target output is specified, we need to move the
-      // window to that output first while in windowed mode.
-      if (pTarget != nullptr) {
-        DXGI_OUTPUT_DESC outputDesc;
-        
-        if (FAILED(pTarget->GetDesc(&outputDesc))) {
-          Logger::err("DxgiSwapChain::SetFullscreenState: Failed to query output properties");
-          return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
-        }
-        
-        SDL_SetWindowPosition(m_window,
-          outputDesc.DesktopCoordinates.left,
-          outputDesc.DesktopCoordinates.top);
-      }
-      
-      // Now that the window is located at the target location,
-      // SDL should fullscreen it on the requested display. We
-      // only use borderless fullscreen for now, may be changed.
-      if (SDL_SetWindowFullscreen(m_window, SDL_WINDOW_FULLSCREEN_DESKTOP)) {
-        Logger::err(str::format(
-          "DxgiSwapChain::SetFullscreenState: Failed to set fullscreen mode:\n",
-          SDL_GetError()));
-        return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
-      }
-    }
-    
-    return S_OK;
+    Logger::err("DxgiSwapChain::SetFullscreenState: Not implemented");
+    return E_NOTIMPL;
   }
   
   
-  void DxgiSwapChain::createPresenter() {
-    m_presenter = new DxgiPresenter(
-      m_device->GetDXVKDevice(),
-      m_desc.OutputWindow,
-      m_desc.BufferDesc.Width,
-      m_desc.BufferDesc.Height,
-      m_desc.BufferDesc.Format);
+  HRESULT DxgiSwapChain::CreatePresenter() {
+    try {
+      m_presenter = new DxgiPresenter(
+        m_device->GetDXVKDevice(),
+        m_desc.OutputWindow);
+      return S_OK;
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return E_FAIL;
+    }
   }
   
   
-  void DxgiSwapChain::createBackBuffer() {
+  HRESULT DxgiSwapChain::CreateBackBuffer() {
     VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT;
     
-    if (FAILED(GetSampleCount(m_desc.SampleDesc.Count, &sampleCount)))
-      throw DxvkError("DxgiSwapChain: Invalid sample count");
+    if (FAILED(GetSampleCount(m_desc.SampleDesc.Count, &sampleCount))) {
+      Logger::err("DxgiSwapChain: Invalid sample count");
+      return E_INVALIDARG;
+    }
     
-    if (FAILED(m_presentDevice->CreateSwapChainBackBuffer(&m_desc, &m_backBuffer)))
-      throw DxvkError("DxgiSwapChain: Failed to create back buffer");
+    if (FAILED(m_presentDevice->CreateSwapChainBackBuffer(&m_desc, &m_backBuffer))) {
+      Logger::err("DxgiSwapChain: Failed to create back buffer");
+      return E_FAIL;
+    }
     
-    m_presenter->updateBackBuffer(m_backBuffer->GetDXVKImage());
+    try {
+      m_presenter->updateBackBuffer(m_backBuffer->GetDXVKImage());
+      return S_OK;
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return E_FAIL;
+    }
   }
   
   
-  VkExtent2D DxgiSwapChain::getWindowSize() const {
-    int winWidth = 0;
-    int winHeight = 0;
-    
-    SDL_GetWindowSize(m_window, &winWidth, &winHeight);
+  VkExtent2D DxgiSwapChain::GetWindowSize() const {
+    RECT windowRect;
+    ::GetClientRect(m_desc.OutputWindow, &windowRect);
     
     VkExtent2D result;
-    result.width  = winWidth;
-    result.height = winHeight;
+    result.width  = windowRect.right;
+    result.height = windowRect.bottom;
     return result;
   }
   

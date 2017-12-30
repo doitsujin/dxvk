@@ -22,11 +22,8 @@ namespace dxvk {
   public:
     
     DxgiPresenter(
-      const Rc<DxvkDevice>& device,
-            HWND            window,
-            uint32_t        bufferWidth,
-            uint32_t        bufferHeight,
-            DXGI_FORMAT     bufferFormat);
+      const Rc<DxvkDevice>&          device,
+            HWND                     window);
     
     ~DxgiPresenter();
       
@@ -50,16 +47,36 @@ namespace dxvk {
      * \param [in] image Back buffer image
      */
     void updateBackBuffer(
-      const Rc<DxvkImage>&  image);
+      const Rc<DxvkImage>& image);
     
     /**
-     * \brief Renders image to the screen
-     * \param [in] view Source image view
+     * \brief Recreats Vulkan swap chain
+     * 
+     * Only actually recreates the swap chain object
+     * if any of the properties have changed. If no
+     * properties have changed, this is a no-op.
+     * \param [in] options New swap chain options
      */
     void recreateSwapchain(
-            uint32_t        bufferWidth,
-            uint32_t        bufferHeight,
-            DXGI_FORMAT     bufferFormat);
+      const DxvkSwapchainProperties& options);
+    
+    /**
+     * \brief Picks a surface format based on a DXGI format
+     * 
+     * This will return a supported format that, if possible,
+     * has properties similar to those of the DXGI format.
+     * \param [in] fmt The DXGI format
+     * \returns The Vulkan format
+     */
+    VkSurfaceFormatKHR pickSurfaceFormat(DXGI_FORMAT fmt) const;
+    
+    /**
+     * \brief Picks a supported present mode
+     * 
+     * \param [in] preferred Preferred present mode
+     * \returns An actually supported present mode
+     */
+    VkPresentModeKHR pickPresentMode(VkPresentModeKHR preferred) const;
     
   private:
     
@@ -74,13 +91,14 @@ namespace dxvk {
     Rc<DxvkSurface>     m_surface;
     Rc<DxvkSwapchain>   m_swapchain;
     
-    Rc<DxvkSampler>     m_sampler;
+    Rc<DxvkSampler>     m_samplerFitting;
+    Rc<DxvkSampler>     m_samplerScaling;
     
     Rc<DxvkImage>       m_backBuffer;
     Rc<DxvkImage>       m_backBufferResolve;
     Rc<DxvkImageView>   m_backBufferView;
     
-    VkSurfaceFormatKHR pickFormat(DXGI_FORMAT fmt) const;
+    DxvkSwapchainProperties m_options;
     
     Rc<DxvkShader> createVertexShader();
     Rc<DxvkShader> createFragmentShader();
