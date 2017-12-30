@@ -2099,6 +2099,22 @@ namespace dxvk {
     m_code.putWord(falseLabel);
   }
   
+  
+  void SpirvModule::opSwitch(
+          uint32_t                selector,
+          uint32_t                jumpDefault,
+          uint32_t                caseCount,
+    const SpirvSwitchCaseLabel*   caseLabels) {
+    m_code.putIns (spv::OpSwitch, 3 + 2 * caseCount);
+    m_code.putWord(selector);
+    m_code.putWord(jumpDefault);
+    
+    for (uint32_t i = 0; i < caseCount; i++) {
+      m_code.putWord(caseLabels[i].literal);
+      m_code.putWord(caseLabels[i].labelId);
+    }
+  }
+  
     
   void SpirvModule::opReturn() {
     m_code.putIns (spv::OpReturn, 1);

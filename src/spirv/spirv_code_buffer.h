@@ -143,9 +143,46 @@ namespace dxvk {
      */
     void store(std::ostream&& stream) const;
     
+    /**
+     * \brief Retrieves current insertion pointer
+     * 
+     * Sometimes it may be necessay to insert code into the
+     * middle of the stream rather than appending it. This
+     * retrieves the current function pointer. Note that the
+     * pointer will become invalid if any code is inserted
+     * before the current pointer location.
+     * \returns Current instruction pointr
+     */
+    size_t getInsertionPtr() const {
+      return m_ptr;
+    }
+    
+    /**
+     * \brief Sets insertion pointer to a specific value
+     * 
+     * Sets the insertion pointer to a value that was
+     * previously retrieved by \ref getInsertionPtr.
+     * \returns Current instruction pointr
+     */
+    void beginInsertion(size_t ptr) {
+      m_ptr = ptr;
+    }
+    
+    /**
+     * \brief Sets insertion pointer to the end
+     * 
+     * After this call, new instructions will be
+     * appended to the stream. In other words,
+     * this will restore default behaviour.
+     */
+    void endInsertion() {
+      m_ptr = m_code.size();
+    }
+    
   private:
     
     std::vector<uint32_t> m_code;
+    size_t m_ptr = 0;
     
   };
   

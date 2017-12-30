@@ -145,7 +145,7 @@ namespace dxvk {
   
   
   enum class DxbcCfgBlockType : uint32_t {
-    If, Loop,
+    If, Loop, Switch,
   };
   
   
@@ -165,12 +165,29 @@ namespace dxvk {
   };
   
   
+  struct DxbcSwitchLabel {
+    SpirvSwitchCaseLabel desc;
+    DxbcSwitchLabel*     next;
+  };
+  
+  
+  struct DxbcCfgBlockSwitch {
+    size_t            insertPtr;
+    uint32_t          selectorId;
+    uint32_t          labelBreak;
+    uint32_t          labelCase;
+    uint32_t          labelDefault;
+    DxbcSwitchLabel*  labelCases;
+  };
+  
+  
   struct DxbcCfgBlock {
     DxbcCfgBlockType type;
     
     union {
-      DxbcCfgBlockIf   b_if;
-      DxbcCfgBlockLoop b_loop;
+      DxbcCfgBlockIf     b_if;
+      DxbcCfgBlockLoop   b_loop;
+      DxbcCfgBlockSwitch b_switch;
     };
   };
   
@@ -433,6 +450,18 @@ namespace dxvk {
     void emitControlFlowEndIf(
       const DxbcShaderInstruction&  ins);
     
+    void emitControlFlowSwitch(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitControlFlowCase(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitControlFlowDefault(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitControlFlowEndSwitch(
+      const DxbcShaderInstruction&  ins);
+    
     void emitControlFlowLoop(
       const DxbcShaderInstruction&  ins);
     
@@ -649,7 +678,8 @@ namespace dxvk {
     
     ////////////////
     // Misc methods
-    DxbcCfgBlock* cfgFindLoopBlock();
+    DxbcCfgBlock* cfgFindBlock(
+      const std::initializer_list<DxbcCfgBlockType>& types);
     
     DxbcBufferInfo getBufferInfo(
       const DxbcRegister& reg);

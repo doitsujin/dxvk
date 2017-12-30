@@ -9,7 +9,8 @@ namespace dxvk {
   SpirvCodeBuffer::~SpirvCodeBuffer() { }
   
   
-  SpirvCodeBuffer::SpirvCodeBuffer(uint32_t size, const uint32_t* data) {
+  SpirvCodeBuffer::SpirvCodeBuffer(uint32_t size, const uint32_t* data)
+  : m_ptr(size) {
     m_code.resize(size);
     std::memcpy(m_code.data(), data, size * sizeof(uint32_t));
   }
@@ -28,6 +29,8 @@ namespace dxvk {
     m_code.resize(buffer.size() / sizeof(uint32_t));
     std::memcpy(reinterpret_cast<char*>(m_code.data()),
       buffer.data(), m_code.size() * sizeof(uint32_t));
+    
+    m_ptr = m_code.size();
   }
   
   
@@ -40,12 +43,14 @@ namespace dxvk {
       const uint32_t* src = other.m_code.data();
       
       std::memcpy(dst + size, src, other.size());
+      m_ptr += other.m_code.size();
     }
   }
   
   
   void SpirvCodeBuffer::putWord(uint32_t word) {
-    m_code.push_back(word);
+    m_code.insert(m_code.begin() + m_ptr, word);
+    m_ptr += 1;
   }
   
   

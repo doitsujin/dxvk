@@ -42,7 +42,7 @@ namespace dxvk {
     /* Cut                                  */
     { 0, DxbcInstClass::GeometryEmit },
     /* Default                              */
-    { },
+    { 0, DxbcInstClass::ControlFlow },
     /* DerivRtx                             */
     { 2, DxbcInstClass::VectorDeriv, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },

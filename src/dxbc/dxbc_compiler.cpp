@@ -2280,6 +2280,109 @@ namespace dxvk {
   }
   
   
+  void DxbcCompiler::emitControlFlowSwitch(const DxbcShaderInstruction& ins) {
+    // Load the selector as a scalar unsigned integer
+    const DxbcRegisterValue selector = emitRegisterLoad(
+      ins.src[0], DxbcRegMask(true, false, false, false));
+    
+    // Declare switch block. We cannot insert the switch
+    // instruction itself yet because the number of case
+    // statements and blocks is unknown at this point.
+    DxbcCfgBlock block;
+    block.type = DxbcCfgBlockType::Switch;
+    block.b_switch.insertPtr    = m_module.getInsertionPtr();
+    block.b_switch.selectorId   = selector.id;
+    block.b_switch.labelBreak   = m_module.allocateId();
+    block.b_switch.labelCase    = m_module.allocateId();
+    block.b_switch.labelDefault = 0;
+    block.b_switch.labelCases   = nullptr;
+    m_controlFlowBlocks.push_back(block);
+    
+    // Define the first 'case' label
+    m_module.opLabel(block.b_switch.labelCase);
+  }
+  
+  
+  void DxbcCompiler::emitControlFlowCase(const DxbcShaderInstruction& ins) {
+    if (m_controlFlowBlocks.size() == 0
+     || m_controlFlowBlocks.back().type != DxbcCfgBlockType::Switch)
+      throw DxvkError("DxbcCompiler: 'Case' without 'Switch' found");
+    
+    // The source operand must be a 32-bit immediate.
+    if (ins.src[0].type != DxbcOperandType::Imm32)
+      throw DxvkError("DxbcCompiler: Invalid operand type for 'Case'");
+    
+    // Use the last label allocated for 'case'. The block starting
+    // with that label is guaranteed to be empty unless a previous
+    // 'case' block was not properly closed in the DXBC shader.
+    DxbcCfgBlockSwitch* block = &m_controlFlowBlocks.back().b_switch;
+    
+    DxbcSwitchLabel label;
+    label.desc.literal = ins.src[0].imm.u32_1;
+    label.desc.labelId = block->labelCase;
+    label.next = block->labelCases;
+    block->labelCases = new DxbcSwitchLabel(label);
+  }
+  
+  
+  void DxbcCompiler::emitControlFlowDefault(const DxbcShaderInstruction& ins) {
+    if (m_controlFlowBlocks.size() == 0
+     || m_controlFlowBlocks.back().type != DxbcCfgBlockType::Switch)
+      throw DxvkError("DxbcCompiler: 'Default' without 'Switch' found");
+    
+    // Set the last label allocated for 'case' as the default label.
+    m_controlFlowBlocks.back().b_switch.labelDefault
+      = m_controlFlowBlocks.back().b_switch.labelCase;
+  }
+  
+  
+  void DxbcCompiler::emitControlFlowEndSwitch(const DxbcShaderInstruction& ins) {
+    if (m_controlFlowBlocks.size() == 0
+     || m_controlFlowBlocks.back().type != DxbcCfgBlockType::Switch)
+      throw DxvkError("DxbcCompiler: 'EndSwitch' without 'Switch' found");
+    
+    // Remove the block from the stack, it's closed
+    DxbcCfgBlock block = m_controlFlowBlocks.back();
+    m_controlFlowBlocks.pop_back();
+    
+    // If no 'default' label was specified, use the last allocated
+    // 'case' label. This is guaranteed to be an empty block unless
+    // a previous 'case' block was not closed properly.
+    if (block.b_switch.labelDefault == 0)
+      block.b_switch.labelDefault = block.b_switch.labelCase;
+    
+    // Close the current 'case' block
+    m_module.opBranch(block.b_switch.labelBreak);
+    m_module.opLabel (block.b_switch.labelBreak);
+    
+    // Insert the 'switch' statement. For that, we need to
+    // gather all the literal-label pairs for the construct.
+    m_module.beginInsertion(block.b_switch.insertPtr);
+    m_module.opSelectionMerge(
+      block.b_switch.labelBreak,
+      spv::SelectionControlMaskNone);
+    
+    // We'll restore the original order of the case labels here
+    std::vector<SpirvSwitchCaseLabel> jumpTargets;
+    for (auto i = block.b_switch.labelCases; i != nullptr; i = i->next)
+      jumpTargets.insert(jumpTargets.begin(), i->desc);
+    
+    m_module.opSwitch(
+      block.b_switch.selectorId,
+      block.b_switch.labelDefault,
+      jumpTargets.size(),
+      jumpTargets.data());
+    m_module.endInsertion();
+    
+    // Destroy the list of case labels
+    // FIXME we're leaking memory if compilation fails.
+    DxbcSwitchLabel* caseLabel = block.b_switch.labelCases;
+    
+    while (caseLabel != nullptr)
+      delete std::exchange(caseLabel, caseLabel->next);
+  }
+  
+    
   void DxbcCompiler::emitControlFlowLoop(const DxbcShaderInstruction& ins) {
     // Declare the 'loop' block
     DxbcCfgBlock block;
@@ -2325,25 +2428,42 @@ namespace dxvk {
   void DxbcCompiler::emitControlFlowBreak(const DxbcShaderInstruction& ins) {
     const bool isBreak = ins.op == DxbcOpcode::Break;
     
-    DxbcCfgBlock* loopBlock = cfgFindLoopBlock();
+    DxbcCfgBlock* cfgBlock = isBreak
+      ? cfgFindBlock({ DxbcCfgBlockType::Loop, DxbcCfgBlockType::Switch })
+      : cfgFindBlock({ DxbcCfgBlockType::Loop });
     
-    if (loopBlock == nullptr)
-      throw DxvkError("DxbcCompiler: 'Break' or 'Continue' outside 'Loop' found");
+    if (cfgBlock == nullptr)
+      throw DxvkError("DxbcCompiler: 'Break' or 'Continue' outside 'Loop' or 'Switch' found");
     
-    m_module.opBranch(isBreak
-      ? loopBlock->b_loop.labelBreak
-      : loopBlock->b_loop.labelContinue);
-    m_module.opLabel (m_module.allocateId());
+    if (cfgBlock->type == DxbcCfgBlockType::Loop) {
+      m_module.opBranch(isBreak
+        ? cfgBlock->b_loop.labelBreak
+        : cfgBlock->b_loop.labelContinue);
+    } else /* if (cfgBlock->type == DxbcCfgBlockType::Switch) */ {
+      m_module.opBranch(cfgBlock->b_switch.labelBreak);
+    }
+    
+    // Subsequent instructions assume that there is an open block
+    const uint32_t labelId = m_module.allocateId();
+    m_module.opLabel(labelId);
+    
+    // If this is on the same level as a switch-case construct,
+    // rather than being nested inside an 'if' statement, close
+    // the current 'case' block.
+    if (m_controlFlowBlocks.back().type == DxbcCfgBlockType::Switch)
+      cfgBlock->b_switch.labelCase = labelId;
   }
   
-    
+  
   void DxbcCompiler::emitControlFlowBreakc(const DxbcShaderInstruction& ins) {
     const bool isBreak = ins.op == DxbcOpcode::Breakc;
     
-    DxbcCfgBlock* loopBlock = cfgFindLoopBlock();
+    DxbcCfgBlock* cfgBlock = isBreak
+      ? cfgFindBlock({ DxbcCfgBlockType::Loop, DxbcCfgBlockType::Switch })
+      : cfgFindBlock({ DxbcCfgBlockType::Loop });
     
-    if (loopBlock == nullptr)
-      throw DxvkError("DxbcCompiler: 'Breakc' or 'Continuec' outside 'Loop' found");
+    if (cfgBlock == nullptr)
+      throw DxvkError("DxbcCompiler: 'Breakc' or 'Continuec' outside 'Loop' or 'Switch' found");
     
     // Perform zero test on the first component of the condition
     const DxbcRegisterValue condition = emitRegisterLoad(
@@ -2363,18 +2483,26 @@ namespace dxvk {
       zeroTest.id, breakBlock, mergeBlock);
     
     m_module.opLabel(breakBlock);
-    m_module.opBranch(isBreak
-      ? loopBlock->b_loop.labelBreak
-      : loopBlock->b_loop.labelContinue);
+    
+    if (cfgBlock->type == DxbcCfgBlockType::Loop) {
+      m_module.opBranch(isBreak
+        ? cfgBlock->b_loop.labelBreak
+        : cfgBlock->b_loop.labelContinue);
+    } else /* if (cfgBlock->type == DxbcCfgBlockType::Switch) */ {
+      m_module.opBranch(cfgBlock->b_switch.labelBreak);
+    }
     
     m_module.opLabel(mergeBlock);
   }
   
   
   void DxbcCompiler::emitControlFlowRet(const DxbcShaderInstruction& ins) {
-    // TODO implement properly
     m_module.opReturn();
-    m_module.functionEnd();
+    
+    if (m_controlFlowBlocks.size() == 0)
+      m_module.functionEnd();
+    else
+      m_module.opLabel(m_module.allocateId());
   }
   
     
@@ -2415,6 +2543,18 @@ namespace dxvk {
         
       case DxbcOpcode::EndIf:
         return this->emitControlFlowEndIf(ins);
+        
+      case DxbcOpcode::Switch:
+        return this->emitControlFlowSwitch(ins);
+        
+      case DxbcOpcode::Case:
+        return this->emitControlFlowCase(ins);
+        
+      case DxbcOpcode::Default:
+        return this->emitControlFlowDefault(ins);
+        
+      case DxbcOpcode::EndSwitch:
+        return this->emitControlFlowEndSwitch(ins);
         
       case DxbcOpcode::Loop:
         return this->emitControlFlowLoop(ins);
@@ -3714,11 +3854,14 @@ namespace dxvk {
   }
   
   
-  DxbcCfgBlock* DxbcCompiler::cfgFindLoopBlock() {
+  DxbcCfgBlock* DxbcCompiler::cfgFindBlock(
+    const std::initializer_list<DxbcCfgBlockType>& types) {
     for (auto cur =  m_controlFlowBlocks.rbegin();
               cur != m_controlFlowBlocks.rend(); cur++) {
-      if (cur->type == DxbcCfgBlockType::Loop)
-        return &(*cur);
+      for (auto type : types) {
+        if (cur->type == type)
+          return &(*cur);
+      }
     }
     
     return nullptr;

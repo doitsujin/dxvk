@@ -34,7 +34,6 @@ namespace dxvk {
     const std::string& semanticName,
           uint32_t     semanticIndex) const {
     for (auto e = this->begin(); e != this->end(); e++) {
-      // TODO case-insensitive compare
       if (e->semanticIndex == semanticIndex
        && compareSemanticNames(semanticName, e->semanticName))
         return &(*e);

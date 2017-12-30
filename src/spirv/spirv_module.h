@@ -4,6 +4,11 @@
 
 namespace dxvk {
   
+  struct SpirvSwitchCaseLabel {
+    uint32_t literal       = 0;
+    uint32_t labelId       = 0;
+  };
+  
   struct SpirvImageOperands {
     uint32_t flags         = 0;
     uint32_t sLodBias      = 0;
@@ -33,6 +38,18 @@ namespace dxvk {
     ~SpirvModule();
     
     SpirvCodeBuffer compile() const;
+    
+    size_t getInsertionPtr() {
+      return m_code.getInsertionPtr();
+    }
+    
+    void beginInsertion(size_t ptr) {
+      m_code.beginInsertion(ptr);
+    }
+    
+    void endInsertion() {
+      m_code.endInsertion();
+    }
     
     uint32_t allocateId();
     
@@ -719,6 +736,13 @@ namespace dxvk {
             uint32_t                condition,
             uint32_t                trueLabel,
             uint32_t                falseLabel);
+    
+    void opSwitch(
+            uint32_t                selector,
+            uint32_t                jumpDefault,
+            uint32_t                caseCount,
+      const SpirvSwitchCaseLabel*   caseLabels);
+            
     
     void opReturn();
     
