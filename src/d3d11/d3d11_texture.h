@@ -173,6 +173,14 @@ namespace dxvk {
           ID3D11Resource*       pResource,
           D3D11TextureInfo*     pTextureInfo);
   
+  /**
+   * \brief Computes image subresource from subresource index
+   * 
+   * \param [in] Aspect Image aspect mask
+   * \param [in] MipLevels Total number of mip levels that the image has
+   * \param [in] Subresource The D3D11 subresource index
+   * \returns Vulkan image subresource info
+   */
   VkImageSubresource GetSubresourceFromIndex(
           VkImageAspectFlags    Aspect,
           UINT                  MipLevels,

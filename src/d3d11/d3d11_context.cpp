@@ -386,17 +386,15 @@ namespace dxvk {
           dstFormatInfo->aspectMask & srcFormatInfo->aspectMask,
           srcTextureInfo.image->info().mipLevels, SrcSubresource);
       
-      VkImageSubresourceLayers dstLayers;
-      dstLayers.aspectMask     = dstSubresource.aspectMask;
-      dstLayers.mipLevel       = dstSubresource.mipLevel;
-      dstLayers.baseArrayLayer = dstSubresource.arrayLayer;
-      dstLayers.layerCount     = 1;
+      const VkImageSubresourceLayers dstLayers = {
+        dstSubresource.aspectMask,
+        dstSubresource.mipLevel,
+        dstSubresource.arrayLayer, 1 };
       
-      VkImageSubresourceLayers srcLayers;
-      srcLayers.aspectMask     = srcSubresource.aspectMask;
-      srcLayers.mipLevel       = srcSubresource.mipLevel;
-      srcLayers.baseArrayLayer = srcSubresource.arrayLayer;
-      srcLayers.layerCount     = 1;
+      const VkImageSubresourceLayers srcLayers = {
+        srcSubresource.aspectMask,
+        srcSubresource.mipLevel,
+        srcSubresource.arrayLayer, 1 };
       
       m_context->copyImage(
         dstTextureInfo.image, dstLayers, dstOffset,
@@ -725,14 +723,20 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeviceContext::DrawIndexedInstancedIndirect(
           ID3D11Buffer*   pBufferForArgs,
           UINT            AlignedByteOffsetForArgs) {
-    Logger::err("D3D11DeviceContext::DrawIndexedInstancedIndirect: Not implemented");
+    static bool errorShown = false;
+    
+    if (!std::exchange(errorShown, true))
+      Logger::err("D3D11DeviceContext::DrawIndexedInstancedIndirect: Not implemented");
   }
   
   
   void STDMETHODCALLTYPE D3D11DeviceContext::DrawInstancedIndirect(
           ID3D11Buffer*   pBufferForArgs,
           UINT            AlignedByteOffsetForArgs) {
-    Logger::err("D3D11DeviceContext::DrawInstancedIndirect: Not implemented");
+    static bool errorShown = false;
+    
+    if (!std::exchange(errorShown, true))
+      Logger::err("D3D11DeviceContext::DrawInstancedIndirect: Not implemented");
   }
   
   
@@ -750,7 +754,10 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeviceContext::DispatchIndirect(
           ID3D11Buffer*   pBufferForArgs,
           UINT            AlignedByteOffsetForArgs) {
-    Logger::err("D3D11DeviceContext::DispatchIndirect: Not implemented");
+    static bool errorShown = false;
+    
+    if (!std::exchange(errorShown, true))
+      Logger::err("D3D11DeviceContext::DispatchIndirect: Not implemented");
   }
   
   
