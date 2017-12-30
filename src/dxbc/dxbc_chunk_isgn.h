@@ -46,6 +46,10 @@ namespace dxvk {
     
     std::vector<DxbcSgnEntry> m_entries;
     
+    bool compareSemanticNames(
+      const std::string& a,
+      const std::string& b) const;
+    
   };
   
 }

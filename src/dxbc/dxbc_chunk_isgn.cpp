@@ -34,12 +34,27 @@ namespace dxvk {
     const std::string& semanticName,
           uint32_t     semanticIndex) const {
     for (auto e = this->begin(); e != this->end(); e++) {
-      if (e->semanticName  == semanticName
-       && e->semanticIndex == semanticIndex)
+      // TODO case-insensitive compare
+      if (e->semanticIndex == semanticIndex
+       && compareSemanticNames(semanticName, e->semanticName))
         return &(*e);
     }
     
     return nullptr;
+  }
+  
+  
+  bool DxbcIsgn::compareSemanticNames(
+    const std::string& a, const std::string& b) const {
+    if (a.size() != b.size())
+      return false;
+    
+    for (size_t i = 0; i < a.size(); i++) {
+      if (std::toupper(a[i]) != std::toupper(b[i]))
+        return false;
+    }
+    
+    return true;
   }
   
 }
