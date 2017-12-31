@@ -146,11 +146,21 @@ namespace dxvk {
             uint32_t                y,
             uint32_t                z);
     
+    void cmdDispatchIndirect(
+            VkBuffer                buffer,
+            VkDeviceSize            offset);
+    
     void cmdDraw(
             uint32_t                vertexCount,
             uint32_t                instanceCount,
             uint32_t                firstVertex,
             uint32_t                firstInstance);
+    
+    void cmdDrawIndirect(
+            VkBuffer                buffer,
+            VkDeviceSize            offset,
+            uint32_t                drawCount,
+            uint32_t                stride);
     
     void cmdDrawIndexed(
             uint32_t                indexCount,
@@ -158,6 +168,12 @@ namespace dxvk {
             uint32_t                firstIndex,
             uint32_t                vertexOffset,
             uint32_t                firstInstance);
+    
+    void cmdDrawIndexedIndirect(
+            VkBuffer                buffer,
+            VkDeviceSize            offset,
+            uint32_t                drawCount,
+            uint32_t                stride);
     
     void cmdEndRenderPass();
     

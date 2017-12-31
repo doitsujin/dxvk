@@ -723,20 +723,20 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeviceContext::DrawIndexedInstancedIndirect(
           ID3D11Buffer*   pBufferForArgs,
           UINT            AlignedByteOffsetForArgs) {
-    static bool errorShown = false;
+    D3D11Buffer* buffer = static_cast<D3D11Buffer*>(pBufferForArgs);
+    DxvkBufferSlice bufferSlice = buffer->GetBufferSlice(AlignedByteOffsetForArgs);
     
-    if (!std::exchange(errorShown, true))
-      Logger::err("D3D11DeviceContext::DrawIndexedInstancedIndirect: Not implemented");
+    m_context->drawIndexedIndirect(bufferSlice, 1, 0);
   }
   
   
   void STDMETHODCALLTYPE D3D11DeviceContext::DrawInstancedIndirect(
           ID3D11Buffer*   pBufferForArgs,
           UINT            AlignedByteOffsetForArgs) {
-    static bool errorShown = false;
+    D3D11Buffer* buffer = static_cast<D3D11Buffer*>(pBufferForArgs);
+    DxvkBufferSlice bufferSlice = buffer->GetBufferSlice(AlignedByteOffsetForArgs);
     
-    if (!std::exchange(errorShown, true))
-      Logger::err("D3D11DeviceContext::DrawInstancedIndirect: Not implemented");
+    m_context->drawIndirect(bufferSlice, 1, 0);
   }
   
   
@@ -754,10 +754,10 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeviceContext::DispatchIndirect(
           ID3D11Buffer*   pBufferForArgs,
           UINT            AlignedByteOffsetForArgs) {
-    static bool errorShown = false;
+    D3D11Buffer* buffer = static_cast<D3D11Buffer*>(pBufferForArgs);
+    DxvkBufferSlice bufferSlice = buffer->GetBufferSlice(AlignedByteOffsetForArgs);
     
-    if (!std::exchange(errorShown, true))
-      Logger::err("D3D11DeviceContext::DispatchIndirect: Not implemented");
+    m_context->dispatchIndirect(bufferSlice);
   }
   
   

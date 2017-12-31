@@ -239,6 +239,14 @@ namespace dxvk {
   }
   
   
+  void DxvkCommandList::cmdDispatchIndirect(
+          VkBuffer                buffer,
+          VkDeviceSize            offset) {
+    m_vkd->vkCmdDispatchIndirect(
+      m_buffer, buffer, offset);
+  }
+  
+  
   void DxvkCommandList::cmdDraw(
           uint32_t                vertexCount,
           uint32_t                instanceCount,
@@ -247,6 +255,16 @@ namespace dxvk {
     m_vkd->vkCmdDraw(m_buffer,
       vertexCount, instanceCount,
       firstVertex, firstInstance);
+  }
+  
+  
+  void DxvkCommandList::cmdDrawIndirect(
+          VkBuffer                buffer,
+          VkDeviceSize            offset,
+          uint32_t                drawCount,
+          uint32_t                stride) {
+    m_vkd->vkCmdDrawIndirect(m_buffer,
+      buffer, offset, drawCount, stride);
   }
   
   
@@ -260,6 +278,16 @@ namespace dxvk {
       indexCount, instanceCount,
       firstIndex, vertexOffset,
       firstInstance);
+  }
+  
+  
+  void DxvkCommandList::cmdDrawIndexedIndirect(
+          VkBuffer                buffer,
+          VkDeviceSize            offset,
+          uint32_t                drawCount,
+          uint32_t                stride) {
+    m_vkd->vkCmdDrawIndexedIndirect(m_buffer,
+      buffer, offset, drawCount, stride);
   }
   
   

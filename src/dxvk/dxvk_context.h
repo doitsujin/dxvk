@@ -218,6 +218,16 @@ namespace dxvk {
             uint32_t z);
     
     /**
+     * \brief Indirect dispatch call
+     * 
+     * Takes arguments from a buffer. The buffer must contain
+     * a structure of the type \c VkDispatchIndirectCommand.
+     * \param [in] buffer The buffer slice
+     */
+    void dispatchIndirect(
+      const DxvkBufferSlice&  buffer);
+    
+    /**
      * \brief Draws primitive without using an index buffer
      * 
      * \param [in] vertexCount Number of vertices to draw
@@ -230,6 +240,20 @@ namespace dxvk {
             uint32_t instanceCount,
             uint32_t firstVertex,
             uint32_t firstInstance);
+    
+    /**
+     * \brief Indirect indexed draw call
+     * 
+     * Takes arguments from a buffer. The structure stored
+     * in the buffer must be of type \c VkDrawIndirectCommand.
+     * \param [in] buffer The buffer slice
+     * \param [in] count Number of dispatch calls
+     * \param [in] stride Stride between dispatch calls
+     */
+    void drawIndirect(
+      const DxvkBufferSlice&  buffer,
+            uint32_t          count,
+            uint32_t          stride);
     
     /**
      * \brief Draws primitives using an index buffer
@@ -246,6 +270,20 @@ namespace dxvk {
             uint32_t firstIndex,
             uint32_t vertexOffset,
             uint32_t firstInstance);
+    
+    /**
+     * \brief Indirect indexed draw call
+     * 
+     * Takes arguments from a buffer. The structure type for
+     * the draw buffer is \c VkDrawIndexedIndirectCommand.
+     * \param [in] buffer The buffer slice
+     * \param [in] count Number of dispatch calls
+     * \param [in] stride Stride between dispatch calls
+     */
+    void drawIndexedIndirect(
+      const DxvkBufferSlice&  buffer,
+            uint32_t          count,
+            uint32_t          stride);
     
     /**
      * \brief Initializes or invalidates an image

@@ -381,6 +381,18 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::dispatchIndirect(
+    const DxvkBufferSlice&  buffer) {
+    this->commitComputeState();
+    
+    m_cmd->cmdDispatchIndirect(
+      buffer.handle(),
+      buffer.offset());
+    
+    this->commitComputeBarriers();
+  }
+  
+  
   void DxvkContext::draw(
           uint32_t vertexCount,
           uint32_t instanceCount,
@@ -391,6 +403,19 @@ namespace dxvk {
     m_cmd->cmdDraw(
       vertexCount, instanceCount,
       firstVertex, firstInstance);
+  }
+  
+  
+  void DxvkContext::drawIndirect(
+    const DxvkBufferSlice&  buffer,
+          uint32_t          count,
+          uint32_t          stride) {
+    this->commitGraphicsState();
+    
+    m_cmd->cmdDrawIndirect(
+      buffer.handle(),
+      buffer.offset(),
+      count, stride);
   }
   
   
@@ -406,6 +431,19 @@ namespace dxvk {
       indexCount, instanceCount,
       firstIndex, vertexOffset,
       firstInstance);
+  }
+  
+  
+  void DxvkContext::drawIndexedIndirect(
+    const DxvkBufferSlice&  buffer,
+          uint32_t          count,
+          uint32_t          stride) {
+    this->commitGraphicsState();
+    
+    m_cmd->cmdDrawIndexedIndirect(
+      buffer.handle(),
+      buffer.offset(),
+      count, stride);
   }
   
   
