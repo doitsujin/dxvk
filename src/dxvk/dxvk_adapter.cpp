@@ -204,6 +204,7 @@ namespace dxvk {
       VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME,
       VK_KHR_SWAPCHAIN_EXTENSION_NAME,
       VK_KHR_MAINTENANCE1_EXTENSION_NAME,
+      VK_KHR_MAINTENANCE2_EXTENSION_NAME,
     };
     
     const vk::NameSet extensionsAvailable
