@@ -391,8 +391,86 @@ namespace dxvk {
         return E_FAIL;
       }
     } else {
-      Logger::err("D3D11Device::CreateUnorderedAccessView: Images not supported yet");
-      return E_NOTIMPL;
+      // Retrieve info about the image
+      D3D11TextureInfo textureInfo;
+      
+      if (FAILED(GetCommonTextureInfo(pResource, &textureInfo))) {
+        Logger::err("D3D11Device: Cannot create unordered access view: Invalid texture");
+        return E_INVALIDARG;
+      }
+      
+      // Fill in the view info. The view type depends solely
+      // on the view dimension field in the view description,
+      // not on the resource type.
+      const DxgiFormatInfo formatInfo = m_dxgiAdapter
+        ->LookupFormat(desc.Format, textureInfo.formatMode);
+      
+      DxvkImageViewCreateInfo viewInfo;
+      viewInfo.format  = formatInfo.format;
+      viewInfo.aspect  = formatInfo.aspect;
+      viewInfo.swizzle = formatInfo.swizzle;
+      
+      switch (desc.ViewDimension) {
+        case D3D11_UAV_DIMENSION_TEXTURE1D:
+          viewInfo.type      = VK_IMAGE_VIEW_TYPE_1D;
+          viewInfo.minLevel  = desc.Texture1D.MipSlice;
+          viewInfo.numLevels = 1;
+          viewInfo.minLayer  = 0;
+          viewInfo.numLayers = 1;
+          break;
+          
+        case D3D11_UAV_DIMENSION_TEXTURE1DARRAY:
+          viewInfo.type      = VK_IMAGE_VIEW_TYPE_1D_ARRAY;
+          viewInfo.minLevel  = desc.Texture1DArray.MipSlice;
+          viewInfo.numLevels = 1;
+          viewInfo.minLayer  = desc.Texture1DArray.FirstArraySlice;
+          viewInfo.numLayers = desc.Texture1DArray.ArraySize;
+          break;
+          
+        case D3D11_UAV_DIMENSION_TEXTURE2D:
+          viewInfo.type      = VK_IMAGE_VIEW_TYPE_2D;
+          viewInfo.minLevel  = desc.Texture2D.MipSlice;
+          viewInfo.numLevels = 1;
+          viewInfo.minLayer  = 0;
+          viewInfo.numLayers = 1;
+          break;
+          
+        case D3D11_UAV_DIMENSION_TEXTURE2DARRAY:
+          viewInfo.type      = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+          viewInfo.minLevel  = desc.Texture2DArray.MipSlice;
+          viewInfo.numLevels = 1;
+          viewInfo.minLayer  = desc.Texture2DArray.FirstArraySlice;
+          viewInfo.numLayers = desc.Texture2DArray.ArraySize;
+          break;
+          
+        case D3D11_UAV_DIMENSION_TEXTURE3D:
+          viewInfo.type      = VK_IMAGE_VIEW_TYPE_3D;
+          viewInfo.minLevel  = desc.Texture3D.MipSlice;
+          viewInfo.numLevels = 1;
+          viewInfo.minLayer  = 0;
+          viewInfo.numLayers = 1;
+          break;
+          
+        default:
+          Logger::err(str::format(
+            "D3D11: View dimension not supported for SRV: ",
+            desc.ViewDimension));
+          return E_INVALIDARG;
+      }
+      
+      if (ppUAView == nullptr)
+        return S_FALSE;
+      
+      try {
+        *ppUAView = ref(new D3D11UnorderedAccessView(
+          this, pResource, desc,
+          m_dxvkDevice->createImageView(
+            textureInfo.image, viewInfo)));
+        return S_OK;
+      } catch (const DxvkError& e) {
+        Logger::err(e.message());
+        return E_FAIL;
+      }
     }
   }
   
