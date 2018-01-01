@@ -38,6 +38,9 @@ namespace dxvk {
     auto begin() const { return m_entries.cbegin(); }
     auto end  () const { return m_entries.cend();   }
     
+    const DxbcSgnEntry* findByRegister(
+            uint32_t     registerId) const;
+    
     const DxbcSgnEntry* find(
       const std::string& semanticName,
             uint32_t     semanticIndex) const;

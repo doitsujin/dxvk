@@ -30,6 +30,16 @@ namespace dxvk {
   }
   
   
+  const DxbcSgnEntry* DxbcIsgn::findByRegister(uint32_t registerId) const {
+    for (auto e = this->begin(); e != this->end(); e++) {
+      if (e->registerId == registerId)
+        return &(*e);
+    }
+    
+    return nullptr;
+  }
+  
+  
   const DxbcSgnEntry* DxbcIsgn::find(
     const std::string& semanticName,
           uint32_t     semanticIndex) const {

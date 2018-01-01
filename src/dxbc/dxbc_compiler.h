@@ -693,6 +693,9 @@ namespace dxvk {
     DxbcRegMask getTexCoordMask(
       const DxbcImageInfo& imageType) const;
     
+    DxbcVectorType getInputRegType(
+            uint32_t regIdx) const;
+    
     ///////////////////////////
     // Type definition methods
     uint32_t getScalarTypeId(

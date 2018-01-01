@@ -428,9 +428,11 @@ namespace dxvk {
     // This may happen when multiple system values are
     // mapped to different parts of the same register.
     if (m_vRegs.at(regIdx) == 0 && sv == DxbcSystemValue::None) {
+      const DxbcVectorType regType = getInputRegType(regIdx);
+      
       DxbcRegisterInfo info;
-      info.type.ctype   = DxbcScalarType::Float32;
-      info.type.ccount  = 4;
+      info.type.ctype   = regType.ctype;
+      info.type.ccount  = regType.ccount;
       info.type.alength = regDim;
       info.sclass = spv::StorageClassInput;
       
@@ -3424,7 +3426,9 @@ namespace dxvk {
         const uint32_t registerId = m_module.consti32(i);
         m_module.opStore(
           m_module.opAccessChain(ptrTypeId, m_vArray, 1, &registerId),
-          m_module.opLoad(vecTypeId, m_vRegs.at(i)));
+          m_module.opBitcast(vecTypeId, m_module.opLoad(
+            getVectorTypeId(getInputRegType(i)),
+            m_vRegs.at(i))));
       }
     }
     
@@ -3471,9 +3475,10 @@ namespace dxvk {
           m_module.opStore(
             m_module.opAccessChain(dstPtrTypeId,
               m_vArray, indices.size(), indices.data()),
-            m_module.opLoad(vecTypeId,
+            m_module.opBitcast(vecTypeId, m_module.opLoad(
+              getVectorTypeId(getInputRegType(i)),
               m_module.opAccessChain(srcPtrTypeId,
-                m_vRegs.at(i), 1, indices.data())));
+                m_vRegs.at(i), 1, indices.data()))));
         }
       }
     }
@@ -4011,6 +4016,23 @@ namespace dxvk {
     }();
     
     return DxbcRegMask::firstN(imageLayerDim + imageType.array);
+  }
+  
+  
+  DxbcVectorType DxbcCompiler::getInputRegType(uint32_t regIdx) const {
+    DxbcVectorType result;
+    result.ctype  = DxbcScalarType::Float32;
+    result.ccount = 4;
+    
+    // Vertex shader inputs must match the type of the input layout
+    if (m_version.type() == DxbcProgramType::VertexShader) {
+      const DxbcSgnEntry* entry = m_isgn->findByRegister(regIdx);
+      
+      if (entry != nullptr)
+        result.ctype = entry->componentType;
+    }
+    
+    return result;
   }
   
   
