@@ -94,6 +94,7 @@ namespace dxvk {
     dsState.stencilOpBack     = stencilOp;
     dsState.depthBoundsMin    = 0.0f;
     dsState.depthBoundsMax    = 1.0f;
+    m_context->setDepthStencilState(dsState);
     
     DxvkLogicOpState loState;
     loState.enableLogicOp = VK_FALSE;
