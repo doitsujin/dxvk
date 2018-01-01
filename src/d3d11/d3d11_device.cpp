@@ -1058,7 +1058,7 @@ namespace dxvk {
       return S_FALSE;
     
     try {
-      *ppQuery = new D3D11Query(this, *pQueryDesc);
+      *ppQuery = ref(new D3D11Query(this, *pQueryDesc));
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());

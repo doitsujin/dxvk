@@ -76,4 +76,29 @@ namespace dxvk {
     *pDesc = m_desc;
   }
   
+  
+  HRESULT STDMETHODCALLTYPE D3D11Query::GetData(
+          void*                             pData,
+          UINT                              GetDataFlags) {
+    static bool errorShown = false;
+    
+    if (!std::exchange(errorShown, true))
+      Logger::warn("D3D11Query::GetData: Stub");
+    
+    if (pData == nullptr)
+      return S_OK;
+    
+    switch (m_desc.Query) {
+      case D3D11_QUERY_OCCLUSION:
+        *static_cast<UINT64*>(pData) = 1;
+        return S_OK;
+        
+      case D3D11_QUERY_OCCLUSION_PREDICATE:
+        *static_cast<BOOL*>(pData) = TRUE;
+        return S_OK;
+        
+      default: return E_INVALIDARG;
+    }
+  }
+  
 }

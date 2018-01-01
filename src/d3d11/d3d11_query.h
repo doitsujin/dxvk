@@ -26,6 +26,10 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc(
             D3D11_QUERY_DESC *pDesc) final;
     
+    HRESULT STDMETHODCALLTYPE GetData(
+            void*                             pData,
+            UINT                              GetDataFlags);
+    
   private:
     
     D3D11Device* const m_device;

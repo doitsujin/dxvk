@@ -2,6 +2,7 @@
 
 #include "d3d11_context.h"
 #include "d3d11_device.h"
+#include "d3d11_query.h"
 #include "d3d11_texture.h"
 
 #include "../dxbc/dxbc_util.h"
@@ -299,8 +300,21 @@ namespace dxvk {
           void*                             pData,
           UINT                              DataSize,
           UINT                              GetDataFlags) {
-    Logger::err("D3D11DeviceContext::GetData: Not implemented");
-    return E_NOTIMPL;
+    if (pAsync->GetDataSize() != DataSize) {
+      Logger::err("D3D11DeviceContext: GetData: Data size mismatch");
+      return E_INVALIDARG;
+    }
+    
+    // This method handles various different but incompatible interfaces,
+    // so we have to find out what we are actually dealing with
+    Com<ID3D11Query> query;
+    
+    if (SUCCEEDED(pAsync->QueryInterface(__uuidof(ID3D11Query), reinterpret_cast<void**>(&query))))
+      return static_cast<D3D11Query*>(query.ptr())->GetData(pData, GetDataFlags);
+    
+    // The interface is not supported
+    Logger::err("D3D11DeviceContext: GetData: Unsupported Async type");
+    return E_INVALIDARG;
   }
   
   
