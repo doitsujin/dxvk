@@ -439,6 +439,12 @@ namespace dxvk {
     void emitTextureSample(
       const DxbcShaderInstruction&  ins);
     
+    void emitTypedUavLoad(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitTypedUavStore(
+      const DxbcShaderInstruction&  ins);
+    
     /////////////////////////////////////
     // Control flow instruction handlers
     void emitControlFlowIf(
@@ -683,6 +689,9 @@ namespace dxvk {
     
     DxbcBufferInfo getBufferInfo(
       const DxbcRegister& reg);
+    
+    DxbcRegMask getTexCoordMask(
+      const DxbcImageInfo& imageType) const;
     
     ///////////////////////////
     // Type definition methods

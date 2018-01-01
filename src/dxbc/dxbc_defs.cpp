@@ -698,9 +698,17 @@ namespace dxvk {
       { DxbcOperandKind::Imm32,  DxbcScalarType::Uint32  },
     } },
     /* LdUavTyped                           */
-    { },
+    { 3, DxbcInstClass::TypedUavLoad, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32  },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32  },
+    } },
     /* StoreUavTyped                        */
-    { },
+    { 3, DxbcInstClass::TypedUavStore, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32  },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32  },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* LdRaw                                */
     { 3, DxbcInstClass::BufferLoad, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },

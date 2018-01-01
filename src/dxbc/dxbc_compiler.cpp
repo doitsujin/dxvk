@@ -99,6 +99,12 @@ namespace dxvk {
       case DxbcInstClass::TextureSample:
         return this->emitTextureSample(ins);
         
+      case DxbcInstClass::TypedUavLoad:
+        return this->emitTypedUavLoad(ins);
+        
+      case DxbcInstClass::TypedUavStore:
+        return this->emitTypedUavStore(ins);
+        
       case DxbcInstClass::VectorAlu:
         return this->emitVectorAlu(ins);
         
@@ -204,7 +210,7 @@ namespace dxvk {
       case DxbcOpcode::DclSampler:
         return this->emitDclSampler(ins);
         
-//       case DxbcOpcode::DclUavTyped:
+      case DxbcOpcode::DclUavTyped:
       case DxbcOpcode::DclResource:
         return this->emitDclResourceTyped(ins);
         
@@ -580,6 +586,14 @@ namespace dxvk {
     //    (imm0) The resource return type
     const uint32_t registerId = ins.dst[0].idx[0].offset;
     
+    // We also handle unordered access views here
+    const bool isUav = ins.op == DxbcOpcode::DclUavTyped;
+    
+    if (isUav) {
+      m_module.enableCapability(spv::CapabilityStorageImageReadWithoutFormat);
+      m_module.enableCapability(spv::CapabilityStorageImageWriteWithoutFormat);
+    }
+    
     // Defines the type of the resource (texture2D, ...)
     const DxbcResourceDim resourceType = ins.controls.resourceDim;
     
@@ -611,18 +625,19 @@ namespace dxvk {
     const uint32_t sampledTypeId = getScalarTypeId(sampledType);
     
     // Declare the resource type
-    const DxbcImageInfo typeInfo = [resourceType] () -> DxbcImageInfo {
+    // TODO test multisampled images
+    const DxbcImageInfo typeInfo = [resourceType, isUav] () -> DxbcImageInfo {
       switch (resourceType) {
-        case DxbcResourceDim::Buffer:         return { spv::DimBuffer, 0, 0, 1 };
-        case DxbcResourceDim::Texture1D:      return { spv::Dim1D, 0, 0, 1 };
-        case DxbcResourceDim::Texture1DArr:   return { spv::Dim1D, 1, 0, 1 };
-        case DxbcResourceDim::Texture2D:      return { spv::Dim2D, 0, 0, 1 };
-        case DxbcResourceDim::Texture2DArr:   return { spv::Dim2D, 1, 0, 1 };
-        case DxbcResourceDim::Texture2DMs:    return { spv::Dim2D, 0, 1, 0 };
-        case DxbcResourceDim::Texture2DMsArr: return { spv::Dim2D, 1, 1, 0 };
-        case DxbcResourceDim::Texture3D:      return { spv::Dim3D, 0, 0, 1 };
-        case DxbcResourceDim::TextureCube:    return { spv::DimCube, 0, 0, 1 };
-        case DxbcResourceDim::TextureCubeArr: return { spv::DimCube, 1, 0, 1 };
+        case DxbcResourceDim::Buffer:         return { spv::DimBuffer, 0, 0, isUav ? 2u : 1u };
+        case DxbcResourceDim::Texture1D:      return { spv::Dim1D,     0, 0, isUav ? 2u : 1u };
+        case DxbcResourceDim::Texture1DArr:   return { spv::Dim1D,     1, 0, isUav ? 2u : 1u };
+        case DxbcResourceDim::Texture2D:      return { spv::Dim2D,     0, 0, isUav ? 2u : 1u };
+        case DxbcResourceDim::Texture2DArr:   return { spv::Dim2D,     1, 0, isUav ? 2u : 1u };
+        case DxbcResourceDim::Texture2DMs:    return { spv::Dim2D,     0, 1, isUav ? 2u : 1u };
+        case DxbcResourceDim::Texture2DMsArr: return { spv::Dim2D,     1, 1, isUav ? 2u : 1u };
+        case DxbcResourceDim::Texture3D:      return { spv::Dim3D,     0, 0, isUav ? 2u : 1u };
+        case DxbcResourceDim::TextureCube:    return { spv::DimCube,   0, 0, isUav ? 2u : 1u };
+        case DxbcResourceDim::TextureCubeArr: return { spv::DimCube,   1, 0, isUav ? 2u : 1u };
         default: throw DxvkError(str::format("DxbcCompiler: Unsupported resource type: ", resourceType));
       }
     }();
@@ -656,24 +671,38 @@ namespace dxvk {
       spv::StorageClassUniformConstant);
     
     m_module.setDebugName(varId,
-      str::format("t", registerId).c_str());
+      str::format(isUav ? "u" : "t", registerId).c_str());
     
-    DxbcShaderResource res;
-    res.type          = DxbcResourceType::Typed;
-    res.imageInfo     = typeInfo;
-    res.varId         = varId;
-    res.sampledType   = sampledType;
-    res.sampledTypeId = sampledTypeId;
-    res.colorTypeId   = colorTypeId;
-    res.depthTypeId   = depthTypeId;
-    res.structStride  = 0;
-    
-    m_textures.at(registerId) = res;
+    if (isUav) {
+      DxbcUav uav;
+      uav.type          = DxbcResourceType::Typed;
+      uav.imageInfo     = typeInfo;
+      uav.varId         = varId;
+      uav.sampledType   = sampledType;
+      uav.sampledTypeId = sampledTypeId;
+      uav.imageTypeId   = colorTypeId;
+      uav.structStride  = 0;
+      m_uavs.at(registerId) = uav;
+    } else {
+      DxbcShaderResource res;
+      res.type          = DxbcResourceType::Typed;
+      res.imageInfo     = typeInfo;
+      res.varId         = varId;
+      res.sampledType   = sampledType;
+      res.sampledTypeId = sampledTypeId;
+      res.colorTypeId   = colorTypeId;
+      res.depthTypeId   = depthTypeId;
+      res.structStride  = 0;
+      m_textures.at(registerId) = res;
+    }
     
     // Compute the DXVK binding slot index for the resource.
     // D3D11 needs to bind the actual resource to this slot.
     const uint32_t bindingId = computeResourceSlotId(
-      m_version.type(), DxbcBindingType::ShaderResource, registerId);
+      m_version.type(), isUav
+        ? DxbcBindingType::UnorderedAccessView
+        : DxbcBindingType::ShaderResource,
+      registerId);
     
     m_module.decorateDescriptorSet(varId, 0);
     m_module.decorateBinding(varId, bindingId);
@@ -681,9 +710,17 @@ namespace dxvk {
     // Store descriptor info for the shader interface
     DxvkResourceSlot resource;
     resource.slot = bindingId;
-    resource.type = resourceType == DxbcResourceDim::Buffer
-      ? VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER
-      : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    
+    if (isUav) {
+      resource.type = resourceType == DxbcResourceDim::Buffer
+        ? VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
+        : VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    } else {
+      resource.type = resourceType == DxbcResourceDim::Buffer
+        ? VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER
+        : VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+    }
+    
     m_resourceSlots.push_back(resource);
   }
   
@@ -2205,6 +2242,60 @@ namespace dxvk {
   }
   
   
+  void DxbcCompiler::emitTypedUavLoad(const DxbcShaderInstruction& ins) {
+    // load_uav_typed has three operands:
+    //    (dst0) The destination register
+    //    (src0) The texture or buffer coordinates
+    //    (src1) The UAV to load from
+    const uint32_t registerId = ins.src[1].idx[0].offset;
+    const DxbcUav uavInfo = m_uavs.at(registerId);
+    
+    // Load texture coordinates
+    const DxbcRegisterValue texCoord = emitRegisterLoad(
+      ins.src[0], getTexCoordMask(uavInfo.imageInfo));
+    
+    // Load source value from the UAV
+    DxbcRegisterValue uavValue;
+    uavValue.type.ctype  = uavInfo.sampledType;
+    uavValue.type.ccount = 4;
+    uavValue.id = m_module.opImageRead(
+      getVectorTypeId(uavValue.type),
+      m_module.opLoad(uavInfo.imageTypeId, uavInfo.varId),
+      texCoord.id, SpirvImageOperands());
+    
+    // Apply component swizzle and mask
+    uavValue = emitRegisterSwizzle(uavValue,
+      ins.src[1].swizzle, ins.dst[0].mask);
+    
+    emitRegisterStore(ins.dst[0], uavValue);
+  }
+  
+  
+  void DxbcCompiler::emitTypedUavStore(const DxbcShaderInstruction& ins) {
+    // store_uav_typed has three operands:
+    //    (dst0) The destination UAV
+    //    (src0) The texture or buffer coordinates
+    //    (src1) The value to store
+    const uint32_t registerId = ins.dst[0].idx[0].offset;
+    const DxbcUav uavInfo = m_uavs.at(registerId);
+    
+    // Load texture coordinates
+    const DxbcRegisterValue texCoord = emitRegisterLoad(
+      ins.src[0], getTexCoordMask(uavInfo.imageInfo));
+    
+    // Load the value that will be written to the image. We'll
+    // have to cast it to the component type of the image.
+    const DxbcRegisterValue texValue = emitRegisterBitcast(
+      emitRegisterLoad(ins.src[1], DxbcRegMask(true, true, true, true)),
+      uavInfo.sampledType);
+    
+    // Write the given value to the image
+    m_module.opImageWrite(
+      m_module.opLoad(uavInfo.imageTypeId, uavInfo.varId),
+      texCoord.id, texValue.id, SpirvImageOperands());
+  }
+  
+  
   void DxbcCompiler::emitControlFlowIf(const DxbcShaderInstruction& ins) {
     // Load the first component of the condition
     // operand and perform a zero test on it.
@@ -2505,7 +2596,7 @@ namespace dxvk {
       m_module.opLabel(m_module.allocateId());
   }
   
-    
+  
   void DxbcCompiler::emitControlFlowDiscard(const DxbcShaderInstruction& ins) {
     // Discard actually has an operand that determines
     // whether or not the fragment should be discarded
@@ -3904,6 +3995,22 @@ namespace dxvk {
       default:
         throw DxvkError(str::format("DxbcCompiler: Invalid operand type for buffer: ", reg.type));
     }
+  }
+  
+  
+  DxbcRegMask DxbcCompiler::getTexCoordMask(const DxbcImageInfo& imageType) const {
+    const uint32_t imageLayerDim = [&] {
+      switch (imageType.dim) {
+        case spv::DimBuffer:  return 1;
+        case spv::Dim1D:      return 1;
+        case spv::Dim2D:      return 2;
+        case spv::Dim3D:      return 3;
+        case spv::DimCube:    return 3;
+        default: throw DxvkError("DxbcCompiler: getTexCoordMask: Unsupported image dimension");
+      }
+    }();
+    
+    return DxbcRegMask::firstN(imageLayerDim + imageType.array);
   }
   
   

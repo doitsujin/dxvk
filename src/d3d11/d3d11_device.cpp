@@ -1238,44 +1238,46 @@ namespace dxvk {
     std::memset(&enabled, 0, sizeof(enabled));
     
     if (featureLevel >= D3D_FEATURE_LEVEL_9_1) {
-      enabled.depthClamp                      = VK_TRUE;
-      enabled.depthBiasClamp                  = VK_TRUE;
-      enabled.depthBounds                     = VK_TRUE;
-      enabled.fillModeNonSolid                = VK_TRUE;
-      enabled.pipelineStatisticsQuery         = supported.pipelineStatisticsQuery;
-      enabled.samplerAnisotropy               = VK_TRUE;
-      enabled.shaderClipDistance              = VK_TRUE;
-      enabled.shaderCullDistance              = VK_TRUE;
+      enabled.depthClamp                            = VK_TRUE;
+      enabled.depthBiasClamp                        = VK_TRUE;
+      enabled.depthBounds                           = VK_TRUE;
+      enabled.fillModeNonSolid                      = VK_TRUE;
+      enabled.pipelineStatisticsQuery               = supported.pipelineStatisticsQuery;
+      enabled.samplerAnisotropy                     = VK_TRUE;
+      enabled.shaderClipDistance                    = VK_TRUE;
+      enabled.shaderCullDistance                    = VK_TRUE;
     }
     
     if (featureLevel >= D3D_FEATURE_LEVEL_9_2) {
-      enabled.occlusionQueryPrecise           = VK_TRUE;
+      enabled.occlusionQueryPrecise                 = VK_TRUE;
     }
     
     if (featureLevel >= D3D_FEATURE_LEVEL_9_3) {
-      enabled.multiViewport                   = VK_TRUE;
-      enabled.independentBlend                = VK_TRUE;
+      enabled.multiViewport                         = VK_TRUE;
+      enabled.independentBlend                      = VK_TRUE;
     }
     
     if (featureLevel >= D3D_FEATURE_LEVEL_10_0) {
-      enabled.fullDrawIndexUint32             = VK_TRUE;
-      enabled.fragmentStoresAndAtomics        = VK_TRUE;
-      enabled.geometryShader                  = VK_TRUE;
-      enabled.logicOp                         = supported.logicOp;
-      enabled.shaderImageGatherExtended       = VK_TRUE;
-      enabled.textureCompressionBC            = VK_TRUE;
-      enabled.vertexPipelineStoresAndAtomics  = VK_TRUE;
+      enabled.fullDrawIndexUint32                   = VK_TRUE;
+      enabled.fragmentStoresAndAtomics              = VK_TRUE;
+      enabled.geometryShader                        = VK_TRUE;
+      enabled.logicOp                               = supported.logicOp;
+      enabled.shaderImageGatherExtended             = VK_TRUE;
+      enabled.textureCompressionBC                  = VK_TRUE;
+      enabled.vertexPipelineStoresAndAtomics        = VK_TRUE;
     }
     
     if (featureLevel >= D3D_FEATURE_LEVEL_10_1) {
-      enabled.imageCubeArray                  = VK_TRUE;
+      enabled.imageCubeArray                        = VK_TRUE;
     }
     
     if (featureLevel >= D3D_FEATURE_LEVEL_11_0) {
-      enabled.shaderFloat64                   = supported.shaderFloat64;
-      enabled.shaderInt64                     = supported.shaderInt64;
-      enabled.tessellationShader              = VK_TRUE;
-      enabled.variableMultisampleRate         = VK_TRUE;
+      enabled.shaderFloat64                         = supported.shaderFloat64;
+      enabled.shaderInt64                           = supported.shaderInt64;
+      enabled.tessellationShader                    = VK_TRUE;
+      enabled.variableMultisampleRate               = VK_TRUE;
+      enabled.shaderStorageImageReadWithoutFormat   = VK_TRUE;
+      enabled.shaderStorageImageWriteWithoutFormat  = VK_TRUE;
     }
     
     return enabled;

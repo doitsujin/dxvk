@@ -43,6 +43,8 @@ namespace dxvk {
     TextureQuery,     ///< Texture query instruction
     TextureFetch,     ///< Texture fetch instruction
     TextureSample,    ///< Texture sampling instruction
+    TypedUavLoad,     ///< Typed UAV load
+    TypedUavStore,    ///< Typed UAV store
     VectorAlu,        ///< Component-wise vector instructions
     VectorCmov,       ///< Component-wise conditional move
     VectorCmp,        ///< Component-wise vector comparison
