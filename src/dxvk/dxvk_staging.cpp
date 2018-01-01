@@ -35,7 +35,7 @@ namespace dxvk {
     slice.offset = m_bufferOffset;
     slice.mapPtr = m_buffer->mapPtr(m_bufferOffset);
     
-    m_bufferOffset += size;
+    m_bufferOffset = align(m_bufferOffset + size, 64);
     return true;
   }
   
