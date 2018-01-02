@@ -1440,14 +1440,30 @@ namespace dxvk {
         }
       }
     } else {
-      // Leave the image contents undefined
+      // While the Microsoft docs state that resource contents
+      // are undefined if no initial data is provided, some
+      // applications expect a resource to be pre-cleared.
       VkImageSubresourceRange subresources;
       subresources.aspectMask     = formatInfo->aspectMask;
       subresources.baseMipLevel   = 0;
       subresources.levelCount     = image->info().mipLevels;
       subresources.baseArrayLayer = 0;
       subresources.layerCount     = image->info().numLayers;
-      m_resourceInitContext->initImage(image, subresources);
+      
+      if (subresources.aspectMask == VK_IMAGE_ASPECT_COLOR_BIT) {
+        VkClearColorValue value;
+        std::memset(&value, 0, sizeof(value));
+        
+        m_resourceInitContext->clearColorImage(
+          image, value, subresources);
+      } else {
+        VkClearDepthStencilValue value;
+        value.depth   = 0.0f;
+        value.stencil = 0;
+        
+        m_resourceInitContext->clearDepthStencilImage(
+          image, value, subresources);
+      }
     }
     
     m_dxvkDevice->submitCommandList(
