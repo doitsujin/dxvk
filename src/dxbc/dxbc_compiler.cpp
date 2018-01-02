@@ -656,18 +656,14 @@ namespace dxvk {
     
     // We do not know whether the image is going to be used as a color
     // image or a depth image yet, so we'll declare types for both.
-    const uint32_t colorTypeId = m_module.defImageType(sampledTypeId,
-      typeInfo.dim, 0, typeInfo.array, typeInfo.ms, typeInfo.sampled,
-      spv::ImageFormatUnknown);
-    
-    const uint32_t depthTypeId = m_module.defImageType(sampledTypeId,
-      typeInfo.dim, 1, typeInfo.array, typeInfo.ms, typeInfo.sampled,
+    const uint32_t imageTypeId = m_module.defImageType(sampledTypeId,
+      typeInfo.dim, 2, typeInfo.array, typeInfo.ms, typeInfo.sampled,
       spv::ImageFormatUnknown);
     
     // We'll declare the texture variable with the color type
     // and decide which one to use when the texture is sampled.
     const uint32_t resourcePtrType = m_module.defPointerType(
-      colorTypeId, spv::StorageClassUniformConstant);
+      imageTypeId, spv::StorageClassUniformConstant);
     
     const uint32_t varId = m_module.newVar(resourcePtrType,
       spv::StorageClassUniformConstant);
@@ -682,7 +678,7 @@ namespace dxvk {
       uav.varId         = varId;
       uav.sampledType   = sampledType;
       uav.sampledTypeId = sampledTypeId;
-      uav.imageTypeId   = colorTypeId;
+      uav.imageTypeId   = imageTypeId;
       uav.structStride  = 0;
       m_uavs.at(registerId) = uav;
     } else {
@@ -692,10 +688,15 @@ namespace dxvk {
       res.varId         = varId;
       res.sampledType   = sampledType;
       res.sampledTypeId = sampledTypeId;
-      res.colorTypeId   = colorTypeId;
-      res.depthTypeId   = depthTypeId;
+      res.imageTypeId   = imageTypeId;
+      res.colorTypeId   = m_module.defImageType(sampledTypeId,
+        typeInfo.dim, 0, typeInfo.array, typeInfo.ms, typeInfo.sampled,
+        spv::ImageFormatUnknown);
+      res.depthTypeId   = m_module.defImageType(sampledTypeId,
+        typeInfo.dim, 1, typeInfo.array, typeInfo.ms, typeInfo.sampled,
+        spv::ImageFormatUnknown);
+        m_textures.at(registerId) = res;
       res.structStride  = 0;
-      m_textures.at(registerId) = res;
     }
     
     // Compute the DXVK binding slot index for the resource.
@@ -788,6 +789,7 @@ namespace dxvk {
       res.varId         = varId;
       res.sampledType   = sampledType;
       res.sampledTypeId = sampledTypeId;
+      res.imageTypeId   = resTypeId;
       res.colorTypeId   = resTypeId;
       res.depthTypeId   = resTypeId;
       res.structStride  = resStride;
@@ -1802,19 +1804,13 @@ namespace dxvk {
     //    (src0) The buffer register to query
     const DxbcBufferInfo bufferInfo = getBufferInfo(ins.src[0]);
     
-    // This instruction can only be used with t# and u#
-    // registers, which are all mapped to texel buffers
-    const uint32_t bufferId = m_module.opLoad(
-        bufferInfo.typeId, bufferInfo.varId);
-    
     // We'll store this as a scalar unsigned integer
-    DxbcRegisterValue result;
-    result.type.ctype  = DxbcScalarType::Uint32;
-    result.type.ccount = 1;
-    
+    DxbcRegisterValue result = emitQueryTexelBufferSize(ins.src[0]);
     const uint32_t typeId = getVectorTypeId(result.type);
-    result.id = m_module.opImageQuerySize(typeId, bufferId);
     
+    // Adjust returned size if this is a raw or structured
+    // buffer, as emitQueryTexelBufferSize only returns the
+    // number of typed elements in the buffer.
     if (bufferInfo.type == DxbcResourceType::Raw) {
       result.id = m_module.opIMul(typeId,
         result.id, m_module.constu32(4));
@@ -1982,7 +1978,7 @@ namespace dxvk {
     // TODO support UAVs
     const uint32_t textureId = ins.src[1].idx[0].offset;
     const uint32_t imageId = m_module.opLoad(
-      m_textures.at(textureId).colorTypeId,
+      m_textures.at(textureId).imageTypeId,
       m_textures.at(textureId).varId);
     
     // Read the exact LOD for the image query
@@ -2104,24 +2100,15 @@ namespace dxvk {
     const uint32_t textureId = ins.src[1].idx[0].offset;
     
     // Image type, which stores the image dimensions etc.
-    const DxbcImageInfo imageType = m_textures.at(textureId).imageInfo;
+    const DxbcImageInfo imageType      = m_textures.at(textureId).imageInfo;
+    const DxbcRegMask   coordArrayMask = getTexCoordMask(imageType);
     
-    const uint32_t imageLayerDim = [&] {
-      switch (imageType.dim) {
-        case spv::DimBuffer:  return 1;
-        case spv::Dim1D:      return 1;
-        case spv::Dim2D:      return 2;
-        case spv::Dim3D:      return 3;
-        default: throw DxvkError("DxbcCompiler: ld: Unsupported image dim");
-      }
-    }();
-    
-    const DxbcRegMask coordArrayMask =
-      DxbcRegMask::firstN(imageLayerDim + imageType.array);
+    const uint32_t imageLayerDim = getTexLayerDim(imageType);
+    const uint32_t imageCoordDim = getTexCoordDim(imageType);
     
     // Load the texture coordinates. The last component
     // contains the LOD if the resource is an image.
-    const DxbcRegisterValue coord = emitRegisterLoad(
+    const DxbcRegisterValue address = emitRegisterLoad(
       ins.src[0], DxbcRegMask(true, true, true, true));
     
     // Additional image operands. This will store
@@ -2141,16 +2128,41 @@ namespace dxvk {
         imageLayerDim, offsetIds.data());
     }
     
+    // The LOD is not present when reading from a buffer
+    DxbcRegisterValue imageLod;
+    imageLod.type = address.type;
+    imageLod.id   = 0;
+    
     if (imageType.dim != spv::DimBuffer) {
+      imageLod = emitRegisterExtract(address,
+        DxbcRegMask(false, false, false, true));
+      
       imageOperands.flags |= spv::ImageOperandsLodMask;
-      imageOperands.sLod = emitRegisterExtract(coord,
-        DxbcRegMask(false, false, false, true)).id;
+      imageOperands.sLod = imageLod.id;
     }
     
-    // Load image variable, no sampler needed
-    const uint32_t imageId = m_module.opLoad(
-      m_textures.at(textureId).colorTypeId,
-      m_textures.at(textureId).varId);
+    // Extract coordinates from address
+    const DxbcRegisterValue coord = emitRegisterExtract(address, coordArrayMask);
+    
+    // Perform bounds checking. If the coordinates are
+    // out of bounds, we return zero in all components.
+    const DxbcRegisterValue resourceSize = imageType.dim != spv::DimBuffer
+      ? emitQueryTextureSize(ins.src[1], imageLod)
+      : emitQueryTexelBufferSize(ins.src[1]);
+    
+    uint32_t boundCheckId = m_module.opULessThan(
+      m_module.defVectorType(m_module.defBoolType(), imageCoordDim),
+      coord.id, resourceSize.id);
+    
+    if (imageCoordDim > 1)
+      boundCheckId = m_module.opAll(m_module.defBoolType(), boundCheckId);
+    
+    const uint32_t boundCheckPassLabel  = m_module.allocateId();
+    const uint32_t boundCheckFailLabel  = m_module.allocateId();
+    const uint32_t boundCheckMergeLabel = m_module.allocateId();
+    
+    m_module.opSelectionMerge(boundCheckMergeLabel, spv::SelectionControlMaskNone);
+    m_module.opBranchConditional(boundCheckId, boundCheckPassLabel, boundCheckFailLabel);
     
     // Reading a typed image or buffer view
     // always returns a four-component vector.
@@ -2158,10 +2170,36 @@ namespace dxvk {
     result.type.ctype  = m_textures.at(textureId).sampledType;
     result.type.ccount = 4;
     
-    result.id = m_module.opImageFetch(
+    // Bound check passed, load the texel
+    m_module.opLabel(boundCheckPassLabel);
+    
+    const uint32_t imageId = m_module.opLoad(
+      m_textures.at(textureId).imageTypeId,
+      m_textures.at(textureId).varId);
+    
+    const uint32_t boundCheckPassId = m_module.opImageFetch(
       getVectorTypeId(result.type), imageId,
-      emitRegisterExtract(coord, coordArrayMask).id,
-      imageOperands);
+      coord.id, imageOperands);
+    
+    m_module.opBranch(boundCheckMergeLabel);
+    m_module.opLabel (boundCheckFailLabel);
+    
+    // Return zeroes if the bound check failed
+    const uint32_t boundCheckFailId = emitBuildZeroVec(result.type).id;
+    
+    m_module.opBranch(boundCheckMergeLabel);
+    m_module.opLabel (boundCheckMergeLabel);
+    
+    // Use a phi function to determine
+    // which of the results to take.
+    const std::array<SpirvPhiLabel, 2> phiOps = {{
+      { boundCheckPassId, boundCheckPassLabel },
+      { boundCheckFailId, boundCheckFailLabel },
+    }};
+    
+    result.id = m_module.opPhi(
+      getVectorTypeId(result.type),
+      phiOps.size(), phiOps.data());
     
     // Swizzle components using the texture swizzle
     // and the destination operand's write mask
@@ -2248,7 +2286,7 @@ namespace dxvk {
     const uint32_t sampledImageId = m_module.opSampledImage(
       sampledImageType,
       m_module.opLoad(
-        m_textures.at(textureId).colorTypeId,
+        m_textures.at(textureId).imageTypeId,
         m_textures.at(textureId).varId),
       m_module.opLoad(
         m_samplers.at(samplerId).typeId,
@@ -2794,6 +2832,43 @@ namespace dxvk {
           getVectorTypeId(result.type),
           componentIndex, ids.data())
       : ids[0];
+    return result;
+  }
+  
+  
+  DxbcRegisterValue DxbcCompiler::emitBuildZero(
+          DxbcScalarType          type) {
+    DxbcRegisterValue result;
+    result.type.ctype  = type;
+    result.type.ccount = 1;
+    
+    switch (type) {
+      case DxbcScalarType::Float32: result.id = m_module.constf32(0.0f); break;
+      case DxbcScalarType::Uint32:  result.id = m_module.constu32(0); break;
+      case DxbcScalarType::Sint32:  result.id = m_module.consti32(0); break;
+      default: throw DxvkError("DxbcCompiler: Invalid scalar type");
+    }
+    
+    return result;
+  }
+  
+  
+  DxbcRegisterValue DxbcCompiler::emitBuildZeroVec(
+          DxbcVectorType          type) {
+    const DxbcRegisterValue scalar = emitBuildZero(type.ctype);
+    
+    if (type.ccount == 1)
+      return scalar;
+    
+    const std::array<uint32_t, 4> zeroIds = {{
+      scalar.id, scalar.id, scalar.id, scalar.id, 
+    }};
+    
+    DxbcRegisterValue result;
+    result.type = type;
+    result.id = m_module.constComposite(
+      getVectorTypeId(result.type),
+      zeroIds.size(), zeroIds.data());
     return result;
   }
   
@@ -3409,6 +3484,55 @@ namespace dxvk {
         srcComponentIndex += 1;
       }
     }
+  }
+  
+  
+  DxbcRegisterValue DxbcCompiler::emitQueryTexelBufferSize(
+    const DxbcRegister&           resource) {
+    // Load the texel buffer object. This cannot be used with
+    // constant buffers or any other type of resource.
+    const DxbcBufferInfo bufferInfo = getBufferInfo(resource);
+    
+    const uint32_t bufferId = m_module.opLoad(
+      bufferInfo.typeId, bufferInfo.varId);
+    
+    // We'll store this as a scalar unsigned integer
+    DxbcRegisterValue result;
+    result.type.ctype  = DxbcScalarType::Uint32;
+    result.type.ccount = 1;
+    result.id = m_module.opImageQuerySize(
+      getVectorTypeId(result.type), bufferId);
+    return result;
+  }
+  
+  
+  DxbcRegisterValue DxbcCompiler::emitQueryTextureLods(
+    const DxbcRegister&           resource) {
+    const DxbcBufferInfo info = getBufferInfo(resource);
+    
+    DxbcRegisterValue result;
+    result.type.ctype  = DxbcScalarType::Uint32;
+    result.type.ccount = 1;
+    result.id = m_module.opImageQueryLevels(
+      getVectorTypeId(result.type),
+      m_module.opLoad(info.typeId, info.varId));
+    return result;
+  }
+  
+  
+  DxbcRegisterValue DxbcCompiler::emitQueryTextureSize(
+    const DxbcRegister&           resource,
+          DxbcRegisterValue       lod) {
+    const DxbcBufferInfo info = getBufferInfo(resource);
+    
+    DxbcRegisterValue result;
+    result.type.ctype  = DxbcScalarType::Uint32;
+    result.type.ccount = getTexCoordDim(info.image);
+    result.id = m_module.opImageQuerySizeLod(
+      getVectorTypeId(result.type),
+      m_module.opLoad(info.typeId, info.varId),
+      lod.id);
+    return result;
   }
   
   
@@ -4124,8 +4248,9 @@ namespace dxvk {
     switch (reg.type) {
       case DxbcOperandType::Resource: {
         DxbcBufferInfo result;
+        result.image  = m_textures.at(registerId).imageInfo;
         result.type   = m_textures.at(registerId).type;
-        result.typeId = m_textures.at(registerId).colorTypeId;
+        result.typeId = m_textures.at(registerId).imageTypeId;
         result.varId  = m_textures.at(registerId).varId;
         result.stride = m_textures.at(registerId).structStride;
         return result;
@@ -4133,6 +4258,7 @@ namespace dxvk {
         
       case DxbcOperandType::UnorderedAccessView: {
         DxbcBufferInfo result;
+        result.image  = m_uavs.at(registerId).imageInfo;
         result.type   = m_uavs.at(registerId).type;
         result.typeId = m_uavs.at(registerId).imageTypeId;
         result.varId  = m_uavs.at(registerId).varId;
@@ -4142,6 +4268,7 @@ namespace dxvk {
         
       case DxbcOperandType::ThreadGroupSharedMemory: {
         DxbcBufferInfo result;
+        result.image  = { spv::DimBuffer, 0, 0, 0 };
         result.type   = m_gRegs.at(registerId).type;
         result.typeId = m_module.defPointerType(
           getScalarTypeId(DxbcScalarType::Uint32),
@@ -4157,19 +4284,24 @@ namespace dxvk {
   }
   
   
+  uint32_t DxbcCompiler::getTexLayerDim(const DxbcImageInfo& imageType) const {
+    switch (imageType.dim) {
+      case spv::DimBuffer:  return 1;
+      case spv::Dim1D:      return 1;
+      case spv::Dim2D:      return 2;
+      case spv::Dim3D:      return 3;
+      case spv::DimCube:    return 3;
+      default: throw DxvkError("DxbcCompiler: getTexLayerDim: Unsupported image dimension");
+    }
+  }
+  
+  uint32_t DxbcCompiler::getTexCoordDim(const DxbcImageInfo& imageType) const {
+    return getTexLayerDim(imageType) + imageType.array;
+  }
+  
+  
   DxbcRegMask DxbcCompiler::getTexCoordMask(const DxbcImageInfo& imageType) const {
-    const uint32_t imageLayerDim = [&] {
-      switch (imageType.dim) {
-        case spv::DimBuffer:  return 1;
-        case spv::Dim1D:      return 1;
-        case spv::Dim2D:      return 2;
-        case spv::Dim3D:      return 3;
-        case spv::DimCube:    return 3;
-        default: throw DxvkError("DxbcCompiler: getTexCoordMask: Unsupported image dimension");
-      }
-    }();
-    
-    return DxbcRegMask::firstN(imageLayerDim + imageType.array);
+    return DxbcRegMask::firstN(getTexCoordDim(imageType));
   }
   
   

@@ -193,6 +193,7 @@ namespace dxvk {
   
   
   struct DxbcBufferInfo {
+    DxbcImageInfo image;
     DxbcResourceType type;
     uint32_t typeId;
     uint32_t varId;
@@ -497,6 +498,12 @@ namespace dxvk {
       const float                   values[4],
       const DxbcRegMask&            writeMask);
     
+    DxbcRegisterValue emitBuildZero(
+            DxbcScalarType          type);
+    
+    DxbcRegisterValue emitBuildZeroVec(
+            DxbcVectorType          type);
+    
     /////////////////////////////////////////
     // Generic register manipulation methods
     DxbcRegisterValue emitRegisterBitcast(
@@ -577,6 +584,18 @@ namespace dxvk {
       const DxbcRegister&           operand,
             DxbcRegisterValue       elementIndex,
             DxbcRegisterValue       value);
+    
+    //////////////////////////
+    // Resource query methods
+    DxbcRegisterValue emitQueryTexelBufferSize(
+      const DxbcRegister&           resource);
+    
+    DxbcRegisterValue emitQueryTextureLods(
+      const DxbcRegister&           resource);
+    
+    DxbcRegisterValue emitQueryTextureSize(
+      const DxbcRegister&           resource,
+            DxbcRegisterValue       lod);
     
     ////////////////////////////////////
     // Buffer index calculation methods
@@ -693,6 +712,12 @@ namespace dxvk {
     
     DxbcBufferInfo getBufferInfo(
       const DxbcRegister& reg);
+    
+    uint32_t getTexLayerDim(
+      const DxbcImageInfo& imageType) const;
+    
+    uint32_t getTexCoordDim(
+      const DxbcImageInfo& imageType) const;
     
     DxbcRegMask getTexCoordMask(
       const DxbcImageInfo& imageType) const;

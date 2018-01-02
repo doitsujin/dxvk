@@ -591,6 +591,32 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opAny(
+          uint32_t                resultType,
+          uint32_t                vector) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpAny, 4);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(vector);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opAll(
+          uint32_t                resultType,
+          uint32_t                vector) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpAll, 4);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(vector);
+    return resultId;
+  }
+  
+    
   uint32_t SpirvModule::opAtomicLoad(
           uint32_t                resultType,
           uint32_t                pointer,
@@ -2407,6 +2433,25 @@ namespace dxvk {
       m_code.putWord(caseLabels[i].literal);
       m_code.putWord(caseLabels[i].labelId);
     }
+  }
+  
+  
+  uint32_t SpirvModule::opPhi(
+          uint32_t                resultType,
+          uint32_t                sourceCount,
+    const SpirvPhiLabel*          sourceLabels) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpPhi, 3 + 2 * sourceCount);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    
+    for (uint32_t i = 0; i < sourceCount; i++) {
+      m_code.putWord(sourceLabels[i].varId);
+      m_code.putWord(sourceLabels[i].labelId);
+    }
+    
+    return resultId;
   }
   
     

@@ -212,7 +212,7 @@ namespace dxvk {
     /* Ld                                   */
     { 3, DxbcInstClass::TextureFetch, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
-      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32  },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32  },
       { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
     } },
     /* LdMs                                 */

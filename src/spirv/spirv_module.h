@@ -4,6 +4,11 @@
 
 namespace dxvk {
   
+  struct SpirvPhiLabel {
+    uint32_t varId         = 0;
+    uint32_t labelId       = 0;
+  };
+  
   struct SpirvSwitchCaseLabel {
     uint32_t literal       = 0;
     uint32_t labelId       = 0;
@@ -249,6 +254,14 @@ namespace dxvk {
             uint32_t                composite,
             uint32_t                indexCount,
       const uint32_t*               indexArray);
+    
+    uint32_t opAny(
+            uint32_t                resultType,
+            uint32_t                vector);
+    
+    uint32_t opAll(
+            uint32_t                resultType,
+            uint32_t                vector);
     
     uint32_t opAtomicLoad(
             uint32_t                resultType,
@@ -851,7 +864,11 @@ namespace dxvk {
             uint32_t                jumpDefault,
             uint32_t                caseCount,
       const SpirvSwitchCaseLabel*   caseLabels);
-            
+    
+    uint32_t opPhi(
+            uint32_t                resultType,
+            uint32_t                sourceCount,
+      const SpirvPhiLabel*          sourceLabels);
     
     void opReturn();
     
