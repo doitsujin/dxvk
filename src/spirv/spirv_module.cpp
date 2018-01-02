@@ -591,6 +591,283 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opAtomicLoad(
+          uint32_t                resultType,
+          uint32_t                pointer,
+          uint32_t                scope,
+          uint32_t                semantics) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpAtomicLoad, 6);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(pointer);
+    m_code.putWord(scope);
+    m_code.putWord(semantics);
+    return resultId;
+  }
+  
+  
+  void SpirvModule::opAtomicStore(
+          uint32_t                pointer,
+          uint32_t                scope,
+          uint32_t                semantics,
+          uint32_t                value) {
+    m_code.putIns (spv::OpAtomicStore, 5);
+    m_code.putWord(pointer);
+    m_code.putWord(scope);
+    m_code.putWord(semantics);
+    m_code.putWord(value);
+  }
+  
+  
+  uint32_t SpirvModule::opAtomicExchange(
+          uint32_t                resultType,
+          uint32_t                pointer,
+          uint32_t                scope,
+          uint32_t                semantics,
+          uint32_t                value) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpAtomicExchange, 7);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(pointer);
+    m_code.putWord(scope);
+    m_code.putWord(semantics);
+    m_code.putWord(value);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opAtomicCompareExchange(
+          uint32_t                resultType,
+          uint32_t                pointer,
+          uint32_t                scope,
+          uint32_t                equal,
+          uint32_t                unequal,
+          uint32_t                value,
+          uint32_t                comparator) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpAtomicCompareExchange, 9);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(pointer);
+    m_code.putWord(scope);
+    m_code.putWord(equal);
+    m_code.putWord(unequal);
+    m_code.putWord(value);
+    m_code.putWord(comparator);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opAtomicIIncrement(
+          uint32_t                resultType,
+          uint32_t                pointer,
+          uint32_t                scope,
+          uint32_t                semantics) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpAtomicIIncrement, 6);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(pointer);
+    m_code.putWord(scope);
+    m_code.putWord(semantics);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opAtomicIDecrement(
+          uint32_t                resultType,
+          uint32_t                pointer,
+          uint32_t                scope,
+          uint32_t                semantics) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpAtomicIDecrement, 6);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(pointer);
+    m_code.putWord(scope);
+    m_code.putWord(semantics);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opAtomicIAdd(
+          uint32_t                resultType,
+          uint32_t                pointer,
+          uint32_t                scope,
+          uint32_t                semantics,
+          uint32_t                value) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpAtomicIAdd, 7);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(pointer);
+    m_code.putWord(scope);
+    m_code.putWord(semantics);
+    m_code.putWord(value);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opAtomicISub(
+          uint32_t                resultType,
+          uint32_t                pointer,
+          uint32_t                scope,
+          uint32_t                semantics,
+          uint32_t                value) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpAtomicISub, 7);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(pointer);
+    m_code.putWord(scope);
+    m_code.putWord(semantics);
+    m_code.putWord(value);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opAtomicSMin(
+          uint32_t                resultType,
+          uint32_t                pointer,
+          uint32_t                scope,
+          uint32_t                semantics,
+          uint32_t                value) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpAtomicSMin, 7);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(pointer);
+    m_code.putWord(scope);
+    m_code.putWord(semantics);
+    m_code.putWord(value);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opAtomicSMax(
+          uint32_t                resultType,
+          uint32_t                pointer,
+          uint32_t                scope,
+          uint32_t                semantics,
+          uint32_t                value) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpAtomicSMax, 7);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(pointer);
+    m_code.putWord(scope);
+    m_code.putWord(semantics);
+    m_code.putWord(value);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opAtomicUMin(
+          uint32_t                resultType,
+          uint32_t                pointer,
+          uint32_t                scope,
+          uint32_t                semantics,
+          uint32_t                value) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpAtomicUMin, 7);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(pointer);
+    m_code.putWord(scope);
+    m_code.putWord(semantics);
+    m_code.putWord(value);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opAtomicUMax(
+          uint32_t                resultType,
+          uint32_t                pointer,
+          uint32_t                scope,
+          uint32_t                semantics,
+          uint32_t                value) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpAtomicUMax, 7);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(pointer);
+    m_code.putWord(scope);
+    m_code.putWord(semantics);
+    m_code.putWord(value);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opAtomicAnd(
+          uint32_t                resultType,
+          uint32_t                pointer,
+          uint32_t                scope,
+          uint32_t                semantics,
+          uint32_t                value) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpAtomicAnd, 7);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(pointer);
+    m_code.putWord(scope);
+    m_code.putWord(semantics);
+    m_code.putWord(value);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opAtomicOr(
+          uint32_t                resultType,
+          uint32_t                pointer,
+          uint32_t                scope,
+          uint32_t                semantics,
+          uint32_t                value) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpAtomicOr, 7);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(pointer);
+    m_code.putWord(scope);
+    m_code.putWord(semantics);
+    m_code.putWord(value);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opAtomicXor(
+          uint32_t                resultType,
+          uint32_t                pointer,
+          uint32_t                scope,
+          uint32_t                semantics,
+          uint32_t                value) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpAtomicXor, 7);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(pointer);
+    m_code.putWord(scope);
+    m_code.putWord(semantics);
+    m_code.putWord(value);
+    return resultId;
+  }
+  
+  
   uint32_t SpirvModule::opBitcast(
           uint32_t                resultType,
           uint32_t                operand) {
@@ -1902,6 +2179,23 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opImageTexelPointer(
+          uint32_t                resultType,
+          uint32_t                image,
+          uint32_t                coordinates,
+          uint32_t                sample) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpImageTexelPointer, 6);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(image);
+    m_code.putWord(coordinates);
+    m_code.putWord(sample);
+    return resultId;
+  }
+  
+    
   uint32_t SpirvModule::opImageQuerySizeLod(
           uint32_t                resultType,
           uint32_t                image,

@@ -1571,7 +1571,7 @@ namespace dxvk {
       
       DxbcRegisterValue cos;
       cos.type = cosInput.type;
-      cos.id = m_module.opSin(
+      cos.id = m_module.opCos(
         getVectorTypeId(cos.type),
         cosInput.id);
       
@@ -1600,12 +1600,110 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitAtomic(const DxbcShaderInstruction& ins) {
+    // atomic_* operations have the following operands:
+    //    (dst0) Destination u# or g# register
+    //    (src0) Index into the texture or buffer
+    //    (src1) The source value for the operation
+    //    (src2) Second source operand (optional)
+    // imm_atomic_* operations have the following operands:
+    //    (dst0) Register that receives the result
+    //    (dst1) Destination u# or g# register
+    //    (srcX) As above
+    const bool isImm = ins.dstCount == 2;
+    const bool isUav = ins.dst[ins.dstCount - 1].type == DxbcOperandType::UnorderedAccessView;
+    
+    // Retrieve destination pointer for the atomic operation
+    const DxbcRegisterPointer pointer = emitGetAtomicPointer(
+      ins.dst[ins.dstCount - 1], ins.src[0]);
+    
+    // Load source values
+    std::array<DxbcRegisterValue, 2> src;
+    
+    for (uint32_t i = 1; i < ins.srcCount; i++) {
+      src[i - 1] = emitRegisterLoad(ins.src[i],
+        DxbcRegMask(true, false, false, false));
+    }
+    
+    // Define memory scope and semantics based on the operands
+    uint32_t semantics = isUav
+      ? spv::MemorySemanticsUniformMemoryMask
+      : spv::MemorySemanticsWorkgroupMemoryMask;
+    
+    // TODO verify whether this is even remotely correct
+    semantics |= spv::MemorySemanticsAcquireReleaseMask;
+    
+    // TODO for UAVs, respect globally coherent flag
+    const uint32_t scopeId     = m_module.constu32(spv::ScopeWorkgroup);
+    const uint32_t semanticsId = m_module.constu32(semantics);
+    
+    // Perform the atomic operation on the given pointer
+    DxbcRegisterValue value;
+    value.type.ctype  = ins.dst[0].dataType;
+    value.type.ccount = 1;
+    value.id = 0;
+    
+    // The result type, which is a scalar integer
+    const uint32_t typeId = getVectorTypeId(value.type);
+    
+    // TODO add signed min/max
     switch (ins.op) {
+      case DxbcOpcode::ImmAtomicExch:
+        value.id = m_module.opAtomicExchange(typeId,
+          pointer.id, scopeId, semanticsId,
+          src[0].id);
+        break;
+      
+      case DxbcOpcode::AtomicIAdd:
+      case DxbcOpcode::ImmAtomicIAdd:
+        value.id = m_module.opAtomicIAdd(typeId,
+          pointer.id, scopeId, semanticsId,
+          src[0].id);
+        break;
+      
+      case DxbcOpcode::AtomicAnd:
+      case DxbcOpcode::ImmAtomicAnd:
+        value.id = m_module.opAtomicAnd(typeId,
+          pointer.id, scopeId, semanticsId,
+          src[0].id);
+        break;
+      
+      case DxbcOpcode::AtomicOr:
+      case DxbcOpcode::ImmAtomicOr:
+        value.id = m_module.opAtomicOr(typeId,
+          pointer.id, scopeId, semanticsId,
+          src[0].id);
+        break;
+      
+      case DxbcOpcode::AtomicXor:
+      case DxbcOpcode::ImmAtomicXor:
+        value.id = m_module.opAtomicXor(typeId,
+          pointer.id, scopeId, semanticsId,
+          src[0].id);
+        break;
+      
+      case DxbcOpcode::AtomicUMin:
+        value.id = m_module.opAtomicUMin(typeId,
+          pointer.id, scopeId, semanticsId,
+          src[0].id);
+        break;
+      
+      case DxbcOpcode::AtomicUMax:
+        value.id = m_module.opAtomicUMin(typeId,
+          pointer.id, scopeId, semanticsId,
+          src[0].id);
+        break;
+      
       default:
         Logger::warn(str::format(
           "DxbcCompiler: Unhandled instruction: ",
           ins.op));
+        return;
     }
+    
+    // Write back the result to the destination
+    // register if this is an imm_atomic_* opcode.
+    if (isImm)
+      emitRegisterStore(ins.dst[0], value);
   }
   
   
@@ -3108,6 +3206,62 @@ namespace dxvk {
           "DxbcCompiler: Unhandled operand type: ",
           operand.type));
     }
+  }
+  
+  
+  DxbcRegisterPointer DxbcCompiler::emitGetAtomicPointer(
+    const DxbcRegister&           operand,
+    const DxbcRegister&           address) {
+    // Query information about the resource itself
+    const uint32_t registerId = operand.idx[0].offset;
+    const DxbcBufferInfo resourceInfo = getBufferInfo(operand);
+    
+    // For UAVs and shared memory, different methods
+    // of obtaining the final pointer are used.
+    const bool isUav = operand.type == DxbcOperandType::UnorderedAccessView;
+    
+    // Compute the actual address into the resource
+    const DxbcRegisterValue addressValue = [&] {
+      switch (resourceInfo.type) {
+        case DxbcResourceType::Raw:
+          return emitCalcBufferIndexRaw(emitRegisterLoad(
+            address, DxbcRegMask(true, false, false, false)));
+          
+        case DxbcResourceType::Structured: {
+          const DxbcRegisterValue addressComponents = emitRegisterLoad(
+            address, DxbcRegMask(true, true, false, false));
+          
+          return emitCalcBufferIndexStructured(
+            emitRegisterExtract(addressComponents, DxbcRegMask(true, false, false, false)),
+            emitRegisterExtract(addressComponents, DxbcRegMask(false, true, false, false)),
+            resourceInfo.stride);
+        };
+        
+        case DxbcResourceType::Typed: {
+          if (!isUav)
+            throw DxvkError("DxbcCompiler: TGSM cannot be typed");
+          
+          return emitRegisterLoad(address, getTexCoordMask(
+            m_uavs.at(registerId).imageInfo));
+        }
+        
+        default:
+          throw DxvkError("DxbcCompiler: Unhandled resource type");
+      }
+    }();
+    
+    // Compute the actual pointer
+    DxbcRegisterPointer result;
+    result.type.ctype  = operand.dataType;
+    result.type.ccount = 1;
+    result.id = isUav
+      ? m_module.opImageTexelPointer(
+          m_module.defPointerType(getVectorTypeId(result.type), spv::StorageClassImage),
+          m_uavs.at(registerId).varId, addressValue.id, m_module.constu32(0))
+      : m_module.opAccessChain(
+          m_module.defPointerType(getVectorTypeId(result.type), spv::StorageClassWorkgroup),
+          m_gRegs.at(registerId).varId, 1, &addressValue.id);
+    return result;
   }
   
   

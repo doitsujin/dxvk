@@ -250,10 +250,113 @@ namespace dxvk {
             uint32_t                indexCount,
       const uint32_t*               indexArray);
     
+    uint32_t opAtomicLoad(
+            uint32_t                resultType,
+            uint32_t                pointer,
+            uint32_t                scope,
+            uint32_t                semantics);
+            
+    void opAtomicStore(
+            uint32_t                pointer,
+            uint32_t                scope,
+            uint32_t                semantics,
+            uint32_t                value);
+            
+    uint32_t opAtomicExchange(
+            uint32_t                resultType,
+            uint32_t                pointer,
+            uint32_t                scope,
+            uint32_t                semantics,
+            uint32_t                value);
+            
+    uint32_t opAtomicCompareExchange(
+            uint32_t                resultType,
+            uint32_t                pointer,
+            uint32_t                scope,
+            uint32_t                equal,
+            uint32_t                unequal,
+            uint32_t                value,
+            uint32_t                comparator);
+            
+    uint32_t opAtomicIIncrement(
+            uint32_t                resultType,
+            uint32_t                pointer,
+            uint32_t                scope,
+            uint32_t                semantics);
+            
+    uint32_t opAtomicIDecrement(
+            uint32_t                resultType,
+            uint32_t                pointer,
+            uint32_t                scope,
+            uint32_t                semantics);
+            
+    uint32_t opAtomicIAdd(
+            uint32_t                resultType,
+            uint32_t                pointer,
+            uint32_t                scope,
+            uint32_t                semantics,
+            uint32_t                value);
+    
+    uint32_t opAtomicISub(
+            uint32_t                resultType,
+            uint32_t                pointer,
+            uint32_t                scope,
+            uint32_t                semantics,
+            uint32_t                value);
+    
+    uint32_t opAtomicSMin(
+            uint32_t                resultType,
+            uint32_t                pointer,
+            uint32_t                scope,
+            uint32_t                semantics,
+            uint32_t                value);
+    
+    uint32_t opAtomicSMax(
+            uint32_t                resultType,
+            uint32_t                pointer,
+            uint32_t                scope,
+            uint32_t                semantics,
+            uint32_t                value);
+    
+    uint32_t opAtomicUMin(
+            uint32_t                resultType,
+            uint32_t                pointer,
+            uint32_t                scope,
+            uint32_t                semantics,
+            uint32_t                value);
+    
+    uint32_t opAtomicUMax(
+            uint32_t                resultType,
+            uint32_t                pointer,
+            uint32_t                scope,
+            uint32_t                semantics,
+            uint32_t                value);
+    
+    uint32_t opAtomicAnd(
+            uint32_t                resultType,
+            uint32_t                pointer,
+            uint32_t                scope,
+            uint32_t                semantics,
+            uint32_t                value);
+    
+    uint32_t opAtomicOr(
+            uint32_t                resultType,
+            uint32_t                pointer,
+            uint32_t                scope,
+            uint32_t                semantics,
+            uint32_t                value);
+    
+    uint32_t opAtomicXor(
+            uint32_t                resultType,
+            uint32_t                pointer,
+            uint32_t                scope,
+            uint32_t                semantics,
+            uint32_t                value);
+    
     uint32_t opBitcast(
             uint32_t                resultType,
             uint32_t                operand);
-    
+            
     uint32_t opBitFieldInsert(
             uint32_t                resultType,
             uint32_t                base,
@@ -660,6 +763,12 @@ namespace dxvk {
             uint32_t                coordinates,
             uint32_t                texel,
       const SpirvImageOperands&     operands);
+    
+    uint32_t opImageTexelPointer(
+            uint32_t                resultType,
+            uint32_t                image,
+            uint32_t                coordinates,
+            uint32_t                sample);
     
     uint32_t opSampledImage(
             uint32_t                resultType,

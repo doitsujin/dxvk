@@ -562,6 +562,10 @@ namespace dxvk {
     DxbcRegisterPointer emitGetOperandPtr(
       const DxbcRegister&           operand);
     
+    DxbcRegisterPointer emitGetAtomicPointer(
+      const DxbcRegister&           operand,
+      const DxbcRegister&           address);
+    
     ///////////////////////////////
     // Resource load/store methods
     DxbcRegisterValue emitRawBufferLoad(
