@@ -516,8 +516,12 @@ namespace dxvk {
     // SPIR-V requires us to put that array into a
     // struct and decorate that struct as a block.
     const uint32_t structType = m_module.defStructTypeUnique(1, &arrayType);
+    
+    m_module.decorateBlock       (structType);
     m_module.memberDecorateOffset(structType, 0, 0);
-    m_module.decorateBlock(structType);
+    
+    m_module.setDebugName        (structType, str::format("struct_cb", bufferId).c_str());
+    m_module.setDebugMemberName  (structType, 0, "m");
     
     // Variable that we'll use to access the buffer
     const uint32_t varId = m_module.newVar(
