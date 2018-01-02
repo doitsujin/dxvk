@@ -308,7 +308,7 @@ namespace dxvk {
           return E_INVALIDARG;
       }
       
-      if (viewInfo.numLayers == 0 || viewInfo.numLayers == 0xFFFFFFFF)
+      if (viewInfo.numLevels == 0 || viewInfo.numLevels == 0xFFFFFFFF)
         viewInfo.numLevels = textureInfo.image->info().mipLevels - viewInfo.minLevel;
       
       if (ppSRView == nullptr)
@@ -685,8 +685,8 @@ namespace dxvk {
           pInputElementDescs[i].SemanticIndex);
         
         if (entry == nullptr) {
-          Logger::err(str::format(
-            "D3D11Device::CreateInputLayout: No such semantic: ",
+          Logger::warn(str::format(
+            "D3D11Device: No such vertex shader semantic: ",
             pInputElementDescs[i].SemanticName,
             pInputElementDescs[i].SemanticIndex));
           continue;

@@ -286,12 +286,12 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11DeviceContext::Begin(ID3D11Asynchronous *pAsync) {
-    Logger::err("D3D11DeviceContext::Begin: Not implemented");
+//     Logger::err("D3D11DeviceContext::Begin: Not implemented");
   }
   
   
   void STDMETHODCALLTYPE D3D11DeviceContext::End(ID3D11Asynchronous *pAsync) {
-    Logger::err("D3D11DeviceContext::End: Not implemented");
+//     Logger::err("D3D11DeviceContext::End: Not implemented");
   }
   
   
