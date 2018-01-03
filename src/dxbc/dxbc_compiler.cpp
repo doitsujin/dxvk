@@ -2313,8 +2313,9 @@ namespace dxvk {
       
       // Sample operation with explicit LOD
       case DxbcOpcode::SampleL: {
+        
         imageOperands.flags |= spv::ImageOperandsLodMask;
-        imageOperands.sLod = m_module.constf32(explicitLod.id);
+        imageOperands.sLod = explicitLod.id;
         
         result.id = m_module.opImageSampleExplicitLod(
           getVectorTypeId(result.type), sampledImageId, coord.id,

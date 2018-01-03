@@ -1458,7 +1458,7 @@ namespace dxvk {
           image, value, subresources);
       } else {
         VkClearDepthStencilValue value;
-        value.depth   = 0.0f;
+        value.depth   = 1.0f;
         value.stencil = 0;
         
         m_resourceInitContext->clearDepthStencilImage(
