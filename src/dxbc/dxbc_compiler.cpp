@@ -658,10 +658,11 @@ namespace dxvk {
       default: break; // No additional capabilities required
     }
     
-    // We do not know whether the image is going to be used as a color
-    // image or a depth image yet, so we'll declare types for both.
+    // We do not know whether the image is going to be used as
+    // a color image or a depth image yet, but we can pick the
+    // correct type when creating a sampled image object.
     const uint32_t imageTypeId = m_module.defImageType(sampledTypeId,
-      typeInfo.dim, 2, typeInfo.array, typeInfo.ms, typeInfo.sampled,
+      typeInfo.dim, 0, typeInfo.array, typeInfo.ms, typeInfo.sampled,
       spv::ImageFormatUnknown);
     
     // We'll declare the texture variable with the color type
@@ -2108,7 +2109,6 @@ namespace dxvk {
     const DxbcRegMask   coordArrayMask = getTexCoordMask(imageType);
     
     const uint32_t imageLayerDim = getTexLayerDim(imageType);
-    const uint32_t imageCoordDim = getTexCoordDim(imageType);
     
     // Load the texture coordinates. The last component
     // contains the LOD if the resource is an image.
@@ -2146,64 +2146,21 @@ namespace dxvk {
     }
     
     // Extract coordinates from address
-    const DxbcRegisterValue coord = emitRegisterExtract(address, coordArrayMask);
+    const DxbcRegisterValue coord =
+      emitRegisterExtract(address, coordArrayMask);
     
-    // Perform bounds checking. If the coordinates are
-    // out of bounds, we return zero in all components.
-    const DxbcRegisterValue resourceSize = imageType.dim != spv::DimBuffer
-      ? emitQueryTextureSize(ins.src[1], imageLod)
-      : emitQueryTexelBufferSize(ins.src[1]);
-    
-    uint32_t boundCheckId = m_module.opULessThan(
-      m_module.defVectorType(m_module.defBoolType(), imageCoordDim),
-      coord.id, resourceSize.id);
-    
-    if (imageCoordDim > 1)
-      boundCheckId = m_module.opAll(m_module.defBoolType(), boundCheckId);
-    
-    const uint32_t boundCheckPassLabel  = m_module.allocateId();
-    const uint32_t boundCheckFailLabel  = m_module.allocateId();
-    const uint32_t boundCheckMergeLabel = m_module.allocateId();
-    
-    m_module.opSelectionMerge(boundCheckMergeLabel, spv::SelectionControlMaskNone);
-    m_module.opBranchConditional(boundCheckId, boundCheckPassLabel, boundCheckFailLabel);
+    const uint32_t imageId = m_module.opLoad(
+      m_textures.at(textureId).imageTypeId,
+      m_textures.at(textureId).varId);
     
     // Reading a typed image or buffer view
     // always returns a four-component vector.
     DxbcRegisterValue result;
     result.type.ctype  = m_textures.at(textureId).sampledType;
     result.type.ccount = 4;
-    
-    // Bound check passed, load the texel
-    m_module.opLabel(boundCheckPassLabel);
-    
-    const uint32_t imageId = m_module.opLoad(
-      m_textures.at(textureId).imageTypeId,
-      m_textures.at(textureId).varId);
-    
-    const uint32_t boundCheckPassId = m_module.opImageFetch(
+    result.id = m_module.opImageFetch(
       getVectorTypeId(result.type), imageId,
       coord.id, imageOperands);
-    
-    m_module.opBranch(boundCheckMergeLabel);
-    m_module.opLabel (boundCheckFailLabel);
-    
-    // Return zeroes if the bound check failed
-    const uint32_t boundCheckFailId = emitBuildZeroVec(result.type).id;
-    
-    m_module.opBranch(boundCheckMergeLabel);
-    m_module.opLabel (boundCheckMergeLabel);
-    
-    // Use a phi function to determine
-    // which of the results to take.
-    const std::array<SpirvPhiLabel, 2> phiOps = {{
-      { boundCheckPassId, boundCheckPassLabel },
-      { boundCheckFailId, boundCheckFailLabel },
-    }};
-    
-    result.id = m_module.opPhi(
-      getVectorTypeId(result.type),
-      phiOps.size(), phiOps.data());
     
     // Swizzle components using the texture swizzle
     // and the destination operand's write mask
@@ -2280,8 +2237,6 @@ namespace dxvk {
       : DxbcRegisterValue();
     
     // Determine the sampled image type based on the opcode.
-    // FIXME while this is in line what the offical glsl compiler
-    // does, this might actually violate the SPIR-V specification.
     const uint32_t sampledImageType = isDepthCompare
       ? m_module.defSampledImageType(m_textures.at(textureId).depthTypeId)
       : m_module.defSampledImageType(m_textures.at(textureId).colorTypeId);
