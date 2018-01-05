@@ -1698,7 +1698,7 @@ namespace dxvk {
         break;
       
       case DxbcOpcode::AtomicUMax:
-        value.id = m_module.opAtomicUMin(typeId,
+        value.id = m_module.opAtomicUMax(typeId,
           pointer.id, scopeId, semanticsId,
           src[0].id);
         break;
