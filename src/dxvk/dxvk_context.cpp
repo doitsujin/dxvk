@@ -286,6 +286,63 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::copyBufferToImage(
+    const Rc<DxvkImage>&        dstImage,
+          VkImageSubresourceLayers dstSubresource,
+          VkOffset3D            dstOffset,
+          VkExtent3D            dstExtent,
+    const Rc<DxvkBuffer>&       srcBuffer,
+          VkDeviceSize          srcOffset,
+          VkExtent2D            srcExtent) {
+    this->renderPassEnd();
+    
+    const VkImageSubresourceRange dstSubresourceRange = {
+      dstSubresource.aspectMask,
+      dstSubresource.mipLevel, 1,
+      dstSubresource.baseArrayLayer,
+      dstSubresource.layerCount };
+    
+    m_barriers.accessImage(
+      dstImage, dstSubresourceRange,
+      dstImage->info().extent == dstExtent
+        ? VK_IMAGE_LAYOUT_UNDEFINED
+        : dstImage->info().layout,
+      dstImage->info().stages,
+      dstImage->info().access,
+      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT);
+    m_barriers.recordCommands(m_cmd);
+    
+    VkBufferImageCopy copyRegion;
+    copyRegion.bufferOffset       = srcOffset;
+    copyRegion.bufferRowLength    = srcExtent.width;
+    copyRegion.bufferImageHeight  = srcExtent.height;
+    copyRegion.imageSubresource   = dstSubresource;
+    copyRegion.imageOffset        = dstOffset;
+    copyRegion.imageExtent        = dstExtent;
+    
+    m_cmd->cmdCopyBufferToImage(
+      srcBuffer->handle(),
+      dstImage->handle(),
+      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      1, &copyRegion);
+    
+    m_barriers.accessImage(
+      dstImage, dstSubresourceRange,
+      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT,
+      dstImage->info().layout,
+      dstImage->info().stages,
+      dstImage->info().access);
+    m_barriers.recordCommands(m_cmd);
+    
+    m_cmd->trackResource(dstImage);
+    m_cmd->trackResource(srcBuffer->resource());
+  }
+  
+  
   void DxvkContext::copyImage(
     const Rc<DxvkImage>&        dstImage,
           VkImageSubresourceLayers dstSubresource,
@@ -296,25 +353,23 @@ namespace dxvk {
           VkExtent3D            extent) {
     this->renderPassEnd();
     
-    VkImageSubresourceRange dstSubresourceRange;
-    dstSubresourceRange.aspectMask     = dstSubresource.aspectMask;
-    dstSubresourceRange.baseMipLevel   = dstSubresource.mipLevel;
-    dstSubresourceRange.levelCount     = 1;
-    dstSubresourceRange.baseArrayLayer = dstSubresource.baseArrayLayer;
-    dstSubresourceRange.layerCount     = dstSubresource.layerCount;
+    const VkImageSubresourceRange dstSubresourceRange = {
+      dstSubresource.aspectMask,
+      dstSubresource.mipLevel, 1,
+      dstSubresource.baseArrayLayer,
+      dstSubresource.layerCount };
     
-    VkImageSubresourceRange srcSubresourceRange;
-    srcSubresourceRange.aspectMask     = srcSubresource.aspectMask;
-    srcSubresourceRange.baseMipLevel   = srcSubresource.mipLevel;
-    srcSubresourceRange.levelCount     = 1;
-    srcSubresourceRange.baseArrayLayer = srcSubresource.baseArrayLayer;
-    srcSubresourceRange.layerCount     = srcSubresource.layerCount;
+    const VkImageSubresourceRange srcSubresourceRange = {
+      srcSubresource.aspectMask,
+      srcSubresource.mipLevel, 1,
+      srcSubresource.baseArrayLayer,
+      srcSubresource.layerCount };
     
-    // TODO if the entire destination resource
-    // gets overwritten, discard the contents.
     m_barriers.accessImage(
       dstImage, dstSubresourceRange,
-      dstImage->info().layout,
+      dstImage->info().extent == extent
+        ? VK_IMAGE_LAYOUT_UNDEFINED
+        : dstImage->info().layout,
       dstImage->info().stages,
       dstImage->info().access,
       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,

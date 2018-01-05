@@ -133,6 +133,13 @@ namespace dxvk {
             uint32_t                regionCount,
       const VkBufferCopy*           pRegions);
     
+    void cmdCopyBufferToImage(
+            VkBuffer                srcBuffer,
+            VkImage                 dstImage,
+            VkImageLayout           dstImageLayout,
+            uint32_t                regionCount,
+      const VkBufferImageCopy*      pRegions);
+    
     void cmdCopyImage(
             VkImage                 srcImage,
             VkImageLayout           srcImageLayout,

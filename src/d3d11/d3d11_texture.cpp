@@ -57,6 +57,42 @@ namespace dxvk {
   
   
   /**
+   * \brief Creates a buffer to map an image object
+   * 
+   * When mapping an image, some applications make the incorrect
+   * assumption that image data is tightly packed, which may lead
+   * to corrupted textures in memory. To prevent this, we create
+   * a tightly packed buffer and use it when mapping the image.
+   */
+  Rc<DxvkBuffer> CreateImageBuffer(
+    const Rc<DxvkDevice>&       device,
+          VkFormat              format,
+          VkExtent3D            extent) {
+    const DxvkFormatInfo* formatInfo = imageFormatInfo(format);
+    
+    const VkExtent3D blockCount = {
+      extent.width  / formatInfo->blockSize.width,
+      extent.height / formatInfo->blockSize.height,
+      extent.depth  / formatInfo->blockSize.depth };
+    
+    DxvkBufferCreateInfo info;
+    info.size   = formatInfo->elementSize
+                * blockCount.width
+                * blockCount.height
+                * blockCount.depth;
+    info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+                | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    info.access = VK_ACCESS_TRANSFER_READ_BIT
+                | VK_ACCESS_TRANSFER_WRITE_BIT;
+    
+    return device->createBuffer(info,
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+  }
+  
+  
+  /**
    * \brief Fills in image info stage and access flags
    * 
    * \param [in] pDevice Target device
@@ -101,7 +137,6 @@ namespace dxvk {
     }
     
     if (CPUAccessFlags != 0) {
-      pImageInfo->tiling  = VK_IMAGE_TILING_LINEAR;
       pImageInfo->stages |= VK_PIPELINE_STAGE_HOST_BIT;
       
       if (CPUAccessFlags & D3D11_CPU_ACCESS_WRITE)
@@ -159,8 +194,10 @@ namespace dxvk {
     // Create the image and, if necessary, the image buffer
     m_texInfo.formatMode  = formatMode;
     m_texInfo.image       = pDevice->GetDXVKDevice()->createImage(
-      info, GetMemoryFlagsForUsage(pDesc->Usage));
-    m_texInfo.imageBuffer = D3D11ImageBuffer { nullptr, 0, 0 };
+      info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    m_texInfo.imageBuffer = pDesc->CPUAccessFlags != 0
+      ? CreateImageBuffer(pDevice->GetDXVKDevice(), info.format, info.extent)
+      : nullptr;
   }
   
   ///////////////////////////////////////////
@@ -249,8 +286,10 @@ namespace dxvk {
     // Create the image and, if necessary, the image buffer
     m_texInfo.formatMode  = formatMode;
     m_texInfo.image       = pDevice->GetDXVKDevice()->createImage(
-      info, GetMemoryFlagsForUsage(pDesc->Usage));
-    m_texInfo.imageBuffer = D3D11ImageBuffer { nullptr, 0, 0 };
+      info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    m_texInfo.imageBuffer = pDesc->CPUAccessFlags != 0
+      ? CreateImageBuffer(pDevice->GetDXVKDevice(), info.format, info.extent)
+      : nullptr;
   }
   
   
@@ -336,8 +375,10 @@ namespace dxvk {
     // Create the image and, if necessary, the image buffer
     m_texInfo.formatMode  = formatMode;
     m_texInfo.image       = pDevice->GetDXVKDevice()->createImage(
-      info, GetMemoryFlagsForUsage(pDesc->Usage));
-    m_texInfo.imageBuffer = D3D11ImageBuffer { nullptr, 0, 0 };
+      info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    m_texInfo.imageBuffer = pDesc->CPUAccessFlags != 0
+      ? CreateImageBuffer(pDevice->GetDXVKDevice(), info.format, info.extent)
+      : nullptr;
   }
   
   
@@ -384,7 +425,7 @@ namespace dxvk {
   
   
   
-  const D3D11TextureInfo* GetCommonTextureInfo(ID3D11Resource* pResource) {
+  D3D11TextureInfo* GetCommonTextureInfo(ID3D11Resource* pResource) {
     D3D11_RESOURCE_DIMENSION dimension = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&dimension);
     

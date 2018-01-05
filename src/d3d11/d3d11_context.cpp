@@ -208,7 +208,7 @@ namespace dxvk {
       
       if (buffer->mapPtr(0) == nullptr) {
         Logger::err("D3D11: Cannot map a device-local buffer");
-        return E_FAIL;
+        return E_INVALIDARG;
       }
       
       if (pMappedResource == nullptr)
@@ -236,39 +236,61 @@ namespace dxvk {
       pMappedResource->DepthPitch = buffer->info().size;
       return S_OK;
     } else {
-      const D3D11TextureInfo* textureInfo
+      // Mapping an image is sadly not as simple as mapping a buffer
+      // because applications tend to ignore row and layer strides.
+      // We use a buffer instead and then perform a copy.
+      D3D11TextureInfo* textureInfo
         = GetCommonTextureInfo(pResource);
       
-      if (textureInfo->image->mapPtr(0) == nullptr) {
+      if (textureInfo->imageBuffer == nullptr) {
         Logger::err("D3D11DeviceContext: Cannot map a device-local image");
-        return E_FAIL;
+        return E_INVALIDARG;
+      }
+      
+      // FIXME copy current image contents into the
+      // buffer unless D3D11_MAP_DISCARD is used.
+      if (MapType == D3D11_MAP_READ || MapType == D3D11_MAP_READ_WRITE) {
+        Logger::err("D3D11DeviceContext: Read-only and Read-Write mapping of images currently not supported");
+        return E_INVALIDARG;
       }
       
       if (pMappedResource == nullptr)
-        return S_OK;
+        return S_FALSE;
       
-      if (textureInfo->image->isInUse()) {
+      if (textureInfo->imageBuffer->isInUse()) {
         // Don't wait if the application tells us not to
         if (MapFlags & D3D11_MAP_FLAG_DO_NOT_WAIT)
           return DXGI_ERROR_WAS_STILL_DRAWING;
         
-        this->Flush();
-        this->Synchronize();
+        if (MapType == D3D11_MAP_WRITE_DISCARD) {
+          m_context->invalidateBuffer(textureInfo->imageBuffer);
+        } else if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE) {
+          this->Flush();
+          this->Synchronize();
+        }
       }
       
-      const DxvkImageCreateInfo imageInfo = textureInfo->image->info();
+      // Query format and subresource in order to compute
+      // the row pitch and layer pitch properly.
+      const DxvkImageCreateInfo& imageInfo = textureInfo->image->info();
+      const DxvkFormatInfo* formatInfo = imageFormatInfo(imageInfo.format);
       
-      const VkImageSubresource imageSubresource =
+      textureInfo->mappedSubresource =
         GetSubresourceFromIndex(VK_IMAGE_ASPECT_COLOR_BIT,
           imageInfo.mipLevels, Subresource);
       
-      const VkSubresourceLayout layout =
-        textureInfo->image->querySubresourceLayout(imageSubresource);
+      const VkExtent3D levelExtent = textureInfo->image
+        ->mipLevelExtent(textureInfo->mappedSubresource.mipLevel);
       
-      // TODO handle undefined stuff
-      pMappedResource->pData      = textureInfo->image->mapPtr(layout.offset);
-      pMappedResource->RowPitch   = layout.rowPitch;
-      pMappedResource->DepthPitch = layout.depthPitch;
+      const VkExtent3D blockCount = {
+        levelExtent.width  / formatInfo->blockSize.width,
+        levelExtent.height / formatInfo->blockSize.height,
+        levelExtent.depth  / formatInfo->blockSize.depth };
+      
+      // Set up map pointer. Data is tightly packed within the mapped buffer.
+      pMappedResource->pData      = textureInfo->imageBuffer->mapPtr(0);
+      pMappedResource->RowPitch   = formatInfo->elementSize * blockCount.width;
+      pMappedResource->DepthPitch = formatInfo->elementSize * blockCount.width * blockCount.height;
       return S_OK;
     }
   }
@@ -277,7 +299,28 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeviceContext::Unmap(
           ID3D11Resource*             pResource,
           UINT                        Subresource) {
-    // Nothing to do here, resources are persistently mapped
+    D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+    pResource->GetType(&resourceDim);
+    
+    if (resourceDim != D3D11_RESOURCE_DIMENSION_BUFFER) {
+      // Now that data has been written into the buffer,
+      // we need to copy its contents into the image
+      const D3D11TextureInfo* textureInfo
+        = GetCommonTextureInfo(pResource);
+      
+      const VkExtent3D levelExtent = textureInfo->image
+        ->mipLevelExtent(textureInfo->mappedSubresource.mipLevel);
+      
+      const VkImageSubresourceLayers subresourceLayers = {
+        textureInfo->mappedSubresource.aspectMask,
+        textureInfo->mappedSubresource.mipLevel,
+        textureInfo->mappedSubresource.arrayLayer, 1 };
+      
+      m_context->copyBufferToImage(
+        textureInfo->image, subresourceLayers,
+        VkOffset3D { 0, 0, 0 }, levelExtent,
+        textureInfo->imageBuffer, 0, { 0u, 0u });
+    }
   }
   
   

@@ -10,18 +10,6 @@ namespace dxvk {
   class D3D11Device;
   
   /**
-   * \brief Image buffer info
-   * 
-   * Stores the buffer used for mapping
-   * an image and the row/layer strides.
-   */
-  struct D3D11ImageBuffer {
-    Rc<DxvkBuffer>    buffer;
-    VkDeviceSize      bytesPerRow;
-    VkDeviceSize      bytesPerLayer;
-  };
-  
-  /**
    * \brief Common texture info
    * 
    * Stores the image and the image format
@@ -29,8 +17,11 @@ namespace dxvk {
    */
   struct D3D11TextureInfo {
     DxgiFormatMode    formatMode;
-    D3D11ImageBuffer  imageBuffer;
+    Rc<DxvkBuffer>    imageBuffer;
     Rc<DxvkImage>     image;
+    
+    VkImageSubresource mappedSubresource = {
+      VK_IMAGE_ASPECT_COLOR_BIT, 0, 0 };
   };
   
   
@@ -64,7 +55,7 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc(
             D3D11_TEXTURE1D_DESC *pDesc) final;
     
-    const D3D11TextureInfo* GetTextureInfo() const {
+    D3D11TextureInfo* GetTextureInfo() {
       return &m_texInfo;
     }
     
@@ -106,7 +97,7 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc(
             D3D11_TEXTURE2D_DESC *pDesc) final;
     
-    const D3D11TextureInfo* GetTextureInfo() const {
+    D3D11TextureInfo* GetTextureInfo() {
       return &m_texInfo;
     }
     
@@ -148,7 +139,7 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc(
             D3D11_TEXTURE3D_DESC *pDesc) final;
     
-    const D3D11TextureInfo* GetTextureInfo() const {
+    D3D11TextureInfo* GetTextureInfo() {
       return &m_texInfo;
     }
     
@@ -168,7 +159,7 @@ namespace dxvk {
    * \param [out] pTextureInfo Pointer to the texture info struct.
    * \returns E_INVALIDARG if the resource is not a texture
    */
-  const D3D11TextureInfo* GetCommonTextureInfo(
+  D3D11TextureInfo* GetCommonTextureInfo(
           ID3D11Resource*       pResource);
   
   /**
