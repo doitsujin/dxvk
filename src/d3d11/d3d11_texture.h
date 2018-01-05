@@ -9,6 +9,32 @@ namespace dxvk {
   
   class D3D11Device;
   
+  /**
+   * \brief Image buffer info
+   * 
+   * Stores the buffer used for mapping
+   * an image and the row/layer strides.
+   */
+  struct D3D11ImageBuffer {
+    Rc<DxvkBuffer>    buffer;
+    VkDeviceSize      bytesPerRow;
+    VkDeviceSize      bytesPerLayer;
+  };
+  
+  /**
+   * \brief Common texture info
+   * 
+   * Stores the image and the image format
+   * mode for a texture of any type.
+   */
+  struct D3D11TextureInfo {
+    DxgiFormatMode    formatMode;
+    D3D11ImageBuffer  imageBuffer;
+    Rc<DxvkImage>     image;
+  };
+  
+  
+  
   ///////////////////////////////////////////
   //      D 3 D 1 1 T E X T U R E 1 D
   class D3D11Texture1D : public D3D11DeviceChild<ID3D11Texture1D> {
@@ -38,20 +64,15 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc(
             D3D11_TEXTURE1D_DESC *pDesc) final;
     
-    DxgiFormatMode GetFormatMode() const {
-      return m_formatMode;
-    }
-    
-    Rc<DxvkImage> GetDXVKImage() const {
-      return m_image;
+    const D3D11TextureInfo* GetTextureInfo() const {
+      return &m_texInfo;
     }
     
   private:
     
     Com<D3D11Device>                m_device;
-    DxgiFormatMode                  m_formatMode;
     D3D11_TEXTURE1D_DESC            m_desc;
-    Rc<DxvkImage>                   m_image;
+    D3D11TextureInfo                m_texInfo;
     
   };
   
@@ -85,20 +106,15 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc(
             D3D11_TEXTURE2D_DESC *pDesc) final;
     
-    DxgiFormatMode GetFormatMode() const {
-      return m_formatMode;
-    }
-    
-    Rc<DxvkImage> GetDXVKImage() const {
-      return m_image;
+    const D3D11TextureInfo* GetTextureInfo() const {
+      return &m_texInfo;
     }
     
   private:
     
     Com<D3D11Device>                m_device;
-    DxgiFormatMode                  m_formatMode;
     D3D11_TEXTURE2D_DESC            m_desc;
-    Rc<DxvkImage>                   m_image;
+    D3D11TextureInfo                m_texInfo;
     
   };
   
@@ -132,33 +148,16 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc(
             D3D11_TEXTURE3D_DESC *pDesc) final;
     
-    DxgiFormatMode GetFormatMode() const {
-      return m_formatMode;
-    }
-    
-    Rc<DxvkImage> GetDXVKImage() const {
-      return m_image;
+    const D3D11TextureInfo* GetTextureInfo() const {
+      return &m_texInfo;
     }
     
   private:
     
     Com<D3D11Device>                m_device;
-    DxgiFormatMode                  m_formatMode;
     D3D11_TEXTURE3D_DESC            m_desc;
-    Rc<DxvkImage>                   m_image;
+    D3D11TextureInfo                m_texInfo;
     
-  };
-  
-  
-  /**
-   * \brief Common texture info
-   * 
-   * Stores the image and the image format
-   * mode for a texture of any type.
-   */
-  struct D3D11TextureInfo {
-    DxgiFormatMode  formatMode;
-    Rc<DxvkImage>   image;
   };
   
   
@@ -169,9 +168,8 @@ namespace dxvk {
    * \param [out] pTextureInfo Pointer to the texture info struct.
    * \returns E_INVALIDARG if the resource is not a texture
    */
-  HRESULT GetCommonTextureInfo(
-          ID3D11Resource*       pResource,
-          D3D11TextureInfo*     pTextureInfo);
+  const D3D11TextureInfo* GetCommonTextureInfo(
+          ID3D11Resource*       pResource);
   
   /**
    * \brief Computes image subresource from subresource index

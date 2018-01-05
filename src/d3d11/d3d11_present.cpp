@@ -9,7 +9,7 @@ namespace dxvk {
   
   
   Rc<DxvkImage> D3D11PresentBackBuffer::GetDXVKImage() {
-    return m_texture->GetDXVKImage();
+    return m_texture->GetTextureInfo()->image;
   }
   
   

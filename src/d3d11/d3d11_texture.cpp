@@ -126,12 +126,14 @@ namespace dxvk {
           D3D11Device*                pDevice,
     const D3D11_TEXTURE1D_DESC*       pDesc)
   : m_device    (pDevice),
-    m_formatMode(GetFormatModeFromBindFlags(pDesc->BindFlags)),
     m_desc      (*pDesc) {
+    
+    const DxgiFormatMode formatMode
+      = GetFormatModeFromBindFlags(pDesc->BindFlags);
     
     DxvkImageCreateInfo info;
     info.type           = VK_IMAGE_TYPE_1D;
-    info.format         = pDevice->LookupFormat(pDesc->Format, m_formatMode).format;
+    info.format         = pDevice->LookupFormat(pDesc->Format, formatMode).format;
     info.flags          = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
     info.sampleCount    = VK_SAMPLE_COUNT_1_BIT;
     info.extent.width   = pDesc->Width;
@@ -154,8 +156,11 @@ namespace dxvk {
       pDesc->MiscFlags,
       &info);
     
-    m_image = pDevice->GetDXVKDevice()->createImage(
+    // Create the image and, if necessary, the image buffer
+    m_texInfo.formatMode  = formatMode;
+    m_texInfo.image       = pDevice->GetDXVKDevice()->createImage(
       info, GetMemoryFlagsForUsage(pDesc->Usage));
+    m_texInfo.imageBuffer = D3D11ImageBuffer { nullptr, 0, 0 };
   }
   
   ///////////////////////////////////////////
@@ -208,12 +213,14 @@ namespace dxvk {
           D3D11Device*                pDevice,
     const D3D11_TEXTURE2D_DESC*       pDesc)
   : m_device    (pDevice),
-    m_formatMode(GetFormatModeFromBindFlags(pDesc->BindFlags)),
     m_desc      (*pDesc) {
+    
+    const DxgiFormatMode formatMode
+      = GetFormatModeFromBindFlags(pDesc->BindFlags);
     
     DxvkImageCreateInfo info;
     info.type           = VK_IMAGE_TYPE_2D;
-    info.format         = pDevice->LookupFormat(pDesc->Format, m_formatMode).format;
+    info.format         = pDevice->LookupFormat(pDesc->Format, formatMode).format;
     info.flags          = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
     info.sampleCount    = VK_SAMPLE_COUNT_1_BIT;
     info.extent.width   = pDesc->Width;
@@ -239,8 +246,11 @@ namespace dxvk {
       pDesc->MiscFlags,
       &info);
     
-    m_image = pDevice->GetDXVKDevice()->createImage(
+    // Create the image and, if necessary, the image buffer
+    m_texInfo.formatMode  = formatMode;
+    m_texInfo.image       = pDevice->GetDXVKDevice()->createImage(
       info, GetMemoryFlagsForUsage(pDesc->Usage));
+    m_texInfo.imageBuffer = D3D11ImageBuffer { nullptr, 0, 0 };
   }
   
   
@@ -292,12 +302,14 @@ namespace dxvk {
           D3D11Device*                pDevice,
     const D3D11_TEXTURE3D_DESC*       pDesc)
   : m_device    (pDevice),
-    m_formatMode(GetFormatModeFromBindFlags(pDesc->BindFlags)),
     m_desc      (*pDesc) {
+    
+    const DxgiFormatMode formatMode
+      = GetFormatModeFromBindFlags(pDesc->BindFlags);
     
     DxvkImageCreateInfo info;
     info.type           = VK_IMAGE_TYPE_3D;
-    info.format         = pDevice->LookupFormat(pDesc->Format, m_formatMode).format;
+    info.format         = pDevice->LookupFormat(pDesc->Format, formatMode).format;
     info.flags          = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT
                         | VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT_KHR;
     info.sampleCount    = VK_SAMPLE_COUNT_1_BIT;
@@ -321,8 +333,11 @@ namespace dxvk {
       pDesc->MiscFlags,
       &info);
     
-    m_image = pDevice->GetDXVKDevice()->createImage(
+    // Create the image and, if necessary, the image buffer
+    m_texInfo.formatMode  = formatMode;
+    m_texInfo.image       = pDevice->GetDXVKDevice()->createImage(
       info, GetMemoryFlagsForUsage(pDesc->Usage));
+    m_texInfo.imageBuffer = D3D11ImageBuffer { nullptr, 0, 0 };
   }
   
   
@@ -369,33 +384,22 @@ namespace dxvk {
   
   
   
-  HRESULT GetCommonTextureInfo(
-          ID3D11Resource*   pResource,
-          D3D11TextureInfo* pTextureInfo) {
+  const D3D11TextureInfo* GetCommonTextureInfo(ID3D11Resource* pResource) {
     D3D11_RESOURCE_DIMENSION dimension = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&dimension);
     
     switch (dimension) {
-      case D3D11_RESOURCE_DIMENSION_TEXTURE1D: {
-        auto tex = static_cast<D3D11Texture1D*>(pResource);
-        pTextureInfo->formatMode = tex->GetFormatMode();
-        pTextureInfo->image      = tex->GetDXVKImage();
-      } return S_OK;
+      case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
+        return static_cast<D3D11Texture1D*>(pResource)->GetTextureInfo();
       
-      case D3D11_RESOURCE_DIMENSION_TEXTURE2D: {
-        auto tex = static_cast<D3D11Texture2D*>(pResource);
-        pTextureInfo->formatMode = tex->GetFormatMode();
-        pTextureInfo->image      = tex->GetDXVKImage();
-      } return S_OK;
+      case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
+        return static_cast<D3D11Texture2D*>(pResource)->GetTextureInfo();
       
-      case D3D11_RESOURCE_DIMENSION_TEXTURE3D: {
-        auto tex = static_cast<D3D11Texture3D*>(pResource);
-        pTextureInfo->formatMode = tex->GetFormatMode();
-        pTextureInfo->image      = tex->GetDXVKImage();
-      } return S_OK;
+      case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
+        return static_cast<D3D11Texture3D*>(pResource)->GetTextureInfo();
       
       default:
-        return E_INVALIDARG;
+        return nullptr;
     }
   }
   
