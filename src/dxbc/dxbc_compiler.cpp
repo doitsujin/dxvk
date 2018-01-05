@@ -291,6 +291,9 @@ namespace dxvk {
     
     m_xRegs.at(regId).ccount = info.type.ccount;
     m_xRegs.at(regId).varId  = emitNewVariable(info);
+    
+    m_module.setDebugName(m_xRegs.at(regId).varId,
+      str::format("x", regId).c_str());
   }
   
   
