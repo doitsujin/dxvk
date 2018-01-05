@@ -1932,7 +1932,7 @@ namespace dxvk {
       const D3D11_VIEWPORT& vp = m_state.rs.viewports.at(i);
       
       viewports.at(i) = VkViewport {
-        vp.TopLeftX, vp.Height - vp.TopLeftY,
+        vp.TopLeftX, vp.Height + vp.TopLeftY,
         vp.Width,   -vp.Height,
         vp.MinDepth, vp.MaxDepth,
       };

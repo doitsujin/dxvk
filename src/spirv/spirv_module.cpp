@@ -1517,7 +1517,7 @@ namespace dxvk {
     m_code.putWord(resultType);
     m_code.putWord(resultId);
     m_code.putWord(m_instExtGlsl450);
-    m_code.putWord(spv::GLSLstd450NMax);
+    m_code.putWord(spv::GLSLstd450FMax);
     m_code.putWord(a);
     m_code.putWord(b);
     return resultId;
@@ -1534,7 +1534,7 @@ namespace dxvk {
     m_code.putWord(resultType);
     m_code.putWord(resultId);
     m_code.putWord(m_instExtGlsl450);
-    m_code.putWord(spv::GLSLstd450NMin);
+    m_code.putWord(spv::GLSLstd450FMin);
     m_code.putWord(a);
     m_code.putWord(b);
     return resultId;
@@ -1620,7 +1620,7 @@ namespace dxvk {
     m_code.putWord(resultType);
     m_code.putWord(resultId);
     m_code.putWord(m_instExtGlsl450);
-    m_code.putWord(spv::GLSLstd450NClamp);
+    m_code.putWord(spv::GLSLstd450FClamp);
     m_code.putWord(x);
     m_code.putWord(minVal);
     m_code.putWord(maxVal);
