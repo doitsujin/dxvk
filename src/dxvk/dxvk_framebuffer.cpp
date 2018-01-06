@@ -65,7 +65,7 @@ namespace dxvk {
   
   DxvkFramebufferSize DxvkRenderTargets::renderTargetSize(
     const Rc<DxvkImageView>& renderTarget) const {
-    auto extent = renderTarget->image()->info().extent;
+    auto extent = renderTarget->mipLevelExtent(0);
     auto layers = renderTarget->info().numLayers;
     return DxvkFramebufferSize { extent.width, extent.height, layers };
   }

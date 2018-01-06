@@ -244,6 +244,18 @@ namespace dxvk {
     }
     
     /**
+     * \brief Mip level size
+     * 
+     * Computes the mip level size relative to
+     * the first mip level that the view includes.
+     * \param [in] level Mip level
+     * \returns Size of that level
+     */
+    VkExtent3D mipLevelExtent(uint32_t level) const {
+      return m_image->mipLevelExtent(level + m_info.minLevel);
+    }
+    
+    /**
      * \brief Subresource range
      * \returns Subresource range
      */

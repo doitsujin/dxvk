@@ -304,7 +304,7 @@ namespace dxvk {
     
     m_barriers.accessImage(
       dstImage, dstSubresourceRange,
-      dstImage->info().extent == dstExtent
+      dstImage->mipLevelExtent(dstSubresource.mipLevel) == dstExtent
         ? VK_IMAGE_LAYOUT_UNDEFINED
         : dstImage->info().layout,
       dstImage->info().stages,
@@ -367,7 +367,7 @@ namespace dxvk {
     
     m_barriers.accessImage(
       dstImage, dstSubresourceRange,
-      dstImage->info().extent == extent
+      dstImage->mipLevelExtent(dstSubresource.mipLevel) == extent
         ? VK_IMAGE_LAYOUT_UNDEFINED
         : dstImage->info().layout,
       dstImage->info().stages,

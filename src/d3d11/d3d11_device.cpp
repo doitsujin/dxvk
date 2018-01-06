@@ -304,7 +304,7 @@ namespace dxvk {
           return E_INVALIDARG;
       }
       
-      if (viewInfo.numLevels == 0 || viewInfo.numLevels == 0xFFFFFFFF)
+      if (viewInfo.numLevels == 0xFFFFFFFF)
         viewInfo.numLevels = textureInfo->image->info().mipLevels - viewInfo.minLevel;
       
       if (ppSRView == nullptr)
@@ -445,7 +445,7 @@ namespace dxvk {
           
         default:
           Logger::err(str::format(
-            "D3D11: View dimension not supported for SRV: ",
+            "D3D11: View dimension not supported for UAV: ",
             desc.ViewDimension));
           return E_INVALIDARG;
       }

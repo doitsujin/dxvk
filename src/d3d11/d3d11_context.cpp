@@ -397,13 +397,26 @@ namespace dxvk {
       const D3D11TextureInfo* dstTextureInfo = GetCommonTextureInfo(pDstResource);
       const D3D11TextureInfo* srcTextureInfo = GetCommonTextureInfo(pSrcResource);
       
+      const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(dstTextureInfo->image->info().format);
+      const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcTextureInfo->image->info().format);
+      
+      const VkImageSubresource dstSubresource =
+        GetSubresourceFromIndex(
+          dstFormatInfo->aspectMask & srcFormatInfo->aspectMask,
+          dstTextureInfo->image->info().mipLevels, DstSubresource);
+      
+      const VkImageSubresource srcSubresource =
+        GetSubresourceFromIndex(
+          dstFormatInfo->aspectMask & srcFormatInfo->aspectMask,
+          srcTextureInfo->image->info().mipLevels, SrcSubresource);
+      
       VkOffset3D srcOffset = { 0, 0, 0 };
       VkOffset3D dstOffset = {
         static_cast<int32_t>(DstX),
         static_cast<int32_t>(DstY),
         static_cast<int32_t>(DstZ) };
       
-      VkExtent3D extent = srcTextureInfo->image->info().extent;
+      VkExtent3D extent = srcTextureInfo->image->mipLevelExtent(srcSubresource.mipLevel);
       
       if (pSrcBox != nullptr) {
         if (pSrcBox->left  >= pSrcBox->right
@@ -419,19 +432,6 @@ namespace dxvk {
         extent.height = pSrcBox->bottom - pSrcBox->top;
         extent.depth  = pSrcBox->back -   pSrcBox->front;
       }
-      
-      const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(dstTextureInfo->image->info().format);
-      const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcTextureInfo->image->info().format);
-      
-      const VkImageSubresource dstSubresource =
-        GetSubresourceFromIndex(
-          dstFormatInfo->aspectMask & srcFormatInfo->aspectMask,
-          dstTextureInfo->image->info().mipLevels, DstSubresource);
-      
-      const VkImageSubresource srcSubresource =
-        GetSubresourceFromIndex(
-          dstFormatInfo->aspectMask & srcFormatInfo->aspectMask,
-          srcTextureInfo->image->info().mipLevels, SrcSubresource);
       
       const VkImageSubresourceLayers dstLayers = {
         dstSubresource.aspectMask,
@@ -529,8 +529,8 @@ namespace dxvk {
       VkClearRect clearRect;
       clearRect.rect.offset.x       = 0;
       clearRect.rect.offset.y       = 0;
-      clearRect.rect.extent.width   = dxvkView->imageInfo().extent.width;
-      clearRect.rect.extent.height  = dxvkView->imageInfo().extent.height;
+      clearRect.rect.extent.width   = dxvkView->mipLevelExtent(0).width;
+      clearRect.rect.extent.height  = dxvkView->mipLevelExtent(0).height;
       clearRect.baseArrayLayer      = 0;
       clearRect.layerCount          = dxvkView->imageInfo().numLayers;
       
@@ -591,8 +591,8 @@ namespace dxvk {
       VkClearRect clearRect;
       clearRect.rect.offset.x       = 0;
       clearRect.rect.offset.y       = 0;
-      clearRect.rect.extent.width   = dxvkView->imageInfo().extent.width;
-      clearRect.rect.extent.height  = dxvkView->imageInfo().extent.height;
+      clearRect.rect.extent.width   = dxvkView->mipLevelExtent(0).width;
+      clearRect.rect.extent.height  = dxvkView->mipLevelExtent(0).height;
       clearRect.baseArrayLayer      = 0;
       clearRect.layerCount          = dxvkView->imageInfo().numLayers;
       
@@ -651,8 +651,12 @@ namespace dxvk {
       const D3D11TextureInfo* textureInfo
         = GetCommonTextureInfo(pDstResource);
       
+      const VkImageSubresource subresource =
+        GetSubresourceFromIndex(VK_IMAGE_ASPECT_COLOR_BIT,
+          textureInfo->image->info().mipLevels, DstSubresource);
+      
       VkOffset3D offset = { 0, 0, 0 };
-      VkExtent3D extent = textureInfo->image->info().extent;
+      VkExtent3D extent = textureInfo->image->mipLevelExtent(subresource.mipLevel);
       
       if (pDstBox != nullptr) {
         if (pDstBox->left >= pDstBox->right
@@ -669,15 +673,10 @@ namespace dxvk {
         extent.depth  = pDstBox->back - pDstBox->front;
       }
       
-      const VkImageSubresource imageSubresource =
-        GetSubresourceFromIndex(VK_IMAGE_ASPECT_COLOR_BIT,
-          textureInfo->image->info().mipLevels, DstSubresource);
-      
-      VkImageSubresourceLayers layers;
-      layers.aspectMask     = imageSubresource.aspectMask;
-      layers.mipLevel       = imageSubresource.mipLevel;
-      layers.baseArrayLayer = imageSubresource.arrayLayer;
-      layers.layerCount     = 1;
+      const VkImageSubresourceLayers layers = {
+        subresource.aspectMask,
+        subresource.mipLevel,
+        subresource.arrayLayer, 1 };
       
       m_context->updateImage(
         textureInfo->image, layers,

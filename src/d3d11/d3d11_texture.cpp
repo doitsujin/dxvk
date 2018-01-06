@@ -149,9 +149,6 @@ namespace dxvk {
     if (MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE)
       pImageInfo->flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
     
-    if (pImageInfo->mipLevels == 0)
-      pImageInfo->mipLevels = util::computeMipLevelCount(pImageInfo->extent);
-    
     if (pImageInfo->tiling == VK_IMAGE_TILING_OPTIMAL)
       pImageInfo->layout = OptimizeLayout(pImageInfo->usage);
   }
@@ -164,18 +161,23 @@ namespace dxvk {
     m_desc      (*pDesc) {
     
     const DxgiFormatMode formatMode
-      = GetFormatModeFromBindFlags(pDesc->BindFlags);
+      = GetFormatModeFromBindFlags(m_desc.BindFlags);
+    
+    if (m_desc.MipLevels == 0) {
+      m_desc.MipLevels = util::computeMipLevelCount(
+        { m_desc.Width, 1u, 1u });
+    }
     
     DxvkImageCreateInfo info;
     info.type           = VK_IMAGE_TYPE_1D;
-    info.format         = pDevice->LookupFormat(pDesc->Format, formatMode).format;
+    info.format         = pDevice->LookupFormat(m_desc.Format, formatMode).format;
     info.flags          = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
     info.sampleCount    = VK_SAMPLE_COUNT_1_BIT;
-    info.extent.width   = pDesc->Width;
+    info.extent.width   = m_desc.Width;
     info.extent.height  = 1;
     info.extent.depth   = 1;
-    info.numLayers      = pDesc->ArraySize;
-    info.mipLevels      = pDesc->MipLevels;
+    info.numLayers      = m_desc.ArraySize;
+    info.mipLevels      = m_desc.MipLevels;
     info.usage          = VK_IMAGE_USAGE_TRANSFER_SRC_BIT
                         | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     info.stages         = VK_PIPELINE_STAGE_TRANSFER_BIT;
@@ -186,16 +188,16 @@ namespace dxvk {
     
     GetImageStagesAndAccessFlags(
       pDevice,
-      pDesc->BindFlags,
-      pDesc->CPUAccessFlags,
-      pDesc->MiscFlags,
+      m_desc.BindFlags,
+      m_desc.CPUAccessFlags,
+      m_desc.MiscFlags,
       &info);
     
     // Create the image and, if necessary, the image buffer
     m_texInfo.formatMode  = formatMode;
     m_texInfo.image       = pDevice->GetDXVKDevice()->createImage(
       info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    m_texInfo.imageBuffer = pDesc->CPUAccessFlags != 0
+    m_texInfo.imageBuffer = m_desc.CPUAccessFlags != 0
       ? CreateImageBuffer(pDevice->GetDXVKDevice(), info.format, info.extent)
       : nullptr;
   }
@@ -253,18 +255,23 @@ namespace dxvk {
     m_desc      (*pDesc) {
     
     const DxgiFormatMode formatMode
-      = GetFormatModeFromBindFlags(pDesc->BindFlags);
+      = GetFormatModeFromBindFlags(m_desc.BindFlags);
+    
+    if (m_desc.MipLevels == 0) {
+      m_desc.MipLevels = util::computeMipLevelCount(
+        { m_desc.Width, m_desc.Height, 1u });
+    }
     
     DxvkImageCreateInfo info;
     info.type           = VK_IMAGE_TYPE_2D;
-    info.format         = pDevice->LookupFormat(pDesc->Format, formatMode).format;
+    info.format         = pDevice->LookupFormat(m_desc.Format, formatMode).format;
     info.flags          = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
     info.sampleCount    = VK_SAMPLE_COUNT_1_BIT;
-    info.extent.width   = pDesc->Width;
-    info.extent.height  = pDesc->Height;
+    info.extent.width   = m_desc.Width;
+    info.extent.height  = m_desc.Height;
     info.extent.depth   = 1;
-    info.numLayers      = pDesc->ArraySize;
-    info.mipLevels      = pDesc->MipLevels;
+    info.numLayers      = m_desc.ArraySize;
+    info.mipLevels      = m_desc.MipLevels;
     info.usage          = VK_IMAGE_USAGE_TRANSFER_SRC_BIT
                         | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     info.stages         = VK_PIPELINE_STAGE_TRANSFER_BIT;
@@ -273,21 +280,21 @@ namespace dxvk {
     info.tiling         = VK_IMAGE_TILING_OPTIMAL;
     info.layout         = VK_IMAGE_LAYOUT_GENERAL;
     
-    if (FAILED(GetSampleCount(pDesc->SampleDesc.Count, &info.sampleCount)))
-      throw DxvkError(str::format("D3D11: Invalid sample count: ", pDesc->SampleDesc.Count));
+    if (FAILED(GetSampleCount(m_desc.SampleDesc.Count, &info.sampleCount)))
+      throw DxvkError(str::format("D3D11: Invalid sample count: ", m_desc.SampleDesc.Count));
     
     GetImageStagesAndAccessFlags(
       pDevice,
-      pDesc->BindFlags,
-      pDesc->CPUAccessFlags,
-      pDesc->MiscFlags,
+      m_desc.BindFlags,
+      m_desc.CPUAccessFlags,
+      m_desc.MiscFlags,
       &info);
     
     // Create the image and, if necessary, the image buffer
     m_texInfo.formatMode  = formatMode;
     m_texInfo.image       = pDevice->GetDXVKDevice()->createImage(
       info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    m_texInfo.imageBuffer = pDesc->CPUAccessFlags != 0
+    m_texInfo.imageBuffer = m_desc.CPUAccessFlags != 0
       ? CreateImageBuffer(pDevice->GetDXVKDevice(), info.format, info.extent)
       : nullptr;
   }
@@ -344,19 +351,24 @@ namespace dxvk {
     m_desc      (*pDesc) {
     
     const DxgiFormatMode formatMode
-      = GetFormatModeFromBindFlags(pDesc->BindFlags);
+      = GetFormatModeFromBindFlags(m_desc.BindFlags);
+    
+    if (m_desc.MipLevels == 0) {
+      m_desc.MipLevels = util::computeMipLevelCount(
+        { m_desc.Width, m_desc.Height, m_desc.Depth });
+    }
     
     DxvkImageCreateInfo info;
     info.type           = VK_IMAGE_TYPE_3D;
-    info.format         = pDevice->LookupFormat(pDesc->Format, formatMode).format;
+    info.format         = pDevice->LookupFormat(m_desc.Format, formatMode).format;
     info.flags          = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT
                         | VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT_KHR;
     info.sampleCount    = VK_SAMPLE_COUNT_1_BIT;
-    info.extent.width   = pDesc->Width;
-    info.extent.height  = pDesc->Height;
-    info.extent.depth   = pDesc->Depth;
+    info.extent.width   = m_desc.Width;
+    info.extent.height  = m_desc.Height;
+    info.extent.depth   = m_desc.Depth;
     info.numLayers      = 1;
-    info.mipLevels      = pDesc->MipLevels;
+    info.mipLevels      = m_desc.MipLevels;
     info.usage          = VK_IMAGE_USAGE_TRANSFER_SRC_BIT
                         | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     info.stages         = VK_PIPELINE_STAGE_TRANSFER_BIT;
@@ -367,16 +379,16 @@ namespace dxvk {
     
     GetImageStagesAndAccessFlags(
       pDevice,
-      pDesc->BindFlags,
-      pDesc->CPUAccessFlags,
-      pDesc->MiscFlags,
+      m_desc.BindFlags,
+      m_desc.CPUAccessFlags,
+      m_desc.MiscFlags,
       &info);
     
     // Create the image and, if necessary, the image buffer
     m_texInfo.formatMode  = formatMode;
     m_texInfo.image       = pDevice->GetDXVKDevice()->createImage(
       info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    m_texInfo.imageBuffer = pDesc->CPUAccessFlags != 0
+    m_texInfo.imageBuffer = m_desc.CPUAccessFlags != 0
       ? CreateImageBuffer(pDevice->GetDXVKDevice(), info.format, info.extent)
       : nullptr;
   }
