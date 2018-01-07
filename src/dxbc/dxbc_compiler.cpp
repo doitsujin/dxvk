@@ -3679,11 +3679,11 @@ namespace dxvk {
     for (uint32_t i = 0; i < m_vRegs.size(); i++) {
       if (m_vRegs.at(i) != 0) {
         const uint32_t registerId = m_module.consti32(i);
-        m_module.opStore(
-          m_module.opAccessChain(ptrTypeId, m_vArray, 1, &registerId),
-          m_module.opBitcast(vecTypeId, m_module.opLoad(
-            getVectorTypeId(getInputRegType(i)),
-            m_vRegs.at(i))));
+        const uint32_t srcTypeId = getVectorTypeId(getInputRegType(i));
+        const uint32_t srcValue  = m_module.opLoad(srcTypeId, m_vRegs.at(i));
+        
+        m_module.opStore(m_module.opAccessChain(ptrTypeId, m_vArray, 1, &registerId),
+          vecTypeId != srcTypeId ? m_module.opBitcast(vecTypeId, srcValue) : srcValue);
       }
     }
     
@@ -3723,17 +3723,16 @@ namespace dxvk {
         const uint32_t registerId = m_module.consti32(i);
         
         for (uint32_t v = 0; v < vertexCount; v++) {
-          std::array<uint32_t, 2> indices = {
-            m_module.consti32(v), registerId,
-          };
+          std::array<uint32_t, 2> indices
+            = {{ m_module.consti32(v), registerId }};
+          
+          const uint32_t srcTypeId = getVectorTypeId(getInputRegType(i));
+          const uint32_t srcValue  = m_module.opLoad(srcTypeId,
+            m_module.opAccessChain(srcPtrTypeId, m_vRegs.at(i), 1, indices.data()));
           
           m_module.opStore(
-            m_module.opAccessChain(dstPtrTypeId,
-              m_vArray, indices.size(), indices.data()),
-            m_module.opBitcast(vecTypeId, m_module.opLoad(
-              getVectorTypeId(getInputRegType(i)),
-              m_module.opAccessChain(srcPtrTypeId,
-                m_vRegs.at(i), 1, indices.data()))));
+            m_module.opAccessChain(dstPtrTypeId, m_vArray, indices.size(), indices.data()),
+            vecTypeId != srcTypeId ? m_module.opBitcast(vecTypeId, srcValue) : srcValue);
         }
       }
     }
@@ -4271,6 +4270,7 @@ namespace dxvk {
       default: throw DxvkError("DxbcCompiler: getTexLayerDim: Unsupported image dimension");
     }
   }
+  
   
   uint32_t DxbcCompiler::getTexCoordDim(const DxbcImageInfo& imageType) const {
     return getTexLayerDim(imageType) + imageType.array;
