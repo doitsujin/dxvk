@@ -240,6 +240,10 @@ namespace dxvk {
   public:
     
     DxvkBufferSlice() { }
+    
+    explicit DxvkBufferSlice(const Rc<DxvkBuffer>& buffer)
+    : DxvkBufferSlice(buffer, 0, buffer->info().size) { }
+    
     DxvkBufferSlice(
       const Rc<DxvkBuffer>& buffer,
             VkDeviceSize    rangeOffset,
