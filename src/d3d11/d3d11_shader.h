@@ -25,6 +25,7 @@ namespace dxvk {
     
     D3D11ShaderModule();
     D3D11ShaderModule(
+      const DxbcOptions*  pDxbcOptions,
             D3D11Device*  pDevice,
       const void*         pShaderBytecode,
             size_t        BytecodeLength);

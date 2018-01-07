@@ -40,13 +40,13 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkShader> DxbcModule::compile() const {
+  Rc<DxvkShader> DxbcModule::compile(const DxbcOptions& options) const {
     if (m_shexChunk == nullptr)
       throw DxvkError("DxbcModule::compile: No SHDR/SHEX chunk");
     
     DxbcCodeSlice slice = m_shexChunk->slice();
     
-    DxbcCompiler compiler(
+    DxbcCompiler compiler(options,
       m_shexChunk->version(),
       m_isgnChunk, m_osgnChunk);
     

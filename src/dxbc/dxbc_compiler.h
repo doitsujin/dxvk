@@ -9,6 +9,7 @@
 #include "dxbc_decoder.h"
 #include "dxbc_defs.h"
 #include "dxbc_names.h"
+#include "dxbc_options.h"
 #include "dxbc_util.h"
 
 namespace dxvk {
@@ -213,6 +214,7 @@ namespace dxvk {
   public:
     
     DxbcCompiler(
+      const DxbcOptions&        options,
       const DxbcProgramVersion& version,
       const Rc<DxbcIsgn>&       isgn,
       const Rc<DxbcIsgn>&       osgn);
@@ -233,6 +235,7 @@ namespace dxvk {
     
   private:
     
+    DxbcOptions         m_options;
     DxbcProgramVersion  m_version;
     SpirvModule         m_module;
     

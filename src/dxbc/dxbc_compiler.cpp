@@ -7,10 +7,12 @@ namespace dxvk {
   constexpr uint32_t PerVertex_ClipDist  = 2;
   
   DxbcCompiler::DxbcCompiler(
+    const DxbcOptions&        options,
     const DxbcProgramVersion& version,
     const Rc<DxbcIsgn>&       isgn,
     const Rc<DxbcIsgn>&       osgn)
-  : m_version (version),
+  : m_options (options),
+    m_version (version),
     m_isgn    (isgn),
     m_osgn    (osgn) {
     // Declare an entry point ID. We'll need it during the
@@ -1040,13 +1042,15 @@ namespace dxvk {
         break;
       
       case DxbcOpcode::Max:
-        dst.id = m_module.opNMax(typeId,
-          src.at(0).id, src.at(1).id);
+        dst.id = m_options.useSimpleMinMaxClamp
+          ? m_module.opFMax(typeId, src.at(0).id, src.at(1).id)
+          : m_module.opNMax(typeId, src.at(0).id, src.at(1).id);
         break;
       
       case DxbcOpcode::Min:
-        dst.id = m_module.opNMin(typeId,
-          src.at(0).id, src.at(1).id);
+        dst.id = m_options.useSimpleMinMaxClamp
+          ? m_module.opFMin(typeId, src.at(0).id, src.at(1).id)
+          : m_module.opNMin(typeId, src.at(0).id, src.at(1).id);
         break;
       
       case DxbcOpcode::Mul:
@@ -2211,7 +2215,7 @@ namespace dxvk {
     
     // Load the texture coordinates. SPIR-V allows these
     // to be float4 even if not all components are used.
-    const DxbcRegisterValue coord = emitRegisterLoad(texCoordReg, coordArrayMask);
+    DxbcRegisterValue coord = emitRegisterLoad(texCoordReg, coordArrayMask);
     
     // Load reference value for depth-compare operations
     const bool isDepthCompare = ins.op == DxbcOpcode::SampleC
@@ -2220,6 +2224,17 @@ namespace dxvk {
     const DxbcRegisterValue referenceValue = isDepthCompare
       ? emitRegisterLoad(ins.src[3], DxbcRegMask(true, false, false, false))
       : DxbcRegisterValue();
+    
+    if (isDepthCompare && m_options.packDrefValueIntoCoordinates) {
+      const std::array<uint32_t, 2> packedCoordIds
+        = {{ coord.id, referenceValue.id }};
+      
+      coord.type.ccount += 1;
+      coord.id = m_module.opCompositeConstruct(
+        getVectorTypeId(coord.type),
+        packedCoordIds.size(),
+        packedCoordIds.data());
+    }
     
     // Load explicit gradients for sample operations that require them
     const bool hasExplicitGradients = ins.op == DxbcOpcode::SampleD;
@@ -3034,10 +3049,9 @@ namespace dxvk {
     if (value.type.ctype == DxbcScalarType::Float32) {
       // Saturating only makes sense on floats
       if (modifiers.saturate) {
-        value.id = m_module.opNClamp(
-          typeId, value.id,
-          m_module.constf32(0.0f),
-          m_module.constf32(1.0f));
+        value.id = m_options.useSimpleMinMaxClamp
+          ? m_module.opFClamp(typeId, value.id, m_module.constf32(0.0f), m_module.constf32(1.0f))
+          : m_module.opNClamp(typeId, value.id, m_module.constf32(0.0f), m_module.constf32(1.0f));
       }
     }
     

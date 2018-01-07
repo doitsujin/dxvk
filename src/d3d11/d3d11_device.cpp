@@ -23,7 +23,8 @@ namespace dxvk {
     m_featureLevel  (featureLevel),
     m_featureFlags  (featureFlags),
     m_dxvkDevice    (m_dxgiDevice->GetDXVKDevice()),
-    m_dxvkAdapter   (m_dxvkDevice->adapter()) {
+    m_dxvkAdapter   (m_dxvkDevice->adapter()),
+    m_dxbcOptions   (m_dxvkDevice) {
     Com<IDXGIAdapter> adapter;
     
     if (FAILED(m_dxgiDevice->GetAdapter(&adapter))
@@ -1356,7 +1357,7 @@ namespace dxvk {
     
     try {
       *pShaderModule = D3D11ShaderModule(
-        this, pShaderBytecode, BytecodeLength);
+        &m_dxbcOptions, this, pShaderBytecode, BytecodeLength);
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());

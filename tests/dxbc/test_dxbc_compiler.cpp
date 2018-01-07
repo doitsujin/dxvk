@@ -40,7 +40,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
     DxbcReader reader(dxbcCode.data(), dxbcCode.size());
     DxbcModule module(reader);
     
-    Rc<DxvkShader> shader = module.compile();
+    Rc<DxvkShader> shader = module.compile(DxbcOptions());
     shader->dump(std::ofstream(
       str::fromws(argv[2]), std::ios::binary));
     return 0;

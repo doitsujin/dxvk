@@ -11,6 +11,16 @@ namespace dxvk {
   class DxvkSurface;
   
   /**
+   * \brief GPU vendors
+   * Based on PCIe IDs.
+   */
+  enum class DxvkGpuVendor : uint16_t {
+    Amd    = 0x1002,
+    Nvidia = 0x10de,
+    Intel  = 0x8086,
+  };
+  
+  /**
    * \brief DXVK adapter
    * 
    * Corresponds to a physical device in Vulkan. Provides

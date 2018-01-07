@@ -8,6 +8,7 @@ dxbc_src = files([
   'dxbc_header.cpp',
   'dxbc_module.cpp',
   'dxbc_names.cpp',
+  'dxbc_options.cpp',
   'dxbc_reader.cpp',
   'dxbc_util.cpp',
 ])

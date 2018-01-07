@@ -1,12 +1,14 @@
 #pragma once
 
+#include "../dxbc/dxbc_options.h"
+
 #include "../dxgi/dxgi_object.h"
+
+#include "../util/com/com_private_data.h"
 
 #include "d3d11_interfaces.h"
 #include "d3d11_state.h"
 #include "d3d11_util.h"
-
-#include "../util/com/com_private_data.h"
 
 namespace dxvk {
   class DxgiAdapter;
@@ -254,6 +256,8 @@ namespace dxvk {
     
     const Rc<DxvkDevice>            m_dxvkDevice;
     const Rc<DxvkAdapter>           m_dxvkAdapter;
+    
+    const DxbcOptions               m_dxbcOptions;
     
     D3D11DeviceContext*             m_context = nullptr;
     

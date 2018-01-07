@@ -565,6 +565,16 @@ namespace dxvk {
             uint32_t                b,
             uint32_t                c);
     
+    uint32_t opFMax(
+            uint32_t                resultType,
+            uint32_t                a,
+            uint32_t                b);
+    
+    uint32_t opFMin(
+            uint32_t                resultType,
+            uint32_t                a,
+            uint32_t                b);
+    
     uint32_t opNMax(
             uint32_t                resultType,
             uint32_t                a,
@@ -594,6 +604,12 @@ namespace dxvk {
             uint32_t                resultType,
             uint32_t                a,
             uint32_t                b);
+    
+    uint32_t opFClamp(
+            uint32_t                resultType,
+            uint32_t                x,
+            uint32_t                minVal,
+            uint32_t                maxVal);
     
     uint32_t opNClamp(
             uint32_t                resultType,
