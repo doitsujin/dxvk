@@ -10,17 +10,13 @@
 namespace dxvk {
   
   D3D11DeviceContext::D3D11DeviceContext(
-          D3D11Device*              parent,
-    const Rc<DxvkDevice>&           device,
-    const Rc<D3D11DummyResources>&  dummyResources)
-  : m_parent(parent), m_device(device),
-    m_dummyResources(dummyResources) {
-    // Create and initialize underlying context so that the
-    // application can use it for rendering immediately
+      D3D11Device*    parent,
+      Rc<DxvkDevice>  device)
+  : m_parent(parent),
+    m_device(device) {
     m_context = m_device->createContext();
     m_context->beginRecording(
       m_device->createCommandList());
-    
     // Create default state objects. We won't ever return them
     // to the application, but we'll use them to apply state.
     Com<ID3D11BlendState>         defaultBlendState;
@@ -1812,7 +1808,7 @@ namespace dxvk {
             slotId + i, newBuffer->GetBufferSlice(0));
         } else {
           m_context->bindResourceBuffer(
-            slotId + i, DxvkBufferSlice(m_dummyResources->buffer));
+            slotId + i, DxvkBufferSlice());
         }
       }
     }
@@ -1840,7 +1836,7 @@ namespace dxvk {
             slotId + i, sampler->GetDXVKSampler());
         } else {
           m_context->bindResourceSampler(
-            slotId + i, m_dummyResources->sampler);
+            slotId + i, nullptr);
         }
       }
     }

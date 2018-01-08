@@ -4,7 +4,6 @@
 #include "../dxvk/dxvk_device.h"
 
 #include "d3d11_context_state.h"
-#include "d3d11_dummy_resource.h"
 #include "d3d11_device_child.h"
 #include "d3d11_view.h"
 
@@ -17,9 +16,8 @@ namespace dxvk {
   public:
     
     D3D11DeviceContext(
-            D3D11Device*              parent,
-      const Rc<DxvkDevice>&           device,
-      const Rc<D3D11DummyResources>&  dummyResources);
+      D3D11Device*    parent,
+      Rc<DxvkDevice>  device);
     ~D3D11DeviceContext();
     
     ULONG STDMETHODCALLTYPE AddRef() final;
@@ -556,10 +554,8 @@ namespace dxvk {
     const D3D11_DEVICE_CONTEXT_TYPE m_type  = D3D11_DEVICE_CONTEXT_IMMEDIATE;
     const UINT                      m_flags = 0;
     
-    Rc<DxvkDevice>              m_device;
-    Rc<DxvkContext>             m_context;
-    
-    Rc<D3D11DummyResources>     m_dummyResources;
+    Rc<DxvkDevice>        m_device;
+    Rc<DxvkContext>       m_context;
     
     Com<D3D11BlendState>        m_defaultBlendState;
     Com<D3D11DepthStencilState> m_defaultDepthStencilState;
