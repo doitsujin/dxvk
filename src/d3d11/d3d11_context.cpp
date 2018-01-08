@@ -161,6 +161,8 @@ namespace dxvk {
   
   void STDMETHODCALLTYPE D3D11DeviceContext::Flush() {
     if (m_type == D3D11_DEVICE_CONTEXT_IMMEDIATE) {
+      m_executedDrawCalls = 0;
+      
       m_device->submitCommandList(
         m_context->endRecording(),
         nullptr, nullptr);
@@ -720,6 +722,7 @@ namespace dxvk {
     m_context->draw(
       VertexCount, 1,
       StartVertexLocation, 0);
+    m_executedDrawCalls += 1;
   }
   
   
@@ -731,6 +734,7 @@ namespace dxvk {
       IndexCount, 1,
       StartIndexLocation,
       BaseVertexLocation, 0);
+    m_executedDrawCalls += 1;
   }
   
   
@@ -744,6 +748,7 @@ namespace dxvk {
       InstanceCount,
       StartVertexLocation,
       StartInstanceLocation);
+    m_executedDrawCalls += 1;
   }
   
   
@@ -759,6 +764,7 @@ namespace dxvk {
       StartIndexLocation,
       BaseVertexLocation,
       StartInstanceLocation);
+    m_executedDrawCalls += 1;
   }
   
   
@@ -769,6 +775,7 @@ namespace dxvk {
     DxvkBufferSlice bufferSlice = buffer->GetBufferSlice(AlignedByteOffsetForArgs);
     
     m_context->drawIndexedIndirect(bufferSlice, 1, 0);
+    m_executedDrawCalls += 1;
   }
   
   
@@ -779,6 +786,7 @@ namespace dxvk {
     DxvkBufferSlice bufferSlice = buffer->GetBufferSlice(AlignedByteOffsetForArgs);
     
     m_context->drawIndirect(bufferSlice, 1, 0);
+    m_executedDrawCalls += 1;
   }
   
   
@@ -790,6 +798,7 @@ namespace dxvk {
       ThreadGroupCountX,
       ThreadGroupCountY,
       ThreadGroupCountZ);
+    m_executedDrawCalls += 1;
   }
   
   
@@ -800,6 +809,7 @@ namespace dxvk {
     DxvkBufferSlice bufferSlice = buffer->GetBufferSlice(AlignedByteOffsetForArgs);
     
     m_context->dispatchIndirect(bufferSlice);
+    m_executedDrawCalls += 1;
   }
   
   
@@ -1522,6 +1532,13 @@ namespace dxvk {
           UINT                              NumViews,
           ID3D11RenderTargetView* const*    ppRenderTargetViews,
           ID3D11DepthStencilView*           pDepthStencilView) {
+    // Optimization: If the app has executed at least a given
+    // number of draw calls since the last explicit flush, flush
+    // the context in order to keep the GPU busy. We'll do this
+    // here because we are going to start a new render pass anyway.
+    if (m_executedDrawCalls >= 500)
+      this->Flush();
+    
     for (UINT i = 0; i < m_state.om.renderTargetViews.size(); i++) {
       D3D11RenderTargetView* view = nullptr;
       
