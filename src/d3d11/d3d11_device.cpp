@@ -24,6 +24,8 @@ namespace dxvk {
     m_featureFlags  (featureFlags),
     m_dxvkDevice    (m_dxgiDevice->GetDXVKDevice()),
     m_dxvkAdapter   (m_dxvkDevice->adapter()),
+    m_dummyResources(new D3D11DummyResources(
+      m_dxvkDevice, GetEnabledShaderStages())),
     m_dxbcOptions   (m_dxvkDevice) {
     Com<IDXGIAdapter> adapter;
     
@@ -35,7 +37,7 @@ namespace dxvk {
     m_dxgiDevice->SetDeviceLayer(this);
     m_presentDevice->SetDeviceLayer(this);
     
-    m_context = new D3D11DeviceContext(this, m_dxvkDevice);
+    m_context = new D3D11DeviceContext(this, m_dxvkDevice, m_dummyResources);
     m_resourceInitContext = m_dxvkDevice->createContext();
   }
   

@@ -6,6 +6,7 @@
 
 #include "../util/com/com_private_data.h"
 
+#include "d3d11_dummy_resource.h"
 #include "d3d11_interfaces.h"
 #include "d3d11_state.h"
 #include "d3d11_util.h"
@@ -256,6 +257,7 @@ namespace dxvk {
     
     const Rc<DxvkDevice>            m_dxvkDevice;
     const Rc<DxvkAdapter>           m_dxvkAdapter;
+    const Rc<D3D11DummyResources>   m_dummyResources;
     
     const DxbcOptions               m_dxbcOptions;
     
