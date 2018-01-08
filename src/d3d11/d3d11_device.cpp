@@ -659,7 +659,7 @@ namespace dxvk {
         pShaderBytecodeWithInputSignature), BytecodeLength);
       DxbcModule dxbcModule(dxbcReader);
       
-      Rc<DxbcIsgn> inputSignature = dxbcModule.isgn();
+      const Rc<DxbcIsgn> inputSignature = dxbcModule.isgn();
       
       std::vector<DxvkVertexAttribute> attributes;
       std::vector<DxvkVertexBinding>   bindings;
@@ -707,7 +707,7 @@ namespace dxvk {
         
         // Create vertex input binding description. The
         // stride is dynamic state in D3D11 and will be
-        // set by STDMETHODCALLTYPE D3D11DeviceContext::IASetVertexBuffers.
+        // set by D3D11DeviceContext::IASetVertexBuffers.
         DxvkVertexBinding binding;
         binding.binding   = pInputElementDescs[i].InputSlot;
         binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
@@ -716,8 +716,8 @@ namespace dxvk {
           binding.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
           
           if (pInputElementDescs[i].InstanceDataStepRate != 1) {
-            Logger::err(str::format(
-              "D3D11Device::CreateInputLayout: Unsupported instance data step rate: ",
+            Logger::warn(str::format(
+              "D3D11Device: Unsupported instance data step rate: ",
               pInputElementDescs[i].InstanceDataStepRate));
           }
         }
@@ -732,7 +732,7 @@ namespace dxvk {
             
             if (binding.inputRate != existingBinding.inputRate) {
               Logger::err(str::format(
-                "D3D11Device::CreateInputLayout: Conflicting input rate for binding ",
+                "D3D11Device: Conflicting input rate for binding ",
                 binding.binding));
               return E_INVALIDARG;
             }
@@ -741,6 +741,23 @@ namespace dxvk {
         
         if (!bindingDefined)
           bindings.push_back(binding);
+      }
+      
+      // Check if there are any semantics defined in the
+      // shader that are not included in the current input
+      // layout.
+      for (auto i = inputSignature->begin(); i != inputSignature->end(); i++) {
+        bool found = i->systemValue != DxbcSystemValue::None;
+        
+        for (uint32_t j = 0; j < attributes.size() && !found; j++)
+          found = attributes.at(j).location == i->registerId;
+        
+        if (!found) {
+          Logger::warn(str::format(
+            "D3D11Device: Vertex input '",
+            i->semanticName, i->semanticIndex,
+            "' not defined by input layout"));
+        }
       }
       
       // Create the actual input layout object

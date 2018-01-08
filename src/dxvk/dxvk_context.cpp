@@ -805,7 +805,10 @@ namespace dxvk {
     const DxvkVertexAttribute* attributes,
           uint32_t             bindingCount,
     const DxvkVertexBinding*   bindings) {
-    m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+    m_flags.set(
+      DxvkContextFlag::GpDirtyPipelineState,
+      DxvkContextFlag::GpDirtyIndexBuffer,
+      DxvkContextFlag::GpDirtyVertexBuffers);
     
     m_state.il.numAttributes = attributeCount;
     m_state.il.numBindings   = bindingCount;
@@ -1033,36 +1036,58 @@ namespace dxvk {
       
       switch (binding.type) {
         case VK_DESCRIPTOR_TYPE_SAMPLER:
-          m_descriptors[i].image.sampler     = res.sampler->handle();
-          m_descriptors[i].image.imageView   = VK_NULL_HANDLE;
-          m_descriptors[i].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-          
-          m_cmd->trackResource(res.sampler);
-          break;
+          if (res.sampler != nullptr) {
+            m_descriptors[i].image.sampler     = res.sampler->handle();
+            m_descriptors[i].image.imageView   = VK_NULL_HANDLE;
+            m_descriptors[i].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            
+            m_cmd->trackResource(res.sampler);
+          } else {
+            Logger::err("DxvkContext: Unbound sampler descriptor");
+            m_descriptors[i].image.sampler     = VK_NULL_HANDLE;
+            m_descriptors[i].image.imageView   = VK_NULL_HANDLE;
+            m_descriptors[i].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+          } break;
         
         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-          m_descriptors[i].image.sampler     = VK_NULL_HANDLE;
-          m_descriptors[i].image.imageView   = res.imageView->handle();
-          m_descriptors[i].image.imageLayout = res.imageView->imageInfo().layout;
-          
-          m_cmd->trackResource(res.imageView);
-          m_cmd->trackResource(res.imageView->image());
-          break;
+          if (res.imageView != nullptr) {
+            m_descriptors[i].image.sampler     = VK_NULL_HANDLE;
+            m_descriptors[i].image.imageView   = res.imageView->handle();
+            m_descriptors[i].image.imageLayout = res.imageView->imageInfo().layout;
+            
+            m_cmd->trackResource(res.imageView);
+            m_cmd->trackResource(res.imageView->image());
+          } else {
+            Logger::err("DxvkContext: Unbound image descriptor");
+            m_descriptors[i].image.sampler     = VK_NULL_HANDLE;
+            m_descriptors[i].image.imageView   = VK_NULL_HANDLE;
+            m_descriptors[i].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+          } break;
         
         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
         case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-          m_descriptors[i].texelBuffer = res.bufferView->handle();
-          
-          m_cmd->trackResource(res.bufferView);
-          m_cmd->trackResource(res.bufferView->buffer()->resource());
-          break;
+          if (res.bufferView != nullptr) {
+            m_descriptors[i].texelBuffer = res.bufferView->handle();
+            
+            m_cmd->trackResource(res.bufferView);
+            m_cmd->trackResource(res.bufferView->buffer()->resource());
+          } else {
+            Logger::err("DxvkContext: Unbound texel buffer");
+            m_descriptors[i].texelBuffer = VK_NULL_HANDLE;
+          } break;
         
         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-          m_descriptors[i].buffer = res.bufferSlice.descriptorInfo();
-          m_cmd->trackResource(res.bufferSlice.resource());
-          break;
+          if (res.bufferSlice.handle() != VK_NULL_HANDLE) {
+            m_descriptors[i].buffer = res.bufferSlice.descriptorInfo();
+            m_cmd->trackResource(res.bufferSlice.resource());
+          } else {
+            Logger::err("DxvkContext: Unbound buffer");
+            m_descriptors[i].buffer.buffer = VK_NULL_HANDLE;
+            m_descriptors[i].buffer.offset = 0;
+            m_descriptors[i].buffer.range  = 0;
+          } break;
         
         default:
           Logger::err(str::format("DxvkContext: Unhandled descriptor type: ", binding.type));
@@ -1135,8 +1160,12 @@ namespace dxvk {
         const VkDeviceSize offset = vbo.offset();
         
         if (handle != VK_NULL_HANDLE) {
-          m_cmd->cmdBindVertexBuffers(i, 1, &handle, &offset);
+          m_cmd->cmdBindVertexBuffers(
+            m_state.il.bindings[i].binding,
+            1, &handle, &offset);
           m_cmd->trackResource(vbo.resource());
+        } else {
+          Logger::err(str::format("DxvkContext: Unbound vertex buffer: ", i));
         }
       }
     }
