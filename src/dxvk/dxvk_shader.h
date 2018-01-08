@@ -10,18 +10,6 @@
 namespace dxvk {
   
   /**
-   * \brief Resource slot
-   * 
-   * Describes the type of a single resource
-   * binding that a shader can access.
-   */
-  struct DxvkResourceSlot {
-    uint32_t         slot;
-    VkDescriptorType type;
-  };
-  
-  
-  /**
    * \brief Shader module object
    * 
    * Manages a Vulkan shader module. This will not

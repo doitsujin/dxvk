@@ -552,6 +552,7 @@ namespace dxvk {
     DxvkResourceSlot resource;
     resource.slot = bindingId;
     resource.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    resource.dim  = DxvkResourceDim::Buffer;
     m_resourceSlots.push_back(resource);
   }
   
@@ -587,6 +588,7 @@ namespace dxvk {
     DxvkResourceSlot resource;
     resource.slot = bindingId;
     resource.type = VK_DESCRIPTOR_TYPE_SAMPLER;
+    resource.dim  = DxvkResourceDim::Opaque;
     m_resourceSlots.push_back(resource);
   }
   
@@ -723,6 +725,7 @@ namespace dxvk {
     // Store descriptor info for the shader interface
     DxvkResourceSlot resource;
     resource.slot = bindingId;
+    resource.dim  = getDxvkResourceDim(resourceType);
     
     if (isUav) {
       resource.type = resourceType == DxbcResourceDim::Buffer
@@ -822,6 +825,7 @@ namespace dxvk {
     resource.type = isUav
       ? VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
       : VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
+    resource.dim  = DxvkResourceDim::Buffer;
     m_resourceSlots.push_back(resource);
   }
   
@@ -4296,6 +4300,26 @@ namespace dxvk {
     }
     
     return result;
+  }
+  
+  
+  DxvkResourceDim DxbcCompiler::getDxvkResourceDim(DxbcResourceDim dim) const {
+    switch (dim) {
+      default:
+      case DxbcResourceDim::Unknown:          return DxvkResourceDim::Opaque;
+      case DxbcResourceDim::Buffer:           return DxvkResourceDim::Buffer;
+      case DxbcResourceDim::RawBuffer:        return DxvkResourceDim::Buffer;
+      case DxbcResourceDim::StructuredBuffer: return DxvkResourceDim::Buffer;
+      case DxbcResourceDim::Texture1D:        return DxvkResourceDim::Image1D;
+      case DxbcResourceDim::Texture1DArr:     return DxvkResourceDim::Image1DArray;
+      case DxbcResourceDim::Texture2D:        return DxvkResourceDim::Image2D;
+      case DxbcResourceDim::Texture2DMs:      return DxvkResourceDim::Image2D;
+      case DxbcResourceDim::Texture2DArr:     return DxvkResourceDim::Image2DArray;
+      case DxbcResourceDim::Texture2DMsArr:   return DxvkResourceDim::Image2DArray;
+      case DxbcResourceDim::TextureCube:      return DxvkResourceDim::ImageCube;
+      case DxbcResourceDim::TextureCubeArr:   return DxvkResourceDim::ImageCubeArray;
+      case DxbcResourceDim::Texture3D:        return DxvkResourceDim::Image3D;
+    }
   }
   
   

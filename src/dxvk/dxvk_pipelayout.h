@@ -7,6 +7,37 @@
 namespace dxvk {
   
   /**
+   * \brief Resource dimension
+   * 
+   * Used to validate resource bindings and to
+   * bind compatible dummy resource in case the
+   * client API did not bind a resource.
+   */
+  enum class DxvkResourceDim : uint32_t {
+    Opaque,
+    Buffer,
+    Image1D,
+    Image1DArray,
+    Image2D,
+    Image2DArray,
+    ImageCube,
+    ImageCubeArray,
+    Image3D,
+  };
+  
+  /**
+   * \brief Resource slot
+   * 
+   * Describes the type of a single resource
+   * binding that a shader can access.
+   */
+  struct DxvkResourceSlot {
+    uint32_t         slot;
+    VkDescriptorType type;
+    DxvkResourceDim  dim;
+  };
+  
+  /**
    * \brief Shader interface binding
    * 
    * Corresponds to a single descriptor binding in
@@ -16,6 +47,7 @@ namespace dxvk {
   struct DxvkDescriptorSlot {
     uint32_t           slot;    ///< Resource slot index for the context
     VkDescriptorType   type;    ///< Descriptor type (aka resource type)
+    DxvkResourceDim    dim;     ///< Resource dimension (buffer or image)
     VkShaderStageFlags stages;  ///< Stages that can use the resource
   };
   
@@ -60,11 +92,13 @@ namespace dxvk {
      * entirely new binding is added.
      * \param [in] slot Resource slot
      * \param [in] type Resource type
+     * \param [in] dim Resource dimension
      * \param [in] stage Shader stage
      */
     void defineSlot(
             uint32_t              slot,
             VkDescriptorType      type,
+            DxvkResourceDim       dim,
             VkShaderStageFlagBits stage);
     
     /**

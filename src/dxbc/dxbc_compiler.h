@@ -728,6 +728,9 @@ namespace dxvk {
     DxbcVectorType getInputRegType(
             uint32_t regIdx) const;
     
+    DxvkResourceDim getDxvkResourceDim(
+            DxbcResourceDim dim) const;
+    
     ///////////////////////////
     // Type definition methods
     uint32_t getScalarTypeId(
