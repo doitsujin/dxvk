@@ -1191,6 +1191,17 @@ namespace dxvk {
           VK_ACCESS_SHADER_WRITE_BIT,
           slot.bufferView->buffer()->info().stages,
           slot.bufferView->buffer()->info().access);
+      } else if (binding.type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
+        m_barriers.accessImage(
+          slot.imageView->image(),
+          slot.imageView->subresources(),
+          slot.imageView->imageInfo().layout,
+          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+          VK_ACCESS_SHADER_READ_BIT | 
+          VK_ACCESS_SHADER_WRITE_BIT,
+          slot.imageView->imageInfo().layout,
+          slot.imageView->imageInfo().stages,
+          slot.imageView->imageInfo().access);
       }
     }
     
