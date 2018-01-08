@@ -283,7 +283,10 @@ namespace dxvk {
           break;
           
         case D3D11_SRV_DIMENSION_TEXTURECUBE:
-          viewInfo.type      = VK_IMAGE_VIEW_TYPE_CUBE;
+          // Some applications bind non-array cube maps to cube map
+          // array slots. In order to support this, we'll use a cube
+          // map array view even for non-array cube maps.
+          viewInfo.type      = VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
           viewInfo.minLevel  = desc.TextureCube.MostDetailedMip;
           viewInfo.numLevels = desc.TextureCube.MipLevels;
           viewInfo.minLayer  = 0;
@@ -1326,6 +1329,7 @@ namespace dxvk {
       enabled.samplerAnisotropy                     = VK_TRUE;
       enabled.shaderClipDistance                    = VK_TRUE;
       enabled.shaderCullDistance                    = VK_TRUE;
+      enabled.robustBufferAccess                    = VK_TRUE;
     }
     
     if (featureLevel >= D3D_FEATURE_LEVEL_9_2) {

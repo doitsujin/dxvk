@@ -649,7 +649,8 @@ namespace dxvk {
         case DxbcResourceDim::Texture2DMs:    return { spv::Dim2D,     0, 1, isUav ? 2u : 1u };
         case DxbcResourceDim::Texture2DMsArr: return { spv::Dim2D,     1, 1, isUav ? 2u : 1u };
         case DxbcResourceDim::Texture3D:      return { spv::Dim3D,     0, 0, isUav ? 2u : 1u };
-        case DxbcResourceDim::TextureCube:    return { spv::DimCube,   0, 0, isUav ? 2u : 1u };
+        // Some applications bind non-array cube maps to cube map array slots
+        case DxbcResourceDim::TextureCube:    return { spv::DimCube,   1, 0, isUav ? 2u : 1u };
         case DxbcResourceDim::TextureCubeArr: return { spv::DimCube,   1, 0, isUav ? 2u : 1u };
         default: throw DxvkError(str::format("DxbcCompiler: Unsupported resource type: ", resourceType));
       }
@@ -660,6 +661,7 @@ namespace dxvk {
       case DxbcResourceDim::Buffer:         m_module.enableCapability(spv::CapabilityImageBuffer);    break;
       case DxbcResourceDim::Texture1D:      m_module.enableCapability(spv::CapabilityImage1D);        break;
       case DxbcResourceDim::Texture1DArr:   m_module.enableCapability(spv::CapabilityImage1D);        break;
+      case DxbcResourceDim::TextureCube:
       case DxbcResourceDim::TextureCubeArr: m_module.enableCapability(spv::CapabilityImageCubeArray); break;
       case DxbcResourceDim::Texture2DMsArr: m_module.enableCapability(spv::CapabilityImageMSArray);   break;
       default: break; // No additional capabilities required
@@ -1782,6 +1784,7 @@ namespace dxvk {
     const DxbcRegisterValue src = emitRegisterLoad(ins.src[2], ins.dst[0].mask);
     const uint32_t typeId = getVectorTypeId(src.type);
     
+    // TODO fix
     DxbcRegisterValue result;
     result.type = src.type;
     result.id = isSigned
@@ -1804,6 +1807,7 @@ namespace dxvk {
     const DxbcRegisterValue insert = emitRegisterLoad(ins.src[2], ins.dst[0].mask);
     const DxbcRegisterValue base   = emitRegisterLoad(ins.src[3], ins.dst[0].mask);
     
+    // TODO fix
     DxbcRegisterValue result;
     result.type = base.type;
     result.id = m_module.opBitFieldInsert(
