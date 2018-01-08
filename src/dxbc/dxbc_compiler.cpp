@@ -1063,9 +1063,10 @@ namespace dxvk {
         break;
       
       case DxbcOpcode::Rcp: {
-        const std::array<float, 4> ones = {{ 1.0f, 1.0f, 1.0f, 1.0f }};
         dst.id = m_module.opFDiv(typeId,
-          emitBuildConstVecf32(ones.data(), ins.dst[0].mask).id,
+          emitBuildConstVecf32(
+            1.0f, 1.0f, 1.0f, 1.0f,
+            ins.dst[0].mask).id,
           src.at(0).id);
       } break;
       
@@ -1784,9 +1785,8 @@ namespace dxvk {
     DxbcRegisterValue result;
     result.type = src.type;
     result.id = isSigned
-      ? m_module.opBitFieldSExtract(typeId, result.id, bitOfs.id, bitCnt.id)
-      : m_module.opBitFieldUExtract(typeId, result.id, bitOfs.id, bitCnt.id);
-    
+      ? m_module.opBitFieldSExtract(typeId, src.id, bitOfs.id, bitCnt.id)
+      : m_module.opBitFieldUExtract(typeId, src.id, bitOfs.id, bitCnt.id);
     emitRegisterStore(ins.dst[0], result);
   }
   
@@ -1809,7 +1809,6 @@ namespace dxvk {
     result.id = m_module.opBitFieldInsert(
       getVectorTypeId(result.type),
       base.id, insert.id, bitOfs.id, bitCnt.id);
-    
     emitRegisterStore(ins.dst[0], result);
   }
   
@@ -1944,9 +1943,12 @@ namespace dxvk {
         // When extracting components from the source register, we must
         // take into account that it it already swizzled and masked.
         if (scalarIds[swizzleIndex] == 0) {
+          const DxbcRegisterValue componentValue
+            = emitRegisterExtract(src, DxbcRegMask::select(componentIndex));
+          
           if (isPack) {  // f32tof16
             const std::array<uint32_t, 2> packIds =
-              {{ m_module.opCompositeExtract(t_f32, src.id, 1, &componentIndex), zerof32 }};
+              {{ componentValue.id, zerof32 }};
             
             scalarIds[swizzleIndex] = m_module.opPackHalf2x16(t_u32,
               m_module.opCompositeConstruct(t_f32v2, packIds.size(), packIds.data()));
@@ -1954,8 +1956,7 @@ namespace dxvk {
             const uint32_t zeroIndex = 0;
             
             scalarIds[swizzleIndex] = m_module.opCompositeExtract(t_f32,
-              m_module.opUnpackHalf2x16(t_f32v2,
-                m_module.opCompositeExtract(t_u32, src.id, 1, &componentIndex)),
+              m_module.opUnpackHalf2x16(t_f32v2, componentValue.id),
               1, &zeroIndex);
           }
         }
@@ -2796,15 +2797,18 @@ namespace dxvk {
   
   
   DxbcRegisterValue DxbcCompiler::emitBuildConstVecf32(
-    const float                   values[4],
+          float                   x,
+          float                   y,
+          float                   z,
+          float                   w,
     const DxbcRegMask&            writeMask) {
     std::array<uint32_t, 4> ids = { 0, 0, 0, 0 };
     uint32_t componentIndex = 0;
     
-    for (uint32_t i = 0; i < 4; i++) {
-      if (writeMask[i])
-        ids[componentIndex++] = m_module.constf32(values[i]);
-    }
+    if (writeMask[0]) ids[componentIndex++] = m_module.constf32(x);
+    if (writeMask[1]) ids[componentIndex++] = m_module.constf32(y);
+    if (writeMask[2]) ids[componentIndex++] = m_module.constf32(z);
+    if (writeMask[3]) ids[componentIndex++] = m_module.constf32(w);
     
     DxbcRegisterValue result;
     result.type.ctype  = DxbcScalarType::Float32;
@@ -2876,6 +2880,9 @@ namespace dxvk {
           DxbcRegisterValue       value,
           DxbcRegSwizzle          swizzle,
           DxbcRegMask             writeMask) {
+    if (value.type.ccount == 1)
+      return emitRegisterExtend(value, writeMask.setCount());
+    
     std::array<uint32_t, 4> indices;
     
     uint32_t dstIndex = 0;
@@ -3053,9 +3060,13 @@ namespace dxvk {
     if (value.type.ctype == DxbcScalarType::Float32) {
       // Saturating only makes sense on floats
       if (modifiers.saturate) {
+        const DxbcRegMask       mask = DxbcRegMask::firstN(value.type.ccount);
+        const DxbcRegisterValue vec0 = emitBuildConstVecf32(0.0f, 0.0f, 0.0f, 0.0f, mask);
+        const DxbcRegisterValue vec1 = emitBuildConstVecf32(1.0f, 1.0f, 1.0f, 1.0f, mask);
+        
         value.id = m_options.useSimpleMinMaxClamp
-          ? m_module.opFClamp(typeId, value.id, m_module.constf32(0.0f), m_module.constf32(1.0f))
-          : m_module.opNClamp(typeId, value.id, m_module.constf32(0.0f), m_module.constf32(1.0f));
+          ? m_module.opFClamp(typeId, value.id, vec0.id, vec1.id)
+          : m_module.opNClamp(typeId, value.id, vec0.id, vec1.id);
       }
     }
     

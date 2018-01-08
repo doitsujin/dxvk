@@ -498,7 +498,10 @@ namespace dxvk {
     // generate constant vectors that store the same
     // value in each component.
     DxbcRegisterValue emitBuildConstVecf32(
-      const float                   values[4],
+            float                   x,
+            float                   y,
+            float                   z,
+            float                   w,
       const DxbcRegMask&            writeMask);
     
     DxbcRegisterValue emitBuildZero(

@@ -28,6 +28,7 @@ namespace dxvk {
     /* Callc                                */
     { 2, DxbcInstClass::ControlFlow, {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
     } },
     /* Case                                 */
     { 1, DxbcInstClass::ControlFlow, {
@@ -55,7 +56,7 @@ namespace dxvk {
     } },
     /* Discard                              */
     { 1, DxbcInstClass::ControlFlow, {
-      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
     } },
     /* Div                                  */
     { 3, DxbcInstClass::VectorAlu, {
