@@ -1782,14 +1782,29 @@ namespace dxvk {
     const DxbcRegisterValue bitOfs = emitRegisterLoad(ins.src[1], ins.dst[0].mask);
     
     const DxbcRegisterValue src = emitRegisterLoad(ins.src[2], ins.dst[0].mask);
-    const uint32_t typeId = getVectorTypeId(src.type);
     
-    // TODO fix
+    const uint32_t componentCount  = src.type.ccount;
+    std::array<uint32_t, 4> componentIds = {{ 0, 0, 0, 0 }};
+    
+    for (uint32_t i = 0; i < componentCount; i++) {
+      const DxbcRegisterValue currBitCnt = emitRegisterExtract(bitCnt, DxbcRegMask::select(i));
+      const DxbcRegisterValue currBitOfs = emitRegisterExtract(bitOfs, DxbcRegMask::select(i));
+      const DxbcRegisterValue currSrc    = emitRegisterExtract(src,    DxbcRegMask::select(i));
+      
+      const uint32_t typeId = getVectorTypeId(currSrc.type);
+      
+      componentIds[i] = isSigned
+        ? m_module.opBitFieldSExtract(typeId, currSrc.id, currBitOfs.id, currBitCnt.id)
+        : m_module.opBitFieldUExtract(typeId, currSrc.id, currBitOfs.id, currBitCnt.id);
+    }
+    
     DxbcRegisterValue result;
     result.type = src.type;
-    result.id = isSigned
-      ? m_module.opBitFieldSExtract(typeId, src.id, bitOfs.id, bitCnt.id)
-      : m_module.opBitFieldUExtract(typeId, src.id, bitOfs.id, bitCnt.id);
+    result.id   = componentCount > 1
+      ? m_module.opCompositeConstruct(
+          getVectorTypeId(result.type),
+          componentCount, componentIds.data())
+      : componentIds[0];
     emitRegisterStore(ins.dst[0], result);
   }
   
@@ -1807,12 +1822,28 @@ namespace dxvk {
     const DxbcRegisterValue insert = emitRegisterLoad(ins.src[2], ins.dst[0].mask);
     const DxbcRegisterValue base   = emitRegisterLoad(ins.src[3], ins.dst[0].mask);
     
-    // TODO fix
+    const uint32_t componentCount  = base.type.ccount;
+    std::array<uint32_t, 4> componentIds = {{ 0, 0, 0, 0 }};
+    
+    for (uint32_t i = 0; i < componentCount; i++) {
+      const DxbcRegisterValue currBitCnt = emitRegisterExtract(bitCnt, DxbcRegMask::select(i));
+      const DxbcRegisterValue currBitOfs = emitRegisterExtract(bitOfs, DxbcRegMask::select(i));
+      const DxbcRegisterValue currInsert = emitRegisterExtract(insert, DxbcRegMask::select(i));
+      const DxbcRegisterValue currBase   = emitRegisterExtract(base,   DxbcRegMask::select(i));
+      
+      componentIds[i] = m_module.opBitFieldInsert(
+        getVectorTypeId(currBase.type),
+        currBase.id,   currInsert.id,
+        currBitOfs.id, currBitCnt.id);
+    }
+    
     DxbcRegisterValue result;
     result.type = base.type;
-    result.id = m_module.opBitFieldInsert(
-      getVectorTypeId(result.type),
-      base.id, insert.id, bitOfs.id, bitCnt.id);
+    result.id   = componentCount > 1
+      ? m_module.opCompositeConstruct(
+          getVectorTypeId(result.type),
+          componentCount, componentIds.data())
+      : componentIds[0];
     emitRegisterStore(ins.dst[0], result);
   }
   
@@ -1945,7 +1976,7 @@ namespace dxvk {
         const uint32_t swizzleIndex = ins.src[0].swizzle[i];
         
         // When extracting components from the source register, we must
-        // take into account that it it already swizzled and masked.
+        // take into account that it it ozzled and masked.
         if (scalarIds[swizzleIndex] == 0) {
           const DxbcRegisterValue componentValue
             = emitRegisterExtract(src, DxbcRegMask::select(componentIndex));
