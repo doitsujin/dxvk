@@ -668,6 +668,12 @@ namespace dxvk {
     VkExtent3D elementCount = imageExtent;
     elementCount.depth *= subresources.layerCount;
     
+    // Align image extent to a full block. This is necessary in
+    // case the image size is not a multiple of the block size.
+    elementCount.width  += formatInfo->blockSize.width  - 1;
+    elementCount.height += formatInfo->blockSize.height - 1;
+    elementCount.depth  += formatInfo->blockSize.depth  - 1;
+    
     elementCount.width  /= formatInfo->blockSize.width;
     elementCount.height /= formatInfo->blockSize.height;
     elementCount.depth  /= formatInfo->blockSize.depth;
@@ -807,7 +813,6 @@ namespace dxvk {
     const DxvkVertexBinding*   bindings) {
     m_flags.set(
       DxvkContextFlag::GpDirtyPipelineState,
-      DxvkContextFlag::GpDirtyIndexBuffer,
       DxvkContextFlag::GpDirtyVertexBuffers);
     
     m_state.il.numAttributes = attributeCount;
