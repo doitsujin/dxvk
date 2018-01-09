@@ -1064,7 +1064,8 @@ namespace dxvk {
             m_cmd->trackResource(res.imageView);
             m_cmd->trackResource(res.imageView->image());
           } else {
-            Logger::err("DxvkContext: Unbound image descriptor");
+            Logger::err("DxvkContext: Unbound or incompatible image descriptor");
+            Logger::err(str::format(res.imageView->type(), " ", binding.view));
             m_descriptors[i].image.sampler     = VK_NULL_HANDLE;
             m_descriptors[i].image.imageView   = VK_NULL_HANDLE;
             m_descriptors[i].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;

@@ -220,6 +220,18 @@ namespace dxvk {
     }
     
     /**
+     * \brief Image view type
+     * 
+     * Convenience method to query the
+     * view type in order to check for
+     * resource compatibility.
+     * \returns Image view type
+     */
+    VkImageViewType type() const {
+      return m_info.type;
+    }
+    
+    /**
      * \brief Image view properties
      * \returns Image view properties
      */

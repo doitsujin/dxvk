@@ -552,7 +552,7 @@ namespace dxvk {
     DxvkResourceSlot resource;
     resource.slot = bindingId;
     resource.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    resource.dim  = DxvkResourceDim::Buffer;
+    resource.view = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     m_resourceSlots.push_back(resource);
   }
   
@@ -588,7 +588,7 @@ namespace dxvk {
     DxvkResourceSlot resource;
     resource.slot = bindingId;
     resource.type = VK_DESCRIPTOR_TYPE_SAMPLER;
-    resource.dim  = DxvkResourceDim::Opaque;
+    resource.view = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     m_resourceSlots.push_back(resource);
   }
   
@@ -649,8 +649,7 @@ namespace dxvk {
         case DxbcResourceDim::Texture2DMs:    return { spv::Dim2D,     0, 1, isUav ? 2u : 1u };
         case DxbcResourceDim::Texture2DMsArr: return { spv::Dim2D,     1, 1, isUav ? 2u : 1u };
         case DxbcResourceDim::Texture3D:      return { spv::Dim3D,     0, 0, isUav ? 2u : 1u };
-        // Some applications bind non-array cube maps to cube map array slots
-        case DxbcResourceDim::TextureCube:    return { spv::DimCube,   1, 0, isUav ? 2u : 1u };
+        case DxbcResourceDim::TextureCube:    return { spv::DimCube,   0, 0, isUav ? 2u : 1u };
         case DxbcResourceDim::TextureCubeArr: return { spv::DimCube,   1, 0, isUav ? 2u : 1u };
         default: throw DxvkError(str::format("DxbcCompiler: Unsupported resource type: ", resourceType));
       }
@@ -661,7 +660,6 @@ namespace dxvk {
       case DxbcResourceDim::Buffer:         m_module.enableCapability(spv::CapabilityImageBuffer);    break;
       case DxbcResourceDim::Texture1D:      m_module.enableCapability(spv::CapabilityImage1D);        break;
       case DxbcResourceDim::Texture1DArr:   m_module.enableCapability(spv::CapabilityImage1D);        break;
-      case DxbcResourceDim::TextureCube:
       case DxbcResourceDim::TextureCubeArr: m_module.enableCapability(spv::CapabilityImageCubeArray); break;
       case DxbcResourceDim::Texture2DMsArr: m_module.enableCapability(spv::CapabilityImageMSArray);   break;
       default: break; // No additional capabilities required
@@ -727,7 +725,7 @@ namespace dxvk {
     // Store descriptor info for the shader interface
     DxvkResourceSlot resource;
     resource.slot = bindingId;
-    resource.dim  = getDxvkResourceDim(resourceType);
+    resource.view = getViewType(resourceType);
     
     if (isUav) {
       resource.type = resourceType == DxbcResourceDim::Buffer
@@ -827,7 +825,7 @@ namespace dxvk {
     resource.type = isUav
       ? VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
       : VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
-    resource.dim  = DxvkResourceDim::Buffer;
+    resource.view = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     m_resourceSlots.push_back(resource);
   }
   
@@ -4349,22 +4347,22 @@ namespace dxvk {
   }
   
   
-  DxvkResourceDim DxbcCompiler::getDxvkResourceDim(DxbcResourceDim dim) const {
+  VkImageViewType DxbcCompiler::getViewType(DxbcResourceDim dim) const {
     switch (dim) {
       default:
-      case DxbcResourceDim::Unknown:          return DxvkResourceDim::Opaque;
-      case DxbcResourceDim::Buffer:           return DxvkResourceDim::Buffer;
-      case DxbcResourceDim::RawBuffer:        return DxvkResourceDim::Buffer;
-      case DxbcResourceDim::StructuredBuffer: return DxvkResourceDim::Buffer;
-      case DxbcResourceDim::Texture1D:        return DxvkResourceDim::Image1D;
-      case DxbcResourceDim::Texture1DArr:     return DxvkResourceDim::Image1DArray;
-      case DxbcResourceDim::Texture2D:        return DxvkResourceDim::Image2D;
-      case DxbcResourceDim::Texture2DMs:      return DxvkResourceDim::Image2D;
-      case DxbcResourceDim::Texture2DArr:     return DxvkResourceDim::Image2DArray;
-      case DxbcResourceDim::Texture2DMsArr:   return DxvkResourceDim::Image2DArray;
-      case DxbcResourceDim::TextureCube:      return DxvkResourceDim::ImageCube;
-      case DxbcResourceDim::TextureCubeArr:   return DxvkResourceDim::ImageCubeArray;
-      case DxbcResourceDim::Texture3D:        return DxvkResourceDim::Image3D;
+      case DxbcResourceDim::Unknown:
+      case DxbcResourceDim::Buffer:
+      case DxbcResourceDim::RawBuffer:
+      case DxbcResourceDim::StructuredBuffer: return VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+      case DxbcResourceDim::Texture1D:        return VK_IMAGE_VIEW_TYPE_1D;
+      case DxbcResourceDim::Texture1DArr:     return VK_IMAGE_VIEW_TYPE_1D_ARRAY;
+      case DxbcResourceDim::Texture2D:        return VK_IMAGE_VIEW_TYPE_2D;
+      case DxbcResourceDim::Texture2DMs:      return VK_IMAGE_VIEW_TYPE_2D;
+      case DxbcResourceDim::Texture2DArr:     return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+      case DxbcResourceDim::Texture2DMsArr:   return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+      case DxbcResourceDim::TextureCube:      return VK_IMAGE_VIEW_TYPE_CUBE;
+      case DxbcResourceDim::TextureCubeArr:   return VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
+      case DxbcResourceDim::Texture3D:        return VK_IMAGE_VIEW_TYPE_3D;
     }
   }
   

@@ -731,7 +731,7 @@ namespace dxvk {
     DxbcVectorType getInputRegType(
             uint32_t regIdx) const;
     
-    DxvkResourceDim getDxvkResourceDim(
+    VkImageViewType getViewType(
             DxbcResourceDim dim) const;
     
     ///////////////////////////

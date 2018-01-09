@@ -11,7 +11,7 @@ namespace dxvk {
   void DxvkDescriptorSlotMapping::defineSlot(
           uint32_t              slot,
           VkDescriptorType      type,
-          DxvkResourceDim       dim,
+          VkImageViewType       view,
           VkShaderStageFlagBits stage) {
     uint32_t bindingId = this->getBindingId(slot);
     
@@ -21,7 +21,7 @@ namespace dxvk {
       DxvkDescriptorSlot slotInfo;
       slotInfo.slot   = slot;
       slotInfo.type   = type;
-      slotInfo.dim    = dim;
+      slotInfo.view   = view;
       slotInfo.stages = stage;
       m_descriptorSlots.push_back(slotInfo);
     }
