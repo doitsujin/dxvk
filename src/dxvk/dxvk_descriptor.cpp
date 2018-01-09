@@ -45,9 +45,8 @@ namespace dxvk {
   
   
   VkDescriptorPool DxvkDescriptorAlloc::createDescriptorPool() {
-    // TODO tune these values, if necessary
-    constexpr uint32_t MaxSets = 64;
-    constexpr uint32_t MaxDesc = 256;
+    constexpr uint32_t MaxSets = 256;
+    constexpr uint32_t MaxDesc = 2048;
     
     std::array<VkDescriptorPoolSize, 7> pools = {{
       { VK_DESCRIPTOR_TYPE_SAMPLER,               MaxDesc },
