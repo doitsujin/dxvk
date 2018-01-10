@@ -47,11 +47,16 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::bindFramebuffer(
-    const Rc<DxvkFramebuffer>& fb) {
+  void DxvkContext::bindFramebuffer(const Rc<DxvkFramebuffer>& fb) {
     if (m_state.om.framebuffer != fb) {
       this->renderPassEnd();
       m_state.om.framebuffer = fb;
+      
+      if (fb != nullptr) {
+        m_state.gp.state.msSampleCount = fb->sampleCount();
+        m_state.gp.state.omRenderPass  = fb->renderPass();
+        m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+      }
     }
   }
   
@@ -770,8 +775,8 @@ namespace dxvk {
           uint32_t            viewportCount,
     const VkViewport*         viewports,
     const VkRect2D*           scissorRects) {
-    if (m_state.vp.viewportCount != viewportCount) {
-      m_state.vp.viewportCount = viewportCount;
+    if (m_state.gp.state.rsViewportCount != viewportCount) {
+      m_state.gp.state.rsViewportCount = viewportCount;
       m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     }
     
@@ -801,9 +806,10 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::setInputAssemblyState(
-    const DxvkInputAssemblyState& state) {
-    m_state.ia = state;
+  void DxvkContext::setInputAssemblyState(const DxvkInputAssemblyState& ia) {
+    m_state.gp.state.iaPrimitiveTopology = ia.primitiveTopology;
+    m_state.gp.state.iaPrimitiveRestart  = ia.primitiveRestart;
+    
     m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
   }
   
@@ -817,41 +823,76 @@ namespace dxvk {
       DxvkContextFlag::GpDirtyPipelineState,
       DxvkContextFlag::GpDirtyVertexBuffers);
     
-    m_state.il.numAttributes = attributeCount;
-    m_state.il.numBindings   = bindingCount;
+    m_state.gp.state.ilAttributeCount = attributeCount;
+    m_state.gp.state.ilBindingCount   = bindingCount;
     
-    for (uint32_t i = 0; i < attributeCount; i++)
-      m_state.il.attributes[i] = attributes[i];
+    for (uint32_t i = 0; i < attributeCount; i++) {
+      m_state.gp.state.ilAttributes[i].location = attributes[i].location;
+      m_state.gp.state.ilAttributes[i].binding  = attributes[i].binding;
+      m_state.gp.state.ilAttributes[i].format   = attributes[i].format;
+      m_state.gp.state.ilAttributes[i].offset   = attributes[i].offset;
+    }
     
-    for (uint32_t i = 0; i < bindingCount; i++)
-      m_state.il.bindings[i] = bindings[i];
+    std::memset(
+      m_state.gp.state.ilAttributes + attributeCount, 0,
+      sizeof(VkVertexInputAttributeDescription) * (MaxNumVertexAttributes - attributeCount));
+    
+    for (uint32_t i = 0; i < bindingCount; i++) {
+      m_state.gp.state.ilBindings[i].binding    = bindings[i].binding;
+      m_state.gp.state.ilBindings[i].inputRate  = bindings[i].inputRate;
+    }
+    
+    std::memset(
+      m_state.gp.state.ilBindings + bindingCount, 0,
+      sizeof(VkVertexInputBindingDescription) * (MaxNumVertexBindings - bindingCount));
   }
   
   
-  void DxvkContext::setRasterizerState(
-    const DxvkRasterizerState& state) {
-    m_state.rs = state;
+  void DxvkContext::setRasterizerState(const DxvkRasterizerState& rs) {
+    m_state.gp.state.rsEnableDepthClamp  = rs.enableDepthClamp;
+    m_state.gp.state.rsEnableDiscard     = rs.enableDiscard;
+    m_state.gp.state.rsPolygonMode       = rs.polygonMode;
+    m_state.gp.state.rsCullMode          = rs.cullMode;
+    m_state.gp.state.rsFrontFace         = rs.frontFace;
+    m_state.gp.state.rsDepthBiasEnable   = rs.depthBiasEnable;
+    m_state.gp.state.rsDepthBiasConstant = rs.depthBiasConstant;
+    m_state.gp.state.rsDepthBiasClamp    = rs.depthBiasClamp;
+    m_state.gp.state.rsDepthBiasSlope    = rs.depthBiasSlope;
+    
     m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
   }
   
   
-  void DxvkContext::setMultisampleState(
-    const DxvkMultisampleState& state) {
-    m_state.ms = state;
+  void DxvkContext::setMultisampleState(const DxvkMultisampleState& ms) {
+    m_state.gp.state.msSampleMask            = ms.sampleMask;
+    m_state.gp.state.msEnableAlphaToCoverage = ms.enableAlphaToCoverage;
+    m_state.gp.state.msEnableAlphaToOne      = ms.enableAlphaToOne;
+    m_state.gp.state.msEnableSampleShading   = ms.enableSampleShading;
+    m_state.gp.state.msMinSampleShading      = ms.minSampleShading;
+    
     m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
   }
   
   
-  void DxvkContext::setDepthStencilState(
-    const DxvkDepthStencilState& state) {
-    m_state.ds = state;
+  void DxvkContext::setDepthStencilState(const DxvkDepthStencilState& ds) {
+    m_state.gp.state.dsEnableDepthTest   = ds.enableDepthTest;
+    m_state.gp.state.dsEnableDepthWrite  = ds.enableDepthWrite;
+    m_state.gp.state.dsEnableDepthBounds = ds.enableDepthBounds;
+    m_state.gp.state.dsEnableStencilTest = ds.enableStencilTest;
+    m_state.gp.state.dsDepthCompareOp    = ds.depthCompareOp;
+    m_state.gp.state.dsStencilOpFront    = ds.stencilOpFront;
+    m_state.gp.state.dsStencilOpBack     = ds.stencilOpBack;
+    m_state.gp.state.dsDepthBoundsMin    = ds.depthBoundsMin;
+    m_state.gp.state.dsDepthBoundsMax    = ds.depthBoundsMax;
+    
     m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
   }
   
   
-  void DxvkContext::setLogicOpState(
-    const DxvkLogicOpState& state) {
-    m_state.lo = state;
+  void DxvkContext::setLogicOpState(const DxvkLogicOpState& lo) {
+    m_state.gp.state.omEnableLogicOp = lo.enableLogicOp;
+    m_state.gp.state.omLogicOp       = lo.logicOp;
+    
     m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
   }
   
@@ -859,7 +900,15 @@ namespace dxvk {
   void DxvkContext::setBlendMode(
           uint32_t            attachment,
     const DxvkBlendMode&      blendMode) {
-    m_state.om.blendModes[attachment] = blendMode;
+    m_state.gp.state.omBlendAttachments[attachment].blendEnable         = blendMode.enableBlending;
+    m_state.gp.state.omBlendAttachments[attachment].srcColorBlendFactor = blendMode.colorSrcFactor;
+    m_state.gp.state.omBlendAttachments[attachment].dstColorBlendFactor = blendMode.colorDstFactor;
+    m_state.gp.state.omBlendAttachments[attachment].colorBlendOp        = blendMode.colorBlendOp;
+    m_state.gp.state.omBlendAttachments[attachment].srcAlphaBlendFactor = blendMode.alphaSrcFactor;
+    m_state.gp.state.omBlendAttachments[attachment].dstAlphaBlendFactor = blendMode.alphaDstFactor;
+    m_state.gp.state.omBlendAttachments[attachment].alphaBlendOp        = blendMode.alphaBlendOp;
+    m_state.gp.state.omBlendAttachments[attachment].colorWriteMask      = blendMode.writeMask;
+    
     m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
   }
   
@@ -925,7 +974,7 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpDirtyPipeline)) {
       m_flags.clr(DxvkContextFlag::GpDirtyPipeline);
       
-      m_state.gp.bs.clear();
+      m_state.gp.state.bsBindingState.clear();
       m_state.gp.pipeline = m_device->createGraphicsPipeline(
         m_state.gp.vs.shader, m_state.gp.tcs.shader, m_state.gp.tes.shader,
         m_state.gp.gs.shader, m_state.gp.fs.shader);
@@ -939,79 +988,14 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpDirtyPipelineState)) {
       m_flags.clr(DxvkContextFlag::GpDirtyPipelineState);
       
-      DxvkGraphicsPipelineStateInfo gpState;
-      gpState.bsBindingState = m_state.gp.bs;
+      for (uint32_t i = 0; i < m_state.gp.state.ilBindingCount; i++)
+        m_state.gp.state.ilBindings[i].stride = m_state.vi.vertexStrides[i];
       
-      gpState.iaPrimitiveTopology      = m_state.ia.primitiveTopology;
-      gpState.iaPrimitiveRestart       = m_state.ia.primitiveRestart;
-      
-      gpState.ilAttributeCount         = m_state.il.numAttributes;
-      gpState.ilBindingCount           = m_state.il.numBindings;
-      
-      for (uint32_t i = 0; i < m_state.il.numAttributes; i++) {
-        gpState.ilAttributes[i].location = m_state.il.attributes[i].location;
-        gpState.ilAttributes[i].binding  = m_state.il.attributes[i].binding;
-        gpState.ilAttributes[i].format   = m_state.il.attributes[i].format;
-        gpState.ilAttributes[i].offset   = m_state.il.attributes[i].offset;
-      }
-      
-      for (uint32_t i = 0; i < m_state.il.numBindings; i++) {
-        gpState.ilBindings[i].binding    = m_state.il.bindings[i].binding;
-        gpState.ilBindings[i].inputRate  = m_state.il.bindings[i].inputRate;
-        gpState.ilBindings[i].stride     = m_state.vi.vertexStrides[i];
-      }
-      
-      gpState.rsEnableDepthClamp       = m_state.rs.enableDepthClamp;
-      gpState.rsEnableDiscard          = m_state.rs.enableDiscard;
-      gpState.rsPolygonMode            = m_state.rs.polygonMode;
-      gpState.rsCullMode               = m_state.rs.cullMode;
-      gpState.rsFrontFace              = m_state.rs.frontFace;
-      gpState.rsDepthBiasEnable        = m_state.rs.depthBiasEnable;
-      gpState.rsDepthBiasConstant      = m_state.rs.depthBiasConstant;
-      gpState.rsDepthBiasClamp         = m_state.rs.depthBiasClamp;
-      gpState.rsDepthBiasSlope         = m_state.rs.depthBiasSlope;
-      gpState.rsViewportCount          = m_state.vp.viewportCount;
-      
-      gpState.msSampleCount            = m_state.om.framebuffer->sampleCount();
-      gpState.msSampleMask             = m_state.ms.sampleMask;
-      gpState.msEnableAlphaToCoverage  = m_state.ms.enableAlphaToCoverage;
-      gpState.msEnableAlphaToOne       = m_state.ms.enableAlphaToOne;
-      gpState.msEnableSampleShading    = m_state.ms.enableSampleShading;
-      gpState.msMinSampleShading       = m_state.ms.minSampleShading;
-      
-      gpState.dsEnableDepthTest        = m_state.ds.enableDepthTest;
-      gpState.dsEnableDepthWrite       = m_state.ds.enableDepthWrite;
-      gpState.dsEnableDepthBounds      = m_state.ds.enableDepthBounds;
-      gpState.dsEnableStencilTest      = m_state.ds.enableStencilTest;
-      gpState.dsDepthCompareOp         = m_state.ds.depthCompareOp;
-      gpState.dsStencilOpFront         = m_state.ds.stencilOpFront;
-      gpState.dsStencilOpBack          = m_state.ds.stencilOpBack;
-      gpState.dsDepthBoundsMin         = m_state.ds.depthBoundsMin;
-      gpState.dsDepthBoundsMax         = m_state.ds.depthBoundsMax;
-      
-      gpState.omEnableLogicOp          = m_state.lo.enableLogicOp;
-      gpState.omLogicOp                = m_state.lo.logicOp;
-      gpState.omRenderPass             = m_state.om.framebuffer->renderPass();
-      
-      const auto& rt = m_state.om.framebuffer->renderTargets();
-      
-      for (uint32_t i = 0; i < DxvkLimits::MaxNumRenderTargets; i++) {
-        if (rt.getColorTarget(i) != nullptr) {
-          const DxvkBlendMode& mode = m_state.om.blendModes[i];
-          
-          gpState.omBlendAttachments[i].blendEnable         = mode.enableBlending;
-          gpState.omBlendAttachments[i].srcColorBlendFactor = mode.colorSrcFactor;
-          gpState.omBlendAttachments[i].dstColorBlendFactor = mode.colorDstFactor;
-          gpState.omBlendAttachments[i].colorBlendOp        = mode.colorBlendOp;
-          gpState.omBlendAttachments[i].srcAlphaBlendFactor = mode.alphaSrcFactor;
-          gpState.omBlendAttachments[i].dstAlphaBlendFactor = mode.alphaDstFactor;
-          gpState.omBlendAttachments[i].alphaBlendOp        = mode.alphaBlendOp;
-          gpState.omBlendAttachments[i].colorWriteMask      = mode.writeMask;
-        }
-      }
+      for (uint32_t i = m_state.gp.state.ilBindingCount; i < MaxNumVertexBindings; i++)
+        m_state.gp.state.ilBindings[i].stride = 0;
       
       m_cmd->cmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,
-        m_state.gp.pipeline->getPipelineHandle(gpState));
+        m_state.gp.pipeline->getPipelineHandle(m_state.gp.state));
     }
   }
   
@@ -1052,7 +1036,7 @@ namespace dxvk {
       
       this->updateShaderDescriptors(
         VK_PIPELINE_BIND_POINT_GRAPHICS,
-        m_state.gp.bs,
+        m_state.gp.state.bsBindingState,
         m_state.gp.pipeline->layout());
     }
   }
@@ -1063,7 +1047,7 @@ namespace dxvk {
     const Rc<DxvkBindingLayout>&  layout) {
     DxvkBindingState& bs =
       bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
-        ? m_state.gp.bs
+        ? m_state.gp.state.bsBindingState
         : m_state.cp.bs;
     
     bool updatePipelineState = false;
@@ -1167,8 +1151,8 @@ namespace dxvk {
   
   
   void DxvkContext::updateViewports() {
-    m_cmd->cmdSetViewport(0, m_state.vp.viewportCount, m_state.vp.viewports.data());
-    m_cmd->cmdSetScissor (0, m_state.vp.viewportCount, m_state.vp.scissorRects.data());
+    m_cmd->cmdSetViewport(0, m_state.gp.state.rsViewportCount, m_state.vp.viewports.data());
+    m_cmd->cmdSetScissor (0, m_state.gp.state.rsViewportCount, m_state.vp.scissorRects.data());
   }
   
   
@@ -1204,7 +1188,7 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpDirtyVertexBuffers)) {
       m_flags.clr(DxvkContextFlag::GpDirtyVertexBuffers);
       
-      for (uint32_t i = 0; i < m_state.il.numBindings; i++) {
+      for (uint32_t i = 0; i < m_state.gp.state.ilBindingCount; i++) {
         const DxvkBufferSlice& vbo = m_state.vi.vertexBuffers[i];
         
         const VkBuffer     handle = vbo.handle();
@@ -1212,11 +1196,9 @@ namespace dxvk {
         
         if (handle != VK_NULL_HANDLE) {
           m_cmd->cmdBindVertexBuffers(
-            m_state.il.bindings[i].binding,
+            m_state.gp.state.ilBindings[i].binding,
             1, &handle, &offset);
           m_cmd->trackResource(vbo.resource());
-        } else {
-          Logger::err(str::format("DxvkContext: Unbound vertex buffer: ", i));
         }
       }
     }

@@ -49,19 +49,16 @@ namespace dxvk {
   
   
   struct DxvkViewportState {
-    uint32_t                                            viewportCount = 0;
     std::array<VkViewport, DxvkLimits::MaxNumViewports> viewports;
     std::array<VkRect2D,   DxvkLimits::MaxNumViewports> scissorRects;
   };
   
   
   struct DxvkOutputMergerState {
-    Rc<DxvkFramebuffer>       framebuffer;
+    Rc<DxvkFramebuffer> framebuffer;
     
-    std::array<DxvkBlendMode,
-      DxvkLimits::MaxNumRenderTargets> blendModes;
-    float                              blendConstants[4];
-    uint32_t                           stencilReference;
+    float     blendConstants[4];
+    uint32_t  stencilReference;
   };
   
   
@@ -71,13 +68,13 @@ namespace dxvk {
   
   
   struct DxvkGraphicsPipelineState {
-    DxvkBindingState bs;
     DxvkShaderStage  vs;
     DxvkShaderStage  tcs;
     DxvkShaderStage  tes;
     DxvkShaderStage  gs;
     DxvkShaderStage  fs;
     
+    DxvkGraphicsPipelineStateInfo state;
     Rc<DxvkGraphicsPipeline> pipeline;
   };
   
@@ -96,14 +93,8 @@ namespace dxvk {
    * and constant pipeline state objects.
    */
   struct DxvkContextState {
-    DxvkInputAssemblyState    ia;
-    DxvkInputLayout           il;
     DxvkVertexInputState      vi;
     DxvkViewportState         vp;
-    DxvkRasterizerState       rs;
-    DxvkMultisampleState      ms;
-    DxvkDepthStencilState     ds;
-    DxvkLogicOpState          lo;
     DxvkOutputMergerState     om;
     
     DxvkGraphicsPipelineState gp;

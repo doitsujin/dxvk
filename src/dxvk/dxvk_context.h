@@ -419,10 +419,10 @@ namespace dxvk {
     
     /**
      * \brief Sets input assembly state
-     * \param [in] state New state object
+     * \param [in] ia New state object
      */
     void setInputAssemblyState(
-      const DxvkInputAssemblyState& state);
+      const DxvkInputAssemblyState& ia);
     
     /**
      * \brief Sets input layout
@@ -440,31 +440,31 @@ namespace dxvk {
     
     /**
      * \brief Sets rasterizer state
-     * \param [in] state New state object
+     * \param [in] rs New state object
      */
     void setRasterizerState(
-      const DxvkRasterizerState& state);
+      const DxvkRasterizerState& rs);
     
     /**
      * \brief Sets multisample state
-     * \param [in] state New state object
+     * \param [in] ms New state object
      */
     void setMultisampleState(
-      const DxvkMultisampleState& state);
+      const DxvkMultisampleState& ms);
     
     /**
      * \brief Sets depth stencil state
-     * \param [in] state New state object
+     * \param [in] ds New state object
      */
     void setDepthStencilState(
-      const DxvkDepthStencilState& state);
+      const DxvkDepthStencilState& ds);
     
     /**
      * \brief Sets logic op state
-     * \param [in] state New state object
+     * \param [in] lo New state object
      */
     void setLogicOpState(
-      const DxvkLogicOpState&   state);
+      const DxvkLogicOpState&   lo);
     
     /**
      * \brief Sets blend mode for an attachment
