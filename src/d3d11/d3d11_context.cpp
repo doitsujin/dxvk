@@ -41,6 +41,10 @@ namespace dxvk {
     
     m_context->setBlendConstants(m_state.om.blendFactor);
     m_context->setStencilReference(m_state.om.stencilRef);
+    
+    // Create a default sampler that we're going to bind
+    // when the application binds null to a sampler slot.
+    m_defaultSampler = CreateDefaultSampler();
   }
   
   
@@ -1853,7 +1857,7 @@ namespace dxvk {
             slotId + i, sampler->GetDXVKSampler());
         } else {
           m_context->bindResourceSampler(
-            slotId + i, nullptr);
+            slotId + i, m_defaultSampler);
         }
       }
     }
@@ -1990,6 +1994,27 @@ namespace dxvk {
       m_state.rs.numViewports,
       viewports.data(),
       scissors.data());
+  }
+  
+  
+  Rc<DxvkSampler> D3D11DeviceContext::CreateDefaultSampler() {
+    DxvkSamplerCreateInfo info;
+    info.minFilter              = VK_FILTER_LINEAR;
+    info.magFilter              = VK_FILTER_LINEAR;
+    info.mipmapMode             = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    info.mipmapLodBias          = 0.0f;
+    info.mipmapLodMin           = -256.0f;
+    info.mipmapLodMax           =  256.0f;
+    info.useAnisotropy          = VK_FALSE;
+    info.maxAnisotropy          = 1.0f;
+    info.addressModeU           = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    info.addressModeV           = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    info.addressModeW           = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    info.compareToDepth         = VK_FALSE;
+    info.compareOp              = VK_COMPARE_OP_NEVER;
+    info.borderColor            = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
+    info.usePixelCoord          = VK_FALSE;
+    return m_device->createSampler(info);
   }
   
 }

@@ -556,6 +556,7 @@ namespace dxvk {
     
     Rc<DxvkDevice>        m_device;
     Rc<DxvkContext>       m_context;
+    Rc<DxvkSampler>       m_defaultSampler;
     
     Com<D3D11BlendState>        m_defaultBlendState;
     Com<D3D11DepthStencilState> m_defaultDepthStencilState;
@@ -594,6 +595,8 @@ namespace dxvk {
             ID3D11UnorderedAccessView* const* ppUnorderedAccessViews);
     
     void ApplyViewportState();
+    
+    Rc<DxvkSampler> CreateDefaultSampler();
     
   };
   
