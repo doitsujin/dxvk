@@ -1957,9 +1957,8 @@ namespace dxvk {
     // The conversion instructions do not map very well to the
     // SPIR-V pack instructions, which operate on 2D vectors.
     std::array<uint32_t, 4> scalarIds  = {{ 0, 0, 0, 0 }};
-    std::array<uint32_t, 4> swizzleIds = {{ 0, 0, 0, 0 }};
     
-    uint32_t componentIndex = 0;
+    const uint32_t componentCount = src.type.ccount;
     
     // These types are used in both pack and unpack operations
     const uint32_t t_u32   = getVectorTypeId({ DxbcScalarType::Uint32,  1 });
@@ -1969,46 +1968,34 @@ namespace dxvk {
     // Constant zero-bit pattern, used for packing
     const uint32_t zerof32 = isPack ? m_module.constf32(0.0f) : 0;
     
-    for (uint32_t i = 0; i < 4; i++) {
-      if (ins.dst[0].mask[i]) {
-        const uint32_t swizzleIndex = ins.src[0].swizzle[i];
+    for (uint32_t i = 0; i < componentCount; i++) {
+      const DxbcRegisterValue componentValue
+        = emitRegisterExtract(src, DxbcRegMask::select(i));
+      
+      if (isPack) {  // f32tof16
+        const std::array<uint32_t, 2> packIds =
+          {{ componentValue.id, zerof32 }};
         
-        // When extracting components from the source register, we must
-        // take into account that it it ozzled and masked.
-        if (scalarIds[swizzleIndex] == 0) {
-          const DxbcRegisterValue componentValue
-            = emitRegisterExtract(src, DxbcRegMask::select(componentIndex));
-          
-          if (isPack) {  // f32tof16
-            const std::array<uint32_t, 2> packIds =
-              {{ componentValue.id, zerof32 }};
-            
-            scalarIds[swizzleIndex] = m_module.opPackHalf2x16(t_u32,
-              m_module.opCompositeConstruct(t_f32v2, packIds.size(), packIds.data()));
-          } else {  // f16tof32
-            const uint32_t zeroIndex = 0;
-            
-            scalarIds[swizzleIndex] = m_module.opCompositeExtract(t_f32,
-              m_module.opUnpackHalf2x16(t_f32v2, componentValue.id),
-              1, &zeroIndex);
-          }
-        }
+        scalarIds[i] = m_module.opPackHalf2x16(t_u32,
+          m_module.opCompositeConstruct(t_f32v2, packIds.size(), packIds.data()));
+      } else {  // f16tof32
+        const uint32_t zeroIndex = 0;
         
-        // Apply write mask and source swizzle at the same time
-        swizzleIds[componentIndex++] = scalarIds[swizzleIndex];
+        scalarIds[i] = m_module.opCompositeExtract(t_f32,
+          m_module.opUnpackHalf2x16(t_f32v2, componentValue.id),
+          1, &zeroIndex);
       }
     }
     
     // Store result in the destination register
     DxbcRegisterValue result;
     result.type.ctype  = ins.dst[0].dataType;
-    result.type.ccount = componentIndex;
-    result.id = componentIndex > 1
+    result.type.ccount = componentCount;
+    result.id = componentCount > 1
       ? m_module.opCompositeConstruct(
           getVectorTypeId(result.type),
-          componentIndex, swizzleIds.data())
-      : swizzleIds[0];
-    
+          componentCount, scalarIds.data())
+      : scalarIds[0];
     emitRegisterStore(ins.dst[0], result);
   }
   
