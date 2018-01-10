@@ -2,6 +2,7 @@
 
 #include <unordered_set>
 
+#include "dxvk_binding.h"
 #include "dxvk_descriptor.h"
 #include "dxvk_lifetime.h"
 #include "dxvk_limits.h"
@@ -87,7 +88,8 @@ namespace dxvk {
             VkDescriptorSetLayout   descriptorLayout,
             uint32_t                descriptorCount,
       const DxvkDescriptorSlot*     descriptorSlots,
-      const DxvkDescriptorInfo*     descriptorInfos);
+      const DxvkDescriptorInfo*     descriptorInfos,
+      const DxvkBindingState&       bindingState);
     
     void cmdBeginRenderPass(
       const VkRenderPassBeginInfo*  pRenderPassBegin,

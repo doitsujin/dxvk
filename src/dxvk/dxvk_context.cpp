@@ -142,10 +142,12 @@ namespace dxvk {
       if (stage == VK_SHADER_STAGE_COMPUTE_BIT) {
         m_flags.set(
           DxvkContextFlag::CpDirtyPipeline,
+          DxvkContextFlag::CpDirtyPipelineState,
           DxvkContextFlag::CpDirtyResources);
       } else {
         m_flags.set(
           DxvkContextFlag::GpDirtyPipeline,
+          DxvkContextFlag::GpDirtyPipelineState,
           DxvkContextFlag::GpDirtyResources);
       }
     }
@@ -920,17 +922,22 @@ namespace dxvk {
   
   
   void DxvkContext::updateGraphicsPipeline() {
-    if (m_flags.any(DxvkContextFlag::GpDirtyPipeline, DxvkContextFlag::GpDirtyPipelineState)) {
-      m_flags.clr(DxvkContextFlag::GpDirtyPipelineState);
+    if (m_flags.test(DxvkContextFlag::GpDirtyPipeline)) {
+      m_flags.clr(DxvkContextFlag::GpDirtyPipeline);
       
-      if (m_flags.test(DxvkContextFlag::GpDirtyPipeline)) {
-        m_flags.clr(DxvkContextFlag::GpDirtyPipeline);
-        
-        m_state.gp.bs.clear();
-        m_state.gp.pipeline = m_device->createGraphicsPipeline(
-          m_state.gp.vs.shader, m_state.gp.tcs.shader, m_state.gp.tes.shader,
-          m_state.gp.gs.shader, m_state.gp.fs.shader);
-      }
+      m_state.gp.bs.clear();
+      m_state.gp.pipeline = m_device->createGraphicsPipeline(
+        m_state.gp.vs.shader, m_state.gp.tcs.shader, m_state.gp.tes.shader,
+        m_state.gp.gs.shader, m_state.gp.fs.shader);
+      
+      m_cmd->trackResource(m_state.gp.pipeline);
+    }
+  }
+  
+  
+  void DxvkContext::updateGraphicsPipelineState() {
+    if (m_flags.test(DxvkContextFlag::GpDirtyPipelineState)) {
+      m_flags.clr(DxvkContextFlag::GpDirtyPipelineState);
       
       DxvkGraphicsPipelineStateInfo gpState;
       gpState.bsBindingState = m_state.gp.bs;
@@ -1005,15 +1012,12 @@ namespace dxvk {
       
       m_cmd->cmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,
         m_state.gp.pipeline->getPipelineHandle(gpState));
-      m_cmd->trackResource(m_state.gp.pipeline);
     }
   }
   
   
   void DxvkContext::updateComputeShaderResources() {
     if (m_flags.test(DxvkContextFlag::CpDirtyResources)) {
-      m_flags.clr(DxvkContextFlag::CpDirtyResources);
-      
       this->updateShaderResources(
         VK_PIPELINE_BIND_POINT_COMPUTE,
         m_state.cp.pipeline->layout());
@@ -1021,12 +1025,34 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::updateComputeShaderDescriptors() {
+    if (m_flags.test(DxvkContextFlag::CpDirtyResources)) {
+      m_flags.clr(DxvkContextFlag::CpDirtyResources);
+      
+      this->updateShaderDescriptors(
+        VK_PIPELINE_BIND_POINT_COMPUTE,
+        m_state.cp.bs,
+        m_state.cp.pipeline->layout());
+    }
+  }
+  
+  
   void DxvkContext::updateGraphicsShaderResources() {
+    if (m_flags.test(DxvkContextFlag::GpDirtyResources)) {
+      this->updateShaderResources(
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        m_state.gp.pipeline->layout());
+    }
+  }
+  
+  
+  void DxvkContext::updateGraphicsShaderDescriptors() {
     if (m_flags.test(DxvkContextFlag::GpDirtyResources)) {
       m_flags.clr(DxvkContextFlag::GpDirtyResources);
       
-      this->updateShaderResources(
+      this->updateShaderDescriptors(
         VK_PIPELINE_BIND_POINT_GRAPHICS,
+        m_state.gp.bs,
         m_state.gp.pipeline->layout());
     }
   }
@@ -1059,7 +1085,6 @@ namespace dxvk {
             
             m_cmd->trackResource(res.sampler);
           } else {
-            Logger::err("DxvkContext: Unbound sampler descriptor");
             updatePipelineState |= bs.setUnbound(i);
             
             m_descriptors[i].image.sampler     = VK_NULL_HANDLE;
@@ -1069,7 +1094,7 @@ namespace dxvk {
         
         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-          if (res.imageView != nullptr/* && res.imageView->type() != binding.view*/) {
+          if (res.imageView != nullptr && res.imageView->type() != binding.view) {
             updatePipelineState |= bs.setBound(i);
             
             m_descriptors[i].image.sampler     = VK_NULL_HANDLE;
@@ -1079,7 +1104,6 @@ namespace dxvk {
             m_cmd->trackResource(res.imageView);
             m_cmd->trackResource(res.imageView->image());
           } else {
-            Logger::err("DxvkContext: Unbound or incompatible image descriptor");
             updatePipelineState |= bs.setUnbound(i);
             
             m_descriptors[i].image.sampler     = VK_NULL_HANDLE;
@@ -1097,7 +1121,6 @@ namespace dxvk {
             m_cmd->trackResource(res.bufferView);
             m_cmd->trackResource(res.bufferView->buffer()->resource());
           } else {
-            Logger::err("DxvkContext: Unbound texel buffer");
             updatePipelineState |= bs.setUnbound(i);
             
             m_descriptors[i].texelBuffer = VK_NULL_HANDLE;
@@ -1111,7 +1134,6 @@ namespace dxvk {
             m_descriptors[i].buffer = res.bufferSlice.descriptorInfo();
             m_cmd->trackResource(res.bufferSlice.resource());
           } else {
-            Logger::err("DxvkContext: Unbound buffer");
             updatePipelineState |= bs.setUnbound(i);
             
             m_descriptors[i].buffer.buffer = VK_NULL_HANDLE;
@@ -1124,19 +1146,26 @@ namespace dxvk {
       }
     }
     
+    if (updatePipelineState) {
+      m_flags.set(bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
+        ? DxvkContextFlag::GpDirtyPipelineState
+        : DxvkContextFlag::CpDirtyPipelineState);
+    }
+  }
+  
+  
+  void DxvkContext::updateShaderDescriptors(
+          VkPipelineBindPoint     bindPoint,
+    const DxvkBindingState&       bindingState,
+    const Rc<DxvkBindingLayout>&  layout) {
     m_cmd->bindResourceDescriptors(
       bindPoint,
       layout->pipelineLayout(),
       layout->descriptorSetLayout(),
       layout->bindingCount(),
       layout->bindings(),
-      m_descriptors.data());
-    
-    if (updatePipelineState) {
-      m_flags.set(bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
-        ? DxvkContextFlag::GpDirtyPipelineState
-        : DxvkContextFlag::CpDirtyPipelineState);
-    }
+      m_descriptors.data(),
+      bindingState);
   }
   
   
@@ -1213,6 +1242,7 @@ namespace dxvk {
     this->renderPassEnd();
     this->updateComputePipeline();
     this->updateComputeShaderResources();
+    this->updateComputeShaderDescriptors();
   }
   
   
@@ -1223,6 +1253,8 @@ namespace dxvk {
     this->updateIndexBufferBinding();
     this->updateVertexBufferBindings();
     this->updateGraphicsShaderResources();
+    this->updateGraphicsPipelineState();
+    this->updateGraphicsShaderDescriptors();
   }
   
   

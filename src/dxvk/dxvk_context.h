@@ -492,13 +492,23 @@ namespace dxvk {
     void renderPassEnd();
     
     void updateComputePipeline();
+    
     void updateGraphicsPipeline();
+    void updateGraphicsPipelineState();
     
     void updateComputeShaderResources();
+    void updateComputeShaderDescriptors();
+    
     void updateGraphicsShaderResources();
+    void updateGraphicsShaderDescriptors();
     
     void updateShaderResources(
             VkPipelineBindPoint     bindPoint,
+      const Rc<DxvkBindingLayout>&  layout);
+    
+    void updateShaderDescriptors(
+            VkPipelineBindPoint     bindPoint,
+      const DxvkBindingState&       bindingState,
       const Rc<DxvkBindingLayout>&  layout);
     
     void updateDynamicState();

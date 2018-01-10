@@ -94,33 +94,36 @@ namespace dxvk {
           VkDescriptorSetLayout   descriptorLayout,
           uint32_t                descriptorCount,
     const DxvkDescriptorSlot*     descriptorSlots,
-    const DxvkDescriptorInfo*     descriptorInfos) {
+    const DxvkDescriptorInfo*     descriptorInfos,
+    const DxvkBindingState&       bindingState) {
     
     // Allocate a new descriptor set
     VkDescriptorSet dset = m_descAlloc.alloc(descriptorLayout);
     
     // Write data to the descriptor set
     std::array<VkWriteDescriptorSet, MaxNumResourceSlots> descriptorWrites;
+    uint32_t writeId = 0;
     
     for (uint32_t i = 0; i < descriptorCount; i++) {
-      auto& curr    = descriptorWrites[i];
-      auto& binding = descriptorSlots[i];
-      
-      curr.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-      curr.pNext            = nullptr;
-      curr.dstSet           = dset;
-      curr.dstBinding       = i;
-      curr.dstArrayElement  = 0;
-      curr.descriptorCount  = 1;
-      curr.descriptorType   = binding.type;
-      curr.pImageInfo       = &descriptorInfos[i].image;
-      curr.pBufferInfo      = &descriptorInfos[i].buffer;
-      curr.pTexelBufferView = &descriptorInfos[i].texelBuffer;
+      if (bindingState.isBound(i)) {
+        auto& curr    = descriptorWrites[writeId++];
+        auto& binding = descriptorSlots[i];
+        
+        curr.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        curr.pNext            = nullptr;
+        curr.dstSet           = dset;
+        curr.dstBinding       = i;
+        curr.dstArrayElement  = 0;
+        curr.descriptorCount  = 1;
+        curr.descriptorType   = binding.type;
+        curr.pImageInfo       = &descriptorInfos[i].image;
+        curr.pBufferInfo      = &descriptorInfos[i].buffer;
+        curr.pTexelBufferView = &descriptorInfos[i].texelBuffer;
+      }
     }
     
     m_vkd->vkUpdateDescriptorSets(
-      m_vkd->device(),
-      descriptorCount,
+      m_vkd->device(), writeId,
       descriptorWrites.data(),
       0, nullptr);
     
