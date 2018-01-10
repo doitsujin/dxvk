@@ -28,11 +28,22 @@ namespace dxvk {
     
     ~DxvkShaderModule();
     
+    /**
+     * \brief Shader module handle
+     * \returns Shader module handle
+     */
     VkShaderModule handle() const {
       return m_module;
     }
     
-    VkPipelineShaderStageCreateInfo stageInfo() const;
+    /**
+     * \brief Shader stage creation info
+     * 
+     * \param [in] specInfo Specialization info
+     * \returns Shader stage create info
+     */
+    VkPipelineShaderStageCreateInfo stageInfo(
+      const VkSpecializationInfo* specInfo) const;
     
   private:
     

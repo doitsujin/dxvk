@@ -30,6 +30,7 @@ namespace dxvk {
     GpDirtyIndexBuffer,     ///< Index buffer binding are out of date
     
     CpDirtyPipeline,        ///< Compute pipeline binding are out of date
+    CpDirtyPipelineState,   ///< Compute pipeline needs to be recompiled
     CpDirtyResources,       ///< Compute pipeline resource bindings are out of date
   };
   
@@ -70,17 +71,19 @@ namespace dxvk {
   
   
   struct DxvkGraphicsPipelineState {
-    DxvkShaderStage vs;
-    DxvkShaderStage tcs;
-    DxvkShaderStage tes;
-    DxvkShaderStage gs;
-    DxvkShaderStage fs;
+    DxvkBindingState bs;
+    DxvkShaderStage  vs;
+    DxvkShaderStage  tcs;
+    DxvkShaderStage  tes;
+    DxvkShaderStage  gs;
+    DxvkShaderStage  fs;
     
     Rc<DxvkGraphicsPipeline> pipeline;
   };
   
   
   struct DxvkComputePipelineState {
+    DxvkBindingState        bs;
     DxvkShaderStage         cs;
     Rc<DxvkComputePipeline> pipeline;
   };

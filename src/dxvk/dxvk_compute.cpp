@@ -32,7 +32,7 @@ namespace dxvk {
     info.sType                = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
     info.pNext                = nullptr;
     info.flags                = 0;
-    info.stage                = m_cs->stageInfo();
+    info.stage                = m_cs->stageInfo(nullptr);
     info.layout               = m_layout->pipelineLayout();
     info.basePipelineHandle   = VK_NULL_HANDLE;
     info.basePipelineIndex    = 0;

@@ -3,6 +3,7 @@
 #include <mutex>
 #include <unordered_map>
 
+#include "dxvk_binding.h"
 #include "dxvk_constant_state.h"
 #include "dxvk_hash.h"
 #include "dxvk_pipelayout.h"
@@ -26,6 +27,8 @@ namespace dxvk {
     
     DxvkGraphicsPipelineStateInfo& operator = (
       const DxvkGraphicsPipelineStateInfo& other);
+    
+    DxvkBindingState                    bsBindingState;
     
     VkPrimitiveTopology                 iaPrimitiveTopology;
     VkBool32                            iaPrimitiveRestart;

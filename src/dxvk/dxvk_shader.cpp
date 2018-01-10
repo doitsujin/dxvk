@@ -26,16 +26,15 @@ namespace dxvk {
   }
   
   
-  VkPipelineShaderStageCreateInfo DxvkShaderModule::stageInfo() const {
+  VkPipelineShaderStageCreateInfo DxvkShaderModule::stageInfo(const VkSpecializationInfo* specInfo) const {
     VkPipelineShaderStageCreateInfo info;
-    
     info.sType                = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     info.pNext                = nullptr;
     info.flags                = 0;
     info.stage                = m_stage;
     info.module               = m_module;
     info.pName                = "main";
-    info.pSpecializationInfo  = nullptr;
+    info.pSpecializationInfo  = specInfo;
     return info;
   }
   

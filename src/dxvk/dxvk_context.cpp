@@ -926,12 +926,14 @@ namespace dxvk {
       if (m_flags.test(DxvkContextFlag::GpDirtyPipeline)) {
         m_flags.clr(DxvkContextFlag::GpDirtyPipeline);
         
+        m_state.gp.bs.clear();
         m_state.gp.pipeline = m_device->createGraphicsPipeline(
           m_state.gp.vs.shader, m_state.gp.tcs.shader, m_state.gp.tes.shader,
           m_state.gp.gs.shader, m_state.gp.fs.shader);
       }
       
       DxvkGraphicsPipelineStateInfo gpState;
+      gpState.bsBindingState = m_state.gp.bs;
       
       gpState.iaPrimitiveTopology      = m_state.ia.primitiveTopology;
       gpState.iaPrimitiveRestart       = m_state.ia.primitiveRestart;
@@ -1033,6 +1035,13 @@ namespace dxvk {
   void DxvkContext::updateShaderResources(
           VkPipelineBindPoint     bindPoint,
     const Rc<DxvkBindingLayout>&  layout) {
+    DxvkBindingState& bs =
+      bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
+        ? m_state.gp.bs
+        : m_state.cp.bs;
+    
+    bool updatePipelineState = false;
+    
     // TODO recreate resource views if the underlying
     // resource was marked as dirty after invalidation
     for (uint32_t i = 0; i < layout->bindingCount(); i++) {
@@ -1042,6 +1051,8 @@ namespace dxvk {
       switch (binding.type) {
         case VK_DESCRIPTOR_TYPE_SAMPLER:
           if (res.sampler != nullptr) {
+            updatePipelineState |= bs.setBound(i);
+            
             m_descriptors[i].image.sampler     = res.sampler->handle();
             m_descriptors[i].image.imageView   = VK_NULL_HANDLE;
             m_descriptors[i].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -1049,6 +1060,8 @@ namespace dxvk {
             m_cmd->trackResource(res.sampler);
           } else {
             Logger::err("DxvkContext: Unbound sampler descriptor");
+            updatePipelineState |= bs.setUnbound(i);
+            
             m_descriptors[i].image.sampler     = VK_NULL_HANDLE;
             m_descriptors[i].image.imageView   = VK_NULL_HANDLE;
             m_descriptors[i].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -1056,7 +1069,9 @@ namespace dxvk {
         
         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-          if (res.imageView != nullptr && res.imageView->type() != binding.view) {
+          if (res.imageView != nullptr/* && res.imageView->type() != binding.view*/) {
+            updatePipelineState |= bs.setBound(i);
+            
             m_descriptors[i].image.sampler     = VK_NULL_HANDLE;
             m_descriptors[i].image.imageView   = res.imageView->handle();
             m_descriptors[i].image.imageLayout = res.imageView->imageInfo().layout;
@@ -1065,6 +1080,8 @@ namespace dxvk {
             m_cmd->trackResource(res.imageView->image());
           } else {
             Logger::err("DxvkContext: Unbound or incompatible image descriptor");
+            updatePipelineState |= bs.setUnbound(i);
+            
             m_descriptors[i].image.sampler     = VK_NULL_HANDLE;
             m_descriptors[i].image.imageView   = VK_NULL_HANDLE;
             m_descriptors[i].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -1073,22 +1090,30 @@ namespace dxvk {
         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
         case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
           if (res.bufferView != nullptr) {
+            updatePipelineState |= bs.setBound(i);
+            
             m_descriptors[i].texelBuffer = res.bufferView->handle();
             
             m_cmd->trackResource(res.bufferView);
             m_cmd->trackResource(res.bufferView->buffer()->resource());
           } else {
             Logger::err("DxvkContext: Unbound texel buffer");
+            updatePipelineState |= bs.setUnbound(i);
+            
             m_descriptors[i].texelBuffer = VK_NULL_HANDLE;
           } break;
         
         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
           if (res.bufferSlice.handle() != VK_NULL_HANDLE) {
+            updatePipelineState |= bs.setBound(i);
+            
             m_descriptors[i].buffer = res.bufferSlice.descriptorInfo();
             m_cmd->trackResource(res.bufferSlice.resource());
           } else {
             Logger::err("DxvkContext: Unbound buffer");
+            updatePipelineState |= bs.setUnbound(i);
+            
             m_descriptors[i].buffer.buffer = VK_NULL_HANDLE;
             m_descriptors[i].buffer.offset = 0;
             m_descriptors[i].buffer.range  = 0;
@@ -1106,6 +1131,12 @@ namespace dxvk {
       layout->bindingCount(),
       layout->bindings(),
       m_descriptors.data());
+    
+    if (updatePipelineState) {
+      m_flags.set(bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
+        ? DxvkContextFlag::GpDirtyPipelineState
+        : DxvkContextFlag::CpDirtyPipelineState);
+    }
   }
   
   
@@ -1178,6 +1209,7 @@ namespace dxvk {
   
   
   void DxvkContext::commitComputeState() {
+    // TODO handle CpDirtyPipelineState
     this->renderPassEnd();
     this->updateComputePipeline();
     this->updateComputeShaderResources();

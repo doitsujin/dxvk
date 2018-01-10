@@ -91,13 +91,27 @@ namespace dxvk {
       VK_DYNAMIC_STATE_STENCIL_REFERENCE,
     };
     
+    std::array<VkBool32,                 MaxNumActiveBindings> specData;
+    std::array<VkSpecializationMapEntry, MaxNumActiveBindings> specMap;
+    
+    for (uint32_t i = 0; i < MaxNumActiveBindings; i++) {
+      specData[i] = state.bsBindingState.isBound(i) ? VK_TRUE : VK_FALSE;
+      specMap [i] = { i, static_cast<uint32_t>(sizeof(VkBool32)) * i, sizeof(VkBool32) };
+    }
+    
+    VkSpecializationInfo specInfo;
+    specInfo.mapEntryCount        = specMap.size();
+    specInfo.pMapEntries          = specMap.data();
+    specInfo.dataSize             = specData.size() * sizeof(VkBool32);
+    specInfo.pData                = specData.data();
+    
     std::vector<VkPipelineShaderStageCreateInfo> stages;
     
-    if (m_vs  != nullptr) stages.push_back(m_vs->stageInfo());
-    if (m_tcs != nullptr) stages.push_back(m_tcs->stageInfo());
-    if (m_tes != nullptr) stages.push_back(m_tes->stageInfo());
-    if (m_gs  != nullptr) stages.push_back(m_gs->stageInfo());
-    if (m_fs  != nullptr) stages.push_back(m_fs->stageInfo());
+    if (m_vs  != nullptr) stages.push_back(m_vs->stageInfo(&specInfo));
+    if (m_tcs != nullptr) stages.push_back(m_tcs->stageInfo(&specInfo));
+    if (m_tes != nullptr) stages.push_back(m_tes->stageInfo(&specInfo));
+    if (m_gs  != nullptr) stages.push_back(m_gs->stageInfo(&specInfo));
+    if (m_fs  != nullptr) stages.push_back(m_fs->stageInfo(&specInfo));
     
     VkPipelineVertexInputStateCreateInfo viInfo;
     viInfo.sType                            = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
