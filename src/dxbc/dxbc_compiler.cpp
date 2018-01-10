@@ -1878,6 +1878,7 @@ namespace dxvk {
     // bufinfo takes two arguments
     //    (dst0) The destination register
     //    (src0) The buffer register to query
+    // TODO Check if resource is bound
     const DxbcBufferInfo bufferInfo = getBufferInfo(ins.src[0]);
     
     // We'll store this as a scalar unsigned integer
@@ -1912,6 +1913,7 @@ namespace dxvk {
     //    (src0) Structure index
     //    (src1) Byte offset
     //    (src2) Source register
+    // TODO Check if resource is bound
     const bool isStructured = ins.op == DxbcOpcode::LdStructured;
     
     // Source register. The exact way we access
@@ -1946,6 +1948,7 @@ namespace dxvk {
     //    (src0) Structure index
     //    (src1) Byte offset
     //    (src2) Source register
+    // TODO Check if resource is bound
     const bool isStructured = ins.op == DxbcOpcode::StoreStructured;
     
     // Source register. The exact way we access
@@ -2033,6 +2036,7 @@ namespace dxvk {
     //    (dst0) The destination register
     //    (src0) Resource LOD to query
     //    (src1) Resource to query
+    // TODO Check if resource is bound
     const DxbcResinfoType resinfoType = ins.controls.resinfoType;
     
     if (ins.src[1].type != DxbcOperandType::Resource) {
@@ -2162,6 +2166,7 @@ namespace dxvk {
     //    (dst0) The destination register
     //    (src0) Source address
     //    (src1) Source texture
+    // TODO Check if resource is bound
     const uint32_t textureId = ins.src[1].idx[0].offset;
     
     // Image type, which stores the image dimensions etc.
@@ -2209,12 +2214,21 @@ namespace dxvk {
     const DxbcRegisterValue coord =
       emitRegisterExtract(address, coordArrayMask);
     
+    // Fetch texels only if the resource is actually bound
+    const uint32_t labelMerge     = m_module.allocateId();
+    const uint32_t labelBound     = m_module.allocateId();
+    const uint32_t labelUnbound   = m_module.allocateId();
+    
+    m_module.opSelectionMerge(labelMerge, spv::SelectionControlMaskNone);
+    m_module.opBranchConditional(m_textures.at(textureId).specId, labelBound, labelUnbound);
+    m_module.opLabel(labelBound);
+    
+    // Reading a typed image or buffer view
+    // always returns a four-component vector.
     const uint32_t imageId = m_module.opLoad(
       m_textures.at(textureId).imageTypeId,
       m_textures.at(textureId).varId);
     
-    // Reading a typed image or buffer view
-    // always returns a four-component vector.
     DxbcRegisterValue result;
     result.type.ctype  = m_textures.at(textureId).sampledType;
     result.type.ccount = 4;
@@ -2226,7 +2240,36 @@ namespace dxvk {
     // and the destination operand's write mask
     result = emitRegisterSwizzle(result,
       ins.src[1].swizzle, ins.dst[0].mask);
-    emitRegisterStore(ins.dst[0], result);
+
+    // If the texture is not bound, return zeroes
+    m_module.opBranch(labelMerge);
+    m_module.opLabel(labelUnbound);
+    
+    DxbcRegisterValue zeroes = [&] {
+      switch (result.type.ctype) {
+        case DxbcScalarType::Float32: return emitBuildConstVecf32(0.0f, 0.0f, 0.0f, 0.0f, ins.dst[0].mask);
+        case DxbcScalarType::Uint32:  return emitBuildConstVecu32(0u, 0u, 0u, 0u,         ins.dst[0].mask);
+        case DxbcScalarType::Sint32:  return emitBuildConstVeci32(0, 0, 0, 0,             ins.dst[0].mask);
+        default: throw DxvkError("DxbcCompiler: Invalid scalar type");
+      }
+    }();
+    
+    m_module.opBranch(labelMerge);
+    m_module.opLabel(labelMerge);
+    
+    // Merge the result with a phi function
+    const std::array<SpirvPhiLabel, 2> phiLabels = {{
+      { result.id, labelBound   },
+      { zeroes.id, labelUnbound },
+    }};
+    
+    DxbcRegisterValue mergedResult;
+    mergedResult.type = result.type;
+    mergedResult.id = m_module.opPhi(
+      getVectorTypeId(mergedResult.type),
+      phiLabels.size(), phiLabels.data());
+    
+    emitRegisterStore(ins.dst[0], mergedResult);
   }
   
   
@@ -2312,16 +2355,6 @@ namespace dxvk {
       ? m_module.defSampledImageType(m_textures.at(textureId).depthTypeId)
       : m_module.defSampledImageType(m_textures.at(textureId).colorTypeId);
     
-    // Combine the texture and the sampler into a sampled image
-    const uint32_t sampledImageId = m_module.opSampledImage(
-      sampledImageType,
-      m_module.opLoad(
-        m_textures.at(textureId).imageTypeId,
-        m_textures.at(textureId).varId),
-      m_module.opLoad(
-        m_samplers.at(samplerId).typeId,
-        m_samplers.at(samplerId).varId));
-    
     // Accumulate additional image operands. These are
     // not part of the actual operand token in SPIR-V.
     SpirvImageOperands imageOperands;
@@ -2338,6 +2371,25 @@ namespace dxvk {
         getVectorTypeId({ DxbcScalarType::Sint32, imageLayerDim }),
         imageLayerDim, offsetIds.data());
     }
+    
+    // Only execute the sample operation if the resource is bound
+    const uint32_t labelMerge     = m_module.allocateId();
+    const uint32_t labelBound     = m_module.allocateId();
+    const uint32_t labelUnbound   = m_module.allocateId();
+    
+    m_module.opSelectionMerge(labelMerge, spv::SelectionControlMaskNone);
+    m_module.opBranchConditional(m_textures.at(textureId).specId, labelBound, labelUnbound);
+    m_module.opLabel(labelBound);
+    
+    // Combine the texture and the sampler into a sampled image
+    const uint32_t sampledImageId = m_module.opSampledImage(
+      sampledImageType,
+      m_module.opLoad(
+        m_textures.at(textureId).imageTypeId,
+        m_textures.at(textureId).varId),
+      m_module.opLoad(
+        m_samplers.at(samplerId).typeId,
+        m_samplers.at(samplerId).varId));
     
     // Sampling an image always returns a four-component
     // vector, whereas depth-compare ops return a scalar.
@@ -2384,7 +2436,6 @@ namespace dxvk {
       
       // Sample operation with explicit LOD
       case DxbcOpcode::SampleL: {
-        
         imageOperands.flags |= spv::ImageOperandsLodMask;
         imageOperands.sLod = explicitLod.id;
         
@@ -2407,7 +2458,35 @@ namespace dxvk {
         textureReg.swizzle, ins.dst[0].mask);
     }
     
-    emitRegisterStore(ins.dst[0], result);
+    // If the texture is not bound, return zeroes
+    m_module.opBranch(labelMerge);
+    m_module.opLabel(labelUnbound);
+    
+    DxbcRegisterValue zeroes = [&] {
+      switch (result.type.ctype) {
+        case DxbcScalarType::Float32: return emitBuildConstVecf32(0.0f, 0.0f, 0.0f, 0.0f, ins.dst[0].mask);
+        case DxbcScalarType::Uint32:  return emitBuildConstVecu32(0u, 0u, 0u, 0u,         ins.dst[0].mask);
+        case DxbcScalarType::Sint32:  return emitBuildConstVeci32(0, 0, 0, 0,             ins.dst[0].mask);
+        default: throw DxvkError("DxbcCompiler: Invalid scalar type");
+      }
+    }();
+    
+    m_module.opBranch(labelMerge);
+    m_module.opLabel(labelMerge);
+    
+    // Merge the result with a phi function
+    const std::array<SpirvPhiLabel, 2> phiLabels = {{
+      { result.id, labelBound   },
+      { zeroes.id, labelUnbound },
+    }};
+    
+    DxbcRegisterValue mergedResult;
+    mergedResult.type = result.type;
+    mergedResult.id = m_module.opPhi(
+      getVectorTypeId(mergedResult.type),
+      phiLabels.size(), phiLabels.data());
+    
+    emitRegisterStore(ins.dst[0], mergedResult);
   }
   
   
@@ -2850,6 +2929,7 @@ namespace dxvk {
           float                   z,
           float                   w,
     const DxbcRegMask&            writeMask) {
+    // TODO refactor these functions into one single template
     std::array<uint32_t, 4> ids = { 0, 0, 0, 0 };
     uint32_t componentIndex = 0;
     
@@ -2860,6 +2940,58 @@ namespace dxvk {
     
     DxbcRegisterValue result;
     result.type.ctype  = DxbcScalarType::Float32;
+    result.type.ccount = componentIndex;
+    result.id = componentIndex > 1
+      ? m_module.constComposite(
+          getVectorTypeId(result.type),
+          componentIndex, ids.data())
+      : ids[0];
+    return result;
+  }
+  
+  
+  DxbcRegisterValue DxbcCompiler::emitBuildConstVecu32(
+          uint32_t                x,
+          uint32_t                y,
+          uint32_t                z,
+          uint32_t                w,
+    const DxbcRegMask&            writeMask) {
+    std::array<uint32_t, 4> ids = { 0, 0, 0, 0 };
+    uint32_t componentIndex = 0;
+    
+    if (writeMask[0]) ids[componentIndex++] = m_module.constu32(x);
+    if (writeMask[1]) ids[componentIndex++] = m_module.constu32(y);
+    if (writeMask[2]) ids[componentIndex++] = m_module.constu32(z);
+    if (writeMask[3]) ids[componentIndex++] = m_module.constu32(w);
+    
+    DxbcRegisterValue result;
+    result.type.ctype  = DxbcScalarType::Uint32;
+    result.type.ccount = componentIndex;
+    result.id = componentIndex > 1
+      ? m_module.constComposite(
+          getVectorTypeId(result.type),
+          componentIndex, ids.data())
+      : ids[0];
+    return result;
+  }
+  
+  
+  DxbcRegisterValue DxbcCompiler::emitBuildConstVeci32(
+          int32_t                 x,
+          int32_t                 y,
+          int32_t                 z,
+          int32_t                 w,
+    const DxbcRegMask&            writeMask) {
+    std::array<uint32_t, 4> ids = { 0, 0, 0, 0 };
+    uint32_t componentIndex = 0;
+    
+    if (writeMask[0]) ids[componentIndex++] = m_module.consti32(x);
+    if (writeMask[1]) ids[componentIndex++] = m_module.consti32(y);
+    if (writeMask[2]) ids[componentIndex++] = m_module.consti32(z);
+    if (writeMask[3]) ids[componentIndex++] = m_module.consti32(w);
+    
+    DxbcRegisterValue result;
+    result.type.ctype  = DxbcScalarType::Sint32;
     result.type.ccount = componentIndex;
     result.id = componentIndex > 1
       ? m_module.constComposite(
@@ -3668,6 +3800,58 @@ namespace dxvk {
   }
   
   
+  DxbcRegisterValue DxbcCompiler::emitRegisterLoadRaw(
+    const DxbcRegister&           reg) {
+    if (reg.type == DxbcOperandType::ConstantBuffer) {
+      // Constant buffer require special care if they are not bound
+      const uint32_t registerId = reg.idx[0].offset;
+      
+      const uint32_t labelMerge   = m_module.allocateId();
+      const uint32_t labelBound   = m_module.allocateId();
+      const uint32_t labelUnbound = m_module.allocateId();
+      
+      m_module.opSelectionMerge(labelMerge, spv::SelectionControlMaskNone);
+      m_module.opBranchConditional(
+        m_constantBuffers.at(registerId).specId,
+        labelBound, labelUnbound);
+      
+      // Case 1: Constant buffer is bound.
+      // Load the register value normally.
+      m_module.opLabel(labelBound);
+      DxbcRegisterValue ifBound = emitValueLoad(emitGetOperandPtr(reg));
+      m_module.opBranch(labelMerge);
+      
+      // Case 2: Constant buffer is not bound.
+      // Return zeroes unconditionally.
+      m_module.opLabel(labelUnbound);
+      DxbcRegisterValue ifUnbound = emitBuildConstVecf32(
+        0.0f, 0.0f, 0.0f, 0.0f,
+        DxbcRegMask(true, true, true, true));
+      m_module.opBranch(labelMerge);
+      
+      // Merge the results with a phi function
+      m_module.opLabel(labelMerge);
+      
+      const std::array<SpirvPhiLabel, 2> phiLabels = {{
+        { ifBound.id,   labelBound   },
+        { ifUnbound.id, labelUnbound },
+      }};
+      
+      DxbcRegisterValue result;
+      result.type.ctype  = DxbcScalarType::Float32;
+      result.type.ccount = 4;
+      result.id = m_module.opPhi(
+        getVectorTypeId(result.type),
+        phiLabels.size(),
+        phiLabels.data());
+      return result;
+    } else {
+      // All other operand types can be accessed directly
+      return emitValueLoad(emitGetOperandPtr(reg));
+    }
+  }
+  
+  
   DxbcRegisterValue DxbcCompiler::emitRegisterLoad(
     const DxbcRegister&           reg,
           DxbcRegMask             writeMask) {
@@ -3710,8 +3894,7 @@ namespace dxvk {
       return emitRegisterBitcast(result, reg.dataType);
     } else {
       // Load operand from the operand pointer
-      DxbcRegisterPointer ptr = emitGetOperandPtr(reg);
-      DxbcRegisterValue result = emitValueLoad(ptr);
+      DxbcRegisterValue result = emitRegisterLoadRaw(reg);
       
       // Apply operand swizzle to the operand value
       result = emitRegisterSwizzle(result, reg.swizzle, writeMask);

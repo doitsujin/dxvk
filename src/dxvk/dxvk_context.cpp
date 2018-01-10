@@ -1086,10 +1086,6 @@ namespace dxvk {
             m_cmd->trackResource(res.sampler);
           } else {
             updatePipelineState |= bs.setUnbound(i);
-            
-            m_descriptors[i].image.sampler     = VK_NULL_HANDLE;
-            m_descriptors[i].image.imageView   = VK_NULL_HANDLE;
-            m_descriptors[i].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
           } break;
         
         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
@@ -1105,10 +1101,6 @@ namespace dxvk {
             m_cmd->trackResource(res.imageView->image());
           } else {
             updatePipelineState |= bs.setUnbound(i);
-            
-            m_descriptors[i].image.sampler     = VK_NULL_HANDLE;
-            m_descriptors[i].image.imageView   = VK_NULL_HANDLE;
-            m_descriptors[i].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
           } break;
         
         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
@@ -1122,8 +1114,6 @@ namespace dxvk {
             m_cmd->trackResource(res.bufferView->buffer()->resource());
           } else {
             updatePipelineState |= bs.setUnbound(i);
-            
-            m_descriptors[i].texelBuffer = VK_NULL_HANDLE;
           } break;
         
         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
@@ -1135,10 +1125,6 @@ namespace dxvk {
             m_cmd->trackResource(res.bufferSlice.resource());
           } else {
             updatePipelineState |= bs.setUnbound(i);
-            
-            m_descriptors[i].buffer.buffer = VK_NULL_HANDLE;
-            m_descriptors[i].buffer.offset = 0;
-            m_descriptors[i].buffer.range  = 0;
           } break;
         
         default:

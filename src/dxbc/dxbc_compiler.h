@@ -505,6 +505,20 @@ namespace dxvk {
             float                   w,
       const DxbcRegMask&            writeMask);
     
+    DxbcRegisterValue emitBuildConstVecu32(
+            uint32_t                x,
+            uint32_t                y,
+            uint32_t                z,
+            uint32_t                w,
+      const DxbcRegMask&            writeMask);
+    
+    DxbcRegisterValue emitBuildConstVeci32(
+            int32_t                 x,
+            int32_t                 y,
+            int32_t                 z,
+            int32_t                 w,
+      const DxbcRegMask&            writeMask);
+    
     DxbcRegisterValue emitBuildZero(
             DxbcScalarType          type);
     
@@ -626,6 +640,9 @@ namespace dxvk {
             DxbcRegisterPointer     ptr,
             DxbcRegisterValue       value,
             DxbcRegMask             writeMask);
+    
+    DxbcRegisterValue emitRegisterLoadRaw(
+      const DxbcRegister&           reg);
     
     DxbcRegisterValue emitRegisterLoad(
       const DxbcRegister&           reg,
