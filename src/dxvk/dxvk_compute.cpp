@@ -35,7 +35,7 @@ namespace dxvk {
     info.stage                = m_cs->stageInfo(nullptr);
     info.layout               = m_layout->pipelineLayout();
     info.basePipelineHandle   = VK_NULL_HANDLE;
-    info.basePipelineIndex    = 0;
+    info.basePipelineIndex    = -1;
     
     if (m_vkd->vkCreateComputePipelines(m_vkd->device(),
           VK_NULL_HANDLE, 1, &info, nullptr, &m_pipeline) != VK_SUCCESS)

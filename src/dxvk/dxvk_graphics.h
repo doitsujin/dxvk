@@ -134,9 +134,11 @@ namespace dxvk {
     std::mutex                  m_mutex;
     std::vector<PipelineStruct> m_pipelines;
     
-    VkPipeline compilePipeline(
-      const DxvkGraphicsPipelineStateInfo& state) const;
+    VkPipeline m_basePipeline = VK_NULL_HANDLE;
     
+    VkPipeline compilePipeline(
+      const DxvkGraphicsPipelineStateInfo& state,
+            VkPipeline                     baseHandle) const;
     void destroyPipelines();
     
   };

@@ -73,14 +73,18 @@ namespace dxvk {
         return pair.pipeline;
     }
     
-    VkPipeline pipeline = this->compilePipeline(state);
+    VkPipeline pipeline = this->compilePipeline(state, m_basePipeline);
     m_pipelines.push_back({ state, pipeline });
+    
+    if (m_basePipeline == VK_NULL_HANDLE)
+      m_basePipeline = pipeline;
     return pipeline;
   }
   
   
   VkPipeline DxvkGraphicsPipeline::compilePipeline(
-    const DxvkGraphicsPipelineStateInfo& state) const {
+    const DxvkGraphicsPipelineStateInfo& state,
+          VkPipeline                     baseHandle) const {
     std::array<VkDynamicState, 4> dynamicStates = {
       VK_DYNAMIC_STATE_VIEWPORT,
       VK_DYNAMIC_STATE_SCISSOR,
@@ -197,7 +201,9 @@ namespace dxvk {
     VkGraphicsPipelineCreateInfo info;
     info.sType                    = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     info.pNext                    = nullptr;
-    info.flags                    = 0;
+    info.flags                    = baseHandle == VK_NULL_HANDLE
+      ? VK_PIPELINE_CREATE_ALLOW_DERIVATIVES_BIT
+      : VK_PIPELINE_CREATE_DERIVATIVE_BIT;
     info.stageCount               = stages.size();
     info.pStages                  = stages.data();
     info.pVertexInputState        = &viInfo;
@@ -212,8 +218,8 @@ namespace dxvk {
     info.layout                   = m_layout->pipelineLayout();
     info.renderPass               = state.omRenderPass;
     info.subpass                  = 0;
-    info.basePipelineHandle       = VK_NULL_HANDLE; // TODO use this
-    info.basePipelineIndex        = 0;
+    info.basePipelineHandle       = baseHandle;
+    info.basePipelineIndex        = -1;
     
     VkPipeline pipeline = VK_NULL_HANDLE;
     if (m_vkd->vkCreateGraphicsPipelines(m_vkd->device(),
