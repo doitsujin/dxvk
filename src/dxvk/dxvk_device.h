@@ -33,7 +33,7 @@ namespace dxvk {
   class DxvkDevice : public RcObject {
     friend class DxvkSubmissionQueue;
     
-    constexpr static VkDeviceSize DefaultStagingBufferSize = 64 * 1024 * 1024;
+    constexpr static VkDeviceSize DefaultStagingBufferSize = 16 * 1024 * 1024;
   public:
     
     DxvkDevice(
@@ -297,9 +297,9 @@ namespace dxvk {
     Rc<vk::DeviceFn>          m_vkd;
     VkPhysicalDeviceFeatures  m_features;
     
-    Rc<DxvkMemoryAllocator> m_memory;
-    Rc<DxvkRenderPassPool>  m_renderPassPool;
-    Rc<DxvkPipelineManager> m_pipelineManager;
+    Rc<DxvkMemoryAllocator>   m_memory;
+    Rc<DxvkRenderPassPool>    m_renderPassPool;
+    Rc<DxvkPipelineManager>   m_pipelineManager;
     
     std::mutex m_submissionLock;
     VkQueue m_graphicsQueue = VK_NULL_HANDLE;
