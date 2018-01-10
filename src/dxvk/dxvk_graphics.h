@@ -28,6 +28,9 @@ namespace dxvk {
     DxvkGraphicsPipelineStateInfo& operator = (
       const DxvkGraphicsPipelineStateInfo& other);
     
+    bool operator == (const DxvkGraphicsPipelineStateInfo& other) const;
+    bool operator != (const DxvkGraphicsPipelineStateInfo& other) const;
+    
     DxvkBindingState                    bsBindingState;
     
     VkPrimitiveTopology                 iaPrimitiveTopology;
@@ -73,18 +76,6 @@ namespace dxvk {
   };
   
   
-  struct DxvkGraphicsPipelineStateHash {
-    size_t operator () (const DxvkGraphicsPipelineStateInfo& state) const;
-  };
-  
-  
-  struct DxvkGraphicsPipelineStateEq {
-    size_t operator () (
-      const DxvkGraphicsPipelineStateInfo& a,
-      const DxvkGraphicsPipelineStateInfo& b) const;
-  };
-  
-  
   /**
    * \brief Graphics pipeline
    * 
@@ -126,6 +117,11 @@ namespace dxvk {
     
   private:
     
+    struct PipelineStruct {
+      DxvkGraphicsPipelineStateInfo stateVector;
+      VkPipeline                    pipeline;
+    };
+    
     Rc<vk::DeviceFn>      m_vkd;
     Rc<DxvkBindingLayout> m_layout;
     
@@ -135,13 +131,8 @@ namespace dxvk {
     Rc<DxvkShaderModule>  m_gs;
     Rc<DxvkShaderModule>  m_fs;
     
-    std::mutex m_mutex;
-    
-    std::unordered_map<
-      DxvkGraphicsPipelineStateInfo,
-      VkPipeline,
-      DxvkGraphicsPipelineStateHash,
-      DxvkGraphicsPipelineStateEq> m_pipelines;
+    std::mutex                  m_mutex;
+    std::vector<PipelineStruct> m_pipelines;
     
     VkPipeline compilePipeline(
       const DxvkGraphicsPipelineStateInfo& state) const;

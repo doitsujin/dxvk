@@ -22,17 +22,13 @@ namespace dxvk {
   }
   
   
-  size_t DxvkGraphicsPipelineStateHash::operator () (
-    const DxvkGraphicsPipelineStateInfo& state) const {
-    // TODO implement hash
-    return 0;
+  bool DxvkGraphicsPipelineStateInfo::operator == (const DxvkGraphicsPipelineStateInfo& other) const {
+    return std::memcmp(this, &other, sizeof(DxvkGraphicsPipelineStateInfo)) == 0;
   }
   
   
-  size_t DxvkGraphicsPipelineStateEq::operator () (
-    const DxvkGraphicsPipelineStateInfo& a,
-    const DxvkGraphicsPipelineStateInfo& b) const {
-    return std::memcmp(&a, &b, sizeof(DxvkGraphicsPipelineStateInfo)) == 0;
+  bool DxvkGraphicsPipelineStateInfo::operator != (const DxvkGraphicsPipelineStateInfo& other) const {
+    return std::memcmp(this, &other, sizeof(DxvkGraphicsPipelineStateInfo)) != 0;
   }
   
   
@@ -72,12 +68,13 @@ namespace dxvk {
     const DxvkGraphicsPipelineStateInfo& state) {
     std::lock_guard<std::mutex> lock(m_mutex);
     
-    auto pair = m_pipelines.find(state);
-    if (pair != m_pipelines.end())
-      return pair->second;
+    for (const PipelineStruct& pair : m_pipelines) {
+      if (pair.stateVector == state)
+        return pair.pipeline;
+    }
     
     VkPipeline pipeline = this->compilePipeline(state);
-    m_pipelines.insert(std::make_pair(state, pipeline));
+    m_pipelines.push_back({ state, pipeline });
     return pipeline;
   }
   
@@ -227,10 +224,8 @@ namespace dxvk {
   
   
   void DxvkGraphicsPipeline::destroyPipelines() {
-    for (const auto& pair : m_pipelines) {
-      m_vkd->vkDestroyPipeline(
-        m_vkd->device(), pair.second, nullptr);
-    }
+    for (const PipelineStruct& pair : m_pipelines)
+      m_vkd->vkDestroyPipeline(m_vkd->device(), pair.pipeline, nullptr);
   }
   
 }
