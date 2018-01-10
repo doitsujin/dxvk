@@ -988,8 +988,10 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpDirtyPipelineState)) {
       m_flags.clr(DxvkContextFlag::GpDirtyPipelineState);
       
-      for (uint32_t i = 0; i < m_state.gp.state.ilBindingCount; i++)
-        m_state.gp.state.ilBindings[i].stride = m_state.vi.vertexStrides[i];
+      for (uint32_t i = 0; i < m_state.gp.state.ilBindingCount; i++) {
+        m_state.gp.state.ilBindings[i].stride
+          = m_state.vi.vertexStrides[m_state.gp.state.ilBindings[i].binding];
+      }
       
       for (uint32_t i = m_state.gp.state.ilBindingCount; i < MaxNumVertexBindings; i++)
         m_state.gp.state.ilBindings[i].stride = 0;
@@ -1189,15 +1191,15 @@ namespace dxvk {
       m_flags.clr(DxvkContextFlag::GpDirtyVertexBuffers);
       
       for (uint32_t i = 0; i < m_state.gp.state.ilBindingCount; i++) {
-        const DxvkBufferSlice& vbo = m_state.vi.vertexBuffers[i];
+        const uint32_t binding = m_state.gp.state.ilBindings[i].binding;
+        
+        const DxvkBufferSlice& vbo = m_state.vi.vertexBuffers[binding];
         
         const VkBuffer     handle = vbo.handle();
         const VkDeviceSize offset = vbo.offset();
         
         if (handle != VK_NULL_HANDLE) {
-          m_cmd->cmdBindVertexBuffers(
-            m_state.gp.state.ilBindings[i].binding,
-            1, &handle, &offset);
+          m_cmd->cmdBindVertexBuffers(binding, 1, &handle, &offset);
           m_cmd->trackResource(vbo.resource());
         }
       }
