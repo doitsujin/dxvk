@@ -1056,7 +1056,7 @@ namespace dxvk {
         
         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-          if (res.imageView != nullptr) {
+          if (res.imageView != nullptr && res.imageView->type() != binding.view) {
             m_descriptors[i].image.sampler     = VK_NULL_HANDLE;
             m_descriptors[i].image.imageView   = res.imageView->handle();
             m_descriptors[i].image.imageLayout = res.imageView->imageInfo().layout;
@@ -1065,7 +1065,6 @@ namespace dxvk {
             m_cmd->trackResource(res.imageView->image());
           } else {
             Logger::err("DxvkContext: Unbound or incompatible image descriptor");
-            Logger::err(str::format(res.imageView->type(), " ", binding.view));
             m_descriptors[i].image.sampler     = VK_NULL_HANDLE;
             m_descriptors[i].image.imageView   = VK_NULL_HANDLE;
             m_descriptors[i].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
