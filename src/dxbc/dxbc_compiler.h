@@ -198,6 +198,7 @@ namespace dxvk {
     DxbcResourceType type;
     uint32_t typeId;
     uint32_t varId;
+    uint32_t specId;
     uint32_t stride;
   };
   

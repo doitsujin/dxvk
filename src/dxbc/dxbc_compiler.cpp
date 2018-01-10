@@ -536,9 +536,6 @@ namespace dxvk {
     m_module.setDebugName(varId,
       str::format("cb", bufferId).c_str());
     
-    m_constantBuffers.at(bufferId).varId = varId;
-    m_constantBuffers.at(bufferId).size  = elementCount;
-    
     // Compute the DXVK binding slot index for the buffer.
     // D3D11 needs to bind the actual buffers to this slot.
     const uint32_t bindingId = computeResourceSlotId(
@@ -547,6 +544,19 @@ namespace dxvk {
     
     m_module.decorateDescriptorSet(varId, 0);
     m_module.decorateBinding(varId, bindingId);
+    
+    // Declare a specialization constant which will
+    // store whether or not the resource is bound.
+    const uint32_t specConstId = m_module.specConstBool(true);
+    m_module.decorateSpecId(specConstId, bindingId);
+    m_module.setDebugName(specConstId,
+      str::format("cb", bufferId, "_bound").c_str());
+    
+    DxbcConstantBuffer buf;
+    buf.varId  = varId;
+    buf.specId = specConstId;
+    buf.size   = elementCount;
+    m_constantBuffers.at(bufferId) = buf;
     
     // Store descriptor info for the shader interface
     DxvkResourceSlot resource;
@@ -683,11 +693,30 @@ namespace dxvk {
     m_module.setDebugName(varId,
       str::format(isUav ? "u" : "t", registerId).c_str());
     
+    // Compute the DXVK binding slot index for the resource.
+    // D3D11 needs to bind the actual resource to this slot.
+    const uint32_t bindingId = computeResourceSlotId(
+      m_version.type(), isUav
+        ? DxbcBindingType::UnorderedAccessView
+        : DxbcBindingType::ShaderResource,
+      registerId);
+    
+    m_module.decorateDescriptorSet(varId, 0);
+    m_module.decorateBinding(varId, bindingId);
+    
+    // Declare a specialization constant which will
+    // store whether or not the resource is bound.
+    const uint32_t specConstId = m_module.specConstBool(true);
+    m_module.decorateSpecId(specConstId, bindingId);
+    m_module.setDebugName(specConstId,
+      str::format(isUav ? "u" : "t", registerId, "_bound").c_str());
+    
     if (isUav) {
       DxbcUav uav;
       uav.type          = DxbcResourceType::Typed;
       uav.imageInfo     = typeInfo;
       uav.varId         = varId;
+      uav.specId        = specConstId;
       uav.sampledType   = sampledType;
       uav.sampledTypeId = sampledTypeId;
       uav.imageTypeId   = imageTypeId;
@@ -698,6 +727,7 @@ namespace dxvk {
       res.type          = DxbcResourceType::Typed;
       res.imageInfo     = typeInfo;
       res.varId         = varId;
+      res.specId        = specConstId;
       res.sampledType   = sampledType;
       res.sampledTypeId = sampledTypeId;
       res.imageTypeId   = imageTypeId;
@@ -710,17 +740,6 @@ namespace dxvk {
         m_textures.at(registerId) = res;
       res.structStride  = 0;
     }
-    
-    // Compute the DXVK binding slot index for the resource.
-    // D3D11 needs to bind the actual resource to this slot.
-    const uint32_t bindingId = computeResourceSlotId(
-      m_version.type(), isUav
-        ? DxbcBindingType::UnorderedAccessView
-        : DxbcBindingType::ShaderResource,
-      registerId);
-    
-    m_module.decorateDescriptorSet(varId, 0);
-    m_module.decorateBinding(varId, bindingId);
     
     // Store descriptor info for the shader interface
     DxvkResourceSlot resource;
@@ -785,11 +804,29 @@ namespace dxvk {
       ? ins.imm[0].u32
       : 0;
     
+    // Compute the DXVK binding slot index for the resource.
+    const uint32_t bindingId = computeResourceSlotId(
+      m_version.type(), isUav
+        ? DxbcBindingType::UnorderedAccessView
+        : DxbcBindingType::ShaderResource,
+      registerId);
+    
+    m_module.decorateDescriptorSet(varId, 0);
+    m_module.decorateBinding(varId, bindingId);
+    
+    // Declare a specialization constant which will
+    // store whether or not the resource is bound.
+    const uint32_t specConstId = m_module.specConstBool(true);
+    m_module.decorateSpecId(specConstId, bindingId);
+    m_module.setDebugName(specConstId,
+      str::format(isUav ? "u" : "t", registerId, "_bound").c_str());
+    
     if (isUav) {
       DxbcUav uav;
       uav.type          = resType;
       uav.imageInfo     = typeInfo;
       uav.varId         = varId;
+      uav.specId        = specConstId;
       uav.sampledType   = sampledType;
       uav.sampledTypeId = sampledTypeId;
       uav.imageTypeId   = resTypeId;
@@ -800,6 +837,7 @@ namespace dxvk {
       res.type          = resType;
       res.imageInfo     = typeInfo;
       res.varId         = varId;
+      res.specId        = specConstId;
       res.sampledType   = sampledType;
       res.sampledTypeId = sampledTypeId;
       res.imageTypeId   = resTypeId;
@@ -808,16 +846,6 @@ namespace dxvk {
       res.structStride  = resStride;
       m_textures.at(registerId) = res;
     }
-    
-    // Compute the DXVK binding slot index for the resource.
-    const uint32_t bindingId = computeResourceSlotId(
-      m_version.type(), isUav
-        ? DxbcBindingType::UnorderedAccessView
-        : DxbcBindingType::ShaderResource,
-      registerId);
-    
-    m_module.decorateDescriptorSet(varId, 0);
-    m_module.decorateBinding(varId, bindingId);
     
     // Store descriptor info for the shader interface
     DxvkResourceSlot resource;
@@ -1873,7 +1901,7 @@ namespace dxvk {
     emitRegisterStore(ins.dst[0], result);
   }
   
-    
+  
   void DxbcCompiler::emitBufferLoad(const DxbcShaderInstruction& ins) {
     // ld_raw takes three arguments:
     //    (dst0) Destination register
@@ -4263,6 +4291,7 @@ namespace dxvk {
         result.type   = m_textures.at(registerId).type;
         result.typeId = m_textures.at(registerId).imageTypeId;
         result.varId  = m_textures.at(registerId).varId;
+        result.specId = m_textures.at(registerId).specId;
         result.stride = m_textures.at(registerId).structStride;
         return result;
       } break;
@@ -4273,6 +4302,7 @@ namespace dxvk {
         result.type   = m_uavs.at(registerId).type;
         result.typeId = m_uavs.at(registerId).imageTypeId;
         result.varId  = m_uavs.at(registerId).varId;
+        result.specId = m_uavs.at(registerId).specId;
         result.stride = m_uavs.at(registerId).structStride;
         return result;
       } break;
@@ -4285,6 +4315,7 @@ namespace dxvk {
           getScalarTypeId(DxbcScalarType::Uint32),
           spv::StorageClassWorkgroup);
         result.varId  = m_gRegs.at(registerId).varId;
+        result.specId = 0;
         result.stride = m_gRegs.at(registerId).elementStride;
         return result;
       } break;

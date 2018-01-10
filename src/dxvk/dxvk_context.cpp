@@ -1094,7 +1094,7 @@ namespace dxvk {
         
         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-          if (res.imageView != nullptr && res.imageView->type() != binding.view) {
+          if (res.imageView != nullptr && res.imageView->type() == binding.view) {
             updatePipelineState |= bs.setBound(i);
             
             m_descriptors[i].image.sampler     = VK_NULL_HANDLE;

@@ -35,8 +35,9 @@ namespace dxvk {
    * access a constant buffer.
    */
   struct DxbcConstantBuffer {
-    uint32_t varId = 0;
-    uint32_t size  = 0;
+    uint32_t varId  = 0;
+    uint32_t specId = 0;
+    uint32_t size   = 0;
   };
   
   /**
@@ -72,6 +73,7 @@ namespace dxvk {
     DxbcResourceType  type          = DxbcResourceType::Typed;
     DxbcImageInfo     imageInfo;
     uint32_t          varId         = 0;
+    uint32_t          specId        = 0;
     DxbcScalarType    sampledType   = DxbcScalarType::Float32;
     uint32_t          sampledTypeId = 0;
     uint32_t          imageTypeId   = 0;
@@ -91,6 +93,7 @@ namespace dxvk {
     DxbcResourceType  type          = DxbcResourceType::Typed;
     DxbcImageInfo     imageInfo;
     uint32_t          varId         = 0;
+    uint32_t          specId        = 0;
     DxbcScalarType    sampledType   = DxbcScalarType::Float32;
     uint32_t          sampledTypeId = 0;
     uint32_t          imageTypeId   = 0;

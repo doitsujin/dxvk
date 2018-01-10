@@ -238,6 +238,22 @@ namespace dxvk {
       m_typeConstDefs.putWord(constIds[i]);
     return resultId;
   }
+  
+  
+  uint32_t SpirvModule::specConstBool(
+          bool                    v) {
+    uint32_t typeId   = this->defBoolType();
+    uint32_t resultId = this->allocateId();
+    
+    const spv::Op op = v
+      ? spv::OpSpecConstantTrue
+      : spv::OpSpecConstantFalse;
+    
+    m_typeConstDefs.putIns  (op, 3);
+    m_typeConstDefs.putWord (typeId);
+    m_typeConstDefs.putWord (resultId);
+    return resultId;
+  }
     
   
   void SpirvModule::decorate(
@@ -313,6 +329,16 @@ namespace dxvk {
     m_annotations.putWord (object);
     m_annotations.putWord (spv::DecorationLocation);
     m_annotations.putInt32(location);
+  }
+  
+  
+  void SpirvModule::decorateSpecId(
+          uint32_t                object,
+          uint32_t                specId) {
+    m_annotations.putIns  (spv::OpDecorate, 4);
+    m_annotations.putWord (object);
+    m_annotations.putWord (spv::DecorationSpecId);
+    m_annotations.putInt32(specId);
   }
   
   

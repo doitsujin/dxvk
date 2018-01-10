@@ -48,8 +48,9 @@ namespace dxvk {
   : m_vkd(vkd) {
     
     m_bindingSlots.resize(bindingCount);
-    std::memcpy(m_bindingSlots.data(), bindingInfos,
-      bindingCount * sizeof(DxvkDescriptorSlot));
+    
+    for (uint32_t i = 0; i < bindingCount; i++)
+      m_bindingSlots[i] = bindingInfos[i];
     
     std::vector<VkDescriptorSetLayoutBinding> bindings;
     

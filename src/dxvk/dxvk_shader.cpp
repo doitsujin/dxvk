@@ -71,7 +71,8 @@ namespace dxvk {
     
     for (auto ins : spirvCode) {
       if (ins.opCode() == spv::OpDecorate
-       && ins.arg(2)   == spv::DecorationBinding) {
+       && ((ins.arg(2) == spv::DecorationBinding)
+        || (ins.arg(2) == spv::DecorationSpecId))) {
         
         const uint32_t oldBinding = ins.arg(3);
         const uint32_t newBinding = mapping.getBindingId(oldBinding);

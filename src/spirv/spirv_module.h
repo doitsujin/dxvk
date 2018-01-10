@@ -124,6 +124,9 @@ namespace dxvk {
             uint32_t                constCount,
       const uint32_t*               constIds);
     
+    uint32_t specConstBool(
+            bool                    v);
+    
     void decorate(
             uint32_t                object,
             spv::Decoration         decoration);
@@ -154,6 +157,10 @@ namespace dxvk {
     void decorateLocation(
             uint32_t                object,
             uint32_t                location);
+    
+    void decorateSpecId(
+            uint32_t                object,
+            uint32_t                specId);
     
     void memberDecorateBuiltIn(
             uint32_t                structId,
