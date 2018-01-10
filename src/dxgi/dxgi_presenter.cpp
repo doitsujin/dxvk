@@ -150,6 +150,18 @@ namespace dxvk {
   
   
   void DxgiPresenter::presentImage() {
+    auto newTime = std::chrono::high_resolution_clock::now();
+    auto us = std::chrono::duration_cast<std::chrono::microseconds>(newTime - m_oldTime).count();
+    
+    m_frames += 1;
+    
+    if (us >= 1'000'000) {
+      std::cout << "FPS: " << (static_cast<double>(m_frames * 1'000'000)
+                             / static_cast<double>(us)) << std::endl;
+      m_frames = 0;
+      m_oldTime = newTime;
+    }
+    
     const bool fitSize =
         m_backBuffer->info().extent.width  == m_options.preferredBufferSize.width
      && m_backBuffer->info().extent.height == m_options.preferredBufferSize.height;
@@ -503,8 +515,8 @@ namespace dxvk {
     
     // Shader resource slots
     std::array<DxvkResourceSlot, 2> resourceSlots = {{
-      { BindingIds::Sampler, VK_DESCRIPTOR_TYPE_SAMPLER       },
-      { BindingIds::Texture, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE },
+      { BindingIds::Sampler, VK_DESCRIPTOR_TYPE_SAMPLER,       VK_IMAGE_VIEW_TYPE_MAX_ENUM },
+      { BindingIds::Texture, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_IMAGE_VIEW_TYPE_2D       },
     }};
     
     // Create the actual shader module

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <chrono>
+
 #include <dxvk_device.h>
 #include <dxvk_surface.h>
 #include <dxvk_swapchain.h>
@@ -102,6 +104,9 @@ namespace dxvk {
     
     Rc<DxvkShader> createVertexShader();
     Rc<DxvkShader> createFragmentShader();
+    
+    std::chrono::high_resolution_clock::time_point m_oldTime;
+    uint32_t m_frames = 0;
     
   };
   
