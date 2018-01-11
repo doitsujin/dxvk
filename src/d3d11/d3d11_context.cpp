@@ -1919,8 +1919,12 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumUAVs,
           ID3D11UnorderedAccessView* const* ppUnorderedAccessViews) {
-    const uint32_t slotId = computeResourceSlotId(
+    const uint32_t uavSlotId = computeResourceSlotId(
       ShaderStage, DxbcBindingType::UnorderedAccessView,
+      StartSlot);
+    
+    const uint32_t ctrSlotId = computeResourceSlotId(
+      ShaderStage, DxbcBindingType::UavCounter,
       StartSlot);
     
     for (uint32_t i = 0; i < NumUAVs; i++) {
@@ -1933,16 +1937,19 @@ namespace dxvk {
           // Figure out what we have to bind based on the resource type
           if (uav->GetResourceType() == D3D11_RESOURCE_DIMENSION_BUFFER) {
             m_context->bindResourceTexelBuffer(
-              slotId + i, uav->GetBufferView());
+              uavSlotId + i, uav->GetBufferView());
+            m_context->bindResourceBuffer(
+              ctrSlotId + i, uav->GetCounterSlice());
           } else {
             m_context->bindResourceImage(
-              slotId + i, uav->GetImageView());
+              uavSlotId + i, uav->GetImageView());
           }
         } else {
           // When unbinding a resource, it doesn't really matter if
           // the resource type is correct, so we'll just bind a null
           // image to the given resource slot
-          m_context->bindResourceImage(slotId + i, nullptr);
+          m_context->bindResourceTexelBuffer(uavSlotId + i, nullptr);
+          m_context->bindResourceBuffer     (ctrSlotId + i, DxvkBufferSlice());
         }
       }
     }
@@ -1960,7 +1967,8 @@ namespace dxvk {
         const DxvkBufferSlice counterSlice = uav->GetCounterSlice();
         const D3D11UavCounter counterValue = { pUAVInitialCounts[i] };
         
-        if (counterSlice.handle() != VK_NULL_HANDLE) {
+        if (counterSlice.handle() != VK_NULL_HANDLE
+         && counterValue.atomicCtr != 0xFFFFFFFFu) {
           m_context->updateBuffer(
             counterSlice.buffer(),
             counterSlice.offset(),
