@@ -35,6 +35,10 @@ namespace dxvk {
       return m_shader;
     }
     
+    const std::string& GetName() const {
+      return m_name;
+    }
+    
   private:
     
     std::string    m_name;
@@ -83,6 +87,10 @@ namespace dxvk {
     
     Rc<DxvkShader> STDMETHODCALLTYPE GetShader() const {
       return m_module.GetShader();
+    }
+    
+    const std::string& GetName() const {
+      return m_module.GetName();
     }
     
   private:
