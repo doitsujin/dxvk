@@ -285,7 +285,7 @@ namespace dxvk {
           break;
           
         case D3D11_SRV_DIMENSION_TEXTURECUBE:
-          viewInfo.type      = VK_IMAGE_VIEW_TYPE_CUBE;
+          viewInfo.type      = VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
           viewInfo.minLevel  = desc.TextureCube.MostDetailedMip;
           viewInfo.numLevels = desc.TextureCube.MipLevels;
           viewInfo.minLayer  = 0;
