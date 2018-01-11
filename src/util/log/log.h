@@ -5,9 +5,15 @@
 #include <mutex>
 #include <string>
 
-#include "../rc/util_rc.h"
-
 namespace dxvk {
+  
+  enum class LogLevel : uint32_t {
+    Trace = 0,
+    Debug = 1,
+    Info  = 2,
+    Warn  = 3,
+    Error = 4,
+  };
   
   /**
    * \brief Logger
@@ -23,6 +29,7 @@ namespace dxvk {
     ~Logger();
     
     static void trace(const std::string& message);
+    static void debug(const std::string& message);
     static void info (const std::string& message);
     static void warn (const std::string& message);
     static void err  (const std::string& message);
@@ -31,10 +38,14 @@ namespace dxvk {
     
     static Logger s_instance;
     
+    const LogLevel m_minLevel;
+    
     std::mutex    m_mutex;
     std::ofstream m_fileStream;
     
-    void log(const std::string& message);
+    void log(LogLevel level, const std::string& message);
+    
+    static LogLevel getMinLogLevel();
 
   };
   
