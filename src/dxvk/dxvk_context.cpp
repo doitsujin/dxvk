@@ -1130,14 +1130,33 @@ namespace dxvk {
           VkPipelineBindPoint     bindPoint,
     const DxvkBindingState&       bindingState,
     const Rc<DxvkBindingLayout>&  layout) {
-    m_cmd->bindResourceDescriptors(
-      bindPoint,
-      layout->pipelineLayout(),
-      layout->descriptorSetLayout(),
-      layout->bindingCount(),
-      layout->bindings(),
-      m_descriptors.data(),
-      bindingState);
+    std::array<VkWriteDescriptorSet, MaxNumResourceSlots> writes;
+    
+    const VkDescriptorSet dset =
+      m_cmd->allocateDescriptorSet(
+        layout->descriptorSetLayout());
+      
+    size_t writeId = 0;
+    
+    for (uint32_t i = 0; i < layout->bindingCount(); i++) {
+      if (bindingState.isBound(i)) {
+        writes[writeId].sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[writeId].pNext            = nullptr;
+        writes[writeId].dstSet           = dset;
+        writes[writeId].dstBinding       = i;
+        writes[writeId].dstArrayElement  = 0;
+        writes[writeId].descriptorCount  = 1;
+        writes[writeId].descriptorType   = layout->binding(i).type;
+        writes[writeId].pImageInfo       = &m_descriptors[i].image;
+        writes[writeId].pBufferInfo      = &m_descriptors[i].buffer;
+        writes[writeId].pTexelBufferView = &m_descriptors[i].texelBuffer;
+        writeId++;
+      }
+    }
+    
+    m_cmd->updateDescriptorSet(writeId, writes.data());
+    m_cmd->cmdBindDescriptorSet(bindPoint,
+      layout->pipelineLayout(), dset);
   }
   
   

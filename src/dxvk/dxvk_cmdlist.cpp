@@ -88,52 +88,6 @@ namespace dxvk {
   }
   
   
-  void DxvkCommandList::bindResourceDescriptors(
-          VkPipelineBindPoint     pipeline,
-          VkPipelineLayout        pipelineLayout,
-          VkDescriptorSetLayout   descriptorLayout,
-          uint32_t                descriptorCount,
-    const DxvkDescriptorSlot*     descriptorSlots,
-    const DxvkDescriptorInfo*     descriptorInfos,
-    const DxvkBindingState&       bindingState) {
-    
-    // Allocate a new descriptor set
-    VkDescriptorSet dset = m_descAlloc.alloc(descriptorLayout);
-    
-    // Write data to the descriptor set
-    std::array<VkWriteDescriptorSet, MaxNumResourceSlots> descriptorWrites;
-    uint32_t writeId = 0;
-    
-    for (uint32_t i = 0; i < descriptorCount; i++) {
-      if (bindingState.isBound(i)) {
-        auto& curr    = descriptorWrites[writeId++];
-        auto& binding = descriptorSlots[i];
-        
-        curr.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        curr.pNext            = nullptr;
-        curr.dstSet           = dset;
-        curr.dstBinding       = i;
-        curr.dstArrayElement  = 0;
-        curr.descriptorCount  = 1;
-        curr.descriptorType   = binding.type;
-        curr.pImageInfo       = &descriptorInfos[i].image;
-        curr.pBufferInfo      = &descriptorInfos[i].buffer;
-        curr.pTexelBufferView = &descriptorInfos[i].texelBuffer;
-      }
-    }
-    
-    m_vkd->vkUpdateDescriptorSets(
-      m_vkd->device(), writeId,
-      descriptorWrites.data(),
-      0, nullptr);
-    
-    // Bind descriptor set to the pipeline
-    m_vkd->vkCmdBindDescriptorSets(m_buffer,
-      pipeline, pipelineLayout, 0, 1,
-      &dset, 0, nullptr);
-  }
-  
-  
   DxvkStagingBufferSlice DxvkCommandList::stagedAlloc(VkDeviceSize size) {
     return m_stagingAlloc.alloc(size);
   }

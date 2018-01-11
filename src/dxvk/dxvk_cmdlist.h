@@ -82,20 +82,35 @@ namespace dxvk {
      */
     void reset();
     
-    void bindResourceDescriptors(
-            VkPipelineBindPoint     pipeline,
-            VkPipelineLayout        pipelineLayout,
-            VkDescriptorSetLayout   descriptorLayout,
+    VkDescriptorSet allocateDescriptorSet(
+            VkDescriptorSetLayout   descriptorLayout) {
+      return m_descAlloc.alloc(descriptorLayout);
+    }
+    
+    
+    void updateDescriptorSet(
             uint32_t                descriptorCount,
-      const DxvkDescriptorSlot*     descriptorSlots,
-      const DxvkDescriptorInfo*     descriptorInfos,
-      const DxvkBindingState&       bindingState);
+      const VkWriteDescriptorSet*   descriptorWrites) {
+      m_vkd->vkUpdateDescriptorSets(m_vkd->device(),
+        descriptorCount, descriptorWrites, 0, nullptr);
+    }
+    
     
     void cmdBeginRenderPass(
       const VkRenderPassBeginInfo*  pRenderPassBegin,
             VkSubpassContents       contents) {
       m_vkd->vkCmdBeginRenderPass(m_buffer,
         pRenderPassBegin, contents);
+    }
+    
+    
+    void cmdBindDescriptorSet(
+          VkPipelineBindPoint       pipeline,
+          VkPipelineLayout          pipelineLayout,
+          VkDescriptorSet           descriptorSet) {
+      m_vkd->vkCmdBindDescriptorSets(m_buffer,
+        pipeline, pipelineLayout, 0, 1,
+        &descriptorSet, 0, nullptr);
     }
     
     
