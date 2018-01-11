@@ -1,6 +1,6 @@
 #pragma once
 
-#include <dxvk_device.h>
+#include "../dxvk/dxvk_device.h"
 
 #include "d3d11_device_child.h"
 
@@ -60,17 +60,17 @@ namespace dxvk {
       *pDesc = m_desc;
     }
     
-    D3D11_RESOURCE_DIMENSION GetResourceType() {
+    D3D11_RESOURCE_DIMENSION GetResourceType() const {
       D3D11_RESOURCE_DIMENSION type;
       m_resource->GetType(&type);
       return type;
     }
     
-    Rc<DxvkBufferView> GetDXVKBufferView() {
+    Rc<DxvkBufferView> GetBufferView() const {
       return m_bufferView;
     }
     
-    Rc<DxvkImageView> GetDXVKImageView() {
+    Rc<DxvkImageView> GetImageView() const {
       return m_imageView;
     }
     
@@ -93,8 +93,5 @@ namespace dxvk {
   
   using D3D11DepthStencilView = D3D11ResourceView<
     ID3D11DepthStencilView, D3D11_DEPTH_STENCIL_VIEW_DESC>;
-  
-  using D3D11UnorderedAccessView = D3D11ResourceView<
-    ID3D11UnorderedAccessView, D3D11_UNORDERED_ACCESS_VIEW_DESC>;
   
 }

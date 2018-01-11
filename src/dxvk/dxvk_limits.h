@@ -10,7 +10,7 @@ namespace dxvk {
     MaxNumVertexBindings        =   32,
     MaxNumOutputStreams         =    4,
     MaxNumViewports             =   16,
-    MaxNumResourceSlots         = 1024,
+    MaxNumResourceSlots         = 1096,
     MaxNumActiveBindings        =  128,
   };
   

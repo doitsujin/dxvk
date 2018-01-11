@@ -17,6 +17,7 @@ namespace dxvk {
     ImageSampler        = 2,
     UnorderedAccessView = 3,
     StreamOutputBuffer  = 4,
+    UavCounter          = 5,
   };
   
   

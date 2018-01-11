@@ -496,7 +496,18 @@ namespace dxvk {
           ID3D11Buffer*                     pDstBuffer,
           UINT                              DstAlignedByteOffset,
           ID3D11UnorderedAccessView*        pSrcView) {
-    Logger::err("D3D11DeviceContext::CopyStructureCount: Not implemented");
+    auto buf = static_cast<D3D11Buffer*>(pDstBuffer);
+    auto uav = static_cast<D3D11UnorderedAccessView*>(pSrcView);
+    
+    const DxvkBufferSlice dstSlice = buf->GetBufferSlice(DstAlignedByteOffset);
+    const DxvkBufferSlice srcSlice = uav->GetCounterSlice();
+    
+    m_context->copyBuffer(
+      dstSlice.buffer(),
+      dstSlice.offset(),
+      srcSlice.buffer(),
+      srcSlice.offset(),
+      sizeof(uint32_t));
   }
   
   
@@ -504,7 +515,7 @@ namespace dxvk {
           ID3D11RenderTargetView*           pRenderTargetView,
     const FLOAT                             ColorRGBA[4]) {
     auto rtv = static_cast<D3D11RenderTargetView*>(pRenderTargetView);
-    const Rc<DxvkImageView> dxvkView = rtv->GetDXVKImageView();
+    const Rc<DxvkImageView> dxvkView = rtv->GetImageView();
     
     // Find out whether the given attachment is currently bound
     // or not, and if it is, which attachment index it has.
@@ -573,7 +584,7 @@ namespace dxvk {
           FLOAT                             Depth,
           UINT8                             Stencil) {
     auto dsv = static_cast<D3D11DepthStencilView*>(pDepthStencilView);
-    const Rc<DxvkImageView> dxvkView = dsv->GetDXVKImageView();
+    const Rc<DxvkImageView> dxvkView = dsv->GetImageView();
     
     VkClearDepthStencilValue clearValue;
     clearValue.depth   = Depth;
@@ -1471,15 +1482,17 @@ namespace dxvk {
           UINT                              NumUAVs,
           ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
     const UINT*                             pUAVInitialCounts) {
-    // TODO implement append-consume buffers
-//     if (pUAVInitialCounts != nullptr)
-//       Logger::err("D3D11DeviceContext: pUAVInitialCounts not supported");
-    
     this->BindUnorderedAccessViews(
       DxbcProgramType::ComputeShader,
       m_state.cs.unorderedAccessViews,
       StartSlot, NumUAVs,
       ppUnorderedAccessViews);
+    
+    if (pUAVInitialCounts != nullptr) {
+      this->InitUnorderedAccessViewCounters(
+        NumUAVs, ppUnorderedAccessViews,
+        pUAVInitialCounts);
+    }
   }
   
   
@@ -1566,11 +1579,11 @@ namespace dxvk {
       
       for (UINT i = 0; i < m_state.om.renderTargetViews.size(); i++) {
         if (m_state.om.renderTargetViews.at(i) != nullptr)
-          attachments.setColorTarget(i, m_state.om.renderTargetViews.at(i)->GetDXVKImageView());
+          attachments.setColorTarget(i, m_state.om.renderTargetViews.at(i)->GetImageView());
       }
       
       if (m_state.om.depthStencilView != nullptr)
-        attachments.setDepthTarget(m_state.om.depthStencilView->GetDXVKImageView());
+        attachments.setDepthTarget(m_state.om.depthStencilView->GetImageView());
       
       if (attachments.hasAttachments())
         framebuffer = m_device->createFramebuffer(attachments);
@@ -1884,10 +1897,10 @@ namespace dxvk {
           // Figure out what we have to bind based on the resource type
           if (resView->GetResourceType() == D3D11_RESOURCE_DIMENSION_BUFFER) {
             m_context->bindResourceTexelBuffer(
-              slotId + i, resView->GetDXVKBufferView());
+              slotId + i, resView->GetBufferView());
           } else {
             m_context->bindResourceImage(
-              slotId + i, resView->GetDXVKImageView());
+              slotId + i, resView->GetImageView());
           }
         } else {
           // When unbinding a resource, it doesn't really matter if
@@ -1920,16 +1933,39 @@ namespace dxvk {
           // Figure out what we have to bind based on the resource type
           if (uav->GetResourceType() == D3D11_RESOURCE_DIMENSION_BUFFER) {
             m_context->bindResourceTexelBuffer(
-              slotId + i, uav->GetDXVKBufferView());
+              slotId + i, uav->GetBufferView());
           } else {
             m_context->bindResourceImage(
-              slotId + i, uav->GetDXVKImageView());
+              slotId + i, uav->GetImageView());
           }
         } else {
           // When unbinding a resource, it doesn't really matter if
           // the resource type is correct, so we'll just bind a null
           // image to the given resource slot
           m_context->bindResourceImage(slotId + i, nullptr);
+        }
+      }
+    }
+  }
+  
+  
+  void D3D11DeviceContext::InitUnorderedAccessViewCounters(
+          UINT                              NumUAVs,
+          ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
+    const UINT*                             pUAVInitialCounts) {
+    for (uint32_t i = 0; i < NumUAVs; i++) {
+      auto uav = static_cast<D3D11UnorderedAccessView*>(ppUnorderedAccessViews[i]);
+      
+      if (uav != nullptr) {
+        const DxvkBufferSlice counterSlice = uav->GetCounterSlice();
+        const D3D11UavCounter counterValue = { pUAVInitialCounts[i] };
+        
+        if (counterSlice.handle() != VK_NULL_HANDLE) {
+          m_context->updateBuffer(
+            counterSlice.buffer(),
+            counterSlice.offset(),
+            counterSlice.length(),
+            &counterValue);
         }
       }
     }

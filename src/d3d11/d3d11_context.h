@@ -594,6 +594,11 @@ namespace dxvk {
             UINT                              NumUAVs,
             ID3D11UnorderedAccessView* const* ppUnorderedAccessViews);
     
+    void InitUnorderedAccessViewCounters(
+            UINT                              NumUAVs,
+            ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
+      const UINT*                             pUAVInitialCounts);
+    
     void ApplyViewportState();
     
     Rc<DxvkSampler> CreateDefaultSampler();

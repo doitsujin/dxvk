@@ -1,5 +1,8 @@
 #pragma once
 
+#include <mutex>
+#include <vector>
+
 #include "../dxbc/dxbc_options.h"
 
 #include "../dxgi/dxgi_object.h"
@@ -231,6 +234,10 @@ namespace dxvk {
       return m_dxvkDevice;
     }
     
+    DxvkBufferSlice AllocateCounterSlice();
+    
+    void FreeCounterSlice(const DxvkBufferSlice& Slice);
+    
     VkPipelineStageFlags GetEnabledShaderStages() const;
     
     DxgiFormatInfo STDMETHODCALLTYPE LookupFormat(
@@ -260,6 +267,10 @@ namespace dxvk {
     const DxbcOptions               m_dxbcOptions;
     
     D3D11DeviceContext*             m_context = nullptr;
+    
+    std::mutex                      m_counterMutex;
+    std::vector<uint32_t>           m_counterSlices;
+    Rc<DxvkBuffer>                  m_counterBuffer;
     
     std::mutex                      m_resourceInitMutex;
     Rc<DxvkContext>                 m_resourceInitContext;
@@ -302,6 +313,8 @@ namespace dxvk {
             D3D11_TEXTURE_ADDRESS_MODE  mode) const;
     
     HRESULT GetFormatSupportFlags(DXGI_FORMAT Format, UINT* pFlags) const;
+    
+    void CreateCounterBuffer();
     
   };
   

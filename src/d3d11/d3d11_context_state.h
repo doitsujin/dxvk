@@ -7,6 +7,7 @@
 #include "d3d11_sampler.h"
 #include "d3d11_shader.h"
 #include "d3d11_state.h"
+#include "d3d11_uav.h"
 #include "d3d11_view.h"
 
 namespace dxvk {

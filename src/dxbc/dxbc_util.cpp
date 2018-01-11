@@ -11,13 +11,14 @@ namespace dxvk {
       //  14 -  29: Samplers
       //  30 - 157: Shader resources
       // 158 - 221: Uniform access views
-      const uint32_t stageOffset = 12 + 158 * 5;
+      const uint32_t stageOffset = 20 + 158 * 5;
       
       switch (bindingType) {
         case DxbcBindingType::ConstantBuffer:     return bindingIndex + stageOffset +  0;
         case DxbcBindingType::ImageSampler:       return bindingIndex + stageOffset +  14;
         case DxbcBindingType::ShaderResource:     return bindingIndex + stageOffset +  30;
         case DxbcBindingType::UnorderedAccessView:return bindingIndex + stageOffset + 158;
+        case DxbcBindingType::UavCounter:         return bindingIndex + stageOffset + 222;
         default: Logger::err("computeResourceSlotId: Invalid resource type");
       }
     } else {
@@ -28,11 +29,12 @@ namespace dxvk {
       //   0 -  13: Constant buffers
       //  14 -  29: Samplers
       //  30 - 157: Shader resources
-      const uint32_t stageOffset = 12 + 158 * static_cast<uint32_t>(shaderStage);
+      const uint32_t stageOffset = 20 + 158 * static_cast<uint32_t>(shaderStage);
       
       switch (bindingType) {
         case DxbcBindingType::UnorderedAccessView:return bindingIndex + 0;
-        case DxbcBindingType::StreamOutputBuffer: return bindingIndex + 8;
+        case DxbcBindingType::UavCounter:         return bindingIndex + 8;
+        case DxbcBindingType::StreamOutputBuffer: return bindingIndex + 16;
         case DxbcBindingType::ConstantBuffer:     return bindingIndex + stageOffset +  0;
         case DxbcBindingType::ImageSampler:       return bindingIndex + stageOffset + 14;
         case DxbcBindingType::ShaderResource:     return bindingIndex + stageOffset + 30;

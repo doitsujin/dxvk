@@ -15,6 +15,7 @@ d3d11_src = [
   'd3d11_shader.cpp',
   'd3d11_state.cpp',
   'd3d11_texture.cpp',
+  'd3d11_uav.cpp',
   'd3d11_util.cpp',
 ]
 

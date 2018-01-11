@@ -37,6 +37,8 @@ namespace dxvk {
     
     m_context = new D3D11DeviceContext(this, m_dxvkDevice);
     m_resourceInitContext = m_dxvkDevice->createContext();
+    
+    CreateCounterBuffer();
   }
   
   
@@ -378,10 +380,18 @@ namespace dxvk {
         return S_FALSE;
       
       try {
+        // Fetch a buffer slice for atomic
+        // append/consume functionality.
+        DxvkBufferSlice counterSlice;
+        
+        if (desc.Buffer.Flags & (D3D11_BUFFER_UAV_FLAG_APPEND | D3D11_BUFFER_UAV_FLAG_COUNTER))
+          counterSlice = AllocateCounterSlice();
+        
         *ppUAView = ref(new D3D11UnorderedAccessView(
           this, pResource, desc,
           m_dxvkDevice->createBufferView(
-            resource->GetBufferSlice().buffer(), viewInfo)));
+            resource->GetBufferSlice().buffer(), viewInfo),
+          counterSlice));
         return S_OK;
       } catch (const DxvkError& e) {
         Logger::err(e.message());
@@ -458,7 +468,8 @@ namespace dxvk {
         *ppUAView = ref(new D3D11UnorderedAccessView(
           this, pResource, desc,
           m_dxvkDevice->createImageView(
-            textureInfo->image, viewInfo)));
+            textureInfo->image, viewInfo),
+          DxvkBufferSlice()));
         return S_OK;
       } catch (const DxvkError& e) {
         Logger::err(e.message());
@@ -1273,6 +1284,27 @@ namespace dxvk {
   }
   
   
+  DxvkBufferSlice D3D11Device::AllocateCounterSlice() {
+    std::lock_guard<std::mutex> lock(m_counterMutex);
+    
+    if (m_counterSlices.size() == 0)
+      throw DxvkError("D3D11Device: Failed to allocate counter slice");
+    
+    uint32_t sliceId = m_counterSlices.back();
+    m_counterSlices.pop_back();
+    
+    return DxvkBufferSlice(m_counterBuffer,
+      sizeof(D3D11UavCounter) * sliceId,
+      sizeof(D3D11UavCounter));
+  }
+  
+  
+  void D3D11Device::FreeCounterSlice(const DxvkBufferSlice& Slice) {
+    std::lock_guard<std::mutex> lock(m_counterMutex);
+    m_counterSlices.push_back(Slice.offset() / sizeof(D3D11UavCounter));
+  }
+  
+  
   VkPipelineStageFlags D3D11Device::GetEnabledShaderStages() const {
     VkPipelineStageFlags enabledShaderPipelineStages
       = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
@@ -1749,6 +1781,32 @@ namespace dxvk {
     
     *pFlags = flags;
     return S_OK;
+  }
+  
+  
+  void D3D11Device::CreateCounterBuffer() {
+    const uint32_t MaxCounterStructs = 1 << 16;
+    
+    // The counter buffer is used as a storage buffer
+    DxvkBufferCreateInfo info;
+    info.size       = MaxCounterStructs * sizeof(D3D11UavCounter);
+    info.usage      = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+                    | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+                    | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+    info.stages     = VK_PIPELINE_STAGE_TRANSFER_BIT
+                    | GetEnabledShaderStages();
+    info.access     = VK_ACCESS_TRANSFER_READ_BIT
+                    | VK_ACCESS_TRANSFER_WRITE_BIT
+                    | VK_ACCESS_SHADER_READ_BIT
+                    | VK_ACCESS_SHADER_WRITE_BIT;
+    m_counterBuffer = m_dxvkDevice->createBuffer(
+      info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    
+    // Init the counter struct allocator as well
+    m_counterSlices.resize(MaxCounterStructs);
+    
+    for (uint32_t i = 0; i < MaxCounterStructs; i++)
+      m_counterSlices[i] = MaxCounterStructs - i - 1;
   }
   
 }
