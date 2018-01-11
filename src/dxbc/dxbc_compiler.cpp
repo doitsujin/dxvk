@@ -65,6 +65,9 @@ namespace dxvk {
       case DxbcInstClass::Atomic:
         return this->emitAtomic(ins);
         
+      case DxbcInstClass::AtomicCounter:
+        return this->emitAtomicCounter(ins);
+        
       case DxbcInstClass::Barrier:
         return this->emitBarrier(ins);
         
@@ -718,6 +721,7 @@ namespace dxvk {
       uav.type          = DxbcResourceType::Typed;
       uav.imageInfo     = typeInfo;
       uav.varId         = varId;
+      uav.ctrId         = 0;
       uav.specId        = specConstId;
       uav.sampledType   = sampledType;
       uav.sampledTypeId = sampledTypeId;
@@ -828,6 +832,7 @@ namespace dxvk {
       uav.type          = resType;
       uav.imageInfo     = typeInfo;
       uav.varId         = varId;
+      uav.ctrId         = 0;
       uav.specId        = specConstId;
       uav.sampledType   = sampledType;
       uav.sampledTypeId = sampledTypeId;
@@ -958,7 +963,49 @@ namespace dxvk {
     m_module.setLocalSize(m_entryPointId,
       ins.imm[0].u32, ins.imm[1].u32, ins.imm[2].u32);
   }
+  
+  
+  uint32_t DxbcCompiler::emitDclUavCounter(uint32_t regId) {
+    // Declare a structure type which holds the UAV counter
+    if (m_uavCtrStructType == 0) {
+      const uint32_t t_u32    = m_module.defIntType(32, 0);
+      const uint32_t t_struct = m_module.defStructTypeUnique(1, &t_u32);
+      
+      m_module.decorate(t_struct, spv::DecorationBufferBlock);
+      m_module.memberDecorateOffset(t_struct, 0, 0);
+      
+      m_module.setDebugName      (t_struct, "uav_meta");
+      m_module.setDebugMemberName(t_struct, 0, "ctr");
+      
+      m_uavCtrStructType  = t_struct;
+      m_uavCtrPointerType = m_module.defPointerType(
+        t_struct, spv::StorageClassUniform);
+    }
     
+    // Declare the buffer variable
+    const uint32_t varId = m_module.newVar(
+      m_uavCtrPointerType, spv::StorageClassUniform);
+    
+    m_module.setDebugName(varId,
+      str::format("u", regId, "_meta").c_str());
+    
+    const uint32_t bindingId = computeResourceSlotId(
+      m_version.type(), DxbcBindingType::UavCounter,
+      regId);
+    
+    m_module.decorateDescriptorSet(varId, 0);
+    m_module.decorateBinding(varId, bindingId);
+    
+    // Declare the storage buffer binding
+    DxvkResourceSlot resource;
+    resource.slot = bindingId;
+    resource.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    resource.view = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    m_resourceSlots.push_back(resource);
+    
+    return varId;
+  }
+  
   
   void DxbcCompiler::emitDclImmediateConstantBuffer(const DxbcShaderInstruction& ins) {
     if (m_immConstBuf != 0)
@@ -1543,16 +1590,8 @@ namespace dxvk {
     //    (dst0) The destination register
     //    (src0) The register to shift
     //    (src1) The shift amount (scalar)
-    const DxbcRegisterValue shiftReg = emitRegisterLoad(
-      ins.src[0], ins.dst[0].mask);
-    
-    DxbcRegisterValue countReg = emitRegisterLoad(
-      ins.src[1], DxbcRegMask(true, false, false, false));
-    
-    // Unlike in DXBC, SPIR-V shift operations allow different
-    // shift amounts per component, so we'll extend the count
-    // register to a vector.
-    countReg = emitRegisterExtend(countReg, shiftReg.type.ccount);
+    const DxbcRegisterValue shiftReg = emitRegisterLoad(ins.src[0], ins.dst[0].mask);
+    const DxbcRegisterValue countReg = emitRegisterLoad(ins.src[1], ins.dst[0].mask);
     
     DxbcRegisterValue result;
     result.type.ctype  = ins.dst[0].dataType;
@@ -1753,6 +1792,67 @@ namespace dxvk {
     // register if this is an imm_atomic_* opcode.
     if (isImm)
       emitRegisterStore(ins.dst[0], value);
+  }
+  
+  
+  void DxbcCompiler::emitAtomicCounter(const DxbcShaderInstruction& ins) {
+    // imm_atomic_alloc and imm_atomic_consume have the following operands:
+    //    (dst0) The register that will hold the old counter value
+    //    (dst1) The UAV whose counter is going to be modified
+    // TODO check if the corresponding UAV is bound
+    const uint32_t registerId = ins.dst[1].idx[0].offset;
+    
+    if (m_uavs.at(registerId).ctrId == 0)
+      m_uavs.at(registerId).ctrId = emitDclUavCounter(registerId);
+    
+    // Get a pointer to the atomic counter in question
+    DxbcRegisterInfo ptrType;
+    ptrType.type.ctype   = DxbcScalarType::Uint32;
+    ptrType.type.ccount  = 1;
+    ptrType.type.alength = 0;
+    ptrType.sclass = spv::StorageClassUniform;
+    
+    const uint32_t zeroId = m_module.consti32(0);
+    const uint32_t ptrId  = m_module.opAccessChain(
+      getPointerTypeId(ptrType),
+      m_uavs.at(registerId).ctrId,
+      1, &zeroId);
+    
+    // Define memory scope and semantics based on the operands
+    uint32_t scope     = spv::ScopeDevice;
+    uint32_t semantics = spv::MemorySemanticsUniformMemoryMask
+                       | spv::MemorySemanticsAcquireReleaseMask;
+    
+    const uint32_t scopeId     = m_module.constu32(scope);
+    const uint32_t semanticsId = m_module.constu32(semantics);
+    
+    // Compute the result value
+    DxbcRegisterValue value;
+    value.type.ctype  = DxbcScalarType::Uint32;
+    value.type.ccount = 1;
+    
+    const uint32_t typeId = getVectorTypeId(value.type);
+    
+    switch (ins.op) {
+      case DxbcOpcode::ImmAtomicAlloc:
+        value.id = m_module.opAtomicIAdd(typeId, ptrId,
+          scopeId, semanticsId, m_module.constu32(1));
+        break;
+        
+      case DxbcOpcode::ImmAtomicConsume:
+        value.id = m_module.opAtomicISub(typeId, ptrId,
+          scopeId, semanticsId, m_module.constu32(1));
+        break;
+      
+      default:
+        Logger::warn(str::format(
+          "DxbcCompiler: Unhandled instruction: ",
+          ins.op));
+        return;
+    }
+    
+    // Store the result
+    emitRegisterStore(ins.dst[0], value);
   }
   
   

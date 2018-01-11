@@ -33,6 +33,7 @@ namespace dxvk {
     ControlFlow,      ///< Control flow instructions
     GeometryEmit,     ///< Special geometry shader instructions
     Atomic,           ///< Atomic operations
+    AtomicCounter,    ///< Atomic counter operations
     Barrier,          ///< Execution or memory barrier
     BitExtract,       ///< Bit field extract operations
     BitInsert,        ///< Bit field insert operations

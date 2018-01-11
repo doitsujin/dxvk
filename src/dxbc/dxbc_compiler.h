@@ -300,6 +300,11 @@ namespace dxvk {
     // an array of four-component uint32 vectors.
     uint32_t m_immConstBuf = 0;
     
+    ////////////////////////////////////////////
+    // Struct type used for UAV counter buffers
+    uint32_t m_uavCtrStructType  = 0;
+    uint32_t m_uavCtrPointerType = 0;
+    
     ///////////////////////////////////////////////////
     // Entry point description - we'll need to declare
     // the function ID and all input/output variables.
@@ -371,6 +376,9 @@ namespace dxvk {
     void emitDclThreadGroup(
       const DxbcShaderInstruction&  ins);
     
+    uint32_t emitDclUavCounter(
+            uint32_t                regId);
+    
     ////////////////////////
     // Custom data handlers
     void emitDclImmediateConstantBuffer(
@@ -412,6 +420,9 @@ namespace dxvk {
       const DxbcShaderInstruction&  ins);
     
     void emitAtomic(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitAtomicCounter(
       const DxbcShaderInstruction&  ins);
     
     void emitBarrier(

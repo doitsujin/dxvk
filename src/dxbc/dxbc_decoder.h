@@ -93,6 +93,7 @@ namespace dxvk {
     DxbcResourceType  type          = DxbcResourceType::Typed;
     DxbcImageInfo     imageInfo;
     uint32_t          varId         = 0;
+    uint32_t          ctrId         = 0;
     uint32_t          specId        = 0;
     DxbcScalarType    sampledType   = DxbcScalarType::Float32;
     uint32_t          sampledTypeId = 0;

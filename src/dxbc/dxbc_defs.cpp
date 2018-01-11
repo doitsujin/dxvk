@@ -792,9 +792,15 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
     } },
     /* ImmAtomicAlloc                       */
-    { },
+    { 2, DxbcInstClass::AtomicCounter, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+    } },
     /* ImmAtomicConsume                     */
-    { },
+    { 2, DxbcInstClass::AtomicCounter, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+    } },
     /* ImmAtomicIAdd                        */
     { 4, DxbcInstClass::Atomic, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
