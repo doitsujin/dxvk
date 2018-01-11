@@ -37,6 +37,7 @@ namespace dxvk {
     
   private:
     
+    std::string    m_name;
     Rc<DxvkShader> m_shader;
     
     Sha1Hash ComputeShaderHash(
