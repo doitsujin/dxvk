@@ -2139,6 +2139,7 @@ namespace dxvk {
     //    (src0) Resource LOD to query
     //    (src1) Resource to query
     // TODO Check if resource is bound
+    const DxbcBufferInfo resourceInfo = getBufferInfo(ins.src[1]);
     const DxbcResinfoType resinfoType = ins.controls.resinfoType;
     
     if (ins.src[1].type != DxbcOperandType::Resource) {
@@ -2146,21 +2147,13 @@ namespace dxvk {
       return;
     }
     
-    // TODO support UAVs
-    const uint32_t textureId = ins.src[1].idx[0].offset;
-    const uint32_t imageId = m_module.opLoad(
-      m_textures.at(textureId).imageTypeId,
-      m_textures.at(textureId).varId);
-    
     // Read the exact LOD for the image query
     const DxbcRegisterValue mipLod = emitRegisterLoad(
       ins.src[0], DxbcRegMask(true, false, false, false));
     
     // Image type, which stores the image dimensions etc.
-    const DxbcImageInfo imageType = m_textures.at(textureId).imageInfo;
-    
     const uint32_t imageDim = [&] {
-      switch (imageType.dim) {
+      switch (resourceInfo.image.dim) {
         case spv::Dim1D:      return 1;
         case spv::Dim2D:      return 2;
         case spv::Dim3D:      return 3;
@@ -2172,11 +2165,15 @@ namespace dxvk {
     const DxbcScalarType returnType = resinfoType == DxbcResinfoType::Uint
       ? DxbcScalarType::Uint32 : DxbcScalarType::Float32;
     
+    // Load the image variable itself
+    const uint32_t imageId = m_module.opLoad(
+      resourceInfo.typeId, resourceInfo.varId);
+    
     // Query image size. This will be written to the
     // first components of the destination register.
     DxbcRegisterValue imageSize;
     imageSize.type.ctype  = DxbcScalarType::Uint32;
-    imageSize.type.ccount = imageDim + imageType.array;
+    imageSize.type.ccount = imageDim + resourceInfo.image.array;
     imageSize.id = m_module.opImageQuerySizeLod(
       getVectorTypeId(imageSize.type),
       imageId, mipLod.id);
@@ -2210,7 +2207,7 @@ namespace dxvk {
     imageLayers.type = imageSize.type;
     imageLayers.id   = 0;
     
-    if (resinfoType == DxbcResinfoType::RcpFloat && imageType.array) {
+    if (resinfoType == DxbcResinfoType::RcpFloat && resourceInfo.image.array) {
       imageLayers = emitRegisterExtract(imageSize, DxbcRegMask::select(imageDim));
       imageSize   = emitRegisterExtract(imageSize, DxbcRegMask::firstN(imageDim));
     }
@@ -2235,12 +2232,12 @@ namespace dxvk {
     if (imageLayers.id != 0)
       vectorIds[numVectorIds++] = imageLayers.id;
     
-    if (imageDim + imageType.array < 3) {
+    if (imageDim + resourceInfo.image.array < 3) {
       const uint32_t zero = returnType == DxbcScalarType::Uint32
         ? m_module.constu32(0)
         : m_module.constf32(0.0f);
       
-      for (uint32_t i = imageDim + imageType.array; i < 3; i++)
+      for (uint32_t i = imageDim + resourceInfo.image.array; i < 3; i++)
         vectorIds[numVectorIds++] = zero;
     }
     
@@ -2250,7 +2247,6 @@ namespace dxvk {
     DxbcRegisterValue result;
     result.type.ctype  = returnType;
     result.type.ccount = 4;
-    
     result.id = m_module.opCompositeConstruct(
       getVectorTypeId(result.type),
       numVectorIds, vectorIds.data());
@@ -2268,7 +2264,6 @@ namespace dxvk {
     //    (dst0) The destination register
     //    (src0) Source address
     //    (src1) Source texture
-    // TODO Check if resource is bound
     const uint32_t textureId = ins.src[1].idx[0].offset;
     
     // Image type, which stores the image dimensions etc.
