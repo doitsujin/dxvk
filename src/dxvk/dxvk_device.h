@@ -33,7 +33,7 @@ namespace dxvk {
   class DxvkDevice : public RcObject {
     friend class DxvkSubmissionQueue;
     
-    constexpr static VkDeviceSize DefaultStagingBufferSize = 16 * 1024 * 1024;
+    constexpr static VkDeviceSize DefaultStagingBufferSize = 4 * 1024 * 1024;
   public:
     
     DxvkDevice(
