@@ -173,9 +173,11 @@ namespace dxvk {
     
     Rc<vk::DeviceFn>    m_vkd;
     Rc<DxvkRenderPass>  m_renderPass;
+    
     DxvkRenderTargets   m_renderTargets;
-    DxvkFramebufferSize m_framebufferSize;
-    VkFramebuffer       m_framebuffer;
+    DxvkFramebufferSize m_framebufferSize = { 0, 0, 0 };
+    
+    VkFramebuffer       m_framebuffer     = VK_NULL_HANDLE;
     
   };
   

@@ -32,9 +32,10 @@ namespace dxvk {
       DxvkContextFlag::GpDirtyPipelineState,
       DxvkContextFlag::GpDirtyDynamicState,
       DxvkContextFlag::GpDirtyResources,
-      DxvkContextFlag::GpDirtyIndexBuffer,
       DxvkContextFlag::GpDirtyVertexBuffers,
+      DxvkContextFlag::GpDirtyIndexBuffer,
       DxvkContextFlag::CpDirtyPipeline,
+      DxvkContextFlag::CpDirtyPipelineState,
       DxvkContextFlag::CpDirtyResources);
   }
   
