@@ -1255,8 +1255,12 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE D3D11Device::GetDeviceRemovedReason() {
-    Logger::err("D3D11Device::GetDeviceRemovedReason: Not implemented");
-    return E_NOTIMPL;
+    static std::atomic<bool> s_errorShown = false;
+    
+    if (!s_errorShown.exchange(true))
+      Logger::warn("D3D11Device::GetDeviceRemovedReason: Stub");
+    
+    return S_OK;
   }
   
   
