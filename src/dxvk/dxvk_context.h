@@ -485,6 +485,9 @@ namespace dxvk {
     DxvkContextState    m_state;
     DxvkBarrierSet      m_barriers;
     
+    VkPipeline m_gpActivePipeline = VK_NULL_HANDLE;
+//     VkPipeline m_cpActivePipeline = VK_NULL_HANDLE; /* will be used later */
+    
     std::array<DxvkShaderResourceSlot, MaxNumResourceSlots> m_rc;
     std::array<DxvkDescriptorInfo,     MaxNumResourceSlots> m_descriptors;
     

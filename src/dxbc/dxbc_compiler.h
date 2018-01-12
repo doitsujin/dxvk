@@ -311,6 +311,11 @@ namespace dxvk {
     std::vector<uint32_t> m_entryPointInterfaces;
     uint32_t              m_entryPointId = 0;
     
+    ////////////////////////////////////////////
+    // Inter-stage shader interface slots. Also
+    // covers vertex input and fragment output.
+    DxvkInterfaceSlots m_interfaceSlots;
+    
     ///////////////////////////////////
     // Shader-specific data structures
     DxbcCompilerVsPart m_vs;

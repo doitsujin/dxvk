@@ -56,6 +56,9 @@ namespace dxvk {
     if (tes != nullptr) m_tes = tes->createShaderModule(vkd, slotMapping);
     if (gs  != nullptr) m_gs  = gs ->createShaderModule(vkd, slotMapping);
     if (fs  != nullptr) m_fs  = fs ->createShaderModule(vkd, slotMapping);
+    
+    m_vsIn  = vs != nullptr ? vs->interfaceSlots().inputSlots  : 0;
+    m_fsOut = fs != nullptr ? fs->interfaceSlots().outputSlots : 0;
   }
   
   
@@ -73,7 +76,10 @@ namespace dxvk {
         return pair.pipeline;
     }
     
-    VkPipeline pipeline = this->compilePipeline(state, m_basePipeline);
+    VkPipeline pipeline = this->validatePipelineState(state)
+      ? this->compilePipeline(state, m_basePipeline)
+      : VK_NULL_HANDLE;
+    
     m_pipelines.push_back({ state, pipeline });
     
     if (m_basePipeline == VK_NULL_HANDLE)
@@ -232,6 +238,25 @@ namespace dxvk {
   void DxvkGraphicsPipeline::destroyPipelines() {
     for (const PipelineStruct& pair : m_pipelines)
       m_vkd->vkDestroyPipeline(m_vkd->device(), pair.pipeline, nullptr);
+  }
+  
+  
+  bool DxvkGraphicsPipeline::validatePipelineState(
+    const DxvkGraphicsPipelineStateInfo& state) const {
+    // Validate vertex input - each input slot consumed by the
+    // vertex shader must be provided by the input layout.
+    uint32_t providedVertexInputs = 0;
+    
+    for (uint32_t i = 0; i < state.ilAttributeCount; i++)
+      providedVertexInputs |= 1u << state.ilAttributes[i].location;
+    
+    if ((providedVertexInputs & m_vsIn) != m_vsIn) {
+      Logger::err("DxvkGraphicsPipeline: Input layout mismatches vertex shader input");
+      return false;
+    }
+    
+    // No errors
+    return true;
   }
   
 }

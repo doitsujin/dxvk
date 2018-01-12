@@ -43,8 +43,9 @@ namespace dxvk {
           VkShaderStageFlagBits   stage,
           uint32_t                slotCount,
     const DxvkResourceSlot*       slotInfos,
+    const DxvkInterfaceSlots&     iface,
     const SpirvCodeBuffer&        code)
-  : m_stage(stage), m_code(code) {
+  : m_stage(stage), m_code(code), m_interface(iface) {
     for (uint32_t i = 0; i < slotCount; i++)
       m_slots.push_back(slotInfos[i]);
   }

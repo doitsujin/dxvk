@@ -463,9 +463,11 @@ namespace dxvk {
           uint32_t firstInstance) {
     this->commitGraphicsState();
     
-    m_cmd->cmdDraw(
-      vertexCount, instanceCount,
-      firstVertex, firstInstance);
+    if (m_gpActivePipeline != VK_NULL_HANDLE) {
+      m_cmd->cmdDraw(
+        vertexCount, instanceCount,
+        firstVertex, firstInstance);
+    }
   }
   
   
@@ -475,10 +477,12 @@ namespace dxvk {
           uint32_t          stride) {
     this->commitGraphicsState();
     
-    m_cmd->cmdDrawIndirect(
-      buffer.handle(),
-      buffer.offset(),
-      count, stride);
+    if (m_gpActivePipeline != VK_NULL_HANDLE) {
+      m_cmd->cmdDrawIndirect(
+        buffer.handle(),
+        buffer.offset(),
+        count, stride);
+    }
   }
   
   
@@ -490,10 +494,12 @@ namespace dxvk {
           uint32_t firstInstance) {
     this->commitGraphicsState();
     
-    m_cmd->cmdDrawIndexed(
-      indexCount, instanceCount,
-      firstIndex, vertexOffset,
-      firstInstance);
+    if (m_gpActivePipeline != VK_NULL_HANDLE) {
+      m_cmd->cmdDrawIndexed(
+        indexCount, instanceCount,
+        firstIndex, vertexOffset,
+        firstInstance);
+    }
   }
   
   
@@ -503,10 +509,12 @@ namespace dxvk {
           uint32_t          stride) {
     this->commitGraphicsState();
     
-    m_cmd->cmdDrawIndexedIndirect(
-      buffer.handle(),
-      buffer.offset(),
-      count, stride);
+    if (m_gpActivePipeline != VK_NULL_HANDLE) {
+      m_cmd->cmdDrawIndexedIndirect(
+        buffer.handle(),
+        buffer.offset(),
+        count, stride);
+    }
   }
   
   
@@ -997,8 +1005,14 @@ namespace dxvk {
       for (uint32_t i = m_state.gp.state.ilBindingCount; i < MaxNumVertexBindings; i++)
         m_state.gp.state.ilBindings[i].stride = 0;
       
-      m_cmd->cmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS,
-        m_state.gp.pipeline->getPipelineHandle(m_state.gp.state));
+      m_gpActivePipeline = m_state.gp.pipeline
+        ->getPipelineHandle(m_state.gp.state);
+      
+      if (m_gpActivePipeline != VK_NULL_HANDLE) {
+        m_cmd->cmdBindPipeline(
+          VK_PIPELINE_BIND_POINT_GRAPHICS,
+          m_gpActivePipeline);
+      }
     }
   }
   

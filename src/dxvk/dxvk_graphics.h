@@ -131,6 +131,9 @@ namespace dxvk {
     Rc<DxvkShaderModule>  m_gs;
     Rc<DxvkShaderModule>  m_fs;
     
+    uint32_t m_vsIn  = 0;
+    uint32_t m_fsOut = 0;
+    
     std::mutex                  m_mutex;
     std::vector<PipelineStruct> m_pipelines;
     
@@ -139,7 +142,11 @@ namespace dxvk {
     VkPipeline compilePipeline(
       const DxvkGraphicsPipelineStateInfo& state,
             VkPipeline                     baseHandle) const;
+    
     void destroyPipelines();
+    
+    bool validatePipelineState(
+      const DxvkGraphicsPipelineStateInfo& state) const;
     
   };
   

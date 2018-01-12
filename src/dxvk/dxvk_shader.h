@@ -10,6 +10,19 @@
 namespace dxvk {
   
   /**
+   * \brief Shader interface slots
+   * 
+   * Stores a bit mask of which shader
+   * interface slots are defined. Used
+   * purely for validation purposes.
+   */
+  struct DxvkInterfaceSlots {
+    uint32_t inputSlots  = 0;
+    uint32_t outputSlots = 0;
+  };
+  
+  
+  /**
    * \brief Shader module object
    * 
    * Manages a Vulkan shader module. This will not
@@ -70,6 +83,7 @@ namespace dxvk {
             VkShaderStageFlagBits   stage,
             uint32_t                slotCount,
       const DxvkResourceSlot*       slotInfos,
+      const DxvkInterfaceSlots&     iface,
       const SpirvCodeBuffer&        code);
     
     ~DxvkShader();
@@ -97,6 +111,17 @@ namespace dxvk {
       const DxvkDescriptorSlotMapping& mapping) const;
     
     /**
+     * \brief Inter-stage interface slots
+     * 
+     * Retrieves the input and output
+     * registers used by the shader.
+     * \returns Shader interface slots
+     */
+    DxvkInterfaceSlots interfaceSlots() const {
+      return m_interface;
+    }
+    
+    /**
      * \brief Dumps SPIR-V shader
      * 
      * Can be used to store the SPIR-V code in a file.
@@ -118,6 +143,7 @@ namespace dxvk {
     SpirvCodeBuffer       m_code;
     
     std::vector<DxvkResourceSlot> m_slots;
+    DxvkInterfaceSlots            m_interface;
     
   };
   

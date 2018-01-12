@@ -183,6 +183,7 @@ namespace dxvk {
       m_version.shaderStage(),
       m_resourceSlots.size(),
       m_resourceSlots.data(),
+      m_interfaceSlots,
       m_module.compile());
   }
   
@@ -468,6 +469,9 @@ namespace dxvk {
       if (im == DxbcInterpolationMode::LinearSample
        || im == DxbcInterpolationMode::LinearNoPerspectiveSample)
         m_module.decorate(varId, spv::DecorationSample);
+      
+      // Declare the input slot as defined
+      m_interfaceSlots.inputSlots |= 1u << regIdx;
     } else if (sv != DxbcSystemValue::None) {
       // Add a new system value mapping if needed
       m_vMappings.push_back({ regIdx, regMask, sv });
@@ -498,6 +502,9 @@ namespace dxvk {
       m_entryPointInterfaces.push_back(varId);
       
       m_oRegs.at(regIdx) = varId;
+      
+      // Declare the output slot as defined
+      m_interfaceSlots.outputSlots |= 1u << regIdx;
     }
     
     

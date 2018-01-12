@@ -438,7 +438,8 @@ namespace dxvk {
     // Create the actual shader module
     return m_device->createShader(
       VK_SHADER_STAGE_VERTEX_BIT,
-      0, nullptr, module.compile());
+      0, nullptr, { 0u, 1u },
+      module.compile());
   }
   
   
@@ -524,6 +525,7 @@ namespace dxvk {
       VK_SHADER_STAGE_FRAGMENT_BIT,
       resourceSlots.size(),
       resourceSlots.data(),
+      { 1u, 1u },
       module.compile());
   }
   

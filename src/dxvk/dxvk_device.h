@@ -201,6 +201,9 @@ namespace dxvk {
      * \brief Creates a shader module
      * 
      * \param [in] stage Shader stage
+     * \param [in] slotCount Resource slot count
+     * \param [in] slotInfos Resource slot descriptions
+     * \param [in] iface Inter-stage interface slots
      * \param [in] code Shader code
      * \returns New shader module
      */
@@ -208,6 +211,7 @@ namespace dxvk {
             VkShaderStageFlagBits     stage,
             uint32_t                  slotCount,
       const DxvkResourceSlot*         slotInfos,
+      const DxvkInterfaceSlots&       iface,
       const SpirvCodeBuffer&          code);
     
     /**
