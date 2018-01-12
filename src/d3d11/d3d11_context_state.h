@@ -65,6 +65,7 @@ namespace dxvk {
     D3D11ConstantBufferBindings   constantBuffers;
     D3D11SamplerBindings          samplers;
     D3D11ShaderResourceBindings   shaderResources;
+    D3D11UnorderedAccessBindings  unorderedAccessViews;
   };
   
   

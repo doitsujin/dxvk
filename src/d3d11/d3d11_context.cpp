@@ -1567,8 +1567,10 @@ namespace dxvk {
     
     m_state.om.depthStencilView = static_cast<D3D11DepthStencilView*>(pDepthStencilView);
     
-    // TODO unbind overlapping shader resource views
-    
+    // NOTE According to the Microsoft docs, we are supposed to
+    // unbind overlapping shader resource views. Since this comes
+    // with a large performance penalty we'll ignore this until an
+    // application actually relies on this behaviour.
     Rc<DxvkFramebuffer> framebuffer = nullptr;
     
     if (ppRenderTargetViews != nullptr || pDepthStencilView != nullptr) {
@@ -1602,7 +1604,25 @@ namespace dxvk {
           UINT                              NumUAVs,
           ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
     const UINT*                             pUAVInitialCounts) {
-    Logger::err("D3D11DeviceContext::OMSetRenderTargetsAndUnorderedAccessViews: Not implemented");
+    if (NumRTVs != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL)
+      OMSetRenderTargets(NumRTVs, ppRenderTargetViews, pDepthStencilView);
+    
+    if (NumUAVs != D3D11_KEEP_UNORDERED_ACCESS_VIEWS) {
+      // UAVs are made available to all shader stages in
+      // the graphics pipeline even though this code may
+      // suggest that they are limited to the pixel shader.
+      // This behaviour is only required for FL_11_1.
+      BindUnorderedAccessViews(
+        DxbcProgramType::PixelShader,
+        m_state.ps.unorderedAccessViews,
+        UAVStartSlot, NumUAVs,
+        ppUnorderedAccessViews);
+      
+      if (pUAVInitialCounts != nullptr) {
+        InitUnorderedAccessViewCounters(NumUAVs,
+          ppUnorderedAccessViews, pUAVInitialCounts);
+      }
+    }
   }
   
   
