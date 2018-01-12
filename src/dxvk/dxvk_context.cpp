@@ -1086,7 +1086,6 @@ namespace dxvk {
             
             m_cmd->trackResource(res.sampler);
           } else {
-            Logger::warn(str::format("Binding ", i, ": Unused ", binding.type));
             updatePipelineState |= bs.setUnbound(i);
           } break;
         
@@ -1102,7 +1101,6 @@ namespace dxvk {
             m_cmd->trackResource(res.imageView);
             m_cmd->trackResource(res.imageView->image());
           } else {
-            Logger::warn(str::format("Binding ", i, ": Unused ", binding.type));
             updatePipelineState |= bs.setUnbound(i);
           } break;
         
@@ -1116,7 +1114,6 @@ namespace dxvk {
             m_cmd->trackResource(res.bufferView);
             m_cmd->trackResource(res.bufferView->buffer()->resource());
           } else {
-            Logger::warn(str::format("Binding ", i, ": Unused ", binding.type));
             updatePipelineState |= bs.setUnbound(i);
           } break;
         
@@ -1128,7 +1125,6 @@ namespace dxvk {
             m_descriptors[i].buffer = res.bufferSlice.descriptorInfo();
             m_cmd->trackResource(res.bufferSlice.resource());
           } else {
-            Logger::warn(str::format("Binding ", i, ": Unused ", binding.type));
             updatePipelineState |= bs.setUnbound(i);
           } break;
         
