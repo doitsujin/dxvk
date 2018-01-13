@@ -554,15 +554,16 @@ namespace dxvk {
     const D3D11_DEVICE_CONTEXT_TYPE m_type  = D3D11_DEVICE_CONTEXT_IMMEDIATE;
     const UINT                      m_flags = 0;
     
-    Rc<DxvkDevice>        m_device;
-    Rc<DxvkContext>       m_context;
-    Rc<DxvkSampler>       m_defaultSampler;
+    Rc<DxvkDevice>              m_device;
+    Rc<DxvkContext>             m_context;
+    Rc<DxvkSampler>             m_defaultSampler;
     
     Com<D3D11BlendState>        m_defaultBlendState;
     Com<D3D11DepthStencilState> m_defaultDepthStencilState;
     Com<D3D11RasterizerState>   m_defaultRasterizerState;
     
-    D3D11ContextState     m_state;
+    D3D11ContextState           m_state;
+    uint64_t                    m_drawCount = 0;
     
     void BindConstantBuffers(
             DxbcProgramType                   ShaderStage,
