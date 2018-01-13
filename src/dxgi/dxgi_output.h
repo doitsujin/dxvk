@@ -12,7 +12,7 @@ namespace dxvk {
     
     DxgiOutput(
             DxgiAdapter*  adapter,
-            UINT          display);
+            HMONITOR      monitor);
     
     ~DxgiOutput();
     
@@ -66,8 +66,10 @@ namespace dxvk {
     
   private:
     
-    Com<DxgiAdapter>  m_adapter;
-    UINT              m_display;
+    Com<DxgiAdapter> m_adapter = nullptr;
+    HMONITOR         m_monitor = nullptr;
+    
+    uint32_t GetFormatBpp(DXGI_FORMAT Format) const;
     
   };
 

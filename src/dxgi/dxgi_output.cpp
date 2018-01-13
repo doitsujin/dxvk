@@ -7,13 +7,15 @@
 #include "dxgi_adapter.h"
 #include "dxgi_output.h"
 
+#include "../dxvk/dxvk_format.h"
+
 namespace dxvk {
   
   DxgiOutput::DxgiOutput(
               DxgiAdapter*  adapter,
-              UINT          display)
-  : m_adapter (adapter),
-    m_display (display) {
+              HMONITOR      monitor)
+  : m_adapter(adapter),
+    m_monitor(monitor) {
     
   }
   
@@ -53,34 +55,20 @@ namespace dxvk {
     if (pDesc == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
-    // Display name, Windows requires wide chars
-    const char* displayName = SDL_GetDisplayName(m_display);
+    ::MONITORINFOEX monInfo = { sizeof(monInfo) };
     
-    if (displayName == nullptr) {
-      Logger::err("DxgiOutput::GetDesc: Failed to get display name");
-      return DXGI_ERROR_DRIVER_INTERNAL_ERROR;
+    if (!::GetMonitorInfo(m_monitor, &monInfo)) {
+      Logger::err("DxgiOutput: Failed to query monitor info");
+      return E_FAIL;
     }
     
     std::memset(pDesc->DeviceName, 0, sizeof(pDesc->DeviceName));
-    std::mbstowcs(pDesc->DeviceName, displayName, _countof(pDesc->DeviceName) - 1);
+    std::mbstowcs(pDesc->DeviceName, monInfo.szDevice, _countof(pDesc->DeviceName) - 1);
     
-    // Current desktop rect of the display
-    SDL_Rect rect;
-    
-    if (SDL_GetDisplayBounds(m_display, &rect)) {
-      Logger::err("DxgiOutput::GetDesc: Failed to get display bounds");
-      return DXGI_ERROR_DRIVER_INTERNAL_ERROR;
-    }
-    
-    pDesc->DesktopCoordinates.left    = rect.x;
-    pDesc->DesktopCoordinates.top     = rect.y;
-    pDesc->DesktopCoordinates.right   = rect.x + rect.w;
-    pDesc->DesktopCoordinates.bottom  = rect.y + rect.h;
-    
-    // We don't have any info for these
+    pDesc->DesktopCoordinates = monInfo.rcMonitor;
     pDesc->AttachedToDesktop  = 1;
     pDesc->Rotation           = DXGI_MODE_ROTATION_UNSPECIFIED;
-    pDesc->Monitor            = nullptr;
+    pDesc->Monitor            = m_monitor;
     return S_OK;
   }
   
@@ -92,89 +80,51 @@ namespace dxvk {
           DXGI_MODE_DESC *pDesc) {
     if (pNumModes == nullptr)
       return DXGI_ERROR_INVALID_CALL;
-      
-    // In order to check whether a display mode is 'centered' or
-    // 'streched' in DXGI terms, we compare its size to the desktop
-    // 'mode. If they are the same, we consider the mode to be
-    // 'centered', which most games will prefer over 'streched'. 
-    SDL_DisplayMode desktopMode;
     
-    if (SDL_GetDesktopDisplayMode(m_display, &desktopMode)) {
-      Logger::err("DxgiOutput::GetDisplayModeList: Failed to list display modes");
-      return DXGI_ERROR_DRIVER_INTERNAL_ERROR;
+    // Query monitor info to get the device name
+    ::MONITORINFOEX monInfo = { sizeof(monInfo) };
+    
+    if (!::GetMonitorInfo(m_monitor, &monInfo)) {
+      Logger::err("DxgiOutput: Failed to query monitor info");
+      return E_FAIL;
     }
     
-    // Create a list of suitable display modes. Because of the way DXGI
-    // swapchains are handled by DXVK, we can ignore the format constraints
-    // here and just pick whatever modes SDL returns for the current display.
-    std::vector<DXGI_MODE_DESC> modes;
+    // Walk over all modes that the display supports and
+    // return those that match the requested format etc.
+    DEVMODE devMode;
     
-    int numDisplayModes = SDL_GetNumDisplayModes(m_display);
+    uint32_t srcModeId = 0;
+    uint32_t dstModeId = 0;
     
-    if (numDisplayModes < 0) {
-      Logger::err("DxgiOutput::GetDisplayModeList: Failed to list display modes");
-      return DXGI_ERROR_DRIVER_INTERNAL_ERROR;
-    }
-    
-    for (int i = 0; i < numDisplayModes; i++) {
-      SDL_DisplayMode currMode;
+    while (::EnumDisplaySettings(monInfo.szDevice, srcModeId++, &devMode)) {
+      // Skip interlaced modes altogether
+      if (devMode.dmDisplayFlags & DM_INTERLACED)
+        continue;
       
-      if (SDL_GetDisplayMode(m_display, i, &currMode)) {
-        Logger::err("DxgiOutput::GetDisplayModeList: Failed to list display modes");
-        return DXGI_ERROR_DRIVER_INTERNAL_ERROR;
-      }
+      // Skip modes with incompatible formats
+      if (devMode.dmBitsPerPel != GetFormatBpp(EnumFormat))
+        continue;
       
-      // We don't want duplicates, so we'll filter out modes
-      // with matching resolution and refresh rate.
-      bool hasMode = false;
-      
-      for (int j = 0; j < i && !hasMode; j++) {
-        SDL_DisplayMode testMode;
+      // Write back display mode
+      if (pDesc != nullptr) {
+        if (dstModeId >= *pNumModes)
+          return DXGI_ERROR_MORE_DATA;
         
-        if (SDL_GetDisplayMode(m_display, j, &testMode)) {
-          Logger::err("DxgiOutput::GetDisplayModeList: Failed to list display modes");
-          return DXGI_ERROR_DRIVER_INTERNAL_ERROR;
-        }
-        
-        hasMode = testMode.w            == currMode.w
-               && testMode.h            == currMode.h
-               && testMode.refresh_rate == currMode.refresh_rate;
-      }
-      
-      // Convert the SDL display mode to a DXGI display mode info
-      // structure and filter out any unwanted modes based on the
-      // supplied flags.
-      if (!hasMode) {
         DXGI_MODE_DESC mode;
-        mode.Width                      = currMode.w;
-        mode.Height                     = currMode.h;
-        mode.RefreshRate.Numerator      = currMode.refresh_rate;
-        mode.RefreshRate.Denominator    = 1;
-        mode.Format                     = EnumFormat;
-        mode.ScanlineOrdering           = DXGI_MODE_SCANLINE_ORDER_PROGRESSIVE;
-        mode.Scaling                    = DXGI_MODE_SCALING_CENTERED;
-        modes.push_back(mode);
+        mode.Width            = devMode.dmPelsWidth;
+        mode.Height           = devMode.dmPelsHeight;
+        mode.RefreshRate      = { devMode.dmDisplayFrequency, 1 };
+        mode.Format           = EnumFormat;
+        mode.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_PROGRESSIVE;
+        mode.Scaling          = DXGI_MODE_SCALING_CENTERED;
+        pDesc[dstModeId] = mode;
       }
-    }
-    
-    // Copy list of display modes to the application-provided
-    // destination buffer. The buffer may not be appropriately
-    // sized by the time this is called.
-    if (pDesc != nullptr) {
-      for (uint32_t i = 0; i < modes.size() && i < *pNumModes; i++)
-        pDesc[i] = modes.at(i);
-    }
-    
-    // If the buffer is too small, we shall ask the application
-    // to query the display mode list again by returning the
-    // appropriate DXGI error code.
-    if ((pDesc == nullptr) || (modes.size() <= *pNumModes)) {
-      *pNumModes = modes.size();
-      return S_OK;
-    } else {
-      return DXGI_ERROR_MORE_DATA;
-    }
       
+      dstModeId += 1;
+    }
+    
+    *pNumModes = dstModeId;
+    return S_OK;
   }
   
   
@@ -230,6 +180,12 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiOutput::WaitForVBlank() {
     Logger::warn("DxgiOutput::WaitForVBlank: Stub");
     return S_OK;
+  }
+  
+  
+  uint32_t DxgiOutput::GetFormatBpp(DXGI_FORMAT Format) const {
+    DxgiFormatInfo formatInfo = m_adapter->LookupFormat(Format, DxgiFormatMode::Any);
+    return imageFormatInfo(formatInfo.format)->elementSize * 8;
   }
   
 }

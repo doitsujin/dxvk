@@ -59,17 +59,12 @@ namespace dxvk {
     if (ppOutput == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
-    int numDisplays = SDL_GetNumVideoDisplays();
-    
-    if (numDisplays < 0) {
-      Logger::err("DxgiAdapter::EnumOutputs: Failed to query display count");
-      return DXGI_ERROR_DRIVER_INTERNAL_ERROR;
-    }
-    
-    if (Output >= static_cast<uint32_t>(numDisplays))
+    if (Output > 0)
       return DXGI_ERROR_NOT_FOUND;
     
-    *ppOutput = ref(new DxgiOutput(this, Output));
+    // TODO support multiple monitors
+    HMONITOR monitor = ::MonitorFromPoint({ 0, 0 }, MONITOR_DEFAULTTOPRIMARY);
+    *ppOutput = ref(new DxgiOutput(this, monitor));
     return S_OK;
   }
   

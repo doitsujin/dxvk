@@ -31,31 +31,48 @@ int WINAPI WinMain(HINSTANCE hInstance,
       return 1;
     }
     
+    DXGI_ADAPTER_DESC desc;
+    
+    if (adapter->GetDesc(&desc) != S_OK) {
+      std::cerr << "Failed to get DXGI adapter info" << std::endl;
+      return 1;
+    }
+    
+    std::array<char, 257> chars;
+    std::wcstombs(chars.data(), desc.Description, chars.size() - 1);
+    
+    std::cout << str::format("Adapter ", i, ":") << std::endl;
+    std::cout << str::format(" ", chars.data()) << std::endl;
+    std::cout << str::format(" Vendor: ", desc.VendorId) << std::endl;
+    std::cout << str::format(" Device: ", desc.DeviceId) << std::endl;
+    std::cout << str::format(" Dedicated RAM: ", desc.DedicatedVideoMemory) << std::endl;
+    std::cout << str::format(" Shared RAM: ", desc.SharedSystemMemory) << std::endl;
+    
     Com<IDXGIOutput> output;
     
     for (UINT j = 0; adapter->EnumOutputs(j, &output) == S_OK; j++) {
       std::vector<DXGI_MODE_DESC> modes;
       
-      HRESULT status = S_OK;
-      UINT    displayModeCount = 0;
+      DXGI_OUTPUT_DESC desc;
       
-      std::cout << str::format("Adapter ", i, ":") << std::endl;
-      
-      DXGI_ADAPTER_DESC desc;
-      
-      if (adapter->GetDesc(&desc) != S_OK) {
-        std::cerr << "Failed to get DXGI adapter info" << std::endl;
+      if (output->GetDesc(&desc) != S_OK) {
+        std::cerr << "Failed to get DXGI output info" << std::endl;
         return 1;
       }
       
       std::array<char, 257> chars;
-      std::wcstombs(chars.data(), desc.Description, chars.size() - 1);
+      std::wcstombs(chars.data(), desc.DeviceName, chars.size() - 1);
       
-      std::cout << str::format(" ", chars.data()) << std::endl;
-      std::cout << str::format(" Vendor: ", desc.VendorId) << std::endl;
-      std::cout << str::format(" Device: ", desc.DeviceId) << std::endl;
-      std::cout << str::format(" Dedicated RAM: ", desc.DedicatedVideoMemory) << std::endl;
-      std::cout << str::format(" Shared RAM: ", desc.SharedSystemMemory) << std::endl;
+      std::cout << str::format(" Output ", j, ":") << std::endl;
+      std::cout << str::format("  ", chars.data()) << std::endl;
+      std::cout << str::format("  Coordinates: ",
+        desc.DesktopCoordinates.left, ",",
+        desc.DesktopCoordinates.top, ":",
+        desc.DesktopCoordinates.right - desc.DesktopCoordinates.left, "x",
+        desc.DesktopCoordinates.bottom - desc.DesktopCoordinates.top) << std::endl;
+      
+      HRESULT status = S_OK;
+      UINT    displayModeCount = 0;
       
       do {
         if (output->GetDisplayModeList(
@@ -79,7 +96,6 @@ int WINAPI WinMain(HINSTANCE hInstance,
         return 1;
       }
       
-      std::cout << str::format(" Output ", j, ":") << std::endl;
       for (auto mode : modes) {
         std::cout << str::format("  ",
           mode.Width, "x", mode.Height, " @ ",
