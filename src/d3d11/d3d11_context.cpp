@@ -1553,6 +1553,7 @@ namespace dxvk {
     // Optimization: If the number of draw and dispatch calls issued
     // prior to the previous context flush is above a certain threshold,
     // submit the current command buffer in order to keep the GPU busy.
+    // This also helps keep the command buffers at a reasonable size.
     if (m_drawCount >= 500)
       this->Flush();
     

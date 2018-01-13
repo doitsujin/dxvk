@@ -1313,18 +1313,10 @@ namespace dxvk {
   
   
   void D3D11Device::FlushInitContext() {
-    auto lock = LockResourceInitContext();
-    
-    if (m_resourceInitUsed) {
-      m_dxvkDevice->submitCommandList(
-        m_resourceInitContext->endRecording(),
-        nullptr, nullptr);
-      
-      m_resourceInitContext->beginRecording(
-        m_dxvkDevice->createCommandList());
-      
-      m_resourceInitUsed = false;
-    }
+    LockResourceInitContext();
+    if (m_resourceInitCommands != 0)
+      SubmitResourceInitCommands();
+    UnlockResourceInitContext(0);
   }
   
   
@@ -1446,13 +1438,15 @@ namespace dxvk {
       = pBuffer->GetBufferSlice();
     
     if (pInitialData != nullptr) {
-      auto lock = LockResourceInitContext();
+      LockResourceInitContext();
       
       m_resourceInitContext->updateBuffer(
         bufferSlice.buffer(),
         bufferSlice.offset(),
         bufferSlice.length(),
         pInitialData->pSysMem);
+      
+      UnlockResourceInitContext(1);
     }
   }
   
@@ -1460,11 +1454,11 @@ namespace dxvk {
   void D3D11Device::InitTexture(
     const Rc<DxvkImage>&              image,
     const D3D11_SUBRESOURCE_DATA*     pInitialData) {
-    auto lock = LockResourceInitContext();
-    
     const DxvkFormatInfo* formatInfo = imageFormatInfo(image->info().format);
     
     if (pInitialData != nullptr) {
+      LockResourceInitContext();
+      
       // pInitialData is an array that stores an entry for
       // every single subresource. Since we will define all
       // subresources, this counts as initialization.
@@ -1491,7 +1485,13 @@ namespace dxvk {
             pInitialData[id].SysMemSlicePitch);
         }
       }
+      
+      const uint32_t subresourceCount =
+        image->info().numLayers * image->info().mipLevels;
+      UnlockResourceInitContext(subresourceCount);
     } else {
+      LockResourceInitContext();
+      
       // While the Microsoft docs state that resource contents
       // are undefined if no initial data is provided, some
       // applications expect a resource to be pre-cleared.
@@ -1516,6 +1516,8 @@ namespace dxvk {
         m_resourceInitContext->clearDepthStencilImage(
           image, value, subresources);
       }
+      
+      UnlockResourceInitContext(1);
     }
   }
   
@@ -1820,6 +1822,33 @@ namespace dxvk {
     
     for (uint32_t i = 0; i < MaxCounterStructs; i++)
       m_counterSlices[i] = MaxCounterStructs - i - 1;
+  }
+  
+  
+  void D3D11Device::LockResourceInitContext() {
+    m_resourceInitMutex.lock();
+  }
+  
+  
+  void D3D11Device::UnlockResourceInitContext(uint64_t CommandCount) {
+    m_resourceInitCommands += CommandCount;
+    
+    if (m_resourceInitCommands >= InitCommandThreshold)
+      SubmitResourceInitCommands();
+    
+    m_resourceInitMutex.unlock();
+  }
+  
+  
+  void D3D11Device::SubmitResourceInitCommands() {
+    m_dxvkDevice->submitCommandList(
+      m_resourceInitContext->endRecording(),
+      nullptr, nullptr);
+    
+    m_resourceInitContext->beginRecording(
+      m_dxvkDevice->createCommandList());
+    
+    m_resourceInitCommands = 0;
   }
   
 }

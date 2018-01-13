@@ -28,7 +28,8 @@ namespace dxvk {
   class D3D11Texture3D;
   
   class D3D11Device : public ComObject<ID3D11Device> {
-    
+    /// Maximum number of resource init commands per command buffer
+    constexpr static uint64_t InitCommandThreshold = 50;
   public:
     
     D3D11Device(
@@ -276,7 +277,7 @@ namespace dxvk {
     
     std::mutex                      m_resourceInitMutex;
     Rc<DxvkContext>                 m_resourceInitContext;
-    bool                            m_resourceInitUsed = false;
+    uint64_t                        m_resourceInitCommands = 0;
     
     D3D11StateObjectSet<D3D11BlendState>        m_bsStateObjects;
     D3D11StateObjectSet<D3D11DepthStencilState> m_dsStateObjects;
@@ -319,11 +320,9 @@ namespace dxvk {
     
     void CreateCounterBuffer();
     
-    std::unique_lock<std::mutex> LockResourceInitContext() {
-      auto lock = std::unique_lock<std::mutex>(m_resourceInitMutex);
-      m_resourceInitUsed = true;
-      return lock;
-    }
+    void LockResourceInitContext();
+    void UnlockResourceInitContext(uint64_t CommandCount);
+    void SubmitResourceInitCommands();
     
   };
   
