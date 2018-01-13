@@ -10,7 +10,6 @@ For the current status of the project, please refer to the [project wiki](https:
 - [wine-staging](https://wine-staging.com/) for Vulkan support
 - [Meson](http://mesonbuild.com/) build system
 - [MinGW64](http://mingw-w64.org/) compiler and headers
-- [SDL2](https://www.libsdl.org/) headers and DLL
 
 ### Building DLLs
 Inside the dxvk directory, run:
@@ -28,7 +27,7 @@ Both `dxgi.dll` and `d3d11.dll`as well as some demo executables will be located 
 
 ## How to use
 In order to run `executable.exe` with DXVK,
-* Copy `dxgi.dll`, `d3d11.dll` and `SDL2.dll` into the same directory as the executable
+* Copy `dxgi.dll` and `d3d11.dll` into the same directory as the executable
 * Run `WINEDLLOVERRIDES=d3d11,dxgi=n wine executable.exe`
 
 DXVK will create a file `dxgi.log` in the current working directory and may print out messages to stderr.

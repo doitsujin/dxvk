@@ -5,19 +5,6 @@ namespace dxvk {
   
   Logger Logger::s_instance("dxgi.log");
   
-  struct SdlInstance {
-    SdlInstance() {
-      if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_NOPARACHUTE))
-        Logger::err("Instance::init: Failed to initialize SDL");
-    }
-    
-    ~SdlInstance() {
-      SDL_Quit();
-    }
-  };
-  
-  SdlInstance sdl;
-  
   HRESULT createDxgiFactory(REFIID riid, void **ppFactory) {
     if (riid != __uuidof(IDXGIFactory)
      && riid != __uuidof(IDXGIFactory1)) {

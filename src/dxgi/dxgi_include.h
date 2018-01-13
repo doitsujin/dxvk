@@ -19,8 +19,6 @@
 
 #include <dxgi1_2.h>
 
-#include <SDL2/SDL.h>
-
 // For some reason, these are not exposed
 #ifndef DXGI_RESOURCE_PRIORITY_NORMAL
   #define DXGI_RESOURCE_PRIORITY_MINIMUM (0x28000000)
