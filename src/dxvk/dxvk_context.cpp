@@ -636,7 +636,9 @@ namespace dxvk {
       // Vulkan specifies that small amounts of data (up to 64kB) can
       // be copied to a buffer directly if the size is a multiple of
       // four. Anything else must be copied through a staging buffer.
-      if ((size <= 65536) && ((size & 0x3) == 0) && ((offset & 0x3) == 0)) {
+      // We'll limit the size to 4kB in order to keep command buffers
+      // reasonably small, we do not know how much data apps may upload.
+      if ((size <= 4096) && ((size & 0x3) == 0) && ((offset & 0x3) == 0)) {
         m_cmd->cmdUpdateBuffer(
           buffer->handle(),
           offset, size, data);
