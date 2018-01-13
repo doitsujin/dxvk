@@ -36,6 +36,7 @@ namespace dxvk::util {
   
 }
 
+
 bool operator == (VkExtent3D a, VkExtent3D b) {
   return a.width  == b.width
       && a.height == b.height
@@ -47,4 +48,16 @@ bool operator != (VkExtent3D a, VkExtent3D b) {
   return a.width  != b.width
       || a.height != b.height
       || a.depth  != b.depth;
+}
+
+
+bool operator == (VkExtent2D a, VkExtent2D b) {
+  return a.width  == b.width
+      && a.height == b.height;
+}
+
+
+bool operator != (VkExtent2D a, VkExtent2D b) {
+  return a.width  != b.width
+      || a.height != b.height;
 }

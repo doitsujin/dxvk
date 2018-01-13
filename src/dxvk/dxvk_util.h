@@ -25,3 +25,6 @@ namespace dxvk::util {
 
 bool operator == (VkExtent3D a, VkExtent3D b);
 bool operator != (VkExtent3D a, VkExtent3D b);
+
+bool operator == (VkExtent2D a, VkExtent2D b);
+bool operator != (VkExtent2D a, VkExtent2D b);

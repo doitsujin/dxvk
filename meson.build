@@ -18,5 +18,11 @@ lib_d3d11          = dxvk_compiler.find_library('d3d11')
 lib_dxgi           = dxvk_compiler.find_library('dxgi')
 lib_d3dcompiler_47 = dxvk_compiler.find_library('d3dcompiler_47')
 
+glsl_compiler = find_program('glslangValidator')
+glsl_generator = generator(glsl_compiler,
+  output    : [ '@BASENAME@.h' ],
+  arguments : [ '-V', '--vn', '@BASENAME@', '@INPUT@', '-o', '@OUTPUT@' ])
+
+
 subdir('src')
 subdir('tests')

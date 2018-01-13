@@ -101,21 +101,17 @@ namespace dxvk {
     loState.logicOp       = VK_LOGIC_OP_NO_OP;
     m_context->setLogicOpState(loState);
     
-    DxvkBlendMode blendMode;
-    blendMode.enableBlending  = VK_FALSE;
-    blendMode.colorSrcFactor  = VK_BLEND_FACTOR_ONE;
-    blendMode.colorDstFactor  = VK_BLEND_FACTOR_ZERO;
-    blendMode.colorBlendOp    = VK_BLEND_OP_ADD;
-    blendMode.alphaSrcFactor  = VK_BLEND_FACTOR_ONE;
-    blendMode.alphaDstFactor  = VK_BLEND_FACTOR_ZERO;
-    blendMode.alphaBlendOp    = VK_BLEND_OP_ADD;
-    blendMode.writeMask       = VK_COLOR_COMPONENT_R_BIT
-                              | VK_COLOR_COMPONENT_G_BIT
-                              | VK_COLOR_COMPONENT_B_BIT
-                              | VK_COLOR_COMPONENT_A_BIT;
-    
-    for (uint32_t i = 0; i < DxvkLimits::MaxNumRenderTargets; i++)
-      m_context->setBlendMode(i, blendMode);
+    m_blendMode.enableBlending  = VK_FALSE;
+    m_blendMode.colorSrcFactor  = VK_BLEND_FACTOR_ONE;
+    m_blendMode.colorDstFactor  = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    m_blendMode.colorBlendOp    = VK_BLEND_OP_ADD;
+    m_blendMode.alphaSrcFactor  = VK_BLEND_FACTOR_ONE;
+    m_blendMode.alphaDstFactor  = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    m_blendMode.alphaBlendOp    = VK_BLEND_OP_ADD;
+    m_blendMode.writeMask       = VK_COLOR_COMPONENT_R_BIT
+                                | VK_COLOR_COMPONENT_G_BIT
+                                | VK_COLOR_COMPONENT_B_BIT
+                                | VK_COLOR_COMPONENT_A_BIT;
     
     m_context->bindShader(
       VK_SHADER_STAGE_VERTEX_BIT,
@@ -124,6 +120,8 @@ namespace dxvk {
     m_context->bindShader(
       VK_SHADER_STAGE_FRAGMENT_BIT,
       this->createFragmentShader());
+    
+    m_hud = hud::Hud::createHud(m_device);
   }
   
   
@@ -150,16 +148,11 @@ namespace dxvk {
   
   
   void DxgiPresenter::presentImage() {
-    auto newTime = std::chrono::high_resolution_clock::now();
-    auto us = std::chrono::duration_cast<std::chrono::microseconds>(newTime - m_oldTime).count();
-    
-    m_frames += 1;
-    
-    if (us >= 1'000'000) {
-      std::cout << "FPS: " << (static_cast<double>(m_frames * 1'000'000)
-                             / static_cast<double>(us)) << std::endl;
-      m_frames = 0;
-      m_oldTime = newTime;
+    if (m_hud != nullptr) {
+      m_hud->render({
+        m_options.preferredBufferSize.width,
+        m_options.preferredBufferSize.height,
+      });
     }
     
     const bool fitSize =
@@ -207,8 +200,19 @@ namespace dxvk {
     m_context->bindResourceSampler(BindingIds::Sampler,
       fitSize ? m_samplerFitting : m_samplerScaling);
     
+    m_blendMode.enableBlending = VK_FALSE;
+    m_context->setBlendMode(0, m_blendMode);
+    
     m_context->bindResourceImage(BindingIds::Texture, m_backBufferView);
     m_context->draw(4, 1, 0, 0);
+    
+    if (m_hud != nullptr) {
+      m_blendMode.enableBlending = VK_TRUE;
+      m_context->setBlendMode(0, m_blendMode);
+      
+      m_context->bindResourceImage(BindingIds::Texture, m_hud->texture());
+      m_context->draw(4, 1, 0, 0);
+    }
     
     m_device->submitCommandList(
       m_context->endRecording(),

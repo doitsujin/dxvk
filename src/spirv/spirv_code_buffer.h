@@ -23,6 +23,11 @@ namespace dxvk {
     SpirvCodeBuffer();
     SpirvCodeBuffer(uint32_t size, const uint32_t* data);
     SpirvCodeBuffer(std::istream&& stream);
+    
+    template<size_t N>
+    SpirvCodeBuffer(const uint32_t (&data)[N])
+    : SpirvCodeBuffer(N, data) { }
+    
     ~SpirvCodeBuffer();
     
     /**

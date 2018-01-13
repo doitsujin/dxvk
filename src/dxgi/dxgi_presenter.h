@@ -1,14 +1,14 @@
 #pragma once
 
-#include <chrono>
+#include "../dxvk/dxvk_device.h"
+#include "../dxvk/dxvk_surface.h"
+#include "../dxvk/dxvk_swapchain.h"
 
-#include <dxvk_device.h>
-#include <dxvk_surface.h>
-#include <dxvk_swapchain.h>
-
-#include "dxgi_include.h"
+#include "../dxvk/hud/dxvk_hud.h"
 
 #include "../spirv/spirv_module.h"
+
+#include "dxgi_include.h"
 
 namespace dxvk {
   
@@ -100,13 +100,13 @@ namespace dxvk {
     Rc<DxvkImage>       m_backBufferResolve;
     Rc<DxvkImageView>   m_backBufferView;
     
+    Rc<hud::Hud>        m_hud;
+    
+    DxvkBlendMode           m_blendMode;
     DxvkSwapchainProperties m_options;
     
     Rc<DxvkShader> createVertexShader();
     Rc<DxvkShader> createFragmentShader();
-    
-    std::chrono::high_resolution_clock::time_point m_oldTime;
-    uint32_t m_frames = 0;
     
   };
   
