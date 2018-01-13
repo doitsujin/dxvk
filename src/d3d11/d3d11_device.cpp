@@ -36,7 +36,10 @@ namespace dxvk {
     m_presentDevice->SetDeviceLayer(this);
     
     m_context = new D3D11DeviceContext(this, m_dxvkDevice);
+    
     m_resourceInitContext = m_dxvkDevice->createContext();
+    m_resourceInitContext->beginRecording(
+      m_dxvkDevice->createCommandList());
     
     CreateCounterBuffer();
   }
@@ -1309,6 +1312,22 @@ namespace dxvk {
   }
   
   
+  void D3D11Device::FlushInitContext() {
+    auto lock = LockResourceInitContext();
+    
+    if (m_resourceInitUsed) {
+      m_dxvkDevice->submitCommandList(
+        m_resourceInitContext->endRecording(),
+        nullptr, nullptr);
+      
+      m_resourceInitContext->beginRecording(
+        m_dxvkDevice->createCommandList());
+      
+      m_resourceInitUsed = false;
+    }
+  }
+  
+  
   VkPipelineStageFlags D3D11Device::GetEnabledShaderStages() const {
     VkPipelineStageFlags enabledShaderPipelineStages
       = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
@@ -1427,17 +1446,13 @@ namespace dxvk {
       = pBuffer->GetBufferSlice();
     
     if (pInitialData != nullptr) {
-      std::lock_guard<std::mutex> lock(m_resourceInitMutex);;
-      m_resourceInitContext->beginRecording(
-        m_dxvkDevice->createCommandList());
+      auto lock = LockResourceInitContext();
+      
       m_resourceInitContext->updateBuffer(
         bufferSlice.buffer(),
         bufferSlice.offset(),
         bufferSlice.length(),
         pInitialData->pSysMem);
-      m_dxvkDevice->submitCommandList(
-        m_resourceInitContext->endRecording(),
-        nullptr, nullptr);
     }
   }
   
@@ -1445,9 +1460,7 @@ namespace dxvk {
   void D3D11Device::InitTexture(
     const Rc<DxvkImage>&              image,
     const D3D11_SUBRESOURCE_DATA*     pInitialData) {
-    std::lock_guard<std::mutex> lock(m_resourceInitMutex);;
-    m_resourceInitContext->beginRecording(
-      m_dxvkDevice->createCommandList());
+    auto lock = LockResourceInitContext();
     
     const DxvkFormatInfo* formatInfo = imageFormatInfo(image->info().format);
     
@@ -1504,10 +1517,6 @@ namespace dxvk {
           image, value, subresources);
       }
     }
-    
-    m_dxvkDevice->submitCommandList(
-      m_resourceInitContext->endRecording(),
-      nullptr, nullptr);
   }
   
   

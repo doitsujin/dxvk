@@ -238,6 +238,8 @@ namespace dxvk {
     
     void FreeCounterSlice(const DxvkBufferSlice& Slice);
     
+    void FlushInitContext();
+    
     VkPipelineStageFlags GetEnabledShaderStages() const;
     
     DxgiFormatInfo STDMETHODCALLTYPE LookupFormat(
@@ -274,6 +276,7 @@ namespace dxvk {
     
     std::mutex                      m_resourceInitMutex;
     Rc<DxvkContext>                 m_resourceInitContext;
+    bool                            m_resourceInitUsed = false;
     
     D3D11StateObjectSet<D3D11BlendState>        m_bsStateObjects;
     D3D11StateObjectSet<D3D11DepthStencilState> m_dsStateObjects;
@@ -315,6 +318,12 @@ namespace dxvk {
     HRESULT GetFormatSupportFlags(DXGI_FORMAT Format, UINT* pFlags) const;
     
     void CreateCounterBuffer();
+    
+    std::unique_lock<std::mutex> LockResourceInitContext() {
+      auto lock = std::unique_lock<std::mutex>(m_resourceInitMutex);
+      m_resourceInitUsed = true;
+      return lock;
+    }
     
   };
   
