@@ -10,6 +10,7 @@ For the current status of the project, please refer to the [project wiki](https:
 - [wine-staging](https://wine-staging.com/) for Vulkan support
 - [Meson](http://mesonbuild.com/) build system
 - [MinGW64](http://mingw-w64.org/) compiler and headers
+- [glslang](https://github.com/KhronosGroup/glslang) front end and validator
 
 ### Building DLLs
 Inside the dxvk directory, run:
