@@ -1,3 +1,4 @@
+#include "dxgi_device.h"
 #include "dxgi_factory.h"
 #include "dxgi_swapchain.h"
 
@@ -18,16 +19,17 @@ namespace dxvk {
     
     // Retrieve the adapter, which is going
     // to be used to enumerate displays.
+    Com<IDXGIDevice> device;
     Com<IDXGIAdapter> adapter;
     
-    if (FAILED(pDevice->QueryInterface(__uuidof(IDXGIDevicePrivate),
-        reinterpret_cast<void**>(&m_device))))
+    if (FAILED(pDevice->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&device))))
       throw DxvkError("DxgiSwapChain::DxgiSwapChain: Invalid device");
     
-    if (FAILED(m_device->GetAdapter(&adapter))
-     || FAILED(adapter->QueryInterface(__uuidof(IDXGIAdapterPrivate),
-        reinterpret_cast<void**>(&m_adapter))))
+    if (FAILED(device->GetAdapter(&adapter)))
       throw DxvkError("DxgiSwapChain::DxgiSwapChain: Failed to retrieve adapter");
+    
+    m_device  = static_cast<DxgiDevice*>(device.ptr());
+    m_adapter = static_cast<DxgiAdapter*>(adapter.ptr());
     
     // Initialize frame statistics
     m_stats.PresentCount         = 0;
@@ -44,8 +46,8 @@ namespace dxvk {
     if (m_desc.BufferDesc.Height == 0) m_desc.BufferDesc.Height = windowSize.height;
     
     // Set initial window mode and fullscreen state
-//     if (FAILED(this->SetFullscreenState(!pDesc->Windowed, nullptr)))
-//       throw DxvkError("DxgiSwapChain: Failed to set initial fullscreen state");
+    if (!pDesc->Windowed && FAILED(EnterFullscreenMode(nullptr)))
+      throw DxvkError("DxgiSwapChain: Failed to set initial fullscreen state");
     
     if (FAILED(CreatePresenter()) || FAILED(CreateBackBuffer()))
       throw DxvkError("DxgiSwapChain: Failed to create presenter or back buffer");
@@ -91,11 +93,18 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetContainingOutput(IDXGIOutput** ppOutput) {
-    if (ppOutput != nullptr)
+    if (ppOutput == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
-    Logger::err("DxgiSwapChain::GetContainingOutput: Not implemented");
-    return E_NOTIMPL;
+    RECT windowRect = { 0, 0, 0, 0 };
+    ::GetWindowRect(m_desc.OutputWindow, &windowRect);
+    
+    HMONITOR monitor = ::MonitorFromPoint(
+      { (windowRect.left + windowRect.right) / 2,
+        (windowRect.top + windowRect.bottom) / 2 },
+      MONITOR_DEFAULTTOPRIMARY);
+    
+    return m_adapter->GetOutputFromMonitor(monitor, ppOutput);
   }
   
   
@@ -232,8 +241,15 @@ namespace dxvk {
           IDXGIOutput*  pTarget) {
     std::lock_guard<std::mutex> lock(m_mutex);
     
-    Logger::err("DxgiSwapChain::SetFullscreenState: Not implemented");
-    return E_NOTIMPL;
+    if (Fullscreen)
+      Logger::warn("DxgiSwapChain: Display mode changes not implemented");
+    
+    if (m_desc.Windowed && Fullscreen)
+      return this->EnterFullscreenMode(pTarget);
+    else if (!m_desc.Windowed && !Fullscreen)
+      return this->LeaveFullscreenMode();
+    
+    return S_OK;
   }
   
   
@@ -281,6 +297,66 @@ namespace dxvk {
     result.width  = windowRect.right;
     result.height = windowRect.bottom;
     return result;
+  }
+  
+  
+  HRESULT DxgiSwapChain::EnterFullscreenMode(IDXGIOutput *pTarget) {
+    Com<IDXGIOutput> output = pTarget;
+    
+    if (output == nullptr) {
+      if (FAILED(GetContainingOutput(&output))) {
+        Logger::err("DxgiSwapChain: Failed to enter fullscreen mode: Cannot query containing output");
+        return E_FAIL;
+      }
+    }
+    
+    // Change the window flags to remove the decoration etc.
+    LONG style   = ::GetWindowLongW(m_desc.OutputWindow, GWL_STYLE);
+    LONG exstyle = ::GetWindowLongW(m_desc.OutputWindow, GWL_EXSTYLE);
+    
+    m_windowState.style = style;
+    m_windowState.exstyle = exstyle;
+    ::GetWindowRect(m_desc.OutputWindow, &m_windowState.rect);
+    
+    style |= WS_POPUP | WS_SYSMENU;
+    style &= ~(WS_CAPTION | WS_THICKFRAME);
+    
+    exstyle &= ~(WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE);
+    
+    ::SetWindowLongW(m_desc.OutputWindow, GWL_STYLE, style);
+    ::SetWindowLongW(m_desc.OutputWindow, GWL_EXSTYLE, exstyle);
+    
+    // Move the window so that it covers the entire output
+    DXGI_OUTPUT_DESC desc;
+    output->GetDesc(&desc);
+    
+    const RECT rect = desc.DesktopCoordinates;
+    
+    ::SetWindowPos(m_desc.OutputWindow, HWND_TOPMOST,
+      rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
+      SWP_FRAMECHANGED | SWP_SHOWWINDOW | SWP_NOACTIVATE);
+    
+    // Update swap chain description
+    m_desc.Windowed = FALSE;
+    return S_OK;
+  }
+  
+  
+  HRESULT DxgiSwapChain::LeaveFullscreenMode() {
+    // FIXME wine only restores window flags if the application
+    // has not modified them in the meantime. Some applications
+    // may rely on that behaviour.
+    const RECT rect = m_windowState.rect;
+    
+    ::SetWindowLongW(m_desc.OutputWindow, GWL_STYLE,   m_windowState.style);
+    ::SetWindowLongW(m_desc.OutputWindow, GWL_EXSTYLE, m_windowState.exstyle);
+    
+    ::SetWindowPos(m_desc.OutputWindow, 0,
+      rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
+      SWP_FRAMECHANGED | SWP_NOZORDER | SWP_NOACTIVATE);
+    
+    m_desc.Windowed = TRUE;
+    return S_OK;
   }
   
   

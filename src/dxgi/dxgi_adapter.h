@@ -51,6 +51,10 @@ namespace dxvk {
     DxgiFormatInfo STDMETHODCALLTYPE LookupFormat(
             DXGI_FORMAT format, DxgiFormatMode mode) final;
     
+    HRESULT GetOutputFromMonitor(
+            HMONITOR              Monitor,
+            IDXGIOutput**         ppOutput);
+    
   private:
     
     using FormatMap = std::unordered_map<DXGI_FORMAT, DxgiFormatInfo>;

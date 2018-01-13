@@ -16,6 +16,7 @@
 
 namespace dxvk {
   
+  class DxgiDevice;
   class DxgiFactory;
   
   class DxgiSwapChain : public DxgiObject<IDXGISwapChain> {
@@ -81,11 +82,17 @@ namespace dxvk {
 
   private:
     
+    struct WindowState {
+      uint32_t style   = 0;
+      uint32_t exstyle = 0;
+      RECT     rect    = { 0, 0, 0, 0 };
+    };
+    
     std::mutex m_mutex;
     
     Com<DxgiFactory>                m_factory;
-    Com<IDXGIAdapterPrivate>        m_adapter;
-    Com<IDXGIDevicePrivate>         m_device;
+    Com<DxgiAdapter>                m_adapter;
+    Com<DxgiDevice>                 m_device;
     Com<IDXGIPresentDevicePrivate>  m_presentDevice;
     
     DXGI_SWAP_CHAIN_DESC            m_desc;
@@ -94,15 +101,22 @@ namespace dxvk {
     Rc<DxgiPresenter>               m_presenter;
     Com<IDXGIPresentBackBuffer>     m_backBuffer;
     
+    WindowState                     m_windowState;
+    
     HRESULT CreatePresenter();
     HRESULT CreateBackBuffer();
     
     VkExtent2D GetWindowSize() const;
     
+    HRESULT EnterFullscreenMode(
+            IDXGIOutput             *pTarget);
+    
+    HRESULT LeaveFullscreenMode();
+    
     HRESULT GetSampleCount(
             UINT                    Count,
             VkSampleCountFlagBits*  pCount) const;
-        
+    
   };
   
 }

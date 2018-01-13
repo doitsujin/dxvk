@@ -153,6 +153,26 @@ namespace dxvk {
   }
   
   
+  HRESULT DxgiAdapter::GetOutputFromMonitor(
+          HMONITOR              Monitor,
+          IDXGIOutput**         ppOutput) {
+    Com<IDXGIOutput> output;
+    
+    for (uint32_t i = 0; SUCCEEDED(EnumOutputs(i, &output)); i++) {
+      DXGI_OUTPUT_DESC outputDesc;
+      output->GetDesc(&outputDesc);
+      
+      if (outputDesc.Monitor == Monitor) {
+        *ppOutput = output.ref();
+        return S_OK;
+      }
+    }
+    
+    // No such output found
+    return DXGI_ERROR_NOT_FOUND;
+  }
+  
+  
   void DxgiAdapter::AddColorFormat(
           DXGI_FORMAT                       srcFormat,
           VkFormat                          dstFormat) {
