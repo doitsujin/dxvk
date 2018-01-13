@@ -33,13 +33,14 @@ namespace dxvk {
   
   
   DxvkGraphicsPipeline::DxvkGraphicsPipeline(
-      const Rc<vk::DeviceFn>& vkd,
-      const Rc<DxvkShader>&   vs,
-      const Rc<DxvkShader>&   tcs,
-      const Rc<DxvkShader>&   tes,
-      const Rc<DxvkShader>&   gs,
-      const Rc<DxvkShader>&   fs)
-  : m_vkd(vkd) {
+      const Rc<vk::DeviceFn>&       vkd,
+      const Rc<DxvkPipelineCache>&  cache,
+      const Rc<DxvkShader>&         vs,
+      const Rc<DxvkShader>&         tcs,
+      const Rc<DxvkShader>&         tes,
+      const Rc<DxvkShader>&         gs,
+      const Rc<DxvkShader>&         fs)
+  : m_vkd(vkd), m_cache(cache) {
     DxvkDescriptorSlotMapping slotMapping;
     if (vs  != nullptr) vs ->defineResourceSlots(slotMapping);
     if (tcs != nullptr) tcs->defineResourceSlots(slotMapping);
@@ -229,7 +230,7 @@ namespace dxvk {
     
     VkPipeline pipeline = VK_NULL_HANDLE;
     if (m_vkd->vkCreateGraphicsPipelines(m_vkd->device(),
-          VK_NULL_HANDLE, 1, &info, nullptr, &pipeline) != VK_SUCCESS)
+          m_cache->handle(), 1, &info, nullptr, &pipeline) != VK_SUCCESS)
       throw DxvkError("DxvkGraphicsPipeline::DxvkGraphicsPipeline: Failed to compile pipeline");
     return pipeline;
   }

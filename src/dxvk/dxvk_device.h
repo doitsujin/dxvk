@@ -8,6 +8,7 @@
 #include "dxvk_framebuffer.h"
 #include "dxvk_image.h"
 #include "dxvk_memory.h"
+#include "dxvk_pipecache.h"
 #include "dxvk_pipemanager.h"
 #include "dxvk_queue.h"
 #include "dxvk_recycler.h"
@@ -303,6 +304,7 @@ namespace dxvk {
     
     Rc<DxvkMemoryAllocator>   m_memory;
     Rc<DxvkRenderPassPool>    m_renderPassPool;
+    Rc<DxvkPipelineCache>     m_pipelineCache;
     Rc<DxvkPipelineManager>   m_pipelineManager;
     
     std::mutex m_submissionLock;

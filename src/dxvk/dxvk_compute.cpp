@@ -3,9 +3,10 @@
 namespace dxvk {
   
   DxvkComputePipeline::DxvkComputePipeline(
-    const Rc<vk::DeviceFn>& vkd,
-    const Rc<DxvkShader>&   cs)
-  : m_vkd(vkd) {
+    const Rc<vk::DeviceFn>&       vkd,
+    const Rc<DxvkPipelineCache>&  cache,
+    const Rc<DxvkShader>&         cs)
+  : m_vkd(vkd), m_cache(cache) {
     DxvkDescriptorSlotMapping slotMapping;
     cs->defineResourceSlots(slotMapping);
     
@@ -38,7 +39,7 @@ namespace dxvk {
     info.basePipelineIndex    = -1;
     
     if (m_vkd->vkCreateComputePipelines(m_vkd->device(),
-          VK_NULL_HANDLE, 1, &info, nullptr, &m_pipeline) != VK_SUCCESS)
+          m_cache->handle(), 1, &info, nullptr, &m_pipeline) != VK_SUCCESS)
       throw DxvkError("DxvkComputePipeline::DxvkComputePipeline: Failed to compile pipeline");
   }
   

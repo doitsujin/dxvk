@@ -73,7 +73,8 @@ namespace dxvk {
      * \returns Compute pipeline object
      */
     Rc<DxvkComputePipeline> createComputePipeline(
-      const Rc<DxvkShader>& cs);
+      const Rc<DxvkPipelineCache>&  cache,
+      const Rc<DxvkShader>&         cs);
     
     /**
      * \brief Retrieves a graphics pipeline object
@@ -89,11 +90,12 @@ namespace dxvk {
      * \returns Graphics pipeline object
      */
     Rc<DxvkGraphicsPipeline> createGraphicsPipeline(
-      const Rc<DxvkShader>& vs,
-      const Rc<DxvkShader>& tcs,
-      const Rc<DxvkShader>& tes,
-      const Rc<DxvkShader>& gs,
-      const Rc<DxvkShader>& fs);
+      const Rc<DxvkPipelineCache>&  cache,
+      const Rc<DxvkShader>&         vs,
+      const Rc<DxvkShader>&         tcs,
+      const Rc<DxvkShader>&         tes,
+      const Rc<DxvkShader>&         gs,
+      const Rc<DxvkShader>&         fs);
     
   private:
     

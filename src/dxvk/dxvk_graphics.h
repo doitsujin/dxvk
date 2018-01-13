@@ -5,7 +5,7 @@
 
 #include "dxvk_binding.h"
 #include "dxvk_constant_state.h"
-#include "dxvk_hash.h"
+#include "dxvk_pipecache.h"
 #include "dxvk_pipelayout.h"
 #include "dxvk_resource.h"
 #include "dxvk_shader.h"
@@ -88,12 +88,13 @@ namespace dxvk {
   public:
     
     DxvkGraphicsPipeline(
-      const Rc<vk::DeviceFn>& vkd,
-      const Rc<DxvkShader>&   vs,
-      const Rc<DxvkShader>&   tcs,
-      const Rc<DxvkShader>&   tes,
-      const Rc<DxvkShader>&   gs,
-      const Rc<DxvkShader>&   fs);
+      const Rc<vk::DeviceFn>&       vkd,
+      const Rc<DxvkPipelineCache>&  cache,
+      const Rc<DxvkShader>&         vs,
+      const Rc<DxvkShader>&         tcs,
+      const Rc<DxvkShader>&         tes,
+      const Rc<DxvkShader>&         gs,
+      const Rc<DxvkShader>&         fs);
     ~DxvkGraphicsPipeline();
     
     /**
@@ -110,6 +111,10 @@ namespace dxvk {
     
     /**
      * \brief Pipeline handle
+     * 
+     * Retrieves a pipeline handle for the given pipeline
+     * state. If necessary, a new pipeline will be created.
+     * \param [in] state Pipeline state vector
      * \returns Pipeline handle
      */
     VkPipeline getPipelineHandle(
@@ -123,6 +128,7 @@ namespace dxvk {
     };
     
     Rc<vk::DeviceFn>      m_vkd;
+    Rc<DxvkPipelineCache> m_cache;
     Rc<DxvkBindingLayout> m_layout;
     
     Rc<DxvkShaderModule>  m_vs;

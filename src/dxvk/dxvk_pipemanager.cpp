@@ -36,7 +36,9 @@ namespace dxvk {
   
   
   DxvkPipelineManager::DxvkPipelineManager(const Rc<vk::DeviceFn>& vkd)
-  : m_vkd(vkd) { }
+  : m_vkd(vkd) {
+    
+  }
   
   
   DxvkPipelineManager::~DxvkPipelineManager() {
@@ -45,7 +47,8 @@ namespace dxvk {
   
   
   Rc<DxvkComputePipeline> DxvkPipelineManager::createComputePipeline(
-    const Rc<DxvkShader>& cs) {
+    const Rc<DxvkPipelineCache>&  cache,
+    const Rc<DxvkShader>&         cs) {
     if (cs == nullptr)
       return nullptr;
     
@@ -59,18 +62,19 @@ namespace dxvk {
       return pair->second;
     
     const Rc<DxvkComputePipeline> pipeline
-      = new DxvkComputePipeline(m_vkd, cs);
+      = new DxvkComputePipeline(m_vkd, cache, cs);
     m_computePipelines.insert(std::make_pair(key, pipeline));
     return pipeline;
   }
   
   
   Rc<DxvkGraphicsPipeline> DxvkPipelineManager::createGraphicsPipeline(
-    const Rc<DxvkShader>& vs,
-    const Rc<DxvkShader>& tcs,
-    const Rc<DxvkShader>& tes,
-    const Rc<DxvkShader>& gs,
-    const Rc<DxvkShader>& fs) {
+    const Rc<DxvkPipelineCache>&  cache,
+    const Rc<DxvkShader>&         vs,
+    const Rc<DxvkShader>&         tcs,
+    const Rc<DxvkShader>&         tes,
+    const Rc<DxvkShader>&         gs,
+    const Rc<DxvkShader>&         fs) {
     if (vs == nullptr)
       return nullptr;
     
@@ -88,7 +92,7 @@ namespace dxvk {
       return pair->second;
     
     const Rc<DxvkGraphicsPipeline> pipeline
-      = new DxvkGraphicsPipeline(m_vkd, vs, tcs, tes, gs, fs);
+      = new DxvkGraphicsPipeline(m_vkd, cache, vs, tcs, tes, gs, fs);
     m_graphicsPipelines.insert(std::make_pair(key, pipeline));
     return pipeline;
   }

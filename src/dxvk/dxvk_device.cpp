@@ -12,6 +12,7 @@ namespace dxvk {
     m_features        (features),
     m_memory          (new DxvkMemoryAllocator(adapter, vkd)),
     m_renderPassPool  (new DxvkRenderPassPool (vkd)),
+    m_pipelineCache   (new DxvkPipelineCache  (vkd)),
     m_pipelineManager (new DxvkPipelineManager(vkd)),
     m_submissionQueue (this) {
     m_vkd->vkGetDeviceQueue(m_vkd->device(),
@@ -161,7 +162,8 @@ namespace dxvk {
   
   Rc<DxvkComputePipeline> DxvkDevice::createComputePipeline(
     const Rc<DxvkShader>&           cs) {
-    return m_pipelineManager->createComputePipeline(cs);
+    return m_pipelineManager->createComputePipeline(
+      m_pipelineCache, cs);
   }
   
   
@@ -171,7 +173,8 @@ namespace dxvk {
     const Rc<DxvkShader>&           tes,
     const Rc<DxvkShader>&           gs,
     const Rc<DxvkShader>&           fs) {
-    return m_pipelineManager->createGraphicsPipeline(vs, tcs, tes, gs, fs);
+    return m_pipelineManager->createGraphicsPipeline(
+      m_pipelineCache, vs, tcs, tes, gs, fs);
   }
   
   

@@ -22,6 +22,7 @@ dxvk_src = files([
   'dxvk_lifetime.cpp',
   'dxvk_main.cpp',
   'dxvk_memory.cpp',
+  'dxvk_pipecache.cpp',
   'dxvk_pipelayout.cpp',
   'dxvk_pipemanager.cpp',
   'dxvk_queue.cpp',
