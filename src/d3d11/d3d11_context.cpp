@@ -488,7 +488,26 @@ namespace dxvk {
         srcBuffer.offset(),
         srcBuffer.length());
     } else {
-      Logger::err("D3D11DeviceContext::CopyResource: Images not supported");
+      const D3D11TextureInfo* dstTextureInfo = GetCommonTextureInfo(pDstResource);
+      const D3D11TextureInfo* srcTextureInfo = GetCommonTextureInfo(pSrcResource);
+
+      VkExtent3D extent = srcTextureInfo->image->mipLevelExtent(
+        dstTextureInfo->mappedSubresource.mipLevel);
+
+      const VkImageSubresourceLayers dstLayers = {
+        dstTextureInfo->mappedSubresource.aspectMask,
+        dstTextureInfo->mappedSubresource.mipLevel,
+        dstTextureInfo->mappedSubresource.arrayLayer, 1 };
+
+      const VkImageSubresourceLayers srcLayers = {
+        srcTextureInfo->mappedSubresource.aspectMask,
+        srcTextureInfo->mappedSubresource.mipLevel,
+        srcTextureInfo->mappedSubresource.arrayLayer, 1 };
+
+      m_context->copyImage(
+        dstTextureInfo->image, dstLayers, VkOffset3D { 0, 0, 0 },
+        srcTextureInfo->image, srcLayers, VkOffset3D { 0, 0, 0 },
+        extent);
     }
   }
   
