@@ -1066,8 +1066,7 @@ namespace dxvk {
     // Other query types are currently unsupported
     if (pQueryDesc->Query != D3D11_QUERY_OCCLUSION
      && pQueryDesc->Query != D3D11_QUERY_OCCLUSION_PREDICATE) {
-      Logger::err(str::format("D3D11Device: Unsupported query type: ", pQueryDesc->Query));
-      return E_INVALIDARG;
+      Logger::warn(str::format("D3D11Device: Unsupported query type: ", pQueryDesc->Query));
     }
     
     if (ppQuery == nullptr)
