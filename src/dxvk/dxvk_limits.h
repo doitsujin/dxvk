@@ -12,6 +12,7 @@ namespace dxvk {
     MaxNumViewports             =   16,
     MaxNumResourceSlots         = 1096,
     MaxNumActiveBindings        =  128,
+    MaxNumQueuedCommandBuffers  =    8,
   };
   
 }

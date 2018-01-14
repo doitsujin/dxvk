@@ -26,7 +26,7 @@ namespace dxvk {
     { std::unique_lock<std::mutex> lock(m_mutex);
       
       m_condOnTake.wait(lock, [this] {
-        return m_entries.size() < 4;
+        return m_entries.size() < MaxNumQueuedCommandBuffers;
       });
       
       m_entries.push({ fence, cmdList });
