@@ -491,34 +491,36 @@ namespace dxvk {
       const D3D11TextureInfo* dstTextureInfo = GetCommonTextureInfo(pDstResource);
       const D3D11TextureInfo* srcTextureInfo = GetCommonTextureInfo(pSrcResource);
 
-      VkExtent3D extent = srcTextureInfo->image->mipLevelExtent(
-        dstTextureInfo->mappedSubresource.mipLevel);
+      const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(dstTextureInfo->image->info().format);
+      const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcTextureInfo->image->info().format);
 
-      const VkImageSubresourceLayers dstLayers = {
-        dstTextureInfo->mappedSubresource.aspectMask,
-        dstTextureInfo->mappedSubresource.mipLevel,
-        dstTextureInfo->mappedSubresource.arrayLayer, 1 };
+      for (uint32_t i = 0; i < srcTextureInfo->image->info().mipLevels; i++) {
+        VkExtent3D extent = srcTextureInfo->image->mipLevelExtent(i);
 
-      const VkImageSubresourceLayers srcLayers = {
-        srcTextureInfo->mappedSubresource.aspectMask,
-        srcTextureInfo->mappedSubresource.mipLevel,
-        srcTextureInfo->mappedSubresource.arrayLayer, 1 };
+        const VkImageSubresourceLayers dstLayers = {
+          dstFormatInfo->aspectMask & srcFormatInfo->aspectMask,
+          i, 0, dstTextureInfo->image->info().numLayers };
 
-      m_context->copyImage(
-        dstTextureInfo->image, dstLayers, VkOffset3D { 0, 0, 0 },
-        srcTextureInfo->image, srcLayers, VkOffset3D { 0, 0, 0 },
-        extent);
+        const VkImageSubresourceLayers srcLayers = {
+          dstFormatInfo->aspectMask & srcFormatInfo->aspectMask,
+          i, 0, srcTextureInfo->image->info().numLayers };
+
+        m_context->copyImage(
+          dstTextureInfo->image, dstLayers, VkOffset3D { 0, 0, 0 },
+          srcTextureInfo->image, srcLayers, VkOffset3D { 0, 0, 0 },
+          extent);
+      }
     }
   }
-  
-  
+
+
   void STDMETHODCALLTYPE D3D11DeviceContext::CopyStructureCount(
           ID3D11Buffer*                     pDstBuffer,
           UINT                              DstAlignedByteOffset,
           ID3D11UnorderedAccessView*        pSrcView) {
     auto buf = static_cast<D3D11Buffer*>(pDstBuffer);
     auto uav = static_cast<D3D11UnorderedAccessView*>(pSrcView);
-    
+
     const DxvkBufferSlice dstSlice = buf->GetBufferSlice(DstAlignedByteOffset);
     const DxvkBufferSlice srcSlice = uav->GetCounterSlice();
     
