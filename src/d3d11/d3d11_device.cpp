@@ -1063,15 +1063,9 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11Device::CreateQuery(
     const D3D11_QUERY_DESC*           pQueryDesc,
           ID3D11Query**               ppQuery) {
-    // Other query types are currently unsupported
-    if (pQueryDesc->Query != D3D11_QUERY_OCCLUSION
-     && pQueryDesc->Query != D3D11_QUERY_OCCLUSION_PREDICATE) {
-      Logger::warn(str::format("D3D11Device: Unsupported query type: ", pQueryDesc->Query));
-    }
-    
     if (ppQuery == nullptr)
       return S_FALSE;
-    
+
     try {
       *ppQuery = ref(new D3D11Query(this, *pQueryDesc));
       return S_OK;

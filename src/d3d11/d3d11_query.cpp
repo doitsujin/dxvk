@@ -7,7 +7,15 @@ namespace dxvk {
           D3D11Device*      device,
     const D3D11_QUERY_DESC& desc)
   : m_device(device), m_desc(desc) {
-    Logger::warn("D3D11Query: Stub");
+    switch (desc.Query) {
+      // Other query types are currently unsupported
+      case D3D11_QUERY_OCCLUSION:
+      case D3D11_QUERY_OCCLUSION_PREDICATE:
+        break;
+
+      default:
+        Logger::warn(str::format("D3D11Query: Unsupported query type ", desc.Query));
+    }
   }
   
   
