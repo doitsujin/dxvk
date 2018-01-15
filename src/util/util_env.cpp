@@ -12,7 +12,7 @@ namespace dxvk::env {
     while (len > result.size()) {
       result.resize(len);
       len = ::GetEnvironmentVariableW(
-        name, result.data(), result.size());
+        name, &result.at(0), result.size());
     }
     
     result.resize(len);
