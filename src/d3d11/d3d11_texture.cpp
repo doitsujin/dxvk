@@ -30,6 +30,8 @@ namespace dxvk {
    * \returns Optimized image layout
    */
   static VkImageLayout OptimizeLayout(VkImageUsageFlags flags) {
+    const VkImageUsageFlags allFlags = flags;
+    
     // Filter out unnecessary flags. Transfer operations
     // are handled by the backend in a transparent manner.
     flags &= ~(VK_IMAGE_USAGE_TRANSFER_DST_BIT
@@ -48,8 +50,11 @@ namespace dxvk {
     
     // If the image is used for reading but not as a storage
     // image, we can optimize the image for texture access
-    if (flags == VK_IMAGE_USAGE_SAMPLED_BIT)
-      return VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    if (flags == VK_IMAGE_USAGE_SAMPLED_BIT) {
+      return allFlags & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+        ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+        : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    }
     
     // Otherwise, we have to stick with the default layout
     return VK_IMAGE_LAYOUT_GENERAL;
