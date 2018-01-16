@@ -488,18 +488,39 @@ namespace dxvk {
         srcBuffer.offset(),
         srcBuffer.length());
     } else {
-      Logger::err("D3D11DeviceContext::CopyResource: Images not supported");
+      const D3D11TextureInfo* dstTextureInfo = GetCommonTextureInfo(pDstResource);
+      const D3D11TextureInfo* srcTextureInfo = GetCommonTextureInfo(pSrcResource);
+
+      const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(dstTextureInfo->image->info().format);
+      const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcTextureInfo->image->info().format);
+
+      for (uint32_t i = 0; i < srcTextureInfo->image->info().mipLevels; i++) {
+        VkExtent3D extent = srcTextureInfo->image->mipLevelExtent(i);
+
+        const VkImageSubresourceLayers dstLayers = {
+          dstFormatInfo->aspectMask & srcFormatInfo->aspectMask,
+          i, 0, dstTextureInfo->image->info().numLayers };
+
+        const VkImageSubresourceLayers srcLayers = {
+          dstFormatInfo->aspectMask & srcFormatInfo->aspectMask,
+          i, 0, srcTextureInfo->image->info().numLayers };
+
+        m_context->copyImage(
+          dstTextureInfo->image, dstLayers, VkOffset3D { 0, 0, 0 },
+          srcTextureInfo->image, srcLayers, VkOffset3D { 0, 0, 0 },
+          extent);
+      }
     }
   }
-  
-  
+
+
   void STDMETHODCALLTYPE D3D11DeviceContext::CopyStructureCount(
           ID3D11Buffer*                     pDstBuffer,
           UINT                              DstAlignedByteOffset,
           ID3D11UnorderedAccessView*        pSrcView) {
     auto buf = static_cast<D3D11Buffer*>(pDstBuffer);
     auto uav = static_cast<D3D11UnorderedAccessView*>(pSrcView);
-    
+
     const DxvkBufferSlice dstSlice = buf->GetBufferSlice(DstAlignedByteOffset);
     const DxvkBufferSlice srcSlice = uav->GetCounterSlice();
     
