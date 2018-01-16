@@ -7,6 +7,8 @@
 
 namespace dxvk {
   
+  class DxvkDevice;
+  
   /**
    * \brief Compute pipeline
    * 
@@ -20,7 +22,7 @@ namespace dxvk {
   public:
     
     DxvkComputePipeline(
-      const Rc<vk::DeviceFn>&       vkd,
+      const DxvkDevice*             device,
       const Rc<DxvkPipelineCache>&  cache,
       const Rc<DxvkShader>&         cs);
     ~DxvkComputePipeline();
@@ -47,7 +49,9 @@ namespace dxvk {
     
   private:
     
-    Rc<vk::DeviceFn>      m_vkd;
+    const DxvkDevice* const m_device;
+    const Rc<vk::DeviceFn>  m_vkd;
+    
     Rc<DxvkPipelineCache> m_cache;
     Rc<DxvkBindingLayout> m_layout;
     Rc<DxvkShaderModule>  m_cs;

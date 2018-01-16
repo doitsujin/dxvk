@@ -5,7 +5,7 @@
 namespace dxvk {
   
   const static std::unordered_map<std::string, DxvkOptionSet> g_appOptions = {{
-    
+    { "NieRAutomata.exe", DxvkOptionSet(DxvkOption::AssumeNoZfight) },
   }};
   
   

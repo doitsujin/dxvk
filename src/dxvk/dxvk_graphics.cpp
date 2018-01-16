@@ -1,5 +1,6 @@
 #include <cstring>
 
+#include "dxvk_device.h"
 #include "dxvk_graphics.h"
 
 namespace dxvk {
@@ -33,14 +34,15 @@ namespace dxvk {
   
   
   DxvkGraphicsPipeline::DxvkGraphicsPipeline(
-      const Rc<vk::DeviceFn>&       vkd,
-      const Rc<DxvkPipelineCache>&  cache,
-      const Rc<DxvkShader>&         vs,
-      const Rc<DxvkShader>&         tcs,
-      const Rc<DxvkShader>&         tes,
-      const Rc<DxvkShader>&         gs,
-      const Rc<DxvkShader>&         fs)
-  : m_vkd(vkd), m_cache(cache) {
+    const DxvkDevice*             device,
+    const Rc<DxvkPipelineCache>&  cache,
+    const Rc<DxvkShader>&         vs,
+    const Rc<DxvkShader>&         tcs,
+    const Rc<DxvkShader>&         tes,
+    const Rc<DxvkShader>&         gs,
+    const Rc<DxvkShader>&         fs)
+  : m_device(device), m_vkd(device->vkd()),
+    m_cache(cache) {
     DxvkDescriptorSlotMapping slotMapping;
     if (vs  != nullptr) vs ->defineResourceSlots(slotMapping);
     if (tcs != nullptr) tcs->defineResourceSlots(slotMapping);
@@ -48,15 +50,15 @@ namespace dxvk {
     if (gs  != nullptr) gs ->defineResourceSlots(slotMapping);
     if (fs  != nullptr) fs ->defineResourceSlots(slotMapping);
     
-    m_layout = new DxvkBindingLayout(vkd,
+    m_layout = new DxvkBindingLayout(m_vkd,
       slotMapping.bindingCount(),
       slotMapping.bindingInfos());
     
-    if (vs  != nullptr) m_vs  = vs ->createShaderModule(vkd, slotMapping);
-    if (tcs != nullptr) m_tcs = tcs->createShaderModule(vkd, slotMapping);
-    if (tes != nullptr) m_tes = tes->createShaderModule(vkd, slotMapping);
-    if (gs  != nullptr) m_gs  = gs ->createShaderModule(vkd, slotMapping);
-    if (fs  != nullptr) m_fs  = fs ->createShaderModule(vkd, slotMapping);
+    if (vs  != nullptr) m_vs  = vs ->createShaderModule(m_vkd, slotMapping);
+    if (tcs != nullptr) m_tcs = tcs->createShaderModule(m_vkd, slotMapping);
+    if (tes != nullptr) m_tes = tes->createShaderModule(m_vkd, slotMapping);
+    if (gs  != nullptr) m_gs  = gs ->createShaderModule(m_vkd, slotMapping);
+    if (fs  != nullptr) m_fs  = fs ->createShaderModule(m_vkd, slotMapping);
     
     m_vsIn  = vs != nullptr ? vs->interfaceSlots().inputSlots  : 0;
     m_fsOut = fs != nullptr ? fs->interfaceSlots().outputSlots : 0;
@@ -146,9 +148,14 @@ namespace dxvk {
     vpInfo.scissorCount           = state.rsViewportCount;
     vpInfo.pScissors              = nullptr;
     
+    VkPipelineRasterizationStateRasterizationOrderAMD rsOrder;
+    rsOrder.sType                 = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_RASTERIZATION_ORDER_AMD;
+    rsOrder.pNext                 = nullptr;
+    rsOrder.rasterizationOrder    = this->pickRasterizationOrder(state);
+    
     VkPipelineRasterizationStateCreateInfo rsInfo;
     rsInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    rsInfo.pNext                  = nullptr;
+    rsInfo.pNext                  = m_device->extensions().amdRasterizationOrder.enabled() ? &rsOrder : rsOrder.pNext;
     rsInfo.flags                  = 0;
     rsInfo.depthClampEnable       = state.rsEnableDepthClamp;
     rsInfo.rasterizerDiscardEnable= state.rsEnableDiscard;
@@ -258,6 +265,31 @@ namespace dxvk {
     
     // No errors
     return true;
+  }
+  
+  
+  VkRasterizationOrderAMD DxvkGraphicsPipeline::pickRasterizationOrder(
+    const DxvkGraphicsPipelineStateInfo& state) const {
+    // If blending is not enabled, we can enable out-of-order
+    // rasterization for certain depth-compare modes.
+    bool blendingEnabled = false;
+    
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+      if (m_fsOut & (1u << i))
+        blendingEnabled |= state.omBlendAttachments[i].blendEnable;
+    }
+    
+    if (!blendingEnabled) {
+      if (m_device->hasOption(DxvkOption::AssumeNoZfight))
+        return VK_RASTERIZATION_ORDER_RELAXED_AMD;
+      
+      if (state.dsDepthCompareOp == VK_COMPARE_OP_NEVER
+       || state.dsDepthCompareOp == VK_COMPARE_OP_LESS
+       || state.dsDepthCompareOp == VK_COMPARE_OP_GREATER)
+        return VK_RASTERIZATION_ORDER_RELAXED_AMD;
+    }
+    
+    return VK_RASTERIZATION_ORDER_STRICT_AMD;
   }
   
 }

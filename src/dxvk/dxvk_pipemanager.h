@@ -59,8 +59,7 @@ namespace dxvk {
     
   public:
     
-    DxvkPipelineManager(
-      const Rc<vk::DeviceFn>&   vkd);
+    DxvkPipelineManager(const DxvkDevice* device);
     ~DxvkPipelineManager();
     
     /**
@@ -99,7 +98,7 @@ namespace dxvk {
     
   private:
     
-    const Rc<vk::DeviceFn> m_vkd;
+    const DxvkDevice* m_device;
     
     std::mutex m_mutex;
     

@@ -1,20 +1,22 @@
 #include "dxvk_compute.h"
+#include "dxvk_device.h"
 
 namespace dxvk {
   
   DxvkComputePipeline::DxvkComputePipeline(
-    const Rc<vk::DeviceFn>&       vkd,
+    const DxvkDevice*             device,
     const Rc<DxvkPipelineCache>&  cache,
     const Rc<DxvkShader>&         cs)
-  : m_vkd(vkd), m_cache(cache) {
+  : m_device(device), m_vkd(device->vkd()),
+    m_cache(cache) {
     DxvkDescriptorSlotMapping slotMapping;
     cs->defineResourceSlots(slotMapping);
     
-    m_layout = new DxvkBindingLayout(vkd,
+    m_layout = new DxvkBindingLayout(m_vkd,
       slotMapping.bindingCount(),
       slotMapping.bindingInfos());
     
-    m_cs = cs->createShaderModule(vkd, slotMapping);
+    m_cs = cs->createShaderModule(m_vkd, slotMapping);
     
     this->compilePipeline();
   }

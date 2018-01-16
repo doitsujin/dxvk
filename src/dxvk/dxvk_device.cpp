@@ -15,7 +15,7 @@ namespace dxvk {
     m_memory          (new DxvkMemoryAllocator(adapter, vkd)),
     m_renderPassPool  (new DxvkRenderPassPool (vkd)),
     m_pipelineCache   (new DxvkPipelineCache  (vkd)),
-    m_pipelineManager (new DxvkPipelineManager(vkd)),
+    m_pipelineManager (new DxvkPipelineManager(this)),
     m_submissionQueue (this) {
     m_options.adjustAppOptions(env::getExeName());
     m_options.adjustDeviceOptions(m_adapter);

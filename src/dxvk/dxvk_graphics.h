@@ -12,6 +12,8 @@
 
 namespace dxvk {
   
+  class DxvkDevice;
+  
   /**
    * \brief Graphics pipeline state info
    * 
@@ -72,7 +74,7 @@ namespace dxvk {
     VkBool32                            omEnableLogicOp;
     VkLogicOp                           omLogicOp;
     VkRenderPass                        omRenderPass;
-    VkPipelineColorBlendAttachmentState omBlendAttachments[DxvkLimits::MaxNumRenderTargets];
+    VkPipelineColorBlendAttachmentState omBlendAttachments[MaxNumRenderTargets];
   };
   
   
@@ -88,7 +90,7 @@ namespace dxvk {
   public:
     
     DxvkGraphicsPipeline(
-      const Rc<vk::DeviceFn>&       vkd,
+      const DxvkDevice*             device,
       const Rc<DxvkPipelineCache>&  cache,
       const Rc<DxvkShader>&         vs,
       const Rc<DxvkShader>&         tcs,
@@ -127,7 +129,9 @@ namespace dxvk {
       VkPipeline                    pipeline;
     };
     
-    Rc<vk::DeviceFn>      m_vkd;
+    const DxvkDevice* const m_device;
+    const Rc<vk::DeviceFn>  m_vkd;
+    
     Rc<DxvkPipelineCache> m_cache;
     Rc<DxvkBindingLayout> m_layout;
     
@@ -152,6 +156,9 @@ namespace dxvk {
     void destroyPipelines();
     
     bool validatePipelineState(
+      const DxvkGraphicsPipelineStateInfo& state) const;
+    
+    VkRasterizationOrderAMD pickRasterizationOrder(
       const DxvkGraphicsPipelineStateInfo& state) const;
     
   };

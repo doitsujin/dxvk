@@ -35,8 +35,8 @@ namespace dxvk {
   }
   
   
-  DxvkPipelineManager::DxvkPipelineManager(const Rc<vk::DeviceFn>& vkd)
-  : m_vkd(vkd) {
+  DxvkPipelineManager::DxvkPipelineManager(const DxvkDevice* device)
+  : m_device(device) {
     
   }
   
@@ -62,7 +62,7 @@ namespace dxvk {
       return pair->second;
     
     const Rc<DxvkComputePipeline> pipeline
-      = new DxvkComputePipeline(m_vkd, cache, cs);
+      = new DxvkComputePipeline(m_device, cache, cs);
     m_computePipelines.insert(std::make_pair(key, pipeline));
     return pipeline;
   }
@@ -92,7 +92,7 @@ namespace dxvk {
       return pair->second;
     
     const Rc<DxvkGraphicsPipeline> pipeline
-      = new DxvkGraphicsPipeline(m_vkd, cache, vs, tcs, tes, gs, fs);
+      = new DxvkGraphicsPipeline(m_device, cache, vs, tcs, tes, gs, fs);
     m_graphicsPipelines.insert(std::make_pair(key, pipeline));
     return pipeline;
   }
