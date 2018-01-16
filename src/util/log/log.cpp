@@ -44,8 +44,9 @@ namespace dxvk {
       static std::array<const char*, 5> s_prefixes
         = {{ "trace: ", "debug: ", "info:  ", "warn:  ", "err:   " }};
       
-      std::cerr << s_prefixes.at(static_cast<uint32_t>(level)) << message << std::endl;
-      m_fileStream << message << std::endl;
+      const char* prefix = s_prefixes.at(static_cast<uint32_t>(level));
+      std::cerr    << prefix << message << std::endl;
+      m_fileStream << prefix << message << std::endl;
       m_fileStream.flush();
     }
   }
