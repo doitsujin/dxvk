@@ -15,4 +15,14 @@ namespace dxvk::env {
    */
   std::string getEnvVar(const wchar_t* name);
   
+  /**
+   * \brief Gets the executable name
+   * 
+   * Returns the base name (not the full path) of the
+   * program executable, including the file extension.
+   * This function should be used to identify programs.
+   * \returns Executable name
+   */
+  std::string getExeName();
+  
 }
