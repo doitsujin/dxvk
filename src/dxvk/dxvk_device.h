@@ -5,6 +5,7 @@
 #include "dxvk_compute.h"
 #include "dxvk_constant_state.h"
 #include "dxvk_context.h"
+#include "dxvk_extensions.h"
 #include "dxvk_framebuffer.h"
 #include "dxvk_image.h"
 #include "dxvk_memory.h"
@@ -40,6 +41,7 @@ namespace dxvk {
     DxvkDevice(
       const Rc<DxvkAdapter>&          adapter,
       const Rc<vk::DeviceFn>&         vkd,
+      const Rc<DxvkDeviceExtensions>& extensions,
       const VkPhysicalDeviceFeatures& features);
       
     ~DxvkDevice();
@@ -69,6 +71,14 @@ namespace dxvk {
      */
     Rc<DxvkAdapter> adapter() const {
       return m_adapter;
+    }
+    
+    /**
+     * \brief Enabled device extensions
+     * \returns Enabled device extensions
+     */
+    const DxvkDeviceExtensions& extensions() const {
+      return *m_extensions;
     }
     
     /**
@@ -300,6 +310,7 @@ namespace dxvk {
     
     Rc<DxvkAdapter>           m_adapter;
     Rc<vk::DeviceFn>          m_vkd;
+    Rc<DxvkDeviceExtensions>  m_extensions;
     VkPhysicalDeviceFeatures  m_features;
     
     Rc<DxvkMemoryAllocator>   m_memory;

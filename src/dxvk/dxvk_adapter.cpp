@@ -74,7 +74,7 @@ namespace dxvk {
         return i;
     }
     
-    throw DxvkError("DxvkAdapter::graphicsQueueFamily: No graphics queue found");
+    throw DxvkError("DxvkAdapter: No graphics queue found");
   }
   
   
@@ -147,7 +147,14 @@ namespace dxvk {
   
   
   Rc<DxvkDevice> DxvkAdapter::createDevice(const VkPhysicalDeviceFeatures& enabledFeatures) {
-    auto enabledExtensions = this->enableExtensions();
+    const Rc<DxvkDeviceExtensions> extensions = new DxvkDeviceExtensions();
+    extensions->enableExtensions(vk::NameSet::enumerateDeviceExtensions(*m_vki, m_handle));
+    
+    if (!extensions->checkSupportStatus())
+      throw DxvkError("DxvkAdapter: Failed to create device");
+    
+    const vk::NameList enabledExtensions =
+      extensions->getEnabledExtensionNames();
     
     Logger::info("Enabled device extensions:");
     this->logNameList(enabledExtensions);
@@ -188,43 +195,13 @@ namespace dxvk {
     VkDevice device = VK_NULL_HANDLE;
     
     if (m_vki->vkCreateDevice(m_handle, &info, nullptr, &device) != VK_SUCCESS)
-      throw DxvkError("DxvkDevice::createDevice: Failed to create device");
-    return new DxvkDevice(this, new vk::DeviceFn(m_vki->instance(), device), enabledFeatures);
+      throw DxvkError("DxvkAdapter: Failed to create device");
+    return new DxvkDevice(this, new vk::DeviceFn(m_vki->instance(), device), extensions, enabledFeatures);
   }
   
   
   Rc<DxvkSurface> DxvkAdapter::createSurface(HINSTANCE instance, HWND window) {
     return new DxvkSurface(this, instance, window);
-  }
-  
-  
-  vk::NameList DxvkAdapter::enableExtensions() {
-    std::vector<const char*> extOptional = {
-      VK_KHR_MAINTENANCE2_EXTENSION_NAME,
-    };
-    
-    std::vector<const char*> extRequired = {
-      VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME,
-      VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-      VK_KHR_MAINTENANCE1_EXTENSION_NAME,
-    };
-    
-    const vk::NameSet extensionsAvailable
-      = vk::NameSet::enumerateDeviceExtensions(*m_vki, m_handle);
-    vk::NameList extensionsEnabled;
-    
-    for (auto e : extOptional) {
-      if (extensionsAvailable.supports(e))
-        extensionsEnabled.add(e);
-    }
-    
-    for (auto e : extRequired) {
-      if (!extensionsAvailable.supports(e))
-        throw DxvkError(str::format("DxvkDevice::getExtensions: Extension ", e, " not supported"));
-      extensionsEnabled.add(e);
-    }
-    
-    return extensionsEnabled;
   }
   
   

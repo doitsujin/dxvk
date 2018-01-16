@@ -155,8 +155,6 @@ namespace dxvk {
     
     std::vector<VkQueueFamilyProperties> m_queueFamilies;
     
-    vk::NameList enableExtensions();
-    
     static void logNameList(const vk::NameList& names);
     
   };

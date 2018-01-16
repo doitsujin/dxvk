@@ -6,9 +6,11 @@ namespace dxvk {
   DxvkDevice::DxvkDevice(
     const Rc<DxvkAdapter>&          adapter,
     const Rc<vk::DeviceFn>&         vkd,
+    const Rc<DxvkDeviceExtensions>& extensions,
     const VkPhysicalDeviceFeatures& features)
   : m_adapter         (adapter),
     m_vkd             (vkd),
+    m_extensions      (extensions),
     m_features        (features),
     m_memory          (new DxvkMemoryAllocator(adapter, vkd)),
     m_renderPassPool  (new DxvkRenderPassPool (vkd)),
