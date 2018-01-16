@@ -2271,6 +2271,11 @@ namespace dxvk {
     //    (dst0) The destination register
     //    (src0) Source address
     //    (src1) Source texture
+    // ld2dms has four operands:
+    //    (dst0) The destination register
+    //    (src0) Source address
+    //    (src1) Source texture
+    //    (src2) Sample number
     const uint32_t textureId = ins.src[1].idx[0].offset;
     
     // Image type, which stores the image dimensions etc.
@@ -2302,16 +2307,22 @@ namespace dxvk {
     }
     
     // The LOD is not present when reading from a buffer
-    DxbcRegisterValue imageLod;
-    imageLod.type = address.type;
-    imageLod.id   = 0;
-    
     if (imageType.dim != spv::DimBuffer) {
-      imageLod = emitRegisterExtract(address,
-        DxbcRegMask(false, false, false, true));
+      DxbcRegisterValue imageLod = emitRegisterExtract(
+        address, DxbcRegMask(false, false, false, true));
       
       imageOperands.flags |= spv::ImageOperandsLodMask;
       imageOperands.sLod = imageLod.id;
+    }
+    
+    // The ld2ms instruction also has a sample index, but
+    // we are only allowed to set it for multisample views
+    if (ins.op == DxbcOpcode::LdMs && imageType.ms == 1) {
+      DxbcRegisterValue sampleId = emitRegisterLoad(
+        ins.src[2], DxbcRegMask(true, false, false, false));
+      
+      imageOperands.flags |= spv::ImageOperandsSampleMask;
+      imageOperands.sSampleId = sampleId.id;
     }
     
     // Extract coordinates from address
