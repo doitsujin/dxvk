@@ -28,9 +28,17 @@ namespace dxvk {
       m_bits |= bits(fx...);
     }
     
+    void set(Flags flags) {
+      m_bits |= flags.m_bits;
+    }
+    
     template<typename... Tx>
     void clr(Tx... fx) {
       m_bits &= ~bits(fx...);
+    }
+    
+    void clr(Flags flags) {
+      m_bits &= ~flags.m_bits;
     }
     
     template<typename... Tx>

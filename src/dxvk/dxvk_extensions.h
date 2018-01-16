@@ -129,6 +129,7 @@ namespace dxvk {
    * used by DXVK if supported by the implementation.
    */
   struct DxvkDeviceExtensions : public DxvkExtensionList {
+    DxvkExtension amdRasterizationOrder   = { this, VK_AMD_RASTERIZATION_ORDER_EXTENSION_NAME,    DxvkExtensionType::Optional };
     DxvkExtension khrMaintenance1         = { this, VK_KHR_MAINTENANCE1_EXTENSION_NAME,           DxvkExtensionType::Required };
     DxvkExtension khrMaintenance2         = { this, VK_KHR_MAINTENANCE2_EXTENSION_NAME,           DxvkExtensionType::Desired  };
     DxvkExtension khrShaderDrawParameters = { this, VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME, DxvkExtensionType::Required };

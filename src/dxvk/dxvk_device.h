@@ -9,6 +9,7 @@
 #include "dxvk_framebuffer.h"
 #include "dxvk_image.h"
 #include "dxvk_memory.h"
+#include "dxvk_options.h"
 #include "dxvk_pipecache.h"
 #include "dxvk_pipemanager.h"
 #include "dxvk_queue.h"
@@ -71,6 +72,16 @@ namespace dxvk {
      */
     Rc<DxvkAdapter> adapter() const {
       return m_adapter;
+    }
+    
+    /**
+     * \brief Checks whether an option is enabled
+     * 
+     * \param [in] option The option to check for
+     * \returns \c true if the option is enabled
+     */
+    bool hasOption(DxvkOption option) const {
+      return m_options.test(option);
     }
     
     /**
@@ -317,6 +328,8 @@ namespace dxvk {
     Rc<DxvkRenderPassPool>    m_renderPassPool;
     Rc<DxvkPipelineCache>     m_pipelineCache;
     Rc<DxvkPipelineManager>   m_pipelineManager;
+    
+    DxvkOptions               m_options;
     
     std::mutex m_submissionLock;
     VkQueue m_graphicsQueue = VK_NULL_HANDLE;

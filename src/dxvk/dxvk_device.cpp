@@ -17,6 +17,10 @@ namespace dxvk {
     m_pipelineCache   (new DxvkPipelineCache  (vkd)),
     m_pipelineManager (new DxvkPipelineManager(vkd)),
     m_submissionQueue (this) {
+    m_options.adjustAppOptions(env::getExeName());
+    m_options.adjustDeviceOptions(m_adapter);
+    m_options.logOptions();
+    
     m_vkd->vkGetDeviceQueue(m_vkd->device(),
       m_adapter->graphicsQueueFamily(), 0,
       &m_graphicsQueue);
