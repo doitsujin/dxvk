@@ -76,24 +76,24 @@ namespace dxvk {
   
   
   DxvkBlendMode D3D11BlendState::DecodeBlendMode(
-    const D3D11_RENDER_TARGET_BLEND_DESC& blendDesc) {
+    const D3D11_RENDER_TARGET_BLEND_DESC& BlendDesc) {
     DxvkBlendMode mode;
-    mode.enableBlending   = blendDesc.BlendEnable;
-    mode.colorSrcFactor   = DecodeBlendFactor(blendDesc.SrcBlend, false);
-    mode.colorDstFactor   = DecodeBlendFactor(blendDesc.DestBlend, false);
-    mode.colorBlendOp     = DecodeBlendOp(blendDesc.BlendOp);
-    mode.alphaSrcFactor   = DecodeBlendFactor(blendDesc.SrcBlendAlpha, true);
-    mode.alphaDstFactor   = DecodeBlendFactor(blendDesc.DestBlendAlpha, true);
-    mode.alphaBlendOp     = DecodeBlendOp(blendDesc.BlendOpAlpha);
+    mode.enableBlending   = BlendDesc.BlendEnable;
+    mode.colorSrcFactor   = DecodeBlendFactor(BlendDesc.SrcBlend, false);
+    mode.colorDstFactor   = DecodeBlendFactor(BlendDesc.DestBlend, false);
+    mode.colorBlendOp     = DecodeBlendOp(BlendDesc.BlendOp);
+    mode.alphaSrcFactor   = DecodeBlendFactor(BlendDesc.SrcBlendAlpha, true);
+    mode.alphaDstFactor   = DecodeBlendFactor(BlendDesc.DestBlendAlpha, true);
+    mode.alphaBlendOp     = DecodeBlendOp(BlendDesc.BlendOpAlpha);
     // TODO find out if D3D11 wants us to apply the write mask if blending
     // is disabled as well. This is standard behaviour in Vulkan.
-    mode.writeMask        = blendDesc.RenderTargetWriteMask;
+    mode.writeMask        = BlendDesc.RenderTargetWriteMask;
     return mode;
   }
   
   
-  VkBlendFactor D3D11BlendState::DecodeBlendFactor(D3D11_BLEND blendFactor, bool isAlpha) {
-    switch (blendFactor) {
+  VkBlendFactor D3D11BlendState::DecodeBlendFactor(D3D11_BLEND BlendFactor, bool IsAlpha) {
+    switch (BlendFactor) {
       case D3D11_BLEND_ZERO:              return VK_BLEND_FACTOR_ZERO;
       case D3D11_BLEND_ONE:               return VK_BLEND_FACTOR_ONE;
       case D3D11_BLEND_SRC_COLOR:         return VK_BLEND_FACTOR_SRC_COLOR;
@@ -105,21 +105,22 @@ namespace dxvk {
       case D3D11_BLEND_DEST_COLOR:        return VK_BLEND_FACTOR_DST_COLOR;
       case D3D11_BLEND_INV_DEST_COLOR:    return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
       case D3D11_BLEND_SRC_ALPHA_SAT:     return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
-      case D3D11_BLEND_BLEND_FACTOR:      return isAlpha ? VK_BLEND_FACTOR_CONSTANT_ALPHA : VK_BLEND_FACTOR_CONSTANT_COLOR;
-      case D3D11_BLEND_INV_BLEND_FACTOR:  return isAlpha ? VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA : VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
+      case D3D11_BLEND_BLEND_FACTOR:      return IsAlpha ? VK_BLEND_FACTOR_CONSTANT_ALPHA : VK_BLEND_FACTOR_CONSTANT_COLOR;
+      case D3D11_BLEND_INV_BLEND_FACTOR:  return IsAlpha ? VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA : VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
       case D3D11_BLEND_SRC1_COLOR:        return VK_BLEND_FACTOR_SRC1_COLOR;
       case D3D11_BLEND_INV_SRC1_COLOR:    return VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR;
       case D3D11_BLEND_SRC1_ALPHA:        return VK_BLEND_FACTOR_SRC1_ALPHA;
       case D3D11_BLEND_INV_SRC1_ALPHA:    return VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA;
     }
     
-    Logger::err(str::format("D3D11: Invalid blend factor: ", blendFactor));
+    if (BlendFactor != 0)  // prevent log spamming when apps use ZeroMemory
+      Logger::err(str::format("D3D11: Invalid blend factor: ", BlendFactor));
     return VK_BLEND_FACTOR_ZERO;
   }
   
   
-  VkBlendOp D3D11BlendState::DecodeBlendOp(D3D11_BLEND_OP blendOp) {
-    switch (blendOp) {
+  VkBlendOp D3D11BlendState::DecodeBlendOp(D3D11_BLEND_OP BlendOp) {
+    switch (BlendOp) {
       case D3D11_BLEND_OP_ADD:            return VK_BLEND_OP_ADD;
       case D3D11_BLEND_OP_SUBTRACT:       return VK_BLEND_OP_SUBTRACT;
       case D3D11_BLEND_OP_REV_SUBTRACT:   return VK_BLEND_OP_REVERSE_SUBTRACT;
@@ -127,7 +128,8 @@ namespace dxvk {
       case D3D11_BLEND_OP_MAX:            return VK_BLEND_OP_MAX;
     }
     
-    Logger::err(str::format("D3D11: Invalid blend op: ", blendOp));
+    if (BlendOp != 0)  // prevent log spamming when apps use ZeroMemory
+      Logger::err(str::format("D3D11: Invalid blend op: ", BlendOp));
     return VK_BLEND_OP_ADD;
   }
   

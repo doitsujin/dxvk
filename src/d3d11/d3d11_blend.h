@@ -44,14 +44,14 @@ namespace dxvk {
     DxvkLogicOpState              m_loState;
     
     static DxvkBlendMode DecodeBlendMode(
-      const D3D11_RENDER_TARGET_BLEND_DESC& blendDesc);
+      const D3D11_RENDER_TARGET_BLEND_DESC& BlendDesc);
     
     static VkBlendFactor DecodeBlendFactor(
-            D3D11_BLEND blendFactor,
-            bool        isAlpha);
+            D3D11_BLEND BlendFactor,
+            bool        IsAlpha);
     
     static VkBlendOp DecodeBlendOp(
-            D3D11_BLEND_OP blendOp);
+            D3D11_BLEND_OP BlendOp);
     
   };
   

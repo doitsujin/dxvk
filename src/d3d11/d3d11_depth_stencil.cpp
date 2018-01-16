@@ -54,30 +54,30 @@ namespace dxvk {
   
   
   VkStencilOpState D3D11DepthStencilState::DecodeStencilOpState(
-    const D3D11_DEPTH_STENCILOP_DESC& stencilDesc,
-    const D3D11_DEPTH_STENCIL_DESC&   desc) const {
+    const D3D11_DEPTH_STENCILOP_DESC& StencilDesc,
+    const D3D11_DEPTH_STENCIL_DESC&   Desc) const {
     VkStencilOpState result;
     result.failOp      = VK_STENCIL_OP_KEEP;
     result.passOp      = VK_STENCIL_OP_KEEP;
     result.depthFailOp = VK_STENCIL_OP_KEEP;
     result.compareOp   = VK_COMPARE_OP_ALWAYS;
-    result.compareMask = desc.StencilReadMask;
-    result.writeMask   = desc.StencilWriteMask;
+    result.compareMask = Desc.StencilReadMask;
+    result.writeMask   = Desc.StencilWriteMask;
     result.reference   = 0;
     
-    if (desc.StencilEnable) {
-      result.failOp      = DecodeStencilOp(stencilDesc.StencilFailOp);
-      result.passOp      = DecodeStencilOp(stencilDesc.StencilPassOp);
-      result.depthFailOp = DecodeStencilOp(stencilDesc.StencilDepthFailOp);
-      result.compareOp   = DecodeCompareOp(stencilDesc.StencilFunc);
+    if (Desc.StencilEnable) {
+      result.failOp      = DecodeStencilOp(StencilDesc.StencilFailOp);
+      result.passOp      = DecodeStencilOp(StencilDesc.StencilPassOp);
+      result.depthFailOp = DecodeStencilOp(StencilDesc.StencilDepthFailOp);
+      result.compareOp   = DecodeCompareOp(StencilDesc.StencilFunc);
     }
     
     return result;
   }
   
   
-  VkStencilOp D3D11DepthStencilState::DecodeStencilOp(D3D11_STENCIL_OP op) const {
-    switch (op) {
+  VkStencilOp D3D11DepthStencilState::DecodeStencilOp(D3D11_STENCIL_OP Op) const {
+    switch (Op) {
       case D3D11_STENCIL_OP_KEEP:       return VK_STENCIL_OP_KEEP;
       case D3D11_STENCIL_OP_ZERO:       return VK_STENCIL_OP_ZERO;
       case D3D11_STENCIL_OP_REPLACE:    return VK_STENCIL_OP_REPLACE;
@@ -88,7 +88,8 @@ namespace dxvk {
       case D3D11_STENCIL_OP_DECR:       return VK_STENCIL_OP_DECREMENT_AND_WRAP;
     }
     
-    Logger::err(str::format("D3D11: Invalid stencil op: ", op));
+    if (Op != 0)
+      Logger::err(str::format("D3D11: Invalid stencil op: ", Op));
     return VK_STENCIL_OP_KEEP;
   }
   

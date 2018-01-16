@@ -53,11 +53,11 @@ namespace dxvk {
       case D3D11_COMPARISON_NOT_EQUAL:      return VK_COMPARE_OP_NOT_EQUAL;
       case D3D11_COMPARISON_GREATER_EQUAL:  return VK_COMPARE_OP_GREATER_OR_EQUAL;
       case D3D11_COMPARISON_ALWAYS:         return VK_COMPARE_OP_ALWAYS;
-        
-      default:
-        Logger::err(str::format("D3D11: Unsupported compare op: ", Mode));
-        return VK_COMPARE_OP_ALWAYS;
     }
+    
+    if (Mode != 0)  // prevent log spamming when apps use ZeroMemory
+      Logger::err(str::format("D3D11: Unsupported compare op: ", Mode));
+    return VK_COMPARE_OP_NEVER;
   }
   
   

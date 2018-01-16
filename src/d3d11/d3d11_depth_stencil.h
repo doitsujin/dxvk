@@ -40,11 +40,11 @@ namespace dxvk {
     DxvkDepthStencilState     m_state;
     
     VkStencilOpState DecodeStencilOpState(
-      const D3D11_DEPTH_STENCILOP_DESC& stencilDesc,
-      const D3D11_DEPTH_STENCIL_DESC&   desc) const;
+      const D3D11_DEPTH_STENCILOP_DESC& StencilDesc,
+      const D3D11_DEPTH_STENCIL_DESC&   Desc) const;
     
     VkStencilOp DecodeStencilOp(
-            D3D11_STENCIL_OP            op) const;
+            D3D11_STENCIL_OP            Op) const;
     
   };
   
