@@ -1297,11 +1297,12 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitVectorCmov(const DxbcShaderInstruction& ins) {
-    // movc has four operands:
-    //    (dst0) The destination register
+    // movc and swapc have the following operands:
+    //    (dst0) The first destination register
+    //    (dst1) The second destination register (swapc only)
     //    (src0) The condition vector
-    //    (src0) Vector to select from if the condition is not 0
-    //    (src0) Vector to select from if the condition is 0
+    //    (src1) Vector to select from if the condition is not 0
+    //    (src2) Vector to select from if the condition is 0
     const DxbcRegisterValue condition   = emitRegisterLoad(ins.src[0], ins.dst[0].mask);
     const DxbcRegisterValue selectTrue  = emitRegisterLoad(ins.src[1], ins.dst[0].mask);
     const DxbcRegisterValue selectFalse = emitRegisterLoad(ins.src[2], ins.dst[0].mask);
@@ -1323,19 +1324,23 @@ namespace dxvk {
       zero = m_module.constComposite(zeroType, componentCount, zeroVec.data());
     }
     
+    // In case of swapc, the second destination operand receives
+    // the output that a cmov instruction would normally get
+    const uint32_t trueIndex = ins.op == DxbcOpcode::Swapc ? 1 : 0;
     
-    // Use the component mask to select the vector components
-    DxbcRegisterValue result;
-    result.type.ctype  = ins.dst[0].dataType;
-    result.type.ccount = componentCount;
-    result.id = m_module.opSelect(
-      getVectorTypeId(result.type),
-      m_module.opINotEqual(boolType, condition.id, zero),
-      selectTrue.id, selectFalse.id);
-    
-    // Apply result modifiers to floating-point results
-    result = emitDstOperandModifiers(result, ins.modifiers);
-    emitRegisterStore(ins.dst[0], result);
+    for (uint32_t i = 0; i < ins.dstCount; i++) {
+      DxbcRegisterValue result;
+      result.type.ctype  = ins.dst[i].dataType;
+      result.type.ccount = componentCount;
+      result.id = m_module.opSelect(
+        getVectorTypeId(result.type),
+        m_module.opINotEqual(boolType, condition.id, zero),
+        i == trueIndex ? selectTrue.id : selectFalse.id,
+        i != trueIndex ? selectTrue.id : selectFalse.id);
+      
+      result = emitDstOperandModifiers(result, ins.modifiers);
+      emitRegisterStore(ins.dst[i], result);
+    }
   }
   
   void DxbcCompiler::emitVectorCmp(const DxbcShaderInstruction& ins) {

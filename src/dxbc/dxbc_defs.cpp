@@ -649,7 +649,13 @@ namespace dxvk {
     /* BfRev                                */
     { },
     /* Swapc                                */
-    { },
+    { 5, DxbcInstClass::VectorCmov, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32  },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* DclStream                            */
     { },
     /* DclFunctionBody                      */
