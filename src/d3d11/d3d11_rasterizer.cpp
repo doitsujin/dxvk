@@ -9,7 +9,6 @@ namespace dxvk {
   : m_device(device), m_desc(desc) {
     
     // State that is not supported in D3D11
-    m_state.enableDepthClamp  = VK_FALSE;
     m_state.enableDiscard     = VK_FALSE;
     
     // Polygon mode. Determines whether the rasterizer fills
@@ -51,11 +50,10 @@ namespace dxvk {
     m_state.depthBiasConstant = static_cast<float>(desc.DepthBias);
     m_state.depthBiasClamp    = desc.DepthBiasClamp;
     m_state.depthBiasSlope    = desc.SlopeScaledDepthBias;
+    m_state.enableDepthClamp  = desc.DepthClipEnable ? VK_FALSE : VK_TRUE;
     
-    // TODO implement depth clamp. Note that there are differences
-    // between D3D11 depth clip (disabled) and Vulkan depth clamp.
     if (!desc.DepthClipEnable)
-      Logger::err("D3D11RasterizerState: Depth clamp not supported");
+      Logger::warn("D3D11RasterizerState: Depth clamp not properly supported");
     
     if (desc.AntialiasedLineEnable)
       Logger::err("D3D11RasterizerState: Antialiased lines not supported");
