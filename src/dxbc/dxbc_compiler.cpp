@@ -1610,8 +1610,11 @@ namespace dxvk {
     //    (dst0) The destination register
     //    (src0) The register to shift
     //    (src1) The shift amount (scalar)
-    const DxbcRegisterValue shiftReg = emitRegisterLoad(ins.src[0], ins.dst[0].mask);
-    const DxbcRegisterValue countReg = emitRegisterLoad(ins.src[1], ins.dst[0].mask);
+    DxbcRegisterValue shiftReg = emitRegisterLoad(ins.src[0], ins.dst[0].mask);
+    DxbcRegisterValue countReg = emitRegisterLoad(ins.src[1], ins.dst[0].mask);
+    
+    if (countReg.type.ccount == 1)
+      countReg = emitRegisterExtend(countReg, shiftReg.type.ccount);
     
     DxbcRegisterValue result;
     result.type.ctype  = ins.dst[0].dataType;
