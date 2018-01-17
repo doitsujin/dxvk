@@ -20,11 +20,13 @@ Inside the dxvk directory, run:
 meson --cross-file build-win64.txt build.w64
 cd build.w64
 meson configure -Dprefix=/target/directory
+# for an optimized release build:
+meson configure -Dbuildtype=release
 ninja
 ninja install
 ```
 
-Both `dxgi.dll` and `d3d11.dll`as well as some demo executables will be located in `/your/directory/bin`.
+Both `dxgi.dll` and `d3d11.dll`as well as some demo executables will be located in `/target/directory/bin`.
 
 ## How to use
 In order to run `executable.exe` with DXVK,
