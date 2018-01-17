@@ -125,8 +125,9 @@ namespace dxvk {
   struct DxbcCompilerPsPart {
     uint32_t functionId = 0;
     
-    uint32_t builtinFragCoord = 0;
-    uint32_t builtinDepth     = 0;
+    uint32_t builtinFragCoord   = 0;
+    uint32_t builtinDepth       = 0;
+    uint32_t builtinIsFrontFace = 0;
     
     std::array<DxbcVectorType, DxbcMaxInterfaceRegs> oTypes;
   };
@@ -455,6 +456,9 @@ namespace dxvk {
       const DxbcShaderInstruction&  ins);
     
     void emitTextureFetch(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitTextureGather(
       const DxbcShaderInstruction&  ins);
     
     void emitTextureSample(

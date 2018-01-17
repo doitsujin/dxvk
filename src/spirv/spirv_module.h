@@ -830,6 +830,20 @@ namespace dxvk {
             uint32_t                coordinates,
       const SpirvImageOperands&     operands);
     
+    uint32_t opImageGather(
+            uint32_t                resultType,
+            uint32_t                sampledImage,
+            uint32_t                coordinates,
+            uint32_t                component,
+      const SpirvImageOperands&     operands);
+    
+    uint32_t opImageDrefGather(
+            uint32_t                resultType,
+            uint32_t                sampledImage,
+            uint32_t                coordinates,
+            uint32_t                reference,
+      const SpirvImageOperands&     operands);
+    
     uint32_t opImageSampleImplicitLod(
             uint32_t                resultType,
             uint32_t                sampledImage,

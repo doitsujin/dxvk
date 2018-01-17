@@ -2360,6 +2360,48 @@ namespace dxvk {
     return resultId;
   }
   
+  
+  uint32_t SpirvModule::opImageGather(
+          uint32_t                resultType,
+          uint32_t                sampledImage,
+          uint32_t                coordinates,
+          uint32_t                component,
+    const SpirvImageOperands&     operands) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns(spv::OpImageGather,
+      6 + getImageOperandWordCount(operands));
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(sampledImage);
+    m_code.putWord(coordinates);
+    m_code.putWord(component);
+    
+    putImageOperands(operands);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opImageDrefGather(
+          uint32_t                resultType,
+          uint32_t                sampledImage,
+          uint32_t                coordinates,
+          uint32_t                reference,
+    const SpirvImageOperands&     operands) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns(spv::OpImageDrefGather,
+      6 + getImageOperandWordCount(operands));
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(sampledImage);
+    m_code.putWord(coordinates);
+    m_code.putWord(reference);
+    
+    putImageOperands(operands);
+    return resultId;
+  }
+  
     
   uint32_t SpirvModule::opImageSampleImplicitLod(
           uint32_t                resultType,

@@ -101,6 +101,9 @@ namespace dxvk {
       case DxbcInstClass::TextureFetch:
         return this->emitTextureFetch(ins);
         
+      case DxbcInstClass::TextureGather:
+        return this->emitTextureGather(ins);
+        
       case DxbcInstClass::TextureSample:
         return this->emitTextureSample(ins);
         
@@ -416,6 +419,16 @@ namespace dxvk {
           spv::StorageClassInput },
           spv::BuiltInLocalInvocationIndex,
           "vThreadIndexInGroup");
+      } break;
+      
+      case DxbcOperandType::OutputDepth: {
+        m_module.setExecutionMode(m_entryPointId,
+          spv::ExecutionModeDepthReplacing);
+        m_ps.builtinDepth = emitNewBuiltinVariable({
+          { DxbcScalarType::Float32, 1, 0 },
+          spv::StorageClassOutput },
+          spv::BuiltInFragDepth,
+          "oDepth");
       } break;
       
       default:
@@ -2388,6 +2401,159 @@ namespace dxvk {
   }
   
   
+  void DxbcCompiler::emitTextureGather(const DxbcShaderInstruction& ins) {
+    // Gather4 takes the following operands:
+    //    (dst0) The destination register
+    //    (src0) Texture coordinates
+    //    (src1) The texture itself
+    //    (src2) The sampler, with a component selector
+    // Gather4C takes the following additional operand:
+    //    (src3) The depth reference value
+    // TODO reduce code duplication by moving some common code
+    // in both sample() and gather() into separate methods
+    const DxbcRegister& texCoordReg = ins.src[0];
+    const DxbcRegister& textureReg  = ins.src[1];
+    const DxbcRegister& samplerReg  = ins.src[2];
+    
+    // Texture and sampler register IDs
+    const uint32_t textureId = textureReg.idx[0].offset;
+    const uint32_t samplerId = samplerReg.idx[0].offset;
+    
+    // Image type, which stores the image dimensions etc.
+    const DxbcImageInfo imageType = m_textures.at(textureId).imageInfo;
+    
+    const uint32_t imageLayerDim = getTexLayerDim(imageType);
+    const uint32_t imageCoordDim = getTexCoordDim(imageType);
+    
+    const DxbcRegMask coordArrayMask = DxbcRegMask::firstN(imageCoordDim);
+    
+    // Load the texture coordinates. SPIR-V allows these
+    // to be float4 even if not all components are used.
+    DxbcRegisterValue coord = emitRegisterLoad(texCoordReg, coordArrayMask);
+    
+    // Load reference value for depth-compare operations
+    const bool isDepthCompare = ins.op == DxbcOpcode::Gather4C;
+    
+    const DxbcRegisterValue referenceValue = isDepthCompare
+      ? emitRegisterLoad(ins.src[3], DxbcRegMask(true, false, false, false))
+      : DxbcRegisterValue();
+    
+    if (isDepthCompare && m_options.packDrefValueIntoCoordinates) {
+      const std::array<uint32_t, 2> packedCoordIds
+        = {{ coord.id, referenceValue.id }};
+      
+      coord.type.ccount += 1;
+      coord.id = m_module.opCompositeConstruct(
+        getVectorTypeId(coord.type),
+        packedCoordIds.size(),
+        packedCoordIds.data());
+    }
+    
+    // Determine the sampled image type based on the opcode.
+    const uint32_t sampledImageType = isDepthCompare
+      ? m_module.defSampledImageType(m_textures.at(textureId).depthTypeId)
+      : m_module.defSampledImageType(m_textures.at(textureId).colorTypeId);
+    
+    // Accumulate additional image operands.
+    SpirvImageOperands imageOperands;
+    
+    if (ins.sampleControls.u != 0 || ins.sampleControls.v != 0 || ins.sampleControls.w != 0) {
+      const std::array<uint32_t, 3> offsetIds = {
+        imageLayerDim >= 1 ? m_module.consti32(ins.sampleControls.u) : 0,
+        imageLayerDim >= 2 ? m_module.consti32(ins.sampleControls.v) : 0,
+        imageLayerDim >= 3 ? m_module.consti32(ins.sampleControls.w) : 0,
+      };
+      
+      imageOperands.flags |= spv::ImageOperandsConstOffsetMask;
+      imageOperands.sConstOffset = m_module.constComposite(
+        getVectorTypeId({ DxbcScalarType::Sint32, imageLayerDim }),
+        imageLayerDim, offsetIds.data());
+    }
+    
+    // Only execute the gather operation if the resource is bound
+    const uint32_t labelMerge     = m_module.allocateId();
+    const uint32_t labelBound     = m_module.allocateId();
+    const uint32_t labelUnbound   = m_module.allocateId();
+    
+    m_module.opSelectionMerge(labelMerge, spv::SelectionControlMaskNone);
+    m_module.opBranchConditional(m_textures.at(textureId).specId, labelBound, labelUnbound);
+    m_module.opLabel(labelBound);
+    
+    // Combine the texture and the sampler into a sampled image
+    const uint32_t sampledImageId = m_module.opSampledImage(
+      sampledImageType,
+      m_module.opLoad(
+        m_textures.at(textureId).imageTypeId,
+        m_textures.at(textureId).varId),
+      m_module.opLoad(
+        m_samplers.at(samplerId).typeId,
+        m_samplers.at(samplerId).varId));
+    
+    // Gathering texels always returns a four-component
+    // vector, even for the depth-compare variants.
+    DxbcRegisterValue result;
+    result.type.ctype  = m_textures.at(textureId).sampledType;
+    result.type.ccount = 4;
+    switch (ins.op) {
+      // Simple image gather operation
+      case DxbcOpcode::Gather4: {
+        result.id = m_module.opImageGather(
+          getVectorTypeId(result.type), sampledImageId, coord.id,
+          m_module.constu32(samplerReg.swizzle[0]),
+          imageOperands);
+      } break;
+      
+      // Depth-compare operation
+      case DxbcOpcode::Gather4C: {
+        result.id = m_module.opImageDrefGather(
+          getVectorTypeId(result.type), sampledImageId, coord.id,
+          referenceValue.id, imageOperands);
+      } break;
+      
+      default:
+        Logger::warn(str::format(
+          "DxbcCompiler: Unhandled instruction: ",
+          ins.op));
+        return;
+    }
+    
+    // Swizzle components using the texture swizzle
+    // and the destination operand's write mask
+    result = emitRegisterSwizzle(result,
+      textureReg.swizzle, ins.dst[0].mask);
+    
+    // If the texture is not bound, return zeroes
+    m_module.opBranch(labelMerge);
+    m_module.opLabel(labelUnbound);
+    
+    DxbcRegisterValue zeroes = [&] {
+      switch (result.type.ctype) {
+        case DxbcScalarType::Float32: return emitBuildConstVecf32(0.0f, 0.0f, 0.0f, 0.0f, ins.dst[0].mask);
+        case DxbcScalarType::Uint32:  return emitBuildConstVecu32(0u, 0u, 0u, 0u,         ins.dst[0].mask);
+        case DxbcScalarType::Sint32:  return emitBuildConstVeci32(0, 0, 0, 0,             ins.dst[0].mask);
+        default: throw DxvkError("DxbcCompiler: Invalid scalar type");
+      }
+    }();
+    
+    m_module.opBranch(labelMerge);
+    m_module.opLabel(labelMerge);
+    
+    // Merge the result with a phi function
+    const std::array<SpirvPhiLabel, 2> phiLabels = {{
+      { result.id, labelBound   },
+      { zeroes.id, labelUnbound },
+    }};
+    
+    DxbcRegisterValue mergedResult;
+    mergedResult.type = result.type;
+    mergedResult.id = m_module.opPhi(
+      getVectorTypeId(mergedResult.type),
+      phiLabels.size(), phiLabels.data());
+    
+    emitRegisterStore(ins.dst[0], mergedResult);
+  }
+  
+  
   void DxbcCompiler::emitTextureSample(const DxbcShaderInstruction& ins) {
     // TODO support remaining sample ops
     
@@ -2407,22 +2573,11 @@ namespace dxvk {
     // Image type, which stores the image dimensions etc.
     const DxbcImageInfo imageType = m_textures.at(textureId).imageInfo;
     
-    const uint32_t imageLayerDim = [&] {
-      switch (imageType.dim) {
-        case spv::DimBuffer:  return 1;
-        case spv::Dim1D:      return 1;
-        case spv::Dim2D:      return 2;
-        case spv::Dim3D:      return 3;
-        case spv::DimCube:    return 3;
-        default: throw DxvkError("DxbcCompiler: Unsupported image dim");
-      }
-    }();
+    const uint32_t imageLayerDim = getTexLayerDim(imageType);
+    const uint32_t imageCoordDim = getTexCoordDim(imageType);
     
-    const DxbcRegMask coordArrayMask =
-      DxbcRegMask::firstN(imageLayerDim + imageType.array);
-    
-    const DxbcRegMask coordLayerMask =
-      DxbcRegMask::firstN(imageLayerDim);
+    const DxbcRegMask coordArrayMask = DxbcRegMask::firstN(imageCoordDim);
+    const DxbcRegMask coordLayerMask = DxbcRegMask::firstN(imageLayerDim);
     
     // Load the texture coordinates. SPIR-V allows these
     // to be float4 even if not all components are used.
@@ -3562,6 +3717,11 @@ namespace dxvk {
         return DxbcRegisterPointer {
           { DxbcScalarType::Uint32, 1 },
           m_cs.builtinLocalInvocationIndex };
+      
+      case DxbcOperandType::OutputDepth:
+        return DxbcRegisterPointer {
+          { DxbcScalarType::Float32, 1 },
+          m_ps.builtinDepth };
         
       default:
         throw DxvkError(str::format(
@@ -4224,6 +4384,20 @@ namespace dxvk {
           emitValueLoad(ptrIn), mask);
       } break;
       
+      case DxbcSystemValue::IsFrontFace: {
+        DxbcRegisterValue result;
+        result.type.ctype  = DxbcScalarType::Uint32;
+        result.type.ccount = 1;
+        result.id = m_module.opSelect(
+          getVectorTypeId(result.type),
+          m_module.opLoad(
+            m_module.defBoolType(),
+            m_ps.builtinIsFrontFace),
+          m_module.constu32(0xFFFFFFFF),
+          m_module.constu32(0x00000000));
+        return result;
+      } break;
+      
       default:
         throw DxvkError(str::format(
           "DxbcCompiler: Unhandled PS SV input: ", sv));
@@ -4326,6 +4500,12 @@ namespace dxvk {
       spv::StorageClassInput },
       spv::BuiltInFragCoord,
       "ps_frag_coord");
+    
+    m_ps.builtinIsFrontFace = emitNewBuiltinVariable({
+      { DxbcScalarType::Bool, 1, 0 },
+      spv::StorageClassInput },
+      spv::BuiltInFrontFacing,
+      "ps_is_front_face");
   }
   
   

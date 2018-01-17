@@ -43,6 +43,7 @@ namespace dxvk {
     ConvertFloat16,   ///< 16-bit float packing/unpacking
     TextureQuery,     ///< Texture query instruction
     TextureFetch,     ///< Texture fetch instruction
+    TextureGather,    ///< Texture gather instruction
     TextureSample,    ///< Texture sampling instruction
     TypedUavLoad,     ///< Typed UAV load
     TypedUavStore,    ///< Typed UAV store

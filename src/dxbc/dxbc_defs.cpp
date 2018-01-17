@@ -532,7 +532,12 @@ namespace dxvk {
     /* Lod                                  */
     { },
     /* Gather4                              */
-    { },
+    { 4, DxbcInstClass::TextureGather, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* SamplePos                            */
     { },
     /* SampleInfo                           */
@@ -581,7 +586,13 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
     } },
     /* Gather4C                             */
-    { },
+    { 5, DxbcInstClass::TextureGather, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* Gather4Po                            */
     { },
     /* Gather4PoC                           */
