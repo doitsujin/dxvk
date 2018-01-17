@@ -138,11 +138,8 @@ namespace dxvk {
     if (mode != DxgiFormatMode::Depth) {
       auto color = m_colorFormats.find(format);
       
-      if (color != m_colorFormats.end()) {
-        if (color->second.format == static_cast<VkFormat>(38))
-          Logger::err(str::format(format));
+      if (color != m_colorFormats.end())
         return color->second;
-      }
     }
     
     if (mode != DxgiFormatMode::Color) {
