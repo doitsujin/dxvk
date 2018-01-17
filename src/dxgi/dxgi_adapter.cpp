@@ -138,8 +138,11 @@ namespace dxvk {
     if (mode != DxgiFormatMode::Depth) {
       auto color = m_colorFormats.find(format);
       
-      if (color != m_colorFormats.end())
+      if (color != m_colorFormats.end()) {
+        if (color->second.format == static_cast<VkFormat>(38))
+          Logger::err(str::format(format));
         return color->second;
+      }
     }
     
     if (mode != DxgiFormatMode::Color) {
@@ -290,8 +293,8 @@ namespace dxvk {
     AddColorFormat(DXGI_FORMAT_R8_SINT,                     VK_FORMAT_R8_SINT);
     
     AddColorFormat(DXGI_FORMAT_A8_UNORM,                    VK_FORMAT_R8_UNORM,
-      { VK_COMPONENT_SWIZZLE_ONE, VK_COMPONENT_SWIZZLE_ONE,
-        VK_COMPONENT_SWIZZLE_ONE, VK_COMPONENT_SWIZZLE_R });
+      { VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_ZERO,
+        VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_R });
     
 //     AddColorFormat(DXGI_FORMAT_R1_UNORM,                    VK_FORMAT_UNDEFINED);
     
