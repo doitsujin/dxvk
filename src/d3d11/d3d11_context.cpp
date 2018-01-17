@@ -1049,10 +1049,8 @@ namespace dxvk {
     if (ppVertexShader != nullptr)
       *ppVertexShader = m_state.vs.shader.ref();
     
-    if (pNumClassInstances != nullptr) {
-      Logger::err("D3D11: VSGetShader: Class instances not implemented");
+    if (pNumClassInstances != nullptr)
       *pNumClassInstances = 0;
-    }
   }
   
   
@@ -1135,10 +1133,8 @@ namespace dxvk {
     if (ppHullShader != nullptr)
       *ppHullShader = m_state.hs.shader.ref();
     
-    if (pNumClassInstances != nullptr) {
-      Logger::err("D3D11: HSGetShader: Class instances not implemented");
+    if (pNumClassInstances != nullptr)
       *pNumClassInstances = 0;
-    }
   }
   
   
@@ -1221,10 +1217,8 @@ namespace dxvk {
     if (ppDomainShader != nullptr)
       *ppDomainShader = m_state.ds.shader.ref();
     
-    if (pNumClassInstances != nullptr) {
-      Logger::err("D3D11: DSGetShader: Class instances not implemented");
+    if (pNumClassInstances != nullptr)
       *pNumClassInstances = 0;
-    }
   }
   
   
@@ -1316,10 +1310,8 @@ namespace dxvk {
     if (ppGeometryShader != nullptr)
       *ppGeometryShader = m_state.gs.shader.ref();
     
-    if (pNumClassInstances != nullptr) {
-      Logger::err("D3D11: GSGetShader: Class instances not implemented");
+    if (pNumClassInstances != nullptr)
       *pNumClassInstances = 0;
-    }
   }
   
   
@@ -1411,10 +1403,8 @@ namespace dxvk {
     if (ppPixelShader != nullptr)
       *ppPixelShader = m_state.ps.shader.ref();
     
-    if (pNumClassInstances != nullptr) {
-      Logger::err("D3D11: PSGetShader: Class instances not implemented");
+    if (pNumClassInstances != nullptr)
       *pNumClassInstances = 0;
-    }
   }
   
   
@@ -1525,10 +1515,8 @@ namespace dxvk {
     if (ppComputeShader != nullptr)
       *ppComputeShader = m_state.cs.shader.ref();
     
-    if (pNumClassInstances != nullptr) {
-      Logger::err("D3D11: CSGetShader: Class instances not implemented");
+    if (pNumClassInstances != nullptr)
       *pNumClassInstances = 0;
-    }
   }
   
   
