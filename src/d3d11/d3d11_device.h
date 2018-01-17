@@ -313,6 +313,10 @@ namespace dxvk {
             ID3D11Resource*                   pResource,
             D3D11_DEPTH_STENCIL_VIEW_DESC*    pDesc);
     
+    HRESULT SetShaderResourceViewDescUnspecValues(
+            ID3D11Resource*                   pResource,
+            D3D11_SHADER_RESOURCE_VIEW_DESC*  pDesc);
+    
     VkSamplerAddressMode DecodeAddressMode(
             D3D11_TEXTURE_ADDRESS_MODE  mode) const;
     

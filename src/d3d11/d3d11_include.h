@@ -17,6 +17,9 @@
 #define D3D11_KEEP_UNORDERED_ACCESS_VIEWS 0xFFFFFFFF
 #endif
 
+#define D3D11_DXVK_USE_REMAINING_LAYERS 0xFFFFFFFF
+#define D3D11_DXVK_USE_REMAINING_LEVELS 0xFFFFFFFF
+
 // Most of these were copied from d3d11.h
 // For some strange reason, we cannot use the structures
 // directly, although others from the same header work.
