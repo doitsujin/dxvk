@@ -213,7 +213,7 @@ namespace dxvk {
       const D3D11Buffer* resource = static_cast<D3D11Buffer*>(pResource);
       const Rc<DxvkBuffer> buffer = resource->GetBufferSlice().buffer();
       
-      if (buffer->mapPtr(0) == nullptr) {
+      if (!(buffer->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) {
         Logger::err("D3D11: Cannot map a device-local buffer");
         return E_INVALIDARG;
       }
@@ -680,7 +680,14 @@ namespace dxvk {
         return;
       }
       
-      if (size != 0) {
+      if (size == 0)
+        return;
+      
+      if (((size == bufferSlice.length())
+       && (bufferSlice.memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))) {
+        m_context->invalidateBuffer(bufferSlice.buffer());
+        std::memcpy(bufferSlice.mapPtr(0), pSrcData, size);
+      } else {
         m_context->updateBuffer(
           bufferSlice.buffer(),
           bufferSlice.offset() + offset,

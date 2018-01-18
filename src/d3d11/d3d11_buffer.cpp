@@ -120,7 +120,23 @@ namespace dxvk {
     }
     
     return m_device->GetDXVKDevice()->createBuffer(
-      info, GetMemoryFlagsForUsage(pDesc->Usage));
+      info, GetMemoryFlags(pDesc));
+  }
+  
+  
+  VkMemoryPropertyFlags D3D11Buffer::GetMemoryFlags(
+    const D3D11_BUFFER_DESC* pDesc) const {
+    // Default constant buffers may get updated frequently with calls
+    // to D3D11DeviceContext::UpdateSubresource, so we'll map them to
+    // host memory in order to allow direct access to the buffer
+    if ((pDesc->Usage == D3D11_USAGE_DEFAULT)
+     && (pDesc->BindFlags & D3D11_BIND_CONSTANT_BUFFER)) {
+      return VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+           | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    }
+    
+    // Use default memory flags for the intended use
+    return GetMemoryFlagsForUsage(pDesc->Usage);
   }
   
 }

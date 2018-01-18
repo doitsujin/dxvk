@@ -103,6 +103,17 @@ namespace dxvk {
     }
     
     /**
+     * \brief Memory type flags
+     * 
+     * Use this to determine whether a
+     * buffer is mapped to host memory.
+     * \returns Vulkan memory flags
+     */
+    VkMemoryPropertyFlags memFlags() const {
+      return m_memFlags;
+    }
+    
+    /**
      * \brief Buffer handle
      * \returns Buffer handle
      */
@@ -258,6 +269,12 @@ namespace dxvk {
     
     Rc<DxvkResource> resource() const {
       return m_buffer->resource();
+    }
+    
+    VkMemoryPropertyFlags memFlags() const {
+      return m_buffer != nullptr
+        ? m_buffer->memFlags()
+        : 0;
     }
     
     VkBuffer handle() const {

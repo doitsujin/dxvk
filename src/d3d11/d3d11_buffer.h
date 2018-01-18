@@ -59,6 +59,9 @@ namespace dxvk {
     Rc<DxvkBuffer> CreateBuffer(
       const D3D11_BUFFER_DESC* pDesc) const;
     
+    VkMemoryPropertyFlags GetMemoryFlags(
+      const D3D11_BUFFER_DESC* pDesc) const;
+    
   };
   
 }
