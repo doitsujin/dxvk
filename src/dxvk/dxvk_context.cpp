@@ -326,7 +326,7 @@ namespace dxvk {
     m_barriers.recordCommands(m_cmd);
     
     VkBufferImageCopy copyRegion;
-    copyRegion.bufferOffset       = srcOffset;
+    copyRegion.bufferOffset       = srcSlice.offset();
     copyRegion.bufferRowLength    = srcExtent.width;
     copyRegion.bufferImageHeight  = srcExtent.height;
     copyRegion.imageSubresource   = dstSubresource;
