@@ -21,9 +21,7 @@ namespace dxvk {
     ~DxvkBarrierSet();
         
     void accessBuffer(
-      const Rc<DxvkBuffer>&           buffer,
-            VkDeviceSize              offset,
-            VkDeviceSize              size,
+      const DxvkPhysicalBufferSlice&  bufSlice,
             VkPipelineStageFlags      srcStages,
             VkAccessFlags             srcAccess,
             VkPipelineStageFlags      dstStages,

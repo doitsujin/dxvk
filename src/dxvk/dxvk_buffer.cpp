@@ -15,14 +15,13 @@ namespace dxvk {
   }
   
   
-  void DxvkBuffer::renameResource(
-    const Rc<DxvkPhysicalBuffer>& resource) {
+  void DxvkBuffer::renameResource(const DxvkPhysicalBufferSlice& resource) {
     m_resource = resource;
   }
   
   
-  Rc<DxvkPhysicalBuffer> DxvkBuffer::allocateResource() {
-    return m_device->allocBufferResource(m_info, m_memFlags);
+  DxvkPhysicalBufferSlice DxvkBuffer::allocateResource() {
+    return m_device->allocBufferResource(m_info, m_memFlags)->slice(0);
   }
   
   

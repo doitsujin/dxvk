@@ -44,7 +44,7 @@ namespace dxvk {
      * \returns Buffer handle
      */
     VkBuffer handle() const {
-      return m_resource->handle();;
+      return m_resource.handle();
     }
     
     /**
@@ -57,7 +57,7 @@ namespace dxvk {
      * \returns Pointer to mapped memory region
      */
     void* mapPtr(VkDeviceSize offset) const {
-      return m_resource->mapPtr(offset);
+      return m_resource.mapPtr(offset);
     }
     
     /**
@@ -70,7 +70,7 @@ namespace dxvk {
      * \returns \c true if the buffer is in use
      */
     bool isInUse() const {
-      return m_resource->isInUse();
+      return m_resource.resource()->isInUse();
     }
     
     /**
@@ -80,7 +80,7 @@ namespace dxvk {
      * \returns The resource object
      */
     Rc<DxvkResource> resource() const {
-      return m_resource;
+      return m_resource.resource();
     }
     
     /**
@@ -93,13 +93,36 @@ namespace dxvk {
      * \param [in] resource The new backing resource
      */
     void renameResource(
-      const Rc<DxvkPhysicalBuffer>& resource);
+      const DxvkPhysicalBufferSlice& resource);
     
     /**
      * \brief Allocates new backing resource
      * \returns The new buffer
      */
-    Rc<DxvkPhysicalBuffer> allocateResource();
+    DxvkPhysicalBufferSlice allocateResource();
+    
+    /**
+     * \brief Physical buffer slice
+     * 
+     * Retrieves a slice into the physical
+     * buffer which backs this buffer.
+     * \returns The backing slice
+     */
+    DxvkPhysicalBufferSlice slice() const {
+      return m_resource;
+    }
+    
+    /**
+     * \brief Physical buffer sub slice
+     * 
+     * Retrieves a sub slice into the backing buffer.
+     * \param [in] offset Offset into the buffer
+     * \param [in] length Length of the slice
+     * \returns The sub slice
+     */
+    DxvkPhysicalBufferSlice subSlice(VkDeviceSize offset, VkDeviceSize length) const {
+      return m_resource.subSlice(offset, length);
+    }
     
   private:
     
@@ -107,7 +130,7 @@ namespace dxvk {
     DxvkBufferCreateInfo    m_info;
     VkMemoryPropertyFlags   m_memFlags;
     
-    Rc<DxvkPhysicalBuffer>  m_resource;
+    DxvkPhysicalBufferSlice m_resource;
     
   };
   
@@ -152,6 +175,16 @@ namespace dxvk {
      */
     Rc<DxvkBuffer> buffer() const {
       return m_buffer;
+    }
+    
+    /**
+     * \brief Underlying buffer slice
+     * \returns Slice backing the view
+     */
+    DxvkPhysicalBufferSlice slice() const {
+      return m_buffer->subSlice(
+        m_info.rangeOffset,
+        m_info.rangeLength);
     }
     
   private:
@@ -215,6 +248,10 @@ namespace dxvk {
     
     size_t length() const {
       return m_length;
+    }
+    
+    DxvkPhysicalBufferSlice physicalSlice() const {
+      return m_buffer->subSlice(m_offset, m_length);
     }
     
     void* mapPtr(VkDeviceSize offset) const  {

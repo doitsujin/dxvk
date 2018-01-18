@@ -163,6 +163,17 @@ namespace dxvk {
     }
     
     /**
+     * \brief Sub slice into the physical buffer
+     * 
+     * \param [in] offset Offset, relative to this slice
+     * \param [in] length Number of bytes of the sub slice
+     * \returns The sub slice
+     */
+    DxvkPhysicalBufferSlice subSlice(VkDeviceSize offset, VkDeviceSize length) const {
+      return DxvkPhysicalBufferSlice(m_buffer, m_offset + offset, length);
+    }
+    
+    /**
      * \brief Map pointer
      * 
      * Retrieves a pointer into the mapped memory

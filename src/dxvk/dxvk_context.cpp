@@ -273,14 +273,14 @@ namespace dxvk {
         1, &bufferRegion);
       
       m_barriers.accessBuffer(
-        srcBuffer, srcOffset, numBytes,
+        srcBuffer->subSlice(srcOffset, numBytes),
         VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_ACCESS_TRANSFER_READ_BIT,
         srcBuffer->info().stages,
         srcBuffer->info().access);
       
       m_barriers.accessBuffer(
-        dstBuffer, dstOffset, numBytes,
+        dstBuffer->subSlice(dstOffset, numBytes),
         VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_ACCESS_TRANSFER_WRITE_BIT,
         dstBuffer->info().stages,
@@ -652,7 +652,7 @@ namespace dxvk {
       }
       
       m_barriers.accessBuffer(
-        buffer, offset, size,
+        buffer->subSlice(offset, size),
         VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_ACCESS_TRANSFER_WRITE_BIT,
         buffer->info().stages,
@@ -1274,9 +1274,7 @@ namespace dxvk {
       
       if (binding.type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER) {
         m_barriers.accessBuffer(
-          slot.bufferSlice.buffer(),
-          slot.bufferSlice.offset(),
-          slot.bufferSlice.length(),
+          slot.bufferSlice.physicalSlice(),
           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
           VK_ACCESS_SHADER_READ_BIT | 
           VK_ACCESS_SHADER_WRITE_BIT,
@@ -1284,9 +1282,7 @@ namespace dxvk {
           slot.bufferSlice.buffer()->info().access);
       } else if (binding.type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {
         m_barriers.accessBuffer(
-          slot.bufferView->buffer(),
-          slot.bufferView->info().rangeOffset,
-          slot.bufferView->info().rangeLength,
+          slot.bufferView->slice(),
           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
           VK_ACCESS_SHADER_READ_BIT | 
           VK_ACCESS_SHADER_WRITE_BIT,

@@ -6,9 +6,7 @@ namespace dxvk {
   DxvkBarrierSet::~DxvkBarrierSet() { }
   
   void DxvkBarrierSet::accessBuffer(
-    const Rc<DxvkBuffer>&           buffer,
-          VkDeviceSize              offset,
-          VkDeviceSize              size,
+    const DxvkPhysicalBufferSlice&  bufSlice,
           VkPipelineStageFlags      srcStages,
           VkAccessFlags             srcAccess,
           VkPipelineStageFlags      dstStages,
@@ -27,9 +25,9 @@ namespace dxvk {
       barrier.dstAccessMask       = dstAccess;
       barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
       barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-      barrier.buffer              = buffer->handle();
-      barrier.offset              = offset;
-      barrier.size                = size;
+      barrier.buffer              = bufSlice.handle();
+      barrier.offset              = bufSlice.offset();
+      barrier.size                = bufSlice.length();
       m_bufBarriers.push_back(barrier);
     }
   }
