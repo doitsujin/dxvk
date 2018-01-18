@@ -40,14 +40,6 @@ namespace dxvk {
     }
     
     /**
-     * \brief Buffer handle
-     * \returns Buffer handle
-     */
-    VkBuffer handle() const {
-      return m_resource.handle();
-    }
-    
-    /**
      * \brief Map pointer
      * 
      * If the buffer has been created on a host-visible
@@ -195,6 +187,9 @@ namespace dxvk {
     DxvkBufferViewCreateInfo m_info;
     VkBufferView             m_view;
     
+    void createBufferView();
+    void destroyBufferView();
+    
   };
   
   
@@ -238,12 +233,6 @@ namespace dxvk {
       return m_buffer != nullptr
         ? m_buffer->memFlags()
         : 0;
-    }
-    
-    VkBuffer handle() const {
-      return m_buffer != nullptr
-        ? m_buffer->handle()
-        : VK_NULL_HANDLE;
     }
     
     size_t offset() const {

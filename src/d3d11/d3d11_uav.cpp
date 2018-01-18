@@ -26,7 +26,7 @@ namespace dxvk {
   
   
   D3D11UnorderedAccessView::~D3D11UnorderedAccessView() {
-    if (m_counterSlice.handle() != VK_NULL_HANDLE)
+    if (m_counterSlice.defined())
       m_device->FreeCounterSlice(m_counterSlice);
   }
   

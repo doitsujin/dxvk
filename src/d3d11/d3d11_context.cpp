@@ -2004,7 +2004,7 @@ namespace dxvk {
         const DxvkBufferSlice counterSlice = uav->GetCounterSlice();
         const D3D11UavCounter counterValue = { pUAVInitialCounts[i] };
         
-        if (counterSlice.handle() != VK_NULL_HANDLE
+        if (counterSlice.defined()
          && counterValue.atomicCtr != 0xFFFFFFFFu) {
           m_context->updateBuffer(
             counterSlice.buffer(),

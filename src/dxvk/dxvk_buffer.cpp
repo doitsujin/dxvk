@@ -30,21 +30,33 @@ namespace dxvk {
     const Rc<DxvkBuffer>&           buffer,
     const DxvkBufferViewCreateInfo& info)
   : m_vkd(vkd), m_buffer(buffer), m_info(info) {
+    this->createBufferView();
+  }
+  
+  
+  DxvkBufferView::~DxvkBufferView() {
+    this->destroyBufferView();
+  }
+  
+  
+  void DxvkBufferView::createBufferView() {
+    auto physicalSlice = this->slice();
+    
     VkBufferViewCreateInfo viewInfo;
     viewInfo.sType  = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
     viewInfo.pNext  = nullptr;
     viewInfo.flags  = 0;
-    viewInfo.buffer = buffer->handle();
-    viewInfo.format = info.format;
-    viewInfo.offset = info.rangeOffset;
-    viewInfo.range  = info.rangeLength;
+    viewInfo.buffer = physicalSlice.handle();
+    viewInfo.format = m_info.format;
+    viewInfo.offset = physicalSlice.offset();
+    viewInfo.range  = physicalSlice.length();
     
     if (m_vkd->vkCreateBufferView(m_vkd->device(), &viewInfo, nullptr, &m_view) != VK_SUCCESS)
       throw DxvkError("DxvkBufferView::DxvkBufferView: Failed to create buffer view");
   }
   
   
-  DxvkBufferView::~DxvkBufferView() {
+  void DxvkBufferView::destroyBufferView() {
     m_vkd->vkDestroyBufferView(
       m_vkd->device(), m_view, nullptr);
   }
