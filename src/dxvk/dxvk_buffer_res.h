@@ -196,9 +196,9 @@ namespace dxvk {
     
   private:
     
-    Rc<DxvkPhysicalBuffer> m_buffer;
-    VkDeviceSize           m_offset;
-    VkDeviceSize           m_length;
+    Rc<DxvkPhysicalBuffer> m_buffer = nullptr;
+    VkDeviceSize           m_offset = 0;
+    VkDeviceSize           m_length = 0;
     
   };
   
