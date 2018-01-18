@@ -8,9 +8,10 @@ namespace dxvk {
           VkDeviceSize          sliceCount,
           DxvkMemoryAllocator&  memAlloc,
           VkMemoryPropertyFlags memFlags)
-  : m_vkd(vkd),
-    m_sliceLength(createInfo.size),
-    m_sliceStride(align(createInfo.size, 256)) {
+  : m_vkd         (vkd),
+    m_sliceCount  (sliceCount),
+    m_sliceLength (createInfo.size),
+    m_sliceStride (align(createInfo.size, 256)) {
     
     VkBufferCreateInfo info;
     info.sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;

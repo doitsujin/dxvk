@@ -79,6 +79,14 @@ namespace dxvk {
     }
     
     /**
+     * \brief Number of slices
+     * \returns Total slice count
+     */
+    VkDeviceSize sliceCount() const {
+      return m_sliceCount;
+    }
+    
+    /**
      * \brief Map pointer
      * 
      * Retrieves a pointer into the mapped memory region
@@ -108,6 +116,7 @@ namespace dxvk {
     DxvkMemory        m_memory;
     VkBuffer          m_handle;
     
+    VkDeviceSize      m_sliceCount;
     VkDeviceSize      m_sliceLength;
     VkDeviceSize      m_sliceStride;
     

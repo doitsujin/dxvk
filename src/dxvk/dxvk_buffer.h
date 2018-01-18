@@ -49,7 +49,7 @@ namespace dxvk {
      * \returns Pointer to mapped memory region
      */
     void* mapPtr(VkDeviceSize offset) const {
-      return m_resource.mapPtr(offset);
+      return m_physSlice.mapPtr(offset);
     }
     
     /**
@@ -62,7 +62,7 @@ namespace dxvk {
      * \returns \c true if the buffer is in use
      */
     bool isInUse() const {
-      return m_resource.resource()->isInUse();
+      return m_physSlice.resource()->isInUse();
     }
     
     /**
@@ -72,26 +72,8 @@ namespace dxvk {
      * \returns The resource object
      */
     Rc<DxvkResource> resource() const {
-      return m_resource.resource();
+      return m_physSlice.resource();
     }
-    
-    /**
-     * \brief Replaces backing resource
-     * 
-     * Replaces the underlying buffer and implicitly marks
-     * any buffer views using this resource as dirty. Do
-     * not call this directly as this is called implicitly
-     * by the context's \c invalidateBuffer method.
-     * \param [in] resource The new backing resource
-     */
-    void renameResource(
-      const DxvkPhysicalBufferSlice& resource);
-    
-    /**
-     * \brief Allocates new backing resource
-     * \returns The new buffer
-     */
-    DxvkPhysicalBufferSlice allocateResource();
     
     /**
      * \brief Physical buffer slice
@@ -101,7 +83,7 @@ namespace dxvk {
      * \returns The backing slice
      */
     DxvkPhysicalBufferSlice slice() const {
-      return m_resource;
+      return m_physSlice;
     }
     
     /**
@@ -113,16 +95,48 @@ namespace dxvk {
      * \returns The sub slice
      */
     DxvkPhysicalBufferSlice subSlice(VkDeviceSize offset, VkDeviceSize length) const {
-      return m_resource.subSlice(offset, length);
+      return m_physSlice.subSlice(offset, length);
     }
+    
+    /**
+     * \brief Replaces backing resource
+     * 
+     * Replaces the underlying buffer and implicitly marks
+     * any buffer views using this resource as dirty. Do
+     * not call this directly as this is called implicitly
+     * by the context's \c invalidateBuffer method.
+     * \param [in] slice The new backing resource
+     */
+    void rename(
+      const DxvkPhysicalBufferSlice& slice);
+    
+    /**
+     * \brief Allocates new physical resource
+     * 
+     * This method must not be called from multiple threads
+     * simultaneously, but it can be called in parallel with
+     * \ref rename and other methods of this class.
+     * \returns The new backing buffer slice
+     */
+    DxvkPhysicalBufferSlice allocPhysicalSlice();
     
   private:
     
     DxvkDevice*             m_device;
     DxvkBufferCreateInfo    m_info;
     VkMemoryPropertyFlags   m_memFlags;
+    DxvkPhysicalBufferSlice m_physSlice;
     
-    DxvkPhysicalBufferSlice m_resource;
+    // TODO maybe align this to a cache line in order
+    // to avoid false sharing once CSMT is implemented
+    VkDeviceSize m_physBufferId   = 0;
+    VkDeviceSize m_physSliceId    = 0;
+    VkDeviceSize m_physSliceCount = 1;
+    
+    std::array<Rc<DxvkPhysicalBuffer>, 2> m_physBuffers;
+    
+    Rc<DxvkPhysicalBuffer> allocPhysicalBuffer(
+            VkDeviceSize    sliceCount) const;
     
   };
   
