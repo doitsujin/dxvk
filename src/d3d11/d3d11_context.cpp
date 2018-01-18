@@ -684,7 +684,7 @@ namespace dxvk {
         return;
       
       if (((size == bufferSlice.length())
-       && (bufferSlice.memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))) {
+       && (bufferSlice.buffer()->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))) {
         m_context->invalidateBuffer(bufferSlice.buffer());
         std::memcpy(bufferSlice.mapPtr(0), pSrcData, size);
       } else {

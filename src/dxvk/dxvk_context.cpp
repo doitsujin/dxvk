@@ -65,8 +65,8 @@ namespace dxvk {
   void DxvkContext::bindIndexBuffer(
     const DxvkBufferSlice&      buffer,
           VkIndexType           indexType) {
-    if (m_state.vi.indexBuffer != buffer
-     || m_state.vi.indexType   != indexType) {
+    if (!m_state.vi.indexBuffer.matches(buffer)
+     || (m_state.vi.indexType != indexType)) {
       m_state.vi.indexBuffer = buffer;
       m_state.vi.indexType   = indexType;
       
@@ -78,7 +78,7 @@ namespace dxvk {
   void DxvkContext::bindResourceBuffer(
           uint32_t              slot,
     const DxvkBufferSlice&      buffer) {
-    if (m_rc[slot].bufferSlice != buffer) {
+    if (!m_rc[slot].bufferSlice.matches(buffer)) {
       m_rc[slot].bufferSlice = buffer;
       
       m_flags.set(
@@ -164,7 +164,7 @@ namespace dxvk {
           uint32_t              binding,
     const DxvkBufferSlice&      buffer,
           uint32_t              stride) {
-    if (m_state.vi.vertexBuffers[binding] != buffer) {
+    if (!m_state.vi.vertexBuffers[binding].matches(buffer)) {
       m_state.vi.vertexBuffers[binding] = buffer;
       m_flags.set(DxvkContextFlag::GpDirtyVertexBuffers);
     }
@@ -1126,7 +1126,7 @@ namespace dxvk {
             m_descriptors[i].texelBuffer = res.bufferView->handle();
             
             m_cmd->trackResource(res.bufferView);
-            m_cmd->trackResource(res.bufferView->buffer()->resource());
+            m_cmd->trackResource(res.bufferView->resource());
           } else {
             updatePipelineState |= bs.setUnbound(i);
           } break;
@@ -1141,7 +1141,7 @@ namespace dxvk {
             m_descriptors[i].buffer.offset = physicalSlice.offset();
             m_descriptors[i].buffer.range  = physicalSlice.length();
             
-            m_cmd->trackResource(res.bufferSlice.resource());
+            m_cmd->trackResource(physicalSlice.resource());
           } else {
             updatePipelineState |= bs.setUnbound(i);
           } break;
@@ -1299,16 +1299,16 @@ namespace dxvk {
           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
           VK_ACCESS_SHADER_READ_BIT | 
           VK_ACCESS_SHADER_WRITE_BIT,
-          slot.bufferSlice.buffer()->info().stages,
-          slot.bufferSlice.buffer()->info().access);
+          slot.bufferSlice.bufferInfo().stages,
+          slot.bufferSlice.bufferInfo().access);
       } else if (binding.type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {
         m_barriers.accessBuffer(
           slot.bufferView->slice(),
           VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
           VK_ACCESS_SHADER_READ_BIT | 
           VK_ACCESS_SHADER_WRITE_BIT,
-          slot.bufferView->buffer()->info().stages,
-          slot.bufferView->buffer()->info().access);
+          slot.bufferView->bufferInfo().stages,
+          slot.bufferView->bufferInfo().access);
       } else if (binding.type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
         m_barriers.accessImage(
           slot.imageView->image(),

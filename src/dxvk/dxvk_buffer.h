@@ -165,8 +165,16 @@ namespace dxvk {
      * \brief Underlying buffer object
      * \returns Underlying buffer object
      */
-    Rc<DxvkBuffer> buffer() const {
-      return m_buffer;
+    const DxvkBufferCreateInfo& bufferInfo() const {
+      return m_buffer->info();
+    }
+    
+    /**
+     * \brief Backing resource
+     * \returns Backing resource
+     */
+    Rc<DxvkResource> resource() const {
+      return m_buffer->resource();
     }
     
     /**
@@ -206,9 +214,6 @@ namespace dxvk {
     
     DxvkBufferSlice() { }
     
-    explicit DxvkBufferSlice(const Rc<DxvkBuffer>& buffer)
-    : DxvkBufferSlice(buffer, 0, buffer->info().size) { }
-    
     DxvkBufferSlice(
       const Rc<DxvkBuffer>& buffer,
             VkDeviceSize    rangeOffset,
@@ -217,50 +222,78 @@ namespace dxvk {
       m_offset(rangeOffset),
       m_length(rangeLength) { }
     
-    bool defined() const {
-      return m_buffer != nullptr;
-    }
+    explicit DxvkBufferSlice(const Rc<DxvkBuffer>& buffer)
+    : DxvkBufferSlice(buffer, 0, buffer->info().size) { }
     
+    size_t offset() const { return m_offset; }
+    size_t length() const { return m_length; }
+    
+    /**
+     * \brief Underlying buffer
+     * \returns The virtual buffer
+     */
     Rc<DxvkBuffer> buffer() const {
       return m_buffer;
     }
     
-    Rc<DxvkResource> resource() const {
-      return m_buffer->resource();
+    /**
+     * \brief Buffer info
+     * 
+     * Retrieves the properties of the underlying
+     * virtual buffer. Should not be used directly
+     * by client APIs.
+     * \returns Buffer properties
+     */
+    const DxvkBufferCreateInfo& bufferInfo() const {
+      return m_buffer->info();
     }
     
-    VkMemoryPropertyFlags memFlags() const {
-      return m_buffer != nullptr
-        ? m_buffer->memFlags()
-        : 0;
+    /**
+     * \brief Checks whether the slice is valid
+     * 
+     * A buffer slice that does not point to any virtual
+     * buffer object is considered undefined and cannot
+     * be used for any operations.
+     * \returns \c true if the slice is defined
+     */
+    bool defined() const {
+      return m_buffer != nullptr;
     }
     
-    size_t offset() const {
-      return m_offset;
-    }
-    
-    size_t length() const {
-      return m_length;
-    }
-    
+    /**
+     * \brief Physical slice
+     * 
+     * Retrieves the physical slice that currently
+     * backs the virtual slice. This may change
+     * when the virtual buffer gets invalidated.
+     * \returns The physical buffer slice
+     */
     DxvkPhysicalBufferSlice physicalSlice() const {
       return m_buffer->subSlice(m_offset, m_length);
     }
     
+    /**
+     * \brief Pointer to mapped memory region
+     * 
+     * \param [in] offset Offset into the slice
+     * \returns Pointer into mapped buffer memory
+     */
     void* mapPtr(VkDeviceSize offset) const  {
       return m_buffer->mapPtr(m_offset + offset);
     }
     
-    bool operator == (const DxvkBufferSlice& other) const {
+    /**
+     * \brief Checks whether two slices are equal
+     * 
+     * Two slices are considered equal if they point to
+     * the same memory region within the same buffer.
+     * \param [in] other The slice to compare to
+     * \returns \c true if the two slices are the same
+     */
+    bool matches(const DxvkBufferSlice& other) const {
       return this->m_buffer == other.m_buffer
           && this->m_offset == other.m_offset
           && this->m_length == other.m_length;
-    }
-    
-    bool operator != (const DxvkBufferSlice& other) const {
-      return this->m_buffer != other.m_buffer
-          || this->m_offset != other.m_offset
-          || this->m_length != other.m_length;
     }
     
   private:
