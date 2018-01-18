@@ -672,10 +672,7 @@ namespace dxvk {
     const void*                     data,
           VkDeviceSize              pitchPerRow,
           VkDeviceSize              pitchPerLayer) {
-    if (subresources.layerCount == 0) {
-      Logger::warn("DxvkContext::updateImage: Layer count is zero");
-      return;
-    }
+    this->renderPassEnd();
     
     // Upload data through a staging buffer. Special care needs to
     // be taken when dealing with compressed image formats: Rather
