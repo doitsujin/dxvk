@@ -1251,7 +1251,7 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE D3D11Device::GetDeviceRemovedReason() {
-    static std::atomic<bool> s_errorShown = false;
+    static std::atomic<bool> s_errorShown = { false };
     
     if (!s_errorShown.exchange(true))
       Logger::warn("D3D11Device::GetDeviceRemovedReason: Stub");
