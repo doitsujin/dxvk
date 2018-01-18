@@ -222,6 +222,10 @@ namespace dxvk {
       m_offset(rangeOffset),
       m_length(rangeLength) { }
     
+    bool defined() const {
+      return m_buffer != nullptr;
+    }
+    
     Rc<DxvkBuffer> buffer() const {
       return m_buffer;
     }
@@ -256,14 +260,6 @@ namespace dxvk {
     
     void* mapPtr(VkDeviceSize offset) const  {
       return m_buffer->mapPtr(m_offset + offset);
-    }
-    
-    VkDescriptorBufferInfo descriptorInfo() const {
-      VkDescriptorBufferInfo info;
-      info.buffer = m_buffer->handle();
-      info.offset = m_offset;
-      info.range  = m_length;
-      return info;
     }
     
     bool operator == (const DxvkBufferSlice& other) const {

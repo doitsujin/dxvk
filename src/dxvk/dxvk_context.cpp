@@ -448,9 +448,11 @@ namespace dxvk {
     const DxvkBufferSlice&  buffer) {
     this->commitComputeState();
     
+    auto physicalSlice = buffer.physicalSlice();
+    
     m_cmd->cmdDispatchIndirect(
-      buffer.handle(),
-      buffer.offset());
+      physicalSlice.handle(),
+      physicalSlice.offset());
     
     this->commitComputeBarriers();
   }
@@ -478,9 +480,11 @@ namespace dxvk {
     this->commitGraphicsState();
     
     if (m_gpActivePipeline != VK_NULL_HANDLE) {
+      auto physicalSlice = buffer.physicalSlice();
+      
       m_cmd->cmdDrawIndirect(
-        buffer.handle(),
-        buffer.offset(),
+        physicalSlice.handle(),
+        physicalSlice.offset(),
         count, stride);
     }
   }
@@ -510,9 +514,11 @@ namespace dxvk {
     this->commitGraphicsState();
     
     if (m_gpActivePipeline != VK_NULL_HANDLE) {
+      auto physicalSlice = buffer.physicalSlice();
+      
       m_cmd->cmdDrawIndexedIndirect(
-        buffer.handle(),
-        buffer.offset(),
+        physicalSlice.handle(),
+        physicalSlice.offset(),
         count, stride);
     }
   }
@@ -1118,10 +1124,14 @@ namespace dxvk {
         
         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-          if (res.bufferSlice.handle() != VK_NULL_HANDLE) {
+          if (res.bufferSlice.defined()) {
             updatePipelineState |= bs.setBound(i);
             
-            m_descriptors[i].buffer = res.bufferSlice.descriptorInfo();
+            auto physicalSlice = res.bufferSlice.physicalSlice();
+            m_descriptors[i].buffer.buffer = physicalSlice.handle();
+            m_descriptors[i].buffer.offset = physicalSlice.offset();
+            m_descriptors[i].buffer.range  = physicalSlice.length();
+            
             m_cmd->trackResource(res.bufferSlice.resource());
           } else {
             updatePipelineState |= bs.setUnbound(i);
@@ -1207,13 +1217,15 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpDirtyIndexBuffer)) {
       m_flags.clr(DxvkContextFlag::GpDirtyIndexBuffer);
       
-      if (m_state.vi.indexBuffer.handle() != VK_NULL_HANDLE) {
+      if (m_state.vi.indexBuffer.defined()) {
+        auto physicalSlice = m_state.vi.indexBuffer.physicalSlice();
+        
         m_cmd->cmdBindIndexBuffer(
-          m_state.vi.indexBuffer.handle(),
-          m_state.vi.indexBuffer.offset(),
+          physicalSlice.handle(),
+          physicalSlice.offset(),
           m_state.vi.indexType);
         m_cmd->trackResource(
-          m_state.vi.indexBuffer.resource());
+          physicalSlice.resource());
       }
     }
   }
@@ -1226,12 +1238,12 @@ namespace dxvk {
       for (uint32_t i = 0; i < m_state.gp.state.ilBindingCount; i++) {
         const uint32_t binding = m_state.gp.state.ilBindings[i].binding;
         
-        const DxvkBufferSlice& vbo = m_state.vi.vertexBuffers[binding];
-        
-        const VkBuffer     handle = vbo.handle();
-        const VkDeviceSize offset = vbo.offset();
-        
-        if (handle != VK_NULL_HANDLE) {
+        if (m_state.vi.vertexBuffers[binding].defined()) {
+          auto vbo = m_state.vi.vertexBuffers[binding].physicalSlice();
+          
+          const VkBuffer     handle = vbo.handle();
+          const VkDeviceSize offset = vbo.offset();
+          
           m_cmd->cmdBindVertexBuffers(binding, 1, &handle, &offset);
           m_cmd->trackResource(vbo.resource());
         }
