@@ -1,5 +1,6 @@
 #include <cstring>
 #include <fstream>
+#include <vector>
 
 #include <d3dcompiler.h>
 
@@ -46,9 +47,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
     return 1;
   }
   
-  std::string data;
-  data.resize(assembly->GetBufferSize());
-  std::memcpy(data.data(), assembly->GetBufferPointer(), data.size());
+  std::string data((const char *)assembly->GetBufferPointer(), assembly->GetBufferSize());
   std::cout << data;
   return 0;
 }

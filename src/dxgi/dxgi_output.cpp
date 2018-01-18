@@ -55,8 +55,9 @@ namespace dxvk {
     if (pDesc == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
-    ::MONITORINFOEX monInfo = { sizeof(monInfo) };
-    
+    ::MONITORINFOEX monInfo;
+
+    monInfo.cbSize = sizeof(monInfo);
     if (!::GetMonitorInfo(m_monitor, &monInfo)) {
       Logger::err("DxgiOutput: Failed to query monitor info");
       return E_FAIL;
@@ -82,8 +83,9 @@ namespace dxvk {
       return DXGI_ERROR_INVALID_CALL;
     
     // Query monitor info to get the device name
-    ::MONITORINFOEX monInfo = { sizeof(monInfo) };
-    
+    ::MONITORINFOEX monInfo;
+
+    monInfo.cbSize = sizeof(monInfo);
     if (!::GetMonitorInfo(m_monitor, &monInfo)) {
       Logger::err("DxgiOutput: Failed to query monitor info");
       return E_FAIL;

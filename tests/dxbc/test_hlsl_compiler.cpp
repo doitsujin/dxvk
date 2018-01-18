@@ -1,5 +1,6 @@
 #include <cstring>
 #include <fstream>
+#include <vector>
 
 #include <d3dcompiler.h>
 
