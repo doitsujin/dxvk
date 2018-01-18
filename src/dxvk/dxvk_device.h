@@ -107,7 +107,7 @@ namespace dxvk {
      * \param [in] memoryType Memory property flags
      * \returns The buffer resource object
      */
-    Rc<DxvkBufferResource> allocBufferResource(
+    Rc<DxvkPhysicalBuffer> allocBufferResource(
       const DxvkBufferCreateInfo& createInfo,
             VkMemoryPropertyFlags memoryType);
     

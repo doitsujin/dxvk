@@ -1,82 +1,8 @@
 #pragma once
 
-#include "dxvk_format.h"
-#include "dxvk_memory.h"
-#include "dxvk_resource.h"
+#include "dxvk_buffer_res.h"
 
 namespace dxvk {
-  
-  /**
-   * \brief Buffer create info
-   * 
-   * The properties of a buffer that are
-   * passed to \ref DxvkDevice::createBuffer
-   */
-  struct DxvkBufferCreateInfo {
-    /// Size of the buffer, in bytes
-    VkDeviceSize size;
-    
-    /// Buffer usage flags
-    VkBufferUsageFlags usage;
-    
-    /// Pipeline stages that can access
-    /// the contents of the buffer.
-    VkPipelineStageFlags stages;
-    
-    /// Allowed access patterns
-    VkAccessFlags access;
-  };
-  
-  
-  /**
-   * \brief Buffer view create info
-   * 
-   * The properties of a buffer view that
-   * are to \ref DxvkDevice::createBufferView
-   */
-  struct DxvkBufferViewCreateInfo {
-    /// Buffer data format, like image data
-    VkFormat format;
-    
-    /// Offset of the buffer region to include in the view
-    VkDeviceSize rangeOffset;
-    
-    /// Size of the buffer region to include in the view
-    VkDeviceSize rangeLength;
-  };
-  
-  
-  /**
-   * \brief Physical buffer resource
-   */
-  class DxvkBufferResource : public DxvkResource {
-    
-  public:
-    
-    DxvkBufferResource(
-      const Rc<vk::DeviceFn>&     vkd,
-      const DxvkBufferCreateInfo& createInfo,
-            DxvkMemoryAllocator&  memAlloc,
-            VkMemoryPropertyFlags memFlags);
-    
-    ~DxvkBufferResource();
-    
-    VkBuffer handle() const {
-      return m_buffer;
-    }
-    
-    void* mapPtr(VkDeviceSize offset) const {
-      return m_memory.mapPtr(offset);
-    }
-    
-  private:
-    
-    Rc<vk::DeviceFn>        m_vkd;
-    DxvkMemory              m_memory;
-    VkBuffer                m_buffer;
-    
-  };
-  
   
   /**
    * \brief Virtual buffer resource
@@ -167,13 +93,13 @@ namespace dxvk {
      * \param [in] resource The new backing resource
      */
     void renameResource(
-      const Rc<DxvkBufferResource>& resource);
+      const Rc<DxvkPhysicalBuffer>& resource);
     
     /**
      * \brief Allocates new backing resource
      * \returns The new buffer
      */
-    Rc<DxvkBufferResource> allocateResource();
+    Rc<DxvkPhysicalBuffer> allocateResource();
     
   private:
     
@@ -181,7 +107,7 @@ namespace dxvk {
     DxvkBufferCreateInfo    m_info;
     VkMemoryPropertyFlags   m_memFlags;
     
-    Rc<DxvkBufferResource>  m_resource;
+    Rc<DxvkPhysicalBuffer>  m_resource;
     
   };
   
