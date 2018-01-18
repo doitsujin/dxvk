@@ -1389,6 +1389,7 @@ namespace dxvk {
     }
     
     if (featureLevel >= D3D_FEATURE_LEVEL_10_1) {
+      enabled.dualSrcBlend                          = VK_TRUE;
       enabled.imageCubeArray                        = VK_TRUE;
     }
     
