@@ -105,34 +105,29 @@ extern "C" {
       if (pFeatureLevel != nullptr)
         *pFeatureLevel = fl;
       
-      // The documentation is unclear about what exactly should be done if
-      // the application passes NULL to ppDevice, but a non-NULL pointer to
-      // ppImmediateContext. In our implementation, the immediate context
-      // does not hold a strong reference to the device that owns it, so
-      // if we cannot write back the device, it would be destroyed.
-      if (ppDevice != nullptr) {
-        Com<IDXGIDevicePrivate> dxvkDevice = nullptr;
-        
-        const VkPhysicalDeviceFeatures deviceFeatures
-          = D3D11Device::GetDeviceFeatures(adapter, fl);
-        
-        if (FAILED(DXGICreateDevicePrivate(dxvkAdapter.ptr(), &deviceFeatures, &dxvkDevice))) {
-          Logger::err("D3D11CreateDevice: Failed to create DXGI device");
-          return E_FAIL;
-        }
-        
-        Com<D3D11Device> d3d11Device = new D3D11Device(
-          dxvkDevice.ptr(), fl, Flags);
-        
-        *ppDevice = d3d11Device.ref();
-        if (ppImmediateContext != nullptr)
-          d3d11Device->GetImmediateContext(ppImmediateContext);
-        return S_OK;
-      } else {
-        Logger::warn("D3D11CreateDevice: ppDevice is null");
-        return S_OK;
+      // If we cannot write back either the device or
+      // the context, don't create the device at all
+      if (ppDevice == nullptr && ppImmediateContext == nullptr)
+        return S_FALSE;
+      
+      Com<IDXGIDevicePrivate> dxvkDevice = nullptr;
+      
+      const VkPhysicalDeviceFeatures deviceFeatures
+        = D3D11Device::GetDeviceFeatures(adapter, fl);
+      
+      if (FAILED(DXGICreateDevicePrivate(dxvkAdapter.ptr(), &deviceFeatures, &dxvkDevice))) {
+        Logger::err("D3D11CreateDevice: Failed to create DXGI device");
+        return E_FAIL;
       }
       
+      Com<D3D11Device> d3d11Device = new D3D11Device(dxvkDevice.ptr(), fl, Flags);
+      
+      if (ppDevice != nullptr)
+        *ppDevice = d3d11Device.ref();
+      
+      if (ppImmediateContext != nullptr)
+        d3d11Device->GetImmediateContext(ppImmediateContext);
+      return S_OK;
     } catch (const DxvkError& e) {
       Logger::err("D3D11CreateDevice: Failed to create D3D11 device");
       return E_FAIL;
