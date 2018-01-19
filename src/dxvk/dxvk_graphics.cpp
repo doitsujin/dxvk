@@ -283,9 +283,9 @@ namespace dxvk {
       if (m_device->hasOption(DxvkOption::AssumeNoZfight))
         return VK_RASTERIZATION_ORDER_RELAXED_AMD;
       
-      if (state.dsDepthCompareOp == VK_COMPARE_OP_NEVER
-       || state.dsDepthCompareOp == VK_COMPARE_OP_LESS
-       || state.dsDepthCompareOp == VK_COMPARE_OP_GREATER)
+      if (state.dsEnableDepthTest && state.dsEnableDepthWrite
+       && (state.dsDepthCompareOp == VK_COMPARE_OP_LESS
+        || state.dsDepthCompareOp == VK_COMPARE_OP_GREATER))
         return VK_RASTERIZATION_ORDER_RELAXED_AMD;
     }
     
