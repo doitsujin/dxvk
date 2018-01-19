@@ -4,6 +4,8 @@ Provides a Vulkan-based implementation of DXGI and D3D11 in order to run 3D appl
 
 For the current status of the project, please refer to the [project wiki](https://github.com/doitsujin/dxvk/wiki).
 
+For binary releases, see the [releases](https://github.com/doitsujin/dxvk/releases) page.
+
 ## Build instructions
 
 ### Requirements:
