@@ -2327,8 +2327,9 @@ namespace dxvk {
         imageLayerDim, offsetIds.data());
     }
     
-    // The LOD is not present when reading from a buffer
-    if (imageType.dim != spv::DimBuffer) {
+    // The LOD is not present when reading from
+    // a buffer or from a multisample texture.
+    if (imageType.dim != spv::DimBuffer && imageType.ms == 0) {
       DxbcRegisterValue imageLod = emitRegisterExtract(
         address, DxbcRegMask(false, false, false, true));
       
@@ -2336,8 +2337,8 @@ namespace dxvk {
       imageOperands.sLod = imageLod.id;
     }
     
-    // The ld2ms instruction also has a sample index, but
-    // we are only allowed to set it for multisample views
+    // The ld2ms instruction has a sample index, but we
+    // are only allowed to set it for multisample views
     if (ins.op == DxbcOpcode::LdMs && imageType.ms == 1) {
       DxbcRegisterValue sampleId = emitRegisterLoad(
         ins.src[2], DxbcRegMask(true, false, false, false));
