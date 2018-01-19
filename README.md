@@ -1,6 +1,6 @@
 # DXVK
 
-Provides a Vulkan-based implementation of DXGI and D3D11 in order to run 3D applications on Linux using Wine.
+A Vulkan-based compatibility layer for Direct3D 11 which allows running 3D applications on Linux using Wine.
 
 For the current status of the project, please refer to the [project wiki](https://github.com/doitsujin/dxvk/wiki).
 
@@ -33,15 +33,19 @@ Both `dxgi.dll` and `d3d11.dll`as well as some demo executables will be located 
 ## How to use
 In order to run `executable.exe` with DXVK,
 * Copy `dxgi.dll` and `d3d11.dll` into the same directory as the executable
-* Run `WINEDLLOVERRIDES=d3d11,dxgi=n wine executable.exe`
+* Set `dxgi.dll` and `d3d11.dll` to *native* in your wine configuration. Note that *native,builtin* may not work for some applications.
 
-DXVK will create a file `dxgi.log` in the current working directory and may print out messages to stderr.
+In order to verify that your application uses DXVK instead of wined3d, check for the presence of the log files `d3d11.log` and `dxgi.log`, or enable the HUD.
+
+### Online multi-player games
+Manipulation of Direct3D libraries in multi-player games may be considered cheating and can get your account **banned**. This may also apply to single-player games with an embedded or dedicated multiplayer portion. **Use at your own risk.**
 
 ### Environment variables
 The behaviour of DXVK can be modified with environment variables.
 
-- `DXVK_SHADER_DUMP_PATH=directory` Writes all DXBC and SPIR-V shaders to the given directory
 - `DXVK_DEBUG_LAYERS=1` Enables Vulkan debug layers. Highly recommended for troubleshooting and debugging purposes.
+- `DXVK_SHADER_DUMP_PATH=directory` Writes all DXBC and SPIR-V shaders to the given directory
+- `DXVK_LOG_LEVEL=error|warn|info|debug|trace` Controls message logging.
 - `DXVK_HUD=1` Enables the HUD
 
 ## Samples and executables
