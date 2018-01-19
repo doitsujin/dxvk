@@ -182,13 +182,6 @@ namespace dxvk {
     const VkImageSubresourceRange&  subresources) {
     this->renderPassEnd();
     
-    const DxvkFormatInfo* formatInfo = imageFormatInfo(image->info().format);
-    
-    if (formatInfo->flags.test(DxvkFormatFlag::BlockCompressed)) {
-      Logger::err("DxvkContext: Compressed clears not supported");
-      return;
-    }
-    
     if (image->info().layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
       m_barriers.accessImage(image, subresources,
         VK_IMAGE_LAYOUT_UNDEFINED, 0, 0,
