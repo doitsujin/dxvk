@@ -684,7 +684,7 @@ namespace dxvk {
           pInputElementDescs[i].SemanticIndex);
         
         if (entry == nullptr) {
-          Logger::warn(str::format(
+          Logger::debug(str::format(
             "D3D11Device: No such vertex shader semantic: ",
             pInputElementDescs[i].SemanticName,
             pInputElementDescs[i].SemanticIndex));
