@@ -254,28 +254,8 @@ namespace dxvk {
         return E_INVALIDARG;
       }
       
-      // FIXME copy current image contents into the
-      // buffer unless D3D11_MAP_DISCARD is used.
-      if (MapType == D3D11_MAP_READ || MapType == D3D11_MAP_READ_WRITE) {
-        Logger::err("D3D11DeviceContext: Read-only and Read-Write mapping of images currently not supported");
-        return E_INVALIDARG;
-      }
-      
       if (pMappedResource == nullptr)
         return S_FALSE;
-      
-      if (textureInfo->imageBuffer->isInUse()) {
-        // Don't wait if the application tells us not to
-        if (MapFlags & D3D11_MAP_FLAG_DO_NOT_WAIT)
-          return DXGI_ERROR_WAS_STILL_DRAWING;
-        
-        if (MapType == D3D11_MAP_WRITE_DISCARD) {
-          m_context->invalidateBuffer(textureInfo->imageBuffer);
-        } else if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE) {
-          this->Flush();
-          this->Synchronize();
-        }
-      }
       
       // Query format and subresource in order to compute
       // the row pitch and layer pitch properly.
@@ -293,6 +273,29 @@ namespace dxvk {
         levelExtent.width  / formatInfo->blockSize.width,
         levelExtent.height / formatInfo->blockSize.height,
         levelExtent.depth  / formatInfo->blockSize.depth };
+      
+      // When using any map mode which requires the image contents
+      // to be preserved, copy image contents into the buffer.
+      if (MapType != D3D11_MAP_WRITE_DISCARD) {
+        const VkImageSubresourceLayers subresourceLayers = {
+          textureInfo->mappedSubresource.aspectMask,
+          textureInfo->mappedSubresource.mipLevel,
+          textureInfo->mappedSubresource.arrayLayer, 1 };
+        
+        m_context->copyImageToBuffer(
+          textureInfo->imageBuffer, 0, { 0u, 0u },
+          textureInfo->image, subresourceLayers,
+          VkOffset3D { 0, 0, 0 }, levelExtent);
+      }
+      
+      if (textureInfo->imageBuffer->isInUse()) {
+        if (MapType == D3D11_MAP_WRITE_DISCARD) {
+          m_context->invalidateBuffer(textureInfo->imageBuffer);
+        } else {
+          this->Flush();
+          this->Synchronize();
+        }
+      }
       
       // Set up map pointer. Data is tightly packed within the mapped buffer.
       pMappedResource->pData      = textureInfo->imageBuffer->mapPtr(0);

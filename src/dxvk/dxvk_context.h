@@ -224,7 +224,27 @@ namespace dxvk {
             VkImageSubresourceLayers srcSubresource,
             VkOffset3D            srcOffset,
             VkExtent3D            extent);
-      
+    
+    /**
+     * \brief Copies data from an image into a buffer
+     * 
+     * \param [in] dstBuffer Destination buffer
+     * \param [in] dstOffset Destination offset, in bytes
+     * \param [in] dstExtent Destination data extent
+     * \param [in] srcImage Source image
+     * \param [in] srcSubresource Source subresource
+     * \param [in] srcOffset Source area offset
+     * \param [in] srcExtent Source area size
+     */
+    void copyImageToBuffer(
+      const Rc<DxvkBuffer>&       dstBuffer,
+            VkDeviceSize          dstOffset,
+            VkExtent2D            dstExtent,
+      const Rc<DxvkImage>&        srcImage,
+            VkImageSubresourceLayers srcSubresource,
+            VkOffset3D            srcOffset,
+            VkExtent3D            srcExtent);
+    
     /**
      * \brief Starts compute jobs
      * 
