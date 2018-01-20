@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../dxvk/dxvk_adapter.h"
+#include "../dxvk/dxvk_cs.h"
 #include "../dxvk/dxvk_device.h"
 
 #include "d3d11_context_state.h"
@@ -563,6 +564,12 @@ namespace dxvk {
     void ApplyViewportState();
     
     Rc<DxvkSampler> CreateDefaultSampler();
+    
+    template<typename Cmd>
+    void EmitCs(Cmd&& command) {
+      // TODO push to CS chunk
+      command.execute(m_context.ptr());
+    }
     
   };
   

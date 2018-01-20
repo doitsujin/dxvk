@@ -200,6 +200,7 @@ namespace dxvk {
   
   
   void D3D11ImmediateContext::Synchronize() {
+    // TODO sync with CS thread
     m_device->waitForIdle();
   }
   
