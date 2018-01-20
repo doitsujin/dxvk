@@ -25,9 +25,7 @@ namespace dxvk {
   
   
   DxvkCsThread::DxvkCsThread(const Rc<DxvkContext>& context)
-  : m_context(context),
-    m_curChunk(new DxvkCsChunk()),
-    m_thread([this] { threadFunc(); }) {
+  : m_context(context), m_thread([this] { threadFunc(); }) {
     
   }
   
@@ -44,16 +42,10 @@ namespace dxvk {
   
   void DxvkCsThread::dispatchChunk(Rc<DxvkCsChunk>&& chunk) {
     { std::unique_lock<std::mutex> lock(m_mutex);
-      m_chunks.push(std::move(m_curChunk));
+      m_chunks.push(std::move(chunk));
     }
     
     m_condOnAdd.notify_one();
-  }
-  
-  
-  void DxvkCsThread::flush() {
-    dispatchChunk(std::move(m_curChunk));
-    m_curChunk = new DxvkCsChunk();
   }
   
   

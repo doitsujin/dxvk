@@ -135,19 +135,6 @@ namespace dxvk {
     ~DxvkCsThread();
     
     /**
-     * \brief Dispatches a new command
-     * 
-     * Adds the command to the current chunk and
-     * dispatches the chunk in case it is full.
-     * \param [in] command The command
-     */
-    template<typename T>
-    void dispatch(T&& command) {
-      while (!m_curChunk->push(command))
-        this->flush();
-    }
-    
-    /**
      * \brief Dispatches an entire chunk
      * 
      * Can be used to efficiently play back large
@@ -155,15 +142,6 @@ namespace dxvk {
      * \param [in] chunk The chunk to dispatch
      */
     void dispatchChunk(Rc<DxvkCsChunk>&& chunk);
-    
-    /**
-     * \brief Dispatches current chunk
-     * 
-     * Adds the current chunk to the dispatch
-     * queue and makes an empty chunk current.
-     * Call this before \ref synchronize.
-     */
-    void flush();
     
     /**
      * \brief Synchronizes with the thread
@@ -179,17 +157,12 @@ namespace dxvk {
     
     const Rc<DxvkContext>       m_context;
     
-    // Chunk that is being recorded
-    Rc<DxvkCsChunk>             m_curChunk;
-    
-    // Chunks that are executing
     std::atomic<bool>           m_stopped = { false };
     std::mutex                  m_mutex;
     std::condition_variable     m_condOnAdd;
     std::condition_variable     m_condOnSync;
     std::queue<Rc<DxvkCsChunk>> m_chunks;
-    
-    std::thread m_thread;
+    std::thread                 m_thread;
     
     void threadFunc();
     
