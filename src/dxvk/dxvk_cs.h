@@ -138,7 +138,9 @@ namespace dxvk {
    * commands on a DXVK context. 
    */
   class DxvkCsThread {
-    
+    // Limit the number of chunks in the queue
+    // to prevent memory leaks, stuttering etc.
+    constexpr static uint32_t MaxChunksInFlight = 128;
   public:
     
     DxvkCsThread(const Rc<DxvkContext>& context);

@@ -565,6 +565,8 @@ namespace dxvk {
       if (((size == bufferSlice.length())
        && (bufferSlice.buffer()->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))) {
         auto physicalSlice = bufferSlice.buffer()->allocPhysicalSlice();
+        physicalSlice.resource()->acquire();
+        
         std::memcpy(physicalSlice.mapPtr(0), pSrcData, size);
         
         EmitCs([
@@ -572,6 +574,7 @@ namespace dxvk {
           cPhysicalSlice = std::move(physicalSlice)
         ] (DxvkContext* ctx) {
           ctx->invalidateBuffer(cDstBuffer, cPhysicalSlice);
+          cPhysicalSlice.resource()->release();
         });
       } else {
         EmitCs([

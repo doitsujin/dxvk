@@ -44,6 +44,10 @@ namespace dxvk {
     { std::unique_lock<std::mutex> lock(m_mutex);
       m_chunks.push(std::move(chunk));
       m_chunksPending += 1;
+      
+      m_condOnSync.wait(lock, [this] {
+        return m_stopped.load() || (m_chunksPending < MaxChunksInFlight);
+      });
     }
     
     m_condOnAdd.notify_one();
@@ -78,13 +82,11 @@ namespace dxvk {
       if (chunk != nullptr) {
         chunk->executeAll(m_context.ptr());
         
-        const bool doNotify = [this] {
-          std::unique_lock<std::mutex> lock(m_mutex);
-          return --m_chunksPending == 0;
-        }();
+        { std::unique_lock<std::mutex> lock(m_mutex);
+          m_chunksPending -= 1;
+        }
         
-        if (doNotify)
-          m_condOnSync.notify_one();
+        m_condOnSync.notify_one();
       }
     }
   }
