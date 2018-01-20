@@ -73,6 +73,16 @@ namespace dxvk {
     ~DxvkCsChunk();
     
     /**
+     * \brief Number of commands recorded to the chunk
+     * 
+     * Can be used to check whether the chunk needs to
+     * be dispatched or just to keep track of statistics.
+     */
+    size_t commandCount() const {
+      return m_commandCount;
+    }
+    
+    /**
      * \brief Tries to add a command to the chunk
      * 
      * If the given command can be added to the chunk, it
