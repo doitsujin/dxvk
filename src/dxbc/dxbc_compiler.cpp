@@ -2564,8 +2564,6 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitTextureSample(const DxbcShaderInstruction& ins) {
-    // TODO support remaining sample ops
-    
     // All sample instructions have at least these operands:
     //    (dst0) The destination register
     //    (src0) Texture coordinates
@@ -2622,10 +2620,11 @@ namespace dxvk {
       ? emitRegisterLoad(ins.src[4], coordLayerMask)
       : DxbcRegisterValue();
     
-    // Explicit LOD value for certain sample operations
-    const bool hasExplicitLod = ins.op == DxbcOpcode::SampleL;
+    // LOD for certain sample operations
+    const bool hasLod = ins.op == DxbcOpcode::SampleL
+                     || ins.op == DxbcOpcode::SampleB;
     
-    const DxbcRegisterValue explicitLod = hasExplicitLod
+    const DxbcRegisterValue lod = hasLod
       ? emitRegisterLoad(ins.src[3], DxbcRegMask(true, false, false, false))
       : DxbcRegisterValue();
     
@@ -2716,9 +2715,19 @@ namespace dxvk {
       // Sample operation with explicit LOD
       case DxbcOpcode::SampleL: {
         imageOperands.flags |= spv::ImageOperandsLodMask;
-        imageOperands.sLod = explicitLod.id;
+        imageOperands.sLod = lod.id;
         
         result.id = m_module.opImageSampleExplicitLod(
+          getVectorTypeId(result.type), sampledImageId, coord.id,
+          imageOperands);
+      } break;
+      
+      // Sample operation with LOD bias
+      case DxbcOpcode::SampleB: {
+        imageOperands.flags |= spv::ImageOperandsBiasMask;
+        imageOperands.sLodBias = lod.id;
+        
+        result.id = m_module.opImageSampleImplicitLod(
           getVectorTypeId(result.type), sampledImageId, coord.id,
           imageOperands);
       } break;
