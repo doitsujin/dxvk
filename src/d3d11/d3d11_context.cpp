@@ -880,8 +880,10 @@ namespace dxvk {
     if (m_state.vs.shader != shader) {
       m_state.vs.shader = shader;
       
-      m_context->bindShader(VK_SHADER_STAGE_VERTEX_BIT,
-        shader != nullptr ? shader->GetShader() : nullptr);
+      EmitCs([cShader = shader != nullptr ? shader->GetShader() : nullptr]
+      (DxvkContext* ctx) {
+        ctx->bindShader(VK_SHADER_STAGE_VERTEX_BIT, cShader);
+      });
     }
   }
   
@@ -1141,8 +1143,10 @@ namespace dxvk {
     if (m_state.gs.shader != shader) {
       m_state.gs.shader = shader;
       
-      m_context->bindShader(VK_SHADER_STAGE_GEOMETRY_BIT,
-        shader != nullptr ? shader->GetShader() : nullptr);
+      EmitCs([cShader = shader != nullptr ? shader->GetShader() : nullptr]
+      (DxvkContext* ctx) {
+        ctx->bindShader(VK_SHADER_STAGE_GEOMETRY_BIT, cShader);
+      });
     }
   }
   
@@ -1234,8 +1238,10 @@ namespace dxvk {
     if (m_state.ps.shader != shader) {
       m_state.ps.shader = shader;
       
-      m_context->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT,
-        shader != nullptr ? shader->GetShader() : nullptr);
+      EmitCs([cShader = shader != nullptr ? shader->GetShader() : nullptr]
+      (DxvkContext* ctx) {
+        ctx->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, cShader);
+      });
     }
   }
   
@@ -1327,8 +1333,10 @@ namespace dxvk {
     if (m_state.cs.shader != shader) {
       m_state.cs.shader = shader;
       
-      m_context->bindShader(VK_SHADER_STAGE_COMPUTE_BIT,
-        shader != nullptr ? shader->GetShader() : nullptr);
+      EmitCs([cShader = shader != nullptr ? shader->GetShader() : nullptr]
+      (DxvkContext* ctx) {
+        ctx->bindShader(VK_SHADER_STAGE_COMPUTE_BIT, cShader);
+      });
     }
   }
   
@@ -1744,13 +1752,14 @@ namespace dxvk {
       if (Bindings[StartSlot + i] != newBuffer) {
         Bindings[StartSlot + i] = newBuffer;
         
-        if (newBuffer != nullptr) {
-          m_context->bindResourceBuffer(
-            slotId + i, newBuffer->GetBufferSlice(0));
-        } else {
-          m_context->bindResourceBuffer(
-            slotId + i, DxvkBufferSlice());
-        }
+        EmitCs([
+          cSlotId = slotId + i,
+          cSlice  = newBuffer != nullptr
+            ? newBuffer->GetBufferSlice()
+            : DxvkBufferSlice()
+        ] (DxvkContext* ctx) {
+          ctx->bindResourceBuffer(cSlotId, cSlice);
+        });
       }
     }
   }
@@ -1772,13 +1781,14 @@ namespace dxvk {
       if (Bindings[StartSlot + i] != sampler) {
         Bindings[StartSlot + i] = sampler;
         
-        if (sampler != nullptr) {
-          m_context->bindResourceSampler(
-            slotId + i, sampler->GetDXVKSampler());
-        } else {
-          m_context->bindResourceSampler(
-            slotId + i, m_defaultSampler);
-        }
+        EmitCs([
+          cSlotId  = slotId + i,
+          cSampler = sampler != nullptr
+            ? sampler->GetDXVKSampler()
+            : m_defaultSampler
+        ] (DxvkContext* ctx) {
+          ctx->bindResourceSampler(cSlotId, cSampler);
+        });
       }
     }
   }
@@ -1803,17 +1813,23 @@ namespace dxvk {
         if (resView != nullptr) {
           // Figure out what we have to bind based on the resource type
           if (resView->GetResourceType() == D3D11_RESOURCE_DIMENSION_BUFFER) {
-            m_context->bindResourceTexelBuffer(
-              slotId + i, resView->GetBufferView());
+            EmitCs([cSlotId = slotId + i, cView = resView->GetBufferView()]
+            (DxvkContext* ctx) {
+              ctx->bindResourceTexelBuffer(cSlotId, cView);
+            });
           } else {
-            m_context->bindResourceImage(
-              slotId + i, resView->GetImageView());
+            EmitCs([cSlotId = slotId + i, cView = resView->GetImageView()]
+            (DxvkContext* ctx) {
+              ctx->bindResourceImage(cSlotId, cView);
+            });
           }
         } else {
           // When unbinding a resource, it doesn't really matter if
           // the resource type is correct, so we'll just bind a null
           // image to the given resource slot
-          m_context->bindResourceImage(slotId + i, nullptr);
+          EmitCs([cSlotId = slotId + i] (DxvkContext* ctx) {
+            ctx->bindResourceImage(cSlotId, nullptr);
+          });
         }
       }
     }
@@ -1843,20 +1859,30 @@ namespace dxvk {
         if (uav != nullptr) {
           // Figure out what we have to bind based on the resource type
           if (uav->GetResourceType() == D3D11_RESOURCE_DIMENSION_BUFFER) {
-            m_context->bindResourceTexelBuffer(
-              uavSlotId + i, uav->GetBufferView());
-            m_context->bindResourceBuffer(
-              ctrSlotId + i, uav->GetCounterSlice());
+            EmitCs([
+              cUavSlotId = uavSlotId + i,
+              cCtrSlotId = ctrSlotId + i,
+              cUavBuffer = uav->GetBufferView(),
+              cCtrBuffer = uav->GetCounterSlice()
+            ] (DxvkContext* ctx) {
+              ctx->bindResourceTexelBuffer(cUavSlotId, cUavBuffer);
+              ctx->bindResourceBuffer     (cCtrSlotId, cCtrBuffer);
+            });
           } else {
-            m_context->bindResourceImage(
-              uavSlotId + i, uav->GetImageView());
+            EmitCs([cUavSlotId = uavSlotId + i, cUavImage = uav->GetImageView()]
+            (DxvkContext* ctx) {
+              ctx->bindResourceImage(cUavSlotId, cUavImage);
+            });
           }
         } else {
           // When unbinding a resource, it doesn't really matter if
           // the resource type is correct, so we'll just bind a null
           // image to the given resource slot
-          m_context->bindResourceTexelBuffer(uavSlotId + i, nullptr);
-          m_context->bindResourceBuffer     (ctrSlotId + i, DxvkBufferSlice());
+          EmitCs([cUavSlotId = uavSlotId + i, cCtrSlotId = ctrSlotId + i]
+          (DxvkContext* ctx) {
+            ctx->bindResourceTexelBuffer(cUavSlotId, nullptr);
+            ctx->bindResourceBuffer     (cCtrSlotId, DxvkBufferSlice());
+          });
         }
       }
     }
@@ -1876,11 +1902,13 @@ namespace dxvk {
         
         if (counterSlice.defined()
          && counterValue.atomicCtr != 0xFFFFFFFFu) {
-          m_context->updateBuffer(
-            counterSlice.buffer(),
-            counterSlice.offset(),
-            counterSlice.length(),
-            &counterValue);
+          EmitCs([counterSlice, counterValue] (DxvkContext* ctx) {
+            ctx->updateBuffer(
+              counterSlice.buffer(),
+              counterSlice.offset(),
+              counterSlice.length(),
+              &counterValue);
+          });
         }
       }
     }
