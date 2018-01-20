@@ -174,6 +174,8 @@ namespace dxvk {
     std::queue<Rc<DxvkCsChunk>> m_chunks;
     std::thread                 m_thread;
     
+    uint32_t                    m_chunksPending = 0;
+    
     void threadFunc();
     
   };

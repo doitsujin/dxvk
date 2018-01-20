@@ -45,6 +45,8 @@ namespace dxvk {
     
   private:
     
+    DxvkCsThread m_csThread;
+    
     void Synchronize();
     void SynchronizeCs();
     

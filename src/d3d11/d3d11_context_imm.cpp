@@ -7,13 +7,16 @@ namespace dxvk {
   D3D11ImmediateContext::D3D11ImmediateContext(
     D3D11Device*    parent,
     Rc<DxvkDevice>  device)
-  : D3D11DeviceContext(parent, device) {
+  : D3D11DeviceContext(parent, device),
+    m_csThread(device->createContext()) {
     
   }
   
   
   D3D11ImmediateContext::~D3D11ImmediateContext() {
-    
+    Flush();
+    SynchronizeCs();
+    Synchronize();
   }
   
   
@@ -113,6 +116,7 @@ namespace dxvk {
             return DXGI_ERROR_WAS_STILL_DRAWING;
           
           Flush();
+          SynchronizeCs();
           Synchronize();
         }
       }
@@ -189,6 +193,7 @@ namespace dxvk {
         });
         
         Flush();
+        SynchronizeCs();
         Synchronize();
         
         physicalSlice = textureInfo->imageBuffer->slice();
@@ -247,16 +252,15 @@ namespace dxvk {
   
   
   void D3D11ImmediateContext::SynchronizeCs() {
-    // Dispatch recorded commands first,
     EmitCsChunk();
     
-    // TODO synchronize with CS thread
+    m_csThread.synchronize();
   }
   
   
   void D3D11ImmediateContext::EmitCsChunk() {
     if (m_csChunk->commandCount() > 0) {
-      m_csChunk->executeAll(m_context.ptr());
+      m_csThread.dispatchChunk(std::move(m_csChunk));
       m_csChunk = new DxvkCsChunk();
     }
   }

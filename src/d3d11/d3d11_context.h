@@ -518,7 +518,6 @@ namespace dxvk {
     D3D11Device* const m_parent;
     
     Rc<DxvkDevice>              m_device;
-    Rc<DxvkContext>             m_context;
     Rc<DxvkCsChunk>             m_csChunk;
     Rc<DxvkSampler>             m_defaultSampler;
     

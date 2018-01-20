@@ -43,6 +43,7 @@ namespace dxvk {
   void DxvkCsThread::dispatchChunk(Rc<DxvkCsChunk>&& chunk) {
     { std::unique_lock<std::mutex> lock(m_mutex);
       m_chunks.push(std::move(chunk));
+      m_chunksPending += 1;
     }
     
     m_condOnAdd.notify_one();
@@ -53,7 +54,7 @@ namespace dxvk {
     std::unique_lock<std::mutex> lock(m_mutex);
     
     m_condOnSync.wait(lock, [this] {
-      return m_chunks.size() == 0;
+      return m_chunksPending == 0;
     });
   }
   
@@ -71,14 +72,20 @@ namespace dxvk {
         if (m_chunks.size() != 0) {
           chunk = std::move(m_chunks.front());
           m_chunks.pop();
-          
-          if (m_chunks.size() == 0)
-            m_condOnSync.notify_one();
         }
       }
       
-      if (chunk != nullptr)
+      if (chunk != nullptr) {
         chunk->executeAll(m_context.ptr());
+        
+        const bool doNotify = [this] {
+          std::unique_lock<std::mutex> lock(m_mutex);
+          return --m_chunksPending == 0;
+        }();
+        
+        if (doNotify)
+          m_condOnSync.notify_one();
+      }
     }
   }
   
