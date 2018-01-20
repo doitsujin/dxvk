@@ -15,8 +15,7 @@ namespace dxvk {
   : m_parent(parent),
     m_device(device) {
     m_context = m_device->createContext();
-    m_context->beginRecording(
-      m_device->createCommandList());
+    
     // Create default state objects. We won't ever return them
     // to the application, but we'll use them to apply state.
     Com<ID3D11BlendState>         defaultBlendState;
@@ -30,23 +29,33 @@ namespace dxvk {
     
     // Apply default state to the context. This is required
     // in order to initialize the DXVK contex properly.
-    m_defaultBlendState = static_cast<D3D11BlendState*>(defaultBlendState.ptr());
-    m_defaultBlendState->BindToContext(m_context, 0xFFFFFFFF);
-    
+    m_defaultBlendState        = static_cast<D3D11BlendState*>       (defaultBlendState.ptr());
     m_defaultDepthStencilState = static_cast<D3D11DepthStencilState*>(defaultDepthStencilState.ptr());
-    m_defaultDepthStencilState->BindToContext(m_context);
-    
-    m_defaultRasterizerState = static_cast<D3D11RasterizerState*>(defaultRasterizerState.ptr());
-    m_defaultRasterizerState->BindToContext(m_context);
-    
-    m_context->setBlendConstants(DxvkBlendConstants {
-      m_state.om.blendFactor[0], m_state.om.blendFactor[1],
-      m_state.om.blendFactor[2], m_state.om.blendFactor[3] });
-    m_context->setStencilReference(m_state.om.stencilRef);
+    m_defaultRasterizerState   = static_cast<D3D11RasterizerState*>  (defaultRasterizerState.ptr());
     
     // Create a default sampler that we're going to bind
     // when the application binds null to a sampler slot.
     m_defaultSampler = CreateDefaultSampler();
+    
+    EmitCs([
+      dev     = m_device,
+      bsState = m_defaultBlendState,
+      dsState = m_defaultDepthStencilState,
+      rsState = m_defaultRasterizerState,
+      blendConst = DxvkBlendConstants {
+        m_state.om.blendFactor[0], m_state.om.blendFactor[1],
+        m_state.om.blendFactor[2], m_state.om.blendFactor[3] },
+      stencilRef = m_state.om.stencilRef
+    ] (DxvkContext* ctx) {
+      ctx->beginRecording(dev->createCommandList());
+      
+      bsState->BindToContext(ctx, 0xFFFFFFFF);
+      dsState->BindToContext(ctx);
+      rsState->BindToContext(ctx);
+      
+      ctx->setBlendConstants  (blendConst);
+      ctx->setStencilReference(stencilRef);
+    });
   }
   
   

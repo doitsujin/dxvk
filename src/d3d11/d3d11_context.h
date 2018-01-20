@@ -568,7 +568,7 @@ namespace dxvk {
     template<typename Cmd>
     void EmitCs(Cmd&& command) {
       // TODO push to CS chunk
-      command.execute(m_context.ptr());
+      command(m_context.ptr());
     }
     
   };

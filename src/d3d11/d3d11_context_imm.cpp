@@ -41,12 +41,14 @@ namespace dxvk {
     m_parent->FlushInitContext();
     m_drawCount = 0;
     
-    m_device->submitCommandList(
-      m_context->endRecording(),
-      nullptr, nullptr);
-    
-    m_context->beginRecording(
-      m_device->createCommandList());
+    EmitCs([dev = m_device] (DxvkContext* ctx) {
+      dev->submitCommandList(
+        ctx->endRecording(),
+        nullptr, nullptr);
+      
+      ctx->beginRecording(
+        dev->createCommandList());
+    });
   }
   
   
