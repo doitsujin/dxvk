@@ -1002,9 +1002,9 @@ namespace dxvk {
   
   
   void DxvkContext::setBlendConstants(
-    const float               blendConstants[4]) {
+    const DxvkBlendConstants&   blendConstants) {
     for (uint32_t i = 0; i < 4; i++)
-      m_state.om.blendConstants[i] = blendConstants[i];
+      m_state.om.blendConstants = blendConstants;
     
     this->updateBlendConstants();
   }
@@ -1400,7 +1400,7 @@ namespace dxvk {
   
   
   void DxvkContext::updateBlendConstants() {
-    m_cmd->cmdSetBlendConstants(m_state.om.blendConstants);
+    m_cmd->cmdSetBlendConstants(&m_state.om.blendConstants.r);
   }
   
   

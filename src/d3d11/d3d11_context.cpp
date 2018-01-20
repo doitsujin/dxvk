@@ -39,7 +39,9 @@ namespace dxvk {
     m_defaultRasterizerState = static_cast<D3D11RasterizerState*>(defaultRasterizerState.ptr());
     m_defaultRasterizerState->BindToContext(m_context);
     
-    m_context->setBlendConstants(m_state.om.blendFactor);
+    m_context->setBlendConstants(DxvkBlendConstants {
+      m_state.om.blendFactor[0], m_state.om.blendFactor[1],
+      m_state.om.blendFactor[2], m_state.om.blendFactor[3] });
     m_context->setStencilReference(m_state.om.stencilRef);
     
     // Create a default sampler that we're going to bind
@@ -1481,9 +1483,11 @@ namespace dxvk {
       blendState->BindToContext(m_context, SampleMask);
     }
     
-    if ((BlendFactor != nullptr) && (!std::memcmp(m_state.om.blendFactor, BlendFactor, 4 * sizeof(FLOAT)))) {
+    if (BlendFactor != nullptr) {
       std::memcpy(m_state.om.blendFactor, BlendFactor, 4 * sizeof(FLOAT));
-      m_context->setBlendConstants(BlendFactor);
+      
+      m_context->setBlendConstants(DxvkBlendConstants {
+        BlendFactor[0], BlendFactor[1], BlendFactor[2], BlendFactor[3] });
     }
   }
   

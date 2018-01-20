@@ -438,7 +438,7 @@ namespace dxvk {
      * \param [in] blendConstants Blend constants
      */
     void setBlendConstants(
-      const float               blendConstants[4]);
+      const DxvkBlendConstants& blendConstants);
     
     /**
      * \brief Sets stencil reference
