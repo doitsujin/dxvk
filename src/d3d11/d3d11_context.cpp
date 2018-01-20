@@ -595,9 +595,12 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeviceContext::Draw(
           UINT            VertexCount,
           UINT            StartVertexLocation) {
-    m_context->draw(
-      VertexCount, 1,
-      StartVertexLocation, 0);
+    EmitCs([=] (DxvkContext* ctx) {
+      ctx->draw(
+        VertexCount, 1,
+        StartVertexLocation, 0);
+    });
+    
     m_drawCount += 1;
   }
   
@@ -606,10 +609,13 @@ namespace dxvk {
           UINT            IndexCount,
           UINT            StartIndexLocation,
           INT             BaseVertexLocation) {
-    m_context->drawIndexed(
-      IndexCount, 1,
-      StartIndexLocation,
-      BaseVertexLocation, 0);
+    EmitCs([=] (DxvkContext* ctx) {
+      ctx->drawIndexed(
+        IndexCount, 1,
+        StartIndexLocation,
+        BaseVertexLocation, 0);
+    });
+    
     m_drawCount += 1;
   }
   
@@ -619,11 +625,14 @@ namespace dxvk {
           UINT            InstanceCount,
           UINT            StartVertexLocation,
           UINT            StartInstanceLocation) {
-    m_context->draw(
-      VertexCountPerInstance,
-      InstanceCount,
-      StartVertexLocation,
-      StartInstanceLocation);
+    EmitCs([=] (DxvkContext* ctx) {
+      ctx->draw(
+        VertexCountPerInstance,
+        InstanceCount,
+        StartVertexLocation,
+        StartInstanceLocation);
+    });
+    
     m_drawCount += 1;
   }
   
@@ -634,12 +643,15 @@ namespace dxvk {
           UINT            StartIndexLocation,
           INT             BaseVertexLocation,
           UINT            StartInstanceLocation) {
-    m_context->drawIndexed(
-      IndexCountPerInstance,
-      InstanceCount,
-      StartIndexLocation,
-      BaseVertexLocation,
-      StartInstanceLocation);
+    EmitCs([=] (DxvkContext* ctx) {
+      ctx->drawIndexed(
+        IndexCountPerInstance,
+        InstanceCount,
+        StartIndexLocation,
+        BaseVertexLocation,
+        StartInstanceLocation);
+    });
+    
     m_drawCount += 1;
   }
   
@@ -648,9 +660,13 @@ namespace dxvk {
           ID3D11Buffer*   pBufferForArgs,
           UINT            AlignedByteOffsetForArgs) {
     D3D11Buffer* buffer = static_cast<D3D11Buffer*>(pBufferForArgs);
-    DxvkBufferSlice bufferSlice = buffer->GetBufferSlice(AlignedByteOffsetForArgs);
     
-    m_context->drawIndexedIndirect(bufferSlice, 1, 0);
+    EmitCs([bufferSlice = buffer->GetBufferSlice(AlignedByteOffsetForArgs)]
+    (DxvkContext* ctx) {
+      ctx->drawIndexedIndirect(
+        bufferSlice, 1, 0);
+    });
+    
     m_drawCount += 1;
   }
   
@@ -659,9 +675,12 @@ namespace dxvk {
           ID3D11Buffer*   pBufferForArgs,
           UINT            AlignedByteOffsetForArgs) {
     D3D11Buffer* buffer = static_cast<D3D11Buffer*>(pBufferForArgs);
-    DxvkBufferSlice bufferSlice = buffer->GetBufferSlice(AlignedByteOffsetForArgs);
     
-    m_context->drawIndirect(bufferSlice, 1, 0);
+    EmitCs([bufferSlice = buffer->GetBufferSlice(AlignedByteOffsetForArgs)]
+    (DxvkContext* ctx) {
+      ctx->drawIndirect(bufferSlice, 1, 0);
+    });
+    
     m_drawCount += 1;
   }
   
@@ -670,10 +689,13 @@ namespace dxvk {
           UINT            ThreadGroupCountX,
           UINT            ThreadGroupCountY,
           UINT            ThreadGroupCountZ) {
-    m_context->dispatch(
-      ThreadGroupCountX,
-      ThreadGroupCountY,
-      ThreadGroupCountZ);
+    EmitCs([=] (DxvkContext* ctx) {
+      ctx->dispatch(
+        ThreadGroupCountX,
+        ThreadGroupCountY,
+        ThreadGroupCountZ);
+    });
+    
     m_drawCount += 1;
   }
   
@@ -682,9 +704,12 @@ namespace dxvk {
           ID3D11Buffer*   pBufferForArgs,
           UINT            AlignedByteOffsetForArgs) {
     D3D11Buffer* buffer = static_cast<D3D11Buffer*>(pBufferForArgs);
-    DxvkBufferSlice bufferSlice = buffer->GetBufferSlice(AlignedByteOffsetForArgs);
     
-    m_context->dispatchIndirect(bufferSlice);
+    EmitCs([bufferSlice = buffer->GetBufferSlice(AlignedByteOffsetForArgs)]
+    (DxvkContext* ctx) {
+      ctx->dispatchIndirect(bufferSlice);
+    });
+    
     m_drawCount += 1;
   }
   
