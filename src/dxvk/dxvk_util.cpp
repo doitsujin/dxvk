@@ -48,8 +48,8 @@ namespace dxvk::util {
     const VkDeviceSize bytesPerLayer = blockCount.height * bytesPerRow;
     const VkDeviceSize bytesTotal    = blockCount.depth  * bytesPerLayer;
     
-    const bool directCopy = (bytesPerRow   == pitchPerRow  ) || (blockCount.height == 1)
-                         && (bytesPerLayer == pitchPerLayer) || (blockCount.depth  == 1);
+    const bool directCopy = ((bytesPerRow   == pitchPerRow  ) || (blockCount.height == 1))
+                         && ((bytesPerLayer == pitchPerLayer) || (blockCount.depth  == 1));
     
     if (directCopy) {
       std::memcpy(dstData, srcData, bytesTotal);
