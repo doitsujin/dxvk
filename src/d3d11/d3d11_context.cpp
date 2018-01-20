@@ -720,10 +720,15 @@ namespace dxvk {
     if (m_state.ia.inputLayout != inputLayout) {
       m_state.ia.inputLayout = inputLayout;
       
-      if (inputLayout != nullptr)
-        inputLayout->BindToContext(m_context);
-      else
-        m_context->setInputLayout(0, nullptr, 0, nullptr);
+      if (inputLayout != nullptr) {
+        EmitCs([inputLayout] (DxvkContext* ctx) {
+          inputLayout->BindToContext(ctx);
+        });
+      } else {
+        EmitCs([inputLayout] (DxvkContext* ctx) {
+          ctx->setInputLayout(0, nullptr, 0, nullptr);
+        });
+      }
     }
   }
   
@@ -763,7 +768,9 @@ namespace dxvk {
         
       }();
       
-      m_context->setInputAssemblyState(iaState);
+      EmitCs([iaState] (DxvkContext* ctx) {
+        ctx->setInputAssemblyState(iaState);
+      });
     }
   }
   
@@ -784,12 +791,19 @@ namespace dxvk {
       m_state.ia.vertexBuffers[i].stride = pStrides[i];
       
       if (newBuffer != nullptr) {
-        m_context->bindVertexBuffer(StartSlot + i,
-          newBuffer->GetBufferSlice(pOffsets[i]),
-          pStrides[i]);
+        EmitCs([
+          slotId = StartSlot + i,
+          offset = pOffsets[i],
+          stride = pStrides[i],
+          slice  = newBuffer->GetBufferSlice(pOffsets[i])
+        ] (DxvkContext* ctx) {
+          ctx->bindVertexBuffer(
+            slotId, slice, stride);
+        });
       } else {
-        m_context->bindVertexBuffer(StartSlot + i,
-          DxvkBufferSlice(), 0);
+        EmitCs([cSlotId = StartSlot + i] (DxvkContext* ctx) {
+          ctx->bindVertexBuffer(cSlotId, DxvkBufferSlice(), 0);
+        });
       }
     }
   }
@@ -817,9 +831,11 @@ namespace dxvk {
         default: Logger::err(str::format("D3D11: Invalid index format: ", Format));
       }
       
-      m_context->bindIndexBuffer(
-        newBuffer->GetBufferSlice(Offset),
-        indexType);
+      EmitCs([indexType,
+        slice = newBuffer->GetBufferSlice(Offset)
+      ] (DxvkContext* ctx) {
+        ctx->bindIndexBuffer(slice, indexType);
+      });
     }
   }
   
