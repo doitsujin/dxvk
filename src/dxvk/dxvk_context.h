@@ -352,7 +352,7 @@ namespace dxvk {
     /**
      * \brief Invalidates a buffer's contents
      * 
-     * Discards a buffer's contents by allocating a new
+     * Discards a buffer's contents by replacing the
      * backing resource. This allows the host to access
      * the buffer while the GPU is still accessing the
      * original backing resource.
@@ -360,9 +360,11 @@ namespace dxvk {
      * \warning If the buffer is used by another context,
      * invalidating it will result in undefined behaviour.
      * \param [in] buffer The buffer to invalidate
+     * \param [in] slice New physical buffer slice
      */
     void invalidateBuffer(
-      const Rc<DxvkBuffer>&           buffer);
+      const Rc<DxvkBuffer>&           buffer,
+      const DxvkPhysicalBufferSlice&  slice);
     
     /**
      * \brief Resolves a multisampled image resource

@@ -263,6 +263,18 @@ namespace dxvk {
     }
     
     /**
+     * \brief Buffer sub slice
+     * 
+     * Takes a sub slice from this slice.
+     * \param [in] offset Sub slice offset
+     * \param [in] length Sub slice length
+     * \returns The sub slice object
+     */
+    DxvkBufferSlice subSlice(VkDeviceSize offset, VkDeviceSize length) const {
+      return DxvkBufferSlice(m_buffer, offset, length);
+    }
+    
+    /**
      * \brief Checks whether the slice is valid
      * 
      * A buffer slice that does not point to any virtual

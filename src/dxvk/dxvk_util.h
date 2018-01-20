@@ -22,6 +22,24 @@ namespace dxvk::util {
   uint32_t computeMipLevelCount(VkExtent3D imageSize);
   
   /**
+   * \brief Writes tightly packed image data to a buffer
+   * 
+   * \param [in] dstData Destination buffer pointer
+   * \param [in] srcData Pointer to source data
+   * \param [in] blockCount Number of blocks to copy
+   * \param [in] blockSize Number of bytes per block
+   * \param [in] pitchPerRow Number of bytes between rows
+   * \param [in] pitchPerLayer Number of bytes between layers
+   */
+  void packImageData(
+          char*             dstData,
+    const char*             srcData,
+          VkExtent3D        blockCount,
+          VkDeviceSize      blockSize,
+          VkDeviceSize      pitchPerRow,
+          VkDeviceSize      pitchPerLayer);
+  
+  /**
    * \brief Computes block count for compressed images
    * 
    * Convenience function to compute the size, in

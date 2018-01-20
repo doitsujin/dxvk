@@ -547,8 +547,8 @@ namespace dxvk {
       const auto bufferResource = static_cast<D3D11Buffer*>(pDstResource);
       const auto bufferSlice = bufferResource->GetBufferSlice();
       
-      VkDeviceSize offset = 0;
-      VkDeviceSize size = bufferSlice.length();
+      VkDeviceSize offset = bufferSlice.offset();
+      VkDeviceSize size   = bufferSlice.length();
       
       if (pDstBox != nullptr) {
         offset = pDstBox->left;
@@ -565,13 +565,26 @@ namespace dxvk {
       
       if (((size == bufferSlice.length())
        && (bufferSlice.buffer()->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))) {
-        m_context->invalidateBuffer(bufferSlice.buffer());
-        std::memcpy(bufferSlice.mapPtr(0), pSrcData, size);
+        auto physicalSlice = bufferSlice.buffer()->allocPhysicalSlice();
+        std::memcpy(physicalSlice.mapPtr(0), pSrcData, size);
+        
+        EmitCs([
+          cDstBuffer     = bufferSlice.buffer(),
+          cPhysicalSlice = std::move(physicalSlice)
+        ] (DxvkContext* ctx) {
+          ctx->invalidateBuffer(cDstBuffer, cPhysicalSlice);
+        });
       } else {
-        m_context->updateBuffer(
-          bufferSlice.buffer(),
-          bufferSlice.offset() + offset,
-          size, pSrcData);
+        EmitCs([
+          cDataBuffer   = Rc<DxvkDataBuffer>(new DxvkDataBuffer(pSrcData, size)),
+          cBufferSlice  = bufferSlice.subSlice(offset, size)
+        ] (DxvkContext* ctx) {
+          ctx->updateBuffer(
+            cBufferSlice.buffer(),
+            cBufferSlice.offset(),
+            cBufferSlice.length(),
+            cDataBuffer->data());
+        });
       }
     } else {
       const D3D11TextureInfo* textureInfo
@@ -604,10 +617,36 @@ namespace dxvk {
         subresource.mipLevel,
         subresource.arrayLayer, 1 };
       
-      m_context->updateImage(
-        textureInfo->image, layers,
-        offset, extent, pSrcData,
+      auto formatInfo = imageFormatInfo(
+        textureInfo->image->info().format);
+      
+      const VkExtent3D regionExtent = util::computeBlockCount(extent, formatInfo->blockSize);
+      
+      const VkDeviceSize bytesPerRow   = regionExtent.width  * formatInfo->elementSize;
+      const VkDeviceSize bytesPerLayer = regionExtent.height * bytesPerRow;
+      const VkDeviceSize bytesTotal    = regionExtent.depth  * bytesPerLayer;
+      
+      Rc<DxvkDataBuffer> imageDataBuffer = new DxvkDataBuffer(bytesTotal);
+      
+      util::packImageData(
+        reinterpret_cast<char*>(imageDataBuffer->data()),
+        reinterpret_cast<const char*>(pSrcData),
+        regionExtent, formatInfo->elementSize,
         SrcRowPitch, SrcDepthPitch);
+      
+      EmitCs([
+        cDstImage         = textureInfo->image,
+        cDstLayers        = layers,
+        cDstOffset        = offset,
+        cDstExtent        = extent,
+        cSrcData          = std::move(imageDataBuffer),
+        cSrcBytesPerRow   = bytesPerRow,
+        cSrcBytesPerLayer = bytesPerLayer
+      ] (DxvkContext* ctx) {
+        ctx->updateImage(cDstImage, cDstLayers,
+          cDstOffset, cDstExtent, cSrcData->data(),
+          cSrcBytesPerRow, cSrcBytesPerLayer);
+      });
     }
   }
   

@@ -729,9 +729,11 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::invalidateBuffer(const Rc<DxvkBuffer>& buffer) {
+  void DxvkContext::invalidateBuffer(
+    const Rc<DxvkBuffer>&           buffer,
+    const DxvkPhysicalBufferSlice&  slice) {
     // Allocate new backing resource
-    buffer->rename(buffer->allocPhysicalSlice());
+    buffer->rename(slice);
     
     // We also need to update all bindings that the buffer
     // may be bound to either directly or through views.
@@ -884,53 +886,23 @@ namespace dxvk {
     const DxvkFormatInfo* formatInfo
       = imageFormatInfo(image->info().format);
     
-    VkExtent3D elementCount = imageExtent;
-    elementCount.depth *= subresources.layerCount;
-    
     // Align image extent to a full block. This is necessary in
     // case the image size is not a multiple of the block size.
-    elementCount.width  += formatInfo->blockSize.width  - 1;
-    elementCount.height += formatInfo->blockSize.height - 1;
-    elementCount.depth  += formatInfo->blockSize.depth  - 1;
-    
-    elementCount.width  /= formatInfo->blockSize.width;
-    elementCount.height /= formatInfo->blockSize.height;
-    elementCount.depth  /= formatInfo->blockSize.depth;
-    
-    VkDeviceSize bytesPerRow   = elementCount.width  * formatInfo->elementSize;
-    VkDeviceSize bytesPerLayer = elementCount.height * bytesPerRow;
-    VkDeviceSize bytesTotal    = elementCount.depth  * bytesPerLayer;
+    VkExtent3D elementCount = util::computeBlockCount(
+      imageExtent, formatInfo->blockSize);
+    elementCount.depth *= subresources.layerCount;
     
     // Allocate staging buffer memory for the image data. The
     // pixels or blocks will be tightly packed within the buffer.
-    DxvkStagingBufferSlice slice = m_cmd->stagedAlloc(bytesTotal);
+    const DxvkStagingBufferSlice slice = m_cmd->stagedAlloc(
+      formatInfo->elementSize * util::flattenImageExtent(elementCount));
     
     auto dstData = reinterpret_cast<char*>(slice.mapPtr);
     auto srcData = reinterpret_cast<const char*>(data);
     
-    // If the application provides tightly packed data as well,
-    // we can minimize the number of memcpy calls in order to
-    // improve performance.
-    bool useDirectCopy = true;
-    
-    useDirectCopy &= (pitchPerLayer == bytesPerLayer) || (elementCount.depth  == 1);
-    useDirectCopy &= (pitchPerRow   == bytesPerRow)   || (elementCount.height == 1);
-    
-    if (useDirectCopy) {
-      std::memcpy(dstData, srcData, bytesTotal);
-    } else {
-      for (uint32_t i = 0; i < elementCount.depth; i++) {
-        for (uint32_t j = 0; j < elementCount.height; j++) {
-          std::memcpy(
-            dstData + j * bytesPerRow,
-            srcData + j * pitchPerRow,
-            bytesPerRow);
-        }
-        
-        srcData += pitchPerLayer;
-        dstData += bytesPerLayer;
-      }
-    }
+    util::packImageData(dstData, srcData,
+      elementCount, formatInfo->elementSize,
+      pitchPerRow, pitchPerLayer);
     
     // Prepare the image layout. If the given extent covers
     // the entire image, we may discard its previous contents.

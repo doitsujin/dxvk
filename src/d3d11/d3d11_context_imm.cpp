@@ -86,7 +86,7 @@ namespace dxvk {
       }
       
       if (pMappedResource == nullptr)
-        return S_OK;
+        return S_FALSE;
       
       if (buffer->isInUse()) {
         // Don't wait if the application tells us not to
@@ -98,7 +98,7 @@ namespace dxvk {
         // be preserved. The No Overwrite mode does not require any
         // sort of synchronization, but should be used with care.
         if (MapType == D3D11_MAP_WRITE_DISCARD) {
-          m_context->invalidateBuffer(buffer);
+          m_context->invalidateBuffer(buffer, buffer->allocPhysicalSlice());
         } else if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE) {
           this->Flush();
           this->Synchronize();
@@ -142,30 +142,51 @@ namespace dxvk {
         levelExtent.depth  / formatInfo->blockSize.depth };
       
       // When using any map mode which requires the image contents
-      // to be preserved, copy image contents into the buffer.
+      // to be preserved, copy the image's contents into the buffer.
       if (MapType != D3D11_MAP_WRITE_DISCARD) {
         const VkImageSubresourceLayers subresourceLayers = {
           textureInfo->mappedSubresource.aspectMask,
           textureInfo->mappedSubresource.mipLevel,
           textureInfo->mappedSubresource.arrayLayer, 1 };
         
-        m_context->copyImageToBuffer(
-          textureInfo->imageBuffer, 0, { 0u, 0u },
-          textureInfo->image, subresourceLayers,
-          VkOffset3D { 0, 0, 0 }, levelExtent);
+        EmitCs([
+          cImageBuffer  = textureInfo->imageBuffer,
+          cImage        = textureInfo->image,
+          cSubresources = subresourceLayers,
+          cLevelExtent  = levelExtent
+        ] (DxvkContext* ctx) {
+          ctx->copyImageToBuffer(
+            cImageBuffer, 0, { 0u, 0u },
+            cImage, cSubresources,
+            VkOffset3D { 0, 0, 0 },
+            cLevelExtent);
+        });
       }
       
-      if (textureInfo->imageBuffer->isInUse()) {
-        if (MapType == D3D11_MAP_WRITE_DISCARD) {
-          m_context->invalidateBuffer(textureInfo->imageBuffer);
-        } else {
+      DxvkPhysicalBufferSlice physicalSlice;
+      
+      if (MapType == D3D11_MAP_WRITE_DISCARD) {
+        physicalSlice = textureInfo->imageBuffer->allocPhysicalSlice();
+        
+        EmitCs([
+          cImageBuffer   = textureInfo->imageBuffer,
+          cPhysicalSlice = physicalSlice
+        ] (DxvkContext* ctx) {
+          ctx->invalidateBuffer(cImageBuffer, cPhysicalSlice);
+        });
+      } else {
+        // TODO sync with CS thread here
+        
+        if (textureInfo->image->isInUse()) {
           this->Flush();
           this->Synchronize();
         }
+        
+        physicalSlice = textureInfo->imageBuffer->slice();
       }
       
       // Set up map pointer. Data is tightly packed within the mapped buffer.
-      pMappedResource->pData      = textureInfo->imageBuffer->mapPtr(0);
+      pMappedResource->pData      = physicalSlice.mapPtr(0);
       pMappedResource->RowPitch   = formatInfo->elementSize * blockCount.width;
       pMappedResource->DepthPitch = formatInfo->elementSize * blockCount.width * blockCount.height;
       return S_OK;
@@ -193,10 +214,16 @@ namespace dxvk {
         textureInfo->mappedSubresource.mipLevel,
         textureInfo->mappedSubresource.arrayLayer, 1 };
       
-      m_context->copyBufferToImage(
-        textureInfo->image, subresourceLayers,
-        VkOffset3D { 0, 0, 0 }, levelExtent,
-        textureInfo->imageBuffer, 0, { 0u, 0u });
+      EmitCs([
+        cSrcBuffer      = textureInfo->imageBuffer,
+        cDstImage       = textureInfo->image,
+        cDstLayers      = subresourceLayers,
+        cDstLevelExtent = levelExtent
+      ] (DxvkContext* ctx) {
+        ctx->copyBufferToImage(cDstImage, cDstLayers,
+          VkOffset3D { 0, 0, 0 }, cDstLevelExtent,
+          cSrcBuffer, 0, { 0u, 0u });
+      });
     }
   }
   
