@@ -715,7 +715,8 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11DeviceContext::IASetInputLayout(ID3D11InputLayout* pInputLayout) {
-    auto inputLayout = static_cast<D3D11InputLayout*>(pInputLayout);
+    Com<D3D11InputLayout> inputLayout =
+      static_cast<D3D11InputLayout*>(pInputLayout);
     
     if (m_state.ia.inputLayout != inputLayout) {
       m_state.ia.inputLayout = inputLayout;
@@ -1469,14 +1470,12 @@ namespace dxvk {
     // unbind overlapping shader resource views. Since this comes
     // with a large performance penalty we'll ignore this until an
     // application actually relies on this behaviour.
-    Rc<DxvkFramebuffer> framebuffer = nullptr;
+    DxvkRenderTargets attachments;
     
+    // D3D11 doesn't have the concept of a framebuffer object,
+    // so we'll just create a new one every time the render
+    // target bindings are updated. Set up the attachments.
     if (ppRenderTargetViews != nullptr || pDepthStencilView != nullptr) {
-      // D3D11 doesn't have the concept of a framebuffer object,
-      // so we'll just create a new one every time the render
-      // target bindings are updated. Set up the attachments.
-      DxvkRenderTargets attachments;
-      
       for (UINT i = 0; i < m_state.om.renderTargetViews.size(); i++) {
         if (m_state.om.renderTargetViews.at(i) != nullptr)
           attachments.setColorTarget(i, m_state.om.renderTargetViews.at(i)->GetImageView());
@@ -1484,13 +1483,15 @@ namespace dxvk {
       
       if (m_state.om.depthStencilView != nullptr)
         attachments.setDepthTarget(m_state.om.depthStencilView->GetImageView());
-      
-      if (attachments.hasAttachments())
-        framebuffer = m_device->createFramebuffer(attachments);
     }
     
-    // Bind the framebuffer object to the context
-    m_context->bindFramebuffer(framebuffer);
+    // Create and bind the framebuffer object to the context
+    EmitCs([attachments, dev = m_device] (DxvkContext* ctx) {
+      Rc<DxvkFramebuffer> framebuffer = nullptr;
+      if (attachments.hasAttachments())
+        framebuffer = dev->createFramebuffer(attachments);
+      ctx->bindFramebuffer(framebuffer);
+    });
   }
   
   
@@ -1528,7 +1529,8 @@ namespace dxvk {
           ID3D11BlendState*                 pBlendState,
     const FLOAT                             BlendFactor[4],
           UINT                              SampleMask) {
-    auto blendState = static_cast<D3D11BlendState*>(pBlendState);
+    Com<D3D11BlendState> blendState =
+      static_cast<D3D11BlendState*>(pBlendState);
     
     if (m_state.om.cbState    != blendState
      || m_state.om.sampleMask != SampleMask) {
@@ -1538,14 +1540,31 @@ namespace dxvk {
       if (blendState == nullptr)
         blendState = m_defaultBlendState.ptr();
       
-      blendState->BindToContext(m_context, SampleMask);
+      EmitCs([
+        cBlendState = std::move(blendState),
+        cSampleMask = SampleMask
+      ] (DxvkContext* ctx) {
+        cBlendState->BindToContext(ctx, cSampleMask);
+      });
     }
     
     if (BlendFactor != nullptr) {
-      std::memcpy(m_state.om.blendFactor, BlendFactor, 4 * sizeof(FLOAT));
+      bool updateBlendFactor = false;
       
-      m_context->setBlendConstants(DxvkBlendConstants {
-        BlendFactor[0], BlendFactor[1], BlendFactor[2], BlendFactor[3] });
+      for (uint32_t i = 0; i < 4; i++) {
+        updateBlendFactor |= m_state.om.blendFactor[i] != BlendFactor[i];
+        m_state.om.blendFactor[i] = BlendFactor[i];
+      }
+      
+      if (updateBlendFactor) {
+        EmitCs([
+          cBlendConstants = DxvkBlendConstants {
+            BlendFactor[0], BlendFactor[1],
+            BlendFactor[2], BlendFactor[3] }
+        ] (DxvkContext* ctx) {
+          ctx->setBlendConstants(cBlendConstants);
+        });
+      }
     }
   }
   
@@ -1553,7 +1572,8 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeviceContext::OMSetDepthStencilState(
           ID3D11DepthStencilState*          pDepthStencilState,
           UINT                              StencilRef) {
-    auto depthStencilState = static_cast<D3D11DepthStencilState*>(pDepthStencilState);
+    Com<D3D11DepthStencilState> depthStencilState =
+      static_cast<D3D11DepthStencilState*>(pDepthStencilState);
     
     if (m_state.om.dsState != depthStencilState) {
       m_state.om.dsState = depthStencilState;
@@ -1561,12 +1581,18 @@ namespace dxvk {
       if (depthStencilState == nullptr)
         depthStencilState = m_defaultDepthStencilState.ptr();
       
-      depthStencilState->BindToContext(m_context);
+      EmitCs([cDepthStencilState = std::move(depthStencilState)]
+      (DxvkContext* ctx) {
+        cDepthStencilState->BindToContext(ctx);
+      });
     }
     
     if (m_state.om.stencilRef != StencilRef) {
       m_state.om.stencilRef = StencilRef;
-      m_context->setStencilReference(StencilRef);
+      
+      EmitCs([cStencilRef = StencilRef] (DxvkContext* ctx) {
+        ctx->setStencilReference(cStencilRef);
+      });
     }
   }
   
@@ -1625,7 +1651,8 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11DeviceContext::RSSetState(ID3D11RasterizerState* pRasterizerState) {
-    auto rasterizerState = static_cast<D3D11RasterizerState*>(pRasterizerState);
+    Com<D3D11RasterizerState> rasterizerState =
+      static_cast<D3D11RasterizerState*>(pRasterizerState);
     
     if (m_state.rs.state != rasterizerState) {
       m_state.rs.state = rasterizerState;
@@ -1633,7 +1660,10 @@ namespace dxvk {
       if (rasterizerState == nullptr)
         rasterizerState = m_defaultRasterizerState.ptr();
       
-      rasterizerState->BindToContext(m_context);
+      EmitCs([cRasterizerState = std::move(rasterizerState)]
+      (DxvkContext* ctx) {
+        cRasterizerState->BindToContext(ctx);
+      });
       
       // In D3D11, the rasterizer state defines
       // whether the scissor test is enabled, so
