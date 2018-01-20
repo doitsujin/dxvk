@@ -141,6 +141,21 @@ namespace dxvk {
     }
     
     
+    void cmdBlitImage(
+            VkImage                 srcImage,
+            VkImageLayout           srcImageLayout,
+            VkImage                 dstImage,
+            VkImageLayout           dstImageLayout,
+            uint32_t                regionCount,
+      const VkImageBlit*            pRegions,
+            VkFilter                filter) {
+      m_vkd->vkCmdBlitImage(m_buffer,
+        srcImage, srcImageLayout,
+        dstImage, dstImageLayout,
+        regionCount, pRegions, filter);
+    }
+    
+    
     void cmdClearAttachments(
             uint32_t                attachmentCount,
       const VkClearAttachment*      pAttachments,

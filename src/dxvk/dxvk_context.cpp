@@ -610,6 +610,125 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::generateMipmaps(
+    const Rc<DxvkImage>&            image,
+    const VkImageSubresourceRange&  subresources) {
+    if (subresources.levelCount <= 1)
+      return;
+    
+    // The top-most level will only be read. We can
+    // discard the contents of all the lower levels
+    // since we're going to override them anyway.
+    m_barriers.accessImage(image,
+      VkImageSubresourceRange {
+        subresources.aspectMask, 
+        subresources.baseMipLevel, 1,
+        subresources.baseArrayLayer,
+        subresources.layerCount },
+      image->info().layout,
+      image->info().stages,
+      image->info().access,
+      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_READ_BIT);
+    
+    m_barriers.accessImage(image,
+      VkImageSubresourceRange {
+        subresources.aspectMask,
+        subresources.baseMipLevel + 1,
+        subresources.levelCount - 1,
+        subresources.baseArrayLayer,
+        subresources.layerCount },
+      VK_IMAGE_LAYOUT_UNDEFINED,
+      image->info().stages,
+      image->info().access,
+      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT);
+    
+    m_barriers.recordCommands(m_cmd);
+    
+    // Generate each individual mip level with a blit
+    for (uint32_t i = 1; i < subresources.levelCount; i++) {
+      const uint32_t mip = subresources.baseMipLevel + i;
+      
+      const VkExtent3D srcExtent = image->mipLevelExtent(mip - 1);
+      const VkExtent3D dstExtent = image->mipLevelExtent(mip);
+      
+      VkImageBlit region;
+      region.srcSubresource = VkImageSubresourceLayers {
+        subresources.aspectMask, mip - 1,
+        subresources.baseArrayLayer,
+        subresources.layerCount };
+      region.srcOffsets[0]   = VkOffset3D { 0, 0, 0 };
+      region.srcOffsets[1].x = srcExtent.width;
+      region.srcOffsets[1].y = srcExtent.height;
+      region.srcOffsets[1].z = srcExtent.depth;
+      
+      region.dstSubresource = VkImageSubresourceLayers {
+        subresources.aspectMask, mip,
+        subresources.baseArrayLayer,
+        subresources.layerCount };
+      region.dstOffsets[0]   = VkOffset3D { 0, 0, 0 };
+      region.dstOffsets[1].x = dstExtent.width;
+      region.dstOffsets[1].y = dstExtent.height;
+      region.dstOffsets[1].z = dstExtent.depth;
+      
+      m_cmd->cmdBlitImage(
+        image->handle(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        image->handle(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1, &region, VK_FILTER_LINEAR);
+      
+      if (i + 1 < subresources.levelCount) {
+        m_barriers.accessImage(image,
+          VkImageSubresourceRange {
+            subresources.aspectMask, mip, 1,
+            subresources.baseArrayLayer,
+            subresources.layerCount },
+          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+          VK_PIPELINE_STAGE_TRANSFER_BIT,
+          VK_ACCESS_TRANSFER_WRITE_BIT,
+          VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+          VK_PIPELINE_STAGE_TRANSFER_BIT,
+          VK_ACCESS_TRANSFER_READ_BIT);
+        m_barriers.recordCommands(m_cmd);
+      }
+    }
+    
+    // Transform mip levels back into their original layout.
+    // The last mip level is still in TRANSFER_DST_OPTIMAL.
+    m_barriers.accessImage(image,
+      VkImageSubresourceRange {
+        subresources.aspectMask,
+        subresources.baseMipLevel,
+        subresources.levelCount - 1,
+        subresources.baseArrayLayer,
+        subresources.layerCount },
+      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_READ_BIT,
+      image->info().layout,
+      image->info().stages,
+      image->info().access);
+    
+    m_barriers.accessImage(image,
+      VkImageSubresourceRange {
+        subresources.aspectMask,
+        subresources.baseMipLevel
+          + subresources.levelCount - 1, 1,
+        subresources.baseArrayLayer,
+        subresources.layerCount },
+      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT,
+      image->info().layout,
+      image->info().stages,
+      image->info().access);
+    
+    m_barriers.recordCommands(m_cmd);
+  }
+  
+  
   void DxvkContext::invalidateBuffer(const Rc<DxvkBuffer>& buffer) {
     // Allocate new backing resource
     buffer->rename(buffer->allocPhysicalSlice());

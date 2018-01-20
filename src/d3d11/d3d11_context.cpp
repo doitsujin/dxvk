@@ -651,7 +651,16 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11DeviceContext::GenerateMips(ID3D11ShaderResourceView* pShaderResourceView) {
-    Logger::err("D3D11DeviceContext::GenerateMips: Not implemented");
+    auto view = static_cast<D3D11ShaderResourceView*>(pShaderResourceView);
+      
+    if (view->GetResourceType() != D3D11_RESOURCE_DIMENSION_BUFFER) {
+      m_context->generateMipmaps(
+        view->GetImageView()->image(),
+        view->GetImageView()->subresources());
+    } else {
+      Logger::err("D3D11DeviceContext: GenerateMips called on a buffer");
+    }
+    
   }
   
   

@@ -326,6 +326,18 @@ namespace dxvk {
             uint32_t          stride);
     
     /**
+     * \brief Generates mip maps
+     * 
+     * Uses blitting to generate lower mip levels from
+     * the top-most mip level passed to this method.
+     * \param [in] image The image to generate mips for
+     * \param [in] subresource The subresource range
+     */
+    void generateMipmaps(
+      const Rc<DxvkImage>&            image,
+      const VkImageSubresourceRange&  subresources);
+    
+    /**
      * \brief Initializes or invalidates an image
      * 
      * Sets up the image layout for future operations
