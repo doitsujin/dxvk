@@ -9,7 +9,7 @@ WINEDEBUG=-all
 if [ -z "$WINEPREFIX" ]; then
     echo "WINEPREFIX is not set, continue? (y/N)"
     read continue
-    if [ "$continue" != "y" ] || [ "$continue" != "Y" ]; then
+    if [ "$continue" != "y" ] && [ "$continue" != "Y" ]; then
       exit 1
     fi
 fi
