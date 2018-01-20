@@ -519,6 +519,7 @@ namespace dxvk {
     
     Rc<DxvkDevice>              m_device;
     Rc<DxvkContext>             m_context;
+    Rc<DxvkCsChunk>             m_csChunk;
     Rc<DxvkSampler>             m_defaultSampler;
     
     Com<D3D11BlendState>        m_defaultBlendState;
@@ -567,9 +568,13 @@ namespace dxvk {
     
     template<typename Cmd>
     void EmitCs(Cmd&& command) {
-      // TODO push to CS chunk
-      command(m_context.ptr());
+      if (!m_csChunk->push(command)) {
+        EmitCsChunk();
+        m_csChunk->push(command);
+      }
     }
+    
+    virtual void EmitCsChunk() = 0;
     
   };
   

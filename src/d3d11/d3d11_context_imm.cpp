@@ -38,6 +38,8 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11ImmediateContext::Flush() {
+    EmitCsChunk();
+    
     m_parent->FlushInitContext();
     m_drawCount = 0;
     
@@ -88,13 +90,11 @@ namespace dxvk {
       if (pMappedResource == nullptr)
         return S_FALSE;
       
-      DxvkPhysicalBufferSlice physicalSlice;
-      
       if (MapType == D3D11_MAP_WRITE_DISCARD) {
         // Allocate a new backing slice for the buffer and set
         // it as the 'new' mapped slice. This assumes that the
         // only way to invalidate a buffer is by mapping it.
-        physicalSlice = buffer->allocPhysicalSlice();
+        auto physicalSlice = buffer->allocPhysicalSlice();
         resource->GetBufferInfo()->mappedSlice = physicalSlice;
         
         EmitCs([
@@ -103,14 +103,10 @@ namespace dxvk {
         ] (DxvkContext* ctx) {
           ctx->invalidateBuffer(cBuffer, cPhysicalSlice);
         });
-      } else if (MapType == D3D11_MAP_WRITE_NO_OVERWRITE) {
-        // Use map pointer from previous map operation. This
-        // way we don't have to synchronize with the CS thread.
-        physicalSlice = resource->GetBufferInfo()->mappedSlice;
-      } else {
+      } else if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE) {
         // Synchronize with CS thread so that we know whether
         // the buffer is currently in use by the GPU or not
-        // TODO implement
+        SynchronizeCs();
         
         if (buffer->isInUse()) {
           if (MapFlags & D3D11_MAP_FLAG_DO_NOT_WAIT)
@@ -120,6 +116,12 @@ namespace dxvk {
           Synchronize();
         }
       }
+      
+      // Use map pointer from previous map operation. This
+      // way we don't have to synchronize with the CS thread
+      // if the map mode is D3D11_MAP_WRITE_NO_OVERWRITE.
+      const DxvkPhysicalBufferSlice physicalSlice
+        = resource->GetBufferInfo()->mappedSlice;
       
       pMappedResource->pData      = physicalSlice.mapPtr(0);
       pMappedResource->RowPitch   = physicalSlice.length();
@@ -241,6 +243,22 @@ namespace dxvk {
     // wait for individual command submissions to complete.
     // This will require changes in the DxvkDevice class.
     m_device->waitForIdle();
+  }
+  
+  
+  void D3D11ImmediateContext::SynchronizeCs() {
+    // Dispatch recorded commands first,
+    EmitCsChunk();
+    
+    // TODO synchronize with CS thread
+  }
+  
+  
+  void D3D11ImmediateContext::EmitCsChunk() {
+    if (m_csChunk->commandCount() > 0) {
+      m_csChunk->executeAll(m_context.ptr());
+      m_csChunk = new DxvkCsChunk();
+    }
   }
   
 }

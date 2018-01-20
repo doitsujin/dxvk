@@ -12,10 +12,10 @@ namespace dxvk {
   D3D11DeviceContext::D3D11DeviceContext(
       D3D11Device*    parent,
       Rc<DxvkDevice>  device)
-  : m_parent(parent),
-    m_device(device) {
-    m_context = m_device->createContext();
-    
+  : m_parent  (parent),
+    m_device  (device),
+    m_context (m_device->createContext()),
+    m_csChunk (new DxvkCsChunk()) {
     // Create default state objects. We won't ever return them
     // to the application, but we'll use them to apply state.
     Com<ID3D11BlendState>         defaultBlendState;
