@@ -273,10 +273,20 @@ namespace dxvk {
         srcSubresource.mipLevel,
         srcSubresource.arrayLayer, 1 };
       
-      m_context->copyImage(
-        dstTextureInfo->image, dstLayers, dstOffset,
-        srcTextureInfo->image, srcLayers, srcOffset,
-        extent);
+      EmitCs([
+        cDstImage  = dstTextureInfo->image,
+        cSrcImage  = srcTextureInfo->image,
+        cDstLayers = dstLayers,
+        cSrcLayers = srcLayers,
+        cDstOffset = dstOffset,
+        cSrcOffset = srcOffset,
+        cExtent    = extent
+      ] (DxvkContext* ctx) {
+        ctx->copyImage(
+          cDstImage, cDstLayers, cDstOffset,
+          cSrcImage, cSrcLayers, cSrcOffset,
+          cExtent);
+      });
     }
   }
   
@@ -304,12 +314,17 @@ namespace dxvk {
         return;
       }
       
-      m_context->copyBuffer(
-        dstBuffer.buffer(),
-        dstBuffer.offset(),
-        srcBuffer.buffer(),
-        srcBuffer.offset(),
-        srcBuffer.length());
+      EmitCs([
+        cDstBuffer = std::move(dstBuffer),
+        cSrcBuffer = std::move(srcBuffer)
+      ] (DxvkContext* ctx) {
+        ctx->copyBuffer(
+          cDstBuffer.buffer(),
+          cDstBuffer.offset(),
+          cSrcBuffer.buffer(),
+          cSrcBuffer.offset(),
+          cSrcBuffer.length());
+      });
     } else {
       const D3D11TextureInfo* dstTextureInfo = GetCommonTextureInfo(pDstResource);
       const D3D11TextureInfo* srcTextureInfo = GetCommonTextureInfo(pSrcResource);
@@ -327,11 +342,19 @@ namespace dxvk {
         const VkImageSubresourceLayers srcLayers = {
           dstFormatInfo->aspectMask & srcFormatInfo->aspectMask,
           i, 0, srcTextureInfo->image->info().numLayers };
-
-        m_context->copyImage(
-          dstTextureInfo->image, dstLayers, VkOffset3D { 0, 0, 0 },
-          srcTextureInfo->image, srcLayers, VkOffset3D { 0, 0, 0 },
-          extent);
+        
+        EmitCs([
+          cDstImage  = dstTextureInfo->image,
+          cSrcImage  = srcTextureInfo->image,
+          cDstLayers = dstLayers,
+          cSrcLayers = srcLayers,
+          cExtent    = extent
+        ] (DxvkContext* ctx) {
+          ctx->copyImage(
+            cDstImage, cDstLayers, VkOffset3D { 0, 0, 0 },
+            cDstImage, cSrcLayers, VkOffset3D { 0, 0, 0 },
+            cExtent);
+        });
       }
     }
   }
@@ -344,15 +367,17 @@ namespace dxvk {
     auto buf = static_cast<D3D11Buffer*>(pDstBuffer);
     auto uav = static_cast<D3D11UnorderedAccessView*>(pSrcView);
 
-    const DxvkBufferSlice dstSlice = buf->GetBufferSlice(DstAlignedByteOffset);
-    const DxvkBufferSlice srcSlice = uav->GetCounterSlice();
-    
-    m_context->copyBuffer(
-      dstSlice.buffer(),
-      dstSlice.offset(),
-      srcSlice.buffer(),
-      srcSlice.offset(),
-      sizeof(uint32_t));
+    EmitCs([
+      cDstSlice = buf->GetBufferSlice(DstAlignedByteOffset),
+      cSrcSlice = uav->GetCounterSlice()
+    ] (DxvkContext* ctx) {
+      ctx->copyBuffer(
+        cDstSlice.buffer(),
+        cDstSlice.offset(),
+        cSrcSlice.buffer(),
+        cSrcSlice.offset(),
+        sizeof(uint32_t));
+    });
   }
   
   
@@ -399,12 +424,22 @@ namespace dxvk {
       if (m_parent->GetFeatureLevel() < D3D_FEATURE_LEVEL_10_0)
         clearRect.layerCount        = 1;
       
-      m_context->clearRenderTarget(clearInfo, clearRect);
+      EmitCs([
+        cClearInfo = clearInfo,
+        cClearRect = clearRect
+      ] (DxvkContext* ctx) {
+        ctx->clearRenderTarget(cClearInfo, cClearRect);
+      });
     } else {
       // Image is not bound to the pipeline. We can still clear
       // it, but we'll have to use a generic clear function.
-      m_context->clearColorImage(dxvkView->image(),
-        clearValue, dxvkView->subresources());
+      EmitCs([
+        cClearValue = clearValue,
+        cDstView    = dxvkView
+      ] (DxvkContext* ctx) {
+        ctx->clearColorImage(cDstView->image(),
+          cClearValue, cDstView->subresources());
+      });
     }
   }
   
@@ -462,10 +497,20 @@ namespace dxvk {
       if (m_parent->GetFeatureLevel() < D3D_FEATURE_LEVEL_10_0)
         clearRect.layerCount        = 1;
       
-      m_context->clearRenderTarget(clearInfo, clearRect);
+      EmitCs([
+        cClearInfo = clearInfo,
+        cClearRect = clearRect
+      ] (DxvkContext* ctx) {
+        ctx->clearRenderTarget(cClearInfo, cClearRect);
+      });
     } else {
-      m_context->clearDepthStencilImage(dxvkView->image(),
-        clearValue, dxvkView->subresources());
+      EmitCs([
+        cClearValue = clearValue,
+        cDstView    = dxvkView
+      ] (DxvkContext* ctx) {
+        ctx->clearDepthStencilImage(cDstView->image(),
+          cClearValue, cDstView->subresources());
+      });
     }
   }
   
@@ -474,9 +519,12 @@ namespace dxvk {
     auto view = static_cast<D3D11ShaderResourceView*>(pShaderResourceView);
       
     if (view->GetResourceType() != D3D11_RESOURCE_DIMENSION_BUFFER) {
-      m_context->generateMipmaps(
-        view->GetImageView()->image(),
-        view->GetImageView()->subresources());
+      EmitCs([cDstImageView = view->GetImageView()]
+      (DxvkContext* ctx) {
+        ctx->generateMipmaps(
+          cDstImageView->image(),
+          cDstImageView->subresources());
+      });
     } else {
       Logger::err("D3D11DeviceContext: GenerateMips called on a buffer");
     }
@@ -1999,10 +2047,16 @@ namespace dxvk {
       }
     }
     
-    m_context->setViewports(
-      m_state.rs.numViewports,
-      viewports.data(),
-      scissors.data());
+    EmitCs([
+      cViewportCount = m_state.rs.numViewports,
+      cViewports     = viewports,
+      cScissors      = scissors
+    ] (DxvkContext* ctx) {
+      ctx->setViewports(
+        cViewportCount,
+        cViewports.data(),
+        cScissors.data());
+    });
   }
   
   
