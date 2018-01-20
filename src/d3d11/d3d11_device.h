@@ -19,6 +19,7 @@ namespace dxvk {
   class D3D11Buffer;
   class D3D11Counter;
   class D3D11DeviceContext;
+  class D3D11ImmediateContext;
   class D3D11Predicate;
   class D3D11PresentDevice;
   class D3D11Query;
@@ -269,7 +270,7 @@ namespace dxvk {
     
     const DxbcOptions               m_dxbcOptions;
     
-    D3D11DeviceContext*             m_context = nullptr;
+    D3D11ImmediateContext*          m_context = nullptr;
     
     std::mutex                      m_counterMutex;
     std::vector<uint32_t>           m_counterSlices;

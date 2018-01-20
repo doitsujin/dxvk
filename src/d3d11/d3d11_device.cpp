@@ -2,7 +2,7 @@
 
 #include "d3d11_buffer.h"
 #include "d3d11_class_linkage.h"
-#include "d3d11_context.h"
+#include "d3d11_context_imm.h"
 #include "d3d11_device.h"
 #include "d3d11_input_layout.h"
 #include "d3d11_present.h"
@@ -35,7 +35,7 @@ namespace dxvk {
     m_dxgiDevice->SetDeviceLayer(this);
     m_presentDevice->SetDeviceLayer(this);
     
-    m_context = new D3D11DeviceContext(this, m_dxvkDevice);
+    m_context = new D3D11ImmediateContext(this, m_dxvkDevice);
     
     m_resourceInitContext = m_dxvkDevice->createContext();
     m_resourceInitContext->beginRecording(

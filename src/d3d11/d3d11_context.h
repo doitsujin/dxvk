@@ -20,42 +20,13 @@ namespace dxvk {
       Rc<DxvkDevice>  device);
     ~D3D11DeviceContext();
     
-    ULONG STDMETHODCALLTYPE AddRef() final;
-    
-    ULONG STDMETHODCALLTYPE Release() final;
-    
     HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID  riid,
             void**  ppvObject) final;
     
     void STDMETHODCALLTYPE GetDevice(ID3D11Device **ppDevice) final;
     
-    D3D11_DEVICE_CONTEXT_TYPE STDMETHODCALLTYPE GetType() final;
-    
-    UINT STDMETHODCALLTYPE GetContextFlags() final;
-    
     void STDMETHODCALLTYPE ClearState() final;
-    
-    void STDMETHODCALLTYPE Flush() final;
-    
-    void STDMETHODCALLTYPE ExecuteCommandList(
-            ID3D11CommandList*  pCommandList,
-            WINBOOL             RestoreContextState) final;
-    
-    HRESULT STDMETHODCALLTYPE FinishCommandList(
-            WINBOOL             RestoreDeferredContextState,
-            ID3D11CommandList   **ppCommandList) final;
-    
-    HRESULT STDMETHODCALLTYPE Map(
-            ID3D11Resource*             pResource,
-            UINT                        Subresource,
-            D3D11_MAP                   MapType,
-            UINT                        MapFlags,
-            D3D11_MAPPED_SUBRESOURCE*   pMappedResource) final;
-    
-    void STDMETHODCALLTYPE Unmap(
-            ID3D11Resource*             pResource,
-            UINT                        Subresource) final;
     
     void STDMETHODCALLTYPE Begin(ID3D11Asynchronous *pAsync) final;
     
@@ -541,18 +512,9 @@ namespace dxvk {
             UINT                              NumBuffers,
             ID3D11Buffer**                    ppSOTargets) final;
     
-    void Synchronize();
-    
-    Rc<DxvkContext> GetDXVKContext() const {
-      return m_context;
-    }
-    
-  private:
+  protected:
     
     D3D11Device* const m_parent;
-    
-    const D3D11_DEVICE_CONTEXT_TYPE m_type  = D3D11_DEVICE_CONTEXT_IMMEDIATE;
-    const UINT                      m_flags = 0;
     
     Rc<DxvkDevice>              m_device;
     Rc<DxvkContext>             m_context;
