@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../dxvk/dxvk_adapter.h"
+#include "../dxvk/dxvk_cs.h"
 #include "../dxvk/dxvk_device.h"
 
 #include "d3d11_context_state.h"
@@ -517,7 +518,7 @@ namespace dxvk {
     D3D11Device* const m_parent;
     
     Rc<DxvkDevice>              m_device;
-    Rc<DxvkContext>             m_context;
+    Rc<DxvkCsChunk>             m_csChunk;
     Rc<DxvkSampler>             m_defaultSampler;
     
     Com<D3D11BlendState>        m_defaultBlendState;
@@ -563,6 +564,16 @@ namespace dxvk {
     void ApplyViewportState();
     
     Rc<DxvkSampler> CreateDefaultSampler();
+    
+    template<typename Cmd>
+    void EmitCs(Cmd&& command) {
+      if (!m_csChunk->push(command)) {
+        EmitCsChunk();
+        m_csChunk->push(command);
+      }
+    }
+    
+    virtual void EmitCsChunk() = 0;
     
   };
   

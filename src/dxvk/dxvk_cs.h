@@ -65,12 +65,22 @@ namespace dxvk {
    * Stores a list of commands.
    */
   class DxvkCsChunk : public RcObject {
-    constexpr static size_t MaxCommands  = 64;
+    constexpr static size_t MaxCommands  = 1024;
     constexpr static size_t MaxBlockSize = 64 * MaxCommands;
   public:
     
     DxvkCsChunk();
     ~DxvkCsChunk();
+    
+    /**
+     * \brief Number of commands recorded to the chunk
+     * 
+     * Can be used to check whether the chunk needs to
+     * be dispatched or just to keep track of statistics.
+     */
+    size_t commandCount() const {
+      return m_commandCount;
+    }
     
     /**
      * \brief Tries to add a command to the chunk
@@ -128,24 +138,13 @@ namespace dxvk {
    * commands on a DXVK context. 
    */
   class DxvkCsThread {
-    
+    // Limit the number of chunks in the queue
+    // to prevent memory leaks, stuttering etc.
+    constexpr static uint32_t MaxChunksInFlight = 16;
   public:
     
     DxvkCsThread(const Rc<DxvkContext>& context);
     ~DxvkCsThread();
-    
-    /**
-     * \brief Dispatches a new command
-     * 
-     * Adds the command to the current chunk and
-     * dispatches the chunk in case it is full.
-     * \param [in] command The command
-     */
-    template<typename T>
-    void dispatch(T&& command) {
-      while (!m_curChunk->push(command))
-        this->flush();
-    }
     
     /**
      * \brief Dispatches an entire chunk
@@ -153,17 +152,9 @@ namespace dxvk {
      * Can be used to efficiently play back large
      * command lists recorded on another thread.
      * \param [in] chunk The chunk to dispatch
+     * \returns New chunk for the next submissions
      */
-    void dispatchChunk(Rc<DxvkCsChunk>&& chunk);
-    
-    /**
-     * \brief Dispatches current chunk
-     * 
-     * Adds the current chunk to the dispatch
-     * queue and makes an empty chunk current.
-     * Call this before \ref synchronize.
-     */
-    void flush();
+    Rc<DxvkCsChunk> dispatchChunk(Rc<DxvkCsChunk>&& chunk);
     
     /**
      * \brief Synchronizes with the thread
@@ -179,17 +170,15 @@ namespace dxvk {
     
     const Rc<DxvkContext>       m_context;
     
-    // Chunk that is being recorded
-    Rc<DxvkCsChunk>             m_curChunk;
-    
-    // Chunks that are executing
     std::atomic<bool>           m_stopped = { false };
     std::mutex                  m_mutex;
     std::condition_variable     m_condOnAdd;
     std::condition_variable     m_condOnSync;
-    std::queue<Rc<DxvkCsChunk>> m_chunks;
+    std::queue<Rc<DxvkCsChunk>> m_chunksQueued;
+    std::queue<Rc<DxvkCsChunk>> m_chunksUnused;
+    std::thread                 m_thread;
     
-    std::thread m_thread;
+    uint32_t                    m_chunksPending = 0;
     
     void threadFunc();
     

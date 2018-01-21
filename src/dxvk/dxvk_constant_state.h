@@ -9,6 +9,17 @@
 namespace dxvk {
   
   /**
+   * \brief Blend constants
+   * 
+   * Stores a blend factor
+   * as an RGBA color value.
+   */
+  struct DxvkBlendConstants {
+    float r, g, b, a;
+  };
+  
+  
+  /**
    * \brief Input assembly state
    * 
    * Stores the primitive topology and

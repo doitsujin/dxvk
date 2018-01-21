@@ -11,6 +11,17 @@ namespace dxvk {
   class D3D11DeviceContext;
   
   
+  /**
+   * \brief Common buffer info
+   * 
+   * Stores where the buffer was last
+   * mapped on the immediate context.
+   */
+  struct D3D11BufferInfo {
+    DxvkPhysicalBufferSlice mappedSlice;
+  };
+  
+  
   class D3D11Buffer : public D3D11DeviceChild<ID3D11Buffer> {
     static constexpr VkDeviceSize BufferSliceAlignment = 64;
   public:
@@ -49,12 +60,17 @@ namespace dxvk {
       return DxvkBufferSlice(m_buffer, offset, m_buffer->info().size - offset);
     }
     
+    D3D11BufferInfo* GetBufferInfo() {
+      return &m_bufferInfo;
+    }
+    
   private:
     
     const Com<D3D11Device>      m_device;
     const D3D11_BUFFER_DESC     m_desc;
     
     Rc<DxvkBuffer>              m_buffer;
+    D3D11BufferInfo             m_bufferInfo;
     
     Rc<DxvkBuffer> CreateBuffer(
       const D3D11_BUFFER_DESC* pDesc) const;

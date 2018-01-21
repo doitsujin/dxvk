@@ -1,3 +1,5 @@
+#include <cstring>
+
 #include "dxvk_util.h"
 
 namespace dxvk::util {
@@ -34,30 +36,36 @@ namespace dxvk::util {
     return mipCnt;
   }
   
-}
-
-
-bool operator == (VkExtent3D a, VkExtent3D b) {
-  return a.width  == b.width
-      && a.height == b.height
-      && a.depth  == b.depth;
-}
-
-
-bool operator != (VkExtent3D a, VkExtent3D b) {
-  return a.width  != b.width
-      || a.height != b.height
-      || a.depth  != b.depth;
-}
-
-
-bool operator == (VkExtent2D a, VkExtent2D b) {
-  return a.width  == b.width
-      && a.height == b.height;
-}
-
-
-bool operator != (VkExtent2D a, VkExtent2D b) {
-  return a.width  != b.width
-      || a.height != b.height;
+  
+  void packImageData(
+          char*             dstData,
+    const char*             srcData,
+          VkExtent3D        blockCount,
+          VkDeviceSize      blockSize,
+          VkDeviceSize      pitchPerRow,
+          VkDeviceSize      pitchPerLayer) {
+    const VkDeviceSize bytesPerRow   = blockCount.width  * blockSize;
+    const VkDeviceSize bytesPerLayer = blockCount.height * bytesPerRow;
+    const VkDeviceSize bytesTotal    = blockCount.depth  * bytesPerLayer;
+    
+    const bool directCopy = ((bytesPerRow   == pitchPerRow  ) || (blockCount.height == 1))
+                         && ((bytesPerLayer == pitchPerLayer) || (blockCount.depth  == 1));
+    
+    if (directCopy) {
+      std::memcpy(dstData, srcData, bytesTotal);
+    } else {
+      for (uint32_t i = 0; i < blockCount.depth; i++) {
+        for (uint32_t j = 0; j < blockCount.height; j++) {
+          std::memcpy(
+            dstData + j * bytesPerRow,
+            srcData + j * pitchPerRow,
+            bytesPerRow);
+        }
+        
+        srcData += pitchPerLayer;
+        dstData += bytesPerLayer;
+      }
+    }
+  }
+  
 }

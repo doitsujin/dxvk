@@ -42,9 +42,15 @@ namespace dxvk {
             ID3D11Resource*             pResource,
             UINT                        Subresource) final;
     
-    void Synchronize();
+    void SynchronizeCsThread();
     
   private:
+    
+    DxvkCsThread m_csThread;
+    
+    void SynchronizeDevice();
+    
+    void EmitCsChunk();
     
   };
   

@@ -57,8 +57,8 @@ namespace dxvk {
   struct DxvkOutputMergerState {
     Rc<DxvkFramebuffer> framebuffer;
     
-    float     blendConstants[4];
-    uint32_t  stencilReference;
+    DxvkBlendConstants  blendConstants;
+    uint32_t            stencilReference;
   };
   
   

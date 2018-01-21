@@ -7,13 +7,16 @@ namespace dxvk {
   D3D11ImmediateContext::D3D11ImmediateContext(
     D3D11Device*    parent,
     Rc<DxvkDevice>  device)
-  : D3D11DeviceContext(parent, device) {
+  : D3D11DeviceContext(parent, device),
+    m_csThread(device->createContext()) {
     
   }
   
   
   D3D11ImmediateContext::~D3D11ImmediateContext() {
-    
+    Flush();
+    SynchronizeCsThread();
+    SynchronizeDevice();
   }
   
   
@@ -41,12 +44,18 @@ namespace dxvk {
     m_parent->FlushInitContext();
     m_drawCount = 0;
     
-    m_device->submitCommandList(
-      m_context->endRecording(),
-      nullptr, nullptr);
+    // Add commands to flush the threaded
+    // context, then flush the command list
+    EmitCs([dev = m_device] (DxvkContext* ctx) {
+      dev->submitCommandList(
+        ctx->endRecording(),
+        nullptr, nullptr);
+      
+      ctx->beginRecording(
+        dev->createCommandList());
+    });
     
-    m_context->beginRecording(
-      m_device->createCommandList());
+    EmitCsChunk();
   }
   
   
@@ -75,8 +84,8 @@ namespace dxvk {
     pResource->GetType(&resourceDim);
     
     if (resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER) {
-      const D3D11Buffer* resource = static_cast<D3D11Buffer*>(pResource);
-      const Rc<DxvkBuffer> buffer = resource->GetBufferSlice().buffer();
+      D3D11Buffer* resource = static_cast<D3D11Buffer*>(pResource);
+      Rc<DxvkBuffer> buffer = resource->GetBufferSlice().buffer();
       
       if (!(buffer->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) {
         Logger::err("D3D11: Cannot map a device-local buffer");
@@ -84,28 +93,47 @@ namespace dxvk {
       }
       
       if (pMappedResource == nullptr)
-        return S_OK;
+        return S_FALSE;
       
-      if (buffer->isInUse()) {
-        // Don't wait if the application tells us not to
-        if (MapFlags & D3D11_MAP_FLAG_DO_NOT_WAIT)
-          return DXGI_ERROR_WAS_STILL_DRAWING;
+      if (MapType == D3D11_MAP_WRITE_DISCARD) {
+        // Allocate a new backing slice for the buffer and set
+        // it as the 'new' mapped slice. This assumes that the
+        // only way to invalidate a buffer is by mapping it.
+        auto physicalSlice = buffer->allocPhysicalSlice();
+        physicalSlice.resource()->acquire();
         
-        // Invalidate the buffer in order to avoid synchronization
-        // if the application does not need the buffer contents to
-        // be preserved. The No Overwrite mode does not require any
-        // sort of synchronization, but should be used with care.
-        if (MapType == D3D11_MAP_WRITE_DISCARD) {
-          m_context->invalidateBuffer(buffer);
-        } else if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE) {
-          this->Flush();
-          this->Synchronize();
+        resource->GetBufferInfo()->mappedSlice = physicalSlice;
+        
+        EmitCs([
+          cBuffer        = buffer,
+          cPhysicalSlice = physicalSlice
+        ] (DxvkContext* ctx) {
+          ctx->invalidateBuffer(cBuffer, cPhysicalSlice);
+          cPhysicalSlice.resource()->release();
+        });
+      } else if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE) {
+        // Synchronize with CS thread so that we know whether
+        // the buffer is currently in use by the GPU or not
+        SynchronizeCsThread();
+        
+        if (buffer->isInUse()) {
+          if (MapFlags & D3D11_MAP_FLAG_DO_NOT_WAIT)
+            return DXGI_ERROR_WAS_STILL_DRAWING;
+          
+          Flush();
+          SynchronizeDevice();
         }
       }
       
-      pMappedResource->pData      = buffer->mapPtr(0);
-      pMappedResource->RowPitch   = buffer->info().size;
-      pMappedResource->DepthPitch = buffer->info().size;
+      // Use map pointer from previous map operation. This
+      // way we don't have to synchronize with the CS thread
+      // if the map mode is D3D11_MAP_WRITE_NO_OVERWRITE.
+      const DxvkPhysicalBufferSlice physicalSlice
+        = resource->GetBufferInfo()->mappedSlice;
+      
+      pMappedResource->pData      = physicalSlice.mapPtr(0);
+      pMappedResource->RowPitch   = physicalSlice.length();
+      pMappedResource->DepthPitch = physicalSlice.length();
       return S_OK;
     } else {
       // Mapping an image is sadly not as simple as mapping a buffer
@@ -134,36 +162,51 @@ namespace dxvk {
       const VkExtent3D levelExtent = textureInfo->image
         ->mipLevelExtent(textureInfo->mappedSubresource.mipLevel);
       
-      const VkExtent3D blockCount = {
-        levelExtent.width  / formatInfo->blockSize.width,
-        levelExtent.height / formatInfo->blockSize.height,
-        levelExtent.depth  / formatInfo->blockSize.depth };
+      const VkExtent3D blockCount = util::computeBlockCount(
+        levelExtent, formatInfo->blockSize);
+      
+      DxvkPhysicalBufferSlice physicalSlice;
       
       // When using any map mode which requires the image contents
-      // to be preserved, copy image contents into the buffer.
-      if (MapType != D3D11_MAP_WRITE_DISCARD) {
+      // to be preserved, copy the image's contents into the buffer.
+      if (MapType == D3D11_MAP_WRITE_DISCARD) {
+        physicalSlice = textureInfo->imageBuffer->allocPhysicalSlice();
+        physicalSlice.resource()->acquire();
+        
+        EmitCs([
+          cImageBuffer   = textureInfo->imageBuffer,
+          cPhysicalSlice = physicalSlice
+        ] (DxvkContext* ctx) {
+          ctx->invalidateBuffer(cImageBuffer, cPhysicalSlice);
+          cPhysicalSlice.resource()->release();
+        });
+      } else {
         const VkImageSubresourceLayers subresourceLayers = {
           textureInfo->mappedSubresource.aspectMask,
           textureInfo->mappedSubresource.mipLevel,
           textureInfo->mappedSubresource.arrayLayer, 1 };
         
-        m_context->copyImageToBuffer(
-          textureInfo->imageBuffer, 0, { 0u, 0u },
-          textureInfo->image, subresourceLayers,
-          VkOffset3D { 0, 0, 0 }, levelExtent);
-      }
-      
-      if (textureInfo->imageBuffer->isInUse()) {
-        if (MapType == D3D11_MAP_WRITE_DISCARD) {
-          m_context->invalidateBuffer(textureInfo->imageBuffer);
-        } else {
-          this->Flush();
-          this->Synchronize();
-        }
+        EmitCs([
+          cImageBuffer  = textureInfo->imageBuffer,
+          cImage        = textureInfo->image,
+          cSubresources = subresourceLayers,
+          cLevelExtent  = levelExtent
+        ] (DxvkContext* ctx) {
+          ctx->copyImageToBuffer(
+            cImageBuffer, 0, VkExtent2D { 0u, 0u },
+            cImage, cSubresources, VkOffset3D { 0, 0, 0 },
+            cLevelExtent);
+        });
+        
+        Flush();
+        SynchronizeCsThread();
+        SynchronizeDevice();
+        
+        physicalSlice = textureInfo->imageBuffer->slice();
       }
       
       // Set up map pointer. Data is tightly packed within the mapped buffer.
-      pMappedResource->pData      = textureInfo->imageBuffer->mapPtr(0);
+      pMappedResource->pData      = physicalSlice.mapPtr(0);
       pMappedResource->RowPitch   = formatInfo->elementSize * blockCount.width;
       pMappedResource->DepthPitch = formatInfo->elementSize * blockCount.width * blockCount.height;
       return S_OK;
@@ -191,16 +234,41 @@ namespace dxvk {
         textureInfo->mappedSubresource.mipLevel,
         textureInfo->mappedSubresource.arrayLayer, 1 };
       
-      m_context->copyBufferToImage(
-        textureInfo->image, subresourceLayers,
-        VkOffset3D { 0, 0, 0 }, levelExtent,
-        textureInfo->imageBuffer, 0, { 0u, 0u });
+      EmitCs([
+        cSrcBuffer      = textureInfo->imageBuffer,
+        cDstImage       = textureInfo->image,
+        cDstLayers      = subresourceLayers,
+        cDstLevelExtent = levelExtent
+      ] (DxvkContext* ctx) {
+        ctx->copyBufferToImage(cDstImage, cDstLayers,
+          VkOffset3D { 0, 0, 0 }, cDstLevelExtent,
+          cSrcBuffer, 0, { 0u, 0u });
+      });
     }
   }
   
   
-  void D3D11ImmediateContext::Synchronize() {
+  void D3D11ImmediateContext::SynchronizeCsThread() {
+    // Dispatch current chunk so that all commands
+    // recorded prior to this function will be run
+    EmitCsChunk();
+    
+    m_csThread.synchronize();
+  }
+  
+  
+  void D3D11ImmediateContext::SynchronizeDevice() {
+    // FIXME waiting until the device finished executing *all*
+    // pending commands is too pessimistic. Instead we should
+    // wait for individual command submissions to complete.
+    // This will require changes in the DxvkDevice class.
     m_device->waitForIdle();
+  }
+  
+  
+  void D3D11ImmediateContext::EmitCsChunk() {
+    if (m_csChunk->commandCount() > 0)
+      m_csChunk = m_csThread.dispatchChunk(std::move(m_csChunk));
   }
   
 }
