@@ -259,39 +259,40 @@ namespace dxvk {
     const Rc<DxvkBuffer>&       srcBuffer,
           VkDeviceSize          srcOffset,
           VkDeviceSize          numBytes) {
-    if (numBytes != 0) {
-      this->renderPassEnd();
-      
-      auto dstSlice = dstBuffer->subSlice(dstOffset, numBytes);
-      auto srcSlice = srcBuffer->subSlice(srcOffset, numBytes);
-      
-      VkBufferCopy bufferRegion;
-      bufferRegion.srcOffset = srcSlice.offset();
-      bufferRegion.dstOffset = dstSlice.offset();
-      bufferRegion.size      = dstSlice.length();
-      
-      m_cmd->cmdCopyBuffer(
-        srcSlice.handle(),
-        dstSlice.handle(),
-        1, &bufferRegion);
-      
-      m_barriers.accessBuffer(srcSlice,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VK_ACCESS_TRANSFER_READ_BIT,
-        srcBuffer->info().stages,
-        srcBuffer->info().access);
-      
-      m_barriers.accessBuffer(dstSlice,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VK_ACCESS_TRANSFER_WRITE_BIT,
-        dstBuffer->info().stages,
-        dstBuffer->info().access);
-      
-      m_barriers.recordCommands(m_cmd);
-      
-      m_cmd->trackResource(dstBuffer->resource());
-      m_cmd->trackResource(srcBuffer->resource());
-    }
+    if (numBytes == 0)
+      return;
+
+    this->renderPassEnd();
+
+    auto dstSlice = dstBuffer->subSlice(dstOffset, numBytes);
+    auto srcSlice = srcBuffer->subSlice(srcOffset, numBytes);
+
+    VkBufferCopy bufferRegion;
+    bufferRegion.srcOffset = srcSlice.offset();
+    bufferRegion.dstOffset = dstSlice.offset();
+    bufferRegion.size      = dstSlice.length();
+
+    m_cmd->cmdCopyBuffer(
+      srcSlice.handle(),
+      dstSlice.handle(),
+      1, &bufferRegion);
+
+    m_barriers.accessBuffer(srcSlice,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_READ_BIT,
+      srcBuffer->info().stages,
+      srcBuffer->info().access);
+
+    m_barriers.accessBuffer(dstSlice,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT,
+      dstBuffer->info().stages,
+      dstBuffer->info().access);
+
+    m_barriers.recordCommands(m_cmd);
+
+    m_cmd->trackResource(dstBuffer->resource());
+    m_cmd->trackResource(srcBuffer->resource());
   }
   
   
@@ -616,6 +617,8 @@ namespace dxvk {
     if (subresources.levelCount <= 1)
       return;
     
+    this->renderPassEnd();
+
     // The top-most level will only be read. We can
     // discard the contents of all the lower levels
     // since we're going to override them anyway.
@@ -757,6 +760,8 @@ namespace dxvk {
     const VkImageSubresourceLayers& dstSubresources,
     const Rc<DxvkImage>&            srcImage,
     const VkImageSubresourceLayers& srcSubresources) {
+    this->renderPassEnd();
+
     VkImageSubresourceRange dstSubresourceRange = {
       dstSubresources.aspectMask,
       dstSubresources.mipLevel, 1,
@@ -828,43 +833,44 @@ namespace dxvk {
           VkDeviceSize              offset,
           VkDeviceSize              size,
     const void*                     data) {
+    if (size == 0)
+      return;
+
     this->renderPassEnd();
-    
-    if (size != 0) {
-      auto physicalSlice = buffer->subSlice(offset, size);
-      
-      // Vulkan specifies that small amounts of data (up to 64kB) can
-      // be copied to a buffer directly if the size is a multiple of
-      // four. Anything else must be copied through a staging buffer.
-      // We'll limit the size to 4kB in order to keep command buffers
-      // reasonably small, we do not know how much data apps may upload.
-      if ((size <= 4096) && ((size & 0x3) == 0) && ((offset & 0x3) == 0)) {
-        m_cmd->cmdUpdateBuffer(
-          physicalSlice.handle(),
-          physicalSlice.offset(),
-          physicalSlice.length(),
-          data);
-      } else {
-        auto slice = m_cmd->stagedAlloc(size);
-        std::memcpy(slice.mapPtr, data, size);
-        
-        m_cmd->stagedBufferCopy(
-          physicalSlice.handle(),
-          physicalSlice.offset(),
-          physicalSlice.length(),
-          slice);
-      }
-      
-      m_barriers.accessBuffer(
-        physicalSlice,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VK_ACCESS_TRANSFER_WRITE_BIT,
-        buffer->info().stages,
-        buffer->info().access);
-      m_barriers.recordCommands(m_cmd);
-      
-      m_cmd->trackResource(buffer->resource());
+
+    auto physicalSlice = buffer->subSlice(offset, size);
+
+    // Vulkan specifies that small amounts of data (up to 64kB) can
+    // be copied to a buffer directly if the size is a multiple of
+    // four. Anything else must be copied through a staging buffer.
+    // We'll limit the size to 4kB in order to keep command buffers
+    // reasonably small, we do not know how much data apps may upload.
+    if ((size <= 4096) && ((size & 0x3) == 0) && ((offset & 0x3) == 0)) {
+      m_cmd->cmdUpdateBuffer(
+        physicalSlice.handle(),
+        physicalSlice.offset(),
+        physicalSlice.length(),
+        data);
+    } else {
+      auto slice = m_cmd->stagedAlloc(size);
+      std::memcpy(slice.mapPtr, data, size);
+
+      m_cmd->stagedBufferCopy(
+        physicalSlice.handle(),
+        physicalSlice.offset(),
+        physicalSlice.length(),
+        slice);
     }
+
+    m_barriers.accessBuffer(
+      physicalSlice,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT,
+      buffer->info().stages,
+      buffer->info().access);
+    m_barriers.recordCommands(m_cmd);
+
+    m_cmd->trackResource(buffer->resource());
   }
   
   
