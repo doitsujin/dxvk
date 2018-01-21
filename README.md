@@ -39,6 +39,9 @@ WINEPREFIX=/your/wineprefix bash dlls_setup.sh
 
 Verify that your application uses DXVK instead of wined3d by checking for the presence of the log files `d3d11.log` and `dxgi.log` in the application's directory, or by enabling the HUD (see notes below).
 
+### Notes on Vulkan drivers
+Before reporting an issue, please check the [Wiki](https://github.com/doitsujin/dxvk/wiki/Driver-support) page on the current driver status.
+
 ### Online multi-player games
 Manipulation of Direct3D libraries in multi-player games may be considered cheating and can get your account **banned**. This may also apply to single-player games with an embedded or dedicated multiplayer portion. **Use at your own risk.**
 
