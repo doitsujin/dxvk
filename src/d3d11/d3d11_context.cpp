@@ -351,7 +351,7 @@ namespace dxvk {
         ] (DxvkContext* ctx) {
           ctx->copyImage(
             cDstImage, cDstLayers, VkOffset3D { 0, 0, 0 },
-            cDstImage, cSrcLayers, VkOffset3D { 0, 0, 0 },
+            cSrcImage, cSrcLayers, VkOffset3D { 0, 0, 0 },
             cExtent);
         });
       }
