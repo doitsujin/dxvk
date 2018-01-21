@@ -1,4 +1,3 @@
-#include "d3d11_context_imm.h"
 #include "d3d11_device.h"
 #include "d3d11_present.h"
 
@@ -55,12 +54,10 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE D3D11PresentDevice::FlushRenderingCommands() {
-    Com<ID3D11DeviceContext> ctx = nullptr;
-    m_device->GetImmediateContext(&ctx);
+    Com<ID3D11DeviceContext> deviceContext = nullptr;
+    m_device->GetImmediateContext(&deviceContext);
     
-    auto immediateContext = static_cast<D3D11ImmediateContext*>(ctx.ptr());
-    immediateContext->Flush();
-    immediateContext->SynchronizeCs();
+    deviceContext->Flush();
     return S_OK;
   }
   
