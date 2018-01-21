@@ -46,9 +46,13 @@ namespace dxvk {
     // If requested by the user, replace
     // the shader with another file.
     if (readPath.size() != 0) {
-      m_shader->read(std::ifstream(
+      // Check whether the file exists
+      std::ifstream readStream(
         str::format(readPath, "/", m_name, ".spv"),
-        std::ios_base::binary));
+        std::ios_base::binary);
+      
+      if (readStream)
+        m_shader->read(std::move(readStream));
     }
   }
   
