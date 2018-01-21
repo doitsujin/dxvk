@@ -21,21 +21,23 @@ Inside the dxvk directory, run:
 # build-win64.txt with build-win32.txt
 meson --cross-file build-win64.txt build.w64
 cd build.w64
-meson configure -Dprefix=/target/directory
+meson configure -Dprefix=/your/dxvk/directory/
 # for an optimized release build:
 meson configure -Dbuildtype=release
 ninja
 ninja install
 ```
 
-Both `dxgi.dll` and `d3d11.dll`as well as some demo executables will be located in `/target/directory/bin`.
+The two libraries `dxgi_vk.dll` and `d3d11_vk.dll`as well as some demo executables will be located in `/your/dxvk/directory/bin`.
 
 ## How to use
-In order to run `executable.exe` with DXVK,
-* Copy `dxgi.dll` and `d3d11.dll` into the same directory as the executable
-* Set `dxgi.dll` and `d3d11.dll` to *native* in your wine configuration. Note that *native,builtin* may not work for some applications.
+In order to set up a wine prefix to use DXVK instead of wined3d globally, run:
+```
+cd /your/dxvk/directory/bin
+WINEPREFIX=/your/wineprefix bash dlls_setup.sh
+```
 
-In order to verify that your application uses DXVK instead of wined3d, check for the presence of the log files `d3d11.log` and `dxgi.log`, or enable the HUD.
+Verify that your application uses DXVK instead of wined3d by checking for the presence of the log files `d3d11.log` and `dxgi.log` in the application's directory, or by enabling the HUD (see notes below).
 
 ### Online multi-player games
 Manipulation of Direct3D libraries in multi-player games may be considered cheating and can get your account **banned**. This may also apply to single-player games with an embedded or dedicated multiplayer portion. **Use at your own risk.**
@@ -45,6 +47,7 @@ The behaviour of DXVK can be modified with environment variables.
 
 - `DXVK_DEBUG_LAYERS=1` Enables Vulkan debug layers. Highly recommended for troubleshooting and debugging purposes.
 - `DXVK_SHADER_DUMP_PATH=directory` Writes all DXBC and SPIR-V shaders to the given directory
+- `DXVK_SHADER_READ_PATH=directory` Reads SPIR-V shaders from the given directory rather than using the shader compiler.
 - `DXVK_LOG_LEVEL=error|warn|info|debug|trace` Controls message logging.
 - `DXVK_HUD=1` Enables the HUD
 

@@ -9,7 +9,7 @@ dxgi_src = [
   'dxgi_swapchain.cpp',
 ]
 
-dxgi_dll = shared_library('dxgi', dxgi_src,
+dxgi_dll = shared_library('dxgi_vk', dxgi_src,
   name_prefix         : '',
   link_with           : [ util_lib ],
   dependencies        : [ dxvk_dep ],
