@@ -40,17 +40,37 @@ namespace dxvk {
   }
   
   
-  void DxvkCsThread::dispatchChunk(Rc<DxvkCsChunk>&& chunk) {
+  Rc<DxvkCsChunk> DxvkCsThread::dispatchChunk(Rc<DxvkCsChunk>&& chunk) {
+    Rc<DxvkCsChunk> nextChunk = nullptr;
+    
     { std::unique_lock<std::mutex> lock(m_mutex);
-      m_chunks.push(std::move(chunk));
+      m_chunksQueued.push(std::move(chunk));
       m_chunksPending += 1;
       
-      m_condOnSync.wait(lock, [this] {
-        return m_stopped.load() || (m_chunksPending < MaxChunksInFlight);
-      });
+      // If a large number of chunks are queued up, wait for
+      // some of them to be processed in order to avoid memory
+      // leaks, stuttering, input lag and similar issues.
+      if (m_chunksPending >= MaxChunksInFlight) {
+        m_condOnSync.wait(lock, [this] {
+          return (m_chunksPending < MaxChunksInFlight / 2)
+              || (m_stopped.load());
+        });
+      }
+      
+      if (m_chunksUnused.size() != 0) {
+        nextChunk = std::move(m_chunksUnused.front());
+        m_chunksUnused.pop();
+      }
     }
     
+    // Wake CS thread
     m_condOnAdd.notify_one();
+    
+    // Allocate new chunk if needed
+    if (nextChunk == nullptr)
+      nextChunk = new DxvkCsChunk();
+    
+    return nextChunk;
   }
   
   
@@ -64,30 +84,31 @@ namespace dxvk {
   
   
   void DxvkCsThread::threadFunc() {
+    Rc<DxvkCsChunk> chunk;
+    
     while (!m_stopped.load()) {
-      Rc<DxvkCsChunk> chunk;
-      
       { std::unique_lock<std::mutex> lock(m_mutex);
+        if (chunk != nullptr) {
+          m_chunksPending -= 1;
+          m_chunksUnused.push(std::move(chunk));
+          
+          m_condOnSync.notify_one();
+        }
         
         m_condOnAdd.wait(lock, [this] {
-          return m_stopped.load() || (m_chunks.size() != 0);
+          return m_stopped.load() || (m_chunksQueued.size() != 0);
         });
         
-        if (m_chunks.size() != 0) {
-          chunk = std::move(m_chunks.front());
-          m_chunks.pop();
+        if (m_chunksQueued.size() != 0) {
+          chunk = std::move(m_chunksQueued.front());
+          m_chunksQueued.pop();
+        } else {
+          chunk = nullptr;
         }
       }
       
-      if (chunk != nullptr) {
+      if (chunk != nullptr)
         chunk->executeAll(m_context.ptr());
-        
-        { std::unique_lock<std::mutex> lock(m_mutex);
-          m_chunksPending -= 1;
-        }
-        
-        m_condOnSync.notify_one();
-      }
     }
   }
   

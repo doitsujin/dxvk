@@ -65,7 +65,7 @@ namespace dxvk {
    * Stores a list of commands.
    */
   class DxvkCsChunk : public RcObject {
-    constexpr static size_t MaxCommands  = 64;
+    constexpr static size_t MaxCommands  = 1024;
     constexpr static size_t MaxBlockSize = 64 * MaxCommands;
   public:
     
@@ -140,7 +140,7 @@ namespace dxvk {
   class DxvkCsThread {
     // Limit the number of chunks in the queue
     // to prevent memory leaks, stuttering etc.
-    constexpr static uint32_t MaxChunksInFlight = 128;
+    constexpr static uint32_t MaxChunksInFlight = 16;
   public:
     
     DxvkCsThread(const Rc<DxvkContext>& context);
@@ -152,8 +152,9 @@ namespace dxvk {
      * Can be used to efficiently play back large
      * command lists recorded on another thread.
      * \param [in] chunk The chunk to dispatch
+     * \returns New chunk for the next submissions
      */
-    void dispatchChunk(Rc<DxvkCsChunk>&& chunk);
+    Rc<DxvkCsChunk> dispatchChunk(Rc<DxvkCsChunk>&& chunk);
     
     /**
      * \brief Synchronizes with the thread
@@ -173,7 +174,8 @@ namespace dxvk {
     std::mutex                  m_mutex;
     std::condition_variable     m_condOnAdd;
     std::condition_variable     m_condOnSync;
-    std::queue<Rc<DxvkCsChunk>> m_chunks;
+    std::queue<Rc<DxvkCsChunk>> m_chunksQueued;
+    std::queue<Rc<DxvkCsChunk>> m_chunksUnused;
     std::thread                 m_thread;
     
     uint32_t                    m_chunksPending = 0;

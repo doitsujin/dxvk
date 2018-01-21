@@ -266,10 +266,8 @@ namespace dxvk {
   
   
   void D3D11ImmediateContext::EmitCsChunk() {
-    if (m_csChunk->commandCount() > 0) {
-      m_csThread.dispatchChunk(std::move(m_csChunk));
-      m_csChunk = new DxvkCsChunk();
-    }
+    if (m_csChunk->commandCount() > 0)
+      m_csChunk = m_csThread.dispatchChunk(std::move(m_csChunk));
   }
   
 }
