@@ -22,6 +22,6 @@ glsl_generator = generator(glsl_compiler,
   output    : [ '@BASENAME@.h' ],
   arguments : [ '-V', '--vn', '@BASENAME@', '@INPUT@', '-o', '@OUTPUT@' ])
 
-
 subdir('src')
 subdir('tests')
+subdir('wine_utils')

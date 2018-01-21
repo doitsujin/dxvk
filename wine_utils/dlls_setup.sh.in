@@ -1,0 +1,53 @@
+#!/bin/bash
+
+dlls_dir=@dlldir@
+path_pattern='s|^\s*PATH\s+REG_EXPAND_SZ\s+(.*)\s*$|\1|g'
+dlls_windir="Z:$(sed 's|/|\\|g'<<<$dlls_dir)"
+dlls_windir_pattern="$(sed 's|\\|\\\\|g'<<<$dlls_windir)"
+WINEDEBUG=-all
+
+if [ -z "$WINEPREFIX" ]; then
+    echo "WINEPREFIX is not set, continue? (y/N)"
+    read continue
+    if [ "$continue" != "y" ] && [ "$continue" != "Y" ]; then
+      exit 1
+    fi
+fi
+
+if [ "$1" == "reset" ]; then
+    wine reg delete HKEY_CURRENT_USER\\Software\\Wine\\DllRedirects /v d3d11
+    wine reg delete HKEY_CURRENT_USER\\Software\\Wine\\DllRedirects /v dxgi
+    path=$(wine reg query 'HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' /v PATH | sed -e 's|\r||g')
+    cleared_path=$(grep REG_EXPAND_SZ <<< $path | sed -E -e $path_pattern -e "s|^(.*;)?$dlls_windir_pattern(;(.*))?$|\\1\\3|")
+    echo "$path"
+    echo "new PATH:                    $cleared_path"
+    wine reg add 'HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' /v PATH /d "$cleared_path" /t REG_EXPAND_SZ
+    exit 0
+fi
+
+function redirect {
+    wine reg query HKEY_CURRENT_USER\\Software\\Wine\\DllRedirects /v $2 | grep -E '^\s*'"$2"'\s+REG_SZ\s+'"$2"'_vk.dll\s*$' 1>/dev/null
+    if [ $? -eq 1 ]; then
+        echo "redirecting [$2 -> $2_vk]"
+        wine reg add HKEY_CURRENT_USER\\Software\\Wine\\DllRedirects /v $2 /d $2_vk.dll
+    else
+        echo -e "redirection [$2 -> $2_vk] was \\e[0;32mOK\\e[0m"
+    fi
+}
+
+redirect CHK_REDIRECT_D3D11 d3d11
+redirect CHK_REDIRECT_DXGI dxgi
+
+path=$(wine reg query 'HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' /v PATH | sed -e 's|\r||g')
+path_val=$(grep REG_EXPAND_SZ<<<$path | sed -E -e $path_pattern)
+check=$(sed -E -e "s|^(.*;)?$dlls_windir_pattern(;.*)?$||" <<<$path_val)
+
+if [ -n "$check" ]; then
+    echo "adding $dlls_windir to windows PATH"
+    new_path="$(sed -E  -e 's|;?\s*$||' <<<$path_val);$dlls_windir"
+    echo "$path"
+    echo "new PATH:                    $new_path"
+    wine reg add 'HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' /v PATH /d "$new_path" /t REG_EXPAND_SZ
+else
+        echo -e "windows PATH was \\e[0;32mOK\\e[0m"
+fi
