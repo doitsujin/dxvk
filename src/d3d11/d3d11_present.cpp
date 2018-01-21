@@ -1,4 +1,5 @@
 #include "d3d11_device.h"
+#include "d3d11_context_imm.h"
 #include "d3d11_present.h"
 
 namespace dxvk {
@@ -57,7 +58,11 @@ namespace dxvk {
     Com<ID3D11DeviceContext> deviceContext = nullptr;
     m_device->GetImmediateContext(&deviceContext);
     
-    deviceContext->Flush();
+    // The presentation code is run from the main rendering thread
+    // rather than the command stream thread, so we synchronize.
+    auto immediateContext = static_cast<D3D11ImmediateContext*>(deviceContext.ptr());
+    immediateContext->Flush();
+    immediateContext->SynchronizeCsThread();
     return S_OK;
   }
   

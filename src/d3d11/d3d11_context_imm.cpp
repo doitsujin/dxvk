@@ -15,8 +15,8 @@ namespace dxvk {
   
   D3D11ImmediateContext::~D3D11ImmediateContext() {
     Flush();
-    SynchronizeCs();
-    Synchronize();
+    SynchronizeCsThread();
+    SynchronizeDevice();
   }
   
   
@@ -114,15 +114,14 @@ namespace dxvk {
       } else if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE) {
         // Synchronize with CS thread so that we know whether
         // the buffer is currently in use by the GPU or not
-        SynchronizeCs();
+        SynchronizeCsThread();
         
         if (buffer->isInUse()) {
           if (MapFlags & D3D11_MAP_FLAG_DO_NOT_WAIT)
             return DXGI_ERROR_WAS_STILL_DRAWING;
           
           Flush();
-          SynchronizeCs();
-          Synchronize();
+          SynchronizeDevice();
         }
       }
       
@@ -200,8 +199,8 @@ namespace dxvk {
         });
         
         Flush();
-        SynchronizeCs();
-        Synchronize();
+        SynchronizeCsThread();
+        SynchronizeDevice();
         
         physicalSlice = textureInfo->imageBuffer->slice();
       }
@@ -249,19 +248,21 @@ namespace dxvk {
   }
   
   
-  void D3D11ImmediateContext::Synchronize() {
+  void D3D11ImmediateContext::SynchronizeCsThread() {
+    // Dispatch current chunk so that all commands
+    // recorded prior to this function will be run
+    EmitCsChunk();
+    
+    m_csThread.synchronize();
+  }
+  
+  
+  void D3D11ImmediateContext::SynchronizeDevice() {
     // FIXME waiting until the device finished executing *all*
     // pending commands is too pessimistic. Instead we should
     // wait for individual command submissions to complete.
     // This will require changes in the DxvkDevice class.
     m_device->waitForIdle();
-  }
-  
-  
-  void D3D11ImmediateContext::SynchronizeCs() {
-    EmitCsChunk();
-    
-    m_csThread.synchronize();
   }
   
   
