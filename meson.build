@@ -24,3 +24,4 @@ glsl_generator = generator(glsl_compiler,
 
 subdir('src')
 subdir('tests')
+subdir('wine_utils')
