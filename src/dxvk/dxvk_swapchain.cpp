@@ -132,7 +132,11 @@ namespace dxvk {
     
     // Create the render pass object
     DxvkRenderPassFormat renderTargetFormat;
-    renderTargetFormat.setColorFormat(0, fmt.format);
+    
+    renderTargetFormat.setColorFormat(0,
+      DxvkRenderTargetFormat { fmt.format,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR });
     
     m_renderPass = new DxvkRenderPass(
       m_vkd, renderTargetFormat);

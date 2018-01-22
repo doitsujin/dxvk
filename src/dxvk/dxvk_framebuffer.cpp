@@ -11,13 +11,19 @@ namespace dxvk {
     
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       if (m_colorTargets.at(i) != nullptr) {
-        result.setColorFormat(i, m_colorTargets.at(i)->info().format);
+        result.setColorFormat(i, DxvkRenderTargetFormat {
+          m_colorTargets.at(i)->imageInfo().format,
+          m_colorTargets.at(i)->imageInfo().layout,
+          m_colorTargets.at(i)->imageInfo().layout });
         result.setSampleCount(m_colorTargets.at(i)->image()->info().sampleCount);
       }
     }
     
     if (m_depthTarget != nullptr) {
-      result.setDepthFormat(m_depthTarget->info().format);
+      result.setDepthFormat(DxvkRenderTargetFormat {
+        m_depthTarget->imageInfo().format,
+        m_depthTarget->imageInfo().layout,
+        m_depthTarget->imageInfo().layout });
       result.setSampleCount(m_depthTarget->image()->info().sampleCount);
     }
     

@@ -561,12 +561,6 @@ namespace dxvk {
     
     void commitComputeBarriers();
     
-    void transformLayoutsRenderPassBegin(
-      const DxvkRenderTargets& renderTargets);
-    
-    void transformLayoutsRenderPassEnd(
-      const DxvkRenderTargets& renderTargets);
-    
   };
   
 }

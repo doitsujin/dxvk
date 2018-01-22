@@ -1108,9 +1108,6 @@ namespace dxvk {
      && (m_state.om.framebuffer != nullptr)) {
       m_flags.set(DxvkContextFlag::GpRenderPassBound);
       
-      this->transformLayoutsRenderPassBegin(
-        m_state.om.framebuffer->renderTargets());
-      
       const DxvkFramebufferSize fbSize
         = m_state.om.framebuffer->size();
       
@@ -1139,9 +1136,6 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
       m_flags.clr(DxvkContextFlag::GpRenderPassBound);
       m_cmd->cmdEndRenderPass();
-      
-      this->transformLayoutsRenderPassEnd(
-        m_state.om.framebuffer->renderTargets());
     }
   }
   
@@ -1488,99 +1482,6 @@ namespace dxvk {
           slot.imageView->imageInfo().stages,
           slot.imageView->imageInfo().access);
       }
-    }
-    
-    m_barriers.recordCommands(m_cmd);
-  }
-  
-  
-  void DxvkContext::transformLayoutsRenderPassBegin(
-    const DxvkRenderTargets& renderTargets) {
-    // Ensure that all color attachments are in the optimal layout.
-    // Any image that is used as a present source requires special
-    // care as we cannot use it for reading.
-    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-      const Rc<DxvkImageView> target = renderTargets.getColorTarget(i);
-      
-      if ((target != nullptr)
-       && (target->imageInfo().layout != VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL)) {
-        VkImageLayout srcLayout = target->imageInfo().layout;
-        
-        if (srcLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR)
-          srcLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        
-        m_barriers.accessImage(
-          target->image(),
-          target->subresources(),
-          srcLayout,
-          target->imageInfo().stages,
-          target->imageInfo().access,
-          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-          VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
-          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
-      }
-    }
-    
-    // Transform the depth-stencil view to the optimal layout
-    const Rc<DxvkImageView> dsTarget = renderTargets.getDepthTarget();
-    
-    if ((dsTarget != nullptr)
-     && (dsTarget->imageInfo().layout != VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)) {
-      m_barriers.accessImage(
-        dsTarget->image(),
-        dsTarget->subresources(),
-        dsTarget->imageInfo().layout,
-        dsTarget->imageInfo().stages,
-        dsTarget->imageInfo().access,
-        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-        VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
-        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT);
-    }
-    
-    m_barriers.recordCommands(m_cmd);
-  }
-  
-  
-  void DxvkContext::transformLayoutsRenderPassEnd(
-    const DxvkRenderTargets& renderTargets) {
-    // Transform color attachments back to their original layouts and
-    // make sure that they can be used for subsequent draw or compute
-    // operations. Swap chain images are treated like any other image.
-    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-      const Rc<DxvkImageView> target = renderTargets.getColorTarget(i);
-      
-      if (target != nullptr) {
-        m_barriers.accessImage(
-          target->image(),
-          target->subresources(),
-          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-          VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
-          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-          target->imageInfo().layout,
-          target->imageInfo().stages,
-          target->imageInfo().access);
-      }
-    }
-    
-    // Transform the depth-stencil attachment back to its original layout.
-    const Rc<DxvkImageView> dsTarget = renderTargets.getDepthTarget();
-    
-    if (dsTarget != nullptr) {
-      m_barriers.accessImage(
-        dsTarget->image(),
-        dsTarget->subresources(),
-        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
-        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
-        VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
-        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
-        dsTarget->imageInfo().layout,
-        dsTarget->imageInfo().stages,
-        dsTarget->imageInfo().access);
     }
     
     m_barriers.recordCommands(m_cmd);

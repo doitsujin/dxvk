@@ -10,6 +10,24 @@
 namespace dxvk {
   
   /**
+   * \brief Format and layout info for a sigle render target
+   * 
+   * Stores the format, initial layout and
+   * final layout of a render target.
+   */
+  struct DxvkRenderTargetFormat {
+    VkFormat      format        = VK_FORMAT_UNDEFINED;
+    VkImageLayout initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    VkImageLayout finalLayout   = VK_IMAGE_LAYOUT_UNDEFINED;
+    
+    bool operator == (const DxvkRenderTargetFormat& other) const;
+    bool operator != (const DxvkRenderTargetFormat& other) const;
+    
+    size_t hash() const;
+  };
+  
+  
+  /**
    * \brief Render pass format
    * 
    * Stores the formats of all render targets
@@ -19,8 +37,6 @@ namespace dxvk {
     
   public:
     
-    DxvkRenderPassFormat();
-    
     /**
      * \brief Retrieves color target format
      * 
@@ -29,7 +45,7 @@ namespace dxvk {
      * \param [in] id Color target index
      * \returns Color target format
      */
-    VkFormat getColorFormat(uint32_t id) const {
+    DxvkRenderTargetFormat getColorFormat(uint32_t id) const {
       return m_color.at(id);
     }
     
@@ -39,7 +55,7 @@ namespace dxvk {
      * If the color target has not been defined,
      * this will return \c VK_FORMAT_UNDEFINED.
      */
-    VkFormat getDepthFormat() const {
+    DxvkRenderTargetFormat getDepthFormat() const {
       return m_depth;
     }
     
@@ -60,7 +76,7 @@ namespace dxvk {
      * \param [in] id Color target index
      * \param [in] fmt Color target format
      */
-    void setColorFormat(uint32_t id, VkFormat fmt) {
+    void setColorFormat(uint32_t id, DxvkRenderTargetFormat fmt) {
       m_color.at(id) = fmt;
     }
     
@@ -68,7 +84,7 @@ namespace dxvk {
      * \brief Sets depth-stencil format
      * \param [in] fmt Depth-stencil format
      */
-    void setDepthFormat(VkFormat fmt) {
+    void setDepthFormat(DxvkRenderTargetFormat fmt) {
       m_depth = fmt;
     }
     
@@ -91,9 +107,9 @@ namespace dxvk {
     
   private:
     
-    std::array<VkFormat, MaxNumRenderTargets> m_color;
-    VkFormat                                  m_depth;
-    VkSampleCountFlagBits                     m_samples;
+    std::array<DxvkRenderTargetFormat, MaxNumRenderTargets> m_color;
+    DxvkRenderTargetFormat                                  m_depth;
+    VkSampleCountFlagBits                                   m_samples = VK_SAMPLE_COUNT_1_BIT;
     
   };
   

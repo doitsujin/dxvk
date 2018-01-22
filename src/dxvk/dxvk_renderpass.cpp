@@ -2,23 +2,38 @@
 
 namespace dxvk {
   
-  DxvkRenderPassFormat::DxvkRenderPassFormat() {
-    for (uint32_t i = 0; i < MaxNumRenderTargets; i++)
-      m_color[i] = VK_FORMAT_UNDEFINED;
-    m_depth   = VK_FORMAT_UNDEFINED;
-    m_samples = VK_SAMPLE_COUNT_1_BIT;
+  bool DxvkRenderTargetFormat::operator == (const DxvkRenderTargetFormat& other) const {
+    return this->format         == other.format
+        && this->initialLayout  == other.initialLayout
+        && this->finalLayout    == other.finalLayout;
+  }
+  
+  
+  bool DxvkRenderTargetFormat::operator != (const DxvkRenderTargetFormat& other) const {
+    return !this->operator == (other);
+  }
+  
+  
+  size_t DxvkRenderTargetFormat::hash() const {
+    std::hash<VkFormat>      fhash;
+    std::hash<VkImageLayout> lhash;
+    
+    DxvkHashState result;
+    result.add(fhash(this->format));
+    result.add(lhash(this->initialLayout));
+    result.add(lhash(this->finalLayout));
+    return result;
   }
   
   
   size_t DxvkRenderPassFormat::hash() const {
-    DxvkHashState result;
-    std::hash<VkFormat>              fhash;
     std::hash<VkSampleCountFlagBits> shash;
     
+    DxvkHashState result;
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++)
-      result.add(fhash(m_color[i]));
+      result.add(m_color[i].hash());
     
-    result.add(fhash(m_depth));
+    result.add(m_depth.hash());
     result.add(shash(m_samples));
     return result;
   }
@@ -49,17 +64,19 @@ namespace dxvk {
     
     // Render passes may not require the previous
     // contents of the attachments to be preserved.
-    if (fmt.getDepthFormat() != VK_FORMAT_UNDEFINED) {
+    const DxvkRenderTargetFormat depthFmt = fmt.getDepthFormat();
+    
+    if (depthFmt.format != VK_FORMAT_UNDEFINED) {
       VkAttachmentDescription desc;
       desc.flags          = 0;
-      desc.format         = fmt.getDepthFormat();
+      desc.format         = depthFmt.format;
       desc.samples        = fmt.getSampleCount();
       desc.loadOp         = VK_ATTACHMENT_LOAD_OP_LOAD;
       desc.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
       desc.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_LOAD;
       desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
-      desc.initialLayout  = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-      desc.finalLayout    = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+      desc.initialLayout  = depthFmt.initialLayout;
+      desc.finalLayout    = depthFmt.finalLayout;
       
       depthRef.attachment = attachments.size();
       depthRef.layout     = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -68,20 +85,22 @@ namespace dxvk {
     }
     
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+      const DxvkRenderTargetFormat colorFmt = fmt.getColorFormat(i);
+      
       colorRef[i].attachment = VK_ATTACHMENT_UNUSED;
       colorRef[i].layout     = VK_IMAGE_LAYOUT_UNDEFINED;
       
-      if (fmt.getColorFormat(i) != VK_FORMAT_UNDEFINED) {
+      if (colorFmt.format != VK_FORMAT_UNDEFINED) {
         VkAttachmentDescription desc;
         desc.flags            = 0;
-        desc.format           = fmt.getColorFormat(i);
+        desc.format           = colorFmt.format;
         desc.samples          = fmt.getSampleCount();
         desc.loadOp           = VK_ATTACHMENT_LOAD_OP_LOAD;
         desc.storeOp          = VK_ATTACHMENT_STORE_OP_STORE;
         desc.stencilLoadOp    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         desc.stencilStoreOp   = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        desc.initialLayout    = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-        desc.finalLayout      = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        desc.initialLayout    = colorFmt.initialLayout;
+        desc.finalLayout      = colorFmt.finalLayout;
         
         colorRef[i].attachment = attachments.size();
         colorRef[i].layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
@@ -98,9 +117,46 @@ namespace dxvk {
     subpass.colorAttachmentCount      = colorRef.size();
     subpass.pColorAttachments         = colorRef.data();
     subpass.pResolveAttachments       = nullptr;
-    subpass.pDepthStencilAttachment   = fmt.getDepthFormat() != VK_FORMAT_UNDEFINED ? &depthRef : nullptr;
+    subpass.pDepthStencilAttachment   = depthFmt.format != VK_FORMAT_UNDEFINED ? &depthRef : nullptr;
     subpass.preserveAttachmentCount   = 0;
     subpass.pPreserveAttachments      = nullptr;
+    
+    std::array<VkSubpassDependency, 2> subpassDeps = {{
+      { VK_SUBPASS_EXTERNAL, 0,
+        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT    |
+        VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+        VK_ACCESS_SHADER_READ_BIT                     |
+        VK_ACCESS_SHADER_WRITE_BIT                    |
+        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT           |
+        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT          |
+        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT   |
+        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT  |
+        VK_ACCESS_TRANSFER_READ_BIT                   |
+        VK_ACCESS_TRANSFER_WRITE_BIT,
+        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT           |
+        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT          |
+        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT   |
+        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, 0 },
+      { 0, VK_SUBPASS_EXTERNAL,
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+        VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT    |
+        VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT           |
+        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT          |
+        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT   |
+        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+        VK_ACCESS_SHADER_READ_BIT                     |
+        VK_ACCESS_SHADER_WRITE_BIT                    |
+        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT           |
+        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT          |
+        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT   |
+        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT  |
+        VK_ACCESS_TRANSFER_READ_BIT                   |
+        VK_ACCESS_TRANSFER_WRITE_BIT, 0 },
+    }};
     
     VkRenderPassCreateInfo info;
     info.sType                        = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -110,8 +166,8 @@ namespace dxvk {
     info.pAttachments                 = attachments.data();
     info.subpassCount                 = 1;
     info.pSubpasses                   = &subpass;
-    info.dependencyCount              = 0;
-    info.pDependencies                = nullptr;
+    info.dependencyCount              = subpassDeps.size();
+    info.pDependencies                = subpassDeps.data();
     
     if (m_vkd->vkCreateRenderPass(m_vkd->device(), &info, nullptr, &m_renderPass) != VK_SUCCESS)
       throw DxvkError("DxvkRenderPass::DxvkRenderPass: Failed to create render pass object");
