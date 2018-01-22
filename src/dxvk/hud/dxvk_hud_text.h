@@ -24,8 +24,8 @@ namespace dxvk::hud {
    * to pick letters in the font texture.
    */
   struct HudTexCoord {
-    uint16_t u;
-    uint16_t v;
+    uint32_t u;
+    uint32_t v;
   };
   
   /**
@@ -35,10 +35,10 @@ namespace dxvk::hud {
    * will use this color for the most part.
    */
   struct HudColor {
-    uint8_t x;
-    uint8_t y;
-    uint8_t z;
-    uint8_t w;
+    float x;
+    float y;
+    float z;
+    float w;
   };
   
   /**

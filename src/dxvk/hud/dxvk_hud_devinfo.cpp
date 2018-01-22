@@ -27,17 +27,17 @@ namespace dxvk::hud {
           HudPos            position) {
     renderer.drawText(context, 16.0f,
       { position.x, position.y },
-      { 0xFF, 0xFF, 0xFF, 0xFF },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
       m_deviceName);
     
     renderer.drawText(context, 16.0f,
       { position.x, position.y + 24 },
-      { 0xFF, 0xFF, 0xFF, 0xFF },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
       m_driverVer);
     
     renderer.drawText(context, 16.0f,
       { position.x, position.y + 44 },
-      { 0xFF, 0xFF, 0xFF, 0xFF },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
       m_vulkanVer);
     
     return HudPos { position.x, position.y + 68 };

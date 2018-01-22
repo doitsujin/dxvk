@@ -34,9 +34,9 @@ namespace dxvk::hud {
     context->setInputAssemblyState(iaState);
     
     const std::array<DxvkVertexAttribute, 3> ilAttributes = {{
-      { 0, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(HudTextVertex, position) },
-      { 1, 0, VK_FORMAT_R16G16_UINT,   offsetof(HudTextVertex, texcoord) },
-      { 2, 0, VK_FORMAT_R8G8B8A8_SRGB, offsetof(HudTextVertex, color)    },
+      { 0, 0, VK_FORMAT_R32G32_SFLOAT,       offsetof(HudTextVertex, position) },
+      { 1, 0, VK_FORMAT_R32G32_UINT,         offsetof(HudTextVertex, texcoord) },
+      { 2, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(HudTextVertex, color)    },
     }};
     
     const std::array<DxvkVertexBinding, 1> ilBindings = {{
@@ -89,12 +89,12 @@ namespace dxvk::hud {
       const HudPos posBr = { origin.x + size.x, origin.y + size.y };
       
       const HudTexCoord texTl = {
-        static_cast<uint16_t>(glyph.x),
-        static_cast<uint16_t>(glyph.y), };
+        static_cast<uint32_t>(glyph.x),
+        static_cast<uint32_t>(glyph.y), };
         
       const HudTexCoord texBr = {
-        static_cast<uint16_t>(glyph.x + glyph.w),
-        static_cast<uint16_t>(glyph.y + glyph.h) };
+        static_cast<uint32_t>(glyph.x + glyph.w),
+        static_cast<uint32_t>(glyph.y + glyph.h) };
       
       vertexData[6 * i + 0].position = { posTl.x, posTl.y };
       vertexData[6 * i + 0].texcoord = { texTl.u, texTl.v };

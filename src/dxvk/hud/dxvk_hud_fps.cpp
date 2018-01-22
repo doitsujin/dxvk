@@ -38,7 +38,7 @@ namespace dxvk::hud {
           HudPos            position) {
     renderer.drawText(context, 16.0f,
       { position.x, position.y },
-      { 0xFF, 0xFF, 0xFF, 0xFF },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
       m_fpsString);
     
     return HudPos { position.x, position.y + 20 };
