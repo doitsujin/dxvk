@@ -10,6 +10,8 @@ namespace dxvk {
     switch (desc.Query) {
       // Other query types are currently unsupported
       case D3D11_QUERY_OCCLUSION:
+      case D3D11_QUERY_TIMESTAMP:
+      case D3D11_QUERY_TIMESTAMP_DISJOINT:
       case D3D11_QUERY_OCCLUSION_PREDICATE:
         break;
 
@@ -89,6 +91,7 @@ namespace dxvk {
           void*                             pData,
           UINT                              GetDataFlags) {
     static bool errorShown = false;
+    static UINT64 fakeTimestamp = 0;
     
     if (!std::exchange(errorShown, true))
       Logger::warn("D3D11Query::GetData: Stub");
@@ -100,7 +103,16 @@ namespace dxvk {
       case D3D11_QUERY_OCCLUSION:
         *static_cast<UINT64*>(pData) = 1;
         return S_OK;
-        
+
+      case D3D11_QUERY_TIMESTAMP:
+        *static_cast<UINT64*>(pData) = fakeTimestamp++;
+        return S_OK;
+
+      case D3D11_QUERY_TIMESTAMP_DISJOINT:
+        static_cast<D3D11_QUERY_DATA_TIMESTAMP_DISJOINT*>(pData)->Frequency = 1000;
+        static_cast<D3D11_QUERY_DATA_TIMESTAMP_DISJOINT*>(pData)->Disjoint = FALSE;
+        return S_OK;
+
       case D3D11_QUERY_OCCLUSION_PREDICATE:
         *static_cast<BOOL*>(pData) = TRUE;
         return S_OK;
