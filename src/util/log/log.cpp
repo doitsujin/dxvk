@@ -2,7 +2,6 @@
 
 #include "../util_env.h"
 
-#include <ctime>
 #include <regex>
 
 namespace dxvk {
@@ -16,13 +15,6 @@ namespace dxvk {
       file += '/';
     std::regex ext(".exe$");
     file += std::regex_replace(env::getExeName(),ext,"") + "_";
-    if (!env::getEnvVar(L"DXVK_LOG_TIMESTAMP").empty()) {
-      std::time_t t = std::time(nullptr);
-      char mbstr[sizeof("2018-01-01_00.00.00")];
-      if (std::strftime(mbstr, sizeof(mbstr), "%Y-%m-%d_%H.%M.%S", std::localtime(&t))) {
-        file += std::string(mbstr) + "_";
-      }
-    }
     m_fileStream = std::ofstream(file + file_name);
   }
   
