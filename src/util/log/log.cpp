@@ -2,8 +2,6 @@
 
 #include "../util_env.h"
 
-#include <regex>
-
 namespace dxvk {
   
   Logger::Logger(const std::string& file_name)
@@ -13,8 +11,11 @@ namespace dxvk {
     std::string file = path;
     if (!file.empty() && *file.rbegin() != '/')
       file += '/';
-    std::regex ext(".exe$");
-    file += std::regex_replace(env::getExeName(),ext,"") + "_";
+    std::string name = env::getExeName();
+    unsigned int extp = name.find_last_of('.');
+    if (extp != std::string::npos && name.substr(extp +1) == "exe")
+      name.erase(extp);
+    file += name + "_";
     m_fileStream = std::ofstream(file + file_name);
   }
   
