@@ -107,7 +107,7 @@ namespace dxvk {
      * slots used by the pipeline.
      * \returns Pipeline layout
      */
-    Rc<DxvkBindingLayout> layout() const {
+    Rc<DxvkPipelineLayout> layout() const {
       return m_layout;
     }
     
@@ -133,7 +133,7 @@ namespace dxvk {
     const Rc<vk::DeviceFn>  m_vkd;
     
     Rc<DxvkPipelineCache> m_cache;
-    Rc<DxvkBindingLayout> m_layout;
+    Rc<DxvkPipelineLayout> m_layout;
     
     Rc<DxvkShaderModule>  m_vs;
     Rc<DxvkShaderModule>  m_tcs;

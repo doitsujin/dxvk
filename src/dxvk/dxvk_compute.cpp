@@ -12,7 +12,7 @@ namespace dxvk {
     DxvkDescriptorSlotMapping slotMapping;
     cs->defineResourceSlots(slotMapping);
     
-    m_layout = new DxvkBindingLayout(m_vkd,
+    m_layout = new DxvkPipelineLayout(m_vkd,
       slotMapping.bindingCount(),
       slotMapping.bindingInfos());
     

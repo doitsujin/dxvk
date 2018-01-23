@@ -1236,7 +1236,7 @@ namespace dxvk {
   
   void DxvkContext::updateShaderResources(
           VkPipelineBindPoint     bindPoint,
-    const Rc<DxvkBindingLayout>&  layout) {
+    const Rc<DxvkPipelineLayout>&  layout) {
     DxvkBindingState& bs =
       bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
         ? m_state.gp.state.bsBindingState
@@ -1323,7 +1323,7 @@ namespace dxvk {
   void DxvkContext::updateShaderDescriptors(
           VkPipelineBindPoint     bindPoint,
     const DxvkBindingState&       bindingState,
-    const Rc<DxvkBindingLayout>&  layout) {
+    const Rc<DxvkPipelineLayout>&  layout) {
     std::array<VkWriteDescriptorSet, MaxNumResourceSlots> writes;
     
     const VkDescriptorSet dset =

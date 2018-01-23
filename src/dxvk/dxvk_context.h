@@ -541,12 +541,12 @@ namespace dxvk {
     
     void updateShaderResources(
             VkPipelineBindPoint     bindPoint,
-      const Rc<DxvkBindingLayout>&  layout);
+      const Rc<DxvkPipelineLayout>&  layout);
     
     void updateShaderDescriptors(
             VkPipelineBindPoint     bindPoint,
       const DxvkBindingState&       bindingState,
-      const Rc<DxvkBindingLayout>&  layout);
+      const Rc<DxvkPipelineLayout>&  layout);
     
     void updateDynamicState();
     void updateViewports();

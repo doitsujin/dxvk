@@ -41,7 +41,7 @@ namespace dxvk {
   }
   
   
-  DxvkBindingLayout::DxvkBindingLayout(
+  DxvkPipelineLayout::DxvkPipelineLayout(
     const Rc<vk::DeviceFn>&   vkd,
           uint32_t            bindingCount,
     const DxvkDescriptorSlot* bindingInfos)
@@ -73,7 +73,7 @@ namespace dxvk {
     
     if (m_vkd->vkCreateDescriptorSetLayout(m_vkd->device(),
           &dsetInfo, nullptr, &m_descriptorSetLayout) != VK_SUCCESS)
-      throw DxvkError("DxvkBindingLayout: Failed to create descriptor set layout");
+      throw DxvkError("DxvkPipelineLayout: Failed to create descriptor set layout");
     
     VkPipelineLayoutCreateInfo pipeInfo;
     pipeInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -88,12 +88,12 @@ namespace dxvk {
           &pipeInfo, nullptr, &m_pipelineLayout) != VK_SUCCESS) {
       m_vkd->vkDestroyDescriptorSetLayout(
         m_vkd->device(), m_descriptorSetLayout, nullptr);
-      throw DxvkError("DxvkBindingLayout: Failed to create pipeline layout");
+      throw DxvkError("DxvkPipelineLayout: Failed to create pipeline layout");
     }
   }
   
   
-  DxvkBindingLayout::~DxvkBindingLayout() {
+  DxvkPipelineLayout::~DxvkPipelineLayout() {
     if (m_pipelineLayout != VK_NULL_HANDLE) {
       m_vkd->vkDestroyPipelineLayout(
         m_vkd->device(), m_pipelineLayout, nullptr);

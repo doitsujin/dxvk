@@ -104,16 +104,16 @@ namespace dxvk {
    * Describes shader resource bindings
    * for a graphics or compute pipeline.
    */
-  class DxvkBindingLayout : public RcObject {
+  class DxvkPipelineLayout : public RcObject {
     
   public:
     
-    DxvkBindingLayout(
+    DxvkPipelineLayout(
       const Rc<vk::DeviceFn>&   vkd,
             uint32_t            bindingCount,
       const DxvkDescriptorSlot* bindingInfos);
     
-    ~DxvkBindingLayout();
+    ~DxvkPipelineLayout();
     
     /**
      * \brief Number of resource bindings

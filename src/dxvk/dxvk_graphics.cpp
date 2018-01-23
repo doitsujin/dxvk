@@ -50,7 +50,7 @@ namespace dxvk {
     if (gs  != nullptr) gs ->defineResourceSlots(slotMapping);
     if (fs  != nullptr) fs ->defineResourceSlots(slotMapping);
     
-    m_layout = new DxvkBindingLayout(m_vkd,
+    m_layout = new DxvkPipelineLayout(m_vkd,
       slotMapping.bindingCount(),
       slotMapping.bindingInfos());
     
