@@ -568,12 +568,21 @@ namespace dxvk {
     template<typename Cmd>
     void EmitCs(Cmd&& command) {
       if (!m_csChunk->push(command)) {
-        EmitCsChunk();
+        EmitCsChunk(std::move(m_csChunk));
+        
+        m_csChunk = new DxvkCsChunk();
         m_csChunk->push(command);
       }
     }
     
-    virtual void EmitCsChunk() = 0;
+    void FlushCsChunk() {
+      if (m_csChunk->commandCount() != 0) {
+        EmitCsChunk(std::move(m_csChunk));
+        m_csChunk = new DxvkCsChunk();
+      }
+    }
+    
+    virtual void EmitCsChunk(Rc<DxvkCsChunk>&& chunk) = 0;
     
   };
   

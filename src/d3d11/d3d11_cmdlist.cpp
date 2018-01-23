@@ -34,4 +34,23 @@ namespace dxvk {
     return m_contextFlags;
   }
   
+  
+  void D3D11CommandList::AddChunk(Rc<DxvkCsChunk>&& Chunk) {
+    m_chunks.push_back(std::move(Chunk));
+  }
+  
+  
+  void D3D11CommandList::EmitToCommandList(ID3D11CommandList* pCommandList) {
+    auto cmdList = static_cast<D3D11CommandList*>(pCommandList);
+    
+    for (auto chunk : m_chunks)
+      cmdList->m_chunks.push_back(chunk);
+  }
+  
+  
+  void D3D11CommandList::EmitToCsThread(const Rc<DxvkCsThread>& CsThread) {
+    for (auto chunk : m_chunks)
+      CsThread->dispatchChunk(Rc<DxvkCsChunk>(chunk));
+  }
+  
 }

@@ -50,7 +50,7 @@ namespace dxvk {
     
     void SynchronizeDevice();
     
-    void EmitCsChunk() final;
+    void EmitCsChunk(Rc<DxvkCsChunk>&& chunk) final;
     
   };
   

@@ -40,9 +40,7 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkCsChunk> DxvkCsThread::dispatchChunk(Rc<DxvkCsChunk>&& chunk) {
-    Rc<DxvkCsChunk> nextChunk = nullptr;
-    
+  void DxvkCsThread::dispatchChunk(Rc<DxvkCsChunk>&& chunk) {
     { std::unique_lock<std::mutex> lock(m_mutex);
       m_chunksQueued.push(std::move(chunk));
       m_chunksPending += 1;
@@ -56,21 +54,10 @@ namespace dxvk {
               || (m_stopped.load());
         });
       }
-      
-      if (m_chunksUnused.size() != 0) {
-        nextChunk = std::move(m_chunksUnused.front());
-        m_chunksUnused.pop();
-      }
     }
     
     // Wake CS thread
     m_condOnAdd.notify_one();
-    
-    // Allocate new chunk if needed
-    if (nextChunk == nullptr)
-      nextChunk = new DxvkCsChunk();
-    
-    return nextChunk;
   }
   
   
@@ -90,8 +77,6 @@ namespace dxvk {
       { std::unique_lock<std::mutex> lock(m_mutex);
         if (chunk != nullptr) {
           m_chunksPending -= 1;
-          m_chunksUnused.push(std::move(chunk));
-          
           m_condOnSync.notify_one();
         }
         

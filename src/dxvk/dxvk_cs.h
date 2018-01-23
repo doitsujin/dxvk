@@ -152,9 +152,8 @@ namespace dxvk {
      * Can be used to efficiently play back large
      * command lists recorded on another thread.
      * \param [in] chunk The chunk to dispatch
-     * \returns New chunk for the next submissions
      */
-    Rc<DxvkCsChunk> dispatchChunk(Rc<DxvkCsChunk>&& chunk);
+    void dispatchChunk(Rc<DxvkCsChunk>&& chunk);
     
     /**
      * \brief Synchronizes with the thread
@@ -175,7 +174,6 @@ namespace dxvk {
     std::condition_variable     m_condOnAdd;
     std::condition_variable     m_condOnSync;
     std::queue<Rc<DxvkCsChunk>> m_chunksQueued;
-    std::queue<Rc<DxvkCsChunk>> m_chunksUnused;
     std::thread                 m_thread;
     
     uint32_t                    m_chunksPending = 0;

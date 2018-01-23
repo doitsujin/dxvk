@@ -7,7 +7,8 @@ namespace dxvk {
     Rc<DxvkDevice>  Device,
     UINT            ContextFlags)
   : D3D11DeviceContext(pParent, Device),
-    m_contextFlags(ContextFlags) {
+    m_contextFlags(ContextFlags),
+    m_commandList (CreateCommandList()) {
     
   }
   
@@ -60,8 +61,13 @@ namespace dxvk {
   }
   
   
-  void D3D11DeferredContext::EmitCsChunk() {
-    
+  Com<D3D11CommandList> D3D11DeferredContext::CreateCommandList() {
+    return new D3D11CommandList(m_parent, m_contextFlags);
+  }
+  
+  
+  void D3D11DeferredContext::EmitCsChunk(Rc<DxvkCsChunk>&& chunk) {
+    m_commandList->AddChunk(std::move(chunk));
   }
 
 }

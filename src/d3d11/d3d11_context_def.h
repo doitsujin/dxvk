@@ -1,5 +1,6 @@
 #pragma once
 
+#include "d3d11_cmdlist.h"
 #include "d3d11_context.h"
 
 namespace dxvk {
@@ -42,7 +43,11 @@ namespace dxvk {
     
     const UINT m_contextFlags;
     
-    void EmitCsChunk() final;
+    Com<D3D11CommandList> m_commandList;
+    
+    Com<D3D11CommandList> CreateCommandList();
+    
+    void EmitCsChunk(Rc<DxvkCsChunk>&& chunk) final;
     
   };
   

@@ -55,7 +55,7 @@ namespace dxvk {
         dev->createCommandList());
     });
     
-    EmitCsChunk();
+    FlushCsChunk();
   }
   
   
@@ -251,7 +251,7 @@ namespace dxvk {
   void D3D11ImmediateContext::SynchronizeCsThread() {
     // Dispatch current chunk so that all commands
     // recorded prior to this function will be run
-    EmitCsChunk();
+    FlushCsChunk();
     
     m_csThread.synchronize();
   }
@@ -266,9 +266,8 @@ namespace dxvk {
   }
   
   
-  void D3D11ImmediateContext::EmitCsChunk() {
-    if (m_csChunk->commandCount() > 0)
-      m_csChunk = m_csThread.dispatchChunk(std::move(m_csChunk));
+  void D3D11ImmediateContext::EmitCsChunk(Rc<DxvkCsChunk>&& chunk) {
+    m_csThread.dispatchChunk(std::move(chunk));
   }
   
 }

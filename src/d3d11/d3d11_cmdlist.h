@@ -1,10 +1,8 @@
 #pragma once
 
-#include "d3d11_device_child.h"
+#include "d3d11_context.h"
 
 namespace dxvk {
-  
-  class D3D11Device;
   
   class D3D11CommandList : public D3D11DeviceChild<ID3D11CommandList> {
     
@@ -25,10 +23,20 @@ namespace dxvk {
     
     UINT GetContextFlags();
     
+    void AddChunk(Rc<DxvkCsChunk>&& Chunk);
+    
+    void EmitToCommandList(
+            ID3D11CommandList*  pCommandList);
+    
+    void EmitToCsThread(
+      const Rc<DxvkCsThread>&   CsThread);
+    
   private:
     
     D3D11Device* const m_device;
     UINT         const m_contextFlags;
+    
+    std::vector<Rc<DxvkCsChunk>> m_chunks;
     
   };
   
