@@ -13,6 +13,7 @@ namespace dxvk {
     Info  = 2,
     Warn  = 3,
     Error = 4,
+    None  = 5,
   };
   
   /**
