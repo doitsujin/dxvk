@@ -182,14 +182,14 @@ namespace dxvk {
     const VkImageSubresourceRange&  subresources) {
     this->renderPassEnd();
     
-    if (image->info().layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-      m_barriers.accessImage(image, subresources,
-        VK_IMAGE_LAYOUT_UNDEFINED, 0, 0,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VK_ACCESS_TRANSFER_WRITE_BIT);
-      m_barriers.recordCommands(m_cmd);
-    }
+    m_barriers.accessImage(image, subresources,
+      VK_IMAGE_LAYOUT_UNDEFINED,
+      image->info().stages,
+      image->info().access,
+      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT);
+    m_barriers.recordCommands(m_cmd);
     
     m_cmd->cmdClearColorImage(image->handle(),
       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -214,14 +214,14 @@ namespace dxvk {
     const VkImageSubresourceRange&  subresources) {
     this->renderPassEnd();
     
-    if (image->info().layout != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
-      m_barriers.accessImage(image, subresources,
-        VK_IMAGE_LAYOUT_UNDEFINED, 0, 0,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VK_ACCESS_TRANSFER_WRITE_BIT);
-      m_barriers.recordCommands(m_cmd);
-    }
+    m_barriers.accessImage(image, subresources,
+      VK_IMAGE_LAYOUT_UNDEFINED,
+      image->info().stages,
+      image->info().access,
+      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT);
+    m_barriers.recordCommands(m_cmd);
     
     m_cmd->cmdClearDepthStencilImage(image->handle(),
       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -603,7 +603,8 @@ namespace dxvk {
     const Rc<DxvkImage>&           image,
     const VkImageSubresourceRange& subresources) {
     m_barriers.accessImage(image, subresources,
-      VK_IMAGE_LAYOUT_UNDEFINED, 0, 0,
+      VK_IMAGE_LAYOUT_UNDEFINED,
+      VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 0,
       image->info().layout,
       image->info().stages,
       image->info().access);
@@ -782,7 +783,9 @@ namespace dxvk {
     // area, so we might as well discard its contents
     m_barriers.accessImage(
       dstImage, dstSubresourceRange,
-      VK_IMAGE_LAYOUT_UNDEFINED, 0, 0,
+      VK_IMAGE_LAYOUT_UNDEFINED,
+      dstImage->info().stages,
+      dstImage->info().access,
       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT);
