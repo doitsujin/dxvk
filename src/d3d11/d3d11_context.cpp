@@ -418,7 +418,7 @@ namespace dxvk {
       clearRect.rect.extent.width   = dxvkView->mipLevelExtent(0).width;
       clearRect.rect.extent.height  = dxvkView->mipLevelExtent(0).height;
       clearRect.baseArrayLayer      = 0;
-      clearRect.layerCount          = dxvkView->imageInfo().numLayers;
+      clearRect.layerCount          = dxvkView->info().numLayers;
       
       if (m_parent->GetFeatureLevel() < D3D_FEATURE_LEVEL_10_0)
         clearRect.layerCount        = 1;
@@ -465,6 +465,14 @@ namespace dxvk {
     auto dsv = static_cast<D3D11DepthStencilView*>(pDepthStencilView);
     const Rc<DxvkImageView> dxvkView = dsv->GetImageView();
     
+    VkImageAspectFlags aspectMask = 0;
+    
+    if (ClearFlags & D3D11_CLEAR_DEPTH)
+      aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
+    
+    if (ClearFlags & D3D11_CLEAR_STENCIL)
+      aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+    
     VkClearDepthStencilValue clearValue;
     clearValue.depth   = Depth;
     clearValue.stencil = Stencil;
@@ -473,15 +481,9 @@ namespace dxvk {
       // Image is bound to the pipeline for rendering. We can
       // use the clear function that operates on attachments.
       VkClearAttachment clearInfo;
-      clearInfo.aspectMask              = 0;
+      clearInfo.aspectMask              = aspectMask;
       clearInfo.colorAttachment         = 0;
       clearInfo.clearValue.depthStencil = clearValue;
-      
-      if (ClearFlags & D3D11_CLEAR_DEPTH)
-        clearInfo.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
-      
-      if (ClearFlags & D3D11_CLEAR_STENCIL)
-        clearInfo.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
       
       // Clear the full area
       VkClearRect clearRect;
@@ -490,7 +492,7 @@ namespace dxvk {
       clearRect.rect.extent.width   = dxvkView->mipLevelExtent(0).width;
       clearRect.rect.extent.height  = dxvkView->mipLevelExtent(0).height;
       clearRect.baseArrayLayer      = 0;
-      clearRect.layerCount          = dxvkView->imageInfo().numLayers;
+      clearRect.layerCount          = dxvkView->info().numLayers;
       
       // FIXME Is this correct? Docs don't say anything
       if (m_parent->GetFeatureLevel() < D3D_FEATURE_LEVEL_10_0)
@@ -505,10 +507,14 @@ namespace dxvk {
     } else {
       EmitCs([
         cClearValue = clearValue,
-        cDstView    = dxvkView
+        cDstView    = dxvkView,
+        cAspectMask = aspectMask
       ] (DxvkContext* ctx) {
+        VkImageSubresourceRange subresources = cDstView->subresources();
+        subresources.aspectMask = cAspectMask;
+        
         ctx->clearDepthStencilImage(cDstView->image(),
-          cClearValue, cDstView->subresources());
+          cClearValue, subresources);
       });
     }
   }
