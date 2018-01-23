@@ -21,7 +21,7 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDevice(
             ID3D11Device **ppDevice) final;
     
-    UINT GetContextFlags();
+    UINT STDMETHODCALLTYPE GetContextFlags() final;
     
     void AddChunk(Rc<DxvkCsChunk>&& Chunk);
     

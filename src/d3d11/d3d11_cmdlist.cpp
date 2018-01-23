@@ -30,7 +30,7 @@ namespace dxvk {
   }
   
   
-  UINT D3D11CommandList::GetContextFlags() {
+  UINT STDMETHODCALLTYPE D3D11CommandList::GetContextFlags() {
     return m_contextFlags;
   }
   

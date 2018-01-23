@@ -564,18 +564,10 @@ namespace dxvk {
       
       if (((size == bufferSlice.length())
        && (bufferSlice.buffer()->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))) {
-        auto physicalSlice = bufferSlice.buffer()->allocPhysicalSlice();
-        physicalSlice.resource()->acquire();
-        
-        std::memcpy(physicalSlice.mapPtr(0), pSrcData, size);
-        
-        EmitCs([
-          cDstBuffer     = bufferSlice.buffer(),
-          cPhysicalSlice = std::move(physicalSlice)
-        ] (DxvkContext* ctx) {
-          ctx->invalidateBuffer(cDstBuffer, cPhysicalSlice);
-          cPhysicalSlice.resource()->release();
-        });
+        D3D11_MAPPED_SUBRESOURCE mappedSr;
+        Map(pDstResource, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSr);
+        std::memcpy(mappedSr.pData, pSrcData, size);
+        Unmap(pDstResource, 0);
       } else {
         EmitCs([
           cDataBuffer   = Rc<DxvkDataBuffer>(new DxvkDataBuffer(pSrcData, size)),
