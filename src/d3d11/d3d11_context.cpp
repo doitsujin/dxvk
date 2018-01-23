@@ -947,15 +947,31 @@ namespace dxvk {
           ID3D11Buffer**                    ppVertexBuffers,
           UINT*                             pStrides,
           UINT*                             pOffsets) {
-    Logger::err("D3D11DeviceContext::IAGetVertexBuffers: Not implemented");
+    for (uint32_t i = 0; i < NumBuffers; i++) {
+      if (ppVertexBuffers != nullptr)
+        ppVertexBuffers[i] = m_state.ia.vertexBuffers[StartSlot + i].buffer.ref();
+      
+      if (pStrides != nullptr)
+        pStrides[i] = m_state.ia.vertexBuffers[StartSlot + i].stride;
+      
+      if (pOffsets != nullptr)
+        pOffsets[i] = m_state.ia.vertexBuffers[StartSlot + i].offset;
+    }
   }
   
   
   void STDMETHODCALLTYPE D3D11DeviceContext::IAGetIndexBuffer(
-          ID3D11Buffer**                    pIndexBuffer,
-          DXGI_FORMAT*                      Format,
-          UINT*                             Offset) {
-    Logger::err("D3D11DeviceContext::IAGetIndexBuffer: Not implemented");
+          ID3D11Buffer**                    ppIndexBuffer,
+          DXGI_FORMAT*                      pFormat,
+          UINT*                             pOffset) {
+    if (ppIndexBuffer != nullptr)
+      *ppIndexBuffer = m_state.ia.indexBuffer.buffer.ref();
+    
+    if (pFormat != nullptr)
+      *pFormat = m_state.ia.indexBuffer.format;
+    
+    if (pOffset != nullptr)
+      *pOffset = m_state.ia.indexBuffer.offset;
   }
   
   

@@ -182,9 +182,9 @@ namespace dxvk {
             UINT*                             pOffsets) final;
     
     void STDMETHODCALLTYPE IAGetIndexBuffer(
-            ID3D11Buffer**                    pIndexBuffer,
-            DXGI_FORMAT*                      Format,
-            UINT*                             Offset) final;
+            ID3D11Buffer**                    ppIndexBuffer,
+            DXGI_FORMAT*                      pFormat,
+            UINT*                             pOffset) final;
     
     void STDMETHODCALLTYPE VSSetShader(
             ID3D11VertexShader*               pVertexShader,
