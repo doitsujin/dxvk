@@ -4,18 +4,14 @@
 
 namespace dxvk {
   
-  class D3D11ImmediateContext : public D3D11DeviceContext {
+  class D3D11DeferredContext : public D3D11DeviceContext {
     
   public:
     
-    D3D11ImmediateContext(
+    D3D11DeferredContext(
       D3D11Device*    pParent,
-      Rc<DxvkDevice>  Device);
-    ~D3D11ImmediateContext();
-    
-    ULONG STDMETHODCALLTYPE AddRef() final;
-    
-    ULONG STDMETHODCALLTYPE Release() final;
+      Rc<DxvkDevice>  Device,
+      UINT            ContextFlags);
     
     D3D11_DEVICE_CONTEXT_TYPE STDMETHODCALLTYPE GetType() final;
     
@@ -42,13 +38,9 @@ namespace dxvk {
             ID3D11Resource*             pResource,
             UINT                        Subresource) final;
     
-    void SynchronizeCsThread();
-    
   private:
     
-    DxvkCsThread m_csThread;
-    
-    void SynchronizeDevice();
+    const UINT m_contextFlags;
     
     void EmitCsChunk() final;
     

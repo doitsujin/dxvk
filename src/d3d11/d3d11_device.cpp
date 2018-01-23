@@ -2,6 +2,7 @@
 
 #include "d3d11_buffer.h"
 #include "d3d11_class_linkage.h"
+#include "d3d11_context_def.h"
 #include "d3d11_context_imm.h"
 #include "d3d11_device.h"
 #include "d3d11_input_layout.h"
@@ -1095,8 +1096,8 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11Device::CreateDeferredContext(
           UINT                        ContextFlags,
           ID3D11DeviceContext**       ppDeferredContext) {
-    Logger::err("D3D11Device::CreateDeferredContext: Not implemented");
-    return E_NOTIMPL;
+    *ppDeferredContext = ref(new D3D11DeferredContext(this, m_dxvkDevice, ContextFlags));
+    return S_OK;
   }
   
   

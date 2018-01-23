@@ -5,10 +5,10 @@
 namespace dxvk {
   
   D3D11ImmediateContext::D3D11ImmediateContext(
-    D3D11Device*    parent,
-    Rc<DxvkDevice>  device)
-  : D3D11DeviceContext(parent, device),
-    m_csThread(device->createContext()) {
+    D3D11Device*    pParent,
+    Rc<DxvkDevice>  Device)
+  : D3D11DeviceContext(pParent, Device),
+    m_csThread(Device->createContext()) {
     
   }
   
