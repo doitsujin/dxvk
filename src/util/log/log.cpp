@@ -15,7 +15,7 @@ namespace dxvk {
     if (!file.empty() && *file.rbegin() != '/')
       file += '/';
     std::string name = env::getExeName();
-    unsigned int extp = name.find_last_of('.');
+    auto extp = name.find_last_of('.');
     if (extp != std::string::npos && name.substr(extp +1) == "exe")
       name.erase(extp);
     file += name + "_";
