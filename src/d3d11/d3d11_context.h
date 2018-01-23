@@ -520,6 +520,7 @@ namespace dxvk {
     Rc<DxvkDevice>              m_device;
     Rc<DxvkCsChunk>             m_csChunk;
     Rc<DxvkSampler>             m_defaultSampler;
+    Rc<DxvkDataBuffer>          m_updateBuffer;
     
     Com<D3D11BlendState>        m_defaultBlendState;
     Com<D3D11DepthStencilState> m_defaultDepthStencilState;
@@ -565,6 +566,8 @@ namespace dxvk {
     
     Rc<DxvkSampler> CreateDefaultSampler();
     
+    DxvkDataSlice AllocUpdateBufferSlice(size_t Size);
+    
     template<typename Cmd>
     void EmitCs(Cmd&& command) {
       if (!m_csChunk->push(command)) {
@@ -583,6 +586,7 @@ namespace dxvk {
     }
     
     virtual void EmitCsChunk(Rc<DxvkCsChunk>&& chunk) = 0;
+    
     
   };
   

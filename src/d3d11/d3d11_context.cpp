@@ -569,15 +569,18 @@ namespace dxvk {
         std::memcpy(mappedSr.pData, pSrcData, size);
         Unmap(pDstResource, 0);
       } else {
+        DxvkDataSlice dataSlice = AllocUpdateBufferSlice(size);
+        std::memcpy(dataSlice.ptr(), pSrcData, size);
+        
         EmitCs([
-          cDataBuffer   = Rc<DxvkDataBuffer>(new DxvkDataBuffer(pSrcData, size)),
+          cDataBuffer   = std::move(dataSlice),
           cBufferSlice  = bufferSlice.subSlice(offset, size)
         ] (DxvkContext* ctx) {
           ctx->updateBuffer(
             cBufferSlice.buffer(),
             cBufferSlice.offset(),
             cBufferSlice.length(),
-            cDataBuffer->data());
+            cDataBuffer.ptr());
         });
       }
     } else {
@@ -620,10 +623,10 @@ namespace dxvk {
       const VkDeviceSize bytesPerLayer = regionExtent.height * bytesPerRow;
       const VkDeviceSize bytesTotal    = regionExtent.depth  * bytesPerLayer;
       
-      Rc<DxvkDataBuffer> imageDataBuffer = new DxvkDataBuffer(bytesTotal);
+      DxvkDataSlice imageDataBuffer = AllocUpdateBufferSlice(bytesTotal);
       
       util::packImageData(
-        reinterpret_cast<char*>(imageDataBuffer->data()),
+        reinterpret_cast<char*>(imageDataBuffer.ptr()),
         reinterpret_cast<const char*>(pSrcData),
         regionExtent, formatInfo->elementSize,
         SrcRowPitch, SrcDepthPitch);
@@ -638,7 +641,7 @@ namespace dxvk {
         cSrcBytesPerLayer = bytesPerLayer
       ] (DxvkContext* ctx) {
         ctx->updateImage(cDstImage, cDstLayers,
-          cDstOffset, cDstExtent, cSrcData->data(),
+          cDstOffset, cDstExtent, cSrcData.ptr(),
           cSrcBytesPerRow, cSrcBytesPerLayer);
       });
     }
@@ -2112,5 +2115,28 @@ namespace dxvk {
     info.usePixelCoord          = VK_FALSE;
     return m_device->createSampler(info);
   }
+  
+  
+  DxvkDataSlice D3D11DeviceContext::AllocUpdateBufferSlice(size_t Size) {
+    constexpr size_t UpdateBufferSize = 4 * 1024 * 1024;
+    
+    if (Size >= UpdateBufferSize) {
+      Rc<DxvkDataBuffer> buffer = new DxvkDataBuffer(Size);
+      return buffer->alloc(Size);
+    } else {
+      if (m_updateBuffer == nullptr)
+        m_updateBuffer = new DxvkDataBuffer(Size);
+      
+      DxvkDataSlice slice = m_updateBuffer->alloc(Size);
+      
+      if (slice.ptr() == nullptr) {
+        m_updateBuffer = new DxvkDataBuffer(Size);
+        slice = m_updateBuffer->alloc(Size);
+      }
+      
+      return slice;
+    }
+  }
+    
   
 }

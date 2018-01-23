@@ -7,16 +7,18 @@ namespace dxvk {
   DxvkDataBuffer:: DxvkDataBuffer() { }
   DxvkDataBuffer::~DxvkDataBuffer() { }
   
-  DxvkDataBuffer::DxvkDataBuffer(
-          size_t  size) {
+  DxvkDataBuffer::DxvkDataBuffer(size_t size) {
     m_data.resize(size);
   }
   
-  DxvkDataBuffer::DxvkDataBuffer(
-    const void*   data,
-          size_t  size) {
-    m_data.resize(size);
-    std::memcpy(m_data.data(), data, size);
+  
+  DxvkDataSlice DxvkDataBuffer::alloc(size_t n) {
+    const size_t offset = m_offset;
+    
+    if (offset + n <= m_data.size()) {
+      m_offset += align(n, CACHE_LINE_SIZE);
+      return DxvkDataSlice(this, offset, n);
+    } return DxvkDataSlice();
   }
   
 }
