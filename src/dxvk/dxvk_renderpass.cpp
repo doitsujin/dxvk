@@ -78,8 +78,10 @@ namespace dxvk {
       desc.initialLayout  = depthFmt.initialLayout;
       desc.finalLayout    = depthFmt.finalLayout;
       
+      // TODO Using GENERAL is a workaround for bugs in either dxvk or
+      // RADV. Revert to VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL.
       depthRef.attachment = attachments.size();
-      depthRef.layout     = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+      depthRef.layout     = VK_IMAGE_LAYOUT_GENERAL;
       
       attachments.push_back(desc);
     }
@@ -102,8 +104,10 @@ namespace dxvk {
         desc.initialLayout    = colorFmt.initialLayout;
         desc.finalLayout      = colorFmt.finalLayout;
         
+        // TODO Using GENERAL is a workaround for bugs in either dxvk
+        // or RADV. Revert to VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL.
         colorRef[i].attachment = attachments.size();
-        colorRef[i].layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+        colorRef[i].layout     = VK_IMAGE_LAYOUT_GENERAL;
         
         attachments.push_back(desc);
       }
