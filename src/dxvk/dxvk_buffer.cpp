@@ -49,7 +49,6 @@ namespace dxvk {
   
   
   Rc<DxvkPhysicalBuffer> DxvkBuffer::allocPhysicalBuffer(VkDeviceSize sliceCount) const {
-    TRACE(this, sliceCount);
     return m_device->allocPhysicalBuffer(m_info, sliceCount, m_memFlags);
   }
   
