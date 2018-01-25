@@ -513,9 +513,11 @@ namespace dxvk {
           uint32_t z) {
     this->commitComputeState();
     
-    m_cmd->cmdDispatch(x, y, z);
-    
-    this->commitComputeBarriers();
+    if (m_cpActivePipeline != VK_NULL_HANDLE) {
+      m_cmd->cmdDispatch(x, y, z);
+      
+      this->commitComputeBarriers();
+    }
   }
   
   
@@ -525,11 +527,13 @@ namespace dxvk {
     
     auto physicalSlice = buffer.physicalSlice();
     
-    m_cmd->cmdDispatchIndirect(
-      physicalSlice.handle(),
-      physicalSlice.offset());
-    
-    this->commitComputeBarriers();
+    if (m_cpActivePipeline != VK_NULL_HANDLE) {
+      m_cmd->cmdDispatchIndirect(
+        physicalSlice.handle(),
+        physicalSlice.offset());
+      
+      this->commitComputeBarriers();
+    }
   }
   
   
@@ -1150,9 +1154,18 @@ namespace dxvk {
       m_state.cp.pipeline = m_device->createComputePipeline(
         m_state.cp.cs.shader);
       
-      m_cmd->cmdBindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE,
-        m_state.cp.pipeline->getPipelineHandle());
-      m_cmd->trackResource(m_state.cp.pipeline);
+      m_cpActivePipeline = m_state.cp.pipeline != nullptr
+        ? m_state.cp.pipeline->getPipelineHandle()
+        : VK_NULL_HANDLE;
+      
+      if (m_state.cp.pipeline != nullptr)
+        m_cmd->trackResource(m_state.cp.pipeline);
+      
+      if (m_cpActivePipeline != VK_NULL_HANDLE) {
+        m_cmd->cmdBindPipeline(
+          VK_PIPELINE_BIND_POINT_COMPUTE,
+          m_cpActivePipeline);
+      }
     }
   }
   
@@ -1166,7 +1179,8 @@ namespace dxvk {
         m_state.gp.vs.shader, m_state.gp.tcs.shader, m_state.gp.tes.shader,
         m_state.gp.gs.shader, m_state.gp.fs.shader);
       
-      m_cmd->trackResource(m_state.gp.pipeline);
+      if (m_state.gp.pipeline != nullptr)
+        m_cmd->trackResource(m_state.gp.pipeline);
     }
   }
   
@@ -1183,8 +1197,9 @@ namespace dxvk {
       for (uint32_t i = m_state.gp.state.ilBindingCount; i < MaxNumVertexBindings; i++)
         m_state.gp.state.ilBindings[i].stride = 0;
       
-      m_gpActivePipeline = m_state.gp.pipeline
-        ->getPipelineHandle(m_state.gp.state);
+      m_gpActivePipeline = m_state.gp.pipeline != nullptr
+        ? m_state.gp.pipeline->getPipelineHandle(m_state.gp.state)
+        : VK_NULL_HANDLE;
       
       if (m_gpActivePipeline != VK_NULL_HANDLE) {
         m_cmd->cmdBindPipeline(
@@ -1197,9 +1212,11 @@ namespace dxvk {
   
   void DxvkContext::updateComputeShaderResources() {
     if (m_flags.test(DxvkContextFlag::CpDirtyResources)) {
-      this->updateShaderResources(
-        VK_PIPELINE_BIND_POINT_COMPUTE,
-        m_state.cp.pipeline->layout());
+      if (m_state.cp.pipeline != nullptr) {
+        this->updateShaderResources(
+          VK_PIPELINE_BIND_POINT_COMPUTE,
+          m_state.cp.pipeline->layout());
+      }
     }
   }
   
@@ -1208,19 +1225,23 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::CpDirtyResources)) {
       m_flags.clr(DxvkContextFlag::CpDirtyResources);
       
-      this->updateShaderDescriptors(
-        VK_PIPELINE_BIND_POINT_COMPUTE,
-        m_state.cp.bs,
-        m_state.cp.pipeline->layout());
+      if (m_state.cp.pipeline != nullptr) {
+        this->updateShaderDescriptors(
+          VK_PIPELINE_BIND_POINT_COMPUTE,
+          m_state.cp.bs,
+          m_state.cp.pipeline->layout());
+      }
     }
   }
   
   
   void DxvkContext::updateGraphicsShaderResources() {
     if (m_flags.test(DxvkContextFlag::GpDirtyResources)) {
-      this->updateShaderResources(
-        VK_PIPELINE_BIND_POINT_GRAPHICS,
-        m_state.gp.pipeline->layout());
+      if (m_state.gp.pipeline != nullptr) {
+        this->updateShaderResources(
+          VK_PIPELINE_BIND_POINT_GRAPHICS,
+          m_state.gp.pipeline->layout());
+      }
     }
   }
   
@@ -1229,10 +1250,12 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpDirtyResources)) {
       m_flags.clr(DxvkContextFlag::GpDirtyResources);
       
-      this->updateShaderDescriptors(
-        VK_PIPELINE_BIND_POINT_GRAPHICS,
-        m_state.gp.state.bsBindingState,
-        m_state.gp.pipeline->layout());
+      if (m_state.gp.pipeline != nullptr) {
+        this->updateShaderDescriptors(
+          VK_PIPELINE_BIND_POINT_GRAPHICS,
+          m_state.gp.state.bsBindingState,
+          m_state.gp.pipeline->layout());
+      }
     }
   }
   

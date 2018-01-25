@@ -520,7 +520,7 @@ namespace dxvk {
     DxvkBarrierSet      m_barriers;
     
     VkPipeline m_gpActivePipeline = VK_NULL_HANDLE;
-//     VkPipeline m_cpActivePipeline = VK_NULL_HANDLE; /* will be used later */
+    VkPipeline m_cpActivePipeline = VK_NULL_HANDLE;
     
     std::array<DxvkShaderResourceSlot, MaxNumResourceSlots> m_rc;
     std::array<DxvkDescriptorInfo,     MaxNumResourceSlots> m_descriptors;
