@@ -1,6 +1,6 @@
 #!/bin/bash
 
-dlls_dir=@dlldir@
+dlls_dir='@dlldir@'
 path_pattern='s|^\s*PATH\s+REG_EXPAND_SZ\s+(.*)\s*$|\1|g'
 dlls_windir="Z:$(sed 's|/|\\|g'<<<$dlls_dir)"
 dlls_windir_pattern="$(sed 's|\\|\\\\|g'<<<$dlls_windir)"
