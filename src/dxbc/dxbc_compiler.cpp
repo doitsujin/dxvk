@@ -2479,15 +2479,6 @@ namespace dxvk {
         imageLayerDim, offsetIds.data());
     }
     
-    // Only execute the gather operation if the resource is bound
-    const uint32_t labelMerge     = m_module.allocateId();
-    const uint32_t labelBound     = m_module.allocateId();
-    const uint32_t labelUnbound   = m_module.allocateId();
-    
-    m_module.opSelectionMerge(labelMerge, spv::SelectionControlMaskNone);
-    m_module.opBranchConditional(m_textures.at(textureId).specId, labelBound, labelUnbound);
-    m_module.opLabel(labelBound);
-    
     // Combine the texture and the sampler into a sampled image
     const uint32_t sampledImageId = m_module.opSampledImage(
       sampledImageType,
@@ -2531,35 +2522,7 @@ namespace dxvk {
     result = emitRegisterSwizzle(result,
       textureReg.swizzle, ins.dst[0].mask);
     
-    // If the texture is not bound, return zeroes
-    m_module.opBranch(labelMerge);
-    m_module.opLabel(labelUnbound);
-    
-    DxbcRegisterValue zeroes = [&] {
-      switch (result.type.ctype) {
-        case DxbcScalarType::Float32: return emitBuildConstVecf32(0.0f, 0.0f, 0.0f, 0.0f, ins.dst[0].mask);
-        case DxbcScalarType::Uint32:  return emitBuildConstVecu32(0u, 0u, 0u, 0u,         ins.dst[0].mask);
-        case DxbcScalarType::Sint32:  return emitBuildConstVeci32(0, 0, 0, 0,             ins.dst[0].mask);
-        default: throw DxvkError("DxbcCompiler: Invalid scalar type");
-      }
-    }();
-    
-    m_module.opBranch(labelMerge);
-    m_module.opLabel(labelMerge);
-    
-    // Merge the result with a phi function
-    const std::array<SpirvPhiLabel, 2> phiLabels = {{
-      { result.id, labelBound   },
-      { zeroes.id, labelUnbound },
-    }};
-    
-    DxbcRegisterValue mergedResult;
-    mergedResult.type = result.type;
-    mergedResult.id = m_module.opPhi(
-      getVectorTypeId(mergedResult.type),
-      phiLabels.size(), phiLabels.data());
-    
-    emitRegisterStore(ins.dst[0], mergedResult);
+    emitRegisterStore(ins.dst[0], result);
   }
   
   
@@ -2650,15 +2613,6 @@ namespace dxvk {
         imageLayerDim, offsetIds.data());
     }
     
-    // Only execute the sample operation if the resource is bound
-    const uint32_t labelMerge     = m_module.allocateId();
-    const uint32_t labelBound     = m_module.allocateId();
-    const uint32_t labelUnbound   = m_module.allocateId();
-    
-    m_module.opSelectionMerge(labelMerge, spv::SelectionControlMaskNone);
-    m_module.opBranchConditional(m_textures.at(textureId).specId, labelBound, labelUnbound);
-    m_module.opLabel(labelBound);
-    
     // Combine the texture and the sampler into a sampled image
     const uint32_t sampledImageId = m_module.opSampledImage(
       sampledImageType,
@@ -2746,35 +2700,7 @@ namespace dxvk {
         textureReg.swizzle, ins.dst[0].mask);
     }
     
-    // If the texture is not bound, return zeroes
-    m_module.opBranch(labelMerge);
-    m_module.opLabel(labelUnbound);
-    
-    DxbcRegisterValue zeroes = [&] {
-      switch (result.type.ctype) {
-        case DxbcScalarType::Float32: return emitBuildConstVecf32(0.0f, 0.0f, 0.0f, 0.0f, ins.dst[0].mask);
-        case DxbcScalarType::Uint32:  return emitBuildConstVecu32(0u, 0u, 0u, 0u,         ins.dst[0].mask);
-        case DxbcScalarType::Sint32:  return emitBuildConstVeci32(0, 0, 0, 0,             ins.dst[0].mask);
-        default: throw DxvkError("DxbcCompiler: Invalid scalar type");
-      }
-    }();
-    
-    m_module.opBranch(labelMerge);
-    m_module.opLabel(labelMerge);
-    
-    // Merge the result with a phi function
-    const std::array<SpirvPhiLabel, 2> phiLabels = {{
-      { result.id, labelBound   },
-      { zeroes.id, labelUnbound },
-    }};
-    
-    DxbcRegisterValue mergedResult;
-    mergedResult.type = result.type;
-    mergedResult.id = m_module.opPhi(
-      getVectorTypeId(mergedResult.type),
-      phiLabels.size(), phiLabels.data());
-    
-    emitRegisterStore(ins.dst[0], mergedResult);
+    emitRegisterStore(ins.dst[0], result);
   }
   
   
