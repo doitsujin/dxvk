@@ -1288,6 +1288,7 @@ namespace dxvk {
             m_cmd->trackResource(res.sampler);
           } else {
             updatePipelineState |= bs.setUnbound(i);
+            m_descriptors[i].image = m_device->dummySamplerDescriptor();
           } break;
         
         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
@@ -1303,6 +1304,7 @@ namespace dxvk {
             m_cmd->trackResource(res.imageView->image());
           } else {
             updatePipelineState |= bs.setUnbound(i);
+            m_descriptors[i].image = m_device->dummyImageViewDescriptor(binding.view);
           } break;
         
         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
@@ -1316,6 +1318,7 @@ namespace dxvk {
             m_cmd->trackResource(res.bufferView->resource());
           } else {
             updatePipelineState |= bs.setUnbound(i);
+            m_descriptors[i].texelBuffer = m_device->dummyBufferViewDescriptor();
           } break;
         
         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
@@ -1331,6 +1334,7 @@ namespace dxvk {
             m_cmd->trackResource(physicalSlice.resource());
           } else {
             updatePipelineState |= bs.setUnbound(i);
+            m_descriptors[i].buffer = m_device->dummyBufferDescriptor();
           } break;
         
         default:
@@ -1355,26 +1359,23 @@ namespace dxvk {
     const VkDescriptorSet dset =
       m_cmd->allocateDescriptorSet(
         layout->descriptorSetLayout());
-      
-    size_t writeId = 0;
     
-    for (uint32_t i = 0; i < layout->bindingCount(); i++) {
-      if (bindingState.isBound(i)) {
-        writes[writeId].sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        writes[writeId].pNext            = nullptr;
-        writes[writeId].dstSet           = dset;
-        writes[writeId].dstBinding       = i;
-        writes[writeId].dstArrayElement  = 0;
-        writes[writeId].descriptorCount  = 1;
-        writes[writeId].descriptorType   = layout->binding(i).type;
-        writes[writeId].pImageInfo       = &m_descriptors[i].image;
-        writes[writeId].pBufferInfo      = &m_descriptors[i].buffer;
-        writes[writeId].pTexelBufferView = &m_descriptors[i].texelBuffer;
-        writeId++;
-      }
+    const uint32_t bindingCount = layout->bindingCount();
+    
+    for (uint32_t i = 0; i < bindingCount; i++) {
+      writes[i].sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      writes[i].pNext            = nullptr;
+      writes[i].dstSet           = dset;
+      writes[i].dstBinding       = i;
+      writes[i].dstArrayElement  = 0;
+      writes[i].descriptorCount  = 1;
+      writes[i].descriptorType   = layout->binding(i).type;
+      writes[i].pImageInfo       = &m_descriptors[i].image;
+      writes[i].pBufferInfo      = &m_descriptors[i].buffer;
+      writes[i].pTexelBufferView = &m_descriptors[i].texelBuffer;
     }
     
-    m_cmd->updateDescriptorSet(writeId, writes.data());
+    m_cmd->updateDescriptorSet(bindingCount, writes.data());
     m_cmd->cmdBindDescriptorSet(bindPoint,
       layout->pipelineLayout(), dset);
   }

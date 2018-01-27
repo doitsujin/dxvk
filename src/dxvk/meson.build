@@ -38,6 +38,7 @@ dxvk_src = files([
   'dxvk_surface.cpp',
   'dxvk_swapchain.cpp',
   'dxvk_sync.cpp',
+  'dxvk_unbound.cpp',
   'dxvk_util.cpp',
   
   'hud/dxvk_hud.cpp',

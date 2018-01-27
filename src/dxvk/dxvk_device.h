@@ -20,6 +20,7 @@
 #include "dxvk_stats.h"
 #include "dxvk_swapchain.h"
 #include "dxvk_sync.h"
+#include "dxvk_unbound.h"
 
 namespace dxvk {
   
@@ -277,6 +278,40 @@ namespace dxvk {
       const DxvkSwapchainProperties&  properties);
     
     /**
+     * \brief Dummy buffer descriptor
+     * \returns Descriptor that points to a dummy buffer
+     */
+    VkDescriptorBufferInfo dummyBufferDescriptor() const {
+      return m_unboundResources.bufferDescriptor();
+    }
+    
+    /**
+     * \brief Dummy buffer view descriptor
+     * \returns Dummy buffer view handle
+     */
+    VkBufferView dummyBufferViewDescriptor() const {
+      return m_unboundResources.bufferViewDescriptor();
+    }
+    
+    /**
+     * \brief Dummy sampler descriptor
+     * \returns Descriptor that points to a dummy sampler
+     */
+    VkDescriptorImageInfo dummySamplerDescriptor() const {
+      return m_unboundResources.samplerDescriptor();
+    }
+    
+    /**
+     * \brief Dummy image view descriptor
+     * 
+     * \param [in] type Required view type
+     * \returns Descriptor that points to a dummy image
+     */
+    VkDescriptorImageInfo dummyImageViewDescriptor(VkImageViewType type) const {
+      return m_unboundResources.imageViewDescriptor(type);
+    }
+    
+    /**
      * \brief Presents a swap chain image
      * 
      * This is implicitly called by the swap chain class
@@ -331,6 +366,7 @@ namespace dxvk {
     Rc<DxvkPipelineCache>     m_pipelineCache;
     Rc<DxvkPipelineManager>   m_pipelineManager;
     
+    DxvkUnboundResources      m_unboundResources;
     DxvkOptions               m_options;
     
     std::mutex m_submissionLock;
