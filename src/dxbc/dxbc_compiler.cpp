@@ -2170,11 +2170,6 @@ namespace dxvk {
     const DxbcBufferInfo resourceInfo = getBufferInfo(ins.src[1]);
     const DxbcResinfoType resinfoType = ins.controls.resinfoType;
     
-    if (ins.src[1].type != DxbcOperandType::Resource) {
-      Logger::err("DxbcCompiler: resinfo: UAVs not yet supported");
-      return;
-    }
-    
     // Read the exact LOD for the image query
     const DxbcRegisterValue mipLod = emitRegisterLoad(
       ins.src[0], DxbcRegMask(true, false, false, false));
