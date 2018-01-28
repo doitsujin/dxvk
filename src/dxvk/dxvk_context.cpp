@@ -1020,9 +1020,6 @@ namespace dxvk {
       DxvkContextFlag::GpDirtyPipelineState,
       DxvkContextFlag::GpDirtyVertexBuffers);
     
-    m_state.gp.state.ilAttributeCount = attributeCount;
-    m_state.gp.state.ilBindingCount   = bindingCount;
-    
     for (uint32_t i = 0; i < attributeCount; i++) {
       m_state.gp.state.ilAttributes[i].location = attributes[i].location;
       m_state.gp.state.ilAttributes[i].binding  = attributes[i].binding;
@@ -1030,18 +1027,19 @@ namespace dxvk {
       m_state.gp.state.ilAttributes[i].offset   = attributes[i].offset;
     }
     
-    std::memset(
-      m_state.gp.state.ilAttributes + attributeCount, 0,
-      sizeof(VkVertexInputAttributeDescription) * (MaxNumVertexAttributes - attributeCount));
+    for (uint32_t i = attributeCount; i < m_state.gp.state.ilAttributeCount; i++)
+      m_state.gp.state.ilAttributes[i] = VkVertexInputAttributeDescription();
     
     for (uint32_t i = 0; i < bindingCount; i++) {
       m_state.gp.state.ilBindings[i].binding    = bindings[i].binding;
       m_state.gp.state.ilBindings[i].inputRate  = bindings[i].inputRate;
     }
     
-    std::memset(
-      m_state.gp.state.ilBindings + bindingCount, 0,
-      sizeof(VkVertexInputBindingDescription) * (MaxNumVertexBindings - bindingCount));
+    for (uint32_t i = bindingCount; i < m_state.gp.state.ilBindingCount; i++)
+      m_state.gp.state.ilBindings[i] = VkVertexInputBindingDescription();
+    
+    m_state.gp.state.ilAttributeCount = attributeCount;
+    m_state.gp.state.ilBindingCount   = bindingCount;
   }
   
   

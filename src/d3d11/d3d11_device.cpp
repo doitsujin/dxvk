@@ -1360,8 +1360,7 @@ namespace dxvk {
     const Rc<DxvkAdapter>&  adapter,
           D3D_FEATURE_LEVEL featureLevel) {
     VkPhysicalDeviceFeatures supported = adapter->features();
-    VkPhysicalDeviceFeatures enabled;
-    std::memset(&enabled, 0, sizeof(enabled));
+    VkPhysicalDeviceFeatures enabled   = {};
     
     if (featureLevel >= D3D_FEATURE_LEVEL_9_1) {
       enabled.depthClamp                            = VK_TRUE;
@@ -1510,11 +1509,8 @@ namespace dxvk {
           image, subresources);
       } else {
         if (subresources.aspectMask == VK_IMAGE_ASPECT_COLOR_BIT) {
-          VkClearColorValue value;
-          std::memset(&value, 0, sizeof(value));
-          
           m_resourceInitContext->clearColorImage(
-            image, value, subresources);
+            image, VkClearColorValue(), subresources);
         } else {
           VkClearDepthStencilValue value;
           value.depth   = 1.0f;
