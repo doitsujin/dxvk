@@ -40,10 +40,9 @@ namespace dxvk {
   
   Rc<DxvkPhysicalBuffer> DxvkDevice::allocPhysicalBuffer(
     const DxvkBufferCreateInfo& createInfo,
-          VkDeviceSize          sliceCount,
           VkMemoryPropertyFlags memoryType) {
     return new DxvkPhysicalBuffer(m_vkd,
-      createInfo, sliceCount, *m_memory, memoryType);
+      createInfo, *m_memory, memoryType);
   }
   
   

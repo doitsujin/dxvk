@@ -64,7 +64,6 @@ namespace dxvk {
     DxvkPhysicalBuffer(
       const Rc<vk::DeviceFn>&     vkd,
       const DxvkBufferCreateInfo& createInfo,
-            VkDeviceSize          sliceCount,
             DxvkMemoryAllocator&  memAlloc,
             VkMemoryPropertyFlags memFlags);
     
@@ -76,14 +75,6 @@ namespace dxvk {
      */
     VkBuffer handle() const {
       return m_handle;
-    }
-    
-    /**
-     * \brief Number of slices
-     * \returns Total slice count
-     */
-    VkDeviceSize sliceCount() const {
-      return m_sliceCount;
     }
     
     /**
@@ -101,24 +92,19 @@ namespace dxvk {
     /**
      * \brief Retrieves a physical buffer slice
      * 
-     * Returns the buffer object and the offset of the
-     * given slice. Slices are always aligned to the
-     * highest required alignment of the device, so
-     * that they can be used for any purpose.
-     * \param [in] id Slice index
+     * \param [in] offset Slice offset
+     * \param [in] length Slice length
      * \returns The physical slice
      */
-    DxvkPhysicalBufferSlice slice(uint32_t id);
+    DxvkPhysicalBufferSlice slice(
+            VkDeviceSize        offset,
+            VkDeviceSize        length);
     
   private:
     
     Rc<vk::DeviceFn>  m_vkd;
     DxvkMemory        m_memory;
     VkBuffer          m_handle;
-    
-    VkDeviceSize      m_sliceCount;
-    VkDeviceSize      m_sliceLength;
-    VkDeviceSize      m_sliceStride;
     
   };
   
@@ -210,5 +196,11 @@ namespace dxvk {
     VkDeviceSize           m_length = 0;
     
   };
+  
+  inline DxvkPhysicalBufferSlice DxvkPhysicalBuffer::slice(
+          VkDeviceSize        offset,
+          VkDeviceSize        length) {
+    return DxvkPhysicalBufferSlice(this, offset, length);
+  }
   
 }

@@ -5,19 +5,15 @@ namespace dxvk {
   DxvkPhysicalBuffer::DxvkPhysicalBuffer(
     const Rc<vk::DeviceFn>&     vkd,
     const DxvkBufferCreateInfo& createInfo,
-          VkDeviceSize          sliceCount,
           DxvkMemoryAllocator&  memAlloc,
           VkMemoryPropertyFlags memFlags)
-  : m_vkd         (vkd),
-    m_sliceCount  (sliceCount),
-    m_sliceLength (createInfo.size),
-    m_sliceStride (align(createInfo.size, 256)) {
+  : m_vkd(vkd) {
     
     VkBufferCreateInfo info;
     info.sType                 = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     info.pNext                 = nullptr;
     info.flags                 = 0;
-    info.size                  = m_sliceStride * sliceCount;
+    info.size                  = createInfo.size;
     info.usage                 = createInfo.usage;
     info.sharingMode           = VK_SHARING_MODE_EXCLUSIVE;
     info.queueFamilyIndexCount = 0;
@@ -41,11 +37,6 @@ namespace dxvk {
   DxvkPhysicalBuffer::~DxvkPhysicalBuffer() {
     if (m_handle != VK_NULL_HANDLE)
       m_vkd->vkDestroyBuffer(m_vkd->device(), m_handle, nullptr);
-  }
-  
-  
-  DxvkPhysicalBufferSlice DxvkPhysicalBuffer::slice(uint32_t id) {
-    return DxvkPhysicalBufferSlice(this, id * m_sliceStride, m_sliceLength);
   }
   
 }

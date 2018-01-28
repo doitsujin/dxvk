@@ -105,13 +105,11 @@ namespace dxvk {
      * \brief Allocates a physical buffer
      * 
      * \param [in] createInfo Buffer create info
-     * \param [in] sliceCount Buffer slice count
      * \param [in] memoryType Memory property flags
      * \returns The buffer resource object
      */
     Rc<DxvkPhysicalBuffer> allocPhysicalBuffer(
       const DxvkBufferCreateInfo& createInfo,
-            VkDeviceSize          sliceCount,
             VkMemoryPropertyFlags memoryType);
     
     /**

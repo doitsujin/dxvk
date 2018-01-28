@@ -129,9 +129,11 @@ namespace dxvk {
     
     // TODO maybe align this to a cache line in order
     // to avoid false sharing once CSMT is implemented
-    VkDeviceSize m_physBufferId   = 0;
-    VkDeviceSize m_physSliceId    = 0;
-    VkDeviceSize m_physSliceCount = 1;
+    VkDeviceSize m_physBufferId     = 0;
+    VkDeviceSize m_physSliceId      = 0;
+    VkDeviceSize m_physSliceCount   = 1;
+    VkDeviceSize m_physSliceLength  = 0;
+    VkDeviceSize m_physSliceStride  = 0;
     
     std::array<Rc<DxvkPhysicalBuffer>, 2> m_physBuffers;
     

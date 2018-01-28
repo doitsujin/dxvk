@@ -1351,7 +1351,7 @@ namespace dxvk {
   void DxvkContext::updateShaderDescriptors(
           VkPipelineBindPoint     bindPoint,
     const DxvkBindingState&       bindingState,
-    const Rc<DxvkPipelineLayout>&  layout) {
+    const Rc<DxvkPipelineLayout>& layout) {
     std::array<VkWriteDescriptorSet, MaxNumResourceSlots> writes;
     
     const VkDescriptorSet dset =

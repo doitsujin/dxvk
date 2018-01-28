@@ -10,6 +10,11 @@ namespace dxvk {
   : m_device        (device),
     m_info          (createInfo),
     m_memFlags      (memoryType) {
+    // Align physical buffer slices to 256 bytes, which guarantees
+    // that we don't violate any Vulkan alignment requirements
+    m_physSliceLength = createInfo.size;
+    m_physSliceStride = align(createInfo.size, 256);
+    
     // Initialize a single backing bufer with one slice
     m_physBuffers[0] = this->allocPhysicalBuffer(1);
     m_physSlice      = this->allocPhysicalSlice();
@@ -23,12 +28,11 @@ namespace dxvk {
   
   
   DxvkPhysicalBufferSlice DxvkBuffer::allocPhysicalSlice() {
-    if (m_physSliceId >= m_physBuffers[m_physBufferId]->sliceCount()) {
+    if (m_physSliceId >= m_physSliceCount) {
       m_physBufferId = (m_physBufferId + 1) % m_physBuffers.size();
       m_physSliceId  = 0;
       
-      if ((m_physBuffers[m_physBufferId] == nullptr)
-       || (m_physBuffers[m_physBufferId]->sliceCount() < m_physSliceCount)) {
+      if (m_physBuffers[m_physBufferId] == nullptr) {
         // Make sure that all buffers have the same size. If we don't do this,
         // one of the physical buffers may grow indefinitely while the others
         // remain small, depending on the usage pattern of the application.
@@ -37,19 +41,26 @@ namespace dxvk {
         // Allocate a new physical buffer if the current one is still in use.
         // This also indicates that the buffer gets updated frequently, so we
         // will double the size of the physical buffers to accomodate for it.
-        if (m_physBufferId == 0)
+        if (m_physBufferId == 0) {
+          std::fill(m_physBuffers.begin(), m_physBuffers.end(), nullptr);
           m_physSliceCount *= 2;
+        }
         
         m_physBuffers[m_physBufferId] = this->allocPhysicalBuffer(m_physSliceCount);
       }
     }
     
-    return m_physBuffers[m_physBufferId]->slice(m_physSliceId++);
+    return m_physBuffers[m_physBufferId]->slice(
+      m_physSliceStride * m_physSliceId++,
+      m_physSliceLength);
   }
   
   
   Rc<DxvkPhysicalBuffer> DxvkBuffer::allocPhysicalBuffer(VkDeviceSize sliceCount) const {
-    return m_device->allocPhysicalBuffer(m_info, sliceCount, m_memFlags);
+    DxvkBufferCreateInfo createInfo;
+    createInfo.size = sliceCount * m_physSliceStride;
+    
+    return m_device->allocPhysicalBuffer(createInfo, m_memFlags);
   }
   
   
