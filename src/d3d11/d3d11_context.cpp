@@ -473,6 +473,10 @@ namespace dxvk {
     if (ClearFlags & D3D11_CLEAR_STENCIL)
       aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
     
+    const DxvkFormatInfo* formatInfo =
+      imageFormatInfo(dxvkView->info().format);
+    aspectMask &= formatInfo->aspectMask;
+    
     VkClearDepthStencilValue clearValue;
     clearValue.depth   = Depth;
     clearValue.stencil = Stencil;
