@@ -65,14 +65,20 @@ namespace dxvk {
     FormatMap         m_colorFormats;
     FormatMap         m_depthFormats;
     
-    void AddColorFormat(
+    void AddColorFormatTypeless(
             DXGI_FORMAT                       srcFormat,
             VkFormat                          dstFormat);
     
     void AddColorFormat(
             DXGI_FORMAT                       srcFormat,
             VkFormat                          dstFormat,
-            VkComponentMapping                swizzle);
+            VkComponentMapping                swizzle = {
+              VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
+              VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY });
+    
+    void AddDepthFormatTypeless(
+            DXGI_FORMAT                       srcFormat,
+            VkFormat                          dstFormat);
     
     void AddDepthFormat(
             DXGI_FORMAT                       srcFormat,

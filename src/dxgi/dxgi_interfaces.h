@@ -12,6 +12,15 @@ namespace dxvk {
   class DxvkImage;
   
   /**
+   * \brief Format information
+   */
+  enum class DxgiFormatFlag {
+    Typeless = 0,
+  };
+  
+  using DxgiFormatFlags = Flags<DxgiFormatFlag>;
+  
+  /**
    * \brief Format info
    * 
    * Stores a Vulkan image format for a given
@@ -23,6 +32,7 @@ namespace dxvk {
     VkFormat            format;
     VkImageAspectFlags  aspect;
     VkComponentMapping  swizzle;
+    DxgiFormatFlags     flags;
   };
   
   /**
