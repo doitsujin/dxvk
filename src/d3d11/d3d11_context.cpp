@@ -673,7 +673,76 @@ namespace dxvk {
           ID3D11Resource*                   pSrcResource,
           UINT                              SrcSubresource,
           DXGI_FORMAT                       Format) {
-    Logger::err("D3D11DeviceContext::ResolveSubresource: Not implemented");
+    D3D11_RESOURCE_DIMENSION dstResourceType;
+    D3D11_RESOURCE_DIMENSION srcResourceType;
+    
+    pDstResource->GetType(&dstResourceType);
+    pSrcResource->GetType(&srcResourceType);
+    
+    if (dstResourceType != D3D11_RESOURCE_DIMENSION_TEXTURE2D
+     || srcResourceType != D3D11_RESOURCE_DIMENSION_TEXTURE2D) {
+      Logger::err("D3D11: ResolveSubresource: Incompatible resources");
+      return;
+    }
+    
+    auto dstTexture = static_cast<D3D11Texture2D*>(pDstResource);
+    auto srcTexture = static_cast<D3D11Texture2D*>(pSrcResource);
+    
+    D3D11_TEXTURE2D_DESC dstDesc;
+    D3D11_TEXTURE2D_DESC srcDesc;
+    
+    dstTexture->GetDesc(&dstDesc);
+    srcTexture->GetDesc(&srcDesc);
+    
+    if (dstDesc.SampleDesc.Count != 1 || srcDesc.SampleDesc.Count == 1) {
+      Logger::err("D3D11: ResolveSubresource: Resource sample count invalid");
+      return;
+    }
+    
+    const D3D11TextureInfo* dstTextureInfo = GetCommonTextureInfo(pDstResource);
+    const D3D11TextureInfo* srcTextureInfo = GetCommonTextureInfo(pSrcResource);
+    
+    const DxgiFormatInfo dstFormatInfo = m_parent->LookupFormat(dstDesc.Format, DxgiFormatMode::Any);
+    const DxgiFormatInfo srcFormatInfo = m_parent->LookupFormat(srcDesc.Format, DxgiFormatMode::Any);
+    
+    const VkImageSubresource dstSubresource =
+      GetSubresourceFromIndex(dstFormatInfo.aspect,
+        dstTextureInfo->image->info().mipLevels, DstSubresource);
+    
+    const VkImageSubresource srcSubresource =
+      GetSubresourceFromIndex(srcFormatInfo.aspect,
+        srcTextureInfo->image->info().mipLevels, SrcSubresource);
+    
+    if (!srcFormatInfo.flags.test(DxgiFormatFlag::Typeless)
+     && !srcFormatInfo.flags.test(DxgiFormatFlag::Typeless)) {
+      if (dstDesc.Format != srcDesc.Format) {
+        Logger::err("D3D11: ResolveSubresource: Incompatible formats");
+        return;
+      }
+      
+      const VkImageSubresourceLayers dstSubresourceLayers = {
+        dstSubresource.aspectMask,
+        dstSubresource.mipLevel,
+        dstSubresource.arrayLayer, 1 };
+      
+      const VkImageSubresourceLayers srcSubresourceLayers = {
+        srcSubresource.aspectMask,
+        srcSubresource.mipLevel,
+        srcSubresource.arrayLayer, 1 };
+      
+      EmitCs([
+        cDstImage  = dstTextureInfo->image,
+        cSrcImage  = srcTextureInfo->image,
+        cDstSubres = dstSubresourceLayers,
+        cSrcSubres = srcSubresourceLayers
+      ] (DxvkContext* ctx) {
+        ctx->resolveImage(
+          cDstImage, cDstSubres,
+          cSrcImage, cSrcSubres);
+      });
+    } else {
+      Logger::err("D3D11: ResolveSubresource with typeless images currently not supported");
+    }
   }
   
   
