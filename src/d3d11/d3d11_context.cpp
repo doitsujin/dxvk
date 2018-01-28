@@ -32,10 +32,6 @@ namespace dxvk {
     m_defaultDepthStencilState = static_cast<D3D11DepthStencilState*>(defaultDepthStencilState.ptr());
     m_defaultRasterizerState   = static_cast<D3D11RasterizerState*>  (defaultRasterizerState.ptr());
     
-    // Create a default sampler that we're going to bind
-    // when the application binds null to a sampler slot.
-    m_defaultSampler = CreateDefaultSampler();
-    
     EmitCs([
       dev     = m_device,
       bsState = m_defaultBlendState,
@@ -1994,7 +1990,7 @@ namespace dxvk {
           cSlotId  = slotId + i,
           cSampler = sampler != nullptr
             ? sampler->GetDXVKSampler()
-            : m_defaultSampler
+            : nullptr
         ] (DxvkContext* ctx) {
           ctx->bindResourceSampler(cSlotId, cSampler);
         });
@@ -2188,27 +2184,6 @@ namespace dxvk {
         cViewports.data(),
         cScissors.data());
     });
-  }
-  
-  
-  Rc<DxvkSampler> D3D11DeviceContext::CreateDefaultSampler() {
-    DxvkSamplerCreateInfo info;
-    info.minFilter              = VK_FILTER_LINEAR;
-    info.magFilter              = VK_FILTER_LINEAR;
-    info.mipmapMode             = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-    info.mipmapLodBias          = 0.0f;
-    info.mipmapLodMin           = -256.0f;
-    info.mipmapLodMax           =  256.0f;
-    info.useAnisotropy          = VK_FALSE;
-    info.maxAnisotropy          = 1.0f;
-    info.addressModeU           = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    info.addressModeV           = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    info.addressModeW           = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    info.compareToDepth         = VK_FALSE;
-    info.compareOp              = VK_COMPARE_OP_NEVER;
-    info.borderColor            = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-    info.usePixelCoord          = VK_FALSE;
-    return m_device->createSampler(info);
   }
   
   

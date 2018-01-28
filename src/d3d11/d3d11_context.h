@@ -519,7 +519,6 @@ namespace dxvk {
     
     Rc<DxvkDevice>              m_device;
     Rc<DxvkCsChunk>             m_csChunk;
-    Rc<DxvkSampler>             m_defaultSampler;
     Rc<DxvkDataBuffer>          m_updateBuffer;
     
     Com<D3D11BlendState>        m_defaultBlendState;
@@ -563,8 +562,6 @@ namespace dxvk {
       const UINT*                             pUAVInitialCounts);
     
     void ApplyViewportState();
-    
-    Rc<DxvkSampler> CreateDefaultSampler();
     
     DxvkDataSlice AllocUpdateBufferSlice(size_t Size);
     
