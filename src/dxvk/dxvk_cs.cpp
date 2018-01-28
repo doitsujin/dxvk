@@ -80,9 +80,12 @@ namespace dxvk {
           m_condOnSync.notify_one();
         }
         
-        m_condOnAdd.wait(lock, [this] {
-          return m_stopped.load() || (m_chunksQueued.size() != 0);
-        });
+        if (m_chunksQueued.size() == 0) {
+          m_condOnAdd.wait(lock, [this] {
+            return (m_chunksQueued.size() != 0)
+                || (m_stopped.load());
+          });
+        }
         
         if (m_chunksQueued.size() != 0) {
           chunk = std::move(m_chunksQueued.front());
