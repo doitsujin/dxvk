@@ -318,6 +318,10 @@ namespace dxvk {
             ID3D11Resource*                   pResource,
             D3D11_SHADER_RESOURCE_VIEW_DESC*  pDesc);
     
+    HRESULT SetUnorderedAccessViewDescUnspecValues(
+            ID3D11Resource*                   pResource,
+            D3D11_UNORDERED_ACCESS_VIEW_DESC* pDesc);
+    
     VkSamplerAddressMode DecodeAddressMode(
             D3D11_TEXTURE_ADDRESS_MODE  mode) const;
     

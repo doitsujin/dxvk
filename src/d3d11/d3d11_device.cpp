@@ -347,6 +347,9 @@ namespace dxvk {
         return E_INVALIDARG;
     } else {
       desc = *pDesc;
+      
+      if (FAILED(SetUnorderedAccessViewDescUnspecValues(pResource, &desc)))
+        return E_INVALIDARG;
     }
     
     if (resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER) {
@@ -451,6 +454,8 @@ namespace dxvk {
           break;
           
         case D3D11_UAV_DIMENSION_TEXTURE3D:
+          // FIXME we actually have to map this to a
+          // 2D array view in order to support W slices
           viewInfo.type      = VK_IMAGE_VIEW_TYPE_3D;
           viewInfo.minLevel  = desc.Texture3D.MipSlice;
           viewInfo.numLevels = 1;
@@ -1684,142 +1689,6 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11Device::SetShaderResourceViewDescUnspecValues(
-          ID3D11Resource*                   pResource,
-          D3D11_SHADER_RESOURCE_VIEW_DESC*  pDesc) {
-    D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
-    pResource->GetType(&resourceDim);
-    
-    DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
-    uint32_t mipLevels = 0;
-    uint32_t numLayers = 0;
-    
-    switch (resourceDim) {
-      case D3D11_RESOURCE_DIMENSION_BUFFER: {
-        if (pDesc->ViewDimension != D3D11_SRV_DIMENSION_BUFFER
-         && pDesc->ViewDimension != D3D11_SRV_DIMENSION_BUFFEREX) {
-          Logger::err("D3D11: Incompatible view dimension for Buffer");
-          return E_INVALIDARG;
-        }
-      } break;
-      
-      case D3D11_RESOURCE_DIMENSION_TEXTURE1D: {
-        D3D11_TEXTURE1D_DESC resourceDesc;
-        static_cast<D3D11Texture1D*>(pResource)->GetDesc(&resourceDesc);
-        
-        if (pDesc->ViewDimension != D3D11_SRV_DIMENSION_TEXTURE1D
-         && pDesc->ViewDimension != D3D11_SRV_DIMENSION_TEXTURE1DARRAY) {
-          Logger::err("D3D11: Incompatible view dimension for Texture1D");
-          return E_INVALIDARG;
-        }
-        
-        format    = resourceDesc.Format;
-        mipLevels = resourceDesc.MipLevels;
-        numLayers = resourceDesc.ArraySize;
-      } break;
-      
-      case D3D11_RESOURCE_DIMENSION_TEXTURE2D: {
-        D3D11_TEXTURE2D_DESC resourceDesc;
-        static_cast<D3D11Texture2D*>(pResource)->GetDesc(&resourceDesc);
-        
-        if (pDesc->ViewDimension != D3D11_SRV_DIMENSION_TEXTURE2D
-         && pDesc->ViewDimension != D3D11_SRV_DIMENSION_TEXTURE2DARRAY
-         && pDesc->ViewDimension != D3D11_SRV_DIMENSION_TEXTURE2DMS
-         && pDesc->ViewDimension != D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY
-         && pDesc->ViewDimension != D3D11_SRV_DIMENSION_TEXTURECUBE
-         && pDesc->ViewDimension != D3D11_SRV_DIMENSION_TEXTURECUBEARRAY) {
-          Logger::err("D3D11: Incompatible view dimension for Texture2D");
-          return E_INVALIDARG;
-        }
-        
-        format    = resourceDesc.Format;
-        mipLevels = resourceDesc.MipLevels;
-        numLayers = resourceDesc.ArraySize;
-      } break;
-      
-      case D3D11_RESOURCE_DIMENSION_TEXTURE3D: {
-        D3D11_TEXTURE3D_DESC resourceDesc;
-        static_cast<D3D11Texture3D*>(pResource)->GetDesc(&resourceDesc);
-        
-        if (pDesc->ViewDimension != D3D11_SRV_DIMENSION_TEXTURE3D) {
-          Logger::err("D3D11: Incompatible view dimension for Texture3D");
-          return E_INVALIDARG;
-        }
-        
-        format    = resourceDesc.Format;
-        mipLevels = resourceDesc.MipLevels;
-        numLayers = 1;
-      } break;
-      
-      default:
-        return E_INVALIDARG;
-    }
-    
-    if (pDesc->Format == DXGI_FORMAT_UNKNOWN)
-      pDesc->Format = format;
-    
-    switch (pDesc->ViewDimension) {
-      case D3D11_SRV_DIMENSION_BUFFER:
-      case D3D11_SRV_DIMENSION_BUFFEREX:
-        break;
-      
-      case D3D11_SRV_DIMENSION_TEXTURE1D:
-        if (pDesc->Texture1D.MipLevels == D3D11_DXVK_USE_REMAINING_LEVELS)
-          pDesc->Texture1D.MipLevels = mipLevels - pDesc->Texture1D.MostDetailedMip;
-        break;
-      
-      case D3D11_SRV_DIMENSION_TEXTURE1DARRAY:
-        if (pDesc->Texture1DArray.MipLevels == D3D11_DXVK_USE_REMAINING_LEVELS)
-          pDesc->Texture1DArray.MipLevels = mipLevels - pDesc->Texture1DArray.MostDetailedMip;
-        if (pDesc->Texture1DArray.ArraySize == D3D11_DXVK_USE_REMAINING_LAYERS)
-          pDesc->Texture1DArray.ArraySize = numLayers - pDesc->Texture1DArray.FirstArraySlice;
-        break;
-      
-      case D3D11_SRV_DIMENSION_TEXTURE2D:
-        if (pDesc->Texture2D.MipLevels == D3D11_DXVK_USE_REMAINING_LEVELS)
-          pDesc->Texture2D.MipLevels = mipLevels - pDesc->Texture2D.MostDetailedMip;
-        break;
-      
-      case D3D11_SRV_DIMENSION_TEXTURE2DARRAY:
-        if (pDesc->Texture2DArray.MipLevels == D3D11_DXVK_USE_REMAINING_LEVELS)
-          pDesc->Texture2DArray.MipLevels = mipLevels - pDesc->Texture2DArray.MostDetailedMip;
-        if (pDesc->Texture2DArray.ArraySize == D3D11_DXVK_USE_REMAINING_LAYERS)
-          pDesc->Texture2DArray.ArraySize = numLayers - pDesc->Texture2DArray.FirstArraySlice;
-        break;
-      
-      case D3D11_SRV_DIMENSION_TEXTURE2DMS:
-        break;
-      
-      case D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY:
-        if (pDesc->Texture2DMSArray.ArraySize == D3D11_DXVK_USE_REMAINING_LAYERS)
-          pDesc->Texture2DMSArray.ArraySize = numLayers - pDesc->Texture2DMSArray.FirstArraySlice;
-        break;
-      
-      case D3D11_SRV_DIMENSION_TEXTURECUBE:
-        if (pDesc->TextureCube.MipLevels == D3D11_DXVK_USE_REMAINING_LEVELS)
-          pDesc->TextureCube.MipLevels = mipLevels - pDesc->TextureCube.MostDetailedMip;
-        break;
-      
-      case D3D11_SRV_DIMENSION_TEXTURECUBEARRAY:
-        if (pDesc->TextureCubeArray.MipLevels == D3D11_DXVK_USE_REMAINING_LEVELS)
-          pDesc->TextureCubeArray.MipLevels = mipLevels - pDesc->TextureCubeArray.MostDetailedMip;
-        if (pDesc->TextureCubeArray.NumCubes == D3D11_DXVK_USE_REMAINING_LAYERS)
-          pDesc->TextureCubeArray.NumCubes = (mipLevels - pDesc->TextureCubeArray.First2DArrayFace / 6);
-        break;
-      
-      case D3D11_SRV_DIMENSION_TEXTURE3D:
-        if (pDesc->Texture3D.MipLevels == D3D11_DXVK_USE_REMAINING_LEVELS)
-          pDesc->Texture3D.MipLevels = mipLevels - pDesc->Texture3D.MostDetailedMip;
-        break;
-      
-      default:
-        break;
-    }
-    
-    return S_OK;
-  }
-  
-  
   HRESULT D3D11Device::GetRenderTargetViewDescFromResource(
           ID3D11Resource*                   pResource,
           D3D11_RENDER_TARGET_VIEW_DESC*    pDesc) {
@@ -1905,6 +1774,224 @@ namespace dxvk {
           resourceDim));
         return E_INVALIDARG;
     }
+  }
+  
+  
+  HRESULT D3D11Device::SetShaderResourceViewDescUnspecValues(
+          ID3D11Resource*                   pResource,
+          D3D11_SHADER_RESOURCE_VIEW_DESC*  pDesc) {
+    D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+    pResource->GetType(&resourceDim);
+    
+    DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
+    uint32_t mipLevels = 0;
+    uint32_t numLayers = 0;
+    
+    switch (resourceDim) {
+      case D3D11_RESOURCE_DIMENSION_BUFFER: {
+        if (pDesc->ViewDimension != D3D11_SRV_DIMENSION_BUFFER
+         && pDesc->ViewDimension != D3D11_SRV_DIMENSION_BUFFEREX) {
+          Logger::err("D3D11: Incompatible view dimension for Buffer");
+          return E_INVALIDARG;
+        }
+      } break;
+      
+      case D3D11_RESOURCE_DIMENSION_TEXTURE1D: {
+        D3D11_TEXTURE1D_DESC resourceDesc;
+        static_cast<D3D11Texture1D*>(pResource)->GetDesc(&resourceDesc);
+        
+        if (pDesc->ViewDimension != D3D11_SRV_DIMENSION_TEXTURE1D
+         && pDesc->ViewDimension != D3D11_SRV_DIMENSION_TEXTURE1DARRAY) {
+          Logger::err("D3D11: Incompatible view dimension for Texture1D");
+          return E_INVALIDARG;
+        }
+        
+        format    = resourceDesc.Format;
+        mipLevels = resourceDesc.MipLevels;
+        numLayers = resourceDesc.ArraySize;
+      } break;
+      
+      case D3D11_RESOURCE_DIMENSION_TEXTURE2D: {
+        D3D11_TEXTURE2D_DESC resourceDesc;
+        static_cast<D3D11Texture2D*>(pResource)->GetDesc(&resourceDesc);
+        
+        if (pDesc->ViewDimension != D3D11_SRV_DIMENSION_TEXTURE2D
+         && pDesc->ViewDimension != D3D11_SRV_DIMENSION_TEXTURE2DARRAY
+         && pDesc->ViewDimension != D3D11_SRV_DIMENSION_TEXTURE2DMS
+         && pDesc->ViewDimension != D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY
+         && pDesc->ViewDimension != D3D11_SRV_DIMENSION_TEXTURECUBE
+         && pDesc->ViewDimension != D3D11_SRV_DIMENSION_TEXTURECUBEARRAY) {
+          Logger::err("D3D11: Incompatible view dimension for Texture2D");
+          return E_INVALIDARG;
+        }
+        
+        format    = resourceDesc.Format;
+        mipLevels = resourceDesc.MipLevels;
+        numLayers = resourceDesc.ArraySize;
+      } break;
+      
+      case D3D11_RESOURCE_DIMENSION_TEXTURE3D: {
+        D3D11_TEXTURE3D_DESC resourceDesc;
+        static_cast<D3D11Texture3D*>(pResource)->GetDesc(&resourceDesc);
+        
+        if (pDesc->ViewDimension != D3D11_SRV_DIMENSION_TEXTURE3D) {
+          Logger::err("D3D11: Incompatible view dimension for Texture3D");
+          return E_INVALIDARG;
+        }
+        
+        format    = resourceDesc.Format;
+        mipLevels = resourceDesc.MipLevels;
+        numLayers = 1;
+      } break;
+      
+      default:
+        return E_INVALIDARG;
+    }
+    
+    if (pDesc->Format == DXGI_FORMAT_UNKNOWN)
+      pDesc->Format = format;
+    
+    switch (pDesc->ViewDimension) {
+      case D3D11_SRV_DIMENSION_TEXTURE1D:
+        if (pDesc->Texture1D.MipLevels == D3D11_DXVK_USE_REMAINING_LEVELS)
+          pDesc->Texture1D.MipLevels = mipLevels - pDesc->Texture1D.MostDetailedMip;
+        break;
+      
+      case D3D11_SRV_DIMENSION_TEXTURE1DARRAY:
+        if (pDesc->Texture1DArray.MipLevels == D3D11_DXVK_USE_REMAINING_LEVELS)
+          pDesc->Texture1DArray.MipLevels = mipLevels - pDesc->Texture1DArray.MostDetailedMip;
+        if (pDesc->Texture1DArray.ArraySize == D3D11_DXVK_USE_REMAINING_LAYERS)
+          pDesc->Texture1DArray.ArraySize = numLayers - pDesc->Texture1DArray.FirstArraySlice;
+        break;
+      
+      case D3D11_SRV_DIMENSION_TEXTURE2D:
+        if (pDesc->Texture2D.MipLevels == D3D11_DXVK_USE_REMAINING_LEVELS)
+          pDesc->Texture2D.MipLevels = mipLevels - pDesc->Texture2D.MostDetailedMip;
+        break;
+      
+      case D3D11_SRV_DIMENSION_TEXTURE2DARRAY:
+        if (pDesc->Texture2DArray.MipLevels == D3D11_DXVK_USE_REMAINING_LEVELS)
+          pDesc->Texture2DArray.MipLevels = mipLevels - pDesc->Texture2DArray.MostDetailedMip;
+        if (pDesc->Texture2DArray.ArraySize == D3D11_DXVK_USE_REMAINING_LAYERS)
+          pDesc->Texture2DArray.ArraySize = numLayers - pDesc->Texture2DArray.FirstArraySlice;
+        break;
+      
+      case D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY:
+        if (pDesc->Texture2DMSArray.ArraySize == D3D11_DXVK_USE_REMAINING_LAYERS)
+          pDesc->Texture2DMSArray.ArraySize = numLayers - pDesc->Texture2DMSArray.FirstArraySlice;
+        break;
+      
+      case D3D11_SRV_DIMENSION_TEXTURECUBE:
+        if (pDesc->TextureCube.MipLevels == D3D11_DXVK_USE_REMAINING_LEVELS)
+          pDesc->TextureCube.MipLevels = mipLevels - pDesc->TextureCube.MostDetailedMip;
+        break;
+      
+      case D3D11_SRV_DIMENSION_TEXTURECUBEARRAY:
+        if (pDesc->TextureCubeArray.MipLevels == D3D11_DXVK_USE_REMAINING_LEVELS)
+          pDesc->TextureCubeArray.MipLevels = mipLevels - pDesc->TextureCubeArray.MostDetailedMip;
+        if (pDesc->TextureCubeArray.NumCubes == D3D11_DXVK_USE_REMAINING_LAYERS)
+          pDesc->TextureCubeArray.NumCubes = (mipLevels - pDesc->TextureCubeArray.First2DArrayFace / 6);
+        break;
+      
+      case D3D11_SRV_DIMENSION_TEXTURE3D:
+        if (pDesc->Texture3D.MipLevels == D3D11_DXVK_USE_REMAINING_LEVELS)
+          pDesc->Texture3D.MipLevels = mipLevels - pDesc->Texture3D.MostDetailedMip;
+        break;
+      
+      default:
+        break;
+    }
+    
+    return S_OK;
+  }
+  
+  
+  HRESULT D3D11Device::SetUnorderedAccessViewDescUnspecValues(
+          ID3D11Resource*                   pResource,
+          D3D11_UNORDERED_ACCESS_VIEW_DESC* pDesc) {
+    D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+    pResource->GetType(&resourceDim);
+    
+    DXGI_FORMAT format = DXGI_FORMAT_UNKNOWN;
+    uint32_t numLayers = 0;
+    
+    switch (resourceDim) {
+      case D3D11_RESOURCE_DIMENSION_BUFFER: {
+        if (pDesc->ViewDimension != D3D11_UAV_DIMENSION_BUFFER) {
+          Logger::err("D3D11: Incompatible view dimension for Buffer");
+          return E_INVALIDARG;
+        }
+      } break;
+      
+      case D3D11_RESOURCE_DIMENSION_TEXTURE1D: {
+        D3D11_TEXTURE1D_DESC resourceDesc;
+        static_cast<D3D11Texture1D*>(pResource)->GetDesc(&resourceDesc);
+        
+        if (pDesc->ViewDimension != D3D11_UAV_DIMENSION_TEXTURE1D
+         && pDesc->ViewDimension != D3D11_UAV_DIMENSION_TEXTURE1DARRAY) {
+          Logger::err("D3D11: Incompatible view dimension for Texture1D");
+          return E_INVALIDARG;
+        }
+        
+        format    = resourceDesc.Format;
+        numLayers = resourceDesc.ArraySize;
+      } break;
+      
+      case D3D11_RESOURCE_DIMENSION_TEXTURE2D: {
+        D3D11_TEXTURE2D_DESC resourceDesc;
+        static_cast<D3D11Texture2D*>(pResource)->GetDesc(&resourceDesc);
+        
+        if (pDesc->ViewDimension != D3D11_UAV_DIMENSION_TEXTURE2D
+         && pDesc->ViewDimension != D3D11_UAV_DIMENSION_TEXTURE2DARRAY) {
+          Logger::err("D3D11: Incompatible view dimension for Texture2D");
+          return E_INVALIDARG;
+        }
+        
+        format    = resourceDesc.Format;
+        numLayers = resourceDesc.ArraySize;
+      } break;
+      
+      case D3D11_RESOURCE_DIMENSION_TEXTURE3D: {
+        D3D11_TEXTURE3D_DESC resourceDesc;
+        static_cast<D3D11Texture3D*>(pResource)->GetDesc(&resourceDesc);
+        
+        if (pDesc->ViewDimension != D3D11_UAV_DIMENSION_TEXTURE3D) {
+          Logger::err("D3D11: Incompatible view dimension for Texture3D");
+          return E_INVALIDARG;
+        }
+        
+        format    = resourceDesc.Format;
+        numLayers = resourceDesc.Depth >> pDesc->Texture3D.MipSlice;
+      } break;
+      
+      default:
+        return E_INVALIDARG;
+    }
+    
+    if (pDesc->Format == DXGI_FORMAT_UNKNOWN)
+      pDesc->Format = format;
+    
+    switch (pDesc->ViewDimension) {
+      case D3D11_UAV_DIMENSION_TEXTURE1DARRAY:
+        if (pDesc->Texture1DArray.ArraySize == D3D11_DXVK_USE_REMAINING_LAYERS)
+          pDesc->Texture1DArray.ArraySize = numLayers - pDesc->Texture1DArray.FirstArraySlice;
+        break;
+      
+      case D3D11_UAV_DIMENSION_TEXTURE2DARRAY:
+        if (pDesc->Texture2DArray.ArraySize == D3D11_DXVK_USE_REMAINING_LAYERS)
+          pDesc->Texture2DArray.ArraySize = numLayers - pDesc->Texture2DArray.FirstArraySlice;
+        break;
+      
+      case D3D11_UAV_DIMENSION_TEXTURE3D:
+        if (pDesc->Texture3D.WSize == D3D11_DXVK_USE_REMAINING_LAYERS)
+          pDesc->Texture3D.WSize = numLayers - pDesc->Texture3D.FirstWSlice;
+        break;
+      
+      default:
+        break;
+    }
+    
+    return S_OK;
   }
   
   
