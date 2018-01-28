@@ -1615,8 +1615,72 @@ namespace dxvk {
   HRESULT D3D11Device::GetUnorderedAccessViewDescFromResource(
           ID3D11Resource*                   pResource,
           D3D11_UNORDERED_ACCESS_VIEW_DESC* pDesc) {
-    Logger::err("D3D11Device::GetUnorderedAccessViewDescFromResource: Not implemented");
-    return E_NOTIMPL;
+    D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+    pResource->GetType(&resourceDim);
+    
+    switch (resourceDim) {
+      case D3D11_RESOURCE_DIMENSION_BUFFER: {
+        D3D11_BUFFER_DESC bufferDesc;
+        static_cast<D3D11Buffer*>(pResource)->GetDesc(&bufferDesc);
+        
+        if (bufferDesc.MiscFlags == D3D11_RESOURCE_MISC_BUFFER_STRUCTURED) {
+          pDesc->Format              = DXGI_FORMAT_UNKNOWN;
+          pDesc->ViewDimension       = D3D11_UAV_DIMENSION_BUFFER;
+          pDesc->Buffer.FirstElement = 0;
+          pDesc->Buffer.NumElements  = bufferDesc.ByteWidth / bufferDesc.StructureByteStride;
+          return S_OK;
+        }
+      } return E_INVALIDARG;
+      
+      case D3D11_RESOURCE_DIMENSION_TEXTURE1D: {
+        D3D11_TEXTURE1D_DESC resourceDesc;
+        static_cast<D3D11Texture1D*>(pResource)->GetDesc(&resourceDesc);
+        
+        pDesc->Format = resourceDesc.Format;
+        
+        if (resourceDesc.ArraySize == 1) {
+          pDesc->ViewDimension = D3D11_UAV_DIMENSION_TEXTURE1D;
+          pDesc->Texture1D.MipSlice = 0;
+        } else {
+          pDesc->ViewDimension = D3D11_UAV_DIMENSION_TEXTURE1DARRAY;
+          pDesc->Texture1DArray.MipSlice        = 0;
+          pDesc->Texture1DArray.FirstArraySlice = 0;
+          pDesc->Texture1DArray.ArraySize       = resourceDesc.ArraySize;
+        }
+      } return S_OK;
+      
+      case D3D11_RESOURCE_DIMENSION_TEXTURE2D: {
+        D3D11_TEXTURE2D_DESC resourceDesc;
+        static_cast<D3D11Texture2D*>(pResource)->GetDesc(&resourceDesc);
+        
+        pDesc->Format = resourceDesc.Format;
+        
+        if (resourceDesc.ArraySize == 1) {
+          pDesc->ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2D;
+          pDesc->Texture2D.MipSlice = 0;
+        } else {
+          pDesc->ViewDimension = D3D11_UAV_DIMENSION_TEXTURE2DARRAY;
+          pDesc->Texture2DArray.MipSlice        = 0;
+          pDesc->Texture2DArray.FirstArraySlice = 0;
+          pDesc->Texture2DArray.ArraySize       = resourceDesc.ArraySize;
+        }
+      } return S_OK;
+      
+      case D3D11_RESOURCE_DIMENSION_TEXTURE3D: {
+        D3D11_TEXTURE3D_DESC resourceDesc;
+        static_cast<D3D11Texture3D*>(pResource)->GetDesc(&resourceDesc);
+        
+        pDesc->Format        = resourceDesc.Format;
+        pDesc->ViewDimension = D3D11_UAV_DIMENSION_TEXTURE3D;
+        pDesc->Texture3D.MipSlice = 0;
+      } return S_OK;
+      
+      default:
+        Logger::err(str::format(
+          "D3D11: Unsupported dimension for unordered access view: ",
+          resourceDim));
+        return E_INVALIDARG;
+    }
   }
   
   
