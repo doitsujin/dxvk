@@ -4337,6 +4337,16 @@ namespace dxvk {
         return result;
       } break;
       
+      case DxbcSystemValue::SampleIndex: {
+        DxbcRegisterPointer ptrIn;
+        ptrIn.type.ctype   = DxbcScalarType::Uint32;
+        ptrIn.type.ccount  = 1;
+        ptrIn.id = m_ps.builtinSampleId;
+        
+        return emitRegisterExtract(
+          emitValueLoad(ptrIn), mask);
+      } break;
+      
       default:
         throw DxvkError(str::format(
           "DxbcCompiler: Unhandled PS SV input: ", sv));
@@ -4445,6 +4455,12 @@ namespace dxvk {
       spv::StorageClassInput },
       spv::BuiltInFrontFacing,
       "ps_is_front_face");
+    
+    m_ps.builtinSampleId = emitNewBuiltinVariable({
+      { DxbcScalarType::Uint32, 1, 0 },
+      spv::StorageClassInput },
+      spv::BuiltInSampleId,
+      "ps_sample_id");
   }
   
   
