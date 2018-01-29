@@ -32,6 +32,13 @@ namespace dxvk {
       other.m_ptr = nullptr;
     }
     
+    Com& operator = (T* object) {
+      this->decRef();
+      m_ptr = object;
+      this->incRef();
+      return *this;
+    }
+    
     Com& operator = (const Com& other) {
       other.incRef();
       this->decRef();

@@ -1728,7 +1728,7 @@ namespace dxvk {
       m_state.om.sampleMask = SampleMask;
       
       if (blendState == nullptr)
-        blendState = m_defaultBlendState.ptr();
+        blendState = m_defaultBlendState;
       
       EmitCs([
         cBlendState = std::move(blendState),
@@ -1769,7 +1769,7 @@ namespace dxvk {
       m_state.om.dsState = depthStencilState;
       
       if (depthStencilState == nullptr)
-        depthStencilState = m_defaultDepthStencilState.ptr();
+        depthStencilState = m_defaultDepthStencilState;
       
       EmitCs([cDepthStencilState = std::move(depthStencilState)]
       (DxvkContext* ctx) {
@@ -1848,7 +1848,7 @@ namespace dxvk {
       m_state.rs.state = rasterizerState;
       
       if (rasterizerState == nullptr)
-        rasterizerState = m_defaultRasterizerState.ptr();
+        rasterizerState = m_defaultRasterizerState;
       
       EmitCs([cRasterizerState = std::move(rasterizerState)]
       (DxvkContext* ctx) {
