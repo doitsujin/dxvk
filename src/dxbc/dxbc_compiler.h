@@ -149,6 +149,66 @@ namespace dxvk {
   };
   
   
+  /**
+   * \brief Hull shader fork/join phase
+   * 
+   * Defines a function and built-in variables
+   * for a single fork or join phase sub-program.
+   */
+  struct DxbcCompilerHsForkJoinPhase {
+    uint32_t functionId         = 0;
+    uint32_t instanceCount      = 0;
+    uint32_t builtinInstanceId  = 0;
+  };
+  
+  
+  /**
+   * \brief Hull shader control point phase
+   * 
+   * Defines the function for the control
+   * point phase program of a hull shader.
+   */
+  struct DxbcCompilerHsControlPointPhase {
+    uint32_t functionId         = 0;
+  };
+  
+  
+  /**
+   * \brief Hull shader phase
+   * 
+   * Used to identify the current
+   * phase and function ID.
+   */
+  enum class DxbcCompilerHsPhase : uint32_t {
+    None,         ///< No active phase
+    Decl,         ///< \c hs_decls
+    ControlPoint, ///< \c hs_control_point_phase
+    Fork,         ///< \c hs_fork_phase
+    Join,         ///< \c hs_join_phase
+  };
+  
+  
+  /**
+   * \brief Hull shader-specific structure
+   */
+  struct DxbcCompilerHsPart {
+    DxbcCompilerHsPhase currPhaseType = DxbcCompilerHsPhase::None;
+    size_t              currPhaseId   = 0;
+    
+    DxbcCompilerHsControlPointPhase          cpPhase;
+    std::vector<DxbcCompilerHsForkJoinPhase> forkPhases;
+    std::vector<DxbcCompilerHsForkJoinPhase> joinPhases;
+  };
+  
+  
+  /**
+   * \brief Domain shader-specific structure
+   */
+  struct DxbcCompilerDsPart {
+    uint32_t functionId = 0;
+  };
+  
+  
   enum class DxbcCfgBlockType : uint32_t {
     If, Loop, Switch,
   };
@@ -323,6 +383,8 @@ namespace dxvk {
     ///////////////////////////////////
     // Shader-specific data structures
     DxbcCompilerVsPart m_vs;
+    DxbcCompilerHsPart m_hs;
+    DxbcCompilerDsPart m_ds;
     DxbcCompilerGsPart m_gs;
     DxbcCompilerPsPart m_ps;
     DxbcCompilerCsPart m_cs;
@@ -716,6 +778,7 @@ namespace dxvk {
     /////////////////////////////////
     // Shader initialization methods
     void emitVsInit();
+    void emitHsInit();
     void emitGsInit();
     void emitPsInit();
     void emitCsInit();
@@ -723,6 +786,7 @@ namespace dxvk {
     ///////////////////////////////
     // Shader finalization methods
     void emitVsFinalize();
+    void emitHsFinalize();
     void emitGsFinalize();
     void emitPsFinalize();
     void emitCsFinalize();
