@@ -711,12 +711,6 @@ namespace dxvk {
             DxbcRegMask             mask,
       const DxbcRegisterValue&      value);
     
-    ////////////////////////////////////////
-    // Builtin variable declaration methods
-    void emitVsInitBuiltins();
-    void emitGsInitBuiltins(uint32_t vertexCount);
-    void emitPsInitBuiltins();
-    
     /////////////////////////////////
     // Shader initialization methods
     void emitVsInit();

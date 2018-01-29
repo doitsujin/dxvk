@@ -946,7 +946,6 @@ namespace dxvk {
     
     emitDclInputArray(vertexCount);
     emitDclInputPerVertex(vertexCount, "gs_vertex_in");
-    emitGsInitBuiltins(vertexCount);
   }
   
   
@@ -4247,6 +4246,22 @@ namespace dxvk {
       case DxbcSystemValue::VertexId: {
         const uint32_t typeId = getScalarTypeId(DxbcScalarType::Uint32);
         
+        if (m_vs.builtinVertexId == 0) {
+          m_vs.builtinVertexId = emitNewBuiltinVariable({
+            { DxbcScalarType::Uint32, 1, 0 },
+            spv::StorageClassInput },
+            spv::BuiltInVertexIndex,
+            "vs_vertex_index");
+        }
+        
+        if (m_vs.builtinBaseVertex == 0) {
+          m_vs.builtinBaseVertex = emitNewBuiltinVariable({
+            { DxbcScalarType::Uint32, 1, 0 },
+            spv::StorageClassInput },
+            spv::BuiltInBaseVertex,
+            "vs_base_vertex");
+        }
+        
         DxbcRegisterValue result;
         result.type.ctype   = DxbcScalarType::Uint32;
         result.type.ccount  = 1;
@@ -4258,6 +4273,22 @@ namespace dxvk {
       
       case DxbcSystemValue::InstanceId: {
         const uint32_t typeId = getScalarTypeId(DxbcScalarType::Uint32);
+        
+        if (m_vs.builtinInstanceId == 0) {
+          m_vs.builtinInstanceId = emitNewBuiltinVariable({
+            { DxbcScalarType::Uint32, 1, 0 },
+            spv::StorageClassInput },
+            spv::BuiltInInstanceIndex,
+            "vs_instance_index");
+        }
+          
+        if (m_vs.builtinBaseInstance == 0) {
+          m_vs.builtinBaseInstance = emitNewBuiltinVariable({
+            { DxbcScalarType::Uint32, 1, 0 },
+            spv::StorageClassInput },
+            spv::BuiltInBaseInstance,
+            "vs_base_instance");
+        }
         
         DxbcRegisterValue result;
         result.type.ctype   = DxbcScalarType::Uint32;
@@ -4314,6 +4345,14 @@ namespace dxvk {
           DxbcRegMask             mask) {
     switch (sv) {
       case DxbcSystemValue::Position: {
+        if (m_ps.builtinFragCoord == 0) {
+          m_ps.builtinFragCoord = emitNewBuiltinVariable({
+            { DxbcScalarType::Float32, 4, 0 },
+            spv::StorageClassInput },
+            spv::BuiltInFragCoord,
+            "ps_frag_coord");
+        }
+        
         DxbcRegisterPointer ptrIn;
         ptrIn.type.ctype   = DxbcScalarType::Float32;
         ptrIn.type.ccount  = 4;
@@ -4324,6 +4363,14 @@ namespace dxvk {
       } break;
       
       case DxbcSystemValue::IsFrontFace: {
+        if (m_ps.builtinIsFrontFace == 0) {
+          m_ps.builtinIsFrontFace = emitNewBuiltinVariable({
+            { DxbcScalarType::Bool, 1, 0 },
+            spv::StorageClassInput },
+            spv::BuiltInFrontFacing,
+            "ps_is_front_face");
+        }
+        
         DxbcRegisterValue result;
         result.type.ctype  = DxbcScalarType::Uint32;
         result.type.ccount = 1;
@@ -4338,6 +4385,16 @@ namespace dxvk {
       } break;
       
       case DxbcSystemValue::SampleIndex: {
+        if (m_ps.builtinSampleId == 0) {
+          m_module.enableCapability(spv::CapabilitySampleRateShading);
+          
+          m_ps.builtinSampleId = emitNewBuiltinVariable({
+            { DxbcScalarType::Uint32, 1, 0 },
+            spv::StorageClassInput },
+            spv::BuiltInSampleId,
+            "ps_sample_id");
+        }
+        
         DxbcRegisterPointer ptrIn;
         ptrIn.type.ctype   = DxbcScalarType::Uint32;
         ptrIn.type.ccount  = 1;
@@ -4411,59 +4468,6 @@ namespace dxvk {
   }
   
   
-  void DxbcCompiler::emitVsInitBuiltins() {
-    m_vs.builtinVertexId = emitNewBuiltinVariable({
-      { DxbcScalarType::Uint32, 1, 0 },
-      spv::StorageClassInput },
-      spv::BuiltInVertexIndex,
-      "vs_vertex_index");
-    
-    m_vs.builtinInstanceId = emitNewBuiltinVariable({
-      { DxbcScalarType::Uint32, 1, 0 },
-      spv::StorageClassInput },
-      spv::BuiltInInstanceIndex,  // TODO test
-      "vs_instance_index");
-    
-    m_vs.builtinBaseVertex = emitNewBuiltinVariable({
-      { DxbcScalarType::Uint32, 1, 0 },
-      spv::StorageClassInput },
-      spv::BuiltInBaseVertex,
-      "vs_base_vertex");
-    
-    m_vs.builtinBaseInstance = emitNewBuiltinVariable({
-      { DxbcScalarType::Uint32, 1, 0 },
-      spv::StorageClassInput },
-      spv::BuiltInBaseInstance,
-      "vs_base_instance");
-  }
-  
-  
-  void DxbcCompiler::emitGsInitBuiltins(uint32_t vertexCount) {
-    // TODO implement
-  }
-  
-  
-  void DxbcCompiler::emitPsInitBuiltins() {
-    m_ps.builtinFragCoord = emitNewBuiltinVariable({
-      { DxbcScalarType::Float32, 4, 0 },
-      spv::StorageClassInput },
-      spv::BuiltInFragCoord,
-      "ps_frag_coord");
-    
-    m_ps.builtinIsFrontFace = emitNewBuiltinVariable({
-      { DxbcScalarType::Bool, 1, 0 },
-      spv::StorageClassInput },
-      spv::BuiltInFrontFacing,
-      "ps_is_front_face");
-    
-    m_ps.builtinSampleId = emitNewBuiltinVariable({
-      { DxbcScalarType::Uint32, 1, 0 },
-      spv::StorageClassInput },
-      spv::BuiltInSampleId,
-      "ps_sample_id");
-  }
-  
-  
   void DxbcCompiler::emitVsInit() {
     m_module.enableCapability(spv::CapabilityClipDistance);
     m_module.enableCapability(spv::CapabilityCullDistance);
@@ -4484,7 +4488,6 @@ namespace dxvk {
     
     // Standard input array
     emitDclInputArray(0);
-    emitVsInitBuiltins();
     
     // Main function of the vertex shader
     m_vs.functionId = m_module.allocateId();
@@ -4564,7 +4567,6 @@ namespace dxvk {
     
     // Standard input array
     emitDclInputArray(0);
-    emitPsInitBuiltins();
     
     // Main function of the pixel shader
     m_ps.functionId = m_module.allocateId();
