@@ -5,21 +5,9 @@
 namespace dxvk {
   
   Logger::Logger(const std::string& file_name)
-  : m_minLevel(getMinLogLevel())
-  {
-    if (m_minLevel == LogLevel::None)
-        return;
-    
-    std::string path = env::getEnvVar(L"DXVK_LOG_PATH");
-    std::string file = path;
-    if (!file.empty() && *file.rbegin() != '/')
-      file += '/';
-    std::string name = env::getExeName();
-    auto extp = name.find_last_of('.');
-    if (extp != std::string::npos && name.substr(extp +1) == "exe")
-      name.erase(extp);
-    file += name + "_";
-    m_fileStream = std::ofstream(file + file_name);
+  : m_minLevel(getMinLogLevel()) {
+    if (m_minLevel != LogLevel::None)
+      m_fileStream = std::ofstream(getFileName(file_name));
   }
   
   
@@ -61,7 +49,6 @@ namespace dxvk {
       const char* prefix = s_prefixes.at(static_cast<uint32_t>(level));
       std::cerr    << prefix << message << std::endl;
       m_fileStream << prefix << message << std::endl;
-      m_fileStream.flush();
     }
   }
   
@@ -84,6 +71,23 @@ namespace dxvk {
     }
     
     return LogLevel::Info;
+  }
+  
+  
+  std::string Logger::getFileName(const std::string& base) {
+    std::string path = env::getEnvVar(L"DXVK_LOG_PATH");
+    
+    if (!path.empty() && *path.rbegin() != '/')
+      path += '/';
+    
+    std::string exeName = env::getExeName();
+    auto extp = exeName.find_last_of('.');
+    
+    if (extp != std::string::npos && exeName.substr(extp + 1) == "exe")
+      exeName.erase(extp);
+    
+    path += exeName + "_" + base;
+    return path;
   }
   
 }

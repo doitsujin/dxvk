@@ -548,7 +548,6 @@ namespace dxvk {
       const DxvkBindingState&       bindingState,
       const Rc<DxvkPipelineLayout>&  layout);
     
-    void updateDynamicState();
     void updateViewports();
     void updateBlendConstants();
     void updateStencilReference();

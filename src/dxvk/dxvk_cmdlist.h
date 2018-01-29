@@ -346,8 +346,7 @@ namespace dxvk {
     }
     
     
-    void cmdSetBlendConstants(
-            float                   blendConstants[4]) {
+    void cmdSetBlendConstants(const float blendConstants[4]) {
       m_vkd->vkCmdSetBlendConstants(m_buffer, blendConstants);
     }
     

@@ -24,7 +24,6 @@ namespace dxvk {
     GpRenderPassBound,      ///< Render pass is currently bound
     GpDirtyPipeline,        ///< Graphics pipeline binding is out of date
     GpDirtyPipelineState,   ///< Graphics pipeline needs to be recompiled
-    GpDirtyDynamicState,    ///< Dynamic state needs to be reapplied
     GpDirtyResources,       ///< Graphics pipeline resource bindings are out of date
     GpDirtyVertexBuffers,   ///< Vertex buffer bindings are out of date
     GpDirtyIndexBuffer,     ///< Index buffer binding are out of date

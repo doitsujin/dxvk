@@ -30,7 +30,6 @@ namespace dxvk {
     m_flags.set(
       DxvkContextFlag::GpDirtyPipeline,
       DxvkContextFlag::GpDirtyPipelineState,
-      DxvkContextFlag::GpDirtyDynamicState,
       DxvkContextFlag::GpDirtyResources,
       DxvkContextFlag::GpDirtyVertexBuffers,
       DxvkContextFlag::GpDirtyIndexBuffer,
@@ -982,16 +981,15 @@ namespace dxvk {
       m_state.vp.scissorRects[i] = scissorRects[i];
     }
     
-    this->updateViewports();
+    m_cmd->cmdSetViewport(0, viewportCount, viewports);
+    m_cmd->cmdSetScissor (0, viewportCount, scissorRects);
   }
   
   
   void DxvkContext::setBlendConstants(
     const DxvkBlendConstants&   blendConstants) {
-    for (uint32_t i = 0; i < 4; i++)
-      m_state.om.blendConstants = blendConstants;
-    
-    this->updateBlendConstants();
+    m_state.om.blendConstants = blendConstants;
+    m_cmd->cmdSetBlendConstants(&blendConstants.r);
   }
   
   
@@ -999,7 +997,9 @@ namespace dxvk {
     const uint32_t            reference) {
     m_state.om.stencilReference = reference;
     
-    this->updateStencilReference();
+    m_cmd->cmdSetStencilReference(
+      VK_STENCIL_FRONT_AND_BACK,
+      reference);
   }
   
   
@@ -1204,6 +1204,16 @@ namespace dxvk {
         m_cmd->cmdBindPipeline(
           VK_PIPELINE_BIND_POINT_GRAPHICS,
           m_gpActivePipeline);
+        
+        m_cmd->cmdSetViewport(0, m_state.gp.state.rsViewportCount, m_state.vp.viewports.data());
+        m_cmd->cmdSetScissor (0, m_state.gp.state.rsViewportCount, m_state.vp.scissorRects.data());
+        
+        m_cmd->cmdSetBlendConstants(
+          &m_state.om.blendConstants.r);
+        
+        m_cmd->cmdSetStencilReference(
+          VK_STENCIL_FRONT_AND_BACK,
+          m_state.om.stencilReference);
       }
     }
   }
@@ -1380,35 +1390,6 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::updateDynamicState() {
-    if (m_flags.test(DxvkContextFlag::GpDirtyDynamicState)) {
-      m_flags.clr(DxvkContextFlag::GpDirtyDynamicState);
-      
-      this->updateViewports();
-      this->updateBlendConstants();
-      this->updateStencilReference();
-    }
-  }
-  
-  
-  void DxvkContext::updateViewports() {
-    m_cmd->cmdSetViewport(0, m_state.gp.state.rsViewportCount, m_state.vp.viewports.data());
-    m_cmd->cmdSetScissor (0, m_state.gp.state.rsViewportCount, m_state.vp.scissorRects.data());
-  }
-  
-  
-  void DxvkContext::updateBlendConstants() {
-    m_cmd->cmdSetBlendConstants(&m_state.om.blendConstants.r);
-  }
-  
-  
-  void DxvkContext::updateStencilReference() {
-    m_cmd->cmdSetStencilReference(
-      VK_STENCIL_FRONT_AND_BACK,
-      m_state.om.stencilReference);
-  }
-  
-  
   void DxvkContext::updateIndexBufferBinding() {
     if (m_flags.test(DxvkContextFlag::GpDirtyIndexBuffer)) {
       m_flags.clr(DxvkContextFlag::GpDirtyIndexBuffer);
@@ -1460,7 +1441,6 @@ namespace dxvk {
   void DxvkContext::commitGraphicsState() {
     this->renderPassBegin();
     this->updateGraphicsPipeline();
-    this->updateDynamicState();
     this->updateIndexBufferBinding();
     this->updateVertexBufferBindings();
     this->updateGraphicsShaderResources();
