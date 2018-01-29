@@ -1,6 +1,7 @@
 #!/bin/bash
 
 dlls_dir='@dlldir@'
+build_arch='@arch@'
 path_pattern='s|^\s*PATH\s+REG_EXPAND_SZ\s+(.*)\s*$|\1|g'
 dlls_windir=$(winepath -w "$dlls_dir")
 dlls_windir_pattern="$(sed 's|\\|\\\\|g'<<<$dlls_windir)"
@@ -52,6 +53,11 @@ function addToPATH {
 
 if [ "$1" == "overrides" ]; then
     set -e
+    if [ $build_arch == "x86_64" ]; then
+        wine=wine64
+    else
+        wine=wine
+    fi
     unix_sys_path="$($wine winepath -u 'C:\windows\system32')"
     wine reg add HKEY_CURRENT_USER\\Software\\Wine\\DllOverrides /v d3d11 /d native /f
     wine reg add HKEY_CURRENT_USER\\Software\\Wine\\DllOverrides /v dxgi /d native /f
