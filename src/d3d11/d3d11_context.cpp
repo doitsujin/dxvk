@@ -164,8 +164,8 @@ namespace dxvk {
           void*                             pData,
           UINT                              DataSize,
           UINT                              GetDataFlags) {
-    if (pAsync->GetDataSize() != DataSize) {
-      Logger::err("D3D11DeviceContext: GetData: Data size mismatch");
+    if (pData != nullptr && pAsync->GetDataSize() != DataSize) {
+      Logger::err(str::format("D3D11DeviceContext: GetData: Data size mismatch: ", pAsync->GetDataSize(), ",", DataSize));
       return E_INVALIDARG;
     }
     

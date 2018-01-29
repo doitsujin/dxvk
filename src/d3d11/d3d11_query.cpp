@@ -16,7 +16,9 @@ namespace dxvk {
         break;
 
       default:
-        Logger::warn(str::format("D3D11Query: Unsupported query type ", desc.Query));
+        static bool errorShown = false;
+        if (!std::exchange(errorShown, true))
+          Logger::warn(str::format("D3D11Query: Unsupported query type ", desc.Query));
     }
   }
   
