@@ -29,6 +29,7 @@ namespace dxvk {
   struct DxvkInputAssemblyState {
     VkPrimitiveTopology primitiveTopology;
     VkBool32            primitiveRestart;
+    uint32_t            patchVertexCount;
   };
   
   

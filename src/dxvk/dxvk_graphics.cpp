@@ -139,6 +139,12 @@ namespace dxvk {
     iaInfo.topology               = state.iaPrimitiveTopology;
     iaInfo.primitiveRestartEnable = state.iaPrimitiveRestart;
     
+    VkPipelineTessellationStateCreateInfo tsInfo;
+    tsInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO;
+    tsInfo.pNext                  = nullptr;
+    tsInfo.flags                  = 0;
+    tsInfo.patchControlPoints     = state.iaPatchVertexCount;
+    
     VkPipelineViewportStateCreateInfo vpInfo;
     vpInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
     vpInfo.pNext                  = nullptr;
@@ -222,7 +228,7 @@ namespace dxvk {
     info.pStages                  = stages.data();
     info.pVertexInputState        = &viInfo;
     info.pInputAssemblyState      = &iaInfo;
-    info.pTessellationState       = nullptr;  // TODO implement
+    info.pTessellationState       = &tsInfo;
     info.pViewportState           = &vpInfo;
     info.pRasterizationState      = &rsInfo;
     info.pMultisampleState        = &msInfo;
@@ -234,6 +240,9 @@ namespace dxvk {
     info.subpass                  = 0;
     info.basePipelineHandle       = baseHandle;
     info.basePipelineIndex        = -1;
+    
+    if (tsInfo.patchControlPoints == 0)
+      info.pTessellationState = nullptr;
     
     VkPipeline pipeline = VK_NULL_HANDLE;
     if (m_vkd->vkCreateGraphicsPipelines(m_vkd->device(),

@@ -584,7 +584,6 @@ namespace dxvk {
     
     virtual void EmitCsChunk(Rc<DxvkCsChunk>&& chunk) = 0;
     
-    
   };
   
 }

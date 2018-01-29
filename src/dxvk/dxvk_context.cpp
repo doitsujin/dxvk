@@ -1006,6 +1006,7 @@ namespace dxvk {
   void DxvkContext::setInputAssemblyState(const DxvkInputAssemblyState& ia) {
     m_state.gp.state.iaPrimitiveTopology = ia.primitiveTopology;
     m_state.gp.state.iaPrimitiveRestart  = ia.primitiveRestart;
+    m_state.gp.state.iaPatchVertexCount  = ia.patchVertexCount;
     
     m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
   }

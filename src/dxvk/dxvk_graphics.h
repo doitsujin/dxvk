@@ -37,6 +37,7 @@ namespace dxvk {
     
     VkPrimitiveTopology                 iaPrimitiveTopology;
     VkBool32                            iaPrimitiveRestart;
+    uint32_t                            iaPatchVertexCount;
     
     uint32_t                            ilAttributeCount;
     uint32_t                            ilBindingCount;
