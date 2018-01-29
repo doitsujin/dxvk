@@ -879,8 +879,18 @@ namespace dxvk {
           SIZE_T                      BytecodeLength,
           ID3D11ClassLinkage*         pClassLinkage,
           ID3D11HullShader**          ppHullShader) {
-    Logger::err("D3D11Device::CreateHullShader: Not implemented");
-    return E_NOTIMPL;
+    D3D11ShaderModule module;
+    
+    if (FAILED(this->CreateShaderModule(&module,
+        pShaderBytecode, BytecodeLength, pClassLinkage)))
+      return E_INVALIDARG;
+    
+    if (ppHullShader != nullptr) {
+      *ppHullShader = ref(new D3D11HullShader(
+        this, std::move(module)));
+    }
+    
+    return S_OK;
   }
   
   
@@ -889,8 +899,18 @@ namespace dxvk {
           SIZE_T                      BytecodeLength,
           ID3D11ClassLinkage*         pClassLinkage,
           ID3D11DomainShader**        ppDomainShader) {
-    Logger::err("D3D11Device::CreateDomainShader: Not implemented");
-    return E_NOTIMPL;
+    D3D11ShaderModule module;
+    
+    if (FAILED(this->CreateShaderModule(&module,
+        pShaderBytecode, BytecodeLength, pClassLinkage)))
+      return E_INVALIDARG;
+    
+    if (ppDomainShader != nullptr) {
+      *ppDomainShader = ref(new D3D11DomainShader(
+        this, std::move(module)));
+    }
+    
+    return S_OK;
   }
   
   
