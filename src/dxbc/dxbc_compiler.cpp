@@ -421,6 +421,15 @@ namespace dxvk {
           "vThreadIndexInGroup");
       } break;
       
+      case DxbcOperandType::OutputCoverageMask: {
+        m_module.enableCapability(spv::CapabilitySampleRateShading);
+        m_ps.builtinSampleMaskOut = emitNewBuiltinVariable({
+          { DxbcScalarType::Uint32, 1, 0 },
+          spv::StorageClassOutput },
+          spv::BuiltInSampleMask,
+          "oDepth");
+      } break;
+      
       case DxbcOperandType::OutputDepth: {
         m_module.setExecutionMode(m_entryPointId,
           spv::ExecutionModeDepthReplacing);
@@ -3656,6 +3665,11 @@ namespace dxvk {
           { DxbcScalarType::Uint32, 1 },
           m_cs.builtinLocalInvocationIndex };
       
+      case DxbcOperandType::OutputCoverageMask:
+        return DxbcRegisterPointer {
+          { DxbcScalarType::Uint32, 1 },
+          m_ps.builtinSampleMaskOut };
+        
       case DxbcOperandType::OutputDepth:
         return DxbcRegisterPointer {
           { DxbcScalarType::Float32, 1 },
