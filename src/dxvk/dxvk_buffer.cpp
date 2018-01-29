@@ -57,7 +57,7 @@ namespace dxvk {
   
   
   Rc<DxvkPhysicalBuffer> DxvkBuffer::allocPhysicalBuffer(VkDeviceSize sliceCount) const {
-    DxvkBufferCreateInfo createInfo;
+    DxvkBufferCreateInfo createInfo = m_info;
     createInfo.size = sliceCount * m_physSliceStride;
     
     return m_device->allocPhysicalBuffer(createInfo, m_memFlags);
