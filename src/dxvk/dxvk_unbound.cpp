@@ -3,7 +3,8 @@
 namespace dxvk {
   
   DxvkUnboundResources::DxvkUnboundResources(DxvkDevice* dev)
-  : m_buffer        (createBuffer(dev)),
+  : m_sampler       (createSampler(dev)),
+    m_buffer        (createBuffer(dev)),
     m_bufferView    (createBufferView(dev, m_buffer)),
     m_image1D       (createImage(dev, VK_IMAGE_TYPE_1D, 1)),
     m_image2D       (createImage(dev, VK_IMAGE_TYPE_2D, 6)),
@@ -142,7 +143,7 @@ namespace dxvk {
       case VK_IMAGE_VIEW_TYPE_CUBE:       return m_viewCube.ptr();
       case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY: return m_viewCubeArr.ptr();
       case VK_IMAGE_VIEW_TYPE_3D:         return m_view3D.ptr();
-      default:                            return nullptr;
+      default:                            Logger::err("null"); return nullptr;
     }
   }
   
