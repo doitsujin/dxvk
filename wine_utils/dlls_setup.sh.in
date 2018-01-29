@@ -1,8 +1,9 @@
 #!/bin/bash
 
 dlls_dir='@dlldir@'
+build_arch='@arch@'
 path_pattern='s|^\s*PATH\s+REG_EXPAND_SZ\s+(.*)\s*$|\1|g'
-dlls_windir="Z:$(sed 's|/|\\|g'<<<$dlls_dir)"
+dlls_windir=$(winepath -w "$dlls_dir")
 dlls_windir_pattern="$(sed 's|\\|\\\\|g'<<<$dlls_windir)"
 WINEDEBUG=-all
 
@@ -35,19 +36,37 @@ function redirect {
     fi
 }
 
+function addToPATH {
+    path=$(wine reg query 'HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' /v PATH | sed -e 's|\r||g')
+    path_val=$(grep REG_EXPAND_SZ<<<$path | sed -E -e $path_pattern)
+    check=$(sed -E -e "s|^(.*;)?$(sed 's|\\|\\\\|g'<<<$1)(;.*)?$||" <<<$path_val)
+    if [ -n "$check" ]; then
+        echo "adding $1 to windows PATH"
+        new_path="$(sed -E  -e 's|;?\s*$||' <<<$path_val);$1"
+        echo "$path"
+        echo "new PATH:                    $new_path"
+        wine reg add 'HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' /v PATH /d "$new_path" /t REG_EXPAND_SZ
+    else
+        echo -e "windows PATH was \\e[0;32mOK\\e[0m"
+    fi
+}
+
+if [ "$1" == "overrides" ]; then
+    set -e
+    if [ $build_arch == "x86_64" ]; then
+        wine=wine64
+    else
+        wine=wine
+    fi
+    unix_sys_path="$($wine winepath -u 'C:\windows\system32')"
+    wine reg add HKEY_CURRENT_USER\\Software\\Wine\\DllOverrides /v d3d11 /d native /f
+    wine reg add HKEY_CURRENT_USER\\Software\\Wine\\DllOverrides /v dxgi /d native /f
+    ln -sf "$dlls_dir/d3d11_vk.dll" "$unix_sys_path/d3d11.dll"
+    ln -sf "$dlls_dir/dxgi_vk.dll" "$unix_sys_path/dxgi.dll"
+    exit 0
+fi
+
 redirect CHK_REDIRECT_D3D11 d3d11
 redirect CHK_REDIRECT_DXGI dxgi
 
-path=$(wine reg query 'HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' /v PATH | sed -e 's|\r||g')
-path_val=$(grep REG_EXPAND_SZ<<<$path | sed -E -e $path_pattern)
-check=$(sed -E -e "s|^(.*;)?$dlls_windir_pattern(;.*)?$||" <<<$path_val)
-
-if [ -n "$check" ]; then
-    echo "adding $dlls_windir to windows PATH"
-    new_path="$(sed -E  -e 's|;?\s*$||' <<<$path_val);$dlls_windir"
-    echo "$path"
-    echo "new PATH:                    $new_path"
-    wine reg add 'HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' /v PATH /d "$new_path" /t REG_EXPAND_SZ
-else
-        echo -e "windows PATH was \\e[0;32mOK\\e[0m"
-fi
+addToPATH "$dlls_windir"
