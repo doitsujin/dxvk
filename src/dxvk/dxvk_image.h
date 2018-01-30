@@ -142,6 +142,14 @@ namespace dxvk {
     }
     
     /**
+     * \brief Image format info
+     * \returns Image format info
+     */
+    const DxvkFormatInfo* formatInfo() const {
+      return imageFormatInfo(m_info.format);
+    }
+    
+    /**
      * \brief Size of a mipmap level
      * 
      * \param [in] level Mip level
@@ -245,6 +253,14 @@ namespace dxvk {
      */
     const DxvkImageCreateInfo& imageInfo() const {
       return m_image->info();
+    }
+    
+    /**
+     * \brief Image format info
+     * \returns Image format info
+     */
+    const DxvkFormatInfo* formatInfo() const {
+      return m_image->formatInfo();
     }
     
     /**

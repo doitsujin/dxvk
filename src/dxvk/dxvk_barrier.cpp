@@ -50,16 +50,17 @@ namespace dxvk {
     
     if ((srcLayout != dstLayout) || accessTypes.test(DxvkResourceAccessType::Write)) {
       VkImageMemoryBarrier barrier;
-      barrier.sType                 = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-      barrier.pNext                 = nullptr;
-      barrier.srcAccessMask         = srcAccess;
-      barrier.dstAccessMask         = dstAccess;
-      barrier.oldLayout             = srcLayout;
-      barrier.newLayout             = dstLayout;
-      barrier.srcQueueFamilyIndex   = VK_QUEUE_FAMILY_IGNORED;
-      barrier.dstQueueFamilyIndex   = VK_QUEUE_FAMILY_IGNORED;
-      barrier.image                 = image->handle();
-      barrier.subresourceRange      = subresources;
+      barrier.sType                       = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+      barrier.pNext                       = nullptr;
+      barrier.srcAccessMask               = srcAccess;
+      barrier.dstAccessMask               = dstAccess;
+      barrier.oldLayout                   = srcLayout;
+      barrier.newLayout                   = dstLayout;
+      barrier.srcQueueFamilyIndex         = VK_QUEUE_FAMILY_IGNORED;
+      barrier.dstQueueFamilyIndex         = VK_QUEUE_FAMILY_IGNORED;
+      barrier.image                       = image->handle();
+      barrier.subresourceRange            = subresources;
+      barrier.subresourceRange.aspectMask = image->formatInfo()->aspectMask;
       m_imgBarriers.push_back(barrier);
     }
   }

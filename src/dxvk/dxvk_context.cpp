@@ -213,7 +213,8 @@ namespace dxvk {
     const VkImageSubresourceRange&  subresources) {
     this->renderPassEnd();
     
-    m_barriers.accessImage(image, subresources,
+    m_barriers.accessImage(
+      image, subresources,
       VK_IMAGE_LAYOUT_UNDEFINED,
       image->info().stages,
       image->info().access,
@@ -226,7 +227,8 @@ namespace dxvk {
       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
       &value, 1, &subresources);
     
-    m_barriers.accessImage(image, subresources,
+    m_barriers.accessImage(
+      image, subresources,
       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT,
@@ -307,7 +309,7 @@ namespace dxvk {
     
     auto srcSlice = srcBuffer->subSlice(srcOffset, 0);
     
-    const VkImageSubresourceRange dstSubresourceRange = {
+    VkImageSubresourceRange dstSubresourceRange = {
       dstSubresource.aspectMask,
       dstSubresource.mipLevel, 1,
       dstSubresource.baseArrayLayer,
@@ -371,13 +373,13 @@ namespace dxvk {
           VkExtent3D            extent) {
     this->renderPassEnd();
     
-    const VkImageSubresourceRange dstSubresourceRange = {
+    VkImageSubresourceRange dstSubresourceRange = {
       dstSubresource.aspectMask,
       dstSubresource.mipLevel, 1,
       dstSubresource.baseArrayLayer,
       dstSubresource.layerCount };
     
-    const VkImageSubresourceRange srcSubresourceRange = {
+    VkImageSubresourceRange srcSubresourceRange = {
       srcSubresource.aspectMask,
       srcSubresource.mipLevel, 1,
       srcSubresource.baseArrayLayer,
@@ -454,7 +456,7 @@ namespace dxvk {
     
     auto dstSlice = dstBuffer->subSlice(dstOffset, 0);
     
-    const VkImageSubresourceRange srcSubresourceRange = {
+    VkImageSubresourceRange srcSubresourceRange = {
       srcSubresource.aspectMask,
       srcSubresource.mipLevel, 1,
       srcSubresource.baseArrayLayer,
@@ -772,15 +774,13 @@ namespace dxvk {
       dstSubresources.aspectMask,
       dstSubresources.mipLevel, 1,
       dstSubresources.baseArrayLayer,
-      dstSubresources.layerCount,
-    };
+      dstSubresources.layerCount };
     
     VkImageSubresourceRange srcSubresourceRange = {
       srcSubresources.aspectMask,
       srcSubresources.mipLevel, 1,
       srcSubresources.baseArrayLayer,
-      srcSubresources.layerCount,
-    };
+      srcSubresources.layerCount };
     
     // We only support resolving to the entire image
     // area, so we might as well discard its contents
@@ -841,18 +841,15 @@ namespace dxvk {
           VkDeviceSize              offset,
           VkDeviceSize              size,
     const void*                     data) {
-    if (size == 0)
-      return;
-
     this->renderPassEnd();
-
-    auto physicalSlice = buffer->subSlice(offset, size);
-
+    
     // Vulkan specifies that small amounts of data (up to 64kB) can
     // be copied to a buffer directly if the size is a multiple of
     // four. Anything else must be copied through a staging buffer.
     // We'll limit the size to 4kB in order to keep command buffers
     // reasonably small, we do not know how much data apps may upload.
+    auto physicalSlice = buffer->subSlice(offset, size);
+    
     if ((size <= 4096) && ((size & 0x3) == 0) && ((offset & 0x3) == 0)) {
       m_cmd->cmdUpdateBuffer(
         physicalSlice.handle(),
@@ -895,8 +892,7 @@ namespace dxvk {
     // Upload data through a staging buffer. Special care needs to
     // be taken when dealing with compressed image formats: Rather
     // than copying pixels, we'll be copying blocks of pixels.
-    const DxvkFormatInfo* formatInfo
-      = imageFormatInfo(image->info().format);
+    const DxvkFormatInfo* formatInfo = image->formatInfo();
     
     // Align image extent to a full block. This is necessary in
     // case the image size is not a multiple of the block size.
