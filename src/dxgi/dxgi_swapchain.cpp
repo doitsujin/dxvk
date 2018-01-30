@@ -172,7 +172,7 @@ namespace dxvk {
         = m_presenter->pickSurfaceFormat(m_desc.BufferDesc.Format);
       swapchainProps.preferredPresentMode = SyncInterval == 0
         ? m_presenter->pickPresentMode(VK_PRESENT_MODE_IMMEDIATE_KHR)
-        : m_presenter->pickPresentMode(VK_PRESENT_MODE_MAILBOX_KHR);
+        : m_presenter->pickPresentMode(VK_PRESENT_MODE_FIFO_KHR);
       swapchainProps.preferredBufferSize = GetWindowSize();
       
       m_presenter->recreateSwapchain(swapchainProps);
