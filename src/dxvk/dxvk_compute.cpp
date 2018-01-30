@@ -42,7 +42,7 @@ namespace dxvk {
     
     if (m_vkd->vkCreateComputePipelines(m_vkd->device(),
           m_cache->handle(), 1, &info, nullptr, &m_pipeline) != VK_SUCCESS)
-      throw DxvkError("DxvkComputePipeline::DxvkComputePipeline: Failed to compile pipeline");
+      Logger::err("DxvkComputePipeline: Failed to compile pipeline");
   }
   
 }

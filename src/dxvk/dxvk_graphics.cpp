@@ -246,8 +246,11 @@ namespace dxvk {
     
     VkPipeline pipeline = VK_NULL_HANDLE;
     if (m_vkd->vkCreateGraphicsPipelines(m_vkd->device(),
-          m_cache->handle(), 1, &info, nullptr, &pipeline) != VK_SUCCESS)
-      throw DxvkError("DxvkGraphicsPipeline::DxvkGraphicsPipeline: Failed to compile pipeline");
+          m_cache->handle(), 1, &info, nullptr, &pipeline) != VK_SUCCESS) {
+      Logger::err("DxvkGraphicsPipeline: Failed to compile pipeline");
+      return VK_NULL_HANDLE;
+    }
+    
     return pipeline;
   }
   
