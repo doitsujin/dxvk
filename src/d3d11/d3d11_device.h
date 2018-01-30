@@ -333,6 +333,8 @@ namespace dxvk {
     void UnlockResourceInitContext(uint64_t CommandCount);
     void SubmitResourceInitCommands();
     
+    static D3D_FEATURE_LEVEL GetMaxFeatureLevel();
+    
   };
   
 }
