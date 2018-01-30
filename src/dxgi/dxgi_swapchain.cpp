@@ -176,9 +176,7 @@ namespace dxvk {
       swapchainProps.preferredBufferSize = GetWindowSize();
       
       m_presenter->recreateSwapchain(swapchainProps);
-      
-      for (uint32_t i = 0; i < SyncInterval || i < 1; i++)
-        m_presenter->presentImage();
+      m_presenter->presentImage();
       return S_OK;
     } catch (const DxvkError& err) {
       Logger::err(err.message());
