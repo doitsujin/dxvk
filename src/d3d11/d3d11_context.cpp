@@ -694,7 +694,7 @@ namespace dxvk {
     dstTexture->GetDesc(&dstDesc);
     srcTexture->GetDesc(&srcDesc);
     
-    if (dstDesc.SampleDesc.Count != 1 || srcDesc.SampleDesc.Count == 1) {
+    if (dstDesc.SampleDesc.Count != 1) {
       Logger::err("D3D11: ResolveSubresource: Resource sample count invalid");
       return;
     }
@@ -713,7 +713,29 @@ namespace dxvk {
       GetSubresourceFromIndex(srcFormatInfo.aspect,
         srcTextureInfo->image->info().mipLevels, SrcSubresource);
     
-    if (!srcFormatInfo.flags.test(DxgiFormatFlag::Typeless)
+    if (srcDesc.SampleDesc.Count == 1) {
+      const VkImageSubresourceLayers dstSubresourceLayers = {
+        dstSubresource.aspectMask,
+        dstSubresource.mipLevel,
+        dstSubresource.arrayLayer, 1 };
+      
+      const VkImageSubresourceLayers srcSubresourceLayers = {
+        srcSubresource.aspectMask,
+        srcSubresource.mipLevel,
+        srcSubresource.arrayLayer, 1 };
+      
+      EmitCs([
+        cDstImage  = dstTextureInfo->image,
+        cSrcImage  = srcTextureInfo->image,
+        cDstLayers = dstSubresourceLayers,
+        cSrcLayers = srcSubresourceLayers
+      ] (DxvkContext* ctx) {
+        ctx->copyImage(
+          cDstImage, cDstLayers, VkOffset3D { 0, 0, 0 },
+          cSrcImage, cSrcLayers, VkOffset3D { 0, 0, 0 },
+          cDstImage->mipLevelExtent(cDstLayers.mipLevel));
+      });
+    } else if (!srcFormatInfo.flags.test(DxgiFormatFlag::Typeless)
      && !srcFormatInfo.flags.test(DxgiFormatFlag::Typeless)) {
       if (dstDesc.Format != srcDesc.Format) {
         Logger::err("D3D11: ResolveSubresource: Incompatible formats");
