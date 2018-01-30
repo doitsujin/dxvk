@@ -713,17 +713,17 @@ namespace dxvk {
       GetSubresourceFromIndex(srcFormatInfo.aspect,
         srcTextureInfo->image->info().mipLevels, SrcSubresource);
     
+    const VkImageSubresourceLayers dstSubresourceLayers = {
+      dstSubresource.aspectMask,
+      dstSubresource.mipLevel,
+      dstSubresource.arrayLayer, 1 };
+    
+    const VkImageSubresourceLayers srcSubresourceLayers = {
+      srcSubresource.aspectMask,
+      srcSubresource.mipLevel,
+      srcSubresource.arrayLayer, 1 };
+    
     if (srcDesc.SampleDesc.Count == 1) {
-      const VkImageSubresourceLayers dstSubresourceLayers = {
-        dstSubresource.aspectMask,
-        dstSubresource.mipLevel,
-        dstSubresource.arrayLayer, 1 };
-      
-      const VkImageSubresourceLayers srcSubresourceLayers = {
-        srcSubresource.aspectMask,
-        srcSubresource.mipLevel,
-        srcSubresource.arrayLayer, 1 };
-      
       EmitCs([
         cDstImage  = dstTextureInfo->image,
         cSrcImage  = srcTextureInfo->image,
@@ -736,21 +736,11 @@ namespace dxvk {
           cDstImage->mipLevelExtent(cDstLayers.mipLevel));
       });
     } else if (!srcFormatInfo.flags.test(DxgiFormatFlag::Typeless)
-     && !srcFormatInfo.flags.test(DxgiFormatFlag::Typeless)) {
+            && !srcFormatInfo.flags.test(DxgiFormatFlag::Typeless)) {
       if (dstDesc.Format != srcDesc.Format) {
         Logger::err("D3D11: ResolveSubresource: Incompatible formats");
         return;
       }
-      
-      const VkImageSubresourceLayers dstSubresourceLayers = {
-        dstSubresource.aspectMask,
-        dstSubresource.mipLevel,
-        dstSubresource.arrayLayer, 1 };
-      
-      const VkImageSubresourceLayers srcSubresourceLayers = {
-        srcSubresource.aspectMask,
-        srcSubresource.mipLevel,
-        srcSubresource.arrayLayer, 1 };
       
       EmitCs([
         cDstImage  = dstTextureInfo->image,
