@@ -766,9 +766,7 @@ namespace dxvk {
       res.sampledType   = sampledType;
       res.sampledTypeId = sampledTypeId;
       res.imageTypeId   = imageTypeId;
-      res.colorTypeId   = m_module.defImageType(sampledTypeId,
-        typeInfo.dim, 0, typeInfo.array, typeInfo.ms, typeInfo.sampled,
-        spv::ImageFormatUnknown);
+      res.colorTypeId   = imageTypeId;
       res.depthTypeId   = m_module.defImageType(sampledTypeId,
         typeInfo.dim, 1, typeInfo.array, typeInfo.ms, typeInfo.sampled,
         spv::ImageFormatUnknown);
