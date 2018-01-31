@@ -1655,7 +1655,7 @@ namespace dxvk {
     // submit the current command buffer in order to keep the GPU busy.
     // This also helps keep the command buffers at a reasonable size.
     if (m_drawCount >= 500)
-      this->Flush();
+      Flush();
     
     for (UINT i = 0; i < m_state.om.renderTargetViews.size(); i++) {
       D3D11RenderTargetView* view = nullptr;

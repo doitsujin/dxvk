@@ -121,6 +121,7 @@ namespace dxvk {
             return DXGI_ERROR_WAS_STILL_DRAWING;
           
           Flush();
+          SynchronizeCsThread();
           SynchronizeDevice();
         }
       }
