@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstring>
 
 #include "d3d11_buffer.h"
