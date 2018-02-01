@@ -175,6 +175,32 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::clearBuffer(
+    const Rc<DxvkBuffer>&       buffer,
+          VkDeviceSize          offset,
+          VkDeviceSize          length,
+          uint32_t              value) {
+    this->renderPassEnd();
+    
+    auto slice = buffer->subSlice(offset, length);
+    
+    m_cmd->cmdFillBuffer(
+      slice.handle(),
+      slice.offset(),
+      slice.length(),
+      value);
+    
+    m_barriers.accessBuffer(slice,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT,
+      buffer->info().stages,
+      buffer->info().access);
+    m_barriers.recordCommands(m_cmd);
+    
+    m_cmd->trackResource(slice.resource());
+  }
+  
+  
   void DxvkContext::clearColorImage(
     const Rc<DxvkImage>&            image,
     const VkClearColorValue&        value,

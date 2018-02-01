@@ -192,6 +192,11 @@ namespace dxvk {
   }
   
   
+  void DxvkDevice::initResources() {
+    m_unboundResources.clearResources(this);
+  }
+  
+  
   VkResult DxvkDevice::presentSwapImage(
     const VkPresentInfoKHR&         presentInfo) {
     m_statCounters.increment(DxvkStat::DevQueuePresents, 1);

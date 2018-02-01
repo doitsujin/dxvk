@@ -196,7 +196,12 @@ namespace dxvk {
     
     if (m_vki->vkCreateDevice(m_handle, &info, nullptr, &device) != VK_SUCCESS)
       throw DxvkError("DxvkAdapter: Failed to create device");
-    return new DxvkDevice(this, new vk::DeviceFn(m_vki->instance(), device), extensions, enabledFeatures);
+    
+    Rc<DxvkDevice> result = new DxvkDevice(this,
+      new vk::DeviceFn(m_vki->instance(), device),
+      extensions, enabledFeatures);
+    result->initResources();
+    return result;
   }
   
   

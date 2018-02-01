@@ -35,6 +35,7 @@ namespace dxvk {
    * contexts. Multiple contexts can be created for a device.
    */
   class DxvkDevice : public RcObject {
+    friend class DxvkContext;
     friend class DxvkSubmissionQueue;
     
     constexpr static VkDeviceSize DefaultStagingBufferSize = 4 * 1024 * 1024;
@@ -276,46 +277,13 @@ namespace dxvk {
       const DxvkSwapchainProperties&  properties);
     
     /**
-     * \brief Dummy buffer handle
-     * \returns Use for unbound vertex buffers.
-     */
-    VkBuffer dummyBufferHandle() const {
-      return m_unboundResources.bufferHandle();
-    }
-    
-    /**
-     * \brief Dummy buffer descriptor
-     * \returns Descriptor that points to a dummy buffer
-     */
-    VkDescriptorBufferInfo dummyBufferDescriptor() const {
-      return m_unboundResources.bufferDescriptor();
-    }
-    
-    /**
-     * \brief Dummy buffer view descriptor
-     * \returns Dummy buffer view handle
-     */
-    VkBufferView dummyBufferViewDescriptor() const {
-      return m_unboundResources.bufferViewDescriptor();
-    }
-    
-    /**
-     * \brief Dummy sampler descriptor
-     * \returns Descriptor that points to a dummy sampler
-     */
-    VkDescriptorImageInfo dummySamplerDescriptor() const {
-      return m_unboundResources.samplerDescriptor();
-    }
-    
-    /**
-     * \brief Dummy image view descriptor
+     * \brief Initializes dummy resources
      * 
-     * \param [in] type Required view type
-     * \returns Descriptor that points to a dummy image
+     * Should be called after creating the device in
+     * case the device initialization was successful
+     * and the device is usable.
      */
-    VkDescriptorImageInfo dummyImageViewDescriptor(VkImageViewType type) const {
-      return m_unboundResources.imageViewDescriptor(type);
-    }
+    void initResources();
     
     /**
      * \brief Presents a swap chain image
@@ -379,7 +347,6 @@ namespace dxvk {
     VkQueue m_graphicsQueue = VK_NULL_HANDLE;
     VkQueue m_presentQueue  = VK_NULL_HANDLE;
     
-    // TODO fine-tune buffer sizes
     DxvkRecycler<DxvkCommandList,  16> m_recycledCommandLists;
     DxvkRecycler<DxvkStagingBuffer, 4> m_recycledStagingBuffers;
     
@@ -389,6 +356,48 @@ namespace dxvk {
     
     void recycleCommandList(
       const Rc<DxvkCommandList>& cmdList);
+    
+    /**
+     * \brief Dummy buffer handle
+     * \returns Use for unbound vertex buffers.
+     */
+    VkBuffer dummyBufferHandle() const {
+      return m_unboundResources.bufferHandle();
+    }
+    
+    /**
+     * \brief Dummy buffer descriptor
+     * \returns Descriptor that points to a dummy buffer
+     */
+    VkDescriptorBufferInfo dummyBufferDescriptor() const {
+      return m_unboundResources.bufferDescriptor();
+    }
+    
+    /**
+     * \brief Dummy buffer view descriptor
+     * \returns Dummy buffer view handle
+     */
+    VkBufferView dummyBufferViewDescriptor() const {
+      return m_unboundResources.bufferViewDescriptor();
+    }
+    
+    /**
+     * \brief Dummy sampler descriptor
+     * \returns Descriptor that points to a dummy sampler
+     */
+    VkDescriptorImageInfo dummySamplerDescriptor() const {
+      return m_unboundResources.samplerDescriptor();
+    }
+    
+    /**
+     * \brief Dummy image view descriptor
+     * 
+     * \param [in] type Required view type
+     * \returns Descriptor that points to a dummy image
+     */
+    VkDescriptorImageInfo dummyImageViewDescriptor(VkImageViewType type) const {
+      return m_unboundResources.imageViewDescriptor(type);
+    }
     
   };
   

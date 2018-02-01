@@ -136,6 +136,23 @@ namespace dxvk {
             uint32_t              stride);
     
     /**
+     * \brief Clears a buffer with a fixed value
+     * 
+     * Note that both \c offset and \c length must
+     * be multiples of four, and that \c value is
+     * consumed as a four-byte word.
+     * \param [in] buffer The buffer to clear
+     * \param [in] offset Offset of the range to clear
+     * \param [in] length Bumber of bytes to clear
+     * \param [in] value Clear value
+     */
+    void clearBuffer(
+      const Rc<DxvkBuffer>&       buffer,
+            VkDeviceSize          offset,
+            VkDeviceSize          length,
+            uint32_t              value);
+    
+    /**
      * \brief Clears subresources of a color image
      * 
      * \param [in] image The image to clear

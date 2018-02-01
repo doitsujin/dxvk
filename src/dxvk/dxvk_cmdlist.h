@@ -304,6 +304,17 @@ namespace dxvk {
       m_vkd->vkCmdEndRenderPass(m_buffer);
     }
     
+    
+    void cmdFillBuffer(
+            VkBuffer                dstBuffer,
+            VkDeviceSize            dstOffset,
+            VkDeviceSize            size,
+            uint32_t                data) {
+      m_vkd->vkCmdFillBuffer(m_buffer,
+        dstBuffer, dstOffset, size, data);
+    }
+    
+    
     void cmdPipelineBarrier(
             VkPipelineStageFlags    srcStageMask,
             VkPipelineStageFlags    dstStageMask,

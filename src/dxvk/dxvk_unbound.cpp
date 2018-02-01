@@ -25,6 +25,21 @@ namespace dxvk {
   }
   
   
+  void DxvkUnboundResources::clearResources(DxvkDevice* dev) {
+    const Rc<DxvkContext> ctx = dev->createContext();
+    ctx->beginRecording(dev->createCommandList());
+    
+    this->clearBuffer(ctx, m_buffer);
+    this->clearImage(ctx, m_image1D);
+    this->clearImage(ctx, m_image2D);
+    this->clearImage(ctx, m_image3D);
+    
+    dev->submitCommandList(
+      ctx->endRecording(),
+      nullptr, nullptr);
+  }
+  
+  
   Rc<DxvkSampler> DxvkUnboundResources::createSampler(DxvkDevice* dev) {
     DxvkSamplerCreateInfo info;
     info.minFilter      = VK_FILTER_LINEAR;
@@ -50,11 +65,13 @@ namespace dxvk {
   Rc<DxvkBuffer> DxvkUnboundResources::createBuffer(DxvkDevice* dev) {
     DxvkBufferCreateInfo info;
     info.size       = 4;
-    info.usage      = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+    info.usage      = VK_BUFFER_USAGE_TRANSFER_DST_BIT
+                    | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
                     | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
                     | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT
                     | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
-    info.stages     = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
+    info.stages     = VK_PIPELINE_STAGE_TRANSFER_BIT
+                    | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
                     | VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT
                     | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
                     | VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
@@ -93,9 +110,11 @@ namespace dxvk {
     info.extent      = { 1, 1, 1 };
     info.numLayers   = layers;
     info.mipLevels   = 1;
-    info.usage       = VK_IMAGE_USAGE_SAMPLED_BIT
+    info.usage       = VK_IMAGE_USAGE_TRANSFER_DST_BIT
+                     | VK_IMAGE_USAGE_SAMPLED_BIT
                      | VK_IMAGE_USAGE_STORAGE_BIT;
-    info.stages      = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
+    info.stages      = VK_PIPELINE_STAGE_TRANSFER_BIT
+                     | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
                      | VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT
                      | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT
                      | VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT
@@ -145,6 +164,25 @@ namespace dxvk {
       case VK_IMAGE_VIEW_TYPE_3D:         return m_view3D.ptr();
       default:                            Logger::err("null"); return nullptr;
     }
+  }
+  
+  
+  void DxvkUnboundResources::clearBuffer(
+    const Rc<DxvkContext>&  ctx,
+    const Rc<DxvkBuffer>&   buffer) {
+    ctx->clearBuffer(buffer, 0, buffer->info().size, 0);
+  }
+  
+  
+  void DxvkUnboundResources::clearImage(
+    const Rc<DxvkContext>&  ctx,
+    const Rc<DxvkImage>&    image) {
+    ctx->clearColorImage(image,
+      VkClearColorValue { },
+      VkImageSubresourceRange {
+        VK_IMAGE_ASPECT_COLOR_BIT,
+        0, image->info().mipLevels,
+        0, image->info().numLayers });
   }
   
 }

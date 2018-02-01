@@ -35,8 +35,9 @@ namespace dxvk {
     /**
      * \brief Dummy buffer descriptor
      * 
-     * Points to a small buffer with undefined
-     * values. Do not access this buffer.
+     * Points to a small buffer filled with zeroes.
+     * Do not write to this buffer, and do not use
+     * it if out-of-bounds read access is possible.
      * \returns Dummy buffer descriptor
      */
     VkDescriptorBufferInfo bufferDescriptor() const {
@@ -95,6 +96,14 @@ namespace dxvk {
       return result;
     }
     
+    /**
+     * \brief Clears the resources
+     * 
+     * Initializes all images and buffers to zero.
+     * \param [in] dev The DXVK device handle
+     */
+    void clearResources(DxvkDevice* dev);
+    
   private:
     
     Rc<DxvkSampler> m_sampler;
@@ -135,6 +144,14 @@ namespace dxvk {
     
     const DxvkImageView* getImageView(
             VkImageViewType type) const;
+    
+    void clearBuffer(
+      const Rc<DxvkContext>&  ctx,
+      const Rc<DxvkBuffer>&   buffer);
+    
+    void clearImage(
+      const Rc<DxvkContext>&  ctx,
+      const Rc<DxvkImage>&    image);
     
   };
   
