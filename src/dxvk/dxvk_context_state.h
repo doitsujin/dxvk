@@ -21,16 +21,17 @@ namespace dxvk {
    * be updated.
    */
   enum class DxvkContextFlag : uint64_t  {
-    GpRenderPassBound,      ///< Render pass is currently bound
-    GpDirtyPipeline,        ///< Graphics pipeline binding is out of date
-    GpDirtyPipelineState,   ///< Graphics pipeline needs to be recompiled
-    GpDirtyResources,       ///< Graphics pipeline resource bindings are out of date
-    GpDirtyVertexBuffers,   ///< Vertex buffer bindings are out of date
-    GpDirtyIndexBuffer,     ///< Index buffer binding are out of date
+    GpRenderPassBound,          ///< Render pass is currently bound
+    GpDirtyPipeline,            ///< Graphics pipeline binding is out of date
+    GpDirtyPipelineState,       ///< Graphics pipeline needs to be recompiled
+    GpDirtyResources,           ///< Graphics pipeline resource bindings are out of date
+    GpDirtyVertexBuffers,       ///< Vertex buffer bindings are out of date
+    GpDirtyIndexBuffer,         ///< Index buffer binding are out of date
+    GpEmulateInstanceFetchRate, ///< The current input layout uses fetch rates != 1
     
-    CpDirtyPipeline,        ///< Compute pipeline binding are out of date
-    CpDirtyPipelineState,   ///< Compute pipeline needs to be recompiled
-    CpDirtyResources,       ///< Compute pipeline resource bindings are out of date
+    CpDirtyPipeline,            ///< Compute pipeline binding are out of date
+    CpDirtyPipelineState,       ///< Compute pipeline needs to be recompiled
+    CpDirtyResources,           ///< Compute pipeline resource bindings are out of date
   };
   
   using DxvkContextFlags = Flags<DxvkContextFlag>;
@@ -42,23 +43,25 @@ namespace dxvk {
     uint32_t        bindingMask = 0;
     
     std::array<DxvkBufferSlice,
-      DxvkLimits::MaxNumVertexBindings> vertexBuffers;
+      DxvkLimits::MaxNumVertexBindings> vertexBuffers = { };
     std::array<uint32_t,
-      DxvkLimits::MaxNumVertexBindings> vertexStrides;
+      DxvkLimits::MaxNumVertexBindings> vertexStrides = { };
+    std::array<uint32_t,
+      DxvkLimits::MaxNumVertexBindings> vertexFetchRates = { };
   };
   
   
   struct DxvkViewportState {
-    std::array<VkViewport, DxvkLimits::MaxNumViewports> viewports;
-    std::array<VkRect2D,   DxvkLimits::MaxNumViewports> scissorRects;
+    std::array<VkViewport, DxvkLimits::MaxNumViewports> viewports    = { };
+    std::array<VkRect2D,   DxvkLimits::MaxNumViewports> scissorRects = { };
   };
   
   
   struct DxvkOutputMergerState {
     Rc<DxvkFramebuffer> framebuffer;
     
-    DxvkBlendConstants  blendConstants;
-    uint32_t            stencilReference;
+    DxvkBlendConstants  blendConstants    = { 0.0f, 0.0f, 0.0f, 0.0f };
+    uint32_t            stencilReference  = 0;
   };
   
   
@@ -73,9 +76,9 @@ namespace dxvk {
     DxvkShaderStage  tes;
     DxvkShaderStage  gs;
     DxvkShaderStage  fs;
-    
+
     DxvkGraphicsPipelineStateInfo state;
-    Rc<DxvkGraphicsPipeline> pipeline;
+    Rc<DxvkGraphicsPipeline>      pipeline;
   };
   
   

@@ -333,6 +333,17 @@ namespace dxvk {
     }
     
     
+    void cmdPushConstants(
+            VkPipelineLayout        layout,
+            VkShaderStageFlags      stageFlags,
+            uint32_t                offset,
+            uint32_t                size,
+      const void*                   pValues) {
+      m_vkd->vkCmdPushConstants(m_buffer,
+        layout, stageFlags, offset, size, pValues);
+    }
+    
+    
     void cmdResolveImage(
             VkImage                 srcImage,
             VkImageLayout           srcImageLayout,

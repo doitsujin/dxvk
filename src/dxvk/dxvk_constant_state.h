@@ -136,6 +136,7 @@ namespace dxvk {
    */
   struct DxvkVertexBinding {
     uint32_t          binding;
+    uint32_t          fetchRate;
     VkVertexInputRate inputRate;
   };
   

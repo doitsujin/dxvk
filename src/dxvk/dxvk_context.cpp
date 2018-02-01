@@ -572,9 +572,16 @@ namespace dxvk {
     this->commitGraphicsState();
     
     if (m_gpActivePipeline != VK_NULL_HANDLE) {
-      m_cmd->cmdDraw(
-        vertexCount, instanceCount,
-        firstVertex, firstInstance);
+      if (!m_flags.test(DxvkContextFlag::GpEmulateInstanceFetchRate)) {
+        m_cmd->cmdDraw(
+          vertexCount, instanceCount,
+          firstVertex, firstInstance);
+      } else {
+        static bool errorShown = false;
+        
+        if (!std::exchange(errorShown, true))
+          Logger::warn("Dxvk: GpEmulateInstanceFetchRate not supported for direct draws");
+      }
     }
   }
   
@@ -588,10 +595,17 @@ namespace dxvk {
     if (m_gpActivePipeline != VK_NULL_HANDLE) {
       auto physicalSlice = buffer.physicalSlice();
       
-      m_cmd->cmdDrawIndirect(
-        physicalSlice.handle(),
-        physicalSlice.offset(),
-        count, stride);
+      if (!m_flags.test(DxvkContextFlag::GpEmulateInstanceFetchRate)) {
+        m_cmd->cmdDrawIndirect(
+          physicalSlice.handle(),
+          physicalSlice.offset(),
+          count, stride);
+      } else {
+        static bool errorShown = false;
+        
+        if (!std::exchange(errorShown, true))
+          Logger::warn("Dxvk: GpEmulateInstanceFetchRate not supported for indirect draws");
+      }
     }
   }
   
@@ -1042,6 +1056,8 @@ namespace dxvk {
     m_flags.set(
       DxvkContextFlag::GpDirtyPipelineState,
       DxvkContextFlag::GpDirtyVertexBuffers);
+    m_flags.clr(
+      DxvkContextFlag::GpEmulateInstanceFetchRate);
     
     for (uint32_t i = 0; i < attributeCount; i++) {
       m_state.gp.state.ilAttributes[i].location = attributes[i].location;
@@ -1056,6 +1072,10 @@ namespace dxvk {
     for (uint32_t i = 0; i < bindingCount; i++) {
       m_state.gp.state.ilBindings[i].binding    = bindings[i].binding;
       m_state.gp.state.ilBindings[i].inputRate  = bindings[i].inputRate;
+      m_state.vi.vertexFetchRates[bindings[i].binding] = bindings[i].fetchRate;
+      
+      if (bindings[i].inputRate == VK_VERTEX_INPUT_RATE_INSTANCE && bindings[i].fetchRate != 1)
+        m_flags.set(DxvkContextFlag::GpEmulateInstanceFetchRate);
     }
     
     for (uint32_t i = bindingCount; i < m_state.gp.state.ilBindingCount; i++)

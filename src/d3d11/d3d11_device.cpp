@@ -731,17 +731,10 @@ namespace dxvk {
         // set by D3D11DeviceContext::IASetVertexBuffers.
         DxvkVertexBinding binding;
         binding.binding   = pInputElementDescs[i].InputSlot;
-        binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-        
-        if (pInputElementDescs[i].InputSlotClass == D3D11_INPUT_PER_INSTANCE_DATA) {
-          binding.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
-          
-          if (pInputElementDescs[i].InstanceDataStepRate != 1) {
-            Logger::warn(str::format(
-              "D3D11Device: Unsupported instance data step rate: ",
-              pInputElementDescs[i].InstanceDataStepRate));
-          }
-        }
+        binding.fetchRate = pInputElementDescs[i].InstanceDataStepRate;
+        binding.inputRate = pInputElementDescs[i].InputSlotClass == D3D11_INPUT_PER_INSTANCE_DATA
+          ? VK_VERTEX_INPUT_RATE_INSTANCE
+          : VK_VERTEX_INPUT_RATE_VERTEX;
         
         // Check if the binding was already defined. If so, the
         // parameters must be identical (namely, the input rate).

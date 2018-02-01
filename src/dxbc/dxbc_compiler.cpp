@@ -4930,6 +4930,8 @@ namespace dxvk {
     m_module.setDebugName(typeId, "s_push_constant");
     m_module.setDebugMemberName(typeId, PerVertex_Position, "instance_id");
     
+    // There's only ever going to be one single push constant
+    // block per shader, so we'll declare the variable here
     uint32_t ptrTypeId = m_module.defPointerType(
       typeId, spv::StorageClassPushConstant);
     

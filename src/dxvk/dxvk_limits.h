@@ -14,6 +14,7 @@ namespace dxvk {
     MaxNumActiveBindings        =  128,
     MaxNumQueuedCommandBuffers  =    8,
     MaxVertexBindingStride      = 2048,
+    MaxPushConstantSize         =  128,
   };
   
 }
