@@ -6,6 +6,8 @@ namespace dxvk {
   constexpr uint32_t PerVertex_CullDist  = 1;
   constexpr uint32_t PerVertex_ClipDist  = 2;
   
+  constexpr uint32_t PushConstant_InstanceId = 0;
+  
   DxbcCompiler::DxbcCompiler(
     const DxbcOptions&        options,
     const DxbcProgramVersion& version,
@@ -33,19 +35,7 @@ namespace dxvk {
       m_oRegs.at(i) = 0;
     }
     
-    // Set up common capabilities for all shaders
-    m_module.enableCapability(spv::CapabilityShader);
-    m_module.enableCapability(spv::CapabilityImageQuery);
-    
-    // Initialize the shader module with capabilities
-    // etc. Each shader type has its own peculiarities.
-    switch (m_version.type()) {
-      case DxbcProgramType::VertexShader:   this->emitVsInit(); break;
-      case DxbcProgramType::GeometryShader: this->emitGsInit(); break;
-      case DxbcProgramType::PixelShader:    this->emitPsInit(); break;
-      case DxbcProgramType::ComputeShader:  this->emitCsInit(); break;
-      default: throw DxvkError("DxbcCompiler: Unsupported program type");
-    }
+    this->emitInit();
   }
   
   
@@ -4480,6 +4470,25 @@ namespace dxvk {
   }
   
   
+  void DxbcCompiler::emitInit() {
+    // Set up common capabilities for all shaders
+    m_module.enableCapability(spv::CapabilityShader);
+    m_module.enableCapability(spv::CapabilityImageQuery);
+    
+    m_pushConstantBlock = getPushConstantBlockId();
+    
+    // Initialize the shader module with capabilities
+    // etc. Each shader type has its own peculiarities.
+    switch (m_version.type()) {
+      case DxbcProgramType::VertexShader:   emitVsInit(); break;
+      case DxbcProgramType::GeometryShader: emitGsInit(); break;
+      case DxbcProgramType::PixelShader:    emitPsInit(); break;
+      case DxbcProgramType::ComputeShader:  emitCsInit(); break;
+      default: throw DxvkError("DxbcCompiler: Unsupported program type");
+    }
+  }
+  
+  
   void DxbcCompiler::emitVsInit() {
     m_module.enableCapability(spv::CapabilityClipDistance);
     m_module.enableCapability(spv::CapabilityCullDistance);
@@ -4898,11 +4907,37 @@ namespace dxvk {
 //     m_module.memberDecorateBuiltIn(typeId, PerVertex_ClipDist, spv::BuiltInClipDistance);
     m_module.decorateBlock(typeId);
     
-    m_module.setDebugName(typeId, "per_vertex");
+    m_module.setDebugName(typeId, "s_per_vertex");
     m_module.setDebugMemberName(typeId, PerVertex_Position, "position");
 //     m_module.setDebugMemberName(typeId, PerVertex_CullDist, "cull_dist");
 //     m_module.setDebugMemberName(typeId, PerVertex_ClipDist, "clip_dist");
     return typeId;
+  }
+  
+  
+  uint32_t DxbcCompiler::getPushConstantBlockId() {
+    uint32_t t_u32 = m_module.defIntType(32, 0);
+    
+    std::array<uint32_t, 1> members;
+    members[PushConstant_InstanceId] = t_u32;
+    
+    uint32_t typeId = m_module.defStructTypeUnique(
+      members.size(), members.data());
+    
+    m_module.memberDecorateOffset(typeId, 0, 0);
+    m_module.decorateBlock(typeId);
+    
+    m_module.setDebugName(typeId, "s_push_constant");
+    m_module.setDebugMemberName(typeId, PerVertex_Position, "instance_id");
+    
+    uint32_t ptrTypeId = m_module.defPointerType(
+      typeId, spv::StorageClassPushConstant);
+    
+    uint32_t varId = m_module.newVar(
+      ptrTypeId, spv::StorageClassPushConstant);
+    
+    m_module.setDebugName(varId, "push_constant");
+    return varId;
   }
   
 }

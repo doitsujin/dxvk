@@ -369,6 +369,10 @@ namespace dxvk {
     uint32_t m_uavCtrStructType  = 0;
     uint32_t m_uavCtrPointerType = 0;
     
+    ////////////////////////////////
+    // Push constant block variable
+    uint32_t m_pushConstantBlock = 0;
+    
     ///////////////////////////////////////////////////
     // Entry point description - we'll need to declare
     // the function ID and all input/output variables.
@@ -777,6 +781,8 @@ namespace dxvk {
     
     /////////////////////////////////
     // Shader initialization methods
+    void emitInit();
+    
     void emitVsInit();
     void emitHsInit();
     void emitGsInit();
@@ -848,6 +854,8 @@ namespace dxvk {
       const DxbcRegisterInfo& type);
     
     uint32_t getPerVertexBlockId();
+    
+    uint32_t getPushConstantBlockId();
     
   };
   
