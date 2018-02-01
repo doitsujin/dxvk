@@ -21,9 +21,21 @@ namespace dxvk {
     ~DxvkUnboundResources();
     
     /**
+     * \brief Dummy buffer handle
+     * 
+     * Returns a handle to a buffer filled
+     * with zeroes. Use for unbound vertex
+     * and index buffers.
+     * \returns Dummy buffer handle
+     */
+    VkBuffer bufferHandle() const {
+      return m_buffer->slice().handle();
+    }
+    
+    /**
      * \brief Dummy buffer descriptor
      * 
-     * Points to a tiny buffer with undefined
+     * Points to a small buffer with undefined
      * values. Do not access this buffer.
      * \returns Dummy buffer descriptor
      */

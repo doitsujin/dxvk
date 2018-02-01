@@ -276,6 +276,14 @@ namespace dxvk {
       const DxvkSwapchainProperties&  properties);
     
     /**
+     * \brief Dummy buffer handle
+     * \returns Use for unbound vertex buffers.
+     */
+    VkBuffer dummyBufferHandle() const {
+      return m_unboundResources.bufferHandle();
+    }
+    
+    /**
      * \brief Dummy buffer descriptor
      * \returns Descriptor that points to a dummy buffer
      */

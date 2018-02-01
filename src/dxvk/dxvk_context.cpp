@@ -1185,8 +1185,12 @@ namespace dxvk {
       m_flags.clr(DxvkContextFlag::GpDirtyPipelineState);
       
       for (uint32_t i = 0; i < m_state.gp.state.ilBindingCount; i++) {
+        const uint32_t binding = m_state.gp.state.ilBindings[i].binding;
+        
         m_state.gp.state.ilBindings[i].stride
-          = m_state.vi.vertexStrides[m_state.gp.state.ilBindings[i].binding];
+          = (m_state.vi.bindingMask & (1u << binding)) != 0
+            ? m_state.vi.vertexStrides[binding]
+            : 0;
       }
       
       for (uint32_t i = m_state.gp.state.ilBindingCount; i < MaxNumVertexBindings; i++)
@@ -1399,6 +1403,10 @@ namespace dxvk {
           m_state.vi.indexType);
         m_cmd->trackResource(
           physicalSlice.resource());
+      } else {
+        m_cmd->cmdBindIndexBuffer(
+          m_device->dummyBufferHandle(),
+          0, VK_INDEX_TYPE_UINT32);
       }
     }
   }
@@ -1407,6 +1415,8 @@ namespace dxvk {
   void DxvkContext::updateVertexBufferBindings() {
     if (m_flags.test(DxvkContextFlag::GpDirtyVertexBuffers)) {
       m_flags.clr(DxvkContextFlag::GpDirtyVertexBuffers);
+      
+      uint32_t bindingMask = 0;
       
       for (uint32_t i = 0; i < m_state.gp.state.ilBindingCount; i++) {
         const uint32_t binding = m_state.gp.state.ilBindings[i].binding;
@@ -1419,7 +1429,19 @@ namespace dxvk {
           
           m_cmd->cmdBindVertexBuffers(binding, 1, &handle, &offset);
           m_cmd->trackResource(vbo.resource());
+          
+          bindingMask |= 1u << binding;
+        } else {
+          const VkBuffer     handle = m_device->dummyBufferHandle();
+          const VkDeviceSize offset = 0;
+          
+          m_cmd->cmdBindVertexBuffers(binding, 1, &handle, &offset);
         }
+      }
+      
+      if (m_state.vi.bindingMask != bindingMask) {
+        m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+        m_state.vi.bindingMask = bindingMask;
       }
     }
   }
