@@ -9,6 +9,7 @@ namespace dxvk {
   : m_device(device), m_desc(desc) {
     switch (desc.Query) {
       // Other query types are currently unsupported
+      case D3D11_QUERY_EVENT:
       case D3D11_QUERY_OCCLUSION:
       case D3D11_QUERY_TIMESTAMP:
       case D3D11_QUERY_TIMESTAMP_DISJOINT:
@@ -102,6 +103,10 @@ namespace dxvk {
       return S_OK;
     
     switch (m_desc.Query) {
+      case D3D11_QUERY_EVENT:
+        *static_cast<BOOL*>(pData) = TRUE;
+        return S_OK;
+
       case D3D11_QUERY_OCCLUSION:
         *static_cast<UINT64*>(pData) = 1;
         return S_OK;
