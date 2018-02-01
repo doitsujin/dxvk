@@ -64,7 +64,7 @@ namespace dxvk {
   
   Rc<DxvkBuffer> DxvkUnboundResources::createBuffer(DxvkDevice* dev) {
     DxvkBufferCreateInfo info;
-    info.size       = 4;
+    info.size       = MaxVertexBindingStride;
     info.usage      = VK_BUFFER_USAGE_TRANSFER_DST_BIT
                     | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
                     | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT

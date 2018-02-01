@@ -13,6 +13,7 @@ namespace dxvk {
     MaxNumResourceSlots         = 1096,
     MaxNumActiveBindings        =  128,
     MaxNumQueuedCommandBuffers  =    8,
+    MaxVertexBindingStride      = 2048,
   };
   
 }
