@@ -757,11 +757,18 @@ namespace dxvk {
       res.sampledTypeId = sampledTypeId;
       res.imageTypeId   = imageTypeId;
       res.colorTypeId   = imageTypeId;
-      res.depthTypeId   = m_module.defImageType(sampledTypeId,
-        typeInfo.dim, 1, typeInfo.array, typeInfo.ms, typeInfo.sampled,
-        spv::ImageFormatUnknown);
-        m_textures.at(registerId) = res;
+      res.depthTypeId   = 0;
       res.structStride  = 0;
+      
+      if (resourceType != DxbcResourceDim::Buffer
+       && resourceType != DxbcResourceDim::Texture2DMs
+       && resourceType != DxbcResourceDim::Texture2DMsArr) {
+        res.depthTypeId = m_module.defImageType(sampledTypeId,
+          typeInfo.dim, 1, typeInfo.array, typeInfo.ms, typeInfo.sampled,
+          spv::ImageFormatUnknown);
+      }
+      
+      m_textures.at(registerId) = res;
     }
     
     // Store descriptor info for the shader interface
@@ -866,7 +873,7 @@ namespace dxvk {
       res.sampledTypeId = sampledTypeId;
       res.imageTypeId   = resTypeId;
       res.colorTypeId   = resTypeId;
-      res.depthTypeId   = resTypeId;
+      res.depthTypeId   = 0;
       res.structStride  = resStride;
       m_textures.at(registerId) = res;
     }
