@@ -217,7 +217,31 @@ namespace dxvk {
     }
     
     if (dstResourceDim == D3D11_RESOURCE_DIMENSION_BUFFER) {
-      Logger::err("D3D11DeviceContext::CopySubresourceRegion: Buffers not supported");
+      auto dstBuffer = static_cast<D3D11Buffer*>(pDstResource)->GetBufferSlice();
+      auto srcBuffer = static_cast<D3D11Buffer*>(pSrcResource)->GetBufferSlice();
+      
+      VkDeviceSize srcOffset = 0;
+      VkDeviceSize srcLength = srcBuffer.length();
+      
+      if (pSrcBox != nullptr) {
+        if (pSrcBox->right > pSrcBox->left)
+          return;  // no-op, but legal
+        
+        srcOffset = pSrcBox->left;
+        srcLength = pSrcBox->right - pSrcBox->left;
+      }
+      
+      EmitCs([
+        cDstSlice = dstBuffer.subSlice(DstX, srcLength),
+        cSrcSlice = srcBuffer.subSlice(srcOffset, srcLength)
+      ] (DxvkContext* ctx) {
+        ctx->copyBuffer(
+          cDstSlice.buffer(),
+          cDstSlice.offset(),
+          cSrcSlice.buffer(),
+          cSrcSlice.offset(),
+          cSrcSlice.length());
+      });
     } else {
       const D3D11TextureInfo* dstTextureInfo = GetCommonTextureInfo(pDstResource);
       const D3D11TextureInfo* srcTextureInfo = GetCommonTextureInfo(pSrcResource);
@@ -736,7 +760,7 @@ namespace dxvk {
           cDstImage->mipLevelExtent(cDstLayers.mipLevel));
       });
     } else if (!srcFormatInfo.flags.test(DxgiFormatFlag::Typeless)
-            && !srcFormatInfo.flags.test(DxgiFormatFlag::Typeless)) {
+            && !dstFormatInfo.flags.test(DxgiFormatFlag::Typeless)) {
       if (dstDesc.Format != srcDesc.Format) {
         Logger::err("D3D11: ResolveSubresource: Incompatible formats");
         return;
