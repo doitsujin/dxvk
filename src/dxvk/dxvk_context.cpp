@@ -572,16 +572,9 @@ namespace dxvk {
     this->commitGraphicsState();
     
     if (m_gpActivePipeline != VK_NULL_HANDLE) {
-      if (!m_flags.test(DxvkContextFlag::GpEmulateInstanceFetchRate)) {
-        m_cmd->cmdDraw(
-          vertexCount, instanceCount,
-          firstVertex, firstInstance);
-      } else {
-        static bool errorShown = false;
-        
-        if (!std::exchange(errorShown, true))
-          Logger::warn("Dxvk: GpEmulateInstanceFetchRate not supported for direct draws");
-      }
+      m_cmd->cmdDraw(
+        vertexCount, instanceCount,
+        firstVertex, firstInstance);
     }
   }
   
@@ -595,17 +588,10 @@ namespace dxvk {
     if (m_gpActivePipeline != VK_NULL_HANDLE) {
       auto physicalSlice = buffer.physicalSlice();
       
-      if (!m_flags.test(DxvkContextFlag::GpEmulateInstanceFetchRate)) {
-        m_cmd->cmdDrawIndirect(
-          physicalSlice.handle(),
-          physicalSlice.offset(),
-          count, stride);
-      } else {
-        static bool errorShown = false;
-        
-        if (!std::exchange(errorShown, true))
-          Logger::warn("Dxvk: GpEmulateInstanceFetchRate not supported for indirect draws");
-      }
+      m_cmd->cmdDrawIndirect(
+        physicalSlice.handle(),
+        physicalSlice.offset(),
+        count, stride);
     }
   }
   
@@ -1083,6 +1069,13 @@ namespace dxvk {
     
     m_state.gp.state.ilAttributeCount = attributeCount;
     m_state.gp.state.ilBindingCount   = bindingCount;
+    
+    if (m_flags.test(DxvkContextFlag::GpEmulateInstanceFetchRate)) {
+      static bool errorShown = false;
+      
+      if (!std::exchange(errorShown, true))
+        Logger::warn("Dxvk: GpEmulateInstanceFetchRate not handled yet");
+    }
   }
   
   

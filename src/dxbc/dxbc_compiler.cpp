@@ -4482,8 +4482,6 @@ namespace dxvk {
     m_module.enableCapability(spv::CapabilityShader);
     m_module.enableCapability(spv::CapabilityImageQuery);
     
-    m_pushConstantBlock = getPushConstantBlockId();
-    
     // Initialize the shader module with capabilities
     // etc. Each shader type has its own peculiarities.
     switch (m_version.type()) {
@@ -4919,34 +4917,6 @@ namespace dxvk {
 //     m_module.setDebugMemberName(typeId, PerVertex_CullDist, "cull_dist");
 //     m_module.setDebugMemberName(typeId, PerVertex_ClipDist, "clip_dist");
     return typeId;
-  }
-  
-  
-  uint32_t DxbcCompiler::getPushConstantBlockId() {
-    uint32_t t_u32 = m_module.defIntType(32, 0);
-    
-    std::array<uint32_t, 1> members;
-    members[PushConstant_InstanceId] = t_u32;
-    
-    uint32_t typeId = m_module.defStructTypeUnique(
-      members.size(), members.data());
-    
-    m_module.memberDecorateOffset(typeId, 0, 0);
-    m_module.decorateBlock(typeId);
-    
-    m_module.setDebugName(typeId, "s_push_constant");
-    m_module.setDebugMemberName(typeId, PerVertex_Position, "instance_id");
-    
-    // There's only ever going to be one single push constant
-    // block per shader, so we'll declare the variable here
-    uint32_t ptrTypeId = m_module.defPointerType(
-      typeId, spv::StorageClassPushConstant);
-    
-    uint32_t varId = m_module.newVar(
-      ptrTypeId, spv::StorageClassPushConstant);
-    
-    m_module.setDebugName(varId, "push_constant");
-    return varId;
   }
   
 }
