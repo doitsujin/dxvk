@@ -116,6 +116,8 @@ namespace dxvk {
     DxbcPrimitiveTopology outputTopology      = DxbcPrimitiveTopology::Undefined;
     uint32_t              outputVertexCount   = 0;
     uint32_t              functionId          = 0;
+    
+    uint32_t              builtinLayer        = 0;
   };
   
   

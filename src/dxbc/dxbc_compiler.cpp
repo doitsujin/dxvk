@@ -4598,6 +4598,25 @@ namespace dxvk {
         emitVsSystemValueStore(sv, mask, value);
         break;
       
+      case DxbcSystemValue::RenderTargetId: {
+        if (m_gs.builtinLayer == 0) {
+          m_gs.builtinLayer = emitNewBuiltinVariable({
+            { DxbcScalarType::Uint32, 1, 0 },
+            spv::StorageClassOutput },
+            spv::BuiltInLayer,
+            "gs_layer");
+        }
+        
+        DxbcRegisterPointer ptr;
+        ptr.type.ctype   = DxbcScalarType::Uint32;
+        ptr.type.ccount  = 1;
+        ptr.id = m_gs.builtinLayer;
+        
+        emitValueStore(
+          ptr, emitRegisterExtract(value, mask),
+          DxbcRegMask(true, false, false, false));
+      } break;
+      
       default:
         Logger::warn(str::format(
           "DxbcCompiler: Unhandled GS SV output: ", sv));
