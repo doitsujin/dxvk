@@ -539,8 +539,9 @@ namespace dxvk {
     VkPipeline m_gpActivePipeline = VK_NULL_HANDLE;
     VkPipeline m_cpActivePipeline = VK_NULL_HANDLE;
     
-    std::array<DxvkShaderResourceSlot, MaxNumResourceSlots> m_rc;
-    std::array<DxvkDescriptorInfo,     MaxNumResourceSlots> m_descriptors;
+    std::array<DxvkShaderResourceSlot, MaxNumResourceSlots>  m_rc;
+    std::array<DxvkDescriptorInfo,     MaxNumActiveBindings> m_descInfos;
+    std::array<VkWriteDescriptorSet,   MaxNumActiveBindings> m_descWrites;
     
     void renderPassBegin();
     void renderPassEnd();

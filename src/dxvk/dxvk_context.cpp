@@ -8,7 +8,18 @@ namespace dxvk {
   
   DxvkContext::DxvkContext(const Rc<DxvkDevice>& device)
   : m_device(device) {
-    
+    for (uint32_t i = 0; i < m_descWrites.size(); i++) {
+      m_descWrites[i].sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+      m_descWrites[i].pNext            = nullptr;
+      m_descWrites[i].dstSet           = VK_NULL_HANDLE;
+      m_descWrites[i].dstBinding       = i;
+      m_descWrites[i].dstArrayElement  = 0;
+      m_descWrites[i].descriptorCount  = 1;
+      m_descWrites[i].descriptorType   = VkDescriptorType(0);
+      m_descWrites[i].pImageInfo       = &m_descInfos[i].image;
+      m_descWrites[i].pBufferInfo      = &m_descInfos[i].buffer;
+      m_descWrites[i].pTexelBufferView = &m_descInfos[i].texelBuffer;
+    }
   }
   
   
@@ -1329,14 +1340,14 @@ namespace dxvk {
           if (res.sampler != nullptr) {
             updatePipelineState |= bs.setBound(i);
             
-            m_descriptors[i].image.sampler     = res.sampler->handle();
-            m_descriptors[i].image.imageView   = VK_NULL_HANDLE;
-            m_descriptors[i].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            m_descInfos[i].image.sampler     = res.sampler->handle();
+            m_descInfos[i].image.imageView   = VK_NULL_HANDLE;
+            m_descInfos[i].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             
             m_cmd->trackResource(res.sampler);
           } else {
             updatePipelineState |= bs.setUnbound(i);
-            m_descriptors[i].image = m_device->dummySamplerDescriptor();
+            m_descInfos[i].image = m_device->dummySamplerDescriptor();
           } break;
         
         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
@@ -1344,15 +1355,15 @@ namespace dxvk {
           if (res.imageView != nullptr && res.imageView->type() == binding.view) {
             updatePipelineState |= bs.setBound(i);
             
-            m_descriptors[i].image.sampler     = VK_NULL_HANDLE;
-            m_descriptors[i].image.imageView   = res.imageView->handle();
-            m_descriptors[i].image.imageLayout = res.imageView->imageInfo().layout;
+            m_descInfos[i].image.sampler     = VK_NULL_HANDLE;
+            m_descInfos[i].image.imageView   = res.imageView->handle();
+            m_descInfos[i].image.imageLayout = res.imageView->imageInfo().layout;
             
             m_cmd->trackResource(res.imageView);
             m_cmd->trackResource(res.imageView->image());
           } else {
             updatePipelineState |= bs.setUnbound(i);
-            m_descriptors[i].image = m_device->dummyImageViewDescriptor(binding.view);
+            m_descInfos[i].image = m_device->dummyImageViewDescriptor(binding.view);
           } break;
         
         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
@@ -1360,13 +1371,13 @@ namespace dxvk {
           if (res.bufferView != nullptr) {
             updatePipelineState |= bs.setBound(i);
             
-            m_descriptors[i].texelBuffer = res.bufferView->handle();
+            m_descInfos[i].texelBuffer = res.bufferView->handle();
             
             m_cmd->trackResource(res.bufferView);
             m_cmd->trackResource(res.bufferView->resource());
           } else {
             updatePipelineState |= bs.setUnbound(i);
-            m_descriptors[i].texelBuffer = m_device->dummyBufferViewDescriptor();
+            m_descInfos[i].texelBuffer = m_device->dummyBufferViewDescriptor();
           } break;
         
         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
@@ -1375,14 +1386,14 @@ namespace dxvk {
             updatePipelineState |= bs.setBound(i);
             
             auto physicalSlice = res.bufferSlice.physicalSlice();
-            m_descriptors[i].buffer.buffer = physicalSlice.handle();
-            m_descriptors[i].buffer.offset = physicalSlice.offset();
-            m_descriptors[i].buffer.range  = physicalSlice.length();
+            m_descInfos[i].buffer.buffer = physicalSlice.handle();
+            m_descInfos[i].buffer.offset = physicalSlice.offset();
+            m_descInfos[i].buffer.range  = physicalSlice.length();
             
             m_cmd->trackResource(physicalSlice.resource());
           } else {
             updatePipelineState |= bs.setUnbound(i);
-            m_descriptors[i].buffer = m_device->dummyBufferDescriptor();
+            m_descInfos[i].buffer = m_device->dummyBufferDescriptor();
           } break;
         
         default:
@@ -1402,28 +1413,17 @@ namespace dxvk {
           VkPipelineBindPoint     bindPoint,
     const DxvkBindingState&       bindingState,
     const Rc<DxvkPipelineLayout>& layout) {
-    std::array<VkWriteDescriptorSet, MaxNumResourceSlots> writes;
-    
     const VkDescriptorSet dset =
       m_cmd->allocateDescriptorSet(
         layout->descriptorSetLayout());
     
-    const uint32_t bindingCount = layout->bindingCount();
-    
-    for (uint32_t i = 0; i < bindingCount; i++) {
-      writes[i].sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-      writes[i].pNext            = nullptr;
-      writes[i].dstSet           = dset;
-      writes[i].dstBinding       = i;
-      writes[i].dstArrayElement  = 0;
-      writes[i].descriptorCount  = 1;
-      writes[i].descriptorType   = layout->binding(i).type;
-      writes[i].pImageInfo       = &m_descriptors[i].image;
-      writes[i].pBufferInfo      = &m_descriptors[i].buffer;
-      writes[i].pTexelBufferView = &m_descriptors[i].texelBuffer;
+    for (uint32_t i = 0; i < layout->bindingCount(); i++) {
+      m_descWrites[i].dstSet         = dset;
+      m_descWrites[i].descriptorType = layout->binding(i).type;
     }
     
-    m_cmd->updateDescriptorSet(bindingCount, writes.data());
+    m_cmd->updateDescriptorSet(
+      layout->bindingCount(), m_descWrites.data());
     m_cmd->cmdBindDescriptorSet(bindPoint,
       layout->pipelineLayout(), dset);
   }
