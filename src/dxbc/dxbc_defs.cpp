@@ -600,9 +600,22 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
     } },
     /* Gather4Po                            */
-    { },
+    { 5, DxbcInstClass::TextureGather, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32  },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* Gather4PoC                           */
-    { },
+    { 6, DxbcInstClass::TextureGather, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32  },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* Rcp                                  */
     { 2, DxbcInstClass::VectorAlu, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },

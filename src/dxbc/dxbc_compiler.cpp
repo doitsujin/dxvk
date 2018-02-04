@@ -2436,11 +2436,16 @@ namespace dxvk {
     //    (src2) The sampler, with a component selector
     // Gather4C takes the following additional operand:
     //    (src3) The depth reference value
+    // The Gather4Po variants take an additional operand
+    // which defines an extended constant offset.
     // TODO reduce code duplication by moving some common code
     // in both sample() and gather() into separate methods
+    const bool isExtendedGather = ins.op == DxbcOpcode::Gather4Po
+                               || ins.op == DxbcOpcode::Gather4PoC;
+    
     const DxbcRegister& texCoordReg = ins.src[0];
-    const DxbcRegister& textureReg  = ins.src[1];
-    const DxbcRegister& samplerReg  = ins.src[2];
+    const DxbcRegister& textureReg  = ins.src[1 + isExtendedGather];
+    const DxbcRegister& samplerReg  = ins.src[2 + isExtendedGather];
     
     // Texture and sampler register IDs
     const uint32_t textureId = textureReg.idx[0].offset;
@@ -2459,10 +2464,12 @@ namespace dxvk {
     DxbcRegisterValue coord = emitRegisterLoad(texCoordReg, coordArrayMask);
     
     // Load reference value for depth-compare operations
-    const bool isDepthCompare = ins.op == DxbcOpcode::Gather4C;
+    const bool isDepthCompare = ins.op == DxbcOpcode::Gather4C
+                             || ins.op == DxbcOpcode::Gather4PoC;
     
     const DxbcRegisterValue referenceValue = isDepthCompare
-      ? emitRegisterLoad(ins.src[3], DxbcRegMask(true, false, false, false))
+      ? emitRegisterLoad(ins.src[3 + isExtendedGather],
+          DxbcRegMask(true, false, false, false))
       : DxbcRegisterValue();
     
     if (isDepthCompare && m_options.packDrefValueIntoCoordinates) {
@@ -2484,7 +2491,15 @@ namespace dxvk {
     // Accumulate additional image operands.
     SpirvImageOperands imageOperands;
     
-    if (ins.sampleControls.u != 0 || ins.sampleControls.v != 0 || ins.sampleControls.w != 0) {
+    if (isExtendedGather) {
+      m_module.enableCapability(spv::CapabilityImageGatherExtended);
+      
+      DxbcRegisterValue gatherOffset = emitRegisterLoad(
+        ins.src[1], DxbcRegMask::firstN(imageLayerDim));
+      
+      imageOperands.flags |= spv::ImageOperandsOffsetMask;
+      imageOperands.gOffset = gatherOffset.id;
+    } else if (ins.sampleControls.u != 0 || ins.sampleControls.v != 0 || ins.sampleControls.w != 0) {
       const std::array<uint32_t, 3> offsetIds = {
         imageLayerDim >= 1 ? m_module.consti32(ins.sampleControls.u) : 0,
         imageLayerDim >= 2 ? m_module.consti32(ins.sampleControls.v) : 0,

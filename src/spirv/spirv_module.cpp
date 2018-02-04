@@ -933,6 +933,64 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opBitCount(
+          uint32_t                resultType,
+          uint32_t                operand) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpBitCount, 4);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(operand);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opFindILsb(
+          uint32_t                resultType,
+          uint32_t                operand) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpExtInst, 6);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(m_instExtGlsl450);
+    m_code.putWord(spv::GLSLstd450FindILsb);
+    m_code.putWord(operand);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opFindUMsb(
+          uint32_t                resultType,
+          uint32_t                operand) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpExtInst, 6);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(m_instExtGlsl450);
+    m_code.putWord(spv::GLSLstd450FindUMsb);
+    m_code.putWord(operand);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opFindSMsb(
+          uint32_t                resultType,
+          uint32_t                operand) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpExtInst, 6);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(m_instExtGlsl450);
+    m_code.putWord(spv::GLSLstd450FindSMsb);
+    m_code.putWord(operand);
+    return resultId;
+  }
+  
+            
   uint32_t SpirvModule::opBitFieldInsert(
           uint32_t                resultType,
           uint32_t                base,
