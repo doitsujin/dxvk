@@ -2197,41 +2197,14 @@ namespace dxvk {
     const DxbcRegisterValue mipLod = emitRegisterLoad(
       ins.src[0], DxbcRegMask(true, false, false, false));
     
-    // Image type, which stores the image dimensions etc.
-    const uint32_t imageDim = [&] {
-      switch (resourceInfo.image.dim) {
-        case spv::Dim1D:      return 1;
-        case spv::Dim2D:      return 2;
-        case spv::Dim3D:      return 3;
-        case spv::DimCube:    return 2;
-        default: throw DxvkError("DxbcCompiler: resinfo: Unsupported image dim");
-      }
-    }();
-    
     const DxbcScalarType returnType = resinfoType == DxbcResinfoType::Uint
       ? DxbcScalarType::Uint32 : DxbcScalarType::Float32;
     
-    // Load the image variable itself
-    const uint32_t imageId = m_module.opLoad(
-      resourceInfo.typeId, resourceInfo.varId);
-    
-    // Query image size. This will be written to the
-    // first components of the destination register.
-    DxbcRegisterValue imageSize;
-    imageSize.type.ctype  = DxbcScalarType::Uint32;
-    imageSize.type.ccount = imageDim + resourceInfo.image.array;
-    imageSize.id = m_module.opImageQuerySizeLod(
-      getVectorTypeId(imageSize.type),
-      imageId, mipLod.id);
-    
-    // Query image levels. This will be written to
-    // the w component of the destination register.
-    DxbcRegisterValue imageLevels;
-    imageLevels.type.ctype  = DxbcScalarType::Uint32;
-    imageLevels.type.ccount = 1;
-    imageLevels.id = m_module.opImageQueryLevels(
-      getVectorTypeId(imageLevels.type),
-      imageId);
+    // Query the size of the selected mip level, as well as the
+    // total number of mip levels. We will have to combine the
+    // result into a four-component vector later.
+    DxbcRegisterValue imageSize   = emitQueryTextureSize(ins.src[1], mipLod);
+    DxbcRegisterValue imageLevels = emitQueryTextureLods(ins.src[1]);
     
     // Convert intermediates to the requested type
     if (returnType == DxbcScalarType::Float32) {
@@ -2249,13 +2222,15 @@ namespace dxvk {
     // If the selected return type is rcpFloat, we need
     // to compute the reciprocal of the image dimensions,
     // but not the array size, so we need to separate it.
+    const uint32_t imageCoordDim = imageSize.type.ccount;
+    
     DxbcRegisterValue imageLayers;
     imageLayers.type = imageSize.type;
     imageLayers.id   = 0;
     
     if (resinfoType == DxbcResinfoType::RcpFloat && resourceInfo.image.array) {
-      imageLayers = emitRegisterExtract(imageSize, DxbcRegMask::select(imageDim));
-      imageSize   = emitRegisterExtract(imageSize, DxbcRegMask::firstN(imageDim));
+      imageLayers = emitRegisterExtract(imageSize, DxbcRegMask::select(imageCoordDim - 1));
+      imageSize   = emitRegisterExtract(imageSize, DxbcRegMask::firstN(imageCoordDim - 1));
     }
     
     if (resinfoType == DxbcResinfoType::RcpFloat) {
@@ -2278,12 +2253,12 @@ namespace dxvk {
     if (imageLayers.id != 0)
       vectorIds[numVectorIds++] = imageLayers.id;
     
-    if (imageDim + resourceInfo.image.array < 3) {
+    if (imageCoordDim < 3) {
       const uint32_t zero = returnType == DxbcScalarType::Uint32
         ? m_module.constu32(0)
         : m_module.constf32(0.0f);
       
-      for (uint32_t i = imageDim + resourceInfo.image.array; i < 3; i++)
+      for (uint32_t i = imageCoordDim; i < 3; i++)
         vectorIds[numVectorIds++] = zero;
     }
     
@@ -3957,10 +3932,17 @@ namespace dxvk {
     DxbcRegisterValue result;
     result.type.ctype  = DxbcScalarType::Uint32;
     result.type.ccount = getTexCoordDim(info.image);
-    result.id = m_module.opImageQuerySizeLod(
-      getVectorTypeId(result.type),
-      m_module.opLoad(info.typeId, info.varId),
-      lod.id);
+    
+    if (info.image.ms == 0) {
+      result.id = m_module.opImageQuerySizeLod(
+        getVectorTypeId(result.type),
+        m_module.opLoad(info.typeId, info.varId),
+        lod.id);
+    } else {
+      result.id = m_module.opImageQuerySize(
+        getVectorTypeId(result.type),
+        m_module.opLoad(info.typeId, info.varId));
+    }
     return result;
   }
   
@@ -3976,8 +3958,8 @@ namespace dxvk {
     const uint32_t typeId = getVectorTypeId(result.type);
     
     result.id = m_module.opIAdd(typeId,
-        m_module.opIMul(typeId, structId.id, m_module.consti32(structStride / 4)),
-        m_module.opSDiv(typeId, structOffset.id, m_module.consti32(4)));
+      m_module.opIMul(typeId, structId.id, m_module.consti32(structStride / 4)),
+      m_module.opSDiv(typeId, structOffset.id, m_module.consti32(4)));
     return result;
   }
   
