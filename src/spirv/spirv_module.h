@@ -840,6 +840,11 @@ namespace dxvk {
             uint32_t                resultType,
             uint32_t                image);
     
+    uint32_t opImageQueryLod(
+            uint32_t                resultType,
+            uint32_t                sampledImage,
+            uint32_t                coordinates);
+    
     uint32_t opImageQuerySamples(
             uint32_t                resultType,
             uint32_t                image);

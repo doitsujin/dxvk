@@ -88,6 +88,9 @@ namespace dxvk {
       case DxbcInstClass::TextureQuery:
         return this->emitTextureQuery(ins);
         
+      case DxbcInstClass::TextureQueryLod:
+        return this->emitTextureQueryLod(ins);
+        
       case DxbcInstClass::TextureQueryMs:
         return this->emitTextureQueryMs(ins);
         
@@ -2283,6 +2286,52 @@ namespace dxvk {
   }
   
   
+  void DxbcCompiler::emitTextureQueryLod(const DxbcShaderInstruction& ins) {
+    // All sample instructions have at least these operands:
+    //    (dst0) The destination register
+    //    (src0) Texture coordinates
+    //    (src1) The texture itself
+    //    (src2) The sampler object
+    const DxbcRegister& texCoordReg = ins.src[0];
+    const DxbcRegister& textureReg  = ins.src[1];
+    const DxbcRegister& samplerReg  = ins.src[2];
+    
+    // Texture and sampler register IDs
+    const uint32_t textureId = textureReg.idx[0].offset;
+    const uint32_t samplerId = samplerReg.idx[0].offset;
+    
+    // Load texture coordinates 
+    const uint32_t imageCoordDim = getTexCoordDim(
+      m_textures.at(textureId).imageInfo);
+    
+    const DxbcRegisterValue coord = emitRegisterLoad(
+      texCoordReg, DxbcRegMask::firstN(imageCoordDim));
+    
+    // Query the LOD. The result is a two-dimensional float32
+    // vector containing the mip level and virtual LOD numbers.
+    const uint32_t sampledImageId = emitLoadSampledImage(
+      m_textures.at(textureId), m_samplers.at(samplerId), false);
+    
+    const uint32_t queriedLodId = m_module.opImageQueryLod(
+      getVectorTypeId({ DxbcScalarType::Float32, 2 }),
+      sampledImageId, coord.id);
+    
+    // Build the result array vector by filling up
+    // the remaining two components with zeroes.
+    const uint32_t zero = m_module.constf32(0.0f);
+    const std::array<uint32_t, 3> resultIds
+      = {{ queriedLodId, zero, zero }};
+    
+    DxbcRegisterValue result;
+    result.type = DxbcVectorType { DxbcScalarType::Float32, 4 };
+    result.id   = m_module.opCompositeConstruct(
+      getVectorTypeId(result.type),
+      resultIds.size(), resultIds.data());
+    
+    emitRegisterStore(ins.dst[0], result);
+  }
+  
+  
   void DxbcCompiler::emitTextureQueryMs(const DxbcShaderInstruction& ins) {
     // sampleinfo has two operands:
     //    (dst0) The destination register
@@ -2624,11 +2673,6 @@ namespace dxvk {
       ? emitRegisterLoad(ins.src[3], DxbcRegMask(true, false, false, false))
       : DxbcRegisterValue();
     
-    // Determine the sampled image type based on the opcode.
-    const uint32_t sampledImageType = isDepthCompare
-      ? m_module.defSampledImageType(m_textures.at(textureId).depthTypeId)
-      : m_module.defSampledImageType(m_textures.at(textureId).colorTypeId);
-    
     // Accumulate additional image operands. These are
     // not part of the actual operand token in SPIR-V.
     SpirvImageOperands imageOperands;
@@ -2647,14 +2691,9 @@ namespace dxvk {
     }
     
     // Combine the texture and the sampler into a sampled image
-    const uint32_t sampledImageId = m_module.opSampledImage(
-      sampledImageType,
-      m_module.opLoad(
-        m_textures.at(textureId).imageTypeId,
-        m_textures.at(textureId).varId),
-      m_module.opLoad(
-        m_samplers.at(samplerId).typeId,
-        m_samplers.at(samplerId).varId));
+    const uint32_t sampledImageId = emitLoadSampledImage(
+      m_textures.at(textureId), m_samplers.at(samplerId),
+      isDepthCompare);
     
     // Sampling an image always returns a four-component
     // vector, whereas depth-compare ops return a scalar.
@@ -3498,6 +3537,20 @@ namespace dxvk {
     }
     
     return value;
+  }
+  
+  
+  uint32_t DxbcCompiler::emitLoadSampledImage(
+    const DxbcShaderResource&     textureResource,
+    const DxbcSampler&            samplerResource,
+          bool                    isDepthCompare) {
+    const uint32_t sampledImageType = isDepthCompare
+      ? m_module.defSampledImageType(textureResource.depthTypeId)
+      : m_module.defSampledImageType(textureResource.colorTypeId);
+    
+    return m_module.opSampledImage(sampledImageType,
+      m_module.opLoad(textureResource.imageTypeId, textureResource.varId),
+      m_module.opLoad(samplerResource.typeId,      samplerResource.varId));
   }
   
   

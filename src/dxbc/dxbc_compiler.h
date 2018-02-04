@@ -524,6 +524,9 @@ namespace dxvk {
     void emitTextureQuery(
       const DxbcShaderInstruction&  ins);
     
+    void emitTextureQueryLod(
+      const DxbcShaderInstruction&  ins);
+    
     void emitTextureQueryMs(
       const DxbcShaderInstruction&  ins);
     
@@ -658,6 +661,13 @@ namespace dxvk {
     DxbcRegisterValue emitDstOperandModifiers(
             DxbcRegisterValue       value,
             DxbcOpModifiers         modifiers);
+    
+    ///////////////////////////////////////
+    // Image register manipulation methods
+    uint32_t emitLoadSampledImage(
+      const DxbcShaderResource&     textureResource,
+      const DxbcSampler&            samplerResource,
+            bool                    isDepthCompare);
     
     ////////////////////////
     // Address load methods

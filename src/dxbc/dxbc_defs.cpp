@@ -536,7 +536,12 @@ namespace dxvk {
     /* Reserved0                            */
     { 0, DxbcInstClass::Undefined },
     /* Lod                                  */
-    { },
+    { 4, DxbcInstClass::TextureQueryLod, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* Gather4                              */
     { 4, DxbcInstClass::TextureGather, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
