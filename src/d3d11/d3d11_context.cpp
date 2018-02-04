@@ -466,7 +466,24 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeviceContext::ClearUnorderedAccessViewUint(
           ID3D11UnorderedAccessView*        pUnorderedAccessView,
     const UINT                              Values[4]) {
-    Logger::err("D3D11DeviceContext::ClearUnorderedAccessViewUint: Not implemented");
+    auto uav = static_cast<D3D11UnorderedAccessView*>(pUnorderedAccessView);
+    
+    if (uav->GetResourceType() == D3D11_RESOURCE_DIMENSION_BUFFER) {
+      Logger::err("D3D11: ClearUnorderedAccessViewUint: Not supported for buffers");
+    } else {
+      VkClearColorValue clearValue;
+      
+      for (uint32_t i = 0; i < 4; i++)
+        clearValue.uint32[i] = Values[i];
+      
+      EmitCs([
+        cClearValue = clearValue,
+        cDstView    = uav->GetImageView()
+      ] (DxvkContext* ctx) {
+        ctx->clearColorImage(cDstView->image(),
+          cClearValue, cDstView->subresources());
+      });
+    }
   }
   
   

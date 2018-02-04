@@ -85,8 +85,6 @@ namespace dxvk {
     mode.alphaSrcFactor   = DecodeBlendFactor(BlendDesc.SrcBlendAlpha, true);
     mode.alphaDstFactor   = DecodeBlendFactor(BlendDesc.DestBlendAlpha, true);
     mode.alphaBlendOp     = DecodeBlendOp(BlendDesc.BlendOpAlpha);
-    // TODO find out if D3D11 wants us to apply the write mask if blending
-    // is disabled as well. This is standard behaviour in Vulkan.
     mode.writeMask        = BlendDesc.RenderTargetWriteMask;
     return mode;
   }
