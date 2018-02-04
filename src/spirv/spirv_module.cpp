@@ -2400,6 +2400,19 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opImageQuerySamples(
+          uint32_t                resultType,
+          uint32_t                image) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpImageQuerySamples, 4);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(image);
+    return resultId;
+  }
+  
+  
   uint32_t SpirvModule::opImageFetch(
           uint32_t                resultType,
           uint32_t                image,

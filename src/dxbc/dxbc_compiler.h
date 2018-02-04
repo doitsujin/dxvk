@@ -524,6 +524,9 @@ namespace dxvk {
     void emitTextureQuery(
       const DxbcShaderInstruction&  ins);
     
+    void emitTextureQueryMs(
+      const DxbcShaderInstruction&  ins);
+    
     void emitTextureFetch(
       const DxbcShaderInstruction&  ins);
     
@@ -701,6 +704,9 @@ namespace dxvk {
       const DxbcRegister&           resource);
     
     DxbcRegisterValue emitQueryTextureLods(
+      const DxbcRegister&           resource);
+    
+    DxbcRegisterValue emitQueryTextureSamples(
       const DxbcRegister&           resource);
     
     DxbcRegisterValue emitQueryTextureSize(

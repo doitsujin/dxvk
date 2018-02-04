@@ -88,6 +88,9 @@ namespace dxvk {
       case DxbcInstClass::TextureQuery:
         return this->emitTextureQuery(ins);
         
+      case DxbcInstClass::TextureQueryMs:
+        return this->emitTextureQueryMs(ins);
+        
       case DxbcInstClass::TextureFetch:
         return this->emitTextureFetch(ins);
         
@@ -2280,6 +2283,25 @@ namespace dxvk {
   }
   
   
+  void DxbcCompiler::emitTextureQueryMs(const DxbcShaderInstruction& ins) {
+    // sampleinfo has two operands:
+    //    (dst0) The destination register
+    //    (src0) Resource to query
+    // TODO Check if resource is bound
+    DxbcRegisterValue sampleCount = emitQueryTextureSamples(ins.src[0]);
+    
+    if (ins.controls.resinfoType != DxbcResinfoType::Uint) {
+      sampleCount.type.ctype  = DxbcScalarType::Float32;
+      sampleCount.type.ccount = 1;
+      sampleCount.id = m_module.opConvertUtoF(
+        getVectorTypeId(sampleCount.type),
+        sampleCount.id);
+    }
+    
+    emitRegisterStore(ins.dst[0], sampleCount);
+  }
+  
+  
   void DxbcCompiler::emitTextureFetch(const DxbcShaderInstruction& ins) {
     // ld has three operands:
     //    (dst0) The destination register
@@ -2502,9 +2524,11 @@ namespace dxvk {
     DxbcRegisterValue result;
     result.type.ctype  = m_textures.at(textureId).sampledType;
     result.type.ccount = 4;
+    
     switch (ins.op) {
       // Simple image gather operation
-      case DxbcOpcode::Gather4: {
+      case DxbcOpcode::Gather4:
+      case DxbcOpcode::Gather4Po: {
         result.id = m_module.opImageGather(
           getVectorTypeId(result.type), sampledImageId, coord.id,
           m_module.constu32(samplerReg.swizzle[0]),
@@ -2512,7 +2536,8 @@ namespace dxvk {
       } break;
       
       // Depth-compare operation
-      case DxbcOpcode::Gather4C: {
+      case DxbcOpcode::Gather4C:
+      case DxbcOpcode::Gather4PoC: {
         result.id = m_module.opImageDrefGather(
           getVectorTypeId(result.type), sampledImageId, coord.id,
           referenceValue.id, imageOperands);
@@ -3918,6 +3943,20 @@ namespace dxvk {
     result.type.ctype  = DxbcScalarType::Uint32;
     result.type.ccount = 1;
     result.id = m_module.opImageQueryLevels(
+      getVectorTypeId(result.type),
+      m_module.opLoad(info.typeId, info.varId));
+    return result;
+  }
+  
+  
+  DxbcRegisterValue DxbcCompiler::emitQueryTextureSamples(
+    const DxbcRegister&           resource) {
+    const DxbcBufferInfo info = getBufferInfo(resource);
+    
+    DxbcRegisterValue result;
+    result.type.ctype  = DxbcScalarType::Uint32;
+    result.type.ccount = 1;
+    result.id = m_module.opImageQuerySamples(
       getVectorTypeId(result.type),
       m_module.opLoad(info.typeId, info.varId));
     return result;
