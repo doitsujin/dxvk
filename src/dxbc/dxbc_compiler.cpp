@@ -412,7 +412,6 @@ namespace dxvk {
       } break;
   
       case DxbcOperandType::InputThreadIndexInGroup: {
-        // FIXME this might not be supported by Vulkan?
         m_cs.builtinLocalInvocationIndex = emitNewBuiltinVariable({
           { DxbcScalarType::Uint32, 1, 0 },
           spv::StorageClassInput },
@@ -426,7 +425,7 @@ namespace dxvk {
           { DxbcScalarType::Uint32, 1, 0 },
           spv::StorageClassOutput },
           spv::BuiltInSampleMask,
-          "oDepth");
+          "oCoverage");
       } break;
       
       case DxbcOperandType::OutputDepth: {
@@ -4360,10 +4359,19 @@ namespace dxvk {
       outputReg.type.ccount = 4;
       outputReg.id = m_oRegs.at(svMapping.regId);
       
-      emitVsSystemValueStore(
-        svMapping.sv,
-        svMapping.regMask,
-        emitValueLoad(outputReg));
+      auto sv    = svMapping.sv;
+      auto mask  = svMapping.regMask;
+      auto value = emitValueLoad(outputReg);
+      
+      switch (m_version.type()) {
+        case DxbcProgramType::VertexShader:   emitVsSystemValueStore(sv, mask, value); break;
+        case DxbcProgramType::GeometryShader: emitGsSystemValueStore(sv, mask, value); break;
+        case DxbcProgramType::HullShader:
+        case DxbcProgramType::DomainShader:
+        case DxbcProgramType::PixelShader:
+        case DxbcProgramType::ComputeShader:
+          break;
+      }
     }
   }
   
