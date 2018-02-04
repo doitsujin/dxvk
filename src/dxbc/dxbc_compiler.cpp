@@ -214,6 +214,9 @@ namespace dxvk {
         
       case DxbcOpcode::DclSampler:
         return this->emitDclSampler(ins);
+      
+      case DxbcOpcode::DclStream:
+        return this->emitDclStream(ins);
         
       case DxbcOpcode::DclUavTyped:
       case DxbcOpcode::DclResource:
@@ -628,6 +631,12 @@ namespace dxvk {
     resource.type = VK_DESCRIPTOR_TYPE_SAMPLER;
     resource.view = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     m_resourceSlots.push_back(resource);
+  }
+  
+  
+  void DxbcCompiler::emitDclStream(const DxbcShaderInstruction& ins) {
+    if (ins.dst[0].idx[0].offset != 0)
+      Logger::err("Dxbc: Multiple streams not supported");
   }
   
   
@@ -1727,12 +1736,14 @@ namespace dxvk {
   
   void DxbcCompiler::emitGeometryEmit(const DxbcShaderInstruction& ins) {
     switch (ins.op) {
-      case DxbcOpcode::Emit: {
+      case DxbcOpcode::Emit:
+      case DxbcOpcode::EmitStream: {
         emitOutputSetup();
         m_module.opEmitVertex();
       } break;
       
-      case DxbcOpcode::Cut: {
+      case DxbcOpcode::Cut:
+      case DxbcOpcode::CutStream: {
         m_module.opEndPrimitive();
       } break;
       

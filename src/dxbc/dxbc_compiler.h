@@ -430,6 +430,9 @@ namespace dxvk {
     void emitDclSampler(
       const DxbcShaderInstruction&  ins);
     
+    void emitDclStream(
+      const DxbcShaderInstruction&  ins);
+    
     void emitDclResourceTyped(
       const DxbcShaderInstruction&  ins);
     

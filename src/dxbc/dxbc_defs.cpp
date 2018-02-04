@@ -567,9 +567,13 @@ namespace dxvk {
     /* HsJoinPhase                          */
     { },
     /* EmitStream                           */
-    { },
+    { 1, DxbcInstClass::GeometryEmit, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32  },
+    } },
     /* CutStream                            */
-    { },
+    { 1, DxbcInstClass::GeometryEmit, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32  },
+    } },
     /* EmitThenCutStream                    */
     { },
     /* InterfaceCall                        */
@@ -696,7 +700,9 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
     } },
     /* DclStream                            */
-    { },
+    { 1, DxbcInstClass::Declaration, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32  },
+    } },
     /* DclFunctionBody                      */
     { },
     /* DclFunctionTable                     */
