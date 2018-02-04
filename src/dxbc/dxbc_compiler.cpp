@@ -1264,6 +1264,26 @@ namespace dxvk {
           src.at(0).id, src.at(1).id);
         break;
       
+      case DxbcOpcode::CountBits:
+        dst.id = m_module.opBitCount(
+          typeId, src.at(0).id);
+        break;
+        
+      case DxbcOpcode::FirstBitLo:
+        dst.id = m_module.opFindILsb(
+          typeId, src.at(0).id);
+        break;
+        
+      case DxbcOpcode::FirstBitHi:
+        dst.id = m_module.opFindUMsb(
+          typeId, src.at(0).id);
+        break;
+        
+      case DxbcOpcode::FirstBitShi:
+        dst.id = m_module.opFindSMsb(
+          typeId, src.at(0).id);
+        break;
+      
       ///////////////////////////
       // Conversion instructions
       case DxbcOpcode::ItoF:

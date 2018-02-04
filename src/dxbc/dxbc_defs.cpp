@@ -623,13 +623,25 @@ namespace dxvk {
     /* USubb                                */
     { },
     /* CountBits                            */
-    { },
+    { 2, DxbcInstClass::VectorAlu, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* FirstBitHi                           */
-    { },
+    { 2, DxbcInstClass::VectorAlu, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* FirstBitLo                           */
-    { },
+    { 2, DxbcInstClass::VectorAlu, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* FirstBitShi                          */
-    { },
+    { 2, DxbcInstClass::VectorAlu, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* UBfe                                 */
     { 4, DxbcInstClass::BitExtract, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
