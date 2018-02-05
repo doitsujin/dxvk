@@ -6,7 +6,6 @@
 
 #include "d3d11_context_state.h"
 #include "d3d11_device_child.h"
-#include "d3d11_view.h"
 
 namespace dxvk {
   

@@ -1,5 +1,5 @@
 #include "d3d11_device.h"
-#include "d3d11_uav.h"
+#include "d3d11_view_uav.h"
 
 namespace dxvk {
   
@@ -37,7 +37,7 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, ID3D11View);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11UnorderedAccessView);
     
-    Logger::warn("ID3D11UnorderedAccessView::QueryInterface: Unknown interface query");
+    Logger::warn("D3D11UnorderedAccessView::QueryInterface: Unknown interface query");
     return E_NOINTERFACE;
   }
   

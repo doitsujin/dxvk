@@ -12,7 +12,6 @@
 #include "d3d11_sampler.h"
 #include "d3d11_shader.h"
 #include "d3d11_texture.h"
-#include "d3d11_view.h"
 
 namespace dxvk {
   
