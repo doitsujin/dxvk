@@ -33,6 +33,10 @@ namespace dxvk {
     VkMemoryRequirements memReq;
     m_vkd->vkGetImageMemoryRequirements(
       m_vkd->device(), m_image, &memReq);
+    
+    // FIXME this only exists to make renderdoc happy
+    memReq.size += 65536;
+    
     m_memory = memAlloc.alloc(memReq, memFlags);
     
     if (m_vkd->vkBindImageMemory(m_vkd->device(),
