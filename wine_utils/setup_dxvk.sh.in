@@ -1,8 +1,14 @@
 #!/bin/bash
 
-dlls_dir='@dlldir@'
-build_arch='@arch@'
 export WINEDEBUG=-all
+
+dlls_dir=`dirname $(readlink -f $0)`
+build_arch='@arch@'
+
+if [ ! -f "$dlls_dir/d3d11.dll" ] || [ ! -f "$dlls_dir/dxgi.dll" ]; then
+    echo "d3d11.dll or dxgi.dll not found in $dlls_dir"
+    exit 1
+fi
 
 if [ $build_arch == "x86_64" ]; then
     wine=wine64
@@ -54,11 +60,13 @@ if [ "$1" == "reset" ]; then
     removeOverride d3d11
     echo -n '[2/2] '
     removeOverride dxgi
-    exit
+elif [ -z "$1" ]; then
+    echo -n '[1/2] '
+    createOverride d3d11
+    echo -n '[2/2] '
+    createOverride dxgi
+else
+    echo "Unrecognized option: $1"
+    echo "Usage: $0 [reset]"
+    exit 1
 fi
-
-echo -n '[1/2] '
-createOverride d3d11
-echo -n '[2/2] '
-createOverride dxgi
-exit
