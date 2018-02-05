@@ -93,7 +93,7 @@ check)
     ;;
 *)
     echo "Unrecognized option: $1"
-    echo "Usage: $0 [reset]"
+    echo "Usage: $0 [reset|check]"
     exit 1
     ;;
 esac
