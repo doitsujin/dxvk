@@ -44,6 +44,23 @@ function removeOverride {
     fi
 }
 
+function checkOverride {
+    echo "$1:"
+    echo -n '    [1/2] Checking override... '
+    local ovr="$(wine reg query 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1)"
+    if [[ $ovr == *native* ]] && ! [[ $ovr == *builtin,native* ]]; then
+        echo -e '\e[1;32mOK\e[0m.'
+    else
+        echo -e '\e[1;31mnot set\e[0m.'
+    fi
+    echo -n "    [2/2] Checking link to $1.dll... "
+    if [ "$(readlink -f "$unix_sys_path/$1.dll")" == "$(readlink -f "$dlls_dir/$1.dll")" ]; then
+        echo -e '\e[1;32mOK\e[0m.'
+    else
+        echo -e '\e[1;31mnot set\e[0m.'
+    fi
+}
+
 function createOverride {
     echo "$1:"
     echo -n '    [1/2] Creating override... '
@@ -55,18 +72,28 @@ function createOverride {
     fi
 }
 
-if [ "$1" == "reset" ]; then
+case "$1" in
+reset)
     echo -n '[1/2] '
     removeOverride d3d11
     echo -n '[2/2] '
     removeOverride dxgi
-elif [ -z "$1" ]; then
+    ;;
+check)
+    echo -n '[1/2] '
+    checkOverride d3d11
+    echo -n '[2/2] '
+    checkOverride dxgi
+    ;;
+'')
     echo -n '[1/2] '
     createOverride d3d11
     echo -n '[2/2] '
     createOverride dxgi
-else
+    ;;
+*)
     echo "Unrecognized option: $1"
     echo "Usage: $0 [reset]"
     exit 1
-fi
+    ;;
+esac
