@@ -22,6 +22,14 @@ if [ -z "$WINEPREFIX" ]; then
     if [ "$continue" != "y" ] && [ "$continue" != "Y" ]; then
       exit 1
     fi
+else
+    if ! [ -f "$WINEPREFIX/system.reg" ]; then
+        echo "WINEPREFIX does not point to an existing wine installation. Proceeding will create a new one, continue? (y/N)"
+        read continue
+        if [ "$continue" != "y" ] && [ "$continue" != "Y" ]; then
+        exit 1
+        fi
+    fi
 fi
 unix_sys_path="$($wine winepath -u 'C:\windows\system32')"
 
