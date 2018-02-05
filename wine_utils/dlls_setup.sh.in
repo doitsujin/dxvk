@@ -2,10 +2,13 @@
 
 dlls_dir='@dlldir@'
 build_arch='@arch@'
-path_pattern='s|^\s*PATH\s+REG_EXPAND_SZ\s+(.*)\s*$|\1|g'
-dlls_windir=$(winepath -w "$dlls_dir")
-dlls_windir_pattern="$(sed 's|\\|\\\\|g'<<<$dlls_windir)"
-WINEDEBUG=-all
+export WINEDEBUG=-all
+
+if [ $build_arch == "x86_64" ]; then
+    wine=wine64
+else
+    wine=wine
+fi
 
 if [ -z "$WINEPREFIX" ]; then
     echo "WINEPREFIX is not set, continue? (y/N)"
@@ -14,59 +17,48 @@ if [ -z "$WINEPREFIX" ]; then
       exit 1
     fi
 fi
+unix_sys_path="$($wine winepath -u 'C:\windows\system32')"
+
+function removeOverride {
+    echo "$1:"
+    echo -n '    [1/2] Removing override... '
+    wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1 /d builtin /f
+    if [ ! $? ]; then
+        exit 1
+    fi
+    local dll="$unix_sys_path/$1.dll"
+    echo -n '    [2/2] Removing link... '
+    if [ -h "$dll" ]; then
+        rm "$dll"
+        if [ "$?" == "0" ]; then
+            echo "Done."
+        fi
+    else
+        echo "'$dll' is not a link or doesn't exist."
+    fi
+}
+
+function createOverride {
+    echo "$1:"
+    echo -n '    [1/2] Creating override... '
+    wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1 /d native /f
+    echo -n "    [2/2] Creating link to $1.dll... "
+    ln -sf "$dlls_dir/$1.dll" "$unix_sys_path/$1.dll"
+    if [ $? ]; then
+        echo "Done."
+    fi
+}
 
 if [ "$1" == "reset" ]; then
-    wine reg delete HKEY_CURRENT_USER\\Software\\Wine\\DllRedirects /v d3d11
-    wine reg delete HKEY_CURRENT_USER\\Software\\Wine\\DllRedirects /v dxgi
-    path=$(wine reg query 'HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' /v PATH | sed -e 's|\r||g')
-    cleared_path=$(grep REG_EXPAND_SZ <<< $path | sed -E -e $path_pattern -e "s|^(.*;)?$dlls_windir_pattern(;(.*))?$|\\1\\3|")
-    echo "$path"
-    echo "new PATH:                    $cleared_path"
-    wine reg add 'HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' /v PATH /d "$cleared_path" /t REG_EXPAND_SZ
-    exit 0
+    echo -n '[1/2] '
+    removeOverride d3d11
+    echo -n '[2/2] '
+    removeOverride dxgi
+    exit
 fi
 
-function redirect {
-    wine reg query HKEY_CURRENT_USER\\Software\\Wine\\DllRedirects /v $2 | grep -E '^\s*'"$2"'\s+REG_SZ\s+'"$2"'_vk.dll\s*$' 1>/dev/null
-    if [ $? -eq 1 ]; then
-        echo "redirecting [$2 -> $2_vk]"
-        wine reg add HKEY_CURRENT_USER\\Software\\Wine\\DllRedirects /v $2 /d $2_vk.dll
-    else
-        echo -e "redirection [$2 -> $2_vk] was \\e[0;32mOK\\e[0m"
-    fi
-}
-
-function addToPATH {
-    path=$(wine reg query 'HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' /v PATH | sed -e 's|\r||g')
-    path_val=$(grep REG_EXPAND_SZ<<<$path | sed -E -e $path_pattern)
-    check=$(sed -E -e "s|^(.*;)?$(sed 's|\\|\\\\|g'<<<$1)(;.*)?$||" <<<$path_val)
-    if [ -n "$check" ]; then
-        echo "adding $1 to windows PATH"
-        new_path="$(sed -E  -e 's|;?\s*$||' <<<$path_val);$1"
-        echo "$path"
-        echo "new PATH:                    $new_path"
-        wine reg add 'HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Session Manager\Environment' /v PATH /d "$new_path" /t REG_EXPAND_SZ
-    else
-        echo -e "windows PATH was \\e[0;32mOK\\e[0m"
-    fi
-}
-
-if [ "$1" == "overrides" ]; then
-    set -e
-    if [ $build_arch == "x86_64" ]; then
-        wine=wine64
-    else
-        wine=wine
-    fi
-    unix_sys_path="$($wine winepath -u 'C:\windows\system32')"
-    wine reg add HKEY_CURRENT_USER\\Software\\Wine\\DllOverrides /v d3d11 /d native /f
-    wine reg add HKEY_CURRENT_USER\\Software\\Wine\\DllOverrides /v dxgi /d native /f
-    ln -sf "$dlls_dir/d3d11_vk.dll" "$unix_sys_path/d3d11.dll"
-    ln -sf "$dlls_dir/dxgi_vk.dll" "$unix_sys_path/dxgi.dll"
-    exit 0
-fi
-
-redirect CHK_REDIRECT_D3D11 d3d11
-redirect CHK_REDIRECT_DXGI dxgi
-
-addToPATH "$dlls_windir"
+echo -n '[1/2] '
+createOverride d3d11
+echo -n '[2/2] '
+createOverride dxgi
+exit
