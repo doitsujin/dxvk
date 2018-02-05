@@ -4,7 +4,6 @@ dlls_dir='@dlldir@'
 build_arch='@arch@'
 export WINEDEBUG=-all
 
-set -e
 if [ $build_arch == "x86_64" ]; then
     wine=wine64
 else
