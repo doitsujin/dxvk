@@ -6,7 +6,7 @@ dlls_dir=`dirname $(readlink -f $0)`
 build_arch='@arch@'
 
 if [ ! -f "$dlls_dir/d3d11.dll" ] || [ ! -f "$dlls_dir/dxgi.dll" ]; then
-    echo "d3d11.dll or dxgi.dll not found in $dlls_dir"
+    echo "d3d11.dll or dxgi.dll not found in $dlls_dir" >&2
     exit 1
 fi
 
@@ -25,8 +25,9 @@ if [ -z "$WINEPREFIX" ]; then
 fi
 unix_sys_path="$($wine winepath -u 'C:\windows\system32')"
 
+ret=0
+
 function removeOverride {
-    echo "$1:"
     echo -n '    [1/2] Removing override... '
     wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1 /d builtin /f
     if [ ! $? ]; then
@@ -38,58 +39,60 @@ function removeOverride {
         rm "$dll"
         if [ "$?" == "0" ]; then
             echo "Done."
+        else
+            ret=2
         fi
     else
         echo "'$dll' is not a link or doesn't exist."
+        ret=2
     fi
 }
 
 function checkOverride {
-    echo "$1:"
     echo -n '    [1/2] Checking override... '
     local ovr="$(wine reg query 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1)"
+    if [ ! $? ]; then
+        exit 1
+    fi
     if [[ $ovr == *native* ]] && ! [[ $ovr == *builtin,native* ]]; then
         echo -e '\e[1;32mOK\e[0m.'
     else
         echo -e '\e[1;31mnot set\e[0m.'
+        ret=2
     fi
     echo -n "    [2/2] Checking link to $1.dll... "
     if [ "$(readlink -f "$unix_sys_path/$1.dll")" == "$(readlink -f "$dlls_dir/$1.dll")" ]; then
         echo -e '\e[1;32mOK\e[0m.'
     else
         echo -e '\e[1;31mnot set\e[0m.'
+        ret=2
     fi
 }
 
 function createOverride {
-    echo "$1:"
     echo -n '    [1/2] Creating override... '
     wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1 /d native /f
+    if [ ! $? ]; then
+        exit 1
+    fi
     echo -n "    [2/2] Creating link to $1.dll... "
     ln -sf "$dlls_dir/$1.dll" "$unix_sys_path/$1.dll"
     if [ $? ]; then
         echo "Done."
+    else
+        ret=2
     fi
 }
 
 case "$1" in
 reset)
-    echo -n '[1/2] '
-    removeOverride d3d11
-    echo -n '[2/2] '
-    removeOverride dxgi
+    fun=removeOverride
     ;;
 check)
-    echo -n '[1/2] '
-    checkOverride d3d11
-    echo -n '[2/2] '
-    checkOverride dxgi
+    fun=checkOverride
     ;;
 '')
-    echo -n '[1/2] '
-    createOverride d3d11
-    echo -n '[2/2] '
-    createOverride dxgi
+    fun=createOverride
     ;;
 *)
     echo "Unrecognized option: $1"
@@ -97,3 +100,9 @@ check)
     exit 1
     ;;
 esac
+
+echo '[1/2] d3d11:'
+$fun d3d11
+echo '[2/2] dxgi:'
+$fun dxgi
+exit $ret
