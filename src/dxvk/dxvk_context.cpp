@@ -89,6 +89,9 @@ namespace dxvk {
           uint32_t              slot,
     const DxvkBufferSlice&      buffer) {
     if (!m_rc[slot].bufferSlice.matches(buffer)) {
+      m_rc[slot].sampler     = nullptr;
+      m_rc[slot].imageView   = nullptr;
+      m_rc[slot].bufferView  = nullptr;
       m_rc[slot].bufferSlice = buffer;
       
       m_flags.set(
@@ -102,7 +105,10 @@ namespace dxvk {
           uint32_t              slot,
     const Rc<DxvkBufferView>&   bufferView) {
     if (m_rc[slot].bufferView != bufferView) {
-      m_rc[slot].bufferView = bufferView;
+      m_rc[slot].sampler     = nullptr;
+      m_rc[slot].imageView   = nullptr;
+      m_rc[slot].bufferView  = bufferView;
+      m_rc[slot].bufferSlice = DxvkBufferSlice();
       
       m_flags.set(
         DxvkContextFlag::CpDirtyResources,
@@ -115,7 +121,10 @@ namespace dxvk {
           uint32_t              slot,
     const Rc<DxvkImageView>&    image) {
     if (m_rc[slot].imageView != image) {
-      m_rc[slot].imageView = image;
+      m_rc[slot].sampler     = nullptr;
+      m_rc[slot].imageView   = image;
+      m_rc[slot].bufferView  = nullptr;
+      m_rc[slot].bufferSlice = DxvkBufferSlice();
       
       m_flags.set(
         DxvkContextFlag::CpDirtyResources,
@@ -128,7 +137,10 @@ namespace dxvk {
           uint32_t              slot,
     const Rc<DxvkSampler>&      sampler) {
     if (m_rc[slot].sampler != sampler) {
-      m_rc[slot].sampler = sampler;
+      m_rc[slot].sampler     = sampler;
+      m_rc[slot].imageView   = nullptr;
+      m_rc[slot].bufferView  = nullptr;
+      m_rc[slot].bufferSlice = DxvkBufferSlice();
       
       m_flags.set(
         DxvkContextFlag::CpDirtyResources,
