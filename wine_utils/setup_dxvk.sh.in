@@ -16,16 +16,56 @@ else
     wine=wine
 fi
 
+quite=false
+assume=
+
+function ask {
+    echo "$1"
+    if [ -z "$assume" ]; then
+        read continue
+    else
+        continue=$assume
+        echo "$continue"
+    fi
+}
+
+POSITIONAL=()
+while [[ $# -gt 0 ]]; do
+
+    case $1 in
+    -y)
+        assume='y'
+        shift
+        ;;
+    -n)
+        assume='n'
+        shift
+        ;;
+    -q|--quiet)
+        quiet=true
+        assume=${assume:-'y'}
+        shift 
+        ;;
+    *)
+        POSITIONAL+=("$1")
+        shift
+        ;;
+    esac
+done
+set -- "${POSITIONAL[@]}"
+
+if [ "$quiet" = true ]; then
+    exec >/dev/null
+fi
+
 if [ -z "$WINEPREFIX" ]; then
-    echo "WINEPREFIX is not set, continue? (y/N)"
-    read continue
+    ask "WINEPREFIX is not set, continue? (y/N)"
     if [ "$continue" != "y" ] && [ "$continue" != "Y" ]; then
-      exit 1
+    exit 1
     fi
 else
     if ! [ -f "$WINEPREFIX/system.reg" ]; then
-        echo "WINEPREFIX does not point to an existing wine installation. Proceeding will create a new one, continue? (y/N)"
-        read continue
+        ask "WINEPREFIX does not point to an existing wine installation. Proceeding will create a new one, continue? (y/N)"
         if [ "$continue" != "y" ] && [ "$continue" != "Y" ]; then
         exit 1
         fi
@@ -104,7 +144,7 @@ check)
     ;;
 *)
     echo "Unrecognized option: $1"
-    echo "Usage: $0 [reset|check]"
+    echo "Usage: $0 [reset|check] [-q|--quite] [-y|-n]"
     exit 1
     ;;
 esac
