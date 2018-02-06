@@ -179,7 +179,8 @@ namespace dxvk {
       Rc<DxvkImageView> iview = m_device->createImageView(image, viewInfo);
       
       DxvkRenderTargets renderTargets;
-      renderTargets.setColorTarget(0, iview);
+      renderTargets.setColorTarget(0, iview,
+        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
       
       m_framebuffers.at(i) = new DxvkFramebuffer(
         m_vkd, m_renderPass, renderTargets);

@@ -1,55 +1,25 @@
+#include <algorithm>
+
 #include "dxvk_renderpass.h"
 
 namespace dxvk {
   
-  bool DxvkRenderTargetFormat::operator == (const DxvkRenderTargetFormat& other) const {
-    return this->format         == other.format
-        && this->initialLayout  == other.initialLayout
-        && this->finalLayout    == other.finalLayout;
-  }
-  
-  
-  bool DxvkRenderTargetFormat::operator != (const DxvkRenderTargetFormat& other) const {
-    return !this->operator == (other);
-  }
-  
-  
-  size_t DxvkRenderTargetFormat::hash() const {
-    std::hash<VkFormat>      fhash;
-    std::hash<VkImageLayout> lhash;
+  bool DxvkRenderPassFormat::matchesFormat(const DxvkRenderPassFormat& other) const {
+    bool equal = m_samples == other.m_samples;
     
-    DxvkHashState result;
-    result.add(fhash(this->format));
-    result.add(lhash(this->initialLayout));
-    result.add(lhash(this->finalLayout));
-    return result;
-  }
-  
-  
-  size_t DxvkRenderPassFormat::hash() const {
-    std::hash<VkSampleCountFlagBits> shash;
+    equal =  m_depth.format         == other.m_depth.format
+          && m_depth.initialLayout  == other.m_depth.initialLayout
+          && m_depth.finalLayout    == other.m_depth.finalLayout
+          && m_depth.renderLayout   == other.m_depth.renderLayout;
     
-    DxvkHashState result;
-    for (uint32_t i = 0; i < MaxNumRenderTargets; i++)
-      result.add(m_color[i].hash());
+    for (uint32_t i = 0; i < MaxNumRenderTargets && equal; i++) {
+      equal &= m_color[i].format         == other.m_color[i].format
+            && m_color[i].initialLayout  == other.m_color[i].initialLayout
+            && m_color[i].finalLayout    == other.m_color[i].finalLayout
+            && m_color[i].renderLayout   == other.m_color[i].renderLayout;
+    }
     
-    result.add(m_depth.hash());
-    result.add(shash(m_samples));
-    return result;
-  }
-  
-  
-  bool DxvkRenderPassFormat::operator == (const DxvkRenderPassFormat& other) const {
-    bool equal = m_depth   == other.m_depth
-              && m_samples == other.m_samples;
-    for (uint32_t i = 0; i < MaxNumRenderTargets && !equal; i++)
-      equal = m_color[i] == other.m_color[i];
     return equal;
-  }
-  
-  
-  bool DxvkRenderPassFormat::operator != (const DxvkRenderPassFormat& other) const {
-    return !this->operator == (other);
   }
   
   
@@ -79,7 +49,7 @@ namespace dxvk {
       desc.finalLayout    = depthFmt.finalLayout;
       
       depthRef.attachment = attachments.size();
-      depthRef.layout     = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+      depthRef.layout     = depthFmt.renderLayout;
       
       attachments.push_back(desc);
     }
@@ -195,14 +165,19 @@ namespace dxvk {
     const DxvkRenderPassFormat& fmt) {
     std::lock_guard<std::mutex> lock(m_mutex);
     
-    auto rp = m_renderPasses.find(fmt);
+    Rc<DxvkRenderPass> renderPass = nullptr;
     
-    if (rp != m_renderPasses.end())
-      return rp->second;
+    for (uint32_t i = 0; i < m_renderPasses.size() && renderPass == nullptr; i++) {
+      if (m_renderPasses[i]->matchesFormat(fmt))
+        renderPass = m_renderPasses[i];
+    }
     
-    auto result = this->createRenderPass(fmt);
-    m_renderPasses.insert(std::make_pair(fmt, result));
-    return result;
+    if (renderPass != nullptr)
+      return renderPass;
+    
+    renderPass = this->createRenderPass(fmt);
+    m_renderPasses.push_back(renderPass);
+    return renderPass;
   }
   
   

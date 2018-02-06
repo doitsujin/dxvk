@@ -177,7 +177,8 @@ namespace dxvk::hud {
     m_renderTargetView = m_device->createImageView(m_renderTarget, viewInfo);
     
     DxvkRenderTargets framebufferInfo;
-    framebufferInfo.setColorTarget(0, m_renderTargetView);
+    framebufferInfo.setColorTarget(0, m_renderTargetView,
+      VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     
     m_renderTargetFbo = m_device->createFramebuffer(framebufferInfo);
   }

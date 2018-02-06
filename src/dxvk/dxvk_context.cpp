@@ -1333,7 +1333,7 @@ namespace dxvk {
   
   void DxvkContext::updateShaderResources(
           VkPipelineBindPoint     bindPoint,
-    const Rc<DxvkPipelineLayout>&  layout) {
+    const Rc<DxvkPipelineLayout>& layout) {
     DxvkBindingState& bs =
       bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
         ? m_state.gp.state.bsBindingState
@@ -1370,6 +1370,15 @@ namespace dxvk {
             m_descInfos[i].image.sampler     = VK_NULL_HANDLE;
             m_descInfos[i].image.imageView   = res.imageView->handle();
             m_descInfos[i].image.imageLayout = res.imageView->imageInfo().layout;
+            
+            // TODO try to reduce the runtime overhead of all these comparisons
+            if (bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS) {
+              DxvkAttachment depthAttachment = m_state.om.framebuffer->renderTargets().getDepthTarget();
+              
+              if (depthAttachment.view != nullptr
+               && depthAttachment.view->image() == res.imageView->image())
+                m_descInfos[i].image.imageLayout = depthAttachment.layout;
+            }
             
             m_cmd->trackResource(res.imageView);
             m_cmd->trackResource(res.imageView->image());

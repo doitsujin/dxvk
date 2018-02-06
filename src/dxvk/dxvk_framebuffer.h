@@ -19,6 +19,12 @@ namespace dxvk {
   };
   
   
+  struct DxvkAttachment {
+    Rc<DxvkImageView> view    = nullptr;
+    VkImageLayout     layout  = VK_IMAGE_LAYOUT_UNDEFINED;
+  };
+  
+  
   /**
    * \brief Render target description
    * 
@@ -40,7 +46,7 @@ namespace dxvk {
      * \param [in] id Color attachment ID
      * \returns Render target view
      */
-    Rc<DxvkImageView> getColorTarget(uint32_t id) const {
+    DxvkAttachment getColorTarget(uint32_t id) const {
       return m_colorTargets.at(id);
     }
     
@@ -48,7 +54,7 @@ namespace dxvk {
      * \brief Retrieves depth-stencil target
      * \returns Depth-stencil target view
      */
-    Rc<DxvkImageView> getDepthTarget() const {
+    DxvkAttachment getDepthTarget() const {
       return m_depthTarget;
     }
     
@@ -57,17 +63,25 @@ namespace dxvk {
      * 
      * \param [in] id Color attachment ID
      * \param [in] view Render target view
+     * \param [in] layout Layout to use for rendering
      */
-    void setColorTarget(uint32_t id, const Rc<DxvkImageView>& view) {
-      m_colorTargets.at(id) = view;
+    void setColorTarget(
+            uint32_t           id,
+      const Rc<DxvkImageView>& view,
+            VkImageLayout      layout) {
+      m_colorTargets.at(id) = { view, layout };
     }
     
     /**
      * \brief Sets depth-stencil target
+     * 
+     * \param [in] layout Layout to use for rendering
      * \param [in] view Depth-stencil target view
      */
-    void setDepthTarget(const Rc<DxvkImageView>& view) {
-      m_depthTarget = view;
+    void setDepthTarget(
+      const Rc<DxvkImageView>& view,
+            VkImageLayout      layout) {
+      m_depthTarget = { view, layout };
     }
     
     /**
@@ -102,8 +116,8 @@ namespace dxvk {
     
   private:
     
-    std::array<Rc<DxvkImageView>, MaxNumRenderTargets> m_colorTargets;
-    Rc<DxvkImageView>                                  m_depthTarget;
+    std::array<DxvkAttachment, MaxNumRenderTargets> m_colorTargets;
+    DxvkAttachment                                  m_depthTarget;
     
     DxvkFramebufferSize renderTargetSize(
       const Rc<DxvkImageView>& renderTarget) const;

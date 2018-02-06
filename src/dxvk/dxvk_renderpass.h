@@ -19,11 +19,7 @@ namespace dxvk {
     VkFormat      format        = VK_FORMAT_UNDEFINED;
     VkImageLayout initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     VkImageLayout finalLayout   = VK_IMAGE_LAYOUT_UNDEFINED;
-    
-    bool operator == (const DxvkRenderTargetFormat& other) const;
-    bool operator != (const DxvkRenderTargetFormat& other) const;
-    
-    size_t hash() const;
+    VkImageLayout renderLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
   };
   
   
@@ -97,13 +93,12 @@ namespace dxvk {
     }
     
     /**
-     * \brief Computes the hash
-     * \returns Resulting hash
+     * \brief Checks whether two render pass formats are compatible
+     * 
+     * \param [in] other The render pass format to compare to
+     * \returns \c true if the render pass formats are compatible
      */
-    size_t hash() const;
-    
-    bool operator == (const DxvkRenderPassFormat& other) const;
-    bool operator != (const DxvkRenderPassFormat& other) const;
+    bool matchesFormat(const DxvkRenderPassFormat& other) const;
     
   private:
     
@@ -147,6 +142,19 @@ namespace dxvk {
       return m_format.getSampleCount();
     }
     
+    /**
+     * \brief Checks render pass format compatibility
+     * 
+     * This render pass object can be used with compatible render
+     * pass formats. Two render pass formats are compatible if the
+     * used attachments match in image format and layout.
+     * \param [in] format The render pass format to test
+     * \returns \c true if the formats match
+     */
+    bool matchesFormat(const DxvkRenderPassFormat& format) const {
+      return m_format.matchesFormat(format);
+    }
+    
   private:
     
     Rc<vk::DeviceFn>      m_vkd;
@@ -182,11 +190,8 @@ namespace dxvk {
     
     Rc<vk::DeviceFn> m_vkd;
     
-    std::mutex m_mutex;
-    std::unordered_map<
-      DxvkRenderPassFormat,
-      Rc<DxvkRenderPass>,
-      DxvkHash> m_renderPasses;
+    std::mutex                      m_mutex;
+    std::vector<Rc<DxvkRenderPass>> m_renderPasses;
     
     Rc<DxvkRenderPass> createRenderPass(
       const DxvkRenderPassFormat& fmt);

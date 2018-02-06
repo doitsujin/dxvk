@@ -10,21 +10,23 @@ namespace dxvk {
     DxvkRenderPassFormat result;
     
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-      if (m_colorTargets.at(i) != nullptr) {
+      if (m_colorTargets.at(i).view != nullptr) {
         result.setColorFormat(i, DxvkRenderTargetFormat {
-          m_colorTargets.at(i)->info().format,
-          m_colorTargets.at(i)->imageInfo().layout,
-          m_colorTargets.at(i)->imageInfo().layout });
-        result.setSampleCount(m_colorTargets.at(i)->image()->info().sampleCount);
+          m_colorTargets.at(i).view->info().format,
+          m_colorTargets.at(i).view->imageInfo().layout,
+          m_colorTargets.at(i).view->imageInfo().layout,
+          m_colorTargets.at(i).layout });
+        result.setSampleCount(m_colorTargets.at(i).view->imageInfo().sampleCount);
       }
     }
     
-    if (m_depthTarget != nullptr) {
+    if (m_depthTarget.view != nullptr) {
       result.setDepthFormat(DxvkRenderTargetFormat {
-        m_depthTarget->info().format,
-        m_depthTarget->imageInfo().layout,
-        m_depthTarget->imageInfo().layout });
-      result.setSampleCount(m_depthTarget->image()->info().sampleCount);
+        m_depthTarget.view->info().format,
+        m_depthTarget.view->imageInfo().layout,
+        m_depthTarget.view->imageInfo().layout,
+        m_depthTarget.layout });
+      result.setSampleCount(m_depthTarget.view->imageInfo().sampleCount);
     }
     
     return result;
@@ -34,12 +36,12 @@ namespace dxvk {
   std::vector<VkImageView> DxvkRenderTargets::getAttachments() const {
     std::vector<VkImageView> result;
     
-    if (m_depthTarget != nullptr)
-      result.push_back(m_depthTarget->handle());
+    if (m_depthTarget.view != nullptr)
+      result.push_back(m_depthTarget.view->handle());
     
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-      if (m_colorTargets.at(i) != nullptr)
-        result.push_back(m_colorTargets.at(i)->handle());
+      if (m_colorTargets.at(i).view != nullptr)
+        result.push_back(m_colorTargets.at(i).view->handle());
     }
     
     return result;
@@ -47,12 +49,12 @@ namespace dxvk {
   
   
   DxvkFramebufferSize DxvkRenderTargets::getImageSize() const {
-    if (m_depthTarget != nullptr)
-      return this->renderTargetSize(m_depthTarget);
+    if (m_depthTarget.view != nullptr)
+      return this->renderTargetSize(m_depthTarget.view);
     
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-      if (m_colorTargets.at(i) != nullptr)
-        return this->renderTargetSize(m_colorTargets.at(i));
+      if (m_colorTargets.at(i).view != nullptr)
+        return this->renderTargetSize(m_colorTargets.at(i).view);
     }
     
     return DxvkFramebufferSize { 0, 0, 0 };
@@ -60,10 +62,10 @@ namespace dxvk {
   
   
   bool DxvkRenderTargets::hasAttachments() const {
-    bool result = m_depthTarget != nullptr;
+    bool result = m_depthTarget.view != nullptr;
     
     for (uint32_t i = 0; (i < MaxNumRenderTargets) && !result; i++)
-      result |= m_colorTargets.at(i) != nullptr;
+      result |= m_colorTargets.at(i).view != nullptr;
     
     return result;
   }

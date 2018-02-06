@@ -69,6 +69,24 @@ namespace dxvk::util {
 }
 
 
+inline bool operator == (
+  const VkImageSubresourceRange& a,
+  const VkImageSubresourceRange& b) {
+  return a.aspectMask     == b.aspectMask
+      && a.baseMipLevel   == b.baseMipLevel
+      && a.levelCount     == b.levelCount
+      && a.baseArrayLayer == b.baseArrayLayer
+      && a.layerCount     == b.layerCount;
+}
+
+
+inline bool operator != (
+  const VkImageSubresourceRange& a,
+  const VkImageSubresourceRange& b) {
+  return !operator == (a, b);
+}
+
+
 inline bool operator == (VkExtent3D a, VkExtent3D b) {
   return a.width  == b.width
       && a.height == b.height

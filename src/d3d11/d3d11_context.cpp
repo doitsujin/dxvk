@@ -1720,12 +1720,18 @@ namespace dxvk {
     // target bindings are updated. Set up the attachments.
     if (ppRenderTargetViews != nullptr || pDepthStencilView != nullptr) {
       for (UINT i = 0; i < m_state.om.renderTargetViews.size(); i++) {
-        if (m_state.om.renderTargetViews.at(i) != nullptr)
-          attachments.setColorTarget(i, m_state.om.renderTargetViews.at(i)->GetImageView());
+        if (m_state.om.renderTargetViews.at(i) != nullptr) {
+          attachments.setColorTarget(i,
+            m_state.om.renderTargetViews.at(i)->GetImageView(),
+            m_state.om.renderTargetViews.at(i)->GetRenderLayout());
+        }
       }
       
-      if (m_state.om.depthStencilView != nullptr)
-        attachments.setDepthTarget(m_state.om.depthStencilView->GetImageView());
+      if (m_state.om.depthStencilView != nullptr) {
+        attachments.setDepthTarget(
+          m_state.om.depthStencilView->GetImageView(),
+          m_state.om.depthStencilView->GetRenderLayout());
+      }
     }
     
     // Create and bind the framebuffer object to the context

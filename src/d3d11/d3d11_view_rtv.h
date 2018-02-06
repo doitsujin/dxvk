@@ -41,6 +41,11 @@ namespace dxvk {
       return m_view;
     }
     
+    VkImageLayout GetRenderLayout() const {
+      // Currently no reason to use anything else
+      return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    }
+    
   private:
     
     Com<D3D11Device>                  m_device;
