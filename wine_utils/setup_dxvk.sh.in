@@ -6,7 +6,7 @@ dlls_dir=`dirname $(readlink -f $0)`
 build_arch='@arch@'
 
 if [ ! -f "$dlls_dir/d3d11.dll" ] || [ ! -f "$dlls_dir/dxgi.dll" ]; then
-    echo "d3d11.dll or dxgi.dll not found in $dlls_dir"
+    echo "d3d11.dll or dxgi.dll not found in $dlls_dir" >&2
     exit 1
 fi
 
@@ -16,17 +16,66 @@ else
     wine=wine
 fi
 
+quite=false
+assume=
+
+function ask {
+    echo "$1"
+    if [ -z "$assume" ]; then
+        read continue
+    else
+        continue=$assume
+        echo "$continue"
+    fi
+}
+
+POSITIONAL=()
+while [[ $# -gt 0 ]]; do
+
+    case $1 in
+    -y)
+        assume='y'
+        shift
+        ;;
+    -n)
+        assume='n'
+        shift
+        ;;
+    -q|--quiet)
+        quiet=true
+        assume=${assume:-'y'}
+        shift 
+        ;;
+    *)
+        POSITIONAL+=("$1")
+        shift
+        ;;
+    esac
+done
+set -- "${POSITIONAL[@]}"
+
+if [ "$quiet" = true ]; then
+    exec >/dev/null
+fi
+
 if [ -z "$WINEPREFIX" ]; then
-    echo "WINEPREFIX is not set, continue? (y/N)"
-    read continue
+    ask "WINEPREFIX is not set, continue? (y/N)"
     if [ "$continue" != "y" ] && [ "$continue" != "Y" ]; then
-      exit 1
+    exit 1
+    fi
+else
+    if ! [ -f "$WINEPREFIX/system.reg" ]; then
+        ask "WINEPREFIX does not point to an existing wine installation. Proceeding will create a new one, continue? (y/N)"
+        if [ "$continue" != "y" ] && [ "$continue" != "Y" ]; then
+        exit 1
+        fi
     fi
 fi
 unix_sys_path="$($wine winepath -u 'C:\windows\system32')"
 
+ret=0
+
 function removeOverride {
-    echo "$1:"
     echo -n '    [1/2] Removing override... '
     wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1 /d builtin /f
     if [ ! $? ]; then
@@ -38,35 +87,70 @@ function removeOverride {
         rm "$dll"
         if [ "$?" == "0" ]; then
             echo "Done."
+        else
+            ret=2
         fi
     else
         echo "'$dll' is not a link or doesn't exist."
+        ret=2
+    fi
+}
+
+function checkOverride {
+    echo -n '    [1/2] Checking override... '
+    local ovr="$(wine reg query 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1)"
+    if [ ! $? ]; then
+        exit 1
+    fi
+    if [[ $ovr == *native* ]] && ! [[ $ovr == *builtin,native* ]]; then
+        echo -e '\e[1;32mOK\e[0m.'
+    else
+        echo -e '\e[1;31mnot set\e[0m.'
+        ret=2
+    fi
+    echo -n "    [2/2] Checking link to $1.dll... "
+    if [ "$(readlink -f "$unix_sys_path/$1.dll")" == "$(readlink -f "$dlls_dir/$1.dll")" ]; then
+        echo -e '\e[1;32mOK\e[0m.'
+    else
+        echo -e '\e[1;31mnot set\e[0m.'
+        ret=2
     fi
 }
 
 function createOverride {
-    echo "$1:"
     echo -n '    [1/2] Creating override... '
     wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1 /d native /f
+    if [ ! $? ]; then
+        exit 1
+    fi
     echo -n "    [2/2] Creating link to $1.dll... "
     ln -sf "$dlls_dir/$1.dll" "$unix_sys_path/$1.dll"
     if [ $? ]; then
         echo "Done."
+    else
+        ret=2
     fi
 }
 
-if [ "$1" == "reset" ]; then
-    echo -n '[1/2] '
-    removeOverride d3d11
-    echo -n '[2/2] '
-    removeOverride dxgi
-elif [ -z "$1" ]; then
-    echo -n '[1/2] '
-    createOverride d3d11
-    echo -n '[2/2] '
-    createOverride dxgi
-else
+case "$1" in
+reset)
+    fun=removeOverride
+    ;;
+check)
+    fun=checkOverride
+    ;;
+'')
+    fun=createOverride
+    ;;
+*)
     echo "Unrecognized option: $1"
-    echo "Usage: $0 [reset]"
+    echo "Usage: $0 [reset|check] [-q|--quite] [-y|-n]"
     exit 1
-fi
+    ;;
+esac
+
+echo '[1/2] d3d11:'
+$fun d3d11
+echo '[2/2] dxgi:'
+$fun dxgi
+exit $ret
