@@ -28,13 +28,13 @@ ninja
 ninja install
 ```
 
-The two libraries `dxgi_vk.dll` and `d3d11_vk.dll`as well as some demo executables will be located in `/your/dxvk/directory/bin`.
+The two libraries `dxgi.dll` and `d3d11.dll`as well as some demo executables will be located in `/your/dxvk/directory/bin`.
 
 ## How to use
 In order to set up a wine prefix to use DXVK instead of wined3d globally, run:
 ```
 cd /your/dxvk/directory/bin
-WINEPREFIX=/your/wineprefix bash dlls_setup.sh
+WINEPREFIX=/your/wineprefix bash setup_dxvk.sh
 ```
 
 Verify that your application uses DXVK instead of wined3d by checking for the presence of the log files `d3d11.log` and `dxgi.log` in the application's directory, or by enabling the HUD (see notes below).
