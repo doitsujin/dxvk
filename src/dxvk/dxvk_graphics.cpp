@@ -94,6 +94,9 @@ namespace dxvk {
   VkPipeline DxvkGraphicsPipeline::compilePipeline(
     const DxvkGraphicsPipelineStateInfo& state,
           VkPipeline                     baseHandle) const {
+    if (Logger::logLevel() <= LogLevel::Debug)
+      this->logPipelineState(state);
+    
     std::array<VkDynamicState, 4> dynamicStates = {
       VK_DYNAMIC_STATE_VIEWPORT,
       VK_DYNAMIC_STATE_SCISSOR,
@@ -302,6 +305,20 @@ namespace dxvk {
     }
     
     return VK_RASTERIZATION_ORDER_STRICT_AMD;
+  }
+  
+  
+  void DxvkGraphicsPipeline::logPipelineState(
+    const DxvkGraphicsPipelineStateInfo& state) const {
+    Logger::debug("Compiling graphics pipeline...");
+    
+    if (m_vs  != nullptr) Logger::debug(str::format("  vs  : ", m_vs ->debugName()));
+    if (m_tcs != nullptr) Logger::debug(str::format("  tcs : ", m_tcs->debugName()));
+    if (m_tes != nullptr) Logger::debug(str::format("  tes : ", m_tes->debugName()));
+    if (m_gs  != nullptr) Logger::debug(str::format("  gs  : ", m_gs ->debugName()));
+    if (m_fs  != nullptr) Logger::debug(str::format("  fs  : ", m_fs ->debugName()));
+    
+    // TODO log more pipeline state
   }
   
 }

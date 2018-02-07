@@ -162,6 +162,9 @@ namespace dxvk {
     VkRasterizationOrderAMD pickRasterizationOrder(
       const DxvkGraphicsPipelineStateInfo& state) const;
     
+    void logPipelineState(
+      const DxvkGraphicsPipelineStateInfo& state) const;
+    
   };
   
 }

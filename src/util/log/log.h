@@ -35,6 +35,10 @@ namespace dxvk {
     static void warn (const std::string& message);
     static void err  (const std::string& message);
     
+    static LogLevel logLevel() {
+      return s_instance.m_minLevel;
+    }
+    
   private:
     
     static Logger s_instance;

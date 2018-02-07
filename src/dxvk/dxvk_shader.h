@@ -37,7 +37,8 @@ namespace dxvk {
     DxvkShaderModule(
       const Rc<vk::DeviceFn>&     vkd,
             VkShaderStageFlagBits stage,
-      const SpirvCodeBuffer&      code);
+      const SpirvCodeBuffer&      code,
+      const std::string&          name);
     
     ~DxvkShaderModule();
     
@@ -58,11 +59,20 @@ namespace dxvk {
     VkPipelineShaderStageCreateInfo stageInfo(
       const VkSpecializationInfo* specInfo) const;
     
+    /**
+     * \brief The shader's debug name
+     * \returns Debug name
+     */
+    const std::string& debugName() const {
+      return m_debugName;
+    }
+    
   private:
     
     Rc<vk::DeviceFn>      m_vkd;
     VkShaderStageFlagBits m_stage;
     VkShaderModule        m_module;
+    std::string           m_debugName;
     
   };
   
@@ -137,6 +147,17 @@ namespace dxvk {
      */
     void read(std::istream&& inputStream);
     
+    /**
+     * \brief Sets the shader's debug name
+     * 
+     * Debug names may be used by the backend in
+     * order to help debug shader compiler issues.
+     * \param [in] name The shader's name
+     */
+    void setDebugName(const std::string& name) {
+      m_debugName = name;
+    }
+    
   private:
     
     VkShaderStageFlagBits m_stage;
@@ -144,6 +165,7 @@ namespace dxvk {
     
     std::vector<DxvkResourceSlot> m_slots;
     DxvkInterfaceSlots            m_interface;
+    std::string                   m_debugName;
     
   };
   

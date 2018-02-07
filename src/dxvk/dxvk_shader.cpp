@@ -5,8 +5,9 @@ namespace dxvk {
   DxvkShaderModule::DxvkShaderModule(
     const Rc<vk::DeviceFn>&     vkd,
           VkShaderStageFlagBits stage,
-    const SpirvCodeBuffer&      code)
-  : m_vkd(vkd), m_stage(stage) {
+    const SpirvCodeBuffer&      code,
+    const std::string&          name)
+  : m_vkd(vkd), m_stage(stage), m_debugName(name) {
     VkShaderModuleCreateInfo info;
     info.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     info.pNext    = nullptr;
@@ -81,7 +82,7 @@ namespace dxvk {
       }
     }
     
-    return new DxvkShaderModule(vkd, m_stage, spirvCode);
+    return new DxvkShaderModule(vkd, m_stage, spirvCode, m_debugName);
   }
   
   

@@ -37,7 +37,8 @@ namespace dxvk {
     }
     
     m_shader = module.compile(*pDxbcOptions);
-      
+    m_shader->setDebugName(m_name);
+    
     if (dumpPath.size() != 0) {
       m_shader->dump(std::ofstream(str::format(dumpPath, "/", m_name, ".spv"),
         std::ios_base::binary | std::ios_base::trunc));
