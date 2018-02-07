@@ -7,7 +7,7 @@ namespace dxvk {
   bool DxvkRenderPassFormat::matchesFormat(const DxvkRenderPassFormat& other) const {
     bool equal = m_samples == other.m_samples;
     
-    equal =  m_depth.format         == other.m_depth.format
+    equal &= m_depth.format         == other.m_depth.format
           && m_depth.initialLayout  == other.m_depth.initialLayout
           && m_depth.finalLayout    == other.m_depth.finalLayout
           && m_depth.renderLayout   == other.m_depth.renderLayout;
