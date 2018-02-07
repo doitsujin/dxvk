@@ -33,18 +33,18 @@ namespace dxvk {
   }
   
   
-  std::vector<VkImageView> DxvkRenderTargets::getAttachments() const {
-    std::vector<VkImageView> result;
+  uint32_t DxvkRenderTargets::getAttachments(VkImageView* viewHandles) const {
+    uint32_t numViews = 0;
     
     if (m_depthTarget.view != nullptr)
-      result.push_back(m_depthTarget.view->handle());
+      viewHandles[numViews++] = m_depthTarget.view->handle();
     
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       if (m_colorTargets.at(i).view != nullptr)
-        result.push_back(m_colorTargets.at(i).view->handle());
+        viewHandles[numViews++] = m_colorTargets.at(i).view->handle();
     }
     
-    return result;
+    return numViews;
   }
   
   
@@ -87,14 +87,15 @@ namespace dxvk {
     m_renderPass      (renderPass),
     m_renderTargets   (renderTargets),
     m_framebufferSize (renderTargets.getImageSize()) {
-    auto views = renderTargets.getAttachments();
+    std::array<VkImageView, MaxNumRenderTargets + 1> views;
+    uint32_t viewCount = renderTargets.getAttachments(views.data());
     
     VkFramebufferCreateInfo info;
     info.sType                = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     info.pNext                = nullptr;
     info.flags                = 0;
     info.renderPass           = renderPass->handle();
-    info.attachmentCount      = views.size();
+    info.attachmentCount      = viewCount;
     info.pAttachments         = views.data();
     info.width                = m_framebufferSize.width;
     info.height               = m_framebufferSize.height;

@@ -95,9 +95,11 @@ namespace dxvk {
     
     /**
      * \brief Creates attachment list
-     * \returns Framebuffer attachment list
+     * 
+     * \param [out] viewHandles Attachment handles
+     * \returns Framebuffer attachment count
      */
-    std::vector<VkImageView> getAttachments() const;
+    uint32_t getAttachments(VkImageView* viewHandles) const;
     
     /**
      * \brief Framebuffer size
