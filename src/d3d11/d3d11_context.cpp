@@ -164,6 +164,11 @@ namespace dxvk {
           void*                             pData,
           UINT                              DataSize,
           UINT                              GetDataFlags) {
+    // Make sure that we can safely write to the memory
+    // location pointed to by pData if it is specified.
+    if (DataSize == 0)
+      pData = nullptr;
+    
     if (pData != nullptr && pAsync->GetDataSize() != DataSize) {
       Logger::err(str::format("D3D11DeviceContext: GetData: Data size mismatch: ", pAsync->GetDataSize(), ",", DataSize));
       return E_INVALIDARG;
