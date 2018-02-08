@@ -84,7 +84,7 @@ namespace dxvk {
         
       case DxbcInstClass::GeometryEmit:
         return this->emitGeometryEmit(ins);
-        
+      
       case DxbcInstClass::TextureQuery:
         return this->emitTextureQuery(ins);
         
@@ -191,6 +191,9 @@ namespace dxvk {
     switch (ins.op) {
       case DxbcOpcode::DclGlobalFlags:
         return this->emitDclGlobalFlags(ins);
+        
+      case DxbcOpcode::DclIndexRange:
+        return;  // not needed for anything
         
       case DxbcOpcode::DclTemps:
         return this->emitDclTemps(ins);

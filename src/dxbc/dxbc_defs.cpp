@@ -470,7 +470,10 @@ namespace dxvk {
       { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
     } },
     /* DclIndexRange                        */
-    { },
+    { 2, DxbcInstClass::Declaration, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::Imm32,  DxbcScalarType::Uint32  },
+    } },
     /* DclGsOutputPrimitiveTopology         */
     { 0, DxbcInstClass::Declaration },
     /* DclGsInputPrimitive                  */
