@@ -444,6 +444,26 @@ namespace dxvk {
           "oDepth");
       } break;
       
+      case DxbcOperandType::OutputDepthGe: {
+        m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeDepthReplacing);
+        m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeDepthGreater);
+        m_ps.builtinDepth = emitNewBuiltinVariable({
+          { DxbcScalarType::Float32, 1, 0 },
+          spv::StorageClassOutput },
+          spv::BuiltInFragDepth,
+          "oDepthGe");
+      } break;
+      
+      case DxbcOperandType::OutputDepthLe: {
+        m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeDepthReplacing);
+        m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeDepthLess);
+        m_ps.builtinDepth = emitNewBuiltinVariable({
+          { DxbcScalarType::Float32, 1, 0 },
+          spv::StorageClassOutput },
+          spv::BuiltInFragDepth,
+          "oDepthLe");
+      } break;
+      
       default:
         Logger::err(str::format(
           "DxbcCompiler: Unsupported operand type declaration: ",
@@ -3770,6 +3790,8 @@ namespace dxvk {
           m_ps.builtinSampleMaskOut };
         
       case DxbcOperandType::OutputDepth:
+      case DxbcOperandType::OutputDepthGe:
+      case DxbcOperandType::OutputDepthLe:
         return DxbcRegisterPointer {
           { DxbcScalarType::Float32, 1 },
           m_ps.builtinDepth };
