@@ -96,6 +96,15 @@ namespace dxvk {
     }
     
     
+    void cmdBeginQuery(
+            VkQueryPool             queryPool,
+            uint32_t                query,
+            VkQueryControlFlags     flags) {
+      m_vkd->vkCmdBeginQuery(m_buffer,
+        queryPool, query, flags);
+    }
+    
+    
     void cmdBeginRenderPass(
       const VkRenderPassBeginInfo*  pRenderPassBegin,
             VkSubpassContents       contents) {
@@ -300,6 +309,13 @@ namespace dxvk {
     }
     
     
+    void cmdEndQuery(
+            VkQueryPool             queryPool,
+            uint32_t                query) {
+      m_vkd->vkCmdEndQuery(m_buffer, queryPool, query);
+    }
+    
+    
     void cmdEndRenderPass() {
       m_vkd->vkCmdEndRenderPass(m_buffer);
     }
@@ -341,6 +357,15 @@ namespace dxvk {
       const void*                   pValues) {
       m_vkd->vkCmdPushConstants(m_buffer,
         layout, stageFlags, offset, size, pValues);
+    }
+    
+    
+    void cmdResetQueryPool(
+            VkQueryPool             queryPool,
+            uint32_t                firstQuery,
+            uint32_t                queryCount) {
+      m_vkd->vkCmdResetQueryPool(m_buffer,
+        queryPool, firstQuery, queryCount);
     }
     
     
@@ -396,6 +421,15 @@ namespace dxvk {
       const VkViewport*             viewports) {
       m_vkd->vkCmdSetViewport(m_buffer,
         firstViewport, viewportCount, viewports);
+    }
+    
+    
+    void cmdWriteTimestamp(
+            VkPipelineStageFlagBits pipelineStage,
+            VkQueryPool             queryPool,
+            uint32_t                query) {
+      m_vkd->vkCmdWriteTimestamp(m_buffer,
+        pipelineStage, queryPool, query);
     }
     
     
