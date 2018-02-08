@@ -1381,6 +1381,7 @@ namespace dxvk {
       enabled.depthBounds                           = VK_TRUE;
       enabled.fillModeNonSolid                      = VK_TRUE;
       enabled.pipelineStatisticsQuery               = supported.pipelineStatisticsQuery;
+      enabled.sampleRateShading                     = VK_TRUE;
       enabled.samplerAnisotropy                     = VK_TRUE;
       enabled.shaderClipDistance                    = VK_TRUE;
       enabled.shaderCullDistance                    = VK_TRUE;
