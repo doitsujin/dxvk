@@ -87,7 +87,7 @@ function removeOverride {
         echo -e "\\e[1;31m$out\\e[0m"
         exit 1
     fi
-    echo -e "\\e[1;32m$out\\e[0m."
+    echo -e "$(sed -e 's|\r||g' <<< "\\e[1;32m$out\\e[0m.")"
     local dll="$unix_sys_path/$1.dll"
     echo -n '    [2/2] Removing link... '
     if [ -h "$dll" ]; then
@@ -137,7 +137,7 @@ function createOverride {
         echo -e "\\e[1;31m$out\\e[0m"
         exit 1
     fi
-    echo -e "\\e[1;32m$out\\e[0m."
+    echo -e "$(sed -e 's|\r||g' <<< "\\e[1;32m$out\\e[0m.")"
     echo -n "    [2/2] Creating link to $1.dll... "
     ln -sf "$dlls_dir/$1.dll" "$unix_sys_path/$1.dll"
     if [ $? -eq 0 ]; then
