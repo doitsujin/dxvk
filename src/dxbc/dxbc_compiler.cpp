@@ -256,7 +256,10 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitDclGlobalFlags(const DxbcShaderInstruction& ins) {
-    // TODO implement properly
+    const DxbcGlobalFlags flags = ins.controls.globalFlags;
+    
+    if (flags.test(DxbcGlobalFlag::EarlyFragmentTests))
+      m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeEarlyFragmentTests);
   }
   
   

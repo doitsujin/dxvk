@@ -242,6 +242,7 @@ namespace dxvk {
    * only one of the members will be valid.
    */
   struct DxbcShaderOpcodeControls {
+    DxbcGlobalFlags       globalFlags;
     DxbcZeroTest          zeroTest;
     DxbcSyncFlags         syncFlags;
     DxbcResourceDim       resourceDim;

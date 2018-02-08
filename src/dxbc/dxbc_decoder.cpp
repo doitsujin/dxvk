@@ -106,6 +106,8 @@ namespace dxvk {
     m_instruction.modifiers.precise  = !!bit::extract(token, 19, 22);
     
     // Opcode controls. It will depend on the opcode itself which ones are valid.
+    m_instruction.controls.globalFlags =
+      static_cast<DxbcGlobalFlag>(bit::extract(token, 11, 14));
     m_instruction.controls.zeroTest =
       static_cast<DxbcZeroTest>(bit::extract(token, 18, 18));
     m_instruction.controls.syncFlags =
