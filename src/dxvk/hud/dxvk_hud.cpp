@@ -29,9 +29,8 @@ namespace dxvk::hud {
       
     m_hudFps.update();
     
-    this->synchronize();
-    this->updateUniformBuffer();
     this->beginRenderPass(recreateFbo);
+    this->updateUniformBuffer();
     this->renderText();
     this->endRenderPass();
   }
@@ -73,24 +72,13 @@ namespace dxvk::hud {
   }
   
   
-  void Hud::synchronize() {
-    // Wait for previous frame to complete so that we can
-    // safely write to the uniform/vertex buffers. We could
-    // actually avoid this by double-buffering the data, but
-    // it is probably not worth the effort.
-    if (m_syncFence != nullptr) {
-      m_syncFence->wait(
-        std::numeric_limits<uint64_t>::max());
-    }
-  }
-  
-  
   void Hud::updateUniformBuffer() {
     HudUniformData uniformData;
     uniformData.surfaceSize = m_surfaceSize;
     
-    std::memcpy(m_uniformBuffer->mapPtr(0),
-      &uniformData, sizeof(uniformData));
+    auto slice = m_uniformBuffer->allocPhysicalSlice();
+    m_context->invalidateBuffer(m_uniformBuffer, slice);
+    std::memcpy(slice.mapPtr(0), &uniformData, sizeof(uniformData));
   }
   
   
@@ -139,8 +127,9 @@ namespace dxvk::hud {
   
   
   void Hud::endRenderPass() {
-    m_syncFence = m_device->submitCommandList(
-      m_context->endRecording(), nullptr, nullptr);
+    m_device->submitCommandList(
+      m_context->endRecording(),
+      nullptr, nullptr);
   }
   
   

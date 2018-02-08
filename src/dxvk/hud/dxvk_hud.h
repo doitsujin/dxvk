@@ -68,7 +68,6 @@ namespace dxvk::hud {
     HudTextRenderer       m_textRenderer;
     VkExtent2D            m_surfaceSize = { 0, 0 };
     
-    Rc<DxvkFence>         m_syncFence;
     Rc<DxvkBuffer>        m_uniformBuffer;
     Rc<DxvkImage>         m_renderTarget;
     Rc<DxvkImageView>     m_renderTargetView;
@@ -81,7 +80,6 @@ namespace dxvk::hud {
     
     Rc<DxvkBuffer> createUniformBuffer();
     
-    void synchronize();
     void updateUniformBuffer();
     void beginRenderPass(bool initFbo);
     void endRenderPass();

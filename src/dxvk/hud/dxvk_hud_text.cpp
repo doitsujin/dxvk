@@ -68,8 +68,11 @@ namespace dxvk::hud {
     const std::string&      text) {
     const size_t vertexIndex = m_vertexIndex;
     
+    auto vertexSlice = m_vertexBuffer->allocPhysicalSlice();
+    context->invalidateBuffer(m_vertexBuffer, vertexSlice);
+    
     HudTextVertex* vertexData = reinterpret_cast<HudTextVertex*>(
-      m_vertexBuffer->mapPtr(vertexIndex * sizeof(HudTextVertex)));
+      vertexSlice.mapPtr(vertexIndex * sizeof(HudTextVertex)));
     
     const float sizeFactor = size / static_cast<float>(g_hudFont.size);
     
