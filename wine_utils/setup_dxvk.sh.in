@@ -144,7 +144,7 @@ check)
     ;;
 *)
     echo "Unrecognized option: $1"
-    echo "Usage: $0 [reset|check] [-q|--quite] [-y|-n]"
+    echo "Usage: $0 [reset|check] [-q|--quiet] [-y|-n]"
     exit 1
     ;;
 esac
