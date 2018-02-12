@@ -72,36 +72,48 @@ else
     fi
 fi
 unix_sys_path="$($wine winepath -u 'C:\windows\system32')"
+if [ $? -ne 0 ]; then
+    exit 1
+fi
+
 
 ret=0
 
 function removeOverride {
     echo -n '    [1/2] Removing override... '
-    wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1 /d builtin /f
-    if [ ! $? ]; then
+    local out
+    out=$(wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1 /d builtin /f 2>&1)
+    if [ $? -ne 0 ]; then
+        echo -e "\\e[1;31m$out\\e[0m"
         exit 1
     fi
+    echo -e "$(sed -e 's|\r||g' <<< "\\e[1;32m$out\\e[0m.")"
     local dll="$unix_sys_path/$1.dll"
     echo -n '    [2/2] Removing link... '
     if [ -h "$dll" ]; then
-        rm "$dll"
-        if [ "$?" == "0" ]; then
-            echo "Done."
+        out=$(rm "$dll" 2>&1)
+        if [ $? -eq 0 ]; then
+            echo -e '\e[1;32mDone\e[0m.'
         else
             ret=2
+            echo -e "\\e[1;31m$out\\e[0m"
         fi
     else
-        echo "'$dll' is not a link or doesn't exist."
+        echo -e "\\e[1;33m'$dll' is not a link or doesn't exist\\e[0m."
         ret=2
     fi
 }
 
 function checkOverride {
     echo -n '    [1/2] Checking override... '
-    local ovr="$(wine reg query 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1)"
-    if [ ! $? ]; then
+    echo -en '\e[1;31m'
+    local ovr
+    ovr="$(wine reg query 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1)"
+    if [ $? -ne 0 ]; then
+        echo -en '\e[1;0m'
         exit 1
     fi
+    echo -en '\e[1;0m'
     if [[ $ovr == *native* ]] && ! [[ $ovr == *builtin,native* ]]; then
         echo -e '\e[1;32mOK\e[0m.'
     else
@@ -119,16 +131,20 @@ function checkOverride {
 
 function createOverride {
     echo -n '    [1/2] Creating override... '
-    wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1 /d native /f
-    if [ ! $? ]; then
+    local out
+    out=$(wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1 /d native /f 2>&1)
+    if [ $? -ne 0 ]; then
+        echo -e "\\e[1;31m$out\\e[0m"
         exit 1
     fi
+    echo -e "$(sed -e 's|\r||g' <<< "\\e[1;32m$out\\e[0m.")"
     echo -n "    [2/2] Creating link to $1.dll... "
     ln -sf "$dlls_dir/$1.dll" "$unix_sys_path/$1.dll"
-    if [ $? ]; then
-        echo "Done."
+    if [ $? -eq 0 ]; then
+        echo -e '\e[1;32mDone\e[0m.'
     else
         ret=2
+        echo -e "\\e[1;31m$out\\e[0m"
     fi
 }
 
