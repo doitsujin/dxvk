@@ -58,6 +58,16 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::beginQuery(const Rc<DxvkQuery>& query) {
+    // TODO implement
+  }
+  
+  
+  void DxvkContext::endQuery(const Rc<DxvkQuery>& query) {
+    // TODO implement
+  }
+  
+    
   void DxvkContext::bindFramebuffer(const Rc<DxvkFramebuffer>& fb) {
     if (m_state.om.framebuffer != fb) {
       this->renderPassEnd();

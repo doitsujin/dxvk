@@ -1,38 +1,103 @@
 #include "dxvk_query.h"
 
 namespace dxvk {
+  
+  DxvkQuery::DxvkQuery(VkQueryType type)
+  : m_type(type) {
     
-  DxvkQuery::DxvkQuery(
-    const Rc<vk::DeviceFn>& vkd,
-          VkQueryType       type)
-  : m_vkd(vkd), m_type(type) {
-    VkQueryPoolCreateInfo info;
-    info.sType      = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
-    info.pNext      = nullptr;
-    info.flags      = 0;
-    info.queryType  = type;
-    info.queryCount = MaxNumQueryCountPerPool;
-    info.pipelineStatistics
-      = VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_VERTICES_BIT
-      | VK_QUERY_PIPELINE_STATISTIC_INPUT_ASSEMBLY_PRIMITIVES_BIT
-      | VK_QUERY_PIPELINE_STATISTIC_VERTEX_SHADER_INVOCATIONS_BIT
-      | VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_INVOCATIONS_BIT
-      | VK_QUERY_PIPELINE_STATISTIC_GEOMETRY_SHADER_PRIMITIVES_BIT
-      | VK_QUERY_PIPELINE_STATISTIC_CLIPPING_INVOCATIONS_BIT
-      | VK_QUERY_PIPELINE_STATISTIC_CLIPPING_PRIMITIVES_BIT
-      | VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT
-      | VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_CONTROL_SHADER_PATCHES_BIT
-      | VK_QUERY_PIPELINE_STATISTIC_TESSELLATION_EVALUATION_SHADER_INVOCATIONS_BIT
-      | VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT;
-    
-    if (m_vkd->vkCreateQueryPool(m_vkd->device(), &info, nullptr, &m_queryPool) != VK_SUCCESS)
-      throw DxvkError("DXVK: Failed to create query pool");
   }
   
   
   DxvkQuery::~DxvkQuery() {
-    m_vkd->vkDestroyQueryPool(
-      m_vkd->device(), m_queryPool, nullptr);
+    
+  }
+  
+  
+  uint32_t DxvkQuery::invalidate() {
+    std::unique_lock<std::mutex> lock(m_mutex);
+    
+    m_status = DxvkQueryStatus::Reset;
+    m_data = DxvkQueryData { };
+    
+    m_queryIndex = 0;
+    m_queryCount = 0;
+    
+    return ++m_revision;
+  }
+  
+  
+  DxvkQueryStatus DxvkQuery::getData(DxvkQueryData& data) {
+    std::unique_lock<std::mutex> lock(m_mutex);
+    
+    if (m_status == DxvkQueryStatus::Available)
+      data = m_data;
+    
+    return m_status;
+  }
+  
+  
+  void DxvkQuery::beginRecording(uint32_t revision) {
+    std::unique_lock<std::mutex> lock(m_mutex);
+    
+    if (m_revision == revision)
+      m_status = DxvkQueryStatus::Active;
+  }
+  
+  
+  void DxvkQuery::endRecording(uint32_t revision) {
+    std::unique_lock<std::mutex> lock(m_mutex);
+    
+    if (m_revision == revision)
+      m_status = DxvkQueryStatus::Pending;
+  }
+  
+  
+  void DxvkQuery::associateQuery(uint32_t revision) {
+    std::unique_lock<std::mutex> lock(m_mutex);
+    
+    if (m_revision == revision)
+      m_queryCount += 1;
+  }
+  
+  
+  void DxvkQuery::updateData(
+          uint32_t       revision,
+    const DxvkQueryData& data) {
+    std::unique_lock<std::mutex> lock(m_mutex);
+    
+    if (m_revision == revision) {
+      switch (m_type) {
+        case VK_QUERY_TYPE_OCCLUSION:
+          m_data.occlusion.samplesPassed += data.occlusion.samplesPassed;
+          break;
+        
+        case VK_QUERY_TYPE_TIMESTAMP:
+          m_data.timestamp.time = data.timestamp.time;
+          break;
+        
+        case VK_QUERY_TYPE_PIPELINE_STATISTICS:
+          m_data.statistic.iaVertices       += data.statistic.iaVertices;
+          m_data.statistic.iaPrimitives     += data.statistic.iaPrimitives;
+          m_data.statistic.vsInvocations    += data.statistic.vsInvocations;
+          m_data.statistic.gsInvocations    += data.statistic.gsInvocations;
+          m_data.statistic.gsPrimitives     += data.statistic.gsPrimitives;
+          m_data.statistic.clipInvocations  += data.statistic.clipInvocations;
+          m_data.statistic.clipPrimitives   += data.statistic.clipPrimitives;
+          m_data.statistic.fsInvocations    += data.statistic.fsInvocations;
+          m_data.statistic.tcsPatches       += data.statistic.tcsPatches;
+          m_data.statistic.tesInvocations   += data.statistic.tesInvocations;
+          m_data.statistic.csInvocations    += data.statistic.csInvocations;
+          break;
+        
+        default:
+          Logger::err(str::format("DxvkQuery: Unhandled query type: ", m_type));
+      }
+      
+      if (++m_queryIndex == m_queryCount && m_status == DxvkQueryStatus::Pending) {
+        m_status = DxvkQueryStatus::Available;
+        m_signal.notify_all();
+      }
+    }
   }
   
 }

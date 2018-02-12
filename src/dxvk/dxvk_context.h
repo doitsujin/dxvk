@@ -5,6 +5,7 @@
 #include "dxvk_cmdlist.h"
 #include "dxvk_context_state.h"
 #include "dxvk_data.h"
+#include "dxvk_query.h"
 #include "dxvk_util.h"
 
 namespace dxvk {
@@ -46,6 +47,21 @@ namespace dxvk {
      * \returns Active command list
      */
     Rc<DxvkCommandList> endRecording();
+    
+    /**
+     * \brief Begins gathering query data
+     * \param [in] query The query to end
+     */
+    void beginQuery(
+      const Rc<DxvkQuery>& query);
+    
+    /**
+     * \brief Ends gathering query data
+     * 
+     * \param [in] query The query to end
+     */
+    void endQuery(
+      const Rc<DxvkQuery>& query);
     
     /**
      * \brief Sets framebuffer
