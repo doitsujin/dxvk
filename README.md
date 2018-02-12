@@ -10,8 +10,8 @@ For binary releases, see the [releases](https://github.com/doitsujin/dxvk/releas
 
 ### Requirements:
 - [wine-staging](https://wine-staging.com/) for Vulkan support
-- [Meson](http://mesonbuild.com/) build system
-- [MinGW64](http://mingw-w64.org/) compiler and headers
+- [Meson](http://mesonbuild.com/) build system (at least 0.43)
+- [MinGW64](http://mingw-w64.org/) compiler and headers (requires threading support)
 - [glslang](https://github.com/KhronosGroup/glslang) front end and validator
 
 ### Building DLLs
@@ -63,3 +63,14 @@ In addition to the DLLs, the following standalone programs are included in the p
 - `dxbc-compiler`: Compiles a DXBC shader to SPIR-V.
 - `dxbc-disasm`: Disassembles a DXBC shader. Requires native `d3dcompiler_47.dll`.
 - `hlsl-compiler`: Compiles a HLSL shader to DXBC. Requires native `d3dcompiler_47.dll`.
+
+## Troubleshooting
+DXVK requires threading support from your mingw-w64 build environment. If you
+are missing this, you may see "error: 'mutex' is not a member of 'std'". On
+Debian, this can usually be resolved by using the posix alternate, which
+supports threading. For example, choose the posix alternate from these
+commands (use i686 for 32-bit):
+```
+update-alternatives --config x86_64-w64-mingw32-gcc
+update-alternatives --config x86_64-w64-mingw32-g++
+```
