@@ -16,7 +16,7 @@ else
     wine=wine
 fi
 
-quite=false
+quiet=false
 assume=
 
 function ask {
