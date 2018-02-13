@@ -145,6 +145,12 @@ namespace dxvk {
   }
   
   
+  Rc<DxvkQueryPool> DxvkDevice::createQueryPool(
+          VkQueryType               queryType) {
+    return new DxvkQueryPool(m_vkd, queryType);
+  }
+  
+  
   Rc<DxvkSampler> DxvkDevice::createSampler(
     const DxvkSamplerCreateInfo&  createInfo) {
     return new DxvkSampler(m_vkd, createInfo);

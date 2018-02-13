@@ -5,7 +5,7 @@
 #include "dxvk_cmdlist.h"
 #include "dxvk_context_state.h"
 #include "dxvk_data.h"
-#include "dxvk_query.h"
+#include "dxvk_query_pool.h"
 #include "dxvk_util.h"
 
 namespace dxvk {
@@ -49,19 +49,18 @@ namespace dxvk {
     Rc<DxvkCommandList> endRecording();
     
     /**
-     * \brief Begins gathering query data
+     * \brief Begins generating query data
      * \param [in] query The query to end
      */
     void beginQuery(
-      const Rc<DxvkQuery>& query);
+      const DxvkQueryRevision&  query);
     
     /**
-     * \brief Ends gathering query data
-     * 
+     * \brief Ends generating query data
      * \param [in] query The query to end
      */
     void endQuery(
-      const Rc<DxvkQuery>& query);
+      const DxvkQueryRevision&  query);
     
     /**
      * \brief Sets framebuffer
@@ -555,6 +554,8 @@ namespace dxvk {
     VkPipeline m_gpActivePipeline = VK_NULL_HANDLE;
     VkPipeline m_cpActivePipeline = VK_NULL_HANDLE;
     
+    std::vector<DxvkQueryRevision> m_activeQueries;
+    
     std::array<DxvkShaderResourceSlot, MaxNumResourceSlots>  m_rc;
     std::array<DxvkDescriptorInfo,     MaxNumActiveBindings> m_descInfos;
     std::array<VkWriteDescriptorSet,   MaxNumActiveBindings> m_descWrites;
@@ -593,6 +594,19 @@ namespace dxvk {
     void commitGraphicsState();
     
     void commitComputeBarriers();
+    
+    void resetQueryPool(
+      const Rc<DxvkQueryPool>& pool);
+    
+    void beginActiveQueries();
+    
+    void endActiveQueries();
+    
+    void insertActiveQuery(
+      const DxvkQueryRevision& query);
+    
+    void eraseActiveQuery(
+      const DxvkQueryRevision& query);
     
   };
   

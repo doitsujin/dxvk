@@ -16,18 +16,56 @@ namespace dxvk {
   public:
     
     DxvkQueryPool(
-      const Rc<vk::DeviceFn>& fn,
-            VkQueryType       queryType,
-            uint32_t          queryCount);
+      const Rc<vk::DeviceFn>& vkd,
+            VkQueryType       queryType);
     
     ~DxvkQueryPool();
+    
+    /**
+     * \brief Query pool handle
+     * \returns Query pool handle
+     */
+    VkQueryPool handle() const {
+      return m_queryPool;
+    }
+    
+    /**
+     * \brief Query count
+     * \returns Query count
+     */
+    uint32_t queryCount() const {
+      return MaxNumQueryCountPerPool;
+    }
+    
+    /**
+     * \brief Allocates a Vulkan query
+     * 
+     * \param [in] revision Query revision
+     * \returns The query ID and pool handle
+     */
+    DxvkQueryHandle allocQuery(
+      const DxvkQueryRevision& revision);
+    
+    /**
+     * \brief Writes back data for a range of queries
+     * 
+     * \param [in] queryIndex First query in the range
+     * \param [in] queryCount Number of queries
+     * \returns Query result status
+     */
+    VkResult getData(
+            uint32_t          queryIndex,
+            uint32_t          queryCount);
     
   private:
     
     Rc<vk::DeviceFn> m_vkd;
-    VkQueryPool      m_queryPool = VK_NULL_HANDLE;
     
-    std::vector<Rc<DxvkQuery>> m_queries;
+    VkQueryType m_queryType;
+    VkQueryPool m_queryPool = VK_NULL_HANDLE;
+    
+    std::array<DxvkQueryRevision, MaxNumQueryCountPerPool> m_queries;
+    uint32_t                                               m_queryId = 0;
     
   };
   

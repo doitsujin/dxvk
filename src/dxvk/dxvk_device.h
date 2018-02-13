@@ -13,6 +13,7 @@
 #include "dxvk_pipecache.h"
 #include "dxvk_pipemanager.h"
 #include "dxvk_queue.h"
+#include "dxvk_query_pool.h"
 #include "dxvk_recycler.h"
 #include "dxvk_renderpass.h"
 #include "dxvk_sampler.h"
@@ -205,6 +206,13 @@ namespace dxvk {
     Rc<DxvkImageView> createImageView(
       const Rc<DxvkImage>&            image,
       const DxvkImageViewCreateInfo&  createInfo);
+    
+    /**
+     * \brief Creates a query pool
+     * \param [in] queryType Query type
+     */
+    Rc<DxvkQueryPool> createQueryPool(
+            VkQueryType               queryType);
     
     /**
      * \brief Creates a sampler object

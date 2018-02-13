@@ -72,6 +72,17 @@ namespace dxvk {
   };
   
   /**
+   * \brief Query entry
+   * 
+   * Stores the pool handle and the
+   * index of a single Vulkan query.
+   */
+  struct DxvkQueryHandle {
+    VkQueryPool queryPool = VK_NULL_HANDLE;
+    uint32_t    queryId   = 0;
+  };
+  
+  /**
    * \brief Query object
    * 
    * Represents a single virtual query. Since queries
@@ -106,6 +117,12 @@ namespace dxvk {
             DxvkQueryData& data);
     
     /**
+     * \brief Gets current query handle
+     * \returns The current query handle
+     */
+    DxvkQueryHandle getHandle();
+    
+    /**
      * \brief Begins recording the query
      * 
      * Sets internal query state to 'active'.
@@ -127,8 +144,11 @@ namespace dxvk {
      * The internal query count is used to determine
      * when the query data is actually available.
      * \param [in] revision Query version ID
+     * \param [in] handle The query handle
      */
-    void associateQuery(uint32_t revision);
+    void associateQuery(
+            uint32_t        revision,
+            DxvkQueryHandle handle);
     
     /**
      * \brief Updates query data
@@ -151,11 +171,23 @@ namespace dxvk {
     
     DxvkQueryStatus m_status   = DxvkQueryStatus::Reset;
     DxvkQueryData   m_data     = {};
+    DxvkQueryHandle m_handle;
     
     uint32_t m_queryIndex = 0;
     uint32_t m_queryCount = 0;
     uint64_t m_revision   = 0;
     
+  };
+  
+  /**
+   * \brief Query revision
+   * 
+   * Stores the query object and the
+   * version ID for query operations.
+   */
+  struct DxvkQueryRevision {
+    Rc<DxvkQuery> query;
+    uint32_t      revision;
   };
   
 }

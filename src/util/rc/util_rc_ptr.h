@@ -115,14 +115,6 @@ namespace dxvk {
     
   };
   
-  
-  template<typename T>
-  struct RcHash {
-    size_t operator () (const Rc<T>& rc) const {
-      return std::hash<T*>()(rc.ptr());
-    }
-  };
-  
 }
 
 template<typename T>

@@ -36,6 +36,11 @@ namespace dxvk {
   }
   
   
+  DxvkQueryHandle DxvkQuery::getHandle() {
+    return m_handle;
+  }
+  
+  
   void DxvkQuery::beginRecording(uint32_t revision) {
     std::unique_lock<std::mutex> lock(m_mutex);
     
@@ -47,16 +52,28 @@ namespace dxvk {
   void DxvkQuery::endRecording(uint32_t revision) {
     std::unique_lock<std::mutex> lock(m_mutex);
     
-    if (m_revision == revision)
-      m_status = DxvkQueryStatus::Pending;
+    if (m_revision == revision) {
+      if (m_queryIndex < m_queryCount) {
+        m_status = DxvkQueryStatus::Pending;
+      } else {
+        m_status = DxvkQueryStatus::Available;
+        m_signal.notify_all();
+      }
+      
+      m_handle = DxvkQueryHandle();
+    }
   }
   
   
-  void DxvkQuery::associateQuery(uint32_t revision) {
+  void DxvkQuery::associateQuery(uint32_t revision, DxvkQueryHandle handle) {
     std::unique_lock<std::mutex> lock(m_mutex);
     
     if (m_revision == revision)
       m_queryCount += 1;
+    
+    // Assign the handle either way as this
+    // will be used by the DXVK context.
+    m_handle = handle;
   }
   
   
