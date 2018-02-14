@@ -1,7 +1,19 @@
+#include <cstring>
+
 #include "dxvk_compute.h"
 #include "dxvk_device.h"
 
 namespace dxvk {
+  
+  bool DxvkComputePipelineStateInfo::operator == (const DxvkComputePipelineStateInfo& other) const {
+    return std::memcmp(this, &other, sizeof(DxvkComputePipelineStateInfo)) == 0;
+  }
+  
+  
+  bool DxvkComputePipelineStateInfo::operator != (const DxvkComputePipelineStateInfo& other) const {
+    return std::memcmp(this, &other, sizeof(DxvkComputePipelineStateInfo)) != 0;
+  }
+  
   
   DxvkComputePipeline::DxvkComputePipeline(
     const DxvkDevice*             device,
@@ -25,6 +37,13 @@ namespace dxvk {
   DxvkComputePipeline::~DxvkComputePipeline() {
     if (m_pipeline != VK_NULL_HANDLE)
       m_vkd->vkDestroyPipeline(m_vkd->device(), m_pipeline, nullptr);
+  }
+  
+  
+  VkPipeline DxvkComputePipeline::getPipelineHandle(
+    const DxvkComputePipelineStateInfo& state) const {
+    // TODO take pipeine state into account
+    return m_pipeline;
   }
   
   

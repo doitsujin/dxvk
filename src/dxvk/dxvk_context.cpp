@@ -1238,15 +1238,23 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::CpDirtyPipeline)) {
       m_flags.clr(DxvkContextFlag::CpDirtyPipeline);
       
+      m_state.cp.state.bsBindingState.clear();
       m_state.cp.pipeline = m_device->createComputePipeline(
         m_state.cp.cs.shader);
       
-      m_cpActivePipeline = m_state.cp.pipeline != nullptr
-        ? m_state.cp.pipeline->getPipelineHandle()
-        : VK_NULL_HANDLE;
-      
       if (m_state.cp.pipeline != nullptr)
         m_cmd->trackResource(m_state.cp.pipeline);
+    }
+  }
+  
+  
+  void DxvkContext::updateComputePipelineState() {
+    if (m_flags.test(DxvkContextFlag::CpDirtyPipelineState)) {
+      m_flags.clr(DxvkContextFlag::CpDirtyPipelineState);
+      
+      m_cpActivePipeline = m_state.cp.pipeline != nullptr
+        ? m_state.cp.pipeline->getPipelineHandle(m_state.cp.state)
+        : VK_NULL_HANDLE;
       
       if (m_cpActivePipeline != VK_NULL_HANDLE) {
         m_cmd->cmdBindPipeline(
@@ -1329,7 +1337,7 @@ namespace dxvk {
       if (m_state.cp.pipeline != nullptr) {
         this->updateShaderDescriptors(
           VK_PIPELINE_BIND_POINT_COMPUTE,
-          m_state.cp.bs,
+          m_state.cp.state.bsBindingState,
           m_state.cp.pipeline->layout());
       }
     }
@@ -1367,7 +1375,7 @@ namespace dxvk {
     DxvkBindingState& bs =
       bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
         ? m_state.gp.state.bsBindingState
-        : m_state.cp.bs;
+        : m_state.cp.state.bsBindingState;
     
     bool updatePipelineState = false;
     
@@ -1538,10 +1546,10 @@ namespace dxvk {
   
   
   void DxvkContext::commitComputeState() {
-    // TODO handle CpDirtyPipelineState
     this->renderPassEnd();
     this->updateComputePipeline();
     this->updateComputeShaderResources();
+    this->updateComputePipelineState();
     this->updateComputeShaderDescriptors();
   }
   
@@ -1565,7 +1573,7 @@ namespace dxvk {
     auto layout = m_state.cp.pipeline->layout();
     
     for (uint32_t i = 0; i < layout->bindingCount(); i++) {
-      if (m_state.cp.bs.isBound(i)) {
+      if (m_state.cp.state.bsBindingState.isBound(i)) {
         const DxvkDescriptorSlot binding = layout->binding(i);
         const DxvkShaderResourceSlot& slot = m_rc[binding.slot];
         

@@ -71,11 +71,11 @@ namespace dxvk {
   
   
   struct DxvkGraphicsPipelineState {
-    DxvkShaderStage  vs;
-    DxvkShaderStage  tcs;
-    DxvkShaderStage  tes;
-    DxvkShaderStage  gs;
-    DxvkShaderStage  fs;
+    DxvkShaderStage vs;
+    DxvkShaderStage tcs;
+    DxvkShaderStage tes;
+    DxvkShaderStage gs;
+    DxvkShaderStage fs;
 
     DxvkGraphicsPipelineStateInfo state;
     Rc<DxvkGraphicsPipeline>      pipeline;
@@ -83,9 +83,10 @@ namespace dxvk {
   
   
   struct DxvkComputePipelineState {
-    DxvkBindingState        bs;
-    DxvkShaderStage         cs;
-    Rc<DxvkComputePipeline> pipeline;
+    DxvkShaderStage cs;
+    
+    DxvkComputePipelineStateInfo  state;
+    Rc<DxvkComputePipeline>       pipeline;
   };
   
   

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "dxvk_binding.h"
 #include "dxvk_pipecache.h"
 #include "dxvk_pipelayout.h"
 #include "dxvk_resource.h"
@@ -8,6 +9,17 @@
 namespace dxvk {
   
   class DxvkDevice;
+  
+  /**
+   * \brief Compute pipeline state info
+   */
+  struct DxvkComputePipelineStateInfo {
+    bool operator == (const DxvkComputePipelineStateInfo& other) const;
+    bool operator != (const DxvkComputePipelineStateInfo& other) const;
+    
+    DxvkBindingState bsBindingState;
+  };
+  
   
   /**
    * \brief Compute pipeline
@@ -41,20 +53,21 @@ namespace dxvk {
     
     /**
      * \brief Pipeline handle
+     * 
+     * \param [in] state Pipeline state
      * \returns Pipeline handle
      */
-    VkPipeline getPipelineHandle() const {
-      return m_pipeline;
-    }
+    VkPipeline getPipelineHandle(
+      const DxvkComputePipelineStateInfo& state) const;
     
   private:
     
     const DxvkDevice* const m_device;
     const Rc<vk::DeviceFn>  m_vkd;
     
-    Rc<DxvkPipelineCache> m_cache;
-    Rc<DxvkPipelineLayout> m_layout;
-    Rc<DxvkShaderModule>  m_cs;
+    Rc<DxvkPipelineCache>   m_cache;
+    Rc<DxvkPipelineLayout>  m_layout;
+    Rc<DxvkShaderModule>    m_cs;
     
     VkPipeline m_pipeline = VK_NULL_HANDLE;
     

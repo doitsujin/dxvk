@@ -564,6 +564,7 @@ namespace dxvk {
     void renderPassEnd();
     
     void updateComputePipeline();
+    void updateComputePipelineState();
     
     void updateGraphicsPipeline();
     void updateGraphicsPipelineState();
