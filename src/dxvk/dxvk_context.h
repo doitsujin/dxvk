@@ -595,6 +595,9 @@ namespace dxvk {
     
     void commitComputeBarriers();
     
+    DxvkQueryHandle allocateQuery(
+      const DxvkQueryRevision& query);
+    
     void resetQueryPool(
       const Rc<DxvkQueryPool>& pool);
     

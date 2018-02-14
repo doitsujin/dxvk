@@ -64,7 +64,7 @@ namespace dxvk {
   
   
   void DxvkContext::beginQuery(const DxvkQueryRevision& query) {
-    DxvkQueryHandle handle; // TODO = allocateQuery(...)
+    DxvkQueryHandle handle = this->allocateQuery(query);
     
     m_cmd->cmdBeginQuery(
       handle.queryPool,
@@ -1602,6 +1602,13 @@ namespace dxvk {
   }
   
   
+    
+  DxvkQueryHandle DxvkContext::allocateQuery(const DxvkQueryRevision& query) {
+    // TODO implement
+    return DxvkQueryHandle { };
+  }
+  
+  
   void DxvkContext::resetQueryPool(const Rc<DxvkQueryPool>& pool) {
     this->renderPassEnd();
     
@@ -1613,7 +1620,7 @@ namespace dxvk {
   
   void DxvkContext::beginActiveQueries() {
     for (const DxvkQueryRevision& query : m_activeQueries) {
-      DxvkQueryHandle handle; // TODO = allocateQuery(...)
+      DxvkQueryHandle handle = this->allocateQuery(query);
       
       m_cmd->cmdBeginQuery(
         handle.queryPool,
