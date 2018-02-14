@@ -496,11 +496,6 @@ namespace dxvk {
     D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resourceDim);
     
-    if (resourceDim != D3D11_RESOURCE_DIMENSION_TEXTURE2D) {
-      Logger::err("D3D11: Unsupported resource type for render target views");
-      return E_INVALIDARG;
-    }
-    
     // The view description is optional. If not defined, it
     // will use the resource's format and all array layers.
     D3D11_RENDER_TARGET_VIEW_DESC desc;
@@ -557,6 +552,14 @@ namespace dxvk {
         viewInfo.numLayers  = desc.Texture2DMSArray.ArraySize;
         break;
       
+      case D3D11_RTV_DIMENSION_TEXTURE3D:
+        viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+        viewInfo.minLevel   = desc.Texture3D.MipSlice;
+        viewInfo.numLevels  = 1;
+        viewInfo.minLayer   = desc.Texture3D.FirstWSlice;
+        viewInfo.numLayers  = desc.Texture3D.WSize;
+        break;
+      
       default:
         Logger::err(str::format(
           "D3D11: pDesc->ViewDimension not supported for render target views: ",
@@ -588,11 +591,6 @@ namespace dxvk {
     // Only 2D textures and 2D texture arrays are allowed
     D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resourceDim);
-    
-    if (resourceDim != D3D11_RESOURCE_DIMENSION_TEXTURE2D) {
-      Logger::err("D3D11: Unsupported resource type for depth-stencil views");
-      return E_INVALIDARG;
-    }
     
     // The view description is optional. If not defined, it
     // will use the resource's format and all array layers.
@@ -1740,6 +1738,17 @@ namespace dxvk {
         }
       } return S_OK;
         
+      case D3D11_RESOURCE_DIMENSION_TEXTURE3D: {
+        D3D11_TEXTURE3D_DESC resourceDesc;
+        static_cast<D3D11Texture3D*>(pResource)->GetDesc(&resourceDesc);
+        
+        pDesc->Format         = resourceDesc.Format;
+        pDesc->ViewDimension  = D3D11_RTV_DIMENSION_TEXTURE3D;
+        pDesc->Texture3D.MipSlice    = 0;
+        pDesc->Texture3D.FirstWSlice = 0;
+        pDesc->Texture3D.WSize       = resourceDesc.Depth;
+      } return S_OK;
+      
       default:
         Logger::err(str::format(
           "D3D11: Unsupported dimension for render target view: ",
@@ -2068,7 +2077,7 @@ namespace dxvk {
         }
         
         format    = resourceDesc.Format;
-        numLayers = 1;
+        numLayers = resourceDesc.Depth;
       } break;
       
       default:
@@ -2092,6 +2101,11 @@ namespace dxvk {
       case D3D11_RTV_DIMENSION_TEXTURE2DMSARRAY:
         if (pDesc->Texture2DMSArray.ArraySize == D3D11_DXVK_USE_REMAINING_LAYERS)
           pDesc->Texture2DMSArray.ArraySize = numLayers - pDesc->Texture2DMSArray.FirstArraySlice;
+        break;
+      
+      case D3D11_RTV_DIMENSION_TEXTURE3D:
+        if (pDesc->Texture3D.WSize == D3D11_DXVK_USE_REMAINING_LAYERS)
+          pDesc->Texture3D.WSize = numLayers - pDesc->Texture3D.FirstWSlice;
         break;
       
       default:
