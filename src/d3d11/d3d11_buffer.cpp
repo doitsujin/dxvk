@@ -93,8 +93,9 @@ namespace dxvk {
       info.access |= VK_ACCESS_SHADER_READ_BIT;
     }
     
-    if (pDesc->BindFlags & D3D11_BIND_STREAM_OUTPUT)
-      throw DxvkError("D3D11Device::CreateBuffer: D3D11_BIND_STREAM_OUTPUT not supported");
+    if (pDesc->BindFlags & D3D11_BIND_STREAM_OUTPUT) {
+      Logger::err("D3D11Device::CreateBuffer: D3D11_BIND_STREAM_OUTPUT not supported");
+    }
     
     if (pDesc->BindFlags & D3D11_BIND_UNORDERED_ACCESS) {
       info.usage  |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
