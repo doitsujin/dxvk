@@ -1565,36 +1565,38 @@ namespace dxvk {
     auto layout = m_state.cp.pipeline->layout();
     
     for (uint32_t i = 0; i < layout->bindingCount(); i++) {
-      const DxvkDescriptorSlot binding = layout->binding(i);
-      const DxvkShaderResourceSlot& slot = m_rc[binding.slot];
-      
-      if (binding.type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER) {
-        m_barriers.accessBuffer(
-          slot.bufferSlice.physicalSlice(),
-          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-          VK_ACCESS_SHADER_READ_BIT | 
-          VK_ACCESS_SHADER_WRITE_BIT,
-          slot.bufferSlice.bufferInfo().stages,
-          slot.bufferSlice.bufferInfo().access);
-      } else if (binding.type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {
-        m_barriers.accessBuffer(
-          slot.bufferView->slice(),
-          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-          VK_ACCESS_SHADER_READ_BIT | 
-          VK_ACCESS_SHADER_WRITE_BIT,
-          slot.bufferView->bufferInfo().stages,
-          slot.bufferView->bufferInfo().access);
-      } else if (binding.type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
-        m_barriers.accessImage(
-          slot.imageView->image(),
-          slot.imageView->subresources(),
-          slot.imageView->imageInfo().layout,
-          VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-          VK_ACCESS_SHADER_READ_BIT | 
-          VK_ACCESS_SHADER_WRITE_BIT,
-          slot.imageView->imageInfo().layout,
-          slot.imageView->imageInfo().stages,
-          slot.imageView->imageInfo().access);
+      if (m_state.cp.bs.isBound(i)) {
+        const DxvkDescriptorSlot binding = layout->binding(i);
+        const DxvkShaderResourceSlot& slot = m_rc[binding.slot];
+        
+        if (binding.type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER) {
+          m_barriers.accessBuffer(
+            slot.bufferSlice.physicalSlice(),
+            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+            VK_ACCESS_SHADER_READ_BIT | 
+            VK_ACCESS_SHADER_WRITE_BIT,
+            slot.bufferSlice.bufferInfo().stages,
+            slot.bufferSlice.bufferInfo().access);
+        } else if (binding.type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {
+          m_barriers.accessBuffer(
+            slot.bufferView->slice(),
+            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+            VK_ACCESS_SHADER_READ_BIT | 
+            VK_ACCESS_SHADER_WRITE_BIT,
+            slot.bufferView->bufferInfo().stages,
+            slot.bufferView->bufferInfo().access);
+        } else if (binding.type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
+          m_barriers.accessImage(
+            slot.imageView->image(),
+            slot.imageView->subresources(),
+            slot.imageView->imageInfo().layout,
+            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+            VK_ACCESS_SHADER_READ_BIT | 
+            VK_ACCESS_SHADER_WRITE_BIT,
+            slot.imageView->imageInfo().layout,
+            slot.imageView->imageInfo().stages,
+            slot.imageView->imageInfo().access);
+        }
       }
     }
     
