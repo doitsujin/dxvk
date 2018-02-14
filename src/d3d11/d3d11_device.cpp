@@ -519,6 +519,18 @@ namespace dxvk {
     const D3D11TextureInfo* textureInfo
       = GetCommonTextureInfo(pResource);
     
+    // If a texture view description uses DXGI_FORMAT_UNKNOWN
+    // then use the format of the resource the view binds to.
+    if( desc.Format == DXGI_FORMAT_UNKNOWN)
+    {
+      if(resourceDim == D3D11_RESOURCE_DIMENSION_TEXTURE2D)
+      {
+        D3D11_TEXTURE2D_DESC resourceDesc;
+        static_cast<D3D11Texture2D*>(pResource)->GetDesc(&resourceDesc);
+        desc.Format = resourceDesc.Format;
+      }
+    }
+    
     // Fill in Vulkan image view info
     DxvkImageViewCreateInfo viewInfo;
     viewInfo.format = m_dxgiAdapter->LookupFormat(desc.Format, DxgiFormatMode::Color).format;
@@ -612,6 +624,18 @@ namespace dxvk {
     const D3D11TextureInfo* textureInfo
       = GetCommonTextureInfo(pResource);
     
+    // If a texture view description uses DXGI_FORMAT_UNKNOWN
+    // then use the format of the resource the view binds to.
+    if( desc.Format == DXGI_FORMAT_UNKNOWN)
+    {
+      if(resourceDim == D3D11_RESOURCE_DIMENSION_TEXTURE2D)
+      {
+        D3D11_TEXTURE2D_DESC resourceDesc;
+        static_cast<D3D11Texture2D*>(pResource)->GetDesc(&resourceDesc);
+        desc.Format = resourceDesc.Format;
+      }
+    }
+
     // Fill in Vulkan image view info
     DxvkImageViewCreateInfo viewInfo;
     viewInfo.format = m_dxgiAdapter->LookupFormat(desc.Format, DxgiFormatMode::Depth).format;
