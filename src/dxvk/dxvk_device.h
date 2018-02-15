@@ -212,7 +212,8 @@ namespace dxvk {
      * \param [in] queryType Query type
      */
     Rc<DxvkQueryPool> createQueryPool(
-            VkQueryType               queryType);
+            VkQueryType               queryType,
+            uint32_t                  queryCount);
     
     /**
      * \brief Creates a sampler object

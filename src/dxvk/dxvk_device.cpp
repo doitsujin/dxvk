@@ -146,8 +146,9 @@ namespace dxvk {
   
   
   Rc<DxvkQueryPool> DxvkDevice::createQueryPool(
-          VkQueryType               queryType) {
-    return new DxvkQueryPool(m_vkd, queryType);
+          VkQueryType               queryType,
+          uint32_t                  queryCount) {
+    return new DxvkQueryPool(m_vkd, queryType, queryCount);
   }
   
   

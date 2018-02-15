@@ -97,6 +97,14 @@ namespace dxvk {
     ~DxvkQuery();
     
     /**
+     * \brief Query type
+     * \returns Query type
+     */
+    VkQueryType type() const {
+      return m_type;
+    }
+    
+    /**
      * \brief Resets the query object
      * 
      * Increments the revision number which will

@@ -7,6 +7,7 @@
 #include "dxvk_lifetime.h"
 #include "dxvk_limits.h"
 #include "dxvk_pipelayout.h"
+#include "dxvk_query_pool.h"
 #include "dxvk_staging.h"
 
 namespace dxvk {
@@ -70,6 +71,18 @@ namespace dxvk {
      */
     void trackResource(const Rc<DxvkResource>& rc) {
       m_resources.trackResource(rc);
+    }
+    
+    /**
+     * \brief Adds a query range to track
+     * 
+     * Query data will be retrieved and written back to
+     * the query objects after the command buffer has
+     * finished executing on the GPU.
+     * \param [in] queries The query range
+     */
+    void trackQueryRange(const DxvkQueryRange& queries) {
+      m_queryRanges.push_back(queries);
     }
     
     /**
@@ -436,11 +449,13 @@ namespace dxvk {
     DxvkStagingBufferSlice stagedAlloc(
             VkDeviceSize            size);
     
+    
     void stagedBufferCopy(
             VkBuffer                dstBuffer,
             VkDeviceSize            dstOffset,
             VkDeviceSize            dataSize,
       const DxvkStagingBufferSlice& dataSlice);
+    
     
     void stagedBufferImageCopy(
             VkImage                 dstImage,
@@ -458,6 +473,8 @@ namespace dxvk {
     DxvkLifetimeTracker m_resources;
     DxvkDescriptorAlloc m_descAlloc;
     DxvkStagingAlloc    m_stagingAlloc;
+    
+    std::vector<DxvkQueryRange> m_queryRanges;
     
   };
   

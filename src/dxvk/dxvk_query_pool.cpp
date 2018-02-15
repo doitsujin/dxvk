@@ -1,11 +1,15 @@
+#include "dxvk_cmdlist.h"
 #include "dxvk_query_pool.h"
 
 namespace dxvk {
   
   DxvkQueryPool::DxvkQueryPool(
     const Rc<vk::DeviceFn>& vkd,
-          VkQueryType       queryType)
-  : m_vkd(vkd), m_queryType(queryType) {
+          VkQueryType       queryType,
+          uint32_t          queryCount)
+  : m_vkd(vkd), m_queryCount(queryCount), m_queryType(queryType) {
+    m_queries.resize(queryCount);
+    
     VkQueryPoolCreateInfo info;
     info.sType      = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
     info.pNext      = nullptr;
@@ -41,12 +45,19 @@ namespace dxvk {
   
   
   DxvkQueryHandle DxvkQueryPool::allocQuery(const DxvkQueryRevision& query) {
-    const DxvkQueryHandle result = { m_queryPool, m_queryId };
+    const uint32_t queryIndex = m_queryRangeOffset + m_queryRangeLength;
     
-    query.query->associateQuery(query.revision, result);
-    m_queries.at(m_queryId) = query;
-    m_queryId += 1;
-    return result;
+    if (queryIndex < m_queryCount) {
+      const DxvkQueryHandle result = { m_queryPool, queryIndex };
+      
+      query.query->associateQuery(query.revision, result);
+      m_queries.at(queryIndex) = query;
+      
+      m_queryRangeLength += 1;
+      return result;
+    } else {
+      return DxvkQueryHandle { VK_NULL_HANDLE, 0 };
+    }
   }
   
   
@@ -70,6 +81,14 @@ namespace dxvk {
     }
     
     return VK_SUCCESS;
+  }
+  
+  
+  void DxvkQueryPool::reset(const Rc<DxvkCommandList>& cmd) {
+    cmd->cmdResetQueryPool(m_queryPool, 0, m_queryCount);
+    
+    m_queryRangeOffset = 0;
+    m_queryRangeLength = 0;
   }
   
 }

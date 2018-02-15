@@ -1197,6 +1197,17 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::writeTimestamp(const DxvkQueryRevision& query) {
+    DxvkQueryHandle handle = this->allocateQuery(query);
+    
+    m_cmd->cmdWriteTimestamp(
+      VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+      handle.queryPool, handle.queryId);
+    
+    query.query->endRecording(query.revision);
+  }
+  
+  
   void DxvkContext::renderPassBegin() {
     if (!m_flags.test(DxvkContextFlag::GpRenderPassBound)
      && (m_state.om.framebuffer != nullptr)) {
@@ -1615,16 +1626,14 @@ namespace dxvk {
     
   DxvkQueryHandle DxvkContext::allocateQuery(const DxvkQueryRevision& query) {
     // TODO implement
-    return DxvkQueryHandle { };
+    return DxvkQueryHandle();
   }
   
   
   void DxvkContext::resetQueryPool(const Rc<DxvkQueryPool>& pool) {
     this->renderPassEnd();
     
-    m_cmd->cmdResetQueryPool(
-      pool->handle(), 0,
-      pool->queryCount());
+    pool->reset(m_cmd);
   }
   
   

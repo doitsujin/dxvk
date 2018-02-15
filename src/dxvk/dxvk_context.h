@@ -542,6 +542,13 @@ namespace dxvk {
             uint32_t            attachment,
       const DxvkBlendMode&      blendMode);
     
+    /**
+     * \brief Writes to a timestamp query
+     * \param [in] query The timestamp query
+     */
+    void writeTimestamp(
+      const DxvkQueryRevision&  query);
+    
   private:
     
     const Rc<DxvkDevice> m_device;
@@ -550,6 +557,10 @@ namespace dxvk {
     DxvkContextFlags    m_flags;
     DxvkContextState    m_state;
     DxvkBarrierSet      m_barriers;
+    
+    Rc<DxvkQueryPool>   m_occlusionQueries;
+    Rc<DxvkQueryPool>   m_statisticQueries;
+    Rc<DxvkQueryPool>   m_timestampQueries;
     
     VkPipeline m_gpActivePipeline = VK_NULL_HANDLE;
     VkPipeline m_cpActivePipeline = VK_NULL_HANDLE;
