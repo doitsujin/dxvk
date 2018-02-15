@@ -946,6 +946,19 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opBitReverse(
+          uint32_t                resultType,
+          uint32_t                operand) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpBitReverse, 4);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(operand);
+    return resultId;
+  }
+  
+  
   uint32_t SpirvModule::opFindILsb(
           uint32_t                resultType,
           uint32_t                operand) {

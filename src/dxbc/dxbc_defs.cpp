@@ -693,7 +693,10 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
     } },
     /* BfRev                                */
-    { },
+    { 2, DxbcInstClass::VectorAlu, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+    } },
     /* Swapc                                */
     { 5, DxbcInstClass::VectorCmov, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },

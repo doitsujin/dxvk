@@ -381,6 +381,10 @@ namespace dxvk {
             uint32_t                resultType,
             uint32_t                operand);
     
+    uint32_t opBitReverse(
+            uint32_t                resultType,
+            uint32_t                operand);
+    
     uint32_t opFindILsb(
             uint32_t                resultType,
             uint32_t                operand);

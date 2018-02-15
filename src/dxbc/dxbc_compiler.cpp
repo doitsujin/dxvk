@@ -1324,6 +1324,11 @@ namespace dxvk {
           typeId, src.at(0).id);
         break;
       
+      case DxbcOpcode::BfRev:
+        dst.id = m_module.opBitReverse(
+          typeId, src.at(0).id);
+        break;
+      
       ///////////////////////////
       // Conversion instructions
       case DxbcOpcode::ItoF:
