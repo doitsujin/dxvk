@@ -117,7 +117,7 @@ namespace dxvk {
     uint32_t              outputVertexCount   = 0;
     uint32_t              functionId          = 0;
     
-    uint32_t              builtinLayer        = 0;
+    uint32_t builtinLayer         = 0;
   };
   
   
@@ -133,6 +133,7 @@ namespace dxvk {
     uint32_t builtinSampleId      = 0;
     uint32_t builtinSampleMaskIn  = 0;
     uint32_t builtinSampleMaskOut = 0;
+    uint32_t builtinLayer         = 0;
     
     std::array<DxbcVectorType, DxbcMaxInterfaceRegs> oTypes;
   };

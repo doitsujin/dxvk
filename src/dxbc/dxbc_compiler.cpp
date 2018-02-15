@@ -4570,8 +4570,24 @@ namespace dxvk {
         ptrIn.type.ccount  = 1;
         ptrIn.id = m_ps.builtinSampleId;
         
-        return emitRegisterExtract(
-          emitValueLoad(ptrIn), mask);
+        return emitValueLoad(ptrIn);
+      } break;
+      
+      case DxbcSystemValue::RenderTargetId: {
+        if (m_ps.builtinLayer == 0) {
+          m_ps.builtinLayer = emitNewBuiltinVariable({
+            { DxbcScalarType::Uint32, 1, 0 },
+            spv::StorageClassInput },
+            spv::BuiltInLayer,
+            "ps_layer");
+        }
+        
+        DxbcRegisterPointer ptr;
+        ptr.type.ctype   = DxbcScalarType::Uint32;
+        ptr.type.ccount  = 1;
+        ptr.id = m_ps.builtinLayer;
+        
+        return emitValueLoad(ptr);
       } break;
       
       default:
