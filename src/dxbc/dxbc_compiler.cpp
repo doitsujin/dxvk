@@ -800,9 +800,10 @@ namespace dxvk {
       res.depthTypeId   = 0;
       res.structStride  = 0;
       
-      if (resourceType != DxbcResourceDim::Buffer
-       && resourceType != DxbcResourceDim::Texture2DMs
-       && resourceType != DxbcResourceDim::Texture2DMsArr) {
+      if (resourceType == DxbcResourceDim::Texture2D
+       || resourceType == DxbcResourceDim::Texture2DArr
+       || resourceType == DxbcResourceDim::TextureCube
+       || resourceType == DxbcResourceDim::TextureCubeArr) {
         res.depthTypeId = m_module.defImageType(sampledTypeId,
           typeInfo.dim, 1, typeInfo.array, typeInfo.ms, typeInfo.sampled,
           spv::ImageFormatUnknown);
@@ -4575,6 +4576,8 @@ namespace dxvk {
       
       case DxbcSystemValue::RenderTargetId: {
         if (m_ps.builtinLayer == 0) {
+          m_module.enableCapability(spv::CapabilityGeometry);
+          
           m_ps.builtinLayer = emitNewBuiltinVariable({
             { DxbcScalarType::Uint32, 1, 0 },
             spv::StorageClassInput },
