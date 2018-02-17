@@ -4039,9 +4039,15 @@ namespace dxvk {
     DxbcRegisterValue result;
     result.type.ctype  = DxbcScalarType::Uint32;
     result.type.ccount = 1;
-    result.id = m_module.opImageQueryLevels(
-      getVectorTypeId(result.type),
-      m_module.opLoad(info.typeId, info.varId));
+    
+    if (info.image.sampled == 1) {
+      result.id = m_module.opImageQueryLevels(
+        getVectorTypeId(result.type),
+        m_module.opLoad(info.typeId, info.varId));
+    } else {
+      // Report one LOD in case of UAVs
+      result.id = m_module.constu32(1);
+    }
     return result;
   }
   
@@ -4069,7 +4075,7 @@ namespace dxvk {
     result.type.ctype  = DxbcScalarType::Uint32;
     result.type.ccount = getTexCoordDim(info.image);
     
-    if (info.image.ms == 0) {
+    if (info.image.ms == 0 && info.image.sampled == 1) {
       result.id = m_module.opImageQuerySizeLod(
         getVectorTypeId(result.type),
         m_module.opLoad(info.typeId, info.varId),
