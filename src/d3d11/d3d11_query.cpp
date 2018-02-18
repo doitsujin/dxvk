@@ -169,7 +169,8 @@ namespace dxvk {
     } else {
       DxvkQueryData queryData = {};
       
-      if (m_query->getData(queryData) != DxvkQueryStatus::Available)
+      if (m_query                     != nullptr
+       && m_query->getData(queryData) != DxvkQueryStatus::Available)
         return S_FALSE;
       
       if (pData == nullptr)
@@ -189,6 +190,7 @@ namespace dxvk {
           return S_OK;
         
         case D3D11_QUERY_TIMESTAMP_DISJOINT: {
+          // FIXME return correct frequency
           auto data = static_cast<D3D11_QUERY_DATA_TIMESTAMP_DISJOINT*>(pData);
           data->Frequency = 1000;
           data->Disjoint = FALSE;
