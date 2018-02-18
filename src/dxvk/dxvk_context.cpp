@@ -1201,6 +1201,11 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::signalEvent(const DxvkEventRevision& event) {
+    m_cmd->trackEvent(event);
+  }
+  
+  
   void DxvkContext::writeTimestamp(const DxvkQueryRevision& query) {
     DxvkQueryHandle handle = this->allocQuery(query);
     

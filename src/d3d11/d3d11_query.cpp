@@ -141,8 +141,13 @@ namespace dxvk {
   
   void D3D11Query::Signal(DxvkContext* ctx, uint32_t revision) {
     switch (m_desc.Query) {
+      case D3D11_QUERY_EVENT: {
+        DxvkEventRevision rev = { m_event, revision };
+        ctx->signalEvent(rev);
+      } break;
+      
       case D3D11_QUERY_TIMESTAMP: {
-        DxvkQueryRevision rev = { m_query, m_revision };
+        DxvkQueryRevision rev = { m_query, revision };
         ctx->writeTimestamp(rev);
       } break;
       
