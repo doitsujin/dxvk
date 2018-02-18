@@ -150,12 +150,40 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11DeviceContext::Begin(ID3D11Asynchronous *pAsync) {
-//     Logger::err("D3D11DeviceContext::Begin: Not implemented");
+    Com<ID3D11Query> query;
+    
+    if (SUCCEEDED(pAsync->QueryInterface(__uuidof(ID3D11Query), reinterpret_cast<void**>(&query)))) {
+      Com<D3D11Query> queryPtr = static_cast<D3D11Query*>(query.ptr());
+      
+      if (queryPtr->HasBeginEnabled()) {
+        const uint32_t revision = queryPtr->Reset();
+        
+        EmitCs([revision, queryPtr] (DxvkContext* ctx) {
+          queryPtr->Begin(ctx, revision);
+        });
+      }
+    }
   }
   
   
   void STDMETHODCALLTYPE D3D11DeviceContext::End(ID3D11Asynchronous *pAsync) {
-//     Logger::err("D3D11DeviceContext::End: Not implemented");
+    Com<ID3D11Query> query;
+    
+    if (SUCCEEDED(pAsync->QueryInterface(__uuidof(ID3D11Query), reinterpret_cast<void**>(&query)))) {
+      Com<D3D11Query> queryPtr = static_cast<D3D11Query*>(query.ptr());
+      
+      if (queryPtr->HasBeginEnabled()) {
+        EmitCs([queryPtr] (DxvkContext* ctx) {
+          queryPtr->End(ctx);
+        });
+      } else {
+        const uint32_t revision = queryPtr->Reset();
+        
+        EmitCs([revision, queryPtr] (DxvkContext* ctx) {
+          queryPtr->Signal(ctx, revision);
+        });
+      }
+    }
   }
   
   
@@ -173,6 +201,10 @@ namespace dxvk {
       Logger::err(str::format("D3D11DeviceContext: GetData: Data size mismatch: ", pAsync->GetDataSize(), ",", DataSize));
       return E_INVALIDARG;
     }
+    
+    // Flush in order to make sure the query commands get dispatched
+    if ((GetDataFlags & D3D11_ASYNC_GETDATA_DONOTFLUSH) == 0)
+      Flush();
     
     // This method handles various different but incompatible interfaces,
     // so we have to find out what we are actually dealing with

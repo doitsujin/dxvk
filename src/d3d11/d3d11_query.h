@@ -2,9 +2,12 @@
 
 #include "d3d11_device_child.h"
 
+#include "../dxvk/dxvk_event.h"
+#include "../dxvk/dxvk_query.h"
+
 namespace dxvk {
   
-  class D3D11Query : public D3D11DeviceChild<ID3D11Query> {
+  class D3D11Query : public D3D11DeviceChild<ID3D11Predicate> {
     
   public:
     
@@ -26,6 +29,16 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc(
             D3D11_QUERY_DESC *pDesc) final;
     
+    uint32_t Reset();
+    
+    bool HasBeginEnabled() const;
+    
+    void Begin(DxvkContext* ctx, uint32_t revision);
+    
+    void End(DxvkContext* ctx);
+    
+    void Signal(DxvkContext* ctx, uint32_t revision);
+    
     HRESULT STDMETHODCALLTYPE GetData(
             void*                             pData,
             UINT                              GetDataFlags);
@@ -34,6 +47,11 @@ namespace dxvk {
     
     D3D11Device* const m_device;
     D3D11_QUERY_DESC   m_desc;
+    
+    Rc<DxvkQuery> m_query = nullptr;
+    Rc<DxvkEvent> m_event = nullptr;
+    
+    uint32_t m_revision = 0;
     
   };
   

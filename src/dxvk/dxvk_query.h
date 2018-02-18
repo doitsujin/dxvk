@@ -113,7 +113,7 @@ namespace dxvk {
      * will take the revision number as an argument.
      * \returns The new query revision number
      */
-    uint32_t invalidate();
+    uint32_t reset();
     
     /**
      * \brief Retrieves query data

@@ -13,7 +13,7 @@ namespace dxvk {
   }
   
   
-  uint32_t DxvkQuery::invalidate() {
+  uint32_t DxvkQuery::reset() {
     std::unique_lock<std::mutex> lock(m_mutex);
     
     m_status = DxvkQueryStatus::Reset;

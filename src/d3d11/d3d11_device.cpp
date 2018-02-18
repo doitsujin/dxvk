@@ -1086,9 +1086,19 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11Device::CreateQuery(
     const D3D11_QUERY_DESC*           pQueryDesc,
           ID3D11Query**               ppQuery) {
+    if (pQueryDesc->Query != D3D11_QUERY_EVENT
+     && pQueryDesc->Query != D3D11_QUERY_OCCLUSION
+     && pQueryDesc->Query != D3D11_QUERY_TIMESTAMP
+     && pQueryDesc->Query != D3D11_QUERY_TIMESTAMP_DISJOINT
+     && pQueryDesc->Query != D3D11_QUERY_PIPELINE_STATISTICS
+     && pQueryDesc->Query != D3D11_QUERY_OCCLUSION_PREDICATE) {
+      Logger::warn(str::format("D3D11Query: Unsupported query type ", pQueryDesc->Query));
+      return E_INVALIDARG;
+    }
+    
     if (ppQuery == nullptr)
       return S_FALSE;
-
+    
     try {
       *ppQuery = ref(new D3D11Query(this, *pQueryDesc));
       return S_OK;
@@ -1102,8 +1112,19 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11Device::CreatePredicate(
     const D3D11_QUERY_DESC*           pPredicateDesc,
           ID3D11Predicate**           ppPredicate) {
-    Logger::err("D3D11Device::CreatePredicate: Not implemented");
-    return E_NOTIMPL;
+    if (pPredicateDesc->Query != D3D11_QUERY_OCCLUSION_PREDICATE)
+      return E_INVALIDARG;
+    
+    if (ppPredicate == nullptr)
+      return S_FALSE;
+    
+    try {
+      *ppPredicate = ref(new D3D11Query(this, *pPredicateDesc));
+      return S_OK;
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return E_FAIL;
+    }
   }
   
   
