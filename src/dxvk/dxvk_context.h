@@ -612,6 +612,9 @@ namespace dxvk {
     void resetQueryPool(
       const Rc<DxvkQueryPool>& pool);
     
+    void trackQueryPool(
+      const Rc<DxvkQueryPool>& pool);
+    
     void beginActiveQueries();
     
     void endActiveQueries();

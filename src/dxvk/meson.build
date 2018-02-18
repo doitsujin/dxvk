@@ -31,6 +31,7 @@ dxvk_src = files([
   'dxvk_pipemanager.cpp',
   'dxvk_query.cpp',
   'dxvk_query_pool.cpp',
+  'dxvk_query_tracker.cpp',
   'dxvk_queue.cpp',
   'dxvk_renderpass.cpp',
   'dxvk_resource.cpp',

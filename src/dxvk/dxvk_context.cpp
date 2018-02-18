@@ -58,6 +58,10 @@ namespace dxvk {
     this->renderPassEnd();
     this->endActiveQueries();
     
+    this->trackQueryPool(m_queryPools[VK_QUERY_TYPE_OCCLUSION]);
+    this->trackQueryPool(m_queryPools[VK_QUERY_TYPE_PIPELINE_STATISTICS]);
+    this->trackQueryPool(m_queryPools[VK_QUERY_TYPE_TIMESTAMP]);
+    
     m_cmd->endRecording();
     return std::exchange(m_cmd, nullptr);
   }
@@ -1634,6 +1638,9 @@ namespace dxvk {
       queryHandle = queryPool->allocQuery(query);
     
     if (queryHandle.queryPool == VK_NULL_HANDLE) {
+      if (queryPool != nullptr)
+        this->trackQueryPool(queryPool);
+      
       m_queryPools[queryType] = m_device->createQueryPool(queryType, MaxNumQueryCountPerPool);
       queryPool = m_queryPools[queryType];
       
@@ -1649,6 +1656,16 @@ namespace dxvk {
     this->renderPassEnd();
     
     pool->reset(m_cmd);
+  }
+  
+  
+  void DxvkContext::trackQueryPool(const Rc<DxvkQueryPool>& pool) {
+    if (pool != nullptr) {
+      DxvkQueryRange range = pool->getActiveQueryRange();
+      
+      if (range.queryCount > 0)
+        m_cmd->trackQueryRange(std::move(range));
+    }
   }
   
   

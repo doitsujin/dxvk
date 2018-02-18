@@ -7,7 +7,7 @@
 #include "dxvk_lifetime.h"
 #include "dxvk_limits.h"
 #include "dxvk_pipelayout.h"
-#include "dxvk_query_pool.h"
+#include "dxvk_query_tracker.h"
 #include "dxvk_staging.h"
 
 namespace dxvk {
@@ -81,8 +81,19 @@ namespace dxvk {
      * finished executing on the GPU.
      * \param [in] queries The query range
      */
-    void trackQueryRange(const DxvkQueryRange& queries) {
-      m_queryRanges.push_back(queries);
+    void trackQueryRange(DxvkQueryRange&& queries) {
+      m_queryTracker.trackQueryRange(std::move(queries));
+    }
+    
+    /**
+     * \brief Writes back query results
+     * 
+     * Uses the query range to write back query data
+     * after the command list has finished executing
+     * on the GPU.
+     */
+    void writeQueryData() {
+      m_queryTracker.writeQueryData();
     }
     
     /**
@@ -94,6 +105,7 @@ namespace dxvk {
      * the command list completes execution.
      */
     void reset();
+    
     
     VkDescriptorSet allocateDescriptorSet(
             VkDescriptorSetLayout   descriptorLayout) {
@@ -473,8 +485,7 @@ namespace dxvk {
     DxvkLifetimeTracker m_resources;
     DxvkDescriptorAlloc m_descAlloc;
     DxvkStagingAlloc    m_stagingAlloc;
-    
-    std::vector<DxvkQueryRange> m_queryRanges;
+    DxvkQueryTracker    m_queryTracker;
     
   };
   

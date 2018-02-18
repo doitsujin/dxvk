@@ -75,6 +75,16 @@ namespace dxvk {
     void reset(
       const Rc<DxvkCommandList>& cmd);
     
+    /**
+     * \brief Retrieves active query range
+     * 
+     * This will also move the beginning of the
+     * new active query range to the end of the
+     * current active query range.
+     * \returns Active query range
+     */
+    DxvkQueryRange getActiveQueryRange();
+    
   private:
     
     Rc<vk::DeviceFn> m_vkd;

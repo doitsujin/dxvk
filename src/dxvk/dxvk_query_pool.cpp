@@ -91,4 +91,16 @@ namespace dxvk {
     m_queryRangeLength = 0;
   }
   
+  
+  DxvkQueryRange DxvkQueryPool::getActiveQueryRange() {
+    DxvkQueryRange result;
+    result.queryPool  = this;
+    result.queryIndex = m_queryRangeOffset;
+    result.queryCount = m_queryRangeLength;
+    
+    m_queryRangeOffset += m_queryRangeLength;
+    m_queryRangeLength  = 0;
+    return result;
+  }
+  
 }
