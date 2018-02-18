@@ -160,7 +160,6 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11Query::GetData(
           void*                             pData,
           UINT                              GetDataFlags) {
-    Logger::info(str::format(m_desc.Query));
     if (m_desc.Query == D3D11_QUERY_EVENT) {
       const bool signaled = m_event->getStatus() == DxvkEventStatus::Signaled;
       if (pData != nullptr)
