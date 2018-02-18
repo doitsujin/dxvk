@@ -158,6 +158,9 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::Present(UINT SyncInterval, UINT Flags) {
     std::lock_guard<std::recursive_mutex> lock(m_mutex);
     
+    if (Flags & DXGI_PRESENT_TEST)
+      return S_OK;
+    
     try {
       // Submit pending rendering commands
       // before recording the present code.
