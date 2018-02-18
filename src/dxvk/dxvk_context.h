@@ -558,9 +558,8 @@ namespace dxvk {
     DxvkContextState    m_state;
     DxvkBarrierSet      m_barriers;
     
-    Rc<DxvkQueryPool>   m_occlusionQueries;
-    Rc<DxvkQueryPool>   m_statisticQueries;
-    Rc<DxvkQueryPool>   m_timestampQueries;
+    // TODO implement this properly...
+    Rc<DxvkQueryPool>   m_queryPools[3] = { nullptr, nullptr, nullptr };
     
     VkPipeline m_gpActivePipeline = VK_NULL_HANDLE;
     VkPipeline m_cpActivePipeline = VK_NULL_HANDLE;
@@ -607,7 +606,7 @@ namespace dxvk {
     
     void commitComputeBarriers();
     
-    DxvkQueryHandle allocateQuery(
+    DxvkQueryHandle allocQuery(
       const DxvkQueryRevision& query);
     
     void resetQueryPool(

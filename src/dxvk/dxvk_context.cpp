@@ -64,7 +64,7 @@ namespace dxvk {
   
   
   void DxvkContext::beginQuery(const DxvkQueryRevision& query) {
-    DxvkQueryHandle handle = this->allocateQuery(query);
+    DxvkQueryHandle handle = this->allocQuery(query);
     
     m_cmd->cmdBeginQuery(
       handle.queryPool,
@@ -1198,7 +1198,7 @@ namespace dxvk {
   
   
   void DxvkContext::writeTimestamp(const DxvkQueryRevision& query) {
-    DxvkQueryHandle handle = this->allocateQuery(query);
+    DxvkQueryHandle handle = this->allocQuery(query);
     
     m_cmd->cmdWriteTimestamp(
       VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
@@ -1624,9 +1624,24 @@ namespace dxvk {
   
   
     
-  DxvkQueryHandle DxvkContext::allocateQuery(const DxvkQueryRevision& query) {
-    // TODO implement
-    return DxvkQueryHandle();
+  DxvkQueryHandle DxvkContext::allocQuery(const DxvkQueryRevision& query) {
+    const VkQueryType queryType = query.query->type();
+    
+    DxvkQueryHandle queryHandle = { VK_NULL_HANDLE, 0 };
+    Rc<DxvkQueryPool> queryPool = m_queryPools[queryType];
+    
+    if (queryPool != nullptr)
+      queryHandle = queryPool->allocQuery(query);
+    
+    if (queryHandle.queryPool == VK_NULL_HANDLE) {
+      m_queryPools[queryType] = m_device->createQueryPool(queryType, MaxNumQueryCountPerPool);
+      queryPool = m_queryPools[queryType];
+      
+      this->resetQueryPool(queryPool);
+      queryHandle = queryPool->allocQuery(query);
+    }
+    
+    return queryHandle;
   }
   
   
@@ -1639,7 +1654,7 @@ namespace dxvk {
   
   void DxvkContext::beginActiveQueries() {
     for (const DxvkQueryRevision& query : m_activeQueries) {
-      DxvkQueryHandle handle = this->allocateQuery(query);
+      DxvkQueryHandle handle = this->allocQuery(query);
       
       m_cmd->cmdBeginQuery(
         handle.queryPool,
