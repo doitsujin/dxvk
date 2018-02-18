@@ -1382,7 +1382,6 @@ namespace dxvk {
     if (featureLevel >= D3D_FEATURE_LEVEL_9_1) {
       enabled.depthClamp                            = VK_TRUE;
       enabled.depthBiasClamp                        = VK_TRUE;
-      enabled.depthBounds                           = VK_TRUE;
       enabled.fillModeNonSolid                      = VK_TRUE;
       enabled.pipelineStatisticsQuery               = supported.pipelineStatisticsQuery;
       enabled.sampleRateShading                     = VK_TRUE;
@@ -1420,7 +1419,6 @@ namespace dxvk {
       enabled.shaderFloat64                         = supported.shaderFloat64;
       enabled.shaderInt64                           = supported.shaderInt64;
       enabled.tessellationShader                    = VK_TRUE;
-      enabled.variableMultisampleRate               = VK_TRUE;
       enabled.shaderStorageImageReadWithoutFormat   = VK_TRUE;
       enabled.shaderStorageImageWriteWithoutFormat  = VK_TRUE;
     }
