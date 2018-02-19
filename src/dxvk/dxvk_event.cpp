@@ -17,10 +17,8 @@ namespace dxvk {
   void DxvkEvent::signal(uint32_t revision) {
     std::unique_lock<std::mutex> lock(m_mutex);
     
-    if (m_revision == revision) {
+    if (m_revision == revision)
       m_status = DxvkEventStatus::Signaled;
-      m_signal.notify_one();
-    }
   }
   
   

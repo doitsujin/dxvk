@@ -41,21 +41,23 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11ImmediateContext::Flush() {
-    m_parent->FlushInitContext();
-    m_drawCount = 0;
-    
-    // Add commands to flush the threaded
-    // context, then flush the command list
-    EmitCs([dev = m_device] (DxvkContext* ctx) {
-      dev->submitCommandList(
-        ctx->endRecording(),
-        nullptr, nullptr);
+    if (m_csChunk->commandCount() != 0) {
+      m_parent->FlushInitContext();
+      m_drawCount = 0;
       
-      ctx->beginRecording(
-        dev->createCommandList());
-    });
-    
-    FlushCsChunk();
+      // Add commands to flush the threaded
+      // context, then flush the command list
+      EmitCs([dev = m_device] (DxvkContext* ctx) {
+        dev->submitCommandList(
+          ctx->endRecording(),
+          nullptr, nullptr);
+        
+        ctx->beginRecording(
+          dev->createCommandList());
+      });
+      
+      FlushCsChunk();
+    }
   }
   
   

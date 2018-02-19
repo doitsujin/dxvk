@@ -13,19 +13,27 @@ namespace dxvk {
         break;
         
       case D3D11_QUERY_OCCLUSION:
+        m_query = new DxvkQuery(
+          VK_QUERY_TYPE_OCCLUSION,
+          VK_QUERY_CONTROL_PRECISE_BIT);
+        break;
+      
       case D3D11_QUERY_OCCLUSION_PREDICATE:
-        m_query = new DxvkQuery(VK_QUERY_TYPE_OCCLUSION);
+        m_query = new DxvkQuery(
+          VK_QUERY_TYPE_OCCLUSION, 0);
         break;
         
       case D3D11_QUERY_TIMESTAMP:
-        m_query = new DxvkQuery(VK_QUERY_TYPE_TIMESTAMP);
+        m_query = new DxvkQuery(
+          VK_QUERY_TYPE_TIMESTAMP, 0);
         break;
       
       case D3D11_QUERY_TIMESTAMP_DISJOINT:
         break;
       
       case D3D11_QUERY_PIPELINE_STATISTICS:
-        m_query = new DxvkQuery(VK_QUERY_TYPE_PIPELINE_STATISTICS);
+        m_query = new DxvkQuery(
+          VK_QUERY_TYPE_PIPELINE_STATISTICS, 0);
         break;
       
       default:

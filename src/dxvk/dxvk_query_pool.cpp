@@ -48,7 +48,10 @@ namespace dxvk {
     const uint32_t queryIndex = m_queryRangeOffset + m_queryRangeLength;
     
     if (queryIndex < m_queryCount) {
-      const DxvkQueryHandle result = { m_queryPool, queryIndex };
+      DxvkQueryHandle result;
+      result.queryPool = m_queryPool;
+      result.queryId   = queryIndex;
+      result.flags     = query.query->flags();
       
       query.query->associateQuery(query.revision, result);
       m_queries.at(queryIndex) = query;
@@ -56,7 +59,7 @@ namespace dxvk {
       m_queryRangeLength += 1;
       return result;
     } else {
-      return DxvkQueryHandle { VK_NULL_HANDLE, 0 };
+      return DxvkQueryHandle();
     }
   }
   

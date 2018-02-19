@@ -9,8 +9,6 @@ namespace dxvk {
   
   /**
    * \brief Query range
-   * 
-   * 
    */
   struct DxvkQueryRange {
     Rc<DxvkQueryPool> queryPool;

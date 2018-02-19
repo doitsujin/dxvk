@@ -1,6 +1,5 @@
 #pragma once
 
-#include <condition_variable>
 #include <mutex>
 
 #include "dxvk_include.h"
@@ -49,8 +48,7 @@ namespace dxvk {
     
   private:
     
-    std::mutex              m_mutex;
-    std::condition_variable m_signal;
+    std::mutex m_mutex;
     
     DxvkEventStatus         m_status   = DxvkEventStatus::Reset;
     uint32_t                m_revision = 0;
