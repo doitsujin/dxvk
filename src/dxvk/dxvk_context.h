@@ -634,6 +634,8 @@ namespace dxvk {
     void eraseActiveQuery(
       const DxvkQueryRevision& query);
     
+    Rc<DxvkBuffer> getTransferBuffer(VkDeviceSize size);
+    
   };
   
 }

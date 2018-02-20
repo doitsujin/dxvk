@@ -66,6 +66,17 @@ namespace dxvk::util {
     return extent.width * extent.height * extent.depth;
   }
   
+  /**
+   * \brief Computes image data size, in bytes
+   * 
+   * Convenience method that can be used to compute the number
+   * of bytes required to store image data in a given format.
+   * \param [in] format The image format
+   * \param [in] extent Image size, in pixels
+   * \returns Data size, in bytes
+   */
+  VkDeviceSize computeImageDataSize(VkFormat format, VkExtent3D extent);
+  
 }
 
 

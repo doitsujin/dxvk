@@ -1,5 +1,6 @@
 #include <cstring>
 
+#include "dxvk_format.h"
 #include "dxvk_util.h"
 
 namespace dxvk::util {
@@ -66,6 +67,12 @@ namespace dxvk::util {
         dstData += bytesPerLayer;
       }
     }
+  }
+  
+  
+  VkDeviceSize computeImageDataSize(VkFormat format, VkExtent3D extent) {
+    const DxvkFormatInfo* formatInfo = imageFormatInfo(format);
+    return formatInfo->elementSize * flattenImageExtent(computeBlockCount(extent, formatInfo->blockSize));
   }
   
 }

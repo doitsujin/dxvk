@@ -286,15 +286,8 @@ namespace dxvk {
       const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(dstTextureInfo->image->info().format);
       const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcTextureInfo->image->info().format);
       
-      const VkImageSubresource dstSubresource =
-        GetSubresourceFromIndex(
-          dstFormatInfo->aspectMask & srcFormatInfo->aspectMask,
-          dstTextureInfo->image->info().mipLevels, DstSubresource);
-      
-      const VkImageSubresource srcSubresource =
-        GetSubresourceFromIndex(
-          dstFormatInfo->aspectMask & srcFormatInfo->aspectMask,
-          srcTextureInfo->image->info().mipLevels, SrcSubresource);
+      const VkImageSubresource dstSubresource = GetSubresourceFromIndex(dstFormatInfo->aspectMask, dstTextureInfo->image->info().mipLevels, DstSubresource);
+      const VkImageSubresource srcSubresource = GetSubresourceFromIndex(srcFormatInfo->aspectMask, srcTextureInfo->image->info().mipLevels, SrcSubresource);
       
       VkOffset3D srcOffset = { 0, 0, 0 };
       VkOffset3D dstOffset = {
@@ -391,13 +384,8 @@ namespace dxvk {
       for (uint32_t i = 0; i < srcTextureInfo->image->info().mipLevels; i++) {
         VkExtent3D extent = srcTextureInfo->image->mipLevelExtent(i);
 
-        const VkImageSubresourceLayers dstLayers = {
-          dstFormatInfo->aspectMask & srcFormatInfo->aspectMask,
-          i, 0, dstTextureInfo->image->info().numLayers };
-
-        const VkImageSubresourceLayers srcLayers = {
-          dstFormatInfo->aspectMask & srcFormatInfo->aspectMask,
-          i, 0, srcTextureInfo->image->info().numLayers };
+        const VkImageSubresourceLayers dstLayers = { dstFormatInfo->aspectMask, i, 0, dstTextureInfo->image->info().numLayers };
+        const VkImageSubresourceLayers srcLayers = { srcFormatInfo->aspectMask, i, 0, srcTextureInfo->image->info().numLayers };
         
         EmitCs([
           cDstImage  = dstTextureInfo->image,

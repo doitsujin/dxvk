@@ -432,13 +432,11 @@ namespace dxvk {
       dstImage->info().layout,
       dstImage->info().stages,
       dstImage->info().access);
-    
     m_barriers.accessBuffer(srcSlice,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_READ_BIT,
       srcBuffer->info().stages,
       srcBuffer->info().access);
-    
     m_barriers.recordCommands(m_cmd);
     
     m_cmd->trackResource(dstImage);
@@ -478,7 +476,6 @@ namespace dxvk {
       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT);
-    
     m_barriers.accessImage(
       srcImage, srcSubresourceRange,
       srcImage->info().layout,
@@ -487,21 +484,75 @@ namespace dxvk {
       VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_READ_BIT);
-    
     m_barriers.recordCommands(m_cmd);
-    
-    VkImageCopy imageRegion;
-    imageRegion.srcSubresource = srcSubresource;
-    imageRegion.srcOffset      = srcOffset;
-    imageRegion.dstSubresource = dstSubresource;
-    imageRegion.dstOffset      = dstOffset;
-    imageRegion.extent         = extent;
-    
-    m_cmd->cmdCopyImage(
-      srcImage->handle(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-      dstImage->handle(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-      1, &imageRegion);
-    
+      
+    if (dstSubresource.aspectMask == srcSubresource.aspectMask) {
+      VkImageCopy imageRegion;
+      imageRegion.srcSubresource = srcSubresource;
+      imageRegion.srcOffset      = srcOffset;
+      imageRegion.dstSubresource = dstSubresource;
+      imageRegion.dstOffset      = dstOffset;
+      imageRegion.extent         = extent;
+      
+      m_cmd->cmdCopyImage(
+        srcImage->handle(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        dstImage->handle(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1, &imageRegion);
+    } else {
+      const VkDeviceSize transferBufferSize = std::max(
+        util::computeImageDataSize(dstImage->info().format, extent),
+        util::computeImageDataSize(srcImage->info().format, extent));
+      
+      // TODO optimize away buffer creation
+      DxvkBufferCreateInfo tmpBufferInfo;
+      tmpBufferInfo.size   = transferBufferSize;
+      tmpBufferInfo.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+                           | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+      tmpBufferInfo.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
+      tmpBufferInfo.access = VK_ACCESS_TRANSFER_READ_BIT
+                           | VK_ACCESS_TRANSFER_WRITE_BIT;
+      
+      Rc<DxvkBuffer> tmpBuffer = m_device->createBuffer(
+        tmpBufferInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+      
+      DxvkPhysicalBufferSlice tmpSlice = tmpBuffer->slice();
+      
+      VkBufferImageCopy bufferImageCopy;
+      bufferImageCopy.bufferOffset       = tmpSlice.offset();
+      bufferImageCopy.bufferRowLength    = 0;
+      bufferImageCopy.bufferImageHeight  = 0;
+      bufferImageCopy.imageSubresource   = srcSubresource;
+      bufferImageCopy.imageOffset        = srcOffset;
+      bufferImageCopy.imageExtent        = extent;
+      
+      m_cmd->cmdCopyImageToBuffer(
+        srcImage->handle(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        tmpSlice.handle(), 1, &bufferImageCopy);
+      
+      m_barriers.accessBuffer(tmpSlice,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_TRANSFER_WRITE_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_TRANSFER_READ_BIT);
+      m_barriers.recordCommands(m_cmd);
+      
+      bufferImageCopy.imageSubresource   = dstSubresource;
+      bufferImageCopy.imageOffset        = dstOffset;
+      
+      m_cmd->cmdCopyBufferToImage(
+        tmpSlice.handle(), dstImage->handle(),
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1, &bufferImageCopy);
+      
+      m_barriers.accessBuffer(tmpSlice,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_TRANSFER_READ_BIT,
+        tmpBuffer->info().stages,
+        tmpBuffer->info().access);
+      
+      m_cmd->trackResource(tmpSlice.resource());
+    }
+      
     m_barriers.accessImage(
       dstImage, dstSubresourceRange,
       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -510,7 +561,6 @@ namespace dxvk {
       dstImage->info().layout,
       dstImage->info().stages,
       dstImage->info().access);
-    
     m_barriers.accessImage(
       srcImage, srcSubresourceRange,
       VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
@@ -519,7 +569,6 @@ namespace dxvk {
       srcImage->info().layout,
       srcImage->info().stages,
       srcImage->info().access);
-    
     m_barriers.recordCommands(m_cmd);
     
     m_cmd->trackResource(dstImage);
@@ -577,13 +626,11 @@ namespace dxvk {
       srcImage->info().layout,
       srcImage->info().stages,
       srcImage->info().access);
-
     m_barriers.accessBuffer(dstSlice,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT,
       dstBuffer->info().stages,
       dstBuffer->info().access);
-      
     m_barriers.recordCommands(m_cmd);
     
     m_cmd->trackResource(srcImage);
