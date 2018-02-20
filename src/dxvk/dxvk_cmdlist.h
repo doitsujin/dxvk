@@ -4,6 +4,7 @@
 
 #include "dxvk_binding.h"
 #include "dxvk_descriptor.h"
+#include "dxvk_event_tracker.h"
 #include "dxvk_lifetime.h"
 #include "dxvk_limits.h"
 #include "dxvk_pipelayout.h"
@@ -86,11 +87,31 @@ namespace dxvk {
     }
     
     /**
+     * \brief Adds an event revision to track
+     * 
+     * The event will be signaled after the command
+     * buffer has finished executing on the GPU.
+     */
+    void trackEvent(const DxvkEventRevision& event) {
+      m_eventTracker.trackEvent(event);
+    }
+    
+    /**
+     * \brief Signals tracked events
+     * 
+     * Marks all tracked events as signaled. Call this after
+     * synchronizing with a fence for this command list.
+     */
+    void signalEvents() {
+      m_eventTracker.signalEvents();
+    }
+    
+    /**
      * \brief Writes back query results
      * 
-     * Uses the query range to write back query data
-     * after the command list has finished executing
-     * on the GPU.
+     * Writes back query data to all queries tracked by the
+     * query range tracker. Call this after synchronizing
+     * with a fence for this command list.
      */
     void writeQueryData() {
       m_queryTracker.writeQueryData();
@@ -486,6 +507,7 @@ namespace dxvk {
     DxvkDescriptorAlloc m_descAlloc;
     DxvkStagingAlloc    m_stagingAlloc;
     DxvkQueryTracker    m_queryTracker;
+    DxvkEventTracker    m_eventTracker;
     
   };
   

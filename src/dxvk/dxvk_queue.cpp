@@ -58,7 +58,9 @@ namespace dxvk {
         entry.fence->wait(std::numeric_limits<uint64_t>::max());
         
         entry.cmdList->writeQueryData();
+        entry.cmdList->signalEvents();
         entry.cmdList->reset();
+        
         m_device->recycleCommandList(entry.cmdList);
       }
     }

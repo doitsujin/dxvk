@@ -5,6 +5,8 @@
 #include "dxvk_cmdlist.h"
 #include "dxvk_context_state.h"
 #include "dxvk_data.h"
+#include "dxvk_event.h"
+#include "dxvk_query.h"
 #include "dxvk_query_pool.h"
 #include "dxvk_util.h"
 
@@ -541,6 +543,13 @@ namespace dxvk {
     void setBlendMode(
             uint32_t            attachment,
       const DxvkBlendMode&      blendMode);
+    
+    /**
+     * \brief Signals an event
+     * \param [in] event The event
+     */
+    void signalEvent(
+      const DxvkEventRevision&  event);
     
     /**
      * \brief Writes to a timestamp query

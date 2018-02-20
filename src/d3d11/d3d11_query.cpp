@@ -7,19 +7,37 @@ namespace dxvk {
           D3D11Device*      device,
     const D3D11_QUERY_DESC& desc)
   : m_device(device), m_desc(desc) {
-    switch (desc.Query) {
-      // Other query types are currently unsupported
+    switch (m_desc.Query) {
       case D3D11_QUERY_EVENT:
-      case D3D11_QUERY_OCCLUSION:
-      case D3D11_QUERY_TIMESTAMP:
-      case D3D11_QUERY_TIMESTAMP_DISJOINT:
-      case D3D11_QUERY_OCCLUSION_PREDICATE:
+        m_event = new DxvkEvent();
         break;
-
+        
+      case D3D11_QUERY_OCCLUSION:
+        m_query = new DxvkQuery(
+          VK_QUERY_TYPE_OCCLUSION,
+          VK_QUERY_CONTROL_PRECISE_BIT);
+        break;
+      
+      case D3D11_QUERY_OCCLUSION_PREDICATE:
+        m_query = new DxvkQuery(
+          VK_QUERY_TYPE_OCCLUSION, 0);
+        break;
+        
+      case D3D11_QUERY_TIMESTAMP:
+        m_query = new DxvkQuery(
+          VK_QUERY_TYPE_TIMESTAMP, 0);
+        break;
+      
+      case D3D11_QUERY_TIMESTAMP_DISJOINT:
+        break;
+      
+      case D3D11_QUERY_PIPELINE_STATISTICS:
+        m_query = new DxvkQuery(
+          VK_QUERY_TYPE_PIPELINE_STATISTICS, 0);
+        break;
+      
       default:
-        static bool errorShown = false;
-        if (!std::exchange(errorShown, true))
-          Logger::warn(str::format("D3D11Query: Unsupported query type ", desc.Query));
+        throw DxvkError(str::format("D3D11: Unhandled query type: ", desc.Query));
     }
   }
   
@@ -34,6 +52,9 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceChild);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11Asynchronous);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11Query);
+    
+    if (m_desc.Query == D3D11_QUERY_OCCLUSION_PREDICATE)
+      COM_QUERY_IFACE(riid, ppvObject, ID3D11Predicate);
     
     Logger::warn("D3D11Query: Unknown interface query");
     return E_NOINTERFACE;
@@ -90,41 +111,118 @@ namespace dxvk {
   }
   
   
+  uint32_t D3D11Query::Reset() {
+    if (m_query != nullptr)
+      return m_query->reset();
+    
+    if (m_event != nullptr)
+      return m_event->reset();
+    
+    return 0;
+  }
+  
+  
+  bool D3D11Query::HasBeginEnabled() const {
+    return m_desc.Query == D3D11_QUERY_OCCLUSION
+        || m_desc.Query == D3D11_QUERY_OCCLUSION_PREDICATE
+        || m_desc.Query == D3D11_QUERY_PIPELINE_STATISTICS;
+  }
+  
+  
+  void D3D11Query::Begin(DxvkContext* ctx, uint32_t revision) {
+    m_revision = revision;
+    
+    if (m_query != nullptr) {
+      DxvkQueryRevision rev = { m_query, revision };
+      ctx->beginQuery(rev);
+    }
+  }
+  
+  
+  void D3D11Query::End(DxvkContext* ctx) {
+    if (m_query != nullptr) {
+      DxvkQueryRevision rev = { m_query, m_revision };
+      ctx->endQuery(rev);
+    }
+  }
+  
+  
+  void D3D11Query::Signal(DxvkContext* ctx, uint32_t revision) {
+    switch (m_desc.Query) {
+      case D3D11_QUERY_EVENT: {
+        DxvkEventRevision rev = { m_event, revision };
+        ctx->signalEvent(rev);
+      } break;
+      
+      case D3D11_QUERY_TIMESTAMP: {
+        DxvkQueryRevision rev = { m_query, revision };
+        ctx->writeTimestamp(rev);
+      } break;
+      
+      default:
+        break;
+    }
+  }
+  
+  
   HRESULT STDMETHODCALLTYPE D3D11Query::GetData(
           void*                             pData,
           UINT                              GetDataFlags) {
-    static bool errorShown = false;
-    static UINT64 fakeTimestamp = 0;
-    
-    if (!std::exchange(errorShown, true))
-      Logger::warn("D3D11Query::GetData: Stub");
-    
-    if (pData == nullptr)
-      return S_OK;
-    
-    switch (m_desc.Query) {
-      case D3D11_QUERY_EVENT:
-        *static_cast<BOOL*>(pData) = TRUE;
+    if (m_desc.Query == D3D11_QUERY_EVENT) {
+      const bool signaled = m_event->getStatus() == DxvkEventStatus::Signaled;
+      if (pData != nullptr)
+        *static_cast<BOOL*>(pData) = signaled;
+      
+      return signaled ? S_OK : S_FALSE;
+    } else {
+      DxvkQueryData queryData = {};
+      
+      if (m_query                     != nullptr
+       && m_query->getData(queryData) != DxvkQueryStatus::Available)
+        return S_FALSE;
+      
+      if (pData == nullptr)
         return S_OK;
-
-      case D3D11_QUERY_OCCLUSION:
-        *static_cast<UINT64*>(pData) = 1;
-        return S_OK;
-
-      case D3D11_QUERY_TIMESTAMP:
-        *static_cast<UINT64*>(pData) = fakeTimestamp++;
-        return S_OK;
-
-      case D3D11_QUERY_TIMESTAMP_DISJOINT:
-        static_cast<D3D11_QUERY_DATA_TIMESTAMP_DISJOINT*>(pData)->Frequency = 1000;
-        static_cast<D3D11_QUERY_DATA_TIMESTAMP_DISJOINT*>(pData)->Disjoint = FALSE;
-        return S_OK;
-
-      case D3D11_QUERY_OCCLUSION_PREDICATE:
-        *static_cast<BOOL*>(pData) = TRUE;
-        return S_OK;
+      
+      switch (m_desc.Query) {
+        case D3D11_QUERY_OCCLUSION:
+          *static_cast<UINT64*>(pData) = queryData.occlusion.samplesPassed;
+          return S_OK;
         
-      default: return E_INVALIDARG;
+        case D3D11_QUERY_OCCLUSION_PREDICATE:
+          *static_cast<BOOL*>(pData) = queryData.occlusion.samplesPassed != 0;
+          return S_OK;
+        
+        case D3D11_QUERY_TIMESTAMP:
+          *static_cast<UINT64*>(pData) = queryData.timestamp.time;
+          return S_OK;
+        
+        case D3D11_QUERY_TIMESTAMP_DISJOINT: {
+          // FIXME return correct frequency
+          auto data = static_cast<D3D11_QUERY_DATA_TIMESTAMP_DISJOINT*>(pData);
+          data->Frequency = 1000;
+          data->Disjoint = FALSE;
+        } return S_OK;
+        
+        case D3D11_QUERY_PIPELINE_STATISTICS: {
+          auto data = static_cast<D3D11_QUERY_DATA_PIPELINE_STATISTICS*>(pData);
+          data->IAVertices    = queryData.statistic.iaVertices;
+          data->IAPrimitives  = queryData.statistic.iaPrimitives;
+          data->VSInvocations = queryData.statistic.vsInvocations;
+          data->GSInvocations = queryData.statistic.gsInvocations;
+          data->GSPrimitives  = queryData.statistic.gsPrimitives;
+          data->CInvocations  = queryData.statistic.clipInvocations;
+          data->CPrimitives   = queryData.statistic.clipPrimitives;
+          data->PSInvocations = queryData.statistic.fsInvocations;
+          data->HSInvocations = queryData.statistic.tcsPatches;
+          data->DSInvocations = queryData.statistic.tesInvocations;
+          data->CSInvocations = queryData.statistic.csInvocations;
+        } return S_OK;
+          
+        default:
+          Logger::err(str::format("D3D11: Unhandled query type in GetData: ", m_desc.Query));
+          return E_INVALIDARG;
+      }
     }
   }
   

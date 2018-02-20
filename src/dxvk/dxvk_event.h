@@ -1,12 +1,14 @@
 #pragma once
 
-#include <condition_variable>
 #include <mutex>
 
 #include "dxvk_include.h"
 
 namespace dxvk {
   
+  /**
+   * \brief Event status
+   */
   enum class DxvkEventStatus {
     Reset     = 0,
     Signaled  = 1,
@@ -36,7 +38,7 @@ namespace dxvk {
      * \brief Signals the event
      * \param [in] revision The revision ID
      */
-    void signalEvent(uint32_t revision);
+    void signal(uint32_t revision);
     
     /**
      * \brief Queries event status
@@ -46,12 +48,22 @@ namespace dxvk {
     
   private:
     
-    std::mutex              m_mutex;
-    std::condition_variable m_signal;
+    std::mutex m_mutex;
     
     DxvkEventStatus         m_status   = DxvkEventStatus::Reset;
     uint32_t                m_revision = 0;
     
+  };
+  
+  /**
+   * \brief Event revision
+   * 
+   * Stores the event object and the
+   * version ID for event operations.
+   */
+  struct DxvkEventRevision {
+    Rc<DxvkEvent> event;
+    uint32_t      revision;
   };
   
 }

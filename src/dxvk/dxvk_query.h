@@ -1,6 +1,5 @@
 #pragma once
 
-#include <condition_variable>
 #include <mutex>
 
 #include "dxvk_limits.h"
@@ -78,8 +77,9 @@ namespace dxvk {
    * index of a single Vulkan query.
    */
   struct DxvkQueryHandle {
-    VkQueryPool queryPool = VK_NULL_HANDLE;
-    uint32_t    queryId   = 0;
+    VkQueryPool         queryPool = VK_NULL_HANDLE;
+    uint32_t            queryId   = 0;
+    VkQueryControlFlags flags     = 0;
   };
   
   /**
@@ -93,7 +93,9 @@ namespace dxvk {
     
   public:
     
-    DxvkQuery(VkQueryType type);
+    DxvkQuery(
+      VkQueryType         type,
+      VkQueryControlFlags flags);
     ~DxvkQuery();
     
     /**
@@ -105,6 +107,17 @@ namespace dxvk {
     }
     
     /**
+     * \brief Query control flags
+     * 
+     * Flags that will be applied when
+     * calling \c vkCmdBeginQuery.
+     * \returns Query control flags
+     */
+    VkQueryControlFlags flags() const {
+      return m_flags;
+    }
+    
+    /**
      * \brief Resets the query object
      * 
      * Increments the revision number which will
@@ -113,7 +126,7 @@ namespace dxvk {
      * will take the revision number as an argument.
      * \returns The new query revision number
      */
-    uint32_t invalidate();
+    uint32_t reset();
     
     /**
      * \brief Retrieves query data
@@ -172,10 +185,10 @@ namespace dxvk {
     
   private:
     
-    const VkQueryType m_type;
+    const VkQueryType         m_type;
+    const VkQueryControlFlags m_flags;
     
-    std::mutex              m_mutex;
-    std::condition_variable m_signal;
+    std::mutex m_mutex;
     
     DxvkQueryStatus m_status   = DxvkQueryStatus::Reset;
     DxvkQueryData   m_data     = {};

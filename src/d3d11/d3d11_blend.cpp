@@ -21,7 +21,7 @@ namespace dxvk {
     m_msState.sampleMask            = 0; // Set during bind
     m_msState.enableAlphaToCoverage = desc.AlphaToCoverageEnable;
     m_msState.enableAlphaToOne      = VK_FALSE;
-    m_msState.enableSampleShading   = VK_TRUE;
+    m_msState.enableSampleShading   = VK_FALSE;
     m_msState.minSampleShading      = 0.0f;
     
     // In 11_0, there is no logic op state. Later versions

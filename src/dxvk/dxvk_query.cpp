@@ -2,8 +2,10 @@
 
 namespace dxvk {
   
-  DxvkQuery::DxvkQuery(VkQueryType type)
-  : m_type(type) {
+  DxvkQuery::DxvkQuery(
+    VkQueryType         type,
+    VkQueryControlFlags flags)
+  : m_type(type), m_flags(flags) {
     
   }
   
@@ -13,7 +15,7 @@ namespace dxvk {
   }
   
   
-  uint32_t DxvkQuery::invalidate() {
+  uint32_t DxvkQuery::reset() {
     std::unique_lock<std::mutex> lock(m_mutex);
     
     m_status = DxvkQueryStatus::Reset;
@@ -57,7 +59,6 @@ namespace dxvk {
         m_status = DxvkQueryStatus::Pending;
       } else {
         m_status = DxvkQueryStatus::Available;
-        m_signal.notify_all();
       }
       
       m_handle = DxvkQueryHandle();
@@ -110,10 +111,8 @@ namespace dxvk {
           Logger::err(str::format("DxvkQuery: Unhandled query type: ", m_type));
       }
       
-      if (++m_queryIndex == m_queryCount && m_status == DxvkQueryStatus::Pending) {
+      if (++m_queryIndex == m_queryCount && m_status == DxvkQueryStatus::Pending)
         m_status = DxvkQueryStatus::Available;
-        m_signal.notify_all();
-      }
     }
   }
   

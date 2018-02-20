@@ -73,7 +73,7 @@ namespace dxvk {
     m_cmd->cmdBeginQuery(
       handle.queryPool,
       handle.queryId,
-      0);
+      handle.flags);
     
     query.query->beginRecording(query.revision);
     this->insertActiveQuery(query);
@@ -1201,6 +1201,11 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::signalEvent(const DxvkEventRevision& event) {
+    m_cmd->trackEvent(event);
+  }
+  
+  
   void DxvkContext::writeTimestamp(const DxvkQueryRevision& query) {
     DxvkQueryHandle handle = this->allocQuery(query);
     
@@ -1631,7 +1636,7 @@ namespace dxvk {
   DxvkQueryHandle DxvkContext::allocQuery(const DxvkQueryRevision& query) {
     const VkQueryType queryType = query.query->type();
     
-    DxvkQueryHandle queryHandle = { VK_NULL_HANDLE, 0 };
+    DxvkQueryHandle queryHandle = DxvkQueryHandle();
     Rc<DxvkQueryPool> queryPool = m_queryPools[queryType];
     
     if (queryPool != nullptr)
@@ -1676,7 +1681,7 @@ namespace dxvk {
       m_cmd->cmdBeginQuery(
         handle.queryPool,
         handle.queryId,
-        0);
+        handle.flags);
     }
   }
   
