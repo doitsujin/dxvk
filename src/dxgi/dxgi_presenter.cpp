@@ -171,7 +171,8 @@ namespace dxvk {
     if (m_backBufferResolve != nullptr) {
       m_context->resolveImage(
         m_backBufferResolve, resolveSubresources,
-        m_backBuffer,        resolveSubresources);
+        m_backBuffer,        resolveSubresources,
+        VK_FORMAT_UNDEFINED);
     }
     
     const DxvkSwapSemaphores sem = m_swapchain->getSemaphorePair();

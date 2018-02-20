@@ -801,25 +801,22 @@ namespace dxvk {
           cSrcImage, cSrcLayers, VkOffset3D { 0, 0, 0 },
           cDstImage->mipLevelExtent(cDstLayers.mipLevel));
       });
-    } else if (!srcFormatInfo.flags.test(DxgiFormatFlag::Typeless)
-            && !dstFormatInfo.flags.test(DxgiFormatFlag::Typeless)) {
-      if (dstDesc.Format != srcDesc.Format) {
-        Logger::err("D3D11: ResolveSubresource: Incompatible formats");
-        return;
-      }
+    } else {
+      const VkFormat format = m_parent->LookupFormat(
+        Format, DxgiFormatMode::Any).format;
       
       EmitCs([
         cDstImage  = dstTextureInfo->image,
         cSrcImage  = srcTextureInfo->image,
         cDstSubres = dstSubresourceLayers,
-        cSrcSubres = srcSubresourceLayers
+        cSrcSubres = srcSubresourceLayers,
+        cFormat    = format
       ] (DxvkContext* ctx) {
         ctx->resolveImage(
           cDstImage, cDstSubres,
-          cSrcImage, cSrcSubres);
+          cSrcImage, cSrcSubres,
+          cFormat);
       });
-    } else {
-      Logger::err("D3D11: ResolveSubresource with typeless images currently not supported");
     }
   }
   

@@ -897,9 +897,13 @@ namespace dxvk {
     const Rc<DxvkImage>&            dstImage,
     const VkImageSubresourceLayers& dstSubresources,
     const Rc<DxvkImage>&            srcImage,
-    const VkImageSubresourceLayers& srcSubresources) {
+    const VkImageSubresourceLayers& srcSubresources,
+          VkFormat                  format) {
     this->renderPassEnd();
-
+    
+    if (format == VK_FORMAT_UNDEFINED)
+      format = srcImage->info().format;
+    
     VkImageSubresourceRange dstSubresourceRange = {
       dstSubresources.aspectMask,
       dstSubresources.mipLevel, 1,
@@ -932,19 +936,24 @@ namespace dxvk {
       VK_ACCESS_TRANSFER_READ_BIT);
     m_barriers.recordCommands(m_cmd);
     
-    VkImageResolve imageRegion;
-    imageRegion.srcSubresource = srcSubresources;
-    imageRegion.srcOffset      = VkOffset3D { 0, 0, 0 };
-    imageRegion.dstSubresource = dstSubresources;
-    imageRegion.dstOffset      = VkOffset3D { 0, 0, 0 };
-    imageRegion.extent         = srcImage->mipLevelExtent(srcSubresources.mipLevel);
-    
-    m_cmd->cmdResolveImage(
-      srcImage->handle(),
-      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-      dstImage->handle(),
-      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-      1, &imageRegion);
+    if (srcImage->info().format == format
+     && dstImage->info().format == format) {
+      VkImageResolve imageRegion;
+      imageRegion.srcSubresource = srcSubresources;
+      imageRegion.srcOffset      = VkOffset3D { 0, 0, 0 };
+      imageRegion.dstSubresource = dstSubresources;
+      imageRegion.dstOffset      = VkOffset3D { 0, 0, 0 };
+      imageRegion.extent         = srcImage->mipLevelExtent(srcSubresources.mipLevel);
+      
+      m_cmd->cmdResolveImage(
+        srcImage->handle(),
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        dstImage->handle(),
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1, &imageRegion);
+    } else {
+      // TODO implement
+    }
     
     m_barriers.accessImage(
       dstImage, dstSubresourceRange,
