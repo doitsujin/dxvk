@@ -6,6 +6,7 @@
 #include "dxvk_context_state.h"
 #include "dxvk_data.h"
 #include "dxvk_event.h"
+#include "dxvk_meta_resolve.h"
 #include "dxvk_query.h"
 #include "dxvk_query_pool.h"
 #include "dxvk_util.h"
