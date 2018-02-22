@@ -86,6 +86,16 @@ namespace dxvk {
   }
   
   
+  bool DxvkShader::optimize() {
+    return m_code.optimize();
+  }
+  
+  
+  bool DxvkShader::validate() const {
+    return m_code.validate();
+  }
+  
+  
   void DxvkShader::dump(std::ostream&& outputStream) const {
     m_code.store(std::move(outputStream));
   }

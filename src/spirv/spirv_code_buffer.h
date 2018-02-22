@@ -184,6 +184,24 @@ namespace dxvk {
       m_ptr = m_code.size();
     }
     
+    /**
+     * \brief Performs in-place optimization
+     * 
+     * This requires the code buffer to
+     * contain a complete SPIR-V module.
+     * \returns \c true on success
+     */
+    bool optimize();
+    
+    /**
+     * \brief Validates shader code
+     * 
+     * This requires the code buffer to
+     * contain a complete SPIR-V module.
+     * \returns \c true if the code is valid
+     */
+    bool validate() const;
+    
   private:
     
     std::vector<uint32_t> m_code;

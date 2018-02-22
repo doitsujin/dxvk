@@ -39,6 +39,18 @@ namespace dxvk {
     m_shader = module.compile(*pDxbcOptions);
     m_shader->setDebugName(m_name);
     
+    // FIXME this is currently way too slow to be viable
+    // as a default option, but may help Nvidia users.
+    if (env::getEnvVar(L"DXVK_SHADER_OPTIMIZE") == "1") {
+      if (!m_shader->optimize())
+        Logger::warn(str::format("Failed to optimize: ", m_name));
+    }
+    
+    if (env::getEnvVar(L"DXVK_SHADER_VALIDATE") == "1") {
+      if (!m_shader->validate())
+        Logger::warn(str::format("Invalid shader: ", m_name));
+    }
+    
     if (dumpPath.size() != 0) {
       m_shader->dump(std::ofstream(str::format(dumpPath, "/", m_name, ".spv"),
         std::ios_base::binary | std::ios_base::trunc));
