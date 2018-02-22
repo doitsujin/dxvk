@@ -9,7 +9,7 @@ For binary releases, see the [releases](https://github.com/doitsujin/dxvk/releas
 ## Build instructions
 
 ### Requirements:
-- [wine-staging](https://wine-staging.com/) for Vulkan support
+- [wine-vulkan](https://github.com/roderickc/wine-vulkan) for Vulkan support
 - [Meson](http://mesonbuild.com/) build system (at least 0.43)
 - [MinGW64](http://mingw-w64.org/) compiler and headers (requires threading support)
 - [glslang](https://github.com/KhronosGroup/glslang) front end and validator
