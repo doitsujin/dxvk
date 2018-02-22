@@ -162,6 +162,11 @@ namespace dxvk {
       D3D11_BUFFER_DESC resourceDesc;
       resource->GetDesc(&resourceDesc);
       
+      if ((resourceDesc.BindFlags & D3D11_BIND_SHADER_RESOURCE) == 0) {
+        Logger::warn("D3D11: Trying to create SRV for buffer without D3D11_BIND_SHADER_RESOURCE");
+        return E_INVALIDARG;
+      }
+      
       DxvkBufferViewCreateInfo viewInfo;
       
       D3D11_BUFFEREX_SRV bufInfo;
@@ -222,6 +227,11 @@ namespace dxvk {
       // Retrieve info about the image
       const D3D11TextureInfo* textureInfo
         = GetCommonTextureInfo(pResource);
+      
+      if ((textureInfo->bindFlags & D3D11_BIND_SHADER_RESOURCE) == 0) {
+        Logger::warn("D3D11: Trying to create SRV for texture without D3D11_BIND_SHADER_RESOURCE");
+        return E_INVALIDARG;
+      }
       
       // Fill in the view info. The view type depends solely
       // on the view dimension field in the view description,
@@ -358,6 +368,11 @@ namespace dxvk {
       D3D11_BUFFER_DESC resourceDesc;
       resource->GetDesc(&resourceDesc);
       
+      if ((resourceDesc.BindFlags & D3D11_BIND_UNORDERED_ACCESS) == 0) {
+        Logger::warn("D3D11: Trying to create UAV for buffer without D3D11_BIND_UNORDERED_ACCESS");
+        return E_INVALIDARG;
+      }
+      
       DxvkBufferViewCreateInfo viewInfo;
       
       if (desc.Buffer.Flags & D3D11_BUFFEREX_SRV_FLAG_RAW) {
@@ -408,6 +423,11 @@ namespace dxvk {
       // Retrieve info about the image
       const D3D11TextureInfo* textureInfo
         = GetCommonTextureInfo(pResource);
+      
+      if ((textureInfo->bindFlags & D3D11_BIND_UNORDERED_ACCESS) == 0) {
+        Logger::warn("D3D11: Trying to create UAV for texture without D3D11_BIND_UNORDERED_ACCESS");
+        return E_INVALIDARG;
+      }
       
       // Fill in the view info. The view type depends solely
       // on the view dimension field in the view description,
@@ -514,6 +534,11 @@ namespace dxvk {
     const D3D11TextureInfo* textureInfo
       = GetCommonTextureInfo(pResource);
     
+    if ((textureInfo->bindFlags & D3D11_BIND_RENDER_TARGET) == 0) {
+      Logger::warn("D3D11: Trying to create RTV for texture without D3D11_BIND_RENDER_TARGET");
+      return E_INVALIDARG;
+    }
+    
     // Fill in Vulkan image view info
     DxvkImageViewCreateInfo viewInfo;
     viewInfo.format = m_dxgiAdapter->LookupFormat(desc.Format, DxgiFormatMode::Color).format;
@@ -609,6 +634,11 @@ namespace dxvk {
     // Retrieve the image that we are going to create the view for
     const D3D11TextureInfo* textureInfo
       = GetCommonTextureInfo(pResource);
+    
+    if ((textureInfo->bindFlags & D3D11_BIND_DEPTH_STENCIL) == 0) {
+      Logger::warn("D3D11: Trying to create DSV for texture without D3D11_BIND_DEPTH_STENCIL");
+      return E_INVALIDARG;
+    }
     
     // Fill in Vulkan image view info
     DxvkImageViewCreateInfo viewInfo;

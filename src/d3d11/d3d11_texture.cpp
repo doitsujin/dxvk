@@ -205,6 +205,9 @@ namespace dxvk {
     m_texInfo.imageBuffer = m_desc.CPUAccessFlags != 0
       ? CreateImageBuffer(pDevice->GetDXVKDevice(), info.format, info.extent)
       : nullptr;
+    
+    m_texInfo.usage       = m_desc.Usage;
+    m_texInfo.bindFlags   = m_desc.BindFlags;
   }
   
   ///////////////////////////////////////////
@@ -302,6 +305,9 @@ namespace dxvk {
     m_texInfo.imageBuffer = m_desc.CPUAccessFlags != 0
       ? CreateImageBuffer(pDevice->GetDXVKDevice(), info.format, info.extent)
       : nullptr;
+    
+    m_texInfo.usage       = m_desc.Usage;
+    m_texInfo.bindFlags   = m_desc.BindFlags;
   }
   
   
@@ -396,6 +402,9 @@ namespace dxvk {
     m_texInfo.imageBuffer = m_desc.CPUAccessFlags != 0
       ? CreateImageBuffer(pDevice->GetDXVKDevice(), info.format, info.extent)
       : nullptr;
+    
+    m_texInfo.usage       = m_desc.Usage;
+    m_texInfo.bindFlags   = m_desc.BindFlags;
   }
   
   

@@ -20,6 +20,9 @@ namespace dxvk {
     Rc<DxvkBuffer>    imageBuffer;
     Rc<DxvkImage>     image;
     
+    D3D11_USAGE       usage;
+    UINT              bindFlags;
+    
     VkImageSubresource mappedSubresource = {
       VK_IMAGE_ASPECT_COLOR_BIT, 0, 0 };
   };
