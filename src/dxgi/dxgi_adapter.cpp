@@ -335,6 +335,8 @@ namespace dxvk {
     
 //     AddColorFormat(DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM,  VK_FORMAT_UNDEFINED);
     
+    AddColorFormat        (DXGI_FORMAT_B4G4R4A4_UNORM,              VK_FORMAT_B4G4R4A4_UNORM_PACK16);
+
     /***********************************************************************************/
     /*                           B L O C K     F O R M A T S                           */
     AddColorFormatTypeless(DXGI_FORMAT_BC1_TYPELESS,                VK_FORMAT_BC1_RGBA_UNORM_BLOCK);
