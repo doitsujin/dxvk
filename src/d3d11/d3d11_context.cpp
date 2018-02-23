@@ -261,7 +261,7 @@ namespace dxvk {
       VkDeviceSize srcLength = srcBuffer.length();
       
       if (pSrcBox != nullptr) {
-        if (pSrcBox->right > pSrcBox->left)
+        if (pSrcBox->left > pSrcBox->right)
           return;  // no-op, but legal
         
         srcOffset = pSrcBox->left;
