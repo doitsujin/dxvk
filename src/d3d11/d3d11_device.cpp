@@ -807,6 +807,11 @@ namespace dxvk {
         }
       }
       
+      std::sort(bindings.begin(), bindings.end(),
+        [] (const DxvkVertexBinding& a, const DxvkVertexBinding& b) {
+          return a.binding < b.binding;
+        });
+      
       // Create the actual input layout object
       // if the application requests it.
       if (ppInputLayout != nullptr) {

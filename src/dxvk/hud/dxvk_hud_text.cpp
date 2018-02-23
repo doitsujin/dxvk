@@ -31,6 +31,7 @@ namespace dxvk::hud {
     DxvkInputAssemblyState iaState;
     iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     iaState.primitiveRestart  = VK_FALSE;
+    iaState.patchVertexCount  = 0;
     context->setInputAssemblyState(iaState);
     
     const std::array<DxvkVertexAttribute, 3> ilAttributes = {{

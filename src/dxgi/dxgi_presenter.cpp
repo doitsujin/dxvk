@@ -50,6 +50,7 @@ namespace dxvk {
     DxvkInputAssemblyState iaState;
     iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
     iaState.primitiveRestart  = VK_FALSE;
+    iaState.patchVertexCount  = 0;
     m_context->setInputAssemblyState(iaState);
     
     m_context->setInputLayout(
