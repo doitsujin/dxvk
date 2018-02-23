@@ -171,8 +171,11 @@ namespace dxvk {
     // FIXME returning query data seems to lock up some
     // games for some reason, so we have to disable it.
     if (m_desc.Query == D3D11_QUERY_EVENT) {
+      if (pData != nullptr)
+        *static_cast<BOOL*>(pData) = TRUE;
       return S_OK;
 //       const bool signaled = m_event->getStatus() == DxvkEventStatus::Signaled;
+//       
 //       if (pData != nullptr)
 //         *static_cast<BOOL*>(pData) = signaled;
 //       
