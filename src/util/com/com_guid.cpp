@@ -10,25 +10,24 @@ const GUID IDXGIPresentBackBuffer::guid        = {0x5679becd,0x8547,0x4d93,{0x96
 const GUID IDXGIPresentDevicePrivate::guid     = {0x79352328,0x16f2,0x4f81,{0x97,0x46,0x9c,0x2e,0x2c,0xcd,0x43,0xcf}};
 
 std::ostream& operator << (std::ostream& os, REFIID guid) {
-  os.width(8);
-  os << std::hex << guid.Data1 << '-';
+  os << std::hex << std::setfill('0')
+     << std::setw(8) << guid.Data1 << '-';
 
-  os.width(4);
-  os << std::hex << guid.Data2 << '-';
+  os << std::hex << std::setfill('0')
+     << std::setw(4) << guid.Data2 << '-';
 
-  os.width(4);
-  os << std::hex << guid.Data3 << '-';
+  os << std::hex << std::setfill('0')
+     << std::setw(4) << guid.Data3 << '-';
 
-  os.width(2);
-  os << std::hex
-     << static_cast<short>(guid.Data4[0])
-     << static_cast<short>(guid.Data4[1])
+  os << std::hex << std::setfill('0')
+     << std::setw(2) << static_cast<short>(guid.Data4[0])
+     << std::setw(2) << static_cast<short>(guid.Data4[1])
      << '-'
-     << static_cast<short>(guid.Data4[2])
-     << static_cast<short>(guid.Data4[3])
-     << static_cast<short>(guid.Data4[4])
-     << static_cast<short>(guid.Data4[5])
-     << static_cast<short>(guid.Data4[6])
-     << static_cast<short>(guid.Data4[7]);
+     << std::setw(2) << static_cast<short>(guid.Data4[2])
+     << std::setw(2) << static_cast<short>(guid.Data4[3])
+     << std::setw(2) << static_cast<short>(guid.Data4[4])
+     << std::setw(2) << static_cast<short>(guid.Data4[5])
+     << std::setw(2) << static_cast<short>(guid.Data4[6])
+     << std::setw(2) << static_cast<short>(guid.Data4[7]);
   return os;
 }

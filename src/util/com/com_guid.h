@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ostream>
+#include <iomanip>
 
 #include "com_include.h"
 
