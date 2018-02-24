@@ -1645,12 +1645,12 @@ namespace dxvk {
   
   
   bool DxvkContext::validateComputeState() {
-    return m_cpActivePipeline != nullptr;
+    return m_cpActivePipeline != VK_NULL_HANDLE;
   }
   
   
   bool DxvkContext::validateGraphicsState() {
-    if (m_gpActivePipeline == nullptr)
+    if (m_gpActivePipeline == VK_NULL_HANDLE)
       return false;
     
     if (!m_flags.test(DxvkContextFlag::GpRenderPassBound))
