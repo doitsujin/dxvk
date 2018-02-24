@@ -1509,7 +1509,7 @@ namespace dxvk {
             m_descInfos[i].image.imageLayout = res.imageView->imageInfo().layout;
             
             // TODO try to reduce the runtime overhead of all these comparisons
-            if (bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS) {
+            if (bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS && m_state.om.framebuffer != nullptr) {
               DxvkAttachment depthAttachment = m_state.om.framebuffer->renderTargets().getDepthTarget();
               
               if (depthAttachment.view != nullptr
