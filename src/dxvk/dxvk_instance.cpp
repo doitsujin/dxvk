@@ -78,6 +78,8 @@ namespace dxvk {
     for (auto l : layers) {
       if (layersAvailable.supports(l))
         layersEnabled.add(l);
+      else
+        throw DxvkError(str::format("Requested layer not installed: ", l));
     }
     
     return layersEnabled;
