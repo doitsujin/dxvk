@@ -644,7 +644,7 @@ namespace dxvk {
           uint32_t z) {
     this->commitComputeState();
     
-    if (m_cpActivePipeline != VK_NULL_HANDLE) {
+    if (this->validateComputeState()) {
       m_cmd->cmdDispatch(x, y, z);
       
       this->commitComputeBarriers();
@@ -658,7 +658,7 @@ namespace dxvk {
     
     auto physicalSlice = buffer.physicalSlice();
     
-    if (m_cpActivePipeline != VK_NULL_HANDLE) {
+    if (this->validateComputeState()) {
       m_cmd->cmdDispatchIndirect(
         physicalSlice.handle(),
         physicalSlice.offset());
@@ -675,7 +675,7 @@ namespace dxvk {
           uint32_t firstInstance) {
     this->commitGraphicsState();
     
-    if (m_gpActivePipeline != VK_NULL_HANDLE) {
+    if (this->validateGraphicsState()) {
       m_cmd->cmdDraw(
         vertexCount, instanceCount,
         firstVertex, firstInstance);
@@ -689,7 +689,7 @@ namespace dxvk {
           uint32_t          stride) {
     this->commitGraphicsState();
     
-    if (m_gpActivePipeline != VK_NULL_HANDLE) {
+    if (this->validateGraphicsState()) {
       auto physicalSlice = buffer.physicalSlice();
       
       m_cmd->cmdDrawIndirect(
@@ -708,7 +708,7 @@ namespace dxvk {
           uint32_t firstInstance) {
     this->commitGraphicsState();
     
-    if (m_gpActivePipeline != VK_NULL_HANDLE) {
+    if (this->validateGraphicsState()) {
       m_cmd->cmdDrawIndexed(
         indexCount, instanceCount,
         firstIndex, vertexOffset,
@@ -723,7 +723,7 @@ namespace dxvk {
           uint32_t          stride) {
     this->commitGraphicsState();
     
-    if (m_gpActivePipeline != VK_NULL_HANDLE) {
+    if (this->validateGraphicsState()) {
       auto physicalSlice = buffer.physicalSlice();
       
       m_cmd->cmdDrawIndexedIndirect(
@@ -1641,6 +1641,22 @@ namespace dxvk {
         m_state.vi.bindingMask = bindingMask;
       }
     }
+  }
+  
+  
+  bool DxvkContext::validateComputeState() {
+    return m_cpActivePipeline != nullptr;
+  }
+  
+  
+  bool DxvkContext::validateGraphicsState() {
+    if (m_gpActivePipeline == nullptr)
+      return false;
+    
+    if (!m_flags.test(DxvkContextFlag::GpRenderPassBound))
+      return false;
+    
+    return true;
   }
   
   

@@ -616,6 +616,9 @@ namespace dxvk {
     void updateIndexBufferBinding();
     void updateVertexBufferBindings();
     
+    bool validateComputeState();
+    bool validateGraphicsState();
+    
     void commitComputeState();
     void commitGraphicsState();
     
