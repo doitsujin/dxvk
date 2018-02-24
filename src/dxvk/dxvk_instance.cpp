@@ -79,7 +79,7 @@ namespace dxvk {
       if (layersAvailable.supports(l))
         layersEnabled.add(l);
       else
-        Logger::warn(str::format("Vulkan layer not installed, therefore not enabled: ", l));
+        throw DxvkError(str::format("Requested layer not installed: ", l));
     }
     
     return layersEnabled;
