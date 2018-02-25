@@ -15,6 +15,9 @@ namespace dxvk {
     DxbcOptions(
       const Rc<DxvkDevice>& device);
       
+    /// Maximum number of sample mask words.
+    uint32_t maxSampleMaskWords = 1;
+
     /// Use Fmin/Fmax instead of Nmin/Nmax.
     bool useSimpleMinMaxClamp = false;
     

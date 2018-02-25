@@ -426,9 +426,17 @@ namespace dxvk {
           "vThreadIndexInGroup");
       } break;
       
+      case DxbcOperandType::InputCoverageMask: {
+        m_ps.builtinSampleMaskIn = emitNewBuiltinVariable({
+          { DxbcScalarType::Uint32, 1, m_options.maxSampleMaskWords },
+          spv::StorageClassInput },
+          spv::BuiltInSampleMask,
+          "vCoverage");
+      } break;
+
       case DxbcOperandType::OutputCoverageMask: {
         m_ps.builtinSampleMaskOut = emitNewBuiltinVariable({
-          { DxbcScalarType::Uint32, 1, 0 },
+          { DxbcScalarType::Uint32, 1, m_options.maxSampleMaskWords },
           spv::StorageClassOutput },
           spv::BuiltInSampleMask,
           "oCoverage");
@@ -3827,9 +3835,14 @@ namespace dxvk {
           { DxbcScalarType::Uint32, 1, 0 },
           m_cs.builtinLocalInvocationIndex };
 
+      case DxbcOperandType::InputCoverageMask:
+        return DxbcRegisterPointer {
+          { DxbcScalarType::Uint32, 1, m_options.maxSampleMaskWords },
+          m_ps.builtinSampleMaskIn };
+
       case DxbcOperandType::OutputCoverageMask:
         return DxbcRegisterPointer {
-          { DxbcScalarType::Uint32, 1, 0 },
+          { DxbcScalarType::Uint32, 1, m_options.maxSampleMaskWords },
           m_ps.builtinSampleMaskOut };
 
       case DxbcOperandType::OutputDepth:
