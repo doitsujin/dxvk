@@ -426,7 +426,6 @@ namespace dxvk {
       } break;
       
       case DxbcOperandType::OutputCoverageMask: {
-        m_module.enableCapability(spv::CapabilitySampleRateShading);
         m_ps.builtinSampleMaskOut = emitNewBuiltinVariable({
           { DxbcScalarType::Uint32, 1, 0 },
           spv::StorageClassOutput },
