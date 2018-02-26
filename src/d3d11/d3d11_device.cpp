@@ -874,11 +874,11 @@ namespace dxvk {
         pShaderBytecode, BytecodeLength, pClassLinkage)))
       return E_INVALIDARG;
     
-    if (ppVertexShader != nullptr) {
-      *ppVertexShader = ref(new D3D11VertexShader(
-        this, std::move(module)));
-    }
+    if (ppVertexShader == nullptr)
+      return S_FALSE;
     
+    *ppVertexShader = ref(new D3D11VertexShader(
+      this, std::move(module)));
     return S_OK;
   }
   
@@ -894,11 +894,11 @@ namespace dxvk {
         pShaderBytecode, BytecodeLength, pClassLinkage)))
       return E_INVALIDARG;
     
-    if (ppGeometryShader != nullptr) {
-      *ppGeometryShader = ref(new D3D11GeometryShader(
-        this, std::move(module)));
-    }
+    if (ppGeometryShader == nullptr)
+      return S_FALSE;
     
+    *ppGeometryShader = ref(new D3D11GeometryShader(
+      this, std::move(module)));
     return S_OK;
   }
   
@@ -929,11 +929,11 @@ namespace dxvk {
         pShaderBytecode, BytecodeLength, pClassLinkage)))
       return E_INVALIDARG;
     
-    if (ppPixelShader != nullptr) {
-      *ppPixelShader = ref(new D3D11PixelShader(
-        this, std::move(module)));
-    }
+    if (ppPixelShader == nullptr)
+      return S_FALSE;
     
+    *ppPixelShader = ref(new D3D11PixelShader(
+      this, std::move(module)));
     return S_OK;
   }
   
@@ -944,17 +944,16 @@ namespace dxvk {
           ID3D11ClassLinkage*         pClassLinkage,
           ID3D11HullShader**          ppHullShader) {
     D3D11ShaderModule module;
-    *ppHullShader = nullptr;
     
     if (FAILED(this->CreateShaderModule(&module,
         pShaderBytecode, BytecodeLength, pClassLinkage)))
       return E_INVALIDARG;
     
-    if (ppHullShader != nullptr) {
-      *ppHullShader = ref(new D3D11HullShader(
-        this, std::move(module)));
-    }
+    if (ppHullShader == nullptr)
+      return S_FALSE;
     
+    *ppHullShader = ref(new D3D11HullShader(
+      this, std::move(module)));
     return S_OK;
   }
   
@@ -965,16 +964,16 @@ namespace dxvk {
           ID3D11ClassLinkage*         pClassLinkage,
           ID3D11DomainShader**        ppDomainShader) {
     D3D11ShaderModule module;
-    *ppDomainShader = nullptr;
+    
     if (FAILED(this->CreateShaderModule(&module,
         pShaderBytecode, BytecodeLength, pClassLinkage)))
       return E_INVALIDARG;
     
-    if (ppDomainShader != nullptr) {
-      *ppDomainShader = ref(new D3D11DomainShader(
-        this, std::move(module)));
-    }
+    if (ppDomainShader == nullptr)
+      return S_FALSE;
     
+    *ppDomainShader = ref(new D3D11DomainShader(
+      this, std::move(module)));
     return S_OK;
   }
   
@@ -990,11 +989,11 @@ namespace dxvk {
         pShaderBytecode, BytecodeLength, pClassLinkage)))
       return E_INVALIDARG;
     
-    if (ppComputeShader != nullptr) {
-      *ppComputeShader = ref(new D3D11ComputeShader(
-        this, std::move(module)));
-    }
+    if (ppComputeShader == nullptr)
+      return S_FALSE;
     
+    *ppComputeShader = ref(new D3D11ComputeShader(
+      this, std::move(module)));
     return S_OK;
   }
   
