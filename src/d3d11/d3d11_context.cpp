@@ -1246,8 +1246,19 @@ namespace dxvk {
           ID3D11HullShader*                 pHullShader,
           ID3D11ClassInstance* const*       ppClassInstances,
           UINT                              NumClassInstances) {
-    if (m_state.hs.shader.ptr() != pHullShader)
-      Logger::err("D3D11DeviceContext::HSSetShader: Not implemented");
+    auto shader = static_cast<D3D11HullShader*>(pHullShader);
+    
+    if (NumClassInstances != 0)
+      Logger::err("D3D11DeviceContext::HSSetShader: Class instances not supported");
+    
+    if (m_state.hs.shader != shader) {
+      m_state.hs.shader = shader;
+      
+      EmitCs([cShader = shader != nullptr ? shader->GetShader() : nullptr]
+      (DxvkContext* ctx) {
+        ctx->bindShader(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, cShader);
+      });
+    }
   }
   
   
@@ -1330,8 +1341,19 @@ namespace dxvk {
           ID3D11DomainShader*               pDomainShader,
           ID3D11ClassInstance* const*       ppClassInstances,
           UINT                              NumClassInstances) {
-    if (m_state.ds.shader.ptr() != pDomainShader)
-      Logger::err("D3D11DeviceContext::DSSetShader: Not implemented");
+    auto shader = static_cast<D3D11DomainShader*>(pDomainShader);
+    
+    if (NumClassInstances != 0)
+      Logger::err("D3D11DeviceContext::DSSetShader: Class instances not supported");
+    
+    if (m_state.ds.shader != shader) {
+      m_state.ds.shader = shader;
+      
+      EmitCs([cShader = shader != nullptr ? shader->GetShader() : nullptr]
+      (DxvkContext* ctx) {
+        ctx->bindShader(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, cShader);
+      });
+    }
   }
   
   
