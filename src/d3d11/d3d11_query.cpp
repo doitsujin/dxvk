@@ -168,40 +168,33 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11Query::GetData(
           void*                             pData,
           UINT                              GetDataFlags) {
-    // FIXME returning query data seems to lock up some
-    // games for some reason, so we have to disable it.
     if (m_desc.Query == D3D11_QUERY_EVENT) {
-      return S_OK;
-//       const bool signaled = m_event->getStatus() == DxvkEventStatus::Signaled;
-//       if (pData != nullptr)
-//         *static_cast<BOOL*>(pData) = signaled;
-//       
-//       return signaled ? S_OK : S_FALSE;
+      const bool signaled = m_event->getStatus() == DxvkEventStatus::Signaled;
+      if (pData != nullptr)
+        *static_cast<BOOL*>(pData) = signaled;
+      
+      return signaled ? S_OK : S_FALSE;
     } else {
-//       DxvkQueryData queryData = {};
-//       
-//       if (m_query                     != nullptr
-//        && m_query->getData(queryData) != DxvkQueryStatus::Available)
-//         return S_FALSE;
+      DxvkQueryData queryData = {};
+      
+      if (m_query                     != nullptr
+       && m_query->getData(queryData) != DxvkQueryStatus::Available)
+        return S_FALSE;
       
       if (pData == nullptr)
         return S_OK;
       
       switch (m_desc.Query) {
         case D3D11_QUERY_OCCLUSION:
-          *static_cast<UINT64*>(pData) = 1;
-//           *static_cast<UINT64*>(pData) = queryData.occlusion.samplesPassed;
+          *static_cast<UINT64*>(pData) = queryData.occlusion.samplesPassed;
           return S_OK;
         
         case D3D11_QUERY_OCCLUSION_PREDICATE:
-          *static_cast<BOOL*>(pData) = TRUE;
-//           *static_cast<BOOL*>(pData) = queryData.occlusion.samplesPassed != 0;
+          *static_cast<BOOL*>(pData) = queryData.occlusion.samplesPassed != 0;
           return S_OK;
         
         case D3D11_QUERY_TIMESTAMP:
-          static UINT64 fakeTime = 0;
-          *static_cast<UINT64*>(pData) = fakeTime++;
-//           *static_cast<UINT64*>(pData) = queryData.timestamp.time;
+          *static_cast<UINT64*>(pData) = queryData.timestamp.time;
           return S_OK;
         
         case D3D11_QUERY_TIMESTAMP_DISJOINT: {
@@ -213,18 +206,17 @@ namespace dxvk {
         
         case D3D11_QUERY_PIPELINE_STATISTICS: {
           auto data = static_cast<D3D11_QUERY_DATA_PIPELINE_STATISTICS*>(pData);
-          *data = D3D11_QUERY_DATA_PIPELINE_STATISTICS();
-//           data->IAVertices    = queryData.statistic.iaVertices;
-//           data->IAPrimitives  = queryData.statistic.iaPrimitives;
-//           data->VSInvocations = queryData.statistic.vsInvocations;
-//           data->GSInvocations = queryData.statistic.gsInvocations;
-//           data->GSPrimitives  = queryData.statistic.gsPrimitives;
-//           data->CInvocations  = queryData.statistic.clipInvocations;
-//           data->CPrimitives   = queryData.statistic.clipPrimitives;
-//           data->PSInvocations = queryData.statistic.fsInvocations;
-//           data->HSInvocations = queryData.statistic.tcsPatches;
-//           data->DSInvocations = queryData.statistic.tesInvocations;
-//           data->CSInvocations = queryData.statistic.csInvocations;
+          data->IAVertices    = queryData.statistic.iaVertices;
+          data->IAPrimitives  = queryData.statistic.iaPrimitives;
+          data->VSInvocations = queryData.statistic.vsInvocations;
+          data->GSInvocations = queryData.statistic.gsInvocations;
+          data->GSPrimitives  = queryData.statistic.gsPrimitives;
+          data->CInvocations  = queryData.statistic.clipInvocations;
+          data->CPrimitives   = queryData.statistic.clipPrimitives;
+          data->PSInvocations = queryData.statistic.fsInvocations;
+          data->HSInvocations = queryData.statistic.tcsPatches;
+          data->DSInvocations = queryData.statistic.tesInvocations;
+          data->CSInvocations = queryData.statistic.csInvocations;
         } return S_OK;
           
         default:
