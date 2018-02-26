@@ -1801,6 +1801,8 @@ namespace dxvk {
         D3D11_TEXTURE1D_DESC resourceDesc;
         static_cast<D3D11Texture1D*>(pResource)->GetDesc(&resourceDesc);
         
+        pDesc->Format = resourceDesc.Format;
+        
         if (resourceDesc.ArraySize == 1) {
           pDesc->ViewDimension = D3D11_RTV_DIMENSION_TEXTURE1D;
           pDesc->Texture1D.MipSlice = 0;
@@ -1869,6 +1871,8 @@ namespace dxvk {
       case D3D11_RESOURCE_DIMENSION_TEXTURE1D: {
         D3D11_TEXTURE1D_DESC resourceDesc;
         static_cast<D3D11Texture1D*>(pResource)->GetDesc(&resourceDesc);
+        
+        pDesc->Format = resourceDesc.Format;
         
         if (resourceDesc.ArraySize == 1) {
           pDesc->ViewDimension = D3D11_DSV_DIMENSION_TEXTURE1D;
