@@ -85,6 +85,9 @@ namespace dxvk {
       case DxbcInstClass::GeometryEmit:
         return this->emitGeometryEmit(ins);
       
+      case DxbcInstClass::Interpolate:
+        return this->emitInterpolate(ins);
+      
       case DxbcInstClass::TextureQuery:
         return this->emitTextureQuery(ins);
         
@@ -2249,6 +2252,55 @@ namespace dxvk {
           getVectorTypeId(result.type),
           componentCount, scalarIds.data())
       : scalarIds[0];
+    emitRegisterStore(ins.dst[0], result);
+  }
+  
+  
+  void DxbcCompiler::emitInterpolate(const DxbcShaderInstruction& ins) {
+    // The SPIR-V instructions operate on input variable pointers,
+    // which are all declared as four-component float vectors.
+    const uint32_t registerId = ins.src[0].idx[0].offset;
+    
+    DxbcRegisterValue result;
+    result.type.ctype  = DxbcScalarType::Float32;
+    result.type.ccount = 4;
+    
+    switch (ins.op) {
+      case DxbcOpcode::EvalCentroid: {
+        result.id = m_module.opInterpolateAtCentroid(
+          getVectorTypeId(result.type),
+          m_vRegs.at(registerId));
+      } break;
+      
+      case DxbcOpcode::EvalSampleIndex: {
+        const DxbcRegisterValue sampleIndex = emitRegisterLoad(
+          ins.src[1], DxbcRegMask(true, false, false, false));
+        
+        result.id = m_module.opInterpolateAtSample(
+          getVectorTypeId(result.type),
+          m_vRegs.at(registerId),
+          sampleIndex.id);
+      } break;
+      
+      case DxbcOpcode::EvalSnapped: {
+        const DxbcRegisterValue offset = emitRegisterLoad(
+          ins.src[1], DxbcRegMask(true, true, false, false));
+        
+        result.id = m_module.opInterpolateAtOffset(
+          getVectorTypeId(result.type),
+          m_vRegs.at(registerId),
+          offset.id);
+      } break;
+      
+      default:
+        Logger::warn(str::format(
+          "DxbcCompiler: Unhandled instruction: ",
+          ins.op));
+        return;
+    }
+    
+    result = emitRegisterSwizzle(result,
+      ins.src[0].swizzle, ins.dst[0].mask);
     emitRegisterStore(ins.dst[0], result);
   }
   
@@ -4813,8 +4865,8 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitPsInit() {
-    m_module.enableCapability(
-      spv::CapabilityDerivativeControl);
+    m_module.enableCapability(spv::CapabilityDerivativeControl);
+    m_module.enableCapability(spv::CapabilityInterpolationFunction);
     
     m_module.setExecutionMode(m_entryPointId,
       spv::ExecutionModeOriginUpperLeft);

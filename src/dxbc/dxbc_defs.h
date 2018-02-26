@@ -41,6 +41,7 @@ namespace dxvk {
     BufferLoad,       ///< Structured or raw buffer load
     BufferStore,      ///< Structured or raw buffer store
     ConvertFloat16,   ///< 16-bit float packing/unpacking
+    Interpolate,      ///< Input attribute interpolation
     TextureQuery,     ///< Texture query instruction
     TextureQueryLod,  ///< Texture LOD query instruction
     TextureQueryMs,   ///< Multisample texture query

@@ -527,6 +527,9 @@ namespace dxvk {
     void emitConvertFloat16(
       const DxbcShaderInstruction&  ins);
     
+    void emitInterpolate(
+      const DxbcShaderInstruction&  ins);
+    
     void emitTextureQuery(
       const DxbcShaderInstruction&  ins);
     

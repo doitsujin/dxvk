@@ -972,11 +972,22 @@ namespace dxvk {
     /* FtoD                                 */
     { },
     /* EvalSnapped                          */
-    { },
+    { 3, DxbcInstClass::Interpolate, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* EvalSampleIndex                      */
-    { },
+    { 3, DxbcInstClass::Interpolate, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32  },
+    } },
     /* EvalCentroid                         */
-    { },
+    { 2, DxbcInstClass::Interpolate, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* DclGsInstanceCount                   */
     { },
   }};

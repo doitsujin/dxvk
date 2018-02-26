@@ -2306,6 +2306,55 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opInterpolateAtCentroid(
+          uint32_t                resultType,
+          uint32_t                interpolant) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpExtInst, 6);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(m_instExtGlsl450);
+    m_code.putWord(spv::GLSLstd450InterpolateAtCentroid);
+    m_code.putWord(interpolant);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opInterpolateAtSample(
+          uint32_t                resultType,
+          uint32_t                interpolant,
+          uint32_t                sample) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpExtInst, 7);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(m_instExtGlsl450);
+    m_code.putWord(spv::GLSLstd450InterpolateAtSample);
+    m_code.putWord(interpolant);
+    m_code.putWord(sample);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opInterpolateAtOffset(
+          uint32_t                resultType,
+          uint32_t                interpolant,
+          uint32_t                offset) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpExtInst, 7);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(m_instExtGlsl450);
+    m_code.putWord(spv::GLSLstd450InterpolateAtOffset);
+    m_code.putWord(interpolant);
+    m_code.putWord(offset);
+    return resultId;
+  }
+  
+  
   uint32_t SpirvModule::opImageRead(
           uint32_t                resultType,
           uint32_t                image,

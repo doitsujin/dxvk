@@ -808,6 +808,20 @@ namespace dxvk {
             uint32_t                pointerId,
             uint32_t                valueId);
     
+    uint32_t opInterpolateAtCentroid(
+            uint32_t                resultType,
+            uint32_t                interpolant);
+    
+    uint32_t opInterpolateAtSample(
+            uint32_t                resultType,
+            uint32_t                interpolant,
+            uint32_t                sample);
+    
+    uint32_t opInterpolateAtOffset(
+            uint32_t                resultType,
+            uint32_t                interpolant,
+            uint32_t                offset);
+    
     uint32_t opImageRead(
             uint32_t                resultType,
             uint32_t                image,
