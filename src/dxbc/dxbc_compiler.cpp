@@ -425,13 +425,22 @@ namespace dxvk {
           "vThreadIndexInGroup");
       } break;
       
+      case DxbcOperandType::InputCoverageMask: {
+        m_module.enableCapability(spv::CapabilitySampleRateShading);
+        m_ps.builtinSampleMaskIn = emitNewBuiltinVariable({
+          { DxbcScalarType::Uint32, 1, 1 },
+          spv::StorageClassInput },
+          spv::BuiltInSampleMask,
+          "vCoverage");
+      } break;
+      
       case DxbcOperandType::OutputCoverageMask: {
         m_module.enableCapability(spv::CapabilitySampleRateShading);
         m_ps.builtinSampleMaskOut = emitNewBuiltinVariable({
-          { DxbcScalarType::Uint32, 1, 0 },
+          { DxbcScalarType::Uint32, 1, 1 },
           spv::StorageClassOutput },
           spv::BuiltInSampleMask,
-          "oCoverage");
+          "oMask");
       } break;
       
       case DxbcOperandType::OutputDepth: {
@@ -3723,9 +3732,8 @@ namespace dxvk {
     
     const uint32_t ptrTypeId = getPointerTypeId(info);
     
-    const std::array<uint32_t, 2> indices = {
-      m_module.consti32(0), constId.id
-    };
+    const std::array<uint32_t, 2> indices =
+      {{ m_module.consti32(0), constId.id }};
     
     DxbcRegisterPointer result;
     result.type.ctype  = info.type.ctype;
@@ -3802,10 +3810,37 @@ namespace dxvk {
           { DxbcScalarType::Uint32, 1 },
           m_cs.builtinLocalInvocationIndex };
       
-      case DxbcOperandType::OutputCoverageMask:
-        return DxbcRegisterPointer {
-          { DxbcScalarType::Uint32, 1 },
-          m_ps.builtinSampleMaskOut };
+      case DxbcOperandType::InputCoverageMask: {
+        const std::array<uint32_t, 1> indices
+          = {{ m_module.constu32(0) }};
+        
+        DxbcRegisterPointer result;
+        result.type.ctype  = DxbcScalarType::Uint32;
+        result.type.ccount = 1;
+        result.id = m_module.opAccessChain(
+          m_module.defPointerType(
+            getVectorTypeId(result.type),
+            spv::StorageClassInput),
+          m_ps.builtinSampleMaskIn,
+          indices.size(), indices.data());
+        return result;
+      }
+        
+      case DxbcOperandType::OutputCoverageMask: {
+        const std::array<uint32_t, 1> indices
+          = {{ m_module.constu32(0) }};
+        
+        DxbcRegisterPointer result;
+        result.type.ctype  = DxbcScalarType::Uint32;
+        result.type.ccount = 1;
+        result.id = m_module.opAccessChain(
+          m_module.defPointerType(
+            getVectorTypeId(result.type),
+            spv::StorageClassOutput),
+          m_ps.builtinSampleMaskOut,
+          indices.size(), indices.data());
+        return result;
+      }
         
       case DxbcOperandType::OutputDepth:
       case DxbcOperandType::OutputDepthGe:

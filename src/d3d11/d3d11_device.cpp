@@ -912,6 +912,7 @@ namespace dxvk {
           ID3D11ClassLinkage*         pClassLinkage,
           ID3D11HullShader**          ppHullShader) {
     D3D11ShaderModule module;
+    *ppHullShader = nullptr;
     
     if (FAILED(this->CreateShaderModule(&module,
         pShaderBytecode, BytecodeLength, pClassLinkage)))
@@ -932,7 +933,7 @@ namespace dxvk {
           ID3D11ClassLinkage*         pClassLinkage,
           ID3D11DomainShader**        ppDomainShader) {
     D3D11ShaderModule module;
-    
+    *ppDomainShader = nullptr;
     if (FAILED(this->CreateShaderModule(&module,
         pShaderBytecode, BytecodeLength, pClassLinkage)))
       return E_INVALIDARG;
