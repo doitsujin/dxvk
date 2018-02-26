@@ -545,6 +545,22 @@ namespace dxvk {
     viewInfo.aspect = imageFormatInfo(viewInfo.format)->aspectMask;
     
     switch (desc.ViewDimension) {
+      case D3D11_RTV_DIMENSION_TEXTURE1D:
+        viewInfo.type       = VK_IMAGE_VIEW_TYPE_1D;
+        viewInfo.minLevel   = desc.Texture1D.MipSlice;
+        viewInfo.numLevels  = 1;
+        viewInfo.minLayer   = 0;
+        viewInfo.numLayers  = 1;
+        break;
+        
+      case D3D11_RTV_DIMENSION_TEXTURE1DARRAY:
+        viewInfo.type       = VK_IMAGE_VIEW_TYPE_1D_ARRAY;
+        viewInfo.minLevel   = desc.Texture1DArray.MipSlice;
+        viewInfo.numLevels  = 1;
+        viewInfo.minLayer   = desc.Texture1DArray.FirstArraySlice;
+        viewInfo.numLayers  = desc.Texture1DArray.ArraySize;
+        break;
+        
       case D3D11_RTV_DIMENSION_TEXTURE2D:
         viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D;
         viewInfo.minLevel   = desc.Texture2D.MipSlice;
@@ -646,6 +662,22 @@ namespace dxvk {
     viewInfo.aspect = imageFormatInfo(viewInfo.format)->aspectMask;
     
     switch (desc.ViewDimension) {
+      case D3D11_DSV_DIMENSION_TEXTURE1D:
+        viewInfo.type       = VK_IMAGE_VIEW_TYPE_1D;
+        viewInfo.minLevel   = desc.Texture1D.MipSlice;
+        viewInfo.numLevels  = 1;
+        viewInfo.minLayer   = 0;
+        viewInfo.numLayers  = 1;
+        break;
+        
+      case D3D11_DSV_DIMENSION_TEXTURE1DARRAY:
+        viewInfo.type       = VK_IMAGE_VIEW_TYPE_1D_ARRAY;
+        viewInfo.minLevel   = desc.Texture1DArray.MipSlice;
+        viewInfo.numLevels  = 1;
+        viewInfo.minLayer   = desc.Texture1DArray.FirstArraySlice;
+        viewInfo.numLayers  = desc.Texture1DArray.ArraySize;
+        break;
+        
       case D3D11_DSV_DIMENSION_TEXTURE2D:
         viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D;
         viewInfo.minLevel   = desc.Texture2D.MipSlice;
@@ -1765,6 +1797,20 @@ namespace dxvk {
     pResource->GetType(&resourceDim);
     
     switch (resourceDim) {
+      case D3D11_RESOURCE_DIMENSION_TEXTURE1D: {
+        D3D11_TEXTURE1D_DESC resourceDesc;
+        static_cast<D3D11Texture1D*>(pResource)->GetDesc(&resourceDesc);
+        
+        if (resourceDesc.ArraySize == 1) {
+          pDesc->ViewDimension = D3D11_RTV_DIMENSION_TEXTURE1D;
+          pDesc->Texture1D.MipSlice = 0;
+        } else {
+          pDesc->ViewDimension = D3D11_RTV_DIMENSION_TEXTURE1DARRAY;
+          pDesc->Texture1DArray.MipSlice        = 0;
+          pDesc->Texture1DArray.FirstArraySlice = 0;
+          pDesc->Texture1DArray.ArraySize       = resourceDesc.ArraySize;
+        }
+      } return S_OK;
       
       case D3D11_RESOURCE_DIMENSION_TEXTURE2D: {
         D3D11_TEXTURE2D_DESC resourceDesc;
@@ -1820,6 +1866,20 @@ namespace dxvk {
     pResource->GetType(&resourceDim);
     
     switch (resourceDim) {
+      case D3D11_RESOURCE_DIMENSION_TEXTURE1D: {
+        D3D11_TEXTURE1D_DESC resourceDesc;
+        static_cast<D3D11Texture1D*>(pResource)->GetDesc(&resourceDesc);
+        
+        if (resourceDesc.ArraySize == 1) {
+          pDesc->ViewDimension = D3D11_DSV_DIMENSION_TEXTURE1D;
+          pDesc->Texture1D.MipSlice = 0;
+        } else {
+          pDesc->ViewDimension = D3D11_DSV_DIMENSION_TEXTURE1DARRAY;
+          pDesc->Texture1DArray.MipSlice        = 0;
+          pDesc->Texture1DArray.FirstArraySlice = 0;
+          pDesc->Texture1DArray.ArraySize       = resourceDesc.ArraySize;
+        }
+      } return S_OK;
       
       case D3D11_RESOURCE_DIMENSION_TEXTURE2D: {
         D3D11_TEXTURE2D_DESC resourceDesc;
