@@ -6,6 +6,8 @@ namespace dxvk {
     const VkPhysicalDeviceProperties deviceProps
       = device->adapter()->deviceProperties();
     
+    this->maxSampleMaskWords = deviceProps.limits.maxSampleMaskWords;
+
     const DxvkGpuVendor vendor
       = static_cast<DxvkGpuVendor>(deviceProps.vendorID);
     

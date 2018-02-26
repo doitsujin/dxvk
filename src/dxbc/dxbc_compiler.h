@@ -58,12 +58,12 @@ namespace dxvk {
   /**
    * \brief Register value
    * 
-   * Stores a vector type and a SPIR-V ID that
+   * Stores an array type and a SPIR-V ID that
    * represents an intermediate value. This is
    * used to track the type of such values.
    */
   struct DxbcRegisterValue {
-    DxbcVectorType    type;
+    DxbcArrayType     type;
     uint32_t          id;
   };
   
@@ -71,12 +71,12 @@ namespace dxvk {
   /**
    * \brief Register pointer
    * 
-   * Stores a vector type and a SPIR-V ID that
+   * Stores an array type and a SPIR-V ID that
    * represents a pointer to such a vector. This
    * can be used to load registers conveniently.
    */
   struct DxbcRegisterPointer {
-    DxbcVectorType    type;
+    DxbcArrayType     type;
     uint32_t          id;
   };
   
@@ -135,7 +135,7 @@ namespace dxvk {
     uint32_t builtinSampleMaskOut = 0;
     uint32_t builtinLayer         = 0;
     
-    std::array<DxbcVectorType, DxbcMaxInterfaceRegs> oTypes;
+    std::array<DxbcArrayType, DxbcMaxInterfaceRegs> oTypes;
   };
   
   
