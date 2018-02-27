@@ -49,10 +49,11 @@ dxvk_src = files([
   
   'hud/dxvk_hud.cpp',
   'hud/dxvk_hud_devinfo.cpp',
+  'hud/dxvk_hud_dxvkinfo.cpp',
   'hud/dxvk_hud_font.cpp',
   'hud/dxvk_hud_fps.cpp',
   'hud/dxvk_hud_text.cpp',
-  
+  'hud/dxvk_hud_cpu.cpp',  
   'vulkan/dxvk_vulkan_extensions.cpp',
   'vulkan/dxvk_vulkan_loader.cpp',
   'vulkan/dxvk_vulkan_names.cpp',
@@ -62,7 +63,7 @@ thread_dep = dependency('threads')
 
 dxvk_lib = static_library('dxvk', dxvk_src, glsl_generator.process(dxvk_hud_shaders),
   link_with           : [ util_lib, spirv_lib ],
-  dependencies        : [ thread_dep, lib_vulkan ],
+  dependencies        : [ thread_dep, lib_vulkan, lib_pdh ],
   include_directories : [ dxvk_include_path ])
 
 dxvk_dep = declare_dependency(

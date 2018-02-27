@@ -11,12 +11,12 @@ namespace dxvk::hud {
    * Displays the name of the device, as well as
    * the driver version and Vulkan API version.
    */
-  class HudDeviceInfo : public HudElement {
+  class HudDxvkInfo : public HudElement {
     
   public:
     
-    HudDeviceInfo(const Rc<DxvkDevice>& device);
-    virtual ~HudDeviceInfo();
+    HudDxvkInfo();
+    virtual ~HudDxvkInfo();
     
     void update() override;
 
@@ -24,12 +24,6 @@ namespace dxvk::hud {
       const Rc<DxvkContext>&  context,
             HudTextRenderer&  renderer,
             HudPos            position) override;
-    
-  private:
-    
-    std::string m_deviceName;
-    std::string m_driverVer;
-    std::string m_vulkanVer;
     
   };
   

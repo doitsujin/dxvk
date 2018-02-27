@@ -2,6 +2,7 @@
 
 #include <chrono>
 
+#include "dxvk_hud_element.h"
 #include "dxvk_hud_text.h"
 
 namespace dxvk::hud {
@@ -12,7 +13,7 @@ namespace dxvk::hud {
    * Displays the current frames per second.
    * TODO implement frame time info/graph.
    */
-  class HudFps {
+  class HudFps : public HudElement {
     using Clock     = std::chrono::high_resolution_clock;
     using TimeDiff  = std::chrono::microseconds;
     using TimePoint = typename Clock::time_point;
@@ -21,14 +22,14 @@ namespace dxvk::hud {
   public:
     
     HudFps();
-    ~HudFps();
+    virtual ~HudFps();
     
-    void update();
+    void update() override;
     
     HudPos renderText(
       const Rc<DxvkContext>&  context,
             HudTextRenderer&  renderer,
-            HudPos            position);
+            HudPos            position) override;
     
   private:
     

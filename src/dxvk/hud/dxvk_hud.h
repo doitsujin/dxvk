@@ -4,8 +4,11 @@
 
 #include "../util/util_env.h"
 
+#include "dxvk_hud_element.h"
+
 #include "dxvk_hud_devinfo.h"
 #include "dxvk_hud_fps.h"
+#include "dxvk_hud_dxvkinfo.h"
 #include "dxvk_hud_text.h"
 
 namespace dxvk::hud {
@@ -38,6 +41,8 @@ namespace dxvk::hud {
      */
     void render(VkExtent2D size);
     
+    void addHudElement(HudElement *element);
+
     /**
      * \brief Rendered image
      * 
@@ -73,9 +78,7 @@ namespace dxvk::hud {
     Rc<DxvkImageView>     m_renderTargetView;
     Rc<DxvkFramebuffer>   m_renderTargetFbo;
     
-    HudDeviceInfo         m_hudDeviceInfo;
-    HudFps                m_hudFps;
-    
+    std::vector<std::unique_ptr<HudElement>> m_hudElements;
     void renderText();
     
     Rc<DxvkBuffer> createUniformBuffer();
