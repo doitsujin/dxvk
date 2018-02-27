@@ -41,6 +41,12 @@ namespace dxvk::hud {
      */
     void render(VkExtent2D size);
     
+    /**
+     * \brief Add Hud element
+     *
+     * Add Hud Element, and take ownership of it.
+     * \param [in] element The HUD element
+     */
     void addHudElement(HudElement *element);
 
     /**

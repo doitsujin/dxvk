@@ -1,8 +1,6 @@
-project('dxvk', ['c', 'cpp'], default_options : ['cpp_std=c++17'])
+project('dxvk', ['c', 'cpp'], default_options : ['cpp_std=c++1z'])
 
 cpu_family = target_machine.cpu_family()
-
-configuration = configuration_data()
 
 dxvk_compiler = meson.get_compiler('cpp')
 dxvk_include_path = include_directories('./include')
@@ -21,8 +19,6 @@ lib_spirvtools_opt = dxvk_compiler.find_library('libSPIRV-Tools-opt', dirs : dxv
 lib_d3d11          = dxvk_compiler.find_library('d3d11')
 lib_dxgi           = dxvk_compiler.find_library('dxgi')
 lib_d3dcompiler_47 = dxvk_compiler.find_library('d3dcompiler_47')
-
-lib_pdh = dxvk_compiler.find_library('pdh')
 
 git_command = find_program('git', required: false)
 
