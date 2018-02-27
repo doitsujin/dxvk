@@ -255,22 +255,35 @@ namespace dxvk {
   DxvkMemory DxvkMemoryAllocator::alloc(
     const VkMemoryRequirements& req,
     const VkMemoryPropertyFlags flags) {
+    DxvkMemory result = this->tryAlloc(req, flags);
     
-    for (uint32_t i = 0; i < m_heaps.size(); i++) {
+    if ((result.memory() == VK_NULL_HANDLE) && (flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))
+      result = this->tryAlloc(req, flags & ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    
+    if (result.memory() == VK_NULL_HANDLE) {
+      throw DxvkError(str::format(
+        "DxvkMemoryAllocator: Failed to allocate ",
+        req.size, " bytes"));
+    }
+    
+    return result;
+  }
+  
+  
+  DxvkMemory DxvkMemoryAllocator::tryAlloc(
+    const VkMemoryRequirements& req,
+    const VkMemoryPropertyFlags flags) {
+    DxvkMemory result;
+    
+    for (uint32_t i = 0; i < m_heaps.size() && result.memory() == VK_NULL_HANDLE; i++) {
       const bool supported = (req.memoryTypeBits & (1u << i)) != 0;
       const bool adequate  = (m_memProps.memoryTypes[i].propertyFlags & flags) == flags;
       
-      if (supported && adequate) {
-        DxvkMemory memory = m_heaps[i]->alloc(req.size, req.alignment);
-        
-        if (memory.memory() != VK_NULL_HANDLE)
-          return memory;
-      }
+      if (supported && adequate)
+        result = m_heaps[i]->alloc(req.size, req.alignment);
     }
     
-    throw DxvkError(str::format(
-      "DxvkMemoryAllocator: Failed to allocate ",
-      req.size, " bytes"));
+    return result;
   }
   
 }

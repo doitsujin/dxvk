@@ -232,6 +232,10 @@ namespace dxvk {
     
     std::array<Rc<DxvkMemoryHeap>, VK_MAX_MEMORY_TYPES> m_heaps;
     
+    DxvkMemory tryAlloc(
+      const VkMemoryRequirements& req,
+      const VkMemoryPropertyFlags flags);
+    
   };
   
 }
