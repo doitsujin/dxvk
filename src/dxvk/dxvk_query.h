@@ -190,7 +190,7 @@ namespace dxvk {
     
     std::mutex m_mutex;
     
-    DxvkQueryStatus m_status   = DxvkQueryStatus::Reset;
+    DxvkQueryStatus m_status   = DxvkQueryStatus::Available;
     DxvkQueryData   m_data     = {};
     DxvkQueryHandle m_handle;
     

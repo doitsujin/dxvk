@@ -50,7 +50,7 @@ namespace dxvk {
     
     std::mutex m_mutex;
     
-    DxvkEventStatus         m_status   = DxvkEventStatus::Reset;
+    DxvkEventStatus         m_status   = DxvkEventStatus::Signaled;
     uint32_t                m_revision = 0;
     
   };
