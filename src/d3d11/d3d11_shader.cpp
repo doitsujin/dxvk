@@ -29,15 +29,29 @@ namespace dxvk {
     // If requested by the user, dump both the raw DXBC
     // shader and the compiled SPIR-V module to a file.
     const std::string dumpPath = env::getEnvVar(L"DXVK_SHADER_DUMP_PATH");
-    const std::string readPath = env::getEnvVar(L"DXVK_SHADER_READ_PATH");
+    const std::string readPath = env::getEnvVar(L"DXVK_SHADER_READ_PATH");   
+    
+    m_shader = module.compile(*pDxbcOptions);
+    m_shader->setDebugName(m_name);
+    
+    // If requested by the user, replace
+    // the shader with another file.
+    if (readPath.size() != 0) {
+      // Check whether the file exists
+      std::ifstream readStream(
+        str::format(readPath, "/", m_name, ".spv"),
+        std::ios_base::binary);
+      
+      if (readStream) {
+        m_shader->read(std::move(readStream));
+      	return;
+      }
+    }
     
     if (dumpPath.size() != 0) {
       reader.store(std::ofstream(str::format(dumpPath, "/", m_name, ".dxbc"),
         std::ios_base::binary | std::ios_base::trunc));
     }
-    
-    m_shader = module.compile(*pDxbcOptions);
-    m_shader->setDebugName(m_name);
     
     // FIXME this is currently way too slow to be viable
     // as a default option, but may help Nvidia users.
@@ -56,17 +70,6 @@ namespace dxvk {
         std::ios_base::binary | std::ios_base::trunc));
     }
     
-    // If requested by the user, replace
-    // the shader with another file.
-    if (readPath.size() != 0) {
-      // Check whether the file exists
-      std::ifstream readStream(
-        str::format(readPath, "/", m_name, ".spv"),
-        std::ios_base::binary);
-      
-      if (readStream)
-        m_shader->read(std::move(readStream));
-    }
   }
   
   
