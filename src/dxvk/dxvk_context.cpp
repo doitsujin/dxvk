@@ -70,9 +70,6 @@ namespace dxvk {
   void DxvkContext::beginQuery(const DxvkQueryRevision& query) {
     DxvkQueryHandle handle = this->allocQuery(query);
     
-    if (query.query->type() == VK_QUERY_TYPE_OCCLUSION)
-      this->renderPassBegin();
-    
     m_cmd->cmdBeginQuery(
       handle.queryPool,
       handle.queryId,
