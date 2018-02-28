@@ -673,22 +673,22 @@ namespace dxvk {
     /* UBfe                                 */
     { 4, DxbcInstClass::BitExtract, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
-      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
-      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
       { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
     } },
     /* IBfe                                 */
     { 4, DxbcInstClass::BitExtract, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Sint32 },
-      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
-      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
       { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
     } },
     /* Bfi                                  */
     { 5, DxbcInstClass::BitInsert, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
-      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
-      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
       { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
       { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
     } },
