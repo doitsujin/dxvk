@@ -17,10 +17,6 @@ namespace dxvk {
       
     /// Use Fmin/Fmax instead of Nmin/Nmax.
     bool useSimpleMinMaxClamp = false;
-    
-    /// Pack the depth reference value into the
-    /// coordinate vector for depth-compare ops.
-    bool packDrefValueIntoCoordinates = false;
   };
   
 }

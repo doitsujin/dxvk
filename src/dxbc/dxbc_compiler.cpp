@@ -2633,17 +2633,6 @@ namespace dxvk {
           DxbcRegMask(true, false, false, false))
       : DxbcRegisterValue();
     
-    if (isDepthCompare && m_options.packDrefValueIntoCoordinates) {
-      const std::array<uint32_t, 2> packedCoordIds
-        = {{ coord.id, referenceValue.id }};
-      
-      coord.type.ccount += 1;
-      coord.id = m_module.opCompositeConstruct(
-        getVectorTypeId(coord.type),
-        packedCoordIds.size(),
-        packedCoordIds.data());
-    }
-    
     // Determine the sampled image type based on the opcode.
     const uint32_t sampledImageType = isDepthCompare
       ? m_module.defSampledImageType(m_textures.at(textureId).depthTypeId)
@@ -2757,17 +2746,6 @@ namespace dxvk {
     const DxbcRegisterValue referenceValue = isDepthCompare
       ? emitRegisterLoad(ins.src[3], DxbcRegMask(true, false, false, false))
       : DxbcRegisterValue();
-    
-    if (isDepthCompare && m_options.packDrefValueIntoCoordinates) {
-      const std::array<uint32_t, 2> packedCoordIds
-        = {{ coord.id, referenceValue.id }};
-      
-      coord.type.ccount += 1;
-      coord.id = m_module.opCompositeConstruct(
-        getVectorTypeId(coord.type),
-        packedCoordIds.size(),
-        packedCoordIds.data());
-    }
     
     // Load explicit gradients for sample operations that require them
     const bool hasExplicitGradients = ins.op == DxbcOpcode::SampleD;
