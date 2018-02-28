@@ -812,10 +812,11 @@ namespace dxvk {
       res.depthTypeId   = 0;
       res.structStride  = 0;
       
-      if (resourceType == DxbcResourceDim::Texture2D
-       || resourceType == DxbcResourceDim::Texture2DArr
-       || resourceType == DxbcResourceDim::TextureCube
-       || resourceType == DxbcResourceDim::TextureCubeArr) {
+      if ((sampledType == DxbcScalarType::Float32)
+       && (resourceType == DxbcResourceDim::Texture2D
+        || resourceType == DxbcResourceDim::Texture2DArr
+        || resourceType == DxbcResourceDim::TextureCube
+        || resourceType == DxbcResourceDim::TextureCubeArr)) {
         res.depthTypeId = m_module.defImageType(sampledTypeId,
           typeInfo.dim, 1, typeInfo.array, typeInfo.ms, typeInfo.sampled,
           spv::ImageFormatUnknown);
