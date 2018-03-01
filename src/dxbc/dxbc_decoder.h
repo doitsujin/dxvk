@@ -251,6 +251,7 @@ namespace dxvk {
     DxbcSamplerMode       samplerMode;
     DxbcPrimitiveTopology primitiveTopology;
     DxbcPrimitive         primitive;
+    uint32_t              controlPointCount;
   };
   
   

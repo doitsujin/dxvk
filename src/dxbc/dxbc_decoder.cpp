@@ -124,6 +124,8 @@ namespace dxvk {
       static_cast<DxbcPrimitiveTopology>(bit::extract(token, 11, 17));
     m_instruction.controls.primitive =
       static_cast<DxbcPrimitive>(bit::extract(token, 11, 16));
+    m_instruction.controls.controlPointCount =
+      static_cast<uint32_t>(bit::extract(token, 11, 16));
     
     // Process extended opcode tokens
     while (bit::extract(token, 31, 31)) {

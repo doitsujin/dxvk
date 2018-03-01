@@ -716,9 +716,9 @@ namespace dxvk {
     /* DclInterface                         */
     { },
     /* DclInputControlPointCount            */
-    { },
+    { 0, DxbcInstClass::Declaration },
     /* DclOutputControlPointCount           */
-    { },
+    { 0, DxbcInstClass::Declaration },
     /* DclTessDomain                        */
     { },
     /* DclTessPartitioning                  */

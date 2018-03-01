@@ -254,6 +254,12 @@ namespace dxvk {
       case DxbcOpcode::DclMaxOutputVertexCount:
         return this->emitDclMaxOutputVertexCount(ins);
         
+      case DxbcOpcode::DclInputControlPointCount:
+        return this->emitDclInputControlPointCount(ins);
+      
+      case DxbcOpcode::DclOutputControlPointCount:
+        return this->emitDclOutputControlPointCount(ins);
+      
       case DxbcOpcode::DclThreadGroup:
         return this->emitDclThreadGroup(ins);
       
@@ -1052,6 +1058,17 @@ namespace dxvk {
     //    (imm0) The maximum number of vertices
     m_gs.outputVertexCount = ins.imm[0].u32;
     m_module.setOutputVertices(m_entryPointId, m_gs.outputVertexCount);
+  }
+  
+  
+  void DxbcCompiler::emitDclInputControlPointCount(const DxbcShaderInstruction& ins) {
+    m_hs.vertexCountIn = ins.controls.controlPointCount;
+  }
+  
+  
+  void DxbcCompiler::emitDclOutputControlPointCount(const DxbcShaderInstruction& ins) {
+    m_module.setOutputVertices(m_entryPointId, ins.controls.controlPointCount);
+    m_hs.vertexCountOut = ins.controls.controlPointCount;
   }
   
   
