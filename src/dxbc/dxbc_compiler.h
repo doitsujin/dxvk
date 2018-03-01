@@ -464,6 +464,15 @@ namespace dxvk {
     void emitDclOutputControlPointCount(
       const DxbcShaderInstruction&  ins);
     
+    void emitDclTessDomain(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitDclTessPartitioning(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitDclTessOutputPrimitive(
+      const DxbcShaderInstruction&  ins);
+    
     void emitDclThreadGroup(
       const DxbcShaderInstruction&  ins);
     

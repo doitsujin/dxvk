@@ -260,6 +260,15 @@ namespace dxvk {
       case DxbcOpcode::DclOutputControlPointCount:
         return this->emitDclOutputControlPointCount(ins);
       
+      case DxbcOpcode::DclTessDomain:
+        return this->emitDclTessDomain(ins);
+      
+      case DxbcOpcode::DclTessPartitioning:
+        return this->emitDclTessPartitioning(ins);
+      
+      case DxbcOpcode::DclTessOutputPrimitive:
+        return this->emitDclTessOutputPrimitive(ins);
+      
       case DxbcOpcode::DclThreadGroup:
         return this->emitDclThreadGroup(ins);
       
@@ -1057,18 +1066,76 @@ namespace dxvk {
     // dcl_max_output_vertex_count has one operand:
     //    (imm0) The maximum number of vertices
     m_gs.outputVertexCount = ins.imm[0].u32;
+    
     m_module.setOutputVertices(m_entryPointId, m_gs.outputVertexCount);
   }
   
   
   void DxbcCompiler::emitDclInputControlPointCount(const DxbcShaderInstruction& ins) {
+    // dcl_input_control_points has the control point
+    // count embedded within the opcode token.
     m_hs.vertexCountIn = ins.controls.controlPointCount;
   }
   
   
   void DxbcCompiler::emitDclOutputControlPointCount(const DxbcShaderInstruction& ins) {
-    m_module.setOutputVertices(m_entryPointId, ins.controls.controlPointCount);
+    // dcl_output_control_points has the control point
+    // count embedded within the opcode token.
     m_hs.vertexCountOut = ins.controls.controlPointCount;
+    
+    m_module.setOutputVertices(m_entryPointId, ins.controls.controlPointCount);
+  }
+  
+  
+  void DxbcCompiler::emitDclTessDomain(const DxbcShaderInstruction& ins) {
+    const spv::ExecutionMode executionMode = [&] {
+      switch (ins.controls.tessDomain) {
+        case DxbcTessDomain::Isolines:  return spv::ExecutionModeIsolines;
+        case DxbcTessDomain::Triangles: return spv::ExecutionModeTriangles;
+        case DxbcTessDomain::Quads:     return spv::ExecutionModeQuads;
+        default: throw DxvkError("Dxbc: Invalid tess domain");
+      }
+    }();
+    
+    m_module.setExecutionMode(m_entryPointId, executionMode);
+  }
+  
+  
+  void DxbcCompiler::emitDclTessPartitioning(const DxbcShaderInstruction& ins) {
+    const spv::ExecutionMode executionMode = [&] {
+      switch (ins.controls.tessPartitioning) {
+        case DxbcTessPartitioning::Pow2:
+        case DxbcTessPartitioning::Integer:   return spv::ExecutionModeSpacingEqual;
+        case DxbcTessPartitioning::FractOdd:  return spv::ExecutionModeSpacingFractionalOdd;
+        case DxbcTessPartitioning::FractEven: return spv::ExecutionModeSpacingFractionalEven;
+        default: throw DxvkError("Dxbc: Invalid tess partitioning");
+      }
+    }();
+    
+    m_module.setExecutionMode(m_entryPointId, executionMode);
+  }
+  
+  
+  void DxbcCompiler::emitDclTessOutputPrimitive(const DxbcShaderInstruction& ins) {
+    switch (ins.controls.tessOutputPrimitive) {
+      case DxbcTessOutputPrimitive::Point:
+        m_module.setExecutionMode(m_entryPointId, spv::ExecutionModePointMode);
+        break;
+        
+      case DxbcTessOutputPrimitive::Line:
+        break;
+        
+      case DxbcTessOutputPrimitive::TriangleCw:
+        m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeVertexOrderCw);
+        break;
+        
+      case DxbcTessOutputPrimitive::TriangleCcw:
+        m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeVertexOrderCcw);
+        break;
+      
+      default:
+        throw DxvkError("Dxbc: Invalid tess output primitive");
+    }
   }
   
   

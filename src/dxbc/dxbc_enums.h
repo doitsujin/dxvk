@@ -548,6 +548,38 @@ namespace dxvk {
   
   
   /**
+   * \brief Tessellator domain
+   */
+  enum class DxbcTessDomain : uint32_t {
+    Undefined     = 0,
+    Isolines      = 1,
+    Triangles     = 2,
+    Quads         = 3,
+  };
+  
+  /**
+   * \brief Tessellator partitioning
+   */
+  enum class DxbcTessPartitioning : uint32_t {
+    Undefined     = 0,
+    Integer       = 1,
+    Pow2          = 2,
+    FractOdd      = 3,
+    FractEven     = 4,
+  };
+  
+  /**
+   * \brief Tessellator output primitive
+   */
+  enum class DxbcTessOutputPrimitive : uint32_t {
+    Undefined     = 0,
+    Point         = 1,
+    Line          = 2,
+    TriangleCw    = 3,
+    TriangleCcw   = 4,
+  };
+  
+  /**
    * \brief Custom data class
    * 
    * Stores which type of custom data is
