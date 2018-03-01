@@ -162,9 +162,12 @@ namespace dxvk {
     // chunks since that might lead to severe fragmentation.
     if (size >= (m_chunkSize / 4)) {
       VkDeviceMemory memory = this->allocDeviceMemory(size);
-      void*          mapPtr = this->mapDeviceMemory(memory);
       
-      return DxvkMemory(nullptr, this, memory, 0, size, mapPtr);
+      if (memory == VK_NULL_HANDLE)
+        return DxvkMemory();
+      
+      return DxvkMemory(nullptr, this, memory,
+        0, size, this->mapDeviceMemory(memory));
     } else {
       std::lock_guard<std::mutex> lock(m_mutex);
       
@@ -179,10 +182,12 @@ namespace dxvk {
       // None of the existing chunks could satisfy
       // the request, we need to create a new one
       VkDeviceMemory chunkMem = this->allocDeviceMemory(m_chunkSize);
-      void*          chunkPtr = this->mapDeviceMemory(chunkMem);
       
-      Rc<DxvkMemoryChunk> newChunk = new DxvkMemoryChunk(
-        this, chunkMem, chunkPtr, m_chunkSize);
+      if (chunkMem == VK_NULL_HANDLE)
+        return DxvkMemory();
+      
+      Rc<DxvkMemoryChunk> newChunk = new DxvkMemoryChunk(this,
+        chunkMem, this->mapDeviceMemory(chunkMem), m_chunkSize);
       DxvkMemory memory = newChunk->alloc(size, align);
       
       m_chunks.push_back(std::move(newChunk));
