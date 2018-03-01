@@ -249,7 +249,7 @@ namespace dxvk {
     m_statCounters.increment(DxvkStat::DevSynchronizations, 1);
     
     if (m_vkd->vkDeviceWaitIdle(m_vkd->device()) != VK_SUCCESS)
-      throw DxvkError("DxvkDevice::waitForIdle: Operation failed");
+      Logger::err("DxvkDevice: waitForIdle: Operation failed");
   }
   
   
