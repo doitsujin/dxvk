@@ -1740,7 +1740,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumUAVs,
           ID3D11UnorderedAccessView**       ppUnorderedAccessViews) {
-    Logger::err("D3D11DeviceContext::CSGetUnorderedAccessViews: Not implemented");
+    for (uint32_t i = 0; i < NumUAVs; i++)
+      ppUnorderedAccessViews[i] = m_state.cs.unorderedAccessViews.at(StartSlot + i).ref();
   }
   
   
