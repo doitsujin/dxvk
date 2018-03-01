@@ -728,9 +728,13 @@ namespace dxvk {
     /* DclHsMaxTessFactor                   */
     { },
     /* DclHsForkPhaseInstanceCount          */
-    { },
+    { 1, DxbcInstClass::HullShaderInstCnt, {
+      { DxbcOperandKind::Imm32, DxbcScalarType::Uint32  },
+    } },
     /* DclHsJoinPhaseInstanceCount          */
-    { },
+    { 1, DxbcInstClass::HullShaderInstCnt, {
+      { DxbcOperandKind::Imm32, DxbcScalarType::Uint32  },
+    } },
     /* DclThreadGroup                       */
     { 3, DxbcInstClass::Declaration, {
       { DxbcOperandKind::Imm32, DxbcScalarType::Uint32 },

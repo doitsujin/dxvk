@@ -88,6 +88,9 @@ namespace dxvk {
       case DxbcInstClass::HullShaderPhase:
         return this->emitHullShaderPhase(ins);
       
+      case DxbcInstClass::HullShaderInstCnt:
+        return this->emitHullShaderInstCnt(ins);
+      
       case DxbcInstClass::Interpolate:
         return this->emitInterpolate(ins);
       
@@ -482,8 +485,18 @@ namespace dxvk {
       
       case DxbcOperandType::InputForkInstanceId:
       case DxbcOperandType::InputJoinInstanceId: {
-        // Nothing to do here, as these are part of the
-        // function signature for the fork and join phases.
+        auto phase = this->getCurrentHsForkJoinPhase();
+        
+        phase->instanceIdPtr = m_module.newVar(
+          m_module.defPointerType(
+            m_module.defIntType(32, 0),
+            spv::StorageClassFunction),
+          spv::StorageClassFunction);
+        
+        m_module.opStore(phase->instanceIdPtr, phase->instanceId);
+        m_module.setDebugName(phase->instanceIdPtr,
+          ins.dst[0].type == DxbcOperandType::InputForkInstanceId
+            ? "vForkInstanceId" : "vJoinInstanceId");
       } break;
       
       default:
@@ -2267,6 +2280,11 @@ namespace dxvk {
   }
   
   
+  void DxbcCompiler::emitHullShaderInstCnt(const DxbcShaderInstruction& ins) {
+    this->getCurrentHsForkJoinPhase()->instanceCount = ins.imm[0].u32;
+  }
+  
+  
   void DxbcCompiler::emitHullShaderPhase(const DxbcShaderInstruction& ins) {
     switch (ins.op) {
       case DxbcOpcode::HsDecls: {
@@ -3954,12 +3972,12 @@ namespace dxvk {
       case DxbcOperandType::InputForkInstanceId:
         return DxbcRegisterPointer {
           { DxbcScalarType::Uint32, 1 },
-          m_hs.forkPhases.at(m_hs.currPhaseId).builtinInstanceId };
+          m_hs.forkPhases.at(m_hs.currPhaseId).instanceIdPtr };
         
       case DxbcOperandType::InputJoinInstanceId:
         return DxbcRegisterPointer {
           { DxbcScalarType::Uint32, 1 },
-          m_hs.joinPhases.at(m_hs.currPhaseId).builtinInstanceId };
+          m_hs.joinPhases.at(m_hs.currPhaseId).instanceIdPtr };
         
       default:
         throw DxvkError(str::format(
@@ -5016,7 +5034,13 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitHsFinalize() {
-    // TODO implement
+    this->emitHsControlPointPhase(m_hs.cpPhase);
+    
+    for (const auto& phase : m_hs.forkPhases)
+      this->emitHsForkJoinPhase(phase);
+    
+    for (const auto& phase : m_hs.joinPhases)
+      this->emitHsForkJoinPhase(phase);
   }
   
   
@@ -5049,6 +5073,22 @@ namespace dxvk {
     m_module.opFunctionCall(
       m_module.defVoidType(),
       m_cs.functionId, 0, nullptr);
+  }
+  
+  
+  void DxbcCompiler::emitHsControlPointPhase(
+    const DxbcCompilerHsControlPointPhase&  phase) {
+    
+  }
+  
+  
+  void DxbcCompiler::emitHsForkJoinPhase(
+    const DxbcCompilerHsForkJoinPhase&      phase) {
+    for (uint32_t i = 0; i < phase.instanceCount; i++) {
+      const uint32_t counterId = m_module.constu32(i);
+      m_module.opFunctionCall(m_module.defVoidType(),
+        phase.functionId, 1, &counterId);
+    }
   }
   
   
@@ -5102,9 +5142,7 @@ namespace dxvk {
   
   
   DxbcCompilerHsForkJoinPhase DxbcCompiler::emitNewHullShaderForkJoinPhase() {
-    uint32_t argTypeId = m_module.defPointerType(
-      m_module.defIntType(32, 0),
-      spv::StorageClassFunction);
+    uint32_t argTypeId = m_module.defIntType(32, 0);
     uint32_t funTypeId = m_module.defFunctionType(
       m_module.defVoidType(), 1, &argTypeId);
     
@@ -5117,8 +5155,8 @@ namespace dxvk {
     m_module.opLabel(m_module.allocateId());
     
     DxbcCompilerHsForkJoinPhase result;
-    result.functionId         = funId;
-    result.builtinInstanceId  = argId;
+    result.functionId = funId;
+    result.instanceId = argId;
     return result;
   }
   
@@ -5332,6 +5370,15 @@ namespace dxvk {
 //     m_module.setDebugMemberName(typeId, PerVertex_CullDist, "cull_dist");
 //     m_module.setDebugMemberName(typeId, PerVertex_ClipDist, "clip_dist");
     return typeId;
+  }
+  
+  
+  DxbcCompilerHsForkJoinPhase* DxbcCompiler::getCurrentHsForkJoinPhase() {
+    switch (m_hs.currPhaseType) {
+      case DxbcCompilerHsPhase::Fork: return &m_hs.forkPhases.at(m_hs.currPhaseId);
+      case DxbcCompilerHsPhase::Join: return &m_hs.joinPhases.at(m_hs.currPhaseId);
+      default:                        return nullptr;
+    }
   }
   
 }

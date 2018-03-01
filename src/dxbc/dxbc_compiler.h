@@ -160,8 +160,9 @@ namespace dxvk {
    */
   struct DxbcCompilerHsForkJoinPhase {
     uint32_t functionId         = 0;
-    uint32_t instanceCount      = 0;
-    uint32_t builtinInstanceId  = 0;
+    uint32_t instanceCount      = 1;
+    uint32_t instanceId         = 0;
+    uint32_t instanceIdPtr      = 0;
   };
   
   
@@ -530,6 +531,9 @@ namespace dxvk {
     void emitHullShaderPhase(
       const DxbcShaderInstruction&  ins);
     
+    void emitHullShaderInstCnt(
+      const DxbcShaderInstruction&  ins);
+    
     void emitInterpolate(
       const DxbcShaderInstruction&  ins);
     
@@ -831,6 +835,14 @@ namespace dxvk {
     void emitPsFinalize();
     void emitCsFinalize();
     
+    ///////////////////////////////
+    // Hull shader phase methods
+    void emitHsControlPointPhase(
+      const DxbcCompilerHsControlPointPhase&  phase);
+    
+    void emitHsForkJoinPhase(
+      const DxbcCompilerHsForkJoinPhase&      phase);
+    
     //////////////
     // Misc stuff
     void emitDclInputArray(
@@ -891,7 +903,7 @@ namespace dxvk {
     
     uint32_t getPerVertexBlockId();
     
-    uint32_t getPushConstantBlockId();
+    DxbcCompilerHsForkJoinPhase* getCurrentHsForkJoinPhase();
     
   };
   

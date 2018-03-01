@@ -547,10 +547,13 @@ namespace dxvk {
           spv::StorageClass       storageClass) {
     uint32_t resultId = this->allocateId();
     
-    m_variables.putIns  (spv::OpVariable, 4);
-    m_variables.putWord (pointerType);
-    m_variables.putWord (resultId);
-    m_variables.putWord (storageClass);
+    auto& code = storageClass != spv::StorageClassFunction
+      ? m_variables : m_code;
+    
+    code.putIns  (spv::OpVariable, 4);
+    code.putWord (pointerType);
+    code.putWord (resultId);
+    code.putWord (storageClass);
     return resultId;
   }
   
@@ -561,11 +564,14 @@ namespace dxvk {
           uint32_t                initialValue) {
     uint32_t resultId = this->allocateId();
     
-    m_variables.putIns  (spv::OpVariable, 5);
-    m_variables.putWord (pointerType);
-    m_variables.putWord (resultId);
-    m_variables.putWord (storageClass);
-    m_variables.putWord (initialValue);
+    auto& code = storageClass != spv::StorageClassFunction
+      ? m_variables : m_code;
+    
+    code.putIns  (spv::OpVariable, 5);
+    code.putWord (pointerType);
+    code.putWord (resultId);
+    code.putWord (storageClass);
+    code.putWord (initialValue);
     return resultId;
   }
   

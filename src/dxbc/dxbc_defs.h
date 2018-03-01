@@ -28,39 +28,40 @@ namespace dxvk {
    * new instructions easier.
    */
   enum class DxbcInstClass {
-    Declaration,      ///< Interface or resource declaration
-    CustomData,       ///< Immediate constant buffer
-    ControlFlow,      ///< Control flow instructions
-    GeometryEmit,     ///< Special geometry shader instructions
-    Atomic,           ///< Atomic operations
-    AtomicCounter,    ///< Atomic counter operations
-    Barrier,          ///< Execution or memory barrier
-    BitExtract,       ///< Bit field extract operations
-    BitInsert,        ///< Bit field insert operations
-    BufferQuery,      ///< Buffer query instruction
-    BufferLoad,       ///< Structured or raw buffer load
-    BufferStore,      ///< Structured or raw buffer store
-    ConvertFloat16,   ///< 16-bit float packing/unpacking
-    HullShaderPhase,  ///< Hull shader phase declaration
-    Interpolate,      ///< Input attribute interpolation
-    TextureQuery,     ///< Texture query instruction
-    TextureQueryLod,  ///< Texture LOD query instruction
-    TextureQueryMs,   ///< Multisample texture query
-    TextureFetch,     ///< Texture fetch instruction
-    TextureGather,    ///< Texture gather instruction
-    TextureSample,    ///< Texture sampling instruction
-    TypedUavLoad,     ///< Typed UAV load
-    TypedUavStore,    ///< Typed UAV store
-    VectorAlu,        ///< Component-wise vector instructions
-    VectorCmov,       ///< Component-wise conditional move
-    VectorCmp,        ///< Component-wise vector comparison
-    VectorDeriv,      ///< Vector derivatives
-    VectorDot,        ///< Dot product instruction
-    VectorIdiv,       ///< Component-wise integer division
-    VectorImul,       ///< Component-wise integer multiplication
-    VectorShift,      ///< Bit shift operations on vectors
-    VectorSinCos,     ///< Sine and Cosine instruction
-    Undefined,        ///< Instruction code not defined
+    Declaration,        ///< Interface or resource declaration
+    CustomData,         ///< Immediate constant buffer
+    ControlFlow,        ///< Control flow instructions
+    GeometryEmit,       ///< Special geometry shader instructions
+    Atomic,             ///< Atomic operations
+    AtomicCounter,      ///< Atomic counter operations
+    Barrier,            ///< Execution or memory barrier
+    BitExtract,         ///< Bit field extract operations
+    BitInsert,          ///< Bit field insert operations
+    BufferQuery,        ///< Buffer query instruction
+    BufferLoad,         ///< Structured or raw buffer load
+    BufferStore,        ///< Structured or raw buffer store
+    ConvertFloat16,     ///< 16-bit float packing/unpacking
+    HullShaderPhase,    ///< Hull shader phase declaration
+    HullShaderInstCnt,  ///< Hull shader phase instance count
+    Interpolate,        ///< Input attribute interpolation
+    TextureQuery,       ///< Texture query instruction
+    TextureQueryLod,    ///< Texture LOD query instruction
+    TextureQueryMs,     ///< Multisample texture query
+    TextureFetch,       ///< Texture fetch instruction
+    TextureGather,      ///< Texture gather instruction
+    TextureSample,      ///< Texture sampling instruction
+    TypedUavLoad,       ///< Typed UAV load
+    TypedUavStore,      ///< Typed UAV store
+    VectorAlu,          ///< Component-wise vector instructions
+    VectorCmov,         ///< Component-wise conditional move
+    VectorCmp,          ///< Component-wise vector comparison
+    VectorDeriv,        ///< Vector derivatives
+    VectorDot,          ///< Dot product instruction
+    VectorIdiv,         ///< Component-wise integer division
+    VectorImul,         ///< Component-wise integer multiplication
+    VectorShift,        ///< Bit shift operations on vectors
+    VectorSinCos,       ///< Sine and Cosine instruction
+    Undefined,          ///< Instruction code not defined
   };
   
   /**
