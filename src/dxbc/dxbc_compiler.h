@@ -527,6 +527,9 @@ namespace dxvk {
     void emitConvertFloat16(
       const DxbcShaderInstruction&  ins);
     
+    void emitHullShaderPhase(
+      const DxbcShaderInstruction&  ins);
+    
     void emitInterpolate(
       const DxbcShaderInstruction&  ins);
     
@@ -810,6 +813,7 @@ namespace dxvk {
     
     void emitVsInit();
     void emitHsInit();
+    void emitDsInit();
     void emitGsInit();
     void emitPsInit();
     void emitCsInit();
@@ -818,6 +822,7 @@ namespace dxvk {
     // Shader finalization methods
     void emitVsFinalize();
     void emitHsFinalize();
+    void emitDsFinalize();
     void emitGsFinalize();
     void emitPsFinalize();
     void emitCsFinalize();
@@ -830,6 +835,8 @@ namespace dxvk {
     void emitDclInputPerVertex(
             uint32_t          vertexCount,
       const char*             varName);
+    
+    DxbcCompilerHsForkJoinPhase emitNewHullShaderForkJoinPhase();
     
     ///////////////////////////////
     // Variable definition methods
