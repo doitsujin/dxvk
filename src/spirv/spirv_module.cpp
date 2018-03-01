@@ -2752,7 +2752,8 @@ namespace dxvk {
     // we can use the code buffer to look up type IDs as
     // well. Result IDs are always stored as argument 1.
     for (auto ins : m_typeConstDefs) {
-      bool match = ins.opCode() == op;
+      bool match = ins.opCode() == op
+                && ins.length() == 2 + argCount;
       
       for (uint32_t i = 0; i < argCount && match; i++)
         match &= ins.arg(2 + i) == argIds[i];

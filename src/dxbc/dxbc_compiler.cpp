@@ -85,6 +85,9 @@ namespace dxvk {
       case DxbcInstClass::GeometryEmit:
         return this->emitGeometryEmit(ins);
       
+      case DxbcInstClass::HullShaderPhase:
+        return this->emitHullShaderPhase(ins);
+      
       case DxbcInstClass::Interpolate:
         return this->emitInterpolate(ins);
       
@@ -475,6 +478,12 @@ namespace dxvk {
           spv::StorageClassOutput },
           spv::BuiltInFragDepth,
           "oDepthLe");
+      } break;
+      
+      case DxbcOperandType::InputForkInstanceId:
+      case DxbcOperandType::InputJoinInstanceId: {
+        // Nothing to do here, as these are part of the
+        // function signature for the fork and join phases.
       } break;
       
       default:
@@ -2258,6 +2267,45 @@ namespace dxvk {
   }
   
   
+  void DxbcCompiler::emitHullShaderPhase(const DxbcShaderInstruction& ins) {
+    switch (ins.op) {
+      case DxbcOpcode::HsDecls: {
+        if (m_hs.currPhaseType != DxbcCompilerHsPhase::None)
+          Logger::err("DXBC: HsDecls not the first phase in hull shader");
+        
+        m_hs.currPhaseType = DxbcCompilerHsPhase::Decl;
+      } break;
+        
+      case DxbcOpcode::HsForkPhase: {
+        auto phase = this->emitNewHullShaderForkJoinPhase();
+        m_hs.forkPhases.push_back(phase);
+        
+        m_hs.currPhaseType = DxbcCompilerHsPhase::Fork;
+        m_hs.currPhaseId   = m_hs.forkPhases.size() - 1;
+        
+        m_module.setDebugName(phase.functionId,
+          str::format("hs_fork_", m_hs.currPhaseId).c_str());
+      } break;
+        
+      case DxbcOpcode::HsJoinPhase: {
+        auto phase = this->emitNewHullShaderForkJoinPhase();
+        m_hs.joinPhases.push_back(phase);
+        
+        m_hs.currPhaseType = DxbcCompilerHsPhase::Join;
+        m_hs.currPhaseId   = m_hs.joinPhases.size() - 1;
+        
+        m_module.setDebugName(phase.functionId,
+          str::format("hs_join_", m_hs.currPhaseId).c_str());
+      } break;
+        
+      default:
+        Logger::warn(str::format(
+          "DxbcCompiler: Unhandled instruction: ",
+          ins.op));
+    }
+  }
+  
+  
   void DxbcCompiler::emitInterpolate(const DxbcShaderInstruction& ins) {
     // The SPIR-V instructions operate on input variable pointers,
     // which are all declared as four-component float vectors.
@@ -3880,6 +3928,16 @@ namespace dxvk {
         return DxbcRegisterPointer {
           { DxbcScalarType::Float32, 1 },
           m_ps.builtinDepth };
+      
+      case DxbcOperandType::InputForkInstanceId:
+        return DxbcRegisterPointer {
+          { DxbcScalarType::Uint32, 1 },
+          m_hs.forkPhases.at(m_hs.currPhaseId).builtinInstanceId };
+        
+      case DxbcOperandType::InputJoinInstanceId:
+        return DxbcRegisterPointer {
+          { DxbcScalarType::Uint32, 1 },
+          m_hs.joinPhases.at(m_hs.currPhaseId).builtinInstanceId };
         
       default:
         throw DxvkError(str::format(
@@ -5018,6 +5076,28 @@ namespace dxvk {
     m_perVertexIn = m_module.newVar(
       ptrTypeId, spv::StorageClassInput);
     m_module.setDebugName(m_perVertexIn, varName);
+  }
+  
+  
+  DxbcCompilerHsForkJoinPhase DxbcCompiler::emitNewHullShaderForkJoinPhase() {
+    uint32_t argTypeId = m_module.defPointerType(
+      m_module.defIntType(32, 0),
+      spv::StorageClassFunction);
+    uint32_t funTypeId = m_module.defFunctionType(
+      m_module.defVoidType(), 1, &argTypeId);
+    
+    uint32_t funId = m_module.allocateId();
+    
+    m_module.functionBegin(m_module.defVoidType(),
+      funId, funTypeId, spv::FunctionControlMaskNone);
+    
+    uint32_t argId = m_module.functionParameter(argTypeId);
+    m_module.opLabel(m_module.allocateId());
+    
+    DxbcCompilerHsForkJoinPhase result;
+    result.functionId         = funId;
+    result.builtinInstanceId  = argId;
+    return result;
   }
   
   

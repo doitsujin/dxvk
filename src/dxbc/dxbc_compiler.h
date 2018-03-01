@@ -527,6 +527,9 @@ namespace dxvk {
     void emitConvertFloat16(
       const DxbcShaderInstruction&  ins);
     
+    void emitHullShaderPhase(
+      const DxbcShaderInstruction&  ins);
+    
     void emitInterpolate(
       const DxbcShaderInstruction&  ins);
     
@@ -832,6 +835,8 @@ namespace dxvk {
     void emitDclInputPerVertex(
             uint32_t          vertexCount,
       const char*             varName);
+    
+    DxbcCompilerHsForkJoinPhase emitNewHullShaderForkJoinPhase();
     
     ///////////////////////////////
     // Variable definition methods

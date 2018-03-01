@@ -562,13 +562,13 @@ namespace dxvk {
     /* Reserved1                            */
     { },
     /* HsDecls                              */
-    { },
+    { 0, DxbcInstClass::HullShaderPhase },
     /* HsControlPointPhase                  */
-    { },
+    { 0, DxbcInstClass::HullShaderPhase },
     /* HsForkPhase                          */
-    { },
+    { 0, DxbcInstClass::HullShaderPhase },
     /* HsJoinPhase                          */
-    { },
+    { 0, DxbcInstClass::HullShaderPhase },
     /* EmitStream                           */
     { 1, DxbcInstClass::GeometryEmit, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Uint32  },
