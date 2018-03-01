@@ -2683,6 +2683,9 @@ namespace dxvk {
           DxbcRegMask(true, false, false, false))
       : DxbcRegisterValue();
     
+    if (isDepthCompare && m_options.addExtraDrefCoordComponent && coord.type.ccount < 4)
+      coord = emitRegisterConcat(coord, referenceValue);
+    
     // Determine the sampled image type based on the opcode.
     const uint32_t sampledImageType = isDepthCompare
       ? m_module.defSampledImageType(m_textures.at(textureId).depthTypeId)
@@ -2796,6 +2799,9 @@ namespace dxvk {
     const DxbcRegisterValue referenceValue = isDepthCompare
       ? emitRegisterLoad(ins.src[3], DxbcRegMask(true, false, false, false))
       : DxbcRegisterValue();
+    
+    if (isDepthCompare && m_options.addExtraDrefCoordComponent && coord.type.ccount < 4)
+      coord = emitRegisterConcat(coord, referenceValue);
     
     // Load explicit gradients for sample operations that require them
     const bool hasExplicitGradients = ins.op == DxbcOpcode::SampleD;
@@ -3583,16 +3589,32 @@ namespace dxvk {
   }
   
   
+  DxbcRegisterValue DxbcCompiler::emitRegisterConcat(
+          DxbcRegisterValue       value1,
+          DxbcRegisterValue       value2) {
+    std::array<uint32_t, 2> ids =
+      {{ value1.id, value2.id }};
+    
+    DxbcRegisterValue result;
+    result.type.ctype  = value1.type.ctype;
+    result.type.ccount = value1.type.ccount + value2.type.ccount;
+    result.id = m_module.opCompositeConstruct(
+      getVectorTypeId(result.type),
+      ids.size(), ids.data());
+    return result;
+  }
+  
+  
   DxbcRegisterValue DxbcCompiler::emitRegisterExtend(
           DxbcRegisterValue       value,
           uint32_t                size) {
     if (size == 1)
       return value;
     
-    std::array<uint32_t, 4> ids = {
+    std::array<uint32_t, 4> ids = {{
       value.id, value.id,
       value.id, value.id, 
-    };
+    }};
     
     DxbcRegisterValue result;
     result.type.ctype  = value.type.ctype;

@@ -652,6 +652,10 @@ namespace dxvk {
             DxbcRegisterValue       srcValue,
             DxbcRegMask             srcMask);
     
+    DxbcRegisterValue emitRegisterConcat(
+            DxbcRegisterValue       value1,
+            DxbcRegisterValue       value2);
+    
     DxbcRegisterValue emitRegisterExtend(
             DxbcRegisterValue       value,
             uint32_t                size);
