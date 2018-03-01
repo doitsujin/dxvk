@@ -162,10 +162,11 @@ namespace dxvk {
     // and write back the output registers.
     switch (m_version.type()) {
       case DxbcProgramType::VertexShader:   this->emitVsFinalize(); break;
+      case DxbcProgramType::HullShader:     this->emitHsFinalize(); break;
+      case DxbcProgramType::DomainShader:   this->emitDsFinalize(); break;
       case DxbcProgramType::GeometryShader: this->emitGsFinalize(); break;
       case DxbcProgramType::PixelShader:    this->emitPsFinalize(); break;
       case DxbcProgramType::ComputeShader:  this->emitCsFinalize(); break;
-      default: throw DxvkError("DxbcCompiler: Unsupported program type");
     }
     
     // End main function
@@ -4769,10 +4770,11 @@ namespace dxvk {
     // etc. Each shader type has its own peculiarities.
     switch (m_version.type()) {
       case DxbcProgramType::VertexShader:   emitVsInit(); break;
+      case DxbcProgramType::HullShader:     emitHsInit(); break;
+      case DxbcProgramType::DomainShader:   emitDsInit(); break;
       case DxbcProgramType::GeometryShader: emitGsInit(); break;
       case DxbcProgramType::PixelShader:    emitPsInit(); break;
       case DxbcProgramType::ComputeShader:  emitCsInit(); break;
-      default: throw DxvkError("DxbcCompiler: Unsupported program type");
     }
   }
   
@@ -4809,6 +4811,24 @@ namespace dxvk {
         m_module.defVoidType(), 0, nullptr),
       spv::FunctionControlMaskNone);
     m_module.opLabel(m_module.allocateId());
+  }
+  
+  
+  void DxbcCompiler::emitHsInit() {
+    m_module.enableCapability(spv::CapabilityTessellation);
+    m_module.enableCapability(spv::CapabilityClipDistance);
+    m_module.enableCapability(spv::CapabilityCullDistance);
+    
+    // TODO implement
+  }
+  
+  
+  void DxbcCompiler::emitDsInit() {
+    m_module.enableCapability(spv::CapabilityTessellation);
+    m_module.enableCapability(spv::CapabilityClipDistance);
+    m_module.enableCapability(spv::CapabilityCullDistance);
+    
+    // TODO implement
   }
   
   
@@ -4912,6 +4932,16 @@ namespace dxvk {
       m_module.defVoidType(),
       m_vs.functionId, 0, nullptr);
     this->emitOutputSetup();
+  }
+  
+  
+  void DxbcCompiler::emitHsFinalize() {
+    // TODO implement
+  }
+  
+  
+  void DxbcCompiler::emitDsFinalize() {
+    // TODO implement
   }
   
   
