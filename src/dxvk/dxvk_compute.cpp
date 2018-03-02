@@ -52,7 +52,7 @@ namespace dxvk {
 
     if (Logger::logLevel() <= LogLevel::Debug) {
       Logger::debug("Compiling compute pipeline..."); 
-      if(m_cs != nullptr) Logger::debug(str::format("  cs  : ", m_cs ->debugName()));
+      Logger::debug(str::format("  cs  : ", m_cs ->debugName()));
     }
     
     VkComputePipelineCreateInfo info;
