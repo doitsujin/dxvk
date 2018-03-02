@@ -31,6 +31,14 @@ namespace dxvk {
   VkPhysicalDeviceProperties DxvkAdapter::deviceProperties() const {
     VkPhysicalDeviceProperties properties;
     m_vki->vkGetPhysicalDeviceProperties(m_handle, &properties);
+    
+    if (DxvkGpuVendor(properties.vendorId) == DxvkGpuVendor::Nvidia) {
+      properties.driverVersion = VK_MAKE_VERSION(
+        VK_VERSION_MAJOR(properties.driverVersion),
+        VK_VERSION_MINOR(properties.driverVersion) >> 2,
+        VK_VERSION_PATCH(properties.driverVersion));
+    }
+    
     return properties;
   }
   
