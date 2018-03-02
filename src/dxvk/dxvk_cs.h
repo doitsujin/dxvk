@@ -23,10 +23,33 @@ namespace dxvk {
     virtual ~DxvkCsCmd() { }
     
     /**
+     * \brief Retrieves next command in a command chain
+     * 
+     * This can be used to quickly iterate
+     * over commands within a chunk.
+     * \returns Pointer the next command
+     */
+    DxvkCsCmd* next() const {
+      return m_next;
+    }
+    
+    /**
+     * \brief Sets next command in a command chain
+     * \param [in] next Next command
+     */
+    void setNext(DxvkCsCmd* next) {
+      m_next = next;
+    }
+    
+    /**
      * \brief Executes embedded commands
      * \param [in] ctx The target context
      */
     virtual void exec(DxvkContext* ctx) const = 0;
+    
+  private:
+    
+    DxvkCsCmd* m_next = nullptr;
     
   };
   
@@ -65,8 +88,7 @@ namespace dxvk {
    * Stores a list of commands.
    */
   class DxvkCsChunk : public RcObject {
-    constexpr static size_t MaxCommands  = 1024;
-    constexpr static size_t MaxBlockSize = 64 * MaxCommands;
+    constexpr static size_t MaxBlockSize = 65536;
   public:
     
     DxvkCsChunk();
@@ -96,13 +118,18 @@ namespace dxvk {
     bool push(T& command) {
       using FuncType = DxvkCsTypedCmd<T>;
       
-      if (m_commandCount >= MaxCommands
-       || m_commandOffset + sizeof(FuncType) > MaxBlockSize)
+      if (m_commandOffset + sizeof(FuncType) > MaxBlockSize)
         return false;
       
-      m_commandList[m_commandCount] =
-        new (m_data + m_commandOffset)
-          FuncType(std::move(command));
+      DxvkCsCmd* tail = m_tail;
+      
+      m_tail = new (m_data + m_commandOffset)
+        FuncType(std::move(command));
+      
+      if (tail != nullptr)
+        tail->setNext(m_tail);
+      else
+        m_head = m_tail;
       
       m_commandCount  += 1;
       m_commandOffset += sizeof(FuncType);
@@ -123,7 +150,8 @@ namespace dxvk {
     size_t m_commandCount  = 0;
     size_t m_commandOffset = 0;
     
-    std::array<DxvkCsCmd*, MaxCommands> m_commandList;
+    DxvkCsCmd* m_head = nullptr;
+    DxvkCsCmd* m_tail = nullptr;
     
     alignas(64)
     char m_data[MaxBlockSize];

@@ -8,19 +8,31 @@ namespace dxvk {
   
   
   DxvkCsChunk::~DxvkCsChunk() {
-    for (size_t i = 0; i < m_commandCount; i++)
-      m_commandList[i]->~DxvkCsCmd();
+    auto cmd = m_head;
+    
+    while (cmd != nullptr) {
+      auto next = cmd->next();
+      cmd->~DxvkCsCmd();
+      cmd = next;
+    }
   }
   
   
   void DxvkCsChunk::executeAll(DxvkContext* ctx) {
-    for (size_t i = 0; i < m_commandCount; i++) {
-      m_commandList[i]->exec(ctx);
-      m_commandList[i]->~DxvkCsCmd();
+    auto cmd = m_head;
+    
+    while (cmd != nullptr) {
+      auto next = cmd->next();
+      cmd->exec(ctx);
+      cmd->~DxvkCsCmd();
+      cmd = next;
     }
     
     m_commandCount  = 0;
     m_commandOffset = 0;
+    
+    m_head = nullptr;
+    m_tail = nullptr;
   }
   
   
