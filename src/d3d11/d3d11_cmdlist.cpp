@@ -48,7 +48,7 @@ namespace dxvk {
   }
   
   
-  void D3D11CommandList::EmitToCsThread(const Rc<DxvkCsThread>& CsThread) {
+  void D3D11CommandList::EmitToCsThread(DxvkCsThread* CsThread) {
     for (auto chunk : m_chunks)
       CsThread->dispatchChunk(Rc<DxvkCsChunk>(chunk));
   }

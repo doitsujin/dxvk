@@ -2321,6 +2321,11 @@ namespace dxvk {
   }
   
   
+  void D3D11DeviceContext::RestoreState() {
+    Logger::err("D3D11DeviceContext::RestoreState: Not implemented");
+  }
+  
+  
   DxvkDataSlice D3D11DeviceContext::AllocUpdateBufferSlice(size_t Size) {
     constexpr size_t UpdateBufferSize = 4 * 1024 * 1024;
     

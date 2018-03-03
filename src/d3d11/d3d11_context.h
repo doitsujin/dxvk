@@ -562,6 +562,8 @@ namespace dxvk {
     
     void ApplyViewportState();
     
+    void RestoreState();
+    
     DxvkDataSlice AllocUpdateBufferSlice(size_t Size);
     
     template<typename Cmd>
