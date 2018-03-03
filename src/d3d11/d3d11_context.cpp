@@ -1767,38 +1767,7 @@ namespace dxvk {
     
     m_state.om.depthStencilView = static_cast<D3D11DepthStencilView*>(pDepthStencilView);
     
-    // NOTE According to the Microsoft docs, we are supposed to
-    // unbind overlapping shader resource views. Since this comes
-    // with a large performance penalty we'll ignore this until an
-    // application actually relies on this behaviour.
-    DxvkRenderTargets attachments;
-    
-    // D3D11 doesn't have the concept of a framebuffer object,
-    // so we'll just create a new one every time the render
-    // target bindings are updated. Set up the attachments.
-    if (ppRenderTargetViews != nullptr || pDepthStencilView != nullptr) {
-      for (UINT i = 0; i < m_state.om.renderTargetViews.size(); i++) {
-        if (m_state.om.renderTargetViews.at(i) != nullptr) {
-          attachments.setColorTarget(i,
-            m_state.om.renderTargetViews.at(i)->GetImageView(),
-            m_state.om.renderTargetViews.at(i)->GetRenderLayout());
-        }
-      }
-      
-      if (m_state.om.depthStencilView != nullptr) {
-        attachments.setDepthTarget(
-          m_state.om.depthStencilView->GetImageView(),
-          m_state.om.depthStencilView->GetRenderLayout());
-      }
-    }
-    
-    // Create and bind the framebuffer object to the context
-    EmitCs([attachments, dev = m_device] (DxvkContext* ctx) {
-      Rc<DxvkFramebuffer> framebuffer = nullptr;
-      if (attachments.hasAttachments())
-        framebuffer = dev->createFramebuffer(attachments);
-      ctx->bindFramebuffer(framebuffer);
-    });
+    BindFramebuffer();
   }
   
   
@@ -2075,6 +2044,40 @@ namespace dxvk {
   }
   
   
+  void D3D11DeviceContext::BindFramebuffer() {
+    // NOTE According to the Microsoft docs, we are supposed to
+    // unbind overlapping shader resource views. Since this comes
+    // with a large performance penalty we'll ignore this until an
+    // application actually relies on this behaviour.
+    DxvkRenderTargets attachments;
+    
+    // D3D11 doesn't have the concept of a framebuffer object,
+    // so we'll just create a new one every time the render
+    // target bindings are updated. Set up the attachments.
+    for (UINT i = 0; i < m_state.om.renderTargetViews.size(); i++) {
+      if (m_state.om.renderTargetViews.at(i) != nullptr) {
+        attachments.setColorTarget(i,
+          m_state.om.renderTargetViews.at(i)->GetImageView(),
+          m_state.om.renderTargetViews.at(i)->GetRenderLayout());
+      }
+    }
+    
+    if (m_state.om.depthStencilView != nullptr) {
+      attachments.setDepthTarget(
+        m_state.om.depthStencilView->GetImageView(),
+        m_state.om.depthStencilView->GetRenderLayout());
+    }
+    
+    // Create and bind the framebuffer object to the context
+    EmitCs([attachments, dev = m_device] (DxvkContext* ctx) {
+      Rc<DxvkFramebuffer> framebuffer = nullptr;
+      if (attachments.hasAttachments())
+        framebuffer = dev->createFramebuffer(attachments);
+      ctx->bindFramebuffer(framebuffer);
+    });
+  }
+  
+  
   void D3D11DeviceContext::BindConstantBuffers(
           DxbcProgramType                   ShaderStage,
           D3D11ConstantBufferBindings&      Bindings,
@@ -2323,6 +2326,8 @@ namespace dxvk {
   
   void D3D11DeviceContext::RestoreState() {
     Logger::err("D3D11DeviceContext::RestoreState: Not implemented");
+    
+    BindFramebuffer();
   }
   
   

@@ -527,6 +527,8 @@ namespace dxvk {
     D3D11ContextState           m_state;
     uint64_t                    m_drawCount = 0;
     
+    void BindFramebuffer();
+    
     void BindConstantBuffers(
             DxbcProgramType                   ShaderStage,
             D3D11ConstantBufferBindings&      Bindings,
