@@ -25,7 +25,7 @@ namespace dxvk {
   DxvkMemory::DxvkMemory(DxvkMemory&& other)
   : m_chunk   (std::exchange(other.m_chunk,  nullptr)),
     m_heap    (std::exchange(other.m_heap,   nullptr)),
-    m_memory  (std::exchange(other.m_memory, VkDeviceMemory(nullptr))),
+    m_memory  (std::exchange(other.m_memory, VkDeviceMemory(VK_NULL_HANDLE))),
     m_offset  (std::exchange(other.m_offset, 0)),
     m_length  (std::exchange(other.m_length, 0)),
     m_mapPtr  (std::exchange(other.m_mapPtr, nullptr)) { }
@@ -34,7 +34,7 @@ namespace dxvk {
   DxvkMemory& DxvkMemory::operator = (DxvkMemory&& other) {
     m_chunk   = std::exchange(other.m_chunk,  nullptr);
     m_heap    = std::exchange(other.m_heap,   nullptr);
-    m_memory  = std::exchange(other.m_memory, VkDeviceMemory(nullptr));
+    m_memory  = std::exchange(other.m_memory, VkDeviceMemory(VK_NULL_HANDLE));
     m_offset  = std::exchange(other.m_offset, 0);
     m_length  = std::exchange(other.m_length, 0);
     m_mapPtr  = std::exchange(other.m_mapPtr, nullptr);
