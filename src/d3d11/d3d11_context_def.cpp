@@ -43,11 +43,14 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11DeferredContext::FinishCommandList(
           WINBOOL             RestoreDeferredContextState,
           ID3D11CommandList   **ppCommandList) {
-    *ppCommandList = m_commandList.ref();
+    if (ppCommandList != nullptr)
+      *ppCommandList = m_commandList.ref();
     m_commandList = CreateCommandList();
     
     if (!RestoreDeferredContextState)
       ClearState();
+    else
+      RestoreState();
     
     return S_OK;
   }
