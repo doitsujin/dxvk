@@ -155,8 +155,14 @@ IDXGIPresentDevicePrivate : public IUnknown {
           void**      ppDevice) = 0;
 };
 
-
+#ifdef _MSC_VER
+struct __declspec(uuid("907bf281-ea3c-43b4-a8e4-9f231107b4ff")) IDXGIAdapterPrivate;
+struct __declspec(uuid("7a622cf6-627a-46b2-b52f-360ef3da831c")) IDXGIDevicePrivate;
+struct __declspec(uuid("5679becd-8547-4d93-96a1-e61a1ce7ef37")) IDXGIPresentBackBuffer;
+struct __declspec(uuid("79352328-16f2-4f81-9746-9c2e2ccd43cf")) IDXGIPresentDevicePrivate;
+#else
 DXVK_DEFINE_GUID(IDXGIAdapterPrivate);
 DXVK_DEFINE_GUID(IDXGIDevicePrivate);
 DXVK_DEFINE_GUID(IDXGIPresentBackBuffer);
 DXVK_DEFINE_GUID(IDXGIPresentDevicePrivate);
+#endif
