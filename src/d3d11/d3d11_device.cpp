@@ -1562,7 +1562,7 @@ namespace dxvk {
     const DxvkBufferSlice bufferSlice
       = pBuffer->GetBufferSlice();
     
-    if (pInitialData != nullptr) {
+    if (pInitialData != nullptr && pInitialData->pSysMem != nullptr) {
       LockResourceInitContext();
       
       m_resourceInitContext->updateBuffer(
@@ -1581,7 +1581,7 @@ namespace dxvk {
     const D3D11_SUBRESOURCE_DATA*     pInitialData) {
     const DxvkFormatInfo* formatInfo = imageFormatInfo(image->info().format);
     
-    if (pInitialData != nullptr) {
+    if (pInitialData != nullptr && pInitialData->pSysMem != nullptr) {
       LockResourceInitContext();
       
       // pInitialData is an array that stores an entry for
