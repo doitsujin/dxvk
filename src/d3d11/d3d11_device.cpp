@@ -64,6 +64,9 @@ namespace dxvk {
     
     if (riid == __uuidof(IDXGIPresentDevicePrivate))
       return m_presentDevice->QueryInterface(riid, ppvObject);
+
+    if (riid == __uuidof(ID3D11Debug))
+      return E_NOINTERFACE;      
     
     Logger::warn("D3D11Device::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
