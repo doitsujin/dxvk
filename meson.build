@@ -3,7 +3,7 @@ project('dxvk', ['c', 'cpp'], default_options : ['cpp_std=c++1z'])
 cpu_family = target_machine.cpu_family()
 
 dxvk_compiler = meson.get_compiler('cpp')
-dxvk_include_path = include_directories('./include')
+dxvk_include_path = include_directories('./include', './src')
 
 if (cpu_family == 'x86_64')
   dxvk_library_path = meson.source_root() + '/lib'
