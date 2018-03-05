@@ -867,6 +867,8 @@ namespace dxvk {
     void emitHsForkJoinPhase(
       const DxbcCompilerHsForkJoinPhase&      phase);
     
+    void emitHsPhaseBarrier();
+    
     //////////////
     // Misc stuff
     void emitDclInputArray(

@@ -372,11 +372,11 @@ namespace dxvk {
         // be stored in the second operand.
         const bool hasSv =
             ins.op == DxbcOpcode::DclInputSgv
-          || ins.op == DxbcOpcode::DclInputSiv
-          || ins.op == DxbcOpcode::DclInputPsSgv
-          || ins.op == DxbcOpcode::DclInputPsSiv
-          || ins.op == DxbcOpcode::DclOutputSgv
-          || ins.op == DxbcOpcode::DclOutputSiv;
+         || ins.op == DxbcOpcode::DclInputSiv
+         || ins.op == DxbcOpcode::DclInputPsSgv
+         || ins.op == DxbcOpcode::DclInputPsSiv
+         || ins.op == DxbcOpcode::DclOutputSgv
+         || ins.op == DxbcOpcode::DclOutputSiv;
         
         DxbcSystemValue sv = DxbcSystemValue::None;
         
@@ -387,7 +387,7 @@ namespace dxvk {
         // interpolation mode that is part of the op token.
         const bool hasInterpolationMode =
             ins.op == DxbcOpcode::DclInputPs
-          || ins.op == DxbcOpcode::DclInputPsSiv;
+         || ins.op == DxbcOpcode::DclInputPsSiv;
         
         DxbcInterpolationMode im = DxbcInterpolationMode::Undefined;
         
@@ -602,7 +602,6 @@ namespace dxvk {
       // Declare the output slot as defined
       m_interfaceSlots.outputSlots |= 1u << regIdx;
     }
-    
     
     // Add a new system value mapping if needed
     if (sv != DxbcSystemValue::None)
@@ -5122,11 +5121,17 @@ namespace dxvk {
   void DxbcCompiler::emitHsFinalize() {
     this->emitHsControlPointPhase(m_hs.cpPhase);
     
+    if (m_hs.forkPhases.size() != 0
+     || m_hs.joinPhases.size() != 0)
+      this->emitHsPhaseBarrier();
+    
     for (const auto& phase : m_hs.forkPhases)
       this->emitHsForkJoinPhase(phase);
     
     for (const auto& phase : m_hs.joinPhases)
       this->emitHsForkJoinPhase(phase);
+    
+    // TODO set up output variables
   }
   
   
@@ -5244,6 +5249,15 @@ namespace dxvk {
     result.functionId = funId;
     result.instanceId = argId;
     return result;
+  }
+  
+  
+  void DxbcCompiler::emitHsPhaseBarrier() {
+    uint32_t exeScopeId = m_module.constu32(spv::ScopeWorkgroup);
+    uint32_t memScopeId = m_module.constu32(spv::ScopeInvocation);
+    uint32_t semanticId = m_module.constu32(spv::MemorySemanticsMaskNone);
+    
+    m_module.opControlBarrier(exeScopeId, memScopeId, semanticId);
   }
   
   
