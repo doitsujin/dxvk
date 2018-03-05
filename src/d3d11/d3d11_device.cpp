@@ -1274,7 +1274,7 @@ namespace dxvk {
     VkSampleCountFlagBits sampleCountFlag = VK_SAMPLE_COUNT_1_BIT;
     
     if (FAILED(GetSampleCount(SampleCount, &sampleCountFlag)))
-      return S_OK;
+      return E_INVALIDARG;
     
     // Check if the device supports the given combination of format
     // and sample count. D3D exposes the opaque concept of quality
