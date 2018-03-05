@@ -1123,50 +1123,16 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11Device::CreateSamplerState(
     const D3D11_SAMPLER_DESC*         pSamplerDesc,
           ID3D11SamplerState**        ppSamplerState) {
-    DxvkSamplerCreateInfo info;
+    HRESULT hr = D3D11SamplerState::ValidateDesc(pSamplerDesc);
     
-    // While D3D11_FILTER is technically an enum, its value bits
-    // can be used to decode the filter properties more efficiently.
-    const uint32_t filterBits = static_cast<uint32_t>(pSamplerDesc->Filter);
+    if (FAILED(hr))
+      return hr;
     
-    info.magFilter      = (filterBits & 0x04) ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
-    info.minFilter      = (filterBits & 0x10) ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
-    info.mipmapMode     = (filterBits & 0x01) ? VK_SAMPLER_MIPMAP_MODE_LINEAR : VK_SAMPLER_MIPMAP_MODE_NEAREST;
-    info.useAnisotropy  = (filterBits & 0x40) ? VK_TRUE : VK_FALSE;
-    info.compareToDepth = (filterBits & 0x80) ? VK_TRUE : VK_FALSE;
-    
-    // Check for any unknown flags
-    if (filterBits & 0xFFFFFF2A) {
-      Logger::err(str::format("D3D11: Unsupported filter bits: ", filterBits));
-      return E_INVALIDARG;
-    }
-    
-    // Set up the remaining properties, which are
-    // stored directly in the sampler description
-    info.mipmapLodBias = pSamplerDesc->MipLODBias;
-    info.mipmapLodMin  = pSamplerDesc->MinLOD;
-    info.mipmapLodMax  = pSamplerDesc->MaxLOD;
-    info.maxAnisotropy = pSamplerDesc->MaxAnisotropy;
-    info.addressModeU  = DecodeAddressMode(pSamplerDesc->AddressU);
-    info.addressModeV  = DecodeAddressMode(pSamplerDesc->AddressV);
-    info.addressModeW  = DecodeAddressMode(pSamplerDesc->AddressW);
-    info.compareOp     = DecodeCompareOp(pSamplerDesc->ComparisonFunc);
-    info.borderColor   = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
-    info.usePixelCoord = VK_FALSE;  // Not supported in D3D11
-    
-    // Try to find a matching border color if clamp to border is enabled
-    if (info.addressModeU == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER
-     || info.addressModeV == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER
-     || info.addressModeW == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER)
-      info.borderColor = DecodeBorderColor(pSamplerDesc->BorderColor);
-    
-    // Create sampler object if the application requests it
     if (ppSamplerState == nullptr)
       return S_FALSE;
     
     try {
-      *ppSamplerState = ref(new D3D11SamplerState(this,
-        *pSamplerDesc, m_dxvkDevice->createSampler(info)));
+      *ppSamplerState = m_samplerObjects.Create(this, *pSamplerDesc);
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
@@ -2327,31 +2293,6 @@ namespace dxvk {
     }
     
     return S_OK;
-  }
-  
-  
-  VkSamplerAddressMode D3D11Device::DecodeAddressMode(
-          D3D11_TEXTURE_ADDRESS_MODE  mode) const {
-    switch (mode) {
-      case D3D11_TEXTURE_ADDRESS_WRAP:
-        return VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        
-      case D3D11_TEXTURE_ADDRESS_MIRROR:
-        return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
-      
-      case D3D11_TEXTURE_ADDRESS_CLAMP:
-        return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        
-      case D3D11_TEXTURE_ADDRESS_BORDER:
-        return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-        
-      case D3D11_TEXTURE_ADDRESS_MIRROR_ONCE:
-        return VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
-      
-      default:
-        Logger::err(str::format("D3D11: Unsupported address mode: ", mode));
-        return VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    }
   }
   
   

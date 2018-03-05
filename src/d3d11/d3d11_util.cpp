@@ -15,6 +15,31 @@ namespace dxvk {
   }
   
   
+  VkSamplerAddressMode DecodeAddressMode(
+          D3D11_TEXTURE_ADDRESS_MODE  mode) {
+    switch (mode) {
+      case D3D11_TEXTURE_ADDRESS_WRAP:
+        return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        
+      case D3D11_TEXTURE_ADDRESS_MIRROR:
+        return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+      
+      case D3D11_TEXTURE_ADDRESS_CLAMP:
+        return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        
+      case D3D11_TEXTURE_ADDRESS_BORDER:
+        return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+        
+      case D3D11_TEXTURE_ADDRESS_MIRROR_ONCE:
+        return VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
+      
+      default:
+        Logger::err(str::format("D3D11: Unsupported address mode: ", mode));
+        return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    }
+  }
+  
+  
   VkBorderColor DecodeBorderColor(const FLOAT BorderColor[4]) {
     struct BorderColorEntry {
       float r, g, b, a;
