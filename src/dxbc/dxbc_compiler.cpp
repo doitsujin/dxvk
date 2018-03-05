@@ -5265,7 +5265,7 @@ namespace dxvk {
     m_entryPointInterfaces.push_back(varId);
     return varId;
   }
-    
+  
   
   uint32_t DxbcCompiler::emitBuiltinTessLevelOuter(spv::StorageClass storageClass) {
     uint32_t id = emitNewBuiltinVariable(
