@@ -25,10 +25,10 @@ namespace dxvk {
     
     void STDMETHODCALLTYPE ExecuteCommandList(
             ID3D11CommandList*  pCommandList,
-            WINBOOL             RestoreContextState) final;
+            BOOL                RestoreContextState) final;
     
     HRESULT STDMETHODCALLTYPE FinishCommandList(
-            WINBOOL             RestoreDeferredContextState,
+            BOOL                RestoreDeferredContextState,
             ID3D11CommandList   **ppCommandList) final;
     
     HRESULT STDMETHODCALLTYPE Map(

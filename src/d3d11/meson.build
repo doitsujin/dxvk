@@ -30,7 +30,9 @@ d3d11_dll = shared_library('d3d11', d3d11_src,
   link_with           : [ util_lib ],
   dependencies        : [ dxvk_dep, dxgi_dep, dxbc_dep ],
   include_directories : dxvk_include_path,
-  install             : true)
+  install             : true,
+  vs_module_defs      : 'd3d11.def',
+  override_options    : ['cpp_std='+dxvk_cpp_std])
 
 d3d11_dep = declare_dependency(
   link_with           : [ d3d11_dll ],

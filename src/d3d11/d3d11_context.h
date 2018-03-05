@@ -40,11 +40,11 @@ namespace dxvk {
     
     void STDMETHODCALLTYPE SetPredication(
             ID3D11Predicate*                  pPredicate,
-            WINBOOL                           PredicateValue) final;
+            BOOL                              PredicateValue) final;
     
     void STDMETHODCALLTYPE GetPredication(
             ID3D11Predicate**                 ppPredicate,
-            WINBOOL*                          pPredicateValue) final;
+            BOOL*                             pPredicateValue) final;
     
     void STDMETHODCALLTYPE CopySubresourceRegion(
             ID3D11Resource*                   pDstResource,

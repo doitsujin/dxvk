@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cctype>
+
 #include "dxbc_common.h"
 #include "dxbc_decoder.h"
 #include "dxbc_enums.h"
