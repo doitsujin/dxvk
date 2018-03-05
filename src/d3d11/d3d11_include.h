@@ -24,7 +24,6 @@
 // For some strange reason, we cannot use the structures
 // directly, although others from the same header work.
 // Some structures are missing from the mingw headers.
-#ifndef _MSC_VER
 typedef struct D3D11_FEATURE_DATA_THREADING {
     BOOL DriverConcurrentCreates;
     BOOL DriverCommandLists;
@@ -60,4 +59,3 @@ typedef struct D3D11_QUERY_DATA_PIPELINE_STATISTICS {
   UINT64 DSInvocations;
   UINT64 CSInvocations;
 } D3D11_QUERY_DATA_PIPELINE_STATISTICS;
-#endif

@@ -1,10 +1,6 @@
 #pragma once
 
-#ifdef _MSC_VER
-    #define DLLEXPORT
-#else
-    #define DLLEXPORT __declspec(dllexport)
-#endif
+#define DLLEXPORT __declspec(dllexport)
 
 #include "../util/com/com_guid.h"
 #include "../util/com/com_object.h"

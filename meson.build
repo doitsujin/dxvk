@@ -1,15 +1,8 @@
-project('dxvk', ['c', 'cpp'])
+project('dxvk', ['c', 'cpp'], default_options : ['cpp_std=c++1z'])
 
 cpu_family = target_machine.cpu_family()
 
 dxvk_compiler = meson.get_compiler('cpp')
-if dxvk_compiler.get_id() == 'msvc'
-  add_global_arguments('-DNOMINMAX', language : 'cpp')
-  dxvk_cpp_std='c++17'
-else
-  dxvk_cpp_std='c++1z'
-endif
-
 dxvk_include_path = include_directories('./include')
 
 if (cpu_family == 'x86_64')
@@ -25,9 +18,7 @@ lib_spirvtools_opt = dxvk_compiler.find_library('libSPIRV-Tools-opt', dirs : dxv
 
 lib_d3d11          = dxvk_compiler.find_library('d3d11')
 lib_dxgi           = dxvk_compiler.find_library('dxgi')
-if dxvk_compiler.get_id() != 'msvc'
-  lib_d3dcompiler_47 = dxvk_compiler.find_library('d3dcompiler_47')
-endif
+lib_d3dcompiler_47 = dxvk_compiler.find_library('d3dcompiler_47')
 
 glsl_compiler = find_program('glslangValidator')
 glsl_generator = generator(glsl_compiler,
@@ -35,7 +26,5 @@ glsl_generator = generator(glsl_compiler,
   arguments : [ '-V', '--vn', '@BASENAME@', '@INPUT@', '-o', '@OUTPUT@' ])
 
 subdir('src')
-if dxvk_compiler.get_id() != 'msvc'
-  subdir('tests')
-  subdir('wine_utils')
-endif
+subdir('tests')
+subdir('wine_utils')

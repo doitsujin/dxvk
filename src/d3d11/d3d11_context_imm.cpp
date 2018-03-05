@@ -64,7 +64,7 @@ namespace dxvk {
   
   void STDMETHODCALLTYPE D3D11ImmediateContext::ExecuteCommandList(
           ID3D11CommandList*  pCommandList,
-          BOOL                RestoreContextState) {
+          WINBOOL             RestoreContextState) {
     static_cast<D3D11CommandList*>(pCommandList)->EmitToCsThread(&m_csThread);
     
     if (RestoreContextState)
@@ -75,7 +75,7 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE D3D11ImmediateContext::FinishCommandList(
-          BOOL                RestoreDeferredContextState,
+          WINBOOL             RestoreDeferredContextState,
           ID3D11CommandList   **ppCommandList) {
     Logger::err("D3D11: FinishCommandList called on immediate context");
     return DXGI_ERROR_INVALID_CALL;

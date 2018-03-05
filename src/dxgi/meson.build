@@ -14,9 +14,7 @@ dxgi_dll = shared_library('dxgi', dxgi_src,
   link_with           : [ util_lib ],
   dependencies        : [ dxvk_dep ],
   include_directories : dxvk_include_path,
-  install             : true,
-  vs_module_defs      : 'dxgi.def',
-  override_options    : ['cpp_std='+dxvk_cpp_std])
+  install             : true)
 
 dxgi_dep = declare_dependency(
   link_with           : [ dxgi_dll ],
