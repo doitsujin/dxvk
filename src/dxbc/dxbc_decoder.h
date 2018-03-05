@@ -3,7 +3,6 @@
 #include <array>
 
 #include "dxbc_common.h"
-#include "dxbc_decoder.h"
 #include "dxbc_defs.h"
 #include "dxbc_enums.h"
 #include "dxbc_names.h"

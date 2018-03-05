@@ -1,7 +1,5 @@
 #include "dxgi_presenter.h"
 
-#include "../spirv/spirv_module.h"
-
 namespace dxvk {
   
   DxgiPresenter::DxgiPresenter(
