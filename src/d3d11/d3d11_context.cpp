@@ -66,7 +66,11 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceChild);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceContext);
     
+    if (riid == __uuidof(ID3DUserDefinedAnnotation))
+      return E_NOINTERFACE;
+  
     Logger::warn("D3D11DeviceContext::QueryInterface: Unknown interface query");
+    Logger::warn(str::format(riid));
     return E_NOINTERFACE;
   }
   
