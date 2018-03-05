@@ -14,6 +14,8 @@ For binary releases, see the [releases](https://github.com/doitsujin/dxvk/releas
 - [MinGW64](http://mingw-w64.org/) compiler and headers (requires threading support)
 - [glslang](https://github.com/KhronosGroup/glslang) front end and validator
 
+**Note:** As of wine 3.3, wine-mainline and wine-staging do **not** support the required Vulkan features yet.
+
 ### Building DLLs
 Inside the dxvk directory, run:
 ```
