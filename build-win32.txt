@@ -10,7 +10,7 @@ c_args = ['-Og', '-gdwarf-2']
 c_link_args = ['-static', '-static-libgcc']
 
 cpp_args = ['-Og', '-gdwarf-2']
-cpp_link_args = ['-static', '-static-libgcc', '-static-libstdc++', '-Wl,--add-stdcall-alias']
+cpp_link_args = ['-static', '-static-libgcc', '-static-libstdc++', '-Wl,--add-stdcall-alias,--enable-stdcall-fixup']
 
 [host_machine]
 system = 'windows'
