@@ -30,7 +30,7 @@ namespace dxvk {
   
   void STDMETHODCALLTYPE D3D11DeferredContext::ExecuteCommandList(
           ID3D11CommandList*  pCommandList,
-          WINBOOL             RestoreContextState) {
+          BOOL                RestoreContextState) {
     static_cast<D3D11CommandList*>(pCommandList)->EmitToCommandList(m_commandList.ptr());
     
     if (RestoreContextState)
@@ -41,7 +41,7 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE D3D11DeferredContext::FinishCommandList(
-          WINBOOL             RestoreDeferredContextState,
+          BOOL                RestoreDeferredContextState,
           ID3D11CommandList   **ppCommandList) {
     if (ppCommandList != nullptr)
       *ppCommandList = m_commandList.ref();
