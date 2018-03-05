@@ -173,7 +173,7 @@ namespace dxvk {
    * point phase program of a hull shader.
    */
   struct DxbcCompilerHsControlPointPhase {
-    uint32_t functionId         = 0;
+    uint32_t functionId             = 0;
   };
   
   
@@ -202,6 +202,7 @@ namespace dxvk {
     uint32_t vertexCountIn   = 0;
     uint32_t vertexCountOut  = 0;
     
+    uint32_t builtinInvocationId   = 0;
     uint32_t builtinTessLevelOuter = 0;
     uint32_t builtinTessLevelInner = 0;
     
@@ -877,6 +878,8 @@ namespace dxvk {
     void emitDclInputPerVertex(
             uint32_t          vertexCount,
       const char*             varName);
+    
+    DxbcCompilerHsControlPointPhase emitNewHullShaderControlPointPhase();
     
     DxbcCompilerHsForkJoinPhase emitNewHullShaderForkJoinPhase();
     

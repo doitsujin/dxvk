@@ -498,6 +498,11 @@ namespace dxvk {
           "oDepthLe");
       } break;
       
+      case DxbcOperandType::OutputControlPointId: {
+        // The hull shader's invocation
+        // ID has been declared already
+      } break;
+      
       case DxbcOperandType::InputForkInstanceId:
       case DxbcOperandType::InputJoinInstanceId: {
         auto phase = this->getCurrentHsForkJoinPhase();
@@ -1074,6 +1079,8 @@ namespace dxvk {
     // dcl_input_control_points has the control point
     // count embedded within the opcode token.
     m_hs.vertexCountIn = ins.controls.controlPointCount;
+    
+    emitDclInputArray(m_hs.vertexCountIn);    
   }
   
   
@@ -2375,6 +2382,15 @@ namespace dxvk {
           Logger::err("DXBC: HsDecls not the first phase in hull shader");
         
         m_hs.currPhaseType = DxbcCompilerHsPhase::Decl;
+      } break;
+        
+      case DxbcOpcode::HsControlPointPhase: {
+        m_hs.cpPhase = this->emitNewHullShaderControlPointPhase();
+        
+        m_hs.currPhaseType = DxbcCompilerHsPhase::ControlPoint;
+        m_hs.currPhaseId   = 0;
+        
+        m_module.setDebugName(m_hs.cpPhase.functionId, "hs_control_point");
       } break;
         
       case DxbcOpcode::HsForkPhase: {
@@ -4052,6 +4068,11 @@ namespace dxvk {
           { DxbcScalarType::Float32, 1 },
           m_ps.builtinDepth };
       
+      case DxbcOperandType::OutputControlPointId:
+        return DxbcRegisterPointer {
+          { DxbcScalarType::Uint32, 1 },
+          m_hs.builtinInvocationId };
+      
       case DxbcOperandType::InputForkInstanceId:
         return DxbcRegisterPointer {
           { DxbcScalarType::Uint32, 1 },
@@ -5000,6 +5021,13 @@ namespace dxvk {
     m_module.enableCapability(spv::CapabilityClipDistance);
     m_module.enableCapability(spv::CapabilityCullDistance);
     
+    m_hs.builtinInvocationId = emitNewBuiltinVariable(
+      DxbcRegisterInfo {
+        { DxbcScalarType::Uint32, 1, 0 },
+        spv::StorageClassInput },
+      spv::BuiltInInvocationId,
+      "vOutputControlPointId");
+    
     m_hs.builtinTessLevelOuter = emitBuiltinTessLevelOuter(spv::StorageClassOutput);
     m_hs.builtinTessLevelInner = emitBuiltinTessLevelInner(spv::StorageClassOutput);
   }
@@ -5119,6 +5147,8 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitHsFinalize() {
+    emitInputSetup(m_hs.vertexCountIn);
+    
     this->emitHsControlPointPhase(m_hs.cpPhase);
     
     if (m_hs.forkPhases.size() != 0
@@ -5169,7 +5199,11 @@ namespace dxvk {
   
   void DxbcCompiler::emitHsControlPointPhase(
     const DxbcCompilerHsControlPointPhase&  phase) {
-    
+    if (phase.functionId != 0) {
+      m_module.opFunctionCall(
+        m_module.defVoidType(),
+        phase.functionId, 0, nullptr);
+    }
   }
   
   
@@ -5229,6 +5263,22 @@ namespace dxvk {
     m_perVertexIn = m_module.newVar(
       ptrTypeId, spv::StorageClassInput);
     m_module.setDebugName(m_perVertexIn, varName);
+  }
+  
+  
+  DxbcCompilerHsControlPointPhase DxbcCompiler::emitNewHullShaderControlPointPhase() {
+    uint32_t funTypeId = m_module.defFunctionType(
+      m_module.defVoidType(), 0, nullptr);
+    
+    uint32_t funId = m_module.allocateId();
+    
+    m_module.functionBegin(m_module.defVoidType(),
+      funId, funTypeId, spv::FunctionControlMaskNone);
+    m_module.opLabel(m_module.allocateId());
+    
+    DxbcCompilerHsControlPointPhase result;
+    result.functionId = funId;
+    return result;
   }
   
   
