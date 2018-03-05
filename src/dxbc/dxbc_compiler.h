@@ -199,8 +199,11 @@ namespace dxvk {
     DxbcCompilerHsPhase currPhaseType   = DxbcCompilerHsPhase::None;
     size_t              currPhaseId     = 0;
     
-    uint32_t            vertexCountIn   = 0;
-    uint32_t            vertexCountOut  = 0;
+    uint32_t vertexCountIn   = 0;
+    uint32_t vertexCountOut  = 0;
+    
+    uint32_t builtinTessLevelOuter = 0;
+    uint32_t builtinTessLevelInner = 0;
     
     DxbcCompilerHsControlPointPhase          cpPhase;
     std::vector<DxbcCompilerHsForkJoinPhase> forkPhases;
@@ -213,6 +216,9 @@ namespace dxvk {
    */
   struct DxbcCompilerDsPart {
     uint32_t functionId = 0;
+    
+    uint32_t builtinTessLevelOuter = 0;
+    uint32_t builtinTessLevelInner = 0;
   };
   
   
@@ -881,6 +887,12 @@ namespace dxvk {
       const DxbcRegisterInfo& info,
             spv::BuiltIn      builtIn,
       const char*             name);
+    
+    uint32_t emitBuiltinTessLevelOuter(
+            spv::StorageClass storageClass);
+    
+    uint32_t emitBuiltinTessLevelInner(
+            spv::StorageClass storageClass);
     
     ////////////////
     // Misc methods

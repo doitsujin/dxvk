@@ -5001,7 +5001,8 @@ namespace dxvk {
     m_module.enableCapability(spv::CapabilityClipDistance);
     m_module.enableCapability(spv::CapabilityCullDistance);
     
-    // TODO implement
+    m_hs.builtinTessLevelOuter = emitBuiltinTessLevelOuter(spv::StorageClassOutput);
+    m_hs.builtinTessLevelInner = emitBuiltinTessLevelInner(spv::StorageClassOutput);
   }
   
   
@@ -5010,7 +5011,8 @@ namespace dxvk {
     m_module.enableCapability(spv::CapabilityClipDistance);
     m_module.enableCapability(spv::CapabilityCullDistance);
     
-    // TODO implement
+    m_ds.builtinTessLevelOuter = emitBuiltinTessLevelOuter(spv::StorageClassInput);
+    m_ds.builtinTessLevelInner = emitBuiltinTessLevelInner(spv::StorageClassInput);
   }
   
   
@@ -5262,6 +5264,32 @@ namespace dxvk {
     
     m_entryPointInterfaces.push_back(varId);
     return varId;
+  }
+    
+  
+  uint32_t DxbcCompiler::emitBuiltinTessLevelOuter(spv::StorageClass storageClass) {
+    uint32_t id = emitNewBuiltinVariable(
+      DxbcRegisterInfo {
+        { DxbcScalarType::Float32, 0, 4 },
+        storageClass },
+      spv::BuiltInTessLevelOuter,
+      "bTessLevelOuter");
+    
+    m_module.decorate(id, spv::DecorationPatch);
+    return id;
+  }
+  
+  
+  uint32_t DxbcCompiler::emitBuiltinTessLevelInner(spv::StorageClass storageClass) {
+    uint32_t id = emitNewBuiltinVariable(
+      DxbcRegisterInfo {
+        { DxbcScalarType::Float32, 0, 2 },
+        storageClass },
+      spv::BuiltInTessLevelInner,
+      "bTessLevelInner");
+    
+    m_module.decorate(id, spv::DecorationPatch);
+    return id;
   }
   
   
