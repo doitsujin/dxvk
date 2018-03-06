@@ -498,25 +498,11 @@ namespace dxvk {
           "oDepthLe");
       } break;
       
-      case DxbcOperandType::OutputControlPointId: {
-        // The hull shader's invocation
-        // ID has been declared already
-      } break;
-      
+      case DxbcOperandType::OutputControlPointId:
       case DxbcOperandType::InputForkInstanceId:
       case DxbcOperandType::InputJoinInstanceId: {
-        auto phase = this->getCurrentHsForkJoinPhase();
-        
-        phase->instanceIdPtr = m_module.newVar(
-          m_module.defPointerType(
-            m_module.defIntType(32, 0),
-            spv::StorageClassFunction),
-          spv::StorageClassFunction);
-        
-        m_module.opStore(phase->instanceIdPtr, phase->instanceId);
-        m_module.setDebugName(phase->instanceIdPtr,
-          ins.dst[0].type == DxbcOperandType::InputForkInstanceId
-            ? "vForkInstanceId" : "vJoinInstanceId");
+        // All of these system values map to the hull shader's
+        // invocation ID, which has been declared already.
       } break;
       
       default:
@@ -4097,19 +4083,11 @@ namespace dxvk {
           m_ps.builtinDepth };
       
       case DxbcOperandType::OutputControlPointId:
-        return DxbcRegisterPointer {
-          { DxbcScalarType::Uint32, 1 },
-          m_hs.builtinInvocationId };
-      
       case DxbcOperandType::InputForkInstanceId:
-        return DxbcRegisterPointer {
-          { DxbcScalarType::Uint32, 1 },
-          m_hs.forkPhases.at(m_hs.currPhaseId).instanceIdPtr };
-        
       case DxbcOperandType::InputJoinInstanceId:
         return DxbcRegisterPointer {
           { DxbcScalarType::Uint32, 1 },
-          m_hs.joinPhases.at(m_hs.currPhaseId).instanceIdPtr };
+          m_hs.builtinInvocationId };
         
       default:
         throw DxvkError(str::format(
@@ -5252,7 +5230,9 @@ namespace dxvk {
       this->emitHsForkJoinPhase(phase);
     
     this->emitHsPhaseBarrier();
+    this->emitHsInvocationBlockBegin(1);
     this->emitOutputSetup();
+    this->emitHsInvocationBlockEnd();
   }
   
   
@@ -5300,11 +5280,11 @@ namespace dxvk {
   
   void DxbcCompiler::emitHsForkJoinPhase(
     const DxbcCompilerHsForkJoinPhase&      phase) {
-    for (uint32_t i = 0; i < phase.instanceCount; i++) {
-      const uint32_t counterId = m_module.constu32(i);
-      m_module.opFunctionCall(m_module.defVoidType(),
-        phase.functionId, 1, &counterId);
-    }
+    this->emitHsInvocationBlockBegin(phase.instanceCount);
+    m_module.opFunctionCall(
+      m_module.defVoidType(),
+      phase.functionId, 0, nullptr);
+    this->emitHsInvocationBlockEnd();
   }
   
   
@@ -5374,21 +5354,17 @@ namespace dxvk {
   
   
   DxbcCompilerHsForkJoinPhase DxbcCompiler::emitNewHullShaderForkJoinPhase() {
-    uint32_t argTypeId = m_module.defIntType(32, 0);
     uint32_t funTypeId = m_module.defFunctionType(
-      m_module.defVoidType(), 1, &argTypeId);
+      m_module.defVoidType(), 0, nullptr);
     
     uint32_t funId = m_module.allocateId();
     
     m_module.functionBegin(m_module.defVoidType(),
       funId, funTypeId, spv::FunctionControlMaskNone);
-    
-    uint32_t argId = m_module.functionParameter(argTypeId);
     m_module.opLabel(m_module.allocateId());
     
     DxbcCompilerHsForkJoinPhase result;
     result.functionId = funId;
-    result.instanceId = argId;
     return result;
   }
   
@@ -5399,6 +5375,41 @@ namespace dxvk {
     uint32_t semanticId = m_module.constu32(spv::MemorySemanticsMaskNone);
     
     m_module.opControlBarrier(exeScopeId, memScopeId, semanticId);
+  }
+  
+  
+  void DxbcCompiler::emitHsInvocationBlockBegin(uint32_t count) {
+    uint32_t invocationId = m_module.opLoad(
+      getScalarTypeId(DxbcScalarType::Uint32),
+      m_hs.builtinInvocationId);
+    
+    uint32_t condition = m_module.opULessThan(
+      m_module.defBoolType(), invocationId,
+      m_module.constu32(count));
+    
+    m_hs.invocationBlockBegin = m_module.allocateId();
+    m_hs.invocationBlockEnd   = m_module.allocateId();
+    
+    m_module.opSelectionMerge(
+      m_hs.invocationBlockEnd,
+      spv::SelectionControlMaskNone);
+    
+    m_module.opBranchConditional(
+      condition,
+      m_hs.invocationBlockBegin,
+      m_hs.invocationBlockEnd);
+    
+    m_module.opLabel(
+      m_hs.invocationBlockBegin);
+  }
+  
+  
+  void DxbcCompiler::emitHsInvocationBlockEnd() {
+    m_module.opBranch (m_hs.invocationBlockEnd);
+    m_module.opLabel  (m_hs.invocationBlockEnd);
+    
+    m_hs.invocationBlockBegin = 0;
+    m_hs.invocationBlockEnd   = 0;
   }
   
   

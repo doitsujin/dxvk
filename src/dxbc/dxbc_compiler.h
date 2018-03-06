@@ -161,8 +161,6 @@ namespace dxvk {
   struct DxbcCompilerHsForkJoinPhase {
     uint32_t functionId         = 0;
     uint32_t instanceCount      = 1;
-    uint32_t instanceId         = 0;
-    uint32_t instanceIdPtr      = 0;
   };
   
   
@@ -208,6 +206,9 @@ namespace dxvk {
     
     uint32_t outputPerPatch        = 0;
     uint32_t outputPerVertex       = 0;
+    
+    uint32_t invocationBlockBegin  = 0;
+    uint32_t invocationBlockEnd    = 0;
     
     DxbcCompilerHsControlPointPhase          cpPhase;
     std::vector<DxbcCompilerHsForkJoinPhase> forkPhases;
@@ -877,6 +878,11 @@ namespace dxvk {
       const DxbcCompilerHsForkJoinPhase&      phase);
     
     void emitHsPhaseBarrier();
+    
+    void emitHsInvocationBlockBegin(
+            uint32_t                          count);
+    
+    void emitHsInvocationBlockEnd();
     
     uint32_t emitTessInterfacePerPatch(
             spv::StorageClass                 storageClass);
