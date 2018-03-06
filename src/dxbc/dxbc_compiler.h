@@ -838,6 +838,11 @@ namespace dxvk {
             DxbcRegMask             mask,
       const DxbcRegisterValue&      value);
     
+    void emitHsSystemValueStore(
+            DxbcSystemValue         sv,
+            DxbcRegMask             mask,
+      const DxbcRegisterValue&      value);
+    
     void emitGsSystemValueStore(
             DxbcSystemValue         sv,
             DxbcRegMask             mask,

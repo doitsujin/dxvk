@@ -4708,6 +4708,17 @@ namespace dxvk {
       outputReg.type.ccount = 4;
       outputReg.id = m_oRegs.at(svMapping.regId);
       
+      if (m_version.type() == DxbcProgramType::HullShader) {
+        uint32_t registerIndex = m_module.constu32(svMapping.regId);
+        
+        outputReg.id = m_module.opAccessChain(
+          m_module.defPointerType(
+            getVectorTypeId(outputReg.type),
+            spv::StorageClassOutput),
+          m_hs.outputPerPatch,
+          1, &registerIndex);
+      }
+      
       auto sv    = svMapping.sv;
       auto mask  = svMapping.regMask;
       auto value = emitValueLoad(outputReg);
@@ -4715,7 +4726,7 @@ namespace dxvk {
       switch (m_version.type()) {
         case DxbcProgramType::VertexShader:   emitVsSystemValueStore(sv, mask, value); break;
         case DxbcProgramType::GeometryShader: emitGsSystemValueStore(sv, mask, value); break;
-        case DxbcProgramType::HullShader:
+        case DxbcProgramType::HullShader:     emitHsSystemValueStore(sv, mask, value); break;
         case DxbcProgramType::DomainShader:
         case DxbcProgramType::PixelShader:
         case DxbcProgramType::ComputeShader:
@@ -4950,6 +4961,57 @@ namespace dxvk {
       default:
         Logger::warn(str::format(
           "DxbcCompiler: Unhandled VS SV output: ", sv));
+    }
+  }
+  
+  
+  void DxbcCompiler::emitHsSystemValueStore(
+          DxbcSystemValue         sv,
+          DxbcRegMask             mask,
+    const DxbcRegisterValue&      value) {
+    if (sv >= DxbcSystemValue::FinalQuadUeq0EdgeTessFactor
+     && sv <= DxbcSystemValue::FinalLineDensityTessFactor) {
+      struct TessFactor {
+        uint32_t array = 0;
+        uint32_t index = 0;
+      };
+      
+      static const std::array<TessFactor, 12> s_tessFactors = {{
+        { m_hs.builtinTessLevelOuter, 0 },  // FinalQuadUeq0EdgeTessFactor
+        { m_hs.builtinTessLevelOuter, 1 },  // FinalQuadVeq0EdgeTessFactor
+        { m_hs.builtinTessLevelOuter, 2 },  // FinalQuadUeq1EdgeTessFactor
+        { m_hs.builtinTessLevelOuter, 3 },  // FinalQuadVeq1EdgeTessFactor
+        { m_hs.builtinTessLevelInner, 0 },  // FinalQuadUInsideTessFactor
+        { m_hs.builtinTessLevelInner, 1 },  // FinalQuadVInsideTessFactor
+        { m_hs.builtinTessLevelOuter, 0 },  // FinalTriUeq0EdgeTessFactor
+        { m_hs.builtinTessLevelOuter, 1 },  // FinalTriVeq0EdgeTessFactor
+        { m_hs.builtinTessLevelOuter, 2 },  // FinalTriWeq0EdgeTessFactor
+        { m_hs.builtinTessLevelInner, 0 },  // FinalTriInsideTessFactor
+        { m_hs.builtinTessLevelOuter, 0 },  // FinalLineDetailTessFactor
+        { m_hs.builtinTessLevelOuter, 1 },  // FinalLineDensityTessFactor
+      }};
+      
+      const TessFactor tessFactor = s_tessFactors.at(static_cast<uint32_t>(sv)
+        - static_cast<uint32_t>(DxbcSystemValue::FinalQuadUeq0EdgeTessFactor));
+      
+      const uint32_t tessFactorArrayIndex
+        = m_module.constu32(tessFactor.index);
+      
+      DxbcRegisterPointer ptr;
+      ptr.type.ctype  = DxbcScalarType::Float32;
+      ptr.type.ccount = 1;
+      ptr.id = m_module.opAccessChain(
+        m_module.defPointerType(
+          getVectorTypeId(ptr.type),
+          spv::StorageClassOutput),
+        tessFactor.array, 1,
+        &tessFactorArrayIndex);
+      
+      emitValueStore(ptr, emitRegisterExtract(value, mask),
+        DxbcRegMask(true, false, false, false));
+    } else {
+      Logger::warn(str::format(
+        "DxbcCompiler: Unhandled HS SV output: ", sv));
     }
   }
   
@@ -5190,8 +5252,7 @@ namespace dxvk {
       this->emitHsForkJoinPhase(phase);
     
     this->emitHsPhaseBarrier();
-    
-    // TODO set up output variables
+    this->emitOutputSetup();
   }
   
   
