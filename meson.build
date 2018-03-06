@@ -23,7 +23,7 @@ lib_d3dcompiler_47 = dxvk_compiler.find_library('d3dcompiler_47')
 git_command = find_program('git', required: false)
 
 if git_command.found()
-  git = run_command('git', ['-C', meson.source_root(), 'describe'])
+  git = run_command('git', ['-C', meson.source_root(), 'rev-parse', '--short', 'HEAD'])
   if git.returncode() == 0
     add_global_arguments('-DDXVK_VERSION="'+git.stdout().strip()+'"', language: 'cpp')
   else
