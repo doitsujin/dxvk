@@ -5341,7 +5341,7 @@ namespace dxvk {
     // Fork/join phases. We cannot run this in parallel
     // because synchronizing per-patch outputs does not
     // work. We don't need to synchronize after this.
-//     this->emitHsInvocationBlockBegin(1);
+    this->emitHsInvocationBlockBegin(1);
     
     for (const auto& phase : m_hs.forkPhases)
       this->emitHsForkJoinPhase(phase);
@@ -5349,10 +5349,13 @@ namespace dxvk {
     for (const auto& phase : m_hs.joinPhases)
       this->emitHsForkJoinPhase(phase);
     
-    // Output setup phase
+    this->emitHsInvocationBlockEnd();
     this->emitHsPhaseBarrier();
+    
+    // Output setup phase
+    this->emitHsInvocationBlockBegin(1);
     this->emitOutputSetup();
-//     this->emitHsInvocationBlockEnd();
+    this->emitHsInvocationBlockEnd();
     this->emitMainFunctionEnd();
   }
   
