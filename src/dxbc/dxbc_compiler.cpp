@@ -493,11 +493,25 @@ namespace dxvk {
           "vDomain");
       } break;
       
-      case DxbcOperandType::OutputControlPointId:
       case DxbcOperandType::InputForkInstanceId:
       case DxbcOperandType::InputJoinInstanceId: {
-        // All of these system values map to the hull shader's
-        // invocation ID, which has been declared already.
+        auto phase = this->getCurrentHsForkJoinPhase();
+        
+        phase->instanceIdPtr = m_module.newVar(
+          m_module.defPointerType(
+            m_module.defIntType(32, 0),
+            spv::StorageClassFunction),
+          spv::StorageClassFunction);
+        
+        m_module.opStore(phase->instanceIdPtr, phase->instanceId);
+        m_module.setDebugName(phase->instanceIdPtr,
+          ins.dst[0].type == DxbcOperandType::InputForkInstanceId
+            ? "vForkInstanceId" : "vJoinInstanceId");
+      } break;
+      
+      case DxbcOperandType::OutputControlPointId: {
+        // This system value map to the invocation
+        // ID, which has been declared already.
       } break;
       
       case DxbcOperandType::InputControlPoint:
@@ -4117,11 +4131,15 @@ namespace dxvk {
           m_ds.builtinTessCoord };
       
       case DxbcOperandType::OutputControlPointId:
+        return DxbcRegisterPointer {
+          { DxbcScalarType::Uint32, 1 },
+          m_hs.builtinInvocationId };
+      
       case DxbcOperandType::InputForkInstanceId:
       case DxbcOperandType::InputJoinInstanceId:
         return DxbcRegisterPointer {
           { DxbcScalarType::Uint32, 1 },
-          m_hs.builtinInvocationId };
+          getCurrentHsForkJoinPhase()->instanceIdPtr };
         
       default:
         throw DxvkError(str::format(
@@ -5310,13 +5328,16 @@ namespace dxvk {
     if (m_hs.cpPhase.functionId == 0)
       m_hs.cpPhase = this->emitNewHullShaderPassthroughPhase();
     
+    // Control point phase
     this->emitMainFunctionBegin();
     this->emitInputSetup(m_hs.vertexCountIn);
     this->emitHsControlPointPhase(m_hs.cpPhase);
+    this->emitHsPhaseBarrier();
     
-    if (m_hs.forkPhases.size() != 0
-     || m_hs.joinPhases.size() != 0)
-      this->emitHsPhaseBarrier();
+    // Fork/join phases. We cannot run this in parallel
+    // because synchronizing per-patch outputs does not
+    // work. We don't need to synchronize after this.
+    this->emitHsInvocationBlockBegin(1);
     
     for (const auto& phase : m_hs.forkPhases)
       this->emitHsForkJoinPhase(phase);
@@ -5324,8 +5345,7 @@ namespace dxvk {
     for (const auto& phase : m_hs.joinPhases)
       this->emitHsForkJoinPhase(phase);
     
-    this->emitHsPhaseBarrier();
-    this->emitHsInvocationBlockBegin(1);
+    // Output setup phase
     this->emitOutputSetup();
     this->emitHsInvocationBlockEnd();
     this->emitMainFunctionEnd();
@@ -5385,11 +5405,13 @@ namespace dxvk {
   
   void DxbcCompiler::emitHsForkJoinPhase(
     const DxbcCompilerHsForkJoinPhase&      phase) {
-    this->emitHsInvocationBlockBegin(phase.instanceCount);
-    m_module.opFunctionCall(
-      m_module.defVoidType(),
-      phase.functionId, 0, nullptr);
-    this->emitHsInvocationBlockEnd();
+    for (uint32_t i = 0; i < phase.instanceCount; i++) {
+      const uint32_t instanceId = m_module.constu32(i);
+      
+      m_module.opFunctionCall(
+        m_module.defVoidType(),
+        phase.functionId, 1, &instanceId);
+    }
   }
   
   
@@ -5515,17 +5537,21 @@ namespace dxvk {
   
   
   DxbcCompilerHsForkJoinPhase DxbcCompiler::emitNewHullShaderForkJoinPhase() {
+    uint32_t argTypeId = m_module.defIntType(32, 0);
     uint32_t funTypeId = m_module.defFunctionType(
-      m_module.defVoidType(), 0, nullptr);
+      m_module.defVoidType(), 1, &argTypeId);
     
     uint32_t funId = m_module.allocateId();
     
     m_module.functionBegin(m_module.defVoidType(),
       funId, funTypeId, spv::FunctionControlMaskNone);
+    
+    uint32_t argId = m_module.functionParameter(argTypeId);
     m_module.opLabel(m_module.allocateId());
     
     DxbcCompilerHsForkJoinPhase result;
     result.functionId = funId;
+    result.instanceId = argId;
     return result;
   }
   

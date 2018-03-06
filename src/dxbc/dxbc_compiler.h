@@ -161,6 +161,9 @@ namespace dxvk {
   struct DxbcCompilerHsForkJoinPhase {
     uint32_t functionId         = 0;
     uint32_t instanceCount      = 1;
+    
+    uint32_t instanceId         = 0;
+    uint32_t instanceIdPtr      = 0;
   };
   
   
