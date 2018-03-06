@@ -586,6 +586,14 @@ namespace dxvk {
           DxbcRegMask             regMask,
           DxbcSystemValue         sv,
           DxbcInterpolationMode   im) {
+    // Add a new system value mapping if needed
+    if (sv != DxbcSystemValue::None)
+      m_oMappings.push_back({ regIdx, regMask, sv });
+    
+    // Hull shaders don't use standard outputs
+    if (m_version.type() == DxbcProgramType::HullShader)
+      return;
+    
     // Avoid declaring the same variable multiple times.
     // This may happen when multiple system values are
     // mapped to different parts of the same register.
@@ -607,10 +615,6 @@ namespace dxvk {
       // Declare the output slot as defined
       m_interfaceSlots.outputSlots |= 1u << regIdx;
     }
-    
-    // Add a new system value mapping if needed
-    if (sv != DxbcSystemValue::None)
-      m_oMappings.push_back({ regIdx, regMask, sv });
   }
   
   
@@ -1088,6 +1092,9 @@ namespace dxvk {
     // dcl_output_control_points has the control point
     // count embedded within the opcode token.
     m_hs.vertexCountOut = ins.controls.controlPointCount;
+    
+    m_hs.outputPerPatch  = emitTessInterfacePerPatch (spv::StorageClassOutput);
+    m_hs.outputPerVertex = emitTessInterfacePerVertex(spv::StorageClassOutput, m_hs.vertexCountOut);
     
     m_module.setOutputVertices(m_entryPointId, ins.controls.controlPointCount);
   }
@@ -2723,7 +2730,7 @@ namespace dxvk {
     // and the destination operand's write mask
     result = emitRegisterSwizzle(result,
       ins.src[1].swizzle, ins.dst[0].mask);
-
+    
     // If the texture is not bound, return zeroes
     m_module.opBranch(labelMerge);
     m_module.opLabel(labelUnbound);
@@ -3889,7 +3896,7 @@ namespace dxvk {
     result.type.ctype  = DxbcScalarType::Float32;
     result.type.ccount = 4;
     
-    std::array<uint32_t, 2> indices = { 0, 0 };
+    std::array<uint32_t, 2> indices = {{ 0, 0 }};
     
     for (uint32_t i = 0; i < operand.idxDim; i++)
       indices.at(i) = emitIndexLoad(operand.idx[i]).id;
@@ -3910,28 +3917,49 @@ namespace dxvk {
   
   DxbcRegisterPointer DxbcCompiler::emitGetOutputPtr(
     const DxbcRegister&           operand) {
-    // Same index format as input registers, except that
-    // outputs cannot be accessed with a relative index.
-    if (operand.idxDim != 1)
-      throw DxvkError("DxbcCompiler: 2D index for o# not yet supported");
+    DxbcRegisterPointer result;
+    result.type.ctype  = DxbcScalarType::Float32;
+    result.type.ccount = 4;
     
-    // We don't support two-dimensional indices yet
-    const uint32_t registerId = operand.idx[0].offset;
-    
-    // In the pixel shader, output registers are typed,
-    // whereas they are float4 in all other stages.
-    if (m_version.type() == DxbcProgramType::PixelShader) {
-      DxbcRegisterPointer result;
-      result.type = m_ps.oTypes.at(registerId);
-      result.id = m_oRegs.at(registerId);
-      return result;
-    } else {
-      DxbcRegisterPointer result;
-      result.type.ctype  = DxbcScalarType::Float32;
-      result.type.ccount = 4;
-      result.id = m_oRegs.at(registerId);
-      return result;
+    switch (m_version.type()) {
+      // Pixel shaders have typed output registers, whereas they
+      // are simple float4 vectors in all other shader stages.
+      case DxbcProgramType::PixelShader: {
+        const uint32_t registerId = operand.idx[0].offset;
+        result.type = m_ps.oTypes.at(registerId);
+        result.id = m_oRegs.at(registerId);
+      } break;
+      
+      // Hull shaders are special in that they have two sets of
+      // output registers, one for per-patch values and one for
+      // per-vertex values.
+      case DxbcProgramType::HullShader: {
+        uint32_t registerId = emitIndexLoad(operand.idx[0]).id;
+        uint32_t ptrTypeId  = m_module.defPointerType(
+            getVectorTypeId(result.type),
+            spv::StorageClassOutput);
+        
+        if (m_hs.currPhaseType == DxbcCompilerHsPhase::ControlPoint) {
+          std::array<uint32_t, 2> indices = {{
+            m_module.opLoad(m_module.defIntType(32, 0), m_hs.builtinInvocationId),
+            registerId,
+          }};
+          
+          result.id = m_module.opAccessChain(
+            ptrTypeId, m_hs.outputPerVertex,
+            indices.size(), indices.data());
+        } else {
+          result.id = m_module.opAccessChain(
+            ptrTypeId, m_hs.outputPerPatch,
+            1, &registerId);
+        }
+      } break;
+      
+      default:
+        result.id = m_oRegs.at(operand.idx[0].offset);
     }
+    
+    return result;
   }
   
   
@@ -5161,6 +5189,8 @@ namespace dxvk {
     for (const auto& phase : m_hs.joinPhases)
       this->emitHsForkJoinPhase(phase);
     
+    this->emitHsPhaseBarrier();
+    
     // TODO set up output variables
   }
   
@@ -5311,6 +5341,40 @@ namespace dxvk {
   }
   
   
+  uint32_t DxbcCompiler::emitTessInterfacePerPatch(spv::StorageClass storageClass) {
+    const bool isInput = storageClass == spv::StorageClassInput;
+    
+    uint32_t vecType = m_module.defVectorType (m_module.defFloatType(32), 4);
+    uint32_t arrType = m_module.defArrayType  (vecType, m_module.constu32(32));
+    uint32_t ptrType = m_module.defPointerType(arrType, storageClass);
+    uint32_t varId   = m_module.newVar        (ptrType, storageClass);
+    
+    m_module.setDebugName     (varId, isInput ? "vPatch" : "oPatch");
+    m_module.decorate         (varId, spv::DecorationPatch);
+    m_module.decorateLocation (varId, 0);
+    
+    m_entryPointInterfaces.push_back(varId);
+    return varId;
+  }
+  
+  
+  uint32_t DxbcCompiler::emitTessInterfacePerVertex(spv::StorageClass storageClass, uint32_t vertexCount) {
+    const bool isInput = storageClass == spv::StorageClassInput;
+    
+    uint32_t vecType      = m_module.defVectorType (m_module.defFloatType(32), 4);
+    uint32_t arrTypeInner = m_module.defArrayType  (vecType,      m_module.constu32(32));
+    uint32_t arrTypeOuter = m_module.defArrayType  (arrTypeInner, m_module.constu32(vertexCount));
+    uint32_t ptrType      = m_module.defPointerType(arrTypeOuter, storageClass);
+    uint32_t varId        = m_module.newVar        (ptrType,      storageClass);
+    
+    m_module.setDebugName     (varId, isInput ? "vVertex" : "oVertex");
+    m_module.decorateLocation (varId, 32);
+    
+    m_entryPointInterfaces.push_back(varId);
+    return varId;
+  }
+  
+    
   uint32_t DxbcCompiler::emitNewVariable(const DxbcRegisterInfo& info) {
     const uint32_t ptrTypeId = this->getPointerTypeId(info);
     return m_module.newVar(ptrTypeId, info.sclass);

@@ -206,6 +206,9 @@ namespace dxvk {
     uint32_t builtinTessLevelOuter = 0;
     uint32_t builtinTessLevelInner = 0;
     
+    uint32_t outputPerPatch        = 0;
+    uint32_t outputPerVertex       = 0;
+    
     DxbcCompilerHsControlPointPhase          cpPhase;
     std::vector<DxbcCompilerHsForkJoinPhase> forkPhases;
     std::vector<DxbcCompilerHsForkJoinPhase> joinPhases;
@@ -869,6 +872,13 @@ namespace dxvk {
       const DxbcCompilerHsForkJoinPhase&      phase);
     
     void emitHsPhaseBarrier();
+    
+    uint32_t emitTessInterfacePerPatch(
+            spv::StorageClass                 storageClass);
+    
+    uint32_t emitTessInterfacePerVertex(
+            spv::StorageClass                 storageClass,
+            uint32_t                          vertexCount);
     
     //////////////
     // Misc stuff
