@@ -849,10 +849,16 @@ namespace dxvk {
             DxbcRegMask             mask,
       const DxbcRegisterValue&      value);
     
-    /////////////////////////////////
-    // Shader initialization methods
+    //////////////////////////////////////
+    // Common function definition methods
     void emitInit();
     
+    void emitMainFunctionBegin();
+    
+    void emitMainFunctionEnd();
+    
+    /////////////////////////////////
+    // Shader initialization methods
     void emitVsInit();
     void emitHsInit();
     void emitDsInit();
@@ -901,6 +907,8 @@ namespace dxvk {
       const char*             varName);
     
     DxbcCompilerHsControlPointPhase emitNewHullShaderControlPointPhase();
+    
+    DxbcCompilerHsControlPointPhase emitNewHullShaderPassthroughPhase();
     
     DxbcCompilerHsForkJoinPhase emitNewHullShaderForkJoinPhase();
     
