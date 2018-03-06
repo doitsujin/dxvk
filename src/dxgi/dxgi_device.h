@@ -72,7 +72,7 @@ namespace dxvk {
 
 extern "C" {
   
-  DLLEXPORT HRESULT __stdcall DXGICreateDevicePrivate(
+  HRESULT __stdcall DXGICreateDevicePrivate(
           IDXGIAdapterPrivate*      pAdapter,
     const VkPhysicalDeviceFeatures* features,
           IDXGIDevicePrivate**      ppDevice);

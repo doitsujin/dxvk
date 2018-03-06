@@ -225,14 +225,14 @@ namespace dxvk {
   
   void STDMETHODCALLTYPE D3D11DeviceContext::SetPredication(
           ID3D11Predicate*                  pPredicate,
-          WINBOOL                           PredicateValue) {
+          BOOL                              PredicateValue) {
     Logger::err("D3D11DeviceContext::SetPredication: Not implemented");
   }
   
   
   void STDMETHODCALLTYPE D3D11DeviceContext::GetPredication(
           ID3D11Predicate**                 ppPredicate,
-          WINBOOL*                          pPredicateValue) {
+          BOOL*                             pPredicateValue) {
     Logger::err("D3D11DeviceContext::GetPredication: Not implemented");
   }
   
