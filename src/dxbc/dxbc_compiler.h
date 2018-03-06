@@ -220,10 +220,16 @@ namespace dxvk {
    * \brief Domain shader-specific structure
    */
   struct DxbcCompilerDsPart {
-    uint32_t functionId = 0;
+    uint32_t functionId            = 0;
     
+    uint32_t builtinTessCoord      = 0;
     uint32_t builtinTessLevelOuter = 0;
     uint32_t builtinTessLevelInner = 0;
+    
+    uint32_t vertexCountIn         = 0;
+    
+    uint32_t inputPerPatch         = 0;
+    uint32_t inputPerVertex        = 0;
   };
   
   
@@ -840,6 +846,11 @@ namespace dxvk {
       const DxbcRegisterValue&      value);
     
     void emitHsSystemValueStore(
+            DxbcSystemValue         sv,
+            DxbcRegMask             mask,
+      const DxbcRegisterValue&      value);
+    
+    void emitDsSystemValueStore(
             DxbcSystemValue         sv,
             DxbcRegMask             mask,
       const DxbcRegisterValue&      value);

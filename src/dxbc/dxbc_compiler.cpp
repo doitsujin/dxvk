@@ -485,11 +485,26 @@ namespace dxvk {
           "oDepthLe");
       } break;
       
+      case DxbcOperandType::InputDomainPoint: {
+        m_ds.builtinTessCoord = emitNewBuiltinVariable({
+          { DxbcScalarType::Float32, 3, 0 },
+          spv::StorageClassInput },
+          spv::BuiltInTessCoord,
+          "vDomain");
+      } break;
+      
       case DxbcOperandType::OutputControlPointId:
       case DxbcOperandType::InputForkInstanceId:
       case DxbcOperandType::InputJoinInstanceId: {
         // All of these system values map to the hull shader's
         // invocation ID, which has been declared already.
+      } break;
+      
+      case DxbcOperandType::InputControlPoint:
+      case DxbcOperandType::InputPatchConstant:
+      case DxbcOperandType::OutputControlPoint: {
+        // These have been declared as global input and
+        // output arrays, so there's nothing left to do.
       } break;
       
       default:
@@ -1055,9 +1070,16 @@ namespace dxvk {
   void DxbcCompiler::emitDclInputControlPointCount(const DxbcShaderInstruction& ins) {
     // dcl_input_control_points has the control point
     // count embedded within the opcode token.
-    m_hs.vertexCountIn = ins.controls.controlPointCount;
-    
-    emitDclInputArray(m_hs.vertexCountIn);    
+    if (m_version.type() == DxbcProgramType::HullShader) {
+      m_hs.vertexCountIn = ins.controls.controlPointCount;
+      
+      emitDclInputArray(m_hs.vertexCountIn);    
+    } else {
+      m_ds.vertexCountIn = ins.controls.controlPointCount;
+      
+      m_ds.inputPerPatch  = emitTessInterfacePerPatch (spv::StorageClassInput);
+      m_ds.inputPerVertex = emitTessInterfacePerVertex(spv::StorageClassInput, m_ds.vertexCountIn);
+    }
   }
   
   
@@ -3873,15 +3895,33 @@ namespace dxvk {
     
     for (uint32_t i = 0; i < operand.idxDim; i++)
       indices.at(i) = emitIndexLoad(operand.idx[i]).id;
+    
+    // Pick the input array depending on
+    // the program type and operand type
+    struct InputArray {
+      uint32_t          id;
+      spv::StorageClass sclass;
+    };
+    
+    const InputArray array = [&] () -> InputArray {
+      switch (operand.type) {
+        case DxbcOperandType::InputControlPoint:
+          return { m_ds.inputPerVertex, spv::StorageClassInput };
+        case DxbcOperandType::InputPatchConstant:
+          return { m_ds.inputPerPatch, spv::StorageClassInput };
+        default:
+          return { m_vArray, spv::StorageClassPrivate };
+      }
+    }();
       
     DxbcRegisterInfo info;
     info.type.ctype   = result.type.ctype;
     info.type.ccount  = result.type.ccount;
     info.type.alength = 0;
-    info.sclass = spv::StorageClassPrivate;
+    info.sclass = array.sclass;
       
     result.id = m_module.opAccessChain(
-      getPointerTypeId(info), m_vArray,
+      getPointerTypeId(info), array.id,
       operand.idxDim, indices.data());
     
     return result;
@@ -3999,6 +4039,8 @@ namespace dxvk {
         return emitGetIndexableTempPtr(operand);
       
       case DxbcOperandType::Input:
+      case DxbcOperandType::InputControlPoint:
+      case DxbcOperandType::InputPatchConstant:
         return emitGetInputPtr(operand);
       
       case DxbcOperandType::Output:
@@ -4068,6 +4110,11 @@ namespace dxvk {
         return DxbcRegisterPointer {
           { DxbcScalarType::Float32, 1 },
           m_ps.builtinDepth };
+      
+      case DxbcOperandType::InputDomainPoint:
+        return DxbcRegisterPointer {
+          { DxbcScalarType::Float32, 3 },
+          m_ds.builtinTessCoord };
       
       case DxbcOperandType::OutputControlPointId:
       case DxbcOperandType::InputForkInstanceId:
@@ -4692,10 +4739,9 @@ namespace dxvk {
         case DxbcProgramType::VertexShader:   emitVsSystemValueStore(sv, mask, value); break;
         case DxbcProgramType::GeometryShader: emitGsSystemValueStore(sv, mask, value); break;
         case DxbcProgramType::HullShader:     emitHsSystemValueStore(sv, mask, value); break;
-        case DxbcProgramType::DomainShader:
-        case DxbcProgramType::PixelShader:
-        case DxbcProgramType::ComputeShader:
-          break;
+        case DxbcProgramType::DomainShader:   emitDsSystemValueStore(sv, mask, value); break;
+        case DxbcProgramType::PixelShader:    break;
+        case DxbcProgramType::ComputeShader:  break;
       }
     }
   }
@@ -5018,6 +5064,24 @@ namespace dxvk {
   }
   
   
+  void DxbcCompiler::emitDsSystemValueStore(
+          DxbcSystemValue         sv,
+          DxbcRegMask             mask,
+    const DxbcRegisterValue&      value) {
+    switch (sv) {
+      case DxbcSystemValue::Position:
+      case DxbcSystemValue::CullDistance:
+      case DxbcSystemValue::ClipDistance:
+        emitVsSystemValueStore(sv, mask, value);
+        break;
+      
+      default:
+        Logger::warn(str::format(
+          "DxbcCompiler: Unhandled DS SV output: ", sv));
+    }
+  }
+  
+  
   void DxbcCompiler::emitInit() {
     // Set up common capabilities for all shaders
     m_module.enableCapability(spv::CapabilityShader);
@@ -5112,6 +5176,28 @@ namespace dxvk {
     
     m_ds.builtinTessLevelOuter = emitBuiltinTessLevelOuter(spv::StorageClassInput);
     m_ds.builtinTessLevelInner = emitBuiltinTessLevelInner(spv::StorageClassInput);
+    
+    // Declare the per-vertex output block
+    const uint32_t perVertexStruct = this->getPerVertexBlockId();
+    const uint32_t perVertexPointer = m_module.defPointerType(
+      perVertexStruct, spv::StorageClassOutput);
+    
+    m_perVertexOut = m_module.newVar(
+      perVertexPointer, spv::StorageClassOutput);
+    m_entryPointInterfaces.push_back(m_perVertexOut);
+    m_module.setDebugName(m_perVertexOut, "ds_vertex_out");
+    
+    // Main function of the domain shader
+    m_ds.functionId = m_module.allocateId();
+    m_module.setDebugName(m_ds.functionId, "ds_main");
+    
+    m_module.functionBegin(
+      m_module.defVoidType(),
+      m_ds.functionId,
+      m_module.defFunctionType(
+        m_module.defVoidType(), 0, nullptr),
+      spv::FunctionControlMaskNone);
+    m_module.opLabel(m_module.allocateId());
   }
   
   
@@ -5248,7 +5334,10 @@ namespace dxvk {
   
   void DxbcCompiler::emitDsFinalize() {
     this->emitMainFunctionBegin();
-    // TODO implement
+    m_module.opFunctionCall(
+      m_module.defVoidType(),
+      m_ds.functionId, 0, nullptr);
+    this->emitOutputSetup();
     this->emitMainFunctionEnd();
   }
   
