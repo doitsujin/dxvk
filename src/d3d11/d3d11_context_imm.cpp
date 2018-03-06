@@ -150,6 +150,11 @@ namespace dxvk {
       // We use a buffer instead and then perform a copy.
       D3D11TextureInfo* textureInfo = GetCommonTextureInfo(pResource);
       
+      if (textureInfo->imageBuffer == nullptr) {
+        Logger::err("D3D11: Cannot map a device-local image");
+        return E_INVALIDARG;
+      }
+      
       if (pMappedResource == nullptr)
         return S_FALSE;
       
