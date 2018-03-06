@@ -3920,9 +3920,13 @@ namespace dxvk {
     const InputArray array = [&] () -> InputArray {
       switch (operand.type) {
         case DxbcOperandType::InputControlPoint:
-          return { m_ds.inputPerVertex, spv::StorageClassInput };
+          return m_version.type() == DxbcProgramType::HullShader
+                  ? InputArray { m_hs.outputPerVertex, spv::StorageClassOutput }
+                  : InputArray { m_ds.inputPerVertex,  spv::StorageClassInput  };
         case DxbcOperandType::InputPatchConstant:
-          return { m_ds.inputPerPatch, spv::StorageClassInput };
+          return m_version.type() == DxbcProgramType::HullShader
+                  ? InputArray { m_hs.outputPerPatch, spv::StorageClassOutput }
+                  : InputArray { m_ds.inputPerPatch,  spv::StorageClassInput  };
         default:
           return { m_vArray, spv::StorageClassPrivate };
       }
@@ -5337,7 +5341,7 @@ namespace dxvk {
     // Fork/join phases. We cannot run this in parallel
     // because synchronizing per-patch outputs does not
     // work. We don't need to synchronize after this.
-    this->emitHsInvocationBlockBegin(1);
+//     this->emitHsInvocationBlockBegin(1);
     
     for (const auto& phase : m_hs.forkPhases)
       this->emitHsForkJoinPhase(phase);
@@ -5346,8 +5350,9 @@ namespace dxvk {
       this->emitHsForkJoinPhase(phase);
     
     // Output setup phase
+    this->emitHsPhaseBarrier();
     this->emitOutputSetup();
-    this->emitHsInvocationBlockEnd();
+//     this->emitHsInvocationBlockEnd();
     this->emitMainFunctionEnd();
   }
   
