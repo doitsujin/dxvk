@@ -6,7 +6,8 @@ namespace dxvk {
   DxgiFactory::DxgiFactory()
   : m_instance(new DxvkInstance()),
     m_adapters(m_instance->enumAdapters()) {
-    
+    for (const auto& adapter : m_adapters)
+      adapter->logAdapterInfo();
   }
   
   

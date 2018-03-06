@@ -147,6 +147,14 @@ namespace dxvk {
       HINSTANCE instance,
       HWND      window);
     
+    /**
+     * \brief Logs DXVK adapter info
+     * 
+     * May be useful for bug reports
+     * and general troubleshooting.
+     */
+    void logAdapterInfo() const;
+    
   private:
     
     Rc<DxvkInstance>    m_instance;

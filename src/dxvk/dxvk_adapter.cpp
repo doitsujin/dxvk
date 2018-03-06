@@ -218,6 +218,21 @@ namespace dxvk {
   }
   
   
+  void DxvkAdapter::logAdapterInfo() const {
+    VkPhysicalDeviceProperties deviceInfo = this->deviceProperties();
+    
+    Logger::info(str::format(deviceInfo.deviceName, ":"));
+    Logger::info(str::format("  Driver: ",
+      VK_VERSION_MAJOR(deviceInfo.driverVersion), ".",
+      VK_VERSION_MINOR(deviceInfo.driverVersion), ".",
+      VK_VERSION_PATCH(deviceInfo.driverVersion)));
+    Logger::info(str::format("  Vulkan: ",
+      VK_VERSION_MAJOR(deviceInfo.apiVersion), ".",
+      VK_VERSION_MINOR(deviceInfo.apiVersion), ".",
+      VK_VERSION_PATCH(deviceInfo.apiVersion)));
+  }
+  
+  
   void DxvkAdapter::logNameList(const vk::NameList& names) {
     for (uint32_t i = 0; i < names.count(); i++)
       Logger::info(str::format("  ", names.name(i)));
