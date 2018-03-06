@@ -968,10 +968,9 @@ namespace dxvk {
           ID3D11HullShader**          ppHullShader) {
     D3D11ShaderModule module;
     
-    Logger::warn("D3D11: CreateHullShader: Tessellation shaders not yet supported");
-//     if (FAILED(this->CreateShaderModule(&module,
-//         pShaderBytecode, BytecodeLength, pClassLinkage)))
-//       return E_INVALIDARG;
+    if (FAILED(this->CreateShaderModule(&module,
+        pShaderBytecode, BytecodeLength, pClassLinkage)))
+      return E_INVALIDARG;
     
     if (ppHullShader == nullptr)
       return S_FALSE;
@@ -989,10 +988,9 @@ namespace dxvk {
           ID3D11DomainShader**        ppDomainShader) {
     D3D11ShaderModule module;
     
-    Logger::warn("D3D11: CreateDomainShader: Tessellation shaders not yet supported");
-//     if (FAILED(this->CreateShaderModule(&module,
-//         pShaderBytecode, BytecodeLength, pClassLinkage)))
-//       return E_INVALIDARG;
+    if (FAILED(this->CreateShaderModule(&module,
+        pShaderBytecode, BytecodeLength, pClassLinkage)))
+      return E_INVALIDARG;
     
     if (ppDomainShader == nullptr)
       return S_FALSE;
