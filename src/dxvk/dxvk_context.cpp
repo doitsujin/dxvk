@@ -1483,8 +1483,6 @@ namespace dxvk {
     
     bool updatePipelineState = false;
     
-    // TODO recreate resource views if the underlying
-    // resource was marked as dirty after invalidation
     for (uint32_t i = 0; i < layout->bindingCount(); i++) {
       const auto& binding = layout->binding(i);
       const auto& res     = m_rc[binding.slot];
@@ -1534,10 +1532,11 @@ namespace dxvk {
           if (res.bufferView != nullptr) {
             updatePipelineState |= bs.setBound(i);
             
+            res.bufferView->updateView();
             m_descInfos[i].texelBuffer = res.bufferView->handle();
             
-            m_cmd->trackResource(res.bufferView);
-            m_cmd->trackResource(res.bufferView->resource());
+            m_cmd->trackResource(res.bufferView->viewResource());
+            m_cmd->trackResource(res.bufferView->bufferResource());
           } else {
             updatePipelineState |= bs.setUnbound(i);
             m_descInfos[i].texelBuffer = m_device->dummyBufferViewDescriptor();

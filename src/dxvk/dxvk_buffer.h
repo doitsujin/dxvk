@@ -12,7 +12,7 @@ namespace dxvk {
    * if allocated on an appropriate memory type.
    */
   class DxvkBuffer : public RcObject {
-    
+    friend class DxvkBufferView;
   public:
     
     DxvkBuffer(
@@ -126,6 +126,7 @@ namespace dxvk {
     DxvkBufferCreateInfo    m_info;
     VkMemoryPropertyFlags   m_memFlags;
     DxvkPhysicalBufferSlice m_physSlice;
+    uint32_t                m_revision = 0;
     
     // TODO maybe align this to a cache line in order
     // to avoid false sharing once CSMT is implemented
@@ -150,7 +151,7 @@ namespace dxvk {
    * contents like formatted pixel data. These
    * buffer views are used as texel buffers.
    */
-  class DxvkBufferView : public DxvkResource {
+  class DxvkBufferView : public RcObject {
     
   public:
     
@@ -166,7 +167,7 @@ namespace dxvk {
      * \returns Buffer view handle
      */
     VkBufferView handle() const {
-      return m_view;
+      return m_physView->handle();
     }
     
     /**
@@ -189,8 +190,16 @@ namespace dxvk {
      * \brief Backing resource
      * \returns Backing resource
      */
-    Rc<DxvkResource> resource() const {
-      return m_buffer->resource();
+    Rc<DxvkResource> viewResource() const {
+      return m_physView;
+    }
+    
+    /**
+     * \brief Backing buffer resource
+     * \returns Backing buffer resource
+     */
+    Rc<DxvkResource> bufferResource() const {
+      return m_physView->slice().resource();
     }
     
     /**
@@ -198,21 +207,30 @@ namespace dxvk {
      * \returns Slice backing the view
      */
     DxvkPhysicalBufferSlice slice() const {
-      return m_buffer->subSlice(
-        m_info.rangeOffset,
-        m_info.rangeLength);
+      return m_physView->slice();
     }
+    
+    /**
+     * \brief Updates the buffer view
+     * 
+     * If the buffer has been invalidated ever since
+     * the view was created, the view is invalid as
+     * well and needs to be re-created. Call this
+     * prior to using the buffer view handle.
+     */
+    void updateView();
     
   private:
     
-    Rc<vk::DeviceFn>  m_vkd;
-    Rc<DxvkBuffer>    m_buffer;
+    Rc<vk::DeviceFn>           m_vkd;
+    DxvkBufferViewCreateInfo   m_info;
     
-    DxvkBufferViewCreateInfo m_info;
-    VkBufferView             m_view;
+    Rc<DxvkBuffer>             m_buffer;
+    Rc<DxvkPhysicalBufferView> m_physView;
     
-    void createBufferView();
-    void destroyBufferView();
+    uint32_t                   m_revision = 0;
+    
+    Rc<DxvkPhysicalBufferView> createView();
     
   };
   
