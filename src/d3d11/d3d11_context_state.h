@@ -28,7 +28,7 @@ namespace dxvk {
     
   using D3D11UnorderedAccessBindings = std::array<
     Com<D3D11UnorderedAccessView>, D3D11_1_UAV_SLOT_COUNT>;
-    
+  
   
   struct D3D11ContextStateVS {
     Com<D3D11VertexShader>        shader;
@@ -127,6 +127,11 @@ namespace dxvk {
   };
   
   
+  struct D3D11ContextStateSO {
+    std::array<Com<D3D11Buffer>, D3D11_SO_STREAM_COUNT> targets;
+  };
+  
+  
   /**
    * \brief Context state
    */
@@ -141,6 +146,7 @@ namespace dxvk {
     D3D11ContextStateIA ia;
     D3D11ContextStateOM om;
     D3D11ContextStateRS rs;
+    D3D11ContextStateSO so;
   };
   
 }

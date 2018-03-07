@@ -2035,16 +2035,20 @@ namespace dxvk {
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppSOTargets,
     const UINT*                             pOffsets) {
-    if (NumBuffers > 0)
-      Logger::err("D3D11DeviceContext::SOSetTargets: Not implemented");
+    // TODO implement properly, including pOffsets
+    for (uint32_t i = 0; i < D3D11_SO_STREAM_COUNT; i++) {
+      m_state.so.targets[i] = (ppSOTargets != nullptr && i < NumBuffers)
+        ? static_cast<D3D11Buffer*>(ppSOTargets[i])
+        : nullptr;
+    }
   }
   
   
   void STDMETHODCALLTYPE D3D11DeviceContext::SOGetTargets(
           UINT                              NumBuffers,
           ID3D11Buffer**                    ppSOTargets) {
-    if (NumBuffers > 0)
-      Logger::err("D3D11DeviceContext::SOGetTargets: Not implemented");
+    for (uint32_t i = 0; i < NumBuffers; i++)
+      ppSOTargets[i] = m_state.so.targets[i].ref();
   }
   
   
