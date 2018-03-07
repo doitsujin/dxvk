@@ -3921,12 +3921,14 @@ namespace dxvk {
       switch (operand.type) {
         case DxbcOperandType::InputControlPoint:
           return m_version.type() == DxbcProgramType::HullShader
-                  ? InputArray { m_hs.outputPerVertex, spv::StorageClassOutput }
-                  : InputArray { m_ds.inputPerVertex,  spv::StorageClassInput  };
+                  ? InputArray { m_vArray,             spv::StorageClassPrivate }
+                  : InputArray { m_ds.inputPerVertex,  spv::StorageClassInput   };
         case DxbcOperandType::InputPatchConstant:
           return m_version.type() == DxbcProgramType::HullShader
                   ? InputArray { m_hs.outputPerPatch, spv::StorageClassOutput }
                   : InputArray { m_ds.inputPerPatch,  spv::StorageClassInput  };
+        case DxbcOperandType::OutputControlPoint:
+          return InputArray { m_hs.outputPerVertex, spv::StorageClassOutput };
         default:
           return { m_vArray, spv::StorageClassPrivate };
       }
@@ -4059,6 +4061,7 @@ namespace dxvk {
       case DxbcOperandType::Input:
       case DxbcOperandType::InputControlPoint:
       case DxbcOperandType::InputPatchConstant:
+      case DxbcOperandType::OutputControlPoint:
         return emitGetInputPtr(operand);
       
       case DxbcOperandType::Output:
