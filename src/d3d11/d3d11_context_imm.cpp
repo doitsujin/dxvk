@@ -122,14 +122,13 @@ namespace dxvk {
       } else if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE) {
         // Synchronize with CS thread so that we know whether
         // the buffer is currently in use by the GPU or not
+        Flush();
         SynchronizeCsThread();
         
-        if (buffer->isInUse()) {
+        while (buffer->isInUse()) {
           if (MapFlags & D3D11_MAP_FLAG_DO_NOT_WAIT)
             return DXGI_ERROR_WAS_STILL_DRAWING;
           
-          Flush();
-          SynchronizeCsThread();
           SynchronizeDevice();
         }
       }

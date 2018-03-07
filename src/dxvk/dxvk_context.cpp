@@ -744,6 +744,8 @@ namespace dxvk {
       image->info().stages,
       image->info().access);
     m_barriers.recordCommands(m_cmd);
+    
+    m_cmd->trackResource(image);
   }
   
   
@@ -995,6 +997,9 @@ namespace dxvk {
       
       m_cmd->trackResource(fb);
     }
+    
+    m_cmd->trackResource(srcImage);
+    m_cmd->trackResource(dstImage);
   }
   
   
