@@ -145,97 +145,6 @@ namespace dxvk {
   
   
   /**
-   * \brief Buffer view
-   * 
-   * Allows the application to interpret buffer
-   * contents like formatted pixel data. These
-   * buffer views are used as texel buffers.
-   */
-  class DxvkBufferView : public RcObject {
-    
-  public:
-    
-    DxvkBufferView(
-      const Rc<vk::DeviceFn>&         vkd,
-      const Rc<DxvkBuffer>&           buffer,
-      const DxvkBufferViewCreateInfo& info);
-    
-    ~DxvkBufferView();
-    
-    /**
-     * \brief Buffer view handle
-     * \returns Buffer view handle
-     */
-    VkBufferView handle() const {
-      return m_physView->handle();
-    }
-    
-    /**
-     * \brief Buffer view properties
-     * \returns Buffer view properties
-     */
-    const DxvkBufferViewCreateInfo& info() const {
-      return m_info;
-    }
-    
-    /**
-     * \brief Underlying buffer object
-     * \returns Underlying buffer object
-     */
-    const DxvkBufferCreateInfo& bufferInfo() const {
-      return m_buffer->info();
-    }
-    
-    /**
-     * \brief Backing resource
-     * \returns Backing resource
-     */
-    Rc<DxvkResource> viewResource() const {
-      return m_physView;
-    }
-    
-    /**
-     * \brief Backing buffer resource
-     * \returns Backing buffer resource
-     */
-    Rc<DxvkResource> bufferResource() const {
-      return m_physView->slice().resource();
-    }
-    
-    /**
-     * \brief Underlying buffer slice
-     * \returns Slice backing the view
-     */
-    DxvkPhysicalBufferSlice slice() const {
-      return m_physView->slice();
-    }
-    
-    /**
-     * \brief Updates the buffer view
-     * 
-     * If the buffer has been invalidated ever since
-     * the view was created, the view is invalid as
-     * well and needs to be re-created. Call this
-     * prior to using the buffer view handle.
-     */
-    void updateView();
-    
-  private:
-    
-    Rc<vk::DeviceFn>           m_vkd;
-    DxvkBufferViewCreateInfo   m_info;
-    
-    Rc<DxvkBuffer>             m_buffer;
-    Rc<DxvkPhysicalBufferView> m_physView;
-    
-    uint32_t                   m_revision = 0;
-    
-    Rc<DxvkPhysicalBufferView> createView();
-    
-  };
-  
-  
-  /**
    * \brief Buffer slice
    * 
    * Stores the buffer and a sub-range of the buffer.
@@ -347,6 +256,107 @@ namespace dxvk {
     Rc<DxvkBuffer> m_buffer = nullptr;
     VkDeviceSize   m_offset = 0;
     VkDeviceSize   m_length = 0;
+    
+  };
+  
+  
+  /**
+   * \brief Buffer view
+   * 
+   * Allows the application to interpret buffer
+   * contents like formatted pixel data. These
+   * buffer views are used as texel buffers.
+   */
+  class DxvkBufferView : public RcObject {
+    
+  public:
+    
+    DxvkBufferView(
+      const Rc<vk::DeviceFn>&         vkd,
+      const Rc<DxvkBuffer>&           buffer,
+      const DxvkBufferViewCreateInfo& info);
+    
+    ~DxvkBufferView();
+    
+    /**
+     * \brief Buffer view handle
+     * \returns Buffer view handle
+     */
+    VkBufferView handle() const {
+      return m_physView->handle();
+    }
+    
+    /**
+     * \brief Buffer view properties
+     * \returns Buffer view properties
+     */
+    const DxvkBufferViewCreateInfo& info() const {
+      return m_info;
+    }
+    
+    /**
+     * \brief Underlying buffer object
+     * \returns Underlying buffer object
+     */
+    const DxvkBufferCreateInfo& bufferInfo() const {
+      return m_buffer->info();
+    }
+    
+    /**
+     * \brief Backing resource
+     * \returns Backing resource
+     */
+    Rc<DxvkResource> viewResource() const {
+      return m_physView;
+    }
+    
+    /**
+     * \brief Backing buffer resource
+     * \returns Backing buffer resource
+     */
+    Rc<DxvkResource> bufferResource() const {
+      return m_physView->slice().resource();
+    }
+    
+    /**
+     * \brief Underlying buffer slice
+     * \returns Slice backing the view
+     */
+    DxvkBufferSlice slice() const {
+      return DxvkBufferSlice(m_buffer,
+        m_info.rangeOffset,
+        m_info.rangeLength);
+    }
+    
+    /**
+     * \brief Underlying buffer slice
+     * \returns Slice backing the view
+     */
+    DxvkPhysicalBufferSlice physicalSlice() const {
+      return m_physView->slice();
+    }
+    
+    /**
+     * \brief Updates the buffer view
+     * 
+     * If the buffer has been invalidated ever since
+     * the view was created, the view is invalid as
+     * well and needs to be re-created. Call this
+     * prior to using the buffer view handle.
+     */
+    void updateView();
+    
+  private:
+    
+    Rc<vk::DeviceFn>           m_vkd;
+    DxvkBufferViewCreateInfo   m_info;
+    
+    Rc<DxvkBuffer>             m_buffer;
+    Rc<DxvkPhysicalBufferView> m_physView;
+    
+    uint32_t                   m_revision = 0;
+    
+    Rc<DxvkPhysicalBufferView> createView();
     
   };
   

@@ -1706,7 +1706,7 @@ namespace dxvk {
             slot.bufferSlice.bufferInfo().access);
         } else if (binding.type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {
           m_barriers.accessBuffer(
-            slot.bufferView->slice(),
+            slot.bufferView->physicalSlice(),
             VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
             VK_ACCESS_SHADER_READ_BIT | 
             VK_ACCESS_SHADER_WRITE_BIT,
