@@ -2870,7 +2870,7 @@ namespace dxvk {
       case DxbcOpcode::Gather4Po: {
         result.id = m_module.opImageGather(
           getVectorTypeId(result.type), sampledImageId, coord.id,
-          m_module.constu32(samplerReg.swizzle[0]),
+          m_module.consti32(samplerReg.swizzle[0]),
           imageOperands);
       } break;
       
