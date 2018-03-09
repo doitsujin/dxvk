@@ -636,6 +636,9 @@ namespace dxvk {
     
     void emitControlFlowRet(
       const DxbcShaderInstruction&  ins);
+
+    void emitControlFlowRetc(
+      const DxbcShaderInstruction&  ins);
     
     void emitControlFlowDiscard(
       const DxbcShaderInstruction&  ins);
