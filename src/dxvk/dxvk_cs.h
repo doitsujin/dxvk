@@ -88,7 +88,7 @@ namespace dxvk {
    * Stores a list of commands.
    */
   class DxvkCsChunk : public RcObject {
-    constexpr static size_t MaxBlockSize = 65536;
+    constexpr static size_t MaxBlockSize = 16384;
   public:
     
     DxvkCsChunk();
@@ -168,7 +168,7 @@ namespace dxvk {
   class DxvkCsThread {
     // Limit the number of chunks in the queue
     // to prevent memory leaks, stuttering etc.
-    constexpr static uint32_t MaxChunksInFlight = 16;
+    constexpr static uint32_t MaxChunksInFlight = 32;
   public:
     
     DxvkCsThread(const Rc<DxvkContext>& context);
