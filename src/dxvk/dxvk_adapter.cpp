@@ -38,7 +38,7 @@ namespace dxvk {
     if (!customVendorID.empty()) {
       Logger::info("Using Custom PCI Vendor ID " + customVendorID + " instead of " + std::to_string(properties.vendorID));
       
-      properties.vendorID = std::stoul(customVendorID, nullptr, 16);;
+      properties.vendorID = std::stoul(customVendorID, nullptr, 16);
     }
     
     if (!customDeviceID.empty()) {
