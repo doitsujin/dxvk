@@ -1476,12 +1476,17 @@ namespace dxvk {
   void DxvkContext::updateShaderResources(
           VkPipelineBindPoint     bindPoint,
     const Rc<DxvkPipelineLayout>& layout) {
-    DxvkBindingState& bs =
+    DxvkBindingState& bindingState =
       bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
         ? m_state.gp.state.bsBindingState
         : m_state.cp.state.bsBindingState;
     
     bool updatePipelineState = false;
+    
+    DxvkAttachment depthAttachment;
+    
+    if (bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS && m_state.om.framebuffer != nullptr)
+      DxvkAttachment depthAttachment = m_state.om.framebuffer->renderTargets().getDepthTarget();
     
     for (uint32_t i = 0; i < layout->bindingCount(); i++) {
       const auto& binding = layout->binding(i);
@@ -1490,7 +1495,7 @@ namespace dxvk {
       switch (binding.type) {
         case VK_DESCRIPTOR_TYPE_SAMPLER:
           if (res.sampler != nullptr) {
-            updatePipelineState |= bs.setBound(i);
+            updatePipelineState |= bindingState.setBound(i);
             
             m_descInfos[i].image.sampler     = res.sampler->handle();
             m_descInfos[i].image.imageView   = VK_NULL_HANDLE;
@@ -1498,39 +1503,34 @@ namespace dxvk {
             
             m_cmd->trackResource(res.sampler);
           } else {
-            updatePipelineState |= bs.setUnbound(i);
+            updatePipelineState |= bindingState.setUnbound(i);
             m_descInfos[i].image = m_device->dummySamplerDescriptor();
           } break;
         
         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
           if (res.imageView != nullptr && res.imageView->type() == binding.view) {
-            updatePipelineState |= bs.setBound(i);
+            updatePipelineState |= bindingState.setBound(i);
             
             m_descInfos[i].image.sampler     = VK_NULL_HANDLE;
             m_descInfos[i].image.imageView   = res.imageView->handle();
             m_descInfos[i].image.imageLayout = res.imageView->imageInfo().layout;
             
-            // TODO try to reduce the runtime overhead of all these comparisons
-            if (bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS && m_state.om.framebuffer != nullptr) {
-              DxvkAttachment depthAttachment = m_state.om.framebuffer->renderTargets().getDepthTarget();
-              
-              if (depthAttachment.view != nullptr
-               && depthAttachment.view->image() == res.imageView->image())
-                m_descInfos[i].image.imageLayout = depthAttachment.layout;
-            }
+            if (depthAttachment.view != nullptr
+             && depthAttachment.view->image() == res.imageView->image())
+              m_descInfos[i].image.imageLayout = depthAttachment.layout;
             
             m_cmd->trackResource(res.imageView);
             m_cmd->trackResource(res.imageView->image());
           } else {
-            updatePipelineState |= bs.setUnbound(i);
+            updatePipelineState |= bindingState.setUnbound(i);
             m_descInfos[i].image = m_device->dummyImageViewDescriptor(binding.view);
           } break;
         
         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
         case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
           if (res.bufferView != nullptr) {
-            updatePipelineState |= bs.setBound(i);
+            updatePipelineState |= bindingState.setBound(i);
             
             res.bufferView->updateView();
             m_descInfos[i].texelBuffer = res.bufferView->handle();
@@ -1538,14 +1538,14 @@ namespace dxvk {
             m_cmd->trackResource(res.bufferView->viewResource());
             m_cmd->trackResource(res.bufferView->bufferResource());
           } else {
-            updatePipelineState |= bs.setUnbound(i);
+            updatePipelineState |= bindingState.setUnbound(i);
             m_descInfos[i].texelBuffer = m_device->dummyBufferViewDescriptor();
           } break;
         
         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
           if (res.bufferSlice.defined()) {
-            updatePipelineState |= bs.setBound(i);
+            updatePipelineState |= bindingState.setBound(i);
             
             auto physicalSlice = res.bufferSlice.physicalSlice();
             m_descInfos[i].buffer.buffer = physicalSlice.handle();
@@ -1554,7 +1554,7 @@ namespace dxvk {
             
             m_cmd->trackResource(physicalSlice.resource());
           } else {
-            updatePipelineState |= bs.setUnbound(i);
+            updatePipelineState |= bindingState.setUnbound(i);
             m_descInfos[i].buffer = m_device->dummyBufferDescriptor();
           } break;
         
