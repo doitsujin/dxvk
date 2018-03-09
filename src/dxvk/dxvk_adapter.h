@@ -16,7 +16,7 @@ namespace dxvk {
    * \brief GPU vendors
    * Based on PCIe IDs.
    */
-  enum DxvkGpuVendor : uint16_t {
+  enum class DxvkGpuVendor : uint16_t {
     Amd    = 0x1002,
     Nvidia = 0x10de,
     Intel  = 0x8086,
