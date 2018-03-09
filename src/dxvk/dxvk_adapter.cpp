@@ -36,13 +36,13 @@ namespace dxvk {
     const std::string customDeviceID = env::getEnvVar(L"DXVK_CUSTOM_DEVICE_ID");
     
     if (!customVendorID.empty()) {
-      Logger::info("Using Custom PCI Vendor ID " + customVendorID + " instead of " + std::to_string(properties.vendorID));
+      Logger::info("Using Custom PCI Vendor ID " + customVendorID + " instead of " + str::format(std::hex, properties.vendorID));
       
       properties.vendorID = std::stoul(customVendorID, nullptr, 16);
     }
     
     if (!customDeviceID.empty()) {
-      Logger::info("Using Custom PCI Device ID " + customDeviceID + " instead of " + std::to_string(properties.deviceID));
+      Logger::info("Using Custom PCI Device ID " + customDeviceID + " instead of " + str::format(std::hex, properties.deviceID));
       
       properties.deviceID = std::stoul(customDeviceID, nullptr, 16);  
     }
