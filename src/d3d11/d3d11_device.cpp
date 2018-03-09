@@ -2022,7 +2022,7 @@ namespace dxvk {
         if (pDesc->TextureCubeArray.MipLevels == D3D11_DXVK_USE_REMAINING_LEVELS)
           pDesc->TextureCubeArray.MipLevels = mipLevels - pDesc->TextureCubeArray.MostDetailedMip;
         if (pDesc->TextureCubeArray.NumCubes == D3D11_DXVK_USE_REMAINING_LAYERS)
-          pDesc->TextureCubeArray.NumCubes = (mipLevels - pDesc->TextureCubeArray.First2DArrayFace / 6);
+          pDesc->TextureCubeArray.NumCubes = (numLayers - pDesc->TextureCubeArray.First2DArrayFace / 6);
         break;
       
       case D3D11_SRV_DIMENSION_TEXTURE3D:
