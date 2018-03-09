@@ -149,7 +149,7 @@ namespace dxvk {
     
 //     this->SOSetTargets(0, nullptr, nullptr);
     
-//     this->SetPredication(nullptr, FALSE);
+    this->SetPredication(nullptr, FALSE);
   }
   
   
@@ -226,14 +226,24 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeviceContext::SetPredication(
           ID3D11Predicate*                  pPredicate,
           BOOL                              PredicateValue) {
-    Logger::err("D3D11DeviceContext::SetPredication: Not implemented");
+    static bool s_errorShown = false;
+    
+    if (!std::exchange(s_errorShown, true))
+      Logger::err("D3D11DeviceContext::SetPredication: Stub");
+    
+    m_state.pr.predicateObject = static_cast<D3D11Query*>(pPredicate);
+    m_state.pr.predicateValue  = PredicateValue;
   }
   
   
   void STDMETHODCALLTYPE D3D11DeviceContext::GetPredication(
           ID3D11Predicate**                 ppPredicate,
           BOOL*                             pPredicateValue) {
-    Logger::err("D3D11DeviceContext::GetPredication: Not implemented");
+    if (ppPredicate != nullptr)
+      *ppPredicate = m_state.pr.predicateObject.ref();
+    
+    if (pPredicateValue != nullptr)
+      *pPredicateValue = m_state.pr.predicateValue;
   }
   
   
@@ -1901,9 +1911,7 @@ namespace dxvk {
           ID3D11DepthStencilView**          ppDepthStencilView) {
     if (ppRenderTargetViews != nullptr) {
       for (UINT i = 0; i < NumViews; i++)
-        ppRenderTargetViews[i] = i < m_state.om.renderTargetViews.size()
-          ? m_state.om.renderTargetViews.at(i).ref()
-          : nullptr;
+        ppRenderTargetViews[i] = m_state.om.renderTargetViews[i].ref();
     }
     
     if (ppDepthStencilView != nullptr)
@@ -1918,7 +1926,12 @@ namespace dxvk {
           UINT                              UAVStartSlot,
           UINT                              NumUAVs,
           ID3D11UnorderedAccessView**       ppUnorderedAccessViews) {
-    Logger::err("D3D11DeviceContext::OMGetRenderTargetsAndUnorderedAccessViews: Not implemented");
+    OMGetRenderTargets(NumRTVs, ppRenderTargetViews, ppDepthStencilView);
+    
+    if (ppUnorderedAccessViews != nullptr) {
+      for (UINT i = 0; i < NumUAVs; i++)
+        ppUnorderedAccessViews[i] = m_state.ps.unorderedAccessViews[UAVStartSlot + i].ref();
+    }
   }
   
   

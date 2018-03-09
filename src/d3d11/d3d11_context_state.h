@@ -4,6 +4,7 @@
 
 #include "d3d11_buffer.h"
 #include "d3d11_input_layout.h"
+#include "d3d11_query.h"
 #include "d3d11_sampler.h"
 #include "d3d11_shader.h"
 #include "d3d11_state.h"
@@ -132,6 +133,12 @@ namespace dxvk {
   };
   
   
+  struct D3D11ContextStatePR {
+    Com<D3D11Query> predicateObject = nullptr;
+    BOOL            predicateValue  = FALSE;
+  };
+  
+  
   /**
    * \brief Context state
    */
@@ -147,6 +154,7 @@ namespace dxvk {
     D3D11ContextStateOM om;
     D3D11ContextStateRS rs;
     D3D11ContextStateSO so;
+    D3D11ContextStatePR pr;
   };
   
 }
