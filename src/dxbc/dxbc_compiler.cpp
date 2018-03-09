@@ -994,7 +994,7 @@ namespace dxvk {
   void DxbcCompiler::emitDclThreadGroupSharedMemory(const DxbcShaderInstruction& ins) {
     // dcl_tgsm_raw takes two arguments:
     //    (dst0) The resource register ID
-    //    (imm0) Block size, in DWORDs
+    //    (imm0) Block size, in bytes
     // dcl_tgsm_structured takes three arguments:
     //    (dst0) The resource register ID
     //    (imm0) Structure stride, in bytes
@@ -1014,7 +1014,7 @@ namespace dxvk {
     varInfo.type.ccount  = 1;
     varInfo.type.alength = isStructured
       ? elementCount * elementStride / 4
-      : elementCount;
+      : elementCount / 4;
     varInfo.sclass = spv::StorageClassWorkgroup;
     
     m_gRegs[regId].type = isStructured
