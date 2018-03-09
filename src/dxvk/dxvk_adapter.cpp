@@ -38,15 +38,7 @@ namespace dxvk {
     if (!customVendorID.empty()) {
       Logger::info("Using Custom PCI Vendor ID " + customVendorID + " instead of " + std::to_string(properties.vendorID));
       
-      uint32_t newID = 0;
-      
-      if (customVendorID == "AMD") newID    = DxvkGpuVendor::Amd;
-      if (customVendorID == "NVIDIA") newID = DxvkGpuVendor::Nvidia;
-      if (customVendorID == "INTEL") newID  = DxvkGpuVendor::Intel;
-      
-      if (newID == 0) newID = std::stoul(customVendorID, nullptr, 16);
-      
-      properties.vendorID = newID;
+      properties.vendorID = std::stoul(customVendorID, nullptr, 16);;
     }
     
     if (!customDeviceID.empty()) {
