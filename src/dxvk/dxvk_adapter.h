@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include "./vulkan/dxvk_vulkan_extensions.h"
 
 #include "dxvk_include.h"
@@ -14,7 +16,7 @@ namespace dxvk {
    * \brief GPU vendors
    * Based on PCIe IDs.
    */
-  enum class DxvkGpuVendor : uint16_t {
+  enum DxvkGpuVendor : uint16_t {
     Amd    = 0x1002,
     Nvidia = 0x10de,
     Intel  = 0x8086,
