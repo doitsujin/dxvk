@@ -33,6 +33,10 @@ namespace dxvk {
     info.borderColor   = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
     info.usePixelCoord = VK_FALSE;  // Not supported in D3D11
     
+    // Make sure to use a valid anisotropy value
+    if (desc.MaxAnisotropy <  1) info.maxAnisotropy =  1.0f;
+    if (desc.MaxAnisotropy > 16) info.maxAnisotropy = 16.0f;
+    
     // Try to find a matching border color if clamp to border is enabled
     if (info.addressModeU == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER
      || info.addressModeV == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER
