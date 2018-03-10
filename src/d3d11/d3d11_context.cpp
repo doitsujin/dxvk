@@ -81,75 +81,98 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11DeviceContext::ClearState() {
-    this->IASetInputLayout(nullptr);
-    this->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED);
-    this->IASetIndexBuffer(nullptr, DXGI_FORMAT_UNKNOWN, 0);
+    // Default shaders
+    m_state.vs.shader = nullptr;
+    m_state.hs.shader = nullptr;
+    m_state.ds.shader = nullptr;
+    m_state.gs.shader = nullptr;
+    m_state.ps.shader = nullptr;
+    m_state.cs.shader = nullptr;
+    
+    // Default constant buffers
+    for (uint32_t i = 0; i < D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT; i++) {
+      m_state.vs.constantBuffers[i] = nullptr;
+      m_state.hs.constantBuffers[i] = nullptr;
+      m_state.ds.constantBuffers[i] = nullptr;
+      m_state.gs.constantBuffers[i] = nullptr;
+      m_state.ps.constantBuffers[i] = nullptr;
+      m_state.cs.constantBuffers[i] = nullptr;
+    }
+    
+    // Default samplers
+    for (uint32_t i = 0; i < D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT; i++) {
+      m_state.vs.samplers[i] = nullptr;
+      m_state.hs.samplers[i] = nullptr;
+      m_state.ds.samplers[i] = nullptr;
+      m_state.gs.samplers[i] = nullptr;
+      m_state.ps.samplers[i] = nullptr;
+      m_state.cs.samplers[i] = nullptr;
+    }
+    
+    // Default shader resources
+    for (uint32_t i = 0; i < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT; i++) {
+      m_state.vs.shaderResources[i] = nullptr;
+      m_state.hs.shaderResources[i] = nullptr;
+      m_state.ds.shaderResources[i] = nullptr;
+      m_state.gs.shaderResources[i] = nullptr;
+      m_state.ps.shaderResources[i] = nullptr;
+      m_state.cs.shaderResources[i] = nullptr;
+    }
+    
+    // Default UAVs
+    for (uint32_t i = 0; i < D3D11_1_UAV_SLOT_COUNT; i++) {
+      m_state.ps.unorderedAccessViews[i] = nullptr;
+      m_state.cs.unorderedAccessViews[i] = nullptr;
+    }
+    
+    // Default IA state
+    m_state.ia.inputLayout       = nullptr;
+    m_state.ia.primitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
     
     for (uint32_t i = 0; i < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT; i++) {
-      ID3D11Buffer* buffer = nullptr;
-      const UINT    offset = 0;
-      const UINT    stride = 0;
-      
-      this->IASetVertexBuffers(i, 1, &buffer, &offset, &stride);
+      m_state.ia.vertexBuffers[i].buffer = nullptr;
+      m_state.ia.vertexBuffers[i].offset = 0;
+      m_state.ia.vertexBuffers[i].stride = 0;
     }
     
-    this->VSSetShader(nullptr, nullptr, 0);
-    this->HSSetShader(nullptr, nullptr, 0);
-    this->DSSetShader(nullptr, nullptr, 0);
-    this->GSSetShader(nullptr, nullptr, 0);
-    this->PSSetShader(nullptr, nullptr, 0);
-    this->CSSetShader(nullptr, nullptr, 0);
+    m_state.ia.indexBuffer.buffer = nullptr;
+    m_state.ia.indexBuffer.offset = 0;
+    m_state.ia.indexBuffer.format = DXGI_FORMAT_UNKNOWN;
     
-    for (uint32_t i = 0; i < D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT; i++) {
-      ID3D11Buffer* buffer = nullptr;
-      
-      this->VSSetConstantBuffers(i, 1, &buffer);
-      this->HSSetConstantBuffers(i, 1, &buffer);
-      this->DSSetConstantBuffers(i, 1, &buffer);
-      this->GSSetConstantBuffers(i, 1, &buffer);
-      this->PSSetConstantBuffers(i, 1, &buffer);
-      this->CSSetConstantBuffers(i, 1, &buffer);
+    // Default OM State
+    for (uint32_t i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; i++)
+      m_state.om.renderTargetViews[i] = nullptr;
+    m_state.om.depthStencilView = nullptr;
+    
+    m_state.om.cbState = nullptr;
+    m_state.om.dsState = nullptr;
+    
+    for (uint32_t i = 0; i < 4; i++)
+      m_state.om.blendFactor[i] = 0.0f;
+    
+    m_state.om.sampleMask = D3D11_DEFAULT_SAMPLE_MASK;
+    m_state.om.stencilRef = D3D11_DEFAULT_STENCIL_REFERENCE;
+    
+    // Default RS state
+    m_state.rs.state        = nullptr;
+    m_state.rs.numViewports = 0;
+    m_state.rs.numScissors  = 0;
+    
+    for (uint32_t i = 0; i < D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE; i++) {
+      m_state.rs.viewports[i] = D3D11_VIEWPORT { };
+      m_state.rs.scissors [i] = D3D11_RECT     { };
     }
     
-    for (uint32_t i = 0; i < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT; i++) {
-      ID3D11ShaderResourceView* view = nullptr;
-      
-      this->VSSetShaderResources(i, 1, &view);
-      this->HSSetShaderResources(i, 1, &view);
-      this->DSSetShaderResources(i, 1, &view);
-      this->GSSetShaderResources(i, 1, &view);
-      this->PSSetShaderResources(i, 1, &view);
-      this->CSSetShaderResources(i, 1, &view);
-    }
+    // Default SO state
+    for (uint32_t i = 0; i < D3D11_SO_STREAM_COUNT; i++)
+      m_state.so.targets[i] = nullptr;
     
-    for (uint32_t i = 0; i < D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT; i++) {
-      ID3D11SamplerState* sampler = nullptr;
-      
-      this->VSSetSamplers(i, 1, &sampler);
-      this->HSSetSamplers(i, 1, &sampler);
-      this->DSSetSamplers(i, 1, &sampler);
-      this->GSSetSamplers(i, 1, &sampler);
-      this->PSSetSamplers(i, 1, &sampler);
-      this->CSSetSamplers(i, 1, &sampler);
-    }
+    // Default predication
+    m_state.pr.predicateObject = nullptr;
+    m_state.pr.predicateValue  = FALSE;
     
-    for (uint32_t i = 0; i < D3D11_1_UAV_SLOT_COUNT; i++) {
-      ID3D11UnorderedAccessView* uav = nullptr;
-      
-      this->CSSetUnorderedAccessViews(i, 1, &uav, nullptr);
-    }
-    
-    this->OMSetRenderTargetsAndUnorderedAccessViews(0, nullptr, nullptr, 0, 0, nullptr, nullptr);
-    this->OMSetBlendState(nullptr, nullptr, D3D11_DEFAULT_SAMPLE_MASK);
-    this->OMSetDepthStencilState(nullptr, 0);
-    
-    this->RSSetState(nullptr);
-    this->RSSetViewports(0, nullptr);
-    this->RSSetScissorRects(0, nullptr);
-    
-    this->SOSetTargets(0, nullptr, nullptr);
-    
-    this->SetPredication(nullptr, FALSE);
+    // Make sure to apply all state
+    RestoreState();
   }
   
   
