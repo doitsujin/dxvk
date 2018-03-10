@@ -2383,6 +2383,8 @@ namespace dxvk {
     
     RestoreUnorderedAccessViews(DxbcProgramType::PixelShader,   m_state.ps.unorderedAccessViews);
     RestoreUnorderedAccessViews(DxbcProgramType::ComputeShader, m_state.cs.unorderedAccessViews);
+    
+    ApplyViewportState();
   }
   
   
