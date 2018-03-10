@@ -1190,11 +1190,7 @@ namespace dxvk {
     
     if (m_state.vs.shader != shader) {
       m_state.vs.shader = shader;
-      
-      EmitCs([cShader = shader != nullptr ? shader->GetShader() : nullptr]
-      (DxvkContext* ctx) {
-        ctx->bindShader(VK_SHADER_STAGE_VERTEX_BIT, cShader);
-      });
+      BindShader(shader, VK_SHADER_STAGE_VERTEX_BIT);
     }
   }
   
@@ -1285,11 +1281,7 @@ namespace dxvk {
     
     if (m_state.hs.shader != shader) {
       m_state.hs.shader = shader;
-      
-      EmitCs([cShader = shader != nullptr ? shader->GetShader() : nullptr]
-      (DxvkContext* ctx) {
-        ctx->bindShader(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT, cShader);
-      });
+      BindShader(shader, VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
     }
   }
   
@@ -1380,11 +1372,7 @@ namespace dxvk {
     
     if (m_state.ds.shader != shader) {
       m_state.ds.shader = shader;
-      
-      EmitCs([cShader = shader != nullptr ? shader->GetShader() : nullptr]
-      (DxvkContext* ctx) {
-        ctx->bindShader(VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT, cShader);
-      });
+      BindShader(shader, VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
     }
   }
   
@@ -1475,11 +1463,7 @@ namespace dxvk {
     
     if (m_state.gs.shader != shader) {
       m_state.gs.shader = shader;
-      
-      EmitCs([cShader = shader != nullptr ? shader->GetShader() : nullptr]
-      (DxvkContext* ctx) {
-        ctx->bindShader(VK_SHADER_STAGE_GEOMETRY_BIT, cShader);
-      });
+      BindShader(shader, VK_SHADER_STAGE_GEOMETRY_BIT);
     }
   }
   
@@ -1570,11 +1554,7 @@ namespace dxvk {
     
     if (m_state.ps.shader != shader) {
       m_state.ps.shader = shader;
-      
-      EmitCs([cShader = shader != nullptr ? shader->GetShader() : nullptr]
-      (DxvkContext* ctx) {
-        ctx->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, cShader);
-      });
+      BindShader(shader, VK_SHADER_STAGE_FRAGMENT_BIT);
     }
   }
   
@@ -1665,11 +1645,7 @@ namespace dxvk {
     
     if (m_state.cs.shader != shader) {
       m_state.cs.shader = shader;
-      
-      EmitCs([cShader = shader != nullptr ? shader->GetShader() : nullptr]
-      (DxvkContext* ctx) {
-        ctx->bindShader(VK_SHADER_STAGE_COMPUTE_BIT, cShader);
-      });
+      BindShader(shader, VK_SHADER_STAGE_COMPUTE_BIT);
     }
   }
   
@@ -2364,9 +2340,19 @@ namespace dxvk {
   
   
   void D3D11DeviceContext::RestoreState() {
-    Logger::err("D3D11DeviceContext::RestoreState: Not implemented");
+    static bool s_errorShown = false;
+    
+    if (!std::exchange(s_errorShown, true))
+      Logger::err("D3D11DeviceContext::RestoreState: Incomplete");
     
     BindFramebuffer();
+    
+    BindShader(m_state.vs.shader.ptr(), VK_SHADER_STAGE_VERTEX_BIT);
+    BindShader(m_state.hs.shader.ptr(), VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+    BindShader(m_state.ds.shader.ptr(), VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+    BindShader(m_state.gs.shader.ptr(), VK_SHADER_STAGE_GEOMETRY_BIT);
+    BindShader(m_state.ps.shader.ptr(), VK_SHADER_STAGE_FRAGMENT_BIT);
+    BindShader(m_state.cs.shader.ptr(), VK_SHADER_STAGE_COMPUTE_BIT);
   }
   
   

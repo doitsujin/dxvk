@@ -529,6 +529,18 @@ namespace dxvk {
     
     void BindFramebuffer();
     
+    template<typename T>
+    void BindShader(
+            T*                                Shader,
+            VkShaderStageFlagBits             Stage) {
+      EmitCs([
+        cShader = Shader != nullptr ? Shader->GetShader() : nullptr,
+        cStage  = Stage
+      ] (DxvkContext* ctx) {
+        ctx->bindShader(cStage, cShader);
+      });
+    }
+    
     void BindConstantBuffers(
             DxbcProgramType                   ShaderStage,
             D3D11ConstantBufferBindings&      Bindings,
