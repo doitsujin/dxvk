@@ -32,6 +32,21 @@ namespace dxvk {
     VkPhysicalDeviceProperties properties;
     m_vki->vkGetPhysicalDeviceProperties(m_handle, &properties);
     
+    const std::string customVendorID = env::getEnvVar(L"DXVK_CUSTOM_VENDOR_ID");
+    const std::string customDeviceID = env::getEnvVar(L"DXVK_CUSTOM_DEVICE_ID");
+    
+    if (!customVendorID.empty()) {
+      Logger::info("Using Custom PCI Vendor ID " + customVendorID + " instead of " + str::format(std::hex, properties.vendorID));
+      
+      properties.vendorID = std::stoul(customVendorID, nullptr, 16);
+    }
+    
+    if (!customDeviceID.empty()) {
+      Logger::info("Using Custom PCI Device ID " + customDeviceID + " instead of " + str::format(std::hex, properties.deviceID));
+      
+      properties.deviceID = std::stoul(customDeviceID, nullptr, 16);  
+    }
+    
     if (DxvkGpuVendor(properties.vendorID) == DxvkGpuVendor::Nvidia) {
       properties.driverVersion = VK_MAKE_VERSION(
         VK_VERSION_MAJOR(properties.driverVersion),
