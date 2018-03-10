@@ -1721,8 +1721,7 @@ namespace dxvk {
           ID3D11BlendState*                 pBlendState,
     const FLOAT                             BlendFactor[4],
           UINT                              SampleMask) {
-    Com<D3D11BlendState> blendState =
-      static_cast<D3D11BlendState*>(pBlendState);
+    auto blendState = static_cast<D3D11BlendState*>(pBlendState);
     
     if (m_state.om.cbState    != blendState
      || m_state.om.sampleMask != SampleMask) {
@@ -1744,8 +1743,7 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeviceContext::OMSetDepthStencilState(
           ID3D11DepthStencilState*          pDepthStencilState,
           UINT                              StencilRef) {
-    Com<D3D11DepthStencilState> depthStencilState =
-      static_cast<D3D11DepthStencilState*>(pDepthStencilState);
+    auto depthStencilState = static_cast<D3D11DepthStencilState*>(pDepthStencilState);
     
     if (m_state.om.dsState != depthStencilState) {
       m_state.om.dsState = depthStencilState;
@@ -1816,8 +1814,7 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11DeviceContext::RSSetState(ID3D11RasterizerState* pRasterizerState) {
-    Com<D3D11RasterizerState> rasterizerState =
-      static_cast<D3D11RasterizerState*>(pRasterizerState);
+    auto rasterizerState = static_cast<D3D11RasterizerState*>(pRasterizerState);
     
     if (m_state.rs.state != rasterizerState) {
       m_state.rs.state = rasterizerState;
@@ -2173,12 +2170,14 @@ namespace dxvk {
           DXGI_FORMAT                       Format) {
     // As in Vulkan, the index format can be either a 32-bit
     // or 16-bit unsigned integer, no other formats are allowed.
-    VkIndexType indexType = VK_INDEX_TYPE_UINT16;
+    VkIndexType indexType = VK_INDEX_TYPE_UINT32;
     
-    switch (Format) {
-      case DXGI_FORMAT_R16_UINT: indexType = VK_INDEX_TYPE_UINT16; break;
-      case DXGI_FORMAT_R32_UINT: indexType = VK_INDEX_TYPE_UINT32; break;
-      default: Logger::err(str::format("D3D11: Invalid index format: ", Format));
+    if (pBuffer != nullptr) {
+      switch (Format) {
+        case DXGI_FORMAT_R16_UINT: indexType = VK_INDEX_TYPE_UINT16; break;
+        case DXGI_FORMAT_R32_UINT: indexType = VK_INDEX_TYPE_UINT32; break;
+        default: Logger::err(str::format("D3D11: Invalid index format: ", Format));
+      }
     }
     
     EmitCs([
