@@ -527,6 +527,12 @@ namespace dxvk {
     D3D11ContextState           m_state;
     uint64_t                    m_drawCount = 0;
     
+    void ApplyInputLayout();
+    
+    void ApplyPrimitiveTopology();
+    
+    void ApplyViewportState();
+    
     void BindFramebuffer();
     
     template<typename T>
@@ -601,8 +607,6 @@ namespace dxvk {
             UINT                              NumUAVs,
             ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
       const UINT*                             pUAVInitialCounts);
-    
-    void ApplyViewportState();
     
     void RestoreState();
     

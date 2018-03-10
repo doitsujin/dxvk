@@ -994,21 +994,11 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11DeviceContext::IASetInputLayout(ID3D11InputLayout* pInputLayout) {
-    Com<D3D11InputLayout> inputLayout =
-      static_cast<D3D11InputLayout*>(pInputLayout);
+    auto inputLayout = static_cast<D3D11InputLayout*>(pInputLayout);
     
     if (m_state.ia.inputLayout != inputLayout) {
       m_state.ia.inputLayout = inputLayout;
-      
-      if (inputLayout != nullptr) {
-        EmitCs([inputLayout] (DxvkContext* ctx) {
-          inputLayout->BindToContext(ctx);
-        });
-      } else {
-        EmitCs([inputLayout] (DxvkContext* ctx) {
-          ctx->setInputLayout(0, nullptr, 0, nullptr);
-        });
-      }
+      ApplyInputLayout();
     }
   }
   
@@ -1016,56 +1006,7 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeviceContext::IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY Topology) {
     if (m_state.ia.primitiveTopology != Topology) {
       m_state.ia.primitiveTopology = Topology;
-      
-      if (Topology == D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED)
-        return;
-      
-      const DxvkInputAssemblyState iaState = [Topology] () -> DxvkInputAssemblyState {
-        if (Topology >= D3D11_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST
-         && Topology <= D3D11_PRIMITIVE_TOPOLOGY_32_CONTROL_POINT_PATCHLIST) {
-          // Tessellation patch. The number of control points per
-          // patch can be inferred from the enum value in D3D11.
-          return { VK_PRIMITIVE_TOPOLOGY_PATCH_LIST, VK_FALSE,
-            uint32_t(Topology - D3D11_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST + 1) };
-        } else {
-          switch (Topology) {
-            case D3D11_PRIMITIVE_TOPOLOGY_POINTLIST:
-              return { VK_PRIMITIVE_TOPOLOGY_POINT_LIST, VK_FALSE, 0 };
-            
-            case D3D11_PRIMITIVE_TOPOLOGY_LINELIST:
-              return { VK_PRIMITIVE_TOPOLOGY_LINE_LIST, VK_FALSE, 0 };
-            
-            case D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP:
-              return { VK_PRIMITIVE_TOPOLOGY_LINE_STRIP, VK_TRUE, 0 };
-            
-            case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST:
-              return { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_FALSE, 0 };
-              
-            case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP:
-              return { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, VK_TRUE, 0 };
-            
-            case D3D11_PRIMITIVE_TOPOLOGY_LINELIST_ADJ:
-              return { VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY, VK_FALSE, 0 };
-            
-            case D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP_ADJ:
-              return { VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY, VK_TRUE, 0 };
-            
-            case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST_ADJ:
-              return { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY, VK_FALSE, 0 };
-            
-            case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ:
-              return { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY, VK_TRUE, 0 };
-            
-            default:
-              Logger::err(str::format("D3D11: Invalid primitive topology: ", Topology));
-              return { };
-          }
-        }
-      }();
-      
-      EmitCs([iaState] (DxvkContext* ctx) {
-        ctx->setInputAssemblyState(iaState);
-      });
+      ApplyPrimitiveTopology();
     }
   }
   
@@ -2026,6 +1967,140 @@ namespace dxvk {
   }
   
   
+  void D3D11DeviceContext::ApplyInputLayout() {
+    if (m_state.ia.inputLayout != nullptr) {
+      EmitCs([cInputLayout = m_state.ia.inputLayout] (DxvkContext* ctx) {
+        cInputLayout->BindToContext(ctx);
+      });
+    } else {
+      EmitCs([] (DxvkContext* ctx) {
+        ctx->setInputLayout(0, nullptr, 0, nullptr);
+      });
+    }
+  }
+  
+  
+  void D3D11DeviceContext::ApplyPrimitiveTopology() {
+    if (m_state.ia.primitiveTopology == D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED)
+      return;
+    
+    const DxvkInputAssemblyState iaState =
+      [Topology = m_state.ia.primitiveTopology] () -> DxvkInputAssemblyState {
+      if (Topology >= D3D11_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST
+       && Topology <= D3D11_PRIMITIVE_TOPOLOGY_32_CONTROL_POINT_PATCHLIST) {
+        // Tessellation patch. The number of control points per
+        // patch can be inferred from the enum value in D3D11.
+        return { VK_PRIMITIVE_TOPOLOGY_PATCH_LIST, VK_FALSE,
+          uint32_t(Topology - D3D11_PRIMITIVE_TOPOLOGY_1_CONTROL_POINT_PATCHLIST + 1) };
+      } else {
+        switch (Topology) {
+          case D3D11_PRIMITIVE_TOPOLOGY_POINTLIST:
+            return { VK_PRIMITIVE_TOPOLOGY_POINT_LIST, VK_FALSE, 0 };
+          
+          case D3D11_PRIMITIVE_TOPOLOGY_LINELIST:
+            return { VK_PRIMITIVE_TOPOLOGY_LINE_LIST, VK_FALSE, 0 };
+          
+          case D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP:
+            return { VK_PRIMITIVE_TOPOLOGY_LINE_STRIP, VK_TRUE, 0 };
+          
+          case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST:
+            return { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_FALSE, 0 };
+            
+          case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP:
+            return { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, VK_TRUE, 0 };
+          
+          case D3D11_PRIMITIVE_TOPOLOGY_LINELIST_ADJ:
+            return { VK_PRIMITIVE_TOPOLOGY_LINE_LIST_WITH_ADJACENCY, VK_FALSE, 0 };
+          
+          case D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP_ADJ:
+            return { VK_PRIMITIVE_TOPOLOGY_LINE_STRIP_WITH_ADJACENCY, VK_TRUE, 0 };
+          
+          case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST_ADJ:
+            return { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY, VK_FALSE, 0 };
+          
+          case D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP_ADJ:
+            return { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY, VK_TRUE, 0 };
+          
+          default:
+            Logger::err(str::format("D3D11: Invalid primitive topology: ", Topology));
+            return { };
+        }
+      }
+    }();
+    
+    EmitCs([iaState] (DxvkContext* ctx) {
+      ctx->setInputAssemblyState(iaState);
+    });
+  }
+  
+  
+  void D3D11DeviceContext::ApplyViewportState() {
+    // We cannot set less than one viewport in Vulkan, and
+    // rendering with no active viewport is illegal anyway.
+    if (m_state.rs.numViewports == 0)
+      return;
+    
+    std::array<VkViewport, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> viewports;
+    std::array<VkRect2D,   D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> scissors;
+    
+    // D3D11's coordinate system has its origin in the bottom left,
+    // but the viewport coordinates are aligned to the top-left
+    // corner so we can get away with flipping the viewport.
+    for (uint32_t i = 0; i < m_state.rs.numViewports; i++) {
+      const D3D11_VIEWPORT& vp = m_state.rs.viewports.at(i);
+      
+      viewports.at(i) = VkViewport {
+        vp.TopLeftX, vp.Height + vp.TopLeftY,
+        vp.Width,   -vp.Height,
+        vp.MinDepth, vp.MaxDepth,
+      };
+    }
+    
+    // Scissor rectangles. Vulkan does not provide an easy way
+    // to disable the scissor test, so we'll have to set scissor
+    // rects that are at least as large as the framebuffer.
+    bool enableScissorTest = false;
+    
+    if (m_state.rs.state != nullptr) {
+      D3D11_RASTERIZER_DESC rsDesc;
+      m_state.rs.state->GetDesc(&rsDesc);
+      enableScissorTest = rsDesc.ScissorEnable;
+    }
+    
+    for (uint32_t i = 0; i < m_state.rs.numViewports; i++) {
+      // TODO D3D11 docs aren't clear about what should happen
+      // when there are undefined scissor rects for a viewport.
+      // Figure out what it does on Windows.
+      if (enableScissorTest && (i < m_state.rs.numScissors)) {
+        const D3D11_RECT& sr = m_state.rs.scissors.at(i);
+        
+        scissors.at(i) = VkRect2D {
+          VkOffset2D { sr.left, sr.top },
+          VkExtent2D {
+            static_cast<uint32_t>(sr.right  - sr.left),
+            static_cast<uint32_t>(sr.bottom - sr.top) } };
+      } else {
+        scissors.at(i) = VkRect2D {
+          VkOffset2D { 0, 0 },
+          VkExtent2D {
+            D3D11_VIEWPORT_BOUNDS_MAX,
+            D3D11_VIEWPORT_BOUNDS_MAX } };
+      }
+    }
+    
+    EmitCs([
+      cViewportCount = m_state.rs.numViewports,
+      cViewports     = viewports,
+      cScissors      = scissors
+    ] (DxvkContext* ctx) {
+      ctx->setViewports(
+        cViewportCount,
+        cViewports.data(),
+        cScissors.data());
+    });
+  }
+  
+  
   void D3D11DeviceContext::BindFramebuffer() {
     // NOTE According to the Microsoft docs, we are supposed to
     // unbind overlapping shader resource views. Since this comes
@@ -2266,73 +2341,6 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::ApplyViewportState() {
-    // We cannot set less than one viewport in Vulkan, and
-    // rendering with no active viewport is illegal anyway.
-    if (m_state.rs.numViewports == 0)
-      return;
-    
-    std::array<VkViewport, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> viewports;
-    std::array<VkRect2D,   D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> scissors;
-    
-    // D3D11's coordinate system has its origin in the bottom left,
-    // but the viewport coordinates are aligned to the top-left
-    // corner so we can get away with flipping the viewport.
-    for (uint32_t i = 0; i < m_state.rs.numViewports; i++) {
-      const D3D11_VIEWPORT& vp = m_state.rs.viewports.at(i);
-      
-      viewports.at(i) = VkViewport {
-        vp.TopLeftX, vp.Height + vp.TopLeftY,
-        vp.Width,   -vp.Height,
-        vp.MinDepth, vp.MaxDepth,
-      };
-    }
-    
-    // Scissor rectangles. Vulkan does not provide an easy way
-    // to disable the scissor test, so we'll have to set scissor
-    // rects that are at least as large as the framebuffer.
-    bool enableScissorTest = false;
-    
-    if (m_state.rs.state != nullptr) {
-      D3D11_RASTERIZER_DESC rsDesc;
-      m_state.rs.state->GetDesc(&rsDesc);
-      enableScissorTest = rsDesc.ScissorEnable;
-    }
-    
-    for (uint32_t i = 0; i < m_state.rs.numViewports; i++) {
-      // TODO D3D11 docs aren't clear about what should happen
-      // when there are undefined scissor rects for a viewport.
-      // Figure out what it does on Windows.
-      if (enableScissorTest && (i < m_state.rs.numScissors)) {
-        const D3D11_RECT& sr = m_state.rs.scissors.at(i);
-        
-        scissors.at(i) = VkRect2D {
-          VkOffset2D { sr.left, sr.top },
-          VkExtent2D {
-            static_cast<uint32_t>(sr.right  - sr.left),
-            static_cast<uint32_t>(sr.bottom - sr.top) } };
-      } else {
-        scissors.at(i) = VkRect2D {
-          VkOffset2D { 0, 0 },
-          VkExtent2D {
-            D3D11_VIEWPORT_BOUNDS_MAX,
-            D3D11_VIEWPORT_BOUNDS_MAX } };
-      }
-    }
-    
-    EmitCs([
-      cViewportCount = m_state.rs.numViewports,
-      cViewports     = viewports,
-      cScissors      = scissors
-    ] (DxvkContext* ctx) {
-      ctx->setViewports(
-        cViewportCount,
-        cViewports.data(),
-        cScissors.data());
-    });
-  }
-  
-  
   void D3D11DeviceContext::RestoreState() {
     static bool s_errorShown = false;
     
@@ -2347,6 +2355,10 @@ namespace dxvk {
     BindShader(m_state.gs.shader.ptr(), VK_SHADER_STAGE_GEOMETRY_BIT);
     BindShader(m_state.ps.shader.ptr(), VK_SHADER_STAGE_FRAGMENT_BIT);
     BindShader(m_state.cs.shader.ptr(), VK_SHADER_STAGE_COMPUTE_BIT);
+    
+    ApplyInputLayout();
+    ApplyPrimitiveTopology();
+    ApplyViewportState();
     
     BindIndexBuffer(
       m_state.ia.indexBuffer.buffer.ptr(),
@@ -2383,8 +2395,6 @@ namespace dxvk {
     
     RestoreUnorderedAccessViews(DxbcProgramType::PixelShader,   m_state.ps.unorderedAccessViews);
     RestoreUnorderedAccessViews(DxbcProgramType::ComputeShader, m_state.cs.unorderedAccessViews);
-    
-    ApplyViewportState();
   }
   
   
