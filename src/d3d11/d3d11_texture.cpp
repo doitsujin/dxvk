@@ -143,13 +143,13 @@ namespace dxvk {
     if (CPUAccessFlags != 0) {
       pImageInfo->stages |= VK_PIPELINE_STAGE_HOST_BIT;
       
-      if (CPUAccessFlags & D3D11_CPU_ACCESS_WRITE) {
+      if (CPUAccessFlags & D3D11_CPU_ACCESS_WRITE)
         pImageInfo->access |= VK_ACCESS_HOST_WRITE_BIT;
+      
+      if (CPUAccessFlags & D3D11_CPU_ACCESS_READ) {
+        pImageInfo->access |= VK_ACCESS_HOST_READ_BIT;
         pImageInfo->tiling  = VK_IMAGE_TILING_LINEAR;
       }
-      
-      if (CPUAccessFlags & D3D11_CPU_ACCESS_READ)
-        pImageInfo->access |= VK_ACCESS_HOST_READ_BIT;
     }
     
     if (MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE)
