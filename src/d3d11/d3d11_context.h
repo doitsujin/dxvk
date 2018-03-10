@@ -531,6 +531,16 @@ namespace dxvk {
     
     void ApplyPrimitiveTopology();
     
+    void ApplyBlendState();
+    
+    void ApplyBlendFactor();
+    
+    void ApplyDepthStencilState();
+    
+    void ApplyStencilRef();
+    
+    void ApplyRasterizerState();
+    
     void ApplyViewportState();
     
     void BindFramebuffer();

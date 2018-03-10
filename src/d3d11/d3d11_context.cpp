@@ -1729,34 +1729,14 @@ namespace dxvk {
       m_state.om.cbState    = blendState;
       m_state.om.sampleMask = SampleMask;
       
-      if (blendState == nullptr)
-        blendState = m_defaultBlendState;
-      
-      EmitCs([
-        cBlendState = std::move(blendState),
-        cSampleMask = SampleMask
-      ] (DxvkContext* ctx) {
-        cBlendState->BindToContext(ctx, cSampleMask);
-      });
+      ApplyBlendState();
     }
     
     if (BlendFactor != nullptr) {
-      bool updateBlendFactor = false;
-      
-      for (uint32_t i = 0; i < 4; i++) {
-        updateBlendFactor |= m_state.om.blendFactor[i] != BlendFactor[i];
+      for (uint32_t i = 0; i < 4; i++)
         m_state.om.blendFactor[i] = BlendFactor[i];
-      }
       
-      if (updateBlendFactor) {
-        EmitCs([
-          cBlendConstants = DxvkBlendConstants {
-            BlendFactor[0], BlendFactor[1],
-            BlendFactor[2], BlendFactor[3] }
-        ] (DxvkContext* ctx) {
-          ctx->setBlendConstants(cBlendConstants);
-        });
-      }
+      ApplyBlendFactor();
     }
   }
   
@@ -1769,22 +1749,12 @@ namespace dxvk {
     
     if (m_state.om.dsState != depthStencilState) {
       m_state.om.dsState = depthStencilState;
-      
-      if (depthStencilState == nullptr)
-        depthStencilState = m_defaultDepthStencilState;
-      
-      EmitCs([cDepthStencilState = std::move(depthStencilState)]
-      (DxvkContext* ctx) {
-        cDepthStencilState->BindToContext(ctx);
-      });
+      ApplyDepthStencilState();
     }
     
     if (m_state.om.stencilRef != StencilRef) {
       m_state.om.stencilRef = StencilRef;
-      
-      EmitCs([cStencilRef = StencilRef] (DxvkContext* ctx) {
-        ctx->setStencilReference(cStencilRef);
-      });
+      ApplyStencilRef();
     }
   }
   
@@ -1852,18 +1822,11 @@ namespace dxvk {
     if (m_state.rs.state != rasterizerState) {
       m_state.rs.state = rasterizerState;
       
-      if (rasterizerState == nullptr)
-        rasterizerState = m_defaultRasterizerState;
-      
-      EmitCs([cRasterizerState = std::move(rasterizerState)]
-      (DxvkContext* ctx) {
-        cRasterizerState->BindToContext(ctx);
-      });
-      
-      // In D3D11, the rasterizer state defines
-      // whether the scissor test is enabled, so
-      // we have to update the scissor rectangles.
-      this->ApplyViewportState();
+      // In D3D11, the rasterizer state defines whether the
+      // scissor test is enabled, so we have to update the
+      // scissor rectangles as well.
+      ApplyRasterizerState();
+      ApplyViewportState();
     }
   }
   
@@ -1876,7 +1839,7 @@ namespace dxvk {
     for (uint32_t i = 0; i < NumViewports; i++)
       m_state.rs.viewports.at(i) = pViewports[i];
     
-    this->ApplyViewportState();
+    ApplyViewportState();
   }
   
   
@@ -1893,7 +1856,7 @@ namespace dxvk {
       m_state.rs.state->GetDesc(&rsDesc);
       
       if (rsDesc.ScissorEnable)
-        this->ApplyViewportState();
+        ApplyViewportState();
     }
   }
   
@@ -2030,6 +1993,60 @@ namespace dxvk {
     
     EmitCs([iaState] (DxvkContext* ctx) {
       ctx->setInputAssemblyState(iaState);
+    });
+  }
+  
+  
+  void D3D11DeviceContext::ApplyBlendState() {
+    EmitCs([
+      cBlendState = m_state.om.cbState != nullptr
+        ? m_state.om.cbState
+        : m_defaultBlendState,
+      cSampleMask = m_state.om.sampleMask
+    ] (DxvkContext* ctx) {
+      cBlendState->BindToContext(ctx, cSampleMask);
+    });
+  }
+  
+  
+  void D3D11DeviceContext::ApplyBlendFactor() {
+    EmitCs([
+      cBlendConstants = DxvkBlendConstants {
+        m_state.om.blendFactor[0], m_state.om.blendFactor[1],
+        m_state.om.blendFactor[2], m_state.om.blendFactor[3] }
+    ] (DxvkContext* ctx) {
+      ctx->setBlendConstants(cBlendConstants);
+    });
+  }
+  
+  
+  void D3D11DeviceContext::ApplyDepthStencilState() {
+    EmitCs([
+      cDepthStencilState = m_state.om.dsState != nullptr
+        ? m_state.om.dsState
+        : m_defaultDepthStencilState
+    ] (DxvkContext* ctx) {
+      cDepthStencilState->BindToContext(ctx);
+    });
+  }
+  
+  
+  void D3D11DeviceContext::ApplyStencilRef() {
+    EmitCs([
+      cStencilRef = m_state.om.stencilRef
+    ] (DxvkContext* ctx) {
+      ctx->setStencilReference(cStencilRef);
+    });
+  }
+  
+  
+  void D3D11DeviceContext::ApplyRasterizerState() {
+    EmitCs([
+      cRasterizerState = m_state.rs.state != nullptr
+        ? m_state.rs.state
+        : m_defaultRasterizerState
+    ] (DxvkContext* ctx) {
+      cRasterizerState->BindToContext(ctx);
     });
   }
   
@@ -2342,11 +2359,6 @@ namespace dxvk {
   
   
   void D3D11DeviceContext::RestoreState() {
-    static bool s_errorShown = false;
-    
-    if (!std::exchange(s_errorShown, true))
-      Logger::err("D3D11DeviceContext::RestoreState: Incomplete");
-    
     BindFramebuffer();
     
     BindShader(m_state.vs.shader.ptr(), VK_SHADER_STAGE_VERTEX_BIT);
@@ -2358,6 +2370,11 @@ namespace dxvk {
     
     ApplyInputLayout();
     ApplyPrimitiveTopology();
+    ApplyBlendState();
+    ApplyBlendFactor();
+    ApplyDepthStencilState();
+    ApplyStencilRef();
+    ApplyRasterizerState();
     ApplyViewportState();
     
     BindIndexBuffer(
