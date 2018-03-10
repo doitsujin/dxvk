@@ -3419,6 +3419,33 @@ namespace dxvk {
     else
       m_module.opLabel(m_module.allocateId());
   }
+
+
+  void DxbcCompiler::emitControlFlowRetc(const DxbcShaderInstruction& ins) {
+    
+    // Perform zero test on the first component of the condition
+    const DxbcRegisterValue condition = emitRegisterLoad(
+      ins.src[0], DxbcRegMask(true, false, false, false));
+    
+    const DxbcRegisterValue zeroTest = emitRegisterZeroTest(
+      condition, ins.controls.zeroTest);
+    
+    // We basically have to wrap this into an 'if' block
+    const uint32_t returnLabel = m_module.allocateId();
+    const uint32_t continueLabel = m_module.allocateId();
+    
+    m_module.opSelectionMerge(continueLabel,
+      spv::SelectionControlMaskNone);
+    
+    m_module.opBranchConditional(
+      zeroTest.id, returnLabel, continueLabel);
+    
+    m_module.opLabel(returnLabel);
+ 
+    m_module.opReturn();
+
+    m_module.opLabel(continueLabel);
+  }
   
   
   void DxbcCompiler::emitControlFlowDiscard(const DxbcShaderInstruction& ins) {
@@ -3487,6 +3514,9 @@ namespace dxvk {
         
       case DxbcOpcode::Ret:
         return this->emitControlFlowRet(ins);
+
+      case DxbcOpcode::Retc:
+        return this->emitControlFlowRetc(ins);
         
       case DxbcOpcode::Discard:
         return this->emitControlFlowDiscard(ins);
