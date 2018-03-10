@@ -247,6 +247,9 @@ namespace dxvk {
       case DxbcOpcode::DclOutputControlPointCount:
         return this->emitDclOutputControlPointCount(ins);
       
+      case DxbcOpcode::DclHsMaxTessFactor:
+        return this->emitDclHsMaxTessFactor(ins);
+        
       case DxbcOpcode::DclTessDomain:
         return this->emitDclTessDomain(ins);
       
@@ -1106,6 +1109,11 @@ namespace dxvk {
     m_hs.outputPerVertex = emitTessInterfacePerVertex(spv::StorageClassOutput, m_hs.vertexCountOut);
     
     m_module.setOutputVertices(m_entryPointId, ins.controls.controlPointCount);
+  }
+  
+  
+  void DxbcCompiler::emitDclHsMaxTessFactor(const DxbcShaderInstruction& ins) {
+    m_hs.maxTessFactor = ins.imm[0].f32;
   }
   
   
@@ -5033,6 +5041,12 @@ namespace dxvk {
       const uint32_t tessFactorArrayIndex
         = m_module.constu32(tessFactor.index);
       
+      // Apply global tess factor limit
+      DxbcRegisterValue tessValue = emitRegisterExtract(value, mask);
+      tessValue.id = m_module.opFClamp(getVectorTypeId(tessValue.type),
+        tessValue.id, m_module.constf32(0.0f),
+        m_module.constf32(m_hs.maxTessFactor));
+      
       DxbcRegisterPointer ptr;
       ptr.type.ctype  = DxbcScalarType::Float32;
       ptr.type.ccount = 1;
@@ -5043,7 +5057,7 @@ namespace dxvk {
         tessFactor.array, 1,
         &tessFactorArrayIndex);
       
-      emitValueStore(ptr, emitRegisterExtract(value, mask),
+      emitValueStore(ptr, tessValue,
         DxbcRegMask(true, false, false, false));
     } else {
       Logger::warn(str::format(

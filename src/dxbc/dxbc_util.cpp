@@ -23,8 +23,9 @@ namespace dxvk {
       }
     } else {
       // Global resource slots
-      //   0 -   7: Uniform access views
-      //   8 -  11: Stream output buffers
+      //   0 -   7: Unordered access views
+      //   8 -  15: UAV counter buffers
+      //  16 -  19: Stream output buffers
       // Per-stage resource slots:
       //   0 -  13: Constant buffers
       //  14 -  29: Samplers

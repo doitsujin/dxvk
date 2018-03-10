@@ -273,9 +273,12 @@ namespace dxvk {
    * \brief Immediate value
    * 
    * Immediate argument represented either
-   * as a 32-bit or 64-bit unsigned integer.
+   * as a 32-bit or 64-bit unsigned integer,
+   * or a 32-bit or 32-bit floating point number.
    */
   union DxbcImmediate {
+    float    f32;
+    double   f64;
     uint32_t u32;
     uint64_t u64;
   };
