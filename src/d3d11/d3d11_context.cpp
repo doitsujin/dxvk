@@ -628,7 +628,6 @@ namespace dxvk {
       clearRect.baseArrayLayer      = 0;
       clearRect.layerCount          = view->info().numLayers;
       
-      // FIXME Is this correct? Docs don't say anything
       if (m_parent->GetFeatureLevel() < D3D_FEATURE_LEVEL_10_0)
         clearRect.layerCount        = 1;
       

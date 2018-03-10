@@ -47,10 +47,10 @@ namespace dxvk {
       *ppCommandList = m_commandList.ref();
     m_commandList = CreateCommandList();
     
-    if (!RestoreDeferredContextState)
-      ClearState();
-    else
+    if (RestoreDeferredContextState)
       RestoreState();
+    else
+      ClearState();
     
     return S_OK;
   }
