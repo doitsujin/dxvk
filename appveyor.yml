@@ -1,0 +1,44 @@
+image: Visual Studio 2017
+
+clone_folder: C:\Projects\DXVK
+
+environment:
+  NINJA_VERSION: "1.8.2"
+  VULKANSDK_VERSION: "1.1.77.0"
+  
+  parallel: true
+  matrix:
+    - platform: x64
+    - platform: x86
+
+install:
+  - ps: Update-AppveyorBuild -Version "$(git describe)"
+
+  #install GlslangValidator
+  - ps: Invoke-WebRequest -Uri https://github.com/Mixaill/glslangValidator-binaries/releases/download/vulkansdk-${env:VULKANSDK_VERSION}/glslangValidator.zip -OutFile glslangValidator.zip
+  - 7z x glslangValidator.zip -oC:\projects\deps\glslangValidator > nul
+  - set PATH=C:\projects\deps\glslangValidator;%PATH%
+
+  #install Meson
+  - set PATH=C:\Python35\scripts;%PATH%
+  - pip3 install meson
+
+  #install Ninja
+  - ps: Invoke-WebRequest -Uri https://github.com/ninja-build/ninja/releases/download/v${env:NINJA_VERSION}/ninja-win.zip -OutFile ninja.zip
+  - 7z x ninja.zip -oC:\projects\deps\ninja > nul
+  - set PATH=C:\projects\deps\ninja;%PATH%
+
+before_build:
+  - if "%platform%" == "x64" (call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\VC\Auxiliary\Build\vcvars64.bat")
+  - if "%platform%" == "x86" (call "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\Tools\VsDevCmd.bat")
+  
+  - cd C:\Projects\DXVK
+  - meson --buildtype release --prefix C:\Projects\DXVK\install\ build
+  
+build_script:
+  - cd C:\Projects\DXVK\build
+  - ninja install
+  
+artifacts:
+  - path: install
+    name: dxvk-%platform%
