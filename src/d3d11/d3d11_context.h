@@ -606,6 +606,22 @@ namespace dxvk {
     
     void RestoreState();
     
+    void RestoreConstantBuffers(
+            DxbcProgramType                   Stage,
+            D3D11ConstantBufferBindings&      Bindings);
+    
+    void RestoreSamplers(
+            DxbcProgramType                   Stage,
+            D3D11SamplerBindings&             Bindings);
+    
+    void RestoreShaderResources(
+            DxbcProgramType                   Stage,
+            D3D11ShaderResourceBindings&      Bindings);
+    
+    void RestoreUnorderedAccessViews(
+            DxbcProgramType                   Stage,
+            D3D11UnorderedAccessBindings&     Bindings);
+    
     DxvkDataSlice AllocUpdateBufferSlice(size_t Size);
     
     template<typename Cmd>

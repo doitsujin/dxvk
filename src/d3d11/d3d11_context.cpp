@@ -2359,6 +2359,80 @@ namespace dxvk {
         m_state.ia.vertexBuffers[i].offset,
         m_state.ia.vertexBuffers[i].stride);
     }
+    
+    RestoreConstantBuffers(DxbcProgramType::VertexShader,   m_state.vs.constantBuffers);
+    RestoreConstantBuffers(DxbcProgramType::HullShader,     m_state.hs.constantBuffers);
+    RestoreConstantBuffers(DxbcProgramType::DomainShader,   m_state.ds.constantBuffers);
+    RestoreConstantBuffers(DxbcProgramType::GeometryShader, m_state.gs.constantBuffers);
+    RestoreConstantBuffers(DxbcProgramType::PixelShader,    m_state.ps.constantBuffers);
+    RestoreConstantBuffers(DxbcProgramType::ComputeShader,  m_state.cs.constantBuffers);
+    
+    RestoreSamplers(DxbcProgramType::VertexShader,   m_state.vs.samplers);
+    RestoreSamplers(DxbcProgramType::HullShader,     m_state.hs.samplers);
+    RestoreSamplers(DxbcProgramType::DomainShader,   m_state.ds.samplers);
+    RestoreSamplers(DxbcProgramType::GeometryShader, m_state.gs.samplers);
+    RestoreSamplers(DxbcProgramType::PixelShader,    m_state.ps.samplers);
+    RestoreSamplers(DxbcProgramType::ComputeShader,  m_state.cs.samplers);
+    
+    RestoreShaderResources(DxbcProgramType::VertexShader,   m_state.vs.shaderResources);
+    RestoreShaderResources(DxbcProgramType::HullShader,     m_state.hs.shaderResources);
+    RestoreShaderResources(DxbcProgramType::DomainShader,   m_state.ds.shaderResources);
+    RestoreShaderResources(DxbcProgramType::GeometryShader, m_state.gs.shaderResources);
+    RestoreShaderResources(DxbcProgramType::PixelShader,    m_state.ps.shaderResources);
+    RestoreShaderResources(DxbcProgramType::ComputeShader,  m_state.cs.shaderResources);
+    
+    RestoreUnorderedAccessViews(DxbcProgramType::PixelShader,   m_state.ps.unorderedAccessViews);
+    RestoreUnorderedAccessViews(DxbcProgramType::ComputeShader, m_state.cs.unorderedAccessViews);
+  }
+  
+  
+  void D3D11DeviceContext::RestoreConstantBuffers(
+          DxbcProgramType                   Stage,
+          D3D11ConstantBufferBindings&      Bindings) {
+    const uint32_t slotId = computeResourceSlotId(
+      Stage, DxbcBindingType::ConstantBuffer, 0);
+    
+    for (uint32_t i = 0; i < Bindings.size(); i++)
+      BindConstantBuffer(slotId + i, Bindings[i].ptr());
+  }
+  
+  
+  void D3D11DeviceContext::RestoreSamplers(
+          DxbcProgramType                   Stage,
+          D3D11SamplerBindings&             Bindings) {
+    const uint32_t slotId = computeResourceSlotId(
+      Stage, DxbcBindingType::ImageSampler, 0);
+    
+    for (uint32_t i = 0; i < Bindings.size(); i++)
+      BindSampler(slotId + i, Bindings[i].ptr());
+  }
+  
+  
+  void D3D11DeviceContext::RestoreShaderResources(
+          DxbcProgramType                   Stage,
+          D3D11ShaderResourceBindings&      Bindings) {
+    const uint32_t slotId = computeResourceSlotId(
+      Stage, DxbcBindingType::ShaderResource, 0);
+    
+    for (uint32_t i = 0; i < Bindings.size(); i++)
+      BindShaderResource(slotId + i, Bindings[i].ptr());
+  }
+  
+  
+  void D3D11DeviceContext::RestoreUnorderedAccessViews(
+          DxbcProgramType                   Stage,
+          D3D11UnorderedAccessBindings&     Bindings) {
+    const uint32_t uavSlotId = computeResourceSlotId(
+      Stage, DxbcBindingType::UnorderedAccessView, 0);
+    
+    const uint32_t ctrSlotId = computeResourceSlotId(
+      Stage, DxbcBindingType::UavCounter, 0);
+    
+    for (uint32_t i = 0; i < Bindings.size(); i++) {
+      BindUnorderedAccessView(
+        uavSlotId + i, ctrSlotId + i,
+        Bindings[i].ptr());
+    }
   }
   
   
