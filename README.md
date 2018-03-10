@@ -51,6 +51,8 @@ Manipulation of Direct3D libraries in multi-player games may be considered cheat
 The behaviour of DXVK can be modified with environment variables.
 
 - `DXVK_DEBUG_LAYERS=1` Enables Vulkan debug layers. Highly recommended for troubleshooting and debugging purposes.
+- `DXVK_CUSTOM_VENDOR_ID=<ID>`  Specifces a custom PCI vendor identifier (Vendor ID)
+- `DXVK_CUSTOM_DEVICE_ID=<ID>`  Specifces a custom PCI device identifier (Device ID) 
 - `DXVK_SHADER_DUMP_PATH=directory` Writes all DXBC and SPIR-V shaders to the given directory
 - `DXVK_SHADER_READ_PATH=directory` Reads SPIR-V shaders from the given directory rather than using the shader compiler.
 - `DXVK_SHADER_VALIDATE=1` Enables SPIR-V shader validation. Useful for debugging purposes.
