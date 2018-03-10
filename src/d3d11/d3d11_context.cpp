@@ -1166,7 +1166,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppConstantBuffers) {
-    this->BindConstantBuffers(
+    this->SetConstantBuffers(
       DxbcProgramType::VertexShader,
       m_state.vs.constantBuffers,
       StartSlot, NumBuffers,
@@ -1178,7 +1178,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
-    this->BindShaderResources(
+    this->SetShaderResources(
       DxbcProgramType::VertexShader,
       m_state.vs.shaderResources,
       StartSlot, NumViews,
@@ -1190,7 +1190,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState* const*        ppSamplers) {
-    this->BindSamplers(
+    this->SetSamplers(
       DxbcProgramType::VertexShader,
       m_state.vs.samplers,
       StartSlot, NumSamplers,
@@ -1257,7 +1257,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
-    this->BindShaderResources(
+    this->SetShaderResources(
       DxbcProgramType::HullShader,
       m_state.hs.shaderResources,
       StartSlot, NumViews,
@@ -1269,7 +1269,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppConstantBuffers) {
-    this->BindConstantBuffers(
+    this->SetConstantBuffers(
       DxbcProgramType::HullShader,
       m_state.hs.constantBuffers,
       StartSlot, NumBuffers,
@@ -1281,7 +1281,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState* const*        ppSamplers) {
-    this->BindSamplers(
+    this->SetSamplers(
       DxbcProgramType::HullShader,
       m_state.hs.samplers,
       StartSlot, NumSamplers,
@@ -1348,7 +1348,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
-    this->BindShaderResources(
+    this->SetShaderResources(
       DxbcProgramType::DomainShader,
       m_state.ds.shaderResources,
       StartSlot, NumViews,
@@ -1360,7 +1360,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppConstantBuffers) {
-    this->BindConstantBuffers(
+    this->SetConstantBuffers(
       DxbcProgramType::DomainShader,
       m_state.ds.constantBuffers,
       StartSlot, NumBuffers,
@@ -1372,7 +1372,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState* const*        ppSamplers) {
-    this->BindSamplers(
+    this->SetSamplers(
       DxbcProgramType::DomainShader,
       m_state.ds.samplers,
       StartSlot, NumSamplers,
@@ -1439,7 +1439,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppConstantBuffers) {
-    this->BindConstantBuffers(
+    this->SetConstantBuffers(
       DxbcProgramType::GeometryShader,
       m_state.gs.constantBuffers,
       StartSlot, NumBuffers,
@@ -1451,7 +1451,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
-    this->BindShaderResources(
+    this->SetShaderResources(
       DxbcProgramType::GeometryShader,
       m_state.gs.shaderResources,
       StartSlot, NumViews,
@@ -1463,7 +1463,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState* const*        ppSamplers) {
-    this->BindSamplers(
+    this->SetSamplers(
       DxbcProgramType::GeometryShader,
       m_state.gs.samplers,
       StartSlot, NumSamplers,
@@ -1530,7 +1530,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppConstantBuffers) {
-    this->BindConstantBuffers(
+    this->SetConstantBuffers(
       DxbcProgramType::PixelShader,
       m_state.ps.constantBuffers,
       StartSlot, NumBuffers,
@@ -1542,7 +1542,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
-    this->BindShaderResources(
+    this->SetShaderResources(
       DxbcProgramType::PixelShader,
       m_state.ps.shaderResources,
       StartSlot, NumViews,
@@ -1554,7 +1554,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState* const*        ppSamplers) {
-    this->BindSamplers(
+    this->SetSamplers(
       DxbcProgramType::PixelShader,
       m_state.ps.samplers,
       StartSlot, NumSamplers,
@@ -1621,7 +1621,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppConstantBuffers) {
-    this->BindConstantBuffers(
+    this->SetConstantBuffers(
       DxbcProgramType::ComputeShader,
       m_state.cs.constantBuffers,
       StartSlot, NumBuffers,
@@ -1633,7 +1633,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView* const*  ppShaderResourceViews) {
-    this->BindShaderResources(
+    this->SetShaderResources(
       DxbcProgramType::ComputeShader,
       m_state.cs.shaderResources,
       StartSlot, NumViews,
@@ -1645,7 +1645,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState* const*        ppSamplers) {
-    this->BindSamplers(
+    this->SetSamplers(
       DxbcProgramType::ComputeShader,
       m_state.cs.samplers,
       StartSlot, NumSamplers,
@@ -1658,7 +1658,7 @@ namespace dxvk {
           UINT                              NumUAVs,
           ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
     const UINT*                             pUAVInitialCounts) {
-    this->BindUnorderedAccessViews(
+    this->SetUnorderedAccessViews(
       DxbcProgramType::ComputeShader,
       m_state.cs.unorderedAccessViews,
       StartSlot, NumUAVs,
@@ -1762,7 +1762,7 @@ namespace dxvk {
       // the graphics pipeline even though this code may
       // suggest that they are limited to the pixel shader.
       // This behaviour is only required for FL_11_1.
-      BindUnorderedAccessViews(
+      SetUnorderedAccessViews(
         DxbcProgramType::PixelShader,
         m_state.ps.unorderedAccessViews,
         UAVStartSlot, NumUAVs,
@@ -2098,7 +2098,61 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::BindConstantBuffers(
+  void D3D11DeviceContext::BindConstantBuffer(
+          UINT                              Slot,
+          D3D11Buffer*                      pBuffer) {
+    EmitCs([
+      cSlotId      = Slot,
+      cBufferSlice = pBuffer != nullptr ? pBuffer->GetBufferSlice() : DxvkBufferSlice()
+    ] (DxvkContext* ctx) {
+      ctx->bindResourceBuffer(cSlotId, cBufferSlice);
+    });
+  }
+  
+  
+  void D3D11DeviceContext::BindSampler(
+          UINT                              Slot,
+          D3D11SamplerState*                pSampler) {
+    EmitCs([
+      cSlotId   = Slot,
+      cSampler  = pSampler != nullptr ? pSampler->GetDXVKSampler() : nullptr
+    ] (DxvkContext* ctx) {
+      ctx->bindResourceSampler(cSlotId, cSampler);
+    });
+  }
+  
+  
+  void D3D11DeviceContext::BindShaderResource(
+          UINT                              Slot,
+          D3D11ShaderResourceView*          pResource) {
+    EmitCs([
+      cSlotId     = Slot,
+      cImageView  = pResource != nullptr ? pResource->GetImageView()  : nullptr,
+      cBufferView = pResource != nullptr ? pResource->GetBufferView() : nullptr
+    ] (DxvkContext* ctx) {
+      ctx->bindResourceView(cSlotId, cImageView, cBufferView);
+    });
+  }
+  
+  
+  void D3D11DeviceContext::BindUnorderedAccessView(
+          UINT                              UavSlot,
+          UINT                              CtrSlot,
+          D3D11UnorderedAccessView*         pUav) {
+    EmitCs([
+      cUavSlotId    = UavSlot,
+      cCtrSlotId    = CtrSlot,
+      cImageView    = pUav != nullptr ? pUav->GetImageView()    : nullptr,
+      cBufferView   = pUav != nullptr ? pUav->GetBufferView()   : nullptr,
+      cCounterSlice = pUav != nullptr ? pUav->GetCounterSlice() : DxvkBufferSlice()
+    ] (DxvkContext* ctx) {
+      ctx->bindResourceView   (cUavSlotId, cImageView, cBufferView);
+      ctx->bindResourceBuffer (cCtrSlotId, cCounterSlice);
+    });
+  }
+  
+  
+  void D3D11DeviceContext::SetConstantBuffers(
           DxbcProgramType                   ShaderStage,
           D3D11ConstantBufferBindings&      Bindings,
           UINT                              StartSlot,
@@ -2113,21 +2167,13 @@ namespace dxvk {
       
       if (Bindings[StartSlot + i] != newBuffer) {
         Bindings[StartSlot + i] = newBuffer;
-        
-        EmitCs([
-          cSlotId = slotId + i,
-          cSlice  = newBuffer != nullptr
-            ? newBuffer->GetBufferSlice()
-            : DxvkBufferSlice()
-        ] (DxvkContext* ctx) {
-          ctx->bindResourceBuffer(cSlotId, cSlice);
-        });
+        BindConstantBuffer(slotId + i, newBuffer);
       }
     }
   }
   
   
-  void D3D11DeviceContext::BindSamplers(
+  void D3D11DeviceContext::SetSamplers(
           DxbcProgramType                   ShaderStage,
           D3D11SamplerBindings&             Bindings,
           UINT                              StartSlot,
@@ -2142,21 +2188,13 @@ namespace dxvk {
       
       if (Bindings[StartSlot + i] != sampler) {
         Bindings[StartSlot + i] = sampler;
-        
-        EmitCs([
-          cSlotId  = slotId + i,
-          cSampler = sampler != nullptr
-            ? sampler->GetDXVKSampler()
-            : nullptr
-        ] (DxvkContext* ctx) {
-          ctx->bindResourceSampler(cSlotId, cSampler);
-        });
+        BindSampler(slotId + i, sampler);
       }
     }
   }
   
   
-  void D3D11DeviceContext::BindShaderResources(
+  void D3D11DeviceContext::SetShaderResources(
           DxbcProgramType                   ShaderStage,
           D3D11ShaderResourceBindings&      Bindings,
           UINT                              StartSlot,
@@ -2171,34 +2209,13 @@ namespace dxvk {
       
       if (Bindings[StartSlot + i] != resView) {
         Bindings[StartSlot + i] = resView;
-        
-        if (resView != nullptr) {
-          // Figure out what we have to bind based on the resource type
-          if (resView->GetResourceType() == D3D11_RESOURCE_DIMENSION_BUFFER) {
-            EmitCs([cSlotId = slotId + i, cView = resView->GetBufferView()]
-            (DxvkContext* ctx) {
-              ctx->bindResourceTexelBuffer(cSlotId, cView);
-            });
-          } else {
-            EmitCs([cSlotId = slotId + i, cView = resView->GetImageView()]
-            (DxvkContext* ctx) {
-              ctx->bindResourceImage(cSlotId, cView);
-            });
-          }
-        } else {
-          // When unbinding a resource, it doesn't really matter if
-          // the resource type is correct, so we'll just bind a null
-          // image to the given resource slot
-          EmitCs([cSlotId = slotId + i] (DxvkContext* ctx) {
-            ctx->bindResourceImage(cSlotId, nullptr);
-          });
-        }
+        BindShaderResource(slotId + i, resView);
       }
     }
   }
   
   
-  void D3D11DeviceContext::BindUnorderedAccessViews(
+  void D3D11DeviceContext::SetUnorderedAccessViews(
           DxbcProgramType                   ShaderStage,
           D3D11UnorderedAccessBindings&     Bindings,
           UINT                              StartSlot,
@@ -2217,35 +2234,7 @@ namespace dxvk {
       
       if (Bindings[StartSlot + i] != uav) {
         Bindings[StartSlot + i] = uav;
-        
-        if (uav != nullptr) {
-          // Figure out what we have to bind based on the resource type
-          if (uav->GetResourceType() == D3D11_RESOURCE_DIMENSION_BUFFER) {
-            EmitCs([
-              cUavSlotId = uavSlotId + i,
-              cCtrSlotId = ctrSlotId + i,
-              cUavBuffer = uav->GetBufferView(),
-              cCtrBuffer = uav->GetCounterSlice()
-            ] (DxvkContext* ctx) {
-              ctx->bindResourceTexelBuffer(cUavSlotId, cUavBuffer);
-              ctx->bindResourceBuffer     (cCtrSlotId, cCtrBuffer);
-            });
-          } else {
-            EmitCs([cUavSlotId = uavSlotId + i, cUavImage = uav->GetImageView()]
-            (DxvkContext* ctx) {
-              ctx->bindResourceImage(cUavSlotId, cUavImage);
-            });
-          }
-        } else {
-          // When unbinding a resource, it doesn't really matter if
-          // the resource type is correct, so we'll just bind a null
-          // image to the given resource slot
-          EmitCs([cUavSlotId = uavSlotId + i, cCtrSlotId = ctrSlotId + i]
-          (DxvkContext* ctx) {
-            ctx->bindResourceTexelBuffer(cUavSlotId, nullptr);
-            ctx->bindResourceBuffer     (cCtrSlotId, DxvkBufferSlice());
-          });
-        }
+        BindUnorderedAccessView(uavSlotId + i, ctrSlotId + i, uav);
       }
     }
   }

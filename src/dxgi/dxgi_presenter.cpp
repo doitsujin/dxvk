@@ -205,14 +205,14 @@ namespace dxvk {
     m_blendMode.enableBlending = VK_FALSE;
     m_context->setBlendMode(0, m_blendMode);
     
-    m_context->bindResourceImage(BindingIds::Texture, m_backBufferView);
+    m_context->bindResourceView(BindingIds::Texture, m_backBufferView, nullptr);
     m_context->draw(4, 1, 0, 0);
     
     if (m_hud != nullptr) {
       m_blendMode.enableBlending = VK_TRUE;
       m_context->setBlendMode(0, m_blendMode);
       
-      m_context->bindResourceImage(BindingIds::Texture, m_hud->texture());
+      m_context->bindResourceView(BindingIds::Texture, m_hud->texture(), nullptr);
       m_context->draw(4, 1, 0, 0);
     }
     
