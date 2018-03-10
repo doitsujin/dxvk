@@ -118,7 +118,6 @@ namespace dxvk {
   Rc<DxvkBuffer> DxvkDevice::createBuffer(
     const DxvkBufferCreateInfo& createInfo,
           VkMemoryPropertyFlags memoryType) {
-    m_statCounters.increment(DxvkStat::ResBufferCreations, 1);
     return new DxvkBuffer(this, createInfo, memoryType);
   }
   
@@ -133,7 +132,6 @@ namespace dxvk {
   Rc<DxvkImage> DxvkDevice::createImage(
     const DxvkImageCreateInfo&  createInfo,
           VkMemoryPropertyFlags memoryType) {
-    m_statCounters.increment(DxvkStat::ResImageCreations, 1);
     return new DxvkImage(m_vkd, createInfo, *m_memory, memoryType);
   }
   
@@ -206,8 +204,6 @@ namespace dxvk {
   
   VkResult DxvkDevice::presentSwapImage(
     const VkPresentInfoKHR&         presentInfo) {
-    m_statCounters.increment(DxvkStat::DevQueuePresents, 1);
-    
     std::lock_guard<std::mutex> lock(m_submissionLock);
     return m_vkd->vkQueuePresentKHR(m_presentQueue, &presentInfo);
   }
@@ -240,14 +236,11 @@ namespace dxvk {
     
     // Add this to the set of running submissions
     m_submissionQueue.submit(fence, commandList);
-    m_statCounters.increment(DxvkStat::DevQueueSubmissions, 1);
     return fence;
   }
   
   
   void DxvkDevice::waitForIdle() {
-    m_statCounters.increment(DxvkStat::DevSynchronizations, 1);
-    
     if (m_vkd->vkDeviceWaitIdle(m_vkd->device()) != VK_SUCCESS)
       Logger::err("DxvkDevice: waitForIdle: Operation failed");
   }
