@@ -50,6 +50,10 @@ namespace dxvk {
     
     void SynchronizeDevice();
     
+    bool WaitForResource(
+      const Rc<DxvkResource>&                 Resource,
+            UINT                              MapFlags);
+    
     void EmitCsChunk(Rc<DxvkCsChunk>&& chunk) final;
     
   };

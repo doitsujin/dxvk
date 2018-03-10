@@ -28,7 +28,6 @@ namespace dxvk {
   };
   
   
-  
   ///////////////////////////////////////////
   //      D 3 D 1 1 T E X T U R E 1 D
   class D3D11Texture1D : public D3D11DeviceChild<ID3D11Texture1D> {

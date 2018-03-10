@@ -22,7 +22,6 @@ namespace dxvk {
     return DxgiFormatMode::Any;
   }
   
-  
   /**
    * \brief Optimizes image layout based on usage flags
    * 
@@ -144,8 +143,10 @@ namespace dxvk {
     if (CPUAccessFlags != 0) {
       pImageInfo->stages |= VK_PIPELINE_STAGE_HOST_BIT;
       
-      if (CPUAccessFlags & D3D11_CPU_ACCESS_WRITE)
+      if (CPUAccessFlags & D3D11_CPU_ACCESS_WRITE) {
         pImageInfo->access |= VK_ACCESS_HOST_WRITE_BIT;
+        pImageInfo->tiling  = VK_IMAGE_TILING_LINEAR;
+      }
       
       if (CPUAccessFlags & D3D11_CPU_ACCESS_READ)
         pImageInfo->access |= VK_ACCESS_HOST_READ_BIT;
@@ -156,6 +157,29 @@ namespace dxvk {
     
     if (pImageInfo->tiling == VK_IMAGE_TILING_OPTIMAL)
       pImageInfo->layout = OptimizeLayout(pImageInfo->usage);
+  }
+  
+  
+  /**
+   * \brief Retrieves memory flags for image usage
+   * 
+   * If the host requires access to the image, we
+   * should create it on a host-visible memory type.
+   * \param [in] Usage Image usage flags
+   * \returns Image memory properties
+   */
+  static VkMemoryPropertyFlags GetImageMemoryFlags(UINT CPUAccessFlags) {
+    if (CPUAccessFlags & D3D11_CPU_ACCESS_READ) {
+      return VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+           | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+           | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+    } else {
+      // If only write access is required, we will emulate
+      // image mapping through a buffer. Some games ignore
+      // the row pitch when mapping images, which leads to
+      // incorrect rendering.
+      return VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    }
   }
   
   
@@ -201,7 +225,7 @@ namespace dxvk {
     // Create the image and, if necessary, the image buffer
     m_texInfo.formatMode  = formatMode;
     m_texInfo.image       = pDevice->GetDXVKDevice()->createImage(
-      info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+      info, GetImageMemoryFlags(m_desc.CPUAccessFlags));
     m_texInfo.imageBuffer = m_desc.CPUAccessFlags != 0
       ? CreateImageBuffer(pDevice->GetDXVKDevice(), info.format, info.extent)
       : nullptr;
@@ -301,7 +325,7 @@ namespace dxvk {
     // Create the image and, if necessary, the image buffer
     m_texInfo.formatMode  = formatMode;
     m_texInfo.image       = pDevice->GetDXVKDevice()->createImage(
-      info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+      info, GetImageMemoryFlags(m_desc.CPUAccessFlags));
     m_texInfo.imageBuffer = m_desc.CPUAccessFlags != 0
       ? CreateImageBuffer(pDevice->GetDXVKDevice(), info.format, info.extent)
       : nullptr;
@@ -354,7 +378,7 @@ namespace dxvk {
   
   
   ///////////////////////////////////////////
-  //      D 3 D 1 1 T E X T U R E 2 D
+  //      D 3 D 1 1 T E X T U R E 3 D
   D3D11Texture3D::D3D11Texture3D(
           D3D11Device*                pDevice,
     const D3D11_TEXTURE3D_DESC*       pDesc)
@@ -398,7 +422,7 @@ namespace dxvk {
     // Create the image and, if necessary, the image buffer
     m_texInfo.formatMode  = formatMode;
     m_texInfo.image       = pDevice->GetDXVKDevice()->createImage(
-      info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+      info, GetImageMemoryFlags(m_desc.CPUAccessFlags));
     m_texInfo.imageBuffer = m_desc.CPUAccessFlags != 0
       ? CreateImageBuffer(pDevice->GetDXVKDevice(), info.format, info.extent)
       : nullptr;
