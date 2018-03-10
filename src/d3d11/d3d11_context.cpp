@@ -139,7 +139,7 @@ namespace dxvk {
       this->CSSetUnorderedAccessViews(i, 1, &uav, nullptr);
     }
     
-    this->OMSetRenderTargets(0, nullptr, nullptr);
+    this->OMSetRenderTargetsAndUnorderedAccessViews(0, nullptr, nullptr, 0, 0, nullptr, nullptr);
     this->OMSetBlendState(nullptr, nullptr, D3D11_DEFAULT_SAMPLE_MASK);
     this->OMSetDepthStencilState(nullptr, 0);
     
@@ -147,7 +147,7 @@ namespace dxvk {
     this->RSSetViewports(0, nullptr);
     this->RSSetScissorRects(0, nullptr);
     
-//     this->SOSetTargets(0, nullptr, nullptr);
+    this->SOSetTargets(0, nullptr, nullptr);
     
     this->SetPredication(nullptr, FALSE);
   }
@@ -2409,8 +2409,8 @@ namespace dxvk {
     RestoreShaderResources(DxbcProgramType::PixelShader,    m_state.ps.shaderResources);
     RestoreShaderResources(DxbcProgramType::ComputeShader,  m_state.cs.shaderResources);
     
-    RestoreUnorderedAccessViews(DxbcProgramType::PixelShader,   m_state.ps.unorderedAccessViews);
-    RestoreUnorderedAccessViews(DxbcProgramType::ComputeShader, m_state.cs.unorderedAccessViews);
+    RestoreUnorderedAccessViews(DxbcProgramType::PixelShader,   m_state.ps.unorderedAccessViews, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT);
+    RestoreUnorderedAccessViews(DxbcProgramType::ComputeShader, m_state.cs.unorderedAccessViews, D3D11_1_UAV_SLOT_COUNT);
   }
   
   
@@ -2449,14 +2449,15 @@ namespace dxvk {
   
   void D3D11DeviceContext::RestoreUnorderedAccessViews(
           DxbcProgramType                   Stage,
-          D3D11UnorderedAccessBindings&     Bindings) {
+          D3D11UnorderedAccessBindings&     Bindings,
+          UINT                              SlotCount) {
     const uint32_t uavSlotId = computeResourceSlotId(
       Stage, DxbcBindingType::UnorderedAccessView, 0);
     
     const uint32_t ctrSlotId = computeResourceSlotId(
       Stage, DxbcBindingType::UavCounter, 0);
     
-    for (uint32_t i = 0; i < Bindings.size(); i++) {
+    for (uint32_t i = 0; i < SlotCount; i++) {
       BindUnorderedAccessView(
         uavSlotId + i, ctrSlotId + i,
         Bindings[i].ptr());
