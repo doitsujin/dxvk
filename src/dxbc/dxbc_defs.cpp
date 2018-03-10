@@ -726,7 +726,9 @@ namespace dxvk {
     /* DclTessOutputPrimitive               */
     { 0, DxbcInstClass::Declaration },
     /* DclHsMaxTessFactor                   */
-    { },
+    { 1, DxbcInstClass::Declaration, {
+      { DxbcOperandKind::Imm32, DxbcScalarType::Float32 },
+    } },
     /* DclHsForkPhaseInstanceCount          */
     { 1, DxbcInstClass::HullShaderInstCnt, {
       { DxbcOperandKind::Imm32, DxbcScalarType::Uint32  },
