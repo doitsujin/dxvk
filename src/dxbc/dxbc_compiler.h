@@ -212,6 +212,9 @@ namespace dxvk {
     
     uint32_t invocationBlockBegin  = 0;
     uint32_t invocationBlockEnd    = 0;
+
+    /* TODO: use this value */
+    float maxTessFactor = 64.0f;
     
     DxbcCompilerHsControlPointPhase          cpPhase;
     std::vector<DxbcCompilerHsForkJoinPhase> forkPhases;
@@ -493,6 +496,9 @@ namespace dxvk {
     void emitDclTessOutputPrimitive(
       const DxbcShaderInstruction&  ins);
     
+    void emitDclHsMaxTessFactor(
+      const DxbcShaderInstruction&  ins);
+
     void emitDclThreadGroup(
       const DxbcShaderInstruction&  ins);
     

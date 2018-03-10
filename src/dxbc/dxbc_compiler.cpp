@@ -256,6 +256,9 @@ namespace dxvk {
       case DxbcOpcode::DclTessOutputPrimitive:
         return this->emitDclTessOutputPrimitive(ins);
       
+      case DxbcOpcode::DclHsMaxTessFactor:
+          return this->emitDclHsMaxTessFactor(ins);
+      
       case DxbcOpcode::DclThreadGroup:
         return this->emitDclThreadGroup(ins);
       
@@ -1158,6 +1161,18 @@ namespace dxvk {
       default:
         throw DxvkError("Dxbc: Invalid tess output primitive");
     }
+  }
+  
+  
+  void DxbcCompiler::emitDclHsMaxTessFactor(const DxbcShaderInstruction& ins) {
+      float maxTessFactor = ins.imm[0].f32;
+
+      if (maxTessFactor < 1.0f || maxTessFactor > 64.0f)
+          Logger::warn(str::format(
+              "DxbcCompiler: Invalid dcl_hs_max_tessfactor value: ",
+              maxTessFactor));
+      else
+          m_hs.maxTessFactor = maxTessFactor;
   }
   
   
