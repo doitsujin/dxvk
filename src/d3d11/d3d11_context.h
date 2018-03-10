@@ -531,15 +531,26 @@ namespace dxvk {
     
     template<typename T>
     void BindShader(
-            T*                                Shader,
+            T*                                pShader,
             VkShaderStageFlagBits             Stage) {
       EmitCs([
-        cShader = Shader != nullptr ? Shader->GetShader() : nullptr,
+        cShader = pShader != nullptr ? pShader->GetShader() : nullptr,
         cStage  = Stage
       ] (DxvkContext* ctx) {
         ctx->bindShader(cStage, cShader);
       });
     }
+    
+    void BindVertexBuffer(
+            UINT                              Slot,
+            D3D11Buffer*                      pBuffer,
+            UINT                              Offset,
+            UINT                              Stride);
+    
+    void BindIndexBuffer(
+            D3D11Buffer*                      pBuffer,
+            UINT                              Offset,
+            DXGI_FORMAT                       Format);
     
     void BindConstantBuffers(
             DxbcProgramType                   ShaderStage,

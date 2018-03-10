@@ -1076,30 +1076,14 @@ namespace dxvk {
           ID3D11Buffer* const*              ppVertexBuffers,
     const UINT*                             pStrides,
     const UINT*                             pOffsets) {
-    // TODO check if any of these buffers
-    // are bound as UAVs or stream outputs
     for (uint32_t i = 0; i < NumBuffers; i++) {
       auto newBuffer = static_cast<D3D11Buffer*>(ppVertexBuffers[i]);
       
-      m_state.ia.vertexBuffers[i].buffer = newBuffer;
-      m_state.ia.vertexBuffers[i].offset = pOffsets[i];
-      m_state.ia.vertexBuffers[i].stride = pStrides[i];
+      m_state.ia.vertexBuffers[StartSlot + i].buffer = newBuffer;
+      m_state.ia.vertexBuffers[StartSlot + i].offset = pOffsets[i];
+      m_state.ia.vertexBuffers[StartSlot + i].stride = pStrides[i];
       
-      if (newBuffer != nullptr) {
-        EmitCs([
-          slotId = StartSlot + i,
-          offset = pOffsets[i],
-          stride = pStrides[i],
-          slice  = newBuffer->GetBufferSlice(pOffsets[i])
-        ] (DxvkContext* ctx) {
-          ctx->bindVertexBuffer(
-            slotId, slice, stride);
-        });
-      } else {
-        EmitCs([cSlotId = StartSlot + i] (DxvkContext* ctx) {
-          ctx->bindVertexBuffer(cSlotId, DxvkBufferSlice(), 0);
-        });
-      }
+      BindVertexBuffer(StartSlot + i, newBuffer, pOffsets[i], pStrides[i]);
     }
   }
   
@@ -1114,24 +1098,7 @@ namespace dxvk {
     m_state.ia.indexBuffer.offset = Offset;
     m_state.ia.indexBuffer.format = Format;
     
-    // As in Vulkan, the index format can be either a 32-bit
-    // unsigned integer or a 16-bit unsigned integer, no other
-    // formats are allowed.
-    if (newBuffer != nullptr) {
-      VkIndexType indexType = VK_INDEX_TYPE_UINT32;
-      
-      switch (Format) {
-        case DXGI_FORMAT_R16_UINT: indexType = VK_INDEX_TYPE_UINT16; break;
-        case DXGI_FORMAT_R32_UINT: indexType = VK_INDEX_TYPE_UINT32; break;
-        default: Logger::err(str::format("D3D11: Invalid index format: ", Format));
-      }
-      
-      EmitCs([indexType,
-        slice = newBuffer->GetBufferSlice(Offset)
-      ] (DxvkContext* ctx) {
-        ctx->bindIndexBuffer(slice, indexType);
-      });
-    }
+    BindIndexBuffer(newBuffer, Offset, Format);
   }
   
   
@@ -2093,6 +2060,44 @@ namespace dxvk {
   }
   
   
+  void D3D11DeviceContext::BindVertexBuffer(
+          UINT                              Slot,
+          D3D11Buffer*                      pBuffer,
+          UINT                              Offset,
+          UINT                              Stride) {
+    EmitCs([
+      cSlotId       = Slot,
+      cBufferSlice  = pBuffer != nullptr ? pBuffer->GetBufferSlice(Offset) : DxvkBufferSlice(),
+      cStride       = pBuffer != nullptr ? Stride                          : 0
+    ] (DxvkContext* ctx) {
+      ctx->bindVertexBuffer(cSlotId, cBufferSlice, cStride);
+    });
+  }
+  
+  
+  void D3D11DeviceContext::BindIndexBuffer(
+          D3D11Buffer*                      pBuffer,
+          UINT                              Offset,
+          DXGI_FORMAT                       Format) {
+    // As in Vulkan, the index format can be either a 32-bit
+    // or 16-bit unsigned integer, no other formats are allowed.
+    VkIndexType indexType = VK_INDEX_TYPE_UINT16;
+    
+    switch (Format) {
+      case DXGI_FORMAT_R16_UINT: indexType = VK_INDEX_TYPE_UINT16; break;
+      case DXGI_FORMAT_R32_UINT: indexType = VK_INDEX_TYPE_UINT32; break;
+      default: Logger::err(str::format("D3D11: Invalid index format: ", Format));
+    }
+    
+    EmitCs([
+      cBufferSlice  = pBuffer != nullptr ? pBuffer->GetBufferSlice(Offset) : DxvkBufferSlice(),
+      cIndexType    = indexType
+    ] (DxvkContext* ctx) {
+      ctx->bindIndexBuffer(cBufferSlice, cIndexType);
+    });
+  }
+  
+  
   void D3D11DeviceContext::BindConstantBuffers(
           DxbcProgramType                   ShaderStage,
           D3D11ConstantBufferBindings&      Bindings,
@@ -2353,6 +2358,18 @@ namespace dxvk {
     BindShader(m_state.gs.shader.ptr(), VK_SHADER_STAGE_GEOMETRY_BIT);
     BindShader(m_state.ps.shader.ptr(), VK_SHADER_STAGE_FRAGMENT_BIT);
     BindShader(m_state.cs.shader.ptr(), VK_SHADER_STAGE_COMPUTE_BIT);
+    
+    BindIndexBuffer(
+      m_state.ia.indexBuffer.buffer.ptr(),
+      m_state.ia.indexBuffer.offset,
+      m_state.ia.indexBuffer.format);
+    
+    for (uint32_t i = 0; i < m_state.ia.vertexBuffers.size(); i++) {
+      BindVertexBuffer(i,
+        m_state.ia.vertexBuffers[i].buffer.ptr(),
+        m_state.ia.vertexBuffers[i].offset,
+        m_state.ia.vertexBuffers[i].stride);
+    }
   }
   
   
