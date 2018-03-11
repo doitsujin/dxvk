@@ -89,6 +89,11 @@ namespace dxvk {
           D3D11_MAP                   MapType,
           UINT                        MapFlags,
           D3D11_MAPPED_SUBRESOURCE*   pMappedResource) {
+    if (pResource == nullptr) {
+      Logger::warn("D3D11ImmediateContext::Map() application tried to map a nullptr resource");
+      return DXGI_ERROR_INVALID_CALL;
+    }
+
     D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resourceDim);
     
