@@ -42,8 +42,9 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11ImmediateContext::Flush() {
+    m_parent->FlushInitContext();
+    
     if (m_csChunk->commandCount() != 0) {
-      m_parent->FlushInitContext();
       m_drawCount = 0;
       
       // Add commands to flush the threaded
