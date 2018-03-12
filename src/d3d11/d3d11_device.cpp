@@ -67,6 +67,10 @@ namespace dxvk {
 
     if (riid == __uuidof(ID3D11Debug))
       return E_NOINTERFACE;      
+
+    //d56e2a4c-5127-8437-658a-98c5bb789498, from GTA V, no occurrences in Google
+    if (riid == GUID{0xd56e2a4c,0x5127,0x8437,{0x65,0x8a,0x98,0xc5,0xbb,0x78,0x94,0x98}})
+      return E_NOINTERFACE;
     
     Logger::warn("D3D11Device::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
