@@ -46,8 +46,92 @@ namespace dxvk {
     const DXGI_MODE_DESC *pModeToMatch,
           DXGI_MODE_DESC *pClosestMatch,
           IUnknown       *pConcernedDevice) {
-    Logger::err("DxgiOutput::FindClosestMatchingMode: Not implemented");
-    return E_NOTIMPL;
+    if (pModeToMatch == nullptr) {
+      Logger::err("DxgiOutput::FindClosestMatchingMode: pModeToMatch is nullptr");
+      return DXGI_ERROR_INVALID_CALL;
+    }
+        
+    if (pClosestMatch == nullptr) {
+      Logger::err("DxgiOutput::FindClosestMatchingMode: pClosestMatch is nullptr");
+      return DXGI_ERROR_INVALID_CALL;
+    }
+
+    if (pModeToMatch->Format == DXGI_FORMAT_UNKNOWN && pConcernedDevice == nullptr) {
+      Logger::err("DxgiOutput::FindClosestMatchingMode: no pointer to device was provided for DXGI_FORMAT_UNKNOWN format");
+      return DXGI_ERROR_INVALID_CALL;
+    }
+
+    if (pModeToMatch->Format == DXGI_FORMAT_UNKNOWN) {
+      /* TODO: perform additional format matching
+      https://msdn.microsoft.com/en-us/library/windows/desktop/bb174547(v=vs.85).aspx?f=255&MSPPError=-2147217396
+      > If pConcernedDevice is NULL, Format CANNOT be DXGI_FORMAT_UNKNOWN.
+      and vice versa
+      >If pConcernedDevice is NOT NULL, Format COULD be DXGI_FORMAT_UNKNOWN.
+ 
+      But Format in structures from GetDisplayModeList() cannot be
+      DXGI_FORMAT_UNKNOWN by definition.
+      
+      There is way in case of DXGI_FORMAT_UNKNOWN and pDevice != nullptr we
+      should perform additional format matching. It may be just ignoring of
+      Format field or using some range of formats but MSDN nothing says 
+      about of criteria.  
+      */
+      Logger::err("DxgiOutput::FindClosestMatchingMode: matching formats to device currently is not supported");
+      return DXGI_ERROR_UNSUPPORTED;
+    }
+ 
+    DXGI_MODE_DESC modeToMatch = *pModeToMatch;
+    UINT modesCount = 0;
+    GetDisplayModeList(pModeToMatch->Format, 0, &modesCount, nullptr);
+
+    if (modesCount == 0) {
+      Logger::err("DxgiOutput::FindClosestMatchingMode: no device formats were found");
+      return DXGI_ERROR_NOT_FOUND;
+    }
+
+    std::vector<DXGI_MODE_DESC> modes(modesCount);
+    GetDisplayModeList(pModeToMatch->Format, 0, &modesCount, modes.data());
+
+    //filter out modes with different scanline ordering if it was set
+    if (modeToMatch.ScanlineOrdering != DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED) {
+      for (auto it = modes.begin(); it != modes.end();) {
+        if (it->ScanlineOrdering != modeToMatch.ScanlineOrdering)
+            it = modes.erase(it);
+        else
+            ++it;
+      }
+    }
+
+    //filter out modes with different refresh rate if it was set
+    if (modeToMatch.RefreshRate.Denominator != 0 || modeToMatch.RefreshRate.Numerator != 0) {
+      for (auto it = modes.begin(); it != modes.end();) {
+        if (it->RefreshRate.Denominator != modeToMatch.RefreshRate.Denominator || 
+          it->RefreshRate.Numerator != modeToMatch.RefreshRate.Numerator)
+          it = modes.erase(it);
+        else
+          ++it;
+      }
+    }
+
+    // return error when there is no modes with target refresh rate and scanline order
+    if(modes.size() == 0) {
+      Logger::err("DxgiOutput::FindClosestMatchingMode: no matched formats were found");
+      return DXGI_ERROR_NOT_FOUND;
+    }
+
+    //select mode with minimal height+width difference
+    UINT minDifference = UINT_MAX;
+    for (auto& mode : modes) {
+      UINT currDifference = abs((int)(modeToMatch.Width - mode.Width))
+        + abs((int)(modeToMatch.Height - mode.Height));
+
+      if (currDifference < minDifference) {
+        minDifference = currDifference;
+        *pClosestMatch = mode;
+      }
+    }
+
+    return S_OK;
   }
   
   
@@ -81,6 +165,9 @@ namespace dxvk {
           DXGI_MODE_DESC *pDesc) {
     if (pNumModes == nullptr)
       return DXGI_ERROR_INVALID_CALL;
+
+    if (Flags != 0)
+      Logger::warn("DxgiOutput::GetDisplayModeList: flags are ignored");
     
     // Query monitor info to get the device name
     ::MONITORINFOEX monInfo;
