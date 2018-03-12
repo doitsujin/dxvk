@@ -148,7 +148,7 @@ namespace dxvk {
       
       if (CPUAccessFlags & D3D11_CPU_ACCESS_READ) {
         pImageInfo->access |= VK_ACCESS_HOST_READ_BIT;
-//         pImageInfo->tiling  = VK_IMAGE_TILING_LINEAR;
+        pImageInfo->tiling  = VK_IMAGE_TILING_LINEAR;
       }
     }
     
@@ -169,19 +169,17 @@ namespace dxvk {
    * \returns Image memory properties
    */
   static VkMemoryPropertyFlags GetImageMemoryFlags(UINT CPUAccessFlags) {
-    // FIXME investigate why image mapping breaks games
-    return VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-//     if (CPUAccessFlags & D3D11_CPU_ACCESS_READ) {
-//       return VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-//            | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-//            | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
-//     } else {
-//       // If only write access is required, we will emulate
-//       // image mapping through a buffer. Some games ignore
-//       // the row pitch when mapping images, which leads to
-//       // incorrect rendering.
-//       return VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-//     }
+    if (CPUAccessFlags & D3D11_CPU_ACCESS_READ) {
+      return VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+           | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+           | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+    } else {
+      // If only write access is required, we will emulate
+      // image mapping through a buffer. Some games ignore
+      // the row pitch when mapping images, which leads to
+      // incorrect rendering.
+      return VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    }
   }
   
   
