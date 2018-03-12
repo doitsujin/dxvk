@@ -1128,10 +1128,17 @@ namespace dxvk {
     for (uint32_t i = 0; i < viewportCount; i++) {
       m_state.vp.viewports[i]    = viewports[i];
       m_state.vp.scissorRects[i] = scissorRects[i];
+      
+      // Vulkan viewports are not allowed to have a width or
+      // height of zero, so we fall back to a dummy viewport.
+      if (viewports[i].width == 0.0f || viewports[i].height == 0.0f) {
+        m_state.vp.viewports[i] = VkViewport {
+          0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f };
+      }
     }
     
-    m_cmd->cmdSetViewport(0, viewportCount, viewports);
-    m_cmd->cmdSetScissor (0, viewportCount, scissorRects);
+    m_cmd->cmdSetViewport(0, viewportCount, m_state.vp.viewports.data());
+    m_cmd->cmdSetScissor (0, viewportCount, m_state.vp.scissorRects.data());
   }
   
   
