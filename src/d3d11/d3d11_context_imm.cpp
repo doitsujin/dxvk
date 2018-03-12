@@ -66,6 +66,8 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11ImmediateContext::ExecuteCommandList(
           ID3D11CommandList*  pCommandList,
           BOOL                RestoreContextState) {
+    FlushCsChunk();
+    
     static_cast<D3D11CommandList*>(pCommandList)->EmitToCsThread(&m_csThread);
     
     if (RestoreContextState)
