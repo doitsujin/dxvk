@@ -250,6 +250,7 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, ID3D11Texture1D);
     
     Logger::warn("D3D11Texture1D::QueryInterface: Unknown interface query");
+    Logger::warn(str::format(riid));
     return E_NOINTERFACE;
   }
   
@@ -349,6 +350,7 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, ID3D11Texture2D);
     
     Logger::warn("D3D11Texture2D::QueryInterface: Unknown interface query");
+    Logger::warn(str::format(riid));
     return E_NOINTERFACE;
   }
   
@@ -446,6 +448,7 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, ID3D11Texture3D);
     
     Logger::warn("D3D11Texture3D::QueryInterface: Unknown interface query");
+    Logger::warn(str::format(riid));
     return E_NOINTERFACE;
   }
   

@@ -27,6 +27,7 @@ namespace dxvk {
       return m_layer->QueryInterface(riid, ppvObject);
     
     Logger::warn("DxgiDevice::QueryInterface: Unknown interface query");
+    Logger::warn(str::format(riid));
     return E_NOINTERFACE;
   }
   

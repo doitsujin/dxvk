@@ -31,6 +31,7 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, IDXGIOutput);
     
     Logger::warn("DxgiOutput::QueryInterface: Unknown interface query");
+    Logger::warn(str::format(riid));
     return E_NOINTERFACE;
   }
   

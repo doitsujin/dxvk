@@ -58,6 +58,7 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, ID3D11SamplerState);
     
     Logger::warn("D3D11SamplerState::QueryInterface: Unknown interface query");
+    Logger::warn(str::format(riid));
     return E_NOINTERFACE;
   }
   
