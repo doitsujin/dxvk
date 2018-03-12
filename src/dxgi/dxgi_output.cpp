@@ -93,21 +93,14 @@ namespace dxvk {
     std::vector<DXGI_MODE_DESC> modes(modesCount);
     GetDisplayModeList(pModeToMatch->Format, 0, &modesCount, modes.data());
 
-    //filter out modes with different scanline ordering if it was set
-    if (modeToMatch.ScanlineOrdering != DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED) {
-      for (auto it = modes.begin(); it != modes.end();) {
-        if (it->ScanlineOrdering != modeToMatch.ScanlineOrdering)
-            it = modes.erase(it);
-        else
-            ++it;
-      }
-    }
+    /* TODO: add scaling and scanline filter when we implement they */
 
     //filter out modes with different refresh rate if it was set
-    if (modeToMatch.RefreshRate.Denominator != 0 || modeToMatch.RefreshRate.Numerator != 0) {
+    if (modeToMatch.RefreshRate.Denominator != 0 && modeToMatch.RefreshRate.Numerator != 0) {
+      UINT targetRefreshRate = modeToMatch.RefreshRate.Numerator / modeToMatch.RefreshRate.Denominator;
       for (auto it = modes.begin(); it != modes.end();) {
-        if (it->RefreshRate.Denominator != modeToMatch.RefreshRate.Denominator || 
-          it->RefreshRate.Numerator != modeToMatch.RefreshRate.Numerator)
+        UINT modeRefreshRate = it->RefreshRate.Numerator / it->RefreshRate.Denominator;
+        if (modeRefreshRate != targetRefreshRate)
           it = modes.erase(it);
         else
           ++it;
