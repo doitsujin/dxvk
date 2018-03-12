@@ -553,7 +553,11 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
     } },
     /* SamplePos                            */
-    { },
+    { 3, DxbcInstClass::TextureQueryMsPos, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32  },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32  },
+    } },
     /* SampleInfo                           */
     { 2, DxbcInstClass::TextureQueryMs, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Uint32  },

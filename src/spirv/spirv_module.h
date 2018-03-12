@@ -119,6 +119,24 @@ namespace dxvk {
     uint32_t constf64(
             double                  v);
     
+    uint32_t constvec4i32(
+            int32_t                 x,
+            int32_t                 y,
+            int32_t                 z,
+            int32_t                 w);
+    
+    uint32_t constvec4u32(
+            uint32_t                x,
+            uint32_t                y,
+            uint32_t                z,
+            uint32_t                w);
+    
+    uint32_t constvec4f32(
+            float                   x,
+            float                   y,
+            float                   z,
+            float                   w);
+    
     uint32_t constComposite(
             uint32_t                typeId,
             uint32_t                constCount,
@@ -723,6 +741,30 @@ namespace dxvk {
             uint32_t                resultType,
             uint32_t                vector1,
             uint32_t                vector2);
+    
+    uint32_t opLogicalEqual(
+            uint32_t                resultType,
+            uint32_t                operand1,
+            uint32_t                operand2);
+    
+    uint32_t opLogicalNotEqual(
+            uint32_t                resultType,
+            uint32_t                operand1,
+            uint32_t                operand2);
+    
+    uint32_t opLogicalAnd(
+            uint32_t                resultType,
+            uint32_t                operand1,
+            uint32_t                operand2);
+    
+    uint32_t opLogicalOr(
+            uint32_t                resultType,
+            uint32_t                operand1,
+            uint32_t                operand2);
+    
+    uint32_t opLogicalNot(
+            uint32_t                resultType,
+            uint32_t                operand);
     
     uint32_t opDot(
             uint32_t                resultType,

@@ -393,6 +393,11 @@ namespace dxvk {
     // an array of four-component uint32 vectors.
     uint32_t m_immConstBuf = 0;
     
+    ///////////////////////////////////////////////////
+    // Sample pos array. If defined, this iis an array
+    // of 32 four-component float vectors.
+    uint32_t m_samplePositions = 0;
+    
     ////////////////////////////////////////////
     // Struct type used for UAV counter buffers
     uint32_t m_uavCtrStructType  = 0;
@@ -589,6 +594,9 @@ namespace dxvk {
     void emitTextureQueryMs(
       const DxbcShaderInstruction&  ins);
     
+    void emitTextureQueryMsPos(
+      const DxbcShaderInstruction&  ins);
+    
     void emitTextureFetch(
       const DxbcShaderInstruction&  ins);
     
@@ -675,12 +683,6 @@ namespace dxvk {
             int32_t                 z,
             int32_t                 w,
       const DxbcRegMask&            writeMask);
-    
-    DxbcRegisterValue emitBuildZero(
-            DxbcScalarType          type);
-    
-    DxbcRegisterValue emitBuildZeroVec(
-            DxbcVectorType          type);
     
     /////////////////////////////////////////
     // Generic register manipulation methods
@@ -933,6 +935,8 @@ namespace dxvk {
     DxbcCompilerHsControlPointPhase emitNewHullShaderPassthroughPhase();
     
     DxbcCompilerHsForkJoinPhase emitNewHullShaderForkJoinPhase();
+    
+    uint32_t emitSamplePosArray();
     
     ///////////////////////////////
     // Variable definition methods

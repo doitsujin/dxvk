@@ -103,6 +103,9 @@ namespace dxvk {
       case DxbcInstClass::TextureQueryMs:
         return this->emitTextureQueryMs(ins);
         
+      case DxbcInstClass::TextureQueryMsPos:
+        return this->emitTextureQueryMsPos(ins);
+        
       case DxbcInstClass::TextureFetch:
         return this->emitTextureFetch(ins);
         
@@ -2546,14 +2549,9 @@ namespace dxvk {
     }
     
     if (resinfoType == DxbcResinfoType::RcpFloat) {
-      const uint32_t typeId = getVectorTypeId(imageSize.type);
-      
-      const uint32_t one = m_module.constf32(1.0f);
-      std::array<uint32_t, 4> constIds = { one, one, one, one };
-      
-      imageSize.id = m_module.opFDiv(typeId,
-        m_module.constComposite(typeId,
-          imageSize.type.ccount, constIds.data()),
+      imageSize.id = m_module.opFDiv(
+        getVectorTypeId(imageSize.type),
+        m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f),
         imageSize.id);
     }
     
@@ -2654,6 +2652,66 @@ namespace dxvk {
     }
     
     emitRegisterStore(ins.dst[0], sampleCount);
+  }
+  
+  
+  void DxbcCompiler::emitTextureQueryMsPos(const DxbcShaderInstruction& ins) {
+    // samplepos has three operands:
+    //    (dst0) The destination register
+    //    (src0) Resource to query 
+    //    (src1) Sample index
+    // TODO Check if resource is bound
+    if (m_samplePositions == 0)
+      m_samplePositions = emitSamplePosArray();
+    
+    // The lookup index is qual to the sample count plus the
+    // sample index, or 0 if the resource cannot be queried.
+    DxbcRegisterValue sampleCount = emitQueryTextureSamples(ins.src[0]);
+    DxbcRegisterValue sampleIndex = emitRegisterLoad(
+      ins.src[1], DxbcRegMask(true, false, false, false));
+    
+    uint32_t lookupIndex = m_module.opIAdd(
+      getVectorTypeId(sampleCount.type),
+      sampleCount.id, sampleIndex.id);
+    
+    // Validate the parameters
+    uint32_t sampleCountValid = m_module.opULessThanEqual(
+      m_module.defBoolType(),
+      sampleCount.id,
+      m_module.constu32(16));
+    
+    uint32_t sampleIndexValid = m_module.opULessThan(
+      m_module.defBoolType(),
+      sampleIndex.id,
+      sampleCount.id);
+    
+    // If the lookup cannot be performed, set the lookup
+    // index to zero, which will return a zero vector.
+    lookupIndex = m_module.opSelect(
+      getVectorTypeId(sampleCount.type),
+      m_module.opLogicalAnd(
+        m_module.defBoolType(),
+        sampleCountValid,
+        sampleIndexValid),
+      lookupIndex,
+      m_module.constu32(0));
+    
+    // Load sample pos vector and write the masked
+    // components to the destination register.
+    DxbcRegisterPointer samplePos;
+    samplePos.type.ctype  = DxbcScalarType::Float32;
+    samplePos.type.ccount = 4;
+    samplePos.id = m_module.opAccessChain(
+      m_module.defPointerType(
+        getVectorTypeId(samplePos.type),
+        spv::StorageClassPrivate),
+      m_samplePositions, 1, &lookupIndex);
+    
+    emitRegisterStore(ins.dst[0],
+      emitRegisterSwizzle(
+        emitValueLoad(samplePos),
+        ins.src[0].swizzle,
+        ins.dst[0].mask));
   }
   
   
@@ -3604,43 +3662,6 @@ namespace dxvk {
           getVectorTypeId(result.type),
           componentIndex, ids.data())
       : ids[0];
-    return result;
-  }
-  
-  
-  DxbcRegisterValue DxbcCompiler::emitBuildZero(
-          DxbcScalarType          type) {
-    DxbcRegisterValue result;
-    result.type.ctype  = type;
-    result.type.ccount = 1;
-    
-    switch (type) {
-      case DxbcScalarType::Float32: result.id = m_module.constf32(0.0f); break;
-      case DxbcScalarType::Uint32:  result.id = m_module.constu32(0); break;
-      case DxbcScalarType::Sint32:  result.id = m_module.consti32(0); break;
-      default: throw DxvkError("DxbcCompiler: Invalid scalar type");
-    }
-    
-    return result;
-  }
-  
-  
-  DxbcRegisterValue DxbcCompiler::emitBuildZeroVec(
-          DxbcVectorType          type) {
-    const DxbcRegisterValue scalar = emitBuildZero(type.ctype);
-    
-    if (type.ccount == 1)
-      return scalar;
-    
-    const std::array<uint32_t, 4> zeroIds = {{
-      scalar.id, scalar.id, scalar.id, scalar.id, 
-    }};
-    
-    DxbcRegisterValue result;
-    result.type = type;
-    result.id = m_module.constComposite(
-      getVectorTypeId(result.type),
-      zeroIds.size(), zeroIds.data());
     return result;
   }
   
@@ -5688,7 +5709,67 @@ namespace dxvk {
     return varId;
   }
   
+  
+  uint32_t DxbcCompiler::emitSamplePosArray() {
+    const std::array<uint32_t, 32> samplePosVectors = {{
+      // Invalid sample count / unbound resource
+      m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f),
+      // VK_SAMPLE_COUNT_1_BIT
+      m_module.constvec4f32(0.5f, 0.5f, 0.0f, 0.0f),
+      // VK_SAMPLE_COUNT_2_BIT
+      m_module.constvec4f32(0.25f, 0.25f, 0.0f, 0.0f),
+      m_module.constvec4f32(0.75f, 0.75f, 0.0f, 0.0f),
+      // VK_SAMPLE_COUNT_4_BIT
+      m_module.constvec4f32(0.375f, 0.125f, 0.0f, 0.0f),
+      m_module.constvec4f32(0.785f, 0.375f, 0.0f, 0.0f),
+      m_module.constvec4f32(0.125f, 0.625f, 0.0f, 0.0f),
+      m_module.constvec4f32(0.625f, 0.875f, 0.0f, 0.0f),
+      // VK_SAMPLE_COUNT_8_BIT
+      m_module.constvec4f32(0.5625f, 0.3125f, 0.0f, 0.0f),
+      m_module.constvec4f32(0.4375f, 0.6875f, 0.0f, 0.0f),
+      m_module.constvec4f32(0.8125f, 0.5625f, 0.0f, 0.0f),
+      m_module.constvec4f32(0.3125f, 0.1875f, 0.0f, 0.0f),
+      m_module.constvec4f32(0.1875f, 0.8125f, 0.0f, 0.0f),
+      m_module.constvec4f32(0.0625f, 0.4375f, 0.0f, 0.0f),
+      m_module.constvec4f32(0.6875f, 0.9375f, 0.0f, 0.0f),
+      m_module.constvec4f32(0.9375f, 0.0625f, 0.0f, 0.0f),
+      // VK_SAMPLE_COUNT_16_BIT
+      m_module.constvec4f32(0.5625f, 0.5625f, 0.0f, 0.0f),
+      m_module.constvec4f32(0.4375f, 0.3125f, 0.0f, 0.0f),
+      m_module.constvec4f32(0.3125f, 0.6250f, 0.0f, 0.0f),
+      m_module.constvec4f32(0.7500f, 0.4375f, 0.0f, 0.0f),
+      m_module.constvec4f32(0.1875f, 0.3750f, 0.0f, 0.0f),
+      m_module.constvec4f32(0.6250f, 0.8125f, 0.0f, 0.0f),
+      m_module.constvec4f32(0.8125f, 0.6875f, 0.0f, 0.0f),
+      m_module.constvec4f32(0.6875f, 0.1875f, 0.0f, 0.0f),
+      m_module.constvec4f32(0.3750f, 0.8750f, 0.0f, 0.0f),
+      m_module.constvec4f32(0.5000f, 0.0625f, 0.0f, 0.0f),
+      m_module.constvec4f32(0.2500f, 0.1250f, 0.0f, 0.0f),
+      m_module.constvec4f32(0.1250f, 0.7500f, 0.0f, 0.0f),
+      m_module.constvec4f32(0.0000f, 0.5000f, 0.0f, 0.0f),
+      m_module.constvec4f32(0.9375f, 0.2500f, 0.0f, 0.0f),
+      m_module.constvec4f32(0.8750f, 0.9375f, 0.0f, 0.0f),
+      m_module.constvec4f32(0.0625f, 0.0000f, 0.0f, 0.0f),
+    }};
     
+    uint32_t arrayTypeId = getArrayTypeId({
+      DxbcScalarType::Float32, 4,
+      samplePosVectors.size() });
+    
+    uint32_t samplePosArray = m_module.constComposite(
+      arrayTypeId,
+      samplePosVectors.size(),
+      samplePosVectors.data());
+    
+    uint32_t varId = m_module.newVarInit(
+      m_module.defPointerType(arrayTypeId, spv::StorageClassPrivate),
+      spv::StorageClassPrivate, samplePosArray);
+    
+    m_module.setDebugName(varId, "g_sample_pos");
+    return varId;
+  }
+  
+  
   uint32_t DxbcCompiler::emitNewVariable(const DxbcRegisterInfo& info) {
     const uint32_t ptrTypeId = this->getPointerTypeId(info);
     return m_module.newVar(ptrTypeId, info.sclass);

@@ -47,6 +47,7 @@ namespace dxvk {
     TextureQuery,       ///< Texture query instruction
     TextureQueryLod,    ///< Texture LOD query instruction
     TextureQueryMs,     ///< Multisample texture query
+    TextureQueryMsPos,  ///< Sample position query
     TextureFetch,       ///< Texture fetch instruction
     TextureGather,      ///< Texture gather instruction
     TextureSample,      ///< Texture sampling instruction

@@ -224,6 +224,84 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::constvec4i32(
+          int32_t                 x,
+          int32_t                 y,
+          int32_t                 z,
+          int32_t                 w) {
+    uint32_t scalarTypeId = this->defIntType(32, 1);
+    uint32_t vectorTypeId = this->defVectorType(scalarTypeId, 4);
+    
+    uint32_t resultId = this->allocateId();
+    
+    uint32_t xConst = this->consti32(x);
+    uint32_t yConst = this->consti32(y);
+    uint32_t zConst = this->consti32(z);
+    uint32_t wConst = this->consti32(w);
+    
+    m_typeConstDefs.putIns  (spv::OpConstantComposite, 7);
+    m_typeConstDefs.putWord (vectorTypeId);
+    m_typeConstDefs.putWord (resultId);
+    m_typeConstDefs.putWord (xConst);
+    m_typeConstDefs.putWord (yConst);
+    m_typeConstDefs.putWord (zConst);
+    m_typeConstDefs.putWord (wConst);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::constvec4u32(
+          uint32_t                x,
+          uint32_t                y,
+          uint32_t                z,
+          uint32_t                w) {
+    uint32_t scalarTypeId = this->defIntType(32, 0);
+    uint32_t vectorTypeId = this->defVectorType(scalarTypeId, 4);
+    
+    uint32_t resultId = this->allocateId();
+    
+    uint32_t xConst = this->constu32(x);
+    uint32_t yConst = this->constu32(y);
+    uint32_t zConst = this->constu32(z);
+    uint32_t wConst = this->constu32(w);
+    
+    m_typeConstDefs.putIns  (spv::OpConstantComposite, 7);
+    m_typeConstDefs.putWord (vectorTypeId);
+    m_typeConstDefs.putWord (resultId);
+    m_typeConstDefs.putWord (xConst);
+    m_typeConstDefs.putWord (yConst);
+    m_typeConstDefs.putWord (zConst);
+    m_typeConstDefs.putWord (wConst);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::constvec4f32(
+          float                   x,
+          float                   y,
+          float                   z,
+          float                   w) {
+    uint32_t scalarTypeId = this->defFloatType(32);
+    uint32_t vectorTypeId = this->defVectorType(scalarTypeId, 4);
+    
+    uint32_t resultId = this->allocateId();
+    
+    uint32_t xConst = this->constf32(x);
+    uint32_t yConst = this->constf32(y);
+    uint32_t zConst = this->constf32(z);
+    uint32_t wConst = this->constf32(w);
+    
+    m_typeConstDefs.putIns  (spv::OpConstantComposite, 7);
+    m_typeConstDefs.putWord (vectorTypeId);
+    m_typeConstDefs.putWord (resultId);
+    m_typeConstDefs.putWord (xConst);
+    m_typeConstDefs.putWord (yConst);
+    m_typeConstDefs.putWord (zConst);
+    m_typeConstDefs.putWord (wConst);
+    return resultId;
+  }
+  
+  
   uint32_t SpirvModule::constComposite(
           uint32_t                typeId,
           uint32_t                constCount,
@@ -379,7 +457,7 @@ namespace dxvk {
   uint32_t SpirvModule::defIntType(
           uint32_t                width,
           uint32_t                isSigned) {
-    std::array<uint32_t, 2> args = { width, isSigned };
+    std::array<uint32_t, 2> args = {{ width, isSigned }};
     return this->defType(spv::OpTypeInt,
       args.size(), args.data());
   }
@@ -387,7 +465,7 @@ namespace dxvk {
   
   uint32_t SpirvModule::defFloatType(
           uint32_t                width) {
-    std::array<uint32_t, 1> args = { width };
+    std::array<uint32_t, 1> args = {{ width }};
     return this->defType(spv::OpTypeFloat,
       args.size(), args.data());
   }
@@ -396,10 +474,8 @@ namespace dxvk {
   uint32_t SpirvModule::defVectorType(
           uint32_t                elementType,
           uint32_t                elementCount) {
-    std::array<uint32_t, 2> args = {
-      elementType,
-      elementCount
-    };
+    std::array<uint32_t, 2> args =
+      {{ elementType, elementCount }};
     
     return this->defType(spv::OpTypeVector,
       args.size(), args.data());
@@ -409,10 +485,8 @@ namespace dxvk {
   uint32_t SpirvModule::defMatrixType(
           uint32_t                columnType,
           uint32_t                columnCount) {
-    std::array<uint32_t, 2> args = {
-      columnType,
-      columnCount
-    };
+    std::array<uint32_t, 2> args =
+      {{ columnType, columnCount }};
     
     return this->defType(spv::OpTypeMatrix,
       args.size(), args.data());
@@ -422,7 +496,7 @@ namespace dxvk {
   uint32_t SpirvModule::defArrayType(
           uint32_t                typeId,
           uint32_t                length) {
-    std::array<uint32_t, 2> args = { typeId, length };
+    std::array<uint32_t, 2> args = {{ typeId, length }};
     
     return this->defType(spv::OpTypeArray,
       args.size(), args.data());
@@ -2020,6 +2094,79 @@ namespace dxvk {
     m_code.putWord(resultId);
     m_code.putWord(vector1);
     m_code.putWord(vector2);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opLogicalEqual(
+          uint32_t                resultType,
+          uint32_t                operand1,
+          uint32_t                operand2) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpLogicalEqual, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(operand1);
+    m_code.putWord(operand2);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opLogicalNotEqual(
+          uint32_t                resultType,
+          uint32_t                operand1,
+          uint32_t                operand2) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpLogicalNotEqual, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(operand1);
+    m_code.putWord(operand2);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opLogicalAnd(
+          uint32_t                resultType,
+          uint32_t                operand1,
+          uint32_t                operand2) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpLogicalAnd, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(operand1);
+    m_code.putWord(operand2);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opLogicalOr(
+          uint32_t                resultType,
+          uint32_t                operand1,
+          uint32_t                operand2) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpLogicalOr, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(operand1);
+    m_code.putWord(operand2);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opLogicalNot(
+          uint32_t                resultType,
+          uint32_t                operand) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpLogicalNot, 4);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(operand);
     return resultId;
   }
   
