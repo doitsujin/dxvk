@@ -100,6 +100,25 @@ int WINAPI WinMain(HINSTANCE hInstance,
         std::cout << str::format("  ",
           mode.Width, "x", mode.Height, " @ ",
           mode.RefreshRate.Numerator / mode.RefreshRate.Denominator) << std::endl;
+
+        //test matching modes
+        DXGI_MODE_DESC matched_mode{ 0 };
+        status = output->FindClosestMatchingMode(&mode, &matched_mode, nullptr);
+
+        if (status != S_OK) {
+            std::cerr << "Failed to get DXGI matched mode" << std::endl;
+            return 1;
+        }
+
+        if (matched_mode.Width != mode.Width ||
+            matched_mode.Height != mode.Height ||
+            matched_mode.RefreshRate.Numerator != mode.RefreshRate.Numerator ||
+            matched_mode.RefreshRate.Denominator != mode.RefreshRate.Denominator ||
+            matched_mode.Format != mode.Format)
+        {
+            std::cerr << "Matched mode is incorrect" << std::endl;
+            return 1;
+        }
       }
     }
   }
