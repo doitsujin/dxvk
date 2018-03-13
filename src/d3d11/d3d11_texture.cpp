@@ -291,8 +291,9 @@ namespace dxvk {
       = GetFormatModeFromBindFlags(m_desc.BindFlags);
     
     if (m_desc.MipLevels == 0) {
-      m_desc.MipLevels = util::computeMipLevelCount(
-        { m_desc.Width, m_desc.Height, 1u });
+      m_desc.MipLevels = m_desc.SampleDesc.Count <= 1
+        ? util::computeMipLevelCount({ m_desc.Width, m_desc.Height, 1u })
+        : 1;
     }
     
     DxvkImageCreateInfo info;
