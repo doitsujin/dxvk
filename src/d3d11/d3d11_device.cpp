@@ -103,12 +103,28 @@ namespace dxvk {
     const D3D11_TEXTURE1D_DESC*   pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
           ID3D11Texture1D**       ppTexture1D) {
+    D3D11_COMMON_TEXTURE_DESC desc;
+    desc.Width          = pDesc->Width;
+    desc.Height         = 1;
+    desc.Depth          = 1;
+    desc.MipLevels      = pDesc->MipLevels;
+    desc.ArraySize      = pDesc->ArraySize;
+    desc.Format         = pDesc->Format;
+    desc.SampleDesc     = DXGI_SAMPLE_DESC { 1, 0 };
+    desc.Usage          = pDesc->Usage;
+    desc.BindFlags      = pDesc->BindFlags;
+    desc.CPUAccessFlags = pDesc->CPUAccessFlags;
+    desc.MiscFlags      = pDesc->MiscFlags;
+    
+    if (FAILED(D3D11CommonTexture::NormalizeTextureProperties(&desc)))
+      return E_INVALIDARG;
+    
     if (ppTexture1D == nullptr)
       return S_FALSE;
     
     try {
       const Com<D3D11Texture1D> texture
-        = new D3D11Texture1D(this, pDesc);
+        = new D3D11Texture1D(this, &desc);
       
       this->InitTexture(texture->GetTextureInfo()->image, pInitialData);
       *ppTexture1D = texture.ref();
@@ -124,12 +140,28 @@ namespace dxvk {
     const D3D11_TEXTURE2D_DESC*   pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
           ID3D11Texture2D**       ppTexture2D) {
+    D3D11_COMMON_TEXTURE_DESC desc;
+    desc.Width          = pDesc->Width;
+    desc.Height         = pDesc->Height;
+    desc.Depth          = 1;
+    desc.MipLevels      = pDesc->MipLevels;
+    desc.ArraySize      = pDesc->ArraySize;
+    desc.Format         = pDesc->Format;
+    desc.SampleDesc     = pDesc->SampleDesc;
+    desc.Usage          = pDesc->Usage;
+    desc.BindFlags      = pDesc->BindFlags;
+    desc.CPUAccessFlags = pDesc->CPUAccessFlags;
+    desc.MiscFlags      = pDesc->MiscFlags;
+    
+    if (FAILED(D3D11CommonTexture::NormalizeTextureProperties(&desc)))
+      return E_INVALIDARG;
+    
     if (ppTexture2D == nullptr)
       return S_FALSE;
     
     try {
       const Com<D3D11Texture2D> texture
-        = new D3D11Texture2D(this, pDesc);
+        = new D3D11Texture2D(this, &desc);
       
       this->InitTexture(texture->GetTextureInfo()->image, pInitialData);
       *ppTexture2D = texture.ref();
@@ -145,12 +177,28 @@ namespace dxvk {
     const D3D11_TEXTURE3D_DESC*   pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
           ID3D11Texture3D**       ppTexture3D) {
+    D3D11_COMMON_TEXTURE_DESC desc;
+    desc.Width          = pDesc->Width;
+    desc.Height         = pDesc->Height;
+    desc.Depth          = pDesc->Depth;
+    desc.MipLevels      = pDesc->MipLevels;
+    desc.ArraySize      = 1;
+    desc.Format         = pDesc->Format;
+    desc.SampleDesc     = DXGI_SAMPLE_DESC { 1, 0 };
+    desc.Usage          = pDesc->Usage;
+    desc.BindFlags      = pDesc->BindFlags;
+    desc.CPUAccessFlags = pDesc->CPUAccessFlags;
+    desc.MiscFlags      = pDesc->MiscFlags;
+    
+    if (FAILED(D3D11CommonTexture::NormalizeTextureProperties(&desc)))
+      return E_INVALIDARG;
+    
     if (ppTexture3D == nullptr)
       return S_FALSE;
       
     try {
       const Com<D3D11Texture3D> texture
-        = new D3D11Texture3D(this, pDesc);
+        = new D3D11Texture3D(this, &desc);
       
       this->InitTexture(texture->GetTextureInfo()->image, pInitialData);
       *ppTexture3D = texture.ref();

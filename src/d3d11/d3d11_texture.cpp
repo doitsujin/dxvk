@@ -4,25 +4,6 @@
 namespace dxvk {
   
   /**
-   * \brief Retrieves format mode from bind flags
-   * 
-   * Uses the bind flags to determine whether a resource
-   * needs to be created with a color format or a depth
-   * format, even if the DXGI format is typeless.
-   * \param [in] BindFlags Image bind flags
-   * \returns Format mode
-   */
-  static DxgiFormatMode GetFormatModeFromBindFlags(UINT BindFlags) {
-    if (BindFlags & D3D11_BIND_RENDER_TARGET)
-      return DxgiFormatMode::Color;
-    
-    if (BindFlags & D3D11_BIND_DEPTH_STENCIL)
-      return DxgiFormatMode::Depth;
-    
-    return DxgiFormatMode::Any;
-  }
-  
-  /**
    * \brief Optimizes image layout based on usage flags
    * 
    * \param [in] flags Image usage flag
@@ -146,10 +127,8 @@ namespace dxvk {
       if (CPUAccessFlags & D3D11_CPU_ACCESS_WRITE)
         pImageInfo->access |= VK_ACCESS_HOST_WRITE_BIT;
       
-      if (CPUAccessFlags & D3D11_CPU_ACCESS_READ) {
+      if (CPUAccessFlags & D3D11_CPU_ACCESS_READ)
         pImageInfo->access |= VK_ACCESS_HOST_READ_BIT;
-//         pImageInfo->tiling  = VK_IMAGE_TILING_LINEAR;
-      }
     }
     
     if (MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE)
@@ -160,53 +139,21 @@ namespace dxvk {
   }
   
   
-  /**
-   * \brief Retrieves memory flags for image usage
-   * 
-   * If the host requires access to the image, we
-   * should create it on a host-visible memory type.
-   * \param [in] Usage Image usage flags
-   * \returns Image memory properties
-   */
-  static VkMemoryPropertyFlags GetImageMemoryFlags(UINT CPUAccessFlags) {
-    // FIXME investigate why image mapping breaks games
-    return VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-//     if (CPUAccessFlags & D3D11_CPU_ACCESS_READ) {
-//       return VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-//            | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-//            | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
-//     } else {
-//       // If only write access is required, we will emulate
-//       // image mapping through a buffer. Some games ignore
-//       // the row pitch when mapping images, which leads to
-//       // incorrect rendering.
-//       return VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-//     }
-  }
-  
-  
-  D3D11Texture1D::D3D11Texture1D(
+  D3D11CommonTexture::D3D11CommonTexture(
           D3D11Device*                pDevice,
-    const D3D11_TEXTURE1D_DESC*       pDesc)
-  : m_device    (pDevice),
-    m_desc      (*pDesc) {
-    
-    const DxgiFormatMode formatMode
-      = GetFormatModeFromBindFlags(m_desc.BindFlags);
-    
-    if (m_desc.MipLevels == 0) {
-      m_desc.MipLevels = util::computeMipLevelCount(
-        { m_desc.Width, 1u, 1u });
-    }
+    const D3D11_COMMON_TEXTURE_DESC*  pDesc,
+          D3D11_RESOURCE_DIMENSION    Dimension)
+  : m_device(pDevice), m_desc(*pDesc) {
+    DxgiFormatInfo formatInfo = m_device->LookupFormat(m_desc.Format, GetFormatMode());
     
     DxvkImageCreateInfo info;
-    info.type           = VK_IMAGE_TYPE_1D;
-    info.format         = pDevice->LookupFormat(m_desc.Format, formatMode).format;
+    info.type           = GetImageTypeFromResourceDim(Dimension);
+    info.format         = formatInfo.format;
     info.flags          = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
     info.sampleCount    = VK_SAMPLE_COUNT_1_BIT;
     info.extent.width   = m_desc.Width;
-    info.extent.height  = 1;
-    info.extent.depth   = 1;
+    info.extent.height  = m_desc.Height;
+    info.extent.depth   = m_desc.Depth;
     info.numLayers      = m_desc.ArraySize;
     info.mipLevels      = m_desc.MipLevels;
     info.usage          = VK_IMAGE_USAGE_TRANSFER_SRC_BIT
@@ -217,27 +164,94 @@ namespace dxvk {
     info.tiling         = VK_IMAGE_TILING_OPTIMAL;
     info.layout         = VK_IMAGE_LAYOUT_GENERAL;
     
+    if (FAILED(GetSampleCount(m_desc.SampleDesc.Count, &info.sampleCount)))
+      throw DxvkError(str::format("D3D11: Invalid sample count: ", m_desc.SampleDesc.Count));
+    
     GetImageStagesAndAccessFlags(
-      pDevice,
+      m_device.ptr(),
       m_desc.BindFlags,
       m_desc.CPUAccessFlags,
       m_desc.MiscFlags,
       &info);
     
-    // Create the image and, if necessary, the image buffer
-    m_texInfo.formatMode  = formatMode;
-    m_texInfo.image       = pDevice->GetDXVKDevice()->createImage(
-      info, GetImageMemoryFlags(m_desc.CPUAccessFlags));
-    m_texInfo.imageBuffer = m_desc.CPUAccessFlags != 0
-      ? CreateImageBuffer(pDevice->GetDXVKDevice(), info.format, info.extent)
+    m_image = m_device->GetDXVKDevice()->createImage(
+      info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    
+    m_buffer = m_desc.CPUAccessFlags != 0
+      ? CreateImageBuffer(m_device->GetDXVKDevice(), info.format, info.extent)
       : nullptr;
     
-    m_texInfo.usage       = m_desc.Usage;
-    m_texInfo.bindFlags   = m_desc.BindFlags;
+    m_texinfo.formatMode = GetFormatMode();
+    m_texinfo.imageBuffer = m_buffer;
+    m_texinfo.image = m_image;
+    m_texinfo.usage = m_desc.Usage;
+    m_texinfo.bindFlags = m_desc.BindFlags;
   }
+  
+  
+  D3D11CommonTexture::~D3D11CommonTexture() {
+    
+  }
+  
+  
+  VkImageSubresource D3D11CommonTexture::GetSubresourceFromIndex(
+          VkImageAspectFlags    Aspect,
+          UINT                  Subresource) {
+    VkImageSubresource result;
+    result.aspectMask     = Aspect;
+    result.mipLevel       = Subresource % m_desc.MipLevels;
+    result.arrayLayer     = Subresource / m_desc.MipLevels;
+    return result;
+  }
+  
+  
+  DxgiFormatMode D3D11CommonTexture::GetFormatMode() const {
+    if (m_desc.BindFlags & D3D11_BIND_RENDER_TARGET)
+      return DxgiFormatMode::Color;
+    
+    if (m_desc.BindFlags & D3D11_BIND_DEPTH_STENCIL)
+      return DxgiFormatMode::Depth;
+    
+    return DxgiFormatMode::Any;
+  }
+  
+  
+  void D3D11CommonTexture::GetDevice(ID3D11Device** ppDevice) const {
+    *ppDevice = m_device.ref();
+  }
+  
+  
+  HRESULT D3D11CommonTexture::NormalizeTextureProperties(D3D11_COMMON_TEXTURE_DESC* pDesc) {
+    if (pDesc->MipLevels == 0) {
+      pDesc->MipLevels = pDesc->SampleDesc.Count <= 1
+        ? util::computeMipLevelCount({ pDesc->Width, pDesc->Height, pDesc->Depth })
+        : 1u;
+    }
+    
+    return S_OK;
+  }
+  
+  
+  VkImageType D3D11CommonTexture::GetImageTypeFromResourceDim(D3D11_RESOURCE_DIMENSION Dimension) {
+    switch (Dimension) {
+      case D3D11_RESOURCE_DIMENSION_TEXTURE1D: return VK_IMAGE_TYPE_1D;
+      case D3D11_RESOURCE_DIMENSION_TEXTURE2D: return VK_IMAGE_TYPE_2D;
+      case D3D11_RESOURCE_DIMENSION_TEXTURE3D: return VK_IMAGE_TYPE_3D;
+      default: throw DxvkError("D3D11CommonTexture: Unhandled resource dimension");
+    }
+  }
+  
   
   ///////////////////////////////////////////
   //      D 3 D 1 1 T E X T U R E 1 D
+  D3D11Texture1D::D3D11Texture1D(
+          D3D11Device*                pDevice,
+    const D3D11_COMMON_TEXTURE_DESC*  pDesc)
+  : m_texture(pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE1D) {
+    
+  }
+  
+  
   D3D11Texture1D::~D3D11Texture1D() {
     
   }
@@ -256,7 +270,7 @@ namespace dxvk {
   
     
   void STDMETHODCALLTYPE D3D11Texture1D::GetDevice(ID3D11Device** ppDevice) {
-    *ppDevice = m_device.ref();
+    m_texture.GetDevice(ppDevice);
   }
   
   
@@ -277,7 +291,14 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11Texture1D::GetDesc(D3D11_TEXTURE1D_DESC *pDesc) {
-    *pDesc = m_desc;
+    pDesc->Width          = m_texture.Desc()->Width;
+    pDesc->MipLevels      = m_texture.Desc()->MipLevels;
+    pDesc->ArraySize      = m_texture.Desc()->ArraySize;
+    pDesc->Format         = m_texture.Desc()->Format;
+    pDesc->Usage          = m_texture.Desc()->Usage;
+    pDesc->BindFlags      = m_texture.Desc()->BindFlags;
+    pDesc->CPUAccessFlags = m_texture.Desc()->CPUAccessFlags;
+    pDesc->MiscFlags      = m_texture.Desc()->MiscFlags;
   }
   
   
@@ -285,57 +306,9 @@ namespace dxvk {
   //      D 3 D 1 1 T E X T U R E 2 D
   D3D11Texture2D::D3D11Texture2D(
           D3D11Device*                pDevice,
-    const D3D11_TEXTURE2D_DESC*       pDesc)
-  : m_device    (pDevice),
-    m_desc      (*pDesc) {
+    const D3D11_COMMON_TEXTURE_DESC*  pDesc)
+  : m_texture(pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE2D) {
     
-    const DxgiFormatMode formatMode
-      = GetFormatModeFromBindFlags(m_desc.BindFlags);
-    
-    if (m_desc.MipLevels == 0) {
-      m_desc.MipLevels = m_desc.SampleDesc.Count <= 1
-        ? util::computeMipLevelCount({ m_desc.Width, m_desc.Height, 1u })
-        : 1;
-    }
-    
-    DxvkImageCreateInfo info;
-    info.type           = VK_IMAGE_TYPE_2D;
-    info.format         = pDevice->LookupFormat(m_desc.Format, formatMode).format;
-    info.flags          = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
-    info.sampleCount    = VK_SAMPLE_COUNT_1_BIT;
-    info.extent.width   = m_desc.Width;
-    info.extent.height  = m_desc.Height;
-    info.extent.depth   = 1;
-    info.numLayers      = m_desc.ArraySize;
-    info.mipLevels      = m_desc.MipLevels;
-    info.usage          = VK_IMAGE_USAGE_TRANSFER_SRC_BIT
-                        | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    info.stages         = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    info.access         = VK_ACCESS_TRANSFER_READ_BIT
-                        | VK_ACCESS_TRANSFER_WRITE_BIT;
-    info.tiling         = VK_IMAGE_TILING_OPTIMAL;
-    info.layout         = VK_IMAGE_LAYOUT_GENERAL;
-    
-    if (FAILED(GetSampleCount(m_desc.SampleDesc.Count, &info.sampleCount)))
-      throw DxvkError(str::format("D3D11: Invalid sample count: ", m_desc.SampleDesc.Count));
-    
-    GetImageStagesAndAccessFlags(
-      pDevice,
-      m_desc.BindFlags,
-      m_desc.CPUAccessFlags,
-      m_desc.MiscFlags,
-      &info);
-    
-    // Create the image and, if necessary, the image buffer
-    m_texInfo.formatMode  = formatMode;
-    m_texInfo.image       = pDevice->GetDXVKDevice()->createImage(
-      info, GetImageMemoryFlags(m_desc.CPUAccessFlags));
-    m_texInfo.imageBuffer = m_desc.CPUAccessFlags != 0
-      ? CreateImageBuffer(pDevice->GetDXVKDevice(), info.format, info.extent)
-      : nullptr;
-    
-    m_texInfo.usage       = m_desc.Usage;
-    m_texInfo.bindFlags   = m_desc.BindFlags;
   }
   
   
@@ -357,7 +330,7 @@ namespace dxvk {
   
     
   void STDMETHODCALLTYPE D3D11Texture2D::GetDevice(ID3D11Device** ppDevice) {
-    *ppDevice = m_device.ref();
+    m_texture.GetDevice(ppDevice);
   }
   
   
@@ -378,7 +351,16 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11Texture2D::GetDesc(D3D11_TEXTURE2D_DESC *pDesc) {
-    *pDesc = m_desc;
+    pDesc->Width          = m_texture.Desc()->Width;
+    pDesc->Height         = m_texture.Desc()->Height;
+    pDesc->MipLevels      = m_texture.Desc()->MipLevels;
+    pDesc->ArraySize      = m_texture.Desc()->ArraySize;
+    pDesc->Format         = m_texture.Desc()->Format;
+    pDesc->SampleDesc     = m_texture.Desc()->SampleDesc;
+    pDesc->Usage          = m_texture.Desc()->Usage;
+    pDesc->BindFlags      = m_texture.Desc()->BindFlags;
+    pDesc->CPUAccessFlags = m_texture.Desc()->CPUAccessFlags;
+    pDesc->MiscFlags      = m_texture.Desc()->MiscFlags;
   }
   
   
@@ -386,54 +368,9 @@ namespace dxvk {
   //      D 3 D 1 1 T E X T U R E 3 D
   D3D11Texture3D::D3D11Texture3D(
           D3D11Device*                pDevice,
-    const D3D11_TEXTURE3D_DESC*       pDesc)
-  : m_device    (pDevice),
-    m_desc      (*pDesc) {
+    const D3D11_COMMON_TEXTURE_DESC*  pDesc)
+  : m_texture(pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE3D) {
     
-    const DxgiFormatMode formatMode
-      = GetFormatModeFromBindFlags(m_desc.BindFlags);
-    
-    if (m_desc.MipLevels == 0) {
-      m_desc.MipLevels = util::computeMipLevelCount(
-        { m_desc.Width, m_desc.Height, m_desc.Depth });
-    }
-    
-    DxvkImageCreateInfo info;
-    info.type           = VK_IMAGE_TYPE_3D;
-    info.format         = pDevice->LookupFormat(m_desc.Format, formatMode).format;
-    info.flags          = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT
-                        | VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT_KHR;
-    info.sampleCount    = VK_SAMPLE_COUNT_1_BIT;
-    info.extent.width   = m_desc.Width;
-    info.extent.height  = m_desc.Height;
-    info.extent.depth   = m_desc.Depth;
-    info.numLayers      = 1;
-    info.mipLevels      = m_desc.MipLevels;
-    info.usage          = VK_IMAGE_USAGE_TRANSFER_SRC_BIT
-                        | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    info.stages         = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    info.access         = VK_ACCESS_TRANSFER_READ_BIT
-                        | VK_ACCESS_TRANSFER_WRITE_BIT;
-    info.tiling         = VK_IMAGE_TILING_OPTIMAL;
-    info.layout         = VK_IMAGE_LAYOUT_GENERAL;
-    
-    GetImageStagesAndAccessFlags(
-      pDevice,
-      m_desc.BindFlags,
-      m_desc.CPUAccessFlags,
-      m_desc.MiscFlags,
-      &info);
-    
-    // Create the image and, if necessary, the image buffer
-    m_texInfo.formatMode  = formatMode;
-    m_texInfo.image       = pDevice->GetDXVKDevice()->createImage(
-      info, GetImageMemoryFlags(m_desc.CPUAccessFlags));
-    m_texInfo.imageBuffer = m_desc.CPUAccessFlags != 0
-      ? CreateImageBuffer(pDevice->GetDXVKDevice(), info.format, info.extent)
-      : nullptr;
-    
-    m_texInfo.usage       = m_desc.Usage;
-    m_texInfo.bindFlags   = m_desc.BindFlags;
   }
   
   
@@ -455,7 +392,7 @@ namespace dxvk {
   
     
   void STDMETHODCALLTYPE D3D11Texture3D::GetDevice(ID3D11Device** ppDevice) {
-    *ppDevice = m_device.ref();
+    m_texture.GetDevice(ppDevice);
   }
   
   
@@ -476,7 +413,15 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11Texture3D::GetDesc(D3D11_TEXTURE3D_DESC *pDesc) {
-    *pDesc = m_desc;
+    pDesc->Width          = m_texture.Desc()->Width;
+    pDesc->Height         = m_texture.Desc()->Height;
+    pDesc->Depth          = m_texture.Desc()->Depth;
+    pDesc->MipLevels      = m_texture.Desc()->MipLevels;
+    pDesc->Format         = m_texture.Desc()->Format;
+    pDesc->Usage          = m_texture.Desc()->Usage;
+    pDesc->BindFlags      = m_texture.Desc()->BindFlags;
+    pDesc->CPUAccessFlags = m_texture.Desc()->CPUAccessFlags;
+    pDesc->MiscFlags      = m_texture.Desc()->MiscFlags;
   }
   
   

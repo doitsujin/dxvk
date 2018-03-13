@@ -30,9 +30,10 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11PresentDevice::CreateSwapChainBackBuffer(
     const DXGI_SWAP_CHAIN_DESC*       pSwapChainDesc,
           IDXGIPresentBackBuffer**    ppInterface) {
-    D3D11_TEXTURE2D_DESC desc;
+    D3D11_COMMON_TEXTURE_DESC desc;
     desc.Width              = pSwapChainDesc->BufferDesc.Width;
     desc.Height             = pSwapChainDesc->BufferDesc.Height;
+    desc.Depth              = 1;
     desc.MipLevels          = 1;
     desc.ArraySize          = 1;
     desc.Format             = pSwapChainDesc->BufferDesc.Format;
