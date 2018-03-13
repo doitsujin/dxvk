@@ -55,8 +55,6 @@ The behaviour of DXVK can be modified with environment variables.
 - `DXVK_CUSTOM_DEVICE_ID=<ID>`  Specifces a custom PCI device identifier (Device ID) 
 - `DXVK_SHADER_DUMP_PATH=directory` Writes all DXBC and SPIR-V shaders to the given directory
 - `DXVK_SHADER_READ_PATH=directory` Reads SPIR-V shaders from the given directory rather than using the shader compiler.
-- `DXVK_SHADER_VALIDATE=1` Enables SPIR-V shader validation. Useful for debugging purposes.
-- `DXVK_SHADER_OPTIMIZE=1` Enables SPIR-V shader optimization. Experimental, use with care.
 - `DXVK_LOG_LEVEL=error|warn|info|debug|trace` Controls message logging.
 - `DXVK_HUD=1` Enables the HUD
 
