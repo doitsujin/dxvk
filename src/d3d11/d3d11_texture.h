@@ -10,25 +10,6 @@ namespace dxvk {
   class D3D11Device;
   
   /**
-   * \brief Common texture info
-   * 
-   * Stores the image and the image format
-   * mode for a texture of any type.
-   */
-  struct D3D11TextureInfo {
-    DxgiFormatMode    formatMode;
-    Rc<DxvkBuffer>    imageBuffer;
-    Rc<DxvkImage>     image;
-    
-    D3D11_USAGE       usage;
-    UINT              bindFlags;
-    
-    VkImageSubresource mappedSubresource = {
-      VK_IMAGE_ASPECT_COLOR_BIT, 0, 0 };
-  };
-  
-  
-  /**
    * \brief Common texture description
    * 
    * Contains all members that can be
@@ -79,18 +60,10 @@ namespace dxvk {
     }
     
     /**
-     * \brief Texture info
-     * \todo NUKE THIS
-     */
-    D3D11TextureInfo* GetTextureInfo() {
-      return &m_texinfo;
-    }
-    
-    /**
      * \brief The DXVK image
      * \returns The DXVK image
      */
-    Rc<DxvkImage> GetDxvkImage() const {
+    Rc<DxvkImage> GetImage() const {
       return m_image;
     }
     
@@ -98,7 +71,7 @@ namespace dxvk {
      * \brief The DXVK buffer
      * \returns The DXVK buffer
      */
-    Rc<DxvkBuffer> GetDxvkBuffer() const {
+    Rc<DxvkBuffer> GetMappedBuffer() const {
       return m_buffer;
     }
     
@@ -137,7 +110,7 @@ namespace dxvk {
      */
     VkImageSubresource GetSubresourceFromIndex(
             VkImageAspectFlags    Aspect,
-            UINT                  Subresource);
+            UINT                  Subresource) const;
     
     /**
      * \brief Format mode
@@ -177,9 +150,6 @@ namespace dxvk {
     VkImageSubresource m_mappedSubresource
       = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0 };
     
-    // TODO get rid of this
-    D3D11TextureInfo m_texinfo;
-    
     static VkImageType GetImageTypeFromResourceDim(
             D3D11_RESOURCE_DIMENSION Dimension);
     
@@ -215,8 +185,8 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc(
             D3D11_TEXTURE1D_DESC *pDesc) final;
     
-    D3D11TextureInfo* GetTextureInfo() {
-      return m_texture.GetTextureInfo();
+    D3D11CommonTexture* GetCommonTexture() {
+      return &m_texture;
     }
     
   private:
@@ -255,8 +225,8 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc(
             D3D11_TEXTURE2D_DESC *pDesc) final;
     
-    D3D11TextureInfo* GetTextureInfo() {
-      return m_texture.GetTextureInfo();
+    D3D11CommonTexture* GetCommonTexture() {
+      return &m_texture;
     }
     
   private:
@@ -295,8 +265,8 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc(
             D3D11_TEXTURE3D_DESC *pDesc) final;
     
-    D3D11TextureInfo* GetTextureInfo() {
-      return m_texture.GetTextureInfo();
+    D3D11CommonTexture* GetCommonTexture() {
+      return &m_texture;
     }
     
   private:
@@ -313,20 +283,7 @@ namespace dxvk {
    * \param [out] pTextureInfo Pointer to the texture info struct.
    * \returns E_INVALIDARG if the resource is not a texture
    */
-  D3D11TextureInfo* GetCommonTextureInfo(
+  D3D11CommonTexture* GetCommonTexture(
           ID3D11Resource*       pResource);
-  
-  /**
-   * \brief Computes image subresource from subresource index
-   * 
-   * \param [in] Aspect Image aspect mask
-   * \param [in] MipLevels Total number of mip levels that the image has
-   * \param [in] Subresource The D3D11 subresource index
-   * \returns Vulkan image subresource info
-   */
-  VkImageSubresource GetSubresourceFromIndex(
-          VkImageAspectFlags    Aspect,
-          UINT                  MipLevels,
-          UINT                  Subresource);
   
 }

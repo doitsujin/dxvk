@@ -180,12 +180,6 @@ namespace dxvk {
     m_buffer = m_desc.CPUAccessFlags != 0
       ? CreateImageBuffer(m_device->GetDXVKDevice(), info.format, info.extent)
       : nullptr;
-    
-    m_texinfo.formatMode = GetFormatMode();
-    m_texinfo.imageBuffer = m_buffer;
-    m_texinfo.image = m_image;
-    m_texinfo.usage = m_desc.Usage;
-    m_texinfo.bindFlags = m_desc.BindFlags;
   }
   
   
@@ -196,7 +190,7 @@ namespace dxvk {
   
   VkImageSubresource D3D11CommonTexture::GetSubresourceFromIndex(
           VkImageAspectFlags    Aspect,
-          UINT                  Subresource) {
+          UINT                  Subresource) const {
     VkImageSubresource result;
     result.aspectMask     = Aspect;
     result.mipLevel       = Subresource % m_desc.MipLevels;
@@ -426,35 +420,23 @@ namespace dxvk {
   
   
   
-  D3D11TextureInfo* GetCommonTextureInfo(ID3D11Resource* pResource) {
+  D3D11CommonTexture* GetCommonTexture(ID3D11Resource* pResource) {
     D3D11_RESOURCE_DIMENSION dimension = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&dimension);
     
     switch (dimension) {
       case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
-        return static_cast<D3D11Texture1D*>(pResource)->GetTextureInfo();
+        return static_cast<D3D11Texture1D*>(pResource)->GetCommonTexture();
       
       case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
-        return static_cast<D3D11Texture2D*>(pResource)->GetTextureInfo();
+        return static_cast<D3D11Texture2D*>(pResource)->GetCommonTexture();
       
       case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
-        return static_cast<D3D11Texture3D*>(pResource)->GetTextureInfo();
+        return static_cast<D3D11Texture3D*>(pResource)->GetCommonTexture();
       
       default:
         return nullptr;
     }
-  }
-  
-  
-  VkImageSubresource GetSubresourceFromIndex(
-          VkImageAspectFlags    Aspect,
-          UINT                  MipLevels,
-          UINT                  Subresource) {
-    VkImageSubresource result;
-    result.aspectMask     = Aspect;
-    result.mipLevel       = Subresource % MipLevels;
-    result.arrayLayer     = Subresource / MipLevels;
-    return result;
   }
   
 }

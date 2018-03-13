@@ -317,14 +317,17 @@ namespace dxvk {
           cSrcSlice.length());
       });
     } else {
-      const D3D11TextureInfo* dstTextureInfo = GetCommonTextureInfo(pDstResource);
-      const D3D11TextureInfo* srcTextureInfo = GetCommonTextureInfo(pSrcResource);
+      const D3D11CommonTexture* dstTextureInfo = GetCommonTexture(pDstResource);
+      const D3D11CommonTexture* srcTextureInfo = GetCommonTexture(pSrcResource);
       
-      const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(dstTextureInfo->image->info().format);
-      const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcTextureInfo->image->info().format);
+      const Rc<DxvkImage> dstImage = dstTextureInfo->GetImage();
+      const Rc<DxvkImage> srcImage = srcTextureInfo->GetImage();
       
-      const VkImageSubresource dstSubresource = GetSubresourceFromIndex(dstFormatInfo->aspectMask, dstTextureInfo->image->info().mipLevels, DstSubresource);
-      const VkImageSubresource srcSubresource = GetSubresourceFromIndex(srcFormatInfo->aspectMask, srcTextureInfo->image->info().mipLevels, SrcSubresource);
+      const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(dstImage->info().format);
+      const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcImage->info().format);
+      
+      const VkImageSubresource dstSubresource = dstTextureInfo->GetSubresourceFromIndex(dstFormatInfo->aspectMask, DstSubresource);
+      const VkImageSubresource srcSubresource = srcTextureInfo->GetSubresourceFromIndex(srcFormatInfo->aspectMask, SrcSubresource);
       
       VkOffset3D srcOffset = { 0, 0, 0 };
       VkOffset3D dstOffset = {
@@ -332,7 +335,7 @@ namespace dxvk {
         static_cast<int32_t>(DstY),
         static_cast<int32_t>(DstZ) };
       
-      VkExtent3D extent = srcTextureInfo->image->mipLevelExtent(srcSubresource.mipLevel);
+      VkExtent3D extent = srcImage->mipLevelExtent(srcSubresource.mipLevel);
       
       if (pSrcBox != nullptr) {
         if (pSrcBox->left  >= pSrcBox->right
@@ -360,8 +363,8 @@ namespace dxvk {
         srcSubresource.arrayLayer, 1 };
       
       EmitCs([
-        cDstImage  = dstTextureInfo->image,
-        cSrcImage  = srcTextureInfo->image,
+        cDstImage  = dstImage,
+        cSrcImage  = srcImage,
         cDstLayers = dstLayers,
         cSrcLayers = srcLayers,
         cDstOffset = dstOffset,
@@ -412,21 +415,21 @@ namespace dxvk {
           cSrcBuffer.length());
       });
     } else {
-      const D3D11TextureInfo* dstTextureInfo = GetCommonTextureInfo(pDstResource);
-      const D3D11TextureInfo* srcTextureInfo = GetCommonTextureInfo(pSrcResource);
+      const Rc<DxvkImage> dstImage = GetCommonTexture(pDstResource)->GetImage();
+      const Rc<DxvkImage> srcImage = GetCommonTexture(pSrcResource)->GetImage();
 
-      const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(dstTextureInfo->image->info().format);
-      const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcTextureInfo->image->info().format);
+      const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(dstImage->info().format);
+      const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcImage->info().format);
+      
+      for (uint32_t i = 0; i < srcImage->info().mipLevels; i++) {
+        VkExtent3D extent = srcImage->mipLevelExtent(i);
 
-      for (uint32_t i = 0; i < srcTextureInfo->image->info().mipLevels; i++) {
-        VkExtent3D extent = srcTextureInfo->image->mipLevelExtent(i);
-
-        const VkImageSubresourceLayers dstLayers = { dstFormatInfo->aspectMask, i, 0, dstTextureInfo->image->info().numLayers };
-        const VkImageSubresourceLayers srcLayers = { srcFormatInfo->aspectMask, i, 0, srcTextureInfo->image->info().numLayers };
+        const VkImageSubresourceLayers dstLayers = { dstFormatInfo->aspectMask, i, 0, dstImage->info().numLayers };
+        const VkImageSubresourceLayers srcLayers = { srcFormatInfo->aspectMask, i, 0, srcImage->info().numLayers };
         
         EmitCs([
-          cDstImage  = dstTextureInfo->image,
-          cSrcImage  = srcTextureInfo->image,
+          cDstImage  = dstImage,
+          cSrcImage  = srcImage,
           cDstLayers = dstLayers,
           cSrcLayers = srcLayers,
           cExtent    = extent
@@ -723,15 +726,14 @@ namespace dxvk {
         });
       }
     } else {
-      const D3D11TextureInfo* textureInfo
-        = GetCommonTextureInfo(pDstResource);
+      const D3D11CommonTexture* textureInfo = GetCommonTexture(pDstResource);
       
       const VkImageSubresource subresource =
-        GetSubresourceFromIndex(VK_IMAGE_ASPECT_COLOR_BIT,
-          textureInfo->image->info().mipLevels, DstSubresource);
+        textureInfo->GetSubresourceFromIndex(
+          VK_IMAGE_ASPECT_COLOR_BIT, DstSubresource);
       
       VkOffset3D offset = { 0, 0, 0 };
-      VkExtent3D extent = textureInfo->image->mipLevelExtent(subresource.mipLevel);
+      VkExtent3D extent = textureInfo->GetImage()->mipLevelExtent(subresource.mipLevel);
       
       if (pDstBox != nullptr) {
         if (pDstBox->left >= pDstBox->right
@@ -754,7 +756,7 @@ namespace dxvk {
         subresource.arrayLayer, 1 };
       
       auto formatInfo = imageFormatInfo(
-        textureInfo->image->info().format);
+        textureInfo->GetImage()->info().format);
       
       const VkExtent3D regionExtent = util::computeBlockCount(extent, formatInfo->blockSize);
       
@@ -771,7 +773,7 @@ namespace dxvk {
         SrcRowPitch, SrcDepthPitch);
       
       EmitCs([
-        cDstImage         = textureInfo->image,
+        cDstImage         = textureInfo->GetImage(),
         cDstLayers        = layers,
         cDstOffset        = offset,
         cDstExtent        = extent,
@@ -832,19 +834,19 @@ namespace dxvk {
       return;
     }
     
-    const D3D11TextureInfo* dstTextureInfo = GetCommonTextureInfo(pDstResource);
-    const D3D11TextureInfo* srcTextureInfo = GetCommonTextureInfo(pSrcResource);
+    const D3D11CommonTexture* dstTextureInfo = GetCommonTexture(pDstResource);
+    const D3D11CommonTexture* srcTextureInfo = GetCommonTexture(pSrcResource);
     
     const DxgiFormatInfo dstFormatInfo = m_parent->LookupFormat(dstDesc.Format, DxgiFormatMode::Any);
     const DxgiFormatInfo srcFormatInfo = m_parent->LookupFormat(srcDesc.Format, DxgiFormatMode::Any);
     
     const VkImageSubresource dstSubresource =
-      GetSubresourceFromIndex(dstFormatInfo.aspect,
-        dstTextureInfo->image->info().mipLevels, DstSubresource);
+      dstTextureInfo->GetSubresourceFromIndex(
+        dstFormatInfo.aspect, DstSubresource);
     
     const VkImageSubresource srcSubresource =
-      GetSubresourceFromIndex(srcFormatInfo.aspect,
-        srcTextureInfo->image->info().mipLevels, SrcSubresource);
+      srcTextureInfo->GetSubresourceFromIndex(
+        srcFormatInfo.aspect, SrcSubresource);
     
     const VkImageSubresourceLayers dstSubresourceLayers = {
       dstSubresource.aspectMask,
@@ -858,8 +860,8 @@ namespace dxvk {
     
     if (srcDesc.SampleDesc.Count == 1) {
       EmitCs([
-        cDstImage  = dstTextureInfo->image,
-        cSrcImage  = srcTextureInfo->image,
+        cDstImage  = dstTextureInfo->GetImage(),
+        cSrcImage  = srcTextureInfo->GetImage(),
         cDstLayers = dstSubresourceLayers,
         cSrcLayers = srcSubresourceLayers
       ] (DxvkContext* ctx) {
@@ -873,8 +875,8 @@ namespace dxvk {
         Format, DxgiFormatMode::Any).format;
       
       EmitCs([
-        cDstImage  = dstTextureInfo->image,
-        cSrcImage  = srcTextureInfo->image,
+        cDstImage  = dstTextureInfo->GetImage(),
+        cSrcImage  = srcTextureInfo->GetImage(),
         cDstSubres = dstSubresourceLayers,
         cSrcSubres = srcSubresourceLayers,
         cFormat    = format
