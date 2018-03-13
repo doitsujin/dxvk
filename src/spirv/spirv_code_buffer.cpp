@@ -3,10 +3,6 @@
 
 #include "spirv_code_buffer.h"
 
-#include <spirv-tools/libspirv.hpp>
-
-using namespace spvtools;
-
 namespace dxvk {
   
   SpirvCodeBuffer:: SpirvCodeBuffer() { }
