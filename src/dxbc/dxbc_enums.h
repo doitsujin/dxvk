@@ -390,28 +390,34 @@ namespace dxvk {
   
   
   enum class DxbcSystemValue : uint32_t {
-    None                        = 0,
-    Position                    = 1,
-    ClipDistance                = 2,
-    CullDistance                = 3,
-    RenderTargetId              = 4,
-    ViewportId                  = 5,
-    VertexId                    = 6,
-    PrimitiveId                 = 7,
-    InstanceId                  = 8,
-    IsFrontFace                 = 9,
-    SampleIndex                 = 10,
-    FinalQuadEdgeTessFactor     = 11,
-    FinalQuadInsideTessFactor   = 12,
-    FinalTriEdgeTessFactor      = 13,
-    FinalTriInsideTessFactor    = 14,
-    FinalLineDetailTessFactor   = 15,
-    FinalLineDensityTessFactor  = 16,
-    Target                      = 64,
-    Depth                       = 65,
-    Coverage                    = 66,
-    DepthGe                     = 67,
-    DepthLe                     = 68
+    None                          = 0,
+    Position                      = 1,
+    ClipDistance                  = 2,
+    CullDistance                  = 3,
+    RenderTargetId                = 4,
+    ViewportId                    = 5,
+    VertexId                      = 6,
+    PrimitiveId                   = 7,
+    InstanceId                    = 8,
+    IsFrontFace                   = 9,
+    SampleIndex                   = 10,
+    FinalQuadUeq0EdgeTessFactor   = 11,
+    FinalQuadVeq0EdgeTessFactor   = 12,
+    FinalQuadUeq1EdgeTessFactor   = 13,
+    FinalQuadVeq1EdgeTessFactor   = 14,
+    FinalQuadUInsideTessFactor    = 15,
+    FinalQuadVInsideTessFactor    = 16,
+    FinalTriUeq0EdgeTessFactor    = 17,
+    FinalTriVeq0EdgeTessFactor    = 18,
+    FinalTriWeq0EdgeTessFactor    = 19,
+    FinalTriInsideTessFactor      = 20,
+    FinalLineDetailTessFactor     = 21,
+    FinalLineDensityTessFactor    = 22,
+    Target                        = 64,
+    Depth                         = 65,
+    Coverage                      = 66,
+    DepthGe                       = 67,
+    DepthLe                       = 68
   };
   
   
@@ -546,6 +552,38 @@ namespace dxvk {
     Bool      = 6,
   };
   
+  
+  /**
+   * \brief Tessellator domain
+   */
+  enum class DxbcTessDomain : uint32_t {
+    Undefined     = 0,
+    Isolines      = 1,
+    Triangles     = 2,
+    Quads         = 3,
+  };
+  
+  /**
+   * \brief Tessellator partitioning
+   */
+  enum class DxbcTessPartitioning : uint32_t {
+    Undefined     = 0,
+    Integer       = 1,
+    Pow2          = 2,
+    FractOdd      = 3,
+    FractEven     = 4,
+  };
+  
+  /**
+   * \brief Tessellator output primitive
+   */
+  enum class DxbcTessOutputPrimitive : uint32_t {
+    Undefined     = 0,
+    Point         = 1,
+    Line          = 2,
+    TriangleCw    = 3,
+    TriangleCcw   = 4,
+  };
   
   /**
    * \brief Custom data class

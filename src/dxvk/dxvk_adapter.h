@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include "./vulkan/dxvk_vulkan_extensions.h"
 
 #include "dxvk_include.h"
@@ -146,6 +148,14 @@ namespace dxvk {
     Rc<DxvkSurface> createSurface(
       HINSTANCE instance,
       HWND      window);
+    
+    /**
+     * \brief Logs DXVK adapter info
+     * 
+     * May be useful for bug reports
+     * and general troubleshooting.
+     */
+    void logAdapterInfo() const;
     
   private:
     

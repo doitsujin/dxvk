@@ -1,8 +1,15 @@
-project('dxvk', ['c', 'cpp'], default_options : ['cpp_std=c++1z'])
+project('dxvk', ['c', 'cpp'])
 
 cpu_family = target_machine.cpu_family()
 
 dxvk_compiler = meson.get_compiler('cpp')
+if dxvk_compiler.get_id() == 'msvc'
+  add_global_arguments('-DNOMINMAX', language : 'cpp')
+  dxvk_cpp_std='c++latest'
+else
+  dxvk_cpp_std='c++1z'
+endif
+
 dxvk_include_path = include_directories('./include')
 
 if (cpu_family == 'x86_64')
@@ -11,14 +18,13 @@ else
   dxvk_library_path = meson.source_root() + '/lib32'
 endif
 
-lib_vulkan = dxvk_compiler.find_library('vulkan-1', dirs : dxvk_library_path)
+lib_vulkan  = dxvk_compiler.find_library('vulkan-1', dirs : dxvk_library_path)
+lib_d3d11   = dxvk_compiler.find_library('d3d11')
+lib_dxgi    = dxvk_compiler.find_library('dxgi')
 
-lib_spirvtools     = dxvk_compiler.find_library('libSPIRV-Tools',     dirs : dxvk_library_path)
-lib_spirvtools_opt = dxvk_compiler.find_library('libSPIRV-Tools-opt', dirs : dxvk_library_path)
-
-lib_d3d11          = dxvk_compiler.find_library('d3d11')
-lib_dxgi           = dxvk_compiler.find_library('dxgi')
-lib_d3dcompiler_47 = dxvk_compiler.find_library('d3dcompiler_47')
+if dxvk_compiler.get_id() != 'msvc'
+  lib_d3dcompiler_47 = dxvk_compiler.find_library('d3dcompiler_47')
+endif
 
 git_command = find_program('git', required: false)
 
@@ -40,5 +46,7 @@ glsl_generator = generator(glsl_compiler,
   arguments : [ '-V', '--vn', '@BASENAME@', '@INPUT@', '-o', '@OUTPUT@' ])
 
 subdir('src')
-subdir('tests')
-subdir('wine_utils')
+if dxvk_compiler.get_id() != 'msvc'
+  subdir('tests')
+  subdir('wine_utils')
+endif

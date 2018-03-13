@@ -34,6 +34,7 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, IDXGIAdapterPrivate);
     
     Logger::warn("DxgiAdapter::QueryInterface: Unknown interface query");
+    Logger::warn(str::format(riid));
     return E_NOINTERFACE;
   }
   
@@ -262,9 +263,9 @@ namespace dxvk {
     AddColorFormat        (DXGI_FORMAT_R32G32_UINT,                 VK_FORMAT_R32G32_UINT);
     AddColorFormat        (DXGI_FORMAT_R32G32_SINT,                 VK_FORMAT_R32G32_SINT);
     
-    AddColorFormatTypeless(DXGI_FORMAT_R10G10B10A2_TYPELESS,        VK_FORMAT_A2R10G10B10_UINT_PACK32);
-    AddColorFormat        (DXGI_FORMAT_R10G10B10A2_UINT,            VK_FORMAT_A2R10G10B10_UINT_PACK32);
-    AddColorFormat        (DXGI_FORMAT_R10G10B10A2_UNORM,           VK_FORMAT_A2R10G10B10_UNORM_PACK32);
+    AddColorFormatTypeless(DXGI_FORMAT_R10G10B10A2_TYPELESS,        VK_FORMAT_A2B10G10R10_UINT_PACK32);
+    AddColorFormat        (DXGI_FORMAT_R10G10B10A2_UINT,            VK_FORMAT_A2B10G10R10_UINT_PACK32);
+    AddColorFormat        (DXGI_FORMAT_R10G10B10A2_UNORM,           VK_FORMAT_A2B10G10R10_UNORM_PACK32);
     
     AddColorFormat        (DXGI_FORMAT_R11G11B10_FLOAT,             VK_FORMAT_B10G11R11_UFLOAT_PACK32);
     
@@ -313,8 +314,14 @@ namespace dxvk {
 //     AddColorFormat(DXGI_FORMAT_R1_UNORM,                    VK_FORMAT_UNDEFINED);
     
     AddColorFormat        (DXGI_FORMAT_R9G9B9E5_SHAREDEXP,          VK_FORMAT_E5B9G9R9_UFLOAT_PACK32);
-//     AddColorFormat(DXGI_FORMAT_R8G8_B8G8_UNORM,             VK_FORMAT_UNDEFINED);
-//     AddColorFormat(DXGI_FORMAT_G8R8_G8B8_UNORM,             VK_FORMAT_UNDEFINED);
+    
+    AddColorFormat        (DXGI_FORMAT_R8G8_B8G8_UNORM,             VK_FORMAT_B8G8R8G8_422_UNORM_KHR,
+      { VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_G,
+        VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_ONE });
+    
+    AddColorFormat        (DXGI_FORMAT_G8R8_G8B8_UNORM,             VK_FORMAT_G8B8G8R8_422_UNORM_KHR,
+      { VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_G,
+        VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_ONE });
     
     AddColorFormat        (DXGI_FORMAT_B5G6R5_UNORM,                VK_FORMAT_B5G6R5_UNORM_PACK16);
     AddColorFormat        (DXGI_FORMAT_B5G5R5A1_UNORM,              VK_FORMAT_B5G5R5A1_UNORM_PACK16);

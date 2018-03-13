@@ -384,9 +384,15 @@ std::ostream& operator << (std::ostream& os, DxbcSystemValue e) {
     ENUM_NAME(DxbcSystemValue::InstanceId);
     ENUM_NAME(DxbcSystemValue::IsFrontFace);
     ENUM_NAME(DxbcSystemValue::SampleIndex);
-    ENUM_NAME(DxbcSystemValue::FinalQuadEdgeTessFactor);
-    ENUM_NAME(DxbcSystemValue::FinalQuadInsideTessFactor);
-    ENUM_NAME(DxbcSystemValue::FinalTriEdgeTessFactor);
+    ENUM_NAME(DxbcSystemValue::FinalQuadUeq0EdgeTessFactor);
+    ENUM_NAME(DxbcSystemValue::FinalQuadVeq0EdgeTessFactor);
+    ENUM_NAME(DxbcSystemValue::FinalQuadUeq1EdgeTessFactor);
+    ENUM_NAME(DxbcSystemValue::FinalQuadVeq1EdgeTessFactor);
+    ENUM_NAME(DxbcSystemValue::FinalQuadUInsideTessFactor);
+    ENUM_NAME(DxbcSystemValue::FinalQuadVInsideTessFactor);
+    ENUM_NAME(DxbcSystemValue::FinalTriUeq0EdgeTessFactor);
+    ENUM_NAME(DxbcSystemValue::FinalTriVeq0EdgeTessFactor);
+    ENUM_NAME(DxbcSystemValue::FinalTriWeq0EdgeTessFactor);
     ENUM_NAME(DxbcSystemValue::FinalTriInsideTessFactor);
     ENUM_NAME(DxbcSystemValue::FinalLineDetailTessFactor);
     ENUM_NAME(DxbcSystemValue::FinalLineDensityTessFactor);

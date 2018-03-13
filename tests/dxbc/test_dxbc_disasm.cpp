@@ -1,6 +1,4 @@
-#include <cstring>
-#include <fstream>
-#include <vector>
+#include <iostream>
 
 #include <d3dcompiler.h>
 
@@ -8,7 +6,7 @@
 #include <windows.h>
 #include <windowsx.h>
 
-#include "../test_utils.h"
+#include "../util/com/com_pointer.h"
 
 using namespace dxvk;
 
@@ -18,36 +16,44 @@ int WINAPI WinMain(HINSTANCE hInstance,
                    int nCmdShow) {
   int     argc = 0;
   LPWSTR* argv = CommandLineToArgvW(
-    GetCommandLineW(), &argc);  
-  
-  if (argc < 2) {
-    std::cerr << "Usage: dxbc-disasm input.dxbc" << std::endl;
+    GetCommandLineW(), &argc);
+
+  if (argc < 2 || argc > 3) {
+    std::cerr << "Usage: dxbc-disasm input.dxbc [output]" << std::endl;
     return 1;
   }
-  
-  std::ifstream ifile(str::fromws(argv[1]), std::ios::binary);
-  ifile.ignore(std::numeric_limits<std::streamsize>::max());
-  std::streamsize length = ifile.gcount();
-  ifile.clear();
-  
-  ifile.seekg(0, std::ios_base::beg);
-  std::vector<char> dxbcCode(length);
-  ifile.read(dxbcCode.data(), length);
-  
+
   Com<ID3DBlob> assembly;
-  
+  Com<ID3DBlob> binary;
+
+  // input file
+  if (FAILED(D3DReadFileToBlob(argv[1], &binary))) {
+    std::cerr << "Failed to read shader" << std::endl;
+    return 1;
+  }
+
   HRESULT hr = D3DDisassemble(
-    dxbcCode.data(),
-    dxbcCode.size(),
+    binary->GetBufferPointer(),
+    binary->GetBufferSize(),
     D3D_DISASM_ENABLE_INSTRUCTION_NUMBERING, nullptr,
     &assembly);
-  
+
   if (FAILED(hr)) {
     std::cerr << "Failed to disassemble shader" << std::endl;
     return 1;
   }
-  
-  std::string data((const char *)assembly->GetBufferPointer(), assembly->GetBufferSize());
-  std::cout << data;
+
+  // output file variant
+  if (argc == 3 && FAILED(D3DWriteBlobToFile(assembly.ptr(), argv[2], 1))) {
+    std::cerr << "Failed to write shader" << std::endl;
+    return 1;
+  }
+
+  // stdout variant
+  if (argc == 2) {
+    std::string data((const char *)assembly->GetBufferPointer(), assembly->GetBufferSize());
+    std::cout << data;
+  }
+
   return 0;
 }

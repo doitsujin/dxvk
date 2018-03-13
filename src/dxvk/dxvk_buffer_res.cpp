@@ -39,4 +39,29 @@ namespace dxvk {
       m_vkd->vkDestroyBuffer(m_vkd->device(), m_handle, nullptr);
   }
   
+  
+  DxvkPhysicalBufferView::DxvkPhysicalBufferView(
+    const Rc<vk::DeviceFn>&         vkd,
+    const DxvkPhysicalBufferSlice&  slice,
+    const DxvkBufferViewCreateInfo& info)
+  : m_vkd(vkd), m_slice(slice.subSlice(info.rangeOffset, info.rangeLength)) {
+    VkBufferViewCreateInfo viewInfo;
+    viewInfo.sType  = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
+    viewInfo.pNext  = nullptr;
+    viewInfo.flags  = 0;
+    viewInfo.buffer = m_slice.handle();
+    viewInfo.format = info.format;
+    viewInfo.offset = m_slice.offset();
+    viewInfo.range  = m_slice.length();
+    
+    if (m_vkd->vkCreateBufferView(m_vkd->device(), &viewInfo, nullptr, &m_view) != VK_SUCCESS)
+      throw DxvkError("DxvkBufferView::DxvkBufferView: Failed to create buffer view");
+  }
+  
+  
+  DxvkPhysicalBufferView::~DxvkPhysicalBufferView() {
+    m_vkd->vkDestroyBufferView(
+      m_vkd->device(), m_view, nullptr);
+  }
+  
 }

@@ -9,7 +9,7 @@ namespace dxvk {
   : D3D11DeviceContext(pParent, Device),
     m_contextFlags(ContextFlags),
     m_commandList (CreateCommandList()) {
-    
+    ClearState();
   }
   
   
@@ -30,16 +30,33 @@ namespace dxvk {
   
   void STDMETHODCALLTYPE D3D11DeferredContext::ExecuteCommandList(
           ID3D11CommandList*  pCommandList,
-          WINBOOL             RestoreContextState) {
-    Logger::err("D3D11DeferredContext::ExecuteCommandList: Not implemented");
+          BOOL                RestoreContextState) {
+    FlushCsChunk();
+    
+    static_cast<D3D11CommandList*>(pCommandList)->EmitToCommandList(m_commandList.ptr());
+    
+    if (RestoreContextState)
+      RestoreState();
+    else
+      ClearState();
   }
   
   
   HRESULT STDMETHODCALLTYPE D3D11DeferredContext::FinishCommandList(
-          WINBOOL             RestoreDeferredContextState,
+          BOOL                RestoreDeferredContextState,
           ID3D11CommandList   **ppCommandList) {
-    Logger::err("D3D11DeferredContext::FinishCommandList: Not implemented");
-    return E_NOTIMPL;
+    FlushCsChunk();
+    
+    if (ppCommandList != nullptr)
+      *ppCommandList = m_commandList.ref();
+    m_commandList = CreateCommandList();
+    
+    if (RestoreDeferredContextState)
+      RestoreState();
+    else
+      ClearState();
+    
+    return S_OK;
   }
   
   

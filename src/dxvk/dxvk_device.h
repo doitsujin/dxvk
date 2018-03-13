@@ -18,7 +18,6 @@
 #include "dxvk_renderpass.h"
 #include "dxvk_sampler.h"
 #include "dxvk_shader.h"
-#include "dxvk_stats.h"
 #include "dxvk_swapchain.h"
 #include "dxvk_sync.h"
 #include "dxvk_unbound.h"
@@ -329,14 +328,6 @@ namespace dxvk {
      */
     void waitForIdle();
     
-    /**
-     * \brief Retrieves stat counters
-     * \returns Stat counters
-     */
-    DxvkStatCounters queryCounters() const {
-      return m_statCounters;
-    }
-    
   private:
     
     Rc<DxvkAdapter>           m_adapter;
@@ -358,8 +349,6 @@ namespace dxvk {
     
     DxvkRecycler<DxvkCommandList,  16> m_recycledCommandLists;
     DxvkRecycler<DxvkStagingBuffer, 4> m_recycledStagingBuffers;
-    
-    DxvkStatCounters m_statCounters;
     
     DxvkSubmissionQueue m_submissionQueue;
     

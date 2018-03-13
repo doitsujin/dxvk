@@ -160,8 +160,10 @@ namespace dxvk {
    */
   struct DxbcCompilerHsForkJoinPhase {
     uint32_t functionId         = 0;
-    uint32_t instanceCount      = 0;
-    uint32_t builtinInstanceId  = 0;
+    uint32_t instanceCount      = 1;
+    
+    uint32_t instanceId         = 0;
+    uint32_t instanceIdPtr      = 0;
   };
   
   
@@ -172,7 +174,7 @@ namespace dxvk {
    * point phase program of a hull shader.
    */
   struct DxbcCompilerHsControlPointPhase {
-    uint32_t functionId         = 0;
+    uint32_t functionId             = 0;
   };
   
   
@@ -195,8 +197,23 @@ namespace dxvk {
    * \brief Hull shader-specific structure
    */
   struct DxbcCompilerHsPart {
-    DxbcCompilerHsPhase currPhaseType = DxbcCompilerHsPhase::None;
-    size_t              currPhaseId   = 0;
+    DxbcCompilerHsPhase currPhaseType   = DxbcCompilerHsPhase::None;
+    size_t              currPhaseId     = 0;
+    
+    float maxTessFactor = 64.0f;
+    
+    uint32_t vertexCountIn   = 0;
+    uint32_t vertexCountOut  = 0;
+    
+    uint32_t builtinInvocationId   = 0;
+    uint32_t builtinTessLevelOuter = 0;
+    uint32_t builtinTessLevelInner = 0;
+    
+    uint32_t outputPerPatch        = 0;
+    uint32_t outputPerVertex       = 0;
+    
+    uint32_t invocationBlockBegin  = 0;
+    uint32_t invocationBlockEnd    = 0;
     
     DxbcCompilerHsControlPointPhase          cpPhase;
     std::vector<DxbcCompilerHsForkJoinPhase> forkPhases;
@@ -208,7 +225,16 @@ namespace dxvk {
    * \brief Domain shader-specific structure
    */
   struct DxbcCompilerDsPart {
-    uint32_t functionId = 0;
+    uint32_t functionId            = 0;
+    
+    uint32_t builtinTessCoord      = 0;
+    uint32_t builtinTessLevelOuter = 0;
+    uint32_t builtinTessLevelInner = 0;
+    
+    uint32_t vertexCountIn         = 0;
+    
+    uint32_t inputPerPatch         = 0;
+    uint32_t inputPerVertex        = 0;
   };
   
   
@@ -367,6 +393,11 @@ namespace dxvk {
     // an array of four-component uint32 vectors.
     uint32_t m_immConstBuf = 0;
     
+    ///////////////////////////////////////////////////
+    // Sample pos array. If defined, this iis an array
+    // of 32 four-component float vectors.
+    uint32_t m_samplePositions = 0;
+    
     ////////////////////////////////////////////
     // Struct type used for UAV counter buffers
     uint32_t m_uavCtrStructType  = 0;
@@ -454,6 +485,24 @@ namespace dxvk {
     void emitDclMaxOutputVertexCount(
       const DxbcShaderInstruction&  ins);
     
+    void emitDclInputControlPointCount(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitDclOutputControlPointCount(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitDclHsMaxTessFactor(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitDclTessDomain(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitDclTessPartitioning(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitDclTessOutputPrimitive(
+      const DxbcShaderInstruction&  ins);
+    
     void emitDclThreadGroup(
       const DxbcShaderInstruction&  ins);
     
@@ -527,6 +576,12 @@ namespace dxvk {
     void emitConvertFloat16(
       const DxbcShaderInstruction&  ins);
     
+    void emitHullShaderPhase(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitHullShaderInstCnt(
+      const DxbcShaderInstruction&  ins);
+    
     void emitInterpolate(
       const DxbcShaderInstruction&  ins);
     
@@ -537,6 +592,9 @@ namespace dxvk {
       const DxbcShaderInstruction&  ins);
     
     void emitTextureQueryMs(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitTextureQueryMsPos(
       const DxbcShaderInstruction&  ins);
     
     void emitTextureFetch(
@@ -591,6 +649,9 @@ namespace dxvk {
     
     void emitControlFlowRet(
       const DxbcShaderInstruction&  ins);
+
+    void emitControlFlowRetc(
+      const DxbcShaderInstruction&  ins);
     
     void emitControlFlowDiscard(
       const DxbcShaderInstruction&  ins);
@@ -623,12 +684,6 @@ namespace dxvk {
             int32_t                 w,
       const DxbcRegMask&            writeMask);
     
-    DxbcRegisterValue emitBuildZero(
-            DxbcScalarType          type);
-    
-    DxbcRegisterValue emitBuildZeroVec(
-            DxbcVectorType          type);
-    
     /////////////////////////////////////////
     // Generic register manipulation methods
     DxbcRegisterValue emitRegisterBitcast(
@@ -648,6 +703,10 @@ namespace dxvk {
             DxbcRegisterValue       dstValue,
             DxbcRegisterValue       srcValue,
             DxbcRegMask             srcMask);
+    
+    DxbcRegisterValue emitRegisterConcat(
+            DxbcRegisterValue       value1,
+            DxbcRegisterValue       value2);
     
     DxbcRegisterValue emitRegisterExtend(
             DxbcRegisterValue       value,
@@ -799,17 +858,34 @@ namespace dxvk {
             DxbcRegMask             mask,
       const DxbcRegisterValue&      value);
     
+    void emitHsSystemValueStore(
+            DxbcSystemValue         sv,
+            DxbcRegMask             mask,
+      const DxbcRegisterValue&      value);
+    
+    void emitDsSystemValueStore(
+            DxbcSystemValue         sv,
+            DxbcRegMask             mask,
+      const DxbcRegisterValue&      value);
+    
     void emitGsSystemValueStore(
             DxbcSystemValue         sv,
             DxbcRegMask             mask,
       const DxbcRegisterValue&      value);
     
-    /////////////////////////////////
-    // Shader initialization methods
+    //////////////////////////////////////
+    // Common function definition methods
     void emitInit();
     
+    void emitMainFunctionBegin();
+    
+    void emitMainFunctionEnd();
+    
+    /////////////////////////////////
+    // Shader initialization methods
     void emitVsInit();
     void emitHsInit();
+    void emitDsInit();
     void emitGsInit();
     void emitPsInit();
     void emitCsInit();
@@ -818,9 +894,32 @@ namespace dxvk {
     // Shader finalization methods
     void emitVsFinalize();
     void emitHsFinalize();
+    void emitDsFinalize();
     void emitGsFinalize();
     void emitPsFinalize();
     void emitCsFinalize();
+    
+    ///////////////////////////////
+    // Hull shader phase methods
+    void emitHsControlPointPhase(
+      const DxbcCompilerHsControlPointPhase&  phase);
+    
+    void emitHsForkJoinPhase(
+      const DxbcCompilerHsForkJoinPhase&      phase);
+    
+    void emitHsPhaseBarrier();
+    
+    void emitHsInvocationBlockBegin(
+            uint32_t                          count);
+    
+    void emitHsInvocationBlockEnd();
+    
+    uint32_t emitTessInterfacePerPatch(
+            spv::StorageClass                 storageClass);
+    
+    uint32_t emitTessInterfacePerVertex(
+            spv::StorageClass                 storageClass,
+            uint32_t                          vertexCount);
     
     //////////////
     // Misc stuff
@@ -831,6 +930,14 @@ namespace dxvk {
             uint32_t          vertexCount,
       const char*             varName);
     
+    DxbcCompilerHsControlPointPhase emitNewHullShaderControlPointPhase();
+    
+    DxbcCompilerHsControlPointPhase emitNewHullShaderPassthroughPhase();
+    
+    DxbcCompilerHsForkJoinPhase emitNewHullShaderForkJoinPhase();
+    
+    uint32_t emitSamplePosArray();
+    
     ///////////////////////////////
     // Variable definition methods
     uint32_t emitNewVariable(
@@ -840,6 +947,12 @@ namespace dxvk {
       const DxbcRegisterInfo& info,
             spv::BuiltIn      builtIn,
       const char*             name);
+    
+    uint32_t emitBuiltinTessLevelOuter(
+            spv::StorageClass storageClass);
+    
+    uint32_t emitBuiltinTessLevelInner(
+            spv::StorageClass storageClass);
     
     ////////////////
     // Misc methods
@@ -880,7 +993,7 @@ namespace dxvk {
     
     uint32_t getPerVertexBlockId();
     
-    uint32_t getPushConstantBlockId();
+    DxbcCompilerHsForkJoinPhase* getCurrentHsForkJoinPhase();
     
   };
   

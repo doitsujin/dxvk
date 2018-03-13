@@ -142,6 +142,30 @@ namespace dxvk {
     }
     
     /**
+     * \brief Memory type flags
+     * 
+     * Use this to determine whether a
+     * buffer is mapped to host memory.
+     * \returns Vulkan memory flags
+     */
+    VkMemoryPropertyFlags memFlags() const {
+      return m_memFlags;
+    }
+    
+    /**
+     * \brief Map pointer
+     * 
+     * If the image has been created on a host-visible
+     * memory type, its memory is mapped and can be
+     * accessed by the host.
+     * \param [in] offset Byte offset into mapped region
+     * \returns Pointer to mapped memory region
+     */
+    void* mapPtr(VkDeviceSize offset) const {
+      return m_memory.mapPtr(offset);
+    }
+    
+    /**
      * \brief Image format info
      * \returns Image format info
      */
@@ -180,25 +204,13 @@ namespace dxvk {
       return result;
     }
     
-    /**
-     * \brief Map pointer
-     * 
-     * If the image has been created on a host-visible
-     * memory type, its memory is mapped and can be
-     * accessed by the host.
-     * \param [in] offset Byte offset into mapped region
-     * \returns Pointer to mapped memory region
-     */
-    void* mapPtr(VkDeviceSize offset) const {
-      return m_memory.mapPtr(offset);
-    }
-    
   private:
     
-    Rc<vk::DeviceFn>    m_vkd;
-    DxvkImageCreateInfo m_info;
-    DxvkMemory          m_memory;
-    VkImage             m_image = VK_NULL_HANDLE;
+    Rc<vk::DeviceFn>      m_vkd;
+    DxvkImageCreateInfo   m_info;
+    VkMemoryPropertyFlags m_memFlags;
+    DxvkMemory            m_memory;
+    VkImage               m_image = VK_NULL_HANDLE;
     
   };
   

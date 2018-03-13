@@ -6,7 +6,8 @@ namespace dxvk {
   DxgiFactory::DxgiFactory()
   : m_instance(new DxvkInstance()),
     m_adapters(m_instance->enumAdapters()) {
-    
+    for (const auto& adapter : m_adapters)
+      adapter->logAdapterInfo();
   }
   
   
@@ -24,6 +25,7 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, IDXGIFactory1);
     
     Logger::warn("DxgiFactory::QueryInterface: Unknown interface query");
+    Logger::warn(str::format(riid));
     return E_NOINTERFACE;
   }
   

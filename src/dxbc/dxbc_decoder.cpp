@@ -105,7 +105,9 @@ namespace dxvk {
     m_instruction.modifiers.saturate = !!bit::extract(token, 13, 13);
     m_instruction.modifiers.precise  = !!bit::extract(token, 19, 22);
     
-    // Opcode controls. It will depend on the opcode itself which ones are valid.
+    // Opcode controls. It will depend on the
+    // opcode itself which ones are valid.
+    // TODO refactor this nonsense
     m_instruction.controls.globalFlags =
       static_cast<DxbcGlobalFlag>(bit::extract(token, 11, 14));
     m_instruction.controls.zeroTest =
@@ -124,6 +126,14 @@ namespace dxvk {
       static_cast<DxbcPrimitiveTopology>(bit::extract(token, 11, 17));
     m_instruction.controls.primitive =
       static_cast<DxbcPrimitive>(bit::extract(token, 11, 16));
+    m_instruction.controls.tessDomain =
+      static_cast<DxbcTessDomain>(bit::extract(token, 11, 12));
+    m_instruction.controls.tessOutputPrimitive =
+      static_cast<DxbcTessOutputPrimitive>(bit::extract(token, 11, 13));
+    m_instruction.controls.tessPartitioning =
+      static_cast<DxbcTessPartitioning>(bit::extract(token, 11, 13));
+    m_instruction.controls.controlPointCount =
+      static_cast<uint32_t>(bit::extract(token, 11, 16));
     
     // Process extended opcode tokens
     while (bit::extract(token, 31, 31)) {

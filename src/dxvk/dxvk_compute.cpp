@@ -49,6 +49,11 @@ namespace dxvk {
   
   void DxvkComputePipeline::compilePipeline() {
     std::vector<VkDescriptorSetLayoutBinding> bindings;
+
+    if (Logger::logLevel() <= LogLevel::Debug) {
+      Logger::debug("Compiling compute pipeline..."); 
+      Logger::debug(str::format("  cs  : ", m_cs ->debugName()));
+    }
     
     VkComputePipelineCreateInfo info;
     info.sType                = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;

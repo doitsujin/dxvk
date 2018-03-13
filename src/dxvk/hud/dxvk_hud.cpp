@@ -45,7 +45,7 @@ namespace dxvk::hud {
   Rc<Hud> Hud::createHud(const Rc<DxvkDevice>& device) {
     const std::string hudConfig = env::getEnvVar(L"DXVK_HUD");
 
-    if (hudConfig.size() == 0)
+    if (hudConfig.size() == 0 || hudConfig == "0")
       return nullptr;
 
     Hud* hud = new Hud(device);

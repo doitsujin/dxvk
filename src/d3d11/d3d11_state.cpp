@@ -77,6 +77,26 @@ namespace dxvk {
   }
   
   
+  size_t D3D11StateDescHash::operator () (
+    const D3D11_SAMPLER_DESC& desc) const {
+    std::hash<float> fhash;
+    
+    DxvkHashState hash;
+    hash.add(desc.Filter);
+    hash.add(desc.AddressU);
+    hash.add(desc.AddressV);
+    hash.add(desc.AddressW);
+    hash.add(fhash(desc.MipLODBias));
+    hash.add(fhash(desc.MaxAnisotropy));
+    hash.add(desc.ComparisonFunc);
+    for (uint32_t i = 0; i < 4; i++)
+      hash.add(fhash(desc.BorderColor[i]));
+    hash.add(fhash(desc.MinLOD));
+    hash.add(fhash(desc.MaxLOD));
+    return hash;
+  }
+  
+  
   bool D3D11StateDescEqual::operator () (
     const D3D11_BLEND_DESC& a,
     const D3D11_BLEND_DESC& b) const {
@@ -145,6 +165,25 @@ namespace dxvk {
         && a.DestBlendAlpha        == b.DestBlendAlpha
         && a.BlendOpAlpha          == b.BlendOpAlpha
         && a.RenderTargetWriteMask == b.RenderTargetWriteMask;
+  }
+  
+  
+  bool D3D11StateDescEqual::operator () (
+    const D3D11_SAMPLER_DESC& a,
+    const D3D11_SAMPLER_DESC& b) const {
+    return a.Filter         == b.Filter
+        && a.AddressU       == b.AddressU
+        && a.AddressV       == b.AddressV
+        && a.AddressW       == b.AddressW
+        && a.MipLODBias     == b.MipLODBias
+        && a.MaxAnisotropy  == b.MaxAnisotropy
+        && a.ComparisonFunc == b.ComparisonFunc
+        && a.BorderColor[0] == b.BorderColor[0]
+        && a.BorderColor[1] == b.BorderColor[1]
+        && a.BorderColor[2] == b.BorderColor[2]
+        && a.BorderColor[3] == b.BorderColor[3]
+        && a.MinLOD         == b.MinLOD
+        && a.MaxLOD         == b.MaxLOD;
   }
   
 }

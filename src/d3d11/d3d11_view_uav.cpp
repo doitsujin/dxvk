@@ -38,6 +38,7 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, ID3D11UnorderedAccessView);
     
     Logger::warn("D3D11UnorderedAccessView::QueryInterface: Unknown interface query");
+    Logger::warn(str::format(riid));
     return E_NOINTERFACE;
   }
   

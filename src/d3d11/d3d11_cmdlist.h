@@ -29,7 +29,7 @@ namespace dxvk {
             ID3D11CommandList*  pCommandList);
     
     void EmitToCsThread(
-      const Rc<DxvkCsThread>&   CsThread);
+            DxvkCsThread*       CsThread);
     
   private:
     

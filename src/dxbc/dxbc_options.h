@@ -15,12 +15,11 @@ namespace dxvk {
     DxbcOptions(
       const Rc<DxvkDevice>& device);
       
+    /// Add extra component to dref coordinate vector
+    bool addExtraDrefCoordComponent = false;
+      
     /// Use Fmin/Fmax instead of Nmin/Nmax.
     bool useSimpleMinMaxClamp = false;
-    
-    /// Pack the depth reference value into the
-    /// coordinate vector for depth-compare ops.
-    bool packDrefValueIntoCoordinates = false;
   };
   
 }

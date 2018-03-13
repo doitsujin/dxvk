@@ -64,6 +64,13 @@ namespace dxvk {
     
     if (riid == __uuidof(IDXGIPresentDevicePrivate))
       return m_presentDevice->QueryInterface(riid, ppvObject);
+
+    if (riid == __uuidof(ID3D11Debug))
+      return E_NOINTERFACE;      
+
+    //d56e2a4c-5127-8437-658a-98c5bb789498, from GTA V, no occurrences in Google
+    if (riid == GUID{0xd56e2a4c,0x5127,0x8437,{0x65,0x8a,0x98,0xc5,0xbb,0x78,0x94,0x98}})
+      return E_NOINTERFACE;
     
     Logger::warn("D3D11Device::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
@@ -965,10 +972,9 @@ namespace dxvk {
           ID3D11HullShader**          ppHullShader) {
     D3D11ShaderModule module;
     
-    Logger::warn("D3D11: CreateHullShader: Tessellation shaders not yet supported");
-//     if (FAILED(this->CreateShaderModule(&module,
-//         pShaderBytecode, BytecodeLength, pClassLinkage)))
-//       return E_INVALIDARG;
+    if (FAILED(this->CreateShaderModule(&module,
+        pShaderBytecode, BytecodeLength, pClassLinkage)))
+      return E_INVALIDARG;
     
     if (ppHullShader == nullptr)
       return S_FALSE;
@@ -986,10 +992,9 @@ namespace dxvk {
           ID3D11DomainShader**        ppDomainShader) {
     D3D11ShaderModule module;
     
-    Logger::warn("D3D11: CreateDomainShader: Tessellation shaders not yet supported");
-//     if (FAILED(this->CreateShaderModule(&module,
-//         pShaderBytecode, BytecodeLength, pClassLinkage)))
-//       return E_INVALIDARG;
+    if (FAILED(this->CreateShaderModule(&module,
+        pShaderBytecode, BytecodeLength, pClassLinkage)))
+      return E_INVALIDARG;
     
     if (ppDomainShader == nullptr)
       return S_FALSE;
@@ -1120,50 +1125,16 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11Device::CreateSamplerState(
     const D3D11_SAMPLER_DESC*         pSamplerDesc,
           ID3D11SamplerState**        ppSamplerState) {
-    DxvkSamplerCreateInfo info;
+    HRESULT hr = D3D11SamplerState::ValidateDesc(pSamplerDesc);
     
-    // While D3D11_FILTER is technically an enum, its value bits
-    // can be used to decode the filter properties more efficiently.
-    const uint32_t filterBits = static_cast<uint32_t>(pSamplerDesc->Filter);
+    if (FAILED(hr))
+      return hr;
     
-    info.magFilter      = (filterBits & 0x04) ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
-    info.minFilter      = (filterBits & 0x10) ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
-    info.mipmapMode     = (filterBits & 0x01) ? VK_SAMPLER_MIPMAP_MODE_LINEAR : VK_SAMPLER_MIPMAP_MODE_NEAREST;
-    info.useAnisotropy  = (filterBits & 0x40) ? VK_TRUE : VK_FALSE;
-    info.compareToDepth = (filterBits & 0x80) ? VK_TRUE : VK_FALSE;
-    
-    // Check for any unknown flags
-    if (filterBits & 0xFFFFFF2A) {
-      Logger::err(str::format("D3D11: Unsupported filter bits: ", filterBits));
-      return E_INVALIDARG;
-    }
-    
-    // Set up the remaining properties, which are
-    // stored directly in the sampler description
-    info.mipmapLodBias = pSamplerDesc->MipLODBias;
-    info.mipmapLodMin  = pSamplerDesc->MinLOD;
-    info.mipmapLodMax  = pSamplerDesc->MaxLOD;
-    info.maxAnisotropy = pSamplerDesc->MaxAnisotropy;
-    info.addressModeU  = DecodeAddressMode(pSamplerDesc->AddressU);
-    info.addressModeV  = DecodeAddressMode(pSamplerDesc->AddressV);
-    info.addressModeW  = DecodeAddressMode(pSamplerDesc->AddressW);
-    info.compareOp     = DecodeCompareOp(pSamplerDesc->ComparisonFunc);
-    info.borderColor   = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
-    info.usePixelCoord = VK_FALSE;  // Not supported in D3D11
-    
-    // Try to find a matching border color if clamp to border is enabled
-    if (info.addressModeU == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER
-     || info.addressModeV == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER
-     || info.addressModeW == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER)
-      info.borderColor = DecodeBorderColor(pSamplerDesc->BorderColor);
-    
-    // Create sampler object if the application requests it
     if (ppSamplerState == nullptr)
       return S_FALSE;
     
     try {
-      *ppSamplerState = ref(new D3D11SamplerState(this,
-        *pSamplerDesc, m_dxvkDevice->createSampler(info)));
+      *ppSamplerState = m_samplerObjects.Create(this, *pSamplerDesc);
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
@@ -1271,7 +1242,7 @@ namespace dxvk {
     VkSampleCountFlagBits sampleCountFlag = VK_SAMPLE_COUNT_1_BIT;
     
     if (FAILED(GetSampleCount(SampleCount, &sampleCountFlag)))
-      return S_OK;
+      return E_INVALIDARG;
     
     // Check if the device supports the given combination of format
     // and sample count. D3D exposes the opaque concept of quality
@@ -1562,7 +1533,7 @@ namespace dxvk {
     const DxvkBufferSlice bufferSlice
       = pBuffer->GetBufferSlice();
     
-    if (pInitialData != nullptr) {
+    if (pInitialData != nullptr && pInitialData->pSysMem != nullptr) {
       LockResourceInitContext();
       
       m_resourceInitContext->updateBuffer(
@@ -1581,7 +1552,7 @@ namespace dxvk {
     const D3D11_SUBRESOURCE_DATA*     pInitialData) {
     const DxvkFormatInfo* formatInfo = imageFormatInfo(image->info().format);
     
-    if (pInitialData != nullptr) {
+    if (pInitialData != nullptr && pInitialData->pSysMem != nullptr) {
       LockResourceInitContext();
       
       // pInitialData is an array that stores an entry for
@@ -2055,7 +2026,7 @@ namespace dxvk {
         if (pDesc->TextureCubeArray.MipLevels == D3D11_DXVK_USE_REMAINING_LEVELS)
           pDesc->TextureCubeArray.MipLevels = mipLevels - pDesc->TextureCubeArray.MostDetailedMip;
         if (pDesc->TextureCubeArray.NumCubes == D3D11_DXVK_USE_REMAINING_LAYERS)
-          pDesc->TextureCubeArray.NumCubes = (mipLevels - pDesc->TextureCubeArray.First2DArrayFace / 6);
+          pDesc->TextureCubeArray.NumCubes = (numLayers - pDesc->TextureCubeArray.First2DArrayFace / 6);
         break;
       
       case D3D11_SRV_DIMENSION_TEXTURE3D:
@@ -2324,31 +2295,6 @@ namespace dxvk {
     }
     
     return S_OK;
-  }
-  
-  
-  VkSamplerAddressMode D3D11Device::DecodeAddressMode(
-          D3D11_TEXTURE_ADDRESS_MODE  mode) const {
-    switch (mode) {
-      case D3D11_TEXTURE_ADDRESS_WRAP:
-        return VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        
-      case D3D11_TEXTURE_ADDRESS_MIRROR:
-        return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
-      
-      case D3D11_TEXTURE_ADDRESS_CLAMP:
-        return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-        
-      case D3D11_TEXTURE_ADDRESS_BORDER:
-        return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-        
-      case D3D11_TEXTURE_ADDRESS_MIRROR_ONCE:
-        return VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
-      
-      default:
-        Logger::err(str::format("D3D11: Unsupported address mode: ", mode));
-        return VK_SAMPLER_ADDRESS_MODE_REPEAT;
-    }
   }
   
   

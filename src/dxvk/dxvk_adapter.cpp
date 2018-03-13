@@ -31,6 +31,29 @@ namespace dxvk {
   VkPhysicalDeviceProperties DxvkAdapter::deviceProperties() const {
     VkPhysicalDeviceProperties properties;
     m_vki->vkGetPhysicalDeviceProperties(m_handle, &properties);
+    
+    const std::string customVendorID = env::getEnvVar(L"DXVK_CUSTOM_VENDOR_ID");
+    const std::string customDeviceID = env::getEnvVar(L"DXVK_CUSTOM_DEVICE_ID");
+    
+    if (!customVendorID.empty()) {
+      Logger::info("Using Custom PCI Vendor ID " + customVendorID + " instead of " + str::format(std::hex, properties.vendorID));
+      
+      properties.vendorID = std::stoul(customVendorID, nullptr, 16);
+    }
+    
+    if (!customDeviceID.empty()) {
+      Logger::info("Using Custom PCI Device ID " + customDeviceID + " instead of " + str::format(std::hex, properties.deviceID));
+      
+      properties.deviceID = std::stoul(customDeviceID, nullptr, 16);  
+    }
+    
+    if (DxvkGpuVendor(properties.vendorID) == DxvkGpuVendor::Nvidia) {
+      properties.driverVersion = VK_MAKE_VERSION(
+        VK_VERSION_MAJOR(properties.driverVersion),
+        VK_VERSION_MINOR(properties.driverVersion) >> 2,
+        VK_VERSION_PATCH(properties.driverVersion));
+    }
+    
     return properties;
   }
   
@@ -207,6 +230,21 @@ namespace dxvk {
   
   Rc<DxvkSurface> DxvkAdapter::createSurface(HINSTANCE instance, HWND window) {
     return new DxvkSurface(this, instance, window);
+  }
+  
+  
+  void DxvkAdapter::logAdapterInfo() const {
+    VkPhysicalDeviceProperties deviceInfo = this->deviceProperties();
+    
+    Logger::info(str::format(deviceInfo.deviceName, ":"));
+    Logger::info(str::format("  Driver: ",
+      VK_VERSION_MAJOR(deviceInfo.driverVersion), ".",
+      VK_VERSION_MINOR(deviceInfo.driverVersion), ".",
+      VK_VERSION_PATCH(deviceInfo.driverVersion)));
+    Logger::info(str::format("  Vulkan: ",
+      VK_VERSION_MAJOR(deviceInfo.apiVersion), ".",
+      VK_VERSION_MINOR(deviceInfo.apiVersion), ".",
+      VK_VERSION_PATCH(deviceInfo.apiVersion)));
   }
   
   

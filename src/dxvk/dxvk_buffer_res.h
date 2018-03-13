@@ -203,4 +203,50 @@ namespace dxvk {
     return DxvkPhysicalBufferSlice(this, offset, length);
   }
   
+  
+  /**
+   * \brief Physical buffer view
+   * 
+   * Manages a texel buffer view for a physical
+   * buffer slice, which is used as the backing
+   * resource of a \c DxvkBufferView.
+   */
+  class DxvkPhysicalBufferView : public DxvkResource {
+    
+  public:
+    
+    DxvkPhysicalBufferView(
+      const Rc<vk::DeviceFn>&         vkd,
+      const DxvkPhysicalBufferSlice&  slice,
+      const DxvkBufferViewCreateInfo& info);
+    
+    ~DxvkPhysicalBufferView();
+    
+    /**
+     * \brief Vulkan buffer view handle
+     * \returns Vulkan buffer view handle
+     */
+    VkBufferView handle() const {
+      return m_view;
+    }
+    
+    /**
+     * \brief Physical buffer slice
+     * 
+     * The slice backing this buffer view.
+     * \returns Physical buffer slice
+     */
+    DxvkPhysicalBufferSlice slice() const {
+      return m_slice;
+    }
+    
+  private:
+    
+    Rc<vk::DeviceFn>        m_vkd;
+    DxvkPhysicalBufferSlice m_slice;
+    
+    VkBufferView m_view = VK_NULL_HANDLE;
+    
+  };
+  
 }

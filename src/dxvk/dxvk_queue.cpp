@@ -55,7 +55,8 @@ namespace dxvk {
       m_condOnTake.notify_one();
       
       if (entry.fence != nullptr) {
-        entry.fence->wait(std::numeric_limits<uint64_t>::max());
+        while (!entry.fence->wait(1'000'000'000ull))
+          continue;
         
         entry.cmdList->writeQueryData();
         entry.cmdList->signalEvents();

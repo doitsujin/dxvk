@@ -96,28 +96,19 @@ namespace dxvk {
       const DxvkBufferSlice&      buffer);
     
     /**
-     * \brief Binds texel buffer view
+     * \brief Binds image or buffer view
      * 
-     * Can be used for both uniform texel
-     * buffers and storage texel buffers.
-     * \param [in] slot Resource binding slot
-     * \param [in] bufferView Buffer view to bind
-     */
-    void bindResourceTexelBuffer(
-            uint32_t              slot,
-      const Rc<DxvkBufferView>&   bufferView);
-    
-    /**
-     * \brief Binds image view
-     * 
-     * Can be used for sampled images with a
-     * dedicated sampler and storage images.
+     * Can be used for sampled images with a dedicated
+     * sampler and for storage images, as well as for
+     * uniform texel buffers and storage texel buffers.
      * \param [in] slot Resource binding slot
      * \param [in] imageView Image view to bind
+     * \param [in] bufferView Buffer view to bind
      */
-    void bindResourceImage(
+    void bindResourceView(
             uint32_t              slot,
-      const Rc<DxvkImageView>&    image);
+      const Rc<DxvkImageView>&    imageView,
+      const Rc<DxvkBufferView>&   bufferView);
     
     /**
      * \brief Binds image sampler

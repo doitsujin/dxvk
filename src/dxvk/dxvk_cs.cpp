@@ -8,19 +8,31 @@ namespace dxvk {
   
   
   DxvkCsChunk::~DxvkCsChunk() {
-    for (size_t i = 0; i < m_commandCount; i++)
-      m_commandList[i]->~DxvkCsCmd();
+    auto cmd = m_head;
+    
+    while (cmd != nullptr) {
+      auto next = cmd->next();
+      cmd->~DxvkCsCmd();
+      cmd = next;
+    }
   }
   
   
   void DxvkCsChunk::executeAll(DxvkContext* ctx) {
-    for (size_t i = 0; i < m_commandCount; i++) {
-      m_commandList[i]->exec(ctx);
-      m_commandList[i]->~DxvkCsCmd();
+    auto cmd = m_head;
+    
+    while (cmd != nullptr) {
+      auto next = cmd->next();
+      cmd->exec(ctx);
+      cmd->~DxvkCsCmd();
+      cmd = next;
     }
     
     m_commandCount  = 0;
     m_commandOffset = 0;
+    
+    m_head = nullptr;
+    m_tail = nullptr;
   }
   
   
@@ -45,12 +57,9 @@ namespace dxvk {
       m_chunksQueued.push(std::move(chunk));
       m_chunksPending += 1;
       
-      // If a large number of chunks are queued up, wait for
-      // some of them to be processed in order to avoid memory
-      // leaks, stuttering, input lag and similar issues.
-      if (m_chunksPending >= MaxChunksInFlight) {
+      if (m_chunksPending > MaxChunksInFlight) {
         m_condOnSync.wait(lock, [this] {
-          return (m_chunksPending < MaxChunksInFlight / 2)
+          return (m_chunksPending <= MaxChunksInFlight )
               || (m_stopped.load());
         });
       }

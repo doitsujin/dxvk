@@ -66,6 +66,7 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, IDXGISwapChain);
     
     Logger::warn("DxgiSwapChain::QueryInterface: Unknown interface query");
+    Logger::warn(str::format(riid));
     return E_NOINTERFACE;
   }
   

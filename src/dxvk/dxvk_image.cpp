@@ -7,7 +7,7 @@ namespace dxvk {
     const DxvkImageCreateInfo&  createInfo,
           DxvkMemoryAllocator&  memAlloc,
           VkMemoryPropertyFlags memFlags)
-  : m_vkd(vkd), m_info(createInfo) {
+  : m_vkd(vkd), m_info(createInfo), m_memFlags(memFlags) {
     
     VkImageCreateInfo info;
     info.sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -33,9 +33,6 @@ namespace dxvk {
     VkMemoryRequirements memReq;
     m_vkd->vkGetImageMemoryRequirements(
       m_vkd->device(), m_image, &memReq);
-    
-    // FIXME this only exists to make renderdoc happy
-    memReq.size += 65536;
     
     m_memory = memAlloc.alloc(memReq, memFlags);
     

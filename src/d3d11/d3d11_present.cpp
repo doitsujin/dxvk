@@ -39,10 +39,12 @@ namespace dxvk {
     desc.SampleDesc         = pSwapChainDesc->SampleDesc;
     desc.Usage              = D3D11_USAGE_DEFAULT;
     desc.BindFlags          = D3D11_BIND_RENDER_TARGET
-                            | D3D11_BIND_SHADER_RESOURCE
-                            | D3D11_BIND_UNORDERED_ACCESS;
+                            | D3D11_BIND_SHADER_RESOURCE;
     desc.CPUAccessFlags     = 0;
     desc.MiscFlags          = 0;
+    
+    if (pSwapChainDesc->BufferUsage & DXGI_USAGE_UNORDERED_ACCESS)
+      desc.BindFlags |= D3D11_BIND_UNORDERED_ACCESS;
     
     try {
       *ppInterface = ref(new D3D11PresentBackBuffer(

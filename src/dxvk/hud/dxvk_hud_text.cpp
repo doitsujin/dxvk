@@ -55,7 +55,7 @@ namespace dxvk::hud {
       sizeof(HudTextVertex));
     
     context->bindResourceSampler(1, m_fontSampler);
-    context->bindResourceImage  (2, m_fontView);
+    context->bindResourceView   (2, m_fontView, nullptr);
     
     m_vertexIndex = 0;
   }

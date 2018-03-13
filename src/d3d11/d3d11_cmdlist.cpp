@@ -21,6 +21,7 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, ID3D11CommandList);
     
     Logger::warn("D3D11CommandList::QueryInterface: Unknown interface query");
+    Logger::warn(str::format(riid));
     return E_NOINTERFACE;
   }
   
@@ -48,7 +49,7 @@ namespace dxvk {
   }
   
   
-  void D3D11CommandList::EmitToCsThread(const Rc<DxvkCsThread>& CsThread) {
+  void D3D11CommandList::EmitToCsThread(DxvkCsThread* CsThread) {
     for (auto chunk : m_chunks)
       CsThread->dispatchChunk(Rc<DxvkCsChunk>(chunk));
   }

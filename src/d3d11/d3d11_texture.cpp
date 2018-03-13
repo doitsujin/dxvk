@@ -22,7 +22,6 @@ namespace dxvk {
     return DxgiFormatMode::Any;
   }
   
-  
   /**
    * \brief Optimizes image layout based on usage flags
    * 
@@ -147,8 +146,10 @@ namespace dxvk {
       if (CPUAccessFlags & D3D11_CPU_ACCESS_WRITE)
         pImageInfo->access |= VK_ACCESS_HOST_WRITE_BIT;
       
-      if (CPUAccessFlags & D3D11_CPU_ACCESS_READ)
+      if (CPUAccessFlags & D3D11_CPU_ACCESS_READ) {
         pImageInfo->access |= VK_ACCESS_HOST_READ_BIT;
+//         pImageInfo->tiling  = VK_IMAGE_TILING_LINEAR;
+      }
     }
     
     if (MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE)
@@ -156,6 +157,31 @@ namespace dxvk {
     
     if (pImageInfo->tiling == VK_IMAGE_TILING_OPTIMAL)
       pImageInfo->layout = OptimizeLayout(pImageInfo->usage);
+  }
+  
+  
+  /**
+   * \brief Retrieves memory flags for image usage
+   * 
+   * If the host requires access to the image, we
+   * should create it on a host-visible memory type.
+   * \param [in] Usage Image usage flags
+   * \returns Image memory properties
+   */
+  static VkMemoryPropertyFlags GetImageMemoryFlags(UINT CPUAccessFlags) {
+    // FIXME investigate why image mapping breaks games
+    return VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+//     if (CPUAccessFlags & D3D11_CPU_ACCESS_READ) {
+//       return VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+//            | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+//            | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+//     } else {
+//       // If only write access is required, we will emulate
+//       // image mapping through a buffer. Some games ignore
+//       // the row pitch when mapping images, which leads to
+//       // incorrect rendering.
+//       return VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+//     }
   }
   
   
@@ -201,7 +227,7 @@ namespace dxvk {
     // Create the image and, if necessary, the image buffer
     m_texInfo.formatMode  = formatMode;
     m_texInfo.image       = pDevice->GetDXVKDevice()->createImage(
-      info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+      info, GetImageMemoryFlags(m_desc.CPUAccessFlags));
     m_texInfo.imageBuffer = m_desc.CPUAccessFlags != 0
       ? CreateImageBuffer(pDevice->GetDXVKDevice(), info.format, info.extent)
       : nullptr;
@@ -224,6 +250,7 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, ID3D11Texture1D);
     
     Logger::warn("D3D11Texture1D::QueryInterface: Unknown interface query");
+    Logger::warn(str::format(riid));
     return E_NOINTERFACE;
   }
   
@@ -266,8 +293,9 @@ namespace dxvk {
       = GetFormatModeFromBindFlags(m_desc.BindFlags);
     
     if (m_desc.MipLevels == 0) {
-      m_desc.MipLevels = util::computeMipLevelCount(
-        { m_desc.Width, m_desc.Height, 1u });
+      m_desc.MipLevels = m_desc.SampleDesc.Count <= 1
+        ? util::computeMipLevelCount({ m_desc.Width, m_desc.Height, 1u })
+        : 1;
     }
     
     DxvkImageCreateInfo info;
@@ -301,7 +329,7 @@ namespace dxvk {
     // Create the image and, if necessary, the image buffer
     m_texInfo.formatMode  = formatMode;
     m_texInfo.image       = pDevice->GetDXVKDevice()->createImage(
-      info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+      info, GetImageMemoryFlags(m_desc.CPUAccessFlags));
     m_texInfo.imageBuffer = m_desc.CPUAccessFlags != 0
       ? CreateImageBuffer(pDevice->GetDXVKDevice(), info.format, info.extent)
       : nullptr;
@@ -323,6 +351,7 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, ID3D11Texture2D);
     
     Logger::warn("D3D11Texture2D::QueryInterface: Unknown interface query");
+    Logger::warn(str::format(riid));
     return E_NOINTERFACE;
   }
   
@@ -354,7 +383,7 @@ namespace dxvk {
   
   
   ///////////////////////////////////////////
-  //      D 3 D 1 1 T E X T U R E 2 D
+  //      D 3 D 1 1 T E X T U R E 3 D
   D3D11Texture3D::D3D11Texture3D(
           D3D11Device*                pDevice,
     const D3D11_TEXTURE3D_DESC*       pDesc)
@@ -398,7 +427,7 @@ namespace dxvk {
     // Create the image and, if necessary, the image buffer
     m_texInfo.formatMode  = formatMode;
     m_texInfo.image       = pDevice->GetDXVKDevice()->createImage(
-      info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+      info, GetImageMemoryFlags(m_desc.CPUAccessFlags));
     m_texInfo.imageBuffer = m_desc.CPUAccessFlags != 0
       ? CreateImageBuffer(pDevice->GetDXVKDevice(), info.format, info.extent)
       : nullptr;
@@ -420,6 +449,7 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, ID3D11Texture3D);
     
     Logger::warn("D3D11Texture3D::QueryInterface: Unknown interface query");
+    Logger::warn(str::format(riid));
     return E_NOINTERFACE;
   }
   

@@ -1,3 +1,4 @@
+#include "d3d11_cmdlist.h"
 #include "d3d11_context_imm.h"
 #include "d3d11_device.h"
 #include "d3d11_texture.h"
@@ -41,8 +42,9 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11ImmediateContext::Flush() {
+    m_parent->FlushInitContext();
+    
     if (m_csChunk->commandCount() != 0) {
-      m_parent->FlushInitContext();
       m_drawCount = 0;
       
       // Add commands to flush the threaded
@@ -63,13 +65,20 @@ namespace dxvk {
   
   void STDMETHODCALLTYPE D3D11ImmediateContext::ExecuteCommandList(
           ID3D11CommandList*  pCommandList,
-          WINBOOL             RestoreContextState) {
-    Logger::err("D3D11ImmediateContext::ExecuteCommandList: Not implemented");
+          BOOL                RestoreContextState) {
+    FlushCsChunk();
+    
+    static_cast<D3D11CommandList*>(pCommandList)->EmitToCsThread(&m_csThread);
+    
+    if (RestoreContextState)
+      RestoreState();
+    else
+      ClearState();
   }
   
   
   HRESULT STDMETHODCALLTYPE D3D11ImmediateContext::FinishCommandList(
-          WINBOOL             RestoreDeferredContextState,
+          BOOL                RestoreDeferredContextState,
           ID3D11CommandList   **ppCommandList) {
     Logger::err("D3D11: FinishCommandList called on immediate context");
     return DXGI_ERROR_INVALID_CALL;
@@ -82,6 +91,11 @@ namespace dxvk {
           D3D11_MAP                   MapType,
           UINT                        MapFlags,
           D3D11_MAPPED_SUBRESOURCE*   pMappedResource) {
+    if (pResource == nullptr) {
+      Logger::warn("D3D11ImmediateContext::Map() application tried to map a nullptr resource");
+      return DXGI_ERROR_INVALID_CALL;
+    }
+
     D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resourceDim);
     
@@ -114,18 +128,8 @@ namespace dxvk {
           cPhysicalSlice.resource()->release();
         });
       } else if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE) {
-        // Synchronize with CS thread so that we know whether
-        // the buffer is currently in use by the GPU or not
-        SynchronizeCsThread();
-        
-        if (buffer->isInUse()) {
-          if (MapFlags & D3D11_MAP_FLAG_DO_NOT_WAIT)
-            return DXGI_ERROR_WAS_STILL_DRAWING;
-          
-          Flush();
-          SynchronizeCsThread();
-          SynchronizeDevice();
-        }
+        if (!WaitForResource(buffer->resource(), MapFlags))
+          return DXGI_ERROR_WAS_STILL_DRAWING;
       }
       
       // Use map pointer from previous map operation. This
@@ -139,80 +143,103 @@ namespace dxvk {
       pMappedResource->DepthPitch = physicalSlice.length();
       return S_OK;
     } else {
-      // Mapping an image is sadly not as simple as mapping a buffer
-      // because applications tend to ignore row and layer strides.
-      // We use a buffer instead and then perform a copy.
-      D3D11TextureInfo* textureInfo
-        = GetCommonTextureInfo(pResource);
-      
-      if (textureInfo->imageBuffer == nullptr) {
-        Logger::err("D3D11DeviceContext: Cannot map a device-local image");
-        return E_INVALIDARG;
-      }
-      
-      if (pMappedResource == nullptr)
-        return S_FALSE;
-      
-      // Query format and subresource in order to compute
-      // the row pitch and layer pitch properly.
+      // Depending on whether the image has been allocated on a
+      // host-visible memory type, we can either use the mapped
+      // memory region directly, or we map a linear buffer.
+      D3D11TextureInfo* textureInfo = GetCommonTextureInfo(pResource);
       const DxvkImageCreateInfo& imageInfo = textureInfo->image->info();
-      const DxvkFormatInfo* formatInfo = imageFormatInfo(imageInfo.format);
       
-      textureInfo->mappedSubresource =
-        GetSubresourceFromIndex(VK_IMAGE_ASPECT_COLOR_BIT,
-          imageInfo.mipLevels, Subresource);
+      textureInfo->mappedSubresource = GetSubresourceFromIndex(
+        VK_IMAGE_ASPECT_COLOR_BIT, imageInfo.mipLevels, Subresource);
       
-      const VkExtent3D levelExtent = textureInfo->image
-        ->mipLevelExtent(textureInfo->mappedSubresource.mipLevel);
-      
-      const VkExtent3D blockCount = util::computeBlockCount(
-        levelExtent, formatInfo->blockSize);
-      
-      DxvkPhysicalBufferSlice physicalSlice;
-      
-      // When using any map mode which requires the image contents
-      // to be preserved, copy the image's contents into the buffer.
-      if (MapType == D3D11_MAP_WRITE_DISCARD) {
-        physicalSlice = textureInfo->imageBuffer->allocPhysicalSlice();
-        physicalSlice.resource()->acquire();
+      if (textureInfo->image->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+        const VkSubresourceLayout subresourceLayout =
+          textureInfo->image->querySubresourceLayout(
+            textureInfo->mappedSubresource);
         
-        EmitCs([
-          cImageBuffer   = textureInfo->imageBuffer,
-          cPhysicalSlice = physicalSlice
-        ] (DxvkContext* ctx) {
-          ctx->invalidateBuffer(cImageBuffer, cPhysicalSlice);
-          cPhysicalSlice.resource()->release();
-        });
+        if (!WaitForResource(textureInfo->image, MapFlags))
+          return DXGI_ERROR_WAS_STILL_DRAWING;
+        
+        pMappedResource->pData      = textureInfo->image->mapPtr(subresourceLayout.offset);
+        pMappedResource->RowPitch   = subresourceLayout.rowPitch;
+        pMappedResource->DepthPitch = subresourceLayout.rowPitch * imageInfo.extent.height;
+        
+        if (imageInfo.type == VK_IMAGE_TYPE_3D)
+          pMappedResource->DepthPitch = subresourceLayout.depthPitch;
+        else if (imageInfo.numLayers > 1)
+          pMappedResource->DepthPitch = subresourceLayout.arrayPitch;
+        
+        return S_OK;
       } else {
-        const VkImageSubresourceLayers subresourceLayers = {
-          textureInfo->mappedSubresource.aspectMask,
-          textureInfo->mappedSubresource.mipLevel,
-          textureInfo->mappedSubresource.arrayLayer, 1 };
+        if (textureInfo->imageBuffer == nullptr) {
+          Logger::err("D3D11: Cannot map a device-local image");
+          return E_INVALIDARG;
+        }
         
-        EmitCs([
-          cImageBuffer  = textureInfo->imageBuffer,
-          cImage        = textureInfo->image,
-          cSubresources = subresourceLayers,
-          cLevelExtent  = levelExtent
-        ] (DxvkContext* ctx) {
-          ctx->copyImageToBuffer(
-            cImageBuffer, 0, VkExtent2D { 0u, 0u },
-            cImage, cSubresources, VkOffset3D { 0, 0, 0 },
-            cLevelExtent);
-        });
+        if (pMappedResource == nullptr)
+          return S_FALSE;
         
-        Flush();
-        SynchronizeCsThread();
-        SynchronizeDevice();
+        // Query format info in order to compute
+        // the row pitch and layer pitch properly.
+        const DxvkFormatInfo* formatInfo = imageFormatInfo(imageInfo.format);
         
-        physicalSlice = textureInfo->imageBuffer->slice();
+        const VkExtent3D levelExtent = textureInfo->image
+          ->mipLevelExtent(textureInfo->mappedSubresource.mipLevel);
+        
+        const VkExtent3D blockCount = util::computeBlockCount(
+          levelExtent, formatInfo->blockSize);
+        
+        DxvkPhysicalBufferSlice physicalSlice;
+        
+        // When using any map mode which requires the image contents
+        // to be preserved, copy the image's contents into the buffer.
+        if (MapType == D3D11_MAP_WRITE_DISCARD) {
+          physicalSlice = textureInfo->imageBuffer->allocPhysicalSlice();
+          physicalSlice.resource()->acquire();
+          
+          EmitCs([
+            cImageBuffer   = textureInfo->imageBuffer,
+            cPhysicalSlice = physicalSlice
+          ] (DxvkContext* ctx) {
+            ctx->invalidateBuffer(cImageBuffer, cPhysicalSlice);
+            cPhysicalSlice.resource()->release();
+          });
+        } else {
+          // We may have to copy the current image contents into the
+          // mapped buffer if the GPU has write access to the image.
+          const bool copyExistingData = textureInfo->usage == D3D11_USAGE_STAGING;
+          
+          if (copyExistingData) {
+            const VkImageSubresourceLayers subresourceLayers = {
+              textureInfo->mappedSubresource.aspectMask,
+              textureInfo->mappedSubresource.mipLevel,
+              textureInfo->mappedSubresource.arrayLayer, 1 };
+            
+            EmitCs([
+              cImageBuffer  = textureInfo->imageBuffer,
+              cImage        = textureInfo->image,
+              cSubresources = subresourceLayers,
+              cLevelExtent  = levelExtent
+            ] (DxvkContext* ctx) {
+              ctx->copyImageToBuffer(
+                cImageBuffer, 0, VkExtent2D { 0u, 0u },
+                cImage, cSubresources, VkOffset3D { 0, 0, 0 },
+                cLevelExtent);
+            });
+          }
+          
+          if (!WaitForResource(textureInfo->imageBuffer->resource(), MapFlags))
+            return DXGI_ERROR_WAS_STILL_DRAWING;
+          
+          physicalSlice = textureInfo->imageBuffer->slice();
+        }
+        
+        // Set up map pointer. Data is tightly packed within the mapped buffer.
+        pMappedResource->pData      = physicalSlice.mapPtr(0);
+        pMappedResource->RowPitch   = formatInfo->elementSize * blockCount.width;
+        pMappedResource->DepthPitch = formatInfo->elementSize * blockCount.width * blockCount.height;
+        return S_OK;
       }
-      
-      // Set up map pointer. Data is tightly packed within the mapped buffer.
-      pMappedResource->pData      = physicalSlice.mapPtr(0);
-      pMappedResource->RowPitch   = formatInfo->elementSize * blockCount.width;
-      pMappedResource->DepthPitch = formatInfo->elementSize * blockCount.width * blockCount.height;
-      return S_OK;
     }
   }
   
@@ -229,24 +256,26 @@ namespace dxvk {
       const D3D11TextureInfo* textureInfo
         = GetCommonTextureInfo(pResource);
       
-      const VkExtent3D levelExtent = textureInfo->image
-        ->mipLevelExtent(textureInfo->mappedSubresource.mipLevel);
-      
-      const VkImageSubresourceLayers subresourceLayers = {
-        textureInfo->mappedSubresource.aspectMask,
-        textureInfo->mappedSubresource.mipLevel,
-        textureInfo->mappedSubresource.arrayLayer, 1 };
-      
-      EmitCs([
-        cSrcBuffer      = textureInfo->imageBuffer,
-        cDstImage       = textureInfo->image,
-        cDstLayers      = subresourceLayers,
-        cDstLevelExtent = levelExtent
-      ] (DxvkContext* ctx) {
-        ctx->copyBufferToImage(cDstImage, cDstLayers,
-          VkOffset3D { 0, 0, 0 }, cDstLevelExtent,
-          cSrcBuffer, 0, { 0u, 0u });
-      });
+      if (!(textureInfo->image->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) {
+        const VkExtent3D levelExtent = textureInfo->image
+          ->mipLevelExtent(textureInfo->mappedSubresource.mipLevel);
+        
+        const VkImageSubresourceLayers subresourceLayers = {
+          textureInfo->mappedSubresource.aspectMask,
+          textureInfo->mappedSubresource.mipLevel,
+          textureInfo->mappedSubresource.arrayLayer, 1 };
+        
+        EmitCs([
+          cSrcBuffer      = textureInfo->imageBuffer,
+          cDstImage       = textureInfo->image,
+          cDstLayers      = subresourceLayers,
+          cDstLevelExtent = levelExtent
+        ] (DxvkContext* ctx) {
+          ctx->copyBufferToImage(cDstImage, cDstLayers,
+            VkOffset3D { 0, 0, 0 }, cDstLevelExtent,
+            cSrcBuffer, 0, { 0u, 0u });
+        });
+      }
     }
   }
   
@@ -261,11 +290,26 @@ namespace dxvk {
   
   
   void D3D11ImmediateContext::SynchronizeDevice() {
-    // FIXME waiting until the device finished executing *all*
-    // pending commands is too pessimistic. Instead we should
-    // wait for individual command submissions to complete.
-    // This will require changes in the DxvkDevice class.
     m_device->waitForIdle();
+  }
+  
+  
+  bool D3D11ImmediateContext::WaitForResource(
+    const Rc<DxvkResource>&                 Resource,
+          UINT                              MapFlags) {
+    // Wait for the any pending D3D11 command to be executed
+    // on the CS thread so that we can determine whether the
+    // resource is currently in use or not.
+    Flush();
+    SynchronizeCsThread();
+    
+    if (Resource->isInUse()) {
+      // TODO implement properly in DxvkDevice
+      while (Resource->isInUse())
+        std::this_thread::yield();
+    }
+    
+    return true;
   }
   
   

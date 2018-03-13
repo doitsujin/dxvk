@@ -4,6 +4,7 @@
 
 #include "d3d11_buffer.h"
 #include "d3d11_input_layout.h"
+#include "d3d11_query.h"
 #include "d3d11_sampler.h"
 #include "d3d11_shader.h"
 #include "d3d11_state.h"
@@ -28,7 +29,7 @@ namespace dxvk {
     
   using D3D11UnorderedAccessBindings = std::array<
     Com<D3D11UnorderedAccessView>, D3D11_1_UAV_SLOT_COUNT>;
-    
+  
   
   struct D3D11ContextStateVS {
     Com<D3D11VertexShader>        shader;
@@ -127,6 +128,17 @@ namespace dxvk {
   };
   
   
+  struct D3D11ContextStateSO {
+    std::array<Com<D3D11Buffer>, D3D11_SO_STREAM_COUNT> targets;
+  };
+  
+  
+  struct D3D11ContextStatePR {
+    Com<D3D11Query> predicateObject = nullptr;
+    BOOL            predicateValue  = FALSE;
+  };
+  
+  
   /**
    * \brief Context state
    */
@@ -141,6 +153,8 @@ namespace dxvk {
     D3D11ContextStateIA ia;
     D3D11ContextStateOM om;
     D3D11ContextStateRS rs;
+    D3D11ContextStateSO so;
+    D3D11ContextStatePR pr;
   };
   
 }

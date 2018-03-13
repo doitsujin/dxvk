@@ -283,6 +283,7 @@ namespace dxvk {
     D3D11StateObjectSet<D3D11BlendState>        m_bsStateObjects;
     D3D11StateObjectSet<D3D11DepthStencilState> m_dsStateObjects;
     D3D11StateObjectSet<D3D11RasterizerState>   m_rsStateObjects;
+    D3D11StateObjectSet<D3D11SamplerState>      m_samplerObjects;
     
     HRESULT CreateShaderModule(
             D3D11ShaderModule*      pShaderModule,
@@ -329,9 +330,6 @@ namespace dxvk {
     HRESULT SetDepthStencilViewDescUnspecValues(
             ID3D11Resource*                   pResource,
             D3D11_DEPTH_STENCIL_VIEW_DESC*    pDesc);
-    
-    VkSamplerAddressMode DecodeAddressMode(
-            D3D11_TEXTURE_ADDRESS_MODE  mode) const;
     
     HRESULT GetFormatSupportFlags(DXGI_FORMAT Format, UINT* pFlags) const;
     
