@@ -189,70 +189,89 @@ namespace dxvk {
     if (pMappedResource == nullptr)
       return S_FALSE;
     
+    // Parameter validation was successful
     VkImageSubresource subresource =
       pResource->GetSubresourceFromIndex(
         VK_IMAGE_ASPECT_COLOR_BIT, Subresource);
     
     pResource->SetMappedSubresource(subresource);
     
-    // Query format info in order to compute
-    // the row pitch and layer pitch properly.
-    const DxvkFormatInfo* formatInfo = imageFormatInfo(mappedImage->info().format);
-    
-    const VkExtent3D levelExtent = mappedImage->mipLevelExtent(subresource.mipLevel);
-    const VkExtent3D blockCount = util::computeBlockCount(
-      levelExtent, formatInfo->blockSize);
-    
-    DxvkPhysicalBufferSlice physicalSlice;
-    
-    // When using any map mode which requires the image contents
-    // to be preserved, copy the image's contents into the buffer.
-    if (MapType == D3D11_MAP_WRITE_DISCARD) {
-      physicalSlice = mappedBuffer->allocPhysicalSlice();
-      physicalSlice.resource()->acquire();
+    if (pResource->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT) {
+      const VkImageType imageType = mappedImage->info().type;
       
-      EmitCs([
-        cImageBuffer   = mappedBuffer,
-        cPhysicalSlice = physicalSlice
-      ] (DxvkContext* ctx) {
-        ctx->invalidateBuffer(cImageBuffer, cPhysicalSlice);
-        cPhysicalSlice.resource()->release();
-      });
-    } else {
-      // We may have to copy the current image contents into the
-      // mapped buffer if the GPU has write access to the image.
-      const bool copyExistingData = pResource->Desc()->Usage == D3D11_USAGE_STAGING;
-      
-      if (copyExistingData) {
-        const VkImageSubresourceLayers subresourceLayers = {
-          subresource.aspectMask,
-          subresource.mipLevel,
-          subresource.arrayLayer, 1 };
-        
-        EmitCs([
-          cImageBuffer  = mappedBuffer,
-          cImage        = mappedImage,
-          cSubresources = subresourceLayers,
-          cLevelExtent  = levelExtent
-        ] (DxvkContext* ctx) {
-          ctx->copyImageToBuffer(
-            cImageBuffer, 0, VkExtent2D { 0u, 0u },
-            cImage, cSubresources, VkOffset3D { 0, 0, 0 },
-            cLevelExtent);
-        });
-      }
-      
-      if (!WaitForResource(mappedBuffer->resource(), MapFlags))
+      // Wait for the resource to become available
+      if (!WaitForResource(mappedImage, MapFlags))
         return DXGI_ERROR_WAS_STILL_DRAWING;
       
-      physicalSlice = mappedBuffer->slice();
+      // Query the subresource's memory layout and hope that
+      // the application respects the returned pitch values.
+      VkSubresourceLayout layout = mappedImage->querySubresourceLayout(subresource);
+      
+      pMappedResource->pData      = mappedImage->mapPtr(layout.offset);
+      pMappedResource->RowPitch   = imageType >= VK_IMAGE_TYPE_2D ? layout.rowPitch   : layout.size;
+      pMappedResource->DepthPitch = imageType >= VK_IMAGE_TYPE_3D ? layout.depthPitch : layout.size;
+      return S_OK;
+    } else {
+      // Query format info which we need to compute
+      // the row pitch and layer pitch properly.
+      const DxvkFormatInfo* formatInfo = imageFormatInfo(mappedImage->info().format);
+      
+      const VkExtent3D levelExtent = mappedImage->mipLevelExtent(subresource.mipLevel);
+      const VkExtent3D blockCount = util::computeBlockCount(
+        levelExtent, formatInfo->blockSize);
+      
+      DxvkPhysicalBufferSlice physicalSlice;
+      
+      if (MapType == D3D11_MAP_WRITE_DISCARD) {
+        // We do not have to preserve the contents of the
+        // buffer if the entire image gets discarded.
+        physicalSlice = mappedBuffer->allocPhysicalSlice();
+        physicalSlice.resource()->acquire();
+        
+        EmitCs([
+          cImageBuffer   = mappedBuffer,
+          cPhysicalSlice = physicalSlice
+        ] (DxvkContext* ctx) {
+          ctx->invalidateBuffer(cImageBuffer, cPhysicalSlice);
+          cPhysicalSlice.resource()->release();
+        });
+      } else {
+        // When using any map mode which requires the image contents
+        // to be preserved, and if the GPU has write access to the
+        // image, copy the current image contents into the buffer.
+        const bool copyExistingData = pResource->Desc()->Usage == D3D11_USAGE_STAGING;
+        
+        if (copyExistingData) {
+          const VkImageSubresourceLayers subresourceLayers = {
+            subresource.aspectMask,
+            subresource.mipLevel,
+            subresource.arrayLayer, 1 };
+          
+          EmitCs([
+            cImageBuffer  = mappedBuffer,
+            cImage        = mappedImage,
+            cSubresources = subresourceLayers,
+            cLevelExtent  = levelExtent
+          ] (DxvkContext* ctx) {
+            ctx->copyImageToBuffer(
+              cImageBuffer, 0, VkExtent2D { 0u, 0u },
+              cImage, cSubresources, VkOffset3D { 0, 0, 0 },
+              cLevelExtent);
+          });
+        }
+        
+        if (!WaitForResource(mappedBuffer->resource(), MapFlags))
+          return DXGI_ERROR_WAS_STILL_DRAWING;
+        
+        physicalSlice = mappedBuffer->slice();
+      }
+      
+      // Set up map pointer. Data is tightly packed within the mapped buffer.
+      pMappedResource->pData      = physicalSlice.mapPtr(0);
+      pMappedResource->RowPitch   = formatInfo->elementSize * blockCount.width;
+      pMappedResource->DepthPitch = formatInfo->elementSize * blockCount.width * blockCount.height;
+      return S_OK;
     }
-    
-    // Set up map pointer. Data is tightly packed within the mapped buffer.
-    pMappedResource->pData      = physicalSlice.mapPtr(0);
-    pMappedResource->RowPitch   = formatInfo->elementSize * blockCount.width;
-    pMappedResource->DepthPitch = formatInfo->elementSize * blockCount.width * blockCount.height;
-    return S_OK;
   }
   
   
@@ -286,6 +305,8 @@ namespace dxvk {
           cSrcBuffer, 0, { 0u, 0u });
       });
     }
+    
+    pResource->ClearMappedSubresource();
   }
   
   

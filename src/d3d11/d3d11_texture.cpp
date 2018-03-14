@@ -203,7 +203,7 @@ namespace dxvk {
     // 2. Since the image will most likely be read for rendering by the GPU,
     //    writing the image to device-local image may be more efficient than
     //    reading its contents from host-visible memory.
-    if ((m_desc.CPUAccessFlags & D3D11_CPU_ACCESS_READ) == 0)
+    if (m_desc.Usage == D3D11_USAGE_DYNAMIC)
       return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
     
     // Images that can be read by the host should be mapped directly in
