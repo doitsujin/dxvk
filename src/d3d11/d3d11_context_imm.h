@@ -4,6 +4,9 @@
 
 namespace dxvk {
   
+  class D3D11Buffer;
+  class D3D11CommonTexture;
+  
   class D3D11ImmediateContext : public D3D11DeviceContext {
     
   public:
@@ -47,6 +50,23 @@ namespace dxvk {
   private:
     
     DxvkCsThread m_csThread;
+    
+    HRESULT MapBuffer(
+            D3D11Buffer*                pResource,
+            D3D11_MAP                   MapType,
+            UINT                        MapFlags,
+            D3D11_MAPPED_SUBRESOURCE*   pMappedResource);
+    
+    HRESULT MapImage(
+            D3D11CommonTexture*         pResource,
+            UINT                        Subresource,
+            D3D11_MAP                   MapType,
+            UINT                        MapFlags,
+            D3D11_MAPPED_SUBRESOURCE*   pMappedResource);
+    
+    void UnmapImage(
+            D3D11CommonTexture*         pResource,
+            UINT                        Subresource);
     
     void SynchronizeDevice();
     

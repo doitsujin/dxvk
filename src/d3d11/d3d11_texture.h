@@ -10,6 +10,19 @@ namespace dxvk {
   class D3D11Device;
   
   /**
+   * \brief Image memory mapping mode
+   * 
+   * Determines how exactly \c Map will
+   * behave when mapping an image.
+   */
+  enum D3D11_COMMON_TEXTURE_MAP_MODE {
+    D3D11_COMMON_TEXTURE_MAP_MODE_NONE,   ///< Not mapped
+    D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER, ///< Mapped through buffer
+    D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT, ///< Directly mapped to host mem
+  };
+  
+  
+  /**
    * \brief Common texture description
    * 
    * Contains all members that can be
@@ -57,6 +70,14 @@ namespace dxvk {
      */
     const D3D11_COMMON_TEXTURE_DESC* Desc() const {
       return &m_desc;
+    }
+    
+    /**
+     * \brief Map mode
+     * \returns Map mode
+     */
+    D3D11_COMMON_TEXTURE_MAP_MODE GetMapMode() const {
+      return m_mapMode;
     }
     
     /**
@@ -141,16 +162,19 @@ namespace dxvk {
     
   private:
     
-    Com<D3D11Device>          m_device;
-    D3D11_COMMON_TEXTURE_DESC m_desc;
+    Com<D3D11Device>              m_device;
+    D3D11_COMMON_TEXTURE_DESC     m_desc;
+    D3D11_COMMON_TEXTURE_MAP_MODE m_mapMode;
     
-    Rc<DxvkImage>             m_image;
-    Rc<DxvkBuffer>            m_buffer;
+    Rc<DxvkImage>   m_image;
+    Rc<DxvkBuffer>  m_buffer;
     
     VkImageSubresource m_mappedSubresource
       = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0 };
     
     Rc<DxvkBuffer> CreateMappedBuffer() const;
+    
+    D3D11_COMMON_TEXTURE_MAP_MODE DetermineMapMode() const;
     
     static VkImageType GetImageTypeFromResourceDim(
             D3D11_RESOURCE_DIMENSION  Dimension);

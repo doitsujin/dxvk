@@ -7,7 +7,7 @@ namespace dxvk {
           D3D11Device*                pDevice,
     const D3D11_COMMON_TEXTURE_DESC*  pDesc,
           D3D11_RESOURCE_DIMENSION    Dimension)
-  : m_device(pDevice), m_desc(*pDesc) {
+  : m_device(pDevice), m_desc(*pDesc), m_mapMode(DetermineMapMode()) {
     DxgiFormatInfo formatInfo = m_device->LookupFormat(m_desc.Format, GetFormatMode());
     
     DxvkImageCreateInfo imageInfo;
@@ -56,8 +56,15 @@ namespace dxvk {
                          |  VK_ACCESS_SHADER_WRITE_BIT;
     }
     
-    if (m_desc.CPUAccessFlags != 0) {
+    if (m_desc.MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE)
+      imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+    
+    if (FAILED(GetSampleCount(m_desc.SampleDesc.Count, &imageInfo.sampleCount)))
+      throw DxvkError(str::format("D3D11: Invalid sample count: ", m_desc.SampleDesc.Count));
+    
+    if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT) {
       imageInfo.stages |= VK_PIPELINE_STAGE_HOST_BIT;
+      imageInfo.tiling  = VK_IMAGE_TILING_LINEAR;
       
       if (m_desc.CPUAccessFlags & D3D11_CPU_ACCESS_WRITE)
         imageInfo.access |= VK_ACCESS_HOST_WRITE_BIT;
@@ -66,14 +73,8 @@ namespace dxvk {
         imageInfo.access |= VK_ACCESS_HOST_READ_BIT;
     }
     
-    if (m_desc.MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE)
-      imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
-    
     if (imageInfo.tiling == VK_IMAGE_TILING_OPTIMAL)
       imageInfo.layout = OptimizeLayout(imageInfo.usage);
-    
-    if (FAILED(GetSampleCount(m_desc.SampleDesc.Count, &imageInfo.sampleCount)))
-      throw DxvkError(str::format("D3D11: Invalid sample count: ", m_desc.SampleDesc.Count));
     
     m_image = m_device->GetDXVKDevice()->createImage(
       imageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
@@ -124,6 +125,15 @@ namespace dxvk {
     }
     
     return S_OK;
+  }
+  
+  
+  D3D11_COMMON_TEXTURE_MAP_MODE D3D11CommonTexture::DetermineMapMode() const {
+    // TODO re-implement direct mapping. We'll have to check
+    // whether that is supported on a per-image basis though.
+    return m_desc.CPUAccessFlags == 0
+      ? D3D11_COMMON_TEXTURE_MAP_MODE_NONE
+      : D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
   }
   
   
