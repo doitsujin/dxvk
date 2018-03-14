@@ -8,7 +8,7 @@ fi
 DXVK_VERSION="$1"
 DXVK_SRC_DIR=`dirname $(readlink -f $0)`
 DXVK_TMP_DIR="/tmp/dxvk-$DXVK_VERSION"
-DXVK_ARCHIVE_PATH="$2/dxvk-$DXVK_VERSION.tar.gz"
+DXVK_ARCHIVE_PATH=$(realpath "$2")"/dxvk-$DXVK_VERSION.tar.gz"
 
 function build_arch {
   cd "$DXVK_SRC_DIR"
