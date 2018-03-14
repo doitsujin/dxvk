@@ -150,8 +150,13 @@ namespace dxvk {
     VkImageSubresource m_mappedSubresource
       = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0 };
     
+    Rc<DxvkBuffer> CreateMappedBuffer() const;
+    
     static VkImageType GetImageTypeFromResourceDim(
-            D3D11_RESOURCE_DIMENSION Dimension);
+            D3D11_RESOURCE_DIMENSION  Dimension);
+    
+    static VkImageLayout OptimizeLayout(
+            VkImageUsageFlags         Usage);
     
   };
   

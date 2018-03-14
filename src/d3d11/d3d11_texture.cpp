@@ -3,142 +3,6 @@
 
 namespace dxvk {
   
-  /**
-   * \brief Optimizes image layout based on usage flags
-   * 
-   * \param [in] flags Image usage flag
-   * \returns Optimized image layout
-   */
-  static VkImageLayout OptimizeLayout(VkImageUsageFlags flags) {
-    const VkImageUsageFlags allFlags = flags;
-    
-    // Filter out unnecessary flags. Transfer operations
-    // are handled by the backend in a transparent manner.
-    flags &= ~(VK_IMAGE_USAGE_TRANSFER_DST_BIT
-             | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
-    
-    // If the image is used only as an attachment, we never
-    // have to transform the image back to a different layout
-    if (flags == VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
-      return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    
-    if (flags == VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
-      return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    
-    flags &= ~(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
-             | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
-    
-    // If the image is used for reading but not as a storage
-    // image, we can optimize the image for texture access
-    if (flags == VK_IMAGE_USAGE_SAMPLED_BIT) {
-      return allFlags & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
-        ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
-        : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    }
-    
-    // Otherwise, we have to stick with the default layout
-    return VK_IMAGE_LAYOUT_GENERAL;
-  }
-  
-  
-  /**
-   * \brief Creates a buffer to map an image object
-   * 
-   * When mapping an image, some applications make the incorrect
-   * assumption that image data is tightly packed, which may lead
-   * to corrupted textures in memory. To prevent this, we create
-   * a tightly packed buffer and use it when mapping the image.
-   */
-  Rc<DxvkBuffer> CreateImageBuffer(
-    const Rc<DxvkDevice>&       device,
-          VkFormat              format,
-          VkExtent3D            extent) {
-    const DxvkFormatInfo* formatInfo = imageFormatInfo(format);
-    
-    const VkExtent3D blockCount = {
-      extent.width  / formatInfo->blockSize.width,
-      extent.height / formatInfo->blockSize.height,
-      extent.depth  / formatInfo->blockSize.depth };
-    
-    DxvkBufferCreateInfo info;
-    info.size   = formatInfo->elementSize
-                * blockCount.width
-                * blockCount.height
-                * blockCount.depth;
-    info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
-                | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-    info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    info.access = VK_ACCESS_TRANSFER_READ_BIT
-                | VK_ACCESS_TRANSFER_WRITE_BIT;
-    
-    return device->createBuffer(info,
-      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-  }
-  
-  
-  /**
-   * \brief Fills in image info stage and access flags
-   * 
-   * \param [in] pDevice Target device
-   * \param [in] BindFLags Resource bind flags
-   * \param [in] CPUAccessFlags CPU access flags
-   * \param [in] MiscFlags Additional usage info
-   * \param [out] pImageInfo DXVK image create info
-   */
-  static void GetImageStagesAndAccessFlags(
-    const D3D11Device*          pDevice,
-          UINT                  BindFlags,
-          UINT                  CPUAccessFlags,
-          UINT                  MiscFlags,
-          DxvkImageCreateInfo*  pImageInfo) {
-    
-    if (BindFlags & D3D11_BIND_SHADER_RESOURCE) {
-      pImageInfo->usage  |= VK_IMAGE_USAGE_SAMPLED_BIT;
-      pImageInfo->stages |= pDevice->GetEnabledShaderStages();
-      pImageInfo->access |= VK_ACCESS_SHADER_READ_BIT;
-    }
-    
-    if (BindFlags & D3D11_BIND_RENDER_TARGET) {
-      pImageInfo->usage  |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-      pImageInfo->stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-      pImageInfo->access |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
-                         |  VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-    }
-    
-    if (BindFlags & D3D11_BIND_DEPTH_STENCIL) {
-      pImageInfo->usage  |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-      pImageInfo->stages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-                         |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-      pImageInfo->access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT
-                         |  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-    }
-    
-    if (BindFlags & D3D11_BIND_UNORDERED_ACCESS) {
-      pImageInfo->usage  |= VK_IMAGE_USAGE_STORAGE_BIT;
-      pImageInfo->stages |= pDevice->GetEnabledShaderStages();
-      pImageInfo->access |= VK_ACCESS_SHADER_READ_BIT
-                         |  VK_ACCESS_SHADER_WRITE_BIT;
-    }
-    
-    if (CPUAccessFlags != 0) {
-      pImageInfo->stages |= VK_PIPELINE_STAGE_HOST_BIT;
-      
-      if (CPUAccessFlags & D3D11_CPU_ACCESS_WRITE)
-        pImageInfo->access |= VK_ACCESS_HOST_WRITE_BIT;
-      
-      if (CPUAccessFlags & D3D11_CPU_ACCESS_READ)
-        pImageInfo->access |= VK_ACCESS_HOST_READ_BIT;
-    }
-    
-    if (MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE)
-      pImageInfo->flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
-    
-    if (pImageInfo->tiling == VK_IMAGE_TILING_OPTIMAL)
-      pImageInfo->layout = OptimizeLayout(pImageInfo->usage);
-  }
-  
-  
   D3D11CommonTexture::D3D11CommonTexture(
           D3D11Device*                pDevice,
     const D3D11_COMMON_TEXTURE_DESC*  pDesc,
@@ -146,39 +10,76 @@ namespace dxvk {
   : m_device(pDevice), m_desc(*pDesc) {
     DxgiFormatInfo formatInfo = m_device->LookupFormat(m_desc.Format, GetFormatMode());
     
-    DxvkImageCreateInfo info;
-    info.type           = GetImageTypeFromResourceDim(Dimension);
-    info.format         = formatInfo.format;
-    info.flags          = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
-    info.sampleCount    = VK_SAMPLE_COUNT_1_BIT;
-    info.extent.width   = m_desc.Width;
-    info.extent.height  = m_desc.Height;
-    info.extent.depth   = m_desc.Depth;
-    info.numLayers      = m_desc.ArraySize;
-    info.mipLevels      = m_desc.MipLevels;
-    info.usage          = VK_IMAGE_USAGE_TRANSFER_SRC_BIT
-                        | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    info.stages         = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    info.access         = VK_ACCESS_TRANSFER_READ_BIT
-                        | VK_ACCESS_TRANSFER_WRITE_BIT;
-    info.tiling         = VK_IMAGE_TILING_OPTIMAL;
-    info.layout         = VK_IMAGE_LAYOUT_GENERAL;
+    DxvkImageCreateInfo imageInfo;
+    imageInfo.type           = GetImageTypeFromResourceDim(Dimension);
+    imageInfo.format         = formatInfo.format;
+    imageInfo.flags          = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+    imageInfo.sampleCount    = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.extent.width   = m_desc.Width;
+    imageInfo.extent.height  = m_desc.Height;
+    imageInfo.extent.depth   = m_desc.Depth;
+    imageInfo.numLayers      = m_desc.ArraySize;
+    imageInfo.mipLevels      = m_desc.MipLevels;
+    imageInfo.usage          = VK_IMAGE_USAGE_TRANSFER_SRC_BIT
+                             | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    imageInfo.stages         = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    imageInfo.access         = VK_ACCESS_TRANSFER_READ_BIT
+                             | VK_ACCESS_TRANSFER_WRITE_BIT;
+    imageInfo.tiling         = VK_IMAGE_TILING_OPTIMAL;
+    imageInfo.layout         = VK_IMAGE_LAYOUT_GENERAL;
     
-    if (FAILED(GetSampleCount(m_desc.SampleDesc.Count, &info.sampleCount)))
+    if (m_desc.BindFlags & D3D11_BIND_SHADER_RESOURCE) {
+      imageInfo.usage  |= VK_IMAGE_USAGE_SAMPLED_BIT;
+      imageInfo.stages |= pDevice->GetEnabledShaderStages();
+      imageInfo.access |= VK_ACCESS_SHADER_READ_BIT;
+    }
+    
+    if (m_desc.BindFlags & D3D11_BIND_RENDER_TARGET) {
+      imageInfo.usage  |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+      imageInfo.stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+      imageInfo.access |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
+                         |  VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    }
+    
+    if (m_desc.BindFlags & D3D11_BIND_DEPTH_STENCIL) {
+      imageInfo.usage  |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+      imageInfo.stages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+                         |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+      imageInfo.access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT
+                         |  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    }
+    
+    if (m_desc.BindFlags & D3D11_BIND_UNORDERED_ACCESS) {
+      imageInfo.usage  |= VK_IMAGE_USAGE_STORAGE_BIT;
+      imageInfo.stages |= pDevice->GetEnabledShaderStages();
+      imageInfo.access |= VK_ACCESS_SHADER_READ_BIT
+                         |  VK_ACCESS_SHADER_WRITE_BIT;
+    }
+    
+    if (m_desc.CPUAccessFlags != 0) {
+      imageInfo.stages |= VK_PIPELINE_STAGE_HOST_BIT;
+      
+      if (m_desc.CPUAccessFlags & D3D11_CPU_ACCESS_WRITE)
+        imageInfo.access |= VK_ACCESS_HOST_WRITE_BIT;
+      
+      if (m_desc.CPUAccessFlags & D3D11_CPU_ACCESS_READ)
+        imageInfo.access |= VK_ACCESS_HOST_READ_BIT;
+    }
+    
+    if (m_desc.MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE)
+      imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+    
+    if (imageInfo.tiling == VK_IMAGE_TILING_OPTIMAL)
+      imageInfo.layout = OptimizeLayout(imageInfo.usage);
+    
+    if (FAILED(GetSampleCount(m_desc.SampleDesc.Count, &imageInfo.sampleCount)))
       throw DxvkError(str::format("D3D11: Invalid sample count: ", m_desc.SampleDesc.Count));
     
-    GetImageStagesAndAccessFlags(
-      m_device.ptr(),
-      m_desc.BindFlags,
-      m_desc.CPUAccessFlags,
-      m_desc.MiscFlags,
-      &info);
-    
     m_image = m_device->GetDXVKDevice()->createImage(
-      info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+      imageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     
     m_buffer = m_desc.CPUAccessFlags != 0
-      ? CreateImageBuffer(m_device->GetDXVKDevice(), info.format, info.extent)
+      ? CreateMappedBuffer()
       : nullptr;
   }
   
@@ -226,6 +127,31 @@ namespace dxvk {
   }
   
   
+  Rc<DxvkBuffer> D3D11CommonTexture::CreateMappedBuffer() const {
+    const DxvkFormatInfo* formatInfo = imageFormatInfo(
+      m_device->LookupFormat(m_desc.Format, GetFormatMode()).format);
+    
+    const VkExtent3D blockCount = util::computeBlockCount(
+      VkExtent3D { m_desc.Width, m_desc.Height, m_desc.Depth },
+      formatInfo->blockSize);
+    
+    DxvkBufferCreateInfo info;
+    info.size   = formatInfo->elementSize
+                * blockCount.width
+                * blockCount.height
+                * blockCount.depth;
+    info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+                | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    info.access = VK_ACCESS_TRANSFER_READ_BIT
+                | VK_ACCESS_TRANSFER_WRITE_BIT;
+    
+    return m_device->GetDXVKDevice()->createBuffer(info,
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+  }
+  
+  
   VkImageType D3D11CommonTexture::GetImageTypeFromResourceDim(D3D11_RESOURCE_DIMENSION Dimension) {
     switch (Dimension) {
       case D3D11_RESOURCE_DIMENSION_TEXTURE1D: return VK_IMAGE_TYPE_1D;
@@ -233,6 +159,38 @@ namespace dxvk {
       case D3D11_RESOURCE_DIMENSION_TEXTURE3D: return VK_IMAGE_TYPE_3D;
       default: throw DxvkError("D3D11CommonTexture: Unhandled resource dimension");
     }
+  }
+  
+  
+  VkImageLayout D3D11CommonTexture::OptimizeLayout(VkImageUsageFlags Usage) {
+    const VkImageUsageFlags usageFlags = Usage;
+    
+    // Filter out unnecessary flags. Transfer operations
+    // are handled by the backend in a transparent manner.
+    Usage &= ~(VK_IMAGE_USAGE_TRANSFER_DST_BIT
+             | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+    
+    // If the image is used only as an attachment, we never
+    // have to transform the image back to a different layout
+    if (Usage == VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)
+      return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    
+    if (Usage == VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+      return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    
+    Usage &= ~(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+             | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+    
+    // If the image is used for reading but not as a storage
+    // image, we can optimize the image for texture access
+    if (Usage == VK_IMAGE_USAGE_SAMPLED_BIT) {
+      return usageFlags & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
+        ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+        : VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    }
+    
+    // Otherwise, we have to stick with the default layout
+    return VK_IMAGE_LAYOUT_GENERAL;
   }
   
   
