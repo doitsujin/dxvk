@@ -28,6 +28,10 @@ namespace dxvk {
     imageInfo.tiling         = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.layout         = VK_IMAGE_LAYOUT_GENERAL;
     
+    if (FAILED(GetSampleCount(m_desc.SampleDesc.Count, &imageInfo.sampleCount)))
+      throw DxvkError(str::format("D3D11: Invalid sample count: ", m_desc.SampleDesc.Count));
+    
+    // Adjust usage flags based on the corresponding D3D flags
     if (m_desc.BindFlags & D3D11_BIND_SHADER_RESOURCE) {
       imageInfo.usage  |= VK_IMAGE_USAGE_SAMPLED_BIT;
       imageInfo.stages |= pDevice->GetEnabledShaderStages();
@@ -38,30 +42,30 @@ namespace dxvk {
       imageInfo.usage  |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
       imageInfo.stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
       imageInfo.access |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
-                         |  VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                       |  VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
     }
     
     if (m_desc.BindFlags & D3D11_BIND_DEPTH_STENCIL) {
       imageInfo.usage  |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
       imageInfo.stages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-                         |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+                       |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
       imageInfo.access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT
-                         |  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                       |  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
     }
     
     if (m_desc.BindFlags & D3D11_BIND_UNORDERED_ACCESS) {
       imageInfo.usage  |= VK_IMAGE_USAGE_STORAGE_BIT;
       imageInfo.stages |= pDevice->GetEnabledShaderStages();
       imageInfo.access |= VK_ACCESS_SHADER_READ_BIT
-                         |  VK_ACCESS_SHADER_WRITE_BIT;
+                       |  VK_ACCESS_SHADER_WRITE_BIT;
     }
     
     if (m_desc.MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE)
       imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
     
-    if (FAILED(GetSampleCount(m_desc.SampleDesc.Count, &imageInfo.sampleCount)))
-      throw DxvkError(str::format("D3D11: Invalid sample count: ", m_desc.SampleDesc.Count));
-    
+    // If the image is mapped directly to host memory, we need
+    // to enable linear tiling, and DXVK needs to be aware that
+    // the image can be accessed by the host.
     if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT) {
       imageInfo.stages |= VK_PIPELINE_STAGE_HOST_BIT;
       imageInfo.tiling  = VK_IMAGE_TILING_LINEAR;
@@ -73,15 +77,19 @@ namespace dxvk {
         imageInfo.access |= VK_ACCESS_HOST_READ_BIT;
     }
     
+    // We must keep LINEAR images in GENERAL layout, but we
+    // can choose a better layout for the image based on how
+    // it is going to be used by the game.
     if (imageInfo.tiling == VK_IMAGE_TILING_OPTIMAL)
       imageInfo.layout = OptimizeLayout(imageInfo.usage);
     
+    // If necessary, create the mapped linear buffer
+    if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER)
+      m_buffer = CreateMappedBuffer();
+    
+    // Finally create the image
     m_image = m_device->GetDXVKDevice()->createImage(
       imageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    
-    m_buffer = m_desc.CPUAccessFlags != 0
-      ? CreateMappedBuffer()
-      : nullptr;
   }
   
   
