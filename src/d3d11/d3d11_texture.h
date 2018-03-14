@@ -174,7 +174,12 @@ namespace dxvk {
     
     Rc<DxvkBuffer> CreateMappedBuffer() const;
     
-    D3D11_COMMON_TEXTURE_MAP_MODE DetermineMapMode() const;
+    BOOL CheckImageSupport(
+      const DxvkImageCreateInfo*  pImageInfo,
+            VkImageTiling         Tiling) const;
+    
+    D3D11_COMMON_TEXTURE_MAP_MODE DetermineMapMode(
+      const DxvkImageCreateInfo*  pImageInfo) const;
     
     static VkImageType GetImageTypeFromResourceDim(
             D3D11_RESOURCE_DIMENSION  Dimension);

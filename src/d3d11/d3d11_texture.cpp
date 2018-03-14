@@ -7,13 +7,13 @@ namespace dxvk {
           D3D11Device*                pDevice,
     const D3D11_COMMON_TEXTURE_DESC*  pDesc,
           D3D11_RESOURCE_DIMENSION    Dimension)
-  : m_device(pDevice), m_desc(*pDesc), m_mapMode(DetermineMapMode()) {
+  : m_device(pDevice), m_desc(*pDesc) {
     DxgiFormatInfo formatInfo = m_device->LookupFormat(m_desc.Format, GetFormatMode());
     
     DxvkImageCreateInfo imageInfo;
     imageInfo.type           = GetImageTypeFromResourceDim(Dimension);
     imageInfo.format         = formatInfo.format;
-    imageInfo.flags          = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+    imageInfo.flags          = 0;
     imageInfo.sampleCount    = VK_SAMPLE_COUNT_1_BIT;
     imageInfo.extent.width   = m_desc.Width;
     imageInfo.extent.height  = m_desc.Height;
@@ -31,7 +31,7 @@ namespace dxvk {
     if (FAILED(GetSampleCount(m_desc.SampleDesc.Count, &imageInfo.sampleCount)))
       throw DxvkError(str::format("D3D11: Invalid sample count: ", m_desc.SampleDesc.Count));
     
-    // Adjust usage flags based on the corresponding D3D flags
+    // Adjust image flags based on the corresponding D3D flags
     if (m_desc.BindFlags & D3D11_BIND_SHADER_RESOURCE) {
       imageInfo.usage  |= VK_IMAGE_USAGE_SAMPLED_BIT;
       imageInfo.stages |= pDevice->GetEnabledShaderStages();
@@ -60,8 +60,32 @@ namespace dxvk {
                        |  VK_ACCESS_SHADER_WRITE_BIT;
     }
     
+    if (formatInfo.flags.test(DxgiFormatFlag::Typeless))
+      imageInfo.flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+    
     if (m_desc.MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE)
       imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+    
+    // Test whether the combination of image parameters is supported
+    if (!CheckImageSupport(&imageInfo, VK_IMAGE_TILING_OPTIMAL)) {
+      throw DxvkError(str::format(
+        "D3D11: Cannot create texture:",
+        "\n  Format:  ", imageInfo.format,
+        "\n  Extent:  ", imageInfo.extent.width,
+                    "x", imageInfo.extent.height,
+                    "x", imageInfo.extent.depth,
+        "\n  Samples: ", imageInfo.sampleCount,
+        "\n  Layers:  ", imageInfo.numLayers,
+        "\n  Levels:  ", imageInfo.mipLevels,
+        "\n  Usage:   ", std::hex, imageInfo.usage));
+    }
+    
+    // Determine map mode based on our findings
+    m_mapMode = DetermineMapMode(&imageInfo);
+    
+    // FIXME Enable direct mapping if it works
+    if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT)
+      m_mapMode = D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
     
     // If the image is mapped directly to host memory, we need
     // to enable linear tiling, and DXVK needs to be aware that
@@ -87,9 +111,17 @@ namespace dxvk {
     if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER)
       m_buffer = CreateMappedBuffer();
     
-    // Finally create the image
-    m_image = m_device->GetDXVKDevice()->createImage(
-      imageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    // Create the image on a host-visible memory type
+    // in case it is going to be mapped directly.
+    VkMemoryPropertyFlags memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    
+    if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT) {
+      memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                       | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+                       | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+    }
+    
+    m_image = m_device->GetDXVKDevice()->createImage(imageInfo, memoryProperties);
   }
   
   
@@ -136,11 +168,50 @@ namespace dxvk {
   }
   
   
-  D3D11_COMMON_TEXTURE_MAP_MODE D3D11CommonTexture::DetermineMapMode() const {
-    // TODO re-implement direct mapping. We'll have to check
-    // whether that is supported on a per-image basis though.
-    return m_desc.CPUAccessFlags == 0
-      ? D3D11_COMMON_TEXTURE_MAP_MODE_NONE
+  BOOL D3D11CommonTexture::CheckImageSupport(
+    const DxvkImageCreateInfo*  pImageInfo,
+          VkImageTiling         Tiling) const {
+    const Rc<DxvkAdapter> adapter = m_device->GetDXVKDevice()->adapter();
+    
+    VkImageFormatProperties formatProps = { };
+    
+    VkResult status = adapter->imageFormatProperties(
+      pImageInfo->format, pImageInfo->type, Tiling,
+      pImageInfo->usage, pImageInfo->flags, formatProps);
+    
+    if (status != VK_SUCCESS)
+      return FALSE;
+    
+    return (pImageInfo->extent.width  <= formatProps.maxExtent.width)
+        && (pImageInfo->extent.height <= formatProps.maxExtent.height)
+        && (pImageInfo->extent.depth  <= formatProps.maxExtent.depth)
+        && (pImageInfo->numLayers     <= formatProps.maxArrayLayers)
+        && (pImageInfo->mipLevels     <= formatProps.maxMipLevels)
+        && (pImageInfo->sampleCount    & formatProps.sampleCounts);
+  }
+  
+  
+  D3D11_COMMON_TEXTURE_MAP_MODE D3D11CommonTexture::DetermineMapMode(
+    const DxvkImageCreateInfo*  pImageInfo) const {
+    // Don't map an image unless the application requests it
+    if (m_desc.CPUAccessFlags == 0)
+      return D3D11_COMMON_TEXTURE_MAP_MODE_NONE;
+    
+    // Write-only images should go through a buffer for multiple reasons:
+    // 1. Some games do not respect the row and depth pitch that is returned
+    //    by the Map() method, which leads to incorrect rendering (e.g. Nier)
+    // 2. Since the image will most likely be read for rendering by the GPU,
+    //    writing the image to device-local image may be more efficient than
+    //    reading its contents from host-visible memory.
+    if ((m_desc.CPUAccessFlags & D3D11_CPU_ACCESS_READ) == 0)
+      return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
+    
+    // Images that can be read by the host should be mapped directly in
+    // order to avoid expensive synchronization with the GPU. This does
+    // however require linear tiling, which may not be supported for all
+    // combinations of image parameters.
+    return this->CheckImageSupport(pImageInfo, VK_IMAGE_TILING_LINEAR)
+      ? D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT
       : D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
   }
   
