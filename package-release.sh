@@ -18,6 +18,7 @@ function build_arch {
         --prefix "$DXVK_TMP_DIR/install.$1"           \
 	--unity on                                    \
         --strip                                       \
+        -Denable_tests=false                          \
         "$DXVK_TMP_DIR/build.$1"
 
   cd "$DXVK_TMP_DIR/build.$1"

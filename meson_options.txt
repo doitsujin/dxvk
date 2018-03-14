@@ -1,0 +1,1 @@
+option('enable_tests', type : 'boolean', value : false)
