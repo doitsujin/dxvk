@@ -63,6 +63,9 @@ namespace dxvk {
     if (m_desc.MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE)
       imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
     
+    if (Dimension == D3D11_RESOURCE_DIMENSION_TEXTURE3D)
+      imageInfo.flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT_KHR;
+    
     // Test whether the combination of image parameters is supported
     if (!CheckImageSupport(&imageInfo, VK_IMAGE_TILING_OPTIMAL)) {
       throw DxvkError(str::format(
