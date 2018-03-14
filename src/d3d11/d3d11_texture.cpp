@@ -13,7 +13,7 @@ namespace dxvk {
     DxvkImageCreateInfo imageInfo;
     imageInfo.type           = GetImageTypeFromResourceDim(Dimension);
     imageInfo.format         = formatInfo.format;
-    imageInfo.flags          = 0;
+    imageInfo.flags          = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
     imageInfo.sampleCount    = VK_SAMPLE_COUNT_1_BIT;
     imageInfo.extent.width   = m_desc.Width;
     imageInfo.extent.height  = m_desc.Height;
@@ -59,9 +59,6 @@ namespace dxvk {
       imageInfo.access |= VK_ACCESS_SHADER_READ_BIT
                        |  VK_ACCESS_SHADER_WRITE_BIT;
     }
-    
-    if (formatInfo.flags.test(DxgiFormatFlag::Typeless))
-      imageInfo.flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
     
     if (m_desc.MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE)
       imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
