@@ -21,6 +21,7 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, IDXGIObject);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIDevice);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIDevice1);
+    COM_QUERY_IFACE(riid, ppvObject, IDXGIDevice2);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIDevicePrivate);
     
     if (m_layer != nullptr)
@@ -93,6 +94,31 @@ namespace dxvk {
           UINT                  MaxLatency) {
     Logger::warn("DxgiDevice::SetMaximumFrameLatency: Stub");
     return S_OK;
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE DxgiDevice::OfferResources( 
+          UINT                          NumResources,
+          IDXGIResource* const*         ppResources,
+          DXGI_OFFER_RESOURCE_PRIORITY  Priority) {
+
+    Logger::err("DxgiDevice::OfferResources: not implemented");
+    return DXGI_ERROR_UNSUPPORTED;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE DxgiDevice::ReclaimResources( 
+          UINT                          NumResources,
+          IDXGIResource* const*         ppResources,
+          BOOL*                         pDiscarded) {
+    Logger::err("DxgiDevice::ReclaimResources: not implemented");
+    return DXGI_ERROR_UNSUPPORTED;    
+  }
+
+
+  HRESULT STDMETHODCALLTYPE DxgiDevice::EnqueueSetEvent(HANDLE hEvent) {
+    Logger::err("DxgiDevice::EnqueueSetEvent: not implemented");
+    return DXGI_ERROR_UNSUPPORTED;           
   }
   
   
