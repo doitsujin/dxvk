@@ -28,7 +28,7 @@ namespace dxvk {
   class D3D11Texture2D;
   class D3D11Texture3D;
   
-  class D3D11Device : public ComObject<ID3D11Device> {
+  class D3D11Device : public ComObject<ID3D11Device1> {
     /// Maximum number of resource init commands per command buffer
     constexpr static uint64_t InitCommandThreshold = 50;
   public:
@@ -144,6 +144,10 @@ namespace dxvk {
       const D3D11_BLEND_DESC*           pBlendStateDesc,
             ID3D11BlendState**          ppBlendState) final;
     
+    HRESULT STDMETHODCALLTYPE CreateBlendState1(
+      const D3D11_BLEND_DESC1*          pBlendStateDesc,
+            ID3D11BlendState1**         ppBlendState) final;
+
     HRESULT STDMETHODCALLTYPE CreateDepthStencilState(
       const D3D11_DEPTH_STENCIL_DESC*   pDepthStencilDesc,
             ID3D11DepthStencilState**   ppDepthStencilState) final;
@@ -151,6 +155,10 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE CreateRasterizerState(
       const D3D11_RASTERIZER_DESC*      pRasterizerDesc,
             ID3D11RasterizerState**     ppRasterizerState) final;
+    
+    HRESULT STDMETHODCALLTYPE CreateRasterizerState1(
+      const D3D11_RASTERIZER_DESC1*     pRasterizerDesc,
+            ID3D11RasterizerState1**    ppRasterizerState) final;
     
     HRESULT STDMETHODCALLTYPE CreateSamplerState(
       const D3D11_SAMPLER_DESC*         pSamplerDesc,
@@ -171,10 +179,34 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE CreateDeferredContext(
             UINT                        ContextFlags,
             ID3D11DeviceContext**       ppDeferredContext) final;
+
+    HRESULT STDMETHODCALLTYPE CreateDeferredContext1(
+            UINT                        ContextFlags,
+            ID3D11DeviceContext1**      ppDeferredContext) final;
+
+    HRESULT STDMETHODCALLTYPE CreateDeviceContextState(
+            UINT                        Flags,
+      const D3D_FEATURE_LEVEL*          pFeatureLevels,
+            UINT                        FeatureLevels,
+            UINT                        SDKVersion,
+            REFIID                      EmulatedInterface,
+            D3D_FEATURE_LEVEL*          pChosenFeatureLevel,
+            ID3DDeviceContextState**    ppContextState) final;
     
     HRESULT STDMETHODCALLTYPE OpenSharedResource(
             HANDLE      hResource,
             REFIID      ReturnedInterface,
+            void**      ppResource) final;
+
+    HRESULT STDMETHODCALLTYPE OpenSharedResource1(
+            HANDLE      hResource,
+            REFIID      returnedInterface,
+            void**      ppResource) final;
+
+    HRESULT STDMETHODCALLTYPE OpenSharedResourceByName(
+            LPCWSTR     lpName,
+            DWORD       dwDesiredAccess,
+            REFIID      returnedInterface,
             void**      ppResource) final;
     
     HRESULT STDMETHODCALLTYPE CheckFormatSupport(
@@ -227,6 +259,9 @@ namespace dxvk {
     
     void STDMETHODCALLTYPE GetImmediateContext(
             ID3D11DeviceContext** ppImmediateContext) final;
+
+    void STDMETHODCALLTYPE GetImmediateContext1(
+            ID3D11DeviceContext1** ppImmediateContext) final;
     
     HRESULT STDMETHODCALLTYPE SetExceptionMode(UINT RaiseFlags) final;
     
