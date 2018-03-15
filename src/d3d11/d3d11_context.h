@@ -11,7 +11,7 @@ namespace dxvk {
   
   class D3D11Device;
   
-  class D3D11DeviceContext : public D3D11DeviceChild<ID3D11DeviceContext> {
+  class D3D11DeviceContext : public D3D11DeviceChild<ID3D11DeviceContext1> {
     
   public:
     
@@ -24,6 +24,19 @@ namespace dxvk {
             REFIID  riid,
             void**  ppvObject) final;
     
+    void STDMETHODCALLTYPE DiscardResource(ID3D11Resource *pResource) final;
+
+    void STDMETHODCALLTYPE DiscardView(ID3D11View* pResourceView) final;
+
+    void STDMETHODCALLTYPE DiscardView1(
+            ID3D11View*                      pResourceView,
+      const D3D11_RECT*                      pRects,
+            UINT                             NumRects) final;
+
+    void STDMETHODCALLTYPE SwapDeviceContextState(
+           ID3DDeviceContextState*           pState,
+           ID3DDeviceContextState**          ppPreviousState) final;
+
     void STDMETHODCALLTYPE GetDevice(ID3D11Device **ppDevice) final;
     
     void STDMETHODCALLTYPE ClearState() final;
@@ -56,6 +69,17 @@ namespace dxvk {
             UINT                              SrcSubresource,
       const D3D11_BOX*                        pSrcBox) final;
     
+    void STDMETHODCALLTYPE CopySubresourceRegion1(
+            ID3D11Resource*                   pDstResource,
+            UINT                              DstSubresource,
+            UINT                              DstX,
+            UINT                              DstY,
+            UINT                              DstZ,
+            ID3D11Resource*                   pSrcResource,
+            UINT                              SrcSubresource,
+      const D3D11_BOX*                        pSrcBox,
+            UINT                              CopyFlags) final;
+    
     void STDMETHODCALLTYPE CopyResource(
             ID3D11Resource*                   pDstResource,
             ID3D11Resource*                   pSrcResource) final;
@@ -83,6 +107,12 @@ namespace dxvk {
             FLOAT                             Depth,
             UINT8                             Stencil) final;
     
+    void STDMETHODCALLTYPE ClearView(
+            ID3D11View                        *pView,
+      const FLOAT                             Color[4],
+      const D3D11_RECT                        *pRect,
+            UINT                              NumRects) final;
+
     void STDMETHODCALLTYPE GenerateMips(
             ID3D11ShaderResourceView*         pShaderResourceView) final;
     
@@ -93,6 +123,15 @@ namespace dxvk {
       const void*                             pSrcData,
             UINT                              SrcRowPitch,
             UINT                              SrcDepthPitch) final;
+    
+    void STDMETHODCALLTYPE UpdateSubresource1(
+            ID3D11Resource*                   pDstResource,
+            UINT                              DstSubresource,
+      const D3D11_BOX*                        pDstBox,
+      const void*                             pSrcData,
+            UINT                              SrcRowPitch,
+            UINT                              SrcDepthPitch,
+            UINT                              CopyFlags) final;
     
     void STDMETHODCALLTYPE SetResourceMinLOD(
             ID3D11Resource*                   pResource,
@@ -194,6 +233,13 @@ namespace dxvk {
             UINT                              StartSlot,
             UINT                              NumBuffers,
             ID3D11Buffer* const*              ppConstantBuffers) final;
+
+     void STDMETHODCALLTYPE VSSetConstantBuffers1(
+            UINT                              StartSlot,
+            UINT                              NumBuffers,
+            ID3D11Buffer* const*              ppConstantBuffers,
+      const UINT*                             pFirstConstant,
+      const UINT*                             pNumConstants) final;
     
     void STDMETHODCALLTYPE VSSetShaderResources(
             UINT                              StartSlot,
@@ -214,6 +260,13 @@ namespace dxvk {
             UINT                              StartSlot,
             UINT                              NumBuffers,
             ID3D11Buffer**                    ppConstantBuffers) final;
+
+    void STDMETHODCALLTYPE VSGetConstantBuffers1(
+            UINT                              StartSlot,
+            UINT                              NumBuffers,
+            ID3D11Buffer**                    ppConstantBuffers,
+            UINT*                             pFirstConstant,
+            UINT*                             pNumConstants) final;
     
     void STDMETHODCALLTYPE VSGetShaderResources(
             UINT                              StartSlot,
@@ -240,6 +293,13 @@ namespace dxvk {
             UINT                              NumBuffers,
             ID3D11Buffer* const*              ppConstantBuffers) final;
     
+    void STDMETHODCALLTYPE HSSetConstantBuffers1(
+            UINT                              StartSlot,
+            UINT                              NumBuffers,
+            ID3D11Buffer* const*              ppConstantBuffers,
+      const UINT*                             pFirstConstant,
+      const UINT*                             pNumConstants) final;
+    
     void STDMETHODCALLTYPE HSSetSamplers(
             UINT                              StartSlot,
             UINT                              NumSamplers,
@@ -254,6 +314,13 @@ namespace dxvk {
             UINT                              StartSlot,
             UINT                              NumBuffers,
             ID3D11Buffer**                    ppConstantBuffers) final;
+
+     void STDMETHODCALLTYPE HSGetConstantBuffers1(
+            UINT                              StartSlot,
+            UINT                              NumBuffers,
+            ID3D11Buffer**                    ppConstantBuffers,
+            UINT*                             pFirstConstant,
+            UINT*                             pNumConstants) final;
     
     void STDMETHODCALLTYPE HSGetShaderResources(
             UINT                              StartSlot,
@@ -279,6 +346,13 @@ namespace dxvk {
             UINT                              StartSlot,
             UINT                              NumBuffers,
             ID3D11Buffer* const*              ppConstantBuffers) final;
+
+    void STDMETHODCALLTYPE DSSetConstantBuffers1(
+            UINT                              StartSlot,
+            UINT                              NumBuffers,
+            ID3D11Buffer* const*              ppConstantBuffers,
+      const UINT*                             pFirstConstant,
+      const UINT*                             pNumConstants) final;
     
     void STDMETHODCALLTYPE DSSetSamplers(
             UINT                              StartSlot,
@@ -294,6 +368,13 @@ namespace dxvk {
             UINT                              StartSlot,
             UINT                              NumBuffers,
             ID3D11Buffer**                    ppConstantBuffers) final;
+    
+     void STDMETHODCALLTYPE DSGetConstantBuffers1(
+            UINT                              StartSlot,
+            UINT                              NumBuffers,
+            ID3D11Buffer**                    ppConstantBuffers,
+            UINT*                             pFirstConstant,
+            UINT*                             pNumConstants) final;
     
     void STDMETHODCALLTYPE DSGetShaderResources(
             UINT                              StartSlot,
@@ -315,6 +396,13 @@ namespace dxvk {
             UINT                              NumBuffers,
             ID3D11Buffer* const*              ppConstantBuffers) final;
     
+    virtual void STDMETHODCALLTYPE GSSetConstantBuffers1(
+            UINT                              StartSlot,
+            UINT                              NumBuffers,
+            ID3D11Buffer* const*              ppConstantBuffers,
+      const UINT*                             pFirstConstant,
+      const UINT*                             pNumConstants) final;
+
     void STDMETHODCALLTYPE GSSetShaderResources(
             UINT                              StartSlot,
             UINT                              NumViews,
@@ -335,6 +423,13 @@ namespace dxvk {
             UINT                              NumBuffers,
             ID3D11Buffer**                    ppConstantBuffers) final;
     
+     void STDMETHODCALLTYPE GSGetConstantBuffers1(
+            UINT                              StartSlot,
+            UINT                              NumBuffers,
+            ID3D11Buffer**                    ppConstantBuffers,
+            UINT*                             pFirstConstant,
+            UINT*                             pNumConstants) final;
+    
     void STDMETHODCALLTYPE GSGetShaderResources(
             UINT                              StartSlot,
             UINT                              NumViews,
@@ -354,6 +449,13 @@ namespace dxvk {
             UINT                              StartSlot,
             UINT                              NumBuffers,
             ID3D11Buffer* const*              ppConstantBuffers) final;
+
+    void STDMETHODCALLTYPE PSSetConstantBuffers1(
+            UINT                              StartSlot,
+            UINT                              NumBuffers,
+            ID3D11Buffer* const*              ppConstantBuffers,
+      const UINT*                             pFirstConstant,
+      const UINT*                             pNumConstants) final;
     
     void STDMETHODCALLTYPE PSSetShaderResources(
             UINT                              StartSlot,
@@ -375,6 +477,13 @@ namespace dxvk {
             UINT                              NumBuffers,
             ID3D11Buffer**                    ppConstantBuffers) final;
     
+    void STDMETHODCALLTYPE PSGetConstantBuffers1(
+            UINT                              StartSlot,
+            UINT                              NumBuffers,
+            ID3D11Buffer**                    ppConstantBuffers,
+            UINT*                             pFirstConstant,
+            UINT*                             pNumConstants) final;
+
     void STDMETHODCALLTYPE PSGetShaderResources(
             UINT                              StartSlot,
             UINT                              NumViews,
@@ -394,6 +503,13 @@ namespace dxvk {
             UINT                              StartSlot,
             UINT                              NumBuffers,
             ID3D11Buffer* const*              ppConstantBuffers) final;
+    
+    void STDMETHODCALLTYPE CSSetConstantBuffers1(
+            UINT                              StartSlot,
+            UINT                              NumBuffers,
+            ID3D11Buffer* const*              ppConstantBuffers,
+      const UINT*                             pFirstConstant,
+      const UINT*                             pNumConstants) final;
     
     void STDMETHODCALLTYPE CSSetShaderResources(
             UINT                              StartSlot,
@@ -420,6 +536,13 @@ namespace dxvk {
             UINT                              StartSlot,
             UINT                              NumBuffers,
             ID3D11Buffer**                    ppConstantBuffers) final;
+    
+    void STDMETHODCALLTYPE CSGetConstantBuffers1(
+            UINT                              StartSlot,
+            UINT                              NumBuffers,
+            ID3D11Buffer**                    ppConstantBuffers,
+            UINT*                             pFirstConstant,
+            UINT*                             pNumConstants) final;
     
     void STDMETHODCALLTYPE CSGetShaderResources(
             UINT                              StartSlot,
