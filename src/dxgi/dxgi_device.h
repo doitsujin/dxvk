@@ -52,6 +52,19 @@ namespace dxvk {
     
     HRESULT STDMETHODCALLTYPE SetMaximumFrameLatency(
             UINT                  MaxLatency) final;
+
+    HRESULT STDMETHODCALLTYPE OfferResources( 
+            UINT                          NumResources,
+            IDXGIResource* const*         ppResources,
+            DXGI_OFFER_RESOURCE_PRIORITY  Priority) final;
+        
+    HRESULT STDMETHODCALLTYPE ReclaimResources( 
+            UINT                          NumResources,
+            IDXGIResource* const*         ppResources,
+            BOOL*                         pDiscarded) final;
+        
+    HRESULT STDMETHODCALLTYPE EnqueueSetEvent( 
+            HANDLE                hEvent) final;
     
     void STDMETHODCALLTYPE SetDeviceLayer(
             IUnknown*             layer) final;
