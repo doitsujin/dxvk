@@ -5754,7 +5754,7 @@ namespace dxvk {
     
     uint32_t arrayTypeId = getArrayTypeId({
       DxbcScalarType::Float32, 4,
-      samplePosVectors.size() });
+      static_cast<uint32_t>(samplePosVectors.size()) });
     
     uint32_t samplePosArray = m_module.constComposite(
       arrayTypeId,
