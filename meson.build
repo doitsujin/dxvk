@@ -32,7 +32,13 @@ glsl_generator = generator(glsl_compiler,
   arguments : [ '-V', '--vn', '@BASENAME@', '@INPUT@', '-o', '@OUTPUT@' ])
 
 subdir('src')
-if dxvk_compiler.get_id() != 'msvc'
+
+enable_tests = get_option('enable_tests')
+
+if enable_tests
   subdir('tests')
+endif
+
+if dxvk_compiler.get_id() != 'msvc'
   subdir('wine_utils')
 endif

@@ -8,7 +8,7 @@ fi
 DXVK_VERSION="$1"
 DXVK_SRC_DIR=`dirname $(readlink -f $0)`
 DXVK_TMP_DIR="/tmp/dxvk-$DXVK_VERSION"
-DXVK_ARCHIVE_PATH="$2/dxvk-$DXVK_VERSION.tar.gz"
+DXVK_ARCHIVE_PATH=$(realpath "$2")"/dxvk-$DXVK_VERSION.tar.gz"
 
 function build_arch {
   cd "$DXVK_SRC_DIR"
@@ -16,7 +16,9 @@ function build_arch {
   meson --cross-file "$DXVK_SRC_DIR/build-win$1.txt"  \
         --buildtype "release"                         \
         --prefix "$DXVK_TMP_DIR/install.$1"           \
+	--unity off                                   \
         --strip                                       \
+        -Denable_tests=false                          \
         "$DXVK_TMP_DIR/build.$1"
 
   cd "$DXVK_TMP_DIR/build.$1"
