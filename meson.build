@@ -22,7 +22,9 @@ lib_vulkan  = dxvk_compiler.find_library('vulkan-1', dirs : dxvk_library_path)
 lib_d3d11   = dxvk_compiler.find_library('d3d11')
 lib_dxgi    = dxvk_compiler.find_library('dxgi')
 
-if dxvk_compiler.get_id() != 'msvc'
+if dxvk_compiler.get_id() == 'msvc'
+  lib_d3dcompiler_47 = dxvk_compiler.find_library('d3dcompiler')
+else
   lib_d3dcompiler_47 = dxvk_compiler.find_library('d3dcompiler_47')
 endif
 
