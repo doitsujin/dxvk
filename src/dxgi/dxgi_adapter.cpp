@@ -98,8 +98,24 @@ namespace dxvk {
     if (pDesc == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
-    const auto deviceProp = m_adapter->deviceProperties();
-    const auto memoryProp = m_adapter->memoryProperties();
+    auto deviceProp = m_adapter->deviceProperties();
+    auto memoryProp = m_adapter->memoryProperties();
+    
+    //Custom Vendor ID
+    const std::string customVendorID = env::getEnvVar(L"DXVK_CUSTOM_VENDOR_ID");
+    const std::string customDeviceID = env::getEnvVar(L"DXVK_CUSTOM_DEVICE_ID");
+    
+    if (!customVendorID.empty()) {
+      Logger::info("Using Custom PCI Vendor ID " + customVendorID + " instead of " + str::format(std::hex, deviceProp.vendorID));
+      
+      deviceProp.vendorID = std::stoul(customVendorID, nullptr, 16);
+    }
+    
+    if (!customDeviceID.empty()) {
+      Logger::info("Using Custom PCI Device ID " + customDeviceID + " instead of " + str::format(std::hex, deviceProp.deviceID));
+      
+      deviceProp.deviceID = std::stoul(customDeviceID, nullptr, 16);  
+    }
     
     std::memset(pDesc->Description, 0, sizeof(pDesc->Description));
     std::mbstowcs(pDesc->Description, deviceProp.deviceName, _countof(pDesc->Description) - 1);

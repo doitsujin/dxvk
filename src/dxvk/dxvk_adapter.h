@@ -1,7 +1,5 @@
 #pragma once
 
-#include <string>
-
 #include "./vulkan/dxvk_vulkan_extensions.h"
 
 #include "dxvk_include.h"
