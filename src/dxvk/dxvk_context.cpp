@@ -1479,7 +1479,7 @@ namespace dxvk {
     DxvkAttachment depthAttachment;
     
     if (bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS && m_state.om.framebuffer != nullptr)
-      DxvkAttachment depthAttachment = m_state.om.framebuffer->renderTargets().getDepthTarget();
+      depthAttachment = m_state.om.framebuffer->renderTargets().getDepthTarget();
     
     for (uint32_t i = 0; i < layout->bindingCount(); i++) {
       const auto& binding = layout->binding(i);
