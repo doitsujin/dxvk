@@ -58,9 +58,14 @@ namespace dxvk {
      * \returns Pipeline handle
      */
     VkPipeline getPipelineHandle(
-      const DxvkComputePipelineStateInfo& state) const;
+      const DxvkComputePipelineStateInfo& state);
     
   private:
+    
+    struct PipelineStruct {
+      DxvkComputePipelineStateInfo stateVector;
+      VkPipeline                   pipeline;
+    };
     
     const DxvkDevice* const m_device;
     const Rc<vk::DeviceFn>  m_vkd;
@@ -69,9 +74,16 @@ namespace dxvk {
     Rc<DxvkPipelineLayout>  m_layout;
     Rc<DxvkShaderModule>    m_cs;
     
-    VkPipeline m_pipeline = VK_NULL_HANDLE;
+    std::mutex                  m_mutex;
+    std::vector<PipelineStruct> m_pipelines;
     
-    void compilePipeline();
+    VkPipeline m_basePipeline = VK_NULL_HANDLE;
+    
+    VkPipeline compilePipeline(
+      const DxvkComputePipelineStateInfo& state,
+            VkPipeline                    baseHandle) const;
+    
+    void destroyPipelines();
     
   };
   
