@@ -65,6 +65,7 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, IUnknown);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceChild);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceContext);
+    COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceContext1);
     
     if (riid == __uuidof(ID3DUserDefinedAnnotation))
       return E_NOINTERFACE;
@@ -74,6 +75,26 @@ namespace dxvk {
     return E_NOINTERFACE;
   }
   
+  void STDMETHODCALLTYPE D3D11DeviceContext::DiscardResource(ID3D11Resource * pResource) {
+    Logger::err("D3D11DeviceContext::DiscardResource: Not implemented");
+  }
+
+  void STDMETHODCALLTYPE D3D11DeviceContext::DiscardView(ID3D11View * pResourceView) {
+    Logger::err("D3D11DeviceContext::DiscardView: Not implemented");
+  }
+
+  void STDMETHODCALLTYPE D3D11DeviceContext::DiscardView1(
+          ID3D11View*              pResourceView, 
+    const D3D11_RECT*              pRects, 
+          UINT                     NumRects) {
+    Logger::err("D3D11DeviceContext::DiscardView1: Not implemented");
+  }
+
+  void STDMETHODCALLTYPE D3D11DeviceContext::SwapDeviceContextState(
+          ID3DDeviceContextState*  pState, 
+          ID3DDeviceContextState** ppPreviousState) {
+    Logger::err("D3D11DeviceContext::SwapDeviceContextState: Not implemented");
+  }
   
   void STDMETHODCALLTYPE D3D11DeviceContext::GetDevice(ID3D11Device **ppDevice) {
     *ppDevice = ref(m_parent);
@@ -379,6 +400,20 @@ namespace dxvk {
     }
   }
   
+  void STDMETHODCALLTYPE D3D11DeviceContext::CopySubresourceRegion1(
+          ID3D11Resource*                   pDstResource,
+          UINT                              DstSubresource,
+          UINT                              DstX, 
+          UINT                              DstY,
+          UINT                              DstZ, 
+          ID3D11Resource*                   pSrcResource, 
+          UINT                              SrcSubresource, 
+    const D3D11_BOX*                        pSrcBox,
+          UINT                              CopyFlags) {
+     if (CopyFlags != 0)
+       Logger::warn("D3D11DeviceContext: CopySubresourceRegion1: ignoring flags");
+     CopySubresourceRegion(pDstResource, DstSubresource, DstX, DstY, DstZ, pSrcResource, SrcSubresource, pSrcBox);
+  }
   
   void STDMETHODCALLTYPE D3D11DeviceContext::CopyResource(
           ID3D11Resource*                   pDstResource,
@@ -608,6 +643,13 @@ namespace dxvk {
     });
   }
   
+  void STDMETHODCALLTYPE D3D11DeviceContext::ClearView(
+          ID3D11View*                       pView, 
+    const FLOAT                             Color[4], 
+    const D3D11_RECT*                       pRect, 
+          UINT                              NumRects) {
+    Logger::err("D3D11DeviceContext::ClearView: not implemented");
+  }
   
   void STDMETHODCALLTYPE D3D11DeviceContext::GenerateMips(ID3D11ShaderResourceView* pShaderResourceView) {
     auto view = static_cast<D3D11ShaderResourceView*>(pShaderResourceView);
@@ -739,6 +781,20 @@ namespace dxvk {
           cSrcBytesPerRow, cSrcBytesPerLayer);
       });
     }
+  }
+
+
+  void STDMETHODCALLTYPE D3D11DeviceContext::UpdateSubresource1(
+          ID3D11Resource*                   pDstResource, 
+          UINT                              DstSubresource, 
+    const D3D11_BOX*                        pDstBox, 
+    const void*                             pSrcData, 
+          UINT                              SrcRowPitch, 
+          UINT                              SrcDepthPitch, 
+          UINT                              CopyFlags) {
+    if(CopyFlags != 0 )
+      Logger::warn("D3D11DeviceContext::UpdateSubresource1: flags ignored");
+    UpdateSubresource(pDstResource, DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch);
   }
   
   
@@ -1090,6 +1146,16 @@ namespace dxvk {
       StartSlot, NumBuffers,
       ppConstantBuffers);
   }
+
+
+  void STDMETHODCALLTYPE D3D11DeviceContext::VSSetConstantBuffers1(
+          UINT                              StartSlot, 
+          UINT                              NumBuffers,
+          ID3D11Buffer* const*              ppConstantBuffers, 
+    const UINT*                             pFirstConstant, 
+    const UINT*                             pNumConstants) {
+    Logger::err("D3D11DeviceContext::VSSetConstantBuffers1: not implemented");
+  }
   
   
   void STDMETHODCALLTYPE D3D11DeviceContext::VSSetShaderResources(
@@ -1134,6 +1200,16 @@ namespace dxvk {
           ID3D11Buffer**                    ppConstantBuffers) {
     for (uint32_t i = 0; i < NumBuffers; i++)
       ppConstantBuffers[i] = m_state.vs.constantBuffers.at(StartSlot + i).ref();
+  }
+
+
+  void STDMETHODCALLTYPE D3D11DeviceContext::VSGetConstantBuffers1(
+          UINT                              StartSlot, 
+          UINT                              NumBuffers, 
+          ID3D11Buffer**                    ppConstantBuffers, 
+          UINT*                             pFirstConstant, 
+          UINT*                             pNumConstants) {
+    Logger::err("D3D11DeviceContext::VSSetConstantBuffers1: not implemented");
   }
   
   
@@ -1193,6 +1269,16 @@ namespace dxvk {
       StartSlot, NumBuffers,
       ppConstantBuffers);
   }
+
+
+  void STDMETHODCALLTYPE D3D11DeviceContext::HSSetConstantBuffers1(
+          UINT                              StartSlot,
+          UINT                              NumBuffers, 
+          ID3D11Buffer* const*              ppConstantBuffers, 
+    const UINT*                             pFirstConstant, 
+    const UINT*                             pNumConstants) {
+    Logger::err("D3D11DeviceContext::HSSetConstantBuffers1: not implemented");
+  }
   
   
   void STDMETHODCALLTYPE D3D11DeviceContext::HSSetSamplers(
@@ -1225,6 +1311,16 @@ namespace dxvk {
           ID3D11Buffer**                    ppConstantBuffers) {
     for (uint32_t i = 0; i < NumBuffers; i++)
       ppConstantBuffers[i] = m_state.hs.constantBuffers.at(StartSlot + i).ref();
+  }
+
+
+  void D3D11DeviceContext::HSGetConstantBuffers1(
+          UINT                              StartSlot, 
+          UINT                              NumBuffers, 
+          ID3D11Buffer**                    ppConstantBuffers, 
+          UINT*                             pFirstConstant, 
+          UINT*                             pNumConstants) {
+    Logger::err("D3D11DeviceContext::HSGetConstantBuffers1: not implemented");
   }
   
   
@@ -1284,6 +1380,16 @@ namespace dxvk {
       StartSlot, NumBuffers,
       ppConstantBuffers);
   }
+
+
+  void STDMETHODCALLTYPE D3D11DeviceContext::DSSetConstantBuffers1(
+          UINT                              StartSlot, 
+          UINT                              NumBuffers, 
+          ID3D11Buffer* const*              ppConstantBuffers,
+    const UINT*                             pFirstConstant,
+    const UINT*                             pNumConstants) {
+    Logger::err("D3D11DeviceContext::DSSetConstantBuffers1: not implemented");
+  }
   
   
   void STDMETHODCALLTYPE D3D11DeviceContext::DSSetSamplers(
@@ -1319,6 +1425,16 @@ namespace dxvk {
   }
   
   
+  void STDMETHODCALLTYPE D3D11DeviceContext::DSGetConstantBuffers1(
+          UINT                              StartSlot,
+          UINT                              NumBuffers,
+          ID3D11Buffer**                    ppConstantBuffers,
+          UINT*                             pFirstConstant, 
+          UINT*                             pNumConstants) {
+    Logger::err("D3D11DeviceContext::DSGetConstantBuffers1: not implemented");
+  }
+
+
   void STDMETHODCALLTYPE D3D11DeviceContext::DSGetShaderResources(
           UINT                              StartSlot,
           UINT                              NumViews,
@@ -1362,6 +1478,16 @@ namespace dxvk {
       m_state.gs.constantBuffers,
       StartSlot, NumBuffers,
       ppConstantBuffers);
+  }
+
+
+  void D3D11DeviceContext::GSSetConstantBuffers1(
+          UINT                              StartSlot, 
+          UINT                              NumBuffers, 
+          ID3D11Buffer* const*              ppConstantBuffers,
+    const UINT*                             pFirstConstant, 
+    const UINT*                             pNumConstants) {  
+    Logger::err("D3D11DeviceContext::GSSetConstantBuffers1: not implemented");
   }
   
   
@@ -1407,6 +1533,16 @@ namespace dxvk {
           ID3D11Buffer**                    ppConstantBuffers) {
     for (uint32_t i = 0; i < NumBuffers; i++)
       ppConstantBuffers[i] = m_state.gs.constantBuffers.at(StartSlot + i).ref();
+  }
+
+
+  void D3D11DeviceContext::GSGetConstantBuffers1(
+          UINT                              StartSlot, 
+          UINT                              NumBuffers, 
+          ID3D11Buffer**                    ppConstantBuffers, 
+          UINT*                             pFirstConstant, 
+          UINT*                             pNumConstants) {
+    Logger::err("D3D11DeviceContext::GSGetConstantBuffers1: not implemented");
   }
   
   
@@ -1454,6 +1590,16 @@ namespace dxvk {
       StartSlot, NumBuffers,
       ppConstantBuffers);
   }
+
+
+  void D3D11DeviceContext::PSSetConstantBuffers1(
+          UINT                              StartSlot, 
+          UINT                              NumBuffers, 
+          ID3D11Buffer* const*              ppConstantBuffers, 
+    const UINT*                             pFirstConstant, 
+    const UINT*                             pNumConstants) {
+    Logger::err("D3D11DeviceContext::PSSetConstantBuffers1: not implemented");
+  }
   
   
   void STDMETHODCALLTYPE D3D11DeviceContext::PSSetShaderResources(
@@ -1498,6 +1644,16 @@ namespace dxvk {
           ID3D11Buffer**                    ppConstantBuffers) {
     for (uint32_t i = 0; i < NumBuffers; i++)
       ppConstantBuffers[i] = m_state.ps.constantBuffers.at(StartSlot + i).ref();
+  }
+
+
+  void D3D11DeviceContext::PSGetConstantBuffers1(
+          UINT                              StartSlot,
+          UINT                              NumBuffers, 
+          ID3D11Buffer**                    ppConstantBuffers,
+          UINT*                             pFirstConstant, 
+          UINT*                             pNumConstants) {
+    Logger::err("D3D11DeviceContext::PSSetConstantBuffers1: not implemented");
   }
   
   
@@ -1544,6 +1700,16 @@ namespace dxvk {
       m_state.cs.constantBuffers,
       StartSlot, NumBuffers,
       ppConstantBuffers);
+  }
+
+
+  void STDMETHODCALLTYPE D3D11DeviceContext::CSSetConstantBuffers1(
+          UINT                              StartSlot, 
+          UINT                              NumBuffers, 
+          ID3D11Buffer* const*              ppConstantBuffers, 
+    const UINT*                             pFirstConstant, 
+    const UINT*                             pNumConstants) {
+    Logger::err("D3D11DeviceContext::CSSetConstantBuffers1: not implemented notsupported");
   }
   
   
@@ -1608,6 +1774,16 @@ namespace dxvk {
           ID3D11Buffer**                    ppConstantBuffers) {
     for (uint32_t i = 0; i < NumBuffers; i++)
       ppConstantBuffers[i] = m_state.cs.constantBuffers.at(StartSlot + i).ref();
+  }
+
+
+  void STDMETHODCALLTYPE D3D11DeviceContext::CSGetConstantBuffers1(
+          UINT                              StartSlot, 
+          UINT                              NumBuffers,
+          ID3D11Buffer**                    ppConstantBuffers, 
+          UINT*                             pFirstConstant, 
+          UINT*                             pNumConstants) {
+    Logger::warn("D3D11DeviceContext::CSGetConstantBuffers1: not implemented");
   }
   
   
