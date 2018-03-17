@@ -134,11 +134,12 @@ namespace dxvk {
     }
     
     
-    void updateDescriptorSet(
-            uint32_t                descriptorCount,
-      const VkWriteDescriptorSet*   descriptorWrites) {
-      m_vkd->vkUpdateDescriptorSets(m_vkd->device(),
-        descriptorCount, descriptorWrites, 0, nullptr);
+    void updateDescriptorSetWithTemplate(
+            VkDescriptorSet               descriptorSet,
+            VkDescriptorUpdateTemplateKHR descriptorTemplate,
+      const void*                         data) {
+      m_vkd->vkUpdateDescriptorSetWithTemplateKHR(m_vkd->device(),
+        descriptorSet, descriptorTemplate, data);
     }
     
     

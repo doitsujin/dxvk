@@ -1,5 +1,6 @@
 #include <cstring>
 
+#include "dxvk_descriptor.h"
 #include "dxvk_pipelayout.h"
 
 namespace dxvk {
@@ -44,26 +45,32 @@ namespace dxvk {
   DxvkPipelineLayout::DxvkPipelineLayout(
     const Rc<vk::DeviceFn>&   vkd,
           uint32_t            bindingCount,
-    const DxvkDescriptorSlot* bindingInfos)
-  : m_vkd(vkd) {
-    
-    m_bindingSlots.resize(bindingCount);
+    const DxvkDescriptorSlot* bindingInfos,
+          VkPipelineBindPoint pipelineBindPoint)
+  : m_vkd(vkd), m_bindingSlots(bindingCount) {
     
     for (uint32_t i = 0; i < bindingCount; i++)
       m_bindingSlots[i] = bindingInfos[i];
     
-    std::vector<VkDescriptorSetLayoutBinding> bindings;
+    std::vector<VkDescriptorSetLayoutBinding>       bindings(bindingCount);
+    std::vector<VkDescriptorUpdateTemplateEntryKHR> tEntries(bindingCount);
     
     for (uint32_t i = 0; i < bindingCount; i++) {
-      VkDescriptorSetLayoutBinding binding;
-      binding.binding            = i;
-      binding.descriptorType     = bindingInfos[i].type;
-      binding.descriptorCount    = 1;
-      binding.stageFlags         = bindingInfos[i].stages;
-      binding.pImmutableSamplers = nullptr;
-      bindings.push_back(binding);
+      bindings[i].binding            = i;
+      bindings[i].descriptorType     = bindingInfos[i].type;
+      bindings[i].descriptorCount    = 1;
+      bindings[i].stageFlags         = bindingInfos[i].stages;
+      bindings[i].pImmutableSamplers = nullptr;
+      
+      tEntries[i].dstBinding      = i;
+      tEntries[i].dstArrayElement = 0;
+      tEntries[i].descriptorCount = 1;
+      tEntries[i].descriptorType  = bindingInfos[i].type;
+      tEntries[i].offset          = sizeof(DxvkDescriptorInfo) * i;
+      tEntries[i].stride          = 0;
     }
     
+    // Create descriptor set layout
     VkDescriptorSetLayoutCreateInfo dsetInfo;
     dsetInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     dsetInfo.pNext        = nullptr;
@@ -75,6 +82,7 @@ namespace dxvk {
           &dsetInfo, nullptr, &m_descriptorSetLayout) != VK_SUCCESS)
       throw DxvkError("DxvkPipelineLayout: Failed to create descriptor set layout");
     
+    // Create pipeline layout
     VkPipelineLayoutCreateInfo pipeInfo;
     pipeInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipeInfo.pNext                  = nullptr;
@@ -85,24 +93,42 @@ namespace dxvk {
     pipeInfo.pPushConstantRanges    = nullptr;
     
     if (m_vkd->vkCreatePipelineLayout(m_vkd->device(),
-          &pipeInfo, nullptr, &m_pipelineLayout) != VK_SUCCESS) {
-      m_vkd->vkDestroyDescriptorSetLayout(
-        m_vkd->device(), m_descriptorSetLayout, nullptr);
+        &pipeInfo, nullptr, &m_pipelineLayout) != VK_SUCCESS) {
+      m_vkd->vkDestroyDescriptorSetLayout(m_vkd->device(), m_descriptorSetLayout, nullptr);
       throw DxvkError("DxvkPipelineLayout: Failed to create pipeline layout");
+    }
+    
+    // Create descriptor update template
+    VkDescriptorUpdateTemplateCreateInfoKHR templateInfo;
+    templateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO_KHR;
+    templateInfo.pNext = nullptr;
+    templateInfo.flags = 0;
+    templateInfo.descriptorUpdateEntryCount = tEntries.size();
+    templateInfo.pDescriptorUpdateEntries   = tEntries.data();
+    templateInfo.templateType               = VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET_KHR;
+    templateInfo.descriptorSetLayout        = m_descriptorSetLayout;
+    templateInfo.pipelineBindPoint          = pipelineBindPoint;
+    templateInfo.pipelineLayout             = m_pipelineLayout;
+    templateInfo.set                        = 0;
+    
+    if (m_vkd->vkCreateDescriptorUpdateTemplateKHR(m_vkd->device(),
+        &templateInfo, nullptr, &m_descriptorTemplate) != VK_SUCCESS) {
+      m_vkd->vkDestroyDescriptorSetLayout(m_vkd->device(), m_descriptorSetLayout, nullptr);
+      m_vkd->vkDestroyPipelineLayout(m_vkd->device(), m_pipelineLayout, nullptr);
+      throw DxvkError("DxvkPipelineLayout: Failed to create descriptor update template");
     }
   }
   
   
   DxvkPipelineLayout::~DxvkPipelineLayout() {
-    if (m_pipelineLayout != VK_NULL_HANDLE) {
-      m_vkd->vkDestroyPipelineLayout(
-        m_vkd->device(), m_pipelineLayout, nullptr);
-    }
+    m_vkd->vkDestroyDescriptorUpdateTemplateKHR(
+      m_vkd->device(), m_descriptorTemplate, nullptr);
     
-    if (m_descriptorSetLayout != VK_NULL_HANDLE) {
-      m_vkd->vkDestroyDescriptorSetLayout(
-        m_vkd->device(), m_descriptorSetLayout, nullptr);
-    }
+    m_vkd->vkDestroyPipelineLayout(
+      m_vkd->device(), m_pipelineLayout, nullptr);
+    
+    m_vkd->vkDestroyDescriptorSetLayout(
+      m_vkd->device(), m_descriptorSetLayout, nullptr);
   }
   
 }

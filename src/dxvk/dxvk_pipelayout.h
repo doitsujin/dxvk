@@ -111,7 +111,8 @@ namespace dxvk {
     DxvkPipelineLayout(
       const Rc<vk::DeviceFn>&   vkd,
             uint32_t            bindingCount,
-      const DxvkDescriptorSlot* bindingInfos);
+      const DxvkDescriptorSlot* bindingInfos,
+            VkPipelineBindPoint pipelineBindPoint);
     
     ~DxvkPipelineLayout();
     
@@ -157,12 +158,21 @@ namespace dxvk {
       return m_pipelineLayout;
     }
     
+    /**
+     * \brief Descriptor update template
+     * \returns Descriptor update template
+     */
+    VkDescriptorUpdateTemplateKHR descriptorTemplate() const {
+      return m_descriptorTemplate;
+    }
+    
   private:
     
-    Rc<vk::DeviceFn>      m_vkd;
+    Rc<vk::DeviceFn> m_vkd;
     
-    VkDescriptorSetLayout m_descriptorSetLayout = VK_NULL_HANDLE;
-    VkPipelineLayout      m_pipelineLayout      = VK_NULL_HANDLE;
+    VkDescriptorSetLayout         m_descriptorSetLayout = VK_NULL_HANDLE;
+    VkPipelineLayout              m_pipelineLayout      = VK_NULL_HANDLE;
+    VkDescriptorUpdateTemplateKHR m_descriptorTemplate  = VK_NULL_HANDLE;
     
     std::vector<DxvkDescriptorSlot> m_bindingSlots;
     

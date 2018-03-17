@@ -52,7 +52,8 @@ namespace dxvk {
     
     m_layout = new DxvkPipelineLayout(m_vkd,
       slotMapping.bindingCount(),
-      slotMapping.bindingInfos());
+      slotMapping.bindingInfos(),
+      VK_PIPELINE_BIND_POINT_GRAPHICS);
     
     if (vs  != nullptr) m_vs  = vs ->createShaderModule(m_vkd, slotMapping);
     if (tcs != nullptr) m_tcs = tcs->createShaderModule(m_vkd, slotMapping);
