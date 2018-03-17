@@ -255,6 +255,13 @@ namespace dxvk::vk {
     VULKAN_FN(vkCmdEndRenderPass);
     VULKAN_FN(vkCmdExecuteCommands);
     
+    #ifdef VK_KHR_descriptor_update_template
+    VULKAN_FN(vkCreateDescriptorUpdateTemplateKHR);
+    VULKAN_FN(vkDestroyDescriptorUpdateTemplateKHR);
+    VULKAN_FN(vkUpdateDescriptorSetWithTemplateKHR);
+    VULKAN_FN(vkCmdPushDescriptorSetWithTemplateKHR);
+    #endif
+    
     #ifdef VK_KHR_swapchain
     VULKAN_FN(vkCreateSwapchainKHR);
     VULKAN_FN(vkDestroySwapchainKHR);
