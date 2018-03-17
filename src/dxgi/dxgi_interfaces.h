@@ -88,7 +88,7 @@ IDXGIAdapterPrivate : public IDXGIAdapter1 {
  * this interface.
  */
 MIDL_INTERFACE("7a622cf6-627a-46b2-b52f-360ef3da831c")
-IDXGIDevicePrivate : public IDXGIDevice1 {
+IDXGIDevicePrivate : public IDXGIDevice2 {
   static const GUID guid;
   
   virtual void STDMETHODCALLTYPE SetDeviceLayer(
