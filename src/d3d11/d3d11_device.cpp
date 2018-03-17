@@ -56,6 +56,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11Device::QueryInterface(REFIID riid, void** ppvObject) {
     COM_QUERY_IFACE(riid, ppvObject, IUnknown);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11Device);
+    COM_QUERY_IFACE(riid, ppvObject, ID3D11Device1);
     
     if (riid == __uuidof(IDXGIDevice)
      || riid == __uuidof(IDXGIDevice1)
@@ -1105,6 +1106,14 @@ namespace dxvk {
   }
   
   
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateBlendState1(
+    const D3D11_BLEND_DESC1*          pBlendStateDesc, 
+          ID3D11BlendState1**         ppBlendState) {
+    Logger::err("D3D11Device::CreateBlendState1: Not implemented");
+    return E_NOTIMPL;
+  }
+  
+  
   HRESULT STDMETHODCALLTYPE D3D11Device::CreateDepthStencilState(
     const D3D11_DEPTH_STENCIL_DESC*   pDepthStencilDesc,
           ID3D11DepthStencilState**   ppDepthStencilState) {
@@ -1162,6 +1171,12 @@ namespace dxvk {
     } return S_FALSE;
   }
   
+  HRESULT D3D11Device::CreateRasterizerState1(
+    const D3D11_RASTERIZER_DESC1*     pRasterizerDesc, 
+          ID3D11RasterizerState1**    ppRasterizerState) {
+    Logger::err("D3D11Device::CreateRasterizerState1: Not implemented");
+    return E_NOTIMPL;
+  }
   
   HRESULT STDMETHODCALLTYPE D3D11Device::CreateSamplerState(
     const D3D11_SAMPLER_DESC*         pSamplerDesc,
@@ -1244,6 +1259,24 @@ namespace dxvk {
     return S_OK;
   }
   
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateDeferredContext1(
+          UINT                        ContextFlags, 
+          ID3D11DeviceContext1**      ppDeferredContext) {
+    *ppDeferredContext = ref(new D3D11DeferredContext(this, m_dxvkDevice, ContextFlags));
+    return S_OK;
+  }
+  
+  HRESULT STDMETHODCALLTYPE D3D11Device::CreateDeviceContextState(
+          UINT                        Flags, 
+    const D3D_FEATURE_LEVEL*          pFeatureLevels, 
+          UINT                        FeatureLevels, 
+          UINT                        SDKVersion, 
+          REFIID                      EmulatedInterface, 
+          D3D_FEATURE_LEVEL*          pChosenFeatureLevel, 
+          ID3DDeviceContextState**    ppContextState) {
+    Logger::err("D3D11Device::CreateDeviceContextState: Not implemented");
+    return E_NOTIMPL;
+  }
   
   HRESULT STDMETHODCALLTYPE D3D11Device::OpenSharedResource(
           HANDLE      hResource,
@@ -1253,6 +1286,24 @@ namespace dxvk {
     return E_NOTIMPL;
   }
   
+  
+  HRESULT STDMETHODCALLTYPE D3D11Device::OpenSharedResource1(
+          HANDLE      hResource,
+          REFIID      ReturnedInterface,
+          void**      ppResource) {
+    Logger::err("D3D11Device::OpenSharedResource1: Not implemented");
+    return E_NOTIMPL;
+  }
+
+  
+  HRESULT STDMETHODCALLTYPE D3D11Device::OpenSharedResourceByName(
+          LPCWSTR     lpName, 
+          DWORD       dwDesiredAccess, 
+          REFIID      returnedInterface, 
+          void **     ppResource) {
+    Logger::err("D3D11Device::OpenSharedResourceByName: Not implemented");
+    return E_NOTIMPL;
+  }
   
   HRESULT STDMETHODCALLTYPE D3D11Device::CheckFormatSupport(
           DXGI_FORMAT Format,
@@ -1358,6 +1409,38 @@ namespace dxvk {
         info->ComputeShaders_Plus_RawAndStructuredBuffers_Via_Shader_4_x = TRUE;
       } return S_OK;
       
+      case D3D11_FEATURE_D3D11_OPTIONS: {
+        if (FeatureSupportDataSize != sizeof(D3D11_FEATURE_DATA_D3D11_OPTIONS))
+          return E_INVALIDARG;
+
+        auto info = static_cast<D3D11_FEATURE_DATA_D3D11_OPTIONS*>(pFeatureSupportData);
+
+        /*TODO: implement and enable*/
+        /*https://msdn.microsoft.com/en-us/library/windows/desktop/hh404457(v=vs.85).aspx */
+        info->OutputMergerLogicOp = false;
+        info->UAVOnlyRenderingForcedSampleCount = false;
+        info->DiscardAPIsSeenByDriver = false;
+        info->FlagsForUpdateAndCopySeenByDriver = false;
+        info->ClearView = false;
+        info->CopyWithOverlap = false;
+        info->ConstantBufferPartialUpdate = false;
+        info->ConstantBufferOffsetting = false;
+        info->MapNoOverwriteOnDynamicConstantBuffer = false;
+        info->MapNoOverwriteOnDynamicBufferSRV = false;
+        info->MultisampleRTVWithForcedSampleCountOne = false;
+        info->SAD4ShaderInstructions = false;
+        info->ExtendedDoublesShaderInstructions = false;
+        info->ExtendedResourceSharing = false;
+      } return S_OK;
+
+      case D3D11_FEATURE_ARCHITECTURE_INFO: {
+        if (FeatureSupportDataSize != sizeof(D3D11_FEATURE_DATA_ARCHITECTURE_INFO))
+          return E_INVALIDARG;
+
+        auto info = static_cast<D3D11_FEATURE_DATA_ARCHITECTURE_INFO*>(pFeatureSupportData);
+        info->TileBasedDeferredRenderer = false;
+      } return S_OK;
+
       default:
         Logger::err(str::format(
           "D3D11Device: CheckFeatureSupport: Unknown feature: ",
@@ -1406,6 +1489,11 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11Device::GetImmediateContext(ID3D11DeviceContext** ppImmediateContext) {
+    *ppImmediateContext = ref(m_context);
+  }
+
+
+  void STDMETHODCALLTYPE D3D11Device::GetImmediateContext1(ID3D11DeviceContext1 ** ppImmediateContext) {
     *ppImmediateContext = ref(m_context);
   }
   
