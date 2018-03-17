@@ -45,6 +45,11 @@ namespace dxvk {
             ID3D11Resource*             pResource,
             UINT                        Subresource) final;
     
+    void STDMETHODCALLTYPE OMSetRenderTargets(
+            UINT                              NumViews,
+            ID3D11RenderTargetView* const*    ppRenderTargetViews,
+            ID3D11DepthStencilView*           pDepthStencilView) final;
+    
     void SynchronizeCsThread();
     
   private:

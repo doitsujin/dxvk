@@ -439,7 +439,7 @@ namespace dxvk {
     void STDMETHODCALLTYPE OMSetRenderTargets(
             UINT                              NumViews,
             ID3D11RenderTargetView* const*    ppRenderTargetViews,
-            ID3D11DepthStencilView*           pDepthStencilView) final;
+            ID3D11DepthStencilView*           pDepthStencilView);
     
     void STDMETHODCALLTYPE OMSetRenderTargetsAndUnorderedAccessViews(
             UINT                              NumRTVs,
