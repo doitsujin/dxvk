@@ -66,6 +66,14 @@ namespace dxvk {
       return m_counterSlice;
     }
     
+    static HRESULT GetDescFromResource(
+            ID3D11Resource*                   pResource,
+            D3D11_UNORDERED_ACCESS_VIEW_DESC* pDesc);
+    
+    static HRESULT NormalizeDesc(
+            ID3D11Resource*                   pResource,
+            D3D11_UNORDERED_ACCESS_VIEW_DESC* pDesc);
+    
   private:
     
     Com<D3D11Device>                  m_device;
