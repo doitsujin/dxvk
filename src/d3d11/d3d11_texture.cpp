@@ -83,10 +83,6 @@ namespace dxvk {
     // Determine map mode based on our findings
     m_mapMode = DetermineMapMode(&imageInfo);
     
-    // FIXME Enable direct mapping if it works
-    if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT)
-      m_mapMode = D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
-    
     // If the image is mapped directly to host memory, we need
     // to enable linear tiling, and DXVK needs to be aware that
     // the image can be accessed by the host.
