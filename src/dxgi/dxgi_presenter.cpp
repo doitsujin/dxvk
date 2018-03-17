@@ -320,6 +320,15 @@ namespace dxvk {
         formats.push_back({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR });
       } break;
       
+      case DXGI_FORMAT_R10G10B10A2_UNORM: {
+        formats.push_back({ VK_FORMAT_A2B10G10R10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR });
+        formats.push_back({ VK_FORMAT_A2R10G10B10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR });
+      } break;
+      
+      case DXGI_FORMAT_R16G16B16A16_FLOAT: {
+        formats.push_back({ VK_FORMAT_R16G16B16A16_SFLOAT, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR });
+      } break;
+      
       default:
         Logger::warn(str::format("DxgiPresenter: Unknown format: ", fmt));
     }

@@ -331,9 +331,9 @@ namespace dxvk {
           VkDeviceSize          numBytes) {
     if (numBytes == 0)
       return;
-
+    
     this->renderPassEnd();
-
+    
     auto dstSlice = dstBuffer->subSlice(dstOffset, numBytes);
     auto srcSlice = srcBuffer->subSlice(srcOffset, numBytes);
 
