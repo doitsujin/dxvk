@@ -311,15 +311,56 @@ namespace dxvk {
   
   
   void DxvkContext::clearRenderTarget(
-    const VkClearAttachment&  attachment,
-    const VkClearRect&        clearArea) {
-    // We only need the framebuffer to be bound. Flushing the
-    // entire pipeline state is not required and might actually
-    // cause problems if the current pipeline state is invalid.
-    this->renderPassBegin();
+    const Rc<DxvkImageView>&    imageView,
+    const VkClearRect&          clearRect,
+          VkImageAspectFlags    clearAspects,
+    const VkClearValue&         clearValue) {
+    // Check whether the render target view is an attachment
+    // of the current framebuffer. If not, we need to create
+    // a temporary framebuffer.
+    uint32_t attachmentIndex = MaxNumRenderTargets;
+    
+    if (m_state.om.framebuffer != nullptr)
+      attachmentIndex = m_state.om.framebuffer->findAttachment(imageView);
+    
+    if (attachmentIndex == MaxNumRenderTargets) {
+      this->renderPassEnd();
+      
+      // Set up and bind a temporary framebuffer
+      DxvkRenderTargets attachments;
+      
+      if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT) {
+        attachments.setColorTarget(0, imageView,
+          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+      } else {
+        attachments.setDepthTarget(imageView,
+          VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+      }
+      
+      this->renderPassBindFramebuffer(
+        m_device->createFramebuffer(attachments));
+    } else {
+      // Make sure that the currently bound
+      // framebuffer can be rendered to
+      this->renderPassBegin();
+    }
+    
+    // Clear the attachment in quesion
+    VkClearAttachment clearInfo;
+    clearInfo.aspectMask      = clearAspects;
+    clearInfo.colorAttachment = attachmentIndex;
+    clearInfo.clearValue      = clearValue;
+    
+    if (attachmentIndex == MaxNumRenderTargets)
+      clearInfo.colorAttachment = 0;
     
     m_cmd->cmdClearAttachments(
-      1, &attachment, 1, &clearArea);
+      1, &clearInfo, 1, &clearRect);
+    
+    // If we used a temporary framebuffer, we'll have to unbind it
+    // again in order to not disturb subsequent rendering commands.
+    if (attachmentIndex == MaxNumRenderTargets)
+      this->renderPassUnbindFramebuffer();
   }
   
   
@@ -1298,27 +1339,7 @@ namespace dxvk {
     if (!m_flags.test(DxvkContextFlag::GpRenderPassBound)
      && (m_state.om.framebuffer != nullptr)) {
       m_flags.set(DxvkContextFlag::GpRenderPassBound);
-      
-      const DxvkFramebufferSize fbSize
-        = m_state.om.framebuffer->size();
-      
-      VkRect2D renderArea;
-      renderArea.offset = VkOffset2D { 0, 0 };
-      renderArea.extent = VkExtent2D { fbSize.width, fbSize.height };
-      
-      VkRenderPassBeginInfo info;
-      info.sType                = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-      info.pNext                = nullptr;
-      info.renderPass           = m_state.om.framebuffer->renderPass();
-      info.framebuffer          = m_state.om.framebuffer->handle();
-      info.renderArea           = renderArea;
-      info.clearValueCount      = 0;
-      info.pClearValues         = nullptr;
-      
-      m_cmd->cmdBeginRenderPass(&info,
-        VK_SUBPASS_CONTENTS_INLINE);
-      m_cmd->trackResource(
-        m_state.om.framebuffer);
+      this->renderPassBindFramebuffer(m_state.om.framebuffer);
     }
   }
   
@@ -1326,8 +1347,35 @@ namespace dxvk {
   void DxvkContext::renderPassEnd() {
     if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
       m_flags.clr(DxvkContextFlag::GpRenderPassBound);
-      m_cmd->cmdEndRenderPass();
+      this->renderPassUnbindFramebuffer();
     }
+  }
+  
+  
+  void DxvkContext::renderPassBindFramebuffer(const Rc<DxvkFramebuffer>& framebuffer) {
+    const DxvkFramebufferSize fbSize = framebuffer->size();
+    
+    VkRect2D renderArea;
+    renderArea.offset = VkOffset2D { 0, 0 };
+    renderArea.extent = VkExtent2D { fbSize.width, fbSize.height };
+    
+    VkRenderPassBeginInfo info;
+    info.sType                = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    info.pNext                = nullptr;
+    info.renderPass           = framebuffer->renderPass();
+    info.framebuffer          = framebuffer->handle();
+    info.renderArea           = renderArea;
+    info.clearValueCount      = 0;
+    info.pClearValues         = nullptr;
+    
+    m_cmd->cmdBeginRenderPass(&info,
+      VK_SUBPASS_CONTENTS_INLINE);
+    m_cmd->trackResource(framebuffer);
+  }
+  
+  
+  void DxvkContext::renderPassUnbindFramebuffer() {
+    m_cmd->cmdEndRenderPass();
   }
   
   

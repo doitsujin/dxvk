@@ -188,12 +188,16 @@ namespace dxvk {
     /**
      * \brief Clears an active render target
      * 
-     * \param [in] attachment Attachment to clear
-     * \param [in] clearArea Rectangular area to clear
+     * \param [in] imageView Render target view to clear
+     * \param [in] clearArea Image area to clear
+     * \param [in] clearAspects Image aspects to clear
+     * \param [in] clearValue The clear value
      */
     void clearRenderTarget(
-      const VkClearAttachment&  attachment,
-      const VkClearRect&        clearArea);
+      const Rc<DxvkImageView>&    imageView,
+      const VkClearRect&          clearRect,
+            VkImageAspectFlags    clearAspects,
+      const VkClearValue&         clearValue);
     
     /**
      * \brief Copies data from one buffer to another
@@ -578,6 +582,10 @@ namespace dxvk {
     
     void renderPassBegin();
     void renderPassEnd();
+    
+    void renderPassBindFramebuffer(
+      const Rc<DxvkFramebuffer>& framebuffer);
+    void renderPassUnbindFramebuffer();
     
     void updateComputePipeline();
     void updateComputePipelineState();

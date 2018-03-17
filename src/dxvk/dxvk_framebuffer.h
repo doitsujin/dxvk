@@ -185,6 +185,17 @@ namespace dxvk {
       return m_renderPass->sampleCount();
     }
     
+    /**
+     * \brief Retrieves index of a given attachment
+     * 
+     * \param [in] view The image view to look up
+     * \returns The attachment index, or \c 0 for a depth-stencil
+     *          attachment, or \c MaxNumRenderTargets if the given
+     *          view is not a framebuffer attachment.
+     */
+    uint32_t findAttachment(
+      const Rc<DxvkImageView>& view) const;
+    
   private:
     
     Rc<vk::DeviceFn>    m_vkd;

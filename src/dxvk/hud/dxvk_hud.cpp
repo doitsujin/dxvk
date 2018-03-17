@@ -93,13 +93,6 @@ namespace dxvk::hud {
           0, 1, 0, 1 });
     }
     
-    VkClearAttachment clearInfo;
-    clearInfo.aspectMask      = VK_IMAGE_ASPECT_COLOR_BIT;
-    clearInfo.colorAttachment = 0;
-    
-    for (uint32_t i = 0; i < 4; i++)
-      clearInfo.clearValue.color.float32[i] = 0.0f;
-    
     VkClearRect clearRect;
     clearRect.rect.offset = { 0, 0 };
     clearRect.rect.extent = m_surfaceSize;
@@ -107,7 +100,10 @@ namespace dxvk::hud {
     clearRect.layerCount     = 1;
     
     m_context->bindFramebuffer(m_renderTargetFbo);
-    m_context->clearRenderTarget(clearInfo, clearRect);
+    m_context->clearRenderTarget(
+      m_renderTargetView, clearRect,
+      VK_IMAGE_ASPECT_COLOR_BIT,
+      VkClearValue { });
     
     VkViewport viewport;
     viewport.x        = 0.0f;

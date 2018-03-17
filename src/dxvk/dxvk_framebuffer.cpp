@@ -111,4 +111,18 @@ namespace dxvk {
       m_vkd->device(), m_framebuffer, nullptr);
   }
   
+  
+  uint32_t DxvkFramebuffer::findAttachment(
+    const Rc<DxvkImageView>& view) const {
+    if (m_renderTargets.getDepthTarget().view == view)
+      return 0;
+    
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+      if (m_renderTargets.getColorTarget(i).view == view)
+        return i;
+    }
+    
+    return MaxNumRenderTargets;
+  }
+  
 }

@@ -473,62 +473,35 @@ namespace dxvk {
     if (rtv == nullptr)
       return;
     
-    // Find out whether the given attachment is currently bound
-    // or not, and if it is, which attachment index it has.
-    int32_t attachmentIndex = -1;
-    
-    for (uint32_t i = 0; i < m_state.om.renderTargetViews.size(); i++) {
-      if (m_state.om.renderTargetViews.at(i) == rtv)
-        attachmentIndex = i;
-    }
-    
-    // Copy the clear color into a clear value structure.
-    // This should also work for images that don nott have
-    // a floating point format.
     const Rc<DxvkImageView> view = rtv->GetImageView();
     
-    VkClearColorValue clearValue;
-    std::memcpy(clearValue.float32, ColorRGBA,
-      sizeof(clearValue.float32));
+    VkClearValue clearValue;
+    clearValue.color.float32[0] = ColorRGBA[0];
+    clearValue.color.float32[1] = ColorRGBA[1];
+    clearValue.color.float32[2] = ColorRGBA[2];
+    clearValue.color.float32[3] = ColorRGBA[3];
     
-    if (attachmentIndex >= 0) {
-      // Image is bound to the pipeline for rendering. We can
-      // use the clear function that operates on attachments.
-      VkClearAttachment clearInfo;
-      clearInfo.aspectMask          = VK_IMAGE_ASPECT_COLOR_BIT;
-      clearInfo.colorAttachment     = static_cast<uint32_t>(attachmentIndex);
-      clearInfo.clearValue.color    = clearValue;
-      
-      // Clear the full area. On FL 9.x, only the first array
-      // layer will be cleared, rather than all array layers.
-      VkClearRect clearRect;
-      clearRect.rect.offset.x       = 0;
-      clearRect.rect.offset.y       = 0;
-      clearRect.rect.extent.width   = view->mipLevelExtent(0).width;
-      clearRect.rect.extent.height  = view->mipLevelExtent(0).height;
-      clearRect.baseArrayLayer      = 0;
-      clearRect.layerCount          = view->info().numLayers;
-      
-      if (m_parent->GetFeatureLevel() < D3D_FEATURE_LEVEL_10_0)
-        clearRect.layerCount        = 1;
-      
-      EmitCs([
-        cClearInfo = clearInfo,
-        cClearRect = clearRect
-      ] (DxvkContext* ctx) {
-        ctx->clearRenderTarget(cClearInfo, cClearRect);
-      });
-    } else {
-      // Image is not bound to the pipeline. We can still clear
-      // it, but we'll have to use a generic clear function.
-      EmitCs([
-        cClearValue = clearValue,
-        cDstView    = view
-      ] (DxvkContext* ctx) {
-        ctx->clearColorImage(cDstView->image(),
-          cClearValue, cDstView->subresources());
-      });
-    }
+    VkClearRect clearRect;
+    clearRect.rect.offset.x       = 0;
+    clearRect.rect.offset.y       = 0;
+    clearRect.rect.extent.width   = view->mipLevelExtent(0).width;
+    clearRect.rect.extent.height  = view->mipLevelExtent(0).height;
+    clearRect.baseArrayLayer      = 0;
+    clearRect.layerCount          = view->info().numLayers;
+    
+    if (m_parent->GetFeatureLevel() < D3D_FEATURE_LEVEL_10_0)
+      clearRect.layerCount        = 1;
+    
+    EmitCs([
+      cClearValue = clearValue,
+      cClearRect  = clearRect,
+      cImageView  = view
+    ] (DxvkContext* ctx) {
+      ctx->clearRenderTarget(
+        cImageView, cClearRect,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+        cClearValue);
+    });
   }
   
   
@@ -606,53 +579,33 @@ namespace dxvk {
     if (ClearFlags & D3D11_CLEAR_STENCIL)
       aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
     
-    const DxvkFormatInfo* formatInfo =
-      imageFormatInfo(view->info().format);
-    aspectMask &= formatInfo->aspectMask;
+    aspectMask &= imageFormatInfo(view->info().format)->aspectMask;
     
-    VkClearDepthStencilValue clearValue;
-    clearValue.depth   = Depth;
-    clearValue.stencil = Stencil;
+    VkClearValue clearValue;
+    clearValue.depthStencil.depth   = Depth;
+    clearValue.depthStencil.stencil = Stencil;
     
-    if (m_state.om.depthStencilView == dsv) {
-      // Image is bound to the pipeline for rendering. We can
-      // use the clear function that operates on attachments.
-      VkClearAttachment clearInfo;
-      clearInfo.aspectMask              = aspectMask;
-      clearInfo.colorAttachment         = 0;
-      clearInfo.clearValue.depthStencil = clearValue;
-      
-      // Clear the full area
-      VkClearRect clearRect;
-      clearRect.rect.offset.x       = 0;
-      clearRect.rect.offset.y       = 0;
-      clearRect.rect.extent.width   = view->mipLevelExtent(0).width;
-      clearRect.rect.extent.height  = view->mipLevelExtent(0).height;
-      clearRect.baseArrayLayer      = 0;
-      clearRect.layerCount          = view->info().numLayers;
-      
-      if (m_parent->GetFeatureLevel() < D3D_FEATURE_LEVEL_10_0)
-        clearRect.layerCount        = 1;
-      
-      EmitCs([
-        cClearInfo = clearInfo,
-        cClearRect = clearRect
-      ] (DxvkContext* ctx) {
-        ctx->clearRenderTarget(cClearInfo, cClearRect);
-      });
-    } else {
-      EmitCs([
-        cClearValue = clearValue,
-        cDstView    = view,
-        cAspectMask = aspectMask
-      ] (DxvkContext* ctx) {
-        VkImageSubresourceRange subresources = cDstView->subresources();
-        subresources.aspectMask = cAspectMask;
-        
-        ctx->clearDepthStencilImage(cDstView->image(),
-          cClearValue, subresources);
-      });
-    }
+    VkClearRect clearRect;
+    clearRect.rect.offset.x       = 0;
+    clearRect.rect.offset.y       = 0;
+    clearRect.rect.extent.width   = view->mipLevelExtent(0).width;
+    clearRect.rect.extent.height  = view->mipLevelExtent(0).height;
+    clearRect.baseArrayLayer      = 0;
+    clearRect.layerCount          = view->info().numLayers;
+    
+    if (m_parent->GetFeatureLevel() < D3D_FEATURE_LEVEL_10_0)
+      clearRect.layerCount        = 1;
+    
+    EmitCs([
+      cClearValue = clearValue,
+      cClearRect  = clearRect,
+      cAspectMask = aspectMask,
+      cImageView  = view
+    ] (DxvkContext* ctx) {
+      ctx->clearRenderTarget(
+        cImageView, cClearRect,
+        cAspectMask, cClearValue);
+    });
   }
   
   
