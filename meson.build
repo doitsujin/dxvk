@@ -26,6 +26,20 @@ if dxvk_compiler.get_id() != 'msvc'
   lib_d3dcompiler_47 = dxvk_compiler.find_library('d3dcompiler_47')
 endif
 
+git_command = find_program('git', required: false)
+
+if git_command.found()
+  git = run_command('git', ['-C', meson.source_root(), 'rev-parse', '--short', 'HEAD'])
+  if git.returncode() == 0
+    add_global_arguments('-DDXVK_VERSION="'+git.stdout().strip()+'"', language: 'cpp')
+  else
+    add_global_arguments('-DDXVK_VERSION="unknown"', language: 'cpp')
+  endif
+else
+  add_global_arguments('-DDXVK_VERSION="unknown"', language: 'cpp')
+endif
+
+
 glsl_compiler = find_program('glslangValidator')
 glsl_generator = generator(glsl_compiler,
   output    : [ '@BASENAME@.h' ],

@@ -42,5 +42,7 @@ namespace dxvk::hud {
     
     return HudPos { position.x, position.y + 68 };
   }
+
+  void HudDeviceInfo::update() {}
   
 }
