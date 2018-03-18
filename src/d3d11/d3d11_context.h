@@ -693,7 +693,7 @@ namespace dxvk {
     
     void BindConstantBuffer(
             UINT                              Slot,
-            D3D11Buffer*                      pBuffer);
+      const D3D11ConstantBufferBinding*       pBufferBinding);
     
     void BindSampler(
             UINT                              Slot,
@@ -713,7 +713,9 @@ namespace dxvk {
             D3D11ConstantBufferBindings&      Bindings,
             UINT                              StartSlot,
             UINT                              NumBuffers,
-            ID3D11Buffer* const*              ppConstantBuffers);
+            ID3D11Buffer* const*              ppConstantBuffers,
+      const UINT*                             pFirstConstant,
+      const UINT*                             pNumConstants);
     
     void SetSamplers(
             DxbcProgramType                   ShaderStage,

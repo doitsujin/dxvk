@@ -15,8 +15,14 @@
 
 namespace dxvk {
   
+  struct D3D11ConstantBufferBinding {
+    Com<D3D11Buffer> buffer         = nullptr;
+    UINT             constantOffset = 0;
+    UINT             constantCount  = 0;
+  };
+  
   using D3D11ConstantBufferBindings = std::array<
-    Com<D3D11Buffer>, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT>;
+    D3D11ConstantBufferBinding, D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT>;
   
   
   using D3D11SamplerBindings = std::array<

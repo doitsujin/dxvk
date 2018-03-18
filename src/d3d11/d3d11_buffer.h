@@ -60,6 +60,14 @@ namespace dxvk {
       return DxvkBufferSlice(m_buffer, offset, m_buffer->info().size - offset);
     }
     
+    DxvkBufferSlice GetBufferSlice(VkDeviceSize offset, VkDeviceSize length) const {
+      return DxvkBufferSlice(m_buffer, offset, length);
+    }
+    
+    VkDeviceSize GetSize() const {
+      return m_buffer->info().size;
+    }
+    
     D3D11BufferInfo* GetBufferInfo() {
       return &m_bufferInfo;
     }
