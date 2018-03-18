@@ -1205,8 +1205,11 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer**                    ppConstantBuffers) {
-    for (uint32_t i = 0; i < NumBuffers; i++)
-      ppConstantBuffers[i] = m_state.vs.constantBuffers.at(StartSlot + i).buffer.ref();
+    GetConstantBuffers(
+      m_state.vs.constantBuffers,
+      StartSlot, NumBuffers,
+      ppConstantBuffers,
+      nullptr, nullptr);
   }
 
 
@@ -1216,7 +1219,12 @@ namespace dxvk {
           ID3D11Buffer**                    ppConstantBuffers, 
           UINT*                             pFirstConstant, 
           UINT*                             pNumConstants) {
-    Logger::err("D3D11DeviceContext::VSSetConstantBuffers1: not implemented");
+    GetConstantBuffers(
+      m_state.vs.constantBuffers,
+      StartSlot, NumBuffers,
+      ppConstantBuffers,
+      pFirstConstant,
+      pNumConstants);
   }
   
   
@@ -1287,7 +1295,7 @@ namespace dxvk {
     const UINT*                             pNumConstants) {
     this->SetConstantBuffers(
       DxbcProgramType::HullShader,
-      m_state.vs.constantBuffers,
+      m_state.hs.constantBuffers,
       StartSlot, NumBuffers,
       ppConstantBuffers,
       pFirstConstant,
@@ -1323,8 +1331,11 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer**                    ppConstantBuffers) {
-    for (uint32_t i = 0; i < NumBuffers; i++)
-      ppConstantBuffers[i] = m_state.hs.constantBuffers.at(StartSlot + i).buffer.ref();
+    GetConstantBuffers(
+      m_state.hs.constantBuffers,
+      StartSlot, NumBuffers,
+      ppConstantBuffers,
+      nullptr, nullptr);
   }
 
 
@@ -1334,7 +1345,12 @@ namespace dxvk {
           ID3D11Buffer**                    ppConstantBuffers, 
           UINT*                             pFirstConstant, 
           UINT*                             pNumConstants) {
-    Logger::err("D3D11DeviceContext::HSGetConstantBuffers1: not implemented");
+    GetConstantBuffers(
+      m_state.hs.constantBuffers,
+      StartSlot, NumBuffers,
+      ppConstantBuffers,
+      pFirstConstant,
+      pNumConstants);
   }
   
   
@@ -1405,7 +1421,7 @@ namespace dxvk {
     const UINT*                             pNumConstants) {
     this->SetConstantBuffers(
       DxbcProgramType::DomainShader,
-      m_state.vs.constantBuffers,
+      m_state.ds.constantBuffers,
       StartSlot, NumBuffers,
       ppConstantBuffers,
       pFirstConstant,
@@ -1441,8 +1457,11 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer**                    ppConstantBuffers) {
-    for (uint32_t i = 0; i < NumBuffers; i++)
-      ppConstantBuffers[i] = m_state.ds.constantBuffers.at(StartSlot + i).buffer.ref();
+    GetConstantBuffers(
+      m_state.ds.constantBuffers,
+      StartSlot, NumBuffers,
+      ppConstantBuffers,
+      nullptr, nullptr);
   }
   
   
@@ -1452,7 +1471,12 @@ namespace dxvk {
           ID3D11Buffer**                    ppConstantBuffers,
           UINT*                             pFirstConstant, 
           UINT*                             pNumConstants) {
-    Logger::err("D3D11DeviceContext::DSGetConstantBuffers1: not implemented");
+    GetConstantBuffers(
+      m_state.ds.constantBuffers,
+      StartSlot, NumBuffers,
+      ppConstantBuffers,
+      pFirstConstant,
+      pNumConstants);
   }
 
 
@@ -1511,7 +1535,7 @@ namespace dxvk {
     const UINT*                             pNumConstants) {  
     this->SetConstantBuffers(
       DxbcProgramType::GeometryShader,
-      m_state.vs.constantBuffers,
+      m_state.gs.constantBuffers,
       StartSlot, NumBuffers,
       ppConstantBuffers,
       pFirstConstant,
@@ -1559,8 +1583,11 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer**                    ppConstantBuffers) {
-    for (uint32_t i = 0; i < NumBuffers; i++)
-      ppConstantBuffers[i] = m_state.gs.constantBuffers.at(StartSlot + i).buffer.ref();
+    GetConstantBuffers(
+      m_state.gs.constantBuffers,
+      StartSlot, NumBuffers,
+      ppConstantBuffers,
+      nullptr, nullptr);
   }
 
 
@@ -1570,7 +1597,12 @@ namespace dxvk {
           ID3D11Buffer**                    ppConstantBuffers, 
           UINT*                             pFirstConstant, 
           UINT*                             pNumConstants) {
-    Logger::err("D3D11DeviceContext::GSGetConstantBuffers1: not implemented");
+    GetConstantBuffers(
+      m_state.gs.constantBuffers,
+      StartSlot, NumBuffers,
+      ppConstantBuffers,
+      pFirstConstant,
+      pNumConstants);
   }
   
   
@@ -1629,7 +1661,7 @@ namespace dxvk {
     const UINT*                             pNumConstants) {
     this->SetConstantBuffers(
       DxbcProgramType::PixelShader,
-      m_state.vs.constantBuffers,
+      m_state.ps.constantBuffers,
       StartSlot, NumBuffers,
       ppConstantBuffers,
       pFirstConstant,
@@ -1677,8 +1709,11 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer**                    ppConstantBuffers) {
-    for (uint32_t i = 0; i < NumBuffers; i++)
-      ppConstantBuffers[i] = m_state.ps.constantBuffers.at(StartSlot + i).buffer.ref();
+    GetConstantBuffers(
+      m_state.ps.constantBuffers,
+      StartSlot, NumBuffers,
+      ppConstantBuffers,
+      nullptr, nullptr);
   }
 
 
@@ -1688,7 +1723,12 @@ namespace dxvk {
           ID3D11Buffer**                    ppConstantBuffers,
           UINT*                             pFirstConstant, 
           UINT*                             pNumConstants) {
-    Logger::err("D3D11DeviceContext::PSSetConstantBuffers1: not implemented");
+    GetConstantBuffers(
+      m_state.ps.constantBuffers,
+      StartSlot, NumBuffers,
+      ppConstantBuffers,
+      pFirstConstant,
+      pNumConstants);
   }
   
   
@@ -1747,7 +1787,7 @@ namespace dxvk {
     const UINT*                             pNumConstants) {
     this->SetConstantBuffers(
       DxbcProgramType::ComputeShader,
-      m_state.vs.constantBuffers,
+      m_state.cs.constantBuffers,
       StartSlot, NumBuffers,
       ppConstantBuffers,
       pFirstConstant,
@@ -1814,8 +1854,11 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer**                    ppConstantBuffers) {
-    for (uint32_t i = 0; i < NumBuffers; i++)
-      ppConstantBuffers[i] = m_state.cs.constantBuffers.at(StartSlot + i).buffer.ref();
+    GetConstantBuffers(
+      m_state.cs.constantBuffers,
+      StartSlot, NumBuffers,
+      ppConstantBuffers,
+      nullptr, nullptr);
   }
 
 
@@ -1825,7 +1868,12 @@ namespace dxvk {
           ID3D11Buffer**                    ppConstantBuffers, 
           UINT*                             pFirstConstant, 
           UINT*                             pNumConstants) {
-    Logger::warn("D3D11DeviceContext::CSGetConstantBuffers1: not implemented");
+    GetConstantBuffers(
+      m_state.cs.constantBuffers,
+      StartSlot, NumBuffers,
+      ppConstantBuffers,
+      pFirstConstant,
+      pNumConstants);
   }
   
   
@@ -2560,6 +2608,26 @@ namespace dxvk {
           });
         }
       }
+    }
+  }
+  
+  
+  void D3D11DeviceContext::GetConstantBuffers(
+    const D3D11ConstantBufferBindings&      Bindings,
+          UINT                              StartSlot,
+          UINT                              NumBuffers,
+          ID3D11Buffer**                    ppConstantBuffers, 
+          UINT*                             pFirstConstant, 
+          UINT*                             pNumConstants) {
+    for (uint32_t i = 0; i < NumBuffers; i++) {
+      if (ppConstantBuffers != nullptr)
+        ppConstantBuffers[i] = Bindings[StartSlot + i].buffer.ref();
+      
+      if (pFirstConstant != nullptr)
+        pFirstConstant[i] = Bindings[StartSlot + i].constantOffset;
+      
+      if (pNumConstants != nullptr)
+        pNumConstants[i] = Bindings[StartSlot + i].constantCount;
     }
   }
   

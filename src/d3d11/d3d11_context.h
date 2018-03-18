@@ -743,6 +743,14 @@ namespace dxvk {
             ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
       const UINT*                             pUAVInitialCounts);
     
+    void GetConstantBuffers(
+      const D3D11ConstantBufferBindings&      Bindings,
+            UINT                              StartSlot,
+            UINT                              NumBuffers,
+            ID3D11Buffer**                    ppConstantBuffers, 
+            UINT*                             pFirstConstant, 
+            UINT*                             pNumConstants);
+    
     void RestoreState();
     
     void RestoreConstantBuffers(
