@@ -581,9 +581,14 @@ namespace dxvk {
           ID3D11Resource*                   pResource,
     const D3D11_RENDER_TARGET_VIEW_DESC*    pDesc,
           ID3D11RenderTargetView**          ppRTView) {
-    // Only 2D textures and 2D texture arrays are allowed
+    // DXVK only supports render target views for image resources
     D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resourceDim);
+    
+    if (resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER) {
+      Logger::err("D3D11: Cannot create render target view for a buffer");
+      return E_INVALIDARG;
+    }
     
     // The view description is optional. If not defined, it
     // will use the resource's format and all array layers.
@@ -698,7 +703,6 @@ namespace dxvk {
           ID3D11Resource*                   pResource,
     const D3D11_DEPTH_STENCIL_VIEW_DESC*    pDesc,
           ID3D11DepthStencilView**          ppDepthStencilView) {
-    // Only 2D textures and 2D texture arrays are allowed
     D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resourceDim);
     
