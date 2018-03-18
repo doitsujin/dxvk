@@ -72,6 +72,7 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, IUnknown);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceChild);
     COM_QUERY_IFACE(riid, ppvObject, ID3D11RasterizerState);
+    COM_QUERY_IFACE(riid, ppvObject, ID3D11RasterizerState1);
     
     Logger::warn("D3D11RasterizerState::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));

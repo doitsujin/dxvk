@@ -9,15 +9,15 @@ namespace dxvk {
   
   class D3D11Device;
   
-  class D3D11BlendState : public D3D11DeviceChild<ID3D11BlendState> {
+  class D3D11BlendState : public D3D11DeviceChild<ID3D11BlendState1> {
     
   public:
     
-    using DescType = D3D11_BLEND_DESC;
+    using DescType = D3D11_BLEND_DESC1;
     
     D3D11BlendState(
-            D3D11Device*      device,
-      const D3D11_BLEND_DESC& desc);
+            D3D11Device*       device,
+      const D3D11_BLEND_DESC1& desc);
     ~D3D11BlendState();
     
     HRESULT STDMETHODCALLTYPE QueryInterface(
@@ -30,21 +30,32 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc(
             D3D11_BLEND_DESC* pDesc) final;
     
+    void STDMETHODCALLTYPE GetDesc1(
+            D3D11_BLEND_DESC1* pDesc) final;
+    
     void BindToContext(
       const Rc<DxvkContext>&  ctx,
             UINT              sampleMask) const;
     
+    static D3D11_BLEND_DESC1 DefaultDesc();
+    
+    static D3D11_BLEND_DESC1 PromoteDesc(
+      const D3D11_BLEND_DESC*   pSrcDesc);
+    
+    static HRESULT NormalizeDesc(
+            D3D11_BLEND_DESC1*  pDesc);
+    
   private:
     
     D3D11Device* const            m_device;
-    D3D11_BLEND_DESC              m_desc;
+    D3D11_BLEND_DESC1             m_desc;
     
     std::array<DxvkBlendMode, 8>  m_blendModes;
     DxvkMultisampleState          m_msState;
     DxvkLogicOpState              m_loState;
     
     static DxvkBlendMode DecodeBlendMode(
-      const D3D11_RENDER_TARGET_BLEND_DESC& BlendDesc);
+      const D3D11_RENDER_TARGET_BLEND_DESC1& BlendDesc);
     
     static VkBlendFactor DecodeBlendFactor(
             D3D11_BLEND BlendFactor,
@@ -52,6 +63,9 @@ namespace dxvk {
     
     static VkBlendOp DecodeBlendOp(
             D3D11_BLEND_OP BlendOp);
+    
+    static VkLogicOp DecodeLogicOp(
+            D3D11_LOGIC_OP LogicOp);
     
   };
   

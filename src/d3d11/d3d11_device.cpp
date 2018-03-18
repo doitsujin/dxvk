@@ -1080,28 +1080,12 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11Device::CreateBlendState(
     const D3D11_BLEND_DESC*           pBlendStateDesc,
           ID3D11BlendState**          ppBlendState) {
-    D3D11_BLEND_DESC desc;
+    D3D11_BLEND_DESC1 desc = pBlendStateDesc != nullptr
+      ? D3D11BlendState::PromoteDesc(pBlendStateDesc)
+      : D3D11BlendState::DefaultDesc();
     
-    if (pBlendStateDesc != nullptr) {
-      desc = *pBlendStateDesc;
-    } else {
-      desc.AlphaToCoverageEnable  = FALSE;
-      desc.IndependentBlendEnable = FALSE;
-      
-      // 1-7 must be ignored if IndependentBlendEnable is disabled so
-      // technically this is not needed, but since this structure is
-      // going to be copied around we'll initialize it nonetheless
-      for (uint32_t i = 0; i < 8; i++) {
-        desc.RenderTarget[i].BlendEnable           = FALSE;
-        desc.RenderTarget[i].SrcBlend              = D3D11_BLEND_ONE;
-        desc.RenderTarget[i].DestBlend             = D3D11_BLEND_ZERO;
-        desc.RenderTarget[i].BlendOp               = D3D11_BLEND_OP_ADD;
-        desc.RenderTarget[i].SrcBlendAlpha         = D3D11_BLEND_ONE;
-        desc.RenderTarget[i].DestBlendAlpha        = D3D11_BLEND_ZERO;
-        desc.RenderTarget[i].BlendOpAlpha          = D3D11_BLEND_OP_ADD;
-        desc.RenderTarget[i].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
-      }
-    }
+    if (FAILED(D3D11BlendState::NormalizeDesc(&desc)))
+      return E_INVALIDARG;
     
     if (ppBlendState != nullptr) {
       *ppBlendState = m_bsStateObjects.Create(this, desc);
@@ -1113,8 +1097,17 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11Device::CreateBlendState1(
     const D3D11_BLEND_DESC1*          pBlendStateDesc, 
           ID3D11BlendState1**         ppBlendState) {
-    Logger::err("D3D11Device::CreateBlendState1: Not implemented");
-    return E_NOTIMPL;
+    D3D11_BLEND_DESC1 desc = pBlendStateDesc != nullptr
+      ? *pBlendStateDesc
+      : D3D11BlendState::DefaultDesc();
+    
+    if (FAILED(D3D11BlendState::NormalizeDesc(&desc)))
+      return E_INVALIDARG;
+    
+    if (ppBlendState != nullptr) {
+      *ppBlendState = m_bsStateObjects.Create(this, desc);
+      return S_OK;
+    } return S_FALSE;
   }
   
   

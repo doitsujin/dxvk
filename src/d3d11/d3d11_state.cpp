@@ -3,7 +3,7 @@
 namespace dxvk {
   
   size_t D3D11StateDescHash::operator () (
-    const D3D11_BLEND_DESC& desc) const {
+    const D3D11_BLEND_DESC1& desc) const {
     DxvkHashState hash;
     hash.add(desc.AlphaToCoverageEnable);
     hash.add(desc.IndependentBlendEnable);
@@ -64,15 +64,17 @@ namespace dxvk {
   
   
   size_t D3D11StateDescHash::operator () (
-    const D3D11_RENDER_TARGET_BLEND_DESC& desc) const {
+    const D3D11_RENDER_TARGET_BLEND_DESC1& desc) const {
     DxvkHashState hash;
     hash.add(desc.BlendEnable);
+    hash.add(desc.LogicOpEnable);
     hash.add(desc.SrcBlend);
     hash.add(desc.DestBlend);
     hash.add(desc.BlendOp);
     hash.add(desc.SrcBlendAlpha);
     hash.add(desc.DestBlendAlpha);
     hash.add(desc.BlendOpAlpha);
+    hash.add(desc.LogicOp);
     hash.add(desc.RenderTargetWriteMask);
     return hash;
   }
@@ -99,8 +101,8 @@ namespace dxvk {
   
   
   bool D3D11StateDescEqual::operator () (
-    const D3D11_BLEND_DESC& a,
-    const D3D11_BLEND_DESC& b) const {
+    const D3D11_BLEND_DESC1& a,
+    const D3D11_BLEND_DESC1& b) const {
     bool eq = a.AlphaToCoverageEnable  == b.AlphaToCoverageEnable
            && a.IndependentBlendEnable == b.IndependentBlendEnable;
     
@@ -157,15 +159,17 @@ namespace dxvk {
   
   
   bool D3D11StateDescEqual::operator () (
-    const D3D11_RENDER_TARGET_BLEND_DESC& a,
-    const D3D11_RENDER_TARGET_BLEND_DESC& b) const {
+    const D3D11_RENDER_TARGET_BLEND_DESC1& a,
+    const D3D11_RENDER_TARGET_BLEND_DESC1& b) const {
     return a.BlendEnable           == b.BlendEnable
+        && a.LogicOpEnable         == b.LogicOpEnable
         && a.SrcBlend              == b.SrcBlend
         && a.DestBlend             == b.DestBlend
         && a.BlendOp               == b.BlendOp
         && a.SrcBlendAlpha         == b.SrcBlendAlpha
         && a.DestBlendAlpha        == b.DestBlendAlpha
         && a.BlendOpAlpha          == b.BlendOpAlpha
+        && a.LogicOp               == b.LogicOp
         && a.RenderTargetWriteMask == b.RenderTargetWriteMask;
   }
   
