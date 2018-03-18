@@ -33,6 +33,11 @@ namespace dxvk {
     void BindToContext(
       const Rc<DxvkContext>&  ctx);
     
+    static D3D11_DEPTH_STENCIL_DESC DefaultDesc();
+    
+    static HRESULT NormalizeDesc(
+            D3D11_DEPTH_STENCIL_DESC* pDesc);
+    
   private:
     
     D3D11Device* const        m_device;

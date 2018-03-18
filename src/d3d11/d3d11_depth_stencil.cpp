@@ -51,6 +51,33 @@ namespace dxvk {
   }
   
   
+  D3D11_DEPTH_STENCIL_DESC D3D11DepthStencilState::DefaultDesc() {
+    D3D11_DEPTH_STENCILOP_DESC stencilOp;
+    stencilOp.StencilFunc        = D3D11_COMPARISON_ALWAYS;
+    stencilOp.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+    stencilOp.StencilPassOp      = D3D11_STENCIL_OP_KEEP;
+    stencilOp.StencilFailOp      = D3D11_STENCIL_OP_KEEP;
+    
+    D3D11_DEPTH_STENCIL_DESC dstDesc;
+    dstDesc.DepthEnable      = TRUE;
+    dstDesc.DepthWriteMask   = D3D11_DEPTH_WRITE_MASK_ALL;
+    dstDesc.DepthFunc        = D3D11_COMPARISON_LESS;
+    dstDesc.StencilEnable    = FALSE;
+    dstDesc.StencilReadMask  = D3D11_DEFAULT_STENCIL_READ_MASK;
+    dstDesc.StencilWriteMask = D3D11_DEFAULT_STENCIL_WRITE_MASK;
+    dstDesc.FrontFace        = stencilOp;
+    dstDesc.BackFace         = stencilOp;
+    return dstDesc;
+  }
+  
+  
+  HRESULT D3D11DepthStencilState::NormalizeDesc(D3D11_DEPTH_STENCIL_DESC* pDesc) {
+    // TODO validate
+    // TODO clear unused values
+    return S_OK;
+  }
+  
+  
   VkStencilOpState D3D11DepthStencilState::DecodeStencilOpState(
     const D3D11_DEPTH_STENCILOP_DESC& StencilDesc,
     const D3D11_DEPTH_STENCIL_DESC&   Desc) const {

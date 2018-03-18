@@ -1114,26 +1114,12 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11Device::CreateDepthStencilState(
     const D3D11_DEPTH_STENCIL_DESC*   pDepthStencilDesc,
           ID3D11DepthStencilState**   ppDepthStencilState) {
-    D3D11_DEPTH_STENCIL_DESC desc;
+    D3D11_DEPTH_STENCIL_DESC desc = pDepthStencilDesc != nullptr
+      ? *pDepthStencilDesc
+      : D3D11DepthStencilState::DefaultDesc();
     
-    if (pDepthStencilDesc != nullptr) {
-      desc = *pDepthStencilDesc;
-    } else {
-      D3D11_DEPTH_STENCILOP_DESC stencilOp;
-      stencilOp.StencilFunc        = D3D11_COMPARISON_ALWAYS;
-      stencilOp.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
-      stencilOp.StencilPassOp      = D3D11_STENCIL_OP_KEEP;
-      stencilOp.StencilFailOp      = D3D11_STENCIL_OP_KEEP;
-      
-      desc.DepthEnable      = TRUE;
-      desc.DepthWriteMask   = D3D11_DEPTH_WRITE_MASK_ALL;
-      desc.DepthFunc        = D3D11_COMPARISON_LESS;
-      desc.StencilEnable    = FALSE;
-      desc.StencilReadMask  = D3D11_DEFAULT_STENCIL_READ_MASK;
-      desc.StencilWriteMask = D3D11_DEFAULT_STENCIL_WRITE_MASK;
-      desc.FrontFace        = stencilOp;
-      desc.BackFace         = stencilOp;
-    }
+    if (FAILED(D3D11DepthStencilState::NormalizeDesc(&desc)))
+      return E_INVALIDARG;
     
     if (ppDepthStencilState != nullptr) {
       *ppDepthStencilState = m_dsStateObjects.Create(this, desc);
