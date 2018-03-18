@@ -1165,16 +1165,16 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11Device::CreateSamplerState(
     const D3D11_SAMPLER_DESC*         pSamplerDesc,
           ID3D11SamplerState**        ppSamplerState) {
-    HRESULT hr = D3D11SamplerState::ValidateDesc(pSamplerDesc);
+    D3D11_SAMPLER_DESC desc = *pSamplerDesc;
     
-    if (FAILED(hr))
-      return hr;
+    if (FAILED(D3D11SamplerState::NormalizeDesc(&desc)))
+      return E_INVALIDARG;
     
     if (ppSamplerState == nullptr)
       return S_FALSE;
     
     try {
-      *ppSamplerState = m_samplerObjects.Create(this, *pSamplerDesc);
+      *ppSamplerState = m_samplerObjects.Create(this, desc);
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());

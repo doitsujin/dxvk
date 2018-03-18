@@ -73,8 +73,8 @@ namespace dxvk {
   }
   
   
-  HRESULT D3D11SamplerState::ValidateDesc(const D3D11_SAMPLER_DESC* desc) {
-    const uint32_t filterBits = static_cast<uint32_t>(desc->Filter);
+  HRESULT D3D11SamplerState::NormalizeDesc(D3D11_SAMPLER_DESC* pDesc) {
+    const uint32_t filterBits = static_cast<uint32_t>(pDesc->Filter);
     
     if (filterBits & 0xFFFFFF2A) {
       Logger::err(str::format("D3D11SamplerState: Unhandled filter: ", filterBits));

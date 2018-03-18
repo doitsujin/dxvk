@@ -33,8 +33,8 @@ namespace dxvk {
       return m_sampler;
     }
     
-    static HRESULT ValidateDesc(
-      const D3D11_SAMPLER_DESC* desc);
+    static HRESULT NormalizeDesc(
+            D3D11_SAMPLER_DESC* pDesc);
     
   private:
     
