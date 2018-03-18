@@ -46,7 +46,7 @@ namespace dxvk {
   
   
   size_t D3D11StateDescHash::operator () (
-    const D3D11_RASTERIZER_DESC& desc) const {
+    const D3D11_RASTERIZER_DESC1& desc) const {
     DxvkHashState hash;
     hash.add(desc.FillMode);
     hash.add(desc.CullMode);
@@ -58,6 +58,7 @@ namespace dxvk {
     hash.add(desc.ScissorEnable);
     hash.add(desc.MultisampleEnable);
     hash.add(desc.AntialiasedLineEnable);
+    hash.add(desc.ForcedSampleCount);
     return hash;
   }
   
@@ -139,8 +140,8 @@ namespace dxvk {
   
   
   bool D3D11StateDescEqual::operator () (
-    const D3D11_RASTERIZER_DESC& a,
-    const D3D11_RASTERIZER_DESC& b) const {
+    const D3D11_RASTERIZER_DESC1& a,
+    const D3D11_RASTERIZER_DESC1& b) const {
     return a.FillMode              == b.FillMode
         && a.CullMode              == b.CullMode
         && a.FrontCounterClockwise == b.FrontCounterClockwise
@@ -150,7 +151,8 @@ namespace dxvk {
         && a.DepthClipEnable       == b.DepthClipEnable
         && a.ScissorEnable         == b.ScissorEnable
         && a.MultisampleEnable     == b.MultisampleEnable
-        && a.AntialiasedLineEnable == b.AntialiasedLineEnable;
+        && a.AntialiasedLineEnable == b.AntialiasedLineEnable
+        && a.ForcedSampleCount     == b.ForcedSampleCount;
   }
   
   

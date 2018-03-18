@@ -15,7 +15,7 @@ namespace dxvk {
     size_t operator () (const D3D11_BLEND_DESC& desc) const;
     size_t operator () (const D3D11_DEPTH_STENCILOP_DESC& desc) const;
     size_t operator () (const D3D11_DEPTH_STENCIL_DESC& desc) const;
-    size_t operator () (const D3D11_RASTERIZER_DESC& desc) const;
+    size_t operator () (const D3D11_RASTERIZER_DESC1& desc) const;
     size_t operator () (const D3D11_RENDER_TARGET_BLEND_DESC& desc) const;
     size_t operator () (const D3D11_SAMPLER_DESC& desc) const;
   };
@@ -25,7 +25,7 @@ namespace dxvk {
     bool operator () (const D3D11_BLEND_DESC& a, const D3D11_BLEND_DESC& b) const;
     bool operator () (const D3D11_DEPTH_STENCILOP_DESC& a, const D3D11_DEPTH_STENCILOP_DESC& b) const;
     bool operator () (const D3D11_DEPTH_STENCIL_DESC& a, const D3D11_DEPTH_STENCIL_DESC& b) const;
-    bool operator () (const D3D11_RASTERIZER_DESC& a, const D3D11_RASTERIZER_DESC& b) const;
+    bool operator () (const D3D11_RASTERIZER_DESC1& a, const D3D11_RASTERIZER_DESC1& b) const;
     bool operator () (const D3D11_RENDER_TARGET_BLEND_DESC& a, const D3D11_RENDER_TARGET_BLEND_DESC& b) const;
     bool operator () (const D3D11_SAMPLER_DESC& a, const D3D11_SAMPLER_DESC& b) const;
   };

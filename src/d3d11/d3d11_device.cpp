@@ -1152,22 +1152,12 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11Device::CreateRasterizerState(
     const D3D11_RASTERIZER_DESC*      pRasterizerDesc,
           ID3D11RasterizerState**     ppRasterizerState) {
-    D3D11_RASTERIZER_DESC desc;
+    D3D11_RASTERIZER_DESC1 desc = pRasterizerDesc != nullptr
+      ? D3D11RasterizerState::PromoteDesc(pRasterizerDesc)
+      : D3D11RasterizerState::DefaultDesc();
     
-    if (pRasterizerDesc != nullptr) {
-      desc = *pRasterizerDesc;
-    } else {
-      desc.FillMode = D3D11_FILL_SOLID;
-      desc.CullMode = D3D11_CULL_BACK;
-      desc.FrontCounterClockwise = FALSE;
-      desc.DepthBias = 0;
-      desc.SlopeScaledDepthBias = 0.0f;
-      desc.DepthBiasClamp = 0.0f;
-      desc.DepthClipEnable = TRUE;
-      desc.ScissorEnable = FALSE;
-      desc.MultisampleEnable = FALSE;
-      desc.AntialiasedLineEnable = FALSE;
-    }
+    if (FAILED(D3D11RasterizerState::NormalizeDesc(&desc)))
+      return E_INVALIDARG;
     
     if (ppRasterizerState != nullptr) {
       *ppRasterizerState = m_rsStateObjects.Create(this, desc);
@@ -1175,12 +1165,23 @@ namespace dxvk {
     } return S_FALSE;
   }
   
+  
   HRESULT D3D11Device::CreateRasterizerState1(
     const D3D11_RASTERIZER_DESC1*     pRasterizerDesc, 
           ID3D11RasterizerState1**    ppRasterizerState) {
-    Logger::err("D3D11Device::CreateRasterizerState1: Not implemented");
-    return E_NOTIMPL;
+    D3D11_RASTERIZER_DESC1 desc = pRasterizerDesc != nullptr
+      ? *pRasterizerDesc
+      : D3D11RasterizerState::DefaultDesc();
+    
+    if (FAILED(D3D11RasterizerState::NormalizeDesc(&desc)))
+      return E_INVALIDARG;
+    
+    if (ppRasterizerState != nullptr) {
+      *ppRasterizerState = m_rsStateObjects.Create(this, desc);
+      return S_OK;
+    } return S_FALSE;
   }
+  
   
   HRESULT STDMETHODCALLTYPE D3D11Device::CreateSamplerState(
     const D3D11_SAMPLER_DESC*         pSamplerDesc,

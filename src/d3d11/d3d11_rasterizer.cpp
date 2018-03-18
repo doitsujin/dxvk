@@ -5,7 +5,7 @@ namespace dxvk {
   
   D3D11RasterizerState::D3D11RasterizerState(
           D3D11Device*                    device,
-    const D3D11_RASTERIZER_DESC&          desc)
+    const D3D11_RASTERIZER_DESC1&         desc)
   : m_device(device), m_desc(desc) {
     
     // State that is not supported in D3D11
@@ -57,6 +57,9 @@ namespace dxvk {
     
     if (desc.AntialiasedLineEnable)
       Logger::err("D3D11RasterizerState: Antialiased lines not supported");
+    
+    if (desc.ForcedSampleCount)
+      Logger::err("D3D11RasterizerState: Forced sample count not supported");
   }
   
   
@@ -82,12 +85,68 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11RasterizerState::GetDesc(D3D11_RASTERIZER_DESC* pDesc) {
+    pDesc->FillMode               = m_desc.FillMode;
+    pDesc->CullMode               = m_desc.CullMode;
+    pDesc->FrontCounterClockwise  = m_desc.FrontCounterClockwise;
+    pDesc->DepthBias              = m_desc.DepthBias;
+    pDesc->DepthBiasClamp         = m_desc.DepthBiasClamp;
+    pDesc->SlopeScaledDepthBias   = m_desc.SlopeScaledDepthBias;
+    pDesc->DepthClipEnable        = m_desc.DepthClipEnable;
+    pDesc->ScissorEnable          = m_desc.ScissorEnable;
+    pDesc->MultisampleEnable      = m_desc.MultisampleEnable;
+    pDesc->AntialiasedLineEnable  = m_desc.AntialiasedLineEnable;
+  }
+  
+  
+  void STDMETHODCALLTYPE D3D11RasterizerState::GetDesc1(D3D11_RASTERIZER_DESC1* pDesc) {
     *pDesc = m_desc;
   }
   
   
   void D3D11RasterizerState::BindToContext(const Rc<DxvkContext>& ctx) {
     ctx->setRasterizerState(m_state);
+  }
+  
+  
+  D3D11_RASTERIZER_DESC1 D3D11RasterizerState::DefaultDesc() {
+    D3D11_RASTERIZER_DESC1 dstDesc;
+    dstDesc.FillMode              = D3D11_FILL_SOLID;
+    dstDesc.CullMode              = D3D11_CULL_BACK;
+    dstDesc.FrontCounterClockwise = FALSE;
+    dstDesc.DepthBias             = 0;
+    dstDesc.SlopeScaledDepthBias  = 0.0f;
+    dstDesc.DepthBiasClamp        = 0.0f;
+    dstDesc.DepthClipEnable       = TRUE;
+    dstDesc.ScissorEnable         = FALSE;
+    dstDesc.MultisampleEnable     = FALSE;
+    dstDesc.AntialiasedLineEnable = FALSE;
+    dstDesc.ForcedSampleCount     = 0;
+    return dstDesc;
+  }
+  
+  
+  D3D11_RASTERIZER_DESC1 D3D11RasterizerState::PromoteDesc(
+    const D3D11_RASTERIZER_DESC*  pSrcDesc) {
+    D3D11_RASTERIZER_DESC1 dstDesc;
+    dstDesc.FillMode              = pSrcDesc->FillMode;
+    dstDesc.CullMode              = pSrcDesc->CullMode;
+    dstDesc.FrontCounterClockwise = pSrcDesc->FrontCounterClockwise;
+    dstDesc.DepthBias             = pSrcDesc->DepthBias;
+    dstDesc.DepthBiasClamp        = pSrcDesc->DepthBiasClamp;
+    dstDesc.SlopeScaledDepthBias  = pSrcDesc->SlopeScaledDepthBias;
+    dstDesc.DepthClipEnable       = pSrcDesc->DepthClipEnable;
+    dstDesc.ScissorEnable         = pSrcDesc->ScissorEnable;
+    dstDesc.MultisampleEnable     = pSrcDesc->MultisampleEnable;
+    dstDesc.AntialiasedLineEnable = pSrcDesc->AntialiasedLineEnable;
+    dstDesc.ForcedSampleCount     = 0;
+    return dstDesc;
+  }
+  
+  
+  HRESULT D3D11RasterizerState::NormalizeDesc(
+          D3D11_RASTERIZER_DESC1* pDesc) {
+    // TODO validate
+    return S_OK;
   }
   
 }
