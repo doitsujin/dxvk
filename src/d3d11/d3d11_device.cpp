@@ -1601,7 +1601,6 @@ namespace dxvk {
       enabled.logicOp                               = supported.logicOp;
       enabled.shaderImageGatherExtended             = VK_TRUE;
       enabled.textureCompressionBC                  = VK_TRUE;
-      enabled.vertexPipelineStoresAndAtomics        = VK_TRUE;
     }
     
     if (featureLevel >= D3D_FEATURE_LEVEL_10_1) {
@@ -1615,6 +1614,11 @@ namespace dxvk {
       enabled.tessellationShader                    = VK_TRUE;
       enabled.shaderStorageImageReadWithoutFormat   = VK_TRUE;
       enabled.shaderStorageImageWriteWithoutFormat  = VK_TRUE;
+    }
+    
+    if (featureLevel >= D3D_FEATURE_LEVEL_11_1) {
+      enabled.logicOp                               = VK_TRUE;
+      enabled.vertexPipelineStoresAndAtomics        = VK_TRUE;
     }
     
     return enabled;
@@ -1872,7 +1876,8 @@ namespace dxvk {
   
   
   D3D_FEATURE_LEVEL D3D11Device::GetMaxFeatureLevel() {
-    static const std::array<std::pair<std::string, D3D_FEATURE_LEVEL>, 6> s_featureLevels = {{
+    static const std::array<std::pair<std::string, D3D_FEATURE_LEVEL>, 7> s_featureLevels = {{
+      { "11_1", D3D_FEATURE_LEVEL_11_1 },
       { "11_0", D3D_FEATURE_LEVEL_11_0 },
       { "10_1", D3D_FEATURE_LEVEL_10_1 },
       { "10_0", D3D_FEATURE_LEVEL_10_0 },
@@ -1891,7 +1896,6 @@ namespace dxvk {
     return entry != s_featureLevels.end()
       ? entry->second
       : D3D_FEATURE_LEVEL_11_0;
-    
   }
   
 }
