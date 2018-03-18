@@ -1155,7 +1155,13 @@ namespace dxvk {
           ID3D11Buffer* const*              ppConstantBuffers, 
     const UINT*                             pFirstConstant, 
     const UINT*                             pNumConstants) {
-    Logger::err("D3D11DeviceContext::VSSetConstantBuffers1: not implemented");
+    this->SetConstantBuffers(
+      DxbcProgramType::VertexShader,
+      m_state.vs.constantBuffers,
+      StartSlot, NumBuffers,
+      ppConstantBuffers,
+      pFirstConstant,
+      pNumConstants);
   }
   
   
@@ -1279,7 +1285,13 @@ namespace dxvk {
           ID3D11Buffer* const*              ppConstantBuffers, 
     const UINT*                             pFirstConstant, 
     const UINT*                             pNumConstants) {
-    Logger::err("D3D11DeviceContext::HSSetConstantBuffers1: not implemented");
+    this->SetConstantBuffers(
+      DxbcProgramType::HullShader,
+      m_state.vs.constantBuffers,
+      StartSlot, NumBuffers,
+      ppConstantBuffers,
+      pFirstConstant,
+      pNumConstants);
   }
   
   
@@ -1391,7 +1403,13 @@ namespace dxvk {
           ID3D11Buffer* const*              ppConstantBuffers,
     const UINT*                             pFirstConstant,
     const UINT*                             pNumConstants) {
-    Logger::err("D3D11DeviceContext::DSSetConstantBuffers1: not implemented");
+    this->SetConstantBuffers(
+      DxbcProgramType::DomainShader,
+      m_state.vs.constantBuffers,
+      StartSlot, NumBuffers,
+      ppConstantBuffers,
+      pFirstConstant,
+      pNumConstants);
   }
   
   
@@ -1491,7 +1509,13 @@ namespace dxvk {
           ID3D11Buffer* const*              ppConstantBuffers,
     const UINT*                             pFirstConstant, 
     const UINT*                             pNumConstants) {  
-    Logger::err("D3D11DeviceContext::GSSetConstantBuffers1: not implemented");
+    this->SetConstantBuffers(
+      DxbcProgramType::GeometryShader,
+      m_state.vs.constantBuffers,
+      StartSlot, NumBuffers,
+      ppConstantBuffers,
+      pFirstConstant,
+      pNumConstants);
   }
   
   
@@ -1603,7 +1627,13 @@ namespace dxvk {
           ID3D11Buffer* const*              ppConstantBuffers, 
     const UINT*                             pFirstConstant, 
     const UINT*                             pNumConstants) {
-    Logger::err("D3D11DeviceContext::PSSetConstantBuffers1: not implemented");
+    this->SetConstantBuffers(
+      DxbcProgramType::PixelShader,
+      m_state.vs.constantBuffers,
+      StartSlot, NumBuffers,
+      ppConstantBuffers,
+      pFirstConstant,
+      pNumConstants);
   }
   
   
@@ -1715,7 +1745,13 @@ namespace dxvk {
           ID3D11Buffer* const*              ppConstantBuffers, 
     const UINT*                             pFirstConstant, 
     const UINT*                             pNumConstants) {
-    Logger::err("D3D11DeviceContext::CSSetConstantBuffers1: not implemented notsupported");
+    this->SetConstantBuffers(
+      DxbcProgramType::ComputeShader,
+      m_state.vs.constantBuffers,
+      StartSlot, NumBuffers,
+      ppConstantBuffers,
+      pFirstConstant,
+      pNumConstants);
   }
   
   
