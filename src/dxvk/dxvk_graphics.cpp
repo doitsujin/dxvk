@@ -95,8 +95,10 @@ namespace dxvk {
   VkPipeline DxvkGraphicsPipeline::compilePipeline(
     const DxvkGraphicsPipelineStateInfo& state,
           VkPipeline                     baseHandle) const {
-    if (Logger::logLevel() <= LogLevel::Debug)
+    if (Logger::logLevel() <= LogLevel::Debug) {
+      Logger::debug("DxvkGraphicsPipeline: Compiling graphics pipeline...");
       this->logPipelineState(state);
+    }
     
     std::array<VkDynamicState, 4> dynamicStates = {
       VK_DYNAMIC_STATE_VIEWPORT,
@@ -249,6 +251,9 @@ namespace dxvk {
       info.pTessellationState = nullptr;
     
     if ((tsInfo.patchControlPoints != 0) && (m_tcs == nullptr || m_tes == nullptr)) {
+      if (Logger::logLevel() > LogLevel::Debug)
+        logPipelineState(state);
+
       Logger::err("DxvkGraphicsPipeline: Cannot use tessellation patches without tessellation shaders");
       return VK_NULL_HANDLE;
     }
@@ -256,6 +261,9 @@ namespace dxvk {
     VkPipeline pipeline = VK_NULL_HANDLE;
     if (m_vkd->vkCreateGraphicsPipelines(m_vkd->device(),
           m_cache->handle(), 1, &info, nullptr, &pipeline) != VK_SUCCESS) {
+      if (Logger::logLevel() > LogLevel::Debug)
+        logPipelineState(state);
+
       Logger::err("DxvkGraphicsPipeline: Failed to compile pipeline");
       return VK_NULL_HANDLE;
     }
@@ -294,35 +302,33 @@ namespace dxvk {
     // If blending is not enabled, we can enable out-of-order
     // rasterization for certain depth-compare modes.
     bool blendingEnabled = false;
-    
+
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       if (m_fsOut & (1u << i))
         blendingEnabled |= state.omBlendAttachments[i].blendEnable;
     }
-    
+
     if (!blendingEnabled) {
       if (m_device->hasOption(DxvkOption::AssumeNoZfight))
         return VK_RASTERIZATION_ORDER_RELAXED_AMD;
-      
+
       if (state.dsEnableDepthTest && state.dsEnableDepthWrite
        && (state.dsDepthCompareOp == VK_COMPARE_OP_LESS
         || state.dsDepthCompareOp == VK_COMPARE_OP_GREATER))
         return VK_RASTERIZATION_ORDER_RELAXED_AMD;
     }
-    
+
     return VK_RASTERIZATION_ORDER_STRICT_AMD;
   }
-  
-  
+
+
   void DxvkGraphicsPipeline::logPipelineState(
     const DxvkGraphicsPipelineStateInfo& state) const {
-    Logger::debug("Compiling graphics pipeline...");
-    
-    if (m_vs  != nullptr) Logger::debug(str::format("  vs  : ", m_vs ->debugName()));
-    if (m_tcs != nullptr) Logger::debug(str::format("  tcs : ", m_tcs->debugName()));
-    if (m_tes != nullptr) Logger::debug(str::format("  tes : ", m_tes->debugName()));
-    if (m_gs  != nullptr) Logger::debug(str::format("  gs  : ", m_gs ->debugName()));
-    if (m_fs  != nullptr) Logger::debug(str::format("  fs  : ", m_fs ->debugName()));
+    if (m_vs  != nullptr) Logger::warn(str::format("  vs  : ", m_vs ->debugName()));
+    if (m_tcs != nullptr) Logger::warn(str::format("  tcs : ", m_tcs->debugName()));
+    if (m_tes != nullptr) Logger::warn(str::format("  tes : ", m_tes->debugName()));
+    if (m_gs  != nullptr) Logger::warn(str::format("  gs  : ", m_gs ->debugName()));
+    if (m_fs  != nullptr) Logger::warn(str::format("  fs  : ", m_fs ->debugName()));
     
     // TODO log more pipeline state
   }
