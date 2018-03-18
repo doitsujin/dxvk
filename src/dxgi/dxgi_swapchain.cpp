@@ -269,12 +269,16 @@ namespace dxvk {
   
   
   HRESULT DxgiSwapChain::CreateBackBuffer() {
+    // Figure out sample count based on swap chain description
     VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT;
     
     if (FAILED(GetSampleCount(m_desc.SampleDesc.Count, &sampleCount))) {
       Logger::err("DxgiSwapChain: Invalid sample count");
       return E_INVALIDARG;
     }
+    
+    // Destroy previous back buffer before creating a new one
+    m_backBuffer = nullptr;
     
     if (FAILED(m_presentDevice->CreateSwapChainBackBuffer(&m_desc, &m_backBuffer))) {
       Logger::err("DxgiSwapChain: Failed to create back buffer");
