@@ -64,7 +64,7 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11SamplerState::GetDevice(ID3D11Device** ppDevice) {
-    *ppDevice = m_device.ref();
+    *ppDevice = ref(m_device);
   }
   
   

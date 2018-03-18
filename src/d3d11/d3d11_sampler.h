@@ -38,7 +38,7 @@ namespace dxvk {
     
   private:
     
-    Com<D3D11Device>   m_device;
+    D3D11Device* const m_device;
     D3D11_SAMPLER_DESC m_desc;
     Rc<DxvkSampler>    m_sampler;
     
