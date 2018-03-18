@@ -39,6 +39,12 @@ cd /your/dxvk/directory/bin
 WINEPREFIX=/your/wineprefix bash setup_dxvk.sh
 ```
 
+If you use multiple Wine versions for tests or with software like PlayOnLinux, you can override wine software path.
+```
+cd /your/dxvk/directory/bin
+WINEPREFIX=/your/wineprefix WINE=~/.yourwinesdir/wine3.4_x64/bin/wine bash setup_dxvk.sh
+```
+
 Verify that your application uses DXVK instead of wined3d by checking for the presence of the log files `d3d11.log` and `dxgi.log` in the application's directory, or by enabling the HUD (see notes below).
 
 ### Notes on Vulkan drivers
