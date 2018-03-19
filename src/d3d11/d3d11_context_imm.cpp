@@ -128,7 +128,7 @@ namespace dxvk {
           D3D11_MAP                   MapType,
           UINT                        MapFlags,
           D3D11_MAPPED_SUBRESOURCE*   pMappedResource) {
-    Rc<DxvkBuffer> buffer = pResource->GetBufferSlice().buffer();
+    Rc<DxvkBuffer> buffer = pResource->GetBuffer();
     
     if (!(buffer->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) {
       Logger::err("D3D11: Cannot map a device-local buffer");
