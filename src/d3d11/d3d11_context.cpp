@@ -410,8 +410,6 @@ namespace dxvk {
           UINT                              SrcSubresource, 
     const D3D11_BOX*                        pSrcBox,
           UINT                              CopyFlags) {
-     if (CopyFlags != 0)
-       Logger::warn("D3D11DeviceContext: CopySubresourceRegion1: ignoring flags");
      CopySubresourceRegion(pDstResource, DstSubresource, DstX, DstY, DstZ, pSrcResource, SrcSubresource, pSrcBox);
   }
   
@@ -792,8 +790,6 @@ namespace dxvk {
           UINT                              SrcRowPitch, 
           UINT                              SrcDepthPitch, 
           UINT                              CopyFlags) {
-    if(CopyFlags != 0 )
-      Logger::warn("D3D11DeviceContext::UpdateSubresource1: flags ignored");
     UpdateSubresource(pDstResource, DstSubresource, pDstBox, pSrcData, SrcRowPitch, SrcDepthPitch);
   }
   
