@@ -1366,7 +1366,7 @@ namespace dxvk {
         
         auto info = static_cast<D3D11_FEATURE_DATA_THREADING*>(pFeatureSupportData);
         info->DriverConcurrentCreates = TRUE;
-        info->DriverCommandLists      = FALSE;
+        info->DriverCommandLists      = TRUE;
       } return S_OK;
       
       case D3D11_FEATURE_DOUBLES: {
