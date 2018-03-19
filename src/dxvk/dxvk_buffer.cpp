@@ -15,44 +15,49 @@ namespace dxvk {
     m_physSliceLength = createInfo.size;
     m_physSliceStride = align(createInfo.size, 256);
     
-    // Initialize a single backing bufer with one slice
-    m_physBuffers[0] = this->allocPhysicalBuffer(1);
-    m_physSlice      = this->allocPhysicalSlice();
+    // Allocate a single buffer slice
+    m_physSlice = this->allocPhysicalBuffer(1)
+      ->slice(0, m_physSliceStride);
   }
   
   
-  void DxvkBuffer::rename(const DxvkPhysicalBufferSlice& slice) {
+  DxvkPhysicalBufferSlice DxvkBuffer::rename(const DxvkPhysicalBufferSlice& slice) {
+    DxvkPhysicalBufferSlice prevSlice = std::move(m_physSlice);
+    
     m_physSlice = slice;
     m_revision += 1;
+    return prevSlice;
   }
   
   
   DxvkPhysicalBufferSlice DxvkBuffer::allocPhysicalSlice() {
-    if (m_physSliceId >= m_physSliceCount) {
-      m_physBufferId = (m_physBufferId + 1) % m_physBuffers.size();
-      m_physSliceId  = 0;
+    std::unique_lock<std::mutex> lock(m_mutex);
+    
+    // If necessary, create a new buffer
+    // that we'll allocate slices from.
+    if (m_slices.size() == 0) {
+      const Rc<DxvkPhysicalBuffer> buffer
+        = this->allocPhysicalBuffer(m_physSliceCount);
       
-      if (m_physBuffers[m_physBufferId] == nullptr) {
-        // Make sure that all buffers have the same size. If we don't do this,
-        // one of the physical buffers may grow indefinitely while the others
-        // remain small, depending on the usage pattern of the application.
-        m_physBuffers[m_physBufferId] = this->allocPhysicalBuffer(m_physSliceCount);
-      } else if (m_physBuffers[m_physBufferId]->isInUse()) {
-        // Allocate a new physical buffer if the current one is still in use.
-        // This also indicates that the buffer gets updated frequently, so we
-        // will double the size of the physical buffers to accomodate for it.
-        if (m_physBufferId == 0) {
-          std::fill(m_physBuffers.begin(), m_physBuffers.end(), nullptr);
-          m_physSliceCount *= 2;
-        }
-        
-        m_physBuffers[m_physBufferId] = this->allocPhysicalBuffer(m_physSliceCount);
+      for (uint32_t i = 0; i < m_physSliceCount; i++) {
+        m_slices.push_back(buffer->slice(
+          m_physSliceStride * i,
+          m_physSliceLength));
       }
+      
+      m_physSliceCount *= 2;
     }
     
-    return m_physBuffers[m_physBufferId]->slice(
-      m_physSliceStride * m_physSliceId++,
-      m_physSliceLength);
+    // Take the first slice from the queue
+    DxvkPhysicalBufferSlice result = std::move(m_slices.back());
+    m_slices.pop_back();
+    return result;
+  }
+  
+  
+  void DxvkBuffer::freePhysicalSlice(const DxvkPhysicalBufferSlice& slice) {
+    std::unique_lock<std::mutex> lock(m_mutex);
+    m_slices.push_back(slice);
   }
   
   
@@ -91,6 +96,25 @@ namespace dxvk {
   Rc<DxvkPhysicalBufferView> DxvkBufferView::createView() {
     return new DxvkPhysicalBufferView(
       m_vkd, m_buffer->slice(), m_info);
+  }
+  
+  
+  DxvkBufferTracker:: DxvkBufferTracker() { }
+  DxvkBufferTracker::~DxvkBufferTracker() { }
+  
+  
+  void DxvkBufferTracker::freeBufferSlice(
+    const Rc<DxvkBuffer>&           buffer,
+    const DxvkPhysicalBufferSlice&  slice) {
+    m_entries.push_back({ buffer, slice });
+  }
+  
+  
+  void DxvkBufferTracker::reset() {
+    for (const auto& e : m_entries)
+      e.buffer->freePhysicalSlice(e.slice);
+      
+    m_entries.clear();
   }
   
 }

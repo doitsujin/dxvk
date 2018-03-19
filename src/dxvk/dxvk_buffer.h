@@ -1,5 +1,8 @@
 #pragma once
 
+#include <mutex>
+#include <vector>
+
 #include "dxvk_buffer_res.h"
 
 namespace dxvk {
@@ -106,40 +109,49 @@ namespace dxvk {
      * not call this directly as this is called implicitly
      * by the context's \c invalidateBuffer method.
      * \param [in] slice The new backing resource
+     * \returns Previous buffer slice
      */
-    void rename(
+    DxvkPhysicalBufferSlice rename(
       const DxvkPhysicalBufferSlice& slice);
     
     /**
      * \brief Allocates new physical resource
-     * 
-     * This method must not be called from multiple threads
-     * simultaneously, but it can be called in parallel with
-     * \ref rename and other methods of this class.
      * \returns The new backing buffer slice
      */
     DxvkPhysicalBufferSlice allocPhysicalSlice();
+    
+    /**
+     * \brief Frees a physical buffer slice
+     * 
+     * Marks the slice as free so that it can be used for
+     * subsequent allocations. Called automatically when
+     * the slice is no longer needed by the GPU.
+     * \param [in] slice The buffer slice to free
+     */
+    void freePhysicalSlice(
+      const DxvkPhysicalBufferSlice& slice);
     
   private:
     
     DxvkDevice*             m_device;
     DxvkBufferCreateInfo    m_info;
     VkMemoryPropertyFlags   m_memFlags;
+    
     DxvkPhysicalBufferSlice m_physSlice;
     uint32_t                m_revision = 0;
     
-    // TODO maybe align this to a cache line in order
-    // to avoid false sharing once CSMT is implemented
-    VkDeviceSize m_physBufferId     = 0;
-    VkDeviceSize m_physSliceId      = 0;
-    VkDeviceSize m_physSliceCount   = 1;
+    std::mutex                           m_mutex;
+    std::vector<DxvkPhysicalBufferSlice> m_slices;
+    
     VkDeviceSize m_physSliceLength  = 0;
     VkDeviceSize m_physSliceStride  = 0;
-    
-    std::array<Rc<DxvkPhysicalBuffer>, 2> m_physBuffers;
+    VkDeviceSize m_physSliceCount   = 2;
     
     Rc<DxvkPhysicalBuffer> allocPhysicalBuffer(
             VkDeviceSize    sliceCount) const;
+    
+    void lock();
+    void unlock();
     
   };
   
@@ -357,6 +369,38 @@ namespace dxvk {
     uint32_t                   m_revision = 0;
     
     Rc<DxvkPhysicalBufferView> createView();
+    
+  };
+  
+  
+  /**
+   * \brief Buffer slice tracker
+   * 
+   * Stores a list of buffer slices that can be
+   * freed. Useful when buffers have been renamed
+   * and the original slice is no longer needed.
+   */
+  class DxvkBufferTracker {
+    
+  public:
+    
+    DxvkBufferTracker();
+    ~DxvkBufferTracker();
+    
+    void freeBufferSlice(
+      const Rc<DxvkBuffer>&           buffer,
+      const DxvkPhysicalBufferSlice&  slice);
+    
+    void reset();
+    
+  private:
+    
+    struct Entry {
+      Rc<DxvkBuffer>          buffer;
+      DxvkPhysicalBufferSlice slice;
+    };
+    
+    std::vector<Entry> m_entries;
     
   };
   

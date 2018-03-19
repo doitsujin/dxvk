@@ -3,6 +3,7 @@
 #include <unordered_set>
 
 #include "dxvk_binding.h"
+#include "dxvk_buffer.h"
 #include "dxvk_descriptor.h"
 #include "dxvk_event_tracker.h"
 #include "dxvk_lifetime.h"
@@ -61,6 +62,21 @@ namespace dxvk {
      * the command list ready for submission.
      */
     void endRecording();
+    
+    /**
+     * \brief Frees physical buffer slice
+     * 
+     * After the command buffer execution has finished,
+     * the given physical slice will be released to the
+     * virtual buffer object so that it can be reused.
+     * \param [in] buffer The virtual buffer object
+     * \param [in] slice The physical buffer slice
+     */
+    void freePhysicalBufferSlice(
+      const Rc<DxvkBuffer>&           buffer,
+      const DxvkPhysicalBufferSlice&  slice) {
+      m_bufferTracker.freeBufferSlice(buffer, slice);
+    }
     
     /**
      * \brief Adds a resource to track
@@ -509,6 +525,7 @@ namespace dxvk {
     DxvkStagingAlloc    m_stagingAlloc;
     DxvkQueryTracker    m_queryTracker;
     DxvkEventTracker    m_eventTracker;
+    DxvkBufferTracker   m_bufferTracker;
     
   };
   

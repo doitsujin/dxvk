@@ -888,7 +888,8 @@ namespace dxvk {
     const Rc<DxvkBuffer>&           buffer,
     const DxvkPhysicalBufferSlice&  slice) {
     // Allocate new backing resource
-    buffer->rename(slice);
+    DxvkPhysicalBufferSlice prevSlice = buffer->rename(slice);
+    m_cmd->freePhysicalBufferSlice(buffer, prevSlice);
     
     // We also need to update all bindings that the buffer
     // may be bound to either directly or through views.

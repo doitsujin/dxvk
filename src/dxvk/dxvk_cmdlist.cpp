@@ -82,6 +82,8 @@ namespace dxvk {
   
   
   void DxvkCommandList::reset() {
+    m_bufferTracker.reset();
+    m_eventTracker.reset();
     m_queryTracker.reset();
     m_stagingAlloc.reset();
     m_descAlloc.reset();
