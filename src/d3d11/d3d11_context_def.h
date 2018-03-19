@@ -5,6 +5,8 @@
 #include "d3d11_context.h"
 #include "d3d11_texture.h"
 
+#include <algorithm>
+
 namespace dxvk {
   
   struct D3D11DeferredContextMapEntry {
