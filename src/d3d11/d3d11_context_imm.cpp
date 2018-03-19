@@ -143,8 +143,6 @@ namespace dxvk {
       // it as the 'new' mapped slice. This assumes that the
       // only way to invalidate a buffer is by mapping it.
       auto physicalSlice = buffer->allocPhysicalSlice();
-      physicalSlice.resource()->acquire();
-      
       pResource->GetBufferInfo()->mappedSlice = physicalSlice;
       
       EmitCs([
@@ -152,7 +150,6 @@ namespace dxvk {
         cPhysicalSlice = physicalSlice
       ] (DxvkContext* ctx) {
         ctx->invalidateBuffer(cBuffer, cPhysicalSlice);
-        cPhysicalSlice.resource()->release();
       });
     } else if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE) {
       if (!WaitForResource(buffer->resource(), MapFlags))
