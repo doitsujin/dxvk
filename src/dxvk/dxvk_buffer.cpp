@@ -31,16 +31,22 @@ namespace dxvk {
   
   
   DxvkPhysicalBufferSlice DxvkBuffer::allocPhysicalSlice() {
-    std::unique_lock<std::mutex> lock(m_mutex);
+    std::unique_lock<std::mutex> freeLock(m_freeMutex);
     
-    // If necessary, create a new buffer
-    // that we'll allocate slices from.
-    if (m_slices.size() == 0) {
+    // If no slices are available, swap the two free lists.
+    if (m_freeSlices.size() == 0) {
+      std::unique_lock<std::mutex> swapLock(m_swapMutex);
+      std::swap(m_freeSlices, m_nextSlices);
+    }
+      
+    // If there are still no slices available, create a new
+    // physical buffer and add all slices to the free list.
+    if (m_freeSlices.size() == 0) {
       const Rc<DxvkPhysicalBuffer> buffer
         = this->allocPhysicalBuffer(m_physSliceCount);
       
       for (uint32_t i = 0; i < m_physSliceCount; i++) {
-        m_slices.push_back(buffer->slice(
+        m_freeSlices.push_back(buffer->slice(
           m_physSliceStride * i,
           m_physSliceLength));
       }
@@ -49,15 +55,16 @@ namespace dxvk {
     }
     
     // Take the first slice from the queue
-    DxvkPhysicalBufferSlice result = std::move(m_slices.back());
-    m_slices.pop_back();
+    DxvkPhysicalBufferSlice result = std::move(m_freeSlices.back());
+    m_freeSlices.pop_back();
     return result;
   }
   
   
   void DxvkBuffer::freePhysicalSlice(const DxvkPhysicalBufferSlice& slice) {
-    std::unique_lock<std::mutex> lock(m_mutex);
-    m_slices.push_back(slice);
+    // Add slice to a separate free list to reduce lock contention.
+    std::unique_lock<std::mutex> swapLock(m_swapMutex);
+    m_nextSlices.push_back(slice);
   }
   
   

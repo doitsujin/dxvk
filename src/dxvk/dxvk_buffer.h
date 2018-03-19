@@ -140,8 +140,11 @@ namespace dxvk {
     DxvkPhysicalBufferSlice m_physSlice;
     uint32_t                m_revision = 0;
     
-    std::mutex                           m_mutex;
-    std::vector<DxvkPhysicalBufferSlice> m_slices;
+    std::mutex m_freeMutex;
+    std::mutex m_swapMutex;
+    
+    std::vector<DxvkPhysicalBufferSlice> m_freeSlices;
+    std::vector<DxvkPhysicalBufferSlice> m_nextSlices;
     
     VkDeviceSize m_physSliceLength  = 0;
     VkDeviceSize m_physSliceStride  = 0;
