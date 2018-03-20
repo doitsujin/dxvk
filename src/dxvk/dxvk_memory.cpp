@@ -108,7 +108,6 @@ namespace dxvk {
       m_freeList.push_back({ allocEnd, sliceEnd - allocEnd });
     
     // Create the memory object with the aligned slice
-    m_delta++;
     return DxvkMemory(this, m_heap,
       m_memory, allocStart, allocEnd - allocStart,
       reinterpret_cast<char*>(m_mapPtr) + allocStart);
@@ -136,7 +135,6 @@ namespace dxvk {
       }
     }
     
-    m_delta--;
     m_freeList.push_back({ offset, length });
   }
   

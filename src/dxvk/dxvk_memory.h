@@ -130,7 +130,7 @@ namespace dxvk {
     VkDeviceMemory  const m_memory;
     void*           const m_mapPtr;
     VkDeviceSize    const m_size;
-    size_t m_delta = 0;
+    
     std::vector<FreeSlice> m_freeList;
     
   };
