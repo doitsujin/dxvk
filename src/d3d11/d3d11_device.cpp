@@ -1396,25 +1396,24 @@ namespace dxvk {
       case D3D11_FEATURE_D3D11_OPTIONS: {
         if (FeatureSupportDataSize != sizeof(D3D11_FEATURE_DATA_D3D11_OPTIONS))
           return E_INVALIDARG;
-
+        
+        // TODO implement, most of these are required for FL 11.1
+        // https://msdn.microsoft.com/en-us/library/windows/desktop/hh404457(v=vs.85).aspx
         auto info = static_cast<D3D11_FEATURE_DATA_D3D11_OPTIONS*>(pFeatureSupportData);
-
-        /*TODO: implement and enable*/
-        /*https://msdn.microsoft.com/en-us/library/windows/desktop/hh404457(v=vs.85).aspx */
-        info->OutputMergerLogicOp = false;
-        info->UAVOnlyRenderingForcedSampleCount = false;
-        info->DiscardAPIsSeenByDriver = false;
-        info->FlagsForUpdateAndCopySeenByDriver = false;
-        info->ClearView = false;
-        info->CopyWithOverlap = false;
-        info->ConstantBufferPartialUpdate = false;
-        info->ConstantBufferOffsetting = false;
-        info->MapNoOverwriteOnDynamicConstantBuffer = false;
-        info->MapNoOverwriteOnDynamicBufferSRV = false;
-        info->MultisampleRTVWithForcedSampleCountOne = false;
-        info->SAD4ShaderInstructions = false;
-        info->ExtendedDoublesShaderInstructions = false;
-        info->ExtendedResourceSharing = false;
+        info->OutputMergerLogicOp                     = m_featureLevel >= D3D_FEATURE_LEVEL_10_0;
+        info->UAVOnlyRenderingForcedSampleCount       = FALSE;
+        info->DiscardAPIsSeenByDriver                 = FALSE;
+        info->FlagsForUpdateAndCopySeenByDriver       = FALSE;
+        info->ClearView                               = FALSE;
+        info->CopyWithOverlap                         = FALSE;
+        info->ConstantBufferPartialUpdate             = TRUE;
+        info->ConstantBufferOffsetting                = TRUE;
+        info->MapNoOverwriteOnDynamicConstantBuffer   = TRUE;
+        info->MapNoOverwriteOnDynamicBufferSRV        = TRUE;
+        info->MultisampleRTVWithForcedSampleCountOne  = FALSE;
+        info->SAD4ShaderInstructions                  = FALSE;
+        info->ExtendedDoublesShaderInstructions       = FALSE;
+        info->ExtendedResourceSharing                 = FALSE;
       } return S_OK;
 
       case D3D11_FEATURE_ARCHITECTURE_INFO: {
