@@ -246,7 +246,9 @@ namespace dxvk {
   DxvkMemoryAllocator::DxvkMemoryAllocator(
     const Rc<DxvkAdapter>&  adapter,
     const Rc<vk::DeviceFn>& vkd)
-  : m_vkd(vkd), m_memProps(adapter->memoryProperties()) {
+  : m_vkd     (vkd),
+    m_devProps(adapter->deviceProperties()),
+    m_memProps(adapter->memoryProperties()) {
     for (uint32_t i = 0; i < m_memProps.memoryTypeCount; i++)
       m_heaps[i] = new DxvkMemoryHeap(m_vkd, i, m_memProps.memoryTypes[i]);
   }

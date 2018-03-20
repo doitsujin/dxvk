@@ -215,6 +215,18 @@ namespace dxvk {
     ~DxvkMemoryAllocator();
     
     /**
+     * \brief Buffer-image granularity
+     * 
+     * The granularity between linear and non-linear
+     * resources in adjacent memory locations. See
+     * section 11.6 of the Vulkan spec for details.
+     * \returns Buffer-image granularity
+     */
+    VkDeviceSize bufferImageGranularity() const {
+      return m_devProps.limits.bufferImageGranularity;
+    }
+    
+    /**
      * \brief Allocates device memory
      * 
      * \param [in] req Memory requirements
@@ -228,6 +240,7 @@ namespace dxvk {
   private:
     
     const Rc<vk::DeviceFn>                 m_vkd;
+    const VkPhysicalDeviceProperties       m_devProps;
     const VkPhysicalDeviceMemoryProperties m_memProps;
     
     std::array<Rc<DxvkMemoryHeap>, VK_MAX_MEMORY_TYPES> m_heaps;

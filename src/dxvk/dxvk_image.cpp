@@ -30,12 +30,23 @@ namespace dxvk {
           &info, nullptr, &m_image) != VK_SUCCESS)
       throw DxvkError("DxvkImage::DxvkImage: Failed to create image");
     
+    // Get memory requirements for the image. We may enforce strict
+    // alignment on non-linear images in order not to violate the
+    // bufferImageGranularity limit, which may be greater than the
+    // required resource memory alignment on some GPUs.
     VkMemoryRequirements memReq;
+    
     m_vkd->vkGetImageMemoryRequirements(
       m_vkd->device(), m_image, &memReq);
     
+    if (info.tiling != VK_IMAGE_TILING_LINEAR) {
+      memReq.size      = align(memReq.size,       memAlloc.bufferImageGranularity());
+      memReq.alignment = align(memReq.alignment , memAlloc.bufferImageGranularity());
+    }
+    
     m_memory = memAlloc.alloc(memReq, memFlags);
     
+    // Try to bind the allocated memory slice to the image
     if (m_vkd->vkBindImageMemory(m_vkd->device(),
           m_image, m_memory.memory(), m_memory.offset()) != VK_SUCCESS)
       throw DxvkError("DxvkImage::DxvkImage: Failed to bind device memory");
