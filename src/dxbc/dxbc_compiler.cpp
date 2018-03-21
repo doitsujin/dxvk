@@ -741,7 +741,8 @@ namespace dxvk {
     const bool isUav = ins.op == DxbcOpcode::DclUavTyped;
     
     if (isUav) {
-      m_module.enableCapability(spv::CapabilityStorageImageReadWithoutFormat);
+      if (m_options.useStorageImageReadWithoutFormat)
+        m_module.enableCapability(spv::CapabilityStorageImageReadWithoutFormat);
       m_module.enableCapability(spv::CapabilityStorageImageWriteWithoutFormat);
     }
     
@@ -3135,6 +3136,13 @@ namespace dxvk {
     // Load texture coordinates
     const DxbcRegisterValue texCoord = emitRegisterLoad(
       ins.src[0], getTexCoordMask(uavInfo.imageInfo));
+    
+    // If the read-without-format capability is not
+    // set. we must define the image format explicitly.
+    if (!m_options.useStorageImageReadWithoutFormat) {
+      m_module.setImageTypeFormat(uavInfo.imageTypeId,
+        getScalarImageFormat(uavInfo.sampledType));
+    }
     
     // Load source value from the UAV
     DxbcRegisterValue uavValue;

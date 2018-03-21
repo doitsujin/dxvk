@@ -20,6 +20,10 @@ namespace dxvk {
       
     /// Use Fmin/Fmax instead of Nmin/Nmax.
     bool useSimpleMinMaxClamp = false;
+    
+    /// If \c false, image read operations can only be performed
+    /// on storage images with a scalar 32-bit image formats.
+    bool useStorageImageReadWithoutFormat = false;
   };
   
 }

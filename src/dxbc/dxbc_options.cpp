@@ -3,27 +3,23 @@
 namespace dxvk {
   
   DxbcOptions::DxbcOptions(const Rc<DxvkDevice>& device) {
-    const VkPhysicalDeviceProperties deviceProps
-      = device->adapter()->deviceProperties();
+    const VkPhysicalDeviceProperties devProps    = device->adapter()->deviceProperties();
+    const VkPhysicalDeviceFeatures   devFeatures = device->features();
     
-    const DxvkGpuVendor vendor
-      = static_cast<DxvkGpuVendor>(deviceProps.vendorID);
+    // Apply driver-specific workarounds
+    const DxvkGpuVendor vendor = static_cast<DxvkGpuVendor>(devProps.vendorID);
     
     if (vendor == DxvkGpuVendor::Nvidia) {
-      // The driver expects the coordinate
-      // vector to have an extra component
+      // Older versions of the driver expect the
+      // coordinate vector to have an extra component
       this->addExtraDrefCoordComponent = true;
       
-      // From vkd3d: NMin/NMax/NClamp crash the driver.
+      // From vkd3d: NMin/NMax/NClamp may crash the driver.
       this->useSimpleMinMaxClamp = true;
     }
     
-    // Inform the user about which workarounds are enabled
-    if (this->addExtraDrefCoordComponent)
-      Logger::warn("DxbcOptions: Growing coordinate vector for Dref operations");
-    
-    if (this->useSimpleMinMaxClamp)
-      Logger::warn("DxbcOptions: Using FMin/FMax/FClamp instead of NMin/NMax/NClamp");
+    // Enable certain features if they are supported by the device
+    this->useStorageImageReadWithoutFormat = devFeatures.shaderStorageImageReadWithoutFormat;
   }
   
 }

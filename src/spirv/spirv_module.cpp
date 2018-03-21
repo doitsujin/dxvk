@@ -624,12 +624,9 @@ namespace dxvk {
           uint32_t                imageType,
           spv::ImageFormat        format) {
     for (auto ins : m_typeConstDefs) {
-      bool match = ins.arg(1) == imageType;
-      
-      if (match) {
+      if (ins.arg(1) == imageType
+       && ins.arg(8) == spv::ImageFormatUnknown)
         ins.setArg(8, format);
-        return;
-      }
     }
   }
   
