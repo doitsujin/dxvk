@@ -1410,8 +1410,10 @@ namespace dxvk {
         
         // TODO implement, most of these are required for FL 11.1
         // https://msdn.microsoft.com/en-us/library/windows/desktop/hh404457(v=vs.85).aspx
+        const VkPhysicalDeviceFeatures& features = m_dxvkDevice->features();
+        
         auto info = static_cast<D3D11_FEATURE_DATA_D3D11_OPTIONS*>(pFeatureSupportData);
-        info->OutputMergerLogicOp                     = m_featureLevel >= D3D_FEATURE_LEVEL_10_0;
+        info->OutputMergerLogicOp                     = features.logicOp;
         info->UAVOnlyRenderingForcedSampleCount       = FALSE;
         info->DiscardAPIsSeenByDriver                 = FALSE;
         info->FlagsForUpdateAndCopySeenByDriver       = FALSE;
@@ -1458,7 +1460,7 @@ namespace dxvk {
         Logger::err(str::format(
           "D3D11Device: CheckFeatureSupport: Unknown feature: ",
           Feature));
-        return E_INVALIDARG;
+        return E_NOTIMPL;
     }
   }
   
