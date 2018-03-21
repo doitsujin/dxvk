@@ -1,6 +1,10 @@
 #pragma once
 
+#include <atomic>
 #include <chrono>
+#include <condition_variable>
+#include <fstream>
+#include <thread>
 
 #include "dxvk_include.h"
 
@@ -16,15 +20,7 @@ namespace dxvk {
    * re-use previously compiled pipelines.
    */
   class DxvkPipelineCache : public RcObject {
-    using Clock     = std::chrono::high_resolution_clock;
-    using TimeDiff  = std::chrono::microseconds;
-    using TimePoint = typename Clock::time_point;
     
-    // 60 seconds
-    constexpr static int64_t UpdateInterval = 60'000'000;
-
-    // ~500kb
-    constexpr static int64_t UpdateSize = 500'000;
   public:
     
     DxvkPipelineCache(const Rc<vk::DeviceFn>& vkd);
@@ -38,21 +34,39 @@ namespace dxvk {
       return m_handle;
     }
     
+    /**
+     * \brief Sends an update signal
+     * 
+     * Notifies the update thread that the
+     * pipeline cache should be updated.
+     */
     void update();
     
   private:
     
-    Rc<vk::DeviceFn> m_vkd;
-    VkPipelineCache  m_handle;
-    std::string      m_shaderCacheFile;
-    TimePoint        m_prevUpdate;
-    size_t           m_prevSize;
+    Rc<vk::DeviceFn>        m_vkd;
+    VkPipelineCache         m_handle;
     
-    void LoadShaderCache(
-      VkPipelineCacheCreateInfo&  info,
-      std::vector<char>&          cache) const;
+    std::string             m_fileName;
     
-    void SaveShaderCache() const;
+    std::atomic<uint32_t>   m_updateStop;
+    std::atomic<uint32_t>   m_updateCounter;
+    
+    std::mutex              m_updateMutex;
+    std::condition_variable m_updateCond;
+    std::thread             m_updateThread;
+    
+    void runThread();
+    
+    std::vector<char> getPipelineCache() const;
+    
+    std::vector<char> loadPipelineCache() const;
+    
+    void storePipelineCache(
+      const std::vector<char>& cacheData) const;
+    
+    static std::string getFileName();
+    
   };
   
 }

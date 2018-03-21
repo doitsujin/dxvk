@@ -204,7 +204,6 @@ namespace dxvk {
   
   VkResult DxvkDevice::presentSwapImage(
     const VkPresentInfoKHR&         presentInfo) {
-    m_pipelineCache->update();
     std::lock_guard<std::mutex> lock(m_submissionLock);
     return m_vkd->vkQueuePresentKHR(m_presentQueue, &presentInfo);
   }
