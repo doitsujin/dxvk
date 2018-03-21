@@ -248,11 +248,6 @@ namespace dxvk {
     if (tsInfo.patchControlPoints == 0)
       info.pTessellationState = nullptr;
     
-    if ((tsInfo.patchControlPoints != 0) && (m_tcs == nullptr || m_tes == nullptr)) {
-      Logger::err("DxvkGraphicsPipeline: Cannot use tessellation patches without tessellation shaders");
-      return VK_NULL_HANDLE;
-    }
-    
     VkPipeline pipeline = VK_NULL_HANDLE;
     if (m_vkd->vkCreateGraphicsPipelines(m_vkd->device(),
           m_cache->handle(), 1, &info, nullptr, &pipeline) != VK_SUCCESS) {
@@ -286,6 +281,13 @@ namespace dxvk {
     
     if ((providedVertexInputs & m_vsIn) != m_vsIn) {
       Logger::err("DxvkGraphicsPipeline: Input layout mismatches vertex shader input");
+      return false;
+    }
+    
+    // If there are no tessellation shaders, we
+    // obviously cannot use tessellation patches.
+    if ((state.iaPatchVertexCount != 0) && (m_tcs == nullptr || m_tes == nullptr)) {
+      Logger::err("DxvkGraphicsPipeline: Cannot use tessellation patches without tessellation shaders");
       return false;
     }
     
