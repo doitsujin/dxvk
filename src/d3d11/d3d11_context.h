@@ -767,8 +767,7 @@ namespace dxvk {
     
     void RestoreUnorderedAccessViews(
             DxbcProgramType                   Stage,
-            D3D11UnorderedAccessBindings&     Bindings,
-            UINT                              SlotCount);
+            D3D11UnorderedAccessBindings&     Bindings);
     
     DxvkDataSlice AllocUpdateBufferSlice(size_t Size);
     

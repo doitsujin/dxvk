@@ -2682,8 +2682,8 @@ namespace dxvk {
     RestoreShaderResources(DxbcProgramType::PixelShader,    m_state.ps.shaderResources);
     RestoreShaderResources(DxbcProgramType::ComputeShader,  m_state.cs.shaderResources);
     
-    RestoreUnorderedAccessViews(DxbcProgramType::PixelShader,   m_state.ps.unorderedAccessViews, D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT);
-    RestoreUnorderedAccessViews(DxbcProgramType::ComputeShader, m_state.cs.unorderedAccessViews, D3D11_1_UAV_SLOT_COUNT);
+    RestoreUnorderedAccessViews(DxbcProgramType::PixelShader,   m_state.ps.unorderedAccessViews);
+    RestoreUnorderedAccessViews(DxbcProgramType::ComputeShader, m_state.cs.unorderedAccessViews);
   }
   
   
@@ -2722,15 +2722,14 @@ namespace dxvk {
   
   void D3D11DeviceContext::RestoreUnorderedAccessViews(
           DxbcProgramType                   Stage,
-          D3D11UnorderedAccessBindings&     Bindings,
-          UINT                              SlotCount) {
+          D3D11UnorderedAccessBindings&     Bindings) {
     const uint32_t uavSlotId = computeResourceSlotId(
       Stage, DxbcBindingType::UnorderedAccessView, 0);
     
     const uint32_t ctrSlotId = computeResourceSlotId(
       Stage, DxbcBindingType::UavCounter, 0);
     
-    for (uint32_t i = 0; i < SlotCount; i++) {
+    for (uint32_t i = 0; i < Bindings.size(); i++) {
       BindUnorderedAccessView(
         uavSlotId + i, ctrSlotId + i,
         Bindings[i].ptr());
