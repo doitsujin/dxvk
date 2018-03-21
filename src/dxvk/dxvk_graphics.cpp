@@ -273,6 +273,10 @@ namespace dxvk {
   
   bool DxvkGraphicsPipeline::validatePipelineState(
     const DxvkGraphicsPipelineStateInfo& state) const {
+    // Make sure that we have an active render pass
+    if (state.omRenderPass == VK_NULL_HANDLE)
+      return false;
+    
     // Validate vertex input - each input slot consumed by the
     // vertex shader must be provided by the input layout.
     uint32_t providedVertexInputs = 0;
