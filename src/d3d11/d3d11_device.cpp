@@ -1633,7 +1633,7 @@ namespace dxvk {
       enabled.shaderFloat64                         = supported.shaderFloat64;
       enabled.shaderInt64                           = supported.shaderInt64;
       enabled.tessellationShader                    = VK_TRUE;
-      enabled.shaderStorageImageReadWithoutFormat   = VK_TRUE;
+      enabled.shaderStorageImageReadWithoutFormat   = supported.shaderStorageImageReadWithoutFormat;
       enabled.shaderStorageImageWriteWithoutFormat  = VK_TRUE;
     }
     
