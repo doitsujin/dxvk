@@ -288,6 +288,7 @@ namespace dxvk {
   
   struct DxbcBufferInfo {
     DxbcImageInfo image;
+    DxbcScalarType stype;
     DxbcResourceType type;
     uint32_t typeId;
     uint32_t varId;
@@ -976,6 +977,9 @@ namespace dxvk {
     
     VkImageViewType getViewType(
             DxbcResourceDim dim) const;
+    
+    spv::ImageFormat getScalarImageFormat(
+            DxbcScalarType type) const;
     
     ///////////////////////////
     // Type definition methods

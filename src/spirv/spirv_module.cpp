@@ -599,20 +599,38 @@ namespace dxvk {
           uint32_t                multisample,
           uint32_t                sampled,
           spv::ImageFormat        format) {
-    std::array<uint32_t, 7> args = {
-      sampledType, dimensionality,
-      depth, arrayed, multisample,
-      sampled, format
-    };
+    uint32_t resultId = this->allocateId();
     
-    return this->defType(spv::OpTypeImage,
-      args.size(), args.data());
+    m_typeConstDefs.putIns (spv::OpTypeImage, 9);
+    m_typeConstDefs.putWord(resultId);
+    m_typeConstDefs.putWord(sampledType);
+    m_typeConstDefs.putWord(dimensionality);
+    m_typeConstDefs.putWord(depth);
+    m_typeConstDefs.putWord(arrayed);
+    m_typeConstDefs.putWord(multisample);
+    m_typeConstDefs.putWord(sampled);
+    m_typeConstDefs.putWord(format);
+    return resultId;
   }
   
   
   uint32_t SpirvModule::defSampledImageType(
           uint32_t                imageType) {
     return this->defType(spv::OpTypeSampledImage, 1, &imageType);
+  }
+  
+  
+  void SpirvModule::setImageTypeFormat(
+          uint32_t                imageType,
+          spv::ImageFormat        format) {
+    for (auto ins : m_typeConstDefs) {
+      bool match = ins.arg(1) == imageType;
+      
+      if (match) {
+        ins.setArg(8, format);
+        return;
+      }
+    }
   }
   
   

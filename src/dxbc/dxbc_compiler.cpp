@@ -1952,7 +1952,7 @@ namespace dxvk {
     const bool isImm = ins.dstCount == 2;
     const bool isUav = ins.dst[ins.dstCount - 1].type == DxbcOperandType::UnorderedAccessView;
     
-    // Retrieve destination pointer for the atomic operation
+    // Retrieve destination pointer for the atomic operation>
     const DxbcRegisterPointer pointer = emitGetAtomicPointer(
       ins.dst[ins.dstCount - 1], ins.src[0]);
     
@@ -4226,6 +4226,14 @@ namespace dxvk {
     // of obtaining the final pointer are used.
     const bool isUav = operand.type == DxbcOperandType::UnorderedAccessView;
     
+    // If the resource is an UAV, we need to specify a format
+    // for the image type. Atomic ops are only allowed for
+    // 32-bit scalar integer formats.
+    if (isUav) {
+      m_module.setImageTypeFormat(resourceInfo.typeId,
+        getScalarImageFormat(resourceInfo.stype));
+    }
+    
     // Compute the actual address into the resource
     const DxbcRegisterValue addressValue = [&] {
       switch (resourceInfo.type) {
@@ -5837,6 +5845,7 @@ namespace dxvk {
       case DxbcOperandType::Resource: {
         DxbcBufferInfo result;
         result.image  = m_textures.at(registerId).imageInfo;
+        result.stype  = m_textures.at(registerId).sampledType;
         result.type   = m_textures.at(registerId).type;
         result.typeId = m_textures.at(registerId).imageTypeId;
         result.varId  = m_textures.at(registerId).varId;
@@ -5848,6 +5857,7 @@ namespace dxvk {
       case DxbcOperandType::UnorderedAccessView: {
         DxbcBufferInfo result;
         result.image  = m_uavs.at(registerId).imageInfo;
+        result.stype  = m_uavs.at(registerId).sampledType;
         result.type   = m_uavs.at(registerId).type;
         result.typeId = m_uavs.at(registerId).imageTypeId;
         result.varId  = m_uavs.at(registerId).varId;
@@ -5859,6 +5869,7 @@ namespace dxvk {
       case DxbcOperandType::ThreadGroupSharedMemory: {
         DxbcBufferInfo result;
         result.image  = { spv::DimBuffer, 0, 0, 0 };
+        result.stype  = DxbcScalarType::Uint32;
         result.type   = m_gRegs.at(registerId).type;
         result.typeId = m_module.defPointerType(
           getScalarTypeId(DxbcScalarType::Uint32),
@@ -5930,6 +5941,16 @@ namespace dxvk {
       case DxbcResourceDim::TextureCube:      return VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
       case DxbcResourceDim::TextureCubeArr:   return VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
       case DxbcResourceDim::Texture3D:        return VK_IMAGE_VIEW_TYPE_3D;
+    }
+  }
+  
+  
+  spv::ImageFormat DxbcCompiler::getScalarImageFormat(DxbcScalarType type) const {
+    switch (type) {
+      case DxbcScalarType::Float32: return spv::ImageFormatR32f;
+      case DxbcScalarType::Sint32:  return spv::ImageFormatR32i;
+      case DxbcScalarType::Uint32:  return spv::ImageFormatR32ui;
+      default: throw DxvkError("DxbcCompiler: Unhandled scalar resource type");
     }
   }
   
