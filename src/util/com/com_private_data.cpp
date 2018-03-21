@@ -23,7 +23,8 @@ namespace dxvk {
     const IUnknown* iface)
   : m_guid  (guid),
     m_iface (const_cast<IUnknown*>(iface)) {
-    m_iface->AddRef();
+    if (m_iface != nullptr)
+      m_iface->AddRef();
   }
   
   
