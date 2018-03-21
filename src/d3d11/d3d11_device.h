@@ -334,7 +334,10 @@ namespace dxvk {
       const Rc<DxvkImage>&              image,
       const D3D11_SUBRESOURCE_DATA*     pInitialData);
     
-    HRESULT GetFormatSupportFlags(DXGI_FORMAT Format, UINT* pFlags) const;
+    HRESULT GetFormatSupportFlags(
+            DXGI_FORMAT Format,
+            UINT*       pFlags1,
+            UINT*       pFlags2) const;
     
     void CreateCounterBuffer();
     
