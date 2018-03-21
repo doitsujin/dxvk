@@ -2504,7 +2504,9 @@ namespace dxvk {
         constantCount  = pNumConstants [i];
       }
       
-      if (Bindings[StartSlot + i].buffer != newBuffer) {
+      if (Bindings[StartSlot + i].buffer         != newBuffer
+       || Bindings[StartSlot + i].constantOffset != constantOffset
+       || Bindings[StartSlot + i].constantCount  != constantCount) {
         Bindings[StartSlot + i].buffer         = newBuffer;
         Bindings[StartSlot + i].constantOffset = constantOffset;
         Bindings[StartSlot + i].constantCount  = constantCount;
