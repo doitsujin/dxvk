@@ -98,6 +98,7 @@ namespace dxvk {
       return VK_NULL_HANDLE;
     }
     
+    m_cache->update();
     return pipeline;
   }
   
