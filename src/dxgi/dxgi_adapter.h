@@ -88,10 +88,6 @@ namespace dxvk {
     
     void SetupFormatTable();
     
-    bool HasFormatSupport(
-            VkFormat                          format,
-            VkFormatFeatureFlags              features) const;
-    
   };
 
 }

@@ -406,27 +406,11 @@ namespace dxvk {
     AddDepthFormat        (DXGI_FORMAT_X32_TYPELESS_G8X24_UINT,     VK_FORMAT_D32_SFLOAT_S8_UINT, VK_IMAGE_ASPECT_STENCIL_BIT);
     
     // Vulkan implementations are not required to support 24-bit depth buffers natively
-    // and AMD decided to not implement them, so we'll fall back to 32-bit depth buffers
-    if (HasFormatSupport(VK_FORMAT_D24_UNORM_S8_UINT, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
-      AddDepthFormatTypeless(DXGI_FORMAT_R24G8_TYPELESS,            VK_FORMAT_D24_UNORM_S8_UINT);
-      AddDepthFormat        (DXGI_FORMAT_D24_UNORM_S8_UINT,         VK_FORMAT_D24_UNORM_S8_UINT, 0);
-      AddDepthFormat        (DXGI_FORMAT_R24_UNORM_X8_TYPELESS,     VK_FORMAT_D24_UNORM_S8_UINT, VK_IMAGE_ASPECT_DEPTH_BIT);
-      AddDepthFormat        (DXGI_FORMAT_X24_TYPELESS_G8_UINT,      VK_FORMAT_D24_UNORM_S8_UINT, VK_IMAGE_ASPECT_STENCIL_BIT);
-    } else {
-      Logger::warn("DxgiAdapter: DXGI_FORMAT_D24_UNORM_S8_UINT -> VK_FORMAT_D32_SFLOAT_S8_UINT");
-      AddDepthFormatTypeless(DXGI_FORMAT_R24G8_TYPELESS,            VK_FORMAT_D32_SFLOAT_S8_UINT);
-      AddDepthFormat        (DXGI_FORMAT_R24_UNORM_X8_TYPELESS,     VK_FORMAT_D32_SFLOAT_S8_UINT, VK_IMAGE_ASPECT_DEPTH_BIT);
-      AddDepthFormat        (DXGI_FORMAT_X24_TYPELESS_G8_UINT,      VK_FORMAT_D32_SFLOAT_S8_UINT, VK_IMAGE_ASPECT_STENCIL_BIT);
-      AddDepthFormat        (DXGI_FORMAT_D24_UNORM_S8_UINT,         VK_FORMAT_D32_SFLOAT_S8_UINT, 0);
-    }
-  }
-  
-  
-  bool DxgiAdapter::HasFormatSupport(
-          VkFormat                          format,
-          VkFormatFeatureFlags              features) const {
-    const VkFormatProperties info = m_adapter->formatProperties(format);
-    return ((info.optimalTilingFeatures | info.bufferFeatures) & features) == features;
+    // and support is generally worse than for 32-bit depth buffers, so we won't use them
+    AddDepthFormatTypeless(DXGI_FORMAT_R24G8_TYPELESS,              VK_FORMAT_D32_SFLOAT_S8_UINT);
+    AddDepthFormat        (DXGI_FORMAT_R24_UNORM_X8_TYPELESS,       VK_FORMAT_D32_SFLOAT_S8_UINT, VK_IMAGE_ASPECT_DEPTH_BIT);
+    AddDepthFormat        (DXGI_FORMAT_X24_TYPELESS_G8_UINT,        VK_FORMAT_D32_SFLOAT_S8_UINT, VK_IMAGE_ASPECT_STENCIL_BIT);
+    AddDepthFormat        (DXGI_FORMAT_D24_UNORM_S8_UINT,           VK_FORMAT_D32_SFLOAT_S8_UINT, 0);
   }
   
 }
