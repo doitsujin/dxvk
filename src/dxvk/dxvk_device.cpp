@@ -226,21 +226,23 @@ namespace dxvk {
       commandList->trackResource(wakeSync);
     }
     
+    VkResult status;
+    
     { // Queue submissions are not thread safe
       std::lock_guard<std::mutex> lock(m_submissionLock);
       
-      const VkResult status = commandList->submit(
+      status = commandList->submit(
         m_graphicsQueue, waitSemaphore, wakeSemaphore);
-      
-      if (status != VK_SUCCESS) {
-        Logger::err(str::format(
-          "DxvkDevice: Command buffer submission failed: ",
-          status));
-      }
     }
     
-    // Add this to the set of running submissions
-    m_submissionQueue.submit(commandList);
+    if (status == VK_SUCCESS) {
+      // Add this to the set of running submissions
+      m_submissionQueue.submit(commandList);
+    } else {
+      Logger::err(str::format(
+        "DxvkDevice: Command buffer submission failed: ",
+        status));
+    }
   }
   
   

@@ -40,7 +40,6 @@ namespace dxvk {
   
   
   DxvkCommandList::~DxvkCommandList() {
-    this->synchronize();
     this->reset();
     
     m_vkd->vkDestroyCommandPool(m_vkd->device(), m_pool,  nullptr);
