@@ -1,4 +1,5 @@
 #include "dxvk_cmdlist.h"
+#include "dxvk_device.h"
 
 namespace dxvk {
     
@@ -6,7 +7,17 @@ namespace dxvk {
     const Rc<vk::DeviceFn>& vkd,
           DxvkDevice*       device,
           uint32_t          queueFamily)
-  : m_vkd(vkd), m_descAlloc(vkd), m_stagingAlloc(device) {
+  : m_vkd         (vkd),
+    m_descAlloc   (vkd),
+    m_stagingAlloc(device) {
+    VkFenceCreateInfo fenceInfo;
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceInfo.pNext = nullptr;
+    fenceInfo.flags = 0;
+    
+    if (m_vkd->vkCreateFence(m_vkd->device(), &fenceInfo, nullptr, &m_fence) != VK_SUCCESS)
+      throw DxvkError("DxvkFence::DxvkFence: Failed to create fence");
+    
     VkCommandPoolCreateInfo poolInfo;
     poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     poolInfo.pNext            = nullptr;
@@ -29,18 +40,18 @@ namespace dxvk {
   
   
   DxvkCommandList::~DxvkCommandList() {
+    this->synchronize();
     this->reset();
     
-    m_vkd->vkDestroyCommandPool(
-      m_vkd->device(), m_pool, nullptr);
+    m_vkd->vkDestroyCommandPool(m_vkd->device(), m_pool,  nullptr);
+    m_vkd->vkDestroyFence      (m_vkd->device(), m_fence, nullptr);
   }
   
   
-  void DxvkCommandList::submit(
+  VkResult DxvkCommandList::submit(
           VkQueue         queue,
           VkSemaphore     waitSemaphore,
-          VkSemaphore     wakeSemaphore,
-          VkFence         fence) {
+          VkSemaphore     wakeSemaphore) {
     const VkPipelineStageFlags waitStageMask
       = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
     
@@ -55,8 +66,20 @@ namespace dxvk {
     info.signalSemaphoreCount = wakeSemaphore == VK_NULL_HANDLE ? 0 : 1;
     info.pSignalSemaphores    = &wakeSemaphore;
     
-    if (m_vkd->vkQueueSubmit(queue, 1, &info, fence) != VK_SUCCESS)
-      throw DxvkError("DxvkDevice::submitCommandList: Command submission failed");
+    return m_vkd->vkQueueSubmit(queue, 1, &info, m_fence);
+  }
+  
+  
+  VkResult DxvkCommandList::synchronize() {
+    VkResult status = VK_TIMEOUT;
+    
+    while (status == VK_TIMEOUT) {
+      status = m_vkd->vkWaitForFences(
+        m_vkd->device(), 1, &m_fence, VK_FALSE,
+        1'000'000'000ull);
+    }
+    
+    return status;
   }
   
   
@@ -68,16 +91,19 @@ namespace dxvk {
     info.pInheritanceInfo = nullptr;
     
     if (m_vkd->vkResetCommandPool(m_vkd->device(), m_pool, 0) != VK_SUCCESS)
-      throw DxvkError("DxvkCommandList::beginRecording: Failed to reset command pool");
+      Logger::err("DxvkCommandList: Failed to reset command buffer");
     
     if (m_vkd->vkBeginCommandBuffer(m_buffer, &info) != VK_SUCCESS)
-      throw DxvkError("DxvkCommandList::beginRecording: Failed to begin command buffer recording");
+      Logger::err("DxvkCommandList: Failed to begin command buffer");
+    
+    if (m_vkd->vkResetFences(m_vkd->device(), 1, &m_fence) != VK_SUCCESS)
+      Logger::err("DxvkCommandList: Failed to reset fence");
   }
   
   
   void DxvkCommandList::endRecording() {
     if (m_vkd->vkEndCommandBuffer(m_buffer) != VK_SUCCESS)
-      throw DxvkError("DxvkCommandList::endRecording: Failed to record command buffer");
+      Logger::err("DxvkCommandList::endRecording: Failed to record command buffer");
   }
   
   

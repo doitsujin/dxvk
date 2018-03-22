@@ -24,16 +24,9 @@ namespace dxvk {
     DxvkSubmissionQueue(DxvkDevice* device);
     ~DxvkSubmissionQueue();
     
-    void submit(
-      const Rc<DxvkFence>&        fence,
-      const Rc<DxvkCommandList>&  cmdList);
+    void submit(const Rc<DxvkCommandList>& cmdList);
     
   private:
-    
-    struct Entry {
-      Rc<DxvkFence>       fence;
-      Rc<DxvkCommandList> cmdList;
-    };
     
     DxvkDevice*             m_device;
     
@@ -42,7 +35,7 @@ namespace dxvk {
     std::mutex              m_mutex;
     std::condition_variable m_condOnAdd;
     std::condition_variable m_condOnTake;
-    std::queue<Entry>       m_entries;
+    std::queue<Rc<DxvkCommandList>> m_entries;
     std::thread             m_thread;
     
     void threadFunc();

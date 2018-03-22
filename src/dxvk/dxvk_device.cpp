@@ -209,12 +209,10 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkFence> DxvkDevice::submitCommandList(
+  void DxvkDevice::submitCommandList(
     const Rc<DxvkCommandList>&      commandList,
     const Rc<DxvkSemaphore>&        waitSync,
     const Rc<DxvkSemaphore>&        wakeSync) {
-    Rc<DxvkFence> fence = new DxvkFence(m_vkd);
-    
     VkSemaphore waitSemaphore = VK_NULL_HANDLE;
     VkSemaphore wakeSemaphore = VK_NULL_HANDLE;
     
@@ -230,13 +228,19 @@ namespace dxvk {
     
     { // Queue submissions are not thread safe
       std::lock_guard<std::mutex> lock(m_submissionLock);
-      commandList->submit(m_graphicsQueue,
-        waitSemaphore, wakeSemaphore, fence->handle());
+      
+      const VkResult status = commandList->submit(
+        m_graphicsQueue, waitSemaphore, wakeSemaphore);
+      
+      if (status != VK_SUCCESS) {
+        Logger::err(str::format(
+          "DxvkDevice: Command buffer submission failed: ",
+          status));
+      }
     }
     
     // Add this to the set of running submissions
-    m_submissionQueue.submit(fence, commandList);
-    return fence;
+    m_submissionQueue.submit(commandList);
   }
   
   

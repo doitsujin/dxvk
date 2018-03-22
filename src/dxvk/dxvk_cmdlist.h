@@ -1,6 +1,6 @@
 #pragma once
 
-#include <unordered_set>
+#include <limits>
 
 #include "dxvk_binding.h"
 #include "dxvk_buffer.h"
@@ -11,6 +11,7 @@
 #include "dxvk_pipelayout.h"
 #include "dxvk_query_tracker.h"
 #include "dxvk_staging.h"
+#include "dxvk_sync.h"
 
 namespace dxvk {
   
@@ -39,13 +40,21 @@ namespace dxvk {
      * \param [in] queue Device queue
      * \param [in] waitSemaphore Semaphore to wait on
      * \param [in] wakeSemaphore Semaphore to signal
-     * \param [in] fence Fence to signal
+     * \returns Submission status
      */
-    void submit(
+    VkResult submit(
             VkQueue         queue,
             VkSemaphore     waitSemaphore,
-            VkSemaphore     wakeSemaphore,
-            VkFence         fence);
+            VkSemaphore     wakeSemaphore);
+    
+    /**
+     * \brief Synchronizes command buffer execution
+     * 
+     * Waits for the fence associated with
+     * this command buffer to get signaled.
+     * \returns Synchronization status
+     */
+    VkResult synchronize();
     
     /**
      * \brief Begins recording
@@ -142,7 +151,6 @@ namespace dxvk {
      * the command list completes execution.
      */
     void reset();
-    
     
     VkDescriptorSet allocateDescriptorSet(
             VkDescriptorSetLayout   descriptorLayout) {
@@ -516,6 +524,8 @@ namespace dxvk {
   private:
     
     Rc<vk::DeviceFn>    m_vkd;
+    
+    VkFence             m_fence;
     
     VkCommandPool       m_pool;
     VkCommandBuffer     m_buffer;

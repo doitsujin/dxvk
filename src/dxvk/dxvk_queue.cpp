@@ -20,16 +20,14 @@ namespace dxvk {
   }
   
   
-  void DxvkSubmissionQueue::submit(
-    const Rc<DxvkFence>&        fence,
-    const Rc<DxvkCommandList>&  cmdList) {
+  void DxvkSubmissionQueue::submit(const Rc<DxvkCommandList>& cmdList) {
     { std::unique_lock<std::mutex> lock(m_mutex);
       
       m_condOnTake.wait(lock, [this] {
         return m_entries.size() < MaxNumQueuedCommandBuffers;
       });
       
-      m_entries.push({ fence, cmdList });
+      m_entries.push(cmdList);
       m_condOnAdd.notify_one();
     }
   }
@@ -37,7 +35,7 @@ namespace dxvk {
   
   void DxvkSubmissionQueue::threadFunc() {
     while (!m_stopped.load()) {
-      Entry entry;
+      Rc<DxvkCommandList> cmdList;
       
       { std::unique_lock<std::mutex> lock(m_mutex);
         
@@ -46,22 +44,27 @@ namespace dxvk {
         });
         
         if (m_entries.size() != 0) {
-          entry = std::move(m_entries.front());
+          cmdList = std::move(m_entries.front());
           m_entries.pop();
         }
         
         m_condOnTake.notify_one();
       }
       
-      if (entry.fence != nullptr) {
-        while (!entry.fence->wait(1'000'000'000ull))
-          continue;
+      if (cmdList != nullptr) {
+        VkResult status = cmdList->synchronize();
         
-        entry.cmdList->writeQueryData();
-        entry.cmdList->signalEvents();
-        entry.cmdList->reset();
-        
-        m_device->recycleCommandList(entry.cmdList);
+        if (status == VK_SUCCESS) {
+          cmdList->writeQueryData();
+          cmdList->signalEvents();
+          cmdList->reset();
+          
+          m_device->recycleCommandList(cmdList);
+        } else {
+          Logger::err(str::format(
+            "DxvkSubmissionQueue: Failed to sync fence: ",
+            status));
+        }
       }
     }
   }

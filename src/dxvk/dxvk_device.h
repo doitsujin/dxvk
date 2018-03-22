@@ -313,7 +313,7 @@ namespace dxvk {
      * \param [in] wakeSync (Optional) Semaphore to notify
      * \returns Synchronization fence
      */
-    Rc<DxvkFence> submitCommandList(
+    void submitCommandList(
       const Rc<DxvkCommandList>&      commandList,
       const Rc<DxvkSemaphore>&        waitSync,
       const Rc<DxvkSemaphore>&        wakeSync);
