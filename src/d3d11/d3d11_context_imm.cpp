@@ -44,7 +44,8 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11ImmediateContext::Flush() {
     m_parent->FlushInitContext();
     
-    if (m_csChunk->commandCount() != 0) {
+    if (m_csIsBusy || m_csChunk->commandCount() != 0) {
+      m_csIsBusy  = false;
       m_drawCount = 0;
       
       // Add commands to flush the threaded
@@ -74,6 +75,8 @@ namespace dxvk {
       RestoreState();
     else
       ClearState();
+    
+    m_csIsBusy = true;
   }
   
   
@@ -95,7 +98,13 @@ namespace dxvk {
       Logger::warn("D3D11ImmediateContext::Map() application tried to map a nullptr resource");
       return DXGI_ERROR_INVALID_CALL;
     }
-
+    
+    if (pMappedResource != nullptr) {
+      pMappedResource->pData      = nullptr;
+      pMappedResource->RowPitch   = 0;
+      pMappedResource->DepthPitch = 0;
+    }
+    
     D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resourceDim);
     
@@ -199,9 +208,6 @@ namespace dxvk {
       return E_INVALIDARG;
     }
     
-    if (pMappedResource == nullptr)
-      return S_FALSE;
-    
     // Parameter validation was successful
     VkImageSubresource subresource =
       pResource->GetSubresourceFromIndex(
@@ -218,8 +224,7 @@ namespace dxvk {
       
       // Query the subresource's memory layout and hope that
       // the application respects the returned pitch values.
-      VkSubresourceLayout layout = mappedImage->querySubresourceLayout(subresource);
-      
+      VkSubresourceLayout layout  = mappedImage->querySubresourceLayout(subresource);
       pMappedResource->pData      = mappedImage->mapPtr(layout.offset);
       pMappedResource->RowPitch   = imageType >= VK_IMAGE_TYPE_2D ? layout.rowPitch   : layout.size;
       pMappedResource->DepthPitch = imageType >= VK_IMAGE_TYPE_3D ? layout.depthPitch : layout.size;
@@ -239,14 +244,12 @@ namespace dxvk {
         // We do not have to preserve the contents of the
         // buffer if the entire image gets discarded.
         physicalSlice = mappedBuffer->allocPhysicalSlice();
-        physicalSlice.resource()->acquire();
         
         EmitCs([
           cImageBuffer   = mappedBuffer,
           cPhysicalSlice = physicalSlice
         ] (DxvkContext* ctx) {
           ctx->invalidateBuffer(cImageBuffer, cPhysicalSlice);
-          cPhysicalSlice.resource()->release();
         });
       } else {
         // When using any map mode which requires the image contents
@@ -273,9 +276,7 @@ namespace dxvk {
           });
         }
         
-        if (!WaitForResource(mappedBuffer->resource(), MapFlags))
-          return DXGI_ERROR_WAS_STILL_DRAWING;
-        
+        WaitForResource(mappedBuffer->resource(), 0);
         physicalSlice = mappedBuffer->slice();
       }
       
@@ -361,6 +362,7 @@ namespace dxvk {
   
   void D3D11ImmediateContext::EmitCsChunk(Rc<DxvkCsChunk>&& chunk) {
     m_csThread.dispatchChunk(std::move(chunk));
+    m_csIsBusy = true;
   }
   
 }

@@ -55,6 +55,7 @@ namespace dxvk {
   private:
     
     DxvkCsThread m_csThread;
+    bool         m_csIsBusy = false;
     
     HRESULT MapBuffer(
             D3D11Buffer*                pResource,

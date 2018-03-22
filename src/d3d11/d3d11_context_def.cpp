@@ -70,6 +70,12 @@ namespace dxvk {
     D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resourceDim);
     
+    if (pMappedResource != nullptr) {
+      pMappedResource->pData      = nullptr;
+      pMappedResource->RowPitch   = 0;
+      pMappedResource->DepthPitch = 0;
+    }
+    
     if (MapType != D3D11_MAP_WRITE_DISCARD
      && MapType != D3D11_MAP_WRITE_NO_OVERWRITE)
       return E_INVALIDARG;
@@ -114,9 +120,6 @@ namespace dxvk {
       Logger::err("D3D11: Cannot map a device-local buffer");
       return E_INVALIDARG;
     }
-    
-    if (pMappedResource == nullptr)
-      return S_FALSE;
     
     auto entry = FindMapEntry(pResource, 0);
     

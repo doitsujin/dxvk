@@ -53,19 +53,17 @@ namespace dxvk {
   
   
   void DxvkCsThread::dispatchChunk(Rc<DxvkCsChunk>&& chunk) {
-    { std::unique_lock<std::mutex> lock(m_mutex);
-      m_chunksQueued.push(std::move(chunk));
-      m_chunksPending += 1;
-      
-      if (m_chunksPending > MaxChunksInFlight) {
-        m_condOnSync.wait(lock, [this] {
-          return (m_chunksPending <= MaxChunksInFlight )
-              || (m_stopped.load());
-        });
-      }
+    std::unique_lock<std::mutex> lock(m_mutex);
+    m_chunksPending += 1;
+    m_chunksQueued.push(std::move(chunk));
+    
+    if (m_chunksPending > MaxChunksInFlight) {
+      m_condOnSync.wait(lock, [this] {
+        return (m_chunksPending <= MaxChunksInFlight )
+            || (m_stopped.load());
+      });
     }
     
-    // Wake CS thread
     m_condOnAdd.notify_one();
   }
   
