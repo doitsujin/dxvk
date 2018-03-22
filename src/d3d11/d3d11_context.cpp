@@ -31,26 +31,6 @@ namespace dxvk {
     m_defaultBlendState        = static_cast<D3D11BlendState*>       (defaultBlendState.ptr());
     m_defaultDepthStencilState = static_cast<D3D11DepthStencilState*>(defaultDepthStencilState.ptr());
     m_defaultRasterizerState   = static_cast<D3D11RasterizerState*>  (defaultRasterizerState.ptr());
-    
-    EmitCs([
-      dev     = m_device,
-      bsState = m_defaultBlendState,
-      dsState = m_defaultDepthStencilState,
-      rsState = m_defaultRasterizerState,
-      blendConst = DxvkBlendConstants {
-        m_state.om.blendFactor[0], m_state.om.blendFactor[1],
-        m_state.om.blendFactor[2], m_state.om.blendFactor[3] },
-      stencilRef = m_state.om.stencilRef
-    ] (DxvkContext* ctx) {
-      ctx->beginRecording(dev->createCommandList());
-      
-      bsState->BindToContext(ctx, 0xFFFFFFFF);
-      dsState->BindToContext(ctx);
-      rsState->BindToContext(ctx);
-      
-      ctx->setBlendConstants  (blendConst);
-      ctx->setStencilReference(stencilRef);
-    });
   }
   
   
