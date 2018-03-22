@@ -14,6 +14,9 @@
 
 namespace dxvk {
   
+  class DxbcAnalyzer;
+  class DxbcCompiler;
+  
   /**
    * \brief DXBC shader module
    * 
@@ -60,6 +63,14 @@ namespace dxvk {
     Rc<DxbcIsgn> m_isgnChunk;
     Rc<DxbcIsgn> m_osgnChunk;
     Rc<DxbcShex> m_shexChunk;
+    
+    void runAnalyzer(
+            DxbcAnalyzer&       analyzer,
+            DxbcCodeSlice       slice) const;
+    
+    void runCompiler(
+            DxbcCompiler&       compiler,
+            DxbcCodeSlice       slice) const;
     
   };
   

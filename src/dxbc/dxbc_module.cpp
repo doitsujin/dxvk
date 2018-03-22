@@ -1,3 +1,4 @@
+#include "dxbc_analysis.h"
 #include "dxbc_compiler.h"
 #include "dxbc_module.h"
 
@@ -44,12 +45,37 @@ namespace dxvk {
     if (m_shexChunk == nullptr)
       throw DxvkError("DxbcModule::compile: No SHDR/SHEX chunk");
     
-    DxbcCodeSlice slice = m_shexChunk->slice();
+    DxbcAnalyzer analyzer(options,
+      m_shexChunk->version());
     
     DxbcCompiler compiler(options,
       m_shexChunk->version(),
       m_isgnChunk, m_osgnChunk);
     
+    this->runAnalyzer(analyzer, m_shexChunk->slice());
+    this->runCompiler(compiler, m_shexChunk->slice());
+    
+    return compiler.finalize();
+  }
+  
+  
+  void DxbcModule::runAnalyzer(
+          DxbcAnalyzer&       analyzer,
+          DxbcCodeSlice       slice) const {
+    DxbcDecodeContext decoder;
+    
+    while (!slice.atEnd()) {
+      decoder.decodeInstruction(slice);
+      
+      analyzer.processInstruction(
+        decoder.getInstruction());
+    }
+  }
+  
+  
+  void DxbcModule::runCompiler(
+          DxbcCompiler&       compiler,
+          DxbcCodeSlice       slice) const {
     DxbcDecodeContext decoder;
     
     while (!slice.atEnd()) {
@@ -58,8 +84,6 @@ namespace dxvk {
       compiler.processInstruction(
         decoder.getInstruction());
     }
-    
-    return compiler.finalize();
   }
   
 }

@@ -1,4 +1,5 @@
 dxbc_src = files([
+  'dxbc_analysis.cpp',
   'dxbc_chunk_isgn.cpp',
   'dxbc_chunk_shex.cpp',
   'dxbc_common.cpp',
