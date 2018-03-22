@@ -30,9 +30,8 @@ namespace dxvk {
       });
       
       m_entries.push({ fence, cmdList });
+      m_condOnAdd.notify_one();
     }
-    
-    m_condOnAdd.notify_one();
   }
   
   
@@ -50,9 +49,9 @@ namespace dxvk {
           entry = std::move(m_entries.front());
           m_entries.pop();
         }
+        
+        m_condOnTake.notify_one();
       }
-      
-      m_condOnTake.notify_one();
       
       if (entry.fence != nullptr) {
         while (!entry.fence->wait(1'000'000'000ull))

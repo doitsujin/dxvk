@@ -25,7 +25,7 @@ namespace dxvk {
     virtual ~DxvkResource();
     
     bool isInUse() const {
-      return m_useCount != 0;
+      return m_useCount.load() != 0;
     }
     
     void acquire() { m_useCount += 1; }
