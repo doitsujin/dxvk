@@ -148,9 +148,6 @@ namespace dxvk {
       return E_INVALIDARG;
     }
     
-    if (pMappedResource == nullptr)
-      return S_FALSE;
-    
     if (MapType == D3D11_MAP_WRITE_DISCARD) {
       // Allocate a new backing slice for the buffer and set
       // it as the 'new' mapped slice. This assumes that the
