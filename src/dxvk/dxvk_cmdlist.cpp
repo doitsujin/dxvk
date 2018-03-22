@@ -16,7 +16,7 @@ namespace dxvk {
     fenceInfo.flags = 0;
     
     if (m_vkd->vkCreateFence(m_vkd->device(), &fenceInfo, nullptr, &m_fence) != VK_SUCCESS)
-      throw DxvkError("DxvkFence::DxvkFence: Failed to create fence");
+      throw DxvkError("DxvkCommandList: Failed to create fence");
     
     VkCommandPoolCreateInfo poolInfo;
     poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -25,7 +25,7 @@ namespace dxvk {
     poolInfo.queueFamilyIndex = queueFamily;
     
     if (m_vkd->vkCreateCommandPool(m_vkd->device(), &poolInfo, nullptr, &m_pool) != VK_SUCCESS)
-      throw DxvkError("DxvkCommandList::DxvkCommandList: Failed to create command pool");
+      throw DxvkError("DxvkCommandList: Failed to create command pool");
     
     VkCommandBufferAllocateInfo cmdInfo;
     cmdInfo.sType             = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -35,7 +35,7 @@ namespace dxvk {
     cmdInfo.commandBufferCount = 1;
     
     if (m_vkd->vkAllocateCommandBuffers(m_vkd->device(), &cmdInfo, &m_buffer) != VK_SUCCESS)
-      throw DxvkError("DxvkCommandList::DxvkCommandList: Failed to allocate command buffer");
+      throw DxvkError("DxvkCommandList: Failed to allocate command buffer");
   }
   
   
