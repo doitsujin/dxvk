@@ -222,7 +222,10 @@ namespace dxvk {
     if (pResource->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT) {
       const VkImageType imageType = mappedImage->info().type;
       
-      // Wait for the resource to become available
+      // Wait for the resource to become available. Forwarding
+      // DO_NOT_WAIT would break The Witcher 3 for some reason.
+      MapFlags &= ~D3D11_MAP_FLAG_DO_NOT_WAIT;
+      
       if (!WaitForResource(mappedImage, MapFlags))
         return DXGI_ERROR_WAS_STILL_DRAWING;
       
