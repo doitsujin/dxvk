@@ -347,6 +347,9 @@ namespace dxvk {
     SynchronizeCsThread();
     
     if (Resource->isInUse()) {
+      if (MapFlags & D3D11_MAP_FLAG_DO_NOT_WAIT)
+        return false;
+      
       // TODO implement properly in DxvkDevice
       while (Resource->isInUse())
         std::this_thread::yield();
