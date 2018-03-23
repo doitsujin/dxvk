@@ -41,8 +41,8 @@ int WINAPI WinMain(HINSTANCE hInstance,
     DxbcModule module(reader);
     
     Rc<DxvkShader> shader = module.compile(DxbcOptions());
-    shader->dump(std::ofstream(
-      str::fromws(argv[2]), std::ios::binary));
+    std::ofstream ofile(str::fromws(argv[2]), std::ios::binary);
+    shader->dump(ofile);
     return 0;
   } catch (const DxvkError& e) {
     Logger::err(e.message());
