@@ -5,6 +5,7 @@
 
 #include "../spirv/spirv_module.h"
 
+#include "dxbc_analysis.h"
 #include "dxbc_chunk_isgn.h"
 #include "dxbc_decoder.h"
 #include "dxbc_defs.h"
@@ -312,7 +313,8 @@ namespace dxvk {
       const DxbcOptions&        options,
       const DxbcProgramVersion& version,
       const Rc<DxbcIsgn>&       isgn,
-      const Rc<DxbcIsgn>&       osgn);
+      const Rc<DxbcIsgn>&       osgn,
+      const DxbcAnalysisInfo&   analysis);
     ~DxbcCompiler();
     
     /**
@@ -336,6 +338,8 @@ namespace dxvk {
     
     Rc<DxbcIsgn>        m_isgn;
     Rc<DxbcIsgn>        m_osgn;
+    
+    const DxbcAnalysisInfo* m_analysis;
     
     ///////////////////////////////////////////////////////
     // Resource slot description for the shader. This will

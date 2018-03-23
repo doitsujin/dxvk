@@ -9,11 +9,21 @@
 
 namespace dxvk {
   
+  /**
+   * \brief Info about unordered access views
+   * 
+   * Stores whether an UAV is accessed with typed
+   * read or atomic instructions. This information
+   * will be used to generate image types.
+   */
   struct DxbcUavInfo {
-    bool accessTypedRead = false;
+    bool accessTypedLoad = false;
     bool accessAtomicOp  = false;
   };
   
+  /**
+   * \brief Shader analysis info
+   */
   struct DxbcAnalysisInfo {
     std::array<DxbcUavInfo, 64> uavInfos;
   };
@@ -31,7 +41,8 @@ namespace dxvk {
     
     DxbcAnalyzer(
       const DxbcOptions&        options,
-      const DxbcProgramVersion& version);
+      const DxbcProgramVersion& version,
+            DxbcAnalysisInfo&   analysis);
     
     ~DxbcAnalyzer();
     
@@ -44,7 +55,7 @@ namespace dxvk {
     
   private:
     
-    
+    DxbcAnalysisInfo* m_analysis = nullptr;
     
   };
   

@@ -45,12 +45,16 @@ namespace dxvk {
     if (m_shexChunk == nullptr)
       throw DxvkError("DxbcModule::compile: No SHDR/SHEX chunk");
     
+    DxbcAnalysisInfo analysisInfo;
+    
     DxbcAnalyzer analyzer(options,
-      m_shexChunk->version());
+      m_shexChunk->version(),
+      analysisInfo);
     
     DxbcCompiler compiler(options,
       m_shexChunk->version(),
-      m_isgnChunk, m_osgnChunk);
+      m_isgnChunk, m_osgnChunk,
+      analysisInfo);
     
     this->runAnalyzer(analyzer, m_shexChunk->slice());
     this->runCompiler(compiler, m_shexChunk->slice());

@@ -12,11 +12,13 @@ namespace dxvk {
     const DxbcOptions&        options,
     const DxbcProgramVersion& version,
     const Rc<DxbcIsgn>&       isgn,
-    const Rc<DxbcIsgn>&       osgn)
+    const Rc<DxbcIsgn>&       osgn,
+    const DxbcAnalysisInfo&   analysis)
   : m_options (options),
     m_version (version),
     m_isgn    (isgn),
-    m_osgn    (osgn) {
+    m_osgn    (osgn),
+    m_analysis(&analysis) {
     // Declare an entry point ID. We'll need it during the
     // initialization phase where the execution mode is set.
     m_entryPointId = m_module.allocateId();
@@ -809,12 +811,24 @@ namespace dxvk {
       default: break; // No additional capabilities required
     }
     
+    // If the read-without-format capability is not set and this
+    // image is access via a typed load, or if atomic operations
+    // are used,, we must define the image format explicitly.
+    spv::ImageFormat imageFormat = spv::ImageFormatUnknown;
+    
+    if (isUav) {
+      if ((m_analysis->uavInfos[registerId].accessAtomicOp)
+       || (m_analysis->uavInfos[registerId].accessTypedLoad
+        && !m_options.useStorageImageReadWithoutFormat))
+        imageFormat = getScalarImageFormat(sampledType);
+    }
+    
     // We do not know whether the image is going to be used as
     // a color image or a depth image yet, but we can pick the
     // correct type when creating a sampled image object.
     const uint32_t imageTypeId = m_module.defImageType(sampledTypeId,
       typeInfo.dim, 0, typeInfo.array, typeInfo.ms, typeInfo.sampled,
-      spv::ImageFormatUnknown);
+      imageFormat);
     
     // We'll declare the texture variable with the color type
     // and decide which one to use when the texture is sampled.
@@ -1989,7 +2003,6 @@ namespace dxvk {
     // The result type, which is a scalar integer
     const uint32_t typeId = getVectorTypeId(value.type);
     
-    // TODO add signed min/max
     switch (ins.op) {
       case DxbcOpcode::ImmAtomicExch:
         value.id = m_module.opAtomicExchange(typeId,
@@ -3140,13 +3153,6 @@ namespace dxvk {
     const DxbcRegisterValue texCoord = emitRegisterLoad(
       ins.src[0], getTexCoordMask(uavInfo.imageInfo));
     
-    // If the read-without-format capability is not
-    // set. we must define the image format explicitly.
-    if (!m_options.useStorageImageReadWithoutFormat) {
-      m_module.setImageTypeFormat(uavInfo.imageTypeId,
-        getScalarImageFormat(uavInfo.sampledType));
-    }
-    
     // Load source value from the UAV
     DxbcRegisterValue uavValue;
     uavValue.type.ctype  = uavInfo.sampledType;
@@ -4236,14 +4242,6 @@ namespace dxvk {
     // For UAVs and shared memory, different methods
     // of obtaining the final pointer are used.
     const bool isUav = operand.type == DxbcOperandType::UnorderedAccessView;
-    
-    // If the resource is an UAV, we need to specify a format
-    // for the image type. Atomic ops are only allowed for
-    // 32-bit scalar integer formats.
-    if (isUav) {
-      m_module.setImageTypeFormat(resourceInfo.typeId,
-        getScalarImageFormat(resourceInfo.stype));
-    }
     
     // Compute the actual address into the resource
     const DxbcRegisterValue addressValue = [&] {
