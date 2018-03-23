@@ -49,9 +49,6 @@ namespace dxvk {
     m_parent->FlushInitContext();
     
     if (m_csIsBusy || m_csChunk->commandCount() != 0) {
-      m_csIsBusy  = false;
-      m_drawCount = 0;
-      
       // Add commands to flush the threaded
       // context, then flush the command list
       EmitCs([dev = m_device] (DxvkContext* ctx) {
@@ -64,6 +61,10 @@ namespace dxvk {
       });
       
       FlushCsChunk();
+      
+      // Reset optimization info
+      m_drawCount = 0;
+      m_csIsBusy  = false;
     }
   }
   
