@@ -254,10 +254,6 @@ namespace dxvk {
     uint32_t defSampledImageType(
             uint32_t                imageType);
     
-    void setImageTypeFormat(
-            uint32_t                imageType,
-            spv::ImageFormat        format);
-    
     uint32_t newVar(
             uint32_t                pointerType,
             spv::StorageClass       storageClass);
