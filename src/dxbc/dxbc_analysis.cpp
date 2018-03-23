@@ -49,13 +49,15 @@ namespace dxvk {
   DxbcClipCullInfo DxbcAnalyzer::getClipCullInfo(const Rc<DxbcIsgn>& sgn) const {
     DxbcClipCullInfo result;
     
-    for (auto e = sgn->begin(); e != sgn->end(); e++) {
-      const uint32_t componentCount = e->componentMask.popCount();
-      
-      if (e->systemValue == DxbcSystemValue::ClipDistance)
-        result.numClipPlanes += componentCount;
-      if (e->systemValue == DxbcSystemValue::CullDistance)
-        result.numCullPlanes += componentCount;
+    if (sgn != nullptr) {
+      for (auto e = sgn->begin(); e != sgn->end(); e++) {
+        const uint32_t componentCount = e->componentMask.popCount();
+        
+        if (e->systemValue == DxbcSystemValue::ClipDistance)
+          result.numClipPlanes += componentCount;
+        if (e->systemValue == DxbcSystemValue::CullDistance)
+          result.numCullPlanes += componentCount;
+      }
     }
     
     return result;
