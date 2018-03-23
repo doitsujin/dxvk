@@ -16,7 +16,7 @@ namespace dxvk {
   }
   
   
-  SpirvCodeBuffer::SpirvCodeBuffer(std::istream&& stream) {
+  SpirvCodeBuffer::SpirvCodeBuffer(std::istream& stream) {
     stream.ignore(std::numeric_limits<std::streamsize>::max());
     std::streamsize length = stream.gcount();
     stream.clear();
@@ -122,7 +122,7 @@ namespace dxvk {
   }
   
   
-  void SpirvCodeBuffer::store(std::ostream&& stream) const {
+  void SpirvCodeBuffer::store(std::ostream& stream) const {
     stream.write(
       reinterpret_cast<const char*>(m_code.data()),
       sizeof(uint32_t) * m_code.size());

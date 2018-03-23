@@ -22,7 +22,7 @@ namespace dxvk {
     
     SpirvCodeBuffer();
     SpirvCodeBuffer(uint32_t size, const uint32_t* data);
-    SpirvCodeBuffer(std::istream&& stream);
+    SpirvCodeBuffer(std::istream& stream);
     
     template<size_t N>
     SpirvCodeBuffer(const uint32_t (&data)[N])
@@ -146,7 +146,7 @@ namespace dxvk {
      * exists mostly for debugging purposes.
      * \param [in] stream Output stream
      */
-    void store(std::ostream&& stream) const;
+    void store(std::ostream& stream) const;
     
     /**
      * \brief Retrieves current insertion pointer

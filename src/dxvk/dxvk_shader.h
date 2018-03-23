@@ -137,7 +137,7 @@ namespace dxvk {
      * Can be used to store the SPIR-V code in a file.
      * \param [in] outputStream Stream to write to 
      */
-    void dump(std::ostream&& outputStream) const;
+    void dump(std::ostream& outputStream) const;
     
     /**
      * \brief Reads SPIR-V shader
@@ -145,7 +145,7 @@ namespace dxvk {
      * Can be used to replace the compiled SPIR-V code.
      * \param [in] inputStream Stream to read from
      */
-    void read(std::istream&& inputStream);
+    void read(std::istream& inputStream);
     
     /**
      * \brief Sets the shader's debug name

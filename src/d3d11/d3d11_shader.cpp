@@ -40,8 +40,11 @@ namespace dxvk {
     m_shader->setDebugName(m_name);
     
     if (dumpPath.size() != 0) {
-      m_shader->dump(std::ofstream(str::format(dumpPath, "/", m_name, ".spv"),
-        std::ios_base::binary | std::ios_base::trunc));
+      std::ofstream dumpStream(
+        str::format(dumpPath, "/", m_name, ".spv"),
+        std::ios_base::binary | std::ios_base::trunc);
+      
+      m_shader->dump(dumpStream);
     }
     
     // If requested by the user, replace
@@ -53,7 +56,7 @@ namespace dxvk {
         std::ios_base::binary);
       
       if (readStream)
-        m_shader->read(std::move(readStream));
+        m_shader->read(readStream);
     }
   }
   

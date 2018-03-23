@@ -86,13 +86,13 @@ namespace dxvk {
   }
   
   
-  void DxvkShader::dump(std::ostream&& outputStream) const {
-    m_code.store(std::move(outputStream));
+  void DxvkShader::dump(std::ostream& outputStream) const {
+    m_code.store(outputStream);
   }
   
   
-  void DxvkShader::read(std::istream&& inputStream) {
-    m_code = SpirvCodeBuffer(std::move(inputStream));
+  void DxvkShader::read(std::istream& inputStream) {
+    m_code = SpirvCodeBuffer(inputStream);
   }
   
 }
