@@ -150,7 +150,7 @@ namespace dxvk {
       return (m_mask >> id) & 1;
     }
     
-    uint32_t setCount() const {
+    uint32_t popCount() const {
       const uint8_t n[16] = { 0, 1, 1, 2, 1, 2, 2, 3,
                               1, 2, 2, 3, 2, 3, 3, 4 };
       return n[m_mask & 0xF];

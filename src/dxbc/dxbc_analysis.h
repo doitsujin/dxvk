@@ -22,10 +22,21 @@ namespace dxvk {
   };
   
   /**
+   * \brief Counts cull and clip distances
+   */
+  struct DxbcClipCullInfo {
+    uint32_t numClipPlanes = 0;
+    uint32_t numCullPlanes = 0;
+  };
+  
+  /**
    * \brief Shader analysis info
    */
   struct DxbcAnalysisInfo {
     std::array<DxbcUavInfo, 64> uavInfos;
+    
+    DxbcClipCullInfo clipCullIn;
+    DxbcClipCullInfo clipCullOut;
   };
   
   /**
@@ -42,6 +53,8 @@ namespace dxvk {
     DxbcAnalyzer(
       const DxbcOptions&        options,
       const DxbcProgramVersion& version,
+      const Rc<DxbcIsgn>&       isgn,
+      const Rc<DxbcIsgn>&       osgn,
             DxbcAnalysisInfo&   analysis);
     
     ~DxbcAnalyzer();
@@ -55,7 +68,13 @@ namespace dxvk {
     
   private:
     
+    Rc<DxbcIsgn> m_isgn;
+    Rc<DxbcIsgn> m_osgn;
+    
     DxbcAnalysisInfo* m_analysis = nullptr;
+    
+    DxbcClipCullInfo getClipCullInfo(
+      const Rc<DxbcIsgn>& sgn) const;
     
   };
   

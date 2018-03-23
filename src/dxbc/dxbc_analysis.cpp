@@ -5,9 +5,17 @@ namespace dxvk {
   DxbcAnalyzer::DxbcAnalyzer(
     const DxbcOptions&        options,
     const DxbcProgramVersion& version,
+    const Rc<DxbcIsgn>&       isgn,
+    const Rc<DxbcIsgn>&       osgn,
           DxbcAnalysisInfo&   analysis)
-  : m_analysis(&analysis) {
-    
+  : m_isgn    (isgn),
+    m_osgn    (osgn),
+    m_analysis(&analysis) {
+    // Get number of clipping and culling planes from the
+    // input and output signatures. We will need this to
+    // declare the shader input and output interfaces.
+    m_analysis->clipCullIn  = getClipCullInfo(m_isgn);
+    m_analysis->clipCullOut = getClipCullInfo(m_osgn);
   }
   
   
@@ -35,6 +43,22 @@ namespace dxvk {
       default:
         return;
     }
+  }
+  
+  
+  DxbcClipCullInfo DxbcAnalyzer::getClipCullInfo(const Rc<DxbcIsgn>& sgn) const {
+    DxbcClipCullInfo result;
+    
+    for (auto e = sgn->begin(); e != sgn->end(); e++) {
+      const uint32_t componentCount = e->componentMask.popCount();
+      
+      if (e->systemValue == DxbcSystemValue::ClipDistance)
+        result.numClipPlanes += componentCount;
+      if (e->systemValue == DxbcSystemValue::CullDistance)
+        result.numCullPlanes += componentCount;
+    }
+    
+    return result;
   }
   
 }

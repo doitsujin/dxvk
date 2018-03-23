@@ -1314,7 +1314,7 @@ namespace dxvk {
     
     DxbcRegisterValue dst;
     dst.type.ctype  = ins.dst[0].dataType;
-    dst.type.ccount = ins.dst[0].mask.setCount();
+    dst.type.ccount = ins.dst[0].mask.popCount();
     
     const uint32_t typeId = getVectorTypeId(dst.type);
     
@@ -1547,7 +1547,7 @@ namespace dxvk {
     const DxbcRegisterValue selectTrue  = emitRegisterLoad(ins.src[1], ins.dst[0].mask);
     const DxbcRegisterValue selectFalse = emitRegisterLoad(ins.src[2], ins.dst[0].mask);
     
-    const uint32_t componentCount = ins.dst[0].mask.setCount();
+    const uint32_t componentCount = ins.dst[0].mask.popCount();
     
     // We'll compare against a vector of zeroes to generate a
     // boolean vector, which in turn will be used by OpSelect
@@ -1593,7 +1593,7 @@ namespace dxvk {
       emitRegisterLoad(ins.src[1], ins.dst[0].mask),
     };
     
-    const uint32_t componentCount = ins.dst[0].mask.setCount();
+    const uint32_t componentCount = ins.dst[0].mask.popCount();
     
     // Condition, which is a boolean vector used
     // to select between the ~0u and 0u vectors.
@@ -1792,7 +1792,7 @@ namespace dxvk {
     if (ins.dst[0].type != DxbcOperandType::Null) {
       DxbcRegisterValue quotient;
       quotient.type.ctype  = ins.dst[0].dataType;
-      quotient.type.ccount = ins.dst[0].mask.setCount();
+      quotient.type.ccount = ins.dst[0].mask.popCount();
       
       quotient.id = m_module.opUDiv(
         getVectorTypeId(quotient.type),
@@ -1805,7 +1805,7 @@ namespace dxvk {
     if (ins.dst[1].type != DxbcOperandType::Null) {
       DxbcRegisterValue remainder;
       remainder.type.ctype  = ins.dst[1].dataType;
-      remainder.type.ccount = ins.dst[1].mask.setCount();
+      remainder.type.ccount = ins.dst[1].mask.popCount();
       
       remainder.id = m_module.opUMod(
         getVectorTypeId(remainder.type),
@@ -1836,7 +1836,7 @@ namespace dxvk {
       
       DxbcRegisterValue result;
       result.type.ctype  = ins.dst[1].dataType;
-      result.type.ccount = ins.dst[1].mask.setCount();
+      result.type.ccount = ins.dst[1].mask.popCount();
       result.id = m_module.opIMul(
         getVectorTypeId(result.type),
         src.at(0).id, src.at(1).id);
@@ -1863,7 +1863,7 @@ namespace dxvk {
     
     DxbcRegisterValue result;
     result.type.ctype  = ins.dst[0].dataType;
-    result.type.ccount = ins.dst[0].mask.setCount();
+    result.type.ccount = ins.dst[0].mask.popCount();
     
     switch (ins.op) {
       case DxbcOpcode::IShl:
@@ -3705,7 +3705,7 @@ namespace dxvk {
           DxbcRegSwizzle          swizzle,
           DxbcRegMask             writeMask) {
     if (value.type.ccount == 1)
-      return emitRegisterExtend(value, writeMask.setCount());
+      return emitRegisterExtend(value, writeMask.popCount());
     
     std::array<uint32_t, 4> indices;
     
@@ -3764,7 +3764,7 @@ namespace dxvk {
     
     const uint32_t typeId = getVectorTypeId(result.type);
     
-    if (srcMask.setCount() == 0) {
+    if (srcMask.popCount() == 0) {
       // Nothing to do if the insertion mask is empty
       result.id = dstValue.id;
     } else if (dstValue.type.ccount == 1) {
@@ -4361,7 +4361,7 @@ namespace dxvk {
     // Create result vector
     DxbcRegisterValue result;
     result.type.ctype  = DxbcScalarType::Uint32;
-    result.type.ccount = writeMask.setCount();
+    result.type.ccount = writeMask.popCount();
     result.id = result.type.ccount > 1
       ? m_module.opCompositeConstruct(getVectorTypeId(result.type),
           result.type.ccount, swizzleIds.data())
@@ -4587,9 +4587,9 @@ namespace dxvk {
     // If the source value consists of only one component,
     // it is stored in all components of the destination.
     if (value.type.ccount == 1)
-      value = emitRegisterExtend(value, writeMask.setCount());
+      value = emitRegisterExtend(value, writeMask.popCount());
     
-    if (ptr.type.ccount == writeMask.setCount()) {
+    if (ptr.type.ccount == writeMask.popCount()) {
       // Simple case: We write to the entire register
       m_module.opStore(ptr.id, value.id);
     } else {
@@ -4679,7 +4679,7 @@ namespace dxvk {
         }
         
         result.type.ctype  = DxbcScalarType::Uint32;
-        result.type.ccount = writeMask.setCount();
+        result.type.ccount = writeMask.popCount();
         result.id = indices.at(0);
         
         if (indexId > 1) {
@@ -5354,7 +5354,7 @@ namespace dxvk {
        && e->registerId  != 0xFFFFFFFF /* depth */) {
         DxbcRegisterInfo info;
         info.type.ctype   = e->componentType;
-        info.type.ccount  = e->componentMask.setCount();
+        info.type.ccount  = e->componentMask.popCount();
         info.type.alength = 0;
         info.sclass = spv::StorageClassOutput;
         

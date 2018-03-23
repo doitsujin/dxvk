@@ -49,6 +49,7 @@ namespace dxvk {
     
     DxbcAnalyzer analyzer(options,
       m_shexChunk->version(),
+      m_isgnChunk, m_osgnChunk,
       analysisInfo);
     
     DxbcCompiler compiler(options,
