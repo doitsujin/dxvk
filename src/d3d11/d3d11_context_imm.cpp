@@ -220,10 +220,7 @@ namespace dxvk {
     if (pResource->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT) {
       const VkImageType imageType = mappedImage->info().type;
       
-      // Wait for the resource to become available. Forwarding
-      // DO_NOT_WAIT would break The Witcher 3 for some reason.
-      MapFlags &= ~D3D11_MAP_FLAG_DO_NOT_WAIT;
-      
+      // Wait for the resource to become available
       if (!WaitForResource(mappedImage, MapFlags))
         return DXGI_ERROR_WAS_STILL_DRAWING;
       
@@ -346,6 +343,11 @@ namespace dxvk {
   bool D3D11ImmediateContext::WaitForResource(
     const Rc<DxvkResource>&                 Resource,
           UINT                              MapFlags) {
+    // Some games (e.g. The Witcher 3) do not work correctly
+    // when a map fails with D3D11_MAP_FLAG_DO_NOT_WAIT set
+    if (m_parent->TestOption(D3D11Option::IgnoreMapFlagNoWait))
+      MapFlags &= ~D3D11_MAP_FLAG_DO_NOT_WAIT;
+    
     // Wait for the any pending D3D11 command to be executed
     // on the CS thread so that we can determine whether the
     // resource is currently in use or not.

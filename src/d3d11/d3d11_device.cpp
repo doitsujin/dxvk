@@ -25,6 +25,7 @@ namespace dxvk {
     m_featureFlags  (featureFlags),
     m_dxvkDevice    (m_dxgiDevice->GetDXVKDevice()),
     m_dxvkAdapter   (m_dxvkDevice->adapter()),
+    m_d3d11Options  (D3D11GetAppOptions(env::getExeName())),
     m_dxbcOptions   (m_dxvkDevice) {
     Com<IDXGIAdapter> adapter;
     

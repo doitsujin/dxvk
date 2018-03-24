@@ -11,6 +11,7 @@ d3d11_src = [
   'd3d11_enums.cpp',
   'd3d11_input_layout.cpp',
   'd3d11_main.cpp',
+  'd3d11_options.cpp',
   'd3d11_present.cpp',
   'd3d11_query.cpp',
   'd3d11_rasterizer.cpp',

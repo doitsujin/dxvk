@@ -10,6 +10,7 @@
 #include "../util/com/com_private_data.h"
 
 #include "d3d11_interfaces.h"
+#include "d3d11_options.h"
 #include "d3d11_state.h"
 #include "d3d11_util.h"
 
@@ -283,6 +284,10 @@ namespace dxvk {
             DXGI_FORMAT           format,
             DxgiFormatMode        mode) const;
     
+    bool TestOption(D3D11Option Option) const {
+      return m_d3d11Options.test(Option);
+    }
+    
     static bool CheckFeatureLevelSupport(
       const Rc<DxvkAdapter>&  adapter,
             D3D_FEATURE_LEVEL featureLevel);
@@ -303,6 +308,7 @@ namespace dxvk {
     const Rc<DxvkDevice>            m_dxvkDevice;
     const Rc<DxvkAdapter>           m_dxvkAdapter;
     
+    const D3D11OptionSet            m_d3d11Options;
     const DxbcOptions               m_dxbcOptions;
     
     D3D11ImmediateContext*          m_context = nullptr;
