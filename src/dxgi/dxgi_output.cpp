@@ -61,70 +61,61 @@ namespace dxvk {
       Logger::err("DxgiOutput::FindClosestMatchingMode: no pointer to device was provided for DXGI_FORMAT_UNKNOWN format");
       return DXGI_ERROR_INVALID_CALL;
     }
-
-    if (pModeToMatch->Format == DXGI_FORMAT_UNKNOWN) {
-      /* TODO: perform additional format matching
-      https://msdn.microsoft.com/en-us/library/windows/desktop/bb174547(v=vs.85).aspx?f=255&MSPPError=-2147217396
-      > If pConcernedDevice is NULL, Format CANNOT be DXGI_FORMAT_UNKNOWN.
-      and vice versa
-      >If pConcernedDevice is NOT NULL, Format COULD be DXGI_FORMAT_UNKNOWN.
- 
-      But Format in structures from GetDisplayModeList() cannot be
-      DXGI_FORMAT_UNKNOWN by definition.
-      
-      There is way in case of DXGI_FORMAT_UNKNOWN and pDevice != nullptr we
-      should perform additional format matching. It may be just ignoring of
-      Format field or using some range of formats but MSDN nothing says 
-      about of criteria.  
-      */
-      Logger::err("DxgiOutput::FindClosestMatchingMode: matching formats to device currently is not supported");
-      return DXGI_ERROR_UNSUPPORTED;
-    }
- 
+    
+    // If no format was specified, fall back to a standard
+    // SRGB format, which is supported on all devices.
+    DXGI_FORMAT formatToMatch = pModeToMatch->Format;
+    
+    if (formatToMatch == DXGI_FORMAT_UNKNOWN)
+      formatToMatch = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    
+    // List all supported modes and filter
+    // out those we don't actually need
     DXGI_MODE_DESC modeToMatch = *pModeToMatch;
-    UINT modesCount = 0;
-    GetDisplayModeList(pModeToMatch->Format, 0, &modesCount, nullptr);
-
-    if (modesCount == 0) {
-      Logger::err("DxgiOutput::FindClosestMatchingMode: no device formats were found");
+    UINT modeCount = 0;
+    GetDisplayModeList(formatToMatch, 0, &modeCount, nullptr);
+    
+    if (modeCount == 0) {
+      Logger::err("DxgiOutput::FindClosestMatchingMode: No modes found");
       return DXGI_ERROR_NOT_FOUND;
     }
 
-    std::vector<DXGI_MODE_DESC> modes(modesCount);
-    GetDisplayModeList(pModeToMatch->Format, 0, &modesCount, modes.data());
+    std::vector<DXGI_MODE_DESC> modes(modeCount);
+    GetDisplayModeList(formatToMatch, 0, &modeCount, modes.data());
 
-    /* TODO: add scaling and scanline filter when we implement they */
-
-    //filter out modes with different refresh rate if it was set
-    if (modeToMatch.RefreshRate.Denominator != 0 && modeToMatch.RefreshRate.Numerator != 0) {
-      UINT targetRefreshRate = modeToMatch.RefreshRate.Numerator / modeToMatch.RefreshRate.Denominator;
-      for (auto it = modes.begin(); it != modes.end();) {
-        UINT modeRefreshRate = it->RefreshRate.Numerator / it->RefreshRate.Denominator;
+    // Filter out modes with different refresh rate
+    if (modeToMatch.RefreshRate.Denominator != 0
+     && modeToMatch.RefreshRate.Numerator   != 0) {
+      UINT targetRefreshRate = modeToMatch.RefreshRate.Numerator
+                             / modeToMatch.RefreshRate.Denominator;
+      
+      for (auto it = modes.begin(); it != modes.end(); ) {
+        UINT modeRefreshRate = it->RefreshRate.Numerator
+                             / it->RefreshRate.Denominator;
+        
         if (modeRefreshRate != targetRefreshRate)
           it = modes.erase(it);
         else
-          ++it;
+          it++;
       }
     }
-
-    // return error when there is no modes with target refresh rate and scanline order
-    if(modes.size() == 0) {
-      Logger::err("DxgiOutput::FindClosestMatchingMode: no matched formats were found");
+    
+    // No matching modes found
+    if (modes.size() == 0)
       return DXGI_ERROR_NOT_FOUND;
-    }
 
-    //select mode with minimal height+width difference
+    // Select mode with minimal height+width difference
     UINT minDifference = UINT_MAX;
     for (auto& mode : modes) {
-      UINT currDifference = abs((int)(modeToMatch.Width - mode.Width))
-        + abs((int)(modeToMatch.Height - mode.Height));
+      UINT currDifference = abs((int)(modeToMatch.Width  - mode.Width))
+                          + abs((int)(modeToMatch.Height - mode.Height));
 
       if (currDifference < minDifference) {
         minDifference = currDifference;
         *pClosestMatch = mode;
       }
     }
-
+    
     return S_OK;
   }
   
