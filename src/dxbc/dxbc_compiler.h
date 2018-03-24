@@ -392,6 +392,9 @@ namespace dxvk {
     // the shader stage, these may be declared as arrays.
     uint32_t m_perVertexOut = 0;
     
+    uint32_t m_clipDistances = 0;
+    uint32_t m_cullDistances = 0;
+    
     //////////////////////////////////////////////////
     // Immediate constant buffer. If defined, this is
     // an array of four-component uint32 vectors.
@@ -877,6 +880,16 @@ namespace dxvk {
             DxbcRegMask             mask,
       const DxbcRegisterValue&      value);
     
+    ///////////////////////////////
+    // Special system value stores
+    void emitClipCullStore(
+            DxbcSystemValue         sv,
+            uint32_t                dstArray);
+    
+    void emitClipCullLoad(
+            DxbcSystemValue         sv,
+            uint32_t                srcArray);
+    
     //////////////////////////////////////
     // Common function definition methods
     void emitInit();
@@ -929,6 +942,11 @@ namespace dxvk {
     // Misc stuff
     void emitDclInputArray(
             uint32_t          vertexCount);
+    
+    uint32_t emitDclClipCullDistanceArray(
+            uint32_t          length,
+            spv::BuiltIn      builtIn,
+            spv::StorageClass storageClass);
     
     DxbcCompilerHsControlPointPhase emitNewHullShaderControlPointPhase();
     

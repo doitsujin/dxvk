@@ -585,11 +585,13 @@ namespace dxvk {
       m_interfaceSlots.inputSlots |= 1u << regIdx;
     } else if (sv != DxbcSystemValue::None) {
       // Add a new system value mapping if needed
-      bool skipSv = sv == DxbcSystemValue::Position
-                 || sv == DxbcSystemValue::ClipDistance
+      bool skipSv = sv == DxbcSystemValue::ClipDistance
                  || sv == DxbcSystemValue::CullDistance;
       
-      if (!skipSv || m_version.type() == DxbcProgramType::PixelShader)
+      if (m_version.type() != DxbcProgramType::PixelShader)
+        skipSv = skipSv || sv == DxbcSystemValue::Position;
+      
+      if (!skipSv)
         m_vMappings.push_back({ regIdx, regMask, sv });
     }
   }
@@ -601,8 +603,11 @@ namespace dxvk {
           DxbcRegMask             regMask,
           DxbcSystemValue         sv,
           DxbcInterpolationMode   im) {
-    // Add a new system value mapping if needed
-    if (sv != DxbcSystemValue::None)
+    // Add a new system value mapping if needed. Clip
+    // and cull distances are handled separately.
+    if (sv != DxbcSystemValue::None
+     && sv != DxbcSystemValue::ClipDistance
+     && sv != DxbcSystemValue::CullDistance)
       m_oMappings.push_back({ regIdx, regMask, sv });
     
     // Hull shaders don't use standard outputs
@@ -1942,6 +1947,8 @@ namespace dxvk {
       case DxbcOpcode::Emit:
       case DxbcOpcode::EmitStream: {
         emitOutputSetup();
+        emitClipCullStore(DxbcSystemValue::ClipDistance, m_clipDistances);
+        emitClipCullStore(DxbcSystemValue::CullDistance, m_cullDistances);
         m_module.opEmitVertex();
       } break;
       
@@ -5165,6 +5172,105 @@ namespace dxvk {
   }
   
   
+  void DxbcCompiler::emitClipCullStore(
+          DxbcSystemValue         sv,
+          uint32_t                dstArray) {
+    uint32_t offset = 0;
+    
+    if (dstArray == 0)
+      return;
+    
+    for (auto e = m_osgn->begin(); e != m_osgn->end(); e++) {
+      if (e->systemValue == sv) {
+        DxbcRegisterPointer srcPtr;
+        srcPtr.type = { DxbcScalarType::Float32, 4 };
+        srcPtr.id = m_oRegs.at(e->registerId);
+        
+        DxbcRegisterValue srcValue = emitValueLoad(srcPtr);
+        
+        for (uint32_t i = 0; i < 4; i++) {
+          if (e->componentMask[i]) {
+            uint32_t offsetId = m_module.consti32(offset++);
+            
+            DxbcRegisterValue component = emitRegisterExtract(
+              srcValue, DxbcRegMask::select(i));
+            
+            DxbcRegisterPointer dstPtr;
+            dstPtr.type = { DxbcScalarType::Float32, 1 };
+            dstPtr.id = m_module.opAccessChain(
+              m_module.defPointerType(
+                getVectorTypeId(dstPtr.type),
+                spv::StorageClassOutput),
+              dstArray, 1, &offsetId);
+            
+            emitValueStore(dstPtr, component,
+              DxbcRegMask(true, false, false, false));
+          }
+        }
+      }
+    }
+  }
+  
+  
+  void DxbcCompiler::emitClipCullLoad(
+          DxbcSystemValue         sv,
+          uint32_t                srcArray) {
+    uint32_t offset = 0;
+    
+    if (srcArray == 0)
+      return;
+    
+    for (auto e = m_isgn->begin(); e != m_isgn->end(); e++) {
+      if (e->systemValue == sv) {
+        // Load individual components from the source array
+        uint32_t                componentIndex = 0;
+        std::array<uint32_t, 4> componentIds   = {{ 0, 0, 0, 0 }};
+        
+        for (uint32_t i = 0; i < 4; i++) {
+          if (e->componentMask[i]) {
+            uint32_t offsetId = m_module.consti32(offset++);
+            
+            DxbcRegisterPointer srcPtr;
+            srcPtr.type = { DxbcScalarType::Float32, 1 };
+            srcPtr.id = m_module.opAccessChain(
+              m_module.defPointerType(
+                getVectorTypeId(srcPtr.type),
+                spv::StorageClassInput),
+              srcArray, 1, &offsetId);
+            
+            componentIds[componentIndex++]
+              = emitValueLoad(srcPtr).id;
+          }
+        }
+        
+        // Put everything into one vector
+        DxbcRegisterValue dstValue;
+        dstValue.type = { DxbcScalarType::Float32, componentIndex };
+        dstValue.id = componentIds[0];
+        
+        if (componentIndex > 1) {
+          dstValue.id = m_module.opCompositeConstruct(
+            getVectorTypeId(dstValue.type),
+            componentIndex, componentIds.data());
+        }
+        
+        // Store vector to the input array
+        uint32_t registerId = m_module.consti32(e->registerId);
+        
+        DxbcRegisterPointer dstInput;
+        dstInput.type = { DxbcScalarType::Float32, 4 };
+        dstInput.id = m_module.opAccessChain(
+          m_module.defPointerType(
+            getVectorTypeId(dstInput.type),
+            spv::StorageClassPrivate),
+          m_vArray, 1, &registerId);
+        
+        emitValueStore(dstInput, dstValue, e->componentMask);
+      }
+    }
+  }
+  
+  
   void DxbcCompiler::emitInit() {
     // Set up common capabilities for all shaders
     m_module.enableCapability(spv::CapabilityShader);
@@ -5221,6 +5327,17 @@ namespace dxvk {
     // Standard input array
     emitDclInputArray(0);
     
+    // Cull/clip distances as outputs
+    m_clipDistances = emitDclClipCullDistanceArray(
+      m_analysis->clipCullOut.numClipPlanes,
+      spv::BuiltInClipDistance,
+      spv::StorageClassOutput);
+    
+    m_cullDistances = emitDclClipCullDistanceArray(
+      m_analysis->clipCullOut.numCullPlanes,
+      spv::BuiltInCullDistance,
+      spv::StorageClassOutput);
+    
     // Main function of the vertex shader
     m_vs.functionId = m_module.allocateId();
     m_module.setDebugName(m_vs.functionId, "vs_main");
@@ -5265,6 +5382,17 @@ namespace dxvk {
     const uint32_t perVertexPointer = m_module.defPointerType(
       perVertexStruct, spv::StorageClassOutput);
     
+    // Cull/clip distances as outputs
+    m_clipDistances = emitDclClipCullDistanceArray(
+      m_analysis->clipCullOut.numClipPlanes,
+      spv::BuiltInClipDistance,
+      spv::StorageClassOutput);
+    
+    m_cullDistances = emitDclClipCullDistanceArray(
+      m_analysis->clipCullOut.numCullPlanes,
+      spv::BuiltInCullDistance,
+      spv::StorageClassOutput);
+    
     m_perVertexOut = m_module.newVar(
       perVertexPointer, spv::StorageClassOutput);
     m_entryPointInterfaces.push_back(m_perVertexOut);
@@ -5300,6 +5428,17 @@ namespace dxvk {
       perVertexPointer, spv::StorageClassOutput);
     m_entryPointInterfaces.push_back(m_perVertexOut);
     m_module.setDebugName(m_perVertexOut, "gs_vertex_out");
+    
+    // Cull/clip distances as outputs
+    m_clipDistances = emitDclClipCullDistanceArray(
+      m_analysis->clipCullOut.numClipPlanes,
+      spv::BuiltInClipDistance,
+      spv::StorageClassOutput);
+    
+    m_cullDistances = emitDclClipCullDistanceArray(
+      m_analysis->clipCullOut.numCullPlanes,
+      spv::BuiltInCullDistance,
+      spv::StorageClassOutput);
     
     // Main function of the vertex shader
     m_gs.functionId = m_module.allocateId();
@@ -5349,6 +5488,17 @@ namespace dxvk {
     // Standard input array
     emitDclInputArray(0);
     
+    // Cull/clip distances as inputs
+    m_clipDistances = emitDclClipCullDistanceArray(
+      m_analysis->clipCullIn.numClipPlanes,
+      spv::BuiltInClipDistance,
+      spv::StorageClassInput);
+    
+    m_cullDistances = emitDclClipCullDistanceArray(
+      m_analysis->clipCullIn.numCullPlanes,
+      spv::BuiltInCullDistance,
+      spv::StorageClassInput);
+    
     // Main function of the pixel shader
     m_ps.functionId = m_module.allocateId();
     m_module.setDebugName(m_ps.functionId, "ps_main");
@@ -5385,6 +5535,8 @@ namespace dxvk {
       m_module.defVoidType(),
       m_vs.functionId, 0, nullptr);
     this->emitOutputSetup();
+    this->emitClipCullStore(DxbcSystemValue::ClipDistance, m_clipDistances);
+    this->emitClipCullStore(DxbcSystemValue::CullDistance, m_cullDistances);
     this->emitMainFunctionEnd();
   }
   
@@ -5427,6 +5579,8 @@ namespace dxvk {
       m_module.defVoidType(),
       m_ds.functionId, 0, nullptr);
     this->emitOutputSetup();
+    this->emitClipCullStore(DxbcSystemValue::ClipDistance, m_clipDistances);
+    this->emitClipCullStore(DxbcSystemValue::CullDistance, m_cullDistances);
     this->emitMainFunctionEnd();
   }
   
@@ -5447,6 +5601,8 @@ namespace dxvk {
   void DxbcCompiler::emitPsFinalize() {
     this->emitMainFunctionBegin();
     this->emitInputSetup();
+    this->emitClipCullLoad(DxbcSystemValue::ClipDistance, m_clipDistances);
+    this->emitClipCullLoad(DxbcSystemValue::CullDistance, m_cullDistances);
     m_module.opFunctionCall(
       m_module.defVoidType(),
       m_ps.functionId, 0, nullptr);
@@ -5511,6 +5667,29 @@ namespace dxvk {
     
     m_module.setDebugName(varId, "shader_in");
     m_vArray = varId;
+  }
+  
+  
+  uint32_t DxbcCompiler::emitDclClipCullDistanceArray(
+          uint32_t          length,
+          spv::BuiltIn      builtIn,
+          spv::StorageClass storageClass) {
+    if (length == 0)
+      return 0;
+    
+    uint32_t t_f32 = m_module.defFloatType(32);
+    uint32_t t_arr = m_module.defArrayType(t_f32, m_module.constu32(length));
+    uint32_t t_ptr = m_module.defPointerType(t_arr, storageClass);
+    uint32_t varId = m_module.newVar(t_ptr, storageClass);
+    
+    m_module.decorateBuiltIn(varId, builtIn);
+    m_module.setDebugName(varId,
+      builtIn == spv::BuiltInClipDistance
+        ? "clip_distances"
+        : "cull_distances");
+    
+    m_entryPointInterfaces.push_back(varId);
+    return varId;
   }
   
   
