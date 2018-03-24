@@ -390,6 +390,7 @@ namespace dxvk {
     ////////////////////////////////////////////////////
     // Per-vertex input and output blocks. Depending on
     // the shader stage, these may be declared as arrays.
+    uint32_t m_perVertexIn  = 0;
     uint32_t m_perVertexOut = 0;
     
     uint32_t m_clipDistances = 0;
@@ -942,6 +943,10 @@ namespace dxvk {
     // Misc stuff
     void emitDclInputArray(
             uint32_t          vertexCount);
+    
+    void emitDclInputPerVertex(
+            uint32_t          vertexCount,
+      const char*             varName);
     
     uint32_t emitDclClipCullDistanceArray(
             uint32_t          length,

@@ -588,9 +588,6 @@ namespace dxvk {
       bool skipSv = sv == DxbcSystemValue::ClipDistance
                  || sv == DxbcSystemValue::CullDistance;
       
-      if (m_version.type() != DxbcProgramType::PixelShader)
-        skipSv = skipSv || sv == DxbcSystemValue::Position;
-      
       if (!skipSv)
         m_vMappings.push_back({ regIdx, regMask, sv });
     }
@@ -1083,7 +1080,11 @@ namespace dxvk {
     m_gs.inputPrimitive = ins.controls.primitive;
     m_module.setExecutionMode(m_entryPointId, mode);
     
-    emitDclInputArray(primitiveVertexCount(m_gs.inputPrimitive));
+    const uint32_t vertexCount
+      = primitiveVertexCount(m_gs.inputPrimitive);
+    
+    emitDclInputArray(vertexCount);
+    emitDclInputPerVertex(vertexCount, "gs_vertex_in");
   }
   
   
@@ -4929,8 +4930,33 @@ namespace dxvk {
           DxbcSystemValue         sv,
           DxbcRegMask             mask,
           uint32_t                vertexId) {
-    throw DxvkError(str::format(
-      "DxbcCompiler: Unhandled GS SV input: ", sv));
+    switch (sv) {
+      case DxbcSystemValue::Position: {
+        const std::array<uint32_t, 2> indices = {
+          m_module.consti32(vertexId),
+          m_module.consti32(PerVertex_Position),
+        };
+        
+        DxbcRegisterPointer ptrIn;
+        ptrIn.type.ctype  = DxbcScalarType::Float32;
+        ptrIn.type.ccount = 4;
+        
+        ptrIn.id = m_module.opAccessChain(
+          m_module.defPointerType(
+            getVectorTypeId(ptrIn.type),
+            spv::StorageClassInput),
+          m_perVertexIn,
+          indices.size(),
+          indices.data());
+        
+        return emitRegisterExtract(
+          emitValueLoad(ptrIn), mask);
+      } break;
+      
+      default:
+        throw DxvkError(str::format(
+          "DxbcCompiler: Unhandled GS SV input: ", sv));
+    }
   }
   
   
@@ -5669,6 +5695,25 @@ namespace dxvk {
     
     m_module.setDebugName(varId, "shader_in");
     m_vArray = varId;
+  }
+  
+  
+  void DxbcCompiler::emitDclInputPerVertex(
+          uint32_t          vertexCount,
+    const char*             varName) {
+    uint32_t typeId = getPerVertexBlockId();
+    
+    if (vertexCount != 0) {
+      typeId = m_module.defArrayType(typeId,
+        m_module.constu32(vertexCount));
+    }
+    
+    const uint32_t ptrTypeId = m_module.defPointerType(
+      typeId, spv::StorageClassInput);
+    
+    m_perVertexIn = m_module.newVar(
+      ptrTypeId, spv::StorageClassInput);
+    m_module.setDebugName(m_perVertexIn, varName);
   }
   
   
