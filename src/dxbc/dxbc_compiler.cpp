@@ -779,6 +779,8 @@ namespace dxvk {
     // Declare the actual sampled type
     const DxbcScalarType sampledType = [xType] {
       switch (xType) {
+        // FIXME is this correct? There's no documentation about it
+        case DxbcResourceReturnType::Mixed: return DxbcScalarType::Uint32;
         // FIXME do we have to manually clamp writes to SNORM/UNORM resources?
         case DxbcResourceReturnType::Snorm: return DxbcScalarType::Float32;
         case DxbcResourceReturnType::Unorm: return DxbcScalarType::Float32;
