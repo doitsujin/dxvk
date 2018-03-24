@@ -1,3 +1,5 @@
+#include <unordered_map>
+
 #include "d3d11_options.h"
 
 namespace dxvk {
