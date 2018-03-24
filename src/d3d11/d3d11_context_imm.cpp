@@ -345,7 +345,7 @@ namespace dxvk {
           UINT                              MapFlags) {
     // Some games (e.g. The Witcher 3) do not work correctly
     // when a map fails with D3D11_MAP_FLAG_DO_NOT_WAIT set
-    if (m_parent->TestOption(D3D11Option::IgnoreMapFlagNoWait))
+    if (!m_parent->TestOption(D3D11Option::AllowMapFlagNoWait))
       MapFlags &= ~D3D11_MAP_FLAG_DO_NOT_WAIT;
     
     // Wait for the any pending D3D11 command to be executed

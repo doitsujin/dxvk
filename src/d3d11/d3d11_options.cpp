@@ -5,7 +5,7 @@
 namespace dxvk {
   
   const static std::unordered_map<std::string, D3D11OptionSet> g_d3d11AppOptions = {{
-    { "witcher3.exe", D3D11OptionSet(D3D11Option::IgnoreMapFlagNoWait) },
+    { "Dishonored2.exe", D3D11OptionSet(D3D11Option::AllowMapFlagNoWait) },
   }};
   
   
