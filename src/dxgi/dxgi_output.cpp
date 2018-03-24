@@ -64,16 +64,23 @@ namespace dxvk {
     
     // If no format was specified, fall back to a standard
     // SRGB format, which is supported on all devices.
-    DXGI_FORMAT formatToMatch = pModeToMatch->Format;
+    DXGI_FORMAT targetFormat = pModeToMatch->Format;
     
-    if (formatToMatch == DXGI_FORMAT_UNKNOWN)
-      formatToMatch = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+    if (targetFormat == DXGI_FORMAT_UNKNOWN)
+      targetFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
+      
+    UINT targetRefreshRate = 0;
+    
+    if (pModeToMatch->RefreshRate.Denominator != 0
+     && pModeToMatch->RefreshRate.Numerator   != 0) {
+      targetRefreshRate = pModeToMatch->RefreshRate.Numerator
+                        / pModeToMatch->RefreshRate.Denominator;
+    }
     
     // List all supported modes and filter
     // out those we don't actually need
-    DXGI_MODE_DESC modeToMatch = *pModeToMatch;
     UINT modeCount = 0;
-    GetDisplayModeList(formatToMatch, 0, &modeCount, nullptr);
+    GetDisplayModeList(targetFormat, DXGI_ENUM_MODES_SCALING, &modeCount, nullptr);
     
     if (modeCount == 0) {
       Logger::err("DxgiOutput::FindClosestMatchingMode: No modes found");
@@ -81,23 +88,23 @@ namespace dxvk {
     }
 
     std::vector<DXGI_MODE_DESC> modes(modeCount);
-    GetDisplayModeList(formatToMatch, 0, &modeCount, modes.data());
-
-    // Filter out modes with different refresh rate
-    if (modeToMatch.RefreshRate.Denominator != 0
-     && modeToMatch.RefreshRate.Numerator   != 0) {
-      UINT targetRefreshRate = modeToMatch.RefreshRate.Numerator
-                             / modeToMatch.RefreshRate.Denominator;
+    GetDisplayModeList(targetFormat, DXGI_ENUM_MODES_SCALING, &modeCount, modes.data());
+    
+    for (auto it = modes.begin(); it != modes.end(); ) {
+      bool skipMode = false;
       
-      for (auto it = modes.begin(); it != modes.end(); ) {
+      // Remove modes with a different refresh rate
+      if (targetRefreshRate != 0) {
         UINT modeRefreshRate = it->RefreshRate.Numerator
                              / it->RefreshRate.Denominator;
-        
-        if (modeRefreshRate != targetRefreshRate)
-          it = modes.erase(it);
-        else
-          it++;
+        skipMode |= modeRefreshRate != targetRefreshRate;
       }
+      
+      // Remove modes with incorrect scaling
+      if (pModeToMatch->Scaling != DXGI_MODE_SCALING_UNSPECIFIED)
+        skipMode |= it->Scaling != pModeToMatch->Scaling;
+      
+      it = skipMode ? modes.erase(it) : ++it;
     }
     
     // No matching modes found
@@ -106,9 +113,10 @@ namespace dxvk {
 
     // Select mode with minimal height+width difference
     UINT minDifference = UINT_MAX;
+    
     for (auto& mode : modes) {
-      UINT currDifference = abs((int)(modeToMatch.Width  - mode.Width))
-                          + abs((int)(modeToMatch.Height - mode.Height));
+      UINT currDifference = std::abs(int(pModeToMatch->Width  - mode.Width))
+                          + std::abs(int(pModeToMatch->Height - mode.Height));
 
       if (currDifference < minDifference) {
         minDifference = currDifference;
@@ -125,8 +133,8 @@ namespace dxvk {
       return DXGI_ERROR_INVALID_CALL;
     
     ::MONITORINFOEX monInfo;
-
     monInfo.cbSize = sizeof(monInfo);
+
     if (!::GetMonitorInfo(m_monitor, &monInfo)) {
       Logger::err("DxgiOutput: Failed to query monitor info");
       return E_FAIL;
@@ -150,14 +158,11 @@ namespace dxvk {
           DXGI_MODE_DESC *pDesc) {
     if (pNumModes == nullptr)
       return DXGI_ERROR_INVALID_CALL;
-
-    if (Flags != 0)
-      Logger::warn("DxgiOutput::GetDisplayModeList: flags are ignored");
     
     // Query monitor info to get the device name
     ::MONITORINFOEX monInfo;
-
     monInfo.cbSize = sizeof(monInfo);
+
     if (!::GetMonitorInfo(m_monitor, &monInfo)) {
       Logger::err("DxgiOutput: Failed to query monitor info");
       return E_FAIL;
@@ -170,6 +175,8 @@ namespace dxvk {
     uint32_t srcModeId = 0;
     uint32_t dstModeId = 0;
     
+    const bool includeStretchedModes = (Flags & DXGI_ENUM_MODES_SCALING);
+    
     while (::EnumDisplaySettings(monInfo.szDevice, srcModeId++, &devMode)) {
       // Skip interlaced modes altogether
       if (devMode.dmDisplayFlags & DM_INTERLACED)
@@ -177,6 +184,13 @@ namespace dxvk {
       
       // Skip modes with incompatible formats
       if (devMode.dmBitsPerPel != GetFormatBpp(EnumFormat))
+        continue;
+      
+      // Skip stretched modes unless they are requested
+      const bool isStretched = devMode.dmPelsWidth  != UINT(monInfo.rcMonitor.right  - monInfo.rcMonitor.left)
+                            || devMode.dmPelsHeight != UINT(monInfo.rcMonitor.bottom - monInfo.rcMonitor.top);
+      
+      if (isStretched && !includeStretchedModes)
         continue;
       
       // Write back display mode
@@ -190,7 +204,10 @@ namespace dxvk {
         mode.RefreshRate      = { devMode.dmDisplayFrequency, 1 };
         mode.Format           = EnumFormat;
         mode.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_PROGRESSIVE;
-        mode.Scaling          = DXGI_MODE_SCALING_CENTERED;
+        mode.Scaling          = isStretched
+          ? DXGI_MODE_SCALING_STRETCHED
+          : DXGI_MODE_SCALING_CENTERED;
+        
         pDesc[dstModeId] = mode;
       }
       

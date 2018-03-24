@@ -99,17 +99,18 @@ int WINAPI WinMain(HINSTANCE hInstance,
       for (auto mode : modes) {
         std::cout << str::format("  ",
           mode.Width, "x", mode.Height, " @ ",
-          mode.RefreshRate.Numerator / mode.RefreshRate.Denominator) << std::endl;
+          mode.RefreshRate.Numerator / mode.RefreshRate.Denominator,
+          mode.Scaling == DXGI_MODE_SCALING_CENTERED ? " (native)" : "") << std::endl;
 
         //test matching modes
         DXGI_MODE_DESC matched_mode{ 0 };
         status = output->FindClosestMatchingMode(&mode, &matched_mode, nullptr);
 
         if (status != S_OK) {
-            std::cerr << "Failed to get DXGI matched mode" << std::endl;
+            std::cerr << "Failed to get matching mode" << std::endl;
             return 1;
         }
-
+        
         if (matched_mode.Width != mode.Width ||
             matched_mode.Height != mode.Height ||
             matched_mode.RefreshRate.Numerator != mode.RefreshRate.Numerator ||
