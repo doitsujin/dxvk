@@ -1748,8 +1748,6 @@ namespace dxvk {
       subresources.baseArrayLayer = 0;
       subresources.layerCount     = image->info().numLayers;
       
-      const DxvkFormatInfo* formatInfo = imageFormatInfo(image->info().format);
-      
       if (formatInfo->flags.test(DxvkFormatFlag::BlockCompressed)) {
         m_resourceInitContext->initImage(
           image, subresources);
