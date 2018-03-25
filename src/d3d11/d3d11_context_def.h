@@ -6,6 +6,7 @@
 #include "d3d11_texture.h"
 
 #include <algorithm>
+#include <vector>
 
 namespace dxvk {
   
@@ -65,31 +66,33 @@ namespace dxvk {
     std::vector<D3D11DeferredContextMapEntry> m_mappedResources;
     
     HRESULT MapBuffer(
-            D3D11Buffer*                pResource,
-            D3D11_MAP                   MapType,
-            UINT                        MapFlags,
-            D3D11_MAPPED_SUBRESOURCE*   pMappedResource);
+            ID3D11Resource*               pResource,
+            D3D11_MAP                     MapType,
+            UINT                          MapFlags,
+            D3D11DeferredContextMapEntry* pMapEntry);
     
     HRESULT MapImage(
-            D3D11CommonTexture*         pResource,
-            UINT                        Subresource,
-            D3D11_MAP                   MapType,
-            UINT                        MapFlags,
-            D3D11_MAPPED_SUBRESOURCE*   pMappedResource);
+            ID3D11Resource*               pResource,
+            UINT                          Subresource,
+            D3D11_MAP                     MapType,
+            UINT                          MapFlags,
+            D3D11DeferredContextMapEntry* pMapEntry);
     
     void UnmapBuffer(
-            D3D11Buffer*                pResource);
+            ID3D11Resource*               pResource,
+      const D3D11DeferredContextMapEntry* pMapEntry);
     
     void UnmapImage(
-            D3D11CommonTexture*         pResource,
-            UINT                        Subresource);
+            ID3D11Resource*               pResource,
+            UINT                          Subresource,
+      const D3D11DeferredContextMapEntry* pMapEntry);
     
     Com<D3D11CommandList> CreateCommandList();
     
     void EmitCsChunk(Rc<DxvkCsChunk>&& chunk) final;
     
     auto FindMapEntry(ID3D11Resource* pResource, UINT Subresource) {
-      return std::find_if(m_mappedResources.begin(), m_mappedResources.end(),
+      return std::find_if(m_mappedResources.rbegin(), m_mappedResources.rend(),
         [pResource, Subresource] (const D3D11DeferredContextMapEntry& entry) {
           return entry.pResource   == pResource
               && entry.Subresource == Subresource;
