@@ -169,12 +169,16 @@ namespace dxvk {
     const auto exeName = env::getExeName();
     const auto filename = Sha1Hash::compute(
       reinterpret_cast<const uint8_t*>(exeName.c_str()), exeName.size());
-    
-    const auto temp = env::getTempDirectory();
-    
-    if (temp.size() != 0)
-      return str::format(temp, filename.toString(), ".pipecache");
-    
+
+    auto pipeCacheDir = env::getEnvVar(L"DXVK_PIPECACHE_DIR");
+
+    if (pipeCacheDir.size() == 0)
+      pipeCacheDir = env::getTempDirectory();
+
+    if (pipeCacheDir.size() != 0) {
+      return str::format(pipeCacheDir, filename.toString(), ".pipecache");
+    }
+
     return std::string();
   }
   
