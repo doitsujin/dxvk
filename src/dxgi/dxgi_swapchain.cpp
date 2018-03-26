@@ -139,8 +139,11 @@ namespace dxvk {
     if (pFullscreen != nullptr)
       *pFullscreen = !m_desc.Windowed;
     
-    if ((ppTarget != nullptr) && !m_desc.Windowed)
-      hr = this->GetContainingOutput(ppTarget);
+    if (ppTarget != nullptr) {
+      *ppTarget = nullptr;
+      if (!m_desc.Windowed)
+        hr = this->GetContainingOutput(ppTarget);
+    }
     
     return hr;
   }
