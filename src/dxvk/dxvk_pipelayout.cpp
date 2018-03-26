@@ -70,24 +70,27 @@ namespace dxvk {
       tEntries[i].stride          = 0;
     }
     
-    // Create descriptor set layout
-    VkDescriptorSetLayoutCreateInfo dsetInfo;
-    dsetInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    dsetInfo.pNext        = nullptr;
-    dsetInfo.flags        = 0;
-    dsetInfo.bindingCount = bindings.size();
-    dsetInfo.pBindings    = bindings.data();
+    // Create descriptor set layout. We do not need to
+    // create one if there are no active resource bindings.
+    if (bindingCount > 0) {
+      VkDescriptorSetLayoutCreateInfo dsetInfo;
+      dsetInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+      dsetInfo.pNext        = nullptr;
+      dsetInfo.flags        = 0;
+      dsetInfo.bindingCount = bindings.size();
+      dsetInfo.pBindings    = bindings.data();
+      
+      if (m_vkd->vkCreateDescriptorSetLayout(m_vkd->device(),
+            &dsetInfo, nullptr, &m_descriptorSetLayout) != VK_SUCCESS)
+        throw DxvkError("DxvkPipelineLayout: Failed to create descriptor set layout");
+    }
     
-    if (m_vkd->vkCreateDescriptorSetLayout(m_vkd->device(),
-          &dsetInfo, nullptr, &m_descriptorSetLayout) != VK_SUCCESS)
-      throw DxvkError("DxvkPipelineLayout: Failed to create descriptor set layout");
-    
-    // Create pipeline layout
+    // Create pipeline layout with the given descriptor set layout
     VkPipelineLayoutCreateInfo pipeInfo;
     pipeInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipeInfo.pNext                  = nullptr;
     pipeInfo.flags                  = 0;
-    pipeInfo.setLayoutCount         = 1;
+    pipeInfo.setLayoutCount         = bindingCount > 0 ? 1 : 0;
     pipeInfo.pSetLayouts            = &m_descriptorSetLayout;
     pipeInfo.pushConstantRangeCount = 0;
     pipeInfo.pPushConstantRanges    = nullptr;
@@ -98,24 +101,27 @@ namespace dxvk {
       throw DxvkError("DxvkPipelineLayout: Failed to create pipeline layout");
     }
     
-    // Create descriptor update template
-    VkDescriptorUpdateTemplateCreateInfoKHR templateInfo;
-    templateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO_KHR;
-    templateInfo.pNext = nullptr;
-    templateInfo.flags = 0;
-    templateInfo.descriptorUpdateEntryCount = tEntries.size();
-    templateInfo.pDescriptorUpdateEntries   = tEntries.data();
-    templateInfo.templateType               = VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET_KHR;
-    templateInfo.descriptorSetLayout        = m_descriptorSetLayout;
-    templateInfo.pipelineBindPoint          = pipelineBindPoint;
-    templateInfo.pipelineLayout             = m_pipelineLayout;
-    templateInfo.set                        = 0;
-    
-    if (m_vkd->vkCreateDescriptorUpdateTemplateKHR(m_vkd->device(),
-        &templateInfo, nullptr, &m_descriptorTemplate) != VK_SUCCESS) {
-      m_vkd->vkDestroyDescriptorSetLayout(m_vkd->device(), m_descriptorSetLayout, nullptr);
-      m_vkd->vkDestroyPipelineLayout(m_vkd->device(), m_pipelineLayout, nullptr);
-      throw DxvkError("DxvkPipelineLayout: Failed to create descriptor update template");
+    // Create descriptor update template. If there are no active
+    // resource bindings, there won't be any descriptors to update.
+    if (bindingCount > 0) {
+      VkDescriptorUpdateTemplateCreateInfoKHR templateInfo;
+      templateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO_KHR;
+      templateInfo.pNext = nullptr;
+      templateInfo.flags = 0;
+      templateInfo.descriptorUpdateEntryCount = tEntries.size();
+      templateInfo.pDescriptorUpdateEntries   = tEntries.data();
+      templateInfo.templateType               = VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET_KHR;
+      templateInfo.descriptorSetLayout        = m_descriptorSetLayout;
+      templateInfo.pipelineBindPoint          = pipelineBindPoint;
+      templateInfo.pipelineLayout             = m_pipelineLayout;
+      templateInfo.set                        = 0;
+      
+      if (m_vkd->vkCreateDescriptorUpdateTemplateKHR(
+          m_vkd->device(), &templateInfo, nullptr, &m_descriptorTemplate) != VK_SUCCESS) {
+        m_vkd->vkDestroyDescriptorSetLayout(m_vkd->device(), m_descriptorSetLayout, nullptr);
+        m_vkd->vkDestroyPipelineLayout(m_vkd->device(), m_pipelineLayout, nullptr);
+        throw DxvkError("DxvkPipelineLayout: Failed to create descriptor update template");
+      }
     }
   }
   
