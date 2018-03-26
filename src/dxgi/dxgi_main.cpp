@@ -9,7 +9,9 @@ namespace dxvk {
     if (riid != __uuidof(IDXGIFactory)
      && riid != __uuidof(IDXGIFactory1)) {
       Logger::err("CreateDXGIFactory: Requested version of IDXGIFactory not supported");
-      return DXGI_ERROR_UNSUPPORTED;
+      Logger::err(str::format(riid));
+      *ppFactory = nullptr;
+      return E_NOINTERFACE;
     }
     
     try {
