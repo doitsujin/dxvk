@@ -5175,6 +5175,25 @@ namespace dxvk {
           DxbcRegMask(true, false, false, false));
       } break;
       
+      case DxbcSystemValue::ViewportId: {
+        if (m_gs.builtinViewportId == 0) {
+          m_gs.builtinViewportId = emitNewBuiltinVariable({
+            { DxbcScalarType::Uint32, 1, 0 },
+            spv::StorageClassOutput },
+            spv::BuiltInViewportIndex,
+            "gs_viewport_id");
+        }
+        
+        DxbcRegisterPointer ptr;
+        ptr.type.ctype   = DxbcScalarType::Uint32;
+        ptr.type.ccount  = 1;
+        ptr.id = m_gs.builtinViewportId;
+        
+        emitValueStore(
+          ptr, emitRegisterExtract(value, mask),
+          DxbcRegMask(true, false, false, false));
+      } break;
+      
       default:
         Logger::warn(str::format(
           "DxbcCompiler: Unhandled GS SV output: ", sv));

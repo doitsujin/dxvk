@@ -119,6 +119,7 @@ namespace dxvk {
     uint32_t              functionId          = 0;
     
     uint32_t builtinLayer         = 0;
+    uint32_t builtinViewportId    = 0;
   };
   
   
