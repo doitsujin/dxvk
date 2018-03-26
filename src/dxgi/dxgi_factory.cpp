@@ -50,8 +50,8 @@ namespace dxvk {
           IUnknown*             pDevice,
           DXGI_SWAP_CHAIN_DESC* pDesc,
           IDXGISwapChain**      ppSwapChain) {
-    if (ppSwapChain == nullptr || pDesc == nullptr)
-      return E_INVALIDARG;
+    if (ppSwapChain == nullptr || pDesc == nullptr || pDevice == NULL)
+      return DXGI_ERROR_INVALID_CALL;
     
     try {
       *ppSwapChain = ref(new DxgiSwapChain(this, pDevice, pDesc));

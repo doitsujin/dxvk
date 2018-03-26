@@ -71,6 +71,9 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE DxgiAdapter::GetDesc(DXGI_ADAPTER_DESC* pDesc) {
+    if (pDesc == nullptr)
+      return E_INVALIDARG;
+
     DXGI_ADAPTER_DESC1 desc1;
     HRESULT hr = this->GetDesc1(&desc1);
     
