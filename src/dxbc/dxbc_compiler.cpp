@@ -5177,6 +5177,8 @@ namespace dxvk {
       
       case DxbcSystemValue::ViewportId: {
         if (m_gs.builtinViewportId == 0) {
+          m_module.enableCapability(spv::CapabilityMultiViewport);
+          
           m_gs.builtinViewportId = emitNewBuiltinVariable({
             { DxbcScalarType::Uint32, 1, 0 },
             spv::StorageClassOutput },
