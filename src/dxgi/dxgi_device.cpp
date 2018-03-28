@@ -4,9 +4,11 @@
 namespace dxvk {
   
   DxgiDevice::DxgiDevice(
-          IDXGIVkAdapter*      pAdapter,
+          IDXGIObject*              pContainer,
+          IDXGIVkAdapter*           pAdapter,
     const VkPhysicalDeviceFeatures* pFeatures)
-  : m_adapter(pAdapter) {
+  : m_container (pContainer),
+    m_adapter   (pAdapter) {
     m_device = m_adapter->GetDXVKAdapter()->createDevice(*pFeatures);
   }
   
@@ -16,25 +18,41 @@ namespace dxvk {
   }
   
   
+  ULONG STDMETHODCALLTYPE DxgiDevice::AddRef() {
+    return m_container->AddRef();
+  }
+  
+  
+  ULONG STDMETHODCALLTYPE DxgiDevice::Release() {
+    return m_container->Release();
+  }
+  
+  
   HRESULT STDMETHODCALLTYPE DxgiDevice::QueryInterface(REFIID riid, void** ppvObject) {
-    COM_QUERY_IFACE(riid, ppvObject, IUnknown);
-    COM_QUERY_IFACE(riid, ppvObject, IDXGIObject);
-    COM_QUERY_IFACE(riid, ppvObject, IDXGIDevice);
-    COM_QUERY_IFACE(riid, ppvObject, IDXGIDevice1);
-    COM_QUERY_IFACE(riid, ppvObject, IDXGIDevice2);
-    COM_QUERY_IFACE(riid, ppvObject, IDXGIVkDevice);
-    
-    if (m_layer != nullptr)
-      return m_layer->QueryInterface(riid, ppvObject);
-    
-    Logger::warn("DxgiDevice::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
-    return E_NOINTERFACE;
+    return m_container->QueryInterface(riid, ppvObject);
   }
   
   
   HRESULT STDMETHODCALLTYPE DxgiDevice::GetParent(REFIID riid, void** ppParent) {
     return m_adapter->QueryInterface(riid, ppParent);
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE DxgiDevice::GetPrivateData(
+    REFGUID Name, UINT* pDataSize, void* pData) {
+    return m_container->GetPrivateData(Name, pDataSize, pData);
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE DxgiDevice::SetPrivateData(
+    REFGUID Name, UINT DataSize, const void* pData) {
+    return m_container->SetPrivateData(Name, DataSize,pData);
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE DxgiDevice::SetPrivateDataInterface(
+    REFGUID Name, const IUnknown* pUnknown) {
+    return m_container->SetPrivateDataInterface(Name, pUnknown);
   }
   
   
@@ -122,11 +140,6 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiDevice::EnqueueSetEvent(HANDLE hEvent) {
     Logger::err("DxgiDevice::EnqueueSetEvent: not implemented");
     return DXGI_ERROR_UNSUPPORTED;           
-  }
-  
-  
-  void STDMETHODCALLTYPE DxgiDevice::SetDeviceLayer(IUnknown* layer) {
-    m_layer = layer;
   }
   
   

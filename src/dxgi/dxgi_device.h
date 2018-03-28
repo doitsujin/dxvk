@@ -9,22 +9,41 @@ namespace dxvk {
   
   class DxgiFactory;
   
-  class DxgiDevice : public DxgiObject<IDXGIVkDevice> {
+  class DxgiDevice : public IDXGIVkDevice {
     
   public:
     
     DxgiDevice(
-            IDXGIVkAdapter*      pAdapter,
+            IDXGIObject*              pContainer,
+            IDXGIVkAdapter*           pAdapter,
       const VkPhysicalDeviceFeatures* pFeatures);
     ~DxgiDevice();
     
+    ULONG STDMETHODCALLTYPE AddRef() final;
+    
+    ULONG STDMETHODCALLTYPE Release() final;
+    
     HRESULT STDMETHODCALLTYPE QueryInterface(
-            REFIID riid,
-            void **ppvObject) final;
+            REFIID                riid,
+            void**                ppvObject) final;
     
     HRESULT STDMETHODCALLTYPE GetParent(
-            REFIID riid,
-            void   **ppParent) final;
+            REFIID                riid,
+            void**                ppParent) final;
+    
+    HRESULT STDMETHODCALLTYPE GetPrivateData(
+            REFGUID               Name,
+            UINT*                 pDataSize,
+            void*                 pData) final;
+    
+    HRESULT STDMETHODCALLTYPE SetPrivateData(
+            REFGUID               Name,
+            UINT                  DataSize,
+      const void*                 pData) final;
+    
+    HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(
+            REFGUID               Name,
+      const IUnknown*             pUnknown) final;
     
     HRESULT STDMETHODCALLTYPE CreateSurface(
       const DXGI_SURFACE_DESC*    pDesc,
@@ -66,17 +85,14 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE EnqueueSetEvent( 
             HANDLE                hEvent) final;
     
-    void STDMETHODCALLTYPE SetDeviceLayer(
-            IUnknown*             layer) final;
-    
     Rc<DxvkDevice> STDMETHODCALLTYPE GetDXVKDevice() final;
     
   private:
     
-    Com<IDXGIVkAdapter> m_adapter;
-    Rc<DxvkDevice>           m_device;
+    IDXGIObject*        m_container;
     
-    IUnknown* m_layer = nullptr;
+    Com<IDXGIVkAdapter> m_adapter;
+    Rc<DxvkDevice>      m_device;
     
   };
 

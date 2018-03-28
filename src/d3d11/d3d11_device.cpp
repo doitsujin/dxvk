@@ -15,27 +15,82 @@
 
 namespace dxvk {
   
+  D3D11DeviceContainer::D3D11DeviceContainer() {
+    
+  }
+  
+  
+  D3D11DeviceContainer::~D3D11DeviceContainer() {
+    delete m_d3d11Presenter;
+    delete m_d3d11Device;
+    delete m_dxgiDevice;
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE D3D11DeviceContainer::QueryInterface(REFIID riid, void** ppvObject) {
+    if (riid == __uuidof(IUnknown)
+     || riid == __uuidof(IDXGIObject)) {
+      *ppvObject = ref(this);
+      return S_OK;
+    }
+    
+    if (riid == __uuidof(IDXGIDevice)
+     || riid == __uuidof(IDXGIDevice1)
+     || riid == __uuidof(IDXGIDevice2)
+     || riid == __uuidof(IDXGIVkDevice)) {
+      *ppvObject = ref(m_dxgiDevice);
+      return S_OK;
+    }
+    
+    if (riid == __uuidof(ID3D11Device)
+     || riid == __uuidof(ID3D11Device1)) {
+      *ppvObject = ref(m_d3d11Device);
+      return S_OK;
+    }
+    
+    if (riid == __uuidof(IDXGIVkPresenter)) {
+      *ppvObject = ref(m_d3d11Presenter);
+      return S_OK;
+    }
+    
+    if (riid == __uuidof(ID3D11Debug))
+      return E_NOINTERFACE;      
+    
+    // Undocumented interfaces that are queried by some games
+    if (riid == GUID{0xd56e2a4c,0x5127,0x8437,{0x65,0x8a,0x98,0xc5,0xbb,0x78,0x94,0x98}})
+      return E_NOINTERFACE;
+    
+    Logger::warn("D3D11DeviceContainer::QueryInterface: Unknown interface query");
+    Logger::warn(str::format(riid));
+    return E_NOINTERFACE;
+  }
+  
+
+  HRESULT STDMETHODCALLTYPE D3D11DeviceContainer::GetParent(
+          REFIID                  riid,
+          void**                  ppParent) {
+    return m_dxgiDevice->GetParent(riid, ppParent);
+  }
+  
+  
   D3D11Device::D3D11Device(
-          IDXGIVkDevice*      dxgiDevice,
-          D3D_FEATURE_LEVEL   featureLevel,
-          UINT                featureFlags)
-  : m_dxgiDevice    (dxgiDevice),
-    m_presentDevice (new D3D11PresentDevice()),
-    m_featureLevel  (featureLevel),
-    m_featureFlags  (featureFlags),
-    m_dxvkDevice    (m_dxgiDevice->GetDXVKDevice()),
+          IDXGIObject*        pContainer,
+          IDXGIVkDevice*      pDxgiDevice,
+          D3D_FEATURE_LEVEL   FeatureLevel,
+          UINT                FeatureFlags)
+  : m_container     (pContainer),
+    m_featureLevel  (FeatureLevel),
+    m_featureFlags  (FeatureFlags),
+    m_dxvkDevice    (pDxgiDevice->GetDXVKDevice()),
     m_dxvkAdapter   (m_dxvkDevice->adapter()),
     m_d3d11Options  (D3D11GetAppOptions(env::getExeName())),
     m_dxbcOptions   (m_dxvkDevice) {
     Com<IDXGIAdapter> adapter;
     
-    if (FAILED(m_dxgiDevice->GetAdapter(&adapter))
+    if (FAILED(pDxgiDevice->GetAdapter(&adapter))
      || FAILED(adapter->QueryInterface(__uuidof(IDXGIVkAdapter),
           reinterpret_cast<void**>(&m_dxgiAdapter))))
       throw DxvkError("D3D11Device: Failed to query adapter");
-    
-    m_dxgiDevice->SetDeviceLayer(this);
-    m_presentDevice->SetDeviceLayer(this);
     
     m_context = new D3D11ImmediateContext(this, m_dxvkDevice);
     
@@ -48,36 +103,22 @@ namespace dxvk {
   
   
   D3D11Device::~D3D11Device() {
-    m_presentDevice->SetDeviceLayer(nullptr);
-    m_dxgiDevice->SetDeviceLayer(nullptr);
     delete m_context;
   }
   
   
+  ULONG STDMETHODCALLTYPE D3D11Device::AddRef() {
+    return m_container->AddRef();
+  }
+  
+  
+  ULONG STDMETHODCALLTYPE D3D11Device::Release() {
+    return m_container->Release();
+  }
+  
+  
   HRESULT STDMETHODCALLTYPE D3D11Device::QueryInterface(REFIID riid, void** ppvObject) {
-    COM_QUERY_IFACE(riid, ppvObject, IUnknown);
-    COM_QUERY_IFACE(riid, ppvObject, ID3D11Device);
-    COM_QUERY_IFACE(riid, ppvObject, ID3D11Device1);
-    
-    if (riid == __uuidof(IDXGIDevice)
-     || riid == __uuidof(IDXGIDevice1)
-     || riid == __uuidof(IDXGIDevice2)
-     || riid == __uuidof(IDXGIVkDevice))
-      return m_dxgiDevice->QueryInterface(riid, ppvObject);
-    
-    if (riid == __uuidof(IDXGIVkPresenter))
-      return m_presentDevice->QueryInterface(riid, ppvObject);
-
-    if (riid == __uuidof(ID3D11Debug))
-      return E_NOINTERFACE;      
-
-    //d56e2a4c-5127-8437-658a-98c5bb789498, from GTA V, no occurrences in Google
-    if (riid == GUID{0xd56e2a4c,0x5127,0x8437,{0x65,0x8a,0x98,0xc5,0xbb,0x78,0x94,0x98}})
-      return E_NOINTERFACE;
-    
-    Logger::warn("D3D11Device::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
-    return E_NOINTERFACE;
+    return m_container->QueryInterface(riid, ppvObject);
   }
     
   
@@ -1468,19 +1509,19 @@ namespace dxvk {
   
   HRESULT STDMETHODCALLTYPE D3D11Device::GetPrivateData(
           REFGUID guid, UINT* pDataSize, void* pData) {
-    return m_dxgiDevice->GetPrivateData(guid, pDataSize, pData);
+    return m_container->GetPrivateData(guid, pDataSize, pData);
   }
   
   
   HRESULT STDMETHODCALLTYPE D3D11Device::SetPrivateData(
           REFGUID guid, UINT DataSize, const void* pData) {
-    return m_dxgiDevice->SetPrivateData(guid, DataSize, pData);
+    return m_container->SetPrivateData(guid, DataSize, pData);
   }
   
   
   HRESULT STDMETHODCALLTYPE D3D11Device::SetPrivateDataInterface(
           REFGUID guid, const IUnknown* pData) {
-    return m_dxgiDevice->SetPrivateDataInterface(guid, pData);
+    return m_container->SetPrivateDataInterface(guid, pData);
   }
   
   

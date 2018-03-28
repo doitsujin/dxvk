@@ -5,6 +5,7 @@
 
 #include "d3d11_device.h"
 #include "d3d11_enums.h"
+#include "d3d11_present.h"
 
 namespace dxvk {
   Logger Logger::s_instance("d3d11.log");
@@ -110,23 +111,27 @@ extern "C" {
       if (ppDevice == nullptr && ppImmediateContext == nullptr)
         return S_FALSE;
       
-      Com<IDXGIVkDevice> dxvkDevice = nullptr;
+      Com<D3D11DeviceContainer> container = new D3D11DeviceContainer();
       
       const VkPhysicalDeviceFeatures deviceFeatures
         = D3D11Device::GetDeviceFeatures(adapter, fl);
       
-      if (FAILED(dxvkAdapter->CreateDevice(&deviceFeatures, &dxvkDevice))) {
+      if (FAILED(dxvkAdapter->CreateDevice(container.ptr(), &deviceFeatures, &container->m_dxgiDevice))) {
         Logger::err("D3D11CreateDevice: Failed to create DXGI device");
         return E_FAIL;
       }
       
-      Com<D3D11Device> d3d11Device = new D3D11Device(dxvkDevice.ptr(), fl, Flags);
+      container->m_d3d11Device = new D3D11Device(
+        container.ptr(), container->m_dxgiDevice, fl, Flags);
+      
+      container->m_d3d11Presenter = new D3D11Presenter(
+        container.ptr(), container->m_d3d11Device);
       
       if (ppDevice != nullptr)
-        *ppDevice = d3d11Device.ref();
+        *ppDevice = ref(container->m_d3d11Device);
       
       if (ppImmediateContext != nullptr)
-        d3d11Device->GetImmediateContext(ppImmediateContext);
+        container->m_d3d11Device->GetImmediateContext(ppImmediateContext);
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err("D3D11CreateDevice: Failed to create D3D11 device");

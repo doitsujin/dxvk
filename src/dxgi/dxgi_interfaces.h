@@ -62,8 +62,7 @@ MIDL_INTERFACE("7a622cf6-627a-46b2-b52f-360ef3da831c")
 IDXGIVkDevice : public IDXGIDevice2 {
   static const GUID guid;
   
-  virtual void STDMETHODCALLTYPE SetDeviceLayer(
-          IUnknown* layer) = 0;
+  virtual ~IDXGIVkDevice() { }
   
   virtual dxvk::Rc<dxvk::DxvkDevice> STDMETHODCALLTYPE GetDXVKDevice() = 0;
 };
@@ -91,8 +90,9 @@ IDXGIVkAdapter : public IDXGIAdapter1 {
    * \returns \c S_OK on success, or an error code
    */
   virtual HRESULT STDMETHODCALLTYPE CreateDevice(
+          IDXGIObject*              pContainer,
     const VkPhysicalDeviceFeatures* pFeatures,
-          IDXGIVkDevice**      ppDevice) = 0;
+          IDXGIVkDevice**           ppDevice) = 0;
   
   /**
    * \brief Maps a DXGI format to a compatible Vulkan format
@@ -140,11 +140,13 @@ IDXGIVkPresenter : public IUnknown {
   /**
    * \brief Creates a swap chain back buffer
    * 
+   * \param [in] pSwapChainDesc Swap chain description
+   * \param [out] ppBackBuffer The swap chain back buffer
    * \returns \c S_OK on success
    */
   virtual HRESULT STDMETHODCALLTYPE CreateSwapChainBackBuffer(
     const DXGI_SWAP_CHAIN_DESC*       pSwapChainDesc,
-          IDXGIVkBackBuffer**    ppBackBuffer) = 0;
+          IDXGIVkBackBuffer**         ppBackBuffer) = 0;
   
   /**
    * \brief Flushes the immediate context

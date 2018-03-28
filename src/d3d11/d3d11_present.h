@@ -30,34 +30,43 @@ namespace dxvk {
   };
   
   
-  class D3D11PresentDevice : public ComObject<IDXGIVkPresenter> {
+  /**
+   * \brief Present device
+   * 
+   * Wires up some swap chain related
+   * functions to the D3D11 device.
+   */
+  class D3D11Presenter final : public IDXGIVkPresenter {
     
   public:
     
-    D3D11PresentDevice();
-    ~D3D11PresentDevice();
+    D3D11Presenter(
+            IDXGIObject*  pContainer,
+            ID3D11Device* pDevice);
+    ~D3D11Presenter();
+    
+    ULONG STDMETHODCALLTYPE AddRef();
+    
+    ULONG STDMETHODCALLTYPE Release();
     
     HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID                  riid,
-            void**                  ppvObject) final;
+            void**                  ppvObject);
     
     HRESULT STDMETHODCALLTYPE CreateSwapChainBackBuffer(
-      const DXGI_SWAP_CHAIN_DESC*       pSwapChainDesc,
-            IDXGIVkBackBuffer**    ppInterface) final;
+      const DXGI_SWAP_CHAIN_DESC*   pSwapChainDesc,
+            IDXGIVkBackBuffer**     ppInterface);
     
-    HRESULT STDMETHODCALLTYPE FlushRenderingCommands() final;
+    HRESULT STDMETHODCALLTYPE FlushRenderingCommands();
     
     HRESULT STDMETHODCALLTYPE GetDevice(
             REFGUID                 riid,
-            void**                  ppvDevice) final;
-    
-    void SetDeviceLayer(D3D11Device* pDevice) {
-      m_device = pDevice;
-    }
+            void**                  ppvDevice);
     
   private:
     
-    D3D11Device* m_device = nullptr;
+    IDXGIObject*  m_container;
+    ID3D11Device* m_device;
     
   };
   

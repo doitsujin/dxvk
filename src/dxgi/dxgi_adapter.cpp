@@ -25,9 +25,7 @@ namespace dxvk {
   }
   
   
-  HRESULT STDMETHODCALLTYPE DxgiAdapter::QueryInterface(
-          REFIID riid,
-          void **ppvObject) {
+  HRESULT STDMETHODCALLTYPE DxgiAdapter::QueryInterface(REFIID riid, void** ppvObject) {
     COM_QUERY_IFACE(riid, ppvObject, IUnknown);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIObject);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIAdapter);
@@ -40,9 +38,7 @@ namespace dxvk {
   }
   
   
-  HRESULT STDMETHODCALLTYPE DxgiAdapter::GetParent(
-          REFIID riid,
-          void   **ppParent) {
+  HRESULT STDMETHODCALLTYPE DxgiAdapter::GetParent(REFIID riid, void** ppParent) {
     return m_factory->QueryInterface(riid, ppParent);
   }
   
@@ -107,19 +103,17 @@ namespace dxvk {
     auto deviceProp = m_adapter->deviceProperties();
     auto memoryProp = m_adapter->memoryProperties();
     
-    //Custom Vendor ID
+    // Custom Vendor ID
     const std::string customVendorID = env::getEnvVar(L"DXVK_CUSTOM_VENDOR_ID");
     const std::string customDeviceID = env::getEnvVar(L"DXVK_CUSTOM_DEVICE_ID");
     
     if (!customVendorID.empty()) {
       Logger::info("Using Custom PCI Vendor ID " + customVendorID + " instead of " + str::format(std::hex, deviceProp.vendorID));
-      
       deviceProp.vendorID = std::stoul(customVendorID, nullptr, 16);
     }
     
     if (!customDeviceID.empty()) {
       Logger::info("Using Custom PCI Device ID " + customDeviceID + " instead of " + str::format(std::hex, deviceProp.deviceID));
-      
       deviceProp.deviceID = std::stoul(customDeviceID, nullptr, 16);  
     }
     
@@ -157,10 +151,11 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE DxgiAdapter::CreateDevice(
+          IDXGIObject*              pContainer,
     const VkPhysicalDeviceFeatures* pFeatures,
-          IDXGIVkDevice**      ppDevice) {
+          IDXGIVkDevice**           ppDevice) {
     try {
-      *ppDevice = ref(new dxvk::DxgiDevice(this, pFeatures));
+      *ppDevice = new dxvk::DxgiDevice(pContainer, this, pFeatures);
       return S_OK;
     } catch (const dxvk::DxvkError& e) {
       dxvk::Logger::err(e.message());

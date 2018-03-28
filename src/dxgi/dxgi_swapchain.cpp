@@ -94,9 +94,6 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetContainingOutput(IDXGIOutput** ppOutput) {
-    if (ppOutput == nullptr)
-      return DXGI_ERROR_INVALID_CALL;
-    
     RECT windowRect = { 0, 0, 0, 0 };
     ::GetWindowRect(m_desc.OutputWindow, &windowRect);
     
