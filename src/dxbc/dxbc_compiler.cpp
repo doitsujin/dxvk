@@ -5924,7 +5924,7 @@ namespace dxvk {
     uint32_t varId        = m_module.newVar        (ptrType,      storageClass);
     
     m_module.setDebugName     (varId, isInput ? "vVertex" : "oVertex");
-    m_module.decorateLocation (varId, 32);
+    m_module.decorateLocation (varId, 0);
     
     m_entryPointInterfaces.push_back(varId);
     return varId;
