@@ -29,7 +29,7 @@ namespace dxvk {
   class D3D11Texture2D;
   class D3D11Texture3D;
   
-  class D3D11Device : public ComObject<ID3D11Device1> {
+  class D3D11Device : public ID3D11Device1 {
     /// Maximum number of resource init commands per command buffer
     constexpr static uint64_t InitCommandThreshold = 50;
   public:
@@ -38,12 +38,15 @@ namespace dxvk {
             IDXGIDevicePrivate*     dxgiDevice,
             D3D_FEATURE_LEVEL       featureLevel,
             UINT                    featureFlags);
-    ~D3D11Device();
+    virtual ~D3D11Device();
     
     HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID                  riid,
             void**                  ppvObject) final;
     
+    ULONG STDMETHODCALLTYPE AddRef(void) final;
+    ULONG STDMETHODCALLTYPE Release(void) final;
+
     HRESULT STDMETHODCALLTYPE CreateBuffer(
       const D3D11_BUFFER_DESC*      pDesc,
       const D3D11_SUBRESOURCE_DATA* pInitialData,
@@ -298,7 +301,8 @@ namespace dxvk {
     
   private:
     
-    const Com<IDXGIDevicePrivate>   m_dxgiDevice;
+    IDXGIDevicePrivate* const       m_dxgiDevice = nullptr;
+
           Com<IDXGIAdapterPrivate>  m_dxgiAdapter;
     const Com<D3D11PresentDevice>   m_presentDevice;
     

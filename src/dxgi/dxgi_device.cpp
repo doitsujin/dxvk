@@ -1,5 +1,6 @@
 #include "dxgi_device.h"
 #include "dxgi_factory.h"
+#include "../d3d11/d3d11_device.h"
 
 namespace dxvk {
   
@@ -12,7 +13,7 @@ namespace dxvk {
   
   
   DxgiDevice::~DxgiDevice() {
-    
+    delete static_cast<D3D11Device*>(m_layer);
   }
   
   

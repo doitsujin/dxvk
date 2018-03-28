@@ -79,8 +79,19 @@ namespace dxvk {
     Logger::warn(str::format(riid));
     return E_NOINTERFACE;
   }
-    
-  
+
+
+  // D3D11Device shares DXGIDevice's refcount
+  ULONG STDMETHODCALLTYPE D3D11Device::AddRef(void) {
+    return m_dxgiDevice->AddRef();
+  }
+
+
+  ULONG STDMETHODCALLTYPE D3D11Device::Release(void) {
+    return m_dxgiDevice->Release();
+  }
+
+
   HRESULT STDMETHODCALLTYPE D3D11Device::CreateBuffer(
     const D3D11_BUFFER_DESC*      pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
