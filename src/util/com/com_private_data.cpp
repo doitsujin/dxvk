@@ -61,13 +61,15 @@ namespace dxvk {
   
   
   HRESULT ComPrivateDataEntry::get(UINT& size, void* data) const {
-    if (size != 0 && data == nullptr)
-      return DXGI_ERROR_INVALID_CALL;
-    
     const UINT minSize = m_iface != nullptr
       ? sizeof(IUnknown*)
       : m_size;
     
+    if (data == nullptr) {
+      size = minSize;
+      return S_OK;
+    }
+
     const HRESULT result = size < minSize
       ? DXGI_ERROR_MORE_DATA
       : S_OK;
@@ -125,12 +127,14 @@ namespace dxvk {
           UINT*     size,
           void*     data) {
     if (size == nullptr)
-      return DXGI_ERROR_INVALID_CALL;
+      return E_INVALIDARG;
     
     auto entry = this->findEntry(guid);
     
-    if (entry == nullptr)
+    if (entry == nullptr) {
+      *size = 0;
       return DXGI_ERROR_NOT_FOUND;
+    }
     
     return entry->get(*size, data);
   }
