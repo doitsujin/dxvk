@@ -4,12 +4,12 @@
 
 namespace dxvk {
   
-  HRESULT STDMETHODCALLTYPE D3D11PresentBackBuffer::QueryInterface(REFIID riid, void** ppvObject) {
+  HRESULT STDMETHODCALLTYPE D3D11VkBackBuffer::QueryInterface(REFIID riid, void** ppvObject) {
     return m_texture->QueryInterface(riid, ppvObject);
   }
   
   
-  Rc<DxvkImage> D3D11PresentBackBuffer::GetDXVKImage() {
+  Rc<DxvkImage> D3D11VkBackBuffer::GetDXVKImage() {
     return m_texture->GetCommonTexture()->GetImage();
   }
   
@@ -22,14 +22,14 @@ namespace dxvk {
           REFIID                  riid,
           void**                  ppvObject) {
     COM_QUERY_IFACE(riid, ppvObject, IUnknown);
-    COM_QUERY_IFACE(riid, ppvObject, IDXGIPresentDevicePrivate);
+    COM_QUERY_IFACE(riid, ppvObject, IDXGIVkPresenter);
     return m_device->QueryInterface(riid, ppvObject);
   }
   
   
   HRESULT STDMETHODCALLTYPE D3D11PresentDevice::CreateSwapChainBackBuffer(
     const DXGI_SWAP_CHAIN_DESC*       pSwapChainDesc,
-          IDXGIPresentBackBuffer**    ppInterface) {
+          IDXGIVkBackBuffer**    ppInterface) {
     D3D11_COMMON_TEXTURE_DESC desc;
     desc.Width              = pSwapChainDesc->BufferDesc.Width;
     desc.Height             = pSwapChainDesc->BufferDesc.Height;
@@ -48,7 +48,7 @@ namespace dxvk {
       desc.BindFlags |= D3D11_BIND_UNORDERED_ACCESS;
     
     try {
-      *ppInterface = ref(new D3D11PresentBackBuffer(
+      *ppInterface = ref(new D3D11VkBackBuffer(
         new D3D11Texture2D(m_device, &desc)));
       return S_OK;
     } catch (const DxvkError& e) {

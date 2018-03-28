@@ -4,7 +4,7 @@
 namespace dxvk {
   
   DxgiDevice::DxgiDevice(
-          IDXGIAdapterPrivate*      pAdapter,
+          IDXGIVkAdapter*      pAdapter,
     const VkPhysicalDeviceFeatures* pFeatures)
   : m_adapter(pAdapter) {
     m_device = m_adapter->GetDXVKAdapter()->createDevice(*pFeatures);
@@ -22,7 +22,7 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, IDXGIDevice);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIDevice1);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIDevice2);
-    COM_QUERY_IFACE(riid, ppvObject, IDXGIDevicePrivate);
+    COM_QUERY_IFACE(riid, ppvObject, IDXGIVkDevice);
     
     if (m_layer != nullptr)
       return m_layer->QueryInterface(riid, ppvObject);

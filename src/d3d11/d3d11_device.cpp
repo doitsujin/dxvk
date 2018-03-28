@@ -16,7 +16,7 @@
 namespace dxvk {
   
   D3D11Device::D3D11Device(
-          IDXGIDevicePrivate* dxgiDevice,
+          IDXGIVkDevice*      dxgiDevice,
           D3D_FEATURE_LEVEL   featureLevel,
           UINT                featureFlags)
   : m_dxgiDevice    (dxgiDevice),
@@ -30,7 +30,7 @@ namespace dxvk {
     Com<IDXGIAdapter> adapter;
     
     if (FAILED(m_dxgiDevice->GetAdapter(&adapter))
-     || FAILED(adapter->QueryInterface(__uuidof(IDXGIAdapterPrivate),
+     || FAILED(adapter->QueryInterface(__uuidof(IDXGIVkAdapter),
           reinterpret_cast<void**>(&m_dxgiAdapter))))
       throw DxvkError("D3D11Device: Failed to query adapter");
     
@@ -62,10 +62,10 @@ namespace dxvk {
     if (riid == __uuidof(IDXGIDevice)
      || riid == __uuidof(IDXGIDevice1)
      || riid == __uuidof(IDXGIDevice2)
-     || riid == __uuidof(IDXGIDevicePrivate))
+     || riid == __uuidof(IDXGIVkDevice))
       return m_dxgiDevice->QueryInterface(riid, ppvObject);
     
-    if (riid == __uuidof(IDXGIPresentDevicePrivate))
+    if (riid == __uuidof(IDXGIVkPresenter))
       return m_presentDevice->QueryInterface(riid, ppvObject);
 
     if (riid == __uuidof(ID3D11Debug))

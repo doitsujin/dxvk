@@ -25,7 +25,7 @@ extern "C" {
           D3D_FEATURE_LEVEL   *pFeatureLevel,
           ID3D11DeviceContext **ppImmediateContext) {
     Com<IDXGIAdapter>        dxgiAdapter = pAdapter;
-    Com<IDXGIAdapterPrivate> dxvkAdapter = nullptr;
+    Com<IDXGIVkAdapter> dxvkAdapter = nullptr;
     
     if (dxgiAdapter == nullptr) {
       // We'll treat everything as hardware, even if the
@@ -58,7 +58,7 @@ extern "C" {
     
     // The adapter must obviously be a DXVK-compatible adapter so
     // that we can create a DXVK-compatible DXGI device from it.
-    if (FAILED(dxgiAdapter->QueryInterface(__uuidof(IDXGIAdapterPrivate),
+    if (FAILED(dxgiAdapter->QueryInterface(__uuidof(IDXGIVkAdapter),
         reinterpret_cast<void**>(&dxvkAdapter)))) {
       Logger::err("D3D11CreateDevice: Adapter is not a DXVK adapter");
       return E_INVALIDARG;
@@ -110,7 +110,7 @@ extern "C" {
       if (ppDevice == nullptr && ppImmediateContext == nullptr)
         return S_FALSE;
       
-      Com<IDXGIDevicePrivate> dxvkDevice = nullptr;
+      Com<IDXGIVkDevice> dxvkDevice = nullptr;
       
       const VkPhysicalDeviceFeatures deviceFeatures
         = D3D11Device::GetDeviceFeatures(adapter, fl);

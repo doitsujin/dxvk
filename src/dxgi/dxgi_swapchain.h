@@ -93,13 +93,13 @@ namespace dxvk {
     Com<DxgiFactory>                m_factory;
     Com<DxgiAdapter>                m_adapter;
     Com<DxgiDevice>                 m_device;
-    Com<IDXGIPresentDevicePrivate>  m_presentDevice;
+    Com<IDXGIVkPresenter>  m_presentDevice;
     
     DXGI_SWAP_CHAIN_DESC            m_desc;
     DXGI_FRAME_STATISTICS           m_stats;
     
     Rc<DxgiPresenter>               m_presenter;
-    Com<IDXGIPresentBackBuffer>     m_backBuffer;
+    Com<IDXGIVkBackBuffer>     m_backBuffer;
     
     WindowState                     m_windowState;
     

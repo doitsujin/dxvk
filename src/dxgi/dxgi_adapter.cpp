@@ -32,7 +32,7 @@ namespace dxvk {
     COM_QUERY_IFACE(riid, ppvObject, IDXGIObject);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIAdapter);
     COM_QUERY_IFACE(riid, ppvObject, IDXGIAdapter1);
-    COM_QUERY_IFACE(riid, ppvObject, IDXGIAdapterPrivate);
+    COM_QUERY_IFACE(riid, ppvObject, IDXGIVkAdapter);
     
     Logger::warn("DxgiAdapter::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
@@ -158,7 +158,7 @@ namespace dxvk {
   
   HRESULT STDMETHODCALLTYPE DxgiAdapter::CreateDevice(
     const VkPhysicalDeviceFeatures* pFeatures,
-          IDXGIDevicePrivate**      ppDevice) {
+          IDXGIVkDevice**      ppDevice) {
     try {
       *ppDevice = ref(new dxvk::DxgiDevice(this, pFeatures));
       return S_OK;

@@ -13,7 +13,7 @@ namespace dxvk {
     
     // Retrieve a device pointer that allows us to
     // communicate with the underlying D3D device
-    if (FAILED(pDevice->QueryInterface(__uuidof(IDXGIPresentDevicePrivate),
+    if (FAILED(pDevice->QueryInterface(__uuidof(IDXGIVkPresenter),
         reinterpret_cast<void**>(&m_presentDevice))))
       throw DxvkError("DxgiSwapChain::DxgiSwapChain: Invalid device");
     

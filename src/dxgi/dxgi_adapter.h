@@ -16,7 +16,7 @@ namespace dxvk {
   class DxgiFactory;
   class DxgiOutput;
   
-  class DxgiAdapter : public DxgiObject<IDXGIAdapterPrivate> {
+  class DxgiAdapter : public DxgiObject<IDXGIVkAdapter> {
     
   public:
     
@@ -51,7 +51,7 @@ namespace dxvk {
     
     HRESULT STDMETHODCALLTYPE CreateDevice(
       const VkPhysicalDeviceFeatures* pFeatures,
-            IDXGIDevicePrivate**      ppDevice) final;
+            IDXGIVkDevice**      ppDevice) final;
     
     DxgiFormatInfo STDMETHODCALLTYPE LookupFormat(
             DXGI_FORMAT format, DxgiFormatMode mode) final;

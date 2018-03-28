@@ -9,12 +9,12 @@ namespace dxvk {
   
   class DxgiFactory;
   
-  class DxgiDevice : public DxgiObject<IDXGIDevicePrivate> {
+  class DxgiDevice : public DxgiObject<IDXGIVkDevice> {
     
   public:
     
     DxgiDevice(
-            IDXGIAdapterPrivate*      pAdapter,
+            IDXGIVkAdapter*      pAdapter,
       const VkPhysicalDeviceFeatures* pFeatures);
     ~DxgiDevice();
     
@@ -73,7 +73,7 @@ namespace dxvk {
     
   private:
     
-    Com<IDXGIAdapterPrivate> m_adapter;
+    Com<IDXGIVkAdapter> m_adapter;
     Rc<DxvkDevice>           m_device;
     
     IUnknown* m_layer = nullptr;

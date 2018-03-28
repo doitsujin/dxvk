@@ -10,11 +10,11 @@ namespace dxvk {
   
   class D3D11Device;
   
-  class D3D11PresentBackBuffer : public ComObject<IDXGIPresentBackBuffer> {
+  class D3D11VkBackBuffer : public ComObject<IDXGIVkBackBuffer> {
     
   public:
     
-    D3D11PresentBackBuffer(D3D11Texture2D* pTexture)
+    D3D11VkBackBuffer(D3D11Texture2D* pTexture)
     : m_texture(pTexture) { }
     
     HRESULT STDMETHODCALLTYPE QueryInterface(
@@ -30,7 +30,7 @@ namespace dxvk {
   };
   
   
-  class D3D11PresentDevice : public ComObject<IDXGIPresentDevicePrivate> {
+  class D3D11PresentDevice : public ComObject<IDXGIVkPresenter> {
     
   public:
     
@@ -43,7 +43,7 @@ namespace dxvk {
     
     HRESULT STDMETHODCALLTYPE CreateSwapChainBackBuffer(
       const DXGI_SWAP_CHAIN_DESC*       pSwapChainDesc,
-            IDXGIPresentBackBuffer**    ppInterface) final;
+            IDXGIVkBackBuffer**    ppInterface) final;
     
     HRESULT STDMETHODCALLTYPE FlushRenderingCommands() final;
     
