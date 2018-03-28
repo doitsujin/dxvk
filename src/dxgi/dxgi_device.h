@@ -14,8 +14,8 @@ namespace dxvk {
   public:
     
     DxgiDevice(
-            IDXGIAdapterPrivate*      adapter,
-      const VkPhysicalDeviceFeatures* features);
+            IDXGIAdapterPrivate*      pAdapter,
+      const VkPhysicalDeviceFeatures* pFeatures);
     ~DxgiDevice();
     
     HRESULT STDMETHODCALLTYPE QueryInterface(
@@ -80,14 +80,4 @@ namespace dxvk {
     
   };
 
-}
-
-
-extern "C" {
-  
-  HRESULT __stdcall DXGICreateDevicePrivate(
-          IDXGIAdapterPrivate*      pAdapter,
-    const VkPhysicalDeviceFeatures* features,
-          IDXGIDevicePrivate**      ppDevice);
-  
 }

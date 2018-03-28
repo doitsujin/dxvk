@@ -49,35 +49,6 @@ namespace dxvk {
     Depth = 2,
   };
 }
-  
-/**
- * \brief Private DXGI adapter interface
- * 
- * The implementation of \c IDXGIAdapter holds a
- * \ref DxvkAdapter which can be retrieved using
- * this interface.
- */
-MIDL_INTERFACE("907bf281-ea3c-43b4-a8e4-9f231107b4ff")
-IDXGIAdapterPrivate : public IDXGIAdapter1 {
-  static const GUID guid;
-  
-  virtual dxvk::Rc<dxvk::DxvkAdapter> STDMETHODCALLTYPE GetDXVKAdapter() = 0;
-  
-  /**
-   * \brief Maps a DXGI format to a compatible Vulkan format
-   * 
-   * For color formats, the returned Vulkan format has the
-   * same memory layout as the DXGI format so that it can
-   * be mapped and copied to buffers. For depth-stencil
-   * formats, this is not guaranteed.
-   * \param [in] format The DXGI format
-   * \param [in] mode Format lookup mode
-   * \returns Vulkan format pair
-   */
-  virtual dxvk::DxgiFormatInfo STDMETHODCALLTYPE LookupFormat(
-          DXGI_FORMAT          format,
-          dxvk::DxgiFormatMode mode) = 0;
-};
 
 
 /**
@@ -95,6 +66,48 @@ IDXGIDevicePrivate : public IDXGIDevice2 {
           IUnknown* layer) = 0;
   
   virtual dxvk::Rc<dxvk::DxvkDevice> STDMETHODCALLTYPE GetDXVKDevice() = 0;
+};
+
+
+/**
+ * \brief Private DXGI adapter interface
+ * 
+ * The implementation of \c IDXGIAdapter holds a
+ * \ref DxvkAdapter which can be retrieved using
+ * this interface.
+ */
+MIDL_INTERFACE("907bf281-ea3c-43b4-a8e4-9f231107b4ff")
+IDXGIAdapterPrivate : public IDXGIAdapter1 {
+  static const GUID guid;
+  
+  virtual dxvk::Rc<dxvk::DxvkAdapter> STDMETHODCALLTYPE GetDXVKAdapter() = 0;
+  
+  /**
+   * \brief Creates a DXGI device object
+   * 
+   * \param [in] pAdapter The adapter
+   * \param [in] pFeatures Device features to enable
+   * \param [out] ppDevice The DXGI device object
+   * \returns \c S_OK on success, or an error code
+   */
+  virtual HRESULT STDMETHODCALLTYPE CreateDevice(
+    const VkPhysicalDeviceFeatures* pFeatures,
+          IDXGIDevicePrivate**      ppDevice) = 0;
+  
+  /**
+   * \brief Maps a DXGI format to a compatible Vulkan format
+   * 
+   * For color formats, the returned Vulkan format has the
+   * same memory layout as the DXGI format so that it can
+   * be mapped and copied to buffers. For depth-stencil
+   * formats, this is not guaranteed.
+   * \param [in] format The DXGI format
+   * \param [in] mode Format lookup mode
+   * \returns Vulkan format pair
+   */
+  virtual dxvk::DxgiFormatInfo STDMETHODCALLTYPE LookupFormat(
+          DXGI_FORMAT          format,
+          dxvk::DxgiFormatMode mode) = 0;
 };
 
 

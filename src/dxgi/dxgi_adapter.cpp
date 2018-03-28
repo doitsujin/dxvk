@@ -2,6 +2,7 @@
 #include <cstring>
 
 #include "dxgi_adapter.h"
+#include "dxgi_device.h"
 #include "dxgi_enums.h"
 #include "dxgi_factory.h"
 #include "dxgi_output.h"
@@ -152,6 +153,19 @@ namespace dxvk {
   
   Rc<DxvkAdapter> STDMETHODCALLTYPE DxgiAdapter::GetDXVKAdapter() {
     return m_adapter;
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE DxgiAdapter::CreateDevice(
+    const VkPhysicalDeviceFeatures* pFeatures,
+          IDXGIDevicePrivate**      ppDevice) {
+    try {
+      *ppDevice = ref(new dxvk::DxgiDevice(this, pFeatures));
+      return S_OK;
+    } catch (const dxvk::DxvkError& e) {
+      dxvk::Logger::err(e.message());
+      return DXGI_ERROR_UNSUPPORTED;
+    }
   }
   
   

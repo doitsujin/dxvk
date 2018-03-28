@@ -49,6 +49,10 @@ namespace dxvk {
     
     Rc<DxvkAdapter> STDMETHODCALLTYPE GetDXVKAdapter() final;
     
+    HRESULT STDMETHODCALLTYPE CreateDevice(
+      const VkPhysicalDeviceFeatures* pFeatures,
+            IDXGIDevicePrivate**      ppDevice) final;
+    
     DxgiFormatInfo STDMETHODCALLTYPE LookupFormat(
             DXGI_FORMAT format, DxgiFormatMode mode) final;
     

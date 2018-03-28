@@ -115,7 +115,7 @@ extern "C" {
       const VkPhysicalDeviceFeatures deviceFeatures
         = D3D11Device::GetDeviceFeatures(adapter, fl);
       
-      if (FAILED(DXGICreateDevicePrivate(dxvkAdapter.ptr(), &deviceFeatures, &dxvkDevice))) {
+      if (FAILED(dxvkAdapter->CreateDevice(&deviceFeatures, &dxvkDevice))) {
         Logger::err("D3D11CreateDevice: Failed to create DXGI device");
         return E_FAIL;
       }
