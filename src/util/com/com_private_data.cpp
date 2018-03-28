@@ -98,6 +98,15 @@ namespace dxvk {
           REFGUID   guid,
           UINT      size,
     const void*     data) {
+    if (data == nullptr) {
+      for (auto it = m_entries.begin(); it != m_entries.end(); ++it) {
+        if (it->hasGuid(guid)) {
+          m_entries.erase(it);
+          return S_OK;
+        }
+      }
+      return S_FALSE;
+    }
     this->insertEntry(ComPrivateDataEntry(guid, size, data));
     return S_OK;
   }
