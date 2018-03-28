@@ -36,9 +36,7 @@ namespace dxvk {
   }
   
   
-  HRESULT STDMETHODCALLTYPE DxgiOutput::GetParent(
-          REFIID riid,
-          void   **ppParent) {
+  HRESULT STDMETHODCALLTYPE DxgiOutput::GetParent(REFIID riid, void **ppParent) {
     return m_adapter->QueryInterface(riid, ppParent);
   }
   

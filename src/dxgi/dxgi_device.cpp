@@ -51,6 +51,9 @@ namespace dxvk {
   
   HRESULT STDMETHODCALLTYPE DxgiDevice::GetAdapter(
           IDXGIAdapter**        pAdapter) {
+    if (pAdapter == nullptr)
+      return DXGI_ERROR_INVALID_CALL;
+    
     *pAdapter = static_cast<IDXGIAdapter*>(m_adapter.ref());
     return S_OK;
   }

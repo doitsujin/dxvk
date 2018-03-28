@@ -41,6 +41,10 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiFactory::CreateSoftwareAdapter(
           HMODULE         Module,
           IDXGIAdapter**  ppAdapter) {
+    if (ppAdapter == nullptr)
+      return DXGI_ERROR_INVALID_CALL;
+    
+    *ppAdapter = nullptr;
     Logger::err("DxgiFactory::CreateSoftwareAdapter: Software adapters not supported");
     return DXGI_ERROR_UNSUPPORTED;
   }
@@ -52,6 +56,7 @@ namespace dxvk {
           IDXGISwapChain**      ppSwapChain) {
     if (ppSwapChain == nullptr || pDesc == nullptr || pDevice == NULL)
       return DXGI_ERROR_INVALID_CALL;
+    
     if (pDesc->OutputWindow == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
@@ -73,8 +78,7 @@ namespace dxvk {
     
     IDXGIAdapter1* handle = nullptr;
     HRESULT hr = this->EnumAdapters1(Adapter, &handle);
-    if (SUCCEEDED(hr))
-      *ppAdapter = handle;
+    *ppAdapter = handle;
     return hr;
   }
   
@@ -85,8 +89,10 @@ namespace dxvk {
     if (ppAdapter == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
-    if (Adapter >= m_adapters.size())
+    if (Adapter >= m_adapters.size()) {
+      *ppAdapter = nullptr;
       return DXGI_ERROR_NOT_FOUND;
+    }
     
     *ppAdapter = ref(new DxgiAdapter(
       this, m_adapters.at(Adapter)));

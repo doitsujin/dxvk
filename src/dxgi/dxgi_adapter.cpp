@@ -60,8 +60,10 @@ namespace dxvk {
     if (ppOutput == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
-    if (Output > 0)
+    if (Output > 0) {
+      *ppOutput = nullptr;
       return DXGI_ERROR_NOT_FOUND;
+    }
     
     // TODO support multiple monitors
     HMONITOR monitor = ::MonitorFromPoint({ 0, 0 }, MONITOR_DEFAULTTOPRIMARY);
@@ -72,7 +74,7 @@ namespace dxvk {
   
   HRESULT STDMETHODCALLTYPE DxgiAdapter::GetDesc(DXGI_ADAPTER_DESC* pDesc) {
     if (pDesc == nullptr)
-      return E_INVALIDARG;
+      return DXGI_ERROR_INVALID_CALL;
 
     DXGI_ADAPTER_DESC1 desc1;
     HRESULT hr = this->GetDesc1(&desc1);
@@ -176,16 +178,18 @@ namespace dxvk {
   HRESULT DxgiAdapter::GetOutputFromMonitor(
           HMONITOR              Monitor,
           IDXGIOutput**         ppOutput) {
-    Com<IDXGIOutput> output;
+    if (ppOutput == nullptr)
+      return DXGI_ERROR_INVALID_CALL;
     
-    for (uint32_t i = 0; SUCCEEDED(EnumOutputs(i, &output)); i++) {
+    for (uint32_t i = 0; SUCCEEDED(EnumOutputs(i, ppOutput)); i++) {
       DXGI_OUTPUT_DESC outputDesc;
-      output->GetDesc(&outputDesc);
+      (*ppOutput)->GetDesc(&outputDesc);
       
-      if (outputDesc.Monitor == Monitor) {
-        *ppOutput = output.ref();
+      if (outputDesc.Monitor == Monitor)
         return S_OK;
-      }
+      
+      (*ppOutput)->Release();
+      (*ppOutput) = nullptr;
     }
     
     // No such output found

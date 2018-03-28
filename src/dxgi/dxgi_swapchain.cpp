@@ -141,6 +141,7 @@ namespace dxvk {
     
     if (ppTarget != nullptr) {
       *ppTarget = nullptr;
+      
       if (!m_desc.Windowed)
         hr = this->GetContainingOutput(ppTarget);
     }
