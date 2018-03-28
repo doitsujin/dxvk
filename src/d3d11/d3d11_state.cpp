@@ -110,7 +110,7 @@ namespace dxvk {
     // undefined data if independent blend is disabled
     const uint32_t usedRenderTargets = a.IndependentBlendEnable ? 8 : 1;
     
-    for (uint32_t i = 0; !eq && (i < usedRenderTargets); i++)
+    for (uint32_t i = 0; eq && (i < usedRenderTargets); i++)
       eq &= this->operator () (a.RenderTarget[i], b.RenderTarget[i]);
     
     return eq;
