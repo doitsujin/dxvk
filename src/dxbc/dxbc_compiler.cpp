@@ -5674,10 +5674,14 @@ namespace dxvk {
     const DxbcCompilerHsForkJoinPhase&      phase) {
     this->emitHsInvocationBlockBegin(phase.instanceCount);
     
+    uint32_t invocationId = m_module.opLoad(
+      getScalarTypeId(DxbcScalarType::Uint32),
+      m_hs.builtinInvocationId);
+    
     m_module.opFunctionCall(
       m_module.defVoidType(),
       phase.functionId, 1,
-      &m_hs.builtinInvocationId);
+      &invocationId);
     
     this->emitHsInvocationBlockEnd();
     this->emitHsPhaseBarrier();
