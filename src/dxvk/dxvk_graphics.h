@@ -1,7 +1,6 @@
 #pragma once
 
-#include <mutex>
-#include <unordered_map>
+#include <vector>
 
 #include "dxvk_binding.h"
 #include "dxvk_constant_state.h"
@@ -145,7 +144,6 @@ namespace dxvk {
     uint32_t m_vsIn  = 0;
     uint32_t m_fsOut = 0;
     
-    std::mutex                  m_mutex;
     std::vector<PipelineStruct> m_pipelines;
     
     VkPipeline m_basePipeline = VK_NULL_HANDLE;

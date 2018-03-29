@@ -74,7 +74,6 @@ namespace dxvk {
   
   VkPipeline DxvkGraphicsPipeline::getPipelineHandle(
     const DxvkGraphicsPipelineStateInfo& state) {
-    std::lock_guard<std::mutex> lock(m_mutex);
     
     for (const PipelineStruct& pair : m_pipelines) {
       if (pair.stateVector == state)

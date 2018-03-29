@@ -74,7 +74,6 @@ namespace dxvk {
     Rc<DxvkPipelineLayout>  m_layout;
     Rc<DxvkShaderModule>    m_cs;
     
-    std::mutex                  m_mutex;
     std::vector<PipelineStruct> m_pipelines;
     
     VkPipeline m_basePipeline = VK_NULL_HANDLE;
