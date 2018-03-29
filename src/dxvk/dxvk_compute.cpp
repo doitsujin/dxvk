@@ -1,3 +1,4 @@
+#include <chrono>
 #include <cstring>
 
 #include "dxvk_compute.h"
@@ -91,12 +92,19 @@ namespace dxvk {
     info.basePipelineHandle   = baseHandle;
     info.basePipelineIndex    = -1;
     
+    // Time pipeline compilation for debugging purposes
+    auto t0 = std::chrono::high_resolution_clock::now();
+    
     VkPipeline pipeline = VK_NULL_HANDLE;
     if (m_vkd->vkCreateComputePipelines(m_vkd->device(),
           m_cache->handle(), 1, &info, nullptr, &pipeline) != VK_SUCCESS) {
       Logger::err("DxvkComputePipeline: Failed to compile pipeline");
       return VK_NULL_HANDLE;
     }
+    
+    auto t1 = std::chrono::high_resolution_clock::now();
+    auto td = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0);
+    Logger::debug(str::format("DxvkComputePipeline: Finished in ", td.count(), " ms"));
     
     m_cache->update();
     return pipeline;
