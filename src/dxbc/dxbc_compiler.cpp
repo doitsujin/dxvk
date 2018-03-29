@@ -5600,19 +5600,12 @@ namespace dxvk {
     this->emitHsControlPointPhase(m_hs.cpPhase);
     this->emitHsPhaseBarrier();
     
-    // Fork/join phases. We cannot run this in parallel
-    // because synchronizing per-patch outputs does not
-    // work. We don't need to synchronize after this.
-    this->emitHsInvocationBlockBegin(1);
-    
+    // Fork-join phases (will run in parallel)
     for (const auto& phase : m_hs.forkPhases)
       this->emitHsForkJoinPhase(phase);
     
     for (const auto& phase : m_hs.joinPhases)
       this->emitHsForkJoinPhase(phase);
-    
-    this->emitHsInvocationBlockEnd();
-    this->emitHsPhaseBarrier();
     
     // Output setup phase
     this->emitHsInvocationBlockBegin(1);
@@ -5679,13 +5672,15 @@ namespace dxvk {
   
   void DxbcCompiler::emitHsForkJoinPhase(
     const DxbcCompilerHsForkJoinPhase&      phase) {
-    for (uint32_t i = 0; i < phase.instanceCount; i++) {
-      const uint32_t instanceId = m_module.constu32(i);
-      
-      m_module.opFunctionCall(
-        m_module.defVoidType(),
-        phase.functionId, 1, &instanceId);
-    }
+    this->emitHsInvocationBlockBegin(phase.instanceCount);
+    
+    m_module.opFunctionCall(
+      m_module.defVoidType(),
+      phase.functionId, 1,
+      &m_hs.builtinInvocationId);
+    
+    this->emitHsInvocationBlockEnd();
+    this->emitHsPhaseBarrier();
   }
   
   
