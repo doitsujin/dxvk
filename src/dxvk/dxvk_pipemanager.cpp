@@ -55,14 +55,13 @@ namespace dxvk {
     DxvkComputePipelineKey key;
     key.cs = cs;
     
-    std::lock_guard<std::mutex> lock(m_mutex);
     auto pair = m_computePipelines.find(key);
-    
     if (pair != m_computePipelines.end())
       return pair->second;
     
     const Rc<DxvkComputePipeline> pipeline
       = new DxvkComputePipeline(m_device, cache, cs);
+    
     m_computePipelines.insert(std::make_pair(key, pipeline));
     return pipeline;
   }
@@ -85,14 +84,13 @@ namespace dxvk {
     key.gs  = gs;
     key.fs  = fs;
     
-    std::lock_guard<std::mutex> lock(m_mutex);
     auto pair = m_graphicsPipelines.find(key);
-    
     if (pair != m_graphicsPipelines.end())
       return pair->second;
     
     const Rc<DxvkGraphicsPipeline> pipeline
       = new DxvkGraphicsPipeline(m_device, cache, vs, tcs, tes, gs, fs);
+    
     m_graphicsPipelines.insert(std::make_pair(key, pipeline));
     return pipeline;
   }

@@ -15,7 +15,6 @@ namespace dxvk {
     m_memory          (new DxvkMemoryAllocator(adapter, vkd)),
     m_renderPassPool  (new DxvkRenderPassPool (vkd)),
     m_pipelineCache   (new DxvkPipelineCache  (vkd)),
-    m_pipelineManager (new DxvkPipelineManager(this)),
     m_unboundResources(this),
     m_submissionQueue (this) {
     m_options.adjustAppOptions(env::getExeName());
@@ -103,7 +102,7 @@ namespace dxvk {
   
   
   Rc<DxvkContext> DxvkDevice::createContext() {
-    return new DxvkContext(this);
+    return new DxvkContext(this, m_pipelineCache);
   }
   
   
@@ -169,24 +168,6 @@ namespace dxvk {
     const SpirvCodeBuffer&          code) {
     return new DxvkShader(stage,
       slotCount, slotInfos, iface, code);
-  }
-  
-  
-  Rc<DxvkComputePipeline> DxvkDevice::createComputePipeline(
-    const Rc<DxvkShader>&           cs) {
-    return m_pipelineManager->createComputePipeline(
-      m_pipelineCache, cs);
-  }
-  
-  
-  Rc<DxvkGraphicsPipeline> DxvkDevice::createGraphicsPipeline(
-    const Rc<DxvkShader>&           vs,
-    const Rc<DxvkShader>&           tcs,
-    const Rc<DxvkShader>&           tes,
-    const Rc<DxvkShader>&           gs,
-    const Rc<DxvkShader>&           fs) {
-    return m_pipelineManager->createGraphicsPipeline(
-      m_pipelineCache, vs, tcs, tes, gs, fs);
   }
   
   

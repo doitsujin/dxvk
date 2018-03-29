@@ -7,6 +7,8 @@
 #include "dxvk_data.h"
 #include "dxvk_event.h"
 #include "dxvk_meta_resolve.h"
+#include "dxvk_pipecache.h"
+#include "dxvk_pipemanager.h"
 #include "dxvk_query.h"
 #include "dxvk_query_pool.h"
 #include "dxvk_util.h"
@@ -24,7 +26,9 @@ namespace dxvk {
     
   public:
     
-    DxvkContext(const Rc<DxvkDevice>& device);
+    DxvkContext(
+      const Rc<DxvkDevice>&        device,
+      const Rc<DxvkPipelineCache>& pipelineCache);
     ~DxvkContext();
     
     /**
@@ -561,7 +565,9 @@ namespace dxvk {
     
   private:
     
-    const Rc<DxvkDevice> m_device;
+    const Rc<DxvkDevice>            m_device;
+    const Rc<DxvkPipelineCache>     m_pipeCache;
+    const Rc<DxvkPipelineManager>   m_pipeMgr;
     
     Rc<DxvkCommandList> m_cmd;
     DxvkContextFlags    m_flags;

@@ -247,33 +247,6 @@ namespace dxvk {
       const SpirvCodeBuffer&          code);
     
     /**
-     * \brief Retrieves a compute pipeline
-     * 
-     * \param [in] layout Pipeline binding layout
-     * \param [in] cs Compute shader
-     * \returns The compute pipeline
-     */
-    Rc<DxvkComputePipeline> createComputePipeline(
-      const Rc<DxvkShader>&           cs);
-    
-    /**
-     * \brief Retrieves a graphics pipeline object
-     * 
-     * \param [in] vs Vertex shader
-     * \param [in] tcs Tessellation control shader
-     * \param [in] tes Tessellation evaluation shader
-     * \param [in] gs Geometry shader
-     * \param [in] fs Fragment shader
-     * \returns The graphics pipeline
-     */
-    Rc<DxvkGraphicsPipeline> createGraphicsPipeline(
-      const Rc<DxvkShader>&           vs,
-      const Rc<DxvkShader>&           tcs,
-      const Rc<DxvkShader>&           tes,
-      const Rc<DxvkShader>&           gs,
-      const Rc<DxvkShader>&           fs);
-    
-    /**
      * \brief Creates a swap chain
      * 
      * \param [in] surface The target surface
@@ -338,7 +311,6 @@ namespace dxvk {
     Rc<DxvkMemoryAllocator>   m_memory;
     Rc<DxvkRenderPassPool>    m_renderPassPool;
     Rc<DxvkPipelineCache>     m_pipelineCache;
-    Rc<DxvkPipelineManager>   m_pipelineManager;
     
     DxvkUnboundResources      m_unboundResources;
     DxvkOptions               m_options;
