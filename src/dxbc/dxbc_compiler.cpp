@@ -1989,8 +1989,9 @@ namespace dxvk {
     std::array<DxbcRegisterValue, 2> src;
     
     for (uint32_t i = 1; i < ins.srcCount; i++) {
-      src[i - 1] = emitRegisterLoad(ins.src[i],
-        DxbcRegMask(true, false, false, false));
+      src[i - 1] = emitRegisterBitcast(
+        emitRegisterLoad(ins.src[i], DxbcRegMask(true, false, false, false)),
+        pointer.type.ctype);
     }
     
     // Define memory scope and semantics based on the operands
@@ -2007,9 +2008,8 @@ namespace dxvk {
     
     // Perform the atomic operation on the given pointer
     DxbcRegisterValue value;
-    value.type.ctype  = ins.dst[0].dataType;
-    value.type.ccount = 1;
-    value.id = 0;
+    value.type = pointer.type;
+    value.id   = 0;
     
     // The result type, which is a scalar integer
     const uint32_t typeId = getVectorTypeId(value.type);
@@ -4286,7 +4286,7 @@ namespace dxvk {
     
     // Compute the actual pointer
     DxbcRegisterPointer result;
-    result.type.ctype  = operand.dataType;
+    result.type.ctype  = resourceInfo.stype;
     result.type.ccount = 1;
     result.id = isUav
       ? m_module.opImageTexelPointer(
