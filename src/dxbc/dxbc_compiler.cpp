@@ -2153,8 +2153,8 @@ namespace dxvk {
     // scope is defined by the operand control bits.
     const DxbcSyncFlags flags = ins.controls.syncFlags;
     
-    uint32_t executionScope   = 0;
-    uint32_t memoryScope      = 0;
+    uint32_t executionScope   = spv::ScopeInvocation;
+    uint32_t memoryScope      = spv::ScopeInvocation;
     uint32_t memorySemantics  = 0;
     
     if (flags.test(DxbcSyncFlag::ThreadsInGroup))
@@ -2162,25 +2162,30 @@ namespace dxvk {
     
     if (flags.test(DxbcSyncFlag::ThreadGroupSharedMemory)) {
       memoryScope      = spv::ScopeWorkgroup;
-      memorySemantics |= spv::MemorySemanticsWorkgroupMemoryMask;
+      memorySemantics |= spv::MemorySemanticsWorkgroupMemoryMask
+                      |  spv::MemorySemanticsAcquireReleaseMask;
     }
     
     if (flags.test(DxbcSyncFlag::UavMemoryGroup)) {
       memoryScope      = spv::ScopeWorkgroup;
-      memorySemantics |= spv::MemorySemanticsUniformMemoryMask;
+      memorySemantics |= spv::MemorySemanticsImageMemoryMask
+                      |  spv::MemorySemanticsUniformMemoryMask
+                      |  spv::MemorySemanticsAcquireReleaseMask;
     }
     
     if (flags.test(DxbcSyncFlag::UavMemoryGlobal)) {
       memoryScope      = spv::ScopeDevice;
-      memorySemantics |= spv::MemorySemanticsUniformMemoryMask;
+      memorySemantics |= spv::MemorySemanticsImageMemoryMask
+                      |  spv::MemorySemanticsUniformMemoryMask
+                      |  spv::MemorySemanticsAcquireReleaseMask;
     }
     
-    if (executionScope != 0) {
+    if (executionScope != spv::ScopeInvocation) {
       m_module.opControlBarrier(
         m_module.constu32(executionScope),
         m_module.constu32(memoryScope),
         m_module.constu32(memorySemantics));
-    } else if (memorySemantics != spv::MemorySemanticsMaskNone) {
+    } else if (memoryScope != spv::ScopeInvocation) {
       m_module.opMemoryBarrier(
         m_module.constu32(memoryScope),
         m_module.constu32(memorySemantics));
