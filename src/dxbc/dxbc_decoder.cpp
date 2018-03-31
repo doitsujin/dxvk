@@ -132,6 +132,8 @@ namespace dxvk {
       static_cast<DxbcTessOutputPrimitive>(bit::extract(token, 11, 13));
     m_instruction.controls.tessPartitioning =
       static_cast<DxbcTessPartitioning>(bit::extract(token, 11, 13));
+    m_instruction.controls.uavFlags =
+      static_cast<uint32_t>(bit::extract(token, 16, 16));
     m_instruction.controls.controlPointCount =
       static_cast<uint32_t>(bit::extract(token, 11, 16));
     

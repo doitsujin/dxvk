@@ -201,8 +201,6 @@ namespace dxvk {
   
   /**
    * \brief Instruction operand
-   * 
-   * 
    */
   struct DxbcRegister {
     DxbcOperandType       type;
@@ -254,6 +252,7 @@ namespace dxvk {
     DxbcTessDomain        tessDomain;
     DxbcTessOutputPrimitive tessOutputPrimitive;
     DxbcTessPartitioning  tessPartitioning;
+    DxbcUavFlags          uavFlags;
     uint32_t              controlPointCount;
   };
   

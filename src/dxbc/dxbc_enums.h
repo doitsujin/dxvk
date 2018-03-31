@@ -575,6 +575,15 @@ namespace dxvk {
   };
   
   /**
+   * \brief UAV definition flags
+   */
+  enum class DxbcUavFlag : uint32_t {
+    GloballyCoherent = 0,
+  };
+  
+  using DxbcUavFlags = Flags<DxbcUavFlag>;
+  
+  /**
    * \brief Tessellator output primitive
    */
   enum class DxbcTessOutputPrimitive : uint32_t {

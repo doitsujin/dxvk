@@ -861,6 +861,9 @@ namespace dxvk {
     m_module.decorateDescriptorSet(varId, 0);
     m_module.decorateBinding(varId, bindingId);
     
+    if (ins.controls.uavFlags.test(DxbcUavFlag::GloballyCoherent))
+      m_module.decorate(varId, spv::DecorationCoherent);
+    
     // Declare a specialization constant which will
     // store whether or not the resource is bound.
     const uint32_t specConstId = m_module.specConstBool(true);
@@ -978,6 +981,9 @@ namespace dxvk {
     
     m_module.decorateDescriptorSet(varId, 0);
     m_module.decorateBinding(varId, bindingId);
+    
+    if (ins.controls.uavFlags.test(DxbcUavFlag::GloballyCoherent))
+      m_module.decorate(varId, spv::DecorationCoherent);
     
     // Declare a specialization constant which will
     // store whether or not the resource is bound.
@@ -1995,15 +2001,20 @@ namespace dxvk {
     }
     
     // Define memory scope and semantics based on the operands
-    uint32_t semantics = isUav
-      ? spv::MemorySemanticsUniformMemoryMask
-      : spv::MemorySemanticsWorkgroupMemoryMask;
+    uint32_t scope     = 0;
+    uint32_t semantics = 0;
     
-    // TODO verify whether this is even remotely correct
-    semantics |= spv::MemorySemanticsAcquireReleaseMask;
+    if (isUav) {
+      scope     = spv::ScopeDevice;
+      semantics = spv::MemorySemanticsImageMemoryMask
+                | spv::MemorySemanticsAcquireReleaseMask;
+    } else {
+      scope     = spv::ScopeWorkgroup;
+      semantics = spv::MemorySemanticsWorkgroupMemoryMask
+                | spv::MemorySemanticsAcquireReleaseMask;
+    }
     
-    // TODO for UAVs, respect globally coherent flag
-    const uint32_t scopeId     = m_module.constu32(spv::ScopeWorkgroup);
+    const uint32_t scopeId     = m_module.constu32(scope);
     const uint32_t semanticsId = m_module.constu32(semantics);
     
     // Perform the atomic operation on the given pointer
