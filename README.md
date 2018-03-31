@@ -9,12 +9,10 @@ For binary releases, see the [releases](https://github.com/doitsujin/dxvk/releas
 ## Build instructions
 
 ### Requirements:
-- [wine 3.4](https://www.winehq.org/) or newer
+- [wine 3.5](https://www.winehq.org/) or newer
 - [Meson](http://mesonbuild.com/) build system (at least 0.43)
 - [MinGW64](http://mingw-w64.org/) compiler and headers (requires threading support)
 - [glslang](https://github.com/KhronosGroup/glslang) front end and validator
-
-**Note:** As of Wine 3.4, enabling Vulkan support requires some manual setup that is described in steps 2 to 4 on the original [wine-vulkan](https://github.com/roderickc/wine-vulkan/blob/master/README.md) README page.
 
 ### Building DLLs
 Inside the dxvk directory, run:
