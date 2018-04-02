@@ -47,14 +47,15 @@ Manipulation of Direct3D libraries in multi-player games may be considered cheat
 
 ### Environment variables
 The behaviour of DXVK can be modified with environment variables.
+- `DXVK_HUD=1` Enables the HUD (FPS, driver info)
 
-- `DXVK_DEBUG_LAYERS=1` Enables Vulkan debug layers. Highly recommended for troubleshooting and debugging purposes.
-- `DXVK_CUSTOM_VENDOR_ID=<ID>`  Specifces a custom PCI vendor identifier (Vendor ID)
-- `DXVK_CUSTOM_DEVICE_ID=<ID>`  Specifces a custom PCI device identifier (Device ID) 
-- `DXVK_SHADER_DUMP_PATH=directory` Writes all DXBC and SPIR-V shaders to the given directory
+The following options can be used for **debugging** purposes. Do not use these for playing games.
+- `DXVK_DEBUG_LAYERS=1` Enables Vulkan debug layers. Highly recommended for troubleshooting and debugging purposes. Requires the Vulkan SDK to be installed and set up within the wine prefix.
+- `DXVK_CUSTOM_VENDOR_ID=<ID>` Specifces a custom PCI vendor identifier (Vendor ID)
+- `DXVK_CUSTOM_DEVICE_ID=<ID>` Specifces a custom PCI device identifier (Device ID) 
+- `DXVK_SHADER_DUMP_PATH=directory` Writes all DXBC and SPIR-V shaders to the given directory.
 - `DXVK_SHADER_READ_PATH=directory` Reads SPIR-V shaders from the given directory rather than using the shader compiler.
 - `DXVK_LOG_LEVEL=error|warn|info|debug|trace` Controls message logging.
-- `DXVK_HUD=1` Enables the HUD
 
 ## Samples and executables
 In addition to the DLLs, the following standalone programs are included in the project.
