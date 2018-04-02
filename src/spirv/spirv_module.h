@@ -1022,6 +1022,12 @@ namespace dxvk {
             uint32_t                argCount,
       const uint32_t*               argIds);
     
+    uint32_t defConst(
+            spv::Op                 op,
+            uint32_t                typeId,
+            uint32_t                argCount,
+      const uint32_t*               argIds);
+    
     void instImportGlsl450();
     
     uint32_t getImageOperandWordCount(
