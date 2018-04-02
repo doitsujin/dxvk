@@ -62,6 +62,8 @@ namespace dxvk {
           DXGI_USAGE            Usage,
     const DXGI_SHARED_RESOURCE* pSharedResource,
           IDXGISurface**        ppSurface) {
+    InitReturnPtr(ppSurface);
+    
     Logger::err("DxgiDevice::CreateSurface: Not implemented");
     return E_NOTIMPL;
   }

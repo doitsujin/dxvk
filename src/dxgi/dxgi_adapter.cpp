@@ -54,6 +54,8 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiAdapter::EnumOutputs(
           UINT        Output,
           IDXGIOutput **ppOutput) {
+    InitReturnPtr(ppOutput);
+    
     if (ppOutput == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
@@ -154,6 +156,8 @@ namespace dxvk {
           IDXGIObject*              pContainer,
     const VkPhysicalDeviceFeatures* pFeatures,
           IDXGIVkDevice**           ppDevice) {
+    InitReturnPtr(ppDevice);
+    
     try {
       *ppDevice = new dxvk::DxgiDevice(pContainer, this, pFeatures);
       return S_OK;

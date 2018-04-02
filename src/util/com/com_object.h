@@ -41,4 +41,10 @@ namespace dxvk {
     
   };
   
+  template<typename T>
+  inline void InitReturnPtr(T** ptr) {
+    if (ptr != nullptr)
+      *ptr = nullptr;
+  }
+  
 }

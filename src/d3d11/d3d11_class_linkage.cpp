@@ -38,6 +38,8 @@ namespace dxvk {
           UINT                TextureOffset,
           UINT                SamplerOffset,
           ID3D11ClassInstance **ppInstance) {
+    InitReturnPtr(ppInstance);
+    
     Logger::err("D3D11ClassLinkage::CreateClassInstance: Not implemented yet");
     return E_NOTIMPL;
   }

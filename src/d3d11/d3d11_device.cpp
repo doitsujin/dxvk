@@ -126,6 +126,8 @@ namespace dxvk {
     const D3D11_BUFFER_DESC*      pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
           ID3D11Buffer**          ppBuffer) {
+    InitReturnPtr(ppBuffer);
+    
     if (ppBuffer == nullptr)
       return S_FALSE;
     
@@ -147,6 +149,8 @@ namespace dxvk {
     const D3D11_TEXTURE1D_DESC*   pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
           ID3D11Texture1D**       ppTexture1D) {
+    InitReturnPtr(ppTexture1D);
+    
     D3D11_COMMON_TEXTURE_DESC desc;
     desc.Width          = pDesc->Width;
     desc.Height         = 1;
@@ -182,6 +186,8 @@ namespace dxvk {
     const D3D11_TEXTURE2D_DESC*   pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
           ID3D11Texture2D**       ppTexture2D) {
+    InitReturnPtr(ppTexture2D);
+    
     D3D11_COMMON_TEXTURE_DESC desc;
     desc.Width          = pDesc->Width;
     desc.Height         = pDesc->Height;
@@ -217,6 +223,8 @@ namespace dxvk {
     const D3D11_TEXTURE3D_DESC*   pDesc,
     const D3D11_SUBRESOURCE_DATA* pInitialData,
           ID3D11Texture3D**       ppTexture3D) {
+    InitReturnPtr(ppTexture3D);
+    
     D3D11_COMMON_TEXTURE_DESC desc;
     desc.Width          = pDesc->Width;
     desc.Height         = pDesc->Height;
@@ -252,6 +260,8 @@ namespace dxvk {
           ID3D11Resource*                   pResource,
     const D3D11_SHADER_RESOURCE_VIEW_DESC*  pDesc,
           ID3D11ShaderResourceView**        ppSRView) {
+    InitReturnPtr(ppSRView);
+    
     D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resourceDim);
     
@@ -457,6 +467,8 @@ namespace dxvk {
           ID3D11Resource*                   pResource,
     const D3D11_UNORDERED_ACCESS_VIEW_DESC* pDesc,
           ID3D11UnorderedAccessView**       ppUAView) {
+    InitReturnPtr(ppUAView);
+    
     D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resourceDim);
     
@@ -623,6 +635,8 @@ namespace dxvk {
           ID3D11Resource*                   pResource,
     const D3D11_RENDER_TARGET_VIEW_DESC*    pDesc,
           ID3D11RenderTargetView**          ppRTView) {
+    InitReturnPtr(ppRTView);
+    
     // DXVK only supports render target views for image resources
     D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resourceDim);
@@ -745,6 +759,8 @@ namespace dxvk {
           ID3D11Resource*                   pResource,
     const D3D11_DEPTH_STENCIL_VIEW_DESC*    pDesc,
           ID3D11DepthStencilView**          ppDepthStencilView) {
+    InitReturnPtr(ppDepthStencilView);
+    
     D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resourceDim);
     
@@ -855,6 +871,8 @@ namespace dxvk {
     const void*                       pShaderBytecodeWithInputSignature,
           SIZE_T                      BytecodeLength,
           ID3D11InputLayout**         ppInputLayout) {
+    InitReturnPtr(ppInputLayout);
+    
     try {
       DxbcReader dxbcReader(reinterpret_cast<const char*>(
         pShaderBytecodeWithInputSignature), BytecodeLength);
@@ -983,6 +1001,7 @@ namespace dxvk {
           SIZE_T                      BytecodeLength,
           ID3D11ClassLinkage*         pClassLinkage,
           ID3D11VertexShader**        ppVertexShader) {
+    InitReturnPtr(ppVertexShader);
     D3D11ShaderModule module;
     
     if (FAILED(this->CreateShaderModule(&module,
@@ -1003,6 +1022,7 @@ namespace dxvk {
           SIZE_T                      BytecodeLength,
           ID3D11ClassLinkage*         pClassLinkage,
           ID3D11GeometryShader**      ppGeometryShader) {
+    InitReturnPtr(ppGeometryShader);
     D3D11ShaderModule module;
     
     if (FAILED(this->CreateShaderModule(&module,
@@ -1028,6 +1048,7 @@ namespace dxvk {
           UINT                        RasterizedStream,
           ID3D11ClassLinkage*         pClassLinkage,
           ID3D11GeometryShader**      ppGeometryShader) {
+    InitReturnPtr(ppGeometryShader);
     Logger::err("D3D11Device::CreateGeometryShaderWithStreamOutput: Not implemented");
     return E_NOTIMPL;
   }
@@ -1038,6 +1059,7 @@ namespace dxvk {
           SIZE_T                      BytecodeLength,
           ID3D11ClassLinkage*         pClassLinkage,
           ID3D11PixelShader**         ppPixelShader) {
+    InitReturnPtr(ppPixelShader);
     D3D11ShaderModule module;
     
     if (FAILED(this->CreateShaderModule(&module,
@@ -1058,6 +1080,7 @@ namespace dxvk {
           SIZE_T                      BytecodeLength,
           ID3D11ClassLinkage*         pClassLinkage,
           ID3D11HullShader**          ppHullShader) {
+    InitReturnPtr(ppHullShader);
     D3D11ShaderModule module;
     
     if (FAILED(this->CreateShaderModule(&module,
@@ -1078,6 +1101,7 @@ namespace dxvk {
           SIZE_T                      BytecodeLength,
           ID3D11ClassLinkage*         pClassLinkage,
           ID3D11DomainShader**        ppDomainShader) {
+    InitReturnPtr(ppDomainShader);
     D3D11ShaderModule module;
     
     if (FAILED(this->CreateShaderModule(&module,
@@ -1098,6 +1122,7 @@ namespace dxvk {
           SIZE_T                      BytecodeLength,
           ID3D11ClassLinkage*         pClassLinkage,
           ID3D11ComputeShader**       ppComputeShader) {
+    InitReturnPtr(ppComputeShader);
     D3D11ShaderModule module;
     
     if (FAILED(this->CreateShaderModule(&module,
@@ -1122,6 +1147,8 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11Device::CreateBlendState(
     const D3D11_BLEND_DESC*           pBlendStateDesc,
           ID3D11BlendState**          ppBlendState) {
+    InitReturnPtr(ppBlendState);
+    
     D3D11_BLEND_DESC1 desc = pBlendStateDesc != nullptr
       ? D3D11BlendState::PromoteDesc(pBlendStateDesc)
       : D3D11BlendState::DefaultDesc();
@@ -1139,6 +1166,8 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11Device::CreateBlendState1(
     const D3D11_BLEND_DESC1*          pBlendStateDesc, 
           ID3D11BlendState1**         ppBlendState) {
+    InitReturnPtr(ppBlendState);
+    
     D3D11_BLEND_DESC1 desc = pBlendStateDesc != nullptr
       ? *pBlendStateDesc
       : D3D11BlendState::DefaultDesc();
@@ -1156,6 +1185,8 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11Device::CreateDepthStencilState(
     const D3D11_DEPTH_STENCIL_DESC*   pDepthStencilDesc,
           ID3D11DepthStencilState**   ppDepthStencilState) {
+    InitReturnPtr(ppDepthStencilState);
+    
     D3D11_DEPTH_STENCIL_DESC desc = pDepthStencilDesc != nullptr
       ? *pDepthStencilDesc
       : D3D11DepthStencilState::DefaultDesc();
@@ -1173,6 +1204,8 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11Device::CreateRasterizerState(
     const D3D11_RASTERIZER_DESC*      pRasterizerDesc,
           ID3D11RasterizerState**     ppRasterizerState) {
+    InitReturnPtr(ppRasterizerState);
+    
     D3D11_RASTERIZER_DESC1 desc = pRasterizerDesc != nullptr
       ? D3D11RasterizerState::PromoteDesc(pRasterizerDesc)
       : D3D11RasterizerState::DefaultDesc();
@@ -1190,6 +1223,8 @@ namespace dxvk {
   HRESULT D3D11Device::CreateRasterizerState1(
     const D3D11_RASTERIZER_DESC1*     pRasterizerDesc, 
           ID3D11RasterizerState1**    ppRasterizerState) {
+    InitReturnPtr(ppRasterizerState);
+    
     D3D11_RASTERIZER_DESC1 desc = pRasterizerDesc != nullptr
       ? *pRasterizerDesc
       : D3D11RasterizerState::DefaultDesc();
@@ -1207,6 +1242,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11Device::CreateSamplerState(
     const D3D11_SAMPLER_DESC*         pSamplerDesc,
           ID3D11SamplerState**        ppSamplerState) {
+    InitReturnPtr(ppSamplerState);
     D3D11_SAMPLER_DESC desc = *pSamplerDesc;
     
     if (FAILED(D3D11SamplerState::NormalizeDesc(&desc)))
@@ -1228,6 +1264,8 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11Device::CreateQuery(
     const D3D11_QUERY_DESC*           pQueryDesc,
           ID3D11Query**               ppQuery) {
+    InitReturnPtr(ppQuery);
+    
     if (pQueryDesc->Query != D3D11_QUERY_EVENT
      && pQueryDesc->Query != D3D11_QUERY_OCCLUSION
      && pQueryDesc->Query != D3D11_QUERY_TIMESTAMP
@@ -1254,6 +1292,8 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11Device::CreatePredicate(
     const D3D11_QUERY_DESC*           pPredicateDesc,
           ID3D11Predicate**           ppPredicate) {
+    InitReturnPtr(ppPredicate);
+    
     if (pPredicateDesc->Query != D3D11_QUERY_OCCLUSION_PREDICATE)
       return E_INVALIDARG;
     
@@ -1273,6 +1313,8 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11Device::CreateCounter(
     const D3D11_COUNTER_DESC*         pCounterDesc,
           ID3D11Counter**             ppCounter) {
+    InitReturnPtr(ppCounter);
+    
     Logger::err("D3D11Device::CreateCounter: Not implemented");
     return E_NOTIMPL;
   }
@@ -1300,6 +1342,8 @@ namespace dxvk {
           REFIID                      EmulatedInterface, 
           D3D_FEATURE_LEVEL*          pChosenFeatureLevel, 
           ID3DDeviceContextState**    ppContextState) {
+    InitReturnPtr(ppContextState);
+    
     Logger::err("D3D11Device::CreateDeviceContextState: Not implemented");
     return E_NOTIMPL;
   }
@@ -1308,6 +1352,8 @@ namespace dxvk {
           HANDLE      hResource,
           REFIID      ReturnedInterface,
           void**      ppResource) {
+    InitReturnPtr(ppResource);
+    
     Logger::err("D3D11Device::OpenSharedResource: Not implemented");
     return E_NOTIMPL;
   }
@@ -1317,6 +1363,8 @@ namespace dxvk {
           HANDLE      hResource,
           REFIID      ReturnedInterface,
           void**      ppResource) {
+    InitReturnPtr(ppResource);
+    
     Logger::err("D3D11Device::OpenSharedResource1: Not implemented");
     return E_NOTIMPL;
   }
@@ -1326,7 +1374,9 @@ namespace dxvk {
           LPCWSTR     lpName, 
           DWORD       dwDesiredAccess, 
           REFIID      returnedInterface, 
-          void **     ppResource) {
+          void**      ppResource) {
+    InitReturnPtr(ppResource);
+    
     Logger::err("D3D11Device::OpenSharedResourceByName: Not implemented");
     return E_NOTIMPL;
   }

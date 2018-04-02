@@ -33,6 +33,8 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiFactory::GetParent(
           REFIID  riid,
           void**  ppParent) {
+    InitReturnPtr(ppParent);
+    
     Logger::warn("DxgiFactory::GetParent: Unknown interface query");
     return E_NOINTERFACE;
   }
@@ -41,10 +43,11 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiFactory::CreateSoftwareAdapter(
           HMODULE         Module,
           IDXGIAdapter**  ppAdapter) {
+    InitReturnPtr(ppAdapter);
+    
     if (ppAdapter == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
-    *ppAdapter = nullptr;
     Logger::err("DxgiFactory::CreateSoftwareAdapter: Software adapters not supported");
     return DXGI_ERROR_UNSUPPORTED;
   }
@@ -54,6 +57,8 @@ namespace dxvk {
           IUnknown*             pDevice,
           DXGI_SWAP_CHAIN_DESC* pDesc,
           IDXGISwapChain**      ppSwapChain) {
+    InitReturnPtr(ppSwapChain);
+    
     if (ppSwapChain == nullptr || pDesc == nullptr || pDevice == NULL)
       return DXGI_ERROR_INVALID_CALL;
     
@@ -73,6 +78,8 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiFactory::EnumAdapters(
           UINT            Adapter,
           IDXGIAdapter**  ppAdapter) {
+    InitReturnPtr(ppAdapter);
+    
     if (ppAdapter == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
@@ -86,13 +93,13 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiFactory::EnumAdapters1(
           UINT            Adapter,
           IDXGIAdapter1** ppAdapter) {
+    InitReturnPtr(ppAdapter);
+    
     if (ppAdapter == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
-    if (Adapter >= m_adapters.size()) {
-      *ppAdapter = nullptr;
+    if (Adapter >= m_adapters.size())
       return DXGI_ERROR_NOT_FOUND;
-    }
     
     *ppAdapter = ref(new DxgiAdapter(
       this, m_adapters.at(Adapter)));

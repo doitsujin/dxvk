@@ -88,6 +88,8 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11ImmediateContext::FinishCommandList(
           BOOL                RestoreDeferredContextState,
           ID3D11CommandList   **ppCommandList) {
+    InitReturnPtr(ppCommandList);
+    
     Logger::err("D3D11: FinishCommandList called on immediate context");
     return DXGI_ERROR_INVALID_CALL;
   }

@@ -82,6 +82,8 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetBuffer(UINT Buffer, REFIID riid, void** ppSurface) {
+    InitReturnPtr(ppSurface);
+    
     std::lock_guard<std::recursive_mutex> lock(m_mutex);
     
     if (Buffer > 0) {
@@ -94,6 +96,8 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetContainingOutput(IDXGIOutput** ppOutput) {
+    InitReturnPtr(ppOutput);
+    
     RECT windowRect = { 0, 0, 0, 0 };
     ::GetWindowRect(m_desc.OutputWindow, &windowRect);
     
