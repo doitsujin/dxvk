@@ -161,6 +161,7 @@ namespace dxvk {
       const DxvkGraphicsPipelineStateInfo& state) const;
     
     void logPipelineState(
+            LogLevel                       level,
       const DxvkGraphicsPipelineStateInfo& state) const;
     
   };

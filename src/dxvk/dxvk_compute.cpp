@@ -98,6 +98,7 @@ namespace dxvk {
     if (m_vkd->vkCreateComputePipelines(m_vkd->device(),
           m_cache->handle(), 1, &info, nullptr, &pipeline) != VK_SUCCESS) {
       Logger::err("DxvkComputePipeline: Failed to compile pipeline");
+      Logger::err(str::format("  cs  : ", m_cs ->debugName()));
       return VK_NULL_HANDLE;
     }
     

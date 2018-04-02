@@ -95,8 +95,10 @@ namespace dxvk {
   VkPipeline DxvkGraphicsPipeline::compilePipeline(
     const DxvkGraphicsPipelineStateInfo& state,
           VkPipeline                     baseHandle) const {
-    if (Logger::logLevel() <= LogLevel::Debug)
-      this->logPipelineState(state);
+    if (Logger::logLevel() <= LogLevel::Debug) {
+      Logger::debug("Compiling graphics pipeline...");
+      this->logPipelineState(LogLevel::Debug, state);
+    }
     
     std::array<VkDynamicState, 4> dynamicStates = {
       VK_DYNAMIC_STATE_VIEWPORT,
@@ -255,6 +257,7 @@ namespace dxvk {
     if (m_vkd->vkCreateGraphicsPipelines(m_vkd->device(),
           m_cache->handle(), 1, &info, nullptr, &pipeline) != VK_SUCCESS) {
       Logger::err("DxvkGraphicsPipeline: Failed to compile pipeline");
+      this->logPipelineState(LogLevel::Error, state);
       return VK_NULL_HANDLE;
     }
     
@@ -329,14 +332,13 @@ namespace dxvk {
   
   
   void DxvkGraphicsPipeline::logPipelineState(
+          LogLevel                       level,
     const DxvkGraphicsPipelineStateInfo& state) const {
-    Logger::debug("Compiling graphics pipeline...");
-    
-    if (m_vs  != nullptr) Logger::debug(str::format("  vs  : ", m_vs ->debugName()));
-    if (m_tcs != nullptr) Logger::debug(str::format("  tcs : ", m_tcs->debugName()));
-    if (m_tes != nullptr) Logger::debug(str::format("  tes : ", m_tes->debugName()));
-    if (m_gs  != nullptr) Logger::debug(str::format("  gs  : ", m_gs ->debugName()));
-    if (m_fs  != nullptr) Logger::debug(str::format("  fs  : ", m_fs ->debugName()));
+    if (m_vs  != nullptr) Logger::log(level, str::format("  vs  : ", m_vs ->debugName()));
+    if (m_tcs != nullptr) Logger::log(level, str::format("  tcs : ", m_tcs->debugName()));
+    if (m_tes != nullptr) Logger::log(level, str::format("  tes : ", m_tes->debugName()));
+    if (m_gs  != nullptr) Logger::log(level, str::format("  gs  : ", m_gs ->debugName()));
+    if (m_fs  != nullptr) Logger::log(level, str::format("  fs  : ", m_fs ->debugName()));
     
     // TODO log more pipeline state
   }
