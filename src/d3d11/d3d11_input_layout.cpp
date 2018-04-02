@@ -27,9 +27,14 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE D3D11InputLayout::QueryInterface(REFIID riid, void** ppvObject) {
-    COM_QUERY_IFACE(riid, ppvObject, IUnknown);
-    COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceChild);
-    COM_QUERY_IFACE(riid, ppvObject, ID3D11InputLayout);
+    *ppvObject = nullptr;
+    
+    if (riid == __uuidof(IUnknown)
+     || riid == __uuidof(ID3D11DeviceChild)
+     || riid == __uuidof(ID3D11InputLayout)) {
+      *ppvObject = ref(this);
+      return S_OK;
+    }
     
     Logger::warn("D3D11InputLayout::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));

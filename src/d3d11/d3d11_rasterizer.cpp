@@ -69,10 +69,15 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE D3D11RasterizerState::QueryInterface(REFIID riid, void** ppvObject) {
-    COM_QUERY_IFACE(riid, ppvObject, IUnknown);
-    COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceChild);
-    COM_QUERY_IFACE(riid, ppvObject, ID3D11RasterizerState);
-    COM_QUERY_IFACE(riid, ppvObject, ID3D11RasterizerState1);
+    *ppvObject = nullptr;
+    
+    if (riid == __uuidof(IUnknown)
+     || riid == __uuidof(ID3D11DeviceChild)
+     || riid == __uuidof(ID3D11RasterizerState)
+     || riid == __uuidof(ID3D11RasterizerState1)) {
+      *ppvObject = ref(this);
+      return S_OK;
+    }
     
     Logger::warn("D3D11RasterizerState::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));

@@ -295,10 +295,15 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE D3D11Texture1D::QueryInterface(REFIID riid, void** ppvObject) {
-    COM_QUERY_IFACE(riid, ppvObject, IUnknown);
-    COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceChild);
-    COM_QUERY_IFACE(riid, ppvObject, ID3D11Resource);
-    COM_QUERY_IFACE(riid, ppvObject, ID3D11Texture1D);
+    *ppvObject = nullptr;
+    
+    if (riid == __uuidof(IUnknown)
+     || riid == __uuidof(ID3D11DeviceChild)
+     || riid == __uuidof(ID3D11Resource)
+     || riid == __uuidof(ID3D11Texture1D)) {
+      *ppvObject = ref(this);
+      return S_OK;
+    }
     
     Logger::warn("D3D11Texture1D::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
@@ -355,10 +360,15 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE D3D11Texture2D::QueryInterface(REFIID riid, void** ppvObject) {
-    COM_QUERY_IFACE(riid, ppvObject, IUnknown);
-    COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceChild);
-    COM_QUERY_IFACE(riid, ppvObject, ID3D11Resource);
-    COM_QUERY_IFACE(riid, ppvObject, ID3D11Texture2D);
+    *ppvObject = nullptr;
+    
+    if (riid == __uuidof(IUnknown)
+     || riid == __uuidof(ID3D11DeviceChild)
+     || riid == __uuidof(ID3D11Resource)
+     || riid == __uuidof(ID3D11Texture2D)) {
+      *ppvObject = ref(this);
+      return S_OK;
+    }
     
     Logger::warn("D3D11Texture2D::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
@@ -417,10 +427,15 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE D3D11Texture3D::QueryInterface(REFIID riid, void** ppvObject) {
-    COM_QUERY_IFACE(riid, ppvObject, IUnknown);
-    COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceChild);
-    COM_QUERY_IFACE(riid, ppvObject, ID3D11Resource);
-    COM_QUERY_IFACE(riid, ppvObject, ID3D11Texture3D);
+    *ppvObject = nullptr;
+    
+    if (riid == __uuidof(IUnknown)
+     || riid == __uuidof(ID3D11DeviceChild)
+     || riid == __uuidof(ID3D11Resource)
+     || riid == __uuidof(ID3D11Texture3D)) {
+      *ppvObject = ref(this);
+      return S_OK;
+    }
     
     Logger::warn("D3D11Texture3D::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));

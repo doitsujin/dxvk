@@ -48,13 +48,21 @@ namespace dxvk {
   
     
   HRESULT STDMETHODCALLTYPE D3D11Query::QueryInterface(REFIID  riid, void** ppvObject) {
-    COM_QUERY_IFACE(riid, ppvObject, IUnknown);
-    COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceChild);
-    COM_QUERY_IFACE(riid, ppvObject, ID3D11Asynchronous);
-    COM_QUERY_IFACE(riid, ppvObject, ID3D11Query);
+    *ppvObject = nullptr;
     
-    if (m_desc.Query == D3D11_QUERY_OCCLUSION_PREDICATE)
-      COM_QUERY_IFACE(riid, ppvObject, ID3D11Predicate);
+    if (riid == __uuidof(IUnknown)
+     || riid == __uuidof(ID3D11DeviceChild)
+     || riid == __uuidof(ID3D11Asynchronous)
+     || riid == __uuidof(ID3D11Query)) {
+      *ppvObject = ref(this);
+      return S_OK;
+    }
+    
+    if (riid == __uuidof(ID3D11Predicate)
+     && m_desc.Query == D3D11_QUERY_OCCLUSION_PREDICATE) {
+      *ppvObject = ref(this);
+      return S_OK;
+    }
     
     Logger::warn("D3D11Query: Unknown interface query");
     Logger::warn(str::format(riid));

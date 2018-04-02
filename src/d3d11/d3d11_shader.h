@@ -73,9 +73,14 @@ namespace dxvk {
     ~D3D11Shader() { }
     
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) final {
-      COM_QUERY_IFACE(riid, ppvObject, IUnknown);
-      COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceChild);
-      COM_QUERY_IFACE(riid, ppvObject, Base);
+      *ppvObject = nullptr;
+      
+      if (riid == __uuidof(IUnknown)
+       || riid == __uuidof(ID3D11DeviceChild)
+       || riid == __uuidof(Base)) {
+        *ppvObject = ref(this);
+        return S_OK;
+      }
       
       Logger::warn("D3D11Shader::QueryInterface: Unknown interface query");
       return E_NOINTERFACE;

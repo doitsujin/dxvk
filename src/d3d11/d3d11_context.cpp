@@ -39,13 +39,16 @@ namespace dxvk {
   }
   
   
-  HRESULT STDMETHODCALLTYPE D3D11DeviceContext::QueryInterface(
-          REFIID  riid,
-          void**  ppvObject) {
-    COM_QUERY_IFACE(riid, ppvObject, IUnknown);
-    COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceChild);
-    COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceContext);
-    COM_QUERY_IFACE(riid, ppvObject, ID3D11DeviceContext1);
+  HRESULT STDMETHODCALLTYPE D3D11DeviceContext::QueryInterface(REFIID riid, void** ppvObject) {
+    *ppvObject = nullptr;
+    
+    if (riid == __uuidof(IUnknown)
+     || riid == __uuidof(ID3D11DeviceChild)
+     || riid == __uuidof(ID3D11DeviceContext)
+     || riid == __uuidof(ID3D11DeviceContext1)) {
+      *ppvObject = ref(this);
+      return S_OK;
+    }
     
     if (riid == __uuidof(ID3DUserDefinedAnnotation))
       return E_NOINTERFACE;

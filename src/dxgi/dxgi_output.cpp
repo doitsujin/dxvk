@@ -26,9 +26,14 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE DxgiOutput::QueryInterface(REFIID riid, void** ppvObject) {
-    COM_QUERY_IFACE(riid, ppvObject, IUnknown);
-    COM_QUERY_IFACE(riid, ppvObject, IDXGIObject);
-    COM_QUERY_IFACE(riid, ppvObject, IDXGIOutput);
+    *ppvObject = nullptr;
+    
+    if (riid == __uuidof(IUnknown)
+     || riid == __uuidof(IDXGIObject)
+     || riid == __uuidof(IDXGIOutput)) {
+      *ppvObject = ref(this);
+      return S_OK;
+    }
     
     Logger::warn("DxgiOutput::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));

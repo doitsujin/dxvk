@@ -60,10 +60,15 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::QueryInterface(REFIID riid, void** ppvObject) {
-    COM_QUERY_IFACE(riid, ppvObject, IUnknown);
-    COM_QUERY_IFACE(riid, ppvObject, IDXGIObject);
-    COM_QUERY_IFACE(riid, ppvObject, IDXGIDeviceSubObject);
-    COM_QUERY_IFACE(riid, ppvObject, IDXGISwapChain);
+    *ppvObject = nullptr;
+    
+    if (riid == __uuidof(IUnknown)
+     || riid == __uuidof(IDXGIObject)
+     || riid == __uuidof(IDXGIDeviceSubObject)
+     || riid == __uuidof(IDXGISwapChain)) {
+      *ppvObject = ref(this);
+      return S_OK;
+    }
     
     Logger::warn("DxgiSwapChain::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));

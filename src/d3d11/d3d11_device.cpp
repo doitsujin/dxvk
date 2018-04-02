@@ -28,6 +28,8 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE D3D11DeviceContainer::QueryInterface(REFIID riid, void** ppvObject) {
+    *ppvObject = nullptr;
+    
     if (riid == __uuidof(IUnknown)
      || riid == __uuidof(IDXGIObject)) {
       *ppvObject = ref(this);

@@ -26,11 +26,16 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE DxgiAdapter::QueryInterface(REFIID riid, void** ppvObject) {
-    COM_QUERY_IFACE(riid, ppvObject, IUnknown);
-    COM_QUERY_IFACE(riid, ppvObject, IDXGIObject);
-    COM_QUERY_IFACE(riid, ppvObject, IDXGIAdapter);
-    COM_QUERY_IFACE(riid, ppvObject, IDXGIAdapter1);
-    COM_QUERY_IFACE(riid, ppvObject, IDXGIVkAdapter);
+    *ppvObject = nullptr;
+    
+    if (riid == __uuidof(IUnknown)
+     || riid == __uuidof(IDXGIObject)
+     || riid == __uuidof(IDXGIAdapter)
+     || riid == __uuidof(IDXGIAdapter1)
+     || riid == __uuidof(IDXGIVkAdapter)) {
+      *ppvObject = ref(this);
+      return S_OK;
+    }
     
     Logger::warn("DxgiAdapter::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
