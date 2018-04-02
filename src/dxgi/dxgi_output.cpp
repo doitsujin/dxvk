@@ -115,7 +115,7 @@ namespace dxvk {
       return DXGI_ERROR_NOT_FOUND;
 
     // Select mode with minimal height+width difference
-    UINT minDifference = UINT_MAX;
+    UINT minDifference = std::numeric_limits<unsigned int>::max();
     
     for (auto& mode : modes) {
       UINT currDifference = std::abs(int(pModeToMatch->Width  - mode.Width))
