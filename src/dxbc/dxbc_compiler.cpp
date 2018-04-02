@@ -2061,24 +2061,28 @@ namespace dxvk {
         break;
       
       case DxbcOpcode::AtomicIMin:
+      case DxbcOpcode::ImmAtomicIMin:
         value.id = m_module.opAtomicSMin(typeId,
           pointer.id, scopeId, semanticsId,
           src[0].id);
         break;
       
       case DxbcOpcode::AtomicIMax:
+      case DxbcOpcode::ImmAtomicIMax:
         value.id = m_module.opAtomicSMax(typeId,
           pointer.id, scopeId, semanticsId,
           src[0].id);
         break;
       
       case DxbcOpcode::AtomicUMin:
+      case DxbcOpcode::ImmAtomicUMin:
         value.id = m_module.opAtomicUMin(typeId,
           pointer.id, scopeId, semanticsId,
           src[0].id);
         break;
       
       case DxbcOpcode::AtomicUMax:
+      case DxbcOpcode::ImmAtomicUMax:
         value.id = m_module.opAtomicUMax(typeId,
           pointer.id, scopeId, semanticsId,
           src[0].id);

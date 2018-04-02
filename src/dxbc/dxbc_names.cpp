@@ -190,10 +190,10 @@ std::ostream& operator << (std::ostream& os, DxbcOpcode e) {
     ENUM_NAME(DxbcOpcode::ImmAtomicXor);
     ENUM_NAME(DxbcOpcode::ImmAtomicExch);
     ENUM_NAME(DxbcOpcode::ImmAtomicCmpExch);
-    ENUM_NAME(DxbcOpcode::ImmAtomicImax);
-    ENUM_NAME(DxbcOpcode::ImmAtomicImin);
-    ENUM_NAME(DxbcOpcode::ImmAtomicUmax);
-    ENUM_NAME(DxbcOpcode::ImmAtomicUmin);
+    ENUM_NAME(DxbcOpcode::ImmAtomicIMax);
+    ENUM_NAME(DxbcOpcode::ImmAtomicIMin);
+    ENUM_NAME(DxbcOpcode::ImmAtomicUMax);
+    ENUM_NAME(DxbcOpcode::ImmAtomicUMin);
     ENUM_NAME(DxbcOpcode::Sync);
     ENUM_NAME(DxbcOpcode::DAdd);
     ENUM_NAME(DxbcOpcode::DMax);

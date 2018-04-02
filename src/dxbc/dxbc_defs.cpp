@@ -927,28 +927,28 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
       { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
     } },
-    /* ImmAtomicImax                        */
+    /* ImmAtomicIMax                        */
     { 4, DxbcInstClass::Atomic, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Sint32 },
       { DxbcOperandKind::DstReg, DxbcScalarType::Sint32 },
       { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
       { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
     } },
-    /* ImmAtomicImin                        */
+    /* ImmAtomicIMin                        */
     { 4, DxbcInstClass::Atomic, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Sint32 },
       { DxbcOperandKind::DstReg, DxbcScalarType::Sint32 },
       { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
       { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
     } },
-    /* ImmAtomicUmax                        */
+    /* ImmAtomicUMax                        */
     { 4, DxbcInstClass::Atomic, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
       { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
       { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32 },
       { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
     } },
-    /* ImmAtomicUmin                        */
+    /* ImmAtomicUMin                        */
     { 4, DxbcInstClass::Atomic, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
       { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
