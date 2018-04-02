@@ -15,31 +15,36 @@ namespace dxvk {
   
   
   void Logger::trace(const std::string& message) {
-    s_instance.log(LogLevel::Trace, message);
+    s_instance.emitMsg(LogLevel::Trace, message);
   }
   
   
   void Logger::debug(const std::string& message) {
-    s_instance.log(LogLevel::Debug, message);
+    s_instance.emitMsg(LogLevel::Debug, message);
   }
   
   
   void Logger::info(const std::string& message) {
-    s_instance.log(LogLevel::Info, message);
+    s_instance.emitMsg(LogLevel::Info, message);
   }
   
   
   void Logger::warn(const std::string& message) {
-    s_instance.log(LogLevel::Warn, message);
+    s_instance.emitMsg(LogLevel::Warn, message);
   }
   
   
   void Logger::err(const std::string& message) {
-    s_instance.log(LogLevel::Error, message);
+    s_instance.emitMsg(LogLevel::Error, message);
   }
   
   
   void Logger::log(LogLevel level, const std::string& message) {
+    s_instance.emitMsg(level, message);
+  }
+  
+  
+  void Logger::emitMsg(LogLevel level, const std::string& message) {
     if (level >= m_minLevel) {
       std::lock_guard<std::mutex> lock(m_mutex);
       

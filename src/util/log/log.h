@@ -35,6 +35,7 @@ namespace dxvk {
     static void info (const std::string& message);
     static void warn (const std::string& message);
     static void err  (const std::string& message);
+    static void log  (LogLevel level, const std::string& message);
     
     static LogLevel logLevel() {
       return s_instance.m_minLevel;
@@ -49,7 +50,7 @@ namespace dxvk {
     std::mutex    m_mutex;
     std::ofstream m_fileStream;
     
-    void log(LogLevel level, const std::string& message);
+    void emitMsg(LogLevel level, const std::string& message);
     
     static LogLevel getMinLogLevel();
     
