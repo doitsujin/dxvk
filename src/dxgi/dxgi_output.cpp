@@ -144,7 +144,7 @@ namespace dxvk {
     }
     
     std::memset(pDesc->DeviceName, 0, sizeof(pDesc->DeviceName));
-    std::mbstowcs(pDesc->DeviceName, monInfo.szDevice, _countof(pDesc->DeviceName) - 1);
+    std::mbstowcs(pDesc->DeviceName, monInfo.szDevice, std::size(pDesc->DeviceName) - 1);
     
     pDesc->DesktopCoordinates = monInfo.rcMonitor;
     pDesc->AttachedToDesktop  = 1;
