@@ -1403,7 +1403,7 @@ namespace dxvk {
       m_flags.clr(DxvkContextFlag::CpDirtyPipelineState);
       
       m_cpActivePipeline = m_state.cp.pipeline != nullptr
-        ? m_state.cp.pipeline->getPipelineHandle(m_state.cp.state)
+        ? m_state.cp.pipeline->getPipelineHandle(m_state.cp.state, m_cmd->statCounters())
         : VK_NULL_HANDLE;
       
       if (m_cpActivePipeline != VK_NULL_HANDLE) {
@@ -1448,7 +1448,7 @@ namespace dxvk {
         m_state.gp.state.ilBindings[i].stride = 0;
       
       m_gpActivePipeline = m_state.gp.pipeline != nullptr
-        ? m_state.gp.pipeline->getPipelineHandle(m_state.gp.state)
+        ? m_state.gp.pipeline->getPipelineHandle(m_state.gp.state, m_cmd->statCounters())
         : VK_NULL_HANDLE;
       
       if (m_gpActivePipeline != VK_NULL_HANDLE) {

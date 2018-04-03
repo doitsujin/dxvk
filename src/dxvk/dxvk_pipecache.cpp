@@ -47,6 +47,16 @@ namespace dxvk {
   }
   
   
+  size_t DxvkPipelineCache::getCacheSize() const {
+    size_t cacheSize = 0;
+    
+    m_vkd->vkGetPipelineCacheData(
+      m_vkd->device(), m_handle, &cacheSize, nullptr);
+    
+    return cacheSize;
+  }
+  
+  
   void DxvkPipelineCache::runThread() {
     uint32_t prevUpdateCounter = 0;
     uint32_t currUpdateCounter = 0;

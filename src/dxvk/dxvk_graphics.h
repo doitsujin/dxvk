@@ -8,6 +8,7 @@
 #include "dxvk_pipelayout.h"
 #include "dxvk_resource.h"
 #include "dxvk_shader.h"
+#include "dxvk_stats.h"
 
 namespace dxvk {
   
@@ -117,10 +118,12 @@ namespace dxvk {
      * Retrieves a pipeline handle for the given pipeline
      * state. If necessary, a new pipeline will be created.
      * \param [in] state Pipeline state vector
+     * \param [in,out] stats Stat counter
      * \returns Pipeline handle
      */
     VkPipeline getPipelineHandle(
-      const DxvkGraphicsPipelineStateInfo& state);
+      const DxvkGraphicsPipelineStateInfo& state,
+            DxvkStatCounters&              stats);
     
   private:
     

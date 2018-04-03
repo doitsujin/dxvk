@@ -5,6 +5,7 @@
 #include "dxvk_pipelayout.h"
 #include "dxvk_resource.h"
 #include "dxvk_shader.h"
+#include "dxvk_stats.h"
 
 namespace dxvk {
   
@@ -58,7 +59,8 @@ namespace dxvk {
      * \returns Pipeline handle
      */
     VkPipeline getPipelineHandle(
-      const DxvkComputePipelineStateInfo& state);
+      const DxvkComputePipelineStateInfo& state,
+            DxvkStatCounters&             stats);
     
   private:
     

@@ -42,6 +42,12 @@ namespace dxvk {
      */
     void update();
     
+    /**
+     * \brief Queries pipeline cache size
+     * \returns Cache size, in bytes
+     */
+    size_t getCacheSize() const;
+    
   private:
     
     Rc<vk::DeviceFn>        m_vkd;

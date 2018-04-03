@@ -63,9 +63,9 @@ namespace dxvk {
      * Retrieves some info about per-command list
      * statistics, such as the number of draw calls
      * or the number of pipelines compiled.
-     * \returns Read-only reference to stat counters
+     * \returns Reference to stat counters
      */
-    const DxvkStatCounters& statCounters() const {
+    DxvkStatCounters& statCounters() {
       return m_statCounters;
     }
     

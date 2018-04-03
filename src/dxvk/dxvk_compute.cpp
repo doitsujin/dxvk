@@ -40,8 +40,8 @@ namespace dxvk {
   
   
   VkPipeline DxvkComputePipeline::getPipelineHandle(
-    const DxvkComputePipelineStateInfo& state) {
-    
+    const DxvkComputePipelineStateInfo& state,
+          DxvkStatCounters&             stats) {
     for (const PipelineStruct& pair : m_pipelines) {
       if (pair.stateVector == state)
         return pair.pipeline;
@@ -52,6 +52,8 @@ namespace dxvk {
     
     if (m_basePipeline == VK_NULL_HANDLE)
       m_basePipeline = pipeline;
+    
+    stats.addCtr(DxvkStatCounter::PipeCountCompute, 1);
     return pipeline;
   }
   
