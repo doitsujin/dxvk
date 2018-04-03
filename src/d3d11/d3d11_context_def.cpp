@@ -256,7 +256,8 @@ namespace dxvk {
   
   
   void D3D11DeferredContext::EmitCsChunk(Rc<DxvkCsChunk>&& chunk) {
-    m_commandList->AddChunk(std::move(chunk));
+    m_commandList->AddChunk(std::move(chunk), m_drawCount);
+    m_drawCount = 0;
   }
 
 }

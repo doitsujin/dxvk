@@ -8,7 +8,7 @@ namespace dxvk {
   class D3D11CommonTexture;
   
   class D3D11ImmediateContext : public D3D11DeviceContext {
-    
+    constexpr static UINT MaxPendingDraws = 500;
   public:
     
     D3D11ImmediateContext(

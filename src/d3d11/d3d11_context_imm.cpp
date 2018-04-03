@@ -72,16 +72,30 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11ImmediateContext::ExecuteCommandList(
           ID3D11CommandList*  pCommandList,
           BOOL                RestoreContextState) {
+    auto commandList = static_cast<D3D11CommandList*>(pCommandList);
+    
+    // Flush any outstanding commands so that
+    // we don't mess up the execution order
     FlushCsChunk();
     
-    static_cast<D3D11CommandList*>(pCommandList)->EmitToCsThread(&m_csThread);
+    // As an optimization, flush everything if the
+    // number of pending draw calls is high enough.
+    if (m_drawCount >= MaxPendingDraws)
+      Flush();
+    
+    // Dispatch command list to the CS thread and
+    // restore the immediate context's state
+    commandList->EmitToCsThread(&m_csThread);
     
     if (RestoreContextState)
       RestoreState();
     else
       ClearState();
     
+    // Mark CS thread as busy so that subsequent
+    // flush operations get executed correctly.
     m_csIsBusy = true;
+    m_drawCount += commandList->GetDrawCount();
   }
   
   
@@ -190,7 +204,7 @@ namespace dxvk {
     // prior to the previous context flush is above a certain threshold,
     // submit the current command buffer in order to keep the GPU busy.
     // This also helps keep the command buffers at a reasonable size.
-    if (m_drawCount >= 500)
+    if (m_drawCount >= MaxPendingDraws)
       Flush();
     
     D3D11DeviceContext::OMSetRenderTargets(
