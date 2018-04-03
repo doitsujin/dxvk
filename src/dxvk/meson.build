@@ -48,6 +48,7 @@ dxvk_src = files([
   
   'hud/dxvk_hud.cpp',
   'hud/dxvk_hud_devinfo.cpp',
+  'hud/dxvk_hud_cachesize.cpp',
   'hud/dxvk_hud_font.cpp',
   'hud/dxvk_hud_fps.cpp',
   'hud/dxvk_hud_text.cpp',

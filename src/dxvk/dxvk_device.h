@@ -77,6 +77,16 @@ namespace dxvk {
     }
     
     /**
+     * \brief The pipeline cache
+     * 
+     * The device's pipeline cache
+     * \returns Pipeline Cache
+     */
+    Rc<DxvkPipelineCache> pipelineCache() const {
+      return m_pipelineCache;
+    }
+    
+    /**
      * \brief Checks whether an option is enabled
      * 
      * \param [in] option The option to check for

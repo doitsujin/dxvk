@@ -6,10 +6,11 @@
 
 #include "dxvk_hud_devinfo.h"
 #include "dxvk_hud_fps.h"
+#include "dxvk_hud_cachesize.h"
 #include "dxvk_hud_text.h"
 
 namespace dxvk::hud {
-  
+    
   struct HudUniformData {
     VkExtent2D surfaceSize;
   };
@@ -75,6 +76,7 @@ namespace dxvk::hud {
     
     HudDeviceInfo         m_hudDeviceInfo;
     HudFps                m_hudFps;
+    HudCacheSize          m_hudCacheSize;
     
     void renderText();
     
