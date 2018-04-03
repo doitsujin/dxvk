@@ -1,5 +1,7 @@
 #include "dxvk_hud_config.h"
 
+#include <unordered_map>
+
 namespace dxvk::hud {
   
   const std::unordered_map<std::string, HudElement> g_hudElements = {{
