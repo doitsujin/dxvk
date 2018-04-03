@@ -32,6 +32,14 @@ namespace dxvk {
      */
     VkPipelineCache handle() const {
       return m_handle;
+    }     
+    
+    /**
+     * \brief returns cache size in bytes
+     * \returns size of the Pipeline cache
+     */
+    size_t getPipelineCacheSize() const {
+      return m_cacheSize;
     }
     
     /**
@@ -42,10 +50,13 @@ namespace dxvk {
      */
     void update();
     
+
+    
   private:
     
     Rc<vk::DeviceFn>        m_vkd;
     VkPipelineCache         m_handle;
+    size_t                  m_cacheSize;
     
     std::string             m_fileName;
     
@@ -60,10 +71,10 @@ namespace dxvk {
     
     std::vector<char> getPipelineCache() const;
     
-    std::vector<char> loadPipelineCache() const;
+    std::vector<char> loadPipelineCache();
     
     void storePipelineCache(
-      const std::vector<char>& cacheData) const;
+      const std::vector<char>& cacheData);
     
     static std::string getFileName();
     

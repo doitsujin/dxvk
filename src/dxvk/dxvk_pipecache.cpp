@@ -5,6 +5,7 @@ namespace dxvk {
   DxvkPipelineCache::DxvkPipelineCache(
     const Rc<vk::DeviceFn>& vkd)
   : m_vkd           (vkd),
+    m_cacheSize     (0),
     m_fileName      (getFileName()),
     m_updateStop    (0),
     m_updateCounter (0),
@@ -106,7 +107,7 @@ namespace dxvk {
   }
   
   
-  std::vector<char> DxvkPipelineCache::loadPipelineCache() const {
+  std::vector<char> DxvkPipelineCache::loadPipelineCache(){
     std::vector<char> cacheData;
     
     if (m_fileName.size() == 0) {
@@ -131,6 +132,8 @@ namespace dxvk {
       cacheData.resize(0);
     }
     
+    m_cacheSize = cacheData.size();
+    
     Logger::debug(str::format(
       "DxvkPipelineCache: Read ", cacheData.size(),
       " bytes from ", m_fileName));
@@ -138,7 +141,7 @@ namespace dxvk {
   }
   
   
-  void DxvkPipelineCache::storePipelineCache(const std::vector<char>& cacheData) const {
+  void DxvkPipelineCache::storePipelineCache(const std::vector<char>& cacheData){
     if (m_fileName.size() == 0) {
       Logger::warn("DxvkPipelineCache: Failed to locate cache file");
       return;
@@ -158,6 +161,8 @@ namespace dxvk {
       Logger::warn("DxvkPipelineCache: Failed to write shader cache file");
       return;
     }
+    
+    m_cacheSize = cacheData.size();
     
     Logger::debug(str::format(
       "DxvkPipelineCache: Wrote ", cacheData.size(),

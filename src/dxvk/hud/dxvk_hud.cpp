@@ -9,7 +9,8 @@ namespace dxvk::hud {
     m_context       (m_device->createContext()),
     m_textRenderer  (m_device, m_context),
     m_uniformBuffer (createUniformBuffer()),
-    m_hudDeviceInfo (device) {
+    m_hudDeviceInfo (device),
+    m_hudCacheSize  (m_device->pipelineCache()) {
     this->setupConstantState();
   }
   
@@ -68,6 +69,8 @@ namespace dxvk::hud {
     position = m_hudDeviceInfo.renderText(
       m_context, m_textRenderer, position);
     position = m_hudFps.renderText(
+      m_context, m_textRenderer, position);
+    position = m_hudCacheSize.renderText(
       m_context, m_textRenderer, position);
   }
   
