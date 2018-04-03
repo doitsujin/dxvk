@@ -19,7 +19,10 @@ namespace dxvk {
     m_memory  (memory),
     m_offset  (offset),
     m_length  (length),
-    m_mapPtr  (mapPtr) { }
+    m_mapPtr  (mapPtr) {
+    if (m_memory != VK_NULL_HANDLE)
+      m_heap->m_memoryUsed += length;
+  }
   
   
   DxvkMemory::DxvkMemory(DxvkMemory&& other)
@@ -32,6 +35,7 @@ namespace dxvk {
   
   
   DxvkMemory& DxvkMemory::operator = (DxvkMemory&& other) {
+    this->free();
     m_chunk   = std::exchange(other.m_chunk,  nullptr);
     m_heap    = std::exchange(other.m_heap,   nullptr);
     m_memory  = std::exchange(other.m_memory, VkDeviceMemory(VK_NULL_HANDLE));
@@ -43,10 +47,18 @@ namespace dxvk {
   
   
   DxvkMemory::~DxvkMemory() {
-    if (m_chunk != nullptr)
+    this->free();
+  }
+  
+  
+  void DxvkMemory::free() {
+    if (m_chunk != nullptr) {
       m_heap->free(m_chunk, m_offset, m_length);
-    else if (m_heap != nullptr)
-      m_heap->freeDeviceMemory(m_memory);
+      m_heap->m_memoryUsed -= m_length;
+    } else if (m_memory != VK_NULL_HANDLE) {
+      m_heap->freeDeviceMemory(m_memory, m_length);
+      m_heap->m_memoryUsed -= m_length;
+    }
   }
   
 
@@ -65,7 +77,7 @@ namespace dxvk {
   
   
   DxvkMemoryChunk::~DxvkMemoryChunk() {
-    m_heap->freeDeviceMemory(m_memory);
+    m_heap->freeDeviceMemory(m_memory, m_size);
   }
   
   
@@ -194,6 +206,14 @@ namespace dxvk {
   }
   
   
+  DxvkMemoryStats DxvkMemoryHeap::getMemoryStats() const {
+    DxvkMemoryStats result;
+    result.memoryAllocated = m_memoryAllocated.load();
+    result.memoryUsed      = m_memoryUsed.load();
+    return result;
+  }
+  
+  
   VkDeviceMemory DxvkMemoryHeap::allocDeviceMemory(VkDeviceSize memorySize) {
     VkMemoryAllocateInfo info;
     info.sType            = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -207,12 +227,14 @@ namespace dxvk {
         &info, nullptr, &memory) != VK_SUCCESS)
       return VK_NULL_HANDLE;
     
+    m_memoryAllocated += memorySize;
     return memory;
   }
   
   
-  void DxvkMemoryHeap::freeDeviceMemory(VkDeviceMemory memory) {
+  void DxvkMemoryHeap::freeDeviceMemory(VkDeviceMemory memory, VkDeviceSize memorySize) {
     m_vkd->vkFreeMemory(m_vkd->device(), memory, nullptr);
+    m_memoryAllocated -= memorySize;
   }
   
   
@@ -272,6 +294,22 @@ namespace dxvk {
     }
     
     return result;
+  }
+  
+  
+  DxvkMemoryStats DxvkMemoryAllocator::getMemoryStats() const {
+    DxvkMemoryStats totalStats;
+    
+    for (size_t i = 0; i < m_heaps.size(); i++) {
+      if (m_heaps[i] != nullptr) {
+        DxvkMemoryStats heapStats = m_heaps[i]->getMemoryStats();
+        
+        totalStats.memoryAllocated += heapStats.memoryAllocated;
+        totalStats.memoryUsed      += heapStats.memoryUsed;
+      }
+    }
+      
+    return totalStats;
   }
   
   

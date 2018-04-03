@@ -179,8 +179,11 @@ namespace dxvk {
   
   
   DxvkStatCounters DxvkDevice::getStatCounters() {
-    // TODO Add memory info
+    DxvkMemoryStats mem = m_memory->getMemoryStats();
+    
     DxvkStatCounters result;
+    result.setCtr(DxvkStatCounter::MemoryAllocated, mem.memoryAllocated);
+    result.setCtr(DxvkStatCounter::MemoryUsed,      mem.memoryUsed);
     
     { std::lock_guard<sync::Spinlock> lock(m_statLock);
       result.merge(m_statCounters);

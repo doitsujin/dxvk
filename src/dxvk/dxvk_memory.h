@@ -8,6 +8,17 @@ namespace dxvk {
   class DxvkMemoryChunk;
   class DxvkMemoryAllocator;
   
+  /**
+   * \brief Memory stats
+   * 
+   * Reports the amount of device memory
+   * allocated and used by the application.
+   */
+  struct DxvkMemoryStats {
+    VkDeviceSize memoryAllocated = 0;
+    VkDeviceSize memoryUsed      = 0;
+  };
+  
   
   /**
    * \brief Memory slice
@@ -71,6 +82,8 @@ namespace dxvk {
     VkDeviceSize      m_offset = 0;
     VkDeviceSize      m_length = 0;
     void*             m_mapPtr = nullptr;
+    
+    void free();
     
   };
   
@@ -172,6 +185,15 @@ namespace dxvk {
             VkDeviceSize size,
             VkDeviceSize align);
     
+    /**
+     * \brief Queries memory stats
+     * 
+     * Returns the amount of memory
+     * allocated and used on this heap.
+     * \returns Global memory stats
+     */
+    DxvkMemoryStats getMemoryStats() const;
+    
   private:
     
     const Rc<vk::DeviceFn>           m_vkd;
@@ -182,11 +204,15 @@ namespace dxvk {
     std::mutex                       m_mutex;
     std::vector<Rc<DxvkMemoryChunk>> m_chunks;
     
+    std::atomic<VkDeviceSize>        m_memoryAllocated = { 0ull };
+    std::atomic<VkDeviceSize>        m_memoryUsed      = { 0ull };
+    
     VkDeviceMemory allocDeviceMemory(
             VkDeviceSize    memorySize);
     
     void freeDeviceMemory(
-            VkDeviceMemory  memory);
+            VkDeviceMemory  memory,
+            VkDeviceSize    memorySize);
     
     void* mapDeviceMemory(
             VkDeviceMemory  memory);
@@ -236,6 +262,15 @@ namespace dxvk {
     DxvkMemory alloc(
       const VkMemoryRequirements& req,
       const VkMemoryPropertyFlags flags);
+    
+    /**
+     * \brief Queries memory stats
+     * 
+     * Returns the total amount of device memory
+     * allocated and used by all available heaps.
+     * \returns Global memory stats
+     */
+    DxvkMemoryStats getMemoryStats() const;
     
   private:
     
