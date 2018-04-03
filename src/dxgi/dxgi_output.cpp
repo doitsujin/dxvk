@@ -138,7 +138,7 @@ namespace dxvk {
     ::MONITORINFOEX monInfo;
     monInfo.cbSize = sizeof(monInfo);
 
-    if (!::GetMonitorInfo(m_monitor, &monInfo)) {
+    if (!::GetMonitorInfo(m_monitor, reinterpret_cast<MONITORINFO*>(&monInfo))) {
       Logger::err("DxgiOutput: Failed to query monitor info");
       return E_FAIL;
     }
@@ -166,7 +166,7 @@ namespace dxvk {
     ::MONITORINFOEX monInfo;
     monInfo.cbSize = sizeof(monInfo);
 
-    if (!::GetMonitorInfo(m_monitor, &monInfo)) {
+    if (!::GetMonitorInfo(m_monitor, reinterpret_cast<MONITORINFO*>(&monInfo))) {
       Logger::err("DxgiOutput: Failed to query monitor info");
       return E_FAIL;
     }
