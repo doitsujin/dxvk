@@ -107,6 +107,7 @@ namespace dxvk {
   
   
   void DxvkCommandList::reset() {
+    m_statCounters.reset();
     m_bufferTracker.reset();
     m_eventTracker.reset();
     m_queryTracker.reset();

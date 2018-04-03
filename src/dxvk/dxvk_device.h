@@ -18,6 +18,7 @@
 #include "dxvk_renderpass.h"
 #include "dxvk_sampler.h"
 #include "dxvk_shader.h"
+#include "dxvk_stats.h"
 #include "dxvk_swapchain.h"
 #include "dxvk_sync.h"
 #include "dxvk_unbound.h"
@@ -258,6 +259,15 @@ namespace dxvk {
       const DxvkSwapchainProperties&  properties);
     
     /**
+     * \brief Retrieves stat counters
+     * 
+     * Can be used by the HUD to display some
+     * internal information, such as memory
+     * usage, draw calls, etc.
+     */
+    DxvkStatCounters getStatCounters();
+    
+    /**
      * \brief Initializes dummy resources
      * 
      * Should be called after creating the device in
@@ -314,6 +324,9 @@ namespace dxvk {
     
     DxvkUnboundResources      m_unboundResources;
     DxvkOptions               m_options;
+    
+    sync::Spinlock            m_statLock;
+    DxvkStatCounters          m_statCounters;
     
     std::mutex m_submissionLock;
     VkQueue m_graphicsQueue = VK_NULL_HANDLE;

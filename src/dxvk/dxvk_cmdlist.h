@@ -11,6 +11,7 @@
 #include "dxvk_pipelayout.h"
 #include "dxvk_query_tracker.h"
 #include "dxvk_staging.h"
+#include "dxvk_stats.h"
 #include "dxvk_sync.h"
 
 namespace dxvk {
@@ -57,6 +58,28 @@ namespace dxvk {
     VkResult synchronize();
     
     /**
+     * \brief Stat counters
+     * 
+     * Retrieves some info about per-command list
+     * statistics, such as the number of draw calls
+     * or the number of pipelines compiled.
+     * \returns Read-only reference to stat counters
+     */
+    const DxvkStatCounters& statCounters() const {
+      return m_statCounters;
+    }
+    
+    /**
+     * \brief Increments a stat counter value
+     * 
+     * \param [in] ctr The counter to increment
+     * \param [in] val The value to add
+     */
+    void addStatCtr(DxvkStatCounter ctr, uint32_t val) {
+      m_statCounters.addCtr(ctr, val);
+    }
+    
+    /**
      * \brief Begins recording
      * 
      * Resets the command buffer and
@@ -69,6 +92,7 @@ namespace dxvk {
      * 
      * Ends command buffer recording, making
      * the command list ready for submission.
+     * \param [in] stats Stat counters
      */
     void endRecording();
     
@@ -536,6 +560,7 @@ namespace dxvk {
     DxvkQueryTracker    m_queryTracker;
     DxvkEventTracker    m_eventTracker;
     DxvkBufferTracker   m_bufferTracker;
+    DxvkStatCounters    m_statCounters;
     
   };
   

@@ -667,6 +667,8 @@ namespace dxvk {
       
       this->commitComputeBarriers();
     }
+    
+    m_cmd->addStatCtr(DxvkStatCounter::CmdDispatchCalls, 1);
   }
   
   
@@ -683,6 +685,8 @@ namespace dxvk {
       
       this->commitComputeBarriers();
     }
+    
+    m_cmd->addStatCtr(DxvkStatCounter::CmdDispatchCalls, 1);
   }
   
   
@@ -698,6 +702,8 @@ namespace dxvk {
         vertexCount, instanceCount,
         firstVertex, firstInstance);
     }
+    
+    m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
   }
   
   
@@ -715,6 +721,8 @@ namespace dxvk {
         physicalSlice.offset(),
         count, stride);
     }
+    
+    m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
   }
   
   
@@ -732,6 +740,8 @@ namespace dxvk {
         firstIndex, vertexOffset,
         firstInstance);
     }
+    
+    m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
   }
   
   
@@ -749,6 +759,8 @@ namespace dxvk {
         physicalSlice.offset(),
         count, stride);
     }
+    
+    m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
   }
   
   
@@ -1363,6 +1375,7 @@ namespace dxvk {
     m_cmd->cmdBeginRenderPass(&info,
       VK_SUBPASS_CONTENTS_INLINE);
     m_cmd->trackResource(framebuffer);
+    m_cmd->addStatCtr(DxvkStatCounter::CmdRenderPassCount, 1);
   }
   
   

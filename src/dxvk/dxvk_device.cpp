@@ -178,6 +178,18 @@ namespace dxvk {
   }
   
   
+  DxvkStatCounters DxvkDevice::getStatCounters() {
+    // TODO Add memory info
+    DxvkStatCounters result;
+    
+    { std::lock_guard<sync::Spinlock> lock(m_statLock);
+      result.merge(m_statCounters);
+    }
+    
+    return result;
+  }
+  
+  
   void DxvkDevice::initResources() {
     m_unboundResources.clearResources(this);
   }
@@ -185,8 +197,13 @@ namespace dxvk {
   
   VkResult DxvkDevice::presentSwapImage(
     const VkPresentInfoKHR&         presentInfo) {
-    std::lock_guard<std::mutex> lock(m_submissionLock);
-    return m_vkd->vkQueuePresentKHR(m_presentQueue, &presentInfo);
+    { // Queue submissions are not thread safe
+      std::lock_guard<std::mutex> queueLock(m_submissionLock);
+      std::lock_guard<sync::Spinlock> statLock(m_statLock);
+      
+      m_statCounters.addCtr(DxvkStatCounter::QueuePresentCount, 1);
+      return m_vkd->vkQueuePresentKHR(m_presentQueue, &presentInfo);
+    }
   }
   
   
@@ -210,7 +227,11 @@ namespace dxvk {
     VkResult status;
     
     { // Queue submissions are not thread safe
-      std::lock_guard<std::mutex> lock(m_submissionLock);
+      std::lock_guard<std::mutex> queueLock(m_submissionLock);
+      std::lock_guard<sync::Spinlock> statLock(m_statLock);
+      
+      m_statCounters.merge(commandList->statCounters());
+      m_statCounters.addCtr(DxvkStatCounter::QueueSubmitCount, 1);
       
       status = commandList->submit(
         m_graphicsQueue, waitSemaphore, wakeSemaphore);
