@@ -1,10 +1,14 @@
 #include "dxvk_hud_config.h"
 
-namespace dxvk {
+namespace dxvk::hud {
   
   const std::unordered_map<std::string, HudElement> g_hudElements = {{
-    { "devinfo",      HudElement::DeviceInfo    },
-    { "fps",          HudElement::Framerate     },
+    { "devinfo",      HudElement::DeviceInfo        },
+    { "fps",          HudElement::Framerate         },
+    { "drawcalls",    HudElement::StatDrawCalls     },
+    { "submissions",  HudElement::StatSubmissions   },
+    { "pipelines",    HudElement::StatPipelines     },
+    { "memory",       HudElement::StatMemory        },
   }};
   
   

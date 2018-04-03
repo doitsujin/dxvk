@@ -52,6 +52,7 @@ dxvk_src = files([
   'hud/dxvk_hud_devinfo.cpp',
   'hud/dxvk_hud_font.cpp',
   'hud/dxvk_hud_fps.cpp',
+  'hud/dxvk_hud_stats.cpp',
   'hud/dxvk_hud_text.cpp',
   
   'vulkan/dxvk_vulkan_extensions.cpp',

@@ -41,7 +41,7 @@ namespace dxvk::hud {
       { 1.0f, 1.0f, 1.0f, 1.0f },
       m_fpsString);
     
-    return HudPos { position.x, position.y + 20 };
+    return HudPos { position.x, position.y + 24 };
   }
   
 }

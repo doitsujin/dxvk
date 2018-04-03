@@ -12,7 +12,8 @@ namespace dxvk::hud {
     m_context       (m_device->createContext()),
     m_textRenderer  (m_device, m_context),
     m_uniformBuffer (createUniformBuffer()),
-    m_hudDeviceInfo (device) {
+    m_hudDeviceInfo (device),
+    m_hudStats      (config.elements) {
     this->setupConstantState();
   }
   
@@ -31,6 +32,7 @@ namespace dxvk::hud {
     }
       
     m_hudFps.update();
+    m_hudStats.update(m_device);
     
     this->beginRenderPass(recreateFbo);
     this->updateUniformBuffer();
@@ -42,11 +44,9 @@ namespace dxvk::hud {
   Rc<Hud> Hud::createHud(const Rc<DxvkDevice>& device) {
     HudConfig config(env::getEnvVar(L"DXVK_HUD"));
     
-    if (config.elements.isClear())
-      return nullptr;
-    
-    // TODO implement configuration options for the HUD
-    return new Hud(device, config);
+    return !config.elements.isClear()
+      ? new Hud(device, config)
+      : nullptr;
   }
   
   
@@ -78,6 +78,9 @@ namespace dxvk::hud {
       position = m_hudFps.renderText(
         m_context, m_textRenderer, position);
     }
+    
+    position = m_hudStats.renderText(
+      m_context, m_textRenderer, position);
   }
   
   

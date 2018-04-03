@@ -8,6 +8,7 @@
 #include "dxvk_hud_devinfo.h"
 #include "dxvk_hud_fps.h"
 #include "dxvk_hud_text.h"
+#include "dxvk_hud_stats.h"
 
 namespace dxvk::hud {
   
@@ -83,6 +84,7 @@ namespace dxvk::hud {
     
     HudDeviceInfo         m_hudDeviceInfo;
     HudFps                m_hudFps;
+    HudStats              m_hudStats;
     
     void renderText();
     

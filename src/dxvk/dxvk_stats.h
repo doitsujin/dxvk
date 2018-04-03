@@ -78,6 +78,15 @@ namespace dxvk {
     }
     
     /**
+     * \brief Computes difference
+     * 
+     * Computes difference between counter values.
+     * \param [in] other Counters to subtract
+     * \returns Difference between counter sets
+     */
+    DxvkStatCounters diff(const DxvkStatCounters& other) const;
+    
+    /**
      * \brief Merges counters
      * 
      * Adds counter values from another set

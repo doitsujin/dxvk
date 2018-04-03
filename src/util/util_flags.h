@@ -68,6 +68,18 @@ namespace dxvk {
       return m_bits;
     }
     
+    Flags operator & (const Flags& other) const {
+      return Flags(m_bits & other.m_bits);
+    }
+    
+    Flags operator | (const Flags& other) const {
+      return Flags(m_bits | other.m_bits);
+    }
+    
+    Flags operator ^ (const Flags& other) const {
+      return Flags(m_bits ^ other.m_bits);
+    }
+    
   private:
     
     IntType m_bits = 0;

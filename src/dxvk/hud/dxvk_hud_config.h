@@ -2,7 +2,7 @@
 
 #include "../dxvk_include.h"
 
-namespace dxvk {
+namespace dxvk::hud {
   
   /**
    * \brief HUD element
@@ -11,8 +11,12 @@ namespace dxvk {
    * or disable HUD elements on demand.
    */
   enum class HudElement {
-    DeviceInfo  = 0,
-    Framerate   = 1,
+    DeviceInfo        = 0,
+    Framerate         = 1,
+    StatDrawCalls     = 2,
+    StatSubmissions   = 3,
+    StatPipelines     = 4,
+    StatMemory        = 5,
   };
   
   using HudElements = Flags<HudElement>;
