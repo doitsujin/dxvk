@@ -4,8 +4,11 @@
 
 namespace dxvk::hud {
   
-  Hud::Hud(const Rc<DxvkDevice>& device)
-  : m_device        (device),
+  Hud::Hud(
+    const Rc<DxvkDevice>& device,
+    const HudConfig&      config)
+  : m_config        (config),
+    m_device        (device),
     m_context       (m_device->createContext()),
     m_textRenderer  (m_device, m_context),
     m_uniformBuffer (createUniformBuffer()),
@@ -37,13 +40,13 @@ namespace dxvk::hud {
   
   
   Rc<Hud> Hud::createHud(const Rc<DxvkDevice>& device) {
-    const std::string hudConfig = env::getEnvVar(L"DXVK_HUD");
+    HudConfig config(env::getEnvVar(L"DXVK_HUD"));
     
-    if (hudConfig.size() == 0 || hudConfig == "0")
+    if (config.elements.isClear())
       return nullptr;
     
     // TODO implement configuration options for the HUD
-    return new Hud(device);
+    return new Hud(device, config);
   }
   
   
@@ -65,10 +68,16 @@ namespace dxvk::hud {
     m_textRenderer.beginFrame(m_context);
     
     HudPos position = { 8.0f, 24.0f };
-    position = m_hudDeviceInfo.renderText(
-      m_context, m_textRenderer, position);
-    position = m_hudFps.renderText(
-      m_context, m_textRenderer, position);
+    
+    if (m_config.elements.test(HudElement::DeviceInfo)) {
+      position = m_hudDeviceInfo.renderText(
+        m_context, m_textRenderer, position);
+    }
+    
+    if (m_config.elements.test(HudElement::Framerate)) {
+      position = m_hudFps.renderText(
+        m_context, m_textRenderer, position);
+    }
   }
   
   
