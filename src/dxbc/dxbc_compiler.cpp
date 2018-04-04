@@ -2026,6 +2026,14 @@ namespace dxvk {
     const uint32_t typeId = getVectorTypeId(value.type);
     
     switch (ins.op) {
+      case DxbcOpcode::AtomicCmpStore:
+      case DxbcOpcode::ImmAtomicCmpExch:
+        value.id = m_module.opAtomicCompareExchange(
+          typeId, pointer.id, scopeId, semanticsId,
+          m_module.constu32(spv::MemorySemanticsMaskNone),
+          src[1].id, src[0].id);
+        break;
+      
       case DxbcOpcode::ImmAtomicExch:
         value.id = m_module.opAtomicExchange(typeId,
           pointer.id, scopeId, semanticsId,
