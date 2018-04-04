@@ -163,14 +163,9 @@ namespace dxvk {
     vpInfo.scissorCount           = state.rsViewportCount;
     vpInfo.pScissors              = nullptr;
     
-    VkPipelineRasterizationStateRasterizationOrderAMD rsOrder;
-    rsOrder.sType                 = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_RASTERIZATION_ORDER_AMD;
-    rsOrder.pNext                 = nullptr;
-    rsOrder.rasterizationOrder    = this->pickRasterizationOrder(state);
-    
     VkPipelineRasterizationStateCreateInfo rsInfo;
     rsInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    rsInfo.pNext                  = m_device->extensions().amdRasterizationOrder.enabled() ? &rsOrder : rsOrder.pNext;
+    rsInfo.pNext                  = nullptr;
     rsInfo.flags                  = 0;
     rsInfo.depthClampEnable       = state.rsEnableDepthClamp;
     rsInfo.rasterizerDiscardEnable= state.rsEnableDiscard;
@@ -306,31 +301,6 @@ namespace dxvk {
     
     // No errors
     return true;
-  }
-  
-  
-  VkRasterizationOrderAMD DxvkGraphicsPipeline::pickRasterizationOrder(
-    const DxvkGraphicsPipelineStateInfo& state) const {
-    // If blending is not enabled, we can enable out-of-order
-    // rasterization for certain depth-compare modes.
-    bool blendingEnabled = false;
-    
-    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-      if (m_fsOut & (1u << i))
-        blendingEnabled |= state.omBlendAttachments[i].blendEnable;
-    }
-    
-    if (!blendingEnabled) {
-      if (m_device->hasOption(DxvkOption::AssumeNoZfight))
-        return VK_RASTERIZATION_ORDER_RELAXED_AMD;
-      
-      if (state.dsEnableDepthTest && state.dsEnableDepthWrite
-       && (state.dsDepthCompareOp == VK_COMPARE_OP_LESS
-        || state.dsDepthCompareOp == VK_COMPARE_OP_GREATER))
-        return VK_RASTERIZATION_ORDER_RELAXED_AMD;
-    }
-    
-    return VK_RASTERIZATION_ORDER_STRICT_AMD;
   }
   
   

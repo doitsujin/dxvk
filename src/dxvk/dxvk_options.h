@@ -8,11 +8,7 @@ namespace dxvk {
    * \brief App- and driver-specific options
    */
   enum class DxvkOption : uint64_t {
-    /// Assume that the application will not render
-    /// multiple polygons with the exact same depth
-    /// value. Allows out-of-order rasterization to
-    /// be enabled for more rendering modes.
-    AssumeNoZfight = 0,
+    
   };
   
   using DxvkOptionSet = Flags<DxvkOption>;

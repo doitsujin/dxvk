@@ -160,9 +160,6 @@ namespace dxvk {
     bool validatePipelineState(
       const DxvkGraphicsPipelineStateInfo& state) const;
     
-    VkRasterizationOrderAMD pickRasterizationOrder(
-      const DxvkGraphicsPipelineStateInfo& state) const;
-    
     void logPipelineState(
             LogLevel                       level,
       const DxvkGraphicsPipelineStateInfo& state) const;
