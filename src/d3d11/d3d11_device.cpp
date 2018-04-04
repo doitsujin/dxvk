@@ -1866,7 +1866,6 @@ namespace dxvk {
   HRESULT D3D11Device::GetFormatSupportFlags(DXGI_FORMAT Format, UINT* pFlags1, UINT* pFlags2) const {
     const VkFormat fmt = m_dxgiAdapter->LookupFormat(Format, DxgiFormatMode::Any).format;
     const VkFormatProperties fmtInfo = m_dxvkAdapter->formatProperties(fmt);
-    
     if (fmt == VK_FORMAT_UNDEFINED)
       return E_FAIL;
     
@@ -1939,13 +1938,17 @@ namespace dxvk {
      || Format == DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM)
       flags1 |= D3D11_FORMAT_SUPPORT_DISPLAY;
     
-    // Query multisampling info
+    // Query multisample support info
+    const DxvkFormatInfo* formatInfo = imageFormatInfo(fmt);
+    
     VkImageFormatProperties imgInfo;
     
     VkResult status = m_dxvkAdapter->imageFormatProperties(fmt,
       VK_IMAGE_TYPE_2D,
       VK_IMAGE_TILING_OPTIMAL,
-      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+      (formatInfo->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT)
+        ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+        : VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
       0, imgInfo);
     
     if (status == VK_SUCCESS && imgInfo.sampleCounts > VK_SAMPLE_COUNT_1_BIT) {

@@ -383,6 +383,7 @@ namespace dxvk {
     }
   }
   
+  
   void STDMETHODCALLTYPE D3D11DeviceContext::CopySubresourceRegion1(
           ID3D11Resource*                   pDstResource,
           UINT                              DstSubresource,
@@ -393,8 +394,9 @@ namespace dxvk {
           UINT                              SrcSubresource, 
     const D3D11_BOX*                        pSrcBox,
           UINT                              CopyFlags) {
-     CopySubresourceRegion(pDstResource, DstSubresource, DstX, DstY, DstZ, pSrcResource, SrcSubresource, pSrcBox);
+    CopySubresourceRegion(pDstResource, DstSubresource, DstX, DstY, DstZ, pSrcResource, SrcSubresource, pSrcBox);
   }
+  
   
   void STDMETHODCALLTYPE D3D11DeviceContext::CopyResource(
           ID3D11Resource*                   pDstResource,
