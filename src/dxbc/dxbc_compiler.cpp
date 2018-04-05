@@ -5002,12 +5002,25 @@ namespace dxvk {
         }
         
         DxbcRegisterPointer ptrIn;
-        ptrIn.type.ctype   = DxbcScalarType::Float32;
-        ptrIn.type.ccount  = 4;
+        ptrIn.type = { DxbcScalarType::Float32, 4 };
         ptrIn.id = m_ps.builtinFragCoord;
         
-        return emitRegisterExtract(
-          emitValueLoad(ptrIn), mask);
+        // The X, Y and Z components of the SV_POSITION semantic
+        // are identical to Vulkan's FragCoord builtin, but we
+        // need to compute the reciprocal of the W component.
+        DxbcRegisterValue fragCoord = emitValueLoad(ptrIn);
+        
+        uint32_t componentIndex = 3;
+        uint32_t t_f32   = m_module.defFloatType(32);
+        uint32_t v_wComp = m_module.opCompositeExtract(t_f32, fragCoord.id, 1, &componentIndex);
+                 v_wComp = m_module.opFDiv(t_f32, m_module.constf32(1.0f), v_wComp);
+        
+        fragCoord.id = m_module.opCompositeInsert(
+          getVectorTypeId(fragCoord.type),
+          v_wComp, fragCoord.id,
+          1, &componentIndex);
+        
+        return emitRegisterExtract(fragCoord, mask);
       } break;
       
       case DxbcSystemValue::IsFrontFace: {
