@@ -39,6 +39,7 @@ typedef enum D3D11_FORMAT_SUPPORT2 {
   D3D11_FORMAT_SUPPORT2_SHAREABLE                                     = 0x400,
   D3D11_FORMAT_SUPPORT2_MULTIPLANE_OVERLAY                            = 0x4000
 } D3D11_FORMAT_SUPPORT2;
+#ifndef __WINE__
 typedef struct D3D11_FEATURE_DATA_FORMAT_SUPPORT2 {
   DXGI_FORMAT InFormat;
   UINT        OutFormatSupport2;
@@ -88,4 +89,5 @@ typedef struct D3D11_FEATURE_DATA_SHADER_MIN_PRECISION_SUPPORT {
 typedef struct D3D11_FEATURE_DATA_D3D9_SHADOW_SUPPORT {
   BOOL SupportsDepthAsTextureWithLessEqualComparisonFilter;
 } D3D11_FEATURE_DATA_D3D9_SHADOW_SUPPORT;
-#endif
+#endif // __WINE__
+#endif // _MSC_VER
