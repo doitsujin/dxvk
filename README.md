@@ -18,7 +18,7 @@ For binary releases, see the [releases](https://github.com/doitsujin/dxvk/releas
 Inside the dxvk directory, run:
 ```
 # 64-bit build. For 32-bit builds, replace
-# build-win64.txt with build-win32.txtẞ
+# build-win64.txt with build-win32.txt
 meson --cross-file build-win64.txt --prefix /your/dxvk/directory build.w64
 cd build.w64
 meson configure 
