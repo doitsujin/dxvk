@@ -1007,7 +1007,8 @@ namespace dxvk {
     D3D11ShaderModule module;
     
     if (FAILED(this->CreateShaderModule(&module,
-        pShaderBytecode, BytecodeLength, pClassLinkage)))
+        pShaderBytecode, BytecodeLength, pClassLinkage,
+        DxbcProgramType::VertexShader)))
       return E_INVALIDARG;
     
     if (ppVertexShader == nullptr)
@@ -1028,7 +1029,8 @@ namespace dxvk {
     D3D11ShaderModule module;
     
     if (FAILED(this->CreateShaderModule(&module,
-        pShaderBytecode, BytecodeLength, pClassLinkage)))
+        pShaderBytecode, BytecodeLength, pClassLinkage,
+        DxbcProgramType::GeometryShader)))
       return E_INVALIDARG;
     
     if (ppGeometryShader == nullptr)
@@ -1065,7 +1067,8 @@ namespace dxvk {
     D3D11ShaderModule module;
     
     if (FAILED(this->CreateShaderModule(&module,
-        pShaderBytecode, BytecodeLength, pClassLinkage)))
+        pShaderBytecode, BytecodeLength, pClassLinkage,
+        DxbcProgramType::PixelShader)))
       return E_INVALIDARG;
     
     if (ppPixelShader == nullptr)
@@ -1086,7 +1089,8 @@ namespace dxvk {
     D3D11ShaderModule module;
     
     if (FAILED(this->CreateShaderModule(&module,
-        pShaderBytecode, BytecodeLength, pClassLinkage)))
+        pShaderBytecode, BytecodeLength, pClassLinkage,
+        DxbcProgramType::HullShader)))
       return E_INVALIDARG;
     
     if (ppHullShader == nullptr)
@@ -1107,7 +1111,8 @@ namespace dxvk {
     D3D11ShaderModule module;
     
     if (FAILED(this->CreateShaderModule(&module,
-        pShaderBytecode, BytecodeLength, pClassLinkage)))
+        pShaderBytecode, BytecodeLength, pClassLinkage,
+        DxbcProgramType::DomainShader)))
       return E_INVALIDARG;
     
     if (ppDomainShader == nullptr)
@@ -1128,7 +1133,8 @@ namespace dxvk {
     D3D11ShaderModule module;
     
     if (FAILED(this->CreateShaderModule(&module,
-        pShaderBytecode, BytecodeLength, pClassLinkage)))
+        pShaderBytecode, BytecodeLength, pClassLinkage,
+        DxbcProgramType::ComputeShader)))
       return E_INVALIDARG;
     
     if (ppComputeShader == nullptr)
@@ -1754,13 +1760,14 @@ namespace dxvk {
           D3D11ShaderModule*      pShaderModule,
     const void*                   pShaderBytecode,
           size_t                  BytecodeLength,
-          ID3D11ClassLinkage*     pClassLinkage) {
+          ID3D11ClassLinkage*     pClassLinkage,
+          DxbcProgramType         ProgramType) {
     if (pClassLinkage != nullptr)
       Logger::warn("D3D11Device::CreateShaderModule: Class linkage not supported");
     
     try {
-      *pShaderModule = D3D11ShaderModule(
-        &m_dxbcOptions, this, pShaderBytecode, BytecodeLength);
+      *pShaderModule = m_shaderModules.GetShaderModule(
+        &m_dxbcOptions, pShaderBytecode, BytecodeLength, ProgramType);
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());

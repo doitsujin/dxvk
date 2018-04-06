@@ -18,6 +18,17 @@ namespace dxvk {
     
     std::string toString() const;
     
+    const uint8_t* digest() const {
+      return m_digest.data();
+    }
+    
+    bool operator == (const Sha1Hash& other) const {
+      return !std::memcmp(
+        this->m_digest.data(),
+        other.m_digest.data(),
+        other.m_digest.size());
+    }
+    
     static Sha1Hash compute(
       const uint8_t*  data,
             size_t    size);

@@ -11,6 +11,7 @@
 
 #include "d3d11_interfaces.h"
 #include "d3d11_options.h"
+#include "d3d11_shader.h"
 #include "d3d11_state.h"
 #include "d3d11_util.h"
 
@@ -363,12 +364,14 @@ namespace dxvk {
     D3D11StateObjectSet<D3D11DepthStencilState> m_dsStateObjects;
     D3D11StateObjectSet<D3D11RasterizerState>   m_rsStateObjects;
     D3D11StateObjectSet<D3D11SamplerState>      m_samplerObjects;
+    D3D11ShaderModuleSet                        m_shaderModules;
     
     HRESULT CreateShaderModule(
             D3D11ShaderModule*      pShaderModule,
       const void*                   pShaderBytecode,
             size_t                  BytecodeLength,
-            ID3D11ClassLinkage*     pClassLinkage);
+            ID3D11ClassLinkage*     pClassLinkage,
+            DxbcProgramType         ProgramType);
     
     void InitBuffer(
             D3D11Buffer*                pBuffer,
