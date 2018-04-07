@@ -65,18 +65,6 @@ The following environment variables can be used for **debugging** purposes.
 - `DXVK_SHADER_READ_PATH=directory` Reads SPIR-V shaders from the given directory rather than using the shader compiler.
 - `DXVK_LOG_LEVEL=error|warn|info|debug|trace` Controls message logging.
 
-## Samples and executables
-In addition to the DLLs, the following standalone programs are included in the project.
-Most of them require a native `d3dcompiler_47.dll`, which you can retrieve from your
-Windows installation in case you have one.
-
-- `d3d11-compute`: Runs a simple compute shader demo.
-- `d3d11-triangle`: Renders a bunch of triangles using D3D11.
-- `dxgi-factory`: Enumerates DXGI adapters and outputs for debugging purposes.
-- `dxbc-compiler`: Compiles a DXBC shader to SPIR-V.
-- `dxbc-disasm`: Disassembles a DXBC shader.
-- `hlsl-compiler`: Compiles a HLSL shader to DXBC.
-
 ## Troubleshooting
 DXVK requires threading support from your mingw-w64 build environment. If you
 are missing this, you may see "error: 'mutex' is not a member of 'std'". On
