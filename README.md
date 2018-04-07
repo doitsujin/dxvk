@@ -56,14 +56,12 @@ The `DXVK_HUD` environment variable controls a HUD which can display the framera
 
 Additionally, `DXVK_HUD=1` has the same effect as `DXVK_HUD=devinfo,fps`.
 
-### Environment variables
+### Debugging
 The following environment variables can be used for **debugging** purposes.
-- `DXVK_DEBUG_LAYERS=1` Enables Vulkan debug layers. Highly recommended for troubleshooting and debugging purposes. Requires the Vulkan SDK to be installed and set up within the wine prefix.
-- `DXVK_CUSTOM_VENDOR_ID=<ID>` Specifies a custom PCI vendor identifier (Vendor ID)
-- `DXVK_CUSTOM_DEVICE_ID=<ID>` Specifies a custom PCI device identifier (Device ID)
-- `DXVK_SHADER_DUMP_PATH=directory` Writes all DXBC and SPIR-V shaders to the given directory.
-- `DXVK_SHADER_READ_PATH=directory` Reads SPIR-V shaders from the given directory rather than using the shader compiler.
-- `DXVK_LOG_LEVEL=error|warn|info|debug|trace` Controls message logging.
+- `DXVK_DEBUG_LAYERS=1` Enables Vulkan debug layers. Highly recommended for troubleshooting rendering issues and driver crashes. Requires the Vulkan SDK to be installed and set up within the wine prefix (`winetricks vulkansdk`).
+- `DXVK_CUSTOM_VENDOR_ID=<ID>` Specifies a custom PCI vendor ID
+- `DXVK_CUSTOM_DEVICE_ID=<ID>` Specifies a custom PCI device ID
+- `DXVK_LOG_LEVEL=none|error|warn|info|debug` Controls message logging.
 
 ## Troubleshooting
 DXVK requires threading support from your mingw-w64 build environment. If you
