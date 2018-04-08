@@ -493,6 +493,14 @@ namespace dxvk {
           "oDepthLe");
       } break;
       
+      case DxbcOperandType::InputPrimitiveId: {
+        m_primitiveIdIn = emitNewBuiltinVariable({
+          { DxbcScalarType::Uint32, 1, 0 },
+          spv::StorageClassInput },
+          spv::BuiltInPrimitiveId,
+          "vPrim");
+      } break;
+      
       case DxbcOperandType::InputDomainPoint: {
         m_ds.builtinTessCoord = emitNewBuiltinVariable({
           { DxbcScalarType::Float32, 3, 0 },
@@ -4247,6 +4255,11 @@ namespace dxvk {
           { DxbcScalarType::Float32, 1 },
           m_ps.builtinDepth };
       
+      case DxbcOperandType::InputPrimitiveId:
+        return DxbcRegisterPointer {
+          { DxbcScalarType::Uint32, 1 },
+          m_primitiveIdIn };
+      
       case DxbcOperandType::InputDomainPoint:
         return DxbcRegisterPointer {
           { DxbcScalarType::Float32, 3 },
@@ -5045,6 +5058,24 @@ namespace dxvk {
         return result;
       } break;
       
+      case DxbcSystemValue::PrimitiveId: {
+        if (m_primitiveIdIn == 0) {
+          m_module.enableCapability(spv::CapabilityGeometry);
+          
+          m_primitiveIdIn = emitNewBuiltinVariable({
+            { DxbcScalarType::Uint32, 1, 0 },
+            spv::StorageClassInput },
+            spv::BuiltInPrimitiveId,
+            "ps_primitive_id");
+        }
+        
+        DxbcRegisterPointer ptrIn;
+        ptrIn.type = { DxbcScalarType::Uint32, 1 };
+        ptrIn.id   = m_primitiveIdIn;
+        
+        return emitValueLoad(ptrIn);
+      } break;
+      
       case DxbcSystemValue::SampleIndex: {
         if (m_ps.builtinSampleId == 0) {
           m_module.enableCapability(spv::CapabilitySampleRateShading);
@@ -5207,9 +5238,8 @@ namespace dxvk {
         }
         
         DxbcRegisterPointer ptr;
-        ptr.type.ctype   = DxbcScalarType::Uint32;
-        ptr.type.ccount  = 1;
-        ptr.id = m_gs.builtinLayer;
+        ptr.type = { DxbcScalarType::Uint32 };
+        ptr.id   = m_gs.builtinLayer;
         
         emitValueStore(
           ptr, emitRegisterExtract(value, mask),
@@ -5228,9 +5258,26 @@ namespace dxvk {
         }
         
         DxbcRegisterPointer ptr;
-        ptr.type.ctype   = DxbcScalarType::Uint32;
-        ptr.type.ccount  = 1;
-        ptr.id = m_gs.builtinViewportId;
+        ptr.type = { DxbcScalarType::Uint32, 1};
+        ptr.id   = m_gs.builtinViewportId;
+        
+        emitValueStore(
+          ptr, emitRegisterExtract(value, mask),
+          DxbcRegMask(true, false, false, false));
+      } break;
+      
+      case DxbcSystemValue::PrimitiveId: {
+        if (m_primitiveIdOut == 0) {
+          m_primitiveIdOut = emitNewBuiltinVariable({
+            { DxbcScalarType::Uint32, 1, 0 },
+            spv::StorageClassOutput },
+            spv::BuiltInPrimitiveId,
+            "gs_primitive_id");
+        }
+        
+        DxbcRegisterPointer ptr;
+        ptr.type = { DxbcScalarType::Uint32, 1};
+        ptr.id   = m_primitiveIdOut;
         
         emitValueStore(
           ptr, emitRegisterExtract(value, mask),

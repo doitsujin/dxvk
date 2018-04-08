@@ -397,6 +397,9 @@ namespace dxvk {
     uint32_t m_clipDistances = 0;
     uint32_t m_cullDistances = 0;
     
+    uint32_t m_primitiveIdIn  = 0;
+    uint32_t m_primitiveIdOut = 0;
+    
     //////////////////////////////////////////////////
     // Immediate constant buffer. If defined, this is
     // an array of four-component uint32 vectors.
@@ -411,10 +414,6 @@ namespace dxvk {
     // Struct type used for UAV counter buffers
     uint32_t m_uavCtrStructType  = 0;
     uint32_t m_uavCtrPointerType = 0;
-    
-    ////////////////////////////////
-    // Push constant block variable
-    uint32_t m_pushConstantBlock = 0;
     
     ///////////////////////////////////////////////////
     // Entry point description - we'll need to declare
