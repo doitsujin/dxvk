@@ -2,7 +2,7 @@
 
 namespace dxvk {
   
-  const std::array<DxvkFormatInfo, 147> g_formatInfos = {{
+  const std::array<DxvkFormatInfo, 149> g_formatInfos = {{
     // VK_FORMAT_UNDEFINED
     { },
     
@@ -475,13 +475,37 @@ namespace dxvk {
     { 16, VK_IMAGE_ASPECT_COLOR_BIT,
       DxvkFormatFlag::BlockCompressed,
       VkExtent3D { 4, 4, 1 } },
+    
+    // VK_FORMAT_G8B8G8R8_422_UNORM_KHR
+    { 4, VK_IMAGE_ASPECT_COLOR_BIT,
+      DxvkFormatFlag::BlockCompressed,
+      VkExtent3D { 2, 1, 1 } },
+    
+    // VK_FORMAT_B8G8R8G8_422_UNORM_KHR
+    { 4, VK_IMAGE_ASPECT_COLOR_BIT,
+      DxvkFormatFlag::BlockCompressed,
+      VkExtent3D { 2, 1, 1 } },
   }};
   
+  
+  const std::array<std::pair<VkFormat, VkFormat>, 2> g_formatGroups = {{
+    { VK_FORMAT_UNDEFINED,              VK_FORMAT_BC7_SRGB_BLOCK          },
+    { VK_FORMAT_G8B8G8R8_422_UNORM_KHR, VK_FORMAT_B8G8R8G8_422_UNORM_KHR  },
+  }};
+  
+  
   const DxvkFormatInfo* imageFormatInfo(VkFormat format) {
-    const uint32_t formatId = static_cast<uint32_t>(format);
+    uint32_t indexOffset = 0;
     
-    if (formatId < g_formatInfos.size())
-      return &g_formatInfos[formatId];
+    for (const auto& group : g_formatGroups) {
+      if (format >= group.first && format <= group.second) {
+        uint32_t index = uint32_t(format) - uint32_t(group.first);
+        return &g_formatInfos[indexOffset + index];
+      } else {
+        indexOffset += uint32_t(group.second)
+                     - uint32_t(group.first) + 1;
+      }
+    }
     
     return nullptr;
   }
