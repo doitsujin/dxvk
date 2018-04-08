@@ -72,8 +72,6 @@ namespace dxvk {
     msState.sampleMask            = 0xffffffff;
     msState.enableAlphaToCoverage = VK_FALSE;
     msState.enableAlphaToOne      = VK_FALSE;
-    msState.enableSampleShading   = VK_FALSE;
-    msState.minSampleShading      = 0.0f;
     m_context->setMultisampleState(msState);
     
     VkStencilOpState stencilOp;
