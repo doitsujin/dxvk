@@ -198,8 +198,6 @@ namespace dxvk::hud {
     msState.sampleMask            = 0xFFFFFFFF;
     msState.enableAlphaToCoverage = VK_FALSE;
     msState.enableAlphaToOne      = VK_FALSE;
-    msState.enableSampleShading   = VK_FALSE;
-    msState.minSampleShading      = 1.0f;
     m_context->setMultisampleState(msState);
     
     VkStencilOpState stencilOp;

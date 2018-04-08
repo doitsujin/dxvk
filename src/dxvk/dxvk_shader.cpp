@@ -57,6 +57,20 @@ namespace dxvk {
   }
   
   
+  bool DxvkShader::hasCapability(spv::Capability cap) {
+    for (auto ins : m_code) {
+      // OpCapability instructions come first
+      if (ins.opCode() != spv::OpCapability)
+        return false;
+      
+      if (ins.arg(1) == cap)
+        return true;
+    }
+    
+    return false;
+  }
+  
+  
   void DxvkShader::defineResourceSlots(
           DxvkDescriptorSlotMapping& mapping) const {
     for (const auto& slot : m_slots)

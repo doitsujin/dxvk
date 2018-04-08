@@ -64,6 +64,9 @@ namespace dxvk {
     
     m_vsIn  = vs != nullptr ? vs->interfaceSlots().inputSlots  : 0;
     m_fsOut = fs != nullptr ? fs->interfaceSlots().outputSlots : 0;
+    
+    m_common.msSampleShadingEnable = fs != nullptr && fs->hasCapability(spv::CapabilitySampleRateShading);
+    m_common.msSampleShadingFactor = 1.0f;
   }
   
   
@@ -183,8 +186,8 @@ namespace dxvk {
     msInfo.pNext                  = nullptr;
     msInfo.flags                  = 0;
     msInfo.rasterizationSamples   = state.msSampleCount;
-    msInfo.sampleShadingEnable    = state.msEnableSampleShading;
-    msInfo.minSampleShading       = state.msMinSampleShading;
+    msInfo.sampleShadingEnable    = m_common.msSampleShadingEnable;
+    msInfo.minSampleShading       = m_common.msSampleShadingFactor;
     msInfo.pSampleMask            = &state.msSampleMask;
     msInfo.alphaToCoverageEnable  = state.msEnableAlphaToCoverage;
     msInfo.alphaToOneEnable       = state.msEnableAlphaToOne;

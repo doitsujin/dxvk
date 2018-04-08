@@ -59,8 +59,6 @@ namespace dxvk {
     uint32_t                            msSampleMask;
     VkBool32                            msEnableAlphaToCoverage;
     VkBool32                            msEnableAlphaToOne;
-    VkBool32                            msEnableSampleShading;
-    float                               msMinSampleShading;
     
     VkBool32                            dsEnableDepthTest;
     VkBool32                            dsEnableDepthWrite;
@@ -76,6 +74,18 @@ namespace dxvk {
     VkLogicOp                           omLogicOp;
     VkRenderPass                        omRenderPass;
     VkPipelineColorBlendAttachmentState omBlendAttachments[MaxNumRenderTargets];
+  };
+  
+  
+  /**
+   * \brief Common graphics pipeline state
+   * 
+   * Non-dynamic pipeline state that cannot
+   * be changed dynamically.
+   */
+  struct DxvkGraphicsCommonPipelineStateInfo {
+    bool                                msSampleShadingEnable;
+    float                               msSampleShadingFactor;
   };
   
   
@@ -135,8 +145,8 @@ namespace dxvk {
     const DxvkDevice* const m_device;
     const Rc<vk::DeviceFn>  m_vkd;
     
-    Rc<DxvkPipelineCache> m_cache;
-    Rc<DxvkPipelineLayout> m_layout;
+    Rc<DxvkPipelineCache>   m_cache;
+    Rc<DxvkPipelineLayout>  m_layout;
     
     Rc<DxvkShaderModule>  m_vs;
     Rc<DxvkShaderModule>  m_tcs;
@@ -146,6 +156,8 @@ namespace dxvk {
     
     uint32_t m_vsIn  = 0;
     uint32_t m_fsOut = 0;
+    
+    DxvkGraphicsCommonPipelineStateInfo m_common;
     
     std::vector<PipelineStruct> m_pipelines;
     

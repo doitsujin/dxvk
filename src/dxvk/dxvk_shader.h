@@ -99,6 +99,18 @@ namespace dxvk {
     ~DxvkShader();
     
     /**
+     * \brief Checks whether a capability is enabled
+     * 
+     * If the shader contains an \c OpCapability
+     * instruction with the given capability, it
+     * is considered enabled. This may be required
+     * to correctly set up certain pipeline states.
+     * \param [in] cap The capability to check
+     * \returns \c true if \c cap is enabled
+     */
+    bool hasCapability(spv::Capability cap);
+    
+    /**
      * \brief Adds resource slots definitions to a mapping
      * 
      * Used to generate the exact descriptor set layout when
