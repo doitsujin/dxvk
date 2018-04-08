@@ -5240,7 +5240,7 @@ namespace dxvk {
         }
         
         DxbcRegisterPointer ptr;
-        ptr.type = { DxbcScalarType::Uint32 };
+        ptr.type = { DxbcScalarType::Uint32, 1 };
         ptr.id   = m_gs.builtinLayer;
         
         emitValueStore(
