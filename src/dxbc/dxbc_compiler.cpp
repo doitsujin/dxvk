@@ -586,8 +586,10 @@ namespace dxvk {
         m_module.decorate(varId, spv::DecorationNoPerspective);
       
       if (im == DxbcInterpolationMode::LinearSample
-       || im == DxbcInterpolationMode::LinearNoPerspectiveSample)
+       || im == DxbcInterpolationMode::LinearNoPerspectiveSample) {
+        m_module.enableCapability(spv::CapabilitySampleRateShading);
         m_module.decorate(varId, spv::DecorationSample);
+      }
       
       // Declare the input slot as defined
       m_interfaceSlots.inputSlots |= 1u << regIdx;
