@@ -108,6 +108,8 @@ namespace dxvk {
     // Opcode controls. It will depend on the
     // opcode itself which ones are valid.
     // TODO refactor this nonsense
+    m_instruction.controls.returnType =
+      static_cast<DxbcInstructionReturnType>(bit::extract(token, 11, 11));
     m_instruction.controls.globalFlags =
       static_cast<DxbcGlobalFlag>(bit::extract(token, 11, 14));
     m_instruction.controls.zeroTest =

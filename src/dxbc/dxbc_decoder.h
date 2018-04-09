@@ -240,20 +240,21 @@ namespace dxvk {
    * only one of the members will be valid.
    */
   struct DxbcShaderOpcodeControls {
-    DxbcGlobalFlags       globalFlags;
-    DxbcZeroTest          zeroTest;
-    DxbcSyncFlags         syncFlags;
-    DxbcResourceDim       resourceDim;
-    DxbcResinfoType       resinfoType;
-    DxbcInterpolationMode interpolation;
-    DxbcSamplerMode       samplerMode;
-    DxbcPrimitiveTopology primitiveTopology;
-    DxbcPrimitive         primitive;
-    DxbcTessDomain        tessDomain;
-    DxbcTessOutputPrimitive tessOutputPrimitive;
-    DxbcTessPartitioning  tessPartitioning;
-    DxbcUavFlags          uavFlags;
-    uint32_t              controlPointCount;
+    DxbcInstructionReturnType returnType;
+    DxbcGlobalFlags           globalFlags;
+    DxbcZeroTest              zeroTest;
+    DxbcSyncFlags             syncFlags;
+    DxbcResourceDim           resourceDim;
+    DxbcResinfoType           resinfoType;
+    DxbcInterpolationMode     interpolation;
+    DxbcSamplerMode           samplerMode;
+    DxbcPrimitiveTopology     primitiveTopology;
+    DxbcPrimitive             primitive;
+    DxbcTessDomain            tessDomain;
+    DxbcTessOutputPrimitive   tessOutputPrimitive;
+    DxbcTessPartitioning      tessPartitioning;
+    DxbcUavFlags              uavFlags;
+    uint32_t                  controlPointCount;
   };
   
   

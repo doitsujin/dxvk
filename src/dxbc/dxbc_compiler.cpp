@@ -2709,9 +2709,8 @@ namespace dxvk {
     // TODO Check if resource is bound
     DxbcRegisterValue sampleCount = emitQueryTextureSamples(ins.src[0]);
     
-    if (ins.controls.resinfoType != DxbcResinfoType::Uint) {
-      sampleCount.type.ctype  = DxbcScalarType::Float32;
-      sampleCount.type.ccount = 1;
+    if (ins.controls.returnType != DxbcInstructionReturnType::Uint) {
+      sampleCount.type = { DxbcScalarType::Float32, 1 };
       sampleCount.id = m_module.opConvertUtoF(
         getVectorTypeId(sampleCount.type),
         sampleCount.id);
