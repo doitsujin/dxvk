@@ -34,44 +34,10 @@ namespace dxvk {
       return m_handle;
     }
     
-    /**
-     * \brief Sends an update signal
-     * 
-     * Notifies the update thread that the
-     * pipeline cache should be updated.
-     */
-    void update();
-    
-    /**
-     * \brief Queries pipeline cache size
-     * \returns Cache size, in bytes
-     */
-    size_t getCacheSize() const;
-    
   private:
     
     Rc<vk::DeviceFn>        m_vkd;
     VkPipelineCache         m_handle;
-    
-    std::string             m_fileName;
-    
-    std::atomic<uint32_t>   m_updateStop;
-    std::atomic<uint32_t>   m_updateCounter;
-    
-    std::mutex              m_updateMutex;
-    std::condition_variable m_updateCond;
-    std::thread             m_updateThread;
-    
-    void runThread();
-    
-    std::vector<char> getPipelineCache() const;
-    
-    std::vector<char> loadPipelineCache() const;
-    
-    void storePipelineCache(
-      const std::vector<char>& cacheData) const;
-    
-    static std::string getFileName();
     
   };
   

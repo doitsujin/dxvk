@@ -184,7 +184,6 @@ namespace dxvk {
     DxvkStatCounters result;
     result.setCtr(DxvkStatCounter::MemoryAllocated, mem.memoryAllocated);
     result.setCtr(DxvkStatCounter::MemoryUsed,      mem.memoryUsed);
-    result.setCtr(DxvkStatCounter::PipeCacheSize,   m_pipelineCache->getCacheSize());
     
     std::lock_guard<sync::Spinlock> lock(m_statLock);
     result.merge(m_statCounters);

@@ -107,8 +107,6 @@ namespace dxvk {
     auto t1 = std::chrono::high_resolution_clock::now();
     auto td = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0);
     Logger::debug(str::format("DxvkComputePipeline: Finished in ", td.count(), " ms"));
-    
-    m_cache->update();
     return pipeline;
   }
   

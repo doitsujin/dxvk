@@ -98,19 +98,11 @@ namespace dxvk::hud {
     const Rc<DxvkContext>&  context,
           HudTextRenderer&  renderer,
           HudPos            position) {
-    constexpr uint64_t kib = 1024;
-    constexpr uint64_t mib = 1024 * 1024;
-    
     const uint64_t gpCount = m_prevCounters.getCtr(DxvkStatCounter::PipeCountGraphics);
     const uint64_t cpCount = m_prevCounters.getCtr(DxvkStatCounter::PipeCountCompute);
-    const uint64_t pcSize  = m_prevCounters.getCtr(DxvkStatCounter::PipeCacheSize);
     
     const std::string strGpCount = str::format("Graphics pipelines: ", gpCount);
     const std::string strCpCount = str::format("Compute pipelines:  ", cpCount);
-    
-    const std::string strPcSize  = str::format("Pipeline cache: ", pcSize >= mib
-      ? str::format(pcSize / mib, ".", ((10 * pcSize) / mib) % 10, " MB")
-      : str::format(pcSize / kib, " kB"));
     
     renderer.drawText(context, 16.0f,
       { position.x, position.y },
@@ -122,12 +114,7 @@ namespace dxvk::hud {
       { 1.0f, 1.0f, 1.0f, 1.0f },
       strCpCount);
     
-    renderer.drawText(context, 16.0f,
-      { position.x, position.y + 40.0f },
-      { 1.0f, 1.0f, 1.0f, 1.0f },
-      strPcSize);
-    
-    return { position.x, position.y + 64.0f };
+    return { position.x, position.y + 44.0f };
   }
   
   
