@@ -66,6 +66,7 @@ namespace dxvk {
     using FormatMap = std::unordered_map<DXGI_FORMAT, DxgiFormatInfo>;
     
     Com<DxgiFactory>  m_factory;
+    Com<DxgiOutput>   m_output;
     Rc<DxvkAdapter>   m_adapter;
     
     FormatMap         m_colorFormats;
@@ -90,6 +91,8 @@ namespace dxvk {
             DXGI_FORMAT                       srcFormat,
             VkFormat                          dstFormat,
             VkImageAspectFlags                srvAspect);
+    
+    void SetupOutputs();
     
     void SetupFormatTable();
     
