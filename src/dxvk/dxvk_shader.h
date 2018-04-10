@@ -176,6 +176,7 @@ namespace dxvk {
     SpirvCodeBuffer       m_code;
     
     std::vector<DxvkResourceSlot> m_slots;
+    std::vector<size_t>           m_idOffsets;
     DxvkInterfaceSlots            m_interface;
     std::string                   m_debugName;
     

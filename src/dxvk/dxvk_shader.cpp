@@ -49,6 +49,15 @@ namespace dxvk {
   : m_stage(stage), m_code(code), m_interface(iface) {
     for (uint32_t i = 0; i < slotCount; i++)
       m_slots.push_back(slotInfos[i]);
+    
+    // Gather the offsets where the binding IDs
+    // are stored so we can quickly remap them.
+    for (auto ins : m_code) {
+      if (ins.opCode() == spv::OpDecorate
+       && ((ins.arg(2) == spv::DecorationBinding)
+        || (ins.arg(2) == spv::DecorationSpecId)))
+        m_idOffsets.push_back(ins.offset() + 3);
+    }
   }
   
   
@@ -81,20 +90,12 @@ namespace dxvk {
   Rc<DxvkShaderModule> DxvkShader::createShaderModule(
     const Rc<vk::DeviceFn>&          vkd,
     const DxvkDescriptorSlotMapping& mapping) const {
-    // Iterate over the code and replace every resource slot
-    // index with the corresponding mapped binding index.
     SpirvCodeBuffer spirvCode = m_code;
     
-    for (auto ins : spirvCode) {
-      if (ins.opCode() == spv::OpDecorate
-       && ((ins.arg(2) == spv::DecorationBinding)
-        || (ins.arg(2) == spv::DecorationSpecId))) {
-        
-        const uint32_t oldBinding = ins.arg(3);
-        const uint32_t newBinding = mapping.getBindingId(oldBinding);
-        ins.setArg(3, newBinding);
-      }
-    }
+    // Remap resource binding IDs
+    uint32_t* code = spirvCode.data();
+    for (uint32_t ofs : m_idOffsets)
+      code[ofs] = mapping.getBindingId(code[ofs]);
     
     return new DxvkShaderModule(vkd, m_stage, spirvCode, m_debugName);
   }
