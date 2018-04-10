@@ -2,6 +2,9 @@
 
 #include "../spirv/spirv_module.h"
 
+#include <dxgi_presenter_frag.h>
+#include <dxgi_presenter_vert.h>
+
 namespace dxvk {
   
   DxgiPresenter::DxgiPresenter(
@@ -342,190 +345,17 @@ namespace dxvk {
   
   
   Rc<DxvkShader> DxgiPresenter::createVertexShader() {
-    SpirvModule module;
+    const SpirvCodeBuffer codeBuffer(dxgi_presenter_vert);
     
-    // Set up basic vertex shader capabilities
-    module.enableCapability(spv::CapabilityShader);
-    module.setMemoryModel(
-      spv::AddressingModelLogical,
-      spv::MemoryModelGLSL450);
-    
-    // ID of the entry point (function)
-    uint32_t entryPointId = module.allocateId();
-    
-    // Data type definitions
-    uint32_t typeVoid       = module.defVoidType();
-    uint32_t typeU32        = module.defIntType(32, 0);
-    uint32_t typeF32        = module.defFloatType(32);
-    uint32_t typeVec2       = module.defVectorType(typeF32, 2);
-    uint32_t typeVec4       = module.defVectorType(typeF32, 4);
-    uint32_t typeVec4Arr4   = module.defArrayType(typeVec4, module.constu32(4));
-    uint32_t typeFn         = module.defFunctionType(typeVoid, 0, nullptr);
-    
-    // Pointer type definitions
-    uint32_t ptrInputU32    = module.defPointerType(typeU32, spv::StorageClassInput);
-    uint32_t ptrOutputVec2  = module.defPointerType(typeVec2, spv::StorageClassOutput);
-    uint32_t ptrOutputVec4  = module.defPointerType(typeVec4, spv::StorageClassOutput);
-    uint32_t ptrPrivateVec4 = module.defPointerType(typeVec4, spv::StorageClassPrivate);
-    uint32_t ptrPrivateArr4 = module.defPointerType(typeVec4Arr4, spv::StorageClassPrivate);
-    
-    // Input variable: VertexIndex
-    uint32_t inVertexId = module.newVar(
-      ptrInputU32, spv::StorageClassInput);
-    module.decorateBuiltIn(inVertexId, spv::BuiltInVertexIndex);
-    
-    // Output variable: Position
-    uint32_t outPosition = module.newVar(
-      ptrOutputVec4, spv::StorageClassOutput);
-    module.decorateBuiltIn(outPosition, spv::BuiltInPosition);
-    
-    // Output variable: Texture coordinates
-    uint32_t outTexCoord = module.newVar(
-      ptrOutputVec2, spv::StorageClassOutput);
-    module.decorateLocation(outTexCoord, 0);
-    
-    // Temporary variable: Vertex array
-    uint32_t varVertexArray = module.newVar(
-      ptrPrivateArr4, spv::StorageClassPrivate);
-    
-    // Scalar constants
-    uint32_t constF32Zero   = module.constf32( 0.0f);
-    uint32_t constF32Half   = module.constf32( 0.5f);
-    uint32_t constF32Pos1   = module.constf32( 1.0f);
-    uint32_t constF32Neg1   = module.constf32(-1.0f);
-    
-    // Vector constants
-    uint32_t constVec2HalfIds[2] = { constF32Half, constF32Half };
-    uint32_t constVec2Half  = module.constComposite(typeVec2, 2, constVec2HalfIds);
-    
-    // Construct vertex array
-    uint32_t vertexData[16] = {
-      constF32Neg1, constF32Neg1, constF32Zero, constF32Pos1,
-      constF32Neg1, constF32Pos1, constF32Zero, constF32Pos1,
-      constF32Pos1, constF32Neg1, constF32Zero, constF32Pos1,
-      constF32Pos1, constF32Pos1, constF32Zero, constF32Pos1,
-    };
-    
-    uint32_t vertexConstants[4] = {
-      module.constComposite(typeVec4, 4, vertexData +  0),
-      module.constComposite(typeVec4, 4, vertexData +  4),
-      module.constComposite(typeVec4, 4, vertexData +  8),
-      module.constComposite(typeVec4, 4, vertexData + 12),
-    };
-    
-    uint32_t vertexArray = module.constComposite(
-      typeVec4Arr4, 4, vertexConstants);
-    
-    
-    // Function header
-    module.functionBegin(typeVoid, entryPointId, typeFn, spv::FunctionControlMaskNone);
-    module.opLabel(module.allocateId());
-    module.opStore(varVertexArray, vertexArray);
-    
-    // Load position of the current vertex
-    uint32_t tmpVertexId  = module.opLoad(typeU32, inVertexId);
-    uint32_t tmpVertexPtr = module.opAccessChain(
-      ptrPrivateVec4, varVertexArray, 1, &tmpVertexId);
-    uint32_t tmpVertexPos = module.opLoad(typeVec4, tmpVertexPtr);
-    module.opStore(outPosition, tmpVertexPos);
-    
-    // Compute texture coordinates
-    uint32_t swizzleIndices[2] = { 0, 1 };
-    uint32_t tmpTexCoord  = module.opVectorShuffle(typeVec2,
-      tmpVertexPos, tmpVertexPos, 2, swizzleIndices);
-    tmpTexCoord = module.opFMul(typeVec2, tmpTexCoord, constVec2Half);
-    tmpTexCoord = module.opFAdd(typeVec2, tmpTexCoord, constVec2Half);
-    module.opStore(outTexCoord, tmpTexCoord);
-    
-    module.opReturn();
-    module.functionEnd();
-    
-    // Register function entry point
-    std::array<uint32_t, 3> interfaces = {
-      inVertexId, outPosition, outTexCoord,
-    };
-    
-    module.addEntryPoint(entryPointId, spv::ExecutionModelVertex,
-      "main", interfaces.size(), interfaces.data());
-    
-    // Create the actual shader module
     return m_device->createShader(
       VK_SHADER_STAGE_VERTEX_BIT,
       0, nullptr, { 0u, 1u },
-      module.compile());
+      codeBuffer);
   }
   
   
   Rc<DxvkShader> DxgiPresenter::createFragmentShader() {
-    SpirvModule module;
-    
-    module.enableCapability(spv::CapabilityShader);
-    module.setMemoryModel(
-      spv::AddressingModelLogical,
-      spv::MemoryModelGLSL450);
-    
-    uint32_t entryPointId = module.allocateId();
-    
-    // Data type definitions
-    uint32_t typeVoid       = module.defVoidType();
-    uint32_t typeF32        = module.defFloatType(32);
-    uint32_t typeVec2       = module.defVectorType(typeF32, 2);
-    uint32_t typeVec4       = module.defVectorType(typeF32, 4);
-    uint32_t typeFn         = module.defFunctionType(typeVoid, 0, nullptr);
-    uint32_t typeSampler    = module.defSamplerType();
-    uint32_t typeTexture    = module.defImageType(
-      typeF32, spv::Dim2D, 0, 0, 0, 1, spv::ImageFormatUnknown);
-    uint32_t typeSampledTex = module.defSampledImageType(typeTexture);
-    
-    // Pointer type definitions
-    uint32_t ptrInputVec2   = module.defPointerType(typeVec2, spv::StorageClassInput);
-    uint32_t ptrOutputVec4  = module.defPointerType(typeVec4, spv::StorageClassOutput);
-    uint32_t ptrSampler     = module.defPointerType(typeSampler, spv::StorageClassUniformConstant);
-    uint32_t ptrTexture     = module.defPointerType(typeTexture, spv::StorageClassUniformConstant);
-    
-    // Sampler
-    uint32_t rcSampler = module.newVar(ptrSampler, spv::StorageClassUniformConstant);
-    module.decorateDescriptorSet(rcSampler, 0);
-    module.decorateBinding(rcSampler, BindingIds::Sampler);
-    
-    // Texture
-    uint32_t rcTexture = module.newVar(ptrTexture, spv::StorageClassUniformConstant);
-    module.decorateDescriptorSet(rcTexture, 0);
-    module.decorateBinding(rcTexture, BindingIds::Texture);
-    
-    // Input variable: Texture coordinates
-    uint32_t inTexCoord = module.newVar(
-      ptrInputVec2, spv::StorageClassInput);
-    module.decorateLocation(inTexCoord, 0);
-    
-    // Output variable: Final color
-    uint32_t outColor = module.newVar(
-      ptrOutputVec4, spv::StorageClassOutput);
-    module.decorateLocation(outColor, 0);
-    
-    // Function header
-    module.functionBegin(typeVoid, entryPointId, typeFn, spv::FunctionControlMaskNone);
-    module.opLabel(module.allocateId());
-    
-    // Load texture coordinates
-    module.opStore(outColor,
-      module.opImageSampleImplicitLod(
-        typeVec4,
-        module.opSampledImage(
-          typeSampledTex,
-          module.opLoad(typeTexture, rcTexture),
-          module.opLoad(typeSampler, rcSampler)),
-        module.opLoad(typeVec2, inTexCoord),
-        SpirvImageOperands()));
-    
-    module.opReturn();
-    module.functionEnd();
-    
-    // Register function entry point
-    std::array<uint32_t, 2> interfaces = { inTexCoord, outColor };
-    
-    module.addEntryPoint(entryPointId, spv::ExecutionModelFragment,
-      "main", interfaces.size(), interfaces.data());
+    const SpirvCodeBuffer codeBuffer(dxgi_presenter_frag);
     
     // Shader resource slots
     std::array<DxvkResourceSlot, 2> resourceSlots = {{
@@ -539,7 +369,7 @@ namespace dxvk {
       resourceSlots.size(),
       resourceSlots.data(),
       { 1u, 1u },
-      module.compile());
+      codeBuffer);
   }
   
 }
