@@ -18,6 +18,7 @@ namespace dxvk {
   
   class DxgiDevice;
   class DxgiFactory;
+  class DxgiOutput;
   
   class DxgiSwapChain : public DxgiObject<IDXGISwapChain> {
     
@@ -80,7 +81,13 @@ namespace dxvk {
             BOOL        Fullscreen,
             IDXGIOutput *pTarget) final;
     
-    HRESULT SetDefaultGammaRamp();
+    HRESULT GetGammaControl(
+            DXGI_GAMMA_CONTROL* pGammaControl);
+    
+    HRESULT SetGammaControl(
+      const DXGI_GAMMA_CONTROL* pGammaControl);
+    
+    HRESULT SetDefaultGammaControl();
     
   private:
     
@@ -95,6 +102,7 @@ namespace dxvk {
     Com<DxgiFactory>                m_factory;
     Com<DxgiAdapter>                m_adapter;
     Com<DxgiDevice>                 m_device;
+    Com<DxgiOutput>                 m_output;
     Com<IDXGIVkPresenter>           m_presentDevice;
     
     DXGI_SWAP_CHAIN_DESC            m_desc;

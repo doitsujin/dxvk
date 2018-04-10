@@ -6,6 +6,7 @@
 
 #include "dxgi_adapter.h"
 #include "dxgi_output.h"
+#include "dxgi_swapchain.h"
 
 #include "../dxvk/dxvk_format.h"
 
@@ -229,20 +230,32 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE DxgiOutput::GetFrameStatistics(DXGI_FRAME_STATISTICS *pStats) {
-    Logger::err("DxgiOutput::GetFrameStatistics: Not implemented");
-    return E_NOTIMPL;
+    Com<DxgiSwapChain> swapChain = GetFullscreenSwapChain();
+    
+    return swapChain != nullptr
+      ? swapChain->GetFrameStatistics(pStats)
+      : DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
   }
   
   
   HRESULT STDMETHODCALLTYPE DxgiOutput::GetGammaControl(DXGI_GAMMA_CONTROL *pArray) {
-    Logger::err("DxgiOutput::GetGammaControl: Not implemented");
-    return E_NOTIMPL;
+    Com<DxgiSwapChain> swapChain = GetFullscreenSwapChain();
+    
+    return swapChain != nullptr
+      ? swapChain->GetGammaControl(pArray)
+      : DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
   }
   
   
   HRESULT STDMETHODCALLTYPE DxgiOutput::GetGammaControlCapabilities(DXGI_GAMMA_CONTROL_CAPABILITIES *pGammaCaps) {
-    Logger::err("DxgiOutput::GetGammaControlCapabilities: Not implemented");
-    return E_NOTIMPL;
+    pGammaCaps->ScaleAndOffsetSupported = TRUE;
+    pGammaCaps->MaxConvertedValue       = 1.0f;
+    pGammaCaps->MinConvertedValue       = 0.0f;
+    pGammaCaps->NumGammaControlPoints   = DxgiPresenterGammaRamp::CpCount;
+    
+    for (uint32_t i = 0; i < pGammaCaps->NumGammaControlPoints; i++)
+      pGammaCaps->ControlPointPositions[i] = DxgiPresenterGammaRamp::cpLocation(i);
+    return S_OK;
   }
   
   
@@ -258,8 +271,12 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE DxgiOutput::SetGammaControl(const DXGI_GAMMA_CONTROL *pArray) {
-    Logger::err("DxgiOutput::SetGammaControl: Not implemented");
-    return E_NOTIMPL;
+    Com<DxgiSwapChain> swapChain = GetFullscreenSwapChain();
+    
+    Logger::err(str::format("DxgiOutput::SetGammaControl ", swapChain.ptr()));
+    return swapChain != nullptr
+      ? swapChain->SetGammaControl(pArray)
+      : DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
   }
   
   
@@ -274,6 +291,23 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiOutput::WaitForVBlank() {
     Logger::warn("DxgiOutput::WaitForVBlank: Stub");
     return S_OK;
+  }
+  
+  
+  BOOL DxgiOutput::SetSwapChain(DxgiSwapChain* pExpected, DxgiSwapChain* pDesired) {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    
+    if (m_fullscreenSwapChain == pExpected) {
+      Logger::err(str::format("SetSwapChain: ", pDesired));
+      m_fullscreenSwapChain = pDesired;
+      return TRUE;
+    } return FALSE;
+  }
+  
+  
+  Com<DxgiSwapChain> DxgiOutput::GetFullscreenSwapChain() {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return Com<DxgiSwapChain>(m_fullscreenSwapChain);
   }
   
   

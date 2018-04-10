@@ -1,10 +1,13 @@
 #pragma once
 
+#include <mutex>
+
 #include "dxgi_object.h"
 
 namespace dxvk {
   
   class DxgiAdapter;
+  class DxgiSwapChain;
   
   class DxgiOutput : public DxgiObject<IDXGIOutput> {
     
@@ -64,10 +67,19 @@ namespace dxvk {
     
     HRESULT STDMETHODCALLTYPE WaitForVBlank() final;
     
+    BOOL SetSwapChain(
+            DxgiSwapChain*        pExpected,
+            DxgiSwapChain*        pDesired);
+    
   private:
     
-    Com<DxgiAdapter> m_adapter = nullptr;
+    DxgiAdapter*     m_adapter = nullptr;
     HMONITOR         m_monitor = nullptr;
+    
+    std::mutex       m_mutex;
+    DxgiSwapChain*   m_fullscreenSwapChain = nullptr;
+    
+    Com<DxgiSwapChain> GetFullscreenSwapChain();
     
     uint32_t GetFormatBpp(DXGI_FORMAT Format) const;
     
