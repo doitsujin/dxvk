@@ -16,14 +16,15 @@ For binary releases, see the [releases](https://github.com/doitsujin/dxvk/releas
 
 ### Building DLLs
 
-Inside the dxvk directory, run:
+#### The simple way
+Inside the DXVK directory, run:
 ```
-bash package-release.sh filename /your/compiling/directory --no-package
+./package-release.sh master /your/target/directory --no-package
 ```
 
-This will create a folder `dxvk-filename` in `/your/compiling/directory`.
+This will create a folder `dxvk-master` in `/your/master/directory`.
 
-To do compiling line by line, run
+#### Compiling manually
 ```
 # 64-bit build. For 32-bit builds, replace
 # build-win64.txt with build-win32.txt
