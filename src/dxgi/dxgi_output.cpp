@@ -273,7 +273,6 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiOutput::SetGammaControl(const DXGI_GAMMA_CONTROL *pArray) {
     Com<DxgiSwapChain> swapChain = GetFullscreenSwapChain();
     
-    Logger::err(str::format("DxgiOutput::SetGammaControl ", swapChain.ptr()));
     return swapChain != nullptr
       ? swapChain->SetGammaControl(pArray)
       : DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
@@ -298,7 +297,6 @@ namespace dxvk {
     std::lock_guard<std::mutex> lock(m_mutex);
     
     if (m_fullscreenSwapChain == pExpected) {
-      Logger::err(str::format("SetSwapChain: ", pDesired));
       m_fullscreenSwapChain = pDesired;
       return TRUE;
     } return FALSE;
