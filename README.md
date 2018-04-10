@@ -18,10 +18,10 @@ For binary releases, see the [releases](https://github.com/doitsujin/dxvk/releas
 
 Inside the dxvk directory, run:
 ```
-package-release.sh filename /your/packaging/directory
+bash package-release.sh filename /your/compiling/directory --no-package
 ```
 
-This will create an archive `dxvk-filename.tar.gz` in `/your/packaging/directory`. You can unpack this where-ever you want.
+This will create a folder `dxvk-filename` in `/your/compiling/directory`.
 
 To do compiling line by line, run
 ```
@@ -42,7 +42,7 @@ The two libraries `dxgi.dll` and `d3d11.dll`as well as some demo executables wil
 In order to set up a wine prefix to use DXVK instead of wined3d globally, run:
 
 ```
-cd /your/unpacked/directory/x32/
+cd /your/compiling/directory/x32/
 WINEPREFIX=/your/wineprefix bash setup_dxvk.sh
 cd ../x64/
 WINEPREFIX=/your/wineprefix bash setup_dxvk.sh
