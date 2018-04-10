@@ -276,7 +276,7 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitDclGlobalFlags(const DxbcShaderInstruction& ins) {
-    const DxbcGlobalFlags flags = ins.controls.globalFlags;
+    const DxbcGlobalFlags flags = ins.controls.globalFlags();
     
     if (flags.test(DxbcGlobalFlag::EarlyFragmentTests))
       m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeEarlyFragmentTests);
@@ -387,7 +387,7 @@ namespace dxvk {
         DxbcInterpolationMode im = DxbcInterpolationMode::Undefined;
         
         if (hasInterpolationMode)
-          im = ins.controls.interpolation;
+          im = ins.controls.interpolation();
         
         // Declare the actual input/output variable
         switch (ins.op) {
@@ -766,7 +766,7 @@ namespace dxvk {
     }
     
     // Defines the type of the resource (texture2D, ...)
-    const DxbcResourceDim resourceType = ins.controls.resourceDim;
+    const DxbcResourceDim resourceType = ins.controls.resourceDim();
     
     // Defines the type of a read operation. DXBC has the ability
     // to define four different types whereas SPIR-V only allows
@@ -871,7 +871,7 @@ namespace dxvk {
     m_module.decorateDescriptorSet(varId, 0);
     m_module.decorateBinding(varId, bindingId);
     
-    if (ins.controls.uavFlags.test(DxbcUavFlag::GloballyCoherent))
+    if (ins.controls.uavFlags().test(DxbcUavFlag::GloballyCoherent))
       m_module.decorate(varId, spv::DecorationCoherent);
     
     // Declare a specialization constant which will
@@ -992,7 +992,7 @@ namespace dxvk {
     m_module.decorateDescriptorSet(varId, 0);
     m_module.decorateBinding(varId, bindingId);
     
-    if (ins.controls.uavFlags.test(DxbcUavFlag::GloballyCoherent))
+    if (ins.controls.uavFlags().test(DxbcUavFlag::GloballyCoherent))
       m_module.decorate(varId, spv::DecorationCoherent);
     
     // Declare a specialization constant which will
@@ -1083,7 +1083,7 @@ namespace dxvk {
     // control bits of the opcode token. In SPIR-V, we
     // have to define an execution mode.
     const spv::ExecutionMode mode = [&] {
-      switch (ins.controls.primitive) {
+      switch (ins.controls.primitive()) {
         case DxbcPrimitive::Point:       return spv::ExecutionModeInputPoints;
         case DxbcPrimitive::Line:        return spv::ExecutionModeInputLines;
         case DxbcPrimitive::Triangle:    return spv::ExecutionModeTriangles;
@@ -1093,7 +1093,7 @@ namespace dxvk {
       }
     }();
     
-    m_gs.inputPrimitive = ins.controls.primitive;
+    m_gs.inputPrimitive = ins.controls.primitive();
     m_module.setExecutionMode(m_entryPointId, mode);
     
     const uint32_t vertexCount
@@ -1109,7 +1109,7 @@ namespace dxvk {
     // control bits of the opcode token. In SPIR-V, we have
     // to define an execution mode.
     const spv::ExecutionMode mode = [&] {
-      switch (ins.controls.primitiveTopology) {
+      switch (ins.controls.primitiveTopology()) {
         case DxbcPrimitiveTopology::PointList:     return spv::ExecutionModeOutputPoints;
         case DxbcPrimitiveTopology::LineStrip:     return spv::ExecutionModeOutputLineStrip;
         case DxbcPrimitiveTopology::TriangleStrip: return spv::ExecutionModeOutputTriangleStrip;
@@ -1134,11 +1134,11 @@ namespace dxvk {
     // dcl_input_control_points has the control point
     // count embedded within the opcode token.
     if (m_version.type() == DxbcProgramType::HullShader) {
-      m_hs.vertexCountIn = ins.controls.controlPointCount;
+      m_hs.vertexCountIn = ins.controls.controlPointCount();
       
       emitDclInputArray(m_hs.vertexCountIn);    
     } else {
-      m_ds.vertexCountIn = ins.controls.controlPointCount;
+      m_ds.vertexCountIn = ins.controls.controlPointCount();
       
       m_ds.inputPerPatch  = emitTessInterfacePerPatch (spv::StorageClassInput);
       m_ds.inputPerVertex = emitTessInterfacePerVertex(spv::StorageClassInput, m_ds.vertexCountIn);
@@ -1149,12 +1149,12 @@ namespace dxvk {
   void DxbcCompiler::emitDclOutputControlPointCount(const DxbcShaderInstruction& ins) {
     // dcl_output_control_points has the control point
     // count embedded within the opcode token.
-    m_hs.vertexCountOut = ins.controls.controlPointCount;
+    m_hs.vertexCountOut = ins.controls.controlPointCount();
     
     m_hs.outputPerPatch  = emitTessInterfacePerPatch (spv::StorageClassOutput);
     m_hs.outputPerVertex = emitTessInterfacePerVertex(spv::StorageClassOutput, m_hs.vertexCountOut);
     
-    m_module.setOutputVertices(m_entryPointId, ins.controls.controlPointCount);
+    m_module.setOutputVertices(m_entryPointId, m_hs.vertexCountOut);
   }
   
   
@@ -1165,7 +1165,7 @@ namespace dxvk {
   
   void DxbcCompiler::emitDclTessDomain(const DxbcShaderInstruction& ins) {
     const spv::ExecutionMode executionMode = [&] {
-      switch (ins.controls.tessDomain) {
+      switch (ins.controls.tessDomain()) {
         case DxbcTessDomain::Isolines:  return spv::ExecutionModeIsolines;
         case DxbcTessDomain::Triangles: return spv::ExecutionModeTriangles;
         case DxbcTessDomain::Quads:     return spv::ExecutionModeQuads;
@@ -1179,7 +1179,7 @@ namespace dxvk {
   
   void DxbcCompiler::emitDclTessPartitioning(const DxbcShaderInstruction& ins) {
     const spv::ExecutionMode executionMode = [&] {
-      switch (ins.controls.tessPartitioning) {
+      switch (ins.controls.tessPartitioning()) {
         case DxbcTessPartitioning::Pow2:
         case DxbcTessPartitioning::Integer:   return spv::ExecutionModeSpacingEqual;
         case DxbcTessPartitioning::FractOdd:  return spv::ExecutionModeSpacingFractionalOdd;
@@ -1193,7 +1193,7 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitDclTessOutputPrimitive(const DxbcShaderInstruction& ins) {
-    switch (ins.controls.tessOutputPrimitive) {
+    switch (ins.controls.tessOutputPrimitive()) {
       case DxbcTessOutputPrimitive::Point:
         m_module.setExecutionMode(m_entryPointId, spv::ExecutionModePointMode);
         break;
@@ -2184,7 +2184,7 @@ namespace dxvk {
   void DxbcCompiler::emitBarrier(const DxbcShaderInstruction& ins) {
     // sync takes no operands. Instead, the synchronization
     // scope is defined by the operand control bits.
-    const DxbcSyncFlags flags = ins.controls.syncFlags;
+    const DxbcSyncFlags flags = ins.controls.syncFlags();
     
     uint32_t executionScope   = spv::ScopeInvocation;
     uint32_t memoryScope      = spv::ScopeInvocation;
@@ -2572,7 +2572,7 @@ namespace dxvk {
     //    (src1) Resource to query
     // TODO Check if resource is bound
     const DxbcBufferInfo resourceInfo = getBufferInfo(ins.src[1]);
-    const DxbcResinfoType resinfoType = ins.controls.resinfoType;
+    const DxbcResinfoType resinfoType = ins.controls.resinfoType();
     
     // Read the exact LOD for the image query
     const DxbcRegisterValue mipLod = emitRegisterLoad(
@@ -2709,7 +2709,7 @@ namespace dxvk {
     // TODO Check if resource is bound
     DxbcRegisterValue sampleCount = emitQueryTextureSamples(ins.src[0]);
     
-    if (ins.controls.returnType != DxbcInstructionReturnType::Uint) {
+    if (ins.controls.returnType() != DxbcInstructionReturnType::Uint) {
       sampleCount.type = { DxbcScalarType::Float32, 1 };
       sampleCount.id = m_module.opConvertUtoF(
         getVectorTypeId(sampleCount.type),
@@ -3250,7 +3250,7 @@ namespace dxvk {
       ins.src[0], DxbcRegMask(true, false, false, false));
     
     const DxbcRegisterValue zeroTest = emitRegisterZeroTest(
-      condition, ins.controls.zeroTest);
+      condition, ins.controls.zeroTest());
     
     // Declare the 'if' block. We do not know if there
     // will be an 'else' block or not, so we'll assume
@@ -3508,7 +3508,7 @@ namespace dxvk {
       ins.src[0], DxbcRegMask(true, false, false, false));
     
     const DxbcRegisterValue zeroTest = emitRegisterZeroTest(
-      condition, ins.controls.zeroTest);
+      condition, ins.controls.zeroTest());
     
     // We basically have to wrap this into an 'if' block
     const uint32_t breakBlock = m_module.allocateId();
@@ -3551,7 +3551,7 @@ namespace dxvk {
       ins.src[0], DxbcRegMask(true, false, false, false));
     
     const DxbcRegisterValue zeroTest = emitRegisterZeroTest(
-      condition, ins.controls.zeroTest);
+      condition, ins.controls.zeroTest());
     
     // We basically have to wrap this into an 'if' block
     const uint32_t returnLabel = m_module.allocateId();
@@ -3578,7 +3578,7 @@ namespace dxvk {
       ins.src[0], DxbcRegMask(true, false, false, false));
     
     const DxbcRegisterValue zeroTest = emitRegisterZeroTest(
-      condition, ins.controls.zeroTest);
+      condition, ins.controls.zeroTest());
     
     // Insert a Pseudo-'If' block
     const uint32_t discardBlock = m_module.allocateId();
