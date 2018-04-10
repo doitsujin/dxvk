@@ -34,9 +34,8 @@ namespace dxvk {
      * \brief Code data
      * \returns Code data
      */
-    const uint32_t* data() const {
-      return m_code.data();
-    }
+    const uint32_t* data() const { return m_code.data(); }
+          uint32_t* data()       { return m_code.data(); }
     
     /**
      * \brief Code size, in bytes
@@ -54,7 +53,8 @@ namespace dxvk {
      * \returns Instruction iterator
      */
     SpirvInstructionIterator begin() {
-      return SpirvInstructionIterator(m_code.data(), m_code.size());
+      return SpirvInstructionIterator(
+        m_code.data(), 0, m_code.size());
     }
     
     /**
@@ -64,7 +64,7 @@ namespace dxvk {
      * \returns Instruction iterator
      */
     SpirvInstructionIterator end() {
-      return SpirvInstructionIterator(nullptr, 0);
+      return SpirvInstructionIterator(nullptr, 0, 0);
     }
     
     /**
