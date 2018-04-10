@@ -10,7 +10,7 @@ For binary releases, see the [releases](https://github.com/doitsujin/dxvk/releas
 
 ### Requirements:
 - [wine 3.5](https://www.winehq.org/) or newer
-- [Meson](http://mesonbuild.com/) build system (at least 0.43)
+- [Meson](http://mesonbuild.com/) build system (at least version 0.43)
 - [MinGW64](http://mingw-w64.org/) compiler and headers (requires threading support)
 - [glslang](https://github.com/KhronosGroup/glslang) front end and validator
 
@@ -22,7 +22,7 @@ Inside the DXVK directory, run:
 ./package-release.sh master /your/target/directory --no-package
 ```
 
-This will create a folder `dxvk-master` in `/your/master/directory`.
+This will create a folder `dxvk-master` in `/your/target/directory`, which contains both 32-bit and 64-bit versions of DXVK.
 
 #### Compiling manually
 ```
@@ -84,7 +84,7 @@ The following environment variables can be used for **debugging** purposes.
 ## Troubleshooting
 DXVK requires threading support from your mingw-w64 build environment. If you
 are missing this, you may see "error: 'mutex' is not a member of 'std'". On
-Debian, this can usually be resolved by using the posix alternate, which
+Debian and Ubuntu, this can usually be resolved by using the posix alternate, which
 supports threading. For example, choose the posix alternate from these
 commands (use i686 for 32-bit):
 ```
