@@ -96,6 +96,9 @@ namespace dxvk {
       case DxbcInstClass::Interpolate:
         return this->emitInterpolate(ins);
       
+      case DxbcInstClass::NoOperation:
+        return;
+      
       case DxbcInstClass::TextureQuery:
         return this->emitTextureQuery(ins);
         

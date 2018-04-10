@@ -282,7 +282,7 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
     } },
     /* Nop                                  */
-    { },
+    { 0, DxbcInstClass::NoOperation },
     /* Not                                  */
     { 2, DxbcInstClass::VectorAlu, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },

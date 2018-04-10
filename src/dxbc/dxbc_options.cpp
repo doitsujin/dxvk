@@ -11,7 +11,7 @@ namespace dxvk {
     
     if (vendor == DxvkGpuVendor::Nvidia
      && (devProps.driverVersion < VK_MAKE_VERSION(396, 18, 0)
-      || getEnvVar(L"__GL_NextGenCompiler") == "0")) {
+      || env::getEnvVar(L"__GL_NextGenCompiler") == "0")) {
       // Older versions of the driver expect the
       // coordinate vector to have an extra component
       this->addExtraDrefCoordComponent = true;
