@@ -8,8 +8,8 @@
 namespace dxvk {
   
   DxgiPresenter::DxgiPresenter(
-    const Rc<DxvkDevice>&          device,
-          HWND                     window)
+    const Rc<DxvkDevice>&         device,
+          HWND                    window)
   : m_device  (device),
     m_context (device->createContext()) {
     
@@ -24,6 +24,18 @@ namespace dxvk {
     m_options.preferredSurfaceFormat = { VK_FORMAT_UNDEFINED, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
     m_options.preferredPresentMode   = VK_PRESENT_MODE_FIFO_KHR;
     m_options.preferredBufferSize    = { 0u, 0u };
+    
+    // Uniform buffer that stores the gamma ramp
+    DxvkBufferCreateInfo gammaBufferInfo;
+    gammaBufferInfo.size        = sizeof(DxgiPresenterGammaRamp);
+    gammaBufferInfo.usage       = VK_BUFFER_USAGE_TRANSFER_DST_BIT
+                                | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    gammaBufferInfo.stages      = VK_PIPELINE_STAGE_TRANSFER_BIT
+                                | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    gammaBufferInfo.access      = VK_ACCESS_TRANSFER_WRITE_BIT
+                                | VK_ACCESS_SHADER_READ_BIT;
+    m_gammaBuffer = m_device->createBuffer(
+      gammaBufferInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     
     // Sampler for presentation
     DxvkSamplerCreateInfo samplerInfo;
@@ -133,6 +145,9 @@ namespace dxvk {
   
   
   void DxgiPresenter::initBackBuffer(const Rc<DxvkImage>& image) {
+    m_context->beginRecording(
+      m_device->createCommandList());
+    
     VkImageSubresourceRange sr;
     sr.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
     sr.baseMipLevel   = 0;
@@ -140,9 +155,8 @@ namespace dxvk {
     sr.baseArrayLayer = 0;
     sr.layerCount     = image->info().numLayers;
     
-    m_context->beginRecording(
-      m_device->createCommandList());
     m_context->initImage(image, sr);
+    
     m_device->submitCommandList(
       m_context->endRecording(),
       nullptr, nullptr);
@@ -209,6 +223,8 @@ namespace dxvk {
     m_context->bindResourceView(BindingIds::Texture, m_backBufferView, nullptr);
     m_context->draw(4, 1, 0, 0);
     
+    m_context->bindResourceBuffer(BindingIds::GammaUbo, DxvkBufferSlice(m_gammaBuffer));
+    
     if (m_hud != nullptr) {
       m_blendMode.enableBlending = VK_TRUE;
       m_context->setBlendMode(0, m_blendMode);
@@ -273,7 +289,6 @@ namespace dxvk {
         : m_backBuffer,
       viewInfo);
     
-    // TODO move this elsewhere
     this->initBackBuffer(m_backBuffer);
   }
   
@@ -344,6 +359,20 @@ namespace dxvk {
   }
   
   
+  void DxgiPresenter::setGammaRamp(const DxgiPresenterGammaRamp& data) {
+    m_context->beginRecording(
+      m_device->createCommandList());
+    
+    m_context->updateBuffer(m_gammaBuffer,
+      0, sizeof(DxgiPresenterGammaRamp),
+      &data);
+    
+    m_device->submitCommandList(
+      m_context->endRecording(),
+      nullptr, nullptr);
+  }
+  
+  
   Rc<DxvkShader> DxgiPresenter::createVertexShader() {
     const SpirvCodeBuffer codeBuffer(dxgi_presenter_vert);
     
@@ -358,9 +387,10 @@ namespace dxvk {
     const SpirvCodeBuffer codeBuffer(dxgi_presenter_frag);
     
     // Shader resource slots
-    std::array<DxvkResourceSlot, 2> resourceSlots = {{
-      { BindingIds::Sampler, VK_DESCRIPTOR_TYPE_SAMPLER,       VK_IMAGE_VIEW_TYPE_MAX_ENUM },
-      { BindingIds::Texture, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_IMAGE_VIEW_TYPE_2D       },
+    const std::array<DxvkResourceSlot, 3> resourceSlots = {{
+      { BindingIds::Sampler,  VK_DESCRIPTOR_TYPE_SAMPLER,        VK_IMAGE_VIEW_TYPE_MAX_ENUM },
+      { BindingIds::Texture,  VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  VK_IMAGE_VIEW_TYPE_2D       },
+      { BindingIds::GammaUbo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_IMAGE_VIEW_TYPE_MAX_ENUM },
     }};
     
     // Create the actual shader module

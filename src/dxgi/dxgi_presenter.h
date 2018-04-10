@@ -13,6 +13,25 @@
 namespace dxvk {
   
   /**
+   * \brief Gamma ramp
+   * 
+   * Structure that can be used to set the gamma
+   * ramp of a swap chain. This is the same data
+   * structure that is used by the fragment shader.
+   */
+  struct DxgiPresenterGammaRamp {
+    constexpr static uint32_t CpCount = 1025;
+    
+    float in_factor[4];
+    float in_offset[4];
+    float cp_values[4 * CpCount];
+    
+    static float cpLocation(uint32_t cp) {
+      return float(cp) / float(CpCount - 1);
+    }
+  };
+  
+  /**
    * \brief DXGI presenter
    * 
    * Renders the back buffer from the
@@ -24,8 +43,8 @@ namespace dxvk {
   public:
     
     DxgiPresenter(
-      const Rc<DxvkDevice>&          device,
-            HWND                     window);
+      const Rc<DxvkDevice>&         device,
+            HWND                    window);
     
     ~DxgiPresenter();
       
@@ -80,11 +99,18 @@ namespace dxvk {
      */
     VkPresentModeKHR pickPresentMode(VkPresentModeKHR preferred) const;
     
+    /**
+     * \brief Sets gamma ramp
+     * \param [in] data Gamma data
+     */
+    void setGammaRamp(const DxgiPresenterGammaRamp& data);
+    
   private:
     
     enum BindingIds : uint32_t {
-      Sampler = 0,
-      Texture = 1,
+      Sampler   = 0,
+      Texture   = 1,
+      GammaUbo  = 2,
     };
     
     Rc<DxvkDevice>      m_device;
@@ -92,6 +118,8 @@ namespace dxvk {
     
     Rc<DxvkSurface>     m_surface;
     Rc<DxvkSwapchain>   m_swapchain;
+    
+    Rc<DxvkBuffer>      m_gammaBuffer;
     
     Rc<DxvkSampler>     m_samplerFitting;
     Rc<DxvkSampler>     m_samplerScaling;

@@ -51,6 +51,9 @@ namespace dxvk {
     
     if (FAILED(CreatePresenter()) || FAILED(CreateBackBuffer()))
       throw DxvkError("DxgiSwapChain: Failed to create presenter or back buffer");
+    
+    if (FAILED(SetDefaultGammaRamp()))
+      throw DxvkError("DxgiSwapChain: Failed to set up gamma ramp");
   }
   
   
@@ -261,6 +264,28 @@ namespace dxvk {
     else if (!m_desc.Windowed && !Fullscreen)
       return this->LeaveFullscreenMode();
     
+    return S_OK;
+  }
+  
+  
+  HRESULT DxgiSwapChain::SetDefaultGammaRamp() {
+    std::lock_guard<std::recursive_mutex> lock(m_mutex);
+    
+    for (uint32_t i = 0; i < 4; i++) {
+      m_gammaControl.in_factor[i] = 1.0f;
+      m_gammaControl.in_offset[i] = 0.0f;
+    }
+    
+    for (uint32_t i = 0; i < DxgiPresenterGammaRamp::CpCount; i++) {
+      const float value = DxgiPresenterGammaRamp::cpLocation(i);
+      
+      m_gammaControl.cp_values[4 * i + 0] = value;
+      m_gammaControl.cp_values[4 * i + 1] = value;
+      m_gammaControl.cp_values[4 * i + 2] = value;
+      m_gammaControl.cp_values[4 * i + 3] = value;
+    }
+    
+    m_presenter->setGammaRamp(m_gammaControl);
     return S_OK;
   }
   
