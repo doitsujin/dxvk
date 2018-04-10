@@ -9,7 +9,8 @@ namespace dxvk {
     // Apply driver-specific workarounds
     const DxvkGpuVendor vendor = static_cast<DxvkGpuVendor>(devProps.vendorID);
     
-    if (vendor == DxvkGpuVendor::Nvidia) {
+    if (vendor == DxvkGpuVendor::Nvidia
+     && devProps.driverVersion <= VK_MAKE_VERSION(396, 18, 0)) {
       // Older versions of the driver expect the
       // coordinate vector to have an extra component
       this->addExtraDrefCoordComponent = true;
