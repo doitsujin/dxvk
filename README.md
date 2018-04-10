@@ -15,7 +15,16 @@ For binary releases, see the [releases](https://github.com/doitsujin/dxvk/releas
 - [glslang](https://github.com/KhronosGroup/glslang) front end and validator
 
 ### Building DLLs
-Inside the dxvk directory, run:
+
+#### The simple way
+Inside the DXVK directory, run:
+```
+./package-release.sh master /your/target/directory --no-package
+```
+
+This will create a folder `dxvk-master` in `/your/master/directory`.
+
+#### Compiling manually
 ```
 # 64-bit build. For 32-bit builds, replace
 # build-win64.txt with build-win32.txt
@@ -32,6 +41,15 @@ The two libraries `dxgi.dll` and `d3d11.dll`as well as some demo executables wil
 
 ## How to use
 In order to set up a wine prefix to use DXVK instead of wined3d globally, run:
+
+```
+cd /your/compiling/directory/x32/
+WINEPREFIX=/your/wineprefix bash setup_dxvk.sh
+cd ../x64/
+WINEPREFIX=/your/wineprefix bash setup_dxvk.sh
+```
+
+When built line by line, run:
 ```
 cd /your/dxvk/directory/bin
 WINEPREFIX=/your/wineprefix bash setup_dxvk.sh
