@@ -6,7 +6,7 @@
 #include <sstream>
 
 #ifdef __WINE__
-#include "windows.h"
+#include "./com/com_include.h"
 #endif
 
 namespace dxvk::str {
