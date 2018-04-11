@@ -388,15 +388,13 @@ namespace dxvk {
   
   
   HRESULT DxgiSwapChain::EnterFullscreenMode(IDXGIOutput *pTarget) {
-    m_output = static_cast<DxgiOutput*>(pTarget);
+    Com<IDXGIOutput> output = static_cast<DxgiOutput*>(pTarget);
     
-    if (m_output == nullptr) {
-      Com<IDXGIOutput> output;
+    if (output == nullptr) {
       if (FAILED(GetContainingOutput(&output))) {
         Logger::err("DxgiSwapChain: Failed to enter fullscreen mode: Cannot query containing output");
         return E_FAIL;
       }
-      m_output = static_cast<DxgiOutput*>(output.ptr());
     }
     
     // Update swap chain description
@@ -420,7 +418,7 @@ namespace dxvk {
     
     // Move the window so that it covers the entire output
     DXGI_OUTPUT_DESC desc;
-    m_output->GetDesc(&desc);
+    output->GetDesc(&desc);
     
     const RECT rect = desc.DesktopCoordinates;
     

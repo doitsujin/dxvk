@@ -102,7 +102,6 @@ namespace dxvk {
     Com<DxgiFactory>                m_factory;
     Com<DxgiAdapter>                m_adapter;
     Com<DxgiDevice>                 m_device;
-    Com<DxgiOutput>                 m_output;
     Com<IDXGIVkPresenter>           m_presentDevice;
     
     DXGI_SWAP_CHAIN_DESC            m_desc;
