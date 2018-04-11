@@ -302,6 +302,19 @@ namespace dxvk {
     }
     
     /**
+     * \brief Element cound
+     * 
+     * Number of typed elements contained
+     * in the buffer view. Depends on the
+     * buffer view format.
+     * \returns Element count
+     */
+    VkDeviceSize elementCount() const {
+      auto format = imageFormatInfo(m_info.format);
+      return m_info.rangeLength / format->elementSize;
+    }
+    
+    /**
      * \brief Buffer view properties
      * \returns Buffer view properties
      */

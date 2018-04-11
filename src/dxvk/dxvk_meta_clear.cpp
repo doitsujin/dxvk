@@ -70,6 +70,47 @@ namespace dxvk {
   }
   
   
+  DxvkMetaClearPipeline DxvkMetaClearObjects::getClearBufferPipeline(
+          DxvkFormatFlags       formatFlags) const {
+    DxvkMetaClearPipeline result;
+    result.dsetLayout = m_clearBufDsetLayout;
+    result.pipeLayout = m_clearBufPipeLayout;
+    result.pipeline   = formatFlags.test(DxvkFormatFlag::SampledInteger)
+      ? m_clearPipesU32.clearBuf
+      : m_clearPipesF32.clearBuf;
+    result.workgroupSize = VkExtent3D { 128, 1, 1 };
+    return result;
+  }
+  
+  
+  DxvkMetaClearPipeline DxvkMetaClearObjects::getClearImagePipeline(
+          VkImageViewType       viewType,
+          DxvkFormatFlags       formatFlags) const {
+    const DxvkMetaClearPipelines& pipes
+      = formatFlags.test(DxvkFormatFlag::SampledInteger)
+        ? m_clearPipesU32 : m_clearPipesF32;
+    
+    DxvkMetaClearPipeline result;
+    result.dsetLayout = m_clearImgDsetLayout;
+    result.pipeLayout = m_clearImgPipeLayout;
+    
+    auto pipeInfo = [&pipes, viewType] () -> std::pair<VkPipeline, VkExtent3D> {
+      switch (viewType) {
+        case VK_IMAGE_VIEW_TYPE_1D:       return { pipes.clearImg1D,      VkExtent3D { 64, 1, 1 } };
+        case VK_IMAGE_VIEW_TYPE_2D:       return { pipes.clearImg2D,      VkExtent3D {  8, 8, 1 } };
+        case VK_IMAGE_VIEW_TYPE_3D:       return { pipes.clearImg3D,      VkExtent3D {  4, 4, 4 } };
+        case VK_IMAGE_VIEW_TYPE_1D_ARRAY: return { pipes.clearImg1DArray, VkExtent3D { 64, 1, 1 } };
+        case VK_IMAGE_VIEW_TYPE_2D_ARRAY: return { pipes.clearImg2DArray, VkExtent3D {  8, 8, 1 } };
+        default:                          return { VkPipeline(VK_NULL_HANDLE), VkExtent3D { 0, 0, 0, } };
+      }
+    }();
+    
+    result.pipeline      = pipeInfo.first;
+    result.workgroupSize = pipeInfo.second;
+    return result;
+  }
+  
+  
   VkDescriptorSetLayout DxvkMetaClearObjects::createDescriptorSetLayout(
           VkDescriptorType        descriptorType) {
     VkDescriptorSetLayoutBinding bindInfo;

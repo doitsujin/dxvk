@@ -182,6 +182,15 @@ namespace dxvk {
     }
     
     
+    void updateDescriptorSets(
+            uint32_t                      descriptorWriteCount,
+      const VkWriteDescriptorSet*         pDescriptorWrites) {
+      m_vkd->vkUpdateDescriptorSets(m_vkd->device(),
+        descriptorWriteCount, pDescriptorWrites,
+        0, nullptr);
+    }
+    
+    
     void updateDescriptorSetWithTemplate(
             VkDescriptorSet               descriptorSet,
             VkDescriptorUpdateTemplateKHR descriptorTemplate,

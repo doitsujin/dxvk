@@ -227,13 +227,13 @@ namespace dxvk {
      * Can be used to clear sub-regions of storage images
      * that are not going to be used as render targets.
      * Implicit format conversion will be applied.
-     * \param [in] bufferView The buffer view
+     * \param [in] imageView The image view
      * \param [in] offset Offset of the rect to clear
      * \param [in] extent Extent of the rect to clear
      * \param [in] value The clear value
      */
     void clearImageView(
-      const Rc<DxvkBufferView>&   bufferView,
+      const Rc<DxvkImageView>&    imageView,
             VkOffset3D            offset,
             VkExtent3D            extent,
             VkClearColorValue     value);
@@ -627,6 +627,8 @@ namespace dxvk {
     void renderPassBindFramebuffer(
       const Rc<DxvkFramebuffer>& framebuffer);
     void renderPassUnbindFramebuffer();
+    
+    void unbindComputePipeline();
     
     void updateComputePipeline();
     void updateComputePipelineState();

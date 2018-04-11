@@ -242,7 +242,66 @@ namespace dxvk {
           VkDeviceSize          offset,
           VkDeviceSize          length,
           VkClearColorValue     value) {
+    this->renderPassEnd();
+    this->unbindComputePipeline();
     
+    // Query pipeline objects to use for this clear operation
+    DxvkMetaClearPipeline pipeInfo = m_metaClear->getClearBufferPipeline(
+      imageFormatInfo(bufferView->info().format)->flags);
+    
+    // Create a descriptor set pointing to the view
+    VkBufferView viewObject = bufferView->handle();
+    
+    VkDescriptorSet descriptorSet =
+      m_cmd->allocateDescriptorSet(pipeInfo.dsetLayout);
+    
+    VkWriteDescriptorSet descriptorWrite;
+    descriptorWrite.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrite.pNext            = nullptr;
+    descriptorWrite.dstSet           = descriptorSet;
+    descriptorWrite.dstBinding       = 0;
+    descriptorWrite.dstArrayElement  = 0;
+    descriptorWrite.descriptorCount  = 1;
+    descriptorWrite.descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER;
+    descriptorWrite.pImageInfo       = nullptr;
+    descriptorWrite.pBufferInfo      = nullptr;
+    descriptorWrite.pTexelBufferView = &viewObject;
+    m_cmd->updateDescriptorSets(1, &descriptorWrite);
+    
+    // Prepare shader arguments
+    DxvkMetaClearArgs pushArgs;
+    pushArgs.clearValue = value;
+    pushArgs.offset = VkOffset3D {  int32_t(offset), 0, 0 };
+    pushArgs.extent = VkExtent3D { uint32_t(length), 1, 1 };
+    
+    VkExtent3D workgroups = util::computeBlockCount(
+      pushArgs.extent, pipeInfo.workgroupSize);
+    
+    m_cmd->cmdBindPipeline(
+      VK_PIPELINE_BIND_POINT_COMPUTE,
+      pipeInfo.pipeline);
+    m_cmd->cmdBindDescriptorSet(
+      VK_PIPELINE_BIND_POINT_COMPUTE,
+      pipeInfo.pipeLayout, descriptorSet);
+    m_cmd->cmdPushConstants(
+      pipeInfo.pipeLayout,
+      VK_SHADER_STAGE_COMPUTE_BIT,
+      0, sizeof(pushArgs), &pushArgs);
+    m_cmd->cmdDispatch(
+      workgroups.width,
+      workgroups.height,
+      workgroups.depth);
+    
+    m_barriers.accessBuffer(
+      bufferView->physicalSlice(),
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+      VK_ACCESS_SHADER_WRITE_BIT,
+      bufferView->bufferInfo().stages,
+      bufferView->bufferInfo().access);
+    m_barriers.recordCommands(m_cmd);
+    
+    m_cmd->trackResource(bufferView->viewResource());
+    m_cmd->trackResource(bufferView->bufferResource());
   }
   
   
@@ -367,11 +426,81 @@ namespace dxvk {
   
   
   void DxvkContext::clearImageView(
-    const Rc<DxvkBufferView>&   bufferView,
+    const Rc<DxvkImageView>&    imageView,
           VkOffset3D            offset,
           VkExtent3D            extent,
           VkClearColorValue     value) {
+    this->renderPassEnd();
+    this->unbindComputePipeline();
     
+    // Query pipeline objects to use for this clear operation
+    DxvkMetaClearPipeline pipeInfo = m_metaClear->getClearImagePipeline(
+      imageView->type(), imageFormatInfo(imageView->info().format)->flags);
+    
+    // Create a descriptor set pointing to the view
+    VkDescriptorSet descriptorSet =
+      m_cmd->allocateDescriptorSet(pipeInfo.dsetLayout);
+    
+    VkDescriptorImageInfo viewInfo;
+    viewInfo.sampler      = VK_NULL_HANDLE;
+    viewInfo.imageView    = imageView->handle();
+    viewInfo.imageLayout  = imageView->imageInfo().layout;
+    
+    VkWriteDescriptorSet descriptorWrite;
+    descriptorWrite.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrite.pNext            = nullptr;
+    descriptorWrite.dstSet           = descriptorSet;
+    descriptorWrite.dstBinding       = 0;
+    descriptorWrite.dstArrayElement  = 0;
+    descriptorWrite.descriptorCount  = 1;
+    descriptorWrite.descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    descriptorWrite.pImageInfo       = &viewInfo;
+    descriptorWrite.pBufferInfo      = nullptr;
+    descriptorWrite.pTexelBufferView = nullptr;
+    m_cmd->updateDescriptorSets(1, &descriptorWrite);
+    
+    // Prepare shader arguments
+    DxvkMetaClearArgs pushArgs;
+    pushArgs.clearValue = value;
+    pushArgs.offset = offset;
+    pushArgs.extent = extent;
+    
+    VkExtent3D workgroups = util::computeBlockCount(
+      pushArgs.extent, pipeInfo.workgroupSize);
+    
+    if (imageView->type() == VK_IMAGE_VIEW_TYPE_1D_ARRAY)
+      workgroups.height = imageView->subresources().layerCount;
+    else if (imageView->type() == VK_IMAGE_VIEW_TYPE_2D_ARRAY)
+      workgroups.depth = imageView->subresources().layerCount;
+    
+    m_cmd->cmdBindPipeline(
+      VK_PIPELINE_BIND_POINT_COMPUTE,
+      pipeInfo.pipeline);
+    m_cmd->cmdBindDescriptorSet(
+      VK_PIPELINE_BIND_POINT_COMPUTE,
+      pipeInfo.pipeLayout, descriptorSet);
+    m_cmd->cmdPushConstants(
+      pipeInfo.pipeLayout,
+      VK_SHADER_STAGE_COMPUTE_BIT,
+      0, sizeof(pushArgs), &pushArgs);
+    m_cmd->cmdDispatch(
+      workgroups.width,
+      workgroups.height,
+      workgroups.depth);
+    
+    m_barriers.accessImage(
+      imageView->image(),
+      imageView->subresources(),
+      imageView->imageInfo().layout,
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+      VK_ACCESS_SHADER_WRITE_BIT,
+      imageView->imageInfo().layout,
+      imageView->imageInfo().stages,
+      imageView->imageInfo().access);
+    m_barriers.recordCommands(m_cmd);
+    
+    m_cmd->trackResource(imageView);
+    m_cmd->trackResource(imageView->image());
   }
   
   
@@ -1399,6 +1528,16 @@ namespace dxvk {
   
   void DxvkContext::renderPassUnbindFramebuffer() {
     m_cmd->cmdEndRenderPass();
+  }
+  
+  
+  void DxvkContext::unbindComputePipeline() {
+    m_flags.set(
+      DxvkContextFlag::CpDirtyPipeline,
+      DxvkContextFlag::CpDirtyPipelineState,
+      DxvkContextFlag::CpDirtyResources);
+    
+    m_cpActivePipeline = VK_NULL_HANDLE;
   }
   
   

@@ -1,8 +1,7 @@
 #pragma once
 
-#include "dxvk_barrier.h"
-#include "dxvk_cmdlist.h"
-#include "dxvk_resource.h"
+#include "dxvk_format.h"
+#include "dxvk_include.h"
 
 #include "../spirv/spirv_code_buffer.h"
 
@@ -23,6 +22,20 @@ namespace dxvk {
   
   
   /**
+   * \brief Pipeline-related objects
+   * 
+   * Use this to bind the pipeline
+   * and allocate a descriptor set.
+   */
+  struct DxvkMetaClearPipeline {
+    VkDescriptorSetLayout dsetLayout;
+    VkPipelineLayout      pipeLayout;
+    VkPipeline            pipeline;
+    VkExtent3D            workgroupSize;
+  };
+  
+  
+  /**
    * \brief Clear shaders and related objects
    * 
    * Creates the shaders, pipeline layouts, and
@@ -35,6 +48,30 @@ namespace dxvk {
     
     DxvkMetaClearObjects(const Rc<vk::DeviceFn>& vkd);
     ~DxvkMetaClearObjects();
+    
+    /**
+     * \brief Retrieves objects to use for buffers
+     * 
+     * Returns the pipeline, pipeline layout and descriptor
+     * set layout which are required to perform a meta clear
+     * operation on a buffer resource with the given format.
+     * \param [in] viewType The image virw type
+     */
+    DxvkMetaClearPipeline getClearBufferPipeline(
+            DxvkFormatFlags       formatFlags) const;
+    
+    /**
+     * \brief Retrieves objects for a given image view type
+     * 
+     * Returns the pipeline, pipeline layout and descriptor
+     * set layout which are required to perform a meta clear
+     * operation on a resource with the given view type.
+     * \param [in] viewType The image virw type
+     * \returns The pipeline-related objects to use
+     */
+    DxvkMetaClearPipeline getClearImagePipeline(
+            VkImageViewType       viewType,
+            DxvkFormatFlags       formatFlags) const;
     
   private:
     
