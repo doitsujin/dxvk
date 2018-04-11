@@ -531,10 +531,18 @@ namespace dxvk {
     if (uav == nullptr)
       return;
     
+    VkClearColorValue clearValue;
+    clearValue.uint32[0] = Values[0];
+    clearValue.uint32[1] = Values[1];
+    clearValue.uint32[2] = Values[2];
+    clearValue.uint32[3] = Values[3];
+    
     if (uav->GetResourceType() == D3D11_RESOURCE_DIMENSION_BUFFER) {
       const Rc<DxvkBufferView> bufferView = uav->GetBufferView();
       
-      if (bufferView->info().format == VK_FORMAT_R32_UINT) {
+      if (bufferView->info().format == VK_FORMAT_R32_UINT
+       || bufferView->info().format == VK_FORMAT_R32_SINT
+       || bufferView->info().format == VK_FORMAT_R32_SFLOAT) {
         EmitCs([
           cClearValue = Values[0],
           cDstSlice   = bufferView->slice()
@@ -546,23 +554,33 @@ namespace dxvk {
             cClearValue);
         });
       } else {
-        Logger::err("D3D11: ClearUnorderedAccessViewUint: Not supported for typed buffers");
+        // FIXME Create integer-typed view if the
+        // buffer view has a floating point format
+        Rc<DxvkBufferView> bufferView = uav->GetBufferView();
+        
+        EmitCs([
+          cClearValue = clearValue,
+          cDstView    = bufferView
+        ] (DxvkContext* ctx) {
+          ctx->clearBufferView(
+            cDstView, 0,
+            cDstView->elementCount(),
+            cClearValue);
+        });
       }
     } else {
-      // FIXME floating point formats are not handled correctly
-      // yet, we might need to create an image view with an
-      // integer format and clear that.
-      VkClearColorValue clearValue;
-      
-      for (uint32_t i = 0; i < 4; i++)
-        clearValue.uint32[i] = Values[i];
+      // FIXME Create integer-typed view if the
+      // image view has a floating point format
+      Rc<DxvkImageView> imageView = uav->GetImageView();
       
       EmitCs([
         cClearValue = clearValue,
-        cDstView    = uav->GetImageView()
+        cDstView    = imageView
       ] (DxvkContext* ctx) {
-        ctx->clearColorImage(cDstView->image(),
-          cClearValue, cDstView->subresources());
+        ctx->clearImageView(cDstView,
+          VkOffset3D { 0, 0, 0 },
+          cDstView->mipLevelExtent(0),
+          cClearValue);
       });
     }
   }
@@ -571,7 +589,38 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeviceContext::ClearUnorderedAccessViewFloat(
           ID3D11UnorderedAccessView*        pUnorderedAccessView,
     const FLOAT                             Values[4]) {
-    Logger::err("D3D11DeviceContext::ClearUnorderedAccessViewFloat: Not implemented");
+    auto uav = static_cast<D3D11UnorderedAccessView*>(pUnorderedAccessView);
+    
+    if (uav == nullptr)
+      return;
+    
+    VkClearColorValue clearValue;
+    clearValue.float32[0] = Values[0];
+    clearValue.float32[1] = Values[1];
+    clearValue.float32[2] = Values[2];
+    clearValue.float32[3] = Values[3];
+    
+    if (uav->GetResourceType() == D3D11_RESOURCE_DIMENSION_BUFFER) {
+      EmitCs([
+        cClearValue = clearValue,
+        cDstView    = uav->GetBufferView()
+      ] (DxvkContext* ctx) {
+        ctx->clearBufferView(
+          cDstView, 0,
+          cDstView->elementCount(),
+          cClearValue);
+      });
+    } else {
+      EmitCs([
+        cClearValue = clearValue,
+        cDstView    = uav->GetImageView()
+      ] (DxvkContext* ctx) {
+        ctx->clearImageView(cDstView,
+          VkOffset3D { 0, 0, 0 },
+          cDstView->mipLevelExtent(0),
+          cClearValue);
+      });
+    }
   }
   
   
