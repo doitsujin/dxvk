@@ -1,0 +1,23 @@
+#version 450
+
+layout(
+  local_size_x = 64,
+  local_size_y = 1,
+  local_size_z = 1) in;
+
+layout(binding = 0)
+writeonly uniform image1DArray dst;
+
+layout(push_constant)
+uniform u_info_t {
+  vec4 clear_value;
+  ivec4 dst_offset;
+  ivec4 dst_size;
+} u_info;
+
+void main() {
+  ivec3 thread_id = ivec3(gl_GlobalInvocationID.x);
+  
+  if (all(lessThan(thread_id.xy, u_info.dst_size.xy)))
+    imageStore(dst, thread_id.xy + u_info.dst_offset.xy, u_info.clear_value);
+}
