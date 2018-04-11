@@ -392,10 +392,12 @@ namespace dxvk {
     m_output = static_cast<DxgiOutput*>(pTarget);
     
     if (m_output == nullptr) {
-      if (FAILED(GetContainingOutput(reinterpret_cast<IDXGIOutput**>(&m_output)))) {
+      Com<IDXGIOutput> output;
+      if (FAILED(GetContainingOutput(&output))) {
         Logger::err("DxgiSwapChain: Failed to enter fullscreen mode: Cannot query containing output");
         return E_FAIL;
       }
+      m_output = static_cast<DxgiOutput*>(output.ptr());
     }
     
     // Update swap chain description
