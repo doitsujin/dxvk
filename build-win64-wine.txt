@@ -1,0 +1,30 @@
+[binaries]
+c = '/usr/bin/winegcc'
+cpp = '/usr/bin/wineg++'
+ar = '/usr/bin/ar'
+strip = '/usr/bin/strip'
+
+[properties]
+c_args = ['-Og', '-gdwarf-2', '-gstrict-dwarf',
+  '-fno-omit-frame-pointer',
+  '-U_FORTIFY_SOURCE', '-D_FORTIFY_SOURCE=0']
+
+c_link_args = [ ]
+
+cpp_args = ['-Og', '-gdwarf-2', '-gstrict-dwarf',
+  '-fno-omit-frame-pointer',
+  '-U_FORTIFY_SOURCE', '-D_FORTIFY_SOURCE=0',
+  '-DNOMINMAX']
+
+cpp_link_args = [ ]
+
+wine_builtin = true
+lib_suffix   = '.dll'
+dll_redirect = '-vk'
+
+[host_machine]
+system = 'linux'
+cpu_family = 'x86_64'
+cpu = 'x86_64'
+endian = 'little'
+

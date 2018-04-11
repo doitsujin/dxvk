@@ -1,1 +1,4 @@
 option('enable_tests', type : 'boolean', value : false)
+
+option('enable_dll_redirects', type : 'boolean', value : false,
+  description: 'support wine-staging dll redirect feature')

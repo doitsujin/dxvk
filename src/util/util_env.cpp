@@ -19,7 +19,7 @@ namespace dxvk::env {
     return str::fromws(result);
   }
   
-  
+#ifndef __WINE__  
   std::string getExeName() {
     std::wstring exePath;
     exePath.resize(MAX_PATH + 1);
@@ -34,7 +34,20 @@ namespace dxvk::env {
       ? fullPath.substr(n + 1)
       : fullPath;
   }
-  
+#else
+  std::string getExeName() {
+    char exePath[MAX_PATH + 1];
+
+    DWORD len = ::GetModuleFileNameA(NULL, exePath, MAX_PATH);
+
+    std::string fullPath(exePath);
+    auto n = fullPath.find_last_of('\\');
+
+    return (n != std::string::npos)
+      ? fullPath.substr(n + 1)
+      : fullPath;
+  }
+#endif  
   
   std::string getTempDirectory() {
     WCHAR windowsTempDir[MAX_PATH] = {0};
