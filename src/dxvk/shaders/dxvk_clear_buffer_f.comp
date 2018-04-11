@@ -12,12 +12,15 @@ layout(push_constant)
 uniform u_info_t {
   vec4 clear_value;
   ivec4 dst_offset;
-  ivec4 dst_size;
+  ivec4 dst_extent;
 } u_info;
 
 void main() {
   ivec3 thread_id = ivec3(gl_GlobalInvocationID.x);
   
-  if (thread_id.x < u_info.dst_size.x)
-    imageStore(dst, thread_id.x + u_info.dst_offset.x, u_info.clear_value);
+  if (thread_id.x < u_info.dst_extent.x) {
+    imageStore(dst,
+      u_info.dst_offset.x + thread_id.x,
+      u_info.clear_value);
+  }
 }

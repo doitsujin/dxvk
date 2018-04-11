@@ -3,8 +3,12 @@ dxvk_shaders = files([
   'shaders/dxvk_clear_buffer_f.comp',
   'shaders/dxvk_clear_image1d_u.comp',
   'shaders/dxvk_clear_image1d_f.comp',
+  'shaders/dxvk_clear_image1darr_u.comp',
+  'shaders/dxvk_clear_image1darr_f.comp',
   'shaders/dxvk_clear_image2d_u.comp',
   'shaders/dxvk_clear_image2d_f.comp',
+  'shaders/dxvk_clear_image2darr_u.comp',
+  'shaders/dxvk_clear_image2darr_f.comp',
   'shaders/dxvk_clear_image3d_u.comp',
   'shaders/dxvk_clear_image3d_f.comp',
   
