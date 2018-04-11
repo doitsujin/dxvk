@@ -16,7 +16,6 @@ namespace dxvk {
     const Rc<DxvkAdapter>&  adapter)
   : m_factory (factory),
     m_adapter (adapter) {
-    SetupOutputs();
     SetupFormatTable();
   }
   
@@ -65,10 +64,14 @@ namespace dxvk {
     if (ppOutput == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
-    if (Output > 0)
+    if (Output > 0) {
+      *ppOutput = nullptr;
       return DXGI_ERROR_NOT_FOUND;
+    }
     
-    *ppOutput = m_output.ref();
+    // TODO support multiple monitors
+    HMONITOR monitor = ::MonitorFromPoint({ 0, 0 }, MONITOR_DEFAULTTOPRIMARY);
+    *ppOutput = ref(new DxgiOutput(this, monitor));
     return S_OK;
   }
   
@@ -271,13 +274,6 @@ namespace dxvk {
       VK_COMPONENT_SWIZZLE_IDENTITY };
     formatPair.flags = DxgiFormatFlags();
     m_depthFormats.insert(std::make_pair(srcFormat, formatPair));
-  }
-  
-  
-  void DxgiAdapter::SetupOutputs() {
-    // TODO support multiple monitors
-    HMONITOR monitor = ::MonitorFromPoint({ 0, 0 }, MONITOR_DEFAULTTOPRIMARY);
-    m_output = new DxgiOutput(this, monitor);
   }
   
   
