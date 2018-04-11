@@ -6,6 +6,7 @@
 #include "dxvk_context_state.h"
 #include "dxvk_data.h"
 #include "dxvk_event.h"
+#include "dxvk_meta_clear.h"
 #include "dxvk_meta_resolve.h"
 #include "dxvk_pipecache.h"
 #include "dxvk_pipemanager.h"
@@ -27,8 +28,9 @@ namespace dxvk {
   public:
     
     DxvkContext(
-      const Rc<DxvkDevice>&        device,
-      const Rc<DxvkPipelineCache>& pipelineCache);
+      const Rc<DxvkDevice>&           device,
+      const Rc<DxvkPipelineCache>&    pipelineCache,
+      const Rc<DxvkMetaClearObjects>& metaClearObjects);
     ~DxvkContext();
     
     /**
@@ -166,6 +168,22 @@ namespace dxvk {
             uint32_t              value);
     
     /**
+     * \brief Clears a buffer view
+     * 
+     * Unlike \c clearBuffer, this method can be used
+     * to clear a buffer view with format conversion. 
+     * \param [in] bufferView The buffer view
+     * \param [in] offset Offset of the region to clear
+     * \param [in] length Extent of the region to clear
+     * \param [in] value The clear value
+     */
+    void clearBufferView(
+      const Rc<DxvkBufferView>&   bufferView,
+            VkDeviceSize          offset,
+            VkDeviceSize          length,
+            VkClearColorValue     value);
+    
+    /**
      * \brief Clears subresources of a color image
      * 
      * \param [in] image The image to clear
@@ -202,6 +220,23 @@ namespace dxvk {
       const VkClearRect&          clearRect,
             VkImageAspectFlags    clearAspects,
       const VkClearValue&         clearValue);
+    
+    /**
+     * \brief Clears an image view
+     * 
+     * Can be used to clear sub-regions of storage images
+     * that are not going to be used as render targets.
+     * Implicit format conversion will be applied.
+     * \param [in] bufferView The buffer view
+     * \param [in] offset Offset of the rect to clear
+     * \param [in] extent Extent of the rect to clear
+     * \param [in] value The clear value
+     */
+    void clearImageView(
+      const Rc<DxvkBufferView>&   bufferView,
+            VkOffset3D            offset,
+            VkExtent3D            extent,
+            VkClearColorValue     value);
     
     /**
      * \brief Copies data from one buffer to another
@@ -568,6 +603,7 @@ namespace dxvk {
     const Rc<DxvkDevice>            m_device;
     const Rc<DxvkPipelineCache>     m_pipeCache;
     const Rc<DxvkPipelineManager>   m_pipeMgr;
+    const Rc<DxvkMetaClearObjects>  m_metaClear;
     
     Rc<DxvkCommandList> m_cmd;
     DxvkContextFlags    m_flags;

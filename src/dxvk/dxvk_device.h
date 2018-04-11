@@ -9,6 +9,7 @@
 #include "dxvk_framebuffer.h"
 #include "dxvk_image.h"
 #include "dxvk_memory.h"
+#include "dxvk_meta_clear.h"
 #include "dxvk_pipecache.h"
 #include "dxvk_pipemanager.h"
 #include "dxvk_queue.h"
@@ -310,6 +311,7 @@ namespace dxvk {
     Rc<DxvkMemoryAllocator>   m_memory;
     Rc<DxvkRenderPassPool>    m_renderPassPool;
     Rc<DxvkPipelineCache>     m_pipelineCache;
+    Rc<DxvkMetaClearObjects>  m_metaClearObjects;
     
     DxvkUnboundResources      m_unboundResources;
     

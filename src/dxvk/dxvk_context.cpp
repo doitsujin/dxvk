@@ -7,11 +7,13 @@
 namespace dxvk {
   
   DxvkContext::DxvkContext(
-    const Rc<DxvkDevice>&        device,
-    const Rc<DxvkPipelineCache>& pipelineCache)
-  : m_device          (device),
-    m_pipeCache   (pipelineCache),
-    m_pipeMgr (new DxvkPipelineManager(device.ptr())) { }
+    const Rc<DxvkDevice>&           device,
+    const Rc<DxvkPipelineCache>&    pipelineCache,
+    const Rc<DxvkMetaClearObjects>& metaClearObjects)
+  : m_device    (device),
+    m_pipeCache (pipelineCache),
+    m_pipeMgr   (new DxvkPipelineManager(device.ptr())),
+    m_metaClear (metaClearObjects) { }
   
   
   DxvkContext::~DxvkContext() {
@@ -235,6 +237,15 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::clearBufferView(
+    const Rc<DxvkBufferView>&   bufferView,
+          VkDeviceSize          offset,
+          VkDeviceSize          length,
+          VkClearColorValue     value) {
+    
+  }
+  
+  
   void DxvkContext::clearColorImage(
     const Rc<DxvkImage>&            image,
     const VkClearColorValue&        value,
@@ -352,6 +363,15 @@ namespace dxvk {
     // again in order to not disturb subsequent rendering commands.
     if (attachmentIndex == MaxNumRenderTargets)
       this->renderPassUnbindFramebuffer();
+  }
+  
+  
+  void DxvkContext::clearImageView(
+    const Rc<DxvkBufferView>&   bufferView,
+          VkOffset3D            offset,
+          VkExtent3D            extent,
+          VkClearColorValue     value) {
+    
   }
   
   
