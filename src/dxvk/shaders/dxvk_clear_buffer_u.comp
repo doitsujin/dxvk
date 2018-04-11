@@ -1,7 +1,7 @@
 #version 450
 
 layout(
-  local_size_x = 64,
+  local_size_x = 128,
   local_size_y = 1,
   local_size_z = 1) in;
 
@@ -16,11 +16,11 @@ uniform u_info_t {
 } u_info;
 
 void main() {
-  ivec3 thread_id = ivec3(gl_GlobalInvocationID.x);
+  int thread_id = int(gl_GlobalInvocationID.x);
   
-  if (thread_id.x < u_info.dst_extent.x) {
+  if (thread_id < u_info.dst_extent.x) {
     imageStore(dst,
-      u_info.dst_offset.x + thread_id.x,
+      u_info.dst_offset.x + thread_id,
       u_info.clear_value);
   }
 }
