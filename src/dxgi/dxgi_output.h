@@ -67,19 +67,10 @@ namespace dxvk {
     
     HRESULT STDMETHODCALLTYPE WaitForVBlank() final;
     
-    BOOL SetSwapChain(
-            DxgiSwapChain*        pExpected,
-            DxgiSwapChain*        pDesired);
-    
   private:
     
     DxgiAdapter*     m_adapter = nullptr;
     HMONITOR         m_monitor = nullptr;
-    
-    std::mutex       m_mutex;
-    DxgiSwapChain*   m_fullscreenSwapChain = nullptr;
-    
-    Com<DxgiSwapChain> GetFullscreenSwapChain();
     
     uint32_t GetFormatBpp(DXGI_FORMAT Format) const;
     

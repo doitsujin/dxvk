@@ -230,20 +230,14 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE DxgiOutput::GetFrameStatistics(DXGI_FRAME_STATISTICS *pStats) {
-    Com<DxgiSwapChain> swapChain = GetFullscreenSwapChain();
-    
-    return swapChain != nullptr
-      ? swapChain->GetFrameStatistics(pStats)
-      : DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
+    Logger::err("DxgiOutput::GetFrameStatistics: Not implemented");
+    return E_NOTIMPL;
   }
   
   
   HRESULT STDMETHODCALLTYPE DxgiOutput::GetGammaControl(DXGI_GAMMA_CONTROL *pArray) {
-    Com<DxgiSwapChain> swapChain = GetFullscreenSwapChain();
-    
-    return swapChain != nullptr
-      ? swapChain->GetGammaControl(pArray)
-      : DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
+    Logger::err("DxgiOutput::GetGammaControl: Not implemented");
+    return E_NOTIMPL;
   }
   
   
@@ -271,11 +265,8 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE DxgiOutput::SetGammaControl(const DXGI_GAMMA_CONTROL *pArray) {
-    Com<DxgiSwapChain> swapChain = GetFullscreenSwapChain();
-    
-    return swapChain != nullptr
-      ? swapChain->SetGammaControl(pArray)
-      : DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
+    Logger::err("DxgiOutput::SetGammaControl: Not implemented");
+    return E_NOTIMPL;
   }
   
   
@@ -290,22 +281,6 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiOutput::WaitForVBlank() {
     Logger::warn("DxgiOutput::WaitForVBlank: Stub");
     return S_OK;
-  }
-  
-  
-  BOOL DxgiOutput::SetSwapChain(DxgiSwapChain* pExpected, DxgiSwapChain* pDesired) {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    
-    if (m_fullscreenSwapChain == pExpected) {
-      m_fullscreenSwapChain = pDesired;
-      return TRUE;
-    } return FALSE;
-  }
-  
-  
-  Com<DxgiSwapChain> DxgiOutput::GetFullscreenSwapChain() {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    return Com<DxgiSwapChain>(m_fullscreenSwapChain);
   }
   
   

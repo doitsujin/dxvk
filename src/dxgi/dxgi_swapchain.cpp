@@ -59,8 +59,7 @@ namespace dxvk {
   
   
   DxgiSwapChain::~DxgiSwapChain() {
-    if (m_output != nullptr)
-      m_output->SetSwapChain(this, nullptr);
+    
   }
   
   
@@ -428,21 +427,12 @@ namespace dxvk {
     ::SetWindowPos(m_desc.OutputWindow, HWND_TOPMOST,
       rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
       SWP_FRAMECHANGED | SWP_SHOWWINDOW | SWP_NOACTIVATE);
-    
-    // Assign this swap chain to the output
-    m_output->SetSwapChain(nullptr, this);
     return S_OK;
   }
   
   
   HRESULT DxgiSwapChain::LeaveFullscreenMode() {
     m_desc.Windowed = TRUE;
-    
-    // Remove this swap chain from the output
-    if (m_output != nullptr) {
-      m_output->SetSwapChain(this, nullptr);
-      m_output = nullptr;
-    }
     
     // FIXME wine only restores window flags if the application
     // has not modified them in the meantime. Some applications
