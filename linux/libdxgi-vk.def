@@ -1,5 +1,0 @@
-LIBRARY DXGI-VK.DLL
-EXPORTS  
-    CreateDXGIFactory
-    CreateDXGIFactory1
-    CreateDXGIFactory2

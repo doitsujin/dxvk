@@ -24,13 +24,13 @@ dxgi_dll = shared_library('dxgi', dxgi_src, glsl_generator.process(dxgi_shaders)
   vs_module_defs      : 'dxgi.def',
   override_options    : ['cpp_std='+dxvk_cpp_std])
 else
-dxgi_dll = shared_library('dxgi'+dll_suffix, dxgi_src, glsl_generator.process(dxgi_shaders),
+dxgi_dll = shared_library('dxgi.dll', dxgi_src, glsl_generator.process(dxgi_shaders),
   name_prefix         : '',
   link_with           : [ util_lib ],
   dependencies        : [ dxvk_dep ],
   include_directories : dxvk_include_path,
   install             : true,
-  objects             : wine_spec_path + 'dxgi'+dll_redirect_suffix+'.spec',
+  objects             : wine_spec_path + 'dxgi.spec',
   override_options    : ['cpp_std='+dxvk_cpp_std])
 endif
 

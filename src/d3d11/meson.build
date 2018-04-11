@@ -29,19 +29,19 @@ if not dxvk_wine_builtin
 d3d11_dll = shared_library('d3d11', d3d11_src,
   name_prefix         : '',
   link_with           : [ util_lib ],
-  dependencies        : [ declare_dependency(link_args: ['-ldxgi']), dxbc_dep, dxvk_dep ],
+  dependencies        : [ dxvk_dep, dxgi_dep, dxbc_dep ],
   include_directories : dxvk_include_path,
   install             : true,
   vs_module_defs      : 'd3d11.def',
   override_options    : ['cpp_std='+dxvk_cpp_std])
 else
-d3d11_dll = shared_library('d3d11'+dll_suffix, d3d11_src,
+d3d11_dll = shared_library('d3d11.dll', d3d11_src,
   name_prefix         : '',
   link_with           : [ util_lib ],
-  dependencies        : [ declare_dependency(link_args: ['-ldxgi'+dll_redirect_suffix]), dxbc_dep, dxvk_dep ],
+  dependencies        : [ declare_dependency(link_args: ['-ldxgi']), dxbc_dep, dxvk_dep ],
   include_directories : dxvk_include_path,
   install             : true,
-  objects             : wine_spec_path + 'd3d11'+dll_redirect_suffix+'.spec',
+  objects             : wine_spec_path + 'd3d11.spec',
   override_options    : ['cpp_std='+dxvk_cpp_std])
 endif
 

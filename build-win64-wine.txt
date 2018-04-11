@@ -19,8 +19,6 @@ cpp_args = ['-Og', '-gdwarf-2', '-gstrict-dwarf',
 cpp_link_args = [ ]
 
 wine_builtin = true
-lib_suffix   = '.dll'
-dll_redirect = '-vk'
 
 [host_machine]
 system = 'linux'

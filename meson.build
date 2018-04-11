@@ -30,12 +30,7 @@ glsl_generator = generator(glsl_compiler,
   arguments : [ '-V', '--vn', '@BASENAME@', '@INPUT@', '-o', '@OUTPUT@' ])
 
 # WINE
-dll_suffix = ''
-dll_redirect_suffix = (get_option('enable_dll_redirects')) ? '-vk' : ''
 if dxvk_wine_builtin
-  # WINE libs are *.dll.so
-  dll_suffix = dll_redirect_suffix + '.dll'
-
   wine_spec_path = meson.source_root() + '/linux/'
   lib_vulkan = declare_dependency(link_args: [ '-L' + wine_spec_path, '-lvulkan-1', '-lpthread' ])
   if get_option('enable_tests')
