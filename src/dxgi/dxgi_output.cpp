@@ -13,7 +13,7 @@
 namespace dxvk {
   
   DxgiOutput::DxgiOutput(
-              DxgiAdapter*  adapter,
+    const Com<DxgiAdapter>& adapter,
               HMONITOR      monitor)
   : m_adapter(adapter),
     m_monitor(monitor) {
