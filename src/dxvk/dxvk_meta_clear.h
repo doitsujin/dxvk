@@ -4,6 +4,8 @@
 #include "dxvk_cmdlist.h"
 #include "dxvk_resource.h"
 
+#include "../spirv/spirv_code_buffer.h"
+
 namespace dxvk {
   
   /**
@@ -36,7 +38,35 @@ namespace dxvk {
     
   private:
     
+    struct DxvkMetaClearPipelines {
+      VkPipeline clearBuf        = VK_NULL_HANDLE;
+      VkPipeline clearImg1D      = VK_NULL_HANDLE;
+      VkPipeline clearImg2D      = VK_NULL_HANDLE;
+      VkPipeline clearImg3D      = VK_NULL_HANDLE;
+      VkPipeline clearImg1DArray = VK_NULL_HANDLE;
+      VkPipeline clearImg2DArray = VK_NULL_HANDLE;
+    };
+    
     Rc<vk::DeviceFn> m_vkd;
+    
+    VkDescriptorSetLayout m_clearBufDsetLayout = VK_NULL_HANDLE;
+    VkDescriptorSetLayout m_clearImgDsetLayout = VK_NULL_HANDLE;
+    
+    VkPipelineLayout m_clearBufPipeLayout = VK_NULL_HANDLE;
+    VkPipelineLayout m_clearImgPipeLayout = VK_NULL_HANDLE;
+    
+    DxvkMetaClearPipelines m_clearPipesF32;
+    DxvkMetaClearPipelines m_clearPipesU32;
+    
+    VkDescriptorSetLayout createDescriptorSetLayout(
+            VkDescriptorType        descriptorType);
+    
+    VkPipelineLayout createPipelineLayout(
+            VkDescriptorSetLayout   dsetLayout);
+    
+    VkPipeline createPipeline(
+      const SpirvCodeBuffer&        spirvCode,
+            VkPipelineLayout        pipeLayout);
     
   };
   
