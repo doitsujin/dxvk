@@ -8,11 +8,11 @@ namespace dxvk {
     const D3D11_COMMON_TEXTURE_DESC*  pDesc,
           D3D11_RESOURCE_DIMENSION    Dimension)
   : m_device(pDevice), m_desc(*pDesc) {
-    DxgiFormatInfo formatInfo = m_device->LookupFormat(m_desc.Format, GetFormatMode());
+    DXGI_VK_FORMAT_INFO formatInfo = m_device->LookupFormat(m_desc.Format, GetFormatMode());
     
     DxvkImageCreateInfo imageInfo;
     imageInfo.type           = GetImageTypeFromResourceDim(Dimension);
-    imageInfo.format         = formatInfo.format;
+    imageInfo.format         = formatInfo.Format;
     imageInfo.flags          = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
     imageInfo.sampleCount    = VK_SAMPLE_COUNT_1_BIT;
     imageInfo.extent.width   = m_desc.Width;
@@ -137,14 +137,14 @@ namespace dxvk {
   }
   
   
-  DxgiFormatMode D3D11CommonTexture::GetFormatMode() const {
+  DXGI_VK_FORMAT_MODE D3D11CommonTexture::GetFormatMode() const {
     if (m_desc.BindFlags & D3D11_BIND_RENDER_TARGET)
-      return DxgiFormatMode::Color;
+      return DXGI_VK_FORMAT_MODE_COLOR;
     
     if (m_desc.BindFlags & D3D11_BIND_DEPTH_STENCIL)
-      return DxgiFormatMode::Depth;
+      return DXGI_VK_FORMAT_MODE_DEPTH;
     
-    return DxgiFormatMode::Any;
+    return DXGI_VK_FORMAT_MODE_ANY;
   }
   
   
@@ -214,7 +214,7 @@ namespace dxvk {
   
   Rc<DxvkBuffer> D3D11CommonTexture::CreateMappedBuffer() const {
     const DxvkFormatInfo* formatInfo = imageFormatInfo(
-      m_device->LookupFormat(m_desc.Format, GetFormatMode()).format);
+      m_device->LookupFormat(m_desc.Format, GetFormatMode()).Format);
     
     const VkExtent3D blockCount = util::computeBlockCount(
       VkExtent3D { m_desc.Width, m_desc.Height, m_desc.Depth },

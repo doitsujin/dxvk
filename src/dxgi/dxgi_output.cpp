@@ -325,8 +325,8 @@ namespace dxvk {
   
   
   uint32_t DxgiOutput::GetFormatBpp(DXGI_FORMAT Format) const {
-    DXGI_VK_FORMAT_INFO formatInfo = m_adapter->LookupFormat(Format, DxgiFormatMode::Any);
-    return imageFormatInfo(formatInfo.format)->elementSize * 8;
+    DXGI_VK_FORMAT_INFO formatInfo = m_adapter->LookupFormat(Format, DXGI_VK_FORMAT_MODE_ANY);
+    return imageFormatInfo(formatInfo.Format)->elementSize * 8;
   }
   
 }

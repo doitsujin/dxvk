@@ -876,16 +876,16 @@ namespace dxvk {
     const D3D11CommonTexture* dstTextureInfo = GetCommonTexture(pDstResource);
     const D3D11CommonTexture* srcTextureInfo = GetCommonTexture(pSrcResource);
     
-    const DxgiFormatInfo dstFormatInfo = m_parent->LookupFormat(dstDesc.Format, DxgiFormatMode::Any);
-    const DxgiFormatInfo srcFormatInfo = m_parent->LookupFormat(srcDesc.Format, DxgiFormatMode::Any);
+    const DXGI_VK_FORMAT_INFO dstFormatInfo = m_parent->LookupFormat(dstDesc.Format, DXGI_VK_FORMAT_MODE_ANY);
+    const DXGI_VK_FORMAT_INFO srcFormatInfo = m_parent->LookupFormat(srcDesc.Format, DXGI_VK_FORMAT_MODE_ANY);
     
     const VkImageSubresource dstSubresource =
       dstTextureInfo->GetSubresourceFromIndex(
-        dstFormatInfo.aspect, DstSubresource);
+        dstFormatInfo.Aspect, DstSubresource);
     
     const VkImageSubresource srcSubresource =
       srcTextureInfo->GetSubresourceFromIndex(
-        srcFormatInfo.aspect, SrcSubresource);
+        srcFormatInfo.Aspect, SrcSubresource);
     
     const VkImageSubresourceLayers dstSubresourceLayers = {
       dstSubresource.aspectMask,
@@ -911,7 +911,7 @@ namespace dxvk {
       });
     } else {
       const VkFormat format = m_parent->LookupFormat(
-        Format, DxgiFormatMode::Any).format;
+        Format, DXGI_VK_FORMAT_MODE_ANY).Format;
       
       EmitCs([
         cDstImage  = dstTextureInfo->GetImage(),

@@ -320,9 +320,9 @@ namespace dxvk {
     
     VkPipelineStageFlags GetEnabledShaderStages() const;
     
-    DxgiFormatInfo STDMETHODCALLTYPE LookupFormat(
+    DXGI_VK_FORMAT_INFO STDMETHODCALLTYPE LookupFormat(
             DXGI_FORMAT           format,
-            DxgiFormatMode        mode) const;
+            DXGI_VK_FORMAT_MODE   mode) const;
     
     bool TestOption(D3D11Option Option) const {
       return m_d3d11Options.test(Option);

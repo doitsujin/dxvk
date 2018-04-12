@@ -140,7 +140,7 @@ namespace dxvk {
      * be used as a color image or a depth image.
      * \returns Format mode
      */
-    DxgiFormatMode GetFormatMode() const;
+    DXGI_VK_FORMAT_MODE GetFormatMode() const;
     
     /**
      * \brief Retrieves parent D3D11 device

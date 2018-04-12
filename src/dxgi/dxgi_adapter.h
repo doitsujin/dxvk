@@ -55,8 +55,8 @@ namespace dxvk {
             IDXGIVkDevice**           ppDevice) final;
     
     DXGI_VK_FORMAT_INFO STDMETHODCALLTYPE LookupFormat(
-            DXGI_FORMAT               format,
-            DxgiFormatMode            mode) final;
+            DXGI_FORMAT               Format,
+            DXGI_VK_FORMAT_MODE       Mode) final;
     
     HRESULT GetOutputFromMonitor(
             HMONITOR                  Monitor,
@@ -72,39 +72,13 @@ namespace dxvk {
     
   private:
     
-    using FormatMap = std::unordered_map<DXGI_FORMAT, DXGI_VK_FORMAT_INFO>;
-    using OutputMap = std::unordered_map<HMONITOR,    DXGI_VK_OUTPUT_DATA>;
+    using OutputMap = std::unordered_map<HMONITOR, DXGI_VK_OUTPUT_DATA>;
     
     Com<DxgiFactory>  m_factory;
     Rc<DxvkAdapter>   m_adapter;
     
-    FormatMap         m_colorFormats;
-    FormatMap         m_depthFormats;
-    
     std::mutex        m_outputMutex;
     OutputMap         m_outputData;
-    
-    void AddColorFormatTypeless(
-            DXGI_FORMAT                       srcFormat,
-            VkFormat                          dstFormat);
-    
-    void AddColorFormat(
-            DXGI_FORMAT                       srcFormat,
-            VkFormat                          dstFormat,
-            VkComponentMapping                swizzle = {
-              VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
-              VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY });
-    
-    void AddDepthFormatTypeless(
-            DXGI_FORMAT                       srcFormat,
-            VkFormat                          dstFormat);
-    
-    void AddDepthFormat(
-            DXGI_FORMAT                       srcFormat,
-            VkFormat                          dstFormat,
-            VkImageAspectFlags                srvAspect);
-    
-    void SetupFormatTable();
     
   };
 

@@ -69,8 +69,8 @@ IDXGIVkAdapter : public IDXGIAdapter1 {
    * \returns Vulkan format pair
    */
   virtual dxvk::DXGI_VK_FORMAT_INFO STDMETHODCALLTYPE LookupFormat(
-          DXGI_FORMAT          format,
-          dxvk::DxgiFormatMode mode) = 0;
+          DXGI_FORMAT               format,
+          dxvk::DXGI_VK_FORMAT_MODE mode) = 0;
 };
 
 

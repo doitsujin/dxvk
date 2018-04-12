@@ -323,7 +323,7 @@ namespace dxvk {
       } else {
         // Typed buffer view - must use an uncompressed color format
         viewInfo.format = m_dxgiAdapter->LookupFormat(
-          desc.Format, DxgiFormatMode::Color).format;
+          desc.Format, DXGI_VK_FORMAT_MODE_COLOR).Format;
         
         const DxvkFormatInfo* formatInfo = imageFormatInfo(viewInfo.format);
         viewInfo.rangeOffset = formatInfo->elementSize * bufInfo.FirstElement;
@@ -359,13 +359,13 @@ namespace dxvk {
       // Fill in the view info. The view type depends solely
       // on the view dimension field in the view description,
       // not on the resource type.
-      const DxgiFormatInfo formatInfo = m_dxgiAdapter
+      const DXGI_VK_FORMAT_INFO formatInfo = m_dxgiAdapter
         ->LookupFormat(desc.Format, textureInfo->GetFormatMode());
       
       DxvkImageViewCreateInfo viewInfo;
-      viewInfo.format  = formatInfo.format;
-      viewInfo.aspect  = formatInfo.aspect;
-      viewInfo.swizzle = formatInfo.swizzle;
+      viewInfo.format  = formatInfo.Format;
+      viewInfo.aspect  = formatInfo.Aspect;
+      viewInfo.swizzle = formatInfo.Swizzle;
       
       switch (desc.ViewDimension) {
         case D3D11_SRV_DIMENSION_TEXTURE1D:
@@ -512,7 +512,7 @@ namespace dxvk {
       } else {
         // Typed buffer view - must use an uncompressed color format
         viewInfo.format = m_dxgiAdapter->LookupFormat(
-          desc.Format, DxgiFormatMode::Color).format;
+          desc.Format, DXGI_VK_FORMAT_MODE_COLOR).Format;
         
         const DxvkFormatInfo* formatInfo = imageFormatInfo(viewInfo.format);
         viewInfo.rangeOffset = formatInfo->elementSize * desc.Buffer.FirstElement;
@@ -556,13 +556,13 @@ namespace dxvk {
       // Fill in the view info. The view type depends solely
       // on the view dimension field in the view description,
       // not on the resource type.
-      const DxgiFormatInfo formatInfo = m_dxgiAdapter
+      const DXGI_VK_FORMAT_INFO formatInfo = m_dxgiAdapter
         ->LookupFormat(desc.Format, textureInfo->GetFormatMode());
       
       DxvkImageViewCreateInfo viewInfo;
-      viewInfo.format  = formatInfo.format;
-      viewInfo.aspect  = formatInfo.aspect;
-      viewInfo.swizzle = formatInfo.swizzle;
+      viewInfo.format  = formatInfo.Format;
+      viewInfo.aspect  = formatInfo.Aspect;
+      viewInfo.swizzle = formatInfo.Swizzle;
       
       switch (desc.ViewDimension) {
         case D3D11_UAV_DIMENSION_TEXTURE1D:
@@ -672,7 +672,7 @@ namespace dxvk {
     
     // Fill in Vulkan image view info
     DxvkImageViewCreateInfo viewInfo;
-    viewInfo.format = m_dxgiAdapter->LookupFormat(desc.Format, DxgiFormatMode::Color).format;
+    viewInfo.format = m_dxgiAdapter->LookupFormat(desc.Format, DXGI_VK_FORMAT_MODE_COLOR).Format;
     viewInfo.aspect = imageFormatInfo(viewInfo.format)->aspectMask;
     
     switch (desc.ViewDimension) {
@@ -790,7 +790,7 @@ namespace dxvk {
     
     // Fill in Vulkan image view info
     DxvkImageViewCreateInfo viewInfo;
-    viewInfo.format = m_dxgiAdapter->LookupFormat(desc.Format, DxgiFormatMode::Depth).format;
+    viewInfo.format = m_dxgiAdapter->LookupFormat(desc.Format, DXGI_VK_FORMAT_MODE_DEPTH).Format;
     viewInfo.aspect = imageFormatInfo(viewInfo.format)->aspectMask;
     
     switch (desc.ViewDimension) {
@@ -903,7 +903,7 @@ namespace dxvk {
         attrib.location = entry->registerId;
         attrib.binding  = pInputElementDescs[i].InputSlot;
         attrib.format   = m_dxgiAdapter->LookupFormat(
-          pInputElementDescs[i].Format, DxgiFormatMode::Color).format;
+          pInputElementDescs[i].Format, DXGI_VK_FORMAT_MODE_COLOR).Format;
         attrib.offset   = pInputElementDescs[i].AlignedByteOffset;
         
         // The application may choose to let the implementation
@@ -1407,7 +1407,7 @@ namespace dxvk {
     
     // We need to check whether the format is 
     VkFormat format = m_dxgiAdapter->LookupFormat(
-      Format, DxgiFormatMode::Any).format;
+      Format, DXGI_VK_FORMAT_MODE_ANY).Format;
     
     if (format == VK_FORMAT_UNDEFINED) {
       Logger::err(str::format("D3D11: Unsupported format: ", Format));
@@ -1625,9 +1625,9 @@ namespace dxvk {
   }
   
   
-  DxgiFormatInfo STDMETHODCALLTYPE D3D11Device::LookupFormat(
+  DXGI_VK_FORMAT_INFO STDMETHODCALLTYPE D3D11Device::LookupFormat(
           DXGI_FORMAT           format,
-          DxgiFormatMode        mode) const {
+          DXGI_VK_FORMAT_MODE   mode) const {
     return m_dxgiAdapter->LookupFormat(format, mode);
   }
   
@@ -1871,7 +1871,7 @@ namespace dxvk {
   
   
   HRESULT D3D11Device::GetFormatSupportFlags(DXGI_FORMAT Format, UINT* pFlags1, UINT* pFlags2) const {
-    const VkFormat fmt = m_dxgiAdapter->LookupFormat(Format, DxgiFormatMode::Any).format;
+    const VkFormat fmt = m_dxgiAdapter->LookupFormat(Format, DXGI_VK_FORMAT_MODE_ANY).Format;
     const VkFormatProperties fmtInfo = m_dxvkAdapter->formatProperties(fmt);
     if (fmt == VK_FORMAT_UNDEFINED)
       return E_FAIL;

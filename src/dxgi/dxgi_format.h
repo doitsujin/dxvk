@@ -7,10 +7,19 @@
 namespace dxvk {
   
   /**
-   * \brief Format information
+   * \brief Format mapping
+   * 
+   * Maps a DXGI format to a set of Vulkan formats.
    */
-  enum DXGI_VK_FORMAT_FLAGS : uint32_t {
-    DXGI_VK_FORMAT_TYPELESS = 0,
+  struct DXGI_VK_FORMAT_MAPPING {
+    VkFormat              FormatColor = VK_FORMAT_UNDEFINED;  ///< Corresponding color format
+    VkFormat              FormatDepth = VK_FORMAT_UNDEFINED;  ///< Corresponding depth format
+    VkFormat              FormatRaw   = VK_FORMAT_UNDEFINED;  ///< Bit-compatible integer format
+    VkImageAspectFlags    AspectColor = 0;                    ///< Defined aspects for the color format
+    VkImageAspectFlags    AspectDepth = 0;                    ///< Defined aspects for the depth format
+    VkComponentMapping    Swizzle     = {                     ///< Color component swizzle
+      VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
+      VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
   };
   
   /**
@@ -22,12 +31,11 @@ namespace dxvk {
    * are supposed to be used.
    */
   struct DXGI_VK_FORMAT_INFO {
-    VkFormat              format      = VK_FORMAT_UNDEFINED;
-    VkImageAspectFlags    aspect      = 0;
-    VkComponentMapping    swizzle     = {
+    VkFormat              Format      = VK_FORMAT_UNDEFINED;  ///< Corresponding color format
+    VkImageAspectFlags    Aspect      = 0;                    ///< Defined image aspect mask
+    VkComponentMapping    Swizzle     = {                     ///< Component swizzle
       VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
       VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
-    UINT                  flags       = 0;
   };
   
   /**
@@ -38,10 +46,22 @@ namespace dxvk {
    * This is used to properly map typeless formats and color
    * formats to depth formats if they are used on depth images.
    */
-  enum class DxgiFormatMode : uint32_t {
-    Any   = 0,
-    Color = 1,
-    Depth = 2,
+  enum DXGI_VK_FORMAT_MODE {
+    DXGI_VK_FORMAT_MODE_ANY   = 0,  ///< Color first, then depth
+    DXGI_VK_FORMAT_MODE_COLOR = 1,  ///< Color only
+    DXGI_VK_FORMAT_MODE_DEPTH = 2,  ///< Depth only
+    DXGI_VK_FORMAT_MODE_RAW   = 3,  ///< Unsigned integer format
   };
+  
+  /**
+   * \brief Retrieves info for a given DXGI format
+   * 
+   * \param [in] Format The DXGI format to look up
+   * \param [in] Mode the format lookup mode
+   * \returns Format info
+   */
+  DXGI_VK_FORMAT_INFO GetDXGIFormatInfo(
+          DXGI_FORMAT         Format,
+          DXGI_VK_FORMAT_MODE Mode);
   
 };
