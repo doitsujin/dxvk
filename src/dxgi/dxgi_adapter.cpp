@@ -49,16 +49,16 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE DxgiAdapter::CheckInterfaceSupport(
-          REFGUID       InterfaceName,
-          LARGE_INTEGER *pUMDVersion) {
+          REFGUID                   InterfaceName,
+          LARGE_INTEGER*            pUMDVersion) {
     Logger::err("DxgiAdapter::CheckInterfaceSupport: No D3D10 support");
     return DXGI_ERROR_UNSUPPORTED;
   }
   
   
   HRESULT STDMETHODCALLTYPE DxgiAdapter::EnumOutputs(
-          UINT        Output,
-          IDXGIOutput **ppOutput) {
+          UINT                      Output,
+          IDXGIOutput**             ppOutput) {
     InitReturnPtr(ppOutput);
     
     if (ppOutput == nullptr)
@@ -173,7 +173,9 @@ namespace dxvk {
   }
   
   
-  DxgiFormatInfo STDMETHODCALLTYPE DxgiAdapter::LookupFormat(DXGI_FORMAT format, DxgiFormatMode mode) {
+  DxgiFormatInfo STDMETHODCALLTYPE DxgiAdapter::LookupFormat(
+          DXGI_FORMAT               format,
+          DxgiFormatMode            mode) {
     // If the mode is 'Any', probe color formats first
     if (mode != DxgiFormatMode::Depth) {
       auto color = m_colorFormats.find(format);
@@ -194,8 +196,8 @@ namespace dxvk {
   
   
   HRESULT DxgiAdapter::GetOutputFromMonitor(
-          HMONITOR              Monitor,
-          IDXGIOutput**         ppOutput) {
+          HMONITOR                  Monitor,
+          IDXGIOutput**             ppOutput) {
     if (ppOutput == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
@@ -212,6 +214,33 @@ namespace dxvk {
     
     // No such output found
     return DXGI_ERROR_NOT_FOUND;
+  }
+  
+  
+  HRESULT DxgiAdapter::GetOutputData(
+          HMONITOR                  Monitor,
+          DXGI_VK_OUTPUT_DATA*      pOutputData) {
+    std::lock_guard<std::mutex> lock(m_outputMutex);
+    
+    auto entry = m_outputData.find(Monitor);
+    if (entry == m_outputData.end())
+      return DXGI_ERROR_NOT_FOUND;
+    
+    if (pOutputData == nullptr)
+      return S_FALSE;
+    
+    *pOutputData = entry->second;
+    return S_OK;
+  }
+  
+  
+  HRESULT DxgiAdapter::SetOutputData(
+          HMONITOR                  Monitor,
+    const DXGI_VK_OUTPUT_DATA*      pOutputData) {
+    std::lock_guard<std::mutex> lock(m_outputMutex);
+    
+    m_outputData.insert_or_assign(Monitor, *pOutputData);
+    return S_OK;
   }
   
   

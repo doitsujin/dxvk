@@ -9,7 +9,7 @@
 #include <dxvk_adapter.h>
 
 #include "dxgi_interfaces.h"
-#include "dxgi_object.h"
+#include "dxgi_output.h"
 
 namespace dxvk {
   
@@ -26,26 +26,26 @@ namespace dxvk {
     ~DxgiAdapter();
     
     HRESULT STDMETHODCALLTYPE QueryInterface(
-            REFIID riid,
-            void **ppvObject) final;
+            REFIID                    riid,
+            void**                    ppvObject) final;
     
     HRESULT STDMETHODCALLTYPE GetParent(
-            REFIID riid,
-            void   **ppParent) final;
+            REFIID                    riid,
+            void**                    ppParent) final;
     
     HRESULT STDMETHODCALLTYPE CheckInterfaceSupport(
-            REFGUID       InterfaceName,
-            LARGE_INTEGER *pUMDVersion) final;
+            REFGUID                   InterfaceName,
+            LARGE_INTEGER*            pUMDVersion) final;
     
     HRESULT STDMETHODCALLTYPE EnumOutputs(
-            UINT        Output,
-            IDXGIOutput **ppOutput) final;
+            UINT                      Output,
+            IDXGIOutput**             ppOutput) final;
     
     HRESULT STDMETHODCALLTYPE GetDesc(
-            DXGI_ADAPTER_DESC *pDesc) final;
+            DXGI_ADAPTER_DESC*        pDesc) final;
     
     HRESULT STDMETHODCALLTYPE GetDesc1(
-            DXGI_ADAPTER_DESC1 *pDesc) final;
+            DXGI_ADAPTER_DESC1*       pDesc) final;
     
     Rc<DxvkAdapter> STDMETHODCALLTYPE GetDXVKAdapter() final;
     
@@ -55,21 +55,34 @@ namespace dxvk {
             IDXGIVkDevice**           ppDevice) final;
     
     DxgiFormatInfo STDMETHODCALLTYPE LookupFormat(
-            DXGI_FORMAT format, DxgiFormatMode mode) final;
+            DXGI_FORMAT               format,
+            DxgiFormatMode            mode) final;
     
     HRESULT GetOutputFromMonitor(
-            HMONITOR              Monitor,
-            IDXGIOutput**         ppOutput);
+            HMONITOR                  Monitor,
+            IDXGIOutput**             ppOutput);
+    
+    HRESULT GetOutputData(
+            HMONITOR                  Monitor,
+            DXGI_VK_OUTPUT_DATA*      pOutputData);
+    
+    HRESULT SetOutputData(
+            HMONITOR                  Monitor,
+      const DXGI_VK_OUTPUT_DATA*      pOutputData);
     
   private:
     
     using FormatMap = std::unordered_map<DXGI_FORMAT, DxgiFormatInfo>;
+    using OutputMap = std::unordered_map<HMONITOR, DXGI_VK_OUTPUT_DATA>;
     
     Com<DxgiFactory>  m_factory;
     Rc<DxvkAdapter>   m_adapter;
     
     FormatMap         m_colorFormats;
     FormatMap         m_depthFormats;
+    
+    std::mutex        m_outputMutex;
+    OutputMap         m_outputData;
     
     void AddColorFormatTypeless(
             DXGI_FORMAT                       srcFormat,

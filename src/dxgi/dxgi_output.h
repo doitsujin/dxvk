@@ -1,13 +1,23 @@
 #pragma once
 
-#include <mutex>
-
 #include "dxgi_object.h"
 
 namespace dxvk {
   
   class DxgiAdapter;
-  class DxgiSwapChain;
+  
+  /**
+   * \brief Per-output data
+   * 
+   * Persistent data for a single output, which
+   * is addressed using the \c HMONITOR handle.
+   */
+  struct DXGI_VK_OUTPUT_DATA {
+    DXGI_FRAME_STATISTICS FrameStats;
+    DXGI_GAMMA_CONTROL    GammaCurve;
+    BOOL                  GammaDirty;
+  };
+  
   
   class DxgiOutput : public DxgiObject<IDXGIOutput> {
     

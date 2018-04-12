@@ -10,7 +10,8 @@ namespace dxvk {
           IUnknown*             pDevice,
           DXGI_SWAP_CHAIN_DESC* pDesc)
   : m_factory (factory),
-    m_desc    (*pDesc) {
+    m_desc    (*pDesc),
+    m_monitor (nullptr) {
     
     // Retrieve a device pointer that allows us to
     // communicate with the underlying D3D device
@@ -177,6 +178,17 @@ namespace dxvk {
       return S_OK;
     
     try {
+      // If in fullscreen mode, apply any updated gamma curve
+      // if it has been changed since the last present call.
+      DXGI_VK_OUTPUT_DATA outputData;
+      
+      if (SUCCEEDED(m_adapter->GetOutputData(m_monitor, &outputData)) && outputData.GammaDirty) {
+        SetGammaControl(&outputData.GammaCurve);
+        
+        outputData.GammaDirty = FALSE;
+        m_adapter->SetOutputData(m_monitor, &outputData);
+      }
+      
       // Submit pending rendering commands
       // before recording the present code.
       m_presentDevice->FlushRenderingCommands();
@@ -425,12 +437,15 @@ namespace dxvk {
     ::SetWindowPos(m_desc.OutputWindow, HWND_TOPMOST,
       rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
       SWP_FRAMECHANGED | SWP_SHOWWINDOW | SWP_NOACTIVATE);
+    
+    m_monitor = desc.Monitor;
     return S_OK;
   }
   
   
   HRESULT DxgiSwapChain::LeaveFullscreenMode() {
     m_desc.Windowed = TRUE;
+    m_monitor = nullptr;
     
     // FIXME wine only restores window flags if the application
     // has not modified them in the meantime. Some applications
@@ -444,7 +459,7 @@ namespace dxvk {
       rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
       SWP_FRAMECHANGED | SWP_NOZORDER | SWP_NOACTIVATE);
     
-    return S_OK;
+    return SetDefaultGammaControl();
   }
   
   

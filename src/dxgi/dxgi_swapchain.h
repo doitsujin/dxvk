@@ -110,6 +110,7 @@ namespace dxvk {
     Rc<DxgiPresenter>               m_presenter;
     Com<IDXGIVkBackBuffer>          m_backBuffer;
     
+    HMONITOR                        m_monitor;
     WindowState                     m_windowState;
     
     DxgiPresenterGammaRamp          m_gammaControl;

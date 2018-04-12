@@ -17,7 +17,21 @@ namespace dxvk {
               HMONITOR      monitor)
   : m_adapter(adapter),
     m_monitor(monitor) {
-    
+    // Init output data if necessary
+    if (FAILED(m_adapter->GetOutputData(m_monitor, nullptr))) {
+      DXGI_VK_OUTPUT_DATA outputData;
+      outputData.FrameStats = DXGI_FRAME_STATISTICS();
+      outputData.GammaCurve.Scale  = { 1.0f, 1.0f, 1.0f };
+      outputData.GammaCurve.Offset = { 0.0f, 0.0f, 0.0f };
+      
+      for (uint32_t i = 0; i < DxgiPresenterGammaRamp::CpCount; i++) {
+        const float value = DxgiPresenterGammaRamp::cpLocation(i);
+        outputData.GammaCurve.GammaCurve[i] = { value, value, value };
+      }
+      
+      outputData.GammaDirty = FALSE;
+      m_adapter->SetOutputData(m_monitor, &outputData);
+    }
   }
   
   
@@ -223,25 +237,39 @@ namespace dxvk {
   }
   
   
-  HRESULT STDMETHODCALLTYPE DxgiOutput::GetDisplaySurfaceData(IDXGISurface *pDestination) {
+  HRESULT STDMETHODCALLTYPE DxgiOutput::GetDisplaySurfaceData(IDXGISurface* pDestination) {
     Logger::err("DxgiOutput::GetDisplaySurfaceData: Not implemented");
     return E_NOTIMPL;
   }
   
   
-  HRESULT STDMETHODCALLTYPE DxgiOutput::GetFrameStatistics(DXGI_FRAME_STATISTICS *pStats) {
-    Logger::err("DxgiOutput::GetFrameStatistics: Not implemented");
-    return E_NOTIMPL;
+  HRESULT STDMETHODCALLTYPE DxgiOutput::GetFrameStatistics(DXGI_FRAME_STATISTICS* pStats) {
+    DXGI_VK_OUTPUT_DATA outputData;
+    
+    if (FAILED(m_adapter->GetOutputData(m_monitor, &outputData))) {
+      Logger::err("DxgiOutput: Failed to query output data");
+      return E_FAIL;
+    }
+    
+    *pStats = outputData.FrameStats;
+    return S_OK;
   }
   
   
-  HRESULT STDMETHODCALLTYPE DxgiOutput::GetGammaControl(DXGI_GAMMA_CONTROL *pArray) {
-    Logger::err("DxgiOutput::GetGammaControl: Not implemented");
-    return E_NOTIMPL;
+  HRESULT STDMETHODCALLTYPE DxgiOutput::GetGammaControl(DXGI_GAMMA_CONTROL* pArray) {
+    DXGI_VK_OUTPUT_DATA outputData;
+    
+    if (FAILED(m_adapter->GetOutputData(m_monitor, &outputData))) {
+      Logger::err("DxgiOutput: Failed to query output data");
+      return E_FAIL;
+    }
+    
+    *pArray = outputData.GammaCurve;
+    return S_OK;
   }
   
   
-  HRESULT STDMETHODCALLTYPE DxgiOutput::GetGammaControlCapabilities(DXGI_GAMMA_CONTROL_CAPABILITIES *pGammaCaps) {
+  HRESULT STDMETHODCALLTYPE DxgiOutput::GetGammaControlCapabilities(DXGI_GAMMA_CONTROL_CAPABILITIES* pGammaCaps) {
     pGammaCaps->ScaleAndOffsetSupported = TRUE;
     pGammaCaps->MaxConvertedValue       = 1.0f;
     pGammaCaps->MinConvertedValue       = 0.0f;
@@ -258,15 +286,27 @@ namespace dxvk {
   }
   
   
-  HRESULT STDMETHODCALLTYPE DxgiOutput::SetDisplaySurface(IDXGISurface *pScanoutSurface) {
+  HRESULT STDMETHODCALLTYPE DxgiOutput::SetDisplaySurface(IDXGISurface* pScanoutSurface) {
     Logger::err("DxgiOutput::SetDisplaySurface: Not implemented");
     return E_NOTIMPL;
   }
   
   
-  HRESULT STDMETHODCALLTYPE DxgiOutput::SetGammaControl(const DXGI_GAMMA_CONTROL *pArray) {
-    Logger::err("DxgiOutput::SetGammaControl: Not implemented");
-    return E_NOTIMPL;
+  HRESULT STDMETHODCALLTYPE DxgiOutput::SetGammaControl(const DXGI_GAMMA_CONTROL* pArray) {
+    DXGI_VK_OUTPUT_DATA outputData;
+    
+    if (FAILED(m_adapter->GetOutputData(m_monitor, &outputData))) {
+      Logger::err("DxgiOutput: Failed to query output data");
+      return E_FAIL;
+    }
+    
+    outputData.GammaCurve = *pArray;
+    outputData.GammaDirty = TRUE;
+    
+    if (FAILED(m_adapter->SetOutputData(m_monitor, &outputData))) {
+      Logger::err("DxgiOutput: Failed to query output data");
+      return E_FAIL;
+    } return S_OK;
   }
   
   
