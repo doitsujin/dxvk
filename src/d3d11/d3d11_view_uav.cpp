@@ -204,17 +204,17 @@ namespace dxvk {
     
     switch (pDesc->ViewDimension) {
       case D3D11_UAV_DIMENSION_TEXTURE1DARRAY:
-        if (pDesc->Texture1DArray.ArraySize == D3D11_DXVK_USE_REMAINING_LAYERS)
+        if (pDesc->Texture1DArray.ArraySize > numLayers - pDesc->Texture1DArray.FirstArraySlice)
           pDesc->Texture1DArray.ArraySize = numLayers - pDesc->Texture1DArray.FirstArraySlice;
         break;
       
       case D3D11_UAV_DIMENSION_TEXTURE2DARRAY:
-        if (pDesc->Texture2DArray.ArraySize == D3D11_DXVK_USE_REMAINING_LAYERS)
+        if (pDesc->Texture2DArray.ArraySize > numLayers - pDesc->Texture2DArray.FirstArraySlice)
           pDesc->Texture2DArray.ArraySize = numLayers - pDesc->Texture2DArray.FirstArraySlice;
         break;
       
       case D3D11_UAV_DIMENSION_TEXTURE3D:
-        if (pDesc->Texture3D.WSize == D3D11_DXVK_USE_REMAINING_LAYERS)
+        if (pDesc->Texture3D.WSize > numLayers - pDesc->Texture3D.FirstWSlice)
           pDesc->Texture3D.WSize = numLayers - pDesc->Texture3D.FirstWSlice;
         break;
       

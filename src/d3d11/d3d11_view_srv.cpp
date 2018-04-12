@@ -223,48 +223,48 @@ namespace dxvk {
     
     switch (pDesc->ViewDimension) {
       case D3D11_SRV_DIMENSION_TEXTURE1D:
-        if (pDesc->Texture1D.MipLevels == D3D11_DXVK_USE_REMAINING_LEVELS)
+        if (pDesc->Texture1D.MipLevels > mipLevels - pDesc->Texture1D.MostDetailedMip)
           pDesc->Texture1D.MipLevels = mipLevels - pDesc->Texture1D.MostDetailedMip;
         break;
       
       case D3D11_SRV_DIMENSION_TEXTURE1DARRAY:
-        if (pDesc->Texture1DArray.MipLevels == D3D11_DXVK_USE_REMAINING_LEVELS)
+        if (pDesc->Texture1DArray.MipLevels > mipLevels - pDesc->Texture1DArray.MostDetailedMip)
           pDesc->Texture1DArray.MipLevels = mipLevels - pDesc->Texture1DArray.MostDetailedMip;
-        if (pDesc->Texture1DArray.ArraySize == D3D11_DXVK_USE_REMAINING_LAYERS)
+        if (pDesc->Texture1DArray.ArraySize > numLayers - pDesc->Texture1DArray.FirstArraySlice)
           pDesc->Texture1DArray.ArraySize = numLayers - pDesc->Texture1DArray.FirstArraySlice;
         break;
       
       case D3D11_SRV_DIMENSION_TEXTURE2D:
-        if (pDesc->Texture2D.MipLevels == D3D11_DXVK_USE_REMAINING_LEVELS)
+        if (pDesc->Texture2D.MipLevels > mipLevels - pDesc->Texture2D.MostDetailedMip)
           pDesc->Texture2D.MipLevels = mipLevels - pDesc->Texture2D.MostDetailedMip;
         break;
       
       case D3D11_SRV_DIMENSION_TEXTURE2DARRAY:
-        if (pDesc->Texture2DArray.MipLevels == D3D11_DXVK_USE_REMAINING_LEVELS)
+        if (pDesc->Texture2DArray.MipLevels > mipLevels - pDesc->Texture2DArray.MostDetailedMip)
           pDesc->Texture2DArray.MipLevels = mipLevels - pDesc->Texture2DArray.MostDetailedMip;
-        if (pDesc->Texture2DArray.ArraySize == D3D11_DXVK_USE_REMAINING_LAYERS)
+        if (pDesc->Texture2DArray.ArraySize > numLayers - pDesc->Texture2DArray.FirstArraySlice)
           pDesc->Texture2DArray.ArraySize = numLayers - pDesc->Texture2DArray.FirstArraySlice;
         break;
       
       case D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY:
-        if (pDesc->Texture2DMSArray.ArraySize == D3D11_DXVK_USE_REMAINING_LAYERS)
+        if (pDesc->Texture2DMSArray.ArraySize > numLayers - pDesc->Texture2DMSArray.FirstArraySlice)
           pDesc->Texture2DMSArray.ArraySize = numLayers - pDesc->Texture2DMSArray.FirstArraySlice;
         break;
       
       case D3D11_SRV_DIMENSION_TEXTURECUBE:
-        if (pDesc->TextureCube.MipLevels == D3D11_DXVK_USE_REMAINING_LEVELS)
+        if (pDesc->TextureCube.MipLevels > mipLevels - pDesc->TextureCube.MostDetailedMip)
           pDesc->TextureCube.MipLevels = mipLevels - pDesc->TextureCube.MostDetailedMip;
         break;
       
       case D3D11_SRV_DIMENSION_TEXTURECUBEARRAY:
-        if (pDesc->TextureCubeArray.MipLevels == D3D11_DXVK_USE_REMAINING_LEVELS)
+        if (pDesc->TextureCubeArray.MipLevels > mipLevels - pDesc->TextureCubeArray.MostDetailedMip)
           pDesc->TextureCubeArray.MipLevels = mipLevels - pDesc->TextureCubeArray.MostDetailedMip;
-        if (pDesc->TextureCubeArray.NumCubes == D3D11_DXVK_USE_REMAINING_LAYERS)
+        if (pDesc->TextureCubeArray.NumCubes > (numLayers - pDesc->TextureCubeArray.First2DArrayFace / 6))
           pDesc->TextureCubeArray.NumCubes = (numLayers - pDesc->TextureCubeArray.First2DArrayFace / 6);
         break;
       
       case D3D11_SRV_DIMENSION_TEXTURE3D:
-        if (pDesc->Texture3D.MipLevels == D3D11_DXVK_USE_REMAINING_LEVELS)
+        if (pDesc->Texture3D.MipLevels > mipLevels - pDesc->Texture3D.MostDetailedMip)
           pDesc->Texture3D.MipLevels = mipLevels - pDesc->Texture3D.MostDetailedMip;
         break;
       

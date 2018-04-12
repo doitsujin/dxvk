@@ -154,11 +154,12 @@ namespace dxvk {
   
   
   HRESULT D3D11CommonTexture::NormalizeTextureProperties(D3D11_COMMON_TEXTURE_DESC* pDesc) {
-    if (pDesc->MipLevels == 0) {
-      pDesc->MipLevels = pDesc->SampleDesc.Count <= 1
-        ? util::computeMipLevelCount({ pDesc->Width, pDesc->Height, pDesc->Depth })
-        : 1u;
-    }
+    uint32_t maxMipLevelCount = pDesc->SampleDesc.Count <= 1
+      ? util::computeMipLevelCount({ pDesc->Width, pDesc->Height, pDesc->Depth })
+      : 1u;
+    
+    if (pDesc->MipLevels == 0 || pDesc->MipLevels > maxMipLevelCount)
+      pDesc->MipLevels = maxMipLevelCount;
     
     return S_OK;
   }
