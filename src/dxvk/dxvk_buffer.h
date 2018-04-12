@@ -326,6 +326,14 @@ namespace dxvk {
      * \brief Underlying buffer object
      * \returns Underlying buffer object
      */
+    Rc<DxvkBuffer> buffer() const {
+      return m_buffer;
+    }
+    
+    /**
+     * \brief Underlying buffer info
+     * \returns Underlying buffer info
+     */
     const DxvkBufferCreateInfo& bufferInfo() const {
       return m_buffer->info();
     }

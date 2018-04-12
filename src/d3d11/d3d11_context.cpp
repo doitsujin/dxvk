@@ -531,6 +531,21 @@ namespace dxvk {
     if (uav == nullptr)
       return;
     
+    // Gather UAV format info. We'll use this to determine
+    // whether we need to create a temporary view or not.
+    D3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc;
+    uav->GetDesc(&uavDesc);
+    
+    VkFormat uavFormat = m_parent->LookupFormat(uavDesc.Format, DXGI_VK_FORMAT_MODE_ANY).Format;
+    VkFormat rawFormat = m_parent->LookupFormat(uavDesc.Format, DXGI_VK_FORMAT_MODE_RAW).Format;
+    
+    // FIXME support packed formats
+    if (uavFormat != rawFormat && rawFormat == VK_FORMAT_UNDEFINED) {
+      Logger::err(str::format("D3D11: No raw format found for ", uavFormat));
+      return;
+    }
+    
+    // Set up clear color struct
     VkClearColorValue clearValue;
     clearValue.uint32[0] = Values[0];
     clearValue.uint32[1] = Values[1];
@@ -538,7 +553,10 @@ namespace dxvk {
     clearValue.uint32[3] = Values[3];
     
     if (uav->GetResourceType() == D3D11_RESOURCE_DIMENSION_BUFFER) {
-      const Rc<DxvkBufferView> bufferView = uav->GetBufferView();
+      // In case of raw and structured buffers as well as typed
+      // buffers that can be used for atomic operations, we can
+      // use the fast Vulkan buffer clear function.
+      Rc<DxvkBufferView> bufferView = uav->GetBufferView();
       
       if (bufferView->info().format == VK_FORMAT_R32_UINT
        || bufferView->info().format == VK_FORMAT_R32_SINT
@@ -554,9 +572,14 @@ namespace dxvk {
             cClearValue);
         });
       } else {
-        // FIXME Create integer-typed view if the
-        // buffer view has a floating point format
-        Rc<DxvkBufferView> bufferView = uav->GetBufferView();
+        // Create a view with an integer format if necessary
+        if (uavFormat != rawFormat)  {
+          DxvkBufferViewCreateInfo info = bufferView->info();
+          info.format = rawFormat;
+          
+          bufferView = m_device->createBufferView(
+            bufferView->buffer(), info);
+        }
         
         EmitCs([
           cClearValue = clearValue,
@@ -569,9 +592,16 @@ namespace dxvk {
         });
       }
     } else {
-      // FIXME Create integer-typed view if the
-      // image view has a floating point format
+      // Create a view with an integer format if necessary
       Rc<DxvkImageView> imageView = uav->GetImageView();
+      
+      if (uavFormat != rawFormat) {
+        DxvkImageViewCreateInfo info = imageView->info();
+        info.format = rawFormat;
+        
+        imageView = m_device->createImageView(
+          imageView->image(), info);
+      }
       
       EmitCs([
         cClearValue = clearValue,
