@@ -2,6 +2,7 @@
 
 #include "../dxvk/dxvk_include.h"
 
+#include "dxgi_format.h"
 #include "dxgi_include.h"
 
 namespace dxvk {
@@ -10,44 +11,6 @@ namespace dxvk {
   class DxvkBuffer;
   class DxvkDevice;
   class DxvkImage;
-  
-  /**
-   * \brief Format information
-   */
-  enum class DxgiFormatFlag {
-    Typeless = 0,
-  };
-  
-  using DxgiFormatFlags = Flags<DxgiFormatFlag>;
-  
-  /**
-   * \brief Format info
-   * 
-   * Stores a Vulkan image format for a given
-   * DXGI format and some additional information
-   * on how resources with the particular format
-   * are supposed to be used.
-   */
-  struct DxgiFormatInfo {
-    VkFormat            format;
-    VkImageAspectFlags  aspect;
-    VkComponentMapping  swizzle;
-    DxgiFormatFlags     flags;
-  };
-  
-  /**
-   * \brief Format lookup mode
-   * 
-   * When looking up an image format, additional information
-   * might be needed on how the image is going to be used.
-   * This is used to properly map typeless formats and color
-   * formats to depth formats if they are used on depth images.
-   */
-  enum class DxgiFormatMode : uint32_t {
-    Any   = 0,
-    Color = 1,
-    Depth = 2,
-  };
 }
 
 
@@ -105,7 +68,7 @@ IDXGIVkAdapter : public IDXGIAdapter1 {
    * \param [in] mode Format lookup mode
    * \returns Vulkan format pair
    */
-  virtual dxvk::DxgiFormatInfo STDMETHODCALLTYPE LookupFormat(
+  virtual dxvk::DXGI_VK_FORMAT_INFO STDMETHODCALLTYPE LookupFormat(
           DXGI_FORMAT          format,
           dxvk::DxgiFormatMode mode) = 0;
 };

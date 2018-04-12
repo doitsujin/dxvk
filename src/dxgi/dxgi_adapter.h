@@ -54,7 +54,7 @@ namespace dxvk {
       const VkPhysicalDeviceFeatures* pFeatures,
             IDXGIVkDevice**           ppDevice) final;
     
-    DxgiFormatInfo STDMETHODCALLTYPE LookupFormat(
+    DXGI_VK_FORMAT_INFO STDMETHODCALLTYPE LookupFormat(
             DXGI_FORMAT               format,
             DxgiFormatMode            mode) final;
     
@@ -72,8 +72,8 @@ namespace dxvk {
     
   private:
     
-    using FormatMap = std::unordered_map<DXGI_FORMAT, DxgiFormatInfo>;
-    using OutputMap = std::unordered_map<HMONITOR, DXGI_VK_OUTPUT_DATA>;
+    using FormatMap = std::unordered_map<DXGI_FORMAT, DXGI_VK_FORMAT_INFO>;
+    using OutputMap = std::unordered_map<HMONITOR,    DXGI_VK_OUTPUT_DATA>;
     
     Com<DxgiFactory>  m_factory;
     Rc<DxvkAdapter>   m_adapter;

@@ -173,7 +173,7 @@ namespace dxvk {
   }
   
   
-  DxgiFormatInfo STDMETHODCALLTYPE DxgiAdapter::LookupFormat(
+  DXGI_VK_FORMAT_INFO STDMETHODCALLTYPE DxgiAdapter::LookupFormat(
           DXGI_FORMAT               format,
           DxgiFormatMode            mode) {
     // If the mode is 'Any', probe color formats first
@@ -191,7 +191,7 @@ namespace dxvk {
     }
     
     Logger::err(str::format("DxgiAdapter: No format mapping for ", format));
-    return DxgiFormatInfo();
+    return DXGI_VK_FORMAT_INFO();
   }
   
   
@@ -247,7 +247,7 @@ namespace dxvk {
   void DxgiAdapter::AddColorFormatTypeless(
           DXGI_FORMAT                       srcFormat,
           VkFormat                          dstFormat) {
-    DxgiFormatInfo formatPair;
+    DXGI_VK_FORMAT_INFO formatPair;
     formatPair.format = dstFormat;
     formatPair.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
     formatPair.swizzle = {
@@ -255,7 +255,7 @@ namespace dxvk {
       VK_COMPONENT_SWIZZLE_IDENTITY,
       VK_COMPONENT_SWIZZLE_IDENTITY,
       VK_COMPONENT_SWIZZLE_IDENTITY };
-    formatPair.flags = DxgiFormatFlag::Typeless;
+    formatPair.flags = DXGI_VK_FORMAT_TYPELESS;
     m_colorFormats.insert(std::make_pair(srcFormat, formatPair));
   }
   
@@ -264,11 +264,11 @@ namespace dxvk {
           DXGI_FORMAT                       srcFormat,
           VkFormat                          dstFormat,
           VkComponentMapping                swizzle) {
-    DxgiFormatInfo formatPair;
+    DXGI_VK_FORMAT_INFO formatPair;
     formatPair.format = dstFormat;
     formatPair.aspect = VK_IMAGE_ASPECT_COLOR_BIT;
     formatPair.swizzle = swizzle;
-    formatPair.flags = DxgiFormatFlags();
+    formatPair.flags = 0;
     m_colorFormats.insert(std::make_pair(srcFormat, formatPair));
   }
   
@@ -276,7 +276,7 @@ namespace dxvk {
   void DxgiAdapter::AddDepthFormatTypeless(
           DXGI_FORMAT                       srcFormat,
           VkFormat                          dstFormat) {
-    DxgiFormatInfo formatPair;
+    DXGI_VK_FORMAT_INFO formatPair;
     formatPair.format = dstFormat;
     formatPair.aspect = 0;
     formatPair.swizzle = {
@@ -284,7 +284,7 @@ namespace dxvk {
       VK_COMPONENT_SWIZZLE_IDENTITY,
       VK_COMPONENT_SWIZZLE_IDENTITY,
       VK_COMPONENT_SWIZZLE_IDENTITY };
-    formatPair.flags = DxgiFormatFlag::Typeless;
+    formatPair.flags = DXGI_VK_FORMAT_TYPELESS;
     m_depthFormats.insert(std::make_pair(srcFormat, formatPair));
   }
   
@@ -293,7 +293,7 @@ namespace dxvk {
           DXGI_FORMAT                       srcFormat,
           VkFormat                          dstFormat,
           VkImageAspectFlags                srvAspect) {
-    DxgiFormatInfo formatPair;
+    DXGI_VK_FORMAT_INFO formatPair;
     formatPair.format = dstFormat;
     formatPair.aspect = srvAspect;
     formatPair.swizzle = {
@@ -301,7 +301,7 @@ namespace dxvk {
       VK_COMPONENT_SWIZZLE_IDENTITY,
       VK_COMPONENT_SWIZZLE_IDENTITY,
       VK_COMPONENT_SWIZZLE_IDENTITY };
-    formatPair.flags = DxgiFormatFlags();
+    formatPair.flags = 0;
     m_depthFormats.insert(std::make_pair(srcFormat, formatPair));
   }
   
