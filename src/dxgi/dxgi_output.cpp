@@ -150,16 +150,15 @@ namespace dxvk {
     if (pDesc == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
-    ::MONITORINFOEX monInfo;
+    ::MONITORINFOEXW monInfo;
     monInfo.cbSize = sizeof(monInfo);
 
-    if (!::GetMonitorInfo(m_monitor, reinterpret_cast<MONITORINFO*>(&monInfo))) {
+    if (!::GetMonitorInfoW(m_monitor, reinterpret_cast<MONITORINFO*>(&monInfo))) {
       Logger::err("DxgiOutput: Failed to query monitor info");
       return E_FAIL;
     }
     
-    std::memset(pDesc->DeviceName, 0, sizeof(pDesc->DeviceName));
-    std::mbstowcs(pDesc->DeviceName, monInfo.szDevice, std::size(pDesc->DeviceName) - 1);
+    std::memcpy(pDesc->DeviceName, monInfo.szDevice, std::size(pDesc->DeviceName));
     
     pDesc->DesktopCoordinates = monInfo.rcMonitor;
     pDesc->AttachedToDesktop  = 1;
@@ -178,24 +177,24 @@ namespace dxvk {
       return DXGI_ERROR_INVALID_CALL;
     
     // Query monitor info to get the device name
-    ::MONITORINFOEX monInfo;
+    ::MONITORINFOEXW monInfo;
     monInfo.cbSize = sizeof(monInfo);
 
-    if (!::GetMonitorInfo(m_monitor, reinterpret_cast<MONITORINFO*>(&monInfo))) {
+    if (!::GetMonitorInfoW(m_monitor, reinterpret_cast<MONITORINFO*>(&monInfo))) {
       Logger::err("DxgiOutput: Failed to query monitor info");
       return E_FAIL;
     }
     
     // Walk over all modes that the display supports and
     // return those that match the requested format etc.
-    DEVMODE devMode;
+    DEVMODEW devMode;
     
     uint32_t srcModeId = 0;
     uint32_t dstModeId = 0;
     
     const bool includeStretchedModes = (Flags & DXGI_ENUM_MODES_SCALING);
     
-    while (::EnumDisplaySettings(monInfo.szDevice, srcModeId++, &devMode)) {
+    while (::EnumDisplaySettingsW(monInfo.szDevice, srcModeId++, &devMode)) {
       // Skip interlaced modes altogether
       if (devMode.dmDisplayFlags & DM_INTERLACED)
         continue;
