@@ -4551,7 +4551,7 @@ namespace dxvk {
     
     DxbcRegisterValue result;
     result.type.ctype  = DxbcScalarType::Uint32;
-    result.type.ccount = getTexCoordDim(info.image);
+    result.type.ccount = getTexSizeDim(info.image);
     
     if (info.image.ms == 0 && info.image.sampled == 1) {
       result.id = m_module.opImageQuerySizeLod(
@@ -6181,6 +6181,18 @@ namespace dxvk {
         
       default:
         throw DxvkError(str::format("DxbcCompiler: Invalid operand type for buffer: ", reg.type));
+    }
+  }
+  
+  
+  uint32_t DxbcCompiler::getTexSizeDim(const DxbcImageInfo& imageType) const {
+    switch (imageType.dim) {
+      case spv::DimBuffer:  return 1 + imageType.array;
+      case spv::Dim1D:      return 1 + imageType.array;
+      case spv::Dim2D:      return 2 + imageType.array;
+      case spv::Dim3D:      return 3 + imageType.array;
+      case spv::DimCube:    return 2 + imageType.array;
+      default: throw DxvkError("DxbcCompiler: getTexLayerDim: Unsupported image dimension");
     }
   }
   

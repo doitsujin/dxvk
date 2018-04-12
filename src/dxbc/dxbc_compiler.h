@@ -985,6 +985,9 @@ namespace dxvk {
     DxbcBufferInfo getBufferInfo(
       const DxbcRegister& reg);
     
+    uint32_t getTexSizeDim(
+      const DxbcImageInfo& imageType) const;
+    
     uint32_t getTexLayerDim(
       const DxbcImageInfo& imageType) const;
     
