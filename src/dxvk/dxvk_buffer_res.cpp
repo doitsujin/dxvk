@@ -20,16 +20,20 @@ namespace dxvk {
     info.pQueueFamilyIndices   = nullptr;
     
     if (m_vkd->vkCreateBuffer(m_vkd->device(),
-          &info, nullptr, &m_handle) != VK_SUCCESS)
-      throw DxvkError("DxvkPhysicalBuffer: Failed to create buffer");
+          &info, nullptr, &m_handle) != VK_SUCCESS) {
+      throw DxvkError(str::format(
+        "DxvkPhysicalBuffer: Failed to create buffer:"
+        "\n  size:  ", info.size,
+        "\n  usage: ", info.usage));
+    }
     
     VkMemoryRequirements memReq;
     m_vkd->vkGetBufferMemoryRequirements(
       m_vkd->device(), m_handle, &memReq);
     m_memory = memAlloc.alloc(memReq, memFlags);
     
-    if (m_vkd->vkBindBufferMemory(m_vkd->device(),
-          m_handle, m_memory.memory(), m_memory.offset()) != VK_SUCCESS)
+    if (m_vkd->vkBindBufferMemory(m_vkd->device(), m_handle,
+        m_memory.memory(), m_memory.offset()) != VK_SUCCESS)
       throw DxvkError("DxvkPhysicalBuffer: Failed to bind device memory");
   }
   
@@ -54,8 +58,14 @@ namespace dxvk {
     viewInfo.offset = m_slice.offset();
     viewInfo.range  = m_slice.length();
     
-    if (m_vkd->vkCreateBufferView(m_vkd->device(), &viewInfo, nullptr, &m_view) != VK_SUCCESS)
-      throw DxvkError("DxvkBufferView::DxvkBufferView: Failed to create buffer view");
+    if (m_vkd->vkCreateBufferView(m_vkd->device(),
+          &viewInfo, nullptr, &m_view) != VK_SUCCESS) {
+      throw DxvkError(str::format(
+        "DxvkPhysicalBufferView: Failed to create buffer view:",
+        "\n  Offset: ", viewInfo.offset,
+        "\n  Range:  ", viewInfo.range,
+        "\n  Format: ", viewInfo.format));
+    }
   }
   
   

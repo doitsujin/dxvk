@@ -102,7 +102,7 @@ namespace dxvk {
     info.layers               = m_framebufferSize.layers;
     
     if (m_vkd->vkCreateFramebuffer(m_vkd->device(), &info, nullptr, &m_framebuffer) != VK_SUCCESS)
-      throw DxvkError("DxvkFramebuffer::DxvkFramebuffer: Failed to create framebuffer object");
+      throw DxvkError("DxvkFramebuffer: Failed to create framebuffer object");
   }
   
   

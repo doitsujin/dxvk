@@ -27,8 +27,20 @@ namespace dxvk {
     info.initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED;
     
     if (m_vkd->vkCreateImage(m_vkd->device(),
-          &info, nullptr, &m_image) != VK_SUCCESS)
-      throw DxvkError("DxvkImage::DxvkImage: Failed to create image");
+          &info, nullptr, &m_image) != VK_SUCCESS) {
+      throw DxvkError(str::format(
+        "DxvkImage: Failed to create image:",
+        "\n  Type:            ", info.imageType,
+        "\n  Format:          ", info.format,
+        "\n  Extent:          ", "(", info.extent.width,
+                                 ",", info.extent.width,
+                                 ",", info.extent.width, ")",
+        "\n  Mip levels:      ", info.mipLevels,
+        "\n  Array layers:    ", info.arrayLayers,
+        "\n  Samples:         ", info.samples,
+        "\n  Usage:           ", info.usage,
+        "\n  Tiling:          ", info.tiling));
+    }
     
     // Get memory requirements for the image. We may enforce strict
     // alignment on non-linear images in order not to violate the
@@ -92,8 +104,30 @@ namespace dxvk {
     viewInfo.components       = info.swizzle;
     viewInfo.subresourceRange = subresourceRange;
     
-    if (m_vkd->vkCreateImageView(m_vkd->device(), &viewInfo, nullptr, &m_view) != VK_SUCCESS)
-      throw DxvkError("DxvkImageView::DxvkImageView: Failed to create image view");
+    if (m_vkd->vkCreateImageView(m_vkd->device(),
+        &viewInfo, nullptr, &m_view) != VK_SUCCESS) {
+      throw DxvkError(str::format(
+        "DxvkImageView: Failed to create image view:"
+        "\n  View type:       ", viewInfo.viewType,
+        "\n  View format:     ", viewInfo.format,
+        "\n  Subresources:    ",
+        "\n    Aspect mask:   ", std::hex, viewInfo.subresourceRange.aspectMask,
+        "\n    Mip levels:    ", viewInfo.subresourceRange.baseMipLevel, " - ",
+                                 viewInfo.subresourceRange.levelCount,
+        "\n    Array layers:  ", viewInfo.subresourceRange.baseArrayLayer, " - ",
+                                 viewInfo.subresourceRange.layerCount,
+        "\n  Image properties:",
+        "\n    Type:          ", image->info().type,
+        "\n    Format:        ", image->info().format,
+        "\n    Extent:        ", "(", image->info().extent.width,
+                                 ",", image->info().extent.height,
+                                 ",", image->info().extent.depth, ")",
+        "\n    Mip levels:    ", image->info().mipLevels,
+        "\n    Array layers:  ", image->info().numLayers,
+        "\n    Samples:       ", image->info().sampleCount,
+        "\n    Usage:         ", std::hex, image->info().usage,
+        "\n    Tiling:        ", image->info().tiling));
+    }
   }
   
   
