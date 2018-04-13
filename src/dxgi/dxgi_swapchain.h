@@ -104,7 +104,7 @@ namespace dxvk {
     DXGI_SWAP_CHAIN_DESC            m_desc;
     DXGI_FRAME_STATISTICS           m_stats;
     
-    Rc<DxgiPresenter>               m_presenter;
+    Rc<DxgiVkPresenter>             m_presenter;
     Com<IDXGIVkBackBuffer>          m_backBuffer;
     
     HMONITOR                        m_monitor;

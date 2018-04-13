@@ -7,7 +7,7 @@
 
 namespace dxvk {
   
-  DxgiPresenter::DxgiPresenter(
+  DxgiVkPresenter::DxgiVkPresenter(
     const Rc<DxvkDevice>&         device,
           HWND                    window)
   : m_device  (device),
@@ -28,16 +28,16 @@ namespace dxvk {
     // Samplers for presentation. We'll create one with point sampling that will
     // be used when the back buffer resolution matches the output resolution, and
     // one with linar sampling that will be used when the image will be scaled.
-    m_samplerFitting = this->createSampler(VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER);
-    m_samplerScaling = this->createSampler(VK_FILTER_LINEAR,  VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER);
+    m_samplerFitting = CreateSampler(VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER);
+    m_samplerScaling = CreateSampler(VK_FILTER_LINEAR,  VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER);
     
     // Create objects required for the gamma ramp. This is implemented partially
     // with an UBO, which stores global parameters, and a lookup texture, which
     // stores the actual gamma ramp and can be sampled with a linear filter.
-    m_gammaUbo          = this->createGammaUbo();
-    m_gammaSampler      = this->createSampler(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
-    m_gammaTexture      = this->createGammaTexture();
-    m_gammaTextureView  = this->createGammaTextureView();
+    m_gammaUbo          = CreateGammaUbo();
+    m_gammaSampler      = CreateSampler(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+    m_gammaTexture      = CreateGammaTexture();
+    m_gammaTextureView  = CreateGammaTextureView();
     
     // Set up context state. The shader bindings and the
     // constant state objects will never be modified.
@@ -108,33 +108,33 @@ namespace dxvk {
     
     m_context->bindShader(
       VK_SHADER_STAGE_VERTEX_BIT,
-      this->createVertexShader());
+      CreateVertexShader());
     
     m_context->bindShader(
       VK_SHADER_STAGE_FRAGMENT_BIT,
-      this->createFragmentShader());
+      CreateFragmentShader());
     
     m_hud = hud::Hud::createHud(m_device);
   }
   
   
-  DxgiPresenter::~DxgiPresenter() {
+  DxgiVkPresenter::~DxgiVkPresenter() {
     m_device->waitForIdle();
   }
   
   
-  void DxgiPresenter::initBackBuffer(const Rc<DxvkImage>& image) {
+  void DxgiVkPresenter::InitBackBuffer(const Rc<DxvkImage>& Image) {
     m_context->beginRecording(
       m_device->createCommandList());
     
     VkImageSubresourceRange sr;
     sr.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
     sr.baseMipLevel   = 0;
-    sr.levelCount     = image->info().mipLevels;
+    sr.levelCount     = Image->info().mipLevels;
     sr.baseArrayLayer = 0;
-    sr.layerCount     = image->info().numLayers;
+    sr.layerCount     = Image->info().numLayers;
     
-    m_context->initImage(image, sr);
+    m_context->initImage(Image, sr);
     
     m_device->submitCommandList(
       m_context->endRecording(),
@@ -142,7 +142,7 @@ namespace dxvk {
   }
   
   
-  void DxgiPresenter::presentImage() {
+  void DxgiVkPresenter::PresentImage() {
     if (m_hud != nullptr) {
       m_hud->render({
         m_options.preferredBufferSize.width,
@@ -222,22 +222,22 @@ namespace dxvk {
   }
   
   
-  void DxgiPresenter::updateBackBuffer(const Rc<DxvkImage>& image) {
+  void DxgiVkPresenter::UpdateBackBuffer(const Rc<DxvkImage>& Image) {
     // Explicitly destroy the old stuff
-    m_backBuffer        = image;
+    m_backBuffer        = Image;
     m_backBufferResolve = nullptr;
     m_backBufferView    = nullptr;
     
     // If a multisampled back buffer was requested, we also need to
     // create a resolve image with otherwise identical properties.
     // Multisample images cannot be sampled from.
-    if (image->info().sampleCount != VK_SAMPLE_COUNT_1_BIT) {
+    if (Image->info().sampleCount != VK_SAMPLE_COUNT_1_BIT) {
       DxvkImageCreateInfo resolveInfo;
       resolveInfo.type          = VK_IMAGE_TYPE_2D;
-      resolveInfo.format        = image->info().format;
+      resolveInfo.format        = Image->info().format;
       resolveInfo.flags         = 0;
       resolveInfo.sampleCount   = VK_SAMPLE_COUNT_1_BIT;
-      resolveInfo.extent        = image->info().extent;
+      resolveInfo.extent        = Image->info().extent;
       resolveInfo.numLayers     = 1;
       resolveInfo.mipLevels     = 1;
       resolveInfo.usage         = VK_IMAGE_USAGE_SAMPLED_BIT
@@ -257,7 +257,7 @@ namespace dxvk {
     // image to be bound as a shader resource.
     DxvkImageViewCreateInfo viewInfo;
     viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format     = image->info().format;
+    viewInfo.format     = Image->info().format;
     viewInfo.aspect     = VK_IMAGE_ASPECT_COLOR_BIT;
     viewInfo.minLevel   = 0;
     viewInfo.numLevels  = 1;
@@ -270,41 +270,39 @@ namespace dxvk {
         : m_backBuffer,
       viewInfo);
     
-    this->initBackBuffer(m_backBuffer);
+    InitBackBuffer(m_backBuffer);
   }
   
   
-  void DxgiPresenter::recreateSwapchain(const DxvkSwapchainProperties& options) {
+  void DxgiVkPresenter::RecreateSwapchain(const DxvkSwapchainProperties* pOptions) {
     const bool doRecreate =
-         options.preferredSurfaceFormat.format      != m_options.preferredSurfaceFormat.format
-      || options.preferredSurfaceFormat.colorSpace  != m_options.preferredSurfaceFormat.colorSpace
-      || options.preferredPresentMode               != m_options.preferredPresentMode
-      || options.preferredBufferSize.width          != m_options.preferredBufferSize.width
-      || options.preferredBufferSize.height         != m_options.preferredBufferSize.height;
+         pOptions->preferredSurfaceFormat.format      != m_options.preferredSurfaceFormat.format
+      || pOptions->preferredSurfaceFormat.colorSpace  != m_options.preferredSurfaceFormat.colorSpace
+      || pOptions->preferredPresentMode               != m_options.preferredPresentMode
+      || pOptions->preferredBufferSize.width          != m_options.preferredBufferSize.width
+      || pOptions->preferredBufferSize.height         != m_options.preferredBufferSize.height;
     
     if (doRecreate) {
       Logger::info(str::format(
-        "DxgiPresenter: Recreating swap chain: ",
-        "\n  Format:       ", options.preferredSurfaceFormat.format,
-        "\n  Present mode: ", options.preferredPresentMode,
-        "\n  Buffer size:  ", options.preferredBufferSize.width, "x", options.preferredBufferSize.height));
+        "DxgiVkPresenter: Recreating swap chain: ",
+        "\n  Format:       ", pOptions->preferredSurfaceFormat.format,
+        "\n  Present mode: ", pOptions->preferredPresentMode,
+        "\n  Buffer size:  ", pOptions->preferredBufferSize.width, "x", pOptions->preferredBufferSize.height));
       
-      m_options = options;
+      if (m_swapchain == nullptr)
+        m_swapchain = m_device->createSwapchain(m_surface, *pOptions);
+      else
+        m_swapchain->changeProperties(*pOptions);
       
-      if (m_swapchain == nullptr) {
-        m_swapchain = m_device->createSwapchain(
-          m_surface, options);
-      } else {
-        m_swapchain->changeProperties(options);
-      }
+      m_options = *pOptions;
     }
   }
   
   
-  VkSurfaceFormatKHR DxgiPresenter::pickSurfaceFormat(DXGI_FORMAT fmt) const {
+  VkSurfaceFormatKHR DxgiVkPresenter::PickSurfaceFormat(DXGI_FORMAT Fmt) const {
     std::vector<VkSurfaceFormatKHR> formats;
     
-    switch (fmt) {
+    switch (Fmt) {
       case DXGI_FORMAT_R8G8B8A8_UNORM:
       case DXGI_FORMAT_B8G8R8A8_UNORM: {
         formats.push_back({ VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR });
@@ -327,7 +325,7 @@ namespace dxvk {
       } break;
       
       default:
-        Logger::warn(str::format("DxgiPresenter: Unknown format: ", fmt));
+        Logger::warn(str::format("DxgiVkPresenter: Unknown format: ", Fmt));
     }
     
     return m_surface->pickSurfaceFormat(
@@ -335,12 +333,12 @@ namespace dxvk {
   }
   
   
-  VkPresentModeKHR DxgiPresenter::pickPresentMode(VkPresentModeKHR preferred) const {
-    return m_surface->pickPresentMode(1, &preferred);
+  VkPresentModeKHR DxgiVkPresenter::PickPresentMode(VkPresentModeKHR Preferred) const {
+    return m_surface->pickPresentMode(1, &Preferred);
   }
   
   
-  void DxgiPresenter::setGammaControl(
+  void DxgiVkPresenter::SetGammaControl(
     const DXGI_VK_GAMMA_INPUT_CONTROL*  pGammaControl,
     const DXGI_VK_GAMMA_CURVE*          pGammaCurve) {
     m_context->beginRecording(
@@ -362,21 +360,21 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkSampler> DxgiPresenter::createSampler(
-          VkFilter              filter,
-          VkSamplerAddressMode  addressMode) {
+  Rc<DxvkSampler> DxgiVkPresenter::CreateSampler(
+          VkFilter              Filter,
+          VkSamplerAddressMode  AddressMode) {
     DxvkSamplerCreateInfo samplerInfo;
-    samplerInfo.magFilter       = filter;
-    samplerInfo.minFilter       = filter;
+    samplerInfo.magFilter       = Filter;
+    samplerInfo.minFilter       = Filter;
     samplerInfo.mipmapMode      = VK_SAMPLER_MIPMAP_MODE_NEAREST;
     samplerInfo.mipmapLodBias   = 0.0f;
     samplerInfo.mipmapLodMin    = 0.0f;
     samplerInfo.mipmapLodMax    = 0.0f;
     samplerInfo.useAnisotropy   = VK_FALSE;
     samplerInfo.maxAnisotropy   = 1.0f;
-    samplerInfo.addressModeU    = addressMode;
-    samplerInfo.addressModeV    = addressMode;
-    samplerInfo.addressModeW    = addressMode;
+    samplerInfo.addressModeU    = AddressMode;
+    samplerInfo.addressModeV    = AddressMode;
+    samplerInfo.addressModeW    = AddressMode;
     samplerInfo.compareToDepth  = VK_FALSE;
     samplerInfo.compareOp       = VK_COMPARE_OP_ALWAYS;
     samplerInfo.borderColor     = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
@@ -385,7 +383,7 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkBuffer> DxgiPresenter::createGammaUbo() {
+  Rc<DxvkBuffer> DxgiVkPresenter::CreateGammaUbo() {
     DxvkBufferCreateInfo info;
     info.size         = sizeof(DXGI_VK_GAMMA_INPUT_CONTROL);
     info.usage        = VK_BUFFER_USAGE_TRANSFER_DST_BIT
@@ -398,7 +396,7 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkImage> DxgiPresenter::createGammaTexture() {
+  Rc<DxvkImage> DxgiVkPresenter::CreateGammaTexture() {
     DxvkImageCreateInfo info;
     info.type         = VK_IMAGE_TYPE_1D;
     info.format       = VK_FORMAT_R16G16B16A16_UNORM;
@@ -419,7 +417,7 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkImageView> DxgiPresenter::createGammaTextureView() {
+  Rc<DxvkImageView> DxgiVkPresenter::CreateGammaTextureView() {
     DxvkImageViewCreateInfo info;
     info.type         = VK_IMAGE_VIEW_TYPE_1D;
     info.format       = VK_FORMAT_R16G16B16A16_UNORM;
@@ -432,7 +430,7 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkShader> DxgiPresenter::createVertexShader() {
+  Rc<DxvkShader> DxgiVkPresenter::CreateVertexShader() {
     const SpirvCodeBuffer codeBuffer(dxgi_presenter_vert);
     
     return m_device->createShader(
@@ -442,7 +440,7 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkShader> DxgiPresenter::createFragmentShader() {
+  Rc<DxvkShader> DxgiVkPresenter::CreateFragmentShader() {
     const SpirvCodeBuffer codeBuffer(dxgi_presenter_frag);
     
     // Shader resource slots

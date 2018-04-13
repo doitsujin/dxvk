@@ -199,14 +199,14 @@ namespace dxvk {
       // Vulkan swap chain itself remains valid.
       DxvkSwapchainProperties swapchainProps;
       swapchainProps.preferredSurfaceFormat
-        = m_presenter->pickSurfaceFormat(m_desc.BufferDesc.Format);
+        = m_presenter->PickSurfaceFormat(m_desc.BufferDesc.Format);
       swapchainProps.preferredPresentMode = SyncInterval == 0
-        ? m_presenter->pickPresentMode(VK_PRESENT_MODE_IMMEDIATE_KHR)
-        : m_presenter->pickPresentMode(VK_PRESENT_MODE_FIFO_KHR);
+        ? m_presenter->PickPresentMode(VK_PRESENT_MODE_IMMEDIATE_KHR)
+        : m_presenter->PickPresentMode(VK_PRESENT_MODE_FIFO_KHR);
       swapchainProps.preferredBufferSize = GetWindowSize();
       
-      m_presenter->recreateSwapchain(swapchainProps);
-      m_presenter->presentImage();
+      m_presenter->RecreateSwapchain(&swapchainProps);
+      m_presenter->PresentImage();
       return S_OK;
     } catch (const DxvkError& err) {
       Logger::err(err.message());
@@ -301,7 +301,7 @@ namespace dxvk {
       curve.ControlPoints[i].A = 0;
     }
     
-    m_presenter->setGammaControl(&control, &curve);
+    m_presenter->SetGammaControl(&control, &curve);
     return S_OK;
   }
   
@@ -321,14 +321,14 @@ namespace dxvk {
       curve.ControlPoints[i] = { value, value, value, 0 };
     }
     
-    m_presenter->setGammaControl(&control, &curve);
+    m_presenter->SetGammaControl(&control, &curve);
     return S_OK;
   }
   
   
   HRESULT DxgiSwapChain::CreatePresenter() {
     try {
-      m_presenter = new DxgiPresenter(
+      m_presenter = new DxgiVkPresenter(
         m_device->GetDXVKDevice(),
         m_desc.OutputWindow);
       return S_OK;
@@ -357,7 +357,7 @@ namespace dxvk {
     }
     
     try {
-      m_presenter->updateBackBuffer(m_backBuffer->GetDXVKImage());
+      m_presenter->UpdateBackBuffer(m_backBuffer->GetDXVKImage());
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());

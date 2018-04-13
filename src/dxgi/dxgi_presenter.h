@@ -84,27 +84,26 @@ namespace dxvk {
    * \ref DxgiSwapChain to the Vulkan
    * swap chain.
    */
-  class DxgiPresenter : public RcObject {
+  class DxgiVkPresenter : public RcObject {
     
   public:
     
-    DxgiPresenter(
+    DxgiVkPresenter(
       const Rc<DxvkDevice>&         device,
             HWND                    window);
     
-    ~DxgiPresenter();
+    ~DxgiVkPresenter();
       
     /**
      * \brief Initializes back buffer image
      * \param [in] image Back buffer image
      */
-    void initBackBuffer(
-      const Rc<DxvkImage>& image);
+    void InitBackBuffer(const Rc<DxvkImage>& Image);
     
     /**
      * \brief Renders back buffer to the screen
      */
-    void presentImage();
+    void PresentImage();
     
     /**
      * \brief Sets new back buffer
@@ -113,8 +112,7 @@ namespace dxvk {
      * the back buffer image was replaced.
      * \param [in] image Back buffer image
      */
-    void updateBackBuffer(
-      const Rc<DxvkImage>& image);
+    void UpdateBackBuffer(const Rc<DxvkImage>& Image);
     
     /**
      * \brief Recreats Vulkan swap chain
@@ -124,8 +122,8 @@ namespace dxvk {
      * properties have changed, this is a no-op.
      * \param [in] options New swap chain options
      */
-    void recreateSwapchain(
-      const DxvkSwapchainProperties& options);
+    void RecreateSwapchain(
+      const DxvkSwapchainProperties* pOptions);
     
     /**
      * \brief Picks a surface format based on a DXGI format
@@ -135,7 +133,7 @@ namespace dxvk {
      * \param [in] fmt The DXGI format
      * \returns The Vulkan format
      */
-    VkSurfaceFormatKHR pickSurfaceFormat(DXGI_FORMAT fmt) const;
+    VkSurfaceFormatKHR PickSurfaceFormat(DXGI_FORMAT Fmt) const;
     
     /**
      * \brief Picks a supported present mode
@@ -143,7 +141,7 @@ namespace dxvk {
      * \param [in] preferred Preferred present mode
      * \returns An actually supported present mode
      */
-    VkPresentModeKHR pickPresentMode(VkPresentModeKHR preferred) const;
+    VkPresentModeKHR PickPresentMode(VkPresentModeKHR Preferred) const;
     
     /**
      * \brief Sets gamma curve
@@ -152,7 +150,7 @@ namespace dxvk {
      * \param [in] pGammaControl Input parameters
      * \param [in] pGammaCurve Gamma curve
      */
-    void setGammaControl(
+    void SetGammaControl(
       const DXGI_VK_GAMMA_INPUT_CONTROL*  pGammaControl,
       const DXGI_VK_GAMMA_CURVE*          pGammaCurve);
     
@@ -189,16 +187,16 @@ namespace dxvk {
     DxvkBlendMode           m_blendMode;
     DxvkSwapchainProperties m_options;
     
-    Rc<DxvkSampler> createSampler(
-            VkFilter              filter,
-            VkSamplerAddressMode  addressMode);
+    Rc<DxvkSampler> CreateSampler(
+            VkFilter              Filter,
+            VkSamplerAddressMode  AddressMode);
     
-    Rc<DxvkBuffer>    createGammaUbo();
-    Rc<DxvkImage>     createGammaTexture();
-    Rc<DxvkImageView> createGammaTextureView();
+    Rc<DxvkBuffer>    CreateGammaUbo();
+    Rc<DxvkImage>     CreateGammaTexture();
+    Rc<DxvkImageView> CreateGammaTextureView();
     
-    Rc<DxvkShader> createVertexShader();
-    Rc<DxvkShader> createFragmentShader();
+    Rc<DxvkShader> CreateVertexShader();
+    Rc<DxvkShader> CreateFragmentShader();
     
   };
   
