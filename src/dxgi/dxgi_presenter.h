@@ -12,24 +12,70 @@
 
 namespace dxvk {
   
+  constexpr uint32_t DXGI_VK_GAMMA_CP_COUNT = 1024;
+  
   /**
-   * \brief Gamma ramp
+   * \brief Gamma control point
    * 
-   * Structure that can be used to set the gamma
-   * ramp of a swap chain. This is the same data
-   * structure that is used by the fragment shader.
+   * Control points are stored as normalized
+   * 16-bit unsigned integer values that will
+   * be converted back to floats in the shader.
    */
-  struct DxgiPresenterGammaRamp {
-    constexpr static uint32_t CpCount = 1025;
-    
-    float in_factor[4];
-    float in_offset[4];
-    float cp_values[4 * CpCount];
-    
-    static float cpLocation(uint32_t cp) {
-      return float(cp) / float(CpCount - 1);
-    }
+  struct DXGI_VK_GAMMA_CP {
+    uint16_t R, G, B, A;
   };
+  
+  /**
+   * \brief Gamma curve
+   * 
+   * A collection of control points that
+   * will be uploaded to the gamma texture.
+   */
+  struct DXGI_VK_GAMMA_CURVE {
+    DXGI_VK_GAMMA_CP ControlPoints[DXGI_VK_GAMMA_CP_COUNT];
+  };
+  
+  /**
+   * \brief Gamma input color
+   * A floating-point color vector.
+   */
+  struct DXGI_VK_GAMMA_INPUT_COLOR {
+    float R, G, B, A;
+  };
+  
+  /**
+   * \brief Gamma input control
+   * 
+   * Stores a scaling factor and a bias that shall
+   * be applied to the input color before performing
+   * the gamma lookup in the fragment shader.
+   */
+  struct DXGI_VK_GAMMA_INPUT_CONTROL {
+    DXGI_VK_GAMMA_INPUT_COLOR Factor;
+    DXGI_VK_GAMMA_INPUT_COLOR Offset;
+  };
+  
+  /**
+   * \brief Maps color value to normalized integer
+   * 
+   * \param [in] x Input value, as floating point
+   * \returns Corresponding normalized integer
+   */
+  inline uint16_t MapGammaControlPoint(float x) {
+    if (x < 0.0f) x = 0.0f;
+    if (x > 1.0f) x = 1.0f;
+    return uint16_t(65535.0f * x);
+  }
+  
+  /**
+   * \brief Computes gamma control point location
+   * 
+   * \param [in] CpIndex Control point ID
+   * \returns Location of the control point
+   */
+  inline float GammaControlPointLocation(uint32_t CpIndex) {
+    return float(CpIndex) / float(DXGI_VK_GAMMA_CP_COUNT - 1);
+  }
   
   /**
    * \brief DXGI presenter
@@ -100,38 +146,56 @@ namespace dxvk {
     VkPresentModeKHR pickPresentMode(VkPresentModeKHR preferred) const;
     
     /**
-     * \brief Sets gamma ramp
-     * \param [in] data Gamma data
+     * \brief Sets gamma curve
+     * 
+     * Updates the gamma lookup texture.
+     * \param [in] pGammaControl Input parameters
+     * \param [in] pGammaCurve Gamma curve
      */
-    void setGammaRamp(const DxgiPresenterGammaRamp& data);
+    void setGammaControl(
+      const DXGI_VK_GAMMA_INPUT_CONTROL*  pGammaControl,
+      const DXGI_VK_GAMMA_CURVE*          pGammaCurve);
     
   private:
     
     enum BindingIds : uint32_t {
       Sampler   = 0,
       Texture   = 1,
-      GammaUbo  = 2,
+      GammaSmp  = 2,
+      GammaTex  = 3,
+      GammaUbo  = 4,
     };
     
-    Rc<DxvkDevice>      m_device;
-    Rc<DxvkContext>     m_context;
+    Rc<DxvkDevice>          m_device;
+    Rc<DxvkContext>         m_context;
     
-    Rc<DxvkSurface>     m_surface;
-    Rc<DxvkSwapchain>   m_swapchain;
+    Rc<DxvkSurface>         m_surface;
+    Rc<DxvkSwapchain>       m_swapchain;
     
-    Rc<DxvkBuffer>      m_gammaBuffer;
+    Rc<DxvkSampler>         m_samplerFitting;
+    Rc<DxvkSampler>         m_samplerScaling;
     
-    Rc<DxvkSampler>     m_samplerFitting;
-    Rc<DxvkSampler>     m_samplerScaling;
+    Rc<DxvkImage>           m_backBuffer;
+    Rc<DxvkImage>           m_backBufferResolve;
+    Rc<DxvkImageView>       m_backBufferView;
     
-    Rc<DxvkImage>       m_backBuffer;
-    Rc<DxvkImage>       m_backBufferResolve;
-    Rc<DxvkImageView>   m_backBufferView;
+    Rc<DxvkBuffer>          m_gammaUbo;
+    Rc<DxvkSampler>         m_gammaSampler;
+    Rc<DxvkImage>           m_gammaTexture;
+    Rc<DxvkImageView>       m_gammaTextureView;
     
-    Rc<hud::Hud>        m_hud;
+    Rc<hud::Hud>            m_hud;
     
     DxvkBlendMode           m_blendMode;
     DxvkSwapchainProperties m_options;
+    
+    Rc<DxvkSampler> createSampler(
+            VkFilter              filter,
+            VkSamplerAddressMode  addressMode);
+    
+    Rc<DxvkBuffer>    createGammaUbo();
+    Rc<DxvkImage>     createGammaTexture();
+    Rc<DxvkImageView> createGammaTextureView();
     
     Rc<DxvkShader> createVertexShader();
     Rc<DxvkShader> createFragmentShader();

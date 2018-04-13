@@ -281,47 +281,27 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiSwapChain::GetGammaControl(DXGI_GAMMA_CONTROL* pGammaControl) {
-    std::lock_guard<std::recursive_mutex> lock(m_mutex);
-    
-    pGammaControl->Scale = {
-      m_gammaControl.in_factor[0],
-      m_gammaControl.in_factor[1],
-      m_gammaControl.in_factor[2] };
-    
-    pGammaControl->Offset = {
-      m_gammaControl.in_offset[0],
-      m_gammaControl.in_offset[1],
-      m_gammaControl.in_offset[2] };
-    
-    for (uint32_t i = 0; i < DxgiPresenterGammaRamp::CpCount; i++) {
-      pGammaControl->GammaCurve[i] = {
-        m_gammaControl.cp_values[4 * i + 0],
-        m_gammaControl.cp_values[4 * i + 1],
-        m_gammaControl.cp_values[4 * i + 2] };
-    }
-    
-    return S_OK;
-  }
-  
-  
   HRESULT DxgiSwapChain::SetGammaControl(const DXGI_GAMMA_CONTROL* pGammaControl) {
     std::lock_guard<std::recursive_mutex> lock(m_mutex);
-    m_gammaControl.in_factor[0] = pGammaControl->Scale.Red;
-    m_gammaControl.in_factor[1] = pGammaControl->Scale.Green;
-    m_gammaControl.in_factor[2] = pGammaControl->Scale.Blue;
     
-    m_gammaControl.in_offset[0] = pGammaControl->Offset.Red;
-    m_gammaControl.in_offset[1] = pGammaControl->Offset.Green;
-    m_gammaControl.in_offset[2] = pGammaControl->Offset.Blue;
+    const DXGI_RGB Factor = pGammaControl->Scale;
+    const DXGI_RGB Offset = pGammaControl->Offset;
     
-    for (uint32_t i = 0; i < DxgiPresenterGammaRamp::CpCount; i++) {
-      m_gammaControl.cp_values[4 * i + 0] = pGammaControl->GammaCurve[i].Red;
-      m_gammaControl.cp_values[4 * i + 1] = pGammaControl->GammaCurve[i].Green;
-      m_gammaControl.cp_values[4 * i + 2] = pGammaControl->GammaCurve[i].Blue;
+    DXGI_VK_GAMMA_INPUT_CONTROL control;
+    control.Factor = { Factor.Red, Factor.Green, Factor.Blue, 1.0f };
+    control.Offset = { Offset.Red, Offset.Green, Offset.Blue, 0.0f };
+    
+    DXGI_VK_GAMMA_CURVE curve;
+    
+    for (uint32_t i = 0; i < DXGI_VK_GAMMA_CP_COUNT; i++) {
+      const DXGI_RGB cp = pGammaControl->GammaCurve[i];
+      curve.ControlPoints[i].R = MapGammaControlPoint(cp.Red);
+      curve.ControlPoints[i].G = MapGammaControlPoint(cp.Green);
+      curve.ControlPoints[i].B = MapGammaControlPoint(cp.Blue);
+      curve.ControlPoints[i].A = 0;
     }
     
-    m_presenter->setGammaRamp(m_gammaControl);
+    m_presenter->setGammaControl(&control, &curve);
     return S_OK;
   }
   
@@ -329,21 +309,19 @@ namespace dxvk {
   HRESULT DxgiSwapChain::SetDefaultGammaControl() {
     std::lock_guard<std::recursive_mutex> lock(m_mutex);
     
-    for (uint32_t i = 0; i < 4; i++) {
-      m_gammaControl.in_factor[i] = 1.0f;
-      m_gammaControl.in_offset[i] = 0.0f;
+    DXGI_VK_GAMMA_INPUT_CONTROL control;
+    control.Factor = { 1.0f, 1.0f, 1.0f, 1.0f };
+    control.Offset = { 0.0f, 0.0f, 0.0f, 0.0f };
+    
+    DXGI_VK_GAMMA_CURVE curve;
+    
+    for (uint32_t i = 0; i < DXGI_VK_GAMMA_CP_COUNT; i++) {
+      const uint16_t value = MapGammaControlPoint(
+        float(i) / float(DXGI_VK_GAMMA_CP_COUNT - 1));
+      curve.ControlPoints[i] = { value, value, value, 0 };
     }
     
-    for (uint32_t i = 0; i < DxgiPresenterGammaRamp::CpCount; i++) {
-      const float value = DxgiPresenterGammaRamp::cpLocation(i);
-      
-      m_gammaControl.cp_values[4 * i + 0] = value;
-      m_gammaControl.cp_values[4 * i + 1] = value;
-      m_gammaControl.cp_values[4 * i + 2] = value;
-      m_gammaControl.cp_values[4 * i + 3] = value;
-    }
-    
-    m_presenter->setGammaRamp(m_gammaControl);
+    m_presenter->setGammaControl(&control, &curve);
     return S_OK;
   }
   

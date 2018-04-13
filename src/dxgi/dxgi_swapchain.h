@@ -81,9 +81,6 @@ namespace dxvk {
             BOOL        Fullscreen,
             IDXGIOutput *pTarget) final;
     
-    HRESULT GetGammaControl(
-            DXGI_GAMMA_CONTROL* pGammaControl);
-    
     HRESULT SetGammaControl(
       const DXGI_GAMMA_CONTROL* pGammaControl);
     
@@ -112,8 +109,6 @@ namespace dxvk {
     
     HMONITOR                        m_monitor;
     WindowState                     m_windowState;
-    
-    DxgiPresenterGammaRamp          m_gammaControl;
     
     HRESULT CreatePresenter();
     HRESULT CreateBackBuffer();

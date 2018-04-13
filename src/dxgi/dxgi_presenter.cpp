@@ -25,40 +25,19 @@ namespace dxvk {
     m_options.preferredPresentMode   = VK_PRESENT_MODE_FIFO_KHR;
     m_options.preferredBufferSize    = { 0u, 0u };
     
-    // Uniform buffer that stores the gamma ramp
-    DxvkBufferCreateInfo gammaBufferInfo;
-    gammaBufferInfo.size        = sizeof(DxgiPresenterGammaRamp);
-    gammaBufferInfo.usage       = VK_BUFFER_USAGE_TRANSFER_DST_BIT
-                                | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-    gammaBufferInfo.stages      = VK_PIPELINE_STAGE_TRANSFER_BIT
-                                | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    gammaBufferInfo.access      = VK_ACCESS_TRANSFER_WRITE_BIT
-                                | VK_ACCESS_SHADER_READ_BIT;
-    m_gammaBuffer = m_device->createBuffer(
-      gammaBufferInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    // Samplers for presentation. We'll create one with point sampling that will
+    // be used when the back buffer resolution matches the output resolution, and
+    // one with linar sampling that will be used when the image will be scaled.
+    m_samplerFitting = this->createSampler(VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER);
+    m_samplerScaling = this->createSampler(VK_FILTER_LINEAR,  VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER);
     
-    // Sampler for presentation
-    DxvkSamplerCreateInfo samplerInfo;
-    samplerInfo.magFilter       = VK_FILTER_NEAREST;
-    samplerInfo.minFilter       = VK_FILTER_NEAREST;
-    samplerInfo.mipmapMode      = VK_SAMPLER_MIPMAP_MODE_NEAREST;
-    samplerInfo.mipmapLodBias   = 0.0f;
-    samplerInfo.mipmapLodMin    = 0.0f;
-    samplerInfo.mipmapLodMax    = 0.0f;
-    samplerInfo.useAnisotropy   = VK_FALSE;
-    samplerInfo.maxAnisotropy   = 1.0f;
-    samplerInfo.addressModeU    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-    samplerInfo.addressModeV    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-    samplerInfo.addressModeW    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-    samplerInfo.compareToDepth  = VK_FALSE;
-    samplerInfo.compareOp       = VK_COMPARE_OP_ALWAYS;
-    samplerInfo.borderColor     = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
-    samplerInfo.usePixelCoord   = VK_FALSE;
-    m_samplerFitting = m_device->createSampler(samplerInfo);
-    
-    samplerInfo.magFilter       = VK_FILTER_LINEAR;
-    samplerInfo.minFilter       = VK_FILTER_LINEAR;
-    m_samplerScaling = m_device->createSampler(samplerInfo);
+    // Create objects required for the gamma ramp. This is implemented partially
+    // with an UBO, which stores global parameters, and a lookup texture, which
+    // stores the actual gamma ramp and can be sampled with a linear filter.
+    m_gammaUbo          = this->createGammaUbo();
+    m_gammaSampler      = this->createSampler(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+    m_gammaTexture      = this->createGammaTexture();
+    m_gammaTextureView  = this->createGammaTextureView();
     
     // Set up context state. The shader bindings and the
     // constant state objects will never be modified.
@@ -223,7 +202,9 @@ namespace dxvk {
     m_context->bindResourceView(BindingIds::Texture, m_backBufferView, nullptr);
     m_context->draw(4, 1, 0, 0);
     
-    m_context->bindResourceBuffer(BindingIds::GammaUbo, DxvkBufferSlice(m_gammaBuffer));
+    m_context->bindResourceSampler(BindingIds::GammaSmp, m_gammaSampler);
+    m_context->bindResourceView   (BindingIds::GammaTex, m_gammaTextureView, nullptr);
+    m_context->bindResourceBuffer (BindingIds::GammaUbo, DxvkBufferSlice(m_gammaUbo));
     
     if (m_hud != nullptr) {
       m_blendMode.enableBlending = VK_TRUE;
@@ -359,17 +340,95 @@ namespace dxvk {
   }
   
   
-  void DxgiPresenter::setGammaRamp(const DxgiPresenterGammaRamp& data) {
+  void DxgiPresenter::setGammaControl(
+    const DXGI_VK_GAMMA_INPUT_CONTROL*  pGammaControl,
+    const DXGI_VK_GAMMA_CURVE*          pGammaCurve) {
     m_context->beginRecording(
       m_device->createCommandList());
     
-    m_context->updateBuffer(m_gammaBuffer,
-      0, sizeof(DxgiPresenterGammaRamp),
-      &data);
+    m_context->updateBuffer(m_gammaUbo,
+      0, sizeof(DXGI_VK_GAMMA_INPUT_CONTROL),
+      pGammaControl);
+    
+    m_context->updateImage(m_gammaTexture,
+      VkImageSubresourceLayers { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
+      VkOffset3D { 0, 0, 0 },
+      VkExtent3D { DXGI_VK_GAMMA_CP_COUNT, 1, 1 },
+      pGammaCurve, 0, 0);
     
     m_device->submitCommandList(
       m_context->endRecording(),
       nullptr, nullptr);
+  }
+  
+  
+  Rc<DxvkSampler> DxgiPresenter::createSampler(
+          VkFilter              filter,
+          VkSamplerAddressMode  addressMode) {
+    DxvkSamplerCreateInfo samplerInfo;
+    samplerInfo.magFilter       = filter;
+    samplerInfo.minFilter       = filter;
+    samplerInfo.mipmapMode      = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    samplerInfo.mipmapLodBias   = 0.0f;
+    samplerInfo.mipmapLodMin    = 0.0f;
+    samplerInfo.mipmapLodMax    = 0.0f;
+    samplerInfo.useAnisotropy   = VK_FALSE;
+    samplerInfo.maxAnisotropy   = 1.0f;
+    samplerInfo.addressModeU    = addressMode;
+    samplerInfo.addressModeV    = addressMode;
+    samplerInfo.addressModeW    = addressMode;
+    samplerInfo.compareToDepth  = VK_FALSE;
+    samplerInfo.compareOp       = VK_COMPARE_OP_ALWAYS;
+    samplerInfo.borderColor     = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+    samplerInfo.usePixelCoord   = VK_FALSE;
+    return m_device->createSampler(samplerInfo);
+  }
+  
+  
+  Rc<DxvkBuffer> DxgiPresenter::createGammaUbo() {
+    DxvkBufferCreateInfo info;
+    info.size         = sizeof(DXGI_VK_GAMMA_INPUT_CONTROL);
+    info.usage        = VK_BUFFER_USAGE_TRANSFER_DST_BIT
+                      | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    info.stages       = VK_PIPELINE_STAGE_TRANSFER_BIT
+                      | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    info.access       = VK_ACCESS_TRANSFER_WRITE_BIT
+                      | VK_ACCESS_SHADER_READ_BIT;
+    return m_device->createBuffer(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+  }
+  
+  
+  Rc<DxvkImage> DxgiPresenter::createGammaTexture() {
+    DxvkImageCreateInfo info;
+    info.type         = VK_IMAGE_TYPE_1D;
+    info.format       = VK_FORMAT_R16G16B16A16_UNORM;
+    info.flags        = 0;
+    info.sampleCount  = VK_SAMPLE_COUNT_1_BIT;
+    info.extent       = { DXGI_VK_GAMMA_CP_COUNT, 1, 1 };
+    info.numLayers    = 1;
+    info.mipLevels    = 1;
+    info.usage        = VK_IMAGE_USAGE_TRANSFER_DST_BIT
+                      | VK_IMAGE_USAGE_SAMPLED_BIT;
+    info.stages       = VK_PIPELINE_STAGE_TRANSFER_BIT
+                      | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    info.access       = VK_ACCESS_TRANSFER_WRITE_BIT
+                      | VK_ACCESS_SHADER_READ_BIT;
+    info.tiling       = VK_IMAGE_TILING_OPTIMAL;
+    info.layout       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    return m_device->createImage(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+  }
+  
+  
+  Rc<DxvkImageView> DxgiPresenter::createGammaTextureView() {
+    DxvkImageViewCreateInfo info;
+    info.type         = VK_IMAGE_VIEW_TYPE_1D;
+    info.format       = VK_FORMAT_R16G16B16A16_UNORM;
+    info.aspect       = VK_IMAGE_ASPECT_COLOR_BIT;
+    info.minLevel     = 0;
+    info.numLevels    = 1;
+    info.minLayer     = 0;
+    info.numLayers    = 1;
+    return m_device->createImageView(m_gammaTexture, info);
   }
   
   
@@ -387,9 +446,11 @@ namespace dxvk {
     const SpirvCodeBuffer codeBuffer(dxgi_presenter_frag);
     
     // Shader resource slots
-    const std::array<DxvkResourceSlot, 3> resourceSlots = {{
+    const std::array<DxvkResourceSlot, 5> resourceSlots = {{
       { BindingIds::Sampler,  VK_DESCRIPTOR_TYPE_SAMPLER,        VK_IMAGE_VIEW_TYPE_MAX_ENUM },
       { BindingIds::Texture,  VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  VK_IMAGE_VIEW_TYPE_2D       },
+      { BindingIds::GammaSmp, VK_DESCRIPTOR_TYPE_SAMPLER,        VK_IMAGE_VIEW_TYPE_MAX_ENUM },
+      { BindingIds::GammaTex, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  VK_IMAGE_VIEW_TYPE_1D       },
       { BindingIds::GammaUbo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_IMAGE_VIEW_TYPE_MAX_ENUM },
     }};
     
