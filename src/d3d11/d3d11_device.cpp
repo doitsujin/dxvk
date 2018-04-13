@@ -1417,7 +1417,7 @@ namespace dxvk {
     // D3D may legally query non-power-of-two sample counts as well
     VkSampleCountFlagBits sampleCountFlag = VK_SAMPLE_COUNT_1_BIT;
     
-    if (FAILED(GetSampleCount(SampleCount, &sampleCountFlag)))
+    if (FAILED(DecodeSampleCount(SampleCount, &sampleCountFlag)))
       return E_INVALIDARG;
     
     // Check if the device supports the given combination of format

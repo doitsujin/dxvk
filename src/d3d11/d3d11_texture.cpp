@@ -28,8 +28,7 @@ namespace dxvk {
     imageInfo.tiling         = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.layout         = VK_IMAGE_LAYOUT_GENERAL;
     
-    if (FAILED(GetSampleCount(m_desc.SampleDesc.Count, &imageInfo.sampleCount)))
-      throw DxvkError(str::format("D3D11: Invalid sample count: ", m_desc.SampleDesc.Count));
+    DecodeSampleCount(m_desc.SampleDesc.Count, &imageInfo.sampleCount);
     
     // Adjust image flags based on the corresponding D3D flags
     if (m_desc.BindFlags & D3D11_BIND_SHADER_RESOURCE) {
@@ -154,7 +153,12 @@ namespace dxvk {
   
   
   HRESULT D3D11CommonTexture::NormalizeTextureProperties(D3D11_COMMON_TEXTURE_DESC* pDesc) {
-    uint32_t maxMipLevelCount = pDesc->SampleDesc.Count <= 1
+    if (FAILED(DecodeSampleCount(pDesc->SampleDesc.Count, nullptr)))
+      return E_INVALIDARG;
+    
+    // Use the maximum possible mip level count if the supplied
+    // mip level count is either unspecified (0) or invalid
+    const uint32_t maxMipLevelCount = pDesc->SampleDesc.Count <= 1
       ? util::computeMipLevelCount({ pDesc->Width, pDesc->Height, pDesc->Depth })
       : 1u;
     

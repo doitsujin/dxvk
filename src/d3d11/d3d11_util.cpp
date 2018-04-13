@@ -2,16 +2,22 @@
 
 namespace dxvk {
   
-  HRESULT GetSampleCount(UINT Count, VkSampleCountFlagBits* pCount) {
+  HRESULT DecodeSampleCount(UINT Count, VkSampleCountFlagBits* pCount) {
+    VkSampleCountFlagBits flag;
+    
     switch (Count) {
-      case  1: *pCount = VK_SAMPLE_COUNT_1_BIT;  return S_OK;
-      case  2: *pCount = VK_SAMPLE_COUNT_2_BIT;  return S_OK;
-      case  4: *pCount = VK_SAMPLE_COUNT_4_BIT;  return S_OK;
-      case  8: *pCount = VK_SAMPLE_COUNT_8_BIT;  return S_OK;
-      case 16: *pCount = VK_SAMPLE_COUNT_16_BIT; return S_OK;
+      case  1: flag = VK_SAMPLE_COUNT_1_BIT;  break;
+      case  2: flag = VK_SAMPLE_COUNT_2_BIT;  break;
+      case  4: flag = VK_SAMPLE_COUNT_4_BIT;  break;
+      case  8: flag = VK_SAMPLE_COUNT_8_BIT;  break;
+      case 16: flag = VK_SAMPLE_COUNT_16_BIT; break;
+      default: return E_INVALIDARG;
     }
     
-    return E_INVALIDARG;
+    if (pCount != nullptr) {
+      *pCount = flag;
+      return S_OK;
+    } return S_FALSE;
   }
   
   

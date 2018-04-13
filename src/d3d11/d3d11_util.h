@@ -8,7 +8,7 @@
 
 namespace dxvk {
   
-  HRESULT GetSampleCount(
+  HRESULT DecodeSampleCount(
           UINT                      Count,
           VkSampleCountFlagBits*    pCount);
     
