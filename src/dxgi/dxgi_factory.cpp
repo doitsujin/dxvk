@@ -33,9 +33,7 @@ namespace dxvk {
   }
   
   
-  HRESULT STDMETHODCALLTYPE DxgiFactory::GetParent(
-          REFIID  riid,
-          void**  ppParent) {
+  HRESULT STDMETHODCALLTYPE DxgiFactory::GetParent(REFIID riid, void** ppParent) {
     InitReturnPtr(ppParent);
     
     Logger::warn("DxgiFactory::GetParent: Unknown interface query");
@@ -51,7 +49,7 @@ namespace dxvk {
     if (ppAdapter == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
-    Logger::err("DxgiFactory::CreateSoftwareAdapter: Software adapters not supported");
+    Logger::err("DXGI: CreateSoftwareAdapter: Software adapters not supported");
     return DXGI_ERROR_UNSUPPORTED;
   }
   
@@ -120,7 +118,7 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE DxgiFactory::MakeWindowAssociation(HWND WindowHandle, UINT Flags) {
-    Logger::warn("DxgiFactory::MakeWindowAssociation: Ignoring flags");
+    Logger::warn("DXGI: MakeWindowAssociation: Ignoring flags");
     m_associatedWindow = WindowHandle;
     return S_OK;
   }

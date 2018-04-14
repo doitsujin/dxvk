@@ -30,35 +30,35 @@ namespace dxvk {
     ~DxgiOutput();
     
     HRESULT STDMETHODCALLTYPE QueryInterface(
-            REFIID riid,
-            void **ppvObject) final;
+            REFIID                riid,
+            void**                ppvObject) final;
     
     HRESULT STDMETHODCALLTYPE GetParent(
-            REFIID riid,
-            void   **ppParent) final;
+            REFIID                riid,
+            void**                ppParent) final;
     
     HRESULT STDMETHODCALLTYPE FindClosestMatchingMode(
-      const DXGI_MODE_DESC *pModeToMatch,
-            DXGI_MODE_DESC *pClosestMatch,
-            IUnknown       *pConcernedDevice) final;
+      const DXGI_MODE_DESC*       pModeToMatch,
+            DXGI_MODE_DESC*       pClosestMatch,
+            IUnknown*             pConcernedDevice) final;
     
     HRESULT STDMETHODCALLTYPE GetDesc(
-            DXGI_OUTPUT_DESC *pDesc) final;
+            DXGI_OUTPUT_DESC*     pDesc) final;
     
     HRESULT STDMETHODCALLTYPE GetDisplayModeList(
-            DXGI_FORMAT    EnumFormat,
-            UINT           Flags,
-            UINT           *pNumModes,
-            DXGI_MODE_DESC *pDesc) final;
+            DXGI_FORMAT           EnumFormat,
+            UINT                  Flags,
+            UINT*                 pNumModes,
+            DXGI_MODE_DESC*       pDesc) final;
     
     HRESULT STDMETHODCALLTYPE GetDisplaySurfaceData(
-            IDXGISurface *pDestination) final;
+            IDXGISurface*         pDestination) final;
     
     HRESULT STDMETHODCALLTYPE GetFrameStatistics(
-            DXGI_FRAME_STATISTICS *pStats) final;
+            DXGI_FRAME_STATISTICS* pStats) final;
     
     HRESULT STDMETHODCALLTYPE GetGammaControl(
-            DXGI_GAMMA_CONTROL *pArray) final;    
+            DXGI_GAMMA_CONTROL*   pArray) final;    
     
     HRESULT STDMETHODCALLTYPE GetGammaControlCapabilities(
             DXGI_GAMMA_CONTROL_CAPABILITIES *pGammaCaps) final;
@@ -66,14 +66,14 @@ namespace dxvk {
     void STDMETHODCALLTYPE ReleaseOwnership() final;
     
     HRESULT STDMETHODCALLTYPE SetDisplaySurface(
-            IDXGISurface *pScanoutSurface) final;
+            IDXGISurface*         pScanoutSurface) final;
     
     HRESULT STDMETHODCALLTYPE SetGammaControl(
-      const DXGI_GAMMA_CONTROL *pArray) final;
+      const DXGI_GAMMA_CONTROL*   pArray) final;
     
     HRESULT STDMETHODCALLTYPE TakeOwnership(
-            IUnknown *pDevice,
-            BOOL     Exclusive) final;
+            IUnknown*             pDevice,
+            BOOL                  Exclusive) final;
     
     HRESULT STDMETHODCALLTYPE WaitForVBlank() final;
     

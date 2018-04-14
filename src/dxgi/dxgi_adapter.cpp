@@ -52,7 +52,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiAdapter::CheckInterfaceSupport(
           REFGUID                   InterfaceName,
           LARGE_INTEGER*            pUMDVersion) {
-    Logger::err("DxgiAdapter::CheckInterfaceSupport: No D3D10 support");
+    Logger::err("DXGI: CheckInterfaceSupport: No D3D10 support");
     return DXGI_ERROR_UNSUPPORTED;
   }
   

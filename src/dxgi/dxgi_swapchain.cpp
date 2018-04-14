@@ -17,7 +17,7 @@ namespace dxvk {
     // communicate with the underlying D3D device
     if (FAILED(pDevice->QueryInterface(__uuidof(IDXGIVkPresenter),
         reinterpret_cast<void**>(&m_presentDevice))))
-      throw DxvkError("DxgiSwapChain::DxgiSwapChain: Invalid device");
+      throw DxvkError("DXGI: DxgiSwapChain: Invalid device");
     
     // Retrieve the adapter, which is going
     // to be used to enumerate displays.
@@ -25,10 +25,10 @@ namespace dxvk {
     Com<IDXGIAdapter> adapter;
     
     if (FAILED(pDevice->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&device))))
-      throw DxvkError("DxgiSwapChain::DxgiSwapChain: Invalid device");
+      throw DxvkError("DXGI: DxgiSwapChain: Invalid device");
     
     if (FAILED(device->GetAdapter(&adapter)))
-      throw DxvkError("DxgiSwapChain::DxgiSwapChain: Failed to retrieve adapter");
+      throw DxvkError("DXGI: DxgiSwapChain: Failed to retrieve adapter");
     
     m_device  = static_cast<DxgiDevice*>(device.ptr());
     m_adapter = static_cast<DxgiAdapter*>(adapter.ptr());
@@ -49,13 +49,13 @@ namespace dxvk {
     
     // Set initial window mode and fullscreen state
     if (!pDesc->Windowed && FAILED(EnterFullscreenMode(nullptr)))
-      throw DxvkError("DxgiSwapChain: Failed to set initial fullscreen state");
+      throw DxvkError("DXGI: DxgiSwapChain: Failed to set initial fullscreen state");
     
     if (FAILED(CreatePresenter()) || FAILED(CreateBackBuffer()))
-      throw DxvkError("DxgiSwapChain: Failed to create presenter or back buffer");
+      throw DxvkError("DXGI: DxgiSwapChain: Failed to create presenter or back buffer");
     
     if (FAILED(SetDefaultGammaControl()))
-      throw DxvkError("DxgiSwapChain: Failed to set up gamma ramp");
+      throw DxvkError("DXGI: DxgiSwapChain: Failed to set up gamma ramp");
   }
   
   
@@ -344,7 +344,7 @@ namespace dxvk {
     VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT;
     
     if (FAILED(GetSampleCount(m_desc.SampleDesc.Count, &sampleCount))) {
-      Logger::err("DxgiSwapChain: Invalid sample count");
+      Logger::err("DXGI: CreateBackBuffer: Invalid sample count");
       return E_INVALIDARG;
     }
     
@@ -352,7 +352,7 @@ namespace dxvk {
     m_backBuffer = nullptr;
     
     if (FAILED(m_presentDevice->CreateSwapChainBackBuffer(&m_desc, &m_backBuffer))) {
-      Logger::err("DxgiSwapChain: Failed to create back buffer");
+      Logger::err("DXGI: CreateBackBuffer: Failed to create back buffer");
       return E_FAIL;
     }
     
@@ -377,12 +377,12 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiSwapChain::EnterFullscreenMode(IDXGIOutput *pTarget) {
+  HRESULT DxgiSwapChain::EnterFullscreenMode(IDXGIOutput* pTarget) {
     Com<IDXGIOutput> output = static_cast<DxgiOutput*>(pTarget);
     
     if (output == nullptr) {
       if (FAILED(GetContainingOutput(&output))) {
-        Logger::err("DxgiSwapChain: Failed to enter fullscreen mode: Cannot query containing output");
+        Logger::err("DXGI: EnterFullscreenMode: Cannot query containing output");
         return E_FAIL;
       }
     }

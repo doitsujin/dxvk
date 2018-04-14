@@ -65,20 +65,11 @@ namespace dxvk {
     const DXGI_MODE_DESC *pModeToMatch,
           DXGI_MODE_DESC *pClosestMatch,
           IUnknown       *pConcernedDevice) {
-    if (pModeToMatch == nullptr) {
-      Logger::err("DxgiOutput::FindClosestMatchingMode: pModeToMatch is nullptr");
+    if (pModeToMatch == nullptr || pClosestMatch == nullptr)
       return DXGI_ERROR_INVALID_CALL;
-    }
-        
-    if (pClosestMatch == nullptr) {
-      Logger::err("DxgiOutput::FindClosestMatchingMode: pClosestMatch is nullptr");
-      return DXGI_ERROR_INVALID_CALL;
-    }
 
-    if (pModeToMatch->Format == DXGI_FORMAT_UNKNOWN && pConcernedDevice == nullptr) {
-      Logger::err("DxgiOutput::FindClosestMatchingMode: no pointer to device was provided for DXGI_FORMAT_UNKNOWN format");
+    if (pModeToMatch->Format == DXGI_FORMAT_UNKNOWN && pConcernedDevice == nullptr)
       return DXGI_ERROR_INVALID_CALL;
-    }
     
     // If no format was specified, fall back to a standard
     // SRGB format, which is supported on all devices.
@@ -101,7 +92,7 @@ namespace dxvk {
     GetDisplayModeList(targetFormat, DXGI_ENUM_MODES_SCALING, &modeCount, nullptr);
     
     if (modeCount == 0) {
-      Logger::err("DxgiOutput::FindClosestMatchingMode: No modes found");
+      Logger::err("DXGI: FindClosestMatchingMode: No modes found");
       return DXGI_ERROR_NOT_FOUND;
     }
 
@@ -154,7 +145,7 @@ namespace dxvk {
     monInfo.cbSize = sizeof(monInfo);
 
     if (!::GetMonitorInfoW(m_monitor, reinterpret_cast<MONITORINFO*>(&monInfo))) {
-      Logger::err("DxgiOutput: Failed to query monitor info");
+      Logger::err("DXGI: Failed to query monitor info");
       return E_FAIL;
     }
     
@@ -181,7 +172,7 @@ namespace dxvk {
     monInfo.cbSize = sizeof(monInfo);
 
     if (!::GetMonitorInfoW(m_monitor, reinterpret_cast<MONITORINFO*>(&monInfo))) {
-      Logger::err("DxgiOutput: Failed to query monitor info");
+      Logger::err("DXGI: Failed to query monitor info");
       return E_FAIL;
     }
     
@@ -246,7 +237,7 @@ namespace dxvk {
     DXGI_VK_OUTPUT_DATA outputData;
     
     if (FAILED(m_adapter->GetOutputData(m_monitor, &outputData))) {
-      Logger::err("DxgiOutput: Failed to query output data");
+      Logger::err("DXGI: Failed to query output data");
       return E_FAIL;
     }
     
@@ -259,7 +250,7 @@ namespace dxvk {
     DXGI_VK_OUTPUT_DATA outputData;
     
     if (FAILED(m_adapter->GetOutputData(m_monitor, &outputData))) {
-      Logger::err("DxgiOutput: Failed to query output data");
+      Logger::err("DXGI: Failed to query output data");
       return E_FAIL;
     }
     
@@ -295,7 +286,7 @@ namespace dxvk {
     DXGI_VK_OUTPUT_DATA outputData;
     
     if (FAILED(m_adapter->GetOutputData(m_monitor, &outputData))) {
-      Logger::err("DxgiOutput: Failed to query output data");
+      Logger::err("DXGI: Failed to query output data");
       return E_FAIL;
     }
     
@@ -303,7 +294,7 @@ namespace dxvk {
     outputData.GammaDirty = TRUE;
     
     if (FAILED(m_adapter->SetOutputData(m_monitor, &outputData))) {
-      Logger::err("DxgiOutput: Failed to query output data");
+      Logger::err("DXGI: Failed to update output data");
       return E_FAIL;
     } return S_OK;
   }

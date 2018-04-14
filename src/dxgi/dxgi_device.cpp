@@ -100,7 +100,7 @@ namespace dxvk {
     if (Priority < -7 || Priority > 7)
       return E_INVALIDARG;
     
-    Logger::err("DxgiDevice::SetGPUThreadPriority: Ignoring");
+    Logger::err("DXGI: SetGPUThreadPriority: Ignoring");
     return S_OK;
   }
   

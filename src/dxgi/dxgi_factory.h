@@ -16,16 +16,16 @@ namespace dxvk {
     ~DxgiFactory();
     
     HRESULT STDMETHODCALLTYPE QueryInterface(
-            REFIID  riid,
-            void**  ppvObject) final;
+            REFIID                riid,
+            void**                ppvObject) final;
     
     HRESULT STDMETHODCALLTYPE GetParent(
-            REFIID  riid,
-            void**  ppParent) final;
+            REFIID                riid,
+            void**                ppParent) final;
     
     HRESULT STDMETHODCALLTYPE CreateSoftwareAdapter(
-            HMODULE         Module,
-            IDXGIAdapter**  ppAdapter) final;
+            HMODULE               Module,
+            IDXGIAdapter**        ppAdapter) final;
     
     HRESULT STDMETHODCALLTYPE CreateSwapChain(
             IUnknown*             pDevice,
@@ -33,19 +33,19 @@ namespace dxvk {
             IDXGISwapChain**      ppSwapChain) final;
     
     HRESULT STDMETHODCALLTYPE EnumAdapters(
-            UINT            Adapter,
-            IDXGIAdapter**  ppAdapter) final;
+            UINT                  Adapter,
+            IDXGIAdapter**        ppAdapter) final;
     
     HRESULT STDMETHODCALLTYPE EnumAdapters1(
-            UINT            Adapter,
-            IDXGIAdapter1** ppAdapter) final;
+            UINT                  Adapter,
+            IDXGIAdapter1**       ppAdapter) final;
     
     HRESULT STDMETHODCALLTYPE GetWindowAssociation(
-            HWND *pWindowHandle) final;
+            HWND*                 pWindowHandle) final;
     
     HRESULT STDMETHODCALLTYPE MakeWindowAssociation(
-            HWND WindowHandle,
-            UINT Flags) final;
+            HWND                  WindowHandle,
+            UINT                  Flags) final;
     
     BOOL STDMETHODCALLTYPE IsCurrent();
     

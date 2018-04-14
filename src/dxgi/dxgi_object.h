@@ -12,24 +12,24 @@ namespace dxvk {
   public:
     
     HRESULT STDMETHODCALLTYPE GetPrivateData(
-            REFGUID Name,
-            UINT    *pDataSize,
-            void    *pData) final {
+            REFGUID       Name,
+            UINT*         pDataSize,
+            void*         pData) final {
       return m_privateData.getData(
         Name, pDataSize, pData);
     }
     
     HRESULT STDMETHODCALLTYPE SetPrivateData(
-            REFGUID Name,
-            UINT    DataSize,
-      const void    *pData) final {
+            REFGUID       Name,
+            UINT          DataSize,
+      const void*         pData) final {
       return m_privateData.setData(
         Name, DataSize, pData);
     }
     
     HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(
-            REFGUID  Name,
-      const IUnknown *pUnknown) final {
+            REFGUID       Name,
+      const IUnknown*     pUnknown) final {
       return m_privateData.setInterface(
         Name, pUnknown);
     }

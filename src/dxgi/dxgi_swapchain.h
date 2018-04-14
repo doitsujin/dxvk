@@ -25,64 +25,64 @@ namespace dxvk {
   public:
     
     DxgiSwapChain(
-          DxgiFactory*          factory,
-          IUnknown*             pDevice,
-          DXGI_SWAP_CHAIN_DESC* pDesc);
+          DxgiFactory*            factory,
+          IUnknown*               pDevice,
+          DXGI_SWAP_CHAIN_DESC*   pDesc);
     ~DxgiSwapChain();
     
     HRESULT STDMETHODCALLTYPE QueryInterface(
-            REFIID  riid,
-            void**  ppvObject) final;
+            REFIID                riid,
+            void**                ppvObject) final;
             
     HRESULT STDMETHODCALLTYPE GetParent(
-            REFIID  riid,
-            void**  ppParent) final;
+            REFIID                riid,
+            void**                ppParent) final;
     
     HRESULT STDMETHODCALLTYPE GetDevice(
-            REFIID  riid,
-            void**  ppDevice) final;
+            REFIID                riid,
+            void**                ppDevice) final;
     
     HRESULT STDMETHODCALLTYPE GetBuffer(
-            UINT    Buffer,
-            REFIID  riid,
-            void**  ppSurface) final;
+            UINT                  Buffer,
+            REFIID                riid,
+            void**                ppSurface) final;
     
     HRESULT STDMETHODCALLTYPE GetContainingOutput(
-            IDXGIOutput **ppOutput) final;
+            IDXGIOutput**         ppOutput) final;
     
     HRESULT STDMETHODCALLTYPE GetDesc(
-            DXGI_SWAP_CHAIN_DESC *pDesc) final;
+            DXGI_SWAP_CHAIN_DESC* pDesc) final;
     
     HRESULT STDMETHODCALLTYPE GetFrameStatistics(
-            DXGI_FRAME_STATISTICS *pStats) final;
+            DXGI_FRAME_STATISTICS* pStats) final;
     
     HRESULT STDMETHODCALLTYPE GetFullscreenState(
-            BOOL        *pFullscreen,
-            IDXGIOutput **ppTarget) final;
+            BOOL*                 pFullscreen,
+            IDXGIOutput**         ppTarget) final;
     
     HRESULT STDMETHODCALLTYPE GetLastPresentCount(
-            UINT *pLastPresentCount) final;
+            UINT*                 pLastPresentCount) final;
     
     HRESULT STDMETHODCALLTYPE Present(
-            UINT SyncInterval,
-            UINT Flags) final;
+            UINT                  SyncInterval,
+            UINT                  Flags) final;
     
     HRESULT STDMETHODCALLTYPE ResizeBuffers(
-            UINT        BufferCount,
-            UINT        Width,
-            UINT        Height,
-            DXGI_FORMAT NewFormat,
-            UINT        SwapChainFlags) final;
+            UINT                  BufferCount,
+            UINT                  Width,
+            UINT                  Height,
+            DXGI_FORMAT           NewFormat,
+            UINT                  SwapChainFlags) final;
     
     HRESULT STDMETHODCALLTYPE ResizeTarget(
-      const DXGI_MODE_DESC *pNewTargetParameters) final;
+      const DXGI_MODE_DESC*       pNewTargetParameters) final;
     
     HRESULT STDMETHODCALLTYPE SetFullscreenState(
-            BOOL        Fullscreen,
-            IDXGIOutput *pTarget) final;
+            BOOL                  Fullscreen,
+            IDXGIOutput*          pTarget) final;
     
     HRESULT SetGammaControl(
-      const DXGI_GAMMA_CONTROL* pGammaControl);
+      const DXGI_GAMMA_CONTROL*   pGammaControl);
     
     HRESULT SetDefaultGammaControl();
     
