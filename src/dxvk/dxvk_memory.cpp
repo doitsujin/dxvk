@@ -288,9 +288,13 @@ namespace dxvk {
       result = this->tryAlloc(req, flags & ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     
     if (result.memory() == VK_NULL_HANDLE) {
-      throw DxvkError(str::format(
-        "DxvkMemoryAllocator: Failed to allocate ",
-        req.size, " bytes"));
+      Logger::err(str::format(
+        "DxvkMemoryAllocator: Memory allocation failed",
+        "\n  Size:      ", req.size,
+        "\n  Alignment: ", req.alignment,
+        "\n  Mem flags: ", "0x", std::hex, flags,
+        "\n  Mem types: ", "0x", std::hex, req.memoryTypeBits));
+      throw DxvkError("DxvkMemoryAllocator: Memory allocation failed");
     }
     
     return result;
