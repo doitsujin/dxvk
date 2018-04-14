@@ -45,7 +45,7 @@ namespace dxvk {
     
     if (status != VK_SUCCESS
      && status != VK_SUBOPTIMAL_KHR)
-      throw DxvkError("DxvkSwapchain::getFramebuffer: Failed to acquire image");
+      throw DxvkError("DxvkSwapchain: Failed to acquire image");
     
     return m_framebuffers.at(m_imageIndex);
   }
@@ -66,10 +66,11 @@ namespace dxvk {
     
     VkResult status = m_device->presentSwapImage(info);
     
-    if (status != VK_SUCCESS
-     && status != VK_SUBOPTIMAL_KHR
-     && status != VK_ERROR_OUT_OF_DATE_KHR)
-      throw DxvkError("DxvkSwapchain::present: Failed to present image");
+    if (status == VK_SUBOPTIMAL_KHR
+     || status == VK_ERROR_OUT_OF_DATE_KHR)
+      this->recreateSwapchain();
+    else if (status != VK_SUCCESS)
+      throw DxvkError("DxvkSwapchain: Failed to present image");
   }
   
   
@@ -123,8 +124,15 @@ namespace dxvk {
     swapInfo.clipped                = VK_TRUE;
     swapInfo.oldSwapchain           = oldSwapchain;
     
+    Logger::debug(str::format(
+      "DxvkSwapchain: Actual swap chain properties: ",
+      "\n  Format:       ", swapInfo.imageFormat,
+      "\n  Present mode: ", swapInfo.presentMode,
+      "\n  Buffer size:  ", swapInfo.imageExtent.width, "x", swapInfo.imageExtent.height,
+      "\n  Image count:  ", swapInfo.minImageCount));
+    
     if (m_vkd->vkCreateSwapchainKHR(m_vkd->device(), &swapInfo, nullptr, &m_handle) != VK_SUCCESS)
-      throw DxvkError("DxvkSwapchain::recreateSwapchain: Failed to recreate swap chain");
+      throw DxvkError("DxvkSwapchain: Failed to recreate swap chain");
     
     // Destroy previous swapchain object
     m_vkd->vkDestroySwapchainKHR(
@@ -194,11 +202,11 @@ namespace dxvk {
   std::vector<VkImage> DxvkSwapchain::retrieveSwapImages() {
     uint32_t imageCount = 0;
     if (m_vkd->vkGetSwapchainImagesKHR(m_vkd->device(), m_handle, &imageCount, nullptr) != VK_SUCCESS)
-      throw DxvkError("DxvkSwapchain::recreateSwapchain: Failed to retrieve swap chain images");
+      throw DxvkError("DxvkSwapchain: Failed to retrieve swap chain images");
     
     std::vector<VkImage> images(imageCount);
     if (m_vkd->vkGetSwapchainImagesKHR(m_vkd->device(), m_handle, &imageCount, images.data()) != VK_SUCCESS)
-      throw DxvkError("DxvkSwapchain::recreateSwapchain: Failed to retrieve swap chain images");
+      throw DxvkError("DxvkSwapchain: Failed to retrieve swap chain images");
     return images;
   }
   
