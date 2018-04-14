@@ -79,6 +79,17 @@ namespace dxvk {
       const Rc<DxvkFramebuffer>& fb);
     
     /**
+     * \brief Sets render targets
+     * 
+     * Creates a framebuffer on the fly if necessary
+     * and binds it using \c bindFramebuffer. Prefer
+     * this method over doing the same thing manually.
+     * \param [in] targets Render targets to bind
+     */
+    void bindRenderTargets(
+      const DxvkRenderTargets&    targets);
+    
+    /**
      * \brief Binds index buffer
      * 
      * The index buffer will be used when

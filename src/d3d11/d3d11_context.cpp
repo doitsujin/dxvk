@@ -2458,11 +2458,8 @@ namespace dxvk {
     }
     
     // Create and bind the framebuffer object to the context
-    EmitCs([attachments, dev = m_device] (DxvkContext* ctx) {
-      Rc<DxvkFramebuffer> framebuffer = nullptr;
-      if (attachments.hasAttachments())
-        framebuffer = dev->createFramebuffer(attachments);
-      ctx->bindFramebuffer(framebuffer);
+    EmitCs([cAttachments = std::move(attachments)] (DxvkContext* ctx) {
+      ctx->bindRenderTargets(cAttachments);
     });
   }
   
