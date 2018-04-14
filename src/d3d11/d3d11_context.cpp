@@ -229,7 +229,10 @@ namespace dxvk {
       pData = nullptr;
     
     if (pData != nullptr && pAsync->GetDataSize() != DataSize) {
-      Logger::err(str::format("D3D11DeviceContext: GetData: Data size mismatch: ", pAsync->GetDataSize(), ",", DataSize));
+      Logger::err(str::format(
+        "D3D11: GetData: Data size mismatch",
+        "\n  Expected: ", pAsync->GetDataSize(),
+        "\n  Got:      ", DataSize));
       return E_INVALIDARG;
     }
     
@@ -245,7 +248,7 @@ namespace dxvk {
       return static_cast<D3D11Query*>(query.ptr())->GetData(pData, GetDataFlags);
     
     // The interface is not supported
-    Logger::err("D3D11DeviceContext: GetData: Unsupported Async type");
+    Logger::err("D3D11: GetData: Unsupported Async type");
     return E_INVALIDARG;
   }
   
@@ -290,7 +293,10 @@ namespace dxvk {
     pSrcResource->GetType(&srcResourceDim);
     
     if (dstResourceDim != srcResourceDim) {
-      Logger::err("D3D11DeviceContext: CopySubresourceRegion: Mismatched resource types");
+      Logger::err(str::format(
+        "D3D11: CopySubresourceRegion: Incompatible resources",
+        "\n  Dst resource type: ", dstResourceDim,
+        "\n  Src resource type: ", srcResourceDim));
       return;
     }
     
@@ -408,7 +414,10 @@ namespace dxvk {
     pSrcResource->GetType(&srcResourceDim);
     
     if (dstResourceDim != srcResourceDim) {
-      Logger::err("D3D11DeviceContext: CopyResource: Mismatched resource types");
+      Logger::err(str::format(
+        "D3D11: CopyResource: Incompatible resources",
+        "\n  Dst resource type: ", dstResourceDim,
+        "\n  Src resource type: ", srcResourceDim));
       return;
     }
     
@@ -417,7 +426,10 @@ namespace dxvk {
       auto srcBuffer = static_cast<D3D11Buffer*>(pSrcResource)->GetBufferSlice();
       
       if (dstBuffer.length() != srcBuffer.length()) {
-        Logger::err("D3D11DeviceContext: CopyResource: Mismatched buffer size");
+        Logger::err(str::format(
+          "D3D11: CopyResource: Mismatched buffer size",
+          "\n  Dst buffer size: ", dstBuffer.length(),
+          "\n  Src buffer size: ", srcBuffer.length()));
         return;
       }
       
@@ -541,7 +553,7 @@ namespace dxvk {
     
     // FIXME support packed formats
     if (uavFormat != rawFormat && rawFormat == VK_FORMAT_UNDEFINED) {
-      Logger::err(str::format("D3D11: No raw format found for ", uavFormat));
+      Logger::err(str::format("D3D11: ClearUnorderedAccessViewUint: No raw format found for ", uavFormat));
       return;
     }
     
@@ -724,9 +736,8 @@ namespace dxvk {
           cDstImageView->subresources());
       });
     } else {
-      Logger::err("D3D11DeviceContext: GenerateMips called on a buffer");
+      Logger::err("D3D11: GenerateMips called on a buffer");
     }
-    
   }
   
   
@@ -754,7 +765,12 @@ namespace dxvk {
       }
       
       if (offset + size > bufferSlice.length()) {
-        Logger::err("D3D11DeviceContext: Buffer update range out of bounds");
+        Logger::err(str::format(
+          "D3D11: UpdateSubresource: Buffer update range out of bounds",
+          "\n  Dst slice offset: ", bufferSlice.offset(),
+          "\n  Dst slice length: ", bufferSlice.length(),
+          "\n  Src slice offset: ", offset,
+          "\n  Src slice length: ", size));
         return;
       }
       
@@ -885,7 +901,10 @@ namespace dxvk {
     
     if (dstResourceType != D3D11_RESOURCE_DIMENSION_TEXTURE2D
      || srcResourceType != D3D11_RESOURCE_DIMENSION_TEXTURE2D) {
-      Logger::err("D3D11: ResolveSubresource: Incompatible resources");
+      Logger::err(str::format(
+        "D3D11: ResolveSubresource: Incompatible resources",
+        "\n  Dst resource type: ", dstResourceType,
+        "\n  Src resource type: ", srcResourceType));
       return;
     }
     
@@ -899,7 +918,10 @@ namespace dxvk {
     srcTexture->GetDesc(&srcDesc);
     
     if (dstDesc.SampleDesc.Count != 1) {
-      Logger::err("D3D11: ResolveSubresource: Resource sample count invalid");
+      Logger::err(str::format(
+        "D3D11: ResolveSubresource: Invalid sample counts",
+        "\n  Dst sample count: ", dstDesc.SampleDesc.Count,
+        "\n  Src sample count: ", srcDesc.SampleDesc.Count));
       return;
     }
     
@@ -1187,7 +1209,7 @@ namespace dxvk {
     auto shader = static_cast<D3D11VertexShader*>(pVertexShader);
     
     if (NumClassInstances != 0)
-      Logger::err("D3D11DeviceContext::VSSetShader: Class instances not supported");
+      Logger::err("D3D11: Class instances not supported");
     
     if (m_state.vs.shader != shader) {
       m_state.vs.shader = shader;
@@ -1313,7 +1335,7 @@ namespace dxvk {
     auto shader = static_cast<D3D11HullShader*>(pHullShader);
     
     if (NumClassInstances != 0)
-      Logger::err("D3D11DeviceContext::HSSetShader: Class instances not supported");
+      Logger::err("D3D11: Class instances not supported");
     
     if (m_state.hs.shader != shader) {
       m_state.hs.shader = shader;
@@ -1439,7 +1461,7 @@ namespace dxvk {
     auto shader = static_cast<D3D11DomainShader*>(pDomainShader);
     
     if (NumClassInstances != 0)
-      Logger::err("D3D11DeviceContext::DSSetShader: Class instances not supported");
+      Logger::err("D3D11: Class instances not supported");
     
     if (m_state.ds.shader != shader) {
       m_state.ds.shader = shader;
@@ -1565,7 +1587,7 @@ namespace dxvk {
     auto shader = static_cast<D3D11GeometryShader*>(pShader);
     
     if (NumClassInstances != 0)
-      Logger::err("D3D11DeviceContext::GSSetShader: Class instances not supported");
+      Logger::err("D3D11: Class instances not supported");
     
     if (m_state.gs.shader != shader) {
       m_state.gs.shader = shader;
@@ -1691,7 +1713,7 @@ namespace dxvk {
     auto shader = static_cast<D3D11PixelShader*>(pPixelShader);
     
     if (NumClassInstances != 0)
-      Logger::err("D3D11DeviceContext::PSSetShader: Class instances not supported");
+      Logger::err("D3D11: Class instances not supported");
     
     if (m_state.ps.shader != shader) {
       m_state.ps.shader = shader;
@@ -1817,7 +1839,7 @@ namespace dxvk {
     auto shader = static_cast<D3D11ComputeShader*>(pComputeShader);
     
     if (NumClassInstances != 0)
-      Logger::err("D3D11DeviceContext::CSSetShader: Class instances not supported");
+      Logger::err("D3D11: Class instances not supported");
     
     if (m_state.cs.shader != shader) {
       m_state.cs.shader = shader;
