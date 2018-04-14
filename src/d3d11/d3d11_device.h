@@ -386,6 +386,10 @@ namespace dxvk {
             UINT*       pFlags1,
             UINT*       pFlags2) const;
     
+    BOOL GetImageTypeSupport(
+            VkFormat    Format,
+            VkImageType Type) const;
+    
     void CreateCounterBuffer();
     
     void LockResourceInitContext();

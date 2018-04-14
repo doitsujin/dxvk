@@ -1871,60 +1871,111 @@ namespace dxvk {
   
   
   HRESULT D3D11Device::GetFormatSupportFlags(DXGI_FORMAT Format, UINT* pFlags1, UINT* pFlags2) const {
-    const VkFormat fmt = m_dxgiAdapter->LookupFormat(Format, DXGI_VK_FORMAT_MODE_ANY).Format;
-    const VkFormatProperties fmtInfo = m_dxvkAdapter->formatProperties(fmt);
-    if (fmt == VK_FORMAT_UNDEFINED)
-      return E_FAIL;
+    // Query some general information from DXGI, DXVK and Vulkan about the format
+    const DXGI_VK_FORMAT_INFO fmtMapping = m_dxgiAdapter->LookupFormat(Format, DXGI_VK_FORMAT_MODE_ANY);
+    const VkFormatProperties  fmtSupport = m_dxvkAdapter->formatProperties(fmtMapping.Format);
+    const DxvkFormatInfo*     fmtProperties = imageFormatInfo(fmtMapping.Format);
+    
+    // Reset output flags preemptively
+    if (pFlags1 != nullptr) *pFlags1 = 0;
+    if (pFlags2 != nullptr) *pFlags2 = 0;
+    
+    // Unsupported or invalid format
+    if (fmtMapping.Format == VK_FORMAT_UNDEFINED)
+      return E_INVALIDARG;
     
     UINT flags1 = 0;
     UINT flags2 = 0;
     
-    if (fmtInfo.bufferFeatures & VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT)
+    // Format can be used for shader resource views with buffers
+    if (fmtSupport.bufferFeatures & VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT)
       flags1 |= D3D11_FORMAT_SUPPORT_BUFFER;
     
-    if (fmtInfo.bufferFeatures & VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT)
+    // Format can be used for vertex data
+    if (fmtSupport.bufferFeatures & VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT)
       flags1 |= D3D11_FORMAT_SUPPORT_IA_VERTEX_BUFFER;
     
-    if (Format == DXGI_FORMAT_R16_UINT || Format == DXGI_FORMAT_R32_UINT)
+    // Format can be used for index data. Only
+    // these two formats are supported by D3D11.
+    if (Format == DXGI_FORMAT_R16_UINT
+     || Format == DXGI_FORMAT_R32_UINT)
       flags1 |= D3D11_FORMAT_SUPPORT_IA_INDEX_BUFFER;
     
     // TODO implement stream output
     // D3D11_FORMAT_SUPPORT_SO_BUFFER
     
-    if (fmtInfo.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT) {
-      flags1 |= D3D11_FORMAT_SUPPORT_TEXTURE1D
-             |  D3D11_FORMAT_SUPPORT_TEXTURE2D
-             |  D3D11_FORMAT_SUPPORT_TEXTURE3D
-             |  D3D11_FORMAT_SUPPORT_TEXTURECUBE
-             |  D3D11_FORMAT_SUPPORT_SHADER_LOAD
-             |  D3D11_FORMAT_SUPPORT_SHADER_GATHER
-             |  D3D11_FORMAT_SUPPORT_SHADER_GATHER_COMPARISON
-             |  D3D11_FORMAT_SUPPORT_SHADER_SAMPLE
-             |  D3D11_FORMAT_SUPPORT_SHADER_SAMPLE_COMPARISON
-             |  D3D11_FORMAT_SUPPORT_MIP
-             |  D3D11_FORMAT_SUPPORT_MIP_AUTOGEN
-             |  D3D11_FORMAT_SUPPORT_MULTISAMPLE_RESOLVE
-             |  D3D11_FORMAT_SUPPORT_CAST_WITHIN_BIT_LAYOUT;
-    }
-    
-    if (fmtInfo.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT) {
-      flags1 |= D3D11_FORMAT_SUPPORT_RENDER_TARGET;
+    if (fmtSupport.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT
+     || fmtSupport.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) {
+      const VkFormat depthFormat = m_dxgiAdapter->LookupFormat(Format, DXGI_VK_FORMAT_MODE_DEPTH).Format;
       
-      if (m_dxvkDevice->features().logicOp)
-        flags2 |= D3D11_FORMAT_SUPPORT2_OUTPUT_MERGER_LOGIC_OP;
+      if (GetImageTypeSupport(fmtMapping.Format, VK_IMAGE_TYPE_1D)) flags1 |= D3D11_FORMAT_SUPPORT_TEXTURE1D;
+      if (GetImageTypeSupport(fmtMapping.Format, VK_IMAGE_TYPE_2D)) flags1 |= D3D11_FORMAT_SUPPORT_TEXTURE2D;
+      if (GetImageTypeSupport(fmtMapping.Format, VK_IMAGE_TYPE_3D)) flags1 |= D3D11_FORMAT_SUPPORT_TEXTURE3D;
+      
+      flags1 |= D3D11_FORMAT_SUPPORT_MIP
+             |  D3D11_FORMAT_SUPPORT_CPU_LOCKABLE
+             |  D3D11_FORMAT_SUPPORT_CAST_WITHIN_BIT_LAYOUT;
+    
+      // Format can be read 
+      if (fmtSupport.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT) {
+        flags1 |= D3D11_FORMAT_SUPPORT_TEXTURECUBE
+               |  D3D11_FORMAT_SUPPORT_SHADER_LOAD
+               |  D3D11_FORMAT_SUPPORT_SHADER_GATHER
+               |  D3D11_FORMAT_SUPPORT_SHADER_SAMPLE;
+        
+        if (depthFormat != VK_FORMAT_UNDEFINED) {
+          flags1 |= D3D11_FORMAT_SUPPORT_SHADER_GATHER_COMPARISON
+                 |  D3D11_FORMAT_SUPPORT_SHADER_SAMPLE_COMPARISON;
+        }
+      }
+      
+      // Format is a color format that can be used for rendering
+      if (fmtSupport.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT) {
+        flags1 |= D3D11_FORMAT_SUPPORT_RENDER_TARGET
+               |  D3D11_FORMAT_SUPPORT_MIP_AUTOGEN;
+        
+        if (m_dxvkDevice->features().logicOp)
+          flags2 |= D3D11_FORMAT_SUPPORT2_OUTPUT_MERGER_LOGIC_OP;
+      }
+      
+      // Format supports blending when used for rendering
+      if (fmtSupport.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT)
+        flags1 |= D3D11_FORMAT_SUPPORT_BLENDABLE;
+      
+      // Format is a depth-stencil format that can be used for rendering
+      if (fmtSupport.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
+        flags1 |= D3D11_FORMAT_SUPPORT_DEPTH_STENCIL;
+      
+      // FIXME implement properly. This would require a VkSurface.
+      if (Format == DXGI_FORMAT_R8G8B8A8_UNORM
+       || Format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB
+       || Format == DXGI_FORMAT_B8G8R8A8_UNORM
+       || Format == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB
+       || Format == DXGI_FORMAT_R16G16B16A16_FLOAT
+       || Format == DXGI_FORMAT_R10G10B10A2_UNORM
+       || Format == DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM)
+        flags1 |= D3D11_FORMAT_SUPPORT_DISPLAY;
+      
+      // Query multisample support for this format
+      VkImageFormatProperties imgFmtProperties;
+      
+      VkResult status = m_dxvkAdapter->imageFormatProperties(fmtMapping.Format,
+        VK_IMAGE_TYPE_2D, VK_IMAGE_TILING_OPTIMAL,
+        (fmtProperties->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT)
+          ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+          : VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+        0, imgFmtProperties);
+      
+      if (status == VK_SUCCESS && imgFmtProperties.sampleCounts > VK_SAMPLE_COUNT_1_BIT) {
+        flags1 |= D3D11_FORMAT_SUPPORT_MULTISAMPLE_RENDERTARGET
+               |  D3D11_FORMAT_SUPPORT_MULTISAMPLE_RESOLVE
+               |  D3D11_FORMAT_SUPPORT_MULTISAMPLE_LOAD;
+      }
     }
     
-    if (fmtInfo.optimalTilingFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT)
-      flags1 |= D3D11_FORMAT_SUPPORT_BLENDABLE;
-    
-    if (fmtInfo.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
-      flags1 |= D3D11_FORMAT_SUPPORT_DEPTH_STENCIL;
-    
-    if (fmtInfo.optimalTilingFeatures)
-      flags1 |= D3D11_FORMAT_SUPPORT_CPU_LOCKABLE;
-    
-    if ((fmtInfo.bufferFeatures & VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT)
-     || (fmtInfo.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT)) {
+    // Format can be used for storage images or storage texel buffers
+    if ((fmtSupport.bufferFeatures & VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT)
+     || (fmtSupport.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT)) {
       flags1 |= D3D11_FORMAT_SUPPORT_TYPED_UNORDERED_ACCESS_VIEW;
       flags2 |= D3D11_FORMAT_SUPPORT2_UAV_TYPED_STORE;
       
@@ -1933,53 +1984,37 @@ namespace dxvk {
        || Format == DXGI_FORMAT_R32_SINT
        || Format == DXGI_FORMAT_R32_FLOAT)
         flags2 |= D3D11_FORMAT_SUPPORT2_UAV_TYPED_LOAD;
+      
+      if (Format == DXGI_FORMAT_R32_UINT
+       || Format == DXGI_FORMAT_R32_SINT) {
+        flags2 |= D3D11_FORMAT_SUPPORT2_UAV_ATOMIC_ADD
+               |  D3D11_FORMAT_SUPPORT2_UAV_ATOMIC_BITWISE_OPS
+               |  D3D11_FORMAT_SUPPORT2_UAV_ATOMIC_COMPARE_STORE_OR_COMPARE_EXCHANGE
+               |  D3D11_FORMAT_SUPPORT2_UAV_ATOMIC_EXCHANGE;
+      }
+      
+      if (Format == DXGI_FORMAT_R32_SINT)
+        flags2 |= D3D11_FORMAT_SUPPORT2_UAV_ATOMIC_SIGNED_MIN_OR_MAX;
+      
+      if (Format == DXGI_FORMAT_R32_UINT)
+        flags2 |= D3D11_FORMAT_SUPPORT2_UAV_ATOMIC_UNSIGNED_MIN_OR_MAX;
     }
     
-    // FIXME implement properly. This would require a VkSurface.
-    if (Format == DXGI_FORMAT_R8G8B8A8_UNORM
-     || Format == DXGI_FORMAT_R8G8B8A8_UNORM_SRGB
-     || Format == DXGI_FORMAT_B8G8R8A8_UNORM
-     || Format == DXGI_FORMAT_B8G8R8A8_UNORM_SRGB
-     || Format == DXGI_FORMAT_R16G16B16A16_FLOAT
-     || Format == DXGI_FORMAT_R10G10B10A2_UNORM
-     || Format == DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM)
-      flags1 |= D3D11_FORMAT_SUPPORT_DISPLAY;
-    
-    // Query multisample support info
-    const DxvkFormatInfo* formatInfo = imageFormatInfo(fmt);
-    
-    VkImageFormatProperties imgInfo;
-    
-    VkResult status = m_dxvkAdapter->imageFormatProperties(fmt,
-      VK_IMAGE_TYPE_2D,
-      VK_IMAGE_TILING_OPTIMAL,
-      (formatInfo->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT)
-        ? VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
-        : VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-      0, imgInfo);
-    
-    if (status == VK_SUCCESS && imgInfo.sampleCounts > VK_SAMPLE_COUNT_1_BIT) {
-      flags1 |= D3D11_FORMAT_SUPPORT_MULTISAMPLE_RENDERTARGET
-             |  D3D11_FORMAT_SUPPORT_MULTISAMPLE_LOAD;
-    }
-    
-    if (Format == DXGI_FORMAT_R32_UINT
-     || Format == DXGI_FORMAT_R32_SINT) {
-      flags2 |= D3D11_FORMAT_SUPPORT2_UAV_ATOMIC_ADD
-             |  D3D11_FORMAT_SUPPORT2_UAV_ATOMIC_BITWISE_OPS
-             |  D3D11_FORMAT_SUPPORT2_UAV_ATOMIC_COMPARE_STORE_OR_COMPARE_EXCHANGE
-             |  D3D11_FORMAT_SUPPORT2_UAV_ATOMIC_EXCHANGE;
-    }
-    
-    if (Format == DXGI_FORMAT_R32_SINT)
-      flags2 |= D3D11_FORMAT_SUPPORT2_UAV_ATOMIC_SIGNED_MIN_OR_MAX;
-    
-    if (Format == DXGI_FORMAT_R32_UINT)
-      flags2 |= D3D11_FORMAT_SUPPORT2_UAV_ATOMIC_UNSIGNED_MIN_OR_MAX;
-    
+    // Write back format support flags
     if (pFlags1 != nullptr) *pFlags1 = flags1;
     if (pFlags2 != nullptr) *pFlags2 = flags2;
     return S_OK;
+  }
+  
+  
+  BOOL D3D11Device::GetImageTypeSupport(VkFormat Format, VkImageType Type) const {
+    VkImageFormatProperties props;
+    
+    VkResult status = m_dxvkAdapter->imageFormatProperties(
+      Format, Type, VK_IMAGE_TILING_OPTIMAL,
+      VK_IMAGE_USAGE_SAMPLED_BIT, 0, props);
+    
+    return status == VK_SUCCESS;
   }
   
   
