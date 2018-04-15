@@ -34,7 +34,6 @@ namespace dxvk {
     // Create objects required for the gamma ramp. This is implemented partially
     // with an UBO, which stores global parameters, and a lookup texture, which
     // stores the actual gamma ramp and can be sampled with a linear filter.
-    m_gammaUbo          = CreateGammaUbo();
     m_gammaSampler      = CreateSampler(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
     m_gammaTexture      = CreateGammaTexture();
     m_gammaTextureView  = CreateGammaTextureView();
@@ -204,7 +203,6 @@ namespace dxvk {
     
     m_context->bindResourceSampler(BindingIds::GammaSmp, m_gammaSampler);
     m_context->bindResourceView   (BindingIds::GammaTex, m_gammaTextureView, nullptr);
-    m_context->bindResourceBuffer (BindingIds::GammaUbo, DxvkBufferSlice(m_gammaUbo));
     
     if (m_hud != nullptr) {
       m_blendMode.enableBlending = VK_TRUE;
@@ -339,14 +337,9 @@ namespace dxvk {
   
   
   void DxgiVkPresenter::SetGammaControl(
-    const DXGI_VK_GAMMA_INPUT_CONTROL*  pGammaControl,
     const DXGI_VK_GAMMA_CURVE*          pGammaCurve) {
     m_context->beginRecording(
       m_device->createCommandList());
-    
-    m_context->updateBuffer(m_gammaUbo,
-      0, sizeof(DXGI_VK_GAMMA_INPUT_CONTROL),
-      pGammaControl);
     
     m_context->updateImage(m_gammaTexture,
       VkImageSubresourceLayers { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
@@ -380,19 +373,6 @@ namespace dxvk {
     samplerInfo.borderColor     = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
     samplerInfo.usePixelCoord   = VK_FALSE;
     return m_device->createSampler(samplerInfo);
-  }
-  
-  
-  Rc<DxvkBuffer> DxgiVkPresenter::CreateGammaUbo() {
-    DxvkBufferCreateInfo info;
-    info.size         = sizeof(DXGI_VK_GAMMA_INPUT_CONTROL);
-    info.usage        = VK_BUFFER_USAGE_TRANSFER_DST_BIT
-                      | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-    info.stages       = VK_PIPELINE_STAGE_TRANSFER_BIT
-                      | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    info.access       = VK_ACCESS_TRANSFER_WRITE_BIT
-                      | VK_ACCESS_SHADER_READ_BIT;
-    return m_device->createBuffer(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   }
   
   
@@ -444,12 +424,11 @@ namespace dxvk {
     const SpirvCodeBuffer codeBuffer(dxgi_presenter_frag);
     
     // Shader resource slots
-    const std::array<DxvkResourceSlot, 5> resourceSlots = {{
+    const std::array<DxvkResourceSlot, 4> resourceSlots = {{
       { BindingIds::Sampler,  VK_DESCRIPTOR_TYPE_SAMPLER,        VK_IMAGE_VIEW_TYPE_MAX_ENUM },
       { BindingIds::Texture,  VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  VK_IMAGE_VIEW_TYPE_2D       },
       { BindingIds::GammaSmp, VK_DESCRIPTOR_TYPE_SAMPLER,        VK_IMAGE_VIEW_TYPE_MAX_ENUM },
       { BindingIds::GammaTex, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  VK_IMAGE_VIEW_TYPE_1D       },
-      { BindingIds::GammaUbo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_IMAGE_VIEW_TYPE_MAX_ENUM },
     }};
     
     // Create the actual shader module

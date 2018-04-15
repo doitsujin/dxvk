@@ -260,7 +260,7 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE DxgiOutput::GetGammaControlCapabilities(DXGI_GAMMA_CONTROL_CAPABILITIES* pGammaCaps) {
-    pGammaCaps->ScaleAndOffsetSupported = TRUE;
+    pGammaCaps->ScaleAndOffsetSupported = FALSE;
     pGammaCaps->MaxConvertedValue       = 1.0f;
     pGammaCaps->MinConvertedValue       = 0.0f;
     pGammaCaps->NumGammaControlPoints   = DXGI_VK_GAMMA_CP_COUNT;

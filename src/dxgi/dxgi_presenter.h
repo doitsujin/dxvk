@@ -36,26 +36,6 @@ namespace dxvk {
   };
   
   /**
-   * \brief Gamma input color
-   * A floating-point color vector.
-   */
-  struct DXGI_VK_GAMMA_INPUT_COLOR {
-    float R, G, B, A;
-  };
-  
-  /**
-   * \brief Gamma input control
-   * 
-   * Stores a scaling factor and a bias that shall
-   * be applied to the input color before performing
-   * the gamma lookup in the fragment shader.
-   */
-  struct DXGI_VK_GAMMA_INPUT_CONTROL {
-    DXGI_VK_GAMMA_INPUT_COLOR Factor;
-    DXGI_VK_GAMMA_INPUT_COLOR Offset;
-  };
-  
-  /**
    * \brief Maps color value to normalized integer
    * 
    * \param [in] x Input value, as floating point
@@ -151,7 +131,6 @@ namespace dxvk {
      * \param [in] pGammaCurve Gamma curve
      */
     void SetGammaControl(
-      const DXGI_VK_GAMMA_INPUT_CONTROL*  pGammaControl,
       const DXGI_VK_GAMMA_CURVE*          pGammaCurve);
     
   private:
@@ -161,7 +140,6 @@ namespace dxvk {
       Texture   = 1,
       GammaSmp  = 2,
       GammaTex  = 3,
-      GammaUbo  = 4,
     };
     
     Rc<DxvkDevice>          m_device;
@@ -177,7 +155,6 @@ namespace dxvk {
     Rc<DxvkImage>           m_backBufferResolve;
     Rc<DxvkImageView>       m_backBufferView;
     
-    Rc<DxvkBuffer>          m_gammaUbo;
     Rc<DxvkSampler>         m_gammaSampler;
     Rc<DxvkImage>           m_gammaTexture;
     Rc<DxvkImageView>       m_gammaTextureView;
@@ -191,7 +168,6 @@ namespace dxvk {
             VkFilter              Filter,
             VkSamplerAddressMode  AddressMode);
     
-    Rc<DxvkBuffer>    CreateGammaUbo();
     Rc<DxvkImage>     CreateGammaTexture();
     Rc<DxvkImageView> CreateGammaTextureView();
     
