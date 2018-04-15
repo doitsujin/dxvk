@@ -116,6 +116,16 @@ namespace dxvk {
      */
     bool hasAttachments() const;
     
+    /**
+     * \brief Compares two sets of render targets
+     * 
+     * Checks whether two sets of render targets
+     * are identical, including the image layout.
+     * \param [in] other Render target set to compare to
+     * \returns \c true if the render targets are the same
+     */
+    bool matches(const DxvkRenderTargets& other) const;
+    
   private:
     
     std::array<DxvkAttachment, MaxNumRenderTargets> m_colorTargets;

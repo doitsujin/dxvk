@@ -88,7 +88,6 @@ namespace dxvk {
   void DxvkContext::bindFramebuffer(const Rc<DxvkFramebuffer>& fb) {
     if (m_state.om.framebuffer != fb) {
       this->renderPassEnd();
-      m_state.om.framebuffer = fb;
       
       if (fb != nullptr) {
         m_state.gp.state.msSampleCount = fb->sampleCount();
@@ -96,38 +95,22 @@ namespace dxvk {
         
         m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
       }
+      
+      m_state.om.framebuffer = fb;
     }
   }
   
   
   void DxvkContext::bindRenderTargets(const DxvkRenderTargets& targets) {
-    bool needsUpdate = false;
+    bool sameAsCurr = m_state.om.framebuffer != nullptr
+                   && m_state.om.framebuffer->renderTargets().matches(targets);
     
-    if (m_state.om.framebuffer != nullptr) {
-      const DxvkRenderTargets& active = m_state.om.framebuffer->renderTargets();
-      
-      needsUpdate |= active.getDepthTarget().view   != targets.getDepthTarget().view
-                  || active.getDepthTarget().layout != targets.getDepthTarget().layout;
-      
-      for (uint32_t i = 0; i < MaxNumRenderTargets && !needsUpdate; i++) {
-        needsUpdate |= active.getColorTarget(i).view   != targets.getColorTarget(i).view
-                    || active.getColorTarget(i).layout != targets.getColorTarget(i).layout;
-      }
-    } else {
-      needsUpdate = targets.hasAttachments();
-    }
-    
-    if (needsUpdate) {
+    if (!sameAsCurr) {
       Rc<DxvkFramebuffer> fb = targets.hasAttachments()
         ? m_device->createFramebuffer(targets)
         : nullptr;
       
-      if (fb != nullptr) {
-        m_state.gp.state.msSampleCount = fb->sampleCount();
-        m_state.gp.state.omRenderPass  = fb->renderPass();
-        
-        m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
-      }
+      this->bindFramebuffer(fb);
     }
   }
   

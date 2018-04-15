@@ -71,6 +71,19 @@ namespace dxvk {
   }
   
   
+  bool DxvkRenderTargets::matches(const DxvkRenderTargets& other) const {
+    bool equal = m_depthTarget.view   == other.m_depthTarget.view
+              && m_depthTarget.layout == other.m_depthTarget.layout;
+    
+    for (uint32_t i = 0; i < MaxNumRenderTargets && equal; i++) {
+      equal &= m_colorTargets.at(i).view   == other.m_colorTargets.at(i).view
+            && m_colorTargets.at(i).layout == other.m_colorTargets.at(i).layout;
+    }
+    
+    return equal;
+  }
+  
+  
   DxvkFramebufferSize DxvkRenderTargets::renderTargetSize(
     const Rc<DxvkImageView>& renderTarget) const {
     auto extent = renderTarget->mipLevelExtent(0);
