@@ -220,6 +220,7 @@ namespace dxvk {
   
   void DxvkAdapter::logAdapterInfo() const {
     VkPhysicalDeviceProperties deviceInfo = this->deviceProperties();
+    VkPhysicalDeviceMemoryProperties memoryInfo = this->memoryProperties();
     
     Logger::info(str::format(deviceInfo.deviceName, ":"));
     Logger::info(str::format("  Driver: ",
@@ -230,6 +231,19 @@ namespace dxvk {
       VK_VERSION_MAJOR(deviceInfo.apiVersion), ".",
       VK_VERSION_MINOR(deviceInfo.apiVersion), ".",
       VK_VERSION_PATCH(deviceInfo.apiVersion)));
+
+    for (uint32_t i = 0; i < memoryInfo.memoryHeapCount; i++) {
+      Logger::info(str::format("  Memory Heap[", i, "]: "));
+      Logger::info(str::format("    Size: ", memoryInfo.memoryHeaps[i].size));
+      Logger::info(str::format("    Flags: ", "0x", std::hex, memoryInfo.memoryHeaps[i].flags));
+      for (uint32_t j = 0; j < memoryInfo.memoryTypeCount; j++) {
+        if (memoryInfo.memoryTypes[j].heapIndex == i) {
+          Logger::info(str::format(
+            "    Memory Type[", j, "]: ",
+            "Property Flags = ", "0x", std::hex, memoryInfo.memoryTypes[j].propertyFlags));
+        }
+      }
+    }
   }
   
   
