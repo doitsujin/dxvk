@@ -44,7 +44,7 @@ namespace dxvk {
      * \param [in] ctr The counter
      * \returns Counter value
      */
-    uint32_t getCtr(DxvkStatCounter ctr) const {
+    uint64_t getCtr(DxvkStatCounter ctr) const {
       return m_counters[uint32_t(ctr)];
     }
     
@@ -54,7 +54,7 @@ namespace dxvk {
      * \param [in] ctr The counter
      * \param [in] val Counter value
      */
-    void setCtr(DxvkStatCounter ctr, uint32_t val) {
+    void setCtr(DxvkStatCounter ctr, uint64_t val) {
       m_counters[uint32_t(ctr)] = val;
     }
     
@@ -64,7 +64,7 @@ namespace dxvk {
      * \param [in] ctr Counter to increment
      * \param [in] val Number to add to counter value
      */
-    void addCtr(DxvkStatCounter ctr, uint32_t val) {
+    void addCtr(DxvkStatCounter ctr, uint64_t val) {
       m_counters[uint32_t(ctr)] += val;
     }
     
@@ -103,7 +103,7 @@ namespace dxvk {
     
   private:
     
-    std::array<uint32_t, uint32_t(DxvkStatCounter::NumCounters)> m_counters;
+    std::array<uint64_t, uint32_t(DxvkStatCounter::NumCounters)> m_counters;
     
   };
   
