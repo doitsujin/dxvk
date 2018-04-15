@@ -52,13 +52,17 @@ namespace dxvk {
      * \brief Compiles DXBC shader to SPIR-V module
      * 
      * \param [in] options DXBC compiler options
+     * \param [in] fileName File name, will be added to
+     *        the compiled SPIR-V for debugging purposes.
      * \returns The compiled shader object
      */
-    Rc<DxvkShader> compile(const DxbcOptions& options) const;
+    Rc<DxvkShader> compile(
+      const DxbcOptions& options,
+      const std::string& fileName) const;
     
   private:
     
-    DxbcHeader m_header;
+    DxbcHeader   m_header;
     
     Rc<DxbcIsgn> m_isgnChunk;
     Rc<DxbcIsgn> m_osgnChunk;

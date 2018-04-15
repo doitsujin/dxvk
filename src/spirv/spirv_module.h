@@ -89,6 +89,15 @@ namespace dxvk {
             uint32_t                entryPointId,
             uint32_t                vertexCount);
     
+    uint32_t addDebugString(
+      const char*                   string);
+    
+    void setDebugSource(
+            spv::SourceLanguage     language,
+            uint32_t                version,
+            uint32_t                file,
+      const char*                   source);
+    
     void setDebugName(
             uint32_t                expressionId,
       const char*                   debugName);

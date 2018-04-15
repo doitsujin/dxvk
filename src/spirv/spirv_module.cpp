@@ -116,6 +116,31 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::addDebugString(
+    const char*                   string) {
+    uint32_t resultId = this->allocateId();
+    
+    m_debugNames.putIns (spv::OpString,
+      2 + m_debugNames.strLen(string));
+    m_debugNames.putWord(resultId);
+    m_debugNames.putStr (string);
+    return resultId;
+  }
+  
+  
+  void SpirvModule::setDebugSource(
+          spv::SourceLanguage     language,
+          uint32_t                version,
+          uint32_t                file,
+    const char*                   source) {
+    m_debugNames.putIns (spv::OpSource,
+      4 + m_debugNames.strLen(source));
+    m_debugNames.putWord(language);
+    m_debugNames.putWord(version);
+    m_debugNames.putWord(file);
+    m_debugNames.putStr (source);
+  }
+  
   void SpirvModule::setDebugName(
           uint32_t                expressionId,
     const char*                   debugName) {

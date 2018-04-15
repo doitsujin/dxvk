@@ -68,7 +68,7 @@ namespace dxvk {
         std::ios_base::binary | std::ios_base::trunc));
     }
     
-    m_shader = module.compile(*pDxbcOptions);
+    m_shader = module.compile(*pDxbcOptions, m_name);
     m_shader->setDebugName(m_name);
     
     if (dumpPath.size() != 0) {

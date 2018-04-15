@@ -28,7 +28,8 @@ int WINAPI WinMain(HINSTANCE hInstance,
   }
   
   try {
-    std::ifstream ifile(str::fromws(argv[1]), std::ios::binary);
+    std::string ifileName = str::fromws(argv[1]);
+    std::ifstream ifile(ifileName, std::ios::binary);
     ifile.ignore(std::numeric_limits<std::streamsize>::max());
     std::streamsize length = ifile.gcount();
     ifile.clear();
@@ -40,7 +41,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
     DxbcReader reader(dxbcCode.data(), dxbcCode.size());
     DxbcModule module(reader);
     
-    Rc<DxvkShader> shader = module.compile(DxbcOptions());
+    Rc<DxvkShader> shader = module.compile(DxbcOptions(), ifileName);
     std::ofstream ofile(str::fromws(argv[2]), std::ios::binary);
     shader->dump(ofile);
     return 0;

@@ -311,6 +311,7 @@ namespace dxvk {
   public:
     
     DxbcCompiler(
+      const std::string&        fileName,
       const DxbcOptions&        options,
       const DxbcProgramVersion& version,
       const Rc<DxbcIsgn>&       isgn,

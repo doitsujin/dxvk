@@ -9,6 +9,7 @@ namespace dxvk {
   constexpr uint32_t PushConstant_InstanceId = 0;
   
   DxbcCompiler::DxbcCompiler(
+    const std::string&        fileName,
     const DxbcOptions&        options,
     const DxbcProgramVersion& version,
     const Rc<DxbcIsgn>&       isgn,
@@ -22,6 +23,12 @@ namespace dxvk {
     // Declare an entry point ID. We'll need it during the
     // initialization phase where the execution mode is set.
     m_entryPointId = m_module.allocateId();
+    
+    // Set the shader name so that we recognize it in renderdoc
+    m_module.setDebugSource(
+      spv::SourceLanguageUnknown, 0,
+      m_module.addDebugString(fileName.c_str()),
+      "");
     
     // Set the memory model. This is the same for all shaders.
     m_module.setMemoryModel(
