@@ -233,9 +233,12 @@ namespace dxvk {
       VK_VERSION_PATCH(deviceInfo.apiVersion)));
 
     for (uint32_t i = 0; i < memoryInfo.memoryHeapCount; i++) {
+      constexpr VkDeviceSize mib = 1024 * 1024;
+      
       Logger::info(str::format("  Memory Heap[", i, "]: "));
-      Logger::info(str::format("    Size: ", memoryInfo.memoryHeaps[i].size));
+      Logger::info(str::format("    Size: ", memoryInfo.memoryHeaps[i].size / mib, " MiB"));
       Logger::info(str::format("    Flags: ", "0x", std::hex, memoryInfo.memoryHeaps[i].flags));
+      
       for (uint32_t j = 0; j < memoryInfo.memoryTypeCount; j++) {
         if (memoryInfo.memoryTypes[j].heapIndex == i) {
           Logger::info(str::format(
