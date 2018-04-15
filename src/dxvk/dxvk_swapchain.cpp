@@ -93,11 +93,13 @@ namespace dxvk {
   
   
   void DxvkSwapchain::recreateSwapchain() {
-    VkSwapchainKHR oldSwapchain = m_handle;
-    
     // Wait until we can be certain that none of our
     // resources are still in use by the device.
     m_device->waitForIdle();
+    
+    // Destroy previous swapchain object
+    m_vkd->vkDestroySwapchainKHR(
+      m_vkd->device(), m_handle, nullptr);
     
     // Recreate the actual swapchain object
     auto caps = m_surface->getSurfaceCapabilities();
@@ -122,7 +124,7 @@ namespace dxvk {
     swapInfo.compositeAlpha         = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     swapInfo.presentMode            = mode;
     swapInfo.clipped                = VK_TRUE;
-    swapInfo.oldSwapchain           = oldSwapchain;
+    swapInfo.oldSwapchain           = VK_NULL_HANDLE;
     
     Logger::debug(str::format(
       "DxvkSwapchain: Actual swap chain properties: ",
@@ -133,10 +135,6 @@ namespace dxvk {
     
     if (m_vkd->vkCreateSwapchainKHR(m_vkd->device(), &swapInfo, nullptr, &m_handle) != VK_SUCCESS)
       throw DxvkError("DxvkSwapchain: Failed to recreate swap chain");
-    
-    // Destroy previous swapchain object
-    m_vkd->vkDestroySwapchainKHR(
-      m_vkd->device(), oldSwapchain, nullptr);
     
     // Create the render pass object
     DxvkRenderPassFormat renderTargetFormat;
