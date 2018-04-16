@@ -4668,53 +4668,7 @@ namespace dxvk {
   
   DxbcRegisterValue DxbcCompiler::emitRegisterLoadRaw(
     const DxbcRegister&           reg) {
-    if (reg.type == DxbcOperandType::ConstantBuffer) {
-      // Constant buffer require special care if they are not bound
-      const uint32_t registerId = reg.idx[0].offset;
-      
-      const uint32_t labelMerge   = m_module.allocateId();
-      const uint32_t labelBound   = m_module.allocateId();
-      const uint32_t labelUnbound = m_module.allocateId();
-      
-      m_module.opSelectionMerge(labelMerge, spv::SelectionControlMaskNone);
-      m_module.opBranchConditional(
-        m_constantBuffers.at(registerId).specId,
-        labelBound, labelUnbound);
-      
-      // Case 1: Constant buffer is bound.
-      // Load the register value normally.
-      m_module.opLabel(labelBound);
-      DxbcRegisterValue ifBound = emitValueLoad(emitGetOperandPtr(reg));
-      m_module.opBranch(labelMerge);
-      
-      // Case 2: Constant buffer is not bound.
-      // Return zeroes unconditionally.
-      m_module.opLabel(labelUnbound);
-      DxbcRegisterValue ifUnbound = emitBuildConstVecf32(
-        0.0f, 0.0f, 0.0f, 0.0f,
-        DxbcRegMask(true, true, true, true));
-      m_module.opBranch(labelMerge);
-      
-      // Merge the results with a phi function
-      m_module.opLabel(labelMerge);
-      
-      const std::array<SpirvPhiLabel, 2> phiLabels = {{
-        { ifBound.id,   labelBound   },
-        { ifUnbound.id, labelUnbound },
-      }};
-      
-      DxbcRegisterValue result;
-      result.type.ctype  = DxbcScalarType::Float32;
-      result.type.ccount = 4;
-      result.id = m_module.opPhi(
-        getVectorTypeId(result.type),
-        phiLabels.size(),
-        phiLabels.data());
-      return result;
-    } else {
-      // All other operand types can be accessed directly
-      return emitValueLoad(emitGetOperandPtr(reg));
-    }
+    return emitValueLoad(emitGetOperandPtr(reg));
   }
   
   
