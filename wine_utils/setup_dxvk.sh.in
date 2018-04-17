@@ -2,7 +2,7 @@
 
 export WINEDEBUG=-all
 
-dlls_dir=`dirname $(readlink -f $0)`
+dlls_dir=`dirname "$(readlink -f $0)"`
 build_arch='@arch@'
 
 if [ ! -f "$dlls_dir/d3d11.dll" ] || [ ! -f "$dlls_dir/dxgi.dll" ]; then
