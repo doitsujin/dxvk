@@ -86,7 +86,7 @@ namespace dxvk::hud {
     HudFps                m_hudFps;
     HudStats              m_hudStats;
     
-    void renderText();
+    void render();
     
     Rc<DxvkBuffer> createUniformBuffer();
     

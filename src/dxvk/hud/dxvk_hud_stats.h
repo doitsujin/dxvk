@@ -24,7 +24,7 @@ namespace dxvk::hud {
     void update(
       const Rc<DxvkDevice>&   device);
     
-    HudPos renderText(
+    HudPos render(
       const Rc<DxvkContext>&  context,
             HudRenderer&      renderer,
             HudPos            position);

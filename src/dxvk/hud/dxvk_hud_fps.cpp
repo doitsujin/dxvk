@@ -32,7 +32,7 @@ namespace dxvk::hud {
   }
   
   
-  HudPos HudFps::renderText(
+  HudPos HudFps::render(
     const Rc<DxvkContext>&  context,
           HudRenderer&      renderer,
           HudPos            position) {

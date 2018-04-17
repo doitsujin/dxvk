@@ -36,7 +36,7 @@ namespace dxvk::hud {
     
     this->beginRenderPass(recreateFbo);
     this->updateUniformBuffer();
-    this->renderText();
+    this->render();
     this->endRenderPass();
   }
   
@@ -64,22 +64,22 @@ namespace dxvk::hud {
   }
   
   
-  void Hud::renderText() {
+  void Hud::render() {
     m_renderer.beginFrame(m_context);
     
     HudPos position = { 8.0f, 24.0f };
     
     if (m_config.elements.test(HudElement::DeviceInfo)) {
-      position = m_hudDeviceInfo.renderText(
+      position = m_hudDeviceInfo.render(
         m_context, m_renderer, position);
     }
     
     if (m_config.elements.test(HudElement::Framerate)) {
-      position = m_hudFps.renderText(
+      position = m_hudFps.render(
         m_context, m_renderer, position);
     }
     
-    position = m_hudStats.renderText(
+    position = m_hudStats.render(
       m_context, m_renderer, position);
   }
   
