@@ -298,7 +298,13 @@ namespace dxvk {
     pDstResource->GetType(&dstResourceDim);
     pSrcResource->GetType(&srcResourceDim);
     
-    if (dstResourceDim != srcResourceDim) {
+    // Copying 2D image slices to 3D images and vice versa is legal
+    const bool copy2Dto3D = dstResourceDim == D3D11_RESOURCE_DIMENSION_TEXTURE3D
+                         && srcResourceDim == D3D11_RESOURCE_DIMENSION_TEXTURE2D;
+    const bool copy3Dto2D = dstResourceDim == D3D11_RESOURCE_DIMENSION_TEXTURE2D
+                         && srcResourceDim == D3D11_RESOURCE_DIMENSION_TEXTURE3D;
+    
+    if (dstResourceDim != srcResourceDim && !copy2Dto3D && !copy3Dto2D) {
       Logger::err(str::format(
         "D3D11: CopySubresourceRegion: Incompatible resources",
         "\n  Dst resource type: ", dstResourceDim,
@@ -368,15 +374,23 @@ namespace dxvk {
         extent.depth  = pSrcBox->back -   pSrcBox->front;
       }
       
-      const VkImageSubresourceLayers dstLayers = {
+      VkImageSubresourceLayers dstLayers = {
         dstSubresource.aspectMask,
         dstSubresource.mipLevel,
         dstSubresource.arrayLayer, 1 };
       
-      const VkImageSubresourceLayers srcLayers = {
+      VkImageSubresourceLayers srcLayers = {
         srcSubresource.aspectMask,
         srcSubresource.mipLevel,
         srcSubresource.arrayLayer, 1 };
+      
+      // Copying multiple slices does not
+      // seem to be supported in D3D11
+      if (copy2Dto3D || copy3Dto2D) {
+        extent.depth         = 1;
+        dstLayers.layerCount = 1;
+        srcLayers.layerCount = 1;
+      }
       
       EmitCs([
         cDstImage  = dstImage,
