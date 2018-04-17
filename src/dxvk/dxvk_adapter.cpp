@@ -35,8 +35,8 @@ namespace dxvk {
     if (DxvkGpuVendor(properties.vendorID) == DxvkGpuVendor::Nvidia) {
       properties.driverVersion = VK_MAKE_VERSION(
         VK_VERSION_MAJOR(properties.driverVersion),
-        VK_VERSION_MINOR(properties.driverVersion) >> 2,
-        VK_VERSION_PATCH(properties.driverVersion));
+        VK_VERSION_MINOR(properties.driverVersion >> 0) >> 2,
+        VK_VERSION_PATCH(properties.driverVersion >> 2) >> 4);
     }
     
     return properties;
