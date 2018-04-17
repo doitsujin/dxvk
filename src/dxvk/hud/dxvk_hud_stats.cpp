@@ -25,7 +25,7 @@ namespace dxvk::hud {
   
   HudPos HudStats::renderText(
     const Rc<DxvkContext>&  context,
-          HudTextRenderer&  renderer,
+          HudRenderer&      renderer,
           HudPos            position) {
     if (m_elements.test(HudElement::StatSubmissions))
       position = this->printSubmissionStats(context, renderer, position);
@@ -45,7 +45,7 @@ namespace dxvk::hud {
   
   HudPos HudStats::printDrawCallStats(
     const Rc<DxvkContext>&  context,
-          HudTextRenderer&  renderer,
+          HudRenderer&      renderer,
           HudPos            position) {
     const uint64_t frameCount = std::max(m_diffCounters.getCtr(DxvkStatCounter::QueuePresentCount), 1ull);
     
@@ -78,7 +78,7 @@ namespace dxvk::hud {
   
   HudPos HudStats::printSubmissionStats(
     const Rc<DxvkContext>&  context,
-          HudTextRenderer&  renderer,
+          HudRenderer&      renderer,
           HudPos            position) {
     const uint64_t frameCount = std::max(m_diffCounters.getCtr(DxvkStatCounter::QueuePresentCount), 1ull);
     const uint64_t numSubmits = m_diffCounters.getCtr(DxvkStatCounter::QueueSubmitCount) / frameCount;
@@ -96,7 +96,7 @@ namespace dxvk::hud {
   
   HudPos HudStats::printPipelineStats(
     const Rc<DxvkContext>&  context,
-          HudTextRenderer&  renderer,
+          HudRenderer&      renderer,
           HudPos            position) {
     const uint64_t gpCount = m_prevCounters.getCtr(DxvkStatCounter::PipeCountGraphics);
     const uint64_t cpCount = m_prevCounters.getCtr(DxvkStatCounter::PipeCountCompute);
@@ -120,7 +120,7 @@ namespace dxvk::hud {
   
   HudPos HudStats::printMemoryStats(
     const Rc<DxvkContext>&  context,
-          HudTextRenderer&  renderer,
+          HudRenderer&      renderer,
           HudPos            position) {
     constexpr uint64_t mib = 1024 * 1024;
     

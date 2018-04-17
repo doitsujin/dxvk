@@ -42,9 +42,9 @@ namespace dxvk::hud {
   };
   
   /**
-   * \brief Text vertex
+   * \brief Vertex
    */
-  struct HudTextVertex {
+  struct HudVertex {
     HudPos      position;
     HudTexCoord texcoord;
     HudColor    color;
@@ -56,15 +56,15 @@ namespace dxvk::hud {
    * Can be used by the presentation backend to
    * display performance and driver information.
    */
-  class HudTextRenderer {
+  class HudRenderer {
     constexpr static VkDeviceSize MaxVertexCount = 1 << 16;
   public:
     
-    HudTextRenderer(
+    HudRenderer(
       const Rc<DxvkDevice>&   device,
       const Rc<DxvkContext>&  context);
     
-    ~HudTextRenderer();
+    ~HudRenderer();
     
     void beginFrame(
       const Rc<DxvkContext>&  context);
@@ -81,7 +81,7 @@ namespace dxvk::hud {
     std::array<uint8_t, 256> m_charMap;
     
     Rc<DxvkShader>      m_vertShader;
-    Rc<DxvkShader>      m_fragShader;
+    Rc<DxvkShader>      m_textShader;
     
     Rc<DxvkImage>       m_fontImage;
     Rc<DxvkImageView>   m_fontView;
@@ -93,7 +93,7 @@ namespace dxvk::hud {
     Rc<DxvkShader> createVertexShader(
       const Rc<DxvkDevice>& device);
     
-    Rc<DxvkShader> createFragmentShader(
+    Rc<DxvkShader> createTextShader(
       const Rc<DxvkDevice>& device);
     
     Rc<DxvkImage> createFontImage(

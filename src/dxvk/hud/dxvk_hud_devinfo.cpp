@@ -23,7 +23,7 @@ namespace dxvk::hud {
   
   HudPos HudDeviceInfo::renderText(
     const Rc<DxvkContext>&  context,
-          HudTextRenderer&  renderer,
+          HudRenderer&      renderer,
           HudPos            position) {
     renderer.drawText(context, 16.0f,
       { position.x, position.y },

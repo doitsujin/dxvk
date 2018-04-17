@@ -1,15 +1,15 @@
-#include "dxvk_hud_text.h"
+#include "dxvk_hud_renderer.h"
 
-#include <hud_text_frag.h>
-#include <hud_text_vert.h>
+#include <hud_text.h>
+#include <hud_vert.h>
 
 namespace dxvk::hud {
   
-  HudTextRenderer::HudTextRenderer(
+  HudRenderer::HudRenderer(
     const Rc<DxvkDevice>&   device,
     const Rc<DxvkContext>&  context)
   : m_vertShader    (createVertexShader(device)),
-    m_fragShader    (createFragmentShader(device)),
+    m_textShader    (createTextShader(device)),
     m_fontImage     (createFontImage(device)),
     m_fontView      (createFontView(device)),
     m_fontSampler   (createFontSampler(device)),
@@ -19,14 +19,14 @@ namespace dxvk::hud {
   }
   
   
-  HudTextRenderer::~HudTextRenderer() {
+  HudRenderer::~HudRenderer() {
     
   }
   
   
-  void HudTextRenderer::beginFrame(const Rc<DxvkContext>& context) {
+  void HudRenderer::beginFrame(const Rc<DxvkContext>& context) {
     context->bindShader(VK_SHADER_STAGE_VERTEX_BIT,   m_vertShader);
-    context->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_fragShader);
+    context->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_textShader);
     
     DxvkInputAssemblyState iaState;
     iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
@@ -35,9 +35,9 @@ namespace dxvk::hud {
     context->setInputAssemblyState(iaState);
     
     const std::array<DxvkVertexAttribute, 3> ilAttributes = {{
-      { 0, 0, VK_FORMAT_R32G32_SFLOAT,       offsetof(HudTextVertex, position) },
-      { 1, 0, VK_FORMAT_R32G32_UINT,         offsetof(HudTextVertex, texcoord) },
-      { 2, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(HudTextVertex, color)    },
+      { 0, 0, VK_FORMAT_R32G32_SFLOAT,       offsetof(HudVertex, position) },
+      { 1, 0, VK_FORMAT_R32G32_UINT,         offsetof(HudVertex, texcoord) },
+      { 2, 0, VK_FORMAT_R32G32B32A32_SFLOAT, offsetof(HudVertex, color)    },
     }};
     
     const std::array<DxvkVertexBinding, 1> ilBindings = {{
@@ -52,7 +52,7 @@ namespace dxvk::hud {
     
     context->bindVertexBuffer(0,
       DxvkBufferSlice(m_vertexBuffer),
-      sizeof(HudTextVertex));
+      sizeof(HudVertex));
     
     context->bindResourceSampler(1, m_fontSampler);
     context->bindResourceView   (2, m_fontView, nullptr);
@@ -61,7 +61,7 @@ namespace dxvk::hud {
   }
   
   
-  void HudTextRenderer::drawText(
+  void HudRenderer::drawText(
     const Rc<DxvkContext>&  context,
           float             size,
           HudPos            pos,
@@ -72,8 +72,8 @@ namespace dxvk::hud {
     auto vertexSlice = m_vertexBuffer->allocPhysicalSlice();
     context->invalidateBuffer(m_vertexBuffer, vertexSlice);
     
-    HudTextVertex* vertexData = reinterpret_cast<HudTextVertex*>(
-      vertexSlice.mapPtr(vertexIndex * sizeof(HudTextVertex)));
+    HudVertex* vertexData = reinterpret_cast<HudVertex*>(
+      vertexSlice.mapPtr(vertexIndex * sizeof(HudVertex)));
     
     const float sizeFactor = size / static_cast<float>(g_hudFont.size);
     
@@ -133,8 +133,8 @@ namespace dxvk::hud {
   }
   
   
-  Rc<DxvkShader> HudTextRenderer::createVertexShader(const Rc<DxvkDevice>& device) {
-    const SpirvCodeBuffer codeBuffer(hud_text_vert);
+  Rc<DxvkShader> HudRenderer::createVertexShader(const Rc<DxvkDevice>& device) {
+    const SpirvCodeBuffer codeBuffer(hud_vert);
     
     // One shader resource: Global HUD uniform buffer
     const std::array<DxvkResourceSlot, 1> resourceSlots = {{
@@ -153,8 +153,8 @@ namespace dxvk::hud {
   }
   
   
-  Rc<DxvkShader> HudTextRenderer::createFragmentShader(const Rc<DxvkDevice>& device) {
-    const SpirvCodeBuffer codeBuffer(hud_text_frag);
+  Rc<DxvkShader> HudRenderer::createTextShader(const Rc<DxvkDevice>& device) {
+    const SpirvCodeBuffer codeBuffer(hud_text);
     
     // One shader resource: Global HUD uniform buffer
     const std::array<DxvkResourceSlot, 2> resourceSlots = {{
@@ -174,7 +174,7 @@ namespace dxvk::hud {
   }
   
   
-  Rc<DxvkImage> HudTextRenderer::createFontImage(const Rc<DxvkDevice>& device) {
+  Rc<DxvkImage> HudRenderer::createFontImage(const Rc<DxvkDevice>& device) {
     DxvkImageCreateInfo info;
     info.type           = VK_IMAGE_TYPE_2D;
     info.format         = VK_FORMAT_R8_UNORM;
@@ -196,7 +196,7 @@ namespace dxvk::hud {
   }
   
   
-  Rc<DxvkImageView> HudTextRenderer::createFontView(const Rc<DxvkDevice>& device) {
+  Rc<DxvkImageView> HudRenderer::createFontView(const Rc<DxvkDevice>& device) {
     DxvkImageViewCreateInfo info;
     info.type           = VK_IMAGE_VIEW_TYPE_2D;
     info.format         = m_fontImage->info().format;
@@ -210,7 +210,7 @@ namespace dxvk::hud {
   }
   
   
-  Rc<DxvkSampler> HudTextRenderer::createFontSampler(const Rc<DxvkDevice>& device) {
+  Rc<DxvkSampler> HudRenderer::createFontSampler(const Rc<DxvkDevice>& device) {
     DxvkSamplerCreateInfo info;
     info.magFilter      = VK_FILTER_LINEAR;
     info.minFilter      = VK_FILTER_LINEAR;
@@ -232,9 +232,9 @@ namespace dxvk::hud {
   }
   
   
-  Rc<DxvkBuffer> HudTextRenderer::createVertexBuffer(const Rc<DxvkDevice>& device) {
+  Rc<DxvkBuffer> HudRenderer::createVertexBuffer(const Rc<DxvkDevice>& device) {
     DxvkBufferCreateInfo info;
-    info.size           = MaxVertexCount * sizeof(HudTextVertex);
+    info.size           = MaxVertexCount * sizeof(HudVertex);
     info.usage          = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
     info.stages         = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
     info.access         = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
@@ -245,7 +245,7 @@ namespace dxvk::hud {
   }
   
   
-  void HudTextRenderer::initFontTexture(
+  void HudRenderer::initFontTexture(
     const Rc<DxvkDevice>&  device,
     const Rc<DxvkContext>& context) {
     context->beginRecording(
@@ -272,7 +272,7 @@ namespace dxvk::hud {
   }
   
   
-  void HudTextRenderer::initCharMap() {
+  void HudRenderer::initCharMap() {
     std::fill(m_charMap.begin(), m_charMap.end(), 0);
     
     for (uint32_t i = 0; i < g_hudFont.charCount; i++)

@@ -10,7 +10,7 @@ namespace dxvk::hud {
   : m_config        (config),
     m_device        (device),
     m_context       (m_device->createContext()),
-    m_textRenderer  (m_device, m_context),
+    m_renderer      (m_device, m_context),
     m_uniformBuffer (createUniformBuffer()),
     m_hudDeviceInfo (device),
     m_hudStats      (config.elements) {
@@ -65,22 +65,22 @@ namespace dxvk::hud {
   
   
   void Hud::renderText() {
-    m_textRenderer.beginFrame(m_context);
+    m_renderer.beginFrame(m_context);
     
     HudPos position = { 8.0f, 24.0f };
     
     if (m_config.elements.test(HudElement::DeviceInfo)) {
       position = m_hudDeviceInfo.renderText(
-        m_context, m_textRenderer, position);
+        m_context, m_renderer, position);
     }
     
     if (m_config.elements.test(HudElement::Framerate)) {
       position = m_hudFps.renderText(
-        m_context, m_textRenderer, position);
+        m_context, m_renderer, position);
     }
     
     position = m_hudStats.renderText(
-      m_context, m_textRenderer, position);
+      m_context, m_renderer, position);
   }
   
   

@@ -7,7 +7,7 @@
 #include "dxvk_hud_config.h"
 #include "dxvk_hud_devinfo.h"
 #include "dxvk_hud_fps.h"
-#include "dxvk_hud_text.h"
+#include "dxvk_hud_renderer.h"
 #include "dxvk_hud_stats.h"
 
 namespace dxvk::hud {
@@ -74,7 +74,7 @@ namespace dxvk::hud {
     const Rc<DxvkDevice>  m_device;
     const Rc<DxvkContext> m_context;
     
-    HudTextRenderer       m_textRenderer;
+    HudRenderer           m_renderer;
     VkExtent2D            m_surfaceSize = { 0, 0 };
     
     Rc<DxvkBuffer>        m_uniformBuffer;
