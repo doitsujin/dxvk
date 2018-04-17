@@ -1,5 +1,6 @@
 #include "dxvk_hud_renderer.h"
 
+#include <hud_line.h>
 #include <hud_text.h>
 #include <hud_vert.h>
 
@@ -8,8 +9,10 @@ namespace dxvk::hud {
   HudRenderer::HudRenderer(
     const Rc<DxvkDevice>&   device,
     const Rc<DxvkContext>&  context)
-  : m_vertShader    (createVertexShader(device)),
+  : m_mode          (Mode::RenderNone),
+    m_vertShader    (createVertexShader(device)),
     m_textShader    (createTextShader(device)),
+    m_lineShader    (createLineShader(device)),
     m_fontImage     (createFontImage(device)),
     m_fontView      (createFontView(device)),
     m_fontSampler   (createFontSampler(device)),
@@ -25,14 +28,8 @@ namespace dxvk::hud {
   
   
   void HudRenderer::beginFrame(const Rc<DxvkContext>& context) {
-    context->bindShader(VK_SHADER_STAGE_VERTEX_BIT,   m_vertShader);
-    context->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_textShader);
-    
-    DxvkInputAssemblyState iaState;
-    iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    iaState.primitiveRestart  = VK_FALSE;
-    iaState.patchVertexCount  = 0;
-    context->setInputAssemblyState(iaState);
+    auto vertexSlice = m_vertexBuffer->allocPhysicalSlice();
+    context->invalidateBuffer(m_vertexBuffer, vertexSlice);
     
     const std::array<DxvkVertexAttribute, 3> ilAttributes = {{
       { 0, 0, VK_FORMAT_R32G32_SFLOAT,       offsetof(HudVertex, position) },
@@ -57,6 +54,7 @@ namespace dxvk::hud {
     context->bindResourceSampler(1, m_fontSampler);
     context->bindResourceView   (2, m_fontView, nullptr);
     
+    m_mode = Mode::RenderNone;
     m_vertexIndex = 0;
   }
   
@@ -67,13 +65,12 @@ namespace dxvk::hud {
           HudPos            pos,
           HudColor          color,
     const std::string&      text) {
+    this->setRenderMode(context, Mode::RenderText);
+    
     const size_t vertexIndex = m_vertexIndex;
     
-    auto vertexSlice = m_vertexBuffer->allocPhysicalSlice();
-    context->invalidateBuffer(m_vertexBuffer, vertexSlice);
-    
     HudVertex* vertexData = reinterpret_cast<HudVertex*>(
-      vertexSlice.mapPtr(vertexIndex * sizeof(HudVertex)));
+      m_vertexBuffer->mapPtr(vertexIndex * sizeof(HudVertex)));
     
     const float sizeFactor = size / static_cast<float>(g_hudFont.size);
     
@@ -133,6 +130,60 @@ namespace dxvk::hud {
   }
   
   
+  void HudRenderer::drawLines(
+    const Rc<DxvkContext>&  context,
+          size_t            vertexCount,
+    const HudVertex*        vertexData) {
+    this->setRenderMode(context, Mode::RenderLines);
+    const size_t vertexIndex = m_vertexIndex;
+    
+    HudVertex* dstVertexData = reinterpret_cast<HudVertex*>(
+      m_vertexBuffer->mapPtr(vertexIndex * sizeof(HudVertex)));
+    
+    for (size_t i = 0; i < vertexCount; i++)
+      dstVertexData[i] = vertexData[i];
+    
+    context->draw(vertexCount, 1, vertexIndex, 0);
+    m_vertexIndex += vertexCount;
+  }
+  
+  
+  void HudRenderer::setRenderMode(
+    const Rc<DxvkContext>&  context,
+          Mode              mode) {
+    if (m_mode != mode) {
+      m_mode = mode;
+    
+      switch (mode) {
+        case Mode::RenderNone:
+          break;
+        
+        case Mode::RenderText: {
+          context->bindShader(VK_SHADER_STAGE_VERTEX_BIT,   m_vertShader);
+          context->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_textShader);
+          
+          DxvkInputAssemblyState iaState;
+          iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+          iaState.primitiveRestart  = VK_FALSE;
+          iaState.patchVertexCount  = 0;
+          context->setInputAssemblyState(iaState);
+        } break;
+        
+        case Mode::RenderLines: {
+          context->bindShader(VK_SHADER_STAGE_VERTEX_BIT,   m_vertShader);
+          context->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_lineShader);
+          
+          DxvkInputAssemblyState iaState;
+          iaState.primitiveTopology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+          iaState.primitiveRestart  = VK_FALSE;
+          iaState.patchVertexCount  = 0;
+          context->setInputAssemblyState(iaState);
+        } break;
+      }
+    }
+  }
+  
+  
   Rc<DxvkShader> HudRenderer::createVertexShader(const Rc<DxvkDevice>& device) {
     const SpirvCodeBuffer codeBuffer(hud_vert);
     
@@ -141,14 +192,11 @@ namespace dxvk::hud {
       { 0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_IMAGE_VIEW_TYPE_MAX_ENUM },
     }};
     
-    // 3 input registers, 2 output registers, tightly packed
-    const DxvkInterfaceSlots interfaceSlots = { 0x7, 0x3 };
-    
     return new DxvkShader(
       VK_SHADER_STAGE_VERTEX_BIT,
       resourceSlots.size(),
       resourceSlots.data(),
-      interfaceSlots,
+      { 0x7, 0x3 },
       codeBuffer);
   }
   
@@ -156,20 +204,27 @@ namespace dxvk::hud {
   Rc<DxvkShader> HudRenderer::createTextShader(const Rc<DxvkDevice>& device) {
     const SpirvCodeBuffer codeBuffer(hud_text);
     
-    // One shader resource: Global HUD uniform buffer
+    // Two shader resources: Font texture and sampler
     const std::array<DxvkResourceSlot, 2> resourceSlots = {{
       { 1, VK_DESCRIPTOR_TYPE_SAMPLER,       VK_IMAGE_VIEW_TYPE_MAX_ENUM },
       { 2, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_IMAGE_VIEW_TYPE_2D       },
     }};
     
-    // 2 input registers, 1 output register
-    const DxvkInterfaceSlots interfaceSlots = { 0x3, 0x1 };
-    
     return new DxvkShader(
       VK_SHADER_STAGE_FRAGMENT_BIT,
       resourceSlots.size(),
       resourceSlots.data(),
-      interfaceSlots,
+      { 0x3, 0x1 },
+      codeBuffer);
+  }
+  
+  
+  Rc<DxvkShader> HudRenderer::createLineShader(const Rc<DxvkDevice>& device) {
+    const SpirvCodeBuffer codeBuffer(hud_line);
+    
+    return new DxvkShader(
+      VK_SHADER_STAGE_FRAGMENT_BIT,
+      0, nullptr, { 0x2, 0x1 },
       codeBuffer);
   }
   
