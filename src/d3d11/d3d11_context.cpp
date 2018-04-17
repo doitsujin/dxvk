@@ -181,6 +181,9 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11DeviceContext::Begin(ID3D11Asynchronous *pAsync) {
+    if (pAsync == nullptr)
+      return;
+    
     Com<ID3D11Query> query;
     
     if (SUCCEEDED(pAsync->QueryInterface(__uuidof(ID3D11Query), reinterpret_cast<void**>(&query)))) {
@@ -198,8 +201,11 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11DeviceContext::End(ID3D11Asynchronous *pAsync) {
+    if (pAsync == nullptr)
+      return;
+
     Com<ID3D11Query> query;
-    
+   
     if (SUCCEEDED(pAsync->QueryInterface(__uuidof(ID3D11Query), reinterpret_cast<void**>(&query)))) {
       Com<D3D11Query> queryPtr = static_cast<D3D11Query*>(query.ptr());
       
