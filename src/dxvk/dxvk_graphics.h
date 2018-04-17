@@ -43,6 +43,7 @@ namespace dxvk {
     uint32_t                            ilBindingCount;
     VkVertexInputAttributeDescription   ilAttributes[DxvkLimits::MaxNumVertexAttributes];
     VkVertexInputBindingDescription     ilBindings[DxvkLimits::MaxNumVertexBindings];
+    uint32_t                            ilDivisors[DxvkLimits::MaxNumVertexBindings];
     
     VkBool32                            rsEnableDepthClamp;
     VkBool32                            rsEnableDiscard;

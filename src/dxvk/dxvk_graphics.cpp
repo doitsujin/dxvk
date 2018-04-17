@@ -135,14 +135,39 @@ namespace dxvk {
     if (m_gs  != nullptr) stages.push_back(m_gs->stageInfo(&specInfo));
     if (m_fs  != nullptr) stages.push_back(m_fs->stageInfo(&specInfo));
     
+    std::array<VkVertexInputBindingDivisorDescriptionEXT, MaxNumVertexBindings> viDivisorDesc;
+    uint32_t                                                                    viDivisorCount = 0;
+    
+    for (uint32_t i = 0; i < state.ilBindingCount; i++) {
+      if (state.ilBindings[i].inputRate == VK_VERTEX_INPUT_RATE_INSTANCE) {
+        const uint32_t id = viDivisorCount++;
+        
+        viDivisorDesc[id].binding = state.ilBindings[i].binding;
+        viDivisorDesc[id].divisor = state.ilDivisors[i];
+      }
+    }
+    
+    VkPipelineVertexInputDivisorStateCreateInfoEXT viDivisorInfo;
+    viDivisorInfo.sType                     = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT;
+    viDivisorInfo.pNext                     = nullptr;
+    viDivisorInfo.vertexBindingDivisorCount = viDivisorCount;
+    viDivisorInfo.pVertexBindingDivisors    = viDivisorDesc.data();
+    
     VkPipelineVertexInputStateCreateInfo viInfo;
     viInfo.sType                            = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    viInfo.pNext                            = nullptr;
+    viInfo.pNext                            = &viDivisorInfo;
     viInfo.flags                            = 0;
     viInfo.vertexBindingDescriptionCount    = state.ilBindingCount;
     viInfo.pVertexBindingDescriptions       = state.ilBindings;
     viInfo.vertexAttributeDescriptionCount  = state.ilAttributeCount;
     viInfo.pVertexAttributeDescriptions     = state.ilAttributes;
+    
+    if (viDivisorCount == 0)
+      viInfo.pNext = viDivisorInfo.pNext;
+    
+    // TODO make this extension required when widely supported
+    if (!m_device->extensions().extVertexAttributeDivisor.enabled())
+      viInfo.pNext = viDivisorInfo.pNext;
     
     VkPipelineInputAssemblyStateCreateInfo iaInfo;
     iaInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;

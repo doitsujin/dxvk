@@ -27,7 +27,6 @@ namespace dxvk {
     GpDirtyResources,           ///< Graphics pipeline resource bindings are out of date
     GpDirtyVertexBuffers,       ///< Vertex buffer bindings are out of date
     GpDirtyIndexBuffer,         ///< Index buffer binding are out of date
-    GpEmulateInstanceFetchRate, ///< The current input layout uses fetch rates != 1
     
     CpDirtyPipeline,            ///< Compute pipeline binding are out of date
     CpDirtyPipelineState,       ///< Compute pipeline needs to be recompiled
@@ -42,12 +41,8 @@ namespace dxvk {
     VkIndexType     indexType   = VK_INDEX_TYPE_UINT32;
     uint32_t        bindingMask = 0;
     
-    std::array<DxvkBufferSlice,
-      DxvkLimits::MaxNumVertexBindings> vertexBuffers = { };
-    std::array<uint32_t,
-      DxvkLimits::MaxNumVertexBindings> vertexStrides = { };
-    std::array<uint32_t,
-      DxvkLimits::MaxNumVertexBindings> vertexFetchRates = { };
+    std::array<DxvkBufferSlice, DxvkLimits::MaxNumVertexBindings> vertexBuffers = { };
+    std::array<uint32_t,        DxvkLimits::MaxNumVertexBindings> vertexStrides = { };
   };
   
   

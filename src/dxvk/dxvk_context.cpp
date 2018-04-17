@@ -1386,8 +1386,6 @@ namespace dxvk {
     m_flags.set(
       DxvkContextFlag::GpDirtyPipelineState,
       DxvkContextFlag::GpDirtyVertexBuffers);
-    m_flags.clr(
-      DxvkContextFlag::GpEmulateInstanceFetchRate);
     
     for (uint32_t i = 0; i < attributeCount; i++) {
       m_state.gp.state.ilAttributes[i].location = attributes[i].location;
@@ -1402,10 +1400,7 @@ namespace dxvk {
     for (uint32_t i = 0; i < bindingCount; i++) {
       m_state.gp.state.ilBindings[i].binding    = bindings[i].binding;
       m_state.gp.state.ilBindings[i].inputRate  = bindings[i].inputRate;
-      m_state.vi.vertexFetchRates[bindings[i].binding] = bindings[i].fetchRate;
-      
-      if (bindings[i].inputRate == VK_VERTEX_INPUT_RATE_INSTANCE && bindings[i].fetchRate != 1)
-        m_flags.set(DxvkContextFlag::GpEmulateInstanceFetchRate);
+      m_state.gp.state.ilDivisors[i]            = bindings[i].fetchRate;
     }
     
     for (uint32_t i = bindingCount; i < m_state.gp.state.ilBindingCount; i++)
@@ -1413,13 +1408,6 @@ namespace dxvk {
     
     m_state.gp.state.ilAttributeCount = attributeCount;
     m_state.gp.state.ilBindingCount   = bindingCount;
-    
-    if (m_flags.test(DxvkContextFlag::GpEmulateInstanceFetchRate)) {
-      static bool errorShown = false;
-      
-      if (!std::exchange(errorShown, true))
-        Logger::warn("Dxvk: GpEmulateInstanceFetchRate not handled yet");
-    }
   }
   
   
