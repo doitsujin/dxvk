@@ -35,10 +35,10 @@ namespace dxvk::hud {
    * will use this color for the most part.
    */
   struct HudColor {
-    float x;
-    float y;
-    float z;
-    float w;
+    float r;
+    float g;
+    float b;
+    float a;
   };
   
   /**

@@ -7,6 +7,7 @@ namespace dxvk::hud {
   const std::unordered_map<std::string, HudElement> g_hudElements = {{
     { "devinfo",      HudElement::DeviceInfo        },
     { "fps",          HudElement::Framerate         },
+    { "frametimes",   HudElement::Frametimes        },
     { "drawcalls",    HudElement::StatDrawCalls     },
     { "submissions",  HudElement::StatSubmissions   },
     { "pipelines",    HudElement::StatPipelines     },

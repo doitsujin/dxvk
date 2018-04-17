@@ -13,10 +13,11 @@ namespace dxvk::hud {
   enum class HudElement {
     DeviceInfo        = 0,
     Framerate         = 1,
-    StatDrawCalls     = 2,
-    StatSubmissions   = 3,
-    StatPipelines     = 4,
-    StatMemory        = 5,
+    Frametimes        = 2,
+    StatDrawCalls     = 3,
+    StatSubmissions   = 4,
+    StatPipelines     = 5,
+    StatMemory        = 6,
   };
   
   using HudElements = Flags<HudElement>;

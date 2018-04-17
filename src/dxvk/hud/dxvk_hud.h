@@ -83,7 +83,7 @@ namespace dxvk::hud {
     Rc<DxvkFramebuffer>   m_renderTargetFbo;
     
     HudDeviceInfo         m_hudDeviceInfo;
-    HudFps                m_hudFps;
+    HudFps                m_hudFramerate;
     HudStats              m_hudStats;
     
     void render();

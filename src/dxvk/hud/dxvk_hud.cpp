@@ -13,6 +13,7 @@ namespace dxvk::hud {
     m_renderer      (m_device, m_context),
     m_uniformBuffer (createUniformBuffer()),
     m_hudDeviceInfo (device),
+    m_hudFramerate  (config.elements),
     m_hudStats      (config.elements) {
     this->setupConstantState();
   }
@@ -31,7 +32,7 @@ namespace dxvk::hud {
       this->setupFramebuffer(size);
     }
       
-    m_hudFps.update();
+    m_hudFramerate.update();
     m_hudStats.update(m_device);
     
     this->beginRenderPass(recreateFbo);
@@ -74,13 +75,8 @@ namespace dxvk::hud {
         m_context, m_renderer, position);
     }
     
-    if (m_config.elements.test(HudElement::Framerate)) {
-      position = m_hudFps.render(
-        m_context, m_renderer, position);
-    }
-    
-    position = m_hudStats.render(
-      m_context, m_renderer, position);
+    position = m_hudFramerate.render(m_context, m_renderer, position);
+    position = m_hudStats    .render(m_context, m_renderer, position);
   }
   
   

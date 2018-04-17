@@ -1,12 +1,15 @@
 #include "dxvk_hud_fps.h"
 
+#include <cmath>
 #include <iomanip>
 
 namespace dxvk::hud {
   
-  HudFps::HudFps()
-  : m_fpsString("FPS: "),
-    m_prevUpdate(Clock::now()) {
+  HudFps::HudFps(HudElements elements)
+  : m_elements  (elements),
+    m_fpsString ("FPS: "),
+    m_prevFpsUpdate(Clock::now()),
+    m_prevFtgUpdate(Clock::now()) {
     
   }
   
@@ -19,20 +22,45 @@ namespace dxvk::hud {
   void HudFps::update() {
     m_frameCount += 1;
     
-    const TimePoint now = Clock::now();
-    const TimeDiff elapsed = std::chrono::duration_cast<TimeDiff>(now - m_prevUpdate);
+    TimePoint now = Clock::now();
+    TimeDiff elapsedFps = std::chrono::duration_cast<TimeDiff>(now - m_prevFpsUpdate);
+    TimeDiff elapsedFtg = std::chrono::duration_cast<TimeDiff>(now - m_prevFtgUpdate);
+    m_prevFtgUpdate = now;
     
-    if (elapsed.count() >= UpdateInterval) {
-      const int64_t fps = (10'000'000ll * m_frameCount) / elapsed.count();
+    // Update FPS string
+    if (elapsedFps.count() >= UpdateInterval) {
+      const int64_t fps = (10'000'000ll * m_frameCount) / elapsedFps.count();
       m_fpsString = str::format("FPS: ", fps / 10, ".", fps % 10);
       
-      m_prevUpdate = now;
+      m_prevFpsUpdate = now;
       m_frameCount = 0;
     }
+    
+    // Update frametime stuff
+    m_dataPoints[m_dataPointId] = float(elapsedFtg.count());
+    m_dataPointId = (m_dataPointId + 1) % NumDataPoints;
   }
   
   
   HudPos HudFps::render(
+    const Rc<DxvkContext>&  context,
+          HudRenderer&      renderer,
+          HudPos            position) {
+    if (m_elements.test(HudElement::Framerate)) {
+      position = this->renderFpsText(
+        context, renderer, position);
+    }
+    
+    if (m_elements.test(HudElement::Frametimes)) {
+      position = this->renderFrametimeGraph(
+        context, renderer, position);
+    }
+    
+    return position;
+  }
+  
+  
+  HudPos HudFps::renderFpsText(
     const Rc<DxvkContext>&  context,
           HudRenderer&      renderer,
           HudPos            position) {
@@ -42,6 +70,64 @@ namespace dxvk::hud {
       m_fpsString);
     
     return HudPos { position.x, position.y + 24 };
+  }
+  
+  
+  HudPos HudFps::renderFrametimeGraph(
+    const Rc<DxvkContext>&  context,
+          HudRenderer&      renderer,
+          HudPos            position) {
+    std::array<HudVertex, NumDataPoints * 2> vData;
+    
+    // 60 FPS = optimal, 10 FPS = worst
+    const float targetUs =  16'666.6f;
+    const float minUs    =   5'000.0f;
+    const float maxUs    = 100'000.0f;
+    
+    // Ten times the maximum/minimum number
+    // of milliseconds for a single frame
+    uint32_t minMs = 0xFFFFFFFFu;
+    uint32_t maxMs = 0x00000000u;
+    
+    // Paint the time points
+    for (uint32_t i = 0; i < NumDataPoints; i++) {
+      float us = m_dataPoints[(m_dataPointId + i) % NumDataPoints];
+      
+      minMs = std::min(minMs, uint32_t(us / 100.0f));
+      maxMs = std::max(maxMs, uint32_t(us / 100.0f));
+      
+      float r = std::clamp(-1.0f + us / targetUs, 0.0f, 1.0f);
+      float g = std::clamp( 3.0f - us / targetUs, 0.0f, 1.0f);
+      float l = std::sqrt(r * r + g * g);
+      
+      HudTexCoord tc = { 0u, 0u };
+      HudColor color = { r / l, g / l, 0.0f, 1.0f };
+      
+      float x = position.x + float(i);
+      float y = position.y + 24.0f;
+      
+      float hVal = std::log2(std::max((us - minUs) / targetUs + 1.0f, 1.0f))
+                 / std::log2((maxUs - minUs) / targetUs);
+      float h = std::clamp(40.0f * hVal, 2.0f, 40.0f);
+      
+      vData[2 * i + 0] = HudVertex { { x, y     }, tc, color };
+      vData[2 * i + 1] = HudVertex { { x, y - h }, tc, color };
+    }
+    
+    renderer.drawLines(context, vData.size(), vData.data());
+    
+    // Paint min/max frame times in the entire window
+    renderer.drawText(context, 14.0f,
+      { position.x, position.y + 44.0f },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
+      str::format("min: ", minMs / 10, ".", minMs % 10));
+    
+    renderer.drawText(context, 14.0f,
+      { position.x + 150.0f, position.y + 44.0f },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
+      str::format("max: ", maxMs / 10, ".", maxMs % 10));
+    
+    return HudPos { position.x, position.y + 66.0f };
   }
   
 }
