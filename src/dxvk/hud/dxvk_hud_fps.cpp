@@ -96,8 +96,8 @@ namespace dxvk::hud {
       minMs = std::min(minMs, uint32_t(us / 100.0f));
       maxMs = std::max(maxMs, uint32_t(us / 100.0f));
       
-      float r = std::clamp(-1.0f + us / targetUs, 0.0f, 1.0f);
-      float g = std::clamp( 3.0f - us / targetUs, 0.0f, 1.0f);
+      float r = std::min(std::max(-1.0f + us / targetUs, 0.0f), 1.0f);
+      float g = std::min(std::max( 3.0f - us / targetUs, 0.0f), 1.0f);
       float l = std::sqrt(r * r + g * g);
       
       HudTexCoord tc = { 0u, 0u };
@@ -108,7 +108,7 @@ namespace dxvk::hud {
       
       float hVal = std::log2(std::max((us - minUs) / targetUs + 1.0f, 1.0f))
                  / std::log2((maxUs - minUs) / targetUs);
-      float h = std::clamp(40.0f * hVal, 2.0f, 40.0f);
+      float h = std::min(std::max(40.0f * hVal, 2.0f), 40.0f);
       
       vData[2 * i + 0] = HudVertex { { x, y     }, tc, color };
       vData[2 * i + 1] = HudVertex { { x, y - h }, tc, color };
