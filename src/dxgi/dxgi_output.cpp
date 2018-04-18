@@ -203,7 +203,7 @@ namespace dxvk {
         mode.RefreshRate      = { devMode.dmDisplayFrequency, 1 };
         mode.Format           = EnumFormat;
         mode.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_PROGRESSIVE;
-        mode.Scaling          = DXGI_MODE_SCALING_CENTERED;
+        mode.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
         modeList.push_back(mode);
       }
       
