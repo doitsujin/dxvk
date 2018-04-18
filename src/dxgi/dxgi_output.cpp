@@ -183,8 +183,6 @@ namespace dxvk {
     uint32_t srcModeId = 0;
     uint32_t dstModeId = 0;
     
-    const bool includeStretchedModes = (Flags & DXGI_ENUM_MODES_SCALING);
-    
     while (::EnumDisplaySettingsW(monInfo.szDevice, srcModeId++, &devMode)) {
       // Skip interlaced modes altogether
       if (devMode.dmDisplayFlags & DM_INTERLACED)
@@ -192,13 +190,6 @@ namespace dxvk {
       
       // Skip modes with incompatible formats
       if (devMode.dmBitsPerPel != GetFormatBpp(EnumFormat))
-        continue;
-      
-      // Skip stretched modes unless they are requested
-      const bool isStretched = devMode.dmPelsWidth  != UINT(monInfo.rcMonitor.right  - monInfo.rcMonitor.left)
-                            || devMode.dmPelsHeight != UINT(monInfo.rcMonitor.bottom - monInfo.rcMonitor.top);
-      
-      if (isStretched && !includeStretchedModes)
         continue;
       
       // Write back display mode
@@ -212,9 +203,7 @@ namespace dxvk {
         mode.RefreshRate      = { devMode.dmDisplayFrequency, 1 };
         mode.Format           = EnumFormat;
         mode.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_PROGRESSIVE;
-        mode.Scaling          = isStretched
-          ? DXGI_MODE_SCALING_STRETCHED
-          : DXGI_MODE_SCALING_CENTERED;
+        mode.Scaling          = DXGI_MODE_SCALING_CENTERED;
         
         pDesc[dstModeId] = mode;
       }
