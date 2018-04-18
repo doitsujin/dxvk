@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include <cstdlib>
 #include <cstring>
 
@@ -183,6 +185,8 @@ namespace dxvk {
     uint32_t srcModeId = 0;
     uint32_t dstModeId = 0;
     
+    std::vector<DXGI_MODE_DESC> modeList;
+    
     while (::EnumDisplaySettingsW(monInfo.szDevice, srcModeId++, &devMode)) {
       // Skip interlaced modes altogether
       if (devMode.dmDisplayFlags & DM_INTERLACED)
@@ -192,11 +196,7 @@ namespace dxvk {
       if (devMode.dmBitsPerPel != GetFormatBpp(EnumFormat))
         continue;
       
-      // Write back display mode
       if (pDesc != nullptr) {
-        if (dstModeId >= *pNumModes)
-          return DXGI_ERROR_MORE_DATA;
-        
         DXGI_MODE_DESC mode;
         mode.Width            = devMode.dmPelsWidth;
         mode.Height           = devMode.dmPelsHeight;
@@ -204,11 +204,34 @@ namespace dxvk {
         mode.Format           = EnumFormat;
         mode.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_PROGRESSIVE;
         mode.Scaling          = DXGI_MODE_SCALING_CENTERED;
-        
-        pDesc[dstModeId] = mode;
+        modeList.push_back(mode);
       }
       
       dstModeId += 1;
+    }
+    
+    // Sort display modes by width, height and refresh rate,
+    // in that order. Some games rely on correct ordering.
+    std::sort(modeList.begin(), modeList.end(),
+      [] (const DXGI_MODE_DESC& a, const DXGI_MODE_DESC& b) {
+        if (a.Width < b.Width) return true;
+        if (a.Width > b.Width) return false;
+        
+        if (a.Height < b.Height) return true;
+        if (a.Height > b.Height) return false;
+        
+        return (a.RefreshRate.Numerator / a.RefreshRate.Denominator)
+             < (b.RefreshRate.Numerator / b.RefreshRate.Denominator);
+      });
+    
+    // If requested, write out the first set of display
+    // modes to the destination array.
+    if (pDesc != nullptr) {
+      for (uint32_t i = 0; i < *pNumModes && i < dstModeId; i++)
+        pDesc[i] = modeList[i];
+      
+      if (dstModeId > *pNumModes)
+        return DXGI_ERROR_MORE_DATA;
     }
     
     *pNumModes = dstModeId;
