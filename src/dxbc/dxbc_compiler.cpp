@@ -37,9 +37,6 @@ namespace dxvk {
     
     // Make sure our interface registers are clear
     for (uint32_t i = 0; i < DxbcMaxInterfaceRegs; i++) {
-      m_ps.oTypes.at(i).ctype  = DxbcScalarType::Float32;
-      m_ps.oTypes.at(i).ccount = 0;
-      
       m_vRegs.at(i) = 0;
       m_oRegs.at(i) = 0;
     }
@@ -635,9 +632,11 @@ namespace dxvk {
     // This may happen when multiple system values are
     // mapped to different parts of the same register.
     if (m_oRegs.at(regIdx) == 0) {
+      const DxbcVectorType regType = getOutputRegType(regIdx);
+      
       DxbcRegisterInfo info;
-      info.type.ctype   = DxbcScalarType::Float32;
-      info.type.ccount  = 4;
+      info.type.ctype   = regType.ctype;
+      info.type.ccount  = regType.ccount;
       info.type.alength = regDim;
       info.sclass = spv::StorageClassOutput;
       
@@ -4093,7 +4092,7 @@ namespace dxvk {
       // are simple float4 vectors in all other shader stages.
       case DxbcProgramType::PixelShader: {
         const uint32_t registerId = operand.idx[0].offset;
-        result.type = m_ps.oTypes.at(registerId);
+        result.type = getOutputRegType(registerId);
         result.id = m_oRegs.at(registerId);
       } break;
       
@@ -4858,7 +4857,7 @@ namespace dxvk {
         case DxbcProgramType::GeometryShader: emitGsSystemValueStore(sv, mask, value); break;
         case DxbcProgramType::HullShader:     emitHsSystemValueStore(sv, mask, value); break;
         case DxbcProgramType::DomainShader:   emitDsSystemValueStore(sv, mask, value); break;
-        case DxbcProgramType::PixelShader:    break;
+        case DxbcProgramType::PixelShader:    emitPsSystemValueStore(sv, mask, value); break;
         case DxbcProgramType::ComputeShader:  break;
       }
     }
@@ -5256,6 +5255,15 @@ namespace dxvk {
   }
   
   
+  void DxbcCompiler::emitPsSystemValueStore(
+          DxbcSystemValue         sv,
+          DxbcRegMask             mask,
+    const DxbcRegisterValue&      value) {
+    Logger::warn(str::format(
+      "DxbcCompiler: Unhandled GS SV output: ", sv));
+  }
+  
+  
   void DxbcCompiler::emitDsSystemValueStore(
           DxbcSystemValue         sv,
           DxbcRegMask             mask,
@@ -5562,30 +5570,6 @@ namespace dxvk {
     
     m_module.setExecutionMode(m_entryPointId,
       spv::ExecutionModeOriginUpperLeft);
-    
-    // Declare pixel shader outputs. According to the Vulkan
-    // documentation, they are required to match the type of
-    // the render target.
-    for (auto e = m_osgn->begin(); e != m_osgn->end(); e++) {
-      if (e->systemValue == DxbcSystemValue::None
-       && e->registerId  != 0xFFFFFFFF /* depth */) {
-        DxbcRegisterInfo info;
-        info.type.ctype   = e->componentType;
-        info.type.ccount  = e->componentMask.popCount();
-        info.type.alength = 0;
-        info.sclass = spv::StorageClassOutput;
-        
-        const uint32_t varId = emitNewVariable(info);
-        
-        m_module.decorateLocation(varId, e->registerId);
-        m_module.setDebugName(varId, str::format("o", e->registerId).c_str());
-        m_entryPointInterfaces.push_back(varId);
-        
-        m_oRegs.at(e->registerId) = varId;
-        m_ps.oTypes.at(e->registerId).ctype  = info.type.ctype;
-        m_ps.oTypes.at(e->registerId).ccount = info.type.ccount;
-      }
-    }
     
     // Standard input array
     emitDclInputArray(0);
@@ -6191,6 +6175,26 @@ namespace dxvk {
       
       if (entry != nullptr)
         result.ctype = entry->componentType;
+    }
+    
+    return result;
+  }
+  
+  
+  DxbcVectorType DxbcCompiler::getOutputRegType(uint32_t regIdx) const {
+    DxbcVectorType result;
+    result.ctype  = DxbcScalarType::Float32;
+    result.ccount = 4;
+    
+    // Pixel shader outputs are required to match the type of
+    // the render target, so we'll scan the output signature.
+    if (m_version.type() == DxbcProgramType::PixelShader) {
+      const DxbcSgnEntry* entry = m_osgn->findByRegister(regIdx);
+      
+      if (entry != nullptr) {
+        result.ctype  = entry->componentType;
+        result.ccount = entry->componentMask.popCount();
+      }
     }
     
     return result;

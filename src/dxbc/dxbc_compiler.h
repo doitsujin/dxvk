@@ -136,8 +136,6 @@ namespace dxvk {
     uint32_t builtinSampleMaskIn  = 0;
     uint32_t builtinSampleMaskOut = 0;
     uint32_t builtinLayer         = 0;
-    
-    std::array<DxbcVectorType, DxbcMaxInterfaceRegs> oTypes;
   };
   
   
@@ -882,6 +880,11 @@ namespace dxvk {
             DxbcRegMask             mask,
       const DxbcRegisterValue&      value);
     
+    void emitPsSystemValueStore(
+            DxbcSystemValue         sv,
+            DxbcRegMask             mask,
+      const DxbcRegisterValue&      value);
+    
     ///////////////////////////////
     // Special system value stores
     void emitClipCullStore(
@@ -999,6 +1002,9 @@ namespace dxvk {
       const DxbcImageInfo& imageType) const;
     
     DxbcVectorType getInputRegType(
+            uint32_t regIdx) const;
+    
+    DxbcVectorType getOutputRegType(
             uint32_t regIdx) const;
     
     VkImageViewType getViewType(
