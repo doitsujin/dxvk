@@ -569,7 +569,7 @@ namespace dxvk {
           uint32_t                variableType,
           spv::StorageClass       storageClass) {
     std::array<uint32_t, 2> args = {{
-      storageClass,
+      static_cast<uint32_t>(storageClass),
       variableType,
     }};
     
@@ -593,11 +593,11 @@ namespace dxvk {
           spv::ImageFormat        format) {
     std::array<uint32_t, 7> args = {{
       sampledType,
-      dimensionality,
+	  static_cast<uint32_t>(dimensionality),
       depth, arrayed,
       multisample,
       sampled,
-      format
+	  static_cast<uint32_t>(format)
     }};
     
     return this->defType(spv::OpTypeImage,
