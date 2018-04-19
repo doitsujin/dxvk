@@ -25,7 +25,7 @@ namespace dxvk {
     info.mipmapLodBias = desc.MipLODBias;
     info.mipmapLodMin  = desc.MinLOD;
     info.mipmapLodMax  = desc.MaxLOD;
-    info.maxAnisotropy = desc.MaxAnisotropy;
+    info.maxAnisotropy = static_cast<float>(desc.MaxAnisotropy);
     info.addressModeU  = DecodeAddressMode(desc.AddressU);
     info.addressModeV  = DecodeAddressMode(desc.AddressV);
     info.addressModeW  = DecodeAddressMode(desc.AddressW);
