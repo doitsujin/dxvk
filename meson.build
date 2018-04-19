@@ -10,6 +10,10 @@ else
   dxvk_cpp_std='c++1z'
 endif
 
+if dxvk_compiler.get_id() == 'msvc'
+	add_global_arguments('/std:' + dxvk_cpp_std, language : 'cpp')
+endif
+
 dxvk_include_path = include_directories('./include')
 
 if (cpu_family == 'x86_64')
