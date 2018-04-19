@@ -350,6 +350,14 @@ namespace dxvk {
       
       const VkImageSubresource dstSubresource = dstTextureInfo->GetSubresourceFromIndex(dstFormatInfo->aspectMask, DstSubresource);
       const VkImageSubresource srcSubresource = srcTextureInfo->GetSubresourceFromIndex(srcFormatInfo->aspectMask, SrcSubresource);
+
+       //Copying between resources is only supported between same texel sizes.
+      if (dstFormatInfo->elementSize != srcFormatInfo->elementSize)
+        return;
+
+      //Sample count must match
+      if (dstImage->info().sampleCount != srcImage->info().sampleCount)
+        return;
       
       VkOffset3D srcOffset = { 0, 0, 0 };
       VkOffset3D dstOffset = {
@@ -358,6 +366,7 @@ namespace dxvk {
         static_cast<int32_t>(DstZ) };
       
       VkExtent3D extent = srcImage->mipLevelExtent(srcSubresource.mipLevel);
+      VkExtent3D srcExtent = extent;
       
       if (pSrcBox != nullptr) {
         if (pSrcBox->left  >= pSrcBox->right
@@ -372,6 +381,13 @@ namespace dxvk {
         extent.width  = pSrcBox->right -  pSrcBox->left;
         extent.height = pSrcBox->bottom - pSrcBox->top;
         extent.depth  = pSrcBox->back -   pSrcBox->front;
+
+        //It's undefined behavior to have a src box outside 
+        //of the resource range
+        if (srcOffset.x + extent.width > srcExtent.width
+         || srcOffset.y + extent.height > srcExtent.height
+         || srcOffset.z + extent.depth > srcExtent.depth)
+          return;
       }
       
       VkImageSubresourceLayers dstLayers = {
@@ -470,7 +486,19 @@ namespace dxvk {
 
       const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(dstImage->info().format);
       const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcImage->info().format);
+
+      //Copying resources is only supported between same texel sizes
+      if (dstFormatInfo->elementSize != srcFormatInfo->elementSize)
+        return;
+
+      //In D3D11, layers, mip levels, and sample count must match
+      if (srcImage->info().numLayers != dstImage->info().numLayers
+       || srcImage->info().mipLevels != dstImage->info().mipLevels
+       || srcImage->info().sampleCount != dstImage->info().sampleCount)
+        return;
+
       
+
       for (uint32_t i = 0; i < srcImage->info().mipLevels; i++) {
         VkExtent3D extent = srcImage->mipLevelExtent(i);
 
