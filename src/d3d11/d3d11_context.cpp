@@ -2910,12 +2910,13 @@ namespace dxvk {
           const VkOffset3D& dstOffset,
           const VkExtent3D& extent) const {
     
+    
     //It's undefined behavior to have a src copy region outside 
     //of the src resource extent
     if (srcOffset.x + extent.width > srcExtent.width
       || srcOffset.y + extent.height > srcExtent.height
       || srcOffset.z + extent.depth > srcExtent.depth)
-      return;
+      return false;
 
     bool dstCompressed = dstFormatInfo->flags.test(DxvkFormatFlag::BlockCompressed);
     bool srcCompressed = srcFormatInfo->flags.test(DxvkFormatFlag::BlockCompressed);
@@ -2926,15 +2927,15 @@ namespace dxvk {
       //must match the source resource dimensions
       if (extent.width % srcFormatInfo->blockSize.width != 0
         || srcOffset.x + extent.width != srcExtent.width)
-        return;
+        return false;
 
       if (extent.height % srcFormatInfo->blockSize.height != 0
         || srcOffset.y + extent.height != srcExtent.height)
-        return;
+        return false;
 
       if (extent.depth % srcFormatInfo->blockSize.depth != 0
         || srcOffset.z + extent.depth != srcExtent.depth)
-        return;
+        return false;
 
       VkExtent3D uncompressedExtent = {
         extent.width / srcFormatInfo->blockSize.width,
@@ -2945,7 +2946,7 @@ namespace dxvk {
       if (uncompressedExtent.width > dstExtent.width - dstOffset.x
         || uncompressedExtent.height > dstExtent.height - dstOffset.y
         || uncompressedExtent.depth > dstExtent.depth - dstOffset.z)
-        return;
+        return false;
 
 
     } else if (!srcCompressed && dstCompressed) {
@@ -2961,22 +2962,22 @@ namespace dxvk {
       //must match the destination resource dimensions
       if (extent.width % dstFormatInfo->blockSize.width != 0
         || dstOffset.x + compressedExtent.width != dstExtent.width)
-        return;
+        return false;
 
       if (extent.height % dstFormatInfo->blockSize.height != 0
         || dstOffset.y + compressedExtent.height != dstExtent.height)
-        return;
+        return false;
 
       if (extent.depth % dstFormatInfo->blockSize.depth != 0
         || dstOffset.z + compressedExtent.depth != dstExtent.depth)
-        return;
+        return false;
 
 
 
       if (compressedExtent.width > dstExtent.width - dstOffset.x
         || compressedExtent.height > dstExtent.height - dstOffset.y
         || compressedExtent.depth > dstExtent.depth - dstOffset.z)
-        return;
+        return false;
 
       //for everything else. uncompressed to uncompressed 
       //or compressed to compressed
@@ -2985,11 +2986,11 @@ namespace dxvk {
       if (extent.width > dstExtent.width - dstOffset.x
         || extent.height > dstExtent.height - dstOffset.y
         || extent.depth > dstExtent.depth - dstOffset.z)
-        return;
+        return false;
     }
     
     
-    return false;
+    return true;
   }
   
 }
