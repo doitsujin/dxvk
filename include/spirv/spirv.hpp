@@ -42,6 +42,8 @@
 #ifndef spirv_HPP
 #define spirv_HPP
 
+#include <stdint.h>
+
 namespace spv {
 
 typedef unsigned int Id;
@@ -55,7 +57,7 @@ static const unsigned int Revision = 12;
 static const unsigned int OpCodeMask = 0xffff;
 static const unsigned int WordCountShift = 16;
 
-enum SourceLanguage {
+enum SourceLanguage : uint32_t {
     SourceLanguageUnknown = 0,
     SourceLanguageESSL = 1,
     SourceLanguageGLSL = 2,
@@ -65,7 +67,7 @@ enum SourceLanguage {
     SourceLanguageMax = 0x7fffffff,
 };
 
-enum ExecutionModel {
+enum ExecutionModel : uint32_t {
     ExecutionModelVertex = 0,
     ExecutionModelTessellationControl = 1,
     ExecutionModelTessellationEvaluation = 2,
@@ -76,21 +78,21 @@ enum ExecutionModel {
     ExecutionModelMax = 0x7fffffff,
 };
 
-enum AddressingModel {
+enum AddressingModel : uint32_t {
     AddressingModelLogical = 0,
     AddressingModelPhysical32 = 1,
     AddressingModelPhysical64 = 2,
     AddressingModelMax = 0x7fffffff,
 };
 
-enum MemoryModel {
+enum MemoryModel : uint32_t {
     MemoryModelSimple = 0,
     MemoryModelGLSL450 = 1,
     MemoryModelOpenCL = 2,
     MemoryModelMax = 0x7fffffff,
 };
 
-enum ExecutionMode {
+enum ExecutionMode : uint32_t {
     ExecutionModeInvocations = 0,
     ExecutionModeSpacingEqual = 1,
     ExecutionModeSpacingFractionalEven = 2,
@@ -127,7 +129,7 @@ enum ExecutionMode {
     ExecutionModeMax = 0x7fffffff,
 };
 
-enum StorageClass {
+enum StorageClass : uint32_t {
     StorageClassUniformConstant = 0,
     StorageClassInput = 1,
     StorageClassUniform = 2,
@@ -144,7 +146,7 @@ enum StorageClass {
     StorageClassMax = 0x7fffffff,
 };
 
-enum Dim {
+enum Dim : uint32_t {
     Dim1D = 0,
     Dim2D = 1,
     Dim3D = 2,
@@ -155,7 +157,7 @@ enum Dim {
     DimMax = 0x7fffffff,
 };
 
-enum SamplerAddressingMode {
+enum SamplerAddressingMode : uint32_t {
     SamplerAddressingModeNone = 0,
     SamplerAddressingModeClampToEdge = 1,
     SamplerAddressingModeClamp = 2,
@@ -164,13 +166,13 @@ enum SamplerAddressingMode {
     SamplerAddressingModeMax = 0x7fffffff,
 };
 
-enum SamplerFilterMode {
+enum SamplerFilterMode : uint32_t {
     SamplerFilterModeNearest = 0,
     SamplerFilterModeLinear = 1,
     SamplerFilterModeMax = 0x7fffffff,
 };
 
-enum ImageFormat {
+enum ImageFormat : uint32_t {
     ImageFormatUnknown = 0,
     ImageFormatRgba32f = 1,
     ImageFormatRgba16f = 2,
@@ -214,7 +216,7 @@ enum ImageFormat {
     ImageFormatMax = 0x7fffffff,
 };
 
-enum ImageChannelOrder {
+enum ImageChannelOrder : uint32_t {
     ImageChannelOrderR = 0,
     ImageChannelOrderA = 1,
     ImageChannelOrderRG = 2,
@@ -238,7 +240,7 @@ enum ImageChannelOrder {
     ImageChannelOrderMax = 0x7fffffff,
 };
 
-enum ImageChannelDataType {
+enum ImageChannelDataType : uint32_t {
     ImageChannelDataTypeSnormInt8 = 0,
     ImageChannelDataTypeSnormInt16 = 1,
     ImageChannelDataTypeUnormInt8 = 2,
@@ -259,7 +261,7 @@ enum ImageChannelDataType {
     ImageChannelDataTypeMax = 0x7fffffff,
 };
 
-enum ImageOperandsShift {
+enum ImageOperandsShift : uint32_t {
     ImageOperandsBiasShift = 0,
     ImageOperandsLodShift = 1,
     ImageOperandsGradShift = 2,
@@ -271,7 +273,7 @@ enum ImageOperandsShift {
     ImageOperandsMax = 0x7fffffff,
 };
 
-enum ImageOperandsMask {
+enum ImageOperandsMask : uint32_t {
     ImageOperandsMaskNone = 0,
     ImageOperandsBiasMask = 0x00000001,
     ImageOperandsLodMask = 0x00000002,
@@ -283,7 +285,7 @@ enum ImageOperandsMask {
     ImageOperandsMinLodMask = 0x00000080,
 };
 
-enum FPFastMathModeShift {
+enum FPFastMathModeShift : uint32_t {
     FPFastMathModeNotNaNShift = 0,
     FPFastMathModeNotInfShift = 1,
     FPFastMathModeNSZShift = 2,
@@ -292,7 +294,7 @@ enum FPFastMathModeShift {
     FPFastMathModeMax = 0x7fffffff,
 };
 
-enum FPFastMathModeMask {
+enum FPFastMathModeMask : uint32_t {
     FPFastMathModeMaskNone = 0,
     FPFastMathModeNotNaNMask = 0x00000001,
     FPFastMathModeNotInfMask = 0x00000002,
@@ -301,7 +303,7 @@ enum FPFastMathModeMask {
     FPFastMathModeFastMask = 0x00000010,
 };
 
-enum FPRoundingMode {
+enum FPRoundingMode : uint32_t {
     FPRoundingModeRTE = 0,
     FPRoundingModeRTZ = 1,
     FPRoundingModeRTP = 2,
@@ -309,20 +311,20 @@ enum FPRoundingMode {
     FPRoundingModeMax = 0x7fffffff,
 };
 
-enum LinkageType {
+enum LinkageType : uint32_t {
     LinkageTypeExport = 0,
     LinkageTypeImport = 1,
     LinkageTypeMax = 0x7fffffff,
 };
 
-enum AccessQualifier {
+enum AccessQualifier : uint32_t {
     AccessQualifierReadOnly = 0,
     AccessQualifierWriteOnly = 1,
     AccessQualifierReadWrite = 2,
     AccessQualifierMax = 0x7fffffff,
 };
 
-enum FunctionParameterAttribute {
+enum FunctionParameterAttribute : uint32_t {
     FunctionParameterAttributeZext = 0,
     FunctionParameterAttributeSext = 1,
     FunctionParameterAttributeByVal = 2,
@@ -334,7 +336,7 @@ enum FunctionParameterAttribute {
     FunctionParameterAttributeMax = 0x7fffffff,
 };
 
-enum Decoration {
+enum Decoration : uint32_t {
     DecorationRelaxedPrecision = 0,
     DecorationSpecId = 1,
     DecorationBlock = 2,
@@ -386,7 +388,7 @@ enum Decoration {
     DecorationMax = 0x7fffffff,
 };
 
-enum BuiltIn {
+enum BuiltIn : uint32_t {
     BuiltInPosition = 0,
     BuiltInPointSize = 1,
     BuiltInClipDistance = 3,
@@ -454,31 +456,31 @@ enum BuiltIn {
     BuiltInMax = 0x7fffffff,
 };
 
-enum SelectionControlShift {
+enum SelectionControlShift : uint32_t {
     SelectionControlFlattenShift = 0,
     SelectionControlDontFlattenShift = 1,
     SelectionControlMax = 0x7fffffff,
 };
 
-enum SelectionControlMask {
+enum SelectionControlMask : uint32_t {
     SelectionControlMaskNone = 0,
     SelectionControlFlattenMask = 0x00000001,
     SelectionControlDontFlattenMask = 0x00000002,
 };
 
-enum LoopControlShift {
+enum LoopControlShift : uint32_t {
     LoopControlUnrollShift = 0,
     LoopControlDontUnrollShift = 1,
     LoopControlMax = 0x7fffffff,
 };
 
-enum LoopControlMask {
+enum LoopControlMask : uint32_t {
     LoopControlMaskNone = 0,
     LoopControlUnrollMask = 0x00000001,
     LoopControlDontUnrollMask = 0x00000002,
 };
 
-enum FunctionControlShift {
+enum FunctionControlShift : uint32_t {
     FunctionControlInlineShift = 0,
     FunctionControlDontInlineShift = 1,
     FunctionControlPureShift = 2,
@@ -486,7 +488,7 @@ enum FunctionControlShift {
     FunctionControlMax = 0x7fffffff,
 };
 
-enum FunctionControlMask {
+enum FunctionControlMask : uint32_t {
     FunctionControlMaskNone = 0,
     FunctionControlInlineMask = 0x00000001,
     FunctionControlDontInlineMask = 0x00000002,
@@ -494,7 +496,7 @@ enum FunctionControlMask {
     FunctionControlConstMask = 0x00000008,
 };
 
-enum MemorySemanticsShift {
+enum MemorySemanticsShift : uint32_t {
     MemorySemanticsAcquireShift = 1,
     MemorySemanticsReleaseShift = 2,
     MemorySemanticsAcquireReleaseShift = 3,
@@ -508,7 +510,7 @@ enum MemorySemanticsShift {
     MemorySemanticsMax = 0x7fffffff,
 };
 
-enum MemorySemanticsMask {
+enum MemorySemanticsMask : uint32_t {
     MemorySemanticsMaskNone = 0,
     MemorySemanticsAcquireMask = 0x00000002,
     MemorySemanticsReleaseMask = 0x00000004,
@@ -522,21 +524,21 @@ enum MemorySemanticsMask {
     MemorySemanticsImageMemoryMask = 0x00000800,
 };
 
-enum MemoryAccessShift {
+enum MemoryAccessShift : uint32_t {
     MemoryAccessVolatileShift = 0,
     MemoryAccessAlignedShift = 1,
     MemoryAccessNontemporalShift = 2,
     MemoryAccessMax = 0x7fffffff,
 };
 
-enum MemoryAccessMask {
+enum MemoryAccessMask : uint32_t {
     MemoryAccessMaskNone = 0,
     MemoryAccessVolatileMask = 0x00000001,
     MemoryAccessAlignedMask = 0x00000002,
     MemoryAccessNontemporalMask = 0x00000004,
 };
 
-enum Scope {
+enum Scope : uint32_t {
     ScopeCrossDevice = 0,
     ScopeDevice = 1,
     ScopeWorkgroup = 2,
@@ -545,31 +547,31 @@ enum Scope {
     ScopeMax = 0x7fffffff,
 };
 
-enum GroupOperation {
+enum GroupOperation : uint32_t {
     GroupOperationReduce = 0,
     GroupOperationInclusiveScan = 1,
     GroupOperationExclusiveScan = 2,
     GroupOperationMax = 0x7fffffff,
 };
 
-enum KernelEnqueueFlags {
+enum KernelEnqueueFlags : uint32_t {
     KernelEnqueueFlagsNoWait = 0,
     KernelEnqueueFlagsWaitKernel = 1,
     KernelEnqueueFlagsWaitWorkGroup = 2,
     KernelEnqueueFlagsMax = 0x7fffffff,
 };
 
-enum KernelProfilingInfoShift {
+enum KernelProfilingInfoShift : uint32_t {
     KernelProfilingInfoCmdExecTimeShift = 0,
     KernelProfilingInfoMax = 0x7fffffff,
 };
 
-enum KernelProfilingInfoMask {
+enum KernelProfilingInfoMask : uint32_t {
     KernelProfilingInfoMaskNone = 0,
     KernelProfilingInfoCmdExecTimeMask = 0x00000001,
 };
 
-enum Capability {
+enum Capability : uint32_t {
     CapabilityMatrix = 0,
     CapabilityShader = 1,
     CapabilityGeometry = 2,
@@ -658,7 +660,7 @@ enum Capability {
     CapabilityMax = 0x7fffffff,
 };
 
-enum Op {
+enum Op : uint32_t {
     OpNop = 0,
     OpUndef = 1,
     OpSourceContinued = 2,
