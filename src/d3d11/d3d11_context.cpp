@@ -367,6 +367,7 @@ namespace dxvk {
       
       VkExtent3D extent = srcImage->mipLevelExtent(srcSubresource.mipLevel);
       VkExtent3D srcExtent = extent;
+      VkExtent3D dstExtent = dstImage->mipLevelExtent(dstSubresource.mipLevel);
       
       if (pSrcBox != nullptr) {
         if (pSrcBox->left  >= pSrcBox->right
@@ -380,15 +381,10 @@ namespace dxvk {
         
         extent.width  = pSrcBox->right -  pSrcBox->left;
         extent.height = pSrcBox->bottom - pSrcBox->top;
-        extent.depth  = pSrcBox->back -   pSrcBox->front;
-
-        //It's undefined behavior to have a src box outside 
-        //of the resource range
-        if (srcOffset.x + extent.width > srcExtent.width
-         || srcOffset.y + extent.height > srcExtent.height
-         || srcOffset.z + extent.depth > srcExtent.depth)
-          return;
+        extent.depth  = pSrcBox->back -   pSrcBox->front;       
       }
+
+      
       
       VkImageSubresourceLayers dstLayers = {
         dstSubresource.aspectMask,
@@ -407,6 +403,12 @@ namespace dxvk {
         dstLayers.layerCount = 1;
         srcLayers.layerCount = 1;
       }
+
+      if (!ValidCopyExtents(srcFormatInfo, dstFormatInfo,
+        srcExtent, srcOffset,
+        dstExtent, dstOffset,
+        srcExtent))
+        return;
       
       EmitCs([
         cDstImage  = dstImage,
@@ -497,7 +499,17 @@ namespace dxvk {
        || srcImage->info().sampleCount != dstImage->info().sampleCount)
         return;
 
-      
+      VkExtent3D srcExtent = srcImage->mipLevelExtent(0);
+      VkExtent3D dstExtent = dstImage->mipLevelExtent(0);
+      VkOffset3D offsets = { 0, 0, 0 };
+
+      if (!ValidCopyExtents(srcFormatInfo, dstFormatInfo,
+          srcExtent, offsets,
+          dstExtent, offsets,
+          srcExtent))
+        return;
+
+
 
       for (uint32_t i = 0; i < srcImage->info().mipLevels; i++) {
         VkExtent3D extent = srcImage->mipLevelExtent(i);
@@ -2887,6 +2899,97 @@ namespace dxvk {
       
       return slice;
     }
+  }
+
+  bool D3D11DeviceContext::ValidCopyExtents(
+          const DxvkFormatInfo* const srcFormatInfo,
+          const DxvkFormatInfo* const dstFormatInfo, 
+          const VkExtent3D& srcExtent,
+          const VkOffset3D& srcOffset,
+          const VkExtent3D& dstExtent,
+          const VkOffset3D& dstOffset,
+          const VkExtent3D& extent) const {
+    
+    //It's undefined behavior to have a src copy region outside 
+    //of the src resource extent
+    if (srcOffset.x + extent.width > srcExtent.width
+      || srcOffset.y + extent.height > srcExtent.height
+      || srcOffset.z + extent.depth > srcExtent.depth)
+      return;
+
+    bool dstCompressed = dstFormatInfo->flags.test(DxvkFormatFlag::BlockCompressed);
+    bool srcCompressed = srcFormatInfo->flags.test(DxvkFormatFlag::BlockCompressed);
+
+    if (srcCompressed && !dstCompressed) {
+      //the extent dimensions must be a multiple of compressed texel block dimensions
+      //if it's not then the srcOffset + Extent 
+      //must match the source resource dimensions
+      if (extent.width % srcFormatInfo->blockSize.width != 0
+        || srcOffset.x + extent.width != srcExtent.width)
+        return;
+
+      if (extent.height % srcFormatInfo->blockSize.height != 0
+        || srcOffset.y + extent.height != srcExtent.height)
+        return;
+
+      if (extent.depth % srcFormatInfo->blockSize.depth != 0
+        || srcOffset.z + extent.depth != srcExtent.depth)
+        return;
+
+      VkExtent3D uncompressedExtent = {
+        extent.width / srcFormatInfo->blockSize.width,
+        extent.height / srcFormatInfo->blockSize.height,
+        extent.depth / srcFormatInfo->blockSize.depth };
+
+
+      if (uncompressedExtent.width > dstExtent.width - dstOffset.x
+        || uncompressedExtent.height > dstExtent.height - dstOffset.y
+        || uncompressedExtent.depth > dstExtent.depth - dstOffset.z)
+        return;
+
+
+    } else if (!srcCompressed && dstCompressed) {
+
+      VkExtent3D compressedExtent = {
+        extent.width * dstFormatInfo->blockSize.width,
+        extent.height * dstFormatInfo->blockSize.height,
+        extent.depth * dstFormatInfo->blockSize.depth };
+
+
+      //the extent dimensions must be a multiple of compressed texel 
+      //block dimensions if it's not then the dstOffset + Extent 
+      //must match the destination resource dimensions
+      if (extent.width % dstFormatInfo->blockSize.width != 0
+        || dstOffset.x + compressedExtent.width != dstExtent.width)
+        return;
+
+      if (extent.height % dstFormatInfo->blockSize.height != 0
+        || dstOffset.y + compressedExtent.height != dstExtent.height)
+        return;
+
+      if (extent.depth % dstFormatInfo->blockSize.depth != 0
+        || dstOffset.z + compressedExtent.depth != dstExtent.depth)
+        return;
+
+
+
+      if (compressedExtent.width > dstExtent.width - dstOffset.x
+        || compressedExtent.height > dstExtent.height - dstOffset.y
+        || compressedExtent.depth > dstExtent.depth - dstOffset.z)
+        return;
+
+      //for everything else. uncompressed to uncompressed 
+      //or compressed to compressed
+    } else { 
+
+      if (extent.width > dstExtent.width - dstOffset.x
+        || extent.height > dstExtent.height - dstOffset.y
+        || extent.depth > dstExtent.depth - dstOffset.z)
+        return;
+    }
+    
+    
+    return false;
   }
   
 }
