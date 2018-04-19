@@ -28,6 +28,17 @@ namespace dxvk {
   class DxvkInstance;
   
   /**
+   * \brief Device queue
+   * 
+   * Stores a Vulkan queue and the
+   * queue family that it belongs to.
+   */
+  struct DxvkDeviceQueue {
+    uint32_t  queueFamily = 0;
+    VkQueue   queueHandle = VK_NULL_HANDLE;
+  };
+  
+  /**
    * \brief DXVK device
    * 
    * Device object. This is responsible for resource creation,
@@ -64,6 +75,17 @@ namespace dxvk {
      */
     VkDevice handle() const {
       return m_vkd->device();
+    }
+    
+    /**
+     * \brief Graphics queue properties
+     * 
+     * Handle and queue family index of
+     * the queue used for rendering.
+     * \returns Graphics queue info
+     */
+    DxvkDeviceQueue graphicsQueue() const {
+      return m_graphicsQueue;
     }
     
     /**
@@ -292,6 +314,27 @@ namespace dxvk {
       const Rc<DxvkSemaphore>&        wakeSync);
     
     /**
+     * \brief Locks submission queue
+     * 
+     * Since Vulkan queues are only meant to be accessed
+     * from one thread at a time, external libraries need
+     * to lock the queue before submitting command buffers.
+     */
+    void lockSubmission() {
+      m_submissionLock.lock();
+    }
+    
+    /**
+     * \brief Unlocks submission queue
+     * 
+     * Releases the Vulkan queues again so that DXVK
+     * itself can use them for submissions again.
+     */
+    void unlockSubmission() {
+      m_submissionLock.unlock();
+    }
+    
+    /**
      * \brief Waits until the device becomes idle
      * 
      * Waits for the GPU to complete the execution of all
@@ -318,9 +361,9 @@ namespace dxvk {
     sync::Spinlock            m_statLock;
     DxvkStatCounters          m_statCounters;
     
-    std::mutex m_submissionLock;
-    VkQueue m_graphicsQueue = VK_NULL_HANDLE;
-    VkQueue m_presentQueue  = VK_NULL_HANDLE;
+    std::mutex                m_submissionLock;
+    DxvkDeviceQueue           m_graphicsQueue;
+    DxvkDeviceQueue           m_presentQueue;
     
     DxvkRecycler<DxvkCommandList,  16> m_recycledCommandLists;
     DxvkRecycler<DxvkStagingBuffer, 4> m_recycledStagingBuffers;
