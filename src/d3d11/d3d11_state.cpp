@@ -47,13 +47,15 @@ namespace dxvk {
   
   size_t D3D11StateDescHash::operator () (
     const D3D11_RASTERIZER_DESC1& desc) const {
+    std::hash<float> fhash;
+
     DxvkHashState hash;
     hash.add(desc.FillMode);
     hash.add(desc.CullMode);
     hash.add(desc.FrontCounterClockwise);
     hash.add(desc.DepthBias);
-    hash.add(desc.SlopeScaledDepthBias);
-    hash.add(desc.DepthBiasClamp);
+    hash.add(fhash(desc.SlopeScaledDepthBias));
+    hash.add(fhash(desc.DepthBiasClamp));
     hash.add(desc.DepthClipEnable);
     hash.add(desc.ScissorEnable);
     hash.add(desc.MultisampleEnable);
@@ -90,7 +92,7 @@ namespace dxvk {
     hash.add(desc.AddressV);
     hash.add(desc.AddressW);
     hash.add(fhash(desc.MipLODBias));
-    hash.add(fhash(desc.MaxAnisotropy));
+    hash.add(desc.MaxAnisotropy);
     hash.add(desc.ComparisonFunc);
     for (uint32_t i = 0; i < 4; i++)
       hash.add(fhash(desc.BorderColor[i]));
