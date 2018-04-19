@@ -5,6 +5,7 @@
 
 #include "d3d11_device.h"
 #include "d3d11_enums.h"
+#include "d3d11_interop.h"
 #include "d3d11_present.h"
 
 namespace dxvk {
@@ -125,6 +126,9 @@ extern "C" {
         container.ptr(), container->m_dxgiDevice, fl, Flags);
       
       container->m_d3d11Presenter = new D3D11Presenter(
+        container.ptr(), container->m_d3d11Device);
+      
+      container->m_d3d11VkInterop = new D3D11VkInterop(
         container.ptr(), container->m_d3d11Device);
       
       if (ppDevice != nullptr)

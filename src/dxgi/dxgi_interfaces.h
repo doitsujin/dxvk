@@ -221,7 +221,7 @@ IDXGIVkInteropDevice : public IUnknown {
    * \param [in] OldLayout Current image layout
    * \param [in] NewLayout Desired image layout
    */
-  virtual HRESULT STDMETHODCALLTYPE TransitionSurfaceLayout(
+  virtual void STDMETHODCALLTYPE TransitionSurfaceLayout(
           IDXGIVkInteropSurface*    pSurface,
     const VkImageSubresourceRange*  pSubresources,
           VkImageLayout             OldLayout,

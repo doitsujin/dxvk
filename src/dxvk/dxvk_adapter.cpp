@@ -28,6 +28,11 @@ namespace dxvk {
   }
   
   
+  Rc<DxvkInstance> DxvkAdapter::instance() const {
+    return m_instance;
+  }
+  
+  
   VkPhysicalDeviceProperties DxvkAdapter::deviceProperties() const {
     VkPhysicalDeviceProperties properties;
     m_vki->vkGetPhysicalDeviceProperties(m_handle, &properties);

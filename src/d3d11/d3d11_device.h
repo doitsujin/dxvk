@@ -29,6 +29,7 @@ namespace dxvk {
   class D3D11Texture1D;
   class D3D11Texture2D;
   class D3D11Texture3D;
+  class D3D11VkInterop;
   
   /**
    * \brief D3D11 device container
@@ -54,6 +55,7 @@ namespace dxvk {
     IDXGIVkDevice*  m_dxgiDevice      = nullptr;
     D3D11Device*    m_d3d11Device     = nullptr;
     D3D11Presenter* m_d3d11Presenter  = nullptr;
+    D3D11VkInterop* m_d3d11VkInterop  = nullptr;
     
   };
   
