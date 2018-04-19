@@ -2926,15 +2926,15 @@ namespace dxvk {
       //if it's not then the srcOffset + Extent 
       //must match the source resource dimensions
       if (extent.width % srcFormatInfo->blockSize.width != 0
-        || srcOffset.x + extent.width != srcExtent.width)
+        && srcOffset.x + extent.width != srcExtent.width)
         return false;
 
       if (extent.height % srcFormatInfo->blockSize.height != 0
-        || srcOffset.y + extent.height != srcExtent.height)
+        && srcOffset.y + extent.height != srcExtent.height)
         return false;
 
       if (extent.depth % srcFormatInfo->blockSize.depth != 0
-        || srcOffset.z + extent.depth != srcExtent.depth)
+        && srcOffset.z + extent.depth != srcExtent.depth)
         return false;
 
       VkExtent3D uncompressedExtent = {
@@ -2961,15 +2961,15 @@ namespace dxvk {
       //block dimensions if it's not then the dstOffset + Extent 
       //must match the destination resource dimensions
       if (extent.width % dstFormatInfo->blockSize.width != 0
-        || dstOffset.x + compressedExtent.width != dstExtent.width)
+        && dstOffset.x + compressedExtent.width != dstExtent.width)
         return false;
 
       if (extent.height % dstFormatInfo->blockSize.height != 0
-        || dstOffset.y + compressedExtent.height != dstExtent.height)
+        && dstOffset.y + compressedExtent.height != dstExtent.height)
         return false;
 
       if (extent.depth % dstFormatInfo->blockSize.depth != 0
-        || dstOffset.z + compressedExtent.depth != dstExtent.depth)
+        && dstOffset.z + compressedExtent.depth != dstExtent.depth)
         return false;
 
 
