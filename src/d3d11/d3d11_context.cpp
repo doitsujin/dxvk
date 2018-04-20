@@ -365,7 +365,7 @@ namespace dxvk {
       // Copies are only supported on size-compatible formats
       if (dstFormatInfo->elementSize != srcFormatInfo->elementSize) {
         Logger::err(str::format(
-          "D3D11: Cannot perform image copy:"
+          "D3D11: CopySubresourceRegion: Incompatible texel size"
           "\n  Dst texel size: ", dstFormatInfo->elementSize,
           "\n  Src texel size: ", srcFormatInfo->elementSize));
         return;
@@ -374,7 +374,7 @@ namespace dxvk {
       // Copies are only supported if the sample count matches
       if (dstImage->info().sampleCount != srcImage->info().sampleCount) {
         Logger::err(str::format(
-          "D3D11: Cannot perform image copy:",
+          "D3D11: CopySubresourceRegion: Incompatible sample count",
           "\n  Dst sample count: ", dstImage->info().sampleCount,
           "\n  Src sample count: ", srcImage->info().sampleCount));
         return;
@@ -433,7 +433,7 @@ namespace dxvk {
       // Don't perform the copy if the offsets aren't aligned
       if (!util::isBlockAligned(srcOffset, srcFormatInfo->blockSize)
        || !util::isBlockAligned(dstOffset, dstFormatInfo->blockSize)) {
-        Logger::err("D3D11: Cannot perform copy: Unaligned block offset");
+        Logger::err("D3D11: CopySubresourceRegion: Unaligned block offset");
         return;
       }
       
@@ -451,7 +451,7 @@ namespace dxvk {
       // if it does not touch the image border for unaligned dimensons
       if (!util::isBlockAligned(srcOffset, regExtent, srcFormatInfo->blockSize, srcExtent)
        || !util::isBlockAligned(dstOffset, regExtent, dstFormatInfo->blockSize, dstExtent)) {
-        Logger::err("D3D11: Cannot perform copy: Unaligned block size");
+        Logger::err("D3D11: CopySubresourceRegion: Unaligned block size");
         return;
       }
       
@@ -537,7 +537,7 @@ namespace dxvk {
       // Copies are only supported on size-compatible formats
       if (dstFormatInfo->elementSize != srcFormatInfo->elementSize) {
         Logger::err(str::format(
-          "D3D11: Cannot perform image copy:"
+          "D3D11: CopyResource: Incompatible texel size"
           "\n  Dst texel size: ", dstFormatInfo->elementSize,
           "\n  Src texel size: ", srcFormatInfo->elementSize));
         return;
@@ -548,7 +548,7 @@ namespace dxvk {
        || srcImage->info().mipLevels != dstImage->info().mipLevels
        || srcImage->info().sampleCount != dstImage->info().sampleCount) {
         Logger::err(str::format(
-          "D3D11: Cannot perform image copy:"
+          "D3D11: CopyResource: Incompatible images"
           "\n  Dst: (", dstImage->info().numLayers,
                    ",", dstImage->info().mipLevels,
                    ",", dstImage->info().sampleCount, ")",
