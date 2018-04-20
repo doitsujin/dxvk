@@ -371,14 +371,16 @@ namespace dxvk {
         return;
       
       VkOffset3D srcOffset = { 0, 0, 0 };
-      VkOffset3D dstOffset = {
-        static_cast<int32_t>(DstX),
-        static_cast<int32_t>(DstY),
-        static_cast<int32_t>(DstZ) };
+      VkOffset3D dstOffset = { int32_t(DstX), int32_t(DstY), int32_t(DstZ) };
       
-      VkExtent3D extent = srcImage->mipLevelExtent(srcSubresource.mipLevel);
-      VkExtent3D srcExtent = extent;
+      VkExtent3D srcExtent = srcImage->mipLevelExtent(srcSubresource.mipLevel);
       VkExtent3D dstExtent = dstImage->mipLevelExtent(dstSubresource.mipLevel);
+      VkExtent3D regExtent = srcExtent;
+      
+      if (uint32_t(dstOffset.x) >= dstExtent.width
+       || uint32_t(dstOffset.y) >= dstExtent.height
+       || uint32_t(dstOffset.z) >= dstExtent.depth)
+        return;
       
       if (pSrcBox != nullptr) {
         if (pSrcBox->left  >= pSrcBox->right
@@ -390,12 +392,15 @@ namespace dxvk {
         srcOffset.y = pSrcBox->top;
         srcOffset.z = pSrcBox->front;
         
-        extent.width  = pSrcBox->right -  pSrcBox->left;
-        extent.height = pSrcBox->bottom - pSrcBox->top;
-        extent.depth  = pSrcBox->back -   pSrcBox->front;       
+        regExtent.width  = pSrcBox->right -  pSrcBox->left;
+        regExtent.height = pSrcBox->bottom - pSrcBox->top;
+        regExtent.depth  = pSrcBox->back -   pSrcBox->front;
+        
+        if (uint32_t(srcOffset.x) >= srcExtent.width
+         || uint32_t(srcOffset.y) >= srcExtent.height
+         || uint32_t(srcOffset.z) >= srcExtent.depth)
+          return;
       }
-
-      
       
       VkImageSubresourceLayers dstLayers = {
         dstSubresource.aspectMask,
@@ -410,19 +415,31 @@ namespace dxvk {
       // Copying multiple slices does not
       // seem to be supported in D3D11
       if (copy2Dto3D || copy3Dto2D) {
-        extent.depth         = 1;
+        regExtent.depth      = 1;
         dstLayers.layerCount = 1;
         srcLayers.layerCount = 1;
       }
-
-      if (!SetValidCopyExtents(
-            srcFormatInfo, dstFormatInfo,
-            srcExtent, srcOffset,
-            dstExtent, dstOffset,
-            extent)) {
+      
+      // Don't perform the copy if the offsets aren't aligned
+      if (!util::isBlockAligned(srcOffset, srcFormatInfo->blockSize)
+       || !util::isBlockAligned(dstOffset, dstFormatInfo->blockSize))
         return;
-      }
-
+      
+      // Clamp the image region in order to avoid out-of-bounds access
+      VkExtent3D regBlockCount = util::computeBlockCount(regExtent, srcFormatInfo->blockSize);
+      VkExtent3D dstBlockCount = util::computeMaxBlockCount(dstOffset, dstExtent, dstFormatInfo->blockSize);
+      VkExtent3D srcBlockCount = util::computeMaxBlockCount(srcOffset, srcExtent, srcFormatInfo->blockSize);
+      
+      regBlockCount = util::minExtent3D(regBlockCount, dstBlockCount);
+      regBlockCount = util::minExtent3D(regBlockCount, srcBlockCount);
+      
+      regExtent = util::minExtent3D(regExtent, util::computeBlockExtent(regBlockCount, srcFormatInfo->blockSize));
+      
+      // Don't perform the copy if the image extent is not aligned and
+      // if it does not touch the image border for unaligned dimensons
+      if (!util::isBlockAligned(srcOffset, regExtent, srcFormatInfo->blockSize, srcExtent)
+       || !util::isBlockAligned(dstOffset, regExtent, dstFormatInfo->blockSize, dstExtent))
+        return;
       
       EmitCs([
         cDstImage  = dstImage,
@@ -431,7 +448,7 @@ namespace dxvk {
         cSrcLayers = srcLayers,
         cDstOffset = dstOffset,
         cSrcOffset = srcOffset,
-        cExtent    = extent
+        cExtent    = regExtent
       ] (DxvkContext* ctx) {
         ctx->copyImage(
           cDstImage, cDstLayers, cDstOffset,
