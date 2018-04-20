@@ -770,15 +770,6 @@ namespace dxvk {
             D3D11UnorderedAccessBindings&     Bindings);
     
     DxvkDataSlice AllocUpdateBufferSlice(size_t Size);
-
-    bool SetValidCopyExtents(
-            const DxvkFormatInfo* const srcFormatInfo, 
-            const DxvkFormatInfo* const dstFormatInfo,
-            const VkExtent3D& srcExtent,
-            const VkOffset3D& srcOffset,
-            const VkExtent3D& dstExtent,
-            const VkOffset3D& dstOffset,
-                  VkExtent3D& extent) const;
     
     template<typename Cmd>
     void EmitCs(Cmd&& command) {

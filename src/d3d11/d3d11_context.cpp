@@ -361,14 +361,24 @@ namespace dxvk {
       
       const VkImageSubresource dstSubresource = dstTextureInfo->GetSubresourceFromIndex(dstFormatInfo->aspectMask, DstSubresource);
       const VkImageSubresource srcSubresource = srcTextureInfo->GetSubresourceFromIndex(srcFormatInfo->aspectMask, SrcSubresource);
-
-       //Copying between resources is only supported between same texel sizes.
-      if (dstFormatInfo->elementSize != srcFormatInfo->elementSize)
+      
+      // Copies are only supported on size-compatible formats
+      if (dstFormatInfo->elementSize != srcFormatInfo->elementSize) {
+        Logger::err(str::format(
+          "D3D11: Cannot perform image copy:"
+          "\n  Dst texel size: ", dstFormatInfo->elementSize,
+          "\n  Src texel size: ", srcFormatInfo->elementSize));
         return;
-
-      //Sample count must match
-      if (dstImage->info().sampleCount != srcImage->info().sampleCount)
+      }
+      
+      // Copies are only supported if the sample count matches
+      if (dstImage->info().sampleCount != srcImage->info().sampleCount) {
+        Logger::err(str::format(
+          "D3D11: Cannot perform image copy:",
+          "\n  Dst sample count: ", dstImage->info().sampleCount,
+          "\n  Src sample count: ", srcImage->info().sampleCount));
         return;
+      }
       
       VkOffset3D srcOffset = { 0, 0, 0 };
       VkOffset3D dstOffset = { int32_t(DstX), int32_t(DstY), int32_t(DstZ) };
@@ -422,8 +432,10 @@ namespace dxvk {
       
       // Don't perform the copy if the offsets aren't aligned
       if (!util::isBlockAligned(srcOffset, srcFormatInfo->blockSize)
-       || !util::isBlockAligned(dstOffset, dstFormatInfo->blockSize))
+       || !util::isBlockAligned(dstOffset, dstFormatInfo->blockSize)) {
+        Logger::err("D3D11: Cannot perform copy: Unaligned block offset");
         return;
+      }
       
       // Clamp the image region in order to avoid out-of-bounds access
       VkExtent3D regBlockCount = util::computeBlockCount(regExtent, srcFormatInfo->blockSize);
@@ -438,8 +450,10 @@ namespace dxvk {
       // Don't perform the copy if the image extent is not aligned and
       // if it does not touch the image border for unaligned dimensons
       if (!util::isBlockAligned(srcOffset, regExtent, srcFormatInfo->blockSize, srcExtent)
-       || !util::isBlockAligned(dstOffset, regExtent, dstFormatInfo->blockSize, dstExtent))
+       || !util::isBlockAligned(dstOffset, regExtent, dstFormatInfo->blockSize, dstExtent)) {
+        Logger::err("D3D11: Cannot perform copy: Unaligned block size");
         return;
+      }
       
       EmitCs([
         cDstImage  = dstImage,
@@ -520,39 +534,35 @@ namespace dxvk {
       const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(dstImage->info().format);
       const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcImage->info().format);
 
-      //Copying resources is only supported between same texel sizes
-      if (dstFormatInfo->elementSize != srcFormatInfo->elementSize)
+      // Copies are only supported on size-compatible formats
+      if (dstFormatInfo->elementSize != srcFormatInfo->elementSize) {
+        Logger::err(str::format(
+          "D3D11: Cannot perform image copy:"
+          "\n  Dst texel size: ", dstFormatInfo->elementSize,
+          "\n  Src texel size: ", srcFormatInfo->elementSize));
         return;
+      }
 
-      //In D3D11, layers, mip levels, and sample count must match
+      // Layer count, mip level count, and sample count must match
       if (srcImage->info().numLayers != dstImage->info().numLayers
        || srcImage->info().mipLevels != dstImage->info().mipLevels
-       || srcImage->info().sampleCount != dstImage->info().sampleCount)
+       || srcImage->info().sampleCount != dstImage->info().sampleCount) {
+        Logger::err(str::format(
+          "D3D11: Cannot perform image copy:"
+          "\n  Dst: (", dstImage->info().numLayers,
+                   ",", dstImage->info().mipLevels,
+                   ",", dstImage->info().sampleCount, ")",
+          "\n  Src: (", srcImage->info().numLayers,
+                   ",", srcImage->info().mipLevels,
+                   ",", srcImage->info().sampleCount, ")"));
         return;
-
-      VkExtent3D srcExtent = srcImage->mipLevelExtent(0);
-      VkExtent3D dstExtent = dstImage->mipLevelExtent(0);
-      VkExtent3D extent = srcExtent;
-      VkOffset3D offsets = { 0, 0, 0 };
-
-      if (!SetValidCopyExtents(
-            srcFormatInfo, dstFormatInfo,
-            srcExtent, offsets,
-            dstExtent, offsets,
-            extent))
-        return;
-
-      //For CopyResource, the src and dst resources 
-      //have same dimensions. If the extent changed
-      //that means the resources are different sizes
-      if (extent != srcExtent)
-        return;
-
+      }
+      
       for (uint32_t i = 0; i < srcImage->info().mipLevels; i++) {
+        VkImageSubresourceLayers dstLayers = { dstFormatInfo->aspectMask, i, 0, dstImage->info().numLayers };
+        VkImageSubresourceLayers srcLayers = { srcFormatInfo->aspectMask, i, 0, srcImage->info().numLayers };
+        
         VkExtent3D extent = srcImage->mipLevelExtent(i);
-
-        const VkImageSubresourceLayers dstLayers = { dstFormatInfo->aspectMask, i, 0, dstImage->info().numLayers };
-        const VkImageSubresourceLayers srcLayers = { srcFormatInfo->aspectMask, i, 0, srcImage->info().numLayers };
         
         EmitCs([
           cDstImage  = dstImage,
@@ -2936,89 +2946,6 @@ namespace dxvk {
       
       return slice;
     }
-  }
-
-  bool D3D11DeviceContext::SetValidCopyExtents(
-          const DxvkFormatInfo* const srcFormatInfo,
-          const DxvkFormatInfo* const dstFormatInfo, 
-          const VkExtent3D& srcExtent,
-          const VkOffset3D& srcOffset,
-          const VkExtent3D& dstExtent,
-          const VkOffset3D& dstOffset,
-                VkExtent3D& extent) const {
-    
-    VkExtent3D newExtent = extent;
-    
-    //It's undefined behavior to have a src copy region outside 
-    //of the src resource extent. Try clamping to source resource extents
-    newExtent.width = std::min(newExtent.width, srcExtent.width - srcOffset.x);
-    newExtent.height = std::min(newExtent.height, srcExtent.height - srcOffset.y);
-    newExtent.depth = std::min(newExtent.depth, srcExtent.depth - srcOffset.z);
-
-    bool dstCompressed = dstFormatInfo->flags.test(DxvkFormatFlag::BlockCompressed);
-    bool srcCompressed = srcFormatInfo->flags.test(DxvkFormatFlag::BlockCompressed);
-
-    if (srcCompressed && !dstCompressed) {
-
-      uint32_t maxWidth = (dstExtent.width - dstOffset.x) * srcFormatInfo->blockSize.width;
-      uint32_t maxHeight = (dstExtent.height - dstOffset.y) * srcFormatInfo->blockSize.height;
-      uint32_t maxDepth = (dstExtent.depth - dstOffset.z) * srcFormatInfo->blockSize.depth;
-      newExtent = {
-        std::min(newExtent.width,maxWidth),
-        std::min(newExtent.height,maxHeight),
-        std::min(newExtent.depth,maxDepth) };
-       
-      //the extent dimensions must be a multiple of compressed texel block dimensions
-      if (newExtent.width % srcFormatInfo->blockSize.width != 0
-       || newExtent.height % srcFormatInfo->blockSize.height != 0
-       || newExtent.depth % srcFormatInfo->blockSize.depth != 0)
-        return false;
-
-
-    } else if (!srcCompressed && dstCompressed) {
-
-      uint32_t maxWidth = (dstExtent.width - dstOffset.x) / dstFormatInfo->blockSize.width;
-      uint32_t maxHeight = (dstExtent.height - dstOffset.y) / dstFormatInfo->blockSize.height;
-      uint32_t maxDepth = (dstExtent.depth - dstOffset.z) / dstFormatInfo->blockSize.depth;
-
-      newExtent = {
-        std::min(newExtent.width, maxWidth),
-        std::min(newExtent.height, maxHeight),
-        std::min(newExtent.depth, maxDepth) };
-
-      //the extent dimensions must be a multiple of compressed texel 
-      if (newExtent.width % dstFormatInfo->blockSize.width != 0
-       || newExtent.height % dstFormatInfo->blockSize.height != 0
-       || newExtent.depth % dstFormatInfo->blockSize.depth != 0)
-        return false;
-      
-    } else if (srcCompressed && dstCompressed) {
-
-      uint32_t maxWidth = dstExtent.width - dstOffset.x;
-      uint32_t maxHeight = dstExtent.height - dstOffset.y;
-      uint32_t maxDepth =  dstExtent.depth - dstOffset.z;
-
-      newExtent = {
-        std::min(newExtent.width, maxWidth),
-        std::min(newExtent.height, maxHeight),
-        std::min(newExtent.depth, maxDepth) };
-
-      //the extent dimensions must be a multiple of compressed texel 
-      if (newExtent.width % srcFormatInfo->blockSize.width != 0
-       || newExtent.height % srcFormatInfo->blockSize.height != 0
-       || newExtent.depth % srcFormatInfo->blockSize.depth != 0)
-        return false;
-
-      //for everything else. uncompressed to uncompressed 
-    } else { 
-      
-      newExtent.width = std::min(newExtent.width, dstExtent.width - dstOffset.x);
-      newExtent.height = std::min(newExtent.height, dstExtent.height - dstOffset.y);
-      newExtent.depth = std::min(newExtent.depth, dstExtent.depth - dstOffset.z);
-    }
-    
-    extent = newExtent;
-    return true;
   }
   
 }
