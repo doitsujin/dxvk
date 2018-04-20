@@ -309,6 +309,10 @@ namespace dxvk {
       return bit::extract(m_bits, 11, 16);
     }
     
+    bool precise() const {
+      return bit::extract(m_bits, 19, 22) != 0;
+    }
+    
   private:
     
     uint32_t m_bits;

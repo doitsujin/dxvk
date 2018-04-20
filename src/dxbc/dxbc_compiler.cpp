@@ -1564,6 +1564,9 @@ namespace dxvk {
         return;
     }
     
+    if (ins.controls.precise())
+      m_module.decorate(dst.id, spv::DecorationNoContraction);
+    
     // Store computed value
     dst = emitDstOperandModifiers(dst, ins.modifiers);
     emitRegisterStore(ins.dst[0], dst);
@@ -1785,6 +1788,9 @@ namespace dxvk {
       getVectorTypeId(dst.type),
       src.at(0).id,
       src.at(1).id);
+    
+    if (ins.controls.precise())
+      m_module.decorate(dst.id, spv::DecorationNoContraction);
     
     dst = emitDstOperandModifiers(dst, ins.modifiers);
     emitRegisterStore(ins.dst[0], dst);
