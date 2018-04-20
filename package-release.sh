@@ -11,6 +11,9 @@ DXVK_BUILD_DIR=$(realpath "$2")"/dxvk-$DXVK_VERSION"
 DXVK_ARCHIVE_PATH=$(realpath "$2")"/dxvk-$DXVK_VERSION.tar.gz"
 
 function build_arch {
+  export WINEARCH="win$1"
+  export WINEPREFIX="$DXVK_BUILD_DIR/wine.$1"
+  
   cd "$DXVK_SRC_DIR"
 
   meson --cross-file "$DXVK_SRC_DIR/build-win$1.txt"  \
@@ -29,7 +32,8 @@ function build_arch {
   cp "$DXVK_BUILD_DIR/install.$1/bin/d3d11.dll" "$DXVK_BUILD_DIR/x$1/d3d11.dll"
   cp "$DXVK_BUILD_DIR/install.$1/bin/dxgi.dll" "$DXVK_BUILD_DIR/x$1/dxgi.dll"
   cp "$DXVK_BUILD_DIR/install.$1/bin/setup_dxvk.sh" "$DXVK_BUILD_DIR/x$1/setup_dxvk.sh"
-
+  
+  rm -R "$DXVK_BUILD_DIR/wine.$1"
   rm -R "$DXVK_BUILD_DIR/build.$1"
   rm -R "$DXVK_BUILD_DIR/install.$1"
 }
