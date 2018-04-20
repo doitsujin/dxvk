@@ -771,14 +771,14 @@ namespace dxvk {
     
     DxvkDataSlice AllocUpdateBufferSlice(size_t Size);
 
-    bool ValidCopyExtents(
+    bool SetValidCopyExtents(
             const DxvkFormatInfo* const srcFormatInfo, 
             const DxvkFormatInfo* const dstFormatInfo,
             const VkExtent3D& srcExtent,
             const VkOffset3D& srcOffset,
             const VkExtent3D& dstExtent,
             const VkOffset3D& dstOffset,
-            const VkExtent3D& extent) const;
+                  VkExtent3D& extent) const;
     
     template<typename Cmd>
     void EmitCs(Cmd&& command) {
