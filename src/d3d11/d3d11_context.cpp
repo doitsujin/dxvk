@@ -316,20 +316,31 @@ namespace dxvk {
       auto dstBuffer = static_cast<D3D11Buffer*>(pDstResource)->GetBufferSlice();
       auto srcBuffer = static_cast<D3D11Buffer*>(pSrcResource)->GetBufferSlice();
       
+      VkDeviceSize dstOffset = DstX;
       VkDeviceSize srcOffset = 0;
-      VkDeviceSize srcLength = srcBuffer.length();
+      VkDeviceSize regLength = srcBuffer.length();
+      
+      if (dstOffset >= dstBuffer.length())
+        return;
       
       if (pSrcBox != nullptr) {
-        if (pSrcBox->left > pSrcBox->right)
+        if (pSrcBox->left >= pSrcBox->right)
           return;  // no-op, but legal
         
         srcOffset = pSrcBox->left;
-        srcLength = pSrcBox->right - pSrcBox->left;
+        regLength = pSrcBox->right - pSrcBox->left;
+        
+        if (srcOffset >= srcBuffer.length())
+          return;
       }
       
+      // Clamp copy region to prevent out-of-bounds access
+      regLength = std::min(regLength, srcBuffer.length() - srcOffset);
+      regLength = std::min(regLength, dstBuffer.length() - dstOffset);
+      
       EmitCs([
-        cDstSlice = dstBuffer.subSlice(DstX, srcLength),
-        cSrcSlice = srcBuffer.subSlice(srcOffset, srcLength)
+        cDstSlice = dstBuffer.subSlice(dstOffset, regLength),
+        cSrcSlice = srcBuffer.subSlice(srcOffset, regLength)
       ] (DxvkContext* ctx) {
         ctx->copyBuffer(
           cDstSlice.buffer(),
