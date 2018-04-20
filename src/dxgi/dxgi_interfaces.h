@@ -152,12 +152,16 @@ IDXGIVkInteropSurface : public IUnknown {
    * 
    * If \c pInfo is not \c nullptr, the following rules apply:
    * - \c pInfo->sType \e must be \c VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO
-   * - \c pInfo->pNext \e must be \c nullptr or point ti a supported
+   * - \c pInfo->pNext \e must be \c nullptr or point to a supported
    *   extension-specific structure (currently none)
    * - \c pInfo->queueFamilyIndexCount must be the length of the
    *   \c pInfo->pQueueFamilyIndices array, in \c uint32_t units.
    * - \c pInfo->pQueueFamilyIndices must point to a pre-allocated
    *   array of \c uint32_t of size \c pInfo->pQueueFamilyIndices.
+   * 
+   * \note As of now, the sharing mode will always be
+   *       \c VK_SHARING_MODE_EXCLUSIVE and no queue
+   *       family indices will be written to the array.
    * 
    * After the call, the structure pointed to by \c pInfo can
    * be used to create an image with identical properties.

@@ -190,6 +190,43 @@ namespace dxvk {
   };
   
   
+  /**
+   * \brief Common texture interop class
+   * 
+   * Provides access to the underlying Vulkan
+   * texture to external Vulkan libraries.
+   */
+  class D3D11VkInteropSurface : public IDXGIVkInteropSurface {
+    
+  public:
+    
+    D3D11VkInteropSurface(
+            IDXGIObject*        pContainer,
+            D3D11CommonTexture* pTexture);
+    
+    ~D3D11VkInteropSurface();
+    
+    ULONG STDMETHODCALLTYPE AddRef();
+    
+    ULONG STDMETHODCALLTYPE Release();
+    
+    HRESULT STDMETHODCALLTYPE QueryInterface(
+            REFIID                  riid,
+            void**                  ppvObject);
+    
+    HRESULT STDMETHODCALLTYPE GetVulkanImageInfo(
+            VkImage*              pHandle,
+            VkImageLayout*        pLayout,
+            VkImageCreateInfo*    pInfo);
+    
+  private:
+    
+    IDXGIObject*        m_container;
+    D3D11CommonTexture* m_texture;
+    
+  };
+  
+  
   ///////////////////////////////////////////
   //      D 3 D 1 1 T E X T U R E 1 D
   class D3D11Texture1D : public D3D11DeviceChild<ID3D11Texture1D> {
