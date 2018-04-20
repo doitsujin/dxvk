@@ -9,6 +9,8 @@ DXVK_VERSION="$1"
 DXVK_SRC_DIR=`dirname $(readlink -f $0)`
 DXVK_BUILD_DIR=$(realpath "$2")"/dxvk-$DXVK_VERSION"
 DXVK_ARCHIVE_PATH=$(realpath "$2")"/dxvk-$DXVK_VERSION.tar.gz"
+export WINEARCH=win64
+export WINEPREFIX="$DXVK_BUILD_DIR/wine"
 
 function build_arch {
   cd "$DXVK_SRC_DIR"
@@ -42,6 +44,8 @@ function package {
 
 build_arch 64
 build_arch 32
+
+rm -R "$DXVK_BUILD_DIR/wine"
 
 if [ "$3" != "--no-package" ]; then
   package
