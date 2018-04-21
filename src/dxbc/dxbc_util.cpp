@@ -7,7 +7,7 @@ namespace dxvk {
           DxbcBindingType bindingType,
           uint32_t        bindingIndex) {
     // First resource slot index for per-stage resources
-    const uint32_t stageOffset = 132 + 158 * static_cast<uint32_t>(shaderStage);
+    const uint32_t stageOffset = 132 + 158 * uint32_t(shaderStage);
     
     if (shaderStage == DxbcProgramType::ComputeShader) {
       //   0 -  13: Constant buffers
@@ -32,9 +32,9 @@ namespace dxvk {
       //  14 -  29: Samplers
       //  30 - 157: Shader resources
       switch (bindingType) {
-        case DxbcBindingType::UnorderedAccessView:return bindingIndex + 0;
-        case DxbcBindingType::UavCounter:         return bindingIndex + 8;
-        case DxbcBindingType::StreamOutputBuffer: return bindingIndex + 16;
+        case DxbcBindingType::StreamOutputBuffer: return bindingIndex + 0;
+        case DxbcBindingType::UnorderedAccessView:return bindingIndex + 4;
+        case DxbcBindingType::UavCounter:         return bindingIndex + 68;
         case DxbcBindingType::ConstantBuffer:     return bindingIndex + stageOffset +  0;
         case DxbcBindingType::ImageSampler:       return bindingIndex + stageOffset + 14;
         case DxbcBindingType::ShaderResource:     return bindingIndex + stageOffset + 30;
