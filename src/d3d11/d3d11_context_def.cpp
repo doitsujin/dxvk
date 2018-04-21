@@ -177,11 +177,16 @@ namespace dxvk {
       return E_INVALIDARG;
     }
     
-    const DxvkFormatInfo* formatInfo = imageFormatInfo(image->info().format);
+    auto formatInfo = imageFormatInfo(image->info().format);
+    
+    if (formatInfo->aspectMask != VK_IMAGE_ASPECT_COLOR_BIT) {
+      Logger::err("D3D11: Cannot map a depth-stencil texture");
+      return E_INVALIDARG;
+    }
     
     VkImageSubresource subresource =
       pTexture->GetSubresourceFromIndex(
-        VK_IMAGE_ASPECT_COLOR_BIT, Subresource);
+        formatInfo->aspectMask, Subresource);
     
     VkExtent3D levelExtent = image->mipLevelExtent(subresource.mipLevel);
     VkExtent3D blockCount = util::computeBlockCount(

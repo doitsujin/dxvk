@@ -224,10 +224,16 @@ namespace dxvk {
       return E_INVALIDARG;
     }
     
-    // Parameter validation was successful
+    auto formatInfo = imageFormatInfo(mappedImage->info().format);
+    
+    if (formatInfo->aspectMask != VK_IMAGE_ASPECT_COLOR_BIT) {
+      Logger::err("D3D11: Cannot map a depth-stencil texture");
+      return E_INVALIDARG;
+    }
+    
     VkImageSubresource subresource =
       pResource->GetSubresourceFromIndex(
-        VK_IMAGE_ASPECT_COLOR_BIT, Subresource);
+        formatInfo->aspectMask, Subresource);
     
     pResource->SetMappedSubresource(subresource);
     
@@ -246,13 +252,8 @@ namespace dxvk {
       pMappedResource->DepthPitch = imageType >= VK_IMAGE_TYPE_3D ? layout.depthPitch : layout.size;
       return S_OK;
     } else {
-      // Query format info which we need to compute
-      // the row pitch and layer pitch properly.
-      const DxvkFormatInfo* formatInfo = imageFormatInfo(mappedImage->info().format);
-      
       const VkExtent3D levelExtent = mappedImage->mipLevelExtent(subresource.mipLevel);
-      const VkExtent3D blockCount = util::computeBlockCount(
-        levelExtent, formatInfo->blockSize);
+      const VkExtent3D blockCount = util::computeBlockCount(levelExtent, formatInfo->blockSize);
       
       DxvkPhysicalBufferSlice physicalSlice;
       
