@@ -808,6 +808,14 @@ namespace dxvk {
     DxbcRegisterValue emitCalcBufferIndexRaw(
             DxbcRegisterValue       byteOffset);
     
+    DxbcRegisterValue emitCalcTexCoord(
+            DxbcRegisterValue       coordVector,
+      const DxbcImageInfo&          imageInfo);
+    
+    DxbcRegisterValue emitLoadTexCoord(
+      const DxbcRegister&           coordReg,
+      const DxbcImageInfo&          imageInfo);
+    
     //////////////////////////////
     // Operand load/store methods
     DxbcRegisterValue emitIndexLoad(

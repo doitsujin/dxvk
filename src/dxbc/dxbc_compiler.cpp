@@ -810,20 +810,18 @@ namespace dxvk {
     const uint32_t sampledTypeId = getScalarTypeId(sampledType);
     
     // Declare the resource type
-    // TODO test multisampled images
     const DxbcImageInfo typeInfo = [resourceType, isUav] () -> DxbcImageInfo {
       switch (resourceType) {
-        case DxbcResourceDim::Buffer:         return { spv::DimBuffer, 0, 0, isUav ? 2u : 1u };
-        case DxbcResourceDim::Texture1D:      return { spv::Dim1D,     0, 0, isUav ? 2u : 1u };
-        case DxbcResourceDim::Texture1DArr:   return { spv::Dim1D,     1, 0, isUav ? 2u : 1u };
-        case DxbcResourceDim::Texture2D:      return { spv::Dim2D,     0, 0, isUav ? 2u : 1u };
-        case DxbcResourceDim::Texture2DArr:   return { spv::Dim2D,     1, 0, isUav ? 2u : 1u };
-        case DxbcResourceDim::Texture2DMs:    return { spv::Dim2D,     0, 1, isUav ? 2u : 1u };
-        case DxbcResourceDim::Texture2DMsArr: return { spv::Dim2D,     1, 1, isUav ? 2u : 1u };
-        case DxbcResourceDim::Texture3D:      return { spv::Dim3D,     0, 0, isUav ? 2u : 1u };
-        // Apps may bind cube maps to a slot that expects cube map arrays
-        case DxbcResourceDim::TextureCube:    return { spv::DimCube,   1, 0, isUav ? 2u : 1u };
-        case DxbcResourceDim::TextureCubeArr: return { spv::DimCube,   1, 0, isUav ? 2u : 1u };
+        case DxbcResourceDim::Buffer:         return { spv::DimBuffer, 0, 0, isUav ? 2u : 1u, 0u };
+        case DxbcResourceDim::Texture1D:      return { spv::Dim1D,     1, 0, isUav ? 2u : 1u, 0u };
+        case DxbcResourceDim::Texture1DArr:   return { spv::Dim1D,     1, 0, isUav ? 2u : 1u, 1u };
+        case DxbcResourceDim::Texture2D:      return { spv::Dim2D,     1, 0, isUav ? 2u : 1u, 0u };
+        case DxbcResourceDim::Texture2DArr:   return { spv::Dim2D,     1, 0, isUav ? 2u : 1u, 1u };
+        case DxbcResourceDim::Texture2DMs:    return { spv::Dim2D,     0, 1, isUav ? 2u : 1u, 0u };
+        case DxbcResourceDim::Texture2DMsArr: return { spv::Dim2D,     1, 1, isUav ? 2u : 1u, 1u };
+        case DxbcResourceDim::Texture3D:      return { spv::Dim3D,     0, 0, isUav ? 2u : 1u, 0u };
+        case DxbcResourceDim::TextureCube:    return { spv::DimCube,   1, 0, isUav ? 2u : 1u, 0u };
+        case DxbcResourceDim::TextureCubeArr: return { spv::DimCube,   1, 0, isUav ? 2u : 1u, 1u };
         default: throw DxvkError(str::format("DxbcCompiler: Unsupported resource type: ", resourceType));
       }
     }();
@@ -968,7 +966,7 @@ namespace dxvk {
     const DxbcScalarType sampledType = DxbcScalarType::Uint32;
     const uint32_t sampledTypeId = getScalarTypeId(sampledType);
     
-    const DxbcImageInfo typeInfo = { spv::DimBuffer, 0, 0, isUav ? 2u : 1u };
+    const DxbcImageInfo typeInfo = { spv::DimBuffer, 0, 0, isUav ? 2u : 1u, 0u };
     
     // Declare the resource type
     const uint32_t resTypeId = m_module.defImageType(sampledTypeId,
@@ -2685,12 +2683,9 @@ namespace dxvk {
     const uint32_t textureId = textureReg.idx[0].offset;
     const uint32_t samplerId = samplerReg.idx[0].offset;
     
-    // Load texture coordinates 
-    const uint32_t imageCoordDim = getTexCoordDim(
-      m_textures.at(textureId).imageInfo);
-    
-    const DxbcRegisterValue coord = emitRegisterLoad(
-      texCoordReg, DxbcRegMask::firstN(imageCoordDim));
+    // Load texture coordinates
+    const DxbcRegisterValue coord = emitLoadTexCoord(
+      texCoordReg, m_textures.at(textureId).imageInfo);
     
     // Query the LOD. The result is a two-dimensional float32
     // vector containing the mip level and virtual LOD numbers.
@@ -2808,10 +2803,8 @@ namespace dxvk {
     const uint32_t textureId = ins.src[1].idx[0].offset;
     
     // Image type, which stores the image dimensions etc.
-    const DxbcImageInfo imageType      = m_textures.at(textureId).imageInfo;
-    const DxbcRegMask   coordArrayMask = getTexCoordMask(imageType);
-    
-    const uint32_t imageLayerDim = getTexLayerDim(imageType);
+    const DxbcImageInfo imageType = m_textures.at(textureId).imageInfo;
+    const uint32_t imageLayerDim  = getTexLayerDim(imageType);
     
     // Load the texture coordinates. The last component
     // contains the LOD if the resource is an image.
@@ -2856,8 +2849,7 @@ namespace dxvk {
     }
     
     // Extract coordinates from address
-    const DxbcRegisterValue coord =
-      emitRegisterExtract(address, coordArrayMask);
+    const DxbcRegisterValue coord = emitCalcTexCoord(address, imageType);
     
     // Fetch texels only if the resource is actually bound
     const uint32_t labelMerge     = m_module.allocateId();
@@ -2943,15 +2935,11 @@ namespace dxvk {
     
     // Image type, which stores the image dimensions etc.
     const DxbcImageInfo imageType = m_textures.at(textureId).imageInfo;
-    
     const uint32_t imageLayerDim = getTexLayerDim(imageType);
-    const uint32_t imageCoordDim = getTexCoordDim(imageType);
-    
-    const DxbcRegMask coordArrayMask = DxbcRegMask::firstN(imageCoordDim);
     
     // Load the texture coordinates. SPIR-V allows these
     // to be float4 even if not all components are used.
-    DxbcRegisterValue coord = emitRegisterLoad(texCoordReg, coordArrayMask);
+    DxbcRegisterValue coord = emitLoadTexCoord(texCoordReg, imageType);
     
     // Load reference value for depth-compare operations
     const bool isDepthCompare = ins.op == DxbcOpcode::Gather4C
@@ -3060,16 +3048,11 @@ namespace dxvk {
     
     // Image type, which stores the image dimensions etc.
     const DxbcImageInfo imageType = m_textures.at(textureId).imageInfo;
-    
-    const uint32_t imageLayerDim = getTexLayerDim(imageType);
-    const uint32_t imageCoordDim = getTexCoordDim(imageType);
-    
-    const DxbcRegMask coordArrayMask = DxbcRegMask::firstN(imageCoordDim);
-    const DxbcRegMask coordLayerMask = DxbcRegMask::firstN(imageLayerDim);
+    const uint32_t imageLayerDim  = getTexLayerDim(imageType);
     
     // Load the texture coordinates. SPIR-V allows these
     // to be float4 even if not all components are used.
-    DxbcRegisterValue coord = emitRegisterLoad(texCoordReg, coordArrayMask);
+    DxbcRegisterValue coord = emitLoadTexCoord(texCoordReg, imageType);
     
     // Load reference value for depth-compare operations
     const bool isDepthCompare = ins.op == DxbcOpcode::SampleC
@@ -3086,11 +3069,11 @@ namespace dxvk {
     const bool hasExplicitGradients = ins.op == DxbcOpcode::SampleD;
     
     const DxbcRegisterValue explicitGradientX = hasExplicitGradients
-      ? emitRegisterLoad(ins.src[3], coordLayerMask)
+      ? emitRegisterLoad(ins.src[3], DxbcRegMask::firstN(imageLayerDim))
       : DxbcRegisterValue();
     
     const DxbcRegisterValue explicitGradientY = hasExplicitGradients
-      ? emitRegisterLoad(ins.src[4], coordLayerMask)
+      ? emitRegisterLoad(ins.src[4], DxbcRegMask::firstN(imageLayerDim))
       : DxbcRegisterValue();
     
     // LOD for certain sample operations
@@ -3213,8 +3196,8 @@ namespace dxvk {
     const DxbcUav uavInfo = m_uavs.at(registerId);
     
     // Load texture coordinates
-    const DxbcRegisterValue texCoord = emitRegisterLoad(
-      ins.src[0], getTexCoordMask(uavInfo.imageInfo));
+    DxbcRegisterValue texCoord = emitLoadTexCoord(
+      ins.src[0], uavInfo.imageInfo);
     
     // Load source value from the UAV
     DxbcRegisterValue uavValue;
@@ -3242,8 +3225,8 @@ namespace dxvk {
     const DxbcUav uavInfo = m_uavs.at(registerId);
     
     // Load texture coordinates
-    const DxbcRegisterValue texCoord = emitRegisterLoad(
-      ins.src[0], getTexCoordMask(uavInfo.imageInfo));
+    DxbcRegisterValue texCoord = emitLoadTexCoord(
+      ins.src[0], uavInfo.imageInfo);
     
     // Load the value that will be written to the image. We'll
     // have to cast it to the component type of the image.
@@ -4332,8 +4315,8 @@ namespace dxvk {
           if (!isUav)
             throw DxvkError("DxbcCompiler: TGSM cannot be typed");
           
-          return emitRegisterLoad(address, getTexCoordMask(
-            m_uavs.at(registerId).imageInfo));
+          return emitLoadTexCoord(address,
+            m_uavs.at(registerId).imageInfo);
         }
         
         default:
@@ -4606,6 +4589,45 @@ namespace dxvk {
       byteOffset.id,
       m_module.consti32(4));
     return result;
+  }
+  
+  
+  DxbcRegisterValue DxbcCompiler::emitCalcTexCoord(
+          DxbcRegisterValue       coordVector,
+    const DxbcImageInfo&          imageInfo) {
+    const uint32_t dim = getTexCoordDim(imageInfo);
+    
+    if (dim != coordVector.type.ccount) {
+      coordVector = emitRegisterExtract(
+        coordVector, DxbcRegMask::firstN(dim));      
+    }
+    
+    if (imageInfo.array && !imageInfo.layered) {
+      const uint32_t index = dim - 1;
+      const uint32_t zero = [&] {
+        switch (coordVector.type.ctype) {
+          case DxbcScalarType::Sint32:  return m_module.consti32(0);
+          case DxbcScalarType::Uint32:  return m_module.constu32(0);
+          case DxbcScalarType::Float32: return m_module.constf32(0.0f);
+          default: throw DxvkError("Dxbc: Invalid tex coord type");
+        }
+      }();
+      
+      
+      coordVector.id = m_module.opCompositeInsert(
+        getVectorTypeId(coordVector.type),
+        zero, coordVector.id, 1, &index);
+    }
+    
+    return coordVector;
+  }
+  
+  
+  DxbcRegisterValue DxbcCompiler::emitLoadTexCoord(
+    const DxbcRegister&           coordReg,
+    const DxbcImageInfo&          imageInfo) {
+    return emitCalcTexCoord(emitRegisterLoad(coordReg,
+      DxbcRegMask(true, true, true, true)), imageInfo);
   }
   
   
@@ -6214,9 +6236,9 @@ namespace dxvk {
       case DxbcResourceDim::Buffer:
       case DxbcResourceDim::RawBuffer:
       case DxbcResourceDim::StructuredBuffer: return VK_IMAGE_VIEW_TYPE_MAX_ENUM;
-      case DxbcResourceDim::Texture1D:        return VK_IMAGE_VIEW_TYPE_1D;
+      case DxbcResourceDim::Texture1D:        return VK_IMAGE_VIEW_TYPE_1D_ARRAY;
       case DxbcResourceDim::Texture1DArr:     return VK_IMAGE_VIEW_TYPE_1D_ARRAY;
-      case DxbcResourceDim::Texture2D:        return VK_IMAGE_VIEW_TYPE_2D;
+      case DxbcResourceDim::Texture2D:        return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
       case DxbcResourceDim::Texture2DMs:      return VK_IMAGE_VIEW_TYPE_2D;
       case DxbcResourceDim::Texture2DArr:     return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
       case DxbcResourceDim::Texture2DMsArr:   return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
