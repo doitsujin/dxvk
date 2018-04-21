@@ -810,13 +810,12 @@ namespace dxvk {
     const uint32_t sampledTypeId = getScalarTypeId(sampledType);
     
     // Declare the resource type
-    // TODO test multisampled images
     const DxbcImageInfo typeInfo = [resourceType, isUav] () -> DxbcImageInfo {
       switch (resourceType) {
         case DxbcResourceDim::Buffer:         return { spv::DimBuffer, 0, 0, isUav ? 2u : 1u };
-        case DxbcResourceDim::Texture1D:      return { spv::Dim1D,     0, 0, isUav ? 2u : 1u };
+        case DxbcResourceDim::Texture1D:      return { spv::Dim1D,     1, 0, isUav ? 2u : 1u };
         case DxbcResourceDim::Texture1DArr:   return { spv::Dim1D,     1, 0, isUav ? 2u : 1u };
-        case DxbcResourceDim::Texture2D:      return { spv::Dim2D,     0, 0, isUav ? 2u : 1u };
+        case DxbcResourceDim::Texture2D:      return { spv::Dim2D,     1, 0, isUav ? 2u : 1u };
         case DxbcResourceDim::Texture2DArr:   return { spv::Dim2D,     1, 0, isUav ? 2u : 1u };
         case DxbcResourceDim::Texture2DMs:    return { spv::Dim2D,     0, 1, isUav ? 2u : 1u };
         case DxbcResourceDim::Texture2DMsArr: return { spv::Dim2D,     1, 1, isUav ? 2u : 1u };
@@ -6214,9 +6213,9 @@ namespace dxvk {
       case DxbcResourceDim::Buffer:
       case DxbcResourceDim::RawBuffer:
       case DxbcResourceDim::StructuredBuffer: return VK_IMAGE_VIEW_TYPE_MAX_ENUM;
-      case DxbcResourceDim::Texture1D:        return VK_IMAGE_VIEW_TYPE_1D;
+      case DxbcResourceDim::Texture1D:        return VK_IMAGE_VIEW_TYPE_1D_ARRAY;
       case DxbcResourceDim::Texture1DArr:     return VK_IMAGE_VIEW_TYPE_1D_ARRAY;
-      case DxbcResourceDim::Texture2D:        return VK_IMAGE_VIEW_TYPE_2D;
+      case DxbcResourceDim::Texture2D:        return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
       case DxbcResourceDim::Texture2DMs:      return VK_IMAGE_VIEW_TYPE_2D;
       case DxbcResourceDim::Texture2DArr:     return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
       case DxbcResourceDim::Texture2DMsArr:   return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
