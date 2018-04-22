@@ -2630,7 +2630,8 @@ namespace dxvk {
     if (resinfoType == DxbcResinfoType::RcpFloat) {
       imageSize.id = m_module.opFDiv(
         getVectorTypeId(imageSize.type),
-        m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f),
+        emitBuildConstVecf32(1.0f, 1.0f, 1.0f, 1.0f,
+          DxbcRegMask::firstN(imageSize.type.ccount)).id,
         imageSize.id);
     }
     
