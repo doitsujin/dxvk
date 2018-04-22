@@ -454,8 +454,7 @@ namespace dxvk {
       
       // Don't perform the copy if the image extent is not aligned and
       // if it does not touch the image border for unaligned dimensons
-      if (!util::isBlockAligned(srcOffset, regExtent, srcFormatInfo->blockSize, srcExtent)
-       || !util::isBlockAligned(dstOffset, regExtent, dstFormatInfo->blockSize, dstExtent)) {
+      if (!util::isBlockAligned(srcOffset, regExtent, srcFormatInfo->blockSize, srcExtent)) {
         Logger::err(str::format(
           "D3D11: CopySubresourceRegion: Unaligned block size",
           "\n  Src offset:     (", srcOffset.x,     ",", srcOffset.y,      ",", srcOffset.z,     ")",
