@@ -433,7 +433,12 @@ namespace dxvk {
       // Don't perform the copy if the offsets aren't aligned
       if (!util::isBlockAligned(srcOffset, srcFormatInfo->blockSize)
        || !util::isBlockAligned(dstOffset, dstFormatInfo->blockSize)) {
-        Logger::err("D3D11: CopySubresourceRegion: Unaligned block offset");
+        Logger::err(str::format(
+          "D3D11: CopySubresourceRegion: Unaligned block offset",
+          "\n  Src offset:     (", srcOffset.x,     ",", srcOffset.y,      ",", srcOffset.z,     ")",
+          "\n  Src block size: (", srcFormatInfo->blockSize.width, "x", srcFormatInfo->blockSize.height, "x", srcFormatInfo->blockSize.depth, ")",
+          "\n  Dst offset:     (", dstOffset.x,     ",", dstOffset.y,      ",", dstOffset.z,     ")",
+          "\n  Dst block size: (", dstFormatInfo->blockSize.width, "x", dstFormatInfo->blockSize.height, "x", dstFormatInfo->blockSize.depth, ")"));
         return;
       }
       
@@ -451,7 +456,15 @@ namespace dxvk {
       // if it does not touch the image border for unaligned dimensons
       if (!util::isBlockAligned(srcOffset, regExtent, srcFormatInfo->blockSize, srcExtent)
        || !util::isBlockAligned(dstOffset, regExtent, dstFormatInfo->blockSize, dstExtent)) {
-        Logger::err("D3D11: CopySubresourceRegion: Unaligned block size");
+        Logger::err(str::format(
+          "D3D11: CopySubresourceRegion: Unaligned block size",
+          "\n  Src offset:     (", srcOffset.x,     ",", srcOffset.y,      ",", srcOffset.z,     ")",
+          "\n  Src extent:     (", srcExtent.width, "x", srcExtent.height, "x", srcExtent.depth, ")",
+          "\n  Src block size: (", srcFormatInfo->blockSize.width, "x", srcFormatInfo->blockSize.height, "x", srcFormatInfo->blockSize.depth, ")",
+          "\n  Dst offset:     (", dstOffset.x,     ",", dstOffset.y,      ",", dstOffset.z,     ")",
+          "\n  Dst extent:     (", dstExtent.width, "x", dstExtent.height, "x", dstExtent.depth, ")",
+          "\n  Dst block size: (", dstFormatInfo->blockSize.width, "x", dstFormatInfo->blockSize.height, "x", dstFormatInfo->blockSize.depth, ")",
+          "\n  Region extent:  (", regExtent.width, "x", regExtent.height, "x", regExtent.depth, ")"));
         return;
       }
       
