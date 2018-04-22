@@ -807,24 +807,9 @@ namespace dxvk {
       }
     }();
     
-    const uint32_t sampledTypeId = getScalarTypeId(sampledType);
-    
     // Declare the resource type
-    const DxbcImageInfo typeInfo = [resourceType, isUav] () -> DxbcImageInfo {
-      switch (resourceType) {
-        case DxbcResourceDim::Buffer:         return { spv::DimBuffer, 0, 0, isUav ? 2u : 1u, 0u };
-        case DxbcResourceDim::Texture1D:      return { spv::Dim1D,     1, 0, isUav ? 2u : 1u, 0u };
-        case DxbcResourceDim::Texture1DArr:   return { spv::Dim1D,     1, 0, isUav ? 2u : 1u, 1u };
-        case DxbcResourceDim::Texture2D:      return { spv::Dim2D,     1, 0, isUav ? 2u : 1u, 0u };
-        case DxbcResourceDim::Texture2DArr:   return { spv::Dim2D,     1, 0, isUav ? 2u : 1u, 1u };
-        case DxbcResourceDim::Texture2DMs:    return { spv::Dim2D,     1, 1, isUav ? 2u : 1u, 0u };
-        case DxbcResourceDim::Texture2DMsArr: return { spv::Dim2D,     1, 1, isUav ? 2u : 1u, 1u };
-        case DxbcResourceDim::Texture3D:      return { spv::Dim3D,     0, 0, isUav ? 2u : 1u, 0u };
-        case DxbcResourceDim::TextureCube:    return { spv::DimCube,   1, 0, isUav ? 2u : 1u, 0u };
-        case DxbcResourceDim::TextureCubeArr: return { spv::DimCube,   1, 0, isUav ? 2u : 1u, 1u };
-        default: throw DxvkError(str::format("DxbcCompiler: Unsupported resource type: ", resourceType));
-      }
-    }();
+    const uint32_t sampledTypeId = getScalarTypeId(sampledType);
+    const DxbcImageInfo typeInfo = getResourceType(resourceType, isUav);    
     
     // Declare additional capabilities if necessary
     switch (resourceType) {
@@ -930,7 +915,7 @@ namespace dxvk {
     // Store descriptor info for the shader interface
     DxvkResourceSlot resource;
     resource.slot = bindingId;
-    resource.view = getViewType(resourceType);
+    resource.view = typeInfo.vtype;
     
     if (isUav) {
       resource.type = resourceType == DxbcResourceDim::Buffer
@@ -967,7 +952,7 @@ namespace dxvk {
     const DxbcScalarType sampledType = DxbcScalarType::Uint32;
     const uint32_t sampledTypeId = getScalarTypeId(sampledType);
     
-    const DxbcImageInfo typeInfo = { spv::DimBuffer, 0, 0, isUav ? 2u : 1u, 0u };
+    const DxbcImageInfo typeInfo = { spv::DimBuffer, 0, 0, isUav ? 2u : 1u, 0u, VK_IMAGE_VIEW_TYPE_MAX_ENUM };
     
     // Declare the resource type
     const uint32_t resTypeId = m_module.defImageType(sampledTypeId,
@@ -6240,23 +6225,31 @@ namespace dxvk {
   }
   
   
-  VkImageViewType DxbcCompiler::getViewType(DxbcResourceDim dim) const {
-    switch (dim) {
-      default:
-      case DxbcResourceDim::Unknown:
-      case DxbcResourceDim::Buffer:
-      case DxbcResourceDim::RawBuffer:
-      case DxbcResourceDim::StructuredBuffer: return VK_IMAGE_VIEW_TYPE_MAX_ENUM;
-      case DxbcResourceDim::Texture1D:        return VK_IMAGE_VIEW_TYPE_1D_ARRAY;
-      case DxbcResourceDim::Texture1DArr:     return VK_IMAGE_VIEW_TYPE_1D_ARRAY;
-      case DxbcResourceDim::Texture2D:        return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-      case DxbcResourceDim::Texture2DMs:      return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-      case DxbcResourceDim::Texture2DArr:     return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-      case DxbcResourceDim::Texture2DMsArr:   return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-      case DxbcResourceDim::TextureCube:      return VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
-      case DxbcResourceDim::TextureCubeArr:   return VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
-      case DxbcResourceDim::Texture3D:        return VK_IMAGE_VIEW_TYPE_3D;
+  DxbcImageInfo DxbcCompiler::getResourceType(
+          DxbcResourceDim   resourceType,
+          bool              isUav) const {
+    DxbcImageInfo typeInfo = [resourceType, isUav] () -> DxbcImageInfo {
+      switch (resourceType) {
+        case DxbcResourceDim::Buffer:         return { spv::DimBuffer, 0, 0, isUav ? 2u : 1u, 0u, VK_IMAGE_VIEW_TYPE_MAX_ENUM   };
+        case DxbcResourceDim::Texture1D:      return { spv::Dim1D,     0, 0, isUav ? 2u : 1u, 0u, VK_IMAGE_VIEW_TYPE_1D         };
+        case DxbcResourceDim::Texture1DArr:   return { spv::Dim1D,     1, 0, isUav ? 2u : 1u, 1u, VK_IMAGE_VIEW_TYPE_1D_ARRAY   };
+        case DxbcResourceDim::Texture2D:      return { spv::Dim2D,     0, 0, isUav ? 2u : 1u, 0u, VK_IMAGE_VIEW_TYPE_2D         };
+        case DxbcResourceDim::Texture2DArr:   return { spv::Dim2D,     1, 0, isUav ? 2u : 1u, 1u, VK_IMAGE_VIEW_TYPE_2D_ARRAY   };
+        case DxbcResourceDim::Texture2DMs:    return { spv::Dim2D,     0, 1, isUav ? 2u : 1u, 0u, VK_IMAGE_VIEW_TYPE_2D         };
+        case DxbcResourceDim::Texture2DMsArr: return { spv::Dim2D,     1, 1, isUav ? 2u : 1u, 1u, VK_IMAGE_VIEW_TYPE_2D_ARRAY   };
+        case DxbcResourceDim::Texture3D:      return { spv::Dim3D,     0, 0, isUav ? 2u : 1u, 0u, VK_IMAGE_VIEW_TYPE_3D         };
+        case DxbcResourceDim::TextureCube:    return { spv::DimCube,   1, 0, isUav ? 2u : 1u, 0u, VK_IMAGE_VIEW_TYPE_CUBE_ARRAY };
+        case DxbcResourceDim::TextureCubeArr: return { spv::DimCube,   1, 0, isUav ? 2u : 1u, 1u, VK_IMAGE_VIEW_TYPE_CUBE_ARRAY };
+        default: throw DxvkError(str::format("DxbcCompiler: Unsupported resource type: ", resourceType));
+      }
+    }();
+    
+    if (typeInfo.dim == spv::Dim2D && m_options.test(DxbcOption::ForceTex2DArray)) {
+      typeInfo.array = 1;
+      typeInfo.vtype = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
     }
+    
+    return typeInfo;
   }
   
   

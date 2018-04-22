@@ -1015,8 +1015,9 @@ namespace dxvk {
     DxbcVectorType getOutputRegType(
             uint32_t regIdx) const;
     
-    VkImageViewType getViewType(
-            DxbcResourceDim dim) const;
+    DxbcImageInfo getResourceType(
+            DxbcResourceDim   resourceType,
+            bool              isUav) const;
     
     spv::ImageFormat getScalarImageFormat(
             DxbcScalarType type) const;

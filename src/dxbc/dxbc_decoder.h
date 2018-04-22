@@ -56,11 +56,12 @@ namespace dxvk {
    * \brief Image type information
    */
   struct DxbcImageInfo {
-    spv::Dim dim      = spv::Dim1D;
-    uint32_t array    = 0;
-    uint32_t ms       = 0;
-    uint32_t sampled  = 0;
-    uint32_t layered  = 0;
+    spv::Dim        dim     = spv::Dim1D;
+    uint32_t        array   = 0;
+    uint32_t        ms      = 0;
+    uint32_t        sampled = 0;
+    uint32_t        layered = 0;
+    VkImageViewType vtype   = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
   };
   
   

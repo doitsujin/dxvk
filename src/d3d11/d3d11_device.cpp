@@ -370,7 +370,7 @@ namespace dxvk {
       
       switch (desc.ViewDimension) {
         case D3D11_SRV_DIMENSION_TEXTURE1D:
-          viewInfo.type      = VK_IMAGE_VIEW_TYPE_1D_ARRAY;
+          viewInfo.type      = VK_IMAGE_VIEW_TYPE_1D;
           viewInfo.minLevel  = desc.Texture1D.MostDetailedMip;
           viewInfo.numLevels = desc.Texture1D.MipLevels;
           viewInfo.minLayer  = 0;
@@ -386,11 +386,14 @@ namespace dxvk {
           break;
           
         case D3D11_SRV_DIMENSION_TEXTURE2D:
-          viewInfo.type      = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+          viewInfo.type      = VK_IMAGE_VIEW_TYPE_2D;
           viewInfo.minLevel  = desc.Texture2D.MostDetailedMip;
           viewInfo.numLevels = desc.Texture2D.MipLevels;
           viewInfo.minLayer  = 0;
           viewInfo.numLayers = 1;
+          
+          if (m_dxbcOptions.test(DxbcOption::ForceTex2DArray))
+            viewInfo.type = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
           break;
           
         case D3D11_SRV_DIMENSION_TEXTURE2DARRAY:
@@ -402,11 +405,14 @@ namespace dxvk {
           break;
           
         case D3D11_SRV_DIMENSION_TEXTURE2DMS:
-          viewInfo.type      = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+          viewInfo.type      = VK_IMAGE_VIEW_TYPE_2D;
           viewInfo.minLevel  = 0;
           viewInfo.numLevels = 1;
           viewInfo.minLayer  = 0;
           viewInfo.numLayers = 1;
+          
+          if (m_dxbcOptions.test(DxbcOption::ForceTex2DArray))
+            viewInfo.type = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
           break;
           
         case D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY:
@@ -567,7 +573,7 @@ namespace dxvk {
       
       switch (desc.ViewDimension) {
         case D3D11_UAV_DIMENSION_TEXTURE1D:
-          viewInfo.type      = VK_IMAGE_VIEW_TYPE_1D_ARRAY;
+          viewInfo.type      = VK_IMAGE_VIEW_TYPE_1D;
           viewInfo.minLevel  = desc.Texture1D.MipSlice;
           viewInfo.numLevels = 1;
           viewInfo.minLayer  = 0;
@@ -583,11 +589,14 @@ namespace dxvk {
           break;
           
         case D3D11_UAV_DIMENSION_TEXTURE2D:
-          viewInfo.type      = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+          viewInfo.type      = VK_IMAGE_VIEW_TYPE_2D;
           viewInfo.minLevel  = desc.Texture2D.MipSlice;
           viewInfo.numLevels = 1;
           viewInfo.minLayer  = 0;
           viewInfo.numLayers = 1;
+          
+          if (m_dxbcOptions.test(DxbcOption::ForceTex2DArray))
+            viewInfo.type = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
           break;
           
         case D3D11_UAV_DIMENSION_TEXTURE2DARRAY:
