@@ -26,16 +26,16 @@ namespace dxvk::str {
     return stream.str();
   }
 #ifdef __WINE__
-  inline std::string fromws(const std::wstring& ws) {
-    char *ret = nullptr;
-    if (ws.size() > 0) {
-        ret = new char[ws.size() + 1];
-        WideCharToMultiByte( CP_UTF8, 0, ws.c_str(), -1, ret, ws.size() + 1, NULL, NULL );
-    }
-    return ret ? ret : "";
+  inline std::string fromws(const wchar_t* ws) {
+    std::string ret;
+    DWORD len = WideCharToMultiByte( CP_UNIXCP, 0, ws, -1, NULL, 0, NULL, NULL );
+    ret.resize(len);
+    WideCharToMultiByte( CP_UNIXCP, 0, ws, -1, &ret.at(0), len, NULL, NULL );
+    ret.resize(ret.length() - 1); // drop '\0'
+    return ret;
   }
 #else
-  inline std::string fromws(const std::wstring& ws) {
+  inline std::string fromws(const wchar_t* ws) {
     return std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(ws);
   }
 #endif
