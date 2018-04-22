@@ -4558,6 +4558,16 @@ namespace dxvk {
         getVectorTypeId(result.type),
         m_module.opLoad(info.typeId, info.varId));
     }
+    
+    if (info.image.array && !info.image.layered) {
+      const uint32_t index = result.type.ccount - 1;
+      const uint32_t zero  = m_module.constu32(0);
+      
+      result.id = m_module.opCompositeInsert(
+        getVectorTypeId(result.type),
+        zero, result.id, 1, &index);
+    }
+    
     return result;
   }
   
@@ -4612,7 +4622,6 @@ namespace dxvk {
           default: throw DxvkError("Dxbc: Invalid tex coord type");
         }
       }();
-      
       
       coordVector.id = m_module.opCompositeInsert(
         getVectorTypeId(coordVector.type),
