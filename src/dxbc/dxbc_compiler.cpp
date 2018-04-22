@@ -2684,8 +2684,8 @@ namespace dxvk {
     const uint32_t samplerId = samplerReg.idx[0].offset;
     
     // Load texture coordinates
-    const DxbcRegisterValue coord = emitLoadTexCoord(
-      texCoordReg, m_textures.at(textureId).imageInfo);
+    const DxbcRegisterValue coord = emitRegisterLoad(texCoordReg,
+      DxbcRegMask::firstN(getTexLayerDim(m_textures.at(textureId).imageInfo)));
     
     // Query the LOD. The result is a two-dimensional float32
     // vector containing the mip level and virtual LOD numbers.
