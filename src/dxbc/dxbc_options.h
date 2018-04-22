@@ -4,26 +4,37 @@
 
 namespace dxvk {
   
-  /**
-   * \brief DXBC compiler options
-   * 
-   * Defines driver- or device-specific options,
-   * which are mostly workarounds for driver bugs.
-   */
-  struct DxbcOptions {
-    DxbcOptions() { }
-    DxbcOptions(
-      const Rc<DxvkDevice>& device);
-      
-    /// Add extra component to dref coordinate vector
-    bool addExtraDrefCoordComponent = false;
-      
-    /// Use Fmin/Fmax instead of Nmin/Nmax.
-    bool useSimpleMinMaxClamp = false;
+  enum class DxbcOption : uint64_t {
+    /// Use the ShaderImageReadWithoutFormat capability.
+    /// Enabled by default on GPUs which support this.
+    UseStorageImageReadWithoutFormat,
     
-    /// If \c false, image read operations can only be performed
-    /// on storage images with a scalar 32-bit image formats.
-    bool useStorageImageReadWithoutFormat = false;
+    /// Adds an extra component to the depth reference
+    /// vector for depth-compare operations. Workaround
+    /// for bugs in Nvidia drivers prior to 396.18.
+    AddExtraDrefCoordComponent,
+    
+    /// Use FMin/FMax/FClamp instead of NMin/NMax/NClamp.
+    /// Workaround for bugs in older Nvidia drivers.
+    UseSimpleMinMaxClamp,
   };
+  
+  using DxbcOptions = Flags<DxbcOption>;
+  
+  /**
+   * \brief Gets app-specific DXBC options
+   * 
+   * \param [in] appName Application name
+   * \returns DXBC options for this application
+   */
+  DxbcOptions getDxbcAppOptions(const std::string& appName);
+  
+  /**
+   * \brief Gets device-specific options
+   * 
+   * \param [in] device The device
+   * \returns Device options
+   */
+  DxbcOptions getDxbcDeviceOptions(const Rc<DxvkDevice>& device);
   
 }
