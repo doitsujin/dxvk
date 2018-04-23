@@ -5790,6 +5790,8 @@ namespace dxvk {
     m_perVertexIn = m_module.newVar(
       ptrTypeId, spv::StorageClassInput);
     m_module.setDebugName(m_perVertexIn, varName);
+    
+    m_entryPointInterfaces.push_back(m_perVertexIn);
   }
   
   
