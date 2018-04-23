@@ -632,8 +632,8 @@ namespace dxvk {
     std::array<DxvkShaderResourceSlot, MaxNumResourceSlots>  m_rc;
     std::array<DxvkDescriptorInfo,     MaxNumActiveBindings> m_descInfos;
     
-    void renderPassBegin();
-    void renderPassEnd();
+    void startRenderPass();
+    void spillRenderPass();
     
     void renderPassBindFramebuffer(
       const Rc<DxvkFramebuffer>& framebuffer);

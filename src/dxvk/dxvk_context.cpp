@@ -48,7 +48,7 @@ namespace dxvk {
   
   
   Rc<DxvkCommandList> DxvkContext::endRecording() {
-    this->renderPassEnd();
+    this->spillRenderPass();
     this->endActiveQueries();
     
     this->trackQueryPool(m_queryPools[VK_QUERY_TYPE_OCCLUSION]);
@@ -87,7 +87,7 @@ namespace dxvk {
   
   void DxvkContext::bindFramebuffer(const Rc<DxvkFramebuffer>& fb) {
     if (m_state.om.framebuffer != fb) {
-      this->renderPassEnd();
+      this->spillRenderPass();
       
       if (fb != nullptr) {
         m_state.gp.state.msSampleCount = fb->sampleCount();
@@ -232,7 +232,7 @@ namespace dxvk {
           VkDeviceSize          offset,
           VkDeviceSize          length,
           uint32_t              value) {
-    this->renderPassEnd();
+    this->spillRenderPass();
     
     auto slice = buffer->subSlice(offset, length);
     
@@ -258,7 +258,7 @@ namespace dxvk {
           VkDeviceSize          offset,
           VkDeviceSize          length,
           VkClearColorValue     value) {
-    this->renderPassEnd();
+    this->spillRenderPass();
     this->unbindComputePipeline();
     
     // Query pipeline objects to use for this clear operation
@@ -325,7 +325,7 @@ namespace dxvk {
     const Rc<DxvkImage>&            image,
     const VkClearColorValue&        value,
     const VkImageSubresourceRange&  subresources) {
-    this->renderPassEnd();
+    this->spillRenderPass();
     
     m_barriers.accessImage(image, subresources,
       VK_IMAGE_LAYOUT_UNDEFINED,
@@ -357,7 +357,7 @@ namespace dxvk {
     const Rc<DxvkImage>&            image,
     const VkClearDepthStencilValue& value,
     const VkImageSubresourceRange&  subresources) {
-    this->renderPassEnd();
+    this->spillRenderPass();
     
     m_barriers.accessImage(
       image, subresources,
@@ -401,7 +401,7 @@ namespace dxvk {
       attachmentIndex = m_state.om.framebuffer->findAttachment(imageView);
     
     if (attachmentIndex == MaxNumRenderTargets) {
-      this->renderPassEnd();
+      this->spillRenderPass();
       
       // Set up and bind a temporary framebuffer
       DxvkRenderTargets attachments;
@@ -419,7 +419,7 @@ namespace dxvk {
     } else {
       // Make sure that the currently bound
       // framebuffer can be rendered to
-      this->renderPassBegin();
+      this->startRenderPass();
     }
     
     // Clear the attachment in quesion
@@ -446,7 +446,7 @@ namespace dxvk {
           VkOffset3D            offset,
           VkExtent3D            extent,
           VkClearColorValue     value) {
-    this->renderPassEnd();
+    this->spillRenderPass();
     this->unbindComputePipeline();
     
     // Query pipeline objects to use for this clear operation
@@ -529,7 +529,7 @@ namespace dxvk {
     if (numBytes == 0)
       return;
     
-    this->renderPassEnd();
+    this->spillRenderPass();
     
     auto dstSlice = dstBuffer->subSlice(dstOffset, numBytes);
     auto srcSlice = srcBuffer->subSlice(srcOffset, numBytes);
@@ -571,7 +571,7 @@ namespace dxvk {
     const Rc<DxvkBuffer>&       srcBuffer,
           VkDeviceSize          srcOffset,
           VkExtent2D            srcExtent) {
-    this->renderPassEnd();
+    this->spillRenderPass();
     
     auto srcSlice = srcBuffer->subSlice(srcOffset, 0);
     
@@ -635,7 +635,7 @@ namespace dxvk {
           VkImageSubresourceLayers srcSubresource,
           VkOffset3D            srcOffset,
           VkExtent3D            extent) {
-    this->renderPassEnd();
+    this->spillRenderPass();
     
     VkImageSubresourceRange dstSubresourceRange = {
       dstSubresource.aspectMask,
@@ -767,7 +767,7 @@ namespace dxvk {
           VkImageSubresourceLayers srcSubresource,
           VkOffset3D            srcOffset,
           VkExtent3D            srcExtent) {
-    this->renderPassEnd();
+    this->spillRenderPass();
     
     auto dstSlice = dstBuffer->subSlice(dstOffset, 0);
     
@@ -950,7 +950,7 @@ namespace dxvk {
     if (subresources.levelCount <= 1)
       return;
     
-    this->renderPassEnd();
+    this->spillRenderPass();
 
     // The top-most level will only be read. We can
     // discard the contents of all the lower levels
@@ -1097,7 +1097,7 @@ namespace dxvk {
     const Rc<DxvkImage>&            srcImage,
     const VkImageSubresourceLayers& srcSubresources,
           VkFormat                  format) {
-    this->renderPassEnd();
+    this->spillRenderPass();
     
     if (format == VK_FORMAT_UNDEFINED)
       format = srcImage->info().format;
@@ -1204,7 +1204,7 @@ namespace dxvk {
           VkDeviceSize              offset,
           VkDeviceSize              size,
     const void*                     data) {
-    this->renderPassEnd();
+    this->spillRenderPass();
     
     // Vulkan specifies that small amounts of data (up to 64kB) can
     // be copied to a buffer directly if the size is a multiple of
@@ -1250,7 +1250,7 @@ namespace dxvk {
     const void*                     data,
           VkDeviceSize              pitchPerRow,
           VkDeviceSize              pitchPerLayer) {
-    this->renderPassEnd();
+    this->spillRenderPass();
     
     // Upload data through a staging buffer. Special care needs to
     // be taken when dealing with compressed image formats: Rather
@@ -1490,7 +1490,7 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::renderPassBegin() {
+  void DxvkContext::startRenderPass() {
     if (!m_flags.test(DxvkContextFlag::GpRenderPassBound)
      && (m_state.om.framebuffer != nullptr)) {
       m_flags.set(DxvkContextFlag::GpRenderPassBound);
@@ -1499,7 +1499,7 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::renderPassEnd() {
+  void DxvkContext::spillRenderPass() {
     if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
       m_flags.clr(DxvkContextFlag::GpRenderPassBound);
       this->renderPassUnbindFramebuffer();
@@ -1872,7 +1872,7 @@ namespace dxvk {
   
   
   void DxvkContext::commitComputeState() {
-    this->renderPassEnd();
+    this->spillRenderPass();
     this->updateComputePipeline();
     this->updateComputeShaderResources();
     this->updateComputePipelineState();
@@ -1881,7 +1881,7 @@ namespace dxvk {
   
   
   void DxvkContext::commitGraphicsState() {
-    this->renderPassBegin();
+    this->startRenderPass();
     this->updateGraphicsPipeline();
     this->updateIndexBufferBinding();
     this->updateVertexBufferBindings();
@@ -1964,7 +1964,7 @@ namespace dxvk {
   
   
   void DxvkContext::resetQueryPool(const Rc<DxvkQueryPool>& pool) {
-    this->renderPassEnd();
+    this->spillRenderPass();
     
     pool->reset(m_cmd);
   }
