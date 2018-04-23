@@ -5,7 +5,8 @@
 namespace dxvk {
   
   const static std::unordered_map<std::string, DxbcOptions> g_dxbcAppOptions = {{
-    { "ManiaPlanet.exe", DxbcOption::ForceTex2DArray },
+    { "Dishonored2.exe", DxbcOptions(DxbcOption::ForceTex2DArray) },
+    { "ManiaPlanet.exe", DxbcOptions(DxbcOption::ForceTex2DArray) },
   }};
   
   
