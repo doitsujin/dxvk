@@ -13,7 +13,7 @@ namespace dxvk {
     
     D3D11ImmediateContext(
       D3D11Device*    pParent,
-      Rc<DxvkDevice>  Device);
+      const Rc<DxvkDevice>&  Device);
     ~D3D11ImmediateContext();
     
     ULONG STDMETHODCALLTYPE AddRef() final;

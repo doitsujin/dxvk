@@ -152,7 +152,7 @@ namespace dxvk {
   
   
   DxvkMemoryHeap::DxvkMemoryHeap(
-    const Rc<vk::DeviceFn>    vkd,
+    const Rc<vk::DeviceFn>&    vkd,
           uint32_t            memTypeId,
           VkMemoryType        memType)
   : m_vkd       (vkd),

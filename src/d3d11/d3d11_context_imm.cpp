@@ -7,7 +7,7 @@ namespace dxvk {
   
   D3D11ImmediateContext::D3D11ImmediateContext(
     D3D11Device*    pParent,
-    Rc<DxvkDevice>  Device)
+    const Rc<DxvkDevice>&  Device)
   : D3D11DeviceContext(pParent, Device),
     m_csThread(Device->createContext()) {
     EmitCs([cDevice = m_device] (DxvkContext* ctx) {

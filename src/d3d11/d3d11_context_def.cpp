@@ -1,12 +1,14 @@
 #include "d3d11_context_def.h"
 
+#include <utility>
+
 namespace dxvk {
   
   D3D11DeferredContext::D3D11DeferredContext(
     D3D11Device*    pParent,
     Rc<DxvkDevice>  Device,
     UINT            ContextFlags)
-  : D3D11DeviceContext(pParent, Device),
+  : D3D11DeviceContext(pParent, std::move(Device)),
     m_contextFlags(ContextFlags),
     m_commandList (CreateCommandList()) {
     ClearState();
