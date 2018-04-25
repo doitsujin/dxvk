@@ -104,7 +104,7 @@ namespace dxvk {
   public:
     
     D3D11Shader(D3D11Device* device, const D3D11ShaderModule& module)
-    : m_device(device), m_module(std::move(module)) { }
+    : m_device(device), m_module(module) { }
     
     ~D3D11Shader() { }
     

@@ -1025,7 +1025,7 @@ namespace dxvk {
       return S_FALSE;
     
     *ppVertexShader = ref(new D3D11VertexShader(
-      this, std::move(module)));
+      this, module));
     return S_OK;
   }
   
@@ -1047,7 +1047,7 @@ namespace dxvk {
       return S_FALSE;
     
     *ppGeometryShader = ref(new D3D11GeometryShader(
-      this, std::move(module)));
+      this, module));
     return S_OK;
   }
   
@@ -1085,7 +1085,7 @@ namespace dxvk {
       return S_FALSE;
     
     *ppPixelShader = ref(new D3D11PixelShader(
-      this, std::move(module)));
+      this, module));
     return S_OK;
   }
   
@@ -1107,7 +1107,7 @@ namespace dxvk {
       return S_FALSE;
     
     *ppHullShader = ref(new D3D11HullShader(
-      this, std::move(module)));
+      this, module));
     return S_OK;
   }
   
@@ -1129,7 +1129,7 @@ namespace dxvk {
       return S_FALSE;
     
     *ppDomainShader = ref(new D3D11DomainShader(
-      this, std::move(module)));
+      this, module));
     return S_OK;
   }
   
@@ -1151,7 +1151,7 @@ namespace dxvk {
       return S_FALSE;
     
     *ppComputeShader = ref(new D3D11ComputeShader(
-      this, std::move(module)));
+      this, module));
     return S_OK;
   }
   
