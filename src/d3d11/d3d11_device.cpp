@@ -7,6 +7,7 @@
 #include "d3d11_context_imm.h"
 #include "d3d11_device.h"
 #include "d3d11_input_layout.h"
+#include "d3d11_interop.h"
 #include "d3d11_present.h"
 #include "d3d11_query.h"
 #include "d3d11_sampler.h"
@@ -21,6 +22,7 @@ namespace dxvk {
   
   
   D3D11DeviceContainer::~D3D11DeviceContainer() {
+    delete m_d3d11VkInterop;
     delete m_d3d11Presenter;
     delete m_d3d11Device;
     delete m_dxgiDevice;
@@ -41,6 +43,11 @@ namespace dxvk {
      || riid == __uuidof(IDXGIDevice2)
      || riid == __uuidof(IDXGIVkDevice)) {
       *ppvObject = ref(m_dxgiDevice);
+      return S_OK;
+    }
+    
+    if (riid == __uuidof(IDXGIVkInteropDevice)) {
+      *ppvObject = ref(m_d3d11VkInterop);
       return S_OK;
     }
     

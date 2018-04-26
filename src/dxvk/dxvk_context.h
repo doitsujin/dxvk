@@ -469,6 +469,20 @@ namespace dxvk {
             VkFormat                  format);
     
     /**
+     * \brief Transforms image subresource layouts
+     * 
+     * \param [in] dstImage Image to transform
+     * \param [in] dstSubresources Subresources
+     * \param [in] srcLayout Current layout
+     * \param [in] dstLayout Desired layout
+     */
+    void transformImage(
+      const Rc<DxvkImage>&            dstImage,
+      const VkImageSubresourceRange&  dstSubresources,
+            VkImageLayout             srcLayout,
+            VkImageLayout             dstLayout);
+    
+    /**
      * \brief Updates a buffer
      * 
      * Copies data from the host into a buffer.

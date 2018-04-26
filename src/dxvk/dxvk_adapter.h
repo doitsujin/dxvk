@@ -53,6 +53,12 @@ namespace dxvk {
     }
     
     /**
+     * \brief Vulkan instance
+     * \returns Vulkan instance
+     */
+    Rc<DxvkInstance> instance() const;
+    
+    /**
      * \brief Physical device properties
      * 
      * Retrieves information about the device itself.

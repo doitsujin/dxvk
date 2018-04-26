@@ -284,12 +284,81 @@ namespace dxvk {
   }
   
   
+  D3D11VkInteropSurface::D3D11VkInteropSurface(
+          ID3D11DeviceChild*  pContainer,
+          D3D11CommonTexture* pTexture)
+  : m_container (pContainer),
+    m_texture   (pTexture) {
+      
+  }
+  
+  
+  D3D11VkInteropSurface::~D3D11VkInteropSurface() {
+    
+  }
+  
+  
+  ULONG STDMETHODCALLTYPE D3D11VkInteropSurface::AddRef() {
+    return m_container->AddRef();
+  }
+  
+  
+  ULONG STDMETHODCALLTYPE D3D11VkInteropSurface::Release() {
+    return m_container->Release();
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE D3D11VkInteropSurface::QueryInterface(
+          REFIID                  riid,
+          void**                  ppvObject) {
+    return m_container->QueryInterface(riid, ppvObject);
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE D3D11VkInteropSurface::GetVulkanImageInfo(
+          VkImage*              pHandle,
+          VkImageLayout*        pLayout,
+          VkImageCreateInfo*    pInfo) {
+    const Rc<DxvkImage> image = m_texture->GetImage();
+    const DxvkImageCreateInfo& info = image->info();
+    
+    if (pHandle != nullptr)
+      *pHandle = image->handle();
+    
+    if (pLayout != nullptr)
+      *pLayout = info.layout;
+    
+    if (pInfo != nullptr) {
+      // We currently don't support any extended structures
+      if (pInfo->sType != VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO
+       || pInfo->pNext != nullptr)
+        return E_INVALIDARG;
+      
+      pInfo->flags          = 0;
+      pInfo->imageType      = info.type;
+      pInfo->format         = info.format;
+      pInfo->extent         = info.extent;
+      pInfo->mipLevels      = info.mipLevels;
+      pInfo->arrayLayers    = info.numLayers;
+      pInfo->samples        = info.sampleCount;
+      pInfo->tiling         = info.tiling;
+      pInfo->usage          = info.usage;
+      pInfo->sharingMode    = VK_SHARING_MODE_EXCLUSIVE;
+      pInfo->queueFamilyIndexCount = 0;
+      pInfo->initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+    }
+    
+    return S_OK;
+  }
+  
+  
   ///////////////////////////////////////////
   //      D 3 D 1 1 T E X T U R E 1 D
   D3D11Texture1D::D3D11Texture1D(
           D3D11Device*                pDevice,
     const D3D11_COMMON_TEXTURE_DESC*  pDesc)
-  : m_texture(pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE1D) {
+  : m_texture(pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE1D),
+    m_interop(this, &m_texture) {
     
   }
   
@@ -307,6 +376,11 @@ namespace dxvk {
      || riid == __uuidof(ID3D11Resource)
      || riid == __uuidof(ID3D11Texture1D)) {
       *ppvObject = ref(this);
+      return S_OK;
+    }
+    
+    if (riid == __uuidof(IDXGIVkInteropSurface)) {
+      *ppvObject = ref(&m_interop);
       return S_OK;
     }
     
@@ -354,7 +428,8 @@ namespace dxvk {
   D3D11Texture2D::D3D11Texture2D(
           D3D11Device*                pDevice,
     const D3D11_COMMON_TEXTURE_DESC*  pDesc)
-  : m_texture(pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE2D) {
+  : m_texture(pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE2D),
+    m_interop(this, &m_texture) {
     
   }
   
@@ -372,6 +447,11 @@ namespace dxvk {
      || riid == __uuidof(ID3D11Resource)
      || riid == __uuidof(ID3D11Texture2D)) {
       *ppvObject = ref(this);
+      return S_OK;
+    }
+    
+    if (riid == __uuidof(IDXGIVkInteropSurface)) {
+      *ppvObject = ref(&m_interop);
       return S_OK;
     }
     
@@ -421,7 +501,8 @@ namespace dxvk {
   D3D11Texture3D::D3D11Texture3D(
           D3D11Device*                pDevice,
     const D3D11_COMMON_TEXTURE_DESC*  pDesc)
-  : m_texture(pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE3D) {
+  : m_texture(pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE3D),
+    m_interop(this, &m_texture) {
     
   }
   
@@ -439,6 +520,11 @@ namespace dxvk {
      || riid == __uuidof(ID3D11Resource)
      || riid == __uuidof(ID3D11Texture3D)) {
       *ppvObject = ref(this);
+      return S_OK;
+    }
+    
+    if (riid == __uuidof(IDXGIVkInteropSurface)) {
+      *ppvObject = ref(&m_interop);
       return S_OK;
     }
     

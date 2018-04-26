@@ -18,12 +18,16 @@ namespace dxvk {
     m_metaClearObjects(new DxvkMetaClearObjects (vkd)),
     m_unboundResources(this),
     m_submissionQueue (this) {
+    m_graphicsQueue.queueFamily = m_adapter->graphicsQueueFamily();
+    m_presentQueue.queueFamily  = m_adapter->presentQueueFamily();
+    
     m_vkd->vkGetDeviceQueue(m_vkd->device(),
-      m_adapter->graphicsQueueFamily(), 0,
-      &m_graphicsQueue);
+      m_graphicsQueue.queueFamily, 0,
+      &m_graphicsQueue.queueHandle);
+    
     m_vkd->vkGetDeviceQueue(m_vkd->device(),
-      m_adapter->presentQueueFamily(), 0,
-      &m_presentQueue);
+      m_presentQueue.queueFamily, 0,
+      &m_presentQueue.queueHandle);
   }
   
   
@@ -202,7 +206,7 @@ namespace dxvk {
       std::lock_guard<sync::Spinlock> statLock(m_statLock);
       
       m_statCounters.addCtr(DxvkStatCounter::QueuePresentCount, 1);
-      return m_vkd->vkQueuePresentKHR(m_presentQueue, &presentInfo);
+      return m_vkd->vkQueuePresentKHR(m_presentQueue.queueHandle, &presentInfo);
     }
   }
   
@@ -234,7 +238,8 @@ namespace dxvk {
       m_statCounters.addCtr(DxvkStatCounter::QueueSubmitCount, 1);
       
       status = commandList->submit(
-        m_graphicsQueue, waitSemaphore, wakeSemaphore);
+        m_graphicsQueue.queueHandle,
+        waitSemaphore, wakeSemaphore);
     }
     
     if (status == VK_SUCCESS) {

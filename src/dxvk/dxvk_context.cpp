@@ -1207,6 +1207,25 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::transformImage(
+    const Rc<DxvkImage>&            dstImage,
+    const VkImageSubresourceRange&  dstSubresources,
+          VkImageLayout             srcLayout,
+          VkImageLayout             dstLayout) {
+    m_barriers.accessImage(
+      dstImage, dstSubresources,
+      srcLayout,
+      dstImage->info().stages,
+      dstImage->info().access,
+      dstLayout,
+      dstImage->info().stages,
+      dstImage->info().access);
+    m_barriers.recordCommands(m_cmd);
+    
+    m_cmd->trackResource(dstImage);
+  }
+  
+  
   void DxvkContext::updateBuffer(
     const Rc<DxvkBuffer>&           buffer,
           VkDeviceSize              offset,

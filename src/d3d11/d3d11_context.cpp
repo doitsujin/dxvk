@@ -2364,6 +2364,33 @@ namespace dxvk {
   }
   
   
+  void STDMETHODCALLTYPE D3D11DeviceContext::TransitionSurfaceLayout(
+          IDXGIVkInteropSurface*    pSurface,
+    const VkImageSubresourceRange*  pSubresources,
+          VkImageLayout             OldLayout,
+          VkImageLayout             NewLayout) {
+    // Get the underlying D3D11 resource
+    Com<ID3D11Resource> resource;
+    
+    pSurface->QueryInterface(__uuidof(ID3D11Resource),
+      reinterpret_cast<void**>(&resource));
+    
+    // Get the texture from that resource
+    D3D11CommonTexture* texture = GetCommonTexture(resource.ptr());
+    
+    EmitCs([
+      cImage        = texture->GetImage(),
+      cSubresources = *pSubresources,
+      cOldLayout    = OldLayout,
+      cNewLayout    = NewLayout
+    ] (DxvkContext* ctx) {
+      ctx->transformImage(
+        cImage, cSubresources,
+        cOldLayout, cNewLayout);
+    });
+  }
+  
+  
   void D3D11DeviceContext::ApplyInputLayout() {
     if (m_state.ia.inputLayout != nullptr) {
       EmitCs([cInputLayout = m_state.ia.inputLayout] (DxvkContext* ctx) {

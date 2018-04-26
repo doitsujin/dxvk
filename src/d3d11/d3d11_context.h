@@ -635,6 +635,12 @@ namespace dxvk {
             UINT                              NumBuffers,
             ID3D11Buffer**                    ppSOTargets) final;
     
+    void STDMETHODCALLTYPE TransitionSurfaceLayout(
+            IDXGIVkInteropSurface*    pSurface,
+      const VkImageSubresourceRange*  pSubresources,
+            VkImageLayout             OldLayout,
+            VkImageLayout             NewLayout);
+    
   protected:
     
     D3D11Device* const m_parent;
