@@ -107,8 +107,11 @@ namespace dxvk {
   
   
   void DxvkContext::bindRenderTargets(const DxvkRenderTargets& targets) {
+    m_state.om.renderTargets = targets;
+    
     if (m_state.om.framebuffer == nullptr || !m_state.om.framebuffer->renderTargets().matches(targets)) {
-      m_state.om.renderTargets = targets;
+      // Create a new framebuffer object next
+      // time we start rendering something
       m_flags.set(DxvkContextFlag::GpDirtyFramebuffer);
     } else {
       // Don't redundantly spill the render pass if
