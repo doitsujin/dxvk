@@ -107,7 +107,9 @@ namespace dxvk::hud {
     clearRect.baseArrayLayer = 0;
     clearRect.layerCount     = 1;
     
-    m_context->bindFramebuffer(m_renderTargetFbo);
+    m_context->bindRenderTargets(
+      m_renderTargetInfo);
+    
     m_context->clearRenderTarget(
       m_renderTargetView, clearRect,
       VK_IMAGE_ASPECT_COLOR_BIT,
@@ -168,12 +170,8 @@ namespace dxvk::hud {
     viewInfo.numLayers      = 1;
     
     m_renderTargetView = m_device->createImageView(m_renderTarget, viewInfo);
-    
-    DxvkRenderTargets framebufferInfo;
-    framebufferInfo.setColorTarget(0, m_renderTargetView,
+    m_renderTargetInfo.setColorTarget(0, m_renderTargetView,
       VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    
-    m_renderTargetFbo = m_device->createFramebuffer(framebufferInfo);
   }
   
   

@@ -80,7 +80,7 @@ namespace dxvk::hud {
     Rc<DxvkBuffer>        m_uniformBuffer;
     Rc<DxvkImage>         m_renderTarget;
     Rc<DxvkImageView>     m_renderTargetView;
-    Rc<DxvkFramebuffer>   m_renderTargetFbo;
+    DxvkRenderTargets     m_renderTargetInfo;
     
     HudDeviceInfo         m_hudDeviceInfo;
     HudFps                m_hudFramerate;
