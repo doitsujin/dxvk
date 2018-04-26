@@ -110,6 +110,10 @@ namespace dxvk {
     if (m_state.om.framebuffer == nullptr || !m_state.om.framebuffer->renderTargets().matches(targets)) {
       m_state.om.renderTargets = targets;
       m_flags.set(DxvkContextFlag::GpDirtyFramebuffer);
+    } else {
+      // Don't redundantly spill the render pass if
+      // the same render targets are bound again
+      m_flags.clr(DxvkContextFlag::GpDirtyFramebuffer);
     }
   }
   
