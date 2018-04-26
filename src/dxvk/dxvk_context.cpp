@@ -98,19 +98,18 @@ namespace dxvk {
       
       m_state.om.framebuffer = fb;
     }
+    
+    m_state.om.renderTargets = fb != nullptr
+      ? fb->renderTargets()
+      : DxvkRenderTargets();
+    m_flags.clr(DxvkContextFlag::GpDirtyFramebuffer);
   }
   
   
   void DxvkContext::bindRenderTargets(const DxvkRenderTargets& targets) {
-    bool sameAsCurr = m_state.om.framebuffer != nullptr
-                   && m_state.om.framebuffer->renderTargets().matches(targets);
-    
-    if (!sameAsCurr) {
-      Rc<DxvkFramebuffer> fb = targets.hasAttachments()
-        ? m_device->createFramebuffer(targets)
-        : nullptr;
-      
-      this->bindFramebuffer(fb);
+    if (m_state.om.framebuffer == nullptr || !m_state.om.framebuffer->renderTargets().matches(targets)) {
+      m_state.om.renderTargets = targets;
+      m_flags.set(DxvkContextFlag::GpDirtyFramebuffer);
     }
   }
   
@@ -392,6 +391,8 @@ namespace dxvk {
     const VkClearRect&          clearRect,
           VkImageAspectFlags    clearAspects,
     const VkClearValue&         clearValue) {
+    this->updateFramebuffer();
+    
     // Check whether the render target view is an attachment
     // of the current framebuffer. If not, we need to create
     // a temporary framebuffer.
@@ -1798,6 +1799,23 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::updateFramebuffer() {
+    if (m_flags.test(DxvkContextFlag::GpDirtyFramebuffer)) {
+      m_flags.clr(DxvkContextFlag::GpDirtyFramebuffer);
+      
+      this->spillRenderPass();
+      
+      auto fb = m_device->createFramebuffer(m_state.om.renderTargets);
+      
+      m_state.gp.state.msSampleCount = fb->sampleCount();
+      m_state.gp.state.omRenderPass  = fb->renderPass();
+      m_state.om.framebuffer = fb;
+      
+      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+    }
+  }
+  
+  
   void DxvkContext::updateIndexBufferBinding() {
     if (m_flags.test(DxvkContextFlag::GpDirtyIndexBuffer)) {
       m_flags.clr(DxvkContextFlag::GpDirtyIndexBuffer);
@@ -1881,6 +1899,7 @@ namespace dxvk {
   
   
   void DxvkContext::commitGraphicsState() {
+    this->updateFramebuffer();
     this->startRenderPass();
     this->updateGraphicsPipeline();
     this->updateIndexBufferBinding();

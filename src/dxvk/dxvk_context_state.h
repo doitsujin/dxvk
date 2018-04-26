@@ -22,6 +22,7 @@ namespace dxvk {
    */
   enum class DxvkContextFlag : uint64_t  {
     GpRenderPassBound,          ///< Render pass is currently bound
+    GpDirtyFramebuffer,         ///< Framebuffer binding is out of date
     GpDirtyPipeline,            ///< Graphics pipeline binding is out of date
     GpDirtyPipelineState,       ///< Graphics pipeline needs to be recompiled
     GpDirtyResources,           ///< Graphics pipeline resource bindings are out of date
@@ -53,6 +54,7 @@ namespace dxvk {
   
   
   struct DxvkOutputMergerState {
+    DxvkRenderTargets   renderTargets;
     Rc<DxvkFramebuffer> framebuffer       = nullptr;
     
     DxvkBlendConstants  blendConstants    = { 0.0f, 0.0f, 0.0f, 0.0f };
