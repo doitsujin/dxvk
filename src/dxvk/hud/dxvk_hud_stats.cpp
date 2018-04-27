@@ -47,7 +47,7 @@ namespace dxvk::hud {
     const Rc<DxvkContext>&  context,
           HudRenderer&      renderer,
           HudPos            position) {
-    const uint64_t frameCount = std::max(m_diffCounters.getCtr(DxvkStatCounter::QueuePresentCount), 1ull);
+    const uint64_t frameCount = std::max(m_diffCounters.getCtr(DxvkStatCounter::QueuePresentCount), UINT64_C(1));
     
     const uint64_t gpCalls = m_diffCounters.getCtr(DxvkStatCounter::CmdDrawCalls)       / frameCount;
     const uint64_t cpCalls = m_diffCounters.getCtr(DxvkStatCounter::CmdDispatchCalls)   / frameCount;
@@ -80,7 +80,7 @@ namespace dxvk::hud {
     const Rc<DxvkContext>&  context,
           HudRenderer&      renderer,
           HudPos            position) {
-    const uint64_t frameCount = std::max(m_diffCounters.getCtr(DxvkStatCounter::QueuePresentCount), 1ull);
+    const uint64_t frameCount = std::max(m_diffCounters.getCtr(DxvkStatCounter::QueuePresentCount), UINT64_C(1));
     const uint64_t numSubmits = m_diffCounters.getCtr(DxvkStatCounter::QueueSubmitCount) / frameCount;
     
     const std::string strSubmissions = str::format("Queue submissions: ", numSubmits);
