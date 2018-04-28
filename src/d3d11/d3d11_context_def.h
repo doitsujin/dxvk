@@ -24,9 +24,9 @@ namespace dxvk {
   public:
     
     D3D11DeferredContext(
-      D3D11Device*    pParent,
-      Rc<DxvkDevice>  Device,
-      UINT            ContextFlags);
+            D3D11Device*    pParent,
+      const Rc<DxvkDevice>& Device,
+            UINT            ContextFlags);
     
     D3D11_DEVICE_CONTEXT_TYPE STDMETHODCALLTYPE GetType() final;
     

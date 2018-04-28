@@ -16,8 +16,8 @@ namespace dxvk {
   public:
     
     D3D11DeviceContext(
-      D3D11Device*    pParent,
-      Rc<DxvkDevice>  Device);
+            D3D11Device*    pParent,
+      const Rc<DxvkDevice>& Device);
     ~D3D11DeviceContext();
     
     HRESULT STDMETHODCALLTYPE QueryInterface(

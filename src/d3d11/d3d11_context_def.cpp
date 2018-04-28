@@ -3,9 +3,9 @@
 namespace dxvk {
   
   D3D11DeferredContext::D3D11DeferredContext(
-    D3D11Device*    pParent,
-    Rc<DxvkDevice>  Device,
-    UINT            ContextFlags)
+          D3D11Device*    pParent,
+    const Rc<DxvkDevice>& Device,
+          UINT            ContextFlags)
   : D3D11DeviceContext(pParent, Device),
     m_contextFlags(ContextFlags),
     m_commandList (CreateCommandList()) {
