@@ -80,13 +80,98 @@ namespace dxvk {
   
   HRESULT D3D11SamplerState::NormalizeDesc(D3D11_SAMPLER_DESC* pDesc) {
     const uint32_t filterBits = static_cast<uint32_t>(pDesc->Filter);
-    
+
     if (filterBits & 0xFFFFFF2A) {
-      Logger::err(str::format("D3D11SamplerState: Unhandled filter: ", filterBits));
+      Logger::err(str::format(
+        "D3D11SamplerState: Unhandled filter: ", filterBits));
       return E_INVALIDARG;
     }
-    
+
+    if (pDesc->Filter == D3D11_FILTER_ANISOTROPIC
+     || pDesc->Filter == D3D11_FILTER_COMPARISON_ANISOTROPIC) {
+      if (pDesc->MaxAnisotropy < 1
+        || pDesc->MaxAnisotropy > 16) {
+        Logger::err(str::format(
+          "D3D11SamplerState: Invalid Anisotropy Range, must be [1,16]: ", pDesc->MaxAnisotropy));
+        return E_INVALIDARG;
+      }
+    } else if (pDesc->MaxAnisotropy < 0
+            || pDesc->MaxAnisotropy > 16) {
+        Logger::err(str::format(
+          "D3D11SamplerState: Invalid Anisotropy Range, must be [0,16]: ", pDesc->MaxAnisotropy));
+        return E_INVALIDARG;
+    } else
+      pDesc->MaxAnisotropy = 0;
+
+    if (IsComparisonFilter(pDesc->Filter))
+    {
+      if (!ValidComparisonFunc(pDesc->ComparisonFunc)) {
+        Logger::err(str::format(
+          "D3D11SamplerState: Invalid Comparison Func: ", pDesc->ComparisonFunc));
+        return E_INVALIDARG;
+      }
+    } else {
+      pDesc->ComparisonFunc = D3D11_COMPARISON_NEVER;
+    }
+
+    if (!ValidAddressMode(pDesc->AddressU)
+     || !ValidAddressMode(pDesc->AddressV)
+     || !ValidAddressMode(pDesc->AddressW)) {
+      Logger::err(str::format(
+        "D3D11SamplerState: Invalid Texture Address Mode: ", 
+        "\n AddressU: ", pDesc->AddressU, 
+        "\n AdressV: ", pDesc->AddressV, 
+        "\n AdressW:", pDesc->AddressW ));
+      return E_INVALIDARG;
+    }
+      
+
+    //clear BorderColor to 0 if none of the texture address
+    //modes are D3D11_TEXTURE_ADDRESS_BORDER
+    if (!(pDesc->AddressU == D3D11_TEXTURE_ADDRESS_BORDER)
+     && !(pDesc->AddressV == D3D11_TEXTURE_ADDRESS_BORDER)
+     && !(pDesc->AddressW == D3D11_TEXTURE_ADDRESS_BORDER)) {
+      for (int i = 0; i < 4; i++) {
+         pDesc->BorderColor[i] = 0.0f;
+      }
+    }
     return S_OK;
+  }
+
+  bool D3D11SamplerState::ValidAddressMode(D3D11_TEXTURE_ADDRESS_MODE mode)
+  {
+    if (mode < D3D11_TEXTURE_ADDRESS_WRAP
+     || mode > D3D11_TEXTURE_ADDRESS_MIRROR_ONCE)
+      return false;
+    return true;
+  }
+
+  bool D3D11SamplerState::ValidComparisonFunc(D3D11_COMPARISON_FUNC comparison) {
+    if (comparison < D3D11_COMPARISON_NEVER
+     || comparison > D3D11_COMPARISON_ALWAYS)
+      return false;
+    return true;
+  }
+
+  bool D3D11SamplerState::IsComparisonFilter(D3D11_FILTER filter) {
+    switch (filter) {
+
+    case D3D11_FILTER_COMPARISON_MIN_MAG_MIP_POINT :
+    case D3D11_FILTER_COMPARISON_MIN_MAG_POINT_MIP_LINEAR:
+    case D3D11_FILTER_COMPARISON_MIN_POINT_MAG_LINEAR_MIP_POINT:
+    case D3D11_FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR:
+    case D3D11_FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT:
+    case D3D11_FILTER_COMPARISON_MIN_LINEAR_MAG_POINT_MIP_LINEAR:
+    case D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT:
+    case D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR:
+    case D3D11_FILTER_COMPARISON_ANISOTROPIC:
+      return true;
+    default:
+      break;
+
+    }
+    return false;
+      
   }
   
 }

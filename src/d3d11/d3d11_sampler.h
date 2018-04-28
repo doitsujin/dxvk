@@ -35,6 +35,15 @@ namespace dxvk {
     
     static HRESULT NormalizeDesc(
             D3D11_SAMPLER_DESC* pDesc);
+
+    static bool ValidAddressMode(
+            D3D11_TEXTURE_ADDRESS_MODE mode);
+
+    static bool ValidComparisonFunc(
+            D3D11_COMPARISON_FUNC comparison);
+
+    static bool IsComparisonFilter(
+            D3D11_FILTER filter);
     
   private:
     

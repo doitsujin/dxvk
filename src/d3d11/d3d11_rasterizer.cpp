@@ -151,7 +151,50 @@ namespace dxvk {
   
   HRESULT D3D11RasterizerState::NormalizeDesc(
           D3D11_RASTERIZER_DESC1* pDesc) {
-    // TODO validate
+    
+    if (pDesc->FillMode < D3D11_FILL_WIREFRAME
+     || pDesc->FillMode > D3D11_FILL_SOLID) {
+      Logger::err(str::format(
+        "D3D11RasterizerState: Invalid FillMode: ", pDesc->FillMode));
+      return E_INVALIDARG;
+    }
+    
+    if (pDesc->CullMode < D3D11_CULL_NONE
+     || pDesc->CullMode > D3D11_CULL_BACK) {
+      Logger::err(str::format(
+        "D3D11RasterizerState: Invalid CullMode: ", pDesc->CullMode));
+      return E_INVALIDARG;
+    }
+    if (pDesc->FrontCounterClockwise != 0) {
+      pDesc->FrontCounterClockwise = 1;
+    }
+
+    if (pDesc->DepthClipEnable != 0) {
+      pDesc->DepthClipEnable = 1;
+    }
+
+    if (pDesc->ScissorEnable != 0) {
+      pDesc->ScissorEnable = 1;
+    }
+
+    if (pDesc->MultisampleEnable != 0) {
+      pDesc->MultisampleEnable = 1;
+    }
+
+    if (pDesc->AntialiasedLineEnable != 0) {
+      pDesc->AntialiasedLineEnable = 1;
+    }
+
+    if (pDesc->ForcedSampleCount != 0
+     && pDesc->ForcedSampleCount != 1
+     && pDesc->ForcedSampleCount != 2
+     && pDesc->ForcedSampleCount != 4
+     && pDesc->ForcedSampleCount != 8
+     && pDesc->ForcedSampleCount != 16) {
+      Logger::err(str::format(
+        "D3D11RasterizerState: Invalid ForcedSampleCount: ", pDesc->ForcedSampleCount));
+      return E_INVALIDARG;
+    }
     return S_OK;
   }
   
