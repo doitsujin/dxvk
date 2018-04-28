@@ -52,7 +52,7 @@ namespace dxvk {
   void D3D11CommandList::EmitToCommandList(ID3D11CommandList* pCommandList) {
     auto cmdList = static_cast<D3D11CommandList*>(pCommandList);
     
-    for (auto chunk : m_chunks)
+    for (const auto& chunk : m_chunks)
       cmdList->m_chunks.push_back(chunk);
     
     cmdList->m_drawCount += m_drawCount;
@@ -60,7 +60,7 @@ namespace dxvk {
   
   
   void D3D11CommandList::EmitToCsThread(DxvkCsThread* CsThread) {
-    for (auto chunk : m_chunks)
+    for (const auto& chunk : m_chunks)
       CsThread->dispatchChunk(Rc<DxvkCsChunk>(chunk));
   }
   
