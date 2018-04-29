@@ -104,11 +104,14 @@ namespace dxvk {
     /**
      * \brief Framebuffer size
      * 
-     * The width, height and layers
-     * of the attached render targets.
+     * The width, height and layer count of the
+     * attached render targets.
+     * \param [in] defaultSize Size to use when
+     *        there are no framebuffer attachments.
      * \returns Framebuffer size
      */
-    DxvkFramebufferSize getImageSize() const;
+    DxvkFramebufferSize getImageSize(
+      const DxvkFramebufferSize&  defaultSize) const;
     
     /**
      * \brief Checks whether any attachments are defined
@@ -152,7 +155,8 @@ namespace dxvk {
     DxvkFramebuffer(
       const Rc<vk::DeviceFn>&       vkd,
       const Rc<DxvkRenderPass>&     renderPass,
-      const DxvkRenderTargets&      renderTargets);
+      const DxvkRenderTargets&      renderTargets,
+      const DxvkFramebufferSize&    defaultSize);
     ~DxvkFramebuffer();
     
     /**

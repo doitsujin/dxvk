@@ -189,7 +189,8 @@ namespace dxvk {
         VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
       
       m_framebuffers.at(i) = new DxvkFramebuffer(
-        m_vkd, m_renderPass, renderTargets);
+        m_vkd, m_renderPass, renderTargets,
+        DxvkFramebufferSize());
       
       m_semaphoreSet.at(i).acquireSync = m_device->createSemaphore();
       m_semaphoreSet.at(i).presentSync = m_device->createSemaphore();

@@ -346,24 +346,25 @@ namespace dxvk {
     
   private:
     
-    Rc<DxvkAdapter>           m_adapter;
-    Rc<vk::DeviceFn>          m_vkd;
-    Rc<DxvkDeviceExtensions>  m_extensions;
-    VkPhysicalDeviceFeatures  m_features;
+    Rc<DxvkAdapter>             m_adapter;
+    Rc<vk::DeviceFn>            m_vkd;
+    Rc<DxvkDeviceExtensions>    m_extensions;
+    VkPhysicalDeviceFeatures    m_features;
+    VkPhysicalDeviceProperties  m_properties;
     
-    Rc<DxvkMemoryAllocator>   m_memory;
-    Rc<DxvkRenderPassPool>    m_renderPassPool;
-    Rc<DxvkPipelineCache>     m_pipelineCache;
-    Rc<DxvkMetaClearObjects>  m_metaClearObjects;
+    Rc<DxvkMemoryAllocator>     m_memory;
+    Rc<DxvkRenderPassPool>      m_renderPassPool;
+    Rc<DxvkPipelineCache>       m_pipelineCache;
+    Rc<DxvkMetaClearObjects>    m_metaClearObjects;
     
-    DxvkUnboundResources      m_unboundResources;
+    DxvkUnboundResources        m_unboundResources;
     
-    sync::Spinlock            m_statLock;
-    DxvkStatCounters          m_statCounters;
+    sync::Spinlock              m_statLock;
+    DxvkStatCounters            m_statCounters;
     
-    std::mutex                m_submissionLock;
-    DxvkDeviceQueue           m_graphicsQueue;
-    DxvkDeviceQueue           m_presentQueue;
+    std::mutex                  m_submissionLock;
+    DxvkDeviceQueue             m_graphicsQueue;
+    DxvkDeviceQueue             m_presentQueue;
     
     DxvkRecycler<DxvkCommandList,  16> m_recycledCommandLists;
     DxvkRecycler<DxvkStagingBuffer, 4> m_recycledStagingBuffers;

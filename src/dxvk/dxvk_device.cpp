@@ -12,6 +12,7 @@ namespace dxvk {
     m_vkd             (vkd),
     m_extensions      (extensions),
     m_features        (features),
+    m_properties      (adapter->deviceProperties()),
     m_memory          (new DxvkMemoryAllocator  (adapter, vkd)),
     m_renderPassPool  (new DxvkRenderPassPool   (vkd)),
     m_pipelineCache   (new DxvkPipelineCache    (vkd)),
@@ -111,9 +112,16 @@ namespace dxvk {
   
   Rc<DxvkFramebuffer> DxvkDevice::createFramebuffer(
     const DxvkRenderTargets& renderTargets) {
+    const DxvkFramebufferSize defaultSize = {
+      m_properties.limits.maxFramebufferWidth,
+      m_properties.limits.maxFramebufferHeight,
+      m_properties.limits.maxFramebufferLayers };
+    
     auto format = renderTargets.renderPassFormat();
     auto renderPass = m_renderPassPool->getRenderPass(format);
-    return new DxvkFramebuffer(m_vkd, renderPass, renderTargets);
+    
+    return new DxvkFramebuffer(m_vkd,
+      renderPass, renderTargets, defaultSize);
   }
   
   

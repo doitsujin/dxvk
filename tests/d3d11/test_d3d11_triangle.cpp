@@ -22,6 +22,8 @@ struct Color {
   uint8_t r, g, b, a;
 };
 
+  bool m_report = false;
+  
 const std::string g_vertexShaderCode =
   "Buffer<float4> buf : register(t0);\n"
   "struct vs_out {\n"
@@ -311,7 +313,7 @@ public:
     
     m_context->OMSetRenderTargets(0, nullptr, nullptr);
     
-    m_swapChain->Present(0, 0);
+    m_swapChain->Present(1, 0);
     
     // Test query results
     while (true) {
@@ -332,6 +334,24 @@ public:
         break;
       }
     }
+    
+    // Swap chain stuff
+    uint32_t frameId = m_frameId++;
+    
+    if (frameId == 300) {
+      m_report = true;
+      std::cout << "fullscreen begin" << std::endl;
+      m_swapChain->SetFullscreenState(TRUE, nullptr);
+      std::cout << "fullscreen end" << std::endl;
+      m_report = false;
+    } else if (frameId == 600) {
+      m_report = true;
+      std::cout << "restore begin" << std::endl;
+      m_swapChain->SetFullscreenState(FALSE, nullptr);
+      std::cout << "restore end" << std::endl;
+      m_report = false;
+    }
+    
   }
   
   
@@ -387,6 +407,8 @@ private:
   Com<ID3D11Query>              m_query;
   
   D3D_FEATURE_LEVEL             m_featureLevel;
+  
+  uint32_t m_frameId = 0;
   
 };
 
@@ -446,6 +468,13 @@ int WINAPI WinMain(HINSTANCE hInstance,
 }
 
 LRESULT CALLBACK WindowProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+  if (m_report) {
+    std::cout << "hwnd: " << hWnd    << std::endl;
+    std::cout << "msg:  " << message << std::endl;
+    std::cout << "wp:   " << wParam  << std::endl;
+    std::cout << "lp:   " << lParam  << std::endl;
+  }
+  
   switch (message) {
     case WM_CLOSE:
       PostQuitMessage(0);

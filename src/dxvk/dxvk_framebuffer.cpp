@@ -48,7 +48,8 @@ namespace dxvk {
   }
   
   
-  DxvkFramebufferSize DxvkRenderTargets::getImageSize() const {
+  DxvkFramebufferSize DxvkRenderTargets::getImageSize(
+    const DxvkFramebufferSize& defaultSize) const {
     if (m_depthTarget.view != nullptr)
       return this->renderTargetSize(m_depthTarget.view);
     
@@ -57,7 +58,7 @@ namespace dxvk {
         return this->renderTargetSize(m_colorTargets.at(i).view);
     }
     
-    return DxvkFramebufferSize { 0, 0, 0 };
+    return defaultSize;
   }
   
   
@@ -95,11 +96,12 @@ namespace dxvk {
   DxvkFramebuffer::DxvkFramebuffer(
     const Rc<vk::DeviceFn>&       vkd,
     const Rc<DxvkRenderPass>&     renderPass,
-    const DxvkRenderTargets&      renderTargets)
+    const DxvkRenderTargets&      renderTargets,
+    const DxvkFramebufferSize&    defaultSize)
   : m_vkd             (vkd),
     m_renderPass      (renderPass),
     m_renderTargets   (renderTargets),
-    m_framebufferSize (renderTargets.getImageSize()) {
+    m_framebufferSize (renderTargets.getImageSize(defaultSize)) {
     std::array<VkImageView, MaxNumRenderTargets + 1> views;
     uint32_t viewCount = renderTargets.getAttachments(views.data());
     
