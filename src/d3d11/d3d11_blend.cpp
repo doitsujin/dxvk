@@ -217,6 +217,7 @@ namespace dxvk {
        
         if (rt->LogicOpEnable != 0) {
           Logger::err(str::format("D3D11BlendState: IndependentBlendEnable must be disabled if LogicOp is enabled: "));
+          return E_INVALIDARG;
         }
         rt->LogicOp = defaultDesc.RenderTarget[0].LogicOp;
         if (rt->BlendEnable != 0) {
