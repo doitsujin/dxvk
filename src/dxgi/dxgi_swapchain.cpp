@@ -454,6 +454,11 @@ namespace dxvk {
       rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
       SWP_FRAMECHANGED | SWP_NOZORDER | SWP_NOACTIVATE);
     
+    // For some reason we have to call SetWindowPos again, or
+    // otherwise the window size is not going to be applied.
+    ::SetWindowPos(m_desc.OutputWindow, 0, 0, 0, 0, 0,
+      SWP_NOSENDCHANGING | SWP_FRAMECHANGED | SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+    
     return SetDefaultGammaControl();
   }
   
