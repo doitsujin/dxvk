@@ -373,8 +373,7 @@ namespace dxvk {
     return true;
   }
 
-  bool D3D11BlendState::ValidBlendAlpha(D3D11_BLEND blendAlpha)
-  {
+  bool D3D11BlendState::ValidBlendAlpha(D3D11_BLEND blendAlpha) {
     //can't be color operations
     if (blendAlpha == D3D11_BLEND_SRC_COLOR
      || blendAlpha == D3D11_BLEND_INV_SRC_COLOR
@@ -385,7 +384,6 @@ namespace dxvk {
      || blendAlpha > D3D11_BLEND_INV_SRC1_ALPHA
      || blendAlpha < D3D11_BLEND_ZERO)
       return false;
-
     return true;
   }
 
@@ -400,9 +398,7 @@ namespace dxvk {
     if (logicOp < D3D11_LOGIC_OP_CLEAR
      || logicOp > D3D11_LOGIC_OP_OR_INVERTED)
       return false;
-
     return true;
-
   }
   
 }

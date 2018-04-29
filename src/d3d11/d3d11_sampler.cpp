@@ -103,8 +103,7 @@ namespace dxvk {
     } else
       pDesc->MaxAnisotropy = 0;
 
-    if (IsComparisonFilter(pDesc->Filter))
-    {
+    if (IsComparisonFilter(pDesc->Filter)) {
       if (!ValidComparisonFunc(pDesc->ComparisonFunc)) {
         Logger::err(str::format(
           "D3D11SamplerState: Invalid Comparison Func: ", pDesc->ComparisonFunc));
@@ -120,11 +119,10 @@ namespace dxvk {
       Logger::err(str::format(
         "D3D11SamplerState: Invalid Texture Address Mode: ", 
         "\n AddressU: ", pDesc->AddressU, 
-        "\n AdressV: ", pDesc->AddressV, 
-        "\n AdressW:", pDesc->AddressW ));
+        "\n AddressV: ", pDesc->AddressV, 
+        "\n AddressW:", pDesc->AddressW ));
       return E_INVALIDARG;
     }
-      
 
     //clear BorderColor to 0 if none of the texture address
     //modes are D3D11_TEXTURE_ADDRESS_BORDER
@@ -138,8 +136,7 @@ namespace dxvk {
     return S_OK;
   }
 
-  bool D3D11SamplerState::ValidAddressMode(D3D11_TEXTURE_ADDRESS_MODE mode)
-  {
+  bool D3D11SamplerState::ValidAddressMode(D3D11_TEXTURE_ADDRESS_MODE mode) {
     if (mode < D3D11_TEXTURE_ADDRESS_WRAP
      || mode > D3D11_TEXTURE_ADDRESS_MIRROR_ONCE)
       return false;
@@ -155,20 +152,18 @@ namespace dxvk {
 
   bool D3D11SamplerState::IsComparisonFilter(D3D11_FILTER filter) {
     switch (filter) {
-
-    case D3D11_FILTER_COMPARISON_MIN_MAG_MIP_POINT :
-    case D3D11_FILTER_COMPARISON_MIN_MAG_POINT_MIP_LINEAR:
-    case D3D11_FILTER_COMPARISON_MIN_POINT_MAG_LINEAR_MIP_POINT:
-    case D3D11_FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR:
-    case D3D11_FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT:
-    case D3D11_FILTER_COMPARISON_MIN_LINEAR_MAG_POINT_MIP_LINEAR:
-    case D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT:
-    case D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR:
-    case D3D11_FILTER_COMPARISON_ANISOTROPIC:
-      return true;
-    default:
-      break;
-
+      case D3D11_FILTER_COMPARISON_MIN_MAG_MIP_POINT :
+      case D3D11_FILTER_COMPARISON_MIN_MAG_POINT_MIP_LINEAR:
+      case D3D11_FILTER_COMPARISON_MIN_POINT_MAG_LINEAR_MIP_POINT:
+      case D3D11_FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR:
+      case D3D11_FILTER_COMPARISON_MIN_LINEAR_MAG_MIP_POINT:
+      case D3D11_FILTER_COMPARISON_MIN_LINEAR_MAG_POINT_MIP_LINEAR:
+      case D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT:
+      case D3D11_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR:
+      case D3D11_FILTER_COMPARISON_ANISOTROPIC:
+        return true;
+      default:
+        break;
     }
     return false;
       
