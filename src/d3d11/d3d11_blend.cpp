@@ -149,110 +149,67 @@ namespace dxvk {
   
   HRESULT D3D11BlendState::NormalizeDesc(D3D11_BLEND_DESC1* pDesc) {
     const D3D11_BLEND_DESC1 defaultDesc = DefaultDesc();
-    if (pDesc->AlphaToCoverageEnable != 0) {
-      pDesc->AlphaToCoverageEnable = 1;
+    
+    if (pDesc->AlphaToCoverageEnable) {
+      pDesc->AlphaToCoverageEnable = TRUE;
     }
 
-    if (pDesc->IndependentBlendEnable != 0) {
-      pDesc->IndependentBlendEnable = 1;
+    if (pDesc->IndependentBlendEnable) {
+      pDesc->IndependentBlendEnable = TRUE;
     }
 
-    D3D11_RENDER_TARGET_BLEND_DESC1* rt = &pDesc->RenderTarget[0];
-    if (rt->BlendEnable != 0) {
-      rt->BlendEnable = 1;
-      //Can not have Blend enabled the same time as LogicOp
-      if (rt->LogicOpEnable == 1) {
-        Logger::err(str::format("D3D11BlendState: Logic Op must be disabled if Blend is enabled: "));
-        return E_INVALIDARG;
-      }
-      
-      if (!ValidateBlendOperations(
+    const uint32_t numRenderTargets = pDesc->IndependentBlendEnable ? 8 : 1;
+
+    for (uint32_t i = 0; i < numRenderTargets; i++) {
+
+      D3D11_RENDER_TARGET_BLEND_DESC1* rt = &pDesc->RenderTarget[i];
+      if (rt->BlendEnable) {
+        rt->BlendEnable = TRUE;
+        //Can not have Blend enabled the same time as LogicOp
+        if (rt->LogicOpEnable) {
+          return E_INVALIDARG;
+        }
+
+        if (!ValidateBlendOperations(
           rt->SrcBlend, rt->SrcBlendAlpha,
           rt->DestBlend, rt->DestBlendAlpha,
           rt->BlendOp, rt->BlendOpAlpha))
-        return E_INVALIDARG;
-    }
-
-    if (rt->LogicOpEnable != 0) {
-      rt->LogicOpEnable = 1;
-
-      if (rt->BlendEnable == 1) {
-        Logger::err(str::format("D3D11BlendState: Blending must be disabled if LogicOp is enabled: "));
-        return E_INVALIDARG;
+          return E_INVALIDARG;
+      } else {
+        rt->SrcBlend = defaultDesc.RenderTarget[0].SrcBlend;
+        rt->DestBlend = defaultDesc.RenderTarget[0].DestBlend;
+        rt->BlendOp = defaultDesc.RenderTarget[0].BlendOp;
+        rt->SrcBlendAlpha = defaultDesc.RenderTarget[0].SrcBlendAlpha;
+        rt->DestBlendAlpha = defaultDesc.RenderTarget[0].DestBlendAlpha;
+        rt->BlendOpAlpha = defaultDesc.RenderTarget[0].BlendOpAlpha;
       }
-       
-      if (pDesc->IndependentBlendEnable == 1) {
-        Logger::err(str::format("D3D11BlendState: IndependentBlendEnable must be disabled if LogicOp is enabled: "));
-        return E_INVALIDARG;
-      }
-      
-      if (!ValidLogicOp(rt->LogicOp)) {
-        Logger::err(str::format("D3D11BlendState: Invalid LogicOp: ", rt->LogicOp));
-        return E_INVALIDARG;
-      }
-        
-    }
-    if (rt->BlendEnable == 0) {
-      rt->SrcBlend = defaultDesc.RenderTarget[0].SrcBlend;
-      rt->DestBlend = defaultDesc.RenderTarget[0].DestBlend;
-      rt->BlendOp = defaultDesc.RenderTarget[0].BlendOp;
-      rt->SrcBlendAlpha = defaultDesc.RenderTarget[0].SrcBlendAlpha;
-      rt->DestBlendAlpha = defaultDesc.RenderTarget[0].DestBlendAlpha;
-      rt->BlendOpAlpha = defaultDesc.RenderTarget[0].BlendOpAlpha;
-    }
 
-    if (rt->LogicOpEnable == 0) {
-      rt->LogicOp = defaultDesc.RenderTarget[0].LogicOp;
-    }
+      if (rt->LogicOpEnable) {
+        rt->LogicOpEnable = TRUE;
 
-    if (rt->RenderTargetWriteMask > D3D11_COLOR_WRITE_ENABLE_ALL) {
-      Logger::err(str::format("D3D11BlendState: Invalid RenderTargetWriteMask: ", rt->RenderTargetWriteMask));
-      return E_INVALIDARG;
-    }
-
-    //for the rest of the rendertargets
-    if (pDesc->IndependentBlendEnable) {
-      for (int i = 1; i < 8; i++) {
-        rt = &pDesc->RenderTarget[i];
-       
-        if (rt->LogicOpEnable != 0) {
-          Logger::err(str::format("D3D11BlendState: IndependentBlendEnable must be disabled if LogicOp is enabled: "));
+        if (rt->BlendEnable
+         || pDesc->IndependentBlendEnable
+         || !ValidateLogicOp(rt->LogicOp)) {
           return E_INVALIDARG;
         }
+
+      } else {
         rt->LogicOp = defaultDesc.RenderTarget[0].LogicOp;
-        if (rt->BlendEnable != 0) {
-          rt->BlendEnable = 1;
+      }
 
-          if (!ValidateBlendOperations(
-            rt->SrcBlend, rt->SrcBlendAlpha,
-            rt->DestBlend, rt->DestBlendAlpha,
-            rt->BlendOp, rt->BlendOpAlpha))
-            return E_INVALIDARG;
-          
-        } else {
-          rt->SrcBlend = defaultDesc.RenderTarget[0].SrcBlend;
-          rt->DestBlend = defaultDesc.RenderTarget[0].DestBlend;
-          rt->BlendOp = defaultDesc.RenderTarget[0].BlendOp;
-          rt->SrcBlendAlpha = defaultDesc.RenderTarget[0].SrcBlendAlpha;
-          rt->DestBlendAlpha = defaultDesc.RenderTarget[0].DestBlendAlpha;
-          rt->BlendOpAlpha = defaultDesc.RenderTarget[0].BlendOpAlpha;
-        }
-        
-        if (rt->RenderTargetWriteMask > D3D11_COLOR_WRITE_ENABLE_ALL) {
-          Logger::err(str::format("D3D11BlendState: Invalid RenderTargetWriteMask: ", rt->RenderTargetWriteMask));
-          return E_INVALIDARG;
-        }
-
+      if (rt->RenderTargetWriteMask > D3D11_COLOR_WRITE_ENABLE_ALL) {
+        return E_INVALIDARG;
       }
     }
+
     if (!pDesc->IndependentBlendEnable) {
-      for (int i = 1; i < 8; i++) {
-        rt = &pDesc->RenderTarget[i];
+      for (uint32_t i = 1; i < 8; i++) {
+        D3D11_RENDER_TARGET_BLEND_DESC1* rt = &pDesc->RenderTarget[i];
 
         //Render targets blend operations are the same
         //across all render targets when blend is enabled
         //on rendertarget[0] with independent blend disabled
-        if (pDesc->RenderTarget[0].BlendEnable == 1) {
+        if (pDesc->RenderTarget[0].BlendEnable) {
           pDesc->RenderTarget[i] = pDesc->RenderTarget[0];
         }
         else {
@@ -262,8 +219,8 @@ namespace dxvk {
 
         //logic operations must be the same as the first render target if enabled
         //in the first rendertarget
-        if (pDesc->RenderTarget[0].LogicOpEnable == 1) {
-          rt->LogicOpEnable = 1;
+        if (pDesc->RenderTarget[0].LogicOpEnable) {
+          rt->LogicOpEnable = TRUE;
           rt->LogicOp = pDesc->RenderTarget[0].LogicOp;
         }
 
@@ -358,14 +315,12 @@ namespace dxvk {
     return VK_LOGIC_OP_NO_OP;
   }
 
-  bool D3D11BlendState::ValidBlend(const D3D11_BLEND blend) {
-    if (blend < D3D11_BLEND_ZERO
-     || blend > D3D11_BLEND_INV_SRC1_ALPHA)
-      return false;
-    return true;
+  bool D3D11BlendState::ValidateBlend(const D3D11_BLEND blend) {
+    return blend >= D3D11_BLEND_ZERO
+        && blend <= D3D11_BLEND_INV_SRC1_ALPHA;
   }
 
-  bool D3D11BlendState::ValidBlendAlpha(const D3D11_BLEND blendAlpha) {
+  bool D3D11BlendState::ValidateBlendAlpha(const D3D11_BLEND blendAlpha) {
     //can't be color operations
     if (blendAlpha == D3D11_BLEND_SRC_COLOR
      || blendAlpha == D3D11_BLEND_INV_SRC_COLOR
@@ -379,18 +334,14 @@ namespace dxvk {
     return true;
   }
 
-  bool D3D11BlendState::ValidBlendOp(const D3D11_BLEND_OP blendOp) {
-    if (blendOp < D3D11_BLEND_OP_ADD
-      || blendOp > D3D11_BLEND_OP_MAX)
-      return false;
-    return true;
+  bool D3D11BlendState::ValidateBlendOp(const D3D11_BLEND_OP blendOp) {
+    return blendOp >= D3D11_BLEND_OP_ADD
+        && blendOp <= D3D11_BLEND_OP_MAX;
   }
 
-  bool D3D11BlendState::ValidLogicOp(const D3D11_LOGIC_OP logicOp) {
-    if (logicOp < D3D11_LOGIC_OP_CLEAR
-     || logicOp > D3D11_LOGIC_OP_OR_INVERTED)
-      return false;
-    return true;
+  bool D3D11BlendState::ValidateLogicOp(const D3D11_LOGIC_OP logicOp) {
+    return logicOp >= D3D11_LOGIC_OP_CLEAR
+        && logicOp <= D3D11_LOGIC_OP_OR_INVERTED;
   }
 
   bool D3D11BlendState::ValidateBlendOperations(
@@ -401,28 +352,17 @@ namespace dxvk {
     const D3D11_BLEND_OP blendOp, 
     const D3D11_BLEND_OP blendOpAlpha) {
     
-    if (!ValidBlendOp(blendOp)
-     || !ValidBlendOp(blendOpAlpha)) {
-      Logger::err(str::format(
-        "D3D11BlendState: Invalid blend sOp: ",
-        "\n BlendOp: ", blendOp,
-        "\n BlendOpAlpha: ", blendOpAlpha));
+    if (!ValidateBlendOp(blendOp)
+     || !ValidateBlendOp(blendOpAlpha)) {
       return false;
     }
 
-    if (!ValidBlend(srcBlend)
-     || !ValidBlendAlpha(srcBlendAlpha)
-     || !ValidBlend(destBlend)
-     || !ValidBlendAlpha(destBlendAlpha)) {
-      Logger::err(str::format(
-        "D3D11BlendState: Invalid Blend: ",
-        "\n SrcBlend: ", srcBlend,
-        "\n DestBlend: ", destBlend,
-        "\n SrcBlendAlpha: ", srcBlendAlpha,
-        "\n DestBlendAlpha: ", destBlendAlpha));
+    if (!ValidateBlend(srcBlend)
+     || !ValidateBlendAlpha(srcBlendAlpha)
+     || !ValidateBlend(destBlend)
+     || !ValidateBlendAlpha(destBlendAlpha)) {
       return false;
     }
-
     return true;
   }
   

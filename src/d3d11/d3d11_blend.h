@@ -45,25 +45,7 @@ namespace dxvk {
     static HRESULT NormalizeDesc(
             D3D11_BLEND_DESC1*  pDesc);
 
-    static bool ValidBlend(
-      const D3D11_BLEND blend);
-
-    static bool ValidBlendAlpha(
-      const D3D11_BLEND blendAlpha);
-
-    static bool ValidBlendOp(
-      const D3D11_BLEND_OP blendOp);
-
-    static bool ValidLogicOp(
-      const D3D11_LOGIC_OP logicOp);
-
-    static bool ValidateBlendOperations(
-      const D3D11_BLEND srcBlend,
-      const D3D11_BLEND srcBlendAlpha,
-      const D3D11_BLEND destBlend,
-      const D3D11_BLEND destBlendAlpha,
-      const D3D11_BLEND_OP blendOp,
-      const D3D11_BLEND_OP blendOpAlpha);
+    
     
   private:
     
@@ -86,6 +68,26 @@ namespace dxvk {
     
     static VkLogicOp DecodeLogicOp(
             D3D11_LOGIC_OP LogicOp);
+
+    static bool ValidateBlend(
+      const D3D11_BLEND blend);
+
+    static bool ValidateBlendAlpha(
+      const D3D11_BLEND blendAlpha);
+
+    static bool ValidateBlendOp(
+      const D3D11_BLEND_OP blendOp);
+
+    static bool ValidateLogicOp(
+      const D3D11_LOGIC_OP logicOp);
+
+    static bool ValidateBlendOperations(
+      const D3D11_BLEND srcBlend,
+      const D3D11_BLEND srcBlendAlpha,
+      const D3D11_BLEND destBlend,
+      const D3D11_BLEND destBlendAlpha,
+      const D3D11_BLEND_OP blendOp,
+      const D3D11_BLEND_OP blendOpAlpha);
   };
   
 }

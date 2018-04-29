@@ -154,46 +154,37 @@ namespace dxvk {
     
     if (pDesc->FillMode < D3D11_FILL_WIREFRAME
      || pDesc->FillMode > D3D11_FILL_SOLID) {
-      Logger::err(str::format(
-        "D3D11RasterizerState: Invalid FillMode: ", pDesc->FillMode));
       return E_INVALIDARG;
     }
     
     if (pDesc->CullMode < D3D11_CULL_NONE
      || pDesc->CullMode > D3D11_CULL_BACK) {
-      Logger::err(str::format(
-        "D3D11RasterizerState: Invalid CullMode: ", pDesc->CullMode));
       return E_INVALIDARG;
     }
-    if (pDesc->FrontCounterClockwise != 0) {
-      pDesc->FrontCounterClockwise = 1;
+    if (pDesc->FrontCounterClockwise) {
+      pDesc->FrontCounterClockwise = TRUE;
     }
 
-    if (pDesc->DepthClipEnable != 0) {
-      pDesc->DepthClipEnable = 1;
+    if (pDesc->DepthClipEnable) {
+      pDesc->DepthClipEnable = TRUE;
     }
 
-    if (pDesc->ScissorEnable != 0) {
-      pDesc->ScissorEnable = 1;
+    if (pDesc->ScissorEnable) {
+      pDesc->ScissorEnable = TRUE;
     }
 
-    if (pDesc->MultisampleEnable != 0) {
-      pDesc->MultisampleEnable = 1;
+    if (pDesc->MultisampleEnable) {
+      pDesc->MultisampleEnable = TRUE;
     }
 
-    if (pDesc->AntialiasedLineEnable != 0) {
-      pDesc->AntialiasedLineEnable = 1;
+    if (pDesc->AntialiasedLineEnable) {
+      pDesc->AntialiasedLineEnable = TRUE;
     }
 
-    if (pDesc->ForcedSampleCount != 0
-     && pDesc->ForcedSampleCount != 1
-     && pDesc->ForcedSampleCount != 2
-     && pDesc->ForcedSampleCount != 4
-     && pDesc->ForcedSampleCount != 8
-     && pDesc->ForcedSampleCount != 16) {
-      Logger::err(str::format(
-        "D3D11RasterizerState: Invalid ForcedSampleCount: ", pDesc->ForcedSampleCount));
-      return E_INVALIDARG;
+    if (pDesc->ForcedSampleCount != 0) {
+      if (FAILED(DecodeSampleCount(pDesc->ForcedSampleCount, nullptr))) {
+        return E_INVALIDARG;
+      }
     }
     return S_OK;
   }

@@ -91,36 +91,25 @@ namespace dxvk {
      || pDesc->Filter == D3D11_FILTER_COMPARISON_ANISOTROPIC) {
       if (pDesc->MaxAnisotropy < 1
         || pDesc->MaxAnisotropy > 16) {
-        Logger::err(str::format(
-          "D3D11SamplerState: Invalid Anisotropy Range, must be [1,16]: ", pDesc->MaxAnisotropy));
         return E_INVALIDARG;
       }
     } else if (pDesc->MaxAnisotropy < 0
             || pDesc->MaxAnisotropy > 16) {
-        Logger::err(str::format(
-          "D3D11SamplerState: Invalid Anisotropy Range, must be [0,16]: ", pDesc->MaxAnisotropy));
         return E_INVALIDARG;
     } else
       pDesc->MaxAnisotropy = 0;
 
     if (IsComparisonFilter(pDesc->Filter)) {
-      if (!ValidComparisonFunc(pDesc->ComparisonFunc)) {
-        Logger::err(str::format(
-          "D3D11SamplerState: Invalid Comparison Func: ", pDesc->ComparisonFunc));
+      if (!ValidateComparisonFunc(pDesc->ComparisonFunc)) {
         return E_INVALIDARG;
       }
     } else {
       pDesc->ComparisonFunc = D3D11_COMPARISON_NEVER;
     }
 
-    if (!ValidAddressMode(pDesc->AddressU)
-     || !ValidAddressMode(pDesc->AddressV)
-     || !ValidAddressMode(pDesc->AddressW)) {
-      Logger::err(str::format(
-        "D3D11SamplerState: Invalid Texture Address Mode: ", 
-        "\n AddressU: ", pDesc->AddressU, 
-        "\n AddressV: ", pDesc->AddressV, 
-        "\n AddressW:", pDesc->AddressW ));
+    if (!ValidateAddressMode(pDesc->AddressU)
+     || !ValidateAddressMode(pDesc->AddressV)
+     || !ValidateAddressMode(pDesc->AddressW)) {
       return E_INVALIDARG;
     }
 
@@ -136,21 +125,17 @@ namespace dxvk {
     return S_OK;
   }
 
-  bool D3D11SamplerState::ValidAddressMode(D3D11_TEXTURE_ADDRESS_MODE mode) {
-    if (mode < D3D11_TEXTURE_ADDRESS_WRAP
-     || mode > D3D11_TEXTURE_ADDRESS_MIRROR_ONCE)
-      return false;
-    return true;
+  bool D3D11SamplerState::ValidateAddressMode(const D3D11_TEXTURE_ADDRESS_MODE mode) {
+    return mode >= D3D11_TEXTURE_ADDRESS_WRAP
+        && mode <= D3D11_TEXTURE_ADDRESS_MIRROR_ONCE;
   }
 
-  bool D3D11SamplerState::ValidComparisonFunc(D3D11_COMPARISON_FUNC comparison) {
-    if (comparison < D3D11_COMPARISON_NEVER
-     || comparison > D3D11_COMPARISON_ALWAYS)
-      return false;
-    return true;
+  bool D3D11SamplerState::ValidateComparisonFunc(const D3D11_COMPARISON_FUNC comparison) {
+    return comparison >= D3D11_COMPARISON_NEVER
+        && comparison <= D3D11_COMPARISON_ALWAYS;
   }
 
-  bool D3D11SamplerState::IsComparisonFilter(D3D11_FILTER filter) {
+  bool D3D11SamplerState::IsComparisonFilter(const D3D11_FILTER filter) {
     switch (filter) {
       case D3D11_FILTER_COMPARISON_MIN_MAG_MIP_POINT :
       case D3D11_FILTER_COMPARISON_MIN_MAG_POINT_MIP_LINEAR:
@@ -163,10 +148,8 @@ namespace dxvk {
       case D3D11_FILTER_COMPARISON_ANISOTROPIC:
         return true;
       default:
-        break;
+        return false;
     }
-    return false;
-      
   }
   
 }

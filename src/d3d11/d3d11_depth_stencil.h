@@ -38,14 +38,7 @@ namespace dxvk {
     static HRESULT NormalizeDesc(
             D3D11_DEPTH_STENCIL_DESC* pDesc);
 
-    static bool ValidDepthFunc(
-            D3D11_COMPARISON_FUNC comparison);
-
-    static bool ValidStencilFunc(
-            D3D11_COMPARISON_FUNC comparison);
-
-    static bool ValidStencilOp(
-            D3D11_STENCIL_OP stencilOp);
+    
     
   private:
     
@@ -59,6 +52,19 @@ namespace dxvk {
     
     VkStencilOp DecodeStencilOp(
             D3D11_STENCIL_OP            Op) const;
+
+
+    static bool ValidateDepthFunc(
+      const D3D11_COMPARISON_FUNC comparison);
+
+    static bool ValidateStencilFunc(
+      const D3D11_COMPARISON_FUNC comparison);
+
+    static bool ValidateStencilOp(
+      const D3D11_STENCIL_OP stencilOp);
+
+    static bool ValidateDepthWriteMask(
+      const D3D11_DEPTH_WRITE_MASK mask);
   };
   
 }
