@@ -148,7 +148,7 @@ namespace dxvk {
   
   
   HRESULT D3D11BlendState::NormalizeDesc(D3D11_BLEND_DESC1* pDesc) {
-    D3D11_BLEND_DESC1 defaultDesc = DefaultDesc();
+    const D3D11_BLEND_DESC1 defaultDesc = DefaultDesc();
     if (pDesc->AlphaToCoverageEnable != 0) {
       pDesc->AlphaToCoverageEnable = 1;
     }

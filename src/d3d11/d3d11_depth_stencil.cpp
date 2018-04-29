@@ -78,7 +78,7 @@ namespace dxvk {
   
   HRESULT D3D11DepthStencilState::NormalizeDesc(D3D11_DEPTH_STENCIL_DESC* pDesc) {
 
-    D3D11_DEPTH_STENCIL_DESC defaultDesc = DefaultDesc();
+    const D3D11_DEPTH_STENCIL_DESC defaultDesc = DefaultDesc();
 
     if (pDesc->DepthEnable != 0) {
       pDesc->DepthEnable = 1;
