@@ -120,6 +120,13 @@ namespace dxvk {
     
     HRESULT LeaveFullscreenMode();
     
+    HRESULT ChangeDisplayMode(
+            IDXGIOutput*            pOutput,
+      const DXGI_MODE_DESC*         pDisplayMode);
+    
+    HRESULT RestoreDisplayMode(
+            IDXGIOutput*            pOutput);
+    
     HRESULT GetSampleCount(
             UINT                    Count,
             VkSampleCountFlagBits*  pCount) const;

@@ -77,6 +77,13 @@ namespace dxvk {
     
     HRESULT STDMETHODCALLTYPE WaitForVBlank() final;
     
+    HRESULT GetDisplayMode(
+            DXGI_MODE_DESC*       pMode,
+            DWORD                 ModeNum);
+    
+    HRESULT SetDisplayMode(
+      const DXGI_MODE_DESC*       pMode);
+    
   private:
     
     Com<DxgiAdapter> m_adapter = nullptr;

@@ -79,11 +79,10 @@ namespace dxvk {
     
     if (targetFormat == DXGI_FORMAT_UNKNOWN)
       targetFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-      
+    
     UINT targetRefreshRate = 0;
     
-    if (pModeToMatch->RefreshRate.Denominator != 0
-     && pModeToMatch->RefreshRate.Numerator   != 0) {
+    if (pModeToMatch->RefreshRate.Denominator != 0) {
       targetRefreshRate = pModeToMatch->RefreshRate.Numerator
                         / pModeToMatch->RefreshRate.Denominator;
     }
@@ -129,7 +128,7 @@ namespace dxvk {
       UINT currDifference = std::abs(int(pModeToMatch->Width  - mode.Width))
                           + std::abs(int(pModeToMatch->Height - mode.Height));
 
-      if (currDifference < minDifference) {
+      if (currDifference <= minDifference) {
         minDifference = currDifference;
         *pClosestMatch = mode;
       }
@@ -323,6 +322,60 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiOutput::WaitForVBlank() {
     Logger::warn("DxgiOutput::WaitForVBlank: Stub");
     return S_OK;
+  }
+  
+  
+  HRESULT DxgiOutput::GetDisplayMode(DXGI_MODE_DESC* pMode, DWORD ModeNum) {
+    ::MONITORINFOEXW monInfo;
+    monInfo.cbSize = sizeof(monInfo);
+
+    if (!::GetMonitorInfoW(m_monitor, reinterpret_cast<MONITORINFO*>(&monInfo))) {
+      Logger::err("DXGI: Failed to query monitor info");
+      return E_FAIL;
+    }
+    
+    DEVMODEW devMode = { };
+    devMode.dmSize = sizeof(devMode);
+    
+    if (!::EnumDisplaySettingsW(monInfo.szDevice, ModeNum, &devMode))
+      return DXGI_ERROR_NOT_FOUND;
+    
+    pMode->Width            = devMode.dmPelsWidth;
+    pMode->Height           = devMode.dmPelsHeight;
+    pMode->RefreshRate      = { devMode.dmDisplayFrequency, 1 };
+    pMode->Format           = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB; // FIXME
+    pMode->ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_PROGRESSIVE;
+    pMode->Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
+    return S_OK;
+  }
+  
+    
+  HRESULT DxgiOutput::SetDisplayMode(const DXGI_MODE_DESC* pMode) {
+    ::MONITORINFOEXW monInfo;
+    monInfo.cbSize = sizeof(monInfo);
+
+    if (!::GetMonitorInfoW(m_monitor, reinterpret_cast<MONITORINFO*>(&monInfo))) {
+      Logger::err("DXGI: Failed to query monitor info");
+      return E_FAIL;
+    }
+    
+    DEVMODEW devMode = { };
+    devMode.dmSize       = sizeof(devMode);
+    devMode.dmFields     = DM_PELSWIDTH | DM_PELSHEIGHT | DM_BITSPERPEL;
+    devMode.dmPelsWidth  = pMode->Width;
+    devMode.dmPelsHeight = pMode->Height;
+    devMode.dmBitsPerPel = GetFormatBpp(pMode->Format);
+    
+    if (pMode->RefreshRate.Numerator != 0)  {
+      devMode.dmFields |= DM_DISPLAYFREQUENCY;
+      devMode.dmDisplayFrequency = pMode->RefreshRate.Numerator
+                                 / pMode->RefreshRate.Denominator;
+    }
+    
+    LONG status = ::ChangeDisplaySettingsExW(
+      monInfo.szDevice, &devMode, nullptr, CDS_FULLSCREEN, nullptr);
+    
+    return status == DISP_CHANGE_SUCCESSFUL ? S_OK : DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;;
   }
   
   

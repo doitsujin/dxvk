@@ -60,7 +60,8 @@ namespace dxvk {
   
   
   DxgiSwapChain::~DxgiSwapChain() {
-    
+    if (IsWindow(m_desc.OutputWindow) && !m_desc.Windowed)
+      LeaveFullscreenMode();
   }
   
   
@@ -269,19 +270,49 @@ namespace dxvk {
     if (!IsWindow(m_desc.OutputWindow))
       return DXGI_ERROR_INVALID_CALL;
     
-    // TODO support fullscreen mode
-    RECT newRect = { 0, 0, 0, 0 };
-    RECT oldRect = { 0, 0, 0, 0 };
+    // Update the swap chain description
+    if (pNewTargetParameters->RefreshRate.Numerator != 0)
+      m_desc.BufferDesc.RefreshRate = pNewTargetParameters->RefreshRate;
     
-    ::GetWindowRect(m_desc.OutputWindow, &oldRect);
-    ::SetRect(&newRect, 0, 0, pNewTargetParameters->Width, pNewTargetParameters->Height);
-    ::AdjustWindowRectEx(&newRect,
-      ::GetWindowLongW(m_desc.OutputWindow, GWL_STYLE), FALSE,
-      ::GetWindowLongW(m_desc.OutputWindow, GWL_EXSTYLE));
-    ::SetRect(&newRect, 0, 0, newRect.right - newRect.left, newRect.bottom - newRect.top);
-    ::OffsetRect(&newRect, oldRect.left, oldRect.top);    
-    ::MoveWindow(m_desc.OutputWindow, newRect.left, newRect.top,
-        newRect.right - newRect.left, newRect.bottom - newRect.top, TRUE);
+    m_desc.BufferDesc.ScanlineOrdering = pNewTargetParameters->ScanlineOrdering;
+    m_desc.BufferDesc.Scaling          = pNewTargetParameters->Scaling;
+    
+    if (m_desc.Windowed) {
+      // Adjust window position and size
+      RECT newRect = { 0, 0, 0, 0 };
+      RECT oldRect = { 0, 0, 0, 0 };
+      
+      ::GetWindowRect(m_desc.OutputWindow, &oldRect);
+      ::SetRect(&newRect, 0, 0, pNewTargetParameters->Width, pNewTargetParameters->Height);
+      ::AdjustWindowRectEx(&newRect,
+        ::GetWindowLongW(m_desc.OutputWindow, GWL_STYLE), FALSE,
+        ::GetWindowLongW(m_desc.OutputWindow, GWL_EXSTYLE));
+      ::SetRect(&newRect, 0, 0, newRect.right - newRect.left, newRect.bottom - newRect.top);
+      ::OffsetRect(&newRect, oldRect.left, oldRect.top);    
+      ::MoveWindow(m_desc.OutputWindow, newRect.left, newRect.top,
+          newRect.right - newRect.left, newRect.bottom - newRect.top, TRUE);
+    } else {
+      Com<IDXGIOutput> output;
+      
+      if (FAILED(m_adapter->GetOutputFromMonitor(m_monitor, &output))) {
+        Logger::err("DXGI: ResizeTarget: Failed to query containing output");
+        return E_FAIL;
+      }
+      
+      // If the swap chain allows it, change the display mode
+      if (m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH)
+        ChangeDisplayMode(output.ptr(), pNewTargetParameters);
+      
+      // Resize and reposition the window to 
+      DXGI_OUTPUT_DESC desc;
+      output->GetDesc(&desc);
+      
+      const RECT newRect = desc.DesktopCoordinates;
+      
+      ::MoveWindow(m_desc.OutputWindow, newRect.left, newRect.top,
+          newRect.right - newRect.left, newRect.bottom - newRect.top, TRUE);
+    }
+    
     
     return S_OK;
   }
@@ -294,9 +325,6 @@ namespace dxvk {
     
     if (!IsWindow(m_desc.OutputWindow))
       return DXGI_ERROR_INVALID_CALL;
-    
-    if (Fullscreen)
-      Logger::warn("DxgiSwapChain: Display mode changes not implemented");
     
     if (m_desc.Windowed && Fullscreen)
       return this->EnterFullscreenMode(pTarget);
@@ -404,6 +432,22 @@ namespace dxvk {
       }
     }
     
+    // Find a display mode that matches what we need
+    ::GetWindowRect(m_desc.OutputWindow, &m_windowState.rect);
+    
+    if (m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH) {
+      auto windowRect = m_windowState.rect;
+      
+      DXGI_MODE_DESC displayMode = m_desc.BufferDesc;
+      displayMode.Width  = windowRect.right - windowRect.left;
+      displayMode.Height = windowRect.bottom - windowRect.top;
+      
+      if (FAILED(ChangeDisplayMode(output.ptr(), &displayMode))) {
+        Logger::err("DXGI: EnterFullscreenMode: Failed to change display mode");
+        return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
+      }
+    }
+    
     // Update swap chain description
     m_desc.Windowed = FALSE;
     
@@ -413,7 +457,6 @@ namespace dxvk {
     
     m_windowState.style = style;
     m_windowState.exstyle = exstyle;
-    ::GetWindowRect(m_desc.OutputWindow, &m_windowState.rect);
     
     style |= WS_POPUP | WS_SYSMENU;
     style &= ~(WS_CAPTION | WS_THICKFRAME);
@@ -439,6 +482,13 @@ namespace dxvk {
   
   
   HRESULT DxgiSwapChain::LeaveFullscreenMode() {
+    Com<IDXGIOutput> output;
+    
+    if (FAILED(m_adapter->GetOutputFromMonitor(m_monitor, &output))
+     || FAILED(RestoreDisplayMode(output.ptr())))
+      Logger::warn("DXGI: LeaveFullscreenMode: Failed to restore display mode");
+    
+    // Restore internal state
     m_desc.Windowed = TRUE;
     m_monitor = nullptr;
     
@@ -460,6 +510,37 @@ namespace dxvk {
       SWP_NOSENDCHANGING | SWP_FRAMECHANGED | SWP_NOSIZE | SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
     
     return SetDefaultGammaControl();
+  }
+  
+  
+  HRESULT DxgiSwapChain::ChangeDisplayMode(
+          IDXGIOutput*            pOutput,
+    const DXGI_MODE_DESC*         pDisplayMode) {
+    auto output = static_cast<DxgiOutput*>(pOutput);
+    
+    DXGI_MODE_DESC selectedMode;
+    
+    // Find a close mode that the output supports
+    HRESULT hr = output->FindClosestMatchingMode(
+      pDisplayMode, &selectedMode, nullptr);
+    
+    if (FAILED(hr))
+      return hr;
+    
+    return output->SetDisplayMode(&selectedMode);
+  }
+  
+  
+  HRESULT DxgiSwapChain::RestoreDisplayMode(IDXGIOutput* pOutput) {
+    auto output = static_cast<DxgiOutput*>(pOutput);
+    DXGI_MODE_DESC mode;
+    
+    HRESULT hr = output->GetDisplayMode(&mode, ENUM_REGISTRY_SETTINGS);
+    
+    if (FAILED(hr))
+      return hr;
+    
+    return output->SetDisplayMode(&mode);
   }
   
   

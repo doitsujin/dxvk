@@ -91,7 +91,7 @@ public:
     swapDesc.OutputWindow                 = window;
     swapDesc.Windowed                     = true;
     swapDesc.SwapEffect                   = DXGI_SWAP_EFFECT_DISCARD;
-    swapDesc.Flags                        = 0;
+    swapDesc.Flags                        = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
     
     if (FAILED(m_factory->CreateSwapChain(m_device.ptr(), &swapDesc, &m_swapChain)))
       throw DxvkError("Failed to create DXGI swap chain");
