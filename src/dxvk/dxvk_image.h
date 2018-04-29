@@ -204,6 +204,19 @@ namespace dxvk {
       return result;
     }
     
+    /**
+     * \brief Picks a compatible layout
+     * 
+     * Under some circumstances, we have to return
+     * a different layout than the one requested.
+     * \param [in] layout The image layout
+     * \returns A compatible image layout
+     */
+    VkImageLayout pickLayout(VkImageLayout layout) const {
+      return m_info.layout == VK_IMAGE_LAYOUT_GENERAL
+        ? VK_IMAGE_LAYOUT_GENERAL : layout;
+    }
+    
   private:
     
     Rc<vk::DeviceFn>      m_vkd;
@@ -307,6 +320,14 @@ namespace dxvk {
       result.baseArrayLayer = m_info.minLayer;
       result.layerCount     = m_info.numLayers;
       return result;
+    }
+    
+    /**
+     * \brief Picks an image layout
+     * \see DxvkImage::pickLayout
+     */
+    VkImageLayout pickLayout(VkImageLayout layout) const {
+      return m_image->pickLayout(layout);
     }
     
   private:

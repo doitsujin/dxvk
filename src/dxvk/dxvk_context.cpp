@@ -337,17 +337,17 @@ namespace dxvk {
       VK_IMAGE_LAYOUT_UNDEFINED,
       image->info().stages,
       image->info().access,
-      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT);
     m_barriers.recordCommands(m_cmd);
     
     m_cmd->cmdClearColorImage(image->handle(),
-      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
       &value, 1, &subresources);
     
     m_barriers.accessImage(image, subresources,
-      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT,
       image->info().layout,
@@ -370,18 +370,18 @@ namespace dxvk {
       VK_IMAGE_LAYOUT_UNDEFINED,
       image->info().stages,
       image->info().access,
-      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT);
     m_barriers.recordCommands(m_cmd);
     
     m_cmd->cmdClearDepthStencilImage(image->handle(),
-      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
       &value, 1, &subresources);
     
     m_barriers.accessImage(
       image, subresources,
-      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT,
       image->info().layout,
@@ -416,10 +416,10 @@ namespace dxvk {
       
       if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT) {
         attachments.setColorTarget(0, imageView,
-          VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+          imageView->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL));
       } else {
         attachments.setDepthTarget(imageView,
-          VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+          imageView->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL));
       }
       
       this->renderPassBindFramebuffer(
@@ -596,7 +596,7 @@ namespace dxvk {
         : dstImage->info().layout,
       dstImage->info().stages,
       dstImage->info().access,
-      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT);
     m_barriers.recordCommands(m_cmd);
@@ -612,12 +612,12 @@ namespace dxvk {
     m_cmd->cmdCopyBufferToImage(
       srcSlice.handle(),
       dstImage->handle(),
-      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
       1, &copyRegion);
     
     m_barriers.accessImage(
       dstImage, dstSubresourceRange,
-      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT,
       dstImage->info().layout,
@@ -664,7 +664,7 @@ namespace dxvk {
         : dstImage->info().layout,
       dstImage->info().stages,
       dstImage->info().access,
-      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT);
     m_barriers.accessImage(
@@ -672,7 +672,7 @@ namespace dxvk {
       srcImage->info().layout,
       srcImage->info().stages,
       srcImage->info().access,
-      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+      srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_READ_BIT);
     m_barriers.recordCommands(m_cmd);
@@ -686,8 +686,8 @@ namespace dxvk {
       imageRegion.extent         = extent;
       
       m_cmd->cmdCopyImage(
-        srcImage->handle(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-        dstImage->handle(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        srcImage->handle(), srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
+        dstImage->handle(), dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
         1, &imageRegion);
     } else {
       const VkDeviceSize transferBufferSize = std::max(
@@ -717,7 +717,8 @@ namespace dxvk {
       bufferImageCopy.imageExtent        = extent;
       
       m_cmd->cmdCopyImageToBuffer(
-        srcImage->handle(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        srcImage->handle(),
+        srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
         tmpSlice.handle(), 1, &bufferImageCopy);
       
       m_barriers.accessBuffer(tmpSlice,
@@ -730,9 +731,9 @@ namespace dxvk {
       bufferImageCopy.imageSubresource   = dstSubresource;
       bufferImageCopy.imageOffset        = dstOffset;
       
-      m_cmd->cmdCopyBufferToImage(
-        tmpSlice.handle(), dstImage->handle(),
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      m_cmd->cmdCopyBufferToImage(tmpSlice.handle(),
+        dstImage->handle(),
+        dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
         1, &bufferImageCopy);
       
       m_barriers.accessBuffer(tmpSlice,
@@ -746,7 +747,7 @@ namespace dxvk {
       
     m_barriers.accessImage(
       dstImage, dstSubresourceRange,
-      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT,
       dstImage->info().layout,
@@ -754,7 +755,7 @@ namespace dxvk {
       dstImage->info().access);
     m_barriers.accessImage(
       srcImage, srcSubresourceRange,
-      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+      srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_READ_BIT,
       srcImage->info().layout,
@@ -790,7 +791,7 @@ namespace dxvk {
       srcImage->info().layout,
       srcImage->info().stages,
       srcImage->info().access,
-      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+      srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_READ_BIT);
     m_barriers.recordCommands(m_cmd);
@@ -805,13 +806,13 @@ namespace dxvk {
     
     m_cmd->cmdCopyImageToBuffer(
       srcImage->handle(),
-      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+      srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
       dstSlice.handle(),
       1, &copyRegion);
     
     m_barriers.accessImage(
       srcImage, srcSubresourceRange,
-      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+      srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_READ_BIT,
       srcImage->info().layout,
@@ -972,7 +973,7 @@ namespace dxvk {
       image->info().layout,
       image->info().stages,
       image->info().access,
-      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+      image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_READ_BIT);
     
@@ -986,7 +987,7 @@ namespace dxvk {
       VK_IMAGE_LAYOUT_UNDEFINED,
       image->info().stages,
       image->info().access,
-      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT);
     
@@ -1019,8 +1020,8 @@ namespace dxvk {
       region.dstOffsets[1].z = dstExtent.depth;
       
       m_cmd->cmdBlitImage(
-        image->handle(), VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-        image->handle(), VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        image->handle(), image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
+        image->handle(), image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
         1, &region, VK_FILTER_LINEAR);
       
       if (i + 1 < subresources.levelCount) {
@@ -1029,10 +1030,10 @@ namespace dxvk {
             subresources.aspectMask, mip, 1,
             subresources.baseArrayLayer,
             subresources.layerCount },
-          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+          image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
           VK_PIPELINE_STAGE_TRANSFER_BIT,
           VK_ACCESS_TRANSFER_WRITE_BIT,
-          VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+          image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
           VK_PIPELINE_STAGE_TRANSFER_BIT,
           VK_ACCESS_TRANSFER_READ_BIT);
         m_barriers.recordCommands(m_cmd);
@@ -1048,7 +1049,7 @@ namespace dxvk {
         subresources.levelCount - 1,
         subresources.baseArrayLayer,
         subresources.layerCount },
-      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+      image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_READ_BIT,
       image->info().layout,
@@ -1062,7 +1063,7 @@ namespace dxvk {
           + subresources.levelCount - 1, 1,
         subresources.baseArrayLayer,
         subresources.layerCount },
-      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT,
       image->info().layout,
@@ -1133,7 +1134,7 @@ namespace dxvk {
         VK_IMAGE_LAYOUT_UNDEFINED,
         dstImage->info().stages,
         dstImage->info().access,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
         VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_ACCESS_TRANSFER_WRITE_BIT);
       m_barriers.accessImage(
@@ -1141,7 +1142,7 @@ namespace dxvk {
         srcImage->info().layout,
         srcImage->info().stages,
         srcImage->info().access,
-        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
         VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_ACCESS_TRANSFER_READ_BIT);
       m_barriers.recordCommands(m_cmd);
@@ -1154,15 +1155,13 @@ namespace dxvk {
       imageRegion.extent         = srcImage->mipLevelExtent(srcSubresources.mipLevel);
       
       m_cmd->cmdResolveImage(
-        srcImage->handle(),
-        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-        dstImage->handle(),
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        srcImage->handle(), srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
+        dstImage->handle(), dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
         1, &imageRegion);
     
       m_barriers.accessImage(
         dstImage, dstSubresourceRange,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
         VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_ACCESS_TRANSFER_WRITE_BIT,
         dstImage->info().layout,
@@ -1170,7 +1169,7 @@ namespace dxvk {
         dstImage->info().access);
       m_barriers.accessImage(
         srcImage, srcSubresourceRange,
-        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
         VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_ACCESS_TRANSFER_READ_BIT,
         srcImage->info().layout,
@@ -1318,7 +1317,7 @@ namespace dxvk {
         : image->info().layout,
       image->info().stages,
       image->info().access,
-      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT);
     m_barriers.recordCommands(m_cmd);
@@ -1335,13 +1334,13 @@ namespace dxvk {
     region.imageExtent        = imageExtent;
     
     m_cmd->stagedBufferImageCopy(image->handle(),
-      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
       region, slice);
     
     // Transition image back into its optimal layout
     m_barriers.accessImage(
       image, subresourceRange,
-      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT,
       image->info().layout,

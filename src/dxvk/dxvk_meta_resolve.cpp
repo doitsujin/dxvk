@@ -47,8 +47,8 @@ namespace dxvk {
         srcImage->info().access | dstImage->info().access, 0 },
     }};
     
-    VkAttachmentReference dstAttachmentRef = { 0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
-    VkAttachmentReference srcAttachmentRef = { 1, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
+    VkAttachmentReference dstAttachmentRef = { 0, dstImage->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) };
+    VkAttachmentReference srcAttachmentRef = { 1, srcImage->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) };
     
     VkSubpassDescription spInfo;
     spInfo.flags                   = 0;
