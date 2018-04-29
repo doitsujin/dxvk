@@ -46,16 +46,24 @@ namespace dxvk {
             D3D11_BLEND_DESC1*  pDesc);
 
     static bool ValidBlend(
-            D3D11_BLEND blend);
+      const D3D11_BLEND blend);
 
     static bool ValidBlendAlpha(
-            D3D11_BLEND blendAlpha);
+      const D3D11_BLEND blendAlpha);
 
     static bool ValidBlendOp(
-            D3D11_BLEND_OP blendOp);
+      const D3D11_BLEND_OP blendOp);
 
     static bool ValidLogicOp(
-            D3D11_LOGIC_OP logicOp);
+      const D3D11_LOGIC_OP logicOp);
+
+    static bool ValidateBlendOperations(
+      const D3D11_BLEND srcBlend,
+      const D3D11_BLEND srcBlendAlpha,
+      const D3D11_BLEND destBlend,
+      const D3D11_BLEND destBlendAlpha,
+      const D3D11_BLEND_OP blendOp,
+      const D3D11_BLEND_OP blendOpAlpha);
     
   private:
     
