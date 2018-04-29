@@ -65,19 +65,10 @@ namespace dxvk {
     if (Dimension == D3D11_RESOURCE_DIMENSION_TEXTURE3D)
       imageInfo.flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT_KHR;
     
-    // Test whether the combination of image parameters is supported
-    if (!CheckImageSupport(&imageInfo, VK_IMAGE_TILING_OPTIMAL)) {
-      throw DxvkError(str::format(
-        "D3D11: Cannot create texture:",
-        "\n  Format:  ", imageInfo.format,
-        "\n  Extent:  ", imageInfo.extent.width,
-                    "x", imageInfo.extent.height,
-                    "x", imageInfo.extent.depth,
-        "\n  Samples: ", imageInfo.sampleCount,
-        "\n  Layers:  ", imageInfo.numLayers,
-        "\n  Levels:  ", imageInfo.mipLevels,
-        "\n  Usage:   ", std::hex, imageInfo.usage));
-    }
+    // Some image formats (i.e. the R32G32B32 ones) are
+    // only supported with linear tiling on most GPUs
+    if (!CheckImageSupport(&imageInfo, VK_IMAGE_TILING_OPTIMAL))
+      imageInfo.tiling = VK_IMAGE_TILING_LINEAR;
     
     // Determine map mode based on our findings
     m_mapMode = DetermineMapMode(&imageInfo);
@@ -101,6 +92,20 @@ namespace dxvk {
     // it is going to be used by the game.
     if (imageInfo.tiling == VK_IMAGE_TILING_OPTIMAL)
       imageInfo.layout = OptimizeLayout(imageInfo.usage);
+    
+    // Check if we can actually create the image
+    if (!CheckImageSupport(&imageInfo, imageInfo.tiling)) {
+      throw DxvkError(str::format(
+        "D3D11: Cannot create texture:",
+        "\n  Format:  ", imageInfo.format,
+        "\n  Extent:  ", imageInfo.extent.width,
+                    "x", imageInfo.extent.height,
+                    "x", imageInfo.extent.depth,
+        "\n  Samples: ", imageInfo.sampleCount,
+        "\n  Layers:  ", imageInfo.numLayers,
+        "\n  Levels:  ", imageInfo.mipLevels,
+        "\n  Usage:   ", std::hex, imageInfo.usage));
+    }
     
     // If necessary, create the mapped linear buffer
     if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER)
