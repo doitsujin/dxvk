@@ -60,8 +60,10 @@ namespace dxvk {
   
   
   DxgiSwapChain::~DxgiSwapChain() {
-    if (IsWindow(m_desc.OutputWindow) && !m_desc.Windowed)
-      LeaveFullscreenMode();
+    Com<IDXGIOutput> output;
+    
+    if (SUCCEEDED(m_adapter->GetOutputFromMonitor(m_monitor, &output)))
+      RestoreDisplayMode(output.ptr());
   }
   
   
