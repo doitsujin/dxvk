@@ -35,8 +35,6 @@ namespace dxvk {
     
     static HRESULT NormalizeDesc(
             D3D11_SAMPLER_DESC* pDesc);
-
-    
     
   private:
     
@@ -45,13 +43,10 @@ namespace dxvk {
     Rc<DxvkSampler>    m_sampler;
 
     static bool ValidateAddressMode(
-            D3D11_TEXTURE_ADDRESS_MODE mode);
+            D3D11_TEXTURE_ADDRESS_MODE  Mode);
 
     static bool ValidateComparisonFunc(
-            D3D11_COMPARISON_FUNC comparison);
-
-    static bool IsComparisonFilter(
-            D3D11_FILTER filter);
+            D3D11_COMPARISON_FUNC       Comparison);
     
   };
   

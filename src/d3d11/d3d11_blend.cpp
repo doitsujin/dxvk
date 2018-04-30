@@ -150,84 +150,61 @@ namespace dxvk {
   HRESULT D3D11BlendState::NormalizeDesc(D3D11_BLEND_DESC1* pDesc) {
     const D3D11_BLEND_DESC1 defaultDesc = DefaultDesc();
     
-    if (pDesc->AlphaToCoverageEnable) {
+    if (pDesc->AlphaToCoverageEnable)
       pDesc->AlphaToCoverageEnable = TRUE;
-    }
-
-    if (pDesc->IndependentBlendEnable) {
+    
+    if (pDesc->IndependentBlendEnable)
       pDesc->IndependentBlendEnable = TRUE;
-    }
-
+    
     const uint32_t numRenderTargets = pDesc->IndependentBlendEnable ? 8 : 1;
-
+    
     for (uint32_t i = 0; i < numRenderTargets; i++) {
-
       D3D11_RENDER_TARGET_BLEND_DESC1* rt = &pDesc->RenderTarget[i];
+      
       if (rt->BlendEnable) {
         rt->BlendEnable = TRUE;
-        //Can not have Blend enabled the same time as LogicOp
-        if (rt->LogicOpEnable) {
+        
+        if (rt->LogicOpEnable)
           return E_INVALIDARG;
-        }
-
+        
         if (!ValidateBlendOperations(
-          rt->SrcBlend, rt->SrcBlendAlpha,
-          rt->DestBlend, rt->DestBlendAlpha,
-          rt->BlendOp, rt->BlendOpAlpha)) {
+         rt->SrcBlend, rt->SrcBlendAlpha,
+         rt->DestBlend, rt->DestBlendAlpha,
+         rt->BlendOp, rt->BlendOpAlpha))
           return E_INVALIDARG;
-        }
       } else {
-        rt->SrcBlend = defaultDesc.RenderTarget[0].SrcBlend;
-        rt->DestBlend = defaultDesc.RenderTarget[0].DestBlend;
-        rt->BlendOp = defaultDesc.RenderTarget[0].BlendOp;
-        rt->SrcBlendAlpha = defaultDesc.RenderTarget[0].SrcBlendAlpha;
+        rt->SrcBlend       = defaultDesc.RenderTarget[0].SrcBlend;
+        rt->DestBlend      = defaultDesc.RenderTarget[0].DestBlend;
+        rt->BlendOp        = defaultDesc.RenderTarget[0].BlendOp;
+        rt->SrcBlendAlpha  = defaultDesc.RenderTarget[0].SrcBlendAlpha;
         rt->DestBlendAlpha = defaultDesc.RenderTarget[0].DestBlendAlpha;
-        rt->BlendOpAlpha = defaultDesc.RenderTarget[0].BlendOpAlpha;
+        rt->BlendOpAlpha   = defaultDesc.RenderTarget[0].BlendOpAlpha;
       }
-
+      
       if (rt->LogicOpEnable) {
         rt->LogicOpEnable = TRUE;
-
+        
+        // Blending must be disabled
+        // if the logic op is enabled
         if (rt->BlendEnable
          || pDesc->IndependentBlendEnable
-         || !ValidateLogicOp(rt->LogicOp)) {
+         || !ValidateLogicOp(rt->LogicOp))
           return E_INVALIDARG;
-        }
       } else {
         rt->LogicOp = defaultDesc.RenderTarget[0].LogicOp;
       }
-
-      if (rt->RenderTargetWriteMask > D3D11_COLOR_WRITE_ENABLE_ALL) {
+      
+      if (rt->RenderTargetWriteMask > D3D11_COLOR_WRITE_ENABLE_ALL)
         return E_INVALIDARG;
-      }
     }
-
-    if (!pDesc->IndependentBlendEnable) {
-      for (uint32_t i = 1; i < 8; i++) {
-        D3D11_RENDER_TARGET_BLEND_DESC1* rt = &pDesc->RenderTarget[i];
-
-        //Render targets blend operations are the same
-        //across all render targets when blend is enabled
-        //on rendertarget[0] with independent blend disabled
-        if (pDesc->RenderTarget[0].BlendEnable) {
-          pDesc->RenderTarget[i] = pDesc->RenderTarget[0];
-        } else {
-          //copy the default values over
-          pDesc->RenderTarget[i] = defaultDesc.RenderTarget[0];
-        }
-
-        //logic operations must be the same as the first render target if enabled
-        //in the first rendertarget
-        if (pDesc->RenderTarget[0].LogicOpEnable) {
-          rt->LogicOpEnable = TRUE;
-          rt->LogicOp = pDesc->RenderTarget[0].LogicOp;
-        }
-
-        //RenderTargetMask is the same as the first rendertarget if independent
-        //blend is disabled
-        rt->RenderTargetWriteMask = pDesc->RenderTarget[0].RenderTargetWriteMask;
-      }
+    
+    for (uint32_t i = numRenderTargets; i < 8; i++) {
+      // Render targets blend operations are the same
+      // across all render targets when blend is enabled
+      // on rendertarget[0] with independent blend disabled
+      pDesc->RenderTarget[i] = pDesc->RenderTarget[0];
     }
+    
     return S_OK;
   }
   
@@ -266,11 +243,8 @@ namespace dxvk {
       case D3D11_BLEND_INV_SRC1_COLOR:    return VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR;
       case D3D11_BLEND_SRC1_ALPHA:        return VK_BLEND_FACTOR_SRC1_ALPHA;
       case D3D11_BLEND_INV_SRC1_ALPHA:    return VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA;
+      default:                            return VK_BLEND_FACTOR_ZERO;
     }
-    
-    if (BlendFactor != 0)  // prevent log spamming when apps use ZeroMemory
-      Logger::err(str::format("D3D11: Invalid blend factor: ", BlendFactor));
-    return VK_BLEND_FACTOR_ZERO;
   }
   
   
@@ -281,11 +255,8 @@ namespace dxvk {
       case D3D11_BLEND_OP_REV_SUBTRACT:   return VK_BLEND_OP_REVERSE_SUBTRACT;
       case D3D11_BLEND_OP_MIN:            return VK_BLEND_OP_MIN;
       case D3D11_BLEND_OP_MAX:            return VK_BLEND_OP_MAX;
+      default:                            return VK_BLEND_OP_ADD;
     }
-    
-    if (BlendOp != 0)  // prevent log spamming when apps use ZeroMemory
-      Logger::err(str::format("D3D11: Invalid blend op: ", BlendOp));
-    return VK_BLEND_OP_ADD;
   }
   
   
@@ -307,63 +278,54 @@ namespace dxvk {
       case D3D11_LOGIC_OP_AND_INVERTED:   return VK_LOGIC_OP_AND_INVERTED;
       case D3D11_LOGIC_OP_OR_REVERSE:     return VK_LOGIC_OP_OR_REVERSE;
       case D3D11_LOGIC_OP_OR_INVERTED:    return VK_LOGIC_OP_OR_INVERTED;
+      default:                            return VK_LOGIC_OP_NO_OP;
     }
-    
-    if (LogicOp != 0)
-      Logger::err(str::format("D3D11: Invalid logic op: ", LogicOp));
-    return VK_LOGIC_OP_NO_OP;
   }
-
-  bool D3D11BlendState::ValidateBlend(const D3D11_BLEND blend) {
-    return blend >= D3D11_BLEND_ZERO
-        && blend <= D3D11_BLEND_INV_SRC1_ALPHA;
+  
+  
+  bool D3D11BlendState::ValidateBlendFactor(D3D11_BLEND Blend) {
+    return Blend >= D3D11_BLEND_ZERO
+        && Blend <= D3D11_BLEND_INV_SRC1_ALPHA;
   }
-
-  bool D3D11BlendState::ValidateBlendAlpha(const D3D11_BLEND blendAlpha) {
-    //can't be color operations
-    if (blendAlpha == D3D11_BLEND_SRC_COLOR
-     || blendAlpha == D3D11_BLEND_INV_SRC_COLOR
-     || blendAlpha == D3D11_BLEND_DEST_COLOR
-     || blendAlpha == D3D11_BLEND_INV_DEST_COLOR
-     || blendAlpha == D3D11_BLEND_SRC1_COLOR
-     || blendAlpha == D3D11_BLEND_INV_SRC1_COLOR
-     || blendAlpha > D3D11_BLEND_INV_SRC1_ALPHA
-     || blendAlpha < D3D11_BLEND_ZERO) {
-      return false;
-    }
-    return true;
+  
+  
+  bool D3D11BlendState::ValidateBlendFactorAlpha(D3D11_BLEND BlendAlpha) {
+    return BlendAlpha >= D3D11_BLEND_ZERO
+        && BlendAlpha <= D3D11_BLEND_INV_SRC1_ALPHA
+        && BlendAlpha != D3D11_BLEND_SRC_COLOR
+        && BlendAlpha != D3D11_BLEND_INV_SRC_COLOR
+        && BlendAlpha != D3D11_BLEND_DEST_COLOR
+        && BlendAlpha != D3D11_BLEND_INV_DEST_COLOR
+        && BlendAlpha != D3D11_BLEND_SRC1_COLOR
+        && BlendAlpha != D3D11_BLEND_INV_SRC1_COLOR;
   }
-
-  bool D3D11BlendState::ValidateBlendOp(const D3D11_BLEND_OP blendOp) {
-    return blendOp >= D3D11_BLEND_OP_ADD
-        && blendOp <= D3D11_BLEND_OP_MAX;
+  
+  
+  bool D3D11BlendState::ValidateBlendOp(D3D11_BLEND_OP BlendOp) {
+    return BlendOp >= D3D11_BLEND_OP_ADD
+        && BlendOp <= D3D11_BLEND_OP_MAX;
   }
-
-  bool D3D11BlendState::ValidateLogicOp(const D3D11_LOGIC_OP logicOp) {
-    return logicOp >= D3D11_LOGIC_OP_CLEAR
-        && logicOp <= D3D11_LOGIC_OP_OR_INVERTED;
+  
+  
+  bool D3D11BlendState::ValidateLogicOp(D3D11_LOGIC_OP LogicOp) {
+    return LogicOp >= D3D11_LOGIC_OP_CLEAR
+        && LogicOp <= D3D11_LOGIC_OP_OR_INVERTED;
   }
-
+  
+  
   bool D3D11BlendState::ValidateBlendOperations(
-    const D3D11_BLEND srcBlend, 
-    const D3D11_BLEND srcBlendAlpha, 
-    const D3D11_BLEND destBlend, 
-    const D3D11_BLEND destBlendAlpha, 
-    const D3D11_BLEND_OP blendOp, 
-    const D3D11_BLEND_OP blendOpAlpha) {
-    
-    if (!ValidateBlendOp(blendOp)
-     || !ValidateBlendOp(blendOpAlpha)) {
-      return false;
-    }
-
-    if (!ValidateBlend(srcBlend)
-     || !ValidateBlendAlpha(srcBlendAlpha)
-     || !ValidateBlend(destBlend)
-     || !ValidateBlendAlpha(destBlendAlpha)) {
-      return false;
-    }
-    return true;
+          D3D11_BLEND     SrcBlend, 
+          D3D11_BLEND     SrcBlendAlpha, 
+          D3D11_BLEND     DestBlend, 
+          D3D11_BLEND     DestBlendAlpha, 
+          D3D11_BLEND_OP  BlendOp, 
+          D3D11_BLEND_OP  BlendOpAlpha) {
+    return ValidateBlendOp(BlendOp)
+        && ValidateBlendOp(BlendOpAlpha)
+        && ValidateBlendFactor(SrcBlend)
+        && ValidateBlendFactor(DestBlend)
+        && ValidateBlendFactorAlpha(SrcBlendAlpha)
+        && ValidateBlendFactorAlpha(DestBlendAlpha);
   }
   
 }
