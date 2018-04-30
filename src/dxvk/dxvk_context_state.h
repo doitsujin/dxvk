@@ -54,10 +54,7 @@ namespace dxvk {
   
   
   struct DxvkOutputMergerState {
-    std::array<VkClearValue, MaxNumRenderTargets + 1> clearValue;
-    
     DxvkRenderTargets   renderTargets;
-    DxvkRenderPassOps   renderPassOps;
     Rc<DxvkFramebuffer> framebuffer       = nullptr;
     
     DxvkBlendConstants  blendConstants    = { 0.0f, 0.0f, 0.0f, 0.0f };

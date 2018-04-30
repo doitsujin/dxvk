@@ -53,20 +53,20 @@ namespace dxvk {
      * 
      * Retrieves a set of semaphores for the acquire
      * and present operations. This must be called
-     * \e before \c getImageView.
+     * \e before \c getFramebuffer.
      * \returns Semaphore pair
      */
     DxvkSwapSemaphores getSemaphorePair();
     
     /**
-     * \brief Retrieves the image view for the current frame
+     * \brief Retrieves the framebuffer for the current frame
      * 
      * If necessary, this will automatically recreate the
-     * underlying swapchain object and image view objects.
+     * underlying swapchain object and framebuffer objects.
      * \param [in] wakeSync Semaphore to signal
-     * \returns The image view object
+     * \returns The framebuffer object
      */
-    Rc<DxvkImageView> getImageView(
+    Rc<DxvkFramebuffer> getFramebuffer(
       const Rc<DxvkSemaphore>& wakeSync);
     
     /**
@@ -83,7 +83,7 @@ namespace dxvk {
     /**
      * \brief Changes swapchain properties
      * 
-     * This must not be called between \ref getImageView
+     * This must not be called between \ref getFramebuffer
      * and \ref present as this method may recreate the swap
      * chain and framebuffer objects immediately.
      * \param [in] props New swapchain properties
@@ -102,7 +102,8 @@ namespace dxvk {
     uint32_t                m_imageIndex = 0;
     uint32_t                m_frameIndex = 0;
     
-    std::vector<Rc<DxvkImageView>>    m_framebuffers;
+    Rc<DxvkRenderPass>                m_renderPass;
+    std::vector<Rc<DxvkFramebuffer>>  m_framebuffers;
     std::vector<DxvkSwapSemaphores>   m_semaphoreSet;
     
     VkResult acquireNextImage(

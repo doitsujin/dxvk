@@ -117,11 +117,11 @@ namespace dxvk {
       m_properties.limits.maxFramebufferHeight,
       m_properties.limits.maxFramebufferLayers };
     
-    auto renderPassFormat = DxvkFramebuffer::getRenderPassFormat(renderTargets);
-    auto renderPassObject = m_renderPassPool->getRenderPass(renderPassFormat);
+    auto format = renderTargets.renderPassFormat();
+    auto renderPass = m_renderPassPool->getRenderPass(format);
     
     return new DxvkFramebuffer(m_vkd,
-      renderPassObject, renderTargets, defaultSize);
+      renderPass, renderTargets, defaultSize);
   }
   
   

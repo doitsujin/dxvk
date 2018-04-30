@@ -4,56 +4,29 @@
 
 namespace dxvk {
   
+  bool DxvkRenderPassFormat::matchesFormat(const DxvkRenderPassFormat& other) const {
+    bool equal = m_samples == other.m_samples;
+    
+    equal &= m_depth.format         == other.m_depth.format
+          && m_depth.initialLayout  == other.m_depth.initialLayout
+          && m_depth.finalLayout    == other.m_depth.finalLayout
+          && m_depth.renderLayout   == other.m_depth.renderLayout;
+    
+    for (uint32_t i = 0; i < MaxNumRenderTargets && equal; i++) {
+      equal &= m_color[i].format         == other.m_color[i].format
+            && m_color[i].initialLayout  == other.m_color[i].initialLayout
+            && m_color[i].finalLayout    == other.m_color[i].finalLayout
+            && m_color[i].renderLayout   == other.m_color[i].renderLayout;
+    }
+    
+    return equal;
+  }
+  
+  
   DxvkRenderPass::DxvkRenderPass(
-    const Rc<vk::DeviceFn>&       vkd,
-    const DxvkRenderPassFormat&   fmt)
-  : m_vkd(vkd), m_format(fmt),
-    m_default(createRenderPass(DxvkRenderPassOps())) {
-    
-  }
-  
-  
-  DxvkRenderPass::~DxvkRenderPass() {
-    m_vkd->vkDestroyRenderPass(m_vkd->device(), m_default, nullptr);
-    
-    for (const auto& i : m_instances) {
-      m_vkd->vkDestroyRenderPass(
-        m_vkd->device(), i.handle, nullptr);
-    }
-  }
-  
-  
-  bool DxvkRenderPass::hasCompatibleFormat(
-    const DxvkRenderPassFormat&  fmt) const {
-    bool eq = m_format.sampleCount == fmt.sampleCount;
-    
-    for (uint32_t i = 0; i < MaxNumRenderTargets && eq; i++) {
-      eq &= m_format.color[i].format == fmt.color[i].format
-         && m_format.color[i].layout == fmt.color[i].layout;
-    }
-    
-    eq &= m_format.depth.format == fmt.depth.format
-       && m_format.depth.layout == fmt.depth.layout;
-    
-    return eq;
-  }
-  
-  
-  VkRenderPass DxvkRenderPass::getHandle(const DxvkRenderPassOps& ops) {
-    std::lock_guard<sync::Spinlock> lock(m_mutex);
-    
-    for (const auto& i : m_instances) {
-      if (compareOps(i.ops, ops))
-        return i.handle;
-    }
-    
-    VkRenderPass handle = this->createRenderPass(ops);
-    m_instances.push_back({ ops, handle });
-    return handle;
-  }
-  
-  
-  VkRenderPass DxvkRenderPass::createRenderPass(const DxvkRenderPassOps& ops) {
+    const Rc<vk::DeviceFn>&     vkd,
+    const DxvkRenderPassFormat& fmt)
+  : m_vkd(vkd), m_format(fmt) {
     std::vector<VkAttachmentDescription> attachments;
     
     VkAttachmentReference                                  depthRef;
@@ -61,45 +34,49 @@ namespace dxvk {
     
     // Render passes may not require the previous
     // contents of the attachments to be preserved.
+    const DxvkRenderTargetFormat depthFmt = fmt.getDepthFormat();
+    
+    if (depthFmt.format != VK_FORMAT_UNDEFINED) {
+      VkAttachmentDescription desc;
+      desc.flags          = 0;
+      desc.format         = depthFmt.format;
+      desc.samples        = fmt.getSampleCount();
+      desc.loadOp         = VK_ATTACHMENT_LOAD_OP_LOAD;
+      desc.storeOp        = VK_ATTACHMENT_STORE_OP_STORE;
+      desc.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_LOAD;
+      desc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
+      desc.initialLayout  = depthFmt.initialLayout;
+      desc.finalLayout    = depthFmt.finalLayout;
+      
+      depthRef.attachment = attachments.size();
+      depthRef.layout     = depthFmt.renderLayout;
+      
+      attachments.push_back(desc);
+    }
+    
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+      const DxvkRenderTargetFormat colorFmt = fmt.getColorFormat(i);
+      
       colorRef[i].attachment = VK_ATTACHMENT_UNUSED;
       colorRef[i].layout     = VK_IMAGE_LAYOUT_UNDEFINED;
       
-      if (m_format.color[i].format != VK_FORMAT_UNDEFINED) {
+      if (colorFmt.format != VK_FORMAT_UNDEFINED) {
         VkAttachmentDescription desc;
         desc.flags            = 0;
-        desc.format           = m_format.color[i].format;
-        desc.samples          = m_format.sampleCount;
-        desc.loadOp           = ops.colorOps[i].loadOp;
-        desc.storeOp          = ops.colorOps[i].storeOp;
+        desc.format           = colorFmt.format;
+        desc.samples          = fmt.getSampleCount();
+        desc.loadOp           = VK_ATTACHMENT_LOAD_OP_LOAD;
+        desc.storeOp          = VK_ATTACHMENT_STORE_OP_STORE;
         desc.stencilLoadOp    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         desc.stencilStoreOp   = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-        desc.initialLayout    = ops.colorOps[i].loadLayout;
-        desc.finalLayout      = ops.colorOps[i].storeLayout;
+        desc.initialLayout    = colorFmt.initialLayout;
+        desc.finalLayout      = colorFmt.finalLayout;
         
         colorRef[i].attachment = attachments.size();
-        colorRef[i].layout     = m_format.color[i].layout;
+        colorRef[i].layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
         
         attachments.push_back(desc);
       }
-    }
-    
-    if (m_format.depth.format != VK_FORMAT_UNDEFINED) {
-      VkAttachmentDescription desc;
-      desc.flags          = 0;
-      desc.format         = m_format.depth.format;
-      desc.samples        = m_format.sampleCount;
-      desc.loadOp         = ops.depthOps.loadOp;
-      desc.storeOp        = ops.depthOps.storeOp;
-      desc.stencilLoadOp  = ops.depthOps.loadOp;
-      desc.stencilStoreOp = ops.depthOps.storeOp;
-      desc.initialLayout  = ops.depthOps.loadLayout;
-      desc.finalLayout    = ops.depthOps.storeLayout;
-      
-      depthRef.attachment = attachments.size();
-      depthRef.layout     = m_format.depth.layout;
-      
-      attachments.push_back(desc);
     }
     
     VkSubpassDescription subpass;
@@ -110,14 +87,11 @@ namespace dxvk {
     subpass.colorAttachmentCount      = colorRef.size();
     subpass.pColorAttachments         = colorRef.data();
     subpass.pResolveAttachments       = nullptr;
-    subpass.pDepthStencilAttachment   = &depthRef;
+    subpass.pDepthStencilAttachment   = depthFmt.format != VK_FORMAT_UNDEFINED ? &depthRef : nullptr;
     subpass.preserveAttachmentCount   = 0;
     subpass.pPreserveAttachments      = nullptr;
     
-    if (m_format.depth.format == VK_FORMAT_UNDEFINED)
-      subpass.pDepthStencilAttachment = nullptr;
-    
-    const std::array<VkSubpassDependency, 2> subpassDeps = {{
+    std::array<VkSubpassDependency, 2> subpassDeps = {{
       { VK_SUBPASS_EXTERNAL, 0,
         VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
@@ -165,33 +139,14 @@ namespace dxvk {
     info.dependencyCount              = subpassDeps.size();
     info.pDependencies                = subpassDeps.data();
     
-    VkRenderPass renderPass = VK_NULL_HANDLE;
-    
-    if (m_vkd->vkCreateRenderPass(m_vkd->device(), &info, nullptr, &renderPass) != VK_SUCCESS) {
-      Logger::err("DxvkRenderPass: Failed to create render pass object");
-      return VK_NULL_HANDLE;
-    }
-    
-    return renderPass;
+    if (m_vkd->vkCreateRenderPass(m_vkd->device(), &info, nullptr, &m_renderPass) != VK_SUCCESS)
+      throw DxvkError("DxvkRenderPass::DxvkRenderPass: Failed to create render pass object");
   }
   
   
-  bool DxvkRenderPass::compareOps(
-    const DxvkRenderPassOps& a,
-    const DxvkRenderPassOps& b) {
-    bool eq = a.depthOps.loadOp      == b.depthOps.loadOp
-           && a.depthOps.loadLayout  == b.depthOps.loadLayout
-           && a.depthOps.storeOp     == b.depthOps.storeOp
-           && a.depthOps.storeLayout == b.depthOps.storeLayout;
-    
-    for (uint32_t i = 0; i < MaxNumRenderTargets && eq; i++) {
-      eq &= a.colorOps[i].loadOp      == b.colorOps[i].loadOp
-         && a.colorOps[i].loadLayout  == b.colorOps[i].loadLayout
-         && a.colorOps[i].storeOp     == b.colorOps[i].storeOp
-         && a.colorOps[i].storeLayout == b.colorOps[i].storeLayout;
-    }
-    
-    return eq;
+  DxvkRenderPass::~DxvkRenderPass() {
+    m_vkd->vkDestroyRenderPass(
+      m_vkd->device(), m_renderPass, nullptr);
   }
   
   
@@ -206,17 +161,29 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkRenderPass> DxvkRenderPassPool::getRenderPass(const DxvkRenderPassFormat& fmt) {
+  Rc<DxvkRenderPass> DxvkRenderPassPool::getRenderPass(
+    const DxvkRenderPassFormat& fmt) {
     std::lock_guard<std::mutex> lock(m_mutex);
     
-    for (const auto& r : m_renderPasses) {
-      if (r->hasCompatibleFormat(fmt))
-        return r;
+    Rc<DxvkRenderPass> renderPass = nullptr;
+    
+    for (uint32_t i = 0; i < m_renderPasses.size() && renderPass == nullptr; i++) {
+      if (m_renderPasses[i]->matchesFormat(fmt))
+        renderPass = m_renderPasses[i];
     }
     
-    Rc<DxvkRenderPass> rp = new DxvkRenderPass(m_vkd, fmt);
-    m_renderPasses.push_back(rp);
-    return rp;
+    if (renderPass != nullptr)
+      return renderPass;
+    
+    renderPass = this->createRenderPass(fmt);
+    m_renderPasses.push_back(renderPass);
+    return renderPass;
+  }
+  
+  
+  Rc<DxvkRenderPass> DxvkRenderPassPool::createRenderPass(
+    const DxvkRenderPassFormat& fmt) {
+    return new DxvkRenderPass(m_vkd, fmt);
   }
   
 }

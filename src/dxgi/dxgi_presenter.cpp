@@ -169,27 +169,26 @@ namespace dxvk {
         VK_FORMAT_UNDEFINED);
     }
     
-    auto swapSemas = m_swapchain->getSemaphorePair();
-    auto swapImage = m_swapchain->getImageView(swapSemas.acquireSync);
+    const DxvkSwapSemaphores sem = m_swapchain->getSemaphorePair();
     
-    DxvkRenderTargets renderTargets;
-    renderTargets.color[0].view   = swapImage;
-    renderTargets.color[0].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    m_context->bindRenderTargets(renderTargets);
+    auto framebuffer     = m_swapchain->getFramebuffer(sem.acquireSync);
+    auto framebufferSize = framebuffer->size();
+    
+    m_context->bindFramebuffer(framebuffer);
     
     VkViewport viewport;
     viewport.x        = 0.0f;
     viewport.y        = 0.0f;
-    viewport.width    = float(swapImage->imageInfo().extent.width);
-    viewport.height   = float(swapImage->imageInfo().extent.height);
+    viewport.width    = static_cast<float>(framebufferSize.width);
+    viewport.height   = static_cast<float>(framebufferSize.height);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
     
     VkRect2D scissor;
     scissor.offset.x      = 0;
     scissor.offset.y      = 0;
-    scissor.extent.width  = swapImage->imageInfo().extent.width;
-    scissor.extent.height = swapImage->imageInfo().extent.height;
+    scissor.extent.width  = framebufferSize.width;
+    scissor.extent.height = framebufferSize.height;
     
     m_context->setViewports(1, &viewport, &scissor);
     
@@ -215,11 +214,9 @@ namespace dxvk {
     
     m_device->submitCommandList(
       m_context->endRecording(),
-      swapSemas.acquireSync,
-      swapSemas.presentSync);
+      sem.acquireSync, sem.presentSync);
     
-    m_swapchain->present(
-      swapSemas.presentSync);
+    m_swapchain->present(sem.presentSync);
   }
   
   
