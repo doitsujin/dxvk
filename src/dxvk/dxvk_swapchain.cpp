@@ -34,7 +34,7 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkFramebuffer> DxvkSwapchain::getFramebuffer(
+  Rc<DxvkImageView> DxvkSwapchain::getImageView(
     const Rc<DxvkSemaphore>& wakeSync) {
     VkResult status = this->acquireNextImage(wakeSync);
     
@@ -136,17 +136,6 @@ namespace dxvk {
     if (m_vkd->vkCreateSwapchainKHR(m_vkd->device(), &swapInfo, nullptr, &m_handle) != VK_SUCCESS)
       throw DxvkError("DxvkSwapchain: Failed to recreate swap chain");
     
-    // Create the render pass object
-    DxvkRenderPassFormat renderTargetFormat;
-    
-    renderTargetFormat.setColorFormat(0,
-      DxvkRenderTargetFormat { fmt.format,
-        VK_IMAGE_LAYOUT_UNDEFINED,
-        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR });
-    
-    m_renderPass = new DxvkRenderPass(
-      m_vkd, renderTargetFormat);
-    
     // Retrieve swap images
     auto swapImages = this->retrieveSwapImages();
     
@@ -181,16 +170,8 @@ namespace dxvk {
     viewInfo.numLayers    = swapInfo.imageArrayLayers;
     
     for (size_t i = 0; i < swapImages.size(); i++) {
-      Rc<DxvkImage> image = new DxvkImage(m_vkd, imageInfo, swapImages.at(i));
-      Rc<DxvkImageView> iview = m_device->createImageView(image, viewInfo);
-      
-      DxvkRenderTargets renderTargets;
-      renderTargets.setColorTarget(0, iview,
-        VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-      
-      m_framebuffers.at(i) = new DxvkFramebuffer(
-        m_vkd, m_renderPass, renderTargets,
-        DxvkFramebufferSize());
+      m_framebuffers.at(i) = m_device->createImageView(
+        new DxvkImage(m_vkd, imageInfo, swapImages.at(i)), viewInfo);
       
       m_semaphoreSet.at(i).acquireSync = m_device->createSemaphore();
       m_semaphoreSet.at(i).presentSync = m_device->createSemaphore();

@@ -170,8 +170,8 @@ namespace dxvk::hud {
     viewInfo.numLayers      = 1;
     
     m_renderTargetView = m_device->createImageView(m_renderTarget, viewInfo);
-    m_renderTargetInfo.setColorTarget(0, m_renderTargetView,
-      VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    m_renderTargetInfo.color[0] = { m_renderTargetView,
+      VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
   }
   
   

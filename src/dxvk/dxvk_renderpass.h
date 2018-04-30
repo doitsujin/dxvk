@@ -1,7 +1,7 @@
 #pragma once
 
 #include <mutex>
-#include <unordered_map>
+#include <vector>
 
 #include "dxvk_hash.h"
 #include "dxvk_include.h"
@@ -10,50 +10,84 @@
 namespace dxvk {
   
   /**
-   * \brief Format and layout info for a sigle render target
+   * \brief Format and layout for a render target
    * 
-   * Stores the format, initial layout and
-   * final layout of a render target.
+   * Stores the image format of the attachment and
+   * the image layout that is used while rendering.
    */
-  struct DxvkRenderTargetFormat {
-    VkFormat      format        = VK_FORMAT_UNDEFINED;
-    VkImageLayout initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    VkImageLayout finalLayout   = VK_IMAGE_LAYOUT_UNDEFINED;
-    VkImageLayout renderLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+  struct DxvkAttachmentFormat {
+    VkFormat      format = VK_FORMAT_UNDEFINED;
+    VkImageLayout layout = VK_IMAGE_LAYOUT_UNDEFINED;
   };
   
   
   /**
    * \brief Render pass format
    * 
-   * Stores the formats of all render targets
-   * that are used by a framebuffer object.
+   * Stores the attachment formats for all depth and
+   * color attachments, as well as the sample count.
    */
-  class DxvkRenderPassFormat {
+  struct DxvkRenderPassFormat {
+    VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT;
+    DxvkAttachmentFormat  depth;
+    DxvkAttachmentFormat  color[MaxNumRenderTargets];
+  };
+  
+  
+  /**
+   * \brief Attachment transitions
+   * 
+   * Stores the load/store ops and the initial
+   * and final layout of a single attachment.
+   */
+  struct DxvkAttachmentOps {
+    VkAttachmentLoadOp  loadOp      = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    VkImageLayout       loadLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+    VkAttachmentStoreOp storeOp     = VK_ATTACHMENT_STORE_OP_STORE;
+    VkImageLayout       storeLayout = VK_IMAGE_LAYOUT_GENERAL;
+  };
+  
+  
+  /**
+   * \brief Render pass transitions
+   * 
+   * Stores transitions for all depth and color attachments.
+   * This is used to select a specific render pass object
+   * from a group of render passes with the same format.
+   */
+  struct DxvkRenderPassOps {
+    DxvkAttachmentOps depthOps;
+    DxvkAttachmentOps colorOps[MaxNumRenderTargets];
+  };
+  
+  
+  /**
+   * \brief Render pass object
+   * 
+   * Manages a set of compatible render passes, i.e.
+   * render passes which share the same format but
+   * may differ in their attachment operations.
+   */
+  class DxvkRenderPass : public RcObject {
     
   public:
     
-    /**
-     * \brief Retrieves color target format
-     * 
-     * If the color target has not been defined,
-     * this will return \c VK_FORMAT_UNDEFINED.
-     * \param [in] id Color target index
-     * \returns Color target format
-     */
-    DxvkRenderTargetFormat getColorFormat(uint32_t id) const {
-      return m_color.at(id);
-    }
+    DxvkRenderPass(
+      const Rc<vk::DeviceFn>&       vkd,
+      const DxvkRenderPassFormat&   fmt);
+    
+    ~DxvkRenderPass();
     
     /**
-     * \brief Retrieves depth-stencil format
+     * \brief Checks whether a format is compatible
      * 
-     * If the color target has not been defined,
-     * this will return \c VK_FORMAT_UNDEFINED.
+     * Two render pass formats are considered compatible
+     * if all the relevant attachment formats match.
+     * \param [in] fmt The render pass format to check
+     * \returns \c true if this render pass is compatible.
      */
-    DxvkRenderTargetFormat getDepthFormat() const {
-      return m_depth;
-    }
+    bool hasCompatibleFormat(
+      const DxvkRenderPassFormat&  fmt) const;
     
     /**
      * \brief Retrieves sample count
@@ -63,103 +97,53 @@ namespace dxvk {
      * \returns Sample count
      */
     VkSampleCountFlagBits getSampleCount() const {
-      return m_samples;
+      return m_format.sampleCount;
     }
     
     /**
-     * \brief Sets color target format
+     * \brief Returns handle of default render pass
      * 
-     * \param [in] id Color target index
-     * \param [in] fmt Color target format
+     * The default render pass handle should be used to
+     * create pipelines and framebuffer objects. It can
+     * \e not be used for \c vkCmdBeginRenderPass calls.
+     * \returns The default render pass handle
      */
-    void setColorFormat(uint32_t id, DxvkRenderTargetFormat fmt) {
-      m_color.at(id) = fmt;
+    VkRenderPass getDefaultHandle() const {
+      return m_default;
     }
     
     /**
-     * \brief Sets depth-stencil format
-     * \param [in] fmt Depth-stencil format
-     */
-    void setDepthFormat(DxvkRenderTargetFormat fmt) {
-      m_depth = fmt;
-    }
-    
-    /**
-     * \brief Sets sample count
-     * \param [in] samples Sample count
-     */
-    void setSampleCount(VkSampleCountFlagBits samples) {
-      m_samples = samples;
-    }
-    
-    /**
-     * \brief Checks whether two render pass formats are compatible
+     * \brief Returns handle to a specialized render pass
      * 
-     * \param [in] other The render pass format to compare to
-     * \returns \c true if the render pass formats are compatible
-     */
-    bool matchesFormat(const DxvkRenderPassFormat& other) const;
-    
-  private:
-    
-    std::array<DxvkRenderTargetFormat, MaxNumRenderTargets> m_color;
-    DxvkRenderTargetFormat                                  m_depth;
-    VkSampleCountFlagBits                                   m_samples = VK_SAMPLE_COUNT_1_BIT;
-    
-  };
-  
-  
-  /**
-   * \brief DXVK render pass
-   * 
-   * Render pass objects are used internally to identify render
-   * target formats and 
-   */
-  class DxvkRenderPass : public RcObject {
-    
-  public:
-    
-    DxvkRenderPass(
-      const Rc<vk::DeviceFn>&     vkd,
-      const DxvkRenderPassFormat& fmt);
-    ~DxvkRenderPass();
-    
-    /**
-     * \brief Render pass handle
-     * 
-     * Internal use only.
+     * Returns a handle to a render pass with the given
+     * set of parameters. This should be used for calls
+     * to \c vkCmdBeginRenderPass.
+     * \param [in] ops Attachment ops
      * \returns Render pass handle
      */
-    VkRenderPass handle() const {
-      return m_renderPass;
-    }
-    
-    /**
-     * \brief Render pass sample count
-     * \returns Render pass sample count
-     */
-    VkSampleCountFlagBits sampleCount() const {
-      return m_format.getSampleCount();
-    }
-    
-    /**
-     * \brief Checks render pass format compatibility
-     * 
-     * This render pass object can be used with compatible render
-     * pass formats. Two render pass formats are compatible if the
-     * used attachments match in image format and layout.
-     * \param [in] format The render pass format to test
-     * \returns \c true if the formats match
-     */
-    bool matchesFormat(const DxvkRenderPassFormat& format) const {
-      return m_format.matchesFormat(format);
-    }
+    VkRenderPass getHandle(
+      const DxvkRenderPassOps& ops);
     
   private:
     
-    Rc<vk::DeviceFn>      m_vkd;
-    DxvkRenderPassFormat  m_format;
-    VkRenderPass          m_renderPass;
+    struct Instance {
+      DxvkRenderPassOps ops;
+      VkRenderPass      handle;
+    };
+    
+    Rc<vk::DeviceFn>        m_vkd;
+    DxvkRenderPassFormat    m_format;
+    VkRenderPass            m_default;
+    
+    sync::Spinlock          m_mutex;
+    std::vector<Instance>   m_instances;
+    
+    VkRenderPass createRenderPass(
+      const DxvkRenderPassOps& ops);
+    
+    static bool compareOps(
+      const DxvkRenderPassOps& a,
+      const DxvkRenderPassOps& b);
     
   };
   
@@ -167,34 +151,34 @@ namespace dxvk {
   /**
    * \brief Render pass pool
    * 
-   * Thread-safe class that manages the render pass
-   * objects that are used within an application.
+   * Manages render pass objects. For each render
+   * pass format, a new render pass object will
+   * be created, but no two render pass objects
+   * will have the same format.
    */
   class DxvkRenderPassPool : public RcObject {
     
   public:
     
-    DxvkRenderPassPool(const Rc<vk::DeviceFn>& vkd);
+    DxvkRenderPassPool(
+      const Rc<vk::DeviceFn>& vkd);
     ~DxvkRenderPassPool();
     
     /**
      * \brief Retrieves a render pass object
      * 
-     * \param [in] fmt Render target formats
-     * \returns Compatible render pass object
+     * \param [in] fmt The render pass format
+     * \returns Matching render pass object
      */
     Rc<DxvkRenderPass> getRenderPass(
-      const DxvkRenderPassFormat& fmt);
+      const DxvkRenderPassFormat&  fmt);
     
   private:
     
-    Rc<vk::DeviceFn> m_vkd;
+    const Rc<vk::DeviceFn> m_vkd;
     
     std::mutex                      m_mutex;
     std::vector<Rc<DxvkRenderPass>> m_renderPasses;
-    
-    Rc<DxvkRenderPass> createRenderPass(
-      const DxvkRenderPassFormat& fmt);
     
   };
   

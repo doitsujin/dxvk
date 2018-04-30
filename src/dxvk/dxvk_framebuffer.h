@@ -19,6 +19,12 @@ namespace dxvk {
   };
   
   
+  /**
+   * \brief Framebuffer attachment
+   * 
+   * Stores an attachment, as well as the image layout
+   * that will be used for rendering to the attachment.
+   */
   struct DxvkAttachment {
     Rc<DxvkImageView> view    = nullptr;
     VkImageLayout     layout  = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -26,127 +32,23 @@ namespace dxvk {
   
   
   /**
-   * \brief Render target description
+   * \brief Render targets
    * 
-   * Stores render targets for a framebuffer object
-   * and provides methods to query the render pass
-   * format. Note that all render target views must
-   * have the same size and number of array layers.
+   * Stores all depth-stencil and color
+   * attachments attached to a framebuffer.
    */
-  class DxvkRenderTargets {
-    
-  public:
-    
-    DxvkRenderTargets();
-    ~DxvkRenderTargets();
-    
-    /**
-     * \brief Retrieves color target
-     * 
-     * \param [in] id Color attachment ID
-     * \returns Render target view
-     */
-    DxvkAttachment getColorTarget(uint32_t id) const {
-      return m_colorTargets.at(id);
-    }
-    
-    /**
-     * \brief Retrieves depth-stencil target
-     * \returns Depth-stencil target view
-     */
-    DxvkAttachment getDepthTarget() const {
-      return m_depthTarget;
-    }
-    
-    /**
-     * \brief Sets color target
-     * 
-     * \param [in] id Color attachment ID
-     * \param [in] view Render target view
-     * \param [in] layout Layout to use for rendering
-     */
-    void setColorTarget(
-            uint32_t           id,
-      const Rc<DxvkImageView>& view,
-            VkImageLayout      layout) {
-      m_colorTargets.at(id) = { view, layout };
-    }
-    
-    /**
-     * \brief Sets depth-stencil target
-     * 
-     * \param [in] layout Layout to use for rendering
-     * \param [in] view Depth-stencil target view
-     */
-    void setDepthTarget(
-      const Rc<DxvkImageView>& view,
-            VkImageLayout      layout) {
-      m_depthTarget = { view, layout };
-    }
-    
-    /**
-     * \brief Render pass format
-     * 
-     * Computes the render pass format based on
-     * the color and depth-stencil attachments.
-     * \returns Render pass format
-     */
-    DxvkRenderPassFormat renderPassFormat() const;
-    
-    /**
-     * \brief Creates attachment list
-     * 
-     * \param [out] viewHandles Attachment handles
-     * \returns Framebuffer attachment count
-     */
-    uint32_t getAttachments(VkImageView* viewHandles) const;
-    
-    /**
-     * \brief Framebuffer size
-     * 
-     * The width, height and layer count of the
-     * attached render targets.
-     * \param [in] defaultSize Size to use when
-     *        there are no framebuffer attachments.
-     * \returns Framebuffer size
-     */
-    DxvkFramebufferSize getImageSize(
-      const DxvkFramebufferSize&  defaultSize) const;
-    
-    /**
-     * \brief Checks whether any attachments are defined
-     * \returns \c false if no attachments are defined
-     */
-    bool hasAttachments() const;
-    
-    /**
-     * \brief Compares two sets of render targets
-     * 
-     * Checks whether two sets of render targets
-     * are identical, including the image layout.
-     * \param [in] other Render target set to compare to
-     * \returns \c true if the render targets are the same
-     */
-    bool matches(const DxvkRenderTargets& other) const;
-    
-  private:
-    
-    std::array<DxvkAttachment, MaxNumRenderTargets> m_colorTargets;
-    DxvkAttachment                                  m_depthTarget;
-    
-    DxvkFramebufferSize renderTargetSize(
-      const Rc<DxvkImageView>& renderTarget) const;
-    
+  struct DxvkRenderTargets {
+    DxvkAttachment depth;
+    DxvkAttachment color[MaxNumRenderTargets];
   };
   
   
   /**
-   * \brief DXVK framebuffer
+   * \brief Framebuffer
    * 
    * A framebuffer either stores a set of image views
    * that will be used as render targets, or in case
-   * no render targets are being used, fixed viewport
-   * dimensions.
+   * no render targets are attached, fixed dimensions.
    */
   class DxvkFramebuffer : public DxvkResource {
     
@@ -157,6 +59,7 @@ namespace dxvk {
       const Rc<DxvkRenderPass>&     renderPass,
       const DxvkRenderTargets&      renderTargets,
       const DxvkFramebufferSize&    defaultSize);
+    
     ~DxvkFramebuffer();
     
     /**
@@ -164,15 +67,7 @@ namespace dxvk {
      * \returns Framebuffer handle
      */
     VkFramebuffer handle() const {
-      return m_framebuffer;
-    }
-    
-    /**
-     * \brief Render pass handle
-     * \returns Render pass handle
-     */
-    VkRenderPass renderPass() const {
-      return m_renderPass->handle();
+      return m_handle;
     }
     
     /**
@@ -180,45 +75,124 @@ namespace dxvk {
      * \returns Framebuffer size
      */
     DxvkFramebufferSize size() const {
-      return m_framebufferSize;
-    }
-    
-    /**
-     * \brief Render target info
-     * \returns Render target info
-     */
-    const DxvkRenderTargets& renderTargets() const {
-      return m_renderTargets;
+      return m_renderSize;
     }
     
     /**
      * \brief Sample count
      * \returns Sample count
      */
-    VkSampleCountFlagBits sampleCount() const {
-      return m_renderPass->sampleCount();
+    VkSampleCountFlagBits getSampleCount() const {
+      return m_renderPass->getSampleCount();
     }
     
     /**
-     * \brief Retrieves index of a given attachment
+     * \brief Retrieves default render pass handle
      * 
-     * \param [in] view The image view to look up
-     * \returns The attachment index, or \c 0 for a depth-stencil
-     *          attachment, or \c MaxNumRenderTargets if the given
-     *          view is not a framebuffer attachment.
+     * Retrieves the render pass handle that was used
+     * to create the Vulkan framebuffer object with,
+     * and that should be used to create pipelines.
+     * \returns The default render pass handle
      */
-    uint32_t findAttachment(
-      const Rc<DxvkImageView>& view) const;
+    VkRenderPass getDefaultRenderPassHandle() const {
+      return m_renderPass->getDefaultHandle();
+    }
+    
+    /**
+     * \brief Retrieves render pass handle
+     * 
+     * Retrieves a render pass handle that can
+     * be used to begin a render pass instance.
+     * \param [in] ops Render pass ops
+     * \returns The render pass handle
+     */
+    VkRenderPass getRenderPassHandle(const DxvkRenderPassOps& ops) const {
+      return m_renderPass->getHandle(ops);
+    }
+    
+    /**
+     * \brief Depth-stencil target
+     * \returns Depth-stencil target
+     */
+    const DxvkAttachment& getDepthTarget() const {
+      return m_renderTargets.depth;
+    }
+    
+    /**
+     * \brief Color target
+     * 
+     * \param [in] id Target Index
+     * \returns The color target
+     */
+    const DxvkAttachment& getColorTarget(uint32_t id) const {
+      return m_renderTargets.color[id];
+    }
+    
+    /**
+     * \brief Number of framebuffer attachment
+     * \returns Total attachment count
+     */
+    uint32_t numAttachments() const {
+      return m_attachmentCount;
+    }
+    
+    /**
+     * \brief Retrieves attachment by index
+     * 
+     * \param [in] id Framebuffer attachment ID
+     * \returns The framebuffer attachment
+     */
+    const DxvkAttachment& getAttachment(uint32_t id) const {
+      return *m_attachments[id];
+    }
+    
+    /**
+     * \brief Finds attachment index by view
+     * 
+     * Color attachments start at 0
+     * \param [in] view Image view
+     * \returns Attachment index
+     */
+    int32_t findAttachment(const Rc<DxvkImageView>& view) const;
+    
+    /**
+     * \brief Checks whether the framebuffer's targets match
+     * 
+     * \param [in] renderTargets Render targets to check
+     * \returns \c true if the render targets are the same
+     *          as the ones used for this framebuffer object.
+     */
+    bool hasTargets(
+      const DxvkRenderTargets&  renderTargets);
+    
+    /**
+     * \brief Generatess render pass format
+     * 
+     * This render pass format can be used to
+     * look up a compatible render pass.
+     * \param [in] renderTargets Render targets
+     * \returns The render pass format
+     */
+    static DxvkRenderPassFormat getRenderPassFormat(
+      const DxvkRenderTargets&  renderTargets);
     
   private:
     
-    Rc<vk::DeviceFn>    m_vkd;
-    Rc<DxvkRenderPass>  m_renderPass;
+    const Rc<vk::DeviceFn>    m_vkd;
+    const Rc<DxvkRenderPass>  m_renderPass;
+    const DxvkRenderTargets   m_renderTargets;
+    const DxvkFramebufferSize m_renderSize;
     
-    DxvkRenderTargets   m_renderTargets;
-    DxvkFramebufferSize m_framebufferSize = { 0, 0, 0 };
+    uint32_t                                                   m_attachmentCount = 0;
+    std::array<const DxvkAttachment*, MaxNumRenderTargets + 1> m_attachments;
     
-    VkFramebuffer       m_framebuffer     = VK_NULL_HANDLE;
+    VkFramebuffer m_handle = VK_NULL_HANDLE;
+    
+    DxvkFramebufferSize computeRenderSize(
+      const DxvkFramebufferSize& defaultSize) const;
+    
+    DxvkFramebufferSize computeRenderTargetSize(
+      const Rc<DxvkImageView>& renderTarget) const;
     
   };
   
