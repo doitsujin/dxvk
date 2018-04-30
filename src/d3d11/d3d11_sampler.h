@@ -45,13 +45,13 @@ namespace dxvk {
     Rc<DxvkSampler>    m_sampler;
 
     static bool ValidateAddressMode(
-      const D3D11_TEXTURE_ADDRESS_MODE mode);
+            D3D11_TEXTURE_ADDRESS_MODE mode);
 
     static bool ValidateComparisonFunc(
-      const D3D11_COMPARISON_FUNC comparison);
+            D3D11_COMPARISON_FUNC comparison);
 
     static bool IsComparisonFilter(
-      const D3D11_FILTER filter);
+            D3D11_FILTER filter);
     
   };
   

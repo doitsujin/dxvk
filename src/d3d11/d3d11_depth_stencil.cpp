@@ -85,9 +85,7 @@ namespace dxvk {
 
       if (!ValidateDepthFunc(pDesc->DepthFunc)) {
         return E_INVALIDARG;
-      }
-
-      
+      }     
     } else {
       pDesc->DepthFunc = defaultDesc.DepthFunc;
       pDesc->DepthWriteMask = defaultDesc.DepthWriteMask;

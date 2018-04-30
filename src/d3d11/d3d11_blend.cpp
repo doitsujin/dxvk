@@ -173,8 +173,9 @@ namespace dxvk {
         if (!ValidateBlendOperations(
           rt->SrcBlend, rt->SrcBlendAlpha,
           rt->DestBlend, rt->DestBlendAlpha,
-          rt->BlendOp, rt->BlendOpAlpha))
+          rt->BlendOp, rt->BlendOpAlpha)) {
           return E_INVALIDARG;
+        }
       } else {
         rt->SrcBlend = defaultDesc.RenderTarget[0].SrcBlend;
         rt->DestBlend = defaultDesc.RenderTarget[0].DestBlend;
@@ -192,7 +193,6 @@ namespace dxvk {
          || !ValidateLogicOp(rt->LogicOp)) {
           return E_INVALIDARG;
         }
-
       } else {
         rt->LogicOp = defaultDesc.RenderTarget[0].LogicOp;
       }
@@ -211,8 +211,7 @@ namespace dxvk {
         //on rendertarget[0] with independent blend disabled
         if (pDesc->RenderTarget[0].BlendEnable) {
           pDesc->RenderTarget[i] = pDesc->RenderTarget[0];
-        }
-        else {
+        } else {
           //copy the default values over
           pDesc->RenderTarget[i] = defaultDesc.RenderTarget[0];
         }
@@ -329,8 +328,9 @@ namespace dxvk {
      || blendAlpha == D3D11_BLEND_SRC1_COLOR
      || blendAlpha == D3D11_BLEND_INV_SRC1_COLOR
      || blendAlpha > D3D11_BLEND_INV_SRC1_ALPHA
-     || blendAlpha < D3D11_BLEND_ZERO)
+     || blendAlpha < D3D11_BLEND_ZERO) {
       return false;
+    }
     return true;
   }
 

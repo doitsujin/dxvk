@@ -96,15 +96,17 @@ namespace dxvk {
     } else if (pDesc->MaxAnisotropy < 0
             || pDesc->MaxAnisotropy > 16) {
         return E_INVALIDARG;
-    } else
-      pDesc->MaxAnisotropy = 0;
+    } else {
+        pDesc->MaxAnisotropy = 0;
+    }
+      
 
     if (IsComparisonFilter(pDesc->Filter)) {
       if (!ValidateComparisonFunc(pDesc->ComparisonFunc)) {
         return E_INVALIDARG;
       }
     } else {
-      pDesc->ComparisonFunc = D3D11_COMPARISON_NEVER;
+        pDesc->ComparisonFunc = D3D11_COMPARISON_NEVER;
     }
 
     if (!ValidateAddressMode(pDesc->AddressU)
@@ -137,7 +139,7 @@ namespace dxvk {
 
   bool D3D11SamplerState::IsComparisonFilter(const D3D11_FILTER filter) {
     switch (filter) {
-      case D3D11_FILTER_COMPARISON_MIN_MAG_MIP_POINT :
+      case D3D11_FILTER_COMPARISON_MIN_MAG_MIP_POINT:
       case D3D11_FILTER_COMPARISON_MIN_MAG_POINT_MIP_LINEAR:
       case D3D11_FILTER_COMPARISON_MIN_POINT_MAG_LINEAR_MIP_POINT:
       case D3D11_FILTER_COMPARISON_MIN_POINT_MAG_MIP_LINEAR:

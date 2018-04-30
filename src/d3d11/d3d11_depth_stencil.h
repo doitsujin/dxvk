@@ -55,16 +55,16 @@ namespace dxvk {
 
 
     static bool ValidateDepthFunc(
-      const D3D11_COMPARISON_FUNC comparison);
+            D3D11_COMPARISON_FUNC comparison);
 
     static bool ValidateStencilFunc(
-      const D3D11_COMPARISON_FUNC comparison);
+            D3D11_COMPARISON_FUNC comparison);
 
     static bool ValidateStencilOp(
-      const D3D11_STENCIL_OP stencilOp);
+            D3D11_STENCIL_OP      stencilOp);
 
     static bool ValidateDepthWriteMask(
-      const D3D11_DEPTH_WRITE_MASK mask);
+            D3D11_DEPTH_WRITE_MASK mask);
   };
   
 }
