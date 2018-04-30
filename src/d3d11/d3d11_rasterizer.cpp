@@ -9,7 +9,7 @@ namespace dxvk {
   : m_device(device), m_desc(desc) {
     
     // State that is not supported in D3D11
-    m_state.enableDiscard     = VK_FALSE;
+    m_state.enableDiscard = VK_FALSE;
     
     // Polygon mode. Determines whether the rasterizer fills
     // a polygon or renders lines connecting the vertices.
@@ -151,7 +151,34 @@ namespace dxvk {
   
   HRESULT D3D11RasterizerState::NormalizeDesc(
           D3D11_RASTERIZER_DESC1* pDesc) {
-    // TODO validate
+    if (pDesc->FillMode < D3D11_FILL_WIREFRAME
+     || pDesc->FillMode > D3D11_FILL_SOLID)
+      return E_INVALIDARG;
+    
+    if (pDesc->CullMode < D3D11_CULL_NONE
+     || pDesc->CullMode > D3D11_CULL_BACK)
+      return E_INVALIDARG;
+    
+    if (pDesc->FrontCounterClockwise)
+      pDesc->FrontCounterClockwise = TRUE;
+    
+    if (pDesc->DepthClipEnable)
+      pDesc->DepthClipEnable = TRUE;
+    
+    if (pDesc->ScissorEnable)
+      pDesc->ScissorEnable = TRUE;
+    
+    if (pDesc->MultisampleEnable)
+      pDesc->MultisampleEnable = TRUE;
+    
+    if (pDesc->AntialiasedLineEnable)
+      pDesc->AntialiasedLineEnable = TRUE;
+    
+    if (pDesc->ForcedSampleCount != 0) {
+      if (FAILED(DecodeSampleCount(pDesc->ForcedSampleCount, nullptr)))
+        return E_INVALIDARG;
+    }
+    
     return S_OK;
   }
   

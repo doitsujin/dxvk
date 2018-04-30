@@ -41,6 +41,12 @@ namespace dxvk {
     D3D11Device* const m_device;
     D3D11_SAMPLER_DESC m_desc;
     Rc<DxvkSampler>    m_sampler;
+
+    static bool ValidateAddressMode(
+            D3D11_TEXTURE_ADDRESS_MODE  Mode);
+
+    static bool ValidateComparisonFunc(
+            D3D11_COMPARISON_FUNC       Comparison);
     
   };
   

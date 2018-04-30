@@ -50,8 +50,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DepthStencilState::BindToContext(
-    const Rc<DxvkContext>&  ctx) {
+  void D3D11DepthStencilState::BindToContext(const Rc<DxvkContext>& ctx) {
     ctx->setDepthStencilState(m_state);
   }
   
@@ -77,8 +76,42 @@ namespace dxvk {
   
   
   HRESULT D3D11DepthStencilState::NormalizeDesc(D3D11_DEPTH_STENCIL_DESC* pDesc) {
-    // TODO validate
-    // TODO clear unused values
+    const D3D11_DEPTH_STENCIL_DESC defaultDesc = DefaultDesc();
+    
+    if (pDesc->DepthEnable) {
+      pDesc->DepthEnable = TRUE;
+      
+      if (!ValidateDepthFunc(pDesc->DepthFunc))
+        return E_INVALIDARG;
+    } else {
+      pDesc->DepthFunc      = defaultDesc.DepthFunc;
+      pDesc->DepthWriteMask = defaultDesc.DepthWriteMask;
+    }
+    
+    if (!ValidateDepthWriteMask(pDesc->DepthWriteMask))
+      return E_INVALIDARG;
+    
+    if (pDesc->StencilEnable) {
+      pDesc->StencilEnable = TRUE;
+      
+      if (!ValidateStencilFunc(pDesc->FrontFace.StencilFunc)
+       || !ValidateStencilOp(pDesc->FrontFace.StencilFailOp)
+       || !ValidateStencilOp(pDesc->FrontFace.StencilDepthFailOp)
+       || !ValidateStencilOp(pDesc->FrontFace.StencilPassOp))
+        return E_INVALIDARG;
+      
+      if (!ValidateStencilFunc(pDesc->BackFace.StencilFunc)
+       || !ValidateStencilOp(pDesc->BackFace.StencilFailOp)
+       || !ValidateStencilOp(pDesc->BackFace.StencilDepthFailOp)
+       || !ValidateStencilOp(pDesc->BackFace.StencilPassOp))
+        return E_INVALIDARG;
+    } else {
+      pDesc->FrontFace        = defaultDesc.FrontFace;
+      pDesc->BackFace         = defaultDesc.BackFace;
+      pDesc->StencilReadMask  = defaultDesc.StencilReadMask;
+      pDesc->StencilWriteMask = defaultDesc.StencilWriteMask;
+    }
+    
     return S_OK;
   }
   
@@ -116,11 +149,32 @@ namespace dxvk {
       case D3D11_STENCIL_OP_INVERT:     return VK_STENCIL_OP_INVERT;
       case D3D11_STENCIL_OP_INCR:       return VK_STENCIL_OP_INCREMENT_AND_WRAP;
       case D3D11_STENCIL_OP_DECR:       return VK_STENCIL_OP_DECREMENT_AND_WRAP;
+      default:                          return VK_STENCIL_OP_KEEP;
     }
-    
-    if (Op != 0)
-      Logger::err(str::format("D3D11: Invalid stencil op: ", Op));
-    return VK_STENCIL_OP_KEEP;
+  }
+  
+  
+  bool D3D11DepthStencilState::ValidateDepthFunc(D3D11_COMPARISON_FUNC Comparison) {
+    return Comparison >= D3D11_COMPARISON_NEVER
+        && Comparison <= D3D11_COMPARISON_ALWAYS;
+  }
+  
+  
+  bool D3D11DepthStencilState::ValidateStencilFunc(D3D11_COMPARISON_FUNC Comparison) {
+    return Comparison >= D3D11_COMPARISON_NEVER
+        && Comparison <= D3D11_COMPARISON_ALWAYS;
+  }
+  
+  
+  bool D3D11DepthStencilState::ValidateStencilOp(D3D11_STENCIL_OP StencilOp) {
+    return StencilOp >= D3D11_STENCIL_OP_KEEP
+        && StencilOp <= D3D11_STENCIL_OP_DECR;
+  }
+  
+  
+  bool D3D11DepthStencilState::ValidateDepthWriteMask(D3D11_DEPTH_WRITE_MASK Mask) {
+    return Mask == D3D11_DEPTH_WRITE_MASK_ZERO 
+        || Mask == D3D11_DEPTH_WRITE_MASK_ALL;
   }
   
 }
