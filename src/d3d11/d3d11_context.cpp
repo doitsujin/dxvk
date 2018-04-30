@@ -2591,20 +2591,20 @@ namespace dxvk {
     // target bindings are updated. Set up the attachments.
     for (UINT i = 0; i < m_state.om.renderTargetViews.size(); i++) {
       if (m_state.om.renderTargetViews.at(i) != nullptr) {
-        attachments.setColorTarget(i,
+        attachments.color[i] = {
           m_state.om.renderTargetViews.at(i)->GetImageView(),
-          m_state.om.renderTargetViews.at(i)->GetRenderLayout());
+          m_state.om.renderTargetViews.at(i)->GetRenderLayout() };
       }
     }
     
     if (m_state.om.depthStencilView != nullptr) {
-      attachments.setDepthTarget(
+      attachments.depth = {
         m_state.om.depthStencilView->GetImageView(),
-        m_state.om.depthStencilView->GetRenderLayout());
+        m_state.om.depthStencilView->GetRenderLayout() };
     }
     
     // Create and bind the framebuffer object to the context
-    EmitCs([cAttachments = attachments] (DxvkContext* ctx) {
+    EmitCs([cAttachments = std::move(attachments)] (DxvkContext* ctx) {
       ctx->bindRenderTargets(cAttachments);
     });
   }

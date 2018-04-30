@@ -2,142 +2,117 @@
 
 namespace dxvk {
   
-  DxvkRenderTargets:: DxvkRenderTargets() { }
-  DxvkRenderTargets::~DxvkRenderTargets() { }
-  
-  
-  DxvkRenderPassFormat DxvkRenderTargets::renderPassFormat() const {
-    DxvkRenderPassFormat result;
+  DxvkFramebuffer::DxvkFramebuffer(
+    const Rc<vk::DeviceFn>&       vkd,
+    const Rc<DxvkRenderPass>&     renderPass,
+    const DxvkRenderTargets&      renderTargets,
+    const DxvkFramebufferSize&    defaultSize)
+  : m_vkd           (vkd),
+    m_renderPass    (renderPass),
+    m_renderTargets (renderTargets),
+    m_renderSize    (computeRenderSize(defaultSize)) {
+    std::array<VkImageView, MaxNumRenderTargets + 1> views;
+    
+    uint32_t viewId = 0;
     
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-      if (m_colorTargets.at(i).view != nullptr) {
-        result.setColorFormat(i, DxvkRenderTargetFormat {
-          m_colorTargets.at(i).view->info().format,
-          m_colorTargets.at(i).view->imageInfo().layout,
-          m_colorTargets.at(i).view->imageInfo().layout,
-          m_colorTargets.at(i).layout });
-        result.setSampleCount(m_colorTargets.at(i).view->imageInfo().sampleCount);
+      if (m_renderTargets.color[i].view != nullptr) {
+        views[viewId] = m_renderTargets.color[i].view->handle();
+        m_attachments[viewId] = &m_renderTargets.color[i];
+        viewId += 1;
       }
     }
     
-    if (m_depthTarget.view != nullptr) {
-      result.setDepthFormat(DxvkRenderTargetFormat {
-        m_depthTarget.view->info().format,
-        m_depthTarget.view->imageInfo().layout,
-        m_depthTarget.view->imageInfo().layout,
-        m_depthTarget.layout });
-      result.setSampleCount(m_depthTarget.view->imageInfo().sampleCount);
+    if (m_renderTargets.depth.view != nullptr) {
+      views[viewId] = m_renderTargets.depth.view->handle();
+      m_attachments[viewId] = &m_renderTargets.depth;
+      viewId += 1;
     }
     
-    return result;
+    VkFramebufferCreateInfo info;
+    info.sType                = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    info.pNext                = nullptr;
+    info.flags                = 0;
+    info.renderPass           = m_renderPass->getDefaultHandle();
+    info.attachmentCount      = viewId;
+    info.pAttachments         = views.data();
+    info.width                = m_renderSize.width;
+    info.height               = m_renderSize.height;
+    info.layers               = m_renderSize.layers;
+    
+    if (m_vkd->vkCreateFramebuffer(m_vkd->device(), &info, nullptr, &m_handle) != VK_SUCCESS)
+      Logger::err("DxvkFramebuffer: Failed to create framebuffer object");
   }
   
   
-  uint32_t DxvkRenderTargets::getAttachments(VkImageView* viewHandles) const {
-    uint32_t numViews = 0;
+  DxvkFramebuffer::~DxvkFramebuffer() {
+    m_vkd->vkDestroyFramebuffer(m_vkd->device(), m_handle, nullptr);
+  }
+  
+  
+  int32_t DxvkFramebuffer::findAttachment(const Rc<DxvkImageView>& view) const {
+    for (uint32_t i = 0; i < m_attachmentCount; i++) {
+      if (m_attachments[i]->view == view)
+        return int32_t(i);
+    }
     
-    if (m_depthTarget.view != nullptr)
-      viewHandles[numViews++] = m_depthTarget.view->handle();
+    return -1;
+  }
+  
+  
+  bool DxvkFramebuffer::hasTargets(const DxvkRenderTargets& renderTargets) {
+    bool eq = m_renderTargets.depth.view   == renderTargets.depth.view
+           && m_renderTargets.depth.layout == renderTargets.depth.layout;
+    
+    for (uint32_t i = 0; i < MaxNumRenderTargets && eq; i++) {
+      eq &= m_renderTargets.color[i].view   == renderTargets.color[i].view
+         && m_renderTargets.color[i].layout == renderTargets.color[i].layout;
+    }
+    
+    return eq;
+  }
+  
+  
+  DxvkRenderPassFormat DxvkFramebuffer::getRenderPassFormat(const DxvkRenderTargets& renderTargets) {
+    DxvkRenderPassFormat format;
     
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-      if (m_colorTargets.at(i).view != nullptr)
-        viewHandles[numViews++] = m_colorTargets.at(i).view->handle();
+      if (renderTargets.color[i].view != nullptr) {
+        format.sampleCount     = renderTargets.color[i].view->imageInfo().sampleCount;
+        format.color[i].format = renderTargets.color[i].view->info().format;
+        format.color[i].layout = renderTargets.color[i].layout;
+      }
     }
     
-    return numViews;
+    if (renderTargets.depth.view != nullptr) {
+      format.sampleCount  = renderTargets.depth.view->imageInfo().sampleCount;
+      format.depth.format = renderTargets.depth.view->info().format;
+      format.depth.layout = renderTargets.depth.layout;
+    }
+    
+    return format;
   }
   
   
-  DxvkFramebufferSize DxvkRenderTargets::getImageSize(
+  DxvkFramebufferSize DxvkFramebuffer::computeRenderSize(
     const DxvkFramebufferSize& defaultSize) const {
-    if (m_depthTarget.view != nullptr)
-      return this->renderTargetSize(m_depthTarget.view);
+    if (m_renderTargets.depth.view != nullptr)
+      return this->computeRenderTargetSize(m_renderTargets.depth.view);
     
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-      if (m_colorTargets.at(i).view != nullptr)
-        return this->renderTargetSize(m_colorTargets.at(i).view);
+      if (m_renderTargets.color[i].view != nullptr)
+        return this->computeRenderTargetSize(m_renderTargets.color[i].view);
     }
     
     return defaultSize;
   }
   
   
-  bool DxvkRenderTargets::hasAttachments() const {
-    bool result = m_depthTarget.view != nullptr;
-    
-    for (uint32_t i = 0; (i < MaxNumRenderTargets) && !result; i++)
-      result |= m_colorTargets.at(i).view != nullptr;
-    
-    return result;
-  }
-  
-  
-  bool DxvkRenderTargets::matches(const DxvkRenderTargets& other) const {
-    bool equal = m_depthTarget.view   == other.m_depthTarget.view
-              && m_depthTarget.layout == other.m_depthTarget.layout;
-    
-    for (uint32_t i = 0; i < MaxNumRenderTargets && equal; i++) {
-      equal &= m_colorTargets.at(i).view   == other.m_colorTargets.at(i).view
-            && m_colorTargets.at(i).layout == other.m_colorTargets.at(i).layout;
-    }
-    
-    return equal;
-  }
-  
-  
-  DxvkFramebufferSize DxvkRenderTargets::renderTargetSize(
+  DxvkFramebufferSize DxvkFramebuffer::computeRenderTargetSize(
     const Rc<DxvkImageView>& renderTarget) const {
     auto extent = renderTarget->mipLevelExtent(0);
     auto layers = renderTarget->info().numLayers;
     return DxvkFramebufferSize { extent.width, extent.height, layers };
-  }
-  
-  
-  DxvkFramebuffer::DxvkFramebuffer(
-    const Rc<vk::DeviceFn>&       vkd,
-    const Rc<DxvkRenderPass>&     renderPass,
-    const DxvkRenderTargets&      renderTargets,
-    const DxvkFramebufferSize&    defaultSize)
-  : m_vkd             (vkd),
-    m_renderPass      (renderPass),
-    m_renderTargets   (renderTargets),
-    m_framebufferSize (renderTargets.getImageSize(defaultSize)) {
-    std::array<VkImageView, MaxNumRenderTargets + 1> views;
-    uint32_t viewCount = renderTargets.getAttachments(views.data());
-    
-    VkFramebufferCreateInfo info;
-    info.sType                = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-    info.pNext                = nullptr;
-    info.flags                = 0;
-    info.renderPass           = renderPass->handle();
-    info.attachmentCount      = viewCount;
-    info.pAttachments         = views.data();
-    info.width                = m_framebufferSize.width;
-    info.height               = m_framebufferSize.height;
-    info.layers               = m_framebufferSize.layers;
-    
-    if (m_vkd->vkCreateFramebuffer(m_vkd->device(), &info, nullptr, &m_framebuffer) != VK_SUCCESS)
-      throw DxvkError("DxvkFramebuffer: Failed to create framebuffer object");
-  }
-  
-  
-  DxvkFramebuffer::~DxvkFramebuffer() {
-    m_vkd->vkDestroyFramebuffer(
-      m_vkd->device(), m_framebuffer, nullptr);
-  }
-  
-  
-  uint32_t DxvkFramebuffer::findAttachment(
-    const Rc<DxvkImageView>& view) const {
-    if (m_renderTargets.getDepthTarget().view == view)
-      return 0;
-    
-    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-      if (m_renderTargets.getColorTarget(i).view == view)
-        return i;
-    }
-    
-    return MaxNumRenderTargets;
   }
   
 }

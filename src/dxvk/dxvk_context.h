@@ -72,13 +72,6 @@ namespace dxvk {
       const DxvkQueryRevision&  query);
     
     /**
-     * \brief Sets framebuffer
-     * \param [in] fb Framebuffer
-     */
-    void bindFramebuffer(
-      const Rc<DxvkFramebuffer>& fb);
-    
-    /**
      * \brief Sets render targets
      * 
      * Creates a framebuffer on the fly if necessary
@@ -650,8 +643,14 @@ namespace dxvk {
     void spillRenderPass();
     
     void renderPassBindFramebuffer(
-      const Rc<DxvkFramebuffer>& framebuffer);
+      const Rc<DxvkFramebuffer>&  framebuffer,
+      const DxvkRenderPassOps&    ops);
+    
     void renderPassUnbindFramebuffer();
+    
+    void resetRenderPassOps(
+      const DxvkRenderTargets&    renderTargets,
+            DxvkRenderPassOps&    renderPassOps);
     
     void unbindComputePipeline();
     
