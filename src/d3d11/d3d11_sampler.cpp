@@ -87,14 +87,10 @@ namespace dxvk {
       return E_INVALIDARG;
     }
     
-    if (filterBits & 0x40 /* anisotropic */) {
-      if (pDesc->MaxAnisotropy < 1
-       || pDesc->MaxAnisotropy > 16)
-        return E_INVALIDARG;
-    } else if (pDesc->MaxAnisotropy < 0
-            || pDesc->MaxAnisotropy > 16) {
-        return E_INVALIDARG;
-    } else {
+    if (pDesc->MaxAnisotropy <  0
+     || pDesc->MaxAnisotropy > 16) {
+      return E_INVALIDARG;
+    } else if ((filterBits & 0x40) == 0 /* not anisotropic */) {
       // Reset anisotropy if it is not used
       pDesc->MaxAnisotropy = 0;
     }
