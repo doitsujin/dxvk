@@ -13,20 +13,18 @@ namespace dxvk {
     m_renderSize    (computeRenderSize(defaultSize)) {
     std::array<VkImageView, MaxNumRenderTargets + 1> views;
     
-    uint32_t viewId = 0;
-    
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       if (m_renderTargets.color[i].view != nullptr) {
-        views[viewId] = m_renderTargets.color[i].view->handle();
-        m_attachments[viewId] = &m_renderTargets.color[i];
-        viewId += 1;
+        views[m_attachmentCount] = m_renderTargets.color[i].view->handle();
+        m_attachments[m_attachmentCount] = &m_renderTargets.color[i];
+        m_attachmentCount += 1;
       }
     }
     
     if (m_renderTargets.depth.view != nullptr) {
-      views[viewId] = m_renderTargets.depth.view->handle();
-      m_attachments[viewId] = &m_renderTargets.depth;
-      viewId += 1;
+      views[m_attachmentCount] = m_renderTargets.depth.view->handle();
+      m_attachments[m_attachmentCount] = &m_renderTargets.depth;
+      m_attachmentCount += 1;
     }
     
     VkFramebufferCreateInfo info;
@@ -34,7 +32,7 @@ namespace dxvk {
     info.pNext                = nullptr;
     info.flags                = 0;
     info.renderPass           = m_renderPass->getDefaultHandle();
-    info.attachmentCount      = viewId;
+    info.attachmentCount      = m_attachmentCount;
     info.pAttachments         = views.data();
     info.width                = m_renderSize.width;
     info.height               = m_renderSize.height;

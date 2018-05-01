@@ -78,23 +78,52 @@ namespace dxvk {
   VkPipeline DxvkGraphicsPipeline::getPipelineHandle(
     const DxvkGraphicsPipelineStateInfo& state,
           DxvkStatCounters&              stats) {
+    VkPipeline pipeline = VK_NULL_HANDLE;
     
-    for (const PipelineStruct& pair : m_pipelines) {
-      if (pair.stateVector == state)
-        return pair.pipeline;
+    { std::lock_guard<sync::Spinlock> lock(m_mutex);
+      
+      if (this->findPipeline(state, pipeline))
+        return pipeline;
     }
     
-    VkPipeline pipeline = this->validatePipelineState(state)
+    // If no pipeline exists with the given state vector,
+    // create a new one and add it to the pipeline set.
+    VkPipeline newPipeline = this->validatePipelineState(state)
       ? this->compilePipeline(state, m_basePipeline)
       : VK_NULL_HANDLE;
     
-    m_pipelines.push_back({ state, pipeline });
+    { std::lock_guard<sync::Spinlock> lock(m_mutex);
+      
+      // Discard the pipeline if another thread
+      // was faster compiling the same pipeline
+      if (this->findPipeline(state, pipeline)) {
+        m_vkd->vkDestroyPipeline(m_vkd->device(), newPipeline, nullptr);
+        return pipeline;
+      }
+      
+      // Add new pipeline to the set
+      m_pipelines.push_back({ state, newPipeline });
+      
+      if (m_basePipeline == VK_NULL_HANDLE)
+        m_basePipeline = newPipeline;
+      
+      stats.addCtr(DxvkStatCounter::PipeCountGraphics, 1);
+      return newPipeline;
+    }
+  }
+  
+  
+  bool DxvkGraphicsPipeline::findPipeline(
+    const DxvkGraphicsPipelineStateInfo& state,
+          VkPipeline&                    pipeline) const {
+    for (const PipelineStruct& pair : m_pipelines) {
+      if (pair.stateVector == state) {
+        pipeline = pair.pipeline;
+        return true;
+      }
+    }
     
-    if (m_basePipeline == VK_NULL_HANDLE)
-      m_basePipeline = pipeline;
-    
-    stats.addCtr(DxvkStatCounter::PipeCountGraphics, 1);
-    return pipeline;
+    return false;
   }
   
   

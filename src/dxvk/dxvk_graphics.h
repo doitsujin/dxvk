@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vector>
+#include <mutex>
 
 #include "dxvk_binding.h"
 #include "dxvk_constant_state.h"
@@ -160,9 +160,14 @@ namespace dxvk {
     
     DxvkGraphicsCommonPipelineStateInfo m_common;
     
+    sync::Spinlock              m_mutex;
     std::vector<PipelineStruct> m_pipelines;
     
     VkPipeline m_basePipeline = VK_NULL_HANDLE;
+    
+    bool findPipeline(
+      const DxvkGraphicsPipelineStateInfo& state,
+            VkPipeline&                    pipeline) const;
     
     VkPipeline compilePipeline(
       const DxvkGraphicsPipelineStateInfo& state,

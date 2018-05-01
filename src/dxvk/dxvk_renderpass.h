@@ -35,15 +35,31 @@ namespace dxvk {
   
   
   /**
-   * \brief Attachment transitions
+   * \brief Color attachment transitions
    * 
    * Stores the load/store ops and the initial
    * and final layout of a single attachment.
    */
-  struct DxvkAttachmentOps {
+  struct DxvkColorAttachmentOps {
     VkAttachmentLoadOp  loadOp      = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     VkImageLayout       loadLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
     VkAttachmentStoreOp storeOp     = VK_ATTACHMENT_STORE_OP_STORE;
+    VkImageLayout       storeLayout = VK_IMAGE_LAYOUT_GENERAL;
+  };
+  
+  
+  /**
+   * \brief Depth attachment transitions
+   * 
+   * Stores the load/store ops and the initial and
+   * final layout of the depth-stencil attachment.
+   */
+  struct DxvkDepthAttachmentOps {
+    VkAttachmentLoadOp  loadOpD     = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    VkAttachmentLoadOp  loadOpS     = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    VkImageLayout       loadLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+    VkAttachmentStoreOp storeOpD    = VK_ATTACHMENT_STORE_OP_STORE;
+    VkAttachmentStoreOp storeOpS    = VK_ATTACHMENT_STORE_OP_STORE;
     VkImageLayout       storeLayout = VK_IMAGE_LAYOUT_GENERAL;
   };
   
@@ -56,8 +72,8 @@ namespace dxvk {
    * from a group of render passes with the same format.
    */
   struct DxvkRenderPassOps {
-    DxvkAttachmentOps depthOps;
-    DxvkAttachmentOps colorOps[MaxNumRenderTargets];
+    DxvkDepthAttachmentOps depthOps;
+    DxvkColorAttachmentOps colorOps[MaxNumRenderTargets];
   };
   
   

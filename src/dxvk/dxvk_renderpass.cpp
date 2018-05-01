@@ -89,10 +89,10 @@ namespace dxvk {
       desc.flags          = 0;
       desc.format         = m_format.depth.format;
       desc.samples        = m_format.sampleCount;
-      desc.loadOp         = ops.depthOps.loadOp;
-      desc.storeOp        = ops.depthOps.storeOp;
-      desc.stencilLoadOp  = ops.depthOps.loadOp;
-      desc.stencilStoreOp = ops.depthOps.storeOp;
+      desc.loadOp         = ops.depthOps.loadOpD;
+      desc.storeOp        = ops.depthOps.storeOpD;
+      desc.stencilLoadOp  = ops.depthOps.loadOpS;
+      desc.stencilStoreOp = ops.depthOps.storeOpS;
       desc.initialLayout  = ops.depthOps.loadLayout;
       desc.finalLayout    = ops.depthOps.storeLayout;
       
@@ -179,9 +179,11 @@ namespace dxvk {
   bool DxvkRenderPass::compareOps(
     const DxvkRenderPassOps& a,
     const DxvkRenderPassOps& b) {
-    bool eq = a.depthOps.loadOp      == b.depthOps.loadOp
+    bool eq = a.depthOps.loadOpD     == b.depthOps.loadOpD
+           && a.depthOps.loadOpS     == b.depthOps.loadOpS
            && a.depthOps.loadLayout  == b.depthOps.loadLayout
-           && a.depthOps.storeOp     == b.depthOps.storeOp
+           && a.depthOps.storeOpD    == b.depthOps.storeOpD
+           && a.depthOps.storeOpS    == b.depthOps.storeOpS
            && a.depthOps.storeLayout == b.depthOps.storeLayout;
     
     for (uint32_t i = 0; i < MaxNumRenderTargets && eq; i++) {

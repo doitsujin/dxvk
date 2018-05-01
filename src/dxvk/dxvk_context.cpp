@@ -9,10 +9,11 @@ namespace dxvk {
   DxvkContext::DxvkContext(
     const Rc<DxvkDevice>&           device,
     const Rc<DxvkPipelineCache>&    pipelineCache,
+    const Rc<DxvkPipelineManager>&  pipelineManager,
     const Rc<DxvkMetaClearObjects>& metaClearObjects)
   : m_device    (device),
     m_pipeCache (pipelineCache),
-    m_pipeMgr   (new DxvkPipelineManager(device.ptr())),
+    m_pipeMgr   (pipelineManager),
     m_metaClear (metaClearObjects) { }
   
   
@@ -29,7 +30,8 @@ namespace dxvk {
     // undefined, so we have to bind and set up everything
     // before any draw or dispatch command is recorded.
     m_flags.clr(
-      DxvkContextFlag::GpRenderPassBound);
+      DxvkContextFlag::GpRenderPassBound,
+      DxvkContextFlag::GpClearRenderTargets);
     
     m_flags.set(
       DxvkContextFlag::GpDirtyPipeline,
@@ -88,7 +90,9 @@ namespace dxvk {
   void DxvkContext::bindRenderTargets(const DxvkRenderTargets& targets) {
     m_state.om.renderTargets = targets;
     
-    // TODO execute pending clears
+    // If necessary, perform clears on the active render targets
+    if (m_flags.test(DxvkContextFlag::GpClearRenderTargets))
+      this->startRenderPass();
     
     // Set up default render pass ops
     this->resetRenderPassOps(
@@ -386,6 +390,35 @@ namespace dxvk {
     const VkClearValue&         clearValue) {
     this->updateFramebuffer();
     
+    // Prepare attachment ops
+    DxvkColorAttachmentOps colorOp;
+    colorOp.loadOp        = VK_ATTACHMENT_LOAD_OP_LOAD;
+    colorOp.loadLayout    = imageView->imageInfo().layout;
+    colorOp.storeOp       = VK_ATTACHMENT_STORE_OP_STORE;
+    colorOp.storeLayout   = imageView->imageInfo().layout;
+    
+    DxvkDepthAttachmentOps depthOp;
+    depthOp.loadOpD       = VK_ATTACHMENT_LOAD_OP_LOAD;
+    depthOp.loadOpS       = VK_ATTACHMENT_LOAD_OP_LOAD;
+    depthOp.loadLayout    = imageView->imageInfo().layout;
+    depthOp.storeOpD      = VK_ATTACHMENT_STORE_OP_STORE;
+    depthOp.storeOpS      = VK_ATTACHMENT_STORE_OP_STORE;
+    depthOp.storeLayout   = imageView->imageInfo().layout;
+    
+    if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT)
+      colorOp.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    
+    if (clearAspects & VK_IMAGE_ASPECT_DEPTH_BIT)
+      depthOp.loadOpD = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    
+    if (clearAspects & VK_IMAGE_ASPECT_STENCIL_BIT)
+      depthOp.loadOpS = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    
+    if (clearAspects == imageView->info().aspect) {
+      colorOp.loadLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+      depthOp.loadLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+    }
+    
     // Check whether the render target view is an attachment
     // of the current framebuffer. If not, we need to create
     // a temporary framebuffer.
@@ -397,12 +430,6 @@ namespace dxvk {
     if (attachmentIndex < 0) {
       this->spillRenderPass();
       
-      DxvkAttachmentOps op;
-      op.loadOp       = VK_ATTACHMENT_LOAD_OP_LOAD;
-      op.loadLayout   = imageView->imageInfo().layout;
-      op.storeOp      = VK_ATTACHMENT_STORE_OP_STORE;
-      op.storeLayout  = imageView->imageInfo().layout;
-      
       // Set up and bind a temporary framebuffer
       DxvkRenderTargets attachments;
       DxvkRenderPassOps ops;
@@ -410,37 +437,39 @@ namespace dxvk {
       if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT) {
         attachments.color[0].view   = imageView;
         attachments.color[0].layout = imageView->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-        ops.colorOps[0] = op;
+        ops.colorOps[0] = colorOp;
       } else {
         attachments.depth.view   = imageView;
         attachments.depth.layout = imageView->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-        ops.depthOps = op;
+        ops.depthOps = depthOp;
       }
       
       this->renderPassBindFramebuffer(
-        m_device->createFramebuffer(attachments), ops);
-    } else {
-      // Make sure that the currently bound
-      // framebuffer can be rendered to
-      this->startRenderPass();
-    }
-    
-    // Clear the attachment in quesion
-    VkClearAttachment clearInfo;
-    clearInfo.aspectMask      = clearAspects;
-    clearInfo.colorAttachment = attachmentIndex;
-    clearInfo.clearValue      = clearValue;
-    
-    if (attachmentIndex < 0)
-      clearInfo.colorAttachment = 0;
-    
-    m_cmd->cmdClearAttachments(
-      1, &clearInfo, 1, &clearRect);
-    
-    // If we used a temporary framebuffer, we'll have to unbind it
-    // again in order to not disturb subsequent rendering commands.
-    if (attachmentIndex < 0)
+        m_device->createFramebuffer(attachments),
+        ops, 1, &clearValue);
       this->renderPassUnbindFramebuffer();
+    } else if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
+      // Clear the attachment in quesion. For color images,
+      // the attachment index for the current subpass is
+      // equal to the render pass attachment index.
+      VkClearAttachment clearInfo;
+      clearInfo.aspectMask      = clearAspects;
+      clearInfo.colorAttachment = attachmentIndex;
+      clearInfo.clearValue      = clearValue;
+      
+      m_cmd->cmdClearAttachments(
+        1, &clearInfo, 1, &clearRect);
+    } else {
+      // Perform the clear when starting the render pass
+      if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT)
+        m_state.om.renderPassOps.colorOps[attachmentIndex] = colorOp;
+      
+      if (clearAspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
+        m_state.om.renderPassOps.depthOps = depthOp;
+      
+      m_state.om.clearValues[attachmentIndex] = clearValue;
+      m_flags.set(DxvkContextFlag::GpClearRenderTargets);
+    }
   }
   
   
@@ -1519,10 +1548,13 @@ namespace dxvk {
     if (!m_flags.test(DxvkContextFlag::GpRenderPassBound)
      && (m_state.om.framebuffer != nullptr)) {
       m_flags.set(DxvkContextFlag::GpRenderPassBound);
+      m_flags.clr(DxvkContextFlag::GpClearRenderTargets);
       
       this->renderPassBindFramebuffer(
         m_state.om.framebuffer,
-        m_state.om.renderPassOps);
+        m_state.om.renderPassOps,
+        m_state.om.clearValues.size(),
+        m_state.om.clearValues.data());
       
       // Don't discard image contents if we have
       // to spill the current render pass
@@ -1534,7 +1566,8 @@ namespace dxvk {
   
   
   void DxvkContext::spillRenderPass() {
-    // TODO execute pending clears
+    if (m_flags.test(DxvkContextFlag::GpClearRenderTargets))
+      this->startRenderPass();
     
     if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
       m_flags.clr(DxvkContextFlag::GpRenderPassBound);
@@ -1545,7 +1578,9 @@ namespace dxvk {
   
   void DxvkContext::renderPassBindFramebuffer(
     const Rc<DxvkFramebuffer>&  framebuffer,
-    const DxvkRenderPassOps&    ops) {
+    const DxvkRenderPassOps&    ops,
+          uint32_t              clearValueCount,
+    const VkClearValue*         clearValues) {
     const DxvkFramebufferSize fbSize = framebuffer->size();
     
     VkRect2D renderArea;
@@ -1558,8 +1593,8 @@ namespace dxvk {
     info.renderPass           = framebuffer->getRenderPassHandle(ops);
     info.framebuffer          = framebuffer->handle();
     info.renderArea           = renderArea;
-    info.clearValueCount      = 0;
-    info.pClearValues         = nullptr;
+    info.clearValueCount      = clearValueCount;
+    info.pClearValues         = clearValues;
     
     m_cmd->cmdBeginRenderPass(&info,
       VK_SUBPASS_CONTENTS_INLINE);
@@ -1577,17 +1612,23 @@ namespace dxvk {
     const DxvkRenderTargets&    renderTargets,
           DxvkRenderPassOps&    renderPassOps) {
     renderPassOps.depthOps = renderTargets.depth.view != nullptr
-      ? DxvkAttachmentOps {
-          VK_ATTACHMENT_LOAD_OP_LOAD,   renderTargets.depth.view->imageInfo().layout,
-          VK_ATTACHMENT_STORE_OP_STORE, renderTargets.depth.view->imageInfo().layout }
-      : DxvkAttachmentOps { };
+      ? DxvkDepthAttachmentOps {
+          VK_ATTACHMENT_LOAD_OP_LOAD,
+          VK_ATTACHMENT_LOAD_OP_LOAD,
+          renderTargets.depth.view->imageInfo().layout,
+          VK_ATTACHMENT_STORE_OP_STORE,
+          VK_ATTACHMENT_STORE_OP_STORE,
+          renderTargets.depth.view->imageInfo().layout }
+      : DxvkDepthAttachmentOps { };
     
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       renderPassOps.colorOps[i] = renderTargets.color[i].view != nullptr
-        ? DxvkAttachmentOps {
-            VK_ATTACHMENT_LOAD_OP_LOAD,   renderTargets.color[i].view->imageInfo().layout,
-            VK_ATTACHMENT_STORE_OP_STORE, renderTargets.color[i].view->imageInfo().layout }
-        : DxvkAttachmentOps { };
+        ? DxvkColorAttachmentOps {
+            VK_ATTACHMENT_LOAD_OP_LOAD,
+            renderTargets.color[i].view->imageInfo().layout,
+            VK_ATTACHMENT_STORE_OP_STORE,
+            renderTargets.color[i].view->imageInfo().layout }
+        : DxvkColorAttachmentOps { };
     }
     
     // TODO provide a sane alternative for this

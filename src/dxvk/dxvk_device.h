@@ -355,6 +355,7 @@ namespace dxvk {
     Rc<DxvkMemoryAllocator>     m_memory;
     Rc<DxvkRenderPassPool>      m_renderPassPool;
     Rc<DxvkPipelineCache>       m_pipelineCache;
+    Rc<DxvkPipelineManager>     m_pipelineManager;
     Rc<DxvkMetaClearObjects>    m_metaClearObjects;
     
     DxvkUnboundResources        m_unboundResources;

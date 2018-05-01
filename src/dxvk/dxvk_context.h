@@ -30,6 +30,7 @@ namespace dxvk {
     DxvkContext(
       const Rc<DxvkDevice>&           device,
       const Rc<DxvkPipelineCache>&    pipelineCache,
+      const Rc<DxvkPipelineManager>&  pipelineManager,
       const Rc<DxvkMetaClearObjects>& metaClearObjects);
     ~DxvkContext();
     
@@ -644,7 +645,9 @@ namespace dxvk {
     
     void renderPassBindFramebuffer(
       const Rc<DxvkFramebuffer>&  framebuffer,
-      const DxvkRenderPassOps&    ops);
+      const DxvkRenderPassOps&    ops,
+            uint32_t              clearValueCount,
+      const VkClearValue*         clearValues);
     
     void renderPassUnbindFramebuffer();
     

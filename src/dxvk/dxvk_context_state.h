@@ -16,12 +16,13 @@ namespace dxvk {
   /**
    * \brief Graphics pipeline state flags
    * 
-   * Stores some information on which state of the
-   * graphics pipeline has changed and/or needs to
-   * be updated.
+   * Stores some information on which state
+   * of the graphics and compute pipelines
+   * has changed and/or needs to be updated.
    */
   enum class DxvkContextFlag : uint64_t  {
     GpRenderPassBound,          ///< Render pass is currently bound
+    GpClearRenderTargets,       ///< Render targets need to be cleared
     GpDirtyFramebuffer,         ///< Framebuffer binding is out of date
     GpDirtyPipeline,            ///< Graphics pipeline binding is out of date
     GpDirtyPipelineState,       ///< Graphics pipeline needs to be recompiled
@@ -54,7 +55,7 @@ namespace dxvk {
   
   
   struct DxvkOutputMergerState {
-    std::array<VkClearValue, MaxNumRenderTargets + 1> clearValue;
+    std::array<VkClearValue, MaxNumRenderTargets + 1> clearValues = { };
     
     DxvkRenderTargets   renderTargets;
     DxvkRenderPassOps   renderPassOps;
