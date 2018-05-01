@@ -1,5 +1,6 @@
 #pragma once
 
+#include <mutex>
 #include <unordered_map>
 
 #include "dxvk_compute.h"
@@ -98,6 +99,8 @@ namespace dxvk {
   private:
     
     const DxvkDevice* m_device;
+    
+    std::mutex m_mutex;
     
     std::unordered_map<
       DxvkComputePipelineKey,

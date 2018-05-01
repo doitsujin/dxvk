@@ -21,17 +21,19 @@ namespace dxvk {
   }
   
   
-  bool DxvkPipelineKeyEq::operator () (const DxvkComputePipelineKey& a, const DxvkComputePipelineKey& b) const {
+  bool DxvkPipelineKeyEq::operator () (
+    const DxvkComputePipelineKey& a,
+    const DxvkComputePipelineKey& b) const {
     return a.cs == b.cs;
   }
   
   
-  bool DxvkPipelineKeyEq::operator () (const DxvkGraphicsPipelineKey& a, const DxvkGraphicsPipelineKey& b) const {
-    return a.vs  == b.vs
-        && a.tcs == b.tcs
-        && a.tes == b.tes
-        && a.gs  == b.gs
-        && a.fs  == b.fs;
+  bool DxvkPipelineKeyEq::operator () (
+    const DxvkGraphicsPipelineKey& a,
+    const DxvkGraphicsPipelineKey& b) const {
+    return a.vs == b.vs && a.tcs == b.tcs
+        && a.tes == b.tes && a.gs == b.gs
+        && a.fs == b.fs;
   }
   
   
@@ -51,6 +53,8 @@ namespace dxvk {
     const Rc<DxvkShader>&         cs) {
     if (cs == nullptr)
       return nullptr;
+    
+    std::lock_guard<std::mutex> lock(m_mutex);
     
     DxvkComputePipelineKey key;
     key.cs = cs;
@@ -76,6 +80,8 @@ namespace dxvk {
     const Rc<DxvkShader>&         fs) {
     if (vs == nullptr)
       return nullptr;
+    
+    std::lock_guard<std::mutex> lock(m_mutex);
     
     DxvkGraphicsPipelineKey key;
     key.vs  = vs;
