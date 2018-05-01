@@ -320,6 +320,17 @@ namespace dxvk {
   }
   
   
+  HRESULT STDMETHODCALLTYPE D3D11VkInteropSurface::GetDevice(
+          IDXGIVkInteropDevice**  ppDevice) {
+    Com<ID3D11Device> device;
+    m_container->GetDevice(&device);
+    
+    return device->QueryInterface(
+      __uuidof(IDXGIVkInteropDevice),
+      reinterpret_cast<void**>(ppDevice));
+  }
+  
+  
   HRESULT STDMETHODCALLTYPE D3D11VkInteropSurface::GetVulkanImageInfo(
           VkImage*              pHandle,
           VkImageLayout*        pLayout,

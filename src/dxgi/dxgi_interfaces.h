@@ -13,6 +13,7 @@ namespace dxvk {
   class DxvkImage;
 }
 
+class IDXGIVkInteropDevice;
 
 /**
  * \brief Private DXGI device interface
@@ -143,6 +144,17 @@ IDXGIVkPresenter : public IUnknown {
 MIDL_INTERFACE("5546cf8c-77e7-4341-b05d-8d4d5000e77d")
 IDXGIVkInteropSurface : public IUnknown {
   static const GUID guid;
+  
+  /**
+   * \brief Retrieves device interop interfaceSlots
+   * 
+   * Queries the device that owns the surface for
+   * the \ref IDXGIVkInteropDevice interface.
+   * \param [out] ppDevice The device interface
+   * \returns \c S_OK on success
+   */
+  virtual HRESULT STDMETHODCALLTYPE GetDevice(
+          IDXGIVkInteropDevice**  ppDevice) = 0;
   
   /**
    * \brief Retrieves Vulkan image info

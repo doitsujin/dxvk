@@ -214,6 +214,9 @@ namespace dxvk {
             REFIID                  riid,
             void**                  ppvObject);
     
+    HRESULT STDMETHODCALLTYPE GetDevice(
+            IDXGIVkInteropDevice**  ppDevice);
+    
     HRESULT STDMETHODCALLTYPE GetVulkanImageInfo(
             VkImage*              pHandle,
             VkImageLayout*        pLayout,
