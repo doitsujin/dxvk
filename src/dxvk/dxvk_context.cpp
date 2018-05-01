@@ -9,10 +9,11 @@ namespace dxvk {
   DxvkContext::DxvkContext(
     const Rc<DxvkDevice>&           device,
     const Rc<DxvkPipelineCache>&    pipelineCache,
+    const Rc<DxvkPipelineManager>&  pipelineManager,
     const Rc<DxvkMetaClearObjects>& metaClearObjects)
   : m_device    (device),
     m_pipeCache (pipelineCache),
-    m_pipeMgr   (new DxvkPipelineManager(device.ptr())),
+    m_pipeMgr   (pipelineManager),
     m_metaClear (metaClearObjects) { }
   
   
