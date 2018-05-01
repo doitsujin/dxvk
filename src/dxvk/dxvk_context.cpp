@@ -1211,17 +1211,21 @@ namespace dxvk {
     const VkImageSubresourceRange&  dstSubresources,
           VkImageLayout             srcLayout,
           VkImageLayout             dstLayout) {
-    m_barriers.accessImage(
-      dstImage, dstSubresources,
-      srcLayout,
-      dstImage->info().stages,
-      dstImage->info().access,
-      dstLayout,
-      dstImage->info().stages,
-      dstImage->info().access);
-    m_barriers.recordCommands(m_cmd);
+    this->spillRenderPass();
     
-    m_cmd->trackResource(dstImage);
+    if (srcLayout != dstLayout) {
+      m_barriers.accessImage(
+        dstImage, dstSubresources,
+        srcLayout,
+        dstImage->info().stages,
+        dstImage->info().access,
+        dstLayout,
+        dstImage->info().stages,
+        dstImage->info().access);
+      m_barriers.recordCommands(m_cmd);
+      
+      m_cmd->trackResource(dstImage);
+    }
   }
   
   
