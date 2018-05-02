@@ -1,6 +1,8 @@
 #include <cstdlib>
 #include <cstring>
 
+#include <d3d10_1.h>
+
 #include "dxgi_adapter.h"
 #include "dxgi_device.h"
 #include "dxgi_enums.h"
@@ -54,6 +56,12 @@ namespace dxvk {
           LARGE_INTEGER*            pUMDVersion) {
     if (pUMDVersion != nullptr)
       *pUMDVersion = LARGE_INTEGER();
+    
+    if (InterfaceName == __uuidof(ID3D10Device)
+     || InterfaceName == __uuidof(ID3D10Device1)) {
+      Logger::warn("DXGI: CheckInterfaceSupport: No D3D10 support");
+      return S_OK;
+    }
     
     Logger::err("DXGI: CheckInterfaceSupport: Unsupported interface");
     Logger::err(str::format(InterfaceName));
