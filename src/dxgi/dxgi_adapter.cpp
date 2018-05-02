@@ -55,9 +55,9 @@ namespace dxvk {
     if (pUMDVersion != nullptr)
       *pUMDVersion = LARGE_INTEGER();
     
-    Logger::err("DXGI: CheckInterfaceSupport: Unsupported interface");
-    Logger::err(str::format(InterfaceName));
-    return DXGI_ERROR_UNSUPPORTED;
+    Logger::warn("DXGI: CheckInterfaceSupport: Unsupported interface");
+    Logger::warn(str::format(InterfaceName));
+    return S_OK;
   }
   
   
