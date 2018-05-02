@@ -133,12 +133,16 @@ namespace dxvk {
           uint32_t                version,
           uint32_t                file,
     const char*                   source) {
-    m_debugNames.putIns (spv::OpSource,
-      4 + m_debugNames.strLen(source));
+    uint32_t strLen = source != nullptr
+      ? m_debugNames.strLen(source) : 0;
+    
+    m_debugNames.putIns (spv::OpSource, 4 + strLen);
     m_debugNames.putWord(language);
     m_debugNames.putWord(version);
     m_debugNames.putWord(file);
-    m_debugNames.putStr (source);
+    
+    if (source != nullptr)
+      m_debugNames.putStr(source);
   }
   
   void SpirvModule::setDebugName(

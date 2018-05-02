@@ -28,7 +28,7 @@ namespace dxvk {
     m_module.setDebugSource(
       spv::SourceLanguageUnknown, 0,
       m_module.addDebugString(fileName.c_str()),
-      "");
+      nullptr);
     
     // Set the memory model. This is the same for all shaders.
     m_module.setMemoryModel(
