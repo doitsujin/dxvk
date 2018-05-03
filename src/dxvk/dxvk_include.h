@@ -12,6 +12,8 @@
 #include "../util/rc/util_rc.h"
 #include "../util/rc/util_rc_ptr.h"
 
+#include "../util/sha1/sha1_util.h"
+
 #include "../util/sync/sync_spinlock.h"
 
 #include "./vulkan/dxvk_vulkan_extensions.h"

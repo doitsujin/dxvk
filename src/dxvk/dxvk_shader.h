@@ -170,10 +170,21 @@ namespace dxvk {
       m_debugName = name;
     }
     
+    /**
+     * \brief Shader hash
+     * 
+     * The SHA-1 hash of the generated SPIR-V shader.
+     * \returns SHA-1 hash of this shader
+     */
+    Sha1Hash hash() const {
+      return m_hash;
+    }
+    
   private:
     
     VkShaderStageFlagBits m_stage;
     SpirvCodeBuffer       m_code;
+    Sha1Hash              m_hash;
     
     std::vector<DxvkResourceSlot> m_slots;
     std::vector<size_t>           m_idOffsets;
