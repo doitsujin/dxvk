@@ -27,14 +27,8 @@ namespace dxvk {
     DxvkHashState result;
     result.add(uint32_t(m_type));
     
-    const uint8_t* digest = m_hash.digest();
-    for (uint32_t i = 0; i < 5; i++) {
-      result.add(
-          uint32_t(digest[4 + i + 0]) <<  0
-        | uint32_t(digest[4 + i + 1]) <<  8
-        | uint32_t(digest[4 + i + 2]) << 16
-        | uint32_t(digest[4 + i + 3]) << 24);
-    }
+    for (uint32_t i = 0; i < 5; i++)
+      result.add(m_hash.dword(i));
     
     return result;
   }

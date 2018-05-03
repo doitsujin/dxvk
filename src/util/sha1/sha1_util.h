@@ -18,8 +18,11 @@ namespace dxvk {
     
     std::string toString() const;
     
-    const uint8_t* digest() const {
-      return m_digest.data();
+    uint32_t dword(uint32_t id) const {
+      return uint32_t(m_digest[4 + id + 0]) <<  0
+           | uint32_t(m_digest[4 + id + 1]) <<  8
+           | uint32_t(m_digest[4 + id + 2]) << 16
+           | uint32_t(m_digest[4 + id + 3]) << 24;
     }
     
     bool operator == (const Sha1Hash& other) const {
