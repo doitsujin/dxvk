@@ -46,11 +46,6 @@ namespace dxvk {
     const DxvkInterfaceSlots&     iface,
     const SpirvCodeBuffer&        code)
   : m_stage(stage), m_code(code), m_interface(iface) {
-    // Compute shader hash once
-    m_hash = Sha1Hash::compute(
-      reinterpret_cast<const uint8_t*>(code.data()),
-      code.size());
-    
     // Write back resource slot infos
     for (uint32_t i = 0; i < slotCount; i++)
       m_slots.push_back(slotInfos[i]);
