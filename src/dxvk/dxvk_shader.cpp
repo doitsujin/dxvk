@@ -4,10 +4,9 @@ namespace dxvk {
   
   DxvkShaderModule::DxvkShaderModule(
     const Rc<vk::DeviceFn>&     vkd,
-          VkShaderStageFlagBits stage,
-    const SpirvCodeBuffer&      code,
-    const std::string&          name)
-  : m_vkd(vkd), m_stage(stage), m_debugName(name) {
+    const Rc<DxvkShader>&       shader,
+    const SpirvCodeBuffer&      code)
+  : m_vkd(vkd), m_shader(shader) {
     VkShaderModuleCreateInfo info;
     info.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     info.pNext    = nullptr;
@@ -32,7 +31,7 @@ namespace dxvk {
     info.sType                = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     info.pNext                = nullptr;
     info.flags                = 0;
-    info.stage                = m_stage;
+    info.stage                = m_shader->stage();
     info.module               = m_module;
     info.pName                = "main";
     info.pSpecializationInfo  = specInfo;
@@ -95,7 +94,7 @@ namespace dxvk {
   
   Rc<DxvkShaderModule> DxvkShader::createShaderModule(
     const Rc<vk::DeviceFn>&          vkd,
-    const DxvkDescriptorSlotMapping& mapping) const {
+    const DxvkDescriptorSlotMapping& mapping) {
     SpirvCodeBuffer spirvCode = m_code;
     
     // Remap resource binding IDs
@@ -103,7 +102,7 @@ namespace dxvk {
     for (uint32_t ofs : m_idOffsets)
       code[ofs] = mapping.getBindingId(code[ofs]);
     
-    return new DxvkShaderModule(vkd, m_stage, spirvCode, m_debugName);
+    return new DxvkShaderModule(vkd, this, spirvCode);
   }
   
   

@@ -363,11 +363,11 @@ namespace dxvk {
   void DxvkGraphicsPipeline::logPipelineState(
           LogLevel                       level,
     const DxvkGraphicsPipelineStateInfo& state) const {
-    if (m_vs  != nullptr) Logger::log(level, str::format("  vs  : ", m_vs ->debugName()));
-    if (m_tcs != nullptr) Logger::log(level, str::format("  tcs : ", m_tcs->debugName()));
-    if (m_tes != nullptr) Logger::log(level, str::format("  tes : ", m_tes->debugName()));
-    if (m_gs  != nullptr) Logger::log(level, str::format("  gs  : ", m_gs ->debugName()));
-    if (m_fs  != nullptr) Logger::log(level, str::format("  fs  : ", m_fs ->debugName()));
+    if (m_vs  != nullptr) Logger::log(level, str::format("  vs  : ", m_vs ->shader()->debugName()));
+    if (m_tcs != nullptr) Logger::log(level, str::format("  tcs : ", m_tcs->shader()->debugName()));
+    if (m_tes != nullptr) Logger::log(level, str::format("  tes : ", m_tes->shader()->debugName()));
+    if (m_gs  != nullptr) Logger::log(level, str::format("  gs  : ", m_gs ->shader()->debugName()));
+    if (m_fs  != nullptr) Logger::log(level, str::format("  fs  : ", m_fs ->shader()->debugName()));
     
     // TODO log more pipeline state
   }

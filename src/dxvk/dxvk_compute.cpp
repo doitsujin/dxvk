@@ -96,7 +96,7 @@ namespace dxvk {
 
     if (Logger::logLevel() <= LogLevel::Debug) {
       Logger::debug("Compiling compute pipeline..."); 
-      Logger::debug(str::format("  cs  : ", m_cs ->debugName()));
+      Logger::debug(str::format("  cs  : ", m_cs->shader()->debugName()));
     }
     
     std::array<VkBool32,                 MaxNumActiveBindings> specData;
@@ -131,7 +131,7 @@ namespace dxvk {
     if (m_vkd->vkCreateComputePipelines(m_vkd->device(),
           m_cache->handle(), 1, &info, nullptr, &pipeline) != VK_SUCCESS) {
       Logger::err("DxvkComputePipeline: Failed to compile pipeline");
-      Logger::err(str::format("  cs  : ", m_cs ->debugName()));
+      Logger::err(str::format("  cs  : ", m_cs->shader()->debugName()));
       return VK_NULL_HANDLE;
     }
     

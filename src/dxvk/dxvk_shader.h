@@ -9,6 +9,8 @@
 
 namespace dxvk {
   
+  class DxvkShader;
+  
   /**
    * \brief Shader interface slots
    * 
@@ -36,9 +38,8 @@ namespace dxvk {
     
     DxvkShaderModule(
       const Rc<vk::DeviceFn>&     vkd,
-            VkShaderStageFlagBits stage,
-      const SpirvCodeBuffer&      code,
-      const std::string&          name);
+      const Rc<DxvkShader>&       shader,
+      const SpirvCodeBuffer&      code);
     
     ~DxvkShaderModule();
     
@@ -60,19 +61,18 @@ namespace dxvk {
       const VkSpecializationInfo* specInfo) const;
     
     /**
-     * \brief The shader's debug name
-     * \returns Debug name
+     * \brief Shader object
+     * \returns The shader
      */
-    const std::string& debugName() const {
-      return m_debugName;
+    Rc<DxvkShader> shader() const {
+      return m_shader;
     }
     
   private:
     
     Rc<vk::DeviceFn>      m_vkd;
-    VkShaderStageFlagBits m_stage;
+    Rc<DxvkShader>        m_shader;
     VkShaderModule        m_module;
-    std::string           m_debugName;
     
   };
   
@@ -97,6 +97,14 @@ namespace dxvk {
       const SpirvCodeBuffer&        code);
     
     ~DxvkShader();
+    
+    /**
+     * \brief Shader stage
+     * \returns Shader stage
+     */
+    VkShaderStageFlagBits stage() const {
+      return m_stage;
+    }
     
     /**
      * \brief Checks whether a capability is enabled
@@ -130,7 +138,7 @@ namespace dxvk {
      */
     Rc<DxvkShaderModule> createShaderModule(
       const Rc<vk::DeviceFn>&          vkd,
-      const DxvkDescriptorSlotMapping& mapping) const;
+      const DxvkDescriptorSlotMapping& mapping);
     
     /**
      * \brief Inter-stage interface slots
@@ -160,6 +168,16 @@ namespace dxvk {
     void read(std::istream& inputStream);
     
     /**
+     * \brief Shader hash
+     * 
+     * The SHA-1 hash of the generated SPIR-V shader.
+     * \returns SHA-1 hash of this shader
+     */
+    Sha1Hash hash() const {
+      return m_hash;
+    }
+    
+    /**
      * \brief Sets the shader's debug name
      * 
      * Debug names may be used by the backend in
@@ -171,13 +189,11 @@ namespace dxvk {
     }
     
     /**
-     * \brief Shader hash
-     * 
-     * The SHA-1 hash of the generated SPIR-V shader.
-     * \returns SHA-1 hash of this shader
+     * \brief Retrieves debug name
+     * \returns The shader's name
      */
-    Sha1Hash hash() const {
-      return m_hash;
+    std::string debugName() const {
+      return m_debugName;
     }
     
   private:
