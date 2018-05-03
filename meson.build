@@ -4,14 +4,14 @@ cpu_family = target_machine.cpu_family()
 
 dxvk_compiler = meson.get_compiler('cpp')
 if dxvk_compiler.get_id() == 'msvc'
-  add_global_arguments('-DNOMINMAX', language : 'cpp')
+  add_project_arguments('-DNOMINMAX', language : 'cpp')
   dxvk_cpp_std='c++latest'
 else
   dxvk_cpp_std='c++1z'
 endif
 
 if dxvk_compiler.get_id() == 'msvc'
-	add_global_arguments('/std:' + dxvk_cpp_std, language : 'cpp')
+	add_project_arguments('/std:' + dxvk_cpp_std, language : 'cpp')
 endif
 
 dxvk_include_path = include_directories('./include')
