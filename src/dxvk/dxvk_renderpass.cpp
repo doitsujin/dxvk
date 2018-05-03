@@ -4,6 +4,21 @@
 
 namespace dxvk {
   
+  bool DxvkRenderPassFormat::matches(const DxvkRenderPassFormat& fmt) const {
+    bool eq = sampleCount == fmt.sampleCount;
+    
+    for (uint32_t i = 0; i < MaxNumRenderTargets && eq; i++) {
+      eq &= color[i].format == fmt.color[i].format
+         && color[i].layout == fmt.color[i].layout;
+    }
+    
+    eq &= depth.format == fmt.depth.format
+       && depth.layout == fmt.depth.layout;
+    
+    return eq;
+  }
+  
+  
   DxvkRenderPass::DxvkRenderPass(
     const Rc<vk::DeviceFn>&       vkd,
     const DxvkRenderPassFormat&   fmt)
@@ -23,19 +38,8 @@ namespace dxvk {
   }
   
   
-  bool DxvkRenderPass::hasCompatibleFormat(
-    const DxvkRenderPassFormat&  fmt) const {
-    bool eq = m_format.sampleCount == fmt.sampleCount;
-    
-    for (uint32_t i = 0; i < MaxNumRenderTargets && eq; i++) {
-      eq &= m_format.color[i].format == fmt.color[i].format
-         && m_format.color[i].layout == fmt.color[i].layout;
-    }
-    
-    eq &= m_format.depth.format == fmt.depth.format
-       && m_format.depth.layout == fmt.depth.layout;
-    
-    return eq;
+  bool DxvkRenderPass::hasCompatibleFormat(const DxvkRenderPassFormat& fmt) const {
+    return m_format.matches(fmt);
   }
   
   

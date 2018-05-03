@@ -77,32 +77,34 @@ namespace dxvk {
   
   VkPipeline DxvkGraphicsPipeline::getPipelineHandle(
     const DxvkGraphicsPipelineStateInfo& state,
+    const DxvkRenderPass&                renderPass,
           DxvkStatCounters&              stats) {
     VkPipeline pipeline = VK_NULL_HANDLE;
+    VkRenderPass renderPassHandle = renderPass.getDefaultHandle();
     
     { std::lock_guard<sync::Spinlock> lock(m_mutex);
       
-      if (this->findPipeline(state, pipeline))
+      if (this->findPipeline(state, renderPassHandle, pipeline))
         return pipeline;
     }
     
     // If no pipeline exists with the given state vector,
     // create a new one and add it to the pipeline set.
     VkPipeline newPipeline = this->validatePipelineState(state)
-      ? this->compilePipeline(state, m_basePipeline)
+      ? this->compilePipeline(state, renderPassHandle, m_basePipeline)
       : VK_NULL_HANDLE;
     
     { std::lock_guard<sync::Spinlock> lock(m_mutex);
       
       // Discard the pipeline if another thread
       // was faster compiling the same pipeline
-      if (this->findPipeline(state, pipeline)) {
+      if (this->findPipeline(state, renderPassHandle, pipeline)) {
         m_vkd->vkDestroyPipeline(m_vkd->device(), newPipeline, nullptr);
         return pipeline;
       }
       
       // Add new pipeline to the set
-      m_pipelines.push_back({ state, newPipeline });
+      m_pipelines.push_back({ state, renderPassHandle, newPipeline });
       
       if (m_basePipeline == VK_NULL_HANDLE)
         m_basePipeline = newPipeline;
@@ -115,9 +117,11 @@ namespace dxvk {
   
   bool DxvkGraphicsPipeline::findPipeline(
     const DxvkGraphicsPipelineStateInfo& state,
+          VkRenderPass                   renderPass,
           VkPipeline&                    pipeline) const {
     for (const PipelineStruct& pair : m_pipelines) {
-      if (pair.stateVector == state) {
+      if (pair.stateVector == state
+       && pair.renderPass  == renderPass) {
         pipeline = pair.pipeline;
         return true;
       }
@@ -129,6 +133,7 @@ namespace dxvk {
   
   VkPipeline DxvkGraphicsPipeline::compilePipeline(
     const DxvkGraphicsPipelineStateInfo& state,
+          VkRenderPass                   renderPass,
           VkPipeline                     baseHandle) const {
     if (Logger::logLevel() <= LogLevel::Debug) {
       Logger::debug("Compiling graphics pipeline...");
@@ -297,7 +302,7 @@ namespace dxvk {
     info.pColorBlendState         = &cbInfo;
     info.pDynamicState            = &dyInfo;
     info.layout                   = m_layout->pipelineLayout();
-    info.renderPass               = state.omRenderPass;
+    info.renderPass               = renderPass;
     info.subpass                  = 0;
     info.basePipelineHandle       = baseHandle;
     info.basePipelineIndex        = -1;
@@ -331,10 +336,6 @@ namespace dxvk {
   
   bool DxvkGraphicsPipeline::validatePipelineState(
     const DxvkGraphicsPipelineStateInfo& state) const {
-    // Make sure that we have an active render pass
-    if (state.omRenderPass == VK_NULL_HANDLE)
-      return false;
-    
     // Validate vertex input - each input slot consumed by the
     // vertex shader must be provided by the input layout.
     uint32_t providedVertexInputs = 0;

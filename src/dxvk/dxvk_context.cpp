@@ -1712,8 +1712,9 @@ namespace dxvk {
       for (uint32_t i = m_state.gp.state.ilBindingCount; i < MaxNumVertexBindings; i++)
         m_state.gp.state.ilBindings[i].stride = 0;
       
-      m_gpActivePipeline = m_state.gp.pipeline != nullptr
-        ? m_state.gp.pipeline->getPipelineHandle(m_state.gp.state, m_cmd->statCounters())
+      m_gpActivePipeline = m_state.gp.pipeline != nullptr && m_state.om.framebuffer != nullptr
+        ? m_state.gp.pipeline->getPipelineHandle(m_state.gp.state,
+            m_state.om.framebuffer->getRenderPass(), m_cmd->statCounters())
         : VK_NULL_HANDLE;
       
       if (m_gpActivePipeline != VK_NULL_HANDLE) {
@@ -1911,7 +1912,6 @@ namespace dxvk {
       auto fb = m_device->createFramebuffer(m_state.om.renderTargets);
       
       m_state.gp.state.msSampleCount = fb->getSampleCount();
-      m_state.gp.state.omRenderPass  = fb->getDefaultRenderPassHandle();
       m_state.om.framebuffer = fb;
       
       m_flags.set(DxvkContextFlag::GpDirtyPipelineState);

@@ -31,6 +31,8 @@ namespace dxvk {
     VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT;
     DxvkAttachmentFormat  depth;
     DxvkAttachmentFormat  color[MaxNumRenderTargets];
+    
+    bool matches(const DxvkRenderPassFormat& fmt) const;
   };
   
   
@@ -93,6 +95,14 @@ namespace dxvk {
       const DxvkRenderPassFormat&   fmt);
     
     ~DxvkRenderPass();
+    
+    /**
+     * \brief Retrieves render pass format
+     * \returns The render pass format
+     */
+    DxvkRenderPassFormat format() const {
+      return m_format;
+    }
     
     /**
      * \brief Checks whether a format is compatible

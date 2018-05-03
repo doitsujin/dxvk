@@ -6,6 +6,7 @@
 #include "dxvk_constant_state.h"
 #include "dxvk_pipecache.h"
 #include "dxvk_pipelayout.h"
+#include "dxvk_renderpass.h"
 #include "dxvk_resource.h"
 #include "dxvk_shader.h"
 #include "dxvk_stats.h"
@@ -73,7 +74,6 @@ namespace dxvk {
     
     VkBool32                            omEnableLogicOp;
     VkLogicOp                           omLogicOp;
-    VkRenderPass                        omRenderPass;
     VkPipelineColorBlendAttachmentState omBlendAttachments[MaxNumRenderTargets];
   };
   
@@ -129,17 +129,20 @@ namespace dxvk {
      * Retrieves a pipeline handle for the given pipeline
      * state. If necessary, a new pipeline will be created.
      * \param [in] state Pipeline state vector
+     * \param [in] renderPass The render pass
      * \param [in,out] stats Stat counter
      * \returns Pipeline handle
      */
     VkPipeline getPipelineHandle(
       const DxvkGraphicsPipelineStateInfo& state,
+      const DxvkRenderPass&                renderPass,
             DxvkStatCounters&              stats);
     
   private:
     
     struct PipelineStruct {
       DxvkGraphicsPipelineStateInfo stateVector;
+      VkRenderPass                  renderPass;
       VkPipeline                    pipeline;
     };
     
@@ -167,10 +170,12 @@ namespace dxvk {
     
     bool findPipeline(
       const DxvkGraphicsPipelineStateInfo& state,
+            VkRenderPass                   renderPass,
             VkPipeline&                    pipeline) const;
     
     VkPipeline compilePipeline(
       const DxvkGraphicsPipelineStateInfo& state,
+            VkRenderPass                   renderPass,
             VkPipeline                     baseHandle) const;
     
     void destroyPipelines();

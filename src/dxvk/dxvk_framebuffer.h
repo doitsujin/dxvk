@@ -111,6 +111,14 @@ namespace dxvk {
     }
     
     /**
+     * \brief Retrieves render pass
+     * \returns Render pass reference
+     */
+    const DxvkRenderPass& getRenderPass() const {
+      return *m_renderPass;
+    }
+    
+    /**
      * \brief Depth-stencil target
      * \returns Depth-stencil target
      */
