@@ -170,7 +170,7 @@ namespace dxvk {
       *ppTarget = nullptr;
       
       if (!m_desc.Windowed)
-        hr = this->GetContainingOutput(ppTarget);
+        hr = m_adapter->GetOutputFromMonitor(m_monitor, ppTarget);
     }
     
     return hr;

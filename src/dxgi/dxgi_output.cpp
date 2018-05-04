@@ -199,7 +199,7 @@ namespace dxvk {
         DXGI_MODE_DESC mode;
         mode.Width            = devMode.dmPelsWidth;
         mode.Height           = devMode.dmPelsHeight;
-        mode.RefreshRate      = { devMode.dmDisplayFrequency, 1 };
+        mode.RefreshRate      = { devMode.dmDisplayFrequency * 1000, 1000 };
         mode.Format           = EnumFormat;
         mode.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_PROGRESSIVE;
         mode.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
