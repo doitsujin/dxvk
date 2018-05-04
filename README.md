@@ -80,7 +80,8 @@ The following environment variables can be used for **debugging** purposes.
 - `DXVK_DEBUG_LAYERS=1` Enables Vulkan debug layers. Highly recommended for troubleshooting rendering issues and driver crashes. Requires the Vulkan SDK to be installed and set up within the wine prefix (`winetricks vulkansdk`).
 - `DXVK_CUSTOM_VENDOR_ID=<ID>` Specifies a custom PCI vendor ID
 - `DXVK_CUSTOM_DEVICE_ID=<ID>` Specifies a custom PCI device ID
-- `DXVK_LOG_LEVEL=none|error|warn|info|debug` Controls message logging.
+- `DXVK_LOG_LEVEL=none|error|warn|info|debug` Controls message logging
+- `DXVK_FAKE_DX10_SUPPORT=1` Advertizes support for D3D10 interfaces
 
 ## Troubleshooting
 DXVK requires threading support from your mingw-w64 build environment. If you
