@@ -8,12 +8,13 @@ namespace dxvk {
     const D3D11_COMMON_TEXTURE_DESC*  pDesc,
           D3D11_RESOURCE_DIMENSION    Dimension)
   : m_device(pDevice), m_desc(*pDesc) {
-    DXGI_VK_FORMAT_INFO formatInfo = m_device->LookupFormat(m_desc.Format, GetFormatMode());
+    DXGI_VK_FORMAT_MODE formatMode = GetFormatMode();
+    DXGI_VK_FORMAT_INFO formatInfo = m_device->LookupFormat(m_desc.Format, formatMode);
     
     DxvkImageCreateInfo imageInfo;
     imageInfo.type           = GetImageTypeFromResourceDim(Dimension);
     imageInfo.format         = formatInfo.Format;
-    imageInfo.flags          = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+    imageInfo.flags          = 0;
     imageInfo.sampleCount    = VK_SAMPLE_COUNT_1_BIT;
     imageInfo.extent.width   = m_desc.Width;
     imageInfo.extent.height  = m_desc.Height;
@@ -27,6 +28,14 @@ namespace dxvk {
                              | VK_ACCESS_TRANSFER_WRITE_BIT;
     imageInfo.tiling         = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.layout         = VK_IMAGE_LAYOUT_GENERAL;
+    
+    // Typeless formats require MUTABLE_FORMAT_BIT to be set, but we
+    // only need to do that for color images since depth-stencil formats
+    // are not compatible to any other depth-stencil formats
+    VkImageAspectFlags formatAspect = imageFormatInfo(formatInfo.Format)->aspectMask;
+    
+    if (formatInfo.Aspect == 0 && formatAspect == VK_IMAGE_ASPECT_COLOR_BIT)
+      imageInfo.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
     
     DecodeSampleCount(m_desc.SampleDesc.Count, &imageInfo.sampleCount);
     
