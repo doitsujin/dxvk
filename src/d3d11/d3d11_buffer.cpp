@@ -127,24 +127,19 @@ namespace dxvk {
       info.access |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
     }
     
-    return m_device->GetDXVKDevice()->createBuffer(
-      info, GetMemoryFlags(pDesc));
-  }
-  
-  
-  VkMemoryPropertyFlags D3D11Buffer::GetMemoryFlags(
-    const D3D11_BUFFER_DESC* pDesc) const {
-    // Default constant buffers may get updated frequently with calls
-    // to D3D11DeviceContext::UpdateSubresource, so we'll map them to
-    // host memory in order to allow direct access to the buffer
-    if ((pDesc->Usage == D3D11_USAGE_DEFAULT)
-     && (pDesc->BindFlags & D3D11_BIND_CONSTANT_BUFFER)) {
-      return VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-           | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    // Default constant buffers may get updated frequently, in which
+    // case mapping the buffer is faster than using update commands.
+    VkMemoryPropertyFlags memoryFlags = GetMemoryFlagsForUsage(pDesc->Usage);
+    
+    if ((pDesc->Usage == D3D11_USAGE_DEFAULT) && (pDesc->BindFlags & D3D11_BIND_CONSTANT_BUFFER)) {
+      info.stages |= VK_PIPELINE_STAGE_HOST_BIT;
+      info.access |= VK_ACCESS_HOST_WRITE_BIT;
+      
+      memoryFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                  | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
     }
     
-    // Use default memory flags for the intended use
-    return GetMemoryFlagsForUsage(pDesc->Usage);
+    return m_device->GetDXVKDevice()->createBuffer(info, memoryFlags);
   }
   
 }
