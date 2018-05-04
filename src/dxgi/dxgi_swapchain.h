@@ -89,9 +89,9 @@ namespace dxvk {
   private:
     
     struct WindowState {
-      uint32_t style   = 0;
-      uint32_t exstyle = 0;
-      RECT     rect    = { 0, 0, 0, 0 };
+      LONG style   = 0;
+      LONG exstyle = 0;
+      RECT rect    = { 0, 0, 0, 0 };
     };
     
     std::recursive_mutex m_mutex;

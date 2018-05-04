@@ -251,8 +251,6 @@ namespace dxvk {
     m_desc.BufferDesc.Width  = Width  != 0 ? Width  : windowSize.width;
     m_desc.BufferDesc.Height = Height != 0 ? Height : windowSize.height;
     
-    m_desc.Flags = SwapChainFlags;
-    
     if (BufferCount != 0)
       m_desc.BufferCount = BufferCount;
     
@@ -460,10 +458,8 @@ namespace dxvk {
     m_windowState.style = style;
     m_windowState.exstyle = exstyle;
     
-    style |= WS_POPUP | WS_SYSMENU;
-    style &= ~(WS_CAPTION | WS_THICKFRAME);
-    
-    exstyle &= ~(WS_EX_WINDOWEDGE | WS_EX_CLIENTEDGE);
+    style   &= ~WS_OVERLAPPEDWINDOW;
+    exstyle &= ~WS_EX_OVERLAPPEDWINDOW;
     
     ::SetWindowLongW(m_desc.OutputWindow, GWL_STYLE, style);
     ::SetWindowLongW(m_desc.OutputWindow, GWL_EXSTYLE, exstyle);
@@ -494,21 +490,23 @@ namespace dxvk {
     m_desc.Windowed = TRUE;
     m_monitor = nullptr;
     
-    // FIXME wine only restores window flags if the application
-    // has not modified them in the meantime. Some applications
-    // may rely on that behaviour.
-    const RECT rect = m_windowState.rect;
+    // Only restore the window style if the application hasn't
+    // changed them. This is in line with what native DXGI does.
+    LONG curStyle   = ::GetWindowLongW(m_desc.OutputWindow, GWL_STYLE) & ~WS_VISIBLE;
+    LONG curExstyle = ::GetWindowLongW(m_desc.OutputWindow, GWL_EXSTYLE) & ~WS_EX_TOPMOST;
     
-    ::SetWindowLongW(m_desc.OutputWindow, GWL_STYLE,   m_windowState.style);
-    ::SetWindowLongW(m_desc.OutputWindow, GWL_EXSTYLE, m_windowState.exstyle);
+    if (curStyle == (m_windowState.style & ~(WS_VISIBLE | WS_OVERLAPPEDWINDOW))
+     && curExstyle == (m_windowState.exstyle & ~(WS_EX_TOPMOST | WS_EX_OVERLAPPEDWINDOW))) {
+      ::SetWindowLongW(m_desc.OutputWindow, GWL_STYLE,   m_windowState.style);
+      ::SetWindowLongW(m_desc.OutputWindow, GWL_EXSTYLE, m_windowState.exstyle);
+    }
+    
+    // Restore window position and apply the style
+    const RECT rect = m_windowState.rect;
     
     ::SetWindowPos(m_desc.OutputWindow, 0,
       rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
       SWP_FRAMECHANGED | SWP_NOZORDER | SWP_NOACTIVATE);
-    
-    // We have to call this in order to actually
-    // apply the window size and properties
-    ::ShowWindow(m_desc.OutputWindow, SW_SHOW);
     
     return SetDefaultGammaControl();
   }
@@ -519,9 +517,12 @@ namespace dxvk {
     const DXGI_MODE_DESC*         pDisplayMode) {
     auto output = static_cast<DxgiOutput*>(pOutput);
     
+    if (output == nullptr)
+      return DXGI_ERROR_INVALID_CALL;
+    
+    // Find a mode that the output supports
     DXGI_MODE_DESC selectedMode;
     
-    // Find a close mode that the output supports
     HRESULT hr = output->FindClosestMatchingMode(
       pDisplayMode, &selectedMode, nullptr);
     
@@ -534,9 +535,15 @@ namespace dxvk {
   
   HRESULT DxgiSwapChain::RestoreDisplayMode(IDXGIOutput* pOutput) {
     auto output = static_cast<DxgiOutput*>(pOutput);
+    
+    if (output == nullptr)
+      return DXGI_ERROR_INVALID_CALL;
+    
+    // Restore registry settings
     DXGI_MODE_DESC mode;
     
-    HRESULT hr = output->GetDisplayMode(&mode, ENUM_REGISTRY_SETTINGS);
+    HRESULT hr = output->GetDisplayMode(
+      &mode, ENUM_REGISTRY_SETTINGS);
     
     if (FAILED(hr))
       return hr;
