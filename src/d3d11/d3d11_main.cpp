@@ -26,7 +26,7 @@ extern "C" {
           ID3D11Device        **ppDevice,
           D3D_FEATURE_LEVEL   *pFeatureLevel,
           ID3D11DeviceContext **ppImmediateContext) {
-    Com<IDXGIAdapter>        dxgiAdapter = pAdapter;
+    Com<IDXGIAdapter>   dxgiAdapter = pAdapter;
     Com<IDXGIVkAdapter> dxvkAdapter = nullptr;
     
     if (dxgiAdapter == nullptr) {
