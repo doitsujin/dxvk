@@ -787,6 +787,13 @@ namespace dxvk {
         return E_INVALIDARG;
     }
     
+    // Normalize view type so that we won't accidentally
+    // bind 2D array views and 2D views at the same time
+    if (viewInfo.numLayers == 1) {
+      if (viewInfo.type == VK_IMAGE_VIEW_TYPE_1D_ARRAY) viewInfo.type = VK_IMAGE_VIEW_TYPE_1D;
+      if (viewInfo.type == VK_IMAGE_VIEW_TYPE_2D_ARRAY) viewInfo.type = VK_IMAGE_VIEW_TYPE_2D;
+    }
+    
     // Create the actual image view if requested
     if (ppRTView == nullptr)
       return S_FALSE;
@@ -903,6 +910,13 @@ namespace dxvk {
           "D3D11: pDesc->ViewDimension not supported for depth-stencil views: ",
           desc.ViewDimension));
         return E_INVALIDARG;
+    }
+    
+    // Normalize view type so that we won't accidentally
+    // bind 2D array views and 2D views at the same time
+    if (viewInfo.numLayers == 1) {
+      if (viewInfo.type == VK_IMAGE_VIEW_TYPE_1D_ARRAY) viewInfo.type = VK_IMAGE_VIEW_TYPE_1D;
+      if (viewInfo.type == VK_IMAGE_VIEW_TYPE_2D_ARRAY) viewInfo.type = VK_IMAGE_VIEW_TYPE_2D;
     }
     
     // Create the actual image view if requested
