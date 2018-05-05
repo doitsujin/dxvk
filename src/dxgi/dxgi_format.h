@@ -12,12 +12,13 @@ namespace dxvk {
    * Maps a DXGI format to a set of Vulkan formats.
    */
   struct DXGI_VK_FORMAT_MAPPING {
-    VkFormat              FormatColor = VK_FORMAT_UNDEFINED;  ///< Corresponding color format
-    VkFormat              FormatDepth = VK_FORMAT_UNDEFINED;  ///< Corresponding depth format
-    VkFormat              FormatRaw   = VK_FORMAT_UNDEFINED;  ///< Bit-compatible integer format
-    VkImageAspectFlags    AspectColor = 0;                    ///< Defined aspects for the color format
-    VkImageAspectFlags    AspectDepth = 0;                    ///< Defined aspects for the depth format
-    VkComponentMapping    Swizzle     = {                     ///< Color component swizzle
+    DXGI_FORMAT           FormatFamily  = DXGI_FORMAT_UNKNOWN;  ///< Typeless format family
+    VkFormat              FormatColor   = VK_FORMAT_UNDEFINED;  ///< Corresponding color format
+    VkFormat              FormatDepth   = VK_FORMAT_UNDEFINED;  ///< Corresponding depth format
+    VkFormat              FormatRaw     = VK_FORMAT_UNDEFINED;  ///< Bit-compatible integer format
+    VkImageAspectFlags    AspectColor   = 0;                    ///< Defined aspects for the color format
+    VkImageAspectFlags    AspectDepth   = 0;                    ///< Defined aspects for the depth format
+    VkComponentMapping    Swizzle       = {                     ///< Color component swizzle
       VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
       VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
   };
@@ -52,6 +53,15 @@ namespace dxvk {
     DXGI_VK_FORMAT_MODE_DEPTH = 2,  ///< Depth only
     DXGI_VK_FORMAT_MODE_RAW   = 3,  ///< Unsigned integer format
   };
+  
+  /**
+   * \brief Retrieves a format mapping entry
+   * 
+   * \param [in] Format The format to look up
+   * \returns Pointer to the map entry
+   */
+  const DXGI_VK_FORMAT_MAPPING* GetDXGIFormatMapping(
+          DXGI_FORMAT         Format);
   
   /**
    * \brief Retrieves info for a given DXGI format

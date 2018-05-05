@@ -1642,10 +1642,16 @@ namespace dxvk {
   }
   
   
-  DXGI_VK_FORMAT_INFO STDMETHODCALLTYPE D3D11Device::LookupFormat(
-          DXGI_FORMAT           format,
-          DXGI_VK_FORMAT_MODE   mode) const {
-    return m_dxgiAdapter->LookupFormat(format, mode);
+  DXGI_VK_FORMAT_MAPPING D3D11Device::GetFormatMapping(
+          DXGI_FORMAT           Format) const {
+    return m_dxgiAdapter->GetFormatMapping(Format);
+  }
+  
+  
+  DXGI_VK_FORMAT_INFO D3D11Device::LookupFormat(
+          DXGI_FORMAT           Format,
+          DXGI_VK_FORMAT_MODE   Mode) const {
+    return m_dxgiAdapter->LookupFormat(Format, Mode);
   }
   
   
