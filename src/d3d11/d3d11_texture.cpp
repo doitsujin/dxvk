@@ -166,6 +166,25 @@ namespace dxvk {
   }
   
   
+  bool D3D11CommonTexture::CheckViewFormatCompatibility(DXGI_FORMAT Format) const {
+    DXGI_VK_FORMAT_MAPPING baseFormat = m_device->GetFormatMapping(m_desc.Format);
+    DXGI_VK_FORMAT_MAPPING viewFormat = m_device->GetFormatMapping(Format);
+    
+    // The view format cannot be typeless
+    if (Format == viewFormat.FormatFamily)
+      return false;
+    
+    // If the resource is strongly typed, the view
+    // format must be identical to the base format.
+    if (m_desc.Format != baseFormat.FormatFamily)
+      return Format == m_desc.Format;
+    
+    // If the resource is typeless, the view format
+    // must be part of the same format family.
+    return viewFormat.FormatFamily == baseFormat.FormatFamily;
+  }
+  
+  
   HRESULT D3D11CommonTexture::NormalizeTextureProperties(D3D11_COMMON_TEXTURE_DESC* pDesc) {
     if (FAILED(DecodeSampleCount(pDesc->SampleDesc.Count, nullptr)))
       return E_INVALIDARG;

@@ -360,7 +360,15 @@ namespace dxvk {
       const D3D11CommonTexture* textureInfo = GetCommonTexture(pResource);
       
       if ((textureInfo->Desc()->BindFlags & D3D11_BIND_SHADER_RESOURCE) == 0) {
-        Logger::warn("D3D11: Trying to create SRV for texture without D3D11_BIND_SHADER_RESOURCE");
+        Logger::err("D3D11: Trying to create SRV for texture without D3D11_BIND_SHADER_RESOURCE");
+        return E_INVALIDARG;
+      }
+      
+      // Check whether we can use the requested format for the view
+      if (!textureInfo->CheckViewFormatCompatibility(desc.Format)) {
+        Logger::err(str::format("D3D11: Incompatible SRV formats",
+          "\n  Base format: ", textureInfo->Desc()->Format,
+          "\n  View format: ", desc.Format));
         return E_INVALIDARG;
       }
       
@@ -567,6 +575,14 @@ namespace dxvk {
         return E_INVALIDARG;
       }
       
+      // Check whether we can use the requested format for the view
+      if (!textureInfo->CheckViewFormatCompatibility(desc.Format)) {
+        Logger::err(str::format("D3D11: Incompatible UAV formats",
+          "\n  Base format: ", textureInfo->Desc()->Format,
+          "\n  View format: ", desc.Format));
+        return E_INVALIDARG;
+      }
+      
       // Fill in the view info. The view type depends solely
       // on the view dimension field in the view description,
       // not on the resource type.
@@ -687,6 +703,14 @@ namespace dxvk {
       return E_INVALIDARG;
     }
     
+    // Check whether we can use the requested format for the view
+    if (!textureInfo->CheckViewFormatCompatibility(desc.Format)) {
+      Logger::err(str::format("D3D11: Incompatible RTV formats",
+        "\n  Base format: ", textureInfo->Desc()->Format,
+        "\n  View format: ", desc.Format));
+      return E_INVALIDARG;
+    }
+    
     // Fill in Vulkan image view info
     DxvkImageViewCreateInfo viewInfo;
     viewInfo.format = m_dxgiAdapter->LookupFormat(desc.Format, DXGI_VK_FORMAT_MODE_COLOR).Format;
@@ -802,6 +826,14 @@ namespace dxvk {
     
     if ((textureInfo->Desc()->BindFlags & D3D11_BIND_DEPTH_STENCIL) == 0) {
       Logger::warn("D3D11: Trying to create DSV for texture without D3D11_BIND_DEPTH_STENCIL");
+      return E_INVALIDARG;
+    }
+    
+    // Check whether we can use the requested format for the view
+    if (!textureInfo->CheckViewFormatCompatibility(desc.Format)) {
+      Logger::err(str::format("D3D11: Incompatible DSV formats",
+        "\n  Base format: ", textureInfo->Desc()->Format,
+        "\n  View format: ", desc.Format));
       return E_INVALIDARG;
     }
     
