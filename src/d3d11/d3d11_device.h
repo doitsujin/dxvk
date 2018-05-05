@@ -322,9 +322,6 @@ namespace dxvk {
     
     VkPipelineStageFlags GetEnabledShaderStages() const;
     
-    DXGI_VK_FORMAT_MAPPING GetFormatMapping(
-            DXGI_FORMAT           Format) const;
-    
     DXGI_VK_FORMAT_INFO LookupFormat(
             DXGI_FORMAT           Format,
             DXGI_VK_FORMAT_MODE   Mode) const;

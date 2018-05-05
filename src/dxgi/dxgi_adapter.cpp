@@ -188,12 +188,6 @@ namespace dxvk {
   }
   
   
-  DXGI_VK_FORMAT_MAPPING STDMETHODCALLTYPE DxgiAdapter::GetFormatMapping(
-          DXGI_FORMAT               Format) {
-    return *GetDXGIFormatMapping(Format);
-  }
-  
-  
   DXGI_VK_FORMAT_INFO STDMETHODCALLTYPE DxgiAdapter::LookupFormat(
           DXGI_FORMAT               Format,
           DXGI_VK_FORMAT_MODE       Mode) {

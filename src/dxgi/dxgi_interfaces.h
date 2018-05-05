@@ -59,19 +59,6 @@ IDXGIVkAdapter : public IDXGIAdapter1 {
           IDXGIVkDevice**           ppDevice) = 0;
   
   /**
-   * \brief Retrieves a format mapping entry for a DXGI format
-   * 
-   * Returns the raw format mapping entry, which contains
-   * the corresponding Vulkan formats for color images,
-   * depth images, and raw image operations, as well as
-   * some generic info about the format.
-   * \param [in] Format The DXGI format
-   * \returns The format mapping entry
-   */
-  virtual dxvk::DXGI_VK_FORMAT_MAPPING STDMETHODCALLTYPE GetFormatMapping(
-          DXGI_FORMAT               Format) = 0;
-  
-  /**
    * \brief Maps a DXGI format to a compatible Vulkan format
    * 
    * For color formats, the returned Vulkan format has the

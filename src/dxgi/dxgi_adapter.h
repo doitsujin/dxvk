@@ -54,9 +54,6 @@ namespace dxvk {
       const VkPhysicalDeviceFeatures* pFeatures,
             IDXGIVkDevice**           ppDevice) final;
     
-    DXGI_VK_FORMAT_MAPPING STDMETHODCALLTYPE GetFormatMapping(
-            DXGI_FORMAT               Format) final;
-    
     DXGI_VK_FORMAT_INFO STDMETHODCALLTYPE LookupFormat(
             DXGI_FORMAT               Format,
             DXGI_VK_FORMAT_MODE       Mode) final;

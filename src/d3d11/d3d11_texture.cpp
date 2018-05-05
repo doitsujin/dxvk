@@ -29,15 +29,15 @@ namespace dxvk {
     imageInfo.tiling         = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.layout         = VK_IMAGE_LAYOUT_GENERAL;
     
-    // Typeless formats require MUTABLE_FORMAT_BIT to be set, but we
-    // only need to do that for color images since depth-stencil formats
-    // are not compatible to any other depth-stencil formats
+    DecodeSampleCount(m_desc.SampleDesc.Count, &imageInfo.sampleCount);
+    
+    // Color formats require MUTABLE_FORMAT_BIT to be set since
+    // they can be reinterpreted, especially typeless formats.
+    // Depth-stencil formats are not compatible to each other.
     VkImageAspectFlags formatAspect = imageFormatInfo(formatInfo.Format)->aspectMask;
     
-    if (formatInfo.Aspect == 0 && formatAspect == VK_IMAGE_ASPECT_COLOR_BIT)
+    if (formatAspect & VK_IMAGE_ASPECT_COLOR_BIT)
       imageInfo.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
-    
-    DecodeSampleCount(m_desc.SampleDesc.Count, &imageInfo.sampleCount);
     
     // Adjust image flags based on the corresponding D3D flags
     if (m_desc.BindFlags & D3D11_BIND_SHADER_RESOURCE) {
@@ -167,21 +167,28 @@ namespace dxvk {
   
   
   bool D3D11CommonTexture::CheckViewFormatCompatibility(DXGI_FORMAT Format) const {
-    DXGI_VK_FORMAT_MAPPING baseFormat = m_device->GetFormatMapping(m_desc.Format);
-    DXGI_VK_FORMAT_MAPPING viewFormat = m_device->GetFormatMapping(Format);
+    DXGI_VK_FORMAT_MODE formatMode = GetFormatMode();
+    DXGI_VK_FORMAT_INFO baseFormat = m_device->LookupFormat(m_desc.Format, formatMode);
+    DXGI_VK_FORMAT_INFO viewFormat = m_device->LookupFormat(Format, formatMode);
     
-    // The view format cannot be typeless
-    if (Format == viewFormat.FormatFamily)
+    // Identical formats always pass this test
+    if (baseFormat.Format == viewFormat.Format)
+      return true;
+    
+    // The available image aspects must match
+    auto baseFormatInfo = imageFormatInfo(baseFormat.Format);
+    auto viewFormatInfo = imageFormatInfo(viewFormat.Format);
+    
+    if (baseFormatInfo->aspectMask != viewFormatInfo->aspectMask)
       return false;
     
-    // If the resource is strongly typed, the view
-    // format must be identical to the base format.
-    if (m_desc.Format != baseFormat.FormatFamily)
-      return Format == m_desc.Format;
+    // Color formats can be reinterpreted. This is not restricted
+    // to typeless formats, we we can create SRGB views for UNORM
+    // textures as well etc. as long as they are bit-compatible.
+    if (baseFormatInfo->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT)
+      return baseFormatInfo->elementSize == viewFormatInfo->elementSize;
     
-    // If the resource is typeless, the view format
-    // must be part of the same format family.
-    return viewFormat.FormatFamily == baseFormat.FormatFamily;
+    return false;
   }
   
   
