@@ -383,6 +383,13 @@ namespace dxvk {
       viewInfo.aspect  = formatInfo.Aspect;
       viewInfo.swizzle = formatInfo.Swizzle;
       
+      // Shaders expect the stencil value in the G component
+      if (viewInfo.aspect == VK_IMAGE_ASPECT_STENCIL_BIT) {
+        viewInfo.swizzle = VkComponentMapping {
+          VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_R,
+          VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_ZERO };
+      }
+      
       switch (desc.ViewDimension) {
         case D3D11_SRV_DIMENSION_TEXTURE1D:
           viewInfo.type      = VK_IMAGE_VIEW_TYPE_1D;
