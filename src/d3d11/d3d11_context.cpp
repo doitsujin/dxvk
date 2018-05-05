@@ -2109,13 +2109,15 @@ namespace dxvk {
           UINT                              NumViews,
           ID3D11RenderTargetView* const*    ppRenderTargetViews,
           ID3D11DepthStencilView*           pDepthStencilView) {
+    // Native D3D11 does not change the render targets if
+    // the parameters passed to this method are invalid.
+    if (!ValidateRenderTargets(NumViews, ppRenderTargetViews, pDepthStencilView))
+      return;
+    
     for (UINT i = 0; i < m_state.om.renderTargetViews.size(); i++) {
-      D3D11RenderTargetView* view = nullptr;
-      
-      if ((i < NumViews) && (ppRenderTargetViews[i] != nullptr))
-        view = static_cast<D3D11RenderTargetView*>(ppRenderTargetViews[i]);
-      
-      m_state.om.renderTargetViews.at(i) = view;
+      m_state.om.renderTargetViews.at(i) = i < NumViews
+        ? static_cast<D3D11RenderTargetView*>(ppRenderTargetViews[i])
+        : nullptr;
     }
     
     m_state.om.depthStencilView = static_cast<D3D11DepthStencilView*>(pDepthStencilView);
@@ -2966,6 +2968,48 @@ namespace dxvk {
   }
   
   
+  bool D3D11DeviceContext::ValidateRenderTargets(
+          UINT                              NumViews,
+          ID3D11RenderTargetView* const*    ppRenderTargetViews,
+          ID3D11DepthStencilView*           pDepthStencilView) {
+    Rc<DxvkImageView> refView;
+    
+    if (pDepthStencilView != nullptr) {
+      refView = static_cast<D3D11DepthStencilView*>(
+        pDepthStencilView)->GetImageView();
+    }
+    
+    for (uint32_t i = 0; i < NumViews; i++) {
+      if (ppRenderTargetViews[i] != nullptr) {
+        auto curView = static_cast<D3D11RenderTargetView*>(
+          ppRenderTargetViews[i])->GetImageView();
+        
+        if (refView != nullptr) {
+          // Render target views must all have the same
+          // size, sample count, layer count, and type
+          if (curView->info().type      != refView->info().type
+           || curView->info().numLayers != refView->info().numLayers)
+            return false;
+          
+          if (curView->imageInfo().sampleCount
+           != refView->imageInfo().sampleCount)
+            return false;
+          
+          if (curView->mipLevelExtent(0)
+           != refView->mipLevelExtent(0)) 
+            return false;
+        } else {
+          // Set reference view. All remaining views
+          // must be compatible to the reference view.
+          refView = curView;
+        }
+      }
+    }
+    
+    return true;
+  }
+  
+    
   DxvkDataSlice D3D11DeviceContext::AllocUpdateBufferSlice(size_t Size) {
     constexpr size_t UpdateBufferSize = 4 * 1024 * 1024;
     

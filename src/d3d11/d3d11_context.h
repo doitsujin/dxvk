@@ -775,6 +775,11 @@ namespace dxvk {
             DxbcProgramType                   Stage,
             D3D11UnorderedAccessBindings&     Bindings);
     
+    bool ValidateRenderTargets(
+            UINT                              NumViews,
+            ID3D11RenderTargetView* const*    ppRenderTargetViews,
+            ID3D11DepthStencilView*           pDepthStencilView);
+    
     DxvkDataSlice AllocUpdateBufferSlice(size_t Size);
     
     template<typename Cmd>
