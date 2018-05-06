@@ -2,7 +2,7 @@
 
 #include "dxgi_include.h"
 
-#include "../dxvk/dxvk_include.h"
+#include "../dxvk/dxvk_adapter.h"
 
 namespace dxvk {
   
@@ -53,15 +53,46 @@ namespace dxvk {
     DXGI_VK_FORMAT_MODE_RAW   = 3,  ///< Unsigned integer format
   };
   
+  
   /**
-   * \brief Retrieves info for a given DXGI format
+   * \brief Format table
    * 
-   * \param [in] Format The DXGI format to look up
-   * \param [in] Mode the format lookup mode
-   * \returns Format info
+   * Initializes a format table for a specific
+   * device and provides methods to look up
+   * formats.
    */
-  DXGI_VK_FORMAT_INFO GetDXGIFormatInfo(
-          DXGI_FORMAT         Format,
-          DXGI_VK_FORMAT_MODE Mode);
+  class DXGIVkFormatTable {
+    
+  public:
+    
+    DXGIVkFormatTable(
+      const Rc<DxvkAdapter>& adapter);
+    ~DXGIVkFormatTable();
+    
+    /**
+     * \brief Retrieves info for a given DXGI format
+     * 
+     * \param [in] Format The DXGI format to look up
+     * \param [in] Mode the format lookup mode
+     * \returns Format info
+     */
+    DXGI_VK_FORMAT_INFO GetFormatInfo(
+            DXGI_FORMAT         Format,
+            DXGI_VK_FORMAT_MODE Mode) const;
+    
+  private:
+    
+    std::array<DXGI_VK_FORMAT_MAPPING, 133> m_dxgiFormats;
+    
+    bool CheckImageFormatSupport(
+      const Rc<DxvkAdapter>&      Adapter,
+            VkFormat              Format,
+            VkFormatFeatureFlags  Features) const;
+    
+    void RemapDepthFormat(
+            DXGI_FORMAT           Format,
+            VkFormat              Target);
+        
+  };
   
 };

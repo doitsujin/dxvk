@@ -18,7 +18,8 @@ namespace dxvk {
           DxgiFactory*      factory,
     const Rc<DxvkAdapter>&  adapter)
   : m_factory (factory),
-    m_adapter (adapter) {
+    m_adapter (adapter),
+    m_formats (adapter) {
     
   }
   
@@ -191,7 +192,7 @@ namespace dxvk {
   DXGI_VK_FORMAT_INFO STDMETHODCALLTYPE DxgiAdapter::LookupFormat(
           DXGI_FORMAT               Format,
           DXGI_VK_FORMAT_MODE       Mode) {
-    return GetDXGIFormatInfo(Format, Mode);
+    return m_formats.GetFormatInfo(Format, Mode);
   }
   
   

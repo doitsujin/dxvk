@@ -216,21 +216,21 @@ namespace dxvk {
       VK_IMAGE_ASPECT_COLOR_BIT },
     // DXGI_FORMAT_R24G8_TYPELESS
     { VK_FORMAT_UNDEFINED,
-      VK_FORMAT_D32_SFLOAT_S8_UINT,
+      VK_FORMAT_D24_UNORM_S8_UINT,
       VK_FORMAT_UNDEFINED },
     // DXGI_FORMAT_D24_UNORM_S8_UINT
     { VK_FORMAT_UNDEFINED,
-      VK_FORMAT_D32_SFLOAT_S8_UINT,
+      VK_FORMAT_D24_UNORM_S8_UINT,
       VK_FORMAT_UNDEFINED,
       0, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT },
     // DXGI_FORMAT_R24_UNORM_X8_TYPELESS
     { VK_FORMAT_UNDEFINED,
-      VK_FORMAT_D32_SFLOAT_S8_UINT,
+      VK_FORMAT_D24_UNORM_S8_UINT,
       VK_FORMAT_UNDEFINED,
       0, VK_IMAGE_ASPECT_DEPTH_BIT },
     // DXGI_FORMAT_X24_TYPELESS_G8_UINT
     { VK_FORMAT_UNDEFINED,
-      VK_FORMAT_D32_SFLOAT_S8_UINT,
+      VK_FORMAT_D24_UNORM_S8_UINT,
       VK_FORMAT_UNDEFINED,
       0, VK_IMAGE_ASPECT_STENCIL_BIT },
     // DXGI_FORMAT_R8G8_TYPELESS
@@ -533,21 +533,36 @@ namespace dxvk {
   }};
   
   
-  const DXGI_VK_FORMAT_MAPPING& GetDXGIFormatMapping(
-          DXGI_FORMAT         Format) {
-    const size_t formatId = size_t(Format);
-    
-    return formatId < g_dxgiFormats.size()
-      ? g_dxgiFormats[formatId]
-      : g_dxgiFormats[0];
+  DXGIVkFormatTable::DXGIVkFormatTable(const Rc<DxvkAdapter>& adapter)
+  : m_dxgiFormats(g_dxgiFormats) {
+    // AMD do not support 24-bit depth buffers on Vulkan,
+    // so we have to fall back to a 32-bit depth format.
+    if (!CheckImageFormatSupport(adapter, VK_FORMAT_D24_UNORM_S8_UINT,
+          VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT |
+          VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)) {
+      Logger::warn("DXGI: VK_FORMAT_D24_UNORM_S8_UINT -> VK_FORMAT_D32_SFLOAT_S8_UINT");
+      RemapDepthFormat(DXGI_FORMAT_R24G8_TYPELESS,        VK_FORMAT_D32_SFLOAT_S8_UINT);
+      RemapDepthFormat(DXGI_FORMAT_R24_UNORM_X8_TYPELESS, VK_FORMAT_D32_SFLOAT_S8_UINT);
+      RemapDepthFormat(DXGI_FORMAT_X24_TYPELESS_G8_UINT,  VK_FORMAT_D32_SFLOAT_S8_UINT);
+      RemapDepthFormat(DXGI_FORMAT_D24_UNORM_S8_UINT,     VK_FORMAT_D32_SFLOAT_S8_UINT);
+    }
   }
   
   
-  DXGI_VK_FORMAT_INFO GetDXGIFormatInfo(
+  DXGIVkFormatTable::~DXGIVkFormatTable() {
+    
+  }
+  
+  
+  DXGI_VK_FORMAT_INFO DXGIVkFormatTable::GetFormatInfo(
           DXGI_FORMAT         Format,
-          DXGI_VK_FORMAT_MODE Mode) {
+          DXGI_VK_FORMAT_MODE Mode) const {
+    const size_t formatId = size_t(Format);
+    
     const DXGI_VK_FORMAT_MAPPING& mapping
-      = GetDXGIFormatMapping(Format);
+      = formatId < m_dxgiFormats.size()
+        ? m_dxgiFormats[formatId]
+        : m_dxgiFormats[0];
     
     switch (Mode) {
       case DXGI_VK_FORMAT_MODE_ANY:
@@ -565,8 +580,26 @@ namespace dxvk {
         return { mapping.FormatRaw, mapping.AspectColor };
     }
     
-    Logger::err("DXGI: GetDXGIFormatInfo: Internal error");
+    Logger::err("DXGI: GetFormatInfo: Internal error");
     return DXGI_VK_FORMAT_INFO();
+  }
+  
+  
+  bool DXGIVkFormatTable::CheckImageFormatSupport(
+    const Rc<DxvkAdapter>&      Adapter,
+          VkFormat              Format,
+          VkFormatFeatureFlags  Features) const {
+    VkFormatProperties supported = Adapter->formatProperties(VK_FORMAT_D24_UNORM_S8_UINT);
+    
+    return (supported.linearTilingFeatures  & Features) == Features
+        || (supported.optimalTilingFeatures & Features) == Features;
+  }
+  
+  
+  void DXGIVkFormatTable::RemapDepthFormat(
+          DXGI_FORMAT         Format,
+          VkFormat            Target) {
+    m_dxgiFormats[uint32_t(Format)].FormatDepth = Target;
   }
   
 }

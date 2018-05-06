@@ -1,13 +1,9 @@
 #pragma once
 
-#include <initializer_list>
-#include <memory>
+#include <mutex>
 #include <unordered_map>
-#include <vector>
-#include <string>
 
-#include <dxvk_adapter.h>
-
+#include "dxgi_format.h"
 #include "dxgi_interfaces.h"
 #include "dxgi_output.h"
 
@@ -76,6 +72,8 @@ namespace dxvk {
     
     Com<DxgiFactory>  m_factory;
     Rc<DxvkAdapter>   m_adapter;
+    
+    DXGIVkFormatTable m_formats;
     
     std::mutex        m_outputMutex;
     OutputMap         m_outputData;
