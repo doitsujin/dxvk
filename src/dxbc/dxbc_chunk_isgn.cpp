@@ -20,7 +20,7 @@ namespace dxvk {
       entry.registerId      = reader.readu32();
       entry.componentMask   = bit::extract(reader.readu32(), 0, 3);
       
-      m_entries.push_back(entry);
+      m_entries.emplace_back(entry);
     }
   }
   
