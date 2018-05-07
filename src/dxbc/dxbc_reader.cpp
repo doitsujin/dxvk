@@ -15,7 +15,7 @@ namespace dxvk {
     std::string result;
     
     while (m_data[m_pos] != '\0')
-      result.push_back(m_data[m_pos++]);
+      result.emplace_back(m_data[m_pos++]);
     
     m_pos++;
     return result;
