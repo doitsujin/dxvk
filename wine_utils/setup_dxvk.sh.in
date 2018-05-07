@@ -10,10 +10,10 @@ if [ ! -f "$dlls_dir/d3d11.dll" ] || [ ! -f "$dlls_dir/dxgi.dll" ]; then
     exit 1
 fi
 
+[ -z "$wine" ] && wine="wine"
+
 if [ $build_arch == "x86_64" ]; then
-    wine=wine64
-else
-    wine=wine
+    wine="${wine}64"
 fi
 
 quiet=false
@@ -82,7 +82,7 @@ ret=0
 function removeOverride {
     echo -n '    [1/2] Removing override... '
     local out
-    out=$(wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1 /d builtin /f 2>&1)
+    out=$($wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1 /d builtin /f 2>&1)
     if [ $? -ne 0 ]; then
         echo -e "\\e[1;31m$out\\e[0m"
         exit 1
@@ -108,7 +108,7 @@ function checkOverride {
     echo -n '    [1/2] Checking override... '
     echo -en '\e[1;31m'
     local ovr
-    ovr="$(wine reg query 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1)"
+    ovr="$($wine reg query 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1)"
     if [ $? -ne 0 ]; then
         echo -en '\e[1;0m'
         exit 1
@@ -132,7 +132,7 @@ function checkOverride {
 function createOverride {
     echo -n '    [1/2] Creating override... '
     local out
-    out=$(wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1 /d native /f 2>&1)
+    out=$($wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1 /d native /f 2>&1)
     if [ $? -ne 0 ]; then
         echo -e "\\e[1;31m$out\\e[0m"
         exit 1
