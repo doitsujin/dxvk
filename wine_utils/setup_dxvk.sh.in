@@ -10,10 +10,18 @@ if [ ! -f "$dlls_dir/d3d11.dll" ] || [ ! -f "$dlls_dir/dxgi.dll" ]; then
     exit 1
 fi
 
-[ -z "$wine" ] && wine="wine"
+if [ -z "$wine" ]; then
+    if [ $build_arch == "x86_64" ]; then
+        wine="wine64"
+    else
+        wine="wine"
+    fi
+fi
 
-if [ $build_arch == "x86_64" ]; then
-    wine="${wine}64"
+winever=`$wine --version | grep wine`
+if [ -z "$winever" ]; then
+    echo "$wine:"' Not a wine executable. Check your $wine.' >&2
+    exit 1
 fi
 
 quiet=false
