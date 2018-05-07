@@ -113,7 +113,7 @@ namespace dxvk {
   void DxvkBufferTracker::freeBufferSlice(
     const Rc<DxvkBuffer>&           buffer,
     const DxvkPhysicalBufferSlice&  slice) {
-    m_entries.push_back({ buffer, slice });
+    m_entries.emplace_back({ buffer, slice });
   }
   
   
