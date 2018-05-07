@@ -48,7 +48,7 @@ namespace dxvk {
   : m_stage(stage), m_code(code), m_interface(iface) {
     // Write back resource slot infos
     for (uint32_t i = 0; i < slotCount; i++)
-      m_slots.push_back(slotInfos[i]);
+      m_slots.emplace_back(slotInfos[i]);
     
     // Gather the offsets where the binding IDs
     // are stored so we can quickly remap them.
@@ -56,7 +56,7 @@ namespace dxvk {
       if (ins.opCode() == spv::OpDecorate
        && ((ins.arg(2) == spv::DecorationBinding)
         || (ins.arg(2) == spv::DecorationSpecId)))
-        m_idOffsets.push_back(ins.offset() + 3);
+        m_idOffsets.emplace_back(ins.offset() + 3);
     }
   }
   
