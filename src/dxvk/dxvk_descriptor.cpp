@@ -8,7 +8,7 @@ namespace dxvk {
     // Allocate one pool right away so that there
     // is always at least one pool available when
     // allocating a descriptor set
-    m_pools.push_back(createDescriptorPool());
+    m_pools.emplace_back(createDescriptorPool());
   }
   
   
@@ -25,7 +25,7 @@ namespace dxvk {
     
     if (set == VK_NULL_HANDLE) {
       if (++m_poolId >= m_pools.size())
-        m_pools.push_back(createDescriptorPool());
+        m_pools.emplace_back(createDescriptorPool());
       
       set = allocFrom(m_pools[m_poolId], layout);
     }
