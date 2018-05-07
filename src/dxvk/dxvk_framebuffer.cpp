@@ -94,15 +94,27 @@ namespace dxvk {
   
   DxvkFramebufferSize DxvkFramebuffer::computeRenderSize(
     const DxvkFramebufferSize& defaultSize) const {
-    if (m_renderTargets.depth.view != nullptr)
-      return this->computeRenderTargetSize(m_renderTargets.depth.view);
+    // Some games bind render targets of a different size and
+    // expect it to work, so we'll compute the minimum size
+    DxvkFramebufferSize minSize = defaultSize;
     
-    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
-      if (m_renderTargets.color[i].view != nullptr)
-        return this->computeRenderTargetSize(m_renderTargets.color[i].view);
+    if (m_renderTargets.depth.view != nullptr) {
+      DxvkFramebufferSize depthSize = this->computeRenderTargetSize(m_renderTargets.depth.view);
+      minSize.width  = std::min(minSize.width,  depthSize.width);
+      minSize.height = std::min(minSize.height, depthSize.height);
+      minSize.layers = std::min(minSize.layers, depthSize.layers);
     }
     
-    return defaultSize;
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+      if (m_renderTargets.color[i].view != nullptr) {
+        DxvkFramebufferSize colorSize = this->computeRenderTargetSize(m_renderTargets.color[i].view);
+        minSize.width  = std::min(minSize.width,  colorSize.width);
+        minSize.height = std::min(minSize.height, colorSize.height);
+        minSize.layers = std::min(minSize.layers, colorSize.layers);
+      }
+    }
+    
+    return minSize;
   }
   
   

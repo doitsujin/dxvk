@@ -2994,10 +2994,6 @@ namespace dxvk {
           if (curView->imageInfo().sampleCount
            != refView->imageInfo().sampleCount)
             return false;
-          
-          if (curView->mipLevelExtent(0)
-           != refView->mipLevelExtent(0)) 
-            return false;
         } else {
           // Set reference view. All remaining views
           // must be compatible to the reference view.
