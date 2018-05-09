@@ -8,11 +8,9 @@ namespace dxvk {
   
   DxvkContext::DxvkContext(
     const Rc<DxvkDevice>&           device,
-    const Rc<DxvkPipelineCache>&    pipelineCache,
     const Rc<DxvkPipelineManager>&  pipelineManager,
     const Rc<DxvkMetaClearObjects>& metaClearObjects)
   : m_device    (device),
-    m_pipeCache (pipelineCache),
     m_pipeMgr   (pipelineManager),
     m_metaClear (metaClearObjects) { }
   
@@ -1654,8 +1652,7 @@ namespace dxvk {
       m_flags.clr(DxvkContextFlag::CpDirtyPipeline);
       
       m_state.cp.state.bsBindingState.clear();
-      m_state.cp.pipeline = m_pipeMgr->createComputePipeline(
-        m_pipeCache, m_state.cp.cs.shader);
+      m_state.cp.pipeline = m_pipeMgr->createComputePipeline(m_state.cp.cs.shader);
       
       if (m_state.cp.pipeline != nullptr)
         m_cmd->trackResource(m_state.cp.pipeline);
@@ -1686,7 +1683,7 @@ namespace dxvk {
       
       m_state.gp.state.bsBindingState.clear();
       m_state.gp.pipeline = m_pipeMgr->createGraphicsPipeline(
-        m_pipeCache, m_state.gp.vs.shader,
+        m_state.gp.vs.shader,
         m_state.gp.tcs.shader, m_state.gp.tes.shader,
         m_state.gp.gs.shader, m_state.gp.fs.shader);
       

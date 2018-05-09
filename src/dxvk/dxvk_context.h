@@ -29,7 +29,6 @@ namespace dxvk {
     
     DxvkContext(
       const Rc<DxvkDevice>&           device,
-      const Rc<DxvkPipelineCache>&    pipelineCache,
       const Rc<DxvkPipelineManager>&  pipelineManager,
       const Rc<DxvkMetaClearObjects>& metaClearObjects);
     ~DxvkContext();
@@ -620,7 +619,6 @@ namespace dxvk {
   private:
     
     const Rc<DxvkDevice>            m_device;
-    const Rc<DxvkPipelineCache>     m_pipeCache;
     const Rc<DxvkPipelineManager>   m_pipeMgr;
     const Rc<DxvkMetaClearObjects>  m_metaClear;
     

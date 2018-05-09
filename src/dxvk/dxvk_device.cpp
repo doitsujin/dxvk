@@ -15,7 +15,6 @@ namespace dxvk {
     m_properties      (adapter->deviceProperties()),
     m_memory          (new DxvkMemoryAllocator  (adapter, vkd)),
     m_renderPassPool  (new DxvkRenderPassPool   (vkd)),
-    m_pipelineCache   (new DxvkPipelineCache    (vkd)),
     m_pipelineManager (new DxvkPipelineManager  (this)),
     m_metaClearObjects(new DxvkMetaClearObjects (vkd)),
     m_unboundResources(this),
@@ -106,7 +105,6 @@ namespace dxvk {
   
   Rc<DxvkContext> DxvkDevice::createContext() {
     return new DxvkContext(this,
-      m_pipelineCache,
       m_pipelineManager,
       m_metaClearObjects);
   }
