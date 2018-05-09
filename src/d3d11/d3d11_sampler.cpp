@@ -12,26 +12,29 @@ namespace dxvk {
     
     // While D3D11_FILTER is technically an enum, its value bits
     // can be used to decode the filter properties more efficiently.
-    const uint32_t filterBits = static_cast<uint32_t>(desc.Filter);
-    
+    const uint32_t filterBits = uint32_t(desc.Filter);
     info.magFilter      = (filterBits & 0x04) ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
     info.minFilter      = (filterBits & 0x10) ? VK_FILTER_LINEAR : VK_FILTER_NEAREST;
-    info.mipmapMode     = (filterBits & 0x01) ? VK_SAMPLER_MIPMAP_MODE_LINEAR : VK_SAMPLER_MIPMAP_MODE_NEAREST;
-    info.useAnisotropy  = (filterBits & 0x40) ? VK_TRUE : VK_FALSE;
-    info.compareToDepth = (filterBits & 0x80) ? VK_TRUE : VK_FALSE;
     
     // Set up the remaining properties, which are
     // stored directly in the sampler description
-    info.mipmapLodBias = desc.MipLODBias;
-    info.mipmapLodMin  = desc.MinLOD;
-    info.mipmapLodMax  = desc.MaxLOD;
-    info.maxAnisotropy = static_cast<float>(desc.MaxAnisotropy);
-    info.addressModeU  = DecodeAddressMode(desc.AddressU);
-    info.addressModeV  = DecodeAddressMode(desc.AddressV);
-    info.addressModeW  = DecodeAddressMode(desc.AddressW);
-    info.compareOp     = DecodeCompareOp(desc.ComparisonFunc);
-    info.borderColor   = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
-    info.usePixelCoord = VK_FALSE;  // Not supported in D3D11
+    info.mipmapMode     = (filterBits & 0x01) ? VK_SAMPLER_MIPMAP_MODE_LINEAR : VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    info.mipmapLodBias  = desc.MipLODBias;
+    info.mipmapLodMin   = desc.MinLOD;
+    info.mipmapLodMax   = desc.MaxLOD;
+    
+    info.useAnisotropy  = (filterBits & 0x40) ? VK_TRUE : VK_FALSE;
+    info.maxAnisotropy  = float(desc.MaxAnisotropy);
+    
+    info.addressModeU   = DecodeAddressMode(desc.AddressU);
+    info.addressModeV   = DecodeAddressMode(desc.AddressV);
+    info.addressModeW   = DecodeAddressMode(desc.AddressW);
+    
+    info.compareToDepth = (filterBits & 0x80) ? VK_TRUE : VK_FALSE;
+    info.compareOp      = DecodeCompareOp(desc.ComparisonFunc);
+    
+    info.borderColor    = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+    info.usePixelCoord  = VK_FALSE;  // Not supported in D3D11
     
     // Make sure to use a valid anisotropy value
     if (desc.MaxAnisotropy <  1) info.maxAnisotropy =  1.0f;
@@ -79,7 +82,7 @@ namespace dxvk {
   
   
   HRESULT D3D11SamplerState::NormalizeDesc(D3D11_SAMPLER_DESC* pDesc) {
-    const uint32_t filterBits = static_cast<uint32_t>(pDesc->Filter);
+    const uint32_t filterBits = uint32_t(pDesc->Filter);
     
     if (filterBits & 0xFFFFFF2A) {
       Logger::err(str::format(
