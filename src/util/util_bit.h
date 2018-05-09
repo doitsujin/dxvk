@@ -1,5 +1,7 @@
 #pragma once
 
+#include <x86intrin.h>
+
 namespace dxvk::bit {
   
   template<typename T>

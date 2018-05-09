@@ -1,7 +1,5 @@
 #pragma once
 
-#include <x86intrin.h>
-
 namespace dxvk {
   
   constexpr size_t CACHE_LINE_SIZE = 64;
