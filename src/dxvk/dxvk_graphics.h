@@ -91,6 +91,65 @@ namespace dxvk {
   
   
   /**
+   * \brief Graphics pipeline instance
+   * 
+   * Stores a state vector and the corresponding
+   * pipeline handles.
+   */
+  class DxvkGraphicsPipelineInstance : public RcObject {
+    
+  public:
+    
+    DxvkGraphicsPipelineInstance(
+      const Rc<vk::DeviceFn>&               vkd,
+      const DxvkGraphicsPipelineStateInfo&  stateVector,
+            VkRenderPass                    renderPass);
+    
+    ~DxvkGraphicsPipelineInstance();
+    
+    /**
+     * \brief Checks for matching pipeline state
+     * 
+     * \param [in] stateVector Graphics pipeline state
+     * \param [in] renderPass Render pass handle
+     * \returns \c true if the specialization is compatible
+     */
+    bool isCompatible(
+      const DxvkGraphicsPipelineStateInfo&  stateVector,
+            VkRenderPass                    renderPass) const {
+      return m_renderPass  == renderPass
+          && m_stateVector == stateVector;
+    }
+    
+    /**
+     * \brief Sets the pipeline handle
+     * \param [in] pipeline The pipeline
+     */
+    void setPipeline(VkPipeline pipeline) {
+      m_pipeline = pipeline;
+    }
+    
+    /**
+     * \brief Retrieves pipeline
+     * \returns The pipeline
+     */
+    VkPipeline getPipeline() const {
+      return m_pipeline;
+    }
+    
+  private:
+    
+    const Rc<vk::DeviceFn> m_vkd;
+    
+    DxvkGraphicsPipelineStateInfo m_stateVector;
+    VkRenderPass                  m_renderPass;
+    
+    VkPipeline m_pipeline = VK_NULL_HANDLE;
+    
+  };
+  
+  
+  /**
    * \brief Graphics pipeline
    * 
    * Stores the pipeline layout as well as methods to
@@ -163,22 +222,17 @@ namespace dxvk {
     
     DxvkGraphicsCommonPipelineStateInfo m_common;
     
-    sync::Spinlock              m_mutex;
-    std::vector<PipelineStruct> m_pipelines;
+    sync::Spinlock                                m_mutex;
+    std::vector<Rc<DxvkGraphicsPipelineInstance>> m_pipelines;
     
-    VkPipeline m_basePipeline = VK_NULL_HANDLE;
-    
-    bool findPipeline(
+    DxvkGraphicsPipelineInstance* findInstance(
       const DxvkGraphicsPipelineStateInfo& state,
-            VkRenderPass                   renderPass,
-            VkPipeline&                    pipeline) const;
+            VkRenderPass                   renderPass) const;
     
     VkPipeline compilePipeline(
       const DxvkGraphicsPipelineStateInfo& state,
             VkRenderPass                   renderPass,
             VkPipeline                     baseHandle) const;
-    
-    void destroyPipelines();
     
     bool validatePipelineState(
       const DxvkGraphicsPipelineStateInfo& state) const;

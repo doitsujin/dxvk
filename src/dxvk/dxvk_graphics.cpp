@@ -34,6 +34,22 @@ namespace dxvk {
   }
   
   
+  DxvkGraphicsPipelineInstance::DxvkGraphicsPipelineInstance(
+    const Rc<vk::DeviceFn>&               vkd,
+    const DxvkGraphicsPipelineStateInfo&  stateVector,
+          VkRenderPass                    renderPass)
+  : m_vkd         (vkd),
+    m_stateVector (stateVector),
+    m_renderPass  (renderPass) {
+    
+  }
+  
+  
+  DxvkGraphicsPipelineInstance::~DxvkGraphicsPipelineInstance() {
+    m_vkd->vkDestroyPipeline(m_vkd->device(), m_pipeline, nullptr);
+  }
+  
+  
   DxvkGraphicsPipeline::DxvkGraphicsPipeline(
     const DxvkDevice*             device,
     const Rc<DxvkPipelineCache>&  cache,
@@ -71,7 +87,7 @@ namespace dxvk {
   
   
   DxvkGraphicsPipeline::~DxvkGraphicsPipeline() {
-    this->destroyPipelines();
+    
   }
   
   
@@ -79,55 +95,58 @@ namespace dxvk {
     const DxvkGraphicsPipelineStateInfo& state,
     const DxvkRenderPass&                renderPass,
           DxvkStatCounters&              stats) {
-    VkPipeline pipeline = VK_NULL_HANDLE;
     VkRenderPass renderPassHandle = renderPass.getDefaultHandle();
     
     { std::lock_guard<sync::Spinlock> lock(m_mutex);
       
-      if (this->findPipeline(state, renderPassHandle, pipeline))
-        return pipeline;
+      DxvkGraphicsPipelineInstance* pipeline =
+        this->findInstance(state, renderPassHandle);
+      
+      if (pipeline != nullptr)
+        return pipeline->getPipeline();
     }
     
-    // If no pipeline exists with the given state vector,
-    // create a new one and add it to the pipeline set.
-    VkPipeline newPipeline = this->validatePipelineState(state)
-      ? this->compilePipeline(state, renderPassHandle, m_basePipeline)
-      : VK_NULL_HANDLE;
+    // If the pipeline state vector is invalid, don't try
+    // to create a new pipeline, it won't work anyway.
+    if (!this->validatePipelineState(state))
+      return VK_NULL_HANDLE;
+    
+    // If no pipeline instance exists with the given state
+    // vector, create a new one and add it to the list.
+    Rc<DxvkGraphicsPipelineInstance> newPipeline =
+      new DxvkGraphicsPipelineInstance(m_device->vkd(), state, renderPassHandle);
+    
+    newPipeline->setPipeline(this->compilePipeline(
+      state, renderPassHandle, VK_NULL_HANDLE));
     
     { std::lock_guard<sync::Spinlock> lock(m_mutex);
       
       // Discard the pipeline if another thread
       // was faster compiling the same pipeline
-      if (this->findPipeline(state, renderPassHandle, pipeline)) {
-        m_vkd->vkDestroyPipeline(m_vkd->device(), newPipeline, nullptr);
-        return pipeline;
-      }
+      DxvkGraphicsPipelineInstance* pipeline =
+        this->findInstance(state, renderPassHandle);
+      
+      if (pipeline != nullptr)
+        return pipeline->getPipeline();
       
       // Add new pipeline to the set
-      m_pipelines.push_back({ state, renderPassHandle, newPipeline });
-      
-      if (m_basePipeline == VK_NULL_HANDLE)
-        m_basePipeline = newPipeline;
+      m_pipelines.push_back(newPipeline);
       
       stats.addCtr(DxvkStatCounter::PipeCountGraphics, 1);
-      return newPipeline;
+      return newPipeline->getPipeline();
     }
   }
   
   
-  bool DxvkGraphicsPipeline::findPipeline(
+  DxvkGraphicsPipelineInstance* DxvkGraphicsPipeline::findInstance(
     const DxvkGraphicsPipelineStateInfo& state,
-          VkRenderPass                   renderPass,
-          VkPipeline&                    pipeline) const {
-    for (const PipelineStruct& pair : m_pipelines) {
-      if (pair.stateVector == state
-       && pair.renderPass  == renderPass) {
-        pipeline = pair.pipeline;
-        return true;
-      }
+          VkRenderPass                   renderPass) const {
+    for (const auto& pipeline : m_pipelines) {
+      if (pipeline->isCompatible(state, renderPass))
+        return pipeline.ptr();
     }
     
-    return false;
+    return nullptr;
   }
   
   
@@ -325,12 +344,6 @@ namespace dxvk {
     auto td = std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0);
     Logger::debug(str::format("DxvkGraphicsPipeline: Finished in ", td.count(), " ms"));
     return pipeline;
-  }
-  
-  
-  void DxvkGraphicsPipeline::destroyPipelines() {
-    for (const PipelineStruct& pair : m_pipelines)
-      m_vkd->vkDestroyPipeline(m_vkd->device(), pair.pipeline, nullptr);
   }
   
   
