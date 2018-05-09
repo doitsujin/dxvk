@@ -1945,29 +1945,51 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpDirtyVertexBuffers)) {
       m_flags.clr(DxvkContextFlag::GpDirtyVertexBuffers);
       
-      uint32_t bindingMask = 0;
+      std::array<VkBuffer,     MaxNumVertexBindings> buffers;
+      std::array<VkDeviceSize, MaxNumVertexBindings> offsets;
+      
+      // Set buffer handles and offsets for active bindings
+      uint32_t bindingCount = 0;
+      uint32_t bindingMask  = 0;
       
       for (uint32_t i = 0; i < m_state.gp.state.ilBindingCount; i++) {
         const uint32_t binding = m_state.gp.state.ilBindings[i].binding;
+        bindingCount = std::max(bindingCount, binding + 1);
         
         if (m_state.vi.vertexBuffers[binding].defined()) {
           auto vbo = m_state.vi.vertexBuffers[binding].physicalSlice();
           
-          const VkBuffer     handle = vbo.handle();
-          const VkDeviceSize offset = vbo.offset();
-          
-          m_cmd->cmdBindVertexBuffers(binding, 1, &handle, &offset);
-          m_cmd->trackResource(vbo.resource());
+          buffers[binding] = vbo.handle();
+          offsets[binding] = vbo.offset();
           
           bindingMask |= 1u << binding;
-        } else {
-          const VkBuffer     handle = m_device->dummyBufferHandle();
-          const VkDeviceSize offset = 0;
           
-          m_cmd->cmdBindVertexBuffers(binding, 1, &handle, &offset);
+          m_cmd->trackResource(vbo.resource());
         }
       }
       
+      // Bind a dummy buffer to the remaining bindings
+      uint32_t bindingsUsed = (1u << bindingCount) - 1u;
+      uint32_t bindingsSet  = bindingMask;
+      
+      while (bindingsSet != bindingsUsed) {
+        uint32_t binding = tzcnt(~bindingsSet);
+        
+        buffers[binding] = m_device->dummyBufferHandle();
+        offsets[binding] = 0;
+        
+        bindingsSet |= 1u << binding;
+      }
+      
+      // Bind all vertex buffers at once
+      if (bindingCount != 0) {
+        m_cmd->cmdBindVertexBuffers(0, bindingCount,
+          buffers.data(), offsets.data());
+      }
+      
+      // If the set of active bindings has changed, we'll
+      // need to adjust the strides of the inactive ones
+      // and compile a new pipeline
       if (m_state.vi.bindingMask != bindingMask) {
         m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
         m_state.vi.bindingMask = bindingMask;
