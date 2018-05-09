@@ -1970,7 +1970,7 @@ namespace dxvk {
       uint32_t bindingsSet  = bindingMask;
       
       while (bindingsSet != bindingsUsed) {
-        uint32_t binding = tzcnt(~bindingsSet);
+        uint32_t binding = bit::tzcnt(~bindingsSet);
         
         buffers[binding] = m_device->dummyBufferHandle();
         offsets[binding] = 0;
