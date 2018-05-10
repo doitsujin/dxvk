@@ -5,6 +5,7 @@
 #include "dxvk_binding.h"
 #include "dxvk_constant_state.h"
 #include "dxvk_pipecache.h"
+#include "dxvk_pipecompiler.h"
 #include "dxvk_pipelayout.h"
 #include "dxvk_renderpass.h"
 #include "dxvk_resource.h"
@@ -175,13 +176,14 @@ namespace dxvk {
   public:
     
     DxvkGraphicsPipeline(
-      const DxvkDevice*             device,
-      const Rc<DxvkPipelineCache>&  cache,
-      const Rc<DxvkShader>&         vs,
-      const Rc<DxvkShader>&         tcs,
-      const Rc<DxvkShader>&         tes,
-      const Rc<DxvkShader>&         gs,
-      const Rc<DxvkShader>&         fs);
+      const DxvkDevice*               device,
+      const Rc<DxvkPipelineCache>&    cache,
+      const Rc<DxvkPipelineCompiler>& compiler,
+      const Rc<DxvkShader>&           vs,
+      const Rc<DxvkShader>&           tcs,
+      const Rc<DxvkShader>&           tes,
+      const Rc<DxvkShader>&           gs,
+      const Rc<DxvkShader>&           fs);
     ~DxvkGraphicsPipeline();
     
     /**
@@ -218,7 +220,7 @@ namespace dxvk {
      * and makes it available to the system.
      * \param [in] instance The pipeline instance
      */
-    void compilePipelineInstance(
+    void compileInstance(
       const Rc<DxvkGraphicsPipelineInstance>& instance);
     
   private:
@@ -232,8 +234,9 @@ namespace dxvk {
     const DxvkDevice* const m_device;
     const Rc<vk::DeviceFn>  m_vkd;
     
-    Rc<DxvkPipelineCache>   m_cache;
-    Rc<DxvkPipelineLayout>  m_layout;
+    Rc<DxvkPipelineCache>     m_cache;
+    Rc<DxvkPipelineCompiler>  m_compiler;
+    Rc<DxvkPipelineLayout>    m_layout;
     
     Rc<DxvkShaderModule>  m_vs;
     Rc<DxvkShaderModule>  m_tcs;
@@ -256,6 +259,7 @@ namespace dxvk {
     VkPipeline compilePipeline(
       const DxvkGraphicsPipelineStateInfo& state,
             VkRenderPass                   renderPass,
+            VkPipelineCreateFlags          createFlags,
             VkPipeline                     baseHandle) const;
     
     bool validatePipelineState(

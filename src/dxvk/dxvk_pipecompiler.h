@@ -6,9 +6,12 @@
 #include <queue>
 #include <thread>
 
-#include "dxvk_graphics.h"
+#include "dxvk_include.h"
 
 namespace dxvk {
+  
+  class DxvkGraphicsPipeline;
+  class DxvkGraphicsPipelineInstance;
   
   /**
    * \brief Pipeline compiler

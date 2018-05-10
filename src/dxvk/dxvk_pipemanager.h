@@ -5,6 +5,7 @@
 
 #include "dxvk_compute.h"
 #include "dxvk_graphics.h"
+#include "dxvk_pipecompiler.h"
 
 namespace dxvk {
   
@@ -96,8 +97,9 @@ namespace dxvk {
     
   private:
     
-    const DxvkDevice*           m_device;
-    const Rc<DxvkPipelineCache> m_cache;
+    const DxvkDevice*               m_device;
+    const Rc<DxvkPipelineCache>     m_cache;
+    const Rc<DxvkPipelineCompiler>  m_compiler;
     
     std::mutex m_mutex;
     

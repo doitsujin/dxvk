@@ -55,15 +55,16 @@ namespace dxvk {
   
   
   DxvkGraphicsPipeline::DxvkGraphicsPipeline(
-    const DxvkDevice*             device,
-    const Rc<DxvkPipelineCache>&  cache,
-    const Rc<DxvkShader>&         vs,
-    const Rc<DxvkShader>&         tcs,
-    const Rc<DxvkShader>&         tes,
-    const Rc<DxvkShader>&         gs,
-    const Rc<DxvkShader>&         fs)
+    const DxvkDevice*               device,
+    const Rc<DxvkPipelineCache>&    cache,
+    const Rc<DxvkPipelineCompiler>& compiler,
+    const Rc<DxvkShader>&           vs,
+    const Rc<DxvkShader>&           tcs,
+    const Rc<DxvkShader>&           tes,
+    const Rc<DxvkShader>&           gs,
+    const Rc<DxvkShader>&           fs)
   : m_device(device), m_vkd(device->vkd()),
-    m_cache(cache) {
+    m_cache(cache), m_compiler(compiler) {
     DxvkDescriptorSlotMapping slotMapping;
     if (vs  != nullptr) vs ->defineResourceSlots(slotMapping);
     if (tcs != nullptr) tcs->defineResourceSlots(slotMapping);
@@ -117,8 +118,8 @@ namespace dxvk {
     
     // If no pipeline instance exists with the given state
     // vector, create a new one and add it to the list.
-    VkPipeline newPipelineHandle = this->compilePipeline(
-      state, renderPassHandle, VK_NULL_HANDLE);
+    VkPipeline newPipelineHandle = this->compilePipeline(state, renderPassHandle,
+      VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT, VK_NULL_HANDLE);
     
     Rc<DxvkGraphicsPipelineInstance> newPipeline =
       new DxvkGraphicsPipelineInstance(m_device->vkd(), state,
@@ -138,16 +139,20 @@ namespace dxvk {
       m_pipelines.push_back(newPipeline);
       
       stats.addCtr(DxvkStatCounter::PipeCountGraphics, 1);
-      return newPipeline->getPipeline();
     }
+    
+    // Compile optimized pipeline asynchronously
+    m_compiler->queueCompilation(this, newPipeline);
+    return newPipelineHandle;
   }
   
   
-  void DxvkGraphicsPipeline::compilePipelineInstance(
+  void DxvkGraphicsPipeline::compileInstance(
     const Rc<DxvkGraphicsPipelineInstance>& instance) {
     // Compile an optimized version of the pipeline
     VkPipeline newPipelineHandle = this->compilePipeline(
-      instance->m_stateVector, instance->m_renderPass, VK_NULL_HANDLE);
+      instance->m_stateVector, instance->m_renderPass,
+      0, VK_NULL_HANDLE);
     
     // If an optimized version has been compiled
     // in the meantime, discard the new pipeline
@@ -171,6 +176,7 @@ namespace dxvk {
   VkPipeline DxvkGraphicsPipeline::compilePipeline(
     const DxvkGraphicsPipelineStateInfo& state,
           VkRenderPass                   renderPass,
+          VkPipelineCreateFlags          createFlags,
           VkPipeline                     baseHandle) const {
     if (Logger::logLevel() <= LogLevel::Debug) {
       Logger::debug("Compiling graphics pipeline...");
@@ -324,9 +330,7 @@ namespace dxvk {
     VkGraphicsPipelineCreateInfo info;
     info.sType                    = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     info.pNext                    = nullptr;
-    info.flags                    = baseHandle == VK_NULL_HANDLE
-      ? VK_PIPELINE_CREATE_ALLOW_DERIVATIVES_BIT
-      : VK_PIPELINE_CREATE_DERIVATIVE_BIT;
+    info.flags                    = createFlags;
     info.stageCount               = stages.size();
     info.pStages                  = stages.data();
     info.pVertexInputState        = &viInfo;
@@ -343,6 +347,10 @@ namespace dxvk {
     info.subpass                  = 0;
     info.basePipelineHandle       = baseHandle;
     info.basePipelineIndex        = -1;
+    
+    info.flags |= baseHandle == VK_NULL_HANDLE
+      ? VK_PIPELINE_CREATE_ALLOW_DERIVATIVES_BIT
+      : VK_PIPELINE_CREATE_DERIVATIVE_BIT;
     
     if (tsInfo.patchControlPoints == 0)
       info.pTessellationState = nullptr;

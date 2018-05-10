@@ -1,3 +1,4 @@
+#include "dxvk_graphics.h"
 #include "dxvk_pipecompiler.h"
 
 namespace dxvk {
