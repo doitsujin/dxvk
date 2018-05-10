@@ -382,17 +382,13 @@ namespace dxvk {
     for (uint32_t i = 0; i < state.ilAttributeCount; i++)
       providedVertexInputs |= 1u << state.ilAttributes[i].location;
     
-    if ((providedVertexInputs & m_vsIn) != m_vsIn) {
-      Logger::err("DxvkGraphicsPipeline: Input layout mismatches vertex shader input");
+    if ((providedVertexInputs & m_vsIn) != m_vsIn)
       return false;
-    }
     
     // If there are no tessellation shaders, we
     // obviously cannot use tessellation patches.
-    if ((state.iaPatchVertexCount != 0) && (m_tcs == nullptr || m_tes == nullptr)) {
-      Logger::err("DxvkGraphicsPipeline: Cannot use tessellation patches without tessellation shaders");
+    if ((state.iaPatchVertexCount != 0) && (m_tcs == nullptr || m_tes == nullptr))
       return false;
-    }
     
     // No errors
     return true;
