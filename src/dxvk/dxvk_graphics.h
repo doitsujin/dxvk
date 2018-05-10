@@ -94,16 +94,17 @@ namespace dxvk {
    * \brief Graphics pipeline instance
    * 
    * Stores a state vector and the corresponding
-   * pipeline handles.
+   * unoptimized and optimized pipeline handles.
    */
   class DxvkGraphicsPipelineInstance : public RcObject {
-    
+    friend class DxvkGraphicsPipeline;
   public:
     
     DxvkGraphicsPipelineInstance(
       const Rc<vk::DeviceFn>&               vkd,
       const DxvkGraphicsPipelineStateInfo&  stateVector,
-            VkRenderPass                    renderPass);
+            VkRenderPass                    renderPass,
+            VkPipeline                      basePipeline);
     
     ~DxvkGraphicsPipelineInstance();
     
@@ -122,19 +123,31 @@ namespace dxvk {
     }
     
     /**
-     * \brief Sets the pipeline handle
-     * \param [in] pipeline The pipeline
+     * \brief Sets the optimized pipeline handle
+     * 
+     * If an optimized pipeline handle has already been
+     * set up, this method will fail and the new pipeline
+     * handle should be destroyed.
+     * \param [in] pipeline The optimized pipeline
      */
-    void setPipeline(VkPipeline pipeline) {
-      m_pipeline = pipeline;
+    bool setFastPipeline(VkPipeline pipeline) {
+      VkPipeline expected = VK_NULL_HANDLE;
+      return m_fastPipeline.compare_exchange_strong(expected, pipeline);
     }
     
     /**
      * \brief Retrieves pipeline
-     * \returns The pipeline
+     * 
+     * Returns the optimized version of the pipeline if
+     * if has been set, or the base pipeline if not.
+     * \returns The pipeline handle
      */
     VkPipeline getPipeline() const {
-      return m_pipeline;
+      VkPipeline basePipeline = m_basePipeline.load();
+      VkPipeline fastPipeline = m_fastPipeline.load();
+      
+      return fastPipeline != VK_NULL_HANDLE
+        ? fastPipeline : basePipeline;
     }
     
   private:
@@ -144,7 +157,8 @@ namespace dxvk {
     DxvkGraphicsPipelineStateInfo m_stateVector;
     VkRenderPass                  m_renderPass;
     
-    VkPipeline m_pipeline = VK_NULL_HANDLE;
+    std::atomic<VkPipeline> m_basePipeline;
+    std::atomic<VkPipeline> m_fastPipeline;
     
   };
   
@@ -193,9 +207,19 @@ namespace dxvk {
      * \returns Pipeline handle
      */
     VkPipeline getPipelineHandle(
-      const DxvkGraphicsPipelineStateInfo& state,
-      const DxvkRenderPass&                renderPass,
-            DxvkStatCounters&              stats);
+      const DxvkGraphicsPipelineStateInfo&    state,
+      const DxvkRenderPass&                   renderPass,
+            DxvkStatCounters&                 stats);
+    
+    /**
+     * \brief Compiles optimized pipeline
+     * 
+     * Compiles an optimized version of a pipeline
+     * and makes it available to the system.
+     * \param [in] instance The pipeline instance
+     */
+    void compilePipelineInstance(
+      const Rc<DxvkGraphicsPipelineInstance>& instance);
     
   private:
     

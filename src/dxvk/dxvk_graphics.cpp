@@ -37,16 +37,20 @@ namespace dxvk {
   DxvkGraphicsPipelineInstance::DxvkGraphicsPipelineInstance(
     const Rc<vk::DeviceFn>&               vkd,
     const DxvkGraphicsPipelineStateInfo&  stateVector,
-          VkRenderPass                    renderPass)
+          VkRenderPass                    renderPass,
+          VkPipeline                      basePipeline)
   : m_vkd         (vkd),
     m_stateVector (stateVector),
-    m_renderPass  (renderPass) {
+    m_renderPass  (renderPass),
+    m_basePipeline(basePipeline),
+    m_fastPipeline(VK_NULL_HANDLE) {
     
   }
   
   
   DxvkGraphicsPipelineInstance::~DxvkGraphicsPipelineInstance() {
-    m_vkd->vkDestroyPipeline(m_vkd->device(), m_pipeline, nullptr);
+    m_vkd->vkDestroyPipeline(m_vkd->device(), m_basePipeline, nullptr);
+    m_vkd->vkDestroyPipeline(m_vkd->device(), m_fastPipeline, nullptr);
   }
   
   
@@ -113,11 +117,12 @@ namespace dxvk {
     
     // If no pipeline instance exists with the given state
     // vector, create a new one and add it to the list.
-    Rc<DxvkGraphicsPipelineInstance> newPipeline =
-      new DxvkGraphicsPipelineInstance(m_device->vkd(), state, renderPassHandle);
+    VkPipeline newPipelineHandle = this->compilePipeline(
+      state, renderPassHandle, VK_NULL_HANDLE);
     
-    newPipeline->setPipeline(this->compilePipeline(
-      state, renderPassHandle, VK_NULL_HANDLE));
+    Rc<DxvkGraphicsPipelineInstance> newPipeline =
+      new DxvkGraphicsPipelineInstance(m_device->vkd(), state,
+        renderPassHandle, newPipelineHandle);
     
     { std::lock_guard<sync::Spinlock> lock(m_mutex);
       
@@ -135,6 +140,19 @@ namespace dxvk {
       stats.addCtr(DxvkStatCounter::PipeCountGraphics, 1);
       return newPipeline->getPipeline();
     }
+  }
+  
+  
+  void DxvkGraphicsPipeline::compilePipelineInstance(
+    const Rc<DxvkGraphicsPipelineInstance>& instance) {
+    // Compile an optimized version of the pipeline
+    VkPipeline newPipelineHandle = this->compilePipeline(
+      instance->m_stateVector, instance->m_renderPass, VK_NULL_HANDLE);
+    
+    // If an optimized version has been compiled
+    // in the meantime, discard the new pipeline
+    if (!instance->setFastPipeline(newPipelineHandle))
+      m_vkd->vkDestroyPipeline(m_vkd->device(), newPipelineHandle, nullptr);
   }
   
   
