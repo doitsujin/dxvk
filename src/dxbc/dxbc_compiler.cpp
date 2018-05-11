@@ -73,6 +73,9 @@ namespace dxvk {
       case DxbcInstClass::BitInsert:
         return this->emitBitInsert(ins);
         
+      case DxbcInstClass::BitScan:
+        return this->emitBitScan(ins);
+        
       case DxbcInstClass::BufferQuery:
         return this->emitBufferQuery(ins);
         
@@ -1498,21 +1501,6 @@ namespace dxvk {
         dst.id = m_module.opBitCount(
           typeId, src.at(0).id);
         break;
-        
-      case DxbcOpcode::FirstBitLo:
-        dst.id = m_module.opFindILsb(
-          typeId, src.at(0).id);
-        break;
-        
-      case DxbcOpcode::FirstBitHi:
-        dst.id = m_module.opFindUMsb(
-          typeId, src.at(0).id);
-        break;
-        
-      case DxbcOpcode::FirstBitShi:
-        dst.id = m_module.opFindSMsb(
-          typeId, src.at(0).id);
-        break;
       
       case DxbcOpcode::BfRev:
         dst.id = m_module.opBitReverse(
@@ -2304,7 +2292,43 @@ namespace dxvk {
     emitRegisterStore(ins.dst[0], result);
   }
   
+  
+  void DxbcCompiler::emitBitScan(const DxbcShaderInstruction& ins) {
+    // firstbit(lo|hi|shi) have two operands:
+    //    (dst0) The destination operant
+    //    (src0) Source operand to scan
+    DxbcRegisterValue src = emitRegisterLoad(ins.src[0], ins.dst[0].mask);
     
+    DxbcRegisterValue dst;
+    dst.type.ctype  = ins.dst[0].dataType;
+    dst.type.ccount = ins.dst[0].mask.popCount();
+    
+    // Result type, should be an unsigned integer
+    const uint32_t typeId = getVectorTypeId(dst.type);
+    
+    switch (ins.op) {
+      case DxbcOpcode::FirstBitLo:  dst.id = m_module.opFindILsb(typeId, src.id); break;
+      case DxbcOpcode::FirstBitHi:  dst.id = m_module.opFindUMsb(typeId, src.id); break;
+      case DxbcOpcode::FirstBitShi: dst.id = m_module.opFindSMsb(typeId, src.id); break;
+      default: Logger::warn(str::format("DxbcCompiler: Unhandled instruction: ", ins.op)); return;
+    }
+    
+    // The 'Hi' variants are counted from the MSB in DXBC
+    // rather than the LSB, so we have to invert the number
+    if (ins.op == DxbcOpcode::FirstBitHi
+     || ins.op == DxbcOpcode::FirstBitShi) {
+      dst.id = m_module.opSelect(typeId,
+        m_module.opINotEqual(m_module.defBoolType(),
+          dst.id, m_module.constu32(0xFFFFFFFF)),
+        m_module.opISub(typeId, m_module.constu32(31), dst.id),
+        m_module.constu32(0xFFFFFFFF));
+    }
+    
+    // No modifiers are supported
+    emitRegisterStore(ins.dst[0], dst);
+  }
+  
+  
   void DxbcCompiler::emitBufferQuery(const DxbcShaderInstruction& ins) {
     // bufinfo takes two arguments
     //    (dst0) The destination register

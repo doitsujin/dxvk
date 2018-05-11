@@ -571,6 +571,9 @@ namespace dxvk {
     void emitBitInsert(
       const DxbcShaderInstruction&  ins);
     
+    void emitBitScan(
+      const DxbcShaderInstruction&  ins);
+    
     void emitBufferQuery(
       const DxbcShaderInstruction&  ins);
     

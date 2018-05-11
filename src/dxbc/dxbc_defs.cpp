@@ -660,17 +660,17 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
     } },
     /* FirstBitHi                           */
-    { 2, DxbcInstClass::VectorAlu, {
+    { 2, DxbcInstClass::BitScan, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
       { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
     } },
     /* FirstBitLo                           */
-    { 2, DxbcInstClass::VectorAlu, {
+    { 2, DxbcInstClass::BitScan, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
       { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
     } },
     /* FirstBitShi                          */
-    { 2, DxbcInstClass::VectorAlu, {
+    { 2, DxbcInstClass::BitScan, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Uint32 },
       { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32 },
     } },

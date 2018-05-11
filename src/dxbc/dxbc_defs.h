@@ -37,6 +37,7 @@ namespace dxvk {
     Barrier,            ///< Execution or memory barrier
     BitExtract,         ///< Bit field extract operations
     BitInsert,          ///< Bit field insert operations
+    BitScan,            ///< Bit scan operations
     BufferQuery,        ///< Buffer query instruction
     BufferLoad,         ///< Structured or raw buffer load
     BufferStore,        ///< Structured or raw buffer store
