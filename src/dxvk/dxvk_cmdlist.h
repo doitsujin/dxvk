@@ -17,6 +17,19 @@
 namespace dxvk {
   
   /**
+   * \brief Command buffer flags
+   * 
+   * A set of flags used to specify which of
+   * the command buffers need to be submitted.
+   */
+  enum class DxvkCmdBufferFlag : uint32_t {
+    InitBuffer = 0,
+    ExecBuffer = 1,
+  };
+  
+  using DxvkCmdBufferFlags = Flags<DxvkCmdBufferFlag>;
+  
+  /**
    * \brief DXVK command list
    * 
    * Stores a command buffer that a context can use to record Vulkan
@@ -468,7 +481,9 @@ namespace dxvk {
             VkQueryPool             queryPool,
             uint32_t                firstQuery,
             uint32_t                queryCount) {
-      m_vkd->vkCmdResetQueryPool(m_execBuffer,
+      m_cmdBuffersUsed.set(DxvkCmdBufferFlag::InitBuffer);
+      
+      m_vkd->vkCmdResetQueryPool(m_initBuffer,
         queryPool, firstQuery, queryCount);
     }
     
@@ -564,6 +579,7 @@ namespace dxvk {
     VkCommandBuffer     m_execBuffer;
     VkCommandBuffer     m_initBuffer;
     
+    DxvkCmdBufferFlags  m_cmdBuffersUsed;
     DxvkLifetimeTracker m_resources;
     DxvkDescriptorAlloc m_descAlloc;
     DxvkStagingAlloc    m_stagingAlloc;
