@@ -34,7 +34,8 @@ namespace dxvk {
     cmdInfo.level             = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     cmdInfo.commandBufferCount = 1;
     
-    if (m_vkd->vkAllocateCommandBuffers(m_vkd->device(), &cmdInfo, &m_buffer) != VK_SUCCESS)
+    if (m_vkd->vkAllocateCommandBuffers(m_vkd->device(), &cmdInfo, &m_execBuffer) != VK_SUCCESS
+     || m_vkd->vkAllocateCommandBuffers(m_vkd->device(), &cmdInfo, &m_initBuffer) != VK_SUCCESS)
       throw DxvkError("DxvkCommandList: Failed to allocate command buffer");
   }
   
@@ -51,6 +52,9 @@ namespace dxvk {
           VkQueue         queue,
           VkSemaphore     waitSemaphore,
           VkSemaphore     wakeSemaphore) {
+    std::array<VkCommandBuffer, 2> cmdBuffers
+      = {{ m_initBuffer, m_execBuffer }};
+    
     const VkPipelineStageFlags waitStageMask
       = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
     
@@ -60,8 +64,8 @@ namespace dxvk {
     info.waitSemaphoreCount   = waitSemaphore == VK_NULL_HANDLE ? 0 : 1;
     info.pWaitSemaphores      = &waitSemaphore;
     info.pWaitDstStageMask    = &waitStageMask;
-    info.commandBufferCount   = 1;
-    info.pCommandBuffers      = &m_buffer;
+    info.commandBufferCount   = cmdBuffers.size();
+    info.pCommandBuffers      = cmdBuffers.data();
     info.signalSemaphoreCount = wakeSemaphore == VK_NULL_HANDLE ? 0 : 1;
     info.pSignalSemaphores    = &wakeSemaphore;
     
@@ -92,7 +96,8 @@ namespace dxvk {
     if (m_vkd->vkResetCommandPool(m_vkd->device(), m_pool, 0) != VK_SUCCESS)
       Logger::err("DxvkCommandList: Failed to reset command buffer");
     
-    if (m_vkd->vkBeginCommandBuffer(m_buffer, &info) != VK_SUCCESS)
+    if (m_vkd->vkBeginCommandBuffer(m_execBuffer, &info) != VK_SUCCESS
+     || m_vkd->vkBeginCommandBuffer(m_initBuffer, &info) != VK_SUCCESS)
       Logger::err("DxvkCommandList: Failed to begin command buffer");
     
     if (m_vkd->vkResetFences(m_vkd->device(), 1, &m_fence) != VK_SUCCESS)
@@ -101,7 +106,8 @@ namespace dxvk {
   
   
   void DxvkCommandList::endRecording() {
-    if (m_vkd->vkEndCommandBuffer(m_buffer) != VK_SUCCESS)
+    if (m_vkd->vkEndCommandBuffer(m_execBuffer) != VK_SUCCESS
+     || m_vkd->vkEndCommandBuffer(m_initBuffer) != VK_SUCCESS)
       Logger::err("DxvkCommandList::endRecording: Failed to record command buffer");
   }
   
@@ -132,7 +138,7 @@ namespace dxvk {
     region.dstOffset = dstOffset;
     region.size      = dataSize;
     
-    m_vkd->vkCmdCopyBuffer(m_buffer,
+    m_vkd->vkCmdCopyBuffer(m_execBuffer,
       dataSlice.buffer, dstBuffer, 1, &region);
   }
   
@@ -142,7 +148,7 @@ namespace dxvk {
           VkImageLayout           dstImageLayout,
     const VkBufferImageCopy&      dstImageRegion,
     const DxvkStagingBufferSlice& dataSlice) {
-    m_vkd->vkCmdCopyBufferToImage(m_buffer,
+    m_vkd->vkCmdCopyBufferToImage(m_execBuffer,
       dataSlice.buffer, dstImage, dstImageLayout,
       1, &dstImageRegion);
   }
