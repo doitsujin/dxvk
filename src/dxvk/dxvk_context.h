@@ -692,9 +692,6 @@ namespace dxvk {
     DxvkQueryHandle allocQuery(
       const DxvkQueryRevision& query);
     
-    void resetQueryPool(
-      const Rc<DxvkQueryPool>& pool);
-    
     void trackQueryPool(
       const Rc<DxvkQueryPool>& pool);
     

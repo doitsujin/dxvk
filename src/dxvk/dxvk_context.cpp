@@ -40,16 +40,11 @@ namespace dxvk {
       DxvkContextFlag::CpDirtyPipeline,
       DxvkContextFlag::CpDirtyPipelineState,
       DxvkContextFlag::CpDirtyResources);
-    
-    // Restart queries that were active during
-    // the last command buffer submission.
-    this->beginActiveQueries();
   }
   
   
   Rc<DxvkCommandList> DxvkContext::endRecording() {
     this->spillRenderPass();
-    this->endActiveQueries();
     
     this->trackQueryPool(m_queryPools[VK_QUERY_TYPE_OCCLUSION]);
     this->trackQueryPool(m_queryPools[VK_QUERY_TYPE_PIPELINE_STATISTICS]);
@@ -61,24 +56,29 @@ namespace dxvk {
   
   
   void DxvkContext::beginQuery(const DxvkQueryRevision& query) {
-    DxvkQueryHandle handle = this->allocQuery(query);
-    
-    m_cmd->cmdBeginQuery(
-      handle.queryPool,
-      handle.queryId,
-      handle.flags);
-    
     query.query->beginRecording(query.revision);
+    
+    if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
+      DxvkQueryHandle handle = this->allocQuery(query);
+      
+      m_cmd->cmdBeginQuery(
+        handle.queryPool,
+        handle.queryId,
+        handle.flags);
+    }
+    
     this->insertActiveQuery(query);
   }
   
   
   void DxvkContext::endQuery(const DxvkQueryRevision& query) {
-    DxvkQueryHandle handle = query.query->getHandle();
-    
-    m_cmd->cmdEndQuery(
-      handle.queryPool,
-      handle.queryId);
+    if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
+      DxvkQueryHandle handle = query.query->getHandle();
+      
+      m_cmd->cmdEndQuery(
+        handle.queryPool,
+        handle.queryId);
+    }
     
     query.query->endRecording(query.revision);
     this->eraseActiveQuery(query);
@@ -1559,6 +1559,8 @@ namespace dxvk {
       this->resetRenderPassOps(
         m_state.om.renderTargets,
         m_state.om.renderPassOps);
+      
+      this->beginActiveQueries();
     }
   }
   
@@ -1569,6 +1571,7 @@ namespace dxvk {
     
     if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
       m_flags.clr(DxvkContextFlag::GpRenderPassBound);
+      this->endActiveQueries();
       this->renderPassUnbindFramebuffer();
     }
   }
@@ -2096,18 +2099,11 @@ namespace dxvk {
       m_queryPools[queryType] = m_device->createQueryPool(queryType, MaxNumQueryCountPerPool);
       queryPool = m_queryPools[queryType];
       
-      this->resetQueryPool(queryPool);
+      queryPool->reset(m_cmd);
       queryHandle = queryPool->allocQuery(query);
     }
     
     return queryHandle;
-  }
-  
-  
-  void DxvkContext::resetQueryPool(const Rc<DxvkQueryPool>& pool) {
-    this->spillRenderPass();
-    
-    pool->reset(m_cmd);
   }
   
   

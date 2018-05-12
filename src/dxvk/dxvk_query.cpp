@@ -55,12 +55,9 @@ namespace dxvk {
     std::unique_lock<std::mutex> lock(m_mutex);
     
     if (m_revision == revision) {
-      if (m_queryIndex < m_queryCount) {
-        m_status = DxvkQueryStatus::Pending;
-      } else {
-        m_status = DxvkQueryStatus::Available;
-      }
-      
+      m_status = m_queryIndex < m_queryCount
+        ? DxvkQueryStatus::Pending
+        : DxvkQueryStatus::Available;
       m_handle = DxvkQueryHandle();
     }
   }
