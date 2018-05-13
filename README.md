@@ -82,6 +82,7 @@ The following environment variables can be used for **debugging** purposes.
 - `DXVK_CUSTOM_DEVICE_ID=<ID>` Specifies a custom PCI device ID
 - `DXVK_LOG_LEVEL=none|error|warn|info|debug` Controls message logging
 - `DXVK_FAKE_DX10_SUPPORT=1` Advertizes support for D3D10 interfaces
+- `DXVK_USE_PIPECOMPILER=1` Enable asynchronous pipeline compilation. This currently only has an effect on RADV in mesa-git.
 
 ## Troubleshooting
 DXVK requires threading support from your mingw-w64 build environment. If you

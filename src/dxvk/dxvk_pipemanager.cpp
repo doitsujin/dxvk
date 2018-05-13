@@ -39,8 +39,12 @@ namespace dxvk {
   
   
   DxvkPipelineManager::DxvkPipelineManager(const DxvkDevice* device)
-  : m_device(device), m_cache(new DxvkPipelineCache(device->vkd())) {
-    
+  : m_device  (device),
+    m_cache   (new DxvkPipelineCache(device->vkd())),
+    m_compiler(nullptr) {
+    // Async shader compilation is opt-in for now
+    if (env::getEnvVar(L"DXVK_USE_PIPECOMPILER") == "1")
+      m_compiler = new DxvkPipelineCompiler();
   }
   
   
@@ -93,8 +97,8 @@ namespace dxvk {
     if (pair != m_graphicsPipelines.end())
       return pair->second;
     
-    const Rc<DxvkGraphicsPipeline> pipeline
-      = new DxvkGraphicsPipeline(m_device, m_cache, vs, tcs, tes, gs, fs);
+    Rc<DxvkGraphicsPipeline> pipeline = new DxvkGraphicsPipeline(
+      m_device, m_cache, m_compiler, vs, tcs, tes, gs, fs);
     
     m_graphicsPipelines.insert(std::make_pair(key, pipeline));
     return pipeline;
