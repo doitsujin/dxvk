@@ -249,8 +249,13 @@ namespace dxvk {
     
     DxvkGraphicsCommonPipelineStateInfo m_common;
     
-    sync::Spinlock                                m_mutex;
+    // List of pipeline instances, shared between threads
+    alignas(CACHE_LINE_SIZE) sync::Spinlock       m_mutex;
     std::vector<Rc<DxvkGraphicsPipelineInstance>> m_pipelines;
+    
+    // Pipeline handles used for derivative pipelines
+    std::atomic<VkPipeline> m_basePipelineBase = { VK_NULL_HANDLE };
+    std::atomic<VkPipeline> m_fastPipelineBase = { VK_NULL_HANDLE };
     
     DxvkGraphicsPipelineInstance* findInstance(
       const DxvkGraphicsPipelineStateInfo& state,

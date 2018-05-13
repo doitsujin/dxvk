@@ -118,8 +118,9 @@ namespace dxvk {
     
     // If no pipeline instance exists with the given state
     // vector, create a new one and add it to the list.
+    VkPipeline newPipelineBase   = m_basePipelineBase.load();
     VkPipeline newPipelineHandle = this->compilePipeline(state, renderPassHandle,
-      VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT, VK_NULL_HANDLE);
+      VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT, newPipelineBase);
     
     Rc<DxvkGraphicsPipelineInstance> newPipeline =
       new DxvkGraphicsPipelineInstance(m_device->vkd(), state,
@@ -141,6 +142,10 @@ namespace dxvk {
       stats.addCtr(DxvkStatCounter::PipeCountGraphics, 1);
     }
     
+    // Use the new pipeline as the base pipeline for derivative pipelines
+    if (newPipelineBase == VK_NULL_HANDLE && newPipelineHandle != VK_NULL_HANDLE)
+      m_basePipelineBase.compare_exchange_strong(newPipelineBase, newPipelineHandle);
+    
     // Compile optimized pipeline asynchronously
     m_compiler->queueCompilation(this, newPipeline);
     return newPipelineHandle;
@@ -150,9 +155,14 @@ namespace dxvk {
   void DxvkGraphicsPipeline::compileInstance(
     const Rc<DxvkGraphicsPipelineInstance>& instance) {
     // Compile an optimized version of the pipeline
+    VkPipeline newPipelineBase   = m_fastPipelineBase.load();
     VkPipeline newPipelineHandle = this->compilePipeline(
       instance->m_stateVector, instance->m_renderPass,
-      0, VK_NULL_HANDLE);
+      0, m_fastPipelineBase);
+    
+    // Use the new pipeline as the base pipeline for derivative pipelines
+    if (newPipelineBase == VK_NULL_HANDLE && newPipelineHandle != VK_NULL_HANDLE)
+      m_fastPipelineBase.compare_exchange_strong(newPipelineBase, newPipelineHandle);
     
     // If an optimized version has been compiled
     // in the meantime, discard the new pipeline
