@@ -3005,7 +3005,7 @@ namespace dxvk {
     return true;
   }
   
-    
+  
   DxvkDataSlice D3D11DeviceContext::AllocUpdateBufferSlice(size_t Size) {
     constexpr size_t UpdateBufferSize = 4 * 1024 * 1024;
     
@@ -3014,12 +3014,12 @@ namespace dxvk {
       return buffer->alloc(Size);
     } else {
       if (m_updateBuffer == nullptr)
-        m_updateBuffer = new DxvkDataBuffer(Size);
+        m_updateBuffer = new DxvkDataBuffer(UpdateBufferSize);
       
       DxvkDataSlice slice = m_updateBuffer->alloc(Size);
       
       if (slice.ptr() == nullptr) {
-        m_updateBuffer = new DxvkDataBuffer(Size);
+        m_updateBuffer = new DxvkDataBuffer(UpdateBufferSize);
         slice = m_updateBuffer->alloc(Size);
       }
       
