@@ -41,8 +41,10 @@ namespace dxvk {
   DxvkPipelineManager::DxvkPipelineManager(const DxvkDevice* device)
   : m_device  (device),
     m_cache   (new DxvkPipelineCache(device->vkd())),
-    m_compiler(new DxvkPipelineCompiler()) {
-    
+    m_compiler(nullptr) {
+    // Async shader compilation is opt-in for now
+    if (env::getEnvVar(L"DXVK_USE_PIPECOMPILER") == "1")
+      m_compiler = new DxvkPipelineCompiler();
   }
   
   

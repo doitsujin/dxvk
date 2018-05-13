@@ -97,9 +97,9 @@ namespace dxvk {
     
   private:
     
-    const DxvkDevice*               m_device;
-    const Rc<DxvkPipelineCache>     m_cache;
-    const Rc<DxvkPipelineCompiler>  m_compiler;
+    const DxvkDevice*         m_device;
+    Rc<DxvkPipelineCache>     m_cache;
+    Rc<DxvkPipelineCompiler>  m_compiler;
     
     std::mutex m_mutex;
     

@@ -120,7 +120,8 @@ namespace dxvk {
     // vector, create a new one and add it to the list.
     VkPipeline newPipelineBase   = m_basePipelineBase.load();
     VkPipeline newPipelineHandle = this->compilePipeline(state, renderPassHandle,
-      VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT, newPipelineBase);
+      m_compiler != nullptr ? VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT : 0,
+      newPipelineBase);
     
     Rc<DxvkGraphicsPipelineInstance> newPipeline =
       new DxvkGraphicsPipelineInstance(m_device->vkd(), state,
@@ -147,7 +148,9 @@ namespace dxvk {
       m_basePipelineBase.compare_exchange_strong(newPipelineBase, newPipelineHandle);
     
     // Compile optimized pipeline asynchronously
-    m_compiler->queueCompilation(this, newPipeline);
+    if (m_compiler != nullptr)
+      m_compiler->queueCompilation(this, newPipeline);
+    
     return newPipelineHandle;
   }
   
