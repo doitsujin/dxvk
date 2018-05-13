@@ -51,7 +51,7 @@ namespace dxvk {
     std::queue<PipelineEntry>   m_compilerQueue;
     std::vector<std::thread>    m_compilerThreads;
     
-    void runCompilerThread();
+    void runCompilerThread(uint32_t workerId);
     
   };
   

@@ -9,14 +9,14 @@ namespace dxvk {
       1u, std::thread::hardware_concurrency() / 2);
     
     Logger::debug(str::format(
-      "DxvkPipelineCompiler: Using ", threadCount, " threads"));
+      "DxvkPipelineCompiler: Using ", threadCount, " workers"));
     
     // Start the compiler threads
     m_compilerThreads.resize(threadCount);
     
     for (uint32_t i = 0; i < threadCount; i++) {
       m_compilerThreads.at(i) = std::thread(
-        [this] { this->runCompilerThread(); });
+        [this, i] { this->runCompilerThread(i); });
     }
   }
   
@@ -24,9 +24,9 @@ namespace dxvk {
   DxvkPipelineCompiler::~DxvkPipelineCompiler() {
     { std::unique_lock<std::mutex> lock(m_compilerLock);
       m_compilerStop.store(true);
-      m_compilerCond.notify_all();
     }
     
+    m_compilerCond.notify_all();
     for (auto& thread : m_compilerThreads)
       thread.join();
   }
@@ -41,7 +41,10 @@ namespace dxvk {
   }
   
   
-  void DxvkPipelineCompiler::runCompilerThread() {
+  void DxvkPipelineCompiler::runCompilerThread(uint32_t workerId) {
+    Logger::debug(str::format(
+      "DxvkPipelineCompiler: Worker #", workerId, " started"));
+    
     while (!m_compilerStop.load()) {
       PipelineEntry entry;
       
@@ -61,6 +64,9 @@ namespace dxvk {
       if (entry.pipeline != nullptr && entry.instance != nullptr)
         entry.pipeline->compileInstance(entry.instance);
     }
+    
+    Logger::debug(str::format(
+      "DxvkPipelineCompiler: Worker #", workerId, " stopped"));
   }
   
 }
