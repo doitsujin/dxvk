@@ -35,8 +35,9 @@ namespace dxvk {
     
   private:
     
-    std::vector<char> m_data;
-    size_t            m_offset = 0;
+    char*   m_data   = nullptr;
+    size_t  m_size   = 0;
+    size_t  m_offset = 0;
     
   };
   
@@ -62,7 +63,7 @@ namespace dxvk {
     
     void* ptr() const {
       return m_buffer != nullptr
-        ? m_buffer->m_data.data() + m_offset
+        ? m_buffer->m_data + m_offset
         : nullptr;
     }
     
