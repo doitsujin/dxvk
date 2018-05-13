@@ -3007,7 +3007,7 @@ namespace dxvk {
   
   
   DxvkDataSlice D3D11DeviceContext::AllocUpdateBufferSlice(size_t Size) {
-    constexpr size_t UpdateBufferSize = 4 * 1024 * 1024;
+    constexpr size_t UpdateBufferSize = 16 * 1024 * 1024;
     
     if (Size >= UpdateBufferSize) {
       Rc<DxvkDataBuffer> buffer = new DxvkDataBuffer(Size);
