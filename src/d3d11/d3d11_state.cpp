@@ -1,24 +1,24 @@
 #include "d3d11_state.h"
 
 namespace dxvk {
-  
+
   size_t D3D11StateDescHash::operator () (
     const D3D11_BLEND_DESC1& desc) const {
     DxvkHashState hash;
     hash.add(desc.AlphaToCoverageEnable);
     hash.add(desc.IndependentBlendEnable);
-    
+
     // Render targets 1 to 7 are ignored and may contain
     // undefined data if independent blend is disabled
     const uint32_t usedRenderTargets = desc.IndependentBlendEnable ? 8 : 1;
-    
+
     for (uint32_t i = 0; i < usedRenderTargets; i++)
       hash.add(this->operator () (desc.RenderTarget[i]));
-    
+
     return hash;
   }
-  
-  
+
+
   size_t D3D11StateDescHash::operator () (
     const D3D11_DEPTH_STENCILOP_DESC& desc) const {
     DxvkHashState hash;
@@ -28,8 +28,8 @@ namespace dxvk {
     hash.add(desc.StencilFailOp);
     return hash;
   }
-  
-  
+
+
   size_t D3D11StateDescHash::operator () (
     const D3D11_DEPTH_STENCIL_DESC& desc) const {
     DxvkHashState hash;
@@ -43,8 +43,8 @@ namespace dxvk {
     hash.add(this->operator () (desc.BackFace));
     return hash;
   }
-  
-  
+
+
   size_t D3D11StateDescHash::operator () (
     const D3D11_RASTERIZER_DESC1& desc) const {
     std::hash<float> fhash;
@@ -63,8 +63,8 @@ namespace dxvk {
     hash.add(desc.ForcedSampleCount);
     return hash;
   }
-  
-  
+
+
   size_t D3D11StateDescHash::operator () (
     const D3D11_RENDER_TARGET_BLEND_DESC1& desc) const {
     DxvkHashState hash;
@@ -80,12 +80,12 @@ namespace dxvk {
     hash.add(desc.RenderTargetWriteMask);
     return hash;
   }
-  
-  
+
+
   size_t D3D11StateDescHash::operator () (
     const D3D11_SAMPLER_DESC& desc) const {
     std::hash<float> fhash;
-    
+
     DxvkHashState hash;
     hash.add(desc.Filter);
     hash.add(desc.AddressU);
@@ -100,25 +100,25 @@ namespace dxvk {
     hash.add(fhash(desc.MaxLOD));
     return hash;
   }
-  
-  
+
+
   bool D3D11StateDescEqual::operator () (
     const D3D11_BLEND_DESC1& a,
     const D3D11_BLEND_DESC1& b) const {
     bool eq = a.AlphaToCoverageEnable  == b.AlphaToCoverageEnable
            && a.IndependentBlendEnable == b.IndependentBlendEnable;
-    
+
     // Render targets 1 to 7 are ignored and may contain
     // undefined data if independent blend is disabled
     const uint32_t usedRenderTargets = a.IndependentBlendEnable ? 8 : 1;
-    
+
     for (uint32_t i = 0; eq && (i < usedRenderTargets); i++)
       eq &= this->operator () (a.RenderTarget[i], b.RenderTarget[i]);
-    
+
     return eq;
   }
-  
-  
+
+
   bool D3D11StateDescEqual::operator () (
     const D3D11_DEPTH_STENCILOP_DESC& a,
     const D3D11_DEPTH_STENCILOP_DESC& b) const {
@@ -127,8 +127,8 @@ namespace dxvk {
         && a.StencilPassOp         == b.StencilPassOp
         && a.StencilFailOp         == b.StencilFailOp;
   }
-  
-  
+
+
   bool D3D11StateDescEqual::operator () (
     const D3D11_DEPTH_STENCIL_DESC& a,
     const D3D11_DEPTH_STENCIL_DESC& b) const {
@@ -141,8 +141,8 @@ namespace dxvk {
         && this->operator () (a.FrontFace, b.FrontFace)
         && this->operator () (a.BackFace, b.BackFace);
   }
-  
-  
+
+
   bool D3D11StateDescEqual::operator () (
     const D3D11_RASTERIZER_DESC1& a,
     const D3D11_RASTERIZER_DESC1& b) const {
@@ -158,8 +158,8 @@ namespace dxvk {
         && a.AntialiasedLineEnable == b.AntialiasedLineEnable
         && a.ForcedSampleCount     == b.ForcedSampleCount;
   }
-  
-  
+
+
   bool D3D11StateDescEqual::operator () (
     const D3D11_RENDER_TARGET_BLEND_DESC1& a,
     const D3D11_RENDER_TARGET_BLEND_DESC1& b) const {
@@ -174,8 +174,8 @@ namespace dxvk {
         && a.LogicOp               == b.LogicOp
         && a.RenderTargetWriteMask == b.RenderTargetWriteMask;
   }
-  
-  
+
+
   bool D3D11StateDescEqual::operator () (
     const D3D11_SAMPLER_DESC& a,
     const D3D11_SAMPLER_DESC& b) const {
@@ -193,5 +193,5 @@ namespace dxvk {
         && a.MinLOD         == b.MinLOD
         && a.MaxLOD         == b.MaxLOD;
   }
-  
+
 }

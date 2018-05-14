@@ -6,21 +6,21 @@
 #include "dxvk_vulkan_loader_fn.h"
 
 namespace dxvk::vk {
-  
+
   /**
    * \brief Vulkan library loader
-   * 
+   *
    * Provides methods to load Vulkan functions that
    * can be called before creating a  instance.
    */
   struct LibraryLoader : public RcObject {
     PFN_vkVoidFunction sym(const char* name) const;
   };
-  
-  
+
+
   /**
    * \brief Vulkan instance loader
-   * 
+   *
    * Loads Vulkan functions that can be
    * called for a specific instance.
    */
@@ -31,11 +31,11 @@ namespace dxvk::vk {
   protected:
     const VkInstance m_instance;
   };
-  
-  
+
+
   /**
    * \brief Vulkan device loader
-   * 
+   *
    * Loads Vulkan functions for a
    * specific device.
    */
@@ -47,34 +47,34 @@ namespace dxvk::vk {
     const PFN_vkGetDeviceProcAddr m_getDeviceProcAddr;
     const VkDevice                m_device;
   };
-  
-  
+
+
   /**
    * \brief Vulkan library functions
-   * 
+   *
    * Vulkan functions that are called before
    * creating an actual Vulkan instance.
    */
   struct LibraryFn : LibraryLoader {
     LibraryFn();
     ~LibraryFn();
-    
+
     VULKAN_FN(vkCreateInstance);
     VULKAN_FN(vkEnumerateInstanceLayerProperties);
     VULKAN_FN(vkEnumerateInstanceExtensionProperties);
   };
-  
-  
+
+
   /**
    * \brief Vulkan instance functions
-   * 
+   *
    * Vulkan functions for a given instance that
    * are independent of any Vulkan devices.
    */
   struct InstanceFn : InstanceLoader {
     InstanceFn(VkInstance instance);
     ~InstanceFn();
-    
+
     VULKAN_FN(vkCreateDevice);
     VULKAN_FN(vkDestroyInstance);
     VULKAN_FN(vkEnumerateDeviceExtensionProperties);
@@ -86,54 +86,54 @@ namespace dxvk::vk {
     VULKAN_FN(vkGetPhysicalDeviceProperties);
     VULKAN_FN(vkGetPhysicalDeviceQueueFamilyProperties);
     VULKAN_FN(vkGetPhysicalDeviceSparseImageFormatProperties);
-    
+
     #ifdef VK_KHR_surface
     #ifdef VK_USE_PLATFORM_XCB_KHR
     VULKAN_FN(vkCreateXcbSurfaceKHR);
     VULKAN_FN(vkGetPhysicalDeviceXcbPresentationSupportKHR);
     #endif
-    
+
     #ifdef VK_USE_PLATFORM_XLIB_KHR
     VULKAN_FN(vkCreateXlibSurfaceKHR);
     VULKAN_FN(vkGetPhysicalDeviceXlibPresentationSupportKHR);
     #endif
-    
+
     #ifdef VK_USE_PLATFORM_WAYLAND_KHR
     VULKAN_FN(vkCreateWaylandSurfaceKHR);
     VULKAN_FN(vkGetPhysicalDeviceWaylandPresentationSupportKHR);
     #endif
-    
+
     #ifdef VK_USE_PLATFORM_WIN32_KHR
     VULKAN_FN(vkCreateWin32SurfaceKHR);
     VULKAN_FN(vkGetPhysicalDeviceWin32PresentationSupportKHR);
     #endif
-    
+
     VULKAN_FN(vkDestroySurfaceKHR);
-    
+
     VULKAN_FN(vkGetPhysicalDeviceSurfaceSupportKHR);
     VULKAN_FN(vkGetPhysicalDeviceSurfaceCapabilitiesKHR);
     VULKAN_FN(vkGetPhysicalDeviceSurfaceFormatsKHR);
     VULKAN_FN(vkGetPhysicalDeviceSurfacePresentModesKHR);
     #endif
-    
+
     #ifdef VK_EXT_debug_report
     VULKAN_FN(vkCreateDebugReportCallbackEXT);
     VULKAN_FN(vkDestroyDebugReportCallbackEXT);
     VULKAN_FN(vkDebugReportMessageEXT);
     #endif
   };
-  
-  
+
+
   /**
    * \brief Vulkan device functions
-   * 
+   *
    * Vulkan functions for a specific Vulkan device.
    * This ensures that no slow dispatch code is executed.
    */
   struct DeviceFn : DeviceLoader {
     DeviceFn(VkInstance instance, VkDevice device);
     ~DeviceFn();
-    
+
     VULKAN_FN(vkDestroyDevice);
     VULKAN_FN(vkGetDeviceQueue);
     VULKAN_FN(vkQueueSubmit);
@@ -254,14 +254,14 @@ namespace dxvk::vk {
     VULKAN_FN(vkCmdNextSubpass);
     VULKAN_FN(vkCmdEndRenderPass);
     VULKAN_FN(vkCmdExecuteCommands);
-    
+
     #ifdef VK_KHR_descriptor_update_template
     VULKAN_FN(vkCreateDescriptorUpdateTemplateKHR);
     VULKAN_FN(vkDestroyDescriptorUpdateTemplateKHR);
     VULKAN_FN(vkUpdateDescriptorSetWithTemplateKHR);
     VULKAN_FN(vkCmdPushDescriptorSetWithTemplateKHR);
     #endif
-    
+
     #ifdef VK_KHR_swapchain
     VULKAN_FN(vkCreateSwapchainKHR);
     VULKAN_FN(vkDestroySwapchainKHR);
@@ -270,5 +270,5 @@ namespace dxvk::vk {
     VULKAN_FN(vkQueuePresentKHR);
     #endif
   };
-  
+
 }

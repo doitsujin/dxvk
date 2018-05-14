@@ -24,12 +24,12 @@
 #include "dxvk_unbound.h"
 
 namespace dxvk {
-  
+
   class DxvkInstance;
-  
+
   /**
    * \brief Device queue
-   * 
+   *
    * Stores a Vulkan queue and the
    * queue family that it belongs to.
    */
@@ -37,10 +37,10 @@ namespace dxvk {
     uint32_t  queueFamily = 0;
     VkQueue   queueHandle = VK_NULL_HANDLE;
   };
-  
+
   /**
    * \brief DXVK device
-   * 
+   *
    * Device object. This is responsible for resource creation,
    * memory allocation, command submission and state tracking.
    * Rendering commands are recorded into command lists using
@@ -49,18 +49,18 @@ namespace dxvk {
   class DxvkDevice : public RcObject {
     friend class DxvkContext;
     friend class DxvkSubmissionQueue;
-    
+
     constexpr static VkDeviceSize DefaultStagingBufferSize = 4 * 1024 * 1024;
   public:
-    
+
     DxvkDevice(
       const Rc<DxvkAdapter>&          adapter,
       const Rc<vk::DeviceFn>&         vkd,
       const Rc<DxvkDeviceExtensions>& extensions,
       const VkPhysicalDeviceFeatures& features);
-      
+
     ~DxvkDevice();
-    
+
     /**
      * \brief Vulkan device functions
      * \returns Vulkan device functions
@@ -68,7 +68,7 @@ namespace dxvk {
     Rc<vk::DeviceFn> vkd() const {
       return m_vkd;
     }
-    
+
     /**
      * \brief Logical device handle
      * \returns The device handle
@@ -76,10 +76,10 @@ namespace dxvk {
     VkDevice handle() const {
       return m_vkd->device();
     }
-    
+
     /**
      * \brief Graphics queue properties
-     * 
+     *
      * Handle and queue family index of
      * the queue used for rendering.
      * \returns Graphics queue info
@@ -87,10 +87,10 @@ namespace dxvk {
     DxvkDeviceQueue graphicsQueue() const {
       return m_graphicsQueue;
     }
-    
+
     /**
      * \brief The adapter
-     * 
+     *
      * The physical device that the
      * device has been created for.
      * \returns Adapter
@@ -98,7 +98,7 @@ namespace dxvk {
     Rc<DxvkAdapter> adapter() const {
       return m_adapter;
     }
-    
+
     /**
      * \brief Enabled device extensions
      * \returns Enabled device extensions
@@ -106,7 +106,7 @@ namespace dxvk {
     const DxvkDeviceExtensions& extensions() const {
       return *m_extensions;
     }
-    
+
     /**
      * \brief Enabled device features
      * \returns Enabled features
@@ -114,10 +114,10 @@ namespace dxvk {
     const VkPhysicalDeviceFeatures& features() const {
       return m_features;
     }
-    
+
     /**
      * \brief Allocates a physical buffer
-     * 
+     *
      * \param [in] createInfo Buffer create info
      * \param [in] memoryType Memory property flags
      * \returns The buffer resource object
@@ -125,10 +125,10 @@ namespace dxvk {
     Rc<DxvkPhysicalBuffer> allocPhysicalBuffer(
       const DxvkBufferCreateInfo& createInfo,
             VkMemoryPropertyFlags memoryType);
-    
+
     /**
      * \brief Allocates a staging buffer
-     * 
+     *
      * Returns a staging buffer that is at least as large
      * as the requested size. It is usually bigger so that
      * a single staging buffer may serve multiple allocations.
@@ -137,10 +137,10 @@ namespace dxvk {
      */
     Rc<DxvkStagingBuffer> allocStagingBuffer(
             VkDeviceSize size);
-    
+
     /**
      * \brief Recycles a staging buffer
-     * 
+     *
      * When a staging buffer is no longer needed, it should
      * be returned to the device so that it can be reused
      * for subsequent allocations.
@@ -148,25 +148,25 @@ namespace dxvk {
      */
     void recycleStagingBuffer(
       const Rc<DxvkStagingBuffer>& buffer);
-    
+
     /**
      * \brief Creates a command list
      * \returns The command list
      */
     Rc<DxvkCommandList> createCommandList();
-    
+
     /**
      * \brief Creates a context
-     * 
+     *
      * Creates a context object that can
      * be used to record command buffers.
      * \returns The context object
      */
     Rc<DxvkContext> createContext();
-    
+
     /**
      * \brief Creates framebuffer for a set of render targets
-     * 
+     *
      * Automatically deduces framebuffer dimensions
      * from the supplied render target views.
      * \param [in] renderTargets Render targets
@@ -174,10 +174,10 @@ namespace dxvk {
      */
     Rc<DxvkFramebuffer> createFramebuffer(
       const DxvkRenderTargets& renderTargets);
-    
+
     /**
      * \brief Creates a buffer object
-     * 
+     *
      * \param [in] createInfo Buffer create info
      * \param [in] memoryType Memory type flags
      * \returns The buffer object
@@ -185,10 +185,10 @@ namespace dxvk {
     Rc<DxvkBuffer> createBuffer(
       const DxvkBufferCreateInfo& createInfo,
             VkMemoryPropertyFlags memoryType);
-    
+
     /**
      * \brief Creates a buffer view
-     * 
+     *
      * \param [in] buffer The buffer to view
      * \param [in] createInfo Buffer view properties
      * \returns The buffer view object
@@ -196,10 +196,10 @@ namespace dxvk {
     Rc<DxvkBufferView> createBufferView(
       const Rc<DxvkBuffer>&           buffer,
       const DxvkBufferViewCreateInfo& createInfo);
-    
+
     /**
      * \brief Creates an image object
-     * 
+     *
      * \param [in] createInfo Image create info
      * \param [in] memoryType Memory type flags
      * \returns The image object
@@ -207,10 +207,10 @@ namespace dxvk {
     Rc<DxvkImage> createImage(
       const DxvkImageCreateInfo&  createInfo,
             VkMemoryPropertyFlags memoryType);
-    
+
     /**
      * \brief Creates an image view
-     * 
+     *
      * \param [in] image The image to create a view for
      * \param [in] createInfo Image view create info
      * \returns The image view
@@ -218,7 +218,7 @@ namespace dxvk {
     Rc<DxvkImageView> createImageView(
       const Rc<DxvkImage>&            image,
       const DxvkImageViewCreateInfo&  createInfo);
-    
+
     /**
      * \brief Creates a query pool
      * \param [in] queryType Query type
@@ -226,25 +226,25 @@ namespace dxvk {
     Rc<DxvkQueryPool> createQueryPool(
             VkQueryType               queryType,
             uint32_t                  queryCount);
-    
+
     /**
      * \brief Creates a sampler object
-     * 
+     *
      * \param [in] createInfo Sampler parameters
      * \returns Newly created sampler object
      */
     Rc<DxvkSampler> createSampler(
       const DxvkSamplerCreateInfo&  createInfo);
-    
+
     /**
      * \brief Creates a semaphore object
      * \returns Newly created semaphore
      */
     Rc<DxvkSemaphore> createSemaphore();
-    
+
     /**
      * \brief Creates a shader module
-     * 
+     *
      * \param [in] stage Shader stage
      * \param [in] slotCount Resource slot count
      * \param [in] slotInfos Resource slot descriptions
@@ -258,10 +258,10 @@ namespace dxvk {
       const DxvkResourceSlot*         slotInfos,
       const DxvkInterfaceSlots&       iface,
       const SpirvCodeBuffer&          code);
-    
+
     /**
      * \brief Creates a swap chain
-     * 
+     *
      * \param [in] surface The target surface
      * \param [in] properties Swapchain properties
      * \returns The swapchain object
@@ -269,28 +269,28 @@ namespace dxvk {
     Rc<DxvkSwapchain> createSwapchain(
       const Rc<DxvkSurface>&          surface,
       const DxvkSwapchainProperties&  properties);
-    
+
     /**
      * \brief Retrieves stat counters
-     * 
+     *
      * Can be used by the HUD to display some
      * internal information, such as memory
      * usage, draw calls, etc.
      */
     DxvkStatCounters getStatCounters();
-    
+
     /**
      * \brief Initializes dummy resources
-     * 
+     *
      * Should be called after creating the device in
      * case the device initialization was successful
      * and the device is usable.
      */
     void initResources();
-    
+
     /**
      * \brief Presents a swap chain image
-     * 
+     *
      * This is implicitly called by the swap chain class
      * when presenting an image. Do not use this directly.
      * \param [in] presentInfo Swap image present info
@@ -298,11 +298,11 @@ namespace dxvk {
      */
     VkResult presentSwapImage(
       const VkPresentInfoKHR&         presentInfo);
-    
+
     /**
      * \brief Submits a command list
-     * 
-     * Synchronization arguments are optional. 
+     *
+     * Synchronization arguments are optional.
      * \param [in] commandList The command list to submit
      * \param [in] waitSync (Optional) Semaphore to wait on
      * \param [in] wakeSync (Optional) Semaphore to notify
@@ -312,10 +312,10 @@ namespace dxvk {
       const Rc<DxvkCommandList>&      commandList,
       const Rc<DxvkSemaphore>&        waitSync,
       const Rc<DxvkSemaphore>&        wakeSync);
-    
+
     /**
      * \brief Locks submission queue
-     * 
+     *
      * Since Vulkan queues are only meant to be accessed
      * from one thread at a time, external libraries need
      * to lock the queue before submitting command buffers.
@@ -323,57 +323,57 @@ namespace dxvk {
     void lockSubmission() {
       m_submissionLock.lock();
     }
-    
+
     /**
      * \brief Unlocks submission queue
-     * 
+     *
      * Releases the Vulkan queues again so that DXVK
      * itself can use them for submissions again.
      */
     void unlockSubmission() {
       m_submissionLock.unlock();
     }
-    
+
     /**
      * \brief Waits until the device becomes idle
-     * 
+     *
      * Waits for the GPU to complete the execution of all
      * previously submitted command buffers. This may be
      * used to ensure that resources that were previously
      * used by the GPU can be safely destroyed.
      */
     void waitForIdle();
-    
+
   private:
-    
+
     Rc<DxvkAdapter>             m_adapter;
     Rc<vk::DeviceFn>            m_vkd;
     Rc<DxvkDeviceExtensions>    m_extensions;
     VkPhysicalDeviceFeatures    m_features;
     VkPhysicalDeviceProperties  m_properties;
-    
+
     Rc<DxvkMemoryAllocator>     m_memory;
     Rc<DxvkRenderPassPool>      m_renderPassPool;
     Rc<DxvkPipelineManager>     m_pipelineManager;
     Rc<DxvkMetaClearObjects>    m_metaClearObjects;
-    
+
     DxvkUnboundResources        m_unboundResources;
-    
+
     sync::Spinlock              m_statLock;
     DxvkStatCounters            m_statCounters;
-    
+
     std::mutex                  m_submissionLock;
     DxvkDeviceQueue             m_graphicsQueue;
     DxvkDeviceQueue             m_presentQueue;
-    
+
     DxvkRecycler<DxvkCommandList,  16> m_recycledCommandLists;
     DxvkRecycler<DxvkStagingBuffer, 4> m_recycledStagingBuffers;
-    
+
     DxvkSubmissionQueue m_submissionQueue;
-    
+
     void recycleCommandList(
       const Rc<DxvkCommandList>& cmdList);
-    
+
     /**
      * \brief Dummy buffer handle
      * \returns Use for unbound vertex buffers.
@@ -381,7 +381,7 @@ namespace dxvk {
     VkBuffer dummyBufferHandle() const {
       return m_unboundResources.bufferHandle();
     }
-    
+
     /**
      * \brief Dummy buffer descriptor
      * \returns Descriptor that points to a dummy buffer
@@ -389,7 +389,7 @@ namespace dxvk {
     VkDescriptorBufferInfo dummyBufferDescriptor() const {
       return m_unboundResources.bufferDescriptor();
     }
-    
+
     /**
      * \brief Dummy buffer view descriptor
      * \returns Dummy buffer view handle
@@ -397,7 +397,7 @@ namespace dxvk {
     VkBufferView dummyBufferViewDescriptor() const {
       return m_unboundResources.bufferViewDescriptor();
     }
-    
+
     /**
      * \brief Dummy sampler descriptor
      * \returns Descriptor that points to a dummy sampler
@@ -405,17 +405,17 @@ namespace dxvk {
     VkDescriptorImageInfo dummySamplerDescriptor() const {
       return m_unboundResources.samplerDescriptor();
     }
-    
+
     /**
      * \brief Dummy image view descriptor
-     * 
+     *
      * \param [in] type Required view type
      * \returns Descriptor that points to a dummy image
      */
     VkDescriptorImageInfo dummyImageViewDescriptor(VkImageViewType type) const {
       return m_unboundResources.imageViewDescriptor(type);
     }
-    
+
   };
-  
+
 }

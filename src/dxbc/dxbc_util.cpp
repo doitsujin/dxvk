@@ -1,14 +1,14 @@
 #include "dxbc_util.h"
 
 namespace dxvk {
-  
+
   uint32_t computeResourceSlotId(
           DxbcProgramType shaderStage,
           DxbcBindingType bindingType,
           uint32_t        bindingIndex) {
     // First resource slot index for per-stage resources
     const uint32_t stageOffset = 132 + 158 * uint32_t(shaderStage);
-    
+
     if (shaderStage == DxbcProgramType::ComputeShader) {
       //   0 -  13: Constant buffers
       //  14 -  29: Samplers
@@ -41,10 +41,10 @@ namespace dxvk {
         default: Logger::err("computeResourceSlotId: Invalid resource type");
       }
     }
-    
+
     return 0;
   }
-  
+
   uint32_t primitiveVertexCount(DxbcPrimitive primitive) {
     static const std::array<uint32_t, 8> s_vertexCounts = {
        0, // Undefined
@@ -56,7 +56,7 @@ namespace dxvk {
        4, // Line with adjacency
        6, // Triangle with adjacency
     };
-    
+
     if (primitive >= DxbcPrimitive::Patch1) {
       return static_cast<uint32_t>(primitive)
            - static_cast<uint32_t>(DxbcPrimitive::Patch1);
@@ -65,5 +65,5 @@ namespace dxvk {
         static_cast<uint32_t>(primitive));
     }
   }
-  
+
 }

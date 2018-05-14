@@ -2,7 +2,7 @@
 #include "d3d11_device.h"
 
 namespace dxvk {
-  
+
   D3D11BlendState::D3D11BlendState(
           D3D11Device*        device,
     const D3D11_BLEND_DESC1&  desc)
@@ -16,30 +16,30 @@ namespace dxvk {
           ? desc.RenderTarget[i]
           : desc.RenderTarget[0]);
     }
-    
+
     // Multisample state is part of the blend state in D3D11
     m_msState.sampleMask            = 0; // Set during bind
     m_msState.enableAlphaToCoverage = desc.AlphaToCoverageEnable;
     m_msState.enableAlphaToOne      = VK_FALSE;
-    
+
     // Vulkan only supports a global logic op for the blend
     // state, which might be problematic in some cases.
     if (desc.IndependentBlendEnable && desc.RenderTarget[0].LogicOpEnable)
       Logger::warn("D3D11: Per-target logic ops not supported");
-    
+
     m_loState.enableLogicOp         = desc.RenderTarget[0].LogicOpEnable;
     m_loState.logicOp               = DecodeLogicOp(desc.RenderTarget[0].LogicOp);
   }
-  
-  
+
+
   D3D11BlendState::~D3D11BlendState() {
-    
+
   }
-  
-  
+
+
   HRESULT STDMETHODCALLTYPE D3D11BlendState::QueryInterface(REFIID riid, void** ppvObject) {
     *ppvObject = nullptr;
-    
+
     if (riid == __uuidof(IUnknown)
      || riid == __uuidof(ID3D11DeviceChild)
      || riid == __uuidof(ID3D11BlendState)
@@ -47,22 +47,22 @@ namespace dxvk {
       *ppvObject = ref(this);
       return S_OK;
     }
-    
+
     Logger::warn("D3D11BlendState::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
     return E_NOINTERFACE;
   }
-  
-  
+
+
   void STDMETHODCALLTYPE D3D11BlendState::GetDevice(ID3D11Device** ppDevice) {
     *ppDevice = ref(m_device);
   }
-  
-  
+
+
   void STDMETHODCALLTYPE D3D11BlendState::GetDesc(D3D11_BLEND_DESC* pDesc) {
     pDesc->AlphaToCoverageEnable  = m_desc.AlphaToCoverageEnable;
     pDesc->IndependentBlendEnable = m_desc.IndependentBlendEnable;
-    
+
     for (uint32_t i = 0; i < 8; i++) {
       pDesc->RenderTarget[i].BlendEnable           = m_desc.RenderTarget[i].BlendEnable;
       pDesc->RenderTarget[i].SrcBlend              = m_desc.RenderTarget[i].SrcBlend;
@@ -74,13 +74,13 @@ namespace dxvk {
       pDesc->RenderTarget[i].RenderTargetWriteMask = m_desc.RenderTarget[i].RenderTargetWriteMask;
     }
   }
-  
-  
+
+
   void STDMETHODCALLTYPE D3D11BlendState::GetDesc1(D3D11_BLEND_DESC1* pDesc) {
     *pDesc = m_desc;
   }
-  
-  
+
+
   void D3D11BlendState::BindToContext(
     const Rc<DxvkContext>&  ctx,
           uint32_t          sampleMask) const {
@@ -89,22 +89,22 @@ namespace dxvk {
     // blend mode array will be identical
     for (uint32_t i = 0; i < m_blendModes.size(); i++)
       ctx->setBlendMode(i, m_blendModes.at(i));
-    
+
     // The sample mask is dynamic state in D3D11
     DxvkMultisampleState msState = m_msState;
     msState.sampleMask = sampleMask;
     ctx->setMultisampleState(msState);
-    
+
     // Set up logic op state as well
     ctx->setLogicOpState(m_loState);
   }
-  
-  
+
+
   D3D11_BLEND_DESC1 D3D11BlendState::DefaultDesc() {
     D3D11_BLEND_DESC1 dstDesc;
     dstDesc.AlphaToCoverageEnable  = FALSE;
     dstDesc.IndependentBlendEnable = FALSE;
-    
+
     // 1-7 must be ignored if IndependentBlendEnable is disabled so
     // technically this is not needed, but since this structure is
     // going to be copied around we'll initialize it nonetheless
@@ -120,16 +120,16 @@ namespace dxvk {
       dstDesc.RenderTarget[i].LogicOp               = D3D11_LOGIC_OP_NOOP;
       dstDesc.RenderTarget[i].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
     }
-    
+
     return dstDesc;
   }
-  
-  
+
+
   D3D11_BLEND_DESC1 D3D11BlendState::PromoteDesc(const D3D11_BLEND_DESC* pSrcDesc) {
     D3D11_BLEND_DESC1 dstDesc;
     dstDesc.AlphaToCoverageEnable  = pSrcDesc->AlphaToCoverageEnable;
     dstDesc.IndependentBlendEnable = pSrcDesc->IndependentBlendEnable;
-    
+
     for (uint32_t i = 0; i < 8; i++) {
       dstDesc.RenderTarget[i].BlendEnable           = pSrcDesc->RenderTarget[i].BlendEnable;
       dstDesc.RenderTarget[i].LogicOpEnable         = FALSE;
@@ -142,31 +142,31 @@ namespace dxvk {
       dstDesc.RenderTarget[i].LogicOp               = D3D11_LOGIC_OP_NOOP;
       dstDesc.RenderTarget[i].RenderTargetWriteMask = pSrcDesc->RenderTarget[i].RenderTargetWriteMask;
     }
-    
+
     return dstDesc;
   }
-  
-  
+
+
   HRESULT D3D11BlendState::NormalizeDesc(D3D11_BLEND_DESC1* pDesc) {
     const D3D11_BLEND_DESC1 defaultDesc = DefaultDesc();
-    
+
     if (pDesc->AlphaToCoverageEnable)
       pDesc->AlphaToCoverageEnable = TRUE;
-    
+
     if (pDesc->IndependentBlendEnable)
       pDesc->IndependentBlendEnable = TRUE;
-    
+
     const uint32_t numRenderTargets = pDesc->IndependentBlendEnable ? 8 : 1;
-    
+
     for (uint32_t i = 0; i < numRenderTargets; i++) {
       D3D11_RENDER_TARGET_BLEND_DESC1* rt = &pDesc->RenderTarget[i];
-      
+
       if (rt->BlendEnable) {
         rt->BlendEnable = TRUE;
-        
+
         if (rt->LogicOpEnable)
           return E_INVALIDARG;
-        
+
         if (!ValidateBlendOperations(
          rt->SrcBlend, rt->SrcBlendAlpha,
          rt->DestBlend, rt->DestBlendAlpha,
@@ -180,10 +180,10 @@ namespace dxvk {
         rt->DestBlendAlpha = defaultDesc.RenderTarget[0].DestBlendAlpha;
         rt->BlendOpAlpha   = defaultDesc.RenderTarget[0].BlendOpAlpha;
       }
-      
+
       if (rt->LogicOpEnable) {
         rt->LogicOpEnable = TRUE;
-        
+
         // Blending must be disabled
         // if the logic op is enabled
         if (rt->BlendEnable
@@ -193,22 +193,22 @@ namespace dxvk {
       } else {
         rt->LogicOp = defaultDesc.RenderTarget[0].LogicOp;
       }
-      
+
       if (rt->RenderTargetWriteMask > D3D11_COLOR_WRITE_ENABLE_ALL)
         return E_INVALIDARG;
     }
-    
+
     for (uint32_t i = numRenderTargets; i < 8; i++) {
       // Render targets blend operations are the same
       // across all render targets when blend is enabled
       // on rendertarget[0] with independent blend disabled
       pDesc->RenderTarget[i] = pDesc->RenderTarget[0];
     }
-    
+
     return S_OK;
   }
-  
-  
+
+
   DxvkBlendMode D3D11BlendState::DecodeBlendMode(
     const D3D11_RENDER_TARGET_BLEND_DESC1& BlendDesc) {
     DxvkBlendMode mode;
@@ -222,8 +222,8 @@ namespace dxvk {
     mode.writeMask        = BlendDesc.RenderTargetWriteMask;
     return mode;
   }
-  
-  
+
+
   VkBlendFactor D3D11BlendState::DecodeBlendFactor(D3D11_BLEND BlendFactor, bool IsAlpha) {
     switch (BlendFactor) {
       case D3D11_BLEND_ZERO:              return VK_BLEND_FACTOR_ZERO;
@@ -246,8 +246,8 @@ namespace dxvk {
       default:                            return VK_BLEND_FACTOR_ZERO;
     }
   }
-  
-  
+
+
   VkBlendOp D3D11BlendState::DecodeBlendOp(D3D11_BLEND_OP BlendOp) {
     switch (BlendOp) {
       case D3D11_BLEND_OP_ADD:            return VK_BLEND_OP_ADD;
@@ -258,8 +258,8 @@ namespace dxvk {
       default:                            return VK_BLEND_OP_ADD;
     }
   }
-  
-  
+
+
   VkLogicOp D3D11BlendState::DecodeLogicOp(D3D11_LOGIC_OP LogicOp) {
     switch (LogicOp) {
       case D3D11_LOGIC_OP_CLEAR:          return VK_LOGIC_OP_CLEAR;
@@ -281,14 +281,14 @@ namespace dxvk {
       default:                            return VK_LOGIC_OP_NO_OP;
     }
   }
-  
-  
+
+
   bool D3D11BlendState::ValidateBlendFactor(D3D11_BLEND Blend) {
     return Blend >= D3D11_BLEND_ZERO
         && Blend <= D3D11_BLEND_INV_SRC1_ALPHA;
   }
-  
-  
+
+
   bool D3D11BlendState::ValidateBlendFactorAlpha(D3D11_BLEND BlendAlpha) {
     return BlendAlpha >= D3D11_BLEND_ZERO
         && BlendAlpha <= D3D11_BLEND_INV_SRC1_ALPHA
@@ -299,26 +299,26 @@ namespace dxvk {
         && BlendAlpha != D3D11_BLEND_SRC1_COLOR
         && BlendAlpha != D3D11_BLEND_INV_SRC1_COLOR;
   }
-  
-  
+
+
   bool D3D11BlendState::ValidateBlendOp(D3D11_BLEND_OP BlendOp) {
     return BlendOp >= D3D11_BLEND_OP_ADD
         && BlendOp <= D3D11_BLEND_OP_MAX;
   }
-  
-  
+
+
   bool D3D11BlendState::ValidateLogicOp(D3D11_LOGIC_OP LogicOp) {
     return LogicOp >= D3D11_LOGIC_OP_CLEAR
         && LogicOp <= D3D11_LOGIC_OP_OR_INVERTED;
   }
-  
-  
+
+
   bool D3D11BlendState::ValidateBlendOperations(
-          D3D11_BLEND     SrcBlend, 
-          D3D11_BLEND     SrcBlendAlpha, 
-          D3D11_BLEND     DestBlend, 
-          D3D11_BLEND     DestBlendAlpha, 
-          D3D11_BLEND_OP  BlendOp, 
+          D3D11_BLEND     SrcBlend,
+          D3D11_BLEND     SrcBlendAlpha,
+          D3D11_BLEND     DestBlend,
+          D3D11_BLEND     DestBlendAlpha,
+          D3D11_BLEND_OP  BlendOp,
           D3D11_BLEND_OP  BlendOpAlpha) {
     return ValidateBlendOp(BlendOp)
         && ValidateBlendOp(BlendOpAlpha)
@@ -327,5 +327,5 @@ namespace dxvk {
         && ValidateBlendFactorAlpha(SrcBlendAlpha)
         && ValidateBlendFactorAlpha(DestBlendAlpha);
   }
-  
+
 }

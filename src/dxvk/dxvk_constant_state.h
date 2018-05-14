@@ -7,21 +7,21 @@
 #include "dxvk_shader.h"
 
 namespace dxvk {
-  
+
   /**
    * \brief Blend constants
-   * 
+   *
    * Stores a blend factor
    * as an RGBA color value.
    */
   struct DxvkBlendConstants {
     float r, g, b, a;
   };
-  
-  
+
+
   /**
    * \brief Input assembly state
-   * 
+   *
    * Stores the primitive topology and
    * whether or not primitive restart
    * is enabled.
@@ -31,11 +31,11 @@ namespace dxvk {
     VkBool32            primitiveRestart;
     uint32_t            patchVertexCount;
   };
-  
-  
+
+
   /**
    * \brief Rasterizer state
-   * 
+   *
    * Stores the operating mode of the
    * rasterizer, including the depth bias.
    */
@@ -50,11 +50,11 @@ namespace dxvk {
     float               depthBiasClamp;
     float               depthBiasSlope;
   };
-  
-  
+
+
   /**
    * \brief Multisample state
-   * 
+   *
    * Defines how to handle certain
    * aspects of multisampling.
    */
@@ -63,11 +63,11 @@ namespace dxvk {
     VkBool32            enableAlphaToCoverage;
     VkBool32            enableAlphaToOne;
   };
-  
-  
+
+
   /**
    * \brief Depth-stencil state
-   * 
+   *
    * Defines the depth test and stencil
    * operations for the graphics pipeline.
    */
@@ -82,8 +82,8 @@ namespace dxvk {
     float               depthBoundsMin;
     float               depthBoundsMax;
   };
-  
-  
+
+
   /**
    * \brief Logic op state
    * Defines a logic op.
@@ -92,11 +92,11 @@ namespace dxvk {
     VkBool32  enableLogicOp;
     VkLogicOp logicOp;
   };
-  
-  
+
+
   /**
    * \brief Blend mode for a single attachment
-   * 
+   *
    * Stores the blend state for a single color attachment.
    * Blend modes can be set separately for each attachment.
    */
@@ -110,11 +110,11 @@ namespace dxvk {
     VkBlendOp             alphaBlendOp;
     VkColorComponentFlags writeMask;
   };
-  
-  
+
+
   /**
    * \brief Vertex attribute description
-   * 
+   *
    * Stores information about a
    * single vertex attribute.
    */
@@ -124,11 +124,11 @@ namespace dxvk {
     VkFormat format;
     uint32_t offset;
   };
-  
-  
+
+
   /**
    * \brief Vertex binding description
-   * 
+   *
    * Stores information about a
    * single vertex binding slot.
    */
@@ -137,20 +137,20 @@ namespace dxvk {
     uint32_t          fetchRate;
     VkVertexInputRate inputRate;
   };
-  
-  
+
+
   /**
    * \brief Input layout
-   * 
+   *
    * Stores the description of all active
    * vertex attributes and vertex bindings.
    */
   struct DxvkInputLayout {
     uint32_t numAttributes;
     uint32_t numBindings;
-    
+
     std::array<DxvkVertexAttribute, DxvkLimits::MaxNumVertexAttributes> attributes;
     std::array<DxvkVertexBinding,   DxvkLimits::MaxNumVertexBindings>   bindings;
   };
-  
+
 }

@@ -3,7 +3,7 @@
 #include <cstring>
 
 namespace dxvk::hud {
-  
+
   Hud::Hud(
     const Rc<DxvkDevice>& device,
     const HudConfig&      config)
@@ -17,40 +17,40 @@ namespace dxvk::hud {
     m_hudStats      (config.elements) {
     this->setupConstantState();
   }
-  
-  
+
+
   Hud::~Hud() {
-    
+
   }
-  
-  
+
+
   void Hud::render(VkExtent2D size) {
     bool recreateFbo = m_surfaceSize != size;
-    
+
     if (recreateFbo) {
       m_surfaceSize = size;
       this->setupFramebuffer(size);
     }
-      
+
     m_hudFramerate.update();
     m_hudStats.update(m_device);
-    
+
     this->beginRenderPass(recreateFbo);
     this->updateUniformBuffer();
     this->render();
     this->endRenderPass();
   }
-  
-  
+
+
   Rc<Hud> Hud::createHud(const Rc<DxvkDevice>& device) {
     HudConfig config(env::getEnvVar(L"DXVK_HUD"));
-    
+
     return !config.elements.isClear()
       ? new Hud(device, config)
       : nullptr;
   }
-  
-  
+
+
   Rc<DxvkBuffer> Hud::createUniformBuffer() {
     DxvkBufferCreateInfo info;
     info.size           = sizeof(HudUniformData);
@@ -58,63 +58,63 @@ namespace dxvk::hud {
     info.stages         = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
                         | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
     info.access         = VK_ACCESS_UNIFORM_READ_BIT;
-    
+
     return m_device->createBuffer(info,
       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
   }
-  
-  
+
+
   void Hud::render() {
     m_renderer.beginFrame(m_context);
-    
+
     HudPos position = { 8.0f, 24.0f };
-    
+
     if (m_config.elements.test(HudElement::DeviceInfo)) {
       position = m_hudDeviceInfo.render(
         m_context, m_renderer, position);
     }
-    
+
     position = m_hudFramerate.render(m_context, m_renderer, position);
     position = m_hudStats    .render(m_context, m_renderer, position);
   }
-  
-  
+
+
   void Hud::updateUniformBuffer() {
     HudUniformData uniformData;
     uniformData.surfaceSize = m_surfaceSize;
-    
+
     auto slice = m_uniformBuffer->allocPhysicalSlice();
     m_context->invalidateBuffer(m_uniformBuffer, slice);
     std::memcpy(slice.mapPtr(0), &uniformData, sizeof(uniformData));
   }
-  
-  
+
+
   void Hud::beginRenderPass(bool initFbo) {
     m_context->beginRecording(
       m_device->createCommandList());
-    
+
     if (initFbo) {
       m_context->initImage(m_renderTarget,
         VkImageSubresourceRange {
           VK_IMAGE_ASPECT_COLOR_BIT,
           0, 1, 0, 1 });
     }
-    
+
     VkClearRect clearRect;
     clearRect.rect.offset = { 0, 0 };
     clearRect.rect.extent = m_surfaceSize;
     clearRect.baseArrayLayer = 0;
     clearRect.layerCount     = 1;
-    
+
     m_context->bindRenderTargets(
       m_renderTargetInfo);
-    
+
     m_context->clearRenderTarget(
       m_renderTargetView, clearRect,
       VK_IMAGE_ASPECT_COLOR_BIT,
       VkClearValue { });
-    
+
     VkViewport viewport;
     viewport.x        = 0.0f;
     viewport.y        = 0.0f;
@@ -122,23 +122,23 @@ namespace dxvk::hud {
     viewport.height   = static_cast<float>(m_surfaceSize.height);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
-    
+
     VkRect2D scissor;
     scissor.offset = { 0, 0 };
     scissor.extent = m_surfaceSize;
-    
+
     m_context->setViewports(1, &viewport, &scissor);
     m_context->bindResourceBuffer(0, DxvkBufferSlice(m_uniformBuffer));
   }
-  
-  
+
+
   void Hud::endRenderPass() {
     m_device->submitCommandList(
       m_context->endRecording(),
       nullptr, nullptr);
   }
-  
-  
+
+
   void Hud::setupFramebuffer(VkExtent2D size) {
     DxvkImageCreateInfo imageInfo;
     imageInfo.type          = VK_IMAGE_TYPE_2D;
@@ -157,9 +157,9 @@ namespace dxvk::hud {
                             | VK_ACCESS_SHADER_READ_BIT;
     imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.layout        = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    
+
     m_renderTarget = m_device->createImage(imageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    
+
     DxvkImageViewCreateInfo viewInfo;
     viewInfo.type           = VK_IMAGE_VIEW_TYPE_2D;
     viewInfo.format         = imageInfo.format;
@@ -168,13 +168,13 @@ namespace dxvk::hud {
     viewInfo.numLevels      = 1;
     viewInfo.minLayer       = 0;
     viewInfo.numLayers      = 1;
-    
+
     m_renderTargetView = m_device->createImageView(m_renderTarget, viewInfo);
     m_renderTargetInfo.color[0] = { m_renderTargetView,
       VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
   }
-  
-  
+
+
   void Hud::setupConstantState() {
     DxvkRasterizerState rsState;
     rsState.enableDepthClamp  = VK_FALSE;
@@ -187,13 +187,13 @@ namespace dxvk::hud {
     rsState.depthBiasClamp    = 0.0f;
     rsState.depthBiasSlope    = 0.0f;
     m_context->setRasterizerState(rsState);
-    
+
     DxvkMultisampleState msState;
     msState.sampleMask            = 0xFFFFFFFF;
     msState.enableAlphaToCoverage = VK_FALSE;
     msState.enableAlphaToOne      = VK_FALSE;
     m_context->setMultisampleState(msState);
-    
+
     VkStencilOpState stencilOp;
     stencilOp.failOp          = VK_STENCIL_OP_KEEP;
     stencilOp.passOp          = VK_STENCIL_OP_KEEP;
@@ -202,7 +202,7 @@ namespace dxvk::hud {
     stencilOp.compareMask     = 0xFFFFFFFF;
     stencilOp.writeMask       = 0xFFFFFFFF;
     stencilOp.reference       = 0;
-    
+
     DxvkDepthStencilState dsState;
     dsState.enableDepthTest   = VK_FALSE;
     dsState.enableDepthWrite  = VK_FALSE;
@@ -214,12 +214,12 @@ namespace dxvk::hud {
     dsState.depthBoundsMin    = 0.0f;
     dsState.depthBoundsMax    = 1.0f;
     m_context->setDepthStencilState(dsState);
-    
+
     DxvkLogicOpState loState;
     loState.enableLogicOp     = VK_FALSE;
     loState.logicOp           = VK_LOGIC_OP_NO_OP;
     m_context->setLogicOpState(loState);
-    
+
     DxvkBlendMode blendMode;
     blendMode.enableBlending  = VK_TRUE;
     blendMode.colorSrcFactor  = VK_BLEND_FACTOR_ONE;
@@ -232,9 +232,9 @@ namespace dxvk::hud {
                               | VK_COLOR_COMPONENT_G_BIT
                               | VK_COLOR_COMPONENT_B_BIT
                               | VK_COLOR_COMPONENT_A_BIT;
-    
+
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++)
       m_context->setBlendMode(i, blendMode);
   }
-  
+
 }

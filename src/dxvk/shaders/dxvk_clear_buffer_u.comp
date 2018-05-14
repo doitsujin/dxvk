@@ -17,7 +17,7 @@ uniform u_info_t {
 
 void main() {
   int thread_id = int(gl_GlobalInvocationID.x);
-  
+
   if (thread_id < u_info.dst_extent.x) {
     imageStore(dst,
       u_info.dst_offset.x + thread_id,

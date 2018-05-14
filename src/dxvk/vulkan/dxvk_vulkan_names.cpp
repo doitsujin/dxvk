@@ -1,5 +1,5 @@
 #include "dxvk_vulkan_names.h"
-    
+
 std::ostream& operator << (std::ostream& os, VkPipelineCacheHeaderVersion e) {
   switch (e) {
     ENUM_NAME(VK_PIPELINE_CACHE_HEADER_VERSION_ONE);

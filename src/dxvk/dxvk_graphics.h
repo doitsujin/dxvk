@@ -13,12 +13,12 @@
 #include "dxvk_stats.h"
 
 namespace dxvk {
-  
+
   class DxvkDevice;
-  
+
   /**
    * \brief Graphics pipeline state info
-   * 
+   *
    * Stores all information that is required to create
    * a graphics pipeline, except the shader objects
    * themselves. Also used to identify pipelines using
@@ -28,25 +28,25 @@ namespace dxvk {
     DxvkGraphicsPipelineStateInfo();
     DxvkGraphicsPipelineStateInfo(
       const DxvkGraphicsPipelineStateInfo& other);
-    
+
     DxvkGraphicsPipelineStateInfo& operator = (
       const DxvkGraphicsPipelineStateInfo& other);
-    
+
     bool operator == (const DxvkGraphicsPipelineStateInfo& other) const;
     bool operator != (const DxvkGraphicsPipelineStateInfo& other) const;
-    
+
     DxvkBindingState                    bsBindingState;
-    
+
     VkPrimitiveTopology                 iaPrimitiveTopology;
     VkBool32                            iaPrimitiveRestart;
     uint32_t                            iaPatchVertexCount;
-    
+
     uint32_t                            ilAttributeCount;
     uint32_t                            ilBindingCount;
     VkVertexInputAttributeDescription   ilAttributes[DxvkLimits::MaxNumVertexAttributes];
     VkVertexInputBindingDescription     ilBindings[DxvkLimits::MaxNumVertexBindings];
     uint32_t                            ilDivisors[DxvkLimits::MaxNumVertexBindings];
-    
+
     VkBool32                            rsEnableDepthClamp;
     VkBool32                            rsEnableDiscard;
     VkPolygonMode                       rsPolygonMode;
@@ -57,12 +57,12 @@ namespace dxvk {
     float                               rsDepthBiasClamp;
     float                               rsDepthBiasSlope;
     uint32_t                            rsViewportCount;
-    
+
     VkSampleCountFlagBits               msSampleCount;
     uint32_t                            msSampleMask;
     VkBool32                            msEnableAlphaToCoverage;
     VkBool32                            msEnableAlphaToOne;
-    
+
     VkBool32                            dsEnableDepthTest;
     VkBool32                            dsEnableDepthWrite;
     VkBool32                            dsEnableDepthBounds;
@@ -72,16 +72,16 @@ namespace dxvk {
     VkStencilOpState                    dsStencilOpBack;
     float                               dsDepthBoundsMin;
     float                               dsDepthBoundsMax;
-    
+
     VkBool32                            omEnableLogicOp;
     VkLogicOp                           omLogicOp;
     VkPipelineColorBlendAttachmentState omBlendAttachments[MaxNumRenderTargets];
   };
-  
-  
+
+
   /**
    * \brief Common graphics pipeline state
-   * 
+   *
    * Non-dynamic pipeline state that cannot
    * be changed dynamically.
    */
@@ -89,29 +89,29 @@ namespace dxvk {
     bool                                msSampleShadingEnable;
     float                               msSampleShadingFactor;
   };
-  
-  
+
+
   /**
    * \brief Graphics pipeline instance
-   * 
+   *
    * Stores a state vector and the corresponding
    * unoptimized and optimized pipeline handles.
    */
   class DxvkGraphicsPipelineInstance : public RcObject {
     friend class DxvkGraphicsPipeline;
   public:
-    
+
     DxvkGraphicsPipelineInstance(
       const Rc<vk::DeviceFn>&               vkd,
       const DxvkGraphicsPipelineStateInfo&  stateVector,
             VkRenderPass                    renderPass,
             VkPipeline                      basePipeline);
-    
+
     ~DxvkGraphicsPipelineInstance();
-    
+
     /**
      * \brief Checks for matching pipeline state
-     * 
+     *
      * \param [in] stateVector Graphics pipeline state
      * \param [in] renderPass Render pass handle
      * \returns \c true if the specialization is compatible
@@ -122,10 +122,10 @@ namespace dxvk {
       return m_renderPass  == renderPass
           && m_stateVector == stateVector;
     }
-    
+
     /**
      * \brief Sets the optimized pipeline handle
-     * 
+     *
      * If an optimized pipeline handle has already been
      * set up, this method will fail and the new pipeline
      * handle should be destroyed.
@@ -135,10 +135,10 @@ namespace dxvk {
       VkPipeline expected = VK_NULL_HANDLE;
       return m_fastPipeline.compare_exchange_strong(expected, pipeline);
     }
-    
+
     /**
      * \brief Retrieves pipeline
-     * 
+     *
      * Returns the optimized version of the pipeline if
      * if has been set, or the base pipeline if not.
      * \returns The pipeline handle
@@ -146,35 +146,35 @@ namespace dxvk {
     VkPipeline getPipeline() const {
       VkPipeline basePipeline = m_basePipeline.load();
       VkPipeline fastPipeline = m_fastPipeline.load();
-      
+
       return fastPipeline != VK_NULL_HANDLE
         ? fastPipeline : basePipeline;
     }
-    
+
   private:
-    
+
     const Rc<vk::DeviceFn> m_vkd;
-    
+
     DxvkGraphicsPipelineStateInfo m_stateVector;
     VkRenderPass                  m_renderPass;
-    
+
     std::atomic<VkPipeline> m_basePipeline;
     std::atomic<VkPipeline> m_fastPipeline;
-    
+
   };
-  
-  
+
+
   /**
    * \brief Graphics pipeline
-   * 
+   *
    * Stores the pipeline layout as well as methods to
    * recompile the graphics pipeline against a given
    * pipeline state vector.
    */
   class DxvkGraphicsPipeline : public DxvkResource {
-    
+
   public:
-    
+
     DxvkGraphicsPipeline(
       const DxvkDevice*               device,
       const Rc<DxvkPipelineCache>&    cache,
@@ -185,10 +185,10 @@ namespace dxvk {
       const Rc<DxvkShader>&           gs,
       const Rc<DxvkShader>&           fs);
     ~DxvkGraphicsPipeline();
-    
+
     /**
      * \brief Pipeline layout
-     * 
+     *
      * Stores the pipeline layout and the descriptor set
      * layout, as well as information on the resource
      * slots used by the pipeline.
@@ -197,10 +197,10 @@ namespace dxvk {
     Rc<DxvkPipelineLayout> layout() const {
       return m_layout;
     }
-    
+
     /**
      * \brief Pipeline handle
-     * 
+     *
      * Retrieves a pipeline handle for the given pipeline
      * state. If necessary, a new pipeline will be created.
      * \param [in] state Pipeline state vector
@@ -212,68 +212,68 @@ namespace dxvk {
       const DxvkGraphicsPipelineStateInfo&    state,
       const DxvkRenderPass&                   renderPass,
             DxvkStatCounters&                 stats);
-    
+
     /**
      * \brief Compiles optimized pipeline
-     * 
+     *
      * Compiles an optimized version of a pipeline
      * and makes it available to the system.
      * \param [in] instance The pipeline instance
      */
     void compileInstance(
       const Rc<DxvkGraphicsPipelineInstance>& instance);
-    
+
   private:
-    
+
     struct PipelineStruct {
       DxvkGraphicsPipelineStateInfo stateVector;
       VkRenderPass                  renderPass;
       VkPipeline                    pipeline;
     };
-    
+
     const DxvkDevice* const m_device;
     const Rc<vk::DeviceFn>  m_vkd;
-    
+
     Rc<DxvkPipelineCache>     m_cache;
     Rc<DxvkPipelineCompiler>  m_compiler;
     Rc<DxvkPipelineLayout>    m_layout;
-    
+
     Rc<DxvkShaderModule>  m_vs;
     Rc<DxvkShaderModule>  m_tcs;
     Rc<DxvkShaderModule>  m_tes;
     Rc<DxvkShaderModule>  m_gs;
     Rc<DxvkShaderModule>  m_fs;
-    
+
     uint32_t m_vsIn  = 0;
     uint32_t m_fsOut = 0;
-    
+
     DxvkGraphicsCommonPipelineStateInfo m_common;
-    
+
     // List of pipeline instances, shared between threads
     alignas(CACHE_LINE_SIZE) sync::Spinlock       m_mutex;
     std::vector<Rc<DxvkGraphicsPipelineInstance>> m_pipelines;
-    
+
     // Pipeline handles used for derivative pipelines
     std::atomic<VkPipeline> m_basePipelineBase = { VK_NULL_HANDLE };
     std::atomic<VkPipeline> m_fastPipelineBase = { VK_NULL_HANDLE };
-    
+
     DxvkGraphicsPipelineInstance* findInstance(
       const DxvkGraphicsPipelineStateInfo& state,
             VkRenderPass                   renderPass) const;
-    
+
     VkPipeline compilePipeline(
       const DxvkGraphicsPipelineStateInfo& state,
             VkRenderPass                   renderPass,
             VkPipelineCreateFlags          createFlags,
             VkPipeline                     baseHandle) const;
-    
+
     bool validatePipelineState(
       const DxvkGraphicsPipelineStateInfo& state) const;
-    
+
     void logPipelineState(
             LogLevel                       level,
       const DxvkGraphicsPipelineStateInfo& state) const;
-    
+
   };
-  
+
 }

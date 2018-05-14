@@ -4,10 +4,10 @@
 #include "dxbc_enums.h"
 
 namespace dxvk {
-  
+
   /**
    * \brief Resource type
-   * 
+   *
    * The type of a shader resource. Used
    * to determine the DXVK resource slot.
    */
@@ -19,11 +19,11 @@ namespace dxvk {
     StreamOutputBuffer  = 4,
     UavCounter          = 5,
   };
-  
-  
+
+
   /**
    * \brief Computes the DXVK resource slot for a binding
-   * 
+   *
    * \param [in] shaderStage The target shader stage
    * \param [in] bindingType Type of the resource
    * \param [in] bindingIndex Resource binding index
@@ -33,14 +33,14 @@ namespace dxvk {
           DxbcProgramType shaderStage,
           DxbcBindingType bindingType,
           uint32_t        bindingIndex);
-  
+
   /**
    * \brief Primitive vertex count
-   * 
+   *
    * Calculates the number of vertices
    * for a given primitive type.
    */
   uint32_t primitiveVertexCount(
           DxbcPrimitive   primitive);
-  
+
 }

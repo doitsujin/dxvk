@@ -3,27 +3,27 @@
 #include "dxvk_include.h"
 
 namespace dxvk::util {
-  
+
   /**
    * \brief Gets pipeline stage flags for shader stages
-   * 
+   *
    * \param [in] shaderStages Shader stage flags
    * \returns Corresponding pipeline stage flags
    */
   VkPipelineStageFlags pipelineStages(
           VkShaderStageFlags shaderStages);
-  
+
   /**
    * \brief Computes number of mip levels for an image
-   * 
+   *
    * \param [in] imageSize Size of the image
    * \returns Number of mipmap layers
    */
   uint32_t computeMipLevelCount(VkExtent3D imageSize);
-  
+
   /**
    * \brief Writes tightly packed image data to a buffer
-   * 
+   *
    * \param [in] dstData Destination buffer pointer
    * \param [in] srcData Pointer to source data
    * \param [in] blockCount Number of blocks to copy
@@ -38,10 +38,10 @@ namespace dxvk::util {
           VkDeviceSize      blockSize,
           VkDeviceSize      pitchPerRow,
           VkDeviceSize      pitchPerLayer);
-  
+
   /**
    * \brief Computes minimum extent
-   * 
+   *
    * \param [in] a First value
    * \param [in] b Second value
    * \returns Component-wise \c min
@@ -52,10 +52,10 @@ namespace dxvk::util {
       std::min(a.height, b.height),
       std::min(a.depth,  b.depth) };
   }
-  
+
   /**
    * \brief Checks whether an offset is block-aligned
-   * 
+   *
    * An offset is considered block-aligned if it is
    * a multiple of the block size. Only non-negative
    * offset values are valid.
@@ -68,10 +68,10 @@ namespace dxvk::util {
         && (offset.y % blockSize.height == 0)
         && (offset.z % blockSize.depth  == 0);
   }
-  
+
   /**
    * \brief Checks whether an extent is block-aligned
-   * 
+   *
    * A block-aligned extent can be used for image copy
    * operations that involve block-compressed images.
    * \param [in] offset The base offset
@@ -86,10 +86,10 @@ namespace dxvk::util {
         && ((extent.height % blockSize.height == 0) || (uint32_t(offset.y + extent.height) == imageSize.height))
         && ((extent.depth  % blockSize.depth  == 0) || (uint32_t(offset.z + extent.depth)  == imageSize.depth));
   }
-  
+
   /**
    * \brief Computes block offset for compressed images
-   * 
+   *
    * Convenience function to compute the block position
    * within a compressed image based on the block size.
    * \param [in] offset The offset
@@ -102,10 +102,10 @@ namespace dxvk::util {
       offset.y / int32_t(blockSize.height),
       offset.z / int32_t(blockSize.depth) };
   }
-  
+
   /**
    * \brief Computes block count for compressed images
-   * 
+   *
    * Convenience function to compute the size, in
    * blocks, of compressed images subresources.
    * \param [in] extent The image size
@@ -118,11 +118,11 @@ namespace dxvk::util {
       (extent.height + blockSize.height - 1) / blockSize.height,
       (extent.depth  + blockSize.depth  - 1) / blockSize.depth };
   }
-  
+
   /**
    * \brief Computes block count for compressed images
-   * 
-   * Given an aligned offset, this computes 
+   *
+   * Given an aligned offset, this computes
    * Convenience function to compute the size, in
    * blocks, of compressed images subresources.
    * \param [in] extent The image size
@@ -135,10 +135,10 @@ namespace dxvk::util {
       (extent.height + blockSize.height - offset.y - 1) / blockSize.height,
       (extent.depth  + blockSize.depth  - offset.z - 1) / blockSize.depth };
   }
-  
+
   /**
    * \brief Computes block extent for compressed images
-   * 
+   *
    * \param [in] blockCount The number of blocks
    * \param [in] blockSize Size of a pixel block
    * \returns Extent of the given blocks
@@ -149,10 +149,10 @@ namespace dxvk::util {
       blockCount.height * blockSize.height,
       blockCount.depth  * blockSize.depth };
   }
-  
+
   /**
    * \brief Computes number of pixels or blocks of an image
-   * 
+   *
    * Basically returns the product of width, height and depth.
    * \param [in] extent Image extent, in pixels or blocks
    * \returns Flattened number of pixels or blocks
@@ -160,10 +160,10 @@ namespace dxvk::util {
   inline uint32_t flattenImageExtent(VkExtent3D extent) {
     return extent.width * extent.height * extent.depth;
   }
-  
+
   /**
    * \brief Computes image data size, in bytes
-   * 
+   *
    * Convenience method that can be used to compute the number
    * of bytes required to store image data in a given format.
    * \param [in] format The image format
@@ -171,7 +171,7 @@ namespace dxvk::util {
    * \returns Data size, in bytes
    */
   VkDeviceSize computeImageDataSize(VkFormat format, VkExtent3D extent);
-  
+
 }
 
 

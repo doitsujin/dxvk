@@ -3,19 +3,19 @@
 #include <x86intrin.h>
 
 namespace dxvk::bit {
-  
+
   template<typename T>
   T extract(T value, uint32_t fst, uint32_t lst) {
     return (value >> fst) & ~(~T(0) << (lst - fst + 1));
   }
-  
+
   template<typename T>
   T popcnt(T value) {
     return value != 0
       ? (value & 1) + popcnt(value >> 1)
       : 0;
   }
-  
+
   inline uint32_t tzcnt(uint32_t n) {
     #if defined(__BMI__)
     return __tzcnt_u32(n);
@@ -40,5 +40,5 @@ namespace dxvk::bit {
     return n != 0 ? r : 32;
     #endif
   }
-  
+
 }

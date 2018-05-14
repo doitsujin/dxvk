@@ -11,7 +11,7 @@
 #include "dxvk_hud_stats.h"
 
 namespace dxvk::hud {
-  
+
   /**
    * \brief HUD uniform data
    * Shader data for the HUD.
@@ -19,35 +19,35 @@ namespace dxvk::hud {
   struct HudUniformData {
     VkExtent2D surfaceSize;
   };
-  
+
   /**
    * \brief DXVK HUD
-   * 
+   *
    * Can be used by the presentation backend to
    * display performance and driver information.
    */
   class Hud : public RcObject {
-    
+
   public:
-    
+
     Hud(
       const Rc<DxvkDevice>& device,
       const HudConfig&      config);
-    
+
     ~Hud();
-    
+
     /**
      * \brief Renders the HUD
-     * 
+     *
      * Recreates the render targets for the HUD
      * in case the surface size has changed.
      * \param [in] size Render target size
      */
     void render(VkExtent2D size);
-    
+
     /**
      * \brief Rendered image
-     * 
+     *
      * Returns the rendered image from
      * the previous call to \ref render.
      * \returns The image view
@@ -55,10 +55,10 @@ namespace dxvk::hud {
     Rc<DxvkImageView> texture() const {
       return m_renderTargetView;
     }
-    
+
     /**
      * \brief Creates the HUD
-     * 
+     *
      * Creates and initializes the HUD if the
      * \c DXVK_HUD environment variable is set.
      * \param [in] device The DXVK device
@@ -66,37 +66,37 @@ namespace dxvk::hud {
      */
     static Rc<Hud> createHud(
       const Rc<DxvkDevice>& device);
-    
+
   private:
-    
+
     const HudConfig       m_config;
-    
+
     const Rc<DxvkDevice>  m_device;
     const Rc<DxvkContext> m_context;
-    
+
     HudRenderer           m_renderer;
     VkExtent2D            m_surfaceSize = { 0, 0 };
-    
+
     Rc<DxvkBuffer>        m_uniformBuffer;
     Rc<DxvkImage>         m_renderTarget;
     Rc<DxvkImageView>     m_renderTargetView;
     DxvkRenderTargets     m_renderTargetInfo;
-    
+
     HudDeviceInfo         m_hudDeviceInfo;
     HudFps                m_hudFramerate;
     HudStats              m_hudStats;
-    
+
     void render();
-    
+
     Rc<DxvkBuffer> createUniformBuffer();
-    
+
     void updateUniformBuffer();
     void beginRenderPass(bool initFbo);
     void endRenderPass();
-    
+
     void setupFramebuffer(VkExtent2D size);
     void setupConstantState();
-    
+
   };
-  
+
 }

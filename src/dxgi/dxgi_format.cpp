@@ -3,7 +3,7 @@
 #include <array>
 
 namespace dxvk {
-  
+
   std::array<DXGI_VK_FORMAT_MAPPING, 133> g_dxgiFormats = {{
     // DXGI_FORMAT_UNKNOWN
     { },
@@ -531,8 +531,8 @@ namespace dxvk {
     // DXGI_FORMAT_V408
     { }, // Unsupported
   }};
-  
-  
+
+
   DXGIVkFormatTable::DXGIVkFormatTable(const Rc<DxvkAdapter>& adapter)
   : m_dxgiFormats(g_dxgiFormats) {
     // AMD do not support 24-bit depth buffers on Vulkan,
@@ -547,59 +547,59 @@ namespace dxvk {
       RemapDepthFormat(DXGI_FORMAT_D24_UNORM_S8_UINT,     VK_FORMAT_D32_SFLOAT_S8_UINT);
     }
   }
-  
-  
+
+
   DXGIVkFormatTable::~DXGIVkFormatTable() {
-    
+
   }
-  
-  
+
+
   DXGI_VK_FORMAT_INFO DXGIVkFormatTable::GetFormatInfo(
           DXGI_FORMAT         Format,
           DXGI_VK_FORMAT_MODE Mode) const {
     const size_t formatId = size_t(Format);
-    
+
     const DXGI_VK_FORMAT_MAPPING& mapping
       = formatId < m_dxgiFormats.size()
         ? m_dxgiFormats[formatId]
         : m_dxgiFormats[0];
-    
+
     switch (Mode) {
       case DXGI_VK_FORMAT_MODE_ANY:
         return mapping.FormatColor != VK_FORMAT_UNDEFINED
           ? DXGI_VK_FORMAT_INFO { mapping.FormatColor, mapping.AspectColor, mapping.Swizzle }
           : DXGI_VK_FORMAT_INFO { mapping.FormatDepth, mapping.AspectDepth };
-      
+
       case DXGI_VK_FORMAT_MODE_COLOR:
         return { mapping.FormatColor, mapping.AspectColor, mapping.Swizzle };
-      
+
       case DXGI_VK_FORMAT_MODE_DEPTH:
         return { mapping.FormatDepth, mapping.AspectDepth };
-      
+
       case DXGI_VK_FORMAT_MODE_RAW:
         return { mapping.FormatRaw, mapping.AspectColor };
     }
-    
+
     Logger::err("DXGI: GetFormatInfo: Internal error");
     return DXGI_VK_FORMAT_INFO();
   }
-  
-  
+
+
   bool DXGIVkFormatTable::CheckImageFormatSupport(
     const Rc<DxvkAdapter>&      Adapter,
           VkFormat              Format,
           VkFormatFeatureFlags  Features) const {
     VkFormatProperties supported = Adapter->formatProperties(VK_FORMAT_D24_UNORM_S8_UINT);
-    
+
     return (supported.linearTilingFeatures  & Features) == Features
         || (supported.optimalTilingFeatures & Features) == Features;
   }
-  
-  
+
+
   void DXGIVkFormatTable::RemapDepthFormat(
           DXGI_FORMAT         Format,
           VkFormat            Target) {
     m_dxgiFormats[uint32_t(Format)].FormatDepth = Target;
   }
-  
+
 }

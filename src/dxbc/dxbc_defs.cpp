@@ -1,7 +1,7 @@
 #include "dxbc_defs.h"
 
 namespace dxvk {
-  
+
   const std::array<DxbcInstFormat, 207> g_instructionFormats = {{
     /* Add                                  */
     { 3, DxbcInstClass::VectorAlu, {
@@ -1001,14 +1001,14 @@ namespace dxvk {
     /* DclGsInstanceCount                   */
     { },
   }};
-  
-  
+
+
   DxbcInstFormat dxbcInstructionFormat(DxbcOpcode opcode) {
     const uint32_t idx = static_cast<uint32_t>(opcode);
-    
+
     return (idx < g_instructionFormats.size())
       ? g_instructionFormats.at(idx)
       : DxbcInstFormat();
   }
-  
+
 }

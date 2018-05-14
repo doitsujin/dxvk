@@ -1,7 +1,7 @@
 #include "dxvk_sampler.h"
 
 namespace dxvk {
-    
+
   DxvkSampler::DxvkSampler(
     const Rc<vk::DeviceFn>&       vkd,
     const DxvkSamplerCreateInfo&  info)
@@ -25,16 +25,16 @@ namespace dxvk {
     samplerInfo.maxLod                  = info.mipmapLodMax;
     samplerInfo.borderColor             = info.borderColor;
     samplerInfo.unnormalizedCoordinates = info.usePixelCoord;
-    
+
     if (m_vkd->vkCreateSampler(m_vkd->device(),
         &samplerInfo, nullptr, &m_sampler) != VK_SUCCESS)
       throw DxvkError("DxvkSampler::DxvkSampler: Failed to create sampler");
   }
-  
-  
+
+
   DxvkSampler::~DxvkSampler() {
     m_vkd->vkDestroySampler(
       m_vkd->device(), m_sampler, nullptr);
   }
-  
+
 }

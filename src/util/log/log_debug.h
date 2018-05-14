@@ -17,22 +17,22 @@
 #endif
 
 namespace dxvk::debug {
-  
+
   std::string methodName(const std::string& prettyName);
-  
+
   inline void traceArgs(std::stringstream& stream) { }
-    
+
   template<typename Arg1>
   void traceArgs(std::stringstream& stream, const Arg1& arg1) {
     stream << arg1;
   }
-  
+
   template<typename Arg1, typename Arg2, typename... Args>
   void traceArgs(std::stringstream& stream, const Arg1& arg1, const Arg2& arg2, const Args&... args) {
     stream << arg1 << ",";
     traceArgs(stream, arg2, args...);
   }
-  
+
   template<typename... Args>
   void trace(const std::string& funcName, const Args&... args) {
     std::stringstream stream;
@@ -41,5 +41,5 @@ namespace dxvk::debug {
     stream << ")";
     Logger::trace(stream.str());
   }
-  
+
 }

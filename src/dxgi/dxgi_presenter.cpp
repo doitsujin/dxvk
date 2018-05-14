@@ -6,38 +6,38 @@
 #include <dxgi_presenter_vert.h>
 
 namespace dxvk {
-  
+
   DxgiVkPresenter::DxgiVkPresenter(
     const Rc<DxvkDevice>&         device,
           HWND                    window)
   : m_device  (device),
     m_context (device->createContext()) {
-    
+
     // Create Vulkan surface for the window
     HINSTANCE instance = reinterpret_cast<HINSTANCE>(
       GetWindowLongPtr(window, GWLP_HINSTANCE));
-    
+
     m_surface = m_device->adapter()->createSurface(instance, window);
-    
+
     // Reset options for the swap chain itself. We will
     // create a swap chain object before presentation.
     m_options.preferredSurfaceFormat = { VK_FORMAT_UNDEFINED, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
     m_options.preferredPresentMode   = VK_PRESENT_MODE_FIFO_KHR;
     m_options.preferredBufferSize    = { 0u, 0u };
-    
+
     // Samplers for presentation. We'll create one with point sampling that will
     // be used when the back buffer resolution matches the output resolution, and
     // one with linar sampling that will be used when the image will be scaled.
     m_samplerFitting = CreateSampler(VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER);
     m_samplerScaling = CreateSampler(VK_FILTER_LINEAR,  VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER);
-    
+
     // Create objects required for the gamma ramp. This is implemented partially
     // with an UBO, which stores global parameters, and a lookup texture, which
     // stores the actual gamma ramp and can be sampled with a linear filter.
     m_gammaSampler      = CreateSampler(VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
     m_gammaTexture      = CreateGammaTexture();
     m_gammaTextureView  = CreateGammaTextureView();
-    
+
     // Set up context state. The shader bindings and the
     // constant state objects will never be modified.
     DxvkInputAssemblyState iaState;
@@ -45,10 +45,10 @@ namespace dxvk {
     iaState.primitiveRestart  = VK_FALSE;
     iaState.patchVertexCount  = 0;
     m_context->setInputAssemblyState(iaState);
-    
+
     m_context->setInputLayout(
       0, nullptr, 0, nullptr);
-    
+
     DxvkRasterizerState rsState;
     rsState.enableDepthClamp   = VK_FALSE;
     rsState.enableDiscard      = VK_FALSE;
@@ -60,13 +60,13 @@ namespace dxvk {
     rsState.depthBiasClamp     = 0.0f;
     rsState.depthBiasSlope     = 0.0f;
     m_context->setRasterizerState(rsState);
-    
+
     DxvkMultisampleState msState;
     msState.sampleMask            = 0xffffffff;
     msState.enableAlphaToCoverage = VK_FALSE;
     msState.enableAlphaToOne      = VK_FALSE;
     m_context->setMultisampleState(msState);
-    
+
     VkStencilOpState stencilOp;
     stencilOp.failOp      = VK_STENCIL_OP_KEEP;
     stencilOp.passOp      = VK_STENCIL_OP_KEEP;
@@ -75,7 +75,7 @@ namespace dxvk {
     stencilOp.compareMask = 0xFFFFFFFF;
     stencilOp.writeMask   = 0xFFFFFFFF;
     stencilOp.reference   = 0;
-    
+
     DxvkDepthStencilState dsState;
     dsState.enableDepthTest   = VK_FALSE;
     dsState.enableDepthWrite  = VK_FALSE;
@@ -87,12 +87,12 @@ namespace dxvk {
     dsState.depthBoundsMin    = 0.0f;
     dsState.depthBoundsMax    = 1.0f;
     m_context->setDepthStencilState(dsState);
-    
+
     DxvkLogicOpState loState;
     loState.enableLogicOp = VK_FALSE;
     loState.logicOp       = VK_LOGIC_OP_NO_OP;
     m_context->setLogicOpState(loState);
-    
+
     m_blendMode.enableBlending  = VK_FALSE;
     m_blendMode.colorSrcFactor  = VK_BLEND_FACTOR_ONE;
     m_blendMode.colorDstFactor  = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
@@ -104,43 +104,43 @@ namespace dxvk {
                                 | VK_COLOR_COMPONENT_G_BIT
                                 | VK_COLOR_COMPONENT_B_BIT
                                 | VK_COLOR_COMPONENT_A_BIT;
-    
+
     m_context->bindShader(
       VK_SHADER_STAGE_VERTEX_BIT,
       CreateVertexShader());
-    
+
     m_context->bindShader(
       VK_SHADER_STAGE_FRAGMENT_BIT,
       CreateFragmentShader());
-    
+
     m_hud = hud::Hud::createHud(m_device);
   }
-  
-  
+
+
   DxgiVkPresenter::~DxgiVkPresenter() {
     m_device->waitForIdle();
   }
-  
-  
+
+
   void DxgiVkPresenter::InitBackBuffer(const Rc<DxvkImage>& Image) {
     m_context->beginRecording(
       m_device->createCommandList());
-    
+
     VkImageSubresourceRange sr;
     sr.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
     sr.baseMipLevel   = 0;
     sr.levelCount     = Image->info().mipLevels;
     sr.baseArrayLayer = 0;
     sr.layerCount     = Image->info().numLayers;
-    
+
     m_context->initImage(Image, sr);
-    
+
     m_device->submitCommandList(
       m_context->endRecording(),
       nullptr, nullptr);
   }
-  
-  
+
+
   void DxgiVkPresenter::PresentImage() {
     if (m_hud != nullptr) {
       m_hud->render({
@@ -148,35 +148,35 @@ namespace dxvk {
         m_options.preferredBufferSize.height,
       });
     }
-    
+
     const bool fitSize =
         m_backBuffer->info().extent.width  == m_options.preferredBufferSize.width
      && m_backBuffer->info().extent.height == m_options.preferredBufferSize.height;
-    
+
     m_context->beginRecording(
       m_device->createCommandList());
-    
+
     VkImageSubresourceLayers resolveSubresources;
     resolveSubresources.aspectMask      = VK_IMAGE_ASPECT_COLOR_BIT;
     resolveSubresources.mipLevel        = 0;
     resolveSubresources.baseArrayLayer  = 0;
     resolveSubresources.layerCount      = 1;
-    
+
     if (m_backBufferResolve != nullptr) {
       m_context->resolveImage(
         m_backBufferResolve, resolveSubresources,
         m_backBuffer,        resolveSubresources,
         VK_FORMAT_UNDEFINED);
     }
-    
+
     auto swapSemas = m_swapchain->getSemaphorePair();
     auto swapImage = m_swapchain->getImageView(swapSemas.acquireSync);
-    
+
     DxvkRenderTargets renderTargets;
     renderTargets.color[0].view   = swapImage;
     renderTargets.color[0].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     m_context->bindRenderTargets(renderTargets);
-    
+
     VkViewport viewport;
     viewport.x        = 0.0f;
     viewport.y        = 0.0f;
@@ -184,51 +184,51 @@ namespace dxvk {
     viewport.height   = float(swapImage->imageInfo().extent.height);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
-    
+
     VkRect2D scissor;
     scissor.offset.x      = 0;
     scissor.offset.y      = 0;
     scissor.extent.width  = swapImage->imageInfo().extent.width;
     scissor.extent.height = swapImage->imageInfo().extent.height;
-    
+
     m_context->setViewports(1, &viewport, &scissor);
-    
+
     m_context->bindResourceSampler(BindingIds::Sampler,
       fitSize ? m_samplerFitting : m_samplerScaling);
-    
+
     m_blendMode.enableBlending = VK_FALSE;
     m_context->setBlendMode(0, m_blendMode);
-    
+
     m_context->bindResourceView(BindingIds::Texture, m_backBufferView, nullptr);
     m_context->draw(4, 1, 0, 0);
-    
+
     m_context->bindResourceSampler(BindingIds::GammaSmp, m_gammaSampler);
     m_context->bindResourceView   (BindingIds::GammaTex, m_gammaTextureView, nullptr);
-    
+
     if (m_hud != nullptr) {
       m_blendMode.enableBlending = VK_TRUE;
       m_context->setBlendMode(0, m_blendMode);
-      
+
       m_context->bindResourceView(BindingIds::Texture, m_hud->texture(), nullptr);
       m_context->draw(4, 1, 0, 0);
     }
-    
+
     m_device->submitCommandList(
       m_context->endRecording(),
       swapSemas.acquireSync,
       swapSemas.presentSync);
-    
+
     m_swapchain->present(
       swapSemas.presentSync);
   }
-  
-  
+
+
   void DxgiVkPresenter::UpdateBackBuffer(const Rc<DxvkImage>& Image) {
     // Explicitly destroy the old stuff
     m_backBuffer        = Image;
     m_backBufferResolve = nullptr;
     m_backBufferView    = nullptr;
-    
+
     // If a multisampled back buffer was requested, we also need to
     // create a resolve image with otherwise identical properties.
     // Multisample images cannot be sampled from.
@@ -249,11 +249,11 @@ namespace dxvk {
                                 | VK_ACCESS_TRANSFER_WRITE_BIT;
       resolveInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
       resolveInfo.layout        = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-      
+
       m_backBufferResolve = m_device->createImage(
         resolveInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     }
-    
+
     // Create an image view that allows the
     // image to be bound as a shader resource.
     DxvkImageViewCreateInfo viewInfo;
@@ -264,17 +264,17 @@ namespace dxvk {
     viewInfo.numLevels  = 1;
     viewInfo.minLayer   = 0;
     viewInfo.numLayers  = 1;
-    
+
     m_backBufferView = m_device->createImageView(
       m_backBufferResolve != nullptr
         ? m_backBufferResolve
         : m_backBuffer,
       viewInfo);
-    
+
     InitBackBuffer(m_backBuffer);
   }
-  
-  
+
+
   void DxgiVkPresenter::RecreateSwapchain(const DxvkSwapchainProperties* pOptions) {
     const bool doRecreate =
          pOptions->preferredSurfaceFormat.format      != m_options.preferredSurfaceFormat.format
@@ -282,80 +282,80 @@ namespace dxvk {
       || pOptions->preferredPresentMode               != m_options.preferredPresentMode
       || pOptions->preferredBufferSize.width          != m_options.preferredBufferSize.width
       || pOptions->preferredBufferSize.height         != m_options.preferredBufferSize.height;
-    
+
     if (doRecreate) {
       Logger::info(str::format(
         "DxgiVkPresenter: Recreating swap chain: ",
         "\n  Format:       ", pOptions->preferredSurfaceFormat.format,
         "\n  Present mode: ", pOptions->preferredPresentMode,
         "\n  Buffer size:  ", pOptions->preferredBufferSize.width, "x", pOptions->preferredBufferSize.height));
-      
+
       if (m_swapchain == nullptr)
         m_swapchain = m_device->createSwapchain(m_surface, *pOptions);
       else
         m_swapchain->changeProperties(*pOptions);
-      
+
       m_options = *pOptions;
     }
   }
-  
-  
+
+
   VkSurfaceFormatKHR DxgiVkPresenter::PickSurfaceFormat(DXGI_FORMAT Fmt) const {
     std::vector<VkSurfaceFormatKHR> formats;
-    
+
     switch (Fmt) {
       case DXGI_FORMAT_R8G8B8A8_UNORM:
       case DXGI_FORMAT_B8G8R8A8_UNORM: {
         formats.push_back({ VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR });
         formats.push_back({ VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR });
       } break;
-      
+
       case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
       case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB: {
         formats.push_back({ VK_FORMAT_R8G8B8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR });
         formats.push_back({ VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR });
       } break;
-      
+
       case DXGI_FORMAT_R10G10B10A2_UNORM: {
         formats.push_back({ VK_FORMAT_A2B10G10R10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR });
         formats.push_back({ VK_FORMAT_A2R10G10B10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR });
       } break;
-      
+
       case DXGI_FORMAT_R16G16B16A16_FLOAT: {
         formats.push_back({ VK_FORMAT_R16G16B16A16_SFLOAT, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR });
       } break;
-      
+
       default:
         Logger::warn(str::format("DxgiVkPresenter: Unknown format: ", Fmt));
     }
-    
+
     return m_surface->pickSurfaceFormat(
       formats.size(), formats.data());
   }
-  
-  
+
+
   VkPresentModeKHR DxgiVkPresenter::PickPresentMode(VkPresentModeKHR Preferred) const {
     return m_surface->pickPresentMode(1, &Preferred);
   }
-  
-  
+
+
   void DxgiVkPresenter::SetGammaControl(
     const DXGI_VK_GAMMA_CURVE*          pGammaCurve) {
     m_context->beginRecording(
       m_device->createCommandList());
-    
+
     m_context->updateImage(m_gammaTexture,
       VkImageSubresourceLayers { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
       VkOffset3D { 0, 0, 0 },
       VkExtent3D { DXGI_VK_GAMMA_CP_COUNT, 1, 1 },
       pGammaCurve, 0, 0);
-    
+
     m_device->submitCommandList(
       m_context->endRecording(),
       nullptr, nullptr);
   }
-  
-  
+
+
   Rc<DxvkSampler> DxgiVkPresenter::CreateSampler(
           VkFilter              Filter,
           VkSamplerAddressMode  AddressMode) {
@@ -377,8 +377,8 @@ namespace dxvk {
     samplerInfo.usePixelCoord   = VK_FALSE;
     return m_device->createSampler(samplerInfo);
   }
-  
-  
+
+
   Rc<DxvkImage> DxgiVkPresenter::CreateGammaTexture() {
     DxvkImageCreateInfo info;
     info.type         = VK_IMAGE_TYPE_1D;
@@ -398,8 +398,8 @@ namespace dxvk {
     info.layout       = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     return m_device->createImage(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   }
-  
-  
+
+
   Rc<DxvkImageView> DxgiVkPresenter::CreateGammaTextureView() {
     DxvkImageViewCreateInfo info;
     info.type         = VK_IMAGE_VIEW_TYPE_1D;
@@ -411,21 +411,21 @@ namespace dxvk {
     info.numLayers    = 1;
     return m_device->createImageView(m_gammaTexture, info);
   }
-  
-  
+
+
   Rc<DxvkShader> DxgiVkPresenter::CreateVertexShader() {
     const SpirvCodeBuffer codeBuffer(dxgi_presenter_vert);
-    
+
     return m_device->createShader(
       VK_SHADER_STAGE_VERTEX_BIT,
       0, nullptr, { 0u, 1u },
       codeBuffer);
   }
-  
-  
+
+
   Rc<DxvkShader> DxgiVkPresenter::CreateFragmentShader() {
     const SpirvCodeBuffer codeBuffer(dxgi_presenter_frag);
-    
+
     // Shader resource slots
     const std::array<DxvkResourceSlot, 4> resourceSlots = {{
       { BindingIds::Sampler,  VK_DESCRIPTOR_TYPE_SAMPLER,        VK_IMAGE_VIEW_TYPE_MAX_ENUM },
@@ -433,7 +433,7 @@ namespace dxvk {
       { BindingIds::GammaSmp, VK_DESCRIPTOR_TYPE_SAMPLER,        VK_IMAGE_VIEW_TYPE_MAX_ENUM },
       { BindingIds::GammaTex, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  VK_IMAGE_VIEW_TYPE_1D       },
     }};
-    
+
     // Create the actual shader module
     return m_device->createShader(
       VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -442,5 +442,5 @@ namespace dxvk {
       { 1u, 1u },
       codeBuffer);
   }
-  
+
 }
