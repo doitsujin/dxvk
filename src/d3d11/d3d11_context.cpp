@@ -203,9 +203,9 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeviceContext::End(ID3D11Asynchronous *pAsync) {
     if (pAsync == nullptr)
       return;
-
+    
     Com<ID3D11Query> query;
-   
+    
     if (SUCCEEDED(pAsync->QueryInterface(__uuidof(ID3D11Query), reinterpret_cast<void**>(&query)))) {
       Com<D3D11Query> queryPtr = static_cast<D3D11Query*>(query.ptr());
       
@@ -241,6 +241,12 @@ namespace dxvk {
         "\n  Got:      ", DataSize));
       return E_INVALIDARG;
     }
+    
+    // Fallout 4 never actually calls this function without
+    // D3D11_ASYNC_GETDATA_DONOTFLUSH set, which may cause
+    // the game to freeze in certain situations.
+    if (m_parent->TestOption(D3D11Option::DisableGetDataFlagDoNotFlush))
+      GetDataFlags &= ~D3D11_ASYNC_GETDATA_DONOTFLUSH;
     
     // Flush in order to make sure the query commands get dispatched
     if ((GetDataFlags & D3D11_ASYNC_GETDATA_DONOTFLUSH) == 0)
