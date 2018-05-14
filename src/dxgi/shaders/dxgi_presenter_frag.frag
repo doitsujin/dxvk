@@ -11,7 +11,7 @@ layout(location = 0) out vec4 o_color;
 
 void main() {
   vec4 color = texture(sampler2D(t_texture, s_sampler), i_texcoord);
-  
+
   o_color = vec4(
     texture(sampler1D(t_gamma, s_gamma), color.r).r,
     texture(sampler1D(t_gamma, s_gamma), color.g).g,

@@ -1,7 +1,7 @@
 #include "dxvk_shader.h"
 
 namespace dxvk {
-  
+
   DxvkShaderModule::DxvkShaderModule(
     const Rc<vk::DeviceFn>&     vkd,
     const Rc<DxvkShader>&       shader,
@@ -13,19 +13,19 @@ namespace dxvk {
     info.flags    = 0;
     info.codeSize = code.size();
     info.pCode    = code.data();
-    
+
     if (m_vkd->vkCreateShaderModule(m_vkd->device(),
           &info, nullptr, &m_module) != VK_SUCCESS)
       throw DxvkError("DxvkComputePipeline::DxvkComputePipeline: Failed to create shader module");
   }
-  
-  
+
+
   DxvkShaderModule::~DxvkShaderModule() {
     m_vkd->vkDestroyShaderModule(
       m_vkd->device(), m_module, nullptr);
   }
-  
-  
+
+
   VkPipelineShaderStageCreateInfo DxvkShaderModule::stageInfo(const VkSpecializationInfo* specInfo) const {
     VkPipelineShaderStageCreateInfo info;
     info.sType                = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -37,8 +37,8 @@ namespace dxvk {
     info.pSpecializationInfo  = specInfo;
     return info;
   }
-  
-  
+
+
   DxvkShader::DxvkShader(
           VkShaderStageFlagBits   stage,
           uint32_t                slotCount,
@@ -49,7 +49,7 @@ namespace dxvk {
     // Write back resource slot infos
     for (uint32_t i = 0; i < slotCount; i++)
       m_slots.push_back(slotInfos[i]);
-    
+
     // Gather the offsets where the binding IDs
     // are stored so we can quickly remap them.
     for (auto ins : m_code) {
@@ -59,55 +59,55 @@ namespace dxvk {
         m_idOffsets.push_back(ins.offset() + 3);
     }
   }
-  
-  
+
+
   DxvkShader::~DxvkShader() {
-    
+
   }
-  
-  
+
+
   bool DxvkShader::hasCapability(spv::Capability cap) {
     for (auto ins : m_code) {
       // OpCapability instructions come first
       if (ins.opCode() != spv::OpCapability)
         return false;
-      
+
       if (ins.arg(1) == cap)
         return true;
     }
-    
+
     return false;
   }
-  
-  
+
+
   void DxvkShader::defineResourceSlots(
           DxvkDescriptorSlotMapping& mapping) const {
     for (const auto& slot : m_slots)
       mapping.defineSlot(slot.slot, slot.type, slot.view, m_stage);
   }
-  
-  
+
+
   Rc<DxvkShaderModule> DxvkShader::createShaderModule(
     const Rc<vk::DeviceFn>&          vkd,
     const DxvkDescriptorSlotMapping& mapping) {
     SpirvCodeBuffer spirvCode = m_code;
-    
+
     // Remap resource binding IDs
     uint32_t* code = spirvCode.data();
     for (uint32_t ofs : m_idOffsets)
       code[ofs] = mapping.getBindingId(code[ofs]);
-    
+
     return new DxvkShaderModule(vkd, this, spirvCode);
   }
-  
-  
+
+
   void DxvkShader::dump(std::ostream& outputStream) const {
     m_code.store(outputStream);
   }
-  
-  
+
+
   void DxvkShader::read(std::istream& inputStream) {
     m_code = SpirvCodeBuffer(inputStream);
   }
-  
+
 }

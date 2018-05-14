@@ -11,12 +11,12 @@
 #include "dxgi_include.h"
 
 namespace dxvk {
-  
+
   constexpr uint32_t DXGI_VK_GAMMA_CP_COUNT = 1024;
-  
+
   /**
    * \brief Gamma control point
-   * 
+   *
    * Control points are stored as normalized
    * 16-bit unsigned integer values that will
    * be converted back to floats in the shader.
@@ -24,20 +24,20 @@ namespace dxvk {
   struct DXGI_VK_GAMMA_CP {
     uint16_t R, G, B, A;
   };
-  
+
   /**
    * \brief Gamma curve
-   * 
+   *
    * A collection of control points that
    * will be uploaded to the gamma texture.
    */
   struct DXGI_VK_GAMMA_CURVE {
     DXGI_VK_GAMMA_CP ControlPoints[DXGI_VK_GAMMA_CP_COUNT];
   };
-  
+
   /**
    * \brief Maps color value to normalized integer
-   * 
+   *
    * \param [in] x Input value, as floating point
    * \returns Corresponding normalized integer
    */
@@ -46,57 +46,57 @@ namespace dxvk {
     if (x > 1.0f) x = 1.0f;
     return uint16_t(65535.0f * x);
   }
-  
+
   /**
    * \brief Computes gamma control point location
-   * 
+   *
    * \param [in] CpIndex Control point ID
    * \returns Location of the control point
    */
   inline float GammaControlPointLocation(uint32_t CpIndex) {
     return float(CpIndex) / float(DXGI_VK_GAMMA_CP_COUNT - 1);
   }
-  
+
   /**
    * \brief DXGI presenter
-   * 
+   *
    * Renders the back buffer from the
    * \ref DxgiSwapChain to the Vulkan
    * swap chain.
    */
   class DxgiVkPresenter : public RcObject {
-    
+
   public:
-    
+
     DxgiVkPresenter(
       const Rc<DxvkDevice>&         device,
             HWND                    window);
-    
+
     ~DxgiVkPresenter();
-      
+
     /**
      * \brief Initializes back buffer image
      * \param [in] image Back buffer image
      */
     void InitBackBuffer(const Rc<DxvkImage>& Image);
-    
+
     /**
      * \brief Renders back buffer to the screen
      */
     void PresentImage();
-    
+
     /**
      * \brief Sets new back buffer
-     * 
+     *
      * Recreates internal structures when
      * the back buffer image was replaced.
      * \param [in] image Back buffer image
      */
     void UpdateBackBuffer(const Rc<DxvkImage>& Image);
-    
+
     /**
      * \brief Recreats Vulkan swap chain
-     * 
+     *
      * Only actually recreates the swap chain object
      * if any of the properties have changed. If no
      * properties have changed, this is a no-op.
@@ -104,76 +104,76 @@ namespace dxvk {
      */
     void RecreateSwapchain(
       const DxvkSwapchainProperties* pOptions);
-    
+
     /**
      * \brief Picks a surface format based on a DXGI format
-     * 
+     *
      * This will return a supported format that, if possible,
      * has properties similar to those of the DXGI format.
      * \param [in] fmt The DXGI format
      * \returns The Vulkan format
      */
     VkSurfaceFormatKHR PickSurfaceFormat(DXGI_FORMAT Fmt) const;
-    
+
     /**
      * \brief Picks a supported present mode
-     * 
+     *
      * \param [in] preferred Preferred present mode
      * \returns An actually supported present mode
      */
     VkPresentModeKHR PickPresentMode(VkPresentModeKHR Preferred) const;
-    
+
     /**
      * \brief Sets gamma curve
-     * 
+     *
      * Updates the gamma lookup texture.
      * \param [in] pGammaControl Input parameters
      * \param [in] pGammaCurve Gamma curve
      */
     void SetGammaControl(
       const DXGI_VK_GAMMA_CURVE*          pGammaCurve);
-    
+
   private:
-    
+
     enum BindingIds : uint32_t {
       Sampler   = 0,
       Texture   = 1,
       GammaSmp  = 2,
       GammaTex  = 3,
     };
-    
+
     Rc<DxvkDevice>          m_device;
     Rc<DxvkContext>         m_context;
-    
+
     Rc<DxvkSurface>         m_surface;
     Rc<DxvkSwapchain>       m_swapchain;
-    
+
     Rc<DxvkSampler>         m_samplerFitting;
     Rc<DxvkSampler>         m_samplerScaling;
-    
+
     Rc<DxvkImage>           m_backBuffer;
     Rc<DxvkImage>           m_backBufferResolve;
     Rc<DxvkImageView>       m_backBufferView;
-    
+
     Rc<DxvkSampler>         m_gammaSampler;
     Rc<DxvkImage>           m_gammaTexture;
     Rc<DxvkImageView>       m_gammaTextureView;
-    
+
     Rc<hud::Hud>            m_hud;
-    
+
     DxvkBlendMode           m_blendMode;
     DxvkSwapchainProperties m_options;
-    
+
     Rc<DxvkSampler> CreateSampler(
             VkFilter              Filter,
             VkSamplerAddressMode  AddressMode);
-    
+
     Rc<DxvkImage>     CreateGammaTexture();
     Rc<DxvkImageView> CreateGammaTextureView();
-    
+
     Rc<DxvkShader> CreateVertexShader();
     Rc<DxvkShader> CreateFragmentShader();
-    
+
   };
-  
+
 }

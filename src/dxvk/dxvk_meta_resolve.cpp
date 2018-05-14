@@ -1,7 +1,7 @@
 #include "dxvk_meta_resolve.h"
 
 namespace dxvk {
-  
+
   DxvkMetaResolveFramebuffer::DxvkMetaResolveFramebuffer(
     const Rc<vk::DeviceFn>&         vkd,
     const Rc<DxvkImage>&            dstImage,
@@ -30,7 +30,7 @@ namespace dxvk {
         srcImage->info().layout,
         srcImage->info().layout },
     }};
-    
+
     // Make sure layout transitions are correctly ordered
     std::array<VkSubpassDependency, 2> subpassDeps = {{
       { VK_SUBPASS_EXTERNAL, 0,
@@ -46,10 +46,10 @@ namespace dxvk {
         VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
         srcImage->info().access | dstImage->info().access, 0 },
     }};
-    
+
     VkAttachmentReference dstAttachmentRef = { 0, dstImage->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) };
     VkAttachmentReference srcAttachmentRef = { 1, srcImage->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL) };
-    
+
     VkSubpassDescription spInfo;
     spInfo.flags                   = 0;
     spInfo.inputAttachmentCount    = 0;
@@ -60,7 +60,7 @@ namespace dxvk {
     spInfo.pDepthStencilAttachment = nullptr;
     spInfo.preserveAttachmentCount = 0;
     spInfo.pPreserveAttachments    = nullptr;
-    
+
     VkRenderPassCreateInfo rpInfo;
     rpInfo.sType             = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     rpInfo.pNext             = nullptr;
@@ -71,9 +71,9 @@ namespace dxvk {
     rpInfo.pSubpasses        = &spInfo;
     rpInfo.dependencyCount   = subpassDeps.size();
     rpInfo.pDependencies     = subpassDeps.data();
-    
+
     m_vkd->vkCreateRenderPass(m_vkd->device(), &rpInfo, nullptr, &m_renderPass);
-    
+
     // Create views for the destination and source image
     VkImageViewCreateInfo dstInfo;
     dstInfo.sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -88,7 +88,7 @@ namespace dxvk {
     dstInfo.subresourceRange = VkImageSubresourceRange {
       dstLayers.aspectMask, dstLayers.mipLevel, 1,
       dstLayers.baseArrayLayer, dstLayers.layerCount };
-    
+
     VkImageViewCreateInfo srcInfo;
     srcInfo.sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     srcInfo.pNext            = nullptr;
@@ -102,13 +102,13 @@ namespace dxvk {
     srcInfo.subresourceRange = VkImageSubresourceRange {
       srcLayers.aspectMask, srcLayers.mipLevel, 1,
       srcLayers.baseArrayLayer, srcLayers.layerCount };
-    
+
     m_vkd->vkCreateImageView(m_vkd->device(), &dstInfo, nullptr, &m_dstImageView);
     m_vkd->vkCreateImageView(m_vkd->device(), &srcInfo, nullptr, &m_srcImageView);
-    
+
     // Create a framebuffer containing the two image views
     std::array<VkImageView, 2> attachments = {{ m_dstImageView, m_srcImageView }};
-    
+
     VkFramebufferCreateInfo fboInfo;
     fboInfo.sType            = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     fboInfo.pNext            = nullptr;
@@ -119,16 +119,16 @@ namespace dxvk {
     fboInfo.width            = dstImage->info().extent.width;
     fboInfo.height           = dstImage->info().extent.height;
     fboInfo.layers           = dstLayers.layerCount;
-    
+
     m_vkd->vkCreateFramebuffer(m_vkd->device(), &fboInfo, nullptr, &m_framebuffer);
   }
-  
-  
+
+
   DxvkMetaResolveFramebuffer::~DxvkMetaResolveFramebuffer() {
     m_vkd->vkDestroyFramebuffer(m_vkd->device(), m_framebuffer,  nullptr);
     m_vkd->vkDestroyImageView  (m_vkd->device(), m_srcImageView, nullptr);
     m_vkd->vkDestroyImageView  (m_vkd->device(), m_dstImageView, nullptr);
     m_vkd->vkDestroyRenderPass (m_vkd->device(), m_renderPass,   nullptr);
   }
-  
+
 }

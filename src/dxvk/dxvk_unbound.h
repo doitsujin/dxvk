@@ -5,24 +5,24 @@
 #include "dxvk_sampler.h"
 
 namespace dxvk {
-  
+
   /**
    * \brief Unbound resources
-   * 
+   *
    * Creates dummy resources that will be used
    * for descriptor sets when the client API did
    * not bind a compatible resource to a slot.
    */
   class DxvkUnboundResources {
-    
+
   public:
-    
+
     DxvkUnboundResources(DxvkDevice* dev);
     ~DxvkUnboundResources();
-    
+
     /**
      * \brief Dummy buffer handle
-     * 
+     *
      * Returns a handle to a buffer filled
      * with zeroes. Use for unbound vertex
      * and index buffers.
@@ -31,10 +31,10 @@ namespace dxvk {
     VkBuffer bufferHandle() const {
       return m_buffer->slice().handle();
     }
-    
+
     /**
      * \brief Dummy buffer descriptor
-     * 
+     *
      * Points to a small buffer filled with zeroes.
      * Do not write to this buffer, and do not use
      * it if out-of-bounds read access is possible.
@@ -42,17 +42,17 @@ namespace dxvk {
      */
     VkDescriptorBufferInfo bufferDescriptor() const {
       auto slice = m_buffer->slice();
-      
+
       VkDescriptorBufferInfo result;
       result.buffer = slice.handle();
       result.offset = slice.offset();
       result.range  = slice.length();
       return result;
     }
-    
+
     /**
      * \brief Dummy buffer view
-     * 
+     *
      * Returns an \c R32_UINT view into the
      * dummy buffer, which will contain one
      * element with undefined value.
@@ -61,10 +61,10 @@ namespace dxvk {
     VkBufferView bufferViewDescriptor() const {
       return m_bufferView->handle();
     }
-    
+
     /**
      * \brief Dummy sampler descriptor
-     * 
+     *
      * Points to a sampler which was created with
      * reasonable default values. Client APIs may
      * still require different behaviour.
@@ -77,10 +77,10 @@ namespace dxvk {
       result.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
       return result;
     }
-    
+
     /**
      * \brief Dummy image view descriptor
-     * 
+     *
      * Points to an image view which, instead of
      * reading image data, will return zeroes for
      * all components unconditionally.
@@ -88,33 +88,33 @@ namespace dxvk {
      */
     VkDescriptorImageInfo imageViewDescriptor(VkImageViewType type) const {
       auto view = getImageView(type);
-      
+
       VkDescriptorImageInfo result;
       result.sampler     = VK_NULL_HANDLE;
       result.imageView   = view->handle();
       result.imageLayout = view->imageInfo().layout;
       return result;
     }
-    
+
     /**
      * \brief Clears the resources
-     * 
+     *
      * Initializes all images and buffers to zero.
      * \param [in] dev The DXVK device handle
      */
     void clearResources(DxvkDevice* dev);
-    
+
   private:
-    
+
     Rc<DxvkSampler> m_sampler;
-    
+
     Rc<DxvkBuffer>     m_buffer;
     Rc<DxvkBufferView> m_bufferView;
-    
+
     Rc<DxvkImage> m_image1D;
     Rc<DxvkImage> m_image2D;
     Rc<DxvkImage> m_image3D;
-    
+
     Rc<DxvkImageView> m_view1D;
     Rc<DxvkImageView> m_view1DArr;
     Rc<DxvkImageView> m_view2D;
@@ -122,37 +122,37 @@ namespace dxvk {
     Rc<DxvkImageView> m_viewCube;
     Rc<DxvkImageView> m_viewCubeArr;
     Rc<DxvkImageView> m_view3D;
-    
+
     Rc<DxvkSampler> createSampler(DxvkDevice* dev);
-    
+
     Rc<DxvkBuffer> createBuffer(DxvkDevice* dev);
-    
+
     Rc<DxvkBufferView> createBufferView(
             DxvkDevice*     dev,
       const Rc<DxvkBuffer>& buffer);
-    
+
     Rc<DxvkImage> createImage(
             DxvkDevice*     dev,
             VkImageType     type,
             uint32_t        layers);
-    
+
     Rc<DxvkImageView> createImageView(
             DxvkDevice*     dev,
       const Rc<DxvkImage>&  image,
             VkImageViewType type,
             uint32_t        layers);
-    
+
     const DxvkImageView* getImageView(
             VkImageViewType type) const;
-    
+
     void clearBuffer(
       const Rc<DxvkContext>&  ctx,
       const Rc<DxvkBuffer>&   buffer);
-    
+
     void clearImage(
       const Rc<DxvkContext>&  ctx,
       const Rc<DxvkImage>&    image);
-    
+
   };
-  
+
 }

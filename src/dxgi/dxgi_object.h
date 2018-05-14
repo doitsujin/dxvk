@@ -5,12 +5,12 @@
 #include "../util/com/com_private_data.h"
 
 namespace dxvk {
-  
+
   template<typename... Base>
   class DxgiObject : public ComObject<Base...> {
-    
+
   public:
-    
+
     HRESULT STDMETHODCALLTYPE GetPrivateData(
             REFGUID       Name,
             UINT*         pDataSize,
@@ -18,7 +18,7 @@ namespace dxvk {
       return m_privateData.getData(
         Name, pDataSize, pData);
     }
-    
+
     HRESULT STDMETHODCALLTYPE SetPrivateData(
             REFGUID       Name,
             UINT          DataSize,
@@ -26,18 +26,18 @@ namespace dxvk {
       return m_privateData.setData(
         Name, DataSize, pData);
     }
-    
+
     HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(
             REFGUID       Name,
       const IUnknown*     pUnknown) final {
       return m_privateData.setInterface(
         Name, pUnknown);
     }
-    
+
   private:
-    
+
     ComPrivateData m_privateData;
-    
+
   };
-  
+
 }

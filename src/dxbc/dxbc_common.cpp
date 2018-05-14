@@ -1,7 +1,7 @@
 #include "dxbc_common.h"
 
 namespace dxvk {
-  
+
   VkShaderStageFlagBits DxbcProgramVersion::shaderStage() const {
     switch (m_type) {
       case DxbcProgramType::PixelShader    : return VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -11,11 +11,11 @@ namespace dxvk {
       case DxbcProgramType::DomainShader   : return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
       case DxbcProgramType::ComputeShader  : return VK_SHADER_STAGE_COMPUTE_BIT;
     }
-    
+
     throw DxvkError("DxbcProgramVersion::shaderStage: Unsupported program type");
   }
-  
-  
+
+
   spv::ExecutionModel DxbcProgramVersion::executionModel() const {
     switch (m_type) {
       case DxbcProgramType::PixelShader    : return spv::ExecutionModelFragment;
@@ -25,8 +25,8 @@ namespace dxvk {
       case DxbcProgramType::DomainShader   : return spv::ExecutionModelTessellationEvaluation;
       case DxbcProgramType::ComputeShader  : return spv::ExecutionModelGLCompute;
     }
-    
+
     throw DxvkError("DxbcProgramVersion::executionModel: Unsupported program type");
   }
-  
+
 }

@@ -8,21 +8,21 @@
 #include "dxvk_pipecompiler.h"
 
 namespace dxvk {
-  
+
   /**
    * \brief Compute pipeline key
-   * 
+   *
    * Identifier for a compute pipeline object.
    * Consists of the compute shader itself.
    */
   struct DxvkComputePipelineKey {
     Rc<DxvkShader> cs;
   };
-  
-  
+
+
   /**
    * \brief Graphics pipeline key
-   * 
+   *
    * Identifier for a graphics pipeline object.
    * Consists of all graphics pipeline shaders.
    */
@@ -33,23 +33,23 @@ namespace dxvk {
     Rc<DxvkShader> gs;
     Rc<DxvkShader> fs;
   };
-  
-  
+
+
   struct DxvkPipelineKeyHash {
     size_t operator () (const DxvkComputePipelineKey& key) const;
     size_t operator () (const DxvkGraphicsPipelineKey& key) const;
   };
-  
-  
+
+
   struct DxvkPipelineKeyEq {
     bool operator () (const DxvkComputePipelineKey& a, const DxvkComputePipelineKey& b) const;
     bool operator () (const DxvkGraphicsPipelineKey& a, const DxvkGraphicsPipelineKey& b) const;
   };
-  
-  
+
+
   /**
    * \brief Pipeline manager
-   * 
+   *
    * Creates and stores graphics pipelines and compute
    * pipelines for each combination of shaders that is
    * used within the application. This is necessary
@@ -57,15 +57,15 @@ namespace dxvk {
    * pipeline objects to the client API.
    */
   class DxvkPipelineManager : public RcObject {
-    
+
   public:
-    
+
     DxvkPipelineManager(const DxvkDevice* device);
     ~DxvkPipelineManager();
-    
+
     /**
      * \brief Retrieves a compute pipeline object
-     * 
+     *
      * If a pipeline for the given shader stage object
      * already exists, it will be returned. Otherwise,
      * a new pipeline will be created.
@@ -74,10 +74,10 @@ namespace dxvk {
      */
     Rc<DxvkComputePipeline> createComputePipeline(
       const Rc<DxvkShader>&         cs);
-    
+
     /**
      * \brief Retrieves a graphics pipeline object
-     * 
+     *
      * If a pipeline for the given shader stage objects
      * already exists, it will be returned. Otherwise,
      * a new pipeline will be created.
@@ -94,27 +94,27 @@ namespace dxvk {
       const Rc<DxvkShader>&         tes,
       const Rc<DxvkShader>&         gs,
       const Rc<DxvkShader>&         fs);
-    
+
   private:
-    
+
     const DxvkDevice*         m_device;
     Rc<DxvkPipelineCache>     m_cache;
     Rc<DxvkPipelineCompiler>  m_compiler;
-    
+
     std::mutex m_mutex;
-    
+
     std::unordered_map<
       DxvkComputePipelineKey,
       Rc<DxvkComputePipeline>,
       DxvkPipelineKeyHash,
       DxvkPipelineKeyEq> m_computePipelines;
-    
+
     std::unordered_map<
       DxvkGraphicsPipelineKey,
       Rc<DxvkGraphicsPipeline>,
       DxvkPipelineKeyHash,
       DxvkPipelineKeyEq> m_graphicsPipelines;
-    
+
   };
-  
+
 }

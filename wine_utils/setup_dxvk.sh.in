@@ -52,7 +52,7 @@ while [[ $# -gt 0 ]]; do
     -q|--quiet)
         quiet=true
         assume=${assume:-'y'}
-        shift 
+        shift
         ;;
     *)
         POSITIONAL+=("$1")

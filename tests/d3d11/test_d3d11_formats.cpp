@@ -163,7 +163,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
                    LPSTR lpCmdLine,
                    int nCmdShow) {
   Com<ID3D11Device> device;
-  
+
   if (FAILED(D3D11CreateDevice(
         nullptr, D3D_DRIVER_TYPE_HARDWARE,
         nullptr, 0, nullptr, 0, D3D11_SDK_VERSION,
@@ -171,15 +171,15 @@ int WINAPI WinMain(HINSTANCE hInstance,
     std::cerr << "Failed to create D3D11 device" << std::endl;
     return 1;
   }
-  
+
   for (UINT i  = UINT(DXGI_FORMAT_UNKNOWN);
             i <= UINT(DXGI_FORMAT_BC7_UNORM_SRGB);
             i++) {
     DXGI_FORMAT format = DXGI_FORMAT(i);
     UINT        flags  = 0;
-    
+
     std::cout << GetFormatName(format) << ": " << std::endl;
-    
+
     if (SUCCEEDED(device->CheckFormatSupport(format, &flags))) {
       for (uint32_t i = 0; i < 32; i++) {
         if (flags & (1 << i)) {
@@ -188,11 +188,11 @@ int WINAPI WinMain(HINSTANCE hInstance,
                     << std::endl;
         }
       }
-      
+
     } else {
       std::cout << "  Not supported" << std::endl;
     }
   }
-  
+
   return 0;
 }

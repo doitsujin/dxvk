@@ -2,9 +2,9 @@
 #include "dxgi_include.h"
 
 namespace dxvk {
-  
+
   Logger Logger::s_instance("dxgi.log");
-  
+
   HRESULT createDxgiFactory(REFIID riid, void **ppFactory) {
     if (riid != __uuidof(IDXGIFactory)
      && riid != __uuidof(IDXGIFactory1)) {
@@ -13,7 +13,7 @@ namespace dxvk {
       *ppFactory = nullptr;
       return E_NOINTERFACE;
     }
-    
+
     try {
       *ppFactory = ref(new DxgiFactory());
       return S_OK;
@@ -33,7 +33,7 @@ extern "C" {
   DLLEXPORT HRESULT __stdcall CreateDXGIFactory1(REFIID riid, void **ppFactory) {
     return dxvk::createDxgiFactory(riid, ppFactory);
   }
-  
+
   DLLEXPORT HRESULT __stdcall CreateDXGIFactory(REFIID riid, void **ppFactory) {
     return dxvk::createDxgiFactory(riid, ppFactory);
   }

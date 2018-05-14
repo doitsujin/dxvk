@@ -1,7 +1,7 @@
 #include "dxvk_device.h"
 
 namespace dxvk {
-  
+
   DxvkUnboundResources::DxvkUnboundResources(DxvkDevice* dev)
   : m_sampler       (createSampler(dev)),
     m_buffer        (createBuffer(dev)),
@@ -16,30 +16,30 @@ namespace dxvk {
     m_viewCube      (createImageView(dev, m_image2D, VK_IMAGE_VIEW_TYPE_CUBE,       6)),
     m_viewCubeArr   (createImageView(dev, m_image2D, VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, 6)),
     m_view3D        (createImageView(dev, m_image3D, VK_IMAGE_VIEW_TYPE_3D,         1)) {
-    
+
   }
-  
-  
+
+
   DxvkUnboundResources::~DxvkUnboundResources() {
-    
+
   }
-  
-  
+
+
   void DxvkUnboundResources::clearResources(DxvkDevice* dev) {
     const Rc<DxvkContext> ctx = dev->createContext();
     ctx->beginRecording(dev->createCommandList());
-    
+
     this->clearBuffer(ctx, m_buffer);
     this->clearImage(ctx, m_image1D);
     this->clearImage(ctx, m_image2D);
     this->clearImage(ctx, m_image3D);
-    
+
     dev->submitCommandList(
       ctx->endRecording(),
       nullptr, nullptr);
   }
-  
-  
+
+
   Rc<DxvkSampler> DxvkUnboundResources::createSampler(DxvkDevice* dev) {
     DxvkSamplerCreateInfo info;
     info.minFilter      = VK_FILTER_LINEAR;
@@ -57,11 +57,11 @@ namespace dxvk {
     info.compareOp      = VK_COMPARE_OP_NEVER;
     info.borderColor    = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
     info.usePixelCoord  = VK_FALSE;
-    
+
     return dev->createSampler(info);
   }
-  
-  
+
+
   Rc<DxvkBuffer> DxvkUnboundResources::createBuffer(DxvkDevice* dev) {
     DxvkBufferCreateInfo info;
     info.size       = MaxUniformBufferSize;
@@ -82,12 +82,12 @@ namespace dxvk {
     info.access     = VK_ACCESS_UNIFORM_READ_BIT
                     | VK_ACCESS_SHADER_READ_BIT
                     | VK_ACCESS_SHADER_WRITE_BIT;
-    
+
     return dev->createBuffer(info,
       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   }
-  
-  
+
+
   Rc<DxvkBufferView> DxvkUnboundResources::createBufferView(
           DxvkDevice*     dev,
     const Rc<DxvkBuffer>& buffer) {
@@ -95,11 +95,11 @@ namespace dxvk {
     info.format      = VK_FORMAT_R32_UINT;
     info.rangeOffset = 0;
     info.rangeLength = buffer->info().size;
-    
+
     return dev->createBufferView(buffer, info);
   }
-  
-  
+
+
   Rc<DxvkImage> DxvkUnboundResources::createImage(
           DxvkDevice*     dev,
           VkImageType     type,
@@ -125,15 +125,15 @@ namespace dxvk {
     info.access      = VK_ACCESS_SHADER_READ_BIT;
     info.layout      = VK_IMAGE_LAYOUT_GENERAL;
     info.tiling      = VK_IMAGE_TILING_OPTIMAL;
-    
+
     if (type == VK_IMAGE_TYPE_2D)
       info.flags       |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
-    
+
     return dev->createImage(info,
       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
   }
-  
-  
+
+
   Rc<DxvkImageView> DxvkUnboundResources::createImageView(
           DxvkDevice*     dev,
     const Rc<DxvkImage>&  image,
@@ -150,11 +150,11 @@ namespace dxvk {
     info.swizzle      = VkComponentMapping {
       VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_ZERO,
       VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_ZERO };
-    
+
     return dev->createImageView(image, info);
   }
-  
-  
+
+
   const DxvkImageView* DxvkUnboundResources::getImageView(VkImageViewType type) const {
     switch (type) {
       case VK_IMAGE_VIEW_TYPE_1D:         return m_view1D.ptr();
@@ -167,15 +167,15 @@ namespace dxvk {
       default:                            Logger::err("null"); return nullptr;
     }
   }
-  
-  
+
+
   void DxvkUnboundResources::clearBuffer(
     const Rc<DxvkContext>&  ctx,
     const Rc<DxvkBuffer>&   buffer) {
     ctx->clearBuffer(buffer, 0, buffer->info().size, 0);
   }
-  
-  
+
+
   void DxvkUnboundResources::clearImage(
     const Rc<DxvkContext>&  ctx,
     const Rc<DxvkImage>&    image) {
@@ -186,5 +186,5 @@ namespace dxvk {
         0, image->info().mipLevels,
         0, image->info().numLayers });
   }
-  
+
 }

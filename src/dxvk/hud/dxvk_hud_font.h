@@ -3,7 +3,7 @@
 #include <cstdint>
 
 namespace dxvk::hud {
-  
+
   struct HudGlyph {
     uint32_t codePoint;
     int32_t  x;
@@ -21,11 +21,11 @@ namespace dxvk::hud {
     uint32_t falloff;
     uint32_t advance;
     uint32_t charCount;
-    
+
     const HudGlyph* glyphs;
     const uint8_t* texture;
   };
-  
+
   extern const HudFont g_hudFont;
-  
+
 }

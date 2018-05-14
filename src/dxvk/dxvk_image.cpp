@@ -1,14 +1,14 @@
 #include "dxvk_image.h"
 
 namespace dxvk {
-  
+
   DxvkImage::DxvkImage(
     const Rc<vk::DeviceFn>&     vkd,
     const DxvkImageCreateInfo&  createInfo,
           DxvkMemoryAllocator&  memAlloc,
           VkMemoryPropertyFlags memFlags)
   : m_vkd(vkd), m_info(createInfo), m_memFlags(memFlags) {
-    
+
     VkImageCreateInfo info;
     info.sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     info.pNext                 = nullptr;
@@ -25,7 +25,7 @@ namespace dxvk {
     info.queueFamilyIndexCount = 0;
     info.pQueueFamilyIndices   = nullptr;
     info.initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED;
-    
+
     if (m_vkd->vkCreateImage(m_vkd->device(),
           &info, nullptr, &m_image) != VK_SUCCESS) {
       throw DxvkError(str::format(
@@ -41,47 +41,47 @@ namespace dxvk {
         "\n  Usage:           ", info.usage,
         "\n  Tiling:          ", info.tiling));
     }
-    
+
     // Get memory requirements for the image. We may enforce strict
     // alignment on non-linear images in order not to violate the
     // bufferImageGranularity limit, which may be greater than the
     // required resource memory alignment on some GPUs.
     VkMemoryRequirements memReq;
-    
+
     m_vkd->vkGetImageMemoryRequirements(
       m_vkd->device(), m_image, &memReq);
-    
+
     if (info.tiling != VK_IMAGE_TILING_LINEAR) {
       memReq.size      = align(memReq.size,       memAlloc.bufferImageGranularity());
       memReq.alignment = align(memReq.alignment , memAlloc.bufferImageGranularity());
     }
-    
+
     m_memory = memAlloc.alloc(memReq, memFlags);
-    
+
     // Try to bind the allocated memory slice to the image
     if (m_vkd->vkBindImageMemory(m_vkd->device(),
           m_image, m_memory.memory(), m_memory.offset()) != VK_SUCCESS)
       throw DxvkError("DxvkImage::DxvkImage: Failed to bind device memory");
   }
-  
-  
+
+
   DxvkImage::DxvkImage(
     const Rc<vk::DeviceFn>&     vkd,
     const DxvkImageCreateInfo&  info,
           VkImage               image)
   : m_vkd(vkd), m_info(info), m_image(image) {
-    
+
   }
-  
-  
+
+
   DxvkImage::~DxvkImage() {
     // This is a bit of a hack to determine whether
     // the image is implementation-handled or not
     if (m_memory.memory() != VK_NULL_HANDLE)
       m_vkd->vkDestroyImage(m_vkd->device(), m_image, nullptr);
   }
-  
-  
+
+
   DxvkImageView::DxvkImageView(
     const Rc<vk::DeviceFn>&         vkd,
     const Rc<DxvkImage>&            image,
@@ -93,7 +93,7 @@ namespace dxvk {
     subresourceRange.levelCount     = info.numLevels;
     subresourceRange.baseArrayLayer = info.minLayer;
     subresourceRange.layerCount     = info.numLayers;
-    
+
     VkImageViewCreateInfo viewInfo;
     viewInfo.sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     viewInfo.pNext            = nullptr;
@@ -103,7 +103,7 @@ namespace dxvk {
     viewInfo.format           = info.format;
     viewInfo.components       = info.swizzle;
     viewInfo.subresourceRange = subresourceRange;
-    
+
     if (m_vkd->vkCreateImageView(m_vkd->device(),
         &viewInfo, nullptr, &m_view) != VK_SUCCESS) {
       throw DxvkError(str::format(
@@ -129,11 +129,11 @@ namespace dxvk {
         "\n    Tiling:        ", image->info().tiling));
     }
   }
-  
-  
+
+
   DxvkImageView::~DxvkImageView() {
     m_vkd->vkDestroyImageView(
       m_vkd->device(), m_view, nullptr);
   }
-  
+
 }

@@ -3,7 +3,7 @@
 #include <unordered_map>
 
 namespace dxvk::hud {
-  
+
   const std::unordered_map<std::string, HudElement> g_hudElements = {{
     { "devinfo",      HudElement::DeviceInfo        },
     { "fps",          HudElement::Framerate         },
@@ -13,13 +13,13 @@ namespace dxvk::hud {
     { "pipelines",    HudElement::StatPipelines     },
     { "memory",       HudElement::StatMemory        },
   }};
-  
-  
+
+
   HudConfig::HudConfig() {
-    
+
   }
-  
-  
+
+
   HudConfig::HudConfig(const std::string& configStr) {
     if (configStr == "1") {
       this->elements.set(
@@ -28,25 +28,25 @@ namespace dxvk::hud {
     } else {
       std::string::size_type pos = 0;
       std::string::size_type end = 0;
-      
+
       while (pos < configStr.size()) {
         end = configStr.find(',', pos);
-        
+
         if (end == std::string::npos)
           end = configStr.size();
-        
+
         std::string configPart = configStr.substr(pos, end - pos);
-        
+
         auto element = g_hudElements.find(configPart);
-        
+
         if (element != g_hudElements.cend()) {
           this->elements.set(element->second);
           Logger::debug(str::format("Hud: Enabled ", configPart));
         }
-        
+
         pos = end + 1;
       }
     }
   }
-  
+
 }

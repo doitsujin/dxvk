@@ -4,7 +4,7 @@
 #include "dxvk_util.h"
 
 namespace dxvk::util {
-  
+
   VkPipelineStageFlags pipelineStages(
           VkShaderStageFlags shaderStages) {
     VkPipelineStageFlags result = 0;
@@ -22,22 +22,22 @@ namespace dxvk::util {
       result |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
     return result;
   }
-  
-  
+
+
   uint32_t computeMipLevelCount(VkExtent3D imageSize) {
     uint32_t maxDim = std::max(imageSize.width, imageSize.height);
              maxDim = std::max(imageSize.depth, maxDim);
     uint32_t mipCnt = 0;
-    
+
     while (maxDim > 0) {
       mipCnt += 1;
       maxDim /= 2;
     }
-    
+
     return mipCnt;
   }
-  
-  
+
+
   void packImageData(
           char*             dstData,
     const char*             srcData,
@@ -48,10 +48,10 @@ namespace dxvk::util {
     const VkDeviceSize bytesPerRow   = blockCount.width  * blockSize;
     const VkDeviceSize bytesPerLayer = blockCount.height * bytesPerRow;
     const VkDeviceSize bytesTotal    = blockCount.depth  * bytesPerLayer;
-    
+
     const bool directCopy = ((bytesPerRow   == pitchPerRow  ) || (blockCount.height == 1))
                          && ((bytesPerLayer == pitchPerLayer) || (blockCount.depth  == 1));
-    
+
     if (directCopy) {
       std::memcpy(dstData, srcData, bytesTotal);
     } else {
@@ -62,17 +62,17 @@ namespace dxvk::util {
             srcData + j * pitchPerRow,
             bytesPerRow);
         }
-        
+
         srcData += pitchPerLayer;
         dstData += bytesPerLayer;
       }
     }
   }
-  
-  
+
+
   VkDeviceSize computeImageDataSize(VkFormat format, VkExtent3D extent) {
     const DxvkFormatInfo* formatInfo = imageFormatInfo(format);
     return formatInfo->elementSize * flattenImageExtent(computeBlockCount(extent, formatInfo->blockSize));
   }
-  
+
 }

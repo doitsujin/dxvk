@@ -4,18 +4,18 @@
 #include "dxvk_pipelayout.h"
 
 namespace dxvk {
-  
+
   DxvkDescriptorSlotMapping:: DxvkDescriptorSlotMapping() { }
   DxvkDescriptorSlotMapping::~DxvkDescriptorSlotMapping() { }
-  
-  
+
+
   void DxvkDescriptorSlotMapping::defineSlot(
           uint32_t              slot,
           VkDescriptorType      type,
           VkImageViewType       view,
           VkShaderStageFlagBits stage) {
     uint32_t bindingId = this->getBindingId(slot);
-    
+
     if (bindingId != InvalidBinding) {
       m_descriptorSlots[bindingId].stages |= stage;
     } else {
@@ -27,8 +27,8 @@ namespace dxvk {
       m_descriptorSlots.push_back(slotInfo);
     }
   }
-  
-  
+
+
   uint32_t DxvkDescriptorSlotMapping::getBindingId(uint32_t slot) const {
     // This won't win a performance competition, but the number
     // of bindings used by a shader is usually much smaller than
@@ -37,31 +37,31 @@ namespace dxvk {
       if (m_descriptorSlots[i].slot == slot)
         return i;
     }
-    
+
     return InvalidBinding;
   }
-  
-  
+
+
   DxvkPipelineLayout::DxvkPipelineLayout(
     const Rc<vk::DeviceFn>&   vkd,
           uint32_t            bindingCount,
     const DxvkDescriptorSlot* bindingInfos,
           VkPipelineBindPoint pipelineBindPoint)
   : m_vkd(vkd), m_bindingSlots(bindingCount) {
-    
+
     for (uint32_t i = 0; i < bindingCount; i++)
       m_bindingSlots[i] = bindingInfos[i];
-    
+
     std::vector<VkDescriptorSetLayoutBinding>       bindings(bindingCount);
     std::vector<VkDescriptorUpdateTemplateEntryKHR> tEntries(bindingCount);
-    
+
     for (uint32_t i = 0; i < bindingCount; i++) {
       bindings[i].binding            = i;
       bindings[i].descriptorType     = bindingInfos[i].type;
       bindings[i].descriptorCount    = 1;
       bindings[i].stageFlags         = bindingInfos[i].stages;
       bindings[i].pImmutableSamplers = nullptr;
-      
+
       tEntries[i].dstBinding      = i;
       tEntries[i].dstArrayElement = 0;
       tEntries[i].descriptorCount = 1;
@@ -69,7 +69,7 @@ namespace dxvk {
       tEntries[i].offset          = sizeof(DxvkDescriptorInfo) * i;
       tEntries[i].stride          = 0;
     }
-    
+
     // Create descriptor set layout. We do not need to
     // create one if there are no active resource bindings.
     if (bindingCount > 0) {
@@ -79,12 +79,12 @@ namespace dxvk {
       dsetInfo.flags        = 0;
       dsetInfo.bindingCount = bindings.size();
       dsetInfo.pBindings    = bindings.data();
-      
+
       if (m_vkd->vkCreateDescriptorSetLayout(m_vkd->device(),
             &dsetInfo, nullptr, &m_descriptorSetLayout) != VK_SUCCESS)
         throw DxvkError("DxvkPipelineLayout: Failed to create descriptor set layout");
     }
-    
+
     // Create pipeline layout with the given descriptor set layout
     VkPipelineLayoutCreateInfo pipeInfo;
     pipeInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -94,13 +94,13 @@ namespace dxvk {
     pipeInfo.pSetLayouts            = &m_descriptorSetLayout;
     pipeInfo.pushConstantRangeCount = 0;
     pipeInfo.pPushConstantRanges    = nullptr;
-    
+
     if (m_vkd->vkCreatePipelineLayout(m_vkd->device(),
         &pipeInfo, nullptr, &m_pipelineLayout) != VK_SUCCESS) {
       m_vkd->vkDestroyDescriptorSetLayout(m_vkd->device(), m_descriptorSetLayout, nullptr);
       throw DxvkError("DxvkPipelineLayout: Failed to create pipeline layout");
     }
-    
+
     // Create descriptor update template. If there are no active
     // resource bindings, there won't be any descriptors to update.
     if (bindingCount > 0) {
@@ -115,7 +115,7 @@ namespace dxvk {
       templateInfo.pipelineBindPoint          = pipelineBindPoint;
       templateInfo.pipelineLayout             = m_pipelineLayout;
       templateInfo.set                        = 0;
-      
+
       if (m_vkd->vkCreateDescriptorUpdateTemplateKHR(
           m_vkd->device(), &templateInfo, nullptr, &m_descriptorTemplate) != VK_SUCCESS) {
         m_vkd->vkDestroyDescriptorSetLayout(m_vkd->device(), m_descriptorSetLayout, nullptr);
@@ -124,17 +124,17 @@ namespace dxvk {
       }
     }
   }
-  
-  
+
+
   DxvkPipelineLayout::~DxvkPipelineLayout() {
     m_vkd->vkDestroyDescriptorUpdateTemplateKHR(
       m_vkd->device(), m_descriptorTemplate, nullptr);
-    
+
     m_vkd->vkDestroyPipelineLayout(
       m_vkd->device(), m_pipelineLayout, nullptr);
-    
+
     m_vkd->vkDestroyDescriptorSetLayout(
       m_vkd->device(), m_descriptorSetLayout, nullptr);
   }
-  
+
 }

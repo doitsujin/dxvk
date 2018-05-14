@@ -25,7 +25,7 @@
 // directly, although others from the same header work.
 // Some structures are missing from the mingw headers.
 #ifndef _MSC_VER
-typedef enum D3D11_FORMAT_SUPPORT2 { 
+typedef enum D3D11_FORMAT_SUPPORT2 {
   D3D11_FORMAT_SUPPORT2_UAV_ATOMIC_ADD                                = 0x1,
   D3D11_FORMAT_SUPPORT2_UAV_ATOMIC_BITWISE_OPS                        = 0x2,
   D3D11_FORMAT_SUPPORT2_UAV_ATOMIC_COMPARE_STORE_OR_COMPARE_EXCHANGE  = 0x4,
@@ -58,7 +58,7 @@ typedef struct D3D11_FEATURE_DATA_FORMAT_SUPPORT {
 typedef struct D3D11_FEATURE_DATA_D3D10_X_HARDWARE_OPTIONS {
   BOOL ComputeShaders_Plus_RawAndStructuredBuffers_Via_Shader_4_x;
 } D3D11_FEATURE_DATA_D3D10_X_HARDWARE_OPTIONS;
-typedef enum D3D11_BUFFEREX_SRV_FLAG { 
+typedef enum D3D11_BUFFEREX_SRV_FLAG {
   D3D11_BUFFEREX_SRV_FLAG_RAW = 1
 } D3D11_BUFFEREX_SRV_FLAG;
 typedef enum D3D11_UAV_FLAG {

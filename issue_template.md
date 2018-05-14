@@ -8,12 +8,12 @@ Name of the game, settings used etc.
 ### System information
 - GPU:
 - Driver:
-- Wine version: 
-- DXVK version: 
+- Wine version:
+- DXVK version:
 
 ### Apitrace file(s)
 - Put a link here
 
 ### Log files
 - d3d11.log:
-- dxgi.log: 
+- dxgi.log:

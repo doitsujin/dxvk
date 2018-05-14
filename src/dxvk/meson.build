@@ -11,7 +11,7 @@ dxvk_shaders = files([
   'shaders/dxvk_clear_image2darr_f.comp',
   'shaders/dxvk_clear_image3d_u.comp',
   'shaders/dxvk_clear_image3d_f.comp',
-  
+
   'hud/shaders/hud_line.frag',
   'hud/shaders/hud_text.frag',
   'hud/shaders/hud_vert.vert',
@@ -61,7 +61,7 @@ dxvk_src = files([
   'dxvk_sync.cpp',
   'dxvk_unbound.cpp',
   'dxvk_util.cpp',
-  
+
   'hud/dxvk_hud.cpp',
   'hud/dxvk_hud_config.cpp',
   'hud/dxvk_hud_devinfo.cpp',
@@ -69,7 +69,7 @@ dxvk_src = files([
   'hud/dxvk_hud_fps.cpp',
   'hud/dxvk_hud_renderer.cpp',
   'hud/dxvk_hud_stats.cpp',
-  
+
   'vulkan/dxvk_vulkan_extensions.cpp',
   'vulkan/dxvk_vulkan_loader.cpp',
   'vulkan/dxvk_vulkan_names.cpp',

@@ -214,8 +214,8 @@ namespace dxvk {
       ENUM_DEFAULT(e);
     }
   }
-  
-  
+
+
   std::ostream& operator << (std::ostream& os, DxbcExtOpcode e) {
     switch (e) {
       ENUM_NAME(DxbcExtOpcode::Empty);
@@ -225,8 +225,8 @@ namespace dxvk {
       ENUM_DEFAULT(e);
     }
   }
-  
-  
+
+
   std::ostream& operator << (std::ostream& os, DxbcOperandType e) {
     switch (e) {
       ENUM_NAME(DxbcOperandType::Temp);
@@ -273,16 +273,16 @@ namespace dxvk {
       ENUM_DEFAULT(e);
     }
   }
-  
-  
+
+
   std::ostream& operator << (std::ostream& os, dxvk::DxbcOperandExt e) {
     switch (e) {
       ENUM_NAME(DxbcOperandExt::OperandModifier);
       ENUM_DEFAULT(e);
     }
   }
-  
-  
+
+
   std::ostream& operator << (std::ostream& os, DxbcComponentCount e) {
     switch (e) {
       ENUM_NAME(DxbcComponentCount::Component0);
@@ -291,8 +291,8 @@ namespace dxvk {
       ENUM_DEFAULT(e);
     }
   }
-  
-  
+
+
   std::ostream& operator << (std::ostream& os, DxbcRegMode e) {
     switch (e) {
       ENUM_NAME(DxbcRegMode::Mask);
@@ -301,8 +301,8 @@ namespace dxvk {
       ENUM_DEFAULT(e);
     }
   }
-  
-  
+
+
   std::ostream& operator << (std::ostream& os, DxbcOperandIndexRepresentation e) {
     switch (e) {
       ENUM_NAME(DxbcOperandIndexRepresentation::Imm32);
@@ -313,8 +313,8 @@ namespace dxvk {
       ENUM_DEFAULT(e);
     }
   }
-  
-  
+
+
   std::ostream& operator << (std::ostream& os, DxbcResourceDim e) {
     switch (e) {
       ENUM_NAME(DxbcResourceDim::Unknown);
@@ -333,8 +333,8 @@ namespace dxvk {
       ENUM_DEFAULT(e);
     }
   }
-  
-  
+
+
   std::ostream& operator << (std::ostream& os, DxbcResourceReturnType e) {
     switch (e) {
       ENUM_NAME(DxbcResourceReturnType::Unorm);
@@ -349,8 +349,8 @@ namespace dxvk {
       ENUM_DEFAULT(e);
     }
   }
-  
-  
+
+
   std::ostream& operator << (std::ostream& os, DxbcRegisterComponentType e) {
     switch (e) {
       ENUM_NAME(DxbcRegisterComponentType::Unknown);
@@ -360,8 +360,8 @@ namespace dxvk {
       ENUM_DEFAULT(e);
     }
   }
-  
-  
+
+
   std::ostream& operator << (std::ostream& os, DxbcInstructionReturnType e) {
     switch (e) {
       ENUM_NAME(DxbcInstructionReturnType::Float);
@@ -369,8 +369,8 @@ namespace dxvk {
       ENUM_DEFAULT(e);
     }
   }
-  
-  
+
+
   std::ostream& operator << (std::ostream& os, DxbcSystemValue e) {
     switch (e) {
       ENUM_NAME(DxbcSystemValue::None);
@@ -404,8 +404,8 @@ namespace dxvk {
       ENUM_DEFAULT(e);
     }
   }
-  
-  
+
+
   std::ostream& operator << (std::ostream& os, dxvk::DxbcProgramType e) {
     switch (e) {
       ENUM_NAME(DxbcProgramType::PixelShader);
@@ -417,7 +417,7 @@ namespace dxvk {
       ENUM_DEFAULT(e);
     }
   }
-  
+
   std::ostream& operator << (std::ostream& os, dxvk::DxbcCustomDataClass e) {
     switch (e) {
       ENUM_NAME(DxbcCustomDataClass::Comment);

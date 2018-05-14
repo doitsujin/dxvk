@@ -17,10 +17,10 @@ float sampleAlpha(float alpha_bias, float dist_range) {
 void main() {
   float r_alpha_center = sampleAlpha(0.0f, 5.0f);
   float r_alpha_shadow = sampleAlpha(0.3f, 5.0f);
-  
+
   vec4 r_center = vec4(v_color.rgb, v_color.a * r_alpha_center);
   vec4 r_shadow = vec4(0.0f, 0.0f, 0.0f, r_alpha_shadow);
-  
+
   o_color = mix(r_shadow, r_center, r_alpha_center);
   o_color.rgb *= o_color.a;
 }

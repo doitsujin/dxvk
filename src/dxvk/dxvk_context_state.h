@@ -12,10 +12,10 @@
 #include "dxvk_shader.h"
 
 namespace dxvk {
-  
+
   /**
    * \brief Graphics pipeline state flags
-   * 
+   *
    * Stores some information on which state
    * of the graphics and compute pipelines
    * has changed and/or needs to be updated.
@@ -29,48 +29,48 @@ namespace dxvk {
     GpDirtyResources,           ///< Graphics pipeline resource bindings are out of date
     GpDirtyVertexBuffers,       ///< Vertex buffer bindings are out of date
     GpDirtyIndexBuffer,         ///< Index buffer binding are out of date
-    
+
     CpDirtyPipeline,            ///< Compute pipeline binding are out of date
     CpDirtyPipelineState,       ///< Compute pipeline needs to be recompiled
     CpDirtyResources,           ///< Compute pipeline resource bindings are out of date
   };
-  
+
   using DxvkContextFlags = Flags<DxvkContextFlag>;
-  
-  
+
+
   struct DxvkVertexInputState {
     DxvkBufferSlice indexBuffer;
     VkIndexType     indexType   = VK_INDEX_TYPE_UINT32;
     uint32_t        bindingMask = 0;
-    
+
     std::array<DxvkBufferSlice, DxvkLimits::MaxNumVertexBindings> vertexBuffers = { };
     std::array<uint32_t,        DxvkLimits::MaxNumVertexBindings> vertexStrides = { };
   };
-  
-  
+
+
   struct DxvkViewportState {
     std::array<VkViewport, DxvkLimits::MaxNumViewports> viewports    = { };
     std::array<VkRect2D,   DxvkLimits::MaxNumViewports> scissorRects = { };
   };
-  
-  
+
+
   struct DxvkOutputMergerState {
     std::array<VkClearValue, MaxNumRenderTargets + 1> clearValues = { };
-    
+
     DxvkRenderTargets   renderTargets;
     DxvkRenderPassOps   renderPassOps;
     Rc<DxvkFramebuffer> framebuffer       = nullptr;
-    
+
     DxvkBlendConstants  blendConstants    = { 0.0f, 0.0f, 0.0f, 0.0f };
     uint32_t            stencilReference  = 0;
   };
-  
-  
+
+
   struct DxvkShaderStage {
     Rc<DxvkShader> shader;
   };
-  
-  
+
+
   struct DxvkGraphicsPipelineState {
     DxvkShaderStage vs;
     DxvkShaderStage tcs;
@@ -81,19 +81,19 @@ namespace dxvk {
     DxvkGraphicsPipelineStateInfo state;
     Rc<DxvkGraphicsPipeline>      pipeline;
   };
-  
-  
+
+
   struct DxvkComputePipelineState {
     DxvkShaderStage cs;
-    
+
     DxvkComputePipelineStateInfo  state;
     Rc<DxvkComputePipeline>       pipeline;
   };
-  
-  
+
+
   /**
    * \brief Pipeline state
-   * 
+   *
    * Stores all bound shaders, resources,
    * and constant pipeline state objects.
    */
@@ -101,9 +101,9 @@ namespace dxvk {
     DxvkVertexInputState      vi;
     DxvkViewportState         vp;
     DxvkOutputMergerState     om;
-    
+
     DxvkGraphicsPipelineState gp;
     DxvkComputePipelineState  cp;
   };
-  
+
 }
