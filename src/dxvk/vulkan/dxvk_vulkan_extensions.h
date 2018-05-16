@@ -58,6 +58,12 @@ namespace dxvk::vk {
     void add(const std::string& name);
     
     /**
+     * \brief Merges two name sets
+     * \param [in] other Name set to merge
+     */
+    void merge(const NameSet& other);
+    
+    /**
      * \brief Checks whether an extension or layer is supported
      * 
      * \param [in] name The layer or extension name

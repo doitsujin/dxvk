@@ -7,6 +7,12 @@ namespace dxvk::vk {
   }
   
   
+  void NameSet::merge(const NameSet& other) {
+    for (const auto& entry : other.m_names)
+      this->add(entry);
+  }
+  
+  
   bool NameSet::contains(const std::string& name) const {
     return m_names.find(name) != m_names.end();
   }
