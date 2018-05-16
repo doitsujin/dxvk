@@ -40,13 +40,25 @@ namespace dxvk {
   
   
   VkInstance DxvkInstance::createInstance() {
-    auto enabledLayers     = this->getLayers();
-    auto enabledExtensions = this->getExtensions(enabledLayers);
+    auto enabledLayers = this->getLayers();
+    
+    // Query available extensions and enable the ones that are needed
+    vk::NameSet availableExtensions = vk::NameSet::enumerateInstanceExtensions(*m_vkl, enabledLayers);
+    
+    DxvkInstanceExtensions extensionsToEnable;
+    extensionsToEnable.enableExtensions(availableExtensions);
+    
+    if (!extensionsToEnable.checkSupportStatus())
+      throw DxvkError("DxvkInstance: Failed to create instance");
+    
+    // Generate list of extensions that we're actually going to use
+    vk::NameSet enabledExtensionSet = extensionsToEnable.getEnabledExtensionNames();
+    vk::NameList enabledExtensionList = enabledExtensionSet.getNameList();
     
     Logger::info("Enabled instance layers:");
     this->logNameList(enabledLayers);
     Logger::info("Enabled instance extensions:");
-    this->logNameList(enabledExtensions);
+    this->logNameList(enabledExtensionList);
     
     VkApplicationInfo appInfo;
     appInfo.sType                 = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -64,8 +76,8 @@ namespace dxvk {
     info.pApplicationInfo         = &appInfo;
     info.enabledLayerCount        = enabledLayers.count();
     info.ppEnabledLayerNames      = enabledLayers.names();
-    info.enabledExtensionCount    = enabledExtensions.count();
-    info.ppEnabledExtensionNames  = enabledExtensions.names();
+    info.enabledExtensionCount    = enabledExtensionList.count();
+    info.ppEnabledExtensionNames  = enabledExtensionList.names();
     
     VkInstance result = VK_NULL_HANDLE;
     if (m_vkl->vkCreateInstance(&info, nullptr, &result) != VK_SUCCESS)
@@ -92,32 +104,6 @@ namespace dxvk {
     }
     
     return layersEnabled;
-  }
-  
-  
-  vk::NameList DxvkInstance::getExtensions(const vk::NameList& layers) {
-    std::vector<const char*> extOptional = { };
-    std::vector<const char*> extRequired = {
-      VK_KHR_SURFACE_EXTENSION_NAME,
-      VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
-    };
-    
-    const vk::NameSet extensionsAvailable
-      = vk::NameSet::enumerateInstanceExtensions(*m_vkl, layers);
-    vk::NameList extensionsEnabled;
-    
-    for (auto e : extOptional) {
-      if (extensionsAvailable.contains(e))
-        extensionsEnabled.add(e);
-    }
-    
-    for (auto e : extRequired) {
-      if (!extensionsAvailable.contains(e))
-        throw DxvkError(str::format("DxvkInstance::getExtensions: Extension ", e, " not supported"));
-      extensionsEnabled.add(e);
-    }
-    
-    return extensionsEnabled;
   }
   
   

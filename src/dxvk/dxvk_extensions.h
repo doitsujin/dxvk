@@ -58,7 +58,7 @@ namespace dxvk {
      * structs for device and instance creation.
      * \returns Names of enabled Vulkan extensions
      */
-    vk::NameList getEnabledExtensionNames() const;
+    vk::NameSet getEnabledExtensionNames() const;
     
   private:
     
@@ -136,6 +136,17 @@ namespace dxvk {
     DxvkExtension khrMaintenance2             = { this, VK_KHR_MAINTENANCE2_EXTENSION_NAME,                 DxvkExtensionType::Desired  };
     DxvkExtension khrShaderDrawParameters     = { this, VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME,       DxvkExtensionType::Required };
     DxvkExtension khrSwapchain                = { this, VK_KHR_SWAPCHAIN_EXTENSION_NAME,                    DxvkExtensionType::Required };
+  };
+  
+  /**
+   * \brief Instance extensions
+   * 
+   * Lists all Vulkan extensions that are potentially
+   * used by DXVK if supported by the implementation.
+   */
+  struct DxvkInstanceExtensions : public DxvkExtensionList {
+    DxvkExtension khrSurface                  = { this, VK_KHR_SURFACE_EXTENSION_NAME,                      DxvkExtensionType::Required };
+    DxvkExtension khrWin32Surface             = { this, VK_KHR_WIN32_SURFACE_EXTENSION_NAME,                DxvkExtensionType::Required };
   };
   
 }

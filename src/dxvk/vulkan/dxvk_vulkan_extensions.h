@@ -96,6 +96,16 @@ namespace dxvk::vk {
       const InstanceFn&       vki,
             VkPhysicalDevice  device);
     
+    /**
+     * \brief Generates a name list
+     * 
+     * The pointers to the names will have the same
+     * lifetime as the name set, and may be invalidated
+     * by modifications made to the name set.
+     * \returns Name list
+     */
+    NameList getNameList() const;
+    
   private:
     
     std::unordered_set<std::string> m_names;

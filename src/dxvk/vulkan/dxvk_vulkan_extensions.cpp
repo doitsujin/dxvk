@@ -73,4 +73,12 @@ namespace dxvk::vk {
       this->add(ext.extensionName);
   }
   
+  
+  NameList NameSet::getNameList() const {
+    NameList result;
+    for (const std::string& name : m_names)
+      result.add(name.c_str());
+    return result;
+  }
+  
 }

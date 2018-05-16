@@ -160,23 +160,27 @@ namespace dxvk {
   
   
   Rc<DxvkDevice> DxvkAdapter::createDevice(const VkPhysicalDeviceFeatures& enabledFeatures) {
+    // Query available extensions and enable the ones that are needed
+    vk::NameSet availableExtensions = vk::NameSet::enumerateDeviceExtensions(*m_vki, m_handle);
+    
     const Rc<DxvkDeviceExtensions> extensions = new DxvkDeviceExtensions();
-    extensions->enableExtensions(vk::NameSet::enumerateDeviceExtensions(*m_vki, m_handle));
+    extensions->enableExtensions(availableExtensions);
     
     if (!extensions->checkSupportStatus())
       throw DxvkError("DxvkAdapter: Failed to create device");
     
-    const vk::NameList enabledExtensions =
-      extensions->getEnabledExtensionNames();
+    // Generate list of extensions that we're actually going to use
+    vk::NameSet enabledExtensionSet = extensions->getEnabledExtensionNames();
+    vk::NameList enabledExtensionList = enabledExtensionSet.getNameList();
     
     Logger::info("Enabled device extensions:");
-    this->logNameList(enabledExtensions);
+    this->logNameList(enabledExtensionList);
     
     float queuePriority = 1.0f;
     std::vector<VkDeviceQueueCreateInfo> queueInfos;
     
-    const uint32_t gIndex = this->graphicsQueueFamily();
-    const uint32_t pIndex = this->presentQueueFamily();
+    uint32_t gIndex = this->graphicsQueueFamily();
+    uint32_t pIndex = this->presentQueueFamily();
     
     VkDeviceQueueCreateInfo graphicsQueue;
     graphicsQueue.sType             = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
@@ -201,8 +205,8 @@ namespace dxvk {
     info.pQueueCreateInfos          = queueInfos.data();
     info.enabledLayerCount          = 0;
     info.ppEnabledLayerNames        = nullptr;
-    info.enabledExtensionCount      = enabledExtensions.count();
-    info.ppEnabledExtensionNames    = enabledExtensions.names();
+    info.enabledExtensionCount      = enabledExtensionList.count();
+    info.ppEnabledExtensionNames    = enabledExtensionList.names();
     info.pEnabledFeatures           = &enabledFeatures;
     
     VkDevice device = VK_NULL_HANDLE;

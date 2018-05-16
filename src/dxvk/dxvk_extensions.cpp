@@ -47,8 +47,8 @@ namespace dxvk {
   }
   
   
-  vk::NameList DxvkExtensionList::getEnabledExtensionNames() const {
-    vk::NameList names;
+  vk::NameSet DxvkExtensionList::getEnabledExtensionNames() const {
+    vk::NameSet names;
     
     for (auto ext : m_extensions) {
       if (ext->enabled())
