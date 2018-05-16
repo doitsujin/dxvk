@@ -48,8 +48,6 @@ namespace dxvk {
     
     VkInstance createInstance();
     
-    vk::NameList getLayers();
-    
     void logNameList(const vk::NameList& names);
     
   };

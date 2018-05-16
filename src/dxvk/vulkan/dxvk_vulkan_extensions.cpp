@@ -18,30 +18,19 @@ namespace dxvk::vk {
   }
   
   
-  NameSet NameSet::enumerateInstanceLayers(const LibraryFn& vkl) {
-    uint32_t layerCount = 0;
-    if (vkl.vkEnumerateInstanceLayerProperties(&layerCount, nullptr) != VK_SUCCESS)
-      throw DxvkError(str::format("LayerSet::enumerateInstanceLayers: Failed to query instance layers"));
-    
-    std::vector<VkLayerProperties> layers(layerCount);
-    if (vkl.vkEnumerateInstanceLayerProperties(&layerCount, layers.data()) != VK_SUCCESS)
-      throw DxvkError(str::format("LayerSet::enumerateInstanceLayers: Failed to query instance layers"));
-    
-    NameSet result;
-    for (const auto& layer : layers)
-      result.m_names.insert(layer.layerName);
-    return result;
-  }
-  
-  
   NameSet NameSet::enumerateInstanceExtensions(
-    const LibraryFn&        vkl,
-    const NameList&         layers) {
-    NameSet result;
-    result.addInstanceLayerExtensions(vkl, nullptr);
+    const LibraryFn&        vkl) {
+    uint32_t extCount = 0;
+    if (vkl.vkEnumerateInstanceExtensionProperties(nullptr, &extCount, nullptr) != VK_SUCCESS)
+      throw DxvkError("ExtensionSet::addInstanceExtensions: Failed to query instance extensions");
     
-    for (size_t i = 0; i < layers.count(); i++)
-      result.addInstanceLayerExtensions(vkl, layers.name(i));
+    std::vector<VkExtensionProperties> extensions(extCount);
+    if (vkl.vkEnumerateInstanceExtensionProperties(nullptr, &extCount, extensions.data()) != VK_SUCCESS)
+      throw DxvkError("ExtensionSet::addInstanceExtensions: Failed to query instance extensions");
+    
+    NameSet result;
+    for (const auto& ext : extensions)
+      result.add(ext.extensionName);
     return result;
   }
   
@@ -61,22 +50,6 @@ namespace dxvk::vk {
     for (const auto& ext : extensions)
       result.add(ext.extensionName);
     return result;
-  }
-  
-  
-  void NameSet::addInstanceLayerExtensions(
-    const LibraryFn&        vkl,
-    const char*             layer) {
-    uint32_t extCount = 0;
-    if (vkl.vkEnumerateInstanceExtensionProperties(layer, &extCount, nullptr) != VK_SUCCESS)
-      throw DxvkError("ExtensionSet::addInstanceExtensions: Failed to query instance extensions");
-    
-    std::vector<VkExtensionProperties> extensions(extCount);
-    if (vkl.vkEnumerateInstanceExtensionProperties(layer, &extCount, extensions.data()) != VK_SUCCESS)
-      throw DxvkError("ExtensionSet::addInstanceExtensions: Failed to query instance extensions");
-    
-    for (const auto& ext : extensions)
-      this->add(ext.extensionName);
   }
   
   

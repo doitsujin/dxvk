@@ -72,24 +72,13 @@ namespace dxvk::vk {
     bool contains(const std::string& name) const;
     
     /**
-     * \brief Enumerates instance layers
-     * 
-     * \param [in] vkl Vulkan library functions
-     * \returns Available instance layers
-     */
-    static NameSet enumerateInstanceLayers(
-      const LibraryFn&        vkl);
-    
-    /**
      * \brief Enumerates instance extensions
      * 
      * \param [in] vkl Vulkan library functions
-     * \param [in] layers Enabled instance layers
      * \returns Available instance extensions
      */
     static NameSet enumerateInstanceExtensions(
-      const LibraryFn&        vkl,
-      const NameList&         layers);
+      const LibraryFn&        vkl);
     
     /**
      * \brief Enumerates device extensions
@@ -115,10 +104,6 @@ namespace dxvk::vk {
   private:
     
     std::unordered_set<std::string> m_names;
-    
-    void addInstanceLayerExtensions(
-      const LibraryFn&        vkl,
-      const char*             layer);
     
   };
   

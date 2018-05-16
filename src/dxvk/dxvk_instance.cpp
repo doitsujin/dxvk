@@ -40,10 +40,8 @@ namespace dxvk {
   
   
   VkInstance DxvkInstance::createInstance() {
-    auto enabledLayers = this->getLayers();
-    
     // Query available extensions and enable the ones that are needed
-    vk::NameSet availableExtensions = vk::NameSet::enumerateInstanceExtensions(*m_vkl, enabledLayers);
+    vk::NameSet availableExtensions = vk::NameSet::enumerateInstanceExtensions(*m_vkl);
     
     DxvkInstanceExtensions extensionsToEnable;
     extensionsToEnable.enableExtensions(availableExtensions);
@@ -55,8 +53,6 @@ namespace dxvk {
     vk::NameSet enabledExtensionSet = extensionsToEnable.getEnabledExtensionNames();
     vk::NameList enabledExtensionList = enabledExtensionSet.getNameList();
     
-    Logger::info("Enabled instance layers:");
-    this->logNameList(enabledLayers);
     Logger::info("Enabled instance extensions:");
     this->logNameList(enabledExtensionList);
     
@@ -74,8 +70,8 @@ namespace dxvk {
     info.pNext                    = nullptr;
     info.flags                    = 0;
     info.pApplicationInfo         = &appInfo;
-    info.enabledLayerCount        = enabledLayers.count();
-    info.ppEnabledLayerNames      = enabledLayers.names();
+    info.enabledLayerCount        = 0;
+    info.ppEnabledLayerNames      = nullptr;
     info.enabledExtensionCount    = enabledExtensionList.count();
     info.ppEnabledExtensionNames  = enabledExtensionList.names();
     
@@ -83,27 +79,6 @@ namespace dxvk {
     if (m_vkl->vkCreateInstance(&info, nullptr, &result) != VK_SUCCESS)
       throw DxvkError("DxvkInstance::createInstance: Failed to create Vulkan instance");
     return result;
-  }
-  
-  
-  vk::NameList DxvkInstance::getLayers() {
-    std::vector<const char*> layers = { };
-    
-    if (env::getEnvVar(L"DXVK_DEBUG_LAYERS") == "1")
-      layers.push_back("VK_LAYER_LUNARG_standard_validation");
-    
-    const vk::NameSet layersAvailable
-      = vk::NameSet::enumerateInstanceLayers(*m_vkl);
-    
-    vk::NameList layersEnabled;
-    for (auto l : layers) {
-      if (layersAvailable.contains(l))
-        layersEnabled.add(l);
-      else
-        throw DxvkError(str::format("Requested layer not installed: ", l));
-    }
-    
-    return layersEnabled;
   }
   
   
