@@ -1,5 +1,7 @@
 #include "dxvk_instance.h"
 
+#include <algorithm>
+
 namespace dxvk {
   
   DxvkInstance::DxvkInstance()
@@ -26,6 +28,13 @@ namespace dxvk {
     std::vector<Rc<DxvkAdapter>> result;
     for (uint32_t i = 0; i < numAdapters; i++)
       result.push_back(new DxvkAdapter(this, adapters[i]));
+    
+    std::sort(result.begin(), result.end(),
+      [this] (const Rc<DxvkAdapter>& a, const Rc<DxvkAdapter>& b) -> bool {
+        return a->deviceProperties().deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
+            && b->deviceProperties().deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
+      });
+    
     return result;
   }
   
