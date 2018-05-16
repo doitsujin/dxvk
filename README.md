@@ -77,7 +77,7 @@ Additionally, `DXVK_HUD=1` has the same effect as `DXVK_HUD=devinfo,fps`.
 
 ### Debugging
 The following environment variables can be used for **debugging** purposes.
-- `DXVK_DEBUG_LAYERS=1` Enables Vulkan debug layers. Highly recommended for troubleshooting rendering issues and driver crashes. Requires the Vulkan SDK to be installed and set up within the wine prefix (`winetricks vulkansdk`).
+- `VK_INSTANCE_LAYERS=VK_LAYER_LUNARG_standard_validation` Enables Vulkan debug layers. Highly recommended for troubleshooting rendering issues and driver crashes. Requires the Vulkan SDK to be installed on the host system.
 - `DXVK_CUSTOM_VENDOR_ID=<ID>` Specifies a custom PCI vendor ID
 - `DXVK_CUSTOM_DEVICE_ID=<ID>` Specifies a custom PCI device ID
 - `DXVK_LOG_LEVEL=none|error|warn|info|debug` Controls message logging
