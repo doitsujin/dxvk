@@ -85,7 +85,7 @@ namespace dxvk {
     
     vk::NameList layersEnabled;
     for (auto l : layers) {
-      if (layersAvailable.supports(l))
+      if (layersAvailable.contains(l))
         layersEnabled.add(l);
       else
         throw DxvkError(str::format("Requested layer not installed: ", l));
@@ -107,12 +107,12 @@ namespace dxvk {
     vk::NameList extensionsEnabled;
     
     for (auto e : extOptional) {
-      if (extensionsAvailable.supports(e))
+      if (extensionsAvailable.contains(e))
         extensionsEnabled.add(e);
     }
     
     for (auto e : extRequired) {
-      if (!extensionsAvailable.supports(e))
+      if (!extensionsAvailable.contains(e))
         throw DxvkError(str::format("DxvkInstance::getExtensions: Extension ", e, " not supported"));
       extensionsEnabled.add(e);
     }

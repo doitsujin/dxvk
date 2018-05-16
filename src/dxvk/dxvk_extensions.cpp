@@ -8,7 +8,7 @@ namespace dxvk {
   
   void DxvkExtensionList::enableExtensions(const vk::NameSet& extensions) {
     for (auto ext : m_extensions) {
-      if (extensions.supports(ext->name()))
+      if (extensions.contains(ext->name()))
         ext->setEnabled(true);
     }
   }

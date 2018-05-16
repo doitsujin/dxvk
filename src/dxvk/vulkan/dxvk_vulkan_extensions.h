@@ -52,12 +52,18 @@ namespace dxvk::vk {
   public:
     
     /**
+     * \brief Adds an extension to the set
+     * \param [in] name The extension to add
+     */
+    void add(const std::string& name);
+    
+    /**
      * \brief Checks whether an extension or layer is supported
      * 
      * \param [in] name The layer or extension name
      * \returns \c true if the entity is supported
      */
-    bool supports(const char* name) const;
+    bool contains(const std::string& name) const;
     
     /**
      * \brief Enumerates instance layers

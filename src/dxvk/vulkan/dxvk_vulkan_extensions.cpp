@@ -2,7 +2,12 @@
 
 namespace dxvk::vk {
   
-  bool NameSet::supports(const char* name) const {
+  void NameSet::add(const std::string& name) {
+    m_names.insert(name);
+  }
+  
+  
+  bool NameSet::contains(const std::string& name) const {
     return m_names.find(name) != m_names.end();
   }
   
@@ -48,7 +53,7 @@ namespace dxvk::vk {
     
     NameSet result;
     for (const auto& ext : extensions)
-      result.m_names.insert(ext.extensionName);
+      result.add(ext.extensionName);
     return result;
   }
   
@@ -65,7 +70,7 @@ namespace dxvk::vk {
       throw DxvkError("ExtensionSet::addInstanceExtensions: Failed to query instance extensions");
     
     for (const auto& ext : extensions)
-      m_names.insert(ext.extensionName);
+      this->add(ext.extensionName);
   }
   
 }
