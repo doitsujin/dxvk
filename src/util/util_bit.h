@@ -1,6 +1,10 @@
 #pragma once
 
+#ifndef _MSC_VER
 #include <x86intrin.h>
+#else
+#include <intrin.h>
+#endif
 
 namespace dxvk::bit {
   
@@ -17,7 +21,9 @@ namespace dxvk::bit {
   }
   
   inline uint32_t tzcnt(uint32_t n) {
-    #if defined(__BMI__)
+    #if defined(_MSC_VER)
+    return _tzcnt_u32(n);
+    #elif defined(__BMI__)
     return __tzcnt_u32(n);
     #elif defined(__GNUC__)
     uint32_t res;
