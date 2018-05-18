@@ -244,10 +244,11 @@ namespace dxvk {
   
   
   struct DxbcCfgBlockIf {
+    uint32_t ztestId;
     uint32_t labelIf;
     uint32_t labelElse;
     uint32_t labelEnd;
-    bool     hadElse;
+    size_t   headerPtr;
   };
   
   

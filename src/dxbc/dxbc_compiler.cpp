@@ -3258,29 +3258,21 @@ namespace dxvk {
     const DxbcRegisterValue condition = emitRegisterLoad(
       ins.src[0], DxbcRegMask(true, false, false, false));
     
-    const DxbcRegisterValue zeroTest = emitRegisterZeroTest(
-      condition, ins.controls.zeroTest());
-    
     // Declare the 'if' block. We do not know if there
     // will be an 'else' block or not, so we'll assume
     // that there is one and leave it empty otherwise.
     DxbcCfgBlock block;
     block.type = DxbcCfgBlockType::If;
+    block.b_if.ztestId   = emitRegisterZeroTest(condition, ins.controls.zeroTest()).id;
     block.b_if.labelIf   = m_module.allocateId();
-    block.b_if.labelElse = m_module.allocateId();
+    block.b_if.labelElse = 0;
     block.b_if.labelEnd  = m_module.allocateId();
-    block.b_if.hadElse   = false;
+    block.b_if.headerPtr = m_module.getInsertionPtr();
     m_controlFlowBlocks.push_back(block);
     
-    m_module.opSelectionMerge(
-      block.b_if.labelEnd,
-      spv::SelectionControlMaskNone);
-    
-    m_module.opBranchConditional(
-      zeroTest.id,
-      block.b_if.labelIf,
-      block.b_if.labelElse);
-    
+    // We'll insert the branch instruction when closing
+    // the block, since we don't know whether or not an
+    // else block is needed right now.
     m_module.opLabel(block.b_if.labelIf);
   }
   
@@ -3288,13 +3280,13 @@ namespace dxvk {
   void DxbcCompiler::emitControlFlowElse(const DxbcShaderInstruction& ins) {
     if (m_controlFlowBlocks.size() == 0
      || m_controlFlowBlocks.back().type != DxbcCfgBlockType::If
-     || m_controlFlowBlocks.back().b_if.hadElse)
+     || m_controlFlowBlocks.back().b_if.labelElse != 0)
       throw DxvkError("DxbcCompiler: 'Else' without 'If' found");
     
     // Set the 'Else' flag so that we do
     // not insert a dummy block on 'EndIf'
     DxbcCfgBlock& block = m_controlFlowBlocks.back();
-    block.b_if.hadElse = true;
+    block.b_if.labelElse = m_module.allocateId();
     
     // Close the 'If' block by branching to
     // the merge block we declared earlier
@@ -3309,21 +3301,28 @@ namespace dxvk {
       throw DxvkError("DxbcCompiler: 'EndIf' without 'If' found");
     
     // Remove the block from the stack, it's closed
-    const DxbcCfgBlock block = m_controlFlowBlocks.back();
+    DxbcCfgBlock block = m_controlFlowBlocks.back();
     m_controlFlowBlocks.pop_back();
+    
+    // Write out the 'if' header
+    m_module.beginInsertion(block.b_if.headerPtr);
+    
+    m_module.opSelectionMerge(
+      block.b_if.labelEnd,
+      spv::SelectionControlMaskNone);
+    
+    m_module.opBranchConditional(
+      block.b_if.ztestId,
+      block.b_if.labelIf,
+      block.b_if.labelElse != 0
+        ? block.b_if.labelElse
+        : block.b_if.labelEnd);
+    
+    m_module.endInsertion();
     
     // End the active 'if' or 'else' block
     m_module.opBranch(block.b_if.labelEnd);
-    
-    // If there was no 'else' block in this construct, we still
-    // have to declare it because we used it as a branch target.
-    if (!block.b_if.hadElse) {
-      m_module.opLabel (block.b_if.labelElse);
-      m_module.opBranch(block.b_if.labelEnd);
-    }
-    
-    // Declare the merge block
-    m_module.opLabel(block.b_if.labelEnd);
+    m_module.opLabel (block.b_if.labelEnd);
   }
   
   
