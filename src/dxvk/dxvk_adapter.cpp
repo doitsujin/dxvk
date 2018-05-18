@@ -171,6 +171,8 @@ namespace dxvk {
     
     // Generate list of extensions that we're actually going to use
     vk::NameSet enabledExtensionSet = extensions->getEnabledExtensionNames();
+    enabledExtensionSet.merge(m_instance->queryExtraDeviceExtensions(this));
+    
     vk::NameList enabledExtensionList = enabledExtensionSet.getNameList();
     
     Logger::info("Enabled device extensions:");

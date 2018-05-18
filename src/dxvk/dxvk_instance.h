@@ -2,6 +2,7 @@
 
 #include "dxvk_adapter.h"
 #include "dxvk_device.h"
+#include "dxvk_openvr.h"
 
 namespace dxvk {
   
@@ -41,7 +42,18 @@ namespace dxvk {
      */
     std::vector<Rc<DxvkAdapter>> enumAdapters();
     
+    /**
+     * \brief Queries extra device extensions
+     * 
+     * \param [in] adapter The device to query
+     * \returns Extra device extensions
+     */
+    vk::NameSet queryExtraDeviceExtensions(
+      const DxvkAdapter* adapter) const;
+    
   private:
+    
+    VrInstance          m_vr;
     
     Rc<vk::LibraryFn>   m_vkl;
     Rc<vk::InstanceFn>  m_vki;
