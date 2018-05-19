@@ -222,13 +222,28 @@ namespace dxvk {
     info.memoryTypeIndex  = m_memTypeId;
     
     VkDeviceMemory memory = VK_NULL_HANDLE;
+    VkResult result = m_vkd->vkAllocateMemory(m_vkd->device(), &info, nullptr, &memory);
     
-    if (m_vkd->vkAllocateMemory(m_vkd->device(),
-        &info, nullptr, &memory) != VK_SUCCESS)
-      return VK_NULL_HANDLE;
-    
-    m_memoryAllocated += memorySize;
-    return memory;
+    switch(result) {
+      case VK_SUCCESS: {
+        m_memoryAllocated += memorySize;
+        return memory;
+      } break;
+      case VK_ERROR_OUT_OF_HOST_MEMORY: {
+        Logger::debug("DxvkMemoryHeap: Out of host memory");
+      } break;
+      case VK_ERROR_OUT_OF_DEVICE_MEMORY: {
+        Logger::debug("DxvkMemoryHeap: Out of device memory");
+      } break;
+      case VK_ERROR_TOO_MANY_OBJECTS: {
+        Logger::debug("DxvkMemoryHeap: Too many objects");
+      } break;
+      default: {
+        Logger::debug(str::format(
+          "DxvkMemoryHeap: Unhandled return value from vkAllocateMemory: ", result));
+      } break;
+    }
+    return VK_NULL_HANDLE;
   }
   
   
