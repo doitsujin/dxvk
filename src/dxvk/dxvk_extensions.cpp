@@ -60,7 +60,7 @@ namespace dxvk {
   
   
   void DxvkExtensionList::registerExtension(DxvkExtension* extension) {
-    m_extensions.push_back(extension);
+    m_extensions.emplace_back(extension);
   }
   
   
