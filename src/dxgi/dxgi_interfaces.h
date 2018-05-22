@@ -109,7 +109,7 @@ IDXGIVkPresenter : public IUnknown {
    * \returns \c S_OK on success
    */
   virtual HRESULT STDMETHODCALLTYPE CreateSwapChainBackBuffer(
-    const DXGI_SWAP_CHAIN_DESC*       pSwapChainDesc,
+    const DXGI_SWAP_CHAIN_DESC1*      pSwapChainDesc,
           IDXGIVkBackBuffer**         ppBackBuffer) = 0;
   
   /**

@@ -25,9 +25,11 @@ namespace dxvk {
   public:
     
     DxgiSwapChain(
-          DxgiFactory*                factory,
-          IUnknown*                   pDevice,
-          DXGI_SWAP_CHAIN_DESC*       pDesc);
+            DxgiFactory*                pFactory,
+            IUnknown*                   pDevice,
+            HWND                        hWnd,
+      const DXGI_SWAP_CHAIN_DESC1*      pDesc,
+      const DXGI_SWAP_CHAIN_FULLSCREEN_DESC*  pFullscreenDesc);
     
     ~DxgiSwapChain();
     
@@ -137,7 +139,9 @@ namespace dxvk {
     Com<DxgiDevice>                 m_device;
     Com<IDXGIVkPresenter>           m_presentDevice;
     
-    DXGI_SWAP_CHAIN_DESC            m_desc;
+    HWND                            m_window;
+    DXGI_SWAP_CHAIN_DESC1           m_desc;
+    DXGI_SWAP_CHAIN_FULLSCREEN_DESC m_descFs;
     DXGI_FRAME_STATISTICS           m_stats;
     
     Rc<DxgiVkPresenter>             m_presenter;

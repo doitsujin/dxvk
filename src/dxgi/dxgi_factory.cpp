@@ -65,21 +65,36 @@ namespace dxvk {
           IUnknown*             pDevice,
           DXGI_SWAP_CHAIN_DESC* pDesc,
           IDXGISwapChain**      ppSwapChain) {
-    InitReturnPtr(ppSwapChain);
-    
-    if (ppSwapChain == nullptr || pDesc == nullptr || pDevice == NULL)
+    if (ppSwapChain == nullptr || pDesc == nullptr || pDevice == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
-    if (pDesc->OutputWindow == nullptr)
-      return DXGI_ERROR_INVALID_CALL;
+    DXGI_SWAP_CHAIN_DESC1 desc;
+    desc.Width              = pDesc->BufferDesc.Width;
+    desc.Height             = pDesc->BufferDesc.Height;
+    desc.Format             = pDesc->BufferDesc.Format;
+    desc.Stereo             = FALSE;
+    desc.SampleDesc         = pDesc->SampleDesc;
+    desc.BufferUsage        = pDesc->BufferUsage;
+    desc.BufferCount        = pDesc->BufferCount;
+    desc.Scaling            = DXGI_SCALING_STRETCH;
+    desc.SwapEffect         = pDesc->SwapEffect;
+    desc.AlphaMode          = DXGI_ALPHA_MODE_IGNORE;
+    desc.Flags              = pDesc->Flags;
     
-    try {
-      *ppSwapChain = ref(new DxgiSwapChain(this, pDevice, pDesc));
-      return S_OK;
-    } catch (const DxvkError& e) {
-      Logger::err(e.message());
-      return E_FAIL;
-    }
+    DXGI_SWAP_CHAIN_FULLSCREEN_DESC descFs;
+    descFs.RefreshRate      = pDesc->BufferDesc.RefreshRate;
+    descFs.ScanlineOrdering = pDesc->BufferDesc.ScanlineOrdering;
+    descFs.Scaling          = pDesc->BufferDesc.Scaling;
+    descFs.Windowed         = pDesc->Windowed;
+    
+    IDXGISwapChain1* swapChain = nullptr;
+    HRESULT hr = CreateSwapChainForHwnd(
+      pDevice, pDesc->OutputWindow,
+      &desc, &descFs, nullptr,
+      &swapChain);
+    
+    *ppSwapChain = swapChain;
+    return hr;
   }
   
   
@@ -92,8 +107,30 @@ namespace dxvk {
           IDXGISwapChain1**     ppSwapChain) {
     InitReturnPtr(ppSwapChain);
     
-    Logger::err("DxgiFactory::CreateSwapChainForHwnd: Not implemented");
-    return E_NOTIMPL;
+    if (ppSwapChain == nullptr || pDesc == nullptr || hWnd == nullptr || pDevice == nullptr)
+      return DXGI_ERROR_INVALID_CALL;
+    
+    // If necessary, set up a default set of
+    // fullscreen parameters for the swap chain
+    DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullscreenDesc;
+    
+    if (pFullscreenDesc != nullptr) {
+      fullscreenDesc = *pFullscreenDesc;
+    } else {
+      fullscreenDesc.RefreshRate      = { 0, 0 };
+      fullscreenDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+      fullscreenDesc.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
+      fullscreenDesc.Windowed         = TRUE;
+    }
+    
+    try {
+      *ppSwapChain = ref(new DxgiSwapChain(this,
+        pDevice, hWnd, pDesc, &fullscreenDesc));
+      return S_OK;
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return E_FAIL;
+    }
   }
   
   
