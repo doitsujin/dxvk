@@ -7,7 +7,8 @@ namespace dxvk {
   
   HRESULT createDxgiFactory(REFIID riid, void **ppFactory) {
     if (riid != __uuidof(IDXGIFactory)
-     && riid != __uuidof(IDXGIFactory1)) {
+     && riid != __uuidof(IDXGIFactory1)
+     && riid != __uuidof(IDXGIFactory2)) {
       Logger::err("CreateDXGIFactory: Requested version of IDXGIFactory not supported");
       Logger::err(str::format(riid));
       *ppFactory = nullptr;
