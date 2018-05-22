@@ -120,6 +120,7 @@ namespace dxvk {
     
     uint32_t builtinLayer         = 0;
     uint32_t builtinViewportId    = 0;
+    uint32_t builtinInvocationId  = 0;
   };
   
   
@@ -512,6 +513,9 @@ namespace dxvk {
       const DxbcShaderInstruction&  ins);
     
     void emitDclThreadGroup(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitDclGsInstanceCount(
       const DxbcShaderInstruction&  ins);
     
     uint32_t emitDclUavCounter(

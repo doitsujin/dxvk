@@ -92,6 +92,16 @@ namespace dxvk {
   }
   
   
+  void SpirvModule::setInvocations(
+          uint32_t                entryPointId,
+          uint32_t                invocations) {
+    m_execModeInfo.putIns  (spv::OpExecutionMode, 4);
+    m_execModeInfo.putWord (entryPointId);
+    m_execModeInfo.putWord (spv::ExecutionModeInvocations);
+    m_execModeInfo.putInt32(invocations);
+  }
+  
+  
   void SpirvModule::setLocalSize(
           uint32_t                entryPointId,
           uint32_t                x,

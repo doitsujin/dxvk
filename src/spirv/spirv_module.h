@@ -79,6 +79,10 @@ namespace dxvk {
             uint32_t                entryPointId,
             spv::ExecutionMode      executionMode);
     
+    void setInvocations(
+            uint32_t                entryPointId,
+            uint32_t                invocations);
+    
     void setLocalSize(
             uint32_t                entryPointId,
             uint32_t                x,

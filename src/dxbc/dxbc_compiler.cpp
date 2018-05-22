@@ -277,6 +277,9 @@ namespace dxvk {
       case DxbcOpcode::DclThreadGroup:
         return this->emitDclThreadGroup(ins);
       
+      case DxbcOpcode::DclGsInstanceCount:
+        return this->emitDclGsInstanceCount(ins);
+      
       default:
         Logger::warn(
           str::format("DxbcCompiler: Unhandled opcode: ",
@@ -543,6 +546,14 @@ namespace dxvk {
       case DxbcOperandType::OutputControlPoint: {
         // These have been declared as global input and
         // output arrays, so there's nothing left to do.
+      } break;
+      
+      case DxbcOperandType::InputGsInstanceId: {
+        m_gs.builtinInvocationId = emitNewBuiltinVariable({
+          { DxbcScalarType::Uint32, 1, 0 },
+          spv::StorageClassInput },
+          spv::BuiltInInvocationId,
+          "vInstanceID");
       } break;
       
       default:
@@ -1216,6 +1227,13 @@ namespace dxvk {
     //    (imm2) Number of threads in Z dimension
     m_module.setLocalSize(m_entryPointId,
       ins.imm[0].u32, ins.imm[1].u32, ins.imm[2].u32);
+  }
+  
+  
+  void DxbcCompiler::emitDclGsInstanceCount(const DxbcShaderInstruction& ins) {
+    // dcl_gs_instance_count has one operand:
+    //    (imm0) Number of geometry shader invocations
+    m_module.setInvocations(m_entryPointId, ins.imm[0].u32);
   }
   
   
@@ -4282,6 +4300,11 @@ namespace dxvk {
         return DxbcRegisterPointer {
           { DxbcScalarType::Uint32, 1 },
           getCurrentHsForkJoinPhase()->instanceIdPtr };
+      
+      case DxbcOperandType::InputGsInstanceId:
+        return DxbcRegisterPointer {
+          { DxbcScalarType::Uint32, 1 },
+          m_gs.builtinInvocationId };
         
       default:
         throw DxvkError(str::format(
