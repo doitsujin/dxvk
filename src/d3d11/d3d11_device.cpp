@@ -1851,6 +1851,9 @@ namespace dxvk {
     const D3D11_SUBRESOURCE_DATA*     pInitialData) {
     const DxvkBufferSlice bufferSlice = pBuffer->GetBufferSlice();
     
+    D3D11_BUFFER_DESC desc;
+    pBuffer->GetDesc(&desc);
+    
     if (pInitialData != nullptr && pInitialData->pSysMem != nullptr) {
       LockResourceInitContext();
       
@@ -1859,6 +1862,16 @@ namespace dxvk {
         bufferSlice.offset(),
         bufferSlice.length(),
         pInitialData->pSysMem);
+      
+      UnlockResourceInitContext(1);
+    } else if (desc.Usage == D3D11_USAGE_DEFAULT) {
+      LockResourceInitContext();
+      
+      m_resourceInitContext->clearBuffer(
+        bufferSlice.buffer(),
+        bufferSlice.offset(),
+        bufferSlice.length(),
+        0u);
       
       UnlockResourceInitContext(1);
     }
