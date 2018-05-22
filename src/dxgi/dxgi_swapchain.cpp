@@ -73,7 +73,8 @@ namespace dxvk {
     if (riid == __uuidof(IUnknown)
      || riid == __uuidof(IDXGIObject)
      || riid == __uuidof(IDXGIDeviceSubObject)
-     || riid == __uuidof(IDXGISwapChain)) {
+     || riid == __uuidof(IDXGISwapChain)
+     || riid == __uuidof(IDXGISwapChain1)) {
       *ppvObject = ref(this);
       return S_OK;
     }
@@ -142,6 +143,35 @@ namespace dxvk {
   }
   
   
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetDesc1(DXGI_SWAP_CHAIN_DESC1* pDesc) {
+    Logger::err("DxgiSwapChain::GetDesc1: Not implemented");
+    return E_NOTIMPL;
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetBackgroundColor(
+          DXGI_RGBA*                pColor) {
+    Logger::err("DxgiSwapChain::GetBackgroundColor: Not implemented");
+    return E_NOTIMPL;
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetRotation(
+          DXGI_MODE_ROTATION*       pRotation) {
+    Logger::err("DxgiSwapChain::GetRotation: Not implemented");
+    return E_NOTIMPL;
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetRestrictToOutput(
+          IDXGIOutput**             ppRestrictToOutput) {
+    InitReturnPtr(ppRestrictToOutput);
+    
+    Logger::err("DxgiSwapChain::GetRestrictToOutput: Not implemented");
+    return E_NOTIMPL;
+  }
+  
+  
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetFrameStatistics(DXGI_FRAME_STATISTICS* pStats) {
     std::lock_guard<std::recursive_mutex> lock(m_mutex);
     
@@ -177,6 +207,28 @@ namespace dxvk {
   }
   
   
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetFullscreenDesc(
+          DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pDesc) {
+    Logger::err("DxgiSwapChain::GetFullscreenDesc: Not implemented");
+    return E_NOTIMPL;
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetHwnd(
+          HWND*                     pHwnd) {
+    Logger::err("DxgiSwapChain::GetHwnd: Not implemented");
+    return E_NOTIMPL;
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetCoreWindow(
+          REFIID                    refiid,
+          void**                    ppUnk) {
+    Logger::err("DxgiSwapChain::GetCoreWindow: Not implemented");
+    return E_NOTIMPL;
+  }
+  
+  
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetLastPresentCount(UINT* pLastPresentCount) {
     std::lock_guard<std::recursive_mutex> lock(m_mutex);
     
@@ -185,6 +237,13 @@ namespace dxvk {
     
     *pLastPresentCount = m_stats.PresentCount;
     return S_OK;
+  }
+  
+  
+  BOOL STDMETHODCALLTYPE DxgiSwapChain::IsTemporaryMonoSupported() {
+    // This seems to be related to stereo 3D display
+    // modes, which we don't support at the moment
+    return FALSE;
   }
   
   
@@ -232,6 +291,17 @@ namespace dxvk {
       Logger::err(err.message());
       return DXGI_ERROR_DRIVER_INTERNAL_ERROR;
     }
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::Present1(
+          UINT                      SyncInterval,
+          UINT                      PresentFlags,
+    const DXGI_PRESENT_PARAMETERS*  pPresentParameters) {
+    if (pPresentParameters != nullptr)
+      Logger::warn("DXGI: Present parameters not supported");
+    
+    return Present(SyncInterval, PresentFlags);
   }
   
   
@@ -332,6 +402,20 @@ namespace dxvk {
       return this->LeaveFullscreenMode();
     
     return S_OK;
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::SetBackgroundColor(
+    const DXGI_RGBA*                pColor) {
+    Logger::err("DxgiSwapChain::SetBackgroundColor: Not implemented");
+    return E_NOTIMPL;
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::SetRotation(
+          DXGI_MODE_ROTATION        Rotation) {
+    Logger::err("DxgiSwapChain::SetRotation: Not implemented");
+    return E_NOTIMPL;
   }
   
   
