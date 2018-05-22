@@ -19,6 +19,7 @@ namespace dxvk {
   class DxgiAdapter;
   
   class D3D11Buffer;
+  class D3D11CommonTexture;
   class D3D11Counter;
   class D3D11DeviceContext;
   class D3D11ImmediateContext;
@@ -380,7 +381,7 @@ namespace dxvk {
       const D3D11_SUBRESOURCE_DATA*     pInitialData);
     
     void InitTexture(
-      const Rc<DxvkImage>&              image,
+            D3D11CommonTexture*         pTexture,
       const D3D11_SUBRESOURCE_DATA*     pInitialData);
     
     HRESULT GetFormatSupportFlags(

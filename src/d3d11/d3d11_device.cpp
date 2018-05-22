@@ -182,7 +182,7 @@ namespace dxvk {
     
     try {
       const Com<D3D11Texture1D> texture = new D3D11Texture1D(this, &desc);
-      this->InitTexture(texture->GetCommonTexture()->GetImage(), pInitialData);
+      this->InitTexture(texture->GetCommonTexture(), pInitialData);
       *ppTexture1D = texture.ref();
       return S_OK;
     } catch (const DxvkError& e) {
@@ -219,7 +219,7 @@ namespace dxvk {
     
     try {
       const Com<D3D11Texture2D> texture = new D3D11Texture2D(this, &desc);
-      this->InitTexture(texture->GetCommonTexture()->GetImage(), pInitialData);
+      this->InitTexture(texture->GetCommonTexture(), pInitialData);
       *ppTexture2D = texture.ref();
       return S_OK;
     } catch (const DxvkError& e) {
@@ -256,7 +256,7 @@ namespace dxvk {
       
     try {
       const Com<D3D11Texture3D> texture = new D3D11Texture3D(this, &desc);
-      this->InitTexture(texture->GetCommonTexture()->GetImage(), pInitialData);
+      this->InitTexture(texture->GetCommonTexture(), pInitialData);
       *ppTexture3D = texture.ref();
       return S_OK;
     } catch (const DxvkError& e) {
@@ -1849,8 +1849,7 @@ namespace dxvk {
   void D3D11Device::InitBuffer(
           D3D11Buffer*                pBuffer,
     const D3D11_SUBRESOURCE_DATA*     pInitialData) {
-    const DxvkBufferSlice bufferSlice
-      = pBuffer->GetBufferSlice();
+    const DxvkBufferSlice bufferSlice = pBuffer->GetBufferSlice();
     
     if (pInitialData != nullptr && pInitialData->pSysMem != nullptr) {
       LockResourceInitContext();
@@ -1867,8 +1866,9 @@ namespace dxvk {
   
   
   void D3D11Device::InitTexture(
-    const Rc<DxvkImage>&              image,
+          D3D11CommonTexture*         pTexture,
     const D3D11_SUBRESOURCE_DATA*     pInitialData) {
+    const Rc<DxvkImage> image = pTexture->GetImage();
     const DxvkFormatInfo* formatInfo = imageFormatInfo(image->info().format);
     
     if (pInitialData != nullptr && pInitialData->pSysMem != nullptr) {
