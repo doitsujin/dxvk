@@ -22,7 +22,8 @@ namespace dxvk {
     if (riid == __uuidof(IUnknown)
      || riid == __uuidof(IDXGIObject)
      || riid == __uuidof(IDXGIFactory)
-     || riid == __uuidof(IDXGIFactory1)) {
+     || riid == __uuidof(IDXGIFactory1)
+     || riid == __uuidof(IDXGIFactory2)) {
       *ppvObject = ref(this);
       return S_OK;
     }
@@ -38,6 +39,12 @@ namespace dxvk {
     
     Logger::warn("DxgiFactory::GetParent: Unknown interface query");
     return E_NOINTERFACE;
+  }
+  
+  
+  BOOL STDMETHODCALLTYPE DxgiFactory::IsWindowedStereoEnabled() {
+    // We don't support Stereo 3D at the moment
+    return FALSE;
   }
   
   
@@ -73,6 +80,45 @@ namespace dxvk {
       Logger::err(e.message());
       return E_FAIL;
     }
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE DxgiFactory::CreateSwapChainForHwnd(
+          IUnknown*             pDevice,
+          HWND                  hWnd,
+    const DXGI_SWAP_CHAIN_DESC1* pDesc,
+    const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pFullscreenDesc,
+          IDXGIOutput*          pRestrictToOutput,
+          IDXGISwapChain1**     ppSwapChain) {
+    InitReturnPtr(ppSwapChain);
+    
+    Logger::err("DxgiFactory::CreateSwapChainForHwnd: Not implemented");
+    return E_NOTIMPL;
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE DxgiFactory::CreateSwapChainForCoreWindow(
+          IUnknown*             pDevice,
+          IUnknown*             pWindow,
+    const DXGI_SWAP_CHAIN_DESC1* pDesc,
+          IDXGIOutput*          pRestrictToOutput,
+          IDXGISwapChain1**     ppSwapChain) {
+    InitReturnPtr(ppSwapChain);
+    
+    Logger::err("DxgiFactory::CreateSwapChainForCoreWindow: Not implemented");
+    return E_NOTIMPL;
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE DxgiFactory::CreateSwapChainForComposition(
+          IUnknown*             pDevice,
+    const DXGI_SWAP_CHAIN_DESC1* pDesc,
+          IDXGIOutput*          pRestrictToOutput,
+          IDXGISwapChain1**     ppSwapChain) {
+    InitReturnPtr(ppSwapChain);
+    
+    Logger::err("DxgiFactory::CreateSwapChainForComposition: Not implemented");
+    return E_NOTIMPL;
   }
   
   
@@ -117,6 +163,14 @@ namespace dxvk {
   }
   
   
+  HRESULT STDMETHODCALLTYPE DxgiFactory::GetSharedResourceAdapterLuid(
+          HANDLE                hResource,
+          LUID*                 pLuid) {
+    Logger::err("DxgiFactory::GetSharedResourceAdapterLuid: Not implemented");
+    return E_NOTIMPL;
+  }
+  
+  
   HRESULT STDMETHODCALLTYPE DxgiFactory::MakeWindowAssociation(HWND WindowHandle, UINT Flags) {
     Logger::warn("DXGI: MakeWindowAssociation: Ignoring flags");
     m_associatedWindow = WindowHandle;
@@ -127,6 +181,52 @@ namespace dxvk {
   BOOL STDMETHODCALLTYPE DxgiFactory::IsCurrent() {
     Logger::warn("DxgiFactory::IsCurrent: Stub");
     return TRUE;
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE DxgiFactory::RegisterOcclusionStatusWindow(
+          HWND                  WindowHandle,
+          UINT                  wMsg,
+          DWORD*                pdwCookie) {
+    Logger::err("DxgiFactory::RegisterOcclusionStatusWindow: Not implemented");
+    return E_NOTIMPL;
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE DxgiFactory::RegisterStereoStatusEvent(
+          HANDLE                hEvent,
+          DWORD*                pdwCookie) {
+    Logger::err("DxgiFactory::RegisterStereoStatusEvent: Not implemented");
+    return E_NOTIMPL;
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE DxgiFactory::RegisterStereoStatusWindow(
+          HWND                  WindowHandle,
+          UINT                  wMsg,
+          DWORD*                pdwCookie) {
+    Logger::err("DxgiFactory::RegisterStereoStatusWindow: Not implemented");
+    return E_NOTIMPL;
+  }
+  
+
+  HRESULT STDMETHODCALLTYPE DxgiFactory::RegisterOcclusionStatusEvent(
+          HANDLE                hEvent,
+          DWORD*                pdwCookie) {
+    Logger::err("DxgiFactory::RegisterOcclusionStatusEvent: Not implemented");
+    return E_NOTIMPL;
+  }
+  
+
+  void STDMETHODCALLTYPE DxgiFactory::UnregisterStereoStatus(
+          DWORD                 dwCookie) {
+    Logger::err("DxgiFactory::UnregisterStereoStatus: Not implemented");
+  }
+  
+  
+  void STDMETHODCALLTYPE DxgiFactory::UnregisterOcclusionStatus(
+          DWORD                 dwCookie) {
+    Logger::err("DxgiFactory::UnregisterOcclusionStatus: Not implemented");
   }
   
 }
