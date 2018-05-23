@@ -306,15 +306,11 @@ namespace dxvk {
       // up vertical synchronization properly, but also apply
       // changes that were made to the window size even if the
       // Vulkan swap chain itself remains valid.
-      DxvkSwapchainProperties swapchainProps;
-      swapchainProps.preferredSurfaceFormat
-        = m_presenter->PickSurfaceFormat(m_desc.Format);
-      swapchainProps.preferredPresentMode = SyncInterval == 0
-        ? m_presenter->PickPresentMode(VK_PRESENT_MODE_IMMEDIATE_KHR)
-        : m_presenter->PickPresentMode(VK_PRESENT_MODE_FIFO_KHR);
-      swapchainProps.preferredBufferSize = GetWindowSize();
-      
-      m_presenter->RecreateSwapchain(&swapchainProps);
+      VkPresentModeKHR presentMode = SyncInterval == 0
+        ? VK_PRESENT_MODE_IMMEDIATE_KHR
+        : VK_PRESENT_MODE_FIFO_KHR;
+        
+      m_presenter->RecreateSwapchain(m_desc.Format, presentMode, GetWindowSize());
       m_presenter->PresentImage();
       return S_OK;
     } catch (const DxvkError& err) {
