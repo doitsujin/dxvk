@@ -181,7 +181,7 @@ namespace dxvk {
     #ifndef _WIN64
     // The value returned by DXGI is a 32-bit value
     // on 32-bit platforms, so we need to clamp it
-    VkDeviceSize maxMemory = 0xF0000000;
+    VkDeviceSize maxMemory = 0xC0000000;
     deviceMemory = std::min(deviceMemory, maxMemory);
     sharedMemory = std::min(sharedMemory, maxMemory);
     #endif
