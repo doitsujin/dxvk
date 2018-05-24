@@ -828,7 +828,6 @@ namespace dxvk {
       case DxbcResourceDim::Buffer:         m_module.enableCapability(spv::CapabilityImageBuffer);    break;
       case DxbcResourceDim::Texture1D:      m_module.enableCapability(spv::CapabilityImage1D);        break;
       case DxbcResourceDim::Texture1DArr:   m_module.enableCapability(spv::CapabilityImage1D);        break;
-      case DxbcResourceDim::TextureCube:    m_module.enableCapability(spv::CapabilityImageCubeArray); break;
       case DxbcResourceDim::TextureCubeArr: m_module.enableCapability(spv::CapabilityImageCubeArray); break;
       case DxbcResourceDim::Texture2DMs:    m_module.enableCapability(spv::CapabilityImageMSArray);   break;
       case DxbcResourceDim::Texture2DMsArr: m_module.enableCapability(spv::CapabilityImageMSArray);   break;
@@ -6284,7 +6283,7 @@ namespace dxvk {
         case DxbcResourceDim::Texture2DMs:    return { spv::Dim2D,     0, 1, isUav ? 2u : 1u, 0u, VK_IMAGE_VIEW_TYPE_2D         };
         case DxbcResourceDim::Texture2DMsArr: return { spv::Dim2D,     1, 1, isUav ? 2u : 1u, 1u, VK_IMAGE_VIEW_TYPE_2D_ARRAY   };
         case DxbcResourceDim::Texture3D:      return { spv::Dim3D,     0, 0, isUav ? 2u : 1u, 0u, VK_IMAGE_VIEW_TYPE_3D         };
-        case DxbcResourceDim::TextureCube:    return { spv::DimCube,   1, 0, isUav ? 2u : 1u, 0u, VK_IMAGE_VIEW_TYPE_CUBE_ARRAY };
+        case DxbcResourceDim::TextureCube:    return { spv::DimCube,   0, 0, isUav ? 2u : 1u, 0u, VK_IMAGE_VIEW_TYPE_CUBE       };
         case DxbcResourceDim::TextureCubeArr: return { spv::DimCube,   1, 0, isUav ? 2u : 1u, 1u, VK_IMAGE_VIEW_TYPE_CUBE_ARRAY };
         default: throw DxvkError(str::format("DxbcCompiler: Unsupported resource type: ", resourceType));
       }
