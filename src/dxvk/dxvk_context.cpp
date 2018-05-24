@@ -1822,11 +1822,11 @@ namespace dxvk {
         
         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-          if (res.imageView != nullptr && res.imageView->type() == binding.view) {
+          if (res.imageView != nullptr && res.imageView->handle(binding.view) != VK_NULL_HANDLE) {
             updatePipelineState |= bindingState.setBound(i);
             
             m_descInfos[i].image.sampler     = VK_NULL_HANDLE;
-            m_descInfos[i].image.imageView   = res.imageView->handle();
+            m_descInfos[i].image.imageView   = res.imageView->handle(binding.view);
             m_descInfos[i].image.imageLayout = res.imageView->imageInfo().layout;
             
             if (depthAttachment.view != nullptr

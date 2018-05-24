@@ -232,7 +232,7 @@ namespace dxvk {
    * \brief DXVK image view
    */
   class DxvkImageView : public DxvkResource {
-    
+    constexpr static uint32_t ViewCount = VK_IMAGE_VIEW_TYPE_CUBE_ARRAY + 1;
   public:
     
     DxvkImageView(
@@ -243,21 +243,34 @@ namespace dxvk {
     ~DxvkImageView();
     
     /**
-     * \brief Image view handle
+     * \brief Image view handle for the default type
      * 
-     * Internal use only.
+     * The default view type is guaranteed to be
+     * supported by the image view, and should be
+     * preferred over picking a different type.
      * \returns Image view handle
      */
     VkImageView handle() const {
-      return m_view;
+      return handle(m_info.type);
+    }
+    
+    /**
+     * \brief Image view handle for a given view type
+     * 
+     * If the view does not support the requested image
+     * view type, \c VK_NULL_HANDLE will be returned.
+     * \param [in] viewType The requested view type
+     * \returns The image view handle
+     */
+    VkImageView handle(VkImageViewType viewType) const {
+      return m_views[viewType];
     }
     
     /**
      * \brief Image view type
      * 
-     * Convenience method to query the
-     * view type in order to check for
-     * resource compatibility.
+     * Convenience method to query the view type
+     * in order to check for resource compatibility.
      * \returns Image view type
      */
     VkImageViewType type() const {
@@ -336,7 +349,9 @@ namespace dxvk {
     Rc<DxvkImage>     m_image;
     
     DxvkImageViewCreateInfo m_info;
-    VkImageView             m_view;
+    VkImageView             m_views[ViewCount];
+    
+    void createView(VkImageViewType type, uint32_t numLayers);
     
   };
   

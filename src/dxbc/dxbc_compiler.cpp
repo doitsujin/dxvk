@@ -828,7 +828,6 @@ namespace dxvk {
       case DxbcResourceDim::Buffer:         m_module.enableCapability(spv::CapabilityImageBuffer);    break;
       case DxbcResourceDim::Texture1D:      m_module.enableCapability(spv::CapabilityImage1D);        break;
       case DxbcResourceDim::Texture1DArr:   m_module.enableCapability(spv::CapabilityImage1D);        break;
-      case DxbcResourceDim::TextureCube:    m_module.enableCapability(spv::CapabilityImageCubeArray); break;
       case DxbcResourceDim::TextureCubeArr: m_module.enableCapability(spv::CapabilityImageCubeArray); break;
       case DxbcResourceDim::Texture2DMs:    m_module.enableCapability(spv::CapabilityImageMSArray);   break;
       case DxbcResourceDim::Texture2DMsArr: m_module.enableCapability(spv::CapabilityImageMSArray);   break;
@@ -964,7 +963,7 @@ namespace dxvk {
     const DxbcScalarType sampledType = DxbcScalarType::Uint32;
     const uint32_t sampledTypeId = getScalarTypeId(sampledType);
     
-    const DxbcImageInfo typeInfo = { spv::DimBuffer, 0, 0, isUav ? 2u : 1u, 0u, VK_IMAGE_VIEW_TYPE_MAX_ENUM };
+    const DxbcImageInfo typeInfo = { spv::DimBuffer, 0, 0, isUav ? 2u : 1u, VK_IMAGE_VIEW_TYPE_MAX_ENUM };
     
     // Declare the resource type
     const uint32_t resTypeId = m_module.defImageType(sampledTypeId,
@@ -4590,15 +4589,6 @@ namespace dxvk {
         m_module.opLoad(info.typeId, info.varId));
     }
     
-    if (info.image.array && !info.image.layered) {
-      const uint32_t index = result.type.ccount - 1;
-      const uint32_t zero  = m_module.constu32(0);
-      
-      result.id = m_module.opCompositeInsert(
-        getVectorTypeId(result.type),
-        zero, result.id, 1, &index);
-    }
-    
     return result;
   }
   
@@ -4641,22 +4631,6 @@ namespace dxvk {
     if (dim != coordVector.type.ccount) {
       coordVector = emitRegisterExtract(
         coordVector, DxbcRegMask::firstN(dim));      
-    }
-    
-    if (imageInfo.array && !imageInfo.layered) {
-      const uint32_t index = dim - 1;
-      const uint32_t zero = [&] {
-        switch (coordVector.type.ctype) {
-          case DxbcScalarType::Sint32:  return m_module.consti32(0);
-          case DxbcScalarType::Uint32:  return m_module.constu32(0);
-          case DxbcScalarType::Float32: return m_module.constf32(0.0f);
-          default: throw DxvkError("Dxbc: Invalid tex coord type");
-        }
-      }();
-      
-      coordVector.id = m_module.opCompositeInsert(
-        getVectorTypeId(coordVector.type),
-        zero, coordVector.id, 1, &index);
     }
     
     return coordVector;
@@ -6276,24 +6250,19 @@ namespace dxvk {
           bool              isUav) const {
     DxbcImageInfo typeInfo = [resourceType, isUav] () -> DxbcImageInfo {
       switch (resourceType) {
-        case DxbcResourceDim::Buffer:         return { spv::DimBuffer, 0, 0, isUav ? 2u : 1u, 0u, VK_IMAGE_VIEW_TYPE_MAX_ENUM   };
-        case DxbcResourceDim::Texture1D:      return { spv::Dim1D,     0, 0, isUav ? 2u : 1u, 0u, VK_IMAGE_VIEW_TYPE_1D         };
-        case DxbcResourceDim::Texture1DArr:   return { spv::Dim1D,     1, 0, isUav ? 2u : 1u, 1u, VK_IMAGE_VIEW_TYPE_1D_ARRAY   };
-        case DxbcResourceDim::Texture2D:      return { spv::Dim2D,     0, 0, isUav ? 2u : 1u, 0u, VK_IMAGE_VIEW_TYPE_2D         };
-        case DxbcResourceDim::Texture2DArr:   return { spv::Dim2D,     1, 0, isUav ? 2u : 1u, 1u, VK_IMAGE_VIEW_TYPE_2D_ARRAY   };
-        case DxbcResourceDim::Texture2DMs:    return { spv::Dim2D,     0, 1, isUav ? 2u : 1u, 0u, VK_IMAGE_VIEW_TYPE_2D         };
-        case DxbcResourceDim::Texture2DMsArr: return { spv::Dim2D,     1, 1, isUav ? 2u : 1u, 1u, VK_IMAGE_VIEW_TYPE_2D_ARRAY   };
-        case DxbcResourceDim::Texture3D:      return { spv::Dim3D,     0, 0, isUav ? 2u : 1u, 0u, VK_IMAGE_VIEW_TYPE_3D         };
-        case DxbcResourceDim::TextureCube:    return { spv::DimCube,   1, 0, isUav ? 2u : 1u, 0u, VK_IMAGE_VIEW_TYPE_CUBE_ARRAY };
-        case DxbcResourceDim::TextureCubeArr: return { spv::DimCube,   1, 0, isUav ? 2u : 1u, 1u, VK_IMAGE_VIEW_TYPE_CUBE_ARRAY };
+        case DxbcResourceDim::Buffer:         return { spv::DimBuffer, 0, 0, isUav ? 2u : 1u, VK_IMAGE_VIEW_TYPE_MAX_ENUM   };
+        case DxbcResourceDim::Texture1D:      return { spv::Dim1D,     0, 0, isUav ? 2u : 1u, VK_IMAGE_VIEW_TYPE_1D         };
+        case DxbcResourceDim::Texture1DArr:   return { spv::Dim1D,     1, 0, isUav ? 2u : 1u, VK_IMAGE_VIEW_TYPE_1D_ARRAY   };
+        case DxbcResourceDim::Texture2D:      return { spv::Dim2D,     0, 0, isUav ? 2u : 1u, VK_IMAGE_VIEW_TYPE_2D         };
+        case DxbcResourceDim::Texture2DArr:   return { spv::Dim2D,     1, 0, isUav ? 2u : 1u, VK_IMAGE_VIEW_TYPE_2D_ARRAY   };
+        case DxbcResourceDim::Texture2DMs:    return { spv::Dim2D,     0, 1, isUav ? 2u : 1u, VK_IMAGE_VIEW_TYPE_2D         };
+        case DxbcResourceDim::Texture2DMsArr: return { spv::Dim2D,     1, 1, isUav ? 2u : 1u, VK_IMAGE_VIEW_TYPE_2D_ARRAY   };
+        case DxbcResourceDim::Texture3D:      return { spv::Dim3D,     0, 0, isUav ? 2u : 1u, VK_IMAGE_VIEW_TYPE_3D         };
+        case DxbcResourceDim::TextureCube:    return { spv::DimCube,   0, 0, isUav ? 2u : 1u, VK_IMAGE_VIEW_TYPE_CUBE       };
+        case DxbcResourceDim::TextureCubeArr: return { spv::DimCube,   1, 0, isUav ? 2u : 1u, VK_IMAGE_VIEW_TYPE_CUBE_ARRAY };
         default: throw DxvkError(str::format("DxbcCompiler: Unsupported resource type: ", resourceType));
       }
     }();
-    
-    if (typeInfo.dim == spv::Dim2D && m_options.test(DxbcOption::ForceTex2DArray)) {
-      typeInfo.array = 1;
-      typeInfo.vtype = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-    }
     
     return typeInfo;
   }

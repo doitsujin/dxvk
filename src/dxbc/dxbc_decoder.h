@@ -60,7 +60,6 @@ namespace dxvk {
     uint32_t        array   = 0;
     uint32_t        ms      = 0;
     uint32_t        sampled = 0;
-    uint32_t        layered = 0;
     VkImageViewType vtype   = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
   };
   
