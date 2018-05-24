@@ -17,11 +17,6 @@ namespace dxvk {
     /// Use FMin/FMax/FClamp instead of NMin/NMax/NClamp.
     /// Workaround for bugs in older Nvidia drivers.
     UseSimpleMinMaxClamp,
-    
-    /// Enforces the use of array views even when dealing
-    /// with non-array texture types. Some games do not
-    /// bind the correct texture type to the pipeline.
-    ForceTex2DArray,
   };
   
   using DxbcOptions = Flags<DxbcOption>;

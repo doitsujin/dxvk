@@ -413,9 +413,6 @@ namespace dxvk {
           viewInfo.numLevels = desc.Texture2D.MipLevels;
           viewInfo.minLayer  = 0;
           viewInfo.numLayers = 1;
-          
-          if (m_dxbcOptions.test(DxbcOption::ForceTex2DArray))
-            viewInfo.type = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
           break;
           
         case D3D11_SRV_DIMENSION_TEXTURE2DARRAY:
@@ -432,9 +429,6 @@ namespace dxvk {
           viewInfo.numLevels = 1;
           viewInfo.minLayer  = 0;
           viewInfo.numLayers = 1;
-          
-          if (m_dxbcOptions.test(DxbcOption::ForceTex2DArray))
-            viewInfo.type = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
           break;
           
         case D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY:
@@ -624,9 +618,6 @@ namespace dxvk {
           viewInfo.numLevels = 1;
           viewInfo.minLayer  = 0;
           viewInfo.numLayers = 1;
-          
-          if (m_dxbcOptions.test(DxbcOption::ForceTex2DArray))
-            viewInfo.type = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
           break;
           
         case D3D11_UAV_DIMENSION_TEXTURE2DARRAY:

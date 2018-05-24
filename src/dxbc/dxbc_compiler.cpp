@@ -6290,11 +6290,6 @@ namespace dxvk {
       }
     }();
     
-    if (typeInfo.dim == spv::Dim2D && m_options.test(DxbcOption::ForceTex2DArray)) {
-      typeInfo.array = 1;
-      typeInfo.vtype = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-    }
-    
     return typeInfo;
   }
   
