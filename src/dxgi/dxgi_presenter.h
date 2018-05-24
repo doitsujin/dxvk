@@ -8,7 +8,7 @@
 
 #include "../spirv/spirv_module.h"
 
-#include "dxgi_include.h"
+#include "dxgi_options.h"
 
 namespace dxvk {
   

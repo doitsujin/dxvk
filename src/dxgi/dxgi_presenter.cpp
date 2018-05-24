@@ -14,6 +14,13 @@ namespace dxvk {
     m_device  (device),
     m_context (device->createContext()) {
     
+    // Some games don't work with deferred surface creation,
+    // so we should default to initializing it immediately.
+    DxgiOptions dxgiOptions = getDxgiAppOptions(env::getExeName());
+    
+    if (!dxgiOptions.test(DxgiOption::DeferSurfaceCreation))
+      m_surface = CreateSurface();
+    
     // Reset options for the swap chain itself. We will
     // create a swap chain object before presentation.
     m_options.preferredSurfaceFormat = { VK_FORMAT_UNDEFINED, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
