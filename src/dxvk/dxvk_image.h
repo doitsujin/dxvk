@@ -286,6 +286,14 @@ namespace dxvk {
     }
     
     /**
+     * \brief Image handle
+     * \returns Image handle
+     */
+    VkImage imageHandle() const {
+      return m_image->handle();
+    }
+    
+    /**
      * \brief Image properties
      * \returns Image properties
      */
@@ -302,8 +310,8 @@ namespace dxvk {
     }
     
     /**
-     * \brief Image
-     * \returns Image
+     * \brief Image object
+     * \returns Image object
      */
     Rc<DxvkImage> image() const {
       return m_image;
