@@ -1073,7 +1073,7 @@ namespace dxvk {
     }
     
     m_cmd->trackResource(mipGenerator);
-    m_cmd->trackResource(imageView);
+    m_cmd->trackResource(imageView->image());
   }
   
   
