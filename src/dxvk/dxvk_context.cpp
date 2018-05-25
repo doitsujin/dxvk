@@ -230,6 +230,9 @@ namespace dxvk {
           uint32_t              value) {
     this->spillRenderPass();
     
+    if (length == buffer->info().size)
+      length = align(length, 4);
+    
     auto slice = buffer->subSlice(offset, length);
     
     m_cmd->cmdFillBuffer(
