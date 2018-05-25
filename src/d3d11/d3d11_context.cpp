@@ -856,9 +856,7 @@ namespace dxvk {
     if (view->GetResourceType() != D3D11_RESOURCE_DIMENSION_BUFFER) {
       EmitCs([cDstImageView = view->GetImageView()]
       (DxvkContext* ctx) {
-        ctx->generateMipmaps(
-          cDstImageView->image(),
-          cDstImageView->subresources());
+        ctx->generateMipmaps(cDstImageView);
       });
     } else {
       Logger::err("D3D11: GenerateMips called on a buffer");

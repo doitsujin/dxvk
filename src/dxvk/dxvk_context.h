@@ -7,6 +7,7 @@
 #include "dxvk_data.h"
 #include "dxvk_event.h"
 #include "dxvk_meta_clear.h"
+#include "dxvk_meta_mipgen.h"
 #include "dxvk_meta_resolve.h"
 #include "dxvk_pipecache.h"
 #include "dxvk_pipemanager.h"
@@ -28,9 +29,10 @@ namespace dxvk {
   public:
     
     DxvkContext(
-      const Rc<DxvkDevice>&           device,
-      const Rc<DxvkPipelineManager>&  pipelineManager,
-      const Rc<DxvkMetaClearObjects>& metaClearObjects);
+      const Rc<DxvkDevice>&             device,
+      const Rc<DxvkPipelineManager>&    pipelineManager,
+      const Rc<DxvkMetaClearObjects>&   metaClearObjects,
+      const Rc<DxvkMetaMipGenObjects>&  metaMipGenObjects);
     ~DxvkContext();
     
     /**
@@ -403,12 +405,10 @@ namespace dxvk {
      * 
      * Uses blitting to generate lower mip levels from
      * the top-most mip level passed to this method.
-     * \param [in] image The image to generate mips for
-     * \param [in] subresource The subresource range
+     * \param [in] imageView The image to generate mips for
      */
     void generateMipmaps(
-      const Rc<DxvkImage>&            image,
-      const VkImageSubresourceRange&  subresources);
+      const Rc<DxvkImageView>&        imageView);
     
     /**
      * \brief Initializes or invalidates an image
@@ -621,6 +621,7 @@ namespace dxvk {
     const Rc<DxvkDevice>            m_device;
     const Rc<DxvkPipelineManager>   m_pipeMgr;
     const Rc<DxvkMetaClearObjects>  m_metaClear;
+    const Rc<DxvkMetaMipGenObjects> m_metaMipGen;
     
     Rc<DxvkCommandList> m_cmd;
     DxvkContextFlags    m_flags;
@@ -654,10 +655,10 @@ namespace dxvk {
             DxvkRenderPassOps&    renderPassOps);
     
     void unbindComputePipeline();
-    
     void updateComputePipeline();
     void updateComputePipelineState();
     
+    void unbindGraphicsPipeline();
     void updateGraphicsPipeline();
     void updateGraphicsPipelineState();
     
