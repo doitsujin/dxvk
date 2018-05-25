@@ -1115,7 +1115,10 @@ namespace dxvk {
           ID3D11GeometryShader**      ppGeometryShader) {
     InitReturnPtr(ppGeometryShader);
     Logger::err("D3D11Device::CreateGeometryShaderWithStreamOutput: Not implemented");
-    return E_NOTIMPL;
+    
+    // Returning S_OK instead of an error fixes some issues
+    // with Overwatch until this is properly implemented
+    return m_d3d11Options.test(D3D11Option::FakeStreamOutSupport) ? S_OK : E_NOTIMPL;
   }
   
   
