@@ -54,13 +54,14 @@ namespace dxvk {
       m_isgnChunk, m_osgnChunk,
       analysisInfo);
     
+    this->runAnalyzer(analyzer, m_shexChunk->slice());
+    
     DxbcCompiler compiler(
       fileName, options,
       m_shexChunk->version(),
       m_isgnChunk, m_osgnChunk,
       analysisInfo);
     
-    this->runAnalyzer(analyzer, m_shexChunk->slice());
     this->runCompiler(compiler, m_shexChunk->slice());
     
     return compiler.finalize();
