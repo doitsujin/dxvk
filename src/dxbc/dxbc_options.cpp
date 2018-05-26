@@ -35,6 +35,7 @@ namespace dxvk {
     if (devFeatures.shaderStorageImageReadWithoutFormat)
       flags.set(DxbcOption::UseStorageImageReadWithoutFormat);
     
+    flags.set(DxbcOption::DeferKill);
     return flags;
   }
   

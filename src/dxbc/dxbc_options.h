@@ -17,6 +17,11 @@ namespace dxvk {
     /// Use FMin/FMax/FClamp instead of NMin/NMax/NClamp.
     /// Workaround for bugs in older Nvidia drivers.
     UseSimpleMinMaxClamp,
+    
+    /// Defer kill operation to the end of the shader.
+    /// Fixes derivatives that are undefined due to
+    /// non-uniform control flow in fragment shaders.
+    DeferKill,
   };
   
   using DxbcOptions = Flags<DxbcOption>;
