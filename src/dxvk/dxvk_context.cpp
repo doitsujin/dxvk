@@ -1383,15 +1383,19 @@ namespace dxvk {
       }
     }
     
-    m_cmd->cmdSetViewport(0, viewportCount, m_state.vp.viewports.data());
-    m_cmd->cmdSetScissor (0, viewportCount, m_state.vp.scissorRects.data());
+    if (m_gpActivePipeline != VK_NULL_HANDLE) {
+      m_cmd->cmdSetViewport(0, viewportCount, m_state.vp.viewports.data());
+      m_cmd->cmdSetScissor (0, viewportCount, m_state.vp.scissorRects.data());
+    }
   }
   
   
   void DxvkContext::setBlendConstants(
     const DxvkBlendConstants&   blendConstants) {
     m_state.om.blendConstants = blendConstants;
-    m_cmd->cmdSetBlendConstants(&blendConstants.r);
+    
+    if (m_gpActivePipeline != VK_NULL_HANDLE)
+      m_cmd->cmdSetBlendConstants(&blendConstants.r);
   }
   
   
@@ -1399,9 +1403,11 @@ namespace dxvk {
     const uint32_t            reference) {
     m_state.om.stencilReference = reference;
     
-    m_cmd->cmdSetStencilReference(
-      VK_STENCIL_FRONT_AND_BACK,
-      reference);
+    if (m_gpActivePipeline != VK_NULL_HANDLE) {
+      m_cmd->cmdSetStencilReference(
+        VK_STENCIL_FRONT_AND_BACK,
+        reference);
+    }
   }
   
   
