@@ -97,6 +97,20 @@ namespace dxvk {
   
   
   /**
+   * \brief Specialization constant properties
+   * 
+   * Stores the name, data type and initial
+   * value of a specialization constant.
+   */
+  struct DxbcSpecConstant {
+    DxbcScalarType  ctype;
+    uint32_t        ccount;
+    uint32_t        value;
+    const char*     name;
+  };
+  
+  
+  /**
    * \brief Vertex shader-specific structure
    */
   struct DxbcCompilerVsPart {
@@ -383,6 +397,13 @@ namespace dxvk {
     // Control flow information. Stores labels for
     // currently active if-else blocks and loops.
     std::vector<DxbcCfgBlock> m_controlFlowBlocks;
+    
+    ///////////////////////////////////////////////
+    // Specialization constants. These are defined
+    // as needed by the getSpecConstant method.
+    std::array<DxbcRegisterValue,
+      uint32_t(DxvkSpecConstantId::SpecConstantIdMax) -
+      uint32_t(DxvkSpecConstantId::SpecConstantIdMin) + 1> m_specConstants;
     
     ///////////////////////////////////////////////////////////
     // Array of input values. Since v# registers are indexable
@@ -847,6 +868,14 @@ namespace dxvk {
     void emitRegisterStore(
       const DxbcRegister&           reg,
             DxbcRegisterValue       value);
+    
+    ////////////////////////////////////////
+    // Spec constant declaration and access
+    DxbcRegisterValue getSpecConstant(
+            DxvkSpecConstantId      specId);
+    
+    DxbcSpecConstant getSpecConstantProperties(
+            DxvkSpecConstantId      specId);
     
     ////////////////////////////
     // Input/output preparation
