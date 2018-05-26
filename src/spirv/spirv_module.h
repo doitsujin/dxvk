@@ -158,6 +158,10 @@ namespace dxvk {
     uint32_t specConstBool(
             bool                    v);
     
+    uint32_t specConst32(
+            uint32_t                typeId,
+            uint32_t                value);
+    
     void decorate(
             uint32_t                object,
             spv::Decoration         decoration);

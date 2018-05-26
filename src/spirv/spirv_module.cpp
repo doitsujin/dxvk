@@ -340,6 +340,19 @@ namespace dxvk {
   }
     
   
+  uint32_t SpirvModule::specConst32(
+          uint32_t                typeId,
+          uint32_t                value) {
+    uint32_t resultId = this->allocateId();
+    
+    m_typeConstDefs.putIns  (spv::OpSpecConstant, 4);
+    m_typeConstDefs.putWord (typeId);
+    m_typeConstDefs.putWord (resultId);
+    m_typeConstDefs.putWord (value);
+    return resultId;
+  }
+  
+  
   void SpirvModule::decorate(
           uint32_t                object,
           spv::Decoration         decoration) {
