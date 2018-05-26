@@ -2013,7 +2013,7 @@ namespace dxvk {
     DxbcConditional cond;
     
     if (isUav) {
-      uint32_t writeTest = bufferInfo.specId;
+      uint32_t writeTest = emitUavWriteTest(bufferInfo);
       
       cond.labelIf  = m_module.allocateId();
       cond.labelEnd = m_module.allocateId();
@@ -2165,7 +2165,7 @@ namespace dxvk {
       m_uavs.at(registerId).ctrId = emitDclUavCounter(registerId);
     
     // Only perform the operation if the UAV is bound
-    uint32_t writeTest = bufferInfo.specId;
+    uint32_t writeTest = emitUavWriteTest(bufferInfo);
     
     DxbcConditional cond;
     cond.labelIf  = m_module.allocateId();
@@ -3295,11 +3295,10 @@ namespace dxvk {
     //    (dst0) The destination UAV
     //    (src0) The texture or buffer coordinates
     //    (src1) The value to store
-    const uint32_t registerId = ins.dst[0].idx[0].offset;
-    const DxbcUav uavInfo = m_uavs.at(registerId);
+    const DxbcBufferInfo uavInfo = getBufferInfo(ins.dst[0]);
     
     // Execute write op only if the UAV is bound
-    uint32_t writeTest = uavInfo.specId;
+    uint32_t writeTest = emitUavWriteTest(uavInfo);
     
     DxbcConditional cond;
     cond.labelIf  = m_module.allocateId();
@@ -3311,18 +3310,17 @@ namespace dxvk {
     m_module.opLabel(cond.labelIf);
     
     // Load texture coordinates
-    DxbcRegisterValue texCoord = emitLoadTexCoord(
-      ins.src[0], uavInfo.imageInfo);
+    DxbcRegisterValue texCoord = emitLoadTexCoord(ins.src[0], uavInfo.image);
     
     // Load the value that will be written to the image. We'll
     // have to cast it to the component type of the image.
     const DxbcRegisterValue texValue = emitRegisterBitcast(
       emitRegisterLoad(ins.src[1], DxbcRegMask(true, true, true, true)),
-      uavInfo.sampledType);
+      uavInfo.stype);
     
     // Write the given value to the image
     m_module.opImageWrite(
-      m_module.opLoad(uavInfo.imageTypeId, uavInfo.varId),
+      m_module.opLoad(uavInfo.typeId, uavInfo.varId),
       texCoord.id, texValue.id, SpirvImageOperands());
     
     // End conditional block
@@ -3667,21 +3665,26 @@ namespace dxvk {
     const DxbcRegisterValue zeroTest = emitRegisterZeroTest(
       condition, ins.controls.zeroTest());
     
-    // Insert a Pseudo-'If' block
-    const uint32_t discardBlock = m_module.allocateId();
-    const uint32_t mergeBlock   = m_module.allocateId();
-    
-    m_module.opSelectionMerge(mergeBlock,
-      spv::SelectionControlMaskNone);
-    
-    m_module.opBranchConditional(
-      zeroTest.id, discardBlock, mergeBlock);
-    
-    // OpKill terminates the block
-    m_module.opLabel(discardBlock);
-    m_module.opKill();
-    
-    m_module.opLabel(mergeBlock);
+    if (m_ps.killState == 0) {
+      DxbcConditional cond;
+      cond.labelIf  = m_module.allocateId();
+      cond.labelEnd = m_module.allocateId();
+      
+      m_module.opSelectionMerge(cond.labelIf, spv::SelectionControlMaskNone);
+      m_module.opBranchConditional(zeroTest.id, cond.labelIf, cond.labelEnd);
+      
+      // OpKill terminates the block
+      m_module.opLabel(cond.labelIf);
+      m_module.opKill();
+      
+      m_module.opLabel(cond.labelEnd);
+    } else {
+      uint32_t typeId = m_module.defBoolType();
+      
+      uint32_t killState = m_module.opLoad     (typeId, m_ps.killState);
+               killState = m_module.opLogicalOr(typeId, killState, zeroTest.id);
+      m_module.opStore(m_ps.killState, killState);
+    }
   }
   
   
@@ -4532,7 +4535,7 @@ namespace dxvk {
     DxbcConditional cond;
     
     if (isUav) {
-      uint32_t writeTest = bufferInfo.specId;
+      uint32_t writeTest = emitUavWriteTest(bufferInfo);
       
       cond.labelIf  = m_module.allocateId();
       cond.labelEnd = m_module.allocateId();
@@ -5552,6 +5555,21 @@ namespace dxvk {
   }
   
   
+  uint32_t DxbcCompiler::emitUavWriteTest(const DxbcBufferInfo& uav) {
+    uint32_t typeId = m_module.defBoolType();
+    uint32_t testId = uav.specId;
+    
+    if (m_ps.killState != 0) {
+      uint32_t killState = m_module.opLoad(typeId, m_ps.killState);
+      
+      testId = m_module.opLogicalAnd(typeId, testId,
+        m_module.opLogicalNot(typeId, killState));
+    }
+    
+    return testId;
+  }
+  
+  
   void DxbcCompiler::emitInit() {
     // Set up common capabilities for all shaders
     m_module.enableCapability(spv::CapabilityShader);
@@ -5756,6 +5774,16 @@ namespace dxvk {
       spv::BuiltInCullDistance,
       spv::StorageClassInput);
     
+    // We may have to defer kill operations to the end of
+    // the shader in order to keep derivatives correct.
+    if (m_analysis->usesKill && m_analysis->usesDerivatives && m_options.test(DxbcOption::DeferKill)) {
+      m_ps.killState = m_module.newVarInit(
+        m_module.defPointerType(m_module.defBoolType(), spv::StorageClassPrivate),
+        spv::StorageClassPrivate, m_module.constBool(false));
+      
+      m_module.setDebugName(m_ps.killState, "ps_kill");
+    }
+    
     // Main function of the pixel shader
     m_ps.functionId = m_module.allocateId();
     m_module.setDebugName(m_ps.functionId, "ps_main");
@@ -5853,9 +5881,27 @@ namespace dxvk {
     this->emitInputSetup();
     this->emitClipCullLoad(DxbcSystemValue::ClipDistance, m_clipDistances);
     this->emitClipCullLoad(DxbcSystemValue::CullDistance, m_cullDistances);
+    
     m_module.opFunctionCall(
       m_module.defVoidType(),
       m_ps.functionId, 0, nullptr);
+    
+    if (m_ps.killState != 0) {
+      DxbcConditional cond;
+      cond.labelIf  = m_module.allocateId();
+      cond.labelEnd = m_module.allocateId();
+      
+      uint32_t killTest = m_module.opLoad(m_module.defBoolType(), m_ps.killState);
+      
+      m_module.opSelectionMerge(cond.labelEnd, spv::SelectionControlMaskNone);
+      m_module.opBranchConditional(killTest, cond.labelIf, cond.labelEnd);
+      
+      m_module.opLabel(cond.labelIf);
+      m_module.opKill();
+      
+      m_module.opLabel(cond.labelEnd);
+    }
+    
     this->emitOutputSetup();
     this->emitMainFunctionEnd();
   }

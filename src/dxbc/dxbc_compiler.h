@@ -165,6 +165,8 @@ namespace dxvk {
     uint32_t builtinSampleMaskIn  = 0;
     uint32_t builtinSampleMaskOut = 0;
     uint32_t builtinLayer         = 0;
+    
+    uint32_t killState            = 0;
   };
   
   
@@ -953,6 +955,11 @@ namespace dxvk {
     void emitClipCullLoad(
             DxbcSystemValue         sv,
             uint32_t                srcArray);
+    
+    ///////////////////////////////
+    // Some state checking methods
+    uint32_t emitUavWriteTest(
+      const DxbcBufferInfo&         uav);
     
     //////////////////////////////////////
     // Common function definition methods
