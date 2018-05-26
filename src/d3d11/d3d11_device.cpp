@@ -1807,6 +1807,8 @@ namespace dxvk {
       enabled.shaderFloat64                         = supported.shaderFloat64;
       enabled.shaderInt64                           = supported.shaderInt64;
       enabled.tessellationShader                    = VK_TRUE;
+      // TODO enable unconditionally once RADV gains support
+      enabled.shaderStorageImageMultisample         = supported.shaderStorageImageMultisample;
       enabled.shaderStorageImageReadWithoutFormat   = supported.shaderStorageImageReadWithoutFormat;
       enabled.shaderStorageImageWriteWithoutFormat  = VK_TRUE;
     }
