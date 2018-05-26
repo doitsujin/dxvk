@@ -3,6 +3,7 @@
 
 #include "dxvk_compute.h"
 #include "dxvk_device.h"
+#include "dxvk_spec_const.h"
 
 namespace dxvk {
   
@@ -99,19 +100,16 @@ namespace dxvk {
       Logger::debug(str::format("  cs  : ", m_cs->shader()->debugName()));
     }
     
-    std::array<VkBool32,                 MaxNumActiveBindings> specData;
-    std::array<VkSpecializationMapEntry, MaxNumActiveBindings> specMap;
+    DxvkSpecConstantData specData;
     
-    for (uint32_t i = 0; i < MaxNumActiveBindings; i++) {
-      specData[i] = state.bsBindingState.isBound(i) ? VK_TRUE : VK_FALSE;
-      specMap [i] = { i, static_cast<uint32_t>(sizeof(VkBool32)) * i, sizeof(VkBool32) };
-    }
+    for (uint32_t i = 0; i < MaxNumActiveBindings; i++)
+      specData.activeBindings[i] = state.bsBindingState.isBound(i) ? VK_TRUE : VK_FALSE;
     
     VkSpecializationInfo specInfo;
-    specInfo.mapEntryCount    = specMap.size();
-    specInfo.pMapEntries      = specMap.data();
-    specInfo.dataSize         = specData.size() * sizeof(VkBool32);
-    specInfo.pData            = specData.data();
+    specInfo.mapEntryCount        = g_specConstantMap.mapEntryCount();
+    specInfo.pMapEntries          = g_specConstantMap.mapEntryData();
+    specInfo.dataSize             = sizeof(specData);
+    specInfo.pData                = &specData;
     
     VkComputePipelineCreateInfo info;
     info.sType                = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
