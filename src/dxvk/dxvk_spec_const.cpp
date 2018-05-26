@@ -1,7 +1,5 @@
 #include "dxvk_spec_const.h"
 
-#include <iostream>
-
 #define SET_CONSTANT_ENTRY(specId, member)  \
   this->setConstantEntry(specId,            \
     offsetof(DxvkSpecConstantData, member), \
