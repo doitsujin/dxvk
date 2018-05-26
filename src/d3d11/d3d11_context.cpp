@@ -1235,8 +1235,18 @@ namespace dxvk {
     auto inputLayout = static_cast<D3D11InputLayout*>(pInputLayout);
     
     if (m_state.ia.inputLayout != inputLayout) {
+      bool equal = false;
+      
+      // Some games (e.g. Grim Dawn) create lots and lots of
+      // identical input layouts, so we'll only apply the state
+      // if the input layouts has actually changed between calls.
+      if (m_state.ia.inputLayout != nullptr && inputLayout != nullptr)
+        equal = m_state.ia.inputLayout->Compare(inputLayout);
+      
       m_state.ia.inputLayout = inputLayout;
-      ApplyInputLayout();
+      
+      if (!equal)
+        ApplyInputLayout();
     }
   }
   
