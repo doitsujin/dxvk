@@ -111,6 +111,20 @@ namespace dxvk {
   
   
   /**
+   * \brief Helper struct for conditional execution
+   * 
+   * Stores a set of labels required to implement either
+   * an if-then block or an if-then-else block. This is
+   * not used to implement control flow instructions.
+   */
+  struct DxbcConditional {
+    uint32_t labelIf   = 0;
+    uint32_t labelElse = 0;
+    uint32_t labelEnd  = 0;
+  };
+  
+  
+  /**
    * \brief Vertex shader-specific structure
    */
   struct DxbcCompilerVsPart {
@@ -151,6 +165,8 @@ namespace dxvk {
     uint32_t builtinSampleMaskIn  = 0;
     uint32_t builtinSampleMaskOut = 0;
     uint32_t builtinLayer         = 0;
+    
+    uint32_t killState            = 0;
   };
   
   
@@ -939,6 +955,11 @@ namespace dxvk {
     void emitClipCullLoad(
             DxbcSystemValue         sv,
             uint32_t                srcArray);
+    
+    ///////////////////////////////
+    // Some state checking methods
+    uint32_t emitUavWriteTest(
+      const DxbcBufferInfo&         uav);
     
     //////////////////////////////////////
     // Common function definition methods
