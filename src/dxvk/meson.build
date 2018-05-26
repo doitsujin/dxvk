@@ -61,6 +61,7 @@ dxvk_src = files([
   'dxvk_resource.cpp',
   'dxvk_sampler.cpp',
   'dxvk_shader.cpp',
+  'dxvk_spec_const.cpp',
   'dxvk_staging.cpp',
   'dxvk_stats.cpp',
   'dxvk_surface.cpp',
