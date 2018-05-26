@@ -2003,8 +2003,26 @@ namespace dxvk {
     //    (dst0) Register that receives the result
     //    (dst1) Destination u# or g# register
     //    (srcX) As above
+    const DxbcBufferInfo bufferInfo = getBufferInfo(ins.dst[ins.dstCount - 1]);
+    
     const bool isImm = ins.dstCount == 2;
     const bool isUav = ins.dst[ins.dstCount - 1].type == DxbcOperandType::UnorderedAccessView;
+    
+    // Perform atomic operations on UAVs only if the UAV
+    // is bound and if there is nothing else stopping us.
+    DxbcConditional cond;
+    
+    if (isUav) {
+      uint32_t writeTest = bufferInfo.specId;
+      
+      cond.labelIf  = m_module.allocateId();
+      cond.labelEnd = m_module.allocateId();
+      
+      m_module.opSelectionMerge(cond.labelEnd, spv::SelectionControlMaskNone);
+      m_module.opBranchConditional(writeTest, cond.labelIf, cond.labelEnd);
+      
+      m_module.opLabel(cond.labelIf);
+    }
     
     // Retrieve destination pointer for the atomic operation>
     const DxbcRegisterPointer pointer = emitGetAtomicPointer(
@@ -2126,6 +2144,12 @@ namespace dxvk {
     // register if this is an imm_atomic_* opcode.
     if (isImm)
       emitRegisterStore(ins.dst[0], value);
+    
+    // End conditional block
+    if (isUav) {
+      m_module.opBranch(cond.labelEnd);
+      m_module.opLabel (cond.labelEnd);
+    }
   }
   
   
@@ -2133,11 +2157,24 @@ namespace dxvk {
     // imm_atomic_alloc and imm_atomic_consume have the following operands:
     //    (dst0) The register that will hold the old counter value
     //    (dst1) The UAV whose counter is going to be modified
-    // TODO check if the corresponding UAV is bound
+    const DxbcBufferInfo bufferInfo = getBufferInfo(ins.dst[1]);
+    
     const uint32_t registerId = ins.dst[1].idx[0].offset;
     
     if (m_uavs.at(registerId).ctrId == 0)
       m_uavs.at(registerId).ctrId = emitDclUavCounter(registerId);
+    
+    // Only perform the operation if the UAV is bound
+    uint32_t writeTest = bufferInfo.specId;
+    
+    DxbcConditional cond;
+    cond.labelIf  = m_module.allocateId();
+    cond.labelEnd = m_module.allocateId();
+    
+    m_module.opSelectionMerge(cond.labelEnd, spv::SelectionControlMaskNone);
+    m_module.opBranchConditional(writeTest, cond.labelIf, cond.labelEnd);
+    
+    m_module.opLabel(cond.labelIf);
     
     // Get a pointer to the atomic counter in question
     DxbcRegisterInfo ptrType;
@@ -2187,6 +2224,10 @@ namespace dxvk {
     
     // Store the result
     emitRegisterStore(ins.dst[0], value);
+    
+    // End conditional block
+    m_module.opBranch(cond.labelEnd);
+    m_module.opLabel (cond.labelEnd);
   }
   
   
@@ -3257,6 +3298,18 @@ namespace dxvk {
     const uint32_t registerId = ins.dst[0].idx[0].offset;
     const DxbcUav uavInfo = m_uavs.at(registerId);
     
+    // Execute write op only if the UAV is bound
+    uint32_t writeTest = uavInfo.specId;
+    
+    DxbcConditional cond;
+    cond.labelIf  = m_module.allocateId();
+    cond.labelEnd = m_module.allocateId();
+    
+    m_module.opSelectionMerge   (cond.labelEnd, spv::SelectionControlMaskNone);
+    m_module.opBranchConditional(writeTest, cond.labelIf, cond.labelEnd);
+    
+    m_module.opLabel(cond.labelIf);
+    
     // Load texture coordinates
     DxbcRegisterValue texCoord = emitLoadTexCoord(
       ins.src[0], uavInfo.imageInfo);
@@ -3271,6 +3324,10 @@ namespace dxvk {
     m_module.opImageWrite(
       m_module.opLoad(uavInfo.imageTypeId, uavInfo.varId),
       texCoord.id, texValue.id, SpirvImageOperands());
+    
+    // End conditional block
+    m_module.opBranch(cond.labelEnd);
+    m_module.opLabel (cond.labelEnd);
   }
   
   
@@ -4467,11 +4524,27 @@ namespace dxvk {
     // Cast source value to the expected data type
     value = emitRegisterBitcast(value, DxbcScalarType::Uint32);
     
-    // Shared memory is not accessed through a texel buffer view
-    const bool isTgsm = operand.type == DxbcOperandType::ThreadGroupSharedMemory;
+    // Thread Group Shared Memory is not accessed through a texel buffer view
+    const bool isUav = operand.type == DxbcOperandType::UnorderedAccessView;
     
-    const uint32_t bufferId = isTgsm
-      ? 0 : m_module.opLoad(bufferInfo.typeId, bufferInfo.varId);
+    // Perform UAV writes only if the UAV is bound and if there
+    // is nothing else preventing us from writing to it.
+    DxbcConditional cond;
+    
+    if (isUav) {
+      uint32_t writeTest = bufferInfo.specId;
+      
+      cond.labelIf  = m_module.allocateId();
+      cond.labelEnd = m_module.allocateId();
+      
+      m_module.opSelectionMerge(cond.labelEnd, spv::SelectionControlMaskNone);
+      m_module.opBranchConditional(writeTest, cond.labelIf, cond.labelEnd);
+      
+      m_module.opLabel(cond.labelIf);
+    }
+    
+    // Perform the actual write operation
+    const uint32_t bufferId = isUav ? m_module.opLoad(bufferInfo.typeId, bufferInfo.varId) : 0;
     
     const uint32_t scalarTypeId = getVectorTypeId({ DxbcScalarType::Uint32, 1 });
     const uint32_t vectorTypeId = getVectorTypeId({ DxbcScalarType::Uint32, 4 });
@@ -4519,6 +4592,12 @@ namespace dxvk {
         // Write next component
         srcComponentIndex += 1;
       }
+    }
+    
+    // End conditional block
+    if (isUav) {
+      m_module.opBranch(cond.labelEnd);
+      m_module.opLabel (cond.labelEnd);
     }
   }
   

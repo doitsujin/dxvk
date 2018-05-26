@@ -111,6 +111,20 @@ namespace dxvk {
   
   
   /**
+   * \brief Helper struct for conditional execution
+   * 
+   * Stores a set of labels required to implement either
+   * an if-then block or an if-then-else block. This is
+   * not used to implement control flow instructions.
+   */
+  struct DxbcConditional {
+    uint32_t labelIf   = 0;
+    uint32_t labelElse = 0;
+    uint32_t labelEnd  = 0;
+  };
+  
+  
+  /**
    * \brief Vertex shader-specific structure
    */
   struct DxbcCompilerVsPart {
