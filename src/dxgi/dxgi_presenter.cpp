@@ -143,7 +143,7 @@ namespace dxvk {
   }
   
   
-  void DxgiVkPresenter::PresentImage() {
+  void DxgiVkPresenter::PresentImage(UINT SyncInterval) {
     if (m_hud != nullptr) {
       m_hud->render({
         m_options.preferredBufferSize.width,
@@ -151,77 +151,84 @@ namespace dxvk {
       });
     }
     
+    // Check whether the back buffer size is the same
+    // as the window size, in which case we should use
+    // VK_FILTER_NEAREST to avoid blurry output
     const bool fitSize =
         m_backBuffer->info().extent.width  == m_options.preferredBufferSize.width
      && m_backBuffer->info().extent.height == m_options.preferredBufferSize.height;
     
-    m_context->beginRecording(
-      m_device->createCommandList());
-    
-    VkImageSubresourceLayers resolveSubresources;
-    resolveSubresources.aspectMask      = VK_IMAGE_ASPECT_COLOR_BIT;
-    resolveSubresources.mipLevel        = 0;
-    resolveSubresources.baseArrayLayer  = 0;
-    resolveSubresources.layerCount      = 1;
-    
-    if (m_backBufferResolve != nullptr) {
-      m_context->resolveImage(
-        m_backBufferResolve, resolveSubresources,
-        m_backBuffer,        resolveSubresources,
-        VK_FORMAT_UNDEFINED);
-    }
-    
-    auto swapSemas = m_swapchain->getSemaphorePair();
-    auto swapImage = m_swapchain->getImageView(swapSemas.acquireSync);
-    
-    DxvkRenderTargets renderTargets;
-    renderTargets.color[0].view   = swapImage;
-    renderTargets.color[0].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    m_context->bindRenderTargets(renderTargets);
-    
-    VkViewport viewport;
-    viewport.x        = 0.0f;
-    viewport.y        = 0.0f;
-    viewport.width    = float(swapImage->imageInfo().extent.width);
-    viewport.height   = float(swapImage->imageInfo().extent.height);
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
-    
-    VkRect2D scissor;
-    scissor.offset.x      = 0;
-    scissor.offset.y      = 0;
-    scissor.extent.width  = swapImage->imageInfo().extent.width;
-    scissor.extent.height = swapImage->imageInfo().extent.height;
-    
-    m_context->setViewports(1, &viewport, &scissor);
-    
-    m_context->bindResourceSampler(BindingIds::Sampler,
-      fitSize ? m_samplerFitting : m_samplerScaling);
-    
-    m_blendMode.enableBlending = VK_FALSE;
-    m_context->setBlendMode(0, m_blendMode);
-    
-    m_context->bindResourceView(BindingIds::Texture, m_backBufferView, nullptr);
-    m_context->draw(4, 1, 0, 0);
-    
-    m_context->bindResourceSampler(BindingIds::GammaSmp, m_gammaSampler);
-    m_context->bindResourceView   (BindingIds::GammaTex, m_gammaTextureView, nullptr);
-    
-    if (m_hud != nullptr) {
-      m_blendMode.enableBlending = VK_TRUE;
+    for (uint32_t i = 0; i < SyncInterval || i < 1; i++) {
+      m_context->beginRecording(
+        m_device->createCommandList());
+      
+      // Resolve back buffer if it is multisampled. We
+      // only have to do it only for the first frame.
+      if (m_backBufferResolve != nullptr && i == 0) {
+        VkImageSubresourceLayers resolveSubresources;
+        resolveSubresources.aspectMask      = VK_IMAGE_ASPECT_COLOR_BIT;
+        resolveSubresources.mipLevel        = 0;
+        resolveSubresources.baseArrayLayer  = 0;
+        resolveSubresources.layerCount      = 1;
+        
+        m_context->resolveImage(
+          m_backBufferResolve, resolveSubresources,
+          m_backBuffer,        resolveSubresources,
+          VK_FORMAT_UNDEFINED);
+      }
+      
+      auto swapSemas = m_swapchain->getSemaphorePair();
+      auto swapImage = m_swapchain->getImageView(swapSemas.acquireSync);
+      
+      DxvkRenderTargets renderTargets;
+      renderTargets.color[0].view   = swapImage;
+      renderTargets.color[0].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+      m_context->bindRenderTargets(renderTargets);
+      
+      VkViewport viewport;
+      viewport.x        = 0.0f;
+      viewport.y        = 0.0f;
+      viewport.width    = float(swapImage->imageInfo().extent.width);
+      viewport.height   = float(swapImage->imageInfo().extent.height);
+      viewport.minDepth = 0.0f;
+      viewport.maxDepth = 1.0f;
+      
+      VkRect2D scissor;
+      scissor.offset.x      = 0;
+      scissor.offset.y      = 0;
+      scissor.extent.width  = swapImage->imageInfo().extent.width;
+      scissor.extent.height = swapImage->imageInfo().extent.height;
+      
+      m_context->setViewports(1, &viewport, &scissor);
+      
+      m_context->bindResourceSampler(BindingIds::Sampler,
+        fitSize ? m_samplerFitting : m_samplerScaling);
+      
+      m_blendMode.enableBlending = VK_FALSE;
       m_context->setBlendMode(0, m_blendMode);
       
-      m_context->bindResourceView(BindingIds::Texture, m_hud->texture(), nullptr);
+      m_context->bindResourceView(BindingIds::Texture, m_backBufferView, nullptr);
       m_context->draw(4, 1, 0, 0);
+      
+      m_context->bindResourceSampler(BindingIds::GammaSmp, m_gammaSampler);
+      m_context->bindResourceView   (BindingIds::GammaTex, m_gammaTextureView, nullptr);
+      
+      if (m_hud != nullptr) {
+        m_blendMode.enableBlending = VK_TRUE;
+        m_context->setBlendMode(0, m_blendMode);
+        
+        m_context->bindResourceView(BindingIds::Texture, m_hud->texture(), nullptr);
+        m_context->draw(4, 1, 0, 0);
+      }
+      
+      m_device->submitCommandList(
+        m_context->endRecording(),
+        swapSemas.acquireSync,
+        swapSemas.presentSync);
+      
+      m_swapchain->present(
+        swapSemas.presentSync);
     }
-    
-    m_device->submitCommandList(
-      m_context->endRecording(),
-      swapSemas.acquireSync,
-      swapSemas.presentSync);
-    
-    m_swapchain->present(
-      swapSemas.presentSync);
   }
   
   

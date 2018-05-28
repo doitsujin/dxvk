@@ -286,6 +286,12 @@ namespace dxvk {
     if (Flags & DXGI_PRESENT_TEST)
       return S_OK;
     
+    // Higher values are not allowed according to the Microsoft documentation:
+    // 
+    //   "1 through 4 - Synchronize presentation after the nth vertical blank."
+    //   https://msdn.microsoft.com/en-us/library/windows/desktop/bb174576(v=vs.85).aspx
+    SyncInterval = std::min<UINT>(SyncInterval, 4);
+    
     try {
       // If in fullscreen mode, apply any updated gamma curve
       // if it has been changed since the last present call.
@@ -309,9 +315,9 @@ namespace dxvk {
       VkPresentModeKHR presentMode = SyncInterval == 0
         ? VK_PRESENT_MODE_IMMEDIATE_KHR
         : VK_PRESENT_MODE_FIFO_KHR;
-        
+      
       m_presenter->RecreateSwapchain(m_desc.Format, presentMode, GetWindowSize());
-      m_presenter->PresentImage();
+      m_presenter->PresentImage(SyncInterval);
       return S_OK;
     } catch (const DxvkError& err) {
       Logger::err(err.message());
