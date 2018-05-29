@@ -191,7 +191,7 @@ namespace dxvk {
   
   DxvkMemoryStats DxvkMemoryAllocator::getMemoryStats() {
     std::lock_guard<std::mutex> lock(m_mutex);
-    
+
     DxvkMemoryStats totalStats;
     
     for (size_t i = 0; i < m_memProps.memoryHeapCount; i++) {
@@ -260,7 +260,8 @@ namespace dxvk {
   DxvkDeviceMemory DxvkMemoryAllocator::tryAllocDeviceMemory(
           DxvkMemoryType*       type,
           VkDeviceSize          size) {
-    if (type->heap->stats.memoryAllocated + size > type->heap->properties.size)
+    if ((type->memType.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+     && (type->heap->stats.memoryAllocated + size > type->heap->properties.size))
       return DxvkDeviceMemory();
     
     DxvkDeviceMemory result;
