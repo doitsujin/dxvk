@@ -130,7 +130,7 @@ namespace dxvk {
     // Default constant buffers may get updated frequently, in which
     // case mapping the buffer is faster than using update commands.
     VkMemoryPropertyFlags memoryFlags = GetMemoryFlagsForUsage(pDesc->Usage);
-    
+
     if ((pDesc->Usage == D3D11_USAGE_DEFAULT) && (pDesc->BindFlags & D3D11_BIND_CONSTANT_BUFFER)) {
       info.stages |= VK_PIPELINE_STAGE_HOST_BIT;
       info.access |= VK_ACCESS_HOST_WRITE_BIT;
@@ -139,6 +139,14 @@ namespace dxvk {
                   | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
     }
     
+    // AMD cards have a device-local, host-visible memory type where
+    // we can put dynamic resources that need fast access by the GPU
+    if ((pDesc->Usage == D3D11_USAGE_DYNAMIC) && (pDesc->BindFlags & (
+        D3D11_BIND_VERTEX_BUFFER   | D3D11_BIND_INDEX_BUFFER     |
+        D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS |
+        D3D11_BIND_CONSTANT_BUFFER)))
+      memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
     return m_device->GetDXVKDevice()->createBuffer(info, memoryFlags);
   }
   
