@@ -1383,31 +1383,21 @@ namespace dxvk {
       }
     }
     
-    if (m_gpActivePipeline != VK_NULL_HANDLE) {
-      m_cmd->cmdSetViewport(0, viewportCount, m_state.vp.viewports.data());
-      m_cmd->cmdSetScissor (0, viewportCount, m_state.vp.scissorRects.data());
-    }
+    m_flags.set(DxvkContextFlag::GpDirtyViewport);
   }
   
   
   void DxvkContext::setBlendConstants(
     const DxvkBlendConstants&   blendConstants) {
     m_state.om.blendConstants = blendConstants;
-    
-    if (m_gpActivePipeline != VK_NULL_HANDLE)
-      m_cmd->cmdSetBlendConstants(&blendConstants.r);
+    m_flags.set(DxvkContextFlag::GpDirtyBlendConstants);
   }
   
   
   void DxvkContext::setStencilReference(
     const uint32_t            reference) {
     m_state.om.stencilReference = reference;
-    
-    if (m_gpActivePipeline != VK_NULL_HANDLE) {
-      m_cmd->cmdSetStencilReference(
-        VK_STENCIL_FRONT_AND_BACK,
-        reference);
-    }
+    m_flags.set(DxvkContextFlag::GpDirtyStencilRef);
   }
   
   
@@ -1723,17 +1713,12 @@ namespace dxvk {
         m_cmd->cmdBindPipeline(
           VK_PIPELINE_BIND_POINT_GRAPHICS,
           m_gpActivePipeline);
-        
-        m_cmd->cmdSetViewport(0, m_state.gp.state.rsViewportCount, m_state.vp.viewports.data());
-        m_cmd->cmdSetScissor (0, m_state.gp.state.rsViewportCount, m_state.vp.scissorRects.data());
-        
-        m_cmd->cmdSetBlendConstants(
-          &m_state.om.blendConstants.r);
-        
-        m_cmd->cmdSetStencilReference(
-          VK_STENCIL_FRONT_AND_BACK,
-          m_state.om.stencilReference);
       }
+
+      m_flags.set(
+        DxvkContextFlag::GpDirtyBlendConstants,
+        DxvkContextFlag::GpDirtyStencilRef,
+        DxvkContextFlag::GpDirtyViewport);
     }
   }
   
@@ -1998,6 +1983,29 @@ namespace dxvk {
       }
     }
   }
+
+  
+  void DxvkContext::updateDynamicState() {
+    if (m_gpActivePipeline == VK_NULL_HANDLE)
+      return;
+    
+    if (m_flags.test(DxvkContextFlag::GpDirtyViewport)) {
+      uint32_t viewportCount = m_state.gp.state.rsViewportCount;
+      m_cmd->cmdSetViewport(0, viewportCount, m_state.vp.viewports.data());
+      m_cmd->cmdSetScissor (0, viewportCount, m_state.vp.scissorRects.data());
+    }
+
+    if (m_flags.test(DxvkContextFlag::GpDirtyBlendConstants))
+      m_cmd->cmdSetBlendConstants(&m_state.om.blendConstants.r);
+
+    if (m_flags.test(DxvkContextFlag::GpDirtyStencilRef))
+      m_cmd->cmdSetStencilReference(VK_STENCIL_FRONT_AND_BACK, m_state.om.stencilReference);
+    
+    m_flags.clr(
+      DxvkContextFlag::GpDirtyBlendConstants,
+      DxvkContextFlag::GpDirtyStencilRef,
+      DxvkContextFlag::GpDirtyViewport);
+  }
   
   
   bool DxvkContext::validateComputeState() {
@@ -2034,6 +2042,7 @@ namespace dxvk {
     this->updateGraphicsShaderResources();
     this->updateGraphicsPipelineState();
     this->updateGraphicsShaderDescriptors();
+    this->updateDynamicState();
   }
   
   

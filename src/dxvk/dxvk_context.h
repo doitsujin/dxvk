@@ -681,6 +681,8 @@ namespace dxvk {
     
     void updateIndexBufferBinding();
     void updateVertexBufferBindings();
+
+    void updateDynamicState();
     
     bool validateComputeState();
     bool validateGraphicsState();

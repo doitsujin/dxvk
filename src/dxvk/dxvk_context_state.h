@@ -29,6 +29,9 @@ namespace dxvk {
     GpDirtyResources,           ///< Graphics pipeline resource bindings are out of date
     GpDirtyVertexBuffers,       ///< Vertex buffer bindings are out of date
     GpDirtyIndexBuffer,         ///< Index buffer binding are out of date
+    GpDirtyBlendConstants,      ///< Blend constants have changed
+    GpDirtyStencilRef,          ///< Stencil reference has changed
+    GpDirtyViewport,            ///< Viewport state has changed
     
     CpDirtyPipeline,            ///< Compute pipeline binding are out of date
     CpDirtyPipelineState,       ///< Compute pipeline needs to be recompiled
