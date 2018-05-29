@@ -2,32 +2,28 @@
 
 namespace dxvk {
   
-  DxvkMemory::DxvkMemory() {
-    
-  }
-  
-  
+  DxvkMemory::DxvkMemory() { }
   DxvkMemory::DxvkMemory(
-          DxvkMemoryChunk*  chunk,
-          DxvkMemoryHeap*   heap,
-          VkDeviceMemory    memory,
-          VkDeviceSize      offset,
-          VkDeviceSize      length,
-          void*             mapPtr)
-  : m_chunk   (chunk),
-    m_heap    (heap),
+          DxvkMemoryAllocator*  alloc,
+          DxvkMemoryChunk*      chunk,
+          DxvkMemoryType*       type,
+          VkDeviceMemory        memory,
+          VkDeviceSize          offset,
+          VkDeviceSize          length,
+          void*                 mapPtr)
+  : m_alloc   (alloc),
+    m_chunk   (chunk),
+    m_type    (type),
     m_memory  (memory),
     m_offset  (offset),
     m_length  (length),
-    m_mapPtr  (mapPtr) {
-    if (m_memory != VK_NULL_HANDLE)
-      m_heap->m_memoryUsed += length;
-  }
+    m_mapPtr  (mapPtr) { }
   
   
   DxvkMemory::DxvkMemory(DxvkMemory&& other)
-  : m_chunk   (std::exchange(other.m_chunk,  nullptr)),
-    m_heap    (std::exchange(other.m_heap,   nullptr)),
+  : m_alloc   (std::exchange(other.m_alloc,  nullptr)),
+    m_chunk   (std::exchange(other.m_chunk,  nullptr)),
+    m_type    (std::exchange(other.m_type,   nullptr)),
     m_memory  (std::exchange(other.m_memory, VkDeviceMemory(VK_NULL_HANDLE))),
     m_offset  (std::exchange(other.m_offset, 0)),
     m_length  (std::exchange(other.m_length, 0)),
@@ -36,8 +32,9 @@ namespace dxvk {
   
   DxvkMemory& DxvkMemory::operator = (DxvkMemory&& other) {
     this->free();
+    m_alloc   = std::exchange(other.m_alloc,  nullptr);
     m_chunk   = std::exchange(other.m_chunk,  nullptr);
-    m_heap    = std::exchange(other.m_heap,   nullptr);
+    m_type    = std::exchange(other.m_type,   nullptr);
     m_memory  = std::exchange(other.m_memory, VkDeviceMemory(VK_NULL_HANDLE));
     m_offset  = std::exchange(other.m_offset, 0);
     m_length  = std::exchange(other.m_length, 0);
@@ -52,32 +49,25 @@ namespace dxvk {
   
   
   void DxvkMemory::free() {
-    if (m_chunk != nullptr) {
-      m_heap->free(m_chunk, m_offset, m_length);
-      m_heap->m_memoryUsed -= m_length;
-    } else if (m_memory != VK_NULL_HANDLE) {
-      m_heap->freeDeviceMemory(m_memory, m_length);
-      m_heap->m_memoryUsed -= m_length;
-    }
+    if (m_alloc != nullptr)
+      m_alloc->free(*this);
   }
   
 
   DxvkMemoryChunk::DxvkMemoryChunk(
-          DxvkMemoryHeap* heap,
-          VkDeviceMemory  memory,
-          void*           mapPtr,
-          VkDeviceSize    size)
-  : m_heap  (heap),
-    m_memory(memory),
-    m_mapPtr(mapPtr),
-    m_size  (size) {
+          DxvkMemoryAllocator*  alloc,
+          DxvkMemoryType*       type,
+          DxvkDeviceMemory      memory)
+  : m_alloc(alloc), m_type(type), m_memory(memory) {
     // Mark the entire chunk as free
-    m_freeList.push_back(FreeSlice { 0, size });
+    m_freeList.push_back(FreeSlice { 0, memory.memSize });
   }
   
   
   DxvkMemoryChunk::~DxvkMemoryChunk() {
-    m_heap->freeDeviceMemory(m_memory, m_size);
+    // This call is technically not thread-safe, but it
+    // doesn't need to be since we don't free chunks
+    m_alloc->freeDeviceMemory(m_type, m_memory);
   }
   
   
@@ -120,9 +110,9 @@ namespace dxvk {
       m_freeList.push_back({ allocEnd, sliceEnd - allocEnd });
     
     // Create the memory object with the aligned slice
-    return DxvkMemory(this, m_heap,
-      m_memory, allocStart, allocEnd - allocStart,
-      reinterpret_cast<char*>(m_mapPtr) + allocStart);
+    return DxvkMemory(m_alloc, this, m_type,
+      m_memory.memHandle, allocStart, allocEnd - allocStart,
+      reinterpret_cast<char*>(m_memory.memPointer) + allocStart);
   }
   
   
@@ -151,126 +141,22 @@ namespace dxvk {
   }
   
   
-  DxvkMemoryHeap::DxvkMemoryHeap(
-    const Rc<vk::DeviceFn>    vkd,
-          uint32_t            memTypeId,
-          VkMemoryType        memType)
-  : m_vkd       (vkd),
-    m_memTypeId (memTypeId),
-    m_memType   (memType) {
-    
-  }
-  
-  
-  DxvkMemoryHeap::~DxvkMemoryHeap() {
-    
-  }
-  
-  
-  DxvkMemory DxvkMemoryHeap::alloc(VkDeviceSize size, VkDeviceSize align) {
-    // We don't sub-allocate large allocations from one of the
-    // chunks since that might lead to severe fragmentation.
-    if (size >= (m_chunkSize / 4)) {
-      VkDeviceMemory memory = this->allocDeviceMemory(size);
-      
-      if (memory == VK_NULL_HANDLE)
-        return DxvkMemory();
-      
-      return DxvkMemory(nullptr, this, memory,
-        0, size, this->mapDeviceMemory(memory));
-    } else {
-      std::lock_guard<std::mutex> lock(m_mutex);
-      
-      // Probe chunks in a first-fit manner
-      for (const auto& chunk : m_chunks) {
-        DxvkMemory memory = chunk->alloc(size, align);
-        
-        if (memory.memory() != VK_NULL_HANDLE)
-          return memory;
-      }
-      
-      // None of the existing chunks could satisfy
-      // the request, we need to create a new one
-      VkDeviceMemory chunkMem = this->allocDeviceMemory(m_chunkSize);
-      
-      if (chunkMem == VK_NULL_HANDLE)
-        return DxvkMemory();
-      
-      Rc<DxvkMemoryChunk> newChunk = new DxvkMemoryChunk(this,
-        chunkMem, this->mapDeviceMemory(chunkMem), m_chunkSize);
-      DxvkMemory memory = newChunk->alloc(size, align);
-      
-      m_chunks.push_back(std::move(newChunk));
-      return memory;
-    }
-  }
-  
-  
-  DxvkMemoryStats DxvkMemoryHeap::getMemoryStats() const {
-    DxvkMemoryStats result;
-    result.memoryAllocated = m_memoryAllocated.load();
-    result.memoryUsed      = m_memoryUsed.load();
-    return result;
-  }
-  
-  
-  VkDeviceMemory DxvkMemoryHeap::allocDeviceMemory(VkDeviceSize memorySize) {
-    VkMemoryAllocateInfo info;
-    info.sType            = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    info.pNext            = nullptr;
-    info.allocationSize   = memorySize;
-    info.memoryTypeIndex  = m_memTypeId;
-    
-    VkDeviceMemory memory = VK_NULL_HANDLE;
-    
-    if (m_vkd->vkAllocateMemory(m_vkd->device(),
-        &info, nullptr, &memory) != VK_SUCCESS)
-      return VK_NULL_HANDLE;
-    
-    m_memoryAllocated += memorySize;
-    return memory;
-  }
-  
-  
-  void DxvkMemoryHeap::freeDeviceMemory(VkDeviceMemory memory, VkDeviceSize memorySize) {
-    m_vkd->vkFreeMemory(m_vkd->device(), memory, nullptr);
-    m_memoryAllocated -= memorySize;
-  }
-  
-  
-  void* DxvkMemoryHeap::mapDeviceMemory(VkDeviceMemory memory) {
-    if ((m_memType.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) == 0)
-      return nullptr;
-    
-    void* ptr = nullptr;
-    
-    VkResult status = m_vkd->vkMapMemory(m_vkd->device(),
-      memory, 0, VK_WHOLE_SIZE, 0, &ptr);
-    
-    if (status != VK_SUCCESS) {
-      Logger::err("DxvkMemoryHeap: Failed to map memory");
-      return nullptr;
-    } return ptr;
-  }
-  
-  
-  void DxvkMemoryHeap::free(
-          DxvkMemoryChunk*  chunk,
-          VkDeviceSize      offset,
-          VkDeviceSize      length) {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    chunk->free(offset, length);
-  }
-  
-  
   DxvkMemoryAllocator::DxvkMemoryAllocator(
     const Rc<DxvkAdapter>&  adapter,
     const Rc<vk::DeviceFn>& vkd)
   : m_vkd     (vkd),
     m_devProps(adapter->deviceProperties()),
     m_memProps(adapter->memoryProperties()) {
-    for (uint32_t i = 0; i < m_memProps.memoryTypeCount; i++)
-      m_heaps[i] = new DxvkMemoryHeap(m_vkd, i, m_memProps.memoryTypes[i]);
+    for (uint32_t i = 0; i < m_memProps.memoryHeapCount; i++) {
+      m_memHeaps[i].properties = m_memProps.memoryHeaps[i];
+      m_memHeaps[i].stats      = DxvkMemoryStats { 0, 0 };
+    }
+    
+    for (uint32_t i = 0; i < m_memProps.memoryTypeCount; i++) {
+      m_memTypes[i].heap       = &m_memHeaps[m_memProps.memoryTypes[i].heapIndex];
+      m_memTypes[i].memType    = m_memProps.memoryTypes[i];
+      m_memTypes[i].memTypeId  = i;
+    }
   }
   
   
@@ -282,12 +168,14 @@ namespace dxvk {
   DxvkMemory DxvkMemoryAllocator::alloc(
     const VkMemoryRequirements& req,
     const VkMemoryPropertyFlags flags) {
+    std::lock_guard<std::mutex> lock(m_mutex);
+
     DxvkMemory result = this->tryAlloc(req, flags);
     
-    if ((result.memory() == VK_NULL_HANDLE) && (flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))
+    if (!result && (flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))
       result = this->tryAlloc(req, flags & ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     
-    if (result.memory() == VK_NULL_HANDLE) {
+    if (!result) {
       Logger::err(str::format(
         "DxvkMemoryAllocator: Memory allocation failed",
         "\n  Size:      ", req.size,
@@ -301,16 +189,14 @@ namespace dxvk {
   }
   
   
-  DxvkMemoryStats DxvkMemoryAllocator::getMemoryStats() const {
+  DxvkMemoryStats DxvkMemoryAllocator::getMemoryStats() {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    
     DxvkMemoryStats totalStats;
     
-    for (size_t i = 0; i < m_heaps.size(); i++) {
-      if (m_heaps[i] != nullptr) {
-        DxvkMemoryStats heapStats = m_heaps[i]->getMemoryStats();
-        
-        totalStats.memoryAllocated += heapStats.memoryAllocated;
-        totalStats.memoryUsed      += heapStats.memoryUsed;
-      }
+    for (size_t i = 0; i < m_memProps.memoryHeapCount; i++) {
+      totalStats.memoryAllocated += m_memHeaps[i].stats.memoryAllocated;
+      totalStats.memoryUsed      += m_memHeaps[i].stats.memoryUsed;
     }
       
     return totalStats;
@@ -322,15 +208,122 @@ namespace dxvk {
     const VkMemoryPropertyFlags flags) {
     DxvkMemory result;
     
-    for (uint32_t i = 0; i < m_heaps.size() && result.memory() == VK_NULL_HANDLE; i++) {
+    for (uint32_t i = 0; i < m_memProps.memoryTypeCount && !result; i++) {
       const bool supported = (req.memoryTypeBits & (1u << i)) != 0;
-      const bool adequate  = (m_memProps.memoryTypes[i].propertyFlags & flags) == flags;
+      const bool adequate  = (m_memTypes[i].memType.propertyFlags & flags) == flags;
       
-      if (supported && adequate)
-        result = m_heaps[i]->alloc(req.size, req.alignment);
+      if (supported && adequate) {
+        result = this->tryAllocFromType(
+          &m_memTypes[i], req.size, req.alignment);
+      }
     }
     
     return result;
+  }
+  
+  
+  DxvkMemory DxvkMemoryAllocator::tryAllocFromType(
+          DxvkMemoryType*       type,
+          VkDeviceSize          size,
+          VkDeviceSize          align) {
+    DxvkMemory memory;
+
+    if (size >= ChunkSize / 4) {
+      DxvkDeviceMemory devMem = this->tryAllocDeviceMemory(type, size);
+
+      if (devMem.memHandle != VK_NULL_HANDLE)
+        memory = DxvkMemory(this, nullptr, type, devMem.memHandle, 0, size, devMem.memPointer);
+    } else {
+      for (uint32_t i = 0; i < type->chunks.size() && !memory; i++)
+        memory = type->chunks[i]->alloc(size, align);
+      
+      if (!memory) {
+        DxvkDeviceMemory devMem = tryAllocDeviceMemory(type, ChunkSize);
+
+        if (devMem.memHandle == VK_NULL_HANDLE)
+          return DxvkMemory();
+        
+        Rc<DxvkMemoryChunk> chunk = new DxvkMemoryChunk(this, type, devMem);
+        memory = chunk->alloc(size, align);
+
+        type->chunks.push_back(std::move(chunk));
+      }
+    }
+
+    if (memory)
+      type->heap->stats.memoryUsed += memory.m_length;
+
+    return memory;
+  }
+  
+  
+  DxvkDeviceMemory DxvkMemoryAllocator::tryAllocDeviceMemory(
+          DxvkMemoryType*       type,
+          VkDeviceSize          size) {
+    if (type->heap->stats.memoryAllocated + size > type->heap->properties.size)
+      return DxvkDeviceMemory();
+    
+    DxvkDeviceMemory result;
+    result.memSize = size;
+    
+    VkMemoryAllocateInfo info;
+    info.sType            = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    info.pNext            = nullptr;
+    info.allocationSize   = size;
+    info.memoryTypeIndex  = type->memTypeId;
+
+    if (m_vkd->vkAllocateMemory(m_vkd->device(), &info, nullptr, &result.memHandle) != VK_SUCCESS)
+      return DxvkDeviceMemory();
+    
+    if (type->memType.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+      VkResult status = m_vkd->vkMapMemory(m_vkd->device(), result.memHandle, 0, VK_WHOLE_SIZE, 0, &result.memPointer);
+
+      if (status != VK_SUCCESS) {
+        Logger::err(str::format("DxvkMemoryAllocator: Mapping memory failed with ", status));
+        return DxvkDeviceMemory();
+      }
+    }
+
+    type->heap->stats.memoryAllocated += size;
+    return result;
+  }
+
+
+  void DxvkMemoryAllocator::free(
+    const DxvkMemory&           memory) {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    memory.m_type->heap->stats.memoryUsed -= memory.m_length;
+
+    if (memory.m_chunk != nullptr) {
+      this->freeChunkMemory(
+        memory.m_type,
+        memory.m_chunk,
+        memory.m_offset,
+        memory.m_length);
+    } else {
+      DxvkDeviceMemory devMem;
+      devMem.memHandle  = memory.m_memory;
+      devMem.memPointer = nullptr;
+      devMem.memSize    = memory.m_length;
+      this->freeDeviceMemory(memory.m_type, devMem);
+    }
+  }
+
+  
+  void DxvkMemoryAllocator::freeChunkMemory(
+          DxvkMemoryType*       type,
+          DxvkMemoryChunk*      chunk,
+          VkDeviceSize          offset,
+          VkDeviceSize          length) {
+    chunk->free(offset, length);
+  }
+  
+
+  void DxvkMemoryAllocator::freeDeviceMemory(
+          DxvkMemoryType*       type,
+          DxvkDeviceMemory      memory) {
+    m_vkd->vkFreeMemory(m_vkd->device(), memory.memHandle, nullptr);
+    type->heap->stats.memoryAllocated -= memory.memSize;
   }
   
 }
