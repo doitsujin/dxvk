@@ -34,7 +34,17 @@ namespace dxvk {
           m_analysis->uavInfos[registerId].accessAtomicOp = true;
         }
       } break;
-        
+      
+      case DxbcInstClass::TextureSample:
+      case DxbcInstClass::VectorDeriv: {
+        m_analysis->usesDerivatives = true;
+      } break;
+      
+      case DxbcInstClass::ControlFlow: {
+        if (ins.op == DxbcOpcode::Discard)
+          m_analysis->usesKill = true;
+      } break;
+      
       case DxbcInstClass::TypedUavLoad: {
         const uint32_t registerId = ins.src[1].idx[0].offset;
         m_analysis->uavInfos[registerId].accessTypedLoad = true;

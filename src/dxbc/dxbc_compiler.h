@@ -97,6 +97,34 @@ namespace dxvk {
   
   
   /**
+   * \brief Specialization constant properties
+   * 
+   * Stores the name, data type and initial
+   * value of a specialization constant.
+   */
+  struct DxbcSpecConstant {
+    DxbcScalarType  ctype;
+    uint32_t        ccount;
+    uint32_t        value;
+    const char*     name;
+  };
+  
+  
+  /**
+   * \brief Helper struct for conditional execution
+   * 
+   * Stores a set of labels required to implement either
+   * an if-then block or an if-then-else block. This is
+   * not used to implement control flow instructions.
+   */
+  struct DxbcConditional {
+    uint32_t labelIf   = 0;
+    uint32_t labelElse = 0;
+    uint32_t labelEnd  = 0;
+  };
+  
+  
+  /**
    * \brief Vertex shader-specific structure
    */
   struct DxbcCompilerVsPart {
@@ -120,6 +148,7 @@ namespace dxvk {
     
     uint32_t builtinLayer         = 0;
     uint32_t builtinViewportId    = 0;
+    uint32_t builtinInvocationId  = 0;
   };
   
   
@@ -136,6 +165,8 @@ namespace dxvk {
     uint32_t builtinSampleMaskIn  = 0;
     uint32_t builtinSampleMaskOut = 0;
     uint32_t builtinLayer         = 0;
+    
+    uint32_t killState            = 0;
   };
   
   
@@ -244,10 +275,11 @@ namespace dxvk {
   
   
   struct DxbcCfgBlockIf {
+    uint32_t ztestId;
     uint32_t labelIf;
     uint32_t labelElse;
     uint32_t labelEnd;
-    bool     hadElse;
+    size_t   headerPtr;
   };
   
   
@@ -382,6 +414,13 @@ namespace dxvk {
     // currently active if-else blocks and loops.
     std::vector<DxbcCfgBlock> m_controlFlowBlocks;
     
+    ///////////////////////////////////////////////
+    // Specialization constants. These are defined
+    // as needed by the getSpecConstant method.
+    std::array<DxbcRegisterValue,
+      uint32_t(DxvkSpecConstantId::SpecConstantIdMax) -
+      uint32_t(DxvkSpecConstantId::SpecConstantIdMin) + 1> m_specConstants;
+    
     ///////////////////////////////////////////////////////////
     // Array of input values. Since v# registers are indexable
     // in DXBC, we need to copy them into an array first.
@@ -511,6 +550,9 @@ namespace dxvk {
       const DxbcShaderInstruction&  ins);
     
     void emitDclThreadGroup(
+      const DxbcShaderInstruction&  ins);
+    
+    void emitDclGsInstanceCount(
       const DxbcShaderInstruction&  ins);
     
     uint32_t emitDclUavCounter(
@@ -843,6 +885,14 @@ namespace dxvk {
       const DxbcRegister&           reg,
             DxbcRegisterValue       value);
     
+    ////////////////////////////////////////
+    // Spec constant declaration and access
+    DxbcRegisterValue getSpecConstant(
+            DxvkSpecConstantId      specId);
+    
+    DxbcSpecConstant getSpecConstantProperties(
+            DxvkSpecConstantId      specId);
+    
     ////////////////////////////
     // Input/output preparation
     void emitInputSetup();
@@ -905,6 +955,11 @@ namespace dxvk {
     void emitClipCullLoad(
             DxbcSystemValue         sv,
             uint32_t                srcArray);
+    
+    ///////////////////////////////
+    // Some state checking methods
+    uint32_t emitUavWriteTest(
+      const DxbcBufferInfo&         uav);
     
     //////////////////////////////////////
     // Common function definition methods

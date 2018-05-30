@@ -5,8 +5,7 @@
 namespace dxvk {
   
   const static std::unordered_map<std::string, DxbcOptions> g_dxbcAppOptions = {{
-    { "Dishonored2.exe", DxbcOptions(DxbcOption::ForceTex2DArray) },
-    { "ManiaPlanet.exe", DxbcOptions(DxbcOption::ForceTex2DArray) },
+    
   }};
   
   
@@ -36,6 +35,7 @@ namespace dxvk {
     if (devFeatures.shaderStorageImageReadWithoutFormat)
       flags.set(DxbcOption::UseStorageImageReadWithoutFormat);
     
+    flags.set(DxbcOption::DeferKill);
     return flags;
   }
   

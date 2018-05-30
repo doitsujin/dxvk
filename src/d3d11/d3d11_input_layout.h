@@ -11,23 +11,26 @@ namespace dxvk {
   public:
     
     D3D11InputLayout(
-            D3D11Device*                pDevice,
-            uint32_t                    numAttributes,
-      const DxvkVertexAttribute*        pAttributes,
-            uint32_t                    numBindings,
-      const DxvkVertexBinding*          pBindings);
+            D3D11Device*          pDevice,
+            uint32_t              numAttributes,
+      const DxvkVertexAttribute*  pAttributes,
+            uint32_t              numBindings,
+      const DxvkVertexBinding*    pBindings);
     
     ~D3D11InputLayout();
     
     HRESULT STDMETHODCALLTYPE QueryInterface(
-            REFIID  riid,
-            void**  ppvObject) final;
+            REFIID                riid,
+            void**                ppvObject) final;
     
     void STDMETHODCALLTYPE GetDevice(
-            ID3D11Device **ppDevice) final;
+            ID3D11Device**        ppDevice) final;
     
     void BindToContext(
-      const Rc<DxvkContext>& ctx);
+      const Rc<DxvkContext>&      ctx);
+    
+    bool Compare(
+      const D3D11InputLayout*     pOther) const;
     
   private:
     

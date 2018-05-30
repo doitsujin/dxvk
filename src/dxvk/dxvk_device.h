@@ -356,6 +356,7 @@ namespace dxvk {
     Rc<DxvkRenderPassPool>      m_renderPassPool;
     Rc<DxvkPipelineManager>     m_pipelineManager;
     Rc<DxvkMetaClearObjects>    m_metaClearObjects;
+    Rc<DxvkMetaMipGenObjects>   m_metaMipGenObjects;
     
     DxvkUnboundResources        m_unboundResources;
     

@@ -999,7 +999,9 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
     } },
     /* DclGsInstanceCount                   */
-    { },
+    { 1, DxbcInstClass::Declaration, {
+      { DxbcOperandKind::Imm32, DxbcScalarType::Uint32 },
+    } },
   }};
   
   

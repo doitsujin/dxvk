@@ -12,6 +12,22 @@ namespace dxvk {
   class DxvkShader;
   
   /**
+   * \brief Built-in specialization constants
+   * 
+   * These specialization constants allow the SPIR-V
+   * shaders to access some pipeline state like D3D
+   * shaders do. They need to be filled in by the
+   * implementation at pipeline compilation time.
+   */
+  enum class DxvkSpecConstantId : uint32_t {
+    RasterizerSampleCount       = 0x10000,
+    
+    SpecConstantIdMin           = RasterizerSampleCount,
+    SpecConstantIdMax           = RasterizerSampleCount,
+  };
+  
+  
+  /**
    * \brief Shader interface slots
    * 
    * Stores a bit mask of which shader

@@ -36,6 +36,7 @@ namespace dxvk {
      || riid == __uuidof(IDXGIObject)
      || riid == __uuidof(IDXGIAdapter)
      || riid == __uuidof(IDXGIAdapter1)
+     || riid == __uuidof(IDXGIAdapter2)
      || riid == __uuidof(IDXGIVkAdapter)) {
       *ppvObject = ref(this);
       return S_OK;
@@ -96,23 +97,20 @@ namespace dxvk {
     if (pDesc == nullptr)
       return DXGI_ERROR_INVALID_CALL;
 
-    DXGI_ADAPTER_DESC1 desc1;
-    HRESULT hr = this->GetDesc1(&desc1);
+    DXGI_ADAPTER_DESC2 desc;
+    HRESULT hr = GetDesc2(&desc);
     
     if (SUCCEEDED(hr)) {
-      std::memcpy(
-        pDesc->Description,
-        desc1.Description,
-        sizeof(pDesc->Description));
+      std::memcpy(pDesc->Description, desc.Description, sizeof(pDesc->Description));
       
-      pDesc->VendorId               = desc1.VendorId;
-      pDesc->DeviceId               = desc1.DeviceId;
-      pDesc->SubSysId               = desc1.SubSysId;
-      pDesc->Revision               = desc1.Revision;
-      pDesc->DedicatedVideoMemory   = desc1.DedicatedVideoMemory;
-      pDesc->DedicatedSystemMemory  = desc1.DedicatedSystemMemory;
-      pDesc->SharedSystemMemory     = desc1.SharedSystemMemory;
-      pDesc->AdapterLuid            = desc1.AdapterLuid;
+      pDesc->VendorId               = desc.VendorId;
+      pDesc->DeviceId               = desc.DeviceId;
+      pDesc->SubSysId               = desc.SubSysId;
+      pDesc->Revision               = desc.Revision;
+      pDesc->DedicatedVideoMemory   = desc.DedicatedVideoMemory;
+      pDesc->DedicatedSystemMemory  = desc.DedicatedSystemMemory;
+      pDesc->SharedSystemMemory     = desc.SharedSystemMemory;
+      pDesc->AdapterLuid            = desc.AdapterLuid;
     }
     
     return hr;
@@ -120,6 +118,31 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE DxgiAdapter::GetDesc1(DXGI_ADAPTER_DESC1* pDesc) {
+    if (pDesc == nullptr)
+      return DXGI_ERROR_INVALID_CALL;
+
+    DXGI_ADAPTER_DESC2 desc;
+    HRESULT hr = GetDesc2(&desc);
+    
+    if (SUCCEEDED(hr)) {
+      std::memcpy(pDesc->Description, desc.Description, sizeof(pDesc->Description));
+      
+      pDesc->VendorId               = desc.VendorId;
+      pDesc->DeviceId               = desc.DeviceId;
+      pDesc->SubSysId               = desc.SubSysId;
+      pDesc->Revision               = desc.Revision;
+      pDesc->DedicatedVideoMemory   = desc.DedicatedVideoMemory;
+      pDesc->DedicatedSystemMemory  = desc.DedicatedSystemMemory;
+      pDesc->SharedSystemMemory     = desc.SharedSystemMemory;
+      pDesc->AdapterLuid            = desc.AdapterLuid;
+      pDesc->Flags                  = desc.Flags;
+    }
+    
+    return hr;
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE DxgiAdapter::GetDesc2(DXGI_ADAPTER_DESC2* pDesc) {
     if (pDesc == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
@@ -158,20 +181,22 @@ namespace dxvk {
     #ifndef _WIN64
     // The value returned by DXGI is a 32-bit value
     // on 32-bit platforms, so we need to clamp it
-    VkDeviceSize maxMemory = 0xF0000000;
+    VkDeviceSize maxMemory = 0xC0000000;
     deviceMemory = std::min(deviceMemory, maxMemory);
     sharedMemory = std::min(sharedMemory, maxMemory);
     #endif
     
-    pDesc->VendorId               = deviceProp.vendorID;
-    pDesc->DeviceId               = deviceProp.deviceID;
-    pDesc->SubSysId               = 0;
-    pDesc->Revision               = 0;
-    pDesc->DedicatedVideoMemory   = deviceMemory;
-    pDesc->DedicatedSystemMemory  = 0;
-    pDesc->SharedSystemMemory     = sharedMemory;
-    pDesc->AdapterLuid            = LUID { 0, 0 };  // TODO implement
-    pDesc->Flags                  = 0;
+    pDesc->VendorId                       = deviceProp.vendorID;
+    pDesc->DeviceId                       = deviceProp.deviceID;
+    pDesc->SubSysId                       = 0;
+    pDesc->Revision                       = 0;
+    pDesc->DedicatedVideoMemory           = deviceMemory;
+    pDesc->DedicatedSystemMemory          = 0;
+    pDesc->SharedSystemMemory             = sharedMemory;
+    pDesc->AdapterLuid                    = LUID { 0, 0 };  // TODO implement
+    pDesc->Flags                          = 0;
+    pDesc->GraphicsPreemptionGranularity  = DXGI_GRAPHICS_PREEMPTION_DMA_BUFFER_BOUNDARY;
+    pDesc->ComputePreemptionGranularity   = DXGI_COMPUTE_PREEMPTION_DMA_BUFFER_BOUNDARY;
     return S_OK;
   }
   

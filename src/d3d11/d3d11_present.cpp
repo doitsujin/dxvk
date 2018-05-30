@@ -43,15 +43,15 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE D3D11Presenter::CreateSwapChainBackBuffer(
-    const DXGI_SWAP_CHAIN_DESC*       pSwapChainDesc,
+    const DXGI_SWAP_CHAIN_DESC1*      pSwapChainDesc,
           IDXGIVkBackBuffer**         ppInterface) {
     D3D11_COMMON_TEXTURE_DESC desc;
-    desc.Width              = pSwapChainDesc->BufferDesc.Width;
-    desc.Height             = pSwapChainDesc->BufferDesc.Height;
+    desc.Width              = pSwapChainDesc->Width;
+    desc.Height             = pSwapChainDesc->Height;
     desc.Depth              = 1;
     desc.MipLevels          = 1;
     desc.ArraySize          = 1;
-    desc.Format             = pSwapChainDesc->BufferDesc.Format;
+    desc.Format             = pSwapChainDesc->Format;
     desc.SampleDesc         = pSwapChainDesc->SampleDesc;
     desc.Usage              = D3D11_USAGE_DEFAULT;
     desc.BindFlags          = D3D11_BIND_RENDER_TARGET

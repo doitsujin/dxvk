@@ -11,12 +11,14 @@
 namespace dxvk {
   
   struct D3D11DeferredContextMapEntry {
-    Com<ID3D11Resource> pResource;
-    UINT                Subresource;
-    D3D11_MAP           MapType;
-    UINT                RowPitch;
-    UINT                DepthPitch;
-    DxvkDataSlice       DataSlice;
+    Com<ID3D11Resource>     pResource;
+    UINT                    Subresource;
+    D3D11_MAP               MapType;
+    UINT                    RowPitch;
+    UINT                    DepthPitch;
+    DxvkDataSlice           DataSlice;
+    DxvkPhysicalBufferSlice BufferSlice;
+    void*                   MapPointer;
   };
   
   class D3D11DeferredContext : public D3D11DeviceContext {

@@ -856,9 +856,7 @@ namespace dxvk {
     if (view->GetResourceType() != D3D11_RESOURCE_DIMENSION_BUFFER) {
       EmitCs([cDstImageView = view->GetImageView()]
       (DxvkContext* ctx) {
-        ctx->generateMipmaps(
-          cDstImageView->image(),
-          cDstImageView->subresources());
+        ctx->generateMipmaps(cDstImageView);
       });
     } else {
       Logger::err("D3D11: GenerateMips called on a buffer");
@@ -1237,8 +1235,18 @@ namespace dxvk {
     auto inputLayout = static_cast<D3D11InputLayout*>(pInputLayout);
     
     if (m_state.ia.inputLayout != inputLayout) {
+      bool equal = false;
+      
+      // Some games (e.g. Grim Dawn) create lots and lots of
+      // identical input layouts, so we'll only apply the state
+      // if the input layouts has actually changed between calls.
+      if (m_state.ia.inputLayout != nullptr && inputLayout != nullptr)
+        equal = m_state.ia.inputLayout->Compare(inputLayout);
+      
       m_state.ia.inputLayout = inputLayout;
-      ApplyInputLayout();
+      
+      if (!equal)
+        ApplyInputLayout();
     }
   }
   
@@ -2290,8 +2298,11 @@ namespace dxvk {
     const D3D11_RECT*                       pRects) {
     m_state.rs.numScissors = NumRects;
     
-    for (uint32_t i = 0; i < NumRects; i++)
-      m_state.rs.scissors.at(i) = pRects[i];
+    for (uint32_t i = 0; i < NumRects; i++) {
+      if (pRects[i].bottom >= pRects[i].top
+       && pRects[i].right  >= pRects[i].left)
+        m_state.rs.scissors.at(i) = pRects[i];
+    }
     
     if (m_state.rs.state != nullptr) {
       D3D11_RASTERIZER_DESC rsDesc;
@@ -2554,17 +2565,22 @@ namespace dxvk {
     }
     
     for (uint32_t i = 0; i < m_state.rs.numViewports; i++) {
-      // TODO D3D11 docs aren't clear about what should happen
-      // when there are undefined scissor rects for a viewport.
-      // Figure out what it does on Windows.
       if (enableScissorTest && (i < m_state.rs.numScissors)) {
-        const D3D11_RECT& sr = m_state.rs.scissors.at(i);
+        D3D11_RECT sr = m_state.rs.scissors.at(i);
         
-        scissors.at(i) = VkRect2D {
-          VkOffset2D { sr.left, sr.top },
-          VkExtent2D {
-            static_cast<uint32_t>(sr.right  - sr.left),
-            static_cast<uint32_t>(sr.bottom - sr.top) } };
+        VkOffset2D srPosA;
+        srPosA.x = std::max<int32_t>(0, sr.left);
+        srPosA.y = std::max<int32_t>(0, sr.top);
+        
+        VkOffset2D srPosB;
+        srPosB.x = std::max<int32_t>(srPosA.x, sr.right);
+        srPosB.y = std::max<int32_t>(srPosA.y, sr.bottom);
+        
+        VkExtent2D srSize;
+        srSize.width  = uint32_t(srPosB.x - srPosA.x);
+        srSize.height = uint32_t(srPosB.y - srPosA.y);
+        
+        scissors.at(i) = VkRect2D { srPosA, srSize };
       } else {
         scissors.at(i) = VkRect2D {
           VkOffset2D { 0, 0 },

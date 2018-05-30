@@ -43,6 +43,9 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE GetDesc1(
             DXGI_ADAPTER_DESC1*       pDesc) final;
     
+    HRESULT STDMETHODCALLTYPE GetDesc2(
+            DXGI_ADAPTER_DESC2*       pDesc) final;
+    
     Rc<DxvkAdapter> STDMETHODCALLTYPE GetDXVKAdapter() final;
     
     HRESULT STDMETHODCALLTYPE CreateDevice(

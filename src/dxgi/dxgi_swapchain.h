@@ -20,69 +20,107 @@ namespace dxvk {
   class DxgiFactory;
   class DxgiOutput;
   
-  class DxgiSwapChain : public DxgiObject<IDXGISwapChain> {
+  class DxgiSwapChain : public DxgiObject<IDXGISwapChain1> {
     
   public:
     
     DxgiSwapChain(
-          DxgiFactory*            factory,
-          IUnknown*               pDevice,
-          DXGI_SWAP_CHAIN_DESC*   pDesc);
+            DxgiFactory*                pFactory,
+            IUnknown*                   pDevice,
+            HWND                        hWnd,
+      const DXGI_SWAP_CHAIN_DESC1*      pDesc,
+      const DXGI_SWAP_CHAIN_FULLSCREEN_DESC*  pFullscreenDesc);
+    
     ~DxgiSwapChain();
     
     HRESULT STDMETHODCALLTYPE QueryInterface(
-            REFIID                riid,
-            void**                ppvObject) final;
+            REFIID                    riid,
+            void**                    ppvObject) final;
             
     HRESULT STDMETHODCALLTYPE GetParent(
-            REFIID                riid,
-            void**                ppParent) final;
+            REFIID                    riid,
+            void**                    ppParent) final;
     
     HRESULT STDMETHODCALLTYPE GetDevice(
-            REFIID                riid,
-            void**                ppDevice) final;
+            REFIID                    riid,
+            void**                    ppDevice) final;
     
     HRESULT STDMETHODCALLTYPE GetBuffer(
-            UINT                  Buffer,
-            REFIID                riid,
-            void**                ppSurface) final;
+            UINT                      Buffer,
+            REFIID                    riid,
+            void**                    ppSurface) final;
     
     HRESULT STDMETHODCALLTYPE GetContainingOutput(
-            IDXGIOutput**         ppOutput) final;
+            IDXGIOutput**             ppOutput) final;
     
     HRESULT STDMETHODCALLTYPE GetDesc(
-            DXGI_SWAP_CHAIN_DESC* pDesc) final;
+            DXGI_SWAP_CHAIN_DESC*     pDesc) final;
     
-    HRESULT STDMETHODCALLTYPE GetFrameStatistics(
-            DXGI_FRAME_STATISTICS* pStats) final;
+    HRESULT STDMETHODCALLTYPE GetDesc1(
+            DXGI_SWAP_CHAIN_DESC1*    pDesc) final;
     
     HRESULT STDMETHODCALLTYPE GetFullscreenState(
-            BOOL*                 pFullscreen,
-            IDXGIOutput**         ppTarget) final;
+            BOOL*                     pFullscreen,
+            IDXGIOutput**             ppTarget) final;
+    
+    HRESULT STDMETHODCALLTYPE GetFullscreenDesc(
+            DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pDesc) final;
+
+    HRESULT STDMETHODCALLTYPE GetHwnd(
+            HWND*                     pHwnd) final;
+
+    HRESULT STDMETHODCALLTYPE GetCoreWindow(
+            REFIID                    refiid,
+            void**                    ppUnk) final;
+
+    HRESULT STDMETHODCALLTYPE GetBackgroundColor(
+            DXGI_RGBA*                pColor) final;
+    
+    HRESULT STDMETHODCALLTYPE GetRotation(
+            DXGI_MODE_ROTATION*       pRotation) final;
+    
+    HRESULT STDMETHODCALLTYPE GetRestrictToOutput(
+            IDXGIOutput**             ppRestrictToOutput) final;
+    
+    HRESULT STDMETHODCALLTYPE GetFrameStatistics(
+            DXGI_FRAME_STATISTICS*    pStats) final;
     
     HRESULT STDMETHODCALLTYPE GetLastPresentCount(
-            UINT*                 pLastPresentCount) final;
+            UINT*                     pLastPresentCount) final;
     
+    BOOL STDMETHODCALLTYPE IsTemporaryMonoSupported() final;
+
     HRESULT STDMETHODCALLTYPE Present(
-            UINT                  SyncInterval,
-            UINT                  Flags) final;
+            UINT                      SyncInterval,
+            UINT                      Flags) final;
     
+    HRESULT STDMETHODCALLTYPE Present1(
+            UINT                      SyncInterval,
+            UINT                      PresentFlags,
+      const DXGI_PRESENT_PARAMETERS*  pPresentParameters) final;
+
     HRESULT STDMETHODCALLTYPE ResizeBuffers(
-            UINT                  BufferCount,
-            UINT                  Width,
-            UINT                  Height,
-            DXGI_FORMAT           NewFormat,
-            UINT                  SwapChainFlags) final;
+            UINT                      BufferCount,
+            UINT                      Width,
+            UINT                      Height,
+            DXGI_FORMAT               NewFormat,
+            UINT                      SwapChainFlags) final;
     
     HRESULT STDMETHODCALLTYPE ResizeTarget(
-      const DXGI_MODE_DESC*       pNewTargetParameters) final;
+      const DXGI_MODE_DESC*           pNewTargetParameters) final;
     
     HRESULT STDMETHODCALLTYPE SetFullscreenState(
-            BOOL                  Fullscreen,
-            IDXGIOutput*          pTarget) final;
+            BOOL                      Fullscreen,
+            IDXGIOutput*              pTarget) final;
     
+    HRESULT STDMETHODCALLTYPE SetBackgroundColor(
+      const DXGI_RGBA*                pColor) final;
+
+    HRESULT STDMETHODCALLTYPE SetRotation(
+            DXGI_MODE_ROTATION        Rotation) final;
+
     HRESULT SetGammaControl(
-      const DXGI_GAMMA_CONTROL*   pGammaControl);
+      const DXGI_GAMMA_CONTROL*       pGammaControl);
     
     HRESULT SetDefaultGammaControl();
     
@@ -101,7 +139,9 @@ namespace dxvk {
     Com<DxgiDevice>                 m_device;
     Com<IDXGIVkPresenter>           m_presentDevice;
     
-    DXGI_SWAP_CHAIN_DESC            m_desc;
+    HWND                            m_window;
+    DXGI_SWAP_CHAIN_DESC1           m_desc;
+    DXGI_SWAP_CHAIN_FULLSCREEN_DESC m_descFs;
     DXGI_FRAME_STATISTICS           m_stats;
     
     Rc<DxgiVkPresenter>             m_presenter;

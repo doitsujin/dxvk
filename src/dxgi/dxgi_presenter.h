@@ -8,7 +8,7 @@
 
 #include "../spirv/spirv_module.h"
 
-#include "dxgi_include.h"
+#include "dxgi_options.h"
 
 namespace dxvk {
   
@@ -100,28 +100,14 @@ namespace dxvk {
      * Only actually recreates the swap chain object
      * if any of the properties have changed. If no
      * properties have changed, this is a no-op.
-     * \param [in] options New swap chain options
+     * \param [in] Format New surface format
+     * \param [in] PresentMode Present mode
+     * \param [in] WindowSize Window size
      */
     void RecreateSwapchain(
-      const DxvkSwapchainProperties* pOptions);
-    
-    /**
-     * \brief Picks a surface format based on a DXGI format
-     * 
-     * This will return a supported format that, if possible,
-     * has properties similar to those of the DXGI format.
-     * \param [in] fmt The DXGI format
-     * \returns The Vulkan format
-     */
-    VkSurfaceFormatKHR PickSurfaceFormat(DXGI_FORMAT Fmt) const;
-    
-    /**
-     * \brief Picks a supported present mode
-     * 
-     * \param [in] preferred Preferred present mode
-     * \returns An actually supported present mode
-     */
-    VkPresentModeKHR PickPresentMode(VkPresentModeKHR Preferred) const;
+            DXGI_FORMAT       Format,
+            VkPresentModeKHR  PresentMode,
+            VkExtent2D        WindowSize);
     
     /**
      * \brief Sets gamma curve
@@ -141,6 +127,8 @@ namespace dxvk {
       GammaSmp  = 2,
       GammaTex  = 3,
     };
+    
+    HWND                    m_window;
     
     Rc<DxvkDevice>          m_device;
     Rc<DxvkContext>         m_context;
@@ -163,6 +151,12 @@ namespace dxvk {
     
     DxvkBlendMode           m_blendMode;
     DxvkSwapchainProperties m_options;
+    
+    VkSurfaceFormatKHR PickSurfaceFormat(DXGI_FORMAT Fmt) const;
+    
+    VkPresentModeKHR PickPresentMode(VkPresentModeKHR Preferred) const;
+    
+    Rc<DxvkSurface> CreateSurface();
     
     Rc<DxvkSampler> CreateSampler(
             VkFilter              Filter,

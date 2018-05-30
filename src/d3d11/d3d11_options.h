@@ -23,6 +23,16 @@ namespace dxvk {
      * when passing the \c DONOTFLUSH flag.
      */
     DisableGetDataFlagDoNotFlush = 1,
+    
+    /**
+     * \brief Fakes stream output support
+     * 
+     * Temporary hack that fixes issues in some games
+     * which technically need stream output but work
+     * well enough without it. Will be removed once
+     * Stream Output is properly supported in DXVK.
+     */
+    FakeStreamOutSupport = 63,
   };
   
   using D3D11OptionSet = Flags<D3D11Option>;

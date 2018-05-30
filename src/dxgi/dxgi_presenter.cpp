@@ -10,14 +10,16 @@ namespace dxvk {
   DxgiVkPresenter::DxgiVkPresenter(
     const Rc<DxvkDevice>&         device,
           HWND                    window)
-  : m_device  (device),
+  : m_window  (window),
+    m_device  (device),
     m_context (device->createContext()) {
     
-    // Create Vulkan surface for the window
-    HINSTANCE instance = reinterpret_cast<HINSTANCE>(
-      GetWindowLongPtr(window, GWLP_HINSTANCE));
+    // Some games don't work with deferred surface creation,
+    // so we should default to initializing it immediately.
+    DxgiOptions dxgiOptions = getDxgiAppOptions(env::getExeName());
     
-    m_surface = m_device->adapter()->createSurface(instance, window);
+    if (!dxgiOptions.test(DxgiOption::DeferSurfaceCreation))
+      m_surface = CreateSurface();
     
     // Reset options for the swap chain itself. We will
     // create a swap chain object before presentation.
@@ -275,27 +277,52 @@ namespace dxvk {
   }
   
   
-  void DxgiVkPresenter::RecreateSwapchain(const DxvkSwapchainProperties* pOptions) {
+  void DxgiVkPresenter::SetGammaControl(
+    const DXGI_VK_GAMMA_CURVE*          pGammaCurve) {
+    m_context->beginRecording(
+      m_device->createCommandList());
+    
+    m_context->updateImage(m_gammaTexture,
+      VkImageSubresourceLayers { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
+      VkOffset3D { 0, 0, 0 },
+      VkExtent3D { DXGI_VK_GAMMA_CP_COUNT, 1, 1 },
+      pGammaCurve, 0, 0);
+    
+    m_device->submitCommandList(
+      m_context->endRecording(),
+      nullptr, nullptr);
+  }
+  
+  
+  void DxgiVkPresenter::RecreateSwapchain(DXGI_FORMAT Format, VkPresentModeKHR PresentMode, VkExtent2D WindowSize) {
+    if (m_surface == nullptr)
+      m_surface = CreateSurface();
+    
+    DxvkSwapchainProperties options;
+    options.preferredSurfaceFormat  = PickSurfaceFormat(Format);
+    options.preferredPresentMode    = PickPresentMode(PresentMode);
+    options.preferredBufferSize     = WindowSize;
+    
     const bool doRecreate =
-         pOptions->preferredSurfaceFormat.format      != m_options.preferredSurfaceFormat.format
-      || pOptions->preferredSurfaceFormat.colorSpace  != m_options.preferredSurfaceFormat.colorSpace
-      || pOptions->preferredPresentMode               != m_options.preferredPresentMode
-      || pOptions->preferredBufferSize.width          != m_options.preferredBufferSize.width
-      || pOptions->preferredBufferSize.height         != m_options.preferredBufferSize.height;
+         options.preferredSurfaceFormat.format      != m_options.preferredSurfaceFormat.format
+      || options.preferredSurfaceFormat.colorSpace  != m_options.preferredSurfaceFormat.colorSpace
+      || options.preferredPresentMode               != m_options.preferredPresentMode
+      || options.preferredBufferSize.width          != m_options.preferredBufferSize.width
+      || options.preferredBufferSize.height         != m_options.preferredBufferSize.height;
     
     if (doRecreate) {
       Logger::info(str::format(
         "DxgiVkPresenter: Recreating swap chain: ",
-        "\n  Format:       ", pOptions->preferredSurfaceFormat.format,
-        "\n  Present mode: ", pOptions->preferredPresentMode,
-        "\n  Buffer size:  ", pOptions->preferredBufferSize.width, "x", pOptions->preferredBufferSize.height));
+        "\n  Format:       ", options.preferredSurfaceFormat.format,
+        "\n  Present mode: ", options.preferredPresentMode,
+        "\n  Buffer size:  ", options.preferredBufferSize.width, "x", options.preferredBufferSize.height));
       
       if (m_swapchain == nullptr)
-        m_swapchain = m_device->createSwapchain(m_surface, *pOptions);
+        m_swapchain = m_device->createSwapchain(m_surface, options);
       else
-        m_swapchain->changeProperties(*pOptions);
+        m_swapchain->changeProperties(options);
       
-      m_options = *pOptions;
+      m_options = options;
     }
   }
   
@@ -339,20 +366,11 @@ namespace dxvk {
   }
   
   
-  void DxgiVkPresenter::SetGammaControl(
-    const DXGI_VK_GAMMA_CURVE*          pGammaCurve) {
-    m_context->beginRecording(
-      m_device->createCommandList());
+  Rc<DxvkSurface> DxgiVkPresenter::CreateSurface() {
+    HINSTANCE instance = reinterpret_cast<HINSTANCE>(
+      GetWindowLongPtr(m_window, GWLP_HINSTANCE));
     
-    m_context->updateImage(m_gammaTexture,
-      VkImageSubresourceLayers { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 },
-      VkOffset3D { 0, 0, 0 },
-      VkExtent3D { DXGI_VK_GAMMA_CP_COUNT, 1, 1 },
-      pGammaCurve, 0, 0);
-    
-    m_device->submitCommandList(
-      m_context->endRecording(),
-      nullptr, nullptr);
+    return m_device->adapter()->createSurface(instance, m_window);
   }
   
   

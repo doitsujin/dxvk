@@ -6,6 +6,8 @@ For the current status of the project, please refer to the [project wiki](https:
 
 For binary releases, see the [releases](https://github.com/doitsujin/dxvk/releases) page.
 
+For Direct3D 10 support, check out [DXUP](https://github.com/Joshua-Ashton/dxup), which can be used together with DXVK.
+
 ## Build instructions
 
 ### Requirements:

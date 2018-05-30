@@ -92,6 +92,16 @@ namespace dxvk {
   }
   
   
+  void SpirvModule::setInvocations(
+          uint32_t                entryPointId,
+          uint32_t                invocations) {
+    m_execModeInfo.putIns  (spv::OpExecutionMode, 4);
+    m_execModeInfo.putWord (entryPointId);
+    m_execModeInfo.putWord (spv::ExecutionModeInvocations);
+    m_execModeInfo.putInt32(invocations);
+  }
+  
+  
   void SpirvModule::setLocalSize(
           uint32_t                entryPointId,
           uint32_t                x,
@@ -329,6 +339,19 @@ namespace dxvk {
     return resultId;
   }
     
+  
+  uint32_t SpirvModule::specConst32(
+          uint32_t                typeId,
+          uint32_t                value) {
+    uint32_t resultId = this->allocateId();
+    
+    m_typeConstDefs.putIns  (spv::OpSpecConstant, 4);
+    m_typeConstDefs.putWord (typeId);
+    m_typeConstDefs.putWord (resultId);
+    m_typeConstDefs.putWord (value);
+    return resultId;
+  }
+  
   
   void SpirvModule::decorate(
           uint32_t                object,

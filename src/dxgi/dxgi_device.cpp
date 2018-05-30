@@ -125,7 +125,7 @@ namespace dxvk {
           IDXGIResource* const*         ppResources,
           DXGI_OFFER_RESOURCE_PRIORITY  Priority) {
 
-    Logger::err("DxgiDevice::OfferResources: not implemented");
+    Logger::err("DxgiDevice::OfferResources: Not implemented");
     return DXGI_ERROR_UNSUPPORTED;
   }
 
@@ -134,13 +134,13 @@ namespace dxvk {
           UINT                          NumResources,
           IDXGIResource* const*         ppResources,
           BOOL*                         pDiscarded) {
-    Logger::err("DxgiDevice::ReclaimResources: not implemented");
+    Logger::err("DxgiDevice::ReclaimResources: Not implemented");
     return DXGI_ERROR_UNSUPPORTED;    
   }
 
 
   HRESULT STDMETHODCALLTYPE DxgiDevice::EnqueueSetEvent(HANDLE hEvent) {
-    Logger::err("DxgiDevice::EnqueueSetEvent: not implemented");
+    Logger::err("DxgiDevice::EnqueueSetEvent: Not implemented");
     return DXGI_ERROR_UNSUPPORTED;           
   }
   

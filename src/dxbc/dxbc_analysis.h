@@ -37,6 +37,9 @@ namespace dxvk {
     
     DxbcClipCullInfo clipCullIn;
     DxbcClipCullInfo clipCullOut;
+    
+    bool usesDerivatives  = false;
+    bool usesKill         = false;
   };
   
   /**

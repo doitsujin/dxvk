@@ -79,6 +79,10 @@ namespace dxvk {
             uint32_t                entryPointId,
             spv::ExecutionMode      executionMode);
     
+    void setInvocations(
+            uint32_t                entryPointId,
+            uint32_t                invocations);
+    
     void setLocalSize(
             uint32_t                entryPointId,
             uint32_t                x,
@@ -153,6 +157,10 @@ namespace dxvk {
     
     uint32_t specConstBool(
             bool                    v);
+    
+    uint32_t specConst32(
+            uint32_t                typeId,
+            uint32_t                value);
     
     void decorate(
             uint32_t                object,

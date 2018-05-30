@@ -54,7 +54,7 @@ namespace dxvk {
             void**                  ppvObject);
     
     HRESULT STDMETHODCALLTYPE CreateSwapChainBackBuffer(
-      const DXGI_SWAP_CHAIN_DESC*   pSwapChainDesc,
+      const DXGI_SWAP_CHAIN_DESC1*  pSwapChainDesc,
             IDXGIVkBackBuffer**     ppInterface);
     
     HRESULT STDMETHODCALLTYPE FlushRenderingCommands();

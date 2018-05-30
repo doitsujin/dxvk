@@ -182,7 +182,7 @@ namespace dxvk {
     
     try {
       const Com<D3D11Texture1D> texture = new D3D11Texture1D(this, &desc);
-      this->InitTexture(texture->GetCommonTexture()->GetImage(), pInitialData);
+      this->InitTexture(texture->GetCommonTexture(), pInitialData);
       *ppTexture1D = texture.ref();
       return S_OK;
     } catch (const DxvkError& e) {
@@ -219,7 +219,7 @@ namespace dxvk {
     
     try {
       const Com<D3D11Texture2D> texture = new D3D11Texture2D(this, &desc);
-      this->InitTexture(texture->GetCommonTexture()->GetImage(), pInitialData);
+      this->InitTexture(texture->GetCommonTexture(), pInitialData);
       *ppTexture2D = texture.ref();
       return S_OK;
     } catch (const DxvkError& e) {
@@ -256,7 +256,7 @@ namespace dxvk {
       
     try {
       const Com<D3D11Texture3D> texture = new D3D11Texture3D(this, &desc);
-      this->InitTexture(texture->GetCommonTexture()->GetImage(), pInitialData);
+      this->InitTexture(texture->GetCommonTexture(), pInitialData);
       *ppTexture3D = texture.ref();
       return S_OK;
     } catch (const DxvkError& e) {
@@ -413,9 +413,6 @@ namespace dxvk {
           viewInfo.numLevels = desc.Texture2D.MipLevels;
           viewInfo.minLayer  = 0;
           viewInfo.numLayers = 1;
-          
-          if (m_dxbcOptions.test(DxbcOption::ForceTex2DArray))
-            viewInfo.type = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
           break;
           
         case D3D11_SRV_DIMENSION_TEXTURE2DARRAY:
@@ -432,9 +429,6 @@ namespace dxvk {
           viewInfo.numLevels = 1;
           viewInfo.minLayer  = 0;
           viewInfo.numLayers = 1;
-          
-          if (m_dxbcOptions.test(DxbcOption::ForceTex2DArray))
-            viewInfo.type = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
           break;
           
         case D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY:
@@ -624,9 +618,6 @@ namespace dxvk {
           viewInfo.numLevels = 1;
           viewInfo.minLayer  = 0;
           viewInfo.numLayers = 1;
-          
-          if (m_dxbcOptions.test(DxbcOption::ForceTex2DArray))
-            viewInfo.type = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
           break;
           
         case D3D11_UAV_DIMENSION_TEXTURE2DARRAY:
@@ -1124,7 +1115,10 @@ namespace dxvk {
           ID3D11GeometryShader**      ppGeometryShader) {
     InitReturnPtr(ppGeometryShader);
     Logger::err("D3D11Device::CreateGeometryShaderWithStreamOutput: Not implemented");
-    return E_NOTIMPL;
+    
+    // Returning S_OK instead of an error fixes some issues
+    // with Overwatch until this is properly implemented
+    return m_d3d11Options.test(D3D11Option::FakeStreamOutSupport) ? S_OK : E_NOTIMPL;
   }
   
   
@@ -1813,6 +1807,8 @@ namespace dxvk {
       enabled.shaderFloat64                         = supported.shaderFloat64;
       enabled.shaderInt64                           = supported.shaderInt64;
       enabled.tessellationShader                    = VK_TRUE;
+      // TODO enable unconditionally once RADV gains support
+      enabled.shaderStorageImageMultisample         = supported.shaderStorageImageMultisample;
       enabled.shaderStorageImageReadWithoutFormat   = supported.shaderStorageImageReadWithoutFormat;
       enabled.shaderStorageImageWriteWithoutFormat  = VK_TRUE;
     }
@@ -1849,8 +1845,10 @@ namespace dxvk {
   void D3D11Device::InitBuffer(
           D3D11Buffer*                pBuffer,
     const D3D11_SUBRESOURCE_DATA*     pInitialData) {
-    const DxvkBufferSlice bufferSlice
-      = pBuffer->GetBufferSlice();
+    const DxvkBufferSlice bufferSlice = pBuffer->GetBufferSlice();
+    
+    D3D11_BUFFER_DESC desc;
+    pBuffer->GetDesc(&desc);
     
     if (pInitialData != nullptr && pInitialData->pSysMem != nullptr) {
       LockResourceInitContext();
@@ -1862,13 +1860,24 @@ namespace dxvk {
         pInitialData->pSysMem);
       
       UnlockResourceInitContext(1);
+    } else if (desc.Usage == D3D11_USAGE_DEFAULT) {
+      LockResourceInitContext();
+      
+      m_resourceInitContext->clearBuffer(
+        bufferSlice.buffer(),
+        bufferSlice.offset(),
+        bufferSlice.length(),
+        0u);
+      
+      UnlockResourceInitContext(1);
     }
   }
   
   
   void D3D11Device::InitTexture(
-    const Rc<DxvkImage>&              image,
+          D3D11CommonTexture*         pTexture,
     const D3D11_SUBRESOURCE_DATA*     pInitialData) {
+    const Rc<DxvkImage> image = pTexture->GetImage();
     const DxvkFormatInfo* formatInfo = imageFormatInfo(image->info().format);
     
     if (pInitialData != nullptr && pInitialData->pSysMem != nullptr) {

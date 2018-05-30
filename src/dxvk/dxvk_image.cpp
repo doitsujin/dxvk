@@ -87,25 +87,75 @@ namespace dxvk {
     const Rc<DxvkImage>&            image,
     const DxvkImageViewCreateInfo&  info)
   : m_vkd(vkd), m_image(image), m_info(info) {
+    // Since applications tend to bind views 
+    for (uint32_t i = 0; i < ViewCount; i++)
+      m_views[i] = VK_NULL_HANDLE;
+    
+    switch (info.type) {
+      case VK_IMAGE_VIEW_TYPE_1D:
+      case VK_IMAGE_VIEW_TYPE_1D_ARRAY: {
+        this->createView(VK_IMAGE_VIEW_TYPE_1D,       1);
+        this->createView(VK_IMAGE_VIEW_TYPE_1D_ARRAY, info.numLayers);
+      } break;
+      
+      case VK_IMAGE_VIEW_TYPE_2D:
+      case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
+      case VK_IMAGE_VIEW_TYPE_CUBE:
+      case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY: {
+        this->createView(VK_IMAGE_VIEW_TYPE_2D,       1);
+        this->createView(VK_IMAGE_VIEW_TYPE_2D_ARRAY, info.numLayers);
+        
+        if (m_image->info().flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) {
+          uint32_t cubeCount = info.numLayers / 6;
+        
+          if (cubeCount > 0) {
+            this->createView(VK_IMAGE_VIEW_TYPE_CUBE,       6);
+            this->createView(VK_IMAGE_VIEW_TYPE_CUBE_ARRAY, 6 * cubeCount);
+          }
+        }
+      } break;
+        
+      case VK_IMAGE_VIEW_TYPE_3D: {
+        this->createView(VK_IMAGE_VIEW_TYPE_3D, 1);
+        
+        if (m_image->info().flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT_KHR) {
+          this->createView(VK_IMAGE_VIEW_TYPE_2D,       1);
+          this->createView(VK_IMAGE_VIEW_TYPE_2D_ARRAY, m_image->info().extent.depth);
+        }
+      } break;
+      
+      default:
+        throw DxvkError(str::format("DxvkImageView: Invalid view type: ", info.type));
+    }
+  }
+  
+  
+  DxvkImageView::~DxvkImageView() {
+    for (uint32_t i = 0; i < ViewCount; i++)
+      m_vkd->vkDestroyImageView(m_vkd->device(), m_views[i], nullptr);
+  }
+  
+  
+  void DxvkImageView::createView(VkImageViewType type, uint32_t numLayers) {
     VkImageSubresourceRange subresourceRange;
-    subresourceRange.aspectMask     = info.aspect;
-    subresourceRange.baseMipLevel   = info.minLevel;
-    subresourceRange.levelCount     = info.numLevels;
-    subresourceRange.baseArrayLayer = info.minLayer;
-    subresourceRange.layerCount     = info.numLayers;
+    subresourceRange.aspectMask     = m_info.aspect;
+    subresourceRange.baseMipLevel   = m_info.minLevel;
+    subresourceRange.levelCount     = m_info.numLevels;
+    subresourceRange.baseArrayLayer = m_info.minLayer;
+    subresourceRange.layerCount     = numLayers;
     
     VkImageViewCreateInfo viewInfo;
     viewInfo.sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     viewInfo.pNext            = nullptr;
     viewInfo.flags            = 0;
-    viewInfo.image            = image->handle();
-    viewInfo.viewType         = info.type;
-    viewInfo.format           = info.format;
-    viewInfo.components       = info.swizzle;
+    viewInfo.image            = m_image->handle();
+    viewInfo.viewType         = type;
+    viewInfo.format           = m_info.format;
+    viewInfo.components       = m_info.swizzle;
     viewInfo.subresourceRange = subresourceRange;
     
     if (m_vkd->vkCreateImageView(m_vkd->device(),
-        &viewInfo, nullptr, &m_view) != VK_SUCCESS) {
+          &viewInfo, nullptr, &m_views[type]) != VK_SUCCESS) {
       throw DxvkError(str::format(
         "DxvkImageView: Failed to create image view:"
         "\n  View type:       ", viewInfo.viewType,
@@ -117,23 +167,17 @@ namespace dxvk {
         "\n    Array layers:  ", viewInfo.subresourceRange.baseArrayLayer, " - ",
                                  viewInfo.subresourceRange.layerCount,
         "\n  Image properties:",
-        "\n    Type:          ", image->info().type,
-        "\n    Format:        ", image->info().format,
-        "\n    Extent:        ", "(", image->info().extent.width,
-                                 ",", image->info().extent.height,
-                                 ",", image->info().extent.depth, ")",
-        "\n    Mip levels:    ", image->info().mipLevels,
-        "\n    Array layers:  ", image->info().numLayers,
-        "\n    Samples:       ", image->info().sampleCount,
-        "\n    Usage:         ", std::hex, image->info().usage,
-        "\n    Tiling:        ", image->info().tiling));
+        "\n    Type:          ", m_image->info().type,
+        "\n    Format:        ", m_image->info().format,
+        "\n    Extent:        ", "(", m_image->info().extent.width,
+                                 ",", m_image->info().extent.height,
+                                 ",", m_image->info().extent.depth, ")",
+        "\n    Mip levels:    ", m_image->info().mipLevels,
+        "\n    Array layers:  ", m_image->info().numLayers,
+        "\n    Samples:       ", m_image->info().sampleCount,
+        "\n    Usage:         ", std::hex, m_image->info().usage,
+        "\n    Tiling:        ", m_image->info().tiling));
     }
-  }
-  
-  
-  DxvkImageView::~DxvkImageView() {
-    m_vkd->vkDestroyImageView(
-      m_vkd->device(), m_view, nullptr);
   }
   
 }

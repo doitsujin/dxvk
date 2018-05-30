@@ -4,6 +4,13 @@
 
 namespace dxvk {
 
+  struct DxvkEq {
+    template<typename T>
+    size_t operator () (const T& a, const T& b) const {
+      return a.eq(b);
+    }
+  };
+
   struct DxvkHash {
     template<typename T>
     size_t operator () (const T& object) const {

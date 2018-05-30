@@ -18,10 +18,10 @@ namespace dxvk {
     /// Workaround for bugs in older Nvidia drivers.
     UseSimpleMinMaxClamp,
     
-    /// Enforces the use of array views even when dealing
-    /// with non-array texture types. Some games do not
-    /// bind the correct texture type to the pipeline.
-    ForceTex2DArray,
+    /// Defer kill operation to the end of the shader.
+    /// Fixes derivatives that are undefined due to
+    /// non-uniform control flow in fragment shaders.
+    DeferKill,
   };
   
   using DxbcOptions = Flags<DxbcOption>;

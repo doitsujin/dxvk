@@ -40,7 +40,7 @@ IDXGIVkDevice : public IDXGIDevice2 {
  * this interface.
  */
 MIDL_INTERFACE("907bf281-ea3c-43b4-a8e4-9f231107b4ff")
-IDXGIVkAdapter : public IDXGIAdapter1 {
+IDXGIVkAdapter : public IDXGIAdapter2 {
   static const GUID guid;
   
   virtual dxvk::Rc<dxvk::DxvkAdapter> STDMETHODCALLTYPE GetDXVKAdapter() = 0;
@@ -109,7 +109,7 @@ IDXGIVkPresenter : public IUnknown {
    * \returns \c S_OK on success
    */
   virtual HRESULT STDMETHODCALLTYPE CreateSwapChainBackBuffer(
-    const DXGI_SWAP_CHAIN_DESC*       pSwapChainDesc,
+    const DXGI_SWAP_CHAIN_DESC1*      pSwapChainDesc,
           IDXGIVkBackBuffer**         ppBackBuffer) = 0;
   
   /**
