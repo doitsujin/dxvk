@@ -942,9 +942,12 @@ namespace dxvk {
       DxbcModule dxbcModule(dxbcReader);
       
       const Rc<DxbcIsgn> inputSignature = dxbcModule.isgn();
+
+      uint32_t attrMask = 0;
+      uint32_t bindMask = 0;
       
-      std::vector<DxvkVertexAttribute> attributes;
-      std::vector<DxvkVertexBinding>   bindings;
+      std::array<DxvkVertexAttribute, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> attrList;
+      std::array<DxvkVertexBinding,   D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> bindList;
       
       for (uint32_t i = 0; i < NumElements; i++) {
         const DxbcSgnEntry* entry = inputSignature->find(
@@ -956,12 +959,11 @@ namespace dxvk {
             "D3D11Device: No such vertex shader semantic: ",
             pInputElementDescs[i].SemanticName,
             pInputElementDescs[i].SemanticIndex));
-          continue;
         }
         
         // Create vertex input attribute description
         DxvkVertexAttribute attrib;
-        attrib.location = entry->registerId;
+        attrib.location = entry != nullptr ? entry->registerId : 0;
         attrib.binding  = pInputElementDescs[i].InputSlot;
         attrib.format   = m_dxgiAdapter->LookupFormat(
           pInputElementDescs[i].Format, DXGI_VK_FORMAT_MODE_COLOR).Format;
@@ -975,7 +977,7 @@ namespace dxvk {
           attrib.offset = 0;
           
           for (uint32_t j = 1; j <= i; j++) {
-            const DxvkVertexAttribute& prev = attributes.at(i - j);
+            const DxvkVertexAttribute& prev = attrList.at(i - j);
             
             if (prev.binding == attrib.binding) {
               const DxvkFormatInfo* formatInfo = imageFormatInfo(prev.format);
@@ -984,8 +986,8 @@ namespace dxvk {
             }
           }
         }
-        
-        attributes.push_back(attrib);
+
+        attrList.at(i) = attrib;
         
         // Create vertex input binding description. The
         // stride is dynamic state in D3D11 and will be
@@ -994,18 +996,19 @@ namespace dxvk {
         binding.binding   = pInputElementDescs[i].InputSlot;
         binding.fetchRate = pInputElementDescs[i].InstanceDataStepRate;
         binding.inputRate = pInputElementDescs[i].InputSlotClass == D3D11_INPUT_PER_INSTANCE_DATA
-          ? VK_VERTEX_INPUT_RATE_INSTANCE
-          : VK_VERTEX_INPUT_RATE_VERTEX;
+          ? VK_VERTEX_INPUT_RATE_INSTANCE : VK_VERTEX_INPUT_RATE_VERTEX;
         
         // Check if the binding was already defined. If so, the
         // parameters must be identical (namely, the input rate).
         bool bindingDefined = false;
         
-        for (const auto& existingBinding : bindings) {
-          if (binding.binding == existingBinding.binding) {
+        for (uint32_t j = 0; j < i; j++) {
+          uint32_t bindingId = attrList.at(j).binding;
+
+          if (binding.binding == bindingId) {
             bindingDefined = true;
             
-            if (binding.inputRate != existingBinding.inputRate) {
+            if (binding.inputRate != bindList.at(bindingId).inputRate) {
               Logger::err(str::format(
                 "D3D11Device: Conflicting input rate for binding ",
                 binding.binding));
@@ -1013,19 +1016,29 @@ namespace dxvk {
             }
           }
         }
-        
+
         if (!bindingDefined)
-          bindings.push_back(binding);
+          bindList.at(binding.binding) = binding;
+        
+        if (entry != nullptr) {
+          attrMask |= 1u << i;
+          bindMask |= 1u << binding.binding;
+        }
       }
-      
+
+      // Compact the attribute and binding lists to filter
+      // out attributes and bindings not used by the shader
+      uint32_t attrCount = CompactSparseList(attrList.data(), attrMask);
+      uint32_t bindCount = CompactSparseList(bindList.data(), bindMask);
+
       // Check if there are any semantics defined in the
       // shader that are not included in the current input
       // layout.
       for (auto i = inputSignature->begin(); i != inputSignature->end(); i++) {
         bool found = i->systemValue != DxbcSystemValue::None;
         
-        for (uint32_t j = 0; j < attributes.size() && !found; j++)
-          found = attributes.at(j).location == i->registerId;
+        for (uint32_t j = 0; j < attrCount && !found; j++)
+          found = attrList.at(j).location == i->registerId;
         
         if (!found) {
           Logger::warn(str::format(
@@ -1035,20 +1048,13 @@ namespace dxvk {
         }
       }
       
-      std::sort(bindings.begin(), bindings.end(),
-        [] (const DxvkVertexBinding& a, const DxvkVertexBinding& b) {
-          return a.binding < b.binding;
-        });
-      
       // Create the actual input layout object
       // if the application requests it.
       if (ppInputLayout != nullptr) {
         *ppInputLayout = ref(
           new D3D11InputLayout(this,
-            attributes.size(),
-            attributes.data(),
-            bindings.size(),
-            bindings.data()));
+            attrCount, attrList.data(),
+            bindCount, bindList.data()));
       }
       
       return S_OK;
