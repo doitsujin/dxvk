@@ -3670,7 +3670,7 @@ namespace dxvk {
       cond.labelIf  = m_module.allocateId();
       cond.labelEnd = m_module.allocateId();
       
-      m_module.opSelectionMerge(cond.labelIf, spv::SelectionControlMaskNone);
+      m_module.opSelectionMerge(cond.labelEnd, spv::SelectionControlMaskNone);
       m_module.opBranchConditional(zeroTest.id, cond.labelIf, cond.labelEnd);
       
       // OpKill terminates the block
