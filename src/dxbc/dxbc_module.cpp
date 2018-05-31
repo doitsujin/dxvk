@@ -24,14 +24,10 @@ namespace dxvk {
         m_shexChunk = new DxbcShex(chunkReader);
       
       if ((tag == "ISGN"))
-        m_isgnChunk = new DxbcIsgn(chunkReader);
+        m_isgnChunk = new DxbcIsgn(chunkReader, tag);
       
-      if ((tag == "OSGN"))
-        m_osgnChunk = new DxbcIsgn(chunkReader);
-      
-//       if ((tag == "OSG5"))
-//         m_osgnChunk = new DxbcIsgn(chunkReader);
-      
+      if ((tag == "OSGN") || (tag == "OSG5"))
+        m_osgnChunk = new DxbcIsgn(chunkReader, tag);
     }
   }
   

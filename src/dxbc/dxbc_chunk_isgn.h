@@ -22,6 +22,7 @@ namespace dxvk {
     DxbcRegMask       componentMask;
     DxbcScalarType    componentType;
     DxbcSystemValue   systemValue;
+    uint32_t          streamId;
   };
   
   /**
@@ -34,7 +35,7 @@ namespace dxvk {
     
   public:
     
-    DxbcIsgn(DxbcReader reader);
+    DxbcIsgn(DxbcReader reader, DxbcTag tag);
     ~DxbcIsgn();
     
     auto begin() const { return m_entries.cbegin(); }
