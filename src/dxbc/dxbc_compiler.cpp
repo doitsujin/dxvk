@@ -4210,35 +4210,6 @@ namespace dxvk {
   }
   
   
-  DxbcRegisterPointer DxbcCompiler::emitGetConstBufPtr(
-    const DxbcRegister&           operand) {
-    // Constant buffers take a two-dimensional index:
-    //    (0) register index (immediate)
-    //    (1) constant offset (relative)
-    DxbcRegisterInfo info;
-    info.type.ctype   = DxbcScalarType::Float32;
-    info.type.ccount  = 4;
-    info.type.alength = 0;
-    info.sclass = spv::StorageClassUniform;
-    
-    const uint32_t regId = operand.idx[0].offset;
-    const DxbcRegisterValue constId = emitIndexLoad(operand.idx[1]);
-    
-    const uint32_t ptrTypeId = getPointerTypeId(info);
-    
-    const std::array<uint32_t, 2> indices =
-      {{ m_module.consti32(0), constId.id }};
-    
-    DxbcRegisterPointer result;
-    result.type.ctype  = info.type.ctype;
-    result.type.ccount = info.type.ccount;
-    result.id = m_module.opAccessChain(ptrTypeId,
-      m_constantBuffers.at(regId).varId,
-      indices.size(), indices.data());
-    return result;
-  }
-  
-  
   DxbcRegisterPointer DxbcCompiler::emitGetImmConstBufPtr(
     const DxbcRegister&           operand) {
     if (m_immConstBuf == 0)
@@ -4280,9 +4251,6 @@ namespace dxvk {
       
       case DxbcOperandType::Output:
         return emitGetOutputPtr(operand);
-      
-      case DxbcOperandType::ConstantBuffer:
-        return emitGetConstBufPtr(operand);
       
       case DxbcOperandType::ImmediateConstantBuffer:
         return emitGetImmConstBufPtr(operand);
@@ -4740,6 +4708,22 @@ namespace dxvk {
   }
   
   
+  DxbcRegisterValue DxbcCompiler::emitIndexBoundCheck(
+          DxbcRegisterValue       index,
+          DxbcRegisterValue       count) {
+    index = emitRegisterBitcast(index, DxbcScalarType::Uint32);
+    count = emitRegisterBitcast(count, DxbcScalarType::Uint32);
+
+    DxbcRegisterValue result;
+    result.type.ctype  = DxbcScalarType::Bool;
+    result.type.ccount = index.type.ccount;
+    result.id = m_module.opULessThan(
+      getVectorTypeId(result.type),
+      index.id, count.id);
+    return result;
+  }
+
+
   DxbcRegisterValue DxbcCompiler::emitIndexLoad(
           DxbcRegIndex            index) {
     if (index.relReg != nullptr) {
@@ -4802,9 +4786,56 @@ namespace dxvk {
   }
   
   
+  DxbcRegisterValue DxbcCompiler::emitConstBufLoadRaw(
+    const DxbcRegister&           operand) {
+    // Constant buffers take a two-dimensional index:
+    //    (0) register index (immediate)
+    //    (1) constant offset (relative)
+    DxbcRegisterInfo info;
+    info.type.ctype   = DxbcScalarType::Float32;
+    info.type.ccount  = 4;
+    info.type.alength = 0;
+    info.sclass = spv::StorageClassUniform;
+    
+    const uint32_t regId = operand.idx[0].offset;
+    const DxbcRegisterValue constId = emitIndexLoad(operand.idx[1]);
+    
+    const uint32_t ptrTypeId = getPointerTypeId(info);
+    
+    const std::array<uint32_t, 2> indices =
+      {{ m_module.consti32(0), constId.id }};
+    
+    DxbcRegisterPointer pointer;
+    pointer.type.ctype  = info.type.ctype;
+    pointer.type.ccount = info.type.ccount;
+    pointer.id = m_module.opAccessChain(ptrTypeId,
+      m_constantBuffers.at(regId).varId,
+      indices.size(), indices.data());
+    
+    DxbcRegisterValue value = emitValueLoad(pointer);
+
+    // For dynamically indexed constant buffers, we should
+    // return a vec4(ß.0f) if the index is out of bounds
+    if (operand.idx[1].relReg != nullptr) {
+      DxbcRegisterValue cbSize;
+      cbSize.type = { DxbcScalarType::Uint32, 1 };
+      cbSize.id   = m_module.constu32(m_constantBuffers.at(regId).size);
+      DxbcRegisterValue inBounds = emitRegisterExtend(emitIndexBoundCheck(constId, cbSize), 4);
+      
+      value.id = m_module.opSelect(
+        getVectorTypeId(value.type), inBounds.id, value.id,
+        m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f));
+    }
+
+    return value;
+  }
+
+
   DxbcRegisterValue DxbcCompiler::emitRegisterLoadRaw(
     const DxbcRegister&           reg) {
-    return emitValueLoad(emitGetOperandPtr(reg));
+    return reg.type == DxbcOperandType::ConstantBuffer
+      ? emitConstBufLoadRaw(reg)
+      : emitValueLoad(emitGetOperandPtr(reg));
   }
   
   
