@@ -5322,6 +5322,50 @@ namespace dxvk {
         emitValueStore(ptr, value, mask);
       } break;
       
+      case DxbcSystemValue::RenderTargetId: {
+        if (m_version.type() != DxbcProgramType::GeometryShader)
+          enableShaderViewportIndexLayer();
+
+        if (m_gs.builtinLayer == 0) {
+          m_gs.builtinLayer = emitNewBuiltinVariable({
+            { DxbcScalarType::Uint32, 1, 0 },
+            spv::StorageClassOutput },
+            spv::BuiltInLayer,
+            "o_layer");
+        }
+        
+        DxbcRegisterPointer ptr;
+        ptr.type = { DxbcScalarType::Uint32, 1 };
+        ptr.id   = m_gs.builtinLayer;
+        
+        emitValueStore(
+          ptr, emitRegisterExtract(value, mask),
+          DxbcRegMask(true, false, false, false));
+      } break;
+      
+      case DxbcSystemValue::ViewportId: {
+        if (m_version.type() != DxbcProgramType::GeometryShader)
+          enableShaderViewportIndexLayer();
+
+        if (m_gs.builtinViewportId == 0) {
+          m_module.enableCapability(spv::CapabilityMultiViewport);
+          
+          m_gs.builtinViewportId = emitNewBuiltinVariable({
+            { DxbcScalarType::Uint32, 1, 0 },
+            spv::StorageClassOutput },
+            spv::BuiltInViewportIndex,
+            "o_viewport");
+        }
+        
+        DxbcRegisterPointer ptr;
+        ptr.type = { DxbcScalarType::Uint32, 1};
+        ptr.id   = m_gs.builtinViewportId;
+        
+        emitValueStore(
+          ptr, emitRegisterExtract(value, mask),
+          DxbcRegMask(true, false, false, false));
+      } break;
+      
       default:
         Logger::warn(str::format(
           "DxbcCompiler: Unhandled VS SV output: ", sv));
@@ -5394,46 +5438,10 @@ namespace dxvk {
       case DxbcSystemValue::Position:
       case DxbcSystemValue::CullDistance:
       case DxbcSystemValue::ClipDistance:
+      case DxbcSystemValue::RenderTargetId:
+      case DxbcSystemValue::ViewportId:
         emitVsSystemValueStore(sv, mask, value);
         break;
-      
-      case DxbcSystemValue::RenderTargetId: {
-        if (m_gs.builtinLayer == 0) {
-          m_gs.builtinLayer = emitNewBuiltinVariable({
-            { DxbcScalarType::Uint32, 1, 0 },
-            spv::StorageClassOutput },
-            spv::BuiltInLayer,
-            "gs_layer");
-        }
-        
-        DxbcRegisterPointer ptr;
-        ptr.type = { DxbcScalarType::Uint32, 1 };
-        ptr.id   = m_gs.builtinLayer;
-        
-        emitValueStore(
-          ptr, emitRegisterExtract(value, mask),
-          DxbcRegMask(true, false, false, false));
-      } break;
-      
-      case DxbcSystemValue::ViewportId: {
-        if (m_gs.builtinViewportId == 0) {
-          m_module.enableCapability(spv::CapabilityMultiViewport);
-          
-          m_gs.builtinViewportId = emitNewBuiltinVariable({
-            { DxbcScalarType::Uint32, 1, 0 },
-            spv::StorageClassOutput },
-            spv::BuiltInViewportIndex,
-            "gs_viewport_id");
-        }
-        
-        DxbcRegisterPointer ptr;
-        ptr.type = { DxbcScalarType::Uint32, 1};
-        ptr.id   = m_gs.builtinViewportId;
-        
-        emitValueStore(
-          ptr, emitRegisterExtract(value, mask),
-          DxbcRegMask(true, false, false, false));
-      } break;
       
       case DxbcSystemValue::PrimitiveId: {
         if (m_primitiveIdOut == 0) {
@@ -5477,6 +5485,8 @@ namespace dxvk {
       case DxbcSystemValue::Position:
       case DxbcSystemValue::CullDistance:
       case DxbcSystemValue::ClipDistance:
+      case DxbcSystemValue::RenderTargetId:
+      case DxbcSystemValue::ViewportId:
         emitVsSystemValueStore(sv, mask, value);
         break;
       
@@ -6318,6 +6328,16 @@ namespace dxvk {
   }
   
   
+  void DxbcCompiler::enableShaderViewportIndexLayer() {
+    if (!m_extensions.shaderViewportIndexLayer) {
+      m_extensions.shaderViewportIndexLayer = true;
+      
+      m_module.enableExtension("SPV_EXT_shader_viewport_index_layer");
+      m_module.enableCapability(spv::CapabilityShaderViewportIndexLayerEXT);
+    }
+  }
+
+
   DxbcCfgBlock* DxbcCompiler::cfgFindBlock(
     const std::initializer_list<DxbcCfgBlockType>& types) {
     for (auto cur =  m_controlFlowBlocks.rbegin();

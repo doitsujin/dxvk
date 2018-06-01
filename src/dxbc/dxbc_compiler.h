@@ -328,6 +328,18 @@ namespace dxvk {
     uint32_t stride;
   };
   
+
+  /**
+   * \brief SPIR-V extension set
+   * 
+   * Keeps track of which optional SPIR-V extensions
+   * are enabled so that any required setup code is
+   * only run once. 
+   */
+  struct DxbcSpirvExtensions {
+    bool shaderViewportIndexLayer = false;
+  };
+
   
   /**
    * \brief DXBC to SPIR-V shader compiler
@@ -472,6 +484,10 @@ namespace dxvk {
     DxbcCompilerGsPart m_gs;
     DxbcCompilerPsPart m_ps;
     DxbcCompilerCsPart m_cs;
+
+    /////////////////////////////
+    // Enabled SPIR-V extensions
+    DxbcSpirvExtensions m_extensions;
     
     /////////////////////////////////////////////////////
     // Shader interface and metadata declaration methods
@@ -1050,6 +1066,10 @@ namespace dxvk {
     
     uint32_t emitBuiltinTessLevelInner(
             spv::StorageClass storageClass);
+
+    ////////////////////////////////
+    // Extension enablement methods
+    void enableShaderViewportIndexLayer();
     
     ////////////////
     // Misc methods
