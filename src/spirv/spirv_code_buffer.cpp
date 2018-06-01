@@ -109,7 +109,7 @@ namespace dxvk {
   
   void SpirvCodeBuffer::putHeader(uint32_t boundIds) {
     this->putWord(spv::MagicNumber);
-    this->putWord(spv::Version);
+    this->putWord(0x00010000); // v1.0
     this->putWord(0); // Generator
     this->putWord(boundIds);
     this->putWord(0); // Schema

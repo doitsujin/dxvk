@@ -1,4 +1,4 @@
-// Copyright (c) 2014-2017 The Khronos Group Inc.
+// Copyright (c) 2014-2018 The Khronos Group Inc.
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and/or associated documentation files (the "Materials"),
@@ -46,12 +46,12 @@ namespace spv {
 
 typedef unsigned int Id;
 
-#define SPV_VERSION 0x10000
-#define SPV_REVISION 12
+#define SPV_VERSION 0x10200
+#define SPV_REVISION 2
 
 static const unsigned int MagicNumber = 0x07230203;
-static const unsigned int Version = 0x00010000;
-static const unsigned int Revision = 12;
+static const unsigned int Version = 0x00010200;
+static const unsigned int Revision = 2;
 static const unsigned int OpCodeMask = 0xffff;
 static const unsigned int WordCountShift = 16;
 
@@ -122,6 +122,13 @@ enum ExecutionMode {
     ExecutionModeOutputTriangleStrip = 29,
     ExecutionModeVecTypeHint = 30,
     ExecutionModeContractionOff = 31,
+    ExecutionModeInitializer = 33,
+    ExecutionModeFinalizer = 34,
+    ExecutionModeSubgroupSize = 35,
+    ExecutionModeSubgroupsPerWorkgroup = 36,
+    ExecutionModeSubgroupsPerWorkgroupId = 37,
+    ExecutionModeLocalSizeId = 38,
+    ExecutionModeLocalSizeHintId = 39,
     ExecutionModePostDepthCoverage = 4446,
     ExecutionModeStencilRefReplacingEXT = 5027,
     ExecutionModeMax = 0x7fffffff,
@@ -378,11 +385,16 @@ enum Decoration {
     DecorationNoContraction = 42,
     DecorationInputAttachmentIndex = 43,
     DecorationAlignment = 44,
+    DecorationMaxByteOffset = 45,
+    DecorationAlignmentId = 46,
+    DecorationMaxByteOffsetId = 47,
     DecorationExplicitInterpAMD = 4999,
     DecorationOverrideCoverageNV = 5248,
     DecorationPassthroughNV = 5250,
     DecorationViewportRelativeNV = 5252,
     DecorationSecondaryViewportRelativeNV = 5256,
+    DecorationHlslCounterBufferGOOGLE = 5634,
+    DecorationHlslSemanticGOOGLE = 5635,
     DecorationMax = 0x7fffffff,
 };
 
@@ -469,6 +481,8 @@ enum SelectionControlMask {
 enum LoopControlShift {
     LoopControlUnrollShift = 0,
     LoopControlDontUnrollShift = 1,
+    LoopControlDependencyInfiniteShift = 2,
+    LoopControlDependencyLengthShift = 3,
     LoopControlMax = 0x7fffffff,
 };
 
@@ -476,6 +490,8 @@ enum LoopControlMask {
     LoopControlMaskNone = 0,
     LoopControlUnrollMask = 0x00000001,
     LoopControlDontUnrollMask = 0x00000002,
+    LoopControlDependencyInfiniteMask = 0x00000004,
+    LoopControlDependencyLengthMask = 0x00000008,
 };
 
 enum FunctionControlShift {
@@ -626,6 +642,9 @@ enum Capability {
     CapabilityStorageImageReadWithoutFormat = 55,
     CapabilityStorageImageWriteWithoutFormat = 56,
     CapabilityMultiViewport = 57,
+    CapabilitySubgroupDispatch = 58,
+    CapabilityNamedBarrier = 59,
+    CapabilityPipeStorage = 60,
     CapabilitySubgroupBallotKHR = 4423,
     CapabilityDrawParameters = 4427,
     CapabilitySubgroupVoteKHR = 4431,
@@ -953,6 +972,18 @@ enum Op {
     OpAtomicFlagTestAndSet = 318,
     OpAtomicFlagClear = 319,
     OpImageSparseRead = 320,
+    OpSizeOf = 321,
+    OpTypePipeStorage = 322,
+    OpConstantPipeStorage = 323,
+    OpCreatePipeFromPipeStorage = 324,
+    OpGetKernelLocalSizeForSubgroupCount = 325,
+    OpGetKernelMaxNumSubgroups = 326,
+    OpTypeNamedBarrier = 327,
+    OpNamedBarrierInitialize = 328,
+    OpMemoryNamedBarrier = 329,
+    OpModuleProcessed = 330,
+    OpExecutionModeId = 331,
+    OpDecorateId = 332,
     OpSubgroupBallotKHR = 4421,
     OpSubgroupFirstInvocationKHR = 4422,
     OpSubgroupAllKHR = 4428,
@@ -977,6 +1008,8 @@ enum Op {
     OpSubgroupBlockWriteINTEL = 5576,
     OpSubgroupImageBlockReadINTEL = 5577,
     OpSubgroupImageBlockWriteINTEL = 5578,
+    OpDecorateStringGOOGLE = 5632,
+    OpMemberDecorateStringGOOGLE = 5633,
     OpMax = 0x7fffffff,
 };
 
@@ -994,4 +1027,3 @@ inline KernelProfilingInfoMask operator|(KernelProfilingInfoMask a, KernelProfil
 }  // end namespace spv
 
 #endif  // #ifndef spirv_HPP
-
