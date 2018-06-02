@@ -52,6 +52,7 @@ namespace dxvk {
     
     VkSubpassDescription spInfo;
     spInfo.flags                   = 0;
+    spInfo.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
     spInfo.inputAttachmentCount    = 0;
     spInfo.pInputAttachments       = nullptr;
     spInfo.colorAttachmentCount    = 1;
