@@ -1,5 +1,7 @@
 #pragma once
 
+#include <chrono>
+
 #include "d3d11_context.h"
 
 namespace dxvk {
@@ -8,7 +10,8 @@ namespace dxvk {
   class D3D11CommonTexture;
   
   class D3D11ImmediateContext : public D3D11DeviceContext {
-    constexpr static UINT MaxPendingDraws = 500;
+    constexpr static uint32_t MinFlushIntervalUs = 2500;
+    constexpr static uint32_t MaxPendingSubmits  = 2;
   public:
     
     D3D11ImmediateContext(
@@ -56,6 +59,9 @@ namespace dxvk {
     
     DxvkCsThread m_csThread;
     bool         m_csIsBusy = false;
+
+    std::chrono::high_resolution_clock::time_point m_lastFlush
+      = std::chrono::high_resolution_clock::now();
     
     HRESULT MapBuffer(
             D3D11Buffer*                pResource,
@@ -81,6 +87,8 @@ namespace dxvk {
             UINT                              MapFlags);
     
     void EmitCsChunk(Rc<DxvkCsChunk>&& chunk) final;
+
+    void FlushImplicit();
     
   };
   
