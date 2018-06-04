@@ -1,5 +1,9 @@
 #include "dxvk_openvr.h"
 
+#ifdef __GNUC__
+#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
+#endif
+
 #include <openvr/openvr.hpp>
 
 namespace dxvk {
