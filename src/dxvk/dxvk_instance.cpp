@@ -1,4 +1,5 @@
 #include "dxvk_instance.h"
+#include "dxvk_openvr.h"
 
 #include <algorithm>
 
@@ -39,6 +40,11 @@ namespace dxvk {
   }
   
   
+  vk::NameSet DxvkInstance::queryExtraDeviceExtensions(const DxvkAdapter* adapter) const {
+    return m_vr.queryDeviceExtensions(adapter->handle());
+  }
+  
+  
   VkInstance DxvkInstance::createInstance() {
     // Query available extensions and enable the ones that are needed
     vk::NameSet availableExtensions = vk::NameSet::enumerateInstanceExtensions(*m_vkl);
@@ -51,6 +57,8 @@ namespace dxvk {
     
     // Generate list of extensions that we're actually going to use
     vk::NameSet enabledExtensionSet = extensionsToEnable.getEnabledExtensionNames();
+    enabledExtensionSet.merge(m_vr.queryInstanceExtensions());
+    
     vk::NameList enabledExtensionList = enabledExtensionSet.getNameList();
     
     Logger::info("Enabled instance extensions:");
