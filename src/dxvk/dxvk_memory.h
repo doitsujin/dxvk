@@ -251,7 +251,7 @@ namespace dxvk {
     
   private:
 
-    constexpr static VkDeviceSize ChunkSize = 16 * 1024 * 1024;
+    constexpr static VkDeviceSize ChunkSize = 32 * 1024 * 1024;
     
     const Rc<vk::DeviceFn>                 m_vkd;
     const VkPhysicalDeviceProperties       m_devProps;
