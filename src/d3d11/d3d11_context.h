@@ -654,7 +654,6 @@ namespace dxvk {
     Com<D3D11RasterizerState>   m_defaultRasterizerState;
     
     D3D11ContextState           m_state;
-    UINT                        m_drawCount = 0;
     
     void ApplyInputLayout();
     

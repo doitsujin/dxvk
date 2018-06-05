@@ -333,6 +333,17 @@ namespace dxvk {
     void unlockSubmission() {
       m_submissionLock.unlock();
     }
+
+    /**
+     * \brief Number of pending submissions
+     * 
+     * A return value of 0 indicates
+     * that the GPU is currently idle.
+     * \returns Pending submission count
+     */
+    uint32_t pendingSubmissions() const {
+      return m_submissionQueue.pendingSubmissions();
+    }
     
     /**
      * \brief Waits until the device becomes idle

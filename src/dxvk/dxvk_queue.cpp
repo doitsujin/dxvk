@@ -27,6 +27,7 @@ namespace dxvk {
         return m_entries.size() < MaxNumQueuedCommandBuffers;
       });
       
+      m_submits += 1;
       m_entries.push(cmdList);
       m_condOnAdd.notify_one();
     }
@@ -65,6 +66,8 @@ namespace dxvk {
             "DxvkSubmissionQueue: Failed to sync fence: ",
             status));
         }
+        
+        m_submits -= 1;
       }
     }
   }

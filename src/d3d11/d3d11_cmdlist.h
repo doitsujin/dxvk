@@ -24,8 +24,7 @@ namespace dxvk {
     UINT STDMETHODCALLTYPE GetContextFlags() final;
     
     void AddChunk(
-            Rc<DxvkCsChunk>&&   Chunk,
-            UINT                DrawCount);
+            Rc<DxvkCsChunk>&&   Chunk);
     
     void EmitToCommandList(
             ID3D11CommandList*  pCommandList);
@@ -33,15 +32,10 @@ namespace dxvk {
     void EmitToCsThread(
             DxvkCsThread*       CsThread);
     
-    UINT GetDrawCount() const {
-      return m_drawCount;
-    }
-    
   private:
     
     D3D11Device* const m_device;
     UINT         const m_contextFlags;
-    UINT               m_drawCount = 0;
     
     std::vector<Rc<DxvkCsChunk>> m_chunks;
     

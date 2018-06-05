@@ -42,10 +42,8 @@ namespace dxvk {
   
   
   void D3D11CommandList::AddChunk(
-            Rc<DxvkCsChunk>&&   Chunk,
-            UINT                DrawCount) {
+            Rc<DxvkCsChunk>&&   Chunk) {
     m_chunks.push_back(std::move(Chunk));
-    m_drawCount += DrawCount;
   }
   
   
@@ -54,8 +52,6 @@ namespace dxvk {
     
     for (const auto& chunk : m_chunks)
       cmdList->m_chunks.push_back(chunk);
-    
-    cmdList->m_drawCount += m_drawCount;
   }
   
   

@@ -1117,8 +1117,6 @@ namespace dxvk {
         VertexCount, 1,
         StartVertexLocation, 0);
     });
-    
-    m_drawCount += 1;
   }
   
   
@@ -1132,8 +1130,6 @@ namespace dxvk {
         StartIndexLocation,
         BaseVertexLocation, 0);
     });
-    
-    m_drawCount += 1;
   }
   
   
@@ -1149,8 +1145,6 @@ namespace dxvk {
         StartVertexLocation,
         StartInstanceLocation);
     });
-    
-    m_drawCount += 1;
   }
   
   
@@ -1168,8 +1162,6 @@ namespace dxvk {
         BaseVertexLocation,
         StartInstanceLocation);
     });
-    
-    m_drawCount += 1;
   }
   
   
@@ -1183,8 +1175,6 @@ namespace dxvk {
       ctx->drawIndexedIndirect(
         bufferSlice, 1, 0);
     });
-    
-    m_drawCount += 1;
   }
   
   
@@ -1197,8 +1187,6 @@ namespace dxvk {
     (DxvkContext* ctx) {
       ctx->drawIndirect(bufferSlice, 1, 0);
     });
-    
-    m_drawCount += 1;
   }
   
   
@@ -1212,8 +1200,6 @@ namespace dxvk {
         ThreadGroupCountY,
         ThreadGroupCountZ);
     });
-    
-    m_drawCount += 1;
   }
   
   
@@ -1226,8 +1212,6 @@ namespace dxvk {
     (DxvkContext* ctx) {
       ctx->dispatchIndirect(bufferSlice);
     });
-    
-    m_drawCount += 1;
   }
   
   

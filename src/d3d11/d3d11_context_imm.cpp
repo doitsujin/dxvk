@@ -63,8 +63,8 @@ namespace dxvk {
       FlushCsChunk();
       
       // Reset optimization info
-      m_drawCount = 0;
       m_csIsBusy  = false;
+      m_lastFlush = std::chrono::high_resolution_clock::now();
     }
   }
   
@@ -80,8 +80,7 @@ namespace dxvk {
     
     // As an optimization, flush everything if the
     // number of pending draw calls is high enough.
-    if (m_drawCount >= MaxPendingDraws)
-      Flush();
+    FlushImplicit();
     
     // Dispatch command list to the CS thread and
     // restore the immediate context's state
@@ -95,7 +94,6 @@ namespace dxvk {
     // Mark CS thread as busy so that subsequent
     // flush operations get executed correctly.
     m_csIsBusy = true;
-    m_drawCount += commandList->GetDrawCount();
   }
   
   
@@ -202,8 +200,7 @@ namespace dxvk {
     // prior to the previous context flush is above a certain threshold,
     // submit the current command buffer in order to keep the GPU busy.
     // This also helps keep the command buffers at a reasonable size.
-    if (m_drawCount >= MaxPendingDraws)
-      Flush();
+    FlushImplicit();
     
     D3D11DeviceContext::OMSetRenderTargets(
       NumViews, ppRenderTargetViews, pDepthStencilView);
@@ -385,6 +382,19 @@ namespace dxvk {
   void D3D11ImmediateContext::EmitCsChunk(Rc<DxvkCsChunk>&& chunk) {
     m_csThread.dispatchChunk(std::move(chunk));
     m_csIsBusy = true;
+  }
+
+
+  void D3D11ImmediateContext::FlushImplicit() {
+    // Flush only if the GPU is about to go idle, in
+    // order to keep the number of submissions low.
+    if (m_device->pendingSubmissions() <= MaxPendingSubmits) {
+      auto now = std::chrono::high_resolution_clock::now();
+
+      // Prevent flushing too often in short intervals.
+      if (now - m_lastFlush >= std::chrono::microseconds(MinFlushIntervalUs))
+        Flush();
+    }
   }
   
 }
