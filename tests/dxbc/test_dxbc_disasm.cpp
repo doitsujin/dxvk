@@ -1,4 +1,5 @@
 #include <iostream>
+#include <string>
 
 #include <d3dcompiler.h>
 
@@ -10,14 +11,7 @@
 
 using namespace dxvk;
 
-int WINAPI WinMain(HINSTANCE hInstance,
-                   HINSTANCE hPrevInstance,
-                   LPSTR lpCmdLine,
-                   int nCmdShow) {
-  int     argc = 0;
-  LPWSTR* argv = CommandLineToArgvW(
-    GetCommandLineW(), &argc);
-
+int wmain(int argc, wchar_t *argv[], wchar_t *envp[]) {
   if (argc < 2 || argc > 3) {
     std::cerr << "Usage: dxbc-disasm input.dxbc [output]" << std::endl;
     return 1;

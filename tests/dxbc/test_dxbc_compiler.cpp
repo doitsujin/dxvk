@@ -14,14 +14,7 @@ namespace dxvk {
 
 using namespace dxvk;
 
-int WINAPI WinMain(HINSTANCE hInstance,
-                   HINSTANCE hPrevInstance,
-                   LPSTR lpCmdLine,
-                   int nCmdShow) {
-  int     argc = 0;
-  LPWSTR* argv = CommandLineToArgvW(
-    GetCommandLineW(), &argc);  
-  
+int wmain(int argc, wchar_t *argv[], wchar_t *envp[]) {
   if (argc < 3) {
     Logger::err("Usage: dxbc-compiler input.dxbc output.spv");
     return 1;

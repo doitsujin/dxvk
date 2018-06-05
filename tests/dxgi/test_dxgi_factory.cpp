@@ -9,10 +9,7 @@
 
 using namespace dxvk;
 
-int WINAPI WinMain(HINSTANCE hInstance,
-                   HINSTANCE hPrevInstance,
-                   LPSTR lpCmdLine,
-                   int nCmdShow) {
+int main() {
   Com<IDXGIFactory> factory;
   
   if (CreateDXGIFactory(__uuidof(IDXGIFactory),

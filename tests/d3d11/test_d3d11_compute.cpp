@@ -30,10 +30,7 @@ const std::string g_computeShaderCode =
   "    buf_out[0] = tmp[0];\n"
   "}\n";
   
-int WINAPI WinMain(HINSTANCE hInstance,
-                   HINSTANCE hPrevInstance,
-                   LPSTR lpCmdLine,
-                   int nCmdShow) {
+int main() {
   Com<ID3D11Device>         device;
   Com<ID3D11DeviceContext>  context;
   Com<ID3D11ComputeShader>  computeShader;
