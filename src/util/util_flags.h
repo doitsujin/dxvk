@@ -79,6 +79,14 @@ namespace dxvk {
     Flags operator ^ (const Flags& other) const {
       return Flags(m_bits ^ other.m_bits);
     }
+
+    bool operator == (const Flags& other) const {
+      return m_bits == other.m_bits;
+    }
+    
+    bool operator != (const Flags& other) const {
+      return m_bits != other.m_bits;
+    }
     
   private:
     
