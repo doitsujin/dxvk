@@ -62,13 +62,10 @@ namespace dxvk {
     
     VkBool32                            dsEnableDepthTest;
     VkBool32                            dsEnableDepthWrite;
-    VkBool32                            dsEnableDepthBounds;
     VkBool32                            dsEnableStencilTest;
     VkCompareOp                         dsDepthCompareOp;
     VkStencilOpState                    dsStencilOpFront;
     VkStencilOpState                    dsStencilOpBack;
-    float                               dsDepthBoundsMin;
-    float                               dsDepthBoundsMax;
     
     VkBool32                            omEnableLogicOp;
     VkLogicOp                           omLogicOp;

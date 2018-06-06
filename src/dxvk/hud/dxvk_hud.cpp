@@ -206,13 +206,10 @@ namespace dxvk::hud {
     DxvkDepthStencilState dsState;
     dsState.enableDepthTest   = VK_FALSE;
     dsState.enableDepthWrite  = VK_FALSE;
-    dsState.enableDepthBounds = VK_FALSE;
     dsState.enableStencilTest = VK_FALSE;
     dsState.depthCompareOp    = VK_COMPARE_OP_NEVER;
     dsState.stencilOpFront    = stencilOp;
     dsState.stencilOpBack     = stencilOp;
-    dsState.depthBoundsMin    = 0.0f;
-    dsState.depthBoundsMax    = 1.0f;
     m_context->setDepthStencilState(dsState);
     
     DxvkLogicOpState loState;

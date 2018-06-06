@@ -74,13 +74,10 @@ namespace dxvk {
   struct DxvkDepthStencilState {
     VkBool32            enableDepthTest;
     VkBool32            enableDepthWrite;
-    VkBool32            enableDepthBounds;
     VkBool32            enableStencilTest;
     VkCompareOp         depthCompareOp;
     VkStencilOpState    stencilOpFront;
     VkStencilOpState    stencilOpBack;
-    float               depthBoundsMin;
-    float               depthBoundsMax;
   };
   
   

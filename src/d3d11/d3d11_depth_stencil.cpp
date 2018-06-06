@@ -9,13 +9,10 @@ namespace dxvk {
   : m_device(device), m_desc(desc) {
     m_state.enableDepthTest   = desc.DepthEnable;
     m_state.enableDepthWrite  = desc.DepthWriteMask == D3D11_DEPTH_WRITE_MASK_ALL;
-    m_state.enableDepthBounds = false;
     m_state.enableStencilTest = desc.StencilEnable;
     m_state.depthCompareOp    = DecodeCompareOp(desc.DepthFunc);
     m_state.stencilOpFront    = DecodeStencilOpState(desc.FrontFace, desc);
     m_state.stencilOpBack     = DecodeStencilOpState(desc.BackFace,  desc);
-    m_state.depthBoundsMin    = 0.0f;
-    m_state.depthBoundsMax    = 1.0f;
   }
   
   

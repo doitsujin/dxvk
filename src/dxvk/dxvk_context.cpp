@@ -1473,13 +1473,10 @@ namespace dxvk {
   void DxvkContext::setDepthStencilState(const DxvkDepthStencilState& ds) {
     m_state.gp.state.dsEnableDepthTest   = ds.enableDepthTest;
     m_state.gp.state.dsEnableDepthWrite  = ds.enableDepthWrite;
-    m_state.gp.state.dsEnableDepthBounds = ds.enableDepthBounds;
     m_state.gp.state.dsEnableStencilTest = ds.enableStencilTest;
     m_state.gp.state.dsDepthCompareOp    = ds.depthCompareOp;
     m_state.gp.state.dsStencilOpFront    = ds.stencilOpFront;
     m_state.gp.state.dsStencilOpBack     = ds.stencilOpBack;
-    m_state.gp.state.dsDepthBoundsMin    = ds.depthBoundsMin;
-    m_state.gp.state.dsDepthBoundsMax    = ds.depthBoundsMax;
     
     m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
   }

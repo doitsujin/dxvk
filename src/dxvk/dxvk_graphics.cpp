@@ -314,12 +314,12 @@ namespace dxvk {
     dsInfo.depthTestEnable        = state.dsEnableDepthTest;
     dsInfo.depthWriteEnable       = state.dsEnableDepthWrite;
     dsInfo.depthCompareOp         = state.dsDepthCompareOp;
-    dsInfo.depthBoundsTestEnable  = state.dsEnableDepthBounds;
+    dsInfo.depthBoundsTestEnable  = VK_FALSE;
     dsInfo.stencilTestEnable      = state.dsEnableStencilTest;
     dsInfo.front                  = state.dsStencilOpFront;
     dsInfo.back                   = state.dsStencilOpBack;
-    dsInfo.minDepthBounds         = state.dsDepthBoundsMin;
-    dsInfo.maxDepthBounds         = state.dsDepthBoundsMax;
+    dsInfo.minDepthBounds         = 0.0f;
+    dsInfo.maxDepthBounds         = 1.0f;
     
     VkPipelineColorBlendStateCreateInfo cbInfo;
     cbInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
