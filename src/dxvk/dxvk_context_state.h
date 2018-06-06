@@ -32,6 +32,7 @@ namespace dxvk {
     GpDirtyBlendConstants,      ///< Blend constants have changed
     GpDirtyStencilRef,          ///< Stencil reference has changed
     GpDirtyViewport,            ///< Viewport state has changed
+    GpDirtyDepthBias,           ///< Depth bias has changed
     
     CpDirtyPipeline,            ///< Compute pipeline binding are out of date
     CpDirtyPipelineState,       ///< Compute pipeline needs to be recompiled
@@ -54,6 +55,13 @@ namespace dxvk {
   struct DxvkViewportState {
     std::array<VkViewport, DxvkLimits::MaxNumViewports> viewports    = { };
     std::array<VkRect2D,   DxvkLimits::MaxNumViewports> scissorRects = { };
+  };
+
+
+  struct DxvkDynamicDepthState {
+    float depthBiasConstant = 0.0f;
+    float depthBiasClamp    = 0.0f;
+    float depthBiasSlope    = 0.0f;
   };
   
   
@@ -103,6 +111,7 @@ namespace dxvk {
   struct DxvkContextState {
     DxvkVertexInputState      vi;
     DxvkViewportState         vp;
+    DxvkDynamicDepthState     ds;
     DxvkOutputMergerState     om;
     
     DxvkGraphicsPipelineState gp;

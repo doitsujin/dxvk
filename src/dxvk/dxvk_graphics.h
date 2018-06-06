@@ -53,9 +53,6 @@ namespace dxvk {
     VkCullModeFlags                     rsCullMode;
     VkFrontFace                         rsFrontFace;
     VkBool32                            rsDepthBiasEnable;
-    float                               rsDepthBiasConstant;
-    float                               rsDepthBiasClamp;
-    float                               rsDepthBiasSlope;
     uint32_t                            rsViewportCount;
     
     VkSampleCountFlagBits               msSampleCount;

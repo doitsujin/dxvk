@@ -516,6 +516,17 @@ namespace dxvk {
       m_vkd->vkCmdSetBlendConstants(m_execBuffer, blendConstants);
     }
     
+
+    void cmdSetDepthBias(
+            float                   depthBiasConstantFactor,
+            float                   depthBiasClamp,
+            float                   depthBiasSlopeFactor) {
+      m_vkd->vkCmdSetDepthBias(m_execBuffer,
+        depthBiasConstantFactor,
+        depthBiasClamp,
+        depthBiasSlopeFactor);
+    }
+
     
     void cmdSetScissor(
             uint32_t                firstScissor,

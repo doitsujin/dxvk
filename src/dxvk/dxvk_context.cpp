@@ -1450,11 +1450,14 @@ namespace dxvk {
     m_state.gp.state.rsCullMode          = rs.cullMode;
     m_state.gp.state.rsFrontFace         = rs.frontFace;
     m_state.gp.state.rsDepthBiasEnable   = rs.depthBiasEnable;
-    m_state.gp.state.rsDepthBiasConstant = rs.depthBiasConstant;
-    m_state.gp.state.rsDepthBiasClamp    = rs.depthBiasClamp;
-    m_state.gp.state.rsDepthBiasSlope    = rs.depthBiasSlope;
-    
-    m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+
+    m_state.ds.depthBiasConstant = rs.depthBiasConstant;
+    m_state.ds.depthBiasClamp    = rs.depthBiasClamp;
+    m_state.ds.depthBiasSlope    = rs.depthBiasSlope;
+
+    m_flags.set(
+      DxvkContextFlag::GpDirtyPipelineState,
+      DxvkContextFlag::GpDirtyDepthBias);
   }
   
   
@@ -1718,7 +1721,8 @@ namespace dxvk {
       m_flags.set(
         DxvkContextFlag::GpDirtyBlendConstants,
         DxvkContextFlag::GpDirtyStencilRef,
-        DxvkContextFlag::GpDirtyViewport);
+        DxvkContextFlag::GpDirtyViewport,
+        DxvkContextFlag::GpDirtyDepthBias);
     }
   }
   
@@ -2001,10 +2005,18 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpDirtyStencilRef))
       m_cmd->cmdSetStencilReference(VK_STENCIL_FRONT_AND_BACK, m_state.om.stencilReference);
     
+    if (m_flags.test(DxvkContextFlag::GpDirtyDepthBias)) {
+      m_cmd->cmdSetDepthBias(
+        m_state.ds.depthBiasConstant,
+        m_state.ds.depthBiasClamp,
+        m_state.ds.depthBiasSlope);
+    }
+    
     m_flags.clr(
       DxvkContextFlag::GpDirtyBlendConstants,
       DxvkContextFlag::GpDirtyStencilRef,
-      DxvkContextFlag::GpDirtyViewport);
+      DxvkContextFlag::GpDirtyViewport,
+      DxvkContextFlag::GpDirtyDepthBias);
   }
   
   

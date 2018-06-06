@@ -197,9 +197,10 @@ namespace dxvk {
       this->logPipelineState(LogLevel::Debug, state);
     }
     
-    std::array<VkDynamicState, 4> dynamicStates = {
+    std::array<VkDynamicState, 5> dynamicStates = {
       VK_DYNAMIC_STATE_VIEWPORT,
       VK_DYNAMIC_STATE_SCISSOR,
+      VK_DYNAMIC_STATE_DEPTH_BIAS,
       VK_DYNAMIC_STATE_BLEND_CONSTANTS,
       VK_DYNAMIC_STATE_STENCIL_REFERENCE,
     };
@@ -290,9 +291,9 @@ namespace dxvk {
     rsInfo.cullMode               = state.rsCullMode;
     rsInfo.frontFace              = state.rsFrontFace;
     rsInfo.depthBiasEnable        = state.rsDepthBiasEnable;
-    rsInfo.depthBiasConstantFactor= state.rsDepthBiasConstant;
-    rsInfo.depthBiasClamp         = state.rsDepthBiasClamp;
-    rsInfo.depthBiasSlopeFactor   = state.rsDepthBiasSlope;
+    rsInfo.depthBiasConstantFactor= 0.0f;
+    rsInfo.depthBiasClamp         = 0.0f;
+    rsInfo.depthBiasSlopeFactor   = 0.0f;
     rsInfo.lineWidth              = 1.0f;
     
     VkPipelineMultisampleStateCreateInfo msInfo;
