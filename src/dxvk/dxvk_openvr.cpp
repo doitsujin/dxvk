@@ -54,7 +54,7 @@ namespace dxvk {
   
   vr::IVRCompositor* VrInstance::getCompositor() {
     using GetGenericInterfaceProc = 
-      void* VR_CALLTYPE (*)(const char*, vr::EVRInitError*);
+      void* (VR_CALLTYPE *)(const char*, vr::EVRInitError*);
     
     // Locate the OpenVR DLL if loaded by the process
     HMODULE ovrApi = ::GetModuleHandle("openvr_api.dll");
