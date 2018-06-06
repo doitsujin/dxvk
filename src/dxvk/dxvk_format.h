@@ -7,6 +7,7 @@ namespace dxvk {
   enum class DxvkFormatFlag {
     BlockCompressed = 0,  ///< Image format is block compressed
     SampledInteger  = 1,  ///< Sampled type is an integer type
+    ColorSpaceSrgb  = 2,  ///< Non-linear SRGB color format
   };
   
   using DxvkFormatFlags = Flags<DxvkFormatFlag>;

@@ -51,7 +51,8 @@ namespace dxvk {
       DxvkFormatFlag::SampledInteger },
     
     // VK_FORMAT_R8_SRGB
-    { 1, VK_IMAGE_ASPECT_COLOR_BIT },
+    { 1, VK_IMAGE_ASPECT_COLOR_BIT,
+      DxvkFormatFlag::ColorSpaceSrgb },
     
     // VK_FORMAT_R8G8_UNORM
     { 2, VK_IMAGE_ASPECT_COLOR_BIT },
@@ -74,7 +75,8 @@ namespace dxvk {
       DxvkFormatFlag::SampledInteger },
     
     // VK_FORMAT_R8G8_SRGB
-    { 2, VK_IMAGE_ASPECT_COLOR_BIT },
+    { 2, VK_IMAGE_ASPECT_COLOR_BIT,
+      DxvkFormatFlag::ColorSpaceSrgb },
     
     // VK_FORMAT_R8G8B8_UNORM
     { 3, VK_IMAGE_ASPECT_COLOR_BIT },
@@ -97,7 +99,8 @@ namespace dxvk {
       DxvkFormatFlag::SampledInteger },
     
     // VK_FORMAT_R8G8B8_SRGB
-    { 3, VK_IMAGE_ASPECT_COLOR_BIT },
+    { 3, VK_IMAGE_ASPECT_COLOR_BIT,
+      DxvkFormatFlag::ColorSpaceSrgb },
     
     // VK_FORMAT_B8G8R8_UNORM
     { 3, VK_IMAGE_ASPECT_COLOR_BIT },
@@ -120,7 +123,8 @@ namespace dxvk {
       DxvkFormatFlag::SampledInteger },
     
     // VK_FORMAT_B8G8R8_SRGB
-    { 3, VK_IMAGE_ASPECT_COLOR_BIT },
+    { 3, VK_IMAGE_ASPECT_COLOR_BIT,
+      DxvkFormatFlag::ColorSpaceSrgb },
     
     // VK_FORMAT_R8G8B8A8_UNORM
     { 4, VK_IMAGE_ASPECT_COLOR_BIT },
@@ -143,7 +147,8 @@ namespace dxvk {
       DxvkFormatFlag::SampledInteger },
     
     // VK_FORMAT_R8G8B8A8_SRGB
-    { 4, VK_IMAGE_ASPECT_COLOR_BIT },
+    { 4, VK_IMAGE_ASPECT_COLOR_BIT,
+      DxvkFormatFlag::ColorSpaceSrgb },
     
     // VK_FORMAT_B8G8R8A8_UNORM
     { 4, VK_IMAGE_ASPECT_COLOR_BIT },
@@ -166,7 +171,8 @@ namespace dxvk {
       DxvkFormatFlag::SampledInteger },
     
     // VK_FORMAT_B8G8R8A8_SRGB
-    { 4, VK_IMAGE_ASPECT_COLOR_BIT },
+    { 4, VK_IMAGE_ASPECT_COLOR_BIT,
+      DxvkFormatFlag::ColorSpaceSrgb },
     
     // VK_FORMAT_A8B8G8R8_UNORM_PACK32
     { 4, VK_IMAGE_ASPECT_COLOR_BIT },
@@ -189,7 +195,8 @@ namespace dxvk {
       DxvkFormatFlag::SampledInteger },
     
     // VK_FORMAT_A8B8G8R8_SRGB_PACK32
-    { 4, VK_IMAGE_ASPECT_COLOR_BIT },
+    { 4, VK_IMAGE_ASPECT_COLOR_BIT,
+      DxvkFormatFlag::ColorSpaceSrgb },
     
     // VK_FORMAT_A2R10G10B10_UNORM_PACK32
     { 4, VK_IMAGE_ASPECT_COLOR_BIT },
@@ -445,7 +452,9 @@ namespace dxvk {
     
     // VK_FORMAT_BC1_RGB_SRGB_BLOCK
     { 8, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::BlockCompressed,
+      DxvkFormatFlags(
+        DxvkFormatFlag::BlockCompressed,
+        DxvkFormatFlag::ColorSpaceSrgb),
       VkExtent3D { 4, 4, 1 } },
     
     // VK_FORMAT_BC1_RGBA_UNORM_BLOCK
@@ -455,7 +464,9 @@ namespace dxvk {
     
     // VK_FORMAT_BC1_RGBA_SRGB_BLOCK
     { 8, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::BlockCompressed,
+      DxvkFormatFlags(
+        DxvkFormatFlag::BlockCompressed,
+        DxvkFormatFlag::ColorSpaceSrgb),
       VkExtent3D { 4, 4, 1 } },
     
     // VK_FORMAT_BC2_UNORM_BLOCK
@@ -465,7 +476,9 @@ namespace dxvk {
     
     // VK_FORMAT_BC2_SRGB_BLOCK
     { 16, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::BlockCompressed,
+      DxvkFormatFlags(
+        DxvkFormatFlag::BlockCompressed,
+        DxvkFormatFlag::ColorSpaceSrgb),
       VkExtent3D { 4, 4, 1 } },
     
     // VK_FORMAT_BC3_UNORM_BLOCK
@@ -475,7 +488,9 @@ namespace dxvk {
     
     // VK_FORMAT_BC3_SRGB_BLOCK
     { 16, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::BlockCompressed,
+      DxvkFormatFlags(
+        DxvkFormatFlag::BlockCompressed,
+        DxvkFormatFlag::ColorSpaceSrgb),
       VkExtent3D { 4, 4, 1 } },
     
     // VK_FORMAT_BC4_UNORM_BLOCK
@@ -515,7 +530,9 @@ namespace dxvk {
     
     // VK_FORMAT_BC7_SRGB_BLOCK
     { 16, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::BlockCompressed,
+      DxvkFormatFlags(
+        DxvkFormatFlag::BlockCompressed,
+        DxvkFormatFlag::ColorSpaceSrgb),
       VkExtent3D { 4, 4, 1 } },
     
     // VK_FORMAT_G8B8G8R8_422_UNORM_KHR
