@@ -1,4 +1,5 @@
 #include "dxvk_surface.h"
+#include "dxvk_format.h"
 
 #include "../util/util_math.h"
 
@@ -49,6 +50,18 @@ namespace dxvk {
            && fmt.colorSpace == preferred[i].colorSpace)
             return fmt;
         }
+      }
+
+      // If that didn't work, we'll fall back to a format
+      // which has similar properties to the preferred one
+      DxvkFormatFlags prefFlags = imageFormatInfo(preferred[0].format)->flags;
+
+      for (auto fmt : m_surfaceFormats) {
+        auto currFlags = imageFormatInfo(fmt.format)->flags;
+
+        if ((currFlags & DxvkFormatFlag::ColorSpaceSrgb)
+         == (prefFlags & DxvkFormatFlag::ColorSpaceSrgb))
+          return fmt;
       }
     }
     
