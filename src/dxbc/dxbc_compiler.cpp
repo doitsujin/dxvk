@@ -1630,12 +1630,22 @@ namespace dxvk {
     //    (dst0) The destination register
     //    (src0) The first vector to compare
     //    (src1) The second vector to compare
+    uint32_t componentCount = ins.dst[0].mask.popCount();
+
+    // For 64-bit operations, we'll return a 32-bit
+    // vector, so we have to adjust the read mask
+    DxbcRegMask srcMask = ins.dst[0].mask;
+
+    if (isDoubleType(ins.src[0].dataType)) {
+      srcMask = DxbcRegMask(
+        componentCount > 0, componentCount > 0,
+        componentCount > 1, componentCount > 1);
+    }
+
     const std::array<DxbcRegisterValue, 2> src = {
-      emitRegisterLoad(ins.src[0], ins.dst[0].mask),
-      emitRegisterLoad(ins.src[1], ins.dst[0].mask),
+      emitRegisterLoad(ins.src[0], srcMask),
+      emitRegisterLoad(ins.src[1], srcMask),
     };
-    
-    const uint32_t componentCount = ins.dst[0].mask.popCount();
     
     // Condition, which is a boolean vector used
     // to select between the ~0u and 0u vectors.
@@ -1647,21 +1657,25 @@ namespace dxvk {
     
     switch (ins.op) {
       case DxbcOpcode::Eq:
+      case DxbcOpcode::DEq:
         condition = m_module.opFOrdEqual(
           conditionType, src.at(0).id, src.at(1).id);
         break;
       
       case DxbcOpcode::Ge:
+      case DxbcOpcode::DGe:
         condition = m_module.opFOrdGreaterThanEqual(
           conditionType, src.at(0).id, src.at(1).id);
         break;
       
       case DxbcOpcode::Lt:
+      case DxbcOpcode::DLt:
         condition = m_module.opFOrdLessThan(
           conditionType, src.at(0).id, src.at(1).id);
         break;
       
       case DxbcOpcode::Ne:
+      case DxbcOpcode::DNe:
         condition = m_module.opFOrdNotEqual(
           conditionType, src.at(0).id, src.at(1).id);
         break;
