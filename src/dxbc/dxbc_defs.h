@@ -42,6 +42,7 @@ namespace dxvk {
     BufferLoad,         ///< Structured or raw buffer load
     BufferStore,        ///< Structured or raw buffer store
     ConvertFloat16,     ///< 16-bit float packing/unpacking
+    ConvertFloat64,     ///< 64-bit float conversion
     HullShaderPhase,    ///< Hull shader phase declaration
     HullShaderInstCnt,  ///< Hull shader phase instance count
     Interpolate,        ///< Input attribute interpolation

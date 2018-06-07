@@ -644,6 +644,9 @@ namespace dxvk {
     void emitConvertFloat16(
       const DxbcShaderInstruction&  ins);
     
+    void emitConvertFloat64(
+      const DxbcShaderInstruction&  ins);
+    
     void emitHullShaderPhase(
       const DxbcShaderInstruction&  ins);
     
@@ -1098,6 +1101,9 @@ namespace dxvk {
             bool              isUav) const;
     
     spv::ImageFormat getScalarImageFormat(
+            DxbcScalarType type) const;
+    
+    bool isDoubleType(
             DxbcScalarType type) const;
     
     ///////////////////////////

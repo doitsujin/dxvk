@@ -95,6 +95,9 @@ namespace dxvk {
       case DxbcInstClass::ConvertFloat16:
         return this->emitConvertFloat16(ins);
         
+      case DxbcInstClass::ConvertFloat64:
+        return this->emitConvertFloat64(ins);
+        
       case DxbcInstClass::ControlFlow:
         return this->emitControlFlow(ins);
         
@@ -2547,6 +2550,33 @@ namespace dxvk {
       : scalarIds[0];
     emitRegisterStore(ins.dst[0], result);
   }
+
+
+  void DxbcCompiler::emitConvertFloat64(const DxbcShaderInstruction& ins) {
+    // ftod and dtof take the following operands:
+    //  (dst0) Destination operand
+    //  (src0) Number to convert
+    m_module.enableCapability(spv::CapabilityFloat64);
+
+    // The source operand mask depends on the number
+    // of components set in the destination mask
+    uint32_t dstBits = ins.dst[0].mask.popCount();
+
+    DxbcRegMask srcMask = isDoubleType(ins.dst[0].dataType)
+      ? DxbcRegMask(dstBits == 2, dstBits == 4, false, false)
+      : DxbcRegMask(dstBits >= 1, dstBits >= 1, dstBits >= 2, dstBits >= 2);
+
+    // Perform actual conversion, destination modifiers are not applied
+    DxbcRegisterValue val = emitRegisterLoad(ins.src[0], srcMask);
+
+    DxbcRegisterValue result;
+    result.type.ctype  = ins.dst[0].dataType;
+    result.type.ccount = val.type.ccount;
+    result.id = m_module.opFConvert(
+      getVectorTypeId(result.type), val.id);
+    
+    emitRegisterStore(ins.dst[0], result);
+  }
   
   
   void DxbcCompiler::emitHullShaderInstCnt(const DxbcShaderInstruction& ins) {
@@ -3824,13 +3854,18 @@ namespace dxvk {
   DxbcRegisterValue DxbcCompiler::emitRegisterBitcast(
           DxbcRegisterValue       srcValue,
           DxbcScalarType          dstType) {
-    if (srcValue.type.ctype == dstType)
+    DxbcScalarType srcType = srcValue.type.ctype;
+
+    if (srcType == dstType)
       return srcValue;
     
-    // TODO support 64-bit values
     DxbcRegisterValue result;
     result.type.ctype  = dstType;
     result.type.ccount = srcValue.type.ccount;
+
+    if (isDoubleType(srcType)) result.type.ccount *= 2;
+    if (isDoubleType(dstType)) result.type.ccount /= 2;
+
     result.id = m_module.opBitcast(
       getVectorTypeId(result.type),
       srcValue.id);
@@ -6473,6 +6508,13 @@ namespace dxvk {
   }
   
   
+  bool DxbcCompiler::isDoubleType(DxbcScalarType type) const {
+    return type == DxbcScalarType::Sint64
+        || type == DxbcScalarType::Uint64
+        || type == DxbcScalarType::Float64;
+  }
+
+
   uint32_t DxbcCompiler::getScalarTypeId(DxbcScalarType type) {
     switch (type) {
       case DxbcScalarType::Uint32:  return m_module.defIntType(32, 0);

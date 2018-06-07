@@ -978,9 +978,15 @@ namespace dxvk {
     /* DMovc                                */
     { },
     /* DtoF                                 */
-    { },
+    { 2, DxbcInstClass::ConvertFloat64, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float64 },
+    } },
     /* FtoD                                 */
-    { },
+    { 2, DxbcInstClass::ConvertFloat64, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float64 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float32 },
+    } },
     /* EvalSnapped                          */
     { 3, DxbcInstClass::Interpolate, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
