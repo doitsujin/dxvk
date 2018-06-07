@@ -2388,6 +2388,19 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opFConvert(
+          uint32_t                resultType,
+          uint32_t                operand) {
+    uint32_t resultId = this->allocateId();
+
+    m_code.putIns (spv::OpFConvert, 4);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(operand);
+    return resultId;
+  }
+  
+  
   uint32_t SpirvModule::opPackHalf2x16(
           uint32_t                resultType,
           uint32_t                operand) {
