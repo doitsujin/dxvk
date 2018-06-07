@@ -1546,8 +1546,10 @@ namespace dxvk {
         if (FeatureSupportDataSize != sizeof(D3D11_FEATURE_DATA_DOUBLES))
           return E_INVALIDARG;
         
+        const VkPhysicalDeviceFeatures& features = m_dxvkDevice->features();
+
         auto info = static_cast<D3D11_FEATURE_DATA_DOUBLES*>(pFeatureSupportData);
-        info->DoublePrecisionFloatShaderOps = FALSE;
+        info->DoublePrecisionFloatShaderOps = features.shaderFloat64 && features.shaderInt64;
       } return S_OK;
       
       case D3D11_FEATURE_FORMAT_SUPPORT: {
