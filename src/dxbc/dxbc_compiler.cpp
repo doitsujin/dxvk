@@ -2581,7 +2581,7 @@ namespace dxvk {
     uint32_t dstBits = ins.dst[0].mask.popCount();
 
     DxbcRegMask srcMask = isDoubleType(ins.dst[0].dataType)
-      ? DxbcRegMask(dstBits == 2, dstBits == 4, false, false)
+      ? DxbcRegMask(dstBits >= 2, dstBits >= 4, false, false)
       : DxbcRegMask(dstBits >= 1, dstBits >= 1, dstBits >= 2, dstBits >= 2);
 
     // Perform actual conversion, destination modifiers are not applied
