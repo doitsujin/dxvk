@@ -244,7 +244,8 @@ namespace dxvk {
   
   
   void DxbcDecodeContext::decodeOperandImmediates(DxbcCodeSlice& code, DxbcRegister& reg) {
-    if (reg.type == DxbcOperandType::Imm32) {
+    if (reg.type == DxbcOperandType::Imm32
+     || reg.type == DxbcOperandType::Imm64) {
       switch (reg.componentCount) {
         // This is commonly used if only one vector
         // component is involved in an operation
@@ -259,12 +260,10 @@ namespace dxvk {
           reg.imm.u32_4[2] = code.read();
           reg.imm.u32_4[3] = code.read();
         } break;
-        
+
         default:
           Logger::warn("DxbcDecodeContext: Invalid component count for immediate operand");
       }
-    } else if (reg.type == DxbcOperandType::Imm64) {
-      Logger::warn("DxbcDecodeContext: 64-bit immediates not supported");
     }
   }
   

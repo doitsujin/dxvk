@@ -1361,6 +1361,9 @@ namespace dxvk {
     DxbcRegisterValue dst;
     dst.type.ctype  = ins.dst[0].dataType;
     dst.type.ccount = ins.dst[0].mask.popCount();
+
+    if (isDoubleType(ins.dst[0].dataType))
+      dst.type.ccount /= 2;
     
     const uint32_t typeId = getVectorTypeId(dst.type);
     
@@ -1368,12 +1371,14 @@ namespace dxvk {
       /////////////////////
       // Move instructions
       case DxbcOpcode::Mov:
+      case DxbcOpcode::DMov:
         dst.id = src.at(0).id;
         break;
         
       /////////////////////////////////////
       // ALU operations on float32 numbers
       case DxbcOpcode::Add:
+      case DxbcOpcode::DAdd:
         dst.id = m_module.opFAdd(typeId,
           src.at(0).id, src.at(1).id);
         break;
@@ -1404,18 +1409,21 @@ namespace dxvk {
         break;
       
       case DxbcOpcode::Max:
+      case DxbcOpcode::DMax:
         dst.id = m_options.test(DxbcOption::UseSimpleMinMaxClamp)
           ? m_module.opFMax(typeId, src.at(0).id, src.at(1).id)
           : m_module.opNMax(typeId, src.at(0).id, src.at(1).id);
         break;
       
       case DxbcOpcode::Min:
+      case DxbcOpcode::DMin:
         dst.id = m_options.test(DxbcOption::UseSimpleMinMaxClamp)
           ? m_module.opFMin(typeId, src.at(0).id, src.at(1).id)
           : m_module.opNMin(typeId, src.at(0).id, src.at(1).id);
         break;
       
       case DxbcOpcode::Mul:
+      case DxbcOpcode::DMul:
         dst.id = m_module.opFMul(typeId,
           src.at(0).id, src.at(1).id);
         break;
@@ -2556,10 +2564,6 @@ namespace dxvk {
     // ftod and dtof take the following operands:
     //  (dst0) Destination operand
     //  (src0) Number to convert
-    m_module.enableCapability(spv::CapabilityFloat64);
-
-    // The source operand mask depends on the number
-    // of components set in the destination mask
     uint32_t dstBits = ins.dst[0].mask.popCount();
 
     DxbcRegMask srcMask = isDoubleType(ins.dst[0].dataType)
@@ -4028,7 +4032,9 @@ namespace dxvk {
     
     switch (value.type.ctype) {
       case DxbcScalarType::Float32: value.id = m_module.opFNegate(typeId, value.id); break;
+      case DxbcScalarType::Float64: value.id = m_module.opFNegate(typeId, value.id); break;
       case DxbcScalarType::Sint32:  value.id = m_module.opSNegate(typeId, value.id); break;
+      case DxbcScalarType::Sint64:  value.id = m_module.opSNegate(typeId, value.id); break;
       default: Logger::warn("DxbcCompiler: Cannot negate given type");
     }
     
@@ -4846,7 +4852,8 @@ namespace dxvk {
   DxbcRegisterValue DxbcCompiler::emitRegisterLoad(
     const DxbcRegister&           reg,
           DxbcRegMask             writeMask) {
-    if (reg.type == DxbcOperandType::Imm32) {
+    if (reg.type == DxbcOperandType::Imm32
+     || reg.type == DxbcOperandType::Imm64) {
       DxbcRegisterValue result;
       
       if (reg.componentCount == DxbcComponentCount::Component1) {
@@ -6516,6 +6523,12 @@ namespace dxvk {
 
 
   uint32_t DxbcCompiler::getScalarTypeId(DxbcScalarType type) {
+    if (type == DxbcScalarType::Float64)
+      m_module.enableCapability(spv::CapabilityFloat64);
+    
+    if (type == DxbcScalarType::Sint64 || type == DxbcScalarType::Uint64)
+      m_module.enableCapability(spv::CapabilityInt64);
+    
     switch (type) {
       case DxbcScalarType::Uint32:  return m_module.defIntType(32, 0);
       case DxbcScalarType::Uint64:  return m_module.defIntType(64, 0);
@@ -6525,7 +6538,7 @@ namespace dxvk {
       case DxbcScalarType::Float64: return m_module.defFloatType(64);
       case DxbcScalarType::Bool:    return m_module.defBoolType();
     }
-    
+
     throw DxvkError("DxbcCompiler: Invalid scalar type");
   }
   

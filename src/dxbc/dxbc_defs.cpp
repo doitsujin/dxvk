@@ -958,13 +958,29 @@ namespace dxvk {
     /* Sync                                 */
     { 0, DxbcInstClass::Barrier },
     /* DAdd                                 */
-    { },
+    { 3, DxbcInstClass::VectorAlu, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float64 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float64 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float64 },
+    } },
     /* DMax                                 */
-    { },
+    { 3, DxbcInstClass::VectorAlu, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float64 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float64 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float64 },
+    } },
     /* DMin                                 */
-    { },
+    { 3, DxbcInstClass::VectorAlu, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float64 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float64 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float64 },
+    } },
     /* DMul                                 */
-    { },
+    { 3, DxbcInstClass::VectorAlu, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float64 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float64 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float64 },
+    } },
     /* DEq                                  */
     { },
     /* DGe                                  */
@@ -974,7 +990,10 @@ namespace dxvk {
     /* DNe                                  */
     { },
     /* DMov                                 */
-    { },
+    { 2, DxbcInstClass::VectorAlu, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float64 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float64 },
+    } },
     /* DMovc                                */
     { },
     /* DtoF                                 */
