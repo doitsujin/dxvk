@@ -45,12 +45,6 @@ namespace dxvk {
     
     void STDMETHODCALLTYPE End(ID3D11Asynchronous *pAsync) final;
     
-    HRESULT STDMETHODCALLTYPE GetData(
-            ID3D11Asynchronous*               pAsync,
-            void*                             pData,
-            UINT                              DataSize,
-            UINT                              GetDataFlags) final;
-    
     void STDMETHODCALLTYPE SetPredication(
             ID3D11Predicate*                  pPredicate,
             BOOL                              PredicateValue) final;

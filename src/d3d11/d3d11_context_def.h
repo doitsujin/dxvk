@@ -34,6 +34,12 @@ namespace dxvk {
     
     UINT STDMETHODCALLTYPE GetContextFlags() final;
     
+    HRESULT STDMETHODCALLTYPE GetData(
+            ID3D11Asynchronous*               pAsync,
+            void*                             pData,
+            UINT                              DataSize,
+            UINT                              GetDataFlags) final;
+    
     void STDMETHODCALLTYPE Flush() final;
     
     void STDMETHODCALLTYPE ExecuteCommandList(

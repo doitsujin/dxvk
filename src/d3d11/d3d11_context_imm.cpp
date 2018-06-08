@@ -45,6 +45,47 @@ namespace dxvk {
   }
   
   
+  HRESULT STDMETHODCALLTYPE D3D11ImmediateContext::GetData(
+          ID3D11Asynchronous*               pAsync,
+          void*                             pData,
+          UINT                              DataSize,
+          UINT                              GetDataFlags) {
+    // Make sure that we can safely write to the memory
+    // location pointed to by pData if it is specified.
+    if (DataSize == 0)
+      pData = nullptr;
+    
+    if (pData != nullptr && pAsync->GetDataSize() != DataSize) {
+      Logger::err(str::format(
+        "D3D11: GetData: Data size mismatch",
+        "\n  Expected: ", pAsync->GetDataSize(),
+        "\n  Got:      ", DataSize));
+      return E_INVALIDARG;
+    }
+    
+    // Fallout 4 never actually calls this function without
+    // D3D11_ASYNC_GETDATA_DONOTFLUSH set, which may cause
+    // the game to freeze in certain situations.
+    if (m_parent->TestOption(D3D11Option::DisableGetDataFlagDoNotFlush))
+      GetDataFlags &= ~D3D11_ASYNC_GETDATA_DONOTFLUSH;
+    
+    // Flush in order to make sure the query commands get dispatched
+    if ((GetDataFlags & D3D11_ASYNC_GETDATA_DONOTFLUSH) == 0)
+      Flush();
+    
+    // This method handles various different but incompatible interfaces,
+    // so we have to find out what we are actually dealing with
+    Com<ID3D11Query> query;
+    
+    if (SUCCEEDED(pAsync->QueryInterface(__uuidof(ID3D11Query), reinterpret_cast<void**>(&query))))
+      return static_cast<D3D11Query*>(query.ptr())->GetData(pData, GetDataFlags);
+    
+    // The interface is not supported
+    Logger::err("D3D11: GetData: Unsupported Async type");
+    return E_INVALIDARG;
+  }
+  
+  
   void STDMETHODCALLTYPE D3D11ImmediateContext::Flush() {
     m_parent->FlushInitContext();
     

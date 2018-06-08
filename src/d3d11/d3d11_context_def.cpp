@@ -23,6 +23,16 @@ namespace dxvk {
   }
   
   
+  HRESULT STDMETHODCALLTYPE D3D11DeferredContext::GetData(
+          ID3D11Asynchronous*               pAsync,
+          void*                             pData,
+          UINT                              DataSize,
+          UINT                              GetDataFlags) {
+    Logger::err("D3D11: GetData called on a deferred context");
+    return DXGI_ERROR_INVALID_CALL;
+  }
+
+
   void STDMETHODCALLTYPE D3D11DeferredContext::Flush() {
     Logger::err("D3D11: Flush called on a deferred context");
   }
