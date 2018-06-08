@@ -63,12 +63,6 @@ namespace dxvk {
       return E_INVALIDARG;
     }
     
-    // Fallout 4 never actually calls this function without
-    // D3D11_ASYNC_GETDATA_DONOTFLUSH set, which may cause
-    // the game to freeze in certain situations.
-    if (m_parent->TestOption(D3D11Option::DisableGetDataFlagDoNotFlush))
-      GetDataFlags &= ~D3D11_ASYNC_GETDATA_DONOTFLUSH;
-    
     // Flush in order to make sure the query commands get dispatched
     if ((GetDataFlags & D3D11_ASYNC_GETDATA_DONOTFLUSH) == 0)
       Flush();

@@ -16,15 +16,6 @@ namespace dxvk {
     AllowMapFlagNoWait = 0,
     
     /**
-     * \brief Ignore D3D11_ASYNC_GETDATA_DONOTFLUSH
-     * 
-     * This can cause significant slowdowns, but some games
-     * expect the implementation to flush the context even
-     * when passing the \c DONOTFLUSH flag.
-     */
-    DisableGetDataFlagDoNotFlush = 1,
-    
-    /**
      * \brief Fakes stream output support
      * 
      * Temporary hack that fixes issues in some games
