@@ -2095,7 +2095,10 @@ namespace dxvk {
       OMSetRenderTargets(NumRTVs, ppRenderTargetViews, pDepthStencilView);
     
     if (NumUAVs != D3D11_KEEP_UNORDERED_ACCESS_VIEWS) {
-      Logger::warn("D3D11: UAV rendering not properly implemented yet");
+      static std::atomic<bool> s_warningShown = { false };
+
+      if (NumUAVs != 0 && !s_warningShown.exchange(true))
+        Logger::warn("D3D11: UAV rendering not properly implemented yet");
 
       // UAVs are made available to all shader stages in
       // the graphics pipeline even though this code may
