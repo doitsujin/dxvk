@@ -4,6 +4,7 @@
 #include "../dxvk/dxvk_cs.h"
 #include "../dxvk/dxvk_device.h"
 
+#include "d3d11_annotation.h"
 #include "d3d11_context_state.h"
 #include "d3d11_device_child.h"
 
@@ -637,7 +638,8 @@ namespace dxvk {
     
   protected:
     
-    D3D11Device* const m_parent;
+    D3D11Device* const          m_parent;
+    D3D11UserDefinedAnnotation  m_annotation;
     
     Rc<DxvkDevice>              m_device;
     Rc<DxvkCsChunk>             m_csChunk;

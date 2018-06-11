@@ -12,9 +12,10 @@ namespace dxvk {
   D3D11DeviceContext::D3D11DeviceContext(
           D3D11Device*    pParent,
     const Rc<DxvkDevice>& Device)
-  : m_parent  (pParent),
-    m_device  (Device),
-    m_csChunk (new DxvkCsChunk()) {
+  : m_parent    (pParent),
+    m_annotation(this),
+    m_device    (Device),
+    m_csChunk   (new DxvkCsChunk()) {
     // Create default state objects. We won't ever return them
     // to the application, but we'll use them to apply state.
     Com<ID3D11BlendState>         defaultBlendState;
@@ -50,8 +51,10 @@ namespace dxvk {
       return S_OK;
     }
     
-    if (riid == __uuidof(ID3DUserDefinedAnnotation))
-      return E_NOINTERFACE;
+    if (riid == __uuidof(ID3DUserDefinedAnnotation)) {
+      *ppvObject = ref(&m_annotation);
+      return S_OK;
+    }
   
     Logger::warn("D3D11DeviceContext::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));

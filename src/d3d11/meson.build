@@ -1,4 +1,5 @@
 d3d11_src = [
+  'd3d11_annotation.cpp',
   'd3d11_blend.cpp',
   'd3d11_buffer.cpp',
   'd3d11_class_linkage.cpp',
