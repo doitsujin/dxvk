@@ -1393,8 +1393,8 @@ namespace dxvk {
           ID3D11Counter**             ppCounter) {
     InitReturnPtr(ppCounter);
     
-    Logger::err("D3D11Device::CreateCounter: Not implemented");
-    return E_NOTIMPL;
+    Logger::err(str::format("D3D11: Unsupported counter: ", pCounterDesc->Counter));
+    return E_INVALIDARG;
   }
   
   
@@ -1506,7 +1506,10 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11Device::CheckCounterInfo(D3D11_COUNTER_INFO* pCounterInfo) {
-    Logger::err("D3D11Device::CheckCounterInfo: Not implemented");
+    // We basically don't support counters
+    pCounterInfo->LastDeviceDependentCounter  = D3D11_COUNTER(0);
+    pCounterInfo->NumSimultaneousCounters     = 0;
+    pCounterInfo->NumDetectableParallelUnits  = 0;
   }
   
   
@@ -1520,8 +1523,8 @@ namespace dxvk {
           UINT*               pUnitsLength,
           LPSTR               szDescription,
           UINT*               pDescriptionLength) {
-    Logger::err("D3D11Device::CheckCounter: Not implemented");
-    return E_NOTIMPL;
+    Logger::err("D3D11: Counters not supported");
+    return E_INVALIDARG;
   }
   
   
