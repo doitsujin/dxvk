@@ -11,7 +11,7 @@ For Direct3D 10 support, check out [DXUP](https://github.com/Joshua-Ashton/dxup)
 ## Build instructions
 
 ### Requirements:
-- [wine 3.5](https://www.winehq.org/) or newer
+- [wine 3.10](https://www.winehq.org/) or newer
 - [Meson](http://mesonbuild.com/) build system (at least version 0.43)
 - [MinGW64](http://mingw-w64.org/) compiler and headers (requires threading support)
 - [glslang](https://github.com/KhronosGroup/glslang) front end and validator
