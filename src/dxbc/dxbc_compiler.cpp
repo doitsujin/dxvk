@@ -2238,6 +2238,8 @@ namespace dxvk {
       case DxbcOpcode::ImmAtomicConsume:
         value.id = m_module.opAtomicISub(typeId, ptrId,
           scopeId, semanticsId, m_module.constu32(1));
+        value.id = m_module.opISub(typeId, value.id,
+          m_module.constu32(1));
         break;
       
       default:
