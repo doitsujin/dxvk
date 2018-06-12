@@ -24,14 +24,6 @@ namespace dxvk {
     const VkPhysicalDeviceProperties devProps    = device->adapter()->deviceProperties();
     const VkPhysicalDeviceFeatures   devFeatures = device->features();
     
-    const DxvkGpuVendor vendor = static_cast<DxvkGpuVendor>(devProps.vendorID);
-    
-    if (vendor == DxvkGpuVendor::Nvidia) {
-      flags.set(
-        DxbcOption::AddExtraDrefCoordComponent,
-        DxbcOption::UseSimpleMinMaxClamp);
-    }
-    
     if (devFeatures.shaderStorageImageReadWithoutFormat)
       flags.set(DxbcOption::UseStorageImageReadWithoutFormat);
     

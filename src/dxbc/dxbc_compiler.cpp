@@ -1410,16 +1410,14 @@ namespace dxvk {
       
       case DxbcOpcode::Max:
       case DxbcOpcode::DMax:
-        dst.id = m_options.test(DxbcOption::UseSimpleMinMaxClamp)
-          ? m_module.opFMax(typeId, src.at(0).id, src.at(1).id)
-          : m_module.opNMax(typeId, src.at(0).id, src.at(1).id);
+        dst.id = m_module.opNMax(typeId,
+          src.at(0).id, src.at(1).id);
         break;
       
       case DxbcOpcode::Min:
       case DxbcOpcode::DMin:
-        dst.id = m_options.test(DxbcOption::UseSimpleMinMaxClamp)
-          ? m_module.opFMin(typeId, src.at(0).id, src.at(1).id)
-          : m_module.opNMin(typeId, src.at(0).id, src.at(1).id);
+        dst.id = m_module.opNMin(typeId,
+          src.at(0).id, src.at(1).id);
         break;
       
       case DxbcOpcode::Mul:
@@ -3074,9 +3072,6 @@ namespace dxvk {
           DxbcRegMask(true, false, false, false))
       : DxbcRegisterValue();
     
-    if (isDepthCompare && m_options.test(DxbcOption::AddExtraDrefCoordComponent) && coord.type.ccount < 4)
-      coord = emitRegisterConcat(coord, referenceValue);
-    
     // Determine the sampled image type based on the opcode.
     const uint32_t sampledImageType = isDepthCompare
       ? m_module.defSampledImageType(m_textures.at(textureId).depthTypeId)
@@ -3185,9 +3180,6 @@ namespace dxvk {
     const DxbcRegisterValue referenceValue = isDepthCompare
       ? emitRegisterLoad(ins.src[3], DxbcRegMask(true, false, false, false))
       : DxbcRegisterValue();
-    
-    if (isDepthCompare && m_options.test(DxbcOption::AddExtraDrefCoordComponent) && coord.type.ccount < 4)
-      coord = emitRegisterConcat(coord, referenceValue);
     
     // Load explicit gradients for sample operations that require them
     const bool hasExplicitGradients = ins.op == DxbcOpcode::SampleD;
@@ -4099,9 +4091,7 @@ namespace dxvk {
         const DxbcRegisterValue vec0 = emitBuildConstVecf32(0.0f, 0.0f, 0.0f, 0.0f, mask);
         const DxbcRegisterValue vec1 = emitBuildConstVecf32(1.0f, 1.0f, 1.0f, 1.0f, mask);
         
-        value.id = m_options.test(DxbcOption::UseSimpleMinMaxClamp)
-          ? m_module.opFClamp(typeId, value.id, vec0.id, vec1.id)
-          : m_module.opNClamp(typeId, value.id, vec0.id, vec1.id);
+        value.id = m_module.opNClamp(typeId, value.id, vec0.id, vec1.id);
       }
     }
     

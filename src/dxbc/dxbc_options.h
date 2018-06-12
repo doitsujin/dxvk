@@ -9,15 +9,6 @@ namespace dxvk {
     /// Enabled by default on GPUs which support this.
     UseStorageImageReadWithoutFormat,
     
-    /// Adds an extra component to the depth reference
-    /// vector for depth-compare operations. Workaround
-    /// for bugs in Nvidia drivers prior to 396.18.
-    AddExtraDrefCoordComponent,
-    
-    /// Use FMin/FMax/FClamp instead of NMin/NMax/NClamp.
-    /// Workaround for bugs in older Nvidia drivers.
-    UseSimpleMinMaxClamp,
-    
     /// Defer kill operation to the end of the shader.
     /// Fixes derivatives that are undefined due to
     /// non-uniform control flow in fragment shaders.
