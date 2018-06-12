@@ -129,7 +129,7 @@ namespace dxvk {
    * used by DXVK if supported by the implementation.
    */
   struct DxvkDeviceExtensions : public DxvkExtensionList {
-    DxvkExtension extShaderViewportIndexLayer = { this, VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME,  DxvkExtensionType::Required };
+    DxvkExtension extShaderViewportIndexLayer = { this, VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME,  DxvkExtensionType::Desired  };
     DxvkExtension extVertexAttributeDivisor   = { this, VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME,     DxvkExtensionType::Required };
     DxvkExtension khrDescriptorUpdateTemplate = { this, VK_KHR_DESCRIPTOR_UPDATE_TEMPLATE_EXTENSION_NAME,   DxvkExtensionType::Required };
     DxvkExtension khrSamplerMirrorClampToEdge = { this, VK_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE_EXTENSION_NAME, DxvkExtensionType::Desired  };
