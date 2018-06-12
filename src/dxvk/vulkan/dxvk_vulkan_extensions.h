@@ -1,8 +1,8 @@
 #pragma once
 
+#include <set>
 #include <string>
 #include <vector>
-#include <unordered_set>
 
 #include "dxvk_vulkan_loader.h"
 
@@ -103,7 +103,7 @@ namespace dxvk::vk {
     
   private:
     
-    std::unordered_set<std::string> m_names;
+    std::set<std::string> m_names;
     
   };
   
