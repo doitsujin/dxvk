@@ -208,9 +208,8 @@ namespace dxvk {
           return S_OK;
         
         case D3D11_QUERY_TIMESTAMP_DISJOINT: {
-          // FIXME return correct frequency
           auto data = static_cast<D3D11_QUERY_DATA_TIMESTAMP_DISJOINT*>(pData);
-          data->Frequency = 1000;
+          data->Frequency = GetTimestampQueryFrequency();
           data->Disjoint = FALSE;
         } return S_OK;
         
@@ -234,6 +233,15 @@ namespace dxvk {
           return E_INVALIDARG;
       }
     }
+  }
+  
+  
+  UINT64 D3D11Query::GetTimestampQueryFrequency() const {
+    Rc<DxvkDevice>  device  = m_device->GetDXVKDevice();
+    Rc<DxvkAdapter> adapter = device->adapter();
+
+    VkPhysicalDeviceLimits limits = adapter->deviceProperties().limits;
+    return uint64_t(1'000'000'000.0f / limits.timestampPeriod);
   }
   
 }
