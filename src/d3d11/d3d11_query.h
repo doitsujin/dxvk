@@ -52,6 +52,8 @@ namespace dxvk {
     Rc<DxvkEvent> m_event = nullptr;
     
     uint32_t m_revision = 0;
+
+    UINT64 GetTimestampQueryFrequency() const;
     
   };
   
