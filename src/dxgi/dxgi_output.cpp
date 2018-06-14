@@ -121,19 +121,32 @@ namespace dxvk {
     if (modes.size() == 0)
       return DXGI_ERROR_NOT_FOUND;
 
+    // If no valid resolution is specified, find the
+    // closest match for the current display resolution
+    UINT targetWidth  = pModeToMatch->Width;
+    UINT targetHeight = pModeToMatch->Height;
+
+    if (targetWidth == 0 || targetHeight == 0) {
+      DXGI_MODE_DESC activeMode;
+      GetDisplayMode(&activeMode, ENUM_CURRENT_SETTINGS);
+
+      targetWidth  = activeMode.Width;
+      targetHeight = activeMode.Height;
+    }
+
     // Select mode with minimal height+width difference
     UINT minDifference = std::numeric_limits<unsigned int>::max();
     
     for (auto& mode : modes) {
-      UINT currDifference = std::abs(int(pModeToMatch->Width  - mode.Width))
-                          + std::abs(int(pModeToMatch->Height - mode.Height));
+      UINT currDifference = std::abs(int(targetWidth  - mode.Width))
+                          + std::abs(int(targetHeight - mode.Height));
 
       if (currDifference <= minDifference) {
         minDifference = currDifference;
         *pClosestMatch = mode;
       }
     }
-    
+
     return S_OK;
   }
   
