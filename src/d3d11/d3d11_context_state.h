@@ -120,6 +120,8 @@ namespace dxvk {
     FLOAT blendFactor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
     UINT  sampleMask     = 0xFFFFFFFFu;
     UINT  stencilRef     = 0u;
+
+    BOOL  isUavRendering = FALSE;
   };
   
   

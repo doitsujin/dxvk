@@ -180,7 +180,7 @@ namespace dxvk {
       DxvkRenderTargets renderTargets;
       renderTargets.color[0].view   = swapImage;
       renderTargets.color[0].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-      m_context->bindRenderTargets(renderTargets);
+      m_context->bindRenderTargets(renderTargets, false);
       
       VkViewport viewport;
       viewport.x        = 0.0f;

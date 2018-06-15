@@ -87,7 +87,9 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::bindRenderTargets(const DxvkRenderTargets& targets) {
+  void DxvkContext::bindRenderTargets(
+    const DxvkRenderTargets&    targets,
+          bool                  spill) {
     m_state.om.renderTargets = targets;
     
     // If necessary, perform clears on the active render targets
@@ -108,6 +110,9 @@ namespace dxvk {
       // the same render targets are bound again
       m_flags.clr(DxvkContextFlag::GpDirtyFramebuffer);
     }
+
+    if (spill)
+      this->spillRenderPass();
   }
   
   

@@ -77,12 +77,15 @@ namespace dxvk {
      * \brief Sets render targets
      * 
      * Creates a framebuffer on the fly if necessary
-     * and binds it using \c bindFramebuffer. Prefer
-     * this method over doing the same thing manually.
+     * and binds it using \c bindFramebuffer. Set the
+     * \c spill flag in order to make shader writes
+     * from previous rendering operations visible.
      * \param [in] targets Render targets to bind
+     * \param [in] spill Spill render pass if true
      */
     void bindRenderTargets(
-      const DxvkRenderTargets&    targets);
+      const DxvkRenderTargets&    targets,
+            bool                  spill);
     
     /**
      * \brief Binds index buffer

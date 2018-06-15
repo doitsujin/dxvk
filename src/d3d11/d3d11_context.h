@@ -667,7 +667,8 @@ namespace dxvk {
     
     void ApplyViewportState();
     
-    void BindFramebuffer();
+    void BindFramebuffer(
+            BOOL                              Spill);
     
     template<typename T>
     void BindShader(
@@ -738,6 +739,11 @@ namespace dxvk {
             UINT                              StartSlot,
             UINT                              NumUAVs,
             ID3D11UnorderedAccessView* const* ppUnorderedAccessViews);
+    
+    void SetRenderTargets(
+            UINT                              NumViews,
+            ID3D11RenderTargetView* const*    ppRenderTargetViews,
+            ID3D11DepthStencilView*           pDepthStencilView);
     
     void InitUnorderedAccessViewCounters(
             UINT                              NumUAVs,

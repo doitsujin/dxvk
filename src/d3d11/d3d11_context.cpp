@@ -2069,20 +2069,8 @@ namespace dxvk {
           UINT                              NumViews,
           ID3D11RenderTargetView* const*    ppRenderTargetViews,
           ID3D11DepthStencilView*           pDepthStencilView) {
-    // Native D3D11 does not change the render targets if
-    // the parameters passed to this method are invalid.
-    if (!ValidateRenderTargets(NumViews, ppRenderTargetViews, pDepthStencilView))
-      return;
-    
-    for (UINT i = 0; i < m_state.om.renderTargetViews.size(); i++) {
-      m_state.om.renderTargetViews.at(i) = i < NumViews
-        ? static_cast<D3D11RenderTargetView*>(ppRenderTargetViews[i])
-        : nullptr;
-    }
-    
-    m_state.om.depthStencilView = static_cast<D3D11DepthStencilView*>(pDepthStencilView);
-    
-    BindFramebuffer();
+    SetRenderTargets(NumViews, ppRenderTargetViews, pDepthStencilView);
+    BindFramebuffer(std::exchange(m_state.om.isUavRendering, false));
   }
   
   
@@ -2094,14 +2082,17 @@ namespace dxvk {
           UINT                              NumUAVs,
           ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
     const UINT*                             pUAVInitialCounts) {
+    bool spillOnBind = m_state.om.isUavRendering;
+
     if (NumRTVs != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL)
-      OMSetRenderTargets(NumRTVs, ppRenderTargetViews, pDepthStencilView);
+      SetRenderTargets(NumRTVs, ppRenderTargetViews, pDepthStencilView);
     
     if (NumUAVs != D3D11_KEEP_UNORDERED_ACCESS_VIEWS) {
-      static std::atomic<bool> s_warningShown = { false };
+      // Check whether there actually are any UAVs bound
+      m_state.om.isUavRendering = false;
 
-      if (NumUAVs != 0 && !s_warningShown.exchange(true))
-        Logger::warn("D3D11: UAV rendering not properly implemented yet");
+      for (uint32_t i = 0; i < NumUAVs && !m_state.om.isUavRendering; i++)
+        m_state.om.isUavRendering = ppUnorderedAccessViews[i] != nullptr;
 
       // UAVs are made available to all shader stages in
       // the graphics pipeline even though this code may
@@ -2118,6 +2109,8 @@ namespace dxvk {
           ppUnorderedAccessViews, pUAVInitialCounts);
       }
     }
+
+    BindFramebuffer(spillOnBind);
   }
   
   
@@ -2554,7 +2547,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::BindFramebuffer() {
+  void D3D11DeviceContext::BindFramebuffer(BOOL Spill) {
     // NOTE According to the Microsoft docs, we are supposed to
     // unbind overlapping shader resource views. Since this comes
     // with a large performance penalty we'll ignore this until an
@@ -2579,8 +2572,11 @@ namespace dxvk {
     }
     
     // Create and bind the framebuffer object to the context
-    EmitCs([cAttachments = std::move(attachments)] (DxvkContext* ctx) {
-      ctx->bindRenderTargets(cAttachments);
+    EmitCs([
+      cAttachments = std::move(attachments),
+      cSpill       = Spill
+    ] (DxvkContext* ctx) {
+      ctx->bindRenderTargets(cAttachments, cSpill);
     });
   }
   
@@ -2786,6 +2782,25 @@ namespace dxvk {
       }
     }
   }
+
+
+  void D3D11DeviceContext::SetRenderTargets(
+          UINT                              NumViews,
+          ID3D11RenderTargetView* const*    ppRenderTargetViews,
+          ID3D11DepthStencilView*           pDepthStencilView) {
+    // Native D3D11 does not change the render targets if
+    // the parameters passed to this method are invalid.
+    if (!ValidateRenderTargets(NumViews, ppRenderTargetViews, pDepthStencilView))
+      return;
+    
+    for (UINT i = 0; i < m_state.om.renderTargetViews.size(); i++) {
+      m_state.om.renderTargetViews.at(i) = i < NumViews
+        ? static_cast<D3D11RenderTargetView*>(ppRenderTargetViews[i])
+        : nullptr;
+    }
+    
+    m_state.om.depthStencilView = static_cast<D3D11DepthStencilView*>(pDepthStencilView);
+  }
   
   
   void D3D11DeviceContext::InitUnorderedAccessViewCounters(
@@ -2835,7 +2850,7 @@ namespace dxvk {
   
   
   void D3D11DeviceContext::RestoreState() {
-    BindFramebuffer();
+    BindFramebuffer(m_state.om.isUavRendering);
     
     BindShader(m_state.vs.shader.ptr(), VK_SHADER_STAGE_VERTEX_BIT);
     BindShader(m_state.hs.shader.ptr(), VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);

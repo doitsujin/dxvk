@@ -108,7 +108,7 @@ namespace dxvk::hud {
     clearRect.layerCount     = 1;
     
     m_context->bindRenderTargets(
-      m_renderTargetInfo);
+      m_renderTargetInfo, false);
     
     m_context->clearRenderTarget(
       m_renderTargetView, clearRect,
