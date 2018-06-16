@@ -189,6 +189,18 @@ namespace dxvk {
       return m_buffer;
     }
     
+    /**
+     * \brief Checks whether this slice overlaps with another
+     * 
+     * \param [in] other The buffer slice to check
+     * \returns \c true if the two slices overlap
+     */
+    bool overlaps(const DxvkPhysicalBufferSlice& other) const {
+      return this->m_buffer == other.m_buffer
+          && this->m_offset + this->m_length > other.m_offset
+          && this->m_offset < other.m_offset + other.m_length;
+    }
+
   private:
     
     Rc<DxvkPhysicalBuffer> m_buffer = nullptr;

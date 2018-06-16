@@ -11,12 +11,12 @@ namespace dxvk {
           VkAccessFlags             srcAccess,
           VkPipelineStageFlags      dstStages,
           VkAccessFlags             dstAccess) {
-    DxvkAccessFlags accessTypes = this->getAccessTypes(srcAccess);
+    DxvkAccessFlags access = this->getAccessTypes(srcAccess);
     
     m_srcStages |= srcStages;
     m_dstStages |= dstStages;
     
-    if (accessTypes.test(DxvkAccess::Write)) {
+    if (access.test(DxvkAccess::Write)) {
       VkBufferMemoryBarrier barrier;
       barrier.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
       barrier.pNext               = nullptr;
@@ -29,6 +29,8 @@ namespace dxvk {
       barrier.size                = bufSlice.length();
       m_bufBarriers.push_back(barrier);
     }
+
+    m_bufSlices.push_back({ bufSlice, access });
   }
   
   
@@ -41,12 +43,12 @@ namespace dxvk {
           VkImageLayout             dstLayout,
           VkPipelineStageFlags      dstStages,
           VkAccessFlags             dstAccess) {
-    DxvkAccessFlags accessTypes = this->getAccessTypes(srcAccess);
+    DxvkAccessFlags access = this->getAccessTypes(srcAccess);
     
     m_srcStages |= srcStages;
     m_dstStages |= dstStages;
     
-    if ((srcLayout != dstLayout) || accessTypes.test(DxvkAccess::Write)) {
+    if ((srcLayout != dstLayout) || access.test(DxvkAccess::Write)) {
       VkImageMemoryBarrier barrier;
       barrier.sType                       = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
       barrier.pNext                       = nullptr;
@@ -64,6 +66,20 @@ namespace dxvk {
   }
   
   
+  bool DxvkBarrierSet::isBufferDirty(
+    const DxvkPhysicalBufferSlice&  bufSlice,
+          DxvkAccessFlags           bufAccess) {
+    bool result = false;
+
+    for (uint32_t i = 0; i < m_bufSlices.size() && !result; i++) {
+      result = (bufSlice.overlaps(m_bufSlices[i].slice))
+            && (bufAccess | m_bufSlices[i].access).test(DxvkAccess::Write);
+    }
+
+    return result;
+  }
+
+
   void DxvkBarrierSet::recordCommands(const Rc<DxvkCommandList>& commandList) {
     if ((m_srcStages | m_dstStages) != 0) {
       VkPipelineStageFlags srcFlags = m_srcStages;
@@ -90,6 +106,8 @@ namespace dxvk {
     m_memBarriers.resize(0);
     m_bufBarriers.resize(0);
     m_imgBarriers.resize(0);
+
+    m_bufSlices.resize(0);
   }
   
   

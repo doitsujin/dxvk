@@ -52,6 +52,8 @@ namespace dxvk {
     this->trackQueryPool(m_queryPools[VK_QUERY_TYPE_PIPELINE_STATISTICS]);
     this->trackQueryPool(m_queryPools[VK_QUERY_TYPE_TIMESTAMP]);
     
+    m_barriers.recordCommands(m_cmd);
+
     m_cmd->endRecording();
     return std::exchange(m_cmd, nullptr);
   }
@@ -239,6 +241,9 @@ namespace dxvk {
       length = align(length, 4);
     
     auto slice = buffer->subSlice(offset, length);
+
+    if (m_barriers.isBufferDirty(slice, DxvkAccess::Write))
+      m_barriers.recordCommands(m_cmd);
     
     m_cmd->cmdFillBuffer(
       slice.handle(),
@@ -251,7 +256,6 @@ namespace dxvk {
       VK_ACCESS_TRANSFER_WRITE_BIT,
       buffer->info().stages,
       buffer->info().access);
-    m_barriers.recordCommands(m_cmd);
     
     m_cmd->trackResource(slice.resource());
   }
@@ -264,6 +268,11 @@ namespace dxvk {
           VkClearColorValue     value) {
     this->spillRenderPass();
     this->unbindComputePipeline();
+
+    auto bufferSlice = bufferView->physicalSlice();
+    
+    if (m_barriers.isBufferDirty(bufferSlice, DxvkAccess::Write))
+      m_barriers.recordCommands(m_cmd);
     
     // Query pipeline objects to use for this clear operation
     DxvkMetaClearPipeline pipeInfo = m_metaClear->getClearBufferPipeline(
@@ -313,12 +322,11 @@ namespace dxvk {
       workgroups.depth);
     
     m_barriers.accessBuffer(
-      bufferView->physicalSlice(),
+      bufferSlice,
       VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
       VK_ACCESS_SHADER_WRITE_BIT,
       bufferView->bufferInfo().stages,
       bufferView->bufferInfo().access);
-    m_barriers.recordCommands(m_cmd);
     
     m_cmd->trackResource(bufferView->viewResource());
     m_cmd->trackResource(bufferView->bufferResource());
@@ -574,6 +582,10 @@ namespace dxvk {
     auto dstSlice = dstBuffer->subSlice(dstOffset, numBytes);
     auto srcSlice = srcBuffer->subSlice(srcOffset, numBytes);
 
+    if (m_barriers.isBufferDirty(srcSlice, DxvkAccess::Read)
+     || m_barriers.isBufferDirty(dstSlice, DxvkAccess::Write))
+      m_barriers.recordCommands(m_cmd);
+
     VkBufferCopy bufferRegion;
     bufferRegion.srcOffset = srcSlice.offset();
     bufferRegion.dstOffset = dstSlice.offset();
@@ -596,8 +608,6 @@ namespace dxvk {
       dstBuffer->info().stages,
       dstBuffer->info().access);
 
-    m_barriers.recordCommands(m_cmd);
-
     m_cmd->trackResource(dstBuffer->resource());
     m_cmd->trackResource(srcBuffer->resource());
   }
@@ -614,7 +624,7 @@ namespace dxvk {
     this->spillRenderPass();
     
     auto srcSlice = srcBuffer->subSlice(srcOffset, 0);
-    
+
     VkImageSubresourceRange dstSubresourceRange = {
       dstSubresource.aspectMask,
       dstSubresource.mipLevel, 1,
@@ -631,6 +641,7 @@ namespace dxvk {
       dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT);
+      
     m_barriers.recordCommands(m_cmd);
     
     VkBufferImageCopy copyRegion;
@@ -655,11 +666,13 @@ namespace dxvk {
       dstImage->info().layout,
       dstImage->info().stages,
       dstImage->info().access);
+
     m_barriers.accessBuffer(srcSlice,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_READ_BIT,
       srcBuffer->info().stages,
       srcBuffer->info().access);
+
     m_barriers.recordCommands(m_cmd);
     
     m_cmd->trackResource(dstImage);
@@ -699,6 +712,7 @@ namespace dxvk {
       dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT);
+
     m_barriers.accessImage(
       srcImage, srcSubresourceRange,
       srcImage->info().layout,
@@ -707,6 +721,7 @@ namespace dxvk {
       srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_READ_BIT);
+
     m_barriers.recordCommands(m_cmd);
       
     if (dstSubresource.aspectMask == srcSubresource.aspectMask) {
@@ -758,6 +773,7 @@ namespace dxvk {
         VK_ACCESS_TRANSFER_WRITE_BIT,
         VK_PIPELINE_STAGE_TRANSFER_BIT,
         VK_ACCESS_TRANSFER_READ_BIT);
+
       m_barriers.recordCommands(m_cmd);
       
       bufferImageCopy.imageSubresource   = dstSubresource;
@@ -785,6 +801,7 @@ namespace dxvk {
       dstImage->info().layout,
       dstImage->info().stages,
       dstImage->info().access);
+
     m_barriers.accessImage(
       srcImage, srcSubresourceRange,
       srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
@@ -793,6 +810,7 @@ namespace dxvk {
       srcImage->info().layout,
       srcImage->info().stages,
       srcImage->info().access);
+      
     m_barriers.recordCommands(m_cmd);
     
     m_cmd->trackResource(dstImage);
@@ -811,7 +829,7 @@ namespace dxvk {
     this->spillRenderPass();
     
     auto dstSlice = dstBuffer->subSlice(dstOffset, 0);
-    
+
     VkImageSubresourceRange srcSubresourceRange = {
       srcSubresource.aspectMask,
       srcSubresource.mipLevel, 1,
@@ -850,11 +868,13 @@ namespace dxvk {
       srcImage->info().layout,
       srcImage->info().stages,
       srcImage->info().access);
+
     m_barriers.accessBuffer(dstSlice,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT,
       dstBuffer->info().stages,
       dstBuffer->info().access);
+
     m_barriers.recordCommands(m_cmd);
     
     m_cmd->trackResource(srcImage);
@@ -1253,6 +1273,9 @@ namespace dxvk {
     // We'll limit the size to 4kB in order to keep command buffers
     // reasonably small, we do not know how much data apps may upload.
     auto physicalSlice = buffer->subSlice(offset, size);
+
+    if (m_barriers.isBufferDirty(physicalSlice, DxvkAccess::Write))
+      m_barriers.recordCommands(m_cmd);
     
     if ((size <= 4096) && ((size & 0x3) == 0) && ((offset & 0x3) == 0)) {
       m_cmd->cmdUpdateBuffer(
@@ -1277,7 +1300,6 @@ namespace dxvk {
       VK_ACCESS_TRANSFER_WRITE_BIT,
       buffer->info().stages,
       buffer->info().access);
-    m_barriers.recordCommands(m_cmd);
 
     m_cmd->trackResource(buffer->resource());
   }
@@ -1532,6 +1554,8 @@ namespace dxvk {
      && (m_state.om.framebuffer != nullptr)) {
       m_flags.set(DxvkContextFlag::GpRenderPassBound);
       m_flags.clr(DxvkContextFlag::GpClearRenderTargets);
+
+      m_barriers.recordCommands(m_cmd);
       
       this->renderPassBindFramebuffer(
         m_state.om.framebuffer,
@@ -2044,6 +2068,7 @@ namespace dxvk {
     this->updateComputeShaderResources();
     this->updateComputePipelineState();
     this->updateComputeShaderDescriptors();
+    m_barriers.recordCommands(m_cmd);
   }
   
   
