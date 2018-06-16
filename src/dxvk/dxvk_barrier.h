@@ -51,7 +51,7 @@ namespace dxvk {
     std::vector<VkBufferMemoryBarrier>  m_bufBarriers;
     std::vector<VkImageMemoryBarrier>   m_imgBarriers;
     
-    DxvkResourceAccessTypes getAccessTypes(VkAccessFlags flags) const;
+    DxvkAccessFlags getAccessTypes(VkAccessFlags flags) const;
     
   };
   

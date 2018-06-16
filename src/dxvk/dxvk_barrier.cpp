@@ -11,13 +11,12 @@ namespace dxvk {
           VkAccessFlags             srcAccess,
           VkPipelineStageFlags      dstStages,
           VkAccessFlags             dstAccess) {
-    const DxvkResourceAccessTypes accessTypes
-      = this->getAccessTypes(srcAccess);
+    DxvkAccessFlags accessTypes = this->getAccessTypes(srcAccess);
     
     m_srcStages |= srcStages;
     m_dstStages |= dstStages;
     
-    if (accessTypes.test(DxvkResourceAccessType::Write)) {
+    if (accessTypes.test(DxvkAccess::Write)) {
       VkBufferMemoryBarrier barrier;
       barrier.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
       barrier.pNext               = nullptr;
@@ -42,13 +41,12 @@ namespace dxvk {
           VkImageLayout             dstLayout,
           VkPipelineStageFlags      dstStages,
           VkAccessFlags             dstAccess) {
-    const DxvkResourceAccessTypes accessTypes
-      = this->getAccessTypes(srcAccess);
+    DxvkAccessFlags accessTypes = this->getAccessTypes(srcAccess);
     
     m_srcStages |= srcStages;
     m_dstStages |= dstStages;
     
-    if ((srcLayout != dstLayout) || accessTypes.test(DxvkResourceAccessType::Write)) {
+    if ((srcLayout != dstLayout) || accessTypes.test(DxvkAccess::Write)) {
       VkImageMemoryBarrier barrier;
       barrier.sType                       = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
       barrier.pNext                       = nullptr;
@@ -95,7 +93,7 @@ namespace dxvk {
   }
   
   
-  DxvkResourceAccessTypes DxvkBarrierSet::getAccessTypes(VkAccessFlags flags) const {
+  DxvkAccessFlags DxvkBarrierSet::getAccessTypes(VkAccessFlags flags) const {
     const VkAccessFlags rflags
       = VK_ACCESS_INDIRECT_COMMAND_READ_BIT
       | VK_ACCESS_INDEX_READ_BIT
@@ -117,9 +115,9 @@ namespace dxvk {
       | VK_ACCESS_HOST_WRITE_BIT
       | VK_ACCESS_MEMORY_WRITE_BIT;
     
-    DxvkResourceAccessTypes result;
-    if (flags & rflags) result.set(DxvkResourceAccessType::Read);
-    if (flags & wflags) result.set(DxvkResourceAccessType::Write);
+    DxvkAccessFlags result;
+    if (flags & rflags) result.set(DxvkAccess::Read);
+    if (flags & wflags) result.set(DxvkAccess::Write);
     return result;
   }
   
