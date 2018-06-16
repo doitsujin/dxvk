@@ -2814,14 +2814,13 @@ namespace dxvk {
         const DxvkBufferSlice counterSlice = uav->GetCounterSlice();
         const D3D11UavCounter counterValue = { pUAVInitialCounts[i] };
         
-        if (counterSlice.defined()
-         && counterValue.atomicCtr != 0xFFFFFFFFu) {
+        if (counterSlice.defined() && counterValue.atomicCtr != 0xFFFFFFFFu) {
           EmitCs([counterSlice, counterValue] (DxvkContext* ctx) {
-            ctx->updateBuffer(
+            ctx->clearBuffer(
               counterSlice.buffer(),
               counterSlice.offset(),
               counterSlice.length(),
-              &counterValue);
+              counterValue.atomicCtr);
           });
         }
       }
