@@ -44,11 +44,14 @@ namespace dxvk {
           VkPipelineStageFlags      dstStages,
           VkAccessFlags             dstAccess) {
     DxvkAccessFlags access = this->getAccessTypes(srcAccess);
-    
+
     m_srcStages |= srcStages;
     m_dstStages |= dstStages;
     
-    if ((srcLayout != dstLayout) || access.test(DxvkAccess::Write)) {
+    if (srcLayout != dstLayout)
+      access.set(DxvkAccess::Write);
+    
+    if (access.test(DxvkAccess::Write)) {
       VkImageMemoryBarrier barrier;
       barrier.sType                       = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
       barrier.pNext                       = nullptr;
@@ -63,6 +66,8 @@ namespace dxvk {
       barrier.subresourceRange.aspectMask = image->formatInfo()->aspectMask;
       m_imgBarriers.push_back(barrier);
     }
+
+    m_imgSlices.push_back({ image.ptr(), subresources, access });
   }
   
   
@@ -79,6 +84,26 @@ namespace dxvk {
     return result;
   }
 
+
+  bool DxvkBarrierSet::isImageDirty(
+    const Rc<DxvkImage>&            image,
+    const VkImageSubresourceRange&  imgSubres,
+          DxvkAccessFlags           imgAccess) {
+    bool result = false;
+
+    for (uint32_t i = 0; i < m_imgSlices.size() && !result; i++) {
+      const VkImageSubresourceRange& dstSubres = m_imgSlices[i].subres;
+
+      result = (image == m_imgSlices[i].image) && (imgAccess | m_imgSlices[i].access).test(DxvkAccess::Write)
+            && imgSubres.baseArrayLayer < dstSubres.baseArrayLayer + dstSubres.layerCount
+            && imgSubres.baseArrayLayer + imgSubres.layerCount     > dstSubres.baseArrayLayer
+            && imgSubres.baseMipLevel   < dstSubres.baseMipLevel   + dstSubres.levelCount
+            && imgSubres.baseMipLevel   + imgSubres.levelCount     > dstSubres.baseMipLevel;
+    }
+
+    return result;
+  }
+  
 
   void DxvkBarrierSet::recordCommands(const Rc<DxvkCommandList>& commandList) {
     if ((m_srcStages | m_dstStages) != 0) {
@@ -108,6 +133,7 @@ namespace dxvk {
     m_imgBarriers.resize(0);
 
     m_bufSlices.resize(0);
+    m_imgSlices.resize(0);
   }
   
   

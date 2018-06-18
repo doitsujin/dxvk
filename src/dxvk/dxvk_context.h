@@ -693,7 +693,8 @@ namespace dxvk {
     void commitComputeState();
     void commitGraphicsState();
     
-    void commitComputeBarriers();
+    void commitComputeInitBarriers();
+    void commitComputePostBarriers();
     
     DxvkQueryHandle allocQuery(
       const DxvkQueryRevision& query);

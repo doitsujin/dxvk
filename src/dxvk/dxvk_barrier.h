@@ -41,6 +41,11 @@ namespace dxvk {
       const DxvkPhysicalBufferSlice&  bufSlice,
             DxvkAccessFlags           bufAccess);
 
+    bool isImageDirty(
+      const Rc<DxvkImage>&            image,
+      const VkImageSubresourceRange&  imgSubres,
+            DxvkAccessFlags           imgAccess);
+    
     void recordCommands(
       const Rc<DxvkCommandList>&      commandList);
     
@@ -52,6 +57,12 @@ namespace dxvk {
       DxvkPhysicalBufferSlice slice;
       DxvkAccessFlags         access;
     };
+
+    struct ImgSlice {
+      DxvkImage*              image;
+      VkImageSubresourceRange subres;
+      DxvkAccessFlags         access;
+    };
     
     VkPipelineStageFlags m_srcStages = 0;
     VkPipelineStageFlags m_dstStages = 0;
@@ -61,6 +72,7 @@ namespace dxvk {
     std::vector<VkImageMemoryBarrier>   m_imgBarriers;
 
     std::vector<BufSlice> m_bufSlices;
+    std::vector<ImgSlice> m_imgSlices;
     
     DxvkAccessFlags getAccessTypes(VkAccessFlags flags) const;
     
