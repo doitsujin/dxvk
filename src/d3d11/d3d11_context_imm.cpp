@@ -63,10 +63,6 @@ namespace dxvk {
       return E_INVALIDARG;
     }
     
-    // Flush in order to make sure the query commands get dispatched
-    if ((GetDataFlags & D3D11_ASYNC_GETDATA_DONOTFLUSH) == 0)
-      Flush();
-    
     // Default error return for unsupported interfaces
     HRESULT hr = E_INVALIDARG;
 
