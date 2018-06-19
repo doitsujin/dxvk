@@ -42,8 +42,9 @@ namespace dxvk {
     }
     
     VkImageLayout GetRenderLayout() const {
-      // Currently no reason to use anything else
-      return VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+      return m_view->imageInfo().tiling == VK_IMAGE_TILING_OPTIMAL
+        ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+        : VK_IMAGE_LAYOUT_GENERAL;
     }
     
     static HRESULT GetDescFromResource(
