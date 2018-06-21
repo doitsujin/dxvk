@@ -35,6 +35,8 @@ namespace dxvk {
   
   
   void DxvkSubmissionQueue::threadFunc() {
+    env::setThreadName(L"dxvk-queue");
+
     while (!m_stopped.load()) {
       Rc<DxvkCommandList> cmdList;
       

@@ -33,5 +33,11 @@ namespace dxvk::env {
    * \returns Temporary directory
    */
   std::string getTempDirectory();
+
+  /**
+   * \brief Sets name of the calling thread
+   * \param [in] name Thread name
+   */
+  void setThreadName(const wchar_t* name);
   
 }

@@ -72,6 +72,8 @@ namespace dxvk {
   
   
   void DxvkCsThread::threadFunc() {
+    env::setThreadName(L"dxvk-cs");
+
     Rc<DxvkCsChunk> chunk;
     
     while (!m_stopped.load()) {

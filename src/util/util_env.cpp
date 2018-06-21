@@ -50,5 +50,21 @@ namespace dxvk::env {
     
     return str::fromws(dxvkTempDir);
   }
+
+
+  void setThreadName(const wchar_t* name) {
+    using SetThreadDescriptionProc = void (WINAPI *) (HANDLE, PCWSTR);
+
+    HMODULE module = ::GetModuleHandleW(L"kernel32.dll");
+
+    if (module == nullptr)
+      return;
+
+    auto proc = reinterpret_cast<SetThreadDescriptionProc>(
+      ::GetProcAddress(module, "SetThreadDescription"));
+
+    if (proc != nullptr)
+      (*proc)(::GetCurrentThread(), name);
+  }
   
 }
