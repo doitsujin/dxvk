@@ -48,14 +48,16 @@ namespace dxvk {
     constexpr uint32_t MaxSets = 256;
     constexpr uint32_t MaxDesc = 2048;
     
-    std::array<VkDescriptorPoolSize, 7> pools = {{
-      { VK_DESCRIPTOR_TYPE_SAMPLER,               MaxDesc },
-      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,         MaxDesc },
-      { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,         MaxDesc },
-      { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,        MaxDesc },
-      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,        MaxDesc },
-      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,  MaxDesc },
-      { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,  MaxDesc } }};
+    std::array<VkDescriptorPoolSize, 9> pools = {{
+      { VK_DESCRIPTOR_TYPE_SAMPLER,                MaxDesc },
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          MaxDesc },
+      { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          MaxDesc },
+      { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         MaxDesc },
+      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         MaxDesc },
+      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   MaxDesc },
+      { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   MaxDesc },
+      { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, MaxDesc },
+      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, MaxDesc } }};
     
     VkDescriptorPoolCreateInfo info;
     info.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
