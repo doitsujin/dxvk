@@ -149,6 +149,8 @@ namespace dxvk {
     VkDeviceSize m_physSliceLength  = 0;
     VkDeviceSize m_physSliceStride  = 0;
     VkDeviceSize m_physSliceCount   = 2;
+
+    Rc<DxvkPhysicalBuffer>  m_physBuffer;
     
     Rc<DxvkPhysicalBuffer> allocPhysicalBuffer(
             VkDeviceSize    sliceCount) const;

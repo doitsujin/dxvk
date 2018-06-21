@@ -42,11 +42,11 @@ namespace dxvk {
     // If there are still no slices available, create a new
     // physical buffer and add all slices to the free list.
     if (m_freeSlices.size() == 0) {
-      const Rc<DxvkPhysicalBuffer> buffer
-        = this->allocPhysicalBuffer(m_physSliceCount);
+      std::unique_lock<std::mutex> swapLock(m_swapMutex);
+      m_physBuffer = this->allocPhysicalBuffer(m_physSliceCount);
       
       for (uint32_t i = 0; i < m_physSliceCount; i++) {
-        m_freeSlices.push_back(buffer->slice(
+        m_freeSlices.push_back(m_physBuffer->slice(
           m_physSliceStride * i,
           m_physSliceLength));
       }
@@ -64,7 +64,11 @@ namespace dxvk {
   void DxvkBuffer::freePhysicalSlice(const DxvkPhysicalBufferSlice& slice) {
     // Add slice to a separate free list to reduce lock contention.
     std::unique_lock<std::mutex> swapLock(m_swapMutex);
-    m_nextSlices.push_back(slice);
+
+    // Discard slices allocated from other physical buffers.
+    // This may make descriptor set binding more efficient.
+    if (m_physBuffer->handle() == slice.handle())
+      m_nextSlices.push_back(slice);
   }
   
   
