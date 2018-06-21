@@ -27,6 +27,8 @@ namespace dxvk {
     GpDirtyPipeline,            ///< Graphics pipeline binding is out of date
     GpDirtyPipelineState,       ///< Graphics pipeline needs to be recompiled
     GpDirtyResources,           ///< Graphics pipeline resource bindings are out of date
+    GpDirtyDescriptorOffsets,   ///< Graphics descriptor set needs to be rebound
+    GpDirtyDescriptorSet,       ///< Graphics descriptor set needs to be updated
     GpDirtyVertexBuffers,       ///< Vertex buffer bindings are out of date
     GpDirtyIndexBuffer,         ///< Index buffer binding are out of date
     GpDirtyBlendConstants,      ///< Blend constants have changed
@@ -37,6 +39,8 @@ namespace dxvk {
     CpDirtyPipeline,            ///< Compute pipeline binding are out of date
     CpDirtyPipelineState,       ///< Compute pipeline needs to be recompiled
     CpDirtyResources,           ///< Compute pipeline resource bindings are out of date
+    CpDirtyDescriptorOffsets,   ///< Compute descriptor set needs to be rebound
+    CpDirtyDescriptorSet,       ///< Compute descriptor set needs to be updated
   };
   
   using DxvkContextFlags = Flags<DxvkContextFlag>;
