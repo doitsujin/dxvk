@@ -38,6 +38,14 @@ namespace dxvk {
     // executed before we destroy any resources.
     m_vkd->vkDeviceWaitIdle(m_vkd->device());
   }
+
+
+  DxvkDeviceOptions DxvkDevice::options() const {
+    DxvkDeviceOptions options;
+    options.maxNumDynamicUniformBuffers = m_properties.limits.maxDescriptorSetUniformBuffersDynamic;
+    options.maxNumDynamicStorageBuffers = m_properties.limits.maxDescriptorSetStorageBuffersDynamic;
+    return options;
+  }
   
   
   Rc<DxvkPhysicalBuffer> DxvkDevice::allocPhysicalBuffer(

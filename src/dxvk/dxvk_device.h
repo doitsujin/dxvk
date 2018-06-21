@@ -26,6 +26,14 @@
 namespace dxvk {
   
   class DxvkInstance;
+
+  /**
+   * \brief Device options
+   */
+  struct DxvkDeviceOptions {
+    uint32_t maxNumDynamicUniformBuffers = 0;
+    uint32_t maxNumDynamicStorageBuffers = 0;
+  };
   
   /**
    * \brief Device queue
@@ -98,7 +106,7 @@ namespace dxvk {
     Rc<DxvkAdapter> adapter() const {
       return m_adapter;
     }
-    
+
     /**
      * \brief Enabled device extensions
      * \returns Enabled device extensions
@@ -114,6 +122,12 @@ namespace dxvk {
     const VkPhysicalDeviceFeatures& features() const {
       return m_features;
     }
+    
+    /**
+     * \brief Retrieves device options
+     * \returns Device options
+     */
+    DxvkDeviceOptions options() const;
     
     /**
      * \brief Allocates a physical buffer
