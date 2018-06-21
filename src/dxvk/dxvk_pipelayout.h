@@ -5,7 +5,7 @@
 #include "dxvk_include.h"
 
 namespace dxvk {
-  
+
   /**
    * \brief Resource slot
    * 
@@ -91,9 +91,30 @@ namespace dxvk {
     uint32_t getBindingId(
             uint32_t              slot) const;
     
+    /**
+     * \brief Makes static descriptors dynamic
+     * 
+     * Replaces static uniform and storage buffer bindings by
+     * their dynamic equivalent if the number of bindings of
+     * the respective type lies within supported device limits.
+     * Using dynamic descriptor types may improve performance.
+     * \param [in] uniformBuffers Max number of uniform buffers
+     * \param [in] storageBuffers Max number of storage buffers
+     */
+    void makeDescriptorsDynamic(
+            uint32_t              uniformBuffers,
+            uint32_t              storageBuffers);
+    
   private:
     
     std::vector<DxvkDescriptorSlot> m_descriptorSlots;
+
+    uint32_t countDescriptors(
+            VkDescriptorType      type) const;
+
+    void replaceDescriptors(
+            VkDescriptorType      oldType,
+            VkDescriptorType      newType);
     
   };
   
@@ -165,16 +186,50 @@ namespace dxvk {
     VkDescriptorUpdateTemplateKHR descriptorTemplate() const {
       return m_descriptorTemplate;
     }
+
+    /**
+     * \brief Number of dynamic bindings
+     * \returns Dynamic binding count
+     */
+    uint32_t dynamicBindingCount() const {
+      return m_dynamicSlots.size();
+    }
+
+    /**
+     * \brief Returns a dynamic binding
+     * 
+     * \param [in] id Dynamic binding ID
+     * \returns Reference to that binding
+     */
+    const DxvkDescriptorSlot& dynamicBinding(uint32_t id) const {
+      return this->binding(m_dynamicSlots[id]);
+    }
     
+    /**
+     * \brief Checks for static buffer bindings
+     * 
+     * Returns \c true if there is at least one
+     * descriptor of the static uniform or storage
+     * buffer type.
+     */
+    bool hasStaticBufferBindings() const {
+      return m_descriptorTypes.any(
+        VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+    }
+
   private:
     
     Rc<vk::DeviceFn> m_vkd;
     
-    VkDescriptorSetLayout         m_descriptorSetLayout = VK_NULL_HANDLE;
-    VkPipelineLayout              m_pipelineLayout      = VK_NULL_HANDLE;
-    VkDescriptorUpdateTemplateKHR m_descriptorTemplate  = VK_NULL_HANDLE;
+    VkDescriptorSetLayout           m_descriptorSetLayout = VK_NULL_HANDLE;
+    VkPipelineLayout                m_pipelineLayout      = VK_NULL_HANDLE;
+    VkDescriptorUpdateTemplateKHR   m_descriptorTemplate  = VK_NULL_HANDLE;
     
     std::vector<DxvkDescriptorSlot> m_bindingSlots;
+    std::vector<uint32_t>           m_dynamicSlots;
+
+    Flags<VkDescriptorType>         m_descriptorTypes;
     
   };
   

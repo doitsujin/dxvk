@@ -42,6 +42,38 @@ namespace dxvk {
   }
   
   
+  void DxvkDescriptorSlotMapping::makeDescriptorsDynamic(
+          uint32_t              uniformBuffers,
+          uint32_t              storageBuffers) {
+    if (this->countDescriptors(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER) <= uniformBuffers)
+      this->replaceDescriptors(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC);
+
+    if (this->countDescriptors(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER) <= storageBuffers)
+      this->replaceDescriptors(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC);
+  }
+
+
+  uint32_t DxvkDescriptorSlotMapping::countDescriptors(
+          VkDescriptorType      type) const {
+    uint32_t count = 0;
+
+    for (const auto& slot : m_descriptorSlots)
+      count += slot.type == type ? 1 : 0;
+    
+    return count;
+  }
+
+
+  void DxvkDescriptorSlotMapping::replaceDescriptors(
+          VkDescriptorType      oldType,
+          VkDescriptorType      newType) {
+    for (auto& slot : m_descriptorSlots) {
+      if (slot.type == oldType)
+        slot.type = newType;
+    }
+  }
+
+
   DxvkPipelineLayout::DxvkPipelineLayout(
     const Rc<vk::DeviceFn>&   vkd,
           uint32_t            bindingCount,
@@ -68,6 +100,12 @@ namespace dxvk {
       tEntries[i].descriptorType  = bindingInfos[i].type;
       tEntries[i].offset          = sizeof(DxvkDescriptorInfo) * i;
       tEntries[i].stride          = 0;
+
+      if (bindingInfos[i].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
+       || bindingInfos[i].type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)
+        m_dynamicSlots.push_back(i);
+      
+      m_descriptorTypes.set(bindingInfos[i].type);
     }
     
     // Create descriptor set layout. We do not need to
