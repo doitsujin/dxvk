@@ -231,12 +231,14 @@ namespace dxvk {
     
     
     void cmdBindDescriptorSet(
-          VkPipelineBindPoint       pipeline,
-          VkPipelineLayout          pipelineLayout,
-          VkDescriptorSet           descriptorSet) {
+            VkPipelineBindPoint       pipeline,
+            VkPipelineLayout          pipelineLayout,
+            VkDescriptorSet           descriptorSet,
+            uint32_t                  dynamicOffsetCount,
+      const uint32_t*                 pDynamicOffsets) {
       m_vkd->vkCmdBindDescriptorSets(m_execBuffer,
         pipeline, pipelineLayout, 0, 1,
-        &descriptorSet, 0, nullptr);
+        &descriptorSet, dynamicOffsetCount, pDynamicOffsets);
     }
     
     

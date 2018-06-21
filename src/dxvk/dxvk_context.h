@@ -636,11 +636,15 @@ namespace dxvk {
     
     VkPipeline m_gpActivePipeline = VK_NULL_HANDLE;
     VkPipeline m_cpActivePipeline = VK_NULL_HANDLE;
+
+    VkDescriptorSet m_gpSet = VK_NULL_HANDLE;
+    VkDescriptorSet m_cpSet = VK_NULL_HANDLE;
     
     std::vector<DxvkQueryRevision> m_activeQueries;
     
     std::array<DxvkShaderResourceSlot, MaxNumResourceSlots>  m_rc;
     std::array<DxvkDescriptorInfo,     MaxNumActiveBindings> m_descInfos;
+    std::array<uint32_t,               MaxNumActiveBindings> m_descOffsets;
     
     void startRenderPass();
     void spillRenderPass();
@@ -673,13 +677,18 @@ namespace dxvk {
     
     void updateShaderResources(
             VkPipelineBindPoint     bindPoint,
-      const Rc<DxvkPipelineLayout>& layout);
+      const DxvkPipelineLayout*     layout);
     
-    void updateShaderDescriptors(
+    VkDescriptorSet updateShaderDescriptors(
             VkPipelineBindPoint     bindPoint,
       const DxvkBindingState&       bindingState,
-      const Rc<DxvkPipelineLayout>& layout);
+      const DxvkPipelineLayout*     layout);
     
+    void updateShaderDescriptorSetBinding(
+            VkPipelineBindPoint     bindPoint,
+            VkDescriptorSet         set,
+      const DxvkPipelineLayout*     layout);
+
     void updateFramebuffer();
     
     void updateIndexBufferBinding();

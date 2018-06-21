@@ -311,7 +311,8 @@ namespace dxvk {
       pipeInfo.pipeline);
     m_cmd->cmdBindDescriptorSet(
       VK_PIPELINE_BIND_POINT_COMPUTE,
-      pipeInfo.pipeLayout, descriptorSet);
+      pipeInfo.pipeLayout, descriptorSet,
+      0, nullptr);
     m_cmd->cmdPushConstants(
       pipeInfo.pipeLayout,
       VK_SHADER_STAGE_COMPUTE_BIT,
@@ -548,7 +549,8 @@ namespace dxvk {
       pipeInfo.pipeline);
     m_cmd->cmdBindDescriptorSet(
       VK_PIPELINE_BIND_POINT_COMPUTE,
-      pipeInfo.pipeLayout, descriptorSet);
+      pipeInfo.pipeLayout, descriptorSet,
+      0, nullptr);
     m_cmd->cmdPushConstants(
       pipeInfo.pipeLayout,
       VK_SHADER_STAGE_COMPUTE_BIT,
@@ -1109,7 +1111,7 @@ namespace dxvk {
       m_cmd->cmdBeginRenderPass(&passInfo, VK_SUBPASS_CONTENTS_INLINE);
       m_cmd->cmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeHandle);
       m_cmd->cmdBindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS,
-        pipeInfo.pipeLayout, descriptorWrite.dstSet);
+        pipeInfo.pipeLayout, descriptorWrite.dstSet, 0, nullptr);
       
       m_cmd->cmdSetViewport(0, 1, &viewport);
       m_cmd->cmdSetScissor (0, 1, &scissor);
@@ -1146,12 +1148,22 @@ namespace dxvk {
     if (usage & VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
       m_flags.set(DxvkContextFlag::GpDirtyVertexBuffers);
     
-    if (usage & (VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
-               | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT
-               | VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT
-               | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT))
+    if (usage & (VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT
+               | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT)) {
       m_flags.set(DxvkContextFlag::GpDirtyResources,
                   DxvkContextFlag::CpDirtyResources);
+    }
+
+    if (usage & (VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
+               | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)) {
+      if (prevSlice.handle() != slice.handle()) {
+        m_flags.set(DxvkContextFlag::GpDirtyResources,
+                    DxvkContextFlag::CpDirtyResources);
+      } else {
+        m_flags.set(DxvkContextFlag::GpDirtyDescriptorOffsets,
+                    DxvkContextFlag::CpDirtyDescriptorOffsets);
+      }
+    }
   }
   
   
@@ -1783,58 +1795,94 @@ namespace dxvk {
   
   
   void DxvkContext::updateComputeShaderResources() {
-    if (m_flags.test(DxvkContextFlag::CpDirtyResources)) {
-      if (m_state.cp.pipeline != nullptr) {
-        this->updateShaderResources(
-          VK_PIPELINE_BIND_POINT_COMPUTE,
-          m_state.cp.pipeline->layout());
-      }
+    if (m_state.cp.pipeline == nullptr)
+      return;
+
+    if ((m_flags.test(DxvkContextFlag::CpDirtyResources))
+     || (m_flags.test(DxvkContextFlag::CpDirtyDescriptorOffsets)
+      && m_state.cp.pipeline->layout()->hasStaticBufferBindings())) {
+      m_flags.clr(DxvkContextFlag::CpDirtyResources);
+
+      this->updateShaderResources(
+        VK_PIPELINE_BIND_POINT_COMPUTE,
+        m_state.cp.pipeline->layout());
+
+      m_flags.set(
+        DxvkContextFlag::CpDirtyDescriptorSet,
+        DxvkContextFlag::CpDirtyDescriptorOffsets);
     }
   }
   
   
   void DxvkContext::updateComputeShaderDescriptors() {
-    if (m_flags.test(DxvkContextFlag::CpDirtyResources)) {
-      m_flags.clr(DxvkContextFlag::CpDirtyResources);
-      
-      if (m_state.cp.pipeline != nullptr) {
-        this->updateShaderDescriptors(
-          VK_PIPELINE_BIND_POINT_COMPUTE,
-          m_state.cp.state.bsBindingState,
-          m_state.cp.pipeline->layout());
-      }
+    if (m_state.cp.pipeline == nullptr)
+      return;
+
+    if (m_flags.test(DxvkContextFlag::CpDirtyDescriptorSet)) {
+      m_cpSet = this->updateShaderDescriptors(
+        VK_PIPELINE_BIND_POINT_COMPUTE,
+        m_state.cp.state.bsBindingState,
+        m_state.cp.pipeline->layout());
     }
+
+    if (m_flags.test(DxvkContextFlag::CpDirtyDescriptorOffsets)) {
+      this->updateShaderDescriptorSetBinding(
+        VK_PIPELINE_BIND_POINT_COMPUTE, m_cpSet,
+        m_state.cp.pipeline->layout());
+    }
+
+    m_flags.clr(
+      DxvkContextFlag::CpDirtyDescriptorOffsets,
+      DxvkContextFlag::CpDirtyDescriptorSet);
   }
   
   
   void DxvkContext::updateGraphicsShaderResources() {
-    if (m_flags.test(DxvkContextFlag::GpDirtyResources)) {
-      if (m_state.gp.pipeline != nullptr) {
-        this->updateShaderResources(
-          VK_PIPELINE_BIND_POINT_GRAPHICS,
-          m_state.gp.pipeline->layout());
-      }
+    if (m_state.gp.pipeline == nullptr)
+      return;
+    
+    if ((m_flags.test(DxvkContextFlag::GpDirtyResources))
+     || (m_flags.test(DxvkContextFlag::GpDirtyDescriptorOffsets)
+      && m_state.gp.pipeline->layout()->hasStaticBufferBindings())) {
+      m_flags.clr(DxvkContextFlag::GpDirtyResources);
+
+      this->updateShaderResources(
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        m_state.gp.pipeline->layout());
+
+      m_flags.set(
+        DxvkContextFlag::GpDirtyDescriptorSet,
+        DxvkContextFlag::GpDirtyDescriptorOffsets);
     }
   }
   
   
   void DxvkContext::updateGraphicsShaderDescriptors() {
-    if (m_flags.test(DxvkContextFlag::GpDirtyResources)) {
-      m_flags.clr(DxvkContextFlag::GpDirtyResources);
-      
-      if (m_state.gp.pipeline != nullptr) {
-        this->updateShaderDescriptors(
-          VK_PIPELINE_BIND_POINT_GRAPHICS,
-          m_state.gp.state.bsBindingState,
-          m_state.gp.pipeline->layout());
-      }
+    if (m_state.gp.pipeline == nullptr)
+      return;
+
+    if (m_flags.test(DxvkContextFlag::GpDirtyDescriptorSet)) {
+      m_gpSet = this->updateShaderDescriptors(
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        m_state.gp.state.bsBindingState,
+        m_state.gp.pipeline->layout());
     }
+
+    if (m_flags.test(DxvkContextFlag::GpDirtyDescriptorOffsets)) {
+      this->updateShaderDescriptorSetBinding(
+        VK_PIPELINE_BIND_POINT_GRAPHICS, m_gpSet,
+        m_state.gp.pipeline->layout());
+    }
+
+    m_flags.clr(
+      DxvkContextFlag::GpDirtyDescriptorOffsets,
+      DxvkContextFlag::GpDirtyDescriptorSet);
   }
   
   
   void DxvkContext::updateShaderResources(
           VkPipelineBindPoint     bindPoint,
-    const Rc<DxvkPipelineLayout>& layout) {
+    const DxvkPipelineLayout*     layout) {
     DxvkBindingState& bindingState =
       bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
         ? m_state.gp.state.bsBindingState
@@ -1917,11 +1965,27 @@ namespace dxvk {
             m_descInfos[i].buffer = m_device->dummyBufferDescriptor();
           } break;
         
+        case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+        case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+          if (res.bufferSlice.defined()) {
+            updatePipelineState |= bindingState.setBound(i);
+            
+            auto physicalSlice = res.bufferSlice.physicalSlice();
+            m_descInfos[i].buffer.buffer = physicalSlice.handle();
+            m_descInfos[i].buffer.offset = 0; /* dynamic */
+            m_descInfos[i].buffer.range  = physicalSlice.length();
+            
+            m_cmd->trackResource(physicalSlice.resource());
+          } else {
+            updatePipelineState |= bindingState.setUnbound(i);
+            m_descInfos[i].buffer = m_device->dummyBufferDescriptor();
+          } break;
+        
         default:
           Logger::err(str::format("DxvkContext: Unhandled descriptor type: ", binding.type));
       }
     }
-    
+
     if (updatePipelineState) {
       m_flags.set(bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
         ? DxvkContextFlag::GpDirtyPipelineState
@@ -1930,21 +1994,43 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::updateShaderDescriptors(
+  VkDescriptorSet DxvkContext::updateShaderDescriptors(
           VkPipelineBindPoint     bindPoint,
     const DxvkBindingState&       bindingState,
-    const Rc<DxvkPipelineLayout>& layout) {
+    const DxvkPipelineLayout*     layout) {
+    VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
+
     if (layout->bindingCount() != 0) {
-      const VkDescriptorSet dset =
-        m_cmd->allocateDescriptorSet(
-          layout->descriptorSetLayout());
+      descriptorSet = m_cmd->allocateDescriptorSet(
+        layout->descriptorSetLayout());
       
       m_cmd->updateDescriptorSetWithTemplate(
-        dset, layout->descriptorTemplate(),
+        descriptorSet, layout->descriptorTemplate(),
         m_descInfos.data());
+    }
+
+    return descriptorSet;
+  }
+
+
+  void DxvkContext::updateShaderDescriptorSetBinding(
+          VkPipelineBindPoint     bindPoint,
+          VkDescriptorSet         set,
+    const DxvkPipelineLayout*     layout) {
+    if (set != VK_NULL_HANDLE) {
+      for (uint32_t i = 0; i < layout->dynamicBindingCount(); i++) {
+        const auto& binding = layout->dynamicBinding(i);
+        const auto& res     = m_rc[binding.slot];
+
+        m_descOffsets[i] = res.bufferSlice.defined()
+          ? res.bufferSlice.physicalSlice().offset()
+          : 0;
+      }
       
       m_cmd->cmdBindDescriptorSet(bindPoint,
-        layout->pipelineLayout(), dset);
+        layout->pipelineLayout(), set,
+        layout->dynamicBindingCount(),
+        m_descOffsets.data());
     }
   }
   
@@ -2128,10 +2214,12 @@ namespace dxvk {
         
         switch (binding.type) {
           case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
             access.set(DxvkAccess::Write);
             /* fall through */
           
           case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
             requiresBarrier = m_barriers.isBufferDirty(
               slot.bufferSlice.physicalSlice(), access);
             break;
@@ -2180,10 +2268,12 @@ namespace dxvk {
         
         switch (binding.type) {
           case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
             access |= VK_ACCESS_SHADER_WRITE_BIT;
             /* fall through */
           
           case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+          case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
             m_barriers.accessBuffer(
               slot.bufferSlice.physicalSlice(),
               stages, access,
