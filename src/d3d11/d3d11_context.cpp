@@ -1016,13 +1016,16 @@ namespace dxvk {
     const DXGI_VK_FORMAT_INFO dstFormatInfo = m_parent->LookupFormat(dstDesc.Format, DXGI_VK_FORMAT_MODE_ANY);
     const DXGI_VK_FORMAT_INFO srcFormatInfo = m_parent->LookupFormat(srcDesc.Format, DXGI_VK_FORMAT_MODE_ANY);
     
+    auto dstVulkanFormatInfo = imageFormatInfo(dstFormatInfo.Format);
+    auto srcVulkanFormatInfo = imageFormatInfo(srcFormatInfo.Format);
+    
     const VkImageSubresource dstSubresource =
       dstTextureInfo->GetSubresourceFromIndex(
-        dstFormatInfo.Aspect, DstSubresource);
+        dstVulkanFormatInfo->aspectMask, DstSubresource);
     
     const VkImageSubresource srcSubresource =
       srcTextureInfo->GetSubresourceFromIndex(
-        srcFormatInfo.Aspect, SrcSubresource);
+        srcVulkanFormatInfo->aspectMask, SrcSubresource);
     
     const VkImageSubresourceLayers dstSubresourceLayers = {
       dstSubresource.aspectMask,
