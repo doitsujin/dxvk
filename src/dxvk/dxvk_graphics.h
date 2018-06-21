@@ -188,8 +188,8 @@ namespace dxvk {
      * slots used by the pipeline.
      * \returns Pipeline layout
      */
-    Rc<DxvkPipelineLayout> layout() const {
-      return m_layout;
+    DxvkPipelineLayout* layout() const {
+      return m_layout.ptr();
     }
     
     /**

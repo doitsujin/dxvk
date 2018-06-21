@@ -25,6 +25,10 @@ namespace dxvk {
     m_cache(cache) {
     DxvkDescriptorSlotMapping slotMapping;
     cs->defineResourceSlots(slotMapping);
+
+    slotMapping.makeDescriptorsDynamic(
+      device->options().maxNumDynamicUniformBuffers,
+      device->options().maxNumDynamicStorageBuffers);
     
     m_layout = new DxvkPipelineLayout(m_vkd,
       slotMapping.bindingCount(),
