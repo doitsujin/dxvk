@@ -46,8 +46,8 @@ namespace dxvk {
     const DXGI_SWAP_CHAIN_DESC1*      pSwapChainDesc,
           IDXGIVkBackBuffer**         ppInterface) {
     D3D11_COMMON_TEXTURE_DESC desc;
-    desc.Width              = pSwapChainDesc->Width;
-    desc.Height             = pSwapChainDesc->Height;
+    desc.Width              = std::max(pSwapChainDesc->Width,  1u);
+    desc.Height             = std::max(pSwapChainDesc->Height, 1u);
     desc.Depth              = 1;
     desc.MipLevels          = 1;
     desc.ArraySize          = 1;
@@ -58,7 +58,7 @@ namespace dxvk {
                             | D3D11_BIND_SHADER_RESOURCE;
     desc.CPUAccessFlags     = 0;
     desc.MiscFlags          = 0;
-    
+
     if (pSwapChainDesc->BufferUsage & DXGI_USAGE_UNORDERED_ACCESS)
       desc.BindFlags |= D3D11_BIND_UNORDERED_ACCESS;
     
