@@ -40,7 +40,7 @@ namespace dxvk {
   
   D3D11ShaderModule::D3D11ShaderModule(
     const D3D11ShaderKey* pShaderKey,
-    const DxbcOptions*    pDxbcOptions,
+    const DxbcModuleInfo* pDxbcModuleInfo,
     const void*           pShaderBytecode,
           size_t          BytecodeLength)
   : m_name(pShaderKey->GetName()) {
@@ -62,7 +62,7 @@ namespace dxvk {
         std::ios_base::binary | std::ios_base::trunc));
     }
     
-    m_shader = module.compile(*pDxbcOptions, m_name);
+    m_shader = module.compile(*pDxbcModuleInfo, m_name);
     m_shader->setDebugName(m_name);
     
     if (dumpPath.size() != 0) {
@@ -92,7 +92,7 @@ namespace dxvk {
   
   
   D3D11ShaderModule D3D11ShaderModuleSet::GetShaderModule(
-    const DxbcOptions*    pDxbcOptions,
+    const DxbcModuleInfo* pDxbcModuleInfo,
     const void*           pShaderBytecode,
           size_t          BytecodeLength,
           DxbcProgramType ProgramType) {
@@ -108,7 +108,7 @@ namespace dxvk {
     
     // This shader has not been compiled yet, so we have to create a
     // new module. This takes a while, so we won't lock the structure.
-    D3D11ShaderModule module(&key, pDxbcOptions, pShaderBytecode, BytecodeLength);
+    D3D11ShaderModule module(&key, pDxbcModuleInfo, pShaderBytecode, BytecodeLength);
     
     // Insert the new module into the lookup table. If another thread
     // has compiled the same shader in the meantime, we should return

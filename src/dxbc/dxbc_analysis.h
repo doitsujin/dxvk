@@ -4,7 +4,7 @@
 #include "dxbc_decoder.h"
 #include "dxbc_defs.h"
 #include "dxbc_names.h"
-#include "dxbc_options.h"
+#include "dxbc_modinfo.h"
 #include "dxbc_util.h"
 
 namespace dxvk {
@@ -54,7 +54,7 @@ namespace dxvk {
   public:
     
     DxbcAnalyzer(
-      const DxbcOptions&        options,
+      const DxbcModuleInfo&     moduleInfo,
       const DxbcProgramVersion& version,
       const Rc<DxbcIsgn>&       isgn,
       const Rc<DxbcIsgn>&       osgn,

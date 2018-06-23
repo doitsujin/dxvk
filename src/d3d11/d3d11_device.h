@@ -374,6 +374,7 @@ namespace dxvk {
       const void*                   pShaderBytecode,
             size_t                  BytecodeLength,
             ID3D11ClassLinkage*     pClassLinkage,
+      const DxbcModuleInfo*         pModuleInfo,
             DxbcProgramType         ProgramType);
     
     void InitBuffer(

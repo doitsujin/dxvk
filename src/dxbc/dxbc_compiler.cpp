@@ -10,16 +10,16 @@ namespace dxvk {
   
   DxbcCompiler::DxbcCompiler(
     const std::string&        fileName,
-    const DxbcOptions&        options,
+    const DxbcModuleInfo&     moduleInfo,
     const DxbcProgramVersion& version,
     const Rc<DxbcIsgn>&       isgn,
     const Rc<DxbcIsgn>&       osgn,
     const DxbcAnalysisInfo&   analysis)
-  : m_options (options),
-    m_version (version),
-    m_isgn    (isgn),
-    m_osgn    (osgn),
-    m_analysis(&analysis) {
+  : m_moduleInfo(moduleInfo),
+    m_version   (version),
+    m_isgn      (isgn),
+    m_osgn      (osgn),
+    m_analysis  (&analysis) {
     // Declare an entry point ID. We'll need it during the
     // initialization phase where the execution mode is set.
     m_entryPointId = m_module.allocateId();
@@ -791,7 +791,7 @@ namespace dxvk {
     const bool isUav = ins.op == DxbcOpcode::DclUavTyped;
     
     if (isUav) {
-      if (m_options.test(DxbcOption::UseStorageImageReadWithoutFormat))
+      if (m_moduleInfo.options.test(DxbcOption::UseStorageImageReadWithoutFormat))
         m_module.enableCapability(spv::CapabilityStorageImageReadWithoutFormat);
       m_module.enableCapability(spv::CapabilityStorageImageWriteWithoutFormat);
     }
@@ -852,7 +852,7 @@ namespace dxvk {
     if (isUav) {
       if ((m_analysis->uavInfos[registerId].accessAtomicOp)
        || (m_analysis->uavInfos[registerId].accessTypedLoad
-        && !m_options.test(DxbcOption::UseStorageImageReadWithoutFormat)))
+        && !m_moduleInfo.options.test(DxbcOption::UseStorageImageReadWithoutFormat)))
         imageFormat = getScalarImageFormat(sampledType);
     }
     
@@ -5834,7 +5834,7 @@ namespace dxvk {
     
     // We may have to defer kill operations to the end of
     // the shader in order to keep derivatives correct.
-    if (m_analysis->usesKill && m_analysis->usesDerivatives && m_options.test(DxbcOption::DeferKill)) {
+    if (m_analysis->usesKill && m_analysis->usesDerivatives && m_moduleInfo.options.test(DxbcOption::DeferKill)) {
       m_ps.killState = m_module.newVarInit(
         m_module.defPointerType(m_module.defBoolType(), spv::StorageClassPrivate),
         spv::StorageClassPrivate, m_module.constBool(false));

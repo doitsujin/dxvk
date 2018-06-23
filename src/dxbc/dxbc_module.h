@@ -5,7 +5,7 @@
 #include "dxbc_chunk_isgn.h"
 #include "dxbc_chunk_shex.h"
 #include "dxbc_header.h"
-#include "dxbc_options.h"
+#include "dxbc_modinfo.h"
 #include "dxbc_reader.h"
 
 // References used for figuring out DXBC:
@@ -51,14 +51,14 @@ namespace dxvk {
     /**
      * \brief Compiles DXBC shader to SPIR-V module
      * 
-     * \param [in] options DXBC compiler options
+     * \param [in] moduleInfo DXBC module info
      * \param [in] fileName File name, will be added to
      *        the compiled SPIR-V for debugging purposes.
      * \returns The compiled shader object
      */
     Rc<DxvkShader> compile(
-      const DxbcOptions& options,
-      const std::string& fileName) const;
+      const DxbcModuleInfo& moduleInfo,
+      const std::string&    fileName) const;
     
   private:
     

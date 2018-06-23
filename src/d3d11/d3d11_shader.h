@@ -70,7 +70,7 @@ namespace dxvk {
     D3D11ShaderModule();
     D3D11ShaderModule(
       const D3D11ShaderKey* pShaderKey,
-      const DxbcOptions*    pDxbcOptions,
+      const DxbcModuleInfo* pDxbcModuleInfo,
       const void*           pShaderBytecode,
             size_t          BytecodeLength);
     ~D3D11ShaderModule();
@@ -165,7 +165,7 @@ namespace dxvk {
     ~D3D11ShaderModuleSet();
     
     D3D11ShaderModule GetShaderModule(
-      const DxbcOptions*    pDxbcOptions,
+      const DxbcModuleInfo* pDxbcModuleInfo,
       const void*           pShaderBytecode,
             size_t          BytecodeLength,
             DxbcProgramType ProgramType);

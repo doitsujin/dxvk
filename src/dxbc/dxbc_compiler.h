@@ -9,8 +9,8 @@
 #include "dxbc_chunk_isgn.h"
 #include "dxbc_decoder.h"
 #include "dxbc_defs.h"
+#include "dxbc_modinfo.h"
 #include "dxbc_names.h"
-#include "dxbc_options.h"
 #include "dxbc_util.h"
 
 namespace dxvk {
@@ -354,7 +354,7 @@ namespace dxvk {
     
     DxbcCompiler(
       const std::string&        fileName,
-      const DxbcOptions&        options,
+      const DxbcModuleInfo&     moduleInfo,
       const DxbcProgramVersion& version,
       const Rc<DxbcIsgn>&       isgn,
       const Rc<DxbcIsgn>&       osgn,
@@ -376,7 +376,7 @@ namespace dxvk {
     
   private:
     
-    DxbcOptions         m_options;
+    DxbcModuleInfo      m_moduleInfo;
     DxbcProgramVersion  m_version;
     SpirvModule         m_module;
     
