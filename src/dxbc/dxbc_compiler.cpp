@@ -673,12 +673,19 @@ namespace dxvk {
       info.type.ccount  = regType.ccount;
       info.type.alength = regDim;
       info.sclass = spv::StorageClassOutput;
+
+      // In xfb mode, we set up the actual
+      // output vars when emitting a vertex
+      if (m_moduleInfo.xfb != nullptr)
+        info.sclass = spv::StorageClassPrivate;
       
       const uint32_t varId = this->emitNewVariable(info);
-      
-      m_module.decorateLocation(varId, regIdx);
       m_module.setDebugName(varId, str::format("o", regIdx).c_str());
-      m_entryPointInterfaces.push_back(varId);
+      
+      if (info.sclass == spv::StorageClassOutput) {
+        m_module.decorateLocation(varId, regIdx);
+        m_entryPointInterfaces.push_back(varId);
+      }
       
       m_oRegs.at(regIdx) = { regType, varId };
       
@@ -2071,6 +2078,7 @@ namespace dxvk {
       emitOutputSetup();
       emitClipCullStore(DxbcSystemValue::ClipDistance, m_clipDistances);
       emitClipCullStore(DxbcSystemValue::CullDistance, m_cullDistances);
+      emitXfbOutputSetup(streamId);
       m_module.opEmitVertex(streamVar);
     }
 
@@ -6050,6 +6058,10 @@ namespace dxvk {
       spv::BuiltInCullDistance,
       spv::StorageClassOutput);
     
+    // Emit Xfb variables if necessary
+    if (m_moduleInfo.xfb != nullptr)
+      emitXfbOutputDeclarations();
+
     // Main function of the vertex shader
     m_gs.functionId = m_module.allocateId();
     m_module.setDebugName(m_gs.functionId, "gs_main");
@@ -6225,6 +6237,77 @@ namespace dxvk {
     this->emitFunctionEnd();
   }
   
+  
+  void DxbcCompiler::emitXfbOutputDeclarations() {
+    for (uint32_t i = 0; i < m_moduleInfo.xfb->entryCount; i++) {
+      const DxbcXfbEntry* xfbEntry = m_moduleInfo.xfb->entries + i;
+      const DxbcSgnEntry* sigEntry = m_osgn->find(
+        xfbEntry->semanticName,
+        xfbEntry->semanticIndex,
+        xfbEntry->streamId);
+
+      if (sigEntry == nullptr)
+        continue;
+      
+      DxbcRegisterInfo varInfo;
+      varInfo.type.ctype = DxbcScalarType::Float32;
+      varInfo.type.ccount = xfbEntry->componentCount;
+      varInfo.type.alength = 0;
+      varInfo.sclass = spv::StorageClassOutput;
+      
+      uint32_t dstComponentMask = (1 << xfbEntry->componentCount) - 1;
+      uint32_t srcComponentMask = dstComponentMask
+        << sigEntry->componentMask.firstSet()
+        << xfbEntry->componentIndex;
+      
+      DxbcXfbVar xfbVar;
+      xfbVar.varId = emitNewVariable(varInfo);
+      xfbVar.streamId = xfbEntry->streamId;
+      xfbVar.outputId = sigEntry->registerId;
+      xfbVar.srcMask = DxbcRegMask(srcComponentMask);
+      xfbVar.dstMask = DxbcRegMask(dstComponentMask);
+      m_xfbVars.push_back(xfbVar);
+
+      m_entryPointInterfaces.push_back(xfbVar.varId);
+      m_module.setDebugName(xfbVar.varId,
+        str::format("xfb", i).c_str());
+      
+      m_module.decorateXfb(xfbVar.varId,
+        xfbEntry->streamId, xfbEntry->bufferId, xfbEntry->offset,
+        m_moduleInfo.xfb->strides[xfbEntry->bufferId]);
+    }
+
+    // TODO Compact location/component assignment
+    for (uint32_t i = 0; i < m_xfbVars.size(); i++) {
+      m_xfbVars[i].location  = i;
+      m_xfbVars[i].component = 0;
+    }
+
+    for (uint32_t i = 0; i < m_xfbVars.size(); i++) {
+      const DxbcXfbVar* var = &m_xfbVars[i];
+
+      m_module.decorateLocation (var->varId, var->location);
+      m_module.decorateComponent(var->varId, var->component);
+    }
+  }
+
+
+  void DxbcCompiler::emitXfbOutputSetup(uint32_t streamId) {
+    for (size_t i = 0; i < m_xfbVars.size(); i++) {
+      if (m_xfbVars[i].streamId == streamId) {
+        DxbcRegisterPointer srcPtr = m_oRegs[m_xfbVars[i].outputId];
+        DxbcRegisterPointer dstPtr;
+        dstPtr.type.ctype  = DxbcScalarType::Float32;
+        dstPtr.type.ccount = m_xfbVars[i].dstMask.popCount();
+        dstPtr.id = m_xfbVars[i].varId;
+
+        DxbcRegisterValue value = emitRegisterExtract(
+          emitValueLoad(srcPtr), m_xfbVars[i].srcMask);
+        emitValueStore(dstPtr, value, m_xfbVars[i].dstMask);
+      }
+    }
+  }
+
   
   void DxbcCompiler::emitHsControlPointPhase(
     const DxbcCompilerHsControlPointPhase&  phase) {

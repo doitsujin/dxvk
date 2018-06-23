@@ -122,6 +122,17 @@ namespace dxvk {
     uint32_t labelElse = 0;
     uint32_t labelEnd  = 0;
   };
+
+
+  struct DxbcXfbVar {
+    uint32_t    varId     = 0;
+    uint32_t    streamId  = 0;
+    uint32_t    outputId  = 0;
+    DxbcRegMask srcMask   = 0;
+    DxbcRegMask dstMask   = 0;
+    uint32_t    location  = 0;
+    uint32_t    component = 0;
+  };
   
   
   /**
@@ -419,6 +430,10 @@ namespace dxvk {
       DxbcRegisterPointer,
       DxbcMaxInterfaceRegs>     m_oRegs;
     std::vector<DxbcSvMapping>  m_oMappings;
+
+    /////////////////////////////////////////////
+    // xfb output registers for geometry shaders
+    std::vector<DxbcXfbVar> m_xfbVars;
     
     //////////////////////////////////////////////////////
     // Shader resource variables. These provide access to
@@ -1044,6 +1059,13 @@ namespace dxvk {
     void emitGsFinalize();
     void emitPsFinalize();
     void emitCsFinalize();
+
+    ///////////////////////
+    // Xfb related methods
+    void emitXfbOutputDeclarations();
+
+    void emitXfbOutputSetup(
+            uint32_t                          streamId);
     
     ///////////////////////////////
     // Hull shader phase methods
