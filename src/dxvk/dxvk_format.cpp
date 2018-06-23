@@ -44,11 +44,11 @@ namespace dxvk {
     
     // VK_FORMAT_R8_UINT
     { 1, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledUInt },
     
     // VK_FORMAT_R8_SINT
     { 1, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledSInt },
     
     // VK_FORMAT_R8_SRGB
     { 1, VK_IMAGE_ASPECT_COLOR_BIT,
@@ -68,11 +68,11 @@ namespace dxvk {
     
     // VK_FORMAT_R8G8_UINT
     { 2, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledUInt },
     
     // VK_FORMAT_R8G8_SINT
     { 2, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledSInt },
     
     // VK_FORMAT_R8G8_SRGB
     { 2, VK_IMAGE_ASPECT_COLOR_BIT,
@@ -92,11 +92,11 @@ namespace dxvk {
     
     // VK_FORMAT_R8G8B8_UINT
     { 3, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledUInt },
     
     // VK_FORMAT_R8G8B8_SINT
     { 3, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledSInt },
     
     // VK_FORMAT_R8G8B8_SRGB
     { 3, VK_IMAGE_ASPECT_COLOR_BIT,
@@ -116,11 +116,11 @@ namespace dxvk {
     
     // VK_FORMAT_B8G8R8_UINT
     { 3, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledUInt },
     
     // VK_FORMAT_B8G8R8_SINT
     { 3, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledSInt },
     
     // VK_FORMAT_B8G8R8_SRGB
     { 3, VK_IMAGE_ASPECT_COLOR_BIT,
@@ -140,11 +140,11 @@ namespace dxvk {
     
     // VK_FORMAT_R8G8B8A8_UINT
     { 4, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledUInt },
     
     // VK_FORMAT_R8G8B8A8_SINT
     { 4, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledSInt },
     
     // VK_FORMAT_R8G8B8A8_SRGB
     { 4, VK_IMAGE_ASPECT_COLOR_BIT,
@@ -164,11 +164,11 @@ namespace dxvk {
     
     // VK_FORMAT_B8G8R8A8_UINT
     { 4, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledUInt },
     
     // VK_FORMAT_B8G8R8A8_SINT
     { 4, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledSInt },
     
     // VK_FORMAT_B8G8R8A8_SRGB
     { 4, VK_IMAGE_ASPECT_COLOR_BIT,
@@ -188,11 +188,11 @@ namespace dxvk {
     
     // VK_FORMAT_A8B8G8R8_UINT_PACK32
     { 4, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledUInt },
     
     // VK_FORMAT_A8B8G8R8_SINT_PACK32
     { 4, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledSInt },
     
     // VK_FORMAT_A8B8G8R8_SRGB_PACK32
     { 4, VK_IMAGE_ASPECT_COLOR_BIT,
@@ -212,11 +212,11 @@ namespace dxvk {
     
     // VK_FORMAT_A2R10G10B10_UINT_PACK32
     { 4, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledUInt },
     
     // VK_FORMAT_A2R10G10B10_SINT_PACK32
     { 4, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledSInt },
     
     // VK_FORMAT_A2B10G10R10_UNORM_PACK32
     { 4, VK_IMAGE_ASPECT_COLOR_BIT },
@@ -232,11 +232,11 @@ namespace dxvk {
     
     // VK_FORMAT_A2B10G10R10_UINT_PACK32
     { 4, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledUInt },
     
     // VK_FORMAT_A2B10G10R10_SINT_PACK32
     { 4, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledSInt },
     
     // VK_FORMAT_R16_UNORM
     { 2, VK_IMAGE_ASPECT_COLOR_BIT },
@@ -252,11 +252,11 @@ namespace dxvk {
     
     // VK_FORMAT_R16_UINT
     { 2, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledUInt },
     
     // VK_FORMAT_R16_SINT
     { 2, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledSInt },
     
     // VK_FORMAT_R16_SFLOAT
     { 2, VK_IMAGE_ASPECT_COLOR_BIT },
@@ -275,11 +275,11 @@ namespace dxvk {
     
     // VK_FORMAT_R16G16_UINT
     { 4, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledUInt },
     
     // VK_FORMAT_R16G16_SINT
     { 4, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledSInt },
     
     // VK_FORMAT_R16G16_SFLOAT
     { 4, VK_IMAGE_ASPECT_COLOR_BIT },
@@ -298,11 +298,11 @@ namespace dxvk {
     
     // VK_FORMAT_R16G16B16_UINT
     { 6, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledUInt },
     
     // VK_FORMAT_R16G16B16_SINT
     { 6, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledSInt },
     
     // VK_FORMAT_R16G16B16_SFLOAT
     { 6, VK_IMAGE_ASPECT_COLOR_BIT },
@@ -321,99 +321,99 @@ namespace dxvk {
     
     // VK_FORMAT_R16G16B16A16_UINT
     { 8, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledUInt },
     
     // VK_FORMAT_R16G16B16A16_SINT
     { 8, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledSInt },
     
     // VK_FORMAT_R16G16B16A16_SFLOAT
     { 8, VK_IMAGE_ASPECT_COLOR_BIT },
     
     // VK_FORMAT_R32_UINT
     { 4, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledUInt },
     
     // VK_FORMAT_R32_SINT
     { 4, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledSInt },
     
     // VK_FORMAT_R32_SFLOAT
     { 4, VK_IMAGE_ASPECT_COLOR_BIT },
     
     // VK_FORMAT_R32G32_UINT
     { 8, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledUInt },
     
     // VK_FORMAT_R32G32_SINT
     { 8, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledSInt },
     
     // VK_FORMAT_R32G32_SFLOAT
     { 8, VK_IMAGE_ASPECT_COLOR_BIT },
     
     // VK_FORMAT_R32G32B32_UINT
     { 12, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledUInt },
     
     // VK_FORMAT_R32G32B32_SINT
     { 12, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledSInt },
     
     // VK_FORMAT_R32G32B32_SFLOAT
     { 12, VK_IMAGE_ASPECT_COLOR_BIT },
     
     // VK_FORMAT_R32G32B32A32_UINT
     { 16, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledUInt },
     
     // VK_FORMAT_R32G32B32A32_SINT
     { 16, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledSInt },
     
     // VK_FORMAT_R32G32B32A32_SFLOAT
     { 16, VK_IMAGE_ASPECT_COLOR_BIT },
     
     // VK_FORMAT_R64_UINT
     { 8, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledUInt },
     
     // VK_FORMAT_R64_SINT
     { 8, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledSInt },
     
     // VK_FORMAT_R64_SFLOAT
     { 8, VK_IMAGE_ASPECT_COLOR_BIT },
     
     // VK_FORMAT_R64G64_UINT
     { 16, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledUInt },
     
     // VK_FORMAT_R64G64_SINT
     { 16, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledSInt },
     
     // VK_FORMAT_R64G64_SFLOAT
     { 16, VK_IMAGE_ASPECT_COLOR_BIT },
     
     // VK_FORMAT_R64G64B64_UINT
     { 24, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledUInt },
     
     // VK_FORMAT_R64G64B64_SINT
     { 24, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledSInt },
     
     // VK_FORMAT_R64G64B64_SFLOAT
     { 24, VK_IMAGE_ASPECT_COLOR_BIT },
     
     // VK_FORMAT_R64G64B64A64_UINT
     { 32, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledUInt },
     
     // VK_FORMAT_R64G64B64A64_SINT
     { 32, VK_IMAGE_ASPECT_COLOR_BIT,
-      DxvkFormatFlag::SampledInteger },
+      DxvkFormatFlag::SampledSInt },
     
     // VK_FORMAT_R64G64B64A64_SFLOAT
     { 32, VK_IMAGE_ASPECT_COLOR_BIT },

@@ -75,9 +75,11 @@ namespace dxvk {
     DxvkMetaClearPipeline result;
     result.dsetLayout = m_clearBufDsetLayout;
     result.pipeLayout = m_clearBufPipeLayout;
-    result.pipeline   = formatFlags.test(DxvkFormatFlag::SampledInteger)
-      ? m_clearPipesU32.clearBuf
-      : m_clearPipesF32.clearBuf;
+    result.pipeline   = m_clearPipesF32.clearBuf;
+    
+    if (formatFlags.any(DxvkFormatFlag::SampledUInt, DxvkFormatFlag::SampledSInt))
+      result.pipeline = m_clearPipesU32.clearBuf;
+    
     result.workgroupSize = VkExtent3D { 128, 1, 1 };
     return result;
   }
@@ -86,8 +88,8 @@ namespace dxvk {
   DxvkMetaClearPipeline DxvkMetaClearObjects::getClearImagePipeline(
           VkImageViewType       viewType,
           DxvkFormatFlags       formatFlags) const {
-    const DxvkMetaClearPipelines& pipes
-      = formatFlags.test(DxvkFormatFlag::SampledInteger)
+    const DxvkMetaClearPipelines& pipes = formatFlags.any(
+      DxvkFormatFlag::SampledUInt, DxvkFormatFlag::SampledSInt)
         ? m_clearPipesU32 : m_clearPipesF32;
     
     DxvkMetaClearPipeline result;
