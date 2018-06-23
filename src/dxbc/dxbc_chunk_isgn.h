@@ -46,7 +46,8 @@ namespace dxvk {
     
     const DxbcSgnEntry* find(
       const std::string& semanticName,
-            uint32_t     semanticIndex) const;
+            uint32_t     semanticIndex,
+            uint32_t     streamIndex) const;
     
   private:
     

@@ -952,7 +952,7 @@ namespace dxvk {
       for (uint32_t i = 0; i < NumElements; i++) {
         const DxbcSgnEntry* entry = inputSignature->find(
           pInputElementDescs[i].SemanticName,
-          pInputElementDescs[i].SemanticIndex);
+          pInputElementDescs[i].SemanticIndex, 0);
         
         if (entry == nullptr) {
           Logger::debug(str::format(

@@ -43,9 +43,11 @@ namespace dxvk {
   
   const DxbcSgnEntry* DxbcIsgn::find(
     const std::string& semanticName,
-          uint32_t     semanticIndex) const {
+          uint32_t     semanticIndex,
+          uint32_t     streamId) const {
     for (auto e = this->begin(); e != this->end(); e++) {
       if (e->semanticIndex == semanticIndex
+       && e->streamId      == streamId
        && compareSemanticNames(semanticName, e->semanticName))
         return &(*e);
     }
