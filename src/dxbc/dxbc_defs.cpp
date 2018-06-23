@@ -87,7 +87,7 @@ namespace dxvk {
     /* Emit                                 */
     { 0, DxbcInstClass::GeometryEmit },
     /* EmitThenCut                          */
-    { },
+    { 0, DxbcInstClass::GeometryEmit },
     /* EndIf                                */
     { 0, DxbcInstClass::ControlFlow },
     /* EndLoop                              */
@@ -582,7 +582,9 @@ namespace dxvk {
       { DxbcOperandKind::DstReg, DxbcScalarType::Uint32  },
     } },
     /* EmitThenCutStream                    */
-    { },
+    { 1, DxbcInstClass::GeometryEmit, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32  },
+    } },
     /* InterfaceCall                        */
     { },
     /* BufInfo                              */

@@ -1994,25 +1994,19 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitGeometryEmit(const DxbcShaderInstruction& ins) {
-    switch (ins.op) {
-      case DxbcOpcode::Emit:
-      case DxbcOpcode::EmitStream: {
-        emitOutputSetup();
-        emitClipCullStore(DxbcSystemValue::ClipDistance, m_clipDistances);
-        emitClipCullStore(DxbcSystemValue::CullDistance, m_cullDistances);
-        m_module.opEmitVertex();
-      } break;
-      
-      case DxbcOpcode::Cut:
-      case DxbcOpcode::CutStream: {
-        m_module.opEndPrimitive();
-      } break;
-      
-      default:
-        Logger::warn(str::format(
-          "DxbcCompiler: Unhandled instruction: ",
-          ins.op));
+    // Checking the negation is easier for EmitThenCut/EmitThenCutStream
+    bool doEmit = ins.op != DxbcOpcode::Cut && ins.op != DxbcOpcode::CutStream;
+    bool doCut = ins.op != DxbcOpcode::Emit && ins.op != DxbcOpcode::EmitStream;
+
+    if (doEmit) {
+      emitOutputSetup();
+      emitClipCullStore(DxbcSystemValue::ClipDistance, m_clipDistances);
+      emitClipCullStore(DxbcSystemValue::CullDistance, m_cullDistances);
+      m_module.opEmitVertex();
     }
+
+    if (doCut)
+      m_module.opEndPrimitive();
   }
   
   
