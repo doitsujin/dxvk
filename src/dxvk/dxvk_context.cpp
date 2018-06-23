@@ -1265,7 +1265,7 @@ namespace dxvk {
       m_cmd->cmdBeginRenderPass(&info, VK_SUBPASS_CONTENTS_INLINE);
       m_cmd->cmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeHandle);
       m_cmd->cmdBindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS,
-        pipeInfo.pipeLayout, descriptorWrite.dstSet, 0, nullptr);
+        pipeInfo.pipeLayout, descriptorWrite.dstSet);
 
       m_cmd->cmdSetViewport(0, 1, &viewport);
       m_cmd->cmdSetScissor (0, 1, &scissor);
