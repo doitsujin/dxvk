@@ -197,6 +197,13 @@ namespace dxvk {
             uint32_t                object,
             uint32_t                specId);
     
+    void decorateXfb(
+            uint32_t                object,
+            uint32_t                streamId,
+            uint32_t                bufferId,
+            uint32_t                offset,
+            uint32_t                stride);
+    
     void memberDecorateBuiltIn(
             uint32_t                structId,
             uint32_t                memberId,
