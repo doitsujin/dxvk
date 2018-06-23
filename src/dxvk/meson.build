@@ -18,6 +18,12 @@ dxvk_shaders = files([
   'shaders/dxvk_mipgen_frag_2d.frag',
   'shaders/dxvk_mipgen_frag_3d.frag',
   
+  'shaders/dxvk_resolve_vert.vert',
+  'shaders/dxvk_resolve_geom.geom',
+  'shaders/dxvk_resolve_frag_f.frag',
+  'shaders/dxvk_resolve_frag_i.frag',
+  'shaders/dxvk_resolve_frag_u.frag',
+
   'hud/shaders/hud_line.frag',
   'hud/shaders/hud_text.frag',
   'hud/shaders/hud_vert.vert',
