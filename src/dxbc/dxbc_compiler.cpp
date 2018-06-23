@@ -796,7 +796,7 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitDclStream(const DxbcShaderInstruction& ins) {
-    if (ins.dst[0].idx[0].offset != 0)
+    if (ins.dst[0].idx[0].offset != 0 && m_moduleInfo.xfb == nullptr)
       Logger::err("Dxbc: Multiple streams not supported");
   }
   
@@ -2053,6 +2053,16 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitGeometryEmit(const DxbcShaderInstruction& ins) {
+    // In xfb mode we might have multiple streams, so
+    // we have to figure out which stream to write to
+    uint32_t streamId  = 0;
+    uint32_t streamVar = 0;
+
+    if (m_moduleInfo.xfb != nullptr) {
+      streamId  = ins.dstCount > 0 ? ins.dst[0].idx[0].offset : 0;
+      streamVar = m_module.constu32(streamId);
+    }
+
     // Checking the negation is easier for EmitThenCut/EmitThenCutStream
     bool doEmit = ins.op != DxbcOpcode::Cut && ins.op != DxbcOpcode::CutStream;
     bool doCut = ins.op != DxbcOpcode::Emit && ins.op != DxbcOpcode::EmitStream;
@@ -2061,11 +2071,11 @@ namespace dxvk {
       emitOutputSetup();
       emitClipCullStore(DxbcSystemValue::ClipDistance, m_clipDistances);
       emitClipCullStore(DxbcSystemValue::CullDistance, m_cullDistances);
-      m_module.opEmitVertex();
+      m_module.opEmitVertex(streamVar);
     }
 
     if (doCut)
-      m_module.opEndPrimitive();
+      m_module.opEndPrimitive(streamVar);
   }
   
   
@@ -6008,6 +6018,14 @@ namespace dxvk {
     m_module.enableCapability(spv::CapabilityGeometry);
     m_module.enableCapability(spv::CapabilityClipDistance);
     m_module.enableCapability(spv::CapabilityCullDistance);
+
+    // Enable capabilities for xfb mode if necessary
+    if (m_moduleInfo.xfb != nullptr) {
+      m_module.enableCapability(spv::CapabilityGeometryStreams);
+      m_module.enableCapability(spv::CapabilityTransformFeedback);
+      
+      m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeXfb);
+    }
     
     // Declare the per-vertex output block. Outputs are not
     // declared as arrays, instead they will be flushed when

@@ -2937,13 +2937,25 @@ namespace dxvk {
   }
   
   
-  void SpirvModule::opEmitVertex() {
-    m_code.putIns (spv::OpEmitVertex, 1);
+  void SpirvModule::opEmitVertex(
+          uint32_t                streamId) {
+    if (streamId == 0) {
+      m_code.putIns (spv::OpEmitVertex, 1);
+    } else {
+      m_code.putIns (spv::OpEmitStreamVertex, 2);
+      m_code.putWord(streamId);
+    }
   }
   
   
-  void SpirvModule::opEndPrimitive() {
-    m_code.putIns (spv::OpEndPrimitive, 1);
+  void SpirvModule::opEndPrimitive(
+          uint32_t                streamId) {
+    if (streamId == 0) {
+      m_code.putIns (spv::OpEndPrimitive, 1);
+    } else {
+      m_code.putIns (spv::OpEndStreamPrimitive, 2);
+      m_code.putWord(streamId);
+    }
   }
   
   

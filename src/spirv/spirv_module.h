@@ -1022,9 +1022,11 @@ namespace dxvk {
     
     void opKill();
     
-    void opEmitVertex();
+    void opEmitVertex(
+            uint32_t                streamId);
     
-    void opEndPrimitive();
+    void opEndPrimitive(
+            uint32_t                streamId);
     
   private:
     
