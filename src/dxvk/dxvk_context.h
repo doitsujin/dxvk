@@ -32,7 +32,8 @@ namespace dxvk {
       const Rc<DxvkDevice>&             device,
       const Rc<DxvkPipelineManager>&    pipelineManager,
       const Rc<DxvkMetaClearObjects>&   metaClearObjects,
-      const Rc<DxvkMetaMipGenObjects>&  metaMipGenObjects);
+      const Rc<DxvkMetaMipGenObjects>&  metaMipGenObjects,
+      const Rc<DxvkMetaResolveObjects>& metaResolveObjects);
     ~DxvkContext();
     
     /**
@@ -621,10 +622,11 @@ namespace dxvk {
     
   private:
     
-    const Rc<DxvkDevice>            m_device;
-    const Rc<DxvkPipelineManager>   m_pipeMgr;
-    const Rc<DxvkMetaClearObjects>  m_metaClear;
-    const Rc<DxvkMetaMipGenObjects> m_metaMipGen;
+    const Rc<DxvkDevice>              m_device;
+    const Rc<DxvkPipelineManager>     m_pipeMgr;
+    const Rc<DxvkMetaClearObjects>    m_metaClear;
+    const Rc<DxvkMetaMipGenObjects>   m_metaMipGen;
+    const Rc<DxvkMetaResolveObjects>  m_metaResolve;
     
     Rc<DxvkCommandList> m_cmd;
     DxvkContextFlags    m_flags;

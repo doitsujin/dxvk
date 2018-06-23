@@ -13,11 +13,12 @@ namespace dxvk {
     m_extensions        (extensions),
     m_features          (features),
     m_properties        (adapter->deviceProperties()),
-    m_memory            (new DxvkMemoryAllocator  (adapter, vkd)),
-    m_renderPassPool    (new DxvkRenderPassPool   (vkd)),
-    m_pipelineManager   (new DxvkPipelineManager  (this)),
-    m_metaClearObjects  (new DxvkMetaClearObjects (vkd)),
-    m_metaMipGenObjects (new DxvkMetaMipGenObjects(vkd)),
+    m_memory            (new DxvkMemoryAllocator    (adapter, vkd)),
+    m_renderPassPool    (new DxvkRenderPassPool     (vkd)),
+    m_pipelineManager   (new DxvkPipelineManager    (this)),
+    m_metaClearObjects  (new DxvkMetaClearObjects   (vkd)),
+    m_metaMipGenObjects (new DxvkMetaMipGenObjects  (vkd)),
+    m_metaResolveObjects(new DxvkMetaResolveObjects (vkd)),
     m_unboundResources  (this),
     m_submissionQueue   (this) {
     m_graphicsQueue.queueFamily = m_adapter->graphicsQueueFamily();
@@ -116,7 +117,8 @@ namespace dxvk {
     return new DxvkContext(this,
       m_pipelineManager,
       m_metaClearObjects,
-      m_metaMipGenObjects);
+      m_metaMipGenObjects,
+      m_metaResolveObjects);
   }
   
   

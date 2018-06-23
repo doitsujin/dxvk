@@ -382,6 +382,7 @@ namespace dxvk {
     Rc<DxvkPipelineManager>     m_pipelineManager;
     Rc<DxvkMetaClearObjects>    m_metaClearObjects;
     Rc<DxvkMetaMipGenObjects>   m_metaMipGenObjects;
+    Rc<DxvkMetaResolveObjects>  m_metaResolveObjects;
     
     DxvkUnboundResources        m_unboundResources;
     
