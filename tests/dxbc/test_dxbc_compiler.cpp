@@ -43,6 +43,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
     
     DxbcModuleInfo moduleInfo;
     moduleInfo.options = DxbcOptions();
+    moduleInfo.xfb     = nullptr;
 
     Rc<DxvkShader> shader = module.compile(moduleInfo, ifileName);
     std::ofstream ofile(str::fromws(argv[2]), std::ios::binary);

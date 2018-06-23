@@ -488,7 +488,7 @@ namespace dxvk {
     // Inter-stage shader interface slots. Also
     // covers vertex input and fragment output.
     DxvkInterfaceSlots m_interfaceSlots;
-    
+
     ///////////////////////////////////
     // Shader-specific data structures
     DxbcCompilerVsPart m_vs;

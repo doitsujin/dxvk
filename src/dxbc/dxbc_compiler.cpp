@@ -199,7 +199,12 @@ namespace dxvk {
       m_entryPointInterfaces.size(),
       m_entryPointInterfaces.data());
     m_module.setDebugName(m_entryPointId, "main");
-    
+
+    DxvkShaderOptions shaderOptions = { };
+
+    if (m_moduleInfo.xfb != nullptr)
+      shaderOptions.rasterizedStream = m_moduleInfo.xfb->rasterizedStream;
+
     // Create the shader module object
     return new DxvkShader(
       m_programInfo.shaderStage(),
@@ -207,6 +212,7 @@ namespace dxvk {
       m_resourceSlots.data(),
       m_interfaceSlots,
       m_module.compile(),
+      shaderOptions,
       std::move(m_immConstData));
   }
   
