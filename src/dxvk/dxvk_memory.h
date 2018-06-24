@@ -237,8 +237,9 @@ namespace dxvk {
      * \returns Allocated memory slice
      */
     DxvkMemory alloc(
-      const VkMemoryRequirements& req,
-      const VkMemoryPropertyFlags flags);
+      const VkMemoryRequirements*             req,
+      const VkMemoryDedicatedAllocateInfoKHR* dedAllocInfo,
+            VkMemoryPropertyFlags             flags);
     
     /**
      * \brief Queries memory stats
@@ -262,17 +263,20 @@ namespace dxvk {
     std::array<DxvkMemoryType, VK_MAX_MEMORY_TYPES> m_memTypes;
     
     DxvkMemory tryAlloc(
-      const VkMemoryRequirements& req,
-      const VkMemoryPropertyFlags flags);
+      const VkMemoryRequirements*             req,
+      const VkMemoryDedicatedAllocateInfoKHR* dedAllocInfo,
+            VkMemoryPropertyFlags             flags);
     
     DxvkMemory tryAllocFromType(
-            DxvkMemoryType*       type,
-            VkDeviceSize          size,
-            VkDeviceSize          align);
+            DxvkMemoryType*                   type,
+            VkDeviceSize                      size,
+            VkDeviceSize                      align,
+      const VkMemoryDedicatedAllocateInfoKHR* dedAllocInfo);
     
     DxvkDeviceMemory tryAllocDeviceMemory(
-            DxvkMemoryType*       type,
-            VkDeviceSize          size);
+            DxvkMemoryType*                   type,
+            VkDeviceSize                      size,
+      const VkMemoryDedicatedAllocateInfoKHR* dedAllocInfo);
     
     void free(
       const DxvkMemory&           memory);

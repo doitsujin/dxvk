@@ -27,10 +27,33 @@ namespace dxvk {
         "\n  usage: ", info.usage));
     }
     
-    VkMemoryRequirements memReq;
-    m_vkd->vkGetBufferMemoryRequirements(
-      m_vkd->device(), m_handle, &memReq);
-    m_memory = memAlloc.alloc(memReq, memFlags);
+    VkMemoryDedicatedRequirementsKHR dedicatedRequirements;
+    dedicatedRequirements.sType                       = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS_KHR;
+    dedicatedRequirements.pNext                       = VK_NULL_HANDLE;
+    dedicatedRequirements.prefersDedicatedAllocation  = VK_FALSE;
+    dedicatedRequirements.requiresDedicatedAllocation = VK_FALSE;
+    
+    VkMemoryRequirements2KHR memReq;
+    memReq.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2_KHR;
+    memReq.pNext = &dedicatedRequirements;
+    
+    VkBufferMemoryRequirementsInfo2KHR memReqInfo;
+    memReqInfo.sType  = VK_STRUCTURE_TYPE_BUFFER_MEMORY_REQUIREMENTS_INFO_2_KHR;
+    memReqInfo.buffer = m_handle;
+    memReqInfo.pNext  = VK_NULL_HANDLE;
+    
+    VkMemoryDedicatedAllocateInfoKHR dedMemoryAllocInfo;
+    dedMemoryAllocInfo.sType  = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO_KHR;
+    dedMemoryAllocInfo.pNext  = VK_NULL_HANDLE;
+    dedMemoryAllocInfo.buffer = m_handle;
+    dedMemoryAllocInfo.image  = VK_NULL_HANDLE;
+
+    m_vkd->vkGetBufferMemoryRequirements2KHR(
+       m_vkd->device(), &memReqInfo, &memReq);
+
+    bool useDedicated = dedicatedRequirements.prefersDedicatedAllocation;
+    m_memory = memAlloc.alloc(&memReq.memoryRequirements,
+      useDedicated ? &dedMemoryAllocInfo : nullptr, memFlags);
     
     if (m_vkd->vkBindBufferMemory(m_vkd->device(), m_handle,
         m_memory.memory(), m_memory.offset()) != VK_SUCCESS)
