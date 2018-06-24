@@ -31,12 +31,16 @@ namespace dxvk {
     
     DecodeSampleCount(m_desc.SampleDesc.Count, &imageInfo.sampleCount);
     
-    // Color formats require MUTABLE_FORMAT_BIT to be set since
-    // they can be reinterpreted, especially typeless formats.
+    // Typeless formats need the MUTABLE_FORMAT_BIT to be set
+    // since they can be reinterpreted. We'll always set this
+    // for UAV images for integer clear operations to work.
+    bool mutableFormat = (formatInfo.Aspect == 0)
+      || (m_desc.BindFlags & D3D11_BIND_UNORDERED_ACCESS);
+
     // Depth-stencil formats are not compatible to each other.
     VkImageAspectFlags formatAspect = imageFormatInfo(formatInfo.Format)->aspectMask;
     
-    if (formatAspect & VK_IMAGE_ASPECT_COLOR_BIT)
+    if (mutableFormat && (formatAspect & VK_IMAGE_ASPECT_COLOR_BIT))
       imageInfo.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
     
     // Adjust image flags based on the corresponding D3D flags
