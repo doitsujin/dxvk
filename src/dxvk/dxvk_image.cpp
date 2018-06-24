@@ -46,13 +46,11 @@ namespace dxvk {
     // alignment on non-linear images in order not to violate the
     // bufferImageGranularity limit, which may be greater than the
     // required resource memory alignment on some GPUs.
-    VkMemoryDedicatedRequirementsKHR dedicatedRequirements =
-    {
-      VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS_KHR,
-      VK_NULL_HANDLE,
-      VK_FALSE,
-      VK_FALSE
-    };
+    VkMemoryDedicatedRequirementsKHR dedicatedRequirements;
+    dedicatedRequirements.sType                       = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS_KHR;
+    dedicatedRequirements.pNext                       = VK_NULL_HANDLE;
+    dedicatedRequirements.prefersDedicatedAllocation  = VK_FALSE;
+    dedicatedRequirements.requiresDedicatedAllocation = VK_FALSE;
     
     VkMemoryRequirements2KHR memReq;
     memReq.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2_KHR;
