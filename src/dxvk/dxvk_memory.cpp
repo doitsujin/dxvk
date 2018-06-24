@@ -166,17 +166,15 @@ namespace dxvk {
   
   
   DxvkMemory DxvkMemoryAllocator::alloc(
-    const VkMemoryRequirements2KHR& req,
-    const VkMemoryDedicatedRequirementsKHR& dedReq,
-    const VkMemoryPropertyFlags flags,
-    VkImage               image,
-    VkBuffer              buffer) {
+    const VkMemoryRequirements2KHR&               req,
+          VkMemoryDedicatedAllocateInfoKHR* const dedAllocInfo,
+    const VkMemoryPropertyFlags                   flags) {
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    DxvkMemory result = this->tryAlloc(req, dedReq, flags, image, buffer);
+    DxvkMemory result = this->tryAlloc(req, dedAllocInfo, flags);
     
     if (!result && (flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))
-      result = this->tryAlloc(req, dedReq, flags & ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, image, buffer);
+      result = this->tryAlloc(req, dedAllocInfo, flags & ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     
     if (!result) {
       Logger::err(str::format(
@@ -207,13 +205,10 @@ namespace dxvk {
   
   
   DxvkMemory DxvkMemoryAllocator::tryAlloc(
-    const VkMemoryRequirements2KHR& req,
-    const VkMemoryDedicatedRequirementsKHR& dedicatedReq,
-    const VkMemoryPropertyFlags flags,
-    VkImage               image,
-    VkBuffer              buffer) {
+    const VkMemoryRequirements2KHR&               req,
+          VkMemoryDedicatedAllocateInfoKHR* const dedAllocInfo,
+    const VkMemoryPropertyFlags                   flags) {
     DxvkMemory result;
-    bool dedicatedAllocation = dedicatedReq.prefersDedicatedAllocation || dedicatedReq.requiresDedicatedAllocation;
 
     for (uint32_t i = 0; i < m_memProps.memoryTypeCount && !result; i++) {
       const bool supported = (req.memoryRequirements.memoryTypeBits & (1u << i)) != 0;
@@ -221,7 +216,7 @@ namespace dxvk {
       
       if (supported && adequate) {
         result = this->tryAllocFromType(
-          &m_memTypes[i], req.memoryRequirements.size, req.memoryRequirements.alignment, dedicatedAllocation, image, buffer);
+          &m_memTypes[i], req.memoryRequirements.size, req.memoryRequirements.alignment, dedAllocInfo);
       }
     }
     
@@ -230,16 +225,14 @@ namespace dxvk {
   
   
   DxvkMemory DxvkMemoryAllocator::tryAllocFromType(
-          DxvkMemoryType*       type,
-          VkDeviceSize          size,
-          VkDeviceSize          align,
-          bool                  dedicatedAllocation,
-          VkImage               image,
-          VkBuffer              buffer) {
+          DxvkMemoryType*                         type,
+          VkDeviceSize                            size,
+          VkDeviceSize                            align,
+          VkMemoryDedicatedAllocateInfoKHR* const dedAllocInfo) {
     DxvkMemory memory;
 
-    if ((size >= ChunkSize / 4) || dedicatedAllocation) {
-      DxvkDeviceMemory devMem = this->tryAllocDeviceMemory(type, size, dedicatedAllocation, image, buffer);
+    if ((size >= ChunkSize / 4) || dedAllocInfo) {
+      DxvkDeviceMemory devMem = this->tryAllocDeviceMemory(type, size, dedAllocInfo);
 
       if (devMem.memHandle != VK_NULL_HANDLE)
         memory = DxvkMemory(this, nullptr, type, devMem.memHandle, 0, size, devMem.memPointer);
@@ -248,7 +241,7 @@ namespace dxvk {
         memory = type->chunks[i]->alloc(size, align);
       
       if (!memory) {
-        DxvkDeviceMemory devMem = tryAllocDeviceMemory(type, ChunkSize, false, image, buffer);
+        DxvkDeviceMemory devMem = tryAllocDeviceMemory(type, ChunkSize, nullptr);
 
         if (devMem.memHandle == VK_NULL_HANDLE)
           return DxvkMemory();
@@ -268,28 +261,19 @@ namespace dxvk {
   
   
   DxvkDeviceMemory DxvkMemoryAllocator::tryAllocDeviceMemory(
-          DxvkMemoryType*       type,
-          VkDeviceSize          size,
-          bool                  dedicatedAllocation,
-          VkImage               image,
-          VkBuffer              buffer) {
+          DxvkMemoryType*                         type,
+          VkDeviceSize                            size,
+          VkMemoryDedicatedAllocateInfoKHR* const dedAllocInfo) {
     if ((type->memType.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
      && (type->heap->stats.memoryAllocated + size > type->heap->properties.size))
       return DxvkDeviceMemory();
     
     DxvkDeviceMemory result;
     result.memSize = size;
-    
-    
-    VkMemoryDedicatedAllocateInfoKHR dedicatedInfo;
-    dedicatedInfo.sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO_KHR;
-    dedicatedInfo.pNext = VK_NULL_HANDLE;
-    dedicatedInfo.buffer = buffer;
-    dedicatedInfo.image = image;
 
     VkMemoryAllocateInfo info;
     info.sType            = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    info.pNext            = dedicatedAllocation ? &dedicatedInfo : VK_NULL_HANDLE;
+    info.pNext            = dedAllocInfo;
     info.allocationSize   = size;
     info.memoryTypeIndex  = type->memTypeId;
 

@@ -56,22 +56,27 @@ namespace dxvk {
     memReq.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2_KHR;
     memReq.pNext = &dedicatedRequirements;
     
-    
     VkImageMemoryRequirementsInfo2KHR memReqInfo;
     memReqInfo.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2_KHR;
     memReqInfo.image = m_image;
     memReqInfo.pNext = VK_NULL_HANDLE;
+
+    VkMemoryDedicatedAllocateInfoKHR dedMemoryAllocInfo;
+    dedMemoryAllocInfo.sType  = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO_KHR;
+    dedMemoryAllocInfo.pNext  = VK_NULL_HANDLE;
+    dedMemoryAllocInfo.buffer = VK_NULL_HANDLE;
+    dedMemoryAllocInfo.image  = m_image;
     
     m_vkd->vkGetImageMemoryRequirements2KHR(
       m_vkd->device(), &memReqInfo, &memReq);
  
-    
     if (info.tiling != VK_IMAGE_TILING_LINEAR) {
       memReq.memoryRequirements.size      = align(memReq.memoryRequirements.size,       memAlloc.bufferImageGranularity());
       memReq.memoryRequirements.alignment = align(memReq.memoryRequirements.alignment , memAlloc.bufferImageGranularity());
     }
-    
-    m_memory = memAlloc.alloc(memReq, dedicatedRequirements, memFlags, m_image, VK_NULL_HANDLE);
+
+    bool useDedicated = dedicatedRequirements.prefersDedicatedAllocation;
+    m_memory = memAlloc.alloc(memReq, useDedicated ? &dedMemoryAllocInfo : nullptr, memFlags);
     
     // Try to bind the allocated memory slice to the image
     if (m_vkd->vkBindImageMemory(m_vkd->device(),

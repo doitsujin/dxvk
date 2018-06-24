@@ -42,9 +42,17 @@ namespace dxvk {
     memReqInfo.buffer = m_handle;
     memReqInfo.pNext  = VK_NULL_HANDLE;
     
+    VkMemoryDedicatedAllocateInfoKHR dedMemoryAllocInfo;
+    dedMemoryAllocInfo.sType  = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO_KHR;
+    dedMemoryAllocInfo.pNext  = VK_NULL_HANDLE;
+    dedMemoryAllocInfo.buffer = m_handle;
+    dedMemoryAllocInfo.image  = VK_NULL_HANDLE;
+
     m_vkd->vkGetBufferMemoryRequirements2KHR(
        m_vkd->device(), &memReqInfo, &memReq);
-    m_memory = memAlloc.alloc(memReq, dedicatedRequirements, memFlags, VK_NULL_HANDLE, m_handle);
+
+    bool useDedicated = dedicatedRequirements.prefersDedicatedAllocation;
+    m_memory = memAlloc.alloc(memReq, useDedicated ? &dedMemoryAllocInfo : nullptr, memFlags);
     
     if (m_vkd->vkBindBufferMemory(m_vkd->device(), m_handle,
         m_memory.memory(), m_memory.offset()) != VK_SUCCESS)

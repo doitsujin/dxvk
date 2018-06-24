@@ -237,11 +237,9 @@ namespace dxvk {
      * \returns Allocated memory slice
      */
     DxvkMemory alloc(
-      const VkMemoryRequirements2KHR& req,
-      const VkMemoryDedicatedRequirementsKHR& dedReq,
-      const VkMemoryPropertyFlags flags,
-      VkImage               image,
-      VkBuffer              buffer);
+      const VkMemoryRequirements2KHR&               req,
+            VkMemoryDedicatedAllocateInfoKHR* const dedAllocInfo,
+      const VkMemoryPropertyFlags                   flags);
     
     /**
      * \brief Queries memory stats
@@ -265,26 +263,20 @@ namespace dxvk {
     std::array<DxvkMemoryType, VK_MAX_MEMORY_TYPES> m_memTypes;
     
     DxvkMemory tryAlloc(
-      const VkMemoryRequirements2KHR& req,
-      const VkMemoryDedicatedRequirementsKHR& dedReq,
-      const VkMemoryPropertyFlags flags,
-      VkImage               image,
-      VkBuffer              buffer);
+      const VkMemoryRequirements2KHR&               req,
+            VkMemoryDedicatedAllocateInfoKHR* const dedAllocInfo,
+      const VkMemoryPropertyFlags                   flags);
     
     DxvkMemory tryAllocFromType(
-            DxvkMemoryType*       type,
-            VkDeviceSize          size,
-            VkDeviceSize          align,
-            bool                  dedicatedAllocation,
-            VkImage               image,
-            VkBuffer              buffer);
+            DxvkMemoryType*                         type,
+            VkDeviceSize                            size,
+            VkDeviceSize                            align,
+            VkMemoryDedicatedAllocateInfoKHR* const dedAllocInfo);
     
     DxvkDeviceMemory tryAllocDeviceMemory(
             DxvkMemoryType*       type,
             VkDeviceSize          size,
-            bool                  dedicatedAllocation,
-            VkImage               image,
-            VkBuffer              buffer);
+            VkMemoryDedicatedAllocateInfoKHR* const dedAllocInfo);
     
     void free(
       const DxvkMemory&           memory);
