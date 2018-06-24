@@ -137,6 +137,8 @@ namespace dxvk {
     DxvkExtension khrMaintenance2             = { this, VK_KHR_MAINTENANCE2_EXTENSION_NAME,                 DxvkExtensionType::Required };
     DxvkExtension khrShaderDrawParameters     = { this, VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME,       DxvkExtensionType::Required };
     DxvkExtension khrSwapchain                = { this, VK_KHR_SWAPCHAIN_EXTENSION_NAME,                    DxvkExtensionType::Required };
+    DxvkExtension khrGetMemoryRequirements2   = { this, VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME,    DxvkExtensionType::Required };
+    DxvkExtension khrDedicatedAllocation      = { this, VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME,         DxvkExtensionType::Required };
   };
   
   /**

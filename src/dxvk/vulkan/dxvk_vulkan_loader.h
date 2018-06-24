@@ -269,6 +269,11 @@ namespace dxvk::vk {
     VULKAN_FN(vkAcquireNextImageKHR);
     VULKAN_FN(vkQueuePresentKHR);
     #endif
+
+    #ifdef VK_KHR_get_memory_requirements2
+    VULKAN_FN(vkGetBufferMemoryRequirements2KHR);
+    VULKAN_FN(vkGetImageMemoryRequirements2KHR);
+    #endif
   };
   
 }
