@@ -8,9 +8,6 @@ namespace dxvk {
     const D3D11_RASTERIZER_DESC1&         desc)
   : m_device(device), m_desc(desc) {
     
-    // State that is not supported in D3D11
-    m_state.enableDiscard = VK_FALSE;
-    
     // Polygon mode. Determines whether the rasterizer fills
     // a polygon or renders lines connecting the vertices.
     m_state.polygonMode = VK_POLYGON_MODE_FILL;
@@ -50,10 +47,7 @@ namespace dxvk {
     m_state.depthBiasConstant = static_cast<float>(desc.DepthBias);
     m_state.depthBiasClamp    = desc.DepthBiasClamp;
     m_state.depthBiasSlope    = desc.SlopeScaledDepthBias;
-    m_state.enableDepthClamp  = desc.DepthClipEnable ? VK_FALSE : VK_TRUE;
-    
-    if (!desc.DepthClipEnable)
-      Logger::warn("D3D11RasterizerState: Depth clamp not properly supported");
+    m_state.depthClampEnable  = desc.DepthClipEnable ? VK_FALSE : VK_TRUE;
     
     if (desc.AntialiasedLineEnable)
       Logger::err("D3D11RasterizerState: Antialiased lines not supported");

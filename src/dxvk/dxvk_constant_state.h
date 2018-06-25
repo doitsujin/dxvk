@@ -40,11 +40,10 @@ namespace dxvk {
    * rasterizer, including the depth bias.
    */
   struct DxvkRasterizerState {
-    VkBool32            enableDepthClamp;
-    VkBool32            enableDiscard;
     VkPolygonMode       polygonMode;
     VkCullModeFlags     cullMode;
     VkFrontFace         frontFace;
+    VkBool32            depthClampEnable;
     VkBool32            depthBiasEnable;
     float               depthBiasConstant;
     float               depthBiasClamp;

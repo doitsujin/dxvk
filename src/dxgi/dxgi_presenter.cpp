@@ -52,11 +52,10 @@ namespace dxvk {
       0, nullptr, 0, nullptr);
     
     DxvkRasterizerState rsState;
-    rsState.enableDepthClamp   = VK_FALSE;
-    rsState.enableDiscard      = VK_FALSE;
     rsState.polygonMode        = VK_POLYGON_MODE_FILL;
     rsState.cullMode           = VK_CULL_MODE_BACK_BIT;
     rsState.frontFace          = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    rsState.depthClampEnable   = VK_FALSE;
     rsState.depthBiasEnable    = VK_FALSE;
     rsState.depthBiasConstant  = 0.0f;
     rsState.depthBiasClamp     = 0.0f;

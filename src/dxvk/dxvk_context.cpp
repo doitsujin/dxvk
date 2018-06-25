@@ -1581,12 +1581,11 @@ namespace dxvk {
   
   
   void DxvkContext::setRasterizerState(const DxvkRasterizerState& rs) {
-    m_state.gp.state.rsEnableDepthClamp  = rs.enableDepthClamp;
-    m_state.gp.state.rsEnableDiscard     = rs.enableDiscard;
+    m_state.gp.state.rsDepthClampEnable  = rs.depthClampEnable;
+    m_state.gp.state.rsDepthBiasEnable   = rs.depthBiasEnable;
     m_state.gp.state.rsPolygonMode       = rs.polygonMode;
     m_state.gp.state.rsCullMode          = rs.cullMode;
     m_state.gp.state.rsFrontFace         = rs.frontFace;
-    m_state.gp.state.rsDepthBiasEnable   = rs.depthBiasEnable;
 
     m_state.ds.depthBiasConstant = rs.depthBiasConstant;
     m_state.ds.depthBiasClamp    = rs.depthBiasClamp;

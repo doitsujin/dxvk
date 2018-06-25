@@ -47,12 +47,11 @@ namespace dxvk {
     VkVertexInputBindingDescription     ilBindings[DxvkLimits::MaxNumVertexBindings];
     uint32_t                            ilDivisors[DxvkLimits::MaxNumVertexBindings];
     
-    VkBool32                            rsEnableDepthClamp;
-    VkBool32                            rsEnableDiscard;
+    VkBool32                            rsDepthClampEnable;
+    VkBool32                            rsDepthBiasEnable;
     VkPolygonMode                       rsPolygonMode;
     VkCullModeFlags                     rsCullMode;
     VkFrontFace                         rsFrontFace;
-    VkBool32                            rsDepthBiasEnable;
     uint32_t                            rsViewportCount;
     
     VkSampleCountFlagBits               msSampleCount;
