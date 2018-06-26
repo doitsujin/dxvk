@@ -36,12 +36,18 @@ namespace dxvk {
   
   Rc<DxvkImageView> DxvkSwapchain::getImageView(
     const Rc<DxvkSemaphore>& wakeSync) {
+    // AcquireNextImage might interfere with the Vulkan
+    // device queue internally, so we should lock it
+    m_device->lockSubmission();
+
     VkResult status = this->acquireNextImage(wakeSync);
     
     if (status == VK_ERROR_OUT_OF_DATE_KHR) {
       this->recreateSwapchain();
       status = this->acquireNextImage(wakeSync);
     }
+    
+    m_device->unlockSubmission();
     
     if (status != VK_SUCCESS
      && status != VK_SUBOPTIMAL_KHR)
