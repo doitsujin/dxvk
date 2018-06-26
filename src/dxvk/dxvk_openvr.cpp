@@ -1,3 +1,4 @@
+#include "dxvk_instance.h"
 #include "dxvk_openvr.h"
 
 #ifdef __GNUC__
@@ -8,34 +9,77 @@
 
 namespace dxvk {
   
-  VrInstance::VrInstance()
-  : m_compositor(getCompositor()) {
+  VrInstance g_vrInstance;
+
+  VrInstance:: VrInstance() { }
+  VrInstance::~VrInstance() { }
+  
+  
+  vk::NameSet VrInstance::getInstanceExtensions() {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_insExtensions;
+  }
+
+
+  vk::NameSet VrInstance::getDeviceExtensions(uint32_t adapterId) {
+    std::lock_guard<std::mutex> lock(m_mutex);
     
-  }
-  
-  
-  VrInstance::~VrInstance() {
+    if (adapterId < m_devExtensions.size())
+      return m_devExtensions[adapterId];
     
+    return vk::NameSet();
+  }
+
+
+  void VrInstance::initInstanceExtensions() {
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (m_initializedInsExt)
+      return;
+    
+    vr::IVRCompositor* compositor = this->getCompositor();
+
+    if (compositor == nullptr)
+      return;
+    
+    m_insExtensions = this->queryInstanceExtensions(compositor);
+    m_initializedInsExt = true;
+  }
+
+
+  void VrInstance::initDeviceExtensions(const DxvkInstance* instance) {
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (m_initializedDevExt)
+      return;
+    
+    vr::IVRCompositor* compositor = this->getCompositor();
+
+    if (compositor == nullptr)
+      return;
+    
+    for (uint32_t i = 0; instance->enumAdapters(i) != nullptr; i++) {
+      m_devExtensions.push_back(this->queryDeviceExtensions(
+        compositor, instance->enumAdapters(i)->handle()));
+    }
+
+    m_initializedDevExt = true;
+  }
+
+
+  vk::NameSet VrInstance::queryInstanceExtensions(vr::IVRCompositor* compositor) const {
+    uint32_t len = compositor->GetVulkanInstanceExtensionsRequired(nullptr, 0);
+    std::vector<char> extensionList(len);
+    len = compositor->GetVulkanInstanceExtensionsRequired(extensionList.data(), len);
+    return parseExtensionList(std::string(extensionList.data(), len));
   }
   
   
-  vk::NameSet VrInstance::queryInstanceExtensions() const {
-    if (m_compositor != nullptr) {
-      uint32_t len = m_compositor->GetVulkanInstanceExtensionsRequired(nullptr, 0);
-      std::vector<char> extensionList(len);
-      len = m_compositor->GetVulkanInstanceExtensionsRequired(extensionList.data(), len);
-      return parseExtensionList(std::string(extensionList.data(), len));
-    } return vk::NameSet();
-  }
-  
-  
-  vk::NameSet VrInstance::queryDeviceExtensions(VkPhysicalDevice adapter) const {
-    if (m_compositor != nullptr) {
-      uint32_t len = m_compositor->GetVulkanDeviceExtensionsRequired(adapter, nullptr, 0);
-      std::vector<char> extensionList(len);
-      len = m_compositor->GetVulkanDeviceExtensionsRequired(adapter, extensionList.data(), len);
-      return parseExtensionList(std::string(extensionList.data(), len));
-    } return vk::NameSet();
+  vk::NameSet VrInstance::queryDeviceExtensions(vr::IVRCompositor* compositor, VkPhysicalDevice adapter) const {
+    uint32_t len = compositor->GetVulkanDeviceExtensionsRequired(adapter, nullptr, 0);
+    std::vector<char> extensionList(len);
+    len = compositor->GetVulkanDeviceExtensionsRequired(adapter, extensionList.data(), len);
+    return parseExtensionList(std::string(extensionList.data(), len));
   }
   
   

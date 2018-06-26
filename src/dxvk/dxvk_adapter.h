@@ -168,6 +168,8 @@ namespace dxvk {
     VkPhysicalDevice    m_handle;
     
     std::vector<VkQueueFamilyProperties> m_queueFamilies;
+
+    uint32_t getAdapterIndex() const;
     
     static void logNameList(const vk::NameList& names);
     

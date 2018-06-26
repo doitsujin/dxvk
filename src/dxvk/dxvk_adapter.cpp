@@ -171,7 +171,7 @@ namespace dxvk {
     
     // Generate list of extensions that we're actually going to use
     vk::NameSet enabledExtensionSet = extensions->getEnabledExtensionNames();
-    enabledExtensionSet.merge(m_instance->queryExtraDeviceExtensions(this));
+    enabledExtensionSet.merge(g_vrInstance.getDeviceExtensions(getAdapterIndex()));
     
     vk::NameList enabledExtensionList = enabledExtensionSet.getNameList();
     
@@ -258,6 +258,16 @@ namespace dxvk {
         }
       }
     }
+  }
+  
+  
+  uint32_t DxvkAdapter::getAdapterIndex() const {
+    for (uint32_t i = 0; m_instance->enumAdapters(i) != nullptr; i++) {
+      if (m_instance->enumAdapters(i).ptr() == this)
+        return i;
+    }
+
+    return ~0u;
   }
   
   

@@ -5,10 +5,14 @@
 
 namespace dxvk {
   
-  DxvkInstance::DxvkInstance()
-  : m_vkl(new vk::LibraryFn()),
-    m_vki(new vk::InstanceFn(this->createInstance())) {
-    this->createAdapters();
+  DxvkInstance::DxvkInstance() {
+    g_vrInstance.initInstanceExtensions();
+
+    m_vkl = new vk::LibraryFn();
+    m_vki = new vk::InstanceFn(this->createInstance());
+
+    m_adapters = this->queryAdapters();
+    g_vrInstance.initDeviceExtensions(this);
   }
   
   
@@ -24,11 +28,6 @@ namespace dxvk {
   }
   
   
-  vk::NameSet DxvkInstance::queryExtraDeviceExtensions(const DxvkAdapter* adapter) const {
-    return m_vr.queryDeviceExtensions(adapter->handle());
-  }
-  
-  
   VkInstance DxvkInstance::createInstance() {
     // Query available extensions and enable the ones that are needed
     vk::NameSet availableExtensions = vk::NameSet::enumerateInstanceExtensions(*m_vkl);
@@ -41,7 +40,7 @@ namespace dxvk {
     
     // Generate list of extensions that we're actually going to use
     vk::NameSet enabledExtensionSet = extensionsToEnable.getEnabledExtensionNames();
-    enabledExtensionSet.merge(m_vr.queryInstanceExtensions());
+    enabledExtensionSet.merge(g_vrInstance.getInstanceExtensions());
     
     vk::NameList enabledExtensionList = enabledExtensionSet.getNameList();
     
@@ -74,7 +73,7 @@ namespace dxvk {
   }
   
   
-  void DxvkInstance::createAdapters() {
+  std::vector<Rc<DxvkAdapter>> DxvkInstance::queryAdapters() {
     uint32_t numAdapters = 0;
     if (m_vki->vkEnumeratePhysicalDevices(m_vki->instance(), &numAdapters, nullptr) != VK_SUCCESS)
       throw DxvkError("DxvkInstance::enumAdapters: Failed to enumerate adapters");
@@ -83,14 +82,17 @@ namespace dxvk {
     if (m_vki->vkEnumeratePhysicalDevices(m_vki->instance(), &numAdapters, adapters.data()) != VK_SUCCESS)
       throw DxvkError("DxvkInstance::enumAdapters: Failed to enumerate adapters");
     
+    std::vector<Rc<DxvkAdapter>> result;
     for (uint32_t i = 0; i < numAdapters; i++)
-      m_adapters.push_back(new DxvkAdapter(this, adapters[i]));
+      result.push_back(new DxvkAdapter(this, adapters[i]));
     
-    std::sort(m_adapters.begin(), m_adapters.end(),
+    std::sort(result.begin(), result.end(),
       [this] (const Rc<DxvkAdapter>& a, const Rc<DxvkAdapter>& b) -> bool {
         return a->deviceProperties().deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
             && b->deviceProperties().deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
       });
+    
+    return result;
   }
   
   

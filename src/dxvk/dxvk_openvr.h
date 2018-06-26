@@ -1,5 +1,8 @@
 #pragma once
 
+#include <mutex>
+#include <vector>
+
 #include "dxvk_include.h"
 
 namespace vr {
@@ -7,6 +10,8 @@ namespace vr {
 }
 
 namespace dxvk {
+
+  class DxvkInstance;
   
   /**
    * \brief OpenVR instance
@@ -20,29 +25,65 @@ namespace dxvk {
     
     VrInstance();
     ~VrInstance();
-    
+
     /**
-     * \brief Queries required instance extensions
-     * \returns Set of required instance extensions
+     * \brief Query instance extensions
+     * \returns Instance extensions
      */
-    vk::NameSet queryInstanceExtensions() const;
-    
+    vk::NameSet getInstanceExtensions();
+
     /**
-     * \brief Queries required device extensions
+     * \brief Query device extensions
      * 
-     * \param [in] adapter The Vulkan device to query
-     * \returns Set of required device extensions
+     * Retrieves the extensions required for a specific
+     * physical device. The adapter index should remain
+     * the same across multiple Vulkan instances.
+     * \param [in] adapterId Adapter index
      */
-    vk::NameSet queryDeviceExtensions(VkPhysicalDevice adapter) const;
+    vk::NameSet getDeviceExtensions(
+            uint32_t      adapterId);
     
+    /**
+     * \brief Initializes instance extension set
+     * 
+     * Should be called before creating
+     * the first Vulkan instance.
+     */
+    void initInstanceExtensions();
+
+    /**
+     * \brief Initializes device extension sets
+     * 
+     * Should be called after setting
+     * up the Vulkan physical devices.
+     * \param [in] instance DXVK instance
+     */
+    void initDeviceExtensions(
+      const DxvkInstance* instance);
+
   private:
+
+    std::mutex  m_mutex;
+
+    bool m_initializedInsExt = false;
+    bool m_initializedDevExt = false;
+
+    vk::NameSet              m_insExtensions;
+    std::vector<vk::NameSet> m_devExtensions;
     
-    vr::IVRCompositor* m_compositor = nullptr;
-    
+    vk::NameSet queryInstanceExtensions(
+            vr::IVRCompositor*        compositor) const;
+
+    vk::NameSet queryDeviceExtensions(
+            vr::IVRCompositor*        compositor,
+            VkPhysicalDevice          adapter) const;
+
     static vk::NameSet parseExtensionList(const std::string& str);
     
     static vr::IVRCompositor* getCompositor();
     
   };
+
+  extern VrInstance g_vrInstance;
   
 }

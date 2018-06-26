@@ -45,18 +45,7 @@ namespace dxvk {
     Rc<DxvkAdapter> enumAdapters(
             uint32_t      index) const;
     
-    /**
-     * \brief Queries extra device extensions
-     * 
-     * \param [in] adapter The device to query
-     * \returns Extra device extensions
-     */
-    vk::NameSet queryExtraDeviceExtensions(
-      const DxvkAdapter* adapter) const;
-    
   private:
-    
-    VrInstance          m_vr;
     
     Rc<vk::LibraryFn>   m_vkl;
     Rc<vk::InstanceFn>  m_vki;
@@ -65,9 +54,9 @@ namespace dxvk {
     
     VkInstance createInstance();
 
-    void createAdapters();
+    std::vector<Rc<DxvkAdapter>> queryAdapters();
     
-    void logNameList(const vk::NameList& names);
+    static void logNameList(const vk::NameList& names);
     
   };
   
