@@ -8,7 +8,7 @@ namespace dxvk {
   DxvkInstance::DxvkInstance()
   : m_vkl(new vk::LibraryFn()),
     m_vki(new vk::InstanceFn(this->createInstance())) {
-    
+    this->createAdapters();
   }
   
   
@@ -17,26 +17,10 @@ namespace dxvk {
   }
   
   
-  std::vector<Rc<DxvkAdapter>> DxvkInstance::enumAdapters() {
-    uint32_t numAdapters = 0;
-    if (m_vki->vkEnumeratePhysicalDevices(m_vki->instance(), &numAdapters, nullptr) != VK_SUCCESS)
-      throw DxvkError("DxvkInstance::enumAdapters: Failed to enumerate adapters");
-    
-    std::vector<VkPhysicalDevice> adapters(numAdapters);
-    if (m_vki->vkEnumeratePhysicalDevices(m_vki->instance(), &numAdapters, adapters.data()) != VK_SUCCESS)
-      throw DxvkError("DxvkInstance::enumAdapters: Failed to enumerate adapters");
-    
-    std::vector<Rc<DxvkAdapter>> result;
-    for (uint32_t i = 0; i < numAdapters; i++)
-      result.push_back(new DxvkAdapter(this, adapters[i]));
-    
-    std::sort(result.begin(), result.end(),
-      [this] (const Rc<DxvkAdapter>& a, const Rc<DxvkAdapter>& b) -> bool {
-        return a->deviceProperties().deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
-            && b->deviceProperties().deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
-      });
-    
-    return result;
+  Rc<DxvkAdapter> DxvkInstance::enumAdapters(uint32_t index) const {
+    return index < m_adapters.size()
+      ? m_adapters[index]
+      : nullptr;
   }
   
   
@@ -87,6 +71,26 @@ namespace dxvk {
     if (m_vkl->vkCreateInstance(&info, nullptr, &result) != VK_SUCCESS)
       throw DxvkError("DxvkInstance::createInstance: Failed to create Vulkan instance");
     return result;
+  }
+  
+  
+  void DxvkInstance::createAdapters() {
+    uint32_t numAdapters = 0;
+    if (m_vki->vkEnumeratePhysicalDevices(m_vki->instance(), &numAdapters, nullptr) != VK_SUCCESS)
+      throw DxvkError("DxvkInstance::enumAdapters: Failed to enumerate adapters");
+    
+    std::vector<VkPhysicalDevice> adapters(numAdapters);
+    if (m_vki->vkEnumeratePhysicalDevices(m_vki->instance(), &numAdapters, adapters.data()) != VK_SUCCESS)
+      throw DxvkError("DxvkInstance::enumAdapters: Failed to enumerate adapters");
+    
+    for (uint32_t i = 0; i < numAdapters; i++)
+      m_adapters.push_back(new DxvkAdapter(this, adapters[i]));
+    
+    std::sort(m_adapters.begin(), m_adapters.end(),
+      [this] (const Rc<DxvkAdapter>& a, const Rc<DxvkAdapter>& b) -> bool {
+        return a->deviceProperties().deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
+            && b->deviceProperties().deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
+      });
   }
   
   

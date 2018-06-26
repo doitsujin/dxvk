@@ -4,10 +4,9 @@
 namespace dxvk {
   
   DxgiFactory::DxgiFactory()
-  : m_instance(new DxvkInstance()),
-    m_adapters(m_instance->enumAdapters()) {
-    for (const auto& adapter : m_adapters)
-      adapter->logAdapterInfo();
+  : m_instance(new DxvkInstance()) {
+    for (uint32_t i = 0; m_instance->enumAdapters(i) != nullptr; i++)
+      m_instance->enumAdapters(i)->logAdapterInfo();
   }
   
   
@@ -182,11 +181,13 @@ namespace dxvk {
     if (ppAdapter == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
-    if (Adapter >= m_adapters.size())
+    Rc<DxvkAdapter> dxvkAdapter
+      = m_instance->enumAdapters(Adapter);
+    
+    if (dxvkAdapter == nullptr)
       return DXGI_ERROR_NOT_FOUND;
     
-    *ppAdapter = ref(new DxgiAdapter(
-      this, m_adapters.at(Adapter)));
+    *ppAdapter = ref(new DxgiAdapter(this, dxvkAdapter));
     return S_OK;
   }
   
