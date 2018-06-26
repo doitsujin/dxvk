@@ -19,7 +19,6 @@ function build_arch {
   meson --cross-file "$DXVK_SRC_DIR/build-win$1.txt"  \
         --buildtype "release"                         \
         --prefix "$DXVK_BUILD_DIR/install.$1"         \
-        --unity on                                    \
         --strip                                       \
         -Denable_tests=false                          \
         "$DXVK_BUILD_DIR/build.$1"
