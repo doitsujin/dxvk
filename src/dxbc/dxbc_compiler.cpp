@@ -5283,13 +5283,32 @@ namespace dxvk {
             { DxbcScalarType::Uint32, 1, 0 },
             spv::StorageClassInput },
             spv::BuiltInLayer,
-            "ps_layer");
+            "v_layer");
         }
         
         DxbcRegisterPointer ptr;
         ptr.type.ctype   = DxbcScalarType::Uint32;
         ptr.type.ccount  = 1;
         ptr.id = m_ps.builtinLayer;
+        
+        return emitValueLoad(ptr);
+      } break;
+      
+      case DxbcSystemValue::ViewportId: {
+        if (m_ps.builtinViewportId == 0) {
+          m_module.enableCapability(spv::CapabilityMultiViewport);
+          
+          m_ps.builtinViewportId = emitNewBuiltinVariable({
+            { DxbcScalarType::Uint32, 1, 0 },
+            spv::StorageClassInput },
+            spv::BuiltInViewportIndex,
+            "v_viewport");
+        }
+        
+        DxbcRegisterPointer ptr;
+        ptr.type.ctype   = DxbcScalarType::Uint32;
+        ptr.type.ccount  = 1;
+        ptr.id = m_ps.builtinViewportId;
         
         return emitValueLoad(ptr);
       } break;
@@ -5338,6 +5357,8 @@ namespace dxvk {
           enableShaderViewportIndexLayer();
 
         if (m_gs.builtinLayer == 0) {
+          m_module.enableCapability(spv::CapabilityGeometry);
+
           m_gs.builtinLayer = emitNewBuiltinVariable({
             { DxbcScalarType::Uint32, 1, 0 },
             spv::StorageClassOutput },
