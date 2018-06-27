@@ -9,13 +9,32 @@ namespace dxvk::hud {
     const HudConfig&      config)
   : m_config        (config),
     m_device        (device),
-    m_context       (m_device->createContext()),
-    m_renderer      (m_device, m_context),
     m_uniformBuffer (createUniformBuffer()),
+    m_renderer      (device),
     m_hudDeviceInfo (device),
     m_hudFramerate  (config.elements),
     m_hudStats      (config.elements) {
-    this->setupConstantState();
+    // Set up constant state
+    m_rsState.polygonMode        = VK_POLYGON_MODE_FILL;
+    m_rsState.cullMode           = VK_CULL_MODE_BACK_BIT;
+    m_rsState.frontFace          = VK_FRONT_FACE_CLOCKWISE;
+    m_rsState.depthClampEnable   = VK_FALSE;
+    m_rsState.depthBiasEnable    = VK_FALSE;
+    m_rsState.depthBiasConstant  = 0.0f;
+    m_rsState.depthBiasClamp     = 0.0f;
+    m_rsState.depthBiasSlope     = 0.0f;
+
+    m_blendMode.enableBlending  = VK_TRUE;
+    m_blendMode.colorSrcFactor  = VK_BLEND_FACTOR_ONE;
+    m_blendMode.colorDstFactor  = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    m_blendMode.colorBlendOp    = VK_BLEND_OP_ADD;
+    m_blendMode.alphaSrcFactor  = VK_BLEND_FACTOR_ONE;
+    m_blendMode.alphaDstFactor  = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    m_blendMode.alphaBlendOp    = VK_BLEND_OP_ADD;
+    m_blendMode.writeMask       = VK_COLOR_COMPONENT_R_BIT
+                                | VK_COLOR_COMPONENT_G_BIT
+                                | VK_COLOR_COMPONENT_B_BIT
+                                | VK_COLOR_COMPONENT_A_BIT;
   }
   
   
@@ -24,21 +43,20 @@ namespace dxvk::hud {
   }
   
   
-  void Hud::render(VkExtent2D size) {
-    bool recreateFbo = m_surfaceSize != size;
-    
-    if (recreateFbo) {
-      m_surfaceSize = size;
-      this->setupFramebuffer(size);
-    }
-      
+  void Hud::update() {
     m_hudFramerate.update();
     m_hudStats.update(m_device);
+  }
+  
+  
+  void Hud::render(const Rc<DxvkContext>& ctx, VkExtent2D surfaceSize) {
+    HudUniformData uniformData;
+    uniformData.surfaceSize = surfaceSize;
     
-    this->beginRenderPass(recreateFbo);
-    this->updateUniformBuffer();
-    this->render();
-    this->endRenderPass();
+    this->updateUniformBuffer(ctx, uniformData);
+
+    this->setupRendererState(ctx);
+    this->renderHudElements(ctx);
   }
   
   
@@ -49,8 +67,40 @@ namespace dxvk::hud {
       ? new Hud(device, config)
       : nullptr;
   }
+
+
+  void Hud::setupRendererState(const Rc<DxvkContext>& ctx) {
+    ctx->setRasterizerState(m_rsState);
+    ctx->setBlendMode(0, m_blendMode);
+
+    ctx->bindResourceBuffer(0,
+      DxvkBufferSlice(m_uniformBuffer));
+
+    m_renderer.beginFrame(ctx);
+  }
+
+
+  void Hud::renderHudElements(const Rc<DxvkContext>& ctx) {
+    HudPos position = { 8.0f, 24.0f };
+    
+    if (m_config.elements.test(HudElement::DeviceInfo)) {
+      position = m_hudDeviceInfo.render(
+        ctx, m_renderer, position);
+    }
+    
+    position = m_hudFramerate.render(ctx, m_renderer, position);
+    position = m_hudStats    .render(ctx, m_renderer, position);
+  }
   
   
+  void Hud::updateUniformBuffer(const Rc<DxvkContext>& ctx, const HudUniformData& data) {
+    auto slice = m_uniformBuffer->allocPhysicalSlice();
+    std::memcpy(slice.mapPtr(0), &data, sizeof(data));
+
+    ctx->invalidateBuffer(m_uniformBuffer, slice);
+  }
+
+
   Rc<DxvkBuffer> Hud::createUniformBuffer() {
     DxvkBufferCreateInfo info;
     info.size           = sizeof(HudUniformData);
@@ -62,175 +112,6 @@ namespace dxvk::hud {
     return m_device->createBuffer(info,
       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-  }
-  
-  
-  void Hud::render() {
-    m_renderer.beginFrame(m_context);
-    
-    HudPos position = { 8.0f, 24.0f };
-    
-    if (m_config.elements.test(HudElement::DeviceInfo)) {
-      position = m_hudDeviceInfo.render(
-        m_context, m_renderer, position);
-    }
-    
-    position = m_hudFramerate.render(m_context, m_renderer, position);
-    position = m_hudStats    .render(m_context, m_renderer, position);
-  }
-  
-  
-  void Hud::updateUniformBuffer() {
-    HudUniformData uniformData;
-    uniformData.surfaceSize = m_surfaceSize;
-    
-    auto slice = m_uniformBuffer->allocPhysicalSlice();
-    m_context->invalidateBuffer(m_uniformBuffer, slice);
-    std::memcpy(slice.mapPtr(0), &uniformData, sizeof(uniformData));
-  }
-  
-  
-  void Hud::beginRenderPass(bool initFbo) {
-    m_context->beginRecording(
-      m_device->createCommandList());
-    
-    if (initFbo) {
-      m_context->initImage(m_renderTarget,
-        VkImageSubresourceRange {
-          VK_IMAGE_ASPECT_COLOR_BIT,
-          0, 1, 0, 1 });
-    }
-    
-    VkClearRect clearRect;
-    clearRect.rect.offset = { 0, 0 };
-    clearRect.rect.extent = m_surfaceSize;
-    clearRect.baseArrayLayer = 0;
-    clearRect.layerCount     = 1;
-    
-    m_context->bindRenderTargets(
-      m_renderTargetInfo, false);
-    
-    m_context->clearRenderTarget(
-      m_renderTargetView, clearRect,
-      VK_IMAGE_ASPECT_COLOR_BIT,
-      VkClearValue { });
-    
-    VkViewport viewport;
-    viewport.x        = 0.0f;
-    viewport.y        = 0.0f;
-    viewport.width    = static_cast<float>(m_surfaceSize.width);
-    viewport.height   = static_cast<float>(m_surfaceSize.height);
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
-    
-    VkRect2D scissor;
-    scissor.offset = { 0, 0 };
-    scissor.extent = m_surfaceSize;
-    
-    m_context->setViewports(1, &viewport, &scissor);
-    m_context->bindResourceBuffer(0, DxvkBufferSlice(m_uniformBuffer));
-  }
-  
-  
-  void Hud::endRenderPass() {
-    m_device->submitCommandList(
-      m_context->endRecording(),
-      nullptr, nullptr);
-  }
-  
-  
-  void Hud::setupFramebuffer(VkExtent2D size) {
-    DxvkImageCreateInfo imageInfo;
-    imageInfo.type          = VK_IMAGE_TYPE_2D;
-    imageInfo.format        = VK_FORMAT_R8G8B8A8_SRGB;
-    imageInfo.flags         = 0;
-    imageInfo.sampleCount   = VK_SAMPLE_COUNT_1_BIT;
-    imageInfo.extent        = { size.width, size.height, 1 };
-    imageInfo.numLayers     = 1;
-    imageInfo.mipLevels     = 1;
-    imageInfo.usage         = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
-                            | VK_IMAGE_USAGE_SAMPLED_BIT;
-    imageInfo.stages        = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-                            | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-    imageInfo.access        = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
-                            | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
-                            | VK_ACCESS_SHADER_READ_BIT;
-    imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
-    imageInfo.layout        = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    
-    m_renderTarget = m_device->createImage(imageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    
-    DxvkImageViewCreateInfo viewInfo;
-    viewInfo.type           = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format         = imageInfo.format;
-    viewInfo.aspect         = VK_IMAGE_ASPECT_COLOR_BIT;
-    viewInfo.minLevel       = 0;
-    viewInfo.numLevels      = 1;
-    viewInfo.minLayer       = 0;
-    viewInfo.numLayers      = 1;
-    
-    m_renderTargetView = m_device->createImageView(m_renderTarget, viewInfo);
-    m_renderTargetInfo.color[0] = { m_renderTargetView,
-      VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
-  }
-  
-  
-  void Hud::setupConstantState() {
-    DxvkRasterizerState rsState;
-    rsState.polygonMode       = VK_POLYGON_MODE_FILL;
-    rsState.cullMode          = VK_CULL_MODE_BACK_BIT;
-    rsState.frontFace         = VK_FRONT_FACE_CLOCKWISE;
-    rsState.depthClampEnable  = VK_FALSE;
-    rsState.depthBiasEnable   = VK_FALSE;
-    rsState.depthBiasConstant = 0.0f;
-    rsState.depthBiasClamp    = 0.0f;
-    rsState.depthBiasSlope    = 0.0f;
-    m_context->setRasterizerState(rsState);
-    
-    DxvkMultisampleState msState;
-    msState.sampleMask            = 0xFFFFFFFF;
-    msState.enableAlphaToCoverage = VK_FALSE;
-    msState.enableAlphaToOne      = VK_FALSE;
-    m_context->setMultisampleState(msState);
-    
-    VkStencilOpState stencilOp;
-    stencilOp.failOp          = VK_STENCIL_OP_KEEP;
-    stencilOp.passOp          = VK_STENCIL_OP_KEEP;
-    stencilOp.depthFailOp     = VK_STENCIL_OP_KEEP;
-    stencilOp.compareOp       = VK_COMPARE_OP_NEVER;
-    stencilOp.compareMask     = 0xFFFFFFFF;
-    stencilOp.writeMask       = 0xFFFFFFFF;
-    stencilOp.reference       = 0;
-    
-    DxvkDepthStencilState dsState;
-    dsState.enableDepthTest   = VK_FALSE;
-    dsState.enableDepthWrite  = VK_FALSE;
-    dsState.enableStencilTest = VK_FALSE;
-    dsState.depthCompareOp    = VK_COMPARE_OP_NEVER;
-    dsState.stencilOpFront    = stencilOp;
-    dsState.stencilOpBack     = stencilOp;
-    m_context->setDepthStencilState(dsState);
-    
-    DxvkLogicOpState loState;
-    loState.enableLogicOp     = VK_FALSE;
-    loState.logicOp           = VK_LOGIC_OP_NO_OP;
-    m_context->setLogicOpState(loState);
-    
-    DxvkBlendMode blendMode;
-    blendMode.enableBlending  = VK_TRUE;
-    blendMode.colorSrcFactor  = VK_BLEND_FACTOR_ONE;
-    blendMode.colorDstFactor  = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    blendMode.colorBlendOp    = VK_BLEND_OP_ADD;
-    blendMode.alphaSrcFactor  = VK_BLEND_FACTOR_ONE;
-    blendMode.alphaDstFactor  = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    blendMode.alphaBlendOp    = VK_BLEND_OP_ADD;
-    blendMode.writeMask       = VK_COLOR_COMPONENT_R_BIT
-                              | VK_COLOR_COMPONENT_G_BIT
-                              | VK_COLOR_COMPONENT_B_BIT
-                              | VK_COLOR_COMPONENT_A_BIT;
-    
-    for (uint32_t i = 0; i < MaxNumRenderTargets; i++)
-      m_context->setBlendMode(i, blendMode);
   }
   
 }

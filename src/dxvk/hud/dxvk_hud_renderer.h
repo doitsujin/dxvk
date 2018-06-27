@@ -61,8 +61,7 @@ namespace dxvk::hud {
   public:
     
     HudRenderer(
-      const Rc<DxvkDevice>&   device,
-      const Rc<DxvkContext>&  context);
+      const Rc<DxvkDevice>&   device);
     
     ~HudRenderer();
     
@@ -130,8 +129,7 @@ namespace dxvk::hud {
       const Rc<DxvkDevice>& device);
     
     void initFontTexture(
-      const Rc<DxvkDevice>&  device,
-      const Rc<DxvkContext>& context);
+      const Rc<DxvkDevice>&  device);
     
     void initCharMap();
     

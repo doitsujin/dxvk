@@ -36,25 +36,11 @@ namespace dxvk::hud {
     
     ~Hud();
     
-    /**
-     * \brief Renders the HUD
-     * 
-     * Recreates the render targets for the HUD
-     * in case the surface size has changed.
-     * \param [in] size Render target size
-     */
-    void render(VkExtent2D size);
-    
-    /**
-     * \brief Rendered image
-     * 
-     * Returns the rendered image from
-     * the previous call to \ref render.
-     * \returns The image view
-     */
-    Rc<DxvkImageView> texture() const {
-      return m_renderTargetView;
-    }
+    void update();
+
+    void render(
+      const Rc<DxvkContext>& ctx,
+            VkExtent2D       surfaceSize);
     
     /**
      * \brief Creates the HUD
@@ -70,32 +56,29 @@ namespace dxvk::hud {
   private:
     
     const HudConfig       m_config;
-    
     const Rc<DxvkDevice>  m_device;
-    const Rc<DxvkContext> m_context;
-    
-    HudRenderer           m_renderer;
-    VkExtent2D            m_surfaceSize = { 0, 0 };
     
     Rc<DxvkBuffer>        m_uniformBuffer;
-    Rc<DxvkImage>         m_renderTarget;
-    Rc<DxvkImageView>     m_renderTargetView;
-    DxvkRenderTargets     m_renderTargetInfo;
-    
+
+    DxvkRasterizerState   m_rsState;
+    DxvkBlendMode         m_blendMode;
+
+    HudRenderer           m_renderer;
     HudDeviceInfo         m_hudDeviceInfo;
     HudFps                m_hudFramerate;
     HudStats              m_hudStats;
-    
-    void render();
+
+    void setupRendererState(
+      const Rc<DxvkContext>&  ctx);
+
+    void renderHudElements(
+      const Rc<DxvkContext>&  ctx);
+      
+    void updateUniformBuffer(
+      const Rc<DxvkContext>&  ctx,
+      const HudUniformData&   data);
     
     Rc<DxvkBuffer> createUniformBuffer();
-    
-    void updateUniformBuffer();
-    void beginRenderPass(bool initFbo);
-    void endRenderPass();
-    
-    void setupFramebuffer(VkExtent2D size);
-    void setupConstantState();
     
   };
   
