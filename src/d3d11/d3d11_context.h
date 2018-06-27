@@ -62,7 +62,7 @@ namespace dxvk {
             UINT                              DstZ,
             ID3D11Resource*                   pSrcResource,
             UINT                              SrcSubresource,
-      const D3D11_BOX*                        pSrcBox) final;
+      const D3D11_BOX*                        pSrcBox);
     
     void STDMETHODCALLTYPE CopySubresourceRegion1(
             ID3D11Resource*                   pDstResource,
@@ -73,11 +73,11 @@ namespace dxvk {
             ID3D11Resource*                   pSrcResource,
             UINT                              SrcSubresource,
       const D3D11_BOX*                        pSrcBox,
-            UINT                              CopyFlags) final;
+            UINT                              CopyFlags);
     
     void STDMETHODCALLTYPE CopyResource(
             ID3D11Resource*                   pDstResource,
-            ID3D11Resource*                   pSrcResource) final;
+            ID3D11Resource*                   pSrcResource);
     
     void STDMETHODCALLTYPE CopyStructureCount(
             ID3D11Buffer*                     pDstBuffer,
@@ -109,7 +109,7 @@ namespace dxvk {
             UINT                              NumRects) final;
 
     void STDMETHODCALLTYPE GenerateMips(
-            ID3D11ShaderResourceView*         pShaderResourceView) final;
+            ID3D11ShaderResourceView*         pShaderResourceView);
     
     void STDMETHODCALLTYPE UpdateSubresource(
             ID3D11Resource*                   pDstResource,
@@ -117,7 +117,7 @@ namespace dxvk {
       const D3D11_BOX*                        pDstBox,
       const void*                             pSrcData,
             UINT                              SrcRowPitch,
-            UINT                              SrcDepthPitch) final;
+            UINT                              SrcDepthPitch);
     
     void STDMETHODCALLTYPE UpdateSubresource1(
             ID3D11Resource*                   pDstResource,
@@ -126,7 +126,7 @@ namespace dxvk {
       const void*                             pSrcData,
             UINT                              SrcRowPitch,
             UINT                              SrcDepthPitch,
-            UINT                              CopyFlags) final;
+            UINT                              CopyFlags);
     
     void STDMETHODCALLTYPE SetResourceMinLOD(
             ID3D11Resource*                   pResource,
@@ -140,7 +140,7 @@ namespace dxvk {
             UINT                              DstSubresource,
             ID3D11Resource*                   pSrcResource,
             UINT                              SrcSubresource,
-            DXGI_FORMAT                       Format) final;
+            DXGI_FORMAT                       Format);
     
     void STDMETHODCALLTYPE DrawAuto() final;
     
@@ -566,7 +566,7 @@ namespace dxvk {
             UINT                              UAVStartSlot,
             UINT                              NumUAVs,
             ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
-      const UINT*                             pUAVInitialCounts) final;
+      const UINT*                             pUAVInitialCounts);
     
     void STDMETHODCALLTYPE OMSetBlendState(
             ID3D11BlendState*                 pBlendState,

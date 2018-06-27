@@ -54,10 +54,71 @@ namespace dxvk {
             ID3D11Resource*             pResource,
             UINT                        Subresource) final;
     
+    void STDMETHODCALLTYPE CopySubresourceRegion(
+            ID3D11Resource*                   pDstResource,
+            UINT                              DstSubresource,
+            UINT                              DstX,
+            UINT                              DstY,
+            UINT                              DstZ,
+            ID3D11Resource*                   pSrcResource,
+            UINT                              SrcSubresource,
+      const D3D11_BOX*                        pSrcBox) final;
+    
+    void STDMETHODCALLTYPE CopySubresourceRegion1(
+            ID3D11Resource*                   pDstResource,
+            UINT                              DstSubresource,
+            UINT                              DstX,
+            UINT                              DstY,
+            UINT                              DstZ,
+            ID3D11Resource*                   pSrcResource,
+            UINT                              SrcSubresource,
+      const D3D11_BOX*                        pSrcBox,
+            UINT                              CopyFlags) final;
+    
+    void STDMETHODCALLTYPE CopyResource(
+            ID3D11Resource*                   pDstResource,
+            ID3D11Resource*                   pSrcResource) final;
+    
+    void STDMETHODCALLTYPE GenerateMips(
+            ID3D11ShaderResourceView*         pShaderResourceView) final;
+    
+    void STDMETHODCALLTYPE UpdateSubresource(
+            ID3D11Resource*                   pDstResource,
+            UINT                              DstSubresource,
+      const D3D11_BOX*                        pDstBox,
+      const void*                             pSrcData,
+            UINT                              SrcRowPitch,
+            UINT                              SrcDepthPitch) final;
+    
+    void STDMETHODCALLTYPE UpdateSubresource1(
+            ID3D11Resource*                   pDstResource,
+            UINT                              DstSubresource,
+      const D3D11_BOX*                        pDstBox,
+      const void*                             pSrcData,
+            UINT                              SrcRowPitch,
+            UINT                              SrcDepthPitch,
+            UINT                              CopyFlags) final;
+    
+    void STDMETHODCALLTYPE ResolveSubresource(
+            ID3D11Resource*                   pDstResource,
+            UINT                              DstSubresource,
+            ID3D11Resource*                   pSrcResource,
+            UINT                              SrcSubresource,
+            DXGI_FORMAT                       Format) final;
+            
     void STDMETHODCALLTYPE OMSetRenderTargets(
             UINT                              NumViews,
             ID3D11RenderTargetView* const*    ppRenderTargetViews,
             ID3D11DepthStencilView*           pDepthStencilView) final;
+    
+    void STDMETHODCALLTYPE OMSetRenderTargetsAndUnorderedAccessViews(
+            UINT                              NumRTVs,
+            ID3D11RenderTargetView* const*    ppRenderTargetViews,
+            ID3D11DepthStencilView*           pDepthStencilView,
+            UINT                              UAVStartSlot,
+            UINT                              NumUAVs,
+            ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
+      const UINT*                             pUAVInitialCounts) final;
     
     void SynchronizeCsThread();
     
