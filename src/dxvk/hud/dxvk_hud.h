@@ -36,8 +36,21 @@ namespace dxvk::hud {
     
     ~Hud();
     
+    /**
+     * \brief Update HUD
+     * 
+     * Updates the data to display.
+     * Should be called once per frame.
+     */
     void update();
 
+    /**
+     * \brief Render HUD
+     * 
+     * Renders the HUD to the given context.
+     * \param [in] ctx Device context
+     * \param [in] surfaceSize Image size, in pixels
+     */
     void render(
       const Rc<DxvkContext>& ctx,
             VkExtent2D       surfaceSize);
@@ -73,7 +86,7 @@ namespace dxvk::hud {
 
     void renderHudElements(
       const Rc<DxvkContext>&  ctx);
-      
+
     void updateUniformBuffer(
       const Rc<DxvkContext>&  ctx,
       const HudUniformData&   data);
