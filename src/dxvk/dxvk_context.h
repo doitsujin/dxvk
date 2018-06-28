@@ -631,7 +631,9 @@ namespace dxvk {
     Rc<DxvkCommandList> m_cmd;
     DxvkContextFlags    m_flags;
     DxvkContextState    m_state;
+
     DxvkBarrierSet      m_barriers;
+    DxvkBarrierSet      m_transitions;
     
     // TODO implement this properly...
     Rc<DxvkQueryPool>   m_queryPools[3] = { nullptr, nullptr, nullptr };
