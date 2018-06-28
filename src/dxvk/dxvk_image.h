@@ -3,6 +3,7 @@
 #include "dxvk_format.h"
 #include "dxvk_memory.h"
 #include "dxvk_resource.h"
+#include "dxvk_util.h"
 
 namespace dxvk {
   
@@ -215,6 +216,21 @@ namespace dxvk {
     VkImageLayout pickLayout(VkImageLayout layout) const {
       return m_info.layout == VK_IMAGE_LAYOUT_GENERAL
         ? VK_IMAGE_LAYOUT_GENERAL : layout;
+    }
+
+    /**
+     * \brief Checks whether a subresource is entirely covered
+     * 
+     * This can be used to determine whether an image can or
+     * should be initialized with \c VK_IMAGE_LAYOUT_UNDEFINED.
+     * \param [in] subresource The image subresource
+     * \param [in] extent Image extent to check
+     */
+    bool isFullSubresource(
+      const VkImageSubresourceLayers& subresource,
+            VkExtent3D                extent) const {
+      return subresource.aspectMask == this->formatInfo()->aspectMask
+          && extent == this->mipLevelExtent(subresource.mipLevel);
     }
     
   private:
