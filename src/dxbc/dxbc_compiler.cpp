@@ -888,6 +888,12 @@ namespace dxvk {
     if (ins.controls.uavFlags().test(DxbcUavFlag::GloballyCoherent))
       m_module.decorate(varId, spv::DecorationCoherent);
     
+    // On GPUs which don't support storageImageReadWithoutFormat,
+    // we have to decorate untyped UAVs as write-only
+    if (isUav && imageFormat == spv::ImageFormatUnknown
+     && !m_moduleInfo.options.test(DxbcOption::UseStorageImageReadWithoutFormat))
+      m_module.decorate(varId, spv::DecorationNonReadable);
+    
     // Declare a specialization constant which will
     // store whether or not the resource is bound.
     const uint32_t specConstId = m_module.specConstBool(true);
