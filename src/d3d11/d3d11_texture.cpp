@@ -28,7 +28,7 @@ namespace dxvk {
                              | VK_ACCESS_TRANSFER_WRITE_BIT;
     imageInfo.tiling         = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.layout         = VK_IMAGE_LAYOUT_GENERAL;
-    
+
     DecodeSampleCount(m_desc.SampleDesc.Count, &imageInfo.sampleCount);
     
     // Typeless formats need the MUTABLE_FORMAT_BIT to be set
@@ -70,6 +70,13 @@ namespace dxvk {
       imageInfo.stages |= pDevice->GetEnabledShaderStages();
       imageInfo.access |= VK_ACCESS_SHADER_READ_BIT
                        |  VK_ACCESS_SHADER_WRITE_BIT;
+    }
+    
+    // Access pattern for meta-resolve operations
+    if (imageInfo.sampleCount != VK_SAMPLE_COUNT_1_BIT) {
+      imageInfo.usage  |= VK_IMAGE_USAGE_SAMPLED_BIT;
+      imageInfo.stages |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+      imageInfo.access |= VK_ACCESS_SHADER_READ_BIT;
     }
     
     if (m_desc.MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE)
