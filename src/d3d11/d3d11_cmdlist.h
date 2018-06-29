@@ -38,6 +38,11 @@ namespace dxvk {
     UINT         const m_contextFlags;
     
     std::vector<Rc<DxvkCsChunk>> m_chunks;
+
+    std::atomic<bool> m_submitted = { false };
+    std::atomic<bool> m_warned    = { false };
+
+    void MarkSubmitted();
     
   };
   
