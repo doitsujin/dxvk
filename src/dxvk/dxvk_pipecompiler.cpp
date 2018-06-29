@@ -14,7 +14,7 @@ namespace dxvk {
     
     for (uint32_t i = 0; i < threadCount; i++) {
       m_compilerThreads.at(i) = std::thread(
-        [this, i] { this->runCompilerThread(i); });
+        [this] { this->runCompilerThread(); });
     }
   }
   
@@ -39,7 +39,7 @@ namespace dxvk {
   }
   
   
-  void DxvkPipelineCompiler::runCompilerThread(uint32_t workerId) {
+  void DxvkPipelineCompiler::runCompilerThread() {
     env::setThreadName(L"dxvk-pcompiler");
     
     while (!m_compilerStop.load()) {
