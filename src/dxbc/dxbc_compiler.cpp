@@ -37,8 +37,8 @@ namespace dxvk {
     
     // Make sure our interface registers are clear
     for (uint32_t i = 0; i < DxbcMaxInterfaceRegs; i++) {
-      m_vRegs.at(i) = 0;
-      m_oRegs.at(i) = 0;
+      m_vRegs.at(i) = DxbcRegisterPointer { };
+      m_oRegs.at(i) = DxbcRegisterPointer { };
     }
     
     // Clear spec constants
@@ -584,7 +584,7 @@ namespace dxvk {
     // Avoid declaring the same variable multiple times.
     // This may happen when multiple system values are
     // mapped to different parts of the same register.
-    if (m_vRegs.at(regIdx) == 0 && sv == DxbcSystemValue::None) {
+    if (m_vRegs.at(regIdx).id == 0 && sv == DxbcSystemValue::None) {
       const DxbcVectorType regType = getInputRegType(regIdx);
       
       DxbcRegisterInfo info;
@@ -599,7 +599,7 @@ namespace dxvk {
       m_module.setDebugName(varId, str::format("v", regIdx).c_str());
       m_entryPointInterfaces.push_back(varId);
       
-      m_vRegs.at(regIdx) = varId;
+      m_vRegs.at(regIdx) = { regType, varId };
       
       // Interpolation mode, used in pixel shaders
       if (im == DxbcInterpolationMode::Constant)
@@ -653,7 +653,7 @@ namespace dxvk {
     // Avoid declaring the same variable multiple times.
     // This may happen when multiple system values are
     // mapped to different parts of the same register.
-    if (m_oRegs.at(regIdx) == 0) {
+    if (m_oRegs.at(regIdx).id == 0) {
       const DxbcVectorType regType = getOutputRegType(regIdx);
       
       DxbcRegisterInfo info;
@@ -668,7 +668,7 @@ namespace dxvk {
       m_module.setDebugName(varId, str::format("o", regIdx).c_str());
       m_entryPointInterfaces.push_back(varId);
       
-      m_oRegs.at(regIdx) = varId;
+      m_oRegs.at(regIdx) = { regType, varId };
       
       // Declare the output slot as defined
       m_interfaceSlots.outputSlots |= 1u << regIdx;
@@ -2663,7 +2663,7 @@ namespace dxvk {
       case DxbcOpcode::EvalCentroid: {
         result.id = m_module.opInterpolateAtCentroid(
           getVectorTypeId(result.type),
-          m_vRegs.at(registerId));
+          m_vRegs.at(registerId).id);
       } break;
       
       case DxbcOpcode::EvalSampleIndex: {
@@ -2672,7 +2672,7 @@ namespace dxvk {
         
         result.id = m_module.opInterpolateAtSample(
           getVectorTypeId(result.type),
-          m_vRegs.at(registerId),
+          m_vRegs.at(registerId).id,
           sampleIndex.id);
       } break;
       
@@ -2682,7 +2682,7 @@ namespace dxvk {
         
         result.id = m_module.opInterpolateAtOffset(
           getVectorTypeId(result.type),
-          m_vRegs.at(registerId),
+          m_vRegs.at(registerId).id,
           offset.id);
       } break;
       
@@ -4211,49 +4211,40 @@ namespace dxvk {
   
   DxbcRegisterPointer DxbcCompiler::emitGetOutputPtr(
     const DxbcRegister&           operand) {
-    DxbcRegisterPointer result;
-    result.type.ctype  = DxbcScalarType::Float32;
-    result.type.ccount = 4;
-    
-    switch (m_version.type()) {
-      // Pixel shaders have typed output registers, whereas they
-      // are simple float4 vectors in all other shader stages.
-      case DxbcProgramType::PixelShader: {
-        const uint32_t registerId = operand.idx[0].offset;
-        result.type = getOutputRegType(registerId);
-        result.id = m_oRegs.at(registerId);
-      } break;
-      
+    if (m_version.type() == DxbcProgramType::HullShader) {
       // Hull shaders are special in that they have two sets of
       // output registers, one for per-patch values and one for
       // per-vertex values.
-      case DxbcProgramType::HullShader: {
-        uint32_t registerId = emitIndexLoad(operand.idx[0]).id;
-        uint32_t ptrTypeId  = m_module.defPointerType(
-            getVectorTypeId(result.type),
-            spv::StorageClassOutput);
-        
-        if (m_hs.currPhaseType == DxbcCompilerHsPhase::ControlPoint) {
-          std::array<uint32_t, 2> indices = {{
-            m_module.opLoad(m_module.defIntType(32, 0), m_hs.builtinInvocationId),
-            registerId,
-          }};
-          
-          result.id = m_module.opAccessChain(
-            ptrTypeId, m_hs.outputPerVertex,
-            indices.size(), indices.data());
-        } else {
-          result.id = m_module.opAccessChain(
-            ptrTypeId, m_hs.outputPerPatch,
-            1, &registerId);
-        }
-      } break;
+      DxbcRegisterPointer result;
+      result.type.ctype  = DxbcScalarType::Float32;
+      result.type.ccount = 4;
       
-      default:
-        result.id = m_oRegs.at(operand.idx[0].offset);
+      uint32_t registerId = emitIndexLoad(operand.idx[0]).id;
+      uint32_t ptrTypeId  = m_module.defPointerType(
+          getVectorTypeId(result.type),
+          spv::StorageClassOutput);
+      
+      if (m_hs.currPhaseType == DxbcCompilerHsPhase::ControlPoint) {
+        std::array<uint32_t, 2> indices = {{
+          m_module.opLoad(m_module.defIntType(32, 0), m_hs.builtinInvocationId),
+          registerId,
+        }};
+        
+        result.id = m_module.opAccessChain(
+          ptrTypeId, m_hs.outputPerVertex,
+          indices.size(), indices.data());
+      } else {
+        result.id = m_module.opAccessChain(
+          ptrTypeId, m_hs.outputPerPatch,
+          1, &registerId);
+      }
+
+      return result;
+    } else {
+      // Regular shaders have their output
+      // registers set up at declaration time
+      return m_oRegs.at(operand.idx[0].offset);
     }
-    
-    return result;
   }
   
   
@@ -4964,10 +4955,10 @@ namespace dxvk {
     const uint32_t ptrTypeId = m_module.defPointerType(vecTypeId, spv::StorageClassPrivate);
     
     for (uint32_t i = 0; i < m_vRegs.size(); i++) {
-      if (m_vRegs.at(i) != 0) {
+      if (m_vRegs.at(i).id != 0) {
         const uint32_t registerId = m_module.consti32(i);
-        const uint32_t srcTypeId = getVectorTypeId(getInputRegType(i));
-        const uint32_t srcValue  = m_module.opLoad(srcTypeId, m_vRegs.at(i));
+        const uint32_t srcTypeId = getVectorTypeId(m_vRegs.at(i).type);
+        const uint32_t srcValue  = m_module.opLoad(srcTypeId, m_vRegs.at(i).id);
         
         m_module.opStore(m_module.opAccessChain(ptrTypeId, m_vArray, 1, &registerId),
           vecTypeId != srcTypeId ? m_module.opBitcast(vecTypeId, srcValue) : srcValue);
@@ -5006,16 +4997,16 @@ namespace dxvk {
     const uint32_t srcPtrTypeId = m_module.defPointerType(vecTypeId, spv::StorageClassInput);
     
     for (uint32_t i = 0; i < m_vRegs.size(); i++) {
-      if (m_vRegs.at(i) != 0) {
+      if (m_vRegs.at(i).id != 0) {
         const uint32_t registerId = m_module.consti32(i);
         
         for (uint32_t v = 0; v < vertexCount; v++) {
           std::array<uint32_t, 2> indices
             = {{ m_module.consti32(v), registerId }};
           
-          const uint32_t srcTypeId = getVectorTypeId(getInputRegType(i));
+          const uint32_t srcTypeId = getVectorTypeId(m_vRegs.at(i).type);
           const uint32_t srcValue  = m_module.opLoad(srcTypeId,
-            m_module.opAccessChain(srcPtrTypeId, m_vRegs.at(i), 1, indices.data()));
+            m_module.opAccessChain(srcPtrTypeId, m_vRegs.at(i).id, 1, indices.data()));
           
           m_module.opStore(
             m_module.opAccessChain(dstPtrTypeId, m_vArray, indices.size(), indices.data()),
@@ -5054,10 +5045,7 @@ namespace dxvk {
   
   void DxbcCompiler::emitOutputSetup() {
     for (const DxbcSvMapping& svMapping : m_oMappings) {
-      DxbcRegisterPointer outputReg;
-      outputReg.type.ctype  = DxbcScalarType::Float32;
-      outputReg.type.ccount = 4;
-      outputReg.id = m_oRegs.at(svMapping.regId);
+      DxbcRegisterPointer outputReg = m_oRegs.at(svMapping.regId);
       
       if (m_version.type() == DxbcProgramType::HullShader) {
         uint32_t registerIndex = m_module.constu32(svMapping.regId);
@@ -5545,10 +5533,7 @@ namespace dxvk {
     
     for (auto e = m_osgn->begin(); e != m_osgn->end(); e++) {
       if (e->systemValue == sv) {
-        DxbcRegisterPointer srcPtr;
-        srcPtr.type = { DxbcScalarType::Float32, 4 };
-        srcPtr.id = m_oRegs.at(e->registerId);
-        
+        DxbcRegisterPointer srcPtr = m_oRegs.at(e->registerId);
         DxbcRegisterValue srcValue = emitValueLoad(srcPtr);
         
         for (uint32_t i = 0; i < 4; i++) {
@@ -6145,7 +6130,7 @@ namespace dxvk {
         dstIndices.size(), dstIndices.data());
       
       uint32_t srcPtr = m_module.opAccessChain(
-        srcPtrTypeId, m_vRegs.at(i->registerId),
+        srcPtrTypeId, m_vRegs.at(i->registerId).id,
         1, &invocationId);
       
       m_module.opStore(dstPtr,
