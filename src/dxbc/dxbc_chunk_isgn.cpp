@@ -56,6 +56,19 @@ namespace dxvk {
   }
   
   
+  DxbcRegMask DxbcIsgn::regMask(
+          uint32_t     registerId) const {
+    DxbcRegMask mask;
+
+    for (auto e = this->begin(); e != this->end(); e++) {
+      if (e->registerId == registerId)
+        mask |= e->componentMask;
+    }
+
+    return mask;
+  }
+
+
   bool DxbcIsgn::compareSemanticNames(
     const std::string& a, const std::string& b) const {
     if (a.size() != b.size())

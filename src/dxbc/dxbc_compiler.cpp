@@ -4957,11 +4957,17 @@ namespace dxvk {
     for (uint32_t i = 0; i < m_vRegs.size(); i++) {
       if (m_vRegs.at(i).id != 0) {
         const uint32_t registerId = m_module.consti32(i);
-        const uint32_t srcTypeId = getVectorTypeId(m_vRegs.at(i).type);
-        const uint32_t srcValue  = m_module.opLoad(srcTypeId, m_vRegs.at(i).id);
+
+        DxbcRegisterPointer srcPtr = m_vRegs.at(i);
+        DxbcRegisterValue srcValue = emitRegisterBitcast(
+          emitValueLoad(srcPtr), DxbcScalarType::Float32);
         
-        m_module.opStore(m_module.opAccessChain(ptrTypeId, m_vArray, 1, &registerId),
-          vecTypeId != srcTypeId ? m_module.opBitcast(vecTypeId, srcValue) : srcValue);
+        DxbcRegisterPointer dstPtr;
+        dstPtr.type = { DxbcScalarType::Float32, 4 };
+        dstPtr.id = m_module.opAccessChain(
+          ptrTypeId, m_vArray, 1, &registerId);
+        
+        emitValueStore(dstPtr, srcValue, DxbcRegMask::firstN(srcValue.type.ccount));
       }
     }
     
@@ -4994,7 +5000,6 @@ namespace dxvk {
     // that the outer index of the array is the vertex index.
     const uint32_t vecTypeId    = m_module.defVectorType(m_module.defFloatType(32), 4);
     const uint32_t dstPtrTypeId = m_module.defPointerType(vecTypeId, spv::StorageClassPrivate);
-    const uint32_t srcPtrTypeId = m_module.defPointerType(vecTypeId, spv::StorageClassInput);
     
     for (uint32_t i = 0; i < m_vRegs.size(); i++) {
       if (m_vRegs.at(i).id != 0) {
@@ -5004,13 +5009,21 @@ namespace dxvk {
           std::array<uint32_t, 2> indices
             = {{ m_module.consti32(v), registerId }};
           
-          const uint32_t srcTypeId = getVectorTypeId(m_vRegs.at(i).type);
-          const uint32_t srcValue  = m_module.opLoad(srcTypeId,
-            m_module.opAccessChain(srcPtrTypeId, m_vRegs.at(i).id, 1, indices.data()));
+          DxbcRegisterPointer srcPtr;
+          srcPtr.type = m_vRegs.at(i).type;
+          srcPtr.id = m_module.opAccessChain(
+            m_module.defPointerType(getVectorTypeId(srcPtr.type), spv::StorageClassInput),
+            m_vRegs.at(i).id, 1, indices.data());
           
-          m_module.opStore(
-            m_module.opAccessChain(dstPtrTypeId, m_vArray, indices.size(), indices.data()),
-            vecTypeId != srcTypeId ? m_module.opBitcast(vecTypeId, srcValue) : srcValue);
+          DxbcRegisterValue srcValue = emitRegisterBitcast(
+            emitValueLoad(srcPtr), DxbcScalarType::Float32);
+          
+          DxbcRegisterPointer dstPtr;
+          dstPtr.type = { DxbcScalarType::Float32, 4 };
+          dstPtr.id = m_module.opAccessChain(
+            dstPtrTypeId, m_vArray, 2, indices.data());
+
+          emitValueStore(dstPtr, srcValue, DxbcRegMask::firstN(srcValue.type.ccount));
         }
       }
     }
@@ -5050,6 +5063,7 @@ namespace dxvk {
       if (m_version.type() == DxbcProgramType::HullShader) {
         uint32_t registerIndex = m_module.constu32(svMapping.regId);
         
+        outputReg.type = { DxbcScalarType::Float32, 4 };
         outputReg.id = m_module.opAccessChain(
           m_module.defPointerType(
             getVectorTypeId(outputReg.type),
@@ -5425,8 +5439,8 @@ namespace dxvk {
         { m_hs.builtinTessLevelOuter, 1 },  // FinalLineDensityTessFactor
       }};
       
-      const TessFactor tessFactor = s_tessFactors.at(static_cast<uint32_t>(sv)
-        - static_cast<uint32_t>(DxbcSystemValue::FinalQuadUeq0EdgeTessFactor));
+      const TessFactor tessFactor = s_tessFactors.at(uint32_t(sv)
+        - uint32_t(DxbcSystemValue::FinalQuadUeq0EdgeTessFactor));
       
       const uint32_t tessFactorArrayIndex
         = m_module.constu32(tessFactor.index);
@@ -6117,24 +6131,25 @@ namespace dxvk {
         DxbcInterpolationMode::Undefined);
       
       // Vector type index
-      uint32_t vecTypeId = getVectorTypeId({ DxbcScalarType::Float32, 4 });
-      
-      uint32_t dstPtrTypeId = m_module.defPointerType(vecTypeId, spv::StorageClassOutput);
-      uint32_t srcPtrTypeId = m_module.defPointerType(vecTypeId, spv::StorageClassInput);
-      
       const std::array<uint32_t, 2> dstIndices
         = {{ invocationId, m_module.constu32(i->registerId) }};
       
-      uint32_t dstPtr = m_module.opAccessChain(
-        dstPtrTypeId, m_hs.outputPerVertex,
-        dstIndices.size(), dstIndices.data());
+      DxbcRegisterPointer srcPtr;
+      srcPtr.type = m_vRegs.at(i->registerId).type;
+      srcPtr.id = m_module.opAccessChain(
+        m_module.defPointerType(getVectorTypeId(srcPtr.type), spv::StorageClassInput),
+        m_vRegs.at(i->registerId).id, 1, &invocationId);
       
-      uint32_t srcPtr = m_module.opAccessChain(
-        srcPtrTypeId, m_vRegs.at(i->registerId).id,
-        1, &invocationId);
-      
-      m_module.opStore(dstPtr,
-        m_module.opLoad(vecTypeId, srcPtr));
+      DxbcRegisterValue srcValue = emitRegisterBitcast(
+        emitValueLoad(srcPtr), DxbcScalarType::Float32);
+
+      DxbcRegisterPointer dstPtr;
+      dstPtr.type = { DxbcScalarType::Float32, 4 };
+      dstPtr.id = m_module.opAccessChain(
+        m_module.defPointerType(getVectorTypeId(dstPtr.type), spv::StorageClassOutput),
+        m_hs.outputPerVertex, dstIndices.size(), dstIndices.data());
+
+      emitValueStore(dstPtr, srcValue, DxbcRegMask::firstN(srcValue.type.ccount));
     }
     
     // End function
@@ -6458,39 +6473,70 @@ namespace dxvk {
   
   
   DxbcVectorType DxbcCompiler::getInputRegType(uint32_t regIdx) const {
-    DxbcVectorType result;
-    result.ctype  = DxbcScalarType::Float32;
-    result.ccount = 4;
-    
-    // Vertex shader inputs must match the type of the input layout
-    if (m_version.type() == DxbcProgramType::VertexShader) {
-      const DxbcSgnEntry* entry = m_isgn->findByRegister(regIdx);
-      
-      if (entry != nullptr)
-        result.ctype = entry->componentType;
+    switch (m_version.type()) {
+      case DxbcProgramType::VertexShader: {
+        const DxbcSgnEntry* entry = m_isgn->findByRegister(regIdx);
+        
+        DxbcVectorType result;
+        result.ctype  = DxbcScalarType::Float32;
+        result.ccount = 4;
+        
+        if (entry != nullptr) {
+          result.ctype  = entry->componentType;
+          result.ccount = entry->componentMask.popCount();
+        }
+        
+        return result;
+      }
+
+      case DxbcProgramType::DomainShader: {
+        DxbcVectorType result;
+        result.ctype  = DxbcScalarType::Float32;
+        result.ccount = 4;
+        return result;
+      }
+
+      default: {
+        DxbcVectorType result;
+        result.ctype  = DxbcScalarType::Float32;
+        result.ccount = m_isgn->regMask(regIdx).minComponents();
+        return result;
+      }
     }
-    
-    return result;
   }
   
   
   DxbcVectorType DxbcCompiler::getOutputRegType(uint32_t regIdx) const {
-    DxbcVectorType result;
-    result.ctype  = DxbcScalarType::Float32;
-    result.ccount = 4;
-    
-    // Pixel shader outputs are required to match the type of
-    // the render target, so we'll scan the output signature.
-    if (m_version.type() == DxbcProgramType::PixelShader) {
-      const DxbcSgnEntry* entry = m_osgn->findByRegister(regIdx);
-      
-      if (entry != nullptr) {
-        result.ctype  = entry->componentType;
-        result.ccount = entry->componentMask.popCount();
+    switch (m_version.type()) {
+      case DxbcProgramType::PixelShader: {
+        const DxbcSgnEntry* entry = m_osgn->findByRegister(regIdx);
+
+        DxbcVectorType result;
+        result.ctype  = DxbcScalarType::Float32;
+        result.ccount = 4;
+        
+        if (entry != nullptr) {
+          result.ctype  = entry->componentType;
+          result.ccount = entry->componentMask.popCount();
+        }
+
+        return result;
+      }
+
+      case DxbcProgramType::HullShader: {
+        DxbcVectorType result;
+        result.ctype  = DxbcScalarType::Float32;
+        result.ccount = 4;
+        return result;
+      }
+
+      default: {
+        DxbcVectorType result;
+        result.ctype  = DxbcScalarType::Float32;
+        result.ccount = m_osgn->regMask(regIdx).minComponents();
+        return result;
       }
     }
-    
-    return result;
   }
   
   

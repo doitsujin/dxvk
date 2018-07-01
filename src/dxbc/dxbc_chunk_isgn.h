@@ -49,6 +49,9 @@ namespace dxvk {
             uint32_t     semanticIndex,
             uint32_t     streamIndex) const;
     
+    DxbcRegMask regMask(
+            uint32_t     registerId) const;
+    
   private:
     
     std::vector<DxbcSgnEntry> m_entries;

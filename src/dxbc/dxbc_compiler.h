@@ -404,15 +404,19 @@ namespace dxvk {
     ///////////////////////////////////////////////////////////
     // v# registers as defined by the shader. The type of each
     // of these inputs is either float4 or an array of float4.
-    std::array<DxbcRegisterPointer, DxbcMaxInterfaceRegs> m_vRegs;
-    std::vector<DxbcSvMapping>                            m_vMappings;
+    std::array<
+      DxbcRegisterPointer,
+      DxbcMaxInterfaceRegs>     m_vRegs;
+    std::vector<DxbcSvMapping>  m_vMappings;
     
     //////////////////////////////////////////////////////////
     // o# registers as defined by the shader. In the fragment
     // shader stage, these registers are typed by the signature,
     // in all other stages, they are float4 registers or arrays.
-    std::array<DxbcRegisterPointer, DxbcMaxInterfaceRegs> m_oRegs;
-    std::vector<DxbcSvMapping>                            m_oMappings;
+    std::array<
+      DxbcRegisterPointer,
+      DxbcMaxInterfaceRegs>     m_oRegs;
+    std::vector<DxbcSvMapping>  m_oMappings;
     
     //////////////////////////////////////////////////////
     // Shader resource variables. These provide access to
