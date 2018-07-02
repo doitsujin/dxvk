@@ -137,7 +137,7 @@ namespace dxvk {
     // Select mode with minimal height+width difference
     UINT minDifference = std::numeric_limits<unsigned int>::max();
     
-    for (auto& mode : modes) {
+    for (auto mode : modes) {
       UINT currDifference = std::abs(int(targetWidth  - mode.Width))
                           + std::abs(int(targetHeight - mode.Height));
 
