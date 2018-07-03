@@ -327,6 +327,10 @@ namespace dxvk {
             DXGI_FORMAT           Format,
             DXGI_VK_FORMAT_MODE   Mode) const;
     
+    DXGI_VK_FORMAT_FAMILY LookupFamily(
+            DXGI_FORMAT           Format,
+            DXGI_VK_FORMAT_MODE   Mode) const;
+    
     bool TestOption(D3D11Option Option) const {
       return m_d3d11Options.test(Option);
     }

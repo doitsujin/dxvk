@@ -8,34 +8,44 @@ namespace dxvk {
     const D3D11_COMMON_TEXTURE_DESC*  pDesc,
           D3D11_RESOURCE_DIMENSION    Dimension)
   : m_device(pDevice), m_desc(*pDesc) {
-    DXGI_VK_FORMAT_MODE formatMode = GetFormatMode();
-    DXGI_VK_FORMAT_INFO formatInfo = m_device->LookupFormat(m_desc.Format, formatMode);
-    
+    DXGI_VK_FORMAT_MODE   formatMode   = GetFormatMode();
+    DXGI_VK_FORMAT_INFO   formatInfo   = m_device->LookupFormat(m_desc.Format, formatMode);
+    DXGI_VK_FORMAT_FAMILY formatFamily = m_device->LookupFamily(m_desc.Format, formatMode);
+
     DxvkImageCreateInfo imageInfo;
-    imageInfo.type           = GetImageTypeFromResourceDim(Dimension);
-    imageInfo.format         = formatInfo.Format;
-    imageInfo.flags          = 0;
-    imageInfo.sampleCount    = VK_SAMPLE_COUNT_1_BIT;
-    imageInfo.extent.width   = m_desc.Width;
-    imageInfo.extent.height  = m_desc.Height;
-    imageInfo.extent.depth   = m_desc.Depth;
-    imageInfo.numLayers      = m_desc.ArraySize;
-    imageInfo.mipLevels      = m_desc.MipLevels;
-    imageInfo.usage          = VK_IMAGE_USAGE_TRANSFER_SRC_BIT
-                             | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    imageInfo.stages         = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    imageInfo.access         = VK_ACCESS_TRANSFER_READ_BIT
-                             | VK_ACCESS_TRANSFER_WRITE_BIT;
-    imageInfo.tiling         = VK_IMAGE_TILING_OPTIMAL;
-    imageInfo.layout         = VK_IMAGE_LAYOUT_GENERAL;
+    imageInfo.type            = GetImageTypeFromResourceDim(Dimension);
+    imageInfo.format          = formatInfo.Format;
+    imageInfo.flags           = 0;
+    imageInfo.sampleCount     = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.extent.width    = m_desc.Width;
+    imageInfo.extent.height   = m_desc.Height;
+    imageInfo.extent.depth    = m_desc.Depth;
+    imageInfo.numLayers       = m_desc.ArraySize;
+    imageInfo.mipLevels       = m_desc.MipLevels;
+    imageInfo.usage           = VK_IMAGE_USAGE_TRANSFER_SRC_BIT
+                              | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    imageInfo.stages          = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    imageInfo.access          = VK_ACCESS_TRANSFER_READ_BIT
+                              | VK_ACCESS_TRANSFER_WRITE_BIT;
+    imageInfo.tiling          = VK_IMAGE_TILING_OPTIMAL;
+    imageInfo.layout          = VK_IMAGE_LAYOUT_GENERAL;
+    imageInfo.viewFormatCount = formatFamily.FormatCount;
+    imageInfo.viewFormats     = formatFamily.Formats;
 
     DecodeSampleCount(m_desc.SampleDesc.Count, &imageInfo.sampleCount);
     
-    // Typeless formats need the MUTABLE_FORMAT_BIT to be set
-    // since they can be reinterpreted. We'll always set this
-    // for UAV images for integer clear operations to work.
-    bool mutableFormat = (formatInfo.Aspect == 0)
-      || (m_desc.BindFlags & D3D11_BIND_UNORDERED_ACCESS);
+    // The image must be marked as mutable if it can be
+    // reinterpreted by a view with a different format
+    bool mutableFormat = formatFamily.FormatCount > 1;
+
+    // For UAVs, the format restrictions are more relaxed.
+    // FIXME for typed formats, we should just add the
+    // corresponding integer format to the format family
+    if (m_desc.BindFlags & D3D11_BIND_UNORDERED_ACCESS) {
+      imageInfo.viewFormatCount = 0;
+      imageInfo.viewFormats     = nullptr;
+      mutableFormat             = true;
+    }
 
     // Depth-stencil formats are not compatible to each other.
     VkImageAspectFlags formatAspect = imageFormatInfo(formatInfo.Format)->aspectMask;

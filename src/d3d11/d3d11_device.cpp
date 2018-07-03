@@ -1719,6 +1719,13 @@ namespace dxvk {
   }
   
   
+  DXGI_VK_FORMAT_FAMILY D3D11Device::LookupFamily(
+          DXGI_FORMAT           Format,
+          DXGI_VK_FORMAT_MODE   Mode) const {
+    return m_dxgiAdapter->LookupFormatFamily(Format, Mode);
+  }
+  
+  
   DxvkBufferSlice D3D11Device::AllocateCounterSlice() {
     std::lock_guard<std::mutex> lock(m_counterMutex);
     
