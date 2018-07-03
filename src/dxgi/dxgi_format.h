@@ -66,10 +66,21 @@ namespace dxvk {
     constexpr static size_t MaxSize = 8;
 
     DXGI_VK_FORMAT_FAMILY() { }
-    DXGI_VK_FORMAT_FAMILY(
-      const std::initializer_list<VkFormat>& FormatList) {
+    DXGI_VK_FORMAT_FAMILY(const std::initializer_list<VkFormat>& FormatList) {
       for (VkFormat f : FormatList)
-        Formats[FormatCount++] = f;
+        Add(f);
+    }
+
+    BOOL Add(VkFormat Format) {
+      for (UINT i = 0; i < FormatCount; i++) {
+        if (Formats[i] == Format)
+          return TRUE;
+      }
+
+      if (FormatCount < MaxSize) {
+        Formats[FormatCount++] = Format;
+        return TRUE;
+      } return FALSE;
     }
 
     UINT     FormatCount = 0;

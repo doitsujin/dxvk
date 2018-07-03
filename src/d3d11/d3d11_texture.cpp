@@ -29,29 +29,40 @@ namespace dxvk {
                               | VK_ACCESS_TRANSFER_WRITE_BIT;
     imageInfo.tiling          = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.layout          = VK_IMAGE_LAYOUT_GENERAL;
-    imageInfo.viewFormatCount = formatFamily.FormatCount;
-    imageInfo.viewFormats     = formatFamily.Formats;
 
     DecodeSampleCount(m_desc.SampleDesc.Count, &imageInfo.sampleCount);
     
-    // The image must be marked as mutable if it can be
-    // reinterpreted by a view with a different format
-    bool mutableFormat = formatFamily.FormatCount > 1;
-
-    // For UAVs, the format restrictions are more relaxed.
-    // FIXME for typed formats, we should just add the
-    // corresponding integer format to the format family
+    // Integer clear operations on UAVs are implemented using
+    // a view with a bit-compatible integer format, so we'll
+    // have to include that format in the format family
     if (m_desc.BindFlags & D3D11_BIND_UNORDERED_ACCESS) {
-      imageInfo.viewFormatCount = 0;
-      imageInfo.viewFormats     = nullptr;
-      mutableFormat             = true;
+      DXGI_VK_FORMAT_INFO formatBase = m_device->LookupFormat(
+        m_desc.Format, DXGI_VK_FORMAT_MODE_RAW);
+
+      if (formatBase.Format != formatInfo.Format
+       && formatBase.Format != VK_FORMAT_UNDEFINED) {
+        formatFamily.Add(formatBase.Format);
+        formatFamily.Add(formatInfo.Format);
+      }
     }
 
-    // Depth-stencil formats are not compatible to each other.
+    // The image must be marked as mutable if it can be reinterpreted
+    // by a view with a different format. Depth-stencil formats cannot
+    // be reinterpreted in Vulkan, so we'll ignore those.
     VkImageAspectFlags formatAspect = imageFormatInfo(formatInfo.Format)->aspectMask;
     
-    if (mutableFormat && (formatAspect & VK_IMAGE_ASPECT_COLOR_BIT))
+    bool isTypeless = formatInfo.Aspect == 0;
+    bool isMutable = formatFamily.FormatCount > 1;
+
+    if (isMutable && (formatAspect & VK_IMAGE_ASPECT_COLOR_BIT)) {
       imageInfo.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+
+      // Typeless UAV images have relaxed reinterpretation rules
+      if (!isTypeless || !(m_desc.BindFlags & D3D11_BIND_UNORDERED_ACCESS)) {
+        imageInfo.viewFormatCount = formatFamily.FormatCount;
+        imageInfo.viewFormats     = formatFamily.Formats;
+      }
+    }
     
     // Adjust image flags based on the corresponding D3D flags
     if (m_desc.BindFlags & D3D11_BIND_SHADER_RESOURCE) {
