@@ -8,10 +8,24 @@ namespace dxvk {
           DxvkMemoryAllocator&  memAlloc,
           VkMemoryPropertyFlags memFlags)
   : m_vkd(vkd), m_info(createInfo), m_memFlags(memFlags) {
+
+    // Copy the compatible view formats to a persistent array
+    m_viewFormats.resize(createInfo.viewFormatCount);
+    for (uint32_t i = 0; i < createInfo.viewFormatCount; i++)
+      m_viewFormats[i] = createInfo.viewFormats[i];
+    m_info.viewFormats = m_viewFormats.data();
+
+    // If defined, we should provide a format list, which
+    // allows some drivers to enable image compression
+    VkImageFormatListCreateInfoKHR formatList;
+    formatList.sType           = VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO_KHR;
+    formatList.pNext           = nullptr;
+    formatList.viewFormatCount = createInfo.viewFormatCount;
+    formatList.pViewFormats    = createInfo.viewFormats;
     
     VkImageCreateInfo info;
     info.sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    info.pNext                 = nullptr;
+    info.pNext                 = &formatList;
     info.flags                 = createInfo.flags;
     info.imageType             = createInfo.type;
     info.format                = createInfo.format;

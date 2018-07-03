@@ -50,6 +50,11 @@ namespace dxvk {
     
     /// Common image layout
     VkImageLayout layout;
+
+    // Image view formats that can
+    // be used with this image
+    uint32_t        viewFormatCount = 0;
+    const VkFormat* viewFormats     = nullptr;
   };
   
   
@@ -240,6 +245,8 @@ namespace dxvk {
     VkMemoryPropertyFlags m_memFlags;
     DxvkMemory            m_memory;
     VkImage               m_image = VK_NULL_HANDLE;
+
+    std::vector<VkFormat> m_viewFormats;
     
   };
   
