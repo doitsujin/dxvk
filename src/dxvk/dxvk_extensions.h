@@ -134,6 +134,7 @@ namespace dxvk {
     DxvkExtension khrDedicatedAllocation      = { this, VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME,         DxvkExtensionType::Required };
     DxvkExtension khrDescriptorUpdateTemplate = { this, VK_KHR_DESCRIPTOR_UPDATE_TEMPLATE_EXTENSION_NAME,   DxvkExtensionType::Required };
     DxvkExtension khrGetMemoryRequirements2   = { this, VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME,    DxvkExtensionType::Required };
+    DxvkExtension khrImageFormatList          = { this, VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME,            DxvkExtensionType::Required };
     DxvkExtension khrMaintenance1             = { this, VK_KHR_MAINTENANCE1_EXTENSION_NAME,                 DxvkExtensionType::Required };
     DxvkExtension khrMaintenance2             = { this, VK_KHR_MAINTENANCE2_EXTENSION_NAME,                 DxvkExtensionType::Required };
     DxvkExtension khrSamplerMirrorClampToEdge = { this, VK_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE_EXTENSION_NAME, DxvkExtensionType::Desired  };
