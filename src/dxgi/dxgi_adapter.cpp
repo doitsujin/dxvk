@@ -229,6 +229,13 @@ namespace dxvk {
   }
   
   
+  DXGI_VK_FORMAT_FAMILY STDMETHODCALLTYPE DxgiAdapter::LookupFormatFamily(
+          DXGI_FORMAT               Format,
+          DXGI_VK_FORMAT_MODE       Mode) {
+    return m_formats.GetFormatFamily(Format, Mode);
+  }
+  
+  
   HRESULT DxgiAdapter::GetOutputFromMonitor(
           HMONITOR                  Monitor,
           IDXGIOutput**             ppOutput) {

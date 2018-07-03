@@ -67,11 +67,22 @@ IDXGIVkAdapter : public IDXGIAdapter2 {
    * formats, this is not guaranteed.
    * \param [in] format The DXGI format
    * \param [in] mode Format lookup mode
-   * \returns Vulkan format pair
+   * \returns Vulkan format mapping
    */
   virtual dxvk::DXGI_VK_FORMAT_INFO STDMETHODCALLTYPE LookupFormat(
-          DXGI_FORMAT               format,
-          dxvk::DXGI_VK_FORMAT_MODE mode) = 0;
+          DXGI_FORMAT               Format,
+          dxvk::DXGI_VK_FORMAT_MODE Mode) = 0;
+  
+  /**
+   * \brief Queries the compatibility family of a given format
+   * 
+   * \param [in] Format The DXGI format
+   * \param [in] Mode Format lookup mode
+   * \returns Format family
+   */
+  virtual dxvk::DXGI_VK_FORMAT_FAMILY STDMETHODCALLTYPE LookupFormatFamily(
+          DXGI_FORMAT               Format,
+          dxvk::DXGI_VK_FORMAT_MODE Mode) = 0;
 };
 
 

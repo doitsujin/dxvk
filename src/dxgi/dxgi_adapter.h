@@ -57,6 +57,10 @@ namespace dxvk {
             DXGI_FORMAT               Format,
             DXGI_VK_FORMAT_MODE       Mode) final;
     
+    DXGI_VK_FORMAT_FAMILY STDMETHODCALLTYPE LookupFormatFamily(
+            DXGI_FORMAT               Format,
+            DXGI_VK_FORMAT_MODE       Mode) final;
+    
     HRESULT GetOutputFromMonitor(
             HMONITOR                  Monitor,
             IDXGIOutput**             ppOutput);
