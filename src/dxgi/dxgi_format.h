@@ -3,6 +3,7 @@
 #include "dxgi_include.h"
 
 #include "../dxvk/dxvk_adapter.h"
+#include "../dxvk/dxvk_format.h"
 
 namespace dxvk {
   
@@ -55,6 +56,28 @@ namespace dxvk {
   
   
   /**
+   * \brief Format family
+   * 
+   * Stores a set of compatible formats. This can
+   * be used to aggregate formats for the image
+   * format list extension.
+   */
+  struct DXGI_VK_FORMAT_FAMILY {
+    constexpr static size_t MaxSize = 8;
+
+    DXGI_VK_FORMAT_FAMILY() { }
+    DXGI_VK_FORMAT_FAMILY(
+      const std::initializer_list<VkFormat>& FormatList) {
+      for (VkFormat f : FormatList)
+        Formats[FormatCount++] = f;
+    }
+
+    UINT     FormatCount = 0;
+    VkFormat Formats[MaxSize];
+  };
+  
+  
+  /**
    * \brief Format table
    * 
    * Initializes a format table for a specific
@@ -80,10 +103,25 @@ namespace dxvk {
             DXGI_FORMAT         Format,
             DXGI_VK_FORMAT_MODE Mode) const;
     
+    /**
+     * \brief Retrieves a format family
+     * 
+     * \param [in] Format The format to query
+     * \param [in] Mode Image format mode
+     * \returns Image format family
+     */
+    DXGI_VK_FORMAT_FAMILY GetFormatFamily(
+            DXGI_FORMAT         Format,
+            DXGI_VK_FORMAT_MODE Mode) const;
+    
   private:
     
     std::array<DXGI_VK_FORMAT_MAPPING, 133> m_dxgiFormats;
+    std::array<DXGI_VK_FORMAT_FAMILY,  133> m_dxgiFamilies;
     
+    const DXGI_VK_FORMAT_MAPPING* GetFormatMapping(
+            DXGI_FORMAT           Format) const;
+
     bool CheckImageFormatSupport(
       const Rc<DxvkAdapter>&      Adapter,
             VkFormat              Format,
