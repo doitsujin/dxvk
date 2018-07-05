@@ -23,9 +23,11 @@ namespace dxvk {
     formatList.viewFormatCount = createInfo.viewFormatCount;
     formatList.pViewFormats    = createInfo.viewFormats;
     
+    // FIXME enable the image format list. We cannot
+    // currently use this because of regressions.
     VkImageCreateInfo info;
     info.sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    info.pNext                 = &formatList;
+    info.pNext                 = nullptr;
     info.flags                 = createInfo.flags;
     info.imageType             = createInfo.type;
     info.format                = createInfo.format;
