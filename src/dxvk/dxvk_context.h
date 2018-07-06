@@ -221,13 +221,11 @@ namespace dxvk {
      * \brief Clears an active render target
      * 
      * \param [in] imageView Render target view to clear
-     * \param [in] clearArea Image area to clear
      * \param [in] clearAspects Image aspects to clear
      * \param [in] clearValue The clear value
      */
     void clearRenderTarget(
       const Rc<DxvkImageView>&    imageView,
-      const VkClearRect&          clearRect,
             VkImageAspectFlags    clearAspects,
       const VkClearValue&         clearValue);
     

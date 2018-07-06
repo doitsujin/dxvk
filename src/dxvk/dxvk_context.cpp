@@ -414,7 +414,6 @@ namespace dxvk {
   
   void DxvkContext::clearRenderTarget(
     const Rc<DxvkImageView>&    imageView,
-    const VkClearRect&          clearRect,
           VkImageAspectFlags    clearAspects,
     const VkClearValue&         clearValue) {
     this->updateFramebuffer();
@@ -486,6 +485,14 @@ namespace dxvk {
       clearInfo.colorAttachment = attachmentIndex;
       clearInfo.clearValue      = clearValue;
       
+      VkClearRect clearRect;
+      clearRect.rect.offset.x       = 0;
+      clearRect.rect.offset.y       = 0;
+      clearRect.rect.extent.width   = imageView->mipLevelExtent(0).width;
+      clearRect.rect.extent.height  = imageView->mipLevelExtent(0).height;
+      clearRect.baseArrayLayer      = 0;
+      clearRect.layerCount          = imageView->info().numLayers;
+
       m_cmd->cmdClearAttachments(
         1, &clearInfo, 1, &clearRect);
     } else {
@@ -1681,7 +1688,7 @@ namespace dxvk {
       m_flags.clr(DxvkContextFlag::GpClearRenderTargets);
 
       m_barriers.recordCommands(m_cmd);
-      
+
       this->renderPassBindFramebuffer(
         m_state.om.framebuffer,
         m_state.om.renderPassOps,

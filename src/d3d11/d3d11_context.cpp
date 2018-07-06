@@ -598,24 +598,12 @@ namespace dxvk {
     clearValue.color.float32[2] = ColorRGBA[2];
     clearValue.color.float32[3] = ColorRGBA[3];
     
-    VkClearRect clearRect;
-    clearRect.rect.offset.x       = 0;
-    clearRect.rect.offset.y       = 0;
-    clearRect.rect.extent.width   = view->mipLevelExtent(0).width;
-    clearRect.rect.extent.height  = view->mipLevelExtent(0).height;
-    clearRect.baseArrayLayer      = 0;
-    clearRect.layerCount          = view->info().numLayers;
-    
-    if (m_parent->GetFeatureLevel() < D3D_FEATURE_LEVEL_10_0)
-      clearRect.layerCount        = 1;
-    
     EmitCs([
       cClearValue = clearValue,
-      cClearRect  = clearRect,
       cImageView  = view
     ] (DxvkContext* ctx) {
       ctx->clearRenderTarget(
-        cImageView, cClearRect,
+        cImageView,
         VK_IMAGE_ASPECT_COLOR_BIT,
         cClearValue);
     });
@@ -781,26 +769,15 @@ namespace dxvk {
     clearValue.depthStencil.depth   = Depth;
     clearValue.depthStencil.stencil = Stencil;
     
-    VkClearRect clearRect;
-    clearRect.rect.offset.x       = 0;
-    clearRect.rect.offset.y       = 0;
-    clearRect.rect.extent.width   = view->mipLevelExtent(0).width;
-    clearRect.rect.extent.height  = view->mipLevelExtent(0).height;
-    clearRect.baseArrayLayer      = 0;
-    clearRect.layerCount          = view->info().numLayers;
-    
-    if (m_parent->GetFeatureLevel() < D3D_FEATURE_LEVEL_10_0)
-      clearRect.layerCount        = 1;
-    
     EmitCs([
       cClearValue = clearValue,
-      cClearRect  = clearRect,
       cAspectMask = aspectMask,
       cImageView  = view
     ] (DxvkContext* ctx) {
       ctx->clearRenderTarget(
-        cImageView, cClearRect,
-        cAspectMask, cClearValue);
+        cImageView,
+        cAspectMask,
+        cClearValue);
     });
   }
   
