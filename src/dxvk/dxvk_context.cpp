@@ -417,7 +417,7 @@ namespace dxvk {
           VkImageAspectFlags    clearAspects,
     const VkClearValue&         clearValue) {
     this->updateFramebuffer();
-    
+
     // Prepare attachment ops
     DxvkColorAttachmentOps colorOp;
     colorOp.loadOp        = VK_ATTACHMENT_LOAD_OP_LOAD;
@@ -493,17 +493,35 @@ namespace dxvk {
       clearRect.baseArrayLayer      = 0;
       clearRect.layerCount          = imageView->info().numLayers;
 
-      m_cmd->cmdClearAttachments(
-        1, &clearInfo, 1, &clearRect);
+      m_cmd->cmdClearAttachments(1, &clearInfo, 1, &clearRect);
     } else {
       // Perform the clear when starting the render pass
-      if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT)
+      if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT) {
         m_state.om.renderPassOps.colorOps[attachmentIndex] = colorOp;
+        m_state.om.clearValues[attachmentIndex].color = clearValue.color;
+      }
       
-      if (clearAspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
-        m_state.om.renderPassOps.depthOps = depthOp;
+      if (clearAspects & VK_IMAGE_ASPECT_DEPTH_BIT) {
+        m_state.om.renderPassOps.depthOps.loadOpD  = depthOp.loadOpD;
+        m_state.om.renderPassOps.depthOps.storeOpD = depthOp.storeOpD;
+        m_state.om.clearValues[attachmentIndex].depthStencil.depth = clearValue.depthStencil.depth;
+      }
       
-      m_state.om.clearValues[attachmentIndex] = clearValue;
+      if (clearAspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
+        m_state.om.renderPassOps.depthOps.loadOpS  = depthOp.loadOpS;
+        m_state.om.renderPassOps.depthOps.storeOpS = depthOp.storeOpS;
+        m_state.om.clearValues[attachmentIndex].depthStencil.stencil = clearValue.depthStencil.stencil;
+      }
+
+      if (clearAspects & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+        m_state.om.renderPassOps.depthOps.loadLayout  = depthOp.loadLayout;
+        m_state.om.renderPassOps.depthOps.storeLayout = depthOp.storeLayout;
+
+        if (m_state.om.renderPassOps.depthOps.loadOpD == VK_ATTACHMENT_LOAD_OP_CLEAR
+         && m_state.om.renderPassOps.depthOps.loadOpS == VK_ATTACHMENT_LOAD_OP_CLEAR)
+          m_state.om.renderPassOps.depthOps.loadLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+      }
+      
       m_flags.set(DxvkContextFlag::GpClearRenderTargets);
     }
   }
