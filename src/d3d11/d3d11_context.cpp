@@ -62,18 +62,27 @@ namespace dxvk {
   }
   
   void STDMETHODCALLTYPE D3D11DeviceContext::DiscardResource(ID3D11Resource * pResource) {
-    Logger::err("D3D11DeviceContext::DiscardResource: Not implemented");
+    static bool s_errorShown = false;
+    
+    if (!std::exchange(s_errorShown, true))
+      Logger::err("D3D11DeviceContext::DiscardResource: Not implemented");
   }
 
   void STDMETHODCALLTYPE D3D11DeviceContext::DiscardView(ID3D11View * pResourceView) {
-    Logger::err("D3D11DeviceContext::DiscardView: Not implemented");
+    static bool s_errorShown = false;
+    
+    if (!std::exchange(s_errorShown, true))
+      Logger::err("D3D11DeviceContext::DiscardView: Not implemented");
   }
 
   void STDMETHODCALLTYPE D3D11DeviceContext::DiscardView1(
           ID3D11View*              pResourceView, 
     const D3D11_RECT*              pRects, 
           UINT                     NumRects) {
-    Logger::err("D3D11DeviceContext::DiscardView1: Not implemented");
+    static bool s_errorShown = false;
+    
+    if (!std::exchange(s_errorShown, true))
+      Logger::err("D3D11DeviceContext::DiscardView1: Not implemented");
   }
 
   void STDMETHODCALLTYPE D3D11DeviceContext::SwapDeviceContextState(
