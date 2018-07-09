@@ -29,8 +29,8 @@ namespace dxvk::bit {
     uint32_t res;
     uint32_t tmp;
     asm (
-      "xor %1, %1;"
-      "bsf %2, %0;"
+      "mov  $32, %1;"
+      "bsf   %2, %0;"
       "cmovz %1, %0;"
       : "=&r" (res), "=&r" (tmp)
       : "r" (n));
