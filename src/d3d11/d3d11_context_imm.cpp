@@ -103,11 +103,10 @@ namespace dxvk {
       
       FlushCsChunk();
       
+      // Reset flush timer used for implicit flushes
+      m_lastFlush = std::chrono::high_resolution_clock::now();
+      m_csIsBusy  = false;
     }
-
-    // Reset optimization info
-    m_csIsBusy  = false;
-    m_lastFlush = std::chrono::high_resolution_clock::now();
   }
   
   
