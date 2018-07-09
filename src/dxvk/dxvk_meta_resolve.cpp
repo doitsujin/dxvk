@@ -30,13 +30,10 @@ namespace dxvk {
       { VK_SUBPASS_EXTERNAL, 0,
         m_dstImageView->imageInfo().stages,
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        m_dstImageView->imageInfo().access,
-        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
-        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, 0 },
+        0, 0, 0 },
       { 0, VK_SUBPASS_EXTERNAL,
         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
         m_dstImageView->imageInfo().stages,
-        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
         VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
         m_dstImageView->imageInfo().access, 0 },
     }};
