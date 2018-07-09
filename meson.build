@@ -11,11 +11,9 @@ else
 endif
 
 # DXVK version
-is_head = find_program('head', required : false).found()
-is_git  = find_program('git', required : false).found()
-if is_head
+if find_program('head', required : false).found()
   dxvk_ver = run_command('head', '-n1', 'RELEASE').stdout().strip()
-  if dxvk_ver != '' and is_git
+  if dxvk_ver != '' and find_program('git', required : false).found()
     dxvk_git_ver = run_command('git', 'rev-parse', '--short', 'HEAD').stdout().strip()
     if dxvk_git_ver != ''
       dxvk_ver += ' (' + dxvk_git_ver + ')'
