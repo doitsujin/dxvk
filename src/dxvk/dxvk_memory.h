@@ -41,6 +41,7 @@ namespace dxvk {
    */
   struct DxvkMemoryHeap {
     VkMemoryHeap      properties;
+    VkDeviceSize      chunkSize;
     DxvkMemoryStats   stats;
   };
 
@@ -252,8 +253,6 @@ namespace dxvk {
     
   private:
 
-    constexpr static VkDeviceSize ChunkSize = 16 * 1024 * 1024;
-    
     const Rc<vk::DeviceFn>                 m_vkd;
     const VkPhysicalDeviceProperties       m_devProps;
     const VkPhysicalDeviceMemoryProperties m_memProps;
@@ -290,6 +289,9 @@ namespace dxvk {
     void freeDeviceMemory(
             DxvkMemoryType*       type,
             DxvkDeviceMemory      memory);
+    
+    VkDeviceSize pickChunkSize(
+            VkDeviceSize          heapSize) const;
 
   };
   
