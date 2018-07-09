@@ -242,6 +242,9 @@ namespace dxvk {
       VK_VERSION_MAJOR(deviceInfo.apiVersion), ".",
       VK_VERSION_MINOR(deviceInfo.apiVersion), ".",
       VK_VERSION_PATCH(deviceInfo.apiVersion)));
+#ifdef DXVK_VERSION
+    Logger::info(str::format("  DXVK: ", std::string(DXVK_VERSION)));
+#endif
 
     for (uint32_t i = 0; i < memoryInfo.memoryHeapCount; i++) {
       constexpr VkDeviceSize mib = 1024 * 1024;
