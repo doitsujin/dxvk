@@ -27,6 +27,9 @@ namespace dxvk::hud {
     std::string m_deviceName;
     std::string m_driverVer;
     std::string m_vulkanVer;
+#ifdef DXVK_VERSION
+    std::string m_dxvkVer;
+#endif
     
   };
   
