@@ -1758,7 +1758,14 @@ namespace dxvk {
     
     m_cmd->cmdBeginRenderPass(&info,
       VK_SUBPASS_CONTENTS_INLINE);
+    
     m_cmd->trackResource(framebuffer);
+
+    for (uint32_t i = 0; i < framebuffer->numAttachments(); i++) {
+      m_cmd->trackResource(framebuffer->getAttachment(i).view);
+      m_cmd->trackResource(framebuffer->getAttachment(i).view->image());
+    }
+
     m_cmd->addStatCtr(DxvkStatCounter::CmdRenderPassCount, 1);
   }
   
