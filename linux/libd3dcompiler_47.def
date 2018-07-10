@@ -1,0 +1,22 @@
+; File generated automatically from d3dcompiler_47.spec; do not edit!
+
+LIBRARY d3dcompiler_47.dll
+
+EXPORTS
+  D3DAssemble @1
+  D3DCompile @2
+  D3DCompile2 @3
+  D3DCompileFromFile @4
+  D3DCreateBlob @6
+  D3DDisassemble @10
+  D3DGetBlobPart @14
+  D3DGetDebugInfo @15
+  D3DGetInputAndOutputSignatureBlob @16
+  D3DGetInputSignatureBlob @17
+  D3DGetOutputSignatureBlob @18
+  D3DLoadModule @20
+  D3DPreprocess @21
+  D3DReadFileToBlob @22
+  D3DReflect @23
+  D3DStripShader @27
+  D3DWriteBlobToFile @28
