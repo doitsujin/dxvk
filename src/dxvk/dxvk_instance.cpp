@@ -1,3 +1,5 @@
+#include <version.h>
+
 #include "dxvk_instance.h"
 #include "dxvk_openvr.h"
 
@@ -6,6 +8,9 @@
 namespace dxvk {
   
   DxvkInstance::DxvkInstance() {
+    Logger::info(str::format("Game: ", env::getExeName()));
+    Logger::info(str::format("DXVK: ", DXVK_VERSION));
+
     g_vrInstance.initInstanceExtensions();
 
     m_vkl = new vk::LibraryFn();
