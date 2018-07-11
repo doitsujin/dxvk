@@ -1,6 +1,7 @@
-#include "dxvk_hud.h"
-
 #include <cstring>
+#include <version.h>
+
+#include "dxvk_hud.h"
 
 namespace dxvk::hud {
   
@@ -83,6 +84,14 @@ namespace dxvk::hud {
   void Hud::renderHudElements(const Rc<DxvkContext>& ctx) {
     HudPos position = { 8.0f, 24.0f };
     
+    if (m_config.elements.test(HudElement::DxvkVersion)) {
+      m_renderer.drawText(ctx, 16.0f,
+        { position.x, position.y },
+        { 1.0f, 1.0f, 1.0f, 1.0f },
+        "DXVK " DXVK_VERSION);
+      position.y += 24.0f;
+    }
+
     if (m_config.elements.test(HudElement::DeviceInfo)) {
       position = m_hudDeviceInfo.render(
         ctx, m_renderer, position);

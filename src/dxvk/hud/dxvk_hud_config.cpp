@@ -12,6 +12,7 @@ namespace dxvk::hud {
     { "submissions",  HudElement::StatSubmissions   },
     { "pipelines",    HudElement::StatPipelines     },
     { "memory",       HudElement::StatMemory        },
+    { "version",      HudElement::DxvkVersion       },
   }};
   
   

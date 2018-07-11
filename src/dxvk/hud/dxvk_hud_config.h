@@ -18,6 +18,7 @@ namespace dxvk::hud {
     StatSubmissions   = 4,
     StatPipelines     = 5,
     StatMemory        = 6,
+    DxvkVersion       = 7,
   };
   
   using HudElements = Flags<HudElement>;
