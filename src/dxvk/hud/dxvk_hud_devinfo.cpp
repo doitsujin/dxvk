@@ -13,6 +13,9 @@ namespace dxvk::hud {
       VK_VERSION_MAJOR(props.apiVersion), ".",
       VK_VERSION_MINOR(props.apiVersion), ".",
       VK_VERSION_PATCH(props.apiVersion));
+#ifdef DXVK_VERSION
+    m_dxvkVer   = str::format("DXVK:   ", std::string(DXVK_VERSION));
+#endif
   }
   
   
@@ -40,7 +43,16 @@ namespace dxvk::hud {
       { 1.0f, 1.0f, 1.0f, 1.0f },
       m_vulkanVer);
     
-    return HudPos { position.x, position.y + 68 };
+#ifdef DXVK_VERSION
+    renderer.drawText(context, 16.0f,
+      { position.x, position.y + 64 },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
+      m_dxvkVer);
+
+     return HudPos { position.x, position.y + 88 };
+#else
+     return HudPos { position.x, position.y + 68 };
+#endif
   }
   
 }

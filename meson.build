@@ -10,6 +10,18 @@ else
   dxvk_cpp_std='c++1z'
 endif
 
+# DXVK version
+if find_program('head', required : false).found()
+  dxvk_ver = run_command('head', '-n1', 'RELEASE').stdout().strip()
+  if dxvk_ver != '' and find_program('git', required : false).found()
+    dxvk_git_ver = run_command('git', 'rev-parse', '--short', 'HEAD').stdout().strip()
+    if dxvk_git_ver != ''
+      dxvk_ver += ' (' + dxvk_git_ver + ')'
+    endif
+    add_project_arguments('-DDXVK_VERSION="' + dxvk_ver + '"', language : 'cpp')
+  endif
+endif
+
 if dxvk_compiler.get_id() == 'msvc'
 	add_project_arguments('/std:' + dxvk_cpp_std, language : 'cpp')
 endif
