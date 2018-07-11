@@ -67,10 +67,8 @@ namespace dxvk {
         instance->enumAdapters(i)->handle()));
     }
 
-    if (m_initializedOpenVr)
-      g_vrFunctions.shutdownInternal();
-
     m_initializedDevExt = true;
+    this->shutdown();
   }
 
 
@@ -104,18 +102,29 @@ namespace dxvk {
   
   
   vr::IVRCompositor* VrInstance::getCompositor() {
-    // Locate the OpenVR DLL if loaded by the process
-    HMODULE ovrApi = ::GetModuleHandle("openvr_api.dll");
+    // Skip OpenVR initialization if requested
+    if (env::getEnvVar(L"DXVK_NO_VR") == "1")
+      return nullptr;
     
-    if (ovrApi == nullptr) {
+    // Locate the OpenVR DLL if loaded by the process. Some
+    // applications may not have OpenVR loaded at the time
+    // they create the DXGI instance, so we try our own DLL.
+    m_ovrApi = ::GetModuleHandle("openvr_api.dll");
+
+    if (m_ovrApi == nullptr) {
+      m_ovrApi = ::LoadLibrary("openvr_api_dxvk.dll");
+      m_loadedOvrApi = m_ovrApi != nullptr;
+    }
+    
+    if (m_ovrApi == nullptr) {
       Logger::warn("OpenVR: Failed to locate module");
       return nullptr;
     }
     
     // Load method used to retrieve the IVRCompositor interface
-    g_vrFunctions.initInternal        = reinterpret_cast<VR_InitInternalProc>       (::GetProcAddress(ovrApi, "VR_InitInternal"));
-    g_vrFunctions.shutdownInternal    = reinterpret_cast<VR_ShutdownInternalProc>   (::GetProcAddress(ovrApi, "VR_ShutdownInternal"));
-    g_vrFunctions.getGenericInterface = reinterpret_cast<VR_GetGenericInterfaceProc>(::GetProcAddress(ovrApi, "VR_GetGenericInterface"));
+    g_vrFunctions.initInternal        = reinterpret_cast<VR_InitInternalProc>       (::GetProcAddress(m_ovrApi, "VR_InitInternal"));
+    g_vrFunctions.shutdownInternal    = reinterpret_cast<VR_ShutdownInternalProc>   (::GetProcAddress(m_ovrApi, "VR_ShutdownInternal"));
+    g_vrFunctions.getGenericInterface = reinterpret_cast<VR_GetGenericInterfaceProc>(::GetProcAddress(m_ovrApi, "VR_GetGenericInterface"));
     
     if (g_vrFunctions.getGenericInterface == nullptr) {
       Logger::warn("OpenVR: VR_GetGenericInterface not found");
@@ -150,14 +159,25 @@ namespace dxvk {
       
       if (error != vr::VRInitError_None || compositor == nullptr) {
         Logger::warn("OpenVR: Failed to query compositor interface");
-        g_vrFunctions.shutdownInternal();
-        m_initializedOpenVr = false;
+        this->shutdown();
         return nullptr;
       }
     }
     
     Logger::info("OpenVR: Compositor interface found");
     return compositor;
+  }
+
+
+  void VrInstance::shutdown() {
+    if (m_initializedOpenVr)
+      g_vrFunctions.shutdownInternal();
+    
+    if (m_loadedOvrApi)
+      ::FreeLibrary(m_ovrApi);
+    
+    m_initializedOpenVr = false;
+    m_loadedOvrApi      = false;
   }
   
 }

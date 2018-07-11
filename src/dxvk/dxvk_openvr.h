@@ -66,7 +66,9 @@ namespace dxvk {
 
     std::mutex            m_mutex;
     vr::IVRCompositor*    m_compositor = nullptr;
+    HMODULE               m_ovrApi     = nullptr;
 
+    bool m_loadedOvrApi      = false;
     bool m_initializedOpenVr = false;
     bool m_initializedInsExt = false;
     bool m_initializedDevExt = false;
@@ -83,6 +85,8 @@ namespace dxvk {
       const std::string&              str) const;
     
     vr::IVRCompositor* getCompositor();
+
+    void shutdown();
     
   };
 
