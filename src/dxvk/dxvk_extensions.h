@@ -129,17 +129,17 @@ namespace dxvk {
    * used by DXVK if supported by the implementation.
    */
   struct DxvkDeviceExtensions : public DxvkExtensionList {
-    DxvkExtension extShaderViewportIndexLayer = { this, VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME,  DxvkExtensionType::Desired  };
-    DxvkExtension extVertexAttributeDivisor   = { this, VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME,     DxvkExtensionType::Required };
-    DxvkExtension khrDedicatedAllocation      = { this, VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME,         DxvkExtensionType::Required };
-    DxvkExtension khrDescriptorUpdateTemplate = { this, VK_KHR_DESCRIPTOR_UPDATE_TEMPLATE_EXTENSION_NAME,   DxvkExtensionType::Required };
-    DxvkExtension khrGetMemoryRequirements2   = { this, VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME,    DxvkExtensionType::Required };
-    DxvkExtension khrImageFormatList          = { this, VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME,            DxvkExtensionType::Required };
-    DxvkExtension khrMaintenance1             = { this, VK_KHR_MAINTENANCE1_EXTENSION_NAME,                 DxvkExtensionType::Required };
-    DxvkExtension khrMaintenance2             = { this, VK_KHR_MAINTENANCE2_EXTENSION_NAME,                 DxvkExtensionType::Required };
-    DxvkExtension khrSamplerMirrorClampToEdge = { this, VK_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE_EXTENSION_NAME, DxvkExtensionType::Desired  };
-    DxvkExtension khrShaderDrawParameters     = { this, VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME,       DxvkExtensionType::Required };
-    DxvkExtension khrSwapchain                = { this, VK_KHR_SWAPCHAIN_EXTENSION_NAME,                    DxvkExtensionType::Required };
+    DxvkExtension extShaderViewportIndexLayer     = { this, VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME,      DxvkExtensionType::Desired  };
+    DxvkExtension extVertexAttributeDivisor       = { this, VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME,         DxvkExtensionType::Required };
+    DxvkExtension khrDedicatedAllocation          = { this, VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME,             DxvkExtensionType::Required };
+    DxvkExtension khrDescriptorUpdateTemplate     = { this, VK_KHR_DESCRIPTOR_UPDATE_TEMPLATE_EXTENSION_NAME,       DxvkExtensionType::Required };
+    DxvkExtension khrGetMemoryRequirements2       = { this, VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME,        DxvkExtensionType::Required };
+    DxvkExtension khrImageFormatList              = { this, VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME,                DxvkExtensionType::Required };
+    DxvkExtension khrMaintenance1                 = { this, VK_KHR_MAINTENANCE1_EXTENSION_NAME,                     DxvkExtensionType::Required };
+    DxvkExtension khrMaintenance2                 = { this, VK_KHR_MAINTENANCE2_EXTENSION_NAME,                     DxvkExtensionType::Required };
+    DxvkExtension khrSamplerMirrorClampToEdge     = { this, VK_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE_EXTENSION_NAME,     DxvkExtensionType::Desired  };
+    DxvkExtension khrShaderDrawParameters         = { this, VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME,           DxvkExtensionType::Required };
+    DxvkExtension khrSwapchain                    = { this, VK_KHR_SWAPCHAIN_EXTENSION_NAME,                        DxvkExtensionType::Required };
   };
   
   /**
@@ -149,8 +149,9 @@ namespace dxvk {
    * used by DXVK if supported by the implementation.
    */
   struct DxvkInstanceExtensions : public DxvkExtensionList {
-    DxvkExtension khrSurface                  = { this, VK_KHR_SURFACE_EXTENSION_NAME,                      DxvkExtensionType::Required };
-    DxvkExtension khrWin32Surface             = { this, VK_KHR_WIN32_SURFACE_EXTENSION_NAME,                DxvkExtensionType::Required };
+    DxvkExtension khrGetPhysicalDeviceProperties2 = { this, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME, DxvkExtensionType::Required };
+    DxvkExtension khrSurface                      = { this, VK_KHR_SURFACE_EXTENSION_NAME,                          DxvkExtensionType::Required };
+    DxvkExtension khrWin32Surface                 = { this, VK_KHR_WIN32_SURFACE_EXTENSION_NAME,                    DxvkExtensionType::Required };
   };
   
 }
