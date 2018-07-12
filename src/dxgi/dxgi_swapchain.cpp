@@ -552,11 +552,9 @@ namespace dxvk {
     ::GetWindowRect(m_window, &m_windowState.rect);
     
     if (m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH) {
-      auto windowRect = m_windowState.rect;
-      
       DXGI_MODE_DESC displayMode;
-      displayMode.Width            = windowRect.right - windowRect.left;
-      displayMode.Height           = windowRect.bottom - windowRect.top;
+      displayMode.Width            = m_desc.Width;
+      displayMode.Height           = m_desc.Height;
       displayMode.RefreshRate      = m_descFs.RefreshRate;
       displayMode.Format           = m_desc.Format;
       displayMode.ScanlineOrdering = m_descFs.ScanlineOrdering;
