@@ -127,7 +127,7 @@ namespace dxvk {
     UINT targetHeight = pModeToMatch->Height;
 
     if (targetWidth == 0 || targetHeight == 0) {
-      DXGI_MODE_DESC activeMode;
+      DXGI_MODE_DESC activeMode = { };
       GetDisplayMode(&activeMode, ENUM_CURRENT_SETTINGS);
 
       targetWidth  = activeMode.Width;
