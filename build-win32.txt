@@ -1,8 +1,8 @@
 [binaries]
-c = '/usr/bin/i686-w64-mingw32-gcc'
-cpp = '/usr/bin/i686-w64-mingw32-g++'
-ar = '/usr/bin/i686-w64-mingw32-ar'
-strip = '/usr/bin/i686-w64-mingw32-strip'
+c = 'i686-w64-mingw32-gcc'
+cpp = 'i686-w64-mingw32-g++'
+ar = 'i686-w64-mingw32-ar'
+strip = 'i686-w64-mingw32-strip'
 exe_wrapper = 'wine'
 
 [properties]
