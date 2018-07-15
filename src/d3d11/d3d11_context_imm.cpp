@@ -3,6 +3,9 @@
 #include "d3d11_device.h"
 #include "d3d11_texture.h"
 
+constexpr static uint32_t MinFlushIntervalUs = 1250;
+constexpr static uint32_t MaxPendingSubmits  = 3;
+
 namespace dxvk {
   
   D3D11ImmediateContext::D3D11ImmediateContext(
