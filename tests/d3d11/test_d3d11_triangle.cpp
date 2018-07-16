@@ -6,6 +6,7 @@
 
 #include <thread>
 
+#include "../../src/util/thread.h"
 #include "../test_utils.h"
 
 using namespace dxvk;

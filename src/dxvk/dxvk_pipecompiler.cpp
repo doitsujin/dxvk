@@ -13,7 +13,7 @@ namespace dxvk {
     m_compilerThreads.resize(threadCount);
     
     for (uint32_t i = 0; i < threadCount; i++) {
-      m_compilerThreads.at(i) = std::thread(
+      m_compilerThreads.at(i) = dxvk::thread(
         [this] { this->runCompilerThread(); });
     }
   }

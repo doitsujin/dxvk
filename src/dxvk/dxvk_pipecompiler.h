@@ -4,8 +4,8 @@
 #include <condition_variable>
 #include <mutex>
 #include <queue>
-#include <thread>
 
+#include "../util/thread.h"
 #include "dxvk_include.h"
 
 namespace dxvk {
@@ -49,7 +49,7 @@ namespace dxvk {
     std::mutex                  m_compilerLock;
     std::condition_variable     m_compilerCond;
     std::queue<PipelineEntry>   m_compilerQueue;
-    std::vector<std::thread>    m_compilerThreads;
+    std::vector<dxvk::thread>   m_compilerThreads;
     
     void runCompilerThread();
     

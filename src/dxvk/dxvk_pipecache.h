@@ -4,7 +4,6 @@
 #include <chrono>
 #include <condition_variable>
 #include <fstream>
-#include <thread>
 
 #include "dxvk_include.h"
 

@@ -527,7 +527,7 @@ namespace dxvk {
       
       // TODO implement properly in DxvkDevice
       while (Resource->isInUse())
-        std::this_thread::yield();
+        dxvk::this_thread::yield();
     }
     
     return true;
