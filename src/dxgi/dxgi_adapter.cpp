@@ -143,14 +143,18 @@ namespace dxvk {
     if (ppOutput == nullptr)
       return E_INVALIDARG;
     
-    if (Output > 0) {
-      *ppOutput = nullptr;
-      return DXGI_ERROR_NOT_FOUND;
-    }
+    MonitorEnumInfo info;
+    info.iMonitorId = Output;
+    info.oMonitor   = nullptr;
     
-    // TODO support multiple monitors
-    HMONITOR monitor = ::MonitorFromPoint({ 0, 0 }, MONITOR_DEFAULTTOPRIMARY);
-    *ppOutput = ref(new DxgiOutput(m_factory, this, monitor));
+    ::EnumDisplayMonitors(
+      nullptr, nullptr, &MonitorEnumProc,
+      reinterpret_cast<LPARAM>(&info));
+    
+    if (info.oMonitor == nullptr)
+      return DXGI_ERROR_NOT_FOUND;
+    
+    *ppOutput = ref(new DxgiOutput(m_factory, this, info.oMonitor));
     return S_OK;
   }
   
@@ -456,6 +460,21 @@ namespace dxvk {
           SetEvent(pair.second);
       }
     }
+  }
+  
+  
+  BOOL CALLBACK DxgiAdapter::MonitorEnumProc(
+          HMONITOR                  hmon,
+          HDC                       hdc,
+          LPRECT                    rect,
+          LPARAM                    lp) {
+    auto data = reinterpret_cast<MonitorEnumInfo*>(lp);
+    
+    if (data->iMonitorId--)
+      return TRUE; /* continue */
+    
+    data->oMonitor = hmon;
+    return FALSE; /* stop */
   }
   
 }

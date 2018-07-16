@@ -124,6 +124,17 @@ namespace dxvk {
 
     void runEventThread();
     
+    struct MonitorEnumInfo {
+      UINT      iMonitorId;
+      HMONITOR  oMonitor;
+    };
+    
+    static BOOL CALLBACK MonitorEnumProc(
+            HMONITOR                  hmon,
+            HDC                       hdc,
+            LPRECT                    rect,
+            LPARAM                    lp);
+    
   };
 
 }
