@@ -3,8 +3,8 @@
 #include <condition_variable>
 #include <mutex>
 #include <queue>
-#include <thread>
 
+#include "../util/thread.h"
 #include "dxvk_cmdlist.h"
 #include "dxvk_sync.h"
 
@@ -56,7 +56,7 @@ namespace dxvk {
     std::condition_variable m_condOnAdd;
     std::condition_variable m_condOnTake;
     std::queue<Rc<DxvkCommandList>> m_entries;
-    std::thread             m_thread;
+    dxvk::thread             m_thread;
     
     void threadFunc();
     

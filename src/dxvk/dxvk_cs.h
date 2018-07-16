@@ -4,8 +4,8 @@
 #include <condition_variable>
 #include <mutex>
 #include <queue>
-#include <thread>
 
+#include "../util/thread.h"
 #include "dxvk_context.h"
 
 namespace dxvk {
@@ -200,7 +200,7 @@ namespace dxvk {
     std::condition_variable     m_condOnAdd;
     std::condition_variable     m_condOnSync;
     std::queue<Rc<DxvkCsChunk>> m_chunksQueued;
-    std::thread                 m_thread;
+    dxvk::thread                m_thread;
     
     uint32_t                    m_chunksPending = 0;
     

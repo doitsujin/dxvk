@@ -1,7 +1,7 @@
 #pragma once
 
 #include <atomic>
-#include <thread>
+#include "../thread.h"
 
 namespace dxvk::sync {
   
@@ -24,7 +24,7 @@ namespace dxvk::sync {
     
     void lock() {
       while (!this->try_lock())
-        std::this_thread::yield();
+        dxvk::this_thread::yield();
     }
     
     void unlock() {
