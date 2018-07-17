@@ -28,7 +28,7 @@ d3d11_src = [
   'd3d11_view_uav.cpp',
 ]
 
-d3d11_dll = shared_library('d3d11', d3d11_src,
+d3d11_dll = shared_library('d3d11'+dll_ext, d3d11_src,
   name_prefix         : '',
   link_with           : [ util_lib ],
   dependencies        : [ dxvk_dep, dxgi_dep, dxbc_dep ],

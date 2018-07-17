@@ -28,6 +28,8 @@ if meson.get_cross_property('winelib', false)
   lib_d3d11   = declare_dependency(link_args: [ '-ld3d11' ])
   lib_dxgi    = declare_dependency(link_args: [ '-ldxgi' ])
   lib_d3dcompiler_47 = declare_dependency(link_args: [ '-ld3dcompiler_47' ])
+  exe_ext = '.exe.so'
+  dll_ext = '.dll'
 else
   lib_vulkan  = dxvk_compiler.find_library('vulkan-1', dirs : dxvk_library_path)
   lib_d3d11   = dxvk_compiler.find_library('d3d11')
@@ -35,6 +37,8 @@ else
   if dxvk_compiler.get_id() != 'msvc'
     lib_d3dcompiler_47 = dxvk_compiler.find_library('d3dcompiler_47')
   endif
+  exe_ext = ''
+  dll_ext = ''
 endif
 
 glsl_compiler = find_program('glslangValidator')
