@@ -16,7 +16,7 @@ namespace dxvk::env {
     }
     
     result.resize(len);
-    return str::fromws(result);
+    return str::fromws(result.data());
   }
   
   
@@ -27,7 +27,7 @@ namespace dxvk::env {
     DWORD len = ::GetModuleFileNameW(NULL, &exePath.at(0), MAX_PATH);
     exePath.resize(len);
     
-    std::string fullPath = str::fromws(exePath);
+    std::string fullPath = str::fromws(exePath.data());
     auto n = fullPath.find_last_of('\\');
     
     return (n != std::string::npos)
@@ -51,4 +51,24 @@ namespace dxvk::env {
       (*proc)(::GetCurrentThread(), name);
   }
   
+}
+
+#ifdef CP_UNIXCP
+static constexpr int cp = CP_UNIXCP;
+#else
+static constexpr int cp = CP_ACP;
+#endif
+
+namespace dxvk::str {
+    std::string fromws(const WCHAR *ws) {
+        size_t len = WideCharToMultiByte(cp, 0, ws, -1, NULL, 0, NULL, NULL);
+        if (len <= 1)
+            return "";
+
+        len--;
+        std::string result;
+        result.resize(len);
+        WideCharToMultiByte(cp, 0, ws, -1, &result.at(0), len, NULL, NULL);
+        return result;
+    }
 }

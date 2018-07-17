@@ -1,9 +1,8 @@
 #pragma once
 
-#include <locale>
-#include <codecvt>
 #include <string>
 #include <sstream>
+#include <windef.h>
 
 namespace dxvk::str {
   
@@ -22,8 +21,6 @@ namespace dxvk::str {
     return stream.str();
   }
   
-  inline std::string fromws(const std::wstring& ws) {
-    return std::wstring_convert<std::codecvt_utf8<wchar_t>>().to_bytes(ws);
-  }
+  std::string fromws(const WCHAR *ws);
   
 }
