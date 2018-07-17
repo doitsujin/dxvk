@@ -26,15 +26,6 @@ namespace dxvk::env {
   std::string getExeName();
   
   /**
-   * \brief Gets the path to the dxvk specific temporary directory
-   * 
-   * Returns the path to the temporary directory for dxvk.
-   * If no such directory can be found the string will be empty.
-   * \returns Temporary directory
-   */
-  std::string getTempDirectory();
-
-  /**
    * \brief Sets name of the calling thread
    * \param [in] name Thread name
    */

@@ -36,22 +36,6 @@ namespace dxvk::env {
   }
   
   
-  std::string getTempDirectory() {
-    WCHAR windowsTempDir[MAX_PATH] = {0};
-    UINT ret = ::GetTempPathW(MAX_PATH, windowsTempDir);
-    if (ret > MAX_PATH || ret == 0)
-      return std::string();
-    
-    auto dxvkTempDir = std::wstring(windowsTempDir) + L"dxvk\\";
-    if (::CreateDirectoryW(dxvkTempDir.c_str(), 0) == 0) {
-      if (::GetLastError() != ERROR_ALREADY_EXISTS)
-        return std::string();
-    }
-    
-    return str::fromws(dxvkTempDir);
-  }
-
-
   void setThreadName(const wchar_t* name) {
     using SetThreadDescriptionProc = void (WINAPI *) (HANDLE, PCWSTR);
 
