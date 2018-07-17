@@ -2,9 +2,10 @@ project('dxvk', ['c', 'cpp'], version : 'v0.62')
 
 cpu_family = target_machine.cpu_family()
 
+add_project_arguments('-DNOMINMAX', language : 'cpp')
+
 dxvk_compiler = meson.get_compiler('cpp')
 if dxvk_compiler.get_id() == 'msvc'
-  add_project_arguments('-DNOMINMAX', language : 'cpp')
   dxvk_cpp_std='c++latest'
 else
   dxvk_cpp_std='c++1z'
