@@ -259,6 +259,10 @@ namespace dxvk {
     if (viDivisorCount == 0)
       viInfo.pNext = viDivisorInfo.pNext;
     
+    // TODO remove this once the extension is widely supported
+    if (!m_device->extensions().extVertexAttributeDivisor.enabled())
+      viInfo.pNext = viDivisorInfo.pNext;
+    
     VkPipelineInputAssemblyStateCreateInfo iaInfo;
     iaInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
     iaInfo.pNext                  = nullptr;

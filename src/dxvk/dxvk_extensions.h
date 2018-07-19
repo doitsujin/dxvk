@@ -130,7 +130,7 @@ namespace dxvk {
    */
   struct DxvkDeviceExtensions : public DxvkExtensionList {
     DxvkExtension extShaderViewportIndexLayer     = { this, VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME,      DxvkExtensionType::Desired  };
-    DxvkExtension extVertexAttributeDivisor       = { this, VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME,         DxvkExtensionType::Required };
+    DxvkExtension extVertexAttributeDivisor       = { this, VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME,         DxvkExtensionType::Desired  };
     DxvkExtension khrDedicatedAllocation          = { this, VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME,             DxvkExtensionType::Required };
     DxvkExtension khrDescriptorUpdateTemplate     = { this, VK_KHR_DESCRIPTOR_UPDATE_TEMPLATE_EXTENSION_NAME,       DxvkExtensionType::Required };
     DxvkExtension khrGetMemoryRequirements2       = { this, VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME,        DxvkExtensionType::Required };
