@@ -111,8 +111,12 @@ namespace dxvk {
      * \param [in] slice The new backing resource
      * \returns Previous buffer slice
      */
-    DxvkPhysicalBufferSlice rename(
-      const DxvkPhysicalBufferSlice& slice);
+    DxvkPhysicalBufferSlice rename(const DxvkPhysicalBufferSlice& slice) {
+      DxvkPhysicalBufferSlice prevSlice = std::move(m_physSlice);
+      m_physSlice = slice;
+      m_revision += 1;
+      return prevSlice;
+    }
     
     /**
      * \brief Allocates new physical resource
@@ -140,8 +144,8 @@ namespace dxvk {
     DxvkPhysicalBufferSlice m_physSlice;
     uint32_t                m_revision = 0;
     
-    std::mutex m_freeMutex;
-    std::mutex m_swapMutex;
+    sync::Spinlock m_freeMutex;
+    sync::Spinlock m_swapMutex;
     
     std::vector<DxvkPhysicalBufferSlice> m_freeSlices;
     std::vector<DxvkPhysicalBufferSlice> m_nextSlices;
