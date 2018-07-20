@@ -2,6 +2,8 @@
 #include "dxgi_factory.h"
 
 namespace dxvk {
+
+  constexpr uint32_t DxgiDevice::DefaultFrameLatency;
   
   DxgiDevice::DxgiDevice(
           IDXGIObject*              pContainer,
@@ -10,6 +12,9 @@ namespace dxvk {
   : m_container (pContainer),
     m_adapter   (pAdapter) {
     m_device = m_adapter->GetDXVKAdapter()->createDevice(*pFeatures);
+
+    for (uint32_t i = 0; i < m_frameEvents.size(); i++)
+      m_frameEvents[i] = new DxvkEvent();
   }
   
   
@@ -107,15 +112,20 @@ namespace dxvk {
   
   HRESULT STDMETHODCALLTYPE DxgiDevice::GetMaximumFrameLatency(
           UINT*                 pMaxLatency) {
-    Logger::warn("DxgiDevice::GetMaximumFrameLatency: Stub");
-    *pMaxLatency = 1;
+    *pMaxLatency = m_frameLatency;
     return S_OK;
   }
   
   
   HRESULT STDMETHODCALLTYPE DxgiDevice::SetMaximumFrameLatency(
           UINT                  MaxLatency) {
-    Logger::warn("DxgiDevice::SetMaximumFrameLatency: Stub");
+    if (MaxLatency == 0)
+      MaxLatency = DefaultFrameLatency;
+    
+    if (MaxLatency > m_frameEvents.size())
+      MaxLatency = m_frameEvents.size();
+    
+    m_frameLatency = MaxLatency;
     return S_OK;
   }
   
@@ -147,6 +157,12 @@ namespace dxvk {
   
   Rc<DxvkDevice> STDMETHODCALLTYPE DxgiDevice::GetDXVKDevice() {
     return m_device;
+  }
+  
+  
+  Rc<DxvkEvent> STDMETHODCALLTYPE DxgiDevice::GetFrameSyncEvent() {
+    uint32_t frameId = m_frameId++ % m_frameLatency;
+    return m_frameEvents[frameId];
   }
   
 }

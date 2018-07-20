@@ -10,7 +10,7 @@ namespace dxvk {
   class DxgiFactory;
   
   class DxgiDevice : public IDXGIVkDevice {
-    
+    constexpr static uint32_t DefaultFrameLatency = 3;
   public:
     
     DxgiDevice(
@@ -86,6 +86,8 @@ namespace dxvk {
             HANDLE                hEvent) final;
     
     Rc<DxvkDevice> STDMETHODCALLTYPE GetDXVKDevice() final;
+
+    Rc<DxvkEvent> STDMETHODCALLTYPE GetFrameSyncEvent();
     
   private:
     
@@ -93,6 +95,11 @@ namespace dxvk {
     
     Com<IDXGIVkAdapter> m_adapter;
     Rc<DxvkDevice>      m_device;
+
+    uint32_t            m_frameLatency = DefaultFrameLatency;
+    uint32_t            m_frameId      = 0;
+
+    std::array<Rc<DxvkEvent>, 16> m_frameEvents;
     
   };
 
