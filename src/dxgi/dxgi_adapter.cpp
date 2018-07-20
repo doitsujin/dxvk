@@ -8,6 +8,7 @@
 #include "dxgi_enums.h"
 #include "dxgi_factory.h"
 #include "dxgi_format.h"
+#include "dxgi_options.h"
 #include "dxgi_output.h"
 
 #include "../dxvk/vulkan/dxvk_vulkan_names.h"
@@ -63,8 +64,9 @@ namespace dxvk {
      || InterfaceName == __uuidof(ID3D10Device1)) {
       Logger::warn("DXGI: CheckInterfaceSupport: No D3D10 support");
       
-      if (env::getEnvVar(L"DXVK_FAKE_DX10_SUPPORT") == "1")
-        return S_OK;
+      DxgiOptions dxgiOptions = getDxgiAppOptions(env::getExeName());
+      return dxgiOptions.test(DxgiOption::FakeDx10Support)
+        ? S_OK : DXGI_ERROR_UNSUPPORTED;
     }
     
     Logger::err("DXGI: CheckInterfaceSupport: Unsupported interface");

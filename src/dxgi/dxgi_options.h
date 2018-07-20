@@ -15,6 +15,11 @@ namespace dxvk {
     /// fixes issues with games that create multiple swap chains
     /// for a single window that may interfere with each other.
     DeferSurfaceCreation,
+
+    /// Report to the app that Dx10 interfaces are supported,
+    /// even if they are not actually supported. Some apps
+    /// refuse to start without it, some don't work with it.
+    FakeDx10Support,
   };
   
   using DxgiOptions = Flags<DxgiOption>;
