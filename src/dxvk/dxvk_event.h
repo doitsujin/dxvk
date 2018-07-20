@@ -44,7 +44,7 @@ namespace dxvk {
      * \brief Queries event status
      * \returns Current event status
      */
-    DxvkEventStatus getStatus();
+    DxvkEventStatus getStatus() const;
     
     /**
      * \brief Waits for event to get signaled
@@ -53,14 +53,20 @@ namespace dxvk {
      * thread calls \ref signal for the current
      * revision of the event.
      */
-    void wait();
+    void wait() const;
 
   private:
     
-    std::mutex m_mutex;
-    
-    DxvkEventStatus         m_status   = DxvkEventStatus::Signaled;
-    uint32_t                m_revision = 0;
+    struct Status {
+      DxvkEventStatus status   = DxvkEventStatus::Signaled;
+      uint32_t        revision = 0;
+    };
+
+    // Packed status and revision
+    std::atomic<uint64_t> m_packed;
+
+    static uint64_t pack(Status info);
+    static Status unpack(uint64_t packed);
     
   };
   
