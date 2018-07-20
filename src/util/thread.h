@@ -2,8 +2,7 @@
 
 #include "util_error.h"
 
-#include <windef.h>
-#include <winbase.h>
+#include "./com/com_include.h"
 
 /*
  * This is needed mostly  for winelib builds. Wine needs to setup each thread that

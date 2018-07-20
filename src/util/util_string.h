@@ -2,7 +2,7 @@
 
 #include <string>
 #include <sstream>
-#include <windef.h>
+#include "./com/com_include.h"
 
 namespace dxvk::str {
   
