@@ -2,6 +2,7 @@
 
 #include "util_error.h"
 
+#include <functional>
 #include "./com/com_include.h"
 
 /*
@@ -15,29 +16,18 @@ namespace dxvk {
   class thread {
   private:
     HANDLE m_handle;
+    std::function<void()> proc;
 
-    template<typename T>
-    class thread_proc {
-    private:
-      T proc;
-    public:
-      thread_proc(T &proc) : proc(proc) {}
-
-      static DWORD WINAPI nativeProc(void *arg) {
-        thread_proc *proc = reinterpret_cast<thread_proc*>(arg);
-        proc->proc();
-        delete proc;
-        return 0;
-      }
-    };
+    static DWORD WINAPI nativeProc(void *arg) {
+      auto* proc = reinterpret_cast<thread*>(arg);
+      proc->proc();
+      return 0;
+    }
 
   public:
-    template<class T>
-    explicit thread(T &&func) {
-        thread_proc<T> *proc = new thread_proc<T>(func);
-        m_handle = ::CreateThread(nullptr, 0, thread_proc<T>::nativeProc, proc, 0, nullptr);
+    explicit thread(std::function<void()> func) : proc(func) {
+        m_handle = ::CreateThread(nullptr, 0, thread::nativeProc, this, 0, nullptr);
         if (!m_handle) {
-            delete proc;
             throw DxvkError("Failed to create thread");
         }
     }
