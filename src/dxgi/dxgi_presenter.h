@@ -84,7 +84,7 @@ namespace dxvk {
      * \brief Renders back buffer to the screen
      * \param [in] SyncInterval Vsync interval
      */
-    void PresentImage(UINT SyncInterval);
+    void PresentImage(UINT SyncInterval, const Rc<DxvkEvent>& SyncEvent);
     
     /**
      * \brief Sets new back buffer

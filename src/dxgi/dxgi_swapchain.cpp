@@ -307,7 +307,7 @@ namespace dxvk {
       // Submit pending rendering commands
       // before recording the present code.
       m_presentDevice->FlushRenderingCommands();
-      
+
       // Update swap chain properties. This will not only set
       // up vertical synchronization properly, but also apply
       // changes that were made to the window size even if the
@@ -317,7 +317,7 @@ namespace dxvk {
         : VK_PRESENT_MODE_FIFO_KHR;
       
       m_presenter->RecreateSwapchain(m_desc.Format, presentMode, GetWindowSize());
-      m_presenter->PresentImage(SyncInterval);
+      m_presenter->PresentImage(SyncInterval, m_device->GetFrameSyncEvent());
       return S_OK;
     } catch (const DxvkError& err) {
       Logger::err(err.message());
