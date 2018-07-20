@@ -26,5 +26,11 @@ namespace dxvk {
     std::unique_lock<std::mutex> lock(m_mutex);
     return m_status;
   }
+
+
+  void DxvkEvent::wait() {
+    while (this->getStatus() != DxvkEventStatus::Signaled)
+      dxvk::this_thread::yield();
+  }
   
 }

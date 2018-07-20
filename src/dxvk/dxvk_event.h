@@ -46,6 +46,15 @@ namespace dxvk {
      */
     DxvkEventStatus getStatus();
     
+    /**
+     * \brief Waits for event to get signaled
+     * 
+     * Blocks the calling thread until another
+     * thread calls \ref signal for the current
+     * revision of the event.
+     */
+    void wait();
+
   private:
     
     std::mutex m_mutex;
