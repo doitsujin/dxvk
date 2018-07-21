@@ -2,6 +2,7 @@
 
 #include <string>
 #include <sstream>
+
 #include "./com/com_include.h"
 
 namespace dxvk::str {
