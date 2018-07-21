@@ -7,8 +7,10 @@ add_project_arguments('-DNOMINMAX', language : 'cpp')
 dxvk_compiler = meson.get_compiler('cpp')
 if dxvk_compiler.get_id() == 'msvc'
   dxvk_cpp_std='c++latest'
+  dxvk_msvc=true
 else
   dxvk_cpp_std='c++1z'
+  dxvk_msvc=false
 endif
 
 if dxvk_compiler.get_id() == 'msvc'

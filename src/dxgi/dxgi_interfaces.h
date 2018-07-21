@@ -13,7 +13,7 @@ namespace dxvk {
   class DxvkImage;
 }
 
-class IDXGIVkInteropDevice;
+struct IDXGIVkInteropDevice;
 
 /**
  * \brief Private DXGI device interface
