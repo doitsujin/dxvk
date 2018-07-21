@@ -6,7 +6,11 @@
 
 #include "./com/com_include.h"
 
+#include "./rc/util_rc.h"
+#include "./rc/util_rc_ptr.h"
+
 namespace dxvk {
+
   /**
    * \brief Thread helper class
    * 
@@ -16,41 +20,95 @@ namespace dxvk {
    * around Windows thread functions so that the rest of code just has to use
    * dxvk::thread class instead of std::thread.
    */
-  class thread {
-
+  class ThreadFn : public RcObject {
+    using Proc = std::function<void()>;
   public:
 
-    thread()
-    : m_handle(nullptr) { }
-
-    explicit thread(std::function<void()> func) : m_proc(func) {
-      m_handle = ::CreateThread(nullptr, 0, thread::nativeProc, this, 0, nullptr);
-
-      if (!m_handle)
+    ThreadFn(Proc&& proc)
+    : m_proc(std::move(proc)) {
+      m_handle = ::CreateThread(nullptr, 0,
+        ThreadFn::threadProc, this, 0, nullptr);
+      
+      if (m_handle == nullptr)
         throw DxvkError("Failed to create thread");
     }
 
-    ~thread() {
-      if (m_handle)
-        ::CloseHandle(m_handle);
+    ~ThreadFn() {
+      if (this->joinable())
+        std::terminate();
+    }
+    
+    void detach() {
+      ::CloseHandle(m_handle);
+      m_handle = nullptr;
     }
 
     void join() {
-      ::WaitForSingleObject(m_handle, INFINITE);
+      if(::WaitForSingleObjectEx(m_handle, INFINITE, FALSE) == WAIT_FAILED)
+        throw DxvkError("Failed to join thread");
+      this->detach();
+    }
+
+    bool joinable() const {
+      return m_handle != nullptr;
     }
 
   private:
 
-    std::function<void()> m_proc;
-    HANDLE                m_handle;
+    Proc    m_proc;
+    HANDLE  m_handle;
 
-    static DWORD WINAPI nativeProc(void *arg) {
-      auto* proc = reinterpret_cast<thread*>(arg);
-      proc->m_proc();
+    static DWORD WINAPI threadProc(void *arg) {
+      Rc<ThreadFn> info = reinterpret_cast<ThreadFn*>(arg);
+      info->m_proc();
       return 0;
     }
 
   };
+
+
+  /**
+   * \brief RAII thread wrapper
+   * 
+   * Wrapper for \c ThreadFn that can be used
+   * as a drop-in replacement for \c std::thread.
+   */
+  class thread {
+
+  public:
+
+    thread() { }
+
+    explicit thread(std::function<void()>&& func)
+    : m_thread(new ThreadFn(std::move(func))) { }
+
+    thread(thread&& other)
+    : m_thread(std::move(other.m_thread)) { }
+
+    thread& operator = (thread&& other) {
+      m_thread = std::move(other.m_thread);
+      return *this;
+    }
+
+    void detach() {
+      m_thread->detach();
+    }
+
+    void join() {
+      m_thread->join();
+    }
+
+    bool joinable() const {
+      return m_thread != nullptr
+          && m_thread->joinable();
+    }
+
+  private:
+
+    Rc<ThreadFn> m_thread;
+
+  };
+
 
   namespace this_thread {
     inline void yield() {
