@@ -256,6 +256,7 @@ namespace dxvk {
     DxvkImageViewCreateInfo viewInfo;
     viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D;
     viewInfo.format     = Image->info().format;
+    viewInfo.usage      = VK_IMAGE_USAGE_SAMPLED_BIT;
     viewInfo.aspect     = VK_IMAGE_ASPECT_COLOR_BIT;
     viewInfo.minLevel   = 0;
     viewInfo.numLevels  = 1;
@@ -417,6 +418,7 @@ namespace dxvk {
     DxvkImageViewCreateInfo info;
     info.type         = VK_IMAGE_VIEW_TYPE_1D;
     info.format       = VK_FORMAT_R16G16B16A16_UNORM;
+    info.usage        = VK_IMAGE_USAGE_SAMPLED_BIT;
     info.aspect       = VK_IMAGE_ASPECT_COLOR_BIT;
     info.minLevel     = 0;
     info.numLevels    = 1;

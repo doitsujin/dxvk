@@ -253,6 +253,7 @@ namespace dxvk::hud {
     DxvkImageViewCreateInfo info;
     info.type           = VK_IMAGE_VIEW_TYPE_2D;
     info.format         = m_fontImage->info().format;
+    info.usage          = VK_IMAGE_USAGE_SAMPLED_BIT;
     info.aspect         = VK_IMAGE_ASPECT_COLOR_BIT;
     info.minLevel       = 0;
     info.numLevels      = 1;

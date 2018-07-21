@@ -142,6 +142,8 @@ namespace dxvk {
     DxvkImageViewCreateInfo info;
     info.type         = type;
     info.format       = image->info().format;
+    info.usage        = VK_IMAGE_USAGE_SAMPLED_BIT
+                      | VK_IMAGE_USAGE_STORAGE_BIT;
     info.aspect       = VK_IMAGE_ASPECT_COLOR_BIT;
     info.minLevel     = 0;
     info.numLevels    = 1;

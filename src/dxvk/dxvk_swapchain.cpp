@@ -169,6 +169,7 @@ namespace dxvk {
     DxvkImageViewCreateInfo viewInfo;
     viewInfo.type         = VK_IMAGE_VIEW_TYPE_2D;
     viewInfo.format       = fmt.format;
+    viewInfo.usage        = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     viewInfo.aspect       = VK_IMAGE_ASPECT_COLOR_BIT;
     viewInfo.minLevel     = 0;
     viewInfo.numLevels    = 1;

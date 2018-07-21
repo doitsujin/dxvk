@@ -1291,6 +1291,7 @@ namespace dxvk {
       DxvkImageViewCreateInfo dstViewInfo;
       dstViewInfo.type      = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
       dstViewInfo.format    = format;
+      dstViewInfo.usage     = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
       dstViewInfo.aspect    = dstSubresources.aspectMask;
       dstViewInfo.minLevel  = dstSubresources.mipLevel;
       dstViewInfo.numLevels = 1;
@@ -1300,6 +1301,7 @@ namespace dxvk {
       DxvkImageViewCreateInfo srcViewInfo;
       srcViewInfo.type      = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
       srcViewInfo.format    = format;
+      srcViewInfo.usage     = VK_IMAGE_USAGE_SAMPLED_BIT;
       srcViewInfo.aspect    = srcSubresources.aspectMask;
       srcViewInfo.minLevel  = srcSubresources.mipLevel;
       srcViewInfo.numLevels = 1;

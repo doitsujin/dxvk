@@ -178,10 +178,15 @@ namespace dxvk {
     subresourceRange.levelCount     = m_info.numLevels;
     subresourceRange.baseArrayLayer = m_info.minLayer;
     subresourceRange.layerCount     = numLayers;
+
+    VkImageViewUsageCreateInfoKHR viewUsage;
+    viewUsage.sType           = VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO_KHR;
+    viewUsage.pNext           = nullptr;
+    viewUsage.usage           = m_info.usage;
     
     VkImageViewCreateInfo viewInfo;
     viewInfo.sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewInfo.pNext            = nullptr;
+    viewInfo.pNext            = &viewUsage;
     viewInfo.flags            = 0;
     viewInfo.image            = m_image->handle();
     viewInfo.viewType         = type;

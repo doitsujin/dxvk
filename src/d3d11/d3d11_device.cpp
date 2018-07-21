@@ -382,6 +382,7 @@ namespace dxvk {
       viewInfo.format  = formatInfo.Format;
       viewInfo.aspect  = formatInfo.Aspect;
       viewInfo.swizzle = formatInfo.Swizzle;
+      viewInfo.usage   = VK_IMAGE_USAGE_SAMPLED_BIT;
       
       // Shaders expect the stencil value in the G component
       if (viewInfo.aspect == VK_IMAGE_ASPECT_STENCIL_BIT) {
@@ -594,6 +595,7 @@ namespace dxvk {
       viewInfo.format  = formatInfo.Format;
       viewInfo.aspect  = formatInfo.Aspect;
       viewInfo.swizzle = formatInfo.Swizzle;
+      viewInfo.usage   = VK_IMAGE_USAGE_STORAGE_BIT;
       
       switch (desc.ViewDimension) {
         case D3D11_UAV_DIMENSION_TEXTURE1D:
@@ -713,6 +715,7 @@ namespace dxvk {
     DxvkImageViewCreateInfo viewInfo;
     viewInfo.format = m_dxgiAdapter->LookupFormat(desc.Format, DXGI_VK_FORMAT_MODE_COLOR).Format;
     viewInfo.aspect = imageFormatInfo(viewInfo.format)->aspectMask;
+    viewInfo.usage  = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     
     switch (desc.ViewDimension) {
       case D3D11_RTV_DIMENSION_TEXTURE1D:
@@ -846,6 +849,7 @@ namespace dxvk {
     DxvkImageViewCreateInfo viewInfo;
     viewInfo.format = m_dxgiAdapter->LookupFormat(desc.Format, DXGI_VK_FORMAT_MODE_DEPTH).Format;
     viewInfo.aspect = imageFormatInfo(viewInfo.format)->aspectMask;
+    viewInfo.usage  = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
     
     switch (desc.ViewDimension) {
       case D3D11_DSV_DIMENSION_TEXTURE1D:

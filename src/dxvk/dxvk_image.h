@@ -70,6 +70,9 @@ namespace dxvk {
     
     /// Pixel format
     VkFormat format = VK_FORMAT_UNDEFINED;
+
+    /// Image view usage flags
+    VkImageUsageFlags usage = 0;
     
     /// Subresources to use in the view
     VkImageAspectFlags aspect = 0;
