@@ -56,6 +56,10 @@ namespace dxvk {
       return m_handle != nullptr;
     }
 
+    DWORD get_id() const {
+      return GetThreadId(m_handle);
+    }
+
   private:
 
     Proc    m_proc;
@@ -111,6 +115,10 @@ namespace dxvk {
           && m_thread->joinable();
     }
 
+    DWORD get_id() {
+      return m_thread->get_id();
+    }
+
   private:
 
     Rc<ThreadFn> m_thread;
@@ -121,6 +129,10 @@ namespace dxvk {
   namespace this_thread {
     inline void yield() {
       Sleep(0);
+    }
+    
+    inline DWORD get_id() {
+      return GetCurrentThreadId();
     }
   }
 }
