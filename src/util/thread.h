@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <functional>
 
 #include "util_error.h"
@@ -143,6 +144,14 @@ namespace dxvk {
     
     inline DWORD get_id() {
       return GetCurrentThreadId();
+    }
+
+    inline void sleep_for(const std::chrono::nanoseconds& ns) {
+      using namespace std::chrono;
+      if (ns > nanoseconds::zero()) {
+        milliseconds ms = duration_cast<milliseconds>(ns + nanoseconds(999999));
+        ::Sleep(ms.count());
+      }
     }
   }
 }
