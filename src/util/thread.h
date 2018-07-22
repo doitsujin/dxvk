@@ -83,11 +83,15 @@ namespace dxvk {
 
     thread() { }
 
+    thread(const thread&) = delete;
+
     explicit thread(std::function<void()>&& func)
     : m_thread(new ThreadFn(std::move(func))) { }
 
     thread(thread&& other)
     : m_thread(std::move(other.m_thread)) { }
+
+    thread& operator=(const thread&) = delete;
 
     thread& operator = (thread&& other) {
       m_thread = std::move(other.m_thread);
