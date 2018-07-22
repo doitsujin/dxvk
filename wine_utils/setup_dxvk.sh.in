@@ -4,9 +4,17 @@ export WINEDEBUG=-all
 
 dlls_dir=`dirname "$(readlink -f $0)"`
 build_arch='@arch@'
+winelib='@winelib@'
 
-if [ ! -f "$dlls_dir/d3d11.dll" ] || [ ! -f "$dlls_dir/dxgi.dll" ]; then
-    echo "d3d11.dll or dxgi.dll not found in $dlls_dir" >&2
+if [ $winelib == 'True' ]; then
+    dll_ext='dll.so'
+    dlls_dir="$dlls_dir"/../lib
+else
+    dll_ext='dll'
+fi
+
+if [ ! -f "$dlls_dir/d3d11.$dll_ext" ] || [ ! -f "$dlls_dir/dxgi.$dll_ext" ]; then
+    echo "d3d11.$dll_ext or dxgi.$dll_ext not found in $dlls_dir" >&2
     exit 1
 fi
 
@@ -128,8 +136,8 @@ function checkOverride {
         echo -e '\e[1;31mnot set\e[0m.'
         ret=2
     fi
-    echo -n "    [2/2] Checking link to $1.dll... "
-    if [ "$(readlink -f "$unix_sys_path/$1.dll")" == "$(readlink -f "$dlls_dir/$1.dll")" ]; then
+    echo -n "    [2/2] Checking link to $1.$dll_ext... "
+    if [ "$(readlink -f "$unix_sys_path/$1.dll")" == "$(readlink -f "$dlls_dir/$1.$dll_ext")" ]; then
         echo -e '\e[1;32mOK\e[0m.'
     else
         echo -e '\e[1;31mnot set\e[0m.'
@@ -146,8 +154,8 @@ function createOverride {
         exit 1
     fi
     echo -e "$(sed -e 's|\r||g' <<< "\\e[1;32m$out\\e[0m.")"
-    echo -n "    [2/2] Creating link to $1.dll... "
-    ln -sf "$dlls_dir/$1.dll" "$unix_sys_path/$1.dll"
+    echo -n "    [2/2] Creating link to $1.$dll_ext... "
+    ln -sf "$dlls_dir/$1.$dll_ext" "$unix_sys_path/$1.dll"
     if [ $? -eq 0 ]; then
         echo -e '\e[1;32mDone\e[0m.'
     else
