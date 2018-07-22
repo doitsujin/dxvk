@@ -115,6 +115,12 @@ namespace dxvk {
           && m_thread->joinable();
     }
 
+    static DWORD hardware_concurrency() {
+      SYSTEM_INFO info {};
+      GetSystemInfo(&info);
+      return info.dwNumberOfProcessors;
+    }
+
     DWORD get_id() {
       return m_thread->get_id();
     }
