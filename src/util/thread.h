@@ -110,6 +110,10 @@ namespace dxvk {
       m_thread->join();
     }
 
+    void swap(thread& other) noexcept {
+      std::swap(m_thread, other.m_thread);
+    }
+
     bool joinable() const {
       return m_thread != nullptr
           && m_thread->joinable();
@@ -140,5 +144,11 @@ namespace dxvk {
     inline DWORD get_id() {
       return GetCurrentThreadId();
     }
+  }
+}
+
+namespace std {
+  inline void swap(dxvk::thread& left, dxvk::thread& right) noexcept {	
+    left.swap(right);
   }
 }
