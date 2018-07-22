@@ -26,6 +26,9 @@ namespace dxvk {
 
     ThreadFn(Proc&& proc)
     : m_proc(std::move(proc)) {
+      // Reference for the thread function
+      this->incRef();
+
       m_handle = ::CreateThread(nullptr, 0,
         ThreadFn::threadProc, this, 0, nullptr);
       
@@ -59,8 +62,9 @@ namespace dxvk {
     HANDLE  m_handle;
 
     static DWORD WINAPI threadProc(void *arg) {
-      Rc<ThreadFn> info = reinterpret_cast<ThreadFn*>(arg);
-      info->m_proc();
+      auto thread = reinterpret_cast<ThreadFn*>(arg);
+      thread->m_proc();
+      thread->decRef();
       return 0;
     }
 
