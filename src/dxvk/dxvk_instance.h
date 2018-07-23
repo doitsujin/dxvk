@@ -56,7 +56,7 @@ namespace dxvk {
 
     std::vector<Rc<DxvkAdapter>> queryAdapters();
     
-    static void logNameList(const vk::NameList& names);
+    static void logNameList(const DxvkNameList& names);
     
   };
   

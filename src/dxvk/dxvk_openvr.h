@@ -31,7 +31,7 @@ namespace dxvk {
      * \brief Query instance extensions
      * \returns Instance extensions
      */
-    vk::NameSet getInstanceExtensions();
+    DxvkNameSet getInstanceExtensions();
 
     /**
      * \brief Query device extensions
@@ -41,7 +41,7 @@ namespace dxvk {
      * the same across multiple Vulkan instances.
      * \param [in] adapterId Adapter index
      */
-    vk::NameSet getDeviceExtensions(
+    DxvkNameSet getDeviceExtensions(
             uint32_t      adapterId);
     
     /**
@@ -73,15 +73,15 @@ namespace dxvk {
     bool m_initializedInsExt = false;
     bool m_initializedDevExt = false;
 
-    vk::NameSet              m_insExtensions;
-    std::vector<vk::NameSet> m_devExtensions;
+    DxvkNameSet              m_insExtensions;
+    std::vector<DxvkNameSet> m_devExtensions;
     
-    vk::NameSet queryInstanceExtensions() const;
+    DxvkNameSet queryInstanceExtensions() const;
 
-    vk::NameSet queryDeviceExtensions(
+    DxvkNameSet queryDeviceExtensions(
             VkPhysicalDevice          adapter) const;
 
-    vk::NameSet parseExtensionList(
+    DxvkNameSet parseExtensionList(
       const std::string&              str) const;
     
     vr::IVRCompositor* getCompositor();

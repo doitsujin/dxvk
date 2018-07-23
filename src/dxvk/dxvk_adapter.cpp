@@ -160,23 +160,37 @@ namespace dxvk {
   
   
   Rc<DxvkDevice> DxvkAdapter::createDevice(const VkPhysicalDeviceFeatures& enabledFeatures) {
-    // Query available extensions and enable the ones that are needed
-    vk::NameSet availableExtensions = vk::NameSet::enumerateDeviceExtensions(*m_vki, m_handle);
-    
-    const Rc<DxvkDeviceExtensions> extensions = new DxvkDeviceExtensions();
-    extensions->enableExtensions(availableExtensions);
-    
-    if (!extensions->checkSupportStatus())
+    DxvkDeviceExtensions devExtensions;
+
+    std::array<DxvkExt*, 11> devExtensionList = {{
+      &devExtensions.extShaderViewportIndexLayer,
+      &devExtensions.extVertexAttributeDivisor,
+      &devExtensions.khrDedicatedAllocation,
+      &devExtensions.khrDescriptorUpdateTemplate,
+      &devExtensions.khrGetMemoryRequirements2,
+      &devExtensions.khrImageFormatList,
+      &devExtensions.khrMaintenance1,
+      &devExtensions.khrMaintenance2,
+      &devExtensions.khrSamplerMirrorClampToEdge,
+      &devExtensions.khrShaderDrawParameters,
+      &devExtensions.khrSwapchain,
+    }};
+
+    DxvkNameSet extensionsEnabled;
+    DxvkNameSet extensionsAvailable = DxvkNameSet::enumDeviceExtensions(m_vki, m_handle);
+
+    if (!extensionsAvailable.enableExtensions(
+          devExtensionList.size(),
+          devExtensionList.data(),
+          extensionsEnabled))
       throw DxvkError("DxvkAdapter: Failed to create device");
     
-    // Generate list of extensions that we're actually going to use
-    vk::NameSet enabledExtensionSet = extensions->getEnabledExtensionNames();
-    enabledExtensionSet.merge(g_vrInstance.getDeviceExtensions(getAdapterIndex()));
-    
-    vk::NameList enabledExtensionList = enabledExtensionSet.getNameList();
+    // Enable additional extensions if necessary
+    extensionsEnabled.merge(g_vrInstance.getDeviceExtensions(getAdapterIndex()));
+    DxvkNameList extensionNameList = extensionsEnabled.toNameList();
     
     Logger::info("Enabled device extensions:");
-    this->logNameList(enabledExtensionList);
+    this->logNameList(extensionNameList);
     
     float queuePriority = 1.0f;
     std::vector<VkDeviceQueueCreateInfo> queueInfos;
@@ -207,8 +221,8 @@ namespace dxvk {
     info.pQueueCreateInfos          = queueInfos.data();
     info.enabledLayerCount          = 0;
     info.ppEnabledLayerNames        = nullptr;
-    info.enabledExtensionCount      = enabledExtensionList.count();
-    info.ppEnabledExtensionNames    = enabledExtensionList.names();
+    info.enabledExtensionCount      = extensionNameList.count();
+    info.ppEnabledExtensionNames    = extensionNameList.names();
     info.pEnabledFeatures           = &enabledFeatures;
     
     VkDevice device = VK_NULL_HANDLE;
@@ -218,7 +232,7 @@ namespace dxvk {
     
     Rc<DxvkDevice> result = new DxvkDevice(this,
       new vk::DeviceFn(m_vki->instance(), device),
-      extensions, enabledFeatures);
+      devExtensions, enabledFeatures);
     result->initResources();
     return result;
   }
@@ -271,7 +285,7 @@ namespace dxvk {
   }
   
   
-  void DxvkAdapter::logNameList(const vk::NameList& names) {
+  void DxvkAdapter::logNameList(const DxvkNameList& names) {
     for (uint32_t i = 0; i < names.count(); i++)
       Logger::info(str::format("  ", names.name(i)));
   }

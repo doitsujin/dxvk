@@ -260,7 +260,7 @@ namespace dxvk {
       viInfo.pNext = viDivisorInfo.pNext;
     
     // TODO remove this once the extension is widely supported
-    if (!m_device->extensions().extVertexAttributeDivisor.enabled())
+    if (!m_device->extensions().extVertexAttributeDivisor)
       viInfo.pNext = viDivisorInfo.pNext;
     
     VkPipelineInputAssemblyStateCreateInfo iaInfo;

@@ -1,7 +1,6 @@
 #pragma once
 
-#include "./vulkan/dxvk_vulkan_extensions.h"
-
+#include "dxvk_extensions.h"
 #include "dxvk_include.h"
 
 namespace dxvk {
@@ -171,7 +170,7 @@ namespace dxvk {
 
     uint32_t getAdapterIndex() const;
     
-    static void logNameList(const vk::NameList& names);
+    static void logNameList(const DxvkNameList& names);
     
   };
   

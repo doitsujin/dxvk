@@ -26,19 +26,19 @@ namespace dxvk {
   VrInstance::~VrInstance() { }
   
   
-  vk::NameSet VrInstance::getInstanceExtensions() {
+  DxvkNameSet VrInstance::getInstanceExtensions() {
     std::lock_guard<std::mutex> lock(m_mutex);
     return m_insExtensions;
   }
 
 
-  vk::NameSet VrInstance::getDeviceExtensions(uint32_t adapterId) {
+  DxvkNameSet VrInstance::getDeviceExtensions(uint32_t adapterId) {
     std::lock_guard<std::mutex> lock(m_mutex);
     
     if (adapterId < m_devExtensions.size())
       return m_devExtensions[adapterId];
     
-    return vk::NameSet();
+    return DxvkNameSet();
   }
 
 
@@ -72,7 +72,7 @@ namespace dxvk {
   }
 
 
-  vk::NameSet VrInstance::queryInstanceExtensions() const {
+  DxvkNameSet VrInstance::queryInstanceExtensions() const {
     uint32_t len = m_compositor->GetVulkanInstanceExtensionsRequired(nullptr, 0);
     std::vector<char> extensionList(len);
     len = m_compositor->GetVulkanInstanceExtensionsRequired(extensionList.data(), len);
@@ -80,7 +80,7 @@ namespace dxvk {
   }
   
   
-  vk::NameSet VrInstance::queryDeviceExtensions(VkPhysicalDevice adapter) const {
+  DxvkNameSet VrInstance::queryDeviceExtensions(VkPhysicalDevice adapter) const {
     uint32_t len = m_compositor->GetVulkanDeviceExtensionsRequired(adapter, nullptr, 0);
     std::vector<char> extensionList(len);
     len = m_compositor->GetVulkanDeviceExtensionsRequired(adapter, extensionList.data(), len);
@@ -88,14 +88,14 @@ namespace dxvk {
   }
   
   
-  vk::NameSet VrInstance::parseExtensionList(const std::string& str) const {
-    vk::NameSet result;
+  DxvkNameSet VrInstance::parseExtensionList(const std::string& str) const {
+    DxvkNameSet result;
     
     std::stringstream strstream(str);
     std::string       section;
     
     while (std::getline(strstream, section, ' '))
-      result.add(section);
+      result.add(section.c_str());
     
     return result;
   }
