@@ -10,6 +10,7 @@ d3d11_src = [
   'd3d11_depth_stencil.cpp',
   'd3d11_device.cpp',
   'd3d11_enums.cpp',
+  'd3d11_initializer.cpp',
   'd3d11_input_layout.cpp',
   'd3d11_interop.cpp',
   'd3d11_main.cpp',

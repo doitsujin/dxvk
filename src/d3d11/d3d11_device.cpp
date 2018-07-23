@@ -102,11 +102,8 @@ namespace dxvk {
           reinterpret_cast<void**>(&m_dxgiAdapter))))
       throw DxvkError("D3D11Device: Failed to query adapter");
     
+    m_initializer = new D3D11Initializer(m_dxvkDevice);
     m_context = new D3D11ImmediateContext(this, m_dxvkDevice);
-    
-    m_resourceInitContext = m_dxvkDevice->createContext();
-    m_resourceInitContext->beginRecording(
-      m_dxvkDevice->createCommandList());
     
     CreateCounterBuffer();
   }
@@ -114,6 +111,7 @@ namespace dxvk {
   
   D3D11Device::~D3D11Device() {
     delete m_context;
+    delete m_initializer;
   }
   
   
@@ -145,7 +143,7 @@ namespace dxvk {
       const Com<D3D11Buffer> buffer
         = new D3D11Buffer(this, pDesc);
       
-      this->InitBuffer(buffer.ptr(), pInitialData);
+      m_initializer->InitBuffer(buffer.ptr(), pInitialData);
       *ppBuffer = buffer.ref();
       return S_OK;
     } catch (const DxvkError& e) {
@@ -182,7 +180,7 @@ namespace dxvk {
     
     try {
       const Com<D3D11Texture1D> texture = new D3D11Texture1D(this, &desc);
-      this->InitTexture(texture->GetCommonTexture(), pInitialData);
+      m_initializer->InitTexture(texture->GetCommonTexture(), pInitialData);
       *ppTexture1D = texture.ref();
       return S_OK;
     } catch (const DxvkError& e) {
@@ -219,7 +217,7 @@ namespace dxvk {
     
     try {
       const Com<D3D11Texture2D> texture = new D3D11Texture2D(this, &desc);
-      this->InitTexture(texture->GetCommonTexture(), pInitialData);
+      m_initializer->InitTexture(texture->GetCommonTexture(), pInitialData);
       *ppTexture2D = texture.ref();
       return S_OK;
     } catch (const DxvkError& e) {
@@ -256,7 +254,7 @@ namespace dxvk {
       
     try {
       const Com<D3D11Texture3D> texture = new D3D11Texture3D(this, &desc);
-      this->InitTexture(texture->GetCommonTexture(), pInitialData);
+      m_initializer->InitTexture(texture->GetCommonTexture(), pInitialData);
       *ppTexture3D = texture.ref();
       return S_OK;
     } catch (const DxvkError& e) {
@@ -1752,10 +1750,7 @@ namespace dxvk {
   
   
   void D3D11Device::FlushInitContext() {
-    LockResourceInitContext();
-    if (m_resourceInitCommands != 0)
-      SubmitResourceInitCommands();
-    UnlockResourceInitContext(0);
+    m_initializer->Flush();
   }
   
   
@@ -1873,113 +1868,6 @@ namespace dxvk {
     } catch (const DxvkError& e) {
       Logger::err(e.message());
       return E_FAIL;
-    }
-  }
-  
-  
-  void D3D11Device::InitBuffer(
-          D3D11Buffer*                pBuffer,
-    const D3D11_SUBRESOURCE_DATA*     pInitialData) {
-    const DxvkBufferSlice bufferSlice = pBuffer->GetBufferSlice();
-    
-    D3D11_BUFFER_DESC desc;
-    pBuffer->GetDesc(&desc);
-    
-    if (pInitialData != nullptr && pInitialData->pSysMem != nullptr) {
-      LockResourceInitContext();
-      
-      m_resourceInitContext->updateBuffer(
-        bufferSlice.buffer(),
-        bufferSlice.offset(),
-        bufferSlice.length(),
-        pInitialData->pSysMem);
-      
-      UnlockResourceInitContext(1);
-    } else if (desc.Usage == D3D11_USAGE_DEFAULT) {
-      LockResourceInitContext();
-      
-      m_resourceInitContext->clearBuffer(
-        bufferSlice.buffer(),
-        bufferSlice.offset(),
-        bufferSlice.length(),
-        0u);
-      
-      UnlockResourceInitContext(1);
-    }
-  }
-  
-  
-  void D3D11Device::InitTexture(
-          D3D11CommonTexture*         pTexture,
-    const D3D11_SUBRESOURCE_DATA*     pInitialData) {
-    const Rc<DxvkImage> image = pTexture->GetImage();
-    const DxvkFormatInfo* formatInfo = imageFormatInfo(image->info().format);
-    
-    if (pInitialData != nullptr && pInitialData->pSysMem != nullptr) {
-      LockResourceInitContext();
-      
-      // pInitialData is an array that stores an entry for
-      // every single subresource. Since we will define all
-      // subresources, this counts as initialization.
-      VkImageSubresourceLayers subresourceLayers;
-      subresourceLayers.aspectMask     = formatInfo->aspectMask;
-      subresourceLayers.mipLevel       = 0;
-      subresourceLayers.baseArrayLayer = 0;
-      subresourceLayers.layerCount     = 1;
-      
-      for (uint32_t layer = 0; layer < image->info().numLayers; layer++) {
-        for (uint32_t level = 0; level < image->info().mipLevels; level++) {
-          subresourceLayers.baseArrayLayer = layer;
-          subresourceLayers.mipLevel       = level;
-          
-          const uint32_t id = D3D11CalcSubresource(
-            level, layer, image->info().mipLevels);
-          
-          m_resourceInitContext->updateImage(
-            image, subresourceLayers,
-            VkOffset3D { 0, 0, 0 },
-            image->mipLevelExtent(level),
-            pInitialData[id].pSysMem,
-            pInitialData[id].SysMemPitch,
-            pInitialData[id].SysMemSlicePitch);
-        }
-      }
-      
-      const uint32_t subresourceCount =
-        image->info().numLayers * image->info().mipLevels;
-      UnlockResourceInitContext(subresourceCount);
-    } else {
-      LockResourceInitContext();
-      
-      // While the Microsoft docs state that resource contents are
-      // undefined if no initial data is provided, some applications
-      // expect a resource to be pre-cleared. We can only do that
-      // for non-compressed images, but that should be fine.
-      VkImageSubresourceRange subresources;
-      subresources.aspectMask     = formatInfo->aspectMask;
-      subresources.baseMipLevel   = 0;
-      subresources.levelCount     = image->info().mipLevels;
-      subresources.baseArrayLayer = 0;
-      subresources.layerCount     = image->info().numLayers;
-      
-      if (formatInfo->flags.test(DxvkFormatFlag::BlockCompressed)) {
-        m_resourceInitContext->initImage(
-          image, subresources);
-      } else {
-        if (subresources.aspectMask == VK_IMAGE_ASPECT_COLOR_BIT) {
-          m_resourceInitContext->clearColorImage(
-            image, VkClearColorValue(), subresources);
-        } else {
-          VkClearDepthStencilValue value;
-          value.depth   = 1.0f;
-          value.stencil = 0;
-          
-          m_resourceInitContext->clearDepthStencilImage(
-            image, value, subresources);
-        }
-      }
-      
-      UnlockResourceInitContext(1);
     }
   }
   
@@ -2155,33 +2043,6 @@ namespace dxvk {
     
     for (uint32_t i = 0; i < MaxCounterStructs; i++)
       m_counterSlices[i] = MaxCounterStructs - i - 1;
-  }
-  
-  
-  void D3D11Device::LockResourceInitContext() {
-    m_resourceInitMutex.lock();
-  }
-  
-  
-  void D3D11Device::UnlockResourceInitContext(uint64_t CommandCount) {
-    m_resourceInitCommands += CommandCount;
-    
-    if (m_resourceInitCommands >= InitCommandThreshold)
-      SubmitResourceInitCommands();
-    
-    m_resourceInitMutex.unlock();
-  }
-  
-  
-  void D3D11Device::SubmitResourceInitCommands() {
-    m_dxvkDevice->submitCommandList(
-      m_resourceInitContext->endRecording(),
-      nullptr, nullptr);
-    
-    m_resourceInitContext->beginRecording(
-      m_dxvkDevice->createCommandList());
-    
-    m_resourceInitCommands = 0;
   }
   
   
