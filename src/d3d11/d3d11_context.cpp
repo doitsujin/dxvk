@@ -208,8 +208,10 @@ namespace dxvk {
     }
     
     // Default SO state
-    for (uint32_t i = 0; i < D3D11_SO_STREAM_COUNT; i++)
-      m_state.so.targets[i] = nullptr;
+    for (uint32_t i = 0; i < D3D11_SO_BUFFER_SLOT_COUNT; i++) {
+      m_state.so.targets[i].buffer = nullptr;
+      m_state.so.targets[i].offset = 0;
+    }
     
     // Default predication
     m_state.pr.predicateObject = nullptr;
@@ -2509,17 +2511,29 @@ namespace dxvk {
     
     *pNumRects = m_state.rs.numScissors;
   }
-  
-  
+
+
   void STDMETHODCALLTYPE D3D11DeviceContext::SOSetTargets(
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppSOTargets,
     const UINT*                             pOffsets) {
-    // TODO implement properly, including pOffsets
-    for (uint32_t i = 0; i < D3D11_SO_STREAM_COUNT; i++) {
-      m_state.so.targets[i] = (ppSOTargets != nullptr && i < NumBuffers)
-        ? static_cast<D3D11Buffer*>(ppSOTargets[i])
-        : nullptr;
+    for (uint32_t i = 0; i < NumBuffers; i++) {
+      D3D11Buffer* buffer = static_cast<D3D11Buffer*>(ppSOTargets[i]);
+      UINT         offset = pOffsets != nullptr ? pOffsets[i] : 0;
+
+      m_state.so.targets[i].buffer = buffer;
+      m_state.so.targets[i].offset = offset;
+    }
+
+    for (uint32_t i = NumBuffers; i < D3D11_SO_BUFFER_SLOT_COUNT; i++) {
+      m_state.so.targets[i].buffer = nullptr;
+      m_state.so.targets[i].offset = 0;
+    }
+
+    for (uint32_t i = 0; i < D3D11_SO_BUFFER_SLOT_COUNT; i++) {
+      BindXfbBuffer(i,
+        m_state.so.targets[i].buffer.ptr(),
+        m_state.so.targets[i].offset);
     }
   }
   
@@ -2528,7 +2542,7 @@ namespace dxvk {
           UINT                              NumBuffers,
           ID3D11Buffer**                    ppSOTargets) {
     for (uint32_t i = 0; i < NumBuffers; i++)
-      ppSOTargets[i] = m_state.so.targets[i].ref();
+      ppSOTargets[i] = m_state.so.targets[i].buffer.ref();
   }
   
   
@@ -2862,7 +2876,38 @@ namespace dxvk {
     });
   }
   
-  
+
+  void D3D11DeviceContext::BindXfbBuffer(
+          UINT                              Slot,
+          D3D11Buffer*                      pBuffer,
+          UINT                              Offset) {
+    DxvkBufferSlice bufferSlice;
+    DxvkBufferSlice counterSlice;
+    
+    if (pBuffer != nullptr) {
+      bufferSlice  = pBuffer->GetBufferSlice();
+      counterSlice = pBuffer->GetSOCounter();
+    }
+
+    EmitCs([
+      cSlotId       = Slot,
+      cOffset       = Offset,
+      cBufferSlice  = bufferSlice,
+      cCounterSlice = counterSlice
+    ] (DxvkContext* ctx) {
+      if (cCounterSlice.defined() && cOffset != ~0u) {
+        ctx->updateBuffer(
+          cCounterSlice.buffer(),
+          cCounterSlice.offset(),
+          sizeof(cOffset),
+          &cOffset);
+      }
+
+      ctx->bindXfbBuffer(cSlotId, cBufferSlice, cCounterSlice);
+    });
+  }
+
+
   void D3D11DeviceContext::BindConstantBuffer(
           UINT                              Slot,
     const D3D11ConstantBufferBinding*       pBufferBinding) {
@@ -3141,6 +3186,9 @@ namespace dxvk {
         m_state.ia.vertexBuffers[i].offset,
         m_state.ia.vertexBuffers[i].stride);
     }
+
+    for (uint32_t i = 0; i < m_state.so.targets.size(); i++)
+      BindXfbBuffer(i, m_state.so.targets[i].buffer.ptr(), ~0u);
     
     RestoreConstantBuffers(DxbcProgramType::VertexShader,   m_state.vs.constantBuffers);
     RestoreConstantBuffers(DxbcProgramType::HullShader,     m_state.hs.constantBuffers);

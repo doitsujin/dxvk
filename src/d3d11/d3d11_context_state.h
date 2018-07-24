@@ -139,10 +139,16 @@ namespace dxvk {
     
     Com<D3D11RasterizerState> state;
   };
+
+
+  struct D3D11ContextSoTarget {
+    Com<D3D11Buffer> buffer;
+    UINT             offset;
+  };
   
-  
+
   struct D3D11ContextStateSO {
-    std::array<Com<D3D11Buffer>, D3D11_SO_STREAM_COUNT> targets;
+    std::array<D3D11ContextSoTarget, D3D11_SO_BUFFER_SLOT_COUNT> targets;
   };
   
   
