@@ -232,8 +232,12 @@ namespace dxvk {
 
     DxvkShaderOptions shaderOptions = { };
 
-    if (m_moduleInfo.xfb != nullptr)
+    if (m_moduleInfo.xfb != nullptr) {
       shaderOptions.rasterizedStream = m_moduleInfo.xfb->rasterizedStream;
+
+      for (uint32_t i = 0; i < 4; i++)
+        shaderOptions.xfbStrides[i] = m_moduleInfo.xfb->strides[i];
+    }
 
     // Create the shader module object
     return new DxvkShader(

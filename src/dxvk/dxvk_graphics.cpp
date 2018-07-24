@@ -69,6 +69,9 @@ namespace dxvk {
     
     m_vsIn  = vs != nullptr ? vs->interfaceSlots().inputSlots  : 0;
     m_fsOut = fs != nullptr ? fs->interfaceSlots().outputSlots : 0;
+
+    if (gs != nullptr && gs->hasCapability(spv::CapabilityTransformFeedback))
+      m_flags.set(DxvkGraphicsPipelineFlag::HasTransformFeedback);
     
     m_common.msSampleShadingEnable = fs != nullptr && fs->hasCapability(spv::CapabilitySampleRateShading);
     m_common.msSampleShadingFactor = 1.0f;
@@ -226,7 +229,11 @@ namespace dxvk {
         viDivisorDesc[id].divisor = state.ilDivisors[i];
       }
     }
-    
+
+    int32_t rasterizedStream = m_gs != nullptr
+      ? m_gs->shader()->shaderOptions().rasterizedStream
+      : 0;
+
     VkPipelineVertexInputDivisorStateCreateInfoEXT viDivisorInfo;
     viDivisorInfo.sType                     = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT;
     viDivisorInfo.pNext                     = nullptr;
@@ -271,12 +278,18 @@ namespace dxvk {
     vpInfo.scissorCount           = state.rsViewportCount;
     vpInfo.pScissors              = nullptr;
     
+    VkPipelineRasterizationStateStreamCreateInfoEXT xfbStreamInfo;
+    xfbStreamInfo.sType           = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_STREAM_CREATE_INFO_EXT;
+    xfbStreamInfo.pNext           = nullptr;
+    xfbStreamInfo.flags           = 0;
+    xfbStreamInfo.rasterizationStream = uint32_t(rasterizedStream);
+
     VkPipelineRasterizationStateCreateInfo rsInfo;
     rsInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     rsInfo.pNext                  = nullptr;
     rsInfo.flags                  = 0;
     rsInfo.depthClampEnable       = state.rsDepthClampEnable;
-    rsInfo.rasterizerDiscardEnable= VK_FALSE;
+    rsInfo.rasterizerDiscardEnable = rasterizedStream < 0;
     rsInfo.polygonMode            = state.rsPolygonMode;
     rsInfo.cullMode               = state.rsCullMode;
     rsInfo.frontFace              = state.rsFrontFace;
@@ -286,6 +299,9 @@ namespace dxvk {
     rsInfo.depthBiasSlopeFactor   = 0.0f;
     rsInfo.lineWidth              = 1.0f;
     
+    if (rasterizedStream > 0)
+      rsInfo.pNext = &xfbStreamInfo;
+
     VkPipelineMultisampleStateCreateInfo msInfo;
     msInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     msInfo.pNext                  = nullptr;

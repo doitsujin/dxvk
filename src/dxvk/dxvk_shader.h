@@ -59,6 +59,8 @@ namespace dxvk {
   struct DxvkShaderOptions {
     /// Rasterized stream, or -1
     int32_t rasterizedStream;
+    /// Xfb vertex strides
+    uint32_t xfbStrides[MaxNumXfbBuffers];
   };
 
 

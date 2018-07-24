@@ -15,6 +15,16 @@ namespace dxvk {
   
   class DxvkDevice;
   class DxvkPipelineManager;
+
+  /**
+   * \brief Flags that describe pipeline properties
+   */
+  enum class DxvkGraphicsPipelineFlag {
+    HasTransformFeedback,
+  };
+
+  using DxvkGraphicsCommonPipelineFlags = Flags<DxvkGraphicsPipelineFlag>;
+
   
   /**
    * \brief Graphics pipeline state info
@@ -157,6 +167,14 @@ namespace dxvk {
     ~DxvkGraphicsPipeline();
     
     /**
+     * \brief Returns graphics pipeline flags
+     * \returns Graphics pipeline property flags
+     */
+    DxvkGraphicsCommonPipelineFlags flags() const {
+      return m_flags;
+    }
+    
+    /**
      * \brief Pipeline layout
      * 
      * Stores the pipeline layout and the descriptor set
@@ -213,6 +231,7 @@ namespace dxvk {
     uint32_t m_vsIn  = 0;
     uint32_t m_fsOut = 0;
     
+    DxvkGraphicsCommonPipelineFlags     m_flags;
     DxvkGraphicsCommonPipelineStateInfo m_common;
     
     // List of pipeline instances, shared between threads
