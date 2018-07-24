@@ -273,7 +273,9 @@ namespace dxvk {
      * \returns The physical buffer slice
      */
     DxvkPhysicalBufferSlice physicalSlice() const {
-      return m_buffer->subSlice(m_offset, m_length);
+      return m_buffer != nullptr
+        ? m_buffer->subSlice(m_offset, m_length)
+        : DxvkPhysicalBufferSlice();
     }
 
     /**
@@ -301,7 +303,9 @@ namespace dxvk {
      * \returns Pointer into mapped buffer memory
      */
     void* mapPtr(VkDeviceSize offset) const  {
-      return m_buffer->mapPtr(m_offset + offset);
+      return m_buffer != nullptr
+        ? m_buffer->mapPtr(m_offset + offset)
+        : nullptr;
     }
     
     /**

@@ -36,6 +36,7 @@ namespace dxvk {
     // before any draw or dispatch command is recorded.
     m_flags.clr(
       DxvkContextFlag::GpRenderPassBound,
+      DxvkContextFlag::GpXfbActive,
       DxvkContextFlag::GpClearRenderTargets);
     
     m_flags.set(
@@ -44,6 +45,7 @@ namespace dxvk {
       DxvkContextFlag::GpDirtyResources,
       DxvkContextFlag::GpDirtyVertexBuffers,
       DxvkContextFlag::GpDirtyIndexBuffer,
+      DxvkContextFlag::GpDirtyXfbBuffers,
       DxvkContextFlag::CpDirtyPipeline,
       DxvkContextFlag::CpDirtyPipelineState,
       DxvkContextFlag::CpDirtyResources,
@@ -222,6 +224,8 @@ namespace dxvk {
           uint32_t              binding,
     const DxvkBufferSlice&      buffer,
     const DxvkBufferSlice&      counter) {
+    this->spillRenderPass();
+
     m_state.xfb.buffers [binding] = buffer;
     m_state.xfb.counters[binding] = counter;
     
@@ -1150,6 +1154,9 @@ namespace dxvk {
     
     if (usage & VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
       m_flags.set(DxvkContextFlag::GpDirtyVertexBuffers);
+    
+    if (usage & VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT)
+      m_flags.set(DxvkContextFlag::GpDirtyXfbBuffers);
     
     if (usage & (VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT
                | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT)) {
@@ -2163,6 +2170,8 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
       m_flags.clr(DxvkContextFlag::GpRenderPassBound);
 
+      this->pauseTransformFeedback();
+      
       m_queries.endQueries(m_cmd, VK_QUERY_TYPE_OCCLUSION);
       m_queries.endQueries(m_cmd, VK_QUERY_TYPE_PIPELINE_STATISTICS);
       
@@ -2243,6 +2252,52 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::startTransformFeedback() {
+    if (!m_flags.test(DxvkContextFlag::GpXfbActive)) {
+      m_flags.set(DxvkContextFlag::GpXfbActive);
+
+      VkBuffer     ctrBuffers[MaxNumXfbBuffers];
+      VkDeviceSize ctrOffsets[MaxNumXfbBuffers];
+
+      for (uint32_t i = 0; i < MaxNumXfbBuffers; i++) {
+        auto physSlice = m_state.xfb.counters[i].physicalSlice();
+
+        ctrBuffers[i] = physSlice.handle();
+        ctrOffsets[i] = physSlice.offset();
+
+        if (physSlice.handle() != VK_NULL_HANDLE)
+          m_cmd->trackResource(physSlice.resource());
+      }
+      
+      m_cmd->cmdBeginTransformFeedback(
+        0, MaxNumXfbBuffers, ctrBuffers, ctrOffsets);
+    }
+  }
+
+
+  void DxvkContext::pauseTransformFeedback() {
+    if (m_flags.test(DxvkContextFlag::GpXfbActive)) {
+      m_flags.clr(DxvkContextFlag::GpXfbActive);
+      
+      VkBuffer     ctrBuffers[MaxNumXfbBuffers];
+      VkDeviceSize ctrOffsets[MaxNumXfbBuffers];
+
+      for (uint32_t i = 0; i < MaxNumXfbBuffers; i++) {
+        auto physSlice = m_state.xfb.counters[i].physicalSlice();
+
+        ctrBuffers[i] = physSlice.handle();
+        ctrOffsets[i] = physSlice.offset();
+
+        if (physSlice.handle() != VK_NULL_HANDLE)
+          m_cmd->trackResource(physSlice.resource());
+      }
+
+      m_cmd->cmdEndTransformFeedback(
+        0, MaxNumXfbBuffers, ctrBuffers, ctrOffsets);
+    }
+  }
+
+
   void DxvkContext::unbindComputePipeline() {
     m_flags.set(
       DxvkContextFlag::CpDirtyPipeline,
@@ -2289,7 +2344,8 @@ namespace dxvk {
       DxvkContextFlag::GpDirtyPipelineState,
       DxvkContextFlag::GpDirtyResources,
       DxvkContextFlag::GpDirtyVertexBuffers,
-      DxvkContextFlag::GpDirtyIndexBuffer);
+      DxvkContextFlag::GpDirtyIndexBuffer,
+      DxvkContextFlag::GpDirtyXfbBuffers);
     
     m_gpActivePipeline = VK_NULL_HANDLE;
   }
@@ -2315,6 +2371,8 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpDirtyPipelineState)) {
       m_flags.clr(DxvkContextFlag::GpDirtyPipelineState);
       
+      this->pauseTransformFeedback();
+
       for (uint32_t i = 0; i < m_state.gp.state.ilBindingCount; i++) {
         const uint32_t binding = m_state.gp.state.ilBindings[i].binding;
         
@@ -2677,6 +2735,50 @@ namespace dxvk {
       }
     }
   }
+  
+  
+  void DxvkContext::updateTransformFeedbackBuffers() {
+    VkBuffer     xfbBuffers[MaxNumXfbBuffers];
+    VkDeviceSize xfbOffsets[MaxNumXfbBuffers];
+    VkDeviceSize xfbLengths[MaxNumXfbBuffers];
+
+    for (size_t i = 0; i < MaxNumXfbBuffers; i++) {
+      auto physSlice = m_state.xfb.buffers[i].physicalSlice();
+      
+      xfbBuffers[i] = physSlice.handle();
+      xfbOffsets[i] = physSlice.offset();
+      xfbLengths[i] = physSlice.length();
+
+      if (physSlice.handle() == VK_NULL_HANDLE)
+        xfbBuffers[i] = m_device->dummyBufferHandle();
+      
+      if (physSlice.handle() != VK_NULL_HANDLE)
+        m_cmd->trackResource(physSlice.resource());
+    }
+
+    m_cmd->cmdBindTransformFeedbackBuffers(
+      0, MaxNumXfbBuffers,
+      xfbBuffers, xfbOffsets, xfbLengths);
+  }
+
+
+  void DxvkContext::updateTransformFeedbackState() {
+    bool hasTransformFeedback =
+         m_state.gp.pipeline != nullptr
+      && m_state.gp.pipeline->flags().test(DxvkGraphicsPipelineFlag::HasTransformFeedback);
+    
+    if (!hasTransformFeedback)
+      return;
+    
+    if (m_flags.test(DxvkContextFlag::GpDirtyXfbBuffers)) {
+      m_flags.clr(DxvkContextFlag::GpDirtyXfbBuffers);
+
+      this->pauseTransformFeedback();
+      this->updateTransformFeedbackBuffers();
+    }
+
+    this->startTransformFeedback();
+  }
 
   
   void DxvkContext::updateDynamicState() {
@@ -2743,6 +2845,7 @@ namespace dxvk {
     this->updateVertexBufferBindings();
     this->updateGraphicsShaderResources();
     this->updateGraphicsPipelineState();
+    this->updateTransformFeedbackState();
     this->updateGraphicsShaderDescriptors();
     this->updateDynamicState();
   }

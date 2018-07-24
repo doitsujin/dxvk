@@ -788,6 +788,9 @@ namespace dxvk {
       const DxvkRenderTargets&    renderTargets,
             DxvkRenderPassOps&    renderPassOps);
     
+    void startTransformFeedback();
+    void pauseTransformFeedback();
+    
     void unbindComputePipeline();
     void updateComputePipeline();
     void updateComputePipelineState();
@@ -820,6 +823,9 @@ namespace dxvk {
     
     void updateIndexBufferBinding();
     void updateVertexBufferBindings();
+    
+    void updateTransformFeedbackBuffers();
+    void updateTransformFeedbackState();
 
     void updateDynamicState();
     
