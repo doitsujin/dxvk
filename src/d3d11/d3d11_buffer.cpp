@@ -130,7 +130,9 @@ namespace dxvk {
     }
     
     if (pDesc->BindFlags & D3D11_BIND_STREAM_OUTPUT) {
-      Logger::err("D3D11Device::CreateBuffer: D3D11_BIND_STREAM_OUTPUT not supported");
+      info.usage  |= VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT;
+      info.stages |= VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT;
+      info.access |= VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT;
     }
     
     if (pDesc->BindFlags & D3D11_BIND_UNORDERED_ACCESS) {
