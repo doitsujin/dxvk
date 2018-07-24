@@ -284,6 +284,15 @@ namespace dxvk::vk {
     VULKAN_FN(vkGetBufferMemoryRequirements2KHR);
     VULKAN_FN(vkGetImageMemoryRequirements2KHR);
     #endif
+
+    #ifdef VK_EXT_transform_feedback
+    VULKAN_FN(vkCmdBindTransformFeedbackBuffersEXT);
+    VULKAN_FN(vkCmdBeginTransformFeedbackEXT);
+    VULKAN_FN(vkCmdEndTransformFeedbackEXT);
+    VULKAN_FN(vkCmdDrawIndirectByteCountEXT);
+    VULKAN_FN(vkCmdBeginQueryIndexedEXT);
+    VULKAN_FN(vkCmdEndQueryIndexedEXT);
+    #endif
   };
   
 }

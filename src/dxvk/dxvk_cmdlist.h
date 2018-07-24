@@ -221,11 +221,31 @@ namespace dxvk {
     }
     
     
+    void cmdBeginQueryIndexed(
+            VkQueryPool             queryPool,
+            uint32_t                query,
+            VkQueryControlFlags     flags,
+            uint32_t                index) {
+      m_vkd->vkCmdBeginQueryIndexedEXT(
+        m_execBuffer, queryPool, query, flags, index);
+    }
+    
+    
     void cmdBeginRenderPass(
       const VkRenderPassBeginInfo*  pRenderPassBegin,
             VkSubpassContents       contents) {
       m_vkd->vkCmdBeginRenderPass(m_execBuffer,
         pRenderPassBegin, contents);
+    }
+
+
+    void cmdBeginTransformFeedback(
+            uint32_t                  firstBuffer,
+            uint32_t                  bufferCount,
+      const VkBuffer*                 counterBuffers,
+      const VkDeviceSize*             counterOffsets) {
+      m_vkd->vkCmdBeginTransformFeedbackEXT(m_execBuffer,
+        firstBuffer, bufferCount, counterBuffers, counterOffsets);
     }
     
     
@@ -255,6 +275,17 @@ namespace dxvk {
             VkPipeline              pipeline) {
       m_vkd->vkCmdBindPipeline(m_execBuffer,
         pipelineBindPoint, pipeline);
+    }
+
+
+    void cmdBindTransformFeedbackBuffers(
+            uint32_t                firstBinding,
+            uint32_t                bindingCount,
+      const VkBuffer*               pBuffers,
+      const VkDeviceSize*           pOffsets,
+      const VkDeviceSize*           pSizes) {
+      m_vkd->vkCmdBindTransformFeedbackBuffersEXT(m_execBuffer,
+        firstBinding, bindingCount, pBuffers, pOffsets, pSizes);
     }
     
     
@@ -425,12 +456,34 @@ namespace dxvk {
       m_vkd->vkCmdDrawIndexedIndirect(m_execBuffer,
         buffer, offset, drawCount, stride);
     }
+
+
+    void cmdDrawIndirectVertexCount(
+            uint32_t                instanceCount,
+            uint32_t                firstInstance,
+            VkBuffer                counterBuffer,
+            VkDeviceSize            counterBufferOffset,
+            uint32_t                counterOffset,
+            uint32_t                vertexStride) {
+      m_vkd->vkCmdDrawIndirectByteCountEXT(m_execBuffer,
+        instanceCount, firstInstance, counterBuffer,
+        counterBufferOffset, counterOffset, vertexStride);
+    }
     
     
     void cmdEndQuery(
             VkQueryPool             queryPool,
             uint32_t                query) {
       m_vkd->vkCmdEndQuery(m_execBuffer, queryPool, query);
+    }
+
+
+    void cmdEndQueryIndexed(
+            VkQueryPool             queryPool,
+            uint32_t                query,
+            uint32_t                index) {
+      m_vkd->vkCmdEndQueryIndexedEXT(
+        m_execBuffer, queryPool, query, index);
     }
     
     
@@ -439,6 +492,16 @@ namespace dxvk {
     }
     
     
+    void cmdEndTransformFeedback(
+            uint32_t                  firstBuffer,
+            uint32_t                  bufferCount,
+      const VkBuffer*                 counterBuffers,
+      const VkDeviceSize*             counterOffsets) {
+      m_vkd->vkCmdEndTransformFeedbackEXT(m_execBuffer,
+        firstBuffer, bufferCount, counterBuffers, counterOffsets);
+    }
+
+
     void cmdFillBuffer(
             VkBuffer                dstBuffer,
             VkDeviceSize            dstOffset,
