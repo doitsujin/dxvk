@@ -174,6 +174,18 @@ namespace dxvk {
             uint32_t              stride);
     
     /**
+     * \brief Binds transform feedback buffer
+     * 
+     * \param [in] binding Xfb buffer binding
+     * \param [in] buffer The buffer to bind
+     * \param [in] counter Xfb counter buffer
+     */
+    void bindXfbBuffer(
+            uint32_t              binding,
+      const DxvkBufferSlice&      buffer,
+      const DxvkBufferSlice&      counter);
+    
+    /**
      * \brief Clears a buffer with a fixed value
      * 
      * Note that both \c offset and \c length must

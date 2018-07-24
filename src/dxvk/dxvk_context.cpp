@@ -218,6 +218,17 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::bindXfbBuffer(
+          uint32_t              binding,
+    const DxvkBufferSlice&      buffer,
+    const DxvkBufferSlice&      counter) {
+    m_state.xfb.buffers [binding] = buffer;
+    m_state.xfb.counters[binding] = counter;
+    
+    m_flags.set(DxvkContextFlag::GpDirtyXfbBuffers);
+  }
+
+
   void DxvkContext::clearBuffer(
     const Rc<DxvkBuffer>&       buffer,
           VkDeviceSize          offset,
