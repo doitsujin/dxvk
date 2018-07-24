@@ -22,6 +22,7 @@ namespace dxvk {
    */
   enum class DxvkContextFlag : uint64_t  {
     GpRenderPassBound,          ///< Render pass is currently bound
+    GpXfbActive,                ///< Transform feedback is enabled
     GpClearRenderTargets,       ///< Render targets need to be cleared
     GpDirtyFramebuffer,         ///< Framebuffer binding is out of date
     GpDirtyPipeline,            ///< Graphics pipeline binding is out of date
@@ -31,6 +32,7 @@ namespace dxvk {
     GpDirtyDescriptorSet,       ///< Graphics descriptor set needs to be updated
     GpDirtyVertexBuffers,       ///< Vertex buffer bindings are out of date
     GpDirtyIndexBuffer,         ///< Index buffer binding are out of date
+    GpDirtyXfbBuffers,          ///< Transform feedback buffer bindings are out of date
     GpDirtyBlendConstants,      ///< Blend constants have changed
     GpDirtyStencilRef,          ///< Stencil reference has changed
     GpDirtyViewport,            ///< Viewport state has changed
@@ -86,6 +88,12 @@ namespace dxvk {
     DxvkBlendConstants  blendConstants    = { 0.0f, 0.0f, 0.0f, 0.0f };
     uint32_t            stencilReference  = 0;
   };
+
+
+  struct DxvkXfbState {
+    std::array<DxvkBufferSlice, MaxNumXfbBuffers> buffers;
+    std::array<DxvkBufferSlice, MaxNumXfbBuffers> counters;
+  };
   
   
   struct DxvkShaderStage {
@@ -125,6 +133,7 @@ namespace dxvk {
     DxvkViewportState         vp;
     DxvkDynamicDepthState     ds;
     DxvkOutputMergerState     om;
+    DxvkXfbState              xfb;
     
     DxvkGraphicsPipelineState gp;
     DxvkComputePipelineState  cp;
