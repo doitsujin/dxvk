@@ -258,6 +258,7 @@ namespace dxvk {
    */
   struct DxvkDeviceExtensions {
     DxvkExt extShaderViewportIndexLayer     = { VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME,      DxvkExtMode::Optional };
+    DxvkExt extTransformFeedback            = { VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME,               DxvkExtMode::Optional };
     DxvkExt extVertexAttributeDivisor       = { VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME,         DxvkExtMode::Optional };
     DxvkExt khrDedicatedAllocation          = { VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME,             DxvkExtMode::Required };
     DxvkExt khrDescriptorUpdateTemplate     = { VK_KHR_DESCRIPTOR_UPDATE_TEMPLATE_EXTENSION_NAME,       DxvkExtMode::Required };

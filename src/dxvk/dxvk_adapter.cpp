@@ -193,8 +193,9 @@ namespace dxvk {
   Rc<DxvkDevice> DxvkAdapter::createDevice(DxvkDeviceFeatures enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 11> devExtensionList = {{
+    std::array<DxvkExt*, 12> devExtensionList = {{
       &devExtensions.extShaderViewportIndexLayer,
+      &devExtensions.extTransformFeedback,
       &devExtensions.extVertexAttributeDivisor,
       &devExtensions.khrDedicatedAllocation,
       &devExtensions.khrDescriptorUpdateTemplate,
