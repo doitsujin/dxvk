@@ -674,11 +674,75 @@ namespace dxvk {
           ID3D11ClassLinkage*         pClassLinkage,
           ID3D11GeometryShader**      ppGeometryShader) {
     InitReturnPtr(ppGeometryShader);
-    Logger::err("D3D11Device::CreateGeometryShaderWithStreamOutput: Not implemented");
+    D3D11CommonShader module;
+
+    if (!m_dxvkDevice->features().extTransformFeedback.transformFeedback) {
+      Logger::err(
+        "D3D11: CreateGeometryShaderWithStreamOutput:"
+        "\n  Transform feedback not supoorted by device");
+      return m_d3d11Options.fakeStreamOutSupport ? S_OK : E_NOTIMPL;
+    }
+
+    // Zero-init some counterss so that we can increment
+    // them while walking over the stream output entries
+    DxbcXfbInfo xfb;
+    xfb.entryCount =  0;
+
+    for (uint32_t i = 0; i < D3D11_SO_BUFFER_SLOT_COUNT; i++)
+      xfb.strides[i] = 0;
     
-    // Returning S_OK instead of an error fixes some issues
-    // with Overwatch until this is properly implemented
-    return m_d3d11Options.fakeStreamOutSupport ? S_OK : E_NOTIMPL;
+    for (uint32_t i = 0; i < NumEntries; i++) {
+      const D3D11_SO_DECLARATION_ENTRY* so = &pSODeclaration[i];
+
+      if (so->OutputSlot >= D3D11_SO_BUFFER_SLOT_COUNT)
+        return E_INVALIDARG;
+
+      if (so->SemanticName != nullptr) {
+        if (so->Stream >= D3D11_SO_BUFFER_SLOT_COUNT
+         || so->StartComponent >= 4
+         || so->ComponentCount <  1
+         || so->ComponentCount >  4)
+          return E_INVALIDARG;
+        
+        DxbcXfbEntry* entry = &xfb.entries[xfb.entryCount++];
+        entry->semanticName   = so->SemanticName;
+        entry->semanticIndex  = so->SemanticIndex;
+        entry->componentIndex = so->StartComponent;
+        entry->componentCount = so->ComponentCount;
+        entry->streamId       = so->Stream;
+        entry->bufferId       = so->OutputSlot;
+        entry->offset         = xfb.strides[so->OutputSlot];
+      }
+
+      xfb.strides[so->OutputSlot] += so->ComponentCount * sizeof(uint32_t);
+    }
+    
+    // If necessary, override the buffer strides
+    for (uint32_t i = 0; i < NumStrides; i++)
+      xfb.strides[i] = pBufferStrides[i];
+
+    // Set stream to rasterize, if any
+    xfb.rasterizedStream = -1;
+    
+    if (RasterizedStream != D3D11_SO_NO_RASTERIZED_STREAM)
+      Logger::err("D3D11: CreateGeometryShaderWithStreamOutput: Rasterized stream not supported");
+
+    // Create the actual shader module
+    DxbcModuleInfo moduleInfo;
+    moduleInfo.options = m_dxbcOptions;
+    moduleInfo.tess    = nullptr;
+    moduleInfo.xfb     = &xfb;
+    
+    if (FAILED(this->CreateShaderModule(&module,
+        pShaderBytecode, BytecodeLength, pClassLinkage,
+        &moduleInfo, DxbcProgramType::GeometryShader)))
+      return E_INVALIDARG;
+    
+    if (ppGeometryShader == nullptr)
+      return S_FALSE;
+    
+    *ppGeometryShader = ref(new D3D11GeometryShader(this, module));
+    return S_OK;
   }
   
   
