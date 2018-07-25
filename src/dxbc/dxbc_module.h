@@ -60,6 +60,20 @@ namespace dxvk {
       const DxbcModuleInfo& moduleInfo,
       const std::string&    fileName) const;
     
+    /**
+     * \brief Compiles a pass-through geometry shader
+     *
+     * Applications can pass a vertex shader to create
+     * a geometry shader with stream output. In this
+     * case, we have to create a passthrough geometry
+     * shader, which operates in point to point mode.
+     * \param [in] moduleInfo DXBC module info
+     * \param [in] fileName SPIR-V shader name
+     */
+    Rc<DxvkShader> compilePassthroughShader(
+      const DxbcModuleInfo& moduleInfo,
+      const std::string&    fileName) const;
+    
   private:
     
     DxbcHeader   m_header;

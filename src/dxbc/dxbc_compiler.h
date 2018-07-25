@@ -383,6 +383,15 @@ namespace dxvk {
       const DxbcShaderInstruction&  ins);
     
     /**
+     * \brief Emits transform feedback passthrough
+     * 
+     * Writes all captured input variables to the
+     * corresponding xfb outputs, and sets up the
+     * geometry shader for point-to-point mode.
+     */
+    void processXfbPassthrough();
+    
+    /**
      * \brief Finalizes the shader
      * \returns The final shader object
      */
@@ -851,6 +860,13 @@ namespace dxvk {
             DxbcRegisterValue       value,
             DxbcOpModifiers         modifiers);
     
+    ////////////////////////////////
+    // Pointer manipulation methods
+    DxbcRegisterPointer emitArrayAccess(
+            DxbcRegisterPointer     pointer,
+            spv::StorageClass       sclass,
+            uint32_t                index);
+
     ///////////////////////////////////////
     // Image register manipulation methods
     uint32_t emitLoadSampledImage(
@@ -1065,7 +1081,8 @@ namespace dxvk {
     void emitXfbOutputDeclarations();
 
     void emitXfbOutputSetup(
-            uint32_t                          streamId);
+            uint32_t                          streamId,
+            bool                              passthrough);
     
     ///////////////////////////////
     // Hull shader phase methods

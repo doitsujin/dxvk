@@ -177,6 +177,36 @@ namespace dxvk {
           ins.op));
     }
   }
+
+
+  void DxbcCompiler::processXfbPassthrough() {
+    m_module.setExecutionMode (m_entryPointId, spv::ExecutionModeInputPoints);
+    m_module.setExecutionMode (m_entryPointId, spv::ExecutionModeOutputPoints);
+    m_module.setOutputVertices(m_entryPointId, 1);
+    m_module.setInvocations   (m_entryPointId, 1);
+
+    for (auto e = m_isgn->begin(); e != m_isgn->end(); e++) {
+      emitDclInput(e->registerId, 1,
+        e->componentMask, e->systemValue,
+        DxbcInterpolationMode::Undefined);
+    }
+
+    // Figure out which streams to enable
+    uint32_t streamMask = 0;
+
+    for (size_t i = 0; i < m_xfbVars.size(); i++)
+      streamMask |= 1u << m_xfbVars[i].streamId;
+    
+    for (uint32_t mask = streamMask; mask != 0; mask &= mask - 1) {
+      const uint32_t streamId = bit::tzcnt(mask);
+
+      emitXfbOutputSetup(streamId, true);
+      m_module.opEmitVertex(m_module.constu32(streamId));
+    }
+
+    // End the main function
+    emitFunctionEnd();
+  }
   
   
   Rc<DxvkShader> DxbcCompiler::finalize() {
@@ -2078,7 +2108,7 @@ namespace dxvk {
       emitOutputSetup();
       emitClipCullStore(DxbcSystemValue::ClipDistance, m_clipDistances);
       emitClipCullStore(DxbcSystemValue::CullDistance, m_cullDistances);
-      emitXfbOutputSetup(streamId);
+      emitXfbOutputSetup(streamId, false);
       m_module.opEmitVertex(streamVar);
     }
 
@@ -4254,6 +4284,21 @@ namespace dxvk {
   }
   
   
+  DxbcRegisterPointer DxbcCompiler::emitArrayAccess(
+          DxbcRegisterPointer     pointer,
+          spv::StorageClass       sclass,
+          uint32_t                index) {
+    uint32_t ptrTypeId = m_module.defPointerType(
+      getVectorTypeId(pointer.type), sclass);
+    
+    DxbcRegisterPointer result;
+    result.type = pointer.type;
+    result.id = m_module.opAccessChain(
+      ptrTypeId, pointer.id, 1, &index);
+    return result;
+  }
+
+
   uint32_t DxbcCompiler::emitLoadSampledImage(
     const DxbcShaderResource&     textureResource,
     const DxbcSampler&            samplerResource,
@@ -6292,10 +6337,21 @@ namespace dxvk {
   }
 
 
-  void DxbcCompiler::emitXfbOutputSetup(uint32_t streamId) {
+  void DxbcCompiler::emitXfbOutputSetup(
+          uint32_t                          streamId,
+          bool                              passthrough) {
     for (size_t i = 0; i < m_xfbVars.size(); i++) {
       if (m_xfbVars[i].streamId == streamId) {
-        DxbcRegisterPointer srcPtr = m_oRegs[m_xfbVars[i].outputId];
+        DxbcRegisterPointer srcPtr = passthrough
+          ? m_vRegs[m_xfbVars[i].outputId]
+          : m_oRegs[m_xfbVars[i].outputId];
+
+        if (passthrough) {
+          srcPtr = emitArrayAccess(srcPtr,
+            spv::StorageClassInput,
+            m_module.constu32(0));
+        }
+        
         DxbcRegisterPointer dstPtr;
         dstPtr.type.ctype  = DxbcScalarType::Float32;
         dstPtr.type.ccount = m_xfbVars[i].dstMask.popCount();
