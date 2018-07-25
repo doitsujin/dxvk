@@ -1550,8 +1550,22 @@ namespace dxvk {
      || Format == DXGI_FORMAT_R32_UINT)
       flags1 |= D3D11_FORMAT_SUPPORT_IA_INDEX_BUFFER;
     
-    // TODO implement stream output
-    // D3D11_FORMAT_SUPPORT_SO_BUFFER
+    // These formats are technically irrelevant since
+    // SO buffers are passed in as raw buffers and not
+    // as views, but the feature flag exists regardless
+    if (Format == DXGI_FORMAT_R32_FLOAT
+     || Format == DXGI_FORMAT_R32_UINT
+     || Format == DXGI_FORMAT_R32_SINT
+     || Format == DXGI_FORMAT_R32G32_FLOAT
+     || Format == DXGI_FORMAT_R32G32_UINT
+     || Format == DXGI_FORMAT_R32G32_SINT
+     || Format == DXGI_FORMAT_R32G32B32_FLOAT
+     || Format == DXGI_FORMAT_R32G32B32_UINT
+     || Format == DXGI_FORMAT_R32G32B32_SINT
+     || Format == DXGI_FORMAT_R32G32B32A32_FLOAT
+     || Format == DXGI_FORMAT_R32G32B32A32_UINT
+     || Format == DXGI_FORMAT_R32G32B32A32_SINT)
+      flags1 |= D3D11_FORMAT_SUPPORT_SO_BUFFER;
     
     if (fmtSupport.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT
      || fmtSupport.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) {
