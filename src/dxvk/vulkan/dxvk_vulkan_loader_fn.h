@@ -1,7 +1,22 @@
 #pragma once
 
+/*
+ * In 32-bit winelib build, alignment of Vulkan structures may be different than what
+ * native C++ compiler expects. Wine exposes an extension, intended for winelib
+ * applications, that exposes native Vulkan APIs with win32 additions, but using
+ * native ABI.
+ */
+#ifdef __WINE__
+#pragma push_macro("_WIN32")
+#undef _WIN32
+#endif
+
 #define VK_USE_PLATFORM_WIN32_KHR 1
 #include <vulkan/vulkan.h>
+
+#ifdef __WINE__
+#pragma pop_macro("_WIN32")
+#endif
 
 #define VULKAN_FN(name) \
   VulkanFn<::PFN_ ## name> name = sym(#name)

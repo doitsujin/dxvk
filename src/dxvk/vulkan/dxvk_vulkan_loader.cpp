@@ -1,9 +1,21 @@
 #include "dxvk_vulkan_loader.h"
 
 namespace dxvk::vk {
-  
+
+#if defined(__WINE__)
+
+  extern "C"
+  PFN_vkVoidFunction native_vkGetInstanceProcAddrWINE(VkInstance instance, const char *name);
+  static const PFN_vkGetInstanceProcAddr GetInstanceProcAddr = native_vkGetInstanceProcAddrWINE;
+
+#else
+
+  static const PFN_vkGetInstanceProcAddr GetInstanceProcAddr = vkGetInstanceProcAddr;
+
+#endif
+
   PFN_vkVoidFunction LibraryLoader::sym(const char* name) const {
-    return ::vkGetInstanceProcAddr(nullptr, name);
+    return dxvk::vk::GetInstanceProcAddr(nullptr, name);
   }
   
   
@@ -12,13 +24,13 @@ namespace dxvk::vk {
   
   
   PFN_vkVoidFunction InstanceLoader::sym(const char* name) const {
-    return ::vkGetInstanceProcAddr(m_instance, name);
+    return dxvk::vk::GetInstanceProcAddr(m_instance, name);
   }
   
   
   DeviceLoader::DeviceLoader(VkInstance instance, VkDevice device)
   : m_getDeviceProcAddr(reinterpret_cast<PFN_vkGetDeviceProcAddr>(
-      ::vkGetInstanceProcAddr(instance, "vkGetDeviceProcAddr"))),
+      dxvk::vk::GetInstanceProcAddr(instance, "vkGetDeviceProcAddr"))),
     m_device(device) { }
   
   
