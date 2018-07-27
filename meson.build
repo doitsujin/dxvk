@@ -26,7 +26,11 @@ else
 endif
 
 if meson.get_cross_property('winelib', false)
-  add_project_link_arguments('-mwindows', language : 'cpp')
+  arch_arg = cpu_family == 'x86_64' ? '-m64' : '-m32'
+  add_project_arguments(arch_arg, '--no-gnu-unique', language : 'cpp')
+  add_project_arguments(arch_arg, language : 'c')
+  add_project_link_arguments(arch_arg, '-mwindows', language : 'cpp')
+
   lib_vulkan  = declare_dependency(link_args: [ '-lvulkan-1' ])
   lib_d3d11   = declare_dependency(link_args: [ '-ld3d11' ])
   lib_dxgi    = declare_dependency(link_args: [ '-ldxgi' ])
