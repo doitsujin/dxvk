@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include "dxvk_query.h"
 
 namespace dxvk {
