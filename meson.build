@@ -26,7 +26,6 @@ else
 endif
 
 if meson.get_cross_property('winelib', false)
-  add_project_link_arguments('-mwindows', language : 'cpp')
   lib_vulkan  = declare_dependency(link_args: [ '-lvulkan-1' ])
   lib_d3d11   = declare_dependency(link_args: [ '-ld3d11' ])
   lib_dxgi    = declare_dependency(link_args: [ '-ldxgi' ])
