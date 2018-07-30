@@ -20,6 +20,7 @@ namespace dxvk {
   class DxgiAdapter;
   
   class D3D11Buffer;
+  class D3D11CommonShader;
   class D3D11CommonTexture;
   class D3D11Counter;
   class D3D11DeviceContext;
@@ -27,7 +28,6 @@ namespace dxvk {
   class D3D11Predicate;
   class D3D11Presenter;
   class D3D11Query;
-  class D3D11ShaderModule;
   class D3D11Texture1D;
   class D3D11Texture2D;
   class D3D11Texture3D;
@@ -372,7 +372,7 @@ namespace dxvk {
     D3D11ShaderModuleSet                        m_shaderModules;
     
     HRESULT CreateShaderModule(
-            D3D11ShaderModule*      pShaderModule,
+            D3D11CommonShader*      pShaderModule,
       const void*                   pShaderBytecode,
             size_t                  BytecodeLength,
             ID3D11ClassLinkage*     pClassLinkage,

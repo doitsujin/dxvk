@@ -1281,7 +1281,10 @@ namespace dxvk {
     
     if (m_state.vs.shader != shader) {
       m_state.vs.shader = shader;
-      BindShader(shader, VK_SHADER_STAGE_VERTEX_BIT);
+
+      BindShader(
+        DxbcProgramType::VertexShader,
+        GetCommonShader(shader));
     }
   }
   
@@ -1407,7 +1410,10 @@ namespace dxvk {
     
     if (m_state.hs.shader != shader) {
       m_state.hs.shader = shader;
-      BindShader(shader, VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
+
+      BindShader(
+        DxbcProgramType::HullShader,
+        GetCommonShader(shader));
     }
   }
   
@@ -1533,7 +1539,10 @@ namespace dxvk {
     
     if (m_state.ds.shader != shader) {
       m_state.ds.shader = shader;
-      BindShader(shader, VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
+
+      BindShader(
+        DxbcProgramType::DomainShader,
+        GetCommonShader(shader));
     }
   }
   
@@ -1659,7 +1668,10 @@ namespace dxvk {
     
     if (m_state.gs.shader != shader) {
       m_state.gs.shader = shader;
-      BindShader(shader, VK_SHADER_STAGE_GEOMETRY_BIT);
+
+      BindShader(
+        DxbcProgramType::GeometryShader,
+        GetCommonShader(shader));
     }
   }
   
@@ -1785,7 +1797,10 @@ namespace dxvk {
     
     if (m_state.ps.shader != shader) {
       m_state.ps.shader = shader;
-      BindShader(shader, VK_SHADER_STAGE_FRAGMENT_BIT);
+
+      BindShader(
+        DxbcProgramType::PixelShader,
+        GetCommonShader(shader));
     }
   }
   
@@ -1911,7 +1926,10 @@ namespace dxvk {
     
     if (m_state.cs.shader != shader) {
       m_state.cs.shader = shader;
-      BindShader(shader, VK_SHADER_STAGE_COMPUTE_BIT);
+
+      BindShader(
+        DxbcProgramType::ComputeShader,
+        GetCommonShader(shader));
     }
   }
   
@@ -2536,6 +2554,18 @@ namespace dxvk {
   }
   
   
+  void D3D11DeviceContext::BindShader(
+          DxbcProgramType       ShaderStage,
+    const D3D11CommonShader*    pShaderModule) {
+    EmitCs([
+      cStage  = GetShaderStage(ShaderStage),
+      cShader = pShaderModule != nullptr ? pShaderModule->GetShader() : nullptr
+    ] (DxvkContext* ctx) {
+      ctx->bindShader(cStage, cShader);
+    });
+  }
+
+
   void D3D11DeviceContext::BindFramebuffer(BOOL Spill) {
     // NOTE According to the Microsoft docs, we are supposed to
     // unbind overlapping shader resource views. Since this comes
@@ -2840,12 +2870,12 @@ namespace dxvk {
   void D3D11DeviceContext::RestoreState() {
     BindFramebuffer(m_state.om.isUavRendering);
     
-    BindShader(m_state.vs.shader.ptr(), VK_SHADER_STAGE_VERTEX_BIT);
-    BindShader(m_state.hs.shader.ptr(), VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT);
-    BindShader(m_state.ds.shader.ptr(), VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT);
-    BindShader(m_state.gs.shader.ptr(), VK_SHADER_STAGE_GEOMETRY_BIT);
-    BindShader(m_state.ps.shader.ptr(), VK_SHADER_STAGE_FRAGMENT_BIT);
-    BindShader(m_state.cs.shader.ptr(), VK_SHADER_STAGE_COMPUTE_BIT);
+    BindShader(DxbcProgramType::VertexShader,   GetCommonShader(m_state.vs.shader.ptr()));
+    BindShader(DxbcProgramType::HullShader,     GetCommonShader(m_state.hs.shader.ptr()));
+    BindShader(DxbcProgramType::DomainShader,   GetCommonShader(m_state.ds.shader.ptr()));
+    BindShader(DxbcProgramType::GeometryShader, GetCommonShader(m_state.gs.shader.ptr()));
+    BindShader(DxbcProgramType::PixelShader,    GetCommonShader(m_state.ps.shader.ptr()));
+    BindShader(DxbcProgramType::ComputeShader,  GetCommonShader(m_state.cs.shader.ptr()));
     
     ApplyInputLayout();
     ApplyPrimitiveTopology();

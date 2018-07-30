@@ -1073,7 +1073,7 @@ namespace dxvk {
           ID3D11ClassLinkage*         pClassLinkage,
           ID3D11VertexShader**        ppVertexShader) {
     InitReturnPtr(ppVertexShader);
-    D3D11ShaderModule module;
+    D3D11CommonShader module;
 
     DxbcModuleInfo moduleInfo;
     moduleInfo.options = m_dxbcOptions;
@@ -1097,7 +1097,7 @@ namespace dxvk {
           ID3D11ClassLinkage*         pClassLinkage,
           ID3D11GeometryShader**      ppGeometryShader) {
     InitReturnPtr(ppGeometryShader);
-    D3D11ShaderModule module;
+    D3D11CommonShader module;
     
     DxbcModuleInfo moduleInfo;
     moduleInfo.options = m_dxbcOptions;
@@ -1140,7 +1140,7 @@ namespace dxvk {
           ID3D11ClassLinkage*         pClassLinkage,
           ID3D11PixelShader**         ppPixelShader) {
     InitReturnPtr(ppPixelShader);
-    D3D11ShaderModule module;
+    D3D11CommonShader module;
     
     DxbcModuleInfo moduleInfo;
     moduleInfo.options = m_dxbcOptions;
@@ -1164,7 +1164,7 @@ namespace dxvk {
           ID3D11ClassLinkage*         pClassLinkage,
           ID3D11HullShader**          ppHullShader) {
     InitReturnPtr(ppHullShader);
-    D3D11ShaderModule module;
+    D3D11CommonShader module;
     
     DxbcModuleInfo moduleInfo;
     moduleInfo.options = m_dxbcOptions;
@@ -1188,7 +1188,7 @@ namespace dxvk {
           ID3D11ClassLinkage*         pClassLinkage,
           ID3D11DomainShader**        ppDomainShader) {
     InitReturnPtr(ppDomainShader);
-    D3D11ShaderModule module;
+    D3D11CommonShader module;
     
     DxbcModuleInfo moduleInfo;
     moduleInfo.options = m_dxbcOptions;
@@ -1212,7 +1212,7 @@ namespace dxvk {
           ID3D11ClassLinkage*         pClassLinkage,
           ID3D11ComputeShader**       ppComputeShader) {
     InitReturnPtr(ppComputeShader);
-    D3D11ShaderModule module;
+    D3D11CommonShader module;
     
     DxbcModuleInfo moduleInfo;
     moduleInfo.options = m_dxbcOptions;
@@ -1852,7 +1852,7 @@ namespace dxvk {
   
   
   HRESULT D3D11Device::CreateShaderModule(
-          D3D11ShaderModule*      pShaderModule,
+          D3D11CommonShader*      pShaderModule,
     const void*                   pShaderBytecode,
           size_t                  BytecodeLength,
           ID3D11ClassLinkage*     pClassLinkage,

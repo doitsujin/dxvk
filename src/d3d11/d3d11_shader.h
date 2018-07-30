@@ -57,23 +57,25 @@ namespace dxvk {
   
   
   /**
-   * \brief Shader module
+   * \brief Common shader object
    * 
    * Stores the compiled SPIR-V shader and the SHA-1
    * hash of the original DXBC shader, which can be
    * used to identify the shader.
    */
-  class D3D11ShaderModule {
+  class D3D11CommonShader {
     
   public:
     
-    D3D11ShaderModule();
-    D3D11ShaderModule(
+    D3D11CommonShader();
+    D3D11CommonShader(
       const D3D11ShaderKey* pShaderKey,
       const DxbcModuleInfo* pDxbcModuleInfo,
       const void*           pShaderBytecode,
             size_t          BytecodeLength);
-    ~D3D11ShaderModule();
+    ~D3D11CommonShader();
+
+    DxbcProgramType GetProgramType() const;
     
     Rc<DxvkShader> GetShader() const {
       return m_shader;
@@ -103,8 +105,8 @@ namespace dxvk {
     
   public:
     
-    D3D11Shader(D3D11Device* device, const D3D11ShaderModule& module)
-    : m_device(device), m_module(module) { }
+    D3D11Shader(D3D11Device* device, const D3D11CommonShader& shader)
+    : m_device(device), m_shader(shader) { }
     
     ~D3D11Shader() { }
     
@@ -126,18 +128,14 @@ namespace dxvk {
       *ppDevice = m_device.ref();
     }
     
-    Rc<DxvkShader> STDMETHODCALLTYPE GetShader() const {
-      return m_module.GetShader();
-    }
-    
-    const std::string& GetName() const {
-      return m_module.GetName();
+    const D3D11CommonShader* GetCommonShader() const {
+      return &m_shader;
     }
     
   private:
     
     Com<D3D11Device>  m_device;
-    D3D11ShaderModule m_module;
+    D3D11CommonShader m_shader;
     
   };
   
@@ -164,7 +162,7 @@ namespace dxvk {
     D3D11ShaderModuleSet();
     ~D3D11ShaderModuleSet();
     
-    D3D11ShaderModule GetShaderModule(
+    D3D11CommonShader GetShaderModule(
       const DxbcModuleInfo* pDxbcModuleInfo,
       const void*           pShaderBytecode,
             size_t          BytecodeLength,
@@ -176,7 +174,7 @@ namespace dxvk {
     
     std::unordered_map<
       D3D11ShaderKey,
-      D3D11ShaderModule,
+      D3D11CommonShader,
       D3D11ShaderKeyHash> m_modules;
     
   };
