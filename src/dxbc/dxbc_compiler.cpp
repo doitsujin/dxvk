@@ -685,13 +685,15 @@ namespace dxvk {
     const uint32_t bufferId     = ins.dst[0].idx[0].offset;
     const uint32_t elementCount = ins.dst[0].idx[1].offset;
     
-    this->emitDclConstantBufferVar(bufferId, elementCount);
+    this->emitDclConstantBufferVar(bufferId, elementCount,
+      str::format("cb", bufferId).c_str());
   }
   
   
   void DxbcCompiler::emitDclConstantBufferVar(
           uint32_t                regIdx,
-          uint32_t                numConstants) {
+          uint32_t                numConstants,
+    const char*                   name) {
     // Uniform buffer data is stored as a fixed-size array
     // of 4x32-bit vectors. SPIR-V requires explicit strides.
     const uint32_t arrayType = m_module.defArrayTypeUnique(
@@ -706,7 +708,7 @@ namespace dxvk {
     m_module.decorateBlock       (structType);
     m_module.memberDecorateOffset(structType, 0, 0);
     
-    m_module.setDebugName        (structType, str::format("struct_cb", regIdx).c_str());
+    m_module.setDebugName        (structType, str::format("struct_", name).c_str());
     m_module.setDebugMemberName  (structType, 0, "m");
     
     // Variable that we'll use to access the buffer
@@ -714,8 +716,7 @@ namespace dxvk {
       m_module.defPointerType(structType, spv::StorageClassUniform),
       spv::StorageClassUniform);
     
-    m_module.setDebugName(varId,
-      str::format("cb", regIdx).c_str());
+    m_module.setDebugName(varId, name);
     
     // Compute the DXVK binding slot index for the buffer.
     // D3D11 needs to bind the actual buffers to this slot.
@@ -731,7 +732,7 @@ namespace dxvk {
     const uint32_t specConstId = m_module.specConstBool(true);
     m_module.decorateSpecId(specConstId, bindingId);
     m_module.setDebugName(specConstId,
-      str::format("cb", regIdx, "_bound").c_str());
+      str::format(name, "_bound").c_str());
     
     DxbcConstantBuffer buf;
     buf.varId  = varId;
@@ -1370,7 +1371,7 @@ namespace dxvk {
   void DxbcCompiler::emitDclImmediateConstantBufferUbo(
           uint32_t                dwordCount,
     const uint32_t*               dwordArray) {
-    this->emitDclConstantBufferVar(Icb_BindingSlotId, dwordCount / 4);
+    this->emitDclConstantBufferVar(Icb_BindingSlotId, dwordCount / 4, "icb");
     m_immConstData = DxvkShaderConstData(dwordCount, dwordArray);
   }
 
