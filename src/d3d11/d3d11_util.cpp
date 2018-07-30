@@ -125,6 +125,7 @@ namespace dxvk {
       case DxbcProgramType::GeometryShader: return VK_SHADER_STAGE_GEOMETRY_BIT;
       case DxbcProgramType::PixelShader:    return VK_SHADER_STAGE_FRAGMENT_BIT;
       case DxbcProgramType::ComputeShader:  return VK_SHADER_STAGE_COMPUTE_BIT;
+      default:                              return VkShaderStageFlagBits(0);
     }
   }
   
