@@ -39,6 +39,7 @@ namespace dxvk {
   
   
   D3D11CommonShader::D3D11CommonShader(
+          D3D11Device*    pDevice,
     const D3D11ShaderKey* pShaderKey,
     const DxbcModuleInfo* pDxbcModuleInfo,
     const void*           pShaderBytecode,
@@ -92,6 +93,7 @@ namespace dxvk {
   
   
   D3D11CommonShader D3D11ShaderModuleSet::GetShaderModule(
+          D3D11Device*    pDevice,
     const DxbcModuleInfo* pDxbcModuleInfo,
     const void*           pShaderBytecode,
           size_t          BytecodeLength,
@@ -108,7 +110,8 @@ namespace dxvk {
     
     // This shader has not been compiled yet, so we have to create a
     // new module. This takes a while, so we won't lock the structure.
-    D3D11CommonShader module(&key, pDxbcModuleInfo, pShaderBytecode, BytecodeLength);
+    D3D11CommonShader module(pDevice, &key,
+      pDxbcModuleInfo, pShaderBytecode, BytecodeLength);
     
     // Insert the new module into the lookup table. If another thread
     // has compiled the same shader in the meantime, we should return

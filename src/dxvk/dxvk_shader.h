@@ -38,6 +38,45 @@ namespace dxvk {
     uint32_t inputSlots  = 0;
     uint32_t outputSlots = 0;
   };
+
+
+  /**
+   * \brief Shader constants
+   * 
+   * Each shader can have constant data associated
+   * with it, which needs to be copied to a uniform
+   * buffer. The client API must then bind that buffer
+   * to an API-specific buffer binding when using the
+   * shader for rendering.
+   */
+  class DxvkShaderConstData {
+
+  public:
+
+    DxvkShaderConstData();
+    DxvkShaderConstData(
+            size_t                dwordCount,
+      const uint32_t*             dwordArray);
+
+    DxvkShaderConstData             (DxvkShaderConstData&& other);
+    DxvkShaderConstData& operator = (DxvkShaderConstData&& other);
+
+    ~DxvkShaderConstData();
+
+    const uint32_t* data() const {
+      return m_data;
+    }
+
+    size_t sizeInBytes() const {
+      return m_size * sizeof(uint32_t);
+    }
+
+  private:
+
+    size_t    m_size = 0;
+    uint32_t* m_data = nullptr;
+
+  };
   
   
   /**
@@ -110,7 +149,8 @@ namespace dxvk {
             uint32_t                slotCount,
       const DxvkResourceSlot*       slotInfos,
       const DxvkInterfaceSlots&     iface,
-      const SpirvCodeBuffer&        code);
+      const SpirvCodeBuffer&        code,
+            DxvkShaderConstData&&   constData);
     
     ~DxvkShader();
     
@@ -166,6 +206,18 @@ namespace dxvk {
     DxvkInterfaceSlots interfaceSlots() const {
       return m_interface;
     }
+
+    /**
+     * \brief Shader constant data
+     * 
+     * Returns a read-only reference to the 
+     * constant data associated with this
+     * shader object.
+     * \returns Shader constant data
+     */
+    const DxvkShaderConstData& shaderConstants() const {
+      return m_constData;
+    }
     
     /**
      * \brief Dumps SPIR-V shader
@@ -210,6 +262,7 @@ namespace dxvk {
     std::vector<DxvkResourceSlot> m_slots;
     std::vector<size_t>           m_idOffsets;
     DxvkInterfaceSlots            m_interface;
+    DxvkShaderConstData           m_constData;
     std::string                   m_debugName;
     
   };

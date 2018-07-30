@@ -69,16 +69,19 @@ namespace dxvk {
     
     D3D11CommonShader();
     D3D11CommonShader(
+            D3D11Device*    pDevice,
       const D3D11ShaderKey* pShaderKey,
       const DxbcModuleInfo* pDxbcModuleInfo,
       const void*           pShaderBytecode,
             size_t          BytecodeLength);
     ~D3D11CommonShader();
 
-    DxbcProgramType GetProgramType() const;
-    
     Rc<DxvkShader> GetShader() const {
       return m_shader;
+    }
+
+    Rc<DxvkBuffer> GetIcb() const {
+      return m_buffer;
     }
     
     std::string GetName() const {
@@ -89,6 +92,7 @@ namespace dxvk {
     
     std::string    m_name;
     Rc<DxvkShader> m_shader;
+    Rc<DxvkBuffer> m_buffer;
     
   };
   
@@ -163,6 +167,7 @@ namespace dxvk {
     ~D3D11ShaderModuleSet();
     
     D3D11CommonShader GetShaderModule(
+            D3D11Device*    pDevice,
       const DxbcModuleInfo* pDxbcModuleInfo,
       const void*           pShaderBytecode,
             size_t          BytecodeLength,

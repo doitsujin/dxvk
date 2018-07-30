@@ -2,6 +2,42 @@
 
 namespace dxvk {
   
+  DxvkShaderConstData::DxvkShaderConstData() {
+
+  }
+
+
+  DxvkShaderConstData::DxvkShaderConstData(
+          size_t                dwordCount,
+    const uint32_t*             dwordArray)
+  : m_size(dwordCount), m_data(new uint32_t[dwordCount]) {
+    for (size_t i = 0; i < dwordCount; i++)
+      m_data[i] = dwordArray[i];
+  }
+
+
+  DxvkShaderConstData::DxvkShaderConstData(DxvkShaderConstData&& other)
+  : m_size(other.m_size), m_data(other.m_data) {
+    other.m_size = 0;
+    other.m_data = nullptr;
+  }
+
+
+  DxvkShaderConstData& DxvkShaderConstData::operator = (DxvkShaderConstData&& other) {
+    delete[] m_data;
+    this->m_size = other.m_size;
+    this->m_data = other.m_data;
+    other.m_size = 0;
+    other.m_data = nullptr;
+    return *this;
+  }
+
+
+  DxvkShaderConstData::~DxvkShaderConstData() {
+    delete[] m_data;
+  }
+
+
   DxvkShaderModule::DxvkShaderModule(
     const Rc<vk::DeviceFn>&     vkd,
     const Rc<DxvkShader>&       shader,
@@ -44,8 +80,10 @@ namespace dxvk {
           uint32_t                slotCount,
     const DxvkResourceSlot*       slotInfos,
     const DxvkInterfaceSlots&     iface,
-    const SpirvCodeBuffer&        code)
-  : m_stage(stage), m_code(code), m_interface(iface) {
+    const SpirvCodeBuffer&        code,
+          DxvkShaderConstData&&   constData)
+  : m_stage(stage), m_code(code), m_interface(iface),
+    m_constData(std::move(constData)) {
     // Write back resource slot infos
     for (uint32_t i = 0; i < slotCount; i++)
       m_slots.push_back(slotInfos[i]);
