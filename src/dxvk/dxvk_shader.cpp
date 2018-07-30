@@ -143,9 +143,4 @@ namespace dxvk {
     m_code.store(outputStream);
   }
   
-  
-  void DxvkShader::read(std::istream& inputStream) {
-    m_code = SpirvCodeBuffer(inputStream);
-  }
-  
 }
