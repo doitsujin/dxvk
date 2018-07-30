@@ -4309,21 +4309,19 @@ namespace dxvk {
   
   DxbcRegisterPointer DxbcCompiler::emitGetImmConstBufPtr(
     const DxbcRegister&           operand) {
-    DxbcRegisterInfo ptrInfo;
-    ptrInfo.type.ctype   = DxbcScalarType::Float32;
-    ptrInfo.type.ccount  = 4;
-    ptrInfo.type.alength = 0;
-
-    DxbcRegisterPointer result;
-    result.type.ctype  = ptrInfo.type.ctype;
-    result.type.ccount = ptrInfo.type.ccount;
-    
     const DxbcRegisterValue constId
       = emitIndexLoad(operand.idx[0]);
     
     if (m_immConstBuf != 0) {
+      DxbcRegisterInfo ptrInfo;
+      ptrInfo.type.ctype   = DxbcScalarType::Uint32;
+      ptrInfo.type.ccount  = 4;
+      ptrInfo.type.alength = 0;
       ptrInfo.sclass = spv::StorageClassPrivate;
 
+      DxbcRegisterPointer result;
+      result.type.ctype  = ptrInfo.type.ctype;
+      result.type.ccount = ptrInfo.type.ccount;
       result.id = m_module.opAccessChain(
         getPointerTypeId(ptrInfo),
         m_immConstBuf, 1, &constId.id);
@@ -4332,8 +4330,15 @@ namespace dxvk {
       const std::array<uint32_t, 2> indices =
         {{ m_module.consti32(0), constId.id }};
       
+      DxbcRegisterInfo ptrInfo;
+      ptrInfo.type.ctype   = DxbcScalarType::Float32;
+      ptrInfo.type.ccount  = 4;
+      ptrInfo.type.alength = 0;
       ptrInfo.sclass = spv::StorageClassUniform;
 
+      DxbcRegisterPointer result;
+      result.type.ctype  = ptrInfo.type.ctype;
+      result.type.ccount = ptrInfo.type.ccount;
       result.id = m_module.opAccessChain(
         getPointerTypeId(ptrInfo),
         m_constantBuffers.at(Icb_BindingSlotId).varId,
