@@ -1,5 +1,6 @@
 #pragma once
 
+#include "dxvk_device_info.h"
 #include "dxvk_extensions.h"
 #include "dxvk_include.h"
 
@@ -60,10 +61,25 @@ namespace dxvk {
     /**
      * \brief Physical device properties
      * 
-     * Retrieves information about the device itself.
-     * \returns Physical device properties
+     * Returns a read-only reference to the core
+     * properties of the Vulkan physical device.
+     * \returns Physical device core properties
      */
-    VkPhysicalDeviceProperties deviceProperties() const;
+    const VkPhysicalDeviceProperties& deviceProperties() const {
+      return m_deviceInfo.core.properties;
+    }
+
+    /**
+     * \brief Device info
+     * 
+     * Returns a read-only reference to the full
+     * device info structure, including extended
+     * properties.
+     * \returns Device info struct
+     */
+    const DxvkDeviceInfo& devicePropertiesExt() const {
+      return m_deviceInfo;
+    }
     
     /**
      * \brief Memory properties
@@ -165,11 +181,18 @@ namespace dxvk {
     Rc<DxvkInstance>    m_instance;
     Rc<vk::InstanceFn>  m_vki;
     VkPhysicalDevice    m_handle;
+
+    DxvkNameSet         m_deviceExtensions;
+    DxvkDeviceInfo      m_deviceInfo;
     
     std::vector<VkQueueFamilyProperties> m_queueFamilies;
 
-    uint32_t getAdapterIndex() const;
+    void queryExtensions();
+    void queryDeviceInfo();
+    void queryDeviceQueues();
     
+    uint32_t getAdapterIndex() const;
+
     static void logNameList(const DxvkNameList& names);
     
   };

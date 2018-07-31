@@ -13,13 +13,9 @@ namespace dxvk {
   : m_instance      (instance),
     m_vki           (instance->vki()),
     m_handle        (handle) {
-    uint32_t numQueueFamilies = 0;
-    m_vki->vkGetPhysicalDeviceQueueFamilyProperties(
-      m_handle, &numQueueFamilies, nullptr);
-    
-    m_queueFamilies.resize(numQueueFamilies);
-    m_vki->vkGetPhysicalDeviceQueueFamilyProperties(
-      m_handle, &numQueueFamilies, m_queueFamilies.data());
+    this->queryExtensions();
+    this->queryDeviceInfo();
+    this->queryDeviceQueues();
   }
   
   
@@ -30,21 +26,6 @@ namespace dxvk {
   
   Rc<DxvkInstance> DxvkAdapter::instance() const {
     return m_instance;
-  }
-  
-  
-  VkPhysicalDeviceProperties DxvkAdapter::deviceProperties() const {
-    VkPhysicalDeviceProperties properties;
-    m_vki->vkGetPhysicalDeviceProperties(m_handle, &properties);
-    
-    if (DxvkGpuVendor(properties.vendorID) == DxvkGpuVendor::Nvidia) {
-      properties.driverVersion = VK_MAKE_VERSION(
-        VK_VERSION_MAJOR(properties.driverVersion),
-        VK_VERSION_MINOR(properties.driverVersion >> 0) >> 2,
-        VK_VERSION_PATCH(properties.driverVersion >> 2) >> 4);
-    }
-    
-    return properties;
   }
   
   
@@ -177,9 +158,8 @@ namespace dxvk {
     }};
 
     DxvkNameSet extensionsEnabled;
-    DxvkNameSet extensionsAvailable = DxvkNameSet::enumDeviceExtensions(m_vki, m_handle);
 
-    if (!extensionsAvailable.enableExtensions(
+    if (!m_deviceExtensions.enableExtensions(
           devExtensionList.size(),
           devExtensionList.data(),
           extensionsEnabled))
@@ -275,6 +255,44 @@ namespace dxvk {
   }
   
   
+  void DxvkAdapter::queryExtensions() {
+    m_deviceExtensions = DxvkNameSet::enumDeviceExtensions(m_vki, m_handle);
+  }
+
+
+  void DxvkAdapter::queryDeviceInfo() {
+    m_deviceInfo = DxvkDeviceInfo();
+    m_deviceInfo.core.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
+    m_deviceInfo.core.pNext = nullptr;
+
+    if (m_deviceExtensions.supports(VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME)) {
+      m_deviceInfo.extVertexAttributeDivisor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT;
+      m_deviceInfo.extVertexAttributeDivisor.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.extVertexAttributeDivisor);
+    }
+
+    m_vki->vkGetPhysicalDeviceProperties2KHR(m_handle, &m_deviceInfo.core);
+    
+    // Nvidia reports the driver version in a slightly different format
+    if (DxvkGpuVendor(m_deviceInfo.core.properties.vendorID) == DxvkGpuVendor::Nvidia) {
+      m_deviceInfo.core.properties.driverVersion = VK_MAKE_VERSION(
+        VK_VERSION_MAJOR(m_deviceInfo.core.properties.driverVersion),
+        VK_VERSION_MINOR(m_deviceInfo.core.properties.driverVersion >> 0) >> 2,
+        VK_VERSION_PATCH(m_deviceInfo.core.properties.driverVersion >> 2) >> 4);
+    }
+  }
+
+
+  void DxvkAdapter::queryDeviceQueues() {
+    uint32_t numQueueFamilies = 0;
+    m_vki->vkGetPhysicalDeviceQueueFamilyProperties(
+      m_handle, &numQueueFamilies, nullptr);
+    
+    m_queueFamilies.resize(numQueueFamilies);
+    m_vki->vkGetPhysicalDeviceQueueFamilyProperties(
+      m_handle, &numQueueFamilies, m_queueFamilies.data());
+  }
+
+
   uint32_t DxvkAdapter::getAdapterIndex() const {
     for (uint32_t i = 0; m_instance->enumAdapters(i) != nullptr; i++) {
       if (m_instance->enumAdapters(i).ptr() == this)
