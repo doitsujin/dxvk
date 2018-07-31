@@ -8,7 +8,7 @@ namespace dxvk {
   DxgiDevice::DxgiDevice(
           IDXGIObject*              pContainer,
           IDXGIVkAdapter*           pAdapter,
-    const VkPhysicalDeviceFeatures* pFeatures)
+    const DxvkDeviceFeatures*       pFeatures)
   : m_container (pContainer),
     m_adapter   (pAdapter) {
     m_device = m_adapter->GetDXVKAdapter()->createDevice(*pFeatures);

@@ -1563,10 +1563,9 @@ namespace dxvk {
         if (FeatureSupportDataSize != sizeof(D3D11_FEATURE_DATA_DOUBLES))
           return E_INVALIDARG;
         
-        const VkPhysicalDeviceFeatures& features = m_dxvkDevice->features();
-
         auto info = static_cast<D3D11_FEATURE_DATA_DOUBLES*>(pFeatureSupportData);
-        info->DoublePrecisionFloatShaderOps = features.shaderFloat64 && features.shaderInt64;
+        info->DoublePrecisionFloatShaderOps = m_dxvkDevice->features().core.features.shaderFloat64
+                                           && m_dxvkDevice->features().core.features.shaderInt64;
       } return S_OK;
       
       case D3D11_FEATURE_FORMAT_SUPPORT: {
@@ -1599,10 +1598,10 @@ namespace dxvk {
         
         // TODO implement, most of these are required for FL 11.1
         // https://msdn.microsoft.com/en-us/library/windows/desktop/hh404457(v=vs.85).aspx
-        const VkPhysicalDeviceFeatures& features = m_dxvkDevice->features();
+        const DxvkDeviceFeatures& features = m_dxvkDevice->features();
         
         auto info = static_cast<D3D11_FEATURE_DATA_D3D11_OPTIONS*>(pFeatureSupportData);
-        info->OutputMergerLogicOp                     = features.logicOp;
+        info->OutputMergerLogicOp                     = features.core.features.logicOp;
         info->UAVOnlyRenderingForcedSampleCount       = FALSE;
         info->DiscardAPIsSeenByDriver                 = FALSE;
         info->FlagsForUpdateAndCopySeenByDriver       = FALSE;
@@ -1760,10 +1759,10 @@ namespace dxvk {
       | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
       | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
     
-    if (m_dxvkDevice->features().geometryShader)
+    if (m_dxvkDevice->features().core.features.geometryShader)
       enabledShaderPipelineStages |= VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
     
-    if (m_dxvkDevice->features().tessellationShader) {
+    if (m_dxvkDevice->features().core.features.tessellationShader) {
       enabledShaderPipelineStages |= VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT
                                   |  VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
     }
@@ -1780,7 +1779,7 @@ namespace dxvk {
       return false;
     
     // Check whether all features are supported
-    const VkPhysicalDeviceFeatures features
+    const DxvkDeviceFeatures features
       = GetDeviceFeatures(adapter, featureLevel);
     
     if (!adapter->checkFeatureSupport(features))
@@ -1791,60 +1790,63 @@ namespace dxvk {
   }
   
   
-  VkPhysicalDeviceFeatures D3D11Device::GetDeviceFeatures(
+  DxvkDeviceFeatures D3D11Device::GetDeviceFeatures(
     const Rc<DxvkAdapter>&  adapter,
           D3D_FEATURE_LEVEL featureLevel) {
-    VkPhysicalDeviceFeatures supported = adapter->features();
-    VkPhysicalDeviceFeatures enabled   = {};
+    DxvkDeviceFeatures supported = adapter->features();
+    DxvkDeviceFeatures enabled   = {};
+
+    enabled.core.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
+    enabled.core.pNext = nullptr;
     
     if (featureLevel >= D3D_FEATURE_LEVEL_9_1) {
-      enabled.depthClamp                            = VK_TRUE;
-      enabled.depthBiasClamp                        = VK_TRUE;
-      enabled.fillModeNonSolid                      = VK_TRUE;
-      enabled.pipelineStatisticsQuery               = supported.pipelineStatisticsQuery;
-      enabled.sampleRateShading                     = VK_TRUE;
-      enabled.samplerAnisotropy                     = VK_TRUE;
-      enabled.shaderClipDistance                    = VK_TRUE;
-      enabled.shaderCullDistance                    = VK_TRUE;
-      enabled.robustBufferAccess                    = VK_TRUE;
+      enabled.core.features.depthClamp                            = VK_TRUE;
+      enabled.core.features.depthBiasClamp                        = VK_TRUE;
+      enabled.core.features.fillModeNonSolid                      = VK_TRUE;
+      enabled.core.features.pipelineStatisticsQuery               = supported.core.features.pipelineStatisticsQuery;
+      enabled.core.features.sampleRateShading                     = VK_TRUE;
+      enabled.core.features.samplerAnisotropy                     = VK_TRUE;
+      enabled.core.features.shaderClipDistance                    = VK_TRUE;
+      enabled.core.features.shaderCullDistance                    = VK_TRUE;
+      enabled.core.features.robustBufferAccess                    = VK_TRUE;
     }
     
     if (featureLevel >= D3D_FEATURE_LEVEL_9_2) {
-      enabled.occlusionQueryPrecise                 = VK_TRUE;
+      enabled.core.features.occlusionQueryPrecise                 = VK_TRUE;
     }
     
     if (featureLevel >= D3D_FEATURE_LEVEL_9_3) {
-      enabled.multiViewport                         = VK_TRUE;
-      enabled.independentBlend                      = VK_TRUE;
+      enabled.core.features.multiViewport                         = VK_TRUE;
+      enabled.core.features.independentBlend                      = VK_TRUE;
     }
     
     if (featureLevel >= D3D_FEATURE_LEVEL_10_0) {
-      enabled.fullDrawIndexUint32                   = VK_TRUE;
-      enabled.fragmentStoresAndAtomics              = VK_TRUE;
-      enabled.geometryShader                        = VK_TRUE;
-      enabled.logicOp                               = supported.logicOp;
-      enabled.shaderImageGatherExtended             = VK_TRUE;
-      enabled.textureCompressionBC                  = VK_TRUE;
+      enabled.core.features.fullDrawIndexUint32                   = VK_TRUE;
+      enabled.core.features.fragmentStoresAndAtomics              = VK_TRUE;
+      enabled.core.features.geometryShader                        = VK_TRUE;
+      enabled.core.features.logicOp                               = supported.core.features.logicOp;
+      enabled.core.features.shaderImageGatherExtended             = VK_TRUE;
+      enabled.core.features.textureCompressionBC                  = VK_TRUE;
     }
     
     if (featureLevel >= D3D_FEATURE_LEVEL_10_1) {
-      enabled.dualSrcBlend                          = VK_TRUE;
-      enabled.imageCubeArray                        = VK_TRUE;
+      enabled.core.features.dualSrcBlend                          = VK_TRUE;
+      enabled.core.features.imageCubeArray                        = VK_TRUE;
     }
     
     if (featureLevel >= D3D_FEATURE_LEVEL_11_0) {
-      enabled.shaderFloat64                         = supported.shaderFloat64;
-      enabled.shaderInt64                           = supported.shaderInt64;
-      enabled.tessellationShader                    = VK_TRUE;
+      enabled.core.features.shaderFloat64                         = supported.core.features.shaderFloat64;
+      enabled.core.features.shaderInt64                           = supported.core.features.shaderInt64;
+      enabled.core.features.tessellationShader                    = VK_TRUE;
       // TODO enable unconditionally once RADV gains support
-      enabled.shaderStorageImageMultisample         = supported.shaderStorageImageMultisample;
-      enabled.shaderStorageImageReadWithoutFormat   = supported.shaderStorageImageReadWithoutFormat;
-      enabled.shaderStorageImageWriteWithoutFormat  = VK_TRUE;
+      enabled.core.features.shaderStorageImageMultisample         = supported.core.features.shaderStorageImageMultisample;
+      enabled.core.features.shaderStorageImageReadWithoutFormat   = supported.core.features.shaderStorageImageReadWithoutFormat;
+      enabled.core.features.shaderStorageImageWriteWithoutFormat  = VK_TRUE;
     }
     
     if (featureLevel >= D3D_FEATURE_LEVEL_11_1) {
-      enabled.logicOp                               = VK_TRUE;
-      enabled.vertexPipelineStoresAndAtomics        = VK_TRUE;
+      enabled.core.features.logicOp                               = VK_TRUE;
+      enabled.core.features.vertexPipelineStoresAndAtomics        = VK_TRUE;
     }
     
     return enabled;
@@ -1936,7 +1938,7 @@ namespace dxvk {
         flags1 |= D3D11_FORMAT_SUPPORT_RENDER_TARGET
                |  D3D11_FORMAT_SUPPORT_MIP_AUTOGEN;
         
-        if (m_dxvkDevice->features().logicOp)
+        if (m_dxvkDevice->features().core.features.logicOp)
           flags2 |= D3D11_FORMAT_SUPPORT2_OUTPUT_MERGER_LOGIC_OP;
       }
       
@@ -1981,7 +1983,7 @@ namespace dxvk {
       flags1 |= D3D11_FORMAT_SUPPORT_TYPED_UNORDERED_ACCESS_VIEW;
       flags2 |= D3D11_FORMAT_SUPPORT2_UAV_TYPED_STORE;
       
-      if (m_dxvkDevice->features().shaderStorageImageReadWithoutFormat
+      if (m_dxvkDevice->features().core.features.shaderStorageImageReadWithoutFormat
        || Format == DXGI_FORMAT_R32_UINT
        || Format == DXGI_FORMAT_R32_SINT
        || Format == DXGI_FORMAT_R32_FLOAT)

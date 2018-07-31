@@ -21,9 +21,9 @@ namespace dxvk {
   DxbcOptions getDxbcDeviceOptions(const Rc<DxvkDevice>& device) {
     DxbcOptions flags;
     
-    VkPhysicalDeviceFeatures devFeatures = device->features();
+    const DxvkDeviceFeatures& devFeatures = device->features();
     
-    if (devFeatures.shaderStorageImageReadWithoutFormat)
+    if (devFeatures.core.features.shaderStorageImageReadWithoutFormat)
       flags.set(DxbcOption::UseStorageImageReadWithoutFormat);
     
     flags.set(DxbcOption::DeferKill);

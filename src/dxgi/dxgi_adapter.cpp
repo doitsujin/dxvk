@@ -210,7 +210,7 @@ namespace dxvk {
   
   HRESULT STDMETHODCALLTYPE DxgiAdapter::CreateDevice(
           IDXGIObject*              pContainer,
-    const VkPhysicalDeviceFeatures* pFeatures,
+    const DxvkDeviceFeatures*       pFeatures,
           IDXGIVkDevice**           ppDevice) {
     InitReturnPtr(ppDevice);
     

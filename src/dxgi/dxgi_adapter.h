@@ -50,7 +50,7 @@ namespace dxvk {
     
     HRESULT STDMETHODCALLTYPE CreateDevice(
             IDXGIObject*              pContainer,
-      const VkPhysicalDeviceFeatures* pFeatures,
+      const DxvkDeviceFeatures*       pFeatures,
             IDXGIVkDevice**           ppDevice) final;
     
     DXGI_VK_FORMAT_INFO STDMETHODCALLTYPE LookupFormat(

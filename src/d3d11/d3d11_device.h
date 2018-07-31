@@ -340,7 +340,7 @@ namespace dxvk {
       const Rc<DxvkAdapter>&  adapter,
             D3D_FEATURE_LEVEL featureLevel);
     
-    static VkPhysicalDeviceFeatures GetDeviceFeatures(
+    static DxvkDeviceFeatures GetDeviceFeatures(
       const Rc<DxvkAdapter>&  adapter,
             D3D_FEATURE_LEVEL featureLevel);
     

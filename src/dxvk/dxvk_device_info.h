@@ -17,4 +17,16 @@ namespace dxvk {
     VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT extVertexAttributeDivisor;
   };
 
+
+  /**
+   * \brief Device features
+   * 
+   * Stores core features and extension-specific features.
+   * If the respective extensions are not available, the
+   * extended features will be marked as unsupported.
+   */
+  struct DxvkDeviceFeatures {
+    VkPhysicalDeviceFeatures2KHR                        core;
+  };
+
 }

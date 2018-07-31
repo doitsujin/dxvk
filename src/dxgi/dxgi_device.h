@@ -16,7 +16,7 @@ namespace dxvk {
     DxgiDevice(
             IDXGIObject*              pContainer,
             IDXGIVkAdapter*           pAdapter,
-      const VkPhysicalDeviceFeatures* pFeatures);
+      const DxvkDeviceFeatures*       pFeatures);
     ~DxgiDevice();
     
     ULONG STDMETHODCALLTYPE AddRef() final;

@@ -55,7 +55,7 @@ IDXGIVkAdapter : public IDXGIAdapter2 {
    */
   virtual HRESULT STDMETHODCALLTYPE CreateDevice(
           IDXGIObject*              pContainer,
-    const VkPhysicalDeviceFeatures* pFeatures,
+    const dxvk::DxvkDeviceFeatures* pFeatures,
           IDXGIVkDevice**           ppDevice) = 0;
   
   /**

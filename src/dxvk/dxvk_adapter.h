@@ -82,6 +82,16 @@ namespace dxvk {
     }
     
     /**
+     * \brief Supportred device features
+     * 
+     * Queries the supported device features.
+     * \returns Device features
+     */
+    const DxvkDeviceFeatures& features() const {
+      return m_deviceFeatures;
+    }
+    
+    /**
      * \brief Memory properties
      * 
      * Queries the memory types and memory heaps of
@@ -89,14 +99,6 @@ namespace dxvk {
      * \returns Device memory properties
      */
     VkPhysicalDeviceMemoryProperties memoryProperties() const;
-    
-    /**
-     * \brief Supportred device features
-     * 
-     * Queries the supported device features.
-     * \returns Device features
-     */
-    VkPhysicalDeviceFeatures features() const;
     
     /**
      * \brief Queries format support
@@ -145,7 +147,7 @@ namespace dxvk {
      * \returns \c true if all features are supported
      */
     bool checkFeatureSupport(
-      const VkPhysicalDeviceFeatures& required) const;
+      const DxvkDeviceFeatures& required) const;
     
     /**
      * \brief Creates a DXVK device
@@ -155,7 +157,7 @@ namespace dxvk {
      * \returns Device handle
      */
     Rc<DxvkDevice> createDevice(
-      const VkPhysicalDeviceFeatures& enabledFeatures);
+            DxvkDeviceFeatures  enabledFeatures);
     
     /**
      * \brief Creates a surface
@@ -184,11 +186,13 @@ namespace dxvk {
 
     DxvkNameSet         m_deviceExtensions;
     DxvkDeviceInfo      m_deviceInfo;
+    DxvkDeviceFeatures  m_deviceFeatures;
     
     std::vector<VkQueueFamilyProperties> m_queueFamilies;
 
     void queryExtensions();
     void queryDeviceInfo();
+    void queryDeviceFeatures();
     void queryDeviceQueues();
     
     uint32_t getAdapterIndex() const;

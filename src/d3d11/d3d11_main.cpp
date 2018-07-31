@@ -69,7 +69,7 @@ extern "C" {
       Logger::info(str::format("D3D11CoreCreateDevice: Using feature level ", fl));
       Com<D3D11DeviceContainer> container = new D3D11DeviceContainer();
       
-      const VkPhysicalDeviceFeatures deviceFeatures
+      const DxvkDeviceFeatures deviceFeatures
         = D3D11Device::GetDeviceFeatures(adapter, fl);
       
       if (FAILED(dxvkAdapter->CreateDevice(container.ptr(), &deviceFeatures, &container->m_dxgiDevice))) {
