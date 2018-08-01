@@ -2301,7 +2301,6 @@ namespace dxvk {
     this->updateComputeShaderResources();
     this->updateComputePipelineState();
     this->updateComputeShaderDescriptors();
-    m_barriers.recordCommands(m_cmd);
   }
   
   
