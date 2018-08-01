@@ -6317,8 +6317,8 @@ namespace dxvk {
       // VK_SAMPLE_COUNT_1_BIT
       m_module.constvec4f32(0.5f, 0.5f, 0.0f, 0.0f),
       // VK_SAMPLE_COUNT_2_BIT
-      m_module.constvec4f32(0.25f, 0.25f, 0.0f, 0.0f),
       m_module.constvec4f32(0.75f, 0.75f, 0.0f, 0.0f),
+      m_module.constvec4f32(0.25f, 0.25f, 0.0f, 0.0f),
       // VK_SAMPLE_COUNT_4_BIT
       m_module.constvec4f32(0.375f, 0.125f, 0.0f, 0.0f),
       m_module.constvec4f32(0.785f, 0.375f, 0.0f, 0.0f),
