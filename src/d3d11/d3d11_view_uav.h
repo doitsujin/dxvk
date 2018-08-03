@@ -8,11 +8,6 @@ namespace dxvk {
   
   class D3D11Device;
   
-  struct D3D11UavCounter {
-    uint32_t atomicCtr;
-  };
-  
-  
   /**
    * \brief Unordered access view
    * 

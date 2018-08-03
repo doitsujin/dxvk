@@ -14,6 +14,7 @@
 #include "d3d11_options.h"
 #include "d3d11_shader.h"
 #include "d3d11_state.h"
+#include "d3d11_uav_counter.h"
 #include "d3d11_util.h"
 
 namespace dxvk {
@@ -316,10 +317,6 @@ namespace dxvk {
       return m_dxvkDevice;
     }
     
-    DxvkBufferSlice AllocateCounterSlice();
-    
-    void FreeCounterSlice(const DxvkBufferSlice& Slice);
-    
     void FlushInitContext();
     
     VkPipelineStageFlags GetEnabledShaderStages() const;
@@ -331,6 +328,14 @@ namespace dxvk {
     DXGI_VK_FORMAT_FAMILY LookupFamily(
             DXGI_FORMAT           Format,
             DXGI_VK_FORMAT_MODE   Mode) const;
+    
+    DxvkBufferSlice AllocCounterSlice() {
+      return m_uavCounters->AllocSlice();
+    }
+    
+    void FreeCounterSlice(const DxvkBufferSlice& Slice) {
+      m_uavCounters->FreeSlice(Slice);
+    }
     
     bool TestOption(D3D11Option Option) const {
       return m_d3d11Options.test(Option);
@@ -359,11 +364,8 @@ namespace dxvk {
     const DxbcOptions               m_dxbcOptions;
     
     D3D11Initializer*               m_initializer = nullptr;
+    D3D11UavCounterAllocator*       m_uavCounters = nullptr;
     D3D11ImmediateContext*          m_context     = nullptr;
-    
-    std::mutex                      m_counterMutex;
-    std::vector<uint32_t>           m_counterSlices;
-    Rc<DxvkBuffer>                  m_counterBuffer;
     
     D3D11StateObjectSet<D3D11BlendState>        m_bsStateObjects;
     D3D11StateObjectSet<D3D11DepthStencilState> m_dsStateObjects;
@@ -387,8 +389,6 @@ namespace dxvk {
     BOOL GetImageTypeSupport(
             VkFormat    Format,
             VkImageType Type) const;
-    
-    void CreateCounterBuffer();
     
     static D3D_FEATURE_LEVEL GetMaxFeatureLevel();
     

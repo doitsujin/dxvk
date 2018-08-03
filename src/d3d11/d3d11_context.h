@@ -7,6 +7,7 @@
 #include "d3d11_annotation.h"
 #include "d3d11_context_state.h"
 #include "d3d11_device_child.h"
+#include "d3d11_uav_counter.h"
 
 namespace dxvk {
   
