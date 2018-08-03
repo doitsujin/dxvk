@@ -2728,8 +2728,7 @@ namespace dxvk {
   void D3D11DeviceContext::DiscardBuffer(
           D3D11Buffer*                      pBuffer) {
     EmitCs([cBuffer = pBuffer->GetBuffer()] (DxvkContext* ctx) {
-      ctx->invalidateBuffer(cBuffer,
-        cBuffer->allocPhysicalSlice());
+      ctx->discardBuffer(cBuffer);
     });
   }
 

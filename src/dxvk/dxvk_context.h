@@ -323,6 +323,18 @@ namespace dxvk {
             VkExtent3D            srcExtent);
     
     /**
+     * \brief Discards a buffer
+     * 
+     * Renames the buffer in case it is currently
+     * used by the GPU in order to avoid having to
+     * insert barriers before future commands using
+     * the buffer.
+     * \param [in] buffer The buffer to discard
+     */
+    void discardBuffer(
+      const Rc<DxvkBuffer>&       buffer);
+    
+    /**
      * \brief Starts compute jobs
      * 
      * \param [in] x Number of threads in X direction
