@@ -2319,17 +2319,20 @@ namespace dxvk {
                       |  spv::MemorySemanticsAcquireReleaseMask;
     }
     
+    // According to the SPIR-V spec, OpControlBarrier should
+    // also act as a memory barrier if the memory semantics
+    // are not 'none', but this is currently broken on RADV.
+    if (memoryScope != spv::ScopeInvocation) {
+      m_module.opMemoryBarrier(
+        m_module.constu32(memoryScope),
+        m_module.constu32(memorySemantics));
+    }
+
     if (executionScope != spv::ScopeInvocation) {
       m_module.opControlBarrier(
         m_module.constu32(executionScope),
         m_module.constu32(memoryScope),
         m_module.constu32(memorySemantics));
-    } else if (memoryScope != spv::ScopeInvocation) {
-      m_module.opMemoryBarrier(
-        m_module.constu32(memoryScope),
-        m_module.constu32(memorySemantics));
-    } else {
-      Logger::warn("DxbcCompiler: sync instruction has no effect");
     }
   }
   
