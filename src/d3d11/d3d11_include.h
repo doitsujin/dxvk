@@ -40,6 +40,10 @@ typedef enum D3D11_FORMAT_SUPPORT2 {
   D3D11_FORMAT_SUPPORT2_MULTIPLANE_OVERLAY                            = 0x4000
 } D3D11_FORMAT_SUPPORT2;
 #ifndef __WINE__
+typedef enum D3D11_COPY_FLAGS {
+  D3D11_COPY_NO_OVERWRITE                                             = 0x1,
+  D3D11_COPY_DISCARD                                                  = 0x2,
+} D3D11_COPY_FLAGS;
 typedef struct D3D11_FEATURE_DATA_FORMAT_SUPPORT2 {
   DXGI_FORMAT InFormat;
   UINT        OutFormatSupport2;

@@ -1604,7 +1604,7 @@ namespace dxvk {
         info->OutputMergerLogicOp                     = features.core.features.logicOp;
         info->UAVOnlyRenderingForcedSampleCount       = FALSE;
         info->DiscardAPIsSeenByDriver                 = TRUE;
-        info->FlagsForUpdateAndCopySeenByDriver       = FALSE;
+        info->FlagsForUpdateAndCopySeenByDriver       = TRUE;
         info->ClearView                               = FALSE;
         info->CopyWithOverlap                         = FALSE;
         info->ConstantBufferPartialUpdate             = TRUE;
