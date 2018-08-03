@@ -61,19 +61,23 @@ namespace dxvk {
     return E_NOINTERFACE;
   }
   
-  void STDMETHODCALLTYPE D3D11DeviceContext::DiscardResource(ID3D11Resource * pResource) {
-    static bool s_errorShown = false;
-    
-    if (!std::exchange(s_errorShown, true))
-      Logger::err("D3D11DeviceContext::DiscardResource: Not implemented");
+
+  void STDMETHODCALLTYPE D3D11DeviceContext::DiscardResource(ID3D11Resource* pResource) {
+    D3D11_RESOURCE_DIMENSION resType = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+    pResource->GetType(&resType);
+
+    // We don't support the Discard API for images
+    if (resType == D3D11_RESOURCE_DIMENSION_BUFFER)
+      DiscardBuffer(reinterpret_cast<D3D11Buffer*>(pResource));
   }
 
-  void STDMETHODCALLTYPE D3D11DeviceContext::DiscardView(ID3D11View * pResourceView) {
-    static bool s_errorShown = false;
-    
-    if (!std::exchange(s_errorShown, true))
-      Logger::err("D3D11DeviceContext::DiscardView: Not implemented");
+
+  void STDMETHODCALLTYPE D3D11DeviceContext::DiscardView(ID3D11View* pResourceView) {
+    // Ignore. We don't do Discard for images or image
+    // subresources, and for buffers we could only really
+    // do this if the view covers the entire buffer.
   }
+
 
   void STDMETHODCALLTYPE D3D11DeviceContext::DiscardView1(
           ID3D11View*              pResourceView, 
@@ -2711,6 +2715,15 @@ namespace dxvk {
   }
   
   
+  void D3D11DeviceContext::DiscardBuffer(
+          D3D11Buffer*                      pBuffer) {
+    EmitCs([cBuffer = pBuffer->GetBuffer()] (DxvkContext* ctx) {
+      ctx->invalidateBuffer(cBuffer,
+        cBuffer->allocPhysicalSlice());
+    });
+  }
+
+
   void D3D11DeviceContext::SetConstantBuffers(
           DxbcProgramType                   ShaderStage,
           D3D11ConstantBufferBindings&      Bindings,

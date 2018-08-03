@@ -1603,7 +1603,7 @@ namespace dxvk {
         auto info = static_cast<D3D11_FEATURE_DATA_D3D11_OPTIONS*>(pFeatureSupportData);
         info->OutputMergerLogicOp                     = features.core.features.logicOp;
         info->UAVOnlyRenderingForcedSampleCount       = FALSE;
-        info->DiscardAPIsSeenByDriver                 = FALSE;
+        info->DiscardAPIsSeenByDriver                 = TRUE;
         info->FlagsForUpdateAndCopySeenByDriver       = FALSE;
         info->ClearView                               = FALSE;
         info->CopyWithOverlap                         = FALSE;

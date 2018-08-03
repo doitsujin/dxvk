@@ -703,6 +703,9 @@ namespace dxvk {
             UINT                              CtrSlot,
             D3D11UnorderedAccessView*         pUav);
     
+    void DiscardBuffer(
+            D3D11Buffer*                      pBuffer);
+    
     void SetConstantBuffers(
             DxbcProgramType                   ShaderStage,
             D3D11ConstantBufferBindings&      Bindings,
