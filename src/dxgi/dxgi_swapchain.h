@@ -132,8 +132,9 @@ namespace dxvk {
       RECT rect    = { 0, 0, 0, 0 };
     };
     
-    std::recursive_mutex m_mutex;
-    
+    std::mutex                      m_lockWindow;
+    std::mutex                      m_lockBuffer;
+
     Com<DxgiFactory>                m_factory;
     Com<DxgiAdapter>                m_adapter;
     Com<DxgiDevice>                 m_device;
