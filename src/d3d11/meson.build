@@ -18,6 +18,7 @@ d3d11_src = [
   'd3d11_present.cpp',
   'd3d11_query.cpp',
   'd3d11_rasterizer.cpp',
+  'd3d11_resource.cpp',
   'd3d11_sampler.cpp',
   'd3d11_shader.cpp',
   'd3d11_state.cpp',

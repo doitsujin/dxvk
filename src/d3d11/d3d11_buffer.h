@@ -37,6 +37,10 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc(
             D3D11_BUFFER_DESC *pDesc) final;
     
+    const D3D11_BUFFER_DESC* Desc() const {
+      return &m_desc;
+    }
+    
     Rc<DxvkBuffer> GetBuffer() const {
       return m_buffer;
     }
@@ -64,7 +68,7 @@ namespace dxvk {
     void SetMappedSlice(const DxvkPhysicalBufferSlice& slice) {
       m_mappedSlice = slice;
     }
-    
+
   private:
     
     const Com<D3D11Device>      m_device;

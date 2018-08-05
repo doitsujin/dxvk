@@ -1,0 +1,63 @@
+#pragma once
+
+#include "d3d11_buffer.h"
+#include "d3d11_texture.h"
+
+namespace dxvk {
+
+  /**
+   * \brief Common resource description
+   * 
+   * Stores the usage and bind flags of a resource
+   * Can be used to quickly determine whether it is
+   * legal to create a view for a given resource.
+   */
+  struct D3D11_COMMON_RESOURCE_DESC {
+    D3D11_USAGE       Usage;
+    UINT              BindFlags;
+    UINT              CPUAccessFlags;
+    UINT              MiscFlags;
+  };
+
+
+  /**
+   * \brief Queries common resource description
+   * 
+   * \param [in] pResource The resource to query
+   * \param [out] pDesc Resource description
+   * \returns \c S_OK on success, or \c E_INVALIDARG
+   */
+  HRESULT GetCommonResourceDesc(
+          ID3D11Resource*             pResource,
+          D3D11_COMMON_RESOURCE_DESC* pDesc);
+  
+  /**
+   * \brief Checks whether a resource has the given bind flags
+   * 
+   * Convenience method that checks whether a resource
+   * was created with \c all the specified bind flags
+   * set. Can be used to check whether a specific type
+   * of view can be created for this resource.
+   * \param [in] pResource The resource to check
+   * \param [in] BindFlags Bind flags to check
+   * \returns \c true if the resource supports the flags
+   */
+  BOOL CheckResourceBindFlags(
+          ID3D11Resource*             pResource,
+          UINT                        BindFlags);
+  
+  /**
+   * \brief Checks whether a format can be used to view a resource
+   * 
+   * Depending on whether the resource is a buffer or a
+   * texture, certain restrictions apply on which formats
+   * can be used to view the resource.
+   * \param [in] pResource The resource to check
+   * \param [in] Format The desired view format
+   * \returns \c true if the format is compatible
+   */
+  BOOL CheckResourceViewFormatCompatibility(
+          ID3D11Resource*             pResource,
+          DXGI_FORMAT                 Format);
+
+}
