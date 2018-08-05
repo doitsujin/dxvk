@@ -4,6 +4,17 @@
 
 namespace dxvk {
   
+  D3D11VkBackBuffer::D3D11VkBackBuffer(D3D11Texture2D* pTexture)
+  : m_texture(pTexture) {
+    m_texture->AddRefPrivate();
+  }
+
+
+  D3D11VkBackBuffer::~D3D11VkBackBuffer() {
+    m_texture->ReleasePrivate();
+  }
+
+
   HRESULT STDMETHODCALLTYPE D3D11VkBackBuffer::QueryInterface(REFIID riid, void** ppvObject) {
     return m_texture->QueryInterface(riid, ppvObject);
   }
