@@ -1,5 +1,6 @@
 #include "d3d11_device.h"
 #include "d3d11_buffer.h"
+#include "d3d11_resource.h"
 #include "d3d11_texture.h"
 #include "d3d11_view_srv.h"
 
@@ -10,6 +11,8 @@ namespace dxvk {
           ID3D11Resource*                   pResource,
     const D3D11_SHADER_RESOURCE_VIEW_DESC*  pDesc)
   : m_device(pDevice), m_resource(pResource), m_desc(*pDesc) {
+    ResourceAddRefPrivate(m_resource);
+
     D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resourceDim);
 
@@ -159,7 +162,7 @@ namespace dxvk {
   
   
   D3D11ShaderResourceView::~D3D11ShaderResourceView() {
-    
+    ResourceReleasePrivate(m_resource);
   }
   
   
@@ -186,7 +189,7 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11ShaderResourceView::GetResource(ID3D11Resource** ppResource) {
-    *ppResource = m_resource.ref();
+    *ppResource = ref(m_resource);
   }
   
   

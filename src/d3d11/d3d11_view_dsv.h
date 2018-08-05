@@ -72,7 +72,7 @@ namespace dxvk {
   private:
     
     Com<D3D11Device>                  m_device;
-    Com<ID3D11Resource>               m_resource;
+    ID3D11Resource*                   m_resource;
     D3D11_DEPTH_STENCIL_VIEW_DESC     m_desc;
     Rc<DxvkImageView>                 m_view;
     

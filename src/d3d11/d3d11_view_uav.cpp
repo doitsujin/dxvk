@@ -1,5 +1,6 @@
 #include "d3d11_device.h"
 #include "d3d11_buffer.h"
+#include "d3d11_resource.h"
 #include "d3d11_texture.h"
 #include "d3d11_view_uav.h"
 
@@ -10,6 +11,8 @@ namespace dxvk {
           ID3D11Resource*                   pResource,
     const D3D11_UNORDERED_ACCESS_VIEW_DESC* pDesc)
   : m_device(pDevice), m_resource(pResource), m_desc(*pDesc) {
+    ResourceAddRefPrivate(m_resource);
+
     D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resourceDim);
     
@@ -103,6 +106,8 @@ namespace dxvk {
   
   
   D3D11UnorderedAccessView::~D3D11UnorderedAccessView() {
+    ResourceReleasePrivate(m_resource);
+
     if (m_counterSlice.defined())
       m_device->FreeCounterSlice(m_counterSlice);
   }
@@ -131,7 +136,7 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11UnorderedAccessView::GetResource(ID3D11Resource** ppResource) {
-    *ppResource = m_resource.ref();
+    *ppResource = ref(m_resource);
   }
   
   

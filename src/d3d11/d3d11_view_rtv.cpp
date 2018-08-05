@@ -1,5 +1,6 @@
 #include "d3d11_device.h"
 #include "d3d11_buffer.h"
+#include "d3d11_resource.h"
 #include "d3d11_texture.h"
 #include "d3d11_view_rtv.h"
 
@@ -10,6 +11,8 @@ namespace dxvk {
           ID3D11Resource*                   pResource,
     const D3D11_RENDER_TARGET_VIEW_DESC*    pDesc)
   : m_device(pDevice), m_resource(pResource), m_desc(*pDesc) {
+    ResourceAddRefPrivate(m_resource);
+
     DxvkImageViewCreateInfo viewInfo;
     viewInfo.format = pDevice->LookupFormat(pDesc->Format, DXGI_VK_FORMAT_MODE_COLOR).Format;
     viewInfo.aspect = imageFormatInfo(viewInfo.format)->aspectMask;
@@ -90,7 +93,7 @@ namespace dxvk {
   
   
   D3D11RenderTargetView::~D3D11RenderTargetView() {
-    
+    ResourceReleasePrivate(m_resource);
   }
   
   
@@ -117,7 +120,7 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11RenderTargetView::GetResource(ID3D11Resource** ppResource) {
-    *ppResource = m_resource.ref();
+    *ppResource = ref(m_resource);
   }
   
   
