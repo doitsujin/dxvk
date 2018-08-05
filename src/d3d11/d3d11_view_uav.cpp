@@ -6,25 +6,100 @@
 namespace dxvk {
   
   D3D11UnorderedAccessView::D3D11UnorderedAccessView(
-          D3D11Device*                      device,
-          ID3D11Resource*                   resource,
-    const D3D11_UNORDERED_ACCESS_VIEW_DESC& desc,
-    const Rc<DxvkBufferView>&               bufferView,
-    const DxvkBufferSlice&                  counterSlice)
-  : m_device(device), m_resource(resource),
-    m_desc(desc), m_bufferView(bufferView),
-    m_counterSlice(counterSlice) { }
-  
-  
-  D3D11UnorderedAccessView::D3D11UnorderedAccessView(
-          D3D11Device*                      device,
-          ID3D11Resource*                   resource,
-    const D3D11_UNORDERED_ACCESS_VIEW_DESC& desc,
-    const Rc<DxvkImageView>&                imageView,
-    const DxvkBufferSlice&                  counterSlice)
-  : m_device(device), m_resource(resource),
-    m_desc(desc), m_imageView(imageView),
-    m_counterSlice(counterSlice) { }
+          D3D11Device*                      pDevice,
+          ID3D11Resource*                   pResource,
+    const D3D11_UNORDERED_ACCESS_VIEW_DESC* pDesc)
+  : m_device(pDevice), m_resource(pResource), m_desc(*pDesc) {
+    D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+    pResource->GetType(&resourceDim);
+    
+    if (resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER) {
+      auto buffer = static_cast<D3D11Buffer*>(pResource);
+      
+      DxvkBufferViewCreateInfo viewInfo;
+      
+      if (pDesc->Buffer.Flags & D3D11_BUFFEREX_SRV_FLAG_RAW) {
+        viewInfo.format      = VK_FORMAT_R32_UINT;
+        viewInfo.rangeOffset = sizeof(uint32_t) * pDesc->Buffer.FirstElement;
+        viewInfo.rangeLength = sizeof(uint32_t) * pDesc->Buffer.NumElements;
+      } else if (pDesc->Format == DXGI_FORMAT_UNKNOWN) {
+        viewInfo.format      = VK_FORMAT_R32_UINT;
+        viewInfo.rangeOffset = buffer->Desc()->StructureByteStride * pDesc->Buffer.FirstElement;
+        viewInfo.rangeLength = buffer->Desc()->StructureByteStride * pDesc->Buffer.NumElements;
+      } else {
+        viewInfo.format = pDevice->LookupFormat(pDesc->Format, DXGI_VK_FORMAT_MODE_COLOR).Format;
+        
+        const DxvkFormatInfo* formatInfo = imageFormatInfo(viewInfo.format);
+        viewInfo.rangeOffset = formatInfo->elementSize * pDesc->Buffer.FirstElement;
+        viewInfo.rangeLength = formatInfo->elementSize * pDesc->Buffer.NumElements;
+      }
+      
+      if (pDesc->Buffer.Flags & (D3D11_BUFFER_UAV_FLAG_APPEND | D3D11_BUFFER_UAV_FLAG_COUNTER))
+        m_counterSlice = pDevice->AllocCounterSlice();
+      
+      m_bufferView = pDevice->GetDXVKDevice()->createBufferView(
+        buffer->GetBuffer(), viewInfo);
+    } else {
+      const DXGI_VK_FORMAT_INFO formatInfo = pDevice->LookupFormat(
+        pDesc->Format, GetCommonTexture(pResource)->GetFormatMode());
+      
+      DxvkImageViewCreateInfo viewInfo;
+      viewInfo.format  = formatInfo.Format;
+      viewInfo.aspect  = formatInfo.Aspect;
+      viewInfo.swizzle = formatInfo.Swizzle;
+      viewInfo.usage   = VK_IMAGE_USAGE_STORAGE_BIT;
+      
+      switch (pDesc->ViewDimension) {
+        case D3D11_UAV_DIMENSION_TEXTURE1D:
+          viewInfo.type      = VK_IMAGE_VIEW_TYPE_1D;
+          viewInfo.minLevel  = pDesc->Texture1D.MipSlice;
+          viewInfo.numLevels = 1;
+          viewInfo.minLayer  = 0;
+          viewInfo.numLayers = 1;
+          break;
+          
+        case D3D11_UAV_DIMENSION_TEXTURE1DARRAY:
+          viewInfo.type      = VK_IMAGE_VIEW_TYPE_1D_ARRAY;
+          viewInfo.minLevel  = pDesc->Texture1DArray.MipSlice;
+          viewInfo.numLevels = 1;
+          viewInfo.minLayer  = pDesc->Texture1DArray.FirstArraySlice;
+          viewInfo.numLayers = pDesc->Texture1DArray.ArraySize;
+          break;
+          
+        case D3D11_UAV_DIMENSION_TEXTURE2D:
+          viewInfo.type      = VK_IMAGE_VIEW_TYPE_2D;
+          viewInfo.minLevel  = pDesc->Texture2D.MipSlice;
+          viewInfo.numLevels = 1;
+          viewInfo.minLayer  = 0;
+          viewInfo.numLayers = 1;
+          break;
+          
+        case D3D11_UAV_DIMENSION_TEXTURE2DARRAY:
+          viewInfo.type      = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+          viewInfo.minLevel  = pDesc->Texture2DArray.MipSlice;
+          viewInfo.numLevels = 1;
+          viewInfo.minLayer  = pDesc->Texture2DArray.FirstArraySlice;
+          viewInfo.numLayers = pDesc->Texture2DArray.ArraySize;
+          break;
+          
+        case D3D11_UAV_DIMENSION_TEXTURE3D:
+          // FIXME we actually have to map this to a
+          // 2D array view in order to support W slices
+          viewInfo.type      = VK_IMAGE_VIEW_TYPE_3D;
+          viewInfo.minLevel  = pDesc->Texture3D.MipSlice;
+          viewInfo.numLevels = 1;
+          viewInfo.minLayer  = 0;
+          viewInfo.numLayers = 1;
+          break;
+          
+        default:
+          throw DxvkError("D3D11: Invalid view dimension for image UAV");
+      }
+
+      m_imageView = pDevice->GetDXVKDevice()->createImageView(
+        GetCommonTexture(pResource)->GetImage(), viewInfo);
+    }
+  }
   
   
   D3D11UnorderedAccessView::~D3D11UnorderedAccessView() {

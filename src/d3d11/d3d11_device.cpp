@@ -345,139 +345,17 @@ namespace dxvk {
       Logger::err(str::format("D3D11: Incompatible UAV format: ", desc.Format));
       return E_INVALIDARG;
     }
+
+    // Create the view if requested
+    if (ppUAView == nullptr)
+      return S_FALSE;
     
-    if (resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER) {
-      auto resource = static_cast<D3D11Buffer*>(pResource);
-      
-      D3D11_BUFFER_DESC resourceDesc;
-      resource->GetDesc(&resourceDesc);
-      
-      DxvkBufferViewCreateInfo viewInfo;
-      
-      if (desc.Buffer.Flags & D3D11_BUFFEREX_SRV_FLAG_RAW) {
-        viewInfo.format      = VK_FORMAT_R32_UINT;
-        viewInfo.rangeOffset = sizeof(uint32_t) * desc.Buffer.FirstElement;
-        viewInfo.rangeLength = sizeof(uint32_t) * desc.Buffer.NumElements;
-      } else if (desc.Format == DXGI_FORMAT_UNKNOWN) {
-        viewInfo.format      = VK_FORMAT_R32_UINT;
-        viewInfo.rangeOffset = resourceDesc.StructureByteStride * desc.Buffer.FirstElement;
-        viewInfo.rangeLength = resourceDesc.StructureByteStride * desc.Buffer.NumElements;
-      } else {
-        // Typed buffer view - must use an uncompressed color format
-        viewInfo.format = m_dxgiAdapter->LookupFormat(
-          desc.Format, DXGI_VK_FORMAT_MODE_COLOR).Format;
-        
-        const DxvkFormatInfo* formatInfo = imageFormatInfo(viewInfo.format);
-        viewInfo.rangeOffset = formatInfo->elementSize * desc.Buffer.FirstElement;
-        viewInfo.rangeLength = formatInfo->elementSize * desc.Buffer.NumElements;
-        
-        if (formatInfo->flags.test(DxvkFormatFlag::BlockCompressed)) {
-          Logger::err("D3D11Device: Compressed formats for buffer views not supported");
-          return E_INVALIDARG;
-        }
-      }
-      
-      if (ppUAView == nullptr)
-        return S_FALSE;
-      
-      try {
-        // Fetch a buffer slice for atomic
-        // append/consume functionality.
-        DxvkBufferSlice counterSlice;
-        
-        if (desc.Buffer.Flags & (D3D11_BUFFER_UAV_FLAG_APPEND | D3D11_BUFFER_UAV_FLAG_COUNTER))
-          counterSlice = AllocCounterSlice();
-        
-        *ppUAView = ref(new D3D11UnorderedAccessView(
-          this, pResource, desc,
-          m_dxvkDevice->createBufferView(
-            resource->GetBufferSlice().buffer(), viewInfo),
-          counterSlice));
-        return S_OK;
-      } catch (const DxvkError& e) {
-        Logger::err(e.message());
-        return E_FAIL;
-      }
-    } else {
-      const D3D11CommonTexture* textureInfo = GetCommonTexture(pResource);
-      
-      // Fill in the view info. The view type depends solely
-      // on the view dimension field in the view description,
-      // not on the resource type.
-      const DXGI_VK_FORMAT_INFO formatInfo = m_dxgiAdapter
-        ->LookupFormat(desc.Format, textureInfo->GetFormatMode());
-      
-      DxvkImageViewCreateInfo viewInfo;
-      viewInfo.format  = formatInfo.Format;
-      viewInfo.aspect  = formatInfo.Aspect;
-      viewInfo.swizzle = formatInfo.Swizzle;
-      viewInfo.usage   = VK_IMAGE_USAGE_STORAGE_BIT;
-      
-      switch (desc.ViewDimension) {
-        case D3D11_UAV_DIMENSION_TEXTURE1D:
-          viewInfo.type      = VK_IMAGE_VIEW_TYPE_1D;
-          viewInfo.minLevel  = desc.Texture1D.MipSlice;
-          viewInfo.numLevels = 1;
-          viewInfo.minLayer  = 0;
-          viewInfo.numLayers = 1;
-          break;
-          
-        case D3D11_UAV_DIMENSION_TEXTURE1DARRAY:
-          viewInfo.type      = VK_IMAGE_VIEW_TYPE_1D_ARRAY;
-          viewInfo.minLevel  = desc.Texture1DArray.MipSlice;
-          viewInfo.numLevels = 1;
-          viewInfo.minLayer  = desc.Texture1DArray.FirstArraySlice;
-          viewInfo.numLayers = desc.Texture1DArray.ArraySize;
-          break;
-          
-        case D3D11_UAV_DIMENSION_TEXTURE2D:
-          viewInfo.type      = VK_IMAGE_VIEW_TYPE_2D;
-          viewInfo.minLevel  = desc.Texture2D.MipSlice;
-          viewInfo.numLevels = 1;
-          viewInfo.minLayer  = 0;
-          viewInfo.numLayers = 1;
-          break;
-          
-        case D3D11_UAV_DIMENSION_TEXTURE2DARRAY:
-          viewInfo.type      = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-          viewInfo.minLevel  = desc.Texture2DArray.MipSlice;
-          viewInfo.numLevels = 1;
-          viewInfo.minLayer  = desc.Texture2DArray.FirstArraySlice;
-          viewInfo.numLayers = desc.Texture2DArray.ArraySize;
-          break;
-          
-        case D3D11_UAV_DIMENSION_TEXTURE3D:
-          // FIXME we actually have to map this to a
-          // 2D array view in order to support W slices
-          viewInfo.type      = VK_IMAGE_VIEW_TYPE_3D;
-          viewInfo.minLevel  = desc.Texture3D.MipSlice;
-          viewInfo.numLevels = 1;
-          viewInfo.minLayer  = 0;
-          viewInfo.numLayers = 1;
-          break;
-          
-        default:
-          Logger::err(str::format(
-            "D3D11: View dimension not supported for UAV: ",
-            desc.ViewDimension));
-          return E_INVALIDARG;
-      }
-      
-      if (ppUAView == nullptr)
-        return S_FALSE;
-      
-      try {
-        *ppUAView = ref(new D3D11UnorderedAccessView(
-          this, pResource, desc,
-          m_dxvkDevice->createImageView(
-            textureInfo->GetImage(),
-            viewInfo),
-          DxvkBufferSlice()));
-        return S_OK;
-      } catch (const DxvkError& e) {
-        Logger::err(e.message());
-        return E_FAIL;
-      }
+    try {
+      *ppUAView = ref(new D3D11UnorderedAccessView(this, pResource, &desc));
+      return S_OK;
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return E_FAIL;
     }
   }
   

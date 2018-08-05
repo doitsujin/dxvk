@@ -20,18 +20,9 @@ namespace dxvk {
   public:
     
     D3D11UnorderedAccessView(
-            D3D11Device*                      device,
-            ID3D11Resource*                   resource,
-      const D3D11_UNORDERED_ACCESS_VIEW_DESC& desc,
-      const Rc<DxvkBufferView>&               bufferView,
-      const DxvkBufferSlice&                  counterSlice);
-    
-    D3D11UnorderedAccessView(
-            D3D11Device*                      device,
-            ID3D11Resource*                   resource,
-      const D3D11_UNORDERED_ACCESS_VIEW_DESC& desc,
-      const Rc<DxvkImageView>&                imageView,
-      const DxvkBufferSlice&                  counterSlice);
+            D3D11Device*                      pDevice,
+            ID3D11Resource*                   pResource,
+      const D3D11_UNORDERED_ACCESS_VIEW_DESC* pDesc);
     
     ~D3D11UnorderedAccessView();
     
