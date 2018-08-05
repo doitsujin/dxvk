@@ -59,5 +59,27 @@ namespace dxvk {
   BOOL CheckResourceViewFormatCompatibility(
           ID3D11Resource*             pResource,
           DXGI_FORMAT                 Format);
+  
+  /**
+   * \brief Increments private reference count of a resource
+   * 
+   * Helper method that figures out the exact type of
+   * the resource and calls its \c AddRefPrivate method.
+   * \param [in] pResource The resource to reference
+   * \returns \c S_OK, or \c E_INVALIDARG for an invalid resource
+   */
+  HRESULT ResourceAddRefPrivate(
+          ID3D11Resource*             pResource);
+  
+  /**
+   * \brief Decrements private reference count of a resource
+   * 
+   * Helper method that figures out the exact type of
+   * the resource and calls its \c ReleasePrivate method.
+   * \param [in] pResource The resource to reference
+   * \returns \c S_OK, or \c E_INVALIDARG for an invalid resource
+   */
+  HRESULT ResourceReleasePrivate(
+          ID3D11Resource*             pResource);
 
 }
