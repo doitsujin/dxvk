@@ -16,10 +16,9 @@ namespace dxvk {
   public:
     
     D3D11RenderTargetView(
-            D3D11Device*                      device,
-            ID3D11Resource*                   resource,
-      const D3D11_RENDER_TARGET_VIEW_DESC&    desc,
-      const Rc<DxvkImageView>&                view);
+            D3D11Device*                      pDevice,
+            ID3D11Resource*                   pResource,
+      const D3D11_RENDER_TARGET_VIEW_DESC*    pDesc);
     
     ~D3D11RenderTargetView();
     
