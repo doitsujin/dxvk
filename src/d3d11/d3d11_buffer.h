@@ -77,5 +77,15 @@ namespace dxvk {
       const D3D11_BUFFER_DESC* pDesc) const;
     
   };
+
+
+  /**
+   * \brief Retrieves buffer from resource pointer
+   * 
+   * \param [in] pResource The resource to query
+   * \returns Pointer to buffer, or \c nullptr
+   */
+  D3D11Buffer* GetCommonBuffer(
+          ID3D11Resource*       pResource);
   
 }

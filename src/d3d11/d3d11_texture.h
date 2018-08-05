@@ -365,11 +365,10 @@ namespace dxvk {
   
   
   /**
-   * \brief Retrieves common info about a texture
+   * \brief Retrieves texture from resource pointer
    * 
-   * \param [in] pResource The resource. Must be a texture.
-   * \param [out] pTextureInfo Pointer to the texture info struct.
-   * \returns E_INVALIDARG if the resource is not a texture
+   * \param [in] pResource The resource to query
+   * \returns Pointer to texture info, or \c nullptr
    */
   D3D11CommonTexture* GetCommonTexture(
           ID3D11Resource*       pResource);

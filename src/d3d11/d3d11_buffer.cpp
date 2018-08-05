@@ -150,4 +150,14 @@ namespace dxvk {
     return m_device->GetDXVKDevice()->createBuffer(info, memoryFlags);
   }
   
+
+  D3D11Buffer* GetCommonBuffer(ID3D11Resource* pResource) {
+    D3D11_RESOURCE_DIMENSION dimension = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+    pResource->GetType(&dimension);
+
+    return dimension == D3D11_RESOURCE_DIMENSION_BUFFER
+      ? static_cast<D3D11Buffer*>(pResource)
+      : nullptr;
+  }
+
 }
