@@ -16,16 +16,9 @@ namespace dxvk {
   public:
     
     D3D11ShaderResourceView(
-            D3D11Device*                      device,
-            ID3D11Resource*                   resource,
-      const D3D11_SHADER_RESOURCE_VIEW_DESC&  desc,
-      const Rc<DxvkBufferView>&               bufferView);
-    
-    D3D11ShaderResourceView(
-            D3D11Device*                      device,
-            ID3D11Resource*                   resource,
-      const D3D11_SHADER_RESOURCE_VIEW_DESC&  desc,
-      const Rc<DxvkImageView>&                imageView);
+            D3D11Device*                      pDevice,
+            ID3D11Resource*                   pResource,
+      const D3D11_SHADER_RESOURCE_VIEW_DESC*  pDesc);
     
     ~D3D11ShaderResourceView();
     
