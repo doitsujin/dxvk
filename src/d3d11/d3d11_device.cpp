@@ -798,9 +798,6 @@ namespace dxvk {
           ID3D11DepthStencilView**          ppDepthStencilView) {
     InitReturnPtr(ppDepthStencilView);
     
-    D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
-    pResource->GetType(&resourceDim);
-    
     // The view description is optional. If not defined, it
     // will use the resource's format and all array layers.
     D3D11_DEPTH_STENCIL_VIEW_DESC desc;
@@ -827,88 +824,12 @@ namespace dxvk {
       return E_INVALIDARG;
     }
     
-    // Retrieve the image that we are going to create the view for
-    const D3D11CommonTexture* textureInfo = GetCommonTexture(pResource);
-    
-    // Fill in Vulkan image view info
-    DxvkImageViewCreateInfo viewInfo;
-    viewInfo.format = m_dxgiAdapter->LookupFormat(desc.Format, DXGI_VK_FORMAT_MODE_DEPTH).Format;
-    viewInfo.aspect = imageFormatInfo(viewInfo.format)->aspectMask;
-    viewInfo.usage  = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-    
-    switch (desc.ViewDimension) {
-      case D3D11_DSV_DIMENSION_TEXTURE1D:
-        viewInfo.type       = VK_IMAGE_VIEW_TYPE_1D;
-        viewInfo.minLevel   = desc.Texture1D.MipSlice;
-        viewInfo.numLevels  = 1;
-        viewInfo.minLayer   = 0;
-        viewInfo.numLayers  = 1;
-        break;
-        
-      case D3D11_DSV_DIMENSION_TEXTURE1DARRAY:
-        viewInfo.type       = VK_IMAGE_VIEW_TYPE_1D_ARRAY;
-        viewInfo.minLevel   = desc.Texture1DArray.MipSlice;
-        viewInfo.numLevels  = 1;
-        viewInfo.minLayer   = desc.Texture1DArray.FirstArraySlice;
-        viewInfo.numLayers  = desc.Texture1DArray.ArraySize;
-        break;
-        
-      case D3D11_DSV_DIMENSION_TEXTURE2D:
-        viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D;
-        viewInfo.minLevel   = desc.Texture2D.MipSlice;
-        viewInfo.numLevels  = 1;
-        viewInfo.minLayer   = 0;
-        viewInfo.numLayers  = 1;
-        break;
-        
-      case D3D11_DSV_DIMENSION_TEXTURE2DARRAY:
-        viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-        viewInfo.minLevel   = desc.Texture2DArray.MipSlice;
-        viewInfo.numLevels  = 1;
-        viewInfo.minLayer   = desc.Texture2DArray.FirstArraySlice;
-        viewInfo.numLayers  = desc.Texture2DArray.ArraySize;
-        break;
-        
-      case D3D11_DSV_DIMENSION_TEXTURE2DMS:
-        viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D;
-        viewInfo.minLevel   = 0;
-        viewInfo.numLevels  = 1;
-        viewInfo.minLayer   = 0;
-        viewInfo.numLayers  = 1;
-        break;
-      
-      case D3D11_DSV_DIMENSION_TEXTURE2DMSARRAY:
-        viewInfo.type       = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-        viewInfo.minLevel   = 0;
-        viewInfo.numLevels  = 1;
-        viewInfo.minLayer   = desc.Texture2DMSArray.FirstArraySlice;
-        viewInfo.numLayers  = desc.Texture2DMSArray.ArraySize;
-        break;
-      
-      default:
-        Logger::err(str::format(
-          "D3D11: pDesc->ViewDimension not supported for depth-stencil views: ",
-          desc.ViewDimension));
-        return E_INVALIDARG;
-    }
-    
-    // Normalize view type so that we won't accidentally
-    // bind 2D array views and 2D views at the same time
-    if (viewInfo.numLayers == 1) {
-      if (viewInfo.type == VK_IMAGE_VIEW_TYPE_1D_ARRAY) viewInfo.type = VK_IMAGE_VIEW_TYPE_1D;
-      if (viewInfo.type == VK_IMAGE_VIEW_TYPE_2D_ARRAY) viewInfo.type = VK_IMAGE_VIEW_TYPE_2D;
-    }
-    
     // Create the actual image view if requested
     if (ppDepthStencilView == nullptr)
       return S_FALSE;
     
     try {
-      *ppDepthStencilView = ref(new D3D11DepthStencilView(
-        this, pResource, desc,
-        m_dxvkDevice->createImageView(
-          textureInfo->GetImage(),
-          viewInfo)));
+      *ppDepthStencilView = ref(new D3D11DepthStencilView(this, pResource, &desc));
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
