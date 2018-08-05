@@ -31,15 +31,11 @@ const std::string g_vertexShaderCode =
   "  float4 pos   : SV_POSITION;\n"
   "  float4 color : COLOR;\n"
   "};\n"
-  "static const float4 g_pos[] = {\n"
-  "  float4(-0.25f, -0.15f, 0.0f, 1.0f),\n"
-  "  float4(-0.50f, -0.65f, 0.0f, 1.0f),\n"
-  "  float4(-0.75f, -0.15f, 0.0f, 1.0f) };\n"
   "vs_out main(float4 vsIn : IN_POSITION,\n"
   "    uint vid : SV_VERTEXID,\n"
   "    uint iid : SV_INSTANCEID) {\n"
   "  vs_out result;\n"
-  "  result.pos = g_pos[vid];\n"
+  "  result.pos = vsIn;\n"
   "  result.color.x = buf[vid].x;\n"
   "  result.color.y = buf[iid * 3].y;\n"
   "  result.color.z = buf[0].z;\n"
@@ -339,24 +335,6 @@ public:
         break;
       }
     }
-    
-    // Swap chain stuff
-    uint32_t frameId = m_frameId++;
-    
-    if (frameId == 300) {
-      m_report = true;
-      std::cout << "fullscreen begin" << std::endl;
-      m_swapChain->SetFullscreenState(TRUE, nullptr);
-      std::cout << "fullscreen end" << std::endl;
-      m_report = false;
-    } else if (frameId == 600) {
-      m_report = true;
-      std::cout << "restore begin" << std::endl;
-      m_swapChain->SetFullscreenState(FALSE, nullptr);
-      std::cout << "restore end" << std::endl;
-      m_report = false;
-    }
-    
   }
   
   
