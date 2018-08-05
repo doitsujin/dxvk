@@ -10,6 +10,7 @@
 #include "d3d11_interop.h"
 #include "d3d11_present.h"
 #include "d3d11_query.h"
+#include "d3d11_resource.h"
 #include "d3d11_sampler.h"
 #include "d3d11_shader.h"
 #include "d3d11_texture.h"
@@ -287,16 +288,23 @@ namespace dxvk {
         return E_INVALIDARG;
     }
     
+    // Check whether SRVs are supported for the resource at all
+    if (!CheckResourceBindFlags(pResource, D3D11_BIND_SHADER_RESOURCE)) {
+      Logger::err("D3D11: Trying to create SRV for texture without D3D11_BIND_SHADER_RESOURCE");
+      return E_INVALIDARG;
+    }
+    
+    // Check whether we can use the requested format for the view
+    if (!CheckResourceViewFormatCompatibility(pResource, desc.Format)) {
+      Logger::err(str::format("D3D11: Incompatible SRV format: ", desc.Format));
+      return E_INVALIDARG;
+    }
+    
     if (resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER) {
       auto resource = static_cast<D3D11Buffer*>(pResource);
       
       D3D11_BUFFER_DESC resourceDesc;
       resource->GetDesc(&resourceDesc);
-      
-      if ((resourceDesc.BindFlags & D3D11_BIND_SHADER_RESOURCE) == 0) {
-        Logger::warn("D3D11: Trying to create SRV for buffer without D3D11_BIND_SHADER_RESOURCE");
-        return E_INVALIDARG;
-      }
       
       DxvkBufferViewCreateInfo viewInfo;
       
@@ -356,19 +364,6 @@ namespace dxvk {
       }
     } else {
       const D3D11CommonTexture* textureInfo = GetCommonTexture(pResource);
-      
-      if ((textureInfo->Desc()->BindFlags & D3D11_BIND_SHADER_RESOURCE) == 0) {
-        Logger::err("D3D11: Trying to create SRV for texture without D3D11_BIND_SHADER_RESOURCE");
-        return E_INVALIDARG;
-      }
-      
-      // Check whether we can use the requested format for the view
-      if (!textureInfo->CheckViewFormatCompatibility(desc.Format)) {
-        Logger::err(str::format("D3D11: Incompatible SRV formats",
-          "\n  Base format: ", textureInfo->Desc()->Format,
-          "\n  View format: ", desc.Format));
-        return E_INVALIDARG;
-      }
       
       // Fill in the view info. The view type depends solely
       // on the view dimension field in the view description,
@@ -510,16 +505,23 @@ namespace dxvk {
         return E_INVALIDARG;
     }
     
+    // Check whether UAVs are supported for the resource at all
+    if (!CheckResourceBindFlags(pResource, D3D11_BIND_UNORDERED_ACCESS)) {
+      Logger::err("D3D11: Trying to create UAV for texture without D3D11_BIND_UNORDERED_ACCESS");
+      return E_INVALIDARG;
+    }
+    
+    // Check whether we can use the requested format for the view
+    if (!CheckResourceViewFormatCompatibility(pResource, desc.Format)) {
+      Logger::err(str::format("D3D11: Incompatible UAV format: ", desc.Format));
+      return E_INVALIDARG;
+    }
+    
     if (resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER) {
       auto resource = static_cast<D3D11Buffer*>(pResource);
       
       D3D11_BUFFER_DESC resourceDesc;
       resource->GetDesc(&resourceDesc);
-      
-      if ((resourceDesc.BindFlags & D3D11_BIND_UNORDERED_ACCESS) == 0) {
-        Logger::warn("D3D11: Trying to create UAV for buffer without D3D11_BIND_UNORDERED_ACCESS");
-        return E_INVALIDARG;
-      }
       
       DxvkBufferViewCreateInfo viewInfo;
       
@@ -569,19 +571,6 @@ namespace dxvk {
       }
     } else {
       const D3D11CommonTexture* textureInfo = GetCommonTexture(pResource);
-      
-      if ((textureInfo->Desc()->BindFlags & D3D11_BIND_UNORDERED_ACCESS) == 0) {
-        Logger::warn("D3D11: Trying to create UAV for texture without D3D11_BIND_UNORDERED_ACCESS");
-        return E_INVALIDARG;
-      }
-      
-      // Check whether we can use the requested format for the view
-      if (!textureInfo->CheckViewFormatCompatibility(desc.Format)) {
-        Logger::err(str::format("D3D11: Incompatible UAV formats",
-          "\n  Base format: ", textureInfo->Desc()->Format,
-          "\n  View format: ", desc.Format));
-        return E_INVALIDARG;
-      }
       
       // Fill in the view info. The view type depends solely
       // on the view dimension field in the view description,
@@ -693,21 +682,20 @@ namespace dxvk {
         return E_INVALIDARG;
     }
     
-    // Retrieve the image that we are going to create the view for
-    const D3D11CommonTexture* textureInfo = GetCommonTexture(pResource);
-    
-    if ((textureInfo->Desc()->BindFlags & D3D11_BIND_RENDER_TARGET) == 0) {
-      Logger::warn("D3D11: Trying to create RTV for texture without D3D11_BIND_RENDER_TARGET");
+    // Check whether UAVs are supported for the resource at all
+    if (!CheckResourceBindFlags(pResource, D3D11_BIND_RENDER_TARGET)) {
+      Logger::err("D3D11: Trying to create RTV for texture without D3D11_BIND_RENDER_TARGET");
       return E_INVALIDARG;
     }
     
     // Check whether we can use the requested format for the view
-    if (!textureInfo->CheckViewFormatCompatibility(desc.Format)) {
-      Logger::err(str::format("D3D11: Incompatible RTV formats",
-        "\n  Base format: ", textureInfo->Desc()->Format,
-        "\n  View format: ", desc.Format));
+    if (!CheckResourceViewFormatCompatibility(pResource, desc.Format)) {
+      Logger::err(str::format("D3D11: Incompatible RTV format: ", desc.Format));
       return E_INVALIDARG;
     }
+
+    // Retrieve the image that we are going to create the view for
+    const D3D11CommonTexture* textureInfo = GetCommonTexture(pResource);
     
     // Fill in Vulkan image view info
     DxvkImageViewCreateInfo viewInfo;
@@ -827,21 +815,20 @@ namespace dxvk {
         return E_INVALIDARG;
     }
     
-    // Retrieve the image that we are going to create the view for
-    const D3D11CommonTexture* textureInfo = GetCommonTexture(pResource);
-    
-    if ((textureInfo->Desc()->BindFlags & D3D11_BIND_DEPTH_STENCIL) == 0) {
+    // Check whether DSVs are supported for the resource at all
+    if (!CheckResourceBindFlags(pResource, D3D11_BIND_DEPTH_STENCIL)) {
       Logger::warn("D3D11: Trying to create DSV for texture without D3D11_BIND_DEPTH_STENCIL");
       return E_INVALIDARG;
     }
     
     // Check whether we can use the requested format for the view
-    if (!textureInfo->CheckViewFormatCompatibility(desc.Format)) {
-      Logger::err(str::format("D3D11: Incompatible DSV formats",
-        "\n  Base format: ", textureInfo->Desc()->Format,
-        "\n  View format: ", desc.Format));
+    if (!CheckResourceViewFormatCompatibility(pResource, desc.Format)) {
+      Logger::err(str::format("D3D11: Incompatible DSV format: ", desc.Format));
       return E_INVALIDARG;
     }
+    
+    // Retrieve the image that we are going to create the view for
+    const D3D11CommonTexture* textureInfo = GetCommonTexture(pResource);
     
     // Fill in Vulkan image view info
     DxvkImageViewCreateInfo viewInfo;
