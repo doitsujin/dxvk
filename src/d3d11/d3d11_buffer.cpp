@@ -9,10 +9,10 @@ namespace dxvk {
   D3D11Buffer::D3D11Buffer(
           D3D11Device*                pDevice,
     const D3D11_BUFFER_DESC*          pDesc)
-  : m_device    (pDevice),
-    m_desc      (*pDesc),
-    m_buffer    (CreateBuffer(pDesc)),
-    m_bufferInfo{ m_buffer->slice() } {
+  : m_device      (pDevice),
+    m_desc        (*pDesc),
+    m_buffer      (CreateBuffer(pDesc)),
+    m_mappedSlice (m_buffer->slice()) {
     
   }
   
