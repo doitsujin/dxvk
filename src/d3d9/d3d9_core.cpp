@@ -62,13 +62,12 @@ namespace dxvk {
     // These formats are supported on pretty much all modern GPUs,
     // so we don't do any checks for them.
     switch (Format) {
-      //case D3DFMT_A1R5G5B5:
-      //case D3DFMT_A2R10G10B10:
+      case D3DFMT_A1R5G5B5:
+      case D3DFMT_A2R10G10B10:
       case D3DFMT_A8R8G8B8:
-      //case D3DFMT_R5G6B5:
-      //case D3DFMT_X1R5G5B5:
-      //case D3DFMT_X8R8G8B8:
-        Logger::trace(str::format("Display mode format: ", Format));
+      case D3DFMT_R5G6B5:
+      case D3DFMT_X1R5G5B5:
+      case D3DFMT_X8R8G8B8:
         return true;
       default:
         Logger::err(str::format("Unsupported display mode format: ", Format));
@@ -83,8 +82,7 @@ namespace dxvk {
     if (!SupportedModeFormat(Format))
       return 0;
 
-    Logger::trace("GetAdapterModeCount");
-    throw DxvkError("Not implemented");
+    return GetAdapter(Adapter).GetModeCount();
   }
 
   HRESULT Direct3D9::EnumAdapterModes(UINT Adapter,
@@ -95,8 +93,13 @@ namespace dxvk {
     if (!SupportedModeFormat(Format))
       return D3DERR_INVALIDCALL;
 
-    Logger::trace("EnumAdapterModes");
-    throw DxvkError("not supported");
+    auto& mode = *pMode;
+
+    mode.Format = Format;
+
+    GetAdapter(Adapter).GetMode(Mode, mode);
+
+    return S_OK;
   }
 
   HRESULT Direct3D9::GetAdapterDisplayMode(UINT Adapter,
@@ -120,22 +123,37 @@ namespace dxvk {
 
   HRESULT Direct3D9::CheckDeviceFormat(UINT Adapter, D3DDEVTYPE DevType,
     D3DFORMAT AdapterFormat, DWORD Usage,
-    D3DRESOURCETYPE RType, D3DFORMAT CheckFormat) {
+    D3DRESOURCETYPE, D3DFORMAT CheckFormat) {
     CHECK_ADAPTER(Adapter);
     CHECK_DEV_TYPE(DevType);
 
-    Logger::trace("CheckDeviceFormat");
-    throw DxvkError("not supported");
+    // In principle, on Vulkan / D3D11 hardware (modern GPUs),
+    // all of the formats and features should be supported.
+    // That is why we return OK here and fail later, if that's not the case.
+
+    const auto usage = str::format("usage (", Usage, ")");
+    const auto format = str::format("format (", CheckFormat, ")");
+
+    Logger::warn(str::format("CheckDeviceFormat called with ", usage, ", ", format));
+    Logger::warn("CheckDeviceFormat always reports all formats are supported");
+
+    return D3D_OK;
   }
 
   HRESULT Direct3D9::CheckDeviceMultiSampleType(UINT Adapter, D3DDEVTYPE DevType,
-    D3DFORMAT SurfaceFormat, BOOL Windowed,
+    D3DFORMAT SurfaceFormat, BOOL,
     D3DMULTISAMPLE_TYPE MultiSampleType, DWORD* pQualityLevels) {
     CHECK_ADAPTER(Adapter);
     CHECK_DEV_TYPE(DevType);
 
-    Logger::trace("CheckDeviceMultiSampleType");
-    throw DxvkError("not supported");
+    // Note: we ignore the `windowed` parameter, since Vulkan doesn't care.
+
+    // TODO: Right now, we just say we don't support multisampling.
+    // We should create a D3D11 Device and actually check for support.
+
+    Logger::err("CheckDeviceMultiSampleType: multisampling not yet supported");
+
+    return D3DERR_NOTAVAILABLE;
   }
 
   HRESULT Direct3D9::CheckDepthStencilMatch(UINT Adapter, D3DDEVTYPE DevType,
