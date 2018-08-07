@@ -336,9 +336,9 @@ namespace dxvk {
     void FreeCounterSlice(const DxvkBufferSlice& Slice) {
       m_uavCounters->FreeSlice(Slice);
     }
-    
-    bool TestOption(D3D11Option Option) const {
-      return m_d3d11Options.test(Option);
+
+    const D3D11Options* GetOptions() const {
+      return &m_d3d11Options;
     }
     
     static bool CheckFeatureLevelSupport(
@@ -353,14 +353,14 @@ namespace dxvk {
     
     IDXGIObject*                    m_container;
     Com<IDXGIVkAdapter>             m_dxgiAdapter;
-    
+
     const D3D_FEATURE_LEVEL         m_featureLevel;
     const UINT                      m_featureFlags;
     
     const Rc<DxvkDevice>            m_dxvkDevice;
     const Rc<DxvkAdapter>           m_dxvkAdapter;
     
-    const D3D11OptionSet            m_d3d11Options;
+    const D3D11Options              m_d3d11Options;
     const DxbcOptions               m_dxbcOptions;
     
     D3D11Initializer*               m_initializer = nullptr;

@@ -1,6 +1,9 @@
 #include <algorithm>
 #include <cstring>
 
+#include "../dxvk/dxvk_adapter.h"
+#include "../dxvk/dxvk_instance.h"
+
 #include "d3d11_buffer.h"
 #include "d3d11_class_linkage.h"
 #include "d3d11_context_def.h"
@@ -93,7 +96,7 @@ namespace dxvk {
     m_featureFlags  (FeatureFlags),
     m_dxvkDevice    (pDxgiDevice->GetDXVKDevice()),
     m_dxvkAdapter   (m_dxvkDevice->adapter()),
-    m_d3d11Options  (D3D11GetAppOptions(env::getExeName())),
+    m_d3d11Options  (m_dxvkAdapter->instance()->config()),
     m_dxbcOptions   (getDxbcAppOptions(env::getExeName()) |
                      getDxbcDeviceOptions(m_dxvkDevice)) {
     Com<IDXGIAdapter> adapter;
@@ -661,7 +664,7 @@ namespace dxvk {
     
     // Returning S_OK instead of an error fixes some issues
     // with Overwatch until this is properly implemented
-    return m_d3d11Options.test(D3D11Option::FakeStreamOutSupport) ? S_OK : E_NOTIMPL;
+    return m_d3d11Options.fakeStreamOutSupport ? S_OK : E_NOTIMPL;
   }
   
   
