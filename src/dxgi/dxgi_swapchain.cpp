@@ -469,6 +469,7 @@ namespace dxvk {
   HRESULT DxgiSwapChain::CreatePresenter() {
     try {
       m_presenter = new DxgiVkPresenter(
+        m_factory->GetOptions(),
         m_device->GetDXVKDevice(),
         m_window);
       return S_OK;

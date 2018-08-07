@@ -8,9 +8,11 @@ namespace dxvk {
   DxgiDevice::DxgiDevice(
           IDXGIObject*              pContainer,
           IDXGIVkAdapter*           pAdapter,
+    const DxgiOptions*              pOptions,
     const DxvkDeviceFeatures*       pFeatures)
-  : m_container (pContainer),
-    m_adapter   (pAdapter) {
+  : m_container       (pContainer),
+    m_adapter         (pAdapter),
+    m_frameLatencyCap (pOptions->maxFrameLatency) {
     m_device = m_adapter->GetDXVKAdapter()->createDevice(*pFeatures);
 
     for (uint32_t i = 0; i < m_frameEvents.size(); i++)
@@ -161,7 +163,13 @@ namespace dxvk {
   
   
   Rc<DxvkEvent> STDMETHODCALLTYPE DxgiDevice::GetFrameSyncEvent() {
-    uint32_t frameId = m_frameId++ % m_frameLatency;
+    uint32_t frameLatency = m_frameLatency;
+
+    if (m_frameLatencyCap != 0
+     && m_frameLatencyCap <= frameLatency)
+      frameLatency = m_frameLatencyCap;
+
+    uint32_t frameId = m_frameId++ % frameLatency;
     return m_frameEvents[frameId];
   }
   

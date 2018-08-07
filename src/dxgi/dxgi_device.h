@@ -4,6 +4,7 @@
 
 #include "dxgi_adapter.h"
 #include "dxgi_interfaces.h"
+#include "dxgi_options.h"
 
 namespace dxvk {
   
@@ -16,6 +17,7 @@ namespace dxvk {
     DxgiDevice(
             IDXGIObject*              pContainer,
             IDXGIVkAdapter*           pAdapter,
+      const DxgiOptions*              pOptions,
       const DxvkDeviceFeatures*       pFeatures);
     ~DxgiDevice();
     
@@ -96,8 +98,9 @@ namespace dxvk {
     Com<IDXGIVkAdapter> m_adapter;
     Rc<DxvkDevice>      m_device;
 
-    uint32_t            m_frameLatency = DefaultFrameLatency;
-    uint32_t            m_frameId      = 0;
+    uint32_t            m_frameLatencyCap = 0;
+    uint32_t            m_frameLatency    = DefaultFrameLatency;
+    uint32_t            m_frameId         = 0;
 
     std::array<Rc<DxvkEvent>, 16> m_frameEvents;
     

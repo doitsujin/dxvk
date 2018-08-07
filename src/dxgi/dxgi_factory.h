@@ -5,6 +5,7 @@
 #include <dxvk_instance.h>
 
 #include "dxgi_adapter.h"
+#include "dxgi_options.h"
 
 namespace dxvk {
     
@@ -100,9 +101,14 @@ namespace dxvk {
     void STDMETHODCALLTYPE UnregisterOcclusionStatus(
             DWORD                 dwCookie) final;
     
+    const DxgiOptions* GetOptions() const {
+      return &m_options;
+    }
+    
   private:
     
     Rc<DxvkInstance> m_instance;
+    DxgiOptions      m_options;
     
     HWND m_associatedWindow = nullptr;
     

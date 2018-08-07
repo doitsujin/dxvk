@@ -64,8 +64,7 @@ namespace dxvk {
      || InterfaceName == __uuidof(ID3D10Device1)) {
       Logger::warn("DXGI: CheckInterfaceSupport: No D3D10 support");
       
-      DxgiOptions dxgiOptions = getDxgiAppOptions(env::getExeName());
-      return dxgiOptions.test(DxgiOption::FakeDx10Support)
+      return m_factory->GetOptions()->fakeDx10Support
         ? S_OK : DXGI_ERROR_UNSUPPORTED;
     }
     
@@ -215,7 +214,8 @@ namespace dxvk {
     InitReturnPtr(ppDevice);
     
     try {
-      *ppDevice = new dxvk::DxgiDevice(pContainer, this, pFeatures);
+      *ppDevice = new dxvk::DxgiDevice(pContainer,
+        this, m_factory->GetOptions(), pFeatures);
       return S_OK;
     } catch (const dxvk::DxvkError& e) {
       dxvk::Logger::err(e.message());

@@ -69,6 +69,7 @@ namespace dxvk {
   public:
     
     DxgiVkPresenter(
+      const DxgiOptions*            pOptions,
       const Rc<DxvkDevice>&         device,
             HWND                    window);
     

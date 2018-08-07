@@ -8,6 +8,7 @@
 namespace dxvk {
   
   DxgiVkPresenter::DxgiVkPresenter(
+    const DxgiOptions*            pOptions,
     const Rc<DxvkDevice>&         device,
           HWND                    window)
   : m_window  (window),
@@ -16,9 +17,7 @@ namespace dxvk {
     
     // Some games don't work with deferred surface creation,
     // so we should default to initializing it immediately.
-    DxgiOptions dxgiOptions = getDxgiAppOptions(env::getExeName());
-    
-    if (!dxgiOptions.test(DxgiOption::DeferSurfaceCreation))
+    if (!pOptions->deferSurfaceCreation)
       m_surface = CreateSurface();
     
     // Reset options for the swap chain itself. We will
