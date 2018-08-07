@@ -28,6 +28,12 @@ namespace dxvk {
     /// Override maximum frame latency if the app specifies
     /// a higher value. May help with frame timing issues.
     int32_t maxFrameLatency;
+
+    /// Override PCI vendor and device IDs reported to the
+    /// application. This may make apps think they are running
+    /// on a different GPU than they do and behave differently.
+    int32_t customVendorId;
+    int32_t customDeviceId;
   };
   
 }
