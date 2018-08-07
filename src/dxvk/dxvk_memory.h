@@ -213,9 +213,7 @@ namespace dxvk {
     friend class DxvkMemoryChunk;
   public:
     
-    DxvkMemoryAllocator(
-      const Rc<DxvkAdapter>&  adapter,
-      const Rc<vk::DeviceFn>& vkd);
+    DxvkMemoryAllocator(const DxvkDevice* device);
     ~DxvkMemoryAllocator();
     
     /**
@@ -256,6 +254,7 @@ namespace dxvk {
     const Rc<vk::DeviceFn>                 m_vkd;
     const VkPhysicalDeviceProperties       m_devProps;
     const VkPhysicalDeviceMemoryProperties m_memProps;
+    const bool                             m_allowOvercommit;
     
     std::mutex                                      m_mutex;
     std::array<DxvkMemoryHeap, VK_MAX_MEMORY_HEAPS> m_memHeaps;

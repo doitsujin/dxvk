@@ -1,3 +1,4 @@
+#include "dxvk_device.h"
 #include "dxvk_memory.h"
 
 namespace dxvk {
@@ -141,12 +142,11 @@ namespace dxvk {
   }
   
   
-  DxvkMemoryAllocator::DxvkMemoryAllocator(
-    const Rc<DxvkAdapter>&  adapter,
-    const Rc<vk::DeviceFn>& vkd)
-  : m_vkd     (vkd),
-    m_devProps(adapter->deviceProperties()),
-    m_memProps(adapter->memoryProperties()) {
+  DxvkMemoryAllocator::DxvkMemoryAllocator(const DxvkDevice* device)
+  : m_vkd             (device->vkd()),
+    m_devProps        (device->adapter()->deviceProperties()),
+    m_memProps        (device->adapter()->memoryProperties()),
+    m_allowOvercommit (device->config().allowMemoryOvercommit) {
     for (uint32_t i = 0; i < m_memProps.memoryHeapCount; i++) {
       VkDeviceSize heapSize = m_memProps.memoryHeaps[i].size;
       
@@ -269,7 +269,8 @@ namespace dxvk {
           VkDeviceSize                      size,
     const VkMemoryDedicatedAllocateInfoKHR* dedAllocInfo) {
     if ((type->memType.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-     && (type->heap->stats.memoryAllocated + size > type->heap->properties.size))
+     && (type->heap->stats.memoryAllocated + size > type->heap->properties.size)
+     && (!m_allowOvercommit))
       return DxvkDeviceMemory();
     
     DxvkDeviceMemory result;

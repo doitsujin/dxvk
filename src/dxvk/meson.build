@@ -56,6 +56,7 @@ dxvk_src = files([
   'dxvk_meta_mipgen.cpp',
   'dxvk_meta_resolve.cpp',
   'dxvk_openvr.cpp',
+  'dxvk_options.cpp',
   'dxvk_pipecache.cpp',
   'dxvk_pipecompiler.cpp',
   'dxvk_pipelayout.cpp',

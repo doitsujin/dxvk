@@ -10,6 +10,7 @@
 #include "dxvk_image.h"
 #include "dxvk_memory.h"
 #include "dxvk_meta_clear.h"
+#include "dxvk_options.h"
 #include "dxvk_pipecache.h"
 #include "dxvk_pipemanager.h"
 #include "dxvk_queue.h"
@@ -83,6 +84,14 @@ namespace dxvk {
      */
     VkDevice handle() const {
       return m_vkd->device();
+    }
+
+    /**
+     * \brief Device options
+     * \returns Device options
+     */
+    const DxvkOptions& config() const {
+      return m_options;
     }
     
     /**
@@ -371,6 +380,8 @@ namespace dxvk {
     
   private:
     
+    DxvkOptions                 m_options;
+
     Rc<DxvkAdapter>             m_adapter;
     Rc<vk::DeviceFn>            m_vkd;
     DxvkDeviceExtensions        m_extensions;
