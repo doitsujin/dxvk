@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../util/config/config_user.h"
+
 #include "dxvk_adapter.h"
 #include "dxvk_device.h"
 #include "dxvk_openvr.h"
@@ -45,8 +47,21 @@ namespace dxvk {
     Rc<DxvkAdapter> enumAdapters(
             uint32_t      index) const;
     
-  private:
+    /**
+     * \brief Retrieves configuration options
+     * 
+     * The configuration set contains user-defined
+     * options as well as app-specific options.
+     * \returns Configuration options
+     */
+    const Config& config() const {
+      return m_config;
+    }
     
+  private:
+
+    Config m_config;
+
     Rc<vk::LibraryFn>   m_vkl;
     Rc<vk::InstanceFn>  m_vki;
 
