@@ -9,12 +9,12 @@
 
 namespace dxvk {
   Direct3D9::Direct3D9() {
-    if (FAILED(CreateDXGIFactory1(__uuidof(IDXGIFactory1), reinterpret_cast<void**>(&m_factory))))
+    if (FAILED(CreateDXGIFactory(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&m_factory))))
       throw DxvkError("Failed to create DXGI factory");
 
     UINT i = 0;
-    IDXGIAdapter1* adapter;
-    while (m_factory->EnumAdapters1(i++, &adapter) != DXGI_ERROR_NOT_FOUND) {
+    IDXGIAdapter* adapter;
+    while (m_factory->EnumAdapters(i++, &adapter) != DXGI_ERROR_NOT_FOUND) {
       m_adapters.emplace_back(Com(adapter));
     }
   }
@@ -247,10 +247,9 @@ namespace dxvk {
     auto adapter = GetAdapter(Adapter);
 
     // First we check the flags.
-    const auto flags = BehaviorFlags;
 
     // No support for multi-GPU.
-    if (flags & D3DCREATE_ADAPTERGROUP_DEVICE)
+    if (BehaviorFlags & D3DCREATE_ADAPTERGROUP_DEVICE)
       return D3DERR_INVALIDCALL;
 
     // Ignored flags:
@@ -267,16 +266,14 @@ namespace dxvk {
 
     // TODO: support D3D9Ex flags like PRESENTSTATS and such.
 
-    // Determine the window to use as the back buffer surface.
-    // We're supposed to use the device window if it is given,
-    // then fallback to the focus window.
-    const auto window = pp.hDeviceWindow ? pp.hDeviceWindow : hFocusWindow;
+    // Now to do some checking of the presentation parameters.
+
+    if (pp.Flags & D3DPRESENTFLAG_LOCKABLE_BACKBUFFER) {
+      Logger::warn("Lockable back buffer not supported");
+    }
 
     // Ensure at least one window is good.
-    CHECK_NOT_NULL(window);
-
-    // TODO: we currently ignore the focus window.
-    // Should we add any special handling for it?
+    CHECK_NOT_NULL(pp.hDeviceWindow || hFocusWindow);
 
     const D3DDEVICE_CREATION_PARAMETERS cp {
       Adapter,

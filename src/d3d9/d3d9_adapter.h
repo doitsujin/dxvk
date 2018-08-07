@@ -5,7 +5,9 @@
 namespace dxvk {
   class D3D9Adapter {
   public:
-    D3D9Adapter(Com<IDXGIAdapter1>&& adapter);
+    D3D9Adapter(Com<IDXGIAdapter>&& adapter);
+
+    IDXGIAdapter* GetAdapter() const;
 
     HRESULT GetIdentifier(D3DADAPTER_IDENTIFIER9& ident);
 
@@ -15,7 +17,7 @@ namespace dxvk {
     HMONITOR GetMonitor() const;
 
   private:
-    Com<IDXGIAdapter1> m_adapter;
+    Com<IDXGIAdapter> m_adapter;
     DXGI_ADAPTER_DESC m_desc;
 
     // D3D9 does not have the concept of multiple monitors per GPU,
@@ -24,8 +26,5 @@ namespace dxvk {
     DXGI_OUTPUT_DESC m_outputDesc;
 
     std::vector<DXGI_MODE_DESC> m_modes;
-
-    // Allow the D3D9 device class to access these fields.
-    friend class D3D9Device;
   };
 }

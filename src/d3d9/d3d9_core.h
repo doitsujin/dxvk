@@ -70,7 +70,7 @@ namespace dxvk {
       IDirect3DDevice9** ppReturnedDeviceInterface) final override;
 
   private:
-    Com<IDXGIFactory1> m_factory;
+    Com<IDXGIFactory> m_factory;
     std::vector<D3D9Adapter> m_adapters;
   };
 }

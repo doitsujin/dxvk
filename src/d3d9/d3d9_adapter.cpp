@@ -25,7 +25,7 @@ namespace dxvk {
     return modes;
   }
 
-  D3D9Adapter::D3D9Adapter(Com<IDXGIAdapter1>&& adapter)
+  D3D9Adapter::D3D9Adapter(Com<IDXGIAdapter>&& adapter)
     : m_adapter(adapter),
       m_output(getFirstOutput(m_adapter.ptr())),
       m_modes(getOutputModes(m_output.ptr())) {
@@ -34,6 +34,10 @@ namespace dxvk {
 
     if (FAILED(m_output->GetDesc(&m_outputDesc)))
       throw DxvkError("Failed to retrieve output description");
+  }
+
+  IDXGIAdapter* D3D9Adapter::GetAdapter() const {
+    return m_adapter.ptr();
   }
 
   HRESULT D3D9Adapter::GetIdentifier(D3DADAPTER_IDENTIFIER9& ident) {
