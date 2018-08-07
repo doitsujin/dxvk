@@ -11,15 +11,6 @@ namespace dxvk {
     return output;
   }
 
-  // Retrieve the HMONITOR of an output.
-  static HMONITOR getOutputMonitor(IDXGIOutput* output) {
-    DXGI_OUTPUT_DESC desc{};
-    if (FAILED(output->GetDesc(&desc)))
-      throw DxvkError("Failed to retrieve output HMONITOR");
-
-    return desc.Monitor;
-  }
-
   // Cache the supported display modes for later.
   static std::vector<DXGI_MODE_DESC> getOutputModes(IDXGIOutput* output) {
     // Note: we just use a common format, and assume the same modes for other formats.
@@ -37,23 +28,20 @@ namespace dxvk {
   D3D9Adapter::D3D9Adapter(Com<IDXGIAdapter1>&& adapter)
     : m_adapter(adapter),
       m_output(getFirstOutput(m_adapter.ptr())),
-      m_monitor(getOutputMonitor(m_output.ptr())),
       m_modes(getOutputModes(m_output.ptr())) {
+    if (FAILED(m_adapter->GetDesc(&m_desc)))
+      throw DxvkError("Failed to retrieve adapter description");
+
+    if (FAILED(m_output->GetDesc(&m_outputDesc)))
+      throw DxvkError("Failed to retrieve output description");
   }
 
   HRESULT D3D9Adapter::GetIdentifier(D3DADAPTER_IDENTIFIER9& ident) {
-    DXGI_ADAPTER_DESC1 desc;
-
-    if (FAILED(m_adapter->GetDesc1(&desc))) {
-      Logger::err("Failed to retrieve adapter description");
-      return D3DERR_INVALIDCALL;
-    }
-
     // Zero out the memory.
     ident = {};
 
     // DXVK Adapter's description is simply the Vulkan device name.
-    const auto name = str::fromws(desc.Description);
+    const auto name = str::fromws(m_desc.Description);
     // This is what game GUIs usually display.
     const auto description = str::format(name, " (D3D9 DXVK Driver)");
     const auto driver = "DXVK";
@@ -64,13 +52,13 @@ namespace dxvk {
 
     ident.DriverVersion.QuadPart = 1;
 
-    ident.VendorId = desc.VendorId;
-    ident.DeviceId = desc.DeviceId;
-    ident.SubSysId = desc.SubSysId;
-    ident.Revision = desc.Revision;
+    ident.VendorId = m_desc.VendorId;
+    ident.DeviceId = m_desc.DeviceId;
+    ident.SubSysId = m_desc.SubSysId;
+    ident.Revision = m_desc.Revision;
 
     // LUID is only 64-bit long, but better something than nothing.
-    std::memcpy(&ident.DeviceIdentifier, &desc.AdapterLuid, sizeof(LUID));
+    std::memcpy(&ident.DeviceIdentifier, &m_desc.AdapterLuid, sizeof(LUID));
 
     // Just claim we're a validated driver.
     ident.WHQLLevel = 1;
@@ -91,5 +79,9 @@ namespace dxvk {
     mode.Width = desc.Width;
     mode.Height = desc.Height;
     mode.RefreshRate = refresh;
+  }
+
+  HMONITOR D3D9Adapter::GetMonitor() const {
+    return m_outputDesc.Monitor;
   }
 }
