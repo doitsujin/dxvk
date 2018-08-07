@@ -1,6 +1,7 @@
 #include "d3d9_core.h"
 
 #include "d3d9_caps.h"
+#include "d3d9_device_impl.h"
 
 #define CHECK_ADAPTER(adapter) { if (!ValidAdapter(adapter)) { return D3DERR_INVALIDCALL; } }
 #define CHECK_DEV_TYPE(ty) { if (ty != D3DDEVTYPE_HAL) { return D3DERR_INVALIDCALL; } }
@@ -41,6 +42,7 @@ namespace dxvk {
     Logger::warn(str::format(riid));
     return E_NOINTERFACE;
   }
+
   HRESULT Direct3D9::RegisterSoftwareDevice(void*) {
     // Applications would call this if there aren't any GPUs available
     // and want to fall back to software rasterization.
@@ -240,21 +242,53 @@ namespace dxvk {
     InitReturnPtr(pReturnDevice);
     CHECK_NOT_NULL(pReturnDevice);
 
-    Logger::trace("CreateDevice");
-    throw DxvkError("not supported");
-  }
+    // This is actually an array, if we were to support multi-GPU adapters.
+    auto& pp = pPresParams[0];
+    auto& device = *pReturnDevice;
+    auto adapter = GetAdapter(Adapter);
 
-  HRESULT Direct3D9::QueryInterface(REFIID riid, void** ppvObject) {
-    *ppvObject = nullptr;
+    // First we check the flags.
+    const auto flags = BehaviorFlags;
 
-    if (riid == __uuidof(IUnknown)) {
-      *ppvObject = ref(this);
-      return S_OK;
-    }
+    // No support for multi-GPU.
+    if (flags & D3DCREATE_ADAPTERGROUP_DEVICE)
+      return D3DERR_INVALIDCALL;
 
-    Logger::warn("Direct3D9::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
-    return E_NOINTERFACE;
+    // Ignored flags:
+    // - DISABLE_PRINTSCREEN: not relevant to us.
+    // - PSGP_THREADING: we multithread as we see fit.
+    // - FPU_PRESERVE: on modern CPUs we needn't mess with the FPU settings.
+    // - *_VERTEXPROCESSING: we always just use hardware acceleration.
+    // - NOWINDOWCHANGES: we don't do anything with the focus window anyway.
+    // - SCREENSAVER: not applicable.
+    // - PUREDEVICE: disables emulation for vertex processing,
+    //   but we didn't support emulation anyway.
+    // - MULTITHREADED: DXVK always supports multithreading.
+    // - DISABLE_DRIVER_MANAGEMENT: we just allow DXVK to handle resources.
+
+    // TODO: support D3D9Ex flags like PRESENTSTATS and such.
+
+    // Determine the window to use as the back buffer surface.
+    // We're supposed to use the device window if it is given,
+    // then fallback to the focus window.
+    const auto window = pp.hDeviceWindow ? pp.hDeviceWindow : hFocusWindow;
+
+    // Ensure at least one window is good.
+    CHECK_NOT_NULL(window);
+
+    // TODO: we currently ignore the focus window.
+    // Should we add any special handling for it?
+
+    const D3DDEVICE_CREATION_PARAMETERS cp {
+      Adapter,
+      DevType,
+      hFocusWindow,
+      BehaviorFlags,
+    };
+
+    device = new D3D9DeviceImpl(this, adapter, cp, pp);
+
+    return D3D_OK;
   }
 
   static bool SupportedModeFormat(D3DFORMAT Format) {

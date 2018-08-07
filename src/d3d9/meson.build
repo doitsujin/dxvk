@@ -1,7 +1,15 @@
 d3d9_src = [
-  'd3d9_main.cpp',
-  'd3d9_core.cpp',
   'd3d9_adapter.cpp',
+  'd3d9_caps.cpp',
+  'd3d9_core.cpp',
+  'd3d9_cursor.cpp',
+  'd3d9_device.cpp',
+  'd3d9_device_impl.cpp',
+  'd3d9_device_params.cpp',
+  'd3d9_main.cpp',
+  'd3d9_query.cpp',
+  'd3d9_shader.cpp',
+  'd3d9_viewport.cpp',
 ]
 
 d3d9_dll = shared_library('d3d9'+dll_ext, d3d9_src,
