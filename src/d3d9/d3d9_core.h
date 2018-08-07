@@ -8,6 +8,8 @@
 class IDXGIFactory1;
 
 namespace dxvk {
+  /// This is the core D3D9 interface which has to be created
+  /// before an application can use any other resource.
   class Direct3D9: public ComObject<IDirect3D9> {
   public:
     Direct3D9();
