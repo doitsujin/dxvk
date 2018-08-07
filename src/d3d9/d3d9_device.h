@@ -37,7 +37,7 @@ namespace dxvk {
       throw DxvkError("Not supported");
     }
 
-  private:
-    Com<ID3D11Device> m_device;
+  protected:
+    virtual ID3D11Device* device() const = 0;
   };
 }

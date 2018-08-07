@@ -116,14 +116,4 @@ namespace dxvk {
       throw DxvkError("Not supported");
     }
   };
-
-  /// Vertex shader class.
-  class D3D9VertexShader final: public ComObject<IDirect3DVertexShader9>  {
-
-  };
-
-  /// Pixel shader class.
-  class D3D9PixelShader final: public ComObject<IDirect3DPixelShader9>  {
-
-  };
 }

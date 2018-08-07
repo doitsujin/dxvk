@@ -428,12 +428,10 @@ namespace dxvk {
       throw DxvkError("Not supported");
     }
 
-    HRESULT STDMETHODCALLTYPE ProcessVertices(UINT                        SrcStartIndex,
-  UINT                        DestIndex,
-  UINT                        VertexCount,
-  IDirect3DVertexBuffer9      *pDestBuffer,
-  IDirect3DVertexDeclaration9 *pVertexDecl,
-  DWORD                       Flags) final override {
+    HRESULT STDMETHODCALLTYPE ProcessVertices(UINT SrcStartIndex,
+      UINT DestIndex, UINT VertexCount,
+      IDirect3DVertexBuffer9* pDestBuffer,
+      IDirect3DVertexDeclaration9 *pVertexDecl, DWORD Flags) final override {
       Logger::err(str::format(__func__, " stub"));
       throw DxvkError("Not supported");
     }
@@ -553,5 +551,14 @@ namespace dxvk {
       Logger::err(str::format(__func__, " stub"));
       throw DxvkError("Not supported");
     }
+
+  private:
+    ID3D11Device* device() const override final {
+      return m_device.ptr();
+    }
+
+    D3D9Adapter& m_adapter;
+    Com<ID3D11Device> m_device;
+    Com<ID3D11DeviceContext> m_ctx;
   };
 }
