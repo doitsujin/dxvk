@@ -2,13 +2,12 @@
 
 #include "d3d9_caps.h"
 #include "d3d9_device_impl.h"
+#include "d3d9_format.h"
 
 #define CHECK_ADAPTER(adapter) { if (!ValidAdapter(adapter)) { return D3DERR_INVALIDCALL; } }
 #define CHECK_DEV_TYPE(ty) { if (ty != D3DDEVTYPE_HAL) { return D3DERR_INVALIDCALL; } }
 
 namespace dxvk {
-  static bool SupportedModeFormat(D3DFORMAT Format);
-
   Direct3D9::Direct3D9() {
     if (FAILED(CreateDXGIFactory1(__uuidof(IDXGIFactory1), reinterpret_cast<void**>(&m_factory))))
       throw DxvkError("Failed to create DXGI factory");
@@ -74,7 +73,7 @@ namespace dxvk {
     if (!ValidAdapter(Adapter))
       return 0;
 
-    if (!SupportedModeFormat(Format))
+    if (!SupportedBackBufferFormat(Format))
       return 0;
 
     return GetAdapter(Adapter).GetModeCount();
@@ -85,7 +84,7 @@ namespace dxvk {
     CHECK_ADAPTER(Adapter);
     CHECK_NOT_NULL(pMode);
 
-    if (!SupportedModeFormat(Format))
+    if (!SupportedBackBufferFormat(Format))
       return D3DERR_INVALIDCALL;
 
     auto& mode = *pMode;
@@ -289,23 +288,5 @@ namespace dxvk {
     device = new D3D9DeviceImpl(this, adapter, cp, pp);
 
     return D3D_OK;
-  }
-
-  static bool SupportedModeFormat(D3DFORMAT Format) {
-    // This is the list of back buffer formats which D3D9 accepts.
-    // These formats are supported on pretty much all modern GPUs,
-    // so we don't do any checks for them.
-    switch (Format) {
-      case D3DFMT_A1R5G5B5:
-      case D3DFMT_A2R10G10B10:
-      case D3DFMT_A8R8G8B8:
-      case D3DFMT_R5G6B5:
-      case D3DFMT_X1R5G5B5:
-      case D3DFMT_X8R8G8B8:
-        return true;
-      default:
-        Logger::err(str::format("Unsupported display mode format: ", Format));
-        return false;
-    }
   }
 }

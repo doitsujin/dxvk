@@ -6,6 +6,7 @@ d3d9_src = [
   'd3d9_device.cpp',
   'd3d9_device_impl.cpp',
   'd3d9_device_params.cpp',
+  'd3d9_format.cpp',
   'd3d9_main.cpp',
   'd3d9_query.cpp',
   'd3d9_shader.cpp',
