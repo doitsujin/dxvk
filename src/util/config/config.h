@@ -65,6 +65,23 @@ namespace dxvk {
       return result;
     }
 
+    /**
+     * \brief Retrieves default options for an app
+     * 
+     * \param [in] appName Name of the application
+     * \returns Default options for the application
+     */
+    static Config getAppConfig(const std::string& appName);
+
+    /**
+     * \brief Retrieves user configuration
+     * 
+     * Reads options from the configuration file,
+     * if it can be found, or an empty option set.
+     * \returns User-defined configuration options
+     */
+    static Config getUserConfig();
+
   private:
 
     OptionMap m_options;

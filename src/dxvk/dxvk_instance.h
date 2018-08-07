@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../util/config/config_user.h"
+#include "../util/config/config.h"
 
 #include "dxvk_adapter.h"
 #include "dxvk_device.h"
