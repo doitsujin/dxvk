@@ -7,4 +7,4 @@
 #include <d3d9.h>
 
 // Validates a pointer parameter.
-#define CHECK_NOT_NULL(ptr) { if (!ptr) { return D3DERR_INVALIDCALL; } }
+#define CHECK_NOT_NULL(ptr) { if (!(ptr)) { return D3DERR_INVALIDCALL; } }
