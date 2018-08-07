@@ -16,7 +16,12 @@ extern "C" {
     // Usually displays 32, which is version 9.0c
     Logger::info(str::format("Creating D3D9 context for SDK version: ", SDKVersion));
 
-    return new Direct3D9();
+    try {
+      return new Direct3D9();
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return nullptr;
+    }
   }
 
   DLLEXPORT HRESULT STDMETHODCALLTYPE Direct3DCreate9Ex(UINT SDKVersion, IDirect3D9Ex** ptr) {
