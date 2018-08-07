@@ -238,11 +238,15 @@ namespace dxvk {
       resolveInfo.numLayers     = 1;
       resolveInfo.mipLevels     = 1;
       resolveInfo.usage         = VK_IMAGE_USAGE_SAMPLED_BIT
+                                | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
                                 | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
       resolveInfo.stages        = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
+                                | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
                                 | VK_PIPELINE_STAGE_TRANSFER_BIT;
       resolveInfo.access        = VK_ACCESS_SHADER_READ_BIT
-                                | VK_ACCESS_TRANSFER_WRITE_BIT;
+                                | VK_ACCESS_TRANSFER_WRITE_BIT
+                                | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
+                                | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
       resolveInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
       resolveInfo.layout        = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
       
