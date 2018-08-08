@@ -119,7 +119,7 @@ namespace dxvk {
     caps.MaxTextureWidth = caps.MaxTextureHeight = caps.MaxVolumeExtent = 16384;
 
     // Not sure what this maximum should be, just leave the maximum possible.
-    caps.MaxTextureRepeat = UINT_MAX;
+    caps.MaxTextureRepeat = std::numeric_limits<unsigned int>::max();
 
     // Max ratio would be 16384 by 1.
     caps.MaxTextureAspectRatio = 16384;
@@ -157,7 +157,7 @@ namespace dxvk {
     // but it's safe to assume it's pretty big.
     caps.MaxPointSize = 16384.f;
 
-    caps.MaxPrimitiveCount = caps.MaxVertexIndex = UINT_MAX;
+    caps.MaxPrimitiveCount = caps.MaxVertexIndex = std::numeric_limits<unsigned int>::max();
 
     // Valid range is 1 through 16, we expose the max.
     caps.MaxStreams = 16;
@@ -209,8 +209,8 @@ namespace dxvk {
 
     caps.VertexTextureFilterCaps = ~0;
 
-    caps.MaxVShaderInstructionsExecuted = UINT_MAX;
-    caps.MaxPShaderInstructionsExecuted = UINT_MAX;
+    caps.MaxVShaderInstructionsExecuted = std::numeric_limits<unsigned int>::max();
+    caps.MaxPShaderInstructionsExecuted = std::numeric_limits<unsigned int>::max();
 
     // Set this to the max possible value.
     caps.MaxVertexShader30InstructionSlots = 32768;
