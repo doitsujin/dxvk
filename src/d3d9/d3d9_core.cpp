@@ -249,8 +249,15 @@ namespace dxvk {
     // First we check the flags.
 
     // No support for multi-GPU.
-    if (BehaviorFlags & D3DCREATE_ADAPTERGROUP_DEVICE)
+    if (BehaviorFlags & D3DCREATE_ADAPTERGROUP_DEVICE) {
+      Logger::err("Multi-GPU configurations not yet supported");
       return D3DERR_INVALIDCALL;
+    }
+
+    if (BehaviorFlags & D3DCREATE_MULTITHREADED) {
+      Logger::err("D3D9 is not yet thread-safe");
+      return D3DERR_INVALIDCALL;
+    }
 
     // Ignored flags:
     // - DISABLE_PRINTSCREEN: not relevant to us.
@@ -259,9 +266,8 @@ namespace dxvk {
     // - *_VERTEXPROCESSING: we always just use hardware acceleration.
     // - NOWINDOWCHANGES: we don't do anything with the focus window anyway.
     // - SCREENSAVER: not applicable.
-    // - PUREDEVICE: disables emulation for vertex processing,
-    //   but we didn't support emulation anyway.
-    // - MULTITHREADED: DXVK always supports multithreading.
+    // - PUREDEVICE: disables emulation for vertex processing, but we didn't support emulation anyway.
+    //   Would also disable some getters, but we don't really care.
     // - DISABLE_DRIVER_MANAGEMENT: we just allow DXVK to handle resources.
 
     // TODO: support D3D9Ex flags like PRESENTSTATS and such.
