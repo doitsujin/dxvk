@@ -7,7 +7,7 @@
 namespace dxvk {
   D3D9Device::D3D9Device(IDirect3D9* parent, D3D9Adapter& adapter,
     const D3DDEVICE_CREATION_PARAMETERS& cp, D3DPRESENT_PARAMETERS& pp)
-    : m_adapter(adapter), m_parent(parent), m_creationParams(cp) {
+    : m_parent(parent), m_creationParams(cp), m_adapter(adapter) {
     // Get a handle to the DXGI adapter.
     auto dxgiAdapter = m_adapter.GetAdapter();
 
@@ -29,6 +29,9 @@ namespace dxvk {
 
       width = r.right - r.left;
       height = r.bottom - r.top;
+
+      pp.BackBufferWidth = width;
+      pp.BackBufferHeight = height;
     }
 
     DXGI_RATIONAL refreshRate { 60, 1 };
@@ -45,20 +48,30 @@ namespace dxvk {
       pp.BackBufferWidth,
       pp.BackBufferHeight,
       refreshRate,
-      BackBufferFormatToDXGIFormat(pp.BackBufferFormat),
+      SurfaceFormatToDXGIFormat(pp.BackBufferFormat),
       DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED,
       DXGI_MODE_SCALING_UNSPECIFIED,
     };
 
     // TODO: support multisampling
-    const DXGI_SAMPLE_DESC samples {
-      1, // pp.MultiSampleType (from 0 to 16)
-      0, // Quality: pp.MultiSampleQuality
+    const auto msSamples = pp.MultiSampleType; // from 0 to 16
+    const auto msQuality = pp.MultiSampleQuality; // Quality
+
+    DXGI_SAMPLE_DESC samples {
+      1,
+      0,
     };
+
+    if (pp.SwapEffect != D3DSWAPEFFECT_DISCARD) {
+      Logger::warn("Multisampling is only supported when the swap effect is DISCARD");
+      Logger::warn("Disabling multisampling");
+      samples = { 1, 0 };
+    }
 
     const auto usage = DXGI_USAGE_BACK_BUFFER | DXGI_USAGE_RENDER_TARGET_OUTPUT;
 
     const auto backBufferCount = std::min(pp.BackBufferCount, 1u);
+    pp.BackBufferCount = backBufferCount;
 
     // TODO: DXVK only supports this swap effect, for now.
     const auto swapEffect = DXGI_SWAP_EFFECT_DISCARD;

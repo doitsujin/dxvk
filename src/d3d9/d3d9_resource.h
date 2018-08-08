@@ -104,9 +104,14 @@ namespace dxvk {
   // Retrieves a stored interface.
   template <typename I>
   inline I* GetInterface(IDirect3DResource9* resource) {
-    IUnknown* ptr;
+    if (!resource)
+      return nullptr;
+
+    IUnknown* ptr{ nullptr };
     DWORD size = sizeof(ptr);
+
     resource->GetPrivateData(D3D9_INTERFACE_GUID, &ptr, &size);
+
     return reinterpret_cast<I*>(ptr);
   }
 }

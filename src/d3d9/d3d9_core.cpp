@@ -73,9 +73,6 @@ namespace dxvk {
     if (!ValidAdapter(Adapter))
       return 0;
 
-    if (!SupportedBackBufferFormat(Format))
-      return 0;
-
     return GetAdapter(Adapter).GetModeCount();
   }
 
@@ -84,13 +81,9 @@ namespace dxvk {
     CHECK_ADAPTER(Adapter);
     CHECK_NOT_NULL(pMode);
 
-    if (!SupportedBackBufferFormat(Format))
-      return D3DERR_INVALIDCALL;
-
     auto& mode = *pMode;
 
     mode.Format = Format;
-
     GetAdapter(Adapter).GetMode(Mode, mode);
 
     return S_OK;
@@ -287,7 +280,12 @@ namespace dxvk {
       BehaviorFlags,
     };
 
-    device = new D3D9Device(this, adapter, cp, pp);
+    try {
+      device = new D3D9Device(this, adapter, cp, pp);
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return D3DERR_INVALIDCALL;
+    }
 
     return D3D_OK;
   }

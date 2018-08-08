@@ -66,7 +66,7 @@ namespace dxvk {
     /// Depth stencil functions.
     HRESULT STDMETHODCALLTYPE CreateDepthStencilSurface(UINT Width, UINT Height,
       D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality,
-      BOOL Discard, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle);
+      BOOL Discard, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle) final override;
 
     HRESULT STDMETHODCALLTYPE SetDepthStencilSurface(IDirect3DSurface9* pNewZStencil) final override;
     HRESULT STDMETHODCALLTYPE GetDepthStencilSurface(IDirect3DSurface9** ppZStencilSurface) final override;
