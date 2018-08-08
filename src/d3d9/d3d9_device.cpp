@@ -1,18 +1,19 @@
 #include "d3d9_device.h"
 
+#include "d3d9_caps.h"
 #include "d3d9_format.h"
+#include "d3d9_surface.h"
 
 namespace dxvk {
-  D3D9Device::~D3D9Device() = default;
-
-  D3D9Device::D3D9Device(D3D9Adapter& adapter, HWND hFocusWindow, D3DPRESENT_PARAMETERS& pp)
-    : m_adapter(adapter) {
+  D3D9Device::D3D9Device(IDirect3D9* parent, D3D9Adapter& adapter,
+    const D3DDEVICE_CREATION_PARAMETERS& cp, D3DPRESENT_PARAMETERS& pp)
+    : m_adapter(adapter), m_parent(parent), m_creationParams(cp) {
     // Get a handle to the DXGI adapter.
     auto dxgiAdapter = m_adapter.GetAdapter();
 
     // We're supposed to use the device window for the back buffer,
     // or fall back to the focus window otherwise.
-    const auto window = pp.hDeviceWindow ? pp.hDeviceWindow : hFocusWindow;
+    const auto window = pp.hDeviceWindow ? pp.hDeviceWindow : cp.hFocusWindow;
 
     // TODO: use the focus window for something.
     // It is currently ignored.
@@ -54,6 +55,7 @@ namespace dxvk {
       1, // pp.MultiSampleType (from 0 to 16)
       0, // Quality: pp.MultiSampleQuality
     };
+
     const auto usage = DXGI_USAGE_BACK_BUFFER | DXGI_USAGE_RENDER_TARGET_OUTPUT;
 
     const auto backBufferCount = std::min(pp.BackBufferCount, 1u);
@@ -91,5 +93,101 @@ namespace dxvk {
       Logger::err(str::format("D3D11CreateDeviceAndSwapChain failed: ", result));
       throw DxvkError("Failed to create D3D9 device");
     }
+
+    // Create the default render target, and the corresponding depth buffer, if requested.
+    // Retrieve the back buffer from the swap chain.
+    Com<ID3D11Texture2D> backBuffer;
+    m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&backBuffer);
+
+    // Create a surface for the render target.
+    const Com<D3D9Surface> surface = new D3D9Surface(this, backBuffer.ptr(), D3DUSAGE_RENDERTARGET);
+
+    Com<ID3D11RenderTargetView> rtView;
+
+    // Create the RT view.
+    if (FAILED(m_device->CreateRenderTargetView(backBuffer.ptr(), nullptr, &rtView)))
+      throw DxvkError("Failed to create render target");
+
+    SetInterface(surface.ptr(), rtView.ref());
+
+    m_renderTarget = surface.ptr();
+
+    if (pp.EnableAutoDepthStencil) {
+      // TODO: support auto creating the depth / stencil buffer.
+      Logger::err("Automatically creating depth buffer not yet supported");
+    }
+
+    UpdateOMViews();
+  }
+
+  D3D9Device::~D3D9Device() = default;
+
+  // Synchronises D3D9's views with the D3D11's Output Merger
+  // render target & depth/stencil views.
+  void D3D9Device::UpdateOMViews() {
+    const auto renderTargetView = GetInterface<ID3D11RenderTargetView>(m_renderTarget.ptr());
+    const auto depthStencilView = GetInterface<ID3D11DepthStencilView>(m_depthStencil.ptr());
+
+    m_ctx->OMSetRenderTargets(1, &renderTargetView, depthStencilView);
+  }
+
+  HRESULT D3D9Device::QueryInterface(REFIID riid, void** ppvObject) {
+    *ppvObject = nullptr;
+
+    if (riid == __uuidof(IUnknown) || riid == __uuidof(IDirect3DDevice9)) {
+      *ppvObject = ref(this);
+      return S_OK;
+    }
+
+    Logger::warn("D3D9Device::QueryInterface: Unknown interface query");
+    Logger::warn(str::format(riid));
+    return E_NOINTERFACE;
+  }
+
+  HRESULT D3D9Device::GetDirect3D(IDirect3D9** ppD3D9) {
+    InitReturnPtr(ppD3D9);
+    CHECK_NOT_NULL(ppD3D9);
+
+    *ppD3D9 = ref(m_parent);
+
+    return D3D_OK;
+  }
+
+  HRESULT D3D9Device::GetDeviceCaps(D3DCAPS9* pCaps) {
+    CHECK_NOT_NULL(pCaps);
+
+    // The caps were not passed in by the constructor,
+    // but they're the same for all devices anyway.
+    FillCaps(m_creationParams.AdapterOrdinal, *pCaps);
+
+    return D3D_OK;
+  }
+
+  HRESULT D3D9Device::GetCreationParameters(D3DDEVICE_CREATION_PARAMETERS* pParameters) {
+    CHECK_NOT_NULL(pParameters);
+
+    *pParameters = m_creationParams;
+
+    return D3D_OK;
+  }
+
+  HRESULT D3D9Device::TestCooperativeLevel() {
+    Logger::err(str::format(__func__, " stub"));
+    throw DxvkError("Not supported");
+  }
+
+  HRESULT D3D9Device::Reset(D3DPRESENT_PARAMETERS *pPresentationParameters) {
+    Logger::err(str::format(__func__, " stub"));
+    throw DxvkError("Not supported");
+  }
+
+  UINT D3D9Device::GetAvailableTextureMem() {
+    Logger::err(str::format(__func__, " stub"));
+    throw DxvkError("Not supported");
+  }
+
+  HRESULT D3D9Device::EvictManagedResources() {
+    Logger::err(str::format(__func__, " stub"));
+    throw DxvkError("Not supported");
   }
 }

@@ -1,7 +1,7 @@
 #include "d3d9_core.h"
 
 #include "d3d9_caps.h"
-#include "d3d9_device_impl.h"
+#include "d3d9_device.h"
 #include "d3d9_format.h"
 
 #define CHECK_ADAPTER(adapter) { if (!ValidAdapter(adapter)) { return D3DERR_INVALIDCALL; } }
@@ -287,7 +287,7 @@ namespace dxvk {
       BehaviorFlags,
     };
 
-    device = new D3D9DeviceImpl(this, adapter, cp, pp);
+    device = new D3D9Device(this, adapter, cp, pp);
 
     return D3D_OK;
   }

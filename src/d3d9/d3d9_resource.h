@@ -57,15 +57,14 @@ namespace dxvk {
       return D3D_OK;
     }
 
-    // TODO: the following functions are hints
-    // which we could use improve performance.
-
     HRESULT STDMETHODCALLTYPE FreePrivateData(REFGUID Guid) final override {
       if (FAILED(m_privateData.setData(Guid, 0, nullptr)))
         return D3DERR_INVALIDCALL;
       return D3D_OK;
     }
 
+    // TODO: the following functions are hints
+    // which we could use improve performance.
 
     DWORD STDMETHODCALLTYPE SetPriority(DWORD Priority) final override {
       const auto old = m_priority;

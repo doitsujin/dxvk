@@ -1,7 +1,7 @@
-#include "d3d9_device_viewport.h"
+#include "d3d9_device.h"
 
 namespace dxvk {
-  HRESULT D3D9DeviceViewport::GetViewport(D3DVIEWPORT9* pViewport) {
+  HRESULT D3D9Device::GetViewport(D3DVIEWPORT9* pViewport) {
     CHECK_NOT_NULL(pViewport);
 
     UINT num = 1;
@@ -19,7 +19,7 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  HRESULT D3D9DeviceViewport::SetViewport(const D3DVIEWPORT9* pViewport) {
+  HRESULT D3D9Device::SetViewport(const D3DVIEWPORT9* pViewport) {
     CHECK_NOT_NULL(pViewport);
 
     const auto& vp = *pViewport;

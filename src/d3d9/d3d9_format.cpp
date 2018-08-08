@@ -14,6 +14,7 @@ namespace dxvk {
 
   static std::unordered_map<DXGI_FORMAT, _D3DFORMAT> formatMapping {
     { DXGI_FORMAT_UNKNOWN, D3DFMT_UNKNOWN },
+    { DXGI_FORMAT_B8G8R8X8_UNORM, D3DFMT_X8B8G8R8 },
   };
 
   bool SupportedBackBufferFormat(D3DFORMAT Format) {

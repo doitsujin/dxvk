@@ -1,7 +1,6 @@
 #pragma once
 
 #include "d3d9_include.h"
-#include "d3d9_resource.h"
 
 namespace dxvk {
   /// Shader class.
