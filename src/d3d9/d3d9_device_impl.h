@@ -4,22 +4,29 @@
 #include "d3d9_device.h"
 #include "d3d9_device_params.h"
 #include "d3d9_query.h"
+#include "d3d9_rt.h"
 #include "d3d9_shader.h"
 #include "d3d9_viewport.h"
 
 namespace dxvk {
   /// This final Device implementation mixes in all of the partial implementations of the interface.
-  class D3D9DeviceImpl final: public virtual ComObject<D3D9Device>,
-      public virtual D3D9DeviceCursor,
-      public virtual D3D9DeviceParams,
-      public virtual D3D9DevicePixelShader,
-      public virtual D3D9DeviceQuery,
-      public virtual D3D9DeviceVertexShader,
-      public virtual D3D9DeviceViewport {
-    public:
+  class D3D9DeviceImpl final: public ComObject<>,
+    public D3D9DeviceCursor,
+    public D3D9DeviceParams,
+    public D3D9DevicePixelShader,
+    public D3D9DeviceQuery,
+    public D3D9DeviceRenderTarget,
+    public D3D9DeviceVertexShader,
+    public D3D9DeviceViewport {
+  public:
     D3D9DeviceImpl(IDirect3D9* parent, D3D9Adapter& adapter,
       const D3DDEVICE_CREATION_PARAMETERS& cp, D3DPRESENT_PARAMETERS& pp);
 
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) final override;
+
+    // We delegate these methods to ComObject, but we need to override them here.
+    ULONG STDMETHODCALLTYPE AddRef() final override;
+    ULONG STDMETHODCALLTYPE Release() final override;
 
     HRESULT STDMETHODCALLTYPE GetDisplayMode(UINT iSwapChain, D3DDISPLAYMODE* pMode) final override {
       Logger::err(str::format(__func__, " stub"));
@@ -110,15 +117,6 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE CreateVertexBuffer(UINT Length,
       DWORD Usage, DWORD FVF, D3DPOOL Pool,
       IDirect3DVertexBuffer9 **ppVertexBuffer, HANDLE *pSharedHandle) final override {
-      Logger::err(str::format(__func__, " stub"));
-      throw DxvkError("Not supported");
-    }
-
-    HRESULT STDMETHODCALLTYPE CreateRenderTarget(UINT Width, UINT Height,
-      D3DFORMAT Format,
-      D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality,
-      BOOL Lockable,
-      IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle) final override {
       Logger::err(str::format(__func__, " stub"));
       throw DxvkError("Not supported");
     }
@@ -289,18 +287,6 @@ namespace dxvk {
       throw DxvkError("Not supported");
     }
 
-    HRESULT STDMETHODCALLTYPE GetRenderTarget(DWORD RenderTargetIndex,
-      IDirect3DSurface9** ppRenderTarget) final override {
-      Logger::err(str::format(__func__, " stub"));
-      throw DxvkError("Not supported");
-    }
-
-    HRESULT STDMETHODCALLTYPE GetRenderTargetData(IDirect3DSurface9* pRenderTarget,
-      IDirect3DSurface9* pDestSurface) final override {
-      Logger::err(str::format(__func__, " stub"));
-      throw DxvkError("Not supported");
-    }
-
     HRESULT STDMETHODCALLTYPE GetSamplerState(
   DWORD               Sampler,
   D3DSAMPLERSTATETYPE Type,
@@ -458,12 +444,6 @@ namespace dxvk {
       throw DxvkError("Not supported");
     }
 
-    HRESULT STDMETHODCALLTYPE SetRenderTarget(DWORD RenderTargetIndex,
-    IDirect3DSurface9 *pRenderTarget) final override {
-      Logger::err(str::format(__func__, " stub"));
-      throw DxvkError("Not supported");
-    }
-
     HRESULT STDMETHODCALLTYPE SetSamplerState(DWORD               Sampler,
   D3DSAMPLERSTATETYPE Type,
   DWORD               Value
@@ -551,14 +531,5 @@ namespace dxvk {
       Logger::err(str::format(__func__, " stub"));
       throw DxvkError("Not supported");
     }
-
-  private:
-    ID3D11Device* device() const override final {
-      return m_device.ptr();
-    }
-
-    D3D9Adapter& m_adapter;
-    Com<ID3D11Device> m_device;
-    Com<ID3D11DeviceContext> m_ctx;
   };
 }

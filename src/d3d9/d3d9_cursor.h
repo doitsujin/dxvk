@@ -1,10 +1,10 @@
 #pragma once
 
-#include "d3d9_include.h"
+#include "d3d9_device.h"
 
 namespace dxvk {
   /// Implementation of cursor-related device functions.
-  class D3D9DeviceCursor: public virtual IDirect3DDevice9 {
+  class D3D9DeviceCursor: public virtual D3D9Device {
   public:
     void STDMETHODCALLTYPE SetCursorPosition(int X, int Y, DWORD Flags) final override;
 
