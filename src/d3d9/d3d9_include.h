@@ -8,3 +8,11 @@
 
 // Validates a pointer parameter.
 #define CHECK_NOT_NULL(ptr) { if (!(ptr)) { return D3DERR_INVALIDCALL; } }
+
+// TODO: support D3D9 shared resources.
+#define CHECK_SHARED_HANDLE(sh) { \
+  if ((sh) != nullptr) { \
+    Logger::err("D3D9 shared resources not yet supported"); \
+    return D3DERR_INVALIDCALL; \
+  } \
+}

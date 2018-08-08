@@ -43,5 +43,6 @@ namespace dxvk {
     D3D9Adapter& m_adapter;
     Com<ID3D11Device> m_device;
     Com<ID3D11DeviceContext> m_ctx;
+    Com<IDXGISwapChain> m_swapChain;
   };
 }

@@ -12,6 +12,10 @@ namespace dxvk {
     { D3DFMT_X8R8G8B8, DXGI_FORMAT_B8G8R8X8_UNORM },
   };
 
+  static std::unordered_map<DXGI_FORMAT, _D3DFORMAT> formatMapping {
+    { DXGI_FORMAT_UNKNOWN, D3DFMT_UNKNOWN },
+  };
+
   bool SupportedBackBufferFormat(D3DFORMAT Format) {
     if (backBufferFormats.count(Format) == 1)
       return true;
@@ -26,6 +30,17 @@ namespace dxvk {
     if (it == backBufferFormats.end()) {
       Logger::err(str::format("Unsupported back buffer format: ", Format));
       return DXGI_FORMAT_UNKNOWN;
+    } else {
+      return it->second;
+    }
+  }
+
+  D3DFORMAT DXGIFormatToSurfaceFormat(DXGI_FORMAT Format) {
+    const auto it = formatMapping.find(Format);
+
+    if (it == formatMapping.end()) {
+      Logger::err(str::format("Unsupported D3D9 format: ", Format));
+      return D3DFMT_UNKNOWN;
     } else {
       return it->second;
     }

@@ -5,6 +5,9 @@ namespace dxvk {
     const D3DDEVICE_CREATION_PARAMETERS& cp, D3DPRESENT_PARAMETERS& pp)
     : D3D9Device(adapter, cp.hFocusWindow, pp),
     D3D9DeviceParams(parent, cp) {
+    // Also create the default render target,
+    // and the corresponding depth buffer, if requested.
+    CreateBackBufferRT(pp.EnableAutoDepthStencil, pp.AutoDepthStencilFormat);
   }
 
   HRESULT D3D9DeviceImpl::QueryInterface(REFIID riid, void** ppvObject) {

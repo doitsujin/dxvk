@@ -3,9 +3,6 @@
 #include "d3d9_device.h"
 
 namespace dxvk {
-  /// Implements query creation.
-  class D3D9DeviceQuery: public virtual D3D9Device {
-    HRESULT STDMETHODCALLTYPE CreateQuery(D3DQUERYTYPE Type,
-      IDirect3DQuery9** ppQuery) final override;
+  class D3D9Query final: public ComObject<IDirect3DQuery9> {
   };
 }

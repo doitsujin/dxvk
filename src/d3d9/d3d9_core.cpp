@@ -255,8 +255,7 @@ namespace dxvk {
     }
 
     if (BehaviorFlags & D3DCREATE_MULTITHREADED) {
-      Logger::err("D3D9 is not yet thread-safe");
-      return D3DERR_INVALIDCALL;
+      Logger::warn("D3D9 is not yet thread-safe");
     }
 
     // Ignored flags:

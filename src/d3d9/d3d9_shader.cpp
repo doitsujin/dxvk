@@ -4,8 +4,11 @@
 
 namespace dxvk {
   template <typename B, typename I>
-  HRESULT D3D9Shader<B, I>::GetDevice(IDirect3DDevice9** ppDevice) {
-    return D3D9DeviceChild::GetDevice(ppDevice);
+  HRESULT D3D9Shader<B, I>::GetDevice(IDirect3DDevice9** ppDevice)  {
+    InitReturnPtr(ppDevice);
+    CHECK_NOT_NULL(ppDevice);
+    *ppDevice = m_parent.ref();
+    return D3D_OK;
   }
 
   template <typename B, typename I>

@@ -1,4 +1,4 @@
-#include "d3d9_cursor.h"
+#include "d3d9_device_cursor.h"
 
 namespace dxvk {
   void D3D9DeviceCursor::SetCursorPosition(int X, int Y, DWORD Flags) {

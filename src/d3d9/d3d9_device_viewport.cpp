@@ -1,4 +1,4 @@
-#include "d3d9_viewport.h"
+#include "d3d9_device_viewport.h"
 
 namespace dxvk {
   HRESULT D3D9DeviceViewport::GetViewport(D3DVIEWPORT9* pViewport) {

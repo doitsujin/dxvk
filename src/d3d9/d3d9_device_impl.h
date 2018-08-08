@@ -1,22 +1,21 @@
 #pragma once
 
-#include "d3d9_cursor.h"
 #include "d3d9_device.h"
+#include "d3d9_device_cursor.h"
 #include "d3d9_device_params.h"
-#include "d3d9_query.h"
-#include "d3d9_rt.h"
-#include "d3d9_shader.h"
-#include "d3d9_viewport.h"
+#include "d3d9_device_query.h"
+#include "d3d9_device_rt.h"
+#include "d3d9_device_shader.h"
+#include "d3d9_device_viewport.h"
 
 namespace dxvk {
   /// This final Device implementation mixes in all of the partial implementations of the interface.
   class D3D9DeviceImpl final: public ComObject<>,
     public D3D9DeviceCursor,
     public D3D9DeviceParams,
-    public D3D9DevicePixelShader,
     public D3D9DeviceQuery,
     public D3D9DeviceRenderTarget,
-    public D3D9DeviceVertexShader,
+    public D3D9DeviceShader,
     public D3D9DeviceViewport {
   public:
     D3D9DeviceImpl(IDirect3D9* parent, D3D9Adapter& adapter,
@@ -81,15 +80,6 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE CreateCubeTexture(UINT EdgeLength, UINT Levels,
       DWORD Usage, D3DFORMAT Format, D3DPOOL Pool,
       IDirect3DCubeTexture9** ppCubeTexture, HANDLE* pSharedHandle) final override {
-      Logger::err(str::format(__func__, " stub"));
-      throw DxvkError("Not supported");
-    }
-
-    HRESULT STDMETHODCALLTYPE CreateDepthStencilSurface(UINT Width, UINT Height,
-      D3DFORMAT Format,
-      D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality,
-      BOOL Discard,
-      IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle) final override {
       Logger::err(str::format(__func__, " stub"));
       throw DxvkError("Not supported");
     }
@@ -203,12 +193,6 @@ namespace dxvk {
     }
 
     HRESULT STDMETHODCALLTYPE GetCurrentTexturePalette(UINT* PaletteNumber) final override {
-      Logger::err(str::format(__func__, " stub"));
-      throw DxvkError("Not supported");
-    }
-
-    HRESULT STDMETHODCALLTYPE GetDepthStencilSurface(
-  IDirect3DSurface9 **ppZStencilSurface) final override {
       Logger::err(str::format(__func__, " stub"));
       throw DxvkError("Not supported");
     }
@@ -375,11 +359,6 @@ namespace dxvk {
     }
 
     HRESULT STDMETHODCALLTYPE SetCurrentTexturePalette(UINT PaletteNumber) final override {
-      Logger::err(str::format(__func__, " stub"));
-      throw DxvkError("Not supported");
-    }
-
-    HRESULT STDMETHODCALLTYPE SetDepthStencilSurface(IDirect3DSurface9* pNewZStencil) final override {
       Logger::err(str::format(__func__, " stub"));
       throw DxvkError("Not supported");
     }

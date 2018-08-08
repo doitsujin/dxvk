@@ -72,8 +72,6 @@ namespace dxvk {
       0,
     };
 
-    Com<IDXGISwapChain> swapChain;
-
     const auto result = D3D11CreateDeviceAndSwapChain(dxgiAdapter,
       D3D_DRIVER_TYPE_UNKNOWN,
       nullptr,
@@ -83,7 +81,7 @@ namespace dxvk {
       0,
       D3D11_SDK_VERSION,
       &scDesc,
-      &swapChain,
+      &m_swapChain,
       &m_device,
       nullptr,
       &m_ctx
@@ -92,10 +90,6 @@ namespace dxvk {
     if (FAILED(result)) {
       Logger::err(str::format("D3D11CreateDeviceAndSwapChain failed: ", result));
       throw DxvkError("Failed to create D3D9 device");
-    }
-
-    if (pp.EnableAutoDepthStencil) {
-      // TODO: create depth/stencil pp.AutoDepthStencilFormat
     }
   }
 }

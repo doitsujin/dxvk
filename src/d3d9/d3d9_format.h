@@ -6,4 +6,5 @@ namespace dxvk {
   bool SupportedBackBufferFormat(D3DFORMAT Format);
 
   DXGI_FORMAT BackBufferFormatToDXGIFormat(D3DFORMAT Format);
+  D3DFORMAT DXGIFormatToSurfaceFormat(DXGI_FORMAT Format);
 }

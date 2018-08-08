@@ -186,9 +186,8 @@ namespace dxvk {
     // Support all types.
     caps.DeclTypes = (1 << 10) - 1;
 
-    // There is no real limit on modern GPUs, except for available VRAM.
-    // Limit this to a reasonable number.
-    caps.NumSimultaneousRTs = 64;
+    // This is D3D11's limit.
+    caps.NumSimultaneousRTs = 8;
 
     // All the possible filters.
     caps.StretchRectFilterCaps = (~0);
