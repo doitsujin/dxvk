@@ -148,6 +148,51 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE UpdateSurface(IDirect3DSurface9* pSourceSurface, const RECT* pSourceRect,
       IDirect3DSurface9* pDestinationSurface, const POINT* pDestPoint) final override;
 
+  public: /// Texture creation functions.
+    HRESULT STDMETHODCALLTYPE CreateTexture(UINT Width, UINT Height, UINT Levels,
+      DWORD Usage, D3DFORMAT Format, D3DPOOL Pool,
+      IDirect3DTexture9** ppTexture, HANDLE* pSharedHandle) final override;
+
+    HRESULT STDMETHODCALLTYPE CreateCubeTexture(UINT EdgeLength, UINT Levels,
+      DWORD Usage, D3DFORMAT Format, D3DPOOL Pool,
+      IDirect3DCubeTexture9** ppCubeTexture, HANDLE* pSharedHandle) final override;
+
+    HRESULT STDMETHODCALLTYPE CreateVolumeTexture(UINT Width, UINT Height,
+      UINT Depth, UINT Levels, DWORD Usage,
+      D3DFORMAT Format, D3DPOOL Pool,
+      IDirect3DVolumeTexture9** ppVolumeTexture, HANDLE* pSharedHandle) final override;
+
+  public: /// Texture state functions.
+    HRESULT STDMETHODCALLTYPE UpdateTexture(IDirect3DBaseTexture9* pSourceTexture,
+      IDirect3DBaseTexture9* pDestinationTexture) final override {
+      Logger::err(str::format(__func__, " stub"));
+      throw DxvkError("Not supported");
+    }
+
+    HRESULT STDMETHODCALLTYPE SetTexture(DWORD Stage,
+      IDirect3DBaseTexture9* pTexture) final override {
+      Logger::err(str::format(__func__, " stub"));
+      throw DxvkError("Not supported");
+    }
+
+    HRESULT STDMETHODCALLTYPE SetTextureStageState(DWORD Stage,
+      D3DTEXTURESTAGESTATETYPE Type, DWORD Value) final override {
+      Logger::err(str::format(__func__, " stub"));
+      throw DxvkError("Not supported");
+    }
+
+    HRESULT STDMETHODCALLTYPE GetTexture(DWORD Stage,
+      IDirect3DBaseTexture9** ppTexture) final override {
+      Logger::err(str::format(__func__, " stub"));
+      throw DxvkError("Not supported");
+    }
+
+    HRESULT STDMETHODCALLTYPE GetTextureStageState(DWORD Stage,
+      D3DTEXTURESTAGESTATETYPE Type, DWORD* pValue) final override {
+      Logger::err(str::format(__func__, " stub"));
+      throw DxvkError("Not supported");
+    }
+
   public: /// Query creation function.
     HRESULT STDMETHODCALLTYPE CreateQuery(D3DQUERYTYPE Type,
       IDirect3DQuery9** ppQuery) final override;
@@ -202,13 +247,6 @@ namespace dxvk {
       throw DxvkError("Not supported");
     }
 
-    HRESULT STDMETHODCALLTYPE CreateCubeTexture(UINT EdgeLength, UINT Levels,
-      DWORD Usage, D3DFORMAT Format, D3DPOOL Pool,
-      IDirect3DCubeTexture9** ppCubeTexture, HANDLE* pSharedHandle) final override {
-      Logger::err(str::format(__func__, " stub"));
-      throw DxvkError("Not supported");
-    }
-
     HRESULT STDMETHODCALLTYPE CreateIndexBuffer(UINT Length,
       DWORD Usage, D3DFORMAT Format, D3DPOOL Pool,
       IDirect3DIndexBuffer9** ppIndexBuffer, HANDLE* pSharedHandle) final override {
@@ -232,21 +270,6 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE CreateVertexBuffer(UINT Length,
       DWORD Usage, DWORD FVF, D3DPOOL Pool,
       IDirect3DVertexBuffer9** ppVertexBuffer, HANDLE* pSharedHandle) final override {
-      Logger::err(str::format(__func__, " stub"));
-      throw DxvkError("Not supported");
-    }
-
-    HRESULT STDMETHODCALLTYPE CreateTexture(UINT Width, UINT Height, UINT Levels,
-      DWORD Usage, D3DFORMAT Format, D3DPOOL Pool,
-      IDirect3DTexture9** ppTexture, HANDLE* pSharedHandle) final override {
-      Logger::err(str::format(__func__, " stub"));
-      throw DxvkError("Not supported");
-    }
-
-    HRESULT STDMETHODCALLTYPE CreateVolumeTexture(UINT Width, UINT Height,
-      UINT Depth, UINT Levels, DWORD Usage,
-      D3DFORMAT Format, D3DPOOL Pool,
-      IDirect3DVolumeTexture9** ppVolumeTexture, HANDLE* pSharedHandle) final override {
       Logger::err(str::format(__func__, " stub"));
       throw DxvkError("Not supported");
     }
@@ -423,17 +446,6 @@ namespace dxvk {
       throw DxvkError("Not supported");
     }
 
-    HRESULT STDMETHODCALLTYPE GetTexture(DWORD Stage,
-      IDirect3DBaseTexture9** ppTexture) final override {
-      Logger::err(str::format(__func__, " stub"));
-      throw DxvkError("Not supported");
-    }
-
-    HRESULT STDMETHODCALLTYPE GetTextureStageState(DWORD Stage,
-      D3DTEXTURESTAGESTATETYPE Type, DWORD* pValue) final override {
-      Logger::err(str::format(__func__, " stub"));
-      throw DxvkError("Not supported");
-    }
 
     HRESULT STDMETHODCALLTYPE GetVertexDeclaration(IDirect3DVertexDeclaration9** ppDecl) final override {
       Logger::err(str::format(__func__, " stub"));
@@ -541,26 +553,8 @@ namespace dxvk {
       Logger::err(str::format(__func__, " stub"));
       throw DxvkError("Not supported");
     }
-    HRESULT STDMETHODCALLTYPE SetTexture(DWORD Stage,
-      IDirect3DBaseTexture9* pTexture) final override {
-      Logger::err(str::format(__func__, " stub"));
-      throw DxvkError("Not supported");
-    }
-
-    HRESULT STDMETHODCALLTYPE SetTextureStageState(DWORD Stage,
-      D3DTEXTURESTAGESTATETYPE Type, DWORD Value) final override {
-      Logger::err(str::format(__func__, " stub"));
-      throw DxvkError("Not supported");
-    }
 
     HRESULT STDMETHODCALLTYPE SetVertexDeclaration(IDirect3DVertexDeclaration9* pDecl) final override {
-      Logger::err(str::format(__func__, " stub"));
-      throw DxvkError("Not supported");
-    }
-
-
-    HRESULT STDMETHODCALLTYPE UpdateTexture(IDirect3DBaseTexture9* pSourceTexture,
-      IDirect3DBaseTexture9* pDestinationTexture) final override {
       Logger::err(str::format(__func__, " stub"));
       throw DxvkError("Not supported");
     }
