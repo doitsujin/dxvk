@@ -1288,7 +1288,7 @@ namespace dxvk {
     const Rc<DxvkAdapter>&  adapter,
           D3D_FEATURE_LEVEL featureLevel) {
     // We currently only support 11_0 interfaces
-    if (featureLevel > GetMaxFeatureLevel())
+    if (featureLevel > GetMaxFeatureLevel(adapter))
       return false;
     
     // Check whether all features are supported
@@ -1535,7 +1535,7 @@ namespace dxvk {
   }
   
   
-  D3D_FEATURE_LEVEL D3D11Device::GetMaxFeatureLevel() {
+  D3D_FEATURE_LEVEL D3D11Device::GetMaxFeatureLevel(const Rc<DxvkAdapter>& Adapter) {
     static const std::array<std::pair<std::string, D3D_FEATURE_LEVEL>, 7> s_featureLevels = {{
       { "11_1", D3D_FEATURE_LEVEL_11_1 },
       { "11_0", D3D_FEATURE_LEVEL_11_0 },
@@ -1546,7 +1546,8 @@ namespace dxvk {
       { "9_1",  D3D_FEATURE_LEVEL_9_1  },
     }};
     
-    const std::string maxLevel = env::getEnvVar(L"DXVK_FEATURE_LEVEL");
+    const std::string maxLevel = Adapter->instance()->config()
+      .getOption<std::string>("d3d11.maxFeatureLevel");
     
     auto entry = std::find_if(s_featureLevels.begin(), s_featureLevels.end(),
       [&] (const std::pair<std::string, D3D_FEATURE_LEVEL>& pair) {

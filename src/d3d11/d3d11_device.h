@@ -390,7 +390,8 @@ namespace dxvk {
             VkFormat    Format,
             VkImageType Type) const;
     
-    static D3D_FEATURE_LEVEL GetMaxFeatureLevel();
+    static D3D_FEATURE_LEVEL GetMaxFeatureLevel(
+      const Rc<DxvkAdapter>&        Adapter);
     
   };
   
