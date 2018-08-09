@@ -3,6 +3,7 @@
 #include "d3d9_caps.h"
 #include "d3d9_format.h"
 #include "d3d9_surface.h"
+#include "d3d9_multisample.h"
 
 namespace dxvk {
   D3D9Device::D3D9Device(IDirect3D9* parent, D3D9Adapter& adapter,
@@ -53,19 +54,14 @@ namespace dxvk {
       DXGI_MODE_SCALING_UNSPECIFIED,
     };
 
-    // TODO: support multisampling
-    const auto msSamples = pp.MultiSampleType; // from 0 to 16
-    const auto msQuality = pp.MultiSampleQuality; // Quality
-
-    DXGI_SAMPLE_DESC samples {
-      1,
-      0,
-    };
+    DXGI_SAMPLE_DESC samples;
 
     if (pp.SwapEffect != D3DSWAPEFFECT_DISCARD) {
       Logger::warn("Multisampling is only supported when the swap effect is DISCARD");
       Logger::warn("Disabling multisampling");
       samples = { 1, 0 };
+    } else {
+      samples = D3D9ToDXGISampleDesc(pp.MultiSampleType, pp.MultiSampleQuality);
     }
 
     const auto usage = DXGI_USAGE_BACK_BUFFER | DXGI_USAGE_RENDER_TARGET_OUTPUT;
@@ -91,7 +87,8 @@ namespace dxvk {
       D3D_DRIVER_TYPE_UNKNOWN,
       nullptr,
       0,
-      // TODO: determine which feature level we actually need.
+      // We don't care about the feature level, since on desktop Vulkan devices
+      // at least level 9_3 is certainly supported.
       nullptr,
       0,
       D3D11_SDK_VERSION,

@@ -8,6 +8,7 @@ d3d9_src = [
   'd3d9_format.cpp',
   'd3d9_gamma.cpp',
   'd3d9_main.cpp',
+  'd3d9_multisample.cpp',
   'd3d9_query.cpp',
   'd3d9_rt.cpp',
   'd3d9_shader.cpp',
