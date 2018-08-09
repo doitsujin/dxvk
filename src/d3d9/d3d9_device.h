@@ -1,7 +1,7 @@
 #pragma once
 
-#include "d3d9_include.h"
 #include "d3d9_adapter.h"
+#include "d3d9_rt.h"
 
 namespace dxvk {
   /// Class representing a logical graphics device.
@@ -54,6 +54,13 @@ namespace dxvk {
       IDirect3DSurface9** ppRenderTarget) final override;
     HRESULT STDMETHODCALLTYPE GetRenderTargetData(IDirect3DSurface9* pRenderTarget,
       IDirect3DSurface9* pDestSurface) final override;
+
+  private:
+    // This function should be called when the default render target
+    // (associated with the default back buffer) should be (re)created.
+    HRESULT CreateDefaultRT();
+
+    Com<D3D9RenderTarget> m_renderTarget;
 
   public: // Depth stencil functions.
     HRESULT STDMETHODCALLTYPE CreateDepthStencilSurface(UINT Width, UINT Height,

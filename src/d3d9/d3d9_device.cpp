@@ -104,6 +104,11 @@ namespace dxvk {
       throw DxvkError("Failed to create D3D9 device");
     }
 
+    if (FAILED(CreateDefaultRT())) {
+      Logger::err("Failed to create default render target");
+      throw DxvkError("Failed to create D3D9 device");
+    }
+
     if (pp.EnableAutoDepthStencil) {
       // TODO: support auto creating the depth / stencil buffer.
       Logger::err("Automatically creating depth buffer not yet supported");

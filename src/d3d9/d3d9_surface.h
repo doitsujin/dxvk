@@ -7,7 +7,7 @@ namespace dxvk {
   ///
   /// This could either be a pixel buffer, a depth buffer, a 2D texture,
   /// or a 2D-view of a 1D/3D/cube-map texture.
-  class D3D9Surface final: public ComObject<D3D9Resource<IDirect3DSurface9>> {
+  class D3D9Surface: public ComObject<D3D9Resource<IDirect3DSurface9>> {
   public:
     D3D9Surface(IDirect3DDevice9* parent, ID3D11Texture2D* surface, DWORD usage);
 
