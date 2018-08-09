@@ -35,10 +35,11 @@ namespace dxvk {
           UINT                        BindFlags,
           DXGI_FORMAT                 Format) {
     auto texture = GetCommonTexture(pResource);
+    auto buffer  = GetCommonBuffer (pResource);
     
     return texture != nullptr
       ? texture->CheckViewCompatibility(BindFlags, Format)
-      : true; /* for buffers */
+      : buffer ->CheckViewCompatibility(BindFlags, Format);
   }
 
 

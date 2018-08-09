@@ -65,6 +65,20 @@ namespace dxvk {
   }
   
   
+  bool D3D11Buffer::CheckViewCompatibility(
+          UINT                BindFlags,
+          DXGI_FORMAT         Format) const {
+    // Check whether the given bind flags are supported
+    VkBufferUsageFlags usage = GetBufferUsageFlags(BindFlags);
+
+    if ((m_buffer->info().usage & usage) != usage)
+      return false;
+
+    // TODO implement format validation
+    return true;
+  }
+
+
   Rc<DxvkBuffer> D3D11Buffer::CreateBuffer(
     const D3D11_BUFFER_DESC* pDesc) const {
     DxvkBufferCreateInfo  info;

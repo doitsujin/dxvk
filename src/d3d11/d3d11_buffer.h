@@ -37,6 +37,10 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc(
             D3D11_BUFFER_DESC *pDesc) final;
     
+    bool CheckViewCompatibility(
+            UINT                BindFlags,
+            DXGI_FORMAT         Format) const;
+
     const D3D11_BUFFER_DESC* Desc() const {
       return &m_desc;
     }
