@@ -8,13 +8,20 @@ namespace dxvk {
     D3D11_VIEWPORT vp;
     m_ctx->RSGetViewports(&num, &vp);
 
-    *pViewport = D3DVIEWPORT9 {
-      // D3D11 allows these to be floats, but since we set the viewport,
-      // they will always be integers.
-      (DWORD)vp.TopLeftX, (DWORD)vp.TopLeftY,
-      (DWORD)vp.Width, (DWORD)vp.Height,
-      vp.MinDepth, vp.MaxDepth
-    };
+    D3DVIEWPORT9 viewport;
+
+    // In D3D11 it's possible for these coordinates to be floats, but since we set them
+    // we know they're integers.
+    viewport.X = static_cast<DWORD>(vp.TopLeftX);
+    viewport.Y = static_cast<DWORD>(vp.TopLeftX);
+
+    viewport.Width = static_cast<DWORD>(vp.Width);
+    viewport.Height = static_cast<DWORD>(vp.Height);
+
+    viewport.MinZ = vp.MinDepth;
+    viewport.MaxZ = vp.MaxDepth;
+
+    *pViewport = viewport;
 
     return D3D_OK;
   }
@@ -24,11 +31,16 @@ namespace dxvk {
 
     const auto& vp = *pViewport;
 
-    const D3D11_VIEWPORT newViewport {
-      (FLOAT)vp.X, (FLOAT)vp.Y,
-      (FLOAT)vp.Width, (FLOAT)vp.Height,
-      vp.MinZ, vp.MaxZ
-    };
+    D3D11_VIEWPORT newViewport;
+
+    newViewport.TopLeftX = static_cast<float>(vp.X);
+    newViewport.TopLeftY = static_cast<float>(vp.Y);
+
+    newViewport.Width = static_cast<float>(vp.Width);
+    newViewport.Height = static_cast<float>(vp.Height);
+
+    newViewport.MinDepth = vp.MinZ;
+    newViewport.MaxDepth = vp.MaxZ;
 
     m_ctx->RSSetViewports(1, &newViewport);
 
