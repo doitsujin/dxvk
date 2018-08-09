@@ -80,7 +80,18 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE SetCursorProperties(UINT XHotSpot, UINT YHotSpot, IDirect3DSurface9* pCursorBitmap) final override;
     void STDMETHODCALLTYPE SetCursorPosition(int X, int Y, DWORD Flags) final override;
 
-    /// Vertex and pixel shader functions.
+  public: /// Transformation state functions.
+    HRESULT STDMETHODCALLTYPE GetTransform(D3DTRANSFORMSTATETYPE State,
+      D3DMATRIX* pMatrix) final override;
+    HRESULT STDMETHODCALLTYPE SetTransform(D3DTRANSFORMSTATETYPE State,
+      const D3DMATRIX* pMatrix) final override;
+    HRESULT STDMETHODCALLTYPE MultiplyTransform(D3DTRANSFORMSTATETYPE TransformStateType,
+      const D3DMATRIX* Matrix) final override;
+
+  private:
+    std::unordered_map<D3DTRANSFORMSTATETYPE, D3DMATRIX> m_transforms;
+
+  public: /// Vertex and pixel shader functions.
     HRESULT STDMETHODCALLTYPE CreateVertexShader(const DWORD* pFunction,
       IDirect3DVertexShader9** ppShader) final override;
 
@@ -418,24 +429,12 @@ namespace dxvk {
       throw DxvkError("Not supported");
     }
 
-    HRESULT STDMETHODCALLTYPE GetTransform(D3DTRANSFORMSTATETYPE State,
-      D3DMATRIX* pMatrix) final override {
-      Logger::err(str::format(__func__, " stub"));
-      throw DxvkError("Not supported");
-    }
-
     HRESULT STDMETHODCALLTYPE GetVertexDeclaration(IDirect3DVertexDeclaration9** ppDecl) final override {
       Logger::err(str::format(__func__, " stub"));
       throw DxvkError("Not supported");
     }
 
     HRESULT STDMETHODCALLTYPE LightEnable(DWORD Index, BOOL Enable) final override {
-      Logger::err(str::format(__func__, " stub"));
-      throw DxvkError("Not supported");
-    }
-
-    HRESULT STDMETHODCALLTYPE MultiplyTransform(D3DTRANSFORMSTATETYPE TransformStateType,
-      const D3DMATRIX* Matrix) final override {
       Logger::err(str::format(__func__, " stub"));
       throw DxvkError("Not supported");
     }
@@ -544,12 +543,6 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE SetTextureStageState(DWORD Stage,
       D3DTEXTURESTAGESTATETYPE Type, DWORD Value) final override {
-      Logger::err(str::format(__func__, " stub"));
-      throw DxvkError("Not supported");
-    }
-
-    HRESULT STDMETHODCALLTYPE SetTransform(D3DTRANSFORMSTATETYPE State,
-      const D3DMATRIX *pMatrix) final override {
       Logger::err(str::format(__func__, " stub"));
       throw DxvkError("Not supported");
     }

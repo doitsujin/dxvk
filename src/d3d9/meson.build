@@ -13,13 +13,14 @@ d3d9_src = [
   'd3d9_rt.cpp',
   'd3d9_shader.cpp',
   'd3d9_surface.cpp',
+  'd3d9_transform.cpp',
   'd3d9_viewport.cpp',
 ]
 
 d3d9_dll = shared_library('d3d9'+dll_ext, d3d9_src,
   name_prefix         : '',
   link_with           : [ util_lib ],
-  dependencies        : [ lib_d3d11, lib_dxgi, dxbc_dep, dxvk_dep ],
+  dependencies        : [ lib_d3dx9, lib_d3d11, lib_dxgi, dxbc_dep, dxvk_dep ],
   include_directories : dxvk_include_path,
   install             : true,
   objects             : not dxvk_msvc ? 'd3d9'+def_spec_ext : [],
