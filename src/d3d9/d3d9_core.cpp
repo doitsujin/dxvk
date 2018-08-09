@@ -5,7 +5,7 @@
 #include "d3d9_format.h"
 
 #define CHECK_ADAPTER(adapter) { if (!ValidAdapter(adapter)) { return D3DERR_INVALIDCALL; } }
-#define CHECK_DEV_TYPE(ty) { if (ty != D3DDEVTYPE_HAL) { return D3DERR_INVALIDCALL; } }
+#define CHECK_DEV_TYPE(ty) { if (ty != D3DDEVTYPE_HAL) { return D3DERR_INVALIDDEVICE; } }
 
 namespace dxvk {
   Direct3D9::Direct3D9() {
@@ -45,17 +45,19 @@ namespace dxvk {
   HRESULT Direct3D9::RegisterSoftwareDevice(void*) {
     // Applications would call this if there aren't any GPUs available
     // and want to fall back to software rasterization.
-    Logger::info("Ignoring RegisterSoftwareDevice: software rasterizers are not supported");
+    Logger::warn("Ignoring RegisterSoftwareDevice: software rasterizers are not supported");
 
     // Since we know we always have at least one Vulkan GPU,
     // we simply fake success.
     return D3D_OK;
   }
 
+  // Returns the number of GPUs on the system.
   UINT Direct3D9::GetAdapterCount() {
     return m_adapters.size();
   }
 
+  // Returns a description of the GPU.
   HRESULT Direct3D9::GetAdapterIdentifier(UINT Adapter,
     DWORD, D3DADAPTER_IDENTIFIER9* pIdentifier) {
     CHECK_ADAPTER(Adapter);
@@ -69,7 +71,7 @@ namespace dxvk {
     return GetAdapter(Adapter).GetIdentifier(ident);
   }
 
-  UINT Direct3D9::GetAdapterModeCount(UINT Adapter, D3DFORMAT Format) {
+  UINT Direct3D9::GetAdapterModeCount(UINT Adapter, D3DFORMAT) {
     if (!ValidAdapter(Adapter))
       return 0;
 
@@ -120,8 +122,6 @@ namespace dxvk {
 
     // Note: Vulkan doesn't care if the app is windowed or not.
 
-    // TODO: perform some form of validation to ensure formats make sense.
-
     return D3D_OK;
   }
 
@@ -136,49 +136,34 @@ namespace dxvk {
     return D3D_OK;
   }
 
+  // This function is called by the app to determine if a certain image format
+  // can be used with multisampling.
   HRESULT Direct3D9::CheckDeviceMultiSampleType(UINT Adapter, D3DDEVTYPE DevType,
     D3DFORMAT SurfaceFormat, BOOL,
     D3DMULTISAMPLE_TYPE MultiSampleType, DWORD* pQualityLevels) {
     CHECK_ADAPTER(Adapter);
     CHECK_DEV_TYPE(DevType);
 
-    // Note: we ignore the `windowed` parameter, since Vulkan doesn't care.
-
-    // D3D11-level hardware guarantees at least 8x multisampling
-    // for the formats we're interested in.
-
-    // TODO: we should at least validate the SurfaceFormat parameter.
-
-    // TODO: we should use ID3D11Device::CheckMultisampleQualityLevels
-    // to support AA modes > 8 samples.
-
     if (pQualityLevels) {
-      // We don't mess with quality levels:
-      // we either support a certain AA sample count, or we don't.
+      // Vulkan doesn't have quality levels: we either enable AA, or don't.
       *pQualityLevels = 1;
     }
 
     if (MultiSampleType > 16)
       return D3DERR_INVALIDCALL;
 
-    const UINT sampleCount = MultiSampleType;
+    // D3D11-level hardware guarantees at least 8x multisampling for the formats we're interested in.
+    // Only thing we need to check is that the MS count is a power-of-two.
 
-    // TODO: we could try to round up the other non-power-of-two-values,
-    // instead of not supporting them.
-    switch (sampleCount) {
-      case 1:
-        return S_OK;
-      case 2:
-        return S_OK;
-      case 4:
-        return S_OK;
-      case 8:
-        return S_OK;
-      default:
-        return D3DERR_NOTAVAILABLE;
+    switch (MultiSampleType) {
+    case 1:
+    case 2:
+    case 4:
+    case 8:
+      return D3D_OK;
+    default:
+      return D3DERR_NOTAVAILABLE;
     }
-
-    return D3D_OK;
   }
 
   HRESULT Direct3D9::CheckDepthStencilMatch(UINT Adapter, D3DDEVTYPE DevType,
@@ -189,8 +174,6 @@ namespace dxvk {
 
     // We don't check anything here, since modern hardware supports
     // pretty much every depth-stencil format combined with any RT format.
-
-    // TODO: validate formats.
 
     return S_OK;
   }
@@ -241,12 +224,15 @@ namespace dxvk {
 
     // First we check the flags.
 
-    // No support for multi-GPU.
+    // TODO: No support for multi-GPU yet.
     if (BehaviorFlags & D3DCREATE_ADAPTERGROUP_DEVICE) {
       Logger::err("Multi-GPU configurations not yet supported");
       return D3DERR_INVALIDCALL;
     }
 
+    // TODO: support multithreaded API usage. Since D3D11 is mostly thread-safe we should be OK,
+    // but the docs aren't very explicit as to what thread safe means.
+    // They just say that D3D9 will "lock some global mutex more often" if the flag is set.
     if (BehaviorFlags & D3DCREATE_MULTITHREADED) {
       Logger::warn("D3D9 is not yet thread-safe");
     }
