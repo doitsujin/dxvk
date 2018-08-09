@@ -31,7 +31,7 @@ namespace dxvk {
     imageInfo.layout          = VK_IMAGE_LAYOUT_GENERAL;
 
     DecodeSampleCount(m_desc.SampleDesc.Count, &imageInfo.sampleCount);
-    
+
     // Integer clear operations on UAVs are implemented using
     // a view with a bit-compatible integer format, so we'll
     // have to include that format in the format family
@@ -49,12 +49,12 @@ namespace dxvk {
     // The image must be marked as mutable if it can be reinterpreted
     // by a view with a different format. Depth-stencil formats cannot
     // be reinterpreted in Vulkan, so we'll ignore those.
-    VkImageAspectFlags formatAspect = imageFormatInfo(formatInfo.Format)->aspectMask;
+    auto formatProperties = imageFormatInfo(formatInfo.Format);
     
     bool isTypeless = formatInfo.Aspect == 0;
     bool isMutable = formatFamily.FormatCount > 1;
 
-    if (isMutable && (formatAspect & VK_IMAGE_ASPECT_COLOR_BIT)) {
+    if (isMutable && (formatProperties->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT)) {
       imageInfo.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
 
       // Typeless UAV images have relaxed reinterpretation rules
@@ -63,6 +63,12 @@ namespace dxvk {
         imageInfo.viewFormats     = formatFamily.Formats;
       }
     }
+
+    // Some games will try to create an SRGB image with the UAV
+    // bind flag set. This works on Windows, but no UAVs can be
+    // created for the image in practice.
+    bool noUav = formatProperties->flags.test(DxvkFormatFlag::ColorSpaceSrgb)
+      && !CheckFormatFeatureSupport(formatInfo.Format, VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT);
     
     // Adjust image flags based on the corresponding D3D flags
     if (m_desc.BindFlags & D3D11_BIND_SHADER_RESOURCE) {
@@ -86,7 +92,7 @@ namespace dxvk {
                        |  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
     }
     
-    if (m_desc.BindFlags & D3D11_BIND_UNORDERED_ACCESS) {
+    if (m_desc.BindFlags & D3D11_BIND_UNORDERED_ACCESS && !noUav) {
       imageInfo.usage  |= VK_IMAGE_USAGE_STORAGE_BIT;
       imageInfo.stages |= pDevice->GetEnabledShaderStages();
       imageInfo.access |= VK_ACCESS_SHADER_READ_BIT
@@ -261,6 +267,16 @@ namespace dxvk {
         && (pImageInfo->numLayers     <= formatProps.maxArrayLayers)
         && (pImageInfo->mipLevels     <= formatProps.maxMipLevels)
         && (pImageInfo->sampleCount    & formatProps.sampleCounts);
+  }
+
+
+  BOOL D3D11CommonTexture::CheckFormatFeatureSupport(
+          VkFormat              Format,
+          VkFormatFeatureFlags  Features) const {
+    VkFormatProperties properties = m_device->GetDXVKDevice()->adapter()->formatProperties(Format);
+
+    return (properties.linearTilingFeatures  & Features) == Features
+        || (properties.optimalTilingFeatures & Features) == Features;
   }
   
   
