@@ -32,21 +32,6 @@ namespace dxvk {
           D3D11_COMMON_RESOURCE_DESC* pDesc);
   
   /**
-   * \brief Checks whether a resource has the given bind flags
-   * 
-   * Convenience method that checks whether a resource
-   * was created with \c all the specified bind flags
-   * set. Can be used to check whether a specific type
-   * of view can be created for this resource.
-   * \param [in] pResource The resource to check
-   * \param [in] BindFlags Bind flags to check
-   * \returns \c true if the resource supports the flags
-   */
-  BOOL CheckResourceBindFlags(
-          ID3D11Resource*             pResource,
-          UINT                        BindFlags);
-  
-  /**
    * \brief Checks whether a format can be used to view a resource
    * 
    * Depending on whether the resource is a buffer or a
@@ -56,8 +41,9 @@ namespace dxvk {
    * \param [in] Format The desired view format
    * \returns \c true if the format is compatible
    */
-  BOOL CheckResourceViewFormatCompatibility(
+  BOOL CheckResourceViewCompatibility(
           ID3D11Resource*             pResource,
+          UINT                        BindFlags,
           DXGI_FORMAT                 Format);
   
   /**

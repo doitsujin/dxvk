@@ -288,19 +288,9 @@ namespace dxvk {
         return E_INVALIDARG;
     }
     
-    // Check whether SRVs are supported for the resource at all
-    if (!CheckResourceBindFlags(pResource, D3D11_BIND_SHADER_RESOURCE)) {
-      Logger::err("D3D11: Trying to create SRV for texture without D3D11_BIND_SHADER_RESOURCE");
+    if (!CheckResourceViewCompatibility(pResource, D3D11_BIND_SHADER_RESOURCE, desc.Format))
       return E_INVALIDARG;
-    }
     
-    // Check whether we can use the requested format for the view
-    if (!CheckResourceViewFormatCompatibility(pResource, desc.Format)) {
-      Logger::err(str::format("D3D11: Incompatible SRV format: ", desc.Format));
-      return E_INVALIDARG;
-    }
-    
-    // Create the actual view if requested
     if (ppSRView == nullptr)
       return S_FALSE;
     
@@ -337,19 +327,9 @@ namespace dxvk {
         return E_INVALIDARG;
     }
     
-    // Check whether UAVs are supported for the resource at all
-    if (!CheckResourceBindFlags(pResource, D3D11_BIND_UNORDERED_ACCESS)) {
-      Logger::err("D3D11: Trying to create UAV for texture without D3D11_BIND_UNORDERED_ACCESS");
+    if (!CheckResourceViewCompatibility(pResource, D3D11_BIND_UNORDERED_ACCESS, desc.Format))
       return E_INVALIDARG;
-    }
-    
-    // Check whether we can use the requested format for the view
-    if (!CheckResourceViewFormatCompatibility(pResource, desc.Format)) {
-      Logger::err(str::format("D3D11: Incompatible UAV format: ", desc.Format));
-      return E_INVALIDARG;
-    }
 
-    // Create the view if requested
     if (ppUAView == nullptr)
       return S_FALSE;
     
@@ -392,19 +372,9 @@ namespace dxvk {
         return E_INVALIDARG;
     }
     
-    // Check whether UAVs are supported for the resource at all
-    if (!CheckResourceBindFlags(pResource, D3D11_BIND_RENDER_TARGET)) {
-      Logger::err("D3D11: Trying to create RTV for texture without D3D11_BIND_RENDER_TARGET");
+    if (!CheckResourceViewCompatibility(pResource, D3D11_BIND_RENDER_TARGET, desc.Format))
       return E_INVALIDARG;
-    }
-    
-    // Check whether we can use the requested format for the view
-    if (!CheckResourceViewFormatCompatibility(pResource, desc.Format)) {
-      Logger::err(str::format("D3D11: Incompatible RTV format: ", desc.Format));
-      return E_INVALIDARG;
-    }
 
-    // Create the actual image view if requested
     if (ppRTView == nullptr)
       return S_FALSE;
     
@@ -438,19 +408,9 @@ namespace dxvk {
         return E_INVALIDARG;
     }
     
-    // Check whether DSVs are supported for the resource at all
-    if (!CheckResourceBindFlags(pResource, D3D11_BIND_DEPTH_STENCIL)) {
-      Logger::warn("D3D11: Trying to create DSV for texture without D3D11_BIND_DEPTH_STENCIL");
+    if (!CheckResourceViewCompatibility(pResource, D3D11_BIND_DEPTH_STENCIL, desc.Format))
       return E_INVALIDARG;
-    }
     
-    // Check whether we can use the requested format for the view
-    if (!CheckResourceViewFormatCompatibility(pResource, desc.Format)) {
-      Logger::err(str::format("D3D11: Incompatible DSV format: ", desc.Format));
-      return E_INVALIDARG;
-    }
-    
-    // Create the actual image view if requested
     if (ppDepthStencilView == nullptr)
       return S_FALSE;
     

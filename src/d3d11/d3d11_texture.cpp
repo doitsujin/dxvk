@@ -204,10 +204,17 @@ namespace dxvk {
   }
   
   
-  bool D3D11CommonTexture::CheckViewFormatCompatibility(DXGI_FORMAT Format) const {
+  bool D3D11CommonTexture::CheckViewCompatibility(UINT BindFlags, DXGI_FORMAT Format) const {
+    // Check whether the given bind flags are supported
+    VkImageUsageFlags usage = GetImageUsageFlags(BindFlags);
+
+    if ((m_image->info().usage & usage) != usage)
+      return false;
+
+    // Check whether the view format is compatible
     DXGI_VK_FORMAT_MODE formatMode = GetFormatMode();
     DXGI_VK_FORMAT_INFO baseFormat = m_device->LookupFormat(m_desc.Format, formatMode);
-    DXGI_VK_FORMAT_INFO viewFormat = m_device->LookupFormat(Format, formatMode);
+    DXGI_VK_FORMAT_INFO viewFormat = m_device->LookupFormat(Format,        formatMode);
     
     // Identical formats always pass this test
     if (baseFormat.Format == viewFormat.Format)

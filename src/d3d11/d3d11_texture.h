@@ -149,15 +149,19 @@ namespace dxvk {
     void GetDevice(ID3D11Device** ppDevice) const;
     
     /**
-     * \brief Checks whether a format can be used to view this textue
+     * \brief Checks whether a view can be created for this textue
      * 
      * View formats are only compatible if they are either identical
      * or from the same family of typeless formats, where the resource
-     * format must be typeless and the view format must be typed.
+     * format must be typeless and the view format must be typed. This
+     * will also check whether the required bind flags are supported.
+     * \param [in] BindFlags Bind flags for the view
      * \param [in] Format The desired view format
      * \returns \c true if the format is compatible
      */
-    bool CheckViewFormatCompatibility(DXGI_FORMAT Format) const;
+    bool CheckViewCompatibility(
+            UINT                BindFlags,
+            DXGI_FORMAT         Format) const;
     
     /**
      * \brief Normalizes and validates texture description

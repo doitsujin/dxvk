@@ -30,23 +30,14 @@ namespace dxvk {
   }
 
 
-  BOOL CheckResourceBindFlags(
+  BOOL CheckResourceViewCompatibility(
           ID3D11Resource*             pResource,
-          UINT                        BindFlags) {
-    D3D11_COMMON_RESOURCE_DESC desc;
-    GetCommonResourceDesc(pResource, &desc);
-
-    return (desc.BindFlags & BindFlags) == BindFlags;
-  }
-
-
-  BOOL CheckResourceViewFormatCompatibility(
-          ID3D11Resource*             pResource,
+          UINT                        BindFlags,
           DXGI_FORMAT                 Format) {
     auto texture = GetCommonTexture(pResource);
     
     return texture != nullptr
-      ? texture->CheckViewFormatCompatibility(Format)
+      ? texture->CheckViewCompatibility(BindFlags, Format)
       : true; /* for buffers */
   }
 
