@@ -8,7 +8,7 @@
 namespace dxvk {
   D3D9Device::D3D9Device(IDirect3D9* parent, D3D9Adapter& adapter,
     const D3DDEVICE_CREATION_PARAMETERS& cp, D3DPRESENT_PARAMETERS& pp)
-    : m_parent(parent), m_creationParams(cp), m_adapter(adapter) {
+    : m_adapter(adapter), m_parent(parent), m_creationParams(cp) {
     // Get a handle to the DXGI adapter.
     auto dxgiAdapter = m_adapter.GetAdapter();
 
@@ -112,34 +112,15 @@ namespace dxvk {
     // Create a surface for the render target.
     const Com<D3D9Surface> surface = new D3D9Surface(this, backBuffer.ptr(), D3DUSAGE_RENDERTARGET);
 
-    Com<ID3D11RenderTargetView> rtView;
-
-    // Create the RT view.
-    if (FAILED(m_device->CreateRenderTargetView(backBuffer.ptr(), nullptr, &rtView)))
-      throw DxvkError("Failed to create render target");
-
-    SetInterface(surface.ptr(), rtView.ref());
-
     m_renderTarget = surface.ptr();
 
     if (pp.EnableAutoDepthStencil) {
       // TODO: support auto creating the depth / stencil buffer.
       Logger::err("Automatically creating depth buffer not yet supported");
     }
-
-    UpdateOMViews();
   }
 
   D3D9Device::~D3D9Device() = default;
-
-  // Synchronises D3D9's views with the D3D11's Output Merger
-  // render target & depth/stencil views.
-  void D3D9Device::UpdateOMViews() {
-    const auto renderTargetView = GetInterface<ID3D11RenderTargetView>(m_renderTarget.ptr());
-    const auto depthStencilView = GetInterface<ID3D11DepthStencilView>(m_depthStencil.ptr());
-
-    m_ctx->OMSetRenderTargets(1, &renderTargetView, depthStencilView);
-  }
 
   HRESULT D3D9Device::QueryInterface(REFIID riid, void** ppvObject) {
     *ppvObject = nullptr;

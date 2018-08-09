@@ -6,9 +6,8 @@
 
 namespace dxvk {
   /// This class should be inherited by classes which are device resources.
-  /// `R` should be a D3D9 interface.
   template <typename R>
-  class D3D9Resource: public virtual R {
+  class D3D9Resource: public R {
   public:
     HRESULT STDMETHODCALLTYPE GetDevice(IDirect3DDevice9** ppDevice) final override {
       InitReturnPtr(ppDevice);
@@ -89,29 +88,4 @@ namespace dxvk {
     ComPrivateData m_privateData;
     DWORD m_priority{ };
   };
-
-  // To simplifiy the implementation of certain interfaces
-  // we store a pointer to the corresponding D3D11 interface in the object's private data.
-  static constexpr GUID D3D9_INTERFACE_GUID { 0x8d6fd656, 0x5498, 0x4b7e,
-    {0x80, 0x6a, 0xb5, 0xf2, 0x0d, 0x65, 0x11, 0x0f }};
-
-  // Stores an interface in this surface.
-  template <typename I>
-  inline void SetInterface(IDirect3DResource9* resource, const I* ptr) {
-    resource->SetPrivateData(D3D9_INTERFACE_GUID, &ptr, sizeof(ptr), D3DSPD_IUNKNOWN);
-  }
-
-  // Retrieves a stored interface.
-  template <typename I>
-  inline I* GetInterface(IDirect3DResource9* resource) {
-    if (!resource)
-      return nullptr;
-
-    IUnknown* ptr{ nullptr };
-    DWORD size = sizeof(ptr);
-
-    resource->GetPrivateData(D3D9_INTERFACE_GUID, &ptr, &size);
-
-    return reinterpret_cast<I*>(ptr);
-  }
 }

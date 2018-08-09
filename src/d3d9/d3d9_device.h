@@ -9,49 +9,41 @@ namespace dxvk {
   /// To simplify implementation of this huge class and help with modularity,
   /// it's implementation is broken up in multiple source files.
   class D3D9Device final: public ComObject<IDirect3DDevice9> {
-    void UpdateOMViews();
+  public:
+    D3D9Device(IDirect3D9* parent, D3D9Adapter& adapter,
+      const D3DDEVICE_CREATION_PARAMETERS& cp, D3DPRESENT_PARAMETERS& pp);
+    virtual ~D3D9Device();
 
-    IDirect3D9* m_parent;
-    D3DDEVICE_CREATION_PARAMETERS m_creationParams;
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) final override;
 
+  private: // Core variables.
     D3D9Adapter& m_adapter;
     Com<ID3D11Device> m_device;
     Com<ID3D11DeviceContext> m_ctx;
     Com<IDXGISwapChain> m_swapChain;
 
-    // TODO: multiple render target support.
-    Com<IDirect3DSurface9> m_renderTarget;
-    Com<IDirect3DSurface9> m_depthStencil;
-
-  public:
-    // What follows are all of Direct3D9Device's functions.
-    // They are implemented in their related files.
-
-    D3D9Device(IDirect3D9* parent, D3D9Adapter& adapter,
-      const D3DDEVICE_CREATION_PARAMETERS& cp, D3DPRESENT_PARAMETERS& pp);
-    virtual ~D3D9Device();
-
-    /// IUnknown functions.
-    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) final override;
-
-    /// Getters for the initial parameters.
+  public: // Getters for the initial parameters.
     HRESULT STDMETHODCALLTYPE GetDirect3D(IDirect3D9** ppD3D9) final override;
     HRESULT STDMETHODCALLTYPE GetDeviceCaps(D3DCAPS9* pCaps) final override;
     HRESULT STDMETHODCALLTYPE GetCreationParameters(D3DDEVICE_CREATION_PARAMETERS* pParameters) final override;
 
-    /// Device state functions.
+  private: // Variables for storing the initial parameters.
+    IDirect3D9* m_parent;
+    D3DDEVICE_CREATION_PARAMETERS m_creationParams;
+
+  public: // Device state functions.
     HRESULT STDMETHODCALLTYPE TestCooperativeLevel() final override;
     HRESULT STDMETHODCALLTYPE Reset(D3DPRESENT_PARAMETERS* pPresentationParameters) final override;
 
-    /// Resource management functions.
+  public: // Resource management functions.
     UINT STDMETHODCALLTYPE GetAvailableTextureMem() final override;
     HRESULT STDMETHODCALLTYPE EvictManagedResources() final override;
 
-    /// Viewport functions.
+  public: // Viewport functions.
     HRESULT STDMETHODCALLTYPE GetViewport(D3DVIEWPORT9* pViewport) final override;
     HRESULT STDMETHODCALLTYPE SetViewport(const D3DVIEWPORT9* pViewport) final override;
 
-    /// Render target functions.
+  public: // Render target functions.
     HRESULT STDMETHODCALLTYPE CreateRenderTarget(UINT Width, UINT Height,
       D3DFORMAT Format,  D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality,
       BOOL Lockable, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle) final override;
@@ -63,7 +55,7 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE GetRenderTargetData(IDirect3DSurface9* pRenderTarget,
       IDirect3DSurface9* pDestSurface) final override;
 
-    /// Depth stencil functions.
+  public: // Depth stencil functions.
     HRESULT STDMETHODCALLTYPE CreateDepthStencilSurface(UINT Width, UINT Height,
       D3DFORMAT Format, D3DMULTISAMPLE_TYPE MultiSample, DWORD MultisampleQuality,
       BOOL Discard, IDirect3DSurface9** ppSurface, HANDLE* pSharedHandle) final override;
@@ -71,11 +63,11 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE SetDepthStencilSurface(IDirect3DSurface9* pNewZStencil) final override;
     HRESULT STDMETHODCALLTYPE GetDepthStencilSurface(IDirect3DSurface9** ppZStencilSurface) final override;
 
-    /// Gamma control functions.
+  public: /// Gamma control functions.
     void STDMETHODCALLTYPE SetGammaRamp(UINT iSwapChain, DWORD Flags, const D3DGAMMARAMP* pRamp) final override;
     void STDMETHODCALLTYPE GetGammaRamp(UINT iSwapChain, D3DGAMMARAMP* pRamp) final override;
 
-    /// Hardware cursor functions.
+  public: /// Hardware cursor functions.
     BOOL STDMETHODCALLTYPE ShowCursor(BOOL bShow) final override;
     HRESULT STDMETHODCALLTYPE SetCursorProperties(UINT XHotSpot, UINT YHotSpot, IDirect3DSurface9* pCursorBitmap) final override;
     void STDMETHODCALLTYPE SetCursorPosition(int X, int Y, DWORD Flags) final override;
@@ -135,14 +127,14 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE SetPixelShaderConstantI(UINT StartRegister,
       const int* pConstantData, UINT Vector4iCount) final override;
 
-    /// Surface-related functions.
+  public: /// Surface-related functions.
     HRESULT STDMETHODCALLTYPE StretchRect(IDirect3DSurface9* pSourceSurface, const RECT* pSourceRect,
       IDirect3DSurface9* pDestSurface, const RECT* pDestRect,
       D3DTEXTUREFILTERTYPE Filter) final override;
     HRESULT STDMETHODCALLTYPE UpdateSurface(IDirect3DSurface9* pSourceSurface, const RECT* pSourceRect,
       IDirect3DSurface9* pDestinationSurface, const POINT* pDestPoint) final override;
 
-    /// Query creation function.
+  public: /// Query creation function.
     HRESULT STDMETHODCALLTYPE CreateQuery(D3DQUERYTYPE Type,
       IDirect3DQuery9** ppQuery) final override;
 
