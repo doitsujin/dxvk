@@ -157,4 +157,32 @@ namespace dxvk {
     return usage;
   }
 
+
+  VkFormatFeatureFlags GetBufferFormatFeatures(UINT BindFlags) {
+    VkFormatFeatureFlags features = 0;
+
+    if (BindFlags & D3D11_BIND_SHADER_RESOURCE)
+      features |= VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT;
+    if (BindFlags & D3D11_BIND_UNORDERED_ACCESS)
+      features |= VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT;
+    
+    return features;
+  }
+
+
+  VkFormatFeatureFlags GetImageFormatFeatures(UINT BindFlags) {
+    VkFormatFeatureFlags features = 0;
+
+    if (BindFlags & D3D11_BIND_DEPTH_STENCIL)
+      features |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    if (BindFlags & D3D11_BIND_RENDER_TARGET)
+      features |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+    if (BindFlags & D3D11_BIND_SHADER_RESOURCE)
+      features |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
+    if (BindFlags & D3D11_BIND_UNORDERED_ACCESS)
+      features |= VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT;
+    
+    return features;
+  }
+
 }

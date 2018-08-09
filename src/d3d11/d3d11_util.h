@@ -45,5 +45,11 @@ namespace dxvk {
   
   VkImageUsageFlags GetImageUsageFlags(
           UINT                      BindFlags);
+  
+  VkFormatFeatureFlags GetBufferFormatFeatures(
+          UINT                      BindFlags);
+
+  VkFormatFeatureFlags GetImageFormatFeatures(
+          UINT                      BindFlags);
 
 }
