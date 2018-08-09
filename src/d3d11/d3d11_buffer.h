@@ -82,7 +82,11 @@ namespace dxvk {
     DxvkPhysicalBufferSlice     m_mappedSlice;
     
     Rc<DxvkBuffer> CreateBuffer(
-      const D3D11_BUFFER_DESC* pDesc) const;
+      const D3D11_BUFFER_DESC*    pDesc) const;
+
+    BOOL CheckFormatFeatureSupport(
+            VkFormat              Format,
+            VkFormatFeatureFlags  Features) const;
     
   };
 

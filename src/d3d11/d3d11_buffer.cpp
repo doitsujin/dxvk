@@ -74,8 +74,12 @@ namespace dxvk {
     if ((m_buffer->info().usage & usage) != usage)
       return false;
 
-    // TODO implement format validation
-    return true;
+    // Check whether the given combination of buffer view
+    // type and view format is supported by the device
+    DXGI_VK_FORMAT_INFO viewFormat = m_device->LookupFormat(Format, DXGI_VK_FORMAT_MODE_ANY);
+    VkFormatFeatureFlags features = GetBufferFormatFeatures(BindFlags);
+
+    return CheckFormatFeatureSupport(viewFormat.Format, features);
   }
 
 
@@ -162,6 +166,14 @@ namespace dxvk {
       memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
     return m_device->GetDXVKDevice()->createBuffer(info, memoryFlags);
+  }
+
+
+  BOOL D3D11Buffer::CheckFormatFeatureSupport(
+          VkFormat              Format,
+          VkFormatFeatureFlags  Features) const {
+    VkFormatProperties properties = m_device->GetDXVKDevice()->adapter()->formatProperties(Format);
+    return (properties.bufferFeatures & Features) == Features;
   }
   
 
