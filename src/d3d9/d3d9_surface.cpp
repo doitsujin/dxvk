@@ -10,10 +10,12 @@ namespace dxvk {
     InitParent(parent);
   }
 
+  D3D9Surface::~D3D9Surface() = default;
+
   HRESULT D3D9Surface::QueryInterface(REFIID riid, void** ppvObject) {
     *ppvObject = nullptr;
 
-    if (riid == __uuidof(IUnknown)
+    if (riid == __uuidof(IUnknown) || riid == __uuidof(IDirect3DResource9)
       || riid == __uuidof(IDirect3DSurface9)) {
       *ppvObject = ref(this);
       return S_OK;

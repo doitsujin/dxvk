@@ -83,6 +83,14 @@ namespace dxvk {
       m_parent = parent;
     }
 
+    template <typename T>
+    void InitParent(D3D9Resource<T>* resource) {
+      m_parent = resource->m_parent;
+    }
+
+    template <typename T>
+    friend class D3D9Resource;
+
   private:
     Com<IDirect3DDevice9> m_parent;
     ComPrivateData m_privateData;

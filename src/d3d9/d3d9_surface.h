@@ -10,6 +10,7 @@ namespace dxvk {
   class D3D9Surface: public ComObject<D3D9Resource<IDirect3DSurface9>> {
   public:
     D3D9Surface(IDirect3DDevice9* parent, ID3D11Texture2D* surface, DWORD usage);
+    virtual ~D3D9Surface();
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) final override;
 
