@@ -18,6 +18,29 @@ namespace dxvk {
     { DXGI_FORMAT_B8G8R8X8_UNORM, D3DFMT_X8B8G8R8 },
   };
 
+  bool IsBackBufferFormat(D3DFORMAT Format) {
+    switch (Format) {
+      case D3DFMT_A1R5G5B5:
+      case D3DFMT_A2R10G10B10:
+      case D3DFMT_A8R8G8B8:
+      case D3DFMT_R5G6B5:
+      case D3DFMT_X1R5G5B5:
+      case D3DFMT_X8R8G8B8:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  bool IsDepthStencilFormat(D3DFORMAT Format) {
+    switch (Format) {
+      case D3DFMT_D24S8:
+        return true;
+      default:
+        return false;
+    }
+  }
+
   DXGI_FORMAT SurfaceFormatToDXGIFormat(D3DFORMAT Format) {
     const auto it = surfaceFormats.find(Format);
     if (it == surfaceFormats.end()) {
