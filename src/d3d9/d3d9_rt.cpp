@@ -34,9 +34,8 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
     }
 
-    m_renderTarget = pRenderTarget;
-
-    return D3D_OK;
+    Logger::err(str::format(__func__, " stub"));
+    throw DxvkError("Not supported");
   }
 
   HRESULT D3D9Device::GetRenderTarget(DWORD RenderTargetIndex,
@@ -50,9 +49,8 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
     }
 
-    *ppRenderTarget = m_renderTarget.ref();
-
-    return D3D_OK;
+    Logger::err(str::format(__func__, " stub"));
+    throw DxvkError("Not supported");
   }
 
   HRESULT D3D9Device::GetRenderTargetData(IDirect3DSurface9* pRenderTarget,

@@ -104,16 +104,6 @@ namespace dxvk {
       throw DxvkError("Failed to create D3D9 device");
     }
 
-    // Create the default render target, and the corresponding depth buffer, if requested.
-    // Retrieve the back buffer from the swap chain.
-    Com<ID3D11Texture2D> backBuffer;
-    m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&backBuffer);
-
-    // Create a surface for the render target.
-    const Com<D3D9Surface> surface = new D3D9Surface(this, backBuffer.ptr(), D3DUSAGE_RENDERTARGET);
-
-    m_renderTarget = surface.ptr();
-
     if (pp.EnableAutoDepthStencil) {
       // TODO: support auto creating the depth / stencil buffer.
       Logger::err("Automatically creating depth buffer not yet supported");
