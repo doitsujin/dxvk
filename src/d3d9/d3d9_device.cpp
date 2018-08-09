@@ -100,18 +100,17 @@ namespace dxvk {
     );
 
     if (FAILED(result)) {
-      Logger::err(str::format("D3D11CreateDeviceAndSwapChain failed: ", result));
-      throw DxvkError("Failed to create D3D9 device");
+      throw DxvkError(str::format("D3D11CreateDeviceAndSwapChain failed: ", result));
     }
 
     if (FAILED(CreateDefaultRT())) {
-      Logger::err("Failed to create default render target");
-      throw DxvkError("Failed to create D3D9 device");
+      throw DxvkError("Failed to create default render target");
     }
 
     if (pp.EnableAutoDepthStencil) {
-      // TODO: support auto creating the depth / stencil buffer.
-      Logger::err("Automatically creating depth buffer not yet supported");
+      if (FAILED(CreateAutoDepthStencil(pp))) {
+        throw DxvkError("Failed to create auto depth / stencil buffer");
+      }
     }
   }
 

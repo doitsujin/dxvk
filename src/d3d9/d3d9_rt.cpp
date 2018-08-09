@@ -21,13 +21,21 @@ namespace dxvk {
 
     // Create the RT view.
     Com<ID3D11RenderTargetView> view;
-    if (FAILED(m_device->CreateRenderTargetView(backBufferSurface.ptr(), nullptr, &view))) {
+    if (FAILED(m_device->CreateRenderTargetView(backBufferSurface.ref(), nullptr, &view))) {
       Logger::err("Failed to create render target view");
       return D3DERR_DRIVERINTERNALERROR;
     }
 
     // Create the actual object.
-    m_renderTarget = new D3D9RenderTarget( this, backBufferSurface.ptr(), std::move(view));
+    // Note that we can't use CreateRenderTarget,
+    // since we use the swap chain's existing surface.
+    auto rt = new D3D9RenderTarget(this, backBufferSurface.ptr(), std::move(view));
+
+    // Propagate the changes.
+    if (FAILED(SetRenderTarget(0, rt))) {
+      Logger::err("Failed to set default render target");
+      return D3DERR_DRIVERINTERNALERROR;
+    }
 
     return D3D_OK;
   }
@@ -64,6 +72,8 @@ namespace dxvk {
 
     m_renderTarget = static_cast<D3D9RenderTarget*>(pRenderTarget);
 
+    // TODO: update the Output Merger state.
+
     return D3D_OK;
   }
 
@@ -76,6 +86,11 @@ namespace dxvk {
     if (RenderTargetIndex > 0) {
       Logger::err("Multiple render targets not yet supported");
       return D3DERR_INVALIDCALL;
+    }
+
+    if (!m_renderTarget.ptr()) {
+      Logger::err("Requested inexistent render target");
+      return D3DERR_NOTFOUND;
     }
 
     *ppRenderTarget = m_renderTarget.ref();

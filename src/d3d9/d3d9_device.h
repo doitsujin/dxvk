@@ -1,6 +1,7 @@
 #pragma once
 
 #include "d3d9_adapter.h"
+#include "d3d9_depth_stencil.h"
 #include "d3d9_rt.h"
 
 namespace dxvk {
@@ -69,6 +70,12 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE SetDepthStencilSurface(IDirect3DSurface9* pNewZStencil) final override;
     HRESULT STDMETHODCALLTYPE GetDepthStencilSurface(IDirect3DSurface9** ppZStencilSurface) final override;
+
+  private:
+    // (Re)creates the depth / stencil buffer which the app requested from us when creating the device.
+    HRESULT CreateAutoDepthStencil(const D3DPRESENT_PARAMETERS& pp);
+
+    Com<D3D9DepthStencil> m_depthStencil;
 
   public: /// Gamma control functions.
     void STDMETHODCALLTYPE SetGammaRamp(UINT iSwapChain, DWORD Flags, const D3DGAMMARAMP* pRamp) final override;
