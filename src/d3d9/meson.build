@@ -1,0 +1,35 @@
+d3d9_src = [
+  'd3d9_adapter.cpp',
+  'd3d9_caps.cpp',
+  'd3d9_core.cpp',
+  'd3d9_cursor.cpp',
+  'd3d9_depth_stencil.cpp',
+  'd3d9_device.cpp',
+  'd3d9_format.cpp',
+  'd3d9_gamma.cpp',
+  'd3d9_main.cpp',
+  'd3d9_multisample.cpp',
+  'd3d9_query.cpp',
+  'd3d9_rt.cpp',
+  'd3d9_shader.cpp',
+  'd3d9_surface.cpp',
+  'd3d9_texture.cpp',
+  'd3d9_texture_cube.cpp',
+  'd3d9_texture_volume.cpp',
+  'd3d9_transform.cpp',
+  'd3d9_viewport.cpp',
+]
+
+d3d9_dll = shared_library('d3d9'+dll_ext, d3d9_src,
+  name_prefix         : '',
+  link_with           : [ util_lib ],
+  dependencies        : [ lib_d3dx9, lib_d3d11, lib_dxgi, dxbc_dep, dxvk_dep ],
+  include_directories : dxvk_include_path,
+  install             : true,
+  objects             : not dxvk_msvc ? 'd3d9'+def_spec_ext : [],
+  vs_module_defs      : 'd3d9'+def_spec_ext,
+  override_options    : ['cpp_std='+dxvk_cpp_std])
+
+d3d9_dep = declare_dependency(
+  link_with           : [ d3d9_dll ],
+  include_directories : [ dxvk_include_path, include_directories('.') ])
