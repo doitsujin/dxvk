@@ -195,7 +195,7 @@ namespace dxvk {
     
     BOOL CheckFormatFeatureSupport(
             VkFormat              Format,
-            VkImageUsageFlags     Features) const;
+            VkFormatFeatureFlags  Features) const;
     
     D3D11_COMMON_TEXTURE_MAP_MODE DetermineMapMode(
       const DxvkImageCreateInfo*  pImageInfo) const;

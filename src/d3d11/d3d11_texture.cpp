@@ -205,35 +205,53 @@ namespace dxvk {
   
   
   bool D3D11CommonTexture::CheckViewCompatibility(UINT BindFlags, DXGI_FORMAT Format) const {
+    const DxvkImageCreateInfo& imageInfo = m_image->info();
+
     // Check whether the given bind flags are supported
     VkImageUsageFlags usage = GetImageUsageFlags(BindFlags);
 
-    if ((m_image->info().usage & usage) != usage)
+    if ((imageInfo.usage & usage) != usage)
       return false;
 
     // Check whether the view format is compatible
     DXGI_VK_FORMAT_MODE formatMode = GetFormatMode();
-    DXGI_VK_FORMAT_INFO baseFormat = m_device->LookupFormat(m_desc.Format, formatMode);
     DXGI_VK_FORMAT_INFO viewFormat = m_device->LookupFormat(Format,        formatMode);
+    DXGI_VK_FORMAT_INFO baseFormat = m_device->LookupFormat(m_desc.Format, formatMode);
     
-    // Identical formats always pass this test
-    if (baseFormat.Format == viewFormat.Format)
-      return true;
-    
-    // The available image aspects must match
-    auto baseFormatInfo = imageFormatInfo(baseFormat.Format);
-    auto viewFormatInfo = imageFormatInfo(viewFormat.Format);
-    
-    if (baseFormatInfo->aspectMask != viewFormatInfo->aspectMask)
+    if (imageInfo.flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) {
+      // Check whether the given combination of image
+      // view type and view format is actually supported
+      VkFormatFeatureFlags features = GetImageFormatFeatures(BindFlags);
+      
+      if (!CheckFormatFeatureSupport(viewFormat.Format, features))
+        return false;
+
+      // Using the image format itself is always legal
+      if (viewFormat.Format == baseFormat.Format)
+        return true;
+      
+      // If there is a list of compatible formats, the
+      // view format must be included in that list.
+      for (size_t i = 0; i < imageInfo.viewFormatCount; i++) {
+        if (imageInfo.viewFormats[i] == viewFormat.Format)
+          return true;
+      }
+
+      // Otherwise, all bit-compatible formats can be used.
+      if (imageInfo.viewFormatCount == 0) {
+        auto baseFormatInfo = imageFormatInfo(baseFormat.Format);
+        auto viewFormatInfo = imageFormatInfo(viewFormat.Format);
+        
+        return baseFormatInfo->aspectMask  == viewFormatInfo->aspectMask
+            && baseFormatInfo->elementSize == viewFormatInfo->elementSize;
+      }
+
       return false;
-    
-    // Color formats can be reinterpreted. This is not restricted
-    // to typeless formats, we we can create SRGB views for UNORM
-    // textures as well etc. as long as they are bit-compatible.
-    if (baseFormatInfo->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT)
-      return baseFormatInfo->elementSize == viewFormatInfo->elementSize;
-    
-    return false;
+    } else {
+      // For non-mutable images, the view format
+      // must be identical to the image format.
+      return viewFormat.Format == baseFormat.Format;
+    }
   }
   
   
