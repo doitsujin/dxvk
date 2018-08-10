@@ -294,7 +294,7 @@ namespace dxvk {
     if (!CheckResourceViewCompatibility(pResource, D3D11_BIND_SHADER_RESOURCE, desc.Format)) {
       Logger::err(str::format("D3D11: Cannot create shader resource view:",
         "\n  Resource type:   ", resourceDesc.Dim,
-        "\n  Resource usage:  ", resourceDesc.Usage,
+        "\n  Resource usage:  ", resourceDesc.BindFlags,
         "\n  Resource format: ", resourceDesc.Format,
         "\n  View format:     ", desc.Format));
       return E_INVALIDARG;
@@ -339,7 +339,7 @@ namespace dxvk {
     if (!CheckResourceViewCompatibility(pResource, D3D11_BIND_UNORDERED_ACCESS, desc.Format)) {
       Logger::err(str::format("D3D11: Cannot create unordered access view:",
         "\n  Resource type:   ", resourceDesc.Dim,
-        "\n  Resource usage:  ", resourceDesc.Usage,
+        "\n  Resource usage:  ", resourceDesc.BindFlags,
         "\n  Resource format: ", resourceDesc.Format,
         "\n  View format:     ", desc.Format));
       return E_INVALIDARG;
@@ -393,7 +393,7 @@ namespace dxvk {
     if (!CheckResourceViewCompatibility(pResource, D3D11_BIND_RENDER_TARGET, desc.Format)) {
       Logger::err(str::format("D3D11: Cannot create render target view:",
         "\n  Resource type:   ", resourceDesc.Dim,
-        "\n  Resource usage:  ", resourceDesc.Usage,
+        "\n  Resource usage:  ", resourceDesc.BindFlags,
         "\n  Resource format: ", resourceDesc.Format,
         "\n  View format:     ", desc.Format));
       return E_INVALIDARG;
@@ -438,7 +438,7 @@ namespace dxvk {
     if (!CheckResourceViewCompatibility(pResource, D3D11_BIND_DEPTH_STENCIL, desc.Format)) {
       Logger::err(str::format("D3D11: Cannot create depth-stencil view:",
         "\n  Resource type:   ", resourceDesc.Dim,
-        "\n  Resource usage:  ", resourceDesc.Usage,
+        "\n  Resource usage:  ", resourceDesc.BindFlags,
         "\n  Resource format: ", resourceDesc.Format,
         "\n  View format:     ", desc.Format));
       return E_INVALIDARG;
