@@ -273,6 +273,9 @@ namespace dxvk {
     const D3D11_SHADER_RESOURCE_VIEW_DESC*  pDesc,
           ID3D11ShaderResourceView**        ppSRView) {
     InitReturnPtr(ppSRView);
+
+    D3D11_COMMON_RESOURCE_DESC resourceDesc;
+    GetCommonResourceDesc(pResource, &resourceDesc);
     
     // The description is optional. If omitted, we'll create
     // a view that covers all subresources of the image.
@@ -288,8 +291,14 @@ namespace dxvk {
         return E_INVALIDARG;
     }
     
-    if (!CheckResourceViewCompatibility(pResource, D3D11_BIND_SHADER_RESOURCE, desc.Format))
+    if (!CheckResourceViewCompatibility(pResource, D3D11_BIND_SHADER_RESOURCE, desc.Format)) {
+      Logger::err(str::format("D3D11: Cannot create shader resource view:",
+        "\n  Resource type:   ", resourceDesc.Dim,
+        "\n  Resource usage:  ", resourceDesc.Usage,
+        "\n  Resource format: ", resourceDesc.Format,
+        "\n  View format:     ", desc.Format));
       return E_INVALIDARG;
+    }
     
     if (ppSRView == nullptr)
       return S_FALSE;
@@ -310,9 +319,9 @@ namespace dxvk {
           ID3D11UnorderedAccessView**       ppUAView) {
     InitReturnPtr(ppUAView);
     
-    D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
-    pResource->GetType(&resourceDim);
-    
+    D3D11_COMMON_RESOURCE_DESC resourceDesc;
+    GetCommonResourceDesc(pResource, &resourceDesc);
+
     // The description is optional. If omitted, we'll create
     // a view that covers all subresources of the image.
     D3D11_UNORDERED_ACCESS_VIEW_DESC desc;
@@ -327,8 +336,14 @@ namespace dxvk {
         return E_INVALIDARG;
     }
     
-    if (!CheckResourceViewCompatibility(pResource, D3D11_BIND_UNORDERED_ACCESS, desc.Format))
+    if (!CheckResourceViewCompatibility(pResource, D3D11_BIND_UNORDERED_ACCESS, desc.Format)) {
+      Logger::err(str::format("D3D11: Cannot create unordered access view:",
+        "\n  Resource type:   ", resourceDesc.Dim,
+        "\n  Resource usage:  ", resourceDesc.Usage,
+        "\n  Resource format: ", resourceDesc.Format,
+        "\n  View format:     ", desc.Format));
       return E_INVALIDARG;
+    }
 
     if (ppUAView == nullptr)
       return S_FALSE;
@@ -358,6 +373,9 @@ namespace dxvk {
       return S_OK; // It is required to run Battlefield 3 and Battlefield 4.
     }
     
+    D3D11_COMMON_RESOURCE_DESC resourceDesc;
+    GetCommonResourceDesc(pResource, &resourceDesc);
+    
     // The view description is optional. If not defined, it
     // will use the resource's format and all array layers.
     D3D11_RENDER_TARGET_VIEW_DESC desc;
@@ -372,8 +390,14 @@ namespace dxvk {
         return E_INVALIDARG;
     }
     
-    if (!CheckResourceViewCompatibility(pResource, D3D11_BIND_RENDER_TARGET, desc.Format))
+    if (!CheckResourceViewCompatibility(pResource, D3D11_BIND_RENDER_TARGET, desc.Format)) {
+      Logger::err(str::format("D3D11: Cannot create render target view:",
+        "\n  Resource type:   ", resourceDesc.Dim,
+        "\n  Resource usage:  ", resourceDesc.Usage,
+        "\n  Resource format: ", resourceDesc.Format,
+        "\n  View format:     ", desc.Format));
       return E_INVALIDARG;
+    }
 
     if (ppRTView == nullptr)
       return S_FALSE;
@@ -394,6 +418,9 @@ namespace dxvk {
           ID3D11DepthStencilView**          ppDepthStencilView) {
     InitReturnPtr(ppDepthStencilView);
     
+    D3D11_COMMON_RESOURCE_DESC resourceDesc;
+    GetCommonResourceDesc(pResource, &resourceDesc);
+
     // The view description is optional. If not defined, it
     // will use the resource's format and all array layers.
     D3D11_DEPTH_STENCIL_VIEW_DESC desc;
@@ -408,8 +435,14 @@ namespace dxvk {
         return E_INVALIDARG;
     }
     
-    if (!CheckResourceViewCompatibility(pResource, D3D11_BIND_DEPTH_STENCIL, desc.Format))
+    if (!CheckResourceViewCompatibility(pResource, D3D11_BIND_DEPTH_STENCIL, desc.Format)) {
+      Logger::err(str::format("D3D11: Cannot create depth-stencil view:",
+        "\n  Resource type:   ", resourceDesc.Dim,
+        "\n  Resource usage:  ", resourceDesc.Usage,
+        "\n  Resource format: ", resourceDesc.Format,
+        "\n  View format:     ", desc.Format));
       return E_INVALIDARG;
+    }
     
     if (ppDepthStencilView == nullptr)
       return S_FALSE;
