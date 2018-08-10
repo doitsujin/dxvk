@@ -13,10 +13,12 @@ namespace dxvk {
    * legal to create a view for a given resource.
    */
   struct D3D11_COMMON_RESOURCE_DESC {
-    D3D11_USAGE       Usage;
-    UINT              BindFlags;
-    UINT              CPUAccessFlags;
-    UINT              MiscFlags;
+    D3D11_RESOURCE_DIMENSION  Dim;
+    DXGI_FORMAT               Format;
+    D3D11_USAGE               Usage;
+    UINT                      BindFlags;
+    UINT                      CPUAccessFlags;
+    UINT                      MiscFlags;
   };
 
 

@@ -9,18 +9,24 @@ namespace dxvk {
     auto texture  = GetCommonTexture(pResource);
 
     if (buffer != nullptr) {
+      pDesc->Dim            = D3D11_RESOURCE_DIMENSION_BUFFER;
+      pDesc->Format         = DXGI_FORMAT_UNKNOWN;
       pDesc->Usage          = buffer->Desc()->Usage;
       pDesc->BindFlags      = buffer->Desc()->BindFlags;
       pDesc->CPUAccessFlags = buffer->Desc()->CPUAccessFlags;
       pDesc->MiscFlags      = buffer->Desc()->MiscFlags;
       return S_OK;
     } else if (texture != nullptr) {
+      pResource->GetType(&pDesc->Dim);
+      pDesc->Format         = texture->Desc()->Format;
       pDesc->Usage          = texture->Desc()->Usage;
       pDesc->BindFlags      = texture->Desc()->BindFlags;
       pDesc->CPUAccessFlags = texture->Desc()->CPUAccessFlags;
       pDesc->MiscFlags      = texture->Desc()->MiscFlags;
       return S_OK;
     } else {
+      pDesc->Dim            = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+      pDesc->Format         = DXGI_FORMAT_UNKNOWN;
       pDesc->Usage          = D3D11_USAGE_DEFAULT;
       pDesc->BindFlags      = 0;
       pDesc->CPUAccessFlags = 0;
