@@ -3519,7 +3519,7 @@ namespace dxvk {
     DxbcSwitchLabel label;
     label.desc.literal = ins.src[0].imm.u32_1;
     label.desc.labelId = block->labelCase;
-    label.next = block->labelCases;
+    label.next         = block->labelCases;
     block->labelCases = new DxbcSwitchLabel(label);
   }
   
@@ -3698,15 +3698,21 @@ namespace dxvk {
   void DxbcCompiler::emitControlFlowRet(const DxbcShaderInstruction& ins) {
     m_module.opReturn();
     
-    if (m_controlFlowBlocks.size() == 0)
+    if (m_controlFlowBlocks.size() != 0) {
+      uint32_t labelId = m_module.allocateId();
+      m_module.opLabel(labelId);
+
+      // return can be used in place of break to terminate a case block
+      if (m_controlFlowBlocks.back().type == DxbcCfgBlockType::Switch)
+        m_controlFlowBlocks.back().b_switch.labelCase = labelId;
+    } else {
+      // Last instruction in the current function
       m_module.functionEnd();
-    else
-      m_module.opLabel(m_module.allocateId());
+    }
   }
 
 
   void DxbcCompiler::emitControlFlowRetc(const DxbcShaderInstruction& ins) {
-    
     // Perform zero test on the first component of the condition
     const DxbcRegisterValue condition = emitRegisterLoad(
       ins.src[0], DxbcRegMask(true, false, false, false));
