@@ -74,6 +74,10 @@ namespace dxvk {
     if ((m_buffer->info().usage & usage) != usage)
       return false;
 
+    // Structured buffer views use no format
+    if (Format == DXGI_FORMAT_UNKNOWN)
+      return (m_desc.MiscFlags & D3D11_RESOURCE_MISC_BUFFER_STRUCTURED) != 0;
+
     // Check whether the given combination of buffer view
     // type and view format is supported by the device
     DXGI_VK_FORMAT_INFO viewFormat = m_device->LookupFormat(Format, DXGI_VK_FORMAT_MODE_ANY);
