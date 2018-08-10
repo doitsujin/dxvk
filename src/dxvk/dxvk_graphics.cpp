@@ -168,14 +168,14 @@ namespace dxvk {
       instance->m_stateVector, instance->m_renderPass,
       0, m_fastPipelineBase);
     
-    // Use the new pipeline as the base pipeline for derivative pipelines
-    if (newPipelineBase == VK_NULL_HANDLE && newPipelineHandle != VK_NULL_HANDLE)
-      m_fastPipelineBase.compare_exchange_strong(newPipelineBase, newPipelineHandle);
-    
-    // If an optimized version has been compiled
-    // in the meantime, discard the new pipeline
-    if (!instance->setFastPipeline(newPipelineHandle))
+    if (!instance->setFastPipeline(newPipelineHandle)) {
+      // If another thread finished compiling an optimized version of this
+      // pipeline before this one finished, discard the new pipeline object.
       m_vkd->vkDestroyPipeline(m_vkd->device(), newPipelineHandle, nullptr);
+    } else if (newPipelineBase == VK_NULL_HANDLE && newPipelineHandle != VK_NULL_HANDLE) {
+      // Use the new pipeline as the base pipeline for derivative pipelines.
+      m_fastPipelineBase.compare_exchange_strong(newPipelineBase, newPipelineHandle);
+    }
   }
   
   
