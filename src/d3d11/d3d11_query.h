@@ -1,9 +1,11 @@
 #pragma once
 
-#include "d3d11_device_child.h"
-
 #include "../dxvk/dxvk_event.h"
 #include "../dxvk/dxvk_query.h"
+
+#include "../d3d10/d3d10_query.h"
+
+#include "d3d11_device_child.h"
 
 namespace dxvk {
   
@@ -43,6 +45,10 @@ namespace dxvk {
             void*                             pData,
             UINT                              GetDataFlags);
     
+    D3D10Query* GetD3D10Iface() {
+      return &m_d3d10;
+    }
+    
   private:
     
     D3D11Device* const m_device;
@@ -52,6 +58,8 @@ namespace dxvk {
     Rc<DxvkEvent> m_event = nullptr;
     
     uint32_t m_revision = 0;
+
+    D3D10Query m_d3d10;
 
     UINT64 GetTimestampQueryFrequency() const;
     

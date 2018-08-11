@@ -6,7 +6,7 @@ namespace dxvk {
   D3D11Query::D3D11Query(
           D3D11Device*      device,
     const D3D11_QUERY_DESC& desc)
-  : m_device(device), m_desc(desc) {
+  : m_device(device), m_desc(desc), m_d3d10(this) {
     switch (m_desc.Query) {
       case D3D11_QUERY_EVENT:
         m_event = new DxvkEvent();
@@ -58,10 +58,24 @@ namespace dxvk {
       return S_OK;
     }
     
-    if (riid == __uuidof(ID3D11Predicate)
-     && m_desc.Query == D3D11_QUERY_OCCLUSION_PREDICATE) {
-      *ppvObject = ref(this);
+    if (riid == __uuidof(IUnknown)
+     || riid == __uuidof(ID3D10DeviceChild)
+     || riid == __uuidof(ID3D10Asynchronous)
+     || riid == __uuidof(ID3D10Query)) {
+      *ppvObject = ref(&m_d3d10);
       return S_OK;
+    }
+    
+    if (m_desc.Query == D3D11_QUERY_OCCLUSION_PREDICATE) {
+      if (riid == __uuidof(ID3D10Predicate)) {
+        *ppvObject = ref(this);
+        return S_OK;
+      }
+
+      if (riid == __uuidof(ID3D10Predicate)) {
+        *ppvObject = ref(&m_d3d10);
+        return S_OK;
+      }
     }
     
     Logger::warn("D3D11Query: Unknown interface query");

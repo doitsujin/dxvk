@@ -4,6 +4,7 @@ d3d10_src = [
   '../d3d10/d3d10_depth_stencil.cpp',
   '../d3d10/d3d10_device.cpp',
   '../d3d10/d3d10_input_layout.cpp',
+  '../d3d10/d3d10_query.cpp',
   '../d3d10/d3d10_rasterizer.cpp',
   '../d3d10/d3d10_sampler.cpp',
   '../d3d10/d3d10_texture.cpp',

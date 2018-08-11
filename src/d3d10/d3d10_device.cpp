@@ -536,16 +536,46 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D10Device::CreateQuery(
     const D3D10_QUERY_DESC*                 pQueryDesc,
           ID3D10Query**                     ppQuery) {
-    Logger::err("D3D10Device::CreateQuery: Not implemented");
-    return E_NOTIMPL;
+    InitReturnPtr(ppQuery);
+
+    D3D11_QUERY_DESC d3d11Desc;
+    d3d11Desc.Query      = D3D11_QUERY(pQueryDesc->Query);
+    d3d11Desc.MiscFlags  = pQueryDesc->MiscFlags;
+
+    ID3D11Query* d3d11Query = nullptr;
+    HRESULT hr = m_device->CreateQuery(&d3d11Desc,
+      ppQuery ? &d3d11Query : nullptr);
+
+    if (FAILED(hr))
+      return hr;
+    
+    if (ppQuery != nullptr) {
+      *ppQuery = static_cast<D3D11Query*>(d3d11Query)->GetD3D10Iface();
+      return S_OK;
+    } return S_FALSE;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D10Device::CreatePredicate(
     const D3D10_QUERY_DESC*                 pPredicateDesc,
           ID3D10Predicate**                 ppPredicate) {
-    Logger::err("D3D10Device::CreatePredicate: Not implemented");
-    return E_NOTIMPL;
+    InitReturnPtr(ppPredicate);
+
+    D3D11_QUERY_DESC d3d11Desc;
+    d3d11Desc.Query      = D3D11_QUERY(pPredicateDesc->Query);
+    d3d11Desc.MiscFlags  = pPredicateDesc->MiscFlags;
+
+    ID3D11Predicate* d3d11Predicate = nullptr;
+    HRESULT hr = m_device->CreatePredicate(&d3d11Desc,
+      ppPredicate ? &d3d11Predicate : nullptr);
+
+    if (FAILED(hr))
+      return hr;
+    
+    if (ppPredicate != nullptr) {
+      *ppPredicate = static_cast<D3D11Query*>(d3d11Predicate)->GetD3D10Iface();
+      return S_OK;
+    } return S_FALSE;
   }
 
 
