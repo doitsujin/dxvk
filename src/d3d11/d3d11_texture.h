@@ -1,6 +1,8 @@
 #pragma once
 
-#include <dxvk_device.h>
+#include "../dxvk/dxvk_device.h"
+
+#include "../d3d10/d3d10_texture.h"
 
 #include "d3d11_device_child.h"
 #include "d3d11_interfaces.h"
@@ -281,11 +283,16 @@ namespace dxvk {
     D3D11CommonTexture* GetCommonTexture() {
       return &m_texture;
     }
+
+    D3D10Texture1D* GetD3D10Iface() {
+      return &m_d3d10;
+    }
     
   private:
     
     D3D11CommonTexture    m_texture;
     D3D11VkInteropSurface m_interop;
+    D3D10Texture1D        m_d3d10;
     
   };
   
@@ -323,10 +330,15 @@ namespace dxvk {
       return &m_texture;
     }
     
+    D3D10Texture2D* GetD3D10Iface() {
+      return &m_d3d10;
+    }
+
   private:
     
     D3D11CommonTexture    m_texture;
     D3D11VkInteropSurface m_interop;
+    D3D10Texture2D        m_d3d10;
     
   };
   
@@ -364,10 +376,15 @@ namespace dxvk {
       return &m_texture;
     }
     
+    D3D10Texture3D* GetD3D10Iface() {
+      return &m_d3d10;
+    }
+
   private:
     
     D3D11CommonTexture    m_texture;
     D3D11VkInteropSurface m_interop;
+    D3D10Texture3D        m_d3d10;
     
   };
   

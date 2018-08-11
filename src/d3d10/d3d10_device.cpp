@@ -102,8 +102,30 @@ namespace dxvk {
     const D3D10_TEXTURE1D_DESC*             pDesc,
     const D3D10_SUBRESOURCE_DATA*           pInitialData,
           ID3D10Texture1D**                 ppTexture1D) {
-    Logger::err("D3D10Device::CreateTexture1D: Not implemented");
-    return E_NOTIMPL;
+    InitReturnPtr(ppTexture1D);
+
+    D3D11_TEXTURE1D_DESC d3d11Desc;
+    d3d11Desc.Width           = pDesc->Width;
+    d3d11Desc.MipLevels       = pDesc->MipLevels;
+    d3d11Desc.ArraySize       = pDesc->ArraySize;
+    d3d11Desc.Format          = pDesc->Format;
+    d3d11Desc.Usage           = D3D11_USAGE(pDesc->Usage);
+    d3d11Desc.BindFlags       = pDesc->BindFlags;
+    d3d11Desc.CPUAccessFlags  = pDesc->CPUAccessFlags;
+    d3d11Desc.MiscFlags       = ConvertD3D10ResourceFlags(pDesc->MiscFlags);
+
+    ID3D11Texture1D* d3d11Texture1D = nullptr;
+    HRESULT hr = m_device->CreateTexture1D(&d3d11Desc,
+      reinterpret_cast<const D3D11_SUBRESOURCE_DATA*>(pInitialData),
+      ppTexture1D != nullptr ? &d3d11Texture1D : nullptr);
+    
+    if (FAILED(hr))
+      return hr;
+
+    if (ppTexture1D != nullptr) {
+      *ppTexture1D = static_cast<D3D11Texture1D*>(d3d11Texture1D)->GetD3D10Iface();
+      return S_OK;
+    } return S_FALSE;
   }
 
 
@@ -111,8 +133,32 @@ namespace dxvk {
     const D3D10_TEXTURE2D_DESC*             pDesc,
     const D3D10_SUBRESOURCE_DATA*           pInitialData,
           ID3D10Texture2D**                 ppTexture2D) {
-    Logger::err("D3D10Device::CreateTexture2D: Not implemented");
-    return E_NOTIMPL;
+    InitReturnPtr(ppTexture2D);
+
+    D3D11_TEXTURE2D_DESC d3d11Desc;
+    d3d11Desc.Width           = pDesc->Width;
+    d3d11Desc.Height          = pDesc->Height;
+    d3d11Desc.MipLevels       = pDesc->MipLevels;
+    d3d11Desc.ArraySize       = pDesc->ArraySize;
+    d3d11Desc.Format          = pDesc->Format;
+    d3d11Desc.SampleDesc      = pDesc->SampleDesc;
+    d3d11Desc.Usage           = D3D11_USAGE(pDesc->Usage);
+    d3d11Desc.BindFlags       = pDesc->BindFlags;
+    d3d11Desc.CPUAccessFlags  = pDesc->CPUAccessFlags;
+    d3d11Desc.MiscFlags       = ConvertD3D10ResourceFlags(pDesc->MiscFlags);
+
+    ID3D11Texture2D* d3d11Texture2D = nullptr;
+    HRESULT hr = m_device->CreateTexture2D(&d3d11Desc,
+      reinterpret_cast<const D3D11_SUBRESOURCE_DATA*>(pInitialData),
+      ppTexture2D != nullptr ? &d3d11Texture2D : nullptr);
+
+    if (FAILED(hr))
+      return hr;
+
+    if (ppTexture2D != nullptr) {
+      *ppTexture2D = static_cast<D3D11Texture2D*>(d3d11Texture2D)->GetD3D10Iface();
+      return S_OK;
+    } return S_FALSE;
   }
 
 
@@ -120,8 +166,31 @@ namespace dxvk {
     const D3D10_TEXTURE3D_DESC*             pDesc,
     const D3D10_SUBRESOURCE_DATA*           pInitialData,
           ID3D10Texture3D**                 ppTexture3D) {
-    Logger::err("D3D10Device::CreateTexture3D: Not implemented");
-    return E_NOTIMPL;
+    InitReturnPtr(ppTexture3D);
+
+    D3D11_TEXTURE3D_DESC d3d11Desc;
+    d3d11Desc.Width           = pDesc->Width;
+    d3d11Desc.Height          = pDesc->Height;
+    d3d11Desc.Depth           = pDesc->Depth;
+    d3d11Desc.MipLevels       = pDesc->MipLevels;
+    d3d11Desc.Format          = pDesc->Format;
+    d3d11Desc.Usage           = D3D11_USAGE(pDesc->Usage);
+    d3d11Desc.BindFlags       = pDesc->BindFlags;
+    d3d11Desc.CPUAccessFlags  = pDesc->CPUAccessFlags;
+    d3d11Desc.MiscFlags       = ConvertD3D10ResourceFlags(pDesc->MiscFlags);
+
+    ID3D11Texture3D* d3d11Texture3D = nullptr;
+    HRESULT hr = m_device->CreateTexture3D(&d3d11Desc,
+      reinterpret_cast<const D3D11_SUBRESOURCE_DATA*>(pInitialData),
+      ppTexture3D != nullptr ? &d3d11Texture3D : nullptr);
+
+    if (FAILED(hr))
+      return hr;
+
+    if (ppTexture3D != nullptr) {
+      *ppTexture3D = static_cast<D3D11Texture3D*>(d3d11Texture3D)->GetD3D10Iface();
+      return S_OK;
+    } return S_FALSE;
   }
 
 

@@ -481,8 +481,9 @@ namespace dxvk {
   D3D11Texture1D::D3D11Texture1D(
           D3D11Device*                pDevice,
     const D3D11_COMMON_TEXTURE_DESC*  pDesc)
-  : m_texture(pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE1D),
-    m_interop(this, &m_texture) {
+  : m_texture (pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE1D),
+    m_interop (this, &m_texture),
+    m_d3d10   (this) {
     
   }
   
@@ -500,6 +501,13 @@ namespace dxvk {
      || riid == __uuidof(ID3D11Resource)
      || riid == __uuidof(ID3D11Texture1D)) {
       *ppvObject = ref(this);
+      return S_OK;
+    }
+    
+    if (riid == __uuidof(ID3D10DeviceChild)
+     || riid == __uuidof(ID3D10Resource)
+     || riid == __uuidof(ID3D10Texture1D)) {
+      *ppvObject = ref(&m_d3d10);
       return S_OK;
     }
     
@@ -552,8 +560,9 @@ namespace dxvk {
   D3D11Texture2D::D3D11Texture2D(
           D3D11Device*                pDevice,
     const D3D11_COMMON_TEXTURE_DESC*  pDesc)
-  : m_texture(pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE2D),
-    m_interop(this, &m_texture) {
+  : m_texture (pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE2D),
+    m_interop (this, &m_texture),
+    m_d3d10   (this) {
     
   }
   
@@ -571,6 +580,13 @@ namespace dxvk {
      || riid == __uuidof(ID3D11Resource)
      || riid == __uuidof(ID3D11Texture2D)) {
       *ppvObject = ref(this);
+      return S_OK;
+    }
+
+    if (riid == __uuidof(ID3D10DeviceChild)
+     || riid == __uuidof(ID3D10Resource)
+     || riid == __uuidof(ID3D10Texture2D)) {
+      *ppvObject = ref(&m_d3d10);
       return S_OK;
     }
     
@@ -625,8 +641,9 @@ namespace dxvk {
   D3D11Texture3D::D3D11Texture3D(
           D3D11Device*                pDevice,
     const D3D11_COMMON_TEXTURE_DESC*  pDesc)
-  : m_texture(pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE3D),
-    m_interop(this, &m_texture) {
+  : m_texture (pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE3D),
+    m_interop (this, &m_texture),
+    m_d3d10   (this) {
     
   }
   
@@ -644,6 +661,13 @@ namespace dxvk {
      || riid == __uuidof(ID3D11Resource)
      || riid == __uuidof(ID3D11Texture3D)) {
       *ppvObject = ref(this);
+      return S_OK;
+    }
+    
+    if (riid == __uuidof(ID3D10DeviceChild)
+     || riid == __uuidof(ID3D10Resource)
+     || riid == __uuidof(ID3D10Texture3D)) {
+      *ppvObject = ref(&m_d3d10);
       return S_OK;
     }
     
