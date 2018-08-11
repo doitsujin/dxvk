@@ -621,7 +621,10 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D10Device::IASetInputLayout(
           ID3D10InputLayout*                pInputLayout) {
-    Logger::err("D3D10Device::IASetInputLayout: Not implemented");
+    D3D10InputLayout* d3d10InputLayout = static_cast<D3D10InputLayout*>(pInputLayout);
+    D3D11InputLayout* d3d11InputLayout = d3d10InputLayout ? d3d10InputLayout->GetD3D11Iface() : nullptr;
+
+    m_context->IASetInputLayout(d3d11InputLayout);
   }
 
 
@@ -666,7 +669,10 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D10Device::IAGetInputLayout(
           ID3D10InputLayout**               ppInputLayout) {
-    Logger::err("D3D10Device::IAGetInputLayout: Not implemented");
+    ID3D11InputLayout* d3d11InputLayout = nullptr;
+    m_context->IAGetInputLayout(&d3d11InputLayout);
+
+    *ppInputLayout = static_cast<D3D11InputLayout*>(d3d11InputLayout)->GetD3D10Iface();
   }
 
 
