@@ -26,13 +26,11 @@ namespace dxvk {
 
 
   ULONG STDMETHODCALLTYPE D3D10Device::AddRef() {
-    // TODO implement properly
     return m_device->AddRef();
   }
 
 
   ULONG STDMETHODCALLTYPE D3D10Device::Release() {
-    // TODO implement properly
     return m_device->Release();
   }
 
@@ -41,7 +39,6 @@ namespace dxvk {
           REFGUID                           guid,
           UINT*                             pDataSize,
           void*                             pData) {
-    // TODO implement properly
     return m_device->GetPrivateData(guid, pDataSize, pData);
   }
 
@@ -50,7 +47,6 @@ namespace dxvk {
           REFGUID                           guid,
           UINT                              DataSize,
     const void*                             pData) {
-    // TODO implement properly
     return m_device->SetPrivateData(guid, DataSize, pData);
   }
 
@@ -58,7 +54,6 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D10Device::SetPrivateDataInterface(
           REFGUID                           guid,
     const IUnknown*                         pData) {
-    // TODO implement properly
     return m_device->SetPrivateDataInterface(guid, pData);
   }
   
@@ -80,13 +75,11 @@ namespace dxvk {
 
 
   D3D10_FEATURE_LEVEL1 STDMETHODCALLTYPE D3D10Device::GetFeatureLevel() {
-    // TODO implement properly
     return D3D10_FEATURE_LEVEL1(m_device->GetFeatureLevel());
   }
 
 
   void STDMETHODCALLTYPE D3D10Device::ClearState() {
-    // TODO implement properly
     m_context->ClearState();
   }
 
