@@ -37,6 +37,15 @@ namespace dxvk {
   }
 
 
+  void GetD3D11Resource(
+          ID3D10Resource*       pSrcResource,
+          ID3D11Resource**      ppDstResource) {
+    pSrcResource->QueryInterface(
+      __uuidof(ID3D11Resource),
+      reinterpret_cast<void**>(ppDstResource));
+  }
+
+
   void GetD3D10Device(
           ID3D11DeviceChild*    pObject,
           ID3D10Device**        ppDevice) {
