@@ -55,6 +55,12 @@ namespace dxvk {
       return S_OK;
     }
     
+    if (riid == __uuidof(ID3D10Device)
+     || riid == __uuidof(ID3D10Device1)) {
+      *ppvObject = ref(m_d3d11Device->GetD3D10Interface());
+      return S_OK;
+    }
+    
     if (riid == __uuidof(ID3D11Device)
      || riid == __uuidof(ID3D11Device1)) {
       *ppvObject = ref(m_d3d11Device);
@@ -108,11 +114,13 @@ namespace dxvk {
     
     m_initializer = new D3D11Initializer(m_dxvkDevice);
     m_uavCounters = new D3D11UavCounterAllocator(this);
-    m_context = new D3D11ImmediateContext(this, m_dxvkDevice);
+    m_context     = new D3D11ImmediateContext(this, m_dxvkDevice);
+    m_d3d10Device = new D3D10Device(this, m_context);
   }
   
   
   D3D11Device::~D3D11Device() {
+    delete m_d3d10Device;
     delete m_context;
     delete m_uavCounters;
     delete m_initializer;

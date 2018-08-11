@@ -1,3 +1,7 @@
+d3d10_src = [
+  '../d3d10/d3d10_device.cpp',
+]
+
 d3d11_src = [
   'd3d11_annotation.cpp',
   'd3d11_blend.cpp',
@@ -31,7 +35,7 @@ d3d11_src = [
   'd3d11_view_uav.cpp',
 ]
 
-d3d11_dll = shared_library('d3d11'+dll_ext, d3d11_src,
+d3d11_dll = shared_library('d3d11'+dll_ext, d3d11_src + d3d10_src,
   name_prefix         : '',
   link_with           : [ util_lib ],
   dependencies        : [ lib_dxgi, dxbc_dep, dxvk_dep ],

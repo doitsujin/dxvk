@@ -1,0 +1,822 @@
+#include "d3d10_device.h"
+
+#include "../d3d11/d3d11_device.h"
+#include "../d3d11/d3d11_context_imm.h"
+
+namespace dxvk {
+  
+  D3D10Device::D3D10Device(
+          D3D11Device*                      pDevice,
+          D3D11ImmediateContext*            pContext)
+  : m_device(pDevice), m_context(pContext) {
+
+  }
+
+  
+  D3D10Device::~D3D10Device() {
+
+  }
+  
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::QueryInterface(
+          REFIID                            riid,
+          void**                            ppvObject) {
+    return m_device->QueryInterface(riid, ppvObject);
+  }
+
+
+  ULONG STDMETHODCALLTYPE D3D10Device::AddRef() {
+    // TODO implement properly
+    return m_device->AddRef();
+  }
+
+
+  ULONG STDMETHODCALLTYPE D3D10Device::Release() {
+    // TODO implement properly
+    return m_device->Release();
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::GetPrivateData(
+          REFGUID                           guid,
+          UINT*                             pDataSize,
+          void*                             pData) {
+    // TODO implement properly
+    return m_device->GetPrivateData(guid, pDataSize, pData);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::SetPrivateData(
+          REFGUID                           guid,
+          UINT                              DataSize,
+    const void*                             pData) {
+    // TODO implement properly
+    return m_device->SetPrivateData(guid, DataSize, pData);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::SetPrivateDataInterface(
+          REFGUID                           guid,
+    const IUnknown*                         pData) {
+    // TODO implement properly
+    return m_device->SetPrivateDataInterface(guid, pData);
+  }
+  
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::GetDeviceRemovedReason() {
+    return m_device->GetDeviceRemovedReason();
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::SetExceptionMode(
+          UINT                              RaiseFlags) {
+    return m_device->SetExceptionMode(RaiseFlags);
+  }
+
+
+  UINT STDMETHODCALLTYPE D3D10Device::GetExceptionMode() {
+    return m_device->GetExceptionMode();
+  }
+
+
+  D3D10_FEATURE_LEVEL1 STDMETHODCALLTYPE D3D10Device::GetFeatureLevel() {
+    // TODO implement properly
+    return D3D10_FEATURE_LEVEL1(m_device->GetFeatureLevel());
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::ClearState() {
+    // TODO implement properly
+    m_context->ClearState();
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::Flush() {
+    m_context->Flush();
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::CreateBuffer(
+    const D3D10_BUFFER_DESC*                pDesc,
+    const D3D10_SUBRESOURCE_DATA*           pInitialData,
+          ID3D10Buffer**                    ppBuffer) {
+    Logger::err("D3D10Device::CreateBuffer: Not implemented");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::CreateTexture1D(
+    const D3D10_TEXTURE1D_DESC*             pDesc,
+    const D3D10_SUBRESOURCE_DATA*           pInitialData,
+          ID3D10Texture1D**                 ppTexture1D) {
+    Logger::err("D3D10Device::CreateTexture1D: Not implemented");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::CreateTexture2D(
+    const D3D10_TEXTURE2D_DESC*             pDesc,
+    const D3D10_SUBRESOURCE_DATA*           pInitialData,
+          ID3D10Texture2D**                 ppTexture2D) {
+    Logger::err("D3D10Device::CreateTexture2D: Not implemented");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::CreateTexture3D(
+    const D3D10_TEXTURE3D_DESC*             pDesc,
+    const D3D10_SUBRESOURCE_DATA*           pInitialData,
+          ID3D10Texture3D**                 ppTexture3D) {
+    Logger::err("D3D10Device::CreateTexture3D: Not implemented");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::CreateShaderResourceView(
+          ID3D10Resource*                   pResource,
+    const D3D10_SHADER_RESOURCE_VIEW_DESC*  pDesc,
+          ID3D10ShaderResourceView**        ppSRView) {
+    Logger::err("D3D10Device::CreateShaderResourceView: Not implemented");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::CreateShaderResourceView1(
+          ID3D10Resource*                   pResource,
+    const D3D10_SHADER_RESOURCE_VIEW_DESC1* pDesc,
+          ID3D10ShaderResourceView1**       ppSRView) {
+    Logger::err("D3D10Device::CreateShaderResourceView1: Not implemented");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::CreateRenderTargetView(
+          ID3D10Resource*                   pResource,
+    const D3D10_RENDER_TARGET_VIEW_DESC*    pDesc,
+          ID3D10RenderTargetView**          ppRTView) {
+    Logger::err("D3D10Device::CreateRenderTargetView: Not implemented");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::CreateDepthStencilView(
+          ID3D10Resource*                   pResource,
+    const D3D10_DEPTH_STENCIL_VIEW_DESC*    pDesc,
+          ID3D10DepthStencilView**          ppDepthStencilView) {
+    Logger::err("D3D10Device::CreateDepthStencilView: Not implemented");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::CreateInputLayout(
+    const D3D10_INPUT_ELEMENT_DESC*         pInputElementDescs,
+          UINT                              NumElements,
+    const void*                             pShaderBytecodeWithInputSignature,
+          SIZE_T                            BytecodeLength,
+          ID3D10InputLayout**               ppInputLayout) {
+    Logger::err("D3D10Device::CreateInputLayout: Not implemented");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::CreateVertexShader(
+    const void*                             pShaderBytecode,
+          SIZE_T                            BytecodeLength,
+          ID3D10VertexShader**              ppVertexShader) {
+    Logger::err("D3D10Device::CreateVertexShader: Not implemented");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::CreateGeometryShader(
+    const void*                             pShaderBytecode,
+          SIZE_T                            BytecodeLength,
+          ID3D10GeometryShader**            ppGeometryShader) {
+    Logger::err("D3D10Device::CreateGeometryShader: Not implemented");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::CreateGeometryShaderWithStreamOutput(
+    const void*                             pShaderBytecode,
+          SIZE_T                            BytecodeLength,
+    const D3D10_SO_DECLARATION_ENTRY*       pSODeclaration,
+          UINT                              NumEntries,
+          UINT                              OutputStreamStride,
+          ID3D10GeometryShader**            ppGeometryShader) {
+    Logger::err("D3D10Device::CreateGeometryShaderWithStreamOutput: Not implemented");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::CreatePixelShader(
+    const void*                             pShaderBytecode,
+          SIZE_T                            BytecodeLength,
+          ID3D10PixelShader**               ppPixelShader) {
+    Logger::err("D3D10Device::CreatePixelShader: Not implemented");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::CreateBlendState(
+    const D3D10_BLEND_DESC*                 pBlendStateDesc,
+          ID3D10BlendState**                ppBlendState) {
+    Logger::err("D3D10Device::CreateBlendState: Not implemented");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::CreateBlendState1(
+    const D3D10_BLEND_DESC1*                pBlendStateDesc,
+          ID3D10BlendState1**               ppBlendState) {
+    Logger::err("D3D10Device::CreateBlendState1: Not implemented");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::CreateDepthStencilState(
+    const D3D10_DEPTH_STENCIL_DESC*         pDepthStencilDesc,
+          ID3D10DepthStencilState**         ppDepthStencilState) {
+    Logger::err("D3D10Device::CreateDepthStencilState: Not implemented");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::CreateRasterizerState(
+    const D3D10_RASTERIZER_DESC*            pRasterizerDesc,
+          ID3D10RasterizerState**           ppRasterizerState) {
+    Logger::err("D3D10Device::CreateRasterizerState: Not implemented");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::CreateSamplerState(
+    const D3D10_SAMPLER_DESC*               pSamplerDesc,
+          ID3D10SamplerState**              ppSamplerState) {
+    Logger::err("D3D10Device::CreateSamplerState: Not implemented");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::CreateQuery(
+    const D3D10_QUERY_DESC*                 pQueryDesc,
+          ID3D10Query**                     ppQuery) {
+    Logger::err("D3D10Device::CreateQuery: Not implemented");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::CreatePredicate(
+    const D3D10_QUERY_DESC*                 pPredicateDesc,
+          ID3D10Predicate**                 ppPredicate) {
+    Logger::err("D3D10Device::CreatePredicate: Not implemented");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::CreateCounter(
+    const D3D10_COUNTER_DESC*               pCounterDesc,
+          ID3D10Counter**                   ppCounter) {
+    Logger::err("D3D10Device::CreateCounter: Not implemented");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::CheckFormatSupport(
+          DXGI_FORMAT                       Format,
+          UINT*                             pFormatSupport) {
+    Logger::err("D3D10Device::CheckFormatSupport: Not implemented");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::CheckMultisampleQualityLevels(
+          DXGI_FORMAT                       Format,
+          UINT                              SampleCount,
+          UINT*                             pNumQualityLevels) {
+    return m_device->CheckMultisampleQualityLevels(
+      Format, SampleCount, pNumQualityLevels);
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::CheckCounterInfo(
+          D3D10_COUNTER_INFO*               pCounterInfo) {
+    Logger::err("D3D10Device::CheckCounterInfo: Not implemented");
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::CheckCounter(
+    const D3D10_COUNTER_DESC*               pDesc,
+          D3D10_COUNTER_TYPE*               pType,
+          UINT*                             pActiveCounters,
+          char*                             name,
+          UINT*                             pNameLength,
+          char*                             units,
+          UINT*                             pUnitsLength,
+          char*                             description,
+          UINT*                             pDescriptionLength) {
+    Logger::err("D3D10Device::CheckCounter: Not implemented");
+    return E_NOTIMPL;
+  }
+
+
+  UINT STDMETHODCALLTYPE D3D10Device::GetCreationFlags() {
+    return m_device->GetCreationFlags();
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D10Device::OpenSharedResource(
+          HANDLE                            hResource,
+          REFIID                            ReturnedInterface,
+          void**                            ppResource) {
+    InitReturnPtr(ppResource);
+    
+    Logger::err("D3D10Device::OpenSharedResource: Not implemented");
+    return E_NOTIMPL;
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::ClearRenderTargetView(
+          ID3D10RenderTargetView*           pRenderTargetView,
+    const FLOAT                             ColorRGBA[4]) {
+    Logger::err("D3D10Device::ClearRenderTargetView: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::ClearDepthStencilView(
+          ID3D10DepthStencilView*           pDepthStencilView,
+          UINT                              ClearFlags,
+          FLOAT                             Depth,
+          UINT8                             Stencil) {
+    Logger::err("D3D10Device::ClearDepthStencilView: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::SetPredication(
+          ID3D10Predicate*                  pPredicate,
+          BOOL                              PredicateValue) {
+    Logger::err("D3D10Device::SetPredication: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::GetPredication(
+          ID3D10Predicate**                 ppPredicate,
+          BOOL*                             pPredicateValue) {
+    Logger::err("D3D10Device::GetPredication: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::CopySubresourceRegion(
+          ID3D10Resource*                   pDstResource,
+          UINT                              DstSubresource,
+          UINT                              DstX,
+          UINT                              DstY,
+          UINT                              DstZ,
+          ID3D10Resource*                   pSrcResource,
+          UINT                              SrcSubresource,
+    const D3D10_BOX*                        pSrcBox) {
+    Logger::err("D3D10Device::CopySubresourceRegion: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::CopyResource(
+          ID3D10Resource*                   pDstResource,
+          ID3D10Resource*                   pSrcResource) {
+    Logger::err("D3D10Device::CopyResource: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::UpdateSubresource(
+          ID3D10Resource*                   pDstResource,
+          UINT                              DstSubresource,
+    const D3D10_BOX*                        pDstBox,
+    const void*                             pSrcData,
+          UINT                              SrcRowPitch,
+          UINT                              SrcDepthPitch) {
+    Logger::err("D3D10Device::UpdateSubresource: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::GenerateMips(
+          ID3D10ShaderResourceView*         pShaderResourceView) {
+    Logger::err("D3D10Device::GenerateMips: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::ResolveSubresource(
+          ID3D10Resource*                   pDstResource,
+          UINT                              DstSubresource,
+          ID3D10Resource*                   pSrcResource,
+          UINT                              SrcSubresource,
+          DXGI_FORMAT                       Format) {
+    Logger::err("D3D10Device::ResolveSubresource: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::Draw(
+          UINT                              VertexCount,
+          UINT                              StartVertexLocation) {
+    m_context->Draw(VertexCount,
+      StartVertexLocation);
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::DrawIndexed(
+          UINT                              IndexCount,
+          UINT                              StartIndexLocation,
+          INT                               BaseVertexLocation) {
+    m_context->DrawIndexed(IndexCount,
+      StartIndexLocation,
+      BaseVertexLocation);
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::DrawInstanced(
+          UINT                              VertexCountPerInstance,
+          UINT                              InstanceCount,
+          UINT                              StartVertexLocation,
+          UINT                              StartInstanceLocation) {
+    m_context->DrawInstanced(
+      VertexCountPerInstance,
+      InstanceCount,
+      StartVertexLocation,
+      StartInstanceLocation);
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::DrawIndexedInstanced(
+          UINT                              IndexCountPerInstance,
+          UINT                              InstanceCount,
+          UINT                              StartIndexLocation,
+          INT                               BaseVertexLocation,
+          UINT                              StartInstanceLocation) {
+    m_context->DrawIndexedInstanced(
+      IndexCountPerInstance,
+      InstanceCount,
+      StartIndexLocation,
+      BaseVertexLocation,
+      StartInstanceLocation);
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::DrawAuto() {
+    m_context->DrawAuto();
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::IASetInputLayout(
+          ID3D10InputLayout*                pInputLayout) {
+    Logger::err("D3D10Device::IASetInputLayout: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::IASetPrimitiveTopology(
+          D3D10_PRIMITIVE_TOPOLOGY          Topology) {
+    Logger::err("D3D10Device::IASetPrimitiveTopology: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::IASetVertexBuffers(
+          UINT                              StartSlot,
+          UINT                              NumBuffers,
+          ID3D10Buffer* const*              ppVertexBuffers,
+    const UINT*                             pStrides,
+    const UINT*                             pOffsets) {
+    Logger::err("D3D10Device::IASetVertexBuffers: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::IASetIndexBuffer(
+          ID3D10Buffer*                     pIndexBuffer,
+          DXGI_FORMAT                       Format,
+          UINT                              Offset) {
+    Logger::err("D3D10Device::IASetIndexBuffer: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::IAGetInputLayout(
+          ID3D10InputLayout**               ppInputLayout) {
+    Logger::err("D3D10Device::IAGetInputLayout: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::IAGetPrimitiveTopology(
+          D3D10_PRIMITIVE_TOPOLOGY*         pTopology) {
+    Logger::err("D3D10Device::IAGetPrimitiveTopology: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::IAGetVertexBuffers(
+          UINT                              StartSlot,
+          UINT                              NumBuffers,
+          ID3D10Buffer**                    ppVertexBuffers,
+          UINT*                             pStrides,
+          UINT*                             pOffsets) {
+    Logger::err("D3D10Device::IAGetVertexBuffers: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::IAGetIndexBuffer(
+          ID3D10Buffer**                    pIndexBuffer,
+          DXGI_FORMAT*                      Format,
+          UINT*                             Offset) {
+    Logger::err("D3D10Device::IAGetIndexBuffer: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::VSSetShader(
+          ID3D10VertexShader*               pVertexShader) {
+    Logger::err("D3D10Device::VSSetShader: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::VSSetConstantBuffers(
+          UINT                              StartSlot,
+          UINT                              NumBuffers,
+          ID3D10Buffer* const*              ppConstantBuffers) {
+    Logger::err("D3D10Device::VSSetConstantBuffers: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::VSSetShaderResources(
+          UINT                              StartSlot,
+          UINT                              NumViews,
+          ID3D10ShaderResourceView* const*  ppShaderResourceViews) {
+    Logger::err("D3D10Device::VSSetShaderResources: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::VSSetSamplers(
+          UINT                              StartSlot,
+          UINT                              NumSamplers,
+          ID3D10SamplerState* const*        ppSamplers) {
+    Logger::err("D3D10Device::VSSetSamplers: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::VSGetShader(
+          ID3D10VertexShader**              ppVertexShader) {
+    Logger::err("D3D10Device::VSGetShader: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::VSGetConstantBuffers(
+          UINT                              StartSlot,
+          UINT                              NumBuffers,
+          ID3D10Buffer**                    ppConstantBuffers) {
+    Logger::err("D3D10Device::VSGetConstantBuffers: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::VSGetShaderResources(
+          UINT                              StartSlot,
+          UINT                              NumViews,
+          ID3D10ShaderResourceView**        ppShaderResourceViews) {
+    Logger::err("D3D10Device::VSGetShaderResources: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::VSGetSamplers(
+          UINT                              StartSlot,
+          UINT                              NumSamplers,
+          ID3D10SamplerState**              ppSamplers) {
+    Logger::err("D3D10Device::VSGetSamplers: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::GSSetShader(
+          ID3D10GeometryShader*             pShader) {
+    Logger::err("D3D10Device::GSSetShader: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::GSSetConstantBuffers(
+          UINT                              StartSlot,
+          UINT                              NumBuffers,
+          ID3D10Buffer* const*              ppConstantBuffers) {
+    Logger::err("D3D10Device::GSSetConstantBuffers: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::GSSetShaderResources(
+          UINT                              StartSlot,
+          UINT                              NumViews,
+          ID3D10ShaderResourceView* const*  ppShaderResourceViews) {
+    Logger::err("D3D10Device::GSSetShaderResources: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::GSSetSamplers(
+          UINT                              StartSlot,
+          UINT                              NumSamplers,
+          ID3D10SamplerState* const*        ppSamplers) {
+    Logger::err("D3D10Device::GSSetSamplers: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::GSGetShader(
+          ID3D10GeometryShader**            ppGeometryShader) {
+    Logger::err("D3D10Device::GSGetShader: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::GSGetConstantBuffers(
+          UINT                              StartSlot,
+          UINT                              NumBuffers,
+          ID3D10Buffer**                    ppConstantBuffers) {
+    Logger::err("D3D10Device::GSGetConstantBuffers: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::GSGetShaderResources(
+          UINT                              StartSlot,
+          UINT                              NumViews,
+          ID3D10ShaderResourceView**        ppShaderResourceViews) {
+    Logger::err("D3D10Device::GSGetShaderResources: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::GSGetSamplers(
+          UINT                              StartSlot,
+          UINT                              NumSamplers,
+          ID3D10SamplerState**              ppSamplers) {
+    Logger::err("D3D10Device::GSGetSamplers: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::PSSetShader(
+          ID3D10PixelShader*                pPixelShader) {
+    Logger::err("D3D10Device::PSSetShader: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::PSSetConstantBuffers(
+          UINT                              StartSlot,
+          UINT                              NumBuffers,
+          ID3D10Buffer* const*              ppConstantBuffers) {
+    Logger::err("D3D10Device::PSSetConstantBuffers: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::PSSetShaderResources(
+          UINT                              StartSlot,
+          UINT                              NumViews,
+          ID3D10ShaderResourceView* const*  ppShaderResourceViews) {
+    Logger::err("D3D10Device::PSSetConstantBuffers: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::PSSetSamplers(
+          UINT                              StartSlot,
+          UINT                              NumSamplers,
+          ID3D10SamplerState* const*        ppSamplers) {
+    Logger::err("D3D10Device::PSSetSamplers: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::PSGetShader(
+          ID3D10PixelShader**               ppPixelShader) {
+    Logger::err("D3D10Device::PSGetShader: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::PSGetConstantBuffers(
+          UINT                              StartSlot,
+          UINT                              NumBuffers,
+          ID3D10Buffer**                    ppConstantBuffers) {
+    Logger::err("D3D10Device::PSGetConstantBuffers: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::PSGetShaderResources(
+          UINT                              StartSlot,
+          UINT                              NumViews,
+          ID3D10ShaderResourceView**        ppShaderResourceViews) {
+    Logger::err("D3D10Device::PSGetShaderResources: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::PSGetSamplers(
+          UINT                              StartSlot,
+          UINT                              NumSamplers,
+          ID3D10SamplerState**              ppSamplers) {
+    Logger::err("D3D10Device::PSGetSamplers: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::OMSetRenderTargets(
+          UINT                              NumViews,
+          ID3D10RenderTargetView* const*    ppRenderTargetViews,
+          ID3D10DepthStencilView*           pDepthStencilView) {
+    Logger::err("D3D10Device::OMSetRenderTargets: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::OMSetBlendState(
+          ID3D10BlendState*                 pBlendState,
+    const FLOAT                             BlendFactor[4],
+          UINT                              SampleMask) {
+    Logger::err("D3D10Device::OMSetBlendState: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::OMSetDepthStencilState(
+          ID3D10DepthStencilState*          pDepthStencilState,
+          UINT                              StencilRef) {
+    Logger::err("D3D10Device::OMSetDepthStencilState: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::OMGetRenderTargets(
+          UINT                              NumViews,
+          ID3D10RenderTargetView**          ppRenderTargetViews,
+          ID3D10DepthStencilView**          ppDepthStencilView) {
+    Logger::err("D3D10Device::OMGetRenderTargets: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::OMGetBlendState(
+          ID3D10BlendState**                ppBlendState,
+          FLOAT                             BlendFactor[4],
+          UINT*                             pSampleMask) {
+    Logger::err("D3D10Device::OMGetBlendState: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::OMGetDepthStencilState(
+          ID3D10DepthStencilState**         ppDepthStencilState,
+          UINT*                             pStencilRef) {
+    Logger::err("D3D10Device::OMGetDepthStencilState: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::RSSetState(
+          ID3D10RasterizerState*            pRasterizerState) {
+    Logger::err("D3D10Device::RSSetState: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::RSSetViewports(
+          UINT                              NumViewports,
+    const D3D10_VIEWPORT*                   pViewports) {
+    Logger::err("D3D10Device::RSSetViewports: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::RSSetScissorRects(
+          UINT                              NumRects,
+    const D3D10_RECT*                       pRects) {
+    Logger::err("D3D10Device::RSSetScissorRects: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::RSGetState(
+          ID3D10RasterizerState**           ppRasterizerState) {
+    Logger::err("D3D10Device::RSGetState: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::RSGetViewports(
+          UINT*                             NumViewports,
+          D3D10_VIEWPORT*                   pViewports) {
+    Logger::err("D3D10Device::RSGetViewports: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::RSGetScissorRects(
+          UINT*                             NumRects,
+          D3D10_RECT*                       pRects) {
+    Logger::err("D3D10Device::RSGetScissorRects: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::SOSetTargets(
+          UINT                              NumBuffers,
+          ID3D10Buffer* const*              ppSOTargets,
+    const UINT*                             pOffsets) {
+    Logger::err("D3D10Device::SOSetTargets: Not implemented");
+  }
+
+  
+  void STDMETHODCALLTYPE D3D10Device::SOGetTargets(
+          UINT                              NumBuffers,
+          ID3D10Buffer**                    ppSOTargets,
+          UINT*                             pOffsets) {
+    Logger::err("D3D10Device::SOGetTargets: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::SetTextFilterSize(
+          UINT                              Width,
+          UINT                              Height) {
+    Logger::err("D3D10Device::SetTextFilterSize: Not implemented");
+  }
+
+
+  void STDMETHODCALLTYPE D3D10Device::GetTextFilterSize(
+          UINT*                             pWidth,
+          UINT*                             pHeight) {
+    Logger::err("D3D10Device::GetTextFilterSize: Not implemented");
+  }
+
+}

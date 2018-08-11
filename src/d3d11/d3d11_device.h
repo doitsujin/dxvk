@@ -7,6 +7,8 @@
 
 #include "../dxgi/dxgi_object.h"
 
+#include "../d3d10/d3d10_device.h"
+
 #include "../util/com/com_private_data.h"
 
 #include "d3d11_initializer.h"
@@ -340,6 +342,10 @@ namespace dxvk {
     const D3D11Options* GetOptions() const {
       return &m_d3d11Options;
     }
+
+    D3D10Device* GetD3D10Interface() const {
+      return m_d3d10Device;
+    }
     
     static bool CheckFeatureLevelSupport(
       const Rc<DxvkAdapter>&  adapter,
@@ -366,6 +372,7 @@ namespace dxvk {
     D3D11Initializer*               m_initializer = nullptr;
     D3D11UavCounterAllocator*       m_uavCounters = nullptr;
     D3D11ImmediateContext*          m_context     = nullptr;
+    D3D10Device*                    m_d3d10Device = nullptr;
     
     D3D11StateObjectSet<D3D11BlendState>        m_bsStateObjects;
     D3D11StateObjectSet<D3D11DepthStencilState> m_dsStateObjects;
