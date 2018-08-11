@@ -826,14 +826,25 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D10Device::RSSetViewports(
           UINT                              NumViewports,
     const D3D10_VIEWPORT*                   pViewports) {
-    Logger::err("D3D10Device::RSSetViewports: Not implemented");
+    D3D11_VIEWPORT vp[D3D10_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
+
+    for (uint32_t i = 0; i < NumViewports; i++) {
+      vp[i].TopLeftX = float(pViewports[i].TopLeftX);
+      vp[i].TopLeftY = float(pViewports[i].TopLeftY);
+      vp[i].Width    = float(pViewports[i].Width);
+      vp[i].Height   = float(pViewports[i].Height);
+      vp[i].MinDepth = pViewports[i].MinDepth;
+      vp[i].MaxDepth = pViewports[i].MaxDepth;
+    }
+
+    m_context->RSSetViewports(NumViewports, vp);
   }
 
 
   void STDMETHODCALLTYPE D3D10Device::RSSetScissorRects(
           UINT                              NumRects,
     const D3D10_RECT*                       pRects) {
-    Logger::err("D3D10Device::RSSetScissorRects: Not implemented");
+    m_context->RSSetScissorRects(NumRects, pRects);
   }
 
 
@@ -846,14 +857,26 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D10Device::RSGetViewports(
           UINT*                             NumViewports,
           D3D10_VIEWPORT*                   pViewports) {
-    Logger::err("D3D10Device::RSGetViewports: Not implemented");
+    D3D11_VIEWPORT vp[D3D10_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
+    m_context->RSGetViewports(NumViewports, pViewports != nullptr ? vp : nullptr);
+
+    if (pViewports != nullptr) {
+      for (uint32_t i = 0; i < *NumViewports; i++) {
+        pViewports[i].TopLeftX = int32_t(vp[i].TopLeftX);
+        pViewports[i].TopLeftY = int32_t(vp[i].TopLeftY);
+        pViewports[i].Width    = uint32_t(vp[i].Width);
+        pViewports[i].Height   = uint32_t(vp[i].Height);
+        pViewports[i].MinDepth = vp[i].MinDepth;
+        pViewports[i].MaxDepth = vp[i].MaxDepth;
+      }
+    }
   }
 
 
   void STDMETHODCALLTYPE D3D10Device::RSGetScissorRects(
           UINT*                             NumRects,
           D3D10_RECT*                       pRects) {
-    Logger::err("D3D10Device::RSGetScissorRects: Not implemented");
+    m_context->RSGetScissorRects(NumRects, pRects);
   }
 
 
