@@ -1067,7 +1067,10 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D10Device::OMSetDepthStencilState(
           ID3D10DepthStencilState*          pDepthStencilState,
           UINT                              StencilRef) {
-    Logger::err("D3D10Device::OMSetDepthStencilState: Not implemented");
+    D3D10DepthStencilState* d3d10DepthStencilState = static_cast<D3D10DepthStencilState*>(pDepthStencilState);
+    D3D11DepthStencilState* d3d11DepthStencilState = d3d10DepthStencilState ? d3d10DepthStencilState->GetD3D11Iface() : nullptr;
+
+    m_context->OMSetDepthStencilState(d3d11DepthStencilState, StencilRef);
   }
 
 
@@ -1097,7 +1100,14 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D10Device::OMGetDepthStencilState(
           ID3D10DepthStencilState**         ppDepthStencilState,
           UINT*                             pStencilRef) {
-    Logger::err("D3D10Device::OMGetDepthStencilState: Not implemented");
+    ID3D11DepthStencilState* d3d11DepthStencilState = nullptr;
+
+    m_context->OMGetDepthStencilState(
+      ppDepthStencilState ? &d3d11DepthStencilState : nullptr,
+      pStencilRef);
+
+    if (ppDepthStencilState != nullptr)
+      *ppDepthStencilState = static_cast<D3D11DepthStencilState*>(d3d11DepthStencilState)->GetD3D10Iface();
   }
 
 
