@@ -666,14 +666,24 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D10Device::SetPredication(
           ID3D10Predicate*                  pPredicate,
           BOOL                              PredicateValue) {
-    Logger::err("D3D10Device::SetPredication: Not implemented");
+    D3D10Query* d3d10Predicate = static_cast<D3D10Query*>(pPredicate);
+    D3D11Query* d3d11Predicate = d3d10Predicate ? d3d10Predicate->GetD3D11Iface() : nullptr;
+
+    m_context->SetPredication(d3d11Predicate, PredicateValue);
   }
 
 
   void STDMETHODCALLTYPE D3D10Device::GetPredication(
           ID3D10Predicate**                 ppPredicate,
           BOOL*                             pPredicateValue) {
-    Logger::err("D3D10Device::GetPredication: Not implemented");
+    ID3D11Predicate* d3d11Predicate = nullptr;
+
+    m_context->GetPredication(
+      ppPredicate ? &d3d11Predicate : nullptr,
+      pPredicateValue);
+    
+    if (ppPredicate != nullptr)
+      *ppPredicate = static_cast<D3D11Query*>(d3d11Predicate)->GetD3D10Iface();
   }
 
 
