@@ -371,8 +371,21 @@ namespace dxvk {
     const void*                             pShaderBytecode,
           SIZE_T                            BytecodeLength,
           ID3D10VertexShader**              ppVertexShader) {
-    Logger::err("D3D10Device::CreateVertexShader: Not implemented");
-    return E_NOTIMPL;
+    InitReturnPtr(ppVertexShader);
+
+    ID3D11VertexShader* d3d11Shader = nullptr;
+    
+    HRESULT hr = m_device->CreateVertexShader(
+      pShaderBytecode, BytecodeLength, nullptr,
+      ppVertexShader ? &d3d11Shader : nullptr);
+    
+    if (FAILED(hr))
+      return hr;
+    
+    if (ppVertexShader != nullptr) {
+      *ppVertexShader = static_cast<D3D11VertexShader*>(d3d11Shader)->GetD3D10Iface();
+      return S_OK;
+    } return S_FALSE;
   }
 
 
@@ -380,8 +393,21 @@ namespace dxvk {
     const void*                             pShaderBytecode,
           SIZE_T                            BytecodeLength,
           ID3D10GeometryShader**            ppGeometryShader) {
-    Logger::err("D3D10Device::CreateGeometryShader: Not implemented");
-    return E_NOTIMPL;
+    InitReturnPtr(ppGeometryShader);
+
+    ID3D11GeometryShader* d3d11Shader = nullptr;
+
+    HRESULT hr = m_device->CreateGeometryShader(
+      pShaderBytecode, BytecodeLength, nullptr,
+      ppGeometryShader ? &d3d11Shader : nullptr);
+    
+    if (FAILED(hr))
+      return hr;
+    
+    if (ppGeometryShader != nullptr) {
+      *ppGeometryShader = static_cast<D3D11GeometryShader*>(d3d11Shader)->GetD3D10Iface();
+      return S_OK;
+    } return S_FALSE;
   }
 
 
@@ -392,8 +418,36 @@ namespace dxvk {
           UINT                              NumEntries,
           UINT                              OutputStreamStride,
           ID3D10GeometryShader**            ppGeometryShader) {
-    Logger::err("D3D10Device::CreateGeometryShaderWithStreamOutput: Not implemented");
-    return E_NOTIMPL;
+    InitReturnPtr(ppGeometryShader);
+
+    std::vector<D3D11_SO_DECLARATION_ENTRY> d3d11Entries(NumEntries);
+
+    for (uint32_t i = 0; i < NumEntries; i++) {
+      d3d11Entries[i].Stream          = 0;
+      d3d11Entries[i].SemanticName    = pSODeclaration[i].SemanticName;
+      d3d11Entries[i].SemanticIndex   = pSODeclaration[i].SemanticIndex;
+      d3d11Entries[i].StartComponent  = pSODeclaration[i].StartComponent;
+      d3d11Entries[i].ComponentCount  = pSODeclaration[i].ComponentCount;
+      d3d11Entries[i].OutputSlot      = pSODeclaration[i].OutputSlot;
+    }
+
+    ID3D11GeometryShader* d3d11Shader = nullptr;
+
+    HRESULT hr = m_device->CreateGeometryShaderWithStreamOutput(
+      pShaderBytecode, BytecodeLength,
+      d3d11Entries.data(),
+      d3d11Entries.size(),
+      &OutputStreamStride, 1,
+      D3D11_SO_NO_RASTERIZED_STREAM, nullptr,
+      ppGeometryShader ? &d3d11Shader : nullptr);
+    
+    if (FAILED(hr))
+      return hr;
+    
+    if (ppGeometryShader != nullptr) {
+      *ppGeometryShader = static_cast<D3D11GeometryShader*>(d3d11Shader)->GetD3D10Iface();
+      return S_OK;
+    } return S_FALSE;
   }
 
 
@@ -401,8 +455,21 @@ namespace dxvk {
     const void*                             pShaderBytecode,
           SIZE_T                            BytecodeLength,
           ID3D10PixelShader**               ppPixelShader) {
-    Logger::err("D3D10Device::CreatePixelShader: Not implemented");
-    return E_NOTIMPL;
+    InitReturnPtr(ppPixelShader);
+
+    ID3D11PixelShader* d3d11Shader = nullptr;
+
+    HRESULT hr = m_device->CreatePixelShader(
+      pShaderBytecode, BytecodeLength, nullptr,
+      ppPixelShader ? &d3d11Shader : nullptr);
+    
+    if (FAILED(hr))
+      return hr;
+    
+    if (ppPixelShader != nullptr) {
+      *ppPixelShader = static_cast<D3D11PixelShader*>(d3d11Shader)->GetD3D10Iface();
+      return S_OK;
+    } return S_FALSE;
   }
 
 
