@@ -37,6 +37,33 @@ namespace dxvk {
   }
 
 
+  void GetD3D10ResourceFromView(
+          ID3D11View*           pSrcView,
+          ID3D10Resource**      ppDstResource) {
+    Com<ID3D11Resource> d3d11Resource;
+    pSrcView->GetResource(&d3d11Resource);
+    GetD3D10Resource(d3d11Resource.ptr(), ppDstResource);
+  }
+
+
+  void GetD3D11ResourceFromView(
+          ID3D10View*           pSrcView,
+          ID3D11Resource**      ppDstResource) {
+    Com<ID3D10Resource> d3d10Resource;
+    pSrcView->GetResource(&d3d10Resource);
+    GetD3D11Resource(d3d10Resource.ptr(), ppDstResource);
+  }
+
+
+  void GetD3D10Resource(
+          ID3D11Resource*       pSrcResource,
+          ID3D10Resource**      ppDstResource) {
+    pSrcResource->QueryInterface(
+      __uuidof(ID3D10Resource),
+      reinterpret_cast<void**>(ppDstResource));
+  }
+
+
   void GetD3D11Resource(
           ID3D10Resource*       pSrcResource,
           ID3D11Resource**      ppDstResource) {

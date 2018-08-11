@@ -16,6 +16,36 @@ namespace dxvk {
   UINT ConvertD3D11ResourceFlags(UINT MiscFlags);
 
   /**
+   * \brief Retrieves D3D10 resource from D3D11 view
+   * 
+   * \param [in] pSrcView The D3D11 resource view
+   * \param [out] ppDstResource The D3D10 resource
+   */
+  void GetD3D10ResourceFromView(
+          ID3D11View*           pSrcView,
+          ID3D10Resource**      ppDstResource);
+
+  /**
+   * \brief Retrieves D3D11 resource from D3D10 view
+   * 
+   * \param [in] pSrcView The D3D10 resource view
+   * \param [out] ppDstResource The D3D11 resource
+   */
+  void GetD3D11ResourceFromView(
+          ID3D10View*           pSrcView,
+          ID3D11Resource**      ppDstResource);
+
+  /**
+   * \brief Retrieves D3D10 resource from D3D11 resource
+   * 
+   * \param [in] pSrcResource The D3D11 resource
+   * \param [out] ppDstResource The D3D10 resource
+   */
+  void GetD3D10Resource(
+          ID3D11Resource*       pSrcResource,
+          ID3D10Resource**      ppDstResource);
+
+  /**
    * \brief Retrieves D3D11 resource from D3D10 resource
    * 
    * \param [in] pSrcResource The D3D10 resource
