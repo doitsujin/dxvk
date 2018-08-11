@@ -534,7 +534,7 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D10Device::IASetPrimitiveTopology(
           D3D10_PRIMITIVE_TOPOLOGY          Topology) {
-    Logger::err("D3D10Device::IASetPrimitiveTopology: Not implemented");
+    m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY(Topology));
   }
 
 
@@ -564,7 +564,12 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D10Device::IAGetPrimitiveTopology(
           D3D10_PRIMITIVE_TOPOLOGY*         pTopology) {
-    Logger::err("D3D10Device::IAGetPrimitiveTopology: Not implemented");
+    D3D11_PRIMITIVE_TOPOLOGY d3d11Topology;
+    m_context->IAGetPrimitiveTopology(&d3d11Topology);
+
+    *pTopology = d3d11Topology <= 32 /* begin patch list */
+      ? D3D10_PRIMITIVE_TOPOLOGY(d3d11Topology)
+      : D3D_PRIMITIVE_TOPOLOGY_UNDEFINED;
   }
 
 
