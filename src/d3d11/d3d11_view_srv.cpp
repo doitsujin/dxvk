@@ -10,7 +10,7 @@ namespace dxvk {
           D3D11Device*                      pDevice,
           ID3D11Resource*                   pResource,
     const D3D11_SHADER_RESOURCE_VIEW_DESC*  pDesc)
-  : m_device(pDevice), m_resource(pResource), m_desc(*pDesc) {
+  : m_device(pDevice), m_resource(pResource), m_desc(*pDesc), m_d3d10(this) {
     ResourceAddRefPrivate(m_resource);
 
     D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
@@ -173,6 +173,14 @@ namespace dxvk {
      || riid == __uuidof(ID3D11DeviceChild)
      || riid == __uuidof(ID3D11View)
      || riid == __uuidof(ID3D11ShaderResourceView)) {
+      *ppvObject = ref(this);
+      return S_OK;
+    }
+    
+    if (riid == __uuidof(ID3D10DeviceChild)
+     || riid == __uuidof(ID3D10View)
+     || riid == __uuidof(ID3D10ShaderResourceView)
+     || riid == __uuidof(ID3D10ShaderResourceView1)) {
       *ppvObject = ref(this);
       return S_OK;
     }

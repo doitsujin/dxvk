@@ -2,6 +2,8 @@
 
 #include "../dxvk/dxvk_device.h"
 
+#include "../d3d10/d3d10_view_srv.h"
+
 #include "d3d11_device_child.h"
 
 namespace dxvk {
@@ -43,6 +45,10 @@ namespace dxvk {
     Rc<DxvkImageView> GetImageView() const {
       return m_imageView;
     }
+
+    D3D10ShaderResourceView* GetD3D10Iface() {
+      return &m_d3d10;
+    }
     
     static HRESULT GetDescFromResource(
             ID3D11Resource*                   pResource,
@@ -59,7 +65,8 @@ namespace dxvk {
     D3D11_SHADER_RESOURCE_VIEW_DESC   m_desc;
     Rc<DxvkBufferView>                m_bufferView;
     Rc<DxvkImageView>                 m_imageView;
-    
+    D3D10ShaderResourceView           m_d3d10;
+
   };
   
 }
