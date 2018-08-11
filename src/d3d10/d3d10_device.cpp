@@ -564,7 +564,17 @@ namespace dxvk {
           ID3D10Buffer* const*              ppVertexBuffers,
     const UINT*                             pStrides,
     const UINT*                             pOffsets) {
-    Logger::err("D3D10Device::IASetVertexBuffers: Not implemented");
+    ID3D11Buffer* d3d11Buffers[D3D10_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+
+    for (uint32_t i = 0; i < NumBuffers; i++) {
+      d3d11Buffers[i] = ppVertexBuffers[i]
+        ? static_cast<D3D10Buffer*>(ppVertexBuffers[i])->GetD3D11Iface()
+        : nullptr;
+    }
+
+    m_context->IASetVertexBuffers(
+      StartSlot, NumBuffers, d3d11Buffers,
+      pStrides, pOffsets);
   }
 
 
@@ -572,7 +582,12 @@ namespace dxvk {
           ID3D10Buffer*                     pIndexBuffer,
           DXGI_FORMAT                       Format,
           UINT                              Offset) {
-    Logger::err("D3D10Device::IASetIndexBuffer: Not implemented");
+    D3D10Buffer* d3d10Buffer = static_cast<D3D10Buffer*>(pIndexBuffer);
+    D3D11Buffer* d3d11Buffer = d3d10Buffer
+      ? d3d10Buffer->GetD3D11Iface()
+      : nullptr;
+
+    m_context->IASetIndexBuffer(d3d11Buffer, Format, Offset);
   }
 
 
@@ -599,7 +614,20 @@ namespace dxvk {
           ID3D10Buffer**                    ppVertexBuffers,
           UINT*                             pStrides,
           UINT*                             pOffsets) {
-    Logger::err("D3D10Device::IAGetVertexBuffers: Not implemented");
+    ID3D11Buffer* d3d11Buffers[D3D10_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+
+    m_context->IAGetVertexBuffers(
+      StartSlot, NumBuffers,
+      ppVertexBuffers ? d3d11Buffers : nullptr,
+      pStrides, pOffsets);
+    
+    if (ppVertexBuffers != nullptr) {
+      for (uint32_t i = 0; i < NumBuffers; i++) {
+        ppVertexBuffers[i] = d3d11Buffers[i]
+          ? static_cast<D3D11Buffer*>(d3d11Buffers[i])->GetD3D10Iface()
+          : nullptr;
+      }
+    }
   }
 
 
@@ -607,7 +635,14 @@ namespace dxvk {
           ID3D10Buffer**                    pIndexBuffer,
           DXGI_FORMAT*                      Format,
           UINT*                             Offset) {
-    Logger::err("D3D10Device::IAGetIndexBuffer: Not implemented");
+    ID3D11Buffer* d3d11Buffer = nullptr;
+
+    m_context->IAGetIndexBuffer(
+      pIndexBuffer ? &d3d11Buffer : nullptr,
+      Format, Offset);
+    
+    if (pIndexBuffer)
+      *pIndexBuffer = static_cast<D3D11Buffer*>(d3d11Buffer)->GetD3D10Iface();
   }
 
 
