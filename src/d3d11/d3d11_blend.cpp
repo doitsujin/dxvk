@@ -6,7 +6,7 @@ namespace dxvk {
   D3D11BlendState::D3D11BlendState(
           D3D11Device*        device,
     const D3D11_BLEND_DESC1&  desc)
-  : m_device(device), m_desc(desc) {
+  : m_device(device), m_desc(desc), m_d3d10(this) {
     // If Independent Blend is disabled, we must ignore the
     // blend modes for render target 1 to 7. In Vulkan, all
     // blend modes need to be identical in that case.
@@ -45,6 +45,13 @@ namespace dxvk {
      || riid == __uuidof(ID3D11BlendState)
      || riid == __uuidof(ID3D11BlendState1)) {
       *ppvObject = ref(this);
+      return S_OK;
+    }
+    
+    if (riid == __uuidof(ID3D10DeviceChild)
+     || riid == __uuidof(ID3D10BlendState)
+     || riid == __uuidof(ID3D10BlendState1)) {
+      *ppvObject = ref(&m_d3d10);
       return S_OK;
     }
     

@@ -319,16 +319,54 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D10Device::CreateBlendState(
     const D3D10_BLEND_DESC*                 pBlendStateDesc,
           ID3D10BlendState**                ppBlendState) {
-    Logger::err("D3D10Device::CreateBlendState: Not implemented");
-    return E_NOTIMPL;
+    InitReturnPtr(ppBlendState);
+
+    D3D11_BLEND_DESC d3d11Desc;
+    d3d11Desc.AlphaToCoverageEnable   = pBlendStateDesc->AlphaToCoverageEnable;
+    d3d11Desc.IndependentBlendEnable  = TRUE;
+
+    for (uint32_t i = 0; i < 8; i++) {
+      d3d11Desc.RenderTarget[i].BlendEnable           = pBlendStateDesc->BlendEnable[i];
+      d3d11Desc.RenderTarget[i].SrcBlend              = D3D11_BLEND   (pBlendStateDesc->SrcBlend);
+      d3d11Desc.RenderTarget[i].DestBlend             = D3D11_BLEND   (pBlendStateDesc->DestBlend);
+      d3d11Desc.RenderTarget[i].BlendOp               = D3D11_BLEND_OP(pBlendStateDesc->BlendOp);
+      d3d11Desc.RenderTarget[i].SrcBlendAlpha         = D3D11_BLEND   (pBlendStateDesc->SrcBlendAlpha);
+      d3d11Desc.RenderTarget[i].DestBlendAlpha        = D3D11_BLEND   (pBlendStateDesc->DestBlendAlpha);
+      d3d11Desc.RenderTarget[i].BlendOpAlpha          = D3D11_BLEND_OP(pBlendStateDesc->BlendOpAlpha);
+      d3d11Desc.RenderTarget[i].RenderTargetWriteMask = pBlendStateDesc->RenderTargetWriteMask[i];
+    }
+
+    ID3D11BlendState* d3d11BlendState = nullptr;
+    HRESULT hr = m_device->CreateBlendState(&d3d11Desc,
+      ppBlendState ? &d3d11BlendState : nullptr);
+    
+    if (FAILED(hr))
+      return hr;
+    
+    if (ppBlendState != nullptr) {
+      *ppBlendState = static_cast<D3D11BlendState*>(d3d11BlendState)->GetD3D10Iface();
+      return S_OK;
+    } return S_FALSE;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D10Device::CreateBlendState1(
     const D3D10_BLEND_DESC1*                pBlendStateDesc,
           ID3D10BlendState1**               ppBlendState) {
-    Logger::err("D3D10Device::CreateBlendState1: Not implemented");
-    return E_NOTIMPL;
+    InitReturnPtr(ppBlendState);
+
+    ID3D11BlendState* d3d11BlendState = nullptr;
+    HRESULT hr = m_device->CreateBlendState(
+      reinterpret_cast<const D3D11_BLEND_DESC*>(pBlendStateDesc),
+      ppBlendState ? &d3d11BlendState : nullptr);
+    
+    if (FAILED(hr))
+      return hr;
+    
+    if (ppBlendState != nullptr) {
+      *ppBlendState = static_cast<D3D11BlendState*>(d3d11BlendState)->GetD3D10Iface();
+      return S_OK;
+    } return S_FALSE;
   }
 
 
