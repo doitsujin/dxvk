@@ -1,6 +1,8 @@
 #pragma once
 
-#include <dxvk_device.h>
+#include "../dxvk/dxvk_device.h"
+
+#include "../d3d10/d3d10_rasterizer.h"
 
 #include "d3d11_device_child.h"
 
@@ -35,6 +37,10 @@ namespace dxvk {
     void BindToContext(
       const Rc<DxvkContext>&  ctx);
     
+    D3D10RasterizerState* GetD3D10Iface() {
+      return &m_d3d10;
+    }
+    
     static D3D11_RASTERIZER_DESC1 DefaultDesc();
     
     static D3D11_RASTERIZER_DESC1 PromoteDesc(
@@ -48,6 +54,7 @@ namespace dxvk {
     D3D11Device* const     m_device;
     D3D11_RASTERIZER_DESC1 m_desc;
     DxvkRasterizerState    m_state;
+    D3D10RasterizerState   m_d3d10;
     
   };
   

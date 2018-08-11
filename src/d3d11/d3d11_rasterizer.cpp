@@ -6,8 +6,7 @@ namespace dxvk {
   D3D11RasterizerState::D3D11RasterizerState(
           D3D11Device*                    device,
     const D3D11_RASTERIZER_DESC1&         desc)
-  : m_device(device), m_desc(desc) {
-    
+  : m_device(device), m_desc(desc), m_d3d10(this) {
     // Polygon mode. Determines whether the rasterizer fills
     // a polygon or renders lines connecting the vertices.
     m_state.polygonMode = VK_POLYGON_MODE_FILL;
@@ -70,6 +69,12 @@ namespace dxvk {
      || riid == __uuidof(ID3D11RasterizerState)
      || riid == __uuidof(ID3D11RasterizerState1)) {
       *ppvObject = ref(this);
+      return S_OK;
+    }
+    
+    if (riid == __uuidof(ID3D10DeviceChild)
+     || riid == __uuidof(ID3D10RasterizerState)) {
+      *ppvObject = ref(&m_d3d10);
       return S_OK;
     }
     

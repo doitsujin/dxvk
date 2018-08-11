@@ -393,8 +393,20 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D10Device::CreateRasterizerState(
     const D3D10_RASTERIZER_DESC*            pRasterizerDesc,
           ID3D10RasterizerState**           ppRasterizerState) {
-    Logger::err("D3D10Device::CreateRasterizerState: Not implemented");
-    return E_NOTIMPL;
+    InitReturnPtr(ppRasterizerState);
+
+    ID3D11RasterizerState* d3d11RasterizerState = nullptr;
+    HRESULT hr = m_device->CreateRasterizerState(
+      reinterpret_cast<const D3D11_RASTERIZER_DESC*>(pRasterizerDesc),
+      ppRasterizerState ? &d3d11RasterizerState : nullptr);
+    
+    if (FAILED(hr))
+      return hr;
+    
+    if (ppRasterizerState != nullptr) {
+      *ppRasterizerState = static_cast<D3D11RasterizerState*>(d3d11RasterizerState)->GetD3D10Iface();
+      return S_OK;
+    } return S_FALSE;
   }
 
 
