@@ -839,7 +839,15 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D10ShaderResourceView* const*  ppShaderResourceViews) {
-    Logger::err("D3D10Device::VSSetShaderResources: Not implemented");
+    ID3D11ShaderResourceView* d3d11Views[D3D10_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
+
+    for (uint32_t i = 0; i < NumViews; i++) {
+      d3d11Views[i] = ppShaderResourceViews && ppShaderResourceViews[i]
+        ? static_cast<D3D10ShaderResourceView*>(ppShaderResourceViews[i])->GetD3D11Iface()
+        : nullptr;
+    }
+
+    m_context->VSSetShaderResources(StartSlot, NumViews, d3d11Views);
   }
 
 
@@ -884,7 +892,14 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D10ShaderResourceView**        ppShaderResourceViews) {
-    Logger::err("D3D10Device::VSGetShaderResources: Not implemented");
+    ID3D11ShaderResourceView* d3d11Views[D3D10_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
+    m_context->VSGetShaderResources(StartSlot, NumViews, d3d11Views);
+
+    for (uint32_t i = 0; i < NumViews; i++) {
+      ppShaderResourceViews[i] = d3d11Views[i]
+        ? static_cast<D3D11ShaderResourceView*>(d3d11Views[i])->GetD3D10Iface()
+        : nullptr;
+    }
   }
 
 
@@ -929,7 +944,15 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D10ShaderResourceView* const*  ppShaderResourceViews) {
-    Logger::err("D3D10Device::GSSetShaderResources: Not implemented");
+    ID3D11ShaderResourceView* d3d11Views[D3D10_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
+
+    for (uint32_t i = 0; i < NumViews; i++) {
+      d3d11Views[i] = ppShaderResourceViews && ppShaderResourceViews[i]
+        ? static_cast<D3D10ShaderResourceView*>(ppShaderResourceViews[i])->GetD3D11Iface()
+        : nullptr;
+    }
+
+    m_context->GSSetShaderResources(StartSlot, NumViews, d3d11Views);
   }
 
 
@@ -974,7 +997,14 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D10ShaderResourceView**        ppShaderResourceViews) {
-    Logger::err("D3D10Device::GSGetShaderResources: Not implemented");
+    ID3D11ShaderResourceView* d3d11Views[D3D10_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
+    m_context->GSGetShaderResources(StartSlot, NumViews, d3d11Views);
+
+    for (uint32_t i = 0; i < NumViews; i++) {
+      ppShaderResourceViews[i] = d3d11Views[i]
+        ? static_cast<D3D11ShaderResourceView*>(d3d11Views[i])->GetD3D10Iface()
+        : nullptr;
+    }
   }
 
 
@@ -1019,7 +1049,15 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D10ShaderResourceView* const*  ppShaderResourceViews) {
-    Logger::err("D3D10Device::PSSetConstantBuffers: Not implemented");
+    ID3D11ShaderResourceView* d3d11Views[D3D10_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
+
+    for (uint32_t i = 0; i < NumViews; i++) {
+      d3d11Views[i] = ppShaderResourceViews && ppShaderResourceViews[i]
+        ? static_cast<D3D10ShaderResourceView*>(ppShaderResourceViews[i])->GetD3D11Iface()
+        : nullptr;
+    }
+
+    m_context->PSSetShaderResources(StartSlot, NumViews, d3d11Views);
   }
 
 
@@ -1064,7 +1102,14 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D10ShaderResourceView**        ppShaderResourceViews) {
-    Logger::err("D3D10Device::PSGetShaderResources: Not implemented");
+    ID3D11ShaderResourceView* d3d11Views[D3D10_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
+    m_context->PSGetShaderResources(StartSlot, NumViews, d3d11Views);
+
+    for (uint32_t i = 0; i < NumViews; i++) {
+      ppShaderResourceViews[i] = d3d11Views[i]
+        ? static_cast<D3D11ShaderResourceView*>(d3d11Views[i])->GetD3D10Iface()
+        : nullptr;
+    }
   }
 
 
