@@ -93,8 +93,28 @@ namespace dxvk {
     const D3D10_BUFFER_DESC*                pDesc,
     const D3D10_SUBRESOURCE_DATA*           pInitialData,
           ID3D10Buffer**                    ppBuffer) {
-    Logger::err("D3D10Device::CreateBuffer: Not implemented");
-    return E_NOTIMPL;
+    InitReturnPtr(ppBuffer);
+
+    D3D11_BUFFER_DESC d3d11Desc;
+    d3d11Desc.ByteWidth       = pDesc->ByteWidth;
+    d3d11Desc.Usage           = D3D11_USAGE(pDesc->Usage);
+    d3d11Desc.BindFlags       = pDesc->BindFlags;
+    d3d11Desc.CPUAccessFlags  = pDesc->CPUAccessFlags;
+    d3d11Desc.MiscFlags       = ConvertD3D10ResourceFlags(pDesc->MiscFlags);
+    d3d11Desc.StructureByteStride = 0;
+
+    ID3D11Buffer* d3d11Buffer = nullptr;
+    HRESULT hr = m_device->CreateBuffer(&d3d11Desc,
+      reinterpret_cast<const D3D11_SUBRESOURCE_DATA*>(pInitialData),
+      ppBuffer != nullptr ? &d3d11Buffer : nullptr);
+    
+    if (FAILED(hr))
+      return hr;
+    
+    if (ppBuffer != nullptr) {
+      *ppBuffer = static_cast<D3D11Buffer*>(d3d11Buffer)->GetD3D10Iface();
+      return S_OK;
+    } return S_FALSE;
   }
 
 

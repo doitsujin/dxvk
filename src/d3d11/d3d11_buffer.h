@@ -1,6 +1,8 @@
 #pragma once
 
-#include <dxvk_device.h>
+#include "../dxvk/dxvk_device.h"
+
+#include "../d3d10/d3d10_buffer.h"
 
 #include "d3d11_device_child.h"
 #include "d3d11_interfaces.h"
@@ -73,6 +75,10 @@ namespace dxvk {
       m_mappedSlice = slice;
     }
 
+    D3D10Buffer* GetD3D10Iface() {
+      return &m_d3d10;
+    }
+
   private:
     
     const Com<D3D11Device>      m_device;
@@ -80,6 +86,8 @@ namespace dxvk {
     
     Rc<DxvkBuffer>              m_buffer;
     DxvkPhysicalBufferSlice     m_mappedSlice;
+
+    D3D10Buffer                 m_d3d10;
     
     Rc<DxvkBuffer> CreateBuffer(
       const D3D11_BUFFER_DESC*    pDesc) const;

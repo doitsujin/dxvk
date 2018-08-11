@@ -12,7 +12,8 @@ namespace dxvk {
   : m_device      (pDevice),
     m_desc        (*pDesc),
     m_buffer      (CreateBuffer(pDesc)),
-    m_mappedSlice (m_buffer->slice()) {
+    m_mappedSlice (m_buffer->slice()),
+    m_d3d10       (this) {
     
   }
   
@@ -30,6 +31,13 @@ namespace dxvk {
      || riid == __uuidof(ID3D11Resource)
      || riid == __uuidof(ID3D11Buffer)) {
       *ppvObject = ref(this);
+      return S_OK;
+    }
+    
+    if (riid == __uuidof(ID3D10DeviceChild)
+     || riid == __uuidof(ID3D10Resource)
+     || riid == __uuidof(ID3D10Buffer)) {
+      *ppvObject = ref(&m_d3d10);
       return S_OK;
     }
     
