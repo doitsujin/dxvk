@@ -656,7 +656,15 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D10Buffer* const*              ppConstantBuffers) {
-    Logger::err("D3D10Device::VSSetConstantBuffers: Not implemented");
+    ID3D11Buffer* d3d11Buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT];
+
+    for (uint32_t i = 0; i < NumBuffers; i++) {
+      d3d11Buffers[i] = ppConstantBuffers && ppConstantBuffers[i]
+        ? static_cast<D3D10Buffer*>(ppConstantBuffers[i])->GetD3D11Iface()
+        : nullptr;
+    }
+
+    m_context->VSSetConstantBuffers(StartSlot, NumBuffers, d3d11Buffers);
   }
 
 
@@ -686,7 +694,14 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D10Buffer**                    ppConstantBuffers) {
-    Logger::err("D3D10Device::VSGetConstantBuffers: Not implemented");
+    ID3D11Buffer* d3d11Buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT];
+    m_context->VSGetConstantBuffers(StartSlot, NumBuffers, d3d11Buffers);
+
+    for (uint32_t i = 0; i < NumBuffers; i++) {
+      ppConstantBuffers[i] = d3d11Buffers[i]
+        ? static_cast<D3D11Buffer*>(d3d11Buffers[i])->GetD3D10Iface()
+        : nullptr;
+    }
   }
 
 
@@ -716,7 +731,15 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D10Buffer* const*              ppConstantBuffers) {
-    Logger::err("D3D10Device::GSSetConstantBuffers: Not implemented");
+    ID3D11Buffer* d3d11Buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT];
+
+    for (uint32_t i = 0; i < NumBuffers; i++) {
+      d3d11Buffers[i] = ppConstantBuffers && ppConstantBuffers[i]
+        ? static_cast<D3D10Buffer*>(ppConstantBuffers[i])->GetD3D11Iface()
+        : nullptr;
+    }
+
+    m_context->GSSetConstantBuffers(StartSlot, NumBuffers, d3d11Buffers);
   }
 
 
@@ -746,7 +769,14 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D10Buffer**                    ppConstantBuffers) {
-    Logger::err("D3D10Device::GSGetConstantBuffers: Not implemented");
+    ID3D11Buffer* d3d11Buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT];
+    m_context->GSGetConstantBuffers(StartSlot, NumBuffers, d3d11Buffers);
+
+    for (uint32_t i = 0; i < NumBuffers; i++) {
+      ppConstantBuffers[i] = d3d11Buffers[i]
+        ? static_cast<D3D11Buffer*>(d3d11Buffers[i])->GetD3D10Iface()
+        : nullptr;
+    }
   }
 
 
@@ -776,7 +806,15 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D10Buffer* const*              ppConstantBuffers) {
-    Logger::err("D3D10Device::PSSetConstantBuffers: Not implemented");
+    ID3D11Buffer* d3d11Buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT];
+
+    for (uint32_t i = 0; i < NumBuffers; i++) {
+      d3d11Buffers[i] = ppConstantBuffers && ppConstantBuffers[i]
+        ? static_cast<D3D10Buffer*>(ppConstantBuffers[i])->GetD3D11Iface()
+        : nullptr;
+    }
+
+    m_context->PSSetConstantBuffers(StartSlot, NumBuffers, d3d11Buffers);
   }
 
 
@@ -806,7 +844,14 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D10Buffer**                    ppConstantBuffers) {
-    Logger::err("D3D10Device::PSGetConstantBuffers: Not implemented");
+    ID3D11Buffer* d3d11Buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT];
+    m_context->PSGetConstantBuffers(StartSlot, NumBuffers, d3d11Buffers);
+
+    for (uint32_t i = 0; i < NumBuffers; i++) {
+      ppConstantBuffers[i] = d3d11Buffers[i]
+        ? static_cast<D3D11Buffer*>(d3d11Buffers[i])->GetD3D10Iface()
+        : nullptr;
+    }
   }
 
 
