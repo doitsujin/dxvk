@@ -482,14 +482,31 @@ namespace dxvk {
           ID3D10Resource*                   pSrcResource,
           UINT                              SrcSubresource,
     const D3D10_BOX*                        pSrcBox) {
-    Logger::err("D3D10Device::CopySubresourceRegion: Not implemented");
+    Com<ID3D11Resource> d3d11DstResource;
+    Com<ID3D11Resource> d3d11SrcResource;
+    
+    GetD3D11Resource(pDstResource, &d3d11DstResource);
+    GetD3D11Resource(pSrcResource, &d3d11SrcResource);
+
+    m_context->CopySubresourceRegion(
+      d3d11DstResource.ptr(), DstSubresource, DstX, DstY, DstZ,
+      d3d11SrcResource.ptr(), SrcSubresource,
+      reinterpret_cast<const D3D11_BOX*>(pSrcBox));
   }
 
 
   void STDMETHODCALLTYPE D3D10Device::CopyResource(
           ID3D10Resource*                   pDstResource,
           ID3D10Resource*                   pSrcResource) {
-    Logger::err("D3D10Device::CopyResource: Not implemented");
+    Com<ID3D11Resource> d3d11DstResource;
+    Com<ID3D11Resource> d3d11SrcResource;
+    
+    GetD3D11Resource(pDstResource, &d3d11DstResource);
+    GetD3D11Resource(pSrcResource, &d3d11SrcResource);
+
+    m_context->CopyResource(
+      d3d11DstResource.ptr(),
+      d3d11SrcResource.ptr());
   }
 
 
@@ -500,7 +517,13 @@ namespace dxvk {
     const void*                             pSrcData,
           UINT                              SrcRowPitch,
           UINT                              SrcDepthPitch) {
-    Logger::err("D3D10Device::UpdateSubresource: Not implemented");
+    Com<ID3D11Resource> d3d11DstResource;
+    GetD3D11Resource(pDstResource, &d3d11DstResource);
+
+    m_context->UpdateSubresource(
+      d3d11DstResource.ptr(), DstSubresource,
+      reinterpret_cast<const D3D11_BOX*>(pDstBox),
+      pSrcData, SrcRowPitch, SrcDepthPitch);
   }
 
 
@@ -516,7 +539,16 @@ namespace dxvk {
           ID3D10Resource*                   pSrcResource,
           UINT                              SrcSubresource,
           DXGI_FORMAT                       Format) {
-    Logger::err("D3D10Device::ResolveSubresource: Not implemented");
+    Com<ID3D11Resource> d3d11DstResource;
+    Com<ID3D11Resource> d3d11SrcResource;
+    
+    GetD3D11Resource(pDstResource, &d3d11DstResource);
+    GetD3D11Resource(pSrcResource, &d3d11SrcResource);
+
+    m_context->ResolveSubresource(
+      d3d11DstResource.ptr(), DstSubresource,
+      d3d11SrcResource.ptr(), SrcSubresource,
+      Format);
   }
 
 
