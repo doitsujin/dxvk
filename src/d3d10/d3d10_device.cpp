@@ -284,8 +284,59 @@ namespace dxvk {
           ID3D10Resource*                   pResource,
     const D3D10_DEPTH_STENCIL_VIEW_DESC*    pDesc,
           ID3D10DepthStencilView**          ppDepthStencilView) {
-    Logger::err("D3D10Device::CreateDepthStencilView: Not implemented");
-    return E_NOTIMPL;
+    Com<ID3D11Resource> d3d11Resource;
+    GetD3D11Resource(pResource, &d3d11Resource);
+
+    D3D11_DEPTH_STENCIL_VIEW_DESC d3d11Desc;
+    d3d11Desc.ViewDimension         = D3D11_DSV_DIMENSION(pDesc->ViewDimension);
+    d3d11Desc.Format                = pDesc->Format;
+    d3d11Desc.Flags                 = 0;
+
+    switch (pDesc->ViewDimension) {
+      case D3D10_DSV_DIMENSION_UNKNOWN:
+        break;
+      
+      case D3D10_DSV_DIMENSION_TEXTURE1D:
+        d3d11Desc.Texture1D.MipSlice               = pDesc->Texture1D.MipSlice;
+        break;
+      
+      case D3D10_DSV_DIMENSION_TEXTURE1DARRAY:
+        d3d11Desc.Texture1DArray.MipSlice          = pDesc->Texture1DArray.MipSlice;
+        d3d11Desc.Texture1DArray.FirstArraySlice   = pDesc->Texture1DArray.FirstArraySlice;
+        d3d11Desc.Texture1DArray.ArraySize         = pDesc->Texture1DArray.ArraySize;
+        break;
+      
+      case D3D10_DSV_DIMENSION_TEXTURE2D:
+        d3d11Desc.Texture2D.MipSlice               = pDesc->Texture2D.MipSlice;
+        break;
+      
+      case D3D10_DSV_DIMENSION_TEXTURE2DARRAY:
+        d3d11Desc.Texture2DArray.MipSlice          = pDesc->Texture2DArray.MipSlice;
+        d3d11Desc.Texture2DArray.FirstArraySlice   = pDesc->Texture2DArray.FirstArraySlice;
+        d3d11Desc.Texture2DArray.ArraySize         = pDesc->Texture2DArray.ArraySize;
+        break;
+      
+      case D3D10_DSV_DIMENSION_TEXTURE2DMS:
+        break;
+
+      case D3D10_DSV_DIMENSION_TEXTURE2DMSARRAY:
+        d3d11Desc.Texture2DMSArray.FirstArraySlice = pDesc->Texture2DMSArray.FirstArraySlice;
+        d3d11Desc.Texture2DMSArray.ArraySize       = pDesc->Texture2DMSArray.ArraySize;
+        break;
+    }
+
+    ID3D11DepthStencilView* d3d11View = nullptr;
+    HRESULT hr = m_device->CreateDepthStencilView(
+      d3d11Resource.ptr(), &d3d11Desc,
+      ppDepthStencilView ? &d3d11View : nullptr);
+    
+    if (FAILED(hr))
+      return hr;
+    
+    if (ppDepthStencilView != nullptr) {
+      *ppDepthStencilView = static_cast<D3D11DepthStencilView*>(d3d11View)->GetD3D10Iface();
+      return S_OK;
+    } return S_FALSE;
   }
 
 

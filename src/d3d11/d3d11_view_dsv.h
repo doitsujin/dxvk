@@ -2,6 +2,8 @@
 
 #include "../dxvk/dxvk_device.h"
 
+#include "../d3d10/d3d10_view_dsv.h"
+
 #include "d3d11_device_child.h"
 
 namespace dxvk {
@@ -60,6 +62,10 @@ namespace dxvk {
         return VK_IMAGE_LAYOUT_GENERAL;
       }
     }
+
+    D3D10DepthStencilView* GetD3D10Iface() {
+      return &m_d3d10;
+    }
     
     static HRESULT GetDescFromResource(
             ID3D11Resource*                   pResource,
@@ -75,6 +81,7 @@ namespace dxvk {
     ID3D11Resource*                   m_resource;
     D3D11_DEPTH_STENCIL_VIEW_DESC     m_desc;
     Rc<DxvkImageView>                 m_view;
+    D3D10DepthStencilView             m_d3d10;
     
   };
   
