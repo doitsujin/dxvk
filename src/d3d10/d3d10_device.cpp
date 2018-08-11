@@ -995,7 +995,10 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D10Device::VSSetShader(
           ID3D10VertexShader*               pVertexShader) {
-    Logger::err("D3D10Device::VSSetShader: Not implemented");
+    D3D10VertexShader* d3d10Shader = static_cast<D3D10VertexShader*>(pVertexShader);
+    D3D11VertexShader* d3d11Shader = d3d10Shader ? d3d10Shader->GetD3D11Iface() : nullptr;
+
+    m_context->VSSetShader(d3d11Shader, nullptr, 0);
   }
 
 
@@ -1049,7 +1052,10 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D10Device::VSGetShader(
           ID3D10VertexShader**              ppVertexShader) {
-    Logger::err("D3D10Device::VSGetShader: Not implemented");
+    ID3D11VertexShader* d3d11Shader = nullptr;
+    m_context->VSGetShader(&d3d11Shader, nullptr, nullptr);
+
+    *ppVertexShader = static_cast<D3D11VertexShader*>(d3d11Shader)->GetD3D10Iface();
   }
 
 
@@ -1100,7 +1106,10 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D10Device::GSSetShader(
           ID3D10GeometryShader*             pShader) {
-    Logger::err("D3D10Device::GSSetShader: Not implemented");
+    D3D10GeometryShader* d3d10Shader = static_cast<D3D10GeometryShader*>(pShader);
+    D3D11GeometryShader* d3d11Shader = d3d10Shader ? d3d10Shader->GetD3D11Iface() : nullptr;
+
+    m_context->GSSetShader(d3d11Shader, nullptr, 0);
   }
 
 
@@ -1154,7 +1163,10 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D10Device::GSGetShader(
           ID3D10GeometryShader**            ppGeometryShader) {
-    Logger::err("D3D10Device::GSGetShader: Not implemented");
+    ID3D11GeometryShader* d3d11Shader = nullptr;
+    m_context->GSGetShader(&d3d11Shader, nullptr, nullptr);
+
+    *ppGeometryShader = static_cast<D3D11GeometryShader*>(d3d11Shader)->GetD3D10Iface();
   }
 
 
@@ -1205,7 +1217,10 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D10Device::PSSetShader(
           ID3D10PixelShader*                pPixelShader) {
-    Logger::err("D3D10Device::PSSetShader: Not implemented");
+    D3D10PixelShader* d3d10Shader = static_cast<D3D10PixelShader*>(pPixelShader);
+    D3D11PixelShader* d3d11Shader = d3d10Shader ? d3d10Shader->GetD3D11Iface() : nullptr;
+
+    m_context->PSSetShader(d3d11Shader, nullptr, 0);
   }
 
 
@@ -1259,7 +1274,10 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D10Device::PSGetShader(
           ID3D10PixelShader**               ppPixelShader) {
-    Logger::err("D3D10Device::PSGetShader: Not implemented");
+    ID3D11PixelShader* d3d11Shader = nullptr;
+    m_context->PSGetShader(&d3d11Shader, nullptr, nullptr);
+
+    *ppPixelShader = static_cast<D3D11PixelShader*>(d3d11Shader)->GetD3D10Iface();
   }
 
 
