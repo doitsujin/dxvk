@@ -256,8 +256,24 @@ namespace dxvk {
     const void*                             pShaderBytecodeWithInputSignature,
           SIZE_T                            BytecodeLength,
           ID3D10InputLayout**               ppInputLayout) {
-    Logger::err("D3D10Device::CreateInputLayout: Not implemented");
-    return E_NOTIMPL;
+    InitReturnPtr(ppInputLayout);
+
+    static_assert(sizeof(D3D10_INPUT_ELEMENT_DESC) ==
+                  sizeof(D3D11_INPUT_ELEMENT_DESC));
+
+    ID3D11InputLayout* d3d11InputLayout = nullptr;
+    HRESULT hr = m_device->CreateInputLayout(
+      reinterpret_cast<const D3D11_INPUT_ELEMENT_DESC*>(pInputElementDescs),
+      NumElements, pShaderBytecodeWithInputSignature, BytecodeLength,
+      ppInputLayout ? &d3d11InputLayout : nullptr);
+    
+    if (FAILED(hr))
+      return hr;
+    
+    if (ppInputLayout) {
+      *ppInputLayout = static_cast<D3D11InputLayout*>(d3d11InputLayout)->GetD3D10Iface();
+      return S_OK;
+    } return S_FALSE;
   }
 
 

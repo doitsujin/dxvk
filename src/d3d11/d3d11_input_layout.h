@@ -2,6 +2,8 @@
 
 #include "d3d11_device_child.h"
 
+#include "../d3d10/d3d10_input_layout.h"
+
 namespace dxvk {
   
   class D3D11Device;
@@ -32,12 +34,18 @@ namespace dxvk {
     bool Compare(
       const D3D11InputLayout*     pOther) const;
     
+    D3D10InputLayout* GetD3D10Iface() {
+      return &m_d3d10;
+    }
+    
   private:
     
     Com<D3D11Device> m_device;
     
     std::vector<DxvkVertexAttribute> m_attributes;
     std::vector<DxvkVertexBinding>   m_bindings;
+
+    D3D10InputLayout m_d3d10;
     
   };
   
