@@ -633,7 +633,10 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D10Device::GenerateMips(
           ID3D10ShaderResourceView*         pShaderResourceView) {
-    Logger::err("D3D10Device::GenerateMips: Not implemented");
+    D3D10ShaderResourceView* d3d10View = static_cast<D3D10ShaderResourceView*>(pShaderResourceView);
+    D3D11ShaderResourceView* d3d11View = d3d10View ? d3d10View->GetD3D11Iface() : nullptr;
+
+    m_context->GenerateMips(d3d11View);
   }
 
 
