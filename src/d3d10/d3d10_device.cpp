@@ -1199,7 +1199,18 @@ namespace dxvk {
           UINT                              NumViews,
           ID3D10RenderTargetView* const*    ppRenderTargetViews,
           ID3D10DepthStencilView*           pDepthStencilView) {
-    Logger::err("D3D10Device::OMSetRenderTargets: Not implemented");
+    ID3D11RenderTargetView* d3d11Rtv[D3D10_SIMULTANEOUS_RENDER_TARGET_COUNT];
+
+    for (uint32_t i = 0; i < NumViews; i++) {
+      d3d11Rtv[i] = ppRenderTargetViews && ppRenderTargetViews[i]
+        ? static_cast<D3D10RenderTargetView*>(ppRenderTargetViews[i])->GetD3D11Iface()
+        : nullptr;
+    }
+
+    D3D10DepthStencilView* d3d10Dsv = static_cast<D3D10DepthStencilView*>(pDepthStencilView);
+    D3D11DepthStencilView* d3d11Dsv = d3d10Dsv ? d3d10Dsv->GetD3D11Iface() : nullptr;
+
+    m_context->OMSetRenderTargets(NumViews, d3d11Rtv, d3d11Dsv);
   }
 
 
@@ -1228,7 +1239,23 @@ namespace dxvk {
           UINT                              NumViews,
           ID3D10RenderTargetView**          ppRenderTargetViews,
           ID3D10DepthStencilView**          ppDepthStencilView) {
-    Logger::err("D3D10Device::OMGetRenderTargets: Not implemented");
+    ID3D11RenderTargetView* d3d11Rtv[D3D10_SIMULTANEOUS_RENDER_TARGET_COUNT];
+    ID3D11DepthStencilView* d3d11Dsv;
+
+    m_context->OMGetRenderTargets(NumViews,
+      ppRenderTargetViews ? d3d11Rtv : nullptr,
+      ppDepthStencilView ? &d3d11Dsv : nullptr);
+    
+    if (ppRenderTargetViews != nullptr) {
+      for (uint32_t i = 0; i < NumViews; i++) {
+        ppRenderTargetViews[i] = d3d11Rtv[i]
+          ? static_cast<D3D11RenderTargetView*>(d3d11Rtv[i])->GetD3D10Iface()
+          : nullptr;
+      }
+    }
+
+    if (ppDepthStencilView)
+      *ppDepthStencilView = static_cast<D3D11DepthStencilView*>(d3d11Dsv)->GetD3D10Iface();
   }
 
 
