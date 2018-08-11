@@ -1045,7 +1045,10 @@ namespace dxvk {
           ID3D10BlendState*                 pBlendState,
     const FLOAT                             BlendFactor[4],
           UINT                              SampleMask) {
-    Logger::err("D3D10Device::OMSetBlendState: Not implemented");
+    D3D10BlendState* d3d10BlendState = static_cast<D3D10BlendState*>(pBlendState);
+    D3D11BlendState* d3d11BlendState = d3d10BlendState ? d3d10BlendState->GetD3D11Iface() : nullptr;
+
+    m_context->OMSetBlendState(d3d11BlendState, BlendFactor, SampleMask);
   }
 
 
@@ -1068,7 +1071,14 @@ namespace dxvk {
           ID3D10BlendState**                ppBlendState,
           FLOAT                             BlendFactor[4],
           UINT*                             pSampleMask) {
-    Logger::err("D3D10Device::OMGetBlendState: Not implemented");
+    ID3D11BlendState* d3d11BlendState = nullptr;
+
+    m_context->OMGetBlendState(
+      ppBlendState ? &d3d11BlendState : nullptr,
+      BlendFactor, pSampleMask);
+
+    if (ppBlendState != nullptr)
+      *ppBlendState = static_cast<D3D11BlendState*>(d3d11BlendState)->GetD3D10Iface();
   }
 
 
