@@ -1125,7 +1125,10 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D10Device::RSSetState(
           ID3D10RasterizerState*            pRasterizerState) {
-    Logger::err("D3D10Device::RSSetState: Not implemented");
+    D3D10RasterizerState* d3d10RasterizerState = static_cast<D3D10RasterizerState*>(pRasterizerState);
+    D3D11RasterizerState* d3d11RasterizerState = d3d10RasterizerState ? d3d10RasterizerState->GetD3D11Iface() : nullptr;
+
+    m_context->RSSetState(d3d11RasterizerState);
   }
 
 
@@ -1156,7 +1159,10 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D10Device::RSGetState(
           ID3D10RasterizerState**           ppRasterizerState) {
-    Logger::err("D3D10Device::RSGetState: Not implemented");
+    ID3D11RasterizerState* d3d11RasterizerState = nullptr;
+    m_context->RSGetState(&d3d11RasterizerState);
+
+    *ppRasterizerState = static_cast<D3D11RasterizerState*>(d3d11RasterizerState)->GetD3D10Iface();
   }
 
 
