@@ -657,8 +657,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D10Device::CheckFormatSupport(
           DXGI_FORMAT                       Format,
           UINT*                             pFormatSupport) {
-    Logger::err("D3D10Device::CheckFormatSupport: Not implemented");
-    return E_NOTIMPL;
+    return m_device->CheckFormatSupport(Format, pFormatSupport);
   }
 
 
