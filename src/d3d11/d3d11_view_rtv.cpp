@@ -10,7 +10,7 @@ namespace dxvk {
           D3D11Device*                      pDevice,
           ID3D11Resource*                   pResource,
     const D3D11_RENDER_TARGET_VIEW_DESC*    pDesc)
-  : m_device(pDevice), m_resource(pResource), m_desc(*pDesc) {
+  : m_device(pDevice), m_resource(pResource), m_desc(*pDesc), m_d3d10(this) {
     ResourceAddRefPrivate(m_resource);
 
     DxvkImageViewCreateInfo viewInfo;
@@ -104,6 +104,13 @@ namespace dxvk {
      || riid == __uuidof(ID3D11DeviceChild)
      || riid == __uuidof(ID3D11View)
      || riid == __uuidof(ID3D11RenderTargetView)) {
+      *ppvObject = ref(this);
+      return S_OK;
+    }
+    
+    if (riid == __uuidof(ID3D10DeviceChild)
+     || riid == __uuidof(ID3D10View)
+     || riid == __uuidof(ID3D10RenderTargetView)) {
       *ppvObject = ref(this);
       return S_OK;
     }

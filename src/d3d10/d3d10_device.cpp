@@ -243,16 +243,16 @@ namespace dxvk {
     Com<ID3D11Resource> d3d11Resource;
     GetD3D11Resource(pResource, &d3d11Resource);
 
-    ID3D11ShaderResourceView* d3d11Srv = nullptr;
+    ID3D11ShaderResourceView* d3d11View = nullptr;
     HRESULT hr = m_device->CreateShaderResourceView(d3d11Resource.ptr(),
       reinterpret_cast<const D3D11_SHADER_RESOURCE_VIEW_DESC*>(pDesc),
-      ppSRView ? &d3d11Srv : nullptr);
+      ppSRView ? &d3d11View : nullptr);
     
     if (FAILED(hr))
       return hr;
     
     if (ppSRView != nullptr) {
-      *ppSRView = static_cast<D3D11ShaderResourceView*>(d3d11Srv)->GetD3D10Iface();
+      *ppSRView = static_cast<D3D11ShaderResourceView*>(d3d11View)->GetD3D10Iface();
       return S_OK;
     } return S_FALSE;
   }
@@ -262,8 +262,21 @@ namespace dxvk {
           ID3D10Resource*                   pResource,
     const D3D10_RENDER_TARGET_VIEW_DESC*    pDesc,
           ID3D10RenderTargetView**          ppRTView) {
-    Logger::err("D3D10Device::CreateRenderTargetView: Not implemented");
-    return E_NOTIMPL;
+    Com<ID3D11Resource> d3d11Resource;
+    GetD3D11Resource(pResource, &d3d11Resource);
+
+    ID3D11RenderTargetView* d3d11View = nullptr;
+    HRESULT hr = m_device->CreateRenderTargetView(d3d11Resource.ptr(),
+      reinterpret_cast<const D3D11_RENDER_TARGET_VIEW_DESC*>(pDesc),
+      ppRTView ? &d3d11View : nullptr);
+    
+    if (FAILED(hr))
+      return hr;
+    
+    if (ppRTView != nullptr) {
+      *ppRTView = static_cast<D3D11RenderTargetView*>(d3d11View)->GetD3D10Iface();
+      return S_OK;
+    } return S_FALSE;
   }
 
 
