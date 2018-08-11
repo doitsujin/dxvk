@@ -939,7 +939,15 @@ namespace dxvk {
           UINT                              NumBuffers,
           ID3D10Buffer* const*              ppSOTargets,
     const UINT*                             pOffsets) {
-    Logger::err("D3D10Device::SOSetTargets: Not implemented");
+    ID3D11Buffer* d3d11Buffers[D3D10_SO_BUFFER_SLOT_COUNT];
+
+    for (uint32_t i = 0; i < NumBuffers; i++) {
+      d3d11Buffers[i] = ppSOTargets && ppSOTargets[i]
+        ? static_cast<D3D10Buffer*>(ppSOTargets[i])->GetD3D11Iface()
+        : nullptr;
+    }
+
+    m_context->SOSetTargets(NumBuffers, d3d11Buffers, pOffsets);
   }
 
   
@@ -947,7 +955,19 @@ namespace dxvk {
           UINT                              NumBuffers,
           ID3D10Buffer**                    ppSOTargets,
           UINT*                             pOffsets) {
-    Logger::err("D3D10Device::SOGetTargets: Not implemented");
+    ID3D11Buffer* d3d11Buffers[D3D10_SO_BUFFER_SLOT_COUNT];
+    m_context->SOGetTargets(NumBuffers, ppSOTargets ? d3d11Buffers : nullptr);
+
+    if (ppSOTargets != nullptr) {
+      for (uint32_t i = 0; i < NumBuffers; i++) {
+        ppSOTargets[i] = d3d11Buffers[i]
+          ? static_cast<D3D11Buffer*>(d3d11Buffers[i])->GetD3D10Iface()
+          : nullptr;
+      }
+    }
+
+    if (pOffsets != nullptr)
+      Logger::warn("D3D10: SOGetTargets: Reporting buffer offsets not supported");
   }
 
 
