@@ -614,7 +614,10 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D10Device::ClearRenderTargetView(
           ID3D10RenderTargetView*           pRenderTargetView,
     const FLOAT                             ColorRGBA[4]) {
-    Logger::err("D3D10Device::ClearRenderTargetView: Not implemented");
+    D3D10RenderTargetView* d3d10View = static_cast<D3D10RenderTargetView*>(pRenderTargetView);
+    D3D11RenderTargetView* d3d11View = d3d10View ? d3d10View->GetD3D11Iface() : nullptr;
+
+    m_context->ClearRenderTargetView(d3d11View, ColorRGBA);
   }
 
 
@@ -623,7 +626,10 @@ namespace dxvk {
           UINT                              ClearFlags,
           FLOAT                             Depth,
           UINT8                             Stencil) {
-    Logger::err("D3D10Device::ClearDepthStencilView: Not implemented");
+    D3D10DepthStencilView* d3d10View = static_cast<D3D10DepthStencilView*>(pDepthStencilView);
+    D3D11DepthStencilView* d3d11View = d3d10View ? d3d10View->GetD3D11Iface() : nullptr;
+
+    m_context->ClearDepthStencilView(d3d11View, ClearFlags, Depth, Stencil);
   }
 
 
