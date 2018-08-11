@@ -1,0 +1,3 @@
+LIBRARY D3D10CORE.DLL
+EXPORTS  
+    D3D10CoreCreateDevice

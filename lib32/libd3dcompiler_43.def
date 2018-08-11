@@ -1,0 +1,17 @@
+; File generated automatically from d3dcompiler_43.spec; do not edit!
+
+LIBRARY d3dcompiler_43.dll
+
+EXPORTS
+  D3DAssemble@32 @1
+  D3DCompile@44 @3
+  D3DCreateBlob@8 @5
+  D3DDisassemble@20 @8
+  D3DGetBlobPart@20 @9
+  D3DGetDebugInfo@12 @10
+  D3DGetInputAndOutputSignatureBlob@12 @11
+  D3DGetInputSignatureBlob@12 @12
+  D3DGetOutputSignatureBlob@12 @13
+  D3DPreprocess@28 @14
+  D3DReflect@16 @15
+  D3DStripShader@16 @17
