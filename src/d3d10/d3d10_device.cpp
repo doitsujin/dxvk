@@ -705,7 +705,15 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D10SamplerState* const*        ppSamplers) {
-    Logger::err("D3D10Device::VSSetSamplers: Not implemented");
+    ID3D11SamplerState* d3d11Samplers[D3D10_COMMONSHADER_SAMPLER_SLOT_COUNT];
+
+    for (uint32_t i = 0; i < NumSamplers; i++) {
+      d3d11Samplers[i] = ppSamplers && ppSamplers[i]
+        ? static_cast<D3D10SamplerState*>(ppSamplers[i])->GetD3D11Iface()
+        : nullptr;
+    }
+
+    m_context->VSSetSamplers(StartSlot, NumSamplers, d3d11Samplers);
   }
 
 
@@ -742,7 +750,14 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D10SamplerState**              ppSamplers) {
-    Logger::err("D3D10Device::VSGetSamplers: Not implemented");
+    ID3D11SamplerState* d3d11Samplers[D3D10_COMMONSHADER_SAMPLER_SLOT_COUNT];
+    m_context->VSGetSamplers(StartSlot, NumSamplers, d3d11Samplers);
+
+    for (uint32_t i = 0; i < NumSamplers; i++) {
+      ppSamplers[i] = d3d11Samplers[i]
+        ? static_cast<D3D11SamplerState*>(d3d11Samplers[i])->GetD3D10Iface()
+        : nullptr;
+    }
   }
 
 
@@ -780,7 +795,15 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D10SamplerState* const*        ppSamplers) {
-    Logger::err("D3D10Device::GSSetSamplers: Not implemented");
+    ID3D11SamplerState* d3d11Samplers[D3D10_COMMONSHADER_SAMPLER_SLOT_COUNT];
+
+    for (uint32_t i = 0; i < NumSamplers; i++) {
+      d3d11Samplers[i] = ppSamplers && ppSamplers[i]
+        ? static_cast<D3D10SamplerState*>(ppSamplers[i])->GetD3D11Iface()
+        : nullptr;
+    }
+
+    m_context->GSSetSamplers(StartSlot, NumSamplers, d3d11Samplers);
   }
 
 
@@ -817,7 +840,14 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D10SamplerState**              ppSamplers) {
-    Logger::err("D3D10Device::GSGetSamplers: Not implemented");
+    ID3D11SamplerState* d3d11Samplers[D3D10_COMMONSHADER_SAMPLER_SLOT_COUNT];
+    m_context->GSGetSamplers(StartSlot, NumSamplers, d3d11Samplers);
+
+    for (uint32_t i = 0; i < NumSamplers; i++) {
+      ppSamplers[i] = d3d11Samplers[i]
+        ? static_cast<D3D11SamplerState*>(d3d11Samplers[i])->GetD3D10Iface()
+        : nullptr;
+    }
   }
 
 
@@ -855,7 +885,15 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D10SamplerState* const*        ppSamplers) {
-    Logger::err("D3D10Device::PSSetSamplers: Not implemented");
+    ID3D11SamplerState* d3d11Samplers[D3D10_COMMONSHADER_SAMPLER_SLOT_COUNT];
+
+    for (uint32_t i = 0; i < NumSamplers; i++) {
+      d3d11Samplers[i] = ppSamplers && ppSamplers[i]
+        ? static_cast<D3D10SamplerState*>(ppSamplers[i])->GetD3D11Iface()
+        : nullptr;
+    }
+
+    m_context->PSSetSamplers(StartSlot, NumSamplers, d3d11Samplers);
   }
 
 
@@ -892,7 +930,14 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D10SamplerState**              ppSamplers) {
-    Logger::err("D3D10Device::PSGetSamplers: Not implemented");
+    ID3D11SamplerState* d3d11Samplers[D3D10_COMMONSHADER_SAMPLER_SLOT_COUNT];
+    m_context->PSGetSamplers(StartSlot, NumSamplers, d3d11Samplers);
+
+    for (uint32_t i = 0; i < NumSamplers; i++) {
+      ppSamplers[i] = d3d11Samplers[i]
+        ? static_cast<D3D11SamplerState*>(d3d11Samplers[i])->GetD3D10Iface()
+        : nullptr;
+    }
   }
 
 
