@@ -335,8 +335,33 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D10Device::CreateSamplerState(
     const D3D10_SAMPLER_DESC*               pSamplerDesc,
           ID3D10SamplerState**              ppSamplerState) {
-    Logger::err("D3D10Device::CreateSamplerState: Not implemented");
-    return E_NOTIMPL;
+    InitReturnPtr(ppSamplerState);
+
+    D3D11_SAMPLER_DESC d3d11Desc;
+    d3d11Desc.Filter            = D3D11_FILTER(pSamplerDesc->Filter);
+    d3d11Desc.AddressU          = D3D11_TEXTURE_ADDRESS_MODE(pSamplerDesc->AddressU);
+    d3d11Desc.AddressV          = D3D11_TEXTURE_ADDRESS_MODE(pSamplerDesc->AddressV);
+    d3d11Desc.AddressW          = D3D11_TEXTURE_ADDRESS_MODE(pSamplerDesc->AddressW);
+    d3d11Desc.MipLODBias        = pSamplerDesc->MipLODBias;
+    d3d11Desc.MaxAnisotropy     = pSamplerDesc->MaxAnisotropy;
+    d3d11Desc.ComparisonFunc    = D3D11_COMPARISON_FUNC(pSamplerDesc->ComparisonFunc);
+    d3d11Desc.MinLOD            = pSamplerDesc->MinLOD;
+    d3d11Desc.MaxLOD            = pSamplerDesc->MaxLOD;
+
+    for (uint32_t i = 0; i < 4; i++)
+      d3d11Desc.BorderColor[i] = pSamplerDesc->BorderColor[i];
+
+    ID3D11SamplerState* d3d11SamplerState = nullptr;
+    HRESULT hr = m_device->CreateSamplerState(&d3d11Desc,
+      ppSamplerState ? &d3d11SamplerState : nullptr);
+    
+    if (FAILED(hr))
+      return hr;
+
+    if (ppSamplerState) {
+      *ppSamplerState = static_cast<D3D11SamplerState*>(d3d11SamplerState)->GetD3D10Iface();
+      return S_OK;
+    } return S_FALSE;
   }
 
 

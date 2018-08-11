@@ -1,6 +1,7 @@
 d3d10_src = [
   '../d3d10/d3d10_buffer.cpp',
   '../d3d10/d3d10_device.cpp',
+  '../d3d10/d3d10_sampler.cpp',
   '../d3d10/d3d10_texture.cpp',
   '../d3d10/d3d10_util.cpp',
 ]
