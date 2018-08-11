@@ -373,8 +373,20 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D10Device::CreateDepthStencilState(
     const D3D10_DEPTH_STENCIL_DESC*         pDepthStencilDesc,
           ID3D10DepthStencilState**         ppDepthStencilState) {
-    Logger::err("D3D10Device::CreateDepthStencilState: Not implemented");
-    return E_NOTIMPL;
+    InitReturnPtr(ppDepthStencilState);
+
+    ID3D11DepthStencilState* d3d11DepthStencilState = nullptr;
+    HRESULT hr = m_device->CreateDepthStencilState(
+      reinterpret_cast<const D3D11_DEPTH_STENCIL_DESC*>(pDepthStencilDesc),
+      ppDepthStencilState ? &d3d11DepthStencilState : nullptr);
+    
+    if (FAILED(hr))
+      return hr;
+    
+    if (ppDepthStencilState != nullptr) {
+      *ppDepthStencilState = static_cast<D3D11DepthStencilState*>(d3d11DepthStencilState)->GetD3D10Iface();
+      return S_OK;
+    } return S_FALSE;
   }
 
 

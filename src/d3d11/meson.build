@@ -1,6 +1,7 @@
 d3d10_src = [
   '../d3d10/d3d10_blend.cpp',
   '../d3d10/d3d10_buffer.cpp',
+  '../d3d10/d3d10_depth_stencil.cpp',
   '../d3d10/d3d10_device.cpp',
   '../d3d10/d3d10_input_layout.cpp',
   '../d3d10/d3d10_sampler.cpp',
