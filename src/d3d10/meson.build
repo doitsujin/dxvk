@@ -1,5 +1,6 @@
 d3d10_main_src = [
-  'd3d10_main.cpp'
+  'd3d10_main.cpp',
+  'd3d10_reflection.cpp',
 ]
 
 d3d10_core_dll = shared_library('d3d10core'+dll_ext, d3d10_main_src,

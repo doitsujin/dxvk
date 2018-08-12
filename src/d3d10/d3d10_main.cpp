@@ -1,6 +1,7 @@
 #include <d3dcompiler.h>
 
 #include "d3d10_include.h"
+#include "d3d10_reflection.h"
 
 #include "../dxgi/dxgi_adapter.h"
 #include "../dxgi/dxgi_device.h"
@@ -250,9 +251,24 @@ extern "C" {
     const void*                     pShaderBytecode,
           SIZE_T                    BytecodeLength,
           ID3D10ShaderReflection**  ppReflector) {
-		return D3DReflect(pShaderBytecode, BytecodeLength, 
-      IID_ID3D10ShaderReflection,
-      reinterpret_cast<void**>(ppReflector));
+    static const GUID IID_ID3D11ShaderReflection =
+      {0x0a233719,0x3960,0x4578,{0x9d,0x7c,0x20,0x3b,0x8b,0x1d,0x9c,0xc1}};
+    
+    InitReturnPtr(ppReflector);
+
+    Com<ID3D11ShaderReflection> d3d11Reflector = nullptr;
+    
+		HRESULT hr = D3DReflect(pShaderBytecode,
+      BytecodeLength, IID_ID3D11ShaderReflection,
+      reinterpret_cast<void**>(&d3d11Reflector));
+    
+    if (FAILED(hr)) {
+      Logger::err("D3D10ReflectShader: Failed to create ID3D11ShaderReflection");
+      return hr;
+    }
+    
+    *ppReflector = ref(new D3D10ShaderReflection(d3d11Reflector.ptr()));
+    return S_OK;
 	}
 
 
