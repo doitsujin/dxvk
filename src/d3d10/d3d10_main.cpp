@@ -1,3 +1,5 @@
+#include <d3dcompiler.h>
+
 #include "d3d10_include.h"
 
 #include "../dxgi/dxgi_adapter.h"
@@ -210,6 +212,141 @@ extern "C" {
       return S_OK;
     } return S_FALSE;
   }
+
+
+	const char* STDMETHODCALLTYPE D3D10GetVertexShaderProfile   (ID3D10Device*) { return "vs_4_1"; }
+	const char* STDMETHODCALLTYPE D3D10GetGeometryShaderProfile (ID3D10Device*) { return "gs_4_1"; }
+	const char* STDMETHODCALLTYPE D3D10GetPixelShaderProfile    (ID3D10Device*) { return "ps_4_1"; }
+
+
+	HRESULT STDMETHODCALLTYPE D3D10CreateBlob(SIZE_T size, LPD3D10BLOB* ppBuffer) {
+		return D3DCreateBlob(size, ppBuffer);
+	}
+
+
+	HRESULT STDMETHODCALLTYPE D3D10GetInputSignatureBlob(
+    const void*                     pShaderBytecode,
+          SIZE_T                    BytecodeLength,
+          ID3D10Blob**              ppSignatureBlob) {
+		return D3DGetInputSignatureBlob(
+      pShaderBytecode,
+      BytecodeLength,
+      ppSignatureBlob);
+	}
+
+
+	HRESULT STDMETHODCALLTYPE D3D10GetOutputSignatureBlob(
+    const void*                     pShaderBytecode,
+          SIZE_T                    BytecodeLength,
+          ID3D10Blob**              ppSignatureBlob) {
+		return D3DGetOutputSignatureBlob(
+      pShaderBytecode,
+      BytecodeLength,
+      ppSignatureBlob);
+	}
+
+
+	HRESULT STDMETHODCALLTYPE D3D10ReflectShader(
+    const void*                     pShaderBytecode,
+          SIZE_T                    BytecodeLength,
+          ID3D10ShaderReflection**  ppReflector) {
+		return D3DReflect(pShaderBytecode, BytecodeLength, 
+      IID_ID3D10ShaderReflection,
+      reinterpret_cast<void**>(ppReflector));
+	}
+
+
+	HRESULT STDMETHODCALLTYPE D3D10CompileShader(
+          LPCSTR              pSrcData,
+          SIZE_T              SrcDataSize,
+          LPCSTR              pFileName,
+    const D3D10_SHADER_MACRO* pDefines,
+          LPD3D10INCLUDE      pInclude,
+          LPCSTR              pFunctionName,
+          LPCSTR              pProfile,
+          UINT                Flags,
+          ID3D10Blob**        ppShader,
+          ID3D10Blob**        ppErrorMsgs) {
+		return D3DCompile(pSrcData, SrcDataSize, pFileName,
+      pDefines, pInclude, pFunctionName, pProfile, Flags,
+      0, ppShader, ppErrorMsgs);
+	}
+
+
+	HRESULT STDMETHODCALLTYPE D3D10CreateEffectFromMemory(
+          void*               pData,
+          SIZE_T              DataSize,
+          UINT                EffectFlags,
+          ID3D10Device*       pDevice,
+          ID3D10EffectPool*   pEffectPool,
+          ID3D10Effect**      ppEffect) {
+    Logger::warn("D3D10CreateEffectFromMemory: Not implemented");
+		return E_NOTIMPL;
+	}
+
+
+	HRESULT STDMETHODCALLTYPE D3D10CreateEffectPoolFromMemory(
+          void*               pData,
+          SIZE_T              DataSize,
+          UINT                EffectFlags,
+          ID3D10Device*       pDevice,
+          ID3D10EffectPool**  ppEffectPool) {
+    Logger::warn("D3D10CreateEffectPoolFromMemory: Not implemented");
+		return E_NOTIMPL;
+	}
+
+
+	HRESULT STDMETHODCALLTYPE D3D10CompileEffectFromMemory(
+          void*               pData,
+          SIZE_T              DataLength,
+          LPCSTR              pSrcFileName,
+    const D3D10_SHADER_MACRO* pDefines,
+          ID3D10Include*      pInclude,
+          UINT                ShaderFlags,
+          UINT                EffectFlags,
+          ID3D10Blob**        ppCompiledEffect,
+          ID3D10Blob**        ppErrors) {
+    Logger::warn("D3D10CompileEffectFromMemory: Not implemented");
+		return E_NOTIMPL;
+	}
+
+
+	HRESULT STDMETHODCALLTYPE D3D10DisassembleEffect(
+          ID3D10Effect*       pEffect,
+          BOOL                EnableColorCode,
+          ID3D10Blob**        ppDisassembly) {
+    Logger::warn("D3D10DisassembleEffect: Not implemented");
+    return E_NOTIMPL;
+	}
+
+
+	HRESULT STDMETHODCALLTYPE D3D10DisassembleShader(
+    const void*               pShader,
+          SIZE_T              BytecodeLength,
+          BOOL                EnableColorCode,
+          LPCSTR              pComments,
+          ID3D10Blob**        ppDisassembly) {
+		return D3DDisassemble(
+      pShader, BytecodeLength,
+      0, pComments, ppDisassembly);
+	}
+
+
+	HRESULT STDMETHODCALLTYPE D3D10PreprocessShader(
+          LPCSTR              pSrcData,
+          SIZE_T              SrcDataSize,
+          LPCSTR              pFileName,
+    const D3D10_SHADER_MACRO* pDefines,
+          LPD3D10INCLUDE      pInclude,
+          ID3D10Blob**        ppShaderText,
+          ID3D10Blob**        ppErrorMsgs) {
+		return D3DPreprocess(
+      pSrcData, SrcDataSize,
+      pFileName, pDefines,
+      pInclude,
+      ppShaderText,
+      ppErrorMsgs);
+	}
 
 }
 
