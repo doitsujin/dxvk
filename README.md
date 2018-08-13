@@ -1,12 +1,10 @@
 # DXVK
 
-A Vulkan-based compatibility layer for Direct3D 11 which allows running 3D applications on Linux using Wine.
+A Vulkan-based translation layer for Direct3D 10/11 which allows running 3D applications on Linux using Wine.
 
 For the current status of the project, please refer to the [project wiki](https://github.com/doitsujin/dxvk/wiki).
 
 For binary releases, see the [releases](https://github.com/doitsujin/dxvk/releases) page.
-
-For Direct3D 10 support, check out [DXUP](https://github.com/Joshua-Ashton/dxup), which can be used together with DXVK.
 
 ## Build instructions
 
@@ -39,7 +37,7 @@ ninja
 ninja install
 ```
 
-The two libraries `dxgi.dll` and `d3d11.dll`as well as some demo executables will be located in `/your/dxvk/directory/bin`.
+The D3D10, D3D11 and DXGI DLLs as well as a shell script to set up DXVK for a specific wine prefix will be located in `/your/dxvk/directory/bin`.
 
 ## How to use
 In order to set up a wine prefix to use DXVK instead of wined3d globally, run:
