@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <functional>
 
 #include "util_error.h"
@@ -56,6 +57,10 @@ namespace dxvk {
       return m_handle != nullptr;
     }
 
+    DWORD get_id() const {
+      return GetThreadId(m_handle);
+    }
+
   private:
 
     Proc    m_proc;
@@ -83,11 +88,15 @@ namespace dxvk {
 
     thread() { }
 
+    thread(const thread&) = delete;
+
     explicit thread(std::function<void()>&& func)
     : m_thread(new ThreadFn(std::move(func))) { }
 
     thread(thread&& other)
     : m_thread(std::move(other.m_thread)) { }
+
+    thread& operator=(const thread&) = delete;
 
     thread& operator = (thread&& other) {
       m_thread = std::move(other.m_thread);
@@ -102,9 +111,23 @@ namespace dxvk {
       m_thread->join();
     }
 
+    void swap(thread& other) noexcept {
+      std::swap(m_thread, other.m_thread);
+    }
+
     bool joinable() const {
       return m_thread != nullptr
           && m_thread->joinable();
+    }
+
+    static DWORD hardware_concurrency() {
+      SYSTEM_INFO info {};
+      GetSystemInfo(&info);
+      return info.dwNumberOfProcessors;
+    }
+
+    DWORD get_id() {
+      return m_thread->get_id();
     }
 
   private:
@@ -118,5 +141,23 @@ namespace dxvk {
     inline void yield() {
       Sleep(0);
     }
+    
+    inline DWORD get_id() {
+      return GetCurrentThreadId();
+    }
+
+    inline void sleep_for(const std::chrono::nanoseconds& ns) {
+      using namespace std::chrono;
+      if (ns > nanoseconds::zero()) {
+        milliseconds ms = duration_cast<milliseconds>(ns + nanoseconds(999999));
+        ::Sleep(ms.count());
+      }
+    }
+  }
+}
+
+namespace std {
+  inline void swap(dxvk::thread& left, dxvk::thread& right) noexcept {	
+    left.swap(right);
   }
 }
