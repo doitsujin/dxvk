@@ -28,6 +28,9 @@ function build_arch {
 
   mkdir "$DXVK_BUILD_DIR/x$1"
 
+  cp "$DXVK_BUILD_DIR/install.$1/bin/d3d10.dll" "$DXVK_BUILD_DIR/x$1/d3d10.dll"
+  cp "$DXVK_BUILD_DIR/install.$1/bin/d3d10_1.dll" "$DXVK_BUILD_DIR/x$1/d3d10_1.dll"
+  cp "$DXVK_BUILD_DIR/install.$1/bin/d3d10core.dll" "$DXVK_BUILD_DIR/x$1/d3d10core.dll"
   cp "$DXVK_BUILD_DIR/install.$1/bin/d3d11.dll" "$DXVK_BUILD_DIR/x$1/d3d11.dll"
   cp "$DXVK_BUILD_DIR/install.$1/bin/dxgi.dll" "$DXVK_BUILD_DIR/x$1/dxgi.dll"
   cp "$DXVK_BUILD_DIR/install.$1/bin/setup_dxvk.sh" "$DXVK_BUILD_DIR/x$1/setup_dxvk.sh"
