@@ -215,39 +215,39 @@ extern "C" {
   }
 
 
-	const char* STDMETHODCALLTYPE D3D10GetVertexShaderProfile   (ID3D10Device*) { return "vs_4_1"; }
-	const char* STDMETHODCALLTYPE D3D10GetGeometryShaderProfile (ID3D10Device*) { return "gs_4_1"; }
-	const char* STDMETHODCALLTYPE D3D10GetPixelShaderProfile    (ID3D10Device*) { return "ps_4_1"; }
+  const char* STDMETHODCALLTYPE D3D10GetVertexShaderProfile   (ID3D10Device*) { return "vs_4_1"; }
+  const char* STDMETHODCALLTYPE D3D10GetGeometryShaderProfile (ID3D10Device*) { return "gs_4_1"; }
+  const char* STDMETHODCALLTYPE D3D10GetPixelShaderProfile    (ID3D10Device*) { return "ps_4_1"; }
 
 
-	HRESULT STDMETHODCALLTYPE D3D10CreateBlob(SIZE_T size, LPD3D10BLOB* ppBuffer) {
-		return D3DCreateBlob(size, ppBuffer);
-	}
+  HRESULT STDMETHODCALLTYPE D3D10CreateBlob(SIZE_T size, LPD3D10BLOB* ppBuffer) {
+    return D3DCreateBlob(size, ppBuffer);
+  }
 
 
-	HRESULT STDMETHODCALLTYPE D3D10GetInputSignatureBlob(
+  HRESULT STDMETHODCALLTYPE D3D10GetInputSignatureBlob(
     const void*                     pShaderBytecode,
           SIZE_T                    BytecodeLength,
           ID3D10Blob**              ppSignatureBlob) {
-		return D3DGetInputSignatureBlob(
+    return D3DGetInputSignatureBlob(
       pShaderBytecode,
       BytecodeLength,
       ppSignatureBlob);
-	}
+  }
 
 
-	HRESULT STDMETHODCALLTYPE D3D10GetOutputSignatureBlob(
+  HRESULT STDMETHODCALLTYPE D3D10GetOutputSignatureBlob(
     const void*                     pShaderBytecode,
           SIZE_T                    BytecodeLength,
           ID3D10Blob**              ppSignatureBlob) {
-		return D3DGetOutputSignatureBlob(
+    return D3DGetOutputSignatureBlob(
       pShaderBytecode,
       BytecodeLength,
       ppSignatureBlob);
-	}
+  }
 
 
-	HRESULT STDMETHODCALLTYPE D3D10ReflectShader(
+  HRESULT STDMETHODCALLTYPE D3D10ReflectShader(
     const void*                     pShaderBytecode,
           SIZE_T                    BytecodeLength,
           ID3D10ShaderReflection**  ppReflector) {
@@ -258,7 +258,7 @@ extern "C" {
 
     Com<ID3D11ShaderReflection> d3d11Reflector = nullptr;
     
-		HRESULT hr = D3DReflect(pShaderBytecode,
+    HRESULT hr = D3DReflect(pShaderBytecode,
       BytecodeLength, IID_ID3D11ShaderReflection,
       reinterpret_cast<void**>(&d3d11Reflector));
     
@@ -269,10 +269,10 @@ extern "C" {
     
     *ppReflector = ref(new D3D10ShaderReflection(d3d11Reflector.ptr()));
     return S_OK;
-	}
+  }
 
 
-	HRESULT STDMETHODCALLTYPE D3D10CompileShader(
+  HRESULT STDMETHODCALLTYPE D3D10CompileShader(
           LPCSTR              pSrcData,
           SIZE_T              SrcDataSize,
           LPCSTR              pFileName,
@@ -283,13 +283,13 @@ extern "C" {
           UINT                Flags,
           ID3D10Blob**        ppShader,
           ID3D10Blob**        ppErrorMsgs) {
-		return D3DCompile(pSrcData, SrcDataSize, pFileName,
+    return D3DCompile(pSrcData, SrcDataSize, pFileName,
       pDefines, pInclude, pFunctionName, pProfile, Flags,
       0, ppShader, ppErrorMsgs);
-	}
+  }
 
 
-	HRESULT STDMETHODCALLTYPE D3D10CreateEffectFromMemory(
+  HRESULT STDMETHODCALLTYPE D3D10CreateEffectFromMemory(
           void*               pData,
           SIZE_T              DataSize,
           UINT                EffectFlags,
@@ -297,22 +297,22 @@ extern "C" {
           ID3D10EffectPool*   pEffectPool,
           ID3D10Effect**      ppEffect) {
     Logger::warn("D3D10CreateEffectFromMemory: Not implemented");
-		return E_NOTIMPL;
-	}
+    return E_NOTIMPL;
+  }
 
 
-	HRESULT STDMETHODCALLTYPE D3D10CreateEffectPoolFromMemory(
+  HRESULT STDMETHODCALLTYPE D3D10CreateEffectPoolFromMemory(
           void*               pData,
           SIZE_T              DataSize,
           UINT                EffectFlags,
           ID3D10Device*       pDevice,
           ID3D10EffectPool**  ppEffectPool) {
     Logger::warn("D3D10CreateEffectPoolFromMemory: Not implemented");
-		return E_NOTIMPL;
-	}
+    return E_NOTIMPL;
+  }
 
 
-	HRESULT STDMETHODCALLTYPE D3D10CompileEffectFromMemory(
+  HRESULT STDMETHODCALLTYPE D3D10CompileEffectFromMemory(
           void*               pData,
           SIZE_T              DataLength,
           LPCSTR              pSrcFileName,
@@ -323,32 +323,32 @@ extern "C" {
           ID3D10Blob**        ppCompiledEffect,
           ID3D10Blob**        ppErrors) {
     Logger::warn("D3D10CompileEffectFromMemory: Not implemented");
-		return E_NOTIMPL;
-	}
+    return E_NOTIMPL;
+  }
 
 
-	HRESULT STDMETHODCALLTYPE D3D10DisassembleEffect(
+  HRESULT STDMETHODCALLTYPE D3D10DisassembleEffect(
           ID3D10Effect*       pEffect,
           BOOL                EnableColorCode,
           ID3D10Blob**        ppDisassembly) {
     Logger::warn("D3D10DisassembleEffect: Not implemented");
     return E_NOTIMPL;
-	}
+  }
 
 
-	HRESULT STDMETHODCALLTYPE D3D10DisassembleShader(
+  HRESULT STDMETHODCALLTYPE D3D10DisassembleShader(
     const void*               pShader,
           SIZE_T              BytecodeLength,
           BOOL                EnableColorCode,
           LPCSTR              pComments,
           ID3D10Blob**        ppDisassembly) {
-		return D3DDisassemble(
+    return D3DDisassemble(
       pShader, BytecodeLength,
       0, pComments, ppDisassembly);
-	}
+  }
 
 
-	HRESULT STDMETHODCALLTYPE D3D10PreprocessShader(
+  HRESULT STDMETHODCALLTYPE D3D10PreprocessShader(
           LPCSTR              pSrcData,
           SIZE_T              SrcDataSize,
           LPCSTR              pFileName,
@@ -356,13 +356,13 @@ extern "C" {
           LPD3D10INCLUDE      pInclude,
           ID3D10Blob**        ppShaderText,
           ID3D10Blob**        ppErrorMsgs) {
-		return D3DPreprocess(
+    return D3DPreprocess(
       pSrcData, SrcDataSize,
       pFileName, pDefines,
       pInclude,
       ppShaderText,
       ppErrorMsgs);
-	}
+  }
 
 }
 

@@ -620,11 +620,11 @@ namespace dxvk {
           spv::ImageFormat        format) {
     std::array<uint32_t, 7> args = {{
       sampledType,
-	  static_cast<uint32_t>(dimensionality),
+    static_cast<uint32_t>(dimensionality),
       depth, arrayed,
       multisample,
       sampled,
-	  static_cast<uint32_t>(format)
+    static_cast<uint32_t>(format)
     }};
     
     return this->defType(spv::OpTypeImage,
