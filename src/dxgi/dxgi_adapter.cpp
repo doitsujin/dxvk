@@ -165,7 +165,8 @@ namespace dxvk {
     }
     
     std::memset(pDesc->Description, 0, sizeof(pDesc->Description));
-    std::mbstowcs(pDesc->Description, deviceProp.deviceName, std::size(pDesc->Description) - 1);
+    ::MultiByteToWideChar(CP_UTF8, 0, deviceProp.deviceName, -1, pDesc->Description,
+                          sizeof(pDesc->Description));
     
     VkDeviceSize deviceMemory = 0;
     VkDeviceSize sharedMemory = 0;
