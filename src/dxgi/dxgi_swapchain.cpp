@@ -410,9 +410,6 @@ namespace dxvk {
           IDXGIOutput*  pTarget) {
     std::lock_guard<std::mutex> lock(m_lockWindow);
     
-    if (!IsWindow(m_window))
-      return DXGI_ERROR_INVALID_CALL;
-    
     if (m_descFs.Windowed && Fullscreen)
       return this->EnterFullscreenMode(pTarget);
     else if (!m_descFs.Windowed && !Fullscreen)
@@ -522,6 +519,9 @@ namespace dxvk {
   
   HRESULT DxgiSwapChain::EnterFullscreenMode(IDXGIOutput* pTarget) {
     Com<IDXGIOutput> output = static_cast<DxgiOutput*>(pTarget);
+
+    if (!IsWindow(m_window))
+      return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
     
     if (output == nullptr) {
       if (FAILED(GetContainingOutput(&output))) {
@@ -581,6 +581,9 @@ namespace dxvk {
   
   HRESULT DxgiSwapChain::LeaveFullscreenMode() {
     Com<IDXGIOutput> output;
+
+    if (!IsWindow(m_window))
+      return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
     
     if (FAILED(m_adapter->GetOutputFromMonitor(m_monitor, &output))
      || FAILED(RestoreDisplayMode(output.ptr())))
