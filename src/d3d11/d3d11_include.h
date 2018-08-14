@@ -40,6 +40,9 @@ typedef enum D3D11_FORMAT_SUPPORT2 {
   D3D11_FORMAT_SUPPORT2_MULTIPLANE_OVERLAY                            = 0x4000
 } D3D11_FORMAT_SUPPORT2;
 #ifndef __WINE__
+
+//MinGW-Headers supports these typedefs since 6.0.0
+#if !defined(__MINGW64_VERSION_MAJOR) || __MINGW64_VERSION_MAJOR < 6
 typedef enum D3D11_COPY_FLAGS {
   D3D11_COPY_NO_OVERWRITE                                             = 0x1,
   D3D11_COPY_DISCARD                                                  = 0x2,
@@ -93,5 +96,6 @@ typedef struct D3D11_FEATURE_DATA_SHADER_MIN_PRECISION_SUPPORT {
 typedef struct D3D11_FEATURE_DATA_D3D9_SHADOW_SUPPORT {
   BOOL SupportsDepthAsTextureWithLessEqualComparisonFilter;
 } D3D11_FEATURE_DATA_D3D9_SHADOW_SUPPORT;
+#endif // !defined(__MINGW64_VERSION_MAJOR) || __MINGW64_VERSION_MAJOR < 6
 #endif // __WINE__
 #endif // _MSC_VER
