@@ -44,7 +44,7 @@ extern "C" {
   }
 
 
-  DLLEXPORT HRESULT D3D10CreateDevice1(
+  DLLEXPORT HRESULT __stdcall D3D10CreateDevice1(
           IDXGIAdapter*           pAdapter,
           D3D10_DRIVER_TYPE       DriverType,
           HMODULE                 Software,
@@ -105,7 +105,7 @@ extern "C" {
   }
 
 
-  DLLEXPORT HRESULT D3D10CreateDevice(
+  DLLEXPORT HRESULT __stdcall D3D10CreateDevice(
           IDXGIAdapter*           pAdapter,
           D3D10_DRIVER_TYPE       DriverType,
           HMODULE                 Software,
@@ -130,7 +130,7 @@ extern "C" {
   }
 
 
-  DLLEXPORT HRESULT D3D10CreateDeviceAndSwapChain1(
+  DLLEXPORT HRESULT __stdcall D3D10CreateDeviceAndSwapChain1(
           IDXGIAdapter*           pAdapter,
           D3D10_DRIVER_TYPE       DriverType,
           HMODULE                 Software,
@@ -188,7 +188,7 @@ extern "C" {
   }
 
 
-  DLLEXPORT HRESULT D3D10CreateDeviceAndSwapChain(
+  DLLEXPORT HRESULT __stdcall D3D10CreateDeviceAndSwapChain(
           IDXGIAdapter*           pAdapter,
           D3D10_DRIVER_TYPE       DriverType,
           HMODULE                 Software,
