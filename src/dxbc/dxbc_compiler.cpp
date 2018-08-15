@@ -1421,6 +1421,7 @@ namespace dxvk {
         break;
         
       case DxbcOpcode::Div:
+      case DxbcOpcode::DDiv:
         dst.id = m_module.opFDiv(typeId,
           src.at(0).id, src.at(1).id);
         break;
@@ -1441,6 +1442,7 @@ namespace dxvk {
         break;
       
       case DxbcOpcode::Mad:
+      case DxbcOpcode::DFma:
         dst.id = m_module.opFFma(typeId,
           src.at(0).id, src.at(1).id, src.at(2).id);
         break;
@@ -1463,13 +1465,20 @@ namespace dxvk {
           src.at(0).id, src.at(1).id);
         break;
       
-      case DxbcOpcode::Rcp: {
+      case DxbcOpcode::Rcp:
         dst.id = m_module.opFDiv(typeId,
           emitBuildConstVecf32(
             1.0f, 1.0f, 1.0f, 1.0f,
             ins.dst[0].mask).id,
           src.at(0).id);
-      } break;
+        break;
+      
+      case DxbcOpcode::DRcp:
+        dst.id = m_module.opFDiv(typeId,
+          emitBuildConstVecf64(1.0, 1.0,
+            ins.dst[0].mask).id,
+          src.at(0).id);
+        break;
       
       case DxbcOpcode::RoundNe:
         dst.id = m_module.opRoundEven(
@@ -3893,6 +3902,28 @@ namespace dxvk {
     
     DxbcRegisterValue result;
     result.type.ctype  = DxbcScalarType::Sint32;
+    result.type.ccount = componentIndex;
+    result.id = componentIndex > 1
+      ? m_module.constComposite(
+          getVectorTypeId(result.type),
+          componentIndex, ids.data())
+      : ids[0];
+    return result;
+  }
+  
+  
+  DxbcRegisterValue DxbcCompiler::emitBuildConstVecf64(
+          double                  xy,
+          double                  zw,
+    const DxbcRegMask&            writeMask) {
+    std::array<uint32_t, 2> ids = { 0, 0 };
+    uint32_t componentIndex = 0;
+    
+    if (writeMask[0] && writeMask[1]) ids[componentIndex++] = m_module.constf64(xy);
+    if (writeMask[2] && writeMask[3]) ids[componentIndex++] = m_module.constf64(zw);
+    
+    DxbcRegisterValue result;
+    result.type.ctype  = DxbcScalarType::Float64;
     result.type.ccount = componentIndex;
     result.id = componentIndex > 1
       ? m_module.constComposite(

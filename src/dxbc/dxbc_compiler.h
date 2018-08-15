@@ -774,6 +774,11 @@ namespace dxvk {
             int32_t                 w,
       const DxbcRegMask&            writeMask);
     
+    DxbcRegisterValue emitBuildConstVecf64(
+            double                  xy,
+            double                  zw,
+      const DxbcRegMask&            writeMask);
+    
     /////////////////////////////////////////
     // Generic register manipulation methods
     DxbcRegisterValue emitRegisterBitcast(
