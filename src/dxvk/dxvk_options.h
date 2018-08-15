@@ -13,6 +13,9 @@ namespace dxvk {
 
     /// Enable asynchronous pipeline compilation.
     bool useAsyncPipeCompiler;
+
+    /// Enable placeholder shaders.
+    bool usePlaceholderShaders;
   };
 
 }

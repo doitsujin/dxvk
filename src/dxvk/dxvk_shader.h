@@ -259,4 +259,6 @@ namespace dxvk {
     
   };
   
+  void getPlaceholderShaders(DxvkShader*& vert, DxvkShader*& frag, bool enabled);
+
 }

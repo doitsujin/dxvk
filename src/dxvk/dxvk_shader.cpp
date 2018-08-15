@@ -1,4 +1,6 @@
 #include "dxvk_shader.h"
+#include "vs_placeholder.h"
+#include "fs_placeholder.h"
 
 namespace dxvk {
   
@@ -35,6 +37,25 @@ namespace dxvk {
 
   DxvkShaderConstData::~DxvkShaderConstData() {
     delete[] m_data;
+  }
+
+
+  void getPlaceholderShaders(DxvkShader*& vert, DxvkShader*& frag, bool enabled) {
+    static bool init;
+    static DxvkShader* vs;
+    static DxvkShader* fs;
+
+    if (!init) {
+      if (enabled) {
+        vs = new DxvkShader(VK_SHADER_STAGE_VERTEX_BIT  , 0, nullptr, {1,1}, SpirvCodeBuffer(vs_placeholder), DxvkShaderConstData());
+        fs = new DxvkShader(VK_SHADER_STAGE_FRAGMENT_BIT, 0, nullptr, {1,1}, SpirvCodeBuffer(fs_placeholder), DxvkShaderConstData());
+        Logger::info("Using placeholder shaders");
+      }
+      init = true;
+    }
+
+    vert = vs;
+    frag = fs;
   }
 
 

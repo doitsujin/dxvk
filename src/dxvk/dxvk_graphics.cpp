@@ -93,6 +93,14 @@ namespace dxvk {
     
     m_common.msSampleShadingEnable = fs != nullptr && fs->hasCapability(spv::CapabilitySampleRateShading);
     m_common.msSampleShadingFactor = 1.0f;
+
+    DxvkShader* vert;
+    DxvkShader* frag;
+    getPlaceholderShaders(vert, frag, (device->config().useAsyncPipeCompiler && device->config().usePlaceholderShaders));
+    if (m_vs != nullptr)
+      m_vs_placeholder = vert ? vert->createShaderModule(m_vkd, slotMapping) : m_vs;
+    if (m_fs != nullptr)
+      m_fs_placeholder = frag ? frag->createShaderModule(m_vkd, slotMapping) : m_fs;
   }
   
   
@@ -223,11 +231,21 @@ namespace dxvk {
     
     std::vector<VkPipelineShaderStageCreateInfo> stages;
     
-    if (m_vs  != nullptr) stages.push_back(m_vs->stageInfo(&specInfo));
+    DxvkShaderModule* vert;
+    DxvkShaderModule* frag;
+    if (createFlags & VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT) {
+        vert = m_vs_placeholder.ptr();
+        frag = m_fs_placeholder.ptr();
+    } else {
+        vert = m_vs.ptr();
+        frag = m_fs.ptr();
+    }
+
+    if (vert  != nullptr) stages.push_back(vert->stageInfo(&specInfo));
     if (m_tcs != nullptr) stages.push_back(m_tcs->stageInfo(&specInfo));
     if (m_tes != nullptr) stages.push_back(m_tes->stageInfo(&specInfo));
     if (m_gs  != nullptr) stages.push_back(m_gs->stageInfo(&specInfo));
-    if (m_fs  != nullptr) stages.push_back(m_fs->stageInfo(&specInfo));
+    if (frag  != nullptr) stages.push_back(frag->stageInfo(&specInfo));
     
     std::array<VkVertexInputBindingDivisorDescriptionEXT, MaxNumVertexBindings> viDivisorDesc;
     uint32_t                                                                    viDivisorCount = 0;

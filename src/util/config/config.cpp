@@ -39,9 +39,19 @@ namespace dxvk {
     { "mafia3.exe", {{
       { "d3d11.fakeStreamOutSupport",       "True" },
     }} },
+    /* No Man's Sky                               */
+    { "NMS.exe", {{
+      { "dxvk.useAsyncPipeCompiler",        "True" },
+      { "dxvk.usePlaceholderShaders",       "True" },
+    }} },
     /* Overwatch                                  */
     { "Overwatch.exe", {{
       { "d3d11.fakeStreamOutSupport",       "True" },
+    }} },
+    /* Path of Exile                              */
+    { "PathOfExile_x64.exe", {{
+      { "dxvk.useAsyncPipeCompiler",        "True" },
+      { "dxvk.usePlaceholderShaders",       "True" },
     }} },
     /* Sleeping Dogs                              */
     { "HKShip.exe", {{
