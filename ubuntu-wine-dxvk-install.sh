@@ -5,7 +5,7 @@
 # This script will install wine staging and setup dxvk in the default .wine folder in the home directory. Run again to build the last cutting edge DXVK
 #
 # install wine staging via https://wiki.winehq.org/Ubuntu
-cd ~/tmp
+cd /tmp
 sudo dpkg --add-architecture i386
 wget -nc https://dl.winehq.org/wine-builds/Release.key
 sudo apt-key add Release.key
