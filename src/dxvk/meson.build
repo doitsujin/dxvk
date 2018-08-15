@@ -27,6 +27,9 @@ dxvk_shaders = files([
   'hud/shaders/hud_line.frag',
   'hud/shaders/hud_text.frag',
   'hud/shaders/hud_vert.vert',
+
+  'placeholders/vs_placeholder.vert',
+  'placeholders/fs_placeholder.frag',
 ])
 
 dxvk_src = files([
