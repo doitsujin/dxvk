@@ -2,7 +2,7 @@
 
 namespace dxvk {
   
-  const std::array<DxbcInstFormat, 207> g_instructionFormats = {{
+  const std::array<DxbcInstFormat, 218> g_instructionFormats = {{
     /* Add                                  */
     { 3, DxbcInstClass::VectorAlu, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
@@ -1044,6 +1044,52 @@ namespace dxvk {
     /* DclGsInstanceCount                   */
     { 1, DxbcInstClass::Declaration, {
       { DxbcOperandKind::Imm32, DxbcScalarType::Uint32 },
+    } },
+    /* Abort                                */
+    { },
+    /* DebugBreak                           */
+    { },
+    /* ReservedBegin11_1                    */
+    { },
+    /* DDiv                                 */
+    { 3, DxbcInstClass::VectorAlu, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float64 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float64 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float64 },
+    } },
+    /* DFma                                 */
+    { 4, DxbcInstClass::VectorAlu, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float64 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float64 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float64 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float64 },
+    } },
+    /* DRcp                                 */
+    { 2, DxbcInstClass::VectorAlu, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float64 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float64 },
+    } },
+    /* Msad                                 */
+    { },
+    /* DtoI                                 */
+    { 2, DxbcInstClass::ConvertFloat64, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Sint32  },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float64 },
+    } },
+    /* DtoU                                 */
+    { 2, DxbcInstClass::ConvertFloat64, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Uint32  },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float64 },
+    } },
+    /* ItoD                                 */
+    { 2, DxbcInstClass::ConvertFloat64, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float64 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Sint32  },
+    } },
+    /* UtoD                                 */
+    { 2, DxbcInstClass::ConvertFloat64, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float64 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32  },
     } },
   }};
   

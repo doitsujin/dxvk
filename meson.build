@@ -37,7 +37,7 @@ else
   lib_vulkan  = dxvk_compiler.find_library('vulkan-1', dirs : dxvk_library_path)
   lib_d3d11   = dxvk_compiler.find_library('d3d11')
   lib_dxgi    = dxvk_compiler.find_library('dxgi')
-  lib_d3dcompiler = dxvk_compiler.find_library('d3dcompiler_43', dirs : dxvk_library_path)
+  lib_d3dcompiler = dxvk_compiler.find_library('d3dcompiler_47', dirs : dxvk_library_path)
   exe_ext = ''
   dll_ext = ''
   def_spec_ext = '.def'

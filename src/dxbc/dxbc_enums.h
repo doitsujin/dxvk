@@ -215,6 +215,17 @@ namespace dxvk {
     EvalSampleIndex                      = 204,
     EvalCentroid                         = 205,
     DclGsInstanceCount                   = 206,
+    Abort                                = 207,
+    DebugBreak                           = 208,
+    ReservedBegin11_1                    = 209,
+    DDiv                                 = 210,
+    DFma                                 = 211,
+    DRcp                                 = 212,
+    Msad                                 = 213,
+    DtoI                                 = 214,
+    DtoU                                 = 215,
+    ItoD                                 = 216,
+    UtoD                                 = 217,
   };
   
   
