@@ -660,6 +660,18 @@ namespace dxvk {
     std::array<DxvkDescriptorInfo,     MaxNumActiveBindings> m_descInfos;
     std::array<uint32_t,               MaxNumActiveBindings> m_descOffsets;
     
+    void clearImageViewFb(
+      const Rc<DxvkImageView>&    imageView,
+            VkOffset3D            offset,
+            VkExtent3D            extent,
+            VkClearValue          value);
+    
+    void clearImageViewCs(
+      const Rc<DxvkImageView>&    imageView,
+            VkOffset3D            offset,
+            VkExtent3D            extent,
+            VkClearValue          value);
+    
     void startRenderPass();
     void spillRenderPass();
     

@@ -532,79 +532,12 @@ namespace dxvk {
           VkOffset3D            offset,
           VkExtent3D            extent,
           VkClearValue          value) {
-    this->spillRenderPass();
-    this->unbindComputePipeline();
-    
-    m_barriers.recordCommands(m_cmd);
-    
-    // Query pipeline objects to use for this clear operation
-    DxvkMetaClearPipeline pipeInfo = m_metaClear->getClearImagePipeline(
-      imageView->type(), imageFormatInfo(imageView->info().format)->flags);
-    
-    // Create a descriptor set pointing to the view
-    VkDescriptorSet descriptorSet =
-      m_cmd->allocateDescriptorSet(pipeInfo.dsetLayout);
-    
-    VkDescriptorImageInfo viewInfo;
-    viewInfo.sampler      = VK_NULL_HANDLE;
-    viewInfo.imageView    = imageView->handle();
-    viewInfo.imageLayout  = imageView->imageInfo().layout;
-    
-    VkWriteDescriptorSet descriptorWrite;
-    descriptorWrite.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    descriptorWrite.pNext            = nullptr;
-    descriptorWrite.dstSet           = descriptorSet;
-    descriptorWrite.dstBinding       = 0;
-    descriptorWrite.dstArrayElement  = 0;
-    descriptorWrite.descriptorCount  = 1;
-    descriptorWrite.descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-    descriptorWrite.pImageInfo       = &viewInfo;
-    descriptorWrite.pBufferInfo      = nullptr;
-    descriptorWrite.pTexelBufferView = nullptr;
-    m_cmd->updateDescriptorSets(1, &descriptorWrite);
-    
-    // Prepare shader arguments
-    DxvkMetaClearArgs pushArgs;
-    pushArgs.clearValue = value.color;
-    pushArgs.offset = offset;
-    pushArgs.extent = extent;
-    
-    VkExtent3D workgroups = util::computeBlockCount(
-      pushArgs.extent, pipeInfo.workgroupSize);
-    
-    if (imageView->type() == VK_IMAGE_VIEW_TYPE_1D_ARRAY)
-      workgroups.height = imageView->subresources().layerCount;
-    else if (imageView->type() == VK_IMAGE_VIEW_TYPE_2D_ARRAY)
-      workgroups.depth = imageView->subresources().layerCount;
-    
-    m_cmd->cmdBindPipeline(
-      VK_PIPELINE_BIND_POINT_COMPUTE,
-      pipeInfo.pipeline);
-    m_cmd->cmdBindDescriptorSet(
-      VK_PIPELINE_BIND_POINT_COMPUTE,
-      pipeInfo.pipeLayout, descriptorSet,
-      0, nullptr);
-    m_cmd->cmdPushConstants(
-      pipeInfo.pipeLayout,
-      VK_SHADER_STAGE_COMPUTE_BIT,
-      0, sizeof(pushArgs), &pushArgs);
-    m_cmd->cmdDispatch(
-      workgroups.width,
-      workgroups.height,
-      workgroups.depth);
-    
-    m_barriers.accessImage(
-      imageView->image(),
-      imageView->subresources(),
-      imageView->imageInfo().layout,
-      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-      VK_ACCESS_SHADER_WRITE_BIT,
-      imageView->imageInfo().layout,
-      imageView->imageInfo().stages,
-      imageView->imageInfo().access);
-    
-    m_cmd->trackResource(imageView);
-    m_cmd->trackResource(imageView->image());
+    const VkImageUsageFlags viewUsage = imageView->info().usage;
+
+    if (viewUsage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))
+      this->clearImageViewFb(imageView, offset, extent, value);
+    else if (viewUsage & VK_IMAGE_USAGE_STORAGE_BIT)
+      this->clearImageViewCs(imageView, offset, extent, value);
   }
   
   
@@ -1711,6 +1644,148 @@ namespace dxvk {
     query.query->endRecording(query.revision);
   }
   
+  
+  void DxvkContext::clearImageViewFb(
+    const Rc<DxvkImageView>&    imageView,
+          VkOffset3D            offset,
+          VkExtent3D            extent,
+          VkClearValue          value) {
+    this->updateFramebuffer();
+
+    // Find out if the render target view is currently bound,
+    // so that we can avoid spilling the render pass if it is.
+    int32_t attachmentIndex = -1;
+    
+    if (m_state.om.framebuffer != nullptr)
+      attachmentIndex = m_state.om.framebuffer->findAttachment(imageView);
+
+    if (attachmentIndex < 0) {
+      this->spillRenderPass();
+
+      // Set up a temporary framebuffer
+      DxvkRenderTargets attachments;
+      DxvkRenderPassOps ops;
+      
+      if (imageView->info().aspect & VK_IMAGE_ASPECT_COLOR_BIT) {
+        attachments.color[0].view   = imageView;
+        attachments.color[0].layout = imageView->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+      } else {
+        attachments.depth.view   = imageView;
+        attachments.depth.layout = imageView->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+      }
+
+      // We cannot leverage render pass clears
+      // because we clear only part of the view
+      this->renderPassBindFramebuffer(
+        m_device->createFramebuffer(attachments),
+        ops, 0, nullptr);
+    }
+
+    // Perform the actual clear operation
+    VkClearAttachment clearInfo;
+    clearInfo.aspectMask          = imageView->info().aspect;
+    clearInfo.colorAttachment     = attachmentIndex;
+    clearInfo.clearValue          = value;
+
+    if (attachmentIndex < 0)
+      clearInfo.colorAttachment   = 0;
+
+    VkClearRect clearRect;
+    clearRect.rect.offset.x       = offset.x;
+    clearRect.rect.offset.y       = offset.y;
+    clearRect.rect.extent.width   = extent.width;
+    clearRect.rect.extent.height  = extent.height;
+    clearRect.baseArrayLayer      = 0;
+    clearRect.layerCount          = imageView->info().numLayers;
+
+    m_cmd->cmdClearAttachments(1, &clearInfo, 1, &clearRect);
+
+    // Unbind temporary framebuffer
+    if (attachmentIndex < 0)
+      this->renderPassUnbindFramebuffer();
+  }
+
+  
+  void DxvkContext::clearImageViewCs(
+    const Rc<DxvkImageView>&    imageView,
+          VkOffset3D            offset,
+          VkExtent3D            extent,
+          VkClearValue          value) {
+    this->spillRenderPass();
+    this->unbindComputePipeline();
+    
+    m_barriers.recordCommands(m_cmd);
+    
+    // Query pipeline objects to use for this clear operation
+    DxvkMetaClearPipeline pipeInfo = m_metaClear->getClearImagePipeline(
+      imageView->type(), imageFormatInfo(imageView->info().format)->flags);
+    
+    // Create a descriptor set pointing to the view
+    VkDescriptorSet descriptorSet =
+      m_cmd->allocateDescriptorSet(pipeInfo.dsetLayout);
+    
+    VkDescriptorImageInfo viewInfo;
+    viewInfo.sampler      = VK_NULL_HANDLE;
+    viewInfo.imageView    = imageView->handle();
+    viewInfo.imageLayout  = imageView->imageInfo().layout;
+    
+    VkWriteDescriptorSet descriptorWrite;
+    descriptorWrite.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrite.pNext            = nullptr;
+    descriptorWrite.dstSet           = descriptorSet;
+    descriptorWrite.dstBinding       = 0;
+    descriptorWrite.dstArrayElement  = 0;
+    descriptorWrite.descriptorCount  = 1;
+    descriptorWrite.descriptorType   = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+    descriptorWrite.pImageInfo       = &viewInfo;
+    descriptorWrite.pBufferInfo      = nullptr;
+    descriptorWrite.pTexelBufferView = nullptr;
+    m_cmd->updateDescriptorSets(1, &descriptorWrite);
+    
+    // Prepare shader arguments
+    DxvkMetaClearArgs pushArgs;
+    pushArgs.clearValue = value.color;
+    pushArgs.offset = offset;
+    pushArgs.extent = extent;
+    
+    VkExtent3D workgroups = util::computeBlockCount(
+      pushArgs.extent, pipeInfo.workgroupSize);
+    
+    if (imageView->type() == VK_IMAGE_VIEW_TYPE_1D_ARRAY)
+      workgroups.height = imageView->subresources().layerCount;
+    else if (imageView->type() == VK_IMAGE_VIEW_TYPE_2D_ARRAY)
+      workgroups.depth = imageView->subresources().layerCount;
+    
+    m_cmd->cmdBindPipeline(
+      VK_PIPELINE_BIND_POINT_COMPUTE,
+      pipeInfo.pipeline);
+    m_cmd->cmdBindDescriptorSet(
+      VK_PIPELINE_BIND_POINT_COMPUTE,
+      pipeInfo.pipeLayout, descriptorSet,
+      0, nullptr);
+    m_cmd->cmdPushConstants(
+      pipeInfo.pipeLayout,
+      VK_SHADER_STAGE_COMPUTE_BIT,
+      0, sizeof(pushArgs), &pushArgs);
+    m_cmd->cmdDispatch(
+      workgroups.width,
+      workgroups.height,
+      workgroups.depth);
+    
+    m_barriers.accessImage(
+      imageView->image(),
+      imageView->subresources(),
+      imageView->imageInfo().layout,
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+      VK_ACCESS_SHADER_WRITE_BIT,
+      imageView->imageInfo().layout,
+      imageView->imageInfo().stages,
+      imageView->imageInfo().access);
+    
+    m_cmd->trackResource(imageView);
+    m_cmd->trackResource(imageView->image());
+  }
+
   
   void DxvkContext::startRenderPass() {
     if (!m_flags.test(DxvkContextFlag::GpRenderPassBound)
