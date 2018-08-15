@@ -24,7 +24,8 @@ sudo update-alternatives --config x86_64-w64-mingw32-g++
 sudo update-alternatives --config x86_64-w64-mingw32-gcc
 # install glslang
 wget https://github.com/KhronosGroup/glslang/releases/download/7.8.2850/glslang-master-linux-Release.zip
-sudo unzip glslang-master-linux-Release.zip -d /usr
+mkdir ~/.local
+unzip glslang-master-linux-Release.zip -d ~/.local
 # Build Dxvk
 if cd ~/dxvk; then
 	git pull
