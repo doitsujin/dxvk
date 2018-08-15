@@ -947,7 +947,7 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeviceContext::GenerateMips(ID3D11ShaderResourceView* pShaderResourceView) {
     auto view = static_cast<D3D11ShaderResourceView*>(pShaderResourceView);
       
-    if (view->GetResourceType() != D3D11_RESOURCE_DIMENSION_BUFFER)
+    if (view->GetResourceType() == D3D11_RESOURCE_DIMENSION_BUFFER)
       return;
       
     EmitCs([cDstImageView = view->GetImageView()]
