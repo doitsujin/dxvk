@@ -1140,7 +1140,7 @@ namespace dxvk {
         info->UAVOnlyRenderingForcedSampleCount       = FALSE;
         info->DiscardAPIsSeenByDriver                 = TRUE;
         info->FlagsForUpdateAndCopySeenByDriver       = TRUE;
-        info->ClearView                               = FALSE;
+        info->ClearView                               = TRUE;
         info->CopyWithOverlap                         = FALSE;
         info->ConstantBufferPartialUpdate             = TRUE;
         info->ConstantBufferOffsetting                = TRUE;
