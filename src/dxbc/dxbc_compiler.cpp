@@ -2633,8 +2633,38 @@ namespace dxvk {
     DxbcRegisterValue result;
     result.type.ctype  = ins.dst[0].dataType;
     result.type.ccount = val.type.ccount;
-    result.id = m_module.opFConvert(
-      getVectorTypeId(result.type), val.id);
+
+    switch (ins.op) {
+      case DxbcOpcode::DtoF:
+      case DxbcOpcode::FtoD:
+        result.id = m_module.opFConvert(
+          getVectorTypeId(result.type), val.id);
+        break;
+
+      case DxbcOpcode::DtoI:
+        result.id = m_module.opConvertFtoS(
+          getVectorTypeId(result.type), val.id);
+        break;
+
+      case DxbcOpcode::DtoU:
+        result.id = m_module.opConvertFtoU(
+          getVectorTypeId(result.type), val.id);
+        break;
+
+      case DxbcOpcode::ItoD:
+        result.id = m_module.opConvertStoF(
+          getVectorTypeId(result.type), val.id);
+        break;
+      
+      case DxbcOpcode::UtoD:
+        result.id = m_module.opConvertUtoF(
+          getVectorTypeId(result.type), val.id);
+        break;
+      
+      default:
+        Logger::warn(str::format("DxbcCompiler: Unhandled instruction: ", ins.op));
+        return;
+    }
     
     emitRegisterStore(ins.dst[0], result);
   }
