@@ -651,11 +651,11 @@ namespace dxvk {
     }
     
     // Set up clear color struct
-    VkClearColorValue clearValue;
-    clearValue.uint32[0] = Values[0];
-    clearValue.uint32[1] = Values[1];
-    clearValue.uint32[2] = Values[2];
-    clearValue.uint32[3] = Values[3];
+    VkClearValue clearValue;
+    clearValue.color.uint32[0] = Values[0];
+    clearValue.color.uint32[1] = Values[1];
+    clearValue.color.uint32[2] = Values[2];
+    clearValue.color.uint32[3] = Values[3];
     
     if (uav->GetResourceType() == D3D11_RESOURCE_DIMENSION_BUFFER) {
       // In case of raw and structured buffers as well as typed
@@ -693,7 +693,7 @@ namespace dxvk {
           ctx->clearBufferView(
             cDstView, 0,
             cDstView->elementCount(),
-            cClearValue);
+            cClearValue.color);
         });
       }
     } else {
@@ -729,11 +729,11 @@ namespace dxvk {
     if (uav == nullptr)
       return;
     
-    VkClearColorValue clearValue;
-    clearValue.float32[0] = Values[0];
-    clearValue.float32[1] = Values[1];
-    clearValue.float32[2] = Values[2];
-    clearValue.float32[3] = Values[3];
+    VkClearValue clearValue;
+    clearValue.color.float32[0] = Values[0];
+    clearValue.color.float32[1] = Values[1];
+    clearValue.color.float32[2] = Values[2];
+    clearValue.color.float32[3] = Values[3];
     
     if (uav->GetResourceType() == D3D11_RESOURCE_DIMENSION_BUFFER) {
       EmitCs([
@@ -743,7 +743,7 @@ namespace dxvk {
         ctx->clearBufferView(
           cDstView, 0,
           cDstView->elementCount(),
-          cClearValue);
+          cClearValue.color);
       });
     } else {
       EmitCs([
@@ -799,6 +799,7 @@ namespace dxvk {
     });
   }
   
+
   void STDMETHODCALLTYPE D3D11DeviceContext::ClearView(
           ID3D11View*                       pView, 
     const FLOAT                             Color[4], 
@@ -807,6 +808,7 @@ namespace dxvk {
     Logger::err("D3D11DeviceContext::ClearView: not implemented");
   }
   
+
   void STDMETHODCALLTYPE D3D11DeviceContext::GenerateMips(ID3D11ShaderResourceView* pShaderResourceView) {
     auto view = static_cast<D3D11ShaderResourceView*>(pShaderResourceView);
       

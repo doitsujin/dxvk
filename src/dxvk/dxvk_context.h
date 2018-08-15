@@ -244,7 +244,7 @@ namespace dxvk {
       const Rc<DxvkImageView>&    imageView,
             VkOffset3D            offset,
             VkExtent3D            extent,
-            VkClearColorValue     value);
+            VkClearValue          value);
     
     /**
      * \brief Copies data from one buffer to another

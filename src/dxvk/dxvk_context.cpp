@@ -531,7 +531,7 @@ namespace dxvk {
     const Rc<DxvkImageView>&    imageView,
           VkOffset3D            offset,
           VkExtent3D            extent,
-          VkClearColorValue     value) {
+          VkClearValue          value) {
     this->spillRenderPass();
     this->unbindComputePipeline();
     
@@ -565,7 +565,7 @@ namespace dxvk {
     
     // Prepare shader arguments
     DxvkMetaClearArgs pushArgs;
-    pushArgs.clearValue = value;
+    pushArgs.clearValue = value.color;
     pushArgs.offset = offset;
     pushArgs.extent = extent;
     
