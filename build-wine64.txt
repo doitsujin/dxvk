@@ -8,7 +8,7 @@ strip = 'strip'
 winelib = true
 
 c_args=['-m64']
-cpp_args=['-m64', '--no-gnu-unique']
+cpp_args=['-m64', '--no-gnu-unique', '-Wno-attributes']
 cpp_link_args=['-m64', '-mwindows']
 
 [host_machine]
