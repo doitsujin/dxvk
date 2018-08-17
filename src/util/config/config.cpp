@@ -189,6 +189,10 @@ namespace dxvk {
 
     if (!stream)
       return config;
+    
+    // Inform the user that we loaded a file, might
+    // help when debugging configuration issues
+    Logger::info(str::format("Found config file: ", filePath));
 
     // Parse the file line by line
     std::string line;
