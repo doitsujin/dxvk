@@ -20,11 +20,6 @@ namespace dxvk {
     /// for a single window that may interfere with each other.
     bool deferSurfaceCreation;
 
-    /// Report to the app that Dx10 interfaces are supported,
-    /// even if they are not actually supported. Some apps
-    /// refuse to start without it, some don't work with it.
-    bool fakeDx10Support;
-
     /// Override maximum frame latency if the app specifies
     /// a higher value. May help with frame timing issues.
     int32_t maxFrameLatency;

@@ -31,10 +31,6 @@ namespace dxvk {
     { "Frostpunk.exe", {{
       { "dxgi.deferSurfaceCreation",        "True" },
     }} },
-    /* Just Cause 2 (Dx10)                        */
-    { "JustCause2.exe", {{
-      { "dxgi.fakeDx10Support",             "True" },
-    }} },
     /* Mafia 3                                    */
     { "mafia3.exe", {{
       { "d3d11.fakeStreamOutSupport",       "True" },
@@ -42,30 +38,6 @@ namespace dxvk {
     /* Overwatch                                  */
     { "Overwatch.exe", {{
       { "d3d11.fakeStreamOutSupport",       "True" },
-    }} },
-    /* Sleeping Dogs                              */
-    { "HKShip.exe", {{
-      { "dxgi.fakeDx10Support",             "True" },
-    }} },
-    /* Sleeping Dogs: Definitive Edition          */
-    { "SDHDShip.exe", {{
-      { "dxgi.fakeDx10Support",             "True" },
-    }} },
-    /* Stalker: Call of Pripyat                   */
-    { "Stalker-COP.exe", {{
-      { "dxgi.fakeDx10Support",             "True" },
-    }} },
-    /* World of Warcraft                          */
-    { "Wow.exe", {{
-      { "dxgi.fakeDx10Support",             "True" },
-    }} },
-    /* World of Warcraft Beta                     */
-    { "WowB.exe", {{
-      { "dxgi.fakeDx10Support",             "True" },
-    }} },
-    /* World of Warcraft Test Branch              */
-    { "WowT.exe", {{
-      { "dxgi.fakeDx10Support",             "True" },
     }} },
   }};
 
