@@ -26,7 +26,7 @@ else
 endif
 
 if meson.get_cross_property('winelib', false)
-  lib_vulkan  = declare_dependency(link_args: [ '-lvulkan-1' ])
+  lib_vulkan  = declare_dependency(link_args: [ '-lwinevulkan' ])
   lib_d3d11   = declare_dependency(link_args: [ '-ld3d11' ])
   lib_dxgi    = declare_dependency(link_args: [ '-ldxgi' ])
   lib_d3dcompiler_43 = declare_dependency(link_args: [ '-L'+dxvk_library_path, '-ld3dcompiler_43' ])
