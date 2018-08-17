@@ -15,16 +15,23 @@ w_metadata setup_dxvk dlls \
     installed_file5="$W_SYSTEM32_DLLS_WIN/d3d10core.dll" \
     homepage="https://github.com/doitsujin/dxvk"
 
+DXVK_ROOT_DIR=`dirname "$(readlink -f $1)"`
+
 load_setup_dxvk()
 {
+    if [ ! -e "$DXVK_ROOT_DIR/x64" ] || [ ! -e "$DXVK_ROOT_DIR/x32" ]; then
+        (>&2 echo "$DXVK_ROOT_DIR/x32 or $DXVK_ROOT_DIR/x64 directory not found.")
+        exit 1
+    fi
+
     for f in "$file1" "$file2" "$file3" "$file4" "$file5"; do
-        w_try cp "x32/$f" "$W_SYSTEM32_DLLS/$f"
+        w_try cp "$DXVK_ROOT_DIR/x32/$f" "$W_SYSTEM32_DLLS/$f"
     done
 
     if [ "$W_ARCH" = "win64" ]; then
         dxvk64_dir="/usr/lib64/wine/dxvk"
         for f in "$file1" "$file2" "$file3" "$file4" "$file5"; do
-            w_try cp "x64/$f" "$W_SYSTEM64_DLLS/$f"
+            w_try cp "$DXVK_ROOT_DIR/x64/$f" "$W_SYSTEM64_DLLS/$f"
         done
     fi
 
