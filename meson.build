@@ -69,5 +69,5 @@ if enable_tests
 endif
 
 if dxvk_compiler.get_id() != 'msvc'
-  subdir('wine_utils')
+  subdir('utils')
 endif
