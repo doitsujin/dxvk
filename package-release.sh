@@ -44,8 +44,11 @@ function build_arch {
   rm -R "$DXVK_BUILD_DIR/install.$1"
 }
 
-function package {
+function build_verb {
   cp "$DXVK_SRC_DIR/utils/setup_dxvk.verb" "$DXVK_BUILD_DIR/setup_dxvk.verb"
+}
+
+function package {
   cd "$DXVK_BUILD_DIR/.."
   tar -czf "$DXVK_ARCHIVE_PATH" "dxvk-$DXVK_VERSION"
   rm -R "dxvk-$DXVK_VERSION"
@@ -53,6 +56,7 @@ function package {
 
 build_arch 64
 build_arch 32
+build_verb
 
 if [ "$3" != "--no-package" ]; then
   package
