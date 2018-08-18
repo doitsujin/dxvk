@@ -5,6 +5,7 @@ ar = 'ar'
 strip = 'strip'
 
 [properties]
+needs_exe_wrapper = true
 winelib = true
 
 c_args=['-m64']
