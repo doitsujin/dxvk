@@ -298,11 +298,15 @@ namespace dxvk {
       // up vertical synchronization properly, but also apply
       // changes that were made to the window size even if the
       // Vulkan swap chain itself remains valid.
-      VkPresentModeKHR presentMode = SyncInterval == 0
-        ? VK_PRESENT_MODE_IMMEDIATE_KHR
-        : VK_PRESENT_MODE_FIFO_KHR;
+      std::vector<VkPresentModeKHR> presentModes;
+      if (SyncInterval == 0) {
+        presentModes.push_back(VK_PRESENT_MODE_IMMEDIATE_KHR);
+        presentModes.push_back(VK_PRESENT_MODE_MAILBOX_KHR);
+      } else {
+        presentModes.push_back(VK_PRESENT_MODE_FIFO_KHR);
+      }
       
-      m_presenter->RecreateSwapchain(m_desc.Format, presentMode, GetWindowSize());
+      m_presenter->RecreateSwapchain(m_desc.Format, presentModes.size(), presentModes.data(), GetWindowSize());
       m_presenter->PresentImage(SyncInterval, m_device->GetFrameSyncEvent());
       return S_OK;
     } catch (const DxvkError& err) {

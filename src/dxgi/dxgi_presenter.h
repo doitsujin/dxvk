@@ -107,10 +107,10 @@ namespace dxvk {
      * \param [in] WindowSize Window size
      */
     void RecreateSwapchain(
-            DXGI_FORMAT       Format,
-            VkPresentModeKHR  PresentMode,
-            VkExtent2D        WindowSize);
-    
+            DXGI_FORMAT             Format,
+            uint32_t                PresentModesCount,
+            const VkPresentModeKHR* PresentModes,
+            VkExtent2D              WindowSize);
     /**
      * \brief Sets gamma curve
      * 
@@ -164,7 +164,7 @@ namespace dxvk {
     
     VkSurfaceFormatKHR PickSurfaceFormat(DXGI_FORMAT Fmt) const;
     
-    VkPresentModeKHR PickPresentMode(VkPresentModeKHR Preferred) const;
+    VkPresentModeKHR PickPresentMode(uint32_t PreferredCount, const VkPresentModeKHR* Preferred) const;
     
     Rc<DxvkSurface> CreateSurface();
     

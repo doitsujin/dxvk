@@ -293,13 +293,13 @@ namespace dxvk {
   }
   
   
-  void DxgiVkPresenter::RecreateSwapchain(DXGI_FORMAT Format, VkPresentModeKHR PresentMode, VkExtent2D WindowSize) {
+  void DxgiVkPresenter::RecreateSwapchain(DXGI_FORMAT Format, uint32_t PresentModesCount, const VkPresentModeKHR* PresentModes, VkExtent2D WindowSize) {
     if (m_surface == nullptr)
       m_surface = CreateSurface();
     
     DxvkSwapchainProperties options;
     options.preferredSurfaceFormat  = PickSurfaceFormat(Format);
-    options.preferredPresentMode    = PickPresentMode(PresentMode);
+    options.preferredPresentMode    = PickPresentMode(PresentModesCount, PresentModes);
     options.preferredBufferSize     = WindowSize;
     
     const bool doRecreate =
@@ -360,8 +360,10 @@ namespace dxvk {
   }
   
   
-  VkPresentModeKHR DxgiVkPresenter::PickPresentMode(VkPresentModeKHR Preferred) const {
-    return m_surface->pickPresentMode(1, &Preferred);
+  VkPresentModeKHR DxgiVkPresenter::PickPresentMode(
+          uint32_t            PreferredCount,
+    const VkPresentModeKHR*   Preferred) const {
+    return m_surface->pickPresentMode(PreferredCount, Preferred);
   }
   
   
