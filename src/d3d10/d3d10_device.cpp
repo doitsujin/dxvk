@@ -1568,7 +1568,8 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D10Device::SetTextFilterSize(
           UINT                              Width,
           UINT                              Height) {
-    // Although a bit strange, this is the behaviour D3D10 exhibits.
+    // D3D10 doesn't seem to actually store or do anything with these values,
+    // as when calling GetTextFilterSize, it just makes the values 0.
   }
 
 
