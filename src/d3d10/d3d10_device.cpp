@@ -1568,14 +1568,19 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D10Device::SetTextFilterSize(
           UINT                              Width,
           UINT                              Height) {
-    Logger::err("D3D10Device::SetTextFilterSize: Not implemented");
+    // D3D10 doesn't seem to actually store or do anything with these values,
+    // as when calling GetTextFilterSize, it just makes the values 0.
   }
 
 
   void STDMETHODCALLTYPE D3D10Device::GetTextFilterSize(
           UINT*                             pWidth,
           UINT*                             pHeight) {
-    Logger::err("D3D10Device::GetTextFilterSize: Not implemented");
+    if (pWidth)
+        *pWidth = 0;
+
+    if (pHeight)
+        *pHeight = 0;
   }
 
 }
