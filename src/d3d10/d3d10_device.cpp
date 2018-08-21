@@ -1564,18 +1564,21 @@ namespace dxvk {
       Logger::warn("D3D10: SOGetTargets: Reporting buffer offsets not supported");
   }
 
-
+  // Although a bit strange, this is the behaviour D3D10 exhibits.
   void STDMETHODCALLTYPE D3D10Device::SetTextFilterSize(
           UINT                              Width,
           UINT                              Height) {
-    Logger::err("D3D10Device::SetTextFilterSize: Not implemented");
   }
 
 
   void STDMETHODCALLTYPE D3D10Device::GetTextFilterSize(
           UINT*                             pWidth,
           UINT*                             pHeight) {
-    Logger::err("D3D10Device::GetTextFilterSize: Not implemented");
+    if (pWidth)
+        *pWidth = 0;
+
+    if (pHeight)
+        *pHeight = 0;
   }
 
 }
