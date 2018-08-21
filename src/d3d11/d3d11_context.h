@@ -630,6 +630,13 @@ namespace dxvk {
     void STDMETHODCALLTYPE SOGetTargets(
             UINT                              NumBuffers,
             ID3D11Buffer**                    ppSOTargets) final;
+
+    // This is not a D3D11 method. It serves to return offsets as is
+    // needed by D3D10's SOGetTargets implementation.
+    void STDMETHODCALLTYPE SOGetOffsets(
+            UINT                              NumBuffers,
+            UINT*                             pOffsets
+    );
     
     void STDMETHODCALLTYPE TransitionSurfaceLayout(
             IDXGIVkInteropSurface*    pSurface,

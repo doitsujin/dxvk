@@ -2472,6 +2472,7 @@ namespace dxvk {
       m_state.so.targets[i] = (ppSOTargets != nullptr && i < NumBuffers)
         ? static_cast<D3D11Buffer*>(ppSOTargets[i])
         : nullptr;
+      m_state.so.offsets[i] = pOffsets ? pOffsets[i] : 0;
     }
   }
   
@@ -2483,6 +2484,14 @@ namespace dxvk {
       ppSOTargets[i] = m_state.so.targets[i].ref();
   }
   
+
+  void STDMETHODCALLTYPE D3D11DeviceContext::SOGetOffsets(
+          UINT                              NumBuffers,
+          UINT*                             pOffsets) {
+    for (uint32_t i = 0; i < NumBuffers; i++)
+      pOffsets[i] = m_state.so.offsets[i];
+  }
+
   
   void STDMETHODCALLTYPE D3D11DeviceContext::TransitionSurfaceLayout(
           IDXGIVkInteropSurface*    pSurface,

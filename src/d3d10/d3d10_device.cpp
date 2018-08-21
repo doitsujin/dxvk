@@ -1561,7 +1561,7 @@ namespace dxvk {
     }
 
     if (pOffsets != nullptr)
-      Logger::warn("D3D10: SOGetTargets: Reporting buffer offsets not supported");
+      m_context->SOGetOffsets(NumBuffers, pOffsets);
   }
 
 
