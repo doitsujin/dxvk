@@ -143,27 +143,25 @@ namespace dxvk {
     if (pDesc == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
+    const DxgiOptions* options = m_factory->GetOptions();
+    
     auto deviceProp = m_adapter->deviceProperties();
     auto memoryProp = m_adapter->memoryProperties();
     
     // Custom Vendor / Device ID
-    const int32_t customVendorID = m_factory->GetOptions()->customVendorId;
-    const int32_t customDeviceID = m_factory->GetOptions()->customDeviceId;
+    if (options->customVendorId >= 0)
+      deviceProp.vendorID = options->customVendorId;
     
-    if (customVendorID >= 0) {
-      Logger::info(str::format("Using Custom PCI Vendor ID ", std::hex, customVendorID));
-      deviceProp.vendorID = customVendorID;
-    }
+    if (options->customDeviceId >= 0)
+      deviceProp.deviceID = options->customDeviceId;
     
-    if (customDeviceID >= 0) {
-      Logger::info(str::format("Using Custom PCI Device ID ", std::hex, customDeviceID));
-      deviceProp.deviceID = customDeviceID;
-    }
-    
+    // Convert device name
     std::memset(pDesc->Description, 0, sizeof(pDesc->Description));
-    ::MultiByteToWideChar(CP_UTF8, 0, deviceProp.deviceName, -1, pDesc->Description,
-                          sizeof(pDesc->Description));
+    ::MultiByteToWideChar(CP_UTF8, 0, deviceProp.deviceName, -1,
+        pDesc->Description, sizeof(pDesc->Description));
     
+    // Get amount of video memory
+    // based on the Vulkan heaps
     VkDeviceSize deviceMemory = 0;
     VkDeviceSize sharedMemory = 0;
     
@@ -175,6 +173,15 @@ namespace dxvk {
       else
         sharedMemory += heap.size;
     }
+    
+    // Some games are silly and need their memory limited
+    if (options->maxDeviceMemory > 0
+     && options->maxDeviceMemory < deviceMemory)
+      deviceMemory = options->maxDeviceMemory;
+    
+    if (options->maxSharedMemory > 0
+     && options->maxSharedMemory < sharedMemory)
+      sharedMemory = options->maxSharedMemory;
     
     #ifndef _WIN64
     // The value returned by DXGI is a 32-bit value
