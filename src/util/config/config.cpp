@@ -31,6 +31,11 @@ namespace dxvk {
     { "Frostpunk.exe", {{
       { "dxgi.deferSurfaceCreation",        "True" },
     }} },
+    /* Life is Feudal MMO                         */
+    { "cm_client.exe", {{
+      { "dxgi.maxDeviceMemory",             "4095" },
+      { "dxgi.maxSharedMemory",             "4095" },
+    }} },
     /* Mafia 3                                    */
     { "mafia3.exe", {{
       { "d3d11.fakeStreamOutSupport",       "True" },
