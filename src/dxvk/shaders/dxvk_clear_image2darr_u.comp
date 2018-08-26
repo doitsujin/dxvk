@@ -18,7 +18,7 @@ uniform u_info_t {
 void main() {
   ivec3 thread_id = ivec3(gl_GlobalInvocationID);
   
-  if (all(lessThan(thread_id.xyz, u_info.dst_extent.xyz))) {
+  if (all(lessThan(thread_id.xy, u_info.dst_extent.xy))) {
     imageStore(dst,
       ivec3(u_info.dst_offset.xy + thread_id.xy, thread_id.z),
       u_info.clear_value);
