@@ -385,6 +385,10 @@ namespace dxvk {
                                  / pMode->RefreshRate.Denominator;
     }
     
+    Logger::info(str::format("DXGI: Setting display mode: ",
+      devMode.dmPelsWidth, "x", devMode.dmPelsHeight, "@",
+      devMode.dmDisplayFrequency));
+    
     LONG status = ::ChangeDisplaySettingsExW(
       monInfo.szDevice, &devMode, nullptr, CDS_FULLSCREEN, nullptr);
     
