@@ -904,7 +904,7 @@ namespace dxvk {
     const Rc<DxvkAdapter>&      Adapter,
           VkFormat              Format,
           VkFormatFeatureFlags  Features) const {
-    VkFormatProperties supported = Adapter->formatProperties(VK_FORMAT_D24_UNORM_S8_UINT);
+    VkFormatProperties supported = Adapter->formatProperties(Format);
     
     return (supported.linearTilingFeatures  & Features) == Features
         || (supported.optimalTilingFeatures & Features) == Features;
