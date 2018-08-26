@@ -293,13 +293,13 @@ namespace dxvk {
   }
   
   
-  void DxgiVkPresenter::RecreateSwapchain(DXGI_FORMAT Format, VkPresentModeKHR PresentMode, VkExtent2D WindowSize) {
+  void DxgiVkPresenter::RecreateSwapchain(DXGI_FORMAT Format, BOOL Vsync, VkExtent2D WindowSize) {
     if (m_surface == nullptr)
       m_surface = CreateSurface();
     
     DxvkSwapchainProperties options;
     options.preferredSurfaceFormat  = PickSurfaceFormat(Format);
-    options.preferredPresentMode    = PickPresentMode(PresentMode);
+    options.preferredPresentMode    = PickPresentMode(Vsync);
     options.preferredBufferSize     = WindowSize;
     
     const bool doRecreate =
@@ -360,8 +360,19 @@ namespace dxvk {
   }
   
   
-  VkPresentModeKHR DxgiVkPresenter::PickPresentMode(VkPresentModeKHR Preferred) const {
-    return m_surface->pickPresentMode(1, &Preferred);
+  VkPresentModeKHR DxgiVkPresenter::PickPresentMode(BOOL Vsync) const {
+    std::array<VkPresentModeKHR, 4> modes;
+    size_t n = 0;
+    
+    if (Vsync) {
+      modes[n++] = VK_PRESENT_MODE_FIFO_KHR;
+    } else {
+      modes[n++] = VK_PRESENT_MODE_IMMEDIATE_KHR;
+      modes[n++] = VK_PRESENT_MODE_MAILBOX_KHR;
+      modes[n++] = VK_PRESENT_MODE_FIFO_RELAXED_KHR;
+    }
+    
+    return m_surface->pickPresentMode(n, modes.data());
   }
   
   
