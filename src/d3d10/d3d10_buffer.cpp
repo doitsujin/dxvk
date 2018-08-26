@@ -54,7 +54,7 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D10Buffer::GetType(
           D3D10_RESOURCE_DIMENSION* rType) {
-    *rType = D3D10_RESOURCE_DIMENSION_TEXTURE1D;
+    *rType = D3D10_RESOURCE_DIMENSION_BUFFER;
   }
 
 
