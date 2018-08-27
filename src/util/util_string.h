@@ -7,8 +7,16 @@
 
 namespace dxvk::str {
   
-  inline void format1(std::stringstream&) { }
+  std::string fromws(const WCHAR *ws);
   
+  inline void format1(std::stringstream&) { }
+
+  template<typename... Tx>
+  void format1(std::stringstream& str, const WCHAR *arg, const Tx&... args) {
+    str << fromws(arg);
+    format1(str, args...);
+  }
+
   template<typename T, typename... Tx>
   void format1(std::stringstream& str, const T& arg, const Tx&... args) {
     str << arg;
@@ -21,7 +29,5 @@ namespace dxvk::str {
     format1(stream, args...);
     return stream.str();
   }
-  
-  std::string fromws(const WCHAR *ws);
   
 }
