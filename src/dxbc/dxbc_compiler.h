@@ -431,6 +431,11 @@ namespace dxvk {
     // currently active if-else blocks and loops.
     std::vector<DxbcCfgBlock> m_controlFlowBlocks;
     
+    //////////////////////////////////////////////
+    // Function state tracking. Required in order
+    // to properly end functions in some cases.
+    bool m_insideFunction = false;
+    
     ///////////////////////////////////////////////
     // Specialization constants. These are defined
     // as needed by the getSpecConstant method.
@@ -1008,9 +1013,16 @@ namespace dxvk {
     // Common function definition methods
     void emitInit();
     
-    void emitMainFunctionBegin();
+    void emitFunctionBegin(
+            uint32_t                entryPoint,
+            uint32_t                returnType,
+            uint32_t                funcType);
     
-    void emitMainFunctionEnd();
+    void emitFunctionEnd();
+    
+    void emitFunctionLabel();
+    
+    void emitMainFunctionBegin();
     
     /////////////////////////////////
     // Shader initialization methods
