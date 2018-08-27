@@ -70,6 +70,12 @@ The `DXVK_HUD` environment variable controls a HUD which can display the framera
 
 Additionally, `DXVK_HUD=1` has the same effect as `DXVK_HUD=devinfo,fps`.
 
+### Device filter
+Some applications do not provide a method to select a different GPU. In that case, DXVK can be forced to use a given device:
+- `DXVK_FILTER_DEVICE_NAME="Device Name" Selects devices with a matching Vulkan device name.
+
+**Note:** If the device filter is configured incorrectly, it may filter out all devices and applications will be unable to create a D3D device.
+
 ### Debugging
 The following environment variables can be used for **debugging** purposes.
 - `VK_INSTANCE_LAYERS=VK_LAYER_LUNARG_standard_validation` Enables Vulkan debug layers. Highly recommended for troubleshooting rendering issues and driver crashes. Requires the Vulkan SDK to be installed on the host system.
