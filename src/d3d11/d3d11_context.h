@@ -643,8 +643,9 @@ namespace dxvk {
     D3D11UserDefinedAnnotation  m_annotation;
     
     Rc<DxvkDevice>              m_device;
-    Rc<DxvkCsChunk>             m_csChunk;
     Rc<DxvkDataBuffer>          m_updateBuffer;
+    
+    DxvkCsChunkRef              m_csChunk;
     
     Com<D3D11BlendState>        m_defaultBlendState;
     Com<D3D11DepthStencilState> m_defaultDepthStencilState;
@@ -779,6 +780,8 @@ namespace dxvk {
     
     DxvkDataSlice AllocUpdateBufferSlice(size_t Size);
     
+    DxvkCsChunkRef AllocCsChunk();
+    
     template<typename T>
     const D3D11CommonShader* GetCommonShader(T* pShader) const {
       return pShader != nullptr ? pShader->GetCommonShader() : nullptr;
@@ -789,7 +792,7 @@ namespace dxvk {
       if (!m_csChunk->push(command)) {
         EmitCsChunk(std::move(m_csChunk));
         
-        m_csChunk = new DxvkCsChunk();
+        m_csChunk = AllocCsChunk();
         m_csChunk->push(command);
       }
     }
@@ -797,11 +800,11 @@ namespace dxvk {
     void FlushCsChunk() {
       if (m_csChunk->commandCount() != 0) {
         EmitCsChunk(std::move(m_csChunk));
-        m_csChunk = new DxvkCsChunk();
+        m_csChunk = AllocCsChunk();
       }
     }
     
-    virtual void EmitCsChunk(Rc<DxvkCsChunk>&& chunk) = 0;
+    virtual void EmitCsChunk(DxvkCsChunkRef&& chunk) = 0;
     
   };
   

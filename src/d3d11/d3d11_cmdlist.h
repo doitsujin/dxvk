@@ -24,7 +24,7 @@ namespace dxvk {
     UINT STDMETHODCALLTYPE GetContextFlags() final;
     
     void AddChunk(
-            Rc<DxvkCsChunk>&&   Chunk);
+            DxvkCsChunkRef&&    Chunk);
     
     void EmitToCommandList(
             ID3D11CommandList*  pCommandList);
@@ -37,7 +37,7 @@ namespace dxvk {
     D3D11Device* const m_device;
     UINT         const m_contextFlags;
     
-    std::vector<Rc<DxvkCsChunk>> m_chunks;
+    std::vector<DxvkCsChunkRef> m_chunks;
 
     std::atomic<bool> m_submitted = { false };
     std::atomic<bool> m_warned    = { false };

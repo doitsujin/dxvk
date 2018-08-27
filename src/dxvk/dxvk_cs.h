@@ -145,6 +145,15 @@ namespace dxvk {
      */
     void executeAll(DxvkContext* ctx);
     
+    /**
+     * \brief Resets chunk
+     * 
+     * Destroys all recorded commands and
+     * marks the chunk itself as empty, so
+     * that it can be reused later.
+     */
+    void reset();
+    
   private:
     
     size_t m_commandCount  = 0;
@@ -155,6 +164,128 @@ namespace dxvk {
     
     alignas(64)
     char m_data[MaxBlockSize];
+    
+  };
+  
+  
+  /**
+   * \brief Chunk pool
+   * 
+   * Implements a pool of CS chunks which can be
+   * recycled. The goal is to reduce the number
+   * of dynamic memory allocations.
+   */
+  class DxvkCsChunkPool {
+    
+  public:
+    
+    DxvkCsChunkPool();
+    ~DxvkCsChunkPool();
+    
+    DxvkCsChunkPool             (const DxvkCsChunkPool&) = delete;
+    DxvkCsChunkPool& operator = (const DxvkCsChunkPool&) = delete;
+    
+    /**
+     * \brief Allocates a chunk
+     * 
+     * Takes an existing chunk from the pool,
+     * or creates a new one if necessary.
+     * \returns Allocated chunk object
+     */
+    DxvkCsChunk* allocChunk();
+    
+    /**
+     * \brief Releases a chunk
+     * 
+     * Resets the chunk and adds it to the pool.
+     * \param [in] chunk Chunk to release
+     */
+    void freeChunk(DxvkCsChunk* chunk);
+    
+  private:
+    
+    sync::Spinlock            m_mutex;
+    std::vector<DxvkCsChunk*> m_chunks;
+    
+  };
+  
+  
+  /**
+   * \brief Chunk reference
+   * 
+   * Implements basic reference counting for
+   * CS chunks and returns them to the pool
+   * as soon as they are no longer needed.
+   */
+  class DxvkCsChunkRef {
+    
+  public:
+    
+    DxvkCsChunkRef() { }
+    DxvkCsChunkRef(
+      DxvkCsChunk*      chunk,
+      DxvkCsChunkPool*  pool)
+    : m_chunk (chunk),
+      m_pool  (pool) {
+      this->incRef();
+    }
+    
+    DxvkCsChunkRef(const DxvkCsChunkRef& other)
+    : m_chunk (other.m_chunk),
+      m_pool  (other.m_pool) {
+      this->incRef();
+    }
+    
+    DxvkCsChunkRef(DxvkCsChunkRef&& other)
+    : m_chunk (other.m_chunk),
+      m_pool  (other.m_pool) {
+      other.m_chunk = nullptr;
+      other.m_pool  = nullptr;
+    }
+    
+    DxvkCsChunkRef& operator = (const DxvkCsChunkRef& other) {
+      other.incRef();
+      this->decRef();
+      this->m_chunk = other.m_chunk;
+      this->m_pool  = other.m_pool;
+      return *this;
+    }
+    
+    DxvkCsChunkRef& operator = (DxvkCsChunkRef&& other) {
+      this->decRef();
+      this->m_chunk = other.m_chunk;
+      this->m_pool  = other.m_pool;
+      other.m_chunk = nullptr;
+      other.m_pool  = nullptr;
+      return *this;
+    }
+    
+    ~DxvkCsChunkRef() {
+      this->decRef();
+    }
+    
+    DxvkCsChunk* operator -> () const {
+      return m_chunk;
+    }
+    
+    operator bool () const {
+      return m_chunk != nullptr;
+    }
+    
+  private:
+    
+    DxvkCsChunk*      m_chunk = nullptr;
+    DxvkCsChunkPool*  m_pool  = nullptr;
+    
+    void incRef() const {
+      if (m_chunk != nullptr)
+        m_chunk->incRef();
+    }
+    
+    void decRef() const {
+      if (m_chunk != nullptr && m_chunk->decRef() == 0)
+        m_pool->freeChunk(m_chunk);
+    }
     
   };
   
@@ -179,7 +310,7 @@ namespace dxvk {
      * command lists recorded on another thread.
      * \param [in] chunk The chunk to dispatch
      */
-    void dispatchChunk(Rc<DxvkCsChunk>&& chunk);
+    void dispatchChunk(DxvkCsChunkRef&& chunk);
     
     /**
      * \brief Synchronizes with the thread
@@ -199,7 +330,7 @@ namespace dxvk {
     std::mutex                  m_mutex;
     std::condition_variable     m_condOnAdd;
     std::condition_variable     m_condOnSync;
-    std::queue<Rc<DxvkCsChunk>> m_chunksQueued;
+    std::queue<DxvkCsChunkRef>  m_chunksQueued;
     dxvk::thread                m_thread;
     
     uint32_t                    m_chunksPending = 0;

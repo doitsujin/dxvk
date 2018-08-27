@@ -7,6 +7,8 @@
 
 #include "../dxgi/dxgi_object.h"
 
+#include "../dxvk/dxvk_cs.h"
+
 #include "../d3d10/d3d10_device.h"
 
 #include "../util/com/com_private_data.h"
@@ -338,7 +340,12 @@ namespace dxvk {
     void FreeCounterSlice(const DxvkBufferSlice& Slice) {
       m_uavCounters->FreeSlice(Slice);
     }
-
+    
+    DxvkCsChunkRef AllocCsChunk() {
+      DxvkCsChunk* chunk = m_csChunkPool.allocChunk();
+      return DxvkCsChunkRef(chunk, &m_csChunkPool);
+    }
+    
     const D3D11Options* GetOptions() const {
       return &m_d3d11Options;
     }
@@ -368,6 +375,8 @@ namespace dxvk {
     
     const D3D11Options              m_d3d11Options;
     const DxbcOptions               m_dxbcOptions;
+    
+    DxvkCsChunkPool                 m_csChunkPool;
     
     D3D11Initializer*               m_initializer = nullptr;
     D3D11UavCounterAllocator*       m_uavCounters = nullptr;

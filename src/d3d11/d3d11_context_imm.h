@@ -151,7 +151,7 @@ namespace dxvk {
       const Rc<DxvkResource>&                 Resource,
             UINT                              MapFlags);
     
-    void EmitCsChunk(Rc<DxvkCsChunk>&& chunk) final;
+    void EmitCsChunk(DxvkCsChunkRef&& chunk) final;
 
     void FlushImplicit();
     

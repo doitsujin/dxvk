@@ -15,7 +15,7 @@ namespace dxvk {
   : m_parent    (pParent),
     m_annotation(this),
     m_device    (Device),
-    m_csChunk   (new DxvkCsChunk()) {
+    m_csChunk   (AllocCsChunk()) {
     // Create default state objects. We won't ever return them
     // to the application, but we'll use them to apply state.
     Com<ID3D11BlendState>         defaultBlendState;
@@ -282,11 +282,11 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeviceContext::CopySubresourceRegion1(
           ID3D11Resource*                   pDstResource,
           UINT                              DstSubresource,
-          UINT                              DstX, 
+          UINT                              DstX,
           UINT                              DstY,
-          UINT                              DstZ, 
-          ID3D11Resource*                   pSrcResource, 
-          UINT                              SrcSubresource, 
+          UINT                              DstZ,
+          ID3D11Resource*                   pSrcResource,
+          UINT                              SrcSubresource,
     const D3D11_BOX*                        pSrcBox,
           UINT                              CopyFlags) {
     D3D11_RESOURCE_DIMENSION dstResourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
@@ -3202,6 +3202,11 @@ namespace dxvk {
       
       return slice;
     }
+  }
+  
+  
+  DxvkCsChunkRef D3D11DeviceContext::AllocCsChunk() {
+    return m_parent->AllocCsChunk();
   }
   
 }

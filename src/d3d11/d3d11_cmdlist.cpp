@@ -41,8 +41,7 @@ namespace dxvk {
   }
   
   
-  void D3D11CommandList::AddChunk(
-            Rc<DxvkCsChunk>&&   Chunk) {
+  void D3D11CommandList::AddChunk(DxvkCsChunkRef&& Chunk) {
     m_chunks.push_back(std::move(Chunk));
   }
   
@@ -59,7 +58,7 @@ namespace dxvk {
   
   void D3D11CommandList::EmitToCsThread(DxvkCsThread* CsThread) {
     for (const auto& chunk : m_chunks)
-      CsThread->dispatchChunk(Rc<DxvkCsChunk>(chunk));
+      CsThread->dispatchChunk(DxvkCsChunkRef(chunk));
     
     MarkSubmitted();
   }
