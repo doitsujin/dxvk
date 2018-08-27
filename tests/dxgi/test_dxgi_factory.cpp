@@ -38,11 +38,8 @@ int WINAPI WinMain(HINSTANCE hInstance,
       return 1;
     }
     
-    std::array<char, 257> chars;
-    std::wcstombs(chars.data(), desc.Description, chars.size() - 1);
-    
     std::cout << str::format("Adapter ", i, ":") << std::endl;
-    std::cout << str::format(" ", chars.data()) << std::endl;
+    std::cout << str::format(" ", desc.Description) << std::endl;
     std::cout << str::format(" Vendor: ", desc.VendorId) << std::endl;
     std::cout << str::format(" Device: ", desc.DeviceId) << std::endl;
     std::cout << str::format(" Dedicated RAM: ", desc.DedicatedVideoMemory) << std::endl;
@@ -60,11 +57,8 @@ int WINAPI WinMain(HINSTANCE hInstance,
         return 1;
       }
       
-      std::array<char, 257> chars;
-      std::wcstombs(chars.data(), desc.DeviceName, chars.size() - 1);
-      
       std::cout << str::format(" Output ", j, ":") << std::endl;
-      std::cout << str::format("  ", chars.data()) << std::endl;
+      std::cout << str::format("  ", desc.DeviceName) << std::endl;
       std::cout << str::format("  Coordinates: ",
         desc.DesktopCoordinates.left, ",",
         desc.DesktopCoordinates.top, ":",
