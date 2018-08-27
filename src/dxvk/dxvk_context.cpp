@@ -876,11 +876,7 @@ namespace dxvk {
   
   void DxvkContext::discardBuffer(
     const Rc<DxvkBuffer>&       buffer) {
-    DxvkAccessFlags accessFlags(
-      DxvkAccess::Read,
-      DxvkAccess::Write);
-    
-    if (m_barriers.isBufferDirty(buffer->slice(), accessFlags))
+    if (m_barriers.isBufferDirty(buffer->slice(), DxvkAccess::Write))
       this->invalidateBuffer(buffer, buffer->allocPhysicalSlice());
   }
 
