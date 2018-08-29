@@ -2,7 +2,7 @@
 
 export WINEDEBUG=-all
 
-dlls_dir=`dirname "$(readlink -f $0)"`
+dlls_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
 build_arch='@arch@'
 winelib='@winelib@'
 
