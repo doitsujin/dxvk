@@ -19,7 +19,6 @@
 #include "d3d11_options.h"
 #include "d3d11_shader.h"
 #include "d3d11_state.h"
-#include "d3d11_uav_counter.h"
 #include "d3d11_util.h"
 
 namespace dxvk {
