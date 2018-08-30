@@ -117,6 +117,7 @@ namespace dxvk {
     m_d3d10Device = new D3D10Device(this, m_context);
 
     m_uavCounters = CreateUAVCounterBuffer();
+    m_xfbCounters = CreateXFBCounterBuffer();
   }
   
   
@@ -1495,6 +1496,27 @@ namespace dxvk {
     
     return new D3D11CounterBuffer(m_dxvkDevice,
       uavCounterInfo, uavCounterSliceLength);
+  }
+
+
+  Rc<D3D11CounterBuffer> D3D11Device::CreateXFBCounterBuffer() {
+    DxvkBufferCreateInfo xfbCounterInfo;
+    xfbCounterInfo.size   = 4096 * sizeof(D3D11SOCounter);
+    xfbCounterInfo.usage  = VK_BUFFER_USAGE_TRANSFER_DST_BIT
+                          | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+                          | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT
+                          | VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT;
+    xfbCounterInfo.stages = VK_PIPELINE_STAGE_TRANSFER_BIT
+                          | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT
+                          | VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT;
+    xfbCounterInfo.access = VK_ACCESS_TRANSFER_READ_BIT
+                          | VK_ACCESS_TRANSFER_WRITE_BIT
+                          | VK_ACCESS_INDIRECT_COMMAND_READ_BIT
+                          | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT
+                          | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT;
+    
+    return new D3D11CounterBuffer(m_dxvkDevice,
+      xfbCounterInfo, sizeof(D3D11SOCounter));
   }
   
   

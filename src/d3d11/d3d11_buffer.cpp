@@ -11,92 +11,7 @@ namespace dxvk {
     const D3D11_BUFFER_DESC*          pDesc)
   : m_device      (pDevice),
     m_desc        (*pDesc),
-    m_buffer      (CreateBuffer(pDesc)),
-    m_mappedSlice (m_buffer->slice()),
     m_d3d10       (this) {
-    
-  }
-  
-  
-  D3D11Buffer::~D3D11Buffer() {
-    
-  }
-  
-  
-  HRESULT STDMETHODCALLTYPE D3D11Buffer::QueryInterface(REFIID riid, void** ppvObject) {
-    *ppvObject = nullptr;
-    
-    if (riid == __uuidof(IUnknown)
-     || riid == __uuidof(ID3D11DeviceChild)
-     || riid == __uuidof(ID3D11Resource)
-     || riid == __uuidof(ID3D11Buffer)) {
-      *ppvObject = ref(this);
-      return S_OK;
-    }
-    
-    if (riid == __uuidof(ID3D10DeviceChild)
-     || riid == __uuidof(ID3D10Resource)
-     || riid == __uuidof(ID3D10Buffer)) {
-      *ppvObject = ref(&m_d3d10);
-      return S_OK;
-    }
-    
-    Logger::warn("D3D11Buffer::QueryInterface: Unknown interface query");
-    Logger::warn(str::format(riid));
-    return E_NOINTERFACE;
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11Buffer::GetDevice(ID3D11Device** ppDevice) {
-    *ppDevice = m_device.ref();
-  }
-  
-  
-  UINT STDMETHODCALLTYPE D3D11Buffer::GetEvictionPriority() {
-    Logger::warn("D3D11Buffer::GetEvictionPriority: Stub");
-    return DXGI_RESOURCE_PRIORITY_NORMAL;
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11Buffer::SetEvictionPriority(UINT EvictionPriority) {
-    Logger::warn("D3D11Buffer::SetEvictionPriority: Stub");
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11Buffer::GetType(D3D11_RESOURCE_DIMENSION* pResourceDimension) {
-    *pResourceDimension = D3D11_RESOURCE_DIMENSION_BUFFER;
-  }
-  
-  
-  void STDMETHODCALLTYPE D3D11Buffer::GetDesc(D3D11_BUFFER_DESC* pDesc) {
-    *pDesc = m_desc;
-  }
-  
-  
-  bool D3D11Buffer::CheckViewCompatibility(
-          UINT                BindFlags,
-          DXGI_FORMAT         Format) const {
-    // Check whether the given bind flags are supported
-    VkBufferUsageFlags usage = GetBufferUsageFlags(BindFlags);
-
-    if ((m_buffer->info().usage & usage) != usage)
-      return false;
-
-    // Structured buffer views use no format
-    if (Format == DXGI_FORMAT_UNKNOWN)
-      return (m_desc.MiscFlags & D3D11_RESOURCE_MISC_BUFFER_STRUCTURED) != 0;
-
-    // Check whether the given combination of buffer view
-    // type and view format is supported by the device
-    DXGI_VK_FORMAT_INFO viewFormat = m_device->LookupFormat(Format, DXGI_VK_FORMAT_MODE_ANY);
-    VkFormatFeatureFlags features = GetBufferFormatFeatures(BindFlags);
-
-    return CheckFormatFeatureSupport(viewFormat.Format, features);
-  }
-
-
-  Rc<DxvkBuffer> D3D11Buffer::CreateBuffer(
-    const D3D11_BUFFER_DESC* pDesc) const {
     DxvkBufferCreateInfo  info;
     info.size   = pDesc->ByteWidth;
     info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
@@ -175,7 +90,92 @@ namespace dxvk {
     if (pDesc->Usage == D3D11_USAGE_DYNAMIC && pDesc->BindFlags)
       memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-    return m_device->GetDXVKDevice()->createBuffer(info, memoryFlags);
+    // Create the buffer and set the entire buffer slice as mapped,
+    // so that we only have to update it when invalidating th buffer
+    m_buffer = m_device->GetDXVKDevice()->createBuffer(info, memoryFlags);
+    m_mapped = m_buffer->slice();
+
+    // For Stream Output buffers we need a counter
+    if (pDesc->BindFlags & D3D11_BIND_STREAM_OUTPUT)
+      m_soCounter = m_device->AllocXfbCounterSlice();
+  }
+  
+  
+  D3D11Buffer::~D3D11Buffer() {
+    if (m_soCounter.defined())
+      m_device->FreeXfbCounterSlice(m_soCounter);
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE D3D11Buffer::QueryInterface(REFIID riid, void** ppvObject) {
+    *ppvObject = nullptr;
+    
+    if (riid == __uuidof(IUnknown)
+     || riid == __uuidof(ID3D11DeviceChild)
+     || riid == __uuidof(ID3D11Resource)
+     || riid == __uuidof(ID3D11Buffer)) {
+      *ppvObject = ref(this);
+      return S_OK;
+    }
+    
+    if (riid == __uuidof(ID3D10DeviceChild)
+     || riid == __uuidof(ID3D10Resource)
+     || riid == __uuidof(ID3D10Buffer)) {
+      *ppvObject = ref(&m_d3d10);
+      return S_OK;
+    }
+    
+    Logger::warn("D3D11Buffer::QueryInterface: Unknown interface query");
+    Logger::warn(str::format(riid));
+    return E_NOINTERFACE;
+  }
+  
+  
+  void STDMETHODCALLTYPE D3D11Buffer::GetDevice(ID3D11Device** ppDevice) {
+    *ppDevice = m_device.ref();
+  }
+  
+  
+  UINT STDMETHODCALLTYPE D3D11Buffer::GetEvictionPriority() {
+    Logger::warn("D3D11Buffer::GetEvictionPriority: Stub");
+    return DXGI_RESOURCE_PRIORITY_NORMAL;
+  }
+  
+  
+  void STDMETHODCALLTYPE D3D11Buffer::SetEvictionPriority(UINT EvictionPriority) {
+    Logger::warn("D3D11Buffer::SetEvictionPriority: Stub");
+  }
+  
+  
+  void STDMETHODCALLTYPE D3D11Buffer::GetType(D3D11_RESOURCE_DIMENSION* pResourceDimension) {
+    *pResourceDimension = D3D11_RESOURCE_DIMENSION_BUFFER;
+  }
+  
+  
+  void STDMETHODCALLTYPE D3D11Buffer::GetDesc(D3D11_BUFFER_DESC* pDesc) {
+    *pDesc = m_desc;
+  }
+  
+  
+  bool D3D11Buffer::CheckViewCompatibility(
+          UINT                BindFlags,
+          DXGI_FORMAT         Format) const {
+    // Check whether the given bind flags are supported
+    VkBufferUsageFlags usage = GetBufferUsageFlags(BindFlags);
+
+    if ((m_buffer->info().usage & usage) != usage)
+      return false;
+
+    // Structured buffer views use no format
+    if (Format == DXGI_FORMAT_UNKNOWN)
+      return (m_desc.MiscFlags & D3D11_RESOURCE_MISC_BUFFER_STRUCTURED) != 0;
+
+    // Check whether the given combination of buffer view
+    // type and view format is supported by the device
+    DXGI_VK_FORMAT_INFO viewFormat = m_device->LookupFormat(Format, DXGI_VK_FORMAT_MODE_ANY);
+    VkFormatFeatureFlags features = GetBufferFormatFeatures(BindFlags);
+
+    return CheckFormatFeatureSupport(viewFormat.Format, features);
   }
 
 
