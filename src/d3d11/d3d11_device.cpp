@@ -985,16 +985,6 @@ namespace dxvk {
           ID3D11Query**               ppQuery) {
     InitReturnPtr(ppQuery);
     
-    if (pQueryDesc->Query != D3D11_QUERY_EVENT
-     && pQueryDesc->Query != D3D11_QUERY_OCCLUSION
-     && pQueryDesc->Query != D3D11_QUERY_TIMESTAMP
-     && pQueryDesc->Query != D3D11_QUERY_TIMESTAMP_DISJOINT
-     && pQueryDesc->Query != D3D11_QUERY_PIPELINE_STATISTICS
-     && pQueryDesc->Query != D3D11_QUERY_OCCLUSION_PREDICATE) {
-      Logger::warn(str::format("D3D11Query: Unsupported query type ", pQueryDesc->Query));
-      return E_INVALIDARG;
-    }
-    
     if (ppQuery == nullptr)
       return S_FALSE;
     
