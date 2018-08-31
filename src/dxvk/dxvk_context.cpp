@@ -871,7 +871,13 @@ namespace dxvk {
     if (this->validateComputeState()) {
       this->commitComputeInitBarriers();
 
+      m_queries.beginQueries(m_cmd,
+        VK_QUERY_TYPE_PIPELINE_STATISTICS);
+      
       m_cmd->cmdDispatch(x, y, z);
+      
+      m_queries.endQueries(m_cmd,
+        VK_QUERY_TYPE_PIPELINE_STATISTICS);
       
       this->commitComputePostBarriers();
     }
@@ -892,9 +898,15 @@ namespace dxvk {
     if (this->validateComputeState()) {
       this->commitComputeInitBarriers();
 
+      m_queries.beginQueries(m_cmd,
+        VK_QUERY_TYPE_PIPELINE_STATISTICS);
+      
       m_cmd->cmdDispatchIndirect(
         physicalSlice.handle(),
         physicalSlice.offset());
+      
+      m_queries.endQueries(m_cmd,
+        VK_QUERY_TYPE_PIPELINE_STATISTICS);
       
       this->commitComputePostBarriers();
     }
