@@ -101,6 +101,7 @@ namespace dxvk {
     Rc<DxvkQueryPool> m_occlusion;
     Rc<DxvkQueryPool> m_pipeStats;
     Rc<DxvkQueryPool> m_timestamp;
+    Rc<DxvkQueryPool> m_xfbStream;
 
     std::vector<DxvkQueryRevision> m_activeQueries;
 

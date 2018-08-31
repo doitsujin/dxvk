@@ -99,6 +99,7 @@ namespace dxvk {
     this->trackQueryPool(cmd, m_occlusion);
     this->trackQueryPool(cmd, m_pipeStats);
     this->trackQueryPool(cmd, m_timestamp);
+    this->trackQueryPool(cmd, m_xfbStream);
   }
 
 
@@ -162,6 +163,9 @@ namespace dxvk {
       
       case VK_QUERY_TYPE_TIMESTAMP:
         return m_timestamp;
+      
+      case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
+        return m_xfbStream;
 
       default:
         throw DxvkError("DXVK: Invalid query type");
@@ -171,10 +175,11 @@ namespace dxvk {
 
   uint32_t DxvkQueryManager::getDxvkQueryTypeBit(VkQueryType type) {
     switch (type) {
-      case VK_QUERY_TYPE_OCCLUSION:           return 0x01;
-      case VK_QUERY_TYPE_PIPELINE_STATISTICS: return 0x02;
-      case VK_QUERY_TYPE_TIMESTAMP:           return 0x04;
-      default:                                return 0;
+      case VK_QUERY_TYPE_OCCLUSION:                     return 0x01;
+      case VK_QUERY_TYPE_PIPELINE_STATISTICS:           return 0x02;
+      case VK_QUERY_TYPE_TIMESTAMP:                     return 0x04;
+      case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT: return 0x08;
+      default:                                          return 0;
     }
   }
 

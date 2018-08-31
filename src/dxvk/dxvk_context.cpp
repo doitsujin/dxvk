@@ -2283,6 +2283,9 @@ namespace dxvk {
       
       m_cmd->cmdBeginTransformFeedback(
         0, MaxNumXfbBuffers, ctrBuffers, ctrOffsets);
+      
+      m_queries.beginQueries(m_cmd,
+        VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT);
     }
   }
 
@@ -2304,6 +2307,9 @@ namespace dxvk {
           m_cmd->trackResource(physSlice.resource());
       }
 
+      m_queries.endQueries(m_cmd, 
+        VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT);
+      
       m_cmd->cmdEndTransformFeedback(
         0, MaxNumXfbBuffers, ctrBuffers, ctrOffsets);
       
