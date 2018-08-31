@@ -243,14 +243,6 @@ namespace dxvk {
       const DxvkImageViewCreateInfo&  createInfo);
     
     /**
-     * \brief Creates a query pool
-     * \param [in] queryType Query type
-     */
-    Rc<DxvkQueryPool> createQueryPool(
-            VkQueryType               queryType,
-            uint32_t                  queryCount);
-    
-    /**
      * \brief Creates a sampler object
      * 
      * \param [in] createInfo Sampler parameters

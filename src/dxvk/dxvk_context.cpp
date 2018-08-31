@@ -16,7 +16,8 @@ namespace dxvk {
     m_pipeMgr     (pipelineManager),
     m_metaClear   (metaClearObjects),
     m_metaMipGen  (metaMipGenObjects),
-    m_metaResolve (metaResolveObjects) { }
+    m_metaResolve (metaResolveObjects),
+    m_queries     (device->vkd()) { }
   
   
   DxvkContext::~DxvkContext() {
@@ -50,10 +51,8 @@ namespace dxvk {
   Rc<DxvkCommandList> DxvkContext::endRecording() {
     this->spillRenderPass();
     
-    this->trackQueryPool(m_queryPools[VK_QUERY_TYPE_OCCLUSION]);
-    this->trackQueryPool(m_queryPools[VK_QUERY_TYPE_PIPELINE_STATISTICS]);
-    this->trackQueryPool(m_queryPools[VK_QUERY_TYPE_TIMESTAMP]);
-    
+    m_queries.trackQueryPools(m_cmd);
+
     m_barriers.recordCommands(m_cmd);
 
     m_cmd->endRecording();
@@ -63,31 +62,13 @@ namespace dxvk {
   
   void DxvkContext::beginQuery(const DxvkQueryRevision& query) {
     query.query->beginRecording(query.revision);
-    
-    if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
-      DxvkQueryHandle handle = this->allocQuery(query);
-      
-      m_cmd->cmdBeginQuery(
-        handle.queryPool,
-        handle.queryId,
-        handle.flags);
-    }
-    
-    this->insertActiveQuery(query);
+    m_queries.enableQuery(m_cmd, query);
   }
   
   
   void DxvkContext::endQuery(const DxvkQueryRevision& query) {
-    if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
-      DxvkQueryHandle handle = query.query->getHandle();
-      
-      m_cmd->cmdEndQuery(
-        handle.queryPool,
-        handle.queryId);
-    }
-    
+    m_queries.disableQuery(m_cmd, query);
     query.query->endRecording(query.revision);
-    this->eraseActiveQuery(query);
   }
   
   
@@ -1631,7 +1612,7 @@ namespace dxvk {
   
   
   void DxvkContext::writeTimestamp(const DxvkQueryRevision& query) {
-    DxvkQueryHandle handle = this->allocQuery(query);
+    DxvkQueryHandle handle = m_queries.allocQuery(m_cmd, query);
     
     m_cmd->cmdWriteTimestamp(
       VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
@@ -1803,7 +1784,10 @@ namespace dxvk {
         m_state.om.renderTargets,
         m_state.om.renderPassOps);
       
-      this->beginActiveQueries();
+      // Begin occlusion queries
+      m_queries.beginQueries(m_cmd, {
+        VK_QUERY_TYPE_OCCLUSION,
+        VK_QUERY_TYPE_PIPELINE_STATISTICS });
     }
   }
   
@@ -1814,7 +1798,11 @@ namespace dxvk {
     
     if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
       m_flags.clr(DxvkContextFlag::GpRenderPassBound);
-      this->endActiveQueries();
+
+      m_queries.endQueries(m_cmd, {
+        VK_QUERY_TYPE_OCCLUSION,
+        VK_QUERY_TYPE_PIPELINE_STATISTICS });
+      
       this->renderPassUnbindFramebuffer();
     }
   }
@@ -2510,79 +2498,6 @@ namespace dxvk {
           default:
             /* nothing to do */;
         }
-      }
-    }
-  }
-  
-  
-    
-  DxvkQueryHandle DxvkContext::allocQuery(const DxvkQueryRevision& query) {
-    const VkQueryType queryType = query.query->type();
-    
-    DxvkQueryHandle queryHandle = DxvkQueryHandle();
-    Rc<DxvkQueryPool> queryPool = m_queryPools[queryType];
-    
-    if (queryPool != nullptr)
-      queryHandle = queryPool->allocQuery(query);
-    
-    if (queryHandle.queryPool == VK_NULL_HANDLE) {
-      if (queryPool != nullptr)
-        this->trackQueryPool(queryPool);
-      
-      m_queryPools[queryType] = m_device->createQueryPool(queryType, MaxNumQueryCountPerPool);
-      queryPool = m_queryPools[queryType];
-      
-      queryPool->reset(m_cmd);
-      queryHandle = queryPool->allocQuery(query);
-    }
-    
-    return queryHandle;
-  }
-  
-  
-  void DxvkContext::trackQueryPool(const Rc<DxvkQueryPool>& pool) {
-    if (pool != nullptr) {
-      DxvkQueryRange range = pool->getActiveQueryRange();
-      
-      if (range.queryCount > 0)
-        m_cmd->trackQueryRange(std::move(range));
-    }
-  }
-  
-  
-  void DxvkContext::beginActiveQueries() {
-    for (const DxvkQueryRevision& query : m_activeQueries) {
-      DxvkQueryHandle handle = this->allocQuery(query);
-      
-      m_cmd->cmdBeginQuery(
-        handle.queryPool,
-        handle.queryId,
-        handle.flags);
-    }
-  }
-  
-  
-  void DxvkContext::endActiveQueries() {
-    for (const DxvkQueryRevision& query : m_activeQueries) {
-      DxvkQueryHandle handle = query.query->getHandle();
-      
-      m_cmd->cmdEndQuery(
-        handle.queryPool,
-        handle.queryId);
-    }
-  }
-  
-  
-  void DxvkContext::insertActiveQuery(const DxvkQueryRevision& query) {
-    m_activeQueries.push_back(query);
-  }
-  
-  
-  void DxvkContext::eraseActiveQuery(const DxvkQueryRevision& query) {
-    for (auto i = m_activeQueries.begin(); i != m_activeQueries.end(); i++) {
-      if (i->query == query.query && i->revision == query.revision) {
-        m_activeQueries.erase(i);
-        return;
       }
     }
   }

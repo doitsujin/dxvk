@@ -12,6 +12,7 @@
 #include "dxvk_pipecache.h"
 #include "dxvk_pipemanager.h"
 #include "dxvk_query.h"
+#include "dxvk_query_manager.h"
 #include "dxvk_query_pool.h"
 #include "dxvk_util.h"
 
@@ -645,16 +646,13 @@ namespace dxvk {
     DxvkBarrierSet      m_barriers;
     DxvkBarrierSet      m_transitions;
     
-    // TODO implement this properly...
-    Rc<DxvkQueryPool>   m_queryPools[3] = { nullptr, nullptr, nullptr };
+    DxvkQueryManager    m_queries;
     
     VkPipeline m_gpActivePipeline = VK_NULL_HANDLE;
     VkPipeline m_cpActivePipeline = VK_NULL_HANDLE;
 
     VkDescriptorSet m_gpSet = VK_NULL_HANDLE;
     VkDescriptorSet m_cpSet = VK_NULL_HANDLE;
-    
-    std::vector<DxvkQueryRevision> m_activeQueries;
     
     std::array<DxvkShaderResourceSlot, MaxNumResourceSlots>  m_rc;
     std::array<DxvkDescriptorInfo,     MaxNumActiveBindings> m_descInfos;
@@ -730,22 +728,6 @@ namespace dxvk {
     
     void commitComputeInitBarriers();
     void commitComputePostBarriers();
-    
-    DxvkQueryHandle allocQuery(
-      const DxvkQueryRevision& query);
-    
-    void trackQueryPool(
-      const Rc<DxvkQueryPool>& pool);
-    
-    void beginActiveQueries();
-    
-    void endActiveQueries();
-    
-    void insertActiveQuery(
-      const DxvkQueryRevision& query);
-    
-    void eraseActiveQuery(
-      const DxvkQueryRevision& query);
     
     Rc<DxvkBuffer> getTransferBuffer(VkDeviceSize size);
     
