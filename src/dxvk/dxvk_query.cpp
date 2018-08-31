@@ -19,7 +19,7 @@ namespace dxvk {
   
   
   bool DxvkQuery::isIndexed() const {
-    return false;
+    return m_type == VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT;
   }
 
 
@@ -110,6 +110,11 @@ namespace dxvk {
           m_data.statistic.tcsPatches       += data.statistic.tcsPatches;
           m_data.statistic.tesInvocations   += data.statistic.tesInvocations;
           m_data.statistic.csInvocations    += data.statistic.csInvocations;
+          break;
+        
+        case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
+          m_data.xfbStream.primitivesWritten += data.xfbStream.primitivesWritten;
+          m_data.xfbStream.primitivesNeeded  += data.xfbStream.primitivesNeeded;
           break;
         
         default:

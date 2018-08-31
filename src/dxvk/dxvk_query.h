@@ -58,6 +58,19 @@ namespace dxvk {
     uint64_t tesInvocations;
     uint64_t csInvocations;
   };
+
+  /**
+   * \brief Transform feedback stream query
+   * 
+   * Stores the number of primitives written to the
+   * buffer, as well as the number of primitives
+   * generated. The latter can be used to check for
+   * overflow.
+   */
+  struct DxvkQueryXfbStreamData {
+    uint64_t primitivesWritten;
+    uint64_t primitivesNeeded;
+  };
   
   /**
    * \brief Query data
@@ -69,6 +82,7 @@ namespace dxvk {
     DxvkQueryOcclusionData occlusion;
     DxvkQueryTimestampData timestamp;
     DxvkQueryStatisticData statistic;
+    DxvkQueryXfbStreamData xfbStream;
   };
   
   /**
