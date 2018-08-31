@@ -138,6 +138,7 @@ namespace dxvk {
   
   struct D3D11ContextStateSO {
     std::array<Com<D3D11Buffer>, D3D11_SO_STREAM_COUNT> targets;
+    std::array<UINT, D3D11_SO_STREAM_COUNT> offsets;
   };
   
   
