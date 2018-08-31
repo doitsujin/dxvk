@@ -1550,7 +1550,10 @@ namespace dxvk {
           ID3D10Buffer**                    ppSOTargets,
           UINT*                             pOffsets) {
     ID3D11Buffer* d3d11Buffers[D3D10_SO_BUFFER_SLOT_COUNT];
-    m_context->SOGetTargets(NumBuffers, ppSOTargets ? d3d11Buffers : nullptr);
+
+    m_context->SOGetTargetsWithOffsets(NumBuffers,
+      ppSOTargets ? d3d11Buffers : nullptr,
+      pOffsets);
 
     if (ppSOTargets != nullptr) {
       for (uint32_t i = 0; i < NumBuffers; i++) {
@@ -1559,9 +1562,6 @@ namespace dxvk {
           : nullptr;
       }
     }
-
-    if (pOffsets != nullptr)
-      Logger::warn("D3D10: SOGetTargets: Reporting buffer offsets not supported");
   }
 
 

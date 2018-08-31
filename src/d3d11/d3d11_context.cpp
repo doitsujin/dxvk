@@ -2561,6 +2561,20 @@ namespace dxvk {
   }
   
   
+  void STDMETHODCALLTYPE D3D11DeviceContext::SOGetTargetsWithOffsets(
+          UINT                              NumBuffers,
+          ID3D11Buffer**                    ppSOTargets,
+          UINT*                             pOffsets) {
+    for (uint32_t i = 0; i < NumBuffers; i++) {
+      if (ppSOTargets != nullptr)
+        ppSOTargets[i] = m_state.so.targets[i].buffer.ref();
+
+      if (pOffsets != nullptr)
+        pOffsets[i] = m_state.so.targets[i].offset;
+    }
+  }
+
+
   void STDMETHODCALLTYPE D3D11DeviceContext::TransitionSurfaceLayout(
           IDXGIVkInteropSurface*    pSurface,
     const VkImageSubresourceRange*  pSubresources,
