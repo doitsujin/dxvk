@@ -13,10 +13,14 @@ namespace dxvk {
   : m_device(pDevice), m_resource(pResource), m_desc(*pDesc), m_d3d10(this) {
     ResourceAddRefPrivate(m_resource);
 
+    DXGI_VK_FORMAT_INFO formatInfo = pDevice->LookupFormat(
+      pDesc->Format, DXGI_VK_FORMAT_MODE_COLOR);
+
     DxvkImageViewCreateInfo viewInfo;
-    viewInfo.format = pDevice->LookupFormat(pDesc->Format, DXGI_VK_FORMAT_MODE_COLOR).Format;
-    viewInfo.aspect = imageFormatInfo(viewInfo.format)->aspectMask;
-    viewInfo.usage  = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    viewInfo.format  = formatInfo.Format;
+    viewInfo.aspect  = imageFormatInfo(viewInfo.format)->aspectMask;
+    viewInfo.swizzle = formatInfo.Swizzle;
+    viewInfo.usage   = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     
     switch (pDesc->ViewDimension) {
       case D3D11_RTV_DIMENSION_TEXTURE1D:
