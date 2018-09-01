@@ -5202,6 +5202,41 @@ namespace dxvk {
       }
     }
   }
+
+
+  void DxbcCompiler::emitOutputMapping() {
+    // For pixel shaders, we need to swizzle the
+    // output vectors using some spec constants.
+    for (uint32_t i = 0; i < m_oRegs.size(); i++) {
+      if (m_oRegs[i].id == 0 || m_oRegs[i].type.ccount < 2)
+        continue;
+      
+      DxbcRegisterValue vector = emitValueLoad(m_oRegs[i]);
+
+      uint32_t specTypeId = getScalarTypeId(DxbcScalarType::Uint32);
+      uint32_t compTypeId = getScalarTypeId(vector.type.ctype);
+      
+      std::array<uint32_t, 4> scalars;
+
+      for (uint32_t c = 0; c < vector.type.ccount; c++) {
+        const char* components = "rgba";
+
+        uint32_t specId = m_module.specConst32(specTypeId, c);
+        m_module.decorateSpecId(specId, uint32_t(DxvkSpecConstantId::ColorComponentMappings) + 4 * i + c);
+        m_module.setDebugName(specId, str::format("omap", i, ".", components[c]).c_str());
+
+        scalars[c] = m_module.opVectorExtractDynamic(compTypeId, vector.id, specId);
+      }
+
+      vector.id = m_module.opCompositeConstruct(
+        getVectorTypeId(vector.type),
+        vector.type.ccount,
+        scalars.data());
+      
+      emitValueStore(m_oRegs[i], vector,
+        DxbcRegMask::firstN(vector.type.ccount));
+    }
+  }
   
   
   DxbcRegisterValue DxbcCompiler::emitVsSystemValueLoad(
@@ -6114,6 +6149,7 @@ namespace dxvk {
     }
     
     this->emitOutputSetup();
+    this->emitOutputMapping();
     this->emitFunctionEnd();
   }
   

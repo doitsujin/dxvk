@@ -947,6 +947,7 @@ namespace dxvk {
     void emitInputSetup(uint32_t vertexCount);
     
     void emitOutputSetup();
+    void emitOutputMapping();
     
     //////////////////////////////////////////
     // System value load methods (per shader)
