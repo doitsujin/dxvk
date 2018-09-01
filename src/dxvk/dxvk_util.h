@@ -201,6 +201,17 @@ namespace dxvk::util {
   VkComponentMapping invertComponentMapping(
           VkComponentMapping          mapping);
   
+  /**
+   * \brief Computes component index for a component swizzle
+   * 
+   * \param [in] component The component swizzle
+   * \param [in] identity Value for SWIZZLE_IDENTITY
+   * \returns Component index
+   */
+  uint32_t getComponentIndex(
+          VkComponentSwizzle          component,
+          uint32_t                    identity);
+  
 }
 
 

@@ -18,6 +18,7 @@ namespace dxvk {
    */
   struct DxvkSpecConstantData {
     uint32_t rasterizerSampleCount;
+    uint32_t outputMappings[MaxNumRenderTargets * 4];
     VkBool32 activeBindings[MaxNumActiveBindings];
   };
   
@@ -55,7 +56,10 @@ namespace dxvk {
     
   private:
     
-    std::array<VkSpecializationMapEntry, MaxNumSpecConstants + MaxNumActiveBindings> m_mapEntries;
+    std::array<VkSpecializationMapEntry,
+      MaxNumSpecConstants  +
+      MaxNumActiveBindings +
+      MaxNumRenderTargets * 4> m_mapEntries;
     
     void setConstantEntry(
             DxvkSpecConstantId  specId,
@@ -64,6 +68,9 @@ namespace dxvk {
     
     void setBindingEntry(
             uint32_t            binding);
+    
+    void setOutputMappingEntry(
+            uint32_t            output);
     
   };
   

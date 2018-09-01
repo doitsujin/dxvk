@@ -237,6 +237,11 @@ namespace dxvk {
       omBlendAttachments[i].colorWriteMask = util::remapComponentMask(
         state.omBlendAttachments[i].colorWriteMask,
         state.omComponentMapping[i]);
+      
+      specData.outputMappings[4 * i + 0] = util::getComponentIndex(state.omComponentMapping[i].r, 0);
+      specData.outputMappings[4 * i + 1] = util::getComponentIndex(state.omComponentMapping[i].g, 1);
+      specData.outputMappings[4 * i + 2] = util::getComponentIndex(state.omComponentMapping[i].b, 2);
+      specData.outputMappings[4 * i + 3] = util::getComponentIndex(state.omComponentMapping[i].a, 3);
     }
 
     // Generate per-instance attribute divisors

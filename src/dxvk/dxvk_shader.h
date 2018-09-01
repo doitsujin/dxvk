@@ -21,7 +21,12 @@ namespace dxvk {
    */
   enum class DxvkSpecConstantId : uint32_t {
     RasterizerSampleCount       = 0x10000,
-    
+
+    /// Special constant ranges that do not count
+    /// towards the spec constant min/max values
+    ColorComponentMappings      = 0x20000,
+
+    /// Lowest and highest known spec constant IDs
     SpecConstantIdMin           = RasterizerSampleCount,
     SpecConstantIdMax           = RasterizerSampleCount,
   };
