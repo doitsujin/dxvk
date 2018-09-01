@@ -193,6 +193,12 @@ namespace dxvk {
     viewInfo.format           = m_info.format;
     viewInfo.components       = m_info.swizzle;
     viewInfo.subresourceRange = subresourceRange;
+
+    if (m_info.usage == VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
+      viewInfo.components = {
+        VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
+        VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
+    }
     
     if (m_vkd->vkCreateImageView(m_vkd->device(),
           &viewInfo, nullptr, &m_views[type]) != VK_SUCCESS) {
