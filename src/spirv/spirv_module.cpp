@@ -1446,6 +1446,21 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opVectorExtractDynamic(
+          uint32_t                resultType,
+          uint32_t                vector,
+          uint32_t                index) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpVectorExtractDynamic, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(vector);
+    m_code.putWord(index);
+    return resultId;
+  }
+
+
   uint32_t SpirvModule::opVectorShuffle(
           uint32_t                resultType,
           uint32_t                vectorLeft,

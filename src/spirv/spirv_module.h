@@ -543,6 +543,11 @@ namespace dxvk {
             uint32_t                resultType,
             uint32_t                operand);
     
+    uint32_t opVectorExtractDynamic(
+            uint32_t                resultType,
+            uint32_t                vector,
+            uint32_t                index);
+    
     uint32_t opVectorShuffle(
             uint32_t                resultType,
             uint32_t                vectorLeft,
