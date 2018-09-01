@@ -132,8 +132,10 @@ namespace dxvk {
     
     // Remap resource binding IDs
     uint32_t* code = spirvCode.data();
-    for (uint32_t ofs : m_idOffsets)
-      code[ofs] = mapping.getBindingId(code[ofs]);
+    for (uint32_t ofs : m_idOffsets) {
+      if (code[ofs] < MaxNumResourceSlots)
+        code[ofs] = mapping.getBindingId(code[ofs]);
+    }
     
     return new DxvkShaderModule(vkd, this, spirvCode);
   }
