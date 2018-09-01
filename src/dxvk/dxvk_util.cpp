@@ -74,5 +74,66 @@ namespace dxvk::util {
     const DxvkFormatInfo* formatInfo = imageFormatInfo(format);
     return formatInfo->elementSize * flattenImageExtent(computeBlockCount(extent, formatInfo->blockSize));
   }
-  
+
+
+  static VkColorComponentFlags remapComponentFlag(
+          VkColorComponentFlags       mask,
+          VkComponentSwizzle          swizzle,
+          VkColorComponentFlagBits    identity) {
+    VkColorComponentFlags bit;
+
+    switch (swizzle) {
+      case VK_COMPONENT_SWIZZLE_IDENTITY: bit = identity;                 break;
+      case VK_COMPONENT_SWIZZLE_R:        bit = VK_COLOR_COMPONENT_R_BIT; break;
+      case VK_COMPONENT_SWIZZLE_G:        bit = VK_COLOR_COMPONENT_G_BIT; break;
+      case VK_COMPONENT_SWIZZLE_B:        bit = VK_COLOR_COMPONENT_B_BIT; break;
+      case VK_COMPONENT_SWIZZLE_A:        bit = VK_COLOR_COMPONENT_A_BIT; break;
+      default:                            bit = 0; /* SWIZZLE_ZERO, SWIZZLE_ONE */
+    }
+
+    return (mask & bit) ? identity : 0;
+  }
+
+
+  VkColorComponentFlags remapComponentMask(
+          VkColorComponentFlags       mask,
+          VkComponentMapping          mapping) {
+    VkColorComponentFlags result = 0;
+    result |= remapComponentFlag(mask, mapping.r, VK_COLOR_COMPONENT_R_BIT);
+    result |= remapComponentFlag(mask, mapping.g, VK_COLOR_COMPONENT_G_BIT);
+    result |= remapComponentFlag(mask, mapping.b, VK_COLOR_COMPONENT_B_BIT);
+    result |= remapComponentFlag(mask, mapping.a, VK_COLOR_COMPONENT_A_BIT);
+    return result;
+  }
+
+
+  static VkComponentSwizzle findComponentSwizzle(
+          VkComponentSwizzle          swizzle,
+          VkComponentSwizzle          identity,
+          VkComponentMapping          mapping) {
+    if (identity == VK_COMPONENT_SWIZZLE_IDENTITY)
+      return VK_COMPONENT_SWIZZLE_IDENTITY;
+    
+    if (mapping.r == swizzle)
+      return VK_COMPONENT_SWIZZLE_R;
+    if (mapping.g == swizzle)
+      return VK_COMPONENT_SWIZZLE_G;
+    if (mapping.b == swizzle)
+      return VK_COMPONENT_SWIZZLE_B;
+    if (mapping.a == swizzle)
+      return VK_COMPONENT_SWIZZLE_A;
+    
+    return VK_COMPONENT_SWIZZLE_ZERO;
+  }
+
+
+  VkComponentMapping invertComponentMapping(VkComponentMapping mapping) {
+    VkComponentMapping result;
+    result.r = findComponentSwizzle(VK_COMPONENT_SWIZZLE_R, mapping.r, mapping);
+    result.g = findComponentSwizzle(VK_COMPONENT_SWIZZLE_G, mapping.g, mapping);
+    result.b = findComponentSwizzle(VK_COMPONENT_SWIZZLE_B, mapping.b, mapping);
+    result.a = findComponentSwizzle(VK_COMPONENT_SWIZZLE_A, mapping.a, mapping);
+    return result;
+  }
+
 }

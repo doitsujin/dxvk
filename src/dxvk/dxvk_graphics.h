@@ -69,6 +69,7 @@ namespace dxvk {
     VkBool32                            omEnableLogicOp;
     VkLogicOp                           omLogicOp;
     VkPipelineColorBlendAttachmentState omBlendAttachments[MaxNumRenderTargets];
+    VkComponentMapping                  omComponentMapping[MaxNumRenderTargets];
   };
   
   

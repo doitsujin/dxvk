@@ -228,7 +228,18 @@ namespace dxvk {
     if (m_tes != nullptr) stages.push_back(m_tes->stageInfo(&specInfo));
     if (m_gs  != nullptr) stages.push_back(m_gs->stageInfo(&specInfo));
     if (m_fs  != nullptr) stages.push_back(m_fs->stageInfo(&specInfo));
-    
+
+    // Fix up color write masks using the component mappings
+    std::array<VkPipelineColorBlendAttachmentState, MaxNumRenderTargets> omBlendAttachments;
+
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+      omBlendAttachments[i] = state.omBlendAttachments[i];
+      omBlendAttachments[i].colorWriteMask = util::remapComponentMask(
+        state.omBlendAttachments[i].colorWriteMask,
+        state.omComponentMapping[i]);
+    }
+
+    // Generate per-instance attribute divisors
     std::array<VkVertexInputBindingDivisorDescriptionEXT, MaxNumVertexBindings> viDivisorDesc;
     uint32_t                                                                    viDivisorCount = 0;
     
@@ -332,7 +343,7 @@ namespace dxvk {
     cbInfo.logicOpEnable          = state.omEnableLogicOp;
     cbInfo.logicOp                = state.omLogicOp;
     cbInfo.attachmentCount        = DxvkLimits::MaxNumRenderTargets;
-    cbInfo.pAttachments           = state.omBlendAttachments;
+    cbInfo.pAttachments           = omBlendAttachments.data();
     
     for (uint32_t i = 0; i < 4; i++)
       cbInfo.blendConstants[i] = 0.0f;

@@ -2245,6 +2245,14 @@ namespace dxvk {
       
       m_state.gp.state.msSampleCount = fb->getSampleCount();
       m_state.om.framebuffer = fb;
+
+      for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+        Rc<DxvkImageView> attachment = fb->getColorTarget(i).view;
+
+        m_state.gp.state.omComponentMapping[i] = attachment != nullptr
+          ? util::invertComponentMapping(attachment->info().swizzle)
+          : VkComponentMapping();
+      }
       
       m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     }
