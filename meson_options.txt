@@ -1,1 +1,2 @@
 option('enable_tests', type : 'boolean', value : false)
+option('enable_utils', type : 'boolean', value : false)
