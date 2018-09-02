@@ -62,12 +62,10 @@ dxvk_version = vcs_tag(
 
 subdir('src')
 
-enable_tests = get_option('enable_tests')
-
-if enable_tests
+if get_option('enable_tests')
   subdir('tests')
 endif
 
-if dxvk_compiler.get_id() != 'msvc'
+if get_option('enable_utils')
   subdir('utils')
 endif

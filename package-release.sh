@@ -26,6 +26,7 @@ function build_arch {
         --prefix "$DXVK_BUILD_DIR/install.$1"         \
         --strip                                       \
         -Denable_tests=false                          \
+        -Denable_utils=true                           \
         "$DXVK_BUILD_DIR/build.$1"
 
   cd "$DXVK_BUILD_DIR/build.$1"
