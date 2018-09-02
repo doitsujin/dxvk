@@ -1960,6 +1960,9 @@ namespace dxvk {
     //    (src1) The shift amount (scalar)
     DxbcRegisterValue shiftReg = emitRegisterLoad(ins.src[0], ins.dst[0].mask);
     DxbcRegisterValue countReg = emitRegisterLoad(ins.src[1], ins.dst[0].mask);
+
+    if (ins.src[1].type != DxbcOperandType::Imm32)
+      countReg = emitRegisterMaskBits(countReg, 0x1F);
     
     if (countReg.type.ccount == 1)
       countReg = emitRegisterExtend(countReg, shiftReg.type.ccount);
@@ -2351,8 +2354,14 @@ namespace dxvk {
     //    (src2) Register to extract bits from
     const bool isSigned = ins.op == DxbcOpcode::IBfe;
     
-    const DxbcRegisterValue bitCnt = emitRegisterLoad(ins.src[0], ins.dst[0].mask);
-    const DxbcRegisterValue bitOfs = emitRegisterLoad(ins.src[1], ins.dst[0].mask);
+    DxbcRegisterValue bitCnt = emitRegisterLoad(ins.src[0], ins.dst[0].mask);
+    DxbcRegisterValue bitOfs = emitRegisterLoad(ins.src[1], ins.dst[0].mask);
+
+    if (ins.src[0].type != DxbcOperandType::Imm32)
+      bitCnt = emitRegisterMaskBits(bitCnt, 0x1F);
+    
+    if (ins.src[1].type != DxbcOperandType::Imm32)
+      bitOfs = emitRegisterMaskBits(bitOfs, 0x1F);
     
     const DxbcRegisterValue src = emitRegisterLoad(ins.src[2], ins.dst[0].mask);
     
@@ -2389,8 +2398,14 @@ namespace dxvk {
     //    (src1) Offset of the bits to extract
     //    (src2) Register to take bits from
     //    (src3) Register to replace bits in
-    const DxbcRegisterValue bitCnt = emitRegisterLoad(ins.src[0], ins.dst[0].mask);
-    const DxbcRegisterValue bitOfs = emitRegisterLoad(ins.src[1], ins.dst[0].mask);
+    DxbcRegisterValue bitCnt = emitRegisterLoad(ins.src[0], ins.dst[0].mask);
+    DxbcRegisterValue bitOfs = emitRegisterLoad(ins.src[1], ins.dst[0].mask);
+    
+    if (ins.src[0].type != DxbcOperandType::Imm32)
+      bitCnt = emitRegisterMaskBits(bitCnt, 0x1F);
+    
+    if (ins.src[1].type != DxbcOperandType::Imm32)
+      bitOfs = emitRegisterMaskBits(bitOfs, 0x1F);
     
     const DxbcRegisterValue insert = emitRegisterLoad(ins.src[2], ins.dst[0].mask);
     const DxbcRegisterValue base   = emitRegisterLoad(ins.src[3], ins.dst[0].mask);
@@ -4164,6 +4179,21 @@ namespace dxvk {
   }
   
   
+  DxbcRegisterValue DxbcCompiler::emitRegisterMaskBits(
+          DxbcRegisterValue       value,
+          uint32_t                mask) {
+    DxbcRegisterValue maskVector = emitBuildConstVecu32(
+      mask, mask, mask, mask, DxbcRegMask::firstN(value.type.ccount));
+    
+    DxbcRegisterValue result;
+    result.type = value.type;
+    result.id = m_module.opBitwiseAnd(
+      getVectorTypeId(result.type),
+      value.id, maskVector.id);
+    return result;
+  }
+
+
   DxbcRegisterValue DxbcCompiler::emitSrcOperandModifiers(
           DxbcRegisterValue       value,
           DxbcRegModifiers        modifiers) {

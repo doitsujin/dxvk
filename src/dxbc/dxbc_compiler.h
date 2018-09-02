@@ -822,6 +822,10 @@ namespace dxvk {
             DxbcRegisterValue       value,
             DxbcZeroTest            test);
     
+    DxbcRegisterValue emitRegisterMaskBits(
+            DxbcRegisterValue       value,
+            uint32_t                mask);
+    
     DxbcRegisterValue emitSrcOperandModifiers(
             DxbcRegisterValue       value,
             DxbcRegModifiers        modifiers);
