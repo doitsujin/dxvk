@@ -70,6 +70,13 @@ The `DXVK_HUD` environment variable controls a HUD which can display the framera
 
 Additionally, `DXVK_HUD=1` has the same effect as `DXVK_HUD=devinfo,fps`.
 
+The `DXVK_HUD_OFFSET` environment variable controls HUD offset on the screen, originating from top left corner of the screen.
+It accepts a comma separated values for x and y axis respectively, examples:
+- `DXVK_HUD_OFFSET=100,200` will offset hud by 100 on x axis and 200 on y axis
+- `DXVK_HUD_OFFSET=,250` will offset hud by 0 on x axis and 250 on y axis
+- `DXVK_HUD_OFFSET=250` will offset hud by 250 on x axis and 0 on y axis (`,` can be omitted if setting value only for x axis)
+Invalid values will be ignored.
+
 ### Device filter
 Some applications do not provide a method to select a different GPU. In that case, DXVK can be forced to use a given device:
 - `DXVK_FILTER_DEVICE_NAME="Device Name" Selects devices with a matching Vulkan device name.
