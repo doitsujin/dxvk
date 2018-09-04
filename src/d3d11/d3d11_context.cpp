@@ -1267,7 +1267,22 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11DeviceContext::DrawAuto() {
-    Logger::err("D3D11DeviceContext::DrawAuto: Not implemented");
+    D3D11Buffer* buffer = m_state.ia.vertexBuffers[0].buffer.ptr();
+
+    if (buffer == nullptr)
+      return;
+    
+    DxvkBufferSlice vtxBuf = buffer->GetBufferSlice();
+    DxvkBufferSlice ctrBuf = buffer->GetSOCounter();
+
+    if (!ctrBuf.defined())
+      return;
+
+    EmitCs([=] (DxvkContext* ctx) {
+      ctx->drawIndirectXfb(ctrBuf,
+        vtxBuf.buffer()->getXfbVertexStride(),
+        0); // FIXME offset?
+    });
   }
   
   
