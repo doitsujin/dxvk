@@ -153,9 +153,9 @@ namespace dxvk {
       case VK_IMAGE_VIEW_TYPE_3D: {
         this->createView(VK_IMAGE_VIEW_TYPE_3D, 1);
         
-        if (m_image->info().flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT_KHR) {
+        if (m_image->info().flags & VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT_KHR && info.numLevels == 1) {
           this->createView(VK_IMAGE_VIEW_TYPE_2D,       1);
-          this->createView(VK_IMAGE_VIEW_TYPE_2D_ARRAY, m_image->info().extent.depth);
+          this->createView(VK_IMAGE_VIEW_TYPE_2D_ARRAY, m_image->mipLevelExtent(info.minLevel).depth);
         }
       } break;
       
