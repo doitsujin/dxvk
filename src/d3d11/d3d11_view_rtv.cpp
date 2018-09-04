@@ -268,7 +268,7 @@ namespace dxvk {
         }
         
         format    = resourceDesc.Format;
-        numLayers = resourceDesc.Depth;
+        numLayers = resourceDesc.Depth >> pDesc->Texture3D.MipSlice;
       } break;
       
       default:
