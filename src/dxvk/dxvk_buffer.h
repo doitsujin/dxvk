@@ -147,6 +147,28 @@ namespace dxvk {
     }
     
     /**
+     * \brief Transform feedback vertex stride
+     * 
+     * Used when drawing after transform feedback,
+     * \returns The current xfb vertex stride
+     */
+    uint32_t getXfbVertexStride() const {
+      return m_vertexStride;
+    }
+    
+    /**
+     * \brief Set transform feedback vertex stride
+     * 
+     * When the buffer is used as a transform feedback
+     * buffer, this will be set to the vertex stride
+     * defined by the geometry shader.
+     * \param [in] stride Vertex stride
+     */
+    void setXfbVertexStride(uint32_t stride) {
+      m_vertexStride = stride;
+    }
+    
+    /**
      * \brief Allocates new physical resource
      * \returns The new backing buffer slice
      */
@@ -170,7 +192,8 @@ namespace dxvk {
     VkMemoryPropertyFlags   m_memFlags;
     
     DxvkPhysicalBufferSlice m_physSlice;
-    uint32_t                m_revision = 0;
+    uint32_t                m_revision     = 0;
+    uint32_t                m_vertexStride = 0;
     
     sync::Spinlock m_freeMutex;
     sync::Spinlock m_swapMutex;

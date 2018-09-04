@@ -487,6 +487,18 @@ namespace dxvk {
             uint32_t          stride);
     
     /**
+     * \brief Transform feddback draw call
+
+     * \param [in] counterBuffer Xfb counter buffer
+     * \param [in] counterDivisor Vertex stride
+     * \param [in] counterBias Counter bias
+     */
+    void drawIndirectXfb(
+      const DxvkBufferSlice&  counterBuffer,
+            uint32_t          counterDivisor,
+            uint32_t          counterBias);
+    
+    /**
      * \brief Generates mip maps
      * 
      * Uses blitting to generate lower mip levels from

@@ -1020,6 +1020,25 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::drawIndirectXfb(
+    const DxvkBufferSlice&  counterBuffer,
+          uint32_t          counterDivisor,
+          uint32_t          counterBias) {
+    this->commitGraphicsState();
+
+    if (this->validateGraphicsState()) {
+      auto physicalSlice = counterBuffer.physicalSlice();
+
+      m_cmd->cmdDrawIndirectVertexCount(1, 0,
+        physicalSlice.handle(),
+        physicalSlice.offset(),
+        counterBias, counterDivisor);
+    }
+
+    m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
+  }
+
+
   void DxvkContext::initImage(
     const Rc<DxvkImage>&           image,
     const VkImageSubresourceRange& subresources) {
@@ -2758,6 +2777,8 @@ namespace dxvk {
   
   
   void DxvkContext::updateTransformFeedbackBuffers() {
+    auto gsOptions = m_state.gp.gs.shader->shaderOptions();
+
     VkBuffer     xfbBuffers[MaxNumXfbBuffers];
     VkDeviceSize xfbOffsets[MaxNumXfbBuffers];
     VkDeviceSize xfbLengths[MaxNumXfbBuffers];
@@ -2772,8 +2793,12 @@ namespace dxvk {
       if (physSlice.handle() == VK_NULL_HANDLE)
         xfbBuffers[i] = m_device->dummyBufferHandle();
       
-      if (physSlice.handle() != VK_NULL_HANDLE)
+      if (physSlice.handle() != VK_NULL_HANDLE) {
+        auto buffer = m_state.xfb.buffers[i].buffer();
+        buffer->setXfbVertexStride(gsOptions.xfbStrides[i]);
+        
         m_cmd->trackResource(physSlice.resource());
+      }
     }
 
     m_cmd->cmdBindTransformFeedbackBuffers(
