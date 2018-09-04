@@ -81,6 +81,25 @@ namespace dxvk {
   }
   
   
+  Rc<DxvkShader> DxvkGraphicsPipeline::getShader(
+          VkShaderStageFlagBits             stage) const {
+    switch (stage) {
+      case VK_SHADER_STAGE_VERTEX_BIT:
+        return m_vs != nullptr ? m_vs->shader() : nullptr;
+      case VK_SHADER_STAGE_GEOMETRY_BIT:
+        return m_gs != nullptr ? m_gs->shader() : nullptr;
+      case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
+        return m_tcs != nullptr ? m_tcs->shader() : nullptr;
+      case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
+        return m_tes != nullptr ? m_tes->shader() : nullptr;
+      case VK_SHADER_STAGE_FRAGMENT_BIT:
+        return m_fs != nullptr ? m_fs->shader() : nullptr;
+      default:
+        return nullptr;
+    }
+  }
+
+
   VkPipeline DxvkGraphicsPipeline::getPipelineHandle(
     const DxvkGraphicsPipelineStateInfo& state,
     const DxvkRenderPass&                renderPass) {
