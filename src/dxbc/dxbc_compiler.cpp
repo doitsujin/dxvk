@@ -4628,76 +4628,80 @@ namespace dxvk {
     
     // Shared memory is the only type of buffer that
     // is not accessed through a texel buffer view
-    const bool isTgsm = operand.type == DxbcOperandType::ThreadGroupSharedMemory;
+    bool isTgsm = operand.type == DxbcOperandType::ThreadGroupSharedMemory;
     
-    const uint32_t bufferId = isTgsm
-      ? 0 : m_module.opLoad(bufferInfo.typeId, bufferInfo.varId);
+    // Common types and IDs used while loading the data
+    uint32_t bufferId = isTgsm ? 0 : m_module.opLoad(bufferInfo.typeId, bufferInfo.varId);
+    
+    uint32_t vectorTypeId = getVectorTypeId({ DxbcScalarType::Uint32, 4 });
+    uint32_t scalarTypeId = getVectorTypeId({ DxbcScalarType::Uint32, 1 });
     
     // Since all data is represented as a sequence of 32-bit
     // integers, we have to load each component individually.
-    std::array<uint32_t, 4> componentIds = { 0, 0, 0, 0 };
-    std::array<uint32_t, 4> swizzleIds   = { 0, 0, 0, 0 };
-    
-    uint32_t componentIndex = 0;
-    
-    const uint32_t vectorTypeId = getVectorTypeId({ DxbcScalarType::Uint32, 4 });
-    const uint32_t scalarTypeId = getVectorTypeId({ DxbcScalarType::Uint32, 1 });
+    std::array<uint32_t, 4> ccomps = { 0, 0, 0, 0 };
+    std::array<uint32_t, 4> scomps = { 0, 0, 0, 0 };
+    uint32_t                scount = 0;
     
     for (uint32_t i = 0; i < 4; i++) {
-      // We'll apply both the write mask and the source operand swizzle
-      // immediately. Unused components are not loaded, and the scalar
-      // IDs are written to the array in the order they are requested.
-      if (writeMask[i]) {
-        const uint32_t swizzleIndex = operand.swizzle[i];
+      uint32_t sindex = operand.swizzle[i];
+
+      if (!writeMask[i])
+        continue;
+      
+      if (ccomps[sindex] == 0) {
+        uint32_t elementIndexAdjusted = m_module.opIAdd(
+          getVectorTypeId(elementIndex.type), elementIndex.id,
+          m_module.consti32(sindex));
         
-        if (componentIds[swizzleIndex] == 0) {
-          // Add the component offset to the element index
-          const uint32_t elementIndexAdjusted = m_module.opIAdd(
-            getVectorTypeId(elementIndex.type), elementIndex.id,
-            m_module.consti32(swizzleIndex));
+        // Load requested component from the buffer
+        uint32_t zero = 0;
+        
+        switch (operand.type) {
+          case DxbcOperandType::Resource:
+            ccomps[sindex] = m_module.opCompositeExtract(scalarTypeId,
+              m_module.opImageFetch(vectorTypeId,
+                bufferId, elementIndexAdjusted,
+                SpirvImageOperands()), 1, &zero);
+            break;
           
-          // Load requested component from the buffer
-          componentIds[swizzleIndex] = [&] {
-            const uint32_t zero = 0;
+          case DxbcOperandType::UnorderedAccessView:
+            ccomps[sindex] = m_module.opCompositeExtract(scalarTypeId,
+              m_module.opImageRead(vectorTypeId,
+                bufferId, elementIndexAdjusted,
+                SpirvImageOperands()), 1, &zero);
+            break;
+          
+          case DxbcOperandType::ThreadGroupSharedMemory:
+            ccomps[sindex] = m_module.opLoad(scalarTypeId,
+              m_module.opAccessChain(bufferInfo.typeId,
+                bufferInfo.varId, 1, &elementIndexAdjusted));
+            break;
             
-            switch (operand.type) {
-              case DxbcOperandType::Resource:
-                return m_module.opCompositeExtract(scalarTypeId,
-                  m_module.opImageFetch(vectorTypeId,
-                    bufferId, elementIndexAdjusted,
-                    SpirvImageOperands()), 1, &zero);
-              
-              case DxbcOperandType::UnorderedAccessView:
-                return m_module.opCompositeExtract(scalarTypeId,
-                  m_module.opImageRead(vectorTypeId,
-                    bufferId, elementIndexAdjusted,
-                    SpirvImageOperands()), 1, &zero);
-              
-              case DxbcOperandType::ThreadGroupSharedMemory:
-                return m_module.opLoad(scalarTypeId,
-                  m_module.opAccessChain(bufferInfo.typeId,
-                    bufferInfo.varId, 1, &elementIndexAdjusted));
-                
-              default:
-                throw DxvkError("DxbcCompiler: Invalid operand type for strucured/raw load");
-            }
-          }();
+          default:
+            throw DxvkError("DxbcCompiler: Invalid operand type for strucured/raw load");
         }
-        
-        // Append current component to the list of scalar IDs.
-        // These will be used to construct the resulting vector.
-        swizzleIds[componentIndex++] = componentIds[swizzleIndex];
+
       }
     }
+
+    for (uint32_t i = 0; i < 4; i++) {
+      uint32_t sindex = operand.swizzle[i];
+      
+      if (writeMask[i])
+        scomps[scount++] = ccomps[sindex];
+    }
     
-    // Create result vector
     DxbcRegisterValue result;
     result.type.ctype  = DxbcScalarType::Uint32;
-    result.type.ccount = writeMask.popCount();
-    result.id = result.type.ccount > 1
-      ? m_module.opCompositeConstruct(getVectorTypeId(result.type),
-          result.type.ccount, swizzleIds.data())
-      : swizzleIds[0];
+    result.type.ccount = scount;
+    result.id = scomps[0];
+    
+    if (scount > 1) {
+      result.id = m_module.opCompositeConstruct(
+        getVectorTypeId(result.type),
+        scount, scomps.data());
+    }
+
     return result;
   }
   
