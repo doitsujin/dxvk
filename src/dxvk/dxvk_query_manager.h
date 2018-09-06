@@ -108,6 +108,14 @@ namespace dxvk {
       const Rc<DxvkCommandList>&  cmd,
       const Rc<DxvkQueryPool>&    pool);
     
+    void beginVulkanQuery(
+      const Rc<DxvkCommandList>&  cmd,
+      const DxvkQueryRevision&    query);
+    
+    void endVulkanQuery(
+      const Rc<DxvkCommandList>&  cmd,
+      const DxvkQueryRevision&    query);
+    
     Rc<DxvkQueryPool>& getQueryPool(
             VkQueryType           type);
     

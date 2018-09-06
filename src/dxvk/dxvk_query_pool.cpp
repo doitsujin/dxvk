@@ -54,6 +54,7 @@ namespace dxvk {
     result.queryPool = m_queryPool;
     result.queryId   = queryIndex;
     result.flags     = query.query->flags();
+    result.index     = query.query->index();
     
     query.query->associateQuery(query.revision, result);
     m_queries.at(queryIndex) = query;

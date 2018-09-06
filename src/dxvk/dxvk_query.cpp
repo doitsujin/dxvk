@@ -4,8 +4,11 @@ namespace dxvk {
   
   DxvkQuery::DxvkQuery(
     VkQueryType         type,
-    VkQueryControlFlags flags)
-  : m_type(type), m_flags(flags) {
+    VkQueryControlFlags flags,
+    uint32_t            index)
+  : m_type  (type),
+    m_flags (flags),
+    m_index (index) {
     
   }
   
@@ -15,6 +18,11 @@ namespace dxvk {
   }
   
   
+  bool DxvkQuery::isIndexed() const {
+    return false;
+  }
+
+
   uint32_t DxvkQuery::reset() {
     std::unique_lock<std::mutex> lock(m_mutex);
     
