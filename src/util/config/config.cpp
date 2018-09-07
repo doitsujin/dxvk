@@ -15,6 +15,11 @@ namespace dxvk {
     { "Dishonored2.exe", {{
       { "d3d11.allowMapFlagNoWait",         "True" }
     }} },
+    /* Dragon Quest 2 - keeps searching for NVAPI */
+    { "DRAGON QUEST XI.exe", {{
+      { "dxgi.customVendorId",              "1002" },
+      { "dxgi.customDeviceId",              "E366" },
+    }} },
     /* F1 2015                                    */
     { "F1_2015.exe", {{
       { "d3d11.fakeStreamOutSupport",       "True" },
