@@ -41,6 +41,11 @@ namespace dxvk {
       { "dxgi.customVendorId",              "1002" },
       { "dxgi.customDeviceId",              "E366" },
     }} },
+    /* Batman: Arkham Knight                      */
+    { "BatmanAK.exe", {{
+      { "dxgi.customVendorId",              "1002" },
+      { "dxgi.customDeviceId",              "E366" },
+    }} },
     /* Mafia 3                                    */
     { "mafia3.exe", {{
       { "d3d11.fakeStreamOutSupport",       "True" },
