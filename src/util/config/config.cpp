@@ -111,6 +111,14 @@ namespace dxvk {
   void Config::merge(const Config& other) {
     for (auto& pair : other.m_options)
       m_options.insert(pair);
+
+    if (!m_options.empty()) {
+      // Inform the user about effective configuration settings
+      Logger::info("Effective config settings:");
+      for (auto& pair : m_options) {
+        Logger::info(str::format("  ", pair.first, " = ", pair.second));
+      }
+    }
   }
 
 
@@ -184,8 +192,13 @@ namespace dxvk {
 
   Config Config::getAppConfig(const std::string& appName) {
     auto appConfig = g_appDefaults.find(appName);
-    if (appConfig != g_appDefaults.end())
+    if (appConfig != g_appDefaults.end()) {
+      // Inform the user that we loaded a default config
+      Logger::info(str::format("Found built-in config: ", appName));
+
       return appConfig->second;
+    }
+
     return Config();
   }
 
