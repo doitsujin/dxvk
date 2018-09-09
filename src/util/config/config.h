@@ -66,6 +66,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Logs option values
+     * 
+     * Prints the effective configuration
+     * to the log for debugging purposes. 
+     */
+    void logOptions() const;
+
+    /**
      * \brief Retrieves default options for an app
      * 
      * \param [in] appName Name of the application
