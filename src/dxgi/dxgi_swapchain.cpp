@@ -272,9 +272,15 @@ namespace dxvk {
     std::lock_guard<std::mutex> lockWin(m_lockWindow);
     std::lock_guard<std::mutex> lockBuf(m_lockBuffer);
 
+    // We'll apply certainl user options to the presenter
+    const DxgiOptions* options = m_factory->GetOptions();
+
     // Retrieve the number of back buffers. If this option
     // was defined by the user, it overrides app settings.
     uint32_t bufferCount = m_desc.BufferCount;
+
+    if (options->numBackBuffers > 0)
+      bufferCount = options->numBackBuffers;
 
     // Higher values are not allowed according to the Microsoft documentation:
     // 

@@ -38,6 +38,8 @@ namespace dxvk {
     // Interpret the memory limits as Megabytes
     this->maxDeviceMemory = VkDeviceSize(config.getOption<int32_t>("dxgi.maxDeviceMemory", 0)) << 20;
     this->maxSharedMemory = VkDeviceSize(config.getOption<int32_t>("dxgi.maxSharedMemory", 0)) << 20;
+
+    this->numBackBuffers = config.getOption<int32_t>("dxgi.numBackBuffers", 0);
   }
   
 }
