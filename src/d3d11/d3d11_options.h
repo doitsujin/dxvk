@@ -23,6 +23,13 @@ namespace dxvk {
     /// well enough without it. Will be removed once
     /// Stream Output is properly supported in DXVK.
     bool fakeStreamOutSupport;
+
+    /// Maximum tessellation factor.
+    ///
+    /// Limits tessellation factors in tessellation
+    /// control shaders. Values from 8 to 64 are
+    /// supported, other values will be ignored.
+    int32_t maxTessFactor;
   };
   
 }

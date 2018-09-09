@@ -5631,10 +5631,17 @@ namespace dxvk {
         = m_module.constu32(tessFactor.index);
       
       // Apply global tess factor limit
+      float maxTessFactor = m_hs.maxTessFactor;
+
+      if (m_moduleInfo.tess != nullptr) {
+        if (m_moduleInfo.tess->maxTessFactor < maxTessFactor)
+          maxTessFactor = m_moduleInfo.tess->maxTessFactor;
+      }
+
       DxbcRegisterValue tessValue = emitRegisterExtract(value, mask);
       tessValue.id = m_module.opFClamp(getVectorTypeId(tessValue.type),
         tessValue.id, m_module.constf32(0.0f),
-        m_module.constf32(m_hs.maxTessFactor));
+        m_module.constf32(maxTessFactor));
       
       DxbcRegisterPointer ptr;
       ptr.type.ctype  = DxbcScalarType::Float32;

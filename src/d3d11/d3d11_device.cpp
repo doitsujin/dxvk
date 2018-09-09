@@ -612,6 +612,7 @@ namespace dxvk {
 
     DxbcModuleInfo moduleInfo;
     moduleInfo.options = m_dxbcOptions;
+    moduleInfo.tess    = nullptr;
     
     if (FAILED(this->CreateShaderModule(&module,
         pShaderBytecode, BytecodeLength, pClassLinkage,
@@ -636,6 +637,7 @@ namespace dxvk {
     
     DxbcModuleInfo moduleInfo;
     moduleInfo.options = m_dxbcOptions;
+    moduleInfo.tess    = nullptr;
 
     if (FAILED(this->CreateShaderModule(&module,
         pShaderBytecode, BytecodeLength, pClassLinkage,
@@ -679,6 +681,7 @@ namespace dxvk {
     
     DxbcModuleInfo moduleInfo;
     moduleInfo.options = m_dxbcOptions;
+    moduleInfo.tess    = nullptr;
 
     if (FAILED(this->CreateShaderModule(&module,
         pShaderBytecode, BytecodeLength, pClassLinkage,
@@ -701,8 +704,15 @@ namespace dxvk {
     InitReturnPtr(ppHullShader);
     D3D11CommonShader module;
     
+    DxbcTessInfo tessInfo;
+    tessInfo.maxTessFactor = float(m_d3d11Options.maxTessFactor);
+
     DxbcModuleInfo moduleInfo;
     moduleInfo.options = m_dxbcOptions;
+    moduleInfo.tess    = nullptr;
+
+    if (tessInfo.maxTessFactor >= 8.0f)
+      moduleInfo.tess = &tessInfo;
 
     if (FAILED(this->CreateShaderModule(&module,
         pShaderBytecode, BytecodeLength, pClassLinkage,
@@ -727,6 +737,7 @@ namespace dxvk {
     
     DxbcModuleInfo moduleInfo;
     moduleInfo.options = m_dxbcOptions;
+    moduleInfo.tess    = nullptr;
 
     if (FAILED(this->CreateShaderModule(&module,
         pShaderBytecode, BytecodeLength, pClassLinkage,
@@ -751,6 +762,7 @@ namespace dxvk {
     
     DxbcModuleInfo moduleInfo;
     moduleInfo.options = m_dxbcOptions;
+    moduleInfo.tess    = nullptr;
 
     if (FAILED(this->CreateShaderModule(&module,
         pShaderBytecode, BytecodeLength, pClassLinkage,
