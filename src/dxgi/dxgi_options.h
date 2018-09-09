@@ -41,6 +41,10 @@ namespace dxvk {
     /// Back buffer count for the Vulkan swap chain.
     /// Overrides DXGI_SWAP_CHAIN_DESC::BufferCount.
     int32_t numBackBuffers;
+
+    /// Sync interval. Overrides the value
+    /// passed to IDXGISwapChain::Present.
+    int32_t syncInterval;
   };
   
 }

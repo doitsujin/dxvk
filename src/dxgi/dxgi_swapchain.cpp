@@ -288,6 +288,9 @@ namespace dxvk {
     //   https://msdn.microsoft.com/en-us/library/windows/desktop/bb174576(v=vs.85).aspx
     SyncInterval = std::min<UINT>(SyncInterval, 4);
 
+    if (options->syncInterval >= 0)
+      SyncInterval = options->syncInterval;
+
     try {
       // If in fullscreen mode, apply any updated gamma curve
       // if it has been changed since the last present call.

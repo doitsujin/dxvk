@@ -40,6 +40,7 @@ namespace dxvk {
     this->maxSharedMemory = VkDeviceSize(config.getOption<int32_t>("dxgi.maxSharedMemory", 0)) << 20;
 
     this->numBackBuffers = config.getOption<int32_t>("dxgi.numBackBuffers", 0);
+    this->syncInterval   = config.getOption<int32_t>("dxgi.syncInterval", -1);
   }
   
 }
