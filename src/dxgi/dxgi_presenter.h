@@ -105,11 +105,13 @@ namespace dxvk {
      * \param [in] Format New surface format
      * \param [in] Vsync Enable vertical sync
      * \param [in] WindowSize Window size
+     * \param [in] BufferCount Swap image count
      */
     void RecreateSwapchain(
             DXGI_FORMAT       Format,
             BOOL              Vsync,
-            VkExtent2D        WindowSize);
+            VkExtent2D        WindowSize,
+            UINT              BufferCount);
     
     /**
      * \brief Sets gamma curve

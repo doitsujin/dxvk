@@ -117,7 +117,7 @@ namespace dxvk {
     swapInfo.pNext                  = nullptr;
     swapInfo.flags                  = 0;
     swapInfo.surface                = m_surface->handle();
-    swapInfo.minImageCount          = m_surface->pickImageCount(caps, mode);
+    swapInfo.minImageCount          = m_surface->pickImageCount(caps, mode, m_properties.preferredBufferCount);
     swapInfo.imageFormat            = fmt.format;
     swapInfo.imageColorSpace        = fmt.colorSpace;
     swapInfo.imageExtent            = m_surface->pickImageExtent(caps, m_properties.preferredBufferSize);

@@ -25,6 +25,7 @@ namespace dxvk {
     m_options.preferredSurfaceFormat = { VK_FORMAT_UNDEFINED, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
     m_options.preferredPresentMode   = VK_PRESENT_MODE_FIFO_KHR;
     m_options.preferredBufferSize    = { 0u, 0u };
+    m_options.preferredBufferCount   = 0;
     
     // Samplers for presentation. We'll create one with point sampling that will
     // be used when the back buffer resolution matches the output resolution, and
@@ -293,7 +294,7 @@ namespace dxvk {
   }
   
   
-  void DxgiVkPresenter::RecreateSwapchain(DXGI_FORMAT Format, BOOL Vsync, VkExtent2D WindowSize) {
+  void DxgiVkPresenter::RecreateSwapchain(DXGI_FORMAT Format, BOOL Vsync, VkExtent2D WindowSize, UINT BufferCount) {
     if (m_surface == nullptr)
       m_surface = CreateSurface();
     
@@ -301,6 +302,7 @@ namespace dxvk {
     options.preferredSurfaceFormat  = PickSurfaceFormat(Format);
     options.preferredPresentMode    = PickPresentMode(Vsync);
     options.preferredBufferSize     = WindowSize;
+    options.preferredBufferCount    = BufferCount;
     
     const bool doRecreate =
          options.preferredSurfaceFormat.format      != m_options.preferredSurfaceFormat.format

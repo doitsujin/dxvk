@@ -28,6 +28,7 @@ namespace dxvk {
     VkSurfaceFormatKHR preferredSurfaceFormat;
     VkPresentModeKHR   preferredPresentMode;
     VkExtent2D         preferredBufferSize;
+    uint32_t           preferredBufferCount;
   };
   
   

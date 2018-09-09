@@ -65,11 +65,13 @@ namespace dxvk {
      * 
      * \param [in] caps Surface capabilities
      * \param [in] mode The present mode
+     * \param [in] preferred Preferred image count
      * \returns Suitable image count
      */
     uint32_t pickImageCount(
       const VkSurfaceCapabilitiesKHR& caps,
-            VkPresentModeKHR          mode) const;
+            VkPresentModeKHR          mode,
+            uint32_t                  preferred) const;
     
     /**
      * \brief Picks a suitable image size for a swap chain
