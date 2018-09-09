@@ -115,9 +115,8 @@ namespace dxvk {
     if (!m_options.empty()) {
       // Inform the user about effective configuration settings
       Logger::info("Effective config settings:");
-      for (auto& pair : m_options) {
+      for (auto& pair : m_options)
         Logger::info(str::format("  ", pair.first, " = ", pair.second));
-      }
     }
   }
 
