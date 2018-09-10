@@ -46,6 +46,14 @@ namespace dxvk {
      || info.addressModeW == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER)
       info.borderColor = DecodeBorderColor(desc.BorderColor);
     
+    // Enforce anisotropy specified in the device options
+    int32_t samplerAnisotropyOption = device->GetOptions()->samplerAnisotropy;
+
+    if (samplerAnisotropyOption >= 0) {
+      info.useAnisotropy = samplerAnisotropyOption > 0;
+      info.maxAnisotropy = float(samplerAnisotropyOption);
+    }
+    
     m_sampler = device->GetDXVKDevice()->createSampler(info);
   }
   

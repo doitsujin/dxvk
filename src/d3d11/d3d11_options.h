@@ -30,6 +30,12 @@ namespace dxvk {
     /// control shaders. Values from 8 to 64 are
     /// supported, other values will be ignored.
     int32_t maxTessFactor;
+
+    /// Anisotropic filter override
+    ///
+    /// Enforces anisotropic filtering with the
+    /// given anisotropy value for all samplers.
+    int32_t samplerAnisotropy;
   };
   
 }
