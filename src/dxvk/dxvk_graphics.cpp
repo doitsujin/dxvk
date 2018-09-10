@@ -39,19 +39,17 @@ namespace dxvk {
     const Rc<vk::DeviceFn>&               vkd,
     const DxvkGraphicsPipelineStateInfo&  stateVector,
           VkRenderPass                    renderPass,
-          VkPipeline                      basePipeline)
+          VkPipeline                      pipeline)
   : m_vkd         (vkd),
     m_stateVector (stateVector),
     m_renderPass  (renderPass),
-    m_basePipeline(basePipeline),
-    m_fastPipeline(VK_NULL_HANDLE) {
+    m_pipeline    (pipeline) {
     
   }
   
   
   DxvkGraphicsPipelineInstance::~DxvkGraphicsPipelineInstance() {
-    m_vkd->vkDestroyPipeline(m_vkd->device(), m_basePipeline, nullptr);
-    m_vkd->vkDestroyPipeline(m_vkd->device(), m_fastPipeline, nullptr);
+    m_vkd->vkDestroyPipeline(m_vkd->device(), m_pipeline, nullptr);
   }
   
   
@@ -123,14 +121,17 @@ namespace dxvk {
     
     // If no pipeline instance exists with the given state
     // vector, create a new one and add it to the list.
-    VkPipeline newPipelineBase   = m_basePipelineBase.load();
-    VkPipeline newPipelineHandle = this->compilePipeline(state, renderPassHandle,
-      m_compiler != nullptr ? VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT : 0,
-      newPipelineBase);
+    VkPipeline newPipelineBase   = m_basePipeline.load();
+    VkPipeline newPipelineHandle = VK_NULL_HANDLE;
+    
+    if (m_compiler == nullptr) {
+      newPipelineHandle = this->compilePipeline(
+        state, renderPassHandle, newPipelineBase);
+    }
     
     Rc<DxvkGraphicsPipelineInstance> newPipeline =
-      new DxvkGraphicsPipelineInstance(m_device->vkd(), state,
-        renderPassHandle, newPipelineHandle);
+      new DxvkGraphicsPipelineInstance(m_device->vkd(),
+        state, renderPassHandle, newPipelineHandle);
     
     { std::lock_guard<sync::Spinlock> lock(m_mutex);
       
@@ -144,15 +145,15 @@ namespace dxvk {
       
       // Add new pipeline to the set
       m_pipelines.push_back(newPipeline);
-      
+
       stats.addCtr(DxvkStatCounter::PipeCountGraphics, 1);
     }
     
     // Use the new pipeline as the base pipeline for derivative pipelines
     if (newPipelineBase == VK_NULL_HANDLE && newPipelineHandle != VK_NULL_HANDLE)
-      m_basePipelineBase.compare_exchange_strong(newPipelineBase, newPipelineHandle);
+      m_basePipeline.compare_exchange_strong(newPipelineBase, newPipelineHandle);
     
-    // Compile optimized pipeline asynchronously
+    // Compile pipeline asynchronously if requested
     if (m_compiler != nullptr)
       m_compiler->queueCompilation(this, newPipeline);
     
@@ -163,18 +164,18 @@ namespace dxvk {
   void DxvkGraphicsPipeline::compileInstance(
     const Rc<DxvkGraphicsPipelineInstance>& instance) {
     // Compile an optimized version of the pipeline
-    VkPipeline newPipelineBase   = m_fastPipelineBase.load();
+    VkPipeline newPipelineBase   = m_basePipeline.load();
     VkPipeline newPipelineHandle = this->compilePipeline(
       instance->m_stateVector, instance->m_renderPass,
-      0, m_fastPipelineBase);
+      newPipelineBase);
     
-    if (!instance->setFastPipeline(newPipelineHandle)) {
+    if (!instance->setPipeline(newPipelineHandle)) {
       // If another thread finished compiling an optimized version of this
       // pipeline before this one finished, discard the new pipeline object.
       m_vkd->vkDestroyPipeline(m_vkd->device(), newPipelineHandle, nullptr);
     } else if (newPipelineBase == VK_NULL_HANDLE && newPipelineHandle != VK_NULL_HANDLE) {
       // Use the new pipeline as the base pipeline for derivative pipelines.
-      m_fastPipelineBase.compare_exchange_strong(newPipelineBase, newPipelineHandle);
+      m_basePipeline.compare_exchange_strong(newPipelineBase, newPipelineHandle);
     }
   }
   
@@ -194,7 +195,6 @@ namespace dxvk {
   VkPipeline DxvkGraphicsPipeline::compilePipeline(
     const DxvkGraphicsPipelineStateInfo& state,
           VkRenderPass                   renderPass,
-          VkPipelineCreateFlags          createFlags,
           VkPipeline                     baseHandle) const {
     if (Logger::logLevel() <= LogLevel::Debug) {
       Logger::debug("Compiling graphics pipeline...");
@@ -363,7 +363,7 @@ namespace dxvk {
     VkGraphicsPipelineCreateInfo info;
     info.sType                    = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     info.pNext                    = nullptr;
-    info.flags                    = createFlags;
+    info.flags                    = 0;
     info.stageCount               = stages.size();
     info.pStages                  = stages.data();
     info.pVertexInputState        = &viInfo;
