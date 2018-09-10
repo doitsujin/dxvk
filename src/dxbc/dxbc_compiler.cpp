@@ -5130,7 +5130,6 @@ namespace dxvk {
         switch (m_version.type()) {
           case DxbcProgramType::VertexShader:   return emitVsSystemValueLoad(map.sv, map.regMask);
           case DxbcProgramType::PixelShader:    return emitPsSystemValueLoad(map.sv, map.regMask);
-          case DxbcProgramType::ComputeShader:  return emitCsSystemValueLoad(map.sv, map.regMask);
           default: throw DxvkError(str::format("DxbcCompiler: Unexpected stage: ", m_version.type()));
         }
       }();
@@ -5509,17 +5508,6 @@ namespace dxvk {
       default:
         throw DxvkError(str::format(
           "DxbcCompiler: Unhandled PS SV input: ", sv));
-    }
-  }
-  
-  
-  DxbcRegisterValue DxbcCompiler::emitCsSystemValueLoad(
-          DxbcSystemValue         sv,
-          DxbcRegMask             mask) {
-    switch (sv) {
-      default:
-        throw DxvkError(str::format(
-          "DxbcCompiler: Unhandled CS SV input: ", sv));
     }
   }
   

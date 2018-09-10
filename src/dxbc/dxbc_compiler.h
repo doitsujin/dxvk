@@ -968,10 +968,6 @@ namespace dxvk {
             DxbcSystemValue         sv,
             DxbcRegMask             mask);
     
-    DxbcRegisterValue emitCsSystemValueLoad(
-            DxbcSystemValue         sv,
-            DxbcRegMask             mask);
-    
     ///////////////////////////////////////////
     // System value store methods (per shader)
     void emitVsSystemValueStore(
