@@ -106,6 +106,12 @@ namespace dxvk {
       return m_thread != nullptr
           && m_thread->joinable();
     }
+    
+    static uint32_t hardware_concurrency() {
+      SYSTEM_INFO info = { };
+      ::GetSystemInfo(&info);
+      return info.dwNumberOfProcessors;
+    }
 
   private:
 
