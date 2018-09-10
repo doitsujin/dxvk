@@ -1,6 +1,6 @@
 #pragma once
 
-#include <set>
+#include <map>
 #include <vector>
 
 #include "dxvk_include.h"
@@ -60,7 +60,15 @@ namespace dxvk {
      * \returns \c true if the extension is enabled
      */
     operator bool () const {
-      return m_enabled;
+      return m_revision != 0;
+    }
+
+    /**
+     * \brief Supported revision
+     * \returns Supported revision
+     */
+    uint32_t revision() const {
+      return m_revision;
     }
 
     /**
@@ -76,15 +84,15 @@ namespace dxvk {
     /**
      * \brief Enables the extension
      */
-    void enable() {
-      m_enabled = true;
+    void enable(uint32_t revision) {
+      m_revision = revision;
     }
 
   private:
 
-    const char* m_name    = nullptr;
-    DxvkExtMode m_mode    = DxvkExtMode::Disabled;
-    bool        m_enabled = false;
+    const char* m_name     = nullptr;
+    DxvkExtMode m_mode     = DxvkExtMode::Disabled;
+    uint32_t    m_revision = 0;
 
   };
 
@@ -175,9 +183,9 @@ namespace dxvk {
      * \brief Checks whether an extension is supported
      * 
      * \param [in] pName Extension name
-     * \returns \c true if the extension is supported
+     * \returns Supported revision, or zero
      */
-    bool supports(
+    uint32_t supports(
       const char*             pName) const;
     
     /**
@@ -238,7 +246,7 @@ namespace dxvk {
 
   private:
 
-    std::set<std::string> m_names;
+    std::map<std::string, uint32_t> m_names;
 
   };
 

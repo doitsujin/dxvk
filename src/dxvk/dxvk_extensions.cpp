@@ -7,18 +7,25 @@ namespace dxvk {
 
 
   void DxvkNameSet::add(const char* pName) {
-    m_names.insert(pName);
+    m_names.insert({ pName, 1u });
   }
 
 
   void DxvkNameSet::merge(const DxvkNameSet& names) {
-    for (const std::string& name : names.m_names)
-      m_names.insert(name);
+    for (const auto& pair : names.m_names)
+      m_names.insert(pair);
   }
 
 
-  bool DxvkNameSet::supports(const char* pName) const {
-    return m_names.find(pName) != m_names.end();
+  uint32_t DxvkNameSet::supports(const char* pName) const {
+    auto entry = m_names.find(pName);
+
+    if (entry == m_names.end())
+      return 0;
+    
+    return entry->second != 0
+      ? entry->second
+      : 1;
   }
 
 
@@ -32,11 +39,11 @@ namespace dxvk {
       DxvkExt* ext = ppExtensions[i];
 
       if (ext->mode() != DxvkExtMode::Disabled) {
-        bool supported = supports(ext->name());
+        uint32_t revision = supports(ext->name());
 
-        if (supported) {
+        if (revision != 0) {
           nameSet.add(ext->name());
-          ext->enable();
+          ext->enable(revision);
         } else if (ext->mode() == DxvkExtMode::Required) {
           Logger::info(str::format(
             "Required Vulkan extension ", ext->name(), " not supported"));
@@ -51,8 +58,8 @@ namespace dxvk {
 
   DxvkNameList DxvkNameSet::toNameList() const {
     DxvkNameList nameList;
-    for (const std::string& name : m_names)
-      nameList.add(name.c_str());
+    for (const auto& pair : m_names)
+      nameList.add(pair.first.c_str());
     return nameList;
   }
 
@@ -70,7 +77,7 @@ namespace dxvk {
 
     DxvkNameSet set;
     for (uint32_t i = 0; i < entryCount; i++)
-      set.m_names.insert(entries[i].layerName);
+      set.m_names.insert({ entries[i].layerName, entries[i].specVersion });
     return set;
   }
   
@@ -88,7 +95,7 @@ namespace dxvk {
 
     DxvkNameSet set;
     for (uint32_t i = 0; i < entryCount; i++)
-      set.m_names.insert(entries[i].extensionName);
+      set.m_names.insert({ entries[i].extensionName, entries[i].specVersion });
     return set;
   }
 
@@ -108,7 +115,7 @@ namespace dxvk {
 
     DxvkNameSet set;
     for (uint32_t i = 0; i < entryCount; i++)
-      set.m_names.insert(entries[i].extensionName);
+      set.m_names.insert({ entries[i].extensionName, entries[i].specVersion });
     return set;
   }
   
