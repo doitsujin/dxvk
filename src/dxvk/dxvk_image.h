@@ -376,7 +376,34 @@ namespace dxvk {
     VkImageLayout pickLayout(VkImageLayout layout) const {
       return m_image->pickLayout(layout);
     }
-    
+
+    /**
+     * \brief Sets render target usage frame number
+     * 
+     * The image view will track internally when
+     * it was last used as a render target. This
+     * info is used for async shader compilation.
+     * \param [in] frameId Frame number
+     */
+    void setRtBindingFrameId(uint32_t frameId) {
+      if (m_rtBindingCurrFrame != frameId) {
+        m_rtBindingPrevFrame = m_rtBindingCurrFrame;
+        m_rtBindingCurrFrame = frameId;
+      }
+    }
+
+    /**
+     * \brief Checks for async pipeline compatibility
+     * 
+     * Asynchronous pipeline compilation may be enabled if the
+     * render target has been used during the previous frame.
+     * \param [in] frameId Current frame ID
+     * \returns \c true if async compilation is supported
+     */
+    bool getRtBindingAsyncShadersCompatibility(uint32_t frameId) const {
+      return m_rtBindingPrevFrame == frameId - 1;
+    }
+
   private:
     
     Rc<vk::DeviceFn>  m_vkd;
@@ -384,7 +411,10 @@ namespace dxvk {
     
     DxvkImageViewCreateInfo m_info;
     VkImageView             m_views[ViewCount];
-    
+
+    uint32_t m_rtBindingCurrFrame = 0;
+    uint32_t m_rtBindingPrevFrame = 0;
+
     void createView(VkImageViewType type, uint32_t numLayers);
     
   };
