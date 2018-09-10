@@ -4,10 +4,12 @@
 namespace dxvk {
   
   DxvkPipelineCompiler::DxvkPipelineCompiler() {
-    constexpr uint32_t threadCount = 1u;
+    uint32_t sysCpuCount = dxvk::thread::hardware_concurrency();
+    uint32_t threadCount = sysCpuCount > 2 ? sysCpuCount - 2 : 1;
     
-    Logger::debug(str::format(
-      "DxvkPipelineCompiler: Using ", threadCount, " workers"));
+    Logger::info(str::format(
+      "DxvkPipelineCompiler: Using ",
+      threadCount, " workers"));
     
     // Start the compiler threads
     m_compilerThreads.resize(threadCount);
