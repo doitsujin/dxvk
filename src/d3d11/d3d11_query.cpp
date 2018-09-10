@@ -201,9 +201,15 @@ namespace dxvk {
     } else {
       DxvkQueryData queryData = {};
       
-      if (m_query                     != nullptr
-       && m_query->getData(queryData) != DxvkQueryStatus::Available)
-        return S_FALSE;
+      if (m_query != nullptr) {
+        DxvkQueryStatus status = m_query->getData(queryData);
+
+        if (status == DxvkQueryStatus::Created)
+          return DXGI_ERROR_INVALID_CALL;
+        
+        if (status != DxvkQueryStatus::Available)
+          return S_FALSE;
+      }
       
       if (pData == nullptr)
         return S_OK;

@@ -13,10 +13,11 @@ namespace dxvk {
    * the current status of the query. 
    */
   enum class DxvkQueryStatus : uint32_t {
-    Reset     = 0,  ///< Query is reset
-    Active    = 1,  ///< Query is being recorded
-    Pending   = 2,  ///< Query has been recorded
-    Available = 3,  ///< Query results can be retrieved
+    Created   = 0,  ///< Query was just created
+    Reset     = 1,  ///< Query is reset
+    Active    = 2,  ///< Query is being recorded
+    Pending   = 3,  ///< Query has been recorded
+    Available = 4,  ///< Query results can be retrieved
   };
   
   /**
@@ -190,7 +191,7 @@ namespace dxvk {
     
     std::mutex m_mutex;
     
-    DxvkQueryStatus m_status   = DxvkQueryStatus::Reset;
+    DxvkQueryStatus m_status   = DxvkQueryStatus::Created;
     DxvkQueryData   m_data     = {};
     DxvkQueryHandle m_handle;
     
