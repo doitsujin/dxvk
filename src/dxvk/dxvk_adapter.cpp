@@ -182,7 +182,11 @@ namespace dxvk {
         && (m_deviceFeatures.core.features.variableMultisampleRate
                 || !required.core.features.variableMultisampleRate)
         && (m_deviceFeatures.core.features.inheritedQueries
-                || !required.core.features.inheritedQueries);
+                || !required.core.features.inheritedQueries)
+        && (m_deviceFeatures.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor
+                || !required.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor)
+        && (m_deviceFeatures.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor
+                || !required.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor);
   }
   
   
@@ -217,7 +221,16 @@ namespace dxvk {
     
     Logger::info("Enabled device extensions:");
     this->logNameList(extensionNameList);
+
+    // Create pNext chain for additional device features
+    enabledFeatures.core.pNext = nullptr;
+
+    if (devExtensions.extVertexAttributeDivisor.revision() >= 3) {
+      enabledFeatures.extVertexAttributeDivisor.pNext = enabledFeatures.core.pNext;
+      enabledFeatures.core.pNext = &enabledFeatures.extVertexAttributeDivisor;
+    }
     
+    // Create one single queue for graphics and present
     float queuePriority = 1.0f;
     std::vector<VkDeviceQueueCreateInfo> queueInfos;
     
@@ -241,7 +254,7 @@ namespace dxvk {
 
     VkDeviceCreateInfo info;
     info.sType                      = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-    info.pNext                      = nullptr;
+    info.pNext                      = enabledFeatures.core.pNext;
     info.flags                      = 0;
     info.queueCreateInfoCount       = queueInfos.size();
     info.pQueueCreateInfos          = queueInfos.data();

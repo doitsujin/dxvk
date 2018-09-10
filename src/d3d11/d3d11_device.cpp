@@ -1324,6 +1324,9 @@ namespace dxvk {
 
     enabled.core.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
     enabled.core.pNext = nullptr;
+
+    enabled.extVertexAttributeDivisor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT;
+    enabled.extVertexAttributeDivisor.pNext = nullptr;
     
     if (featureLevel >= D3D_FEATURE_LEVEL_9_1) {
       enabled.core.features.depthClamp                            = VK_TRUE;
@@ -1376,6 +1379,12 @@ namespace dxvk {
       enabled.core.features.vertexPipelineStoresAndAtomics        = VK_TRUE;
     }
     
+    if (supported.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor
+     && supported.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor) {
+      enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor      = VK_TRUE;
+      enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor  = VK_TRUE;
+    }
+
     return enabled;
   }
   
