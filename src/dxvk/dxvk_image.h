@@ -386,9 +386,13 @@ namespace dxvk {
      * \param [in] frameId Frame number
      */
     void setRtBindingFrameId(uint32_t frameId) {
-      if (m_rtBindingCurrFrame != frameId) {
-        m_rtBindingPrevFrame = m_rtBindingCurrFrame;
-        m_rtBindingCurrFrame = frameId;
+      if (frameId != m_rtBindingFrameId) {
+        if (frameId == m_rtBindingFrameId + 1)
+          m_rtBindingFrameCount += 1;
+        else
+          m_rtBindingFrameCount = 0;
+        
+        m_rtBindingFrameId = frameId;
       }
     }
 
@@ -396,12 +400,12 @@ namespace dxvk {
      * \brief Checks for async pipeline compatibility
      * 
      * Asynchronous pipeline compilation may be enabled if the
-     * render target has been used during the previous frame.
+     * render target has been drawn to in the previous frames.
      * \param [in] frameId Current frame ID
      * \returns \c true if async compilation is supported
      */
-    bool getRtBindingAsyncShadersCompatibility(uint32_t frameId) const {
-      return m_rtBindingPrevFrame == frameId - 1;
+    bool getRtBindingAsyncCompilationCompat() const {
+      return m_rtBindingFrameCount >= 5;
     }
 
   private:
@@ -412,8 +416,8 @@ namespace dxvk {
     DxvkImageViewCreateInfo m_info;
     VkImageView             m_views[ViewCount];
 
-    uint32_t m_rtBindingCurrFrame = 0;
-    uint32_t m_rtBindingPrevFrame = 0;
+    uint32_t m_rtBindingFrameId    = 0;
+    uint32_t m_rtBindingFrameCount = 0;
 
     void createView(VkImageViewType type, uint32_t numLayers);
     

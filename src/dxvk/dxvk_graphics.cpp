@@ -102,9 +102,10 @@ namespace dxvk {
   VkPipeline DxvkGraphicsPipeline::getPipelineHandle(
     const DxvkGraphicsPipelineStateInfo& state,
     const DxvkRenderPass&                renderPass,
-          DxvkStatCounters&              stats) {
+          DxvkStatCounters&              stats,
+          bool                           async) {
     VkRenderPass renderPassHandle = renderPass.getDefaultHandle();
-    
+
     { std::lock_guard<sync::Spinlock> lock(m_mutex);
       
       DxvkGraphicsPipelineInstance* pipeline =
@@ -124,7 +125,7 @@ namespace dxvk {
     VkPipeline newPipelineBase   = m_basePipeline.load();
     VkPipeline newPipelineHandle = VK_NULL_HANDLE;
     
-    if (m_compiler == nullptr) {
+    if (!async) {
       newPipelineHandle = this->compilePipeline(
         state, renderPassHandle, newPipelineBase);
     }
@@ -154,7 +155,7 @@ namespace dxvk {
       m_basePipeline.compare_exchange_strong(newPipelineBase, newPipelineHandle);
     
     // Compile pipeline asynchronously if requested
-    if (m_compiler != nullptr)
+    if (async)
       m_compiler->queueCompilation(this, newPipeline);
     
     return newPipelineHandle;

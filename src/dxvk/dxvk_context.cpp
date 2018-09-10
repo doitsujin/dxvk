@@ -1976,7 +1976,8 @@ namespace dxvk {
       
       m_gpActivePipeline = m_state.gp.pipeline != nullptr && m_state.om.framebuffer != nullptr
         ? m_state.gp.pipeline->getPipelineHandle(m_state.gp.state,
-            m_state.om.framebuffer->getRenderPass(), m_cmd->statCounters())
+            m_state.om.framebuffer->getRenderPass(), m_cmd->statCounters(),
+            this->checkAsyncCompilationCompat())
         : VK_NULL_HANDLE;
       
       if (m_gpActivePipeline != VK_NULL_HANDLE) {
@@ -2253,6 +2254,9 @@ namespace dxvk {
           ? util::invertComponentMapping(attachment->info().swizzle)
           : VkComponentMapping();
       }
+
+      for (uint32_t i = 0; i < fb->numAttachments(); i++)
+        fb->getAttachment(i).view->setRtBindingFrameId(m_device->getCurrentFrameId());
       
       m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     }
@@ -2520,6 +2524,18 @@ namespace dxvk {
         }
       }
     }
+  }
+
+
+  bool DxvkContext::checkAsyncCompilationCompat() {
+    bool fbCompat = m_device->config().useAsyncPipeCompiler;
+
+    for (uint32_t i = 0; fbCompat && i < m_state.om.framebuffer->numAttachments(); i++) {
+      const auto& attachment = m_state.om.framebuffer->getAttachment(i);
+      fbCompat &= attachment.view->getRtBindingAsyncCompilationCompat();
+    }
+
+    return fbCompat;
   }
   
 }

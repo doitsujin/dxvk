@@ -195,12 +195,14 @@ namespace dxvk {
      * \param [in] state Pipeline state vector
      * \param [in] renderPass The render pass
      * \param [in,out] stats Stat counter
+     * \param [in] async Compile asynchronously
      * \returns Pipeline handle
      */
     VkPipeline getPipelineHandle(
       const DxvkGraphicsPipelineStateInfo&    state,
       const DxvkRenderPass&                   renderPass,
-            DxvkStatCounters&                 stats);
+            DxvkStatCounters&                 stats,
+            bool                              async);
     
     /**
      * \brief Compiles optimized pipeline

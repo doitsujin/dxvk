@@ -728,6 +728,8 @@ namespace dxvk {
     
     void commitComputeInitBarriers();
     void commitComputePostBarriers();
+
+    bool checkAsyncCompilationCompat();
     
     Rc<DxvkBuffer> getTransferBuffer(VkDeviceSize size);
     
