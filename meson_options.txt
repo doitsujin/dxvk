@@ -1,2 +1,4 @@
-option('enable_tests', type : 'boolean', value : false)
-option('enable_utils', type : 'boolean', value : true)
+option('enable_tests', type : 'boolean', value : false,
+  description: 'build simple apps to test DXVK work')
+option('enable_utils', type : 'boolean', value : true,
+  description: 'build setup helper utility (setup_dxvk.sh)')
