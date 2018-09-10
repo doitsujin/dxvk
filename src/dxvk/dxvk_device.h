@@ -293,6 +293,12 @@ namespace dxvk {
      * usage, draw calls, etc.
      */
     DxvkStatCounters getStatCounters();
+
+    /**
+     * \brief Retreves current frame ID
+     * \returns Current frame ID
+     */
+    uint32_t getCurrentFrameId() const;
     
     /**
      * \brief Initializes dummy resources

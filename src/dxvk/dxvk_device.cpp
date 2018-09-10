@@ -207,6 +207,11 @@ namespace dxvk {
     result.merge(m_statCounters);
     return result;
   }
+
+
+  uint32_t DxvkDevice::getCurrentFrameId() const {
+    return m_statCounters.getCtr(DxvkStatCounter::QueuePresentCount);
+  }
   
   
   void DxvkDevice::initResources() {
