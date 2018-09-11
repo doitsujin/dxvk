@@ -44,7 +44,7 @@ namespace dxvk {
     const DxvkQueryRevision&    query) {
     m_activeQueries.push_back(query);
 
-    if (m_activeTypes.test(query.query->type())) {
+    if (m_activeTypes & getDxvkQueryTypeBit(query.query->type())) {
       DxvkQueryHandle handle = this->allocQuery(cmd, query);
       
       cmd->cmdBeginQuery(
@@ -69,7 +69,7 @@ namespace dxvk {
     }
     
     if (iter != m_activeQueries.end()) {
-      if (m_activeTypes.test(iter->query->type())) {
+      if (m_activeTypes & getDxvkQueryTypeBit(iter->query->type())) {
         DxvkQueryHandle handle = iter->query->getHandle();
 
         cmd->cmdEndQuery(
@@ -84,11 +84,11 @@ namespace dxvk {
 
   void DxvkQueryManager::beginQueries(
     const Rc<DxvkCommandList>&  cmd,
-          DxvkQueryTypeFlags    types) {
-    m_activeTypes.set(types);
+          VkQueryType           type) {
+    m_activeTypes |= getDxvkQueryTypeBit(type);
 
     for (const DxvkQueryRevision& query : m_activeQueries) {
-      if (types.test(query.query->type())) {
+      if (type == query.query->type()) {
         DxvkQueryHandle handle = this->allocQuery(cmd, query);
         
         cmd->cmdBeginQuery(
@@ -102,11 +102,11 @@ namespace dxvk {
   
   void DxvkQueryManager::endQueries(
     const Rc<DxvkCommandList>&  cmd,
-          DxvkQueryTypeFlags    types) {
-    m_activeTypes.clr(types);
+          VkQueryType           type) {
+    m_activeTypes &= ~getDxvkQueryTypeBit(type);
 
     for (const DxvkQueryRevision& query : m_activeQueries) {
-      if (types.test(query.query->type())) {
+      if (type == query.query->type()) {
         DxvkQueryHandle handle = query.query->getHandle();
         
         cmd->cmdEndQuery(
@@ -149,6 +149,16 @@ namespace dxvk {
 
       default:
         throw DxvkError("DXVK: Invalid query type");
+    }
+  }
+
+
+  uint32_t DxvkQueryManager::getDxvkQueryTypeBit(VkQueryType type) {
+    switch (type) {
+      case VK_QUERY_TYPE_OCCLUSION:           return 0x01;
+      case VK_QUERY_TYPE_PIPELINE_STATISTICS: return 0x02;
+      case VK_QUERY_TYPE_TIMESTAMP:           return 0x04;
+      default:                                return 0;
     }
   }
 

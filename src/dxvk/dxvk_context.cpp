@@ -1797,9 +1797,8 @@ namespace dxvk {
         m_state.om.renderPassOps);
       
       // Begin occlusion queries
-      m_queries.beginQueries(m_cmd, {
-        VK_QUERY_TYPE_OCCLUSION,
-        VK_QUERY_TYPE_PIPELINE_STATISTICS });
+      m_queries.beginQueries(m_cmd, VK_QUERY_TYPE_OCCLUSION);
+      m_queries.beginQueries(m_cmd, VK_QUERY_TYPE_PIPELINE_STATISTICS);
     }
   }
   
@@ -1811,9 +1810,8 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
       m_flags.clr(DxvkContextFlag::GpRenderPassBound);
 
-      m_queries.endQueries(m_cmd, {
-        VK_QUERY_TYPE_OCCLUSION,
-        VK_QUERY_TYPE_PIPELINE_STATISTICS });
+      m_queries.endQueries(m_cmd, VK_QUERY_TYPE_OCCLUSION);
+      m_queries.endQueries(m_cmd, VK_QUERY_TYPE_PIPELINE_STATISTICS);
       
       this->renderPassUnbindFramebuffer();
     }
