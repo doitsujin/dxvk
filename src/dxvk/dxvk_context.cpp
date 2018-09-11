@@ -2528,7 +2528,7 @@ namespace dxvk {
 
 
   bool DxvkContext::checkAsyncCompilationCompat() {
-    bool fbCompat = m_device->config().useAsyncPipeCompiler;
+    bool fbCompat = m_device->config().asyncPipeCompiler;
 
     for (uint32_t i = 0; fbCompat && i < m_state.om.framebuffer->numAttachments(); i++) {
       const auto& attachment = m_state.om.framebuffer->getAttachment(i);

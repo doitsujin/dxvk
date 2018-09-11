@@ -42,7 +42,7 @@ namespace dxvk {
   : m_device  (device),
     m_cache   (new DxvkPipelineCache(device->vkd())),
     m_compiler(nullptr) {
-    if (m_device->config().useAsyncPipeCompiler)
+    if (m_device->config().asyncPipeCompiler)
       m_compiler = new DxvkPipelineCompiler();
   }
   

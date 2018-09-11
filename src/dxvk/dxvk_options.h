@@ -12,7 +12,7 @@ namespace dxvk {
     bool allowMemoryOvercommit;
 
     /// Enable asynchronous pipeline compilation.
-    bool useAsyncPipeCompiler;
+    bool asyncPipeCompiler;
   };
 
 }
