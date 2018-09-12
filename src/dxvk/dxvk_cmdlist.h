@@ -43,7 +43,6 @@ namespace dxvk {
   public:
     
     DxvkCommandList(
-      const Rc<vk::DeviceFn>& vkd,
             DxvkDevice*       device,
             uint32_t          queueFamily);
     ~DxvkCommandList();

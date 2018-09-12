@@ -106,8 +106,8 @@ namespace dxvk {
     Rc<DxvkCommandList> cmdList = m_recycledCommandLists.retrieveObject();
     
     if (cmdList == nullptr) {
-      cmdList = new DxvkCommandList(m_vkd,
-        this, m_adapter->graphicsQueueFamily());
+      cmdList = new DxvkCommandList(this,
+        m_adapter->graphicsQueueFamily());
     }
     
     return cmdList;

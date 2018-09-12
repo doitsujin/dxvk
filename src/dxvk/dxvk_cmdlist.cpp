@@ -4,12 +4,11 @@
 namespace dxvk {
     
   DxvkCommandList::DxvkCommandList(
-    const Rc<vk::DeviceFn>& vkd,
           DxvkDevice*       device,
           uint32_t          queueFamily)
-  : m_vkd           (vkd),
+  : m_vkd           (device->vkd()),
     m_cmdBuffersUsed(0),
-    m_descAlloc     (vkd),
+    m_descAlloc     (device->vkd()),
     m_stagingAlloc  (device) {
     VkFenceCreateInfo fenceInfo;
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
