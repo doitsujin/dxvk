@@ -11,6 +11,10 @@
 namespace dxvk {
 
   const static std::unordered_map<std::string, Config> g_appDefaults = {{
+    /* Assassin's Creed Syndicate - amdags issues */
+    { "ACS.exe", {{
+      { "dxgi.customVendorId",              "10DE" },
+    }} },
     /* Dishonored 2                               */
     { "Dishonored2.exe", {{
       { "d3d11.allowMapFlagNoWait",         "True" }
