@@ -838,6 +838,12 @@ namespace dxvk {
     void commitComputeInitBarriers();
     void commitComputePostBarriers();
 
+    void emitMemoryBarrier(
+            VkPipelineStageFlags      srcStages,
+            VkAccessFlags             srcAccess,
+            VkPipelineStageFlags      dstStages,
+            VkAccessFlags             dstAccess);
+
     void trackDrawBuffer();
     
   };

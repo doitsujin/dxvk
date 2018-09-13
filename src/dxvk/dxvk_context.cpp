@@ -2176,6 +2176,8 @@ namespace dxvk {
       m_queries.endQueries(m_cmd, VK_QUERY_TYPE_PIPELINE_STATISTICS);
       
       this->renderPassUnbindFramebuffer();
+
+      m_flags.clr(DxvkContextFlag::GpDirtyXfbCounters);
     }
   }
   
@@ -2256,6 +2258,16 @@ namespace dxvk {
     if (!m_flags.test(DxvkContextFlag::GpXfbActive)) {
       m_flags.set(DxvkContextFlag::GpXfbActive);
 
+      if (m_flags.test(DxvkContextFlag::GpDirtyXfbCounters)) {
+        m_flags.clr(DxvkContextFlag::GpDirtyXfbCounters);
+
+        this->emitMemoryBarrier(
+          VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT,
+          VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT,
+          VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, /* XXX */
+          VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT);
+      }
+
       VkBuffer     ctrBuffers[MaxNumXfbBuffers];
       VkDeviceSize ctrOffsets[MaxNumXfbBuffers];
 
@@ -2294,6 +2306,8 @@ namespace dxvk {
 
       m_cmd->cmdEndTransformFeedback(
         0, MaxNumXfbBuffers, ctrBuffers, ctrOffsets);
+      
+      m_flags.set(DxvkContextFlag::GpDirtyXfbCounters);
     }
   }
 
@@ -2967,6 +2981,22 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::emitMemoryBarrier(
+          VkPipelineStageFlags      srcStages,
+          VkAccessFlags             srcAccess,
+          VkPipelineStageFlags      dstStages,
+          VkAccessFlags             dstAccess) {
+    VkMemoryBarrier barrier;
+    barrier.sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    barrier.pNext         = nullptr;
+    barrier.srcAccessMask = srcAccess;
+    barrier.dstAccessMask = dstAccess;
+
+    m_cmd->cmdPipelineBarrier(srcStages, dstStages,
+      0, 1, &barrier, 0, nullptr, 0, nullptr);
+  }
+
+  
   void DxvkContext::trackDrawBuffer() {
     if (m_flags.test(DxvkContextFlag::DirtyDrawBuffer)) {
       m_flags.clr(DxvkContextFlag::DirtyDrawBuffer);

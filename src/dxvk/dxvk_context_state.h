@@ -33,6 +33,7 @@ namespace dxvk {
     GpDirtyVertexBuffers,       ///< Vertex buffer bindings are out of date
     GpDirtyIndexBuffer,         ///< Index buffer binding are out of date
     GpDirtyXfbBuffers,          ///< Transform feedback buffer bindings are out of date
+    GpDirtyXfbCounters,         ///< Counter buffer values are dirty
     GpDirtyBlendConstants,      ///< Blend constants have changed
     GpDirtyStencilRef,          ///< Stencil reference has changed
     GpDirtyViewport,            ///< Viewport state has changed
