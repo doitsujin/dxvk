@@ -713,7 +713,7 @@ namespace dxvk {
             VkDescriptorSet         set,
       const DxvkPipelineLayout*     layout);
 
-    void updateFramebuffer(bool isDraw);
+    void updateFramebuffer();
     
     void updateIndexBufferBinding();
     void updateVertexBufferBindings();
@@ -729,8 +729,6 @@ namespace dxvk {
     void commitComputeInitBarriers();
     void commitComputePostBarriers();
 
-    bool checkAsyncCompilationCompat();
-    
     Rc<DxvkBuffer> getTransferBuffer(VkDeviceSize size);
     
   };

@@ -167,7 +167,6 @@ namespace dxvk {
     DxvkGraphicsPipeline(
       const DxvkDevice*               device,
       const Rc<DxvkPipelineCache>&    cache,
-      const Rc<DxvkPipelineCompiler>& compiler,
       const Rc<DxvkShader>&           vs,
       const Rc<DxvkShader>&           tcs,
       const Rc<DxvkShader>&           tes,
@@ -195,14 +194,12 @@ namespace dxvk {
      * \param [in] state Pipeline state vector
      * \param [in] renderPass The render pass
      * \param [in,out] stats Stat counter
-     * \param [in] async Compile asynchronously
      * \returns Pipeline handle
      */
     VkPipeline getPipelineHandle(
       const DxvkGraphicsPipelineStateInfo&    state,
       const DxvkRenderPass&                   renderPass,
-            DxvkStatCounters&                 stats,
-            bool                              async);
+            DxvkStatCounters&                 stats);
     
     /**
      * \brief Compiles optimized pipeline
@@ -226,7 +223,6 @@ namespace dxvk {
     const Rc<vk::DeviceFn>  m_vkd;
     
     Rc<DxvkPipelineCache>     m_cache;
-    Rc<DxvkPipelineCompiler>  m_compiler;
     Rc<DxvkPipelineLayout>    m_layout;
     
     Rc<DxvkShaderModule>  m_vs;

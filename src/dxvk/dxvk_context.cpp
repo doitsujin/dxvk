@@ -397,7 +397,7 @@ namespace dxvk {
     const Rc<DxvkImageView>&    imageView,
           VkImageAspectFlags    clearAspects,
     const VkClearValue&         clearValue) {
-    this->updateFramebuffer(false);
+    this->updateFramebuffer();
 
     // Prepare attachment ops
     DxvkColorAttachmentOps colorOp;
@@ -1639,7 +1639,7 @@ namespace dxvk {
           VkOffset3D            offset,
           VkExtent3D            extent,
           VkClearValue          value) {
-    this->updateFramebuffer(false);
+    this->updateFramebuffer();
 
     // Find out if the render target view is currently bound,
     // so that we can avoid spilling the render pass if it is.
@@ -1974,8 +1974,7 @@ namespace dxvk {
       
       m_gpActivePipeline = m_state.gp.pipeline != nullptr && m_state.om.framebuffer != nullptr
         ? m_state.gp.pipeline->getPipelineHandle(m_state.gp.state,
-            m_state.om.framebuffer->getRenderPass(), m_cmd->statCounters(),
-            this->checkAsyncCompilationCompat())
+            m_state.om.framebuffer->getRenderPass(), m_cmd->statCounters())
         : VK_NULL_HANDLE;
       
       if (m_gpActivePipeline != VK_NULL_HANDLE) {
@@ -2234,7 +2233,7 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::updateFramebuffer(bool isDraw) {
+  void DxvkContext::updateFramebuffer() {
     if (m_flags.test(DxvkContextFlag::GpDirtyFramebuffer)) {
       m_flags.clr(DxvkContextFlag::GpDirtyFramebuffer);
       
@@ -2253,11 +2252,6 @@ namespace dxvk {
           : VkComponentMapping();
       }
 
-      if (isDraw) {
-        for (uint32_t i = 0; i < fb->numAttachments(); i++)
-          fb->getAttachment(i).view->setRtBindingFrameId(m_device->getCurrentFrameId());
-      }
-      
       m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     }
   }
@@ -2399,7 +2393,7 @@ namespace dxvk {
   
   
   void DxvkContext::commitGraphicsState() {
-    this->updateFramebuffer(true);
+    this->updateFramebuffer();
     this->startRenderPass();
     this->updateGraphicsPipeline();
     this->updateIndexBufferBinding();
@@ -2524,18 +2518,6 @@ namespace dxvk {
         }
       }
     }
-  }
-
-
-  bool DxvkContext::checkAsyncCompilationCompat() {
-    bool fbCompat = m_device->config().asyncPipeCompiler;
-
-    for (uint32_t i = 0; fbCompat && i < m_state.om.framebuffer->numAttachments(); i++) {
-      const auto& attachment = m_state.om.framebuffer->getAttachment(i);
-      fbCompat &= attachment.view->getRtBindingAsyncCompilationCompat();
-    }
-
-    return fbCompat;
   }
   
 }

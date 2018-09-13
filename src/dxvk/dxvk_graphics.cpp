@@ -56,14 +56,12 @@ namespace dxvk {
   DxvkGraphicsPipeline::DxvkGraphicsPipeline(
     const DxvkDevice*               device,
     const Rc<DxvkPipelineCache>&    cache,
-    const Rc<DxvkPipelineCompiler>& compiler,
     const Rc<DxvkShader>&           vs,
     const Rc<DxvkShader>&           tcs,
     const Rc<DxvkShader>&           tes,
     const Rc<DxvkShader>&           gs,
     const Rc<DxvkShader>&           fs)
-  : m_device(device), m_vkd(device->vkd()),
-    m_cache(cache), m_compiler(compiler) {
+  : m_device(device), m_vkd(device->vkd()), m_cache(cache) {
     DxvkDescriptorSlotMapping slotMapping;
     if (vs  != nullptr) vs ->defineResourceSlots(slotMapping);
     if (tcs != nullptr) tcs->defineResourceSlots(slotMapping);
@@ -102,8 +100,7 @@ namespace dxvk {
   VkPipeline DxvkGraphicsPipeline::getPipelineHandle(
     const DxvkGraphicsPipelineStateInfo& state,
     const DxvkRenderPass&                renderPass,
-          DxvkStatCounters&              stats,
-          bool                           async) {
+          DxvkStatCounters&              stats) {
     VkRenderPass renderPassHandle = renderPass.getDefaultHandle();
 
     { std::lock_guard<sync::Spinlock> lock(m_mutex);
@@ -123,12 +120,8 @@ namespace dxvk {
     // If no pipeline instance exists with the given state
     // vector, create a new one and add it to the list.
     VkPipeline newPipelineBase   = m_basePipeline.load();
-    VkPipeline newPipelineHandle = VK_NULL_HANDLE;
-    
-    if (!async) {
-      newPipelineHandle = this->compilePipeline(
-        state, renderPassHandle, newPipelineBase);
-    }
+    VkPipeline newPipelineHandle = this->compilePipeline(
+      state, renderPassHandle, newPipelineBase);
     
     Rc<DxvkGraphicsPipelineInstance> newPipeline =
       new DxvkGraphicsPipelineInstance(m_device->vkd(),
@@ -153,10 +146,6 @@ namespace dxvk {
     // Use the new pipeline as the base pipeline for derivative pipelines
     if (newPipelineBase == VK_NULL_HANDLE && newPipelineHandle != VK_NULL_HANDLE)
       m_basePipeline.compare_exchange_strong(newPipelineBase, newPipelineHandle);
-    
-    // Compile pipeline asynchronously if requested
-    if (async)
-      m_compiler->queueCompilation(this, newPipeline);
     
     return newPipelineHandle;
   }
