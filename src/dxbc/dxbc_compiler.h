@@ -246,6 +246,8 @@ namespace dxvk {
     
     uint32_t invocationBlockBegin  = 0;
     uint32_t invocationBlockEnd    = 0;
+
+    uint32_t outputPerPatchMask    = 0;
     
     DxbcCompilerHsControlPointPhase          cpPhase;
     std::vector<DxbcCompilerHsForkJoinPhase> forkPhases;
@@ -1057,6 +1059,8 @@ namespace dxvk {
             uint32_t                          count);
     
     void emitHsInvocationBlockEnd();
+
+    void emitHsOutputSetup();
     
     uint32_t emitTessInterfacePerPatch(
             spv::StorageClass                 storageClass);

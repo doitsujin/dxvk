@@ -648,14 +648,14 @@ namespace dxvk {
      && sv != DxbcSystemValue::CullDistance)
       m_oMappings.push_back({ regIdx, regMask, sv });
     
-    // Hull shaders don't use standard outputs
-    if (m_version.type() == DxbcProgramType::HullShader)
-      return;
-    
-    // Avoid declaring the same variable multiple times.
-    // This may happen when multiple system values are
-    // mapped to different parts of the same register.
-    if (m_oRegs.at(regIdx).id == 0) {
+    if (m_version.type() == DxbcProgramType::HullShader) {
+      // Hull shaders don't use standard outputs
+      if (getCurrentHsForkJoinPhase() != nullptr)
+        m_hs.outputPerPatchMask |= 1 << regIdx;
+    } else if (m_oRegs.at(regIdx).id == 0) {
+      // Avoid declaring the same variable multiple times.
+      // This may happen when multiple system values are
+      // mapped to different parts of the same register.
       const DxbcVectorType regType = getOutputRegType(regIdx);
       
       DxbcRegisterInfo info;
@@ -1181,7 +1181,7 @@ namespace dxvk {
     // count embedded within the opcode token.
     m_hs.vertexCountOut = ins.controls.controlPointCount();
     
-    m_hs.outputPerPatch  = emitTessInterfacePerPatch (spv::StorageClassOutput);
+    m_hs.outputPerPatch  = emitTessInterfacePerPatch(spv::StorageClassPrivate);
     m_hs.outputPerVertex = emitTessInterfacePerVertex(spv::StorageClassOutput, m_hs.vertexCountOut);
     
     m_module.setOutputVertices(m_entryPointId, m_hs.vertexCountOut);
@@ -4313,8 +4313,8 @@ namespace dxvk {
                   : InputArray { m_ds.inputPerVertex,  spv::StorageClassInput   };
         case DxbcOperandType::InputPatchConstant:
           return m_version.type() == DxbcProgramType::HullShader
-                  ? InputArray { m_hs.outputPerPatch, spv::StorageClassOutput }
-                  : InputArray { m_ds.inputPerPatch,  spv::StorageClassInput  };
+                  ? InputArray { m_hs.outputPerPatch, spv::StorageClassPrivate }
+                  : InputArray { m_ds.inputPerPatch,  spv::StorageClassInput   };
         case DxbcOperandType::OutputControlPoint:
           return InputArray { m_hs.outputPerVertex, spv::StorageClassOutput };
         default:
@@ -4347,20 +4347,25 @@ namespace dxvk {
       result.type.ccount = 4;
       
       uint32_t registerId = emitIndexLoad(operand.idx[0]).id;
-      uint32_t ptrTypeId  = m_module.defPointerType(
-          getVectorTypeId(result.type),
-          spv::StorageClassOutput);
-      
+
       if (m_hs.currPhaseType == DxbcCompilerHsPhase::ControlPoint) {
         std::array<uint32_t, 2> indices = {{
           m_module.opLoad(m_module.defIntType(32, 0), m_hs.builtinInvocationId),
           registerId,
         }};
         
+        uint32_t ptrTypeId  = m_module.defPointerType(
+          getVectorTypeId(result.type),
+          spv::StorageClassOutput);
+      
         result.id = m_module.opAccessChain(
           ptrTypeId, m_hs.outputPerVertex,
           indices.size(), indices.data());
       } else {
+        uint32_t ptrTypeId  = m_module.defPointerType(
+          getVectorTypeId(result.type),
+          spv::StorageClassPrivate);
+        
         result.id = m_module.opAccessChain(
           ptrTypeId, m_hs.outputPerPatch,
           1, &registerId);
@@ -5216,7 +5221,7 @@ namespace dxvk {
         outputReg.id = m_module.opAccessChain(
           m_module.defPointerType(
             getVectorTypeId(outputReg.type),
-            spv::StorageClassOutput),
+            spv::StorageClassPrivate),
           m_hs.outputPerPatch,
           1, &registerIndex);
       }
@@ -6121,6 +6126,7 @@ namespace dxvk {
       this->emitHsForkJoinPhase(phase);
     
     this->emitOutputSetup();
+    this->emitHsOutputSetup();
     this->emitHsInvocationBlockEnd();
     this->emitFunctionEnd();
   }
@@ -6424,21 +6430,51 @@ namespace dxvk {
     m_hs.invocationBlockBegin = 0;
     m_hs.invocationBlockEnd   = 0;
   }
+
+
+  void DxbcCompiler::emitHsOutputSetup() {
+    uint32_t outputPerPatch = emitTessInterfacePerPatch(spv::StorageClassOutput);
+
+    uint32_t vecType = getVectorTypeId({ DxbcScalarType::Float32, 4 });
+
+    uint32_t srcPtrType = m_module.defPointerType(vecType, spv::StorageClassPrivate);
+    uint32_t dstPtrType = m_module.defPointerType(vecType, spv::StorageClassOutput);
+
+    for (uint32_t i = 0; i < 32; i++) {
+      if (m_hs.outputPerPatchMask & (1 << i)) {
+        uint32_t index = m_module.constu32(i);
+
+        uint32_t srcPtr = m_module.opAccessChain(srcPtrType, m_hs.outputPerPatch, 1, &index);
+        uint32_t dstPtr = m_module.opAccessChain(dstPtrType, outputPerPatch,      1, &index);
+
+        m_module.opStore(dstPtr, m_module.opLoad(vecType, srcPtr));
+      }
+    }
+  }
   
   
   uint32_t DxbcCompiler::emitTessInterfacePerPatch(spv::StorageClass storageClass) {
-    const bool isInput = storageClass == spv::StorageClassInput;
+    const char* name = "vPatch";
+
+    if (storageClass == spv::StorageClassPrivate)
+      name = "rPatch";
+    if (storageClass == spv::StorageClassOutput)
+      name = "oPatch";
     
     uint32_t vecType = m_module.defVectorType (m_module.defFloatType(32), 4);
     uint32_t arrType = m_module.defArrayType  (vecType, m_module.constu32(32));
     uint32_t ptrType = m_module.defPointerType(arrType, storageClass);
     uint32_t varId   = m_module.newVar        (ptrType, storageClass);
     
-    m_module.setDebugName     (varId, isInput ? "vPatch" : "oPatch");
-    m_module.decorate         (varId, spv::DecorationPatch);
-    m_module.decorateLocation (varId, 0);
+    m_module.setDebugName     (varId, name);
     
-    m_entryPointInterfaces.push_back(varId);
+    if (storageClass != spv::StorageClassPrivate) {
+      m_module.decorate         (varId, spv::DecorationPatch);
+      m_module.decorateLocation (varId, 0);
+
+      m_entryPointInterfaces.push_back(varId);
+    }
+
     return varId;
   }
   
@@ -6455,7 +6491,8 @@ namespace dxvk {
     m_module.setDebugName     (varId, isInput ? "vVertex" : "oVertex");
     m_module.decorateLocation (varId, 0);
     
-    m_entryPointInterfaces.push_back(varId);
+    if (storageClass != spv::StorageClassPrivate)
+      m_entryPointInterfaces.push_back(varId);
     return varId;
   }
   
