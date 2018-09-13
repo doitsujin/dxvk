@@ -358,6 +358,11 @@ namespace dxvk {
   
   void DxbcCompiler::emitDclInterfaceReg(const DxbcShaderInstruction& ins) {
     switch (ins.dst[0].type) {
+      case DxbcOperandType::InputControlPoint:
+        if (m_version.type() != DxbcProgramType::HullShader)
+          break;
+        /* fall through */
+
       case DxbcOperandType::Input:
       case DxbcOperandType::Output: {
         // dcl_input and dcl_output instructions
@@ -553,7 +558,6 @@ namespace dxvk {
         // ID, which has been declared already.
       } break;
       
-      case DxbcOperandType::InputControlPoint:
       case DxbcOperandType::InputPatchConstant:
       case DxbcOperandType::OutputControlPoint: {
         // These have been declared as global input and
