@@ -28,7 +28,7 @@ struct Color {
 const std::string g_vertexShaderCode =
   "Buffer<float4> buf : register(t0);\n"
   "struct vs_out {\n"
-  "  float4 pos   : SV_POSITION;\n"
+  "  float4 pos   : POSITION;\n"
   "  float4 color : COLOR;\n"
   "};\n"
   "vs_out main(float4 vsIn : IN_POSITION,\n"
@@ -40,8 +40,66 @@ const std::string g_vertexShaderCode =
   "  result.color.y = buf[iid * 3].y;\n"
   "  result.color.z = buf[0].z;\n"
   "  result.color.w = 1.0f;\n"
+  "  result.color = float4(1.0f, 1.0f, 1.0f, 1.0f);\n"
   "  return result;\n"
   "}\n";
+
+const std::string g_hullShaderCode =
+  "struct vs_out {\n"
+  "  float4 pos   : POSITION;\n"
+  "  float4 color : COLOR;\n"
+  "};\n"
+  "struct hs_vtx {\n"
+  "  float4 pos   : POSITION;\n"
+  "};\n"
+  "struct hs_patch {\n"
+  "  float4 color  : COLOR;\n"
+  "  float  tessEdge[3] : SV_TessFactor;\n"
+  "  float  tessInner : SV_InsideTessFactor;\n"
+  "};\n"
+  "hs_patch main_pc(InputPatch<vs_out, 3> ip) {\n"
+  "  hs_patch ov;\n"
+  "  ov.color = ip[0].color;\n"
+  "  ov.tessEdge[0] = 1.0f;\n"
+  "  ov.tessEdge[1] = 1.0f;\n"
+  "  ov.tessEdge[2] = 1.0f;\n"
+  "  ov.tessInner = 1.0f;\n"
+  "  return ov;\n"
+  "}\n"
+  "[domain(\"tri\")]\n"
+  "[partitioning(\"fractional_odd\")]\n"
+  "[outputtopology(\"triangle_cw\")]\n"
+  "[outputcontrolpoints(3)]\n"
+  "[patchconstantfunc(\"main_pc\")]\n"
+  "hs_vtx main(InputPatch<vs_out, 3> ip, uint i : SV_OutputControlPointID) {\n"
+  "  hs_vtx ov;\n"
+  "  ov.pos = ip[i].pos;\n"
+  "  return ov;\n"
+  "}\n";
+
+const std::string g_domainShaderCode =
+  "struct ds_out {\n"
+  "  float4 pos   : SV_POSITION;\n"
+  "  float4 color : COLOR;\n"
+  "};\n"
+  "struct hs_vtx {\n"
+  "  float4 pos   : POSITION;\n"
+  "};\n"
+  "struct hs_patch {\n"
+  "  float4 color  : COLOR;\n"
+  "  float  tessEdge[3] : SV_TessFactor;\n"
+  "  float  tessInner : SV_InsideTessFactor;\n"
+  "};\n"
+  "[domain(\"tri\")]\n"
+  "ds_out main(float3 p : SV_DomainLocation, OutputPatch<hs_vtx, 3> ip, hs_patch pc) {\n"
+  "  ds_out ov;\n"
+  "  ov.pos = ip[0].pos * p.x\n"
+  "         + ip[1].pos * p.y\n"
+  "         + ip[2].pos * p.z;\n"
+  "  ov.color = pc.color;\n"
+  "  return ov;\n"
+  "}\n";
+
 
 const std::string g_pixelShaderCode =
   "struct vs_out {\n"
@@ -201,6 +259,8 @@ public:
       throw DxvkError("Failed to create resource buffer view");
     
     Com<ID3DBlob> vertexShaderBlob;
+    Com<ID3DBlob> hullShaderBlob;
+    Com<ID3DBlob> domainShaderBlob;
     Com<ID3DBlob> pixelShaderBlob;
     
     if (FAILED(D3DCompile(
@@ -212,6 +272,26 @@ public:
           &vertexShaderBlob,
           nullptr)))
       throw DxvkError("Failed to compile vertex shader");
+    
+    if (FAILED(D3DCompile(
+          g_hullShaderCode.data(),
+          g_hullShaderCode.size(),
+          "Hull shader",
+          nullptr, nullptr,
+          "main", "hs_5_0", 0, 0,
+          &hullShaderBlob,
+          nullptr)))
+      throw DxvkError("Failed to compile hull shader");
+    
+    if (FAILED(D3DCompile(
+          g_domainShaderCode.data(),
+          g_domainShaderCode.size(),
+          "Domain shader",
+          nullptr, nullptr,
+          "main", "ds_5_0", 0, 0,
+          &domainShaderBlob,
+          nullptr)))
+      throw DxvkError("Failed to compile domain shader");
     
     if (FAILED(D3DCompile(
           g_pixelShaderCode.data(),
@@ -228,6 +308,18 @@ public:
           vertexShaderBlob->GetBufferSize(),
           nullptr, &m_vertexShader)))
       throw DxvkError("Failed to create vertex shader");
+    
+    if (FAILED(m_device->CreateHullShader(
+          hullShaderBlob->GetBufferPointer(),
+          hullShaderBlob->GetBufferSize(),
+          nullptr, &m_hullShader)))
+      throw DxvkError("Failed to create hull shader");
+    
+    if (FAILED(m_device->CreateDomainShader(
+          domainShaderBlob->GetBufferPointer(),
+          domainShaderBlob->GetBufferSize(),
+          nullptr, &m_domainShader)))
+      throw DxvkError("Failed to create domain shader");
     
     if (FAILED(m_device->CreatePixelShader(
           pixelShaderBlob->GetBufferPointer(),
@@ -278,6 +370,8 @@ public:
     m_context->ClearRenderTargetView(m_bufferView.ptr(), color);
     
     m_context->VSSetShader(m_vertexShader.ptr(), nullptr, 0);
+    m_context->HSSetShader(m_hullShader.ptr(), nullptr, 0);
+    m_context->DSSetShader(m_domainShader.ptr(), nullptr, 0);
     m_context->PSSetShader(m_pixelShader.ptr(), nullptr, 0);
     
     m_context->VSSetShaderResources(0, 1, &m_resourceView);
@@ -287,7 +381,7 @@ public:
     
     // Test normal draws with base vertex
     m_context->Begin(m_query.ptr());
-    m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_3_CONTROL_POINT_PATCHLIST);
     m_context->IASetInputLayout(m_vertexFormat.ptr());
     m_context->IASetVertexBuffers(0, 1, &m_vertexBuffer, &vsStride, &vsOffset);
     m_context->Draw(3, 0);
@@ -385,6 +479,8 @@ private:
   Com<ID3D11InputLayout>        m_vertexFormat;
   
   Com<ID3D11VertexShader>       m_vertexShader;
+  Com<ID3D11HullShader>         m_hullShader;
+  Com<ID3D11DomainShader>       m_domainShader;
   Com<ID3D11PixelShader>        m_pixelShader;
   
   Com<ID3D11Query>              m_query;
