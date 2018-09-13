@@ -397,7 +397,7 @@ namespace dxvk {
     const Rc<DxvkImageView>&    imageView,
           VkImageAspectFlags    clearAspects,
     const VkClearValue&         clearValue) {
-    this->updateFramebuffer();
+    this->updateFramebuffer(false);
 
     // Prepare attachment ops
     DxvkColorAttachmentOps colorOp;
@@ -1639,7 +1639,7 @@ namespace dxvk {
           VkOffset3D            offset,
           VkExtent3D            extent,
           VkClearValue          value) {
-    this->updateFramebuffer();
+    this->updateFramebuffer(false);
 
     // Find out if the render target view is currently bound,
     // so that we can avoid spilling the render pass if it is.
@@ -2234,7 +2234,7 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::updateFramebuffer() {
+  void DxvkContext::updateFramebuffer(bool isDraw) {
     if (m_flags.test(DxvkContextFlag::GpDirtyFramebuffer)) {
       m_flags.clr(DxvkContextFlag::GpDirtyFramebuffer);
       
@@ -2253,8 +2253,10 @@ namespace dxvk {
           : VkComponentMapping();
       }
 
-      for (uint32_t i = 0; i < fb->numAttachments(); i++)
-        fb->getAttachment(i).view->setRtBindingFrameId(m_device->getCurrentFrameId());
+      if (isDraw) {
+        for (uint32_t i = 0; i < fb->numAttachments(); i++)
+          fb->getAttachment(i).view->setRtBindingFrameId(m_device->getCurrentFrameId());
+      }
       
       m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     }
@@ -2397,7 +2399,7 @@ namespace dxvk {
   
   
   void DxvkContext::commitGraphicsState() {
-    this->updateFramebuffer();
+    this->updateFramebuffer(true);
     this->startRenderPass();
     this->updateGraphicsPipeline();
     this->updateIndexBufferBinding();

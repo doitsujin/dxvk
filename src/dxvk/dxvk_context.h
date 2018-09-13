@@ -713,7 +713,7 @@ namespace dxvk {
             VkDescriptorSet         set,
       const DxvkPipelineLayout*     layout);
 
-    void updateFramebuffer();
+    void updateFramebuffer(bool isDraw);
     
     void updateIndexBufferBinding();
     void updateVertexBufferBindings();
