@@ -25,13 +25,17 @@ const std::string g_gsCode =
   "};\n"
   "struct GS_OUT_NORMAL {\n"
   "  float3 nor : GS_NORMAL;\n"
+  "  float  len : GS_LENGTH;\n"
   "};\n"
   "[maxvertexcount(1)]\n"
   "void main(triangle GS_IN vs_in[3], inout PointStream<GS_OUT_NORMAL> o_normals) {\n"
   "  float3 ds1 = vs_in[1].pos.xyz - vs_in[0].pos.xyz;\n"
   "  float3 ds2 = vs_in[2].pos.xyz - vs_in[0].pos.xyz;\n"
+  "  float3 cv = cross(ds1, ds2);\n"
+  "  float  cl = length(cv);\n"
   "  GS_OUT_NORMAL normal;\n"
-  "  normal.nor = normalize(cross(ds1, ds2));\n"
+  "  normal.nor = cv / cl;\n"
+  "  normal.len = cl;"
   "  o_normals.Append(normal);\n"
   "}\n";
 
@@ -47,12 +51,15 @@ Com<ID3D11Buffer>           g_vertexBuffer;
 Com<ID3D11Buffer>           g_normalBuffer;
 Com<ID3D11Buffer>           g_readBuffer;
 
+Com<ID3D11Query>            g_soStream;
+Com<ID3D11Query>            g_soOverflow;
+
 struct Vertex {
   float x, y, z, w;
 };
 
 struct Normal {
-  float x, y, z;
+  float x, y, z, len;
 };
 
 int WINAPI WinMain(HINSTANCE hInstance,
@@ -92,8 +99,9 @@ int WINAPI WinMain(HINSTANCE hInstance,
     return 1;
   }
 
-  std::array<D3D11_SO_DECLARATION_ENTRY, 1> soDeclarations = {{
+  std::array<D3D11_SO_DECLARATION_ENTRY, 2> soDeclarations = {{
     { 0, "GS_NORMAL", 0, 0, 3, 0 },
+    { 0, "GS_LENGTH", 0, 0, 1, 0 },
   }};
 
   std::array<UINT, 1> soBufferStrides = {{
@@ -127,7 +135,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
     return 1;
   }
 
-  std::array<Vertex, 6> vertexData = {{
+  std::array<Vertex, 9> vertexData = {{
     { 0.0f, 0.0f, 0.0f, 1.0f },
     { 1.0f, 0.0f, 0.0f, 1.0f },
     { 0.0f, 1.0f, 0.0f, 1.0f },
@@ -135,6 +143,10 @@ int WINAPI WinMain(HINSTANCE hInstance,
     { 0.5f,-1.0f,-0.2f, 1.0f },
     { 3.2f, 2.0f, 0.0f, 1.0f },
     {-1.0f,-1.0f, 0.4f, 1.0f },
+
+    { 0.7f,-0.5f,-0.8f, 1.0f },
+    { 1.2f, 1.0f,-1.0f, 1.0f },
+    {-0.1f, 1.0f,-2.7f, 1.0f },
   }};
 
   D3D11_BUFFER_DESC vertexDesc;
@@ -188,6 +200,21 @@ int WINAPI WinMain(HINSTANCE hInstance,
     return 1;
   }
 
+  D3D11_QUERY_DESC soQueryDesc;
+  soQueryDesc.Query = D3D11_QUERY_SO_STATISTICS_STREAM0;
+  soQueryDesc.MiscFlags = 0;
+
+  if (FAILED(g_d3d11Device->CreateQuery(&soQueryDesc, &g_soStream))) {
+    std::cerr << "Failed to create streamout query" << std::endl;
+    return 1;
+  }
+
+  soQueryDesc.Query = D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM0;
+  if (FAILED(g_d3d11Device->CreateQuery(&soQueryDesc, &g_soOverflow))) {
+    std::cerr << "Failed to create streamout overflow query" << std::endl;
+    return 1;
+  }
+
   UINT soOffset = 0;
   UINT vbOffset = 0;
   UINT vbStride = sizeof(Vertex);
@@ -218,12 +245,29 @@ int WINAPI WinMain(HINSTANCE hInstance,
   g_d3d11Context->VSSetShader(g_vertShader.ptr(), nullptr, 0);
   g_d3d11Context->GSSetShader(g_geomShader.ptr(), nullptr, 0);
   
+  g_d3d11Context->Begin(g_soStream.ptr());
+  g_d3d11Context->Begin(g_soOverflow.ptr());
+
   g_d3d11Context->Draw(vertexData.size(), 0);
+
+  g_d3d11Context->End(g_soOverflow.ptr());
+  g_d3d11Context->End(g_soStream.ptr());
 
   g_d3d11Context->CopyResource(
     g_readBuffer.ptr(),
     g_normalBuffer.ptr());
   
+  D3D11_QUERY_DATA_SO_STATISTICS soQueryData = { };
+  BOOL soOverflowData = false;
+  
+  while (g_d3d11Context->GetData(g_soStream.ptr(), &soQueryData, sizeof(soQueryData), 0) != S_OK
+      || g_d3d11Context->GetData(g_soOverflow.ptr(), &soOverflowData, sizeof(soOverflowData), 0) != S_OK)
+    continue;
+  
+  std::cout << "Written:  " << soQueryData.NumPrimitivesWritten << std::endl;
+  std::cout << "Needed:   " << soQueryData.PrimitivesStorageNeeded << std::endl;
+  std::cout << "Overflow: " << (soOverflowData ? "Yes" : "No") << std::endl;
+
   D3D11_MAPPED_SUBRESOURCE mapInfo;
 
   if (FAILED(g_d3d11Context->Map(g_readBuffer.ptr(), 0, D3D11_MAP_READ, 0, &mapInfo))) {
@@ -236,7 +280,8 @@ int WINAPI WinMain(HINSTANCE hInstance,
   
   for (uint32_t i = 0; i < normalData.size(); i++) {
     std::cout << i << ": " << normalData[i].x << ","
-      << normalData[i].y << "," << normalData[i].z << std::endl;
+      << normalData[i].y << "," << normalData[i].z << ","
+      << normalData[i].len << std::endl;
   }
 
   return 0;
