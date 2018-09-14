@@ -287,6 +287,8 @@ namespace dxvk {
     VkPhysicalDeviceMemoryProperties memoryInfo = this->memoryProperties();
     
     Logger::info(str::format(deviceInfo.deviceName, ":"));
+    Logger::info(str::format("  Vendor ID: 0x", std::hex, deviceInfo.vendorID));
+    Logger::info(str::format("  Device ID: 0x", std::hex, deviceInfo.deviceID));
     Logger::info(str::format("  Driver: ",
       VK_VERSION_MAJOR(deviceInfo.driverVersion), ".",
       VK_VERSION_MINOR(deviceInfo.driverVersion), ".",
