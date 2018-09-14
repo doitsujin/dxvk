@@ -155,4 +155,7 @@ echo '[4/5] d3d10core:'
 $fun d3d10core
 echo '[5/5] d3d11:'
 $fun d3d11
-exit $ret
+
+if [ $ret -ne 0 ]; then
+    exit $ret
+fi
