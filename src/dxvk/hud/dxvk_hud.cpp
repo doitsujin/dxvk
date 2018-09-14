@@ -1,4 +1,5 @@
 #include <cstring>
+#include <string>
 #include <version.h>
 
 #include "dxvk_hud.h"
@@ -82,8 +83,45 @@ namespace dxvk::hud {
 
 
   void Hud::renderHudElements(const Rc<DxvkContext>& ctx) {
-    HudPos position = { 8.0f, 24.0f };
-    
+    auto hudOffset = env::getEnvVar(L"DXVK_HUD_OFFSET");
+    float offsetX  = 0.0f;
+    float offsetY  = 0.0f;
+    if (hudOffset.size() > 0) {
+      auto xySplit = hudOffset.find(',');
+      if (xySplit != std::string::npos) {
+        auto xStr = hudOffset.substr(0, xySplit);
+        auto yStr = hudOffset.substr(xySplit + 1);
+
+        if (xStr.size() > 0) {
+          try {
+            offsetX = std::stof(xStr);
+          } catch (...) {
+            // ignore
+          }
+        }
+
+        if (yStr.size() > 0) {
+          try {
+            offsetY = std::stof(yStr);
+          } catch (...) {
+            // ignore
+          }
+        }
+      } else {
+        try {
+          offsetX = std::stof(hudOffset);
+        } catch (...) {
+          // ignore
+        }
+      }
+    }
+
+    if (offsetX != 0.0f || offsetY != 0.0f) {
+      Logger::debug(str::format("Hud: using offset x:", offsetX, " y:", offsetY));
+    }
+
+    HudPos position = { 8.0f + offsetX, 24.0f + offsetY };
+
     if (m_config.elements.test(HudElement::DxvkVersion)) {
       m_renderer.drawText(ctx, 16.0f,
         { position.x, position.y },
