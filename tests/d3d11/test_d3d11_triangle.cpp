@@ -40,7 +40,6 @@ const std::string g_vertexShaderCode =
   "  result.color.y = buf[iid * 3].y;\n"
   "  result.color.z = buf[0].z;\n"
   "  result.color.w = 1.0f;\n"
-  "  result.color = float4(1.0f, 1.0f, 1.0f, 1.0f);\n"
   "  return result;\n"
   "}\n";
 
@@ -60,10 +59,10 @@ const std::string g_hullShaderCode =
   "hs_patch main_pc(InputPatch<vs_out, 3> ip) {\n"
   "  hs_patch ov;\n"
   "  ov.color = ip[0].color;\n"
-  "  ov.tessEdge[0] = 1.0f;\n"
-  "  ov.tessEdge[1] = 1.0f;\n"
-  "  ov.tessEdge[2] = 1.0f;\n"
-  "  ov.tessInner = 1.0f;\n"
+  "  ov.tessEdge[0] = 4.0f;\n"
+  "  ov.tessEdge[1] = 4.0f;\n"
+  "  ov.tessEdge[2] = 4.0f;\n"
+  "  ov.tessInner = 4.0f;\n"
   "  return ov;\n"
   "}\n"
   "[domain(\"tri\")]\n"
