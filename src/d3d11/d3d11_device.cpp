@@ -1338,6 +1338,9 @@ namespace dxvk {
     enabled.core.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
     enabled.core.pNext = nullptr;
 
+    enabled.extTransformFeedback.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT;
+    enabled.extTransformFeedback.pNext = nullptr;
+
     enabled.extVertexAttributeDivisor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT;
     enabled.extVertexAttributeDivisor.pNext = nullptr;
     
@@ -1370,6 +1373,8 @@ namespace dxvk {
       enabled.core.features.shaderImageGatherExtended             = VK_TRUE;
       enabled.core.features.textureCompressionBC                  = VK_TRUE;
       enabled.core.features.variableMultisampleRate               = supported.core.features.variableMultisampleRate;
+      enabled.extTransformFeedback.transformFeedback              = supported.extTransformFeedback.transformFeedback;
+      enabled.extTransformFeedback.geometryStreams                = supported.extTransformFeedback.geometryStreams;
     }
     
     if (featureLevel >= D3D_FEATURE_LEVEL_10_1) {
