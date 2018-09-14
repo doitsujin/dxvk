@@ -5,7 +5,6 @@
 #include "dxvk_binding.h"
 #include "dxvk_constant_state.h"
 #include "dxvk_pipecache.h"
-#include "dxvk_pipecompiler.h"
 #include "dxvk_pipelayout.h"
 #include "dxvk_renderpass.h"
 #include "dxvk_resource.h"
@@ -200,16 +199,6 @@ namespace dxvk {
       const DxvkGraphicsPipelineStateInfo&    state,
       const DxvkRenderPass&                   renderPass,
             DxvkStatCounters&                 stats);
-    
-    /**
-     * \brief Compiles optimized pipeline
-     * 
-     * Compiles an optimized version of a pipeline
-     * and makes it available to the system.
-     * \param [in] instance The pipeline instance
-     */
-    void compileInstance(
-      const Rc<DxvkGraphicsPipelineInstance>& instance);
     
   private:
     

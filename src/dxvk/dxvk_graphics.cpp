@@ -151,25 +151,6 @@ namespace dxvk {
   }
   
   
-  void DxvkGraphicsPipeline::compileInstance(
-    const Rc<DxvkGraphicsPipelineInstance>& instance) {
-    // Compile an optimized version of the pipeline
-    VkPipeline newPipelineBase   = m_basePipeline.load();
-    VkPipeline newPipelineHandle = this->compilePipeline(
-      instance->m_stateVector, instance->m_renderPass,
-      newPipelineBase);
-    
-    if (!instance->setPipeline(newPipelineHandle)) {
-      // If another thread finished compiling an optimized version of this
-      // pipeline before this one finished, discard the new pipeline object.
-      m_vkd->vkDestroyPipeline(m_vkd->device(), newPipelineHandle, nullptr);
-    } else if (newPipelineBase == VK_NULL_HANDLE && newPipelineHandle != VK_NULL_HANDLE) {
-      // Use the new pipeline as the base pipeline for derivative pipelines.
-      m_basePipeline.compare_exchange_strong(newPipelineBase, newPipelineHandle);
-    }
-  }
-  
-  
   DxvkGraphicsPipelineInstance* DxvkGraphicsPipeline::findInstance(
     const DxvkGraphicsPipelineStateInfo& state,
           VkRenderPass                   renderPass) const {
