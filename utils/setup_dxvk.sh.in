@@ -96,21 +96,17 @@ fi
 ret=0
 
 function removeOverride {
-    echo -n '    [1/2] Removing override... '
-    local out
-    out=$($wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1 /d builtin /f 2>&1)
+    echo "    [1/2] Removing override... "
+    $wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1 /d builtin /f > /dev/null 2>&1
     if [ $? -ne 0 ]; then
-        echo -e "$out"
+        echo "Failed"
         exit 1
     fi
-    echo -e "$(sed -e 's|\r||g' <<< "$out.")"
     local dll="$unix_sys_path/$1.dll"
-    echo -n '    [2/2] Removing link... '
+    echo "    [2/2] Removing link... "
     if [ -h "$dll" ]; then
         out=$(rm "$dll" 2>&1)
-        if [ $? -eq 0 ]; then
-            echo -e 'Done.'
-        else
+        if [ $? -ne 0 ]; then
             ret=2
             echo -e "$out"
         fi
@@ -120,44 +116,18 @@ function removeOverride {
     fi
 }
 
-function checkOverride {
-    echo -n '    [1/2] Checking override... '
-    local ovr
-    ovr="$($wine reg query 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1)"
-    if [ $? -ne 0 ]; then
-        exit 1
-    fi
-    if [[ $ovr == *native* ]] && ! [[ $ovr == *builtin,native* ]]; then
-        echo -e 'OK.'
-    else
-        echo -e 'not set.'
-        ret=2
-    fi
-    echo -n "    [2/2] Checking link to $1.$dll_ext... "
-    if [ "$(readlink -f "$unix_sys_path/$1.dll")" == "$(readlink -f "$dlls_dir/$1.$dll_ext")" ]; then
-        echo -e 'OK.'
-    else
-        echo -e 'not set.'
-        ret=2
-    fi
-}
-
 function createOverride {
-    echo -n '    [1/2] Creating override... '
-    local out
-    out=$($wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1 /d native /f 2>&1)
+    echo "    [1/2] Creating override... "
+    $wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1 /d native /f >/dev/null 2>&1
     if [ $? -ne 0 ]; then
-        echo -e "$out"
+        echo -e "Failed"
         exit 1
     fi
-    echo -e "$(sed -e 's|\r||g' <<< "$out.")"
-    echo -n "    [2/2] Creating link to $1.$dll_ext... "
+    echo "    [2/2] Creating link to $1.$dll_ext... "
     ln -sf "$dlls_dir/$1.$dll_ext" "$unix_sys_path/$1.dll"
-    if [ $? -eq 0 ]; then
-        echo -e 'Done.'
-    else
-        ret=2
-        echo -e "$out"
+    if [ $? -ne 0 ]; then
+        echo -e "Failed"
+        exit 1
     fi
 }
 
@@ -165,15 +135,12 @@ case "$1" in
 reset)
     fun=removeOverride
     ;;
-check)
-    fun=checkOverride
-    ;;
 '')
     fun=createOverride
     ;;
 *)
     echo "Unrecognized option: $1"
-    echo "Usage: $0 [reset|check] [-q|--quiet] [-y|-n]"
+    echo "Usage: $0 [reset] [-q|--quiet] [-y|-n]"
     exit 1
     ;;
 esac
