@@ -90,18 +90,19 @@ namespace dxvk {
    * Stores a state vector and the
    * corresponding pipeline handle.
    */
-  class DxvkGraphicsPipelineInstance : public RcObject {
-    friend class DxvkGraphicsPipeline;
+  class DxvkGraphicsPipelineInstance {
+
   public:
-    
+
+    DxvkGraphicsPipelineInstance() { }
     DxvkGraphicsPipelineInstance(
-      const Rc<vk::DeviceFn>&               vkd,
-      const DxvkGraphicsPipelineStateInfo&  stateVector,
-            VkRenderPass                    renderPass,
-            VkPipeline                      pipeline);
-    
-    ~DxvkGraphicsPipelineInstance();
-    
+      const DxvkGraphicsPipelineStateInfo&  state,
+            VkRenderPass                    rp,
+            VkPipeline                      pipe)
+    : m_stateVector (state),
+      m_renderPass  (rp),
+      m_pipeline    (pipe) { }
+
     /**
      * \brief Checks for matching pipeline state
      * 
@@ -110,47 +111,28 @@ namespace dxvk {
      * \returns \c true if the specialization is compatible
      */
     bool isCompatible(
-      const DxvkGraphicsPipelineStateInfo&  stateVector,
-            VkRenderPass                    renderPass) const {
-      return m_renderPass  == renderPass
-          && m_stateVector == stateVector;
+      const DxvkGraphicsPipelineStateInfo&  state,
+            VkRenderPass                    rp) const {
+      return m_stateVector == state
+          && m_renderPass  == rp;
     }
-    
-    /**
-     * \brief Sets the optimized pipeline handle
-     * 
-     * If an optimized pipeline handle has already been
-     * set up, this method will fail and the new pipeline
-     * handle should be destroyed.
-     * \param [in] pipeline The optimized pipeline
-     */
-    bool setPipeline(VkPipeline pipeline) {
-      VkPipeline expected = VK_NULL_HANDLE;
-      return m_pipeline.compare_exchange_strong(expected, pipeline);
-    }
-    
+
     /**
      * \brief Retrieves pipeline
-     * 
-     * Returns the optimized version of the pipeline if
-     * if has been set, or the base pipeline if not.
      * \returns The pipeline handle
      */
-    VkPipeline getPipeline() const {
-      return m_pipeline.load();
+    VkPipeline pipeline() const {
+      return m_pipeline;
     }
-    
+
   private:
-    
-    const Rc<vk::DeviceFn> m_vkd;
-    
+
     DxvkGraphicsPipelineStateInfo m_stateVector;
     VkRenderPass                  m_renderPass;
+    VkPipeline                    m_pipeline;
 
-    std::atomic<VkPipeline>       m_pipeline;
-    
   };
-  
+
   
   /**
    * \brief Graphics pipeline
@@ -226,13 +208,13 @@ namespace dxvk {
     DxvkGraphicsCommonPipelineStateInfo m_common;
     
     // List of pipeline instances, shared between threads
-    alignas(CACHE_LINE_SIZE) sync::Spinlock       m_mutex;
-    std::vector<Rc<DxvkGraphicsPipelineInstance>> m_pipelines;
+    alignas(CACHE_LINE_SIZE) sync::Spinlock   m_mutex;
+    std::vector<DxvkGraphicsPipelineInstance> m_pipelines;
     
     // Pipeline handles used for derivative pipelines
     std::atomic<VkPipeline> m_basePipeline = { VK_NULL_HANDLE };
     
-    DxvkGraphicsPipelineInstance* findInstance(
+    const DxvkGraphicsPipelineInstance* findInstance(
       const DxvkGraphicsPipelineStateInfo& state,
             VkRenderPass                   renderPass) const;
     
@@ -240,6 +222,9 @@ namespace dxvk {
       const DxvkGraphicsPipelineStateInfo& state,
             VkRenderPass                   renderPass,
             VkPipeline                     baseHandle) const;
+    
+    void destroyPipeline(
+            VkPipeline                     pipeline) const;
     
     bool validatePipelineState(
       const DxvkGraphicsPipelineStateInfo& state) const;

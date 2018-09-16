@@ -35,24 +35,6 @@ namespace dxvk {
   }
   
   
-  DxvkGraphicsPipelineInstance::DxvkGraphicsPipelineInstance(
-    const Rc<vk::DeviceFn>&               vkd,
-    const DxvkGraphicsPipelineStateInfo&  stateVector,
-          VkRenderPass                    renderPass,
-          VkPipeline                      pipeline)
-  : m_vkd         (vkd),
-    m_stateVector (stateVector),
-    m_renderPass  (renderPass),
-    m_pipeline    (pipeline) {
-    
-  }
-  
-  
-  DxvkGraphicsPipelineInstance::~DxvkGraphicsPipelineInstance() {
-    m_vkd->vkDestroyPipeline(m_vkd->device(), m_pipeline, nullptr);
-  }
-  
-  
   DxvkGraphicsPipeline::DxvkGraphicsPipeline(
     const DxvkDevice*               device,
     const Rc<DxvkPipelineCache>&    cache,
@@ -93,7 +75,8 @@ namespace dxvk {
   
   
   DxvkGraphicsPipeline::~DxvkGraphicsPipeline() {
-    
+    for (const auto& instance : m_pipelines)
+      this->destroyPipeline(instance.pipeline());
   }
   
   
@@ -105,11 +88,11 @@ namespace dxvk {
 
     { std::lock_guard<sync::Spinlock> lock(m_mutex);
       
-      DxvkGraphicsPipelineInstance* pipeline =
+      const DxvkGraphicsPipelineInstance* instance =
         this->findInstance(state, renderPassHandle);
       
-      if (pipeline != nullptr)
-        return pipeline->getPipeline();
+      if (instance != nullptr)
+        return instance->pipeline();
     }
     
     // If the pipeline state vector is invalid, don't try
@@ -123,22 +106,20 @@ namespace dxvk {
     VkPipeline newPipelineHandle = this->compilePipeline(
       state, renderPassHandle, newPipelineBase);
     
-    Rc<DxvkGraphicsPipelineInstance> newPipeline =
-      new DxvkGraphicsPipelineInstance(m_device->vkd(),
-        state, renderPassHandle, newPipelineHandle);
-    
     { std::lock_guard<sync::Spinlock> lock(m_mutex);
       
       // Discard the pipeline if another thread
       // was faster compiling the same pipeline
-      DxvkGraphicsPipelineInstance* pipeline =
+      const DxvkGraphicsPipelineInstance* instance =
         this->findInstance(state, renderPassHandle);
       
-      if (pipeline != nullptr)
-        return pipeline->getPipeline();
+      if (instance != nullptr) {
+        this->destroyPipeline(newPipelineHandle);
+        return instance->pipeline();
+      }
       
       // Add new pipeline to the set
-      m_pipelines.push_back(newPipeline);
+      m_pipelines.emplace_back(state, renderPassHandle, newPipelineHandle);
 
       stats.addCtr(DxvkStatCounter::PipeCountGraphics, 1);
     }
@@ -151,12 +132,12 @@ namespace dxvk {
   }
   
   
-  DxvkGraphicsPipelineInstance* DxvkGraphicsPipeline::findInstance(
+  const DxvkGraphicsPipelineInstance* DxvkGraphicsPipeline::findInstance(
     const DxvkGraphicsPipelineStateInfo& state,
           VkRenderPass                   renderPass) const {
-    for (const auto& pipeline : m_pipelines) {
-      if (pipeline->isCompatible(state, renderPass))
-        return pipeline.ptr();
+    for (const auto& instance : m_pipelines) {
+      if (instance.isCompatible(state, renderPass))
+        return &instance;
     }
     
     return nullptr;
@@ -377,6 +358,11 @@ namespace dxvk {
   }
   
   
+  void DxvkGraphicsPipeline::destroyPipeline(VkPipeline pipeline) const {
+    m_vkd->vkDestroyPipeline(m_vkd->device(), pipeline, nullptr);
+  }
+
+
   bool DxvkGraphicsPipeline::validatePipelineState(
     const DxvkGraphicsPipelineStateInfo& state) const {
     // Validate vertex input - each input slot consumed by the
