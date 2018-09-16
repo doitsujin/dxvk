@@ -8,7 +8,7 @@
 namespace dxvk {
   
   DxvkAdapter::DxvkAdapter(
-    const Rc<DxvkInstance>&   instance,
+          DxvkInstance*       instance,
           VkPhysicalDevice    handle)
   : m_instance      (instance),
     m_vki           (instance->vki()),

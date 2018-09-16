@@ -32,7 +32,7 @@ namespace dxvk {
   public:
     
     DxvkAdapter(
-      const Rc<DxvkInstance>&   instance,
+            DxvkInstance*       instance,
             VkPhysicalDevice    handle);
     ~DxvkAdapter();
     
@@ -180,7 +180,7 @@ namespace dxvk {
     
   private:
     
-    Rc<DxvkInstance>    m_instance;
+    DxvkInstance*       m_instance;
     Rc<vk::InstanceFn>  m_vki;
     VkPhysicalDevice    m_handle;
 
