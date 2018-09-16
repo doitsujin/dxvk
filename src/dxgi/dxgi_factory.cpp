@@ -218,7 +218,6 @@ namespace dxvk {
   
   
   BOOL STDMETHODCALLTYPE DxgiFactory::IsCurrent() {
-    Logger::warn("DxgiFactory::IsCurrent: Stub");
     return TRUE;
   }
   
