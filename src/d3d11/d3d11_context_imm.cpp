@@ -333,14 +333,12 @@ namespace dxvk {
       Logger::err("D3D11: Cannot map a device-local buffer");
       return E_INVALIDARG;
     }
-
-    DxvkPhysicalBufferSlice physicalSlice;
     
     if (MapType == D3D11_MAP_WRITE_DISCARD) {
       // Allocate a new backing slice for the buffer and set
       // it as the 'new' mapped slice. This assumes that the
       // only way to invalidate a buffer is by mapping it.
-      physicalSlice = buffer->allocPhysicalSlice();
+      auto physicalSlice = buffer->allocPhysicalSlice();
       pResource->SetMappedSlice(physicalSlice);
       
       EmitCs([
@@ -352,13 +350,13 @@ namespace dxvk {
     } else if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE) {
       if (!WaitForResource(buffer->resource(), MapFlags))
         return DXGI_ERROR_WAS_STILL_DRAWING;
-      
-      physicalSlice = pResource->GetMappedSlice();
     }
     
     // Use map pointer from previous map operation. This
     // way we don't have to synchronize with the CS thread
     // if the map mode is D3D11_MAP_WRITE_NO_OVERWRITE.
+    DxvkPhysicalBufferSlice physicalSlice = pResource->GetMappedSlice();
+    
     pMappedResource->pData      = physicalSlice.mapPtr(0);
     pMappedResource->RowPitch   = pResource->GetSize();
     pMappedResource->DepthPitch = pResource->GetSize();
