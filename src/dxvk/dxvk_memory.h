@@ -27,9 +27,10 @@ namespace dxvk {
    * be persistently mapped.
    */
   struct DxvkDeviceMemory {
-    VkDeviceMemory    memHandle  = VK_NULL_HANDLE;
-    void*             memPointer = nullptr;
-    VkDeviceSize      memSize    = 0;
+    VkDeviceMemory        memHandle  = VK_NULL_HANDLE;
+    void*                 memPointer = nullptr;
+    VkDeviceSize          memSize    = 0;
+    VkMemoryPropertyFlags memFlags   = 0;
   };
 
   
@@ -159,19 +160,21 @@ namespace dxvk {
             DxvkDeviceMemory      memory);
     
     ~DxvkMemoryChunk();
-    
+
     /**
      * \brief Allocates memory from the chunk
      * 
      * On failure, this returns a slice with
      * \c VK_NULL_HANDLE as the memory handle.
+     * \param [in] flags Requested memory flags
      * \param [in] size Number of bytes to allocate
      * \param [in] align Required alignment
      * \returns The allocated memory slice
      */
     DxvkMemory alloc(
-            VkDeviceSize size,
-            VkDeviceSize align);
+            VkMemoryPropertyFlags flags,
+            VkDeviceSize          size,
+            VkDeviceSize          align);
     
     /**
      * \brief Frees memory
@@ -267,12 +270,14 @@ namespace dxvk {
     
     DxvkMemory tryAllocFromType(
             DxvkMemoryType*                   type,
+            VkMemoryPropertyFlags             flags,
             VkDeviceSize                      size,
             VkDeviceSize                      align,
       const VkMemoryDedicatedAllocateInfoKHR* dedAllocInfo);
     
     DxvkDeviceMemory tryAllocDeviceMemory(
             DxvkMemoryType*                   type,
+            VkMemoryPropertyFlags             flags,
             VkDeviceSize                      size,
       const VkMemoryDedicatedAllocateInfoKHR* dedAllocInfo);
     

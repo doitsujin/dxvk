@@ -72,7 +72,15 @@ namespace dxvk {
   }
   
   
-  DxvkMemory DxvkMemoryChunk::alloc(VkDeviceSize size, VkDeviceSize align) {
+  DxvkMemory DxvkMemoryChunk::alloc(
+          VkMemoryPropertyFlags flags,
+          VkDeviceSize          size,
+          VkDeviceSize          align) {
+    // Property flags must be compatible. This could
+    // be refined a bit in the future if necessary.
+    if (m_memory.memFlags != flags)
+      return DxvkMemory();
+    
     // If the chunk is full, return
     if (m_freeList.size() == 0)
       return DxvkMemory();
@@ -219,7 +227,7 @@ namespace dxvk {
       
       if (supported && adequate) {
         result = this->tryAllocFromType(&m_memTypes[i],
-          req->size, req->alignment, dedAllocInfo);
+          flags, req->size, req->alignment, dedAllocInfo);
       }
     }
     
@@ -229,29 +237,31 @@ namespace dxvk {
   
   DxvkMemory DxvkMemoryAllocator::tryAllocFromType(
           DxvkMemoryType*                   type,
+          VkMemoryPropertyFlags             flags,
           VkDeviceSize                      size,
           VkDeviceSize                      align,
     const VkMemoryDedicatedAllocateInfoKHR* dedAllocInfo) {
     DxvkMemory memory;
 
     if ((size >= type->heap->chunkSize / 4) || dedAllocInfo) {
-      DxvkDeviceMemory devMem = this->tryAllocDeviceMemory(type, size, dedAllocInfo);
+      DxvkDeviceMemory devMem = this->tryAllocDeviceMemory(
+        type, flags, size, dedAllocInfo);
 
       if (devMem.memHandle != VK_NULL_HANDLE)
         memory = DxvkMemory(this, nullptr, type, devMem.memHandle, 0, size, devMem.memPointer);
     } else {
       for (uint32_t i = 0; i < type->chunks.size() && !memory; i++)
-        memory = type->chunks[i]->alloc(size, align);
+        memory = type->chunks[i]->alloc(flags, size, align);
       
       if (!memory) {
         DxvkDeviceMemory devMem = tryAllocDeviceMemory(
-          type, type->heap->chunkSize, nullptr);
+          type, flags, type->heap->chunkSize, nullptr);
 
         if (devMem.memHandle == VK_NULL_HANDLE)
           return DxvkMemory();
         
         Rc<DxvkMemoryChunk> chunk = new DxvkMemoryChunk(this, type, devMem);
-        memory = chunk->alloc(size, align);
+        memory = chunk->alloc(flags, size, align);
 
         type->chunks.push_back(std::move(chunk));
       }
@@ -266,6 +276,7 @@ namespace dxvk {
   
   DxvkDeviceMemory DxvkMemoryAllocator::tryAllocDeviceMemory(
           DxvkMemoryType*                   type,
+          VkMemoryPropertyFlags             flags,
           VkDeviceSize                      size,
     const VkMemoryDedicatedAllocateInfoKHR* dedAllocInfo) {
     if ((type->memType.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
@@ -274,7 +285,8 @@ namespace dxvk {
       return DxvkDeviceMemory();
     
     DxvkDeviceMemory result;
-    result.memSize = size;
+    result.memSize  = size;
+    result.memFlags = flags;
 
     VkMemoryAllocateInfo info;
     info.sType            = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -285,7 +297,7 @@ namespace dxvk {
     if (m_vkd->vkAllocateMemory(m_vkd->device(), &info, nullptr, &result.memHandle) != VK_SUCCESS)
       return DxvkDeviceMemory();
     
-    if (type->memType.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+    if (flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
       VkResult status = m_vkd->vkMapMemory(m_vkd->device(), result.memHandle, 0, VK_WHOLE_SIZE, 0, &result.memPointer);
 
       if (status != VK_SUCCESS) {
