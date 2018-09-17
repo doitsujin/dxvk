@@ -9,14 +9,14 @@
 namespace dxvk {
   
   /**
-   * \brief Binding state
+   * \brief Binding mask
    * 
    * Used to track which resource slots have a compatible
    * binding and which ones don't. This is used to set up
    * binding-related specialization constants in shaders.
    * \tparam N Number of binding slots
    */
-  class DxvkBindingState {
+  class DxvkBindingMask {
     constexpr static uint32_t BitCount = 32;
     constexpr static uint32_t IntCount = (MaxNumActiveBindings + BitCount - 1) / BitCount;
   public:

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "dxvk_barrier.h"
-#include "dxvk_binding.h"
+#include "dxvk_bind_mask.h"
 #include "dxvk_cmdlist.h"
 #include "dxvk_context_state.h"
 #include "dxvk_data.h"
@@ -701,11 +701,11 @@ namespace dxvk {
     
     void updateShaderResources(
             VkPipelineBindPoint     bindPoint,
+            DxvkBindingMask&        bindMask,
       const DxvkPipelineLayout*     layout);
     
     VkDescriptorSet updateShaderDescriptors(
             VkPipelineBindPoint     bindPoint,
-      const DxvkBindingState&       bindingState,
       const DxvkPipelineLayout*     layout);
     
     void updateShaderDescriptorSetBinding(

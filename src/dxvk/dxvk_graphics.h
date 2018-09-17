@@ -2,7 +2,7 @@
 
 #include <mutex>
 
-#include "dxvk_binding.h"
+#include "dxvk_bind_mask.h"
 #include "dxvk_constant_state.h"
 #include "dxvk_pipecache.h"
 #include "dxvk_pipelayout.h"
@@ -34,7 +34,7 @@ namespace dxvk {
     bool operator == (const DxvkGraphicsPipelineStateInfo& other) const;
     bool operator != (const DxvkGraphicsPipelineStateInfo& other) const;
     
-    DxvkBindingState                    bsBindingState;
+    DxvkBindingMask                     bsBindingMask;
     
     VkPrimitiveTopology                 iaPrimitiveTopology;
     VkBool32                            iaPrimitiveRestart;

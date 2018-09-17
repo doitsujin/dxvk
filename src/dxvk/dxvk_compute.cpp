@@ -107,7 +107,7 @@ namespace dxvk {
     DxvkSpecConstantData specData;
     
     for (uint32_t i = 0; i < MaxNumActiveBindings; i++)
-      specData.activeBindings[i] = state.bsBindingState.isBound(i) ? VK_TRUE : VK_FALSE;
+      specData.activeBindings[i] = state.bsBindingMask.isBound(i) ? VK_TRUE : VK_FALSE;
     
     VkSpecializationInfo specInfo;
     specInfo.mapEntryCount        = g_specConstantMap.mapEntryCount();

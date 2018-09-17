@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include "dxvk_binding.h"
+#include "dxvk_bind_mask.h"
 #include "dxvk_pipecache.h"
 #include "dxvk_pipelayout.h"
 #include "dxvk_resource.h"
@@ -20,7 +20,7 @@ namespace dxvk {
     bool operator == (const DxvkComputePipelineStateInfo& other) const;
     bool operator != (const DxvkComputePipelineStateInfo& other) const;
     
-    DxvkBindingState bsBindingState;
+    DxvkBindingMask bsBindingMask;
   };
   
   
