@@ -25,9 +25,9 @@ namespace dxvk {
      * \brief Adds a resource to track
      * \param [in] rc The resource to track
      */
-    void trackResource(const Rc<DxvkResource>& rc) {
-      m_resources.push_back(rc);
+    void trackResource(Rc<DxvkResource>&& rc) {
       rc->acquire();
+      m_resources.emplace_back(std::move(rc));
     }
     
     /**

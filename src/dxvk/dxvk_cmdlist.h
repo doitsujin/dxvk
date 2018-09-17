@@ -131,8 +131,8 @@ namespace dxvk {
      * the device can guarantee that the submission has
      * completed.
      */
-    void trackResource(const Rc<DxvkResource>& rc) {
-      m_resources.trackResource(rc);
+    void trackResource(Rc<DxvkResource> rc) {
+      m_resources.trackResource(std::move(rc));
     }
     
     /**
