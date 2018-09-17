@@ -251,6 +251,14 @@ namespace dxvk {
     DxvkPhysicalBufferSlice slice() const {
       return m_slice;
     }
+
+    /**
+     * \brief Physical buffer resource
+     * \returns Resource pointer
+     */
+    Rc<DxvkResource> bufferResource() const {
+      return m_slice.resource();
+    }
     
   private:
     

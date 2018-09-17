@@ -357,7 +357,7 @@ namespace dxvk {
      * \returns Backing buffer resource
      */
     Rc<DxvkResource> bufferResource() const {
-      return m_physView->slice().resource();
+      return m_physView->bufferResource();
     }
     
     /**
