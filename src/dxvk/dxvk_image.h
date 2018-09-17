@@ -339,7 +339,7 @@ namespace dxvk {
      * \brief Image object
      * \returns Image object
      */
-    Rc<DxvkImage> image() const {
+    const Rc<DxvkImage>& image() const {
       return m_image;
     }
     

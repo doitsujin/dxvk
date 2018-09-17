@@ -196,7 +196,7 @@ namespace dxvk {
      * \brief Underlying buffer
      * \returns The virtual buffer
      */
-    Rc<DxvkBuffer> buffer() const {
+    const Rc<DxvkBuffer>& buffer() const {
       return m_buffer;
     }
     
@@ -332,7 +332,7 @@ namespace dxvk {
      * \brief Underlying buffer object
      * \returns Underlying buffer object
      */
-    Rc<DxvkBuffer> buffer() const {
+    const Rc<DxvkBuffer>& buffer() const {
       return m_buffer;
     }
     
