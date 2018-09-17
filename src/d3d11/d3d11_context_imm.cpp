@@ -355,11 +355,11 @@ namespace dxvk {
     // Use map pointer from previous map operation. This
     // way we don't have to synchronize with the CS thread
     // if the map mode is D3D11_MAP_WRITE_NO_OVERWRITE.
-    const DxvkPhysicalBufferSlice physicalSlice = pResource->GetMappedSlice();
+    DxvkPhysicalBufferSlice physicalSlice = pResource->GetMappedSlice();
     
     pMappedResource->pData      = physicalSlice.mapPtr(0);
-    pMappedResource->RowPitch   = physicalSlice.length();
-    pMappedResource->DepthPitch = physicalSlice.length();
+    pMappedResource->RowPitch   = pResource->GetSize();
+    pMappedResource->DepthPitch = pResource->GetSize();
     return S_OK;
   }
   
