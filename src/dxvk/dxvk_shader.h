@@ -5,6 +5,7 @@
 #include "dxvk_include.h"
 #include "dxvk_limits.h"
 #include "dxvk_pipelayout.h"
+#include "dxvk_shader_key.h"
 
 #include "../spirv/spirv_code_buffer.h"
 
