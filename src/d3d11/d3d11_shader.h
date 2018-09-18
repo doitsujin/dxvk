@@ -20,45 +20,6 @@ namespace dxvk {
   class D3D11Device;
   
   /**
-   * \brief Shader key
-   * 
-   * A unique identifier for a shader consisting
-   * of the program type and the SHA-1 hash of
-   * the shader's original bytecode.
-   */
-  class D3D11ShaderKey {
-    
-  public:
-    
-    D3D11ShaderKey(
-            DxbcProgramType ProgramType,
-      const void*           pShaderBytecode,
-            size_t          BytecodeLength);
-    
-    std::string GetName() const;
-    
-    size_t GetHash() const;
-    
-    bool operator == (const D3D11ShaderKey& other) const {
-      return m_type == other.m_type
-          && m_hash == other.m_hash;
-    }
-    
-  private:
-    
-    DxbcProgramType m_type;
-    Sha1Hash        m_hash;
-    
-  };
-  
-  struct D3D11ShaderKeyHash {
-    size_t operator () (const D3D11ShaderKey& a) const {
-      return a.GetHash();
-    }
-  };
-  
-  
-  /**
    * \brief Common shader object
    * 
    * Stores the compiled SPIR-V shader and the SHA-1
@@ -72,7 +33,7 @@ namespace dxvk {
     D3D11CommonShader();
     D3D11CommonShader(
             D3D11Device*    pDevice,
-      const D3D11ShaderKey* pShaderKey,
+      const DxvkShaderKey*  pShaderKey,
       const DxbcModuleInfo* pDxbcModuleInfo,
       const void*           pShaderBytecode,
             size_t          BytecodeLength);
@@ -192,9 +153,9 @@ namespace dxvk {
     std::mutex m_mutex;
     
     std::unordered_map<
-      D3D11ShaderKey,
+      DxvkShaderKey,
       D3D11CommonShader,
-      D3D11ShaderKeyHash> m_modules;
+      DxvkHash, DxvkEq> m_modules;
     
   };
   
