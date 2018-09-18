@@ -342,12 +342,22 @@ namespace dxvk {
         cDstSlice = dstBuffer.subSlice(dstOffset, regLength),
         cSrcSlice = srcBuffer.subSlice(srcOffset, regLength)
       ] (DxvkContext* ctx) {
-        ctx->copyBuffer(
-          cDstSlice.buffer(),
-          cDstSlice.offset(),
-          cSrcSlice.buffer(),
-          cSrcSlice.offset(),
-          cSrcSlice.length());
+        bool sameResource = cDstSlice.buffer() == cSrcSlice.buffer();
+
+        if (!sameResource) {
+          ctx->copyBuffer(
+            cDstSlice.buffer(),
+            cDstSlice.offset(),
+            cSrcSlice.buffer(),
+            cSrcSlice.offset(),
+            cSrcSlice.length());
+        } else {
+          ctx->copyBufferRegion(
+            cDstSlice.buffer(),
+            cDstSlice.offset(),
+            cSrcSlice.offset(),
+            cSrcSlice.length());
+        }
       });
     } else {
       const D3D11CommonTexture* dstTextureInfo = GetCommonTexture(pDstResource);
@@ -476,10 +486,20 @@ namespace dxvk {
         cSrcOffset = srcOffset,
         cExtent    = regExtent
       ] (DxvkContext* ctx) {
-        ctx->copyImage(
-          cDstImage, cDstLayers, cDstOffset,
-          cSrcImage, cSrcLayers, cSrcOffset,
-          cExtent);
+        bool sameSubresource = cDstImage  == cSrcImage
+                            && cDstLayers == cSrcLayers;
+        
+        if (!sameSubresource) {
+          ctx->copyImage(
+            cDstImage, cDstLayers, cDstOffset,
+            cSrcImage, cSrcLayers, cSrcOffset,
+            cExtent);
+        } else {
+          ctx->copyImageRegion(
+            cDstImage, cDstLayers,
+            cDstOffset, cSrcOffset,
+            cExtent);
+        }
       });
     }
   }
