@@ -1145,11 +1145,11 @@ namespace dxvk {
         
         // TODO implement, most of these are required for FL 11.1
         // https://msdn.microsoft.com/en-us/library/windows/desktop/hh404457(v=vs.85).aspx
-        const DxvkDeviceFeatures& features = m_dxvkDevice->features();
-        
+        const auto& features = m_dxvkDevice->features();
+
         auto info = static_cast<D3D11_FEATURE_DATA_D3D11_OPTIONS*>(pFeatureSupportData);
         info->OutputMergerLogicOp                     = features.core.features.logicOp;
-        info->UAVOnlyRenderingForcedSampleCount       = FALSE;
+        info->UAVOnlyRenderingForcedSampleCount       = features.core.features.variableMultisampleRate;
         info->DiscardAPIsSeenByDriver                 = TRUE;
         info->FlagsForUpdateAndCopySeenByDriver       = TRUE;
         info->ClearView                               = TRUE;
@@ -1158,7 +1158,7 @@ namespace dxvk {
         info->ConstantBufferOffsetting                = TRUE;
         info->MapNoOverwriteOnDynamicConstantBuffer   = TRUE;
         info->MapNoOverwriteOnDynamicBufferSRV        = TRUE;
-        info->MultisampleRTVWithForcedSampleCountOne  = FALSE;
+        info->MultisampleRTVWithForcedSampleCountOne  = TRUE; /* not really */
         info->SAD4ShaderInstructions                  = FALSE;
         info->ExtendedDoublesShaderInstructions       = TRUE;
         info->ExtendedResourceSharing                 = FALSE;
@@ -1356,6 +1356,7 @@ namespace dxvk {
       enabled.core.features.logicOp                               = supported.core.features.logicOp;
       enabled.core.features.shaderImageGatherExtended             = VK_TRUE;
       enabled.core.features.textureCompressionBC                  = VK_TRUE;
+      enabled.core.features.variableMultisampleRate               = supported.core.features.variableMultisampleRate;
     }
     
     if (featureLevel >= D3D_FEATURE_LEVEL_10_1) {
@@ -1376,6 +1377,7 @@ namespace dxvk {
     
     if (featureLevel >= D3D_FEATURE_LEVEL_11_1) {
       enabled.core.features.logicOp                               = VK_TRUE;
+      enabled.core.features.variableMultisampleRate               = VK_TRUE;
       enabled.core.features.vertexPipelineStoresAndAtomics        = VK_TRUE;
     }
     
