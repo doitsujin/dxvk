@@ -12,9 +12,9 @@ namespace dxvk {
     const DxvkShaderKey*  pShaderKey,
     const DxbcModuleInfo* pDxbcModuleInfo,
     const void*           pShaderBytecode,
-          size_t          BytecodeLength)
-  : m_name(pShaderKey->toString()) {
-    Logger::debug(str::format("Compiling shader ", m_name));
+          size_t          BytecodeLength) {
+    const std::string name = pShaderKey->toString();
+    Logger::debug(str::format("Compiling shader ", name));
     
     DxbcReader reader(
       reinterpret_cast<const char*>(pShaderBytecode),
@@ -27,16 +27,16 @@ namespace dxvk {
     const std::string dumpPath = env::getEnvVar(L"DXVK_SHADER_DUMP_PATH");
     
     if (dumpPath.size() != 0) {
-      reader.store(std::ofstream(str::format(dumpPath, "/", m_name, ".dxbc"),
+      reader.store(std::ofstream(str::format(dumpPath, "/", name, ".dxbc"),
         std::ios_base::binary | std::ios_base::trunc));
     }
     
-    m_shader = module.compile(*pDxbcModuleInfo, m_name);
-    m_shader->setDebugName(m_name);
+    m_shader = module.compile(*pDxbcModuleInfo, name);
+    m_shader->setShaderKey(*pShaderKey);
     
     if (dumpPath.size() != 0) {
       std::ofstream dumpStream(
-        str::format(dumpPath, "/", m_name, ".spv"),
+        str::format(dumpPath, "/", name, ".spv"),
         std::ios_base::binary | std::ios_base::trunc);
       
       m_shader->dump(dumpStream);

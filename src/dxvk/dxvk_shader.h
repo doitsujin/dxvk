@@ -237,14 +237,19 @@ namespace dxvk {
     void dump(std::ostream& outputStream) const;
     
     /**
-     * \brief Sets the shader's debug name
-     * 
-     * Debug names may be used by the backend in
-     * order to help debug shader compiler issues.
-     * \param [in] name The shader's name
+     * \brief Sets the shader key
+     * \param [in] key Unique key
      */
-    void setDebugName(const std::string& name) {
-      m_debugName = name;
+    void setShaderKey(const DxvkShaderKey& key) {
+      m_key = key;
+    }
+
+    /**
+     * \brief Retrieves shader key
+     * \returns The unique shader key
+     */
+    DxvkShaderKey getShaderKey() const {
+      return m_key;
     }
     
     /**
@@ -252,7 +257,7 @@ namespace dxvk {
      * \returns The shader's name
      */
     std::string debugName() const {
-      return m_debugName;
+      return m_key.toString();
     }
     
   private:
@@ -264,7 +269,7 @@ namespace dxvk {
     std::vector<size_t>           m_idOffsets;
     DxvkInterfaceSlots            m_interface;
     DxvkShaderConstData           m_constData;
-    std::string                   m_debugName;
+    DxvkShaderKey                 m_key;
     
   };
   

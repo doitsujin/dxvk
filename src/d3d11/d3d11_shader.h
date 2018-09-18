@@ -48,12 +48,11 @@ namespace dxvk {
     }
     
     std::string GetName() const {
-      return m_name;
+      return m_shader->debugName();
     }
     
   private:
     
-    std::string    m_name;
     Rc<DxvkShader> m_shader;
     Rc<DxvkBuffer> m_buffer;
     
