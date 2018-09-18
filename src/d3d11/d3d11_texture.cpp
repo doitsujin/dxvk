@@ -256,6 +256,9 @@ namespace dxvk {
   
   
   HRESULT D3D11CommonTexture::NormalizeTextureProperties(D3D11_COMMON_TEXTURE_DESC* pDesc) {
+    if (pDesc->Width == 0 || pDesc->Height == 0 || pDesc->Depth == 0)
+      return E_INVALIDARG;
+    
     if (FAILED(DecodeSampleCount(pDesc->SampleDesc.Count, nullptr)))
       return E_INVALIDARG;
     
