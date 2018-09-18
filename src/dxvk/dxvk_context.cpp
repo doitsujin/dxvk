@@ -567,6 +567,36 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::copyBufferRegion(
+    const Rc<DxvkBuffer>&       dstBuffer,
+          VkDeviceSize          dstOffset,
+          VkDeviceSize          srcOffset,
+          VkDeviceSize          numBytes) {
+    VkDeviceSize loOvl = std::max(dstOffset, srcOffset);
+    VkDeviceSize hiOvl = std::min(dstOffset, srcOffset) + numBytes;
+
+    if (hiOvl > loOvl) {
+      DxvkBufferCreateInfo bufInfo;
+      bufInfo.size    = numBytes;
+      bufInfo.usage   = VK_BUFFER_USAGE_TRANSFER_DST_BIT
+                      | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+      bufInfo.stages  = VK_PIPELINE_STAGE_TRANSFER_BIT;
+      bufInfo.access  = VK_ACCESS_TRANSFER_WRITE_BIT
+                      | VK_ACCESS_TRANSFER_READ_BIT;
+
+      auto tmpBuffer = m_device->createBuffer(
+        bufInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+      
+      VkDeviceSize tmpOffset = 0;
+      
+      this->copyBuffer(tmpBuffer, tmpOffset, dstBuffer, srcOffset, numBytes);
+      this->copyBuffer(dstBuffer, dstOffset, tmpBuffer, tmpOffset, numBytes);
+    } else {
+      this->copyBuffer(dstBuffer, dstOffset, dstBuffer, srcOffset, numBytes);
+    }
+  }
+
+
   void DxvkContext::copyBufferToImage(
     const Rc<DxvkImage>&        dstImage,
           VkImageSubresourceLayers dstSubresource,
@@ -783,6 +813,72 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::copyImageRegion(
+    const Rc<DxvkImage>&        dstImage,
+          VkImageSubresourceLayers dstSubresource,
+          VkOffset3D            dstOffset,
+          VkOffset3D            srcOffset,
+          VkExtent3D            extent) {
+    VkOffset3D loOvl = {
+      std::max(dstOffset.x, srcOffset.x),
+      std::max(dstOffset.y, srcOffset.y),
+      std::max(dstOffset.z, srcOffset.z) };
+    
+    VkOffset3D hiOvl = {
+      std::min(dstOffset.x, srcOffset.x) + int32_t(extent.width),
+      std::min(dstOffset.y, srcOffset.y) + int32_t(extent.height),
+      std::min(dstOffset.z, srcOffset.z) + int32_t(extent.depth) };
+    
+    bool overlap = hiOvl.x > loOvl.x
+                && hiOvl.y > loOvl.y
+                && hiOvl.z > loOvl.z;
+    
+    if (overlap) {
+      DxvkImageCreateInfo imgInfo;
+      imgInfo.type          = dstImage->info().type;
+      imgInfo.format        = dstImage->info().format;
+      imgInfo.flags         = 0;
+      imgInfo.sampleCount   = dstImage->info().sampleCount;
+      imgInfo.extent        = extent;
+      imgInfo.numLayers     = dstSubresource.layerCount;
+      imgInfo.mipLevels     = 1;
+      imgInfo.usage         = VK_IMAGE_USAGE_TRANSFER_DST_BIT
+                            | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+      imgInfo.stages        = VK_PIPELINE_STAGE_TRANSFER_BIT;
+      imgInfo.access        = VK_ACCESS_TRANSFER_WRITE_BIT
+                            | VK_ACCESS_TRANSFER_READ_BIT;
+      imgInfo.tiling        = dstImage->info().tiling;
+      imgInfo.layout        = VK_IMAGE_LAYOUT_GENERAL;
+
+      auto tmpImage = m_device->createImage(
+        imgInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+      
+      VkImageSubresourceLayers tmpSubresource;
+      tmpSubresource.aspectMask     = dstSubresource.aspectMask;
+      tmpSubresource.mipLevel       = 0;
+      tmpSubresource.baseArrayLayer = 0;
+      tmpSubresource.layerCount     = dstSubresource.layerCount;
+
+      VkOffset3D tmpOffset = { 0, 0, 0 };
+
+      this->copyImage(
+        tmpImage, tmpSubresource, tmpOffset,
+        dstImage, dstSubresource, srcOffset,
+        extent);
+      
+      this->copyImage(
+        dstImage, dstSubresource, dstOffset,
+        tmpImage, tmpSubresource, tmpOffset,
+        extent);
+    } else {
+      this->copyImage(
+        dstImage, dstSubresource, dstOffset,
+        dstImage, dstSubresource, srcOffset,
+        extent);
+    }
+  }
+
+
   void DxvkContext::copyImageToBuffer(
     const Rc<DxvkBuffer>&       dstBuffer,
           VkDeviceSize          dstOffset,
