@@ -1143,7 +1143,6 @@ namespace dxvk {
         if (FeatureSupportDataSize != sizeof(D3D11_FEATURE_DATA_D3D11_OPTIONS))
           return E_INVALIDARG;
         
-        // TODO implement, most of these are required for FL 11.1
         // https://msdn.microsoft.com/en-us/library/windows/desktop/hh404457(v=vs.85).aspx
         const auto& features = m_dxvkDevice->features();
 
@@ -1161,7 +1160,7 @@ namespace dxvk {
         info->MultisampleRTVWithForcedSampleCountOne  = TRUE; /* not really */
         info->SAD4ShaderInstructions                  = FALSE;
         info->ExtendedDoublesShaderInstructions       = TRUE;
-        info->ExtendedResourceSharing                 = FALSE;
+        info->ExtendedResourceSharing                 = TRUE; /* not really */
       } return S_OK;
 
       case D3D11_FEATURE_ARCHITECTURE_INFO: {
@@ -1300,7 +1299,6 @@ namespace dxvk {
   bool D3D11Device::CheckFeatureLevelSupport(
     const Rc<DxvkAdapter>&  adapter,
           D3D_FEATURE_LEVEL featureLevel) {
-    // We currently only support 11_0 interfaces
     if (featureLevel > GetMaxFeatureLevel(adapter))
       return false;
     
@@ -1606,7 +1604,7 @@ namespace dxvk {
     
     return entry != s_featureLevels.end()
       ? entry->second
-      : D3D_FEATURE_LEVEL_11_0;
+      : D3D_FEATURE_LEVEL_11_1;
   }
   
 }
