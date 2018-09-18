@@ -52,8 +52,9 @@ namespace dxvk {
     VkCullModeFlags                     rsCullMode;
     VkFrontFace                         rsFrontFace;
     uint32_t                            rsViewportCount;
+    VkSampleCountFlags                  rsSampleCount;
     
-    VkSampleCountFlagBits               msSampleCount;
+    VkSampleCountFlags                  msSampleCount;
     uint32_t                            msSampleMask;
     VkBool32                            msEnableAlphaToCoverage;
     VkBool32                            msEnableAlphaToOne;

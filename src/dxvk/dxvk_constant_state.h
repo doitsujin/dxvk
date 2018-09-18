@@ -48,6 +48,7 @@ namespace dxvk {
     float               depthBiasConstant;
     float               depthBiasClamp;
     float               depthBiasSlope;
+    VkSampleCountFlags  sampleCount;
   };
   
   

@@ -160,9 +160,18 @@ namespace dxvk {
       VK_DYNAMIC_STATE_BLEND_CONSTANTS,
       VK_DYNAMIC_STATE_STENCIL_REFERENCE,
     };
+
+    // Figure out the actual sample count to use
+    VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT;
+
+    if (state.msSampleCount)
+      sampleCount = VkSampleCountFlagBits(state.msSampleCount);
+    else if (state.rsSampleCount)
+      sampleCount = VkSampleCountFlagBits(state.rsSampleCount);
     
+    // Set up some specialization constants
     DxvkSpecConstantData specData;
-    specData.rasterizerSampleCount = uint32_t(state.msSampleCount);
+    specData.rasterizerSampleCount = uint32_t(sampleCount);
     
     for (uint32_t i = 0; i < MaxNumActiveBindings; i++)
       specData.activeBindings[i] = state.bsBindingMask.isBound(i) ? VK_TRUE : VK_FALSE;
@@ -272,7 +281,7 @@ namespace dxvk {
     msInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     msInfo.pNext                  = nullptr;
     msInfo.flags                  = 0;
-    msInfo.rasterizationSamples   = state.msSampleCount;
+    msInfo.rasterizationSamples   = sampleCount;
     msInfo.sampleShadingEnable    = m_common.msSampleShadingEnable;
     msInfo.minSampleShading       = m_common.msSampleShadingFactor;
     msInfo.pSampleMask            = &state.msSampleMask;

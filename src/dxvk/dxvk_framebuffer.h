@@ -79,11 +79,17 @@ namespace dxvk {
     }
     
     /**
-     * \brief Sample count
+     * \brief Framebuffer sample count
+     * 
+     * Returns the sample count of the color
+     * and depth-stencil attachments, or 0 if
+     * there are no attachments.
      * \returns Sample count
      */
-    VkSampleCountFlagBits getSampleCount() const {
-      return m_renderPass->getSampleCount();
+    VkSampleCountFlags getSampleCount() const {
+      return m_attachmentCount != 0
+        ? m_renderPass->getSampleCount()
+        : 0;
     }
     
     /**

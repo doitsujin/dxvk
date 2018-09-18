@@ -1562,6 +1562,7 @@ namespace dxvk {
     m_state.gp.state.rsPolygonMode       = rs.polygonMode;
     m_state.gp.state.rsCullMode          = rs.cullMode;
     m_state.gp.state.rsFrontFace         = rs.frontFace;
+    m_state.gp.state.rsSampleCount       = rs.sampleCount;
 
     m_state.ds.depthBiasConstant = rs.depthBiasConstant;
     m_state.ds.depthBiasClamp    = rs.depthBiasClamp;
