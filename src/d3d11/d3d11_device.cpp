@@ -282,6 +282,9 @@ namespace dxvk {
           ID3D11ShaderResourceView**        ppSRView) {
     InitReturnPtr(ppSRView);
 
+    if (pResource == nullptr)
+      return E_INVALIDARG;
+    
     D3D11_COMMON_RESOURCE_DESC resourceDesc;
     GetCommonResourceDesc(pResource, &resourceDesc);
     
@@ -327,6 +330,9 @@ namespace dxvk {
           ID3D11UnorderedAccessView**       ppUAView) {
     InitReturnPtr(ppUAView);
     
+    if (pResource == nullptr)
+      return E_INVALIDARG;
+    
     D3D11_COMMON_RESOURCE_DESC resourceDesc;
     GetCommonResourceDesc(pResource, &resourceDesc);
 
@@ -371,18 +377,18 @@ namespace dxvk {
     const D3D11_RENDER_TARGET_VIEW_DESC*    pDesc,
           ID3D11RenderTargetView**          ppRTView) {
     InitReturnPtr(ppRTView);
+
+    if (pResource == nullptr)
+      return E_INVALIDARG;
     
     // DXVK only supports render target views for image resources
-    D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
-    pResource->GetType(&resourceDim);
+    D3D11_COMMON_RESOURCE_DESC resourceDesc;
+    GetCommonResourceDesc(pResource, &resourceDesc);
     
-    if (resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER) {
+    if (resourceDesc.Dim == D3D11_RESOURCE_DIMENSION_BUFFER) {
       Logger::warn("D3D11: Cannot create render target view for a buffer");
       return S_OK; // It is required to run Battlefield 3 and Battlefield 4.
     }
-    
-    D3D11_COMMON_RESOURCE_DESC resourceDesc;
-    GetCommonResourceDesc(pResource, &resourceDesc);
     
     // The view description is optional. If not defined, it
     // will use the resource's format and all array layers.
@@ -425,6 +431,9 @@ namespace dxvk {
     const D3D11_DEPTH_STENCIL_VIEW_DESC*    pDesc,
           ID3D11DepthStencilView**          ppDepthStencilView) {
     InitReturnPtr(ppDepthStencilView);
+    
+    if (pResource == nullptr)
+      return E_INVALIDARG;
     
     D3D11_COMMON_RESOURCE_DESC resourceDesc;
     GetCommonResourceDesc(pResource, &resourceDesc);
