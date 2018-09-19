@@ -49,7 +49,6 @@ d3d11_src = [
 
 d3d11_dll = shared_library('d3d11'+dll_ext, d3d11_src + d3d10_src,
   name_prefix         : '',
-  link_with           : [ util_lib ],
   dependencies        : [ lib_dxgi, dxbc_dep, dxvk_dep ],
   include_directories : dxvk_include_path,
   install             : true,
