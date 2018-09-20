@@ -2305,7 +2305,7 @@ namespace dxvk {
         const auto& res     = m_rc[binding.slot];
 
         m_descOffsets[i] = res.bufferSlice.defined()
-          ? res.bufferSlice.physicalSlice().offset()
+          ? res.bufferSlice.getDynamicOffset()
           : 0;
       }
       

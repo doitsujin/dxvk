@@ -196,6 +196,16 @@ namespace dxvk {
       offset = keepOffset ? m_offset + offset : 0;
       return m_buffer->getDescriptor(offset, length);
     }
+
+    /**
+     * \brief Retrieves dynamic offset
+     * 
+     * \param [in] offset Offset into the slice
+     * \returns Physical buffer slice offset
+     */
+    VkDeviceSize getDynamicOffset(VkDeviceSize offset) const {
+      return m_offset + offset;
+    }
     
     /**
      * \brief Map pointer

@@ -79,6 +79,16 @@ namespace dxvk {
     DxvkDescriptorInfo getDescriptor(VkDeviceSize offset, VkDeviceSize length, bool keepOffset) const {
       return m_physSlice.getDescriptor(offset, length, keepOffset);
     }
+
+    /**
+     * \brief Retrieves dynamic offset
+     * 
+     * \param [in] offset Offset into the buffer
+     * \returns Physical buffer slice offset
+     */
+    VkDeviceSize getDynamicOffset(VkDeviceSize offset) const {
+      return m_physSlice.getDynamicOffset(offset);
+    }
     
     /**
      * \brief Underlying buffer resource
@@ -268,6 +278,16 @@ namespace dxvk {
      */
     DxvkDescriptorInfo getDescriptor(bool keepOffset) const {
       return m_buffer->getDescriptor(m_offset, m_length, keepOffset);
+    }
+
+    /**
+     * \brief Retrieves dynamic offset
+     * 
+     * Used for descriptor set binding.
+     * \returns Buffer slice offset
+     */
+    VkDeviceSize getDynamicOffset() const {
+      return m_buffer->getDynamicOffset(m_offset);
     }
     
     /**
