@@ -11,12 +11,6 @@
 namespace dxvk {
   
   class DxvkDevice;
-
-  struct DxvkSubmission {
-    Rc<DxvkCommandList> cmdList;
-    Rc<DxvkSemaphore>   semWait;
-    Rc<DxvkSemaphore>   semWake;
-  };
   
   /**
    * \brief Submission queue
@@ -47,33 +41,9 @@ namespace dxvk {
      * to finish executing on the GPU and signal
      * any queries and events that are used by
      * the command list in question.
-     * \param [in] submission Command submission
+     * \param [in] cmdList The command list
      */
-    void submit(DxvkSubmission submission);
-
-    /**
-     * \brief Synchronizes with submission thread
-     * 
-     * Waits until all submissions queued prior
-     * to this call are submitted to the GPU.
-     */
-    void synchronize();
-
-    /**
-     * \brief Locks external queue lock
-     * Protects the Vulkan queue.
-     */
-    void lock() {
-      m_externalLock.lock();
-    }
-
-    /**
-     * \brief Locks external queue lock
-     * Releases the Vulkan queue.
-     */
-    void unlock() {
-      m_externalLock.unlock();
-    }
+    void submit(const Rc<DxvkCommandList>& cmdList);
     
   private:
     
@@ -81,22 +51,14 @@ namespace dxvk {
     
     std::atomic<bool>       m_stopped = { false };
     std::atomic<uint32_t>   m_submits = { 0u };
-
-    std::mutex                      m_externalLock;
     
-    std::mutex                      m_queueLock;
-    std::condition_variable         m_queueCond;
-    std::queue<Rc<DxvkCommandList>> m_queueEntries;
-    dxvk::thread                    m_queueThread;
+    std::mutex              m_mutex;
+    std::condition_variable m_condOnAdd;
+    std::condition_variable m_condOnTake;
+    std::queue<Rc<DxvkCommandList>> m_entries;
+    dxvk::thread             m_thread;
     
-    std::mutex                      m_submitLock;
-    std::condition_variable         m_submitCondOnAdd;
-    std::condition_variable         m_submitCondOnTake;
-    std::queue<DxvkSubmission>      m_submitQueue;
-    dxvk::thread                    m_submitThread;
-    
-    void threadSubmit();
-    void threadQueue();
+    void threadFunc();
     
   };
   

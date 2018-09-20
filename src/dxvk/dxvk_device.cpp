@@ -221,16 +221,13 @@ namespace dxvk {
   
   VkResult DxvkDevice::presentSwapImage(
     const VkPresentInfoKHR&         presentInfo) {
-    { std::lock_guard<sync::Spinlock> statLock(m_statLock);
-      m_statCounters.addCtr(DxvkStatCounter::QueuePresentCount, 1);
-    }
+    { // Queue submissions are not thread safe
+      std::lock_guard<std::mutex> queueLock(m_submissionLock);
+      std::lock_guard<sync::Spinlock> statLock(m_statLock);
       
-    this->lockSubmission();
-    VkResult status = m_vkd->vkQueuePresentKHR(
-      m_presentQueue.queueHandle, &presentInfo);
-    this->unlockSubmission();
-    
-    return status;
+      m_statCounters.addCtr(DxvkStatCounter::QueuePresentCount, 1);
+      return m_vkd->vkQueuePresentKHR(m_presentQueue.queueHandle, &presentInfo);
+    }
   }
   
   
@@ -238,17 +235,41 @@ namespace dxvk {
     const Rc<DxvkCommandList>&      commandList,
     const Rc<DxvkSemaphore>&        waitSync,
     const Rc<DxvkSemaphore>&        wakeSync) {
-    { std::lock_guard<sync::Spinlock> statLock(m_statLock);
+    VkSemaphore waitSemaphore = VK_NULL_HANDLE;
+    VkSemaphore wakeSemaphore = VK_NULL_HANDLE;
     
+    if (waitSync != nullptr) {
+      waitSemaphore = waitSync->handle();
+      commandList->trackResource(waitSync);
+    }
+    
+    if (wakeSync != nullptr) {
+      wakeSemaphore = wakeSync->handle();
+      commandList->trackResource(wakeSync);
+    }
+    
+    VkResult status;
+    
+    { // Queue submissions are not thread safe
+      std::lock_guard<std::mutex> queueLock(m_submissionLock);
+      std::lock_guard<sync::Spinlock> statLock(m_statLock);
+      
       m_statCounters.merge(commandList->statCounters());
       m_statCounters.addCtr(DxvkStatCounter::QueueSubmitCount, 1);
+      
+      status = commandList->submit(
+        m_graphicsQueue.queueHandle,
+        waitSemaphore, wakeSemaphore);
     }
-
-    DxvkSubmission submission;
-    submission.cmdList = commandList;
-    submission.semWait = waitSync;
-    submission.semWake = wakeSync;
-    m_submissionQueue.submit(std::move(submission));
+    
+    if (status == VK_SUCCESS) {
+      // Add this to the set of running submissions
+      m_submissionQueue.submit(commandList);
+    } else {
+      Logger::err(str::format(
+        "DxvkDevice: Command buffer submission failed: ",
+        status));
+    }
   }
   
   

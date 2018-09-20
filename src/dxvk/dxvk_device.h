@@ -327,6 +327,7 @@ namespace dxvk {
      * \param [in] commandList The command list to submit
      * \param [in] waitSync (Optional) Semaphore to wait on
      * \param [in] wakeSync (Optional) Semaphore to notify
+     * \returns Synchronization fence
      */
     void submitCommandList(
       const Rc<DxvkCommandList>&      commandList,
@@ -341,8 +342,7 @@ namespace dxvk {
      * to lock the queue before submitting command buffers.
      */
     void lockSubmission() {
-      m_submissionQueue.synchronize();
-      m_submissionQueue.lock();
+      m_submissionLock.lock();
     }
     
     /**
@@ -352,7 +352,7 @@ namespace dxvk {
      * itself can use them for submissions again.
      */
     void unlockSubmission() {
-      m_submissionQueue.unlock();
+      m_submissionLock.unlock();
     }
 
     /**
@@ -399,6 +399,7 @@ namespace dxvk {
     sync::Spinlock              m_statLock;
     DxvkStatCounters            m_statCounters;
     
+    std::mutex                  m_submissionLock;
     DxvkDeviceQueue             m_graphicsQueue;
     DxvkDeviceQueue             m_presentQueue;
     
