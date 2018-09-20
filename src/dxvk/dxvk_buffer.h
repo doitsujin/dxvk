@@ -67,6 +67,18 @@ namespace dxvk {
     bool isInUse() const {
       return m_physSlice.resource()->isInUse();
     }
+
+    /**
+     * \brief Retrieves descriptor info
+     * 
+     * \param [in] offset Buffer slice offset
+     * \param [in] length Buffer slice length
+     * \param [in] keepOffset \c false to zero offset
+     * \returns Buffer slice descriptor
+     */
+    DxvkDescriptorInfo getDescriptor(VkDeviceSize offset, VkDeviceSize length, bool keepOffset) const {
+      return m_physSlice.getDescriptor(offset, length, keepOffset);
+    }
     
     /**
      * \brief Underlying buffer resource
@@ -191,7 +203,7 @@ namespace dxvk {
     
     size_t offset() const { return m_offset; }
     size_t length() const { return m_length; }
-    
+
     /**
      * \brief Underlying buffer
      * \returns The virtual buffer
@@ -247,6 +259,16 @@ namespace dxvk {
     DxvkPhysicalBufferSlice physicalSlice() const {
       return m_buffer->subSlice(m_offset, m_length);
     }
+
+    /**
+     * \brief Retrieves descriptor info
+     * 
+     * \param [in] keepOffset \c false to zero offset
+     * \returns Buffer slice descriptor
+     */
+    DxvkDescriptorInfo getDescriptor(bool keepOffset) const {
+      return m_buffer->getDescriptor(m_offset, m_length, keepOffset);
+    }
     
     /**
      * \brief Pointer to mapped memory region
@@ -256,6 +278,14 @@ namespace dxvk {
      */
     void* mapPtr(VkDeviceSize offset) const  {
       return m_buffer->mapPtr(m_offset + offset);
+    }
+    
+    /**
+     * \brief Resource pointer
+     * \returns Resource pointer
+     */
+    Rc<DxvkResource> resource() const {
+      return m_buffer->resource();
     }
     
     /**

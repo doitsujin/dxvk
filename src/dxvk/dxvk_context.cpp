@@ -2244,13 +2244,9 @@ namespace dxvk {
         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
           if (res.bufferSlice.defined()) {
             updatePipelineState |= bindMask.setBound(i);
+            m_descInfos[i] = res.bufferSlice.getDescriptor(true);
             
-            auto physicalSlice = res.bufferSlice.physicalSlice();
-            m_descInfos[i].buffer.buffer = physicalSlice.handle();
-            m_descInfos[i].buffer.offset = physicalSlice.offset();
-            m_descInfos[i].buffer.range  = physicalSlice.length();
-            
-            m_cmd->trackResource(physicalSlice.resource());
+            m_cmd->trackResource(res.bufferSlice.resource());
           } else {
             updatePipelineState |= bindMask.setUnbound(i);
             m_descInfos[i].buffer = m_device->dummyBufferDescriptor();
@@ -2260,13 +2256,9 @@ namespace dxvk {
         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
           if (res.bufferSlice.defined()) {
             updatePipelineState |= bindMask.setBound(i);
+            m_descInfos[i] = res.bufferSlice.getDescriptor(false);
             
-            auto physicalSlice = res.bufferSlice.physicalSlice();
-            m_descInfos[i].buffer.buffer = physicalSlice.handle();
-            m_descInfos[i].buffer.offset = 0; /* dynamic */
-            m_descInfos[i].buffer.range  = physicalSlice.length();
-            
-            m_cmd->trackResource(physicalSlice.resource());
+            m_cmd->trackResource(res.bufferSlice.resource());
           } else {
             updatePipelineState |= bindMask.setUnbound(i);
             m_descInfos[i].buffer = m_device->dummyBufferDescriptor();
