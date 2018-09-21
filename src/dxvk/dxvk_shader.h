@@ -12,6 +12,7 @@
 namespace dxvk {
   
   class DxvkShader;
+  class DxvkShaderModule;
   
   /**
    * \brief Built-in specialization constants
@@ -85,59 +86,6 @@ namespace dxvk {
     size_t    m_size = 0;
     uint32_t* m_data = nullptr;
 
-  };
-  
-  
-  /**
-   * \brief Shader module object
-   * 
-   * Manages a Vulkan shader module. This will not
-   * perform any shader compilation. Instead, the
-   * context will create pipeline objects on the
-   * fly when executing draw calls.
-   */
-  class DxvkShaderModule : public RcObject {
-    
-  public:
-    
-    DxvkShaderModule(
-      const Rc<vk::DeviceFn>&     vkd,
-      const Rc<DxvkShader>&       shader,
-      const SpirvCodeBuffer&      code);
-    
-    ~DxvkShaderModule();
-    
-    /**
-     * \brief Shader module handle
-     * \returns Shader module handle
-     */
-    VkShaderModule handle() const {
-      return m_module;
-    }
-    
-    /**
-     * \brief Shader stage creation info
-     * 
-     * \param [in] specInfo Specialization info
-     * \returns Shader stage create info
-     */
-    VkPipelineShaderStageCreateInfo stageInfo(
-      const VkSpecializationInfo* specInfo) const;
-    
-    /**
-     * \brief Shader object
-     * \returns The shader
-     */
-    Rc<DxvkShader> shader() const {
-      return m_shader;
-    }
-    
-  private:
-    
-    Rc<vk::DeviceFn>      m_vkd;
-    Rc<DxvkShader>        m_shader;
-    VkShaderModule        m_module;
-    
   };
   
   
@@ -270,6 +218,67 @@ namespace dxvk {
     DxvkInterfaceSlots            m_interface;
     DxvkShaderConstData           m_constData;
     DxvkShaderKey                 m_key;
+    
+  };
+  
+
+  /**
+   * \brief Shader module object
+   * 
+   * Manages a Vulkan shader module. This will not
+   * perform any shader compilation. Instead, the
+   * context will create pipeline objects on the
+   * fly when executing draw calls.
+   */
+  class DxvkShaderModule : public RcObject {
+    
+  public:
+    
+    DxvkShaderModule(
+      const Rc<vk::DeviceFn>&     vkd,
+      const Rc<DxvkShader>&       shader,
+      const SpirvCodeBuffer&      code);
+    
+    ~DxvkShaderModule();
+    
+    /**
+     * \brief Shader module handle
+     * \returns Shader module handle
+     */
+    VkShaderModule handle() const {
+      return m_module;
+    }
+    
+    /**
+     * \brief Shader stage creation info
+     * 
+     * \param [in] specInfo Specialization info
+     * \returns Shader stage create info
+     */
+    VkPipelineShaderStageCreateInfo stageInfo(
+      const VkSpecializationInfo* specInfo) const;
+    
+    /**
+     * \brief Shader object
+     * \returns The shader
+     */
+    Rc<DxvkShader> shader() const {
+      return m_shader;
+    }
+
+    /**
+     * \brief Retrieves shader key
+     * \returns Unique shader key
+     */
+    DxvkShaderKey getShaderKey() const {
+      return m_shader->getShaderKey();
+    }
+    
+  private:
+    
+    Rc<vk::DeviceFn>      m_vkd;
+    Rc<DxvkShader>        m_shader;
+    VkShaderModule        m_module;
     
   };
   
