@@ -1,5 +1,6 @@
 #include "dxvk_device.h"
 #include "dxvk_pipemanager.h"
+#include "dxvk_state_cache.h"
 
 namespace dxvk {
   
@@ -38,10 +39,15 @@ namespace dxvk {
   }
   
   
-  DxvkPipelineManager::DxvkPipelineManager(const DxvkDevice* device)
-  : m_device  (device),
-    m_cache   (new DxvkPipelineCache(device->vkd())) {
+  DxvkPipelineManager::DxvkPipelineManager(
+    const DxvkDevice*         device,
+          DxvkRenderPassPool* passManager)
+  : m_device    (device),
+    m_cache     (new DxvkPipelineCache(device->vkd())) {
+    std::string useStateCache = env::getEnvVar(L"DXVK_STATE_CACHE");
     
+    if (useStateCache != "0")
+      m_stateCache = new DxvkStateCache(this, passManager);
   }
   
   
@@ -99,6 +105,13 @@ namespace dxvk {
     
     m_graphicsPipelines.insert(std::make_pair(key, pipeline));
     return pipeline;
+  }
+
+  
+  void DxvkPipelineManager::registerShader(
+    const Rc<DxvkShader>&         shader) {
+    if (m_stateCache != nullptr)
+      m_stateCache->registerShader(shader);
   }
 
 

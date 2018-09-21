@@ -310,6 +310,13 @@ namespace dxvk {
     void initResources();
     
     /**
+     * \brief Registers a shader
+     * \param [in] shader Newly compiled shader
+     */
+    void registerShader(
+      const Rc<DxvkShader>&         shader);
+    
+    /**
      * \brief Presents a swap chain image
      * 
      * This is implicitly called by the swap chain class

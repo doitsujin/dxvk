@@ -16,7 +16,7 @@ namespace dxvk {
     m_properties        (adapter->deviceProperties()),
     m_memory            (new DxvkMemoryAllocator    (this)),
     m_renderPassPool    (new DxvkRenderPassPool     (vkd)),
-    m_pipelineManager   (new DxvkPipelineManager    (this)),
+    m_pipelineManager   (new DxvkPipelineManager    (this, m_renderPassPool.ptr())),
     m_metaClearObjects  (new DxvkMetaClearObjects   (vkd)),
     m_metaMipGenObjects (new DxvkMetaMipGenObjects  (vkd)),
     m_metaResolveObjects(new DxvkMetaResolveObjects (vkd)),
@@ -219,6 +219,11 @@ namespace dxvk {
   
   void DxvkDevice::initResources() {
     m_unboundResources.clearResources(this);
+  }
+
+
+  void DxvkDevice::registerShader(const Rc<DxvkShader>& shader) {
+    m_pipelineManager->registerShader(shader);
   }
   
   

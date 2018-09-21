@@ -5,6 +5,7 @@
 #include "dxvk_graphics.h"
 #include "dxvk_pipemanager.h"
 #include "dxvk_spec_const.h"
+#include "dxvk_state_cache.h"
 
 namespace dxvk {
   
@@ -131,6 +132,9 @@ namespace dxvk {
     // Use the new pipeline as the base pipeline for derivative pipelines
     if (newPipelineBase == VK_NULL_HANDLE && newPipelineHandle != VK_NULL_HANDLE)
       m_basePipeline.compare_exchange_strong(newPipelineBase, newPipelineHandle);
+    
+    if (newPipelineHandle != VK_NULL_HANDLE)
+      this->writePipelineStateToCache(state, renderPass.format());
     
     return newPipelineHandle;
   }
@@ -395,6 +399,23 @@ namespace dxvk {
     
     // No errors
     return true;
+  }
+  
+  
+  void DxvkGraphicsPipeline::writePipelineStateToCache(
+    const DxvkGraphicsPipelineStateInfo& state,
+    const DxvkRenderPassFormat&          format) const {
+    if (m_pipeMgr->m_stateCache == nullptr)
+      return;
+    
+    DxvkStateCacheKey key;
+    if (m_vs  != nullptr) key.vs = m_vs->getShaderKey();
+    if (m_tcs != nullptr) key.tcs = m_tcs->getShaderKey();
+    if (m_tes != nullptr) key.tes = m_tes->getShaderKey();
+    if (m_gs  != nullptr) key.gs = m_gs->getShaderKey();
+    if (m_fs  != nullptr) key.fs = m_fs->getShaderKey();
+
+    m_pipeMgr->m_stateCache->addGraphicsPipeline(key, state, format);
   }
   
   
