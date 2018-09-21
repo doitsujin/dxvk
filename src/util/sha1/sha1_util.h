@@ -36,6 +36,13 @@ namespace dxvk {
       const uint8_t*  data,
             size_t    size);
     
+    template<typename T>
+    static Sha1Hash compute(const T& data) {
+      auto bytes = reinterpret_cast<const uint8_t*>(&data);
+      return compute(bytes, sizeof(T));
+    }
+
+    
   private:
     
     Sha1Digest m_digest;
