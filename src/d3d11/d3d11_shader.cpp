@@ -63,6 +63,8 @@ namespace dxvk {
         m_shader->shaderConstants().data(),
         m_shader->shaderConstants().sizeInBytes());
     }
+
+    pDevice->GetDXVKDevice()->registerShader(m_shader);
   }
 
   
