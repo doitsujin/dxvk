@@ -3,6 +3,7 @@
 
 #include "dxvk_device.h"
 #include "dxvk_graphics.h"
+#include "dxvk_pipemanager.h"
 #include "dxvk_spec_const.h"
 
 namespace dxvk {
@@ -36,14 +37,13 @@ namespace dxvk {
   
   
   DxvkGraphicsPipeline::DxvkGraphicsPipeline(
-    const DxvkDevice*               device,
-    const Rc<DxvkPipelineCache>&    cache,
+          DxvkPipelineManager*      pipeMgr,
     const Rc<DxvkShader>&           vs,
     const Rc<DxvkShader>&           tcs,
     const Rc<DxvkShader>&           tes,
     const Rc<DxvkShader>&           gs,
     const Rc<DxvkShader>&           fs)
-  : m_device(device), m_vkd(device->vkd()), m_cache(cache) {
+  : m_vkd(pipeMgr->m_device->vkd()), m_pipeMgr(pipeMgr) {
     DxvkDescriptorSlotMapping slotMapping;
     if (vs  != nullptr) vs ->defineResourceSlots(slotMapping);
     if (tcs != nullptr) tcs->defineResourceSlots(slotMapping);
@@ -52,8 +52,8 @@ namespace dxvk {
     if (fs  != nullptr) fs ->defineResourceSlots(slotMapping);
     
     slotMapping.makeDescriptorsDynamic(
-      device->options().maxNumDynamicUniformBuffers,
-      device->options().maxNumDynamicStorageBuffers);
+      pipeMgr->m_device->options().maxNumDynamicUniformBuffers,
+      pipeMgr->m_device->options().maxNumDynamicStorageBuffers);
     
     m_layout = new DxvkPipelineLayout(m_vkd,
       slotMapping.bindingCount(),
@@ -237,7 +237,7 @@ namespace dxvk {
       viInfo.pNext = viDivisorInfo.pNext;
     
     // TODO remove this once the extension is widely supported
-    if (!m_device->extensions().extVertexAttributeDivisor)
+    if (!m_pipeMgr->m_device->extensions().extVertexAttributeDivisor)
       viInfo.pNext = viDivisorInfo.pNext;
     
     VkPipelineInputAssemblyStateCreateInfo iaInfo;
@@ -354,7 +354,7 @@ namespace dxvk {
     
     VkPipeline pipeline = VK_NULL_HANDLE;
     if (m_vkd->vkCreateGraphicsPipelines(m_vkd->device(),
-          m_cache->handle(), 1, &info, nullptr, &pipeline) != VK_SUCCESS) {
+          m_pipeMgr->m_cache->handle(), 1, &info, nullptr, &pipeline) != VK_SUCCESS) {
       Logger::err("DxvkGraphicsPipeline: Failed to compile pipeline");
       this->logPipelineState(LogLevel::Error, state);
       return VK_NULL_HANDLE;

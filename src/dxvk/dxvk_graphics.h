@@ -14,6 +14,7 @@
 namespace dxvk {
   
   class DxvkDevice;
+  class DxvkPipelineManager;
   
   /**
    * \brief Graphics pipeline state info
@@ -147,8 +148,7 @@ namespace dxvk {
   public:
     
     DxvkGraphicsPipeline(
-      const DxvkDevice*               device,
-      const Rc<DxvkPipelineCache>&    cache,
+            DxvkPipelineManager*      pipeMgr,
       const Rc<DxvkShader>&           vs,
       const Rc<DxvkShader>&           tcs,
       const Rc<DxvkShader>&           tes,
@@ -191,17 +191,15 @@ namespace dxvk {
       VkPipeline                    pipeline;
     };
     
-    const DxvkDevice* const m_device;
-    const Rc<vk::DeviceFn>  m_vkd;
-    
-    Rc<DxvkPipelineCache>     m_cache;
-    Rc<DxvkPipelineLayout>    m_layout;
-    
-    Rc<DxvkShaderModule>  m_vs;
-    Rc<DxvkShaderModule>  m_tcs;
-    Rc<DxvkShaderModule>  m_tes;
-    Rc<DxvkShaderModule>  m_gs;
-    Rc<DxvkShaderModule>  m_fs;
+    Rc<vk::DeviceFn>        m_vkd;
+    DxvkPipelineManager*    m_pipeMgr;
+
+    Rc<DxvkPipelineLayout>  m_layout;
+    Rc<DxvkShaderModule>    m_vs;
+    Rc<DxvkShaderModule>    m_tcs;
+    Rc<DxvkShaderModule>    m_tes;
+    Rc<DxvkShaderModule>    m_gs;
+    Rc<DxvkShaderModule>    m_fs;
     
     uint32_t m_vsIn  = 0;
     uint32_t m_fsOut = 0;

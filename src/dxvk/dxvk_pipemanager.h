@@ -56,7 +56,8 @@ namespace dxvk {
    * pipeline objects to the client API.
    */
   class DxvkPipelineManager : public RcObject {
-    
+    friend class DxvkComputePipeline;
+    friend class DxvkGraphicsPipeline;
   public:
     
     DxvkPipelineManager(const DxvkDevice* device);

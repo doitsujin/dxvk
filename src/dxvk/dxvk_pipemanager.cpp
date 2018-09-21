@@ -65,7 +65,7 @@ namespace dxvk {
       return pair->second;
     
     const Rc<DxvkComputePipeline> pipeline
-      = new DxvkComputePipeline(m_device, m_cache, cs);
+      = new DxvkComputePipeline(this, cs);
     
     m_computePipelines.insert(std::make_pair(key, pipeline));
     return pipeline;
@@ -95,7 +95,7 @@ namespace dxvk {
       return pair->second;
     
     Rc<DxvkGraphicsPipeline> pipeline = new DxvkGraphicsPipeline(
-      m_device, m_cache, vs, tcs, tes, gs, fs);
+      this, vs, tcs, tes, gs, fs);
     
     m_graphicsPipelines.insert(std::make_pair(key, pipeline));
     return pipeline;

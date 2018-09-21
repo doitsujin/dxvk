@@ -3,6 +3,7 @@
 
 #include "dxvk_compute.h"
 #include "dxvk_device.h"
+#include "dxvk_pipemanager.h"
 #include "dxvk_spec_const.h"
 
 namespace dxvk {
@@ -18,17 +19,16 @@ namespace dxvk {
   
   
   DxvkComputePipeline::DxvkComputePipeline(
-    const DxvkDevice*             device,
-    const Rc<DxvkPipelineCache>&  cache,
+          DxvkPipelineManager*    pipeMgr,
     const Rc<DxvkShader>&         cs)
-  : m_device(device), m_vkd(device->vkd()),
-    m_cache(cache) {
+  : m_vkd(pipeMgr->m_device->vkd()),
+    m_pipeMgr(pipeMgr) {
     DxvkDescriptorSlotMapping slotMapping;
     cs->defineResourceSlots(slotMapping);
 
     slotMapping.makeDescriptorsDynamic(
-      device->options().maxNumDynamicUniformBuffers,
-      device->options().maxNumDynamicStorageBuffers);
+      m_pipeMgr->m_device->options().maxNumDynamicUniformBuffers,
+      m_pipeMgr->m_device->options().maxNumDynamicStorageBuffers);
     
     m_layout = new DxvkPipelineLayout(m_vkd,
       slotMapping.bindingCount(),
@@ -131,7 +131,7 @@ namespace dxvk {
     
     VkPipeline pipeline = VK_NULL_HANDLE;
     if (m_vkd->vkCreateComputePipelines(m_vkd->device(),
-          m_cache->handle(), 1, &info, nullptr, &pipeline) != VK_SUCCESS) {
+          m_pipeMgr->m_cache->handle(), 1, &info, nullptr, &pipeline) != VK_SUCCESS) {
       Logger::err("DxvkComputePipeline: Failed to compile pipeline");
       Logger::err(str::format("  cs  : ", m_cs->shader()->debugName()));
       return VK_NULL_HANDLE;

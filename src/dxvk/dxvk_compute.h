@@ -12,6 +12,7 @@
 namespace dxvk {
   
   class DxvkDevice;
+  class DxvkPipelineManager;
   
   /**
    * \brief Compute pipeline state info
@@ -37,8 +38,7 @@ namespace dxvk {
   public:
     
     DxvkComputePipeline(
-      const DxvkDevice*             device,
-      const Rc<DxvkPipelineCache>&  cache,
+            DxvkPipelineManager*    pipeMgr,
       const Rc<DxvkShader>&         cs);
     ~DxvkComputePipeline();
     
@@ -71,10 +71,9 @@ namespace dxvk {
       VkPipeline                   pipeline;
     };
     
-    const DxvkDevice* const m_device;
-    const Rc<vk::DeviceFn>  m_vkd;
+    Rc<vk::DeviceFn>        m_vkd;
+    DxvkPipelineManager*    m_pipeMgr;
     
-    Rc<DxvkPipelineCache>   m_cache;
     Rc<DxvkPipelineLayout>  m_layout;
     Rc<DxvkShaderModule>    m_cs;
     
