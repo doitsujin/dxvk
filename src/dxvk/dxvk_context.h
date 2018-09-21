@@ -762,8 +762,6 @@ namespace dxvk {
     
     void commitComputeInitBarriers();
     void commitComputePostBarriers();
-
-    Rc<DxvkBuffer> getTransferBuffer(VkDeviceSize size);
     
   };
   
