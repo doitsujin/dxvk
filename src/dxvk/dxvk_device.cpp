@@ -198,10 +198,13 @@ namespace dxvk {
   
   DxvkStatCounters DxvkDevice::getStatCounters() {
     DxvkMemoryStats mem = m_memory->getMemoryStats();
+    DxvkPipelineCount pipe = m_pipelineManager->getPipelineCount();
     
     DxvkStatCounters result;
-    result.setCtr(DxvkStatCounter::MemoryAllocated, mem.memoryAllocated);
-    result.setCtr(DxvkStatCounter::MemoryUsed,      mem.memoryUsed);
+    result.setCtr(DxvkStatCounter::MemoryAllocated,   mem.memoryAllocated);
+    result.setCtr(DxvkStatCounter::MemoryUsed,        mem.memoryUsed);
+    result.setCtr(DxvkStatCounter::PipeCountGraphics, pipe.numGraphicsPipelines);
+    result.setCtr(DxvkStatCounter::PipeCountCompute,  pipe.numComputePipelines);
     
     std::lock_guard<sync::Spinlock> lock(m_statLock);
     result.merge(m_statCounters);

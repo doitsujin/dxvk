@@ -175,13 +175,11 @@ namespace dxvk {
      * state. If necessary, a new pipeline will be created.
      * \param [in] state Pipeline state vector
      * \param [in] renderPass The render pass
-     * \param [in,out] stats Stat counter
      * \returns Pipeline handle
      */
     VkPipeline getPipelineHandle(
       const DxvkGraphicsPipelineStateInfo&    state,
-      const DxvkRenderPass&                   renderPass,
-            DxvkStatCounters&                 stats);
+      const DxvkRenderPass&                   renderPass);
     
   private:
     

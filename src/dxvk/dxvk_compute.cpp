@@ -45,8 +45,7 @@ namespace dxvk {
   
   
   VkPipeline DxvkComputePipeline::getPipelineHandle(
-    const DxvkComputePipelineStateInfo& state,
-          DxvkStatCounters&             stats) {
+    const DxvkComputePipelineStateInfo& state) {
     VkPipeline pipeline = VK_NULL_HANDLE;
     
     { std::lock_guard<sync::Spinlock> lock(m_mutex);
@@ -70,11 +69,11 @@ namespace dxvk {
       
       // Add new pipeline to the set
       m_pipelines.push_back({ state, newPipeline });
+      m_pipeMgr->m_numComputePipelines += 1;
       
       if (m_basePipeline == VK_NULL_HANDLE)
         m_basePipeline = newPipeline;
       
-      stats.addCtr(DxvkStatCounter::PipeCountCompute, 1);
       return newPipeline;
     }
   }

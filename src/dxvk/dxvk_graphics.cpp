@@ -82,8 +82,7 @@ namespace dxvk {
   
   VkPipeline DxvkGraphicsPipeline::getPipelineHandle(
     const DxvkGraphicsPipelineStateInfo& state,
-    const DxvkRenderPass&                renderPass,
-          DxvkStatCounters&              stats) {
+    const DxvkRenderPass&                renderPass) {
     VkRenderPass renderPassHandle = renderPass.getDefaultHandle();
 
     { std::lock_guard<sync::Spinlock> lock(m_mutex);
@@ -120,8 +119,7 @@ namespace dxvk {
       
       // Add new pipeline to the set
       m_pipelines.emplace_back(state, renderPassHandle, newPipelineHandle);
-
-      stats.addCtr(DxvkStatCounter::PipeCountGraphics, 1);
+      m_pipeMgr->m_numGraphicsPipelines += 1;
     }
     
     // Use the new pipeline as the base pipeline for derivative pipelines

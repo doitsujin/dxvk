@@ -7,6 +7,17 @@
 #include "dxvk_graphics.h"
 
 namespace dxvk {
+
+  /**
+   * \brief Pipeline count
+   * 
+   * Stores number of graphics and
+   * compute pipelines, individually.
+   */
+  struct DxvkPipelineCount {
+    uint32_t numGraphicsPipelines;
+    uint32_t numComputePipelines;
+  };
   
   /**
    * \brief Compute pipeline key
@@ -95,10 +106,19 @@ namespace dxvk {
       const Rc<DxvkShader>&         gs,
       const Rc<DxvkShader>&         fs);
     
+    /**
+     * \brief Retrieves total pipeline count
+     * \returns Number of compute/graphics pipelines
+     */
+    DxvkPipelineCount getPipelineCount() const;
+    
   private:
     
     const DxvkDevice*         m_device;
     Rc<DxvkPipelineCache>     m_cache;
+
+    std::atomic<uint32_t>     m_numComputePipelines  = { 0 };
+    std::atomic<uint32_t>     m_numGraphicsPipelines = { 0 };
     
     std::mutex m_mutex;
     

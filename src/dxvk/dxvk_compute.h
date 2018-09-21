@@ -61,8 +61,7 @@ namespace dxvk {
      * \returns Pipeline handle
      */
     VkPipeline getPipelineHandle(
-      const DxvkComputePipelineStateInfo& state,
-            DxvkStatCounters&             stats);
+      const DxvkComputePipelineStateInfo& state);
     
   private:
     

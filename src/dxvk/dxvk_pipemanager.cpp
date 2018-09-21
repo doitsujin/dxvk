@@ -100,5 +100,13 @@ namespace dxvk {
     m_graphicsPipelines.insert(std::make_pair(key, pipeline));
     return pipeline;
   }
+
+
+  DxvkPipelineCount DxvkPipelineManager::getPipelineCount() const {
+    DxvkPipelineCount result;
+    result.numComputePipelines  = m_numComputePipelines.load();
+    result.numGraphicsPipelines = m_numGraphicsPipelines.load();
+    return result;
+  }
   
 }
