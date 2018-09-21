@@ -81,6 +81,11 @@ namespace dxvk {
       { "dxgi.customVendorId",              "1002" },
       { "dxgi.customDeviceId",              "e366" },
     }} },
+    /* Sword Art Online Fatal Bullet              */
+    { "SAOFB-Win64-Shipping.exe", {{
+      { "dxgi.customVendorId",              "1002" },
+      { "dxgi.customDeviceId",              "e366" },
+    }} },
   }};
 
 
