@@ -189,12 +189,10 @@ namespace dxvk {
      * 
      * \param [in] offset Buffer slice offset
      * \param [in] length Buffer slice length
-     * \param [in] keepOffset \c false to zero offset
      * \returns Buffer slice descriptor
      */
-    DxvkDescriptorInfo getDescriptor(VkDeviceSize offset, VkDeviceSize length, bool keepOffset) const {
-      offset = keepOffset ? m_offset + offset : 0;
-      return m_buffer->getDescriptor(offset, length);
+    DxvkDescriptorInfo getDescriptor(VkDeviceSize offset, VkDeviceSize length) const {
+      return m_buffer->getDescriptor(m_offset + offset, length);
     }
 
     /**

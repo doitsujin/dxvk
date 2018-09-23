@@ -76,8 +76,8 @@ namespace dxvk {
      * \param [in] keepOffset \c false to zero offset
      * \returns Buffer slice descriptor
      */
-    DxvkDescriptorInfo getDescriptor(VkDeviceSize offset, VkDeviceSize length, bool keepOffset) const {
-      return m_physSlice.getDescriptor(offset, length, keepOffset);
+    DxvkDescriptorInfo getDescriptor(VkDeviceSize offset, VkDeviceSize length) const {
+      return m_physSlice.getDescriptor(offset, length);
     }
 
     /**
@@ -272,12 +272,10 @@ namespace dxvk {
 
     /**
      * \brief Retrieves descriptor info
-     * 
-     * \param [in] keepOffset \c false to zero offset
      * \returns Buffer slice descriptor
      */
-    DxvkDescriptorInfo getDescriptor(bool keepOffset) const {
-      return m_buffer->getDescriptor(m_offset, m_length, keepOffset);
+    DxvkDescriptorInfo getDescriptor() const {
+      return m_buffer->getDescriptor(m_offset, m_length);
     }
 
     /**

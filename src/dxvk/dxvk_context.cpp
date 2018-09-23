@@ -2244,7 +2244,7 @@ namespace dxvk {
         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
           if (res.bufferSlice.defined()) {
             updatePipelineState |= bindMask.setBound(i);
-            m_descInfos[i] = res.bufferSlice.getDescriptor(true);
+            m_descInfos[i] = res.bufferSlice.getDescriptor();
             
             m_cmd->trackResource(res.bufferSlice.resource());
           } else {
@@ -2256,7 +2256,8 @@ namespace dxvk {
         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
           if (res.bufferSlice.defined()) {
             updatePipelineState |= bindMask.setBound(i);
-            m_descInfos[i] = res.bufferSlice.getDescriptor(false);
+            m_descInfos[i] = res.bufferSlice.getDescriptor();
+            m_descInfos[i].buffer.offset = 0;
             
             m_cmd->trackResource(res.bufferSlice.resource());
           } else {
@@ -2346,14 +2347,14 @@ namespace dxvk {
       m_flags.clr(DxvkContextFlag::GpDirtyIndexBuffer);
       
       if (m_state.vi.indexBuffer.defined()) {
-        auto physicalSlice = m_state.vi.indexBuffer.physicalSlice();
+        auto bufferInfo = m_state.vi.indexBuffer.getDescriptor();
         
         m_cmd->cmdBindIndexBuffer(
-          physicalSlice.handle(),
-          physicalSlice.offset(),
+          bufferInfo.buffer.buffer,
+          bufferInfo.buffer.offset,
           m_state.vi.indexType);
         m_cmd->trackResource(
-          physicalSlice.resource());
+          m_state.vi.indexBuffer.resource());
       } else {
         m_cmd->cmdBindIndexBuffer(
           m_device->dummyBufferHandle(),
@@ -2379,14 +2380,14 @@ namespace dxvk {
         bindingCount = std::max(bindingCount, binding + 1);
         
         if (m_state.vi.vertexBuffers[binding].defined()) {
-          auto vbo = m_state.vi.vertexBuffers[binding].physicalSlice();
+          auto vbo = m_state.vi.vertexBuffers[binding].getDescriptor();
           
-          buffers[binding] = vbo.handle();
-          offsets[binding] = vbo.offset();
+          buffers[binding] = vbo.buffer.buffer;
+          offsets[binding] = vbo.buffer.offset;
           
           bindingMask |= 1u << binding;
           
-          m_cmd->trackResource(vbo.resource());
+          m_cmd->trackResource(m_state.vi.vertexBuffers[binding].resource());
         }
       }
       
