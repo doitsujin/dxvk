@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <vector>
 
 #include "dxvk_bind_mask.h"
@@ -79,7 +80,7 @@ namespace dxvk {
     sync::Spinlock              m_mutex;
     std::vector<PipelineStruct> m_pipelines;
     
-    VkPipeline m_basePipeline = VK_NULL_HANDLE;
+    std::atomic<VkPipeline> m_basePipeline = { VK_NULL_HANDLE };
     
     bool findPipeline(
       const DxvkComputePipelineStateInfo& state,
@@ -89,7 +90,11 @@ namespace dxvk {
       const DxvkComputePipelineStateInfo& state,
             VkPipeline                    baseHandle) const;
     
-    void destroyPipelines();
+    void destroyPipeline(
+            VkPipeline                    pipeline);
+
+    void writePipelineStateToCache(
+      const DxvkComputePipelineStateInfo& state) const;
     
   };
   

@@ -5,6 +5,7 @@
 #include "dxvk_device.h"
 #include "dxvk_pipemanager.h"
 #include "dxvk_spec_const.h"
+#include "dxvk_state_cache.h"
 
 namespace dxvk {
   
@@ -40,7 +41,8 @@ namespace dxvk {
   
   
   DxvkComputePipeline::~DxvkComputePipeline() {
-    this->destroyPipelines();
+    for (const auto& instance : m_pipelines)
+      this->destroyPipeline(instance.pipeline);
   }
   
   
@@ -54,28 +56,41 @@ namespace dxvk {
         return pipeline;
     }
     
-    // If no pipeline exists with the given state vector,
-    // create a new one and add it to the pipeline set.
-    VkPipeline newPipeline = this->compilePipeline(state, m_basePipeline);
+    // If no pipeline instance exists with the given state
+    // vector, create a new one and add it to the list.
+    VkPipeline newPipelineBase   = m_basePipeline.load();
+    VkPipeline newPipelineHandle = VK_NULL_HANDLE;
+
+    // FIXME for some reason, compiling the exact
+    // same pipeline crashes inside driver code
+    { std::lock_guard<sync::Spinlock> lock(m_mutex);
+      newPipelineHandle = this->compilePipeline(
+        state, newPipelineBase);
+    }
     
     { std::lock_guard<sync::Spinlock> lock(m_mutex);
       
       // Discard the pipeline if another thread
       // was faster compiling the same pipeline
       if (this->findPipeline(state, pipeline)) {
-        m_vkd->vkDestroyPipeline(m_vkd->device(), newPipeline, nullptr);
+        this->destroyPipeline(newPipelineHandle);
+        m_vkd->vkDestroyPipeline(m_vkd->device(), newPipelineHandle, nullptr);
         return pipeline;
       }
       
       // Add new pipeline to the set
-      m_pipelines.push_back({ state, newPipeline });
+      m_pipelines.push_back({ state, newPipelineHandle });
       m_pipeMgr->m_numComputePipelines += 1;
-      
-      if (m_basePipeline == VK_NULL_HANDLE)
-        m_basePipeline = newPipeline;
-      
-      return newPipeline;
     }
+
+    // Use the new pipeline as the base pipeline for derivative pipelines
+    if (newPipelineBase == VK_NULL_HANDLE && newPipelineHandle != VK_NULL_HANDLE)
+      m_basePipeline.compare_exchange_strong(newPipelineBase, newPipelineHandle);
+    
+    if (newPipelineHandle != VK_NULL_HANDLE)
+      this->writePipelineStateToCache(state);
+    
+    return newPipelineHandle;
   }
   
   
@@ -141,11 +156,24 @@ namespace dxvk {
     Logger::debug(str::format("DxvkComputePipeline: Finished in ", td.count(), " ms"));
     return pipeline;
   }
+
+
+  void DxvkComputePipeline::destroyPipeline(VkPipeline pipeline) {
+    m_vkd->vkDestroyPipeline(m_vkd->device(), pipeline, nullptr);
+  }
   
   
-  void DxvkComputePipeline::destroyPipelines() {
-    for (const PipelineStruct& pair : m_pipelines)
-      m_vkd->vkDestroyPipeline(m_vkd->device(), pair.pipeline, nullptr);
+  void DxvkComputePipeline::writePipelineStateToCache(
+    const DxvkComputePipelineStateInfo& state) const {
+    if (m_pipeMgr->m_stateCache == nullptr)
+      return;
+    
+    DxvkStateCacheKey key;
+
+    if (m_cs != nullptr)
+      key.cs = m_cs->getShaderKey();
+
+    m_pipeMgr->m_stateCache->addComputePipeline(key, state);
   }
   
 }
