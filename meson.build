@@ -1,4 +1,4 @@
-project('dxvk', ['c', 'cpp'], version : 'v0.72')
+project('dxvk', ['c', 'cpp'], version : 'v0.80')
 
 cpu_family = target_machine.cpu_family()
 
