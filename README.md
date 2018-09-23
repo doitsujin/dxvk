@@ -76,10 +76,18 @@ Some applications do not provide a method to select a different GPU. In that cas
 
 **Note:** If the device filter is configured incorrectly, it may filter out all devices and applications will be unable to create a D3D device.
 
+### State cache
+DXVK caches pipeline state by default, so that shaders can be recompiled ahead of time on subsequent runs of an application, even if the driver's own shader cache got invalidated in the meantime. This cache is enabled by default, and generally reduces stuttering.
+
+The following environment variables can be used to control the cache:
+- `DXVK_STATE_CACHE=0` Disables the state cache.
+- `DXVK_STATE_CACHE_PATH=/some/directory` Specifies a directory where to put the cache files. Defaults to the current working directory of the application.
+
 ### Debugging
 The following environment variables can be used for **debugging** purposes.
 - `VK_INSTANCE_LAYERS=VK_LAYER_LUNARG_standard_validation` Enables Vulkan debug layers. Highly recommended for troubleshooting rendering issues and driver crashes. Requires the Vulkan SDK to be installed on the host system.
 - `DXVK_LOG_LEVEL=none|error|warn|info|debug` Controls message logging.
+- `DXVK_LOG_PATH=/some/directory` Changes path where log files are stored.
 - `DXVK_CONFIG_FILE=/xxx/dxvk.conf` Sets path to the configuration file.
 
 ## Troubleshooting
