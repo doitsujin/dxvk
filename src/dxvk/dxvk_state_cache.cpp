@@ -11,7 +11,8 @@ namespace dxvk {
         && this->tcs.eq(key.tcs)
         && this->tes.eq(key.tes)
         && this->gs.eq(key.gs)
-        && this->fs.eq(key.fs);
+        && this->fs.eq(key.fs)
+        && this->cs.eq(key.cs);
   }
 
 
@@ -22,6 +23,7 @@ namespace dxvk {
     hash.add(this->tes.hash());
     hash.add(this->gs.hash());
     hash.add(this->fs.hash());
+    hash.add(this->cs.hash());
     return hash;
   }
 
@@ -114,14 +116,40 @@ namespace dxvk {
     for (auto e = entries.first; e != entries.second; e++) {
       const DxvkStateCacheEntry& entry = m_entries[e->second];
 
-      if (entry.format.matches(format) && entry.state == state)
+      if (entry.format.matches(format) && entry.gpState == state)
         return;
     }
 
     // Queue a job to write this pipeline to the cache
     std::unique_lock<std::mutex> lock(m_writerLock);
 
-    m_writerQueue.push({ shaders, state, format, g_nullHash });
+    m_writerQueue.push({ shaders, state,
+      DxvkComputePipelineStateInfo(),
+      format, g_nullHash });
+    m_writerCond.notify_one();
+  }
+
+
+  void DxvkStateCache::addComputePipeline(
+    const DxvkStateCacheKey&              shaders,
+    const DxvkComputePipelineStateInfo&   state) {
+    if (shaders.cs.eq(g_nullShaderKey))
+      return;
+
+    // Do not add an entry that is already in the cache
+    auto entries = m_entryMap.equal_range(shaders);
+
+    for (auto e = entries.first; e != entries.second; e++) {
+      if (m_entries[e->second].cpState == state)
+        return;
+    }
+
+    // Queue a job to write this pipeline to the cache
+    std::unique_lock<std::mutex> lock(m_writerLock);
+
+    m_writerQueue.push({ shaders,
+      DxvkGraphicsPipelineStateInfo(), state,
+      DxvkRenderPassFormat(), g_nullHash });
     m_writerCond.notify_one();
   }
 
@@ -148,7 +176,8 @@ namespace dxvk {
        || !getShaderByKey(p->second.tcs, item.tcs)
        || !getShaderByKey(p->second.tes, item.tes)
        || !getShaderByKey(p->second.gs,  item.gs)
-       || !getShaderByKey(p->second.fs,  item.fs))
+       || !getShaderByKey(p->second.fs,  item.fs)
+       || !getShaderByKey(p->second.cs,  item.cs))
         continue;
       
       if (!workerLock)
@@ -204,18 +233,27 @@ namespace dxvk {
     key.tes = getShaderKey(item.tes);
     key.gs  = getShaderKey(item.gs);
     key.fs  = getShaderKey(item.fs);
+    key.cs  = getShaderKey(item.cs);
 
-    // Create the base pipeline object
-    auto entries = m_entryMap.equal_range(key);
-    auto pipeline = m_pipeManager->createGraphicsPipeline(
-      item.vs, item.tcs, item.tes, item.gs, item.fs);
+    if (item.cs == nullptr) {
+      auto pipeline = m_pipeManager->createGraphicsPipeline(
+        item.vs, item.tcs, item.tes, item.gs, item.fs);
+      auto entries = m_entryMap.equal_range(key);
 
-    // Compile all pipeline variations stored in the cache
-    for (auto e = entries.first; e != entries.second; e++) {
-      const auto& entry = m_entries[e->second];
+      for (auto e = entries.first; e != entries.second; e++) {
+        const auto& entry = m_entries[e->second];
 
-      auto rp = m_passManager->getRenderPass(entry.format);
-      pipeline->getPipelineHandle(entry.state, *rp);
+        auto rp = m_passManager->getRenderPass(entry.format);
+        pipeline->getPipelineHandle(entry.gpState, *rp);
+      }
+    } else {
+      auto pipeline = m_pipeManager->createComputePipeline(item.cs);
+      auto entries = m_entryMap.equal_range(key);
+
+      for (auto e = entries.first; e != entries.second; e++) {
+        const auto& entry = m_entries[e->second];
+        pipeline->getPipelineHandle(entry.cpState);
+      }
     }
   }
 
@@ -255,6 +293,7 @@ namespace dxvk {
         mapShaderToPipeline(entry.shaders.tes, entry.shaders);
         mapShaderToPipeline(entry.shaders.gs,  entry.shaders);
         mapShaderToPipeline(entry.shaders.fs,  entry.shaders);
+        mapShaderToPipeline(entry.shaders.cs,  entry.shaders);
       } else if (ifile) {
         numInvalidEntries += 1;
       }

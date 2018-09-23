@@ -26,6 +26,7 @@ namespace dxvk {
     DxvkShaderKey tes;
     DxvkShaderKey gs;
     DxvkShaderKey fs;
+    DxvkShaderKey cs;
 
     bool eq(const DxvkStateCacheKey& key) const;
 
@@ -43,7 +44,8 @@ namespace dxvk {
    */
   struct DxvkStateCacheEntry {
     DxvkStateCacheKey             shaders;
-    DxvkGraphicsPipelineStateInfo state;
+    DxvkGraphicsPipelineStateInfo gpState;
+    DxvkComputePipelineStateInfo  cpState;
     DxvkRenderPassFormat          format;
     Sha1Hash                      hash;
   };
@@ -58,7 +60,7 @@ namespace dxvk {
    */
   struct DxvkStateCacheHeader {
     char     magic[4]   = { 'D', 'X', 'V', 'K' };
-    uint32_t version    = 1;
+    uint32_t version    = 2;
     uint32_t entrySize  = sizeof(DxvkStateCacheEntry);
   };
 
@@ -99,6 +101,18 @@ namespace dxvk {
       const DxvkRenderPassFormat&           format);
 
     /**
+     * Adds a compute pipeline to the cache
+     * 
+     * If the pipeline is not already cached, this
+     * will write a new pipeline to the cache file.
+     * \param [in] shaders Shader keys
+     * \param [in] state Compute pipeline state
+     */
+    void addComputePipeline(
+      const DxvkStateCacheKey&              shaders,
+      const DxvkComputePipelineStateInfo&   state);
+
+    /**
      * \brief Registers a newly compiled shader
      * 
      * Makes the shader available to the pipeline
@@ -111,8 +125,16 @@ namespace dxvk {
 
   private:
 
-    using WorkerItem = DxvkGraphicsPipelineKey;
     using WriterItem = DxvkStateCacheEntry;
+
+    struct WorkerItem {
+      Rc<DxvkShader> vs;
+      Rc<DxvkShader> tcs;
+      Rc<DxvkShader> tes;
+      Rc<DxvkShader> gs;
+      Rc<DxvkShader> fs;
+      Rc<DxvkShader> cs;
+    };
 
     DxvkPipelineManager*              m_pipeManager;
     DxvkRenderPassPool*               m_passManager;
