@@ -74,7 +74,6 @@ namespace dxvk {
       // was faster compiling the same pipeline
       if (this->findPipeline(state, pipeline)) {
         this->destroyPipeline(newPipelineHandle);
-        m_vkd->vkDestroyPipeline(m_vkd->device(), newPipelineHandle, nullptr);
         return pipeline;
       }
       
