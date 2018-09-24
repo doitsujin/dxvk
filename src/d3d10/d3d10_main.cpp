@@ -30,8 +30,17 @@ extern "C" {
           ID3D10Device**          ppDevice) {
     Com<ID3D11Device> d3d11Device;
 
-    HRESULT hr = D3D11CoreCreateDevice(pFactory,
-      pAdapter, Flags, &FeatureLevel, 1, &d3d11Device);
+    if (ppDevice != nullptr)
+      *ppDevice = nullptr;
+
+    HRESULT hr = pAdapter->CheckInterfaceSupport(
+      __uuidof(ID3D10Device), nullptr);
+    
+    if (FAILED(hr))
+      return hr;
+
+    hr = D3D11CoreCreateDevice(pFactory, pAdapter,
+      Flags, &FeatureLevel, 1, &d3d11Device);
     
     if (FAILED(hr))
       return hr;

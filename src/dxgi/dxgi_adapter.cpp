@@ -57,12 +57,16 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiAdapter::CheckInterfaceSupport(
           REFGUID                   InterfaceName,
           LARGE_INTEGER*            pUMDVersion) {
+    const DxgiOptions* options = m_factory->GetOptions();
+
     if (pUMDVersion != nullptr)
       *pUMDVersion = LARGE_INTEGER();
     
-    if (InterfaceName == __uuidof(ID3D10Device)
-     || InterfaceName == __uuidof(ID3D10Device1))
-      return S_OK;
+    if (options->d3d10Enable) {
+      if (InterfaceName == __uuidof(ID3D10Device)
+       || InterfaceName == __uuidof(ID3D10Device1))
+        return S_OK;
+    }
     
     Logger::err("DXGI: CheckInterfaceSupport: Unsupported interface");
     Logger::err(str::format(InterfaceName));

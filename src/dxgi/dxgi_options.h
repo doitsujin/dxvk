@@ -45,6 +45,9 @@ namespace dxvk {
     /// Sync interval. Overrides the value
     /// passed to IDXGISwapChain::Present.
     int32_t syncInterval;
+
+    /// Enables D3D10 support
+    bool d3d10Enable;
   };
   
 }
