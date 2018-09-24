@@ -397,6 +397,11 @@ namespace dxvk {
     if ((state.iaPatchVertexCount != 0) && (m_tcs == nullptr || m_tes == nullptr))
       return false;
     
+    // Prevent unintended out-of-bounds access to the IL arrays
+    if (state.ilAttributeCount > DxvkLimits::MaxNumVertexAttributes
+     || state.ilBindingCount   > DxvkLimits::MaxNumVertexBindings)
+      return false;
+    
     // No errors
     return true;
   }
