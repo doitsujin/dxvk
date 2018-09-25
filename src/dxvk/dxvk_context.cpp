@@ -736,6 +736,12 @@ namespace dxvk {
         dstImage->handle(), dstImageLayout,
         1, &imageRegion);
     } else {
+      // TODO handle this case correctly
+      if (dstImage->info().sampleCount != VK_SAMPLE_COUNT_1_BIT) {
+        Logger::err("DXVK: MSAA depth<>color copies not supported");
+        return;
+      }
+
       const VkDeviceSize transferBufferSize = std::max(
         util::computeImageDataSize(dstImage->info().format, extent),
         util::computeImageDataSize(srcImage->info().format, extent));
