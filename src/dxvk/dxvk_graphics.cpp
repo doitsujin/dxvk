@@ -85,45 +85,27 @@ namespace dxvk {
     const DxvkGraphicsPipelineStateInfo& state,
     const DxvkRenderPass&                renderPass) {
     VkRenderPass renderPassHandle = renderPass.getDefaultHandle();
+    
+    VkPipeline newPipelineBase   = VK_NULL_HANDLE;
+    VkPipeline newPipelineHandle = VK_NULL_HANDLE;
 
     { std::lock_guard<sync::Spinlock> lock(m_mutex);
-      
-      const DxvkGraphicsPipelineInstance* instance =
-        this->findInstance(state, renderPassHandle);
+    
+      auto instance = this->findInstance(state, renderPassHandle);
       
       if (instance != nullptr)
         return instance->pipeline();
-    }
     
-    // If the pipeline state vector is invalid, don't try
-    // to create a new pipeline, it won't work anyway.
-    if (!this->validatePipelineState(state))
-      return VK_NULL_HANDLE;
-    
-    // If no pipeline instance exists with the given state
-    // vector, create a new one and add it to the list.
-    VkPipeline newPipelineBase   = m_basePipeline.load();
-    VkPipeline newPipelineHandle = VK_NULL_HANDLE;
-    
-    // FIXME for some reason, compiling the exact
-    // same pipeline crashes inside driver code
-    { std::lock_guard<sync::Spinlock> lock(m_mutex);
-      newPipelineHandle = this->compilePipeline(
-        state, renderPassHandle, newPipelineBase);
-    }
+      // If the pipeline state vector is invalid, don't try
+      // to create a new pipeline, it won't work anyway.
+      if (!this->validatePipelineState(state))
+        return VK_NULL_HANDLE;
+      
+      // If no pipeline instance exists with the given state
+      // vector, create a new one and add it to the list.
+      newPipelineBase   = m_basePipeline.load();
+      newPipelineHandle = this->compilePipeline(state, renderPassHandle, newPipelineBase);
 
-    { std::lock_guard<sync::Spinlock> lock(m_mutex);
-      
-      // Discard the pipeline if another thread
-      // was faster compiling the same pipeline
-      const DxvkGraphicsPipelineInstance* instance =
-        this->findInstance(state, renderPassHandle);
-      
-      if (instance != nullptr) {
-        this->destroyPipeline(newPipelineHandle);
-        return instance->pipeline();
-      }
-      
       // Add new pipeline to the set
       m_pipelines.emplace_back(state, renderPassHandle, newPipelineHandle);
       m_pipeMgr->m_numGraphicsPipelines += 1;

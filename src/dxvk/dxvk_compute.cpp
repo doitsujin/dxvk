@@ -48,34 +48,18 @@ namespace dxvk {
   
   VkPipeline DxvkComputePipeline::getPipelineHandle(
     const DxvkComputePipelineStateInfo& state) {
-    VkPipeline pipeline = VK_NULL_HANDLE;
-    
-    { std::lock_guard<sync::Spinlock> lock(m_mutex);
-      
-      if (this->findPipeline(state, pipeline))
-        return pipeline;
-    }
-    
-    // If no pipeline instance exists with the given state
-    // vector, create a new one and add it to the list.
-    VkPipeline newPipelineBase   = m_basePipeline.load();
+    VkPipeline newPipelineBase   = VK_NULL_HANDLE;
     VkPipeline newPipelineHandle = VK_NULL_HANDLE;
 
-    // FIXME for some reason, compiling the exact
-    // same pipeline crashes inside driver code
     { std::lock_guard<sync::Spinlock> lock(m_mutex);
-      newPipelineHandle = this->compilePipeline(
-        state, newPipelineBase);
-    }
+
+      if (this->findPipeline(state, newPipelineHandle))
+        return newPipelineHandle;
     
-    { std::lock_guard<sync::Spinlock> lock(m_mutex);
-      
-      // Discard the pipeline if another thread
-      // was faster compiling the same pipeline
-      if (this->findPipeline(state, pipeline)) {
-        this->destroyPipeline(newPipelineHandle);
-        return pipeline;
-      }
+      // If no pipeline instance exists with the given state
+      // vector, create a new one and add it to the list.
+      newPipelineBase   = m_basePipeline.load();
+      newPipelineHandle = this->compilePipeline(state, newPipelineBase);
       
       // Add new pipeline to the set
       m_pipelines.push_back({ state, newPipelineHandle });
