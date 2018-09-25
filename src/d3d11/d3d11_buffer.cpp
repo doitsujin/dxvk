@@ -135,8 +135,7 @@ namespace dxvk {
     
     if (pDesc->BindFlags & D3D11_BIND_UNORDERED_ACCESS) {
       info.usage  |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
-      info.stages |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
-                  |  VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+      info.stages |= m_device->GetEnabledShaderStages();
       info.access |= VK_ACCESS_SHADER_READ_BIT
                   |  VK_ACCESS_SHADER_WRITE_BIT;
     }
@@ -171,10 +170,7 @@ namespace dxvk {
     
     // AMD cards have a device-local, host-visible memory type where
     // we can put dynamic resources that need fast access by the GPU
-    if ((pDesc->Usage == D3D11_USAGE_DYNAMIC) && (pDesc->BindFlags & (
-        D3D11_BIND_VERTEX_BUFFER   | D3D11_BIND_INDEX_BUFFER     |
-        D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS |
-        D3D11_BIND_CONSTANT_BUFFER)))
+    if (pDesc->Usage == D3D11_USAGE_DYNAMIC && pDesc->BindFlags)
       memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
     return m_device->GetDXVKDevice()->createBuffer(info, memoryFlags);
