@@ -1885,8 +1885,6 @@ namespace dxvk {
       m_flags.set(DxvkContextFlag::GpRenderPassBound);
       m_flags.clr(DxvkContextFlag::GpClearRenderTargets);
 
-      m_barriers.recordCommands(m_cmd);
-
       this->renderPassBindFramebuffer(
         m_state.om.framebuffer,
         m_state.om.renderPassOps,
@@ -1941,6 +1939,8 @@ namespace dxvk {
     info.clearValueCount      = clearValueCount;
     info.pClearValues         = clearValues;
     
+    m_barriers.recordCommands(m_cmd);
+
     m_cmd->cmdBeginRenderPass(&info,
       VK_SUBPASS_CONTENTS_INLINE);
     
