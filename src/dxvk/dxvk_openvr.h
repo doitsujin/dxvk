@@ -66,7 +66,11 @@ namespace dxvk {
 
     std::mutex            m_mutex;
     vr::IVRCompositor*    m_compositor = nullptr;
+#ifdef __WINE__
+    void*                 m_ovrApi     = nullptr;
+#else
     HMODULE               m_ovrApi     = nullptr;
+#endif
 
     bool m_loadedOvrApi      = false;
     bool m_initializedOpenVr = false;

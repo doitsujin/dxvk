@@ -10,7 +10,7 @@ winelib = true
 
 c_args=['-m32', '-msse', '-msse2']
 cpp_args=['-m32', '--no-gnu-unique', '-Wno-attributes', '-msse', '-msse2']
-cpp_link_args=['-m32', '-mwindows']
+cpp_link_args=['-m32', '-mwindows', '-ldl']
 
 [host_machine]
 system = 'linux'
