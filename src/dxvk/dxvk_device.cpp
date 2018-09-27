@@ -18,6 +18,7 @@ namespace dxvk {
     m_renderPassPool    (new DxvkRenderPassPool     (vkd)),
     m_pipelineManager   (new DxvkPipelineManager    (this, m_renderPassPool.ptr())),
     m_metaClearObjects  (new DxvkMetaClearObjects   (vkd)),
+    m_metaCopyObjects   (new DxvkMetaCopyObjects    (vkd)),
     m_metaMipGenObjects (new DxvkMetaMipGenObjects  (vkd)),
     m_metaResolveObjects(new DxvkMetaResolveObjects (vkd)),
     m_unboundResources  (this),
@@ -118,6 +119,7 @@ namespace dxvk {
     return new DxvkContext(this,
       m_pipelineManager,
       m_metaClearObjects,
+      m_metaCopyObjects,
       m_metaMipGenObjects,
       m_metaResolveObjects);
   }

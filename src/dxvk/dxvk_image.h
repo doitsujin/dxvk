@@ -240,6 +240,21 @@ namespace dxvk {
       return subresource.aspectMask == this->formatInfo()->aspectMask
           && extent == this->mipLevelExtent(subresource.mipLevel);
     }
+
+    /**
+     * \brief Checks view format compatibility
+     * 
+     * If this returns true, a view with the given
+     * format can be safely created for this image.
+     * \param [in] format The format to check
+     * \returns \c true if the format is vompatible
+     */
+    bool isViewCompatible(VkFormat format) const {
+      bool result = m_info.format == format;
+      for (uint32_t i = 0; i < m_viewFormats.size() && !result; i++)
+        result |= m_viewFormats[i] == format;
+      return result;
+    }
     
   private:
     

@@ -7,6 +7,7 @@
 #include "dxvk_data.h"
 #include "dxvk_event.h"
 #include "dxvk_meta_clear.h"
+#include "dxvk_meta_copy.h"
 #include "dxvk_meta_mipgen.h"
 #include "dxvk_meta_resolve.h"
 #include "dxvk_pipecache.h"
@@ -33,6 +34,7 @@ namespace dxvk {
       const Rc<DxvkDevice>&             device,
       const Rc<DxvkPipelineManager>&    pipelineManager,
       const Rc<DxvkMetaClearObjects>&   metaClearObjects,
+      const Rc<DxvkMetaCopyObjects>&    metaCopyObjects,
       const Rc<DxvkMetaMipGenObjects>&  metaMipGenObjects,
       const Rc<DxvkMetaResolveObjects>& metaResolveObjects);
     ~DxvkContext();
@@ -670,6 +672,7 @@ namespace dxvk {
     const Rc<DxvkDevice>              m_device;
     const Rc<DxvkPipelineManager>     m_pipeMgr;
     const Rc<DxvkMetaClearObjects>    m_metaClear;
+    const Rc<DxvkMetaCopyObjects>     m_metaCopy;
     const Rc<DxvkMetaMipGenObjects>   m_metaMipGen;
     const Rc<DxvkMetaResolveObjects>  m_metaResolve;
     
@@ -703,6 +706,24 @@ namespace dxvk {
             VkOffset3D            offset,
             VkExtent3D            extent,
             VkClearValue          value);
+    
+    void copyImageHw(
+      const Rc<DxvkImage>&        dstImage,
+            VkImageSubresourceLayers dstSubresource,
+            VkOffset3D            dstOffset,
+      const Rc<DxvkImage>&        srcImage,
+            VkImageSubresourceLayers srcSubresource,
+            VkOffset3D            srcOffset,
+            VkExtent3D            extent);
+    
+    void copyImageFb(
+      const Rc<DxvkImage>&        dstImage,
+            VkImageSubresourceLayers dstSubresource,
+            VkOffset3D            dstOffset,
+      const Rc<DxvkImage>&        srcImage,
+            VkImageSubresourceLayers srcSubresource,
+            VkOffset3D            srcOffset,
+            VkExtent3D            extent);
     
     void startRenderPass();
     void spillRenderPass();
