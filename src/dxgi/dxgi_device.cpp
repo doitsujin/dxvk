@@ -97,8 +97,18 @@ namespace dxvk {
           IUnknown* const*      ppResources,
           DXGI_RESIDENCY*       pResidencyStatus,
           UINT                  NumResources) {
-    Logger::err("DxgiDevice::QueryResourceResidency: Not implemented");
-    return E_NOTIMPL;
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::err("DxgiDevice::QueryResourceResidency: Stub");
+    
+    if (!ppResources || !pResidencyStatus)
+      return E_INVALIDARG;
+
+    for (uint32_t i = 0; i < NumResources; i++)
+      pResidencyStatus[i] = DXGI_RESIDENCY_FULLY_RESIDENT;
+
+    return S_OK;
   }
   
   
