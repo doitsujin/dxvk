@@ -725,6 +725,19 @@ namespace dxvk {
             VkOffset3D            srcOffset,
             VkExtent3D            extent);
     
+    void resolveImageHw(
+      const Rc<DxvkImage>&            dstImage,
+      const VkImageSubresourceLayers& dstSubresources,
+      const Rc<DxvkImage>&            srcImage,
+      const VkImageSubresourceLayers& srcSubresources);
+    
+    void resolveImageFb(
+      const Rc<DxvkImage>&            dstImage,
+      const VkImageSubresourceLayers& dstSubresources,
+      const Rc<DxvkImage>&            srcImage,
+      const VkImageSubresourceLayers& srcSubresources,
+            VkFormat                  format);
+    
     void startRenderPass();
     void spillRenderPass();
     
