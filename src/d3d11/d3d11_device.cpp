@@ -1404,7 +1404,7 @@ namespace dxvk {
     const auto& devInfo = m_dxvkAdapter->deviceProperties();
 
     VkDeviceSize uavCounterSliceLength = align<VkDeviceSize>(
-      sizeof(D3D11UavCounter), devInfo.limits.minStorageBufferOffsetAlignment);
+      sizeof(uint32_t), devInfo.limits.minStorageBufferOffsetAlignment);
 
     DxvkBufferCreateInfo uavCounterInfo;
     uavCounterInfo.size   = 4096 * uavCounterSliceLength;

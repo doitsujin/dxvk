@@ -2181,13 +2181,8 @@ namespace dxvk {
       DxbcProgramType::ComputeShader,
       m_state.cs.unorderedAccessViews,
       StartSlot, NumUAVs,
-      ppUnorderedAccessViews);
-    
-    if (pUAVInitialCounts != nullptr) {
-      InitUnorderedAccessViewCounters(
-        NumUAVs, ppUnorderedAccessViews,
-        pUAVInitialCounts);
-    }
+      ppUnorderedAccessViews,
+      pUAVInitialCounts);
   }
   
   
@@ -2289,17 +2284,12 @@ namespace dxvk {
       // UAVs are made available to all shader stages in
       // the graphics pipeline even though this code may
       // suggest that they are limited to the pixel shader.
-      // This behaviour is only required for FL_11_1.
       SetUnorderedAccessViews(
         DxbcProgramType::PixelShader,
         m_state.ps.unorderedAccessViews,
         UAVStartSlot, NumUAVs,
-        ppUnorderedAccessViews);
-      
-      if (pUAVInitialCounts != nullptr) {
-        InitUnorderedAccessViewCounters(NumUAVs,
-          ppUnorderedAccessViews, pUAVInitialCounts);
-      }
+        ppUnorderedAccessViews,
+        pUAVInitialCounts);
     }
 
     BindFramebuffer(spillOnBind);
@@ -2882,14 +2872,24 @@ namespace dxvk {
   void D3D11DeviceContext::BindUnorderedAccessView(
           UINT                              UavSlot,
           UINT                              CtrSlot,
-          D3D11UnorderedAccessView*         pUav) {
+          D3D11UnorderedAccessView*         pUav,
+          UINT                              Counter) {
     EmitCs([
       cUavSlotId    = UavSlot,
       cCtrSlotId    = CtrSlot,
       cImageView    = pUav != nullptr ? pUav->GetImageView()    : nullptr,
       cBufferView   = pUav != nullptr ? pUav->GetBufferView()   : nullptr,
-      cCounterSlice = pUav != nullptr ? pUav->GetCounterSlice() : DxvkBufferSlice()
+      cCounterSlice = pUav != nullptr ? pUav->GetCounterSlice() : DxvkBufferSlice(),
+      cCounterValue = Counter
     ] (DxvkContext* ctx) {
+      if (cCounterSlice.defined() && cCounterValue != ~0u) {
+        ctx->updateBuffer(
+          cCounterSlice.buffer(),
+          cCounterSlice.offset(),
+          sizeof(uint32_t),
+          &cCounterValue);
+      }
+
       ctx->bindResourceView   (cUavSlotId, cImageView, cBufferView);
       ctx->bindResourceBuffer (cCtrSlotId, cCounterSlice);
     });
@@ -2989,7 +2989,8 @@ namespace dxvk {
           D3D11UnorderedAccessBindings&     Bindings,
           UINT                              StartSlot,
           UINT                              NumUAVs,
-          ID3D11UnorderedAccessView* const* ppUnorderedAccessViews) {
+          ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
+    const UINT*                             pUAVInitialCounts) {
     const uint32_t uavSlotId = computeResourceSlotId(
       ShaderStage, DxbcBindingType::UnorderedAccessView,
       StartSlot);
@@ -3003,7 +3004,8 @@ namespace dxvk {
       
       if (Bindings[StartSlot + i] != uav) {
         Bindings[StartSlot + i] = uav;
-        BindUnorderedAccessView(uavSlotId + i, ctrSlotId + i, uav);
+        BindUnorderedAccessView(uavSlotId + i, ctrSlotId + i, uav,
+          pUAVInitialCounts ? pUAVInitialCounts[i] : ~0u);
       }
     }
   }
@@ -3025,31 +3027,6 @@ namespace dxvk {
     }
     
     m_state.om.depthStencilView = static_cast<D3D11DepthStencilView*>(pDepthStencilView);
-  }
-  
-  
-  void D3D11DeviceContext::InitUnorderedAccessViewCounters(
-          UINT                              NumUAVs,
-          ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
-    const UINT*                             pUAVInitialCounts) {
-    for (uint32_t i = 0; i < NumUAVs; i++) {
-      auto uav = static_cast<D3D11UnorderedAccessView*>(ppUnorderedAccessViews[i]);
-      
-      if (uav != nullptr) {
-        const DxvkBufferSlice counterSlice = uav->GetCounterSlice();
-        const D3D11UavCounter counterValue = { pUAVInitialCounts[i] };
-        
-        if (counterSlice.defined() && counterValue.atomicCtr != 0xFFFFFFFFu) {
-          EmitCs([counterSlice, counterValue] (DxvkContext* ctx) {
-            ctx->clearBuffer(
-              counterSlice.buffer(),
-              counterSlice.offset(),
-              counterSlice.length(),
-              counterValue.atomicCtr);
-          });
-        }
-      }
-    }
   }
   
   
@@ -3175,7 +3152,7 @@ namespace dxvk {
     for (uint32_t i = 0; i < Bindings.size(); i++) {
       BindUnorderedAccessView(
         uavSlotId + i, ctrSlotId + i,
-        Bindings[i].ptr());
+        Bindings[i].ptr(), ~0u);
     }
   }
   

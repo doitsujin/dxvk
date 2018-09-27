@@ -9,17 +9,6 @@ namespace dxvk {
   class D3D11Device;
   
   /**
-   * \brief UAV counter structure
-   * 
-   * Data structure passed to shaders that use
-   * append/consume buffer functionality.
-   */
-  struct D3D11UavCounter {
-    uint32_t atomicCtr;
-  };
-
-
-  /**
    * \brief Unordered access view
    * 
    * Unordered access views are special in that they can

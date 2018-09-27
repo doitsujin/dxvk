@@ -701,7 +701,8 @@ namespace dxvk {
     void BindUnorderedAccessView(
             UINT                              UavSlot,
             UINT                              CtrSlot,
-            D3D11UnorderedAccessView*         pUav);
+            D3D11UnorderedAccessView*         pUav,
+            UINT                              Counter);
     
     void DiscardBuffer(
             D3D11Buffer*                      pBuffer);
@@ -734,17 +735,13 @@ namespace dxvk {
             D3D11UnorderedAccessBindings&     Bindings,
             UINT                              StartSlot,
             UINT                              NumUAVs,
-            ID3D11UnorderedAccessView* const* ppUnorderedAccessViews);
+            ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
+      const UINT*                             pUAVInitialCounts);
     
     void SetRenderTargets(
             UINT                              NumViews,
             ID3D11RenderTargetView* const*    ppRenderTargetViews,
             ID3D11DepthStencilView*           pDepthStencilView);
-    
-    void InitUnorderedAccessViewCounters(
-            UINT                              NumUAVs,
-            ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
-      const UINT*                             pUAVInitialCounts);
     
     void GetConstantBuffers(
       const D3D11ConstantBufferBindings&      Bindings,
