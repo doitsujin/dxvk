@@ -55,7 +55,7 @@ namespace dxvk {
     bool isMutable = formatFamily.FormatCount > 1;
 
     if (isMutable && (formatProperties->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT)) {
-      imageInfo.flags = VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
+      imageInfo.flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
 
       // Typeless UAV images have relaxed reinterpretation rules
       if (!isTypeless || !(m_desc.BindFlags & D3D11_BIND_UNORDERED_ACCESS)) {
@@ -139,6 +139,11 @@ namespace dxvk {
     // it is going to be used by the game.
     if (imageInfo.tiling == VK_IMAGE_TILING_OPTIMAL)
       imageInfo.layout = OptimizeLayout(imageInfo.usage);
+
+    // For some formats, we need to enable sampled and/or
+    // render target capabilities if available, but these
+    // should in no way affect the default image layout
+    imageInfo.usage |= EnableMetaCopyUsage(imageInfo.format, imageInfo.tiling);
     
     // Check if we can actually create the image
     if (!CheckImageSupport(&imageInfo, imageInfo.tiling)) {
@@ -307,6 +312,46 @@ namespace dxvk {
         || (properties.optimalTilingFeatures & Features) == Features;
   }
   
+  
+  VkImageUsageFlags D3D11CommonTexture::EnableMetaCopyUsage(
+          VkFormat              Format,
+          VkImageTiling         Tiling) const {
+    VkFormatFeatureFlags requestedFeatures = 0;
+
+    if (Format == VK_FORMAT_D16_UNORM || Format == VK_FORMAT_D32_SFLOAT) {
+      requestedFeatures |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT
+                        |  VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    }
+
+    if (Format == VK_FORMAT_R16_UNORM || Format == VK_FORMAT_R32_SFLOAT) {
+      requestedFeatures |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT
+                        |  VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+    }
+
+    if (requestedFeatures == 0)
+      return 0;
+
+    // Enable usage flags for all supported and requested features
+    VkFormatProperties properties = m_device->GetDXVKDevice()->adapter()->formatProperties(Format);
+
+    requestedFeatures &= Tiling == VK_IMAGE_TILING_OPTIMAL
+      ? properties.optimalTilingFeatures
+      : properties.linearTilingFeatures;
+    
+    VkImageUsageFlags requestedUsage = 0;
+
+    if (requestedFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)
+      requestedUsage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+    
+    if (requestedFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
+      requestedUsage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    
+    if (requestedFeatures & VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)
+      requestedUsage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+
+    return requestedUsage;
+  }
+
   
   D3D11_COMMON_TEXTURE_MAP_MODE D3D11CommonTexture::DetermineMapMode(
     const DxvkImageCreateInfo*  pImageInfo) const {
