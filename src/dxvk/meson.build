@@ -12,6 +12,13 @@ dxvk_shaders = files([
   'shaders/dxvk_clear_image3d_u.comp',
   'shaders/dxvk_clear_image3d_f.comp',
   
+  'shaders/dxvk_copy_color_1d.frag',
+  'shaders/dxvk_copy_color_2d.frag',
+  'shaders/dxvk_copy_color_ms.frag',
+  'shaders/dxvk_copy_depth_1d.frag',
+  'shaders/dxvk_copy_depth_2d.frag',
+  'shaders/dxvk_copy_depth_ms.frag',
+
   'shaders/dxvk_mipgen_vert.vert',
   'shaders/dxvk_mipgen_geom.geom',
   'shaders/dxvk_mipgen_frag_1d.frag',
@@ -54,6 +61,7 @@ dxvk_src = files([
   'dxvk_main.cpp',
   'dxvk_memory.cpp',
   'dxvk_meta_clear.cpp',
+  'dxvk_meta_copy.cpp',
   'dxvk_meta_mipgen.cpp',
   'dxvk_meta_resolve.cpp',
   'dxvk_openvr.cpp',
