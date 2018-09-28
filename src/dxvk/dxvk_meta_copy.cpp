@@ -514,7 +514,7 @@ namespace dxvk {
     stencilOp.compareOp         = VK_COMPARE_OP_ALWAYS;
     stencilOp.compareMask       = 0xFFFFFFFF;
     stencilOp.writeMask         = 0xFFFFFFFF;
-    stencilOp.compareMask       = 0;
+    stencilOp.reference         = 0;
     
     VkPipelineDepthStencilStateCreateInfo dsState;
     dsState.sType               = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
