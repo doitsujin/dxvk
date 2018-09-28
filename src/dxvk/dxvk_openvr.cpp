@@ -5,7 +5,19 @@
 #pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
 #endif
 
+#ifdef __WINE__
+#include <dlfcn.h>
+
+#pragma push_macro("_WIN32")
+//request UNIX ABI from openvr.hpp
+#undef _WIN32
+#endif
+
 #include <openvr/openvr.hpp>
+
+#ifdef __WINE__
+#pragma pop_macro("_WIN32")
+#endif
 
 using VR_InitInternalProc        = vr::IVRSystem* (VR_CALLTYPE *)(vr::EVRInitError*, vr::EVRApplicationType);
 using VR_ShutdownInternalProc    = void  (VR_CALLTYPE *)();
@@ -109,12 +121,22 @@ namespace dxvk {
     // Locate the OpenVR DLL if loaded by the process. Some
     // applications may not have OpenVR loaded at the time
     // they create the DXGI instance, so we try our own DLL.
+#ifdef __WINE__
+    // on winelib, load native openvr_api directly
+    m_ovrApi = ::dlopen("libopenvr_api.so", RTLD_LAZY | RTLD_NOLOAD);
+
+    if (m_ovrApi == nullptr) {
+      m_ovrApi = ::dlopen("libopenvr_api_dxvk.so", RTLD_LAZY | RTLD_LOCAL);
+      m_loadedOvrApi = m_ovrApi != nullptr;
+    }
+#else
     m_ovrApi = ::GetModuleHandle("openvr_api.dll");
 
     if (m_ovrApi == nullptr) {
       m_ovrApi = ::LoadLibrary("openvr_api_dxvk.dll");
       m_loadedOvrApi = m_ovrApi != nullptr;
     }
+#endif
     
     if (m_ovrApi == nullptr) {
       Logger::warn("OpenVR: Failed to locate module");
@@ -122,9 +144,15 @@ namespace dxvk {
     }
     
     // Load method used to retrieve the IVRCompositor interface
+#ifdef __WINE__
+    g_vrFunctions.initInternal        = reinterpret_cast<VR_InitInternalProc>       (::dlsym(m_ovrApi, "VR_InitInternal"));
+    g_vrFunctions.shutdownInternal    = reinterpret_cast<VR_ShutdownInternalProc>   (::dlsym(m_ovrApi, "VR_ShutdownInternal"));
+    g_vrFunctions.getGenericInterface = reinterpret_cast<VR_GetGenericInterfaceProc>(::dlsym(m_ovrApi, "VR_GetGenericInterface"));
+#else
     g_vrFunctions.initInternal        = reinterpret_cast<VR_InitInternalProc>       (::GetProcAddress(m_ovrApi, "VR_InitInternal"));
     g_vrFunctions.shutdownInternal    = reinterpret_cast<VR_ShutdownInternalProc>   (::GetProcAddress(m_ovrApi, "VR_ShutdownInternal"));
     g_vrFunctions.getGenericInterface = reinterpret_cast<VR_GetGenericInterfaceProc>(::GetProcAddress(m_ovrApi, "VR_GetGenericInterface"));
+#endif
     
     if (g_vrFunctions.getGenericInterface == nullptr) {
       Logger::warn("OpenVR: VR_GetGenericInterface not found");
@@ -173,8 +201,13 @@ namespace dxvk {
     if (m_initializedOpenVr)
       g_vrFunctions.shutdownInternal();
     
+#if __WINE__
+    if (m_loadedOvrApi)
+      ::dlclose(m_ovrApi);
+#else
     if (m_loadedOvrApi)
       ::FreeLibrary(m_ovrApi);
+#endif
     
     m_initializedOpenVr = false;
     m_loadedOvrApi      = false;
