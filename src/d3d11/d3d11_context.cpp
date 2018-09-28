@@ -511,7 +511,7 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeviceContext::CopyResource(
           ID3D11Resource*                   pDstResource,
           ID3D11Resource*                   pSrcResource) {
-    if (!pDstResource || !pSrcResource)
+    if (!pDstResource || !pSrcResource || (pDstResource == pSrcResource))
       return;
     
     D3D11_RESOURCE_DIMENSION dstResourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
