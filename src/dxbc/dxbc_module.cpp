@@ -6,7 +6,7 @@ namespace dxvk {
   
   DxbcModule::DxbcModule(DxbcReader& reader)
   : m_header(reader) {
-    for (uint32_t i = 0; i < m_header.numChunks(); i++) {
+    for (uint32_t i = 0; i < m_header.numChunks(); ++i) {
       
       // The chunk tag is stored at the beginning of each chunk
       auto chunkReader = reader.clone(m_header.chunkOffset(i));

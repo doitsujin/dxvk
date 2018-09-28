@@ -72,7 +72,7 @@ namespace dxvk::hud {
     
     const float sizeFactor = size / static_cast<float>(g_hudFont.size);
     
-    for (size_t i = 0; i < text.size(); i++) {
+    for (size_t i = 0; i < text.size(); ++i) {
       const HudGlyph& glyph = g_hudFont.glyphs[
         m_charMap[static_cast<uint8_t>(text[i])]];
       
@@ -138,7 +138,7 @@ namespace dxvk::hud {
     HudVertex* dstVertexData = reinterpret_cast<HudVertex*>(
       m_vertexBuffer->mapPtr(vertexIndex * sizeof(HudVertex)));
     
-    for (size_t i = 0; i < vertexCount; i++)
+    for (size_t i = 0; i < vertexCount; ++i)
       dstVertexData[i] = vertexData[i];
     
     context->draw(vertexCount, 1, vertexIndex, 0);
@@ -330,7 +330,7 @@ namespace dxvk::hud {
   void HudRenderer::initCharMap() {
     std::fill(m_charMap.begin(), m_charMap.end(), 0);
     
-    for (uint32_t i = 0; i < g_hudFont.charCount; i++)
+    for (uint32_t i = 0; i < g_hudFont.charCount; ++i)
       m_charMap.at(g_hudFont.glyphs[i].codePoint) = i;
   }
   

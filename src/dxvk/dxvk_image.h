@@ -251,7 +251,7 @@ namespace dxvk {
      */
     bool isViewCompatible(VkFormat format) const {
       bool result = m_info.format == format;
-      for (uint32_t i = 0; i < m_viewFormats.size() && !result; i++)
+      for (uint32_t i = 0; i < m_viewFormats.size() && !result; ++i)
         result |= m_viewFormats[i] == format;
       return result;
     }

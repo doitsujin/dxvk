@@ -169,7 +169,7 @@ namespace dxvk {
     VkDeviceSize deviceMemory = 0;
     VkDeviceSize sharedMemory = 0;
     
-    for (uint32_t i = 0; i < memoryProp.memoryHeapCount; i++) {
+    for (uint32_t i = 0; i < memoryProp.memoryHeapCount; ++i) {
       VkMemoryHeap heap = memoryProp.memoryHeaps[i];
       
       if (heap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
@@ -252,7 +252,7 @@ namespace dxvk {
     if (ppOutput == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
-    for (uint32_t i = 0; SUCCEEDED(EnumOutputs(i, ppOutput)); i++) {
+    for (uint32_t i = 0; SUCCEEDED(EnumOutputs(i, ppOutput)); ++i) {
       DXGI_OUTPUT_DESC outputDesc;
       (*ppOutput)->GetDesc(&outputDesc);
       

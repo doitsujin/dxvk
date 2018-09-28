@@ -9,7 +9,7 @@ void main() {
   int sampleCount = textureSamples(s_image);
 
   o_color = vec4(0.0f);
-  for (int i = 0; i < sampleCount; i++)
+  for (int i = 0; i < sampleCount; ++i)
     o_color += texelFetch(s_image, ivec3(gl_FragCoord.xy, gl_Layer), i);
   o_color /= float(sampleCount);
 }

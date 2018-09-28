@@ -92,7 +92,7 @@ namespace dxvk {
     uint32_t word = 0;
     uint32_t nbit = 0;
     
-    for (uint32_t i = 0; str[i] != '\0'; str++) {
+    for (uint32_t i = 0; str[i] != '\0'; ++str) {
       word |= (static_cast<uint32_t>(str[i]) & 0xFF) << nbit;
       
       if ((nbit += 8) == 32) {

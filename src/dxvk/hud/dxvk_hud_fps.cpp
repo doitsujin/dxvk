@@ -90,7 +90,7 @@ namespace dxvk::hud {
     uint32_t maxMs = 0x00000000u;
     
     // Paint the time points
-    for (uint32_t i = 0; i < NumDataPoints; i++) {
+    for (uint32_t i = 0; i < NumDataPoints; ++i) {
       float us = m_dataPoints[(m_dataPointId + i) % NumDataPoints];
       
       minMs = std::min(minMs, uint32_t(us / 100.0f));

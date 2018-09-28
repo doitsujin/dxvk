@@ -66,7 +66,7 @@ namespace dxvk {
     pDesc->MinLOD            = d3d11Desc.MinLOD;
     pDesc->MaxLOD            = d3d11Desc.MaxLOD;
 
-    for (uint32_t i = 0; i < 4; i++)
+    for (uint32_t i = 0; i < 4; ++i)
       pDesc->BorderColor[i] = d3d11Desc.BorderColor[i];
   }
 

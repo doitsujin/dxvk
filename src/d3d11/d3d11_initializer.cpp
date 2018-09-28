@@ -116,8 +116,8 @@ namespace dxvk {
       subresourceLayers.baseArrayLayer = 0;
       subresourceLayers.layerCount     = 1;
       
-      for (uint32_t layer = 0; layer < image->info().numLayers; layer++) {
-        for (uint32_t level = 0; level < image->info().mipLevels; level++) {
+      for (uint32_t layer = 0; layer < image->info().numLayers; ++layer) {
+        for (uint32_t level = 0; level < image->info().mipLevels; ++level) {
           subresourceLayers.baseArrayLayer = layer;
           subresourceLayers.mipLevel       = level;
           

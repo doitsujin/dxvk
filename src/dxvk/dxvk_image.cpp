@@ -11,7 +11,7 @@ namespace dxvk {
 
     // Copy the compatible view formats to a persistent array
     m_viewFormats.resize(createInfo.viewFormatCount);
-    for (uint32_t i = 0; i < createInfo.viewFormatCount; i++)
+    for (uint32_t i = 0; i < createInfo.viewFormatCount; ++i)
       m_viewFormats[i] = createInfo.viewFormats[i];
     m_info.viewFormats = m_viewFormats.data();
 
@@ -123,7 +123,7 @@ namespace dxvk {
     const DxvkImageViewCreateInfo&  info)
   : m_vkd(vkd), m_image(image), m_info(info) {
     // Since applications tend to bind views 
-    for (uint32_t i = 0; i < ViewCount; i++)
+    for (uint32_t i = 0; i < ViewCount; ++i)
       m_views[i] = VK_NULL_HANDLE;
     
     switch (info.type) {
@@ -166,7 +166,7 @@ namespace dxvk {
   
   
   DxvkImageView::~DxvkImageView() {
-    for (uint32_t i = 0; i < ViewCount; i++)
+    for (uint32_t i = 0; i < ViewCount; ++i)
       m_vkd->vkDestroyImageView(m_vkd->device(), m_views[i], nullptr);
   }
   

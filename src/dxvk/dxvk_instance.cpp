@@ -100,7 +100,7 @@ namespace dxvk {
       throw DxvkError("DxvkInstance::enumAdapters: Failed to enumerate adapters");
     
     std::vector<Rc<DxvkAdapter>> result;
-    for (uint32_t i = 0; i < numAdapters; i++) {
+    for (uint32_t i = 0; i < numAdapters; ++i) {
       Rc<DxvkAdapter> adapter = new DxvkAdapter(this, adapters[i]);
       
       if (filter.testAdapter(adapter))
@@ -123,7 +123,7 @@ namespace dxvk {
   
   
   void DxvkInstance::logNameList(const DxvkNameList& names) {
-    for (uint32_t i = 0; i < names.count(); i++)
+    for (uint32_t i = 0; i < names.count(); ++i)
       Logger::info(str::format("  ", names.name(i)));
   }
   

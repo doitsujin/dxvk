@@ -10,7 +10,7 @@ namespace dxvk {
     // If Independent Blend is disabled, we must ignore the
     // blend modes for render target 1 to 7. In Vulkan, all
     // blend modes need to be identical in that case.
-    for (uint32_t i = 0; i < m_blendModes.size(); i++) {
+    for (uint32_t i = 0; i < m_blendModes.size(); ++i) {
       m_blendModes.at(i) = DecodeBlendMode(
         desc.IndependentBlendEnable
           ? desc.RenderTarget[i]
@@ -70,7 +70,7 @@ namespace dxvk {
     pDesc->AlphaToCoverageEnable  = m_desc.AlphaToCoverageEnable;
     pDesc->IndependentBlendEnable = m_desc.IndependentBlendEnable;
     
-    for (uint32_t i = 0; i < 8; i++) {
+    for (uint32_t i = 0; i < 8; ++i) {
       pDesc->RenderTarget[i].BlendEnable           = m_desc.RenderTarget[i].BlendEnable;
       pDesc->RenderTarget[i].SrcBlend              = m_desc.RenderTarget[i].SrcBlend;
       pDesc->RenderTarget[i].DestBlend             = m_desc.RenderTarget[i].DestBlend;
@@ -94,7 +94,7 @@ namespace dxvk {
     // We handled Independent Blend during object creation
     // already, so if it is disabled, all elements in the
     // blend mode array will be identical
-    for (uint32_t i = 0; i < m_blendModes.size(); i++)
+    for (uint32_t i = 0; i < m_blendModes.size(); ++i)
       ctx->setBlendMode(i, m_blendModes.at(i));
     
     // The sample mask is dynamic state in D3D11
@@ -115,7 +115,7 @@ namespace dxvk {
     // 1-7 must be ignored if IndependentBlendEnable is disabled so
     // technically this is not needed, but since this structure is
     // going to be copied around we'll initialize it nonetheless
-    for (uint32_t i = 0; i < 8; i++) {
+    for (uint32_t i = 0; i < 8; ++i) {
       dstDesc.RenderTarget[i].BlendEnable           = FALSE;
       dstDesc.RenderTarget[i].LogicOpEnable         = FALSE;
       dstDesc.RenderTarget[i].SrcBlend              = D3D11_BLEND_ONE;
@@ -137,7 +137,7 @@ namespace dxvk {
     dstDesc.AlphaToCoverageEnable  = pSrcDesc->AlphaToCoverageEnable;
     dstDesc.IndependentBlendEnable = pSrcDesc->IndependentBlendEnable;
     
-    for (uint32_t i = 0; i < 8; i++) {
+    for (uint32_t i = 0; i < 8; ++i) {
       dstDesc.RenderTarget[i].BlendEnable           = pSrcDesc->RenderTarget[i].BlendEnable;
       dstDesc.RenderTarget[i].LogicOpEnable         = FALSE;
       dstDesc.RenderTarget[i].SrcBlend              = pSrcDesc->RenderTarget[i].SrcBlend;
@@ -165,7 +165,7 @@ namespace dxvk {
     
     const uint32_t numRenderTargets = pDesc->IndependentBlendEnable ? 8 : 1;
     
-    for (uint32_t i = 0; i < numRenderTargets; i++) {
+    for (uint32_t i = 0; i < numRenderTargets; ++i) {
       D3D11_RENDER_TARGET_BLEND_DESC1* rt = &pDesc->RenderTarget[i];
       
       if (rt->BlendEnable) {
@@ -205,7 +205,7 @@ namespace dxvk {
         return E_INVALIDARG;
     }
     
-    for (uint32_t i = numRenderTargets; i < 8; i++) {
+    for (uint32_t i = numRenderTargets; i < 8; ++i) {
       // Render targets blend operations are the same
       // across all render targets when blend is enabled
       // on rendertarget[0] with independent blend disabled

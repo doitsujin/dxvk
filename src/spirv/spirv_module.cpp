@@ -69,7 +69,7 @@ namespace dxvk {
     m_entryPoints.putWord (entryPointId);
     m_entryPoints.putStr  (name);
     
-    for (uint32_t i = 0; i < interfaceCount; i++)
+    for (uint32_t i = 0; i < interfaceCount; ++i)
       m_entryPoints.putWord(interfaceIds[i]);
   }
   
@@ -562,7 +562,7 @@ namespace dxvk {
     std::vector<uint32_t> args;
     args.push_back(returnType);
     
-    for (uint32_t i = 0; i < argCount; i++)
+    for (uint32_t i = 0; i < argCount; ++i)
       args.push_back(argTypes[i]);
     
     return this->defType(spv::OpTypeFunction,
@@ -586,7 +586,7 @@ namespace dxvk {
     m_typeConstDefs.putIns (spv::OpTypeStruct, 2 + memberCount);
     m_typeConstDefs.putWord(resultId);
     
-    for (uint32_t i = 0; i < memberCount; i++)
+    for (uint32_t i = 0; i < memberCount; ++i)
       m_typeConstDefs.putWord(memberTypes[i]);
     return resultId;
   }
@@ -713,7 +713,7 @@ namespace dxvk {
     m_code.putWord(resultId);
     m_code.putWord(composite);
     
-    for (uint32_t i = 0; i < indexCount; i++)
+    for (uint32_t i = 0; i < indexCount; ++i)
       m_code.putInt32(indexArray[i]);
     return resultId;
   }
@@ -1324,7 +1324,7 @@ namespace dxvk {
     m_code.putWord(resultType);
     m_code.putWord(resultId);
     
-    for (uint32_t i = 0; i < valueCount; i++)
+    for (uint32_t i = 0; i < valueCount; ++i)
       m_code.putWord(valueArray[i]);
     return resultId;
   }
@@ -1342,7 +1342,7 @@ namespace dxvk {
     m_code.putWord(resultId);
     m_code.putWord(composite);
     
-    for (uint32_t i = 0; i < indexCount; i++)
+    for (uint32_t i = 0; i < indexCount; ++i)
       m_code.putInt32(indexArray[i]);
     return resultId;
   }
@@ -1362,7 +1362,7 @@ namespace dxvk {
     m_code.putWord(object);
     m_code.putWord(composite);
     
-    for (uint32_t i = 0; i < indexCount; i++)
+    for (uint32_t i = 0; i < indexCount; ++i)
       m_code.putInt32(indexArray[i]);
     return resultId;
   }
@@ -1475,7 +1475,7 @@ namespace dxvk {
     m_code.putWord(vectorLeft);
     m_code.putWord(vectorRight);
     
-    for (uint32_t i = 0; i < indexCount; i++)
+    for (uint32_t i = 0; i < indexCount; ++i)
       m_code.putInt32(indexArray[i]);
     return resultId;
   }
@@ -2475,7 +2475,7 @@ namespace dxvk {
     m_code.putWord(resultId);
     m_code.putWord(functionId);
     
-    for (uint32_t i = 0; i < argCount; i++)
+    for (uint32_t i = 0; i < argCount; ++i)
       m_code.putWord(argIds[i]);
     return resultId;
   }
@@ -2901,7 +2901,7 @@ namespace dxvk {
     m_code.putWord(selector);
     m_code.putWord(jumpDefault);
     
-    for (uint32_t i = 0; i < caseCount; i++) {
+    for (uint32_t i = 0; i < caseCount; ++i) {
       m_code.putWord(caseLabels[i].literal);
       m_code.putWord(caseLabels[i].labelId);
     }
@@ -2918,7 +2918,7 @@ namespace dxvk {
     m_code.putWord(resultType);
     m_code.putWord(resultId);
     
-    for (uint32_t i = 0; i < sourceCount; i++) {
+    for (uint32_t i = 0; i < sourceCount; ++i) {
       m_code.putWord(sourceLabels[i].varId);
       m_code.putWord(sourceLabels[i].labelId);
     }
@@ -2958,7 +2958,7 @@ namespace dxvk {
       bool match = ins.opCode() == op
                 && ins.length() == 2 + argCount;
       
-      for (uint32_t i = 0; i < argCount && match; i++)
+      for (uint32_t i = 0; i < argCount && match; ++i)
         match &= ins.arg(2 + i) == argIds[i];
       
       if (match)
@@ -2970,7 +2970,7 @@ namespace dxvk {
     m_typeConstDefs.putIns (op, 2 + argCount);
     m_typeConstDefs.putWord(resultId);
     
-    for (uint32_t i = 0; i < argCount; i++)
+    for (uint32_t i = 0; i < argCount; ++i)
       m_typeConstDefs.putWord(argIds[i]);
     return resultId;
   }
@@ -2987,7 +2987,7 @@ namespace dxvk {
                 && ins.length() == 3 + argCount
                 && ins.arg(1)   == typeId;
       
-      for (uint32_t i = 0; i < argCount && match; i++)
+      for (uint32_t i = 0; i < argCount && match; ++i)
         match &= ins.arg(3 + i) == argIds[i];
       
       if (match)
@@ -3000,7 +3000,7 @@ namespace dxvk {
     m_typeConstDefs.putWord(typeId);
     m_typeConstDefs.putWord(resultId);
     
-    for (uint32_t i = 0; i < argCount; i++)
+    for (uint32_t i = 0; i < argCount; ++i)
       m_typeConstDefs.putWord(argIds[i]);
     return resultId;
   }

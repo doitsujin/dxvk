@@ -130,7 +130,7 @@ namespace dxvk {
     if (pDesc->AddressU != D3D11_TEXTURE_ADDRESS_BORDER
      && pDesc->AddressV != D3D11_TEXTURE_ADDRESS_BORDER
      && pDesc->AddressW != D3D11_TEXTURE_ADDRESS_BORDER) {
-      for (int i = 0; i < 4; i++)
+      for (int i = 0; i < 4; ++i)
         pDesc->BorderColor[i] = 0.0f;
     }
     

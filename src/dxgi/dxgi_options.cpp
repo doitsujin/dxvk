@@ -10,7 +10,7 @@ namespace dxvk {
     
     int32_t id = 0;
 
-    for (size_t i = 0; i < str.size(); i++) {
+    for (size_t i = 0; i < str.size(); ++i) {
       id *= 16;
 
       if (str[i] >= '0' && str[i] <= '9')

@@ -36,7 +36,7 @@ namespace dxvk {
     DxvkHashState result;
     result.add(uint32_t(m_type));
     
-    for (uint32_t i = 0; i < 5; i++)
+    for (uint32_t i = 0; i < 5; ++i)
       result.add(m_sha1.dword(i));
     
     return result;

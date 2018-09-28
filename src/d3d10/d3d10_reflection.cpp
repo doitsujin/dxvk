@@ -8,7 +8,7 @@ namespace dxvk {
     D3D11_SHADER_TYPE_DESC d3d11Desc;
     m_d3d11->GetDesc(&d3d11Desc);
 
-    for (uint32_t i = 0; i < d3d11Desc.Members; i++)
+    for (uint32_t i = 0; i < d3d11Desc.Members; ++i)
       m_members.emplace_back(m_d3d11->GetMemberTypeByIndex(i));
   }
 
@@ -57,7 +57,7 @@ namespace dxvk {
 
   ID3D10ShaderReflectionType* D3D10ShaderReflectionType::FindMemberType(
           ID3D11ShaderReflectionType*     pMemberType) {
-    for (size_t i = 0; i < m_members.size(); i++) {
+    for (size_t i = 0; i < m_members.size(); ++i) {
       if (m_members[i].GetD3D11Iface() == pMemberType)
         return &m_members[i];
     }
@@ -105,7 +105,7 @@ namespace dxvk {
     D3D11_SHADER_BUFFER_DESC d3d11Desc;
     m_d3d11->GetDesc(&d3d11Desc);
 
-    for (uint32_t i = 0; i < d3d11Desc.Variables; i++)
+    for (uint32_t i = 0; i < d3d11Desc.Variables; ++i)
       m_variables.emplace_back(m_d3d11->GetVariableByIndex(i));
   }
 
@@ -146,7 +146,7 @@ namespace dxvk {
 
   ID3D10ShaderReflectionVariable* D3D10ShaderReflectionConstantBuffer::FindVariable(
           ID3D11ShaderReflectionVariable* pVariable) {
-    for (size_t i = 0; i < m_variables.size(); i++) {
+    for (size_t i = 0; i < m_variables.size(); ++i) {
       if (m_variables[i].GetD3D11Iface() == pVariable)
         return &m_variables[i];
     }
@@ -160,7 +160,7 @@ namespace dxvk {
     D3D11_SHADER_DESC d3d11Desc;
     m_d3d11->GetDesc(&d3d11Desc);
 
-    for (uint32_t i = 0; i < d3d11Desc.ConstantBuffers; i++)
+    for (uint32_t i = 0; i < d3d11Desc.ConstantBuffers; ++i)
       m_constantBuffers.emplace_back(m_d3d11->GetConstantBufferByIndex(i));
   }
 
@@ -292,7 +292,7 @@ namespace dxvk {
 
   ID3D10ShaderReflectionConstantBuffer* D3D10ShaderReflection::FindConstantBuffer(
           ID3D11ShaderReflectionConstantBuffer* pConstantBuffer) {
-    for (size_t i = 0; i < m_constantBuffers.size(); i++) {
+    for (size_t i = 0; i < m_constantBuffers.size(); ++i) {
       if (m_constantBuffers[i].GetD3D11Iface() == pConstantBuffer)
         return &m_constantBuffers[i];
     }

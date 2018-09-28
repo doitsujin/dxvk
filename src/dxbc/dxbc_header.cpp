@@ -18,7 +18,7 @@ namespace dxvk {
     uint32_t chunkCount = reader.readu32();
     
     // Chunk offsets are stored immediately after
-    for (uint32_t i = 0; i < chunkCount; i++)
+    for (uint32_t i = 0; i < chunkCount; ++i)
       m_chunkOffsets.push_back(reader.readu32());
   }
   

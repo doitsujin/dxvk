@@ -15,7 +15,7 @@ namespace dxvk {
     m_frameLatencyCap (pOptions->maxFrameLatency) {
     m_device = m_adapter->GetDXVKAdapter()->createDevice(*pFeatures);
 
-    for (uint32_t i = 0; i < m_frameEvents.size(); i++)
+    for (uint32_t i = 0; i < m_frameEvents.size(); ++i)
       m_frameEvents[i] = new DxvkEvent();
   }
   
@@ -105,7 +105,7 @@ namespace dxvk {
     if (!ppResources || !pResidencyStatus)
       return E_INVALIDARG;
 
-    for (uint32_t i = 0; i < NumResources; i++)
+    for (uint32_t i = 0; i < NumResources; ++i)
       pResidencyStatus[i] = DXGI_RESIDENCY_FULLY_RESIDENT;
 
     return S_OK;

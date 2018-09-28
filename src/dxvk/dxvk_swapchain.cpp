@@ -176,7 +176,7 @@ namespace dxvk {
     viewInfo.minLayer     = 0;
     viewInfo.numLayers    = swapInfo.imageArrayLayers;
     
-    for (size_t i = 0; i < swapImages.size(); i++) {
+    for (size_t i = 0; i < swapImages.size(); ++i) {
       m_framebuffers.at(i) = m_device->createImageView(
         new DxvkImage(m_vkd, imageInfo, swapImages.at(i)), viewInfo);
       

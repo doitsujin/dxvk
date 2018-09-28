@@ -15,18 +15,18 @@ namespace dxvk {
   public:
     
     DxbcTag() {
-      for (size_t i = 0; i < 4; i++)
+      for (size_t i = 0; i < 4; ++i)
         m_chars[i] = '\0';
     }
     
     DxbcTag(const char* tag) {
-      for (size_t i = 0; i < 4; i++)
+      for (size_t i = 0; i < 4; ++i)
         m_chars[i] = tag[i];
     }
     
     bool operator == (const DxbcTag& other) const {
       bool result = true;
-      for (size_t i = 0; i < 4; i++)
+      for (size_t i = 0; i < 4; ++i)
         result &= m_chars[i] == other.m_chars[i];
       return result;
     }

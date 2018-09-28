@@ -445,7 +445,7 @@ namespace dxvk {
   HRESULT DxgiSwapChain::SetGammaControl(const DXGI_GAMMA_CONTROL* pGammaControl) {
     DXGI_VK_GAMMA_CURVE curve;
     
-    for (uint32_t i = 0; i < DXGI_VK_GAMMA_CP_COUNT; i++) {
+    for (uint32_t i = 0; i < DXGI_VK_GAMMA_CP_COUNT; ++i) {
       const DXGI_RGB cp = pGammaControl->GammaCurve[i];
       curve.ControlPoints[i].R = MapGammaControlPoint(cp.Red);
       curve.ControlPoints[i].G = MapGammaControlPoint(cp.Green);
@@ -461,7 +461,7 @@ namespace dxvk {
   HRESULT DxgiSwapChain::SetDefaultGammaControl() {
     DXGI_VK_GAMMA_CURVE curve;
     
-    for (uint32_t i = 0; i < DXGI_VK_GAMMA_CP_COUNT; i++) {
+    for (uint32_t i = 0; i < DXGI_VK_GAMMA_CP_COUNT; ++i) {
       const uint16_t value = MapGammaControlPoint(
         float(i) / float(DXGI_VK_GAMMA_CP_COUNT - 1));
       curve.ControlPoints[i] = { value, value, value, 0 };

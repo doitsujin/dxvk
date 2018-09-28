@@ -89,7 +89,7 @@ namespace dxvk {
     // manner. This may help keep fragmentation low.
     auto bestSlice = m_freeList.begin();
     
-    for (auto slice = m_freeList.begin(); slice != m_freeList.end(); slice++) {
+    for (auto slice = m_freeList.begin(); slice != m_freeList.end(); ++slice) {
       if (slice->length == size) {
         bestSlice = slice;
         break;
@@ -155,7 +155,7 @@ namespace dxvk {
     m_devProps        (device->adapter()->deviceProperties()),
     m_memProps        (device->adapter()->memoryProperties()),
     m_allowOvercommit (device->config().allowMemoryOvercommit) {
-    for (uint32_t i = 0; i < m_memProps.memoryHeapCount; i++) {
+    for (uint32_t i = 0; i < m_memProps.memoryHeapCount; ++i) {
       VkDeviceSize heapSize = m_memProps.memoryHeaps[i].size;
       
       m_memHeaps[i].properties = m_memProps.memoryHeaps[i];
@@ -163,7 +163,7 @@ namespace dxvk {
       m_memHeaps[i].stats      = DxvkMemoryStats { 0, 0 };
     }
     
-    for (uint32_t i = 0; i < m_memProps.memoryTypeCount; i++) {
+    for (uint32_t i = 0; i < m_memProps.memoryTypeCount; ++i) {
       m_memTypes[i].heap       = &m_memHeaps[m_memProps.memoryTypes[i].heapIndex];
       m_memTypes[i].memType    = m_memProps.memoryTypes[i];
       m_memTypes[i].memTypeId  = i;
@@ -206,7 +206,7 @@ namespace dxvk {
 
     DxvkMemoryStats totalStats;
     
-    for (size_t i = 0; i < m_memProps.memoryHeapCount; i++) {
+    for (size_t i = 0; i < m_memProps.memoryHeapCount; ++i) {
       totalStats.memoryAllocated += m_memHeaps[i].stats.memoryAllocated;
       totalStats.memoryUsed      += m_memHeaps[i].stats.memoryUsed;
     }
@@ -221,7 +221,7 @@ namespace dxvk {
           VkMemoryPropertyFlags             flags) {
     DxvkMemory result;
 
-    for (uint32_t i = 0; i < m_memProps.memoryTypeCount && !result; i++) {
+    for (uint32_t i = 0; i < m_memProps.memoryTypeCount && !result; ++i) {
       const bool supported = (req->memoryTypeBits & (1u << i)) != 0;
       const bool adequate  = (m_memTypes[i].memType.propertyFlags & flags) == flags;
       
@@ -250,7 +250,7 @@ namespace dxvk {
       if (devMem.memHandle != VK_NULL_HANDLE)
         memory = DxvkMemory(this, nullptr, type, devMem.memHandle, 0, size, devMem.memPointer);
     } else {
-      for (uint32_t i = 0; i < type->chunks.size() && !memory; i++)
+      for (uint32_t i = 0; i < type->chunks.size() && !memory; ++i)
         memory = type->chunks[i]->alloc(flags, size, align);
       
       if (!memory) {

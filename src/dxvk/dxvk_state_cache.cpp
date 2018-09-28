@@ -79,7 +79,7 @@ namespace dxvk {
     Logger::info(str::format("DXVK: Using ", numWorkers, " compiler threads"));
     
     // Start the worker threads and the file writer
-    for (uint32_t i = 0; i < numWorkers; i++)
+    for (uint32_t i = 0; i < numWorkers; ++i)
       m_workerThreads.emplace_back([this] () { workerFunc(); });
     
     m_writerThread = dxvk::thread([this] () { writerFunc(); });
@@ -113,7 +113,7 @@ namespace dxvk {
     // Do not add an entry that is already in the cache
     auto entries = m_entryMap.equal_range(shaders);
 
-    for (auto e = entries.first; e != entries.second; e++) {
+    for (auto e = entries.first; e != entries.second; ++e) {
       const DxvkStateCacheEntry& entry = m_entries[e->second];
 
       if (entry.format.matches(format) && entry.gpState == state)
@@ -139,7 +139,7 @@ namespace dxvk {
     // Do not add an entry that is already in the cache
     auto entries = m_entryMap.equal_range(shaders);
 
-    for (auto e = entries.first; e != entries.second; e++) {
+    for (auto e = entries.first; e != entries.second; ++e) {
       if (m_entries[e->second].cpState == state)
         return;
     }
@@ -169,7 +169,7 @@ namespace dxvk {
 
     auto pipelines = m_pipelineMap.equal_range(key);
 
-    for (auto p = pipelines.first; p != pipelines.second; p++) {
+    for (auto p = pipelines.first; p != pipelines.second; ++p) {
       WorkerItem item;
 
       if (!getShaderByKey(p->second.vs,  item.vs)
@@ -240,7 +240,7 @@ namespace dxvk {
         item.vs, item.tcs, item.tes, item.gs, item.fs);
       auto entries = m_entryMap.equal_range(key);
 
-      for (auto e = entries.first; e != entries.second; e++) {
+      for (auto e = entries.first; e != entries.second; ++e) {
         const auto& entry = m_entries[e->second];
 
         auto rp = m_passManager->getRenderPass(entry.format);
@@ -250,7 +250,7 @@ namespace dxvk {
       auto pipeline = m_pipeManager->createComputePipeline(item.cs);
       auto entries = m_entryMap.equal_range(key);
 
-      for (auto e = entries.first; e != entries.second; e++) {
+      for (auto e = entries.first; e != entries.second; ++e) {
         const auto& entry = m_entries[e->second];
         pipeline->getPipelineHandle(entry.cpState);
       }
@@ -324,7 +324,7 @@ namespace dxvk {
     if (!stream.read(data, size))
       return false;
     
-    for (uint32_t i = 0; i < 4; i++) {
+    for (uint32_t i = 0; i < 4; ++i) {
       if (expected.magic[i] != actual.magic[i])
         return false;
     }

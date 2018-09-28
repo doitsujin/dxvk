@@ -13,7 +13,7 @@ const vec4 g_vpos[4] = {
 };
 
 void main() {
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < 4; ++i) {
     gl_Position = g_vpos[i];
     gl_Layer    = i_instance[0];
     EmitVertex();

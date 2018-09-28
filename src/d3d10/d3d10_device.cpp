@@ -427,7 +427,7 @@ namespace dxvk {
 
     std::vector<D3D11_SO_DECLARATION_ENTRY> d3d11Entries(NumEntries);
 
-    for (uint32_t i = 0; i < NumEntries; i++) {
+    for (uint32_t i = 0; i < NumEntries; ++i) {
       d3d11Entries[i].Stream          = 0;
       d3d11Entries[i].SemanticName    = pSODeclaration[i].SemanticName;
       d3d11Entries[i].SemanticIndex   = pSODeclaration[i].SemanticIndex;
@@ -487,7 +487,7 @@ namespace dxvk {
     d3d11Desc.AlphaToCoverageEnable   = pBlendStateDesc->AlphaToCoverageEnable;
     d3d11Desc.IndependentBlendEnable  = TRUE;
 
-    for (uint32_t i = 0; i < 8; i++) {
+    for (uint32_t i = 0; i < 8; ++i) {
       d3d11Desc.RenderTarget[i].BlendEnable           = pBlendStateDesc->BlendEnable[i];
       d3d11Desc.RenderTarget[i].SrcBlend              = D3D11_BLEND   (pBlendStateDesc->SrcBlend);
       d3d11Desc.RenderTarget[i].DestBlend             = D3D11_BLEND   (pBlendStateDesc->DestBlend);
@@ -588,7 +588,7 @@ namespace dxvk {
     d3d11Desc.MinLOD            = pSamplerDesc->MinLOD;
     d3d11Desc.MaxLOD            = pSamplerDesc->MaxLOD;
 
-    for (uint32_t i = 0; i < 4; i++)
+    for (uint32_t i = 0; i < 4; ++i)
       d3d11Desc.BorderColor[i] = pSamplerDesc->BorderColor[i];
 
     ID3D11SamplerState* d3d11SamplerState = nullptr;
@@ -917,7 +917,7 @@ namespace dxvk {
     if (NumBuffers > D3D10_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT)
       return;
 
-    for (uint32_t i = 0; i < NumBuffers; i++) {
+    for (uint32_t i = 0; i < NumBuffers; ++i) {
       d3d11Buffers[i] = ppVertexBuffers[i]
         ? static_cast<D3D10Buffer*>(ppVertexBuffers[i])->GetD3D11Iface()
         : nullptr;
@@ -974,7 +974,7 @@ namespace dxvk {
       pStrides, pOffsets);
     
     if (ppVertexBuffers != nullptr) {
-      for (uint32_t i = 0; i < NumBuffers; i++) {
+      for (uint32_t i = 0; i < NumBuffers; ++i) {
         ppVertexBuffers[i] = d3d11Buffers[i]
           ? static_cast<D3D11Buffer*>(d3d11Buffers[i])->GetD3D10Iface()
           : nullptr;
@@ -1016,7 +1016,7 @@ namespace dxvk {
     if (NumBuffers > D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT)
       return;
 
-    for (uint32_t i = 0; i < NumBuffers; i++) {
+    for (uint32_t i = 0; i < NumBuffers; ++i) {
       d3d11Buffers[i] = ppConstantBuffers && ppConstantBuffers[i]
         ? static_cast<D3D10Buffer*>(ppConstantBuffers[i])->GetD3D11Iface()
         : nullptr;
@@ -1035,7 +1035,7 @@ namespace dxvk {
     if (NumViews > D3D10_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT)
       return;
     
-    for (uint32_t i = 0; i < NumViews; i++) {
+    for (uint32_t i = 0; i < NumViews; ++i) {
       d3d11Views[i] = ppShaderResourceViews && ppShaderResourceViews[i]
         ? static_cast<D3D10ShaderResourceView*>(ppShaderResourceViews[i])->GetD3D11Iface()
         : nullptr;
@@ -1054,7 +1054,7 @@ namespace dxvk {
     if (NumSamplers > D3D10_COMMONSHADER_SAMPLER_SLOT_COUNT)
       return;
 
-    for (uint32_t i = 0; i < NumSamplers; i++) {
+    for (uint32_t i = 0; i < NumSamplers; ++i) {
       d3d11Samplers[i] = ppSamplers && ppSamplers[i]
         ? static_cast<D3D10SamplerState*>(ppSamplers[i])->GetD3D11Iface()
         : nullptr;
@@ -1080,7 +1080,7 @@ namespace dxvk {
     ID3D11Buffer* d3d11Buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT];
     m_context->VSGetConstantBuffers(StartSlot, NumBuffers, d3d11Buffers);
 
-    for (uint32_t i = 0; i < NumBuffers; i++) {
+    for (uint32_t i = 0; i < NumBuffers; ++i) {
       ppConstantBuffers[i] = d3d11Buffers[i]
         ? static_cast<D3D11Buffer*>(d3d11Buffers[i])->GetD3D10Iface()
         : nullptr;
@@ -1095,7 +1095,7 @@ namespace dxvk {
     ID3D11ShaderResourceView* d3d11Views[D3D10_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
     m_context->VSGetShaderResources(StartSlot, NumViews, d3d11Views);
 
-    for (uint32_t i = 0; i < NumViews; i++) {
+    for (uint32_t i = 0; i < NumViews; ++i) {
       ppShaderResourceViews[i] = d3d11Views[i]
         ? static_cast<D3D11ShaderResourceView*>(d3d11Views[i])->GetD3D10Iface()
         : nullptr;
@@ -1110,7 +1110,7 @@ namespace dxvk {
     ID3D11SamplerState* d3d11Samplers[D3D10_COMMONSHADER_SAMPLER_SLOT_COUNT];
     m_context->VSGetSamplers(StartSlot, NumSamplers, d3d11Samplers);
 
-    for (uint32_t i = 0; i < NumSamplers; i++) {
+    for (uint32_t i = 0; i < NumSamplers; ++i) {
       ppSamplers[i] = d3d11Samplers[i]
         ? static_cast<D3D11SamplerState*>(d3d11Samplers[i])->GetD3D10Iface()
         : nullptr;
@@ -1136,7 +1136,7 @@ namespace dxvk {
     if (NumBuffers > D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT)
       return;
 
-    for (uint32_t i = 0; i < NumBuffers; i++) {
+    for (uint32_t i = 0; i < NumBuffers; ++i) {
       d3d11Buffers[i] = ppConstantBuffers && ppConstantBuffers[i]
         ? static_cast<D3D10Buffer*>(ppConstantBuffers[i])->GetD3D11Iface()
         : nullptr;
@@ -1155,7 +1155,7 @@ namespace dxvk {
     if (NumViews > D3D10_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT)
       return;
 
-    for (uint32_t i = 0; i < NumViews; i++) {
+    for (uint32_t i = 0; i < NumViews; ++i) {
       d3d11Views[i] = ppShaderResourceViews && ppShaderResourceViews[i]
         ? static_cast<D3D10ShaderResourceView*>(ppShaderResourceViews[i])->GetD3D11Iface()
         : nullptr;
@@ -1174,7 +1174,7 @@ namespace dxvk {
     if (NumSamplers > D3D10_COMMONSHADER_SAMPLER_SLOT_COUNT)
       return;
 
-    for (uint32_t i = 0; i < NumSamplers; i++) {
+    for (uint32_t i = 0; i < NumSamplers; ++i) {
       d3d11Samplers[i] = ppSamplers && ppSamplers[i]
         ? static_cast<D3D10SamplerState*>(ppSamplers[i])->GetD3D11Iface()
         : nullptr;
@@ -1200,7 +1200,7 @@ namespace dxvk {
     ID3D11Buffer* d3d11Buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT];
     m_context->GSGetConstantBuffers(StartSlot, NumBuffers, d3d11Buffers);
 
-    for (uint32_t i = 0; i < NumBuffers; i++) {
+    for (uint32_t i = 0; i < NumBuffers; ++i) {
       ppConstantBuffers[i] = d3d11Buffers[i]
         ? static_cast<D3D11Buffer*>(d3d11Buffers[i])->GetD3D10Iface()
         : nullptr;
@@ -1215,7 +1215,7 @@ namespace dxvk {
     ID3D11ShaderResourceView* d3d11Views[D3D10_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
     m_context->GSGetShaderResources(StartSlot, NumViews, d3d11Views);
 
-    for (uint32_t i = 0; i < NumViews; i++) {
+    for (uint32_t i = 0; i < NumViews; ++i) {
       ppShaderResourceViews[i] = d3d11Views[i]
         ? static_cast<D3D11ShaderResourceView*>(d3d11Views[i])->GetD3D10Iface()
         : nullptr;
@@ -1230,7 +1230,7 @@ namespace dxvk {
     ID3D11SamplerState* d3d11Samplers[D3D10_COMMONSHADER_SAMPLER_SLOT_COUNT];
     m_context->GSGetSamplers(StartSlot, NumSamplers, d3d11Samplers);
 
-    for (uint32_t i = 0; i < NumSamplers; i++) {
+    for (uint32_t i = 0; i < NumSamplers; ++i) {
       ppSamplers[i] = d3d11Samplers[i]
         ? static_cast<D3D11SamplerState*>(d3d11Samplers[i])->GetD3D10Iface()
         : nullptr;
@@ -1256,7 +1256,7 @@ namespace dxvk {
     if (NumBuffers > D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT)
       return;
 
-    for (uint32_t i = 0; i < NumBuffers; i++) {
+    for (uint32_t i = 0; i < NumBuffers; ++i) {
       d3d11Buffers[i] = ppConstantBuffers && ppConstantBuffers[i]
         ? static_cast<D3D10Buffer*>(ppConstantBuffers[i])->GetD3D11Iface()
         : nullptr;
@@ -1275,7 +1275,7 @@ namespace dxvk {
     if (NumViews > D3D10_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT)
       return;
 
-    for (uint32_t i = 0; i < NumViews; i++) {
+    for (uint32_t i = 0; i < NumViews; ++i) {
       d3d11Views[i] = ppShaderResourceViews && ppShaderResourceViews[i]
         ? static_cast<D3D10ShaderResourceView*>(ppShaderResourceViews[i])->GetD3D11Iface()
         : nullptr;
@@ -1294,7 +1294,7 @@ namespace dxvk {
     if (NumSamplers > D3D10_COMMONSHADER_SAMPLER_SLOT_COUNT)
       return;
 
-    for (uint32_t i = 0; i < NumSamplers; i++) {
+    for (uint32_t i = 0; i < NumSamplers; ++i) {
       d3d11Samplers[i] = ppSamplers && ppSamplers[i]
         ? static_cast<D3D10SamplerState*>(ppSamplers[i])->GetD3D11Iface()
         : nullptr;
@@ -1320,7 +1320,7 @@ namespace dxvk {
     ID3D11Buffer* d3d11Buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT];
     m_context->PSGetConstantBuffers(StartSlot, NumBuffers, d3d11Buffers);
 
-    for (uint32_t i = 0; i < NumBuffers; i++) {
+    for (uint32_t i = 0; i < NumBuffers; ++i) {
       ppConstantBuffers[i] = d3d11Buffers[i]
         ? static_cast<D3D11Buffer*>(d3d11Buffers[i])->GetD3D10Iface()
         : nullptr;
@@ -1335,7 +1335,7 @@ namespace dxvk {
     ID3D11ShaderResourceView* d3d11Views[D3D10_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
     m_context->PSGetShaderResources(StartSlot, NumViews, d3d11Views);
 
-    for (uint32_t i = 0; i < NumViews; i++) {
+    for (uint32_t i = 0; i < NumViews; ++i) {
       ppShaderResourceViews[i] = d3d11Views[i]
         ? static_cast<D3D11ShaderResourceView*>(d3d11Views[i])->GetD3D10Iface()
         : nullptr;
@@ -1350,7 +1350,7 @@ namespace dxvk {
     ID3D11SamplerState* d3d11Samplers[D3D10_COMMONSHADER_SAMPLER_SLOT_COUNT];
     m_context->PSGetSamplers(StartSlot, NumSamplers, d3d11Samplers);
 
-    for (uint32_t i = 0; i < NumSamplers; i++) {
+    for (uint32_t i = 0; i < NumSamplers; ++i) {
       ppSamplers[i] = d3d11Samplers[i]
         ? static_cast<D3D11SamplerState*>(d3d11Samplers[i])->GetD3D10Iface()
         : nullptr;
@@ -1367,7 +1367,7 @@ namespace dxvk {
     if (NumViews > D3D10_SIMULTANEOUS_RENDER_TARGET_COUNT)
       return;
 
-    for (uint32_t i = 0; i < NumViews; i++) {
+    for (uint32_t i = 0; i < NumViews; ++i) {
       d3d11Rtv[i] = ppRenderTargetViews && ppRenderTargetViews[i]
         ? static_cast<D3D10RenderTargetView*>(ppRenderTargetViews[i])->GetD3D11Iface()
         : nullptr;
@@ -1413,7 +1413,7 @@ namespace dxvk {
       ppDepthStencilView ? &d3d11Dsv : nullptr);
     
     if (ppRenderTargetViews != nullptr) {
-      for (uint32_t i = 0; i < NumViews; i++) {
+      for (uint32_t i = 0; i < NumViews; ++i) {
         ppRenderTargetViews[i] = d3d11Rtv[i]
           ? static_cast<D3D11RenderTargetView*>(d3d11Rtv[i])->GetD3D10Iface()
           : nullptr;
@@ -1471,7 +1471,7 @@ namespace dxvk {
     if (NumViewports > D3D10_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE)
       return;
 
-    for (uint32_t i = 0; i < NumViewports; i++) {
+    for (uint32_t i = 0; i < NumViewports; ++i) {
       vp[i].TopLeftX = float(pViewports[i].TopLeftX);
       vp[i].TopLeftY = float(pViewports[i].TopLeftY);
       vp[i].Width    = float(pViewports[i].Width);
@@ -1507,7 +1507,7 @@ namespace dxvk {
     m_context->RSGetViewports(NumViewports, pViewports != nullptr ? vp : nullptr);
 
     if (pViewports != nullptr) {
-      for (uint32_t i = 0; i < *NumViewports; i++) {
+      for (uint32_t i = 0; i < *NumViewports; ++i) {
         pViewports[i].TopLeftX = int32_t(vp[i].TopLeftX);
         pViewports[i].TopLeftY = int32_t(vp[i].TopLeftY);
         pViewports[i].Width    = uint32_t(vp[i].Width);
@@ -1535,7 +1535,7 @@ namespace dxvk {
     if (NumBuffers > D3D10_SO_BUFFER_SLOT_COUNT)
       return;
 
-    for (uint32_t i = 0; i < NumBuffers; i++) {
+    for (uint32_t i = 0; i < NumBuffers; ++i) {
       d3d11Buffers[i] = ppSOTargets && ppSOTargets[i]
         ? static_cast<D3D10Buffer*>(ppSOTargets[i])->GetD3D11Iface()
         : nullptr;
@@ -1553,7 +1553,7 @@ namespace dxvk {
     m_context->SOGetTargets(NumBuffers, ppSOTargets ? d3d11Buffers : nullptr);
 
     if (ppSOTargets != nullptr) {
-      for (uint32_t i = 0; i < NumBuffers; i++) {
+      for (uint32_t i = 0; i < NumBuffers; ++i) {
         ppSOTargets[i] = d3d11Buffers[i]
           ? static_cast<D3D11Buffer*>(d3d11Buffers[i])->GetD3D10Iface()
           : nullptr;

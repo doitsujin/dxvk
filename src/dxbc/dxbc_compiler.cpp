@@ -37,13 +37,13 @@ namespace dxvk {
       spv::MemoryModelGLSL450);
     
     // Make sure our interface registers are clear
-    for (uint32_t i = 0; i < DxbcMaxInterfaceRegs; i++) {
+    for (uint32_t i = 0; i < DxbcMaxInterfaceRegs; ++i) {
       m_vRegs.at(i) = DxbcRegisterPointer { };
       m_oRegs.at(i) = DxbcRegisterPointer { };
     }
     
     // Clear spec constants
-    for (uint32_t i = 0; i < m_specConstants.size(); i++) {
+    for (uint32_t i = 0; i < m_specConstants.size(); ++i) {
       m_specConstants.at(i) = DxbcRegisterValue {
         DxbcVectorType { DxbcScalarType::Uint32, 0 },
         0 };
@@ -323,7 +323,7 @@ namespace dxvk {
       info.type.alength = 0;
       info.sclass       = spv::StorageClassPrivate;
       
-      for (uint32_t i = oldCount; i < newCount; i++) {
+      for (uint32_t i = oldCount; i < newCount; ++i) {
         const uint32_t varId = this->emitNewVariable(info);
         m_module.setDebugName(varId, str::format("r", i).c_str());
         m_rRegs.at(i) = varId;
@@ -1338,7 +1338,7 @@ namespace dxvk {
     const uint32_t vectorTypeId = getVectorTypeId(vecType);
     const uint32_t vectorCount  = dwordCount / 4;
     
-    for (uint32_t i = 0; i < vectorCount; i++) {
+    for (uint32_t i = 0; i < vectorCount; ++i) {
       std::array<uint32_t, 4> scalarIds = {
         m_module.constu32(dwordArray[4 * i + 0]),
         m_module.constu32(dwordArray[4 * i + 1]),
@@ -1396,7 +1396,7 @@ namespace dxvk {
   void DxbcCompiler::emitVectorAlu(const DxbcShaderInstruction& ins) {
     std::array<DxbcRegisterValue, DxbcMaxOperandCount> src;
     
-    for (uint32_t i = 0; i < ins.srcCount; i++)
+    for (uint32_t i = 0; i < ins.srcCount; ++i)
       src.at(i) = emitRegisterLoad(ins.src[i], ins.dst[0].mask);
     
     DxbcRegisterValue dst;
@@ -1658,7 +1658,7 @@ namespace dxvk {
     // the output that a cmov instruction would normally get
     const uint32_t trueIndex = ins.op == DxbcOpcode::Swapc ? 1 : 0;
     
-    for (uint32_t i = 0; i < ins.dstCount; i++) {
+    for (uint32_t i = 0; i < ins.dstCount; ++i) {
       DxbcRegisterValue result;
       result.type.ctype  = ins.dst[i].dataType;
       result.type.ccount = componentCount;
@@ -2101,7 +2101,7 @@ namespace dxvk {
     // Load source values
     std::array<DxbcRegisterValue, 2> src;
     
-    for (uint32_t i = 1; i < ins.srcCount; i++) {
+    for (uint32_t i = 1; i < ins.srcCount; ++i) {
       src[i - 1] = emitRegisterBitcast(
         emitRegisterLoad(ins.src[i], DxbcRegMask(true, false, false, false)),
         pointer.type.ctype);
@@ -2372,7 +2372,7 @@ namespace dxvk {
     const uint32_t componentCount  = src.type.ccount;
     std::array<uint32_t, 4> componentIds = {{ 0, 0, 0, 0 }};
     
-    for (uint32_t i = 0; i < componentCount; i++) {
+    for (uint32_t i = 0; i < componentCount; ++i) {
       const DxbcRegisterValue currBitCnt = emitRegisterExtract(bitCnt, DxbcRegMask::select(i));
       const DxbcRegisterValue currBitOfs = emitRegisterExtract(bitOfs, DxbcRegMask::select(i));
       const DxbcRegisterValue currSrc    = emitRegisterExtract(src,    DxbcRegMask::select(i));
@@ -2417,7 +2417,7 @@ namespace dxvk {
     const uint32_t componentCount  = base.type.ccount;
     std::array<uint32_t, 4> componentIds = {{ 0, 0, 0, 0 }};
     
-    for (uint32_t i = 0; i < componentCount; i++) {
+    for (uint32_t i = 0; i < componentCount; ++i) {
       const DxbcRegisterValue currBitCnt = emitRegisterExtract(bitCnt, DxbcRegMask::select(i));
       const DxbcRegisterValue currBitOfs = emitRegisterExtract(bitOfs, DxbcRegMask::select(i));
       const DxbcRegisterValue currInsert = emitRegisterExtract(insert, DxbcRegMask::select(i));
@@ -2601,7 +2601,7 @@ namespace dxvk {
     // Constant zero-bit pattern, used for packing
     const uint32_t zerof32 = isPack ? m_module.constf32(0.0f) : 0;
     
-    for (uint32_t i = 0; i < componentCount; i++) {
+    for (uint32_t i = 0; i < componentCount; ++i) {
       const DxbcRegisterValue componentValue
         = emitRegisterExtract(src, DxbcRegMask::select(i));
       
@@ -2858,7 +2858,7 @@ namespace dxvk {
         ? m_module.constu32(0)
         : m_module.constf32(0.0f);
       
-      for (uint32_t i = imageCoordDim; i < 3; i++)
+      for (uint32_t i = imageCoordDim; i < 3; ++i)
         vectorIds[numVectorIds++] = zero;
     }
     
@@ -4012,7 +4012,7 @@ namespace dxvk {
     
     uint32_t dstIndex = 0;
     
-    for (uint32_t i = 0; i < 4; i++) {
+    for (uint32_t i = 0; i < 4; ++i) {
       if (writeMask[i])
         indices[dstIndex++] = swizzle[i];
     }
@@ -4021,7 +4021,7 @@ namespace dxvk {
     // to a no-op, we don't need to insert any instructions.
     bool isIdentitySwizzle = dstIndex == value.type.ccount;
     
-    for (uint32_t i = 0; i < dstIndex && isIdentitySwizzle; i++)
+    for (uint32_t i = 0; i < dstIndex && isIdentitySwizzle; ++i)
       isIdentitySwizzle &= indices[i] == i;
     
     if (isIdentitySwizzle)
@@ -4087,7 +4087,7 @@ namespace dxvk {
       std::array<uint32_t, 4> components;
       uint32_t srcComponentId = dstValue.type.ccount;
       
-      for (uint32_t i = 0; i < dstValue.type.ccount; i++)
+      for (uint32_t i = 0; i < dstValue.type.ccount; ++i)
         components.at(i) = srcMask[i] ? srcComponentId++ : i;
       
       result.id = m_module.opVectorShuffle(
@@ -4299,7 +4299,7 @@ namespace dxvk {
     
     std::array<uint32_t, 2> indices = {{ 0, 0 }};
     
-    for (uint32_t i = 0; i < operand.idxDim; i++)
+    for (uint32_t i = 0; i < operand.idxDim; ++i)
       indices.at(i) = emitIndexLoad(operand.idx[i]).id;
     
     // Pick the input array depending on
@@ -4651,7 +4651,7 @@ namespace dxvk {
     std::array<uint32_t, 4> scomps = { 0, 0, 0, 0 };
     uint32_t                scount = 0;
     
-    for (uint32_t i = 0; i < 4; i++) {
+    for (uint32_t i = 0; i < 4; ++i) {
       uint32_t sindex = operand.swizzle[i];
 
       if (!writeMask[i])
@@ -4693,7 +4693,7 @@ namespace dxvk {
       }
     }
 
-    for (uint32_t i = 0; i < 4; i++) {
+    for (uint32_t i = 0; i < 4; ++i) {
       uint32_t sindex = operand.swizzle[i];
       
       if (writeMask[i])
@@ -4751,7 +4751,7 @@ namespace dxvk {
     
     uint32_t srcComponentIndex = 0;
     
-    for (uint32_t i = 0; i < 4; i++) {
+    for (uint32_t i = 0; i < 4; ++i) {
       if (operand.mask[i]) {
         const uint32_t srcComponentId = value.type.ccount > 1
           ? m_module.opCompositeExtract(scalarTypeId,
@@ -5022,7 +5022,7 @@ namespace dxvk {
         std::array<uint32_t, 4> indices;
         uint32_t indexId = 0;
         
-        for (uint32_t i = 0; i < indices.size(); i++) {
+        for (uint32_t i = 0; i < indices.size(); ++i) {
           if (writeMask[i]) {
             indices.at(indexId++) =
               m_module.constu32(reg.imm.u32_4[i]);
@@ -5113,7 +5113,7 @@ namespace dxvk {
     const uint32_t vecTypeId = m_module.defVectorType(m_module.defFloatType(32), 4);
     const uint32_t ptrTypeId = m_module.defPointerType(vecTypeId, spv::StorageClassPrivate);
     
-    for (uint32_t i = 0; i < m_vRegs.size(); i++) {
+    for (uint32_t i = 0; i < m_vRegs.size(); ++i) {
       if (m_vRegs.at(i).id != 0) {
         const uint32_t registerId = m_module.consti32(i);
 
@@ -5159,11 +5159,11 @@ namespace dxvk {
     const uint32_t vecTypeId    = m_module.defVectorType(m_module.defFloatType(32), 4);
     const uint32_t dstPtrTypeId = m_module.defPointerType(vecTypeId, spv::StorageClassPrivate);
     
-    for (uint32_t i = 0; i < m_vRegs.size(); i++) {
+    for (uint32_t i = 0; i < m_vRegs.size(); ++i) {
       if (m_vRegs.at(i).id != 0) {
         const uint32_t registerId = m_module.consti32(i);
         
-        for (uint32_t v = 0; v < vertexCount; v++) {
+        for (uint32_t v = 0; v < vertexCount; ++v) {
           std::array<uint32_t, 2> indices
             = {{ m_module.consti32(v), registerId }};
           
@@ -5191,7 +5191,7 @@ namespace dxvk {
     for (const DxbcSvMapping& map : m_vMappings) {
       const uint32_t registerId = m_module.consti32(map.regId);
       
-      for (uint32_t v = 0; v < vertexCount; v++) {
+      for (uint32_t v = 0; v < vertexCount; ++v) {
         const DxbcRegisterValue value = [&] {
           switch (m_version.type()) {
             case DxbcProgramType::GeometryShader: return emitGsSystemValueLoad(map.sv, map.regMask, v);
@@ -5249,7 +5249,7 @@ namespace dxvk {
   void DxbcCompiler::emitOutputMapping() {
     // For pixel shaders, we need to swizzle the
     // output vectors using some spec constants.
-    for (uint32_t i = 0; i < m_oRegs.size(); i++) {
+    for (uint32_t i = 0; i < m_oRegs.size(); ++i) {
       if (m_oRegs[i].id == 0 || m_oRegs[i].type.ccount < 2)
         continue;
       
@@ -5260,7 +5260,7 @@ namespace dxvk {
       
       std::array<uint32_t, 4> scalars;
 
-      for (uint32_t c = 0; c < vector.type.ccount; c++) {
+      for (uint32_t c = 0; c < vector.type.ccount; ++c) {
         const char* components = "rgba";
 
         uint32_t specId = m_module.specConst32(specTypeId, c);
@@ -5734,12 +5734,12 @@ namespace dxvk {
     if (dstArray == 0)
       return;
     
-    for (auto e = m_osgn->begin(); e != m_osgn->end(); e++) {
+    for (auto e = m_osgn->begin(); e != m_osgn->end(); ++e) {
       if (e->systemValue == sv) {
         DxbcRegisterPointer srcPtr = m_oRegs.at(e->registerId);
         DxbcRegisterValue srcValue = emitValueLoad(srcPtr);
         
-        for (uint32_t i = 0; i < 4; i++) {
+        for (uint32_t i = 0; i < 4; ++i) {
           if (e->componentMask[i]) {
             uint32_t offsetId = m_module.consti32(offset++);
             
@@ -5771,13 +5771,13 @@ namespace dxvk {
     if (srcArray == 0)
       return;
     
-    for (auto e = m_isgn->begin(); e != m_isgn->end(); e++) {
+    for (auto e = m_isgn->begin(); e != m_isgn->end(); ++e) {
       if (e->systemValue == sv) {
         // Load individual components from the source array
         uint32_t                componentIndex = 0;
         std::array<uint32_t, 4> componentIds   = {{ 0, 0, 0, 0 }};
         
-        for (uint32_t i = 0; i < 4; i++) {
+        for (uint32_t i = 0; i < 4; ++i) {
           if (e->componentMask[i]) {
             uint32_t offsetId = m_module.consti32(offset++);
             
@@ -6212,7 +6212,7 @@ namespace dxvk {
   
   void DxbcCompiler::emitHsForkJoinPhase(
     const DxbcCompilerHsForkJoinPhase&      phase) {
-    for (uint32_t i = 0; i < phase.instanceCount; i++) {
+    for (uint32_t i = 0; i < phase.instanceCount; ++i) {
       uint32_t invocationId = m_module.constu32(i);
       
       m_module.opFunctionCall(
@@ -6333,7 +6333,7 @@ namespace dxvk {
       getScalarTypeId(DxbcScalarType::Uint32),
       m_hs.builtinInvocationId);
     
-    for (auto i = m_isgn->begin(); i != m_isgn->end(); i++) {
+    for (auto i = m_isgn->begin(); i != m_isgn->end(); ++i) {
       this->emitDclInput(
         i->registerId, m_hs.vertexCountIn,
         i->componentMask,
@@ -6444,7 +6444,7 @@ namespace dxvk {
     uint32_t srcPtrType = m_module.defPointerType(vecType, spv::StorageClassPrivate);
     uint32_t dstPtrType = m_module.defPointerType(vecType, spv::StorageClassOutput);
 
-    for (uint32_t i = 0; i < 32; i++) {
+    for (uint32_t i = 0; i < 32; ++i) {
       if (m_hs.outputPerPatchMask & (1 << i)) {
         uint32_t index = m_module.constu32(i);
 
@@ -6620,7 +6620,7 @@ namespace dxvk {
   DxbcCfgBlock* DxbcCompiler::cfgFindBlock(
     const std::initializer_list<DxbcCfgBlockType>& types) {
     for (auto cur =  m_controlFlowBlocks.rbegin();
-              cur != m_controlFlowBlocks.rend(); cur++) {
+              cur != m_controlFlowBlocks.rend(); ++cur) {
       for (auto type : types) {
         if (cur->type == type)
           return &(*cur);
