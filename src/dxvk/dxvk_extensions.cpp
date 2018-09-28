@@ -35,7 +35,7 @@ namespace dxvk {
           DxvkNameSet&       nameSet) const {
     bool allRequiredEnabled = true;
 
-    for (uint32_t i = 0; i < numExtensions; i++) {
+    for (uint32_t i = 0; i < numExtensions; ++i) {
       DxvkExt* ext = ppExtensions[i];
 
       if (ext->mode() != DxvkExtMode::Disabled) {
@@ -76,7 +76,7 @@ namespace dxvk {
       return DxvkNameSet();
 
     DxvkNameSet set;
-    for (uint32_t i = 0; i < entryCount; i++)
+    for (uint32_t i = 0; i < entryCount; ++i)
       set.m_names.insert({ entries[i].layerName, entries[i].specVersion });
     return set;
   }
@@ -94,7 +94,7 @@ namespace dxvk {
       return DxvkNameSet();
 
     DxvkNameSet set;
-    for (uint32_t i = 0; i < entryCount; i++)
+    for (uint32_t i = 0; i < entryCount; ++i)
       set.m_names.insert({ entries[i].extensionName, entries[i].specVersion });
     return set;
   }
@@ -114,7 +114,7 @@ namespace dxvk {
       return DxvkNameSet();
 
     DxvkNameSet set;
-    for (uint32_t i = 0; i < entryCount; i++)
+    for (uint32_t i = 0; i < entryCount; ++i)
       set.m_names.insert({ entries[i].extensionName, entries[i].specVersion });
     return set;
   }

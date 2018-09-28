@@ -86,7 +86,7 @@ namespace dxvk {
       // data. In case of occlusion queries, we should return a
       // non-zero value for samples passed, so that games do not
       // accidentally omit certain geometry because of this.
-      for (uint32_t i = 0; i < queryCount; i++) {
+      for (uint32_t i = 0; i < queryCount; ++i) {
         results[i] = DxvkQueryData();
         
         if (m_queryType == VK_QUERY_TYPE_OCCLUSION)
@@ -95,7 +95,7 @@ namespace dxvk {
     }
     
     // Forward query data to the query objects
-    for (uint32_t i = 0; i < queryCount; i++) {
+    for (uint32_t i = 0; i < queryCount; ++i) {
       const DxvkQueryRevision& query = m_queries.at(queryIndex + i);
       query.query->updateData(query.revision, results[i]);
     }

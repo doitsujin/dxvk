@@ -73,7 +73,7 @@ namespace dxvk {
      * that are not used by a pipeline.
      */
     void clear() {
-      for (uint32_t i = 0; i < IntCount; i++)
+      for (uint32_t i = 0; i < IntCount; ++i)
         m_slots[i] = 0;
     }
     

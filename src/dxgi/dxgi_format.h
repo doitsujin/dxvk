@@ -72,7 +72,7 @@ namespace dxvk {
     }
 
     BOOL Add(VkFormat Format) {
-      for (UINT i = 0; i < FormatCount; i++) {
+      for (UINT i = 0; i < FormatCount; ++i) {
         if (Formats[i] == Format)
           return TRUE;
       }

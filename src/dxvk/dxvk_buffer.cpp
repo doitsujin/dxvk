@@ -36,7 +36,7 @@ namespace dxvk {
       std::unique_lock<sync::Spinlock> swapLock(m_swapMutex);
       m_physBuffer = this->allocPhysicalBuffer(m_physSliceCount);
       
-      for (uint32_t i = 0; i < m_physSliceCount; i++) {
+      for (uint32_t i = 0; i < m_physSliceCount; ++i) {
         m_freeSlices.push_back(m_physBuffer->slice(
           m_physSliceStride * i,
           m_physSliceLength));

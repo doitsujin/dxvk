@@ -76,7 +76,7 @@ namespace dxvk {
           DxvkAccessFlags           bufAccess) {
     bool result = false;
 
-    for (uint32_t i = 0; i < m_bufSlices.size() && !result; i++) {
+    for (uint32_t i = 0; i < m_bufSlices.size() && !result; ++i) {
       result = (bufSlice.overlaps(m_bufSlices[i].slice))
             && (bufAccess | m_bufSlices[i].access).test(DxvkAccess::Write);
     }
@@ -91,7 +91,7 @@ namespace dxvk {
           DxvkAccessFlags           imgAccess) {
     bool result = false;
 
-    for (uint32_t i = 0; i < m_imgSlices.size() && !result; i++) {
+    for (uint32_t i = 0; i < m_imgSlices.size() && !result; ++i) {
       const VkImageSubresourceRange& dstSubres = m_imgSlices[i].subres;
 
       result = (image == m_imgSlices[i].image) && (imgAccess | m_imgSlices[i].access).test(DxvkAccess::Write)

@@ -113,7 +113,7 @@ namespace dxvk {
     m_state.cs.shader = nullptr;
     
     // Default constant buffers
-    for (uint32_t i = 0; i < D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT; i++) {
+    for (uint32_t i = 0; i < D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT; ++i) {
       m_state.vs.constantBuffers[i] = { nullptr, 0, 0 };
       m_state.hs.constantBuffers[i] = { nullptr, 0, 0 };
       m_state.ds.constantBuffers[i] = { nullptr, 0, 0 };
@@ -123,7 +123,7 @@ namespace dxvk {
     }
     
     // Default samplers
-    for (uint32_t i = 0; i < D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT; i++) {
+    for (uint32_t i = 0; i < D3D11_COMMONSHADER_SAMPLER_SLOT_COUNT; ++i) {
       m_state.vs.samplers[i] = nullptr;
       m_state.hs.samplers[i] = nullptr;
       m_state.ds.samplers[i] = nullptr;
@@ -133,7 +133,7 @@ namespace dxvk {
     }
     
     // Default shader resources
-    for (uint32_t i = 0; i < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT; i++) {
+    for (uint32_t i = 0; i < D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT; ++i) {
       m_state.vs.shaderResources[i] = nullptr;
       m_state.hs.shaderResources[i] = nullptr;
       m_state.ds.shaderResources[i] = nullptr;
@@ -143,7 +143,7 @@ namespace dxvk {
     }
     
     // Default UAVs
-    for (uint32_t i = 0; i < D3D11_1_UAV_SLOT_COUNT; i++) {
+    for (uint32_t i = 0; i < D3D11_1_UAV_SLOT_COUNT; ++i) {
       m_state.ps.unorderedAccessViews[i] = nullptr;
       m_state.cs.unorderedAccessViews[i] = nullptr;
     }
@@ -152,7 +152,7 @@ namespace dxvk {
     m_state.ia.inputLayout       = nullptr;
     m_state.ia.primitiveTopology = D3D11_PRIMITIVE_TOPOLOGY_UNDEFINED;
     
-    for (uint32_t i = 0; i < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT; i++) {
+    for (uint32_t i = 0; i < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT; ++i) {
       m_state.ia.vertexBuffers[i].buffer = nullptr;
       m_state.ia.vertexBuffers[i].offset = 0;
       m_state.ia.vertexBuffers[i].stride = 0;
@@ -163,14 +163,14 @@ namespace dxvk {
     m_state.ia.indexBuffer.format = DXGI_FORMAT_UNKNOWN;
     
     // Default OM State
-    for (uint32_t i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; i++)
+    for (uint32_t i = 0; i < D3D11_SIMULTANEOUS_RENDER_TARGET_COUNT; ++i)
       m_state.om.renderTargetViews[i] = nullptr;
     m_state.om.depthStencilView = nullptr;
     
     m_state.om.cbState = nullptr;
     m_state.om.dsState = nullptr;
     
-    for (uint32_t i = 0; i < 4; i++)
+    for (uint32_t i = 0; i < 4; ++i)
       m_state.om.blendFactor[i] = 0.0f;
     
     m_state.om.sampleMask = D3D11_DEFAULT_SAMPLE_MASK;
@@ -181,13 +181,13 @@ namespace dxvk {
     m_state.rs.numViewports = 0;
     m_state.rs.numScissors  = 0;
     
-    for (uint32_t i = 0; i < D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE; i++) {
+    for (uint32_t i = 0; i < D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE; ++i) {
       m_state.rs.viewports[i] = D3D11_VIEWPORT { };
       m_state.rs.scissors [i] = D3D11_RECT     { };
     }
     
     // Default SO state
-    for (uint32_t i = 0; i < D3D11_SO_STREAM_COUNT; i++)
+    for (uint32_t i = 0; i < D3D11_SO_STREAM_COUNT; ++i)
       m_state.so.targets[i] = nullptr;
     
     // Default predication
@@ -582,7 +582,7 @@ namespace dxvk {
         return;
       }
       
-      for (uint32_t i = 0; i < srcImage->info().mipLevels; i++) {
+      for (uint32_t i = 0; i < srcImage->info().mipLevels; ++i) {
         VkImageSubresourceLayers dstLayers = { dstFormatInfo->aspectMask, i, 0, dstImage->info().numLayers };
         VkImageSubresourceLayers srcLayers = { srcFormatInfo->aspectMask, i, 0, srcImage->info().numLayers };
         
@@ -883,7 +883,7 @@ namespace dxvk {
     VkClearValue clearValue;
 
     if (imgView == nullptr || imgView->info().aspect & VK_IMAGE_ASPECT_COLOR_BIT) {
-      for (uint32_t i = 0; i < 4; i++) {
+      for (uint32_t i = 0; i < 4; ++i) {
         if (formatInfo->flags.test(DxvkFormatFlag::SampledUInt))
           clearValue.color.uint32[i] = uint32_t(Color[i]);
         else if (formatInfo->flags.test(DxvkFormatFlag::SampledSInt))
@@ -897,7 +897,7 @@ namespace dxvk {
     }
 
     // Clear all the rectangles that are specified
-    for (uint32_t i = 0; i < NumRects; i++) {
+    for (uint32_t i = 0; i < NumRects; ++i) {
       if (pRect[i].left >= pRect[i].right
        || pRect[i].top >= pRect[i].bottom)
         continue;
@@ -1385,7 +1385,7 @@ namespace dxvk {
           ID3D11Buffer* const*              ppVertexBuffers,
     const UINT*                             pStrides,
     const UINT*                             pOffsets) {
-    for (uint32_t i = 0; i < NumBuffers; i++) {
+    for (uint32_t i = 0; i < NumBuffers; ++i) {
       auto newBuffer = static_cast<D3D11Buffer*>(ppVertexBuffers[i]);
       
       m_state.ia.vertexBuffers[StartSlot + i].buffer = newBuffer;
@@ -1427,7 +1427,7 @@ namespace dxvk {
           ID3D11Buffer**                    ppVertexBuffers,
           UINT*                             pStrides,
           UINT*                             pOffsets) {
-    for (uint32_t i = 0; i < NumBuffers; i++) {
+    for (uint32_t i = 0; i < NumBuffers; ++i) {
       if (ppVertexBuffers != nullptr)
         ppVertexBuffers[i] = m_state.ia.vertexBuffers[StartSlot + i].buffer.ref();
       
@@ -1570,7 +1570,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView**        ppShaderResourceViews) {
-    for (uint32_t i = 0; i < NumViews; i++)
+    for (uint32_t i = 0; i < NumViews; ++i)
       ppShaderResourceViews[i] = m_state.vs.shaderResources.at(StartSlot + i).ref();
   }
   
@@ -1579,7 +1579,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState**              ppSamplers) {
-    for (uint32_t i = 0; i < NumSamplers; i++)
+    for (uint32_t i = 0; i < NumSamplers; ++i)
       ppSamplers[i] = m_state.vs.samplers.at(StartSlot + i).ref();
   }
   
@@ -1699,7 +1699,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView**        ppShaderResourceViews) {
-    for (uint32_t i = 0; i < NumViews; i++)
+    for (uint32_t i = 0; i < NumViews; ++i)
       ppShaderResourceViews[i] = m_state.hs.shaderResources.at(StartSlot + i).ref();
   }
   
@@ -1708,7 +1708,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState**              ppSamplers) {
-    for (uint32_t i = 0; i < NumSamplers; i++)
+    for (uint32_t i = 0; i < NumSamplers; ++i)
       ppSamplers[i] = m_state.hs.samplers.at(StartSlot + i).ref();
   }
   
@@ -1828,7 +1828,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView**        ppShaderResourceViews) {
-    for (uint32_t i = 0; i < NumViews; i++)
+    for (uint32_t i = 0; i < NumViews; ++i)
       ppShaderResourceViews[i] = m_state.ds.shaderResources.at(StartSlot + i).ref();
   }
   
@@ -1837,7 +1837,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState**              ppSamplers) {
-    for (uint32_t i = 0; i < NumSamplers; i++)
+    for (uint32_t i = 0; i < NumSamplers; ++i)
       ppSamplers[i] = m_state.ds.samplers.at(StartSlot + i).ref();
   }
   
@@ -1957,7 +1957,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView**        ppShaderResourceViews) {
-    for (uint32_t i = 0; i < NumViews; i++)
+    for (uint32_t i = 0; i < NumViews; ++i)
       ppShaderResourceViews[i] = m_state.gs.shaderResources.at(StartSlot + i).ref();
   }
   
@@ -1966,7 +1966,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState**              ppSamplers) {
-    for (uint32_t i = 0; i < NumSamplers; i++)
+    for (uint32_t i = 0; i < NumSamplers; ++i)
       ppSamplers[i] = m_state.gs.samplers.at(StartSlot + i).ref();
   }
   
@@ -2086,7 +2086,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView**        ppShaderResourceViews) {
-    for (uint32_t i = 0; i < NumViews; i++)
+    for (uint32_t i = 0; i < NumViews; ++i)
       ppShaderResourceViews[i] = m_state.ps.shaderResources.at(StartSlot + i).ref();
   }
   
@@ -2095,7 +2095,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState**              ppSamplers) {
-    for (uint32_t i = 0; i < NumSamplers; i++)
+    for (uint32_t i = 0; i < NumSamplers; ++i)
       ppSamplers[i] = m_state.ps.samplers.at(StartSlot + i).ref();
   }
   
@@ -2229,7 +2229,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D11ShaderResourceView**        ppShaderResourceViews) {
-    for (uint32_t i = 0; i < NumViews; i++)
+    for (uint32_t i = 0; i < NumViews; ++i)
       ppShaderResourceViews[i] = m_state.cs.shaderResources.at(StartSlot + i).ref();
   }
   
@@ -2238,7 +2238,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState**              ppSamplers) {
-    for (uint32_t i = 0; i < NumSamplers; i++)
+    for (uint32_t i = 0; i < NumSamplers; ++i)
       ppSamplers[i] = m_state.cs.samplers.at(StartSlot + i).ref();
   }
   
@@ -2247,7 +2247,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumUAVs,
           ID3D11UnorderedAccessView**       ppUnorderedAccessViews) {
-    for (uint32_t i = 0; i < NumUAVs; i++)
+    for (uint32_t i = 0; i < NumUAVs; ++i)
       ppUnorderedAccessViews[i] = m_state.cs.unorderedAccessViews.at(StartSlot + i).ref();
   }
   
@@ -2278,7 +2278,7 @@ namespace dxvk {
       // Check whether there actually are any UAVs bound
       m_state.om.isUavRendering = false;
 
-      for (uint32_t i = 0; i < NumUAVs && !m_state.om.isUavRendering; i++)
+      for (uint32_t i = 0; i < NumUAVs && !m_state.om.isUavRendering; ++i)
         m_state.om.isUavRendering = ppUnorderedAccessViews[i] != nullptr;
 
       // UAVs are made available to all shader stages in
@@ -2311,7 +2311,7 @@ namespace dxvk {
     }
     
     if (BlendFactor != nullptr) {
-      for (uint32_t i = 0; i < 4; i++)
+      for (uint32_t i = 0; i < 4; ++i)
         m_state.om.blendFactor[i] = BlendFactor[i];
       
       ApplyBlendFactor();
@@ -2341,7 +2341,7 @@ namespace dxvk {
           ID3D11RenderTargetView**          ppRenderTargetViews,
           ID3D11DepthStencilView**          ppDepthStencilView) {
     if (ppRenderTargetViews != nullptr) {
-      for (UINT i = 0; i < NumViews; i++)
+      for (UINT i = 0; i < NumViews; ++i)
         ppRenderTargetViews[i] = m_state.om.renderTargetViews[i].ref();
     }
     
@@ -2360,7 +2360,7 @@ namespace dxvk {
     OMGetRenderTargets(NumRTVs, ppRenderTargetViews, ppDepthStencilView);
     
     if (ppUnorderedAccessViews != nullptr) {
-      for (UINT i = 0; i < NumUAVs; i++)
+      for (UINT i = 0; i < NumUAVs; ++i)
         ppUnorderedAccessViews[i] = m_state.ps.unorderedAccessViews[UAVStartSlot + i].ref();
     }
   }
@@ -2412,7 +2412,7 @@ namespace dxvk {
     const D3D11_VIEWPORT*                   pViewports) {
     m_state.rs.numViewports = NumViewports;
     
-    for (uint32_t i = 0; i < NumViewports; i++)
+    for (uint32_t i = 0; i < NumViewports; ++i)
       m_state.rs.viewports.at(i) = pViewports[i];
     
     ApplyViewportState();
@@ -2424,7 +2424,7 @@ namespace dxvk {
     const D3D11_RECT*                       pRects) {
     m_state.rs.numScissors = NumRects;
     
-    for (uint32_t i = 0; i < NumRects; i++) {
+    for (uint32_t i = 0; i < NumRects; ++i) {
       if (pRects[i].bottom >= pRects[i].top
        && pRects[i].right  >= pRects[i].left)
         m_state.rs.scissors.at(i) = pRects[i];
@@ -2450,7 +2450,7 @@ namespace dxvk {
           UINT*                             pNumViewports,
           D3D11_VIEWPORT*                   pViewports) {
     if (pViewports != nullptr) {
-      for (uint32_t i = 0; i < *pNumViewports; i++) {
+      for (uint32_t i = 0; i < *pNumViewports; ++i) {
         if (i < m_state.rs.numViewports) {
           pViewports[i] = m_state.rs.viewports.at(i);
         } else {
@@ -2472,7 +2472,7 @@ namespace dxvk {
           UINT*                             pNumRects,
           D3D11_RECT*                       pRects) {
     if (pRects != nullptr) {
-      for (uint32_t i = 0; i < *pNumRects; i++) {
+      for (uint32_t i = 0; i < *pNumRects; ++i) {
         if (i < m_state.rs.numScissors) {
           pRects[i] = m_state.rs.scissors.at(i);
         } else {
@@ -2493,7 +2493,7 @@ namespace dxvk {
           ID3D11Buffer* const*              ppSOTargets,
     const UINT*                             pOffsets) {
     // TODO implement properly, including pOffsets
-    for (uint32_t i = 0; i < D3D11_SO_STREAM_COUNT; i++) {
+    for (uint32_t i = 0; i < D3D11_SO_STREAM_COUNT; ++i) {
       m_state.so.targets[i] = (ppSOTargets != nullptr && i < NumBuffers)
         ? static_cast<D3D11Buffer*>(ppSOTargets[i])
         : nullptr;
@@ -2504,7 +2504,7 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeviceContext::SOGetTargets(
           UINT                              NumBuffers,
           ID3D11Buffer**                    ppSOTargets) {
-    for (uint32_t i = 0; i < NumBuffers; i++)
+    for (uint32_t i = 0; i < NumBuffers; ++i)
       ppSOTargets[i] = m_state.so.targets[i].ref();
   }
   
@@ -2669,7 +2669,7 @@ namespace dxvk {
     // D3D11's coordinate system has its origin in the bottom left,
     // but the viewport coordinates are aligned to the top-left
     // corner so we can get away with flipping the viewport.
-    for (uint32_t i = 0; i < m_state.rs.numViewports; i++) {
+    for (uint32_t i = 0; i < m_state.rs.numViewports; ++i) {
       const D3D11_VIEWPORT& vp = m_state.rs.viewports.at(i);
       
       viewports.at(i) = VkViewport {
@@ -2690,7 +2690,7 @@ namespace dxvk {
       enableScissorTest = rsDesc.ScissorEnable;
     }
     
-    for (uint32_t i = 0; i < m_state.rs.numViewports; i++) {
+    for (uint32_t i = 0; i < m_state.rs.numViewports; ++i) {
       if (enableScissorTest && (i < m_state.rs.numScissors)) {
         D3D11_RECT sr = m_state.rs.scissors.at(i);
         
@@ -2764,7 +2764,7 @@ namespace dxvk {
     // D3D11 doesn't have the concept of a framebuffer object,
     // so we'll just create a new one every time the render
     // target bindings are updated. Set up the attachments.
-    for (UINT i = 0; i < m_state.om.renderTargetViews.size(); i++) {
+    for (UINT i = 0; i < m_state.om.renderTargetViews.size(); ++i) {
       if (m_state.om.renderTargetViews.at(i) != nullptr) {
         attachments.color[i] = {
           m_state.om.renderTargetViews.at(i)->GetImageView(),
@@ -2916,7 +2916,7 @@ namespace dxvk {
       ShaderStage, DxbcBindingType::ConstantBuffer,
       StartSlot);
     
-    for (uint32_t i = 0; i < NumBuffers; i++) {
+    for (uint32_t i = 0; i < NumBuffers; ++i) {
       auto newBuffer = static_cast<D3D11Buffer*>(ppConstantBuffers[i]);
       
       UINT constantOffset = 0;
@@ -2952,7 +2952,7 @@ namespace dxvk {
       ShaderStage, DxbcBindingType::ImageSampler,
       StartSlot);
     
-    for (uint32_t i = 0; i < NumSamplers; i++) {
+    for (uint32_t i = 0; i < NumSamplers; ++i) {
       auto sampler = static_cast<D3D11SamplerState*>(ppSamplers[i]);
       
       if (Bindings[StartSlot + i] != sampler) {
@@ -2973,7 +2973,7 @@ namespace dxvk {
       ShaderStage, DxbcBindingType::ShaderResource,
       StartSlot);
     
-    for (uint32_t i = 0; i < NumResources; i++) {
+    for (uint32_t i = 0; i < NumResources; ++i) {
       auto resView = static_cast<D3D11ShaderResourceView*>(ppResources[i]);
       
       if (Bindings[StartSlot + i] != resView) {
@@ -2999,7 +2999,7 @@ namespace dxvk {
       ShaderStage, DxbcBindingType::UavCounter,
       StartSlot);
     
-    for (uint32_t i = 0; i < NumUAVs; i++) {
+    for (uint32_t i = 0; i < NumUAVs; ++i) {
       auto uav = static_cast<D3D11UnorderedAccessView*>(ppUnorderedAccessViews[i]);
       
       if (Bindings[StartSlot + i] != uav) {
@@ -3020,7 +3020,7 @@ namespace dxvk {
     if (!ValidateRenderTargets(NumViews, ppRenderTargetViews, pDepthStencilView))
       return;
     
-    for (UINT i = 0; i < m_state.om.renderTargetViews.size(); i++) {
+    for (UINT i = 0; i < m_state.om.renderTargetViews.size(); ++i) {
       m_state.om.renderTargetViews.at(i) = i < NumViews
         ? static_cast<D3D11RenderTargetView*>(ppRenderTargetViews[i])
         : nullptr;
@@ -3037,7 +3037,7 @@ namespace dxvk {
           ID3D11Buffer**                    ppConstantBuffers, 
           UINT*                             pFirstConstant, 
           UINT*                             pNumConstants) {
-    for (uint32_t i = 0; i < NumBuffers; i++) {
+    for (uint32_t i = 0; i < NumBuffers; ++i) {
       if (ppConstantBuffers != nullptr)
         ppConstantBuffers[i] = Bindings[StartSlot + i].buffer.ref();
       
@@ -3074,7 +3074,7 @@ namespace dxvk {
       m_state.ia.indexBuffer.offset,
       m_state.ia.indexBuffer.format);
     
-    for (uint32_t i = 0; i < m_state.ia.vertexBuffers.size(); i++) {
+    for (uint32_t i = 0; i < m_state.ia.vertexBuffers.size(); ++i) {
       BindVertexBuffer(i,
         m_state.ia.vertexBuffers[i].buffer.ptr(),
         m_state.ia.vertexBuffers[i].offset,
@@ -3113,7 +3113,7 @@ namespace dxvk {
     const uint32_t slotId = computeResourceSlotId(
       Stage, DxbcBindingType::ConstantBuffer, 0);
     
-    for (uint32_t i = 0; i < Bindings.size(); i++)
+    for (uint32_t i = 0; i < Bindings.size(); ++i)
       BindConstantBuffer(slotId + i, &Bindings[i]);
   }
   
@@ -3124,7 +3124,7 @@ namespace dxvk {
     const uint32_t slotId = computeResourceSlotId(
       Stage, DxbcBindingType::ImageSampler, 0);
     
-    for (uint32_t i = 0; i < Bindings.size(); i++)
+    for (uint32_t i = 0; i < Bindings.size(); ++i)
       BindSampler(slotId + i, Bindings[i].ptr());
   }
   
@@ -3135,7 +3135,7 @@ namespace dxvk {
     const uint32_t slotId = computeResourceSlotId(
       Stage, DxbcBindingType::ShaderResource, 0);
     
-    for (uint32_t i = 0; i < Bindings.size(); i++)
+    for (uint32_t i = 0; i < Bindings.size(); ++i)
       BindShaderResource(slotId + i, Bindings[i].ptr());
   }
   
@@ -3149,7 +3149,7 @@ namespace dxvk {
     const uint32_t ctrSlotId = computeResourceSlotId(
       Stage, DxbcBindingType::UavCounter, 0);
     
-    for (uint32_t i = 0; i < Bindings.size(); i++) {
+    for (uint32_t i = 0; i < Bindings.size(); ++i) {
       BindUnorderedAccessView(
         uavSlotId + i, ctrSlotId + i,
         Bindings[i].ptr(), ~0u);
@@ -3168,7 +3168,7 @@ namespace dxvk {
         pDepthStencilView)->GetImageView();
     }
     
-    for (uint32_t i = 0; i < NumViews; i++) {
+    for (uint32_t i = 0; i < NumViews; ++i) {
       if (ppRenderTargetViews[i] != nullptr) {
         auto curView = static_cast<D3D11RenderTargetView*>(
           ppRenderTargetViews[i])->GetImageView();

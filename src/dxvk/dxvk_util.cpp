@@ -55,8 +55,8 @@ namespace dxvk::util {
     if (directCopy) {
       std::memcpy(dstData, srcData, bytesTotal);
     } else {
-      for (uint32_t i = 0; i < blockCount.depth; i++) {
-        for (uint32_t j = 0; j < blockCount.height; j++) {
+      for (uint32_t i = 0; i < blockCount.depth; ++i) {
+        for (uint32_t j = 0; j < blockCount.height; ++j) {
           std::memcpy(
             dstData + j * bytesPerRow,
             srcData + j * pitchPerRow,

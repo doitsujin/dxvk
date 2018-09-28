@@ -1031,7 +1031,7 @@ namespace dxvk {
     DxvkMetaMipGenPipeline pipeInfo = m_metaMipGen->getPipeline(
       mipGenerator->viewType(), imageView->info().format);
     
-    for (uint32_t i = 0; i < mipGenerator->passCount(); i++) {
+    for (uint32_t i = 0; i < mipGenerator->passCount(); ++i) {
       DxvkMetaMipGenPass pass = mipGenerator->pass(i);
       
       // Width, height and layer count for the current pass
@@ -1314,7 +1314,7 @@ namespace dxvk {
       m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     }
     
-    for (uint32_t i = 0; i < viewportCount; i++) {
+    for (uint32_t i = 0; i < viewportCount; ++i) {
       m_state.vp.viewports[i]    = viewports[i];
       m_state.vp.scissorRects[i] = scissorRects[i];
       
@@ -1362,23 +1362,23 @@ namespace dxvk {
       DxvkContextFlag::GpDirtyPipelineState,
       DxvkContextFlag::GpDirtyVertexBuffers);
     
-    for (uint32_t i = 0; i < attributeCount; i++) {
+    for (uint32_t i = 0; i < attributeCount; ++i) {
       m_state.gp.state.ilAttributes[i].location = attributes[i].location;
       m_state.gp.state.ilAttributes[i].binding  = attributes[i].binding;
       m_state.gp.state.ilAttributes[i].format   = attributes[i].format;
       m_state.gp.state.ilAttributes[i].offset   = attributes[i].offset;
     }
     
-    for (uint32_t i = attributeCount; i < m_state.gp.state.ilAttributeCount; i++)
+    for (uint32_t i = attributeCount; i < m_state.gp.state.ilAttributeCount; ++i)
       m_state.gp.state.ilAttributes[i] = VkVertexInputAttributeDescription();
     
-    for (uint32_t i = 0; i < bindingCount; i++) {
+    for (uint32_t i = 0; i < bindingCount; ++i) {
       m_state.gp.state.ilBindings[i].binding    = bindings[i].binding;
       m_state.gp.state.ilBindings[i].inputRate  = bindings[i].inputRate;
       m_state.gp.state.ilDivisors[i]            = bindings[i].fetchRate;
     }
     
-    for (uint32_t i = bindingCount; i < m_state.gp.state.ilBindingCount; i++)
+    for (uint32_t i = bindingCount; i < m_state.gp.state.ilBindingCount; ++i)
       m_state.gp.state.ilBindings[i] = VkVertexInputBindingDescription();
     
     m_state.gp.state.ilAttributeCount = attributeCount;
@@ -2150,7 +2150,7 @@ namespace dxvk {
     
     m_cmd->trackResource(framebuffer);
 
-    for (uint32_t i = 0; i < framebuffer->numAttachments(); i++) {
+    for (uint32_t i = 0; i < framebuffer->numAttachments(); ++i) {
       m_cmd->trackResource(framebuffer->getAttachment(i).view);
       m_cmd->trackResource(framebuffer->getAttachment(i).view->image());
     }
@@ -2177,7 +2177,7 @@ namespace dxvk {
           renderTargets.depth.view->imageInfo().layout }
       : DxvkDepthAttachmentOps { };
     
-    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+    for (uint32_t i = 0; i < MaxNumRenderTargets; ++i) {
       renderPassOps.colorOps[i] = renderTargets.color[i].view != nullptr
         ? DxvkColorAttachmentOps {
             VK_ATTACHMENT_LOAD_OP_LOAD,
@@ -2267,7 +2267,7 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpDirtyPipelineState)) {
       m_flags.clr(DxvkContextFlag::GpDirtyPipelineState);
       
-      for (uint32_t i = 0; i < m_state.gp.state.ilBindingCount; i++) {
+      for (uint32_t i = 0; i < m_state.gp.state.ilBindingCount; ++i) {
         const uint32_t binding = m_state.gp.state.ilBindings[i].binding;
         
         m_state.gp.state.ilBindings[i].stride
@@ -2276,7 +2276,7 @@ namespace dxvk {
             : 0;
       }
       
-      for (uint32_t i = m_state.gp.state.ilBindingCount; i < MaxNumVertexBindings; i++)
+      for (uint32_t i = m_state.gp.state.ilBindingCount; i < MaxNumVertexBindings; ++i)
         m_state.gp.state.ilBindings[i].stride = 0;
       
       m_gpActivePipeline = m_state.gp.pipeline != nullptr && m_state.om.framebuffer != nullptr
@@ -2396,7 +2396,7 @@ namespace dxvk {
     if (bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS && m_state.om.framebuffer != nullptr)
       depthAttachment = m_state.om.framebuffer->getDepthTarget();
     
-    for (uint32_t i = 0; i < layout->bindingCount(); i++) {
+    for (uint32_t i = 0; i < layout->bindingCount(); ++i) {
       const auto& binding = layout->binding(i);
       const auto& res     = m_rc[binding.slot];
       
@@ -2511,7 +2511,7 @@ namespace dxvk {
           VkDescriptorSet         set,
     const DxvkPipelineLayout*     layout) {
     if (set != VK_NULL_HANDLE) {
-      for (uint32_t i = 0; i < layout->dynamicBindingCount(); i++) {
+      for (uint32_t i = 0; i < layout->dynamicBindingCount(); ++i) {
         const auto& binding = layout->dynamicBinding(i);
         const auto& res     = m_rc[binding.slot];
 
@@ -2539,7 +2539,7 @@ namespace dxvk {
       m_state.gp.state.msSampleCount = fb->getSampleCount();
       m_state.om.framebuffer = fb;
 
-      for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+      for (uint32_t i = 0; i < MaxNumRenderTargets; ++i) {
         Rc<DxvkImageView> attachment = fb->getColorTarget(i).view;
 
         m_state.gp.state.omComponentMapping[i] = attachment != nullptr
@@ -2585,7 +2585,7 @@ namespace dxvk {
       uint32_t bindingCount = 0;
       uint32_t bindingMask  = 0;
       
-      for (uint32_t i = 0; i < m_state.gp.state.ilBindingCount; i++) {
+      for (uint32_t i = 0; i < m_state.gp.state.ilBindingCount; ++i) {
         const uint32_t binding = m_state.gp.state.ilBindings[i].binding;
         bindingCount = std::max(bindingCount, binding + 1);
         
@@ -2705,7 +2705,7 @@ namespace dxvk {
 
     bool requiresBarrier = false;
 
-    for (uint32_t i = 0; i < layout->bindingCount() && !requiresBarrier; i++) {
+    for (uint32_t i = 0; i < layout->bindingCount() && !requiresBarrier; ++i) {
       if (m_state.cp.state.bsBindingMask.isBound(i)) {
         const DxvkDescriptorSlot binding = layout->binding(i);
         const DxvkShaderResourceSlot& slot = m_rc[binding.slot];
@@ -2758,7 +2758,7 @@ namespace dxvk {
   void DxvkContext::commitComputePostBarriers() {
     auto layout = m_state.cp.pipeline->layout();
     
-    for (uint32_t i = 0; i < layout->bindingCount(); i++) {
+    for (uint32_t i = 0; i < layout->bindingCount(); ++i) {
       if (m_state.cp.state.bsBindingMask.isBound(i)) {
         const DxvkDescriptorSlot binding = layout->binding(i);
         const DxvkShaderResourceSlot& slot = m_rc[binding.slot];

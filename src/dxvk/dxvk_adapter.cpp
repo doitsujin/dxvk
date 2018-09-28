@@ -57,7 +57,7 @@ namespace dxvk {
   
     
   uint32_t DxvkAdapter::graphicsQueueFamily() const {
-    for (uint32_t i = 0; i < m_queueFamilies.size(); i++) {
+    for (uint32_t i = 0; i < m_queueFamilies.size(); ++i) {
       if (m_queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
         return i;
     }
@@ -296,14 +296,14 @@ namespace dxvk {
       VK_VERSION_MINOR(deviceInfo.apiVersion), ".",
       VK_VERSION_PATCH(deviceInfo.apiVersion)));
 
-    for (uint32_t i = 0; i < memoryInfo.memoryHeapCount; i++) {
+    for (uint32_t i = 0; i < memoryInfo.memoryHeapCount; ++i) {
       constexpr VkDeviceSize mib = 1024 * 1024;
       
       Logger::info(str::format("  Memory Heap[", i, "]: "));
       Logger::info(str::format("    Size: ", memoryInfo.memoryHeaps[i].size / mib, " MiB"));
       Logger::info(str::format("    Flags: ", "0x", std::hex, memoryInfo.memoryHeaps[i].flags));
       
-      for (uint32_t j = 0; j < memoryInfo.memoryTypeCount; j++) {
+      for (uint32_t j = 0; j < memoryInfo.memoryTypeCount; ++j) {
         if (memoryInfo.memoryTypes[j].heapIndex == i) {
           Logger::info(str::format(
             "    Memory Type[", j, "]: ",
@@ -367,7 +367,7 @@ namespace dxvk {
 
 
   uint32_t DxvkAdapter::getAdapterIndex() const {
-    for (uint32_t i = 0; m_instance->enumAdapters(i) != nullptr; i++) {
+    for (uint32_t i = 0; m_instance->enumAdapters(i) != nullptr; ++i) {
       if (m_instance->enumAdapters(i).ptr() == this)
         return i;
     }
@@ -377,7 +377,7 @@ namespace dxvk {
   
   
   void DxvkAdapter::logNameList(const DxvkNameList& names) {
-    for (uint32_t i = 0; i < names.count(); i++)
+    for (uint32_t i = 0; i < names.count(); ++i)
       Logger::info(str::format("  ", names.name(i)));
   }
   

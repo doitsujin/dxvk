@@ -136,7 +136,7 @@ namespace dxvk {
         m_backBuffer->info().extent.width  == m_options.preferredBufferSize.width
      && m_backBuffer->info().extent.height == m_options.preferredBufferSize.height;
     
-    for (uint32_t i = 0; i < SyncInterval || i < 1; i++) {
+    for (uint32_t i = 0; i < SyncInterval || i < 1; ++i) {
       m_context->beginRecording(
         m_device->createCommandList());
       

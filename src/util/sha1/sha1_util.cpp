@@ -11,7 +11,7 @@ namespace dxvk {
     std::string result;
     result.resize(2 * m_digest.size());
     
-    for (uint32_t i = 0; i < m_digest.size(); i++) {
+    for (uint32_t i = 0; i < m_digest.size(); ++i) {
       result.at(2 * i + 0) = nibbles[(m_digest[i] >> 4) & 0xF];
       result.at(2 * i + 1) = nibbles[(m_digest[i] >> 0) & 0xF];
     }

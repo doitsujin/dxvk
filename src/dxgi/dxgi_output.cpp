@@ -26,7 +26,7 @@ namespace dxvk {
       outputData.GammaCurve.Scale  = { 1.0f, 1.0f, 1.0f };
       outputData.GammaCurve.Offset = { 0.0f, 0.0f, 0.0f };
       
-      for (uint32_t i = 0; i < DXGI_VK_GAMMA_CP_COUNT; i++) {
+      for (uint32_t i = 0; i < DXGI_VK_GAMMA_CP_COUNT; ++i) {
         const float value = GammaControlPointLocation(i);
         outputData.GammaCurve.GammaCurve[i] = { value, value, value };
       }
@@ -239,7 +239,7 @@ namespace dxvk {
     // If requested, write out the first set of display
     // modes to the destination array.
     if (pDesc != nullptr) {
-      for (uint32_t i = 0; i < *pNumModes && i < dstModeId; i++)
+      for (uint32_t i = 0; i < *pNumModes && i < dstModeId; ++i)
         pDesc[i] = modeList[i];
       
       if (dstModeId > *pNumModes)
@@ -289,7 +289,7 @@ namespace dxvk {
     pGammaCaps->MinConvertedValue       = 0.0f;
     pGammaCaps->NumGammaControlPoints   = DXGI_VK_GAMMA_CP_COUNT;
     
-    for (uint32_t i = 0; i < pGammaCaps->NumGammaControlPoints; i++)
+    for (uint32_t i = 0; i < pGammaCaps->NumGammaControlPoints; ++i)
       pGammaCaps->ControlPointPositions[i] = GammaControlPointLocation(i);
     return S_OK;
   }

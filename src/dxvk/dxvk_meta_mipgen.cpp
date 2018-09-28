@@ -25,7 +25,7 @@ namespace dxvk {
     // Create image views and framebuffers
     m_passes.resize(view->info().numLevels - 1);
     
-    for (uint32_t i = 0; i < m_passes.size(); i++)
+    for (uint32_t i = 0; i < m_passes.size(); ++i)
       m_passes.at(i) = this->createFramebuffer(i);
   }
   
@@ -518,7 +518,7 @@ namespace dxvk {
     cbState.attachmentCount     = 1;
     cbState.pAttachments        = &cbAttachment;
     
-    for (uint32_t i = 0; i < 4; i++)
+    for (uint32_t i = 0; i < 4; ++i)
       cbState.blendConstants[i] = 0.0f;
     
     VkGraphicsPipelineCreateInfo info;

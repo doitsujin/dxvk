@@ -11,7 +11,7 @@ namespace dxvk {
       DxbcScalarType::Sint32, DxbcScalarType::Float32,
     };
     
-    for (uint32_t i = 0; i < elementCount; i++) {
+    for (uint32_t i = 0; i < elementCount; ++i) {
       DxbcSgnEntry entry;
       entry.streamId        = tag == "OSG5" ? reader.readu32() : 0;
       entry.semanticName    = reader.clone(reader.readu32()).readString();
@@ -32,7 +32,7 @@ namespace dxvk {
   
   
   const DxbcSgnEntry* DxbcIsgn::findByRegister(uint32_t registerId) const {
-    for (auto e = this->begin(); e != this->end(); e++) {
+    for (auto e = this->begin(); e != this->end(); ++e) {
       if (e->registerId == registerId)
         return &(*e);
     }
@@ -45,7 +45,7 @@ namespace dxvk {
     const std::string& semanticName,
           uint32_t     semanticIndex,
           uint32_t     streamId) const {
-    for (auto e = this->begin(); e != this->end(); e++) {
+    for (auto e = this->begin(); e != this->end(); ++e) {
       if (e->semanticIndex == semanticIndex
        && e->streamId      == streamId
        && compareSemanticNames(semanticName, e->semanticName))
@@ -60,7 +60,7 @@ namespace dxvk {
           uint32_t     registerId) const {
     DxbcRegMask mask;
 
-    for (auto e = this->begin(); e != this->end(); e++) {
+    for (auto e = this->begin(); e != this->end(); ++e) {
       if (e->registerId == registerId)
         mask |= e->componentMask;
     }
@@ -74,7 +74,7 @@ namespace dxvk {
     if (a.size() != b.size())
       return false;
     
-    for (size_t i = 0; i < a.size(); i++) {
+    for (size_t i = 0; i < a.size(); ++i) {
       if (std::toupper(a[i]) != std::toupper(b[i]))
         return false;
     }

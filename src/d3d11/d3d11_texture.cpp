@@ -237,7 +237,7 @@ namespace dxvk {
       
       // If there is a list of compatible formats, the
       // view format must be included in that list.
-      for (size_t i = 0; i < imageInfo.viewFormatCount; i++) {
+      for (size_t i = 0; i < imageInfo.viewFormatCount; ++i) {
         if (imageInfo.viewFormats[i] == viewFormat.Format)
           return true;
       }

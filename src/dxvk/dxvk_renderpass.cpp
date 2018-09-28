@@ -7,7 +7,7 @@ namespace dxvk {
   bool DxvkRenderPassFormat::matches(const DxvkRenderPassFormat& fmt) const {
     bool eq = sampleCount == fmt.sampleCount;
     
-    for (uint32_t i = 0; i < MaxNumRenderTargets && eq; i++) {
+    for (uint32_t i = 0; i < MaxNumRenderTargets && eq; ++i) {
       eq &= color[i].format == fmt.color[i].format
          && color[i].layout == fmt.color[i].layout;
     }
@@ -65,7 +65,7 @@ namespace dxvk {
     
     // Render passes may not require the previous
     // contents of the attachments to be preserved.
-    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+    for (uint32_t i = 0; i < MaxNumRenderTargets; ++i) {
       colorRef[i].attachment = VK_ATTACHMENT_UNUSED;
       colorRef[i].layout     = VK_IMAGE_LAYOUT_UNDEFINED;
       
@@ -179,7 +179,7 @@ namespace dxvk {
            && a.depthOps.storeOpS    == b.depthOps.storeOpS
            && a.depthOps.storeLayout == b.depthOps.storeLayout;
     
-    for (uint32_t i = 0; i < MaxNumRenderTargets && eq; i++) {
+    for (uint32_t i = 0; i < MaxNumRenderTargets && eq; ++i) {
       eq &= a.colorOps[i].loadOp      == b.colorOps[i].loadOp
          && a.colorOps[i].loadLayout  == b.colorOps[i].loadLayout
          && a.colorOps[i].storeOp     == b.colorOps[i].storeOp

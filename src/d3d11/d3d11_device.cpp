@@ -495,7 +495,7 @@ namespace dxvk {
       std::array<DxvkVertexAttribute, D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> attrList;
       std::array<DxvkVertexBinding,   D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT> bindList;
       
-      for (uint32_t i = 0; i < NumElements; i++) {
+      for (uint32_t i = 0; i < NumElements; ++i) {
         const DxbcSgnEntry* entry = inputSignature->find(
           pInputElementDescs[i].SemanticName,
           pInputElementDescs[i].SemanticIndex, 0);
@@ -522,7 +522,7 @@ namespace dxvk {
         if (attrib.offset == D3D11_APPEND_ALIGNED_ELEMENT) {
           attrib.offset = 0;
           
-          for (uint32_t j = 1; j <= i; j++) {
+          for (uint32_t j = 1; j <= i; ++j) {
             const DxvkVertexAttribute& prev = attrList.at(i - j);
             
             if (prev.binding == attrib.binding) {
@@ -548,7 +548,7 @@ namespace dxvk {
         // parameters must be identical (namely, the input rate).
         bool bindingDefined = false;
         
-        for (uint32_t j = 0; j < i; j++) {
+        for (uint32_t j = 0; j < i; ++j) {
           uint32_t bindingId = attrList.at(j).binding;
 
           if (binding.binding == bindingId) {
@@ -580,10 +580,10 @@ namespace dxvk {
       // Check if there are any semantics defined in the
       // shader that are not included in the current input
       // layout.
-      for (auto i = inputSignature->begin(); i != inputSignature->end(); i++) {
+      for (auto i = inputSignature->begin(); i != inputSignature->end(); ++i) {
         bool found = i->systemValue != DxbcSystemValue::None;
         
-        for (uint32_t j = 0; j < attrCount && !found; j++)
+        for (uint32_t j = 0; j < attrCount && !found; ++j)
           found = attrList.at(j).location == i->registerId;
         
         if (!found) {

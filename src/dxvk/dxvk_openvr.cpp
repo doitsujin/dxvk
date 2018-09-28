@@ -62,7 +62,7 @@ namespace dxvk {
     if (m_compositor == nullptr || m_initializedDevExt)
       return;
     
-    for (uint32_t i = 0; instance->enumAdapters(i) != nullptr; i++) {
+    for (uint32_t i = 0; instance->enumAdapters(i) != nullptr; ++i) {
       m_devExtensions.push_back(this->queryDeviceExtensions(
         instance->enumAdapters(i)->handle()));
     }

@@ -64,7 +64,7 @@ namespace dxvk {
     pDesc->DestBlendAlpha         = D3D10_BLEND   (d3d11Desc.RenderTarget[0].DestBlendAlpha);
     pDesc->BlendOpAlpha           = D3D10_BLEND_OP(d3d11Desc.RenderTarget[0].BlendOpAlpha);
 
-    for (uint32_t i = 0; i < 8; i++) {
+    for (uint32_t i = 0; i < 8; ++i) {
       uint32_t srcId = d3d11Desc.IndependentBlendEnable ? i : 0;
       pDesc->BlendEnable[i]           = d3d11Desc.RenderTarget[srcId].BlendEnable;
       pDesc->RenderTargetWriteMask[i] = d3d11Desc.RenderTarget[srcId].RenderTargetWriteMask;

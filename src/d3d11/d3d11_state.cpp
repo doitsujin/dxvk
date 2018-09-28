@@ -12,7 +12,7 @@ namespace dxvk {
     // undefined data if independent blend is disabled
     const uint32_t usedRenderTargets = desc.IndependentBlendEnable ? 8 : 1;
     
-    for (uint32_t i = 0; i < usedRenderTargets; i++)
+    for (uint32_t i = 0; i < usedRenderTargets; ++i)
       hash.add(this->operator () (desc.RenderTarget[i]));
     
     return hash;
@@ -94,7 +94,7 @@ namespace dxvk {
     hash.add(fhash(desc.MipLODBias));
     hash.add(desc.MaxAnisotropy);
     hash.add(desc.ComparisonFunc);
-    for (uint32_t i = 0; i < 4; i++)
+    for (uint32_t i = 0; i < 4; ++i)
       hash.add(fhash(desc.BorderColor[i]));
     hash.add(fhash(desc.MinLOD));
     hash.add(fhash(desc.MaxLOD));
@@ -112,7 +112,7 @@ namespace dxvk {
     // undefined data if independent blend is disabled
     const uint32_t usedRenderTargets = a.IndependentBlendEnable ? 8 : 1;
     
-    for (uint32_t i = 0; eq && (i < usedRenderTargets); i++)
+    for (uint32_t i = 0; eq && (i < usedRenderTargets); ++i)
       eq &= this->operator () (a.RenderTarget[i], b.RenderTarget[i]);
     
     return eq;

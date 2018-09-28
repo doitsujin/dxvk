@@ -33,7 +33,7 @@ namespace dxvk {
     // This won't win a performance competition, but the number
     // of bindings used by a shader is usually much smaller than
     // the number of resource slots available to the system.
-    for (uint32_t i = 0; i < m_descriptorSlots.size(); i++) {
+    for (uint32_t i = 0; i < m_descriptorSlots.size(); ++i) {
       if (m_descriptorSlots[i].slot == slot)
         return i;
     }
@@ -81,13 +81,13 @@ namespace dxvk {
           VkPipelineBindPoint pipelineBindPoint)
   : m_vkd(vkd), m_bindingSlots(bindingCount) {
     
-    for (uint32_t i = 0; i < bindingCount; i++)
+    for (uint32_t i = 0; i < bindingCount; ++i)
       m_bindingSlots[i] = bindingInfos[i];
     
     std::vector<VkDescriptorSetLayoutBinding>       bindings(bindingCount);
     std::vector<VkDescriptorUpdateTemplateEntryKHR> tEntries(bindingCount);
     
-    for (uint32_t i = 0; i < bindingCount; i++) {
+    for (uint32_t i = 0; i < bindingCount; ++i) {
       bindings[i].binding            = i;
       bindings[i].descriptorType     = bindingInfos[i].type;
       bindings[i].descriptorCount    = 1;

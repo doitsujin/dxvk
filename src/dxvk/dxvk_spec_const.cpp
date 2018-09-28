@@ -12,10 +12,10 @@ namespace dxvk {
   DxvkSpecConstantMap::DxvkSpecConstantMap() {
     SET_CONSTANT_ENTRY(DxvkSpecConstantId::RasterizerSampleCount, rasterizerSampleCount);
 
-    for (uint32_t i = 0; i < MaxNumActiveBindings; i++)
+    for (uint32_t i = 0; i < MaxNumActiveBindings; ++i)
       this->setBindingEntry(i);
     
-    for (uint32_t i = 0; i < MaxNumRenderTargets; i++)
+    for (uint32_t i = 0; i < MaxNumRenderTargets; ++i)
       this->setOutputMappingEntry(i);
   }
   
@@ -44,7 +44,7 @@ namespace dxvk {
 
   void DxvkSpecConstantMap::setOutputMappingEntry(
           uint32_t            output) {
-    for (uint32_t i = 0; i < 4; i++) {
+    for (uint32_t i = 0; i < 4; ++i) {
       uint32_t constId = 4 * output + i;
 
       VkSpecializationMapEntry entry;

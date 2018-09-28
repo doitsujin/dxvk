@@ -151,7 +151,7 @@ namespace dxvk {
     const DxbcInstFormat format = dxbcInstructionFormat(m_instruction.op);
     m_instruction.opClass = format.instructionClass;
     
-    for (uint32_t i = 0; i < format.operandCount; i++)
+    for (uint32_t i = 0; i < format.operandCount; ++i)
       this->decodeOperand(code, format.operands[i]);
   }
   
@@ -271,7 +271,7 @@ namespace dxvk {
   void DxbcDecodeContext::decodeOperandIndex(DxbcCodeSlice& code, DxbcRegister& reg, uint32_t token) {
     reg.idxDim = bit::extract(token, 20, 21);
     
-    for (uint32_t i = 0; i < reg.idxDim; i++) {
+    for (uint32_t i = 0; i < reg.idxDim; ++i) {
       // An index can be encoded in various different ways
       const DxbcOperandIndexRepresentation repr =
         static_cast<DxbcOperandIndexRepresentation>(
@@ -318,7 +318,7 @@ namespace dxvk {
     reg.modifiers       = 0;
     reg.idxDim          = 0;
     
-    for (uint32_t i = 0; i < DxbcMaxRegIndexDim; i++) {
+    for (uint32_t i = 0; i < DxbcMaxRegIndexDim; ++i) {
       reg.idx[i].relReg = nullptr;
       reg.idx[i].offset = 0;
     }

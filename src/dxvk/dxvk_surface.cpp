@@ -44,7 +44,7 @@ namespace dxvk {
       
       // If the preferred format is explicitly listed in
       // the array of supported surface formats, use it
-      for (uint32_t i = 0; i < preferredCount; i++) {
+      for (uint32_t i = 0; i < preferredCount; ++i) {
         for (auto fmt : m_surfaceFormats) {
           if (fmt.format     == preferred[i].format
            && fmt.colorSpace == preferred[i].colorSpace)
@@ -73,7 +73,7 @@ namespace dxvk {
   VkPresentModeKHR DxvkSurface::pickPresentMode(
           uint32_t            preferredCount,
     const VkPresentModeKHR*   preferred) const {
-    for (uint32_t i = 0; i < preferredCount; i++) {
+    for (uint32_t i = 0; i < preferredCount; ++i) {
       for (auto mode : m_presentModes) {
         if (mode == preferred[i])
           return mode;

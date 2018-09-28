@@ -176,7 +176,7 @@ namespace dxvk {
     // Parse absolute number
     int32_t intval = 0;
 
-    for (size_t i = start; i < value.size(); i++) {
+    for (size_t i = start; i < value.size(); ++i) {
       if (value[i] < '0' || value[i] > '9')
         return false;
       

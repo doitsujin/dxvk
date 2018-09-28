@@ -60,7 +60,7 @@ namespace dxvk {
     DxbcClipCullInfo result;
     
     if (sgn != nullptr) {
-      for (auto e = sgn->begin(); e != sgn->end(); e++) {
+      for (auto e = sgn->begin(); e != sgn->end(); ++e) {
         const uint32_t componentCount = e->componentMask.popCount();
         
         if (e->systemValue == DxbcSystemValue::ClipDistance)

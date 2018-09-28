@@ -50,7 +50,7 @@ extern "C" {
     const Rc<DxvkAdapter> adapter = dxvkAdapter->GetDXVKAdapter();
     
     UINT flId;
-    for (flId = 0 ; flId < FeatureLevels; flId++) {
+    for (flId = 0 ; flId < FeatureLevels; ++flId) {
       Logger::info(str::format("D3D11CoreCreateDevice: Probing ", pFeatureLevels[flId]));
       
       if (D3D11Device::CheckFeatureLevelSupport(adapter, pFeatureLevels[flId]))

@@ -163,7 +163,7 @@ namespace dxvk {
     DxvkSpecConstantData specData;
     specData.rasterizerSampleCount = uint32_t(sampleCount);
     
-    for (uint32_t i = 0; i < MaxNumActiveBindings; i++)
+    for (uint32_t i = 0; i < MaxNumActiveBindings; ++i)
       specData.activeBindings[i] = state.bsBindingMask.isBound(i) ? VK_TRUE : VK_FALSE;
     
     VkSpecializationInfo specInfo;
@@ -183,7 +183,7 @@ namespace dxvk {
     // Fix up color write masks using the component mappings
     std::array<VkPipelineColorBlendAttachmentState, MaxNumRenderTargets> omBlendAttachments;
 
-    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+    for (uint32_t i = 0; i < MaxNumRenderTargets; ++i) {
       omBlendAttachments[i] = state.omBlendAttachments[i];
       omBlendAttachments[i].colorWriteMask = util::remapComponentMask(
         state.omBlendAttachments[i].colorWriteMask,
@@ -199,7 +199,7 @@ namespace dxvk {
     std::array<VkVertexInputBindingDivisorDescriptionEXT, MaxNumVertexBindings> viDivisorDesc;
     uint32_t                                                                    viDivisorCount = 0;
     
-    for (uint32_t i = 0; i < state.ilBindingCount; i++) {
+    for (uint32_t i = 0; i < state.ilBindingCount; ++i) {
       if (state.ilBindings[i].inputRate == VK_VERTEX_INPUT_RATE_INSTANCE) {
         const uint32_t id = viDivisorCount++;
         
@@ -301,7 +301,7 @@ namespace dxvk {
     cbInfo.attachmentCount        = DxvkLimits::MaxNumRenderTargets;
     cbInfo.pAttachments           = omBlendAttachments.data();
     
-    for (uint32_t i = 0; i < 4; i++)
+    for (uint32_t i = 0; i < 4; ++i)
       cbInfo.blendConstants[i] = 0.0f;
     
     VkPipelineDynamicStateCreateInfo dyInfo;
@@ -368,7 +368,7 @@ namespace dxvk {
     // vertex shader must be provided by the input layout.
     uint32_t providedVertexInputs = 0;
     
-    for (uint32_t i = 0; i < state.ilAttributeCount; i++)
+    for (uint32_t i = 0; i < state.ilAttributeCount; ++i)
       providedVertexInputs |= 1u << state.ilAttributes[i].location;
     
     if ((providedVertexInputs & m_vsIn) != m_vsIn)

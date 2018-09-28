@@ -43,7 +43,7 @@ namespace dxvk {
     
     VkDeviceSize sliceCount = m_bufferInfo.size / m_sliceLength;
     
-    for (uint32_t i = 0; i < sliceCount; i++) {
+    for (uint32_t i = 0; i < sliceCount; ++i) {
       m_freeSlices.push_back(DxvkBufferSlice(
         buffer, m_sliceLength * i, m_sliceLength));
     }

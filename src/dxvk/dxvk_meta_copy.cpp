@@ -504,7 +504,7 @@ namespace dxvk {
     cbState.attachmentCount     = 1;
     cbState.pAttachments        = &cbAttachment;
     
-    for (uint32_t i = 0; i < 4; i++)
+    for (uint32_t i = 0; i < 4; ++i)
       cbState.blendConstants[i] = 0.0f;
     
     VkStencilOpState stencilOp;
