@@ -41,6 +41,7 @@ namespace dxvk {
 
     this->numBackBuffers = config.getOption<int32_t>("dxgi.numBackBuffers", 0);
     this->syncInterval   = config.getOption<int32_t>("dxgi.syncInterval", -1);
+    this->syncMode       = DxgiSyncMode(config.getOption<int32_t>("dxgi.syncMode", 0));
 
     this->d3d10Enable = config.getOption<bool>("d3d10.enable", true);
   }

@@ -7,6 +7,14 @@
 #include "dxgi_include.h"
 
 namespace dxvk {
+
+  /**
+   * \brief Sync mode
+   */
+  enum class DxgiSyncMode : int32_t {
+    Default   = 0,
+    Mailbox   = 1,
+  };
   
   /**
    * \brief DXGI options
@@ -45,6 +53,9 @@ namespace dxvk {
     /// Sync interval. Overrides the value
     /// passed to IDXGISwapChain::Present.
     int32_t syncInterval;
+
+    /// Vsync mode
+    DxgiSyncMode syncMode;
 
     /// Enables D3D10 support
     bool d3d10Enable;

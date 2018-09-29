@@ -163,6 +163,7 @@ namespace dxvk {
     DxvkLogicOpState        m_loState;
     DxvkBlendMode           m_blendMode;
     DxvkSwapchainProperties m_options;
+    DxgiSyncMode            m_syncMode;
     
     VkSurfaceFormatKHR PickSurfaceFormat(DXGI_FORMAT Fmt) const;
     

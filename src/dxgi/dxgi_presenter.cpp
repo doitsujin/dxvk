@@ -13,7 +13,8 @@ namespace dxvk {
           HWND                    window)
   : m_window  (window),
     m_device  (device),
-    m_context (device->createContext()) {
+    m_context (device->createContext()),
+    m_syncMode(pOptions->syncMode) {
     
     // Some games don't work with deferred surface creation,
     // so we should default to initializing it immediately.
@@ -367,6 +368,8 @@ namespace dxvk {
     size_t n = 0;
     
     if (Vsync) {
+      if (m_syncMode == DxgiSyncMode::Mailbox)
+        modes[n++] = VK_PRESENT_MODE_MAILBOX_KHR;
       modes[n++] = VK_PRESENT_MODE_FIFO_KHR;
     } else {
       modes[n++] = VK_PRESENT_MODE_IMMEDIATE_KHR;
