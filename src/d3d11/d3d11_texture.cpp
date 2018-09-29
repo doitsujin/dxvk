@@ -53,8 +53,9 @@ namespace dxvk {
     
     bool isTypeless = formatInfo.Aspect == 0;
     bool isMutable = formatFamily.FormatCount > 1;
+    bool isColorFormat = (formatProperties->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) != 0;
 
-    if (isMutable && (formatProperties->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT)) {
+    if (isMutable && isColorFormat) {
       imageInfo.flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
 
       // Typeless UAV images have relaxed reinterpretation rules
@@ -100,7 +101,7 @@ namespace dxvk {
     }
     
     // Access pattern for meta-resolve operations
-    if (imageInfo.sampleCount != VK_SAMPLE_COUNT_1_BIT) {
+    if (imageInfo.sampleCount != VK_SAMPLE_COUNT_1_BIT && isColorFormat) {
       imageInfo.usage  |= VK_IMAGE_USAGE_SAMPLED_BIT;
       imageInfo.stages |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
       imageInfo.access |= VK_ACCESS_SHADER_READ_BIT;
