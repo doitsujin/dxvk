@@ -19,6 +19,11 @@ namespace dxvk {
     m_physSlice = this->allocPhysicalBuffer(1)
       ->slice(0, m_physSliceStride);
   }
+
+
+  DxvkBuffer::~DxvkBuffer() {
+    
+  }
   
   
   DxvkPhysicalBufferSlice DxvkBuffer::allocPhysicalSlice() {

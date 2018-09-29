@@ -23,6 +23,8 @@ namespace dxvk {
       const DxvkBufferCreateInfo& createInfo,
             VkMemoryPropertyFlags memoryType);
     
+    ~DxvkBuffer();
+    
     /**
      * \brief Buffer properties
      * \returns Buffer properties
@@ -210,7 +212,7 @@ namespace dxvk {
     
     explicit DxvkBufferSlice(const Rc<DxvkBuffer>& buffer)
     : DxvkBufferSlice(buffer, 0, buffer->info().size) { }
-    
+
     size_t offset() const { return m_offset; }
     size_t length() const { return m_length; }
 
