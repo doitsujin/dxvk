@@ -79,7 +79,11 @@ namespace dxvk {
      * \returns Buffer slice descriptor
      */
     DxvkDescriptorInfo getDescriptor(VkDeviceSize offset, VkDeviceSize length) const {
-      return m_physSlice.getDescriptor(offset, length);
+      DxvkDescriptorInfo result;
+      result.buffer.buffer = m_physSlice.handle();
+      result.buffer.offset = m_physSlice.offset() + offset;
+      result.buffer.range  = length;
+      return result;
     }
 
     /**
@@ -89,7 +93,7 @@ namespace dxvk {
      * \returns Physical buffer slice offset
      */
     VkDeviceSize getDynamicOffset(VkDeviceSize offset) const {
-      return m_physSlice.getDynamicOffset(offset);
+      return m_physSlice.offset() + offset;
     }
     
     /**

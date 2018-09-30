@@ -91,21 +91,6 @@ namespace dxvk {
     }
 
     /**
-     * \brief Retrieves descriptor info
-     * 
-     * \param [in] offset Buffer slice offset
-     * \param [in] length Buffer slice length
-     * \returns Buffer slice descriptor
-     */
-    DxvkDescriptorInfo getDescriptor(VkDeviceSize offset, VkDeviceSize length) const {
-      DxvkDescriptorInfo result;
-      result.buffer.buffer = m_handle;
-      result.buffer.offset = offset;
-      result.buffer.range  = length;
-      return result;
-    }
-    
-    /**
      * \brief Retrieves a physical buffer slice
      * 
      * \param [in] offset Slice offset
@@ -184,27 +169,6 @@ namespace dxvk {
       return DxvkPhysicalBufferSlice(m_buffer, m_offset + offset, length);
     }
 
-    /**
-     * \brief Retrieves descriptor info
-     * 
-     * \param [in] offset Buffer slice offset
-     * \param [in] length Buffer slice length
-     * \returns Buffer slice descriptor
-     */
-    DxvkDescriptorInfo getDescriptor(VkDeviceSize offset, VkDeviceSize length) const {
-      return m_buffer->getDescriptor(m_offset + offset, length);
-    }
-
-    /**
-     * \brief Retrieves dynamic offset
-     * 
-     * \param [in] offset Offset into the slice
-     * \returns Physical buffer slice offset
-     */
-    VkDeviceSize getDynamicOffset(VkDeviceSize offset) const {
-      return m_offset + offset;
-    }
-    
     /**
      * \brief Map pointer
      * 
