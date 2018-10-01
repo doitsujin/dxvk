@@ -836,6 +836,24 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::discardImage(
+    const Rc<DxvkImage>&          image,
+          VkImageSubresourceRange subresources) {
+    this->spillRenderPass();
+
+    if (m_barriers.isImageDirty(image, subresources, DxvkAccess::Write))
+      m_barriers.recordCommands(m_cmd);
+    
+    m_barriers.accessImage(image, subresources,
+      VK_IMAGE_LAYOUT_UNDEFINED, 0, 0,
+      image->info().layout,
+      image->info().stages,
+      image->info().access);
+    
+    m_cmd->trackResource(image);
+  }
+
+
   void DxvkContext::dispatch(
           uint32_t x,
           uint32_t y,

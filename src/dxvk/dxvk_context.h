@@ -372,6 +372,19 @@ namespace dxvk {
       const Rc<DxvkBuffer>&       buffer);
     
     /**
+     * \brief Discards image subresources
+     * 
+     * Discards the current contents of the image
+     * and performs a fast layout transition. This
+     * may improve performance in some cases.
+     * \param [in] image The image to discard
+     * \param [in] subresources Image subresources
+     */
+    void discardImage(
+      const Rc<DxvkImage>&          image,
+            VkImageSubresourceRange subresources);
+    
+    /**
      * \brief Starts compute jobs
      * 
      * \param [in] x Number of threads in X direction
