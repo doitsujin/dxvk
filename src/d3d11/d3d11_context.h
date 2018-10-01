@@ -7,6 +7,7 @@
 #include "d3d11_annotation.h"
 #include "d3d11_context_state.h"
 #include "d3d11_device_child.h"
+#include "d3d11_texture.h"
 
 namespace dxvk {
   
@@ -706,6 +707,9 @@ namespace dxvk {
     
     void DiscardBuffer(
             D3D11Buffer*                      pBuffer);
+    
+    void DiscardTexture(
+            D3D11CommonTexture*               pTexture);
     
     void SetConstantBuffers(
             DxbcProgramType                   ShaderStage,

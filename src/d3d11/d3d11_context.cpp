@@ -72,13 +72,31 @@ namespace dxvk {
 
     if (resType == D3D11_RESOURCE_DIMENSION_BUFFER)
       DiscardBuffer(static_cast<D3D11Buffer*>(pResource));
+    else if (resType != D3D11_RESOURCE_DIMENSION_UNKNOWN)
+      DiscardTexture(GetCommonTexture(pResource));
   }
 
 
   void STDMETHODCALLTYPE D3D11DeviceContext::DiscardView(ID3D11View* pResourceView) {
-    // Ignore. We don't do Discard for images or image
-    // subresources, and for buffers we could only really
-    // do this if the view covers the entire buffer.
+    // ID3D11View has no methods to query the exact type of
+    // the view, so we'll have to check each possible class
+    auto dsv = dynamic_cast<D3D11DepthStencilView*>(pResourceView);
+    auto rtv = dynamic_cast<D3D11RenderTargetView*>(pResourceView);
+    auto uav = dynamic_cast<D3D11UnorderedAccessView*>(pResourceView);
+
+    Rc<DxvkImageView> view;
+    if (dsv) view = dsv->GetImageView();
+    if (rtv) view = rtv->GetImageView();
+    if (uav) view = uav->GetImageView();
+
+    if (view != nullptr) {
+      EmitCs([cView = std::move(view)]
+      (DxvkContext* ctx) {
+        ctx->discardImage(
+          cView->image(),
+          cView->subresources());
+      });
+    }
   }
 
 
@@ -2903,6 +2921,18 @@ namespace dxvk {
           D3D11Buffer*                      pBuffer) {
     EmitCs([cBuffer = pBuffer->GetBuffer()] (DxvkContext* ctx) {
       ctx->discardBuffer(cBuffer);
+    });
+  }
+
+
+  void D3D11DeviceContext::DiscardTexture(
+          D3D11CommonTexture*               pTexture) {
+    EmitCs([cImage = pTexture->GetImage()] (DxvkContext* ctx) {
+      VkImageSubresourceRange subresources = {
+        cImage->formatInfo()->aspectMask,
+        0, cImage->info().mipLevels,
+        0, cImage->info().numLayers };
+      ctx->discardImage(cImage, subresources);
     });
   }
 
