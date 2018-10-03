@@ -6,8 +6,8 @@ strip = 'x86_64-w64-mingw32-strip'
 exe_wrapper = 'wine'
 
 [properties]
-c_link_args = ['-static', '-static-libgcc']
-cpp_link_args = ['-static', '-static-libgcc', '-static-libstdc++']
+c_link_args = ['-static', '-static-libgcc', '-mtune=core2']
+cpp_link_args = ['-static', '-static-libgcc', '-static-libstdc++', '-mtune=core2']
 
 [host_machine]
 system = 'windows'
