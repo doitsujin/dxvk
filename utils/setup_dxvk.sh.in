@@ -8,7 +8,8 @@ winelib='@winelib@'
 
 if [ $winelib == 'True' ]; then
     dll_ext='dll.so'
-    dlls_dir="$dlls_dir"/../lib
+    # strip off the trailing bindir to get to the prefix, then append libdir
+    dlls_dir="${dlls_dir%/@bindir@}/@libdir@"
 else
     dll_ext='dll'
 fi
