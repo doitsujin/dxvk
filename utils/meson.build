@@ -1,5 +1,6 @@
 conf = configuration_data()
-conf.set('dlldir', get_option('prefix')+'/'+get_option('bindir'))
+conf.set('bindir', get_option('bindir'))
+conf.set('libdir', get_option('libdir'))
 conf.set('arch', target_machine.cpu_family())
 conf.set('winelib', meson.get_cross_property('winelib', false))
 configure_file(
