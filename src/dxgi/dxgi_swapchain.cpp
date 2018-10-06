@@ -403,12 +403,11 @@ namespace dxvk {
       DXGI_OUTPUT_DESC desc;
       output->GetDesc(&desc);
       
-      const RECT newRect = desc.DesktopCoordinates;
+      RECT newRect = desc.DesktopCoordinates;
       
       ::MoveWindow(m_window, newRect.left, newRect.top,
           newRect.right - newRect.left, newRect.bottom - newRect.top, TRUE);
     }
-    
     
     return S_OK;
   }
@@ -418,7 +417,7 @@ namespace dxvk {
           BOOL          Fullscreen,
           IDXGIOutput*  pTarget) {
     std::lock_guard<std::mutex> lock(m_lockWindow);
-    
+
     if (m_descFs.Windowed && Fullscreen)
       return this->EnterFullscreenMode(pTarget);
     else if (!m_descFs.Windowed && !Fullscreen)
@@ -628,18 +627,28 @@ namespace dxvk {
           IDXGIOutput*            pOutput,
     const DXGI_MODE_DESC*         pDisplayMode) {
     auto output = static_cast<DxgiOutput*>(pOutput);
-    
+
     if (output == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
     // Find a mode that the output supports
+    DXGI_MODE_DESC preferredMode = *pDisplayMode;
     DXGI_MODE_DESC selectedMode;
+
+    if (preferredMode.Format == DXGI_FORMAT_UNKNOWN)
+      preferredMode.Format = m_desc.Format;
     
     HRESULT hr = output->FindClosestMatchingMode(
-      pDisplayMode, &selectedMode, nullptr);
+      &preferredMode, &selectedMode, nullptr);
     
-    if (FAILED(hr))
+    if (FAILED(hr)) {
+      Logger::err(str::format(
+        "DXGI: Failed to query closest mode:",
+        "\n  Format: ", preferredMode.Format,
+        "\n  Mode:   ", preferredMode.Width, "x", preferredMode.Height,
+          "@", preferredMode.RefreshRate.Numerator / preferredMode.RefreshRate.Denominator));
       return hr;
+    }
     
     return output->SetDisplayMode(&selectedMode);
   }
