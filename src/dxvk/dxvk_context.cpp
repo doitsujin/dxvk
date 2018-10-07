@@ -884,7 +884,7 @@ namespace dxvk {
     
     auto physicalSlice = buffer.physicalSlice();
 
-    if (m_barriers.isBufferDirty(buffer.physicalSlice(), DxvkAccess::Read))
+    if (m_barriers.isBufferDirty(physicalSlice, DxvkAccess::Read))
       m_barriers.recordCommands(m_cmd);
     
     if (this->validateComputeState()) {
@@ -897,10 +897,19 @@ namespace dxvk {
         physicalSlice.handle(),
         physicalSlice.offset());
       
+      m_cmd->trackResource(
+        physicalSlice.resource());
+
       m_queries.endQueries(m_cmd,
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
       
       this->commitComputePostBarriers();
+
+      m_barriers.accessBuffer(physicalSlice,
+        VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
+        VK_ACCESS_INDIRECT_COMMAND_READ_BIT,
+        buffer.bufferInfo().stages,
+        buffer.bufferInfo().access);
     }
     
     m_cmd->addStatCtr(DxvkStatCounter::CmdDispatchCalls, 1);
