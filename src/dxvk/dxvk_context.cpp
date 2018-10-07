@@ -931,11 +931,11 @@ namespace dxvk {
     this->commitGraphicsState();
     
     if (this->validateGraphicsState()) {
-      auto physicalSlice = buffer.physicalSlice();
+      auto descriptor = buffer.getDescriptor();
       
       m_cmd->cmdDrawIndirect(
-        physicalSlice.handle(),
-        physicalSlice.offset(),
+        descriptor.buffer.buffer,
+        descriptor.buffer.offset,
         count, stride);
     }
     
@@ -969,11 +969,11 @@ namespace dxvk {
     this->commitGraphicsState();
     
     if (this->validateGraphicsState()) {
-      auto physicalSlice = buffer.physicalSlice();
+      auto descriptor = buffer.getDescriptor();
       
       m_cmd->cmdDrawIndexedIndirect(
-        physicalSlice.handle(),
-        physicalSlice.offset(),
+        descriptor.buffer.buffer,
+        descriptor.buffer.offset,
         count, stride);
     }
     
