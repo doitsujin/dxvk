@@ -703,6 +703,8 @@ namespace dxvk {
 
     VkDescriptorSet m_gpSet = VK_NULL_HANDLE;
     VkDescriptorSet m_cpSet = VK_NULL_HANDLE;
+
+    VkBuffer m_lastIndirectDrawBuffer = VK_NULL_HANDLE;
     
     std::array<DxvkShaderResourceSlot, MaxNumResourceSlots>  m_rc;
     std::array<DxvkDescriptorInfo,     MaxNumActiveBindings> m_descInfos;
@@ -809,6 +811,10 @@ namespace dxvk {
     
     void commitComputeInitBarriers();
     void commitComputePostBarriers();
+
+    void trackDrawBuffer(
+      const DxvkBufferSlice&  buffer,
+            VkBuffer          handle);
     
   };
   

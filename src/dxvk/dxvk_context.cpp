@@ -52,6 +52,7 @@ namespace dxvk {
   
   Rc<DxvkCommandList> DxvkContext::endRecording() {
     this->spillRenderPass();
+    this->trackDrawBuffer(DxvkBufferSlice(), VK_NULL_HANDLE);
     
     m_queries.trackQueryPools(m_cmd);
 
@@ -946,6 +947,8 @@ namespace dxvk {
         descriptor.buffer.buffer,
         descriptor.buffer.offset,
         count, stride);
+      
+      this->trackDrawBuffer(buffer, descriptor.buffer.buffer);
     }
     
     m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
@@ -984,6 +987,8 @@ namespace dxvk {
         descriptor.buffer.buffer,
         descriptor.buffer.offset,
         count, stride);
+      
+      this->trackDrawBuffer(buffer, descriptor.buffer.buffer);
     }
     
     m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
@@ -2831,6 +2836,18 @@ namespace dxvk {
             /* nothing to do */;
         }
       }
+    }
+  }
+
+
+  void DxvkContext::trackDrawBuffer(
+    const DxvkBufferSlice&  buffer,
+          VkBuffer          handle) {
+    if (m_lastIndirectDrawBuffer != handle) {
+      m_lastIndirectDrawBuffer = handle;
+
+      if (handle != VK_NULL_HANDLE)
+        m_cmd->trackResource(buffer.resource());
     }
   }
   
