@@ -32,8 +32,8 @@ namespace dxvk {
     ~DxbcModule();
     
     /**
-     * \brief Shader type and version
-     * \returns Shader type and version
+     * \brief Shader type
+     * \returns Shader type
      */
     DxbcProgramVersion version() const {
       return m_shexChunk->version();
