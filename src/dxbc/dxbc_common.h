@@ -25,12 +25,12 @@ namespace dxvk {
    * 
    * Stores the shader program type.
    */
-  class DxbcProgramVersion {
+  class DxbcProgramInfo {
     
   public:
     
-    DxbcProgramVersion() { }
-    DxbcProgramVersion(DxbcProgramType type)
+    DxbcProgramInfo() { }
+    DxbcProgramInfo(DxbcProgramType type)
     : m_type(type) { }
     
     /**

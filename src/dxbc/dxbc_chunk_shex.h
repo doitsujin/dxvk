@@ -20,8 +20,8 @@ namespace dxvk {
     DxbcShex(DxbcReader reader);
     ~DxbcShex();
     
-    DxbcProgramVersion version() const {
-      return m_version;
+    DxbcProgramInfo programInfo() const {
+      return m_programInfo;
     }
     
     DxbcCodeSlice slice() const {
@@ -31,7 +31,7 @@ namespace dxvk {
     
   private:
     
-    DxbcProgramVersion    m_version;
+    DxbcProgramInfo       m_programInfo;
     std::vector<uint32_t> m_code;
     
   };

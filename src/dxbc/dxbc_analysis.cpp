@@ -4,7 +4,7 @@ namespace dxvk {
   
   DxbcAnalyzer::DxbcAnalyzer(
     const DxbcModuleInfo&     moduleInfo,
-    const DxbcProgramVersion& version,
+    const DxbcProgramInfo&    programInfo,
     const Rc<DxbcIsgn>&       isgn,
     const Rc<DxbcIsgn>&       osgn,
           DxbcAnalysisInfo&   analysis)

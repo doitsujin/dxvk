@@ -2,7 +2,7 @@
 
 namespace dxvk {
   
-  VkShaderStageFlagBits DxbcProgramVersion::shaderStage() const {
+  VkShaderStageFlagBits DxbcProgramInfo::shaderStage() const {
     switch (m_type) {
       case DxbcProgramType::PixelShader    : return VK_SHADER_STAGE_FRAGMENT_BIT;
       case DxbcProgramType::VertexShader   : return VK_SHADER_STAGE_VERTEX_BIT;
@@ -12,11 +12,11 @@ namespace dxvk {
       case DxbcProgramType::ComputeShader  : return VK_SHADER_STAGE_COMPUTE_BIT;
     }
     
-    throw DxvkError("DxbcProgramVersion::shaderStage: Unsupported program type");
+    throw DxvkError("DxbcProgramInfo::shaderStage: Unsupported program type");
   }
   
   
-  spv::ExecutionModel DxbcProgramVersion::executionModel() const {
+  spv::ExecutionModel DxbcProgramInfo::executionModel() const {
     switch (m_type) {
       case DxbcProgramType::PixelShader    : return spv::ExecutionModelFragment;
       case DxbcProgramType::VertexShader   : return spv::ExecutionModelVertex;
@@ -26,7 +26,7 @@ namespace dxvk {
       case DxbcProgramType::ComputeShader  : return spv::ExecutionModelGLCompute;
     }
     
-    throw DxvkError("DxbcProgramVersion::executionModel: Unsupported program type");
+    throw DxvkError("DxbcProgramInfo::executionModel: Unsupported program type");
   }
   
 }
