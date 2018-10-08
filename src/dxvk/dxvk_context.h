@@ -92,6 +92,16 @@ namespace dxvk {
             bool                  spill);
     
     /**
+     * \brief Binds indirect argument buffer
+     * 
+     * Sets the buffer that is going to be used
+     * for indirect draw and dispatch operations.
+     * \param [in] buffer New argument buffer
+     */
+    void bindDrawBuffer(
+      const DxvkBufferSlice&      buffer);
+    
+    /**
      * \brief Binds index buffer
      * 
      * The index buffer will be used when
@@ -392,19 +402,19 @@ namespace dxvk {
      * \param [in] z Number of threads in Z direction
      */
     void dispatch(
-            uint32_t x,
-            uint32_t y,
-            uint32_t z);
+            uint32_t          x,
+            uint32_t          y,
+            uint32_t          z);
     
     /**
      * \brief Indirect dispatch call
      * 
      * Takes arguments from a buffer. The buffer must contain
      * a structure of the type \c VkDispatchIndirectCommand.
-     * \param [in] buffer The buffer slice
+     * \param [in] offset Draw buffer offset
      */
     void dispatchIndirect(
-      const DxvkBufferSlice&  buffer);
+            VkDeviceSize      offset);
     
     /**
      * \brief Draws primitive without using an index buffer
@@ -415,22 +425,22 @@ namespace dxvk {
      * \param [in] firstInstance First instance ID
      */
     void draw(
-            uint32_t vertexCount,
-            uint32_t instanceCount,
-            uint32_t firstVertex,
-            uint32_t firstInstance);
+            uint32_t          vertexCount,
+            uint32_t          instanceCount,
+            uint32_t          firstVertex,
+            uint32_t          firstInstance);
     
     /**
      * \brief Indirect indexed draw call
      * 
      * Takes arguments from a buffer. The structure stored
      * in the buffer must be of type \c VkDrawIndirectCommand.
-     * \param [in] buffer The buffer slice
+     * \param [in] offset Draw buffer offset
      * \param [in] count Number of dispatch calls
      * \param [in] stride Stride between dispatch calls
      */
     void drawIndirect(
-      const DxvkBufferSlice&  buffer,
+            VkDeviceSize      offset,
             uint32_t          count,
             uint32_t          stride);
     
@@ -455,12 +465,12 @@ namespace dxvk {
      * 
      * Takes arguments from a buffer. The structure type for
      * the draw buffer is \c VkDrawIndexedIndirectCommand.
-     * \param [in] buffer The buffer slice
+     * \param [in] offset Draw buffer offset
      * \param [in] count Number of dispatch calls
      * \param [in] stride Stride between dispatch calls
      */
     void drawIndexedIndirect(
-      const DxvkBufferSlice&  buffer,
+            VkDeviceSize      offset,
             uint32_t          count,
             uint32_t          stride);
     
@@ -704,8 +714,6 @@ namespace dxvk {
     VkDescriptorSet m_gpSet = VK_NULL_HANDLE;
     VkDescriptorSet m_cpSet = VK_NULL_HANDLE;
 
-    VkBuffer m_lastIndirectDrawBuffer = VK_NULL_HANDLE;
-    
     std::array<DxvkShaderResourceSlot, MaxNumResourceSlots>  m_rc;
     std::array<DxvkDescriptorInfo,     MaxNumActiveBindings> m_descInfos;
     std::array<uint32_t,               MaxNumActiveBindings> m_descOffsets;
@@ -812,9 +820,7 @@ namespace dxvk {
     void commitComputeInitBarriers();
     void commitComputePostBarriers();
 
-    void trackDrawBuffer(
-      const DxvkBufferSlice&  buffer,
-            VkBuffer          handle);
+    void trackDrawBuffer();
     
   };
   

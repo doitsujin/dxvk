@@ -46,13 +46,13 @@ namespace dxvk {
       DxvkContextFlag::GpDirtyIndexBuffer,
       DxvkContextFlag::CpDirtyPipeline,
       DxvkContextFlag::CpDirtyPipelineState,
-      DxvkContextFlag::CpDirtyResources);
+      DxvkContextFlag::CpDirtyResources,
+      DxvkContextFlag::DirtyDrawBuffer);
   }
   
   
   Rc<DxvkCommandList> DxvkContext::endRecording() {
     this->spillRenderPass();
-    this->trackDrawBuffer(DxvkBufferSlice(), VK_NULL_HANDLE);
     
     m_queries.trackQueryPools(m_cmd);
 
@@ -104,6 +104,16 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::bindDrawBuffer(
+    const DxvkBufferSlice&      buffer) {
+    if (!m_state.id.argBuffer.matches(buffer)) {
+      m_state.id.argBuffer = buffer;
+
+      m_flags.set(DxvkContextFlag::DirtyDrawBuffer);
+    }
+  }
+
+
   void DxvkContext::bindIndexBuffer(
     const DxvkBufferSlice&      buffer,
           VkIndexType           indexType) {
@@ -880,10 +890,11 @@ namespace dxvk {
   
   
   void DxvkContext::dispatchIndirect(
-    const DxvkBufferSlice&  buffer) {
+          VkDeviceSize      offset) {
     this->commitComputeState();
     
-    auto physicalSlice = buffer.physicalSlice();
+    auto physicalSlice = m_state.id.argBuffer.physicalSlice()
+      .subSlice(offset, sizeof(VkDispatchIndirectCommand));
 
     if (m_barriers.isBufferDirty(physicalSlice, DxvkAccess::Read))
       m_barriers.recordCommands(m_cmd);
@@ -898,9 +909,6 @@ namespace dxvk {
         physicalSlice.handle(),
         physicalSlice.offset());
       
-      m_cmd->trackResource(
-        physicalSlice.resource());
-
       m_queries.endQueries(m_cmd,
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
       
@@ -909,8 +917,10 @@ namespace dxvk {
       m_barriers.accessBuffer(physicalSlice,
         VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
         VK_ACCESS_INDIRECT_COMMAND_READ_BIT,
-        buffer.bufferInfo().stages,
-        buffer.bufferInfo().access);
+        m_state.id.argBuffer.bufferInfo().stages,
+        m_state.id.argBuffer.bufferInfo().access);
+      
+      this->trackDrawBuffer();
     }
     
     m_cmd->addStatCtr(DxvkStatCounter::CmdDispatchCalls, 1);
@@ -935,20 +945,20 @@ namespace dxvk {
   
   
   void DxvkContext::drawIndirect(
-    const DxvkBufferSlice&  buffer,
+          VkDeviceSize      offset,
           uint32_t          count,
           uint32_t          stride) {
     this->commitGraphicsState();
     
     if (this->validateGraphicsState()) {
-      auto descriptor = buffer.getDescriptor();
+      auto descriptor = m_state.id.argBuffer.getDescriptor();
       
       m_cmd->cmdDrawIndirect(
         descriptor.buffer.buffer,
-        descriptor.buffer.offset,
+        descriptor.buffer.offset + offset,
         count, stride);
       
-      this->trackDrawBuffer(buffer, descriptor.buffer.buffer);
+      this->trackDrawBuffer();
     }
     
     m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
@@ -975,20 +985,20 @@ namespace dxvk {
   
   
   void DxvkContext::drawIndexedIndirect(
-    const DxvkBufferSlice&  buffer,
+          VkDeviceSize      offset,
           uint32_t          count,
           uint32_t          stride) {
     this->commitGraphicsState();
     
     if (this->validateGraphicsState()) {
-      auto descriptor = buffer.getDescriptor();
+      auto descriptor = m_state.id.argBuffer.getDescriptor();
       
       m_cmd->cmdDrawIndexedIndirect(
         descriptor.buffer.buffer,
-        descriptor.buffer.offset,
+        descriptor.buffer.offset + offset,
         count, stride);
       
-      this->trackDrawBuffer(buffer, descriptor.buffer.buffer);
+      this->trackDrawBuffer();
     }
     
     m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
@@ -1120,6 +1130,9 @@ namespace dxvk {
     // We also need to update all bindings that the buffer
     // may be bound to either directly or through views.
     const VkBufferUsageFlags usage = buffer->info().usage;
+    
+    if (usage & VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT)
+      m_flags.set(DxvkContextFlag::DirtyDrawBuffer);
     
     if (usage & VK_BUFFER_USAGE_INDEX_BUFFER_BIT)
       m_flags.set(DxvkContextFlag::GpDirtyIndexBuffer);
@@ -2840,14 +2853,12 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::trackDrawBuffer(
-    const DxvkBufferSlice&  buffer,
-          VkBuffer          handle) {
-    if (m_lastIndirectDrawBuffer != handle) {
-      m_lastIndirectDrawBuffer = handle;
+  void DxvkContext::trackDrawBuffer() {
+    if (m_flags.test(DxvkContextFlag::DirtyDrawBuffer)) {
+      m_flags.clr(DxvkContextFlag::DirtyDrawBuffer);
 
-      if (handle != VK_NULL_HANDLE)
-        m_cmd->trackResource(buffer.resource());
+      if (m_state.id.argBuffer.defined())
+        m_cmd->trackResource(m_state.id.argBuffer.resource());
     }
   }
   

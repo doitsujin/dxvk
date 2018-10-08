@@ -99,6 +99,11 @@ namespace dxvk {
     UINT             offset = 0;
     DXGI_FORMAT      format = DXGI_FORMAT_UNKNOWN;
   };
+
+
+  struct D3D11ContextStateID {
+    Com<D3D11Buffer> argBuffer = nullptr;
+  };
   
   
   struct D3D11ContextStateIA {
@@ -158,6 +163,7 @@ namespace dxvk {
     D3D11ContextStatePS ps;
     D3D11ContextStateVS vs;
     
+    D3D11ContextStateID id;
     D3D11ContextStateIA ia;
     D3D11ContextStateOM om;
     D3D11ContextStateRS rs;

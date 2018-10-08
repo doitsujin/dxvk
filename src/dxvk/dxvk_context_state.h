@@ -41,9 +41,16 @@ namespace dxvk {
     CpDirtyResources,           ///< Compute pipeline resource bindings are out of date
     CpDirtyDescriptorOffsets,   ///< Compute descriptor set needs to be rebound
     CpDirtyDescriptorSet,       ///< Compute descriptor set needs to be updated
+
+    DirtyDrawBuffer,            ///< Indirect argument buffer is dirty
   };
   
   using DxvkContextFlags = Flags<DxvkContextFlag>;
+
+
+  struct DxvkIndirectDrawState {
+    DxvkBufferSlice argBuffer;
+  };
   
   
   struct DxvkVertexInputState {
@@ -113,6 +120,7 @@ namespace dxvk {
    * and constant pipeline state objects.
    */
   struct DxvkContextState {
+    DxvkIndirectDrawState     id;
     DxvkVertexInputState      vi;
     DxvkViewportState         vp;
     DxvkDynamicDepthState     ds;

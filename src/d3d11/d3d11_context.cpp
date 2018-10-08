@@ -165,6 +165,9 @@ namespace dxvk {
       m_state.ps.unorderedAccessViews[i] = nullptr;
       m_state.cs.unorderedAccessViews[i] = nullptr;
     }
+
+    // Default ID state
+    m_state.id.argBuffer = nullptr;
     
     // Default IA state
     m_state.ia.inputLayout       = nullptr;
@@ -1325,12 +1328,11 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeviceContext::DrawIndexedInstancedIndirect(
           ID3D11Buffer*   pBufferForArgs,
           UINT            AlignedByteOffsetForArgs) {
-    D3D11Buffer* buffer = static_cast<D3D11Buffer*>(pBufferForArgs);
+    SetDrawBuffer(pBufferForArgs);
     
-    EmitCs([bufferSlice = buffer->GetBufferSlice(AlignedByteOffsetForArgs)]
+    EmitCs([cOffset = AlignedByteOffsetForArgs]
     (DxvkContext* ctx) {
-      ctx->drawIndexedIndirect(
-        bufferSlice, 1, 0);
+      ctx->drawIndexedIndirect(cOffset, 1, 0);
     });
   }
   
@@ -1338,11 +1340,11 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeviceContext::DrawInstancedIndirect(
           ID3D11Buffer*   pBufferForArgs,
           UINT            AlignedByteOffsetForArgs) {
-    D3D11Buffer* buffer = static_cast<D3D11Buffer*>(pBufferForArgs);
+    SetDrawBuffer(pBufferForArgs);
     
-    EmitCs([bufferSlice = buffer->GetBufferSlice(AlignedByteOffsetForArgs)]
+    EmitCs([cOffset = AlignedByteOffsetForArgs]
     (DxvkContext* ctx) {
-      ctx->drawIndirect(bufferSlice, 1, 0);
+      ctx->drawIndirect(cOffset, 1, 0);
     });
   }
   
@@ -1363,11 +1365,11 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeviceContext::DispatchIndirect(
           ID3D11Buffer*   pBufferForArgs,
           UINT            AlignedByteOffsetForArgs) {
-    D3D11Buffer* buffer = static_cast<D3D11Buffer*>(pBufferForArgs);
+    SetDrawBuffer(pBufferForArgs);
     
-    EmitCs([bufferSlice = buffer->GetBufferSlice(AlignedByteOffsetForArgs)]
+    EmitCs([cOffset = AlignedByteOffsetForArgs]
     (DxvkContext* ctx) {
-      ctx->dispatchIndirect(bufferSlice);
+      ctx->dispatchIndirect(cOffset);
     });
   }
   
@@ -2809,6 +2811,18 @@ namespace dxvk {
   }
   
   
+  void D3D11DeviceContext::BindDrawBuffer(
+          D3D11Buffer*                      pBuffer) {
+    EmitCs([
+      cBufferSlice = pBuffer != nullptr
+        ? pBuffer->GetBufferSlice()
+        : DxvkBufferSlice()
+    ] (DxvkContext* ctx) {
+      ctx->bindDrawBuffer(cBufferSlice);
+    });
+  }
+
+
   void D3D11DeviceContext::BindVertexBuffer(
           UINT                              Slot,
           D3D11Buffer*                      pBuffer,
@@ -2934,6 +2948,17 @@ namespace dxvk {
         0, cImage->info().numLayers };
       ctx->discardImage(cImage, subresources);
     });
+  }
+
+
+  void D3D11DeviceContext::SetDrawBuffer(
+          ID3D11Buffer*                     pBuffer) {
+    auto buffer = static_cast<D3D11Buffer*>(pBuffer);
+
+    if (m_state.id.argBuffer != buffer) {
+      m_state.id.argBuffer = buffer;
+      BindDrawBuffer(buffer);
+    }
   }
 
 
@@ -3101,6 +3126,9 @@ namespace dxvk {
     ApplyStencilRef();
     ApplyRasterizerState();
     ApplyViewportState();
+
+    BindDrawBuffer(
+      m_state.id.argBuffer.ptr());
     
     BindIndexBuffer(
       m_state.ia.indexBuffer.buffer.ptr(),

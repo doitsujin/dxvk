@@ -676,6 +676,9 @@ namespace dxvk {
     void BindFramebuffer(
             BOOL                              Spill);
     
+    void BindDrawBuffer(
+            D3D11Buffer*                      pBuffer);
+    
     void BindVertexBuffer(
             UINT                              Slot,
             D3D11Buffer*                      pBuffer,
@@ -710,6 +713,9 @@ namespace dxvk {
     
     void DiscardTexture(
             D3D11CommonTexture*               pTexture);
+    
+    void SetDrawBuffer(
+            ID3D11Buffer*                     pBuffer);
     
     void SetConstantBuffers(
             DxbcProgramType                   ShaderStage,
