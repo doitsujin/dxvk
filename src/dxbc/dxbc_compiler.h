@@ -358,7 +358,7 @@ namespace dxvk {
     DxbcCompiler(
       const std::string&        fileName,
       const DxbcModuleInfo&     moduleInfo,
-      const DxbcProgramVersion& version,
+      const DxbcProgramInfo&    programInfo,
       const Rc<DxbcIsgn>&       isgn,
       const Rc<DxbcIsgn>&       osgn,
       const DxbcAnalysisInfo&   analysis);
@@ -380,7 +380,7 @@ namespace dxvk {
   private:
     
     DxbcModuleInfo      m_moduleInfo;
-    DxbcProgramVersion  m_version;
+    DxbcProgramInfo     m_programInfo;
     SpirvModule         m_module;
     
     Rc<DxbcIsgn>        m_isgn;

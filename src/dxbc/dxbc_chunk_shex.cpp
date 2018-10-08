@@ -8,7 +8,7 @@ namespace dxvk {
     // numbers, and the high word contains the program type.
     reader.skip(2);
     auto pType    = reader.readEnum<DxbcProgramType>();
-    m_version = DxbcProgramVersion(pType);
+    m_programInfo = DxbcProgramInfo(pType);
     
     // Read the actual shader code as an array of DWORDs.
     auto codeLength = reader.readu32() - 2;
