@@ -21,35 +21,17 @@ namespace dxvk {
   
   
   /**
-   * \brief DXBC shader version info
+   * \brief DXBC shader info
    * 
-   * Stores the shader model version
-   * as well as the program type.
+   * Stores the shader program type.
    */
   class DxbcProgramVersion {
     
   public:
     
     DxbcProgramVersion() { }
-    DxbcProgramVersion(
-      uint8_t major, uint8_t minor, DxbcProgramType type)
-    : m_major(major), m_minor(minor), m_type(type) { }
-    
-    /**
-     * \brief Major version
-     * \returns Major version
-     */
-    uint32_t major() const {
-      return m_major;
-    }
-    
-    /**
-     * \brief Minor version
-     * \returns Minor version
-     */
-    uint32_t minor() const {
-      return m_minor;
-    }
+    DxbcProgramVersion(DxbcProgramType type)
+    : m_type(type) { }
     
     /**
      * \brief Program type
@@ -79,8 +61,6 @@ namespace dxvk {
     
   private:
     
-    uint8_t         m_major = 0;
-    uint8_t         m_minor = 0;
     DxbcProgramType m_type  = DxbcProgramType::PixelShader;
     
   };
