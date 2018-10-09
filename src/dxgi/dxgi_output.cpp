@@ -333,9 +333,9 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE DxgiOutput::WaitForVBlank() {
-    bool s_warningShown = false;
+    static bool s_errorShown = false;
 
-    if (!std::exchange(s_warningShown, true))
+    if (!std::exchange(s_errorShown, true))
       Logger::warn("DxgiOutput::WaitForVBlank: Stub");
     return S_OK;
   }
