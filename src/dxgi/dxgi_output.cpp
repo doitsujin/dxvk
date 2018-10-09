@@ -333,7 +333,10 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE DxgiOutput::WaitForVBlank() {
-    Logger::warn("DxgiOutput::WaitForVBlank: Stub");
+    bool s_warningShown = false;
+
+    if (!std::exchange(s_warningShown, true))
+      Logger::warn("DxgiOutput::WaitForVBlank: Stub");
     return S_OK;
   }
   
