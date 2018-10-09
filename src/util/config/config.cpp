@@ -28,6 +28,14 @@ namespace dxvk {
       { "dxgi.customVendorId",              "1002" },
       { "dxgi.customDeviceId",              "e366" },
     }} },
+    /* The Evil Within                            */
+    { "EvilWithin.exe", {{
+      { "d3d11.dcMapSpeedHack",             "False" },
+    }} },
+    /* The Evil Within Demo                       */
+    { "EvilWithinDemo.exe", {{
+      { "d3d11.dcMapSpeedHack",             "False" },
+    }} },
     /* F1 2015                                    */
     { "F1_2015.exe", {{
       { "d3d11.fakeStreamOutSupport",       "True" },

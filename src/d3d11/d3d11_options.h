@@ -16,6 +16,13 @@ namespace dxvk {
     /// operation succeeds when that flag is set.
     bool allowMapFlagNoWait;
 
+    /// Enables speed hack for mapping on deferred contexts
+    ///
+    /// This can substantially speed up some games, but may
+    /// cause issues if the game submits command lists more
+    /// than once.
+    bool dcMapSpeedHack;
+
     /// Fakes stream output support.
     /// 
     /// Temporary hack that fixes issues in some games

@@ -65,10 +65,11 @@ namespace dxvk {
   
   
   void D3D11CommandList::MarkSubmitted() {
-    if (m_submitted.exchange(true) && !m_warned.exchange(true)) {
+    if (m_submitted.exchange(true) && !m_warned.exchange(true)
+     && m_device->GetOptions()->dcMapSpeedHack) {
       Logger::warn(
-        "D3D11: Command list submitted multiple times.\n"
-        "       This is currently not supported.");
+        "D3D11: Command list submitted multiple times,\n"
+        "       but d3d11.dcMapSpeedHack is enabled");
     }
   }
   

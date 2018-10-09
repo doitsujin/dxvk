@@ -1,4 +1,5 @@
 #include "d3d11_context_def.h"
+#include "d3d11_device.h"
 
 namespace dxvk {
   
@@ -172,7 +173,7 @@ namespace dxvk {
     pMapEntry->RowPitch     = pBuffer->GetSize();
     pMapEntry->DepthPitch   = pBuffer->GetSize();
     
-    if (bufferDesc.Usage == D3D11_USAGE_DYNAMIC) {
+    if (bufferDesc.Usage == D3D11_USAGE_DYNAMIC && m_parent->GetOptions()->dcMapSpeedHack) {
       // For resources that cannot be written by the GPU,
       // we may write to the buffer resource directly and
       // just swap in the physical buffer slice as needed.
@@ -242,7 +243,7 @@ namespace dxvk {
     D3D11_BUFFER_DESC bufferDesc;
     pBuffer->GetDesc(&bufferDesc);
     
-    if (bufferDesc.Usage == D3D11_USAGE_DYNAMIC) {
+    if (bufferDesc.Usage == D3D11_USAGE_DYNAMIC && m_parent->GetOptions()->dcMapSpeedHack) {
       EmitCs([
         cDstBuffer = pBuffer->GetBuffer(),
         cPhysSlice = pMapEntry->BufferSlice
