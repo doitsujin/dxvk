@@ -34,7 +34,7 @@ namespace dxvk {
   };
   
   
-  class DxgiOutput : public DxgiObject<IDXGIOutput> {
+  class DxgiOutput : public DxgiObject<IDXGIOutput1> {
     
   public:
     
@@ -56,6 +56,11 @@ namespace dxvk {
       const DXGI_MODE_DESC*       pModeToMatch,
             DXGI_MODE_DESC*       pClosestMatch,
             IUnknown*             pConcernedDevice) final;
+
+    HRESULT STDMETHODCALLTYPE FindClosestMatchingMode1(
+      const DXGI_MODE_DESC1*      pModeToMatch,
+            DXGI_MODE_DESC1*      pClosestMatch,
+            IUnknown*             pConcernedDevice) final;
     
     HRESULT STDMETHODCALLTYPE GetDesc(
             DXGI_OUTPUT_DESC*     pDesc) final;
@@ -66,8 +71,17 @@ namespace dxvk {
             UINT*                 pNumModes,
             DXGI_MODE_DESC*       pDesc) final;
     
+    HRESULT STDMETHODCALLTYPE GetDisplayModeList1(
+            DXGI_FORMAT           EnumFormat,
+            UINT                  Flags,
+            UINT*                 pNumModes,
+            DXGI_MODE_DESC1*      pDesc) final;
+    
     HRESULT STDMETHODCALLTYPE GetDisplaySurfaceData(
             IDXGISurface*         pDestination) final;
+
+    HRESULT STDMETHODCALLTYPE GetDisplaySurfaceData1(
+            IDXGIResource*        pDestination) final;
     
     HRESULT STDMETHODCALLTYPE GetFrameStatistics(
             DXGI_FRAME_STATISTICS* pStats) final;
@@ -91,6 +105,10 @@ namespace dxvk {
             BOOL                  Exclusive) final;
     
     HRESULT STDMETHODCALLTYPE WaitForVBlank() final;
+
+    HRESULT STDMETHODCALLTYPE DuplicateOutput(
+            IUnknown*                 pDevice,
+            IDXGIOutputDuplication**  ppOutputDuplication) final;
     
     HRESULT GetDisplayMode(
             DXGI_MODE_DESC*       pMode,
