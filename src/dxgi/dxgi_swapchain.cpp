@@ -58,7 +58,8 @@ namespace dxvk {
      || riid == __uuidof(IDXGIObject)
      || riid == __uuidof(IDXGIDeviceSubObject)
      || riid == __uuidof(IDXGISwapChain)
-     || riid == __uuidof(IDXGISwapChain1)) {
+     || riid == __uuidof(IDXGISwapChain1)
+     || riid == __uuidof(IDXGISwapChain2)) {
       *ppvObject = ref(this);
       return S_OK;
     }
@@ -385,6 +386,68 @@ namespace dxvk {
   }
   
   
+  HANDLE STDMETHODCALLTYPE DxgiSwapChain::GetFrameLatencyWaitableObject() {
+    Logger::err("DxgiSwapChain::GetFrameLatencyWaitableObject: Not implemented");
+    return nullptr;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetMatrixTransform(
+          DXGI_MATRIX_3X2_F*        pMatrix) {
+    // We don't support composition swap chains
+    Logger::err("DxgiSwapChain::GetMatrixTransform: Not supported");
+    return DXGI_ERROR_INVALID_CALL;
+  }
+
+  
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetMaximumFrameLatency(
+          UINT*                     pMaxLatency) {
+    Logger::err("DxgiSwapChain::GetMaximumFrameLatency: Not implemented");
+    return DXGI_ERROR_INVALID_CALL;
+  }
+
+  
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetSourceSize(
+          UINT*                     pWidth,
+          UINT*                     pHeight) {
+    // TODO implement properly once supported
+    if (pWidth)  *pWidth  = m_desc.Width;
+    if (pHeight) *pHeight = m_desc.Height;
+    return S_OK;
+  }
+
+  
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::SetMatrixTransform(
+    const DXGI_MATRIX_3X2_F*        pMatrix) {
+    // We don't support composition swap chains
+    Logger::err("DxgiSwapChain::SetMatrixTransform: Not supported");
+    return DXGI_ERROR_INVALID_CALL;
+  }
+
+  
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::SetMaximumFrameLatency(
+          UINT                      MaxLatency) {
+    Logger::err("DxgiSwapChain::SetMaximumFrameLatency: Not implemented");
+    return DXGI_ERROR_INVALID_CALL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::SetSourceSize(
+          UINT                      Width,
+          UINT                      Height) {
+    if (Width  == 0 || Width  > m_desc.Width
+     || Height == 0 || Height > m_desc.Height)
+      return E_INVALIDARG;
+
+    RECT region;
+    region.left   = 0;
+    region.top    = 0;
+    region.right  = Width;
+    region.bottom = Height;
+    return m_presenter->SetPresentRegion(&region);
+  }
+  
+
   HRESULT DxgiSwapChain::SetGammaControl(const DXGI_GAMMA_CONTROL* pGammaControl) {
     return m_presenter->SetGammaControl(DXGI_VK_GAMMA_CP_COUNT, pGammaControl->GammaCurve);
   }

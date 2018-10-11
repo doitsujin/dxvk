@@ -19,7 +19,7 @@ namespace dxvk {
   class DxgiFactory;
   class DxgiOutput;
   
-  class DxgiSwapChain : public DxgiObject<IDXGISwapChain1> {
+  class DxgiSwapChain : public DxgiObject<IDXGISwapChain2> {
     
   public:
     
@@ -117,6 +117,28 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE SetRotation(
             DXGI_MODE_ROTATION        Rotation) final;
+    
+    HANDLE STDMETHODCALLTYPE GetFrameLatencyWaitableObject() final;
+
+    HRESULT STDMETHODCALLTYPE GetMatrixTransform(
+            DXGI_MATRIX_3X2_F*        pMatrix) final;
+    
+    HRESULT STDMETHODCALLTYPE GetMaximumFrameLatency(
+            UINT*                     pMaxLatency) final;
+    
+    HRESULT STDMETHODCALLTYPE GetSourceSize(
+            UINT*                     pWidth,
+            UINT*                     pHeight) final;
+    
+    HRESULT STDMETHODCALLTYPE SetMatrixTransform(
+      const DXGI_MATRIX_3X2_F*        pMatrix) final;
+    
+    HRESULT STDMETHODCALLTYPE SetMaximumFrameLatency(
+            UINT                      MaxLatency) final;
+
+    HRESULT STDMETHODCALLTYPE SetSourceSize(
+            UINT                      Width,
+            UINT                      Height) final;
 
     HRESULT SetGammaControl(
       const DXGI_GAMMA_CONTROL*       pGammaControl);
