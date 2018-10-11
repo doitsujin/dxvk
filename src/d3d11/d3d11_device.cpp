@@ -45,6 +45,7 @@ namespace dxvk {
     if (riid == __uuidof(IDXGIDevice)
      || riid == __uuidof(IDXGIDevice1)
      || riid == __uuidof(IDXGIDevice2)
+     || riid == __uuidof(IDXGIDevice3)
      || riid == __uuidof(IDXGIVkDevice)) {
       *ppvObject = ref(m_dxgiDevice);
       return S_OK;

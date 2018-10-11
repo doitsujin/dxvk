@@ -70,7 +70,7 @@ IDXGIVkSwapChain : public IUnknown {
  * this interface.
  */
 MIDL_INTERFACE("7a622cf6-627a-46b2-b52f-360ef3da831c")
-IDXGIVkDevice : public IDXGIDevice2 {
+IDXGIVkDevice : public IDXGIDevice3 {
   static const GUID guid;
   
   virtual ~IDXGIVkDevice() { }

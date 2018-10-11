@@ -87,6 +87,8 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE EnqueueSetEvent( 
             HANDLE                hEvent) final;
     
+    void STDMETHODCALLTYPE Trim() final;
+    
     Rc<DxvkDevice> STDMETHODCALLTYPE GetDXVKDevice() final;
 
     Rc<DxvkEvent> STDMETHODCALLTYPE GetFrameSyncEvent() final;

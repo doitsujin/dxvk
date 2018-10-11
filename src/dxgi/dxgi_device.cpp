@@ -165,6 +165,14 @@ namespace dxvk {
     Logger::err("DxgiDevice::EnqueueSetEvent: Not implemented");
     return DXGI_ERROR_UNSUPPORTED;           
   }
+
+
+  void STDMETHODCALLTYPE DxgiDevice::Trim() {
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("DxgiDevice::Trim: Stub");
+  }
   
   
   Rc<DxvkDevice> STDMETHODCALLTYPE DxgiDevice::GetDXVKDevice() {
