@@ -34,7 +34,7 @@ namespace dxvk {
   };
   
   
-  class DxgiOutput : public DxgiObject<IDXGIOutput1> {
+  class DxgiOutput : public DxgiObject<IDXGIOutput3> {
     
   public:
     
@@ -109,6 +109,13 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE DuplicateOutput(
             IUnknown*                 pDevice,
             IDXGIOutputDuplication**  ppOutputDuplication) final;
+    
+    BOOL STDMETHODCALLTYPE SupportsOverlays() final;
+
+    HRESULT STDMETHODCALLTYPE CheckOverlaySupport(
+            DXGI_FORMAT           EnumFormat,
+            IUnknown*             pConcernedDevice,
+            UINT*                 pFlags) final;
     
     HRESULT GetDisplayMode(
             DXGI_MODE_DESC*       pMode,

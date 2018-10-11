@@ -48,7 +48,9 @@ namespace dxvk {
     if (riid == __uuidof(IUnknown)
      || riid == __uuidof(IDXGIObject)
      || riid == __uuidof(IDXGIOutput)
-     || riid == __uuidof(IDXGIOutput1)) {
+     || riid == __uuidof(IDXGIOutput1)
+     || riid == __uuidof(IDXGIOutput2)
+     || riid == __uuidof(IDXGIOutput3)) {
       *ppvObject = ref(this);
       return S_OK;
     }
@@ -425,6 +427,20 @@ namespace dxvk {
       Logger::warn("DxgiOutput::DuplicateOutput: Stub");
     
     return E_NOTIMPL;
+  }
+
+
+  BOOL DxgiOutput::SupportsOverlays() {
+    return FALSE;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE DxgiOutput::CheckOverlaySupport(
+          DXGI_FORMAT EnumFormat,
+          IUnknown*   pConcernedDevice,
+          UINT*       pFlags) {
+    Logger::warn("DxgiOutput: CheckOverlaySupport: Stub");
+    return DXGI_ERROR_UNSUPPORTED;
   }
 
 
