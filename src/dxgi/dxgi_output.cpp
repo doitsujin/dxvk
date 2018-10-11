@@ -50,7 +50,8 @@ namespace dxvk {
      || riid == __uuidof(IDXGIOutput)
      || riid == __uuidof(IDXGIOutput1)
      || riid == __uuidof(IDXGIOutput2)
-     || riid == __uuidof(IDXGIOutput3)) {
+     || riid == __uuidof(IDXGIOutput3)
+     || riid == __uuidof(IDXGIOutput4)) {
       *ppvObject = ref(this);
       return S_OK;
     }
@@ -440,6 +441,16 @@ namespace dxvk {
           IUnknown*   pConcernedDevice,
           UINT*       pFlags) {
     Logger::warn("DxgiOutput: CheckOverlaySupport: Stub");
+    return DXGI_ERROR_UNSUPPORTED;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE DxgiOutput::CheckOverlayColorSpaceSupport(
+          DXGI_FORMAT           Format,
+          DXGI_COLOR_SPACE_TYPE ColorSpace,
+          IUnknown*             pConcernedDevice,
+          UINT*                 pFlags) {
+    Logger::warn("DxgiOutput: CheckOverlayColorSpaceSupport: Stub");
     return DXGI_ERROR_UNSUPPORTED;
   }
 

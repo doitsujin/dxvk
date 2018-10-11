@@ -34,7 +34,7 @@ namespace dxvk {
   };
   
   
-  class DxgiOutput : public DxgiObject<IDXGIOutput3> {
+  class DxgiOutput : public DxgiObject<IDXGIOutput4> {
     
   public:
     
@@ -114,6 +114,12 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE CheckOverlaySupport(
             DXGI_FORMAT           EnumFormat,
+            IUnknown*             pConcernedDevice,
+            UINT*                 pFlags) final;
+    
+    HRESULT STDMETHODCALLTYPE CheckOverlayColorSpaceSupport(
+            DXGI_FORMAT           Format,
+            DXGI_COLOR_SPACE_TYPE ColorSpace,
             IUnknown*             pConcernedDevice,
             UINT*                 pFlags) final;
     

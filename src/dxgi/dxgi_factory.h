@@ -9,7 +9,7 @@
 
 namespace dxvk {
     
-  class DxgiFactory : public DxgiObject<IDXGIFactory3> {
+  class DxgiFactory : public DxgiObject<IDXGIFactory4> {
     
   public:
     
@@ -64,6 +64,15 @@ namespace dxvk {
             UINT                  Adapter,
             IDXGIAdapter1**       ppAdapter) final;
     
+    HRESULT STDMETHODCALLTYPE EnumAdapterByLuid(
+            LUID                  AdapterLuid,
+            REFIID                riid,
+            void**                ppvAdapter) final;
+    
+    HRESULT STDMETHODCALLTYPE EnumWarpAdapter(
+            REFIID                riid,
+            void**                ppvAdapter) final;
+
     HRESULT STDMETHODCALLTYPE GetWindowAssociation(
             HWND*                 pWindowHandle) final;
     
