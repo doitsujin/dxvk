@@ -5,37 +5,28 @@ namespace dxvk {
   
   Logger Logger::s_instance("dxgi.log");
   
-  HRESULT createDxgiFactory(REFIID riid, void **ppFactory) {
-    if (riid != __uuidof(IDXGIFactory)
-     && riid != __uuidof(IDXGIFactory1)
-     && riid != __uuidof(IDXGIFactory2)) {
-      Logger::err("CreateDXGIFactory: Requested version of IDXGIFactory not supported");
-      Logger::err(str::format(riid));
-      *ppFactory = nullptr;
-      return E_NOINTERFACE;
-    }
-    
-    try {
-      *ppFactory = ref(new DxgiFactory());
-      return S_OK;
-    } catch (const DxvkError& err) {
-      Logger::err(err.message());
+  HRESULT createDxgiFactory(UINT Flags, REFIID riid, void **ppFactory) {
+    Com<DxgiFactory> factory = new DxgiFactory(Flags);
+    HRESULT hr = factory->QueryInterface(riid, ppFactory);
+
+    if (FAILED(hr))
       return DXGI_ERROR_UNSUPPORTED;
-    }
+    
+    return S_OK;
   }
 }
 
 extern "C" {
   DLLEXPORT HRESULT __stdcall CreateDXGIFactory2(UINT Flags, REFIID riid, void **ppFactory) {
     dxvk::Logger::warn("CreateDXGIFactory2: Ignoring flags");
-    return dxvk::createDxgiFactory(riid, ppFactory);
+    return dxvk::createDxgiFactory(Flags, riid, ppFactory);
   }
 
   DLLEXPORT HRESULT __stdcall CreateDXGIFactory1(REFIID riid, void **ppFactory) {
-    return dxvk::createDxgiFactory(riid, ppFactory);
+    return dxvk::createDxgiFactory(0, riid, ppFactory);
   }
   
   DLLEXPORT HRESULT __stdcall CreateDXGIFactory(REFIID riid, void **ppFactory) {
-    return dxvk::createDxgiFactory(riid, ppFactory);
+    return dxvk::createDxgiFactory(0, riid, ppFactory);
   }
 }

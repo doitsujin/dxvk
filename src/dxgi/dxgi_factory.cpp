@@ -3,9 +3,10 @@
 
 namespace dxvk {
   
-  DxgiFactory::DxgiFactory()
+  DxgiFactory::DxgiFactory(UINT Flags)
   : m_instance(new DxvkInstance()),
-    m_options (m_instance->config()) {
+    m_options (m_instance->config()),
+    m_flags   (Flags) {
     for (uint32_t i = 0; m_instance->enumAdapters(i) != nullptr; i++)
       m_instance->enumAdapters(i)->logAdapterInfo();
   }
@@ -23,7 +24,8 @@ namespace dxvk {
      || riid == __uuidof(IDXGIObject)
      || riid == __uuidof(IDXGIFactory)
      || riid == __uuidof(IDXGIFactory1)
-     || riid == __uuidof(IDXGIFactory2)) {
+     || riid == __uuidof(IDXGIFactory2)
+     || riid == __uuidof(IDXGIFactory3)) {
       *ppvObject = ref(this);
       return S_OK;
     }
@@ -265,6 +267,11 @@ namespace dxvk {
   void STDMETHODCALLTYPE DxgiFactory::UnregisterOcclusionStatus(
           DWORD                 dwCookie) {
     Logger::err("DxgiFactory::UnregisterOcclusionStatus: Not implemented");
+  }
+
+
+  UINT STDMETHODCALLTYPE DxgiFactory::GetCreationFlags() {
+    return m_flags;
   }
   
 }

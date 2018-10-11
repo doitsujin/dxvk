@@ -9,11 +9,11 @@
 
 namespace dxvk {
     
-  class DxgiFactory : public DxgiObject<IDXGIFactory2> {
+  class DxgiFactory : public DxgiObject<IDXGIFactory3> {
     
   public:
     
-    DxgiFactory();
+    DxgiFactory(UINT Flags);
     ~DxgiFactory();
     
     HRESULT STDMETHODCALLTYPE QueryInterface(
@@ -101,6 +101,8 @@ namespace dxvk {
     void STDMETHODCALLTYPE UnregisterOcclusionStatus(
             DWORD                 dwCookie) final;
     
+    UINT STDMETHODCALLTYPE GetCreationFlags() final;
+    
     const DxgiOptions* GetOptions() const {
       return &m_options;
     }
@@ -109,6 +111,7 @@ namespace dxvk {
     
     Rc<DxvkInstance> m_instance;
     DxgiOptions      m_options;
+    UINT             m_flags;
     
     HWND m_associatedWindow = nullptr;
     
