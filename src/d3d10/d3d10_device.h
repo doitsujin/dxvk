@@ -474,7 +474,9 @@ namespace dxvk {
             UINT*                             pHeight);
     
     D3D10DeviceLock LockDevice() {
-      return D3D10DeviceLock(m_mutex);
+      return m_threadSafe
+        ? D3D10DeviceLock(m_mutex)
+        : D3D10DeviceLock();
     }
     
   private:
@@ -482,6 +484,8 @@ namespace dxvk {
     D3D10DeviceMutex        m_mutex;
     D3D11Device*            m_device;
     D3D11ImmediateContext*  m_context;
+
+    bool m_threadSafe = true;
 
   };
 

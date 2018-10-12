@@ -9,7 +9,9 @@ namespace dxvk {
           D3D11Device*                      pDevice,
           D3D11ImmediateContext*            pContext)
   : m_device(pDevice), m_context(pContext) {
-
+    // Respecting the single-threaded flag may improve performance
+    UINT flags = pDevice->GetCreationFlags();
+    m_threadSafe = !(flags & D3D10_CREATE_DEVICE_SINGLETHREADED);
   }
 
   
