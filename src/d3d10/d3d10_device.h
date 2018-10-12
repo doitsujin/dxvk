@@ -1,12 +1,9 @@
 #pragma once
 
-#include "d3d10_include.h"
+#include "d3d10_multithread.h"
 
 namespace dxvk {
 
-  using D3D10DeviceMutex = sync::Spinlock;
-  using D3D10DeviceLock = std::unique_lock<D3D10DeviceMutex>;
-  
   class D3D11Device;
   class D3D11ImmediateContext;
 
@@ -473,6 +470,10 @@ namespace dxvk {
             UINT*                             pWidth,
             UINT*                             pHeight);
     
+    D3D10Multithread* GetMultithreadIface() {
+      return &m_multithread;
+    }
+    
     D3D10DeviceLock LockDevice() {
       return m_threadSafe
         ? D3D10DeviceLock(m_mutex)
@@ -484,6 +485,7 @@ namespace dxvk {
     D3D10DeviceMutex        m_mutex;
     D3D11Device*            m_device;
     D3D11ImmediateContext*  m_context;
+    D3D10Multithread        m_multithread;
 
     bool m_threadSafe = true;
 

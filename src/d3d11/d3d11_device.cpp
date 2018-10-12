@@ -61,6 +61,11 @@ namespace dxvk {
       return S_OK;
     }
     
+    if (riid == __uuidof(ID3D10Multithread)) {
+      *ppvObject = ref(m_d3d11Device->GetD3D10Interface()->GetMultithreadIface());
+      return S_OK;
+    }
+
     if (riid == __uuidof(ID3D11Device)
      || riid == __uuidof(ID3D11Device1)) {
       *ppvObject = ref(m_d3d11Device);
