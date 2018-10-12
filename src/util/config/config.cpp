@@ -15,10 +15,6 @@ namespace dxvk {
     { "ACS.exe", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
-    /* Bioshock (original)                        */
-    { "Bioshock.exe", {{
-      { "d3d10.enable",                     "False" },
-    }} },
     /* Dishonored 2                               */
     { "Dishonored2.exe", {{
       { "d3d11.allowMapFlagNoWait",         "True" }
