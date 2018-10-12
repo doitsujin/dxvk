@@ -70,6 +70,11 @@ namespace dxvk {
     { "Overwatch.exe", {{
       { "d3d11.fakeStreamOutSupport",       "True" },
     }} },
+    /* Star Citizen                               */
+    { "StarCitizen.exe", {{
+      { "dxgi.customVendorId",              "1002" },
+      { "dxgi.customDeviceId",              "e366" },
+    }} },
   }};
 
 
