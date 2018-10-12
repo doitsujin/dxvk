@@ -715,6 +715,8 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D10Device::ClearRenderTargetView(
           ID3D10RenderTargetView*           pRenderTargetView,
     const FLOAT                             ColorRGBA[4]) {
+    D3D10DeviceLock lock = LockDevice();
+
     D3D10RenderTargetView* d3d10View = static_cast<D3D10RenderTargetView*>(pRenderTargetView);
     D3D11RenderTargetView* d3d11View = d3d10View ? d3d10View->GetD3D11Iface() : nullptr;
 
@@ -727,6 +729,8 @@ namespace dxvk {
           UINT                              ClearFlags,
           FLOAT                             Depth,
           UINT8                             Stencil) {
+    D3D10DeviceLock lock = LockDevice();
+
     D3D10DepthStencilView* d3d10View = static_cast<D3D10DepthStencilView*>(pDepthStencilView);
     D3D11DepthStencilView* d3d11View = d3d10View ? d3d10View->GetD3D11Iface() : nullptr;
 
@@ -737,6 +741,8 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D10Device::SetPredication(
           ID3D10Predicate*                  pPredicate,
           BOOL                              PredicateValue) {
+    D3D10DeviceLock lock = LockDevice();
+
     D3D10Query* d3d10Predicate = static_cast<D3D10Query*>(pPredicate);
     D3D11Query* d3d11Predicate = d3d10Predicate ? d3d10Predicate->GetD3D11Iface() : nullptr;
 
@@ -747,6 +753,7 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D10Device::GetPredication(
           ID3D10Predicate**                 ppPredicate,
           BOOL*                             pPredicateValue) {
+    D3D10DeviceLock lock = LockDevice();
     ID3D11Predicate* d3d11Predicate = nullptr;
 
     m_context->GetPredication(
@@ -767,6 +774,8 @@ namespace dxvk {
           ID3D10Resource*                   pSrcResource,
           UINT                              SrcSubresource,
     const D3D10_BOX*                        pSrcBox) {
+    D3D10DeviceLock lock = LockDevice();
+
     Com<ID3D11Resource> d3d11DstResource;
     Com<ID3D11Resource> d3d11SrcResource;
     
@@ -783,6 +792,8 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D10Device::CopyResource(
           ID3D10Resource*                   pDstResource,
           ID3D10Resource*                   pSrcResource) {
+    D3D10DeviceLock lock = LockDevice();
+
     Com<ID3D11Resource> d3d11DstResource;
     Com<ID3D11Resource> d3d11SrcResource;
     
@@ -802,6 +813,8 @@ namespace dxvk {
     const void*                             pSrcData,
           UINT                              SrcRowPitch,
           UINT                              SrcDepthPitch) {
+    D3D10DeviceLock lock = LockDevice();
+
     Com<ID3D11Resource> d3d11DstResource;
     GetD3D11Resource(pDstResource, &d3d11DstResource);
 
@@ -814,6 +827,8 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D10Device::GenerateMips(
           ID3D10ShaderResourceView*         pShaderResourceView) {
+    D3D10DeviceLock lock = LockDevice();
+
     D3D10ShaderResourceView* d3d10View = static_cast<D3D10ShaderResourceView*>(pShaderResourceView);
     D3D11ShaderResourceView* d3d11View = d3d10View ? d3d10View->GetD3D11Iface() : nullptr;
 
@@ -827,6 +842,8 @@ namespace dxvk {
           ID3D10Resource*                   pSrcResource,
           UINT                              SrcSubresource,
           DXGI_FORMAT                       Format) {
+    D3D10DeviceLock lock = LockDevice();
+
     Com<ID3D11Resource> d3d11DstResource;
     Com<ID3D11Resource> d3d11SrcResource;
     
@@ -843,6 +860,8 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D10Device::Draw(
           UINT                              VertexCount,
           UINT                              StartVertexLocation) {
+    D3D10DeviceLock lock = LockDevice();
+
     m_context->Draw(VertexCount,
       StartVertexLocation);
   }
@@ -852,6 +871,8 @@ namespace dxvk {
           UINT                              IndexCount,
           UINT                              StartIndexLocation,
           INT                               BaseVertexLocation) {
+    D3D10DeviceLock lock = LockDevice();
+
     m_context->DrawIndexed(IndexCount,
       StartIndexLocation,
       BaseVertexLocation);
@@ -863,6 +884,8 @@ namespace dxvk {
           UINT                              InstanceCount,
           UINT                              StartVertexLocation,
           UINT                              StartInstanceLocation) {
+    D3D10DeviceLock lock = LockDevice();
+
     m_context->DrawInstanced(
       VertexCountPerInstance,
       InstanceCount,
@@ -877,6 +900,8 @@ namespace dxvk {
           UINT                              StartIndexLocation,
           INT                               BaseVertexLocation,
           UINT                              StartInstanceLocation) {
+    D3D10DeviceLock lock = LockDevice();
+
     m_context->DrawIndexedInstanced(
       IndexCountPerInstance,
       InstanceCount,
@@ -887,12 +912,16 @@ namespace dxvk {
 
 
   void STDMETHODCALLTYPE D3D10Device::DrawAuto() {
+    D3D10DeviceLock lock = LockDevice();
+
     m_context->DrawAuto();
   }
 
 
   void STDMETHODCALLTYPE D3D10Device::IASetInputLayout(
           ID3D10InputLayout*                pInputLayout) {
+    D3D10DeviceLock lock = LockDevice();
+
     D3D10InputLayout* d3d10InputLayout = static_cast<D3D10InputLayout*>(pInputLayout);
     D3D11InputLayout* d3d11InputLayout = d3d10InputLayout ? d3d10InputLayout->GetD3D11Iface() : nullptr;
 
@@ -902,7 +931,10 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D10Device::IASetPrimitiveTopology(
           D3D10_PRIMITIVE_TOPOLOGY          Topology) {
-    m_context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY(Topology));
+    D3D10DeviceLock lock = LockDevice();
+
+    m_context->IASetPrimitiveTopology(
+      D3D11_PRIMITIVE_TOPOLOGY(Topology));
   }
 
 
@@ -912,6 +944,8 @@ namespace dxvk {
           ID3D10Buffer* const*              ppVertexBuffers,
     const UINT*                             pStrides,
     const UINT*                             pOffsets) {
+    D3D10DeviceLock lock = LockDevice();
+    
     ID3D11Buffer* d3d11Buffers[D3D10_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
 
     if (NumBuffers > D3D10_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT)
@@ -933,6 +967,8 @@ namespace dxvk {
           ID3D10Buffer*                     pIndexBuffer,
           DXGI_FORMAT                       Format,
           UINT                              Offset) {
+    D3D10DeviceLock lock = LockDevice();
+
     D3D10Buffer* d3d10Buffer = static_cast<D3D10Buffer*>(pIndexBuffer);
     D3D11Buffer* d3d11Buffer = d3d10Buffer ? d3d10Buffer->GetD3D11Iface() : nullptr;
 
@@ -943,14 +979,19 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D10Device::IAGetInputLayout(
           ID3D10InputLayout**               ppInputLayout) {
     ID3D11InputLayout* d3d11InputLayout = nullptr;
+    D3D10DeviceLock lock = LockDevice();
+
     m_context->IAGetInputLayout(&d3d11InputLayout);
 
-    *ppInputLayout = static_cast<D3D11InputLayout*>(d3d11InputLayout)->GetD3D10Iface();
+    *ppInputLayout = static_cast<D3D11InputLayout*>(
+      d3d11InputLayout)->GetD3D10Iface();
   }
 
 
   void STDMETHODCALLTYPE D3D10Device::IAGetPrimitiveTopology(
           D3D10_PRIMITIVE_TOPOLOGY*         pTopology) {
+    D3D10DeviceLock lock = LockDevice();
+
     D3D11_PRIMITIVE_TOPOLOGY d3d11Topology;
     m_context->IAGetPrimitiveTopology(&d3d11Topology);
 
@@ -966,6 +1007,8 @@ namespace dxvk {
           ID3D10Buffer**                    ppVertexBuffers,
           UINT*                             pStrides,
           UINT*                             pOffsets) {
+    D3D10DeviceLock lock = LockDevice();
+
     ID3D11Buffer* d3d11Buffers[D3D10_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
 
     m_context->IAGetVertexBuffers(
@@ -987,6 +1030,8 @@ namespace dxvk {
           ID3D10Buffer**                    pIndexBuffer,
           DXGI_FORMAT*                      Format,
           UINT*                             Offset) {
+    D3D10DeviceLock lock = LockDevice();
+    
     ID3D11Buffer* d3d11Buffer = nullptr;
 
     m_context->IAGetIndexBuffer(
@@ -1000,6 +1045,8 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D10Device::VSSetShader(
           ID3D10VertexShader*               pVertexShader) {
+    D3D10DeviceLock lock = LockDevice();
+
     D3D10VertexShader* d3d10Shader = static_cast<D3D10VertexShader*>(pVertexShader);
     D3D11VertexShader* d3d11Shader = d3d10Shader ? d3d10Shader->GetD3D11Iface() : nullptr;
 
@@ -1011,6 +1058,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D10Buffer* const*              ppConstantBuffers) {
+    D3D10DeviceLock lock = LockDevice();
+
     ID3D11Buffer* d3d11Buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT];
 
     if (NumBuffers > D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT)
@@ -1030,6 +1079,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D10ShaderResourceView* const*  ppShaderResourceViews) {
+    D3D10DeviceLock lock = LockDevice();
+
     ID3D11ShaderResourceView* d3d11Views[D3D10_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
 
     if (NumViews > D3D10_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT)
@@ -1049,6 +1100,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D10SamplerState* const*        ppSamplers) {
+    D3D10DeviceLock lock = LockDevice();
+
     ID3D11SamplerState* d3d11Samplers[D3D10_COMMONSHADER_SAMPLER_SLOT_COUNT];
 
     if (NumSamplers > D3D10_COMMONSHADER_SAMPLER_SLOT_COUNT)
@@ -1066,6 +1119,8 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D10Device::VSGetShader(
           ID3D10VertexShader**              ppVertexShader) {
+    D3D10DeviceLock lock = LockDevice();
+
     ID3D11VertexShader* d3d11Shader = nullptr;
     m_context->VSGetShader(&d3d11Shader, nullptr, nullptr);
 
@@ -1077,6 +1132,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D10Buffer**                    ppConstantBuffers) {
+    D3D10DeviceLock lock = LockDevice();
+
     ID3D11Buffer* d3d11Buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT];
     m_context->VSGetConstantBuffers(StartSlot, NumBuffers, d3d11Buffers);
 
@@ -1092,6 +1149,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D10ShaderResourceView**        ppShaderResourceViews) {
+    D3D10DeviceLock lock = LockDevice();
+    
     ID3D11ShaderResourceView* d3d11Views[D3D10_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
     m_context->VSGetShaderResources(StartSlot, NumViews, d3d11Views);
 
@@ -1107,6 +1166,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D10SamplerState**              ppSamplers) {
+    D3D10DeviceLock lock = LockDevice();
+    
     ID3D11SamplerState* d3d11Samplers[D3D10_COMMONSHADER_SAMPLER_SLOT_COUNT];
     m_context->VSGetSamplers(StartSlot, NumSamplers, d3d11Samplers);
 
@@ -1120,6 +1181,8 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D10Device::GSSetShader(
           ID3D10GeometryShader*             pShader) {
+    D3D10DeviceLock lock = LockDevice();
+    
     D3D10GeometryShader* d3d10Shader = static_cast<D3D10GeometryShader*>(pShader);
     D3D11GeometryShader* d3d11Shader = d3d10Shader ? d3d10Shader->GetD3D11Iface() : nullptr;
 
@@ -1131,6 +1194,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D10Buffer* const*              ppConstantBuffers) {
+    D3D10DeviceLock lock = LockDevice();
+    
     ID3D11Buffer* d3d11Buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT];
 
     if (NumBuffers > D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT)
@@ -1150,6 +1215,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D10ShaderResourceView* const*  ppShaderResourceViews) {
+    D3D10DeviceLock lock = LockDevice();
+    
     ID3D11ShaderResourceView* d3d11Views[D3D10_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
 
     if (NumViews > D3D10_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT)
@@ -1169,6 +1236,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D10SamplerState* const*        ppSamplers) {
+    D3D10DeviceLock lock = LockDevice();
+    
     ID3D11SamplerState* d3d11Samplers[D3D10_COMMONSHADER_SAMPLER_SLOT_COUNT];
 
     if (NumSamplers > D3D10_COMMONSHADER_SAMPLER_SLOT_COUNT)
@@ -1186,6 +1255,8 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D10Device::GSGetShader(
           ID3D10GeometryShader**            ppGeometryShader) {
+    D3D10DeviceLock lock = LockDevice();
+    
     ID3D11GeometryShader* d3d11Shader = nullptr;
     m_context->GSGetShader(&d3d11Shader, nullptr, nullptr);
 
@@ -1197,6 +1268,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D10Buffer**                    ppConstantBuffers) {
+    D3D10DeviceLock lock = LockDevice();
+    
     ID3D11Buffer* d3d11Buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT];
     m_context->GSGetConstantBuffers(StartSlot, NumBuffers, d3d11Buffers);
 
@@ -1212,6 +1285,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D10ShaderResourceView**        ppShaderResourceViews) {
+    D3D10DeviceLock lock = LockDevice();
+    
     ID3D11ShaderResourceView* d3d11Views[D3D10_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
     m_context->GSGetShaderResources(StartSlot, NumViews, d3d11Views);
 
@@ -1227,6 +1302,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D10SamplerState**              ppSamplers) {
+    D3D10DeviceLock lock = LockDevice();
+    
     ID3D11SamplerState* d3d11Samplers[D3D10_COMMONSHADER_SAMPLER_SLOT_COUNT];
     m_context->GSGetSamplers(StartSlot, NumSamplers, d3d11Samplers);
 
@@ -1240,6 +1317,8 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D10Device::PSSetShader(
           ID3D10PixelShader*                pPixelShader) {
+    D3D10DeviceLock lock = LockDevice();
+    
     D3D10PixelShader* d3d10Shader = static_cast<D3D10PixelShader*>(pPixelShader);
     D3D11PixelShader* d3d11Shader = d3d10Shader ? d3d10Shader->GetD3D11Iface() : nullptr;
 
@@ -1251,6 +1330,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D10Buffer* const*              ppConstantBuffers) {
+    D3D10DeviceLock lock = LockDevice();
+    
     ID3D11Buffer* d3d11Buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT];
 
     if (NumBuffers > D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT)
@@ -1270,6 +1351,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D10ShaderResourceView* const*  ppShaderResourceViews) {
+    D3D10DeviceLock lock = LockDevice();
+    
     ID3D11ShaderResourceView* d3d11Views[D3D10_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
 
     if (NumViews > D3D10_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT)
@@ -1289,6 +1372,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D10SamplerState* const*        ppSamplers) {
+    D3D10DeviceLock lock = LockDevice();
+    
     ID3D11SamplerState* d3d11Samplers[D3D10_COMMONSHADER_SAMPLER_SLOT_COUNT];
 
     if (NumSamplers > D3D10_COMMONSHADER_SAMPLER_SLOT_COUNT)
@@ -1306,6 +1391,8 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D10Device::PSGetShader(
           ID3D10PixelShader**               ppPixelShader) {
+    D3D10DeviceLock lock = LockDevice();
+    
     ID3D11PixelShader* d3d11Shader = nullptr;
     m_context->PSGetShader(&d3d11Shader, nullptr, nullptr);
 
@@ -1317,6 +1404,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D10Buffer**                    ppConstantBuffers) {
+    D3D10DeviceLock lock = LockDevice();
+    
     ID3D11Buffer* d3d11Buffers[D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT];
     m_context->PSGetConstantBuffers(StartSlot, NumBuffers, d3d11Buffers);
 
@@ -1332,6 +1421,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumViews,
           ID3D10ShaderResourceView**        ppShaderResourceViews) {
+    D3D10DeviceLock lock = LockDevice();
+    
     ID3D11ShaderResourceView* d3d11Views[D3D10_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
     m_context->PSGetShaderResources(StartSlot, NumViews, d3d11Views);
 
@@ -1347,6 +1438,8 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D10SamplerState**              ppSamplers) {
+    D3D10DeviceLock lock = LockDevice();
+    
     ID3D11SamplerState* d3d11Samplers[D3D10_COMMONSHADER_SAMPLER_SLOT_COUNT];
     m_context->PSGetSamplers(StartSlot, NumSamplers, d3d11Samplers);
 
@@ -1362,6 +1455,8 @@ namespace dxvk {
           UINT                              NumViews,
           ID3D10RenderTargetView* const*    ppRenderTargetViews,
           ID3D10DepthStencilView*           pDepthStencilView) {
+    D3D10DeviceLock lock = LockDevice();
+    
     ID3D11RenderTargetView* d3d11Rtv[D3D10_SIMULTANEOUS_RENDER_TARGET_COUNT];
 
     if (NumViews > D3D10_SIMULTANEOUS_RENDER_TARGET_COUNT)
@@ -1384,6 +1479,8 @@ namespace dxvk {
           ID3D10BlendState*                 pBlendState,
     const FLOAT                             BlendFactor[4],
           UINT                              SampleMask) {
+    D3D10DeviceLock lock = LockDevice();
+    
     D3D10BlendState* d3d10BlendState = static_cast<D3D10BlendState*>(pBlendState);
     D3D11BlendState* d3d11BlendState = d3d10BlendState ? d3d10BlendState->GetD3D11Iface() : nullptr;
 
@@ -1405,6 +1502,8 @@ namespace dxvk {
           UINT                              NumViews,
           ID3D10RenderTargetView**          ppRenderTargetViews,
           ID3D10DepthStencilView**          ppDepthStencilView) {
+    D3D10DeviceLock lock = LockDevice();
+    
     ID3D11RenderTargetView* d3d11Rtv[D3D10_SIMULTANEOUS_RENDER_TARGET_COUNT];
     ID3D11DepthStencilView* d3d11Dsv;
 
@@ -1429,6 +1528,8 @@ namespace dxvk {
           ID3D10BlendState**                ppBlendState,
           FLOAT                             BlendFactor[4],
           UINT*                             pSampleMask) {
+    D3D10DeviceLock lock = LockDevice();
+    
     ID3D11BlendState* d3d11BlendState = nullptr;
 
     m_context->OMGetBlendState(
@@ -1443,6 +1544,8 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D10Device::OMGetDepthStencilState(
           ID3D10DepthStencilState**         ppDepthStencilState,
           UINT*                             pStencilRef) {
+    D3D10DeviceLock lock = LockDevice();
+    
     ID3D11DepthStencilState* d3d11DepthStencilState = nullptr;
 
     m_context->OMGetDepthStencilState(
@@ -1456,6 +1559,8 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D10Device::RSSetState(
           ID3D10RasterizerState*            pRasterizerState) {
+    D3D10DeviceLock lock = LockDevice();
+    
     D3D10RasterizerState* d3d10RasterizerState = static_cast<D3D10RasterizerState*>(pRasterizerState);
     D3D11RasterizerState* d3d11RasterizerState = d3d10RasterizerState ? d3d10RasterizerState->GetD3D11Iface() : nullptr;
 
@@ -1466,6 +1571,8 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D10Device::RSSetViewports(
           UINT                              NumViewports,
     const D3D10_VIEWPORT*                   pViewports) {
+    D3D10DeviceLock lock = LockDevice();
+    
     D3D11_VIEWPORT vp[D3D10_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
 
     if (NumViewports > D3D10_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE)
@@ -1487,12 +1594,16 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D10Device::RSSetScissorRects(
           UINT                              NumRects,
     const D3D10_RECT*                       pRects) {
+    D3D10DeviceLock lock = LockDevice();
+    
     m_context->RSSetScissorRects(NumRects, pRects);
   }
 
 
   void STDMETHODCALLTYPE D3D10Device::RSGetState(
           ID3D10RasterizerState**           ppRasterizerState) {
+    D3D10DeviceLock lock = LockDevice();
+    
     ID3D11RasterizerState* d3d11RasterizerState = nullptr;
     m_context->RSGetState(&d3d11RasterizerState);
 
@@ -1503,6 +1614,8 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D10Device::RSGetViewports(
           UINT*                             NumViewports,
           D3D10_VIEWPORT*                   pViewports) {
+    D3D10DeviceLock lock = LockDevice();
+    
     D3D11_VIEWPORT vp[D3D10_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
     m_context->RSGetViewports(NumViewports, pViewports != nullptr ? vp : nullptr);
 
@@ -1522,6 +1635,8 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D10Device::RSGetScissorRects(
           UINT*                             NumRects,
           D3D10_RECT*                       pRects) {
+    D3D10DeviceLock lock = LockDevice();
+    
     m_context->RSGetScissorRects(NumRects, pRects);
   }
 
@@ -1530,6 +1645,8 @@ namespace dxvk {
           UINT                              NumBuffers,
           ID3D10Buffer* const*              ppSOTargets,
     const UINT*                             pOffsets) {
+    D3D10DeviceLock lock = LockDevice();
+    
     ID3D11Buffer* d3d11Buffers[D3D10_SO_BUFFER_SLOT_COUNT];
 
     if (NumBuffers > D3D10_SO_BUFFER_SLOT_COUNT)
@@ -1549,6 +1666,8 @@ namespace dxvk {
           UINT                              NumBuffers,
           ID3D10Buffer**                    ppSOTargets,
           UINT*                             pOffsets) {
+    D3D10DeviceLock lock = LockDevice();
+    
     ID3D11Buffer* d3d11Buffers[D3D10_SO_BUFFER_SLOT_COUNT];
     m_context->SOGetTargets(NumBuffers, ppSOTargets ? d3d11Buffers : nullptr);
 

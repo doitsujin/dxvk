@@ -6,7 +6,8 @@ namespace dxvk {
   D3D11Query::D3D11Query(
           D3D11Device*      device,
     const D3D11_QUERY_DESC& desc)
-  : m_device(device), m_desc(desc), m_d3d10(this) {
+  : m_device(device), m_desc(desc),
+    m_d3d10(this, device->GetD3D10Interface()) {
     switch (m_desc.Query) {
       case D3D11_QUERY_EVENT:
         m_event = new DxvkEvent();

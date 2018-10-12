@@ -4,6 +4,7 @@
 
 namespace dxvk {
 
+  class D3D10Device;
   class D3D11Device;
   class D3D11DeviceContext;
   class D3D11Query;
@@ -12,8 +13,8 @@ namespace dxvk {
 
   public:
 
-    D3D10Query(D3D11Query* pParent)
-    : m_d3d11(pParent) { }
+    D3D10Query(D3D11Query* pParent, D3D10Device* pDevice)
+    : m_device(pDevice), m_d3d11(pParent) { }
 
     HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID                    riid,
@@ -60,7 +61,8 @@ namespace dxvk {
 
   private:
 
-    D3D11Query* m_d3d11;
+    D3D10Device* m_device;
+    D3D11Query*  m_d3d11;
 
   };
 

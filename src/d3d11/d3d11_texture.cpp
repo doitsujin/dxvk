@@ -532,7 +532,7 @@ namespace dxvk {
     const D3D11_COMMON_TEXTURE_DESC*  pDesc)
   : m_texture (pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE1D),
     m_interop (this, &m_texture),
-    m_d3d10   (this) {
+    m_d3d10   (this, pDevice->GetD3D10Interface()) {
     
   }
   
@@ -611,7 +611,7 @@ namespace dxvk {
     const D3D11_COMMON_TEXTURE_DESC*  pDesc)
   : m_texture (pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE2D),
     m_interop (this, &m_texture),
-    m_d3d10   (this) {
+    m_d3d10   (this, pDevice->GetD3D10Interface()) {
     
   }
   
@@ -692,7 +692,7 @@ namespace dxvk {
     const D3D11_COMMON_TEXTURE_DESC*  pDesc)
   : m_texture (pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE3D),
     m_interop (this, &m_texture),
-    m_d3d10   (this) {
+    m_d3d10   (this, pDevice->GetD3D10Interface()) {
     
   }
   

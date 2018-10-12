@@ -73,6 +73,8 @@ namespace dxvk {
           D3D10_MAP                 MapType,
           UINT                      MapFlags,
           void**                    ppData) {
+    D3D10DeviceLock lock = m_device->LockDevice();
+
     Com<ID3D11DeviceContext> ctx;
     GetD3D11Context(m_d3d11, &ctx);
 
@@ -91,6 +93,8 @@ namespace dxvk {
 
 
   void STDMETHODCALLTYPE D3D10Buffer::Unmap() {
+    D3D10DeviceLock lock = m_device->LockDevice();
+    
     Com<ID3D11DeviceContext> ctx;
     GetD3D11Context(m_d3d11, &ctx);
 

@@ -1,4 +1,5 @@
 #include "d3d10_query.h"
+#include "d3d10_device.h"
 
 #include "../d3d11/d3d11_device.h"
 #include "../d3d11/d3d11_context.h"
@@ -53,6 +54,8 @@ namespace dxvk {
 
 
   void STDMETHODCALLTYPE D3D10Query::Begin() {
+    D3D10DeviceLock lock = m_device->LockDevice();
+    
     Com<ID3D11DeviceContext> ctx;
     GetD3D11Context(m_d3d11, &ctx);
 
@@ -61,6 +64,8 @@ namespace dxvk {
 
 
   void STDMETHODCALLTYPE D3D10Query::End() {
+    D3D10DeviceLock lock = m_device->LockDevice();
+    
     Com<ID3D11DeviceContext> ctx;
     GetD3D11Context(m_d3d11, &ctx);
 
@@ -72,6 +77,8 @@ namespace dxvk {
           void*                     pData,
           UINT                      DataSize,
           UINT                      GetDataFlags) {
+    D3D10DeviceLock lock = m_device->LockDevice();
+    
     Com<ID3D11DeviceContext> ctx;
     GetD3D11Context(m_d3d11, &ctx);
 

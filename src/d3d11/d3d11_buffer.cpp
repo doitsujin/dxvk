@@ -13,7 +13,7 @@ namespace dxvk {
     m_desc        (*pDesc),
     m_buffer      (CreateBuffer(pDesc)),
     m_mappedSlice (m_buffer->slice()),
-    m_d3d10       (this) {
+    m_d3d10       (this, pDevice->GetD3D10Interface()) {
     
   }
   

@@ -1,4 +1,5 @@
 #include "d3d10_texture.h"
+#include "d3d10_device.h"
 
 #include "../d3d11/d3d11_device.h"
 #include "../d3d11/d3d11_context.h"
@@ -74,6 +75,8 @@ namespace dxvk {
           D3D10_MAP                 MapType,
           UINT                      MapFlags,
           void**                    ppData) {
+    D3D10DeviceLock lock = m_device->LockDevice();
+
     Com<ID3D11DeviceContext> ctx;
     GetD3D11Context(m_d3d11, &ctx);
 
@@ -93,6 +96,8 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D10Texture1D::Unmap(
           UINT                      Subresource) {
+    D3D10DeviceLock lock = m_device->LockDevice();
+
     Com<ID3D11DeviceContext> ctx;
     GetD3D11Context(m_d3d11, &ctx);
 
@@ -184,6 +189,8 @@ namespace dxvk {
           D3D10_MAP                 MapType,
           UINT                      MapFlags,
           D3D10_MAPPED_TEXTURE2D*   pMappedTex2D) {
+    D3D10DeviceLock lock = m_device->LockDevice();
+
     Com<ID3D11DeviceContext> ctx;
     GetD3D11Context(m_d3d11, &ctx);
 
@@ -204,6 +211,8 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D10Texture2D::Unmap(
           UINT                      Subresource) {
+    D3D10DeviceLock lock = m_device->LockDevice();
+    
     Com<ID3D11DeviceContext> ctx;
     GetD3D11Context(m_d3d11, &ctx);
 
@@ -297,6 +306,8 @@ namespace dxvk {
           D3D10_MAP                 MapType,
           UINT                      MapFlags,
           D3D10_MAPPED_TEXTURE3D*   pMappedTex3D) {
+    D3D10DeviceLock lock = m_device->LockDevice();
+
     Com<ID3D11DeviceContext> ctx;
     GetD3D11Context(m_d3d11, &ctx);
 
@@ -318,6 +329,8 @@ namespace dxvk {
 
   void STDMETHODCALLTYPE D3D10Texture3D::Unmap(
           UINT                      Subresource) {
+    D3D10DeviceLock lock = m_device->LockDevice();
+    
     Com<ID3D11DeviceContext> ctx;
     GetD3D11Context(m_d3d11, &ctx);
 

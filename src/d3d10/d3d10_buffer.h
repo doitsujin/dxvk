@@ -6,13 +6,14 @@ namespace dxvk {
 
   class D3D11Buffer;
   class D3D11Device;
+  class D3D10Device;
 
   class D3D10Buffer : public ID3D10Buffer {
 
   public:
 
-    D3D10Buffer(D3D11Buffer* pParent)
-    : m_d3d11(pParent) { }
+    D3D10Buffer(D3D11Buffer* pParent, D3D10Device* pDevice)
+    : m_device(pDevice), m_d3d11(pParent) { }
 
     HRESULT STDMETHODCALLTYPE QueryInterface(
             REFIID                    riid,
@@ -63,6 +64,7 @@ namespace dxvk {
 
   private:
 
+    D3D10Device* m_device;
     D3D11Buffer* m_d3d11;
 
   };
