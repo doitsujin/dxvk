@@ -15,6 +15,16 @@ namespace dxvk {
   
   class DxvkDevice;
   class DxvkPipelineManager;
+
+  /**
+   * \brief Flags that describe pipeline properties
+   */
+  enum class DxvkGraphicsPipelineFlag {
+    HasTransformFeedback,
+  };
+
+  using DxvkGraphicsCommonPipelineFlags = Flags<DxvkGraphicsPipelineFlag>;
+
   
   /**
    * \brief Graphics pipeline state info
@@ -157,6 +167,14 @@ namespace dxvk {
     ~DxvkGraphicsPipeline();
     
     /**
+     * \brief Returns graphics pipeline flags
+     * \returns Graphics pipeline property flags
+     */
+    DxvkGraphicsCommonPipelineFlags flags() const {
+      return m_flags;
+    }
+    
+    /**
      * \brief Pipeline layout
      * 
      * Stores the pipeline layout and the descriptor set
@@ -167,6 +185,17 @@ namespace dxvk {
     DxvkPipelineLayout* layout() const {
       return m_layout.ptr();
     }
+    
+    /**
+     * \brief Queries shader for a given stage
+     * 
+     * In case no shader is specified for the
+     * given stage, \c nullptr will be returned.
+     * \param [in] stage The shader stage
+     * \returns Shader of the given stage
+     */
+    Rc<DxvkShader> getShader(
+            VkShaderStageFlagBits             stage) const;
     
     /**
      * \brief Pipeline handle
@@ -202,6 +231,7 @@ namespace dxvk {
     uint32_t m_vsIn  = 0;
     uint32_t m_fsOut = 0;
     
+    DxvkGraphicsCommonPipelineFlags     m_flags;
     DxvkGraphicsCommonPipelineStateInfo m_common;
     
     // List of pipeline instances, shared between threads

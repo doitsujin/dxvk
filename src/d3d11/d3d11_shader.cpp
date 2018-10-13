@@ -31,7 +31,14 @@ namespace dxvk {
         std::ios_base::binary | std::ios_base::trunc));
     }
     
-    m_shader = module.compile(*pDxbcModuleInfo, name);
+    // Decide whether we need to create a pass-through
+    // geometry shader for vertex shader stream output
+    bool passthroughShader = pDxbcModuleInfo->xfb != nullptr
+      && module.programInfo().type() != DxbcProgramType::GeometryShader;
+
+    m_shader = passthroughShader
+      ? module.compilePassthroughShader(*pDxbcModuleInfo, name)
+      : module.compile                 (*pDxbcModuleInfo, name);
     m_shader->setShaderKey(*pShaderKey);
     
     if (dumpPath.size() != 0) {

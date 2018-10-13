@@ -134,7 +134,9 @@ namespace dxvk {
      * \returns Buffer handle
      */
     VkBuffer handle() const {
-      return m_buffer->handle();
+      return m_buffer != nullptr
+        ? m_buffer->handle()
+        : VK_NULL_HANDLE;
     }
     
     /**

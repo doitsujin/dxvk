@@ -4,8 +4,11 @@ namespace dxvk {
   
   DxvkQuery::DxvkQuery(
     VkQueryType         type,
-    VkQueryControlFlags flags)
-  : m_type(type), m_flags(flags) {
+    VkQueryControlFlags flags,
+    uint32_t            index)
+  : m_type  (type),
+    m_flags (flags),
+    m_index (index) {
     
   }
   
@@ -15,6 +18,11 @@ namespace dxvk {
   }
   
   
+  bool DxvkQuery::isIndexed() const {
+    return m_type == VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT;
+  }
+
+
   uint32_t DxvkQuery::reset() {
     std::unique_lock<std::mutex> lock(m_mutex);
     
@@ -102,6 +110,11 @@ namespace dxvk {
           m_data.statistic.tcsPatches       += data.statistic.tcsPatches;
           m_data.statistic.tesInvocations   += data.statistic.tesInvocations;
           m_data.statistic.csInvocations    += data.statistic.csInvocations;
+          break;
+        
+        case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT:
+          m_data.xfbStream.primitivesWritten += data.xfbStream.primitivesWritten;
+          m_data.xfbStream.primitivesNeeded  += data.xfbStream.primitivesNeeded;
           break;
         
         default:

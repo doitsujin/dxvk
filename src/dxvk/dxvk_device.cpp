@@ -186,8 +186,9 @@ namespace dxvk {
     const DxvkInterfaceSlots&       iface,
     const SpirvCodeBuffer&          code) {
     return new DxvkShader(stage,
-      slotCount, slotInfos, iface,
-      code, DxvkShaderConstData());
+      slotCount, slotInfos, iface, code,
+      DxvkShaderOptions(),
+      DxvkShaderConstData());
   }
   
   

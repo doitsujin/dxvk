@@ -37,6 +37,35 @@ namespace dxvk {
           VK_QUERY_TYPE_PIPELINE_STATISTICS, 0);
         break;
       
+      case D3D11_QUERY_SO_STATISTICS:
+      case D3D11_QUERY_SO_STATISTICS_STREAM0:
+      case D3D11_QUERY_SO_OVERFLOW_PREDICATE:
+      case D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM0:
+        // FIXME it is technically incorrect to map
+        // SO_OVERFLOW_PREDICATE to the first stream,
+        // but this is good enough for D3D10 behaviour
+        m_query = new DxvkQuery(
+          VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT, 0, 0);
+        break;
+      
+      case D3D11_QUERY_SO_STATISTICS_STREAM1:
+      case D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM1:
+        m_query = new DxvkQuery(
+          VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT, 0, 1);
+        break;
+      
+      case D3D11_QUERY_SO_STATISTICS_STREAM2:
+      case D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM2:
+        m_query = new DxvkQuery(
+          VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT, 0, 2);
+        break;
+      
+      case D3D11_QUERY_SO_STATISTICS_STREAM3:
+      case D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM3:
+        m_query = new DxvkQuery(
+          VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT, 0, 3);
+        break;
+      
       default:
         throw DxvkError(str::format("D3D11: Unhandled query type: ", desc.Query));
     }
@@ -247,7 +276,27 @@ namespace dxvk {
           data->DSInvocations = queryData.statistic.tesInvocations;
           data->CSInvocations = queryData.statistic.csInvocations;
         } return S_OK;
+
+        case D3D11_QUERY_SO_STATISTICS:
+        case D3D11_QUERY_SO_STATISTICS_STREAM0:
+        case D3D11_QUERY_SO_STATISTICS_STREAM1:
+        case D3D11_QUERY_SO_STATISTICS_STREAM2:
+        case D3D11_QUERY_SO_STATISTICS_STREAM3: {
+          auto data = static_cast<D3D11_QUERY_DATA_SO_STATISTICS*>(pData);
+          data->NumPrimitivesWritten    = queryData.xfbStream.primitivesWritten;
+          data->PrimitivesStorageNeeded = queryData.xfbStream.primitivesNeeded;
+        } return S_OK;
           
+        case D3D11_QUERY_SO_OVERFLOW_PREDICATE:
+        case D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM0:
+        case D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM1:
+        case D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM2:
+        case D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM3: {
+          auto data = static_cast<BOOL*>(pData);
+          *data = queryData.xfbStream.primitivesNeeded
+                > queryData.xfbStream.primitivesWritten;
+        } return S_OK;
+
         default:
           Logger::err(str::format("D3D11: Unhandled query type in GetData: ", m_desc.Query));
           return E_INVALIDARG;

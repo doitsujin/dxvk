@@ -117,6 +117,7 @@ namespace dxvk {
     m_d3d10Device = new D3D10Device(this, m_context);
 
     m_uavCounters = CreateUAVCounterBuffer();
+    m_xfbCounters = CreateXFBCounterBuffer();
   }
   
   
@@ -622,6 +623,7 @@ namespace dxvk {
     DxbcModuleInfo moduleInfo;
     moduleInfo.options = m_dxbcOptions;
     moduleInfo.tess    = nullptr;
+    moduleInfo.xfb     = nullptr;
     
     if (FAILED(this->CreateShaderModule(&module,
         pShaderBytecode, BytecodeLength, pClassLinkage,
@@ -647,6 +649,7 @@ namespace dxvk {
     DxbcModuleInfo moduleInfo;
     moduleInfo.options = m_dxbcOptions;
     moduleInfo.tess    = nullptr;
+    moduleInfo.xfb     = nullptr;
 
     if (FAILED(this->CreateShaderModule(&module,
         pShaderBytecode, BytecodeLength, pClassLinkage,
@@ -672,11 +675,75 @@ namespace dxvk {
           ID3D11ClassLinkage*         pClassLinkage,
           ID3D11GeometryShader**      ppGeometryShader) {
     InitReturnPtr(ppGeometryShader);
-    Logger::err("D3D11Device::CreateGeometryShaderWithStreamOutput: Not implemented");
+    D3D11CommonShader module;
+
+    if (!m_dxvkDevice->features().extTransformFeedback.transformFeedback) {
+      Logger::err(
+        "D3D11: CreateGeometryShaderWithStreamOutput:"
+        "\n  Transform feedback not supoorted by device");
+      return m_d3d11Options.fakeStreamOutSupport ? S_OK : E_NOTIMPL;
+    }
+
+    // Zero-init some counterss so that we can increment
+    // them while walking over the stream output entries
+    DxbcXfbInfo xfb;
+    xfb.entryCount =  0;
+
+    for (uint32_t i = 0; i < D3D11_SO_BUFFER_SLOT_COUNT; i++)
+      xfb.strides[i] = 0;
     
-    // Returning S_OK instead of an error fixes some issues
-    // with Overwatch until this is properly implemented
-    return m_d3d11Options.fakeStreamOutSupport ? S_OK : E_NOTIMPL;
+    for (uint32_t i = 0; i < NumEntries; i++) {
+      const D3D11_SO_DECLARATION_ENTRY* so = &pSODeclaration[i];
+
+      if (so->OutputSlot >= D3D11_SO_BUFFER_SLOT_COUNT)
+        return E_INVALIDARG;
+
+      if (so->SemanticName != nullptr) {
+        if (so->Stream >= D3D11_SO_BUFFER_SLOT_COUNT
+         || so->StartComponent >= 4
+         || so->ComponentCount <  1
+         || so->ComponentCount >  4)
+          return E_INVALIDARG;
+        
+        DxbcXfbEntry* entry = &xfb.entries[xfb.entryCount++];
+        entry->semanticName   = so->SemanticName;
+        entry->semanticIndex  = so->SemanticIndex;
+        entry->componentIndex = so->StartComponent;
+        entry->componentCount = so->ComponentCount;
+        entry->streamId       = so->Stream;
+        entry->bufferId       = so->OutputSlot;
+        entry->offset         = xfb.strides[so->OutputSlot];
+      }
+
+      xfb.strides[so->OutputSlot] += so->ComponentCount * sizeof(uint32_t);
+    }
+    
+    // If necessary, override the buffer strides
+    for (uint32_t i = 0; i < NumStrides; i++)
+      xfb.strides[i] = pBufferStrides[i];
+
+    // Set stream to rasterize, if any
+    xfb.rasterizedStream = -1;
+    
+    if (RasterizedStream != D3D11_SO_NO_RASTERIZED_STREAM)
+      Logger::err("D3D11: CreateGeometryShaderWithStreamOutput: Rasterized stream not supported");
+
+    // Create the actual shader module
+    DxbcModuleInfo moduleInfo;
+    moduleInfo.options = m_dxbcOptions;
+    moduleInfo.tess    = nullptr;
+    moduleInfo.xfb     = &xfb;
+    
+    if (FAILED(this->CreateShaderModule(&module,
+        pShaderBytecode, BytecodeLength, pClassLinkage,
+        &moduleInfo, DxbcProgramType::GeometryShader)))
+      return E_INVALIDARG;
+    
+    if (ppGeometryShader == nullptr)
+      return S_FALSE;
+    
+    *ppGeometryShader = ref(new D3D11GeometryShader(this, module));
+    return S_OK;
   }
   
   
@@ -691,6 +758,7 @@ namespace dxvk {
     DxbcModuleInfo moduleInfo;
     moduleInfo.options = m_dxbcOptions;
     moduleInfo.tess    = nullptr;
+    moduleInfo.xfb     = nullptr;
 
     if (FAILED(this->CreateShaderModule(&module,
         pShaderBytecode, BytecodeLength, pClassLinkage,
@@ -719,6 +787,7 @@ namespace dxvk {
     DxbcModuleInfo moduleInfo;
     moduleInfo.options = m_dxbcOptions;
     moduleInfo.tess    = nullptr;
+    moduleInfo.xfb     = nullptr;
 
     if (tessInfo.maxTessFactor >= 8.0f)
       moduleInfo.tess = &tessInfo;
@@ -747,6 +816,7 @@ namespace dxvk {
     DxbcModuleInfo moduleInfo;
     moduleInfo.options = m_dxbcOptions;
     moduleInfo.tess    = nullptr;
+    moduleInfo.xfb     = nullptr;
 
     if (FAILED(this->CreateShaderModule(&module,
         pShaderBytecode, BytecodeLength, pClassLinkage,
@@ -772,6 +842,7 @@ namespace dxvk {
     DxbcModuleInfo moduleInfo;
     moduleInfo.options = m_dxbcOptions;
     moduleInfo.tess    = nullptr;
+    moduleInfo.xfb     = nullptr;
 
     if (FAILED(this->CreateShaderModule(&module,
         pShaderBytecode, BytecodeLength, pClassLinkage,
@@ -913,16 +984,6 @@ namespace dxvk {
     const D3D11_QUERY_DESC*           pQueryDesc,
           ID3D11Query**               ppQuery) {
     InitReturnPtr(ppQuery);
-    
-    if (pQueryDesc->Query != D3D11_QUERY_EVENT
-     && pQueryDesc->Query != D3D11_QUERY_OCCLUSION
-     && pQueryDesc->Query != D3D11_QUERY_TIMESTAMP
-     && pQueryDesc->Query != D3D11_QUERY_TIMESTAMP_DISJOINT
-     && pQueryDesc->Query != D3D11_QUERY_PIPELINE_STATISTICS
-     && pQueryDesc->Query != D3D11_QUERY_OCCLUSION_PREDICATE) {
-      Logger::warn(str::format("D3D11Query: Unsupported query type ", pQueryDesc->Query));
-      return E_INVALIDARG;
-    }
     
     if (ppQuery == nullptr)
       return S_FALSE;
@@ -1332,6 +1393,9 @@ namespace dxvk {
     enabled.core.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
     enabled.core.pNext = nullptr;
 
+    enabled.extTransformFeedback.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT;
+    enabled.extTransformFeedback.pNext = nullptr;
+
     enabled.extVertexAttributeDivisor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT;
     enabled.extVertexAttributeDivisor.pNext = nullptr;
     
@@ -1364,6 +1428,8 @@ namespace dxvk {
       enabled.core.features.shaderImageGatherExtended             = VK_TRUE;
       enabled.core.features.textureCompressionBC                  = VK_TRUE;
       enabled.core.features.variableMultisampleRate               = supported.core.features.variableMultisampleRate;
+      enabled.extTransformFeedback.transformFeedback              = supported.extTransformFeedback.transformFeedback;
+      enabled.extTransformFeedback.geometryStreams                = supported.extTransformFeedback.geometryStreams;
     }
     
     if (featureLevel >= D3D_FEATURE_LEVEL_10_1) {
@@ -1421,6 +1487,27 @@ namespace dxvk {
     return new D3D11CounterBuffer(m_dxvkDevice,
       uavCounterInfo, uavCounterSliceLength);
   }
+
+
+  Rc<D3D11CounterBuffer> D3D11Device::CreateXFBCounterBuffer() {
+    DxvkBufferCreateInfo xfbCounterInfo;
+    xfbCounterInfo.size   = 4096 * sizeof(D3D11SOCounter);
+    xfbCounterInfo.usage  = VK_BUFFER_USAGE_TRANSFER_DST_BIT
+                          | VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+                          | VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT
+                          | VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_COUNTER_BUFFER_BIT_EXT;
+    xfbCounterInfo.stages = VK_PIPELINE_STAGE_TRANSFER_BIT
+                          | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT
+                          | VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT;
+    xfbCounterInfo.access = VK_ACCESS_TRANSFER_READ_BIT
+                          | VK_ACCESS_TRANSFER_WRITE_BIT
+                          | VK_ACCESS_INDIRECT_COMMAND_READ_BIT
+                          | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT
+                          | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT;
+    
+    return new D3D11CounterBuffer(m_dxvkDevice,
+      xfbCounterInfo, sizeof(D3D11SOCounter));
+  }
   
   
   HRESULT D3D11Device::CreateShaderModule(
@@ -1475,8 +1562,22 @@ namespace dxvk {
      || Format == DXGI_FORMAT_R32_UINT)
       flags1 |= D3D11_FORMAT_SUPPORT_IA_INDEX_BUFFER;
     
-    // TODO implement stream output
-    // D3D11_FORMAT_SUPPORT_SO_BUFFER
+    // These formats are technically irrelevant since
+    // SO buffers are passed in as raw buffers and not
+    // as views, but the feature flag exists regardless
+    if (Format == DXGI_FORMAT_R32_FLOAT
+     || Format == DXGI_FORMAT_R32_UINT
+     || Format == DXGI_FORMAT_R32_SINT
+     || Format == DXGI_FORMAT_R32G32_FLOAT
+     || Format == DXGI_FORMAT_R32G32_UINT
+     || Format == DXGI_FORMAT_R32G32_SINT
+     || Format == DXGI_FORMAT_R32G32B32_FLOAT
+     || Format == DXGI_FORMAT_R32G32B32_UINT
+     || Format == DXGI_FORMAT_R32G32B32_SINT
+     || Format == DXGI_FORMAT_R32G32B32A32_FLOAT
+     || Format == DXGI_FORMAT_R32G32B32A32_UINT
+     || Format == DXGI_FORMAT_R32G32B32A32_SINT)
+      flags1 |= D3D11_FORMAT_SUPPORT_SO_BUFFER;
     
     if (fmtSupport.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT
      || fmtSupport.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) {

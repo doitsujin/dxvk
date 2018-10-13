@@ -177,6 +177,36 @@ namespace dxvk {
           ins.op));
     }
   }
+
+
+  void DxbcCompiler::processXfbPassthrough() {
+    m_module.setExecutionMode (m_entryPointId, spv::ExecutionModeInputPoints);
+    m_module.setExecutionMode (m_entryPointId, spv::ExecutionModeOutputPoints);
+    m_module.setOutputVertices(m_entryPointId, 1);
+    m_module.setInvocations   (m_entryPointId, 1);
+
+    for (auto e = m_isgn->begin(); e != m_isgn->end(); e++) {
+      emitDclInput(e->registerId, 1,
+        e->componentMask, e->systemValue,
+        DxbcInterpolationMode::Undefined);
+    }
+
+    // Figure out which streams to enable
+    uint32_t streamMask = 0;
+
+    for (size_t i = 0; i < m_xfbVars.size(); i++)
+      streamMask |= 1u << m_xfbVars[i].streamId;
+    
+    for (uint32_t mask = streamMask; mask != 0; mask &= mask - 1) {
+      const uint32_t streamId = bit::tzcnt(mask);
+
+      emitXfbOutputSetup(streamId, true);
+      m_module.opEmitVertex(m_module.constu32(streamId));
+    }
+
+    // End the main function
+    emitFunctionEnd();
+  }
   
   
   Rc<DxvkShader> DxbcCompiler::finalize() {
@@ -199,7 +229,16 @@ namespace dxvk {
       m_entryPointInterfaces.size(),
       m_entryPointInterfaces.data());
     m_module.setDebugName(m_entryPointId, "main");
-    
+
+    DxvkShaderOptions shaderOptions = { };
+
+    if (m_moduleInfo.xfb != nullptr) {
+      shaderOptions.rasterizedStream = m_moduleInfo.xfb->rasterizedStream;
+
+      for (uint32_t i = 0; i < 4; i++)
+        shaderOptions.xfbStrides[i] = m_moduleInfo.xfb->strides[i];
+    }
+
     // Create the shader module object
     return new DxvkShader(
       m_programInfo.shaderStage(),
@@ -207,6 +246,7 @@ namespace dxvk {
       m_resourceSlots.data(),
       m_interfaceSlots,
       m_module.compile(),
+      shaderOptions,
       std::move(m_immConstData));
   }
   
@@ -667,12 +707,19 @@ namespace dxvk {
       info.type.ccount  = regType.ccount;
       info.type.alength = regDim;
       info.sclass = spv::StorageClassOutput;
+
+      // In xfb mode, we set up the actual
+      // output vars when emitting a vertex
+      if (m_moduleInfo.xfb != nullptr)
+        info.sclass = spv::StorageClassPrivate;
       
       const uint32_t varId = this->emitNewVariable(info);
-      
-      m_module.decorateLocation(varId, regIdx);
       m_module.setDebugName(varId, str::format("o", regIdx).c_str());
-      m_entryPointInterfaces.push_back(varId);
+      
+      if (info.sclass == spv::StorageClassOutput) {
+        m_module.decorateLocation(varId, regIdx);
+        m_entryPointInterfaces.push_back(varId);
+      }
       
       m_oRegs.at(regIdx) = { regType, varId };
       
@@ -790,7 +837,7 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitDclStream(const DxbcShaderInstruction& ins) {
-    if (ins.dst[0].idx[0].offset != 0)
+    if (ins.dst[0].idx[0].offset != 0 && m_moduleInfo.xfb == nullptr)
       Logger::err("Dxbc: Multiple streams not supported");
   }
   
@@ -2047,6 +2094,16 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitGeometryEmit(const DxbcShaderInstruction& ins) {
+    // In xfb mode we might have multiple streams, so
+    // we have to figure out which stream to write to
+    uint32_t streamId  = 0;
+    uint32_t streamVar = 0;
+
+    if (m_moduleInfo.xfb != nullptr) {
+      streamId  = ins.dstCount > 0 ? ins.dst[0].idx[0].offset : 0;
+      streamVar = m_module.constu32(streamId);
+    }
+
     // Checking the negation is easier for EmitThenCut/EmitThenCutStream
     bool doEmit = ins.op != DxbcOpcode::Cut && ins.op != DxbcOpcode::CutStream;
     bool doCut = ins.op != DxbcOpcode::Emit && ins.op != DxbcOpcode::EmitStream;
@@ -2055,11 +2112,12 @@ namespace dxvk {
       emitOutputSetup();
       emitClipCullStore(DxbcSystemValue::ClipDistance, m_clipDistances);
       emitClipCullStore(DxbcSystemValue::CullDistance, m_cullDistances);
-      m_module.opEmitVertex();
+      emitXfbOutputSetup(streamId, false);
+      m_module.opEmitVertex(streamVar);
     }
 
     if (doCut)
-      m_module.opEndPrimitive();
+      m_module.opEndPrimitive(streamVar);
   }
   
   
@@ -4230,6 +4288,21 @@ namespace dxvk {
   }
   
   
+  DxbcRegisterPointer DxbcCompiler::emitArrayAccess(
+          DxbcRegisterPointer     pointer,
+          spv::StorageClass       sclass,
+          uint32_t                index) {
+    uint32_t ptrTypeId = m_module.defPointerType(
+      getVectorTypeId(pointer.type), sclass);
+    
+    DxbcRegisterPointer result;
+    result.type = pointer.type;
+    result.id = m_module.opAccessChain(
+      ptrTypeId, pointer.id, 1, &index);
+    return result;
+  }
+
+
   uint32_t DxbcCompiler::emitLoadSampledImage(
     const DxbcShaderResource&     textureResource,
     const DxbcSampler&            samplerResource,
@@ -6002,6 +6075,14 @@ namespace dxvk {
     m_module.enableCapability(spv::CapabilityGeometry);
     m_module.enableCapability(spv::CapabilityClipDistance);
     m_module.enableCapability(spv::CapabilityCullDistance);
+
+    // Enable capabilities for xfb mode if necessary
+    if (m_moduleInfo.xfb != nullptr) {
+      m_module.enableCapability(spv::CapabilityGeometryStreams);
+      m_module.enableCapability(spv::CapabilityTransformFeedback);
+      
+      m_module.setExecutionMode(m_entryPointId, spv::ExecutionModeXfb);
+    }
     
     // Declare the per-vertex output block. Outputs are not
     // declared as arrays, instead they will be flushed when
@@ -6026,6 +6107,10 @@ namespace dxvk {
       spv::BuiltInCullDistance,
       spv::StorageClassOutput);
     
+    // Emit Xfb variables if necessary
+    if (m_moduleInfo.xfb != nullptr)
+      emitXfbOutputDeclarations();
+
     // Main function of the vertex shader
     m_gs.functionId = m_module.allocateId();
     m_module.setDebugName(m_gs.functionId, "gs_main");
@@ -6201,6 +6286,88 @@ namespace dxvk {
     this->emitFunctionEnd();
   }
   
+  
+  void DxbcCompiler::emitXfbOutputDeclarations() {
+    for (uint32_t i = 0; i < m_moduleInfo.xfb->entryCount; i++) {
+      const DxbcXfbEntry* xfbEntry = m_moduleInfo.xfb->entries + i;
+      const DxbcSgnEntry* sigEntry = m_osgn->find(
+        xfbEntry->semanticName,
+        xfbEntry->semanticIndex,
+        xfbEntry->streamId);
+
+      if (sigEntry == nullptr)
+        continue;
+      
+      DxbcRegisterInfo varInfo;
+      varInfo.type.ctype = DxbcScalarType::Float32;
+      varInfo.type.ccount = xfbEntry->componentCount;
+      varInfo.type.alength = 0;
+      varInfo.sclass = spv::StorageClassOutput;
+      
+      uint32_t dstComponentMask = (1 << xfbEntry->componentCount) - 1;
+      uint32_t srcComponentMask = dstComponentMask
+        << sigEntry->componentMask.firstSet()
+        << xfbEntry->componentIndex;
+      
+      DxbcXfbVar xfbVar;
+      xfbVar.varId = emitNewVariable(varInfo);
+      xfbVar.streamId = xfbEntry->streamId;
+      xfbVar.outputId = sigEntry->registerId;
+      xfbVar.srcMask = DxbcRegMask(srcComponentMask);
+      xfbVar.dstMask = DxbcRegMask(dstComponentMask);
+      m_xfbVars.push_back(xfbVar);
+
+      m_entryPointInterfaces.push_back(xfbVar.varId);
+      m_module.setDebugName(xfbVar.varId,
+        str::format("xfb", i).c_str());
+      
+      m_module.decorateXfb(xfbVar.varId,
+        xfbEntry->streamId, xfbEntry->bufferId, xfbEntry->offset,
+        m_moduleInfo.xfb->strides[xfbEntry->bufferId]);
+    }
+
+    // TODO Compact location/component assignment
+    for (uint32_t i = 0; i < m_xfbVars.size(); i++) {
+      m_xfbVars[i].location  = i;
+      m_xfbVars[i].component = 0;
+    }
+
+    for (uint32_t i = 0; i < m_xfbVars.size(); i++) {
+      const DxbcXfbVar* var = &m_xfbVars[i];
+
+      m_module.decorateLocation (var->varId, var->location);
+      m_module.decorateComponent(var->varId, var->component);
+    }
+  }
+
+
+  void DxbcCompiler::emitXfbOutputSetup(
+          uint32_t                          streamId,
+          bool                              passthrough) {
+    for (size_t i = 0; i < m_xfbVars.size(); i++) {
+      if (m_xfbVars[i].streamId == streamId) {
+        DxbcRegisterPointer srcPtr = passthrough
+          ? m_vRegs[m_xfbVars[i].outputId]
+          : m_oRegs[m_xfbVars[i].outputId];
+
+        if (passthrough) {
+          srcPtr = emitArrayAccess(srcPtr,
+            spv::StorageClassInput,
+            m_module.constu32(0));
+        }
+        
+        DxbcRegisterPointer dstPtr;
+        dstPtr.type.ctype  = DxbcScalarType::Float32;
+        dstPtr.type.ccount = m_xfbVars[i].dstMask.popCount();
+        dstPtr.id = m_xfbVars[i].varId;
+
+        DxbcRegisterValue value = emitRegisterExtract(
+          emitValueLoad(srcPtr), m_xfbVars[i].srcMask);
+        emitValueStore(dstPtr, value, m_xfbVars[i].dstMask);
+      }
+    }
+  }
+
   
   void DxbcCompiler::emitHsControlPointPhase(
     const DxbcCompilerHsControlPointPhase&  phase) {

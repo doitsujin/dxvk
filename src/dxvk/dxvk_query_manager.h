@@ -101,12 +101,21 @@ namespace dxvk {
     Rc<DxvkQueryPool> m_occlusion;
     Rc<DxvkQueryPool> m_pipeStats;
     Rc<DxvkQueryPool> m_timestamp;
+    Rc<DxvkQueryPool> m_xfbStream;
 
     std::vector<DxvkQueryRevision> m_activeQueries;
 
     void trackQueryPool(
       const Rc<DxvkCommandList>&  cmd,
       const Rc<DxvkQueryPool>&    pool);
+    
+    void beginVulkanQuery(
+      const Rc<DxvkCommandList>&  cmd,
+      const DxvkQueryRevision&    query);
+    
+    void endVulkanQuery(
+      const Rc<DxvkCommandList>&  cmd,
+      const DxvkQueryRevision&    query);
     
     Rc<DxvkQueryPool>& getQueryPool(
             VkQueryType           type);

@@ -51,6 +51,20 @@ namespace dxvk {
 
 
   /**
+   * \brief Additional shader options
+   * 
+   * Contains additional properties that should be
+   * taken into account when creating pipelines.
+   */
+  struct DxvkShaderOptions {
+    /// Rasterized stream, or -1
+    int32_t rasterizedStream;
+    /// Xfb vertex strides
+    uint32_t xfbStrides[MaxNumXfbBuffers];
+  };
+
+
+  /**
    * \brief Shader constants
    * 
    * Each shader can have constant data associated
@@ -107,6 +121,7 @@ namespace dxvk {
       const DxvkResourceSlot*       slotInfos,
       const DxvkInterfaceSlots&     iface,
       const SpirvCodeBuffer&        code,
+      const DxvkShaderOptions&      options,
             DxvkShaderConstData&&   constData);
     
     ~DxvkShader();
@@ -165,6 +180,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Shader options
+     * \returns Shader options
+     */
+    DxvkShaderOptions shaderOptions() const {
+      return m_options;
+    }
+
+    /**
      * \brief Shader constant data
      * 
      * Returns a read-only reference to the 
@@ -216,6 +239,7 @@ namespace dxvk {
     std::vector<DxvkResourceSlot> m_slots;
     std::vector<size_t>           m_idOffsets;
     DxvkInterfaceSlots            m_interface;
+    DxvkShaderOptions             m_options;
     DxvkShaderConstData           m_constData;
     DxvkShaderKey                 m_key;
     

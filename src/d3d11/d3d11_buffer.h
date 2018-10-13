@@ -11,6 +11,18 @@ namespace dxvk {
   
   class D3D11Device;
   class D3D11DeviceContext;
+
+
+  /**
+   * \brief Stream output buffer offset
+   *
+   * A byte offset into the buffer that
+   * stores the byte offset where new
+   * data will be written to.
+   */
+  struct D3D11SOCounter {
+    uint32_t byteOffset;
+  };
   
   
   class D3D11Buffer : public D3D11DeviceChild<ID3D11Buffer> {
@@ -62,17 +74,21 @@ namespace dxvk {
     DxvkBufferSlice GetBufferSlice(VkDeviceSize offset, VkDeviceSize length) const {
       return DxvkBufferSlice(m_buffer, offset, length);
     }
+
+    DxvkBufferSlice GetSOCounter() {
+      return m_soCounter;
+    }
     
     VkDeviceSize GetSize() const {
       return m_buffer->info().size;
     }
 
     DxvkPhysicalBufferSlice GetMappedSlice() const {
-      return m_mappedSlice;
+      return m_mapped;
     }
 
     void SetMappedSlice(const DxvkPhysicalBufferSlice& slice) {
-      m_mappedSlice = slice;
+      m_mapped = slice;
     }
 
     D3D10Buffer* GetD3D10Iface() {
@@ -85,12 +101,10 @@ namespace dxvk {
     const D3D11_BUFFER_DESC     m_desc;
     
     Rc<DxvkBuffer>              m_buffer;
-    DxvkPhysicalBufferSlice     m_mappedSlice;
+    DxvkBufferSlice             m_soCounter;
+    DxvkPhysicalBufferSlice     m_mapped;
 
     D3D10Buffer                 m_d3d10;
-    
-    Rc<DxvkBuffer> CreateBuffer(
-      const D3D11_BUFFER_DESC*    pDesc) const;
 
     BOOL CheckFormatFeatureSupport(
             VkFormat              Format,

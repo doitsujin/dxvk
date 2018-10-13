@@ -36,6 +36,7 @@ namespace dxvk {
     // before any draw or dispatch command is recorded.
     m_flags.clr(
       DxvkContextFlag::GpRenderPassBound,
+      DxvkContextFlag::GpXfbActive,
       DxvkContextFlag::GpClearRenderTargets);
     
     m_flags.set(
@@ -44,6 +45,7 @@ namespace dxvk {
       DxvkContextFlag::GpDirtyResources,
       DxvkContextFlag::GpDirtyVertexBuffers,
       DxvkContextFlag::GpDirtyIndexBuffer,
+      DxvkContextFlag::GpDirtyXfbBuffers,
       DxvkContextFlag::CpDirtyPipeline,
       DxvkContextFlag::CpDirtyPipelineState,
       DxvkContextFlag::CpDirtyResources,
@@ -218,6 +220,19 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::bindXfbBuffer(
+          uint32_t              binding,
+    const DxvkBufferSlice&      buffer,
+    const DxvkBufferSlice&      counter) {
+    this->spillRenderPass();
+
+    m_state.xfb.buffers [binding] = buffer;
+    m_state.xfb.counters[binding] = counter;
+    
+    m_flags.set(DxvkContextFlag::GpDirtyXfbBuffers);
+  }
+
+
   void DxvkContext::clearBuffer(
     const Rc<DxvkBuffer>&       buffer,
           VkDeviceSize          offset,
@@ -1005,6 +1020,25 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::drawIndirectXfb(
+    const DxvkBufferSlice&  counterBuffer,
+          uint32_t          counterDivisor,
+          uint32_t          counterBias) {
+    this->commitGraphicsState();
+
+    if (this->validateGraphicsState()) {
+      auto physicalSlice = counterBuffer.physicalSlice();
+
+      m_cmd->cmdDrawIndirectVertexCount(1, 0,
+        physicalSlice.handle(),
+        physicalSlice.offset(),
+        counterBias, counterDivisor);
+    }
+
+    m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
+  }
+
+
   void DxvkContext::initImage(
     const Rc<DxvkImage>&           image,
     const VkImageSubresourceRange& subresources) {
@@ -1139,6 +1173,9 @@ namespace dxvk {
     
     if (usage & VK_BUFFER_USAGE_VERTEX_BUFFER_BIT)
       m_flags.set(DxvkContextFlag::GpDirtyVertexBuffers);
+    
+    if (usage & VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT)
+      m_flags.set(DxvkContextFlag::GpDirtyXfbBuffers);
     
     if (usage & (VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT
                | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT)) {
@@ -2152,10 +2189,14 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
       m_flags.clr(DxvkContextFlag::GpRenderPassBound);
 
+      this->pauseTransformFeedback();
+      
       m_queries.endQueries(m_cmd, VK_QUERY_TYPE_OCCLUSION);
       m_queries.endQueries(m_cmd, VK_QUERY_TYPE_PIPELINE_STATISTICS);
       
       this->renderPassUnbindFramebuffer();
+
+      m_flags.clr(DxvkContextFlag::GpDirtyXfbCounters);
     }
   }
   
@@ -2232,6 +2273,70 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::startTransformFeedback() {
+    if (!m_flags.test(DxvkContextFlag::GpXfbActive)) {
+      m_flags.set(DxvkContextFlag::GpXfbActive);
+
+      if (m_flags.test(DxvkContextFlag::GpDirtyXfbCounters)) {
+        m_flags.clr(DxvkContextFlag::GpDirtyXfbCounters);
+
+        this->emitMemoryBarrier(
+          VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT,
+          VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT,
+          VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, /* XXX */
+          VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT);
+      }
+
+      VkBuffer     ctrBuffers[MaxNumXfbBuffers];
+      VkDeviceSize ctrOffsets[MaxNumXfbBuffers];
+
+      for (uint32_t i = 0; i < MaxNumXfbBuffers; i++) {
+        auto physSlice = m_state.xfb.counters[i].physicalSlice();
+
+        ctrBuffers[i] = physSlice.handle();
+        ctrOffsets[i] = physSlice.offset();
+
+        if (physSlice.handle() != VK_NULL_HANDLE)
+          m_cmd->trackResource(physSlice.resource());
+      }
+      
+      m_cmd->cmdBeginTransformFeedback(
+        0, MaxNumXfbBuffers, ctrBuffers, ctrOffsets);
+      
+      m_queries.beginQueries(m_cmd,
+        VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT);
+    }
+  }
+
+
+  void DxvkContext::pauseTransformFeedback() {
+    if (m_flags.test(DxvkContextFlag::GpXfbActive)) {
+      m_flags.clr(DxvkContextFlag::GpXfbActive);
+      
+      VkBuffer     ctrBuffers[MaxNumXfbBuffers];
+      VkDeviceSize ctrOffsets[MaxNumXfbBuffers];
+
+      for (uint32_t i = 0; i < MaxNumXfbBuffers; i++) {
+        auto physSlice = m_state.xfb.counters[i].physicalSlice();
+
+        ctrBuffers[i] = physSlice.handle();
+        ctrOffsets[i] = physSlice.offset();
+
+        if (physSlice.handle() != VK_NULL_HANDLE)
+          m_cmd->trackResource(physSlice.resource());
+      }
+
+      m_queries.endQueries(m_cmd, 
+        VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT);
+      
+      m_cmd->cmdEndTransformFeedback(
+        0, MaxNumXfbBuffers, ctrBuffers, ctrOffsets);
+      
+      m_flags.set(DxvkContextFlag::GpDirtyXfbCounters);
+    }
+  }
+
+
   void DxvkContext::unbindComputePipeline() {
     m_flags.set(
       DxvkContextFlag::CpDirtyPipeline,
@@ -2278,7 +2383,8 @@ namespace dxvk {
       DxvkContextFlag::GpDirtyPipelineState,
       DxvkContextFlag::GpDirtyResources,
       DxvkContextFlag::GpDirtyVertexBuffers,
-      DxvkContextFlag::GpDirtyIndexBuffer);
+      DxvkContextFlag::GpDirtyIndexBuffer,
+      DxvkContextFlag::GpDirtyXfbBuffers);
     
     m_gpActivePipeline = VK_NULL_HANDLE;
   }
@@ -2304,6 +2410,8 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpDirtyPipelineState)) {
       m_flags.clr(DxvkContextFlag::GpDirtyPipelineState);
       
+      this->pauseTransformFeedback();
+
       for (uint32_t i = 0; i < m_state.gp.state.ilBindingCount; i++) {
         const uint32_t binding = m_state.gp.state.ilBindings[i].binding;
         
@@ -2666,6 +2774,56 @@ namespace dxvk {
       }
     }
   }
+  
+  
+  void DxvkContext::updateTransformFeedbackBuffers() {
+    auto gsOptions = m_state.gp.gs.shader->shaderOptions();
+
+    VkBuffer     xfbBuffers[MaxNumXfbBuffers];
+    VkDeviceSize xfbOffsets[MaxNumXfbBuffers];
+    VkDeviceSize xfbLengths[MaxNumXfbBuffers];
+
+    for (size_t i = 0; i < MaxNumXfbBuffers; i++) {
+      auto physSlice = m_state.xfb.buffers[i].physicalSlice();
+      
+      xfbBuffers[i] = physSlice.handle();
+      xfbOffsets[i] = physSlice.offset();
+      xfbLengths[i] = physSlice.length();
+
+      if (physSlice.handle() == VK_NULL_HANDLE)
+        xfbBuffers[i] = m_device->dummyBufferHandle();
+      
+      if (physSlice.handle() != VK_NULL_HANDLE) {
+        auto buffer = m_state.xfb.buffers[i].buffer();
+        buffer->setXfbVertexStride(gsOptions.xfbStrides[i]);
+        
+        m_cmd->trackResource(physSlice.resource());
+      }
+    }
+
+    m_cmd->cmdBindTransformFeedbackBuffers(
+      0, MaxNumXfbBuffers,
+      xfbBuffers, xfbOffsets, xfbLengths);
+  }
+
+
+  void DxvkContext::updateTransformFeedbackState() {
+    bool hasTransformFeedback =
+         m_state.gp.pipeline != nullptr
+      && m_state.gp.pipeline->flags().test(DxvkGraphicsPipelineFlag::HasTransformFeedback);
+    
+    if (!hasTransformFeedback)
+      return;
+    
+    if (m_flags.test(DxvkContextFlag::GpDirtyXfbBuffers)) {
+      m_flags.clr(DxvkContextFlag::GpDirtyXfbBuffers);
+
+      this->pauseTransformFeedback();
+      this->updateTransformFeedbackBuffers();
+    }
+
+    this->startTransformFeedback();
+  }
 
   
   void DxvkContext::updateDynamicState() {
@@ -2732,6 +2890,7 @@ namespace dxvk {
     this->updateVertexBufferBindings();
     this->updateGraphicsShaderResources();
     this->updateGraphicsPipelineState();
+    this->updateTransformFeedbackState();
     this->updateGraphicsShaderDescriptors();
     this->updateDynamicState();
   }
@@ -2853,6 +3012,22 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::emitMemoryBarrier(
+          VkPipelineStageFlags      srcStages,
+          VkAccessFlags             srcAccess,
+          VkPipelineStageFlags      dstStages,
+          VkAccessFlags             dstAccess) {
+    VkMemoryBarrier barrier;
+    barrier.sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    barrier.pNext         = nullptr;
+    barrier.srcAccessMask = srcAccess;
+    barrier.dstAccessMask = dstAccess;
+
+    m_cmd->cmdPipelineBarrier(srcStages, dstStages,
+      0, 1, &barrier, 0, nullptr, 0, nullptr);
+  }
+
+  
   void DxvkContext::trackDrawBuffer() {
     if (m_flags.test(DxvkContextFlag::DirtyDrawBuffer)) {
       m_flags.clr(DxvkContextFlag::DirtyDrawBuffer);

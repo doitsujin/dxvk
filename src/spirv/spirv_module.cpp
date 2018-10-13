@@ -438,6 +438,34 @@ namespace dxvk {
     m_annotations.putInt32(specId);
   }
   
+
+  void SpirvModule::decorateXfb(
+          uint32_t                object,
+          uint32_t                streamId,
+          uint32_t                bufferId,
+          uint32_t                offset,
+          uint32_t                stride) {
+    m_annotations.putIns  (spv::OpDecorate, 4);
+    m_annotations.putWord (object);
+    m_annotations.putWord (spv::DecorationStream);
+    m_annotations.putInt32(streamId);
+
+    m_annotations.putIns  (spv::OpDecorate, 4);
+    m_annotations.putWord (object);
+    m_annotations.putWord (spv::DecorationXfbBuffer);
+    m_annotations.putInt32(bufferId);
+
+    m_annotations.putIns  (spv::OpDecorate, 4);
+    m_annotations.putWord (object);
+    m_annotations.putWord (spv::DecorationXfbStride);
+    m_annotations.putInt32(stride);
+
+    m_annotations.putIns  (spv::OpDecorate, 4);
+    m_annotations.putWord (object);
+    m_annotations.putWord (spv::DecorationOffset);
+    m_annotations.putInt32(offset);
+  }
+  
   
   void SpirvModule::memberDecorateBuiltIn(
           uint32_t                structId,
@@ -2937,13 +2965,25 @@ namespace dxvk {
   }
   
   
-  void SpirvModule::opEmitVertex() {
-    m_code.putIns (spv::OpEmitVertex, 1);
+  void SpirvModule::opEmitVertex(
+          uint32_t                streamId) {
+    if (streamId == 0) {
+      m_code.putIns (spv::OpEmitVertex, 1);
+    } else {
+      m_code.putIns (spv::OpEmitStreamVertex, 2);
+      m_code.putWord(streamId);
+    }
   }
   
   
-  void SpirvModule::opEndPrimitive() {
-    m_code.putIns (spv::OpEndPrimitive, 1);
+  void SpirvModule::opEndPrimitive(
+          uint32_t                streamId) {
+    if (streamId == 0) {
+      m_code.putIns (spv::OpEndPrimitive, 1);
+    } else {
+      m_code.putIns (spv::OpEndStreamPrimitive, 2);
+      m_code.putWord(streamId);
+    }
   }
   
   

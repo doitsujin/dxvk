@@ -81,9 +81,10 @@ namespace dxvk {
     const DxvkResourceSlot*       slotInfos,
     const DxvkInterfaceSlots&     iface,
     const SpirvCodeBuffer&        code,
+    const DxvkShaderOptions&      options,
           DxvkShaderConstData&&   constData)
   : m_stage(stage), m_code(code), m_interface(iface),
-    m_constData(std::move(constData)) {
+    m_options(options), m_constData(std::move(constData)) {
     // Write back resource slot infos
     for (uint32_t i = 0; i < slotCount; i++)
       m_slots.push_back(slotInfos[i]);

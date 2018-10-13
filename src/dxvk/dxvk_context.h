@@ -174,6 +174,18 @@ namespace dxvk {
             uint32_t              stride);
     
     /**
+     * \brief Binds transform feedback buffer
+     * 
+     * \param [in] binding Xfb buffer binding
+     * \param [in] buffer The buffer to bind
+     * \param [in] counter Xfb counter buffer
+     */
+    void bindXfbBuffer(
+            uint32_t              binding,
+      const DxvkBufferSlice&      buffer,
+      const DxvkBufferSlice&      counter);
+    
+    /**
      * \brief Clears a buffer with a fixed value
      * 
      * Note that both \c offset and \c length must
@@ -473,6 +485,18 @@ namespace dxvk {
             VkDeviceSize      offset,
             uint32_t          count,
             uint32_t          stride);
+    
+    /**
+     * \brief Transform feddback draw call
+
+     * \param [in] counterBuffer Xfb counter buffer
+     * \param [in] counterDivisor Vertex stride
+     * \param [in] counterBias Counter bias
+     */
+    void drawIndirectXfb(
+      const DxvkBufferSlice&  counterBuffer,
+            uint32_t          counterDivisor,
+            uint32_t          counterBias);
     
     /**
      * \brief Generates mip maps
@@ -776,6 +800,9 @@ namespace dxvk {
       const DxvkRenderTargets&    renderTargets,
             DxvkRenderPassOps&    renderPassOps);
     
+    void startTransformFeedback();
+    void pauseTransformFeedback();
+    
     void unbindComputePipeline();
     void updateComputePipeline();
     void updateComputePipelineState();
@@ -808,6 +835,9 @@ namespace dxvk {
     
     void updateIndexBufferBinding();
     void updateVertexBufferBindings();
+    
+    void updateTransformFeedbackBuffers();
+    void updateTransformFeedbackState();
 
     void updateDynamicState();
     
@@ -819,6 +849,12 @@ namespace dxvk {
     
     void commitComputeInitBarriers();
     void commitComputePostBarriers();
+
+    void emitMemoryBarrier(
+            VkPipelineStageFlags      srcStages,
+            VkAccessFlags             srcAccess,
+            VkPipelineStageFlags      dstStages,
+            VkAccessFlags             dstAccess);
 
     void trackDrawBuffer();
     

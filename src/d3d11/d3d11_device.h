@@ -333,14 +333,6 @@ namespace dxvk {
             DXGI_FORMAT           Format,
             DXGI_VK_FORMAT_MODE   Mode) const;
     
-    DxvkBufferSlice AllocCounterSlice() {
-      return m_uavCounters->AllocSlice();
-    }
-    
-    void FreeCounterSlice(const DxvkBufferSlice& Slice) {
-      m_uavCounters->FreeSlice(Slice);
-    }
-    
     DxvkCsChunkRef AllocCsChunk() {
       DxvkCsChunk* chunk = m_csChunkPool.allocChunk();
       return DxvkCsChunkRef(chunk, &m_csChunkPool);
@@ -353,6 +345,12 @@ namespace dxvk {
     D3D10Device* GetD3D10Interface() const {
       return m_d3d10Device;
     }
+    
+    DxvkBufferSlice AllocUavCounterSlice() { return m_uavCounters->AllocSlice(); }
+    DxvkBufferSlice AllocXfbCounterSlice() { return m_xfbCounters->AllocSlice(); }
+    
+    void FreeUavCounterSlice(const DxvkBufferSlice& Slice) { m_uavCounters->FreeSlice(Slice); }
+    void FreeXfbCounterSlice(const DxvkBufferSlice& Slice) { m_xfbCounters->FreeSlice(Slice); }
     
     static bool CheckFeatureLevelSupport(
       const Rc<DxvkAdapter>&  adapter,
@@ -383,6 +381,7 @@ namespace dxvk {
     D3D10Device*                    m_d3d10Device = nullptr;
 
     Rc<D3D11CounterBuffer>          m_uavCounters;
+    Rc<D3D11CounterBuffer>          m_xfbCounters;
     
     D3D11StateObjectSet<D3D11BlendState>        m_bsStateObjects;
     D3D11StateObjectSet<D3D11DepthStencilState> m_dsStateObjects;
@@ -391,6 +390,7 @@ namespace dxvk {
     D3D11ShaderModuleSet                        m_shaderModules;
     
     Rc<D3D11CounterBuffer> CreateUAVCounterBuffer();
+    Rc<D3D11CounterBuffer> CreateXFBCounterBuffer();
 
     HRESULT CreateShaderModule(
             D3D11CommonShader*      pShaderModule,

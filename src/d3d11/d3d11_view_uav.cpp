@@ -38,7 +38,7 @@ namespace dxvk {
       }
       
       if (pDesc->Buffer.Flags & (D3D11_BUFFER_UAV_FLAG_APPEND | D3D11_BUFFER_UAV_FLAG_COUNTER))
-        m_counterSlice = pDevice->AllocCounterSlice();
+        m_counterSlice = pDevice->AllocUavCounterSlice();
       
       m_bufferView = pDevice->GetDXVKDevice()->createBufferView(
         buffer->GetBuffer(), viewInfo);
@@ -109,7 +109,7 @@ namespace dxvk {
     ResourceReleasePrivate(m_resource);
 
     if (m_counterSlice.defined())
-      m_device->FreeCounterSlice(m_counterSlice);
+      m_device->FreeUavCounterSlice(m_counterSlice);
   }
   
   

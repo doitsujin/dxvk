@@ -122,6 +122,17 @@ namespace dxvk {
     uint32_t labelElse = 0;
     uint32_t labelEnd  = 0;
   };
+
+
+  struct DxbcXfbVar {
+    uint32_t    varId     = 0;
+    uint32_t    streamId  = 0;
+    uint32_t    outputId  = 0;
+    DxbcRegMask srcMask   = 0;
+    DxbcRegMask dstMask   = 0;
+    uint32_t    location  = 0;
+    uint32_t    component = 0;
+  };
   
   
   /**
@@ -372,6 +383,15 @@ namespace dxvk {
       const DxbcShaderInstruction&  ins);
     
     /**
+     * \brief Emits transform feedback passthrough
+     * 
+     * Writes all captured input variables to the
+     * corresponding xfb outputs, and sets up the
+     * geometry shader for point-to-point mode.
+     */
+    void processXfbPassthrough();
+    
+    /**
      * \brief Finalizes the shader
      * \returns The final shader object
      */
@@ -419,6 +439,10 @@ namespace dxvk {
       DxbcRegisterPointer,
       DxbcMaxInterfaceRegs>     m_oRegs;
     std::vector<DxbcSvMapping>  m_oMappings;
+
+    /////////////////////////////////////////////
+    // xfb output registers for geometry shaders
+    std::vector<DxbcXfbVar> m_xfbVars;
     
     //////////////////////////////////////////////////////
     // Shader resource variables. These provide access to
@@ -488,7 +512,7 @@ namespace dxvk {
     // Inter-stage shader interface slots. Also
     // covers vertex input and fragment output.
     DxvkInterfaceSlots m_interfaceSlots;
-    
+
     ///////////////////////////////////
     // Shader-specific data structures
     DxbcCompilerVsPart m_vs;
@@ -836,6 +860,13 @@ namespace dxvk {
             DxbcRegisterValue       value,
             DxbcOpModifiers         modifiers);
     
+    ////////////////////////////////
+    // Pointer manipulation methods
+    DxbcRegisterPointer emitArrayAccess(
+            DxbcRegisterPointer     pointer,
+            spv::StorageClass       sclass,
+            uint32_t                index);
+
     ///////////////////////////////////////
     // Image register manipulation methods
     uint32_t emitLoadSampledImage(
@@ -1044,6 +1075,14 @@ namespace dxvk {
     void emitGsFinalize();
     void emitPsFinalize();
     void emitCsFinalize();
+
+    ///////////////////////
+    // Xfb related methods
+    void emitXfbOutputDeclarations();
+
+    void emitXfbOutputSetup(
+            uint32_t                          streamId,
+            bool                              passthrough);
     
     ///////////////////////////////
     // Hull shader phase methods

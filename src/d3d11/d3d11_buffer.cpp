@@ -11,15 +11,99 @@ namespace dxvk {
     const D3D11_BUFFER_DESC*          pDesc)
   : m_device      (pDevice),
     m_desc        (*pDesc),
-    m_buffer      (CreateBuffer(pDesc)),
-    m_mappedSlice (m_buffer->slice()),
     m_d3d10       (this, pDevice->GetD3D10Interface()) {
+    DxvkBufferCreateInfo  info;
+    info.size   = pDesc->ByteWidth;
+    info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+                | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    info.access = VK_ACCESS_TRANSFER_READ_BIT
+                | VK_ACCESS_TRANSFER_WRITE_BIT;
     
+    if (pDesc->BindFlags & D3D11_BIND_VERTEX_BUFFER) {
+      info.usage  |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+      info.stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+      info.access |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+    }
+    
+    if (pDesc->BindFlags & D3D11_BIND_INDEX_BUFFER) {
+      info.usage  |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+      info.stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+      info.access |= VK_ACCESS_INDEX_READ_BIT;
+    }
+    
+    if (pDesc->BindFlags & D3D11_BIND_CONSTANT_BUFFER) {
+      info.usage  |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+      info.stages |= m_device->GetEnabledShaderStages();
+      info.access |= VK_ACCESS_UNIFORM_READ_BIT;
+    }
+    
+    if (pDesc->BindFlags & D3D11_BIND_SHADER_RESOURCE) {
+      info.usage  |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
+      info.stages |= m_device->GetEnabledShaderStages();
+      info.access |= VK_ACCESS_SHADER_READ_BIT;
+    }
+    
+    if (pDesc->BindFlags & D3D11_BIND_STREAM_OUTPUT) {
+      info.usage  |= VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT;
+      info.stages |= VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT;
+      info.access |= VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT;
+    }
+    
+    if (pDesc->BindFlags & D3D11_BIND_UNORDERED_ACCESS) {
+      info.usage  |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
+      info.stages |= m_device->GetEnabledShaderStages();
+      info.access |= VK_ACCESS_SHADER_READ_BIT
+                  |  VK_ACCESS_SHADER_WRITE_BIT;
+    }
+    
+    if (pDesc->CPUAccessFlags & D3D11_CPU_ACCESS_WRITE) {
+      info.stages |= VK_PIPELINE_STAGE_HOST_BIT;
+      info.access |= VK_ACCESS_HOST_WRITE_BIT;
+    }
+    
+    if (pDesc->CPUAccessFlags & D3D11_CPU_ACCESS_READ) {
+      info.stages |= VK_PIPELINE_STAGE_HOST_BIT;
+      info.access |= VK_ACCESS_HOST_READ_BIT;
+    }
+    
+    if (pDesc->MiscFlags & D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS) {
+      info.usage  |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
+      info.stages |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+      info.access |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
+    }
+    
+    // Default constant buffers may get updated frequently, in which
+    // case mapping the buffer is faster than using update commands.
+    VkMemoryPropertyFlags memoryFlags = GetMemoryFlagsForUsage(pDesc->Usage);
+
+    if ((pDesc->Usage == D3D11_USAGE_DEFAULT) && (pDesc->BindFlags & D3D11_BIND_CONSTANT_BUFFER)) {
+      info.stages |= VK_PIPELINE_STAGE_HOST_BIT;
+      info.access |= VK_ACCESS_HOST_WRITE_BIT;
+      
+      memoryFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                  | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    }
+    
+    // AMD cards have a device-local, host-visible memory type where
+    // we can put dynamic resources that need fast access by the GPU
+    if (pDesc->Usage == D3D11_USAGE_DYNAMIC && pDesc->BindFlags)
+      memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+    // Create the buffer and set the entire buffer slice as mapped,
+    // so that we only have to update it when invalidating th buffer
+    m_buffer = m_device->GetDXVKDevice()->createBuffer(info, memoryFlags);
+    m_mapped = m_buffer->slice();
+
+    // For Stream Output buffers we need a counter
+    if (pDesc->BindFlags & D3D11_BIND_STREAM_OUTPUT)
+      m_soCounter = m_device->AllocXfbCounterSlice();
   }
   
   
   D3D11Buffer::~D3D11Buffer() {
-    
+    if (m_soCounter.defined())
+      m_device->FreeXfbCounterSlice(m_soCounter);
   }
   
   
@@ -92,88 +176,6 @@ namespace dxvk {
     VkFormatFeatureFlags features = GetBufferFormatFeatures(BindFlags);
 
     return CheckFormatFeatureSupport(viewFormat.Format, features);
-  }
-
-
-  Rc<DxvkBuffer> D3D11Buffer::CreateBuffer(
-    const D3D11_BUFFER_DESC* pDesc) const {
-    DxvkBufferCreateInfo  info;
-    info.size   = pDesc->ByteWidth;
-    info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
-                | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-    info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    info.access = VK_ACCESS_TRANSFER_READ_BIT
-                | VK_ACCESS_TRANSFER_WRITE_BIT;
-    
-    if (pDesc->BindFlags & D3D11_BIND_VERTEX_BUFFER) {
-      info.usage  |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-      info.stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-      info.access |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
-    }
-    
-    if (pDesc->BindFlags & D3D11_BIND_INDEX_BUFFER) {
-      info.usage  |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-      info.stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-      info.access |= VK_ACCESS_INDEX_READ_BIT;
-    }
-    
-    if (pDesc->BindFlags & D3D11_BIND_CONSTANT_BUFFER) {
-      info.usage  |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-      info.stages |= m_device->GetEnabledShaderStages();
-      info.access |= VK_ACCESS_UNIFORM_READ_BIT;
-    }
-    
-    if (pDesc->BindFlags & D3D11_BIND_SHADER_RESOURCE) {
-      info.usage  |= VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT;
-      info.stages |= m_device->GetEnabledShaderStages();
-      info.access |= VK_ACCESS_SHADER_READ_BIT;
-    }
-    
-    if (pDesc->BindFlags & D3D11_BIND_STREAM_OUTPUT) {
-      Logger::err("D3D11Device::CreateBuffer: D3D11_BIND_STREAM_OUTPUT not supported");
-    }
-    
-    if (pDesc->BindFlags & D3D11_BIND_UNORDERED_ACCESS) {
-      info.usage  |= VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT;
-      info.stages |= m_device->GetEnabledShaderStages();
-      info.access |= VK_ACCESS_SHADER_READ_BIT
-                  |  VK_ACCESS_SHADER_WRITE_BIT;
-    }
-    
-    if (pDesc->CPUAccessFlags & D3D11_CPU_ACCESS_WRITE) {
-      info.stages |= VK_PIPELINE_STAGE_HOST_BIT;
-      info.access |= VK_ACCESS_HOST_WRITE_BIT;
-    }
-    
-    if (pDesc->CPUAccessFlags & D3D11_CPU_ACCESS_READ) {
-      info.stages |= VK_PIPELINE_STAGE_HOST_BIT;
-      info.access |= VK_ACCESS_HOST_READ_BIT;
-    }
-    
-    if (pDesc->MiscFlags & D3D11_RESOURCE_MISC_DRAWINDIRECT_ARGS) {
-      info.usage  |= VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT;
-      info.stages |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
-      info.access |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
-    }
-    
-    // Default constant buffers may get updated frequently, in which
-    // case mapping the buffer is faster than using update commands.
-    VkMemoryPropertyFlags memoryFlags = GetMemoryFlagsForUsage(pDesc->Usage);
-
-    if ((pDesc->Usage == D3D11_USAGE_DEFAULT) && (pDesc->BindFlags & D3D11_BIND_CONSTANT_BUFFER)) {
-      info.stages |= VK_PIPELINE_STAGE_HOST_BIT;
-      info.access |= VK_ACCESS_HOST_WRITE_BIT;
-      
-      memoryFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-                  | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-    }
-    
-    // AMD cards have a device-local, host-visible memory type where
-    // we can put dynamic resources that need fast access by the GPU
-    if (pDesc->Usage == D3D11_USAGE_DYNAMIC && pDesc->BindFlags)
-      memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-
-    return m_device->GetDXVKDevice()->createBuffer(info, memoryFlags);
   }
 
 

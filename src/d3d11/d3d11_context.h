@@ -631,6 +631,11 @@ namespace dxvk {
             UINT                              NumBuffers,
             ID3D11Buffer**                    ppSOTargets) final;
     
+    void STDMETHODCALLTYPE SOGetTargetsWithOffsets(
+            UINT                              NumBuffers,
+            ID3D11Buffer**                    ppSOTargets,
+            UINT*                             pOffsets);
+    
     void STDMETHODCALLTYPE TransitionSurfaceLayout(
             IDXGIVkInteropSurface*    pSurface,
       const VkImageSubresourceRange*  pSubresources,
@@ -689,6 +694,11 @@ namespace dxvk {
             D3D11Buffer*                      pBuffer,
             UINT                              Offset,
             DXGI_FORMAT                       Format);
+    
+    void BindXfbBuffer(
+            UINT                              Slot,
+            D3D11Buffer*                      pBuffer,
+            UINT                              Offset);
     
     void BindConstantBuffer(
             UINT                              Slot,

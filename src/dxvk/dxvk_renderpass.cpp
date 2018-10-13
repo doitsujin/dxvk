@@ -121,7 +121,7 @@ namespace dxvk {
     if (m_format.depth.format == VK_FORMAT_UNDEFINED)
       subpass.pDepthStencilAttachment = nullptr;
     
-    const std::array<VkSubpassDependency, 2> subpassDeps = {{
+    const std::array<VkSubpassDependency, 3> subpassDeps = {{
       { VK_SUBPASS_EXTERNAL, 0,
         VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
         VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
@@ -130,11 +130,18 @@ namespace dxvk {
         VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT          |
         VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT   |
         VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, 0 },
+      { 0, 0,
+        VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT,
+        VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT,
+        VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, /* XXX */
+        VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT, 0 },
       { 0, VK_SUBPASS_EXTERNAL,
         VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
         VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
         VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT          |
         VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT  |
+        VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT    |
+        VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT |
         VK_ACCESS_SHADER_WRITE_BIT,
         VK_ACCESS_COLOR_ATTACHMENT_READ_BIT           |
         VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT   |
@@ -144,7 +151,8 @@ namespace dxvk {
         VK_ACCESS_SHADER_READ_BIT                     |
         VK_ACCESS_TRANSFER_READ_BIT                   |
         VK_ACCESS_UNIFORM_READ_BIT                    |
-        VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT, 0 },
+        VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT           |
+        VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT, 0 },
     }};
     
     VkRenderPassCreateInfo info;

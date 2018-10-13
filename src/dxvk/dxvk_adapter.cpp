@@ -183,6 +183,8 @@ namespace dxvk {
                 || !required.core.features.variableMultisampleRate)
         && (m_deviceFeatures.core.features.inheritedQueries
                 || !required.core.features.inheritedQueries)
+        && (m_deviceFeatures.extTransformFeedback.transformFeedback
+                || !required.extTransformFeedback.transformFeedback)
         && (m_deviceFeatures.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor
                 || !required.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor)
         && (m_deviceFeatures.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor
@@ -193,8 +195,9 @@ namespace dxvk {
   Rc<DxvkDevice> DxvkAdapter::createDevice(DxvkDeviceFeatures enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 11> devExtensionList = {{
+    std::array<DxvkExt*, 12> devExtensionList = {{
       &devExtensions.extShaderViewportIndexLayer,
+      &devExtensions.extTransformFeedback,
       &devExtensions.extVertexAttributeDivisor,
       &devExtensions.khrDedicatedAllocation,
       &devExtensions.khrDescriptorUpdateTemplate,
@@ -224,6 +227,11 @@ namespace dxvk {
 
     // Create pNext chain for additional device features
     enabledFeatures.core.pNext = nullptr;
+
+    if (devExtensions.extTransformFeedback) {
+      enabledFeatures.extTransformFeedback.pNext = enabledFeatures.core.pNext;
+      enabledFeatures.core.pNext = &enabledFeatures.extTransformFeedback;
+    }
 
     if (devExtensions.extVertexAttributeDivisor.revision() >= 3) {
       enabledFeatures.extVertexAttributeDivisor.pNext = enabledFeatures.core.pNext;
@@ -324,6 +332,11 @@ namespace dxvk {
     m_deviceInfo.core.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
     m_deviceInfo.core.pNext = nullptr;
 
+    if (m_deviceExtensions.supports(VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME)) {
+      m_deviceInfo.extTransformFeedback.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_PROPERTIES_EXT;
+      m_deviceInfo.extTransformFeedback.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.extTransformFeedback);
+    }
+
     if (m_deviceExtensions.supports(VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME)) {
       m_deviceInfo.extVertexAttributeDivisor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT;
       m_deviceInfo.extVertexAttributeDivisor.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.extVertexAttributeDivisor);
@@ -345,6 +358,11 @@ namespace dxvk {
     m_deviceFeatures = DxvkDeviceFeatures();
     m_deviceFeatures.core.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
     m_deviceFeatures.core.pNext = nullptr;
+
+    if (m_deviceExtensions.supports(VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME)) {
+      m_deviceFeatures.extTransformFeedback.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT;
+      m_deviceFeatures.extTransformFeedback.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extTransformFeedback);
+    }
 
     if (m_deviceExtensions.supports(VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME) >= 3) {
       m_deviceFeatures.extVertexAttributeDivisor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT;
