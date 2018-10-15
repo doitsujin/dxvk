@@ -130,13 +130,6 @@ namespace dxvk {
     // to enforce the device's frame latency requirement.
     SyncEvent->wait();
     
-    // Check whether the back buffer size is the same
-    // as the window size, in which case we should use
-    // VK_FILTER_NEAREST to avoid blurry output
-    const bool fitSize =
-        m_backBuffer->info().extent.width  == m_options.preferredBufferSize.width
-     && m_backBuffer->info().extent.height == m_options.preferredBufferSize.height;
-    
     for (uint32_t i = 0; i < SyncInterval || i < 1; i++) {
       m_context->beginRecording(
         m_device->createCommandList());
@@ -159,6 +152,10 @@ namespace dxvk {
       auto swapSemas = m_swapchain->getSemaphorePair();
       auto swapImage = m_swapchain->getImageView(swapSemas.acquireSync);
       
+      // Use an appropriate texture filter depending on whether
+      // the back buffer size matches the swap image size
+      bool fitSize = m_backBuffer->info().extent == swapImage->imageInfo().extent;
+
       m_context->bindShader(VK_SHADER_STAGE_VERTEX_BIT,   m_vertShader);
       m_context->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_fragShader);
       
