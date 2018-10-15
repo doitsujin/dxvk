@@ -81,6 +81,11 @@ namespace dxvk {
       { "dxgi.customVendorId",              "1002" },
       { "dxgi.customDeviceId",              "e366" },
     }} },
+    /* Assetto Corsa Competizione                 */
+    { "AC2-Win64-Shipping.exe", {{
+      { "dxgi.customVendorId",              "1002" },
+      { "dxgi.customDeviceId",              "e366" },
+    }} },
   }};
 
 
