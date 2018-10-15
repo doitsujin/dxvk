@@ -271,7 +271,7 @@ namespace dxvk {
           BOOL                              PredicateValue) {
     static bool s_errorShown = false;
     
-    if (!std::exchange(s_errorShown, true))
+    if (pPredicate && !std::exchange(s_errorShown, true))
       Logger::err("D3D11DeviceContext::SetPredication: Stub");
     
     m_state.pr.predicateObject = static_cast<D3D11Query*>(pPredicate);
