@@ -2536,10 +2536,19 @@ namespace dxvk {
     const DxvkPipelineLayout*     layout) {
     bool updatePipelineState = false;
     
-    DxvkAttachment depthAttachment;
+    // If the depth attachment is also bound as a shader
+    // resource, we have to use the appropriate layout
+    VkImage       depthImage  = VK_NULL_HANDLE;
+    VkImageLayout depthLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     
-    if (bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS && m_state.om.framebuffer != nullptr)
-      depthAttachment = m_state.om.framebuffer->getDepthTarget();
+    if (bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS && m_state.om.framebuffer != nullptr) {
+      const auto& depthAttachment = m_state.om.framebuffer->getDepthTarget();
+
+      if (depthAttachment.view != nullptr) {
+        depthImage  = depthAttachment.view->imageHandle();
+        depthLayout = depthAttachment.layout;
+      }
+    }
     
     for (uint32_t i = 0; i < layout->bindingCount(); i++) {
       const auto& binding = layout->binding(i);
@@ -2569,9 +2578,8 @@ namespace dxvk {
             m_descInfos[i].image.imageView   = res.imageView->handle(binding.view);
             m_descInfos[i].image.imageLayout = res.imageView->imageInfo().layout;
             
-            if (depthAttachment.view != nullptr
-             && depthAttachment.view->image() == res.imageView->image())
-              m_descInfos[i].image.imageLayout = depthAttachment.layout;
+            if (res.imageView->imageHandle() == depthImage)
+              m_descInfos[i].image.imageLayout = depthLayout;
             
             m_cmd->trackResource(res.imageView);
             m_cmd->trackResource(res.imageView->image());
