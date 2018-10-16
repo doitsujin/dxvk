@@ -159,9 +159,6 @@ namespace dxvk {
     D3D11Buffer* pBuffer = static_cast<D3D11Buffer*>(pResource);
     const Rc<DxvkBuffer> buffer = pBuffer->GetBuffer();
     
-    D3D11_BUFFER_DESC bufferDesc;
-    pBuffer->GetDesc(&bufferDesc);
-    
     if (!(buffer->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) {
       Logger::err("D3D11: Cannot map a device-local buffer");
       return E_INVALIDARG;
@@ -173,7 +170,7 @@ namespace dxvk {
     pMapEntry->RowPitch     = pBuffer->GetSize();
     pMapEntry->DepthPitch   = pBuffer->GetSize();
     
-    if (bufferDesc.Usage == D3D11_USAGE_DYNAMIC && m_parent->GetOptions()->dcMapSpeedHack) {
+    if (pBuffer->Desc()->Usage == D3D11_USAGE_DYNAMIC && m_parent->GetOptions()->dcMapSpeedHack) {
       // For resources that cannot be written by the GPU,
       // we may write to the buffer resource directly and
       // just swap in the physical buffer slice as needed.
@@ -240,10 +237,7 @@ namespace dxvk {
     const D3D11DeferredContextMapEntry* pMapEntry) {
     D3D11Buffer* pBuffer = static_cast<D3D11Buffer*>(pResource);
     
-    D3D11_BUFFER_DESC bufferDesc;
-    pBuffer->GetDesc(&bufferDesc);
-    
-    if (bufferDesc.Usage == D3D11_USAGE_DYNAMIC && m_parent->GetOptions()->dcMapSpeedHack) {
+    if (pBuffer->Desc()->Usage == D3D11_USAGE_DYNAMIC && m_parent->GetOptions()->dcMapSpeedHack) {
       EmitCs([
         cDstBuffer = pBuffer->GetBuffer(),
         cPhysSlice = pMapEntry->BufferSlice

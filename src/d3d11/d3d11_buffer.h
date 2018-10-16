@@ -58,7 +58,7 @@ namespace dxvk {
     const D3D11_BUFFER_DESC* Desc() const {
       return &m_desc;
     }
-    
+
     Rc<DxvkBuffer> GetBuffer() const {
       return m_buffer;
     }
@@ -80,15 +80,16 @@ namespace dxvk {
     }
     
     VkDeviceSize GetSize() const {
-      return m_buffer->info().size;
+      return m_desc.ByteWidth;
+    }
+
+    DxvkPhysicalBufferSlice DiscardSlice() {
+      m_mapped = m_buffer->allocPhysicalSlice();
+      return m_mapped;
     }
 
     DxvkPhysicalBufferSlice GetMappedSlice() const {
       return m_mapped;
-    }
-
-    void SetMappedSlice(const DxvkPhysicalBufferSlice& slice) {
-      m_mapped = slice;
     }
 
     D3D10Buffer* GetD3D10Iface() {

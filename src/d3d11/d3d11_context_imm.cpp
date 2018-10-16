@@ -157,28 +157,32 @@ namespace dxvk {
           D3D11_MAP                   MapType,
           UINT                        MapFlags,
           D3D11_MAPPED_SUBRESOURCE*   pMappedResource) {
-    if (pResource == nullptr)
-      return DXGI_ERROR_INVALID_CALL;
-    
-    if (pMappedResource != nullptr) {
-      pMappedResource->pData      = nullptr;
-      pMappedResource->RowPitch   = 0;
-      pMappedResource->DepthPitch = 0;
-    }
+    if (!pResource || !pMappedResource)
+      return E_INVALIDARG;
     
     D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resourceDim);
+
+    HRESULT hr;
     
     if (resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER) {
-      return MapBuffer(
+      hr = MapBuffer(
         static_cast<D3D11Buffer*>(pResource),
         MapType, MapFlags, pMappedResource);
     } else {
-      return MapImage(
+      hr = MapImage(
         GetCommonTexture(pResource),
         Subresource, MapType, MapFlags,
         pMappedResource);
     }
+
+    if (FAILED(hr)) {
+      pMappedResource->pData      = nullptr;
+      pMappedResource->RowPitch   = 0;
+      pMappedResource->DepthPitch = 0;
+    }
+
+    return hr;
   }
   
   
@@ -328,7 +332,7 @@ namespace dxvk {
           UINT                        MapFlags,
           D3D11_MAPPED_SUBRESOURCE*   pMappedResource) {
     Rc<DxvkBuffer> buffer = pResource->GetBuffer();
-    
+
     if (!(buffer->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) {
       Logger::err("D3D11: Cannot map a device-local buffer");
       return E_INVALIDARG;
@@ -338,29 +342,36 @@ namespace dxvk {
       // Allocate a new backing slice for the buffer and set
       // it as the 'new' mapped slice. This assumes that the
       // only way to invalidate a buffer is by mapping it.
-      auto physicalSlice = buffer->allocPhysicalSlice();
-      pResource->SetMappedSlice(physicalSlice);
+      auto physicalSlice = pResource->DiscardSlice();
+      pMappedResource->pData      = physicalSlice.mapPtr(0);
+      pMappedResource->RowPitch   = pResource->GetSize();
+      pMappedResource->DepthPitch = pResource->GetSize();
       
       EmitCs([
-        cBuffer        = buffer,
-        cPhysicalSlice = physicalSlice
+        cBuffer        = std::move(buffer),
+        cPhysicalSlice = std::move(physicalSlice)
       ] (DxvkContext* ctx) {
         ctx->invalidateBuffer(cBuffer, cPhysicalSlice);
       });
-    } else if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE) {
-      if (!WaitForResource(buffer->resource(), MapFlags))
-        return DXGI_ERROR_WAS_STILL_DRAWING;
+
+      return S_OK;
+    } else {
+      // Wait until the resource is no longer in use
+      if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE) {
+        if (!WaitForResource(buffer->resource(), MapFlags))
+          return DXGI_ERROR_WAS_STILL_DRAWING;
+      }
+
+      // Use map pointer from previous map operation. This
+      // way we don't have to synchronize with the CS thread
+      // if the map mode is D3D11_MAP_WRITE_NO_OVERWRITE.
+      DxvkPhysicalBufferSlice physicalSlice = pResource->GetMappedSlice();
+      
+      pMappedResource->pData      = physicalSlice.mapPtr(0);
+      pMappedResource->RowPitch   = pResource->GetSize();
+      pMappedResource->DepthPitch = pResource->GetSize();
+      return S_OK;
     }
-    
-    // Use map pointer from previous map operation. This
-    // way we don't have to synchronize with the CS thread
-    // if the map mode is D3D11_MAP_WRITE_NO_OVERWRITE.
-    DxvkPhysicalBufferSlice physicalSlice = pResource->GetMappedSlice();
-    
-    pMappedResource->pData      = physicalSlice.mapPtr(0);
-    pMappedResource->RowPitch   = pResource->GetSize();
-    pMappedResource->DepthPitch = pResource->GetSize();
-    return S_OK;
   }
   
   
