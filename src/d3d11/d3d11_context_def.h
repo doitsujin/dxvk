@@ -30,36 +30,36 @@ namespace dxvk {
       const Rc<DxvkDevice>& Device,
             UINT            ContextFlags);
     
-    D3D11_DEVICE_CONTEXT_TYPE STDMETHODCALLTYPE GetType() final;
+    D3D11_DEVICE_CONTEXT_TYPE STDMETHODCALLTYPE GetType();
     
-    UINT STDMETHODCALLTYPE GetContextFlags() final;
+    UINT STDMETHODCALLTYPE GetContextFlags();
     
     HRESULT STDMETHODCALLTYPE GetData(
             ID3D11Asynchronous*               pAsync,
             void*                             pData,
             UINT                              DataSize,
-            UINT                              GetDataFlags) final;
+            UINT                              GetDataFlags);
     
-    void STDMETHODCALLTYPE Flush() final;
+    void STDMETHODCALLTYPE Flush();
     
     void STDMETHODCALLTYPE ExecuteCommandList(
             ID3D11CommandList*  pCommandList,
-            BOOL                RestoreContextState) final;
+            BOOL                RestoreContextState);
     
     HRESULT STDMETHODCALLTYPE FinishCommandList(
             BOOL                RestoreDeferredContextState,
-            ID3D11CommandList   **ppCommandList) final;
+            ID3D11CommandList   **ppCommandList);
     
     HRESULT STDMETHODCALLTYPE Map(
             ID3D11Resource*             pResource,
             UINT                        Subresource,
             D3D11_MAP                   MapType,
             UINT                        MapFlags,
-            D3D11_MAPPED_SUBRESOURCE*   pMappedResource) final;
+            D3D11_MAPPED_SUBRESOURCE*   pMappedResource);
     
     void STDMETHODCALLTYPE Unmap(
             ID3D11Resource*             pResource,
-            UINT                        Subresource) final;
+            UINT                        Subresource);
     
   private:
     
@@ -97,7 +97,7 @@ namespace dxvk {
     
     Com<D3D11CommandList> CreateCommandList();
     
-    void EmitCsChunk(DxvkCsChunkRef&& chunk) final;
+    void EmitCsChunk(DxvkCsChunkRef&& chunk);
     
     auto FindMapEntry(ID3D11Resource* pResource, UINT Subresource) {
       return std::find_if(m_mappedResources.rbegin(), m_mappedResources.rend(),
