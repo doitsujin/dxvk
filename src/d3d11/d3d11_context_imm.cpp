@@ -48,6 +48,20 @@ namespace dxvk {
   }
   
   
+  void STDMETHODCALLTYPE D3D11ImmediateContext::End(
+          ID3D11Asynchronous*               pAsync) {
+    D3D11DeviceContext::End(pAsync);
+
+    if (pAsync) {
+      D3D11_QUERY_DESC desc;
+      static_cast<D3D11Query*>(pAsync)->GetDesc(&desc);
+      
+      if (desc.Query == D3D11_QUERY_EVENT)
+        FlushImplicit(TRUE);
+    }
+  }
+
+
   HRESULT STDMETHODCALLTYPE D3D11ImmediateContext::GetData(
           ID3D11Asynchronous*               pAsync,
           void*                             pData,
@@ -75,7 +89,7 @@ namespace dxvk {
     // If we're likely going to spin on the asynchronous object,
     // flush the context so that we're keeping the GPU busy
     if (hr == S_FALSE)
-      FlushImplicit();
+      FlushImplicit(FALSE);
     
     return hr;
   }
@@ -116,7 +130,7 @@ namespace dxvk {
     
     // As an optimization, flush everything if the
     // number of pending draw calls is high enough.
-    FlushImplicit();
+    FlushImplicit(FALSE);
     
     // Dispatch command list to the CS thread and
     // restore the immediate context's state
@@ -193,7 +207,7 @@ namespace dxvk {
           UINT                              NumViews,
           ID3D11RenderTargetView* const*    ppRenderTargetViews,
           ID3D11DepthStencilView*           pDepthStencilView) {
-    FlushImplicit();
+    FlushImplicit(FALSE);
     
     D3D11DeviceContext::OMSetRenderTargets(
       NumViews, ppRenderTargetViews, pDepthStencilView);
@@ -208,7 +222,7 @@ namespace dxvk {
           UINT                              NumUAVs,
           ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
     const UINT*                             pUAVInitialCounts) {
-    FlushImplicit();
+    FlushImplicit(FALSE);
 
     D3D11DeviceContext::OMSetRenderTargetsAndUnorderedAccessViews(
       NumRTVs, ppRenderTargetViews, pDepthStencilView,
@@ -429,7 +443,7 @@ namespace dxvk {
         // We don't have to wait, but misbehaving games may
         // still try to spin on `Map` until the resource is
         // idle, so we should flush pending commands
-        FlushImplicit();
+        FlushImplicit(FALSE);
         return false;
       } else {
         // Make sure pending commands using the resource get
@@ -452,10 +466,10 @@ namespace dxvk {
   }
 
 
-  void D3D11ImmediateContext::FlushImplicit() {
+  void D3D11ImmediateContext::FlushImplicit(BOOL StrongHint) {
     // Flush only if the GPU is about to go idle, in
     // order to keep the number of submissions low.
-    if (m_device->pendingSubmissions() <= MaxPendingSubmits) {
+    if (StrongHint || m_device->pendingSubmissions() <= MaxPendingSubmits) {
       auto now = std::chrono::high_resolution_clock::now();
 
       // Prevent flushing too often in short intervals.

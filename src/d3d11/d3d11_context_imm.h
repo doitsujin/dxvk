@@ -25,6 +25,9 @@ namespace dxvk {
     
     UINT STDMETHODCALLTYPE GetContextFlags();
     
+    void STDMETHODCALLTYPE End(
+            ID3D11Asynchronous*               pAsync);
+
     HRESULT STDMETHODCALLTYPE GetData(
             ID3D11Asynchronous*               pAsync,
             void*                             pData,
@@ -101,7 +104,7 @@ namespace dxvk {
     
     void EmitCsChunk(DxvkCsChunkRef&& chunk);
 
-    void FlushImplicit();
+    void FlushImplicit(BOOL StrongHint);
     
   };
   
