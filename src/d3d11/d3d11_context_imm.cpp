@@ -53,12 +53,15 @@ namespace dxvk {
           void*                             pData,
           UINT                              DataSize,
           UINT                              GetDataFlags) {
+    if (!pAsync)
+      return E_INVALIDARG;
+    
     // Make sure that we can safely write to the memory
     // location pointed to by pData if it is specified.
     if (DataSize == 0)
       pData = nullptr;
     
-    if (pData != nullptr && pAsync->GetDataSize() != DataSize) {
+    if (pData && pAsync->GetDataSize() != DataSize) {
       Logger::err(str::format(
         "D3D11: GetData: Data size mismatch",
         "\n  Expected: ", pAsync->GetDataSize(),
@@ -66,24 +69,13 @@ namespace dxvk {
       return E_INVALIDARG;
     }
     
-    // Default error return for unsupported interfaces
-    HRESULT hr = E_INVALIDARG;
-
-    // This method can handle various incompatible interfaces,
-    // so we have to find out what we are actually dealing with
-    Com<ID3D11Query> query;
-    
-    if (SUCCEEDED(pAsync->QueryInterface(__uuidof(ID3D11Query), reinterpret_cast<void**>(&query))))
-      hr = static_cast<D3D11Query*>(query.ptr())->GetData(pData, GetDataFlags);
+    // Get query status directly from the query object
+    HRESULT hr = static_cast<D3D11Query*>(pAsync)->GetData(pData, GetDataFlags);
     
     // If we're likely going to spin on the asynchronous object,
     // flush the context so that we're keeping the GPU busy
     if (hr == S_FALSE)
       FlushImplicit();
-    
-    // The requested interface is not supported
-    if (FAILED(hr))
-      Logger::err("D3D11: GetData: Unsupported Async type");
     
     return hr;
   }

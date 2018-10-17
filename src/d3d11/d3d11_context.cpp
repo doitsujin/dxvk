@@ -226,18 +226,13 @@ namespace dxvk {
     if (!pAsync)
       return;
     
-    Com<ID3D11Query> query;
-    
-    if (SUCCEEDED(pAsync->QueryInterface(__uuidof(ID3D11Query), reinterpret_cast<void**>(&query)))) {
-      Com<D3D11Query> queryPtr = static_cast<D3D11Query*>(query.ptr());
+    Com<D3D11Query> queryPtr = static_cast<D3D11Query*>(pAsync);
       
-      if (queryPtr->HasBeginEnabled()) {
-        const uint32_t revision = queryPtr->Reset();
-        
-        EmitCs([revision, queryPtr] (DxvkContext* ctx) {
-          queryPtr->Begin(ctx, revision);
-        });
-      }
+    if (queryPtr->HasBeginEnabled()) {
+      uint32_t revision = queryPtr->Reset();
+      EmitCs([revision, queryPtr] (DxvkContext* ctx) {
+        queryPtr->Begin(ctx, revision);
+      });
     }
   }
   
@@ -246,22 +241,17 @@ namespace dxvk {
     if (!pAsync)
       return;
     
-    Com<ID3D11Query> query;
+    Com<D3D11Query> queryPtr = static_cast<D3D11Query*>(pAsync);
     
-    if (SUCCEEDED(pAsync->QueryInterface(__uuidof(ID3D11Query), reinterpret_cast<void**>(&query)))) {
-      Com<D3D11Query> queryPtr = static_cast<D3D11Query*>(query.ptr());
-      
-      if (queryPtr->HasBeginEnabled()) {
-        EmitCs([queryPtr] (DxvkContext* ctx) {
-          queryPtr->End(ctx);
-        });
-      } else {
-        const uint32_t revision = queryPtr->Reset();
-        
-        EmitCs([revision, queryPtr] (DxvkContext* ctx) {
-          queryPtr->Signal(ctx, revision);
-        });
-      }
+    if (queryPtr->HasBeginEnabled()) {
+      EmitCs([queryPtr] (DxvkContext* ctx) {
+        queryPtr->End(ctx);
+      });
+    } else {
+      uint32_t revision = queryPtr->Reset();
+      EmitCs([revision, queryPtr] (DxvkContext* ctx) {
+        queryPtr->Signal(ctx, revision);
+      });
     }
   }
   
