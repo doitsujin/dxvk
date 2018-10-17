@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 if [ -z "$1" ] || [ -z "$2" ]; then
   echo "Usage: package-release.sh version destdir [--no-package]"
   exit 1
