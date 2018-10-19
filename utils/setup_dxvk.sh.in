@@ -20,7 +20,9 @@ if [ ! -f "$dlls_dir/d3d11.$dll_ext" ] || [ ! -f "$dlls_dir/dxgi.$dll_ext" ]; th
 fi
 
 if [ -z "$wine" ]; then
-    if [ $build_arch == "x86_64" ]; then
+    if [ -n "$WINE" ]; then
+        wine="$WINE"
+    elif [ $build_arch == "x86_64" ]; then
         wine="wine64"
     else
         wine="wine"
