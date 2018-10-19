@@ -133,15 +133,15 @@ function createOverride {
 }
 
 case "$1" in
-reset)
+uninstall)
     fun=removeOverride
     ;;
-'')
+install)
     fun=createOverride
     ;;
 *)
     echo "Unrecognized option: $1"
-    echo "Usage: $0 [reset] [-q|--quiet] [-y|-n]"
+    echo "Usage: $0 [install|uninstall] [-q|--quiet] [-y|-n]"
     exit 1
     ;;
 esac
