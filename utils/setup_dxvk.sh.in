@@ -88,9 +88,20 @@ else
         fi
     fi
 fi
-unix_sys_path="$($wine winepath -u 'C:\windows\system32')"
-if [ $? -ne 0 ]; then
-    exit 1
+
+if [ $build_arch == "x86_64" ]; then
+    # on wine64:
+    #   - C:\windows\sysnative is C:\windows\system32
+    #   - C:\windows\system32 is C:\windows\syswow64
+    unix_sys_path="$($wine winepath -u 'C:\windows\sysnative')"
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
+else
+    unix_sys_path="$($wine winepath -u 'C:\windows\system32')"
+    if [ $? -ne 0 ]; then
+        exit 1
+    fi
 fi
 
 
