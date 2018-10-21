@@ -6,11 +6,13 @@ For the current status of the project, please refer to the [project wiki](https:
 
 
 ## How to use
-In order to install a DXVK package obtained from the [release](https://github.com/doitsujin/dxvk/releases) page into a given wine prefix, run the following commands from within the DXVK directory:
-
+In order to install DXVK run the following commands. `~/.wine` stands for the default wine prefix in your home folder you may change that to another path if you know what you are doing. Also be sure the version is up to date with version on top of the [release page](https://github.com/doitsujin/dxvk/releases). If its not please do a pull request for this readme to change it.
 ```
-export WINEPREFIX=/path/to/.wine-prefix
-winetricks --force setup_dxvk.verb
+cd /tmp
+export WINEPREFIX=~/.wine
+wget https://github.com/doitsujin/dxvk/releases/download/v0.90/dxvk-0.90.tar.gz
+tar -xvf dxvk-0.90.tar.gz
+winetricks --force dxvk-0.90/setup_dxvk.verb
 ```
 
 This will **copy** the DLLs into the `system32` and `syswow64` directories of your wine prefix and set up the required DLL overrides. Pure 32-bit prefixes are also supported.
@@ -94,6 +96,8 @@ Debian and Ubuntu, this can usually be resolved by using the posix alternate, wh
 supports threading. For example, choose the posix alternate from these
 commands (use i686 for 32-bit):
 ```
-update-alternatives --config x86_64-w64-mingw32-gcc
-update-alternatives --config x86_64-w64-mingw32-g++
+sudo update-alternatives --set x86_64-w64-mingw32-gcc `which x86_64-w64-mingw32-gcc-posix`
+sudo update-alternatives --set x86_64-w64-mingw32-g++ `which x86_64-w64-mingw32-g++-posix`
+sudo update-alternatives --set i686-w64-mingw32-gcc `which i686-w64-mingw32-gcc-posix`
+sudo update-alternatives --set i686-w64-mingw32-g++ `which i686-w64-mingw32-g++-posix`
 ```
