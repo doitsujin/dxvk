@@ -16,6 +16,16 @@ namespace dxvk {
    */
   struct DxvkBlendConstants {
     float r, g, b, a;
+
+    bool operator == (const DxvkBlendConstants& other) const {
+      return this->r == other.r && this->g == other.g
+          && this->b == other.b && this->a == other.a;
+    }
+
+    bool operator != (const DxvkBlendConstants& other) const {
+      return this->r != other.r || this->g != other.g
+          || this->b != other.b || this->a != other.a;
+    }
   };
   
   

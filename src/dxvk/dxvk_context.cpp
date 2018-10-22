@@ -1406,15 +1406,19 @@ namespace dxvk {
   
   void DxvkContext::setBlendConstants(
     const DxvkBlendConstants&   blendConstants) {
-    m_state.om.blendConstants = blendConstants;
-    m_flags.set(DxvkContextFlag::GpDirtyBlendConstants);
+    if (m_state.om.blendConstants != blendConstants) {
+      m_state.om.blendConstants = blendConstants;
+      m_flags.set(DxvkContextFlag::GpDirtyBlendConstants);
+    }
   }
   
   
   void DxvkContext::setStencilReference(
     const uint32_t            reference) {
-    m_state.om.stencilReference = reference;
-    m_flags.set(DxvkContextFlag::GpDirtyStencilRef);
+    if (m_state.om.stencilReference != reference) {
+      m_state.om.stencilReference = reference;
+      m_flags.set(DxvkContextFlag::GpDirtyStencilRef);
+    }
   }
   
   
