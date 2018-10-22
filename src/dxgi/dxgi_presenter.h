@@ -36,18 +36,6 @@ namespace dxvk {
   };
   
   /**
-   * \brief Maps color value to normalized integer
-   * 
-   * \param [in] x Input value, as floating point
-   * \returns Corresponding normalized integer
-   */
-  inline uint16_t MapGammaControlPoint(float x) {
-    if (x < 0.0f) x = 0.0f;
-    if (x > 1.0f) x = 1.0f;
-    return uint16_t(65535.0f * x);
-  }
-  
-  /**
    * \brief Computes gamma control point location
    * 
    * \param [in] CpIndex Control point ID

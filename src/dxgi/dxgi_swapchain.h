@@ -145,14 +145,10 @@ namespace dxvk {
     DXGI_SWAP_CHAIN_FULLSCREEN_DESC m_descFs;
     DXGI_FRAME_STATISTICS           m_stats;
     
-    Rc<DxgiVkPresenter>             m_presenter;
-    Com<IDXGIVkBackBuffer>          m_backBuffer;
+    Com<IDXGIVkSwapChain>           m_presenter;
     
     HMONITOR                        m_monitor;
     WindowState                     m_windowState;
-    
-    HRESULT CreatePresenter();
-    HRESULT CreateBackBuffer();
     
     VkExtent2D GetWindowSize() const;
     
