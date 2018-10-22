@@ -2,6 +2,8 @@
 
 #include "../util/config/config.h"
 
+#include "../dxgi/dxgi_options.h"
+
 #include "d3d11_include.h"
 
 namespace dxvk {
@@ -43,6 +45,22 @@ namespace dxvk {
     /// Enforces anisotropic filtering with the
     /// given anisotropy value for all samplers.
     int32_t samplerAnisotropy;
+    
+    /// Back buffer count for the Vulkan swap chain.
+    /// Overrides DXGI_SWAP_CHAIN_DESC::BufferCount.
+    int32_t numBackBuffers;
+
+    /// Sync interval. Overrides the value
+    /// passed to IDXGISwapChain::Present.
+    int32_t syncInterval;
+
+    /// Defer surface creation until first present call. This
+    /// fixes issues with games that create multiple swap chains
+    /// for a single window that may interfere with each other.
+    bool deferSurfaceCreation;
+
+    /// Vsync mode
+    DxgiSyncMode syncMode;
   };
   
 }
