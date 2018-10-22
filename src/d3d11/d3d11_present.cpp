@@ -100,5 +100,22 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11Presenter::GetDevice(REFGUID riid, void** ppvDevice) {
     return m_device->QueryInterface(riid, ppvDevice);
   }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11Presenter::CreateSwapChainForHwnd(
+          HWND                    hWnd,
+    const DXGI_SWAP_CHAIN_DESC1*  pDesc,
+          IDXGIVkSwapChain**      ppSwapChain) {
+    InitReturnPtr(ppSwapChain);
+
+    try {
+      *ppSwapChain = ref(new D3D11SwapChain(
+        static_cast<D3D11Device*>(m_device), hWnd, pDesc));
+      return S_OK;
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return E_FAIL;
+    }
+  }
   
 }

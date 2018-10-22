@@ -89,7 +89,7 @@ namespace dxvk {
     
     Rc<DxvkDevice> STDMETHODCALLTYPE GetDXVKDevice() final;
 
-    Rc<DxvkEvent> STDMETHODCALLTYPE GetFrameSyncEvent();
+    Rc<DxvkEvent> STDMETHODCALLTYPE GetFrameSyncEvent() final;
     
   private:
     

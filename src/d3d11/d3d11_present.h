@@ -4,6 +4,7 @@
 #include "../dxgi/dxgi_interfaces.h"
 
 #include "d3d11_include.h"
+#include "d3d11_swapchain.h"
 #include "d3d11_texture.h"
 
 namespace dxvk {
@@ -62,6 +63,11 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE GetDevice(
             REFGUID                 riid,
             void**                  ppvDevice);
+    
+    HRESULT STDMETHODCALLTYPE CreateSwapChainForHwnd(
+            HWND                    hWnd,
+      const DXGI_SWAP_CHAIN_DESC1*  pDesc,
+            IDXGIVkSwapChain**      ppSwapChain);
     
   private:
     
