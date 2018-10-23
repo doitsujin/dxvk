@@ -79,7 +79,7 @@ extern "C" {
       
       container->m_d3d11Device = new D3D11Device(
         container.ptr(), container->m_dxgiDevice, fl, Flags);
-      container->m_d3d11Presenter = new D3D11Presenter(
+      container->m_d3d11Presenter = new D3D11PresentDevice(
         container.ptr(), container->m_d3d11Device);
       container->m_d3d11VkInterop = new D3D11VkInterop(
         container.ptr(), container->m_d3d11Device);

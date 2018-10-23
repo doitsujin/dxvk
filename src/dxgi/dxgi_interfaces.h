@@ -150,40 +150,8 @@ IDXGIVkBackBuffer : public IUnknown {
  * back buffer interface.
  */
 MIDL_INTERFACE("79352328-16f2-4f81-9746-9c2e2ccd43cf")
-IDXGIVkPresenter : public IUnknown {
+IDXGIVkPresentDevice : public IUnknown {
   static const GUID guid;
-  
-  /**
-   * \brief Creates a swap chain back buffer
-   * 
-   * \param [in] pSwapChainDesc Swap chain description
-   * \param [out] ppBackBuffer The swap chain back buffer
-   * \returns \c S_OK on success
-   */
-  virtual HRESULT STDMETHODCALLTYPE CreateSwapChainBackBuffer(
-    const DXGI_SWAP_CHAIN_DESC1*      pSwapChainDesc,
-          IDXGIVkBackBuffer**         ppBackBuffer) = 0;
-  
-  /**
-   * \brief Flushes the immediate context
-   * 
-   * Used by the swap chain's \c Present method to
-   * ensure that all rendering commands get dispatched
-   * before presenting the swap chain's back buffer.
-   * \returns \c S_OK on success
-   */
-  virtual HRESULT STDMETHODCALLTYPE FlushRenderingCommands() = 0;
-  
-  /**
-   * \brief Underlying DXVK device
-   * 
-   * \param [in] riid Device type
-   * \param [in] ppDevice device
-   * \returns DXVK device handle
-   */
-  virtual HRESULT STDMETHODCALLTYPE GetDevice(
-          REFGUID     riid,
-          void**      ppDevice) = 0;
   
   virtual HRESULT STDMETHODCALLTYPE CreateSwapChainForHwnd(
           HWND                    hWnd,
@@ -337,7 +305,7 @@ IDXGIVkInteropDevice : public IUnknown {
 struct __declspec(uuid("907bf281-ea3c-43b4-a8e4-9f231107b4ff")) IDXGIVkAdapter;
 struct __declspec(uuid("7a622cf6-627a-46b2-b52f-360ef3da831c")) IDXGIVkDevice;
 struct __declspec(uuid("5679becd-8547-4d93-96a1-e61a1ce7ef37")) IDXGIVkBackBuffer;
-struct __declspec(uuid("79352328-16f2-4f81-9746-9c2e2ccd43cf")) IDXGIVkPresenter;
+struct __declspec(uuid("79352328-16f2-4f81-9746-9c2e2ccd43cf")) IDXGIVkPresentDevice;
 struct __declspec(uuid("e2ef5fa5-dc21-4af7-90c4-f67ef6a09323")) IDXGIVkInteropDevice;
 struct __declspec(uuid("5546cf8c-77e7-4341-b05d-8d4d5000e77d")) IDXGIVkInteropSurface;
 struct __declspec(uuid("104001a6-7f36-4957-b932-86ade9567d91")) IDXGIVkSwapChain;
@@ -345,7 +313,7 @@ struct __declspec(uuid("104001a6-7f36-4957-b932-86ade9567d91")) IDXGIVkSwapChain
 DXVK_DEFINE_GUID(IDXGIVkAdapter);
 DXVK_DEFINE_GUID(IDXGIVkDevice);
 DXVK_DEFINE_GUID(IDXGIVkBackBuffer);
-DXVK_DEFINE_GUID(IDXGIVkPresenter);
+DXVK_DEFINE_GUID(IDXGIVkPresentDevice);
 DXVK_DEFINE_GUID(IDXGIVkInteropDevice);
 DXVK_DEFINE_GUID(IDXGIVkInteropSurface);
 DXVK_DEFINE_GUID(IDXGIVkSwapChain);

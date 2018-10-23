@@ -67,7 +67,7 @@ namespace dxvk {
       return S_OK;
     }
     
-    if (riid == __uuidof(IDXGIVkPresenter)) {
+    if (riid == __uuidof(IDXGIVkPresentDevice)) {
       *ppvObject = ref(m_d3d11Presenter);
       return S_OK;
     }

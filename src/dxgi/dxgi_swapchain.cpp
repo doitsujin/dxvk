@@ -16,10 +16,12 @@ namespace dxvk {
     m_desc    (*pDesc),
     m_descFs  (*pFullscreenDesc),
     m_monitor (nullptr) {
+    Com<IDXGIVkPresentDevice> presentDevice;
+
     // Retrieve a device pointer that allows us to
     // communicate with the underlying D3D device
-    if (FAILED(pDevice->QueryInterface(__uuidof(IDXGIVkPresenter),
-        reinterpret_cast<void**>(&m_presentDevice))))
+    if (FAILED(pDevice->QueryInterface(__uuidof(IDXGIVkPresentDevice),
+        reinterpret_cast<void**>(&presentDevice))))
       throw DxvkError("DXGI: DxgiSwapChain: Invalid device");
     
     // Retrieve the adapter, which is going
@@ -54,7 +56,7 @@ namespace dxvk {
     if (!m_descFs.Windowed && FAILED(EnterFullscreenMode(nullptr)))
       throw DxvkError("DXGI: DxgiSwapChain: Failed to set initial fullscreen state");
     
-    if (FAILED(m_presentDevice->CreateSwapChainForHwnd(m_window, &m_desc, &m_presenter)))
+    if (FAILED(presentDevice->CreateSwapChainForHwnd(m_window, &m_desc, &m_presenter)))
       throw DxvkError("DXGI: DxgiSwapChain: Failed to create presenter");
   }
   
