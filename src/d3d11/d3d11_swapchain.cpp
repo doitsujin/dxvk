@@ -625,7 +625,7 @@ namespace dxvk {
     size_t n = 0;
     
     if (m_vsync) {
-      if (options->syncMode == DxgiSyncMode::Mailbox)
+      if (options->syncMode == D3D11SwapChainSyncMode::Mailbox)
         modes[n++] = VK_PRESENT_MODE_MAILBOX_KHR;
       modes[n++] = VK_PRESENT_MODE_FIFO_KHR;
     } else {

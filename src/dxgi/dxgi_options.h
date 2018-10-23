@@ -9,14 +9,6 @@
 namespace dxvk {
 
   /**
-   * \brief Sync mode
-   */
-  enum class DxgiSyncMode : int32_t {
-    Default   = 0,
-    Mailbox   = 1,
-  };
-  
-  /**
    * \brief DXGI options
    * 
    * Per-app options that control the
@@ -45,17 +37,6 @@ namespace dxvk {
     /// more than 4 GiB of VRAM.
     VkDeviceSize maxDeviceMemory;
     VkDeviceSize maxSharedMemory;
-
-    /// Back buffer count for the Vulkan swap chain.
-    /// Overrides DXGI_SWAP_CHAIN_DESC::BufferCount.
-    int32_t numBackBuffers;
-
-    /// Sync interval. Overrides the value
-    /// passed to IDXGISwapChain::Present.
-    int32_t syncInterval;
-
-    /// Vsync mode
-    DxgiSyncMode syncMode;
 
     /// Enables D3D10 support
     bool d3d10Enable;

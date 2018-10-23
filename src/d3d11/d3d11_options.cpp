@@ -13,7 +13,7 @@ namespace dxvk {
     this->deferSurfaceCreation  = config.getOption<bool>("dxgi.deferSurfaceCreation",   false);
     this->numBackBuffers        = config.getOption<int32_t>("dxgi.numBackBuffers", 0);
     this->syncInterval          = config.getOption<int32_t>("dxgi.syncInterval", -1);
-    this->syncMode              = DxgiSyncMode(config.getOption<int32_t>("dxgi.syncMode", 0));
+    this->syncMode              = D3D11SwapChainSyncMode(config.getOption<int32_t>("dxgi.syncMode", 0));
   }
   
 }

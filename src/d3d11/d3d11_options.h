@@ -8,6 +8,14 @@
 
 namespace dxvk {
   
+  /**
+   * \brief Sync mode
+   */
+  enum class D3D11SwapChainSyncMode : int32_t {
+    Default   = 0,
+    Mailbox   = 1,
+  };
+  
   struct D3D11Options {
     D3D11Options(const Config& config);
     /// Handle D3D11_MAP_FLAG_DO_NOT_WAIT properly.
@@ -60,7 +68,7 @@ namespace dxvk {
     bool deferSurfaceCreation;
 
     /// Vsync mode
-    DxgiSyncMode syncMode;
+    D3D11SwapChainSyncMode syncMode;
   };
   
 }
