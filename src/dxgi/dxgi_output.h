@@ -7,6 +7,21 @@ namespace dxvk {
   class DxgiAdapter;
   
   /**
+   * \brief Number of gamma control points
+   */
+  constexpr uint32_t DXGI_VK_GAMMA_CP_COUNT = 1024;
+  
+  /**
+   * \brief Computes gamma control point location
+   * 
+   * \param [in] CpIndex Control point ID
+   * \returns Location of the control point
+   */
+  inline float GammaControlPointLocation(uint32_t CpIndex) {
+    return float(CpIndex) / float(DXGI_VK_GAMMA_CP_COUNT - 1);
+  }
+  
+  /**
    * \brief Per-output data
    * 
    * Persistent data for a single output, which

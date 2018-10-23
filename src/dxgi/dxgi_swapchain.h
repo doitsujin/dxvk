@@ -8,7 +8,6 @@
 
 #include "dxgi_interfaces.h"
 #include "dxgi_object.h"
-#include "dxgi_presenter.h"
 
 #include "../d3d11/d3d11_interfaces.h"
 
