@@ -69,6 +69,10 @@ namespace dxvk {
 
     /// Vsync mode
     D3D11SwapChainSyncMode syncMode;
+
+    /// Reports whether the implementation utilizes hardware command lists
+    bool reportCommandListSupport;
+
   };
   
 }

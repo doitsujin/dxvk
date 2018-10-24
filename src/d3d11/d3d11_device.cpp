@@ -1173,7 +1173,7 @@ namespace dxvk {
         // https://msdn.microsoft.com/en-us/library/windows/desktop/ff476486(v=vs.85).aspx)
         auto info = static_cast<D3D11_FEATURE_DATA_THREADING*>(pFeatureSupportData);
         info->DriverConcurrentCreates = TRUE;
-        info->DriverCommandLists      = TRUE;
+        info->DriverCommandLists      = m_d3d11Options.reportCommandListSupport ? TRUE : FALSE;
       } return S_OK;
       
       case D3D11_FEATURE_DOUBLES: {

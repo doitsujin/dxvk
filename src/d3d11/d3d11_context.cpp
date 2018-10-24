@@ -1022,10 +1022,44 @@ namespace dxvk {
           UINT                              CopyFlags) {
     if (!pDstResource)
       return;
-    
+
     // We need a different code path for buffers
     D3D11_RESOURCE_DIMENSION resourceType;
     pDstResource->GetType(&resourceType);
+
+    // Simulate bug present in the d3d11 runtime, https://blogs.msdn.microsoft.com/chuckw/2010/07/28/known-issue-direct3d-11-updatesubresource-and-deferred-contexts/
+    // Inverse of renderdoc's workaround
+    if (pDstBox && this->GetType() == D3D11_DEVICE_CONTEXT_DEFERRED && !m_parent->GetOptions()->reportCommandListSupport)
+    {
+      if (resourceType == D3D11_RESOURCE_DIMENSION_BUFFER)
+      {
+        pSrcData += pDstBox->left;
+      } else { // Texture
+        D3D11_BOX alignedBox = *pDstBox;
+
+        // according to the MSDN, block formats need to be aligned
+        Rc<DxvkImage> internalImage = GetCommonTexture(pDstResource)->GetImage();
+        auto formatInfo = imageFormatInfo(internalImage->info().format);
+        bool isBlockFormat = formatInfo->flags == DxvkFormatFlag::BlockCompressed;
+
+        if (isBlockFormat)
+        {
+          alignedBox.left *= 4;
+          alignedBox.right *= 4;
+          alignedBox.top *= 4;
+          alignedBox.bottom *= 4;
+        }
+
+        pSrcData += (alignedBox.front * SrcDepthPitch) + 
+                    (alignedBox.top * SrcRowPitch) + 
+                    (alignedBox.left * formatInfo->elementSize);
+      }
+
+      if (IsBadReadPtr(pSrcData, 1))
+      {
+        Logger::warn("D3D11: UpdateSubresource: Invalid pSrcData after bug simulated\n");
+      }
+    }
     
     if (resourceType == D3D11_RESOURCE_DIMENSION_BUFFER) {
       const auto bufferResource = static_cast<D3D11Buffer*>(pDstResource);
