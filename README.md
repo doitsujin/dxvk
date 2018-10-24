@@ -8,11 +8,12 @@ For the current status of the project, please refer to the [project wiki](https:
 ## How to use
 In order to install DXVK run the following commands. `~/.wine` stands for the default wine prefix in your home folder you may change that to another path if you know what you are doing. Also be sure the version is up to date with version on top of the [release page](https://github.com/doitsujin/dxvk/releases). If its not please do a pull request for this readme to change it.
 ```
-cd /tmp
-export WINEPREFIX=~/.wine
-wget https://github.com/doitsujin/dxvk/releases/download/v0.90/dxvk-0.90.tar.gz
-tar -xvf dxvk-0.90.tar.gz
-winetricks --force dxvk-0.90/setup_dxvk.verb
+mkdir dxvk-download
+cd dxvk-download
+WINEPREFIX=~/.wine
+DXVK_LATEST_TAR=$(curl --silent "https://api.github.com/repos/doitsujin/dxvk/releases" | grep '"browser_download_url":' | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+wget -qO- $DXVK_LATEST_TAR | tar xvz --transform 's/^dbt2-0.37.50.3/dbt2/' --strip-components=1
+winetricks --force setup_dxvk.verb
 ```
 
 This will **copy** the DLLs into the `system32` and `syswow64` directories of your wine prefix and set up the required DLL overrides. Pure 32-bit prefixes are also supported.
