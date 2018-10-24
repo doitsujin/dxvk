@@ -73,6 +73,13 @@ namespace dxvk {
   }
 
 
+  HRESULT STDMETHODCALLTYPE D3D11SwapChain::GetDevice(
+          REFIID                    riid,
+          void**                    ppDevice) {
+    return m_parent->QueryInterface(riid, ppDevice);
+  }
+
+
   HRESULT STDMETHODCALLTYPE D3D11SwapChain::GetImage(
           UINT                      BufferId,
           REFIID                    riid,

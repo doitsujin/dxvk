@@ -136,7 +136,6 @@ namespace dxvk {
 
     Com<DxgiFactory>                m_factory;
     Com<DxgiAdapter>                m_adapter;
-    Com<DxgiDevice>                 m_device;
     
     HWND                            m_window;
     DXGI_SWAP_CHAIN_DESC1           m_desc;

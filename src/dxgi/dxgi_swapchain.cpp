@@ -35,7 +35,6 @@ namespace dxvk {
     if (FAILED(device->GetAdapter(&adapter)))
       throw DxvkError("DXGI: DxgiSwapChain: Failed to retrieve adapter");
     
-    m_device  = static_cast<DxgiDevice*>(device.ptr());
     m_adapter = static_cast<DxgiAdapter*>(adapter.ptr());
     
     // Initialize frame statistics
@@ -93,7 +92,7 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetDevice(REFIID riid, void** ppDevice) {
-    return m_device->QueryInterface(riid, ppDevice);
+    return m_presenter->GetDevice(riid, ppDevice);
   }
   
   

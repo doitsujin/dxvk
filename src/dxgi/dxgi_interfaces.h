@@ -29,6 +29,10 @@ IDXGIVkSwapChain : public IUnknown {
 
   virtual HRESULT STDMETHODCALLTYPE GetDesc(
           DXGI_SWAP_CHAIN_DESC1*    pDesc) = 0;
+  
+  virtual HRESULT STDMETHODCALLTYPE GetDevice(
+          REFIID                    riid,
+          void**                    ppDevice) = 0;
 
   virtual HRESULT STDMETHODCALLTYPE GetImage(
           UINT                      BufferId,
