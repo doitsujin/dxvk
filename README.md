@@ -10,7 +10,7 @@ In order to install latest realease of DXVK run the following commands. `~/.wine
 ```
 mkdir dxvk-download
 cd dxvk-download
-WINEPREFIX=~/.wine
+export WINEPREFIX=~/.wine
 DXVK_LATEST_TAR=$(curl --silent "https://api.github.com/repos/doitsujin/dxvk/releases" | grep '"browser_download_url":' | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
 wget -qO- $DXVK_LATEST_TAR | tar xvz --transform 's/^dbt2-0.37.50.3/dbt2/' --strip-components=1
 winetricks --force setup_dxvk.verb
