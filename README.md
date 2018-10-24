@@ -6,7 +6,7 @@ For the current status of the project, please refer to the [project wiki](https:
 
 
 ## How to use
-In order to install latest realease of DXVK run the following commands. `~/.wine` stands for the default wine prefix in your home folder you may change that to another path if you know what you are doing.
+In order to install the latest realease of DXVK run the following commands. `~/.wine` stands for the default wine prefix in your home folder you may change that to another path if you know what you are doing.
 ```
 mkdir dxvk-download
 cd dxvk-download
