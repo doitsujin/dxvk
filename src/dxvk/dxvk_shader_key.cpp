@@ -7,14 +7,6 @@ namespace dxvk {
     m_sha1(Sha1Hash::compute(nullptr, 0)) { }
 
 
-  DxvkShaderKey::DxvkShaderKey(
-          VkShaderStageFlagBits shaderStage,
-    const void*                 sourceCode,
-          size_t                sourceSize)
-  : m_type(shaderStage),
-    m_sha1(Sha1Hash::compute(reinterpret_cast<const uint8_t*>(sourceCode), sourceSize)) { }
-  
-
   std::string DxvkShaderKey::toString() const {
     const char* prefix = nullptr;
 
