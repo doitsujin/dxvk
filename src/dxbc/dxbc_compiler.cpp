@@ -2803,8 +2803,7 @@ namespace dxvk {
     const uint32_t registerId = ins.src[0].idx[0].offset;
     
     DxbcRegisterValue result;
-    result.type.ctype  = DxbcScalarType::Float32;
-    result.type.ccount = 4;
+    result.type = getInputRegType(registerId);
     
     switch (ins.op) {
       case DxbcOpcode::EvalCentroid: {
