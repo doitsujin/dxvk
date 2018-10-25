@@ -24,6 +24,10 @@ namespace dxvk {
       { "dxgi.customVendorId",              "1002" },
       { "dxgi.customDeviceId",              "e366" },
     }} },
+    /* The Vanishing of Ethan Carter Redux        */
+    { "EthanCarter-Win64-Shipping.exe", {{
+      { "dxgi.customVendorId",              "10de" },
+    }} },
     /* The Evil Within                            */
     { "EvilWithin.exe", {{
       { "d3d11.dcMapSpeedHack",             "False" },
