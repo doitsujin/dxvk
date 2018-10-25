@@ -203,6 +203,107 @@ namespace dxvk {
   }
   
   
+  void STDMETHODCALLTYPE D3D11ImmediateContext::CopySubresourceRegion(
+          ID3D11Resource*                   pDstResource,
+          UINT                              DstSubresource,
+          UINT                              DstX,
+          UINT                              DstY,
+          UINT                              DstZ,
+          ID3D11Resource*                   pSrcResource,
+          UINT                              SrcSubresource,
+    const D3D11_BOX*                        pSrcBox) {
+    FlushImplicit(FALSE);
+
+    D3D11DeviceContext::CopySubresourceRegion(
+      pDstResource, DstSubresource, DstX, DstY, DstZ,
+      pSrcResource, SrcSubresource, pSrcBox);
+  }
+  
+
+  void STDMETHODCALLTYPE D3D11ImmediateContext::CopySubresourceRegion1(
+          ID3D11Resource*                   pDstResource,
+          UINT                              DstSubresource,
+          UINT                              DstX,
+          UINT                              DstY,
+          UINT                              DstZ,
+          ID3D11Resource*                   pSrcResource,
+          UINT                              SrcSubresource,
+    const D3D11_BOX*                        pSrcBox,
+          UINT                              CopyFlags) {
+    FlushImplicit(FALSE);
+
+    D3D11DeviceContext::CopySubresourceRegion1(
+      pDstResource, DstSubresource, DstX, DstY, DstZ,
+      pSrcResource, SrcSubresource, pSrcBox, CopyFlags);
+  }
+
+  
+  void STDMETHODCALLTYPE D3D11ImmediateContext::CopyResource(
+          ID3D11Resource*                   pDstResource,
+          ID3D11Resource*                   pSrcResource) {
+    FlushImplicit(FALSE);
+
+    D3D11DeviceContext::CopyResource(
+      pDstResource, pSrcResource);
+  }
+
+  
+  void STDMETHODCALLTYPE D3D11ImmediateContext::GenerateMips(
+          ID3D11ShaderResourceView*         pShaderResourceView) {
+    FlushImplicit(FALSE);
+
+    D3D11DeviceContext::GenerateMips(
+      pShaderResourceView);
+  }
+  
+
+  void STDMETHODCALLTYPE D3D11ImmediateContext::UpdateSubresource(
+          ID3D11Resource*                   pDstResource,
+          UINT                              DstSubresource,
+    const D3D11_BOX*                        pDstBox,
+    const void*                             pSrcData,
+          UINT                              SrcRowPitch,
+          UINT                              SrcDepthPitch) {
+    FlushImplicit(FALSE);
+
+    D3D11DeviceContext::UpdateSubresource(
+      pDstResource, DstSubresource, pDstBox,
+      pSrcData, SrcRowPitch, SrcDepthPitch);
+  }
+
+  
+  void STDMETHODCALLTYPE D3D11ImmediateContext::UpdateSubresource1(
+          ID3D11Resource*                   pDstResource,
+          UINT                              DstSubresource,
+    const D3D11_BOX*                        pDstBox,
+    const void*                             pSrcData,
+          UINT                              SrcRowPitch,
+          UINT                              SrcDepthPitch,
+          UINT                              CopyFlags) {
+    FlushImplicit(FALSE);
+
+    D3D11DeviceContext::UpdateSubresource1(
+      pDstResource, DstSubresource, pDstBox,
+      pSrcData, SrcRowPitch, SrcDepthPitch,
+      CopyFlags);
+  }
+  
+
+  void STDMETHODCALLTYPE D3D11ImmediateContext::ResolveSubresource(
+          ID3D11Resource*                   pDstResource,
+          UINT                              DstSubresource,
+          ID3D11Resource*                   pSrcResource,
+          UINT                              SrcSubresource,
+          DXGI_FORMAT                       Format) {
+    FlushImplicit(FALSE);
+
+    D3D11DeviceContext::ResolveSubresource(
+      pDstResource, DstSubresource,
+      pSrcResource, SrcSubresource,
+      Format);
+  }
+
+
   void STDMETHODCALLTYPE D3D11ImmediateContext::OMSetRenderTargets(
           UINT                              NumViews,
           ID3D11RenderTargetView* const*    ppRenderTargetViews,
