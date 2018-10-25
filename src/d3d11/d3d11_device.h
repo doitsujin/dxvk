@@ -394,11 +394,11 @@ namespace dxvk {
 
     HRESULT CreateShaderModule(
             D3D11CommonShader*      pShaderModule,
+            DxvkShaderKey           ShaderKey,
       const void*                   pShaderBytecode,
             size_t                  BytecodeLength,
             ID3D11ClassLinkage*     pClassLinkage,
-      const DxbcModuleInfo*         pModuleInfo,
-            DxbcProgramType         ProgramType);
+      const DxbcModuleInfo*         pModuleInfo);
     
     HRESULT GetFormatSupportFlags(
             DXGI_FORMAT Format,

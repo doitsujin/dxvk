@@ -81,23 +81,21 @@ namespace dxvk {
   
   D3D11CommonShader D3D11ShaderModuleSet::GetShaderModule(
           D3D11Device*    pDevice,
+    const DxvkShaderKey*  pShaderKey,
     const DxbcModuleInfo* pDxbcModuleInfo,
     const void*           pShaderBytecode,
-          size_t          BytecodeLength,
-          DxbcProgramType ProgramType) {
-    // Compute the shader's unique key so that we can perform a lookup
-    DxvkShaderKey key(GetShaderStage(ProgramType), pShaderBytecode, BytecodeLength);
-    
+          size_t          BytecodeLength) {
+    // Use the shader's unique key for the lookup
     { std::unique_lock<std::mutex> lock(m_mutex);
       
-      auto entry = m_modules.find(key);
+      auto entry = m_modules.find(*pShaderKey);
       if (entry != m_modules.end())
         return entry->second;
     }
     
     // This shader has not been compiled yet, so we have to create a
     // new module. This takes a while, so we won't lock the structure.
-    D3D11CommonShader module(pDevice, &key,
+    D3D11CommonShader module(pDevice, pShaderKey,
       pDxbcModuleInfo, pShaderBytecode, BytecodeLength);
     
     // Insert the new module into the lookup table. If another thread
@@ -105,7 +103,7 @@ namespace dxvk {
     // that object instead and discard the newly created module.
     { std::unique_lock<std::mutex> lock(m_mutex);
       
-      auto status = m_modules.insert({ key, module });
+      auto status = m_modules.insert({ *pShaderKey, module });
       if (!status.second)
         return status.first->second;
     }

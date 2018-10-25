@@ -36,6 +36,17 @@ namespace dxvk {
             size_t                sourceSize);
     
     /**
+     * \brief Creates shader key
+     * 
+     * \param [in] stage Shader stage
+     * \param [in] hash Shader hash
+     */
+    DxvkShaderKey(
+            VkShaderStageFlagBits stage,
+            Sha1Hash              hash)
+    : m_type(stage), m_sha1(hash) { }
+    
+    /**
      * \brief Generates string from shader key
      * \returns String representation of the key
      */
