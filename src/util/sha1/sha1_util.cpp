@@ -21,13 +21,26 @@ namespace dxvk {
   
   
   Sha1Hash Sha1Hash::compute(
-    const uint8_t*  data,
+    const void*     data,
           size_t    size) {
+    Sha1Data chunk = { data, size };
+    return compute(1, &chunk);
+  }
+  
+  
+  Sha1Hash Sha1Hash::compute(
+          size_t    numChunks,
+    const Sha1Data* chunks) {
     Sha1Digest digest;
     
     SHA1_CTX ctx;
     SHA1Init(&ctx);
-    SHA1Update(&ctx, data, size);
+    
+    for (size_t i = 0; i < numChunks; i++) {
+      auto ptr = reinterpret_cast<const uint8_t*>(chunks[i].data);
+      SHA1Update(&ctx, ptr, chunks[i].size);
+    }
+
     SHA1Final(digest.data(), &ctx);
     return Sha1Hash(digest);
   }

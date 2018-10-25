@@ -7,6 +7,11 @@
 namespace dxvk {
   
   using Sha1Digest = std::array<uint8_t, 20>;
+
+  struct Sha1Data {
+    const void* data;
+    size_t      size;
+  };
   
   class Sha1Hash {
     
@@ -33,16 +38,18 @@ namespace dxvk {
     }
     
     static Sha1Hash compute(
-      const uint8_t*  data,
+      const void*     data,
             size_t    size);
+    
+    static Sha1Hash compute(
+            size_t    numChunks,
+      const Sha1Data* chunks);
     
     template<typename T>
     static Sha1Hash compute(const T& data) {
-      auto bytes = reinterpret_cast<const uint8_t*>(&data);
-      return compute(bytes, sizeof(T));
+      return compute(&data, sizeof(T));
     }
 
-    
   private:
     
     Sha1Digest m_digest;
