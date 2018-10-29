@@ -2287,7 +2287,7 @@ namespace dxvk {
           ID3D11RenderTargetView* const*    ppRenderTargetViews,
           ID3D11DepthStencilView*           pDepthStencilView) {
     SetRenderTargets(NumViews, ppRenderTargetViews, pDepthStencilView);
-    BindFramebuffer(std::exchange(m_state.om.isUavRendering, false));
+    BindFramebuffer(false);
   }
   
   
@@ -2299,17 +2299,15 @@ namespace dxvk {
           UINT                              NumUAVs,
           ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
     const UINT*                             pUAVInitialCounts) {
-    bool spillOnBind = m_state.om.isUavRendering;
-
+    bool isUavRendering = false;
+    
     if (NumRTVs != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL)
       SetRenderTargets(NumRTVs, ppRenderTargetViews, pDepthStencilView);
     
     if (NumUAVs != D3D11_KEEP_UNORDERED_ACCESS_VIEWS) {
       // Check whether there actually are any UAVs bound
-      m_state.om.isUavRendering = false;
-
-      for (uint32_t i = 0; i < NumUAVs && !m_state.om.isUavRendering; i++)
-        m_state.om.isUavRendering = ppUnorderedAccessViews[i] != nullptr;
+      for (uint32_t i = 0; i < NumUAVs && !isUavRendering; i++)
+        isUavRendering = ppUnorderedAccessViews[i] != nullptr;
 
       // UAVs are made available to all shader stages in
       // the graphics pipeline even though this code may
@@ -2322,7 +2320,7 @@ namespace dxvk {
         pUAVInitialCounts);
     }
 
-    BindFramebuffer(spillOnBind);
+    BindFramebuffer(isUavRendering);
   }
   
   
@@ -3173,7 +3171,7 @@ namespace dxvk {
   
   
   void D3D11DeviceContext::RestoreState() {
-    BindFramebuffer(m_state.om.isUavRendering);
+    BindFramebuffer(false);
     
     BindShader(DxbcProgramType::VertexShader,   GetCommonShader(m_state.vs.shader.ptr()));
     BindShader(DxbcProgramType::HullShader,     GetCommonShader(m_state.hs.shader.ptr()));
