@@ -239,7 +239,7 @@ namespace dxvk {
     std::vector<DxvkGraphicsPipelineInstance> m_pipelines;
     
     // Pipeline handles used for derivative pipelines
-    std::atomic<VkPipeline> m_basePipeline = { VK_NULL_HANDLE };
+    VkPipeline m_basePipeline = VK_NULL_HANDLE;
     
     const DxvkGraphicsPipelineInstance* findInstance(
       const DxvkGraphicsPipelineStateInfo& state,

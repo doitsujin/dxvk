@@ -108,7 +108,6 @@ namespace dxvk {
     const DxvkRenderPass&                renderPass) {
     VkRenderPass renderPassHandle = renderPass.getDefaultHandle();
     
-    VkPipeline newPipelineBase   = VK_NULL_HANDLE;
     VkPipeline newPipelineHandle = VK_NULL_HANDLE;
 
     { std::lock_guard<sync::Spinlock> lock(m_mutex);
@@ -125,17 +124,15 @@ namespace dxvk {
       
       // If no pipeline instance exists with the given state
       // vector, create a new one and add it to the list.
-      newPipelineBase   = m_basePipeline.load();
-      newPipelineHandle = this->compilePipeline(state, renderPassHandle, newPipelineBase);
+      newPipelineHandle = this->compilePipeline(state, renderPassHandle, m_basePipeline);
 
       // Add new pipeline to the set
       m_pipelines.emplace_back(state, renderPassHandle, newPipelineHandle);
       m_pipeMgr->m_numGraphicsPipelines += 1;
+      
+      if (!m_basePipeline && newPipelineHandle)
+        m_basePipeline = newPipelineHandle;
     }
-    
-    // Use the new pipeline as the base pipeline for derivative pipelines
-    if (newPipelineBase == VK_NULL_HANDLE && newPipelineHandle != VK_NULL_HANDLE)
-      m_basePipeline.compare_exchange_strong(newPipelineBase, newPipelineHandle);
     
     if (newPipelineHandle != VK_NULL_HANDLE)
       this->writePipelineStateToCache(state, renderPass.format());
