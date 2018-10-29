@@ -110,6 +110,7 @@ namespace dxvk {
     DxvkShaderStage fs;
 
     DxvkGraphicsPipelineStateInfo state;
+    DxvkGraphicsPipelineFlags     flags;
     Rc<DxvkGraphicsPipeline>      pipeline;
   };
   

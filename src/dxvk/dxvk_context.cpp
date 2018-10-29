@@ -953,6 +953,8 @@ namespace dxvk {
       m_cmd->cmdDraw(
         vertexCount, instanceCount,
         firstVertex, firstInstance);
+      
+      this->commitGraphicsPostBarriers();
     }
     
     m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
@@ -973,6 +975,7 @@ namespace dxvk {
         descriptor.buffer.offset + offset,
         count, stride);
       
+      this->commitGraphicsPostBarriers();
       this->trackDrawBuffer();
     }
     
@@ -993,6 +996,8 @@ namespace dxvk {
         indexCount, instanceCount,
         firstIndex, vertexOffset,
         firstInstance);
+      
+      this->commitGraphicsPostBarriers();
     }
     
     m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
@@ -1013,6 +1018,7 @@ namespace dxvk {
         descriptor.buffer.offset + offset,
         count, stride);
       
+      this->commitGraphicsPostBarriers();
       this->trackDrawBuffer();
     }
     
@@ -1033,6 +1039,8 @@ namespace dxvk {
         physicalSlice.handle(),
         physicalSlice.offset(),
         counterBias, counterDivisor);
+      
+      this->commitGraphicsPostBarriers();
     }
 
     m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
@@ -2403,9 +2411,12 @@ namespace dxvk {
         m_state.gp.vs.shader,
         m_state.gp.tcs.shader, m_state.gp.tes.shader,
         m_state.gp.gs.shader, m_state.gp.fs.shader);
+      m_state.gp.flags = DxvkGraphicsPipelineFlags();
       
-      if (m_state.gp.pipeline != nullptr)
+      if (m_state.gp.pipeline != nullptr) {
+        m_state.gp.flags = m_state.gp.pipeline->flags();
         m_cmd->trackResource(m_state.gp.pipeline);
+      }
     }
   }
   
@@ -2820,11 +2831,7 @@ namespace dxvk {
 
 
   void DxvkContext::updateTransformFeedbackState() {
-    bool hasTransformFeedback =
-         m_state.gp.pipeline != nullptr
-      && m_state.gp.pipeline->flags().test(DxvkGraphicsPipelineFlag::HasTransformFeedback);
-    
-    if (!hasTransformFeedback)
+    if (!m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasTransformFeedback))
       return;
     
     if (m_flags.test(DxvkContextFlag::GpDirtyXfbBuffers)) {
@@ -3021,6 +3028,15 @@ namespace dxvk {
         }
       }
     }
+  }
+  
+  
+  void DxvkContext::commitGraphicsPostBarriers() {
+    // Render pass dependencies always act as a full memory barrier. We
+    // have to do this because writes from the vertex shader in one draw
+    // need to be visible to the fragment shader in the next draw, etc.
+    if (m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasStorageDescriptors))
+      this->spillRenderPass();
   }
 
 

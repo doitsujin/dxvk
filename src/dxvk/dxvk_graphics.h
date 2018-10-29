@@ -24,7 +24,7 @@ namespace dxvk {
     HasStorageDescriptors,
   };
 
-  using DxvkGraphicsCommonPipelineFlags = Flags<DxvkGraphicsPipelineFlag>;
+  using DxvkGraphicsPipelineFlags = Flags<DxvkGraphicsPipelineFlag>;
 
   
   /**
@@ -171,7 +171,7 @@ namespace dxvk {
      * \brief Returns graphics pipeline flags
      * \returns Graphics pipeline property flags
      */
-    DxvkGraphicsCommonPipelineFlags flags() const {
+    DxvkGraphicsPipelineFlags flags() const {
       return m_flags;
     }
     
@@ -232,7 +232,7 @@ namespace dxvk {
     uint32_t m_vsIn  = 0;
     uint32_t m_fsOut = 0;
     
-    DxvkGraphicsCommonPipelineFlags     m_flags;
+    DxvkGraphicsPipelineFlags           m_flags;
     DxvkGraphicsCommonPipelineStateInfo m_common;
     
     // List of pipeline instances, shared between threads

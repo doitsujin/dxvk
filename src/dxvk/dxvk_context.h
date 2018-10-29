@@ -849,6 +849,8 @@ namespace dxvk {
     
     void commitComputeInitBarriers();
     void commitComputePostBarriers();
+    
+    void commitGraphicsPostBarriers();
 
     void emitMemoryBarrier(
             VkPipelineStageFlags      srcStages,
