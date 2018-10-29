@@ -73,6 +73,9 @@ namespace dxvk {
     if (gs != nullptr && gs->hasCapability(spv::CapabilityTransformFeedback))
       m_flags.set(DxvkGraphicsPipelineFlag::HasTransformFeedback);
     
+    if (m_layout->hasStorageDescriptors())
+      m_flags.set(DxvkGraphicsPipelineFlag::HasStorageDescriptors);
+    
     m_common.msSampleShadingEnable = fs != nullptr && fs->hasCapability(spv::CapabilitySampleRateShading);
     m_common.msSampleShadingFactor = 1.0f;
   }

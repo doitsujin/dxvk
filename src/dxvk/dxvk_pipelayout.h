@@ -217,6 +217,21 @@ namespace dxvk {
         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
     }
+    
+    /**
+     * \brief Checks whether buffers or images are written to
+     * 
+     * It is assumed that storage images and buffers
+     * will be written to if they are present. Used
+     * for synchronization purposes.
+     */
+    bool hasStorageDescriptors() const {
+      return m_descriptorTypes.any(
+        VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
+        VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER);
+    }
 
   private:
     
