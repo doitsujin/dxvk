@@ -224,13 +224,23 @@ namespace dxvk {
      * It is assumed that storage images and buffers
      * will be written to if they are present. Used
      * for synchronization purposes.
+     * \param [in] stages Shader stages to check
      */
-    bool hasStorageDescriptors() const {
-      return m_descriptorTypes.any(
-        VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC,
-        VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER);
+    VkShaderStageFlags getStorageDescriptorStages() const {
+      VkShaderStageFlags stages = 0;
+
+      for (const auto& slot : m_bindingSlots) {
+        bool isStorageDescriptor =
+          slot.type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER         ||
+          slot.type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC ||
+          slot.type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER   ||
+          slot.type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        
+        if (isStorageDescriptor)
+          stages |= slot.stages;
+      }
+      
+      return stages;
     }
 
   private:

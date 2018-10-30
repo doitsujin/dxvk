@@ -3032,8 +3032,15 @@ namespace dxvk {
   
   
   void DxvkContext::commitGraphicsPostBarriers() {
-    if (m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasStorageDescriptors)) {
-      // FIXME support vertex stage SSBO synchronization
+    bool fs = m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasFsStorageDescriptors);
+    bool vs = m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasVsStorageDescriptors);
+
+    if (vs) {
+      // External subpass dependencies serve as full memory
+      // and execution barriers, so we can use this to allow
+      // inter-stage synchronization.
+      this->spillRenderPass();
+    } else if (fs) {
       this->emitMemoryBarrier(
         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
         VK_ACCESS_SHADER_WRITE_BIT,
