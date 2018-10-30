@@ -3032,11 +3032,14 @@ namespace dxvk {
   
   
   void DxvkContext::commitGraphicsPostBarriers() {
-    // Render pass dependencies always act as a full memory barrier. We
-    // have to do this because writes from the vertex shader in one draw
-    // need to be visible to the fragment shader in the next draw, etc.
-    if (m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasStorageDescriptors))
-      this->spillRenderPass();
+    if (m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasStorageDescriptors)) {
+      // FIXME support vertex stage SSBO synchronization
+      this->emitMemoryBarrier(
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        VK_ACCESS_SHADER_WRITE_BIT,
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        VK_ACCESS_SHADER_READ_BIT);
+    }
   }
 
 
