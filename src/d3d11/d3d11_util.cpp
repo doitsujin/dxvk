@@ -46,34 +46,6 @@ namespace dxvk {
   }
   
   
-  VkBorderColor DecodeBorderColor(const FLOAT BorderColor[4]) {
-    struct BorderColorEntry {
-      float r, g, b, a;
-      VkBorderColor bc;
-    };
-    
-    // Vulkan only supports a very limited set of border colors
-    const std::array<BorderColorEntry, 3> borderColorMap = {{
-      { 0.0f, 0.0f, 0.0f, 0.0f, VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK },
-      { 0.0f, 0.0f, 0.0f, 1.0f, VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK },
-      { 1.0f, 1.0f, 1.0f, 1.0f, VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE },
-    }};
-    
-    for (const auto& e : borderColorMap) {
-      if (e.r == BorderColor[0] && e.g == BorderColor[1]
-       && e.b == BorderColor[2] && e.a == BorderColor[3])
-        return e.bc;
-    }
-      
-    Logger::warn(str::format(
-      "D3D11Device: No matching border color found for (",
-      BorderColor[0], ",", BorderColor[1], ",",
-      BorderColor[2], ",", BorderColor[3], ")"));
-    
-    return VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
-  }
-  
-  
   VkCompareOp DecodeCompareOp(D3D11_COMPARISON_FUNC Mode) {
     switch (Mode) {
       case D3D11_COMPARISON_NEVER:          return VK_COMPARE_OP_NEVER;

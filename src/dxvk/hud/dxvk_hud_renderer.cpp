@@ -279,7 +279,7 @@ namespace dxvk::hud {
     info.addressModeW   = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     info.compareToDepth = VK_FALSE;
     info.compareOp      = VK_COMPARE_OP_NEVER;
-    info.borderColor    = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+    info.borderColor    = VkClearColorValue();
     info.usePixelCoord  = VK_TRUE;
     
     return device->createSampler(info);

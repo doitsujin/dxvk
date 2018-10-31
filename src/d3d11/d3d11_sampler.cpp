@@ -33,18 +33,14 @@ namespace dxvk {
     info.compareToDepth = (filterBits & 0x80) ? VK_TRUE : VK_FALSE;
     info.compareOp      = DecodeCompareOp(desc.ComparisonFunc);
     
-    info.borderColor    = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+    for (uint32_t i = 0; i < 4; i++)
+      info.borderColor.float32[i] = desc.BorderColor[i];
+    
     info.usePixelCoord  = VK_FALSE;  // Not supported in D3D11
     
     // Make sure to use a valid anisotropy value
     if (desc.MaxAnisotropy <  1) info.maxAnisotropy =  1.0f;
     if (desc.MaxAnisotropy > 16) info.maxAnisotropy = 16.0f;
-    
-    // Try to find a matching border color if clamp to border is enabled
-    if (info.addressModeU == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER
-     || info.addressModeV == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER
-     || info.addressModeW == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER)
-      info.borderColor = DecodeBorderColor(desc.BorderColor);
     
     // Enforce anisotropy specified in the device options
     int32_t samplerAnisotropyOption = device->GetOptions()->samplerAnisotropy;

@@ -552,7 +552,7 @@ namespace dxvk {
     samplerInfo.addressModeW    = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
     samplerInfo.compareToDepth  = VK_FALSE;
     samplerInfo.compareOp       = VK_COMPARE_OP_ALWAYS;
-    samplerInfo.borderColor     = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+    samplerInfo.borderColor     = VkClearColorValue();
     samplerInfo.usePixelCoord   = VK_FALSE;
     m_samplerFitting = m_device->createSampler(samplerInfo);
 

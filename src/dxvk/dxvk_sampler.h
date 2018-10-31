@@ -32,7 +32,7 @@ namespace dxvk {
     VkCompareOp compareOp;
     
     /// Texture border color
-    VkBorderColor borderColor;
+    VkClearColorValue borderColor;
     
     /// Enables unnormalized coordinates
     VkBool32 usePixelCoord;
@@ -76,6 +76,8 @@ namespace dxvk {
     Rc<vk::DeviceFn>      m_vkd;
     DxvkSamplerCreateInfo m_info;
     VkSampler             m_sampler = VK_NULL_HANDLE;
+
+    VkBorderColor getBorderColor(VkClearColorValue borderColor) const;
     
   };
   
