@@ -19,11 +19,6 @@ namespace dxvk {
     { "Dishonored2.exe", {{
       { "d3d11.allowMapFlagNoWait",         "True" }
     }} },
-    /* Dragon Quest 2 - keeps searching for NVAPI */
-    { "DRAGON QUEST XI.exe", {{
-      { "dxgi.customVendorId",              "1002" },
-      { "dxgi.customDeviceId",              "e366" },
-    }} },
     /* Elite Dangerous                            */
     { "EliteDangerous64.exe", {{
       { "dxgi.customVendorId",              "10de" },
@@ -56,16 +51,6 @@ namespace dxvk {
     { "Frostpunk.exe", {{
       { "dxgi.deferSurfaceCreation",        "True" },
     }} },
-    /* Grand Theft Auto V                         */
-    { "GTA5.exe", {{
-      { "dxgi.customVendorId",              "1002" },
-      { "dxgi.customDeviceId",              "e366" },
-    }} },
-    /* Batman: Arkham Knight                      */
-    { "BatmanAK.exe", {{
-      { "dxgi.customVendorId",              "1002" },
-      { "dxgi.customDeviceId",              "e366" },
-    }} },
     /* Mafia 3                                    */
     { "mafia3.exe", {{
       { "d3d11.fakeStreamOutSupport",       "True" },
@@ -73,31 +58,6 @@ namespace dxvk {
     /* Overwatch                                  */
     { "Overwatch.exe", {{
       { "d3d11.fakeStreamOutSupport",       "True" },
-    }} },
-    /* Star Citizen                               */
-    { "StarCitizen.exe", {{
-      { "dxgi.customVendorId",              "1002" },
-      { "dxgi.customDeviceId",              "e366" },
-    }} },
-    /* Dauntless                                  */
-    { "Dauntless-Win64-Shipping.exe", {{
-      { "dxgi.customVendorId",              "1002" },
-      { "dxgi.customDeviceId",              "e366" },
-    }} },
-    /* Redout                                     */
-    { "redout-Win64-Shipping.exe", {{
-      { "dxgi.customVendorId",              "1002" },
-      { "dxgi.customDeviceId",              "e366" },
-    }} },
-    /* Sword Art Online Fatal Bullet              */
-    { "SAOFB-Win64-Shipping.exe", {{
-      { "dxgi.customVendorId",              "1002" },
-      { "dxgi.customDeviceId",              "e366" },
-    }} },
-    /* Assetto Corsa Competizione                 */
-    { "AC2-Win64-Shipping.exe", {{
-      { "dxgi.customVendorId",              "1002" },
-      { "dxgi.customDeviceId",              "e366" },
     }} },
   }};
 
