@@ -35,21 +35,13 @@ namespace dxvk {
     m_passManager(passManager) {
     bool newFile = !readCacheFile();
 
-    // Open cache file for writing
-    std::ios_base::openmode mode = std::ios_base::binary;
-
-    mode |= newFile
-      ? std::ios_base::trunc
-      : std::ios_base::app;
-    
-    m_writerFile = std::ofstream(getCacheFileName(), mode);
-
-    if (!m_writerFile) {
-      // We can't write to the file, but we might still
-      // use cache entries previously read from the file
-      Logger::warn("DXVK: Failed to open state cache file");
-    } else if (newFile) {
+    if (newFile) {
       Logger::warn("DXVK: Creating new state cache file");
+
+      // Start with an empty file
+      std::ofstream file(getCacheFileName(),
+        std::ios_base::binary |
+        std::ios_base::trunc);
 
       // Write header with the current version number
       DxvkStateCacheHeader header;
@@ -57,14 +49,12 @@ namespace dxvk {
       auto data = reinterpret_cast<const char*>(&header);
       auto size = sizeof(header);
 
-      m_writerFile.write(data, size);
+      file.write(data, size);
 
       // Write all valid entries to the cache file in
       // case we're recovering a corrupted cache file
       for (auto& e : m_entries)
-        writeCacheEntry(m_writerFile, e);
-
-      m_writerFile.flush();
+        writeCacheEntry(file, e);
     }
 
     // Use half the available CPU cores for pipeline compilation
@@ -390,6 +380,8 @@ namespace dxvk {
   void DxvkStateCache::writerFunc() {
     env::setThreadName(L"dxvk-writer");
 
+    std::ofstream file;
+
     while (!m_stopThreads.load()) {
       DxvkStateCacheEntry entry;
 
@@ -407,7 +399,13 @@ namespace dxvk {
         m_writerQueue.pop();
       }
 
-      writeCacheEntry(m_writerFile, entry);
+      if (!file) {
+        file = std::ofstream(getCacheFileName(),
+          std::ios_base::binary |
+          std::ios_base::app);
+      }
+
+      writeCacheEntry(file, entry);
     }
   }
 

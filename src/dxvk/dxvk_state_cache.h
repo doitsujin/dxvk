@@ -164,7 +164,6 @@ namespace dxvk {
     std::mutex                        m_writerLock;
     std::condition_variable           m_writerCond;
     std::queue<WriterItem>            m_writerQueue;
-    std::ofstream                     m_writerFile;
     dxvk::thread                      m_writerThread;
 
     DxvkShaderKey getShaderKey(
