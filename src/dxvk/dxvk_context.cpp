@@ -1630,7 +1630,11 @@ namespace dxvk {
     this->spillRenderPass();
     this->unbindComputePipeline();
     
-    m_barriers.recordCommands(m_cmd);
+    if (m_barriers.isImageDirty(
+          imageView->image(),
+          imageView->subresources(),
+          DxvkAccess::Write))
+      m_barriers.recordCommands(m_cmd);
     
     // Query pipeline objects to use for this clear operation
     DxvkMetaClearPipeline pipeInfo = m_metaClear->getClearImagePipeline(
