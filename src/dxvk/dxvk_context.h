@@ -62,6 +62,14 @@ namespace dxvk {
      * \returns Active command list
      */
     Rc<DxvkCommandList> endRecording();
+
+    /**
+     * \brief Flushes command buffer
+     * 
+     * Transparently submits the current command
+     * buffer and allocates a new one.
+     */
+    void flushCommandList();
     
     /**
      * \brief Begins generating query data

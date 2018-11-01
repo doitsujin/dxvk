@@ -101,13 +101,8 @@ namespace dxvk {
     if (m_csIsBusy || m_csChunk->commandCount() != 0) {
       // Add commands to flush the threaded
       // context, then flush the command list
-      EmitCs([dev = m_device] (DxvkContext* ctx) {
-        dev->submitCommandList(
-          ctx->endRecording(),
-          nullptr, nullptr);
-        
-        ctx->beginRecording(
-          dev->createCommandList());
+      EmitCs([] (DxvkContext* ctx) {
+        ctx->flushCommandList();
       });
       
       FlushCsChunk();

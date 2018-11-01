@@ -63,6 +63,16 @@ namespace dxvk {
     m_cmd->endRecording();
     return std::exchange(m_cmd, nullptr);
   }
+
+
+  void DxvkContext::flushCommandList() {
+    m_device->submitCommandList(
+      this->endRecording(),
+      nullptr, nullptr);
+    
+    this->beginRecording(
+      m_device->createCommandList());
+  }
   
   
   void DxvkContext::beginQuery(const DxvkQueryRevision& query) {
