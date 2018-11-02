@@ -643,11 +643,8 @@ namespace dxvk {
     // but pipeline barriers need to have all aspect bits set
     auto dstFormatInfo = dstImage->formatInfo();
 
-    VkImageSubresourceRange dstSubresourceRange = {
-      dstFormatInfo->aspectMask,
-      dstSubresource.mipLevel, 1,
-      dstSubresource.baseArrayLayer,
-      dstSubresource.layerCount };
+    auto dstSubresourceRange = vk::makeSubresourceRange(dstSubresource);
+    dstSubresourceRange.aspectMask = dstFormatInfo->aspectMask;
     
     if (m_barriers.isImageDirty(dstImage, dstSubresourceRange, DxvkAccess::Write)
      || m_barriers.isBufferDirty(srcSlice, DxvkAccess::Read))
@@ -809,11 +806,8 @@ namespace dxvk {
     // but pipeline barriers need to have all aspect bits set
     auto srcFormatInfo = srcImage->formatInfo();
 
-    VkImageSubresourceRange srcSubresourceRange = {
-      srcFormatInfo->aspectMask,
-      srcSubresource.mipLevel, 1,
-      srcSubresource.baseArrayLayer,
-      srcSubresource.layerCount };
+    auto srcSubresourceRange = vk::makeSubresourceRange(srcSubresource);
+    srcSubresourceRange.aspectMask = srcFormatInfo->aspectMask;
     
     if (m_barriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write)
      || m_barriers.isBufferDirty(dstSlice, DxvkAccess::Write))
@@ -1343,12 +1337,8 @@ namespace dxvk {
     
     // Prepare the image layout. If the given extent covers
     // the entire image, we may discard its previous contents.
-    VkImageSubresourceRange subresourceRange;
-    subresourceRange.aspectMask     = formatInfo->aspectMask;
-    subresourceRange.baseMipLevel   = subresources.mipLevel;
-    subresourceRange.levelCount     = 1;
-    subresourceRange.baseArrayLayer = subresources.baseArrayLayer;
-    subresourceRange.layerCount     = subresources.layerCount;
+    auto subresourceRange = vk::makeSubresourceRange(subresources);
+    subresourceRange.aspectMask = formatInfo->aspectMask;
 
     if (m_barriers.isImageDirty(image, subresourceRange, DxvkAccess::Write))
       m_barriers.recordCommands(m_cmd);
@@ -1715,17 +1705,8 @@ namespace dxvk {
           VkImageSubresourceLayers srcSubresource,
           VkOffset3D            srcOffset,
           VkExtent3D            extent) {
-    VkImageSubresourceRange dstSubresourceRange = {
-      dstSubresource.aspectMask,
-      dstSubresource.mipLevel, 1,
-      dstSubresource.baseArrayLayer,
-      dstSubresource.layerCount };
-    
-    VkImageSubresourceRange srcSubresourceRange = {
-      srcSubresource.aspectMask,
-      srcSubresource.mipLevel, 1,
-      srcSubresource.baseArrayLayer,
-      srcSubresource.layerCount };
+    auto dstSubresourceRange = vk::makeSubresourceRange(dstSubresource);
+    auto srcSubresourceRange = vk::makeSubresourceRange(srcSubresource);
     
     if (m_barriers.isImageDirty(dstImage, dstSubresourceRange, DxvkAccess::Write)
      || m_barriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write))
@@ -1801,11 +1782,7 @@ namespace dxvk {
     this->unbindGraphicsPipeline();
     m_barriers.recordCommands(m_cmd);
 
-    VkImageSubresourceRange srcSubresourceRange = {
-      srcSubresource.aspectMask,
-      srcSubresource.mipLevel, 1,
-      srcSubresource.baseArrayLayer,
-      srcSubresource.layerCount };
+    auto srcSubresourceRange = vk::makeSubresourceRange(srcSubresource);
 
     // Source image needs to be readable
     if (!(srcImage->info().usage & VK_IMAGE_USAGE_SAMPLED_BIT)) {
@@ -2010,17 +1987,8 @@ namespace dxvk {
     const VkImageSubresourceLayers& dstSubresources,
     const Rc<DxvkImage>&            srcImage,
     const VkImageSubresourceLayers& srcSubresources) {
-    VkImageSubresourceRange dstSubresourceRange = {
-      dstSubresources.aspectMask,
-      dstSubresources.mipLevel, 1,
-      dstSubresources.baseArrayLayer,
-      dstSubresources.layerCount };
-    
-    VkImageSubresourceRange srcSubresourceRange = {
-      srcSubresources.aspectMask,
-      srcSubresources.mipLevel, 1,
-      srcSubresources.baseArrayLayer,
-      srcSubresources.layerCount };
+    auto dstSubresourceRange = vk::makeSubresourceRange(dstSubresources);
+    auto srcSubresourceRange = vk::makeSubresourceRange(srcSubresources);
     
     if (m_barriers.isImageDirty(dstImage, dstSubresourceRange, DxvkAccess::Write)
      || m_barriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write))
