@@ -59,4 +59,4 @@ d3d11_dll = shared_library('d3d11'+dll_ext, d3d11_src + d3d10_src, glsl_generato
 
 d3d11_dep = declare_dependency(
   link_with           : [ d3d11_dll ],
-  include_directories : [ dxvk_include_path, include_directories('.') ])
+  include_directories : [ dxvk_include_path ])

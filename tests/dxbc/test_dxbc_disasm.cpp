@@ -7,7 +7,7 @@
 #include <windows.h>
 #include <windowsx.h>
 
-#include "../util/com/com_pointer.h"
+#include "../../src/util/com/com_pointer.h"
 
 using namespace dxvk;
 

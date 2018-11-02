@@ -26,4 +26,4 @@ dxgi_dll = shared_library('dxgi'+dll_ext, dxgi_src,
 
 dxgi_dep = declare_dependency(
   link_with           : [ dxgi_dll ],
-  include_directories : [ dxvk_include_path, include_directories('.') ])
+  include_directories : [ dxvk_include_path ])
