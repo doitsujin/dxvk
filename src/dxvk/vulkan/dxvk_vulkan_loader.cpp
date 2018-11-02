@@ -19,8 +19,8 @@ namespace dxvk::vk {
   }
   
   
-  InstanceLoader::InstanceLoader(VkInstance instance)
-  : m_instance(instance) { }
+  InstanceLoader::InstanceLoader(bool owned, VkInstance instance)
+  : m_instance(instance), m_owned(owned) { }
   
   
   PFN_vkVoidFunction InstanceLoader::sym(const char* name) const {
@@ -28,10 +28,10 @@ namespace dxvk::vk {
   }
   
   
-  DeviceLoader::DeviceLoader(VkInstance instance, VkDevice device)
+  DeviceLoader::DeviceLoader(bool owned, VkInstance instance, VkDevice device)
   : m_getDeviceProcAddr(reinterpret_cast<PFN_vkGetDeviceProcAddr>(
       dxvk::vk::GetInstanceProcAddr(instance, "vkGetDeviceProcAddr"))),
-    m_device(device) { }
+    m_device(device), m_owned(owned) { }
   
   
   PFN_vkVoidFunction DeviceLoader::sym(const char* name) const {
@@ -43,17 +43,19 @@ namespace dxvk::vk {
   LibraryFn::~LibraryFn() { }
   
   
-  InstanceFn::InstanceFn(VkInstance instance)
-  : InstanceLoader(instance) { }
+  InstanceFn::InstanceFn(bool owned, VkInstance instance)
+  : InstanceLoader(owned, instance) { }
   InstanceFn::~InstanceFn() {
-    this->vkDestroyInstance(m_instance, nullptr);
+    if (m_owned)
+      this->vkDestroyInstance(m_instance, nullptr);
   }
   
   
-  DeviceFn::DeviceFn(VkInstance instance, VkDevice device)
-  : DeviceLoader(instance, device) { }
+  DeviceFn::DeviceFn(bool owned, VkInstance instance, VkDevice device)
+  : DeviceLoader(owned, instance, device) { }
   DeviceFn::~DeviceFn() {
-    this->vkDestroyDevice(m_device, nullptr);
+    if (m_owned)
+      this->vkDestroyDevice(m_device, nullptr);
   }
   
 }

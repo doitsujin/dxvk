@@ -18,7 +18,7 @@ namespace dxvk {
     g_vrInstance.initInstanceExtensions();
 
     m_vkl = new vk::LibraryFn();
-    m_vki = new vk::InstanceFn(this->createInstance());
+    m_vki = new vk::InstanceFn(true, this->createInstance());
 
     m_adapters = this->queryAdapters();
     g_vrInstance.initDeviceExtensions(this);
