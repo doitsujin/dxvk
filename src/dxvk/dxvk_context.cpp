@@ -2813,17 +2813,16 @@ namespace dxvk {
 
 
   void DxvkContext::updateTransformFeedbackState() {
-    if (!m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasTransformFeedback))
-      return;
-    
-    if (m_flags.test(DxvkContextFlag::GpDirtyXfbBuffers)) {
-      m_flags.clr(DxvkContextFlag::GpDirtyXfbBuffers);
+    if (m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasTransformFeedback)) {
+      if (m_flags.test(DxvkContextFlag::GpDirtyXfbBuffers)) {
+        m_flags.clr(DxvkContextFlag::GpDirtyXfbBuffers);
 
-      this->pauseTransformFeedback();
-      this->updateTransformFeedbackBuffers();
+        this->pauseTransformFeedback();
+        this->updateTransformFeedbackBuffers();
+      }
+
+      this->startTransformFeedback();
     }
-
-    this->startTransformFeedback();
   }
 
   
@@ -2875,25 +2874,67 @@ namespace dxvk {
   
   
   void DxvkContext::commitComputeState() {
-    this->spillRenderPass();
-    this->updateComputePipeline();
+    if (m_flags.any(
+          DxvkContextFlag::GpRenderPassBound,
+          DxvkContextFlag::GpClearRenderTargets))
+      this->spillRenderPass();
+    
+    if (m_flags.test(DxvkContextFlag::CpDirtyPipeline))
+      this->updateComputePipeline();
+    
+    if (m_flags.any(
+          DxvkContextFlag::CpDirtyResources,
+          DxvkContextFlag::CpDirtyDescriptorOffsets))
     this->updateComputeShaderResources();
-    this->updateComputePipelineState();
-    this->updateComputeShaderDescriptors();
+
+    if (m_flags.test(DxvkContextFlag::CpDirtyPipelineState))
+      this->updateComputePipelineState();
+    
+    if (m_flags.any(
+          DxvkContextFlag::CpDirtyDescriptorSet,
+          DxvkContextFlag::CpDirtyDescriptorOffsets))
+      this->updateComputeShaderDescriptors();
   }
   
   
   void DxvkContext::commitGraphicsState() {
-    this->updateFramebuffer();
-    this->startRenderPass();
-    this->updateGraphicsPipeline();
-    this->updateIndexBufferBinding();
-    this->updateVertexBufferBindings();
-    this->updateGraphicsShaderResources();
-    this->updateGraphicsPipelineState();
-    this->updateTransformFeedbackState();
-    this->updateGraphicsShaderDescriptors();
-    this->updateDynamicState();
+    if (m_flags.test(DxvkContextFlag::GpDirtyFramebuffer))
+      this->updateFramebuffer();
+
+    if (!m_flags.test(DxvkContextFlag::GpRenderPassBound))
+      this->startRenderPass();
+    
+    if (m_flags.test(DxvkContextFlag::GpDirtyPipeline))
+      this->updateGraphicsPipeline();
+    
+    if (m_flags.test(DxvkContextFlag::GpDirtyIndexBuffer))
+      this->updateIndexBufferBinding();
+    
+    if (m_flags.test(DxvkContextFlag::GpDirtyVertexBuffers))
+      this->updateVertexBufferBindings();
+    
+    if (m_flags.any(
+          DxvkContextFlag::GpDirtyResources,
+          DxvkContextFlag::GpDirtyDescriptorOffsets))
+      this->updateGraphicsShaderResources();
+    
+    if (m_flags.test(DxvkContextFlag::GpDirtyPipelineState))
+      this->updateGraphicsPipelineState();
+    
+    if (m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasTransformFeedback))
+      this->updateTransformFeedbackState();
+
+    if (m_flags.any(
+          DxvkContextFlag::GpDirtyDescriptorSet,
+          DxvkContextFlag::GpDirtyDescriptorOffsets))
+      this->updateGraphicsShaderDescriptors();
+    
+    if (m_flags.any(
+          DxvkContextFlag::GpDirtyViewport,
+          DxvkContextFlag::GpDirtyBlendConstants,
+          DxvkContextFlag::GpDirtyStencilRef,
+          DxvkContextFlag::GpDirtyDepthBias))
+      this->updateDynamicState();
   }
   
   
