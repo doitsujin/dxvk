@@ -1,4 +1,4 @@
-#include "dxvk_vulkan_loader.h"
+#include "vulkan_loader.h"
 
 namespace dxvk::vk {
 

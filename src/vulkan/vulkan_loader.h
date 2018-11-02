@@ -1,9 +1,9 @@
 #pragma once
 
-#include "../../util/rc/util_rc.h"
-#include "../../util/rc/util_rc_ptr.h"
+#include "../util/rc/util_rc.h"
+#include "../util/rc/util_rc_ptr.h"
 
-#include "dxvk_vulkan_loader_fn.h"
+#include "vulkan_loader_fn.h"
 
 namespace dxvk::vk {
   

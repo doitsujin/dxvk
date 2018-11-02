@@ -16,5 +16,5 @@
 
 #include "../util/sync/sync_spinlock.h"
 
-#include "./vulkan/dxvk_vulkan_loader.h"
-#include "./vulkan/dxvk_vulkan_names.h"
+#include "../vulkan/vulkan_loader.h"
+#include "../vulkan/vulkan_names.h"

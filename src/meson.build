@@ -1,5 +1,6 @@
 subdir('util')
 subdir('spirv')
+subdir('vulkan')
 subdir('dxvk')
 subdir('dxgi')
 subdir('dxbc')

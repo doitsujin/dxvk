@@ -2,9 +2,9 @@
 
 #include <ostream>
 
-#include "../../util/util_enum.h"
+#include "../util/util_enum.h"
 
-#include "dxvk_vulkan_loader_fn.h"
+#include "vulkan_loader_fn.h"
 
 std::ostream& operator << (std::ostream& os, VkPipelineCacheHeaderVersion e);
 std::ostream& operator << (std::ostream& os, VkResult e);

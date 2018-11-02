@@ -11,8 +11,6 @@
 #include "dxgi_options.h"
 #include "dxgi_output.h"
 
-#include "../dxvk/vulkan/dxvk_vulkan_names.h"
-
 namespace dxvk {
 
   DxgiAdapter::DxgiAdapter(
