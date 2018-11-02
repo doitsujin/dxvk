@@ -345,8 +345,8 @@ namespace dxvk {
       // only way to invalidate a buffer is by mapping it.
       auto physicalSlice = pResource->DiscardSlice();
       pMappedResource->pData      = physicalSlice.mapPtr(0);
-      pMappedResource->RowPitch   = pResource->GetSize();
-      pMappedResource->DepthPitch = pResource->GetSize();
+      pMappedResource->RowPitch   = pResource->Desc()->ByteWidth;
+      pMappedResource->DepthPitch = pResource->Desc()->ByteWidth;
       
       EmitCs([
         cBuffer        = std::move(buffer),
@@ -369,8 +369,8 @@ namespace dxvk {
       DxvkPhysicalBufferSlice physicalSlice = pResource->GetMappedSlice();
       
       pMappedResource->pData      = physicalSlice.mapPtr(0);
-      pMappedResource->RowPitch   = pResource->GetSize();
-      pMappedResource->DepthPitch = pResource->GetSize();
+      pMappedResource->RowPitch   = pResource->Desc()->ByteWidth;
+      pMappedResource->DepthPitch = pResource->Desc()->ByteWidth;
       return S_OK;
     }
   }

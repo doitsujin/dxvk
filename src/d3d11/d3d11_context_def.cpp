@@ -167,8 +167,8 @@ namespace dxvk {
     pMapEntry->pResource    = pResource;
     pMapEntry->Subresource  = 0;
     pMapEntry->MapType      = D3D11_MAP_WRITE_DISCARD;
-    pMapEntry->RowPitch     = pBuffer->GetSize();
-    pMapEntry->DepthPitch   = pBuffer->GetSize();
+    pMapEntry->RowPitch     = pBuffer->Desc()->ByteWidth;
+    pMapEntry->DepthPitch   = pBuffer->Desc()->ByteWidth;
     
     if (pBuffer->Desc()->Usage == D3D11_USAGE_DYNAMIC && m_parent->GetOptions()->dcMapSpeedHack) {
       // For resources that cannot be written by the GPU,
@@ -179,7 +179,7 @@ namespace dxvk {
     } else {
       // For GPU-writable resources, we need a data slice
       // to perform the update operation at execution time.
-      pMapEntry->DataSlice   = AllocUpdateBufferSlice(pBuffer->GetSize());
+      pMapEntry->DataSlice   = AllocUpdateBufferSlice(pBuffer->Desc()->ByteWidth);
       pMapEntry->MapPointer  = pMapEntry->DataSlice.ptr();
     }
     

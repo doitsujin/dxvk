@@ -3041,7 +3041,7 @@ namespace dxvk {
       
       UINT constantOffset = 0;
       UINT constantCount  = newBuffer != nullptr
-        ? newBuffer->GetSize() / 16
+        ? newBuffer->Desc()->ByteWidth / 16
         : 0;
       
       if (newBuffer != nullptr && pFirstConstant != nullptr && pNumConstants != nullptr) {
