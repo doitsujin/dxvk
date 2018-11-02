@@ -2,10 +2,10 @@
 
 #include <vector>
 
-#include <dxvk_instance.h>
-
 #include "dxgi_adapter.h"
 #include "dxgi_options.h"
+
+#include "../dxvk/dxvk_instance.h"
 
 namespace dxvk {
     

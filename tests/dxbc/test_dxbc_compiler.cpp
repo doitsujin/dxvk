@@ -1,8 +1,8 @@
 #include <iterator>
 #include <fstream>
 
-#include <dxbc_module.h>
-#include <dxvk_shader.h>
+#include "../../src/dxbc/dxbc_module.h"
+#include "../../src/dxvk/dxvk_shader.h"
 
 #include <shellapi.h>
 #include <windows.h>

@@ -3,13 +3,13 @@
 #include <memory>
 #include <mutex>
 
-#include <dxvk_surface.h>
-#include <dxvk_swapchain.h>
-
 #include "dxgi_interfaces.h"
 #include "dxgi_object.h"
 
 #include "../d3d11/d3d11_interfaces.h"
+
+#include "../dxvk/dxvk_surface.h"
+#include "../dxvk/dxvk_swapchain.h"
 
 #include "../spirv/spirv_module.h"
 
