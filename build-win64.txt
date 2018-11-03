@@ -3,11 +3,11 @@ c = 'x86_64-w64-mingw32-gcc'
 cpp = 'x86_64-w64-mingw32-g++'
 ar = 'x86_64-w64-mingw32-ar'
 strip = 'x86_64-w64-mingw32-strip'
-exe_wrapper = 'wine'
 
 [properties]
 c_link_args = ['-static', '-static-libgcc']
 cpp_link_args = ['-static', '-static-libgcc', '-static-libstdc++']
+needs_exe_wrapper = true
 
 [host_machine]
 system = 'windows'
