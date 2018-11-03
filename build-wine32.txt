@@ -6,7 +6,6 @@ strip = 'strip'
 
 [properties]
 needs_exe_wrapper = true
-winelib = true
 
 c_args=['-m32', '-msse', '-msse2']
 cpp_args=['-m32', '--no-gnu-unique', '-msse', '-msse2']

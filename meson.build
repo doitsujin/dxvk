@@ -25,7 +25,13 @@ else
   dxvk_library_path = meson.source_root() + '/lib32'
 endif
 
-if meson.get_cross_property('winelib', false)
+code = '''#ifndef __WINE__
+#error 1
+#endif'''
+
+dxvk_winelib = dxvk_compiler.compiles(code, name: 'winelib check')
+
+if dxvk_winelib
   lib_vulkan  = declare_dependency(link_args: [ '-lwinevulkan' ])
   lib_d3d11   = declare_dependency(link_args: [ '-ld3d11' ])
   lib_dxgi    = declare_dependency(link_args: [ '-ldxgi' ])
