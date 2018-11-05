@@ -2798,9 +2798,12 @@ namespace dxvk {
   
   
   void DxbcCompiler::emitInterpolate(const DxbcShaderInstruction& ins) {
+    m_module.enableCapability(spv::CapabilityInterpolationFunction);
+    m_module.enableCapability(spv::CapabilitySampleRateShading);
+
     // The SPIR-V instructions operate on input variable pointers,
     // which are all declared as four-component float vectors.
-    const uint32_t registerId = ins.src[0].idx[0].offset;
+    uint32_t registerId = ins.src[0].idx[0].offset;
     
     DxbcRegisterValue result;
     result.type = getInputRegType(registerId);
@@ -6125,7 +6128,6 @@ namespace dxvk {
   
   void DxbcCompiler::emitPsInit() {
     m_module.enableCapability(spv::CapabilityDerivativeControl);
-    m_module.enableCapability(spv::CapabilityInterpolationFunction);
     
     m_module.setExecutionMode(m_entryPointId,
       spv::ExecutionModeOriginUpperLeft);
