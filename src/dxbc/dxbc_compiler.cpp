@@ -2799,7 +2799,6 @@ namespace dxvk {
   
   void DxbcCompiler::emitInterpolate(const DxbcShaderInstruction& ins) {
     m_module.enableCapability(spv::CapabilityInterpolationFunction);
-    m_module.enableCapability(spv::CapabilitySampleRateShading);
 
     // The SPIR-V instructions operate on input variable pointers,
     // which are all declared as four-component float vectors.
