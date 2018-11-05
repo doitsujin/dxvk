@@ -57,11 +57,9 @@ namespace dxvk {
         writeCacheEntry(file, e);
     }
 
-    // Use half the available CPU cores for pipeline compilation
+    // Use 3/4 the available CPU cores for pipeline compilation
     uint32_t numCpuCores = dxvk::thread::hardware_concurrency();
-    uint32_t numWorkers  = numCpuCores > 8
-      ? numCpuCores * 3 / 4
-      : numCpuCores * 1 / 2;
+    uint32_t numWorkers  = numCpuCores * 3 / 4;
 
     if (numWorkers <  1) numWorkers =  1;
     if (numWorkers > 16) numWorkers = 16;
