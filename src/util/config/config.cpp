@@ -24,6 +24,10 @@ namespace dxvk {
       { "dxgi.customVendorId",              "1002" },
       { "dxgi.customDeviceId",              "e366" },
     }} },
+    /* Elite Dangerous                            */
+    { "EliteDangerous64.exe", {{
+      { "dxgi.customVendorId",              "10de" },
+    }} },
     /* The Vanishing of Ethan Carter Redux        */
     { "EthanCarter-Win64-Shipping.exe", {{
       { "dxgi.customVendorId",              "10de" },
