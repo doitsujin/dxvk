@@ -155,7 +155,7 @@ namespace dxvk {
       subresources.layerCount     = image->info().numLayers;
 
       if (formatInfo->flags.test(DxvkFormatFlag::BlockCompressed)) {
-        m_context->initImage(image, subresources);
+        m_context->clearCompressedColorImage(image, subresources);
       } else {
         if (subresources.aspectMask == VK_IMAGE_ASPECT_COLOR_BIT) {
           VkClearColorValue value = { };
