@@ -251,6 +251,16 @@ namespace dxvk {
       const VkImageSubresourceRange&  subresources);
     
     /**
+     * \brief Clears a compressed image to black
+     *
+     * \param [in] image The image to clear
+     * \param [in] subresources Subresources to clear
+     */
+    void clearCompressedColorImage(
+      const Rc<DxvkImage>&            image,
+      const VkImageSubresourceRange&  subresources);
+    
+    /**
      * \brief Clears an active render target
      * 
      * \param [in] imageView Render target view to clear

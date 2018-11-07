@@ -421,6 +421,66 @@ namespace dxvk {
     
     m_cmd->trackResource(image);
   }
+
+
+  void DxvkContext::clearCompressedColorImage(
+    const Rc<DxvkImage>&            image,
+    const VkImageSubresourceRange&  subresources) {
+    this->spillRenderPass();
+
+    // Allocate enough staging buffer memory to fit one
+    // single subresource, then dispatch multiple copies
+    VkDeviceSize dataSize = util::computeImageDataSize(
+      image->info().format,
+      image->mipLevelExtent(subresources.baseMipLevel));
+    
+    DxvkStagingBufferSlice slice = m_cmd->stagedAlloc(dataSize);
+    std::memset(slice.mapPtr, 0, dataSize);
+
+    if (m_barriers.isImageDirty(image, subresources, DxvkAccess::Write))
+      m_barriers.recordCommands(m_cmd);
+    
+    m_transitions.accessImage(
+      image, subresources,
+      VK_IMAGE_LAYOUT_UNDEFINED, 0, 0,
+      image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT);
+    
+    m_transitions.recordCommands(m_cmd);
+
+    for (uint32_t level = 0; level < subresources.levelCount; level++) {
+      VkOffset3D offset = VkOffset3D { 0, 0, 0 };
+      VkExtent3D extent = image->mipLevelExtent(subresources.baseMipLevel + level);
+
+      for (uint32_t layer = 0; layer < subresources.layerCount; layer++) {
+        VkBufferImageCopy region;
+        region.bufferOffset       = slice.offset;
+        region.bufferRowLength    = 0;
+        region.bufferImageHeight  = 0;
+        region.imageSubresource   = vk::makeSubresourceLayers(
+          vk::pickSubresource(subresources, level, layer));
+        region.imageOffset        = offset;
+        region.imageExtent        = extent;
+
+        m_cmd->cmdCopyBufferToImage(
+          slice.buffer, image->handle(),
+          image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+          1, &region);
+      }
+    }
+
+    m_barriers.accessImage(
+      image, subresources,
+      image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT,
+      image->info().layout,
+      image->info().stages,
+      image->info().access);
+    
+    m_cmd->trackResource(image);
+  }
   
   
   void DxvkContext::clearRenderTarget(
