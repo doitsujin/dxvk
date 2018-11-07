@@ -73,7 +73,7 @@ namespace dxvk {
     appInfo.applicationVersion    = 0;
     appInfo.pEngineName           = "DXVK";
     appInfo.engineVersion         = VK_MAKE_VERSION(0, 9, 2);
-    appInfo.apiVersion            = 0;
+    appInfo.apiVersion            = VK_MAKE_VERSION(1, 1, 0);
     
     VkInstanceCreateInfo info;
     info.sType                    = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -86,8 +86,17 @@ namespace dxvk {
     info.ppEnabledExtensionNames  = extensionNameList.names();
     
     VkInstance result = VK_NULL_HANDLE;
-    if (m_vkl->vkCreateInstance(&info, nullptr, &result) != VK_SUCCESS)
+    VkResult status = m_vkl->vkCreateInstance(&info, nullptr, &result);
+
+    if (status == VK_ERROR_INCOMPATIBLE_DRIVER) {
+      Logger::warn("Failed to create Vulkan 1.1 instance, falling back to 1.0");
+      appInfo.apiVersion = 0; /* some very old drivers may not accept 1.0 */
+      status = m_vkl->vkCreateInstance(&info, nullptr, &result);
+    }
+
+    if (status != VK_SUCCESS)
       throw DxvkError("DxvkInstance::createInstance: Failed to create Vulkan instance");
+    
     return result;
   }
   
