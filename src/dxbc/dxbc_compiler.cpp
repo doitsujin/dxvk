@@ -3892,6 +3892,26 @@ namespace dxvk {
       uint32_t killState = m_module.opLoad     (typeId, m_ps.killState);
                killState = m_module.opLogicalOr(typeId, killState, zeroTest.id);
       m_module.opStore(m_ps.killState, killState);
+
+      if (m_moduleInfo.options.useSubgroupOpsForEarlyDiscard) {
+        uint32_t killSubgroup = m_module.opGroupNonUniformLogicalAnd(
+          m_module.defBoolType(),
+          m_module.constu32(spv::ScopeSubgroup),
+          spv::GroupOperationReduce, killState, 0);
+        
+        DxbcConditional cond;
+        cond.labelIf  = m_module.allocateId();
+        cond.labelEnd = m_module.allocateId();
+        
+        m_module.opSelectionMerge(cond.labelEnd, spv::SelectionControlMaskNone);
+        m_module.opBranchConditional(killSubgroup, cond.labelIf, cond.labelEnd);
+        
+        // OpKill terminates the block
+        m_module.opLabel(cond.labelIf);
+        m_module.opKill();
+        
+        m_module.opLabel(cond.labelEnd);
+      }
     }
   }
   
@@ -6166,6 +6186,11 @@ namespace dxvk {
         spv::StorageClassPrivate, m_module.constBool(false));
       
       m_module.setDebugName(m_ps.killState, "ps_kill");
+
+      if (m_moduleInfo.options.useSubgroupOpsForEarlyDiscard) {
+        m_module.enableCapability(spv::CapabilityGroupNonUniform);
+        m_module.enableCapability(spv::CapabilityGroupNonUniformArithmetic);
+      }
     }
     
     // Main function of the pixel shader
