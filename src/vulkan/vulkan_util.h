@@ -26,6 +26,16 @@ namespace dxvk::vk {
     return range;
   }
 
+  inline VkImageSubresourceLayers makeSubresourceLayers(
+    const VkImageSubresource& subres) {
+    VkImageSubresourceLayers layers;
+    layers.aspectMask     = subres.aspectMask;
+    layers.mipLevel       = subres.mipLevel;
+    layers.baseArrayLayer = subres.arrayLayer;
+    layers.layerCount     = 1;
+    return layers;
+  }
+
   inline VkImageSubresourceLayers pickSubresourceLayers(
     const VkImageSubresourceRange&  range,
           uint32_t                  level) {
