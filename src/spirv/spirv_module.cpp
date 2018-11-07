@@ -2872,6 +2872,28 @@ namespace dxvk {
   }
   
   
+  uint32_t SpirvModule::opGroupNonUniformLogicalAnd(
+          uint32_t                resultType,
+          uint32_t                execution,
+          uint32_t                operation,
+          uint32_t                value,
+          uint32_t                clusterSize) {
+    uint32_t resultId = this->allocateId();
+
+    m_code.putIns(spv::OpGroupNonUniformLogicalAnd,
+      6 + (clusterSize ? 1 : 0));
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(execution);
+    m_code.putWord(operation);
+    m_code.putWord(value);
+
+    if (clusterSize)
+      m_code.putWord(clusterSize);
+    return resultId;
+  }
+
+
   void SpirvModule::opControlBarrier(
           uint32_t                execution,
           uint32_t                memory,

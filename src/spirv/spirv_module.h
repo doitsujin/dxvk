@@ -991,6 +991,13 @@ namespace dxvk {
             uint32_t                coordinates,
             uint32_t                reference,
       const SpirvImageOperands&     operands);
+
+    uint32_t opGroupNonUniformLogicalAnd(
+            uint32_t                resultType,
+            uint32_t                execution,
+            uint32_t                operation,
+            uint32_t                value,
+            uint32_t                clusterSize);
     
     void opControlBarrier(
             uint32_t                execution,
