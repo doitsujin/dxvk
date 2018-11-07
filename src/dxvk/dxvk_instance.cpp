@@ -61,11 +61,13 @@ namespace dxvk {
     
     Logger::info("Enabled instance extensions:");
     this->logNameList(extensionNameList);
+
+    std::string appName = env::getExeName();
     
     VkApplicationInfo appInfo;
     appInfo.sType                 = VK_STRUCTURE_TYPE_APPLICATION_INFO;
     appInfo.pNext                 = nullptr;
-    appInfo.pApplicationName      = nullptr;
+    appInfo.pApplicationName      = appName.c_str();
     appInfo.applicationVersion    = 0;
     appInfo.pEngineName           = "DXVK";
     appInfo.engineVersion         = VK_MAKE_VERSION(0, 9, 1);
