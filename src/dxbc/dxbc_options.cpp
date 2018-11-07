@@ -13,7 +13,6 @@ namespace dxvk {
     const DxvkDeviceFeatures& devFeatures = device->features();
 
     useStorageImageReadWithoutFormat = devFeatures.core.features.shaderStorageImageReadWithoutFormat;
-    deferKill                        = true;
   }
   
 }

@@ -6160,7 +6160,7 @@ namespace dxvk {
     
     // We may have to defer kill operations to the end of
     // the shader in order to keep derivatives correct.
-    if (m_analysis->usesKill && m_analysis->usesDerivatives && m_moduleInfo.options.deferKill) {
+    if (m_analysis->usesKill && m_analysis->usesDerivatives) {
       m_ps.killState = m_module.newVarInit(
         m_module.defPointerType(m_module.defBoolType(), spv::StorageClassPrivate),
         spv::StorageClassPrivate, m_module.constBool(false));
