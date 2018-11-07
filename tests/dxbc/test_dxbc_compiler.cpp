@@ -42,8 +42,8 @@ int WINAPI WinMain(HINSTANCE hInstance,
     DxbcModule module(reader);
     
     DxbcModuleInfo moduleInfo;
-    moduleInfo.options = DxbcOptions();
-    moduleInfo.xfb     = nullptr;
+    moduleInfo.options.useSubgroupOpsForEarlyDiscard = true;
+    moduleInfo.xfb = nullptr;
 
     Rc<DxvkShader> shader = module.compile(moduleInfo, ifileName);
     std::ofstream ofile(str::fromws(argv[2]), std::ios::binary);
