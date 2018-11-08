@@ -66,6 +66,7 @@ dxvk_src = files([
   'dxvk_meta_clear.cpp',
   'dxvk_meta_copy.cpp',
   'dxvk_meta_mipgen.cpp',
+  'dxvk_meta_pack.cpp',
   'dxvk_meta_resolve.cpp',
   'dxvk_openvr.cpp',
   'dxvk_options.cpp',
