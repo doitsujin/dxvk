@@ -391,14 +391,7 @@ namespace dxvk {
     }
     
     auto formatInfo = imageFormatInfo(mappedImage->info().format);
-    
-    if (formatInfo->aspectMask != VK_IMAGE_ASPECT_COLOR_BIT) {
-      Logger::err("D3D11: Cannot map a depth-stencil texture");
-      return E_INVALIDARG;
-    }
-    
-    VkImageSubresource subresource =
-      pResource->GetSubresourceFromIndex(
+    auto subresource = pResource->GetSubresourceFromIndex(
         formatInfo->aspectMask, Subresource);
     
     pResource->SetMappedSubresource(subresource);
@@ -417,9 +410,47 @@ namespace dxvk {
       pMappedResource->RowPitch   = imageType >= VK_IMAGE_TYPE_2D ? layout.rowPitch   : layout.size;
       pMappedResource->DepthPitch = imageType >= VK_IMAGE_TYPE_3D ? layout.depthPitch : layout.size;
       return S_OK;
+    } else if (formatInfo->aspectMask == (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+      VkExtent3D levelExtent = mappedImage->mipLevelExtent(subresource.mipLevel);
+
+      if (MapType != D3D11_MAP_READ) {
+        Logger::err(str::format("D3D11: Map type ", MapType, " not supported for depth-stencil images"));
+        return E_INVALIDARG;
+      }
+
+      // The actual Vulkan image format may differ
+      // from the format requested by the application
+      VkFormat packFormat = GetPackedDepthStencilFormat(pResource->Desc()->Format);
+      auto packFormatInfo = imageFormatInfo(packFormat);
+
+      // This is slow, but we have to dispatch a pack
+      // operation and then immediately synchronize.
+      EmitCs([
+        cImageBuffer = mappedBuffer,
+        cImage       = mappedImage,
+        cSubresource = subresource,
+        cFormat      = packFormat
+      ] (DxvkContext* ctx) {
+        auto layers = vk::makeSubresourceLayers(cSubresource);
+        auto x = cImage->mipLevelExtent(cSubresource.mipLevel);
+
+        VkOffset2D offset = { 0, 0 };
+        VkExtent2D extent = { x.width, x.height };
+
+        ctx->copyDepthStencilImageToPackedBuffer(
+          cImageBuffer, 0, cImage, layers, offset, extent, cFormat);
+      });
+
+      WaitForResource(mappedBuffer->resource(), 0);
+
+      DxvkPhysicalBufferSlice physicalSlice = mappedBuffer->slice();
+      pMappedResource->pData      = physicalSlice.mapPtr(0);
+      pMappedResource->RowPitch   = packFormatInfo->elementSize * levelExtent.width;
+      pMappedResource->DepthPitch = packFormatInfo->elementSize * levelExtent.width * levelExtent.height;
+      return S_OK;
     } else {
-      const VkExtent3D levelExtent = mappedImage->mipLevelExtent(subresource.mipLevel);
-      const VkExtent3D blockCount = util::computeBlockCount(levelExtent, formatInfo->blockSize);
+      VkExtent3D levelExtent = mappedImage->mipLevelExtent(subresource.mipLevel);
+      VkExtent3D blockCount = util::computeBlockCount(levelExtent, formatInfo->blockSize);
       
       DxvkPhysicalBufferSlice physicalSlice;
       
@@ -441,10 +472,7 @@ namespace dxvk {
         const bool copyExistingData = pResource->Desc()->Usage == D3D11_USAGE_STAGING;
         
         if (copyExistingData) {
-          const VkImageSubresourceLayers subresourceLayers = {
-            subresource.aspectMask,
-            subresource.mipLevel,
-            subresource.arrayLayer, 1 };
+          auto subresourceLayers = vk::makeSubresourceLayers(subresource);
           
           EmitCs([
             cImageBuffer  = mappedBuffer,
