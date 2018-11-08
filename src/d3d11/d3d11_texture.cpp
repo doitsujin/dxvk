@@ -145,6 +145,7 @@ namespace dxvk {
     // render target capabilities if available, but these
     // should in no way affect the default image layout
     imageInfo.usage |= EnableMetaCopyUsage(imageInfo.format, imageInfo.tiling);
+    imageInfo.usage |= EnableMetaPackUsage(imageInfo.format, m_desc.CPUAccessFlags);
     
     // Check if we can actually create the image
     if (!CheckImageSupport(&imageInfo, imageInfo.tiling)) {
@@ -353,6 +354,23 @@ namespace dxvk {
     return requestedUsage;
   }
 
+
+  VkImageUsageFlags D3D11CommonTexture::EnableMetaPackUsage(
+          VkFormat              Format,
+          UINT                  CpuAccess) const {
+    if ((CpuAccess & D3D11_CPU_ACCESS_READ) == 0)
+      return 0;
+    
+    const auto dsMask = VK_IMAGE_ASPECT_DEPTH_BIT
+                      | VK_IMAGE_ASPECT_STENCIL_BIT;
+
+    auto formatInfo = imageFormatInfo(Format);
+
+    return formatInfo->aspectMask == dsMask
+      ? VK_IMAGE_USAGE_SAMPLED_BIT
+      : 0;
+  }
+
   
   D3D11_COMMON_TEXTURE_MAP_MODE D3D11CommonTexture::DetermineMapMode(
     const DxvkImageCreateInfo*  pImageInfo) const {
@@ -367,6 +385,11 @@ namespace dxvk {
     //    writing the image to device-local image may be more efficient than
     //    reading its contents from host-visible memory.
     if (m_desc.Usage == D3D11_USAGE_DYNAMIC)
+      return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
+    
+    // Depth-stencil formats in D3D11 can be mapped and follow special
+    // packing rules, so we need to copy that data into a buffer first
+    if (GetPackedDepthStencilFormat(m_desc.Format))
       return D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER;
     
     // Images that can be read by the host should be mapped directly in
