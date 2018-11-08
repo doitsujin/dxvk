@@ -1,5 +1,6 @@
 #pragma once
 
+#include "dxvk_descriptor.h"
 #include "dxvk_format.h"
 #include "dxvk_memory.h"
 #include "dxvk_resource.h"
@@ -390,6 +391,21 @@ namespace dxvk {
      */
     VkImageLayout pickLayout(VkImageLayout layout) const {
       return m_image->pickLayout(layout);
+    }
+
+    /**
+     * \brief Retrieves descriptor info
+     * 
+     * \param [in] type Exact view type
+     * \param [in] layout Image layout
+     * \returns Image descriptor
+     */
+    DxvkDescriptorInfo getDescriptor(VkImageViewType type, VkImageLayout layout) const {
+      DxvkDescriptorInfo result;
+      result.image.sampler      = VK_NULL_HANDLE;
+      result.image.imageView    = handle(type);
+      result.image.imageLayout  = layout;
+      return result;
     }
 
   private:
