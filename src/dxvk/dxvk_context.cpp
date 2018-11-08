@@ -921,6 +921,116 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::copyDepthStencilImageToPackedBuffer(
+    const Rc<DxvkBuffer>&       dstBuffer,
+          VkDeviceSize          dstOffset,
+    const Rc<DxvkImage>&        srcImage,
+          VkImageSubresourceLayers srcSubresource,
+          VkOffset2D            srcOffset,
+          VkExtent2D            srcExtent,
+          VkFormat              format) {
+    this->spillRenderPass();
+    this->unbindComputePipeline();
+
+    // Retrieve compute pipeline for the given format
+    auto pipeInfo = m_metaPack->getPipeline(format);
+
+    if (!pipeInfo.pipeHandle)
+      return;
+    
+    // Create one depth view and one stencil view
+    DxvkImageViewCreateInfo dViewInfo;
+    dViewInfo.type       = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+    dViewInfo.format     = srcImage->info().format;
+    dViewInfo.usage      = VK_IMAGE_USAGE_SAMPLED_BIT;
+    dViewInfo.aspect     = VK_IMAGE_ASPECT_DEPTH_BIT;
+    dViewInfo.minLevel   = srcSubresource.mipLevel;
+    dViewInfo.numLevels  = 1;
+    dViewInfo.minLayer   = srcSubresource.baseArrayLayer;
+    dViewInfo.numLayers  = srcSubresource.layerCount;
+
+    DxvkImageViewCreateInfo sViewInfo = dViewInfo;
+    sViewInfo.aspect     = VK_IMAGE_ASPECT_STENCIL_BIT;
+    
+    Rc<DxvkImageView> dView = m_device->createImageView(srcImage, dViewInfo);
+    Rc<DxvkImageView> sView = m_device->createImageView(srcImage, sViewInfo);
+
+    // Create a descriptor set for the pack operation
+    VkImageLayout layout = srcImage->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
+
+    DxvkMetaPackDescriptors descriptors;
+    descriptors.dstBuffer  = dstBuffer->getDescriptor(0, VK_WHOLE_SIZE).buffer;
+    descriptors.srcDepth   = dView->getDescriptor(VK_IMAGE_VIEW_TYPE_2D_ARRAY, layout).image;
+    descriptors.srcStencil = sView->getDescriptor(VK_IMAGE_VIEW_TYPE_2D_ARRAY, layout).image;
+
+    VkDescriptorSet dset = m_cmd->allocateDescriptorSet(pipeInfo.dsetLayout);
+    m_cmd->updateDescriptorSetWithTemplate(dset, pipeInfo.dsetTemplate, &descriptors);
+
+    // Since this is a meta operation, the image may be
+    // in a different layout and we have to transition it
+    auto subresourceRange = vk::makeSubresourceRange(srcSubresource);
+
+    if (m_barriers.isImageDirty(srcImage, subresourceRange, DxvkAccess::Write))
+      m_barriers.recordCommands(m_cmd);
+    
+    if (srcImage->info().layout != layout) {
+      m_transitions.accessImage(
+        srcImage, subresourceRange,
+        srcImage->info().layout, 0, 0,
+        layout,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        VK_ACCESS_SHADER_READ_BIT);
+      
+      m_transitions.recordCommands(m_cmd);
+    }
+
+    // Execute the actual pack operation
+    DxvkMetaPackArgs args;
+    args.srcOffset = srcOffset;
+    args.srcExtent = srcExtent;
+
+    m_cmd->cmdBindPipeline(
+      VK_PIPELINE_BIND_POINT_COMPUTE,
+      pipeInfo.pipeHandle);
+    
+    m_cmd->cmdBindDescriptorSet(
+      VK_PIPELINE_BIND_POINT_COMPUTE,
+      pipeInfo.pipeLayout, dset,
+      0, nullptr);
+    
+    m_cmd->cmdPushConstants(
+      pipeInfo.pipeLayout,
+      VK_SHADER_STAGE_COMPUTE_BIT,
+      0, sizeof(args), &args);
+    
+    m_cmd->cmdDispatch(
+      (srcExtent.width  + 7) / 8,
+      (srcExtent.height + 7) / 8,
+      srcSubresource.layerCount);
+    
+    m_barriers.accessImage(
+      srcImage, subresourceRange, layout,
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+      VK_ACCESS_SHADER_READ_BIT,
+      srcImage->info().layout,
+      srcImage->info().stages,
+      srcImage->info().access);
+    
+    m_barriers.accessBuffer(
+      dstBuffer->slice(),
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+      VK_ACCESS_SHADER_WRITE_BIT,
+      dstBuffer->info().stages,
+      dstBuffer->info().access);
+
+    m_cmd->trackResource(dView);
+    m_cmd->trackResource(sView);
+
+    m_cmd->trackResource(srcImage);
+    m_cmd->trackResource(dstBuffer->resource());
+  }
+  
+  
   void DxvkContext::discardBuffer(
     const Rc<DxvkBuffer>&       buffer) {
     if (m_barriers.isBufferDirty(buffer->slice(), DxvkAccess::Write))

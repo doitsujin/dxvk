@@ -402,6 +402,30 @@ namespace dxvk {
             VkExtent3D            srcExtent);
     
     /**
+     * \brief Packs depth-stencil image data to a buffer
+     * 
+     * Packs data from both the depth and stencil aspects
+     * of an image into a buffer. The supported formats are:
+     * - \c VK_FORMAT_D24_UNORM_S8_UINT: 0xssdddddd
+     * - \c VK_FORMAT_D32_SFLOAT_S8_UINT: 0xdddddddd 0x000000ss
+     * \param [in] dstBuffer Destination buffer
+     * \param [in] dstOffset Destination offset, in bytes
+     * \param [in] srcImage Source image
+     * \param [in] srcSubresource Source subresource
+     * \param [in] srcOffset Source area offset
+     * \param [in] srcExtent Source area size
+     * \param [in] format Packed data format
+     */
+    void copyDepthStencilImageToPackedBuffer(
+      const Rc<DxvkBuffer>&       dstBuffer,
+            VkDeviceSize          dstOffset,
+      const Rc<DxvkImage>&        srcImage,
+            VkImageSubresourceLayers srcSubresource,
+            VkOffset2D            srcOffset,
+            VkExtent2D            srcExtent,
+            VkFormat              format);
+    
+    /**
      * \brief Discards a buffer
      * 
      * Renames the buffer in case it is currently
