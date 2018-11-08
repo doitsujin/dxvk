@@ -9,6 +9,7 @@
 #include "dxvk_meta_clear.h"
 #include "dxvk_meta_copy.h"
 #include "dxvk_meta_mipgen.h"
+#include "dxvk_meta_pack.h"
 #include "dxvk_meta_resolve.h"
 #include "dxvk_pipecache.h"
 #include "dxvk_pipemanager.h"
@@ -36,6 +37,7 @@ namespace dxvk {
       const Rc<DxvkMetaClearObjects>&   metaClearObjects,
       const Rc<DxvkMetaCopyObjects>&    metaCopyObjects,
       const Rc<DxvkMetaMipGenObjects>&  metaMipGenObjects,
+      const Rc<DxvkMetaPackObjects>&    metaPackObjects,
       const Rc<DxvkMetaResolveObjects>& metaResolveObjects);
     ~DxvkContext();
     
@@ -739,6 +741,7 @@ namespace dxvk {
     const Rc<DxvkMetaClearObjects>    m_metaClear;
     const Rc<DxvkMetaCopyObjects>     m_metaCopy;
     const Rc<DxvkMetaMipGenObjects>   m_metaMipGen;
+    const Rc<DxvkMetaPackObjects>     m_metaPack;
     const Rc<DxvkMetaResolveObjects>  m_metaResolve;
     
     Rc<DxvkCommandList> m_cmd;

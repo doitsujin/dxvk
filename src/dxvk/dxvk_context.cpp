@@ -12,12 +12,14 @@ namespace dxvk {
     const Rc<DxvkMetaClearObjects>&   metaClearObjects,
     const Rc<DxvkMetaCopyObjects>&    metaCopyObjects,
     const Rc<DxvkMetaMipGenObjects>&  metaMipGenObjects,
+    const Rc<DxvkMetaPackObjects>&    metaPackObjects,
     const Rc<DxvkMetaResolveObjects>& metaResolveObjects)
   : m_device      (device),
     m_pipeMgr     (pipelineManager),
     m_metaClear   (metaClearObjects),
     m_metaCopy    (metaCopyObjects),
     m_metaMipGen  (metaMipGenObjects),
+    m_metaPack    (metaPackObjects),
     m_metaResolve (metaResolveObjects),
     m_queries     (device->vkd()) { }
   
@@ -917,8 +919,8 @@ namespace dxvk {
     m_cmd->trackResource(srcImage);
     m_cmd->trackResource(dstSlice.resource());
   }
-  
-  
+
+
   void DxvkContext::discardBuffer(
     const Rc<DxvkBuffer>&       buffer) {
     if (m_barriers.isBufferDirty(buffer->slice(), DxvkAccess::Write))

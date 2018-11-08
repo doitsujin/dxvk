@@ -20,6 +20,7 @@ namespace dxvk {
     m_metaClearObjects  (new DxvkMetaClearObjects   (vkd)),
     m_metaCopyObjects   (new DxvkMetaCopyObjects    (vkd)),
     m_metaMipGenObjects (new DxvkMetaMipGenObjects  (vkd)),
+    m_metaPackObjects   (new DxvkMetaPackObjects    (vkd)),
     m_metaResolveObjects(new DxvkMetaResolveObjects (vkd)),
     m_unboundResources  (this),
     m_submissionQueue   (this) {
@@ -121,6 +122,7 @@ namespace dxvk {
       m_metaClearObjects,
       m_metaCopyObjects,
       m_metaMipGenObjects,
+      m_metaPackObjects,
       m_metaResolveObjects);
   }
   
