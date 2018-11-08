@@ -157,4 +157,24 @@ namespace dxvk {
     return features;
   }
 
+
+  VkFormat GetPackedDepthStencilFormat(DXGI_FORMAT Format) {
+    switch (Format) {
+      case DXGI_FORMAT_R24G8_TYPELESS:
+      case DXGI_FORMAT_R24_UNORM_X8_TYPELESS:
+      case DXGI_FORMAT_X24_TYPELESS_G8_UINT:
+      case DXGI_FORMAT_D24_UNORM_S8_UINT:
+        return VK_FORMAT_D24_UNORM_S8_UINT;
+      
+      case DXGI_FORMAT_R32G8X24_TYPELESS:
+      case DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS:
+      case DXGI_FORMAT_X32_TYPELESS_G8X24_UINT:
+      case DXGI_FORMAT_D32_FLOAT_S8X24_UINT:
+        return VK_FORMAT_D32_SFLOAT_S8_UINT;
+      
+      default:
+        return VK_FORMAT_UNDEFINED;
+    }
+  }
+
 }

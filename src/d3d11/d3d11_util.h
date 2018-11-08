@@ -48,5 +48,8 @@ namespace dxvk {
 
   VkFormatFeatureFlags GetImageFormatFeatures(
           UINT                      BindFlags);
+  
+  VkFormat GetPackedDepthStencilFormat(
+          DXGI_FORMAT               Format);
 
 }
