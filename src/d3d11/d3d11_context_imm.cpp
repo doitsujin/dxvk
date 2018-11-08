@@ -394,7 +394,7 @@ namespace dxvk {
     auto subresource = pResource->GetSubresourceFromIndex(
         formatInfo->aspectMask, Subresource);
     
-    pResource->SetMappedSubresource(subresource);
+    pResource->SetMappedSubresource(subresource, MapType);
     
     if (pResource->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT) {
       const VkImageType imageType = mappedImage->info().type;
@@ -503,6 +503,9 @@ namespace dxvk {
   void D3D11ImmediateContext::UnmapImage(
           D3D11CommonTexture*         pResource,
           UINT                        Subresource) {
+    if (pResource->GetMapType() == D3D11_MAP_READ)
+      return;
+    
     if (pResource->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER) {
       // Now that data has been written into the buffer,
       // we need to copy its contents into the image

@@ -105,13 +105,21 @@ namespace dxvk {
     VkImageSubresource GetMappedSubresource() const {
       return m_mappedSubresource;
     }
+
+    /**
+     * \brief Current map type
+     */
+    D3D11_MAP GetMapType() const {
+      return m_mapType;
+    }
     
     /**
      * \brief Sets mapped subresource
      * \param [in] subresource THe subresource
      */
-    void SetMappedSubresource(VkImageSubresource subresource) {
-      m_mappedSubresource = subresource;
+    void SetMappedSubresource(VkImageSubresource Subresource, D3D11_MAP MapType) {
+      m_mappedSubresource = Subresource;
+      m_mapType           = MapType;
     }
     
     /**
@@ -188,6 +196,7 @@ namespace dxvk {
     
     VkImageSubresource m_mappedSubresource
       = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0 };
+    D3D11_MAP m_mapType = D3D11_MAP_READ;
     
     Rc<DxvkBuffer> CreateMappedBuffer() const;
     
