@@ -24,6 +24,9 @@ dxvk_shaders = files([
   'shaders/dxvk_mipgen_frag_1d.frag',
   'shaders/dxvk_mipgen_frag_2d.frag',
   'shaders/dxvk_mipgen_frag_3d.frag',
+
+  'shaders/dxvk_pack_d24s8.comp',
+  'shaders/dxvk_pack_d32s8.comp',
   
   'shaders/dxvk_resolve_vert.vert',
   'shaders/dxvk_resolve_geom.geom',

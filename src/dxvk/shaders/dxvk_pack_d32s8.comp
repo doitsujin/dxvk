@@ -1,0 +1,45 @@
+#version 450
+
+#extension GL_EXT_samplerless_texture_functions : enable
+
+layout(
+  local_size_x = 8,
+  local_size_y = 8,
+  local_size_z = 1) in;
+
+struct d32s8_t {
+  float d32;
+  uint  s8;
+};
+
+layout(binding = 0, std430)
+writeonly buffer s_buffer_t {
+  d32s8_t data[];
+} s_buffer;
+
+layout(binding = 1) uniform  texture2DArray u_depth;
+layout(binding = 2) uniform utexture2DArray u_stencil;
+
+layout(push_constant)
+uniform u_info_t {
+  uvec2 src_offset;
+  uvec2 src_extent;
+} u_info;
+
+void main() {
+  if (all(lessThan(gl_GlobalInvocationID.xy, u_info.src_extent))) {
+    uvec3 src_offset = uvec3(
+      gl_GlobalInvocationID.xy + u_info.src_offset,
+      gl_GlobalInvocationID.z);
+
+    uvec2 dst_pitch = uvec2(u_info.src_extent.x,
+      u_info.src_extent.x * u_info.src_extent.y);
+
+    uint dst_offset = gl_GlobalInvocationID.x
+                    + gl_GlobalInvocationID.y * dst_pitch.x
+                    + gl_GlobalInvocationID.z * dst_pitch.y;
+    
+    s_buffer.data[dst_offset].d32 = texelFetch(u_depth,   ivec3(src_offset), 0).r;
+    s_buffer.data[dst_offset].s8  = texelFetch(u_stencil, ivec3(src_offset), 0).r;
+  }
+}
