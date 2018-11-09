@@ -852,7 +852,7 @@ namespace dxvk {
     const bool isUav = ins.op == DxbcOpcode::DclUavTyped;
     
     if (isUav) {
-      if (m_moduleInfo.options.test(DxbcOption::UseStorageImageReadWithoutFormat))
+      if (m_moduleInfo.options.useStorageImageReadWithoutFormat)
         m_module.enableCapability(spv::CapabilityStorageImageReadWithoutFormat);
       m_module.enableCapability(spv::CapabilityStorageImageWriteWithoutFormat);
     }
@@ -913,7 +913,7 @@ namespace dxvk {
     if (isUav) {
       if ((m_analysis->uavInfos[registerId].accessAtomicOp)
        || (m_analysis->uavInfos[registerId].accessTypedLoad
-        && !m_moduleInfo.options.test(DxbcOption::UseStorageImageReadWithoutFormat)))
+        && !m_moduleInfo.options.useStorageImageReadWithoutFormat))
         imageFormat = getScalarImageFormat(sampledType);
     }
     
@@ -952,7 +952,7 @@ namespace dxvk {
     // On GPUs which don't support storageImageReadWithoutFormat,
     // we have to decorate untyped UAVs as write-only
     if (isUav && imageFormat == spv::ImageFormatUnknown
-     && !m_moduleInfo.options.test(DxbcOption::UseStorageImageReadWithoutFormat))
+     && !m_moduleInfo.options.useStorageImageReadWithoutFormat)
       m_module.decorate(varId, spv::DecorationNonReadable);
     
     // Declare a specialization constant which will
@@ -6147,7 +6147,7 @@ namespace dxvk {
     
     // We may have to defer kill operations to the end of
     // the shader in order to keep derivatives correct.
-    if (m_analysis->usesKill && m_analysis->usesDerivatives && m_moduleInfo.options.test(DxbcOption::DeferKill)) {
+    if (m_analysis->usesKill && m_analysis->usesDerivatives && m_moduleInfo.options.deferKill) {
       m_ps.killState = m_module.newVarInit(
         m_module.defPointerType(m_module.defBoolType(), spv::StorageClassPrivate),
         spv::StorageClassPrivate, m_module.constBool(false));

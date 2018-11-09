@@ -4,30 +4,16 @@
 
 namespace dxvk {
   
-  const static std::unordered_map<std::string, DxbcOptions> g_dxbcAppOptions = {{
-    
-  }};
-  
-  
-  DxbcOptions getDxbcAppOptions(const std::string& appName) {
-    auto appOptions = g_dxbcAppOptions.find(appName);
-    
-    return appOptions != g_dxbcAppOptions.end()
-      ? appOptions->second
-      : DxbcOptions();
+  DxbcOptions::DxbcOptions() {
+
   }
-  
-  
-  DxbcOptions getDxbcDeviceOptions(const Rc<DxvkDevice>& device) {
-    DxbcOptions flags;
-    
+
+
+  DxbcOptions::DxbcOptions(const Rc<DxvkDevice>& device) {
     const DxvkDeviceFeatures& devFeatures = device->features();
-    
-    if (devFeatures.core.features.shaderStorageImageReadWithoutFormat)
-      flags.set(DxbcOption::UseStorageImageReadWithoutFormat);
-    
-    flags.set(DxbcOption::DeferKill);
-    return flags;
+
+    useStorageImageReadWithoutFormat = devFeatures.core.features.shaderStorageImageReadWithoutFormat;
+    deferKill                        = true;
   }
   
 }
