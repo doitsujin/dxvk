@@ -92,14 +92,6 @@ namespace dxvk {
   }
   
   
-  void DxvkBufferView::updateView() {
-    if (m_revision != m_buffer->m_revision) {
-      m_physView = this->createView();
-      m_revision = m_buffer->m_revision;
-    }
-  }
-  
-  
   Rc<DxvkPhysicalBufferView> DxvkBufferView::createView() {
     return new DxvkPhysicalBufferView(
       m_vkd, m_buffer->slice(), m_info);

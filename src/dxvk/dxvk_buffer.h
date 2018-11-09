@@ -467,7 +467,12 @@ namespace dxvk {
      * well and needs to be re-created. Call this
      * prior to using the buffer view handle.
      */
-    void updateView();
+    void updateView() {
+      if (m_revision != m_buffer->m_revision) {
+        m_physView = this->createView();
+        m_revision = m_buffer->m_revision;
+      }
+    }
     
   private:
     
