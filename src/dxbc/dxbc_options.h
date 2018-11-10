@@ -9,7 +9,6 @@ namespace dxvk {
     DxbcOptions(const Rc<DxvkDevice>& device);
 
     /// Use the ShaderImageReadWithoutFormat capability.
-    /// Enabled by default on GPUs which support this.
     bool useStorageImageReadWithoutFormat = false;
     
     /// Defer kill operation to the end of the shader.

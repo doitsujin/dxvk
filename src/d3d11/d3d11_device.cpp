@@ -1471,7 +1471,6 @@ namespace dxvk {
       enabled.core.features.tessellationShader                    = VK_TRUE;
       // TODO enable unconditionally once RADV gains support
       enabled.core.features.shaderStorageImageMultisample         = supported.core.features.shaderStorageImageMultisample;
-      enabled.core.features.shaderStorageImageReadWithoutFormat   = supported.core.features.shaderStorageImageReadWithoutFormat;
       enabled.core.features.shaderStorageImageWriteWithoutFormat  = VK_TRUE;
     }
     
