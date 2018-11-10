@@ -686,7 +686,6 @@ namespace dxvk {
     VkFormat uavFormat = m_parent->LookupFormat(uavDesc.Format, DXGI_VK_FORMAT_MODE_ANY).Format;
     VkFormat rawFormat = m_parent->LookupFormat(uavDesc.Format, DXGI_VK_FORMAT_MODE_RAW).Format;
     
-    // FIXME support packed formats
     if (uavFormat != rawFormat && rawFormat == VK_FORMAT_UNDEFINED) {
       Logger::err(str::format("D3D11: ClearUnorderedAccessViewUint: No raw format found for ", uavFormat));
       return;
@@ -698,6 +697,13 @@ namespace dxvk {
     clearValue.color.uint32[1] = Values[1];
     clearValue.color.uint32[2] = Values[2];
     clearValue.color.uint32[3] = Values[3];
+
+    // This is the only packed format that has UAV support
+    if (uavFormat == VK_FORMAT_B10G11R11_UFLOAT_PACK32) {
+      clearValue.color.uint32[0] = ((Values[0] & 0x7FF) <<  0)
+                                 | ((Values[1] & 0x7FF) << 11)
+                                 | ((Values[2] & 0x3FF) << 22);
+    }
     
     if (uav->GetResourceType() == D3D11_RESOURCE_DIMENSION_BUFFER) {
       // In case of raw and structured buffers as well as typed
