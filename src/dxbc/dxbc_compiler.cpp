@@ -1680,11 +1680,20 @@ namespace dxvk {
     //    (src0) The condition vector
     //    (src1) Vector to select from if the condition is not 0
     //    (src2) Vector to select from if the condition is 0
-    const DxbcRegisterValue condition   = emitRegisterLoad(ins.src[0], ins.dst[0].mask);
+    DxbcRegMask condMask = ins.dst[0].mask;
+
+    if (ins.dst[0].dataType == DxbcScalarType::Float64) {
+      condMask = DxbcRegMask(
+        condMask[0] && condMask[1],
+        condMask[2] && condMask[3],
+        false, false);
+    }
+    
+    const DxbcRegisterValue condition   = emitRegisterLoad(ins.src[0], condMask);
     const DxbcRegisterValue selectTrue  = emitRegisterLoad(ins.src[1], ins.dst[0].mask);
     const DxbcRegisterValue selectFalse = emitRegisterLoad(ins.src[2], ins.dst[0].mask);
     
-    const uint32_t componentCount = ins.dst[0].mask.popCount();
+    uint32_t componentCount = condMask.popCount();
     
     // We'll compare against a vector of zeroes to generate a
     // boolean vector, which in turn will be used by OpSelect

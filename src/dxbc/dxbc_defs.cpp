@@ -1013,7 +1013,12 @@ namespace dxvk {
       { DxbcOperandKind::SrcReg, DxbcScalarType::Float64 },
     } },
     /* DMovc                                */
-    { },
+    { 4, DxbcInstClass::VectorCmov, {
+      { DxbcOperandKind::DstReg, DxbcScalarType::Float64 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Uint32  },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float64 },
+      { DxbcOperandKind::SrcReg, DxbcScalarType::Float64 },
+    } },
     /* DtoF                                 */
     { 2, DxbcInstClass::ConvertFloat64, {
       { DxbcOperandKind::DstReg, DxbcScalarType::Float32 },
