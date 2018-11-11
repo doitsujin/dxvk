@@ -14,6 +14,9 @@ namespace dxvk {
     /// Use subgroup operations to discard fragment
     /// shader invocations if derivatives remain valid.
     bool useSubgroupOpsForEarlyDiscard = false;
+
+    /// Use clustered subgroup operations
+    bool useSubgroupOpsClustered = false;
   };
   
 }
