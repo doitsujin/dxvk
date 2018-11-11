@@ -7,6 +7,7 @@ namespace dxvk {
 
   DxvkMetaPackObjects::DxvkMetaPackObjects(const Rc<vk::DeviceFn>& vkd)
   : m_vkd         (vkd),
+    m_sampler     (createSampler()),
     m_dsetLayout  (createDescriptorSetLayout()),
     m_pipeLayout  (createPipelineLayout()),
     m_template    (createDescriptorUpdateTemplate()),
@@ -28,6 +29,9 @@ namespace dxvk {
     
     m_vkd->vkDestroyDescriptorSetLayout(
       m_vkd->device(), m_dsetLayout, nullptr);
+    
+    m_vkd->vkDestroySampler(
+      m_vkd->device(), m_sampler, nullptr);
   }
 
 
@@ -48,11 +52,39 @@ namespace dxvk {
   }
 
 
+  VkSampler DxvkMetaPackObjects::createSampler() {
+    VkSamplerCreateInfo info;
+    info.sType                  = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    info.pNext                  = nullptr;
+    info.flags                  = 0;
+    info.magFilter              = VK_FILTER_NEAREST;
+    info.minFilter              = VK_FILTER_NEAREST;
+    info.mipmapMode             = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    info.addressModeU           = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    info.addressModeV           = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    info.addressModeW           = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    info.mipLodBias             = 0.0f;
+    info.anisotropyEnable       = VK_FALSE;
+    info.maxAnisotropy          = 1.0f;
+    info.compareEnable          = VK_FALSE;
+    info.compareOp              = VK_COMPARE_OP_ALWAYS;
+    info.minLod                 = 0.0f;
+    info.maxLod                 = 0.0f;
+    info.borderColor            = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+    info.unnormalizedCoordinates = VK_FALSE;
+    
+    VkSampler result = VK_NULL_HANDLE;
+    if (m_vkd->vkCreateSampler(m_vkd->device(), &info, nullptr, &result) != VK_SUCCESS)
+      throw DxvkError("DxvkMetaPackObjects: Failed to create sampler");
+    return result;
+  }
+
+
   VkDescriptorSetLayout DxvkMetaPackObjects::createDescriptorSetLayout() {
     std::array<VkDescriptorSetLayoutBinding, 3> bindings = {{
-      { 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
-      { 1, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
-      { 2, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+      { 0, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         1, VK_SHADER_STAGE_COMPUTE_BIT, nullptr },
+      { 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, &m_sampler },
+      { 2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_COMPUTE_BIT, &m_sampler },
     }};
 
     VkDescriptorSetLayoutCreateInfo dsetInfo;
@@ -93,9 +125,9 @@ namespace dxvk {
 
   VkDescriptorUpdateTemplateKHR DxvkMetaPackObjects::createDescriptorUpdateTemplate() {
     std::array<VkDescriptorUpdateTemplateEntryKHR, 3> bindings = {{
-      { 0, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, offsetof(DxvkMetaPackDescriptors, dstBuffer),  0 },
-      { 1, 0, 1, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  offsetof(DxvkMetaPackDescriptors, srcDepth),   0 },
-      { 2, 0, 1, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  offsetof(DxvkMetaPackDescriptors, srcStencil), 0 },
+      { 0, 0, 1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         offsetof(DxvkMetaPackDescriptors, dstBuffer),  0 },
+      { 1, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, offsetof(DxvkMetaPackDescriptors, srcDepth),   0 },
+      { 2, 0, 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, offsetof(DxvkMetaPackDescriptors, srcStencil), 0 },
     }};
 
     VkDescriptorUpdateTemplateCreateInfoKHR templateInfo;

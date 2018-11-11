@@ -69,6 +69,8 @@ namespace dxvk {
 
     Rc<vk::DeviceFn>      m_vkd;
 
+    VkSampler             m_sampler;
+
     VkDescriptorSetLayout m_dsetLayout;
     VkPipelineLayout      m_pipeLayout;
 
@@ -79,6 +81,8 @@ namespace dxvk {
 
     VkPipeline            m_pipeD24S8;
     VkPipeline            m_pipeD32S8;
+
+    VkSampler createSampler();
 
     VkDescriptorSetLayout createDescriptorSetLayout();
 
