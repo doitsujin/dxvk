@@ -73,6 +73,21 @@ namespace dxvk {
   }
 
 
+  HRESULT STDMETHODCALLTYPE D3D11SwapChain::GetAdapter(
+          REFIID                    riid,
+          void**                    ppvObject) {
+    Com<IDXGIDevice> dxgiDevice;
+
+    HRESULT hr = GetDevice(__uuidof(IDXGIDevice),
+      reinterpret_cast<void**>(&dxgiDevice));
+
+    if (FAILED(hr))
+      return hr;
+    
+    return dxgiDevice->GetParent(riid, ppvObject);
+  }
+
+
   HRESULT STDMETHODCALLTYPE D3D11SwapChain::GetDevice(
           REFIID                    riid,
           void**                    ppDevice) {

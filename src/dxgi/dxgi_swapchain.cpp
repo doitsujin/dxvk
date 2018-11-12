@@ -16,33 +16,19 @@ namespace dxvk {
     m_desc    (*pDesc),
     m_descFs  (*pFullscreenDesc),
     m_monitor (nullptr) {
-    Com<IDXGIVkPresentDevice> presentDevice;
-
-    // Retrieve a device pointer that allows us to
-    // communicate with the underlying D3D device
-    if (FAILED(pDevice->QueryInterface(__uuidof(IDXGIVkPresentDevice),
-        reinterpret_cast<void**>(&presentDevice))))
-      throw DxvkError("DXGI: DxgiSwapChain: Invalid device");
-    
-    // Retrieve the adapter, which is going
-    // to be used to enumerate displays.
-    Com<IDXGIDevice> device;
-    Com<IDXGIAdapter> adapter;
-    
-    if (FAILED(pDevice->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&device))))
-      throw DxvkError("DXGI: DxgiSwapChain: Invalid device");
-    
-    if (FAILED(device->GetAdapter(&adapter)))
-      throw DxvkError("DXGI: DxgiSwapChain: Failed to retrieve adapter");
-    
-    m_adapter = static_cast<DxgiAdapter*>(adapter.ptr());
-    
     // Initialize frame statistics
     m_stats.PresentCount         = 0;
     m_stats.PresentRefreshCount  = 0;
     m_stats.SyncRefreshCount     = 0;
     m_stats.SyncQPCTime.QuadPart = 0;
     m_stats.SyncGPUTime.QuadPart = 0;
+    
+    // Create presenter, which also serves as an interface to the device
+    if (FAILED(CreatePresenter(pDevice, &m_presenter)))
+      throw DxvkError("DXGI: Failed to create presenter");
+    
+    if (FAILED(m_presenter->GetAdapter(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&m_adapter))))
+      throw DxvkError("DXGI: Failed to get adapter for present device");
     
     // Adjust initial back buffer size. If zero, these
     // shall be set to the current window size.
@@ -53,10 +39,7 @@ namespace dxvk {
     
     // Set initial window mode and fullscreen state
     if (!m_descFs.Windowed && FAILED(EnterFullscreenMode(nullptr)))
-      throw DxvkError("DXGI: DxgiSwapChain: Failed to set initial fullscreen state");
-    
-    if (FAILED(presentDevice->CreateSwapChainForHwnd(m_window, &m_desc, &m_presenter)))
-      throw DxvkError("DXGI: DxgiSwapChain: Failed to create presenter");
+      throw DxvkError("DXGI: Failed to set initial fullscreen state");
   }
   
   
@@ -581,6 +564,21 @@ namespace dxvk {
       case  8: *pCount = VK_SAMPLE_COUNT_8_BIT;  return S_OK;
       case 16: *pCount = VK_SAMPLE_COUNT_16_BIT; return S_OK;
     }
+    
+    return E_INVALIDARG;
+  }
+
+
+  HRESULT DxgiSwapChain::CreatePresenter(
+            IUnknown*               pDevice,
+            IDXGIVkSwapChain**      ppSwapChain) {
+    Com<IDXGIVkPresentDevice> presentDevice;
+
+    // Retrieve a device pointer that allows us to
+    // communicate with the underlying D3D device
+    if (SUCCEEDED(pDevice->QueryInterface(__uuidof(IDXGIVkPresentDevice),
+        reinterpret_cast<void**>(&presentDevice))))
+      return presentDevice->CreateSwapChainForHwnd(m_window, &m_desc, ppSwapChain);
     
     return E_INVALIDARG;
   }

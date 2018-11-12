@@ -165,6 +165,10 @@ namespace dxvk {
             UINT                    Count,
             VkSampleCountFlagBits*  pCount) const;
     
+    HRESULT CreatePresenter(
+            IUnknown*               pDevice,
+            IDXGIVkSwapChain**      ppSwapChain);
+    
   };
   
 }

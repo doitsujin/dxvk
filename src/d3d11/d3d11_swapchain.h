@@ -40,6 +40,10 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE GetDesc(
             DXGI_SWAP_CHAIN_DESC1*    pDesc);
 
+    HRESULT STDMETHODCALLTYPE GetAdapter(
+            REFIID                    riid,
+            void**                    ppvObject);
+    
     HRESULT STDMETHODCALLTYPE GetDevice(
             REFIID                    riid,
             void**                    ppDevice);
