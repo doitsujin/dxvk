@@ -1,6 +1,7 @@
 vkcommon_src = files([
   'vulkan_loader.cpp',
   'vulkan_names.cpp',
+  'vulkan_presenter.cpp',
 ])
 
 thread_dep = dependency('threads')
