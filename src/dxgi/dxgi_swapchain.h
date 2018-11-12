@@ -19,7 +19,7 @@ namespace dxvk {
   class DxgiFactory;
   class DxgiOutput;
   
-  class DxgiSwapChain : public DxgiObject<IDXGISwapChain2> {
+  class DxgiSwapChain : public DxgiObject<IDXGISwapChain3> {
     
   public:
     
@@ -49,6 +49,8 @@ namespace dxvk {
             REFIID                    riid,
             void**                    ppSurface) final;
     
+    UINT STDMETHODCALLTYPE GetCurrentBackBufferIndex() final;
+
     HRESULT STDMETHODCALLTYPE GetContainingOutput(
             IDXGIOutput**             ppOutput) final;
     
@@ -105,6 +107,15 @@ namespace dxvk {
             DXGI_FORMAT               NewFormat,
             UINT                      SwapChainFlags) final;
     
+    HRESULT STDMETHODCALLTYPE ResizeBuffers1(
+            UINT                      BufferCount,
+            UINT                      Width,
+            UINT                      Height,
+            DXGI_FORMAT               Format,
+            UINT                      SwapChainFlags,
+      const UINT*                     pCreationNodeMask,
+            IUnknown* const*          ppPresentQueue) final;
+
     HRESULT STDMETHODCALLTYPE ResizeTarget(
       const DXGI_MODE_DESC*           pNewTargetParameters) final;
     
@@ -139,6 +150,13 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE SetSourceSize(
             UINT                      Width,
             UINT                      Height) final;
+    
+    HRESULT STDMETHODCALLTYPE CheckColorSpaceSupport(
+            DXGI_COLOR_SPACE_TYPE     ColorSpace,
+            UINT*                     pColorSpaceSupport) final;
+
+    HRESULT STDMETHODCALLTYPE SetColorSpace1(
+            DXGI_COLOR_SPACE_TYPE     ColorSpace) final;
 
     HRESULT SetGammaControl(
       const DXGI_GAMMA_CONTROL*       pGammaControl);

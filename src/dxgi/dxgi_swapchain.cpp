@@ -59,7 +59,8 @@ namespace dxvk {
      || riid == __uuidof(IDXGIDeviceSubObject)
      || riid == __uuidof(IDXGISwapChain)
      || riid == __uuidof(IDXGISwapChain1)
-     || riid == __uuidof(IDXGISwapChain2)) {
+     || riid == __uuidof(IDXGISwapChain2)
+     || riid == __uuidof(IDXGISwapChain3)) {
       *ppvObject = ref(this);
       return S_OK;
     }
@@ -82,6 +83,11 @@ namespace dxvk {
   
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetBuffer(UINT Buffer, REFIID riid, void** ppSurface) {
     return m_presenter->GetImage(Buffer, riid, ppSurface);
+  }
+
+
+  UINT STDMETHODCALLTYPE DxgiSwapChain::GetCurrentBackBufferIndex() {
+    return m_presenter->GetImageIndex();
   }
   
   
@@ -302,6 +308,24 @@ namespace dxvk {
   }
   
   
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::ResizeBuffers1(
+          UINT                      BufferCount,
+          UINT                      Width,
+          UINT                      Height,
+          DXGI_FORMAT               Format,
+          UINT                      SwapChainFlags,
+    const UINT*                     pCreationNodeMask,
+          IUnknown* const*          ppPresentQueue) {
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("DxgiSwapChain::ResizeBuffers1: Stub");
+
+    return ResizeBuffers(BufferCount,
+      Width, Height, Format, SwapChainFlags);
+  }
+
+
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::ResizeTarget(const DXGI_MODE_DESC* pNewTargetParameters) {
     std::lock_guard<std::mutex> lock(m_lockWindow);
 
@@ -447,6 +471,22 @@ namespace dxvk {
     return m_presenter->SetPresentRegion(&region);
   }
   
+
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::CheckColorSpaceSupport(
+    DXGI_COLOR_SPACE_TYPE           ColorSpace,
+    UINT*                           pColorSpaceSupport) {
+    Logger::err("DxgiSwapChain::CheckColorSpaceSupport: Not implemented");
+
+    *pColorSpaceSupport = 0;
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT DxgiSwapChain::SetColorSpace1(DXGI_COLOR_SPACE_TYPE ColorSpace) {
+    Logger::err("DxgiSwapChain::SetColorSpace1: Not implemented");
+    return E_NOTIMPL;
+  }
+
 
   HRESULT DxgiSwapChain::SetGammaControl(const DXGI_GAMMA_CONTROL* pGammaControl) {
     return m_presenter->SetGammaControl(DXGI_VK_GAMMA_CP_COUNT, pGammaControl->GammaCurve);
