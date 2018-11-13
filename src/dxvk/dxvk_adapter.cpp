@@ -13,6 +13,7 @@ namespace dxvk {
   : m_instance      (instance),
     m_vki           (instance->vki()),
     m_handle        (handle) {
+    this->initHeapAllocInfo();
     this->queryExtensions();
     this->queryDeviceInfo();
     this->queryDeviceFeatures();
@@ -30,6 +31,22 @@ namespace dxvk {
   }
   
   
+  DxvkAdapterMemoryInfo DxvkAdapter::getMemoryHeapInfo() const {
+    VkPhysicalDeviceMemoryProperties props = memoryProperties();
+
+    DxvkAdapterMemoryInfo info = { };
+    info.heapCount = props.memoryHeapCount;
+
+    for (uint32_t i = 0; i < info.heapCount; i++) {
+      info.heaps[i].heapFlags       = props.memoryHeaps[i].flags;
+      info.heaps[i].memoryAvailable = props.memoryHeaps[i].size;
+      info.heaps[i].memoryAllocated = m_heapAlloc[i].load();
+    }
+
+    return info;
+  }
+
+
   VkPhysicalDeviceMemoryProperties DxvkAdapter::memoryProperties() const {
     VkPhysicalDeviceMemoryProperties memoryProperties;
     m_vki->vkGetPhysicalDeviceMemoryProperties(m_handle, &memoryProperties);
@@ -288,6 +305,20 @@ namespace dxvk {
   Rc<DxvkSurface> DxvkAdapter::createSurface(HINSTANCE instance, HWND window) {
     return new DxvkSurface(this, instance, window);
   }
+
+
+  void DxvkAdapter::notifyHeapMemoryAlloc(
+          uint32_t            heap,
+          VkDeviceSize        bytes) {
+    m_heapAlloc[heap] += bytes;
+  }
+
+  
+  void DxvkAdapter::notifyHeapMemoryFree(
+          uint32_t            heap,
+          VkDeviceSize        bytes) {
+    m_heapAlloc[heap] -= bytes;
+  }
   
   
   void DxvkAdapter::logAdapterInfo() const {
@@ -322,6 +353,12 @@ namespace dxvk {
   }
   
   
+  void DxvkAdapter::initHeapAllocInfo() {
+    for (uint32_t i = 0; i < m_heapAlloc.size(); i++)
+      m_heapAlloc[i] = 0;
+  }
+
+
   void DxvkAdapter::queryExtensions() {
     m_deviceExtensions = DxvkNameSet::enumDeviceExtensions(m_vki, m_handle);
   }

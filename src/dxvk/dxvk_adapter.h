@@ -19,6 +19,29 @@ namespace dxvk {
     Nvidia = 0x10de,
     Intel  = 0x8086,
   };
+
+  /**
+   * \brief Adapter memory heap info
+   * 
+   * Stores info about a heap, and the amount
+   * of memory allocated from it by the app.
+   */
+  struct DxvkAdapterMemoryHeapInfo {
+    VkMemoryHeapFlags heapFlags;
+    VkDeviceSize memoryAvailable;
+    VkDeviceSize memoryAllocated;
+  };
+
+  /**
+   * \brief Adapter memory info
+   * 
+   * Stores properties and allocation
+   * info of each available heap.
+   */
+  struct DxvkAdapterMemoryInfo {
+    uint32_t                  heapCount;
+    DxvkAdapterMemoryHeapInfo heaps[VK_MAX_MEMORY_HEAPS];
+  };
   
   /**
    * \brief DXVK adapter
@@ -92,6 +115,17 @@ namespace dxvk {
     }
     
     /**
+     * \brief Retrieves memory heap info
+     * 
+     * Returns properties of all available memory heaps,
+     * both device-local and non-local heaps, and the
+     * amount of memory allocated from those heaps by
+     * logical devices.
+     * \returns Memory heap info
+     */
+    DxvkAdapterMemoryInfo getMemoryHeapInfo() const;
+    
+    /**
      * \brief Memory properties
      * 
      * Queries the memory types and memory heaps of
@@ -99,7 +133,7 @@ namespace dxvk {
      * \returns Device memory properties
      */
     VkPhysicalDeviceMemoryProperties memoryProperties() const;
-    
+
     /**
      * \brief Queries format support
      * 
@@ -171,6 +205,28 @@ namespace dxvk {
       HWND      window);
     
     /**
+     * \brief Registers memory allocation
+     * 
+     * Updates memory alloc info accordingly.
+     * \param [in] heap Memory heap index
+     * \param [in] bytes Allocation size
+     */
+    void notifyHeapMemoryAlloc(
+            uint32_t            heap,
+            VkDeviceSize        bytes);
+    
+    /**
+     * \brief Registers memory deallocation
+     * 
+     * Updates memory alloc info accordingly.
+     * \param [in] heap Memory heap index
+     * \param [in] bytes Allocation size
+     */
+    void notifyHeapMemoryFree(
+            uint32_t            heap,
+            VkDeviceSize        bytes);
+    
+    /**
      * \brief Logs DXVK adapter info
      * 
      * May be useful for bug reports
@@ -190,6 +246,9 @@ namespace dxvk {
     
     std::vector<VkQueueFamilyProperties> m_queueFamilies;
 
+    std::array<std::atomic<VkDeviceSize>, VK_MAX_MEMORY_HEAPS> m_heapAlloc;
+
+    void initHeapAllocInfo();
     void queryExtensions();
     void queryDeviceInfo();
     void queryDeviceFeatures();

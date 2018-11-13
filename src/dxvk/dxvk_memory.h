@@ -56,6 +56,7 @@ namespace dxvk {
    */
   struct DxvkMemoryType {
     DxvkMemoryHeap*   heap;
+    uint32_t          heapId;
 
     VkMemoryType      memType;
     uint32_t          memTypeId;
@@ -255,6 +256,7 @@ namespace dxvk {
   private:
 
     const Rc<vk::DeviceFn>                 m_vkd;
+    const Rc<DxvkAdapter>                  m_adapter;
     const VkPhysicalDeviceProperties       m_devProps;
     const VkPhysicalDeviceMemoryProperties m_memProps;
     const bool                             m_allowOvercommit;
