@@ -15,6 +15,7 @@
 #include "../util/sha1/sha1_util.h"
 
 #include "../util/sync/sync_spinlock.h"
+#include "../util/sync/sync_ticketlock.h"
 
 #include "../vulkan/vulkan_loader.h"
 #include "../vulkan/vulkan_names.h"

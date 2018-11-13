@@ -224,7 +224,7 @@ namespace dxvk {
     const VkQueryControlFlags m_flags;
     const uint32_t            m_index;
     
-    std::mutex m_mutex;
+    sync::TicketLock m_mutex;
     
     DxvkQueryStatus m_status   = DxvkQueryStatus::Created;
     DxvkQueryData   m_data     = {};
