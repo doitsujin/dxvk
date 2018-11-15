@@ -12,6 +12,17 @@
 namespace dxvk {
 
   /**
+   * \brief Thread priority
+   */
+  enum class ThreadPriority : int32_t {
+    Lowest      = THREAD_PRIORITY_LOWEST,
+    Low         = THREAD_PRIORITY_BELOW_NORMAL,
+    Normal      = THREAD_PRIORITY_NORMAL,
+    High        = THREAD_PRIORITY_ABOVE_NORMAL,
+    Highest     = THREAD_PRIORITY_HIGHEST,
+  };
+
+  /**
    * \brief Thread helper class
    * 
    * This is needed mostly  for winelib builds. Wine needs to setup each thread that
@@ -54,6 +65,10 @@ namespace dxvk {
 
     bool joinable() const {
       return m_handle != nullptr;
+    }
+
+    void set_priority(ThreadPriority priority) {
+      ::SetThreadPriority(m_handle, int32_t(priority));
     }
 
   private:
@@ -105,6 +120,10 @@ namespace dxvk {
     bool joinable() const {
       return m_thread != nullptr
           && m_thread->joinable();
+    }
+
+    void set_priority(ThreadPriority priority) {
+      m_thread->set_priority(priority);
     }
     
     static uint32_t hardware_concurrency() {
