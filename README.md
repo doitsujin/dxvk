@@ -23,7 +23,7 @@ Verify that your application uses DXVK instead of wined3d by checking for the pr
 ### Requirements:
 - [wine 3.10](https://www.winehq.org/) or newer
 - [Meson](http://mesonbuild.com/) build system (at least version 0.43)
-- [MinGW64](http://mingw-w64.org/) compiler and headers (requires threading support)
+- [MinGW64](http://mingw-w64.org/) 6.0 compiler and headers
 - [glslang](https://github.com/KhronosGroup/glslang) compile
 
 ### Building DLLs
