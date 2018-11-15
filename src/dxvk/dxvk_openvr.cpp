@@ -115,7 +115,7 @@ namespace dxvk {
   
   vr::IVRCompositor* VrInstance::getCompositor() {
     // Skip OpenVR initialization if requested
-    if (env::getEnvVar(L"DXVK_NO_VR") == "1")
+    if (env::getEnvVar("DXVK_NO_VR") == "1")
       return nullptr;
     
     // Locate the OpenVR DLL if loaded by the process. Some
