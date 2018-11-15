@@ -44,7 +44,7 @@ namespace dxvk {
           DxvkRenderPassPool* passManager)
   : m_device    (device),
     m_cache     (new DxvkPipelineCache(device->vkd())) {
-    std::string useStateCache = env::getEnvVar(L"DXVK_STATE_CACHE");
+    std::string useStateCache = env::getEnvVar("DXVK_STATE_CACHE");
     
     if (useStateCache != "0")
       m_stateCache = new DxvkStateCache(device, this, passManager);

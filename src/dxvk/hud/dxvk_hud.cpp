@@ -62,7 +62,7 @@ namespace dxvk::hud {
   
   
   Rc<Hud> Hud::createHud(const Rc<DxvkDevice>& device) {
-    HudConfig config(env::getEnvVar(L"DXVK_HUD"));
+    HudConfig config(env::getEnvVar("DXVK_HUD"));
     
     return !config.elements.isClear()
       ? new Hud(device, config)
