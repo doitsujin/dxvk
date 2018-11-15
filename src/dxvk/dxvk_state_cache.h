@@ -13,6 +13,8 @@
 
 namespace dxvk {
 
+  class DxvkDevice;
+
   /**
    * \brief State cache entry key
    * 
@@ -81,6 +83,7 @@ namespace dxvk {
   public:
 
     DxvkStateCache(
+      const DxvkDevice*           device,
             DxvkPipelineManager*  pipeManager,
             DxvkRenderPassPool*   passManager);
     

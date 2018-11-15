@@ -1,3 +1,4 @@
+#include "dxvk_device.h"
 #include "dxvk_pipemanager.h"
 #include "dxvk_state_cache.h"
 
@@ -29,6 +30,7 @@ namespace dxvk {
 
 
   DxvkStateCache::DxvkStateCache(
+    const DxvkDevice*           device,
           DxvkPipelineManager*  pipeManager,
           DxvkRenderPassPool*   passManager)
   : m_pipeManager(pipeManager),
@@ -65,6 +67,9 @@ namespace dxvk {
 
     if (numWorkers <  1) numWorkers =  1;
     if (numWorkers > 16) numWorkers = 16;
+
+    if (device->config().numCompilerThreads > 0)
+      numWorkers = device->config().numCompilerThreads;
     
     Logger::info(str::format("DXVK: Using ", numWorkers, " compiler threads"));
     

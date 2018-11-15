@@ -47,7 +47,7 @@ namespace dxvk {
     std::string useStateCache = env::getEnvVar(L"DXVK_STATE_CACHE");
     
     if (useStateCache != "0")
-      m_stateCache = new DxvkStateCache(this, passManager);
+      m_stateCache = new DxvkStateCache(device, this, passManager);
   }
   
   
