@@ -74,8 +74,10 @@ namespace dxvk {
     Logger::info(str::format("DXVK: Using ", numWorkers, " compiler threads"));
     
     // Start the worker threads and the file writer
-    for (uint32_t i = 0; i < numWorkers; i++)
+    for (uint32_t i = 0; i < numWorkers; i++) {
       m_workerThreads.emplace_back([this] () { workerFunc(); });
+      m_workerThreads[i].set_priority(ThreadPriority::Lowest);
+    }
     
     m_writerThread = dxvk::thread([this] () { writerFunc(); });
   }
