@@ -36,7 +36,10 @@ namespace dxvk {
       slotMapping.bindingInfos(),
       VK_PIPELINE_BIND_POINT_COMPUTE);
     
-    m_cs = cs->createShaderModule(m_vkd, slotMapping);
+    DxvkShaderModuleCreateInfo moduleInfo;
+    moduleInfo.fsDualSrcBlend = false;
+
+    m_cs = cs->createShaderModule(m_vkd, slotMapping, moduleInfo);
   }
   
   

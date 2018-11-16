@@ -101,6 +101,14 @@ namespace dxvk {
     uint32_t* m_data = nullptr;
 
   };
+
+
+  /**
+   * \brief Shader module create info
+   */
+  struct DxvkShaderModuleCreateInfo {
+    bool fsDualSrcBlend;
+  };
   
   
   /**
@@ -162,11 +170,13 @@ namespace dxvk {
      * Maps the binding slot numbers 
      * \param [in] vkd Vulkan device functions
      * \param [in] mapping Resource slot mapping
+     * \param [in] info Module create info
      * \returns The shader module
      */
     Rc<DxvkShaderModule> createShaderModule(
       const Rc<vk::DeviceFn>&          vkd,
-      const DxvkDescriptorSlotMapping& mapping);
+      const DxvkDescriptorSlotMapping& mapping,
+      const DxvkShaderModuleCreateInfo& info);
     
     /**
      * \brief Inter-stage interface slots
@@ -242,6 +252,9 @@ namespace dxvk {
     DxvkShaderOptions             m_options;
     DxvkShaderConstData           m_constData;
     DxvkShaderKey                 m_key;
+
+    size_t m_o1IdxOffset = 0;
+    size_t m_o1LocOffset = 0;
     
   };
   

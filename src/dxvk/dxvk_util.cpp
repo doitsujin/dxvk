@@ -149,4 +149,12 @@ namespace dxvk::util {
     }
   }
 
+
+  bool isDualSourceBlendFactor(VkBlendFactor factor) {
+    return factor == VK_BLEND_FACTOR_SRC1_COLOR
+        || factor == VK_BLEND_FACTOR_SRC1_ALPHA
+        || factor == VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR
+        || factor == VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA;
+  }
+
 }

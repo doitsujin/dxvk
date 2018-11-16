@@ -229,6 +229,7 @@ namespace dxvk {
     Rc<DxvkShaderModule>    m_tes;
     Rc<DxvkShaderModule>    m_gs;
     Rc<DxvkShaderModule>    m_fs;
+    Rc<DxvkShaderModule>    m_fs2;
     
     uint32_t m_vsIn  = 0;
     uint32_t m_fsOut = 0;

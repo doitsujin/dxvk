@@ -61,11 +61,18 @@ namespace dxvk {
       slotMapping.bindingInfos(),
       VK_PIPELINE_BIND_POINT_GRAPHICS);
     
-    if (vs  != nullptr) m_vs  = vs ->createShaderModule(m_vkd, slotMapping);
-    if (tcs != nullptr) m_tcs = tcs->createShaderModule(m_vkd, slotMapping);
-    if (tes != nullptr) m_tes = tes->createShaderModule(m_vkd, slotMapping);
-    if (gs  != nullptr) m_gs  = gs ->createShaderModule(m_vkd, slotMapping);
-    if (fs  != nullptr) m_fs  = fs ->createShaderModule(m_vkd, slotMapping);
+    DxvkShaderModuleCreateInfo moduleInfo;
+    moduleInfo.fsDualSrcBlend = true;
+    
+    DxvkShaderModuleCreateInfo moduleInfoDualSrc;
+    moduleInfoDualSrc.fsDualSrcBlend = true;
+    
+    if (vs  != nullptr) m_vs  = vs ->createShaderModule(m_vkd, slotMapping, moduleInfo);
+    if (tcs != nullptr) m_tcs = tcs->createShaderModule(m_vkd, slotMapping, moduleInfo);
+    if (tes != nullptr) m_tes = tes->createShaderModule(m_vkd, slotMapping, moduleInfo);
+    if (gs  != nullptr) m_gs  = gs ->createShaderModule(m_vkd, slotMapping, moduleInfo);
+    if (fs  != nullptr) m_fs  = fs ->createShaderModule(m_vkd, slotMapping, moduleInfo);
+    if (fs  != nullptr) m_fs2 = fs ->createShaderModule(m_vkd, slotMapping, moduleInfoDualSrc);
     
     m_vsIn  = vs != nullptr ? vs->interfaceSlots().inputSlots  : 0;
     m_fsOut = fs != nullptr ? fs->interfaceSlots().outputSlots : 0;
@@ -200,12 +207,20 @@ namespace dxvk {
     specInfo.pData                = &specData;
     
     std::vector<VkPipelineShaderStageCreateInfo> stages;
-    
+
+    bool useDualSrcBlend = state.omBlendAttachments[0].blendEnable && (
+      util::isDualSourceBlendFactor(state.omBlendAttachments[0].srcColorBlendFactor) ||
+      util::isDualSourceBlendFactor(state.omBlendAttachments[0].dstColorBlendFactor) ||
+      util::isDualSourceBlendFactor(state.omBlendAttachments[0].srcAlphaBlendFactor) ||
+      util::isDualSourceBlendFactor(state.omBlendAttachments[0].dstAlphaBlendFactor));
+
+    Rc<DxvkShaderModule> fs = useDualSrcBlend ? m_fs2 : m_fs;
+
     if (m_vs  != nullptr) stages.push_back(m_vs->stageInfo(&specInfo));
     if (m_tcs != nullptr) stages.push_back(m_tcs->stageInfo(&specInfo));
     if (m_tes != nullptr) stages.push_back(m_tes->stageInfo(&specInfo));
     if (m_gs  != nullptr) stages.push_back(m_gs->stageInfo(&specInfo));
-    if (m_fs  != nullptr) stages.push_back(m_fs->stageInfo(&specInfo));
+    if (fs    != nullptr) stages.push_back(fs->stageInfo(&specInfo));
 
     // Fix up color write masks using the component mappings
     std::array<VkPipelineColorBlendAttachmentState, MaxNumRenderTargets> omBlendAttachments;
