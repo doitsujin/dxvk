@@ -419,6 +419,16 @@ namespace dxvk {
   }
   
   
+  void SpirvModule::decorateIndex(
+          uint32_t                object,
+          uint32_t                index) {
+    m_annotations.putIns  (spv::OpDecorate, 4);
+    m_annotations.putWord (object);
+    m_annotations.putWord (spv::DecorationIndex);
+    m_annotations.putInt32(index);
+  }
+
+
   void SpirvModule::decorateLocation(
           uint32_t                object,
           uint32_t                location) {

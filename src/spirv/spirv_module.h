@@ -189,6 +189,10 @@ namespace dxvk {
             uint32_t                object,
             uint32_t                set);
     
+    void decorateIndex(
+            uint32_t                object,
+            uint32_t                index);
+    
     void decorateLocation(
             uint32_t                object,
             uint32_t                location);
