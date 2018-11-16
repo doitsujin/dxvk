@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../dxvk/dxvk_event.h"
+#include "../dxvk/dxvk_gpu_event.h"
 #include "../dxvk/dxvk_query.h"
 
 #include "../d3d10/d3d10_query.h"
@@ -54,8 +54,8 @@ namespace dxvk {
     D3D11Device* const m_device;
     D3D11_QUERY_DESC   m_desc;
     
-    Rc<DxvkQuery> m_query = nullptr;
-    Rc<DxvkEvent> m_event = nullptr;
+    Rc<DxvkQuery>     m_query = nullptr;
+    Rc<DxvkGpuEvent>  m_event = nullptr;
     
     uint32_t m_revision = 0;
 

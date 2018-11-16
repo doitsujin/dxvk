@@ -8,9 +8,11 @@ namespace dxvk {
     const D3D11_QUERY_DESC& desc)
   : m_device(device), m_desc(desc),
     m_d3d10(this, device->GetD3D10Interface()) {
+    Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
+
     switch (m_desc.Query) {
       case D3D11_QUERY_EVENT:
-        m_event = new DxvkEvent();
+        m_event = dxvkDevice->createGpuEvent();
         break;
         
       case D3D11_QUERY_OCCLUSION:
@@ -171,9 +173,6 @@ namespace dxvk {
     if (m_query != nullptr)
       return m_query->reset();
     
-    if (m_event != nullptr)
-      return m_event->reset();
-    
     return 0;
   }
   
@@ -205,8 +204,7 @@ namespace dxvk {
   void D3D11Query::Signal(DxvkContext* ctx, uint32_t revision) {
     switch (m_desc.Query) {
       case D3D11_QUERY_EVENT: {
-        DxvkEventRevision rev = { m_event, revision };
-        ctx->signalEvent(rev);
+        ctx->signalGpuEvent(m_event);
       } break;
       
       case D3D11_QUERY_TIMESTAMP: {
@@ -224,7 +222,16 @@ namespace dxvk {
           void*                             pData,
           UINT                              GetDataFlags) {
     if (m_desc.Query == D3D11_QUERY_EVENT) {
-      const bool signaled = m_event->getStatus() == DxvkEventStatus::Signaled;
+      DxvkGpuEventStatus status = m_event->test();
+
+      if (status == DxvkGpuEventStatus::Invalid)
+        return DXGI_ERROR_INVALID_CALL;
+      
+      bool signaled = status == DxvkGpuEventStatus::Signaled;
+
+      // FIXME remove once query refactor is done
+      if (m_event->isInUse())
+        signaled = false;
       
       if (pData != nullptr)
         *static_cast<BOOL*>(pData) = signaled;

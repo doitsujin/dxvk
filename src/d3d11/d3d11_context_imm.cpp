@@ -89,6 +89,10 @@ namespace dxvk {
       return E_INVALIDARG;
     }
     
+    // Ensure that all query commands actually get
+    // executed before trying to access the query
+    SynchronizeCsThread();
+
     // Get query status directly from the query object
     HRESULT hr = static_cast<D3D11Query*>(pAsync)->GetData(pData, GetDataFlags);
     
