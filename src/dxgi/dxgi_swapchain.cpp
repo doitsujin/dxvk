@@ -23,19 +23,19 @@ namespace dxvk {
     m_stats.SyncQPCTime.QuadPart = 0;
     m_stats.SyncGPUTime.QuadPart = 0;
     
-    // Create presenter, which also serves as an interface to the device
-    if (FAILED(CreatePresenter(pDevice, &m_presenter)))
-      throw DxvkError("DXGI: Failed to create presenter");
-    
-    if (FAILED(m_presenter->GetAdapter(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&m_adapter))))
-      throw DxvkError("DXGI: Failed to get adapter for present device");
-    
     // Adjust initial back buffer size. If zero, these
     // shall be set to the current window size.
     const VkExtent2D windowSize = GetWindowSize();
     
     if (m_desc.Width  == 0) m_desc.Width  = windowSize.width;
     if (m_desc.Height == 0) m_desc.Height = windowSize.height;
+    
+    // Create presenter, which also serves as an interface to the device
+    if (FAILED(CreatePresenter(pDevice, &m_presenter)))
+      throw DxvkError("DXGI: Failed to create presenter");
+    
+    if (FAILED(m_presenter->GetAdapter(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&m_adapter))))
+      throw DxvkError("DXGI: Failed to get adapter for present device");
     
     // Set initial window mode and fullscreen state
     if (!m_descFs.Windowed && FAILED(EnterFullscreenMode(nullptr)))
