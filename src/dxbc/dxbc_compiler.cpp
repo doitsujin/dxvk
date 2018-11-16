@@ -719,6 +719,10 @@ namespace dxvk {
       if (info.sclass == spv::StorageClassOutput) {
         m_module.decorateLocation(varId, regIdx);
         m_entryPointInterfaces.push_back(varId);
+
+        // Add index decoration for potential dual-source blending
+        if (m_programInfo.type() == DxbcProgramType::PixelShader)
+          m_module.decorateIndex(varId, 0);
       }
       
       m_oRegs.at(regIdx) = { regType, varId };
