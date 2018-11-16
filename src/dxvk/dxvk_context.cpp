@@ -9,6 +9,7 @@ namespace dxvk {
   DxvkContext::DxvkContext(
     const Rc<DxvkDevice>&             device,
     const Rc<DxvkPipelineManager>&    pipelineManager,
+    const Rc<DxvkGpuEventPool>&       gpuEventPool,
     const Rc<DxvkMetaClearObjects>&   metaClearObjects,
     const Rc<DxvkMetaCopyObjects>&    metaCopyObjects,
     const Rc<DxvkMetaMipGenObjects>&  metaMipGenObjects,
@@ -16,6 +17,7 @@ namespace dxvk {
     const Rc<DxvkMetaResolveObjects>& metaResolveObjects)
   : m_device      (device),
     m_pipeMgr     (pipelineManager),
+    m_gpuEvents   (gpuEventPool),
     m_metaClear   (metaClearObjects),
     m_metaCopy    (metaCopyObjects),
     m_metaMipGen  (metaMipGenObjects),

@@ -19,6 +19,7 @@ namespace dxvk {
     m_memory            (new DxvkMemoryAllocator    (this)),
     m_renderPassPool    (new DxvkRenderPassPool     (vkd)),
     m_pipelineManager   (new DxvkPipelineManager    (this, m_renderPassPool.ptr())),
+    m_gpuEventPool      (new DxvkGpuEventPool       (vkd)),
     m_metaClearObjects  (new DxvkMetaClearObjects   (vkd)),
     m_metaCopyObjects   (new DxvkMetaCopyObjects    (vkd)),
     m_metaMipGenObjects (new DxvkMetaMipGenObjects  (vkd)),
@@ -140,11 +141,17 @@ namespace dxvk {
   Rc<DxvkContext> DxvkDevice::createContext() {
     return new DxvkContext(this,
       m_pipelineManager,
+      m_gpuEventPool,
       m_metaClearObjects,
       m_metaCopyObjects,
       m_metaMipGenObjects,
       m_metaPackObjects,
       m_metaResolveObjects);
+  }
+
+
+  Rc<DxvkGpuEvent> DxvkDevice::createGpuEvent() {
+    return new DxvkGpuEvent(m_vkd);
   }
   
   

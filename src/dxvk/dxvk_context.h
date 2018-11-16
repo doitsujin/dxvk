@@ -6,6 +6,7 @@
 #include "dxvk_context_state.h"
 #include "dxvk_data.h"
 #include "dxvk_event.h"
+#include "dxvk_gpu_event.h"
 #include "dxvk_meta_clear.h"
 #include "dxvk_meta_copy.h"
 #include "dxvk_meta_mipgen.h"
@@ -34,6 +35,7 @@ namespace dxvk {
     DxvkContext(
       const Rc<DxvkDevice>&             device,
       const Rc<DxvkPipelineManager>&    pipelineManager,
+      const Rc<DxvkGpuEventPool>&       gpuEventPool,
       const Rc<DxvkMetaClearObjects>&   metaClearObjects,
       const Rc<DxvkMetaCopyObjects>&    metaCopyObjects,
       const Rc<DxvkMetaMipGenObjects>&  metaMipGenObjects,
@@ -782,6 +784,7 @@ namespace dxvk {
     
     const Rc<DxvkDevice>              m_device;
     const Rc<DxvkPipelineManager>     m_pipeMgr;
+    const Rc<DxvkGpuEventPool>        m_gpuEvents;
     const Rc<DxvkMetaClearObjects>    m_metaClear;
     const Rc<DxvkMetaCopyObjects>     m_metaCopy;
     const Rc<DxvkMetaMipGenObjects>   m_metaMipGen;
