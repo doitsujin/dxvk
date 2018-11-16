@@ -774,6 +774,13 @@ namespace dxvk {
       const DxvkEventRevision&  event);
     
     /**
+     * \brief Signals a GPU event
+     * \param [in] event The event
+     */
+    void signalGpuEvent(
+      const Rc<DxvkGpuEvent>&   event);
+    
+    /**
      * \brief Writes to a timestamp query
      * \param [in] query The timestamp query
      */

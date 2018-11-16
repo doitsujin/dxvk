@@ -124,6 +124,7 @@ namespace dxvk {
   void DxvkCommandList::reset() {
     m_statCounters.reset();
     m_bufferTracker.reset();
+    m_gpuEventTracker.reset();
     m_eventTracker.reset();
     m_queryTracker.reset();
     m_stagingAlloc.reset();

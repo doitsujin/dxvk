@@ -1762,6 +1762,19 @@ namespace dxvk {
   void DxvkContext::signalEvent(const DxvkEventRevision& event) {
     m_cmd->trackEvent(event);
   }
+
+
+  void DxvkContext::signalGpuEvent(const Rc<DxvkGpuEvent>& event) {
+    this->spillRenderPass();
+    
+    DxvkGpuEventHandle handle = m_gpuEvents->allocEvent();
+
+    m_cmd->cmdSetEvent(handle.event,
+      VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+
+    m_cmd->trackGpuEvent(event->reset(handle));
+    m_cmd->trackResource(event);
+  }
   
   
   void DxvkContext::writeTimestamp(const DxvkQueryRevision& query) {
