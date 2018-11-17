@@ -14,7 +14,6 @@
 #include "dxvk_pipecache.h"
 #include "dxvk_pipemanager.h"
 #include "dxvk_queue.h"
-#include "dxvk_query_pool.h"
 #include "dxvk_recycler.h"
 #include "dxvk_renderpass.h"
 #include "dxvk_sampler.h"

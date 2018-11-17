@@ -249,13 +249,10 @@ namespace dxvk {
       return;
     
     Com<D3D11Query> queryPtr = static_cast<D3D11Query*>(pAsync);
-      
-    if (queryPtr->HasBeginEnabled()) {
-      uint32_t revision = queryPtr->Reset();
-      EmitCs([revision, queryPtr] (DxvkContext* ctx) {
-        queryPtr->Begin(ctx, revision);
-      });
-    }
+
+    EmitCs([queryPtr] (DxvkContext* ctx) {
+      queryPtr->Begin(ctx);
+    });
   }
   
   
@@ -267,16 +264,9 @@ namespace dxvk {
     
     Com<D3D11Query> queryPtr = static_cast<D3D11Query*>(pAsync);
     
-    if (queryPtr->HasBeginEnabled()) {
-      EmitCs([queryPtr] (DxvkContext* ctx) {
-        queryPtr->End(ctx);
-      });
-    } else {
-      uint32_t revision = queryPtr->Reset();
-      EmitCs([revision, queryPtr] (DxvkContext* ctx) {
-        queryPtr->Signal(ctx, revision);
-      });
-    }
+    EmitCs([queryPtr] (DxvkContext* ctx) {
+      queryPtr->End(ctx);
+    });
   }
   
   

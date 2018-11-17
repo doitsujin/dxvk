@@ -127,7 +127,6 @@ namespace dxvk {
     m_gpuQueryTracker.reset();
     m_gpuEventTracker.reset();
     m_eventTracker.reset();
-    m_queryTracker.reset();
     m_stagingAlloc.reset();
     m_descriptorPoolTracker.reset();
     m_resources.reset();

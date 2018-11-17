@@ -24,7 +24,6 @@ namespace dxvk {
     m_metaMipGen  (metaMipGenObjects),
     m_metaPack    (metaPackObjects),
     m_metaResolve (metaResolveObjects),
-    m_queries     (device->vkd()),
     m_queryManager(gpuQueryPool) {
 
   }
@@ -68,8 +67,6 @@ namespace dxvk {
   Rc<DxvkCommandList> DxvkContext::endRecording() {
     this->spillRenderPass();
     
-    m_queries.trackQueryPools(m_cmd);
-
     m_barriers.recordCommands(m_cmd);
 
     m_cmd->endRecording();
@@ -88,18 +85,6 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::beginQuery(const DxvkQueryRevision& query) {
-    query.query->beginRecording(query.revision);
-    m_queries.enableQuery(m_cmd, query);
-  }
-  
-  
-  void DxvkContext::endQuery(const DxvkQueryRevision& query) {
-    m_queries.disableQuery(m_cmd, query);
-    query.query->endRecording(query.revision);
-  }
-
-
   void DxvkContext::beginQuery(const Rc<DxvkGpuQuery>& query) {
     m_queryManager.enableQuery(m_cmd, query);
   }
@@ -1123,16 +1108,10 @@ namespace dxvk {
     if (this->validateComputeState()) {
       this->commitComputeInitBarriers();
 
-      m_queries.beginQueries(m_cmd,
-        VK_QUERY_TYPE_PIPELINE_STATISTICS);
-      
       m_queryManager.beginQueries(m_cmd,
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
       
       m_cmd->cmdDispatch(x, y, z);
-      
-      m_queries.endQueries(m_cmd,
-        VK_QUERY_TYPE_PIPELINE_STATISTICS);
       
       m_queryManager.endQueries(m_cmd,
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
@@ -1157,18 +1136,12 @@ namespace dxvk {
     if (this->validateComputeState()) {
       this->commitComputeInitBarriers();
 
-      m_queries.beginQueries(m_cmd,
-        VK_QUERY_TYPE_PIPELINE_STATISTICS);
-      
       m_queryManager.beginQueries(m_cmd,
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
       
       m_cmd->cmdDispatchIndirect(
         bufferSlice.handle,
         bufferSlice.offset);
-      
-      m_queries.endQueries(m_cmd,
-        VK_QUERY_TYPE_PIPELINE_STATISTICS);
       
       m_queryManager.endQueries(m_cmd,
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
@@ -1803,17 +1776,6 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::writeTimestamp(const DxvkQueryRevision& query) {
-    DxvkQueryHandle handle = m_queries.allocQuery(m_cmd, query);
-    
-    m_cmd->cmdWriteTimestamp(
-      VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-      handle.queryPool, handle.queryId);
-    
-    query.query->endRecording(query.revision);
-  }
-
-
   void DxvkContext::writeTimestamp(const Rc<DxvkGpuQuery>& query) {
     m_queryManager.writeTimestamp(m_cmd, query);
   }
@@ -2464,9 +2426,6 @@ namespace dxvk {
         m_state.om.renderPassOps);
       
       // Begin occlusion queries
-      m_queries.beginQueries(m_cmd, VK_QUERY_TYPE_OCCLUSION);
-      m_queries.beginQueries(m_cmd, VK_QUERY_TYPE_PIPELINE_STATISTICS);
-
       m_queryManager.beginQueries(m_cmd, VK_QUERY_TYPE_OCCLUSION);
       m_queryManager.beginQueries(m_cmd, VK_QUERY_TYPE_PIPELINE_STATISTICS);
     }
@@ -2481,9 +2440,6 @@ namespace dxvk {
       m_flags.clr(DxvkContextFlag::GpRenderPassBound);
 
       this->pauseTransformFeedback();
-      
-      m_queries.endQueries(m_cmd, VK_QUERY_TYPE_OCCLUSION);
-      m_queries.endQueries(m_cmd, VK_QUERY_TYPE_PIPELINE_STATISTICS);
       
       m_queryManager.endQueries(m_cmd, VK_QUERY_TYPE_OCCLUSION);
       m_queryManager.endQueries(m_cmd, VK_QUERY_TYPE_PIPELINE_STATISTICS);
@@ -2675,9 +2631,6 @@ namespace dxvk {
       m_cmd->cmdBeginTransformFeedback(
         0, MaxNumXfbBuffers, ctrBuffers, ctrOffsets);
       
-      m_queries.beginQueries(m_cmd,
-        VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT);
-      
       m_queryManager.beginQueries(m_cmd,
         VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT);
     }
@@ -2701,9 +2654,6 @@ namespace dxvk {
           m_cmd->trackResource(m_state.xfb.counters[i].buffer());
       }
 
-      m_queries.endQueries(m_cmd, 
-        VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT);
-      
       m_queryManager.endQueries(m_cmd, 
         VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT);
       

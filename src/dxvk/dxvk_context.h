@@ -15,9 +15,6 @@
 #include "dxvk_meta_resolve.h"
 #include "dxvk_pipecache.h"
 #include "dxvk_pipemanager.h"
-#include "dxvk_query.h"
-#include "dxvk_query_manager.h"
-#include "dxvk_query_pool.h"
 #include "dxvk_util.h"
 
 namespace dxvk {
@@ -82,18 +79,12 @@ namespace dxvk {
      * \param [in] query The query to end
      */
     void beginQuery(
-      const DxvkQueryRevision&  query);
-    
-    void beginQuery(
       const Rc<DxvkGpuQuery>&   query);
     
     /**
      * \brief Ends generating query data
      * \param [in] query The query to end
      */
-    void endQuery(
-      const DxvkQueryRevision&  query);
-    
     void endQuery(
       const Rc<DxvkGpuQuery>&   query);
     
@@ -793,9 +784,6 @@ namespace dxvk {
      * \param [in] query The timestamp query
      */
     void writeTimestamp(
-      const DxvkQueryRevision&  query);
-    
-    void writeTimestamp(
       const Rc<DxvkGpuQuery>&   query);
     
   private:
@@ -819,9 +807,8 @@ namespace dxvk {
     DxvkBarrierSet          m_transitions;
     DxvkBarrierControlFlags m_barrierControl;
     
-    DxvkQueryManager        m_queries;
     DxvkGpuQueryManager     m_queryManager;
-
+    
     VkPipeline m_gpActivePipeline = VK_NULL_HANDLE;
     VkPipeline m_cpActivePipeline = VK_NULL_HANDLE;
 

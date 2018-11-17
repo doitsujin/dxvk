@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../dxvk/dxvk_gpu_event.h"
-#include "../dxvk/dxvk_query.h"
+#include "../dxvk/dxvk_gpu_query.h"
 
 #include "../d3d10/d3d10_query.h"
 
@@ -31,15 +31,9 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc(
             D3D11_QUERY_DESC *pDesc) final;
     
-    uint32_t Reset();
-    
-    bool HasBeginEnabled() const;
-    
-    void Begin(DxvkContext* ctx, uint32_t revision);
+    void Begin(DxvkContext* ctx);
     
     void End(DxvkContext* ctx);
-    
-    void Signal(DxvkContext* ctx, uint32_t revision);
     
     HRESULT STDMETHODCALLTYPE GetData(
             void*                             pData,
@@ -54,7 +48,7 @@ namespace dxvk {
     D3D11Device* const m_device;
     D3D11_QUERY_DESC   m_desc;
     
-    Rc<DxvkQuery>     m_query = nullptr;
+    Rc<DxvkGpuQuery>  m_query = nullptr;
     Rc<DxvkGpuEvent>  m_event = nullptr;
     
     uint32_t m_revision = 0;

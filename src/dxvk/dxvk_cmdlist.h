@@ -11,7 +11,6 @@
 #include "dxvk_lifetime.h"
 #include "dxvk_limits.h"
 #include "dxvk_pipelayout.h"
-#include "dxvk_query_tracker.h"
 #include "dxvk_staging.h"
 #include "dxvk_stats.h"
 
@@ -137,18 +136,6 @@ namespace dxvk {
     }
     
     /**
-     * \brief Adds a query range to track
-     * 
-     * Query data will be retrieved and written back to
-     * the query objects after the command buffer has
-     * finished executing on the GPU.
-     * \param [in] queries The query range
-     */
-    void trackQueryRange(DxvkQueryRange&& queries) {
-      m_queryTracker.trackQueryRange(std::move(queries));
-    }
-    
-    /**
      * \brief Adds an event revision to track
      * 
      * The event will be signaled after the command
@@ -196,17 +183,6 @@ namespace dxvk {
      */
     void signalEvents() {
       m_eventTracker.signalEvents();
-    }
-    
-    /**
-     * \brief Writes back query results
-     * 
-     * Writes back query data to all queries tracked by the
-     * query range tracker. Call this after synchronizing
-     * with a fence for this command list.
-     */
-    void writeQueryData() {
-      m_queryTracker.writeQueryData();
     }
     
     /**
@@ -707,7 +683,6 @@ namespace dxvk {
     DxvkLifetimeTracker m_resources;
     DxvkDescriptorPoolTracker m_descriptorPoolTracker;
     DxvkStagingAlloc    m_stagingAlloc;
-    DxvkQueryTracker    m_queryTracker;
     DxvkEventTracker    m_eventTracker;
     DxvkGpuEventTracker m_gpuEventTracker;
     DxvkGpuQueryTracker m_gpuQueryTracker;

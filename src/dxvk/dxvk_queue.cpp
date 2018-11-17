@@ -58,7 +58,6 @@ namespace dxvk {
         VkResult status = cmdList->synchronize();
         
         if (status == VK_SUCCESS) {
-          cmdList->writeQueryData();
           cmdList->signalEvents();
           cmdList->reset();
           
