@@ -7,6 +7,7 @@
 #include "dxvk_descriptor.h"
 #include "dxvk_event.h"
 #include "dxvk_gpu_event.h"
+#include "dxvk_gpu_query.h"
 #include "dxvk_lifetime.h"
 #include "dxvk_limits.h"
 #include "dxvk_pipelayout.h"
@@ -174,6 +175,17 @@ namespace dxvk {
      */
     void trackGpuEvent(DxvkGpuEventHandle handle) {
       m_gpuEventTracker.trackEvent(handle);
+    }
+    
+    /**
+     * \brief Tracks a GPU query
+     * 
+     * The query handle will be returned to its allocator
+     * after the command buffer has finished executing.
+     * \param [in] handle Event handle
+     */
+    void trackGpuQuery(DxvkGpuQueryHandle handle) {
+      m_gpuQueryTracker.trackQuery(handle);
     }
     
     /**
@@ -552,6 +564,23 @@ namespace dxvk {
       m_vkd->vkCmdPushConstants(m_execBuffer,
         layout, stageFlags, offset, size, pValues);
     }
+
+
+    void cmdResetQuery(
+            VkQueryPool             queryPool,
+            uint32_t                queryId,
+            VkEvent                 event) {
+      m_cmdBuffersUsed.set(DxvkCmdBufferFlag::InitBuffer);
+
+      m_vkd->vkResetEvent(
+        m_vkd->device(), event);
+      
+      m_vkd->vkCmdResetQueryPool(
+        m_initBuffer, queryPool, queryId, 1);
+      
+      m_vkd->vkCmdSetEvent(m_initBuffer,
+        event, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+    }
     
     
     void cmdResetQueryPool(
@@ -681,6 +710,7 @@ namespace dxvk {
     DxvkQueryTracker    m_queryTracker;
     DxvkEventTracker    m_eventTracker;
     DxvkGpuEventTracker m_gpuEventTracker;
+    DxvkGpuQueryTracker m_gpuQueryTracker;
     DxvkBufferTracker   m_bufferTracker;
     DxvkStatCounters    m_statCounters;
     

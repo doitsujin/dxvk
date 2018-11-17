@@ -56,6 +56,7 @@ dxvk_src = files([
   'dxvk_format.cpp',
   'dxvk_framebuffer.cpp',
   'dxvk_gpu_event.cpp',
+  'dxvk_gpu_query.cpp',
   'dxvk_graphics.cpp',
   'dxvk_image.cpp',
   'dxvk_instance.cpp',
