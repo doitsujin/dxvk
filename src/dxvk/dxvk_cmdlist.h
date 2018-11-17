@@ -5,7 +5,7 @@
 #include "dxvk_bind_mask.h"
 #include "dxvk_buffer.h"
 #include "dxvk_descriptor.h"
-#include "dxvk_event_tracker.h"
+#include "dxvk_event.h"
 #include "dxvk_lifetime.h"
 #include "dxvk_limits.h"
 #include "dxvk_pipelayout.h"
