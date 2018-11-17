@@ -84,12 +84,18 @@ namespace dxvk {
     void beginQuery(
       const DxvkQueryRevision&  query);
     
+    void beginQuery(
+      const Rc<DxvkGpuQuery>&   query);
+    
     /**
      * \brief Ends generating query data
      * \param [in] query The query to end
      */
     void endQuery(
       const DxvkQueryRevision&  query);
+    
+    void endQuery(
+      const Rc<DxvkGpuQuery>&   query);
     
     /**
      * \brief Sets render targets
@@ -788,6 +794,9 @@ namespace dxvk {
      */
     void writeTimestamp(
       const DxvkQueryRevision&  query);
+    
+    void writeTimestamp(
+      const Rc<DxvkGpuQuery>&   query);
     
   private:
     
