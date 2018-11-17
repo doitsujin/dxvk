@@ -7,6 +7,7 @@
 #include "dxvk_data.h"
 #include "dxvk_event.h"
 #include "dxvk_gpu_event.h"
+#include "dxvk_gpu_query.h"
 #include "dxvk_meta_clear.h"
 #include "dxvk_meta_copy.h"
 #include "dxvk_meta_mipgen.h"
@@ -36,6 +37,7 @@ namespace dxvk {
       const Rc<DxvkDevice>&             device,
       const Rc<DxvkPipelineManager>&    pipelineManager,
       const Rc<DxvkGpuEventPool>&       gpuEventPool,
+      const Rc<DxvkGpuQueryPool>&       gpuQueryPool,
       const Rc<DxvkMetaClearObjects>&   metaClearObjects,
       const Rc<DxvkMetaCopyObjects>&    metaCopyObjects,
       const Rc<DxvkMetaMipGenObjects>&  metaMipGenObjects,
@@ -809,6 +811,7 @@ namespace dxvk {
     DxvkBarrierControlFlags m_barrierControl;
     
     DxvkQueryManager        m_queries;
+    DxvkGpuQueryManager     m_queryManager;
 
     VkPipeline m_gpActivePipeline = VK_NULL_HANDLE;
     VkPipeline m_cpActivePipeline = VK_NULL_HANDLE;

@@ -10,6 +10,7 @@ namespace dxvk {
     const Rc<DxvkDevice>&             device,
     const Rc<DxvkPipelineManager>&    pipelineManager,
     const Rc<DxvkGpuEventPool>&       gpuEventPool,
+    const Rc<DxvkGpuQueryPool>&       gpuQueryPool,
     const Rc<DxvkMetaClearObjects>&   metaClearObjects,
     const Rc<DxvkMetaCopyObjects>&    metaCopyObjects,
     const Rc<DxvkMetaMipGenObjects>&  metaMipGenObjects,
@@ -23,8 +24,11 @@ namespace dxvk {
     m_metaMipGen  (metaMipGenObjects),
     m_metaPack    (metaPackObjects),
     m_metaResolve (metaResolveObjects),
-    m_queries     (device->vkd()) { }
-  
+    m_queries     (device->vkd()),
+    m_queryManager(gpuQueryPool) {
+
+  }
+    
   
   DxvkContext::~DxvkContext() {
     

@@ -207,6 +207,19 @@ namespace dxvk {
      * \returns New GPU event
      */
     Rc<DxvkGpuEvent> createGpuEvent();
+
+    /**
+     * \brief Creates a query
+     * 
+     * \param [in] type Query type
+     * \param [in] flags Query flags
+     * \param [in] index Query index
+     * \returns New query
+     */
+    Rc<DxvkGpuQuery> createGpuQuery(
+            VkQueryType           type,
+            VkQueryControlFlags   flags,
+            uint32_t              index);
     
     /**
      * \brief Creates framebuffer for a set of render targets
@@ -405,6 +418,7 @@ namespace dxvk {
     Rc<DxvkPipelineManager>     m_pipelineManager;
 
     Rc<DxvkGpuEventPool>        m_gpuEventPool;
+    Rc<DxvkGpuQueryPool>        m_gpuQueryPool;
 
     Rc<DxvkMetaClearObjects>    m_metaClearObjects;
     Rc<DxvkMetaCopyObjects>     m_metaCopyObjects;
