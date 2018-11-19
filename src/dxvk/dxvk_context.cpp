@@ -1242,7 +1242,6 @@ namespace dxvk {
       return;
     
     this->spillRenderPass();
-    this->unbindGraphicsPipeline();
 
     m_barriers.recordCommands(m_cmd);
     
@@ -1951,7 +1950,6 @@ namespace dxvk {
           VkImageSubresourceLayers srcSubresource,
           VkOffset3D            srcOffset,
           VkExtent3D            extent) {
-    this->unbindGraphicsPipeline();
     m_barriers.recordCommands(m_cmd);
 
     auto srcSubresourceRange = vk::makeSubresourceRange(srcSubresource);
@@ -2225,7 +2223,6 @@ namespace dxvk {
     const Rc<DxvkImage>&            srcImage,
     const VkImageSubresourceLayers& srcSubresources,
           VkFormat                  format) {
-    this->unbindGraphicsPipeline();
     m_barriers.recordCommands(m_cmd);
 
     // Create image views covering the requested subresourcs
@@ -2361,6 +2358,7 @@ namespace dxvk {
       m_queries.endQueries(m_cmd, VK_QUERY_TYPE_PIPELINE_STATISTICS);
       
       this->renderPassUnbindFramebuffer();
+      this->unbindGraphicsPipeline();
 
       m_flags.clr(DxvkContextFlag::GpDirtyXfbCounters);
     }
