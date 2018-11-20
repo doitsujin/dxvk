@@ -170,7 +170,7 @@ namespace dxvk {
     pMapEntry->RowPitch     = pBuffer->Desc()->ByteWidth;
     pMapEntry->DepthPitch   = pBuffer->Desc()->ByteWidth;
     
-    if (pBuffer->Desc()->Usage == D3D11_USAGE_DYNAMIC && m_parent->GetOptions()->dcMapSpeedHack) {
+    if (pBuffer->Desc()->Usage == D3D11_USAGE_DYNAMIC && m_csFlags.test(DxvkCsChunkFlag::SingleUse)) {
       // For resources that cannot be written by the GPU,
       // we may write to the buffer resource directly and
       // just swap in the physical buffer slice as needed.
@@ -237,7 +237,7 @@ namespace dxvk {
     const D3D11DeferredContextMapEntry* pMapEntry) {
     D3D11Buffer* pBuffer = static_cast<D3D11Buffer*>(pResource);
     
-    if (pBuffer->Desc()->Usage == D3D11_USAGE_DYNAMIC && m_parent->GetOptions()->dcMapSpeedHack) {
+    if (pBuffer->Desc()->Usage == D3D11_USAGE_DYNAMIC && m_csFlags.test(DxvkCsChunkFlag::SingleUse)) {
       EmitCs([
         cDstBuffer = pBuffer->GetBuffer(),
         cPhysSlice = pMapEntry->BufferSlice
@@ -301,7 +301,7 @@ namespace dxvk {
 
   DxvkCsChunkFlags D3D11DeferredContext::GetCsChunkFlags(
           D3D11Device*                  pDevice) {
-    return pDevice->GetOptions()->dcMapSpeedHack
+    return pDevice->GetOptions()->dcSingleUseMode
       ? DxvkCsChunkFlags(DxvkCsChunkFlag::SingleUse)
       : DxvkCsChunkFlags();
   }

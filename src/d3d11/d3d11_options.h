@@ -31,7 +31,7 @@ namespace dxvk {
     /// This can substantially speed up some games, but may
     /// cause issues if the game submits command lists more
     /// than once.
-    bool dcMapSpeedHack;
+    bool dcSingleUseMode;
 
     /// Fakes stream output support.
     /// 

@@ -34,11 +34,11 @@ namespace dxvk {
     }} },
     /* The Evil Within                            */
     { "EvilWithin.exe", {{
-      { "d3d11.dcMapSpeedHack",             "False" },
+      { "d3d11.dcSingleUseMode",            "False" },
     }} },
     /* The Evil Within Demo                       */
     { "EvilWithinDemo.exe", {{
-      { "d3d11.dcMapSpeedHack",             "False" },
+      { "d3d11.dcSingleUseMode",            "False" },
     }} },
     /* F1 2015                                    */
     { "F1_2015.exe", {{
