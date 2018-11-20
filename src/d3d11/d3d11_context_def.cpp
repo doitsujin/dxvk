@@ -7,7 +7,7 @@ namespace dxvk {
           D3D11Device*    pParent,
     const Rc<DxvkDevice>& Device,
           UINT            ContextFlags)
-  : D3D11DeviceContext(pParent, Device),
+  : D3D11DeviceContext(pParent, Device, GetCsChunkFlags(pParent)),
     m_contextFlags(ContextFlags),
     m_commandList (CreateCommandList()) {
     ClearState();
@@ -296,6 +296,14 @@ namespace dxvk {
   
   void D3D11DeferredContext::EmitCsChunk(DxvkCsChunkRef&& chunk) {
     m_commandList->AddChunk(std::move(chunk));
+  }
+
+
+  DxvkCsChunkFlags D3D11DeferredContext::GetCsChunkFlags(
+          D3D11Device*                  pDevice) {
+    return pDevice->GetOptions()->dcMapSpeedHack
+      ? DxvkCsChunkFlags(DxvkCsChunkFlag::SingleUse)
+      : DxvkCsChunkFlags();
   }
 
 }

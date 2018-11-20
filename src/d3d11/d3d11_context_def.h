@@ -98,6 +98,9 @@ namespace dxvk {
     Com<D3D11CommandList> CreateCommandList();
     
     void EmitCsChunk(DxvkCsChunkRef&& chunk);
+
+    static DxvkCsChunkFlags GetCsChunkFlags(
+            D3D11Device*                  pDevice);
     
     auto FindMapEntry(ID3D11Resource* pResource, UINT Subresource) {
       return std::find_if(m_mappedResources.rbegin(), m_mappedResources.rend(),

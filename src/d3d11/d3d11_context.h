@@ -18,8 +18,9 @@ namespace dxvk {
   public:
     
     D3D11DeviceContext(
-            D3D11Device*    pParent,
-      const Rc<DxvkDevice>& Device);
+            D3D11Device*            pParent,
+      const Rc<DxvkDevice>&         Device,
+            DxvkCsChunkFlags        CsFlags);
     ~D3D11DeviceContext();
     
     HRESULT STDMETHODCALLTYPE QueryInterface(
@@ -650,6 +651,7 @@ namespace dxvk {
     Rc<DxvkDevice>              m_device;
     Rc<DxvkDataBuffer>          m_updateBuffer;
     
+    DxvkCsChunkFlags            m_csFlags;
     DxvkCsChunkRef              m_csChunk;
     
     Com<D3D11BlendState>        m_defaultBlendState;

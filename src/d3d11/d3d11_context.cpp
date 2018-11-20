@@ -10,11 +10,13 @@
 namespace dxvk {
   
   D3D11DeviceContext::D3D11DeviceContext(
-          D3D11Device*    pParent,
-    const Rc<DxvkDevice>& Device)
+          D3D11Device*            pParent,
+    const Rc<DxvkDevice>&         Device,
+          DxvkCsChunkFlags        CsFlags)
   : m_parent    (pParent),
     m_annotation(this),
     m_device    (Device),
+    m_csFlags   (CsFlags),
     m_csChunk   (AllocCsChunk()) {
     // Create default state objects. We won't ever return them
     // to the application, but we'll use them to apply state.
@@ -3350,7 +3352,7 @@ namespace dxvk {
   
   
   DxvkCsChunkRef D3D11DeviceContext::AllocCsChunk() {
-    return m_parent->AllocCsChunk(0);
+    return m_parent->AllocCsChunk(m_csFlags);
   }
   
 }
