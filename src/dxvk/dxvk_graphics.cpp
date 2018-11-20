@@ -62,7 +62,7 @@ namespace dxvk {
       VK_PIPELINE_BIND_POINT_GRAPHICS);
     
     DxvkShaderModuleCreateInfo moduleInfo;
-    moduleInfo.fsDualSrcBlend = true;
+    moduleInfo.fsDualSrcBlend = false;
     
     DxvkShaderModuleCreateInfo moduleInfoDualSrc;
     moduleInfoDualSrc.fsDualSrcBlend = true;
