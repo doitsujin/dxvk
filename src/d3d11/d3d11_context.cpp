@@ -3350,7 +3350,7 @@ namespace dxvk {
   
   
   DxvkCsChunkRef D3D11DeviceContext::AllocCsChunk() {
-    return m_parent->AllocCsChunk();
+    return m_parent->AllocCsChunk(0);
   }
   
 }

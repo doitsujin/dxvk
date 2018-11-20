@@ -333,8 +333,8 @@ namespace dxvk {
             DXGI_FORMAT           Format,
             DXGI_VK_FORMAT_MODE   Mode) const;
     
-    DxvkCsChunkRef AllocCsChunk() {
-      DxvkCsChunk* chunk = m_csChunkPool.allocChunk();
+    DxvkCsChunkRef AllocCsChunk(DxvkCsChunkFlags flags) {
+      DxvkCsChunk* chunk = m_csChunkPool.allocChunk(flags);
       return DxvkCsChunkRef(chunk, &m_csChunkPool);
     }
     

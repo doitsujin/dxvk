@@ -83,6 +83,18 @@ namespace dxvk {
   
   
   /**
+   * \brief Submission flags
+   */
+  enum class DxvkCsChunkFlag : uint32_t {
+    /// Indicates that the submitted chunk will
+    /// no longer be needed after one submission.
+    SingleUse,
+  };
+
+  using DxvkCsChunkFlags = Flags<DxvkCsChunkFlag>;
+  
+  
+  /**
    * \brief Command chunk
    * 
    * Stores a list of commands.
@@ -103,7 +115,7 @@ namespace dxvk {
     size_t commandCount() const {
       return m_commandCount;
     }
-    
+
     /**
      * \brief Tries to add a command to the chunk
      * 
@@ -137,6 +149,12 @@ namespace dxvk {
     }
     
     /**
+     * \brief Initializes chunk for recording
+     * \param [in] flags Chunk flags
+     */
+    void init(DxvkCsChunkFlags flags);
+    
+    /**
      * \brief Executes all commands
      * 
      * This will also reset the chunk
@@ -161,6 +179,8 @@ namespace dxvk {
     
     DxvkCsCmd* m_head = nullptr;
     DxvkCsCmd* m_tail = nullptr;
+
+    DxvkCsChunkFlags m_flags;
     
     alignas(64)
     char m_data[MaxBlockSize];
@@ -190,9 +210,10 @@ namespace dxvk {
      * 
      * Takes an existing chunk from the pool,
      * or creates a new one if necessary.
+     * \param [in] flags Chunk flags
      * \returns Allocated chunk object
      */
-    DxvkCsChunk* allocChunk();
+    DxvkCsChunk* allocChunk(DxvkCsChunkFlags flags);
     
     /**
      * \brief Releases a chunk
@@ -288,8 +309,8 @@ namespace dxvk {
     }
     
   };
-  
-  
+
+
   /**
    * \brief Command stream thread
    * 

@@ -12,12 +12,32 @@ namespace dxvk {
   }
   
   
+  void DxvkCsChunk::init(DxvkCsChunkFlags flags) {
+    m_flags = flags;
+  }
+
+
   void DxvkCsChunk::executeAll(DxvkContext* ctx) {
     auto cmd = m_head;
     
-    while (cmd != nullptr) {
-      cmd->exec(ctx);
-      cmd = cmd->next();
+    if (m_flags.test(DxvkCsChunkFlag::SingleUse)) {
+      m_commandCount  = 0;
+      m_commandOffset = 0;
+      
+      while (cmd != nullptr) {
+        auto next = cmd->next();
+        cmd->exec(ctx);
+        cmd->~DxvkCsCmd();
+        cmd = next;
+      }
+
+      m_head = nullptr;
+      m_tail = nullptr;
+    } else {
+      while (cmd != nullptr) {
+        cmd->exec(ctx);
+        cmd = cmd->next();
+      }
     }
   }
   
@@ -25,14 +45,14 @@ namespace dxvk {
   void DxvkCsChunk::reset() {
     auto cmd = m_head;
     
+    m_commandCount  = 0;
+    m_commandOffset = 0;
+    
     while (cmd != nullptr) {
       auto next = cmd->next();
       cmd->~DxvkCsCmd();
       cmd = next;
     }
-    
-    m_commandCount  = 0;
-    m_commandOffset = 0;
     
     m_head = nullptr;
     m_tail = nullptr;
@@ -50,17 +70,22 @@ namespace dxvk {
   }
   
   
-  DxvkCsChunk* DxvkCsChunkPool::allocChunk() {
+  DxvkCsChunk* DxvkCsChunkPool::allocChunk(DxvkCsChunkFlags flags) {
+    DxvkCsChunk* chunk = nullptr;
+
     { std::lock_guard<sync::Spinlock> lock(m_mutex);
       
       if (m_chunks.size() != 0) {
-        DxvkCsChunk* chunk = m_chunks.back();
+        chunk = m_chunks.back();
         m_chunks.pop_back();
-        return chunk;
       }
     }
     
-    return new DxvkCsChunk();
+    if (!chunk)
+      chunk = new DxvkCsChunk();
+    
+    chunk->init(flags);
+    return chunk;
   }
   
   
