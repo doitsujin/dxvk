@@ -212,7 +212,8 @@ namespace dxvk {
   Rc<DxvkDevice> DxvkAdapter::createDevice(DxvkDeviceFeatures enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 12> devExtensionList = {{
+    std::array<DxvkExt*, 13> devExtensionList = {{
+      &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.extShaderViewportIndexLayer,
       &devExtensions.extTransformFeedback,
       &devExtensions.extVertexAttributeDivisor,
@@ -254,6 +255,15 @@ namespace dxvk {
       enabledFeatures.extVertexAttributeDivisor.pNext = enabledFeatures.core.pNext;
       enabledFeatures.core.pNext = &enabledFeatures.extVertexAttributeDivisor;
     }
+
+    // Report the desired overallocation behaviour to the driver
+    VkDeviceMemoryOverallocationCreateInfoAMD overallocInfo;
+    overallocInfo.sType = VK_STRUCTURE_TYPE_DEVICE_MEMORY_OVERALLOCATION_CREATE_INFO_AMD;
+    overallocInfo.pNext = nullptr;
+    overallocInfo.overallocationBehavior = VK_MEMORY_OVERALLOCATION_BEHAVIOR_DISALLOWED_AMD;
+
+    if (m_instance->options().allowMemoryOvercommit)
+      overallocInfo.overallocationBehavior = VK_MEMORY_OVERALLOCATION_BEHAVIOR_ALLOWED_AMD;
     
     // Create one single queue for graphics and present
     float queuePriority = 1.0f;
@@ -288,6 +298,9 @@ namespace dxvk {
     info.enabledExtensionCount      = extensionNameList.count();
     info.ppEnabledExtensionNames    = extensionNameList.names();
     info.pEnabledFeatures           = &enabledFeatures.core.features;
+
+    if (devExtensions.amdMemoryOverallocationBehaviour)
+      overallocInfo.pNext = std::exchange(info.pNext, &overallocInfo);
     
     VkDevice device = VK_NULL_HANDLE;
     

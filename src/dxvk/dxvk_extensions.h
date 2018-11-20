@@ -257,6 +257,7 @@ namespace dxvk {
    * used by DXVK if supported by the implementation.
    */
   struct DxvkDeviceExtensions {
+    DxvkExt amdMemoryOverallocationBehaviour= { VK_AMD_MEMORY_OVERALLOCATION_BEHAVIOR_EXTENSION_NAME,   DxvkExtMode::Optional };
     DxvkExt extShaderViewportIndexLayer     = { VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME,      DxvkExtMode::Optional };
     DxvkExt extTransformFeedback            = { VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME,               DxvkExtMode::Optional };
     DxvkExt extVertexAttributeDivisor       = { VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME,         DxvkExtMode::Optional };
