@@ -58,10 +58,19 @@ namespace dxvk {
     const Config& config() const {
       return m_config;
     }
+
+    /**
+     * \brief DXVK options
+     * \returns DXVK options
+     */
+    const DxvkOptions& options() const {
+      return m_options;
+    }
     
   private:
 
-    Config m_config;
+    Config              m_config;
+    DxvkOptions         m_options;
 
     Rc<vk::LibraryFn>   m_vkl;
     Rc<vk::InstanceFn>  m_vki;

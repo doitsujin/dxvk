@@ -8,7 +8,7 @@ namespace dxvk {
     const Rc<vk::DeviceFn>&         vkd,
     const DxvkDeviceExtensions&     extensions,
     const DxvkDeviceFeatures&       features)
-  : m_options           (adapter->instance()->config()),
+  : m_options           (adapter->instance()->options()),
     m_adapter           (adapter),
     m_vkd               (vkd),
     m_extensions        (extensions),

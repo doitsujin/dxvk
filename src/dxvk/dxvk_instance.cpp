@@ -22,6 +22,8 @@ namespace dxvk {
 
     m_adapters = this->queryAdapters();
     g_vrInstance.initDeviceExtensions(this);
+
+    m_options = DxvkOptions(m_config);
   }
   
   

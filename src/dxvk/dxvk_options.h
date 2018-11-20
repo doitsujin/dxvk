@@ -5,6 +5,7 @@
 namespace dxvk {
 
   struct DxvkOptions {
+    DxvkOptions() { }
     DxvkOptions(const Config& config);
 
     /// Allow allocating more memory from
