@@ -985,6 +985,7 @@ namespace dxvk {
     
     void emitOutputSetup();
     void emitOutputMapping();
+    void emitOutputDepthClamp();
     
     //////////////////////////////////////////
     // System value load methods (per shader)

@@ -5392,6 +5392,29 @@ namespace dxvk {
         DxbcRegMask::firstN(vector.type.ccount));
     }
   }
+
+
+  void DxbcCompiler::emitOutputDepthClamp() {
+    // HACK: Some drivers do not clamp FragDepth to [minDepth..maxDepth]
+    // before writing to the depth attachment, but we do not have acccess
+    // to those. Clamp to [0..1] instead.
+    if (m_ps.builtinDepth) {
+      DxbcRegisterPointer ptr;
+      ptr.type = { DxbcScalarType::Float32, 1 };
+      ptr.id = m_ps.builtinDepth;
+
+      DxbcRegisterValue value = emitValueLoad(ptr);
+
+      value.id = m_module.opFClamp(
+        getVectorTypeId(ptr.type),
+        value.id,
+        m_module.constf32(0.0f),
+        m_module.constf32(1.0f));
+      
+      emitValueStore(ptr, value,
+        DxbcRegMask::firstN(1));
+    }
+  }
   
   
   DxbcRegisterValue DxbcCompiler::emitVsSystemValueLoad(
@@ -6321,6 +6344,7 @@ namespace dxvk {
     
     this->emitOutputSetup();
     this->emitOutputMapping();
+    this->emitOutputDepthClamp();
     this->emitFunctionEnd();
   }
   
