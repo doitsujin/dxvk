@@ -17,6 +17,9 @@ namespace dxvk {
 
     /// Use clustered subgroup operations
     bool useSubgroupOpsClustered = false;
+
+    /// Clear thread-group shared memory to zero
+    bool zeroInitWorkgroupMemory = false;
   };
   
 }
