@@ -21,6 +21,12 @@ namespace dxvk {
      && (devInfo.coreSubgroup.supportedOperations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT);
     useSubgroupOpsClustered = useSubgroupOpsForEarlyDiscard
      && (devInfo.coreSubgroup.supportedOperations & VK_SUBGROUP_FEATURE_CLUSTERED_BIT);
+    
+    // Disable early discard on Nvidia because it may hurt performance
+    if (DxvkGpuVendor(devInfo.core.properties.vendorID) == DxvkGpuVendor::Nvidia) {
+      useSubgroupOpsForEarlyDiscard = false;
+      useSubgroupOpsClustered       = false;
+    }
   }
   
 }
