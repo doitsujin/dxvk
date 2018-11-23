@@ -1305,6 +1305,10 @@ namespace dxvk {
     //    (imm0) Number of threads in X dimension
     //    (imm1) Number of threads in Y dimension
     //    (imm2) Number of threads in Z dimension
+    m_cs.workgroupSizeX = ins.imm[0].u32;
+    m_cs.workgroupSizeY = ins.imm[1].u32;
+    m_cs.workgroupSizeZ = ins.imm[2].u32;
+
     m_module.setLocalSize(m_entryPointId,
       ins.imm[0].u32, ins.imm[1].u32, ins.imm[2].u32);
   }

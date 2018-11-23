@@ -187,6 +187,10 @@ namespace dxvk {
    */
   struct DxbcCompilerCsPart {
     uint32_t functionId = 0;
+
+    uint32_t workgroupSizeX               = 0;
+    uint32_t workgroupSizeY               = 0;
+    uint32_t workgroupSizeZ               = 0;
     
     uint32_t builtinGlobalInvocationId    = 0;
     uint32_t builtinLocalInvocationId     = 0;
