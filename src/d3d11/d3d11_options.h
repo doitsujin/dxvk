@@ -41,6 +41,12 @@ namespace dxvk {
     /// Stream Output is properly supported in DXVK.
     bool fakeStreamOutSupport;
 
+    /// Zero-initialize workgroup memory
+    ///
+    /// Workargound for games that don't initialize
+    /// TGSM in compute shaders before reading it.
+    bool zeroInitWorkgroupMemory;
+
     /// Maximum tessellation factor.
     ///
     /// Limits tessellation factors in tessellation

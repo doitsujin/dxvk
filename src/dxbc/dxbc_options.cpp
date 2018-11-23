@@ -1,4 +1,4 @@
-#include <unordered_map>
+#include "../d3d11/d3d11_options.h"
 
 #include "dxbc_options.h"
 
@@ -9,7 +9,7 @@ namespace dxvk {
   }
 
 
-  DxbcOptions::DxbcOptions(const Rc<DxvkDevice>& device) {
+  DxbcOptions::DxbcOptions(const Rc<DxvkDevice>& device, const D3D11Options& options) {
     const DxvkDeviceFeatures& devFeatures = device->features();
     const DxvkDeviceInfo& devInfo = device->adapter()->devicePropertiesExt();
     
@@ -21,6 +21,8 @@ namespace dxvk {
      && (devInfo.coreSubgroup.supportedOperations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT);
     useSubgroupOpsClustered = useSubgroupOpsForEarlyDiscard
      && (devInfo.coreSubgroup.supportedOperations & VK_SUBGROUP_FEATURE_CLUSTERED_BIT);
+    
+    zeroInitWorkgroupMemory = options.zeroInitWorkgroupMemory;
     
     // Disable early discard on Nvidia because it may hurt performance
     if (DxvkGpuVendor(devInfo.core.properties.vendorID) == DxvkGpuVendor::Nvidia) {

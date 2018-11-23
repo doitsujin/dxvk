@@ -104,7 +104,7 @@ namespace dxvk {
     m_dxvkDevice    (pDxgiDevice->GetDXVKDevice()),
     m_dxvkAdapter   (m_dxvkDevice->adapter()),
     m_d3d11Options  (m_dxvkAdapter->instance()->config()),
-    m_dxbcOptions   (m_dxvkDevice) {
+    m_dxbcOptions   (m_dxvkDevice, m_d3d11Options) {
     Com<IDXGIAdapter> adapter;
     
     if (FAILED(pDxgiDevice->GetAdapter(&adapter))

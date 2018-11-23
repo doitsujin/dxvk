@@ -3,10 +3,12 @@
 #include "../dxvk/dxvk_device.h"
 
 namespace dxvk {
+
+  struct D3D11Options;
   
   struct DxbcOptions {
     DxbcOptions();
-    DxbcOptions(const Rc<DxvkDevice>& device);
+    DxbcOptions(const Rc<DxvkDevice>& device, const D3D11Options& options);
 
     /// Use the ShaderImageReadWithoutFormat capability.
     bool useStorageImageReadWithoutFormat = false;
