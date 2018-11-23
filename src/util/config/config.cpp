@@ -59,6 +59,10 @@ namespace dxvk {
     { "Overwatch.exe", {{
       { "d3d11.fakeStreamOutSupport",       "True" },
     }} },
+    /* Quantum Break                              */
+    { "QuantumBreak.exe", {{
+      { "d3d11.zeroInitWorkgroupMemory",    "True" },
+    }} },
   }};
 
 
