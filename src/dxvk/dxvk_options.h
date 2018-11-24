@@ -12,6 +12,9 @@ namespace dxvk {
     /// a heap than the device supports.
     bool allowMemoryOvercommit;
 
+    /// Enable state cache
+    bool enableStateCache;
+
     /// Number of compiler threads
     /// when using the state cache
     int32_t numCompilerThreads;

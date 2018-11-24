@@ -63,6 +63,10 @@ namespace dxvk {
     { "QuantumBreak.exe", {{
       { "d3d11.zeroInitWorkgroupMemory",    "True" },
     }} },
+    /* Anno 2205                                  */
+    { "anno2205.exe", {{
+      { "dxvk.enableStateCache",            "False" },
+    }} },
   }};
 
 
