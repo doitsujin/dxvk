@@ -24,8 +24,12 @@ namespace dxvk {
     
     zeroInitWorkgroupMemory = options.zeroInitWorkgroupMemory;
     
+    // Disable early discard on AMD due to GPU hangs
     // Disable early discard on Nvidia because it may hurt performance
-    if (DxvkGpuVendor(devInfo.core.properties.vendorID) == DxvkGpuVendor::Nvidia) {
+    auto vendor = DxvkGpuVendor(devInfo.core.properties.vendorID);
+
+    if (vendor == DxvkGpuVendor::Amd
+     || vendor == DxvkGpuVendor::Nvidia) {
       useSubgroupOpsForEarlyDiscard = false;
       useSubgroupOpsClustered       = false;
     }
