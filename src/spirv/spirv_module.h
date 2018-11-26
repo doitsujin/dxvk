@@ -992,6 +992,17 @@ namespace dxvk {
             uint32_t                reference,
       const SpirvImageOperands&     operands);
 
+    uint32_t opGroupNonUniformBallot(
+            uint32_t                resultType,
+            uint32_t                execution,
+            uint32_t                predicate);
+    
+    uint32_t opGroupNonUniformBallotBitCount(
+            uint32_t                resultType,
+            uint32_t                execution,
+            uint32_t                operation,
+            uint32_t                ballot);
+    
     uint32_t opGroupNonUniformLogicalAnd(
             uint32_t                resultType,
             uint32_t                execution,
