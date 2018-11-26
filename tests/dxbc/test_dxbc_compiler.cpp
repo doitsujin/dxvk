@@ -43,7 +43,6 @@ int WINAPI WinMain(HINSTANCE hInstance,
     
     DxbcModuleInfo moduleInfo;
     moduleInfo.options.useSubgroupOpsForEarlyDiscard = true;
-    moduleInfo.options.useSubgroupOpsClustered       = true;
     moduleInfo.xfb = nullptr;
 
     Rc<DxvkShader> shader = module.compile(moduleInfo, ifileName);

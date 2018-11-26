@@ -18,9 +18,7 @@ namespace dxvk {
     useSubgroupOpsForEarlyDiscard
       = (devInfo.coreSubgroup.subgroupSize >= 4)
      && (devInfo.coreSubgroup.supportedStages     & VK_SHADER_STAGE_FRAGMENT_BIT)
-     && (devInfo.coreSubgroup.supportedOperations & VK_SUBGROUP_FEATURE_ARITHMETIC_BIT);
-    useSubgroupOpsClustered = useSubgroupOpsForEarlyDiscard
-     && (devInfo.coreSubgroup.supportedOperations & VK_SUBGROUP_FEATURE_CLUSTERED_BIT);
+     && (devInfo.coreSubgroup.supportedOperations & VK_SUBGROUP_FEATURE_BALLOT_BIT);
     
     zeroInitWorkgroupMemory = options.zeroInitWorkgroupMemory;
     
@@ -29,10 +27,8 @@ namespace dxvk {
     auto vendor = DxvkGpuVendor(devInfo.core.properties.vendorID);
 
     if (vendor == DxvkGpuVendor::Amd
-     || vendor == DxvkGpuVendor::Nvidia) {
+     || vendor == DxvkGpuVendor::Nvidia)
       useSubgroupOpsForEarlyDiscard = false;
-      useSubgroupOpsClustered       = false;
-    }
   }
   
 }

@@ -3898,16 +3898,20 @@ namespace dxvk {
       m_module.opStore(m_ps.killState, killState);
 
       if (m_moduleInfo.options.useSubgroupOpsForEarlyDiscard) {
-        uint32_t killSubgroup = m_module.opGroupNonUniformLogicalAnd(
-          m_module.defBoolType(),
+        uint32_t ballot = m_module.opGroupNonUniformBallot(
+          getVectorTypeId({ DxbcScalarType::Uint32, 4 }),
           m_module.constu32(spv::ScopeSubgroup),
-          m_moduleInfo.options.useSubgroupOpsClustered
-            ? spv::GroupOperationClusteredReduce
-            : spv::GroupOperationReduce,
-          killState,
-          m_moduleInfo.options.useSubgroupOpsClustered
-            ? m_module.constu32(4)
-            : 0);
+          killState);
+        
+        uint32_t invocationMask = m_module.opLoad(
+          getVectorTypeId({ DxbcScalarType::Uint32, 4 }),
+          m_ps.invocationMask);
+        
+        uint32_t killSubgroup = m_module.opAll(
+          m_module.defBoolType(),
+          m_module.opIEqual(
+            m_module.defVectorType(m_module.defBoolType(), 4),
+            ballot, invocationMask));
         
         DxbcConditional cond;
         cond.labelIf  = m_module.allocateId();
@@ -6297,6 +6301,17 @@ namespace dxvk {
       spv::BuiltInCullDistance,
       spv::StorageClassInput);
     
+    // Main function of the pixel shader
+    m_ps.functionId = m_module.allocateId();
+    m_module.setDebugName(m_ps.functionId, "ps_main");
+    
+    this->emitFunctionBegin(
+      m_ps.functionId,
+      m_module.defVoidType(),
+      m_module.defFunctionType(
+        m_module.defVoidType(), 0, nullptr));
+    this->emitFunctionLabel();
+
     // We may have to defer kill operations to the end of
     // the shader in order to keep derivatives correct.
     if (m_analysis->usesKill && m_analysis->usesDerivatives) {
@@ -6308,23 +6323,22 @@ namespace dxvk {
 
       if (m_moduleInfo.options.useSubgroupOpsForEarlyDiscard) {
         m_module.enableCapability(spv::CapabilityGroupNonUniform);
-        m_module.enableCapability(spv::CapabilityGroupNonUniformArithmetic);
+        m_module.enableCapability(spv::CapabilityGroupNonUniformBallot);
 
-        if (m_moduleInfo.options.useSubgroupOpsClustered)
-          m_module.enableCapability(spv::CapabilityGroupNonUniformClustered);
+        DxbcRegisterInfo invocationMask;
+        invocationMask.type = { DxbcScalarType::Uint32, 4, 0 };
+        invocationMask.sclass = spv::StorageClassFunction;
+
+        m_ps.invocationMask = emitNewVariable(invocationMask);
+        m_module.setDebugName(m_ps.invocationMask, "fInvocationMask");
+        
+        m_module.opStore(m_ps.invocationMask,
+          m_module.opGroupNonUniformBallot(
+            getVectorTypeId({ DxbcScalarType::Uint32, 4 }),
+            m_module.constu32(spv::ScopeSubgroup),
+            m_module.constBool(true)));
       }
     }
-    
-    // Main function of the pixel shader
-    m_ps.functionId = m_module.allocateId();
-    m_module.setDebugName(m_ps.functionId, "ps_main");
-    
-    this->emitFunctionBegin(
-      m_ps.functionId,
-      m_module.defVoidType(),
-      m_module.defFunctionType(
-        m_module.defVoidType(), 0, nullptr));
-    this->emitFunctionLabel();
   }
   
   
