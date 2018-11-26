@@ -716,8 +716,8 @@ namespace dxvk {
     
     void BindUnorderedAccessView(
             UINT                              UavSlot,
-            UINT                              CtrSlot,
             D3D11UnorderedAccessView*         pUav,
+            UINT                              CtrSlot,
             UINT                              Counter);
     
     void DiscardBuffer(
