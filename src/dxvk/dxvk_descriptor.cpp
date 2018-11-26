@@ -45,19 +45,19 @@ namespace dxvk {
   
   
   VkDescriptorPool DxvkDescriptorAlloc::createDescriptorPool() {
-    constexpr uint32_t MaxSets = 256;
-    constexpr uint32_t MaxDesc = 2048;
-    
-    std::array<VkDescriptorPoolSize, 9> pools = {{
-      { VK_DESCRIPTOR_TYPE_SAMPLER,                MaxDesc },
-      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          MaxDesc },
-      { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          MaxDesc },
-      { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         MaxDesc },
-      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         MaxDesc },
-      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   MaxDesc },
-      { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   MaxDesc },
-      { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, MaxDesc },
-      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, MaxDesc } }};
+    constexpr uint32_t MaxSets = 2048;
+
+    std::array<VkDescriptorPoolSize, 10> pools = {{
+      { VK_DESCRIPTOR_TYPE_SAMPLER,                MaxSets * 2 },
+      { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          MaxSets * 3 },
+      { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,          MaxSets / 8 },
+      { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,         MaxSets * 3 },
+      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,         MaxSets / 8 },
+      { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER,   MaxSets * 3 },
+      { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   MaxSets / 8 },
+      { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, MaxSets * 3 },
+      { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, MaxSets / 8 },
+      { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MaxSets / 16 } }};
     
     VkDescriptorPoolCreateInfo info;
     info.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
