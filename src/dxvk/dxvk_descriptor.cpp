@@ -1,50 +1,10 @@
 #include "dxvk_descriptor.h"
+#include "dxvk_device.h"
 
 namespace dxvk {
   
-  DxvkDescriptorAlloc::DxvkDescriptorAlloc(
-    const Rc<vk::DeviceFn>& vkd)
+  DxvkDescriptorPool::DxvkDescriptorPool(const Rc<vk::DeviceFn>& vkd)
   : m_vkd(vkd) {
-    // Allocate one pool right away so that there
-    // is always at least one pool available when
-    // allocating a descriptor set
-    m_pools.push_back(createDescriptorPool());
-  }
-  
-  
-  DxvkDescriptorAlloc::~DxvkDescriptorAlloc() {
-    for (auto p : m_pools) {
-      m_vkd->vkDestroyDescriptorPool(
-        m_vkd->device(), p, nullptr);
-    }
-  }
-  
-  
-  VkDescriptorSet DxvkDescriptorAlloc::alloc(VkDescriptorSetLayout layout) {
-    VkDescriptorSet set = allocFrom(m_pools[m_poolId], layout);
-    
-    if (set == VK_NULL_HANDLE) {
-      if (++m_poolId >= m_pools.size())
-        m_pools.push_back(createDescriptorPool());
-      
-      set = allocFrom(m_pools[m_poolId], layout);
-    }
-    
-    return set;
-  }
-  
-  
-  void DxvkDescriptorAlloc::reset() {
-    for (auto p : m_pools) {
-      m_vkd->vkResetDescriptorPool(
-        m_vkd->device(), p, 0);
-    }
-    
-    m_poolId = 0;
-  }
-  
-  
-  VkDescriptorPool DxvkDescriptorAlloc::createDescriptorPool() {
     constexpr uint32_t MaxSets = 2048;
 
     std::array<VkDescriptorPoolSize, 10> pools = {{
@@ -67,21 +27,22 @@ namespace dxvk {
     info.poolSizeCount = pools.size();
     info.pPoolSizes    = pools.data();
     
-    VkDescriptorPool pool = VK_NULL_HANDLE;
-    if (m_vkd->vkCreateDescriptorPool(m_vkd->device(),
-          &info, nullptr, &pool) != VK_SUCCESS)
-      throw DxvkError("DxvkDescriptorAlloc: Failed to create descriptor pool");
-    return pool;
+    if (m_vkd->vkCreateDescriptorPool(m_vkd->device(), &info, nullptr, &m_pool) != VK_SUCCESS)
+      throw DxvkError("DxvkDescriptorPool: Failed to create descriptor pool");
   }
   
   
-  VkDescriptorSet DxvkDescriptorAlloc::allocFrom(
-          VkDescriptorPool      pool,
-          VkDescriptorSetLayout layout) const {
+  DxvkDescriptorPool::~DxvkDescriptorPool() {
+    m_vkd->vkDestroyDescriptorPool(
+      m_vkd->device(), m_pool, nullptr);
+  }
+  
+  
+  VkDescriptorSet DxvkDescriptorPool::alloc(VkDescriptorSetLayout layout) {
     VkDescriptorSetAllocateInfo info;
     info.sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     info.pNext              = nullptr;
-    info.descriptorPool     = pool;
+    info.descriptorPool     = m_pool;
     info.descriptorSetCount = 1;
     info.pSetLayouts        = &layout;
     
@@ -89,6 +50,40 @@ namespace dxvk {
     if (m_vkd->vkAllocateDescriptorSets(m_vkd->device(), &info, &set) != VK_SUCCESS)
       return VK_NULL_HANDLE;
     return set;
+  }
+  
+  
+  void DxvkDescriptorPool::reset() {
+    m_vkd->vkResetDescriptorPool(
+      m_vkd->device(), m_pool, 0);
+  }
+
+
+
+
+  DxvkDescriptorPoolTracker::DxvkDescriptorPoolTracker(DxvkDevice* device)
+  : m_device(device) {
+
+  }
+
+
+  DxvkDescriptorPoolTracker::~DxvkDescriptorPoolTracker() {
+
+  }
+
+
+  void DxvkDescriptorPoolTracker::trackDescriptorPool(Rc<DxvkDescriptorPool> pool) {
+    m_pools.push_back(std::move(pool));
+  }
+
+  
+  void DxvkDescriptorPoolTracker::reset() {
+    for (const auto& pool : m_pools) {
+      pool->reset();
+      m_device->recycleDescriptorPool(pool);
+    }
+
+    m_pools.clear();
   }
   
 }

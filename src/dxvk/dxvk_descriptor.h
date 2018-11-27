@@ -5,6 +5,8 @@
 #include "dxvk_include.h"
 
 namespace dxvk {
+
+  class DxvkDevice;
   
   /**
    * \brief Descriptor info
@@ -20,21 +22,18 @@ namespace dxvk {
   
   
   /**
-   * \brief Descriptor set allocator
+   * \brief Descriptor pool
    * 
-   * Creates descriptor pools on demand and
-   * allocates descriptor sets from those pools.
+   * Wrapper around a Vulkan descriptor pool that
+   * descriptor sets can be allocated from.
    */
-  class DxvkDescriptorAlloc {
+  class DxvkDescriptorPool : public RcObject {
     
   public:
     
-    DxvkDescriptorAlloc(
+    DxvkDescriptorPool(
       const Rc<vk::DeviceFn>& vkd);
-    ~DxvkDescriptorAlloc();
-    
-    DxvkDescriptorAlloc             (const DxvkDescriptorAlloc&) = delete;
-    DxvkDescriptorAlloc& operator = (const DxvkDescriptorAlloc&) = delete;
+    ~DxvkDescriptorPool();
     
     /**
      * \brief Allocates a descriptor set
@@ -56,16 +55,46 @@ namespace dxvk {
   private:
     
     Rc<vk::DeviceFn> m_vkd;
+    VkDescriptorPool m_pool;
     
-    std::vector<VkDescriptorPool> m_pools;
-    size_t                        m_poolId = 0;
+  };
+
+
+  /**
+   * \brief Descriptor pool tracker
+   * 
+   * Tracks descriptor pools that are either full
+   * or no longer needed by the DXVK context. The
+   * command list will reset and recycle all pools
+   * once it has completed execution on the GPU.
+   */
+  class DxvkDescriptorPoolTracker {
+
+  public:
+
+    DxvkDescriptorPoolTracker(DxvkDevice* device);
+    ~DxvkDescriptorPoolTracker();
+
+    /**
+     * \brief Adds a descriptor pool to track
+     * \param [in] pool The descriptor pool
+     */
+    void trackDescriptorPool(Rc<DxvkDescriptorPool> pool);
     
-    VkDescriptorPool createDescriptorPool();
-    
-    VkDescriptorSet allocFrom(
-      VkDescriptorPool      pool,
-      VkDescriptorSetLayout layout) const;
-    
+    /**
+     * \brief Resets event tracker
+     * 
+     * Resets all tracked descriptor pools
+     * and returns them to the device.
+     */
+    void reset();
+
+  private:
+
+    DxvkDevice* m_device;
+
+    std::vector<Rc<DxvkDescriptorPool>> m_pools;
+
   };
   
 }

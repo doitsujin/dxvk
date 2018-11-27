@@ -58,6 +58,7 @@ namespace dxvk {
   class DxvkDevice : public RcObject {
     friend class DxvkContext;
     friend class DxvkSubmissionQueue;
+    friend class DxvkDescriptorPoolTracker;
     
     constexpr static VkDeviceSize DefaultStagingBufferSize = 4 * 1024 * 1024;
   public:
@@ -177,6 +178,16 @@ namespace dxvk {
      * \returns The command list
      */
     Rc<DxvkCommandList> createCommandList();
+    
+    /**
+     * \brief Creates a descriptor pool
+     * 
+     * Returns a previously recycled pool, or creates
+     * a new one if necessary. The context should take
+     * ownership of the returned pool.
+     * \returns Descriptor pool
+     */
+    Rc<DxvkDescriptorPool> createDescriptorPool();
     
     /**
      * \brief Creates a context
@@ -413,13 +424,17 @@ namespace dxvk {
     DxvkDeviceQueue             m_graphicsQueue;
     DxvkDeviceQueue             m_presentQueue;
     
-    DxvkRecycler<DxvkCommandList,  16> m_recycledCommandLists;
-    DxvkRecycler<DxvkStagingBuffer, 4> m_recycledStagingBuffers;
+    DxvkRecycler<DxvkCommandList,    16> m_recycledCommandLists;
+    DxvkRecycler<DxvkDescriptorPool, 16> m_recycledDescriptorPools;
+    DxvkRecycler<DxvkStagingBuffer,   4> m_recycledStagingBuffers;
     
     DxvkSubmissionQueue m_submissionQueue;
     
     void recycleCommandList(
       const Rc<DxvkCommandList>& cmdList);
+    
+    void recycleDescriptorPool(
+      const Rc<DxvkDescriptorPool>& pool);
     
     /**
      * \brief Dummy buffer handle

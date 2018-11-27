@@ -8,7 +8,7 @@ namespace dxvk {
           uint32_t          queueFamily)
   : m_vkd           (device->vkd()),
     m_cmdBuffersUsed(0),
-    m_descAlloc     (device->vkd()),
+    m_descriptorPoolTracker(device),
     m_stagingAlloc  (device) {
     VkFenceCreateInfo fenceInfo;
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
@@ -127,7 +127,7 @@ namespace dxvk {
     m_eventTracker.reset();
     m_queryTracker.reset();
     m_stagingAlloc.reset();
-    m_descAlloc.reset();
+    m_descriptorPoolTracker.reset();
     m_resources.reset();
   }
   

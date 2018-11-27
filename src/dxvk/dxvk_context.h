@@ -768,7 +768,9 @@ namespace dxvk {
     const Rc<DxvkMetaPackObjects>     m_metaPack;
     const Rc<DxvkMetaResolveObjects>  m_metaResolve;
     
-    Rc<DxvkCommandList> m_cmd;
+    Rc<DxvkCommandList>     m_cmd;
+    Rc<DxvkDescriptorPool>  m_descPool;
+
     DxvkContextFlags    m_flags;
     DxvkContextState    m_state;
 
@@ -902,6 +904,9 @@ namespace dxvk {
             VkAccessFlags             srcAccess,
             VkPipelineStageFlags      dstStages,
             VkAccessFlags             dstAccess);
+    
+    VkDescriptorSet allocateDescriptorSet(
+            VkDescriptorSetLayout     layout);
 
     void trackDrawBuffer();
     

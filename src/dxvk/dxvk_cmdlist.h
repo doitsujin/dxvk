@@ -156,6 +156,14 @@ namespace dxvk {
     void trackEvent(const DxvkEventRevision& event) {
       m_eventTracker.trackEvent(event);
     }
+
+    /**
+     * \brief Tracks a descriptor pool
+     * \param [in] pool The descriptor pool
+     */
+    void trackDescriptorPool(Rc<DxvkDescriptorPool> pool) {
+      m_descriptorPoolTracker.trackDescriptorPool(pool);
+    }
     
     /**
      * \brief Signals tracked events
@@ -187,12 +195,6 @@ namespace dxvk {
      * the command list completes execution.
      */
     void reset();
-    
-    VkDescriptorSet allocateDescriptorSet(
-            VkDescriptorSetLayout   descriptorLayout) {
-      return m_descAlloc.alloc(descriptorLayout);
-    }
-    
     
     void updateDescriptorSets(
             uint32_t                      descriptorWriteCount,
@@ -656,7 +658,7 @@ namespace dxvk {
     
     DxvkCmdBufferFlags  m_cmdBuffersUsed;
     DxvkLifetimeTracker m_resources;
-    DxvkDescriptorAlloc m_descAlloc;
+    DxvkDescriptorPoolTracker m_descriptorPoolTracker;
     DxvkStagingAlloc    m_stagingAlloc;
     DxvkQueryTracker    m_queryTracker;
     DxvkEventTracker    m_eventTracker;

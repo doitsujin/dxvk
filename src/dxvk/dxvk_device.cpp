@@ -114,6 +114,16 @@ namespace dxvk {
     
     return cmdList;
   }
+
+
+  Rc<DxvkDescriptorPool> DxvkDevice::createDescriptorPool() {
+    Rc<DxvkDescriptorPool> pool = m_recycledDescriptorPools.retrieveObject();
+
+    if (pool == nullptr)
+      pool = new DxvkDescriptorPool(m_vkd);
+    
+    return pool;
+  }
   
   
   Rc<DxvkContext> DxvkDevice::createContext() {
@@ -294,6 +304,11 @@ namespace dxvk {
   
   void DxvkDevice::recycleCommandList(const Rc<DxvkCommandList>& cmdList) {
     m_recycledCommandLists.returnObject(cmdList);
+  }
+  
+
+  void DxvkDevice::recycleDescriptorPool(const Rc<DxvkDescriptorPool>& pool) {
+    m_recycledDescriptorPools.returnObject(pool);
   }
   
 }

@@ -296,8 +296,7 @@ namespace dxvk {
     // Create a descriptor set pointing to the view
     VkBufferView viewObject = bufferView->handle();
     
-    VkDescriptorSet descriptorSet =
-      m_cmd->allocateDescriptorSet(pipeInfo.dsetLayout);
+    VkDescriptorSet descriptorSet = allocateDescriptorSet(pipeInfo.dsetLayout);
     
     VkWriteDescriptorSet descriptorWrite;
     descriptorWrite.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -963,7 +962,7 @@ namespace dxvk {
     descriptors.srcDepth   = dView->getDescriptor(VK_IMAGE_VIEW_TYPE_2D_ARRAY, layout).image;
     descriptors.srcStencil = sView->getDescriptor(VK_IMAGE_VIEW_TYPE_2D_ARRAY, layout).image;
 
-    VkDescriptorSet dset = m_cmd->allocateDescriptorSet(pipeInfo.dsetLayout);
+    VkDescriptorSet dset = allocateDescriptorSet(pipeInfo.dsetLayout);
     m_cmd->updateDescriptorSetWithTemplate(dset, pipeInfo.dsetTemplate, &descriptors);
 
     // Since this is a meta operation, the image may be
@@ -1290,7 +1289,7 @@ namespace dxvk {
       
       // Create descriptor set with the current source view
       descriptorImage.imageView = pass.srcView;
-      descriptorWrite.dstSet = m_cmd->allocateDescriptorSet(pipeInfo.dsetLayout);
+      descriptorWrite.dstSet = allocateDescriptorSet(pipeInfo.dsetLayout);
       m_cmd->updateDescriptorSets(1, &descriptorWrite);
       
       // Set up viewport and scissor rect
@@ -1802,8 +1801,7 @@ namespace dxvk {
       imageView->type(), imageFormatInfo(imageView->info().format)->flags);
     
     // Create a descriptor set pointing to the view
-    VkDescriptorSet descriptorSet =
-      m_cmd->allocateDescriptorSet(pipeInfo.dsetLayout);
+    VkDescriptorSet descriptorSet = allocateDescriptorSet(pipeInfo.dsetLayout);
     
     VkDescriptorImageInfo viewInfo;
     viewInfo.sampler      = VK_NULL_HANDLE;
@@ -2077,7 +2075,7 @@ namespace dxvk {
     descriptorWrite.pBufferInfo      = nullptr;
     descriptorWrite.pTexelBufferView = nullptr;
     
-    descriptorWrite.dstSet = m_cmd->allocateDescriptorSet(pipeInfo.dsetLayout);
+    descriptorWrite.dstSet = allocateDescriptorSet(pipeInfo.dsetLayout);
     m_cmd->updateDescriptorSets(1, &descriptorWrite);
     
     VkViewport viewport;
@@ -2272,7 +2270,7 @@ namespace dxvk {
     descriptorWrite.pBufferInfo      = nullptr;
     descriptorWrite.pTexelBufferView = nullptr;
     
-    descriptorWrite.dstSet = m_cmd->allocateDescriptorSet(pipeInfo.dsetLayout);
+    descriptorWrite.dstSet = allocateDescriptorSet(pipeInfo.dsetLayout);
     m_cmd->updateDescriptorSets(1, &descriptorWrite);
 
     // Set up viewport and scissor rect
@@ -2814,7 +2812,7 @@ namespace dxvk {
     VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
 
     if (layout->bindingCount() != 0) {
-      descriptorSet = m_cmd->allocateDescriptorSet(
+      descriptorSet = allocateDescriptorSet(
         layout->descriptorSetLayout());
       
       m_cmd->updateDescriptorSetWithTemplate(
@@ -3256,6 +3254,24 @@ namespace dxvk {
 
     m_cmd->cmdPipelineBarrier(srcStages, dstStages,
       0, 1, &barrier, 0, nullptr, 0, nullptr);
+  }
+
+
+  VkDescriptorSet DxvkContext::allocateDescriptorSet(
+          VkDescriptorSetLayout     layout) {
+    if (m_descPool == nullptr)
+      m_descPool = m_device->createDescriptorPool();
+    
+    VkDescriptorSet set = m_descPool->alloc(layout);
+
+    if (set == VK_NULL_HANDLE) {
+      m_cmd->trackDescriptorPool(std::move(m_descPool));
+
+      m_descPool = m_device->createDescriptorPool();
+      set = m_descPool->alloc(layout);
+    }
+
+    return set;
   }
 
   
