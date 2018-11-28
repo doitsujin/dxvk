@@ -186,11 +186,6 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkSemaphore> DxvkDevice::createSemaphore() {
-    return new DxvkSemaphore(m_vkd);
-  }
-  
-  
   Rc<DxvkShader> DxvkDevice::createShader(
           VkShaderStageFlagBits     stage,
           uint32_t                  slotCount,

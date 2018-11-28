@@ -12,7 +12,6 @@
 #include "dxvk_query_tracker.h"
 #include "dxvk_staging.h"
 #include "dxvk_stats.h"
-#include "dxvk_sync.h"
 
 namespace dxvk {
   

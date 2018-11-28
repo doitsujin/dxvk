@@ -5,8 +5,8 @@
 #include <queue>
 
 #include "../util/thread.h"
+
 #include "dxvk_cmdlist.h"
-#include "dxvk_sync.h"
 
 namespace dxvk {
   

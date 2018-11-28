@@ -20,7 +20,6 @@
 #include "dxvk_sampler.h"
 #include "dxvk_shader.h"
 #include "dxvk_stats.h"
-#include "dxvk_sync.h"
 #include "dxvk_unbound.h"
 
 #include "../vulkan/vulkan_presenter.h"
@@ -262,12 +261,6 @@ namespace dxvk {
      */
     Rc<DxvkSampler> createSampler(
       const DxvkSamplerCreateInfo&  createInfo);
-    
-    /**
-     * \brief Creates a semaphore object
-     * \returns Newly created semaphore
-     */
-    Rc<DxvkSemaphore> createSemaphore();
     
     /**
      * \brief Creates a shader module
