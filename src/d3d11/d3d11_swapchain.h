@@ -2,9 +2,6 @@
 
 #include "d3d11_texture.h"
 
-#include "../dxvk/dxvk_surface.h"
-#include "../dxvk/dxvk_swapchain.h"
-
 #include "../dxvk/hud/dxvk_hud.h"
 
 namespace dxvk {
@@ -89,8 +86,7 @@ namespace dxvk {
     Rc<DxvkDevice>          m_device;
     Rc<DxvkContext>         m_context;
 
-    Rc<DxvkSurface>         m_surface;
-    Rc<DxvkSwapchain>       m_swapchain;
+    Rc<vk::Presenter>       m_presenter;
 
     Rc<DxvkShader>          m_vertShader;
     Rc<DxvkShader>          m_fragShader;
@@ -117,12 +113,21 @@ namespace dxvk {
 
     D3D11Texture2D*         m_backBuffer = nullptr;
 
+    std::vector<Rc<DxvkImageView>> m_imageViews;
+
     bool                    m_dirty = true;
     bool                    m_vsync = true;
 
     void PresentImage(UINT SyncInterval);
 
     void FlushImmediateContext();
+    
+    void RecreateSwapChain(
+            BOOL                      Vsync);
+
+    void CreatePresenter();
+
+    void CreateRenderTargetViews();
 
     void CreateBackBuffer();
 
@@ -130,10 +135,6 @@ namespace dxvk {
             UINT                NumControlPoints,
       const D3D11_VK_GAMMA_CP*  pControlPoints);
     
-    void CreateSurface();
-
-    void CreateSwapChain();
-
     void CreateHud();
 
     void InitRenderState();
@@ -142,10 +143,14 @@ namespace dxvk {
 
     void InitShaders();
     
-    VkSurfaceFormatKHR PickSurfaceFormat() const;
+    uint32_t PickFormats(
+            DXGI_FORMAT               Format,
+            VkSurfaceFormatKHR*       pDstFormats);
     
-    VkPresentModeKHR PickPresentMode() const;
-
+    uint32_t PickPresentModes(
+            BOOL                      Vsync,
+            VkPresentModeKHR*         pDstModes);
+    
   };
 
 }

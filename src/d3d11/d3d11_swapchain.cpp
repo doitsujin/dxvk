@@ -29,7 +29,7 @@ namespace dxvk {
       throw DxvkError("D3D11: Incompatible device for swap chain");
     
     if (!pDevice->GetOptions()->deferSurfaceCreation)
-      CreateSurface();
+      CreatePresenter();
     
     CreateBackBuffer();
     CreateHud();
@@ -182,12 +182,21 @@ namespace dxvk {
     m_dirty |= vsync != m_vsync;
     m_vsync  = vsync;
 
+    if (m_presenter == nullptr)
+      CreatePresenter();
+
     if (std::exchange(m_dirty, false))
-      CreateSwapChain();
+      RecreateSwapChain(vsync);
     
     FlushImmediateContext();
-    PresentImage(SyncInterval);
-    return S_OK;
+
+    try {
+      PresentImage(SyncInterval);
+      return S_OK;
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return E_FAIL;
+    }
   }
 
 
@@ -220,34 +229,50 @@ namespace dxvk {
       }
       
       // Presentation semaphores and WSI swap chain image
-      auto wsiSemas = m_swapchain->getSemaphorePair();
-      auto wsiImage = m_swapchain->getImageView(wsiSemas.acquireSync);
+      vk::PresenterInfo info = m_presenter->info();
+      vk::PresenterSync sync = m_presenter->getSyncSemaphores();
+
+      uint32_t imageIndex = 0;
+
+      VkResult status = m_presenter->acquireNextImage(
+        sync.acquire, imageIndex);
+
+      while (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR) {
+        RecreateSwapChain(m_vsync);
+        
+        info = m_presenter->info();
+        sync = m_presenter->getSyncSemaphores();
+
+        status = m_presenter->acquireNextImage(
+          sync.acquire, imageIndex);
+      }
 
       // Use an appropriate texture filter depending on whether
       // the back buffer size matches the swap image size
-      bool fitSize = m_swapImage->info().extent == wsiImage->imageInfo().extent;
+      bool fitSize = m_swapImage->info().extent.width  == info.imageExtent.width
+                  && m_swapImage->info().extent.height == info.imageExtent.height;
 
       m_context->bindShader(VK_SHADER_STAGE_VERTEX_BIT,   m_vertShader);
       m_context->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, m_fragShader);
 
       DxvkRenderTargets renderTargets;
-      renderTargets.color[0].view   = wsiImage;
+      renderTargets.color[0].view   = m_imageViews.at(imageIndex);
       renderTargets.color[0].layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
       m_context->bindRenderTargets(renderTargets, false);
 
       VkViewport viewport;
       viewport.x        = 0.0f;
       viewport.y        = 0.0f;
-      viewport.width    = float(wsiImage->imageInfo().extent.width);
-      viewport.height   = float(wsiImage->imageInfo().extent.height);
+      viewport.width    = float(info.imageExtent.width);
+      viewport.height   = float(info.imageExtent.height);
       viewport.minDepth = 0.0f;
       viewport.maxDepth = 1.0f;
       
       VkRect2D scissor;
       scissor.offset.x      = 0;
       scissor.offset.y      = 0;
-      scissor.extent.width  = wsiImage->imageInfo().extent.width;
-      scissor.extent.height = wsiImage->imageInfo().extent.height;
+      scissor.extent.width  = info.imageExtent.width;
+      scissor.extent.height = info.imageExtent.height;
 
       m_context->setViewports(1, &viewport, &scissor);
 
@@ -268,12 +293,8 @@ namespace dxvk {
 
       m_context->draw(4, 1, 0, 0);
 
-      VkExtent2D hudSize = {
-        wsiImage->imageInfo().extent.width,
-        wsiImage->imageInfo().extent.height };
-
       if (m_hud != nullptr)
-        m_hud->render(m_context, hudSize);
+        m_hud->render(m_context, info.imageExtent);
       
       if (i + 1 >= SyncInterval) {
         DxvkEventRevision eventRev;
@@ -284,11 +305,93 @@ namespace dxvk {
 
       m_device->submitCommandList(
         m_context->endRecording(),
-        wsiSemas.acquireSync->handle(),
-        wsiSemas.presentSync->handle());
+        sync.acquire, sync.present);
       
-      m_swapchain->present(
-        wsiSemas.presentSync);
+      status = m_device->presentImage(
+        m_presenter, sync.present);
+      
+      if (status != VK_SUCCESS)
+        RecreateSwapChain(m_vsync);
+    }
+  }
+
+  
+  void D3D11SwapChain::RecreateSwapChain(BOOL Vsync) {
+    vk::PresenterDesc presenterDesc;
+    presenterDesc.imageExtent     = { m_desc.Width, m_desc.Height };
+    presenterDesc.imageCount      = m_desc.BufferCount;
+    presenterDesc.numFormats      = PickFormats(m_desc.Format, presenterDesc.formats);
+    presenterDesc.numPresentModes = PickPresentModes(Vsync, presenterDesc.presentModes);
+
+    if (m_presenter->recreateSwapChain(presenterDesc) != VK_SUCCESS)
+      throw DxvkError("D3D11SwapChain: Failed to recreate swap chain");
+    
+    CreateRenderTargetViews();
+  }
+
+
+  void D3D11SwapChain::CreatePresenter() {
+    DxvkDeviceQueue graphicsQueue = m_device->graphicsQueue();
+
+    vk::PresenterDevice presenterDevice;
+    presenterDevice.queueFamily   = graphicsQueue.queueFamily;
+    presenterDevice.queue         = graphicsQueue.queueHandle;
+    presenterDevice.adapter       = m_device->adapter()->handle();
+
+    vk::PresenterDesc presenterDesc;
+    presenterDesc.imageExtent     = { m_desc.Width, m_desc.Height };
+    presenterDesc.imageCount      = m_desc.BufferCount;
+    presenterDesc.numFormats      = PickFormats(m_desc.Format, presenterDesc.formats);
+    presenterDesc.numPresentModes = PickPresentModes(false, presenterDesc.presentModes);
+
+    m_presenter = new vk::Presenter(m_window,
+      m_device->adapter()->vki(),
+      m_device->vkd(),
+      presenterDevice,
+      presenterDesc);
+    
+    CreateRenderTargetViews();
+  }
+
+
+  void D3D11SwapChain::CreateRenderTargetViews() {
+    vk::PresenterInfo info = m_presenter->info();
+
+    m_imageViews.clear();
+    m_imageViews.resize(info.imageCount);
+
+    DxvkImageCreateInfo imageInfo;
+    imageInfo.type        = VK_IMAGE_TYPE_2D;
+    imageInfo.format      = info.format.format;
+    imageInfo.flags       = 0;
+    imageInfo.sampleCount = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.extent      = { info.imageExtent.width, info.imageExtent.height, 1 };
+    imageInfo.numLayers   = 1;
+    imageInfo.mipLevels   = 1;
+    imageInfo.usage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    imageInfo.stages      = 0;
+    imageInfo.access      = 0;
+    imageInfo.tiling      = VK_IMAGE_TILING_OPTIMAL;
+    imageInfo.layout      = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    DxvkImageViewCreateInfo viewInfo;
+    viewInfo.type         = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format       = info.format.format;
+    viewInfo.usage        = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    viewInfo.aspect       = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.minLevel     = 0;
+    viewInfo.numLevels    = 1;
+    viewInfo.minLayer     = 0;
+    viewInfo.numLayers    = 1;
+
+    for (uint32_t i = 0; i < info.imageCount; i++) {
+      VkImage imageHandle = m_presenter->getImage(i).image;
+      
+      Rc<DxvkImage> image = new DxvkImage(
+        m_device->vkd(), imageInfo, imageHandle);
+
+      m_imageViews[i] = new DxvkImageView(
+        m_device->vkd(), image, viewInfo);
     }
   }
 
@@ -467,37 +570,6 @@ namespace dxvk {
   }
 
 
-  void D3D11SwapChain::CreateSurface() {
-    HINSTANCE instance = reinterpret_cast<HINSTANCE>(
-      GetWindowLongPtr(m_window, GWLP_HINSTANCE));
-    
-    m_surface = m_device->adapter()->createSurface(instance, m_window);
-  }
-
-
-  void D3D11SwapChain::CreateSwapChain() {
-    auto options = m_parent->GetOptions();
-
-    if (m_surface == nullptr)
-      CreateSurface();
-    
-    DxvkSwapchainProperties swapInfo;
-    swapInfo.preferredSurfaceFormat     = PickSurfaceFormat();
-    swapInfo.preferredPresentMode       = PickPresentMode();
-    swapInfo.preferredBufferSize.width  = m_desc.Width;
-    swapInfo.preferredBufferSize.height = m_desc.Height;
-    swapInfo.preferredBufferCount       = m_desc.BufferCount;
-
-    if (options->numBackBuffers > 0)
-      swapInfo.preferredBufferCount = options->numBackBuffers;
-
-    if (m_swapchain == nullptr)
-      m_swapchain = m_device->createSwapchain(m_surface, swapInfo);
-    else
-      m_swapchain->changeProperties(swapInfo);
-  }
-
-
   void D3D11SwapChain::CreateHud() {
     m_hud = hud::Hud::createHud(m_device);
   }
@@ -607,58 +679,56 @@ namespace dxvk {
       { 1u, 1u }, fsCode);
   }
 
-  
-  VkSurfaceFormatKHR D3D11SwapChain::PickSurfaceFormat() const {
-    std::array<VkSurfaceFormatKHR, 2> formats;
-    size_t n = 0;
 
-    switch (m_desc.Format) {
+  uint32_t D3D11SwapChain::PickFormats(
+          DXGI_FORMAT               Format,
+          VkSurfaceFormatKHR*       pDstFormats) {
+    uint32_t n = 0;
+
+    switch (Format) {
       case DXGI_FORMAT_R8G8B8A8_UNORM:
       case DXGI_FORMAT_B8G8R8A8_UNORM: {
-        formats[n++] = { VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-        formats[n++] = { VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+        pDstFormats[n++] = { VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+        pDstFormats[n++] = { VK_FORMAT_B8G8R8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
       } break;
       
       case DXGI_FORMAT_R8G8B8A8_UNORM_SRGB:
       case DXGI_FORMAT_B8G8R8A8_UNORM_SRGB: {
-        formats[n++] = { VK_FORMAT_R8G8B8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-        formats[n++] = { VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+        pDstFormats[n++] = { VK_FORMAT_R8G8B8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+        pDstFormats[n++] = { VK_FORMAT_B8G8R8A8_SRGB, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
       } break;
       
       case DXGI_FORMAT_R10G10B10A2_UNORM: {
-        formats[n++] = { VK_FORMAT_A2B10G10R10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
-        formats[n++] = { VK_FORMAT_A2R10G10B10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+        pDstFormats[n++] = { VK_FORMAT_A2B10G10R10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+        pDstFormats[n++] = { VK_FORMAT_A2R10G10B10_UNORM_PACK32, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
       } break;
       
       case DXGI_FORMAT_R16G16B16A16_FLOAT: {
-        formats[n++] = { VK_FORMAT_R16G16B16A16_SFLOAT, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
+        pDstFormats[n++] = { VK_FORMAT_R16G16B16A16_SFLOAT, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
       } break;
       
       default:
-        Logger::warn(str::format("DxgiVkPresenter: Unknown format: ", m_desc.Format));
+        Logger::warn(str::format("VkD3DPresenter: Unknown format: ", m_desc.Format));
     }
-    
-    return m_surface->pickSurfaceFormat(n, formats.data());
+
+    return n;
   }
 
-  
-  VkPresentModeKHR D3D11SwapChain::PickPresentMode() const {
-    auto options = m_parent->GetOptions();
-    
-    std::array<VkPresentModeKHR, 4> modes;
-    size_t n = 0;
-    
-    if (m_vsync) {
-      if (options->syncMode == D3D11SwapChainSyncMode::Mailbox)
-        modes[n++] = VK_PRESENT_MODE_MAILBOX_KHR;
-      modes[n++] = VK_PRESENT_MODE_FIFO_KHR;
+
+  uint32_t D3D11SwapChain::PickPresentModes(
+          BOOL                      Vsync,
+          VkPresentModeKHR*         pDstModes) {
+    uint32_t n = 0;
+
+    if (Vsync) {
+      pDstModes[n++] = VK_PRESENT_MODE_FIFO_KHR;
     } else {
-      modes[n++] = VK_PRESENT_MODE_IMMEDIATE_KHR;
-      modes[n++] = VK_PRESENT_MODE_MAILBOX_KHR;
-      modes[n++] = VK_PRESENT_MODE_FIFO_RELAXED_KHR;
+      pDstModes[n++] = VK_PRESENT_MODE_IMMEDIATE_KHR;
+      pDstModes[n++] = VK_PRESENT_MODE_MAILBOX_KHR;
+      pDstModes[n++] = VK_PRESENT_MODE_FIFO_RELAXED_KHR;
     }
-    
-    return m_surface->pickPresentMode(n, modes.data());
+
+    return n;
   }
 
 }
