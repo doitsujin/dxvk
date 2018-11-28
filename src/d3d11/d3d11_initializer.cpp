@@ -193,12 +193,7 @@ namespace dxvk {
 
 
   void D3D11Initializer::FlushInternal() {
-    m_device->submitCommandList(
-      m_context->endRecording(),
-      nullptr, nullptr);
-
-    m_context->beginRecording(
-      m_device->createCommandList());
+    m_context->flushCommandList();
     
     m_transferCommands = 0;
     m_transferMemory   = 0;
