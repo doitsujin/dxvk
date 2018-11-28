@@ -24,6 +24,8 @@
 #include "dxvk_sync.h"
 #include "dxvk_unbound.h"
 
+#include "../vulkan/vulkan_presenter.h"
+
 namespace dxvk {
   
   class DxvkInstance;
@@ -337,6 +339,18 @@ namespace dxvk {
      */
     VkResult presentSwapImage(
       const VkPresentInfoKHR&         presentInfo);
+    
+    /**
+     * \brief Presents a swap chain image
+     * 
+     * Locks the device queues and invokes the
+     * presenter's \c presentImage method.
+     * \param [in] presenter The presenter
+     * \param [in] semaphore Sync semaphore
+     */
+    VkResult presentImage(
+      const Rc<vk::Presenter>&        presenter,
+            VkSemaphore               semaphore);
     
     /**
      * \brief Submits a command list

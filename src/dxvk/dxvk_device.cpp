@@ -254,6 +254,21 @@ namespace dxvk {
   }
   
   
+  VkResult DxvkDevice::presentImage(
+    const Rc<vk::Presenter>&        presenter,
+          VkSemaphore               semaphore) {
+    std::lock_guard<std::mutex> queueLock(m_submissionLock);
+    VkResult status = presenter->presentImage(semaphore);
+
+    if (status != VK_SUCCESS)
+      return status;
+    
+    std::lock_guard<sync::Spinlock> statLock(m_statLock);
+    m_statCounters.addCtr(DxvkStatCounter::QueuePresentCount, 1);
+    return status;
+  }
+
+
   void DxvkDevice::submitCommandList(
     const Rc<DxvkCommandList>&      commandList,
           VkSemaphore               waitSync,
