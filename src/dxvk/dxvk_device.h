@@ -20,7 +20,6 @@
 #include "dxvk_sampler.h"
 #include "dxvk_shader.h"
 #include "dxvk_stats.h"
-#include "dxvk_swapchain.h"
 #include "dxvk_sync.h"
 #include "dxvk_unbound.h"
 
@@ -288,17 +287,6 @@ namespace dxvk {
       const SpirvCodeBuffer&          code);
     
     /**
-     * \brief Creates a swap chain
-     * 
-     * \param [in] surface The target surface
-     * \param [in] properties Swapchain properties
-     * \returns The swapchain object
-     */
-    Rc<DxvkSwapchain> createSwapchain(
-      const Rc<DxvkSurface>&          surface,
-      const DxvkSwapchainProperties&  properties);
-    
-    /**
      * \brief Retrieves stat counters
      * 
      * Can be used by the HUD to display some
@@ -328,17 +316,6 @@ namespace dxvk {
      */
     void registerShader(
       const Rc<DxvkShader>&         shader);
-    
-    /**
-     * \brief Presents a swap chain image
-     * 
-     * This is implicitly called by the swap chain class
-     * when presenting an image. Do not use this directly.
-     * \param [in] presentInfo Swap image present info
-     * \returns Present status
-     */
-    VkResult presentSwapImage(
-      const VkPresentInfoKHR&         presentInfo);
     
     /**
      * \brief Presents a swap chain image

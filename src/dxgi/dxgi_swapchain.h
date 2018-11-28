@@ -9,7 +9,6 @@
 #include "../d3d11/d3d11_interfaces.h"
 
 #include "../dxvk/dxvk_surface.h"
-#include "../dxvk/dxvk_swapchain.h"
 
 #include "../spirv/spirv_module.h"
 

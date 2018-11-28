@@ -87,7 +87,6 @@ dxvk_src = files([
   'dxvk_state_cache.cpp',
   'dxvk_stats.cpp',
   'dxvk_surface.cpp',
-  'dxvk_swapchain.cpp',
   'dxvk_sync.cpp',
   'dxvk_unbound.cpp',
   'dxvk_util.cpp',

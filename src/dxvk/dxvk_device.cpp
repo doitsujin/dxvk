@@ -204,13 +204,6 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkSwapchain> DxvkDevice::createSwapchain(
-    const Rc<DxvkSurface>&          surface,
-    const DxvkSwapchainProperties&  properties) {
-    return new DxvkSwapchain(this, surface, properties);
-  }
-  
-  
   DxvkStatCounters DxvkDevice::getStatCounters() {
     DxvkMemoryStats mem = m_memory->getMemoryStats();
     DxvkPipelineCount pipe = m_pipelineManager->getPipelineCount();
@@ -239,18 +232,6 @@ namespace dxvk {
 
   void DxvkDevice::registerShader(const Rc<DxvkShader>& shader) {
     m_pipelineManager->registerShader(shader);
-  }
-  
-  
-  VkResult DxvkDevice::presentSwapImage(
-    const VkPresentInfoKHR&         presentInfo) {
-    { // Queue submissions are not thread safe
-      std::lock_guard<std::mutex> queueLock(m_submissionLock);
-      std::lock_guard<sync::Spinlock> statLock(m_statLock);
-      
-      m_statCounters.addCtr(DxvkStatCounter::QueuePresentCount, 1);
-      return m_vkd->vkQueuePresentKHR(m_presentQueue.queueHandle, &presentInfo);
-    }
   }
   
   
