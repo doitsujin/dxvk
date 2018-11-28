@@ -3,7 +3,6 @@
 #include "dxvk_adapter.h"
 #include "dxvk_device.h"
 #include "dxvk_instance.h"
-#include "dxvk_surface.h"
 
 namespace dxvk {
   
@@ -315,11 +314,6 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkSurface> DxvkAdapter::createSurface(HINSTANCE instance, HWND window) {
-    return new DxvkSurface(this, instance, window);
-  }
-
-
   void DxvkAdapter::notifyHeapMemoryAlloc(
           uint32_t            heap,
           VkDeviceSize        bytes) {

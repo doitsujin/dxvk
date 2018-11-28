@@ -8,7 +8,6 @@ namespace dxvk {
   
   class DxvkDevice;
   class DxvkInstance;
-  class DxvkSurface;
   
   /**
    * \brief GPU vendors
@@ -192,17 +191,6 @@ namespace dxvk {
      */
     Rc<DxvkDevice> createDevice(
             DxvkDeviceFeatures  enabledFeatures);
-    
-    /**
-     * \brief Creates a surface
-     * 
-     * \param [in] instance Module instance
-     * \param [in] window Application window
-     * \returns Surface handle
-     */
-    Rc<DxvkSurface> createSurface(
-      HINSTANCE instance,
-      HWND      window);
     
     /**
      * \brief Registers memory allocation

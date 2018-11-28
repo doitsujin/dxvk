@@ -8,8 +8,6 @@
 
 #include "../d3d11/d3d11_interfaces.h"
 
-#include "../dxvk/dxvk_surface.h"
-
 #include "../spirv/spirv_module.h"
 
 namespace dxvk {
