@@ -103,15 +103,9 @@ namespace dxvk {
     m_featureFlags  (FeatureFlags),
     m_dxvkDevice    (pDxgiDevice->GetDXVKDevice()),
     m_dxvkAdapter   (m_dxvkDevice->adapter()),
+    m_d3d11Formats  (m_dxvkAdapter),
     m_d3d11Options  (m_dxvkAdapter->instance()->config()),
     m_dxbcOptions   (m_dxvkDevice, m_d3d11Options) {
-    Com<IDXGIAdapter> adapter;
-    
-    if (FAILED(pDxgiDevice->GetAdapter(&adapter))
-     || FAILED(adapter->QueryInterface(__uuidof(IDXGIVkAdapter),
-          reinterpret_cast<void**>(&m_dxgiAdapter))))
-      throw DxvkError("D3D11Device: Failed to query adapter");
-    
     m_initializer = new D3D11Initializer(m_dxvkDevice);
     m_context     = new D3D11ImmediateContext(this, m_dxvkDevice);
     m_d3d10Device = new D3D10Device(this, m_context);
@@ -512,8 +506,7 @@ namespace dxvk {
         DxvkVertexAttribute attrib;
         attrib.location = entry != nullptr ? entry->registerId : 0;
         attrib.binding  = pInputElementDescs[i].InputSlot;
-        attrib.format   = m_dxgiAdapter->LookupFormat(
-          pInputElementDescs[i].Format, DXGI_VK_FORMAT_MODE_COLOR).Format;
+        attrib.format   = LookupFormat(pInputElementDescs[i].Format, DXGI_VK_FORMAT_MODE_COLOR).Format;
         attrib.offset   = pInputElementDescs[i].AlignedByteOffset;
         
         // The application may choose to let the implementation
@@ -1135,8 +1128,7 @@ namespace dxvk {
     *pNumQualityLevels = 0;
     
     // We need to check whether the format is 
-    VkFormat format = m_dxgiAdapter->LookupFormat(
-      Format, DXGI_VK_FORMAT_MODE_ANY).Format;
+    VkFormat format = LookupFormat(Format, DXGI_VK_FORMAT_MODE_ANY).Format;
     
     if (format == VK_FORMAT_UNDEFINED) {
       Logger::err(str::format("D3D11: Unsupported format: ", Format));
@@ -1360,14 +1352,14 @@ namespace dxvk {
   DXGI_VK_FORMAT_INFO D3D11Device::LookupFormat(
           DXGI_FORMAT           Format,
           DXGI_VK_FORMAT_MODE   Mode) const {
-    return m_dxgiAdapter->LookupFormat(Format, Mode);
+    return m_d3d11Formats.GetFormatInfo(Format, Mode);
   }
   
   
   DXGI_VK_FORMAT_FAMILY D3D11Device::LookupFamily(
           DXGI_FORMAT           Format,
           DXGI_VK_FORMAT_MODE   Mode) const {
-    return m_dxgiAdapter->LookupFormatFamily(Format, Mode);
+    return m_d3d11Formats.GetFormatFamily(Format, Mode);
   }
   
   
@@ -1560,7 +1552,7 @@ namespace dxvk {
 
   HRESULT D3D11Device::GetFormatSupportFlags(DXGI_FORMAT Format, UINT* pFlags1, UINT* pFlags2) const {
     // Query some general information from DXGI, DXVK and Vulkan about the format
-    const DXGI_VK_FORMAT_INFO fmtMapping = m_dxgiAdapter->LookupFormat(Format, DXGI_VK_FORMAT_MODE_ANY);
+    const DXGI_VK_FORMAT_INFO fmtMapping = LookupFormat(Format, DXGI_VK_FORMAT_MODE_ANY);
     const VkFormatProperties  fmtSupport = m_dxvkAdapter->formatProperties(fmtMapping.Format);
     const DxvkFormatInfo*     fmtProperties = imageFormatInfo(fmtMapping.Format);
     
@@ -1608,7 +1600,7 @@ namespace dxvk {
     
     if (fmtSupport.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT
      || fmtSupport.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT) {
-      const VkFormat depthFormat = m_dxgiAdapter->LookupFormat(Format, DXGI_VK_FORMAT_MODE_DEPTH).Format;
+      const VkFormat depthFormat = LookupFormat(Format, DXGI_VK_FORMAT_MODE_DEPTH).Format;
       
       if (GetImageTypeSupport(fmtMapping.Format, VK_IMAGE_TYPE_1D)) flags1 |= D3D11_FORMAT_SUPPORT_TEXTURE1D;
       if (GetImageTypeSupport(fmtMapping.Format, VK_IMAGE_TYPE_2D)) flags1 |= D3D11_FORMAT_SUPPORT_TEXTURE2D;

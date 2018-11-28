@@ -363,7 +363,6 @@ namespace dxvk {
   private:
     
     IDXGIObject*                    m_container;
-    Com<IDXGIVkAdapter>             m_dxgiAdapter;
 
     const D3D_FEATURE_LEVEL         m_featureLevel;
     const UINT                      m_featureFlags;
@@ -371,6 +370,7 @@ namespace dxvk {
     const Rc<DxvkDevice>            m_dxvkDevice;
     const Rc<DxvkAdapter>           m_dxvkAdapter;
     
+    const DXGIVkFormatTable         m_d3d11Formats;
     const D3D11Options              m_d3d11Options;
     const DxbcOptions               m_dxbcOptions;
     
