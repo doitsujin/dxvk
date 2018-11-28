@@ -79,11 +79,7 @@ namespace dxvk {
     
     DXGI_VK_FORMAT_INFO STDMETHODCALLTYPE LookupFormat(
             DXGI_FORMAT               Format,
-            DXGI_VK_FORMAT_MODE       Mode) final;
-    
-    DXGI_VK_FORMAT_FAMILY STDMETHODCALLTYPE LookupFormatFamily(
-            DXGI_FORMAT               Format,
-            DXGI_VK_FORMAT_MODE       Mode) final;
+            DXGI_VK_FORMAT_MODE       Mode);
     
     HRESULT GetOutputFromMonitor(
             HMONITOR                  Monitor,
