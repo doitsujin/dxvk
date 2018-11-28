@@ -349,8 +349,8 @@ namespace dxvk {
      */
     void submitCommandList(
       const Rc<DxvkCommandList>&      commandList,
-      const Rc<DxvkSemaphore>&        waitSync,
-      const Rc<DxvkSemaphore>&        wakeSync);
+            VkSemaphore               waitSync,
+            VkSemaphore               wakeSync);
     
     /**
      * \brief Locks submission queue

@@ -323,7 +323,8 @@ namespace dxvk::hud {
     
     device->submitCommandList(
       context->endRecording(),
-      nullptr, nullptr);
+      VK_NULL_HANDLE,
+      VK_NULL_HANDLE);
   }
   
   

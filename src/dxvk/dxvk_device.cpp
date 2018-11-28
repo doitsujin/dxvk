@@ -256,21 +256,8 @@ namespace dxvk {
   
   void DxvkDevice::submitCommandList(
     const Rc<DxvkCommandList>&      commandList,
-    const Rc<DxvkSemaphore>&        waitSync,
-    const Rc<DxvkSemaphore>&        wakeSync) {
-    VkSemaphore waitSemaphore = VK_NULL_HANDLE;
-    VkSemaphore wakeSemaphore = VK_NULL_HANDLE;
-    
-    if (waitSync != nullptr) {
-      waitSemaphore = waitSync->handle();
-      commandList->trackResource(waitSync);
-    }
-    
-    if (wakeSync != nullptr) {
-      wakeSemaphore = wakeSync->handle();
-      commandList->trackResource(wakeSync);
-    }
-    
+          VkSemaphore               waitSync,
+          VkSemaphore               wakeSync) {
     VkResult status;
     
     { // Queue submissions are not thread safe
@@ -282,7 +269,7 @@ namespace dxvk {
       
       status = commandList->submit(
         m_graphicsQueue.queueHandle,
-        waitSemaphore, wakeSemaphore);
+        waitSync, wakeSync);
     }
     
     if (status == VK_SUCCESS) {

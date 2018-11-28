@@ -284,8 +284,8 @@ namespace dxvk {
 
       m_device->submitCommandList(
         m_context->endRecording(),
-        wsiSemas.acquireSync,
-        wsiSemas.presentSync);
+        wsiSemas.acquireSync->handle(),
+        wsiSemas.presentSync->handle());
       
       m_swapchain->present(
         wsiSemas.presentSync);
@@ -408,7 +408,8 @@ namespace dxvk {
 
     m_device->submitCommandList(
       m_context->endRecording(),
-      nullptr, nullptr);
+      VK_NULL_HANDLE,
+      VK_NULL_HANDLE);
   }
 
 
@@ -461,7 +462,8 @@ namespace dxvk {
     
     m_device->submitCommandList(
       m_context->endRecording(),
-      nullptr, nullptr);
+      VK_NULL_HANDLE,
+      VK_NULL_HANDLE);
   }
 
 

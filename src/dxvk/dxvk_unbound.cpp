@@ -36,7 +36,8 @@ namespace dxvk {
     
     dev->submitCommandList(
       ctx->endRecording(),
-      nullptr, nullptr);
+      VK_NULL_HANDLE,
+      VK_NULL_HANDLE);
   }
   
   
