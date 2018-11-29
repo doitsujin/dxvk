@@ -4,6 +4,8 @@
 #include "../dxvk/dxvk_cs.h"
 #include "../dxvk/dxvk_device.h"
 
+#include "../d3d10/d3d10_multithread.h"
+
 #include "d3d11_annotation.h"
 #include "d3d11_context_state.h"
 #include "d3d11_device_child.h"
@@ -647,6 +649,7 @@ namespace dxvk {
     
     D3D11Device* const          m_parent;
     D3D11UserDefinedAnnotation  m_annotation;
+    D3D10Multithread            m_multithread;
     
     Rc<DxvkDevice>              m_device;
     Rc<DxvkDataBuffer>          m_updateBuffer;
@@ -803,6 +806,10 @@ namespace dxvk {
     template<typename T>
     const D3D11CommonShader* GetCommonShader(T* pShader) const {
       return pShader != nullptr ? pShader->GetCommonShader() : nullptr;
+    }
+
+    D3D10DeviceLock LockContext() {
+      return m_multithread.AcquireLock();
     }
 
     template<typename Cmd>

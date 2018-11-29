@@ -42,6 +42,8 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeferredContext::ExecuteCommandList(
           ID3D11CommandList*  pCommandList,
           BOOL                RestoreContextState) {
+    D3D10DeviceLock lock = LockContext();
+
     FlushCsChunk();
     
     static_cast<D3D11CommandList*>(pCommandList)->EmitToCommandList(m_commandList.ptr());
@@ -56,6 +58,8 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11DeferredContext::FinishCommandList(
           BOOL                RestoreDeferredContextState,
           ID3D11CommandList   **ppCommandList) {
+    D3D10DeviceLock lock = LockContext();
+
     FlushCsChunk();
     
     if (ppCommandList != nullptr)
@@ -78,6 +82,8 @@ namespace dxvk {
           D3D11_MAP                   MapType,
           UINT                        MapFlags,
           D3D11_MAPPED_SUBRESOURCE*   pMappedResource) {
+    D3D10DeviceLock lock = LockContext();
+
     D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resourceDim);
     
@@ -132,6 +138,8 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeferredContext::Unmap(
           ID3D11Resource*             pResource,
           UINT                        Subresource) {
+    D3D10DeviceLock lock = LockContext();
+
     D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resourceDim);
     

@@ -98,6 +98,8 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11ImmediateContext::Flush() {
     m_parent->FlushInitContext();
     
+    D3D10DeviceLock lock = LockContext();
+    
     if (m_csIsBusy || m_csChunk->commandCount() != 0) {
       // Add commands to flush the threaded
       // context, then flush the command list
@@ -117,6 +119,8 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11ImmediateContext::ExecuteCommandList(
           ID3D11CommandList*  pCommandList,
           BOOL                RestoreContextState) {
+    D3D10DeviceLock lock = LockContext();
+
     auto commandList = static_cast<D3D11CommandList*>(pCommandList);
     
     // Flush any outstanding commands so that
@@ -158,6 +162,8 @@ namespace dxvk {
           D3D11_MAP                   MapType,
           UINT                        MapFlags,
           D3D11_MAPPED_SUBRESOURCE*   pMappedResource) {
+    D3D10DeviceLock lock = LockContext();
+
     if (!pResource || !pMappedResource)
       return E_INVALIDARG;
     
@@ -190,6 +196,8 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11ImmediateContext::Unmap(
           ID3D11Resource*             pResource,
           UINT                        Subresource) {
+    D3D10DeviceLock lock = LockContext();
+
     D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resourceDim);
     
