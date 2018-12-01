@@ -46,7 +46,7 @@ namespace dxvk {
   DxgiSwapChain::~DxgiSwapChain() {
     Com<IDXGIOutput> output;
     
-    if (SUCCEEDED(m_adapter->GetOutputFromMonitor(m_monitor, &output)))
+    if (!m_descFs.Windowed && SUCCEEDED(m_adapter->GetOutputFromMonitor(m_monitor, &output)))
       RestoreDisplayMode(output.ptr());
   }
   
@@ -268,7 +268,7 @@ namespace dxvk {
       // if it has been changed since the last present call.
       DXGI_VK_OUTPUT_DATA outputData;
       
-      if (SUCCEEDED(m_adapter->GetOutputData(m_monitor, &outputData)) && outputData.GammaDirty) {
+      if (!m_descFs.Windowed && SUCCEEDED(m_adapter->GetOutputData(m_monitor, &outputData)) && outputData.GammaDirty) {
         SetGammaControl(&outputData.GammaCurve);
         
         outputData.GammaDirty = FALSE;
