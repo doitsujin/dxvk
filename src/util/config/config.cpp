@@ -67,10 +67,6 @@ namespace dxvk {
     { "anno2205.exe", {{
       { "dxvk.enableStateCache",            "False" },
     }} },
-    /* Battlefield 1                              */
-    { "bf1.exe", {{
-      { "dxgi.customVendorId",              "10de" },
-    }} },
   }};
 
 
