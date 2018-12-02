@@ -152,6 +152,9 @@ extern "C" {
     InitReturnPtr(ppDevice);
     InitReturnPtr(ppSwapChain);
 
+    if (ppSwapChain && !pSwapChainDesc)
+      return E_INVALIDARG;
+    
     // Try to create the device as usual
     Com<ID3D10Device1> d3d10Device = nullptr;
     HRESULT hr = D3D10CreateDevice1(pAdapter,
@@ -162,31 +165,30 @@ extern "C" {
       return hr;
 
     // Create the swap chain if requested
-    if (pSwapChainDesc == nullptr)
-      return E_INVALIDARG;
-    
-    Com<IDXGIDevice>  dxgiDevice  = nullptr;
-    Com<IDXGIAdapter> dxgiAdapter = nullptr;
-    Com<IDXGIFactory> dxgiFactory = nullptr;
+    if (ppSwapChain) {
+      Com<IDXGIDevice>  dxgiDevice  = nullptr;
+      Com<IDXGIAdapter> dxgiAdapter = nullptr;
+      Com<IDXGIFactory> dxgiFactory = nullptr;
 
-    if (FAILED(d3d10Device->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&dxgiDevice)))) {
-      Logger::err("D3D11CreateDeviceAndSwapChain: Failed to query DXGI device");
-      return E_FAIL;
-    }
-    
-    if (FAILED(dxgiDevice->GetParent(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&dxgiAdapter)))) {
-      Logger::err("D3D11CreateDeviceAndSwapChain: Failed to query DXGI adapter");
-      return E_FAIL;
-    }
-    
-    if (FAILED(dxgiAdapter->GetParent(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&dxgiFactory)))) {
-      Logger::err("D3D11CreateDeviceAndSwapChain: Failed to query DXGI factory");
-      return E_FAIL;
-    }
-    
-    if (FAILED(dxgiFactory->CreateSwapChain(d3d10Device.ptr(), pSwapChainDesc, ppSwapChain))) {
-      Logger::err("D3D11CreateDeviceAndSwapChain: Failed to create swap chain");
-      return E_FAIL;
+      if (FAILED(d3d10Device->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&dxgiDevice)))) {
+        Logger::err("D3D11CreateDeviceAndSwapChain: Failed to query DXGI device");
+        return E_FAIL;
+      }
+      
+      if (FAILED(dxgiDevice->GetParent(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&dxgiAdapter)))) {
+        Logger::err("D3D11CreateDeviceAndSwapChain: Failed to query DXGI adapter");
+        return E_FAIL;
+      }
+      
+      if (FAILED(dxgiAdapter->GetParent(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&dxgiFactory)))) {
+        Logger::err("D3D11CreateDeviceAndSwapChain: Failed to query DXGI factory");
+        return E_FAIL;
+      }
+      
+      if (FAILED(dxgiFactory->CreateSwapChain(d3d10Device.ptr(), pSwapChainDesc, ppSwapChain))) {
+        Logger::err("D3D11CreateDeviceAndSwapChain: Failed to create swap chain");
+        return E_FAIL;
+      }
     }
 
     // Write back device pointer
