@@ -149,6 +149,7 @@ namespace dxvk {
     
     auto deviceProp = m_adapter->deviceProperties();
     auto memoryProp = m_adapter->memoryProperties();
+    auto deviceId   = m_adapter->devicePropertiesExt().coreDeviceId;
     
     // Custom Vendor / Device ID
     if (options->customVendorId >= 0)
@@ -208,10 +209,13 @@ namespace dxvk {
     pDesc->DedicatedVideoMemory           = deviceMemory;
     pDesc->DedicatedSystemMemory          = 0;
     pDesc->SharedSystemMemory             = sharedMemory;
-    pDesc->AdapterLuid                    = LUID { 0, 0 };  // TODO implement
+    pDesc->AdapterLuid                    = LUID { 0, 0 };
     pDesc->Flags                          = 0;
     pDesc->GraphicsPreemptionGranularity  = DXGI_GRAPHICS_PREEMPTION_DMA_BUFFER_BOUNDARY;
     pDesc->ComputePreemptionGranularity   = DXGI_COMPUTE_PREEMPTION_DMA_BUFFER_BOUNDARY;
+
+    if (deviceId.deviceLUIDValid)
+      std::memcpy(&pDesc->AdapterLuid, deviceId.deviceLUID, VK_LUID_SIZE);
     return S_OK;
   }
   
