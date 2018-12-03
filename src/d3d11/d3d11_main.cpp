@@ -47,7 +47,7 @@ extern "C" {
     
     // Find the highest feature level supported by the device.
     // This works because the feature level array is ordered.
-    const Rc<DxvkAdapter> adapter = dxvkAdapter->GetDXVKAdapter();
+    Rc<DxvkAdapter> adapter = dxvkAdapter->GetDXVKAdapter();
     
     UINT flId;
     for (flId = 0 ; flId < FeatureLevels; flId++) {
@@ -67,25 +67,12 @@ extern "C" {
     
     try {
       Logger::info(str::format("D3D11CoreCreateDevice: Using feature level ", fl));
-      Com<D3D11DeviceContainer> container = new D3D11DeviceContainer();
+      Com<D3D11DXGIDevice> device = new D3D11DXGIDevice(
+        pAdapter, adapter.ptr(), fl, Flags);
       
-      const DxvkDeviceFeatures deviceFeatures
-        = D3D11Device::GetDeviceFeatures(adapter, fl);
-      
-      if (FAILED(dxvkAdapter->CreateDevice(container.ptr(), &deviceFeatures, &container->m_dxgiDevice))) {
-        Logger::err("D3D11CoreCreateDevice: Failed to create DXGI device");
-        return E_FAIL;
-      }
-      
-      container->m_d3d11Device = new D3D11Device(
-        container.ptr(), container->m_dxgiDevice, fl, Flags);
-      container->m_d3d11Presenter = new D3D11PresentDevice(
-        container.ptr(), container->m_d3d11Device);
-      container->m_d3d11VkInterop = new D3D11VkInterop(
-        container.ptr(), container->m_d3d11Device);
-      
-      *ppDevice = ref(container->m_d3d11Device);
-      return S_OK;
+      return device->QueryInterface(
+        __uuidof(ID3D11Device),
+        reinterpret_cast<void**>(ppDevice));
     } catch (const DxvkError& e) {
       Logger::err("D3D11CoreCreateDevice: Failed to create D3D11 device");
       return E_FAIL;

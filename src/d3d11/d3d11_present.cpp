@@ -4,9 +4,10 @@
 namespace dxvk {
   
   D3D11PresentDevice::D3D11PresentDevice(
-            IDXGIObject*  pContainer,
-            ID3D11Device* pDevice)
-  : m_container(pContainer), m_device(pDevice) {
+            D3D11DXGIDevice*  pContainer,
+            D3D11Device*      pDevice)
+  : m_container (pContainer),
+    m_device    (pDevice) {
     
   }
   
@@ -39,7 +40,7 @@ namespace dxvk {
 
     try {
       *ppSwapChain = ref(new D3D11SwapChain(
-        static_cast<D3D11Device*>(m_device), hWnd, pDesc));
+        m_container, m_device, hWnd, pDesc));
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());

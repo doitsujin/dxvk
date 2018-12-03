@@ -15,19 +15,16 @@ namespace dxvk {
 
 
   D3D11SwapChain::D3D11SwapChain(
+          D3D11DXGIDevice*        pContainer,
           D3D11Device*            pDevice,
           HWND                    hWnd,
     const DXGI_SWAP_CHAIN_DESC1*  pDesc)
-  : m_parent  (pDevice),
-    m_window  (hWnd),
-    m_desc    (*pDesc),
-    m_device  (pDevice->GetDXVKDevice()),
-    m_context (m_device->createContext()) {
-    
-    if (FAILED(pDevice->QueryInterface(__uuidof(IDXGIVkDevice),
-        reinterpret_cast<void**>(&m_dxgiDevice))))
-      throw DxvkError("D3D11: Incompatible device for swap chain");
-    
+  : m_dxgiDevice(pContainer),
+    m_parent    (pDevice),
+    m_window    (hWnd),
+    m_desc      (*pDesc),
+    m_device    (pDevice->GetDXVKDevice()),
+    m_context   (m_device->createContext()) {
     if (!pDevice->GetOptions()->deferSurfaceCreation)
       CreatePresenter();
     
@@ -76,22 +73,14 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11SwapChain::GetAdapter(
           REFIID                    riid,
           void**                    ppvObject) {
-    Com<IDXGIDevice> dxgiDevice;
-
-    HRESULT hr = GetDevice(__uuidof(IDXGIDevice),
-      reinterpret_cast<void**>(&dxgiDevice));
-
-    if (FAILED(hr))
-      return hr;
-    
-    return dxgiDevice->GetParent(riid, ppvObject);
+    return m_dxgiDevice->GetParent(riid, ppvObject);
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D11SwapChain::GetDevice(
           REFIID                    riid,
           void**                    ppDevice) {
-    return m_parent->QueryInterface(riid, ppDevice);
+    return m_dxgiDevice->QueryInterface(riid, ppDevice);
   }
 
 

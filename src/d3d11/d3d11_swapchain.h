@@ -7,6 +7,7 @@
 namespace dxvk {
   
   class D3D11Device;
+  class D3D11DXGIDevice;
 
   /**
    * \brief Gamma control point
@@ -24,15 +25,16 @@ namespace dxvk {
   public:
 
     D3D11SwapChain(
-            D3D11Device*            pDevice,
-            HWND                    hWnd,
-      const DXGI_SWAP_CHAIN_DESC1*  pDesc);
+            D3D11DXGIDevice*          pContainer,
+            D3D11Device*              pDevice,
+            HWND                      hWnd,
+      const DXGI_SWAP_CHAIN_DESC1*    pDesc);
     
     ~D3D11SwapChain();
 
     HRESULT STDMETHODCALLTYPE QueryInterface(
-            REFIID                  riid,
-            void**                  ppvObject);
+            REFIID                    riid,
+            void**                    ppvObject);
 
     HRESULT STDMETHODCALLTYPE GetDesc(
             DXGI_SWAP_CHAIN_DESC1*    pDesc);
@@ -76,7 +78,7 @@ namespace dxvk {
       GammaTex  = 3,
     };
 
-    Com<IDXGIVkDevice>      m_dxgiDevice;
+    Com<D3D11DXGIDevice>    m_dxgiDevice;
     
     D3D11Device*            m_parent;
     HWND                    m_window;
