@@ -2,6 +2,8 @@
 
 #include "../dxgi/dxgi_adapter.h"
 
+#include "../dxvk/dxvk_instance.h"
+
 #include "d3d11_device.h"
 #include "d3d11_enums.h"
 #include "d3d11_interop.h"
@@ -21,14 +23,31 @@ extern "C" {
     const D3D_FEATURE_LEVEL*  pFeatureLevels,
           UINT                FeatureLevels,
           ID3D11Device**      ppDevice) {
-    Com<IDXGIVkAdapter> dxvkAdapter = nullptr;
+    Rc<DxvkAdapter>  dxvkAdapter;
+    Rc<DxvkInstance> dxvkInstance;
+
+    Com<IDXGIVkAdapter> dxgiVkAdapter;
     
-    // The adapter must obviously be a DXVK-compatible adapter so
-    // that we can create a DXVK-compatible DXGI device from it.
-    if (FAILED(pAdapter->QueryInterface(__uuidof(IDXGIVkAdapter),
-        reinterpret_cast<void**>(&dxvkAdapter)))) {
-      Logger::err("D3D11CoreCreateDevice: Adapter is not a DXVK adapter");
-      return E_INVALIDARG;
+    // Try to find the corresponding Vulkan device for the DXGI adapter
+    if (SUCCEEDED(pAdapter->QueryInterface(__uuidof(IDXGIVkAdapter), reinterpret_cast<void**>(&dxgiVkAdapter)))) {
+      dxvkAdapter  = dxgiVkAdapter->GetDXVKAdapter();
+      dxvkInstance = dxvkAdapter->instance();
+    } else {
+      Logger::warn("D3D11CoreCreateDevice: Adapter is not a DXVK adapter");
+      DXGI_ADAPTER_DESC desc;
+      pAdapter->GetDesc(&desc);
+
+      dxvkInstance = new DxvkInstance();
+      dxvkAdapter  = dxvkInstance->findAdapterByLuid(&desc.AdapterLuid);
+
+      if (dxvkAdapter == nullptr)
+        dxvkAdapter = dxvkInstance->findAdapterByDeviceId(desc.VendorId, desc.DeviceId);
+      
+      if (dxvkAdapter == nullptr)
+        dxvkAdapter = dxvkInstance->enumAdapters(0);
+
+      if (dxvkAdapter == nullptr)
+        return E_FAIL;
     }
     
     // Feature levels to probe if the
@@ -46,13 +65,12 @@ extern "C" {
     
     // Find the highest feature level supported by the device.
     // This works because the feature level array is ordered.
-    Rc<DxvkAdapter> adapter = dxvkAdapter->GetDXVKAdapter();
-    
     UINT flId;
+
     for (flId = 0 ; flId < FeatureLevels; flId++) {
       Logger::info(str::format("D3D11CoreCreateDevice: Probing ", pFeatureLevels[flId]));
       
-      if (D3D11Device::CheckFeatureLevelSupport(adapter, pFeatureLevels[flId]))
+      if (D3D11Device::CheckFeatureLevelSupport(dxvkAdapter, pFeatureLevels[flId]))
         break;
     }
     
@@ -67,7 +85,7 @@ extern "C" {
     try {
       Logger::info(str::format("D3D11CoreCreateDevice: Using feature level ", fl));
       Com<D3D11DXGIDevice> device = new D3D11DXGIDevice(
-        pAdapter, adapter.ptr(), fl, Flags);
+        pAdapter, dxvkAdapter.ptr(), fl, Flags);
       
       return device->QueryInterface(
         __uuidof(ID3D11Device),
