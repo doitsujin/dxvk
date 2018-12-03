@@ -4,7 +4,6 @@
 #include <d3d10_1.h>
 
 #include "dxgi_adapter.h"
-#include "dxgi_device.h"
 #include "dxgi_enums.h"
 #include "dxgi_factory.h"
 #include "dxgi_format.h"
@@ -308,23 +307,6 @@ namespace dxvk {
 
   Rc<DxvkAdapter> STDMETHODCALLTYPE DxgiAdapter::GetDXVKAdapter() {
     return m_adapter;
-  }
-  
-  
-  HRESULT STDMETHODCALLTYPE DxgiAdapter::CreateDevice(
-          IDXGIObject*              pContainer,
-    const DxvkDeviceFeatures*       pFeatures,
-          IDXGIVkDevice**           ppDevice) {
-    InitReturnPtr(ppDevice);
-    
-    try {
-      *ppDevice = new dxvk::DxgiDevice(pContainer,
-        this, m_factory->GetOptions(), pFeatures);
-      return S_OK;
-    } catch (const dxvk::DxvkError& e) {
-      dxvk::Logger::err(e.message());
-      return DXGI_ERROR_UNSUPPORTED;
-    }
   }
   
   

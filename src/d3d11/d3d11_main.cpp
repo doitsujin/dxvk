@@ -1,7 +1,6 @@
 #include <array>
 
 #include "../dxgi/dxgi_adapter.h"
-#include "../dxgi/dxgi_device.h"
 
 #include "d3d11_device.h"
 #include "d3d11_enums.h"

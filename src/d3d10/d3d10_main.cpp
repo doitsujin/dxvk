@@ -4,7 +4,6 @@
 #include "d3d10_reflection.h"
 
 #include "../dxgi/dxgi_adapter.h"
-#include "../dxgi/dxgi_device.h"
 
 namespace dxvk {
   Logger Logger::s_instance("d3d10.log");

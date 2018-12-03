@@ -1,4 +1,3 @@
-#include "dxgi_device.h"
 #include "dxgi_factory.h"
 #include "dxgi_output.h"
 #include "dxgi_swapchain.h"

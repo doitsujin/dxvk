@@ -63,25 +63,6 @@ IDXGIVkSwapChain : public IUnknown {
 
 
 /**
- * \brief Private DXGI device interface
- * 
- * The implementation of \c IDXGIDevice stores a
- * \ref DxvkDevice which can be retrieved using
- * this interface.
- */
-MIDL_INTERFACE("7a622cf6-627a-46b2-b52f-360ef3da831c")
-IDXGIVkDevice : public IDXGIDevice3 {
-  static const GUID guid;
-  
-  virtual ~IDXGIVkDevice() { }
-  
-  virtual dxvk::Rc<dxvk::DxvkDevice> STDMETHODCALLTYPE GetDXVKDevice() = 0;
-  
-  virtual dxvk::Rc<dxvk::DxvkEvent> STDMETHODCALLTYPE GetFrameSyncEvent() = 0;
-};
-
-
-/**
  * \brief Private DXGI adapter interface
  * 
  * The implementation of \c IDXGIAdapter holds a
@@ -94,18 +75,6 @@ IDXGIVkAdapter : public IDXGIAdapter3 {
   
   virtual dxvk::Rc<dxvk::DxvkAdapter> STDMETHODCALLTYPE GetDXVKAdapter() = 0;
   
-  /**
-   * \brief Creates a DXGI device object
-   * 
-   * \param [in] pAdapter The adapter
-   * \param [in] pFeatures Device features to enable
-   * \param [out] ppDevice The DXGI device object
-   * \returns \c S_OK on success, or an error code
-   */
-  virtual HRESULT STDMETHODCALLTYPE CreateDevice(
-          IDXGIObject*              pContainer,
-    const dxvk::DxvkDeviceFeatures* pFeatures,
-          IDXGIVkDevice**           ppDevice) = 0;
 };
 
 
@@ -270,14 +239,12 @@ IDXGIVkInteropDevice : public IUnknown {
 
 #ifdef _MSC_VER
 struct __declspec(uuid("907bf281-ea3c-43b4-a8e4-9f231107b4ff")) IDXGIVkAdapter;
-struct __declspec(uuid("7a622cf6-627a-46b2-b52f-360ef3da831c")) IDXGIVkDevice;
 struct __declspec(uuid("79352328-16f2-4f81-9746-9c2e2ccd43cf")) IDXGIVkPresentDevice;
 struct __declspec(uuid("e2ef5fa5-dc21-4af7-90c4-f67ef6a09323")) IDXGIVkInteropDevice;
 struct __declspec(uuid("5546cf8c-77e7-4341-b05d-8d4d5000e77d")) IDXGIVkInteropSurface;
 struct __declspec(uuid("104001a6-7f36-4957-b932-86ade9567d91")) IDXGIVkSwapChain;
 #else
 DXVK_DEFINE_GUID(IDXGIVkAdapter);
-DXVK_DEFINE_GUID(IDXGIVkDevice);
 DXVK_DEFINE_GUID(IDXGIVkPresentDevice);
 DXVK_DEFINE_GUID(IDXGIVkInteropDevice);
 DXVK_DEFINE_GUID(IDXGIVkInteropSurface);

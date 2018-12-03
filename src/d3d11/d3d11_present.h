@@ -1,6 +1,5 @@
 #pragma once
 
-#include "../dxgi/dxgi_device.h"
 #include "../dxgi/dxgi_interfaces.h"
 
 #include "d3d11_include.h"
