@@ -49,6 +49,26 @@ namespace dxvk {
             uint32_t      index) const;
     
     /**
+     * \brief Finds adapter by LUID
+     * 
+     * \param [in] luid Pointer to LUID
+     * \returns Matching adapter, if any
+     */
+    Rc<DxvkAdapter> findAdapterByLuid(
+      const void*         luid) const;
+    
+    /**
+     * \brief Finds adapter by device IDs
+     * 
+     * \param [in] vendorId Vendor ID
+     * \param [in] deviceId Device ID
+     * \returns Matching adapter, if any
+     */
+    Rc<DxvkAdapter> findAdapterByDeviceId(
+            uint16_t      vendorId,
+            uint16_t      deviceId) const;
+    
+    /**
      * \brief Retrieves configuration options
      * 
      * The configuration set contains user-defined
