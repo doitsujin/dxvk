@@ -9,7 +9,7 @@ namespace dxvk {
   
   DxvkInstance::DxvkInstance() {
     Logger::info(str::format("Game: ", env::getExeName()));
-    Logger::info(str::format("DXVK: ", DXVK_VERSION));
+    Logger::info(str::format(u8"DXVK - 🐸 - ", DXVK_VERSION));
 
     m_config = Config::getUserConfig();
     m_config.merge(Config::getAppConfig(env::getExeName()));
