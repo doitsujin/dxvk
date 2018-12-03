@@ -14,6 +14,7 @@ namespace dxvk {
    */
   struct DxvkDeviceInfo {
     VkPhysicalDeviceProperties2KHR                      core;
+    VkPhysicalDeviceIDProperties                        coreDeviceId;
     VkPhysicalDeviceSubgroupProperties                  coreSubgroup;
     VkPhysicalDeviceTransformFeedbackPropertiesEXT      extTransformFeedback;
     VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT extVertexAttributeDivisor;

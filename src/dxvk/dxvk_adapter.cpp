@@ -380,6 +380,9 @@ namespace dxvk {
     m_vki->vkGetPhysicalDeviceProperties2KHR(m_handle, &m_deviceInfo.core);
 
     if (m_deviceInfo.core.properties.apiVersion >= VK_MAKE_VERSION(1, 1, 0)) {
+      m_deviceInfo.coreDeviceId.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES;
+      m_deviceInfo.coreDeviceId.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.coreDeviceId);
+
       m_deviceInfo.coreSubgroup.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES;
       m_deviceInfo.coreSubgroup.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.coreSubgroup);
     }
