@@ -515,7 +515,8 @@ namespace dxvk {
     if (clearAspects & VK_IMAGE_ASPECT_STENCIL_BIT)
       depthOp.loadOpS = VK_ATTACHMENT_LOAD_OP_CLEAR;
     
-    if (clearAspects == imageView->info().aspect) {
+    if (clearAspects == imageView->info().aspect
+     && imageView->imageInfo().type != VK_IMAGE_TYPE_3D) {
       colorOp.loadLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
       depthOp.loadLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
     }
