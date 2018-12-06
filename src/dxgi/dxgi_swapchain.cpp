@@ -532,8 +532,10 @@ namespace dxvk {
       displayMode.Height           = m_desc.Height;
       displayMode.RefreshRate      = m_descFs.RefreshRate;
       displayMode.Format           = m_desc.Format;
-      displayMode.ScanlineOrdering = m_descFs.ScanlineOrdering;
-      displayMode.Scaling          = m_descFs.Scaling;
+      // Ignore these two, games usually use them wrong and we don't
+      // support any scaling modes except UNSPECIFIED anyway.
+      displayMode.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+      displayMode.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
       
       if (FAILED(ChangeDisplayMode(output.ptr(), &displayMode))) {
         Logger::err("DXGI: EnterFullscreenMode: Failed to change display mode");
