@@ -1506,7 +1506,7 @@ namespace dxvk {
     D3D10DeviceLock lock = LockDevice();
     
     ID3D11RenderTargetView* d3d11Rtv[D3D10_SIMULTANEOUS_RENDER_TARGET_COUNT];
-    ID3D11DepthStencilView* d3d11Dsv;
+    ID3D11DepthStencilView* d3d11Dsv = nullptr;
 
     m_context->OMGetRenderTargets(NumViews,
       ppRenderTargetViews ? d3d11Rtv : nullptr,
