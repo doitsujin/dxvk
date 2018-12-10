@@ -321,28 +321,6 @@ namespace dxvk {
   }
   
   
-  HRESULT DxgiAdapter::GetOutputFromMonitor(
-          HMONITOR                  Monitor,
-          IDXGIOutput**             ppOutput) {
-    if (ppOutput == nullptr)
-      return DXGI_ERROR_INVALID_CALL;
-    
-    for (uint32_t i = 0; SUCCEEDED(EnumOutputs(i, ppOutput)); i++) {
-      DXGI_OUTPUT_DESC outputDesc;
-      (*ppOutput)->GetDesc(&outputDesc);
-      
-      if (outputDesc.Monitor == Monitor)
-        return S_OK;
-      
-      (*ppOutput)->Release();
-      (*ppOutput) = nullptr;
-    }
-    
-    // No such output found
-    return DXGI_ERROR_NOT_FOUND;
-  }
-  
-  
   HRESULT DxgiAdapter::GetOutputData(
           HMONITOR                  Monitor,
           DXGI_VK_OUTPUT_DATA*      pOutputData) {

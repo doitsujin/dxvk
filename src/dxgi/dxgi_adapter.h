@@ -76,10 +76,6 @@ namespace dxvk {
             DXGI_FORMAT               Format,
             DXGI_VK_FORMAT_MODE       Mode);
     
-    HRESULT GetOutputFromMonitor(
-            HMONITOR                  Monitor,
-            IDXGIOutput**             ppOutput);
-    
     HRESULT GetOutputData(
             HMONITOR                  Monitor,
             DXGI_VK_OUTPUT_DATA*      pOutputData);

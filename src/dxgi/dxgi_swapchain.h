@@ -201,6 +201,10 @@ namespace dxvk {
             IUnknown*               pDevice,
             IDXGIVkSwapChain**      ppSwapChain);
     
+    HRESULT GetOutputFromMonitor(
+            HMONITOR                  Monitor,
+            IDXGIOutput**             ppOutput);
+    
   };
   
 }

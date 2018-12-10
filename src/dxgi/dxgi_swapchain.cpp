@@ -45,7 +45,7 @@ namespace dxvk {
   DxgiSwapChain::~DxgiSwapChain() {
     Com<IDXGIOutput> output;
     
-    if (SUCCEEDED(m_adapter->GetOutputFromMonitor(m_monitor, &output)))
+    if (SUCCEEDED(GetOutputFromMonitor(m_monitor, &output)))
       RestoreDisplayMode(output.ptr());
   }
   
@@ -104,7 +104,7 @@ namespace dxvk {
         (windowRect.top + windowRect.bottom) / 2 },
       MONITOR_DEFAULTTOPRIMARY);
     
-    return m_adapter->GetOutputFromMonitor(monitor, ppOutput);
+    return GetOutputFromMonitor(monitor, ppOutput);
   }
   
   
@@ -185,7 +185,7 @@ namespace dxvk {
       *ppTarget = nullptr;
       
       if (!m_descFs.Windowed)
-        hr = m_adapter->GetOutputFromMonitor(m_monitor, ppTarget);
+        hr = GetOutputFromMonitor(m_monitor, ppTarget);
     }
     
     return hr;
@@ -358,7 +358,7 @@ namespace dxvk {
     } else {
       Com<IDXGIOutput> output;
       
-      if (FAILED(m_adapter->GetOutputFromMonitor(m_monitor, &output))) {
+      if (FAILED(GetOutputFromMonitor(m_monitor, &output))) {
         Logger::err("DXGI: ResizeTarget: Failed to query containing output");
         return E_FAIL;
       }
@@ -570,7 +570,7 @@ namespace dxvk {
     if (!IsWindow(m_window))
       return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
     
-    if (FAILED(m_adapter->GetOutputFromMonitor(m_monitor, &output))
+    if (FAILED(GetOutputFromMonitor(m_monitor, &output))
      || FAILED(RestoreDisplayMode(output.ptr())))
       Logger::warn("DXGI: LeaveFullscreenMode: Failed to restore display mode");
     
@@ -675,6 +675,27 @@ namespace dxvk {
       return presentDevice->CreateSwapChainForHwnd(m_window, &m_desc, ppSwapChain);
     
     return E_INVALIDARG;
+  }
+  
+  
+  HRESULT DxgiSwapChain::GetOutputFromMonitor(
+          HMONITOR                  Monitor,
+          IDXGIOutput**             ppOutput) {
+    if (!ppOutput)
+      return DXGI_ERROR_INVALID_CALL;
+    
+    for (uint32_t i = 0; SUCCEEDED(m_adapter->EnumOutputs(i, ppOutput)); i++) {
+      DXGI_OUTPUT_DESC outputDesc;
+      (*ppOutput)->GetDesc(&outputDesc);
+      
+      if (outputDesc.Monitor == Monitor)
+        return S_OK;
+      
+      (*ppOutput)->Release();
+      (*ppOutput) = nullptr;
+    }
+    
+    return DXGI_ERROR_NOT_FOUND;
   }
   
 }
