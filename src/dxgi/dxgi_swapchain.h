@@ -154,11 +154,6 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE SetColorSpace1(
             DXGI_COLOR_SPACE_TYPE     ColorSpace) final;
-
-    HRESULT SetGammaControl(
-      const DXGI_GAMMA_CONTROL*       pGammaControl);
-    
-    HRESULT SetDefaultGammaControl();
     
   private:
     

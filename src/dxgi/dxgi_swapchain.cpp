@@ -268,7 +268,7 @@ namespace dxvk {
       DXGI_VK_OUTPUT_DATA outputData;
       
       if (SUCCEEDED(m_adapter->GetOutputData(m_monitor, &outputData)) && outputData.GammaDirty) {
-        SetGammaControl(&outputData.GammaCurve);
+        m_presenter->SetGammaControl(DXGI_VK_GAMMA_CP_COUNT, outputData.GammaCurve.GammaCurve);
         
         outputData.GammaDirty = FALSE;
         m_adapter->SetOutputData(m_monitor, &outputData);
@@ -487,16 +487,6 @@ namespace dxvk {
   }
 
 
-  HRESULT DxgiSwapChain::SetGammaControl(const DXGI_GAMMA_CONTROL* pGammaControl) {
-    return m_presenter->SetGammaControl(DXGI_VK_GAMMA_CP_COUNT, pGammaControl->GammaCurve);
-  }
-  
-  
-  HRESULT DxgiSwapChain::SetDefaultGammaControl() {
-    return m_presenter->SetGammaControl(0, nullptr);
-  }
-  
-  
   VkExtent2D DxgiSwapChain::GetWindowSize() const {
     RECT windowRect;
     
@@ -606,7 +596,7 @@ namespace dxvk {
       rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
       SWP_FRAMECHANGED | SWP_NOZORDER | SWP_NOACTIVATE);
     
-    return SetDefaultGammaControl();
+    return m_presenter->SetGammaControl(0, nullptr);
   }
   
   
