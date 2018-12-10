@@ -5,7 +5,7 @@
 namespace dxvk {
   
   DxgiSwapChain::DxgiSwapChain(
-          DxgiFactory*                pFactory,
+          IDXGIFactory*               pFactory,
           IUnknown*                   pDevice,
           HWND                        hWnd,
     const DXGI_SWAP_CHAIN_DESC1*      pDesc,
