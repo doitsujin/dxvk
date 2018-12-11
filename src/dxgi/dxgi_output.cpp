@@ -167,7 +167,8 @@ namespace dxvk {
 
     if (targetWidth == 0 || targetHeight == 0) {
       DXGI_MODE_DESC activeMode = { };
-      GetDisplayMode(&activeMode, ENUM_CURRENT_SETTINGS);
+      GetMonitorDisplayMode(m_monitor,
+        ENUM_CURRENT_SETTINGS, &activeMode);
 
       targetWidth  = activeMode.Width;
       targetHeight = activeMode.Height;
@@ -274,7 +275,7 @@ namespace dxvk {
         continue;
       
       // Skip modes with incompatible formats
-      if (devMode.dmBitsPerPel != GetFormatBpp(EnumFormat))
+      if (devMode.dmBitsPerPel != GetMonitorFormatBpp(EnumFormat))
         continue;
       
       if (pDesc != nullptr) {
@@ -451,70 +452,6 @@ namespace dxvk {
           UINT*                 pFlags) {
     Logger::warn("DxgiOutput: CheckOverlayColorSpaceSupport: Stub");
     return DXGI_ERROR_UNSUPPORTED;
-  }
-
-
-  HRESULT DxgiOutput::GetDisplayMode(DXGI_MODE_DESC* pMode, DWORD ModeNum) {
-    ::MONITORINFOEXW monInfo;
-    monInfo.cbSize = sizeof(monInfo);
-
-    if (!::GetMonitorInfoW(m_monitor, reinterpret_cast<MONITORINFO*>(&monInfo))) {
-      Logger::err("DXGI: Failed to query monitor info");
-      return E_FAIL;
-    }
-    
-    DEVMODEW devMode = { };
-    devMode.dmSize = sizeof(devMode);
-    
-    if (!::EnumDisplaySettingsW(monInfo.szDevice, ModeNum, &devMode))
-      return DXGI_ERROR_NOT_FOUND;
-    
-    pMode->Width            = devMode.dmPelsWidth;
-    pMode->Height           = devMode.dmPelsHeight;
-    pMode->RefreshRate      = { devMode.dmDisplayFrequency, 1 };
-    pMode->Format           = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB; // FIXME
-    pMode->ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_PROGRESSIVE;
-    pMode->Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
-    return S_OK;
-  }
-  
-    
-  HRESULT DxgiOutput::SetDisplayMode(const DXGI_MODE_DESC* pMode) {
-    ::MONITORINFOEXW monInfo;
-    monInfo.cbSize = sizeof(monInfo);
-
-    if (!::GetMonitorInfoW(m_monitor, reinterpret_cast<MONITORINFO*>(&monInfo))) {
-      Logger::err("DXGI: Failed to query monitor info");
-      return E_FAIL;
-    }
-    
-    DEVMODEW devMode = { };
-    devMode.dmSize       = sizeof(devMode);
-    devMode.dmFields     = DM_PELSWIDTH | DM_PELSHEIGHT | DM_BITSPERPEL;
-    devMode.dmPelsWidth  = pMode->Width;
-    devMode.dmPelsHeight = pMode->Height;
-    devMode.dmBitsPerPel = GetFormatBpp(pMode->Format);
-    
-    if (pMode->RefreshRate.Numerator != 0)  {
-      devMode.dmFields |= DM_DISPLAYFREQUENCY;
-      devMode.dmDisplayFrequency = pMode->RefreshRate.Numerator
-                                 / pMode->RefreshRate.Denominator;
-    }
-    
-    Logger::info(str::format("DXGI: Setting display mode: ",
-      devMode.dmPelsWidth, "x", devMode.dmPelsHeight, "@",
-      devMode.dmDisplayFrequency));
-    
-    LONG status = ::ChangeDisplaySettingsExW(
-      monInfo.szDevice, &devMode, nullptr, CDS_FULLSCREEN, nullptr);
-    
-    return status == DISP_CHANGE_SUCCESSFUL ? S_OK : DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;;
-  }
-  
-  
-  uint32_t DxgiOutput::GetFormatBpp(DXGI_FORMAT Format) const {
-    DXGI_VK_FORMAT_INFO formatInfo = m_adapter->LookupFormat(Format, DXGI_VK_FORMAT_MODE_ANY);
-    return imageFormatInfo(formatInfo.Format)->elementSize * 8;
   }
   
 }

@@ -124,19 +124,10 @@ namespace dxvk {
             IUnknown*             pConcernedDevice,
             UINT*                 pFlags) final;
     
-    HRESULT GetDisplayMode(
-            DXGI_MODE_DESC*       pMode,
-            DWORD                 ModeNum);
-    
-    HRESULT SetDisplayMode(
-      const DXGI_MODE_DESC*       pMode);
-    
   private:
     
     Com<DxgiAdapter> m_adapter = nullptr;
     HMONITOR         m_monitor = nullptr;
-    
-    uint32_t GetFormatBpp(DXGI_FORMAT Format) const;
     
   };
 
