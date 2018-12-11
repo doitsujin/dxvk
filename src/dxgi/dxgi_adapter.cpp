@@ -320,31 +320,4 @@ namespace dxvk {
     return m_formats.GetFormatInfo(Format, Mode);
   }
   
-  
-  HRESULT DxgiAdapter::GetOutputData(
-          HMONITOR                  Monitor,
-          DXGI_VK_OUTPUT_DATA*      pOutputData) {
-    std::lock_guard<std::mutex> lock(m_outputMutex);
-    
-    auto entry = m_outputData.find(Monitor);
-    if (entry == m_outputData.end())
-      return DXGI_ERROR_NOT_FOUND;
-    
-    if (pOutputData == nullptr)
-      return S_FALSE;
-    
-    *pOutputData = entry->second;
-    return S_OK;
-  }
-  
-  
-  HRESULT DxgiAdapter::SetOutputData(
-          HMONITOR                  Monitor,
-    const DXGI_VK_OUTPUT_DATA*      pOutputData) {
-    std::lock_guard<std::mutex> lock(m_outputMutex);
-    
-    m_outputData.insert_or_assign(Monitor, *pOutputData);
-    return S_OK;
-  }
-  
 }
