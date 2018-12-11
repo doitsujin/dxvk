@@ -195,7 +195,7 @@ namespace dxvk {
       const DXGI_MODE_DESC*         pDisplayMode);
     
     HRESULT RestoreDisplayMode(
-            IDXGIOutput*            pOutput);
+            HMONITOR                hMonitor);
     
     HRESULT GetSampleCount(
             UINT                    Count,

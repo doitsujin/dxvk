@@ -43,10 +43,7 @@ namespace dxvk {
   
   
   DxgiSwapChain::~DxgiSwapChain() {
-    Com<IDXGIOutput> output;
-    
-    if (SUCCEEDED(GetOutputFromMonitor(m_monitor, &output)))
-      RestoreDisplayMode(output.ptr());
+    RestoreDisplayMode(m_monitor);
 
     // Decouple swap chain from monitor if necessary
     DXGI_VK_MONITOR_DATA* monitorInfo = nullptr;
@@ -584,13 +581,10 @@ namespace dxvk {
   
   
   HRESULT DxgiSwapChain::LeaveFullscreenMode() {
-    Com<IDXGIOutput> output;
-
     if (!IsWindow(m_window))
       return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
     
-    if (FAILED(GetOutputFromMonitor(m_monitor, &output))
-     || FAILED(RestoreDisplayMode(output.ptr())))
+    if (FAILED(RestoreDisplayMode(m_monitor)))
       Logger::warn("DXGI: LeaveFullscreenMode: Failed to restore display mode");
     
     // Reset gamma control and decouple swap chain from monitor
@@ -633,19 +627,20 @@ namespace dxvk {
   HRESULT DxgiSwapChain::ChangeDisplayMode(
           IDXGIOutput*            pOutput,
     const DXGI_MODE_DESC*         pDisplayMode) {
-    auto output = static_cast<DxgiOutput*>(pOutput);
-
-    if (output == nullptr)
+    if (!pOutput)
       return DXGI_ERROR_INVALID_CALL;
     
     // Find a mode that the output supports
+    DXGI_OUTPUT_DESC outputDesc;
+    pOutput->GetDesc(&outputDesc);
+    
     DXGI_MODE_DESC preferredMode = *pDisplayMode;
     DXGI_MODE_DESC selectedMode;
 
     if (preferredMode.Format == DXGI_FORMAT_UNKNOWN)
       preferredMode.Format = m_desc.Format;
     
-    HRESULT hr = output->FindClosestMatchingMode(
+    HRESULT hr = pOutput->FindClosestMatchingMode(
       &preferredMode, &selectedMode, nullptr);
     
     if (FAILED(hr)) {
@@ -657,26 +652,24 @@ namespace dxvk {
       return hr;
     }
     
-    return output->SetDisplayMode(&selectedMode);
+    return SetMonitorDisplayMode(outputDesc.Monitor, &selectedMode);
   }
   
   
-  HRESULT DxgiSwapChain::RestoreDisplayMode(IDXGIOutput* pOutput) {
-    auto output = static_cast<DxgiOutput*>(pOutput);
-    
-    if (output == nullptr)
+  HRESULT DxgiSwapChain::RestoreDisplayMode(HMONITOR hMonitor) {
+    if (!hMonitor)
       return DXGI_ERROR_INVALID_CALL;
     
     // Restore registry settings
     DXGI_MODE_DESC mode;
     
-    HRESULT hr = output->GetDisplayMode(
-      &mode, ENUM_REGISTRY_SETTINGS);
+    HRESULT hr = GetMonitorDisplayMode(
+      hMonitor, ENUM_REGISTRY_SETTINGS, &mode);
     
     if (FAILED(hr))
       return hr;
     
-    return output->SetDisplayMode(&mode);
+    return SetMonitorDisplayMode(hMonitor, &mode);
   }
   
   
