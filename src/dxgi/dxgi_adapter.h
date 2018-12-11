@@ -72,18 +72,11 @@ namespace dxvk {
 
     Rc<DxvkAdapter> STDMETHODCALLTYPE GetDXVKAdapter() final;
     
-    DXGI_VK_FORMAT_INFO STDMETHODCALLTYPE LookupFormat(
-            DXGI_FORMAT               Format,
-            DXGI_VK_FORMAT_MODE       Mode);
-    
   private:
-    
-    using OutputMap = std::unordered_map<HMONITOR, DXGI_VK_OUTPUT_DATA>;
     
     Com<DxgiFactory>  m_factory;
     Rc<DxvkAdapter>   m_adapter;
     
-    DXGIVkFormatTable m_formats;
     UINT64            m_memReservation[2] = { 0, 0 };
     
   };
