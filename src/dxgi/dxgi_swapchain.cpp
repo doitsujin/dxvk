@@ -47,6 +47,16 @@ namespace dxvk {
     
     if (SUCCEEDED(GetOutputFromMonitor(m_monitor, &output)))
       RestoreDisplayMode(output.ptr());
+
+    // Decouple swap chain from monitor if necessary
+    DXGI_VK_MONITOR_DATA* monitorInfo = nullptr;
+    
+    if (SUCCEEDED(AcquireMonitorData(m_monitor, &monitorInfo))) {
+      if (monitorInfo->pSwapChain == this)
+        monitorInfo->pSwapChain = nullptr;
+      
+      ReleaseMonitorData();
+    }
   }
   
   
@@ -263,17 +273,6 @@ namespace dxvk {
     SyncInterval = std::min<UINT>(SyncInterval, 4);
 
     try {
-      // If in fullscreen mode, apply any updated gamma curve
-      // if it has been changed since the last present call.
-      DXGI_VK_OUTPUT_DATA outputData;
-      
-      if (SUCCEEDED(m_adapter->GetOutputData(m_monitor, &outputData)) && outputData.GammaDirty) {
-        m_presenter->SetGammaControl(DXGI_VK_GAMMA_CP_COUNT, outputData.GammaCurve.GammaCurve);
-        
-        outputData.GammaDirty = FALSE;
-        m_adapter->SetOutputData(m_monitor, &outputData);
-      }
-      
       return m_presenter->Present(SyncInterval, PresentFlags, nullptr);
     } catch (const DxvkError& err) {
       Logger::err(err.message());
@@ -481,9 +480,17 @@ namespace dxvk {
   }
 
 
-  HRESULT DxgiSwapChain::SetColorSpace1(DXGI_COLOR_SPACE_TYPE ColorSpace) {
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::SetColorSpace1(DXGI_COLOR_SPACE_TYPE ColorSpace) {
     Logger::err("DxgiSwapChain::SetColorSpace1: Not implemented");
     return E_NOTIMPL;
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE DxgiSwapChain::SetGammaControl(
+          UINT                      NumPoints,
+    const DXGI_RGB*                 pGammaCurve) {
+    std::lock_guard<std::mutex> lockBuf(m_lockBuffer);
+    return m_presenter->SetGammaControl(NumPoints, pGammaCurve);
   }
 
 
@@ -560,6 +567,18 @@ namespace dxvk {
       SWP_FRAMECHANGED | SWP_SHOWWINDOW | SWP_NOACTIVATE);
     
     m_monitor = desc.Monitor;
+
+    // Apply current gamma curve of the output
+    DXGI_VK_MONITOR_DATA* monitorInfo = nullptr;
+
+    if (SUCCEEDED(AcquireMonitorData(m_monitor, &monitorInfo))) {
+      if (!monitorInfo->pSwapChain)
+        monitorInfo->pSwapChain = this;
+      
+      SetGammaControl(DXGI_VK_GAMMA_CP_COUNT, monitorInfo->GammaCurve.GammaCurve);
+      ReleaseMonitorData();
+    }
+
     return S_OK;
   }
   
@@ -573,6 +592,17 @@ namespace dxvk {
     if (FAILED(GetOutputFromMonitor(m_monitor, &output))
      || FAILED(RestoreDisplayMode(output.ptr())))
       Logger::warn("DXGI: LeaveFullscreenMode: Failed to restore display mode");
+    
+    // Reset gamma control and decouple swap chain from monitor
+    DXGI_VK_MONITOR_DATA* monitorInfo = nullptr;
+
+    if (SUCCEEDED(AcquireMonitorData(m_monitor, &monitorInfo))) {
+      if (monitorInfo->pSwapChain == this)
+        monitorInfo->pSwapChain = nullptr;
+      
+      SetGammaControl(0, nullptr);
+      ReleaseMonitorData();
+    }
     
     // Restore internal state
     m_descFs.Windowed = TRUE;
@@ -596,7 +626,7 @@ namespace dxvk {
       rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
       SWP_FRAMECHANGED | SWP_NOZORDER | SWP_NOACTIVATE);
     
-    return m_presenter->SetGammaControl(0, nullptr);
+    return S_OK;
   }
   
   

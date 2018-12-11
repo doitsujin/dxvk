@@ -19,21 +19,19 @@ namespace dxvk {
               HMONITOR      monitor)
   : m_adapter(adapter),
     m_monitor(monitor) {
-    // Init output data if necessary
-    if (FAILED(m_adapter->GetOutputData(m_monitor, nullptr))) {
-      DXGI_VK_OUTPUT_DATA outputData;
-      outputData.FrameStats = DXGI_FRAME_STATISTICS();
-      outputData.GammaCurve.Scale  = { 1.0f, 1.0f, 1.0f };
-      outputData.GammaCurve.Offset = { 0.0f, 0.0f, 0.0f };
-      
-      for (uint32_t i = 0; i < DXGI_VK_GAMMA_CP_COUNT; i++) {
-        const float value = GammaControlPointLocation(i);
-        outputData.GammaCurve.GammaCurve[i] = { value, value, value };
-      }
-      
-      outputData.GammaDirty = FALSE;
-      m_adapter->SetOutputData(m_monitor, &outputData);
+    // Init monitor info if necessary
+    DXGI_VK_MONITOR_DATA monitorData;
+    monitorData.pSwapChain = nullptr;
+    monitorData.FrameStats = DXGI_FRAME_STATISTICS();
+    monitorData.GammaCurve.Scale  = { 1.0f, 1.0f, 1.0f };
+    monitorData.GammaCurve.Offset = { 0.0f, 0.0f, 0.0f };
+    
+    for (uint32_t i = 0; i < DXGI_VK_GAMMA_CP_COUNT; i++) {
+      const float value = GammaControlPointLocation(i);
+      monitorData.GammaCurve.GammaCurve[i] = { value, value, value };
     }
+    
+    InitMonitorData(monitor, &monitorData);    
   }
   
   
@@ -330,27 +328,27 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE DxgiOutput::GetFrameStatistics(DXGI_FRAME_STATISTICS* pStats) {
-    DXGI_VK_OUTPUT_DATA outputData;
+    DXGI_VK_MONITOR_DATA* monitorInfo = nullptr;
+    HRESULT hr = AcquireMonitorData(m_monitor, &monitorInfo);
+
+    if (FAILED(hr))
+      return hr;
     
-    if (FAILED(m_adapter->GetOutputData(m_monitor, &outputData))) {
-      Logger::err("DXGI: Failed to query output data");
-      return E_FAIL;
-    }
-    
-    *pStats = outputData.FrameStats;
+    *pStats = monitorInfo->FrameStats;
+    ReleaseMonitorData();
     return S_OK;
   }
   
   
   HRESULT STDMETHODCALLTYPE DxgiOutput::GetGammaControl(DXGI_GAMMA_CONTROL* pArray) {
-    DXGI_VK_OUTPUT_DATA outputData;
+    DXGI_VK_MONITOR_DATA* monitorInfo = nullptr;
+    HRESULT hr = AcquireMonitorData(m_monitor, &monitorInfo);
+
+    if (FAILED(hr))
+      return hr;
     
-    if (FAILED(m_adapter->GetOutputData(m_monitor, &outputData))) {
-      Logger::err("DXGI: Failed to query output data");
-      return E_FAIL;
-    }
-    
-    *pArray = outputData.GammaCurve;
+    *pArray = monitorInfo->GammaCurve;
+    ReleaseMonitorData();
     return S_OK;
   }
   
@@ -385,20 +383,21 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE DxgiOutput::SetGammaControl(const DXGI_GAMMA_CONTROL* pArray) {
-    DXGI_VK_OUTPUT_DATA outputData;
+    DXGI_VK_MONITOR_DATA* monitorInfo = nullptr;
+    HRESULT hr = AcquireMonitorData(m_monitor, &monitorInfo);
+
+    if (FAILED(hr))
+      return hr;
     
-    if (FAILED(m_adapter->GetOutputData(m_monitor, &outputData))) {
-      Logger::err("DXGI: Failed to query output data");
-      return E_FAIL;
+    monitorInfo->GammaCurve = *pArray;
+
+    if (monitorInfo->pSwapChain) {
+      hr = monitorInfo->pSwapChain->SetGammaControl(
+        DXGI_VK_GAMMA_CP_COUNT, pArray->GammaCurve);
     }
-    
-    outputData.GammaCurve = *pArray;
-    outputData.GammaDirty = TRUE;
-    
-    if (FAILED(m_adapter->SetOutputData(m_monitor, &outputData))) {
-      Logger::err("DXGI: Failed to update output data");
-      return E_FAIL;
-    } return S_OK;
+
+    ReleaseMonitorData();
+    return hr;
   }
   
   

@@ -155,6 +155,10 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE SetColorSpace1(
             DXGI_COLOR_SPACE_TYPE     ColorSpace) final;
     
+    HRESULT STDMETHODCALLTYPE SetGammaControl(
+            UINT                      NumPoints,
+      const DXGI_RGB*                 pGammaCurve);
+    
   private:
     
     struct WindowState {
@@ -167,7 +171,7 @@ namespace dxvk {
     std::mutex                      m_lockBuffer;
 
     Com<IDXGIFactory>               m_factory;
-    Com<DxgiAdapter>                m_adapter;
+    Com<IDXGIAdapter>               m_adapter;
     
     HWND                            m_window;
     DXGI_SWAP_CHAIN_DESC1           m_desc;

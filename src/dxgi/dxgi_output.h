@@ -1,5 +1,6 @@
 #pragma once
 
+#include "dxgi_monitor.h"
 #include "dxgi_object.h"
 
 namespace dxvk {
