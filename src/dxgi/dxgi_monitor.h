@@ -20,6 +20,16 @@ namespace dxvk {
 
 
   /**
+   * \brief Queries bits per pixel for a format
+   * 
+   * The format must be a valid swap chain format.
+   * \param [in] Format The DXGI format to query
+   * \returns Bits per pixel for this format
+   */
+  uint32_t GetMonitorFormatBpp(
+          DXGI_FORMAT             Format);
+  
+  /**
    * \brief Initializes monitor data
    * 
    * Fails if data for the given monitor already exists.
@@ -50,5 +60,30 @@ namespace dxvk {
    * \param [in] hMonitor The monitor handle
    */
   void ReleaseMonitorData();
+
+
+  /**
+   * \brief Retrieves monitor display mode
+   *
+   * \param [in] hMonitor Monitor handle
+   * \param [in] ModeNum Mode number
+   * \param [out] Display mode properties
+   * \returns S_OK on success
+   */
+  HRESULT GetMonitorDisplayMode(
+          HMONITOR                hMonitor,
+          DWORD                   ModeNum,
+          DXGI_MODE_DESC*         pMode);
+
+  /**
+   * \brief Sets monitor display mode
+   * 
+   * \param [in] hMonitor Monitor handle
+   * \param [in] pMode Display mode properties
+   * \returns S_OK on success
+   */
+  HRESULT SetMonitorDisplayMode(
+          HMONITOR                hMonitor,
+    const DXGI_MODE_DESC*         pMode);
 
 }
