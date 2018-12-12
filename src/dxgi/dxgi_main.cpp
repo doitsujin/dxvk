@@ -6,13 +6,18 @@ namespace dxvk {
   Logger Logger::s_instance("dxgi.log");
   
   HRESULT createDxgiFactory(UINT Flags, REFIID riid, void **ppFactory) {
-    Com<DxgiFactory> factory = new DxgiFactory(Flags);
-    HRESULT hr = factory->QueryInterface(riid, ppFactory);
+    try {
+      Com<DxgiFactory> factory = new DxgiFactory(Flags);
+      HRESULT hr = factory->QueryInterface(riid, ppFactory);
 
-    if (FAILED(hr))
-      return DXGI_ERROR_UNSUPPORTED;
-    
-    return S_OK;
+      if (FAILED(hr))
+        return DXGI_ERROR_UNSUPPORTED;
+      
+      return S_OK;
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return E_FAIL;
+    }
   }
 }
 
