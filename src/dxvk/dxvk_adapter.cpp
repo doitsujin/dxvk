@@ -211,13 +211,14 @@ namespace dxvk {
   Rc<DxvkDevice> DxvkAdapter::createDevice(DxvkDeviceFeatures enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 13> devExtensionList = {{
+    std::array<DxvkExt*, 14> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.extShaderViewportIndexLayer,
       &devExtensions.extTransformFeedback,
       &devExtensions.extVertexAttributeDivisor,
       &devExtensions.khrDedicatedAllocation,
       &devExtensions.khrDescriptorUpdateTemplate,
+      &devExtensions.khrDriverProperties,
       &devExtensions.khrGetMemoryRequirements2,
       &devExtensions.khrImageFormatList,
       &devExtensions.khrMaintenance1,
