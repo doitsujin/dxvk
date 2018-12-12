@@ -10,8 +10,10 @@ namespace dxvk {
 
 
   DxbcOptions::DxbcOptions(const Rc<DxvkDevice>& device, const D3D11Options& options) {
+    const Rc<DxvkAdapter> adapter = device->adapter();
+
     const DxvkDeviceFeatures& devFeatures = device->features();
-    const DxvkDeviceInfo& devInfo = device->adapter()->devicePropertiesExt();
+    const DxvkDeviceInfo& devInfo = adapter->devicePropertiesExt();
     
     useStorageImageReadWithoutFormat
       = devFeatures.core.features.shaderStorageImageReadWithoutFormat;
@@ -24,10 +26,8 @@ namespace dxvk {
     
     // Disable early discard on AMD due to GPU hangs
     // Disable early discard on Nvidia because it may hurt performance
-    auto vendor = DxvkGpuVendor(devInfo.core.properties.vendorID);
-
-    if (vendor == DxvkGpuVendor::Amd
-     || vendor == DxvkGpuVendor::Nvidia)
+    if (adapter->matchesDriver(DxvkGpuVendor::Amd,    VK_DRIVER_ID_MESA_RADV_KHR,          0, 0)
+     || adapter->matchesDriver(DxvkGpuVendor::Nvidia, VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0))
       useSubgroupOpsForEarlyDiscard = false;
   }
   
