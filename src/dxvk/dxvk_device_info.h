@@ -18,6 +18,7 @@ namespace dxvk {
     VkPhysicalDeviceSubgroupProperties                  coreSubgroup;
     VkPhysicalDeviceTransformFeedbackPropertiesEXT      extTransformFeedback;
     VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT extVertexAttributeDivisor;
+    VkPhysicalDeviceDriverPropertiesKHR                 khrDeviceDriverProperties;
   };
 
 

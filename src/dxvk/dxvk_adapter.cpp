@@ -327,6 +327,22 @@ namespace dxvk {
           VkDeviceSize        bytes) {
     m_heapAlloc[heap] -= bytes;
   }
+
+
+  bool DxvkAdapter::matchesDriver(
+          DxvkGpuVendor       vendor,
+          VkDriverIdKHR       driver,
+          uint32_t            minVer,
+          uint32_t            maxVer) const {
+    bool driverMatches = m_deviceInfo.khrDeviceDriverProperties.driverID
+      ? driver == m_deviceInfo.khrDeviceDriverProperties.driverID
+      : vendor == DxvkGpuVendor(m_deviceInfo.core.properties.vendorID);
+
+    if (minVer) driverMatches &= m_deviceInfo.core.properties.driverVersion >= minVer;
+    if (maxVer) driverMatches &= m_deviceInfo.core.properties.driverVersion <  maxVer;
+
+    return driverMatches;
+  }
   
   
   void DxvkAdapter::logAdapterInfo() const {
@@ -396,6 +412,11 @@ namespace dxvk {
     if (m_deviceExtensions.supports(VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME)) {
       m_deviceInfo.extVertexAttributeDivisor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT;
       m_deviceInfo.extVertexAttributeDivisor.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.extVertexAttributeDivisor);
+    }
+
+    if (m_deviceExtensions.supports(VK_KHR_DRIVER_PROPERTIES_EXTENSION_NAME)) {
+      m_deviceInfo.khrDeviceDriverProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES_KHR;
+      m_deviceInfo.khrDeviceDriverProperties.pNext = std::exchange(m_deviceInfo.core.pNext, &m_deviceInfo.khrDeviceDriverProperties);
     }
 
     // Query full device properties for all enabled extensions
