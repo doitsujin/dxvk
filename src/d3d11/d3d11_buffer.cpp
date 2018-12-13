@@ -72,6 +72,11 @@ namespace dxvk {
       info.stages |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
       info.access |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
     }
+
+    if (pDesc->MiscFlags & (
+        D3D11_RESOURCE_MISC_BUFFER_ALLOW_RAW_VIEWS |
+        D3D11_RESOURCE_MISC_BUFFER_STRUCTURED))
+      info.usage |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
     
     // Default constant buffers may get updated frequently, in which
     // case mapping the buffer is faster than using update commands.
