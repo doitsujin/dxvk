@@ -920,6 +920,9 @@ namespace dxvk {
     
     //////////////////////////
     // Resource query methods
+    DxbcRegisterValue emitQueryBufferSize(
+      const DxbcRegister&           resource);
+    
     DxbcRegisterValue emitQueryTexelBufferSize(
       const DxbcRegister&           resource);
     
