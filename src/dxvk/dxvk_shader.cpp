@@ -133,7 +133,7 @@ namespace dxvk {
   void DxvkShader::defineResourceSlots(
           DxvkDescriptorSlotMapping& mapping) const {
     for (const auto& slot : m_slots)
-      mapping.defineSlot(slot.slot, slot.type, slot.view, m_stage);
+      mapping.defineSlot(slot.slot, slot.type, slot.view, m_stage, slot.access);
   }
   
   

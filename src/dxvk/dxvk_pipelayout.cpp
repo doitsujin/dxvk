@@ -13,17 +13,20 @@ namespace dxvk {
           uint32_t              slot,
           VkDescriptorType      type,
           VkImageViewType       view,
-          VkShaderStageFlagBits stage) {
+          VkShaderStageFlagBits stage,
+          VkAccessFlags         access) {
     uint32_t bindingId = this->getBindingId(slot);
     
     if (bindingId != InvalidBinding) {
       m_descriptorSlots[bindingId].stages |= stage;
+      m_descriptorSlots[bindingId].access |= access;
     } else {
       DxvkDescriptorSlot slotInfo;
       slotInfo.slot   = slot;
       slotInfo.type   = type;
       slotInfo.view   = view;
       slotInfo.stages = stage;
+      slotInfo.access = access;
       m_descriptorSlots.push_back(slotInfo);
     }
   }

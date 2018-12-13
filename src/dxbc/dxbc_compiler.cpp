@@ -800,6 +800,7 @@ namespace dxvk {
     resource.slot = bindingId;
     resource.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     resource.view = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    resource.access = VK_ACCESS_UNIFORM_READ_BIT;
     m_resourceSlots.push_back(resource);
   }
 
@@ -836,6 +837,7 @@ namespace dxvk {
     resource.slot = bindingId;
     resource.type = VK_DESCRIPTOR_TYPE_SAMPLER;
     resource.view = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    resource.access = 0;
     m_resourceSlots.push_back(resource);
   }
   
@@ -1008,11 +1010,13 @@ namespace dxvk {
     DxvkResourceSlot resource;
     resource.slot = bindingId;
     resource.view = typeInfo.vtype;
+    resource.access = VK_ACCESS_SHADER_READ_BIT;
     
     if (isUav) {
       resource.type = resourceType == DxbcResourceDim::Buffer
         ? VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
         : VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+      resource.access |= VK_ACCESS_SHADER_WRITE_BIT;
     } else {
       resource.type = resourceType == DxbcResourceDim::Buffer
         ? VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER
@@ -1121,6 +1125,11 @@ namespace dxvk {
       ? VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER
       : VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
     resource.view = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    resource.access = VK_ACCESS_SHADER_READ_BIT;
+
+    if (isUav)
+      resource.access |= VK_ACCESS_SHADER_WRITE_BIT;
+
     m_resourceSlots.push_back(resource);
   }
   
@@ -1357,6 +1366,8 @@ namespace dxvk {
     resource.slot = bindingId;
     resource.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     resource.view = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    resource.access = VK_ACCESS_SHADER_READ_BIT
+                    | VK_ACCESS_SHADER_WRITE_BIT;
     m_resourceSlots.push_back(resource);
     
     return varId;

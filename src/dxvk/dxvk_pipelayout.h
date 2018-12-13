@@ -16,6 +16,7 @@ namespace dxvk {
     uint32_t           slot;
     VkDescriptorType   type;
     VkImageViewType    view;
+    VkAccessFlags      access;
   };
   
   /**
@@ -30,6 +31,7 @@ namespace dxvk {
     VkDescriptorType   type;    ///< Descriptor type (aka resource type)
     VkImageViewType    view;    ///< Compatible image view type
     VkShaderStageFlags stages;  ///< Stages that can use the resource
+    VkAccessFlags      access;  ///< Access flags
   };
   
   
@@ -75,12 +77,14 @@ namespace dxvk {
      * \param [in] type Resource type
      * \param [in] view Image view type
      * \param [in] stage Shader stage
+     * \param [in] access Access flags
      */
     void defineSlot(
             uint32_t              slot,
             VkDescriptorType      type,
             VkImageViewType       view,
-            VkShaderStageFlagBits stage);
+            VkShaderStageFlagBits stage,
+            VkAccessFlags         access);
     
     /**
      * \brief Gets binding ID for a slot
@@ -230,13 +234,7 @@ namespace dxvk {
       VkShaderStageFlags stages = 0;
 
       for (const auto& slot : m_bindingSlots) {
-        bool isStorageDescriptor =
-          slot.type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER         ||
-          slot.type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC ||
-          slot.type == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER   ||
-          slot.type == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-        
-        if (isStorageDescriptor)
+        if (slot.access & VK_ACCESS_SHADER_WRITE_BIT)
           stages |= slot.stages;
       }
       
