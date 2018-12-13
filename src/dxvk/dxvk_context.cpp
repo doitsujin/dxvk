@@ -163,7 +163,10 @@ namespace dxvk {
      || m_rc[slot].bufferView != bufferView) {
       m_rc[slot].imageView   = imageView;
       m_rc[slot].bufferView  = bufferView;
-      
+      m_rc[slot].bufferSlice = bufferView != nullptr
+        ? bufferView->slice()
+        : DxvkBufferSlice();
+
       m_flags.set(
         DxvkContextFlag::CpDirtyResources,
         DxvkContextFlag::GpDirtyResources);
