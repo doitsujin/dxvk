@@ -308,6 +308,11 @@ namespace dxvk {
             uint32_t                indexCount,
       const uint32_t*               indexArray);
     
+    uint32_t opArrayLength(
+            uint32_t                resultType,
+            uint32_t                structure,
+            uint32_t                memberId);
+    
     uint32_t opAny(
             uint32_t                resultType,
             uint32_t                vector);

@@ -755,6 +755,21 @@ namespace dxvk {
       m_code.putInt32(indexArray[i]);
     return resultId;
   }
+
+
+  uint32_t SpirvModule::opArrayLength(
+          uint32_t                resultType,
+          uint32_t                structure,
+          uint32_t                memberId) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpArrayLength, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(structure);
+    m_code.putWord(memberId);
+    return resultId;
+  }
   
   
   uint32_t SpirvModule::opAny(
