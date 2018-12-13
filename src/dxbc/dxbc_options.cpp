@@ -21,6 +21,8 @@ namespace dxvk {
       = (devInfo.coreSubgroup.subgroupSize >= 4)
      && (devInfo.coreSubgroup.supportedStages     & VK_SHADER_STAGE_FRAGMENT_BIT)
      && (devInfo.coreSubgroup.supportedOperations & VK_SUBGROUP_FEATURE_BALLOT_BIT);
+    useRawSsbo
+      = (devInfo.core.properties.limits.minStorageBufferOffsetAlignment <= sizeof(uint32_t));
     
     zeroInitWorkgroupMemory = options.zeroInitWorkgroupMemory;
     
