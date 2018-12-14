@@ -153,6 +153,9 @@ namespace dxvk {
             BOOL                      Vsync,
             VkPresentModeKHR*         pDstModes);
     
+    uint32_t PickImageCount(
+            UINT                      Preferred);
+    
   };
 
 }

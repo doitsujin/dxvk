@@ -308,7 +308,7 @@ namespace dxvk {
   void D3D11SwapChain::RecreateSwapChain(BOOL Vsync) {
     vk::PresenterDesc presenterDesc;
     presenterDesc.imageExtent     = { m_desc.Width, m_desc.Height };
-    presenterDesc.imageCount      = m_desc.BufferCount;
+    presenterDesc.imageCount      = PickImageCount(m_desc.BufferCount);
     presenterDesc.numFormats      = PickFormats(m_desc.Format, presenterDesc.formats);
     presenterDesc.numPresentModes = PickPresentModes(Vsync, presenterDesc.presentModes);
 
@@ -329,7 +329,7 @@ namespace dxvk {
 
     vk::PresenterDesc presenterDesc;
     presenterDesc.imageExtent     = { m_desc.Width, m_desc.Height };
-    presenterDesc.imageCount      = m_desc.BufferCount;
+    presenterDesc.imageCount      = PickImageCount(m_desc.BufferCount);
     presenterDesc.numFormats      = PickFormats(m_desc.Format, presenterDesc.formats);
     presenterDesc.numPresentModes = PickPresentModes(false, presenterDesc.presentModes);
 
@@ -718,6 +718,13 @@ namespace dxvk {
     }
 
     return n;
+  }
+
+
+  uint32_t D3D11SwapChain::PickImageCount(
+          UINT                      Preferred) {
+    int32_t option = m_parent->GetOptions()->numBackBuffers;
+    return option > 0 ? uint32_t(option) : uint32_t(Preferred);
   }
 
 }
