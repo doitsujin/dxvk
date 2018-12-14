@@ -763,7 +763,7 @@ namespace dxvk {
     m_module.decorateBlock       (structType);
     m_module.memberDecorateOffset(structType, 0, 0);
     
-    m_module.setDebugName        (structType, str::format("struct_", name).c_str());
+    m_module.setDebugName        (structType, str::format(name, "_t").c_str());
     m_module.setDebugMemberName  (structType, 0, "m");
     
     // Variable that we'll use to access the buffer
@@ -1080,7 +1080,7 @@ namespace dxvk {
       m_module.memberDecorateOffset(structType, 0, 0);
 
       m_module.setDebugName(structType,
-        str::format("struct_", isUav ? "u" : "t", registerId).c_str());
+        str::format(isUav ? "u" : "t", registerId, "_t").c_str());
       m_module.setDebugMemberName(structType, 0, "m");
 
       if (!isUav)
