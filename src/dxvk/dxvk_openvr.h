@@ -5,6 +5,12 @@
 
 #include "dxvk_include.h"
 
+#ifdef __WINE__
+using SoHandle = void*;
+#else
+using SoHandle = HMODULE;
+#endif
+
 namespace vr {
   class IVRCompositor;
   class IVRSystem;
@@ -66,11 +72,7 @@ namespace dxvk {
 
     std::mutex            m_mutex;
     vr::IVRCompositor*    m_compositor = nullptr;
-#ifdef __WINE__
-    void*                 m_ovrApi     = nullptr;
-#else
-    HMODULE               m_ovrApi     = nullptr;
-#endif
+    SoHandle              m_ovrApi     = nullptr;
 
     bool m_loadedOvrApi      = false;
     bool m_initializedOpenVr = false;
@@ -91,6 +93,12 @@ namespace dxvk {
     vr::IVRCompositor* getCompositor();
 
     void shutdown();
+
+    SoHandle loadLibrary();
+
+    void freeLibrary();
+
+    void* getSym(const char* sym);
     
   };
 
