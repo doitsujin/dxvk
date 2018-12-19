@@ -5,14 +5,17 @@
 #include "d3d11_include.h"
 
 namespace dxvk {
+
+  class D3D11Device;
   
   class D3D11VkInterop : public ComObject<IDXGIVkInteropDevice> {
     
   public:
     
     D3D11VkInterop(
-            IDXGIObject*  pContainer,
-            ID3D11Device* pDevice);
+            IDXGIObject*          pContainer,
+            D3D11Device*          pDevice);
+
     ~D3D11VkInterop();
     
     ULONG STDMETHODCALLTYPE AddRef();
@@ -20,8 +23,8 @@ namespace dxvk {
     ULONG STDMETHODCALLTYPE Release();
     
     HRESULT STDMETHODCALLTYPE QueryInterface(
-            REFIID                  riid,
-            void**                  ppvObject);
+            REFIID                riid,
+            void**                ppvObject);
     
     void STDMETHODCALLTYPE GetVulkanHandles(
             VkInstance*           pInstance,
@@ -46,8 +49,8 @@ namespace dxvk {
     
   private:
     
-    IDXGIObject*  m_container;
-    ID3D11Device* m_device;
+    IDXGIObject* m_container;
+    D3D11Device* m_device;
     
   };
   

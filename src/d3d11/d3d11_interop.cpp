@@ -9,8 +9,8 @@
 namespace dxvk {
   
   D3D11VkInterop::D3D11VkInterop(
-          IDXGIObject*  pContainer,
-          ID3D11Device* pDevice)
+          IDXGIObject*          pContainer,
+          D3D11Device*          pDevice)
   : m_container (pContainer),
     m_device    (pDevice) { }
   
@@ -31,8 +31,8 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE D3D11VkInterop::QueryInterface(
-          REFIID                  riid,
-          void**                  ppvObject) {
+          REFIID                riid,
+          void**                ppvObject) {
     return m_container->QueryInterface(riid, ppvObject);
   }
   
@@ -41,7 +41,7 @@ namespace dxvk {
           VkInstance*           pInstance,
           VkPhysicalDevice*     pPhysDev,
           VkDevice*             pDevice) {
-    auto device   = static_cast<D3D11Device*>(m_device)->GetDXVKDevice();
+    auto device   = m_device->GetDXVKDevice();
     auto adapter  = device->adapter();
     auto instance = adapter->instance();
     
@@ -96,12 +96,12 @@ namespace dxvk {
   
   
   void STDMETHODCALLTYPE D3D11VkInterop::LockSubmissionQueue() {
-    static_cast<D3D11Device*>(m_device)->GetDXVKDevice()->lockSubmission();
+    m_device->GetDXVKDevice()->lockSubmission();
   }
   
   
   void STDMETHODCALLTYPE D3D11VkInterop::ReleaseSubmissionQueue() {
-    static_cast<D3D11Device*>(m_device)->GetDXVKDevice()->unlockSubmission();
+    m_device->GetDXVKDevice()->unlockSubmission();
   }
   
 }
