@@ -57,10 +57,10 @@ namespace dxvk {
   void VrInstance::initInstanceExtensions() {
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    if (m_compositor == nullptr)
+    if (!m_compositor)
       m_compositor = this->getCompositor();
 
-    if (m_compositor == nullptr || m_initializedInsExt)
+    if (!m_compositor || m_initializedInsExt)
       return;
     
     m_insExtensions = this->queryInstanceExtensions();
@@ -71,7 +71,7 @@ namespace dxvk {
   void VrInstance::initDeviceExtensions(const DxvkInstance* instance) {
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    if (m_compositor == nullptr || m_initializedDevExt)
+    if (!m_compositor || m_initializedDevExt)
       return;
     
     for (uint32_t i = 0; instance->enumAdapters(i) != nullptr; i++) {
@@ -121,40 +121,19 @@ namespace dxvk {
     // Locate the OpenVR DLL if loaded by the process. Some
     // applications may not have OpenVR loaded at the time
     // they create the DXGI instance, so we try our own DLL.
-#ifdef __WINE__
-    // on winelib, load native openvr_api directly
-    m_ovrApi = ::dlopen("libopenvr_api.so", RTLD_LAZY | RTLD_NOLOAD);
-
-    if (m_ovrApi == nullptr) {
-      m_ovrApi = ::dlopen("libopenvr_api_dxvk.so", RTLD_LAZY | RTLD_LOCAL);
-      m_loadedOvrApi = m_ovrApi != nullptr;
-    }
-#else
-    m_ovrApi = ::GetModuleHandle("openvr_api.dll");
-
-    if (m_ovrApi == nullptr) {
-      m_ovrApi = ::LoadLibrary("openvr_api_dxvk.dll");
-      m_loadedOvrApi = m_ovrApi != nullptr;
-    }
-#endif
+    m_ovrApi = this->loadLibrary();
     
-    if (m_ovrApi == nullptr) {
+    if (!m_ovrApi) {
       Logger::warn("OpenVR: Failed to locate module");
       return nullptr;
     }
     
     // Load method used to retrieve the IVRCompositor interface
-#ifdef __WINE__
-    g_vrFunctions.initInternal        = reinterpret_cast<VR_InitInternalProc>       (::dlsym(m_ovrApi, "VR_InitInternal"));
-    g_vrFunctions.shutdownInternal    = reinterpret_cast<VR_ShutdownInternalProc>   (::dlsym(m_ovrApi, "VR_ShutdownInternal"));
-    g_vrFunctions.getGenericInterface = reinterpret_cast<VR_GetGenericInterfaceProc>(::dlsym(m_ovrApi, "VR_GetGenericInterface"));
-#else
-    g_vrFunctions.initInternal        = reinterpret_cast<VR_InitInternalProc>       (::GetProcAddress(m_ovrApi, "VR_InitInternal"));
-    g_vrFunctions.shutdownInternal    = reinterpret_cast<VR_ShutdownInternalProc>   (::GetProcAddress(m_ovrApi, "VR_ShutdownInternal"));
-    g_vrFunctions.getGenericInterface = reinterpret_cast<VR_GetGenericInterfaceProc>(::GetProcAddress(m_ovrApi, "VR_GetGenericInterface"));
-#endif
+    g_vrFunctions.initInternal        = reinterpret_cast<VR_InitInternalProc>       (this->getSym("VR_InitInternal"));
+    g_vrFunctions.shutdownInternal    = reinterpret_cast<VR_ShutdownInternalProc>   (this->getSym("VR_ShutdownInternal"));
+    g_vrFunctions.getGenericInterface = reinterpret_cast<VR_GetGenericInterfaceProc>(this->getSym("VR_GetGenericInterface"));
     
-    if (g_vrFunctions.getGenericInterface == nullptr) {
+    if (!g_vrFunctions.getGenericInterface) {
       Logger::warn("OpenVR: VR_GetGenericInterface not found");
       return nullptr;
     }
@@ -165,9 +144,9 @@ namespace dxvk {
     vr::IVRCompositor* compositor = reinterpret_cast<vr::IVRCompositor*>(
       g_vrFunctions.getGenericInterface(vr::IVRCompositor_Version, &error));
     
-    if (error != vr::VRInitError_None || compositor == nullptr) {
-      if (g_vrFunctions.initInternal     == nullptr
-       || g_vrFunctions.shutdownInternal == nullptr) {
+    if (error != vr::VRInitError_None || !compositor) {
+      if (!g_vrFunctions.initInternal
+       || !g_vrFunctions.shutdownInternal) {
         Logger::warn("OpenVR: VR_InitInternal or VR_ShutdownInternal not found");
         return nullptr;
       }
@@ -185,7 +164,7 @@ namespace dxvk {
       compositor = reinterpret_cast<vr::IVRCompositor*>(
         g_vrFunctions.getGenericInterface(vr::IVRCompositor_Version, &error));
       
-      if (error != vr::VRInitError_None || compositor == nullptr) {
+      if (error != vr::VRInitError_None || !compositor) {
         Logger::warn("OpenVR: Failed to query compositor interface");
         this->shutdown();
         return nullptr;
@@ -201,16 +180,48 @@ namespace dxvk {
     if (m_initializedOpenVr)
       g_vrFunctions.shutdownInternal();
     
-#if __WINE__
     if (m_loadedOvrApi)
-      ::dlclose(m_ovrApi);
-#else
-    if (m_loadedOvrApi)
-      ::FreeLibrary(m_ovrApi);
-#endif
+      this->freeLibrary();
     
     m_initializedOpenVr = false;
     m_loadedOvrApi      = false;
+  }
+
+
+  SoHandle VrInstance::loadLibrary() {
+    SoHandle handle = nullptr;
+    #ifdef __WINE__
+    // on winelib, load native openvr_api directly
+    if (!(handle = ::dlopen("libopenvr_api.so", RTLD_LAZY | RTLD_NOLOAD)))
+      handle = ::dlopen("libopenvr_api_dxvk.so", RTLD_LAZY | RTLD_LOCAL);
+    m_loadedOvrApi = handle != nullptr;
+    #else
+    if (!(handle = ::GetModuleHandle("openvr_api.dll"))) {
+      handle = ::LoadLibrary("openvr_api_dxvk.dll");
+      m_loadedOvrApi = handle != nullptr;
+    }
+    #endif
+    return handle;
+  }
+
+
+  void VrInstance::freeLibrary() {
+    #ifdef __WINE__
+    ::dlclose(m_ovrApi);
+    #else
+    ::FreeLibrary(m_ovrApi);
+    #endif
+  }
+
+  
+  void* VrInstance::getSym(const char* sym) {
+    #ifdef __WINE__
+    return reinterpret_cast<void*>(
+      ::dlsym(m_ovrApi, sym));
+    #else
+    return reinterpret_cast<void*>(
+      ::GetProcAddress(m_ovrApi, sym));
+    #endif
   }
   
 }
