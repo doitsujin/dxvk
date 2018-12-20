@@ -183,6 +183,17 @@ namespace dxvk {
       const DxvkDeviceFeatures& required) const;
     
     /**
+     * \brief Enables extensions for this adapter
+     *
+     * When creating a device, all extensions that
+     * are added using this method will be enabled
+     * in addition to the ones required by DXVK.
+     * This is used for OpenVR support.
+     */
+    void enableExtensions(
+      const DxvkNameSet&        extensions);
+    
+    /**
      * \brief Creates a DXVK device
      * 
      * Creates a logical device for this adapter.
@@ -244,6 +255,7 @@ namespace dxvk {
     Rc<vk::InstanceFn>  m_vki;
     VkPhysicalDevice    m_handle;
 
+    DxvkNameSet         m_extraExtensions;
     DxvkNameSet         m_deviceExtensions;
     DxvkDeviceInfo      m_deviceInfo;
     DxvkDeviceFeatures  m_deviceFeatures;
@@ -258,8 +270,6 @@ namespace dxvk {
     void queryDeviceFeatures();
     void queryDeviceQueues();
     
-    uint32_t getAdapterIndex() const;
-
     static void logNameList(const DxvkNameList& names);
     
   };

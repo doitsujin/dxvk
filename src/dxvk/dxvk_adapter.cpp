@@ -208,6 +208,11 @@ namespace dxvk {
   }
   
   
+  void DxvkAdapter::enableExtensions(const DxvkNameSet& extensions) {
+    m_extraExtensions.merge(extensions);
+  }
+
+
   Rc<DxvkDevice> DxvkAdapter::createDevice(DxvkDeviceFeatures enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
@@ -237,7 +242,7 @@ namespace dxvk {
       throw DxvkError("DxvkAdapter: Failed to create device");
     
     // Enable additional extensions if necessary
-    extensionsEnabled.merge(g_vrInstance.getDeviceExtensions(getAdapterIndex()));
+    extensionsEnabled.merge(m_extraExtensions);
     DxvkNameList extensionNameList = extensionsEnabled.toNameList();
     
     Logger::info("Enabled device extensions:");
@@ -459,16 +464,6 @@ namespace dxvk {
     m_queueFamilies.resize(numQueueFamilies);
     m_vki->vkGetPhysicalDeviceQueueFamilyProperties(
       m_handle, &numQueueFamilies, m_queueFamilies.data());
-  }
-
-
-  uint32_t DxvkAdapter::getAdapterIndex() const {
-    for (uint32_t i = 0; m_instance->enumAdapters(i) != nullptr; i++) {
-      if (m_instance->enumAdapters(i).ptr() == this)
-        return i;
-    }
-
-    return ~0u;
   }
   
   

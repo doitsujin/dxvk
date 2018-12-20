@@ -23,6 +23,11 @@ namespace dxvk {
     m_adapters = this->queryAdapters();
     g_vrInstance.initDeviceExtensions(this);
 
+    for (uint32_t i = 0; i < m_adapters.size(); i++) {
+      m_adapters[i]->enableExtensions(
+        g_vrInstance.getDeviceExtensions(i));
+    }
+
     m_options = DxvkOptions(m_config);
   }
   
