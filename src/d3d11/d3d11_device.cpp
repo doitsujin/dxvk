@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <cstring>
 
+#include "../dxgi/dxgi_swapchain.h"
+
 #include "../dxvk/dxvk_adapter.h"
 #include "../dxvk/dxvk_instance.h"
 
@@ -1669,6 +1671,52 @@ namespace dxvk {
 
 
 
+  WineDXGISwapChainFactory::WineDXGISwapChainFactory(IUnknown* pContainer)
+  : m_container(pContainer) {
+    
+  }
+  
+  
+  ULONG STDMETHODCALLTYPE WineDXGISwapChainFactory::AddRef() {
+    return m_container->AddRef();
+  }
+  
+  
+  ULONG STDMETHODCALLTYPE WineDXGISwapChainFactory::Release() {
+    return m_container->Release();
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE WineDXGISwapChainFactory::QueryInterface(
+          REFIID                  riid,
+          void**                  ppvObject) {
+    return m_container->QueryInterface(riid, ppvObject);
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE WineDXGISwapChainFactory::CreateSwapChainForHwnd(
+          IDXGIFactory*           pFactory,
+          HWND                    hWnd,
+    const DXGI_SWAP_CHAIN_DESC1*  pDesc,
+    const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pFullscreenDesc,
+          IDXGIOutput*            pRestrictToOutput,
+          IDXGISwapChain1**       ppSwapChain) {
+    InitReturnPtr(ppSwapChain);
+    
+    try {
+      *ppSwapChain = ref(new DxgiSwapChain(
+        pFactory, m_container, hWnd,
+        pDesc, pFullscreenDesc));
+      return S_OK;
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return DXGI_ERROR_INVALID_CALL;
+    }
+  }
+  
+  
+  
+  
   D3D11DXGIDevice::D3D11DXGIDevice(
           IDXGIAdapter*       pAdapter,
           DxvkAdapter*        pDxvkAdapter,
@@ -1679,7 +1727,8 @@ namespace dxvk {
     m_dxvkDevice    (CreateDevice(FeatureLevel)),
     m_d3d11Device   (this, FeatureLevel, FeatureFlags),
     m_d3d11Presenter(this, &m_d3d11Device),
-    m_d3d11Interop  (this, &m_d3d11Device) {
+    m_d3d11Interop  (this, &m_d3d11Device),
+    m_wineFactory   (this) {
     for (uint32_t i = 0; i < m_frameEvents.size(); i++)
       m_frameEvents[i] = new DxvkEvent();
   }
@@ -1722,6 +1771,11 @@ namespace dxvk {
     
     if (riid == __uuidof(IDXGIVkPresentDevice)) {
       *ppvObject = ref(&m_d3d11Presenter);
+      return S_OK;
+    }
+    
+    if (riid == __uuidof(IWineDXGISwapChainFactory)) {
+      *ppvObject = ref(&m_wineFactory);
       return S_OK;
     }
 

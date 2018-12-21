@@ -6,6 +6,7 @@
 #include "../dxbc/dxbc_options.h"
 
 #include "../dxgi/dxgi_object.h"
+#include "../dxgi/dxgi_interfaces.h"
 
 #include "../dxvk/dxvk_cs.h"
 
@@ -390,6 +391,38 @@ namespace dxvk {
     
   };
   
+  
+  /**
+   * \brief DXGI swap chain factory
+   */
+  class WineDXGISwapChainFactory : public IWineDXGISwapChainFactory {
+    
+  public:
+    
+    WineDXGISwapChainFactory(IUnknown* pContainer);
+    
+    ULONG STDMETHODCALLTYPE AddRef();
+    
+    ULONG STDMETHODCALLTYPE Release();
+    
+    HRESULT STDMETHODCALLTYPE QueryInterface(
+            REFIID                  riid,
+            void**                  ppvObject);
+    
+    HRESULT STDMETHODCALLTYPE CreateSwapChainForHwnd(
+            IDXGIFactory*           pFactory,
+            HWND                    hWnd,
+      const DXGI_SWAP_CHAIN_DESC1*  pDesc,
+      const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pFullscreenDesc,
+            IDXGIOutput*            pRestrictToOutput,
+            IDXGISwapChain1**       ppSwapChain);
+    
+  private:
+    
+    IUnknown* m_container;
+    
+  };
+  
 
   /**
    * \brief D3D11 device container
@@ -473,6 +506,8 @@ namespace dxvk {
     D3D11Device         m_d3d11Device;
     D3D11PresentDevice  m_d3d11Presenter;
     D3D11VkInterop      m_d3d11Interop;
+    
+    WineDXGISwapChainFactory m_wineFactory;
     
     uint32_t m_frameLatencyCap = 0;
     uint32_t m_frameLatency    = DefaultFrameLatency;

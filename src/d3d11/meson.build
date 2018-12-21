@@ -1,5 +1,7 @@
 dxgi_common_src = [
   '../dxgi/dxgi_format.cpp',
+  '../dxgi/dxgi_monitor.cpp',
+  '../dxgi/dxgi_swapchain.cpp',
 ]
 
 d3d10_src = [
