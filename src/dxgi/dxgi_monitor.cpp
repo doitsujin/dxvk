@@ -127,5 +127,20 @@ namespace dxvk {
     
     return status == DISP_CHANGE_SUCCESSFUL ? S_OK : DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;;
   }
+  
+  
+  void GetWindowClientSize(
+          HWND                    hWnd,
+          UINT*                   pWidth,
+          UINT*                   pHeight) {
+    RECT rect = { };
+    ::GetClientRect(hWnd, &rect);
+    
+    if (pWidth)
+      *pWidth = rect.right - rect.left;
+    
+    if (pHeight)
+      *pHeight = rect.bottom - rect.top;
+  }
 
 }

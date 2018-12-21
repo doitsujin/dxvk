@@ -85,5 +85,17 @@ namespace dxvk {
   HRESULT SetMonitorDisplayMode(
           HMONITOR                hMonitor,
     const DXGI_MODE_DESC*         pMode);
+  
+  /**
+   * \brief Queries window client size
+   * 
+   * \param [in] hWnd Window to query
+   * \param [out] pWidth Client width
+   * \param [out] pHeight Client height
+   */
+  void GetWindowClientSize(
+          HWND                    hWnd,
+          UINT*                   pWidth,
+          UINT*                   pHeight);
 
 }

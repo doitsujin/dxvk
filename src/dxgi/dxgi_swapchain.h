@@ -183,8 +183,6 @@ namespace dxvk {
     HMONITOR                        m_monitor;
     WindowState                     m_windowState;
     
-    VkExtent2D GetWindowSize() const;
-    
     HRESULT EnterFullscreenMode(
             IDXGIOutput             *pTarget);
     
