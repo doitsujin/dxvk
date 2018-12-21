@@ -22,7 +22,7 @@ namespace dxvk {
     
     DxgiSwapChain(
             IDXGIFactory*               pFactory,
-            IUnknown*                   pDevice,
+            IDXGIVkSwapChain*           pPresenter,
             HWND                        hWnd,
       const DXGI_SWAP_CHAIN_DESC1*      pDesc,
       const DXGI_SWAP_CHAIN_FULLSCREEN_DESC*  pFullscreenDesc);
@@ -199,14 +199,20 @@ namespace dxvk {
             UINT                    Count,
             VkSampleCountFlagBits*  pCount) const;
     
-    HRESULT CreatePresenter(
-            IUnknown*               pDevice,
-            IDXGIVkSwapChain**      ppSwapChain);
-    
     HRESULT GetOutputFromMonitor(
-            HMONITOR                  Monitor,
-            IDXGIOutput**             ppOutput);
+            HMONITOR                Monitor,
+            IDXGIOutput**           ppOutput);
     
   };
+  
+  
+  HRESULT CreateDxvkSwapChainForHwnd(
+          IDXGIFactory*             pFactory,
+          IDXGIVkPresentDevice*     pDevice,
+          HWND                      hWnd,
+    const DXGI_SWAP_CHAIN_DESC1*    pDesc,
+    const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pFullscreenDesc,
+          IDXGIOutput*              pRestrictToOutput,
+          IDXGISwapChain1**         ppSwapChain);
   
 }

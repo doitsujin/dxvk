@@ -110,30 +110,22 @@ namespace dxvk {
           IDXGISwapChain1**     ppSwapChain) {
     InitReturnPtr(ppSwapChain);
     
-    if (ppSwapChain == nullptr || pDesc == nullptr || hWnd == nullptr || pDevice == nullptr)
+    if (!ppSwapChain || !pDesc || !hWnd || !pDevice)
       return DXGI_ERROR_INVALID_CALL;
     
-    // If necessary, set up a default set of
-    // fullscreen parameters for the swap chain
-    DXGI_SWAP_CHAIN_FULLSCREEN_DESC fullscreenDesc;
+    Com<IDXGIVkPresentDevice> dxvkDevice;
     
-    if (pFullscreenDesc != nullptr) {
-      fullscreenDesc = *pFullscreenDesc;
-    } else {
-      fullscreenDesc.RefreshRate      = { 0, 0 };
-      fullscreenDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
-      fullscreenDesc.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
-      fullscreenDesc.Windowed         = TRUE;
+    if (SUCCEEDED(pDevice->QueryInterface(
+          __uuidof(IDXGIVkPresentDevice),
+          reinterpret_cast<void**>(&dxvkDevice)))) {
+      return CreateDxvkSwapChainForHwnd(
+        this, dxvkDevice.ptr(), hWnd, pDesc,
+        pFullscreenDesc, pRestrictToOutput,
+        ppSwapChain);
     }
     
-    try {
-      *ppSwapChain = ref(new DxgiSwapChain(this,
-        pDevice, hWnd, pDesc, &fullscreenDesc));
-      return S_OK;
-    } catch (const DxvkError& e) {
-      Logger::err(e.message());
-      return E_FAIL;
-    }
+    Logger::err("DXGI: CreateSwapChainForHwnd: Unsupported device type");
+    return DXGI_ERROR_UNSUPPORTED;
   }
   
   
