@@ -40,9 +40,13 @@ extern "C" {
 
     hr = D3D11CoreCreateDevice(pFactory, pAdapter,
       Flags, &FeatureLevel, 1, &d3d11Device);
-    
+
     if (FAILED(hr))
       return hr;
+    
+    Com<ID3D10Multithread> multithread;
+    d3d11Device->QueryInterface(__uuidof(ID3D10Multithread), reinterpret_cast<void**>(&multithread));
+    multithread->SetMultithreadProtected(!(Flags & D3D10_CREATE_DEVICE_SINGLETHREADED));
     
     if (FAILED(d3d11Device->QueryInterface(
         __uuidof(ID3D10Device), reinterpret_cast<void**>(ppDevice))))

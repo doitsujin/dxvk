@@ -469,20 +469,11 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetTextFilterSize(
             UINT*                             pWidth,
             UINT*                             pHeight);
-    
-    D3D10DeviceLock LockDevice() {
-      return m_multithread.AcquireLock();
-    }
 
-    D3D10Multithread* GetMultithread() {
-      return &m_multithread;
-    }
-    
   private:
 
     D3D11Device*            m_device;
     D3D11ImmediateContext*  m_context;
-    D3D10Multithread        m_multithread;
 
   };
 
