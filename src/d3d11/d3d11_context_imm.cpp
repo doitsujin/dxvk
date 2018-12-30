@@ -547,6 +547,8 @@ namespace dxvk {
   
   
   void D3D11ImmediateContext::SynchronizeCsThread() {
+    D3D10DeviceLock lock = LockContext();
+
     // Dispatch current chunk so that all commands
     // recorded prior to this function will be run
     FlushCsChunk();
