@@ -644,7 +644,7 @@ namespace dxvk {
       const VkImageSubresourceRange*  pSubresources,
             VkImageLayout             OldLayout,
             VkImageLayout             NewLayout);
-    
+
   protected:
     
     D3D11Device* const          m_parent;

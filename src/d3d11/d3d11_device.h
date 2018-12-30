@@ -318,10 +318,6 @@ namespace dxvk {
     D3D10Device* GetD3D10Interface() const {
       return m_d3d10Device;
     }
-
-    D3D10Multithread* GetD3D10Multithread() const {
-      return m_d3d10Device->GetMultithread();
-    }
     
     DxvkBufferSlice AllocUavCounterSlice() { return m_uavCounters->AllocSlice(); }
     DxvkBufferSlice AllocXfbCounterSlice() { return m_xfbCounters->AllocSlice(); }
