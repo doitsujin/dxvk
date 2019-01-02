@@ -101,7 +101,8 @@ namespace dxvk {
     if (m_desc.MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE)
       imageInfo.flags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
     
-    if (Dimension == D3D11_RESOURCE_DIMENSION_TEXTURE3D)
+    if (Dimension == D3D11_RESOURCE_DIMENSION_TEXTURE3D &&
+        (m_desc.BindFlags & D3D11_BIND_RENDER_TARGET))
       imageInfo.flags |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT_KHR;
     
     // Some image formats (i.e. the R32G32B32 ones) are
