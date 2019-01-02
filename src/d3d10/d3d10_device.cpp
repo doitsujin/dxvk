@@ -751,9 +751,9 @@ namespace dxvk {
     m_context->GetPredication(
       ppPredicate ? &d3d11Predicate : nullptr,
       pPredicateValue);
-    
+
     if (ppPredicate != nullptr)
-      *ppPredicate = static_cast<D3D11Query*>(d3d11Predicate)->GetD3D10Iface();
+      *ppPredicate = d3d11Predicate ? static_cast<D3D11Query*>(d3d11Predicate)->GetD3D10Iface() : nullptr;
   }
 
 
@@ -945,8 +945,8 @@ namespace dxvk {
     ID3D11InputLayout* d3d11InputLayout = nullptr;
     m_context->IAGetInputLayout(&d3d11InputLayout);
 
-    *ppInputLayout = static_cast<D3D11InputLayout*>(
-      d3d11InputLayout)->GetD3D10Iface();
+    *ppInputLayout = d3d11InputLayout ? static_cast<D3D11InputLayout*>(
+      d3d11InputLayout)->GetD3D10Iface() : nullptr;
   }
 
 
@@ -995,7 +995,7 @@ namespace dxvk {
       Format, Offset);
 
     if (pIndexBuffer != nullptr)
-      *pIndexBuffer = static_cast<D3D11Buffer*>(d3d11Buffer)->GetD3D10Iface();
+      *pIndexBuffer = d3d11Buffer ? static_cast<D3D11Buffer*>(d3d11Buffer)->GetD3D10Iface() : nullptr;
   }
 
 
@@ -1070,7 +1070,7 @@ namespace dxvk {
     ID3D11VertexShader* d3d11Shader = nullptr;
     m_context->VSGetShader(&d3d11Shader, nullptr, nullptr);
 
-    *ppVertexShader = static_cast<D3D11VertexShader*>(d3d11Shader)->GetD3D10Iface();
+    *ppVertexShader = d3d11Shader ? static_cast<D3D11VertexShader*>(d3d11Shader)->GetD3D10Iface() : nullptr;
   }
 
 
@@ -1190,7 +1190,7 @@ namespace dxvk {
     ID3D11GeometryShader* d3d11Shader = nullptr;
     m_context->GSGetShader(&d3d11Shader, nullptr, nullptr);
 
-    *ppGeometryShader = static_cast<D3D11GeometryShader*>(d3d11Shader)->GetD3D10Iface();
+    *ppGeometryShader = d3d11Shader ? static_cast<D3D11GeometryShader*>(d3d11Shader)->GetD3D10Iface() : nullptr;
   }
 
 
@@ -1310,7 +1310,7 @@ namespace dxvk {
     ID3D11PixelShader* d3d11Shader = nullptr;
     m_context->PSGetShader(&d3d11Shader, nullptr, nullptr);
 
-    *ppPixelShader = static_cast<D3D11PixelShader*>(d3d11Shader)->GetD3D10Iface();
+    *ppPixelShader = d3d11Shader ? static_cast<D3D11PixelShader*>(d3d11Shader)->GetD3D10Iface() : nullptr;
   }
 
 
@@ -1422,7 +1422,7 @@ namespace dxvk {
     }
 
     if (ppDepthStencilView)
-      *ppDepthStencilView = static_cast<D3D11DepthStencilView*>(d3d11Dsv)->GetD3D10Iface();
+      *ppDepthStencilView = d3d11Dsv ? static_cast<D3D11DepthStencilView*>(d3d11Dsv)->GetD3D10Iface() : nullptr;
   }
 
 
@@ -1437,7 +1437,7 @@ namespace dxvk {
       BlendFactor, pSampleMask);
 
     if (ppBlendState != nullptr)
-      *ppBlendState = static_cast<D3D11BlendState*>(d3d11BlendState)->GetD3D10Iface();
+      *ppBlendState = d3d11BlendState ? static_cast<D3D11BlendState*>(d3d11BlendState)->GetD3D10Iface() : nullptr;
   }
 
 
@@ -1451,7 +1451,7 @@ namespace dxvk {
       pStencilRef);
 
     if (ppDepthStencilState != nullptr)
-      *ppDepthStencilState = static_cast<D3D11DepthStencilState*>(d3d11DepthStencilState)->GetD3D10Iface();
+      *ppDepthStencilState = d3d11DepthStencilState ? static_cast<D3D11DepthStencilState*>(d3d11DepthStencilState)->GetD3D10Iface() : nullptr;
   }
 
 
@@ -1497,7 +1497,7 @@ namespace dxvk {
     ID3D11RasterizerState* d3d11RasterizerState = nullptr;
     m_context->RSGetState(&d3d11RasterizerState);
 
-    *ppRasterizerState = static_cast<D3D11RasterizerState*>(d3d11RasterizerState)->GetD3D10Iface();
+    *ppRasterizerState = d3d11RasterizerState ? static_cast<D3D11RasterizerState*>(d3d11RasterizerState)->GetD3D10Iface() : nullptr;
   }
 
 
