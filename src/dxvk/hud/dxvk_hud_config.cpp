@@ -26,6 +26,9 @@ namespace dxvk::hud {
       this->elements.set(
         HudElement::DeviceInfo,
         HudElement::Framerate);
+    } else if (configStr == "full") {
+      for (auto pair : g_hudElements)
+        this->elements.set(pair.second);
     } else {
       std::string::size_type pos = 0;
       std::string::size_type end = 0;
