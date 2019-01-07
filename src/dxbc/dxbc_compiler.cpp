@@ -5999,7 +5999,7 @@ namespace dxvk {
           DxbcRegMask             mask,
     const DxbcRegisterValue&      value) {
     Logger::warn(str::format(
-      "DxbcCompiler: Unhandled GS SV output: ", sv));
+      "DxbcCompiler: Unhandled PS SV output: ", sv));
   }
   
   
