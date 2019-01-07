@@ -65,7 +65,7 @@ The `DXVK_HUD` environment variable controls a HUD which can display the framera
 - `memory`: Shows the amount of device memory allocated and used.
 - `version`: Shows DXVK version.
 
-Additionally, `DXVK_HUD=1` has the same effect as `DXVK_HUD=devinfo,fps`.
+Additionally, `DXVK_HUD=1` has the same effect as `DXVK_HUD=devinfo,fps`, and `DXVK_HUD=full` enables all available HUD elements.
 
 ### Device filter
 Some applications do not provide a method to select a different GPU. In that case, DXVK can be forced to use a given device:
