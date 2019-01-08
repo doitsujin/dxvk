@@ -143,14 +143,15 @@ namespace dxvk {
     if (!CheckImageSupport(&imageInfo, imageInfo.tiling)) {
       throw DxvkError(str::format(
         "D3D11: Cannot create texture:",
-        "\n  Format:  ", imageInfo.format,
-        "\n  Extent:  ", imageInfo.extent.width,
-                    "x", imageInfo.extent.height,
-                    "x", imageInfo.extent.depth,
-        "\n  Samples: ", imageInfo.sampleCount,
-        "\n  Layers:  ", imageInfo.numLayers,
-        "\n  Levels:  ", imageInfo.mipLevels,
-        "\n  Usage:   ", std::hex, imageInfo.usage));
+        "\n  Format:  ", m_desc.Format,
+        "\n  Extent:  ", m_desc.Width,
+                    "x", m_desc.Height,
+                    "x", m_desc.Depth,
+        "\n  Samples: ", m_desc.SampleDesc.Count,
+        "\n  Layers:  ", m_desc.ArraySize,
+        "\n  Levels:  ", m_desc.MipLevels,
+        "\n  Usage:   ", std::hex, m_desc.BindFlags,
+        "\n  Flags:   ", std::hex, m_desc.MiscFlags));
     }
     
     // If necessary, create the mapped linear buffer
