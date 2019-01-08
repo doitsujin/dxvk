@@ -193,6 +193,24 @@ namespace dxvk {
     result = sign * intval;
     return true;
   }
+  
+  
+  bool Config::parseOptionValue(
+    const std::string&  value,
+          Tristate&     result) {
+    if (value == "True") {
+      result = Tristate::True;
+      return true;
+    } else if (value == "False") {
+      result = Tristate::False;
+      return true;
+    } else if (value == "Auto") {
+      result = Tristate::Auto;
+      return true;
+    } else {
+      return false;
+    }
+  }
 
 
   Config Config::getAppConfig(const std::string& appName) {
