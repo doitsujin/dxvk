@@ -67,6 +67,14 @@ namespace dxvk {
     { "anno2205.exe", {{
       { "dxvk.enableStateCache",            "False" },
     }} },
+    /* Fifa '19                                   */
+    { "FIFA19.exe", {{
+      { "dxvk.useRawSsbo",                  "True" },
+    }} },
+    /* Fifa '19 Demo                              */
+    { "FIFA19_demo.exe", {{
+      { "dxvk.useRawSsbo",                  "True" },
+    }} },
   }};
 
 
