@@ -18,6 +18,10 @@ namespace dxvk {
     /// Number of compiler threads
     /// when using the state cache
     int32_t numCompilerThreads;
+
+    /// Shader-related options
+    Tristate useRawSsbo;
+    Tristate useEarlyDiscard;
   };
 
 }
