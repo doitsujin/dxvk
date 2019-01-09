@@ -346,7 +346,7 @@ namespace dxvk {
       bufferView->bufferInfo().stages,
       bufferView->bufferInfo().access);
     
-    m_cmd->trackResource(bufferView->viewResource());
+    m_cmd->trackResource(bufferView);
     m_cmd->trackResource(bufferView->bufferResource());
   }
   
@@ -2766,7 +2766,7 @@ namespace dxvk {
             res.bufferView->updateView();
             m_descInfos[i].texelBuffer = res.bufferView->handle();
             
-            m_cmd->trackResource(res.bufferView->viewResource());
+            m_cmd->trackResource(res.bufferView);
             m_cmd->trackResource(res.bufferView->bufferResource());
           } else {
             updatePipelineState |= bindMask.setUnbound(i);

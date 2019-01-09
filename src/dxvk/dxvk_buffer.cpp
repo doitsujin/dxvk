@@ -81,20 +81,64 @@ namespace dxvk {
     const Rc<DxvkBuffer>&           buffer,
     const DxvkBufferViewCreateInfo& info)
   : m_vkd(vkd), m_info(info), m_buffer(buffer),
-    m_physView(this->createView()),
-    m_revision(m_buffer->m_revision) {
+    m_bufferSlice (m_buffer->getSliceHandle()),
+    m_bufferView  (createBufferView(m_bufferSlice)) {
     
   }
   
   
   DxvkBufferView::~DxvkBufferView() {
-    
+    if (m_views.empty()) {
+      m_vkd->vkDestroyBufferView(
+        m_vkd->device(), m_bufferView, nullptr);
+    } else {
+      for (const auto& pair : m_views) {
+        m_vkd->vkDestroyBufferView(
+          m_vkd->device(), pair.second, nullptr);
+      }
+    }
   }
   
   
-  Rc<DxvkPhysicalBufferView> DxvkBufferView::createView() {
-    return new DxvkPhysicalBufferView(
-      m_vkd, m_buffer->slice(), m_info);
+  VkBufferView DxvkBufferView::createBufferView(
+    const DxvkBufferSliceHandle& slice) {
+    VkBufferViewCreateInfo viewInfo;
+    viewInfo.sType  = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO;
+    viewInfo.pNext  = nullptr;
+    viewInfo.flags  = 0;
+    viewInfo.buffer = slice.handle;
+    viewInfo.format = m_info.format;
+    viewInfo.offset = slice.offset;
+    viewInfo.range  = slice.length;
+    
+    VkBufferView result = VK_NULL_HANDLE;
+
+    if (m_vkd->vkCreateBufferView(m_vkd->device(),
+          &viewInfo, nullptr, &result) != VK_SUCCESS) {
+      throw DxvkError(str::format(
+        "DxvkBufferView: Failed to create buffer view:",
+        "\n  Offset: ", viewInfo.offset,
+        "\n  Range:  ", viewInfo.range,
+        "\n  Format: ", viewInfo.format));
+    }
+
+    return result;
+  }
+
+
+  void DxvkBufferView::updateBufferView() {
+    if (m_views.empty())
+      m_views.insert({ m_bufferSlice, m_bufferView });
+    
+    m_bufferSlice = m_buffer->getSliceHandle();
+    auto entry = m_views.find(m_bufferSlice);
+    
+    if (entry != m_views.end()) {
+      m_bufferView = entry->second;
+    } else {
+      m_bufferView = createBufferView(m_bufferSlice);
+      m_views.insert({ m_bufferSlice, m_bufferView });
+    }
   }
   
   

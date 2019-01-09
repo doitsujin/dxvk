@@ -1,9 +1,10 @@
 #pragma once
 
-#include <mutex>
+#include <unordered_map>
 #include <vector>
 
 #include "dxvk_buffer_res.h"
+#include "dxvk_hash.h"
 
 namespace dxvk {
 
@@ -19,6 +20,20 @@ namespace dxvk {
     VkDeviceSize  offset;
     VkDeviceSize  length;
     void*         mapPtr;
+
+    bool eq(const DxvkBufferSliceHandle& other) const {
+      return handle == other.handle
+          && offset == other.offset
+          && length == other.length;
+    }
+
+    size_t hash() const {
+      DxvkHashState result;
+      result.add(std::hash<VkBuffer>()(handle));
+      result.add(std::hash<VkDeviceSize>()(offset));
+      result.add(std::hash<VkDeviceSize>()(length));
+      return result;
+    }
   };
 
   
@@ -185,7 +200,6 @@ namespace dxvk {
     DxvkPhysicalBufferSlice rename(const DxvkPhysicalBufferSlice& slice) {
       DxvkPhysicalBufferSlice prevSlice = std::move(m_physSlice);
       m_physSlice = slice;
-      m_revision += 1;
       return prevSlice;
     }
     
@@ -235,7 +249,6 @@ namespace dxvk {
     VkMemoryPropertyFlags   m_memFlags;
     
     DxvkPhysicalBufferSlice m_physSlice;
-    uint32_t                m_revision     = 0;
     uint32_t                m_vertexStride = 0;
     
     sync::Spinlock m_freeMutex;
@@ -252,9 +265,6 @@ namespace dxvk {
     
     Rc<DxvkPhysicalBuffer> allocPhysicalBuffer(
             VkDeviceSize    sliceCount) const;
-    
-    void lock();
-    void unlock();
     
   };
   
@@ -437,7 +447,7 @@ namespace dxvk {
    * contents like formatted pixel data. These
    * buffer views are used as texel buffers.
    */
-  class DxvkBufferView : public RcObject {
+  class DxvkBufferView : public DxvkResource {
     
   public:
     
@@ -453,7 +463,7 @@ namespace dxvk {
      * \returns Buffer view handle
      */
     VkBufferView handle() const {
-      return m_physView->handle();
+      return m_bufferView;
     }
     
     /**
@@ -494,19 +504,11 @@ namespace dxvk {
     }
     
     /**
-     * \brief Backing resource
-     * \returns Backing resource
-     */
-    Rc<DxvkResource> viewResource() const {
-      return m_physView;
-    }
-    
-    /**
      * \brief Backing buffer resource
      * \returns Backing buffer resource
      */
     Rc<DxvkResource> bufferResource() const {
-      return m_physView->bufferResource();
+      return m_buffer->resource();
     }
 
     /**
@@ -530,14 +532,6 @@ namespace dxvk {
     }
     
     /**
-     * \brief Underlying buffer slice
-     * \returns Slice backing the view
-     */
-    DxvkPhysicalBufferSlice physicalSlice() const {
-      return m_physView->slice();
-    }
-    
-    /**
      * \brief Updates the buffer view
      * 
      * If the buffer has been invalidated ever since
@@ -546,23 +540,28 @@ namespace dxvk {
      * prior to using the buffer view handle.
      */
     void updateView() {
-      if (m_revision != m_buffer->m_revision) {
-        m_physView = this->createView();
-        m_revision = m_buffer->m_revision;
-      }
+      if (!m_bufferSlice.eq(m_buffer->getSliceHandle()))
+        this->updateBufferView();
     }
     
   private:
     
-    Rc<vk::DeviceFn>           m_vkd;
-    DxvkBufferViewCreateInfo   m_info;
+    Rc<vk::DeviceFn>          m_vkd;
+    DxvkBufferViewCreateInfo  m_info;
+    Rc<DxvkBuffer>            m_buffer;
+
+    DxvkBufferSliceHandle     m_bufferSlice;
+    VkBufferView              m_bufferView;
+
+    std::unordered_map<
+      DxvkBufferSliceHandle,
+      VkBufferView,
+      DxvkHash, DxvkEq> m_views;
     
-    Rc<DxvkBuffer>             m_buffer;
-    Rc<DxvkPhysicalBufferView> m_physView;
+    VkBufferView createBufferView(
+      const DxvkBufferSliceHandle& slice);
     
-    uint32_t                   m_revision = 0;
-    
-    Rc<DxvkPhysicalBufferView> createView();
+    void updateBufferView();
     
   };
   
