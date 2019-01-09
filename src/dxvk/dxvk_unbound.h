@@ -29,7 +29,7 @@ namespace dxvk {
      * \returns Dummy buffer handle
      */
     VkBuffer bufferHandle() const {
-      return m_buffer->slice().handle();
+      return m_buffer->getSliceHandle().handle;
     }
     
     /**
@@ -41,12 +41,12 @@ namespace dxvk {
      * \returns Dummy buffer descriptor
      */
     VkDescriptorBufferInfo bufferDescriptor() const {
-      auto slice = m_buffer->slice();
+      auto slice = m_buffer->getSliceHandle();
       
       VkDescriptorBufferInfo result;
-      result.buffer = slice.handle();
-      result.offset = slice.offset();
-      result.range  = slice.length();
+      result.buffer = slice.handle;
+      result.offset = slice.offset;
+      result.range  = slice.length;
       return result;
     }
     
