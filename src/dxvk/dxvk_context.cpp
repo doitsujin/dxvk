@@ -259,15 +259,15 @@ namespace dxvk {
     if (length == buffer->info().size)
       length = align(length, 4);
     
-    auto slice = buffer->subSlice(offset, length);
+    auto slice = buffer->getSliceHandle(offset, length);
 
     if (m_barriers.isBufferDirty(slice, DxvkAccess::Write))
       m_barriers.recordCommands(m_cmd);
     
     m_cmd->cmdFillBuffer(
-      slice.handle(),
-      slice.offset(),
-      slice.length(),
+      slice.handle,
+      slice.offset,
+      slice.length,
       value);
     
     m_barriers.accessBuffer(slice,
@@ -276,7 +276,7 @@ namespace dxvk {
       buffer->info().stages,
       buffer->info().access);
     
-    m_cmd->trackResource(slice.resource());
+    m_cmd->trackResource(buffer->resource());
   }
   
   
@@ -288,7 +288,7 @@ namespace dxvk {
     this->spillRenderPass();
     this->unbindComputePipeline();
 
-    auto bufferSlice = bufferView->physicalSlice();
+    auto bufferSlice = bufferView->getSliceHandle();
     
     if (m_barriers.isBufferDirty(bufferSlice, DxvkAccess::Write))
       m_barriers.recordCommands(m_cmd);
@@ -340,8 +340,7 @@ namespace dxvk {
       workgroups.height,
       workgroups.depth);
     
-    m_barriers.accessBuffer(
-      bufferSlice,
+    m_barriers.accessBuffer(bufferSlice,
       VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
       VK_ACCESS_SHADER_WRITE_BIT,
       bufferView->bufferInfo().stages,
@@ -629,21 +628,21 @@ namespace dxvk {
     
     this->spillRenderPass();
     
-    auto dstSlice = dstBuffer->subSlice(dstOffset, numBytes);
-    auto srcSlice = srcBuffer->subSlice(srcOffset, numBytes);
+    auto dstSlice = dstBuffer->getSliceHandle(dstOffset, numBytes);
+    auto srcSlice = srcBuffer->getSliceHandle(srcOffset, numBytes);
 
     if (m_barriers.isBufferDirty(srcSlice, DxvkAccess::Read)
      || m_barriers.isBufferDirty(dstSlice, DxvkAccess::Write))
       m_barriers.recordCommands(m_cmd);
 
     VkBufferCopy bufferRegion;
-    bufferRegion.srcOffset = srcSlice.offset();
-    bufferRegion.dstOffset = dstSlice.offset();
-    bufferRegion.size      = dstSlice.length();
+    bufferRegion.srcOffset = srcSlice.offset;
+    bufferRegion.dstOffset = dstSlice.offset;
+    bufferRegion.size      = dstSlice.length;
 
     m_cmd->cmdCopyBuffer(
-      srcSlice.handle(),
-      dstSlice.handle(),
+      srcSlice.handle,
+      dstSlice.handle,
       1, &bufferRegion);
 
     m_barriers.accessBuffer(srcSlice,
@@ -703,7 +702,7 @@ namespace dxvk {
           VkExtent2D            srcExtent) {
     this->spillRenderPass();
 
-    auto srcSlice = srcBuffer->subSlice(srcOffset, 0);
+    auto srcSlice = srcBuffer->getSliceHandle(srcOffset, 0);
 
     // We may copy to only one aspect of a depth-stencil image,
     // but pipeline barriers need to have all aspect bits set
@@ -733,7 +732,7 @@ namespace dxvk {
     m_transitions.recordCommands(m_cmd);
     
     VkBufferImageCopy copyRegion;
-    copyRegion.bufferOffset       = srcSlice.offset();
+    copyRegion.bufferOffset       = srcSlice.offset;
     copyRegion.bufferRowLength    = srcExtent.width;
     copyRegion.bufferImageHeight  = srcExtent.height;
     copyRegion.imageSubresource   = dstSubresource;
@@ -741,7 +740,7 @@ namespace dxvk {
     copyRegion.imageExtent        = dstExtent;
     
     m_cmd->cmdCopyBufferToImage(
-      srcSlice.handle(),
+      srcSlice.handle,
       dstImage->handle(),
       dstImageLayoutTransfer,
       1, &copyRegion);
@@ -762,7 +761,7 @@ namespace dxvk {
       srcBuffer->info().access);
     
     m_cmd->trackResource(dstImage);
-    m_cmd->trackResource(srcSlice.resource());
+    m_cmd->trackResource(srcBuffer->resource());
   }
   
   
@@ -866,7 +865,7 @@ namespace dxvk {
           VkExtent3D            srcExtent) {
     this->spillRenderPass();
     
-    auto dstSlice = dstBuffer->subSlice(dstOffset, 0);
+    auto dstSlice = dstBuffer->getSliceHandle(dstOffset, 0);
 
     // We may copy to only one aspect of a depth-stencil image,
     // but pipeline barriers need to have all aspect bits set
@@ -892,7 +891,7 @@ namespace dxvk {
     m_transitions.recordCommands(m_cmd);
     
     VkBufferImageCopy copyRegion;
-    copyRegion.bufferOffset       = dstSlice.offset();
+    copyRegion.bufferOffset       = dstSlice.offset;
     copyRegion.bufferRowLength    = dstExtent.width;
     copyRegion.bufferImageHeight  = dstExtent.height;
     copyRegion.imageSubresource   = srcSubresource;
@@ -902,7 +901,7 @@ namespace dxvk {
     m_cmd->cmdCopyImageToBuffer(
       srcImage->handle(),
       srcImageLayoutTransfer,
-      dstSlice.handle(),
+      dstSlice.handle,
       1, &copyRegion);
     
     m_barriers.accessImage(
@@ -921,7 +920,7 @@ namespace dxvk {
       dstBuffer->info().access);
     
     m_cmd->trackResource(srcImage);
-    m_cmd->trackResource(dstSlice.resource());
+    m_cmd->trackResource(dstBuffer->resource());
   }
 
 
@@ -1021,7 +1020,7 @@ namespace dxvk {
       srcImage->info().access);
     
     m_barriers.accessBuffer(
-      dstBuffer->slice(),
+      dstBuffer->getSliceHandle(),
       VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
       VK_ACCESS_SHADER_WRITE_BIT,
       dstBuffer->info().stages,
@@ -1037,7 +1036,7 @@ namespace dxvk {
   
   void DxvkContext::discardBuffer(
     const Rc<DxvkBuffer>&       buffer) {
-    if (m_barriers.isBufferDirty(buffer->slice(), DxvkAccess::Write))
+    if (m_barriers.isBufferDirty(buffer->getSliceHandle(), DxvkAccess::Write))
       this->invalidateBuffer(buffer, buffer->allocPhysicalSlice());
   }
 
@@ -1088,10 +1087,10 @@ namespace dxvk {
           VkDeviceSize      offset) {
     this->commitComputeState();
     
-    auto physicalSlice = m_state.id.argBuffer.physicalSlice()
-      .subSlice(offset, sizeof(VkDispatchIndirectCommand));
+    auto bufferSlice = m_state.id.argBuffer.getSliceHandle(
+      offset, sizeof(VkDispatchIndirectCommand));
 
-    if (m_barriers.isBufferDirty(physicalSlice, DxvkAccess::Read))
+    if (m_barriers.isBufferDirty(bufferSlice, DxvkAccess::Read))
       m_barriers.recordCommands(m_cmd);
     
     if (this->validateComputeState()) {
@@ -1101,15 +1100,15 @@ namespace dxvk {
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
       
       m_cmd->cmdDispatchIndirect(
-        physicalSlice.handle(),
-        physicalSlice.offset());
+        bufferSlice.handle,
+        bufferSlice.offset);
       
       m_queries.endQueries(m_cmd,
         VK_QUERY_TYPE_PIPELINE_STATISTICS);
       
       this->commitComputePostBarriers();
 
-      m_barriers.accessBuffer(physicalSlice,
+      m_barriers.accessBuffer(bufferSlice,
         VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
         VK_ACCESS_INDIRECT_COMMAND_READ_BIT,
         m_state.id.argBuffer.bufferInfo().stages,
@@ -1444,30 +1443,30 @@ namespace dxvk {
     // four. Anything else must be copied through a staging buffer.
     // We'll limit the size to 4kB in order to keep command buffers
     // reasonably small, we do not know how much data apps may upload.
-    auto physicalSlice = buffer->subSlice(offset, size);
+    auto bufferSlice = buffer->getSliceHandle(offset, size);
 
-    if (m_barriers.isBufferDirty(physicalSlice, DxvkAccess::Write))
+    if (m_barriers.isBufferDirty(bufferSlice, DxvkAccess::Write))
       m_barriers.recordCommands(m_cmd);
     
     if ((size <= 4096) && ((size & 0x3) == 0) && ((offset & 0x3) == 0)) {
       m_cmd->cmdUpdateBuffer(
-        physicalSlice.handle(),
-        physicalSlice.offset(),
-        physicalSlice.length(),
+        bufferSlice.handle,
+        bufferSlice.offset,
+        bufferSlice.length,
         data);
     } else {
       auto slice = m_cmd->stagedAlloc(size);
       std::memcpy(slice.mapPtr, data, size);
 
       m_cmd->stagedBufferCopy(
-        physicalSlice.handle(),
-        physicalSlice.offset(),
-        physicalSlice.length(),
+        bufferSlice.handle,
+        bufferSlice.offset,
+        bufferSlice.length,
         slice);
     }
 
     m_barriers.accessBuffer(
-      physicalSlice,
+      bufferSlice,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT,
       buffer->info().stages,
@@ -3133,7 +3132,7 @@ namespace dxvk {
           case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
           case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
             requiresBarrier = m_barriers.isBufferDirty(
-              slot.bufferSlice.physicalSlice(), access);
+              slot.bufferSlice.getSliceHandle(), access);
             break;
         
           case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
@@ -3143,7 +3142,7 @@ namespace dxvk {
 
           case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
             requiresBarrier = m_barriers.isBufferDirty(
-              slot.bufferView->physicalSlice(), access);
+              slot.bufferView->getSliceHandle(), access);
             break;
           
           case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
@@ -3190,7 +3189,7 @@ namespace dxvk {
           case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
           case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
             m_barriers.accessBuffer(
-              slot.bufferSlice.physicalSlice(),
+              slot.bufferSlice.getSliceHandle(),
               stages, access,
               slot.bufferSlice.bufferInfo().stages,
               slot.bufferSlice.bufferInfo().access);
@@ -3203,7 +3202,7 @@ namespace dxvk {
 
           case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
             m_barriers.accessBuffer(
-              slot.bufferView->physicalSlice(),
+              slot.bufferView->getSliceHandle(),
               stages, access,
               slot.bufferView->bufferInfo().stages,
               slot.bufferView->bufferInfo().access);

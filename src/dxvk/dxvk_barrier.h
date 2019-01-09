@@ -21,7 +21,7 @@ namespace dxvk {
     ~DxvkBarrierSet();
         
     void accessBuffer(
-      const DxvkPhysicalBufferSlice&  bufSlice,
+      const DxvkBufferSliceHandle&    bufSlice,
             VkPipelineStageFlags      srcStages,
             VkAccessFlags             srcAccess,
             VkPipelineStageFlags      dstStages,
@@ -38,7 +38,7 @@ namespace dxvk {
             VkAccessFlags             dstAccess);
     
     bool isBufferDirty(
-      const DxvkPhysicalBufferSlice&  bufSlice,
+      const DxvkBufferSliceHandle&    bufSlice,
             DxvkAccessFlags           bufAccess);
 
     bool isImageDirty(
@@ -54,7 +54,7 @@ namespace dxvk {
   private:
 
     struct BufSlice {
-      DxvkPhysicalBufferSlice slice;
+      DxvkBufferSliceHandle   slice;
       DxvkAccessFlags         access;
     };
 

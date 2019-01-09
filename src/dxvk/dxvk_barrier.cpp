@@ -6,7 +6,7 @@ namespace dxvk {
   DxvkBarrierSet::~DxvkBarrierSet() { }
   
   void DxvkBarrierSet::accessBuffer(
-    const DxvkPhysicalBufferSlice&  bufSlice,
+    const DxvkBufferSliceHandle&    bufSlice,
           VkPipelineStageFlags      srcStages,
           VkAccessFlags             srcAccess,
           VkPipelineStageFlags      dstStages,
@@ -24,9 +24,9 @@ namespace dxvk {
       barrier.dstAccessMask       = dstAccess;
       barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
       barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-      barrier.buffer              = bufSlice.handle();
-      barrier.offset              = bufSlice.offset();
-      barrier.size                = bufSlice.length();
+      barrier.buffer              = bufSlice.handle;
+      barrier.offset              = bufSlice.offset;
+      barrier.size                = bufSlice.length;
       m_bufBarriers.push_back(barrier);
     }
 
@@ -72,13 +72,16 @@ namespace dxvk {
   
   
   bool DxvkBarrierSet::isBufferDirty(
-    const DxvkPhysicalBufferSlice&  bufSlice,
+    const DxvkBufferSliceHandle&    bufSlice,
           DxvkAccessFlags           bufAccess) {
     bool result = false;
 
     for (uint32_t i = 0; i < m_bufSlices.size() && !result; i++) {
-      result = (bufSlice.overlaps(m_bufSlices[i].slice))
-            && (bufAccess | m_bufSlices[i].access).test(DxvkAccess::Write);
+      const DxvkBufferSliceHandle& dstSlice = m_bufSlices[i].slice;
+
+      result = (bufSlice.handle == dstSlice.handle) && (bufAccess | m_bufSlices[i].access).test(DxvkAccess::Write)
+            && (bufSlice.offset + bufSlice.length > dstSlice.offset)
+            && (bufSlice.offset < dstSlice.offset + dstSlice.length);
     }
 
     return result;
@@ -95,10 +98,10 @@ namespace dxvk {
       const VkImageSubresourceRange& dstSubres = m_imgSlices[i].subres;
 
       result = (image == m_imgSlices[i].image) && (imgAccess | m_imgSlices[i].access).test(DxvkAccess::Write)
-            && imgSubres.baseArrayLayer < dstSubres.baseArrayLayer + dstSubres.layerCount
-            && imgSubres.baseArrayLayer + imgSubres.layerCount     > dstSubres.baseArrayLayer
-            && imgSubres.baseMipLevel   < dstSubres.baseMipLevel   + dstSubres.levelCount
-            && imgSubres.baseMipLevel   + imgSubres.levelCount     > dstSubres.baseMipLevel;
+            && (imgSubres.baseArrayLayer < dstSubres.baseArrayLayer + dstSubres.layerCount)
+            && (imgSubres.baseArrayLayer + imgSubres.layerCount     > dstSubres.baseArrayLayer)
+            && (imgSubres.baseMipLevel   < dstSubres.baseMipLevel   + dstSubres.levelCount)
+            && (imgSubres.baseMipLevel   + imgSubres.levelCount     > dstSubres.baseMipLevel);
     }
 
     return result;
