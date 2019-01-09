@@ -33,10 +33,10 @@ namespace dxvk {
     if (m_bufferOffset + size > m_bufferSize)
       return false;
     
-    auto physicalSlice = m_buffer->subSlice(m_bufferOffset, size);
-    slice.buffer = physicalSlice.handle();
-    slice.offset = physicalSlice.offset();
-    slice.mapPtr = physicalSlice.mapPtr(0);
+    auto physSlice = m_buffer->getSliceHandle(m_bufferOffset, size);
+    slice.buffer = physSlice.handle;
+    slice.offset = physSlice.offset;
+    slice.mapPtr = physSlice.mapPtr;
     
     m_bufferOffset = align(m_bufferOffset + size, 64);
     return true;
