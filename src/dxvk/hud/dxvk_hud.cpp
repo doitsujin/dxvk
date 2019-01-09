@@ -103,8 +103,8 @@ namespace dxvk::hud {
   
   
   void Hud::updateUniformBuffer(const Rc<DxvkContext>& ctx, const HudUniformData& data) {
-    auto slice = m_uniformBuffer->allocPhysicalSlice();
-    std::memcpy(slice.mapPtr(0), &data, sizeof(data));
+    auto slice = m_uniformBuffer->allocSlice();
+    std::memcpy(slice.mapPtr, &data, sizeof(data));
 
     ctx->invalidateBuffer(m_uniformBuffer, slice);
   }

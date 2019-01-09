@@ -9,6 +9,18 @@
 namespace dxvk {
 
   /**
+   * \brief Buffer info
+   * 
+   * Stores a Vulkan buffer handle and the
+   * memory object that is bound to the buffer.
+   */
+  struct DxvkBufferHandle {
+    VkBuffer      buffer = VK_NULL_HANDLE;
+    DxvkMemory    memory;
+  };
+  
+
+  /**
    * \brief Buffer slice info
    * 
    * Stores the Vulkan buffer handle, offset
@@ -44,14 +56,15 @@ namespace dxvk {
    * unformatted data. Can be accessed by the host
    * if allocated on an appropriate memory type.
    */
-  class DxvkBuffer : public RcObject {
+  class DxvkBuffer : public DxvkResource {
     friend class DxvkBufferView;
   public:
     
     DxvkBuffer(
             DxvkDevice*           device,
       const DxvkBufferCreateInfo& createInfo,
-            VkMemoryPropertyFlags memoryType);
+            DxvkMemoryAllocator&  memAlloc,
+            VkMemoryPropertyFlags memFlags);
     
     ~DxvkBuffer();
     
@@ -84,33 +97,15 @@ namespace dxvk {
      * \returns Pointer to mapped memory region
      */
     void* mapPtr(VkDeviceSize offset) const {
-      return m_physSlice.mapPtr(offset);
+      return reinterpret_cast<char*>(m_physSlice.mapPtr) + offset;
     }
     
-    /**
-     * \brief Checks whether the buffer is in use
-     * 
-     * Returns \c true if the underlying buffer resource
-     * is in use. If it is, it should not be accessed by
-     * the host for reading or writing, but reallocating
-     * the buffer is a valid strategy to overcome this.
-     * \returns \c true if the buffer is in use
-     */
-    bool isInUse() const {
-      return m_physSlice.resource()->isInUse();
-    }
-
     /**
      * \brief Retrieves slice handle
      * \returns Buffer slice handle
      */
     DxvkBufferSliceHandle getSliceHandle() const {
-      DxvkBufferSliceHandle result;
-      result.handle = m_physSlice.handle();
-      result.offset = m_physSlice.offset();
-      result.length = m_physSlice.length();
-      result.mapPtr = m_physSlice.mapPtr(0);
-      return result;
+      return m_physSlice;
     }
 
     /**
@@ -122,10 +117,10 @@ namespace dxvk {
      */
     DxvkBufferSliceHandle getSliceHandle(VkDeviceSize offset, VkDeviceSize length) const {
       DxvkBufferSliceHandle result;
-      result.handle = m_physSlice.handle();
-      result.offset = m_physSlice.offset() + offset;
+      result.handle = m_physSlice.handle;
+      result.offset = m_physSlice.offset + offset;
       result.length = length;
-      result.mapPtr = m_physSlice.mapPtr(offset);
+      result.mapPtr = mapPtr(offset);
       return result;
     }
 
@@ -138,8 +133,8 @@ namespace dxvk {
      */
     DxvkDescriptorInfo getDescriptor(VkDeviceSize offset, VkDeviceSize length) const {
       DxvkDescriptorInfo result;
-      result.buffer.buffer = m_physSlice.handle();
-      result.buffer.offset = m_physSlice.offset() + offset;
+      result.buffer.buffer = m_physSlice.handle;
+      result.buffer.offset = m_physSlice.offset + offset;
       result.buffer.range  = length;
       return result;
     }
@@ -148,43 +143,10 @@ namespace dxvk {
      * \brief Retrieves dynamic offset
      * 
      * \param [in] offset Offset into the buffer
-     * \returns Physical buffer slice offset
+     * \returns Offset for dynamic descriptors
      */
     VkDeviceSize getDynamicOffset(VkDeviceSize offset) const {
-      return m_physSlice.offset() + offset;
-    }
-    
-    /**
-     * \brief Underlying buffer resource
-     * 
-     * Use this for lifetime tracking.
-     * \returns The resource object
-     */
-    Rc<DxvkResource> resource() const {
-      return m_physSlice.resource();
-    }
-    
-    /**
-     * \brief Physical buffer slice
-     * 
-     * Retrieves a slice into the physical
-     * buffer which backs this buffer.
-     * \returns The backing slice
-     */
-    DxvkPhysicalBufferSlice slice() const {
-      return m_physSlice;
-    }
-    
-    /**
-     * \brief Physical buffer sub slice
-     * 
-     * Retrieves a sub slice into the backing buffer.
-     * \param [in] offset Offset into the buffer
-     * \param [in] length Length of the slice
-     * \returns The sub slice
-     */
-    DxvkPhysicalBufferSlice subSlice(VkDeviceSize offset, VkDeviceSize length) const {
-      return m_physSlice.subSlice(offset, length);
+      return m_physSlice.offset + offset;
     }
     
     /**
@@ -197,10 +159,8 @@ namespace dxvk {
      * \param [in] slice The new backing resource
      * \returns Previous buffer slice
      */
-    DxvkPhysicalBufferSlice rename(const DxvkPhysicalBufferSlice& slice) {
-      DxvkPhysicalBufferSlice prevSlice = std::move(m_physSlice);
-      m_physSlice = slice;
-      return prevSlice;
+    DxvkBufferSliceHandle rename(const DxvkBufferSliceHandle& slice) {
+      return std::exchange(m_physSlice, slice);
     }
     
     /**
@@ -226,45 +186,47 @@ namespace dxvk {
     }
     
     /**
-     * \brief Allocates new physical resource
-     * \returns The new backing buffer slice
+     * \brief Allocates new buffer slice
+     * \returns The new buffer slice
      */
-    DxvkPhysicalBufferSlice allocPhysicalSlice();
+    DxvkBufferSliceHandle allocSlice();
     
     /**
-     * \brief Frees a physical buffer slice
+     * \brief Frees a buffer slice
      * 
      * Marks the slice as free so that it can be used for
      * subsequent allocations. Called automatically when
      * the slice is no longer needed by the GPU.
      * \param [in] slice The buffer slice to free
      */
-    void freePhysicalSlice(
-      const DxvkPhysicalBufferSlice& slice);
+    void freeSlice(
+      const DxvkBufferSliceHandle& slice);
     
   private:
-    
+
     DxvkDevice*             m_device;
     DxvkBufferCreateInfo    m_info;
+    DxvkMemoryAllocator*    m_memAlloc;
     VkMemoryPropertyFlags   m_memFlags;
     
-    DxvkPhysicalBufferSlice m_physSlice;
+    DxvkBufferHandle        m_buffer;
+    DxvkBufferSliceHandle   m_physSlice;
+
     uint32_t                m_vertexStride = 0;
     
     sync::Spinlock m_freeMutex;
     sync::Spinlock m_swapMutex;
     
-    std::vector<DxvkPhysicalBufferSlice> m_freeSlices;
-    std::vector<DxvkPhysicalBufferSlice> m_nextSlices;
+    std::vector<DxvkBufferHandle>        m_buffers;
+    std::vector<DxvkBufferSliceHandle>   m_freeSlices;
+    std::vector<DxvkBufferSliceHandle>   m_nextSlices;
     
     VkDeviceSize m_physSliceLength  = 0;
     VkDeviceSize m_physSliceStride  = 0;
     VkDeviceSize m_physSliceCount   = 2;
 
-    Rc<DxvkPhysicalBuffer>  m_physBuffer;
-    
-    Rc<DxvkPhysicalBuffer> allocPhysicalBuffer(
-            VkDeviceSize    sliceCount) const;
+    DxvkBufferHandle allocBuffer(
+            VkDeviceSize          sliceCount) const;
     
   };
   
@@ -366,20 +328,6 @@ namespace dxvk {
     }
 
     /**
-     * \brief Physical slice
-     * 
-     * Retrieves the physical slice that currently
-     * backs the virtual slice. This may change
-     * when the virtual buffer gets invalidated.
-     * \returns The physical buffer slice
-     */
-    DxvkPhysicalBufferSlice physicalSlice() const {
-      return m_buffer != nullptr
-        ? m_buffer->subSlice(m_offset, m_length)
-        : DxvkPhysicalBufferSlice();
-    }
-
-    /**
      * \brief Retrieves descriptor info
      * \returns Buffer slice descriptor
      */
@@ -407,14 +355,6 @@ namespace dxvk {
       return m_buffer != nullptr
         ? m_buffer->mapPtr(m_offset + offset)
         : nullptr;
-    }
-    
-    /**
-     * \brief Resource pointer
-     * \returns Resource pointer
-     */
-    Rc<DxvkResource> resource() const {
-      return m_buffer->resource();
     }
     
     /**
@@ -502,14 +442,6 @@ namespace dxvk {
     const DxvkBufferCreateInfo& bufferInfo() const {
       return m_buffer->info();
     }
-    
-    /**
-     * \brief Backing buffer resource
-     * \returns Backing buffer resource
-     */
-    Rc<DxvkResource> bufferResource() const {
-      return m_buffer->resource();
-    }
 
     /**
      * \brief Retrieves buffer slice handle
@@ -581,16 +513,16 @@ namespace dxvk {
     ~DxvkBufferTracker();
     
     void freeBufferSlice(
-      const Rc<DxvkBuffer>&           buffer,
-      const DxvkPhysicalBufferSlice&  slice);
+      const Rc<DxvkBuffer>&         buffer,
+      const DxvkBufferSliceHandle&  slice);
     
     void reset();
     
   private:
     
     struct Entry {
-      Rc<DxvkBuffer>          buffer;
-      DxvkPhysicalBufferSlice slice;
+      Rc<DxvkBuffer>        buffer;
+      DxvkBufferSliceHandle slice;
     };
     
     std::vector<Entry> m_entries;

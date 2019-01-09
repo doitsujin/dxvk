@@ -26,7 +26,7 @@ namespace dxvk::hud {
   
   
   void HudRenderer::beginFrame(const Rc<DxvkContext>& context) {
-    auto vertexSlice = m_vertexBuffer->allocPhysicalSlice();
+    auto vertexSlice = m_vertexBuffer->allocSlice();
     context->invalidateBuffer(m_vertexBuffer, vertexSlice);
     
     const std::array<DxvkVertexAttribute, 3> ilAttributes = {{

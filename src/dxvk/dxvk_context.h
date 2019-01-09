@@ -575,11 +575,11 @@ namespace dxvk {
      * \warning If the buffer is used by another context,
      * invalidating it will result in undefined behaviour.
      * \param [in] buffer The buffer to invalidate
-     * \param [in] slice New physical buffer slice
+     * \param [in] slice New buffer slice handle
      */
     void invalidateBuffer(
       const Rc<DxvkBuffer>&           buffer,
-      const DxvkPhysicalBufferSlice&  slice);
+      const DxvkBufferSliceHandle&    slice);
     
     /**
      * \brief Resolves a multisampled image resource

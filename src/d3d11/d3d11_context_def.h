@@ -17,7 +17,7 @@ namespace dxvk {
     UINT                    RowPitch;
     UINT                    DepthPitch;
     DxvkDataSlice           DataSlice;
-    DxvkPhysicalBufferSlice BufferSlice;
+    DxvkBufferSliceHandle   BufferSlice;
     void*                   MapPointer;
   };
   

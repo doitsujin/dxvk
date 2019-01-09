@@ -79,12 +79,12 @@ namespace dxvk {
       return m_soCounter;
     }
     
-    DxvkPhysicalBufferSlice DiscardSlice() {
-      m_mapped = m_buffer->allocPhysicalSlice();
+    DxvkBufferSliceHandle DiscardSlice() {
+      m_mapped = m_buffer->allocSlice();
       return m_mapped;
     }
 
-    DxvkPhysicalBufferSlice GetMappedSlice() const {
+    DxvkBufferSliceHandle GetMappedSlice() const {
       return m_mapped;
     }
 
@@ -99,7 +99,7 @@ namespace dxvk {
     
     Rc<DxvkBuffer>              m_buffer;
     DxvkBufferSlice             m_soCounter;
-    DxvkPhysicalBufferSlice     m_mapped;
+    DxvkBufferSliceHandle       m_mapped;
 
     D3D10Buffer                 m_d3d10;
 

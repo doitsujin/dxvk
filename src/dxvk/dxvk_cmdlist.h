@@ -108,17 +108,17 @@ namespace dxvk {
     void endRecording();
     
     /**
-     * \brief Frees physical buffer slice
+     * \brief Frees buffer slice
      * 
      * After the command buffer execution has finished,
-     * the given physical slice will be released to the
+     * the given buffer slice will be released to the
      * virtual buffer object so that it can be reused.
      * \param [in] buffer The virtual buffer object
-     * \param [in] slice The physical buffer slice
+     * \param [in] slice The buffer slice handle
      */
-    void freePhysicalBufferSlice(
+    void freeBufferSlice(
       const Rc<DxvkBuffer>&           buffer,
-      const DxvkPhysicalBufferSlice&  slice) {
+      const DxvkBufferSliceHandle&    slice) {
       m_bufferTracker.freeBufferSlice(buffer, slice);
     }
     

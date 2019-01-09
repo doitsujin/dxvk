@@ -276,7 +276,7 @@ namespace dxvk {
       buffer->info().stages,
       buffer->info().access);
     
-    m_cmd->trackResource(buffer->resource());
+    m_cmd->trackResource(buffer);
   }
   
   
@@ -347,7 +347,7 @@ namespace dxvk {
       bufferView->bufferInfo().access);
     
     m_cmd->trackResource(bufferView);
-    m_cmd->trackResource(bufferView->bufferResource());
+    m_cmd->trackResource(bufferView->buffer());
   }
   
   
@@ -657,8 +657,8 @@ namespace dxvk {
       dstBuffer->info().stages,
       dstBuffer->info().access);
 
-    m_cmd->trackResource(dstBuffer->resource());
-    m_cmd->trackResource(srcBuffer->resource());
+    m_cmd->trackResource(dstBuffer);
+    m_cmd->trackResource(srcBuffer);
   }
   
   
@@ -761,7 +761,7 @@ namespace dxvk {
       srcBuffer->info().access);
     
     m_cmd->trackResource(dstImage);
-    m_cmd->trackResource(srcBuffer->resource());
+    m_cmd->trackResource(srcBuffer);
   }
   
   
@@ -920,7 +920,7 @@ namespace dxvk {
       dstBuffer->info().access);
     
     m_cmd->trackResource(srcImage);
-    m_cmd->trackResource(dstBuffer->resource());
+    m_cmd->trackResource(dstBuffer);
   }
 
 
@@ -1030,14 +1030,14 @@ namespace dxvk {
     m_cmd->trackResource(sView);
 
     m_cmd->trackResource(srcImage);
-    m_cmd->trackResource(dstBuffer->resource());
+    m_cmd->trackResource(dstBuffer);
   }
   
   
   void DxvkContext::discardBuffer(
     const Rc<DxvkBuffer>&       buffer) {
     if (m_barriers.isBufferDirty(buffer->getSliceHandle(), DxvkAccess::Write))
-      this->invalidateBuffer(buffer, buffer->allocPhysicalSlice());
+      this->invalidateBuffer(buffer, buffer->allocSlice());
   }
 
 
@@ -1343,10 +1343,10 @@ namespace dxvk {
   
   void DxvkContext::invalidateBuffer(
     const Rc<DxvkBuffer>&           buffer,
-    const DxvkPhysicalBufferSlice&  slice) {
+    const DxvkBufferSliceHandle&    slice) {
     // Allocate new backing resource
-    DxvkPhysicalBufferSlice prevSlice = buffer->rename(slice);
-    m_cmd->freePhysicalBufferSlice(buffer, prevSlice);
+    DxvkBufferSliceHandle prevSlice = buffer->rename(slice);
+    m_cmd->freeBufferSlice(buffer, prevSlice);
     
     // We also need to update all bindings that the buffer
     // may be bound to either directly or through views.
@@ -1372,7 +1372,7 @@ namespace dxvk {
 
     if (usage & (VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT
                | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)) {
-      if (prevSlice.handle() != slice.handle()) {
+      if (prevSlice.handle != slice.handle) {
         m_flags.set(DxvkContextFlag::GpDirtyResources,
                     DxvkContextFlag::CpDirtyResources);
       } else {
@@ -1473,7 +1473,7 @@ namespace dxvk {
       buffer->info().stages,
       buffer->info().access);
 
-    m_cmd->trackResource(buffer->resource());
+    m_cmd->trackResource(buffer);
   }
   
   
@@ -2464,7 +2464,7 @@ namespace dxvk {
         ctrOffsets[i] = physSlice.offset;
 
         if (physSlice.handle != VK_NULL_HANDLE)
-          m_cmd->trackResource(m_state.xfb.counters[i].resource());
+          m_cmd->trackResource(m_state.xfb.counters[i].buffer());
       }
       
       m_cmd->cmdBeginTransformFeedback(
@@ -2490,7 +2490,7 @@ namespace dxvk {
         ctrOffsets[i] = physSlice.offset;
 
         if (physSlice.handle != VK_NULL_HANDLE)
-          m_cmd->trackResource(m_state.xfb.counters[i].resource());
+          m_cmd->trackResource(m_state.xfb.counters[i].buffer());
       }
 
       m_queries.endQueries(m_cmd, 
@@ -2767,7 +2767,7 @@ namespace dxvk {
             m_descInfos[i].texelBuffer = res.bufferView->handle();
             
             m_cmd->trackResource(res.bufferView);
-            m_cmd->trackResource(res.bufferView->bufferResource());
+            m_cmd->trackResource(res.bufferView->buffer());
           } else {
             updatePipelineState |= bindMask.setUnbound(i);
             m_descInfos[i].texelBuffer = m_device->dummyBufferViewDescriptor();
@@ -2779,7 +2779,7 @@ namespace dxvk {
             updatePipelineState |= bindMask.setBound(i);
             m_descInfos[i] = res.bufferSlice.getDescriptor();
             
-            m_cmd->trackResource(res.bufferSlice.resource());
+            m_cmd->trackResource(res.bufferSlice.buffer());
           } else {
             updatePipelineState |= bindMask.setUnbound(i);
             m_descInfos[i].buffer = m_device->dummyBufferDescriptor();
@@ -2792,7 +2792,7 @@ namespace dxvk {
             m_descInfos[i] = res.bufferSlice.getDescriptor();
             m_descInfos[i].buffer.offset = 0;
             
-            m_cmd->trackResource(res.bufferSlice.resource());
+            m_cmd->trackResource(res.bufferSlice.buffer());
           } else {
             updatePipelineState |= bindMask.setUnbound(i);
             m_descInfos[i].buffer = m_device->dummyBufferDescriptor();
@@ -2887,7 +2887,7 @@ namespace dxvk {
           bufferInfo.buffer.offset,
           m_state.vi.indexType);
         m_cmd->trackResource(
-          m_state.vi.indexBuffer.resource());
+          m_state.vi.indexBuffer.buffer());
       } else {
         m_cmd->cmdBindIndexBuffer(
           m_device->dummyBufferHandle(),
@@ -2920,7 +2920,7 @@ namespace dxvk {
           
           bindingMask |= 1u << binding;
           
-          m_cmd->trackResource(m_state.vi.vertexBuffers[binding].resource());
+          m_cmd->trackResource(m_state.vi.vertexBuffers[binding].buffer());
         }
       }
       
@@ -2975,7 +2975,7 @@ namespace dxvk {
         auto buffer = m_state.xfb.buffers[i].buffer();
         buffer->setXfbVertexStride(gsOptions.xfbStrides[i]);
         
-        m_cmd->trackResource(buffer->resource());
+        m_cmd->trackResource(buffer);
       }
     }
 
@@ -3291,7 +3291,7 @@ namespace dxvk {
       m_flags.clr(DxvkContextFlag::DirtyDrawBuffer);
 
       if (m_state.id.argBuffer.defined())
-        m_cmd->trackResource(m_state.id.argBuffer.resource());
+        m_cmd->trackResource(m_state.id.argBuffer.buffer());
     }
   }
   

@@ -351,32 +351,32 @@ namespace dxvk {
       // Allocate a new backing slice for the buffer and set
       // it as the 'new' mapped slice. This assumes that the
       // only way to invalidate a buffer is by mapping it.
-      auto physicalSlice = pResource->DiscardSlice();
-      pMappedResource->pData      = physicalSlice.mapPtr(0);
+      auto physSlice = pResource->DiscardSlice();
+      pMappedResource->pData      = physSlice.mapPtr;
       pMappedResource->RowPitch   = pResource->Desc()->ByteWidth;
       pMappedResource->DepthPitch = pResource->Desc()->ByteWidth;
       
       EmitCs([
-        cBuffer        = std::move(buffer),
-        cPhysicalSlice = std::move(physicalSlice)
+        cBuffer      = std::move(buffer),
+        cBufferSlice = std::move(physSlice)
       ] (DxvkContext* ctx) {
-        ctx->invalidateBuffer(cBuffer, cPhysicalSlice);
+        ctx->invalidateBuffer(cBuffer, cBufferSlice);
       });
 
       return S_OK;
     } else {
       // Wait until the resource is no longer in use
       if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE) {
-        if (!WaitForResource(buffer->resource(), MapFlags))
+        if (!WaitForResource(buffer, MapFlags))
           return DXGI_ERROR_WAS_STILL_DRAWING;
       }
 
       // Use map pointer from previous map operation. This
       // way we don't have to synchronize with the CS thread
       // if the map mode is D3D11_MAP_WRITE_NO_OVERWRITE.
-      DxvkPhysicalBufferSlice physicalSlice = pResource->GetMappedSlice();
+      DxvkBufferSliceHandle physSlice = pResource->GetMappedSlice();
       
-      pMappedResource->pData      = physicalSlice.mapPtr(0);
+      pMappedResource->pData      = physSlice.mapPtr;
       pMappedResource->RowPitch   = pResource->Desc()->ByteWidth;
       pMappedResource->DepthPitch = pResource->Desc()->ByteWidth;
       return S_OK;
@@ -449,10 +449,10 @@ namespace dxvk {
           cImageBuffer, 0, cImage, layers, offset, extent, cFormat);
       });
 
-      WaitForResource(mappedBuffer->resource(), 0);
+      WaitForResource(mappedBuffer, 0);
 
-      DxvkPhysicalBufferSlice physicalSlice = mappedBuffer->slice();
-      pMappedResource->pData      = physicalSlice.mapPtr(0);
+      DxvkBufferSliceHandle physSlice = mappedBuffer->getSliceHandle();
+      pMappedResource->pData      = physSlice.mapPtr;
       pMappedResource->RowPitch   = packFormatInfo->elementSize * levelExtent.width;
       pMappedResource->DepthPitch = packFormatInfo->elementSize * levelExtent.width * levelExtent.height;
       return S_OK;
@@ -460,18 +460,18 @@ namespace dxvk {
       VkExtent3D levelExtent = mappedImage->mipLevelExtent(subresource.mipLevel);
       VkExtent3D blockCount = util::computeBlockCount(levelExtent, formatInfo->blockSize);
       
-      DxvkPhysicalBufferSlice physicalSlice;
+      DxvkBufferSliceHandle physSlice;
       
       if (MapType == D3D11_MAP_WRITE_DISCARD) {
         // We do not have to preserve the contents of the
         // buffer if the entire image gets discarded.
-        physicalSlice = mappedBuffer->allocPhysicalSlice();
+        physSlice = mappedBuffer->allocSlice();
         
         EmitCs([
-          cImageBuffer   = mappedBuffer,
-          cPhysicalSlice = physicalSlice
+          cImageBuffer = mappedBuffer,
+          cBufferSlice = physSlice
         ] (DxvkContext* ctx) {
-          ctx->invalidateBuffer(cImageBuffer, cPhysicalSlice);
+          ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
         });
       } else {
         // When using any map mode which requires the image contents
@@ -495,12 +495,12 @@ namespace dxvk {
           });
         }
         
-        WaitForResource(mappedBuffer->resource(), 0);
-        physicalSlice = mappedBuffer->slice();
+        WaitForResource(mappedBuffer, 0);
+        physSlice = mappedBuffer->getSliceHandle();
       }
       
       // Set up map pointer. Data is tightly packed within the mapped buffer.
-      pMappedResource->pData      = physicalSlice.mapPtr(0);
+      pMappedResource->pData      = physSlice.mapPtr;
       pMappedResource->RowPitch   = formatInfo->elementSize * blockCount.width;
       pMappedResource->DepthPitch = formatInfo->elementSize * blockCount.width * blockCount.height;
       return S_OK;

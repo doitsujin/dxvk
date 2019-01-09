@@ -181,9 +181,9 @@ namespace dxvk {
     if (pBuffer->Desc()->Usage == D3D11_USAGE_DYNAMIC && m_csFlags.test(DxvkCsChunkFlag::SingleUse)) {
       // For resources that cannot be written by the GPU,
       // we may write to the buffer resource directly and
-      // just swap in the physical buffer slice as needed.
-      pMapEntry->BufferSlice = buffer->allocPhysicalSlice();
-      pMapEntry->MapPointer  = pMapEntry->BufferSlice.mapPtr(0);
+      // just swap in the buffer slice as needed.
+      pMapEntry->BufferSlice = buffer->allocSlice();
+      pMapEntry->MapPointer  = pMapEntry->BufferSlice.mapPtr;
     } else {
       // For GPU-writable resources, we need a data slice
       // to perform the update operation at execution time.
@@ -257,8 +257,8 @@ namespace dxvk {
         cDstBuffer = pBuffer->GetBuffer(),
         cDataSlice = pMapEntry->DataSlice
       ] (DxvkContext* ctx) {
-        DxvkPhysicalBufferSlice slice = cDstBuffer->allocPhysicalSlice();
-        std::memcpy(slice.mapPtr(0), cDataSlice.ptr(), cDataSlice.length());
+        DxvkBufferSliceHandle slice = cDstBuffer->allocSlice();
+        std::memcpy(slice.mapPtr, cDataSlice.ptr(), cDataSlice.length());
         ctx->invalidateBuffer(cDstBuffer, slice);
       });
     }

@@ -140,17 +140,6 @@ namespace dxvk {
     DxvkDeviceOptions options() const;
     
     /**
-     * \brief Allocates a physical buffer
-     * 
-     * \param [in] createInfo Buffer create info
-     * \param [in] memoryType Memory property flags
-     * \returns The buffer resource object
-     */
-    Rc<DxvkPhysicalBuffer> allocPhysicalBuffer(
-      const DxvkBufferCreateInfo& createInfo,
-            VkMemoryPropertyFlags memoryType);
-    
-    /**
      * \brief Allocates a staging buffer
      * 
      * Returns a staging buffer that is at least as large
