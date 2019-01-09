@@ -3,10 +3,53 @@
 #include <unordered_map>
 #include <vector>
 
-#include "dxvk_buffer_res.h"
+#include "dxvk_descriptor.h"
+#include "dxvk_format.h"
 #include "dxvk_hash.h"
+#include "dxvk_memory.h"
+#include "dxvk_resource.h"
 
 namespace dxvk {
+
+  /**
+   * \brief Buffer create info
+   * 
+   * The properties of a buffer that are
+   * passed to \ref DxvkDevice::createBuffer
+   */
+  struct DxvkBufferCreateInfo {
+    /// Size of the buffer, in bytes
+    VkDeviceSize size;
+    
+    /// Buffer usage flags
+    VkBufferUsageFlags usage;
+    
+    /// Pipeline stages that can access
+    /// the contents of the buffer.
+    VkPipelineStageFlags stages;
+    
+    /// Allowed access patterns
+    VkAccessFlags access;
+  };
+  
+  
+  /**
+   * \brief Buffer view create info
+   * 
+   * The properties of a buffer view that
+   * are to \ref DxvkDevice::createBufferView
+   */
+  struct DxvkBufferViewCreateInfo {
+    /// Buffer data format, like image data
+    VkFormat format;
+    
+    /// Offset of the buffer region to include in the view
+    VkDeviceSize rangeOffset;
+    
+    /// Size of the buffer region to include in the view
+    VkDeviceSize rangeLength;
+  };
+
 
   /**
    * \brief Buffer info

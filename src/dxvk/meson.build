@@ -43,7 +43,6 @@ dxvk_src = files([
   'dxvk_adapter.cpp',
   'dxvk_barrier.cpp',
   'dxvk_buffer.cpp',
-  'dxvk_buffer_res.cpp',
   'dxvk_cmdlist.cpp',
   'dxvk_compute.cpp',
   'dxvk_context.cpp',
