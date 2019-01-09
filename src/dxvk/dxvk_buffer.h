@@ -6,6 +6,21 @@
 #include "dxvk_buffer_res.h"
 
 namespace dxvk {
+
+  /**
+   * \brief Buffer slice info
+   * 
+   * Stores the Vulkan buffer handle, offset
+   * and length of the slice, and a pointer
+   * to the mapped region..
+   */
+  struct DxvkBufferSliceHandle {
+    VkBuffer      handle;
+    VkDeviceSize  offset;
+    VkDeviceSize  length;
+    void*         mapPtr;
+  };
+
   
   /**
    * \brief Virtual buffer resource
@@ -71,11 +86,39 @@ namespace dxvk {
     }
 
     /**
+     * \brief Retrieves slice handle
+     * \returns Buffer slice handle
+     */
+    DxvkBufferSliceHandle getSliceHandle() const {
+      DxvkBufferSliceHandle result;
+      result.handle = m_physSlice.handle();
+      result.offset = m_physSlice.offset();
+      result.length = m_physSlice.length();
+      result.mapPtr = m_physSlice.mapPtr(0);
+      return result;
+    }
+
+    /**
+     * \brief Retrieves sub slice handle
+     * 
+     * \param [in] offset Offset into buffer
+     * \param [in] length Sub slice length
+     * \returns Buffer slice handle
+     */
+    DxvkBufferSliceHandle getSliceHandle(VkDeviceSize offset, VkDeviceSize length) const {
+      DxvkBufferSliceHandle result;
+      result.handle = m_physSlice.handle();
+      result.offset = m_physSlice.offset() + offset;
+      result.length = length;
+      result.mapPtr = m_physSlice.mapPtr(offset);
+      return result;
+    }
+
+    /**
      * \brief Retrieves descriptor info
      * 
      * \param [in] offset Buffer slice offset
      * \param [in] length Buffer slice length
-     * \param [in] keepOffset \c false to zero offset
      * \returns Buffer slice descriptor
      */
     DxvkDescriptorInfo getDescriptor(VkDeviceSize offset, VkDeviceSize length) const {
@@ -288,6 +331,31 @@ namespace dxvk {
     }
     
     /**
+     * \brief Retrieves buffer slice handle
+     * 
+     * Returns the buffer handle and offset
+     * \returns Buffer slice handle
+     */
+    DxvkBufferSliceHandle getSliceHandle() const {
+      return m_buffer != nullptr
+        ? m_buffer->getSliceHandle(m_offset, m_length)
+        : DxvkBufferSliceHandle();
+    }
+
+    /**
+     * \brief Retrieves sub slice handle
+     * 
+     * \param [in] offset Offset into buffer
+     * \param [in] length Sub slice length
+     * \returns Buffer slice handle
+     */
+    DxvkBufferSliceHandle getSliceHandle(VkDeviceSize offset, VkDeviceSize length) const {
+      return m_buffer != nullptr
+        ? m_buffer->getSliceHandle(m_offset + offset, length)
+        : DxvkBufferSliceHandle();
+    }
+
+    /**
      * \brief Physical slice
      * 
      * Retrieves the physical slice that currently
@@ -439,6 +507,16 @@ namespace dxvk {
      */
     Rc<DxvkResource> bufferResource() const {
       return m_physView->bufferResource();
+    }
+
+    /**
+     * \brief Retrieves buffer slice handle
+     * \returns Buffer slice handle
+     */
+    DxvkBufferSliceHandle getSliceHandle() const {
+      return m_buffer->getSliceHandle(
+        m_info.rangeOffset,
+        m_info.rangeLength);
     }
     
     /**
