@@ -1212,12 +1212,13 @@ namespace dxvk {
     this->commitGraphicsState();
 
     if (this->validateGraphicsState()) {
-      auto physicalSlice = counterBuffer.physicalSlice();
+      auto physSlice = counterBuffer.getSliceHandle();
 
       m_cmd->cmdDrawIndirectVertexCount(1, 0,
-        physicalSlice.handle(),
-        physicalSlice.offset(),
-        counterBias, counterDivisor);
+        physSlice.handle,
+        physSlice.offset,
+        counterBias,
+        counterDivisor);
       
       this->commitGraphicsPostBarriers();
     }
@@ -2457,13 +2458,13 @@ namespace dxvk {
       VkDeviceSize ctrOffsets[MaxNumXfbBuffers];
 
       for (uint32_t i = 0; i < MaxNumXfbBuffers; i++) {
-        auto physSlice = m_state.xfb.counters[i].physicalSlice();
+        auto physSlice = m_state.xfb.counters[i].getSliceHandle();
 
-        ctrBuffers[i] = physSlice.handle();
-        ctrOffsets[i] = physSlice.offset();
+        ctrBuffers[i] = physSlice.handle;
+        ctrOffsets[i] = physSlice.offset;
 
-        if (physSlice.handle() != VK_NULL_HANDLE)
-          m_cmd->trackResource(physSlice.resource());
+        if (physSlice.handle != VK_NULL_HANDLE)
+          m_cmd->trackResource(m_state.xfb.counters[i].resource());
       }
       
       m_cmd->cmdBeginTransformFeedback(
@@ -2483,13 +2484,13 @@ namespace dxvk {
       VkDeviceSize ctrOffsets[MaxNumXfbBuffers];
 
       for (uint32_t i = 0; i < MaxNumXfbBuffers; i++) {
-        auto physSlice = m_state.xfb.counters[i].physicalSlice();
+        auto physSlice = m_state.xfb.counters[i].getSliceHandle();
 
-        ctrBuffers[i] = physSlice.handle();
-        ctrOffsets[i] = physSlice.offset();
+        ctrBuffers[i] = physSlice.handle;
+        ctrOffsets[i] = physSlice.offset;
 
-        if (physSlice.handle() != VK_NULL_HANDLE)
-          m_cmd->trackResource(physSlice.resource());
+        if (physSlice.handle != VK_NULL_HANDLE)
+          m_cmd->trackResource(m_state.xfb.counters[i].resource());
       }
 
       m_queries.endQueries(m_cmd, 
@@ -2961,20 +2962,20 @@ namespace dxvk {
     VkDeviceSize xfbLengths[MaxNumXfbBuffers];
 
     for (size_t i = 0; i < MaxNumXfbBuffers; i++) {
-      auto physSlice = m_state.xfb.buffers[i].physicalSlice();
+      auto physSlice = m_state.xfb.buffers[i].getSliceHandle();
       
-      xfbBuffers[i] = physSlice.handle();
-      xfbOffsets[i] = physSlice.offset();
-      xfbLengths[i] = physSlice.length();
+      xfbBuffers[i] = physSlice.handle;
+      xfbOffsets[i] = physSlice.offset;
+      xfbLengths[i] = physSlice.length;
 
-      if (physSlice.handle() == VK_NULL_HANDLE)
+      if (physSlice.handle == VK_NULL_HANDLE)
         xfbBuffers[i] = m_device->dummyBufferHandle();
       
-      if (physSlice.handle() != VK_NULL_HANDLE) {
+      if (physSlice.handle != VK_NULL_HANDLE) {
         auto buffer = m_state.xfb.buffers[i].buffer();
         buffer->setXfbVertexStride(gsOptions.xfbStrides[i]);
         
-        m_cmd->trackResource(physSlice.resource());
+        m_cmd->trackResource(buffer->resource());
       }
     }
 
