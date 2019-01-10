@@ -80,6 +80,42 @@ namespace dxvk {
     T m_command;
     
   };
+
+
+  /**
+   * \brief Typed command with metadata
+   * 
+   * Stores a function object and an arbitrary
+   * data structure which can be modified after
+   * submitting the command to a cs chunk.
+   */
+  template<typename T, typename M>
+  class alignas(16) DxvkCsDataCmd : public DxvkCsCmd {
+
+  public:
+
+    template<typename... Args>
+    DxvkCsDataCmd(T&& cmd, Args&&... args)
+    : m_command (std::move(cmd)),
+      m_data    (std::forward<Args>(args)...) { }
+    
+    DxvkCsDataCmd             (DxvkCsDataCmd&&) = delete;
+    DxvkCsDataCmd& operator = (DxvkCsDataCmd&&) = delete;
+
+    void exec(DxvkContext* ctx) const {
+      m_command(ctx, &m_data);
+    }
+
+    M* data() {
+      return &m_data;
+    }
+
+  private:
+
+    T m_command;
+    M m_data;
+
+  };
   
   
   /**
@@ -146,6 +182,34 @@ namespace dxvk {
       m_commandCount  += 1;
       m_commandOffset += sizeof(FuncType);
       return true;
+    }
+
+    /**
+     * \brief Adds a command with data to the chunk 
+     * 
+     * \param [in] command The command to add
+     * \param [in] args Constructor args for the data object
+     * \returns Pointer to the data object, or \c nullptr
+     */
+    template<typename M, typename T, typename... Args>
+    M* pushCmd(T& command, Args&&... args) {
+      using FuncType = DxvkCsDataCmd<T, M>;
+      
+      if (m_commandOffset + sizeof(FuncType) > MaxBlockSize)
+        return nullptr;
+      
+      FuncType* func = new (m_data + m_commandOffset)
+        FuncType(std::move(command), std::forward<Args>(args)...);
+      
+      if (m_tail != nullptr)
+        m_tail->setNext(func);
+      else
+        m_head = func;
+      m_tail = func;
+
+      m_commandCount  += 1;
+      m_commandOffset += sizeof(FuncType);
+      return func->data();
     }
     
     /**
