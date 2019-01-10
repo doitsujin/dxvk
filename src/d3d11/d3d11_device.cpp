@@ -1398,6 +1398,7 @@ namespace dxvk {
     }
     
     if (featureLevel >= D3D_FEATURE_LEVEL_11_0) {
+      enabled.core.features.multiDrawIndirect                     = supported.core.features.multiDrawIndirect;
       enabled.core.features.drawIndirectFirstInstance             = VK_TRUE;
       enabled.core.features.shaderFloat64                         = supported.core.features.shaderFloat64;
       enabled.core.features.shaderInt64                           = supported.core.features.shaderInt64;
