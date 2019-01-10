@@ -40,6 +40,9 @@ namespace dxvk {
 
     /// Enables D3D10 support
     bool d3d10Enable;
+
+    /// Enables nvapi workaround
+    bool nvapiHack;
   };
   
 }

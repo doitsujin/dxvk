@@ -159,7 +159,7 @@ namespace dxvk {
     
     // XXX nvapi workaround for a lot of Unreal Engine 4 games
     if (options->customVendorId < 0 && options->customDeviceId < 0
-     && deviceProp.vendorID == uint16_t(DxvkGpuVendor::Nvidia)) {
+     && options->nvapiHack && deviceProp.vendorID == uint16_t(DxvkGpuVendor::Nvidia)) {
       Logger::info("DXGI: NvAPI workaround enabled, reporting AMD GPU");
       deviceProp.vendorID = uint16_t(DxvkGpuVendor::Amd);
       deviceProp.deviceID = 0x67df; /* RX 480 */
