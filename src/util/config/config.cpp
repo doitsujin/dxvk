@@ -75,6 +75,14 @@ namespace dxvk {
     { "FIFA19_demo.exe", {{
       { "dxvk.useRawSsbo",                  "True" },
     }} },
+    /* Call of Duty WW2                           */
+    { "s2_sp64_ship.exe", {{
+      { "dxgi.nvapiHack",                   "False" },
+    }} },
+    /* Need for Speed 2015                        */
+    { "NFS16.exe", {{
+      { "dxgi.nvapiHack",                   "False" },
+    }} },
   }};
 
 
