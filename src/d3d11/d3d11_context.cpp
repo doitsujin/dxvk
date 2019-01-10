@@ -18,7 +18,8 @@ namespace dxvk {
     m_multithread(this, false),
     m_device    (Device),
     m_csFlags   (CsFlags),
-    m_csChunk   (AllocCsChunk()) {
+    m_csChunk   (AllocCsChunk()),
+    m_cmdData   (nullptr) {
     // Create default state objects. We won't ever return them
     // to the application, but we'll use them to apply state.
     Com<ID3D11BlendState>         defaultBlendState;
@@ -1401,10 +1402,27 @@ namespace dxvk {
     
     SetDrawBuffer(pBufferForArgs);
     
-    EmitCs([cOffset = AlignedByteOffsetForArgs]
-    (DxvkContext* ctx) {
-      ctx->drawIndexedIndirect(cOffset, 1, 0);
-    });
+    // If possible, batch up multiple indirect draw calls of
+    // the same type into one single multiDrawIndirect call
+    constexpr VkDeviceSize stride = sizeof(VkDrawIndexedIndirectCommand);
+    auto cmdData = static_cast<D3D11CmdDrawIndirectData*>(m_cmdData);
+
+    bool useMultiDraw = cmdData && cmdData->type == D3D11CmdType::DrawIndirectIndexed
+      && cmdData->offset + cmdData->count * stride == AlignedByteOffsetForArgs
+      && m_device->features().core.features.multiDrawIndirect;
+    
+    if (useMultiDraw) {
+      cmdData->count += 1;
+    } else {
+      cmdData = EmitCsCmd<D3D11CmdDrawIndirectData>(
+        [] (DxvkContext* ctx, const D3D11CmdDrawIndirectData* data) {
+          ctx->drawIndexedIndirect(data->offset, data->count, stride);
+        });
+      
+      cmdData->type   = D3D11CmdType::DrawIndirectIndexed;
+      cmdData->offset = AlignedByteOffsetForArgs;
+      cmdData->count  = 1;
+    }
   }
   
   
@@ -1414,11 +1432,28 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     SetDrawBuffer(pBufferForArgs);
+
+    // If possible, batch up multiple indirect draw calls of
+    // the same type into one single multiDrawIndirect call
+    constexpr VkDeviceSize stride = sizeof(VkDrawIndirectCommand);
+    auto cmdData = static_cast<D3D11CmdDrawIndirectData*>(m_cmdData);
+
+    bool useMultiDraw = cmdData && cmdData->type == D3D11CmdType::DrawIndirectIndexed
+      && cmdData->offset + cmdData->count * stride == AlignedByteOffsetForArgs
+      && m_device->features().core.features.multiDrawIndirect;
     
-    EmitCs([cOffset = AlignedByteOffsetForArgs]
-    (DxvkContext* ctx) {
-      ctx->drawIndirect(cOffset, 1, 0);
-    });
+    if (useMultiDraw) {
+      cmdData->count += 1;
+    } else {
+      cmdData = EmitCsCmd<D3D11CmdDrawIndirectData>(
+        [] (DxvkContext* ctx, const D3D11CmdDrawIndirectData* data) {
+          ctx->drawIndirect(data->offset, data->count, stride);
+        });
+      
+      cmdData->type   = D3D11CmdType::DrawIndirect;
+      cmdData->offset = AlignedByteOffsetForArgs;
+      cmdData->count  = 1;
+    }
   }
   
   

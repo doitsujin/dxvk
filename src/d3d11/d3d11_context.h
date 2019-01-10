@@ -7,6 +7,7 @@
 #include "../d3d10/d3d10_multithread.h"
 
 #include "d3d11_annotation.h"
+#include "d3d11_cmd.h"
 #include "d3d11_context_state.h"
 #include "d3d11_device_child.h"
 #include "d3d11_texture.h"
@@ -662,6 +663,7 @@ namespace dxvk {
     Com<D3D11RasterizerState>   m_defaultRasterizerState;
     
     D3D11ContextState           m_state;
+    D3D11CmdData*               m_cmdData;
     
     void ApplyInputLayout();
     
@@ -814,6 +816,8 @@ namespace dxvk {
 
     template<typename Cmd>
     void EmitCs(Cmd&& command) {
+      m_cmdData = nullptr;
+
       if (!m_csChunk->push(command)) {
         EmitCsChunk(std::move(m_csChunk));
         
@@ -821,11 +825,29 @@ namespace dxvk {
         m_csChunk->push(command);
       }
     }
+
+    template<typename M, typename Cmd, typename... Args>
+    M* EmitCsCmd(Cmd&& command, Args&&... args) {
+      M* data = m_csChunk->pushCmd<M, Cmd, Args...>(
+        command, std::forward<Args>(args)...);
+
+      if (!data) {
+        EmitCsChunk(std::move(m_csChunk));
+        
+        m_csChunk = AllocCsChunk();
+        data = m_csChunk->pushCmd<M, Cmd, Args...>(
+          command, std::forward<Args>(args)...);
+      }
+
+      m_cmdData = data;
+      return data;
+    }
     
     void FlushCsChunk() {
       if (m_csChunk->commandCount() != 0) {
         EmitCsChunk(std::move(m_csChunk));
         m_csChunk = AllocCsChunk();
+        m_cmdData = nullptr;
       }
     }
     
