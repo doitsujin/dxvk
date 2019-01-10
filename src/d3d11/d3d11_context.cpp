@@ -1416,7 +1416,8 @@ namespace dxvk {
     } else {
       cmdData = EmitCsCmd<D3D11CmdDrawIndirectData>(
         [] (DxvkContext* ctx, const D3D11CmdDrawIndirectData* data) {
-          ctx->drawIndexedIndirect(data->offset, data->count, stride);
+          ctx->drawIndexedIndirect(data->offset, data->count,
+            sizeof(VkDrawIndexedIndirectCommand));
         });
       
       cmdData->type   = D3D11CmdType::DrawIndirectIndexed;
@@ -1447,7 +1448,8 @@ namespace dxvk {
     } else {
       cmdData = EmitCsCmd<D3D11CmdDrawIndirectData>(
         [] (DxvkContext* ctx, const D3D11CmdDrawIndirectData* data) {
-          ctx->drawIndirect(data->offset, data->count, stride);
+          ctx->drawIndirect(data->offset, data->count,
+            sizeof(VkDrawIndirectCommand));
         });
       
       cmdData->type   = D3D11CmdType::DrawIndirect;
