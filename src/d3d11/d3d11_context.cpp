@@ -2705,12 +2705,24 @@ namespace dxvk {
     const D3D11_VIEWPORT*                   pViewports) {
     D3D10DeviceLock lock = LockContext();
     
+    bool dirty = m_state.rs.numViewports != NumViewports;
     m_state.rs.numViewports = NumViewports;
     
-    for (uint32_t i = 0; i < NumViewports; i++)
-      m_state.rs.viewports.at(i) = pViewports[i];
+    for (uint32_t i = 0; i < NumViewports; i++) {
+      const D3D11_VIEWPORT& vp = m_state.rs.viewports[i];
+
+      dirty |= vp.TopLeftX != pViewports[i].TopLeftX
+            || vp.TopLeftY != pViewports[i].TopLeftY
+            || vp.Width    != pViewports[i].Width
+            || vp.Height   != pViewports[i].Height
+            || vp.MinDepth != pViewports[i].MinDepth
+            || vp.MaxDepth != pViewports[i].MaxDepth;
+      
+      m_state.rs.viewports[i] = pViewports[i];
+    }
     
-    ApplyViewportState();
+    if (dirty)
+      ApplyViewportState();
   }
   
   
@@ -2719,15 +2731,24 @@ namespace dxvk {
     const D3D11_RECT*                       pRects) {
     D3D10DeviceLock lock = LockContext();
     
+    bool dirty = m_state.rs.numScissors != NumRects;
     m_state.rs.numScissors = NumRects;
     
     for (uint32_t i = 0; i < NumRects; i++) {
       if (pRects[i].bottom >= pRects[i].top
-       && pRects[i].right  >= pRects[i].left)
-        m_state.rs.scissors.at(i) = pRects[i];
+       && pRects[i].right  >= pRects[i].left) {
+        const D3D11_RECT& sr = m_state.rs.scissors[i];
+
+        dirty |= sr.top    != pRects[i].top
+              || sr.left   != pRects[i].left
+              || sr.bottom != pRects[i].bottom
+              || sr.right  != pRects[i].right;
+
+        m_state.rs.scissors[i] = pRects[i];
+      }
     }
     
-    if (m_state.rs.state != nullptr) {
+    if (m_state.rs.state != nullptr && dirty) {
       D3D11_RASTERIZER_DESC rsDesc;
       m_state.rs.state->GetDesc(&rsDesc);
       
