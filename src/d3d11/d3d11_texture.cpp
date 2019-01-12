@@ -598,13 +598,15 @@ namespace dxvk {
   
   
   UINT STDMETHODCALLTYPE D3D11Texture1D::GetEvictionPriority() {
-    Logger::warn("D3D11Texture1D::GetEvictionPriority: Stub");
     return DXGI_RESOURCE_PRIORITY_NORMAL;
   }
   
   
   void STDMETHODCALLTYPE D3D11Texture1D::SetEvictionPriority(UINT EvictionPriority) {
-    Logger::warn("D3D11Texture1D::SetEvictionPriority: Stub");
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D11Texture1D::SetEvictionPriority: Stub");
   }
   
   
@@ -677,13 +679,15 @@ namespace dxvk {
   
   
   UINT STDMETHODCALLTYPE D3D11Texture2D::GetEvictionPriority() {
-    Logger::warn("D3D11Texture2D::GetEvictionPriority: Stub");
     return DXGI_RESOURCE_PRIORITY_NORMAL;
   }
   
   
   void STDMETHODCALLTYPE D3D11Texture2D::SetEvictionPriority(UINT EvictionPriority) {
-    Logger::warn("D3D11Texture2D::SetEvictionPriority: Stub");
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D11Texture2D::SetEvictionPriority: Stub");
   }
   
   
@@ -758,13 +762,15 @@ namespace dxvk {
   
   
   UINT STDMETHODCALLTYPE D3D11Texture3D::GetEvictionPriority() {
-    Logger::warn("D3D11Texture3D::GetEvictionPriority: Stub");
     return DXGI_RESOURCE_PRIORITY_NORMAL;
   }
   
   
   void STDMETHODCALLTYPE D3D11Texture3D::SetEvictionPriority(UINT EvictionPriority) {
-    Logger::warn("D3D11Texture3D::SetEvictionPriority: Stub");
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D11Texture3D::SetEvictionPriority: Stub");
   }
   
   

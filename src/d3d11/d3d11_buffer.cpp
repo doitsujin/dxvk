@@ -142,13 +142,15 @@ namespace dxvk {
   
   
   UINT STDMETHODCALLTYPE D3D11Buffer::GetEvictionPriority() {
-    Logger::warn("D3D11Buffer::GetEvictionPriority: Stub");
     return DXGI_RESOURCE_PRIORITY_NORMAL;
   }
   
   
   void STDMETHODCALLTYPE D3D11Buffer::SetEvictionPriority(UINT EvictionPriority) {
-    Logger::warn("D3D11Buffer::SetEvictionPriority: Stub");
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D11Buffer::SetEvictionPriority: Stub");
   }
   
   
