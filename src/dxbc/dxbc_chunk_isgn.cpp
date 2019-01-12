@@ -10,16 +10,23 @@ namespace dxvk {
       DxbcScalarType::Uint32, DxbcScalarType::Uint32,
       DxbcScalarType::Sint32, DxbcScalarType::Float32,
     };
+
+    // https://github.com/DarkStarSword/3d-fixes/blob/master/dx11shaderanalyse.py#L101
+    bool hasStream    = (tag == "ISG1") || (tag == "OSG1") || (tag == "PSG1") || (tag == "OSG5");
+    bool hasPrecision = (tag == "ISG1") || (tag == "OSG1") || (tag == "PSG1");
     
     for (uint32_t i = 0; i < elementCount; i++) {
       DxbcSgnEntry entry;
-      entry.streamId        = tag == "OSG5" ? reader.readu32() : 0;
+      entry.streamId        = hasStream ? reader.readu32() : 0;
       entry.semanticName    = reader.clone(reader.readu32()).readString();
       entry.semanticIndex   = reader.readu32();
       entry.systemValue     = static_cast<DxbcSystemValue>(reader.readu32());
       entry.componentType   = componentTypes.at(reader.readu32());
       entry.registerId      = reader.readu32();
       entry.componentMask   = bit::extract(reader.readu32(), 0, 3);
+
+      if (hasPrecision)
+        reader.readu32();
 
       m_entries.push_back(entry);
     }

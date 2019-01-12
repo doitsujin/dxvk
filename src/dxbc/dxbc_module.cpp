@@ -23,10 +23,10 @@ namespace dxvk {
       if ((tag == "SHDR") || (tag == "SHEX"))
         m_shexChunk = new DxbcShex(chunkReader);
       
-      if ((tag == "ISGN"))
+      if ((tag == "ISGN") || (tag == "ISG1"))
         m_isgnChunk = new DxbcIsgn(chunkReader, tag);
       
-      if ((tag == "OSGN") || (tag == "OSG5"))
+      if ((tag == "OSGN") || (tag == "OSG5") || (tag == "OSG1"))
         m_osgnChunk = new DxbcIsgn(chunkReader, tag);
     }
   }
