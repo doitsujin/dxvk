@@ -13,7 +13,7 @@ namespace dxvk::env {
    * \param [in] name Name of the variable
    * \returns Value of the variable
    */
-  std::string getEnvVar(const std::string& name);
+  std::string getEnvVar(const char* name);
   
   /**
    * \brief Gets the executable name

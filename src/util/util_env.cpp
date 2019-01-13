@@ -1,29 +1,16 @@
 #include "util_env.h"
 #include <vector>
+#include <cstdlib>
 
 #include "./com/com_include.h"
 
 namespace dxvk::env {
 
-  std::string getEnvVar(const std::string& name) {
-    int nameLen = ::MultiByteToWideChar(CP_ACP, 0, name.c_str(), name.length() + 1, nullptr, 0);
-
-    std::vector<WCHAR> wideName(nameLen);
-
-    ::MultiByteToWideChar(CP_ACP, 0, name.c_str(), name.length() + 1, wideName.data(), nameLen);
-
-    DWORD len = ::GetEnvironmentVariableW(wideName.data(), nullptr, 0);
-    
-    std::vector<WCHAR> result;
-    
-    while (len > result.size()) {
-      result.resize(len);
-      len = ::GetEnvironmentVariableW(
-        wideName.data(), result.data(), result.size());
-    }
-    
-    result.resize(len);
-    return str::fromws(result.data());
+  std::string getEnvVar(const char* name) {
+    char* result = std::getenv(name);
+    return (result)
+      ? result
+      : "";
   }
   
   
