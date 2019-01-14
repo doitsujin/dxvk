@@ -1736,7 +1736,8 @@ namespace dxvk {
     m_d3d11Device   (this, FeatureLevel, FeatureFlags),
     m_d3d11Presenter(this, &m_d3d11Device),
     m_d3d11Interop  (this, &m_d3d11Device),
-    m_wineFactory   (&m_d3d11Presenter) {
+    m_wineFactory   (&m_d3d11Presenter),
+    m_frameLatencyCap(m_d3d11Device.GetOptions()->maxFrameLatency) {
     for (uint32_t i = 0; i < m_frameEvents.size(); i++)
       m_frameEvents[i] = new DxvkEvent();
   }

@@ -28,9 +28,6 @@ namespace dxvk {
 
   
   DxgiOptions::DxgiOptions(const Config& config) {
-    this->deferSurfaceCreation  = config.getOption<bool>    ("dxgi.deferSurfaceCreation", false);
-    this->maxFrameLatency       = config.getOption<int32_t> ("dxgi.maxFrameLatency",      0);
-    
     // Fetch these as a string representing a hexadecimal number and parse it.
     this->customVendorId = parsePciId(config.getOption<std::string>("dxgi.customVendorId"));
     this->customDeviceId = parsePciId(config.getOption<std::string>("dxgi.customDeviceId"));
