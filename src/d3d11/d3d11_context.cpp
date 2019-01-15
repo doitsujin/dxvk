@@ -1439,7 +1439,7 @@ namespace dxvk {
     constexpr VkDeviceSize stride = sizeof(VkDrawIndirectCommand);
     auto cmdData = static_cast<D3D11CmdDrawIndirectData*>(m_cmdData);
 
-    bool useMultiDraw = cmdData && cmdData->type == D3D11CmdType::DrawIndirectIndexed
+    bool useMultiDraw = cmdData && cmdData->type == D3D11CmdType::DrawIndirect
       && cmdData->offset + cmdData->count * stride == AlignedByteOffsetForArgs
       && m_device->features().core.features.multiDrawIndirect;
     
