@@ -41,8 +41,10 @@ namespace dxvk {
       ? VK_FRONT_FACE_COUNTER_CLOCKWISE
       : VK_FRONT_FACE_CLOCKWISE;
     
-    // Let's treat the depth bias as enabled by default
-    m_state.depthBiasEnable   = VK_TRUE;
+    // In the backend we treat depth bias as a dynamic state because
+    // some games like to put random/uninitialized numbers here, but
+    // we do not need to enable it in case the parameters are both 0.
+    m_state.depthBiasEnable   = desc.DepthBias != 0 || desc.SlopeScaledDepthBias != 0.0f;
     m_state.depthBiasConstant = static_cast<float>(desc.DepthBias);
     m_state.depthBiasClamp    = desc.DepthBiasClamp;
     m_state.depthBiasSlope    = desc.SlopeScaledDepthBias;
