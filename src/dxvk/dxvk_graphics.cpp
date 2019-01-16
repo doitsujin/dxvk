@@ -177,13 +177,21 @@ namespace dxvk {
       this->logPipelineState(LogLevel::Debug, state);
     }
     
-    std::array<VkDynamicState, 5> dynamicStates = {
-      VK_DYNAMIC_STATE_VIEWPORT,
-      VK_DYNAMIC_STATE_SCISSOR,
-      VK_DYNAMIC_STATE_DEPTH_BIAS,
-      VK_DYNAMIC_STATE_BLEND_CONSTANTS,
-      VK_DYNAMIC_STATE_STENCIL_REFERENCE,
-    };
+    // Set up dynamic states as needed
+    std::array<VkDynamicState, 5> dynamicStates;
+    uint32_t                      dynamicStateCount = 0;
+    
+    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_VIEWPORT;
+    dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_SCISSOR;
+
+    if (state.useDynamicDepthBias())
+      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BIAS;
+    
+    if (state.useDynamicBlendConstants())
+      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_BLEND_CONSTANTS;
+    
+    if (state.useDynamicStencilRef())
+      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_STENCIL_REFERENCE;
 
     // Figure out the actual sample count to use
     VkSampleCountFlagBits sampleCount = VK_SAMPLE_COUNT_1_BIT;
@@ -366,7 +374,7 @@ namespace dxvk {
     dyInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
     dyInfo.pNext                  = nullptr;
     dyInfo.flags                  = 0;
-    dyInfo.dynamicStateCount      = dynamicStates.size();
+    dyInfo.dynamicStateCount      = dynamicStateCount;
     dyInfo.pDynamicStates         = dynamicStates.data();
     
     VkGraphicsPipelineCreateInfo info;

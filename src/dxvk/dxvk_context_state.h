@@ -35,16 +35,19 @@ namespace dxvk {
     GpDirtyXfbBuffers,          ///< Transform feedback buffer bindings are out of date
     GpDirtyXfbCounters,         ///< Counter buffer values are dirty
     GpDirtyBlendConstants,      ///< Blend constants have changed
+    GpDirtyDepthBias,           ///< Depth bias has changed
     GpDirtyStencilRef,          ///< Stencil reference has changed
     GpDirtyViewport,            ///< Viewport state has changed
-    GpDirtyDepthBias,           ///< Depth bias has changed
+    GpDynamicBlendConstants,    ///< Blend constants are dynamic
+    GpDynamicDepthBias,         ///< Depth bias is dynamic
+    GpDynamicStencilRef,        ///< Stencil reference is dynamic
     
     CpDirtyPipeline,            ///< Compute pipeline binding are out of date
     CpDirtyPipelineState,       ///< Compute pipeline needs to be recompiled
     CpDirtyResources,           ///< Compute pipeline resource bindings are out of date
     CpDirtyDescriptorOffsets,   ///< Compute descriptor set needs to be rebound
     CpDirtyDescriptorSet,       ///< Compute descriptor set needs to be updated
-
+    
     DirtyDrawBuffer,            ///< Indirect argument buffer is dirty
   };
   

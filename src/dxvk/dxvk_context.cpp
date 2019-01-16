@@ -2590,6 +2590,7 @@ namespace dxvk {
       
       this->pauseTransformFeedback();
 
+      // Fix up vertex binding strides for unbound buffers
       for (uint32_t i = 0; i < m_state.gp.state.ilBindingCount; i++) {
         const uint32_t binding = m_state.gp.state.ilBindings[i].binding;
         
@@ -2602,6 +2603,25 @@ namespace dxvk {
       for (uint32_t i = m_state.gp.state.ilBindingCount; i < MaxNumVertexBindings; i++)
         m_state.gp.state.ilBindings[i].stride = 0;
       
+      // Check which dynamic states need to be active. States that
+      // are not dynamic will be invalidated in the command buffer.
+      m_flags.clr(DxvkContextFlag::GpDynamicBlendConstants,
+                  DxvkContextFlag::GpDynamicDepthBias,
+                  DxvkContextFlag::GpDynamicStencilRef);
+      
+      m_flags.set(m_state.gp.state.useDynamicBlendConstants()
+        ? DxvkContextFlag::GpDynamicBlendConstants
+        : DxvkContextFlag::GpDirtyBlendConstants);
+      
+      m_flags.set(m_state.gp.state.useDynamicDepthBias()
+        ? DxvkContextFlag::GpDynamicDepthBias
+        : DxvkContextFlag::GpDirtyDepthBias);
+      
+      m_flags.set(m_state.gp.state.useDynamicStencilRef()
+        ? DxvkContextFlag::GpDynamicStencilRef
+        : DxvkContextFlag::GpDirtyStencilRef);
+      
+      // Retrieve and bind actual Vulkan pipeline handle
       m_gpActivePipeline = m_state.gp.pipeline != nullptr && m_state.om.framebuffer != nullptr
         ? m_state.gp.pipeline->getPipelineHandle(m_state.gp.state,
             m_state.om.framebuffer->getRenderPass())
@@ -3006,29 +3026,37 @@ namespace dxvk {
       return;
     
     if (m_flags.test(DxvkContextFlag::GpDirtyViewport)) {
+      m_flags.clr(DxvkContextFlag::GpDirtyViewport);
+
       uint32_t viewportCount = m_state.gp.state.rsViewportCount;
       m_cmd->cmdSetViewport(0, viewportCount, m_state.vp.viewports.data());
       m_cmd->cmdSetScissor (0, viewportCount, m_state.vp.scissorRects.data());
     }
 
-    if (m_flags.test(DxvkContextFlag::GpDirtyBlendConstants))
+    if (m_flags.all(DxvkContextFlag::GpDirtyBlendConstants,
+                    DxvkContextFlag::GpDynamicBlendConstants)) {
+      m_flags.clr(DxvkContextFlag::GpDirtyBlendConstants);
       m_cmd->cmdSetBlendConstants(&m_state.om.blendConstants.r);
+    }
 
-    if (m_flags.test(DxvkContextFlag::GpDirtyStencilRef))
-      m_cmd->cmdSetStencilReference(VK_STENCIL_FRONT_AND_BACK, m_state.om.stencilReference);
+    if (m_flags.all(DxvkContextFlag::GpDirtyStencilRef,
+                    DxvkContextFlag::GpDynamicStencilRef)) {
+      m_flags.clr(DxvkContextFlag::GpDirtyStencilRef);
+
+      m_cmd->cmdSetStencilReference(
+        VK_STENCIL_FRONT_AND_BACK,
+        m_state.om.stencilReference);
+    }
     
-    if (m_flags.test(DxvkContextFlag::GpDirtyDepthBias)) {
+    if (m_flags.all(DxvkContextFlag::GpDirtyDepthBias,
+                    DxvkContextFlag::GpDynamicDepthBias)) {
+      m_flags.clr(DxvkContextFlag::GpDirtyDepthBias);
+
       m_cmd->cmdSetDepthBias(
         m_state.ds.depthBiasConstant,
         m_state.ds.depthBiasClamp,
         m_state.ds.depthBiasSlope);
     }
-    
-    m_flags.clr(
-      DxvkContextFlag::GpDirtyBlendConstants,
-      DxvkContextFlag::GpDirtyStencilRef,
-      DxvkContextFlag::GpDirtyViewport,
-      DxvkContextFlag::GpDirtyDepthBias);
   }
   
   
