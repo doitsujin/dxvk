@@ -212,6 +212,9 @@ namespace dxvk::util {
           VkComponentSwizzle          component,
           uint32_t                    identity);
   
+  bool isBlendConstantBlendFactor(
+          VkBlendFactor               factor);
+  
   bool isDualSourceBlendFactor(
           VkBlendFactor               factor);
   

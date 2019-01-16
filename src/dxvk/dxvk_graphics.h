@@ -27,7 +27,7 @@ namespace dxvk {
 
   using DxvkGraphicsPipelineFlags = Flags<DxvkGraphicsPipelineFlag>;
 
-  
+
   /**
    * \brief Graphics pipeline state info
    * 
@@ -46,6 +46,28 @@ namespace dxvk {
     
     bool operator == (const DxvkGraphicsPipelineStateInfo& other) const;
     bool operator != (const DxvkGraphicsPipelineStateInfo& other) const;
+
+    bool useDynamicStencilRef() const {
+      return dsEnableStencilTest;
+    }
+
+    bool useDynamicDepthBias() const {
+      return rsDepthBiasEnable;
+    }
+
+    bool useDynamicBlendConstants() const {
+      bool result = false;
+      
+      for (uint32_t i = 0; i < MaxNumRenderTargets && !result; i++) {
+        result |= omBlendAttachments[i].blendEnable
+         && (util::isBlendConstantBlendFactor(omBlendAttachments[i].srcColorBlendFactor)
+          || util::isBlendConstantBlendFactor(omBlendAttachments[i].dstColorBlendFactor)
+          || util::isBlendConstantBlendFactor(omBlendAttachments[i].srcAlphaBlendFactor)
+          || util::isBlendConstantBlendFactor(omBlendAttachments[i].dstAlphaBlendFactor));
+      }
+
+      return result;
+    }
     
     DxvkBindingMask                     bsBindingMask;
     
