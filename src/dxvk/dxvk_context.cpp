@@ -48,6 +48,10 @@ namespace dxvk {
       DxvkContextFlag::GpDirtyVertexBuffers,
       DxvkContextFlag::GpDirtyIndexBuffer,
       DxvkContextFlag::GpDirtyXfbBuffers,
+      DxvkContextFlag::GpDirtyBlendConstants,
+      DxvkContextFlag::GpDirtyStencilRef,
+      DxvkContextFlag::GpDirtyViewport,
+      DxvkContextFlag::GpDirtyDepthBias,
       DxvkContextFlag::CpDirtyPipeline,
       DxvkContextFlag::CpDirtyPipelineState,
       DxvkContextFlag::CpDirtyResources,
@@ -2551,7 +2555,11 @@ namespace dxvk {
       DxvkContextFlag::GpDirtyResources,
       DxvkContextFlag::GpDirtyVertexBuffers,
       DxvkContextFlag::GpDirtyIndexBuffer,
-      DxvkContextFlag::GpDirtyXfbBuffers);
+      DxvkContextFlag::GpDirtyXfbBuffers,
+      DxvkContextFlag::GpDirtyBlendConstants,
+      DxvkContextFlag::GpDirtyStencilRef,
+      DxvkContextFlag::GpDirtyViewport,
+      DxvkContextFlag::GpDirtyDepthBias);
     
     m_gpActivePipeline = VK_NULL_HANDLE;
   }
@@ -2604,12 +2612,6 @@ namespace dxvk {
           VK_PIPELINE_BIND_POINT_GRAPHICS,
           m_gpActivePipeline);
       }
-
-      m_flags.set(
-        DxvkContextFlag::GpDirtyBlendConstants,
-        DxvkContextFlag::GpDirtyStencilRef,
-        DxvkContextFlag::GpDirtyViewport,
-        DxvkContextFlag::GpDirtyDepthBias);
     }
   }
   
