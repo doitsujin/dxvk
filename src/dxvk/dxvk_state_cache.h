@@ -62,7 +62,7 @@ namespace dxvk {
    */
   struct DxvkStateCacheHeader {
     char     magic[4]   = { 'D', 'X', 'V', 'K' };
-    uint32_t version    = 2;
+    uint32_t version    = 3;
     uint32_t entrySize  = sizeof(DxvkStateCacheEntry);
   };
 
@@ -190,7 +190,8 @@ namespace dxvk {
     bool readCacheFile();
 
     bool readCacheHeader(
-            std::istream&             stream) const;
+            std::istream&             stream,
+            DxvkStateCacheHeader&     header) const;
 
     bool readCacheEntry(
             std::istream&             stream, 
@@ -198,6 +199,9 @@ namespace dxvk {
     
     void writeCacheEntry(
             std::ostream&             stream, 
+            DxvkStateCacheEntry&      entry) const;
+    
+    bool convertEntryV2(
             DxvkStateCacheEntry&      entry) const;
     
     void workerFunc();

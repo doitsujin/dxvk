@@ -266,10 +266,29 @@ namespace dxvk {
 
     // The header stores the state cache version,
     // we need to regenerate it if it's outdated
-    if (!readCacheHeader(ifile)) {
+    DxvkStateCacheHeader newHeader;
+    DxvkStateCacheHeader curHeader;
+
+    if (!readCacheHeader(ifile, curHeader)) {
+      Logger::warn("DXVK: Failed to read state cache header");
+      return false;
+    }
+
+    // Struct size hasn't changed between v2/v3
+    if (curHeader.entrySize != newHeader.entrySize) {
+      Logger::warn("DXVK: State cache entry size changed");
+      return false;
+    }
+
+    // Discard caches of unsupported versions
+    if (curHeader.version != 2 && curHeader.version != 3) {
       Logger::warn("DXVK: State cache out of date");
       return false;
     }
+
+    // Notify user about format conversion
+    if (curHeader.version != newHeader.version)
+      Logger::warn(str::format("DXVK: Updating state cache version to v", newHeader.version));
 
     // Read actual cache entries from the file.
     // If we encounter invalid entries, we should
@@ -280,6 +299,9 @@ namespace dxvk {
       DxvkStateCacheEntry entry;
 
       if (readCacheEntry(ifile, entry)) {
+        if (curHeader.version == 2)
+          convertEntryV2(entry);
+        
         size_t entryId = m_entries.size();
         m_entries.push_back(entry);
 
@@ -304,30 +326,31 @@ namespace dxvk {
       Logger::warn(str::format(
         "DXVK: Skipped ", numInvalidEntries,
         " invalid state cache entries"));
+      return false;
     }
     
-    return !numInvalidEntries;
+    // Rewrite entire state cache if it is outdated
+    return curHeader.version == newHeader.version;
   }
 
 
   bool DxvkStateCache::readCacheHeader(
-          std::istream&             stream) const {
+          std::istream&             stream,
+          DxvkStateCacheHeader&     header) const {
     DxvkStateCacheHeader expected;
-    DxvkStateCacheHeader actual;
 
-    auto data = reinterpret_cast<char*>(&actual);
-    auto size = sizeof(actual);
+    auto data = reinterpret_cast<char*>(&header);
+    auto size = sizeof(header);
 
     if (!stream.read(data, size))
       return false;
     
     for (uint32_t i = 0; i < 4; i++) {
-      if (expected.magic[i] != actual.magic[i])
+      if (expected.magic[i] != header.magic[i])
         return false;
     }
     
-    return expected.version   == actual.version
-        && expected.entrySize == actual.entrySize;
+    return true;
   }
 
 
@@ -356,6 +379,20 @@ namespace dxvk {
 
     stream.write(data, size);
     stream.flush();
+  }
+
+
+  bool DxvkStateCache::convertEntryV2(
+          DxvkStateCacheEntry&      entry) const {
+    // Semantics changed:
+    // v2: rsDepthClampEnable
+    // v3: rsDepthClipEnable
+    entry.gpState.rsDepthClipEnable = !entry.gpState.rsDepthClipEnable;
+
+    // Frontend changed: Depth bias
+    // will typically be disabled
+    entry.gpState.rsDepthBiasEnable = VK_FALSE;
+    return true;
   }
 
 
