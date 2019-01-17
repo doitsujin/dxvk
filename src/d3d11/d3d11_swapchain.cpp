@@ -572,7 +572,7 @@ namespace dxvk {
     m_rsState.polygonMode        = VK_POLYGON_MODE_FILL;
     m_rsState.cullMode           = VK_CULL_MODE_BACK_BIT;
     m_rsState.frontFace          = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    m_rsState.depthClampEnable   = VK_FALSE;
+    m_rsState.depthClipEnable    = VK_FALSE;
     m_rsState.depthBiasEnable    = VK_FALSE;
     m_rsState.depthBiasConstant  = 0.0f;
     m_rsState.depthBiasClamp     = 0.0f;

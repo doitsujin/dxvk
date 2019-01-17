@@ -53,7 +53,7 @@ namespace dxvk {
     VkPolygonMode       polygonMode;
     VkCullModeFlags     cullMode;
     VkFrontFace         frontFace;
-    VkBool32            depthClampEnable;
+    VkBool32            depthClipEnable;
     VkBool32            depthBiasEnable;
     float               depthBiasConstant;
     float               depthBiasClamp;

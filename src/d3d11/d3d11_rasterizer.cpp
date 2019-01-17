@@ -48,7 +48,7 @@ namespace dxvk {
     m_state.depthBiasConstant = static_cast<float>(desc.DepthBias);
     m_state.depthBiasClamp    = desc.DepthBiasClamp;
     m_state.depthBiasSlope    = desc.SlopeScaledDepthBias;
-    m_state.depthClampEnable  = desc.DepthClipEnable ? VK_FALSE : VK_TRUE;
+    m_state.depthClipEnable   = desc.DepthClipEnable;
     m_state.sampleCount       = VkSampleCountFlags(desc.ForcedSampleCount);
     
     if (desc.AntialiasedLineEnable)
