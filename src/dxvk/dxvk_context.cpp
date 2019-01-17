@@ -1130,7 +1130,7 @@ namespace dxvk {
           uint32_t instanceCount,
           uint32_t firstVertex,
           uint32_t firstInstance) {
-    this->commitGraphicsState();
+    this->commitGraphicsState(false);
     
     if (this->validateGraphicsState()) {
       m_cmd->cmdDraw(
@@ -1148,7 +1148,7 @@ namespace dxvk {
           VkDeviceSize      offset,
           uint32_t          count,
           uint32_t          stride) {
-    this->commitGraphicsState();
+    this->commitGraphicsState(false);
     
     if (this->validateGraphicsState()) {
       auto descriptor = m_state.id.argBuffer.getDescriptor();
@@ -1172,7 +1172,7 @@ namespace dxvk {
           uint32_t firstIndex,
           uint32_t vertexOffset,
           uint32_t firstInstance) {
-    this->commitGraphicsState();
+    this->commitGraphicsState(true);
     
     if (this->validateGraphicsState()) {
       m_cmd->cmdDrawIndexed(
@@ -1191,7 +1191,7 @@ namespace dxvk {
           VkDeviceSize      offset,
           uint32_t          count,
           uint32_t          stride) {
-    this->commitGraphicsState();
+    this->commitGraphicsState(true);
     
     if (this->validateGraphicsState()) {
       auto descriptor = m_state.id.argBuffer.getDescriptor();
@@ -1213,7 +1213,7 @@ namespace dxvk {
     const DxvkBufferSlice&  counterBuffer,
           uint32_t          counterDivisor,
           uint32_t          counterBias) {
-    this->commitGraphicsState();
+    this->commitGraphicsState(false);
 
     if (this->validateGraphicsState()) {
       auto physSlice = counterBuffer.getSliceHandle();
@@ -3100,7 +3100,7 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::commitGraphicsState() {
+  void DxvkContext::commitGraphicsState(bool indexed) {
     if (m_flags.test(DxvkContextFlag::GpDirtyFramebuffer))
       this->updateFramebuffer();
 
@@ -3110,7 +3110,7 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpDirtyPipeline))
       this->updateGraphicsPipeline();
     
-    if (m_flags.test(DxvkContextFlag::GpDirtyIndexBuffer))
+    if (m_flags.test(DxvkContextFlag::GpDirtyIndexBuffer) && indexed)
       this->updateIndexBufferBinding();
     
     if (m_flags.test(DxvkContextFlag::GpDirtyVertexBuffers))

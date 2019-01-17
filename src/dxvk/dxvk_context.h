@@ -892,7 +892,7 @@ namespace dxvk {
     bool validateGraphicsState();
     
     void commitComputeState();
-    void commitGraphicsState();
+    void commitGraphicsState(bool indexed);
     
     void commitComputeInitBarriers();
     void commitComputePostBarriers();
