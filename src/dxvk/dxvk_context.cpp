@@ -1593,8 +1593,8 @@ namespace dxvk {
   
   void DxvkContext::setBlendConstants(
           DxvkBlendConstants  blendConstants) {
-    if (m_state.om.blendConstants != blendConstants) {
-      m_state.om.blendConstants = blendConstants;
+    if (m_state.dyn.blendConstants != blendConstants) {
+      m_state.dyn.blendConstants = blendConstants;
       m_flags.set(DxvkContextFlag::GpDirtyBlendConstants);
     }
   }
@@ -1611,8 +1611,8 @@ namespace dxvk {
   
   void DxvkContext::setStencilReference(
           uint32_t            reference) {
-    if (m_state.om.stencilReference != reference) {
-      m_state.om.stencilReference = reference;
+    if (m_state.dyn.stencilReference != reference) {
+      m_state.dyn.stencilReference = reference;
       m_flags.set(DxvkContextFlag::GpDirtyStencilRef);
     }
   }
@@ -3039,7 +3039,7 @@ namespace dxvk {
     if (m_flags.all(DxvkContextFlag::GpDirtyBlendConstants,
                     DxvkContextFlag::GpDynamicBlendConstants)) {
       m_flags.clr(DxvkContextFlag::GpDirtyBlendConstants);
-      m_cmd->cmdSetBlendConstants(&m_state.om.blendConstants.r);
+      m_cmd->cmdSetBlendConstants(&m_state.dyn.blendConstants.r);
     }
 
     if (m_flags.all(DxvkContextFlag::GpDirtyStencilRef,
@@ -3048,7 +3048,7 @@ namespace dxvk {
 
       m_cmd->cmdSetStencilReference(
         VK_STENCIL_FRONT_AND_BACK,
-        m_state.om.stencilReference);
+        m_state.dyn.stencilReference);
     }
     
     if (m_flags.all(DxvkContextFlag::GpDirtyDepthBias,
