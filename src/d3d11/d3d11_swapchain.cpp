@@ -574,9 +574,7 @@ namespace dxvk {
     m_rsState.frontFace          = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     m_rsState.depthClipEnable    = VK_FALSE;
     m_rsState.depthBiasEnable    = VK_FALSE;
-    m_rsState.depthBiasConstant  = 0.0f;
-    m_rsState.depthBiasClamp     = 0.0f;
-    m_rsState.depthBiasSlope     = 0.0f;
+    m_rsState.sampleCount        = VK_SAMPLE_COUNT_1_BIT;
     
     m_msState.sampleMask            = 0xffffffff;
     m_msState.enableAlphaToCoverage = VK_FALSE;

@@ -1592,7 +1592,7 @@ namespace dxvk {
   
   
   void DxvkContext::setBlendConstants(
-    const DxvkBlendConstants&   blendConstants) {
+          DxvkBlendConstants  blendConstants) {
     if (m_state.om.blendConstants != blendConstants) {
       m_state.om.blendConstants = blendConstants;
       m_flags.set(DxvkContextFlag::GpDirtyBlendConstants);
@@ -1600,8 +1600,17 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::setDepthBias(
+          DxvkDepthBias       depthBias) {
+    if (m_state.dyn.depthBias != depthBias) {
+      m_state.dyn.depthBias = depthBias;
+      m_flags.set(DxvkContextFlag::GpDirtyDepthBias);
+    }
+  }
+  
+  
   void DxvkContext::setStencilReference(
-    const uint32_t            reference) {
+          uint32_t            reference) {
     if (m_state.om.stencilReference != reference) {
       m_state.om.stencilReference = reference;
       m_flags.set(DxvkContextFlag::GpDirtyStencilRef);
@@ -1659,13 +1668,7 @@ namespace dxvk {
     m_state.gp.state.rsFrontFace         = rs.frontFace;
     m_state.gp.state.rsSampleCount       = rs.sampleCount;
 
-    m_state.ds.depthBiasConstant = rs.depthBiasConstant;
-    m_state.ds.depthBiasClamp    = rs.depthBiasClamp;
-    m_state.ds.depthBiasSlope    = rs.depthBiasSlope;
-
-    m_flags.set(
-      DxvkContextFlag::GpDirtyPipelineState,
-      DxvkContextFlag::GpDirtyDepthBias);
+    m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
   }
   
   
@@ -3053,9 +3056,9 @@ namespace dxvk {
       m_flags.clr(DxvkContextFlag::GpDirtyDepthBias);
 
       m_cmd->cmdSetDepthBias(
-        m_state.ds.depthBiasConstant,
-        m_state.ds.depthBiasClamp,
-        m_state.ds.depthBiasSlope);
+        m_state.dyn.depthBias.depthBiasConstant,
+        m_state.dyn.depthBias.depthBiasClamp,
+        m_state.dyn.depthBias.depthBiasSlope);
     }
   }
   

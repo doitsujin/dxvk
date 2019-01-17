@@ -16,14 +16,12 @@ namespace dxvk::hud {
     m_hudFramerate  (config.elements),
     m_hudStats      (config.elements) {
     // Set up constant state
-    m_rsState.polygonMode        = VK_POLYGON_MODE_FILL;
-    m_rsState.cullMode           = VK_CULL_MODE_BACK_BIT;
-    m_rsState.frontFace          = VK_FRONT_FACE_CLOCKWISE;
-    m_rsState.depthClipEnable    = VK_FALSE;
-    m_rsState.depthBiasEnable    = VK_FALSE;
-    m_rsState.depthBiasConstant  = 0.0f;
-    m_rsState.depthBiasClamp     = 0.0f;
-    m_rsState.depthBiasSlope     = 0.0f;
+    m_rsState.polygonMode       = VK_POLYGON_MODE_FILL;
+    m_rsState.cullMode          = VK_CULL_MODE_BACK_BIT;
+    m_rsState.frontFace         = VK_FRONT_FACE_CLOCKWISE;
+    m_rsState.depthClipEnable   = VK_FALSE;
+    m_rsState.depthBiasEnable   = VK_FALSE;
+    m_rsState.sampleCount       = VK_SAMPLE_COUNT_1_BIT;
 
     m_blendMode.enableBlending  = VK_TRUE;
     m_blendMode.colorSrcFactor  = VK_BLEND_FACTOR_ONE;

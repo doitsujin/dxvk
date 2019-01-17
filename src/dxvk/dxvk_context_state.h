@@ -75,13 +75,6 @@ namespace dxvk {
   };
 
 
-  struct DxvkDynamicDepthState {
-    float depthBiasConstant = 0.0f;
-    float depthBiasClamp    = 0.0f;
-    float depthBiasSlope    = 0.0f;
-  };
-  
-  
   struct DxvkOutputMergerState {
     std::array<VkClearValue, MaxNumRenderTargets + 1> clearValues = { };
     
@@ -124,6 +117,11 @@ namespace dxvk {
     DxvkComputePipelineStateInfo  state;
     Rc<DxvkComputePipeline>       pipeline;
   };
+
+
+  struct DxvkDynamicState {
+    DxvkDepthBias             depthBias = { 0.0f, 0.0f, 0.0f };
+  };
   
   
   /**
@@ -136,9 +134,9 @@ namespace dxvk {
     DxvkIndirectDrawState     id;
     DxvkVertexInputState      vi;
     DxvkViewportState         vp;
-    DxvkDynamicDepthState     ds;
     DxvkOutputMergerState     om;
     DxvkXfbState              xfb;
+    DxvkDynamicState          dyn;
     
     DxvkGraphicsPipelineState gp;
     DxvkComputePipelineState  cp;
