@@ -143,7 +143,7 @@ namespace dxvk {
     const Rc<DxvkBuffer>&           buffer,
     const DxvkBufferViewCreateInfo& info)
   : m_vkd(vkd), m_info(info), m_buffer(buffer),
-    m_bufferSlice (m_buffer->getSliceHandle()),
+    m_bufferSlice (getSliceHandle()),
     m_bufferView  (createBufferView(m_bufferSlice)) {
     
   }
@@ -188,13 +188,14 @@ namespace dxvk {
   }
 
 
-  void DxvkBufferView::updateBufferView() {
+  void DxvkBufferView::updateBufferView(
+    const DxvkBufferSliceHandle& slice) {
     if (m_views.empty())
       m_views.insert({ m_bufferSlice, m_bufferView });
     
-    m_bufferSlice = m_buffer->getSliceHandle();
-    auto entry = m_views.find(m_bufferSlice);
-
+    m_bufferSlice = slice;
+    
+    auto entry = m_views.find(slice);
     if (entry != m_views.end()) {
       m_bufferView = entry->second;
     } else {

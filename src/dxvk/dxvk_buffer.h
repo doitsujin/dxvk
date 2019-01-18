@@ -515,8 +515,10 @@ namespace dxvk {
      * prior to using the buffer view handle.
      */
     void updateView() {
-      if (!m_bufferSlice.eq(m_buffer->getSliceHandle()))
-        this->updateBufferView();
+      DxvkBufferSliceHandle slice = getSliceHandle();
+
+      if (!m_bufferSlice.eq(slice))
+        this->updateBufferView(slice);
     }
     
   private:
@@ -536,7 +538,8 @@ namespace dxvk {
     VkBufferView createBufferView(
       const DxvkBufferSliceHandle& slice);
     
-    void updateBufferView();
+    void updateBufferView(
+      const DxvkBufferSliceHandle& slice);
     
   };
   
