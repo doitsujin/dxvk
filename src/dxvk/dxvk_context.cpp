@@ -292,8 +292,12 @@ namespace dxvk {
     this->spillRenderPass();
     this->unbindComputePipeline();
 
+    // The view range might have been invalidated, so
+    // we need to make sure the handle is up to date
+    bufferView->updateView();
+
     auto bufferSlice = bufferView->getSliceHandle();
-    
+
     if (m_barriers.isBufferDirty(bufferSlice, DxvkAccess::Write))
       m_barriers.recordCommands(m_cmd);
     
