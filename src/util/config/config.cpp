@@ -11,7 +11,7 @@
 namespace dxvk {
 
   const static std::unordered_map<std::string, Config> g_appDefaults = {{
-    /* Assassin's Creed Syndicate - amdags issues */
+    /* Assassin's Creed Syndicate: amdags issues  */
     { "ACS.exe", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
@@ -19,7 +19,8 @@ namespace dxvk {
     { "Dishonored2.exe", {{
       { "d3d11.allowMapFlagNoWait",         "True" }
     }} },
-    /* Elite Dangerous                            */
+    /* Elite Dangerous: Compiles weird shaders    *
+     * when running on AMD hardware               */
     { "EliteDangerous64.exe", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
@@ -27,7 +28,8 @@ namespace dxvk {
     { "EthanCarter-Win64-Shipping.exe", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
-    /* The Evil Within                            */
+    /* The Evil Within: Submits command lists     * 
+     * multiple times                             */
     { "EvilWithin.exe", {{
       { "d3d11.dcSingleUseMode",            "False" },
     }} },
@@ -35,39 +37,26 @@ namespace dxvk {
     { "EvilWithinDemo.exe", {{
       { "d3d11.dcSingleUseMode",            "False" },
     }} },
-    /* F1 2015                                    */
-    { "F1_2015.exe", {{
-      { "d3d11.fakeStreamOutSupport",       "True" },
-    }} },
     /* Far Cry 5                                  */
     { "FarCry5.exe", {{
       { "d3d11.allowMapFlagNoWait",         "True" }
     }} },
-    /* Final Fantasy XV                           */
-    { "ffxv_s.exe", {{
-      { "d3d11.fakeStreamOutSupport",       "True" },
-    }} },
-    /* Frostpunk                                  */
+    /* Frostpunk: Renders one frame with D3D9     *
+     * after creating the DXGI swap chain         */
     { "Frostpunk.exe", {{
       { "dxgi.deferSurfaceCreation",        "True" },
     }} },
-    /* Mafia 3                                    */
-    { "mafia3.exe", {{
-      { "d3d11.fakeStreamOutSupport",       "True" },
-    }} },
-    /* Overwatch                                  */
-    { "Overwatch.exe", {{
-      { "d3d11.fakeStreamOutSupport",       "True" },
-    }} },
-    /* Quantum Break                              */
+    /* Quantum Break: Mever initializes shared    *
+     * memory in one of its compute shaders       */
     { "QuantumBreak.exe", {{
       { "d3d11.zeroInitWorkgroupMemory",    "True" },
     }} },
-    /* Anno 2205                                  */
+    /* Anno 2205: Random crashes with state cache */
     { "anno2205.exe", {{
       { "dxvk.enableStateCache",            "False" },
     }} },
-    /* Fifa '19                                   */
+    /* Fifa '19: Binds typed buffer SRV to shader *
+     * that expects raw/structured buffer SRV     */
     { "FIFA19.exe", {{
       { "dxvk.useRawSsbo",                  "True" },
     }} },
