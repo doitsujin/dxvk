@@ -673,6 +673,9 @@ namespace dxvk {
     uint32_t n = 0;
 
     switch (Format) {
+      default:
+        Logger::warn(str::format("D3D11SwapChain: Unexpected format: ", m_desc.Format));
+        
       case DXGI_FORMAT_R8G8B8A8_UNORM:
       case DXGI_FORMAT_B8G8R8A8_UNORM: {
         pDstFormats[n++] = { VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
@@ -693,9 +696,6 @@ namespace dxvk {
       case DXGI_FORMAT_R16G16B16A16_FLOAT: {
         pDstFormats[n++] = { VK_FORMAT_R16G16B16A16_SFLOAT, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
       } break;
-      
-      default:
-        Logger::warn(str::format("VkD3DPresenter: Unknown format: ", m_desc.Format));
     }
 
     return n;
