@@ -25,14 +25,6 @@ namespace dxvk {
     /// than once.
     bool dcSingleUseMode;
 
-    /// Fakes stream output support.
-    /// 
-    /// Temporary hack that fixes issues in some games
-    /// which technically need stream output but work
-    /// well enough without it. Will be removed once
-    /// Stream Output is properly supported in DXVK.
-    bool fakeStreamOutSupport;
-
     /// Zero-initialize workgroup memory
     ///
     /// Workargound for games that don't initialize

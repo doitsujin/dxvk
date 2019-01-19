@@ -613,8 +613,8 @@ namespace dxvk {
     if (!m_dxvkDevice->features().extTransformFeedback.transformFeedback) {
       Logger::err(
         "D3D11: CreateGeometryShaderWithStreamOutput:"
-        "\n  Transform feedback not supoorted by device");
-      return m_d3d11Options.fakeStreamOutSupport ? S_OK : E_NOTIMPL;
+        "\n  Transform feedback not supported by device");
+      return S_OK;
     }
 
     // Zero-init some counterss so that we can increment
