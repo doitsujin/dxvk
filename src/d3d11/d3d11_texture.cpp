@@ -78,11 +78,20 @@ namespace dxvk {
       imageInfo.access |= VK_ACCESS_SHADER_READ_BIT;
     }
     
-    if (m_desc.BindFlags & D3D11_BIND_RENDER_TARGET)
+    if (m_desc.BindFlags & D3D11_BIND_RENDER_TARGET) {
       imageInfo.usage  |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+      imageInfo.stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+      imageInfo.access |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
+                       |  VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    }
     
-    if (m_desc.BindFlags & D3D11_BIND_DEPTH_STENCIL)
+    if (m_desc.BindFlags & D3D11_BIND_DEPTH_STENCIL) {
       imageInfo.usage  |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+      imageInfo.stages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+                       |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+      imageInfo.access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT
+                       |  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    }
     
     if (m_desc.BindFlags & D3D11_BIND_UNORDERED_ACCESS && !noUav) {
       imageInfo.usage  |= VK_IMAGE_USAGE_STORAGE_BIT;
