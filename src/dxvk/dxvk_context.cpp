@@ -1761,9 +1761,21 @@ namespace dxvk {
       if (imageView->info().aspect & VK_IMAGE_ASPECT_COLOR_BIT) {
         attachments.color[0].view   = imageView;
         attachments.color[0].layout = imageView->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+
+        ops.colorOps[0].loadOp      = VK_ATTACHMENT_LOAD_OP_LOAD;
+        ops.colorOps[0].loadLayout  = imageView->imageInfo().layout;
+        ops.colorOps[0].storeOp     = VK_ATTACHMENT_STORE_OP_STORE;
+        ops.colorOps[0].storeLayout = imageView->imageInfo().layout;
       } else {
         attachments.depth.view   = imageView;
         attachments.depth.layout = imageView->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+
+        ops.depthOps.loadOpD     = VK_ATTACHMENT_LOAD_OP_LOAD;
+        ops.depthOps.loadOpS     = VK_ATTACHMENT_LOAD_OP_LOAD;
+        ops.depthOps.loadLayout  = imageView->imageInfo().layout;
+        ops.depthOps.storeOpD    = VK_ATTACHMENT_STORE_OP_STORE;
+        ops.depthOps.storeOpS    = VK_ATTACHMENT_STORE_OP_STORE;
+        ops.depthOps.storeLayout = imageView->imageInfo().layout;
       }
 
       // We cannot leverage render pass clears
