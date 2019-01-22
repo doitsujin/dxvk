@@ -118,7 +118,7 @@ extern "C" {
         Logger::warn("D3D11CreateDevice: Unsupported driver type");
       
       // We'll use the first adapter returned by a DXGI factory
-      if (FAILED(CreateDXGIFactory(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&dxgiFactory)))) {
+      if (FAILED(CreateDXGIFactory1(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&dxgiFactory)))) {
         Logger::err("D3D11CreateDevice: Failed to create a DXGI factory");
         return E_FAIL;
       }
