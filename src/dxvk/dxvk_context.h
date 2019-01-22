@@ -844,6 +844,7 @@ namespace dxvk {
     
     void startRenderPass();
     void spillRenderPass();
+    void clearRenderPass();
     
     void renderPassBindFramebuffer(
       const Rc<DxvkFramebuffer>&  framebuffer,
