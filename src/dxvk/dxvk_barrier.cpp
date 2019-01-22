@@ -16,6 +16,10 @@ namespace dxvk {
     m_srcStages |= srcStages;
     m_dstStages |= dstStages;
     
+    if (srcStages == VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
+     || dstStages == VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT)
+      access.set(DxvkAccess::Write);
+    
     if (access.test(DxvkAccess::Write)) {
       VkBufferMemoryBarrier barrier;
       barrier.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
@@ -48,7 +52,9 @@ namespace dxvk {
     m_srcStages |= srcStages;
     m_dstStages |= dstStages;
     
-    if (srcLayout != dstLayout)
+    if (srcStages == VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
+     || dstStages == VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
+     || srcLayout != dstLayout)
       access.set(DxvkAccess::Write);
     
     if (access.test(DxvkAccess::Write)) {
