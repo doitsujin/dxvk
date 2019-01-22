@@ -69,12 +69,25 @@ namespace dxvk {
 
     m_imgSlices.push_back({ image.ptr(), subresources, access });
   }
+
+
+  void DxvkBarrierSet::accessMemory(
+          VkPipelineStageFlags      srcStages,
+          VkAccessFlags             srcAccess,
+          VkPipelineStageFlags      dstStages,
+          VkAccessFlags             dstAccess) {
+    m_srcStages |= srcStages;
+    m_dstStages |= dstStages;
+
+    m_srcAccess |= srcAccess;
+    m_dstAccess |= dstAccess;
+  }
   
   
   bool DxvkBarrierSet::isBufferDirty(
     const DxvkBufferSliceHandle&    bufSlice,
           DxvkAccessFlags           bufAccess) {
-    bool result = false;
+    bool result = m_srcAccess || m_dstAccess;
 
     for (uint32_t i = 0; i < m_bufSlices.size() && !result; i++) {
       const DxvkBufferSliceHandle& dstSlice = m_bufSlices[i].slice;
@@ -92,7 +105,8 @@ namespace dxvk {
     const Rc<DxvkImage>&            image,
     const VkImageSubresourceRange&  imgSubres,
           DxvkAccessFlags           imgAccess) {
-    bool result = false;
+    bool result = (m_srcStages & image->info().stages)
+               && (m_srcAccess & image->info().access);
 
     for (uint32_t i = 0; i < m_imgSlices.size() && !result; i++) {
       const VkImageSubresourceRange& dstSubres = m_imgSlices[i].subres;
@@ -109,16 +123,26 @@ namespace dxvk {
   
 
   void DxvkBarrierSet::recordCommands(const Rc<DxvkCommandList>& commandList) {
-    if ((m_srcStages | m_dstStages) != 0) {
+    if (m_srcStages | m_dstStages) {
       VkPipelineStageFlags srcFlags = m_srcStages;
       VkPipelineStageFlags dstFlags = m_dstStages;
       
-      if (srcFlags == 0) srcFlags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-      if (dstFlags == 0) dstFlags = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+      if (!srcFlags) srcFlags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+      if (!dstFlags) dstFlags = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+
+      VkMemoryBarrier memBarrier;
+      memBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+      memBarrier.pNext = nullptr;
+      memBarrier.srcAccessMask = m_srcAccess;
+      memBarrier.dstAccessMask = m_dstAccess;
+
+      VkMemoryBarrier* pMemBarrier = nullptr;
+      if (m_srcAccess | m_dstAccess)
+        pMemBarrier = &memBarrier;
       
       commandList->cmdPipelineBarrier(
         srcFlags, dstFlags, 0,
-        m_memBarriers.size(), m_memBarriers.data(),
+        pMemBarrier ? 1 : 0, pMemBarrier,
         m_bufBarriers.size(), m_bufBarriers.data(),
         m_imgBarriers.size(), m_imgBarriers.data());
       
@@ -131,7 +155,6 @@ namespace dxvk {
     m_srcStages = 0;
     m_dstStages = 0;
     
-    m_memBarriers.resize(0);
     m_bufBarriers.resize(0);
     m_imgBarriers.resize(0);
 
