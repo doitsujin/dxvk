@@ -121,44 +121,39 @@ namespace dxvk {
     if (m_format.depth.format == VK_FORMAT_UNDEFINED)
       subpass.pDepthStencilAttachment = nullptr;
     
-    const std::array<VkSubpassDependency, 4> subpassDeps = {{
-      { VK_SUBPASS_EXTERNAL, 0,
-        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-        VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
-        0, 
-        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT           |
-        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT          |
-        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT   |
-        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT, 0 },
-      { 0, 0,
+    std::array<VkSubpassDependency, 3> subpassDeps;
+    uint32_t                           subpassDepCount = 0;
+
+    if (ops.barrier.srcStages & (
+          VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT |
+          VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT |
+          VK_PIPELINE_STAGE_ALL_COMMANDS_BIT)) {
+      subpassDeps[subpassDepCount++] = { 0, 0,
         VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT,
         VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT, /* XXX */
         VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT,
-        VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT, 0 },
-      { 0, 0,
+        VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT, 0 };
+    }
+
+    if (ops.barrier.srcStages & (
+          VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+          VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT |
+          VK_PIPELINE_STAGE_ALL_COMMANDS_BIT)) {
+      subpassDeps[subpassDepCount++] = { 0, 0,
         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
         VK_ACCESS_SHADER_WRITE_BIT,
-        VK_ACCESS_SHADER_READ_BIT, 0 },
-      { 0, VK_SUBPASS_EXTERNAL,
-        VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT,
-        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT          |
-        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT  |
-        VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT    |
-        VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT |
-        VK_ACCESS_SHADER_WRITE_BIT,
-        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT           |
-        VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT   |
-        VK_ACCESS_HOST_READ_BIT                       |
-        VK_ACCESS_INDEX_READ_BIT                      |
-        VK_ACCESS_INDIRECT_COMMAND_READ_BIT           |
-        VK_ACCESS_SHADER_READ_BIT                     |
-        VK_ACCESS_TRANSFER_READ_BIT                   |
-        VK_ACCESS_UNIFORM_READ_BIT                    |
-        VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT           |
-        VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT, 0 },
-    }};
+        VK_ACCESS_SHADER_READ_BIT, 0 };
+    }
+
+    if (ops.barrier.srcStages && ops.barrier.dstStages) {
+      subpassDeps[subpassDepCount++] = {
+        0, VK_SUBPASS_EXTERNAL,
+        ops.barrier.srcStages,
+        ops.barrier.dstStages,
+        ops.barrier.srcAccess,
+        ops.barrier.dstAccess, 0 };
+    }
     
     VkRenderPassCreateInfo info;
     info.sType                        = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -168,8 +163,8 @@ namespace dxvk {
     info.pAttachments                 = attachments.data();
     info.subpassCount                 = 1;
     info.pSubpasses                   = &subpass;
-    info.dependencyCount              = subpassDeps.size();
-    info.pDependencies                = subpassDeps.data();
+    info.dependencyCount              = subpassDepCount;
+    info.pDependencies                = subpassDepCount ? subpassDeps.data() : nullptr;
     
     VkRenderPass renderPass = VK_NULL_HANDLE;
     
@@ -185,12 +180,19 @@ namespace dxvk {
   bool DxvkRenderPass::compareOps(
     const DxvkRenderPassOps& a,
     const DxvkRenderPassOps& b) {
-    bool eq = a.depthOps.loadOpD     == b.depthOps.loadOpD
-           && a.depthOps.loadOpS     == b.depthOps.loadOpS
-           && a.depthOps.loadLayout  == b.depthOps.loadLayout
-           && a.depthOps.storeOpD    == b.depthOps.storeOpD
-           && a.depthOps.storeOpS    == b.depthOps.storeOpS
-           && a.depthOps.storeLayout == b.depthOps.storeLayout;
+    bool eq = a.barrier.srcStages == b.barrier.srcStages
+           && a.barrier.srcAccess == b.barrier.srcAccess
+           && a.barrier.dstStages == b.barrier.dstStages
+           && a.barrier.dstAccess == b.barrier.dstAccess;
+    
+    if (eq) {
+      eq &= a.depthOps.loadOpD     == b.depthOps.loadOpD
+         && a.depthOps.loadOpS     == b.depthOps.loadOpS
+         && a.depthOps.loadLayout  == b.depthOps.loadLayout
+         && a.depthOps.storeOpD    == b.depthOps.storeOpD
+         && a.depthOps.storeOpS    == b.depthOps.storeOpS
+         && a.depthOps.storeLayout == b.depthOps.storeLayout;
+    }
     
     for (uint32_t i = 0; i < MaxNumRenderTargets && eq; i++) {
       eq &= a.colorOps[i].loadOp      == b.colorOps[i].loadOp

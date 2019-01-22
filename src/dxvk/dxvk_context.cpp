@@ -549,12 +549,22 @@ namespace dxvk {
       if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT) {
         attachments.color[0].view   = imageView;
         attachments.color[0].layout = imageView->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+        
+        ops.barrier.srcStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        ops.barrier.srcAccess = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
         ops.colorOps[0] = colorOp;
       } else {
         attachments.depth.view   = imageView;
         attachments.depth.layout = imageView->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+        
+        ops.barrier.srcStages = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+                              | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        ops.barrier.srcAccess = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
         ops.depthOps = depthOp;
       }
+
+      ops.barrier.dstStages = imageView->imageInfo().stages;
+      ops.barrier.dstAccess = imageView->imageInfo().access;
       
       this->renderPassBindFramebuffer(
         m_device->createFramebuffer(attachments),
@@ -1762,6 +1772,10 @@ namespace dxvk {
         attachments.color[0].view   = imageView;
         attachments.color[0].layout = imageView->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
+        ops.barrier.srcStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        ops.barrier.srcAccess = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
+                              | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
         ops.colorOps[0].loadOp      = VK_ATTACHMENT_LOAD_OP_LOAD;
         ops.colorOps[0].loadLayout  = imageView->imageInfo().layout;
         ops.colorOps[0].storeOp     = VK_ATTACHMENT_STORE_OP_STORE;
@@ -1770,6 +1784,11 @@ namespace dxvk {
         attachments.depth.view   = imageView;
         attachments.depth.layout = imageView->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
+        ops.barrier.srcStages = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+                              | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        ops.barrier.srcAccess = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
+                              | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        
         ops.depthOps.loadOpD     = VK_ATTACHMENT_LOAD_OP_LOAD;
         ops.depthOps.loadOpS     = VK_ATTACHMENT_LOAD_OP_LOAD;
         ops.depthOps.loadLayout  = imageView->imageInfo().layout;
@@ -1777,6 +1796,9 @@ namespace dxvk {
         ops.depthOps.storeOpS    = VK_ATTACHMENT_STORE_OP_STORE;
         ops.depthOps.storeLayout = imageView->imageInfo().layout;
       }
+
+      ops.barrier.dstStages = imageView->imageInfo().stages;
+      ops.barrier.dstAccess = imageView->imageInfo().access;
 
       // We cannot leverage render pass clears
       // because we clear only part of the view
@@ -2435,6 +2457,25 @@ namespace dxvk {
   void DxvkContext::resetRenderPassOps(
     const DxvkRenderTargets&    renderTargets,
           DxvkRenderPassOps&    renderPassOps) {
+    renderPassOps.barrier.srcStages = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
+    renderPassOps.barrier.srcAccess = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
+                                    | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+                                    | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT
+                                    | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
+                                    | VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT
+                                    | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT
+                                    | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT
+                                    | VK_ACCESS_INDIRECT_COMMAND_READ_BIT
+                                    | VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT
+                                    | VK_ACCESS_INDEX_READ_BIT
+                                    | VK_ACCESS_UNIFORM_READ_BIT
+                                    | VK_ACCESS_SHADER_READ_BIT
+                                    | VK_ACCESS_SHADER_WRITE_BIT;
+    renderPassOps.barrier.dstStages = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+    renderPassOps.barrier.dstAccess = renderPassOps.barrier.srcAccess
+                                    | VK_ACCESS_TRANSFER_READ_BIT
+                                    | VK_ACCESS_TRANSFER_WRITE_BIT;
+
     renderPassOps.depthOps = renderTargets.depth.view != nullptr
       ? DxvkDepthAttachmentOps {
           VK_ATTACHMENT_LOAD_OP_LOAD,
