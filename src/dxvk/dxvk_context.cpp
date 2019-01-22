@@ -556,26 +556,27 @@ namespace dxvk {
         attachments.color[0].view   = imageView;
         attachments.color[0].layout = imageView->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
         
-        ops.barrier.srcStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        ops.barrier.srcAccess = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
         ops.colorOps[0] = colorOp;
       } else {
         attachments.depth.view   = imageView;
         attachments.depth.layout = imageView->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
         
-        ops.barrier.srcStages = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-                              | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-        ops.barrier.srcAccess = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
         ops.depthOps = depthOp;
       }
-
-      ops.barrier.dstStages = imageView->imageInfo().stages;
-      ops.barrier.dstAccess = imageView->imageInfo().access;
       
       this->renderPassBindFramebuffer(
         m_device->createFramebuffer(attachments),
         ops, 1, &clearValue);
       this->renderPassUnbindFramebuffer();
+
+      m_barriers.accessImage(
+        imageView->image(),
+        imageView->subresources(),
+        imageView->imageInfo().layout,
+        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
+        imageView->imageInfo().layout,
+        imageView->imageInfo().stages,
+        imageView->imageInfo().access);
     } else if (m_flags.test(DxvkContextFlag::GpRenderPassBound)) {
       // Clear the attachment in quesion. For color images,
       // the attachment index for the current subpass is
@@ -1784,10 +1785,6 @@ namespace dxvk {
         attachments.color[0].view   = imageView;
         attachments.color[0].layout = imageView->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
-        ops.barrier.srcStages = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        ops.barrier.srcAccess = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
-                              | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
         ops.colorOps[0].loadOp      = VK_ATTACHMENT_LOAD_OP_LOAD;
         ops.colorOps[0].loadLayout  = imageView->imageInfo().layout;
         ops.colorOps[0].storeOp     = VK_ATTACHMENT_STORE_OP_STORE;
@@ -1796,11 +1793,6 @@ namespace dxvk {
         attachments.depth.view   = imageView;
         attachments.depth.layout = imageView->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-        ops.barrier.srcStages = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-                              | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-        ops.barrier.srcAccess = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
-                              | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        
         ops.depthOps.loadOpD     = VK_ATTACHMENT_LOAD_OP_LOAD;
         ops.depthOps.loadOpS     = VK_ATTACHMENT_LOAD_OP_LOAD;
         ops.depthOps.loadLayout  = imageView->imageInfo().layout;
@@ -1809,14 +1801,20 @@ namespace dxvk {
         ops.depthOps.storeLayout = imageView->imageInfo().layout;
       }
 
-      ops.barrier.dstStages = imageView->imageInfo().stages;
-      ops.barrier.dstAccess = imageView->imageInfo().access;
-
       // We cannot leverage render pass clears
       // because we clear only part of the view
       this->renderPassBindFramebuffer(
         m_device->createFramebuffer(attachments),
         ops, 0, nullptr);
+      
+      m_barriers.accessImage(
+        imageView->image(),
+        imageView->subresources(),
+        imageView->imageInfo().layout,
+        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
+        imageView->imageInfo().layout,
+        imageView->imageInfo().stages,
+        imageView->imageInfo().access);
     }
 
     // Perform the actual clear operation
