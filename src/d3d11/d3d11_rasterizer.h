@@ -34,6 +34,10 @@ namespace dxvk {
     void STDMETHODCALLTYPE GetDesc1(
             D3D11_RASTERIZER_DESC1* pDesc) final;
     
+    const D3D11_RASTERIZER_DESC1* Desc() const {
+      return &m_desc;
+    }
+    
     void BindToContext(
       const Rc<DxvkContext>&  ctx);
     
