@@ -72,6 +72,10 @@ namespace dxvk {
     { "NFS16.exe", {{
       { "dxgi.nvapiHack",                   "False" },
     }} },
+    /* Mass Effect Andromeda                      */
+    { "MassEffectAndromeda.exe", {{
+      { "dxgi.nvapiHack",                   "False" },
+    }} },
   }};
 
 
