@@ -6855,6 +6855,9 @@ namespace dxvk {
   void DxbcCompiler::emitHsOutputSetup() {
     uint32_t outputPerPatch = emitTessInterfacePerPatch(spv::StorageClassOutput);
 
+    if (!outputPerPatch)
+      return;
+
     uint32_t vecType = getVectorTypeId({ DxbcScalarType::Float32, 4 });
 
     uint32_t srcPtrType = m_module.defPointerType(vecType, spv::StorageClassPrivate);
@@ -6881,8 +6884,13 @@ namespace dxvk {
     if (storageClass == spv::StorageClassOutput)
       name = "oPatch";
     
+    uint32_t arrLen  = m_psgn != nullptr ? m_psgn->maxRegisterCount() : 0;
+
+    if (!arrLen)
+      return 0;
+
     uint32_t vecType = m_module.defVectorType (m_module.defFloatType(32), 4);
-    uint32_t arrType = m_module.defArrayType  (vecType, m_module.constu32(32));
+    uint32_t arrType = m_module.defArrayType  (vecType, m_module.constu32(arrLen));
     uint32_t ptrType = m_module.defPointerType(arrType, storageClass);
     uint32_t varId   = m_module.newVar        (ptrType, storageClass);
     
@@ -6902,14 +6910,25 @@ namespace dxvk {
   uint32_t DxbcCompiler::emitTessInterfacePerVertex(spv::StorageClass storageClass, uint32_t vertexCount) {
     const bool isInput = storageClass == spv::StorageClassInput;
     
+    uint32_t arrLen = isInput
+      ? (m_isgn != nullptr ? m_isgn->maxRegisterCount() : 0)
+      : (m_osgn != nullptr ? m_osgn->maxRegisterCount() : 0);
+    
+    if (!arrLen)
+      return 0;
+    
+    uint32_t locIdx = m_psgn != nullptr
+      ? m_psgn->maxRegisterCount()
+      : 0;
+    
     uint32_t vecType      = m_module.defVectorType (m_module.defFloatType(32), 4);
-    uint32_t arrTypeInner = m_module.defArrayType  (vecType,      m_module.constu32(32));
+    uint32_t arrTypeInner = m_module.defArrayType  (vecType,      m_module.constu32(arrLen));
     uint32_t arrTypeOuter = m_module.defArrayType  (arrTypeInner, m_module.constu32(vertexCount));
     uint32_t ptrType      = m_module.defPointerType(arrTypeOuter, storageClass);
     uint32_t varId        = m_module.newVar        (ptrType,      storageClass);
     
     m_module.setDebugName     (varId, isInput ? "vVertex" : "oVertex");
-    m_module.decorateLocation (varId, 0);
+    m_module.decorateLocation (varId, locIdx);
     
     if (storageClass != spv::StorageClassPrivate)
       m_entryPointInterfaces.push_back(varId);
