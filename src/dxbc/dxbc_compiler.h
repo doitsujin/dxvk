@@ -377,6 +377,7 @@ namespace dxvk {
       const DxbcProgramInfo&    programInfo,
       const Rc<DxbcIsgn>&       isgn,
       const Rc<DxbcIsgn>&       osgn,
+      const Rc<DxbcIsgn>&       psgn,
       const DxbcAnalysisInfo&   analysis);
     ~DxbcCompiler();
     
@@ -410,6 +411,7 @@ namespace dxvk {
     
     Rc<DxbcIsgn>        m_isgn;
     Rc<DxbcIsgn>        m_osgn;
+    Rc<DxbcIsgn>        m_psgn;
     
     const DxbcAnalysisInfo* m_analysis;
     

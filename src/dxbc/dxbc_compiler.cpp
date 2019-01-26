@@ -15,11 +15,13 @@ namespace dxvk {
     const DxbcProgramInfo&    programInfo,
     const Rc<DxbcIsgn>&       isgn,
     const Rc<DxbcIsgn>&       osgn,
+    const Rc<DxbcIsgn>&       psgn,
     const DxbcAnalysisInfo&   analysis)
   : m_moduleInfo (moduleInfo),
     m_programInfo(programInfo),
     m_isgn       (isgn),
     m_osgn       (osgn),
+    m_psgn       (psgn),
     m_analysis   (&analysis) {
     // Declare an entry point ID. We'll need it during the
     // initialization phase where the execution mode is set.
