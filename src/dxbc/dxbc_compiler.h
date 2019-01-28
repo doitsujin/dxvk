@@ -972,6 +972,10 @@ namespace dxvk {
     DxbcRegisterValue emitRegisterLoadRaw(
       const DxbcRegister&           reg);
     
+    DxbcRegisterValue emitConstantBufferLoad(
+      const DxbcRegister&           reg,
+            DxbcRegMask             writeMask);
+    
     DxbcRegisterValue emitRegisterLoad(
       const DxbcRegister&           reg,
             DxbcRegMask             writeMask);

@@ -5187,11 +5187,62 @@ namespace dxvk {
       m_module.opStore(ptr.id, tmp.id);
     }
   }
-  
-  
+
+
   DxbcRegisterValue DxbcCompiler::emitRegisterLoadRaw(
     const DxbcRegister&           reg) {
     return emitValueLoad(emitGetOperandPtr(reg));
+  }
+  
+  
+  DxbcRegisterValue DxbcCompiler::emitConstantBufferLoad(
+    const DxbcRegister&           reg,
+          DxbcRegMask             writeMask) {
+    DxbcRegisterPointer ptr = emitGetOperandPtr(reg);
+
+    std::array<uint32_t, 4> ccomps = { 0, 0, 0, 0 };
+    std::array<uint32_t, 4> scomps = { 0, 0, 0, 0 };
+    uint32_t                scount = 0;
+
+    for (uint32_t i = 0; i < 4; i++) {
+      uint32_t sindex = reg.swizzle[i];
+
+      if (!writeMask[i] || ccomps[sindex])
+        continue;
+      
+      uint32_t componentId = m_module.constu32(sindex);
+      uint32_t componentPtr = m_module.opAccessChain(
+        m_module.defPointerType(
+          getScalarTypeId(DxbcScalarType::Float32),
+          spv::StorageClassUniformConstant),
+        ptr.id, 1, &componentId);
+      
+      ccomps[sindex] = m_module.opLoad(
+        getScalarTypeId(DxbcScalarType::Float32),
+        componentPtr);
+    }
+
+    for (uint32_t i = 0; i < 4; i++) {
+      uint32_t sindex = reg.swizzle[i];
+      
+      if (writeMask[i])
+        scomps[scount++] = ccomps[sindex];
+    }
+    
+    DxbcRegisterValue result;
+    result.type.ctype  = DxbcScalarType::Float32;
+    result.type.ccount = scount;
+    result.id = scomps[0];
+    
+    if (scount > 1) {
+      result.id = m_module.opCompositeConstruct(
+        getVectorTypeId(result.type),
+        scount, scomps.data());
+    }
+
+    result = emitRegisterBitcast(result, reg.dataType);
+    result = emitSrcOperandModifiers(result, reg.modifiers);
+    return result;
   }
   
   
@@ -5236,6 +5287,8 @@ namespace dxvk {
       
       // Cast constants to the requested type
       return emitRegisterBitcast(result, reg.dataType);
+    } else if (reg.type == DxbcOperandType::ConstantBuffer) {
+      return emitConstantBufferLoad(reg, writeMask);
     } else {
       // Load operand from the operand pointer
       DxbcRegisterValue result = emitRegisterLoadRaw(reg);
