@@ -7,11 +7,11 @@
 #include "d3d11_include.h"
 
 namespace dxvk {
-  
+
   struct D3D11Options {
     D3D11Options(const Config& config);
     /// Handle D3D11_MAP_FLAG_DO_NOT_WAIT properly.
-    /// 
+    ///
     /// This can offer substantial speedups, but some games
     /// (The Witcher 3, Elder Scrolls Online, possibly others)
     /// seem to make incorrect assumptions about when a map
@@ -42,6 +42,13 @@ namespace dxvk {
     /// but might also cause rendering issues.
     bool relaxedBarriers;
 
+    /// Check dynamic constant buffer index bounds
+    ///
+    /// Comes with a performance penalty and is not
+    /// completely accurate to D3D11 but fixes an
+    /// issue in Dark Souls Remastered
+    bool checkConstantBufferBounds = false;
+
     /// Maximum tessellation factor.
     ///
     /// Limits tessellation factors in tessellation
@@ -54,7 +61,7 @@ namespace dxvk {
     /// Enforces anisotropic filtering with the
     /// given anisotropy value for all samplers.
     int32_t samplerAnisotropy;
-    
+
     /// Back buffer count for the Vulkan swap chain.
     /// Overrides DXGI_SWAP_CHAIN_DESC::BufferCount.
     int32_t numBackBuffers;
@@ -72,5 +79,5 @@ namespace dxvk {
     /// for a single window that may interfere with each other.
     bool deferSurfaceCreation;
   };
-  
+
 }

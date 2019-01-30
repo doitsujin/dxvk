@@ -5,7 +5,7 @@
 namespace dxvk {
 
   struct D3D11Options;
-  
+
   struct DxbcOptions {
     DxbcOptions();
     DxbcOptions(const Rc<DxvkDevice>& device, const D3D11Options& options);
@@ -34,6 +34,9 @@ namespace dxvk {
 
     /// Clear thread-group shared memory to zero
     bool zeroInitWorkgroupMemory = false;
+
+    /// Check dynamic constant buffer index bounds
+    bool checkConstantBufferBounds = false;
   };
-  
+
 }

@@ -27,10 +27,11 @@ namespace dxvk {
       = (devInfo.core.properties.limits.minStorageBufferOffsetAlignment <= sizeof(uint32_t));
     useSdivForBufferIndex
       = adapter->matchesDriver(DxvkGpuVendor::Nvidia, VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0);
-    
+
     strictDivision          = options.strictDivision;
     zeroInitWorkgroupMemory = options.zeroInitWorkgroupMemory;
-    
+    checkConstantBufferBounds = options.checkConstantBufferBounds;
+
     // Disable early discard on RADV due to GPU hangs
     // Disable early discard on Nvidia because it may hurt performance
     if (adapter->matchesDriver(DxvkGpuVendor::Amd,    VK_DRIVER_ID_MESA_RADV_KHR,          0, 0)

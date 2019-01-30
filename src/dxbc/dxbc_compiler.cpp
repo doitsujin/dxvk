@@ -5236,7 +5236,7 @@ namespace dxvk {
     const DxbcRegisterValue constId = emitIndexLoad(reg.idx[1]);
     
     const uint32_t ptrTypeId = getPointerTypeId(info);
-    
+
     const std::array<uint32_t, 2> indices =
       {{ m_module.consti32(0), constId.id }};
     
@@ -5289,12 +5289,12 @@ namespace dxvk {
 
     // For dynamically indexed constant buffers, we should
     // return a vec4(0.0f) if the index is out of bounds
-    if (reg.idx[1].relReg != nullptr) {
+    if (m_moduleInfo.options.checkConstantBufferBounds && reg.idx[1].relReg != nullptr) {
       DxbcRegisterValue cbSize;
       cbSize.type = { DxbcScalarType::Uint32, 1 };
       cbSize.id   = m_module.constu32(m_constantBuffers.at(regId).size);
-      DxbcRegisterValue inBounds = emitRegisterExtend(emitIndexBoundCheck(constId, cbSize), 4);
 
+      DxbcRegisterValue inBounds = emitRegisterExtend(emitIndexBoundCheck(constId, cbSize), 4);
       result.type = ptr.type;
       result.id = m_module.opSelect(
         getVectorTypeId(result.type), inBounds.id, result.id,
