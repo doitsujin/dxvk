@@ -156,8 +156,7 @@ namespace dxvk {
   : m_vkd             (device->vkd()),
     m_device          (device),
     m_devProps        (device->adapter()->deviceProperties()),
-    m_memProps        (device->adapter()->memoryProperties()),
-    m_allowOvercommit (device->config().allowMemoryOvercommit) {
+    m_memProps        (device->adapter()->memoryProperties()) {
     for (uint32_t i = 0; i < m_memProps.memoryHeapCount; i++) {
       VkDeviceSize heapSize = m_memProps.memoryHeaps[i].size;
       

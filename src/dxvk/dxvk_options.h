@@ -8,10 +8,6 @@ namespace dxvk {
     DxvkOptions() { }
     DxvkOptions(const Config& config);
 
-    /// Allow allocating more memory from
-    /// a heap than the device supports.
-    bool allowMemoryOvercommit;
-
     /// Enable state cache
     bool enableStateCache;
 

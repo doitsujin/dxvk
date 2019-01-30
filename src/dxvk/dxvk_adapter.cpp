@@ -273,10 +273,7 @@ namespace dxvk {
     VkDeviceMemoryOverallocationCreateInfoAMD overallocInfo;
     overallocInfo.sType = VK_STRUCTURE_TYPE_DEVICE_MEMORY_OVERALLOCATION_CREATE_INFO_AMD;
     overallocInfo.pNext = nullptr;
-    overallocInfo.overallocationBehavior = VK_MEMORY_OVERALLOCATION_BEHAVIOR_DISALLOWED_AMD;
-
-    if (m_instance->options().allowMemoryOvercommit)
-      overallocInfo.overallocationBehavior = VK_MEMORY_OVERALLOCATION_BEHAVIOR_ALLOWED_AMD;
+    overallocInfo.overallocationBehavior = VK_MEMORY_OVERALLOCATION_BEHAVIOR_ALLOWED_AMD;
     
     // Create one single queue for graphics and present
     float queuePriority = 1.0f;
