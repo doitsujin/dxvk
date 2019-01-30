@@ -118,6 +118,10 @@ namespace dxvk {
     { "starwarsbattlefronttrial.exe", {{
       { "dxgi.nvapiHack",                   "False" },
     }} },
+    /* Dark Souls Remastered                      */
+    { "DarkSoulsRemastered.exe", {{
+      { "d3d11.checkConstantBufferBounds",  "True" },
+    }} },
   }};
 
 
