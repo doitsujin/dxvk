@@ -958,6 +958,10 @@ namespace dxvk {
     
     //////////////////////////////
     // Operand load/store methods
+    DxbcRegisterValue emitIndexBoundCheck(
+          DxbcRegisterValue       index,
+            DxbcRegisterValue       count);
+
     DxbcRegisterValue emitIndexLoad(
             DxbcRegIndex            index);
     
