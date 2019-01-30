@@ -302,7 +302,7 @@ namespace dxvk {
 
     VkMemoryPriorityAllocateInfoEXT prio;
     prio.sType            = VK_STRUCTURE_TYPE_MEMORY_PRIORITY_ALLOCATE_INFO_EXT;
-    prio.pNext            = nullptr;
+    prio.pNext            = dedAllocInfo;
     prio.priority         = priority;
 
     VkMemoryAllocateInfo info;
