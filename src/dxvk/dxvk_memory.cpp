@@ -293,19 +293,22 @@ namespace dxvk {
           VkDeviceSize                      size,
           float                             priority,
     const VkMemoryDedicatedAllocateInfoKHR* dedAllocInfo) {
-    if ((type->memType.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-     && (type->heap->stats.memoryAllocated + size > type->heap->properties.size)
-     && (!m_allowOvercommit))
-      return DxvkDeviceMemory();
+    bool useMemoryPriority = (flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+                          && (m_device->features().extMemoryPriority.memoryPriority);
     
     DxvkDeviceMemory result;
     result.memSize  = size;
     result.memFlags = flags;
     result.priority = priority;
 
+    VkMemoryPriorityAllocateInfoEXT prio;
+    prio.sType            = VK_STRUCTURE_TYPE_MEMORY_PRIORITY_ALLOCATE_INFO_EXT;
+    prio.pNext            = nullptr;
+    prio.priority         = priority;
+
     VkMemoryAllocateInfo info;
     info.sType            = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    info.pNext            = dedAllocInfo;
+    info.pNext            = useMemoryPriority ? &prio : prio.pNext;
     info.allocationSize   = size;
     info.memoryTypeIndex  = type->memTypeId;
 
