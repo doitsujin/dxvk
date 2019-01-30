@@ -17,6 +17,8 @@ namespace dxvk {
     this->queryDeviceInfo();
     this->queryDeviceFeatures();
     this->queryDeviceQueues();
+
+    m_hasMemoryBudget = m_deviceExtensions.supports(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
   }
   
   
@@ -31,15 +33,29 @@ namespace dxvk {
   
   
   DxvkAdapterMemoryInfo DxvkAdapter::getMemoryHeapInfo() const {
-    VkPhysicalDeviceMemoryProperties props = memoryProperties();
+    VkPhysicalDeviceMemoryBudgetPropertiesEXT memBudget = { };
+    memBudget.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT;
+    memBudget.pNext = nullptr;
 
+    VkPhysicalDeviceMemoryProperties2KHR memProps = { };
+    memProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2_KHR;
+    memProps.pNext = m_hasMemoryBudget ? &memBudget : nullptr;
+
+    m_vki->vkGetPhysicalDeviceMemoryProperties2KHR(m_handle, &memProps);
+    
     DxvkAdapterMemoryInfo info = { };
-    info.heapCount = props.memoryHeapCount;
+    info.heapCount = memProps.memoryProperties.memoryHeapCount;
 
     for (uint32_t i = 0; i < info.heapCount; i++) {
-      info.heaps[i].heapFlags       = props.memoryHeaps[i].flags;
-      info.heaps[i].memoryAvailable = props.memoryHeaps[i].size;
-      info.heaps[i].memoryAllocated = m_heapAlloc[i].load();
+      info.heaps[i].heapFlags = memProps.memoryProperties.memoryHeaps[i].flags;
+
+      if (m_hasMemoryBudget) {
+        info.heaps[i].memoryAvailable = memBudget.heapBudget[i];
+        info.heaps[i].memoryAllocated = memBudget.heapUsage[i];
+      } else {
+        info.heaps[i].memoryAvailable = memProps.memoryProperties.memoryHeaps[i].size;
+        info.heaps[i].memoryAllocated = m_heapAlloc[i].load();
+      }
     }
 
     return info;
@@ -328,14 +344,16 @@ namespace dxvk {
   void DxvkAdapter::notifyHeapMemoryAlloc(
           uint32_t            heap,
           VkDeviceSize        bytes) {
-    m_heapAlloc[heap] += bytes;
+    if (!m_hasMemoryBudget)
+      m_heapAlloc[heap] += bytes;
   }
 
   
   void DxvkAdapter::notifyHeapMemoryFree(
           uint32_t            heap,
           VkDeviceSize        bytes) {
-    m_heapAlloc[heap] -= bytes;
+    if (!m_hasMemoryBudget)
+      m_heapAlloc[heap] -= bytes;
   }
 
 

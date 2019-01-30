@@ -259,6 +259,8 @@ namespace dxvk {
     DxvkNameSet         m_deviceExtensions;
     DxvkDeviceInfo      m_deviceInfo;
     DxvkDeviceFeatures  m_deviceFeatures;
+
+    bool                m_hasMemoryBudget;
     
     std::vector<VkQueueFamilyProperties> m_queueFamilies;
 
