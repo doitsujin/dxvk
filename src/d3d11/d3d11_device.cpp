@@ -1353,6 +1353,10 @@ namespace dxvk {
     enabled.core.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
     enabled.core.pNext = nullptr;
 
+    enabled.extMemoryPriority.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT;
+    enabled.extMemoryPriority.pNext = nullptr;
+    enabled.extMemoryPriority.memoryPriority = supported.extMemoryPriority.memoryPriority;
+
     enabled.extTransformFeedback.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT;
     enabled.extTransformFeedback.pNext = nullptr;
 
