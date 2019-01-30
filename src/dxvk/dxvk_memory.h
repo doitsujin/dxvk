@@ -262,7 +262,7 @@ namespace dxvk {
   private:
 
     const Rc<vk::DeviceFn>                 m_vkd;
-    const Rc<DxvkAdapter>                  m_adapter;
+    const DxvkDevice*                      m_device;
     const VkPhysicalDeviceProperties       m_devProps;
     const VkPhysicalDeviceMemoryProperties m_memProps;
     const bool                             m_allowOvercommit;

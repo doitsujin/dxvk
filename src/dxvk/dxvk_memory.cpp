@@ -154,9 +154,9 @@ namespace dxvk {
   
   DxvkMemoryAllocator::DxvkMemoryAllocator(const DxvkDevice* device)
   : m_vkd             (device->vkd()),
-    m_adapter         (device->adapter()),
-    m_devProps        (m_adapter->deviceProperties()),
-    m_memProps        (m_adapter->memoryProperties()),
+    m_device          (device),
+    m_devProps        (device->adapter()->deviceProperties()),
+    m_memProps        (device->adapter()->memoryProperties()),
     m_allowOvercommit (device->config().allowMemoryOvercommit) {
     for (uint32_t i = 0; i < m_memProps.memoryHeapCount; i++) {
       VkDeviceSize heapSize = m_memProps.memoryHeaps[i].size;
@@ -322,7 +322,7 @@ namespace dxvk {
     }
 
     type->heap->stats.memoryAllocated += size;
-    m_adapter->notifyHeapMemoryAlloc(type->heapId, size);
+    m_device->adapter()->notifyHeapMemoryAlloc(type->heapId, size);
     return result;
   }
 
@@ -362,7 +362,7 @@ namespace dxvk {
           DxvkDeviceMemory      memory) {
     m_vkd->vkFreeMemory(m_vkd->device(), memory.memHandle, nullptr);
     type->heap->stats.memoryAllocated -= memory.memSize;
-    m_adapter->notifyHeapMemoryFree(type->heapId, memory.memSize);
+    m_device->adapter()->notifyHeapMemoryFree(type->heapId, memory.memSize);
   }
 
 
