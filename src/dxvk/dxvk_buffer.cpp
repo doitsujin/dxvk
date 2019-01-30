@@ -125,9 +125,18 @@ namespace dxvk {
     vkd->vkGetBufferMemoryRequirements2KHR(
        vkd->device(), &memReqInfo, &memReq);
 
+    // Use high memory priority for GPU-writable resources
+    bool isGpuWritable = (m_info.usage & (
+      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+      VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT)) != 0;
+    
+    float priority = isGpuWritable ? 1.0f : 0.5f;
+    
+    // Ask driver whether we should be using a dedicated allocation
     bool useDedicated = dedicatedRequirements.prefersDedicatedAllocation;
+
     handle.memory = m_memAlloc->alloc(&memReq.memoryRequirements,
-      useDedicated ? &dedMemoryAllocInfo : nullptr, m_memFlags, 0.5f);
+      useDedicated ? &dedMemoryAllocInfo : nullptr, m_memFlags, priority);
     
     if (vkd->vkBindBufferMemory(vkd->device(), handle.buffer,
         handle.memory.memory(), handle.memory.offset()) != VK_SUCCESS)
