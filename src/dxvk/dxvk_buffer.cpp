@@ -127,7 +127,7 @@ namespace dxvk {
 
     bool useDedicated = dedicatedRequirements.prefersDedicatedAllocation;
     handle.memory = m_memAlloc->alloc(&memReq.memoryRequirements,
-      useDedicated ? &dedMemoryAllocInfo : nullptr, m_memFlags);
+      useDedicated ? &dedMemoryAllocInfo : nullptr, m_memFlags, 0.5f);
     
     if (vkd->vkBindBufferMemory(vkd->device(), handle.buffer,
         handle.memory.memory(), handle.memory.offset()) != VK_SUCCESS)

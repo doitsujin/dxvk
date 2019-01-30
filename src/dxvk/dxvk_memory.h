@@ -31,6 +31,7 @@ namespace dxvk {
     void*                 memPointer = nullptr;
     VkDeviceSize          memSize    = 0;
     VkMemoryPropertyFlags memFlags   = 0;
+    float                 priority   = 0.0f;
   };
 
   
@@ -170,12 +171,14 @@ namespace dxvk {
      * \param [in] flags Requested memory flags
      * \param [in] size Number of bytes to allocate
      * \param [in] align Required alignment
+     * \param [in] priority Requested priority
      * \returns The allocated memory slice
      */
     DxvkMemory alloc(
             VkMemoryPropertyFlags flags,
             VkDeviceSize          size,
-            VkDeviceSize          align);
+            VkDeviceSize          align,
+            float                 priority);
     
     /**
      * \brief Frees memory
@@ -236,13 +239,16 @@ namespace dxvk {
      * \brief Allocates device memory
      * 
      * \param [in] req Memory requirements
-     * \param [in] flats Memory type flags
+     * \param [in] dedAllocInfo Dedicated allocation info
+     * \param [in] flags Memory type flags
+     * \param [in] priority Device-local memory priority
      * \returns Allocated memory slice
      */
     DxvkMemory alloc(
       const VkMemoryRequirements*             req,
       const VkMemoryDedicatedAllocateInfoKHR* dedAllocInfo,
-            VkMemoryPropertyFlags             flags);
+            VkMemoryPropertyFlags             flags,
+            float                             priority);
     
     /**
      * \brief Queries memory stats
@@ -268,19 +274,22 @@ namespace dxvk {
     DxvkMemory tryAlloc(
       const VkMemoryRequirements*             req,
       const VkMemoryDedicatedAllocateInfoKHR* dedAllocInfo,
-            VkMemoryPropertyFlags             flags);
+            VkMemoryPropertyFlags             flags,
+            float                             priority);
     
     DxvkMemory tryAllocFromType(
             DxvkMemoryType*                   type,
             VkMemoryPropertyFlags             flags,
             VkDeviceSize                      size,
             VkDeviceSize                      align,
+            float                             priority,
       const VkMemoryDedicatedAllocateInfoKHR* dedAllocInfo);
     
     DxvkDeviceMemory tryAllocDeviceMemory(
             DxvkMemoryType*                   type,
             VkMemoryPropertyFlags             flags,
             VkDeviceSize                      size,
+            float                             priority,
       const VkMemoryDedicatedAllocateInfoKHR* dedAllocInfo);
     
     void free(

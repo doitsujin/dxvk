@@ -91,7 +91,7 @@ namespace dxvk {
 
     bool useDedicated = dedicatedRequirements.prefersDedicatedAllocation;
     m_memory = memAlloc.alloc(&memReq.memoryRequirements,
-      useDedicated ? &dedMemoryAllocInfo : nullptr, memFlags);
+      useDedicated ? &dedMemoryAllocInfo : nullptr, memFlags, 0.5f);
     
     // Try to bind the allocated memory slice to the image
     if (m_vkd->vkBindImageMemory(m_vkd->device(),
