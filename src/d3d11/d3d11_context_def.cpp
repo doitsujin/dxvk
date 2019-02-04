@@ -165,9 +165,8 @@ namespace dxvk {
           UINT                          MapFlags,
           D3D11DeferredContextMapEntry* pMapEntry) {
     D3D11Buffer* pBuffer = static_cast<D3D11Buffer*>(pResource);
-    const Rc<DxvkBuffer> buffer = pBuffer->GetBuffer();
     
-    if (!(buffer->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) {
+    if (unlikely(pBuffer->GetMapMode() == D3D11_COMMON_BUFFER_MAP_MODE_NONE)) {
       Logger::err("D3D11: Cannot map a device-local buffer");
       return E_INVALIDARG;
     }
@@ -182,7 +181,7 @@ namespace dxvk {
       // For resources that cannot be written by the GPU,
       // we may write to the buffer resource directly and
       // just swap in the buffer slice as needed.
-      pMapEntry->BufferSlice = buffer->allocSlice();
+      pMapEntry->BufferSlice = pBuffer->AllocSlice();
       pMapEntry->MapPointer  = pMapEntry->BufferSlice.mapPtr;
     } else {
       // For GPU-writable resources, we need a data slice

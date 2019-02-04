@@ -94,6 +94,10 @@ namespace dxvk {
       return m_soCounter;
     }
     
+    DxvkBufferSliceHandle AllocSlice() {
+      return m_buffer->allocSlice();
+    }
+    
     DxvkBufferSliceHandle DiscardSlice() {
       m_mapped = m_buffer->allocSlice();
       return m_mapped;
