@@ -76,6 +76,14 @@ namespace dxvk {
     { "MassEffectAndromeda.exe", {{
       { "dxgi.nvapiHack",                   "False" },
     }} },
+    /* Far Cry 4                                  */
+    { "FarCry4.exe", {{
+      { "dxgi.nvapiHack",                   "False" },
+    }} },
+    /* Far Cry Primal                             */
+    { "FCPrimal.exe", {{
+      { "dxgi.nvapiHack",                   "False" },
+    }} },
   }};
 
 
