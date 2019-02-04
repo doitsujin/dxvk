@@ -6696,7 +6696,10 @@ namespace dxvk {
     DxbcArrayType info;
     info.ctype   = DxbcScalarType::Float32;
     info.ccount  = 4;
-    info.alength = DxbcMaxInterfaceRegs;
+    info.alength = m_isgn != nullptr ? m_isgn->maxRegisterCount() : 0;
+
+    if (info.alength == 0)
+      return;
     
     // Define the array type. This will be two-dimensional
     // in some shaders, with the outer index representing
