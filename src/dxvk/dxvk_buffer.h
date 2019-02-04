@@ -232,7 +232,39 @@ namespace dxvk {
      * \brief Allocates new buffer slice
      * \returns The new buffer slice
      */
-    DxvkBufferSliceHandle allocSlice();
+    DxvkBufferSliceHandle allocSlice() {
+      std::unique_lock<sync::Spinlock> freeLock(m_freeMutex);
+      
+      // If no slices are available, swap the two free lists.
+      if (unlikely(m_freeSlices.size() == 0)) {
+        std::unique_lock<sync::Spinlock> swapLock(m_swapMutex);
+        std::swap(m_freeSlices, m_nextSlices);
+      }
+
+      // If there are still no slices available, create a new
+      // backing buffer and add all slices to the free list.
+      if (unlikely(m_freeSlices.size() == 0)) {
+        std::unique_lock<sync::Spinlock> swapLock(m_swapMutex);
+        DxvkBufferHandle handle = allocBuffer(m_physSliceCount);
+        
+        for (uint32_t i = 0; i < m_physSliceCount; i++) {
+          DxvkBufferSliceHandle slice;
+          slice.handle = handle.buffer;
+          slice.offset = m_physSliceStride * i;
+          slice.length = m_physSliceLength;
+          slice.mapPtr = handle.memory.mapPtr(slice.offset);
+          m_freeSlices.push_back(slice);
+        }
+        
+        m_buffers.push_back(std::move(handle));
+        m_physSliceCount *= 2;
+      }
+      
+      // Take the first slice from the queue
+      DxvkBufferSliceHandle result = m_freeSlices.back();
+      m_freeSlices.pop_back();
+      return result;
+    }
     
     /**
      * \brief Frees a buffer slice
@@ -242,8 +274,11 @@ namespace dxvk {
      * the slice is no longer needed by the GPU.
      * \param [in] slice The buffer slice to free
      */
-    void freeSlice(
-      const DxvkBufferSliceHandle& slice);
+    void freeSlice(const DxvkBufferSliceHandle& slice) {
+      // Add slice to a separate free list to reduce lock contention.
+      std::unique_lock<sync::Spinlock> swapLock(m_swapMutex);
+      m_nextSlices.push_back(slice);
+    }
     
   private:
 
