@@ -183,7 +183,7 @@ namespace dxvk {
         pMappedResource);
     }
 
-    if (FAILED(hr)) {
+    if (unlikely(FAILED(hr))) {
       pMappedResource->pData      = nullptr;
       pMappedResource->RowPitch   = 0;
       pMappedResource->DepthPitch = 0;
@@ -340,9 +340,7 @@ namespace dxvk {
           D3D11_MAP                   MapType,
           UINT                        MapFlags,
           D3D11_MAPPED_SUBRESOURCE*   pMappedResource) {
-    Rc<DxvkBuffer> buffer = pResource->GetBuffer();
-
-    if (!(buffer->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)) {
+    if (unlikely(pResource->GetMapMode() == D3D11_COMMON_BUFFER_MAP_MODE_NONE)) {
       Logger::err("D3D11: Cannot map a device-local buffer");
       return E_INVALIDARG;
     }
@@ -357,8 +355,8 @@ namespace dxvk {
       pMappedResource->DepthPitch = pResource->Desc()->ByteWidth;
       
       EmitCs([
-        cBuffer      = std::move(buffer),
-        cBufferSlice = std::move(physSlice)
+        cBuffer      = pResource->GetBuffer(),
+        cBufferSlice = physSlice
       ] (DxvkContext* ctx) {
         ctx->invalidateBuffer(cBuffer, cBufferSlice);
       });
@@ -367,7 +365,7 @@ namespace dxvk {
     } else {
       // Wait until the resource is no longer in use
       if (MapType != D3D11_MAP_WRITE_NO_OVERWRITE) {
-        if (!WaitForResource(buffer, MapFlags))
+        if (!WaitForResource(pResource->GetBuffer(), MapFlags))
           return DXGI_ERROR_WAS_STILL_DRAWING;
       }
 
@@ -393,7 +391,7 @@ namespace dxvk {
     const Rc<DxvkImage>  mappedImage  = pResource->GetImage();
     const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer();
     
-    if (pResource->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_NONE) {
+    if (unlikely(pResource->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_NONE)) {
       Logger::err("D3D11: Cannot map a device-local image");
       return E_INVALIDARG;
     }
