@@ -532,11 +532,12 @@ namespace dxvk {
     }
     
     // Check whether the render target view is an attachment
-    // of the current framebuffer. If not, we need to create
-    // a temporary framebuffer.
+    // of the current framebuffer and is included entirely.
+    // If not, we need to create a temporary framebuffer.
     int32_t attachmentIndex = -1;
     
-    if (m_state.om.framebuffer != nullptr)
+    if (m_state.om.framebuffer != nullptr
+     && m_state.om.framebuffer->isFullSize(imageView))
       attachmentIndex = m_state.om.framebuffer->findAttachment(imageView);
     
     if (attachmentIndex < 0) {
