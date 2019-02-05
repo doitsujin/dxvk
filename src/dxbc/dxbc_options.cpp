@@ -24,6 +24,7 @@ namespace dxvk {
     useRawSsbo
       = (devInfo.core.properties.limits.minStorageBufferOffsetAlignment <= sizeof(uint32_t));
     
+    strictDivision          = options.strictDivision;
     zeroInitWorkgroupMemory = options.zeroInitWorkgroupMemory;
     
     // Disable early discard on RADV due to GPU hangs

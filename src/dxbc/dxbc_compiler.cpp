@@ -1519,6 +1519,21 @@ namespace dxvk {
         break;
         
       case DxbcOpcode::Div:
+        dst.id = m_module.opFDiv(typeId,
+          src.at(0).id, src.at(1).id);
+        
+        if (m_moduleInfo.options.strictDivision) {
+          uint32_t boolType = dst.type.ccount > 1
+            ? m_module.defVectorType(m_module.defBoolType(), dst.type.ccount)
+            : m_module.defBoolType();
+          
+          dst.id = m_module.opSelect(typeId,
+            m_module.opFOrdNotEqual(boolType, src.at(1).id,
+              emitBuildConstVecf32(0.0f, 0.0f, 0.0f, 0.0f, ins.dst[0].mask).id),
+            dst.id, src.at(0).id);
+        }
+        break;
+
       case DxbcOpcode::DDiv:
         dst.id = m_module.opFDiv(typeId,
           src.at(0).id, src.at(1).id);

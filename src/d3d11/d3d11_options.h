@@ -25,6 +25,11 @@ namespace dxvk {
     /// than once.
     bool dcSingleUseMode;
 
+    /// Enables sm4-compliant division-by-zero behaviour
+    /// Windows drivers don't normally do this, but some
+    /// games may expect correct behaviour.
+    bool strictDivision;
+
     /// Zero-initialize workgroup memory
     ///
     /// Workargound for games that don't initialize

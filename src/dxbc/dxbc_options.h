@@ -21,6 +21,9 @@ namespace dxvk {
     /// for raw and structured buffers.
     bool useRawSsbo = false;
 
+    /// Enables sm4-compliant division-by-zero behaviour
+    bool strictDivision = false;
+
     /// Clear thread-group shared memory to zero
     bool zeroInitWorkgroupMemory = false;
   };
