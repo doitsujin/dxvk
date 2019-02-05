@@ -60,6 +60,10 @@ namespace dxvk {
     { "FIFA19.exe", {{
       { "dxvk.useRawSsbo",                  "True" },
     }} },
+    /* Final Fantasy XIV: Fix random black blocks */
+    { "ffxiv_dx11.exe", {{
+      { "d3d11.strictDivision",             "True" },
+    }} },
     /* Fifa '19 Demo                              */
     { "FIFA19_demo.exe", {{
       { "dxvk.useRawSsbo",                  "True" },
