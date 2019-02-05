@@ -5229,7 +5229,7 @@ namespace dxvk {
       uint32_t componentPtr = m_module.opAccessChain(
         m_module.defPointerType(
           getScalarTypeId(DxbcScalarType::Float32),
-          spv::StorageClassUniformConstant),
+          spv::StorageClassUniform),
         ptr.id, 1, &componentId);
       
       ccomps[sindex] = m_module.opLoad(
