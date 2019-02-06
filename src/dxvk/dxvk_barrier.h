@@ -52,6 +52,17 @@ namespace dxvk {
       const VkImageSubresourceRange&  imgSubres,
             DxvkAccessFlags           imgAccess);
     
+    DxvkAccessFlags getBufferAccess(
+      const DxvkBufferSliceHandle&    bufSlice);
+    
+    DxvkAccessFlags getImageAccess(
+      const Rc<DxvkImage>&            image,
+      const VkImageSubresourceRange&  imgSubres);
+    
+    VkPipelineStageFlags getSrcStages() {
+      return m_srcStages;
+    }
+    
     void recordCommands(
       const Rc<DxvkCommandList>&      commandList);
     

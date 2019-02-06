@@ -126,7 +126,44 @@ namespace dxvk {
 
     return result;
   }
+
+
+  DxvkAccessFlags DxvkBarrierSet::getBufferAccess(
+    const DxvkBufferSliceHandle&    bufSlice) {
+    DxvkAccessFlags access = getAccessTypes(m_srcAccess);
+
+    for (uint32_t i = 0; i < m_bufSlices.size(); i++) {
+      const DxvkBufferSliceHandle& dstSlice = m_bufSlices[i].slice;
+
+      if ((bufSlice.handle == dstSlice.handle)
+       && (bufSlice.offset + bufSlice.length > dstSlice.offset)
+       && (bufSlice.offset < dstSlice.offset + dstSlice.length))
+        access = access | m_bufSlices[i].access;
+    }
+
+    return access;
+  }
+
   
+  DxvkAccessFlags DxvkBarrierSet::getImageAccess(
+    const Rc<DxvkImage>&            image,
+    const VkImageSubresourceRange&  imgSubres) {
+    DxvkAccessFlags access = getAccessTypes(m_srcAccess & image->info().access);
+
+    for (uint32_t i = 0; i < m_imgSlices.size(); i++) {
+      const VkImageSubresourceRange& dstSubres = m_imgSlices[i].subres;
+
+      if ((image == m_imgSlices[i].image)
+       && (imgSubres.baseArrayLayer < dstSubres.baseArrayLayer + dstSubres.layerCount)
+       && (imgSubres.baseArrayLayer + imgSubres.layerCount     > dstSubres.baseArrayLayer)
+       && (imgSubres.baseMipLevel   < dstSubres.baseMipLevel   + dstSubres.levelCount)
+       && (imgSubres.baseMipLevel   + imgSubres.levelCount     > dstSubres.baseMipLevel))
+        access = access | m_imgSlices[i].access;
+    }
+
+    return access;
+  }
+
 
   void DxvkBarrierSet::recordCommands(const Rc<DxvkCommandList>& commandList) {
     if (m_srcStages | m_dstStages) {
