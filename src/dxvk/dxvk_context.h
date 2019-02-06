@@ -755,6 +755,16 @@ namespace dxvk {
       const DxvkBlendMode&      blendMode);
     
     /**
+     * \brief Sets barrier control flags
+     *
+     * Barrier control flags can be used to control
+     * implicit synchronization of compute shaders.
+     * \param [in] control New barrier control flags
+     */
+    void setBarrierControl(
+            DxvkBarrierControlFlags control);
+    
+    /**
      * \brief Signals an event
      * \param [in] event The event
      */
@@ -781,14 +791,15 @@ namespace dxvk {
     Rc<DxvkCommandList>     m_cmd;
     Rc<DxvkDescriptorPool>  m_descPool;
 
-    DxvkContextFlags    m_flags;
-    DxvkContextState    m_state;
+    DxvkContextFlags        m_flags;
+    DxvkContextState        m_state;
 
-    DxvkBarrierSet      m_barriers;
-    DxvkBarrierSet      m_transitions;
+    DxvkBarrierSet          m_barriers;
+    DxvkBarrierSet          m_transitions;
+    DxvkBarrierControlFlags m_barrierControl;
     
-    DxvkQueryManager    m_queries;
-    
+    DxvkQueryManager        m_queries;
+
     VkPipeline m_gpActivePipeline = VK_NULL_HANDLE;
     VkPipeline m_cpActivePipeline = VK_NULL_HANDLE;
 

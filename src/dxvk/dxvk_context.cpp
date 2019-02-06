@@ -1737,6 +1737,11 @@ namespace dxvk {
     
     m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
   }
+
+
+  void DxvkContext::setBarrierControl(DxvkBarrierControlFlags control) {
+    m_barrierControl = control;
+  }
   
   
   void DxvkContext::signalEvent(const DxvkEventRevision& event) {

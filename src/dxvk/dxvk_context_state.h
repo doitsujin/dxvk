@@ -54,6 +54,19 @@ namespace dxvk {
   using DxvkContextFlags = Flags<DxvkContextFlag>;
 
 
+  /**
+   * \brief Barrier control flags
+   * 
+   * These flags specify what (not) to
+   * synchronize implicitly.
+   */
+  enum class DxvkBarrierControl : uint32_t {
+    IgnoreWriteAfterWrite       = 1,
+  };
+
+  using DxvkBarrierControlFlags  = Flags<DxvkBarrierControl>;
+
+
   struct DxvkIndirectDrawState {
     DxvkBufferSlice argBuffer;
   };
