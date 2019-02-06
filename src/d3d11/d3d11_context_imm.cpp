@@ -13,8 +13,14 @@ namespace dxvk {
     const Rc<DxvkDevice>& Device)
   : D3D11DeviceContext(pParent, Device, DxvkCsChunkFlag::SingleUse),
     m_csThread(Device->createContext()) {
-    EmitCs([cDevice = m_device] (DxvkContext* ctx) {
+    EmitCs([
+      cDevice          = m_device,
+      cRelaxedBarriers = pParent->GetOptions()->relaxedBarriers
+    ] (DxvkContext* ctx) {
       ctx->beginRecording(cDevice->createCommandList());
+
+      if (cRelaxedBarriers)
+        ctx->setBarrierControl(DxvkBarrierControl::IgnoreWriteAfterWrite);
     });
     
     ClearState();

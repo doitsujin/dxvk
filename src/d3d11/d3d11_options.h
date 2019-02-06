@@ -36,6 +36,12 @@ namespace dxvk {
     /// TGSM in compute shaders before reading it.
     bool zeroInitWorkgroupMemory;
 
+    /// Use relaxed memory barriers
+    ///
+    /// May improve performance in some games,
+    /// but might also cause rendering issues.
+    bool relaxedBarriers;
+
     /// Maximum tessellation factor.
     ///
     /// Limits tessellation factors in tessellation

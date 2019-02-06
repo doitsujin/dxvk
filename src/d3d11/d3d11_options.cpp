@@ -9,6 +9,7 @@ namespace dxvk {
     this->dcSingleUseMode       = config.getOption<bool>("d3d11.dcSingleUseMode", true);
     this->strictDivision          = config.getOption<bool>("d3d11.strictDivision", false);
     this->zeroInitWorkgroupMemory = config.getOption<bool>("d3d11.zeroInitWorkgroupMemory", false);
+    this->relaxedBarriers       = config.getOption<bool>("d3d11.relaxedBarriers", false);
     this->maxTessFactor         = config.getOption<int32_t>("d3d11.maxTessFactor", 0);
     this->samplerAnisotropy     = config.getOption<int32_t>("d3d11.samplerAnisotropy", -1);
     this->deferSurfaceCreation  = config.getOption<bool>("dxgi.deferSurfaceCreation", false);
