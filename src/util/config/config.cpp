@@ -68,6 +68,10 @@ namespace dxvk {
     { "FIFA19_demo.exe", {{
       { "dxvk.useRawSsbo",                  "True" },
     }} },
+    /* Resident Evil 2: Improve GPU performance   */
+    { "re2.exe", {{
+      { "d3d11.relaxedBarriers",            "True" },
+    }} },
     /* Call of Duty WW2                           */
     { "s2_sp64_ship.exe", {{
       { "dxgi.nvapiHack",                   "False" },
