@@ -62,6 +62,7 @@ d3d11_dll = shared_library('d3d11'+dll_ext, dxgi_common_src + d3d11_src + d3d10_
   install             : true,
   objects             : not dxvk_msvc ? 'd3d11'+def_spec_ext : [],
   vs_module_defs      : 'd3d11'+def_spec_ext,
+  cpp_args            : '-DLOGGER_FILENAME=d3d11.log',
   override_options    : ['cpp_std='+dxvk_cpp_std])
 
 d3d11_dep = declare_dependency(

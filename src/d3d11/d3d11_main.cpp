@@ -9,8 +9,10 @@
 #include "d3d11_interop.h"
 #include "d3d11_present.h"
 
+#include "../util/util_str.h"
+
 namespace dxvk {
-  Logger Logger::s_instance("d3d11.log");
+  Logger Logger::s_instance(xstr(LOGGER_FILENAME));
 }
   
 extern "C" {
