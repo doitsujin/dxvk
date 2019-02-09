@@ -1,9 +1,11 @@
 #include "dxgi_factory.h"
 #include "dxgi_include.h"
 
+#include "../util/util_str.h"
+
 namespace dxvk {
   
-  Logger Logger::s_instance("dxgi.log");
+  Logger Logger::s_instance(xstr(LOGGER_FILENAME));
   
   HRESULT createDxgiFactory(UINT Flags, REFIID riid, void **ppFactory) {
     try {

@@ -22,6 +22,7 @@ dxgi_dll = shared_library('dxgi'+dll_ext, dxgi_src,
   install             : true,
   vs_module_defs      : 'dxgi'+def_spec_ext,
   objects             : not dxvk_msvc ? 'dxgi'+def_spec_ext : [],
+  cpp_args            : '-DLOGGER_FILENAME=dxgi.log',
   override_options    : ['cpp_std='+dxvk_cpp_std])
 
 dxgi_dep = declare_dependency(
