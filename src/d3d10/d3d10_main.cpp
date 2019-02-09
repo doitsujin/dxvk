@@ -5,8 +5,10 @@
 
 #include "../dxgi/dxgi_adapter.h"
 
+#include "../util/util_str.h"
+
 namespace dxvk {
-  Logger Logger::s_instance("d3d10.log");
+  Logger Logger::s_instance(xstr(LOGGER_FILENAME));
 }
 
 extern "C" {
