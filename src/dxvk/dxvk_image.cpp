@@ -145,9 +145,11 @@ namespace dxvk {
       
       case VK_IMAGE_VIEW_TYPE_2D:
       case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
+        this->createView(VK_IMAGE_VIEW_TYPE_2D, 1);
+        /* fall through */
+
       case VK_IMAGE_VIEW_TYPE_CUBE:
       case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY: {
-        this->createView(VK_IMAGE_VIEW_TYPE_2D,       1);
         this->createView(VK_IMAGE_VIEW_TYPE_2D_ARRAY, info.numLayers);
         
         if (m_image->info().flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) {
