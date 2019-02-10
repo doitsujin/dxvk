@@ -38,6 +38,15 @@ namespace dxvk {
     VkInstance handle() {
       return m_vki->instance();
     }
+
+     /**
+     * \brief Number of adapters
+     * 
+     * \returns The number of adapters
+     */
+    size_t adapterCount() {
+      return m_adapters.size();
+    }
     
     /**
      * \brief Retrieves an adapter
