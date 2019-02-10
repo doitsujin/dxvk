@@ -38,6 +38,9 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE D3D11BlendState::QueryInterface(REFIID riid, void** ppvObject) {
+    if (ppvObject == nullptr)
+      return E_POINTER;
+
     *ppvObject = nullptr;
     
     if (riid == __uuidof(IUnknown)

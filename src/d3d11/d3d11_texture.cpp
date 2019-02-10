@@ -568,6 +568,9 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE D3D11Texture1D::QueryInterface(REFIID riid, void** ppvObject) {
+    if (ppvObject == nullptr)
+      return E_POINTER;
+
     *ppvObject = nullptr;
     
     if (riid == __uuidof(IUnknown)
@@ -649,6 +652,9 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE D3D11Texture2D::QueryInterface(REFIID riid, void** ppvObject) {
+    if (ppvObject == nullptr)
+      return E_POINTER;
+
     *ppvObject = nullptr;
     
     if (riid == __uuidof(IUnknown)
@@ -732,6 +738,9 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE D3D11Texture3D::QueryInterface(REFIID riid, void** ppvObject) {
+    if (ppvObject == nullptr)
+      return E_POINTER;
+
     *ppvObject = nullptr;
     
     if (riid == __uuidof(IUnknown)

@@ -50,6 +50,9 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11SwapChain::QueryInterface(
           REFIID                  riid,
           void**                  ppvObject) {
+    if (ppvObject == nullptr)
+      return E_POINTER;
+
     InitReturnPtr(ppvObject);
 
     if (riid == __uuidof(IUnknown)

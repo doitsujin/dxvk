@@ -16,6 +16,9 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE D3D11ClassLinkage::QueryInterface(REFIID riid, void** ppvObject) {
+    if (ppvObject == nullptr)
+      return E_POINTER;
+
     *ppvObject = nullptr;
     
     if (riid == __uuidof(IUnknown)
