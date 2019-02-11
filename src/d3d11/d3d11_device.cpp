@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cstring>
 
+#include "../dxgi/dxgi_monitor.h"
 #include "../dxgi/dxgi_swapchain.h"
 
 #include "../dxvk/dxvk_adapter.h"
@@ -1720,10 +1721,44 @@ namespace dxvk {
     if (!ppSwapChain || !pDesc || !hWnd)
       return DXGI_ERROR_INVALID_CALL;
     
-    return CreateDxvkSwapChainForHwnd(
-      pFactory, m_device, hWnd, pDesc,
-      pFullscreenDesc, pRestrictToOutput,
-      ppSwapChain);
+    // Make sure the back buffer size is not zero
+    DXGI_SWAP_CHAIN_DESC1 desc = *pDesc;
+    
+    GetWindowClientSize(hWnd,
+      desc.Width  ? nullptr : &desc.Width,
+      desc.Height ? nullptr : &desc.Height);
+    
+    // If necessary, set up a default set of
+    // fullscreen parameters for the swap chain
+    DXGI_SWAP_CHAIN_FULLSCREEN_DESC fsDesc;
+    
+    if (pFullscreenDesc) {
+      fsDesc = *pFullscreenDesc;
+    } else {
+      fsDesc.RefreshRate      = { 0, 0 };
+      fsDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+      fsDesc.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
+      fsDesc.Windowed         = TRUE;
+    }
+    
+    // Create presenter for the device
+    Com<IDXGIVkSwapChain> presenter;
+    
+    HRESULT hr = m_device->CreateSwapChainForHwnd(
+      hWnd, &desc, &presenter);
+    
+    if (FAILED(hr))
+      return hr;
+    
+    try {
+      // Create actual swap chain object
+      *ppSwapChain = ref(new DxgiSwapChain(
+        pFactory, presenter.ptr(), hWnd, &desc, &fsDesc));
+      return S_OK;
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return DXGI_ERROR_UNSUPPORTED;
+    }
   }
   
   

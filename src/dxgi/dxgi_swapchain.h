@@ -205,14 +205,4 @@ namespace dxvk {
     
   };
   
-  
-  HRESULT CreateDxvkSwapChainForHwnd(
-          IDXGIFactory*             pFactory,
-          IDXGIVkPresentDevice*     pDevice,
-          HWND                      hWnd,
-    const DXGI_SWAP_CHAIN_DESC1*    pDesc,
-    const DXGI_SWAP_CHAIN_FULLSCREEN_DESC* pFullscreenDesc,
-          IDXGIOutput*              pRestrictToOutput,
-          IDXGISwapChain1**         ppSwapChain);
-  
 }
