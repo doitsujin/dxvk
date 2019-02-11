@@ -1686,8 +1686,9 @@ namespace dxvk {
 
 
   WineDXGISwapChainFactory::WineDXGISwapChainFactory(
-          IDXGIVkPresentDevice*   pDevice)
-  : m_device(pDevice) {
+          D3D11DXGIDevice*        pContainer,
+          D3D11Device*            pDevice)
+  : m_container(pContainer), m_device(pDevice) {
     
   }
   
@@ -1741,17 +1742,12 @@ namespace dxvk {
       fsDesc.Windowed         = TRUE;
     }
     
-    // Create presenter for the device
-    Com<IDXGIVkSwapChain> presenter;
-    
-    HRESULT hr = m_device->CreateSwapChainForHwnd(
-      hWnd, &desc, &presenter);
-    
-    if (FAILED(hr))
-      return hr;
-    
     try {
-      // Create actual swap chain object
+      // Create presenter for the device
+      Com<D3D11SwapChain> presenter = new D3D11SwapChain(
+        m_container, m_device, hWnd, &desc);
+      
+      // Create the actual swap chain
       *ppSwapChain = ref(new DxgiSwapChain(
         pFactory, presenter.ptr(), hWnd, &desc, &fsDesc));
       return S_OK;
@@ -1775,7 +1771,7 @@ namespace dxvk {
     m_d3d11Device   (this, FeatureLevel, FeatureFlags),
     m_d3d11Presenter(this, &m_d3d11Device),
     m_d3d11Interop  (this, &m_d3d11Device),
-    m_wineFactory   (&m_d3d11Presenter),
+    m_wineFactory   (this, &m_d3d11Device),
     m_frameLatencyCap(m_d3d11Device.GetOptions()->maxFrameLatency) {
     for (uint32_t i = 0; i < m_frameEvents.size(); i++)
       m_frameEvents[i] = new DxvkEvent();

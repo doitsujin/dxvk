@@ -396,7 +396,8 @@ namespace dxvk {
   public:
     
     WineDXGISwapChainFactory(
-            IDXGIVkPresentDevice*   pDevice);
+            D3D11DXGIDevice*        pContainer,
+            D3D11Device*            pDevice);
     
     ULONG STDMETHODCALLTYPE AddRef();
     
@@ -416,7 +417,8 @@ namespace dxvk {
     
   private:
     
-    IDXGIVkPresentDevice* m_device;
+    D3D11DXGIDevice* m_container;
+    D3D11Device*     m_device;
     
   };
   
