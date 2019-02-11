@@ -14,11 +14,11 @@
 #include "d3d11_device.h"
 #include "d3d11_input_layout.h"
 #include "d3d11_interop.h"
-#include "d3d11_present.h"
 #include "d3d11_query.h"
 #include "d3d11_resource.h"
 #include "d3d11_sampler.h"
 #include "d3d11_shader.h"
+#include "d3d11_swapchain.h"
 #include "d3d11_texture.h"
 
 namespace dxvk {
@@ -1769,7 +1769,6 @@ namespace dxvk {
     m_dxvkAdapter   (pDxvkAdapter),
     m_dxvkDevice    (CreateDevice(FeatureLevel)),
     m_d3d11Device   (this, FeatureLevel, FeatureFlags),
-    m_d3d11Presenter(this, &m_d3d11Device),
     m_d3d11Interop  (this, &m_d3d11Device),
     m_wineFactory   (this, &m_d3d11Device),
     m_frameLatencyCap(m_d3d11Device.GetOptions()->maxFrameLatency) {
@@ -1813,11 +1812,6 @@ namespace dxvk {
     if (riid == __uuidof(ID3D11Device)
      || riid == __uuidof(ID3D11Device1)) {
       *ppvObject = ref(&m_d3d11Device);
-      return S_OK;
-    }
-    
-    if (riid == __uuidof(IDXGIVkPresentDevice)) {
-      *ppvObject = ref(&m_d3d11Presenter);
       return S_OK;
     }
     
