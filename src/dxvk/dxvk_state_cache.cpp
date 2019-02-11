@@ -45,6 +45,12 @@ namespace dxvk {
         std::ios_base::binary |
         std::ios_base::trunc);
 
+      if (!file && env::createDirectory(getCacheDir())) {
+        file = std::ofstream(getCacheFileName(),
+          std::ios_base::binary |
+          std::ios_base::trunc);
+      }
+
       // Write header with the current version number
       DxvkStateCacheHeader header;
 
@@ -455,7 +461,7 @@ namespace dxvk {
 
 
   std::string DxvkStateCache::getCacheFileName() const {
-    std::string path = env::getEnvVar("DXVK_STATE_CACHE_PATH");
+    std::string path = getCacheDir();
 
     if (!path.empty() && *path.rbegin() != '/')
       path += '/';
@@ -468,6 +474,11 @@ namespace dxvk {
     
     path += exeName + ".dxvk-cache";
     return path;
+  }
+
+
+  std::string DxvkStateCache::getCacheDir() const {
+    return env::getEnvVar("DXVK_STATE_CACHE_PATH");
   }
 
 }
