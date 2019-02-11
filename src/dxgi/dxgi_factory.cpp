@@ -116,15 +116,14 @@ namespace dxvk {
     if (!ppSwapChain || !pDesc || !hWnd || !pDevice)
       return DXGI_ERROR_INVALID_CALL;
     
-    Com<IDXGIVkPresentDevice> dxvkDevice;
+    Com<IWineDXGISwapChainFactory> wineDevice;
     
     if (SUCCEEDED(pDevice->QueryInterface(
-          __uuidof(IDXGIVkPresentDevice),
-          reinterpret_cast<void**>(&dxvkDevice)))) {
-      return CreateDxvkSwapChainForHwnd(
-        this, dxvkDevice.ptr(), hWnd, pDesc,
-        pFullscreenDesc, pRestrictToOutput,
-        ppSwapChain);
+          __uuidof(IWineDXGISwapChainFactory),
+          reinterpret_cast<void**>(&wineDevice)))) {
+      return wineDevice->CreateSwapChainForHwnd(
+        this, hWnd, pDesc, pFullscreenDesc,
+        pRestrictToOutput, ppSwapChain);
     }
     
     Logger::err("DXGI: CreateSwapChainForHwnd: Unsupported device type");
