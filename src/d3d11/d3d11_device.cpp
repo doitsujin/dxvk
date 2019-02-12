@@ -1832,6 +1832,10 @@ namespace dxvk {
     // Undocumented interfaces that are queried by some games
     if (riid == GUID{0xd56e2a4c,0x5127,0x8437,{0x65,0x8a,0x98,0xc5,0xbb,0x78,0x94,0x98}})
       return E_NOINTERFACE;
+
+    // Interface of IDirectBee, what appears to be some form of debug system provided by a wrapper for CryEngine games.
+    if (riid == GUID{0x29ad19a0,0x3c26,0x49f5,{0xa3,0xba,0x9a,0x66,0x55,0x33,0xd4,0xe1}})
+      return E_NOINTERFACE;
     
     Logger::warn("D3D11DXGIDevice::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
