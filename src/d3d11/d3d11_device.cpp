@@ -1715,11 +1715,14 @@ namespace dxvk {
     
     if (!ppSwapChain || !pDesc || !hWnd)
       return DXGI_ERROR_INVALID_CALL;
-    
+#ifndef DXVK_NATIVE
     return CreateDxvkSwapChainForHwnd(
       pFactory, m_device, hWnd, pDesc,
       pFullscreenDesc, pRestrictToOutput,
       ppSwapChain);
+#else 
+    return DXGI_ERROR_INVALID_CALL;
+#endif
   }
   
   
@@ -1782,12 +1785,12 @@ namespace dxvk {
       *ppvObject = ref(&m_d3d11Presenter);
       return S_OK;
     }
-    
+#ifndef DXVK_NATIVE
     if (riid == __uuidof(IWineDXGISwapChainFactory)) {
       *ppvObject = ref(&m_wineFactory);
       return S_OK;
     }
-
+#endif
     if (riid == __uuidof(ID3D10Multithread)) {
       Com<ID3D11DeviceContext> context;
       m_d3d11Device.GetImmediateContext(&context);

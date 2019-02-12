@@ -1,7 +1,4 @@
-util_src = files([
-  'util_env.cpp',
-  'util_string.cpp',
-  
+util_src_files = [
   'com/com_guid.cpp',
   'com/com_private_data.cpp',
 
@@ -12,9 +9,18 @@ util_src = files([
   
   'sha1/sha1.c',
   'sha1/sha1_util.cpp',
-])
+]
 
-util_lib = static_library('util', util_src,
+if dxvk_native
+  util_src_files += 'util_env_native.cpp'
+else
+  util_src_files += 'util_env.cpp'
+  util_src_files += 'util_string.cpp'
+endif
+
+util_src = files(util_src_files)
+
+util_lib = static_library('util', util_src, com_headers,
   include_directories : [ dxvk_include_path ],
   override_options    : ['cpp_std='+dxvk_cpp_std])
 

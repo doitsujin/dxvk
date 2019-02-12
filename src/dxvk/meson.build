@@ -99,7 +99,7 @@ dxvk_src = files([
 
 thread_dep = dependency('threads')
 
-dxvk_lib = static_library('dxvk', dxvk_src, glsl_generator.process(dxvk_shaders), dxvk_version,
+dxvk_lib = static_library('dxvk', dxvk_src, glsl_generator.process(dxvk_shaders), com_headers, dxvk_version,
   link_with           : [ util_lib, spirv_lib ],
   dependencies        : [ thread_dep, vkcommon_dep ] + dxvk_extradep,
   include_directories : [ dxvk_include_path ],

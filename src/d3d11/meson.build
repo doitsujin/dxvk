@@ -1,8 +1,12 @@
+if not dxvk_native
 dxgi_common_src = [
   '../dxgi/dxgi_format.cpp',
   '../dxgi/dxgi_monitor.cpp',
   '../dxgi/dxgi_swapchain.cpp',
 ]
+else
+  dxgi_common_src = ['../dxgi/dxgi_format.cpp']
+endif
 
 d3d10_src = [
   '../d3d10/d3d10_blend.cpp',
@@ -20,6 +24,10 @@ d3d10_src = [
   '../d3d10/d3d10_view_rtv.cpp',
   '../d3d10/d3d10_view_srv.cpp',
 ]
+
+if dxvk_native
+  d3d10_src += '../d3d10/d3d10_main.cpp'
+endif
 
 d3d11_src = [
   'd3d11_annotation.cpp',
@@ -55,12 +63,18 @@ d3d11_src = [
   'd3d11_view_uav.cpp',
 ]
 
-d3d11_dll = shared_library('d3d11'+dll_ext, dxgi_common_src + d3d11_src + d3d10_src, glsl_generator.process(dxgi_shaders),
+if dxvk_native
+  name = 'libdxvk'
+else
+  name = 'd3d11'+dll_ext
+endif
+
+d3d11_dll = shared_library(name, dxgi_common_src + d3d11_src + d3d10_src, glsl_generator.process(dxgi_shaders), com_headers,
   name_prefix         : '',
   dependencies        : [ lib_dxgi, dxbc_dep, dxvk_dep ],
   include_directories : dxvk_include_path,
   install             : true,
-  objects             : not dxvk_msvc ? 'd3d11'+def_spec_ext : [],
+  objects             : not dxvk_msvc and not dxvk_native ? 'd3d11'+def_spec_ext : [],
   vs_module_defs      : 'd3d11'+def_spec_ext,
   override_options    : ['cpp_std='+dxvk_cpp_std])
 

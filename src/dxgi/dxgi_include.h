@@ -1,7 +1,7 @@
 #pragma once
 
 //for some reason we need to specify __declspec(dllexport) for MinGW
-#if defined(_MSC_VER) || defined(__WINE__)
+#if defined(_MSC_VER) || defined(__WINE__) || defined(DXVK_NATIVE)
   #define DLLEXPORT
 #else
   #define DLLEXPORT __declspec(dllexport)

@@ -9,7 +9,10 @@
 # ifdef __WINE__
 #   define DXVK_DEFINE_GUID(iface) \
       template<> inline GUID const& __wine_uuidof<iface> () { return iface::guid; }
-# else
+# elif defined(DXVK_NATIVE)
+#   define DXVK_DEFINE_GUID(iface) \
+      template<> inline GUID const& __dxvk_uuidof<iface> () { return iface::guid; }
+#else
 #   define DXVK_DEFINE_GUID(iface) \
       template<> inline GUID const& __mingw_uuidof<iface> () { return iface::guid; }
 # endif

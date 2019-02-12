@@ -10,6 +10,8 @@
 
 #include "vulkan_loader.h"
 
+#include "../dxvk/dxvk_util.h"
+
 namespace dxvk::vk {
 
   /**

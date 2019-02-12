@@ -17,19 +17,27 @@ if dxvk_compiler.get_id() == 'msvc'
   add_project_arguments('/std:' + dxvk_cpp_std, language : 'cpp')
 endif
 
-dxvk_include_path = include_directories('./include')
-
 if (cpu_family == 'x86_64')
   dxvk_library_path = meson.source_root() + '/lib'
 else
   dxvk_library_path = meson.source_root() + '/lib32'
 endif
 
-code = '''#ifndef __WINE__
+winelib_check_code = '''#ifndef __WINE__
 #error 1
 #endif'''
 
-dxvk_winelib = dxvk_compiler.compiles(code, name: 'winelib check')
+mingw_check_code = '''#ifndef __MINGW32__
+#error 1
+#endif'''
+
+dxvk_winelib = dxvk_compiler.compiles(winelib_check_code, name: 'winelib check')
+dxvk_mingw   = dxvk_compiler.compiles(mingw_check_code, name: 'mingw check')
+
+dxvk_native = not dxvk_mingw and not dxvk_winelib and dxvk_compiler.get_id() != 'msvc'
+
+dxvk_include_path = include_directories(['./include', dxvk_native ? './include/native' : ''])
+
 dxvk_extradep = [ ]
 
 if dxvk_winelib
@@ -42,6 +50,25 @@ if dxvk_winelib
   exe_ext = '.exe.so'
   dll_ext = '.dll'
   def_spec_ext = '.spec'
+elif dxvk_native
+  lib_vulkan = dxvk_compiler.find_library('vulkan', dirs : dxvk_library_path)
+  lib_dxgi   = dependency('', required : false)
+  lib_d3dcompiler_43 = dependency('', required : false)
+  lib_d3dcompiler_47 = dependency('', required : false)
+  dxvk_extradep += [ declare_dependency(link_args: [ '-ldl' ]) ]
+  dxvk_extradep += [ declare_dependency(link_args: [ '-pthread' ]) ]
+
+  idl_compiler = find_program('widl')
+
+  com_header_generator = generator(idl_compiler,
+    output    : [ '@BASENAME@.h' ],
+    arguments : [ '-h', '-o', '@OUTPUT@', '@INPUT@' ])
+
+  exe_ext = ''
+  dll_ext = ''
+  def_spec_ext = '.def'
+  
+  add_project_arguments(['-DDXVK_NATIVE=1'], language : 'cpp')
 else
   lib_vulkan  = dxvk_compiler.find_library('vulkan-1', dirs : dxvk_library_path)
   lib_d3d11   = dxvk_compiler.find_library('d3d11')
@@ -67,6 +94,10 @@ dxvk_version = vcs_tag(
   command: ['git', 'describe', '--dirty=+'],
   input:  'version.h.in',
   output: 'version.h')
+
+if dxvk_native
+  subdir('include')
+endif
 
 subdir('src')
 

@@ -9,8 +9,14 @@
 #include "d3d11_interop.h"
 #include "d3d11_present.h"
 
+#include "../dxvk/dxvk_util.h"
+
 namespace dxvk {
+#ifndef DXVK_NATIVE
   Logger Logger::s_instance("d3d11.log");
+#else
+  Logger Logger::s_instance("dxvk.log");
+#endif
 }
   
 extern "C" {
@@ -112,6 +118,7 @@ extern "C" {
     Com<IDXGIAdapter> dxgiAdapter = pAdapter;
     
     if (dxgiAdapter == nullptr) {
+#ifndef DXVK_NATIVE
       // We'll treat everything as hardware, even if the
       // Vulkan device is actually a software device.
       if (DriverType != D3D_DRIVER_TYPE_HARDWARE)
@@ -127,7 +134,9 @@ extern "C" {
         Logger::err("D3D11CreateDevice: No default adapter available");
         return E_FAIL;
       }
-      
+#else
+      return E_INVALIDARG;
+#endif
     } else {
       // We should be able to query the DXGI factory from the adapter
       if (FAILED(dxgiAdapter->GetParent(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&dxgiFactory)))) {
@@ -239,5 +248,28 @@ extern "C" {
     
     return S_OK;
   }
+
+  /* Native Entry-Point */
+  #ifdef DXVK_NATIVE
+    HRESULT dxvk_native_create_d3d11_device(
+          dxvk_native_info      native_info,
+          IDXGIAdapter*         pAdapter,
+          D3D_DRIVER_TYPE       DriverType,
+          HMODULE               Software,
+          UINT                  Flags,
+    const D3D_FEATURE_LEVEL*    pFeatureLevels,
+          UINT                  FeatureLevels,
+          UINT                  SDKVersion,
+          ID3D11Device**        ppDevice,
+          D3D_FEATURE_LEVEL*    pFeatureLevel,
+          ID3D11DeviceContext** ppImmediateContext) {
+
+      env::g_native_info = native_info;
+
+      return D3D11CreateDevice(pAdapter, DriverType,
+        Software, Flags, pFeatureLevels, FeatureLevels,
+        SDKVersion, ppDevice, pFeatureLevel, ppImmediateContext);
+    }
+  #endif
   
 }

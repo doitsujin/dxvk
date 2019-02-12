@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../include/dxvk.h"
+
 #include "util_string.h"
 
 namespace dxvk::env {
@@ -31,4 +33,5 @@ namespace dxvk::env {
    */
   void setThreadName(const std::string& name);
   
+  extern dxvk_native_info g_native_info;
 }

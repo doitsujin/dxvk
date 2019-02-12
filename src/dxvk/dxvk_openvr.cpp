@@ -5,7 +5,7 @@
 #pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
 #endif
 
-#ifdef __WINE__
+#if defined(__WINE__) || defined(DXVK_NATIVE)
 #include <dlfcn.h>
 
 #pragma push_macro("_WIN32")
@@ -190,7 +190,7 @@ namespace dxvk {
 
   SoHandle VrInstance::loadLibrary() {
     SoHandle handle = nullptr;
-    #ifdef __WINE__
+    #if defined(__WINE__) || defined(DXVK_NATIVE)
     // on winelib, load native openvr_api directly
     if (!(handle = ::dlopen("libopenvr_api.so", RTLD_LAZY | RTLD_NOLOAD)))
       handle = ::dlopen("libopenvr_api_dxvk.so", RTLD_LAZY | RTLD_LOCAL);
@@ -206,7 +206,7 @@ namespace dxvk {
 
 
   void VrInstance::freeLibrary() {
-    #ifdef __WINE__
+    #if defined(__WINE__) || defined(DXVK_NATIVE)
     ::dlclose(m_ovrApi);
     #else
     ::FreeLibrary(m_ovrApi);
@@ -215,7 +215,7 @@ namespace dxvk {
 
   
   void* VrInstance::getSym(const char* sym) {
-    #ifdef __WINE__
+    #if defined(__WINE__) || defined(DXVK_NATIVE)
     return reinterpret_cast<void*>(
       ::dlsym(m_ovrApi, sym));
     #else

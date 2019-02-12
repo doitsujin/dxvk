@@ -331,6 +331,13 @@ namespace dxvk::vk {
 
 
   VkResult Presenter::createSurface(HWND window) {
+    VkResult status = VK_ERROR_FEATURE_NOT_PRESENT;
+
+#ifdef DXVK_NATIVE
+    if(env::g_native_info.pfn_create_vulkan_surface) {
+      status = env::g_native_info.pfn_create_vulkan_surface(window, &m_surface);
+    }
+#else
     HINSTANCE instance = reinterpret_cast<HINSTANCE>(
       GetWindowLongPtr(window, GWLP_HINSTANCE));
     
@@ -341,9 +348,10 @@ namespace dxvk::vk {
     info.hinstance  = instance;
     info.hwnd       = window;
     
-    VkResult status = m_vki->vkCreateWin32SurfaceKHR(
+    status = m_vki->vkCreateWin32SurfaceKHR(
       m_vki->instance(), &info, nullptr, &m_surface);
-    
+#endif
+
     if (status != VK_SUCCESS)
       return status;
     

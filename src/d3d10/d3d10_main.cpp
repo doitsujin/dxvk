@@ -1,13 +1,17 @@
+#ifndef DXVK_NATIVE
 #include <d3dcompiler.h>
+#include "d3d10_reflection.h"
+#endif
 
 #include "d3d10_include.h"
-#include "d3d10_reflection.h"
 
 #include "../dxgi/dxgi_adapter.h"
 
+#ifndef DXVK_NATIVE
 namespace dxvk {
   Logger Logger::s_instance("d3d10.log");
 }
+#endif
 
 extern "C" {
   using namespace dxvk;
@@ -72,6 +76,7 @@ extern "C" {
     Com<IDXGIAdapter> dxgiAdapter = pAdapter;
 
     if (dxgiAdapter == nullptr) {
+#ifndef DXVK_NATIVE
       if (DriverType != D3D10_DRIVER_TYPE_HARDWARE)
         Logger::warn("D3D10CreateDevice: Unsupported driver type");
       
@@ -84,7 +89,9 @@ extern "C" {
         Logger::err("D3D10CreateDevice: No default adapter available");
         return E_FAIL;
       }
-      
+#else
+      return E_INVALIDARG;
+#endif
     } else {
       if (FAILED(dxgiAdapter->GetParent(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&dxgiFactory)))) {
         Logger::err("D3D10CreateDevice: Failed to query DXGI factory from DXGI adapter");
@@ -141,7 +148,26 @@ extern "C" {
     } return S_FALSE;
   }
 
+  /* Native Entry-Point */
+#ifdef DXVK_NATIVE
+  HRESULT dxvk_native_create_d3d10_device(
+    dxvk_native_info        native_info,
+    IDXGIAdapter*           pAdapter,
+    D3D10_DRIVER_TYPE       DriverType,
+    HMODULE                 Software,
+    UINT                    Flags,
+    D3D10_FEATURE_LEVEL1    HardwareLevel,
+    UINT                    SDKVersion,
+    ID3D10Device1**         ppDevice) {
 
+    env::g_native_info = native_info;
+
+    return D3D10CreateDevice1(pAdapter, DriverType,
+      Software, Flags, HardwareLevel, SDKVersion, ppDevice);
+  }
+#endif
+
+#ifndef DXVK_NATIVE
   DLLEXPORT HRESULT __stdcall D3D10CreateDeviceAndSwapChain1(
           IDXGIAdapter*           pAdapter,
           D3D10_DRIVER_TYPE       DriverType,
@@ -227,7 +253,6 @@ extern "C" {
       return S_OK;
     } return S_FALSE;
   }
-
 
   const char* STDMETHODCALLTYPE D3D10GetVertexShaderProfile   (ID3D10Device*) { return "vs_4_1"; }
   const char* STDMETHODCALLTYPE D3D10GetGeometryShaderProfile (ID3D10Device*) { return "gs_4_1"; }
@@ -377,6 +402,7 @@ extern "C" {
       ppShaderText,
       ppErrorMsgs);
   }
+#endif
 
 }
 

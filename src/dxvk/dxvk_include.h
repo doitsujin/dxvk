@@ -21,3 +21,5 @@
 #include "../vulkan/vulkan_loader.h"
 #include "../vulkan/vulkan_names.h"
 #include "../vulkan/vulkan_util.h"
+
+#include "../include/dxvk.h"

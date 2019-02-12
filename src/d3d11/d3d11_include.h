@@ -39,7 +39,7 @@ typedef enum D3D11_FORMAT_SUPPORT2 {
   D3D11_FORMAT_SUPPORT2_SHAREABLE                                     = 0x400,
   D3D11_FORMAT_SUPPORT2_MULTIPLANE_OVERLAY                            = 0x4000
 } D3D11_FORMAT_SUPPORT2;
-#ifndef __WINE__
+#if !defined(__WINE__) && !defined(DXVK_NATIVE)
 
 //MinGW-Headers supports these typedefs since 6.0.0
 #if !defined(__MINGW64_VERSION_MAJOR) || __MINGW64_VERSION_MAJOR < 6

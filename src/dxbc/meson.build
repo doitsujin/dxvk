@@ -14,7 +14,7 @@ dxbc_src = files([
   'dxbc_util.cpp',
 ])
 
-dxbc_lib = static_library('dxbc', dxbc_src,
+dxbc_lib = static_library('dxbc', dxbc_src, com_headers,
   include_directories : [ dxvk_include_path ],
   override_options    : ['cpp_std='+dxvk_cpp_std])
 
