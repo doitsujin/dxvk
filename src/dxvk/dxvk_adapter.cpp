@@ -17,6 +17,8 @@ namespace dxvk {
     this->queryDeviceInfo();
     this->queryDeviceFeatures();
     this->queryDeviceQueues();
+
+    m_hasMemoryBudget = m_deviceExtensions.supports(VK_EXT_MEMORY_BUDGET_EXTENSION_NAME);
   }
   
   
@@ -31,15 +33,29 @@ namespace dxvk {
   
   
   DxvkAdapterMemoryInfo DxvkAdapter::getMemoryHeapInfo() const {
-    VkPhysicalDeviceMemoryProperties props = memoryProperties();
+    VkPhysicalDeviceMemoryBudgetPropertiesEXT memBudget = { };
+    memBudget.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT;
+    memBudget.pNext = nullptr;
 
+    VkPhysicalDeviceMemoryProperties2KHR memProps = { };
+    memProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2_KHR;
+    memProps.pNext = m_hasMemoryBudget ? &memBudget : nullptr;
+
+    m_vki->vkGetPhysicalDeviceMemoryProperties2KHR(m_handle, &memProps);
+    
     DxvkAdapterMemoryInfo info = { };
-    info.heapCount = props.memoryHeapCount;
+    info.heapCount = memProps.memoryProperties.memoryHeapCount;
 
     for (uint32_t i = 0; i < info.heapCount; i++) {
-      info.heaps[i].heapFlags       = props.memoryHeaps[i].flags;
-      info.heaps[i].memoryAvailable = props.memoryHeaps[i].size;
-      info.heaps[i].memoryAllocated = m_heapAlloc[i].load();
+      info.heaps[i].heapFlags = memProps.memoryProperties.memoryHeaps[i].flags;
+
+      if (m_hasMemoryBudget) {
+        info.heaps[i].memoryAvailable = memBudget.heapBudget[i];
+        info.heaps[i].memoryAllocated = memBudget.heapUsage[i];
+      } else {
+        info.heaps[i].memoryAvailable = memProps.memoryProperties.memoryHeaps[i].size;
+        info.heaps[i].memoryAllocated = m_heapAlloc[i].load();
+      }
     }
 
     return info;
@@ -199,6 +215,8 @@ namespace dxvk {
                 || !required.core.features.variableMultisampleRate)
         && (m_deviceFeatures.core.features.inheritedQueries
                 || !required.core.features.inheritedQueries)
+        && (m_deviceFeatures.extMemoryPriority.memoryPriority
+                || !required.extMemoryPriority.memoryPriority)
         && (m_deviceFeatures.extTransformFeedback.transformFeedback
                 || !required.extTransformFeedback.transformFeedback)
         && (m_deviceFeatures.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor
@@ -216,8 +234,9 @@ namespace dxvk {
   Rc<DxvkDevice> DxvkAdapter::createDevice(DxvkDeviceFeatures enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 14> devExtensionList = {{
+    std::array<DxvkExt*, 15> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
+      &devExtensions.extMemoryPriority,
       &devExtensions.extShaderViewportIndexLayer,
       &devExtensions.extTransformFeedback,
       &devExtensions.extVertexAttributeDivisor,
@@ -251,6 +270,11 @@ namespace dxvk {
     // Create pNext chain for additional device features
     enabledFeatures.core.pNext = nullptr;
 
+    if (devExtensions.extMemoryPriority) {
+      enabledFeatures.extMemoryPriority.pNext = enabledFeatures.core.pNext;
+      enabledFeatures.core.pNext = &enabledFeatures.extMemoryPriority;
+    }
+
     if (devExtensions.extTransformFeedback) {
       enabledFeatures.extTransformFeedback.pNext = enabledFeatures.core.pNext;
       enabledFeatures.core.pNext = &enabledFeatures.extTransformFeedback;
@@ -265,10 +289,7 @@ namespace dxvk {
     VkDeviceMemoryOverallocationCreateInfoAMD overallocInfo;
     overallocInfo.sType = VK_STRUCTURE_TYPE_DEVICE_MEMORY_OVERALLOCATION_CREATE_INFO_AMD;
     overallocInfo.pNext = nullptr;
-    overallocInfo.overallocationBehavior = VK_MEMORY_OVERALLOCATION_BEHAVIOR_DISALLOWED_AMD;
-
-    if (m_instance->options().allowMemoryOvercommit)
-      overallocInfo.overallocationBehavior = VK_MEMORY_OVERALLOCATION_BEHAVIOR_ALLOWED_AMD;
+    overallocInfo.overallocationBehavior = VK_MEMORY_OVERALLOCATION_BEHAVIOR_ALLOWED_AMD;
     
     // Create one single queue for graphics and present
     float queuePriority = 1.0f;
@@ -323,14 +344,16 @@ namespace dxvk {
   void DxvkAdapter::notifyHeapMemoryAlloc(
           uint32_t            heap,
           VkDeviceSize        bytes) {
-    m_heapAlloc[heap] += bytes;
+    if (!m_hasMemoryBudget)
+      m_heapAlloc[heap] += bytes;
   }
 
   
   void DxvkAdapter::notifyHeapMemoryFree(
           uint32_t            heap,
           VkDeviceSize        bytes) {
-    m_heapAlloc[heap] -= bytes;
+    if (!m_hasMemoryBudget)
+      m_heapAlloc[heap] -= bytes;
   }
 
 
@@ -441,6 +464,11 @@ namespace dxvk {
     m_deviceFeatures = DxvkDeviceFeatures();
     m_deviceFeatures.core.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
     m_deviceFeatures.core.pNext = nullptr;
+
+    if (m_deviceExtensions.supports(VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME)) {
+      m_deviceFeatures.extMemoryPriority.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT;
+      m_deviceFeatures.extMemoryPriority.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extMemoryPriority);
+    }
 
     if (m_deviceExtensions.supports(VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME)) {
       m_deviceFeatures.extTransformFeedback.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT;

@@ -22,4 +22,20 @@ namespace dxvk::str {
       &result.at(0), len, nullptr, nullptr);
     return result;
   }
+
+
+  std::vector<WCHAR> tows(const std::string& str) {
+    int strLen = ::MultiByteToWideChar(
+      CP_ACP, 0, str.c_str(), str.length() + 1,
+      nullptr, 0);
+
+    std::vector<WCHAR> wideStr(strLen);
+
+    ::MultiByteToWideChar(
+      CP_ACP, 0, str.c_str(), str.length() + 1,
+      wideStr.data(), strLen);
+    
+    return wideStr;
+  }
+
 }

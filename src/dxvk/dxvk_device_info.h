@@ -31,6 +31,7 @@ namespace dxvk {
    */
   struct DxvkDeviceFeatures {
     VkPhysicalDeviceFeatures2KHR                        core;
+    VkPhysicalDeviceMemoryPriorityFeaturesEXT           extMemoryPriority;
     VkPhysicalDeviceTransformFeedbackFeaturesEXT        extTransformFeedback;
     VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT   extVertexAttributeDivisor;
   };

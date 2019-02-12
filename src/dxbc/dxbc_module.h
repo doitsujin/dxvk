@@ -80,6 +80,7 @@ namespace dxvk {
     
     Rc<DxbcIsgn> m_isgnChunk;
     Rc<DxbcIsgn> m_osgnChunk;
+    Rc<DxbcIsgn> m_psgnChunk;
     Rc<DxbcShex> m_shexChunk;
     
     void runAnalyzer(

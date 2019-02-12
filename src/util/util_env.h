@@ -32,6 +32,14 @@ namespace dxvk::env {
    * \param [in] name Thread name
    */
   void setThreadName(const std::string& name);
+
+  /**
+   * \brief Creates a directory
+   * 
+   * \param [in] path Path to directory
+   * \returns \c true on success
+   */
+  bool createDirectory(const std::string& path);
   
   extern dxvk_native_info g_native_info;
 }

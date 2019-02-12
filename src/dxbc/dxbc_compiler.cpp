@@ -15,11 +15,13 @@ namespace dxvk {
     const DxbcProgramInfo&    programInfo,
     const Rc<DxbcIsgn>&       isgn,
     const Rc<DxbcIsgn>&       osgn,
+    const Rc<DxbcIsgn>&       psgn,
     const DxbcAnalysisInfo&   analysis)
   : m_moduleInfo (moduleInfo),
     m_programInfo(programInfo),
     m_isgn       (isgn),
     m_osgn       (osgn),
+    m_psgn       (psgn),
     m_analysis   (&analysis) {
     // Declare an entry point ID. We'll need it during the
     // initialization phase where the execution mode is set.
@@ -1517,6 +1519,21 @@ namespace dxvk {
         break;
         
       case DxbcOpcode::Div:
+        dst.id = m_module.opFDiv(typeId,
+          src.at(0).id, src.at(1).id);
+        
+        if (m_moduleInfo.options.strictDivision) {
+          uint32_t boolType = dst.type.ccount > 1
+            ? m_module.defVectorType(m_module.defBoolType(), dst.type.ccount)
+            : m_module.defBoolType();
+          
+          dst.id = m_module.opSelect(typeId,
+            m_module.opFOrdNotEqual(boolType, src.at(1).id,
+              emitBuildConstVecf32(0.0f, 0.0f, 0.0f, 0.0f, ins.dst[0].mask).id),
+            dst.id, src.at(0).id);
+        }
+        break;
+
       case DxbcOpcode::DDiv:
         dst.id = m_module.opFDiv(typeId,
           src.at(0).id, src.at(1).id);
@@ -5085,7 +5102,7 @@ namespace dxvk {
     
     result.id = m_module.opIAdd(typeId,
       m_module.opIMul(typeId, structId.id, m_module.consti32(structStride / 4)),
-      m_module.opSDiv(typeId, structOffset.id, m_module.consti32(4)));
+      m_module.opShiftRightLogical(typeId, structOffset.id, m_module.consti32(2)));
     return result;
   }
   
@@ -5095,10 +5112,10 @@ namespace dxvk {
     DxbcRegisterValue result;
     result.type.ctype  = DxbcScalarType::Sint32;
     result.type.ccount = 1;
-    result.id = m_module.opSDiv(
+    result.id = m_module.opShiftRightLogical(
       getVectorTypeId(result.type),
       byteOffset.id,
-      m_module.consti32(4));
+      m_module.consti32(2));
     return result;
   }
   
@@ -5185,11 +5202,62 @@ namespace dxvk {
       m_module.opStore(ptr.id, tmp.id);
     }
   }
-  
-  
+
+
   DxbcRegisterValue DxbcCompiler::emitRegisterLoadRaw(
     const DxbcRegister&           reg) {
     return emitValueLoad(emitGetOperandPtr(reg));
+  }
+  
+  
+  DxbcRegisterValue DxbcCompiler::emitConstantBufferLoad(
+    const DxbcRegister&           reg,
+          DxbcRegMask             writeMask) {
+    DxbcRegisterPointer ptr = emitGetOperandPtr(reg);
+
+    std::array<uint32_t, 4> ccomps = { 0, 0, 0, 0 };
+    std::array<uint32_t, 4> scomps = { 0, 0, 0, 0 };
+    uint32_t                scount = 0;
+
+    for (uint32_t i = 0; i < 4; i++) {
+      uint32_t sindex = reg.swizzle[i];
+
+      if (!writeMask[i] || ccomps[sindex])
+        continue;
+      
+      uint32_t componentId = m_module.constu32(sindex);
+      uint32_t componentPtr = m_module.opAccessChain(
+        m_module.defPointerType(
+          getScalarTypeId(DxbcScalarType::Float32),
+          spv::StorageClassUniform),
+        ptr.id, 1, &componentId);
+      
+      ccomps[sindex] = m_module.opLoad(
+        getScalarTypeId(DxbcScalarType::Float32),
+        componentPtr);
+    }
+
+    for (uint32_t i = 0; i < 4; i++) {
+      uint32_t sindex = reg.swizzle[i];
+      
+      if (writeMask[i])
+        scomps[scount++] = ccomps[sindex];
+    }
+    
+    DxbcRegisterValue result;
+    result.type.ctype  = DxbcScalarType::Float32;
+    result.type.ccount = scount;
+    result.id = scomps[0];
+    
+    if (scount > 1) {
+      result.id = m_module.opCompositeConstruct(
+        getVectorTypeId(result.type),
+        scount, scomps.data());
+    }
+
+    result = emitRegisterBitcast(result, reg.dataType);
+    result = emitSrcOperandModifiers(result, reg.modifiers);
+    return result;
   }
   
   
@@ -5234,6 +5302,8 @@ namespace dxvk {
       
       // Cast constants to the requested type
       return emitRegisterBitcast(result, reg.dataType);
+    } else if (reg.type == DxbcOperandType::ConstantBuffer) {
+      return emitConstantBufferLoad(reg, writeMask);
     } else {
       // Load operand from the operand pointer
       DxbcRegisterValue result = emitRegisterLoadRaw(reg);
@@ -6641,7 +6711,10 @@ namespace dxvk {
     DxbcArrayType info;
     info.ctype   = DxbcScalarType::Float32;
     info.ccount  = 4;
-    info.alength = DxbcMaxInterfaceRegs;
+    info.alength = m_isgn != nullptr ? m_isgn->maxRegisterCount() : 0;
+
+    if (info.alength == 0)
+      return;
     
     // Define the array type. This will be two-dimensional
     // in some shaders, with the outer index representing
@@ -6853,6 +6926,9 @@ namespace dxvk {
   void DxbcCompiler::emitHsOutputSetup() {
     uint32_t outputPerPatch = emitTessInterfacePerPatch(spv::StorageClassOutput);
 
+    if (!outputPerPatch)
+      return;
+
     uint32_t vecType = getVectorTypeId({ DxbcScalarType::Float32, 4 });
 
     uint32_t srcPtrType = m_module.defPointerType(vecType, spv::StorageClassPrivate);
@@ -6879,8 +6955,13 @@ namespace dxvk {
     if (storageClass == spv::StorageClassOutput)
       name = "oPatch";
     
+    uint32_t arrLen  = m_psgn != nullptr ? m_psgn->maxRegisterCount() : 0;
+
+    if (!arrLen)
+      return 0;
+
     uint32_t vecType = m_module.defVectorType (m_module.defFloatType(32), 4);
-    uint32_t arrType = m_module.defArrayType  (vecType, m_module.constu32(32));
+    uint32_t arrType = m_module.defArrayType  (vecType, m_module.constu32(arrLen));
     uint32_t ptrType = m_module.defPointerType(arrType, storageClass);
     uint32_t varId   = m_module.newVar        (ptrType, storageClass);
     
@@ -6900,14 +6981,25 @@ namespace dxvk {
   uint32_t DxbcCompiler::emitTessInterfacePerVertex(spv::StorageClass storageClass, uint32_t vertexCount) {
     const bool isInput = storageClass == spv::StorageClassInput;
     
+    uint32_t arrLen = isInput
+      ? (m_isgn != nullptr ? m_isgn->maxRegisterCount() : 0)
+      : (m_osgn != nullptr ? m_osgn->maxRegisterCount() : 0);
+    
+    if (!arrLen)
+      return 0;
+    
+    uint32_t locIdx = m_psgn != nullptr
+      ? m_psgn->maxRegisterCount()
+      : 0;
+    
     uint32_t vecType      = m_module.defVectorType (m_module.defFloatType(32), 4);
-    uint32_t arrTypeInner = m_module.defArrayType  (vecType,      m_module.constu32(32));
+    uint32_t arrTypeInner = m_module.defArrayType  (vecType,      m_module.constu32(arrLen));
     uint32_t arrTypeOuter = m_module.defArrayType  (arrTypeInner, m_module.constu32(vertexCount));
     uint32_t ptrType      = m_module.defPointerType(arrTypeOuter, storageClass);
     uint32_t varId        = m_module.newVar        (ptrType,      storageClass);
     
     m_module.setDebugName     (varId, isInput ? "vVertex" : "oVertex");
-    m_module.decorateLocation (varId, 0);
+    m_module.decorateLocation (varId, locIdx);
     
     if (storageClass != spv::StorageClassPrivate)
       m_entryPointInterfaces.push_back(varId);

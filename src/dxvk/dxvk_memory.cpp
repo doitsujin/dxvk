@@ -75,10 +75,12 @@ namespace dxvk {
   DxvkMemory DxvkMemoryChunk::alloc(
           VkMemoryPropertyFlags flags,
           VkDeviceSize          size,
-          VkDeviceSize          align) {
+          VkDeviceSize          align,
+          float                 priority) {
     // Property flags must be compatible. This could
     // be refined a bit in the future if necessary.
-    if (m_memory.memFlags != flags)
+    if (m_memory.memFlags != flags
+     || m_memory.priority != priority)
       return DxvkMemory();
     
     // If the chunk is full, return
@@ -152,10 +154,9 @@ namespace dxvk {
   
   DxvkMemoryAllocator::DxvkMemoryAllocator(const DxvkDevice* device)
   : m_vkd             (device->vkd()),
-    m_adapter         (device->adapter()),
-    m_devProps        (m_adapter->deviceProperties()),
-    m_memProps        (m_adapter->memoryProperties()),
-    m_allowOvercommit (device->config().allowMemoryOvercommit) {
+    m_device          (device),
+    m_devProps        (device->adapter()->deviceProperties()),
+    m_memProps        (device->adapter()->memoryProperties()) {
     for (uint32_t i = 0; i < m_memProps.memoryHeapCount; i++) {
       VkDeviceSize heapSize = m_memProps.memoryHeaps[i].size;
       
@@ -181,13 +182,14 @@ namespace dxvk {
   DxvkMemory DxvkMemoryAllocator::alloc(
     const VkMemoryRequirements*             req,
     const VkMemoryDedicatedAllocateInfoKHR* dedAllocInfo,
-          VkMemoryPropertyFlags             flags) {
+          VkMemoryPropertyFlags             flags,
+          float                             priority) {
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    DxvkMemory result = this->tryAlloc(req, dedAllocInfo, flags);
+    DxvkMemory result = this->tryAlloc(req, dedAllocInfo, flags, priority);
     
     if (!result && (flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))
-      result = this->tryAlloc(req, dedAllocInfo, flags & ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+      result = this->tryAlloc(req, dedAllocInfo, flags & ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, priority);
     
     if (!result) {
       Logger::err(str::format(
@@ -220,7 +222,8 @@ namespace dxvk {
   DxvkMemory DxvkMemoryAllocator::tryAlloc(
     const VkMemoryRequirements*             req,
     const VkMemoryDedicatedAllocateInfoKHR* dedAllocInfo,
-          VkMemoryPropertyFlags             flags) {
+          VkMemoryPropertyFlags             flags,
+          float                             priority) {
     DxvkMemory result;
 
     for (uint32_t i = 0; i < m_memProps.memoryTypeCount && !result; i++) {
@@ -229,7 +232,7 @@ namespace dxvk {
       
       if (supported && adequate) {
         result = this->tryAllocFromType(&m_memTypes[i],
-          flags, req->size, req->alignment, dedAllocInfo);
+          flags, req->size, req->alignment, priority, dedAllocInfo);
       }
     }
     
@@ -242,28 +245,35 @@ namespace dxvk {
           VkMemoryPropertyFlags             flags,
           VkDeviceSize                      size,
           VkDeviceSize                      align,
+          float                             priority,
     const VkMemoryDedicatedAllocateInfoKHR* dedAllocInfo) {
+    // Prevent unnecessary external host memory fragmentation
+    bool isDeviceLocal = (flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT) != 0;
+
+    if (!isDeviceLocal)
+      priority = 0.0f;
+
     DxvkMemory memory;
 
     if ((size >= type->heap->chunkSize / 4) || dedAllocInfo) {
       DxvkDeviceMemory devMem = this->tryAllocDeviceMemory(
-        type, flags, size, dedAllocInfo);
+        type, flags, size, priority, dedAllocInfo);
 
       if (devMem.memHandle != VK_NULL_HANDLE)
         memory = DxvkMemory(this, nullptr, type, devMem.memHandle, 0, size, devMem.memPointer);
     } else {
       for (uint32_t i = 0; i < type->chunks.size() && !memory; i++)
-        memory = type->chunks[i]->alloc(flags, size, align);
+        memory = type->chunks[i]->alloc(flags, size, align, priority);
       
       if (!memory) {
         DxvkDeviceMemory devMem = tryAllocDeviceMemory(
-          type, flags, type->heap->chunkSize, nullptr);
+          type, flags, type->heap->chunkSize, priority, nullptr);
 
         if (devMem.memHandle == VK_NULL_HANDLE)
           return DxvkMemory();
         
         Rc<DxvkMemoryChunk> chunk = new DxvkMemoryChunk(this, type, devMem);
-        memory = chunk->alloc(flags, size, align);
+        memory = chunk->alloc(flags, size, align, priority);
 
         type->chunks.push_back(std::move(chunk));
       }
@@ -280,19 +290,24 @@ namespace dxvk {
           DxvkMemoryType*                   type,
           VkMemoryPropertyFlags             flags,
           VkDeviceSize                      size,
+          float                             priority,
     const VkMemoryDedicatedAllocateInfoKHR* dedAllocInfo) {
-    if ((type->memType.propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-     && (type->heap->stats.memoryAllocated + size > type->heap->properties.size)
-     && (!m_allowOvercommit))
-      return DxvkDeviceMemory();
+    bool useMemoryPriority = (flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+                          && (m_device->features().extMemoryPriority.memoryPriority);
     
     DxvkDeviceMemory result;
     result.memSize  = size;
     result.memFlags = flags;
+    result.priority = priority;
+
+    VkMemoryPriorityAllocateInfoEXT prio;
+    prio.sType            = VK_STRUCTURE_TYPE_MEMORY_PRIORITY_ALLOCATE_INFO_EXT;
+    prio.pNext            = dedAllocInfo;
+    prio.priority         = priority;
 
     VkMemoryAllocateInfo info;
     info.sType            = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    info.pNext            = dedAllocInfo;
+    info.pNext            = useMemoryPriority ? &prio : prio.pNext;
     info.allocationSize   = size;
     info.memoryTypeIndex  = type->memTypeId;
 
@@ -309,7 +324,7 @@ namespace dxvk {
     }
 
     type->heap->stats.memoryAllocated += size;
-    m_adapter->notifyHeapMemoryAlloc(type->heapId, size);
+    m_device->adapter()->notifyHeapMemoryAlloc(type->heapId, size);
     return result;
   }
 
@@ -349,7 +364,7 @@ namespace dxvk {
           DxvkDeviceMemory      memory) {
     m_vkd->vkFreeMemory(m_vkd->device(), memory.memHandle, nullptr);
     type->heap->stats.memoryAllocated -= memory.memSize;
-    m_adapter->notifyHeapMemoryFree(type->heapId, memory.memSize);
+    m_device->adapter()->notifyHeapMemoryFree(type->heapId, memory.memSize);
   }
 
 

@@ -14,6 +14,15 @@ namespace dxvk {
 
 
   /**
+   * \brief Buffer map mode
+   */
+  enum D3D11_COMMON_BUFFER_MAP_MODE {
+    D3D11_COMMON_BUFFER_MAP_MODE_NONE,
+    D3D11_COMMON_BUFFER_MAP_MODE_DIRECT,
+  };
+
+
+  /**
    * \brief Stream output buffer offset
    *
    * A byte offset into the buffer that
@@ -59,6 +68,12 @@ namespace dxvk {
       return &m_desc;
     }
 
+    D3D11_COMMON_BUFFER_MAP_MODE GetMapMode() const {
+      return (m_buffer->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+        ? D3D11_COMMON_BUFFER_MAP_MODE_DIRECT
+        : D3D11_COMMON_BUFFER_MAP_MODE_NONE;
+    }
+
     Rc<DxvkBuffer> GetBuffer() const {
       return m_buffer;
     }
@@ -77,6 +92,10 @@ namespace dxvk {
 
     DxvkBufferSlice GetSOCounter() {
       return m_soCounter;
+    }
+    
+    DxvkBufferSliceHandle AllocSlice() {
+      return m_buffer->allocSlice();
     }
     
     DxvkBufferSliceHandle DiscardSlice() {

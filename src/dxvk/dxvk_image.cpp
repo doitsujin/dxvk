@@ -89,9 +89,19 @@ namespace dxvk {
       memReq.memoryRequirements.alignment = align(memReq.memoryRequirements.alignment , memAlloc.bufferImageGranularity());
     }
 
+    // Use high memory priority for GPU-writable resources
+    bool isGpuWritable = (m_info.usage & (
+      VK_IMAGE_USAGE_STORAGE_BIT          |
+      VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+      VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) != 0;
+    
+    float priority = isGpuWritable ? 1.0f : 0.5f;
+
+    // Ask driver whether we should be using a dedicated allocation
     bool useDedicated = dedicatedRequirements.prefersDedicatedAllocation;
+
     m_memory = memAlloc.alloc(&memReq.memoryRequirements,
-      useDedicated ? &dedMemoryAllocInfo : nullptr, memFlags);
+      useDedicated ? &dedMemoryAllocInfo : nullptr, memFlags, priority);
     
     // Try to bind the allocated memory slice to the image
     if (m_vkd->vkBindImageMemory(m_vkd->device(),
@@ -135,9 +145,11 @@ namespace dxvk {
       
       case VK_IMAGE_VIEW_TYPE_2D:
       case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
+        this->createView(VK_IMAGE_VIEW_TYPE_2D, 1);
+        /* fall through */
+
       case VK_IMAGE_VIEW_TYPE_CUBE:
       case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY: {
-        this->createView(VK_IMAGE_VIEW_TYPE_2D,       1);
         this->createView(VK_IMAGE_VIEW_TYPE_2D_ARRAY, info.numLayers);
         
         if (m_image->info().flags & VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) {

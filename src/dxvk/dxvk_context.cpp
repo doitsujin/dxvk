@@ -260,19 +260,32 @@ namespace dxvk {
           uint32_t              value) {
     this->spillRenderPass();
     
-    if (length == buffer->info().size)
-      length = align(length, 4);
-    
+    length = align(length, sizeof(uint32_t));
     auto slice = buffer->getSliceHandle(offset, length);
 
     if (m_barriers.isBufferDirty(slice, DxvkAccess::Write))
       m_barriers.recordCommands(m_cmd);
     
-    m_cmd->cmdFillBuffer(
-      slice.handle,
-      slice.offset,
-      slice.length,
-      value);
+    constexpr VkDeviceSize updateThreshold = 256;
+
+    if (length <= updateThreshold * sizeof(uint32_t)) {
+      std::array<uint32_t, updateThreshold> data;
+
+      for (uint32_t i = 0; i < length / sizeof(uint32_t); i++)
+        data[i] = value;
+      
+      m_cmd->cmdUpdateBuffer(
+        slice.handle,
+        slice.offset,
+        slice.length,
+        data.data());
+    } else {
+      m_cmd->cmdFillBuffer(
+        slice.handle,
+        slice.offset,
+        slice.length,
+        value);
+    }
     
     m_barriers.accessBuffer(slice,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -532,11 +545,12 @@ namespace dxvk {
     }
     
     // Check whether the render target view is an attachment
-    // of the current framebuffer. If not, we need to create
-    // a temporary framebuffer.
+    // of the current framebuffer and is included entirely.
+    // If not, we need to create a temporary framebuffer.
     int32_t attachmentIndex = -1;
     
-    if (m_state.om.framebuffer != nullptr)
+    if (m_state.om.framebuffer != nullptr
+     && m_state.om.framebuffer->isFullSize(imageView))
       attachmentIndex = m_state.om.framebuffer->findAttachment(imageView);
     
     if (attachmentIndex < 0) {
@@ -1735,6 +1749,11 @@ namespace dxvk {
     m_state.gp.state.omBlendAttachments[attachment].colorWriteMask      = blendMode.writeMask;
     
     m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+  }
+
+
+  void DxvkContext::setBarrierControl(DxvkBarrierControlFlags control) {
+    m_barrierControl = control;
   }
   
   
@@ -3268,46 +3287,58 @@ namespace dxvk {
         const DxvkDescriptorSlot binding = layout->binding(i);
         const DxvkShaderResourceSlot& slot = m_rc[binding.slot];
 
-        DxvkAccessFlags access = DxvkAccess::Read;
+        DxvkAccessFlags dstAccess = DxvkAccess::Read;
+        DxvkAccessFlags srcAccess = 0;
         
         switch (binding.type) {
           case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
           case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
             if (binding.access & VK_ACCESS_SHADER_WRITE_BIT)
-              access.set(DxvkAccess::Write);
+              dstAccess.set(DxvkAccess::Write);
             /* fall through */
           
           case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
           case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-            requiresBarrier = m_barriers.isBufferDirty(
-              slot.bufferSlice.getSliceHandle(), access);
+            srcAccess = m_barriers.getBufferAccess(
+              slot.bufferSlice.getSliceHandle());
             break;
         
           case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
             if (binding.access & VK_ACCESS_SHADER_WRITE_BIT)
-              access.set(DxvkAccess::Write);
+              dstAccess.set(DxvkAccess::Write);
             /* fall through */
 
           case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-            requiresBarrier = m_barriers.isBufferDirty(
-              slot.bufferView->getSliceHandle(), access);
+            srcAccess = m_barriers.getBufferAccess(
+              slot.bufferView->getSliceHandle());
             break;
           
           case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
             if (binding.access & VK_ACCESS_SHADER_WRITE_BIT)
-              access.set(DxvkAccess::Write);
+              dstAccess.set(DxvkAccess::Write);
             /* fall through */
 
           case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-            requiresBarrier = m_barriers.isImageDirty(
+            srcAccess = m_barriers.getImageAccess(
               slot.imageView->image(),
-              slot.imageView->subresources(),
-              access);
+              slot.imageView->subresources());
             break;
 
           default:
             /* nothing to do */;
         }
+
+        if (srcAccess == 0)
+          continue;
+
+        // Skip write-after-write barriers if explicitly requested
+        if ((m_barrierControl.test(DxvkBarrierControl::IgnoreWriteAfterWrite))
+         && (m_barriers.getSrcStages() == VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT)
+         && (srcAccess.test(DxvkAccess::Write))
+         && (dstAccess.test(DxvkAccess::Write)))
+          continue;
+
+        requiresBarrier = (srcAccess | dstAccess).test(DxvkAccess::Write);
       }
     }
 

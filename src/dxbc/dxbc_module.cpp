@@ -28,6 +28,9 @@ namespace dxvk {
       
       if ((tag == "OSGN") || (tag == "OSG5") || (tag == "OSG1"))
         m_osgnChunk = new DxbcIsgn(chunkReader, tag);
+      
+      if ((tag == "PCSG") || (tag == "PSG1"))
+        m_psgnChunk = new DxbcIsgn(chunkReader, tag);
     }
   }
   
@@ -48,7 +51,7 @@ namespace dxvk {
     DxbcAnalyzer analyzer(moduleInfo,
       m_shexChunk->programInfo(),
       m_isgnChunk, m_osgnChunk,
-      analysisInfo);
+      m_psgnChunk, analysisInfo);
     
     this->runAnalyzer(analyzer, m_shexChunk->slice());
     
@@ -56,7 +59,7 @@ namespace dxvk {
       fileName, moduleInfo,
       m_shexChunk->programInfo(),
       m_isgnChunk, m_osgnChunk,
-      analysisInfo);
+      m_psgnChunk, analysisInfo);
     
     this->runCompiler(compiler, m_shexChunk->slice());
     
@@ -76,7 +79,7 @@ namespace dxvk {
       fileName, moduleInfo,
       DxbcProgramType::GeometryShader,
       m_osgnChunk, m_osgnChunk,
-      analysisInfo);
+      m_psgnChunk, analysisInfo);
     
     compiler.processXfbPassthrough();
     return compiler.finalize();

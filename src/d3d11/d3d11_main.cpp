@@ -7,7 +7,6 @@
 #include "d3d11_device.h"
 #include "d3d11_enums.h"
 #include "d3d11_interop.h"
-#include "d3d11_present.h"
 
 #include "../dxvk/dxvk_util.h"
 

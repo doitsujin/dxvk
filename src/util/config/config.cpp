@@ -60,9 +60,17 @@ namespace dxvk {
     { "FIFA19.exe", {{
       { "dxvk.useRawSsbo",                  "True" },
     }} },
+    /* Final Fantasy XIV: Fix random black blocks */
+    { "ffxiv_dx11.exe", {{
+      { "d3d11.strictDivision",             "True" },
+    }} },
     /* Fifa '19 Demo                              */
     { "FIFA19_demo.exe", {{
       { "dxvk.useRawSsbo",                  "True" },
+    }} },
+    /* Resident Evil 2: Improve GPU performance   */
+    { "re2.exe", {{
+      { "d3d11.relaxedBarriers",            "True" },
     }} },
     /* Call of Duty WW2                           */
     { "s2_sp64_ship.exe", {{
@@ -70,6 +78,18 @@ namespace dxvk {
     }} },
     /* Need for Speed 2015                        */
     { "NFS16.exe", {{
+      { "dxgi.nvapiHack",                   "False" },
+    }} },
+    /* Mass Effect Andromeda                      */
+    { "MassEffectAndromeda.exe", {{
+      { "dxgi.nvapiHack",                   "False" },
+    }} },
+    /* Far Cry 4                                  */
+    { "FarCry4.exe", {{
+      { "dxgi.nvapiHack",                   "False" },
+    }} },
+    /* Far Cry Primal                             */
+    { "FCPrimal.exe", {{
       { "dxgi.nvapiHack",                   "False" },
     }} },
   }};

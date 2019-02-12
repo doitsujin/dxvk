@@ -19,7 +19,6 @@
 #include "d3d11_interfaces.h"
 #include "d3d11_interop.h"
 #include "d3d11_options.h"
-#include "d3d11_present.h"
 #include "d3d11_shader.h"
 #include "d3d11_state.h"
 #include "d3d11_util.h"
@@ -396,7 +395,8 @@ namespace dxvk {
   public:
     
     WineDXGISwapChainFactory(
-            IDXGIVkPresentDevice*   pDevice);
+            D3D11DXGIDevice*        pContainer,
+            D3D11Device*            pDevice);
     
     ULONG STDMETHODCALLTYPE AddRef();
     
@@ -416,7 +416,8 @@ namespace dxvk {
     
   private:
     
-    IDXGIVkPresentDevice* m_device;
+    D3D11DXGIDevice* m_container;
+    D3D11Device*     m_device;
     
   };
   
@@ -501,7 +502,6 @@ namespace dxvk {
     Rc<DxvkDevice>      m_dxvkDevice;
 
     D3D11Device         m_d3d11Device;
-    D3D11PresentDevice  m_d3d11Presenter;
     D3D11VkInterop      m_d3d11Interop;
     
     WineDXGISwapChainFactory m_wineFactory;

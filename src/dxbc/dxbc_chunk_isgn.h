@@ -52,6 +52,8 @@ namespace dxvk {
     DxbcRegMask regMask(
             uint32_t     registerId) const;
     
+    uint32_t maxRegisterCount() const;
+    
   private:
     
     std::vector<DxbcSgnEntry> m_entries;

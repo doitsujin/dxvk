@@ -2,12 +2,15 @@
 
 #include <string>
 #include <sstream>
+#include <vector>
 
 #include "./com/com_include.h"
 
 namespace dxvk::str {
   
   std::string fromws(const WCHAR *ws);
+
+  std::vector<WCHAR> tows(const std::string& str);
   
   inline void format1(std::stringstream&) { }
 

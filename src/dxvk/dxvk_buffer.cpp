@@ -36,48 +36,6 @@ namespace dxvk {
   }
   
   
-  DxvkBufferSliceHandle DxvkBuffer::allocSlice() {
-    std::unique_lock<sync::Spinlock> freeLock(m_freeMutex);
-    
-    // If no slices are available, swap the two free lists.
-    if (m_freeSlices.size() == 0) {
-      std::unique_lock<sync::Spinlock> swapLock(m_swapMutex);
-      std::swap(m_freeSlices, m_nextSlices);
-    }
-
-    // If there are still no slices available, create a new
-    // backing buffer and add all slices to the free list.
-    if (m_freeSlices.size() == 0) {
-      std::unique_lock<sync::Spinlock> swapLock(m_swapMutex);
-      DxvkBufferHandle handle = allocBuffer(m_physSliceCount);
-      
-      for (uint32_t i = 0; i < m_physSliceCount; i++) {
-        DxvkBufferSliceHandle slice;
-        slice.handle = handle.buffer;
-        slice.offset = m_physSliceStride * i;
-        slice.length = m_physSliceLength;
-        slice.mapPtr = handle.memory.mapPtr(slice.offset);
-        m_freeSlices.push_back(slice);
-      }
-      
-      m_buffers.push_back(std::move(handle));
-      m_physSliceCount *= 2;
-    }
-    
-    // Take the first slice from the queue
-    DxvkBufferSliceHandle result = std::move(m_freeSlices.back());
-    m_freeSlices.pop_back();
-    return result;
-  }
-  
-  
-  void DxvkBuffer::freeSlice(const DxvkBufferSliceHandle& slice) {
-    // Add slice to a separate free list to reduce lock contention.
-    std::unique_lock<sync::Spinlock> swapLock(m_swapMutex);
-    m_nextSlices.push_back(slice);
-  }
-  
-  
   DxvkBufferHandle DxvkBuffer::allocBuffer(VkDeviceSize sliceCount) const {
     auto vkd = m_device->vkd();
 
@@ -125,9 +83,18 @@ namespace dxvk {
     vkd->vkGetBufferMemoryRequirements2KHR(
        vkd->device(), &memReqInfo, &memReq);
 
+    // Use high memory priority for GPU-writable resources
+    bool isGpuWritable = (m_info.usage & (
+      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+      VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT)) != 0;
+    
+    float priority = isGpuWritable ? 1.0f : 0.5f;
+    
+    // Ask driver whether we should be using a dedicated allocation
     bool useDedicated = dedicatedRequirements.prefersDedicatedAllocation;
+
     handle.memory = m_memAlloc->alloc(&memReq.memoryRequirements,
-      useDedicated ? &dedMemoryAllocInfo : nullptr, m_memFlags);
+      useDedicated ? &dedMemoryAllocInfo : nullptr, m_memFlags, priority);
     
     if (vkd->vkBindBufferMemory(vkd->device(), handle.buffer,
         handle.memory.memory(), handle.memory.offset()) != VK_SUCCESS)

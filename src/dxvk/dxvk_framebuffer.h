@@ -176,8 +176,19 @@ namespace dxvk {
      * \returns \c true if the render targets are the same
      *          as the ones used for this framebuffer object.
      */
-    bool hasTargets(
-      const DxvkRenderTargets&  renderTargets);
+    bool hasTargets(const DxvkRenderTargets& renderTargets);
+    
+    /**
+     * \brief Checks whether view and framebuffer sizes match
+     *
+     * Tests whether the size of the framebuffer is the same
+     * as the size of one of its views. This may be \c false
+     * when mixing attachments with mismatched dimensions.
+     * \param [in] view Image view to test
+     * \returns \c true if \c view has the same size as
+     *          the framebuffer.
+     */
+    bool isFullSize(const Rc<DxvkImageView>& view) const;
     
     /**
      * \brief Generatess render pass format

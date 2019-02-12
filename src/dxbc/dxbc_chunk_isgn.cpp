@@ -76,6 +76,14 @@ namespace dxvk {
   }
 
 
+  uint32_t DxbcIsgn::maxRegisterCount() const {
+    uint32_t result = 0;
+    for (auto e = this->begin(); e != this->end(); e++)
+      result = std::max(result, e->registerId + 1);
+    return result;
+  }
+
+
   bool DxbcIsgn::compareSemanticNames(
     const std::string& a, const std::string& b) const {
     if (a.size() != b.size())

@@ -71,6 +71,13 @@ namespace dxvk {
   }
   
   
+  bool DxvkFramebuffer::isFullSize(const Rc<DxvkImageView>& view) const {
+    return m_renderSize.width  == view->mipLevelExtent(0).width
+        && m_renderSize.height == view->mipLevelExtent(0).height
+        && m_renderSize.layers == view->info().numLayers;
+  }
+
+
   DxvkRenderPassFormat DxvkFramebuffer::getRenderPassFormat(const DxvkRenderTargets& renderTargets) {
     DxvkRenderPassFormat format;
     

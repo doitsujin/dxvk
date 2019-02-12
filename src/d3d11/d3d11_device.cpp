@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cstring>
 
+#include "../dxgi/dxgi_monitor.h"
 #include "../dxgi/dxgi_swapchain.h"
 
 #include "../dxvk/dxvk_adapter.h"
@@ -13,11 +14,11 @@
 #include "d3d11_device.h"
 #include "d3d11_input_layout.h"
 #include "d3d11_interop.h"
-#include "d3d11_present.h"
 #include "d3d11_query.h"
 #include "d3d11_resource.h"
 #include "d3d11_sampler.h"
 #include "d3d11_shader.h"
+#include "d3d11_swapchain.h"
 #include "d3d11_texture.h"
 
 namespace dxvk {
@@ -1353,6 +1354,10 @@ namespace dxvk {
     enabled.core.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
     enabled.core.pNext = nullptr;
 
+    enabled.extMemoryPriority.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT;
+    enabled.extMemoryPriority.pNext = nullptr;
+    enabled.extMemoryPriority.memoryPriority = supported.extMemoryPriority.memoryPriority;
+
     enabled.extTransformFeedback.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT;
     enabled.extTransformFeedback.pNext = nullptr;
 
@@ -1681,8 +1686,9 @@ namespace dxvk {
 
 
   WineDXGISwapChainFactory::WineDXGISwapChainFactory(
-          IDXGIVkPresentDevice*   pDevice)
-  : m_device(pDevice) {
+          D3D11DXGIDevice*        pContainer,
+          D3D11Device*            pDevice)
+  : m_container(pContainer), m_device(pDevice) {
     
   }
   
@@ -1715,14 +1721,41 @@ namespace dxvk {
     
     if (!ppSwapChain || !pDesc || !hWnd)
       return DXGI_ERROR_INVALID_CALL;
-#ifndef DXVK_NATIVE
-    return CreateDxvkSwapChainForHwnd(
-      pFactory, m_device, hWnd, pDesc,
-      pFullscreenDesc, pRestrictToOutput,
-      ppSwapChain);
-#else 
-    return DXGI_ERROR_INVALID_CALL;
-#endif
+
+    
+    // Make sure the back buffer size is not zero
+    DXGI_SWAP_CHAIN_DESC1 desc = *pDesc;
+    
+    GetWindowClientSize(hWnd,
+      desc.Width  ? nullptr : &desc.Width,
+      desc.Height ? nullptr : &desc.Height);
+    
+    // If necessary, set up a default set of
+    // fullscreen parameters for the swap chain
+    DXGI_SWAP_CHAIN_FULLSCREEN_DESC fsDesc;
+    
+    if (pFullscreenDesc) {
+      fsDesc = *pFullscreenDesc;
+    } else {
+      fsDesc.RefreshRate      = { 0, 0 };
+      fsDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+      fsDesc.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
+      fsDesc.Windowed         = TRUE;
+    }
+    
+    try {
+      // Create presenter for the device
+      Com<D3D11SwapChain> presenter = new D3D11SwapChain(
+        m_container, m_device, hWnd, &desc);
+      
+      // Create the actual swap chain
+      *ppSwapChain = ref(new DxgiSwapChain(
+        pFactory, presenter.ptr(), hWnd, &desc, &fsDesc));
+      return S_OK;
+    } catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return DXGI_ERROR_UNSUPPORTED;
+    }
   }
   
   
@@ -1737,9 +1770,8 @@ namespace dxvk {
     m_dxvkAdapter   (pDxvkAdapter),
     m_dxvkDevice    (CreateDevice(FeatureLevel)),
     m_d3d11Device   (this, FeatureLevel, FeatureFlags),
-    m_d3d11Presenter(this, &m_d3d11Device),
     m_d3d11Interop  (this, &m_d3d11Device),
-    m_wineFactory   (&m_d3d11Presenter),
+    m_wineFactory   (this, &m_d3d11Device),
     m_frameLatencyCap(m_d3d11Device.GetOptions()->maxFrameLatency) {
     for (uint32_t i = 0; i < m_frameEvents.size(); i++)
       m_frameEvents[i] = new DxvkEvent();
@@ -1752,6 +1784,9 @@ namespace dxvk {
   
   
   HRESULT STDMETHODCALLTYPE D3D11DXGIDevice::QueryInterface(REFIID riid, void** ppvObject) {
+    if (ppvObject == nullptr)
+      return E_POINTER;
+
     *ppvObject = nullptr;
     
     if (riid == __uuidof(IUnknown)
@@ -1781,16 +1816,11 @@ namespace dxvk {
       return S_OK;
     }
     
-    if (riid == __uuidof(IDXGIVkPresentDevice)) {
-      *ppvObject = ref(&m_d3d11Presenter);
-      return S_OK;
-    }
-#ifndef DXVK_NATIVE
     if (riid == __uuidof(IWineDXGISwapChainFactory)) {
       *ppvObject = ref(&m_wineFactory);
       return S_OK;
     }
-#endif
+
     if (riid == __uuidof(ID3D10Multithread)) {
       Com<ID3D11DeviceContext> context;
       m_d3d11Device.GetImmediateContext(&context);
