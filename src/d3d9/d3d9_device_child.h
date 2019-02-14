@@ -10,7 +10,7 @@ namespace dxvk {
   public:
 
     Direct3DDeviceChild9(Direct3DDevice9Ex* device)
-      : m_device{ device } {}
+      : m_parent{ device } {}
 
     HRESULT STDMETHODCALLTYPE GetDevice(IDirect3DDevice9** ppDevice) {
       InitReturnPtr(ppDevice);
@@ -18,17 +18,17 @@ namespace dxvk {
       if (ppDevice == nullptr)
         return D3DERR_INVALIDCALL;
 
-      *ppDevice = ref(static_cast<IDirect3DDevice9Ex*>(m_device));
+      *ppDevice = ref(static_cast<IDirect3DDevice9Ex*>(m_parent));
       return D3D_OK;
     }
 
-    Direct3DDevice9Ex* GetD3D9Device() {
-      return m_device;
+    Direct3DDevice9Ex* GetParent() {
+      return m_parent;
     }
 
   protected:
 
-    Direct3DDevice9Ex* m_device;
+    Direct3DDevice9Ex* m_parent;
 
   };
 
