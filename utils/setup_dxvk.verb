@@ -1,7 +1,7 @@
 w_metadata setup_dxvk dlls \
     title="DXVK" \
     publisher="Philip Rebohle" \
-    year="2018" \
+    year="2019" \
     media="manual_download" \
     file1="dxgi.dll" \
     file2="d3d11.dll" \
