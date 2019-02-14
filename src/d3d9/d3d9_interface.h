@@ -130,7 +130,6 @@ namespace dxvk {
       D3DDISPLAYMODEEX* displayMode,
       IDirect3DDevice9Ex** outDevice);
 
-    HMONITOR getDefaultMonitor();
     void cacheModes(D3D9Format enumFormat);
 
     std::vector<D3DDISPLAYMODEEX> m_modes;

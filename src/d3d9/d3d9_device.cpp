@@ -968,6 +968,10 @@ namespace dxvk {
     return m_extended;
   }
 
+  HWND Direct3DDevice9Ex::GetWindow() {
+    return m_window;
+  }
+
   DxvkDeviceFeatures Direct3DDevice9Ex::GetDeviceFeatures(const Rc<DxvkAdapter>& adapter) {
     DxvkDeviceFeatures supported = adapter->features();
     DxvkDeviceFeatures enabled = {};

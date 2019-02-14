@@ -1,6 +1,10 @@
 #pragma once
 
 #include "d3d9_device_child.h"
+#include "d3d9_format.h"
+#include "d3d9_presenter.h"
+
+#include <vector>
 
 namespace dxvk {
 
@@ -45,10 +49,17 @@ namespace dxvk {
 
     HRESULT WaitForVBlank();
 
+    HWND GetPresentWindow(HWND windowOverride = nullptr);
+
   private:
 
-    D3DPRESENT_PARAMETERS m_presentationParameters;
+    D3D9Presenter& GetOrMakePresenter(HWND window);
 
+    Rc<DxvkDevice> m_device;
+
+    std::vector<Rc<D3D9Presenter>> m_presenters;
+
+    D3DPRESENT_PARAMETERS m_presentParams;
     std::vector<Direct3DSurface9*> m_buffers;
 
   };

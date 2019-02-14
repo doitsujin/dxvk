@@ -37,4 +37,9 @@ namespace dxvk {
 
     return false;
   }
+
+  HMONITOR GetDefaultMonitor() {
+    return ::MonitorFromPoint({ 0, 0 }, MONITOR_DEFAULTTOPRIMARY);
+  }
+
 }

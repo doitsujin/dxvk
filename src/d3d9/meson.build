@@ -6,7 +6,8 @@ d3d9_src = [
   'd3d9_device.cpp',
   'd3d9_cursor.cpp',
   'd3d9_swapchain.cpp',
-  'd3d9_format.cpp'
+  'd3d9_format.cpp',
+  'd3d9_presenter.cpp'
 ]
 
 d3d9_dll = shared_library('d3d9'+dll_ext, d3d9_src,

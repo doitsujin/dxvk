@@ -520,6 +520,8 @@ namespace dxvk {
 
     bool IsExtended();
 
+    HWND GetWindow();
+
   private:
 
     Direct3DSwapChain9Ex* getInternalSwapchain(UINT index);

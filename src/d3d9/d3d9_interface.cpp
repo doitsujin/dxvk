@@ -153,7 +153,7 @@ namespace dxvk {
     if (Adapter >= this->GetAdapterCount())
       return nullptr;
 
-    return getDefaultMonitor();
+    return GetDefaultMonitor();
   }
 
   HRESULT STDMETHODCALLTYPE Direct3D9Ex::CreateDevice(
@@ -294,10 +294,6 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  HMONITOR Direct3D9Ex::getDefaultMonitor() {
-    return ::MonitorFromPoint({ 0, 0 }, MONITOR_DEFAULTTOPRIMARY);
-  }
-
   void Direct3D9Ex::cacheModes(D3D9Format enumFormat) {
     if (!m_modes.empty() && m_modeCacheFormat == enumFormat)
       return; // We already cached the modes for this format. No need to do it again.
@@ -305,7 +301,7 @@ namespace dxvk {
     ::MONITORINFOEXW monInfo;
     monInfo.cbSize = sizeof(monInfo);
 
-    if (!::GetMonitorInfoW(getDefaultMonitor(), reinterpret_cast<MONITORINFO*>(&monInfo))) {
+    if (!::GetMonitorInfoW(GetDefaultMonitor(), reinterpret_cast<MONITORINFO*>(&monInfo))) {
       Logger::err("Direct3D9Ex::cacheModes: failed to query monitor info");
       return;
     }

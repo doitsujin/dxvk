@@ -25,4 +25,6 @@ namespace dxvk {
   bool IsSupportedMonitorFormat(
     D3D9Format             Format);
 
+  HMONITOR GetDefaultMonitor();
+
 }
