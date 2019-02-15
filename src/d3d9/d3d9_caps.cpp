@@ -550,19 +550,19 @@ namespace dxvk::caps {
     pCaps->StencilCaps = 511;
     pCaps->FVFCaps = 1048584;
     pCaps->TextureOpCaps = 67108863;
-    pCaps->MaxTextureBlendStages = 8;
+    pCaps->MaxTextureBlendStages = MaxTextureBlendStages;
 
-    pCaps->MaxSimultaneousTextures = 8;
+    pCaps->MaxSimultaneousTextures = MaxSimultaneousRenderTargets;
 
     pCaps->VertexProcessingCaps = 379;
     pCaps->MaxActiveLights = 8;
-    pCaps->MaxUserClipPlanes = 6;
+    pCaps->MaxUserClipPlanes = MaxClipPlanes;
     pCaps->MaxVertexBlendMatrices = 4;
     pCaps->MaxVertexBlendMatrixIndex = 0;
     pCaps->MaxPointSize = 256.0f;
     pCaps->MaxPrimitiveCount = 5592405;
     pCaps->MaxVertexIndex = 16777215;
-    pCaps->MaxStreams = 16;
+    pCaps->MaxStreams = MaxStreams;
     pCaps->MaxStreamStride = 508;
 
     //if (shaderModel == "3") {
@@ -578,7 +578,7 @@ namespace dxvk::caps {
     //  pCaps->PixelShaderVersion = D3DPS_VERSION(1, 4);
     //}
 
-    pCaps->MaxVertexShaderConst = 256;
+    pCaps->MaxVertexShaderConst = MaxFloatConstants;
     pCaps->PixelShader1xMaxValue = FLT_MAX;
     pCaps->DevCaps2 = 113;
     pCaps->MaxNpatchTessellationLevel = 1.0f;
@@ -587,7 +587,7 @@ namespace dxvk::caps {
     pCaps->AdapterOrdinalInGroup = 0;
     pCaps->NumberOfAdaptersInGroup = 2;
     pCaps->DeclTypes = 1023;
-    pCaps->NumSimultaneousRTs = 4;
+    pCaps->NumSimultaneousRTs = MaxSimultaneousRenderTargets;
     pCaps->StretchRectFilterCaps = 50332416;
 
     pCaps->VS20Caps.Caps = 1;

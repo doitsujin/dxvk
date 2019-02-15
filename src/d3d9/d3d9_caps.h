@@ -33,4 +33,12 @@ namespace dxvk::caps {
 
   HRESULT getDeviceCaps(UINT adapter, D3DDEVTYPE type, D3DCAPS9* pCaps);
 
+  constexpr uint32_t MaxClipPlanes = 6;
+  constexpr uint32_t MaxSamplers = 16;
+  constexpr uint32_t MaxStreams = 16;
+  constexpr uint32_t MaxTextureBlendStages = 8;
+  constexpr uint32_t MaxSimultaneousRenderTargets = D3D_MAX_SIMULTANEOUS_RENDERTARGETS;
+  constexpr uint32_t MaxFloatConstants = 256;
+  constexpr uint32_t MaxOtherConstants = 16;
+
 }
