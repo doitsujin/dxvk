@@ -268,19 +268,23 @@ namespace dxvk {
     this->logNameList(extensionNameList);
 
     // Create pNext chain for additional device features
+    enabledFeatures.core.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
     enabledFeatures.core.pNext = nullptr;
 
     if (devExtensions.extMemoryPriority) {
+      enabledFeatures.extMemoryPriority.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT;
       enabledFeatures.extMemoryPriority.pNext = enabledFeatures.core.pNext;
       enabledFeatures.core.pNext = &enabledFeatures.extMemoryPriority;
     }
 
     if (devExtensions.extTransformFeedback) {
+      enabledFeatures.extTransformFeedback.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT;
       enabledFeatures.extTransformFeedback.pNext = enabledFeatures.core.pNext;
       enabledFeatures.core.pNext = &enabledFeatures.extTransformFeedback;
     }
 
     if (devExtensions.extVertexAttributeDivisor.revision() >= 3) {
+      enabledFeatures.extVertexAttributeDivisor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT;
       enabledFeatures.extVertexAttributeDivisor.pNext = enabledFeatures.core.pNext;
       enabledFeatures.core.pNext = &enabledFeatures.extVertexAttributeDivisor;
     }
