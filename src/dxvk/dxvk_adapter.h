@@ -197,10 +197,12 @@ namespace dxvk {
      * \brief Creates a DXVK device
      * 
      * Creates a logical device for this adapter.
+     * \param [in] clientApi Name of the client API
      * \param [in] enabledFeatures Device features
      * \returns Device handle
      */
     Rc<DxvkDevice> createDevice(
+            std::string         clientApi,
             DxvkDeviceFeatures  enabledFeatures);
     
     /**

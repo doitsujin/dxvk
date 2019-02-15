@@ -4,11 +4,13 @@
 namespace dxvk {
   
   DxvkDevice::DxvkDevice(
+          std::string               clientApi,
     const Rc<DxvkAdapter>&          adapter,
     const Rc<vk::DeviceFn>&         vkd,
     const DxvkDeviceExtensions&     extensions,
     const DxvkDeviceFeatures&       features)
-  : m_options           (adapter->instance()->options()),
+  : m_clientApi         (clientApi),
+    m_options           (adapter->instance()->options()),
     m_adapter           (adapter),
     m_vkd               (vkd),
     m_extensions        (extensions),
