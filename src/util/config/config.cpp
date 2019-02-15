@@ -72,6 +72,10 @@ namespace dxvk {
     { "re2.exe", {{
       { "d3d11.relaxedBarriers",            "True" },
     }} },
+    /* Resident Evil 7                            */
+    { "re7.exe", {{
+      { "d3d11.relaxedBarriers",            "True" },
+    }} },
     /* Call of Duty WW2                           */
     { "s2_sp64_ship.exe", {{
       { "dxgi.nvapiHack",                   "False" },
