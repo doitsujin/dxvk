@@ -976,19 +976,16 @@ namespace dxvk {
     DxvkDeviceFeatures supported = adapter->features();
     DxvkDeviceFeatures enabled = {};
 
-    enabled.core.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
-    enabled.core.pNext = nullptr;
+    // Geometry shaders are used for some meta ops
+    enabled.core.features.geometryShader = VK_TRUE;
+    enabled.core.features.robustBufferAccess = VK_TRUE;
 
-    enabled.extMemoryPriority.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT;
-    enabled.extMemoryPriority.pNext = nullptr;
     enabled.extMemoryPriority.memoryPriority = supported.extMemoryPriority.memoryPriority;
 
-    enabled.extTransformFeedback.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT;
-    enabled.extTransformFeedback.pNext = nullptr;
+    enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor = supported.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor;
+    enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor = supported.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor;
 
-    enabled.extVertexAttributeDivisor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT;
-    enabled.extVertexAttributeDivisor.pNext = nullptr;
-
+    // SM1 level hardware
     enabled.core.features.depthClamp = VK_TRUE;
     enabled.core.features.depthBiasClamp = VK_TRUE;
     enabled.core.features.fillModeNonSolid = VK_TRUE;
@@ -997,22 +994,19 @@ namespace dxvk {
     enabled.core.features.samplerAnisotropy = VK_TRUE;
     enabled.core.features.shaderClipDistance = VK_TRUE;
     enabled.core.features.shaderCullDistance = VK_TRUE;
-    enabled.core.features.robustBufferAccess = VK_TRUE;
 
+    // Ensure we support real BC formats and unofficial vendor ones.
+    enabled.core.features.textureCompressionBC = VK_TRUE;
+
+    // SM2 level hardware
     enabled.core.features.occlusionQueryPrecise = VK_TRUE;
 
+    // SM3 level hardware
     enabled.core.features.multiViewport = VK_TRUE;
     enabled.core.features.independentBlend = VK_TRUE;
 
-    // These two are likely not necessary... TODO: investigate this further.
+    // D3D10 level hardware supports this in D3D9 native.
     enabled.core.features.fullDrawIndexUint32 = VK_TRUE;
-    enabled.core.features.textureCompressionBC = VK_TRUE;
-
-    if (supported.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor
-      && supported.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor) {
-      enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor = VK_TRUE;
-      enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor = VK_TRUE;
-    }
 
     return enabled;
   }
