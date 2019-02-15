@@ -542,7 +542,7 @@ namespace dxvk {
 
     D3D9Cursor m_cursor;
 
-    std::vector<Com<IDirect3DSwapChain9Ex>> m_swapchains;
+    std::vector<IDirect3DSwapChain9Ex*> m_swapchains;
 
   };
 

@@ -2,6 +2,9 @@
 
 #include "d3d9_swapchain.h"
 #include "d3d9_caps.h"
+#include "d3d9_util.h"
+
+#include "../util/util_bit.h"
 
 #include <algorithm>
 
@@ -129,7 +132,13 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateAdditionalSwapChain(D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DSwapChain9** ppSwapChain) {
-    Logger::warn("Direct3DDevice9Ex::CreateAdditionalSwapChain: Stub");
+    InitReturnPtr(ppSwapChain);
+
+    if (ppSwapChain == nullptr || pPresentationParameters == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    *ppSwapChain = new Direct3DSwapChain9Ex(this, pPresentationParameters);
+
     return D3D_OK;
   }
 
@@ -151,8 +160,7 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::Reset(D3DPRESENT_PARAMETERS* pPresentationParameters) {
-    Logger::warn("Direct3DDevice9Ex::Reset: Stub");
-    return D3D_OK;
+    return ResetEx(pPresentationParameters, nullptr);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::Present(
@@ -980,7 +988,204 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::ResetEx(D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX *pFullscreenDisplayMode) {
-    Logger::warn("Direct3DDevice9Ex::ResetEx: Stub");
+    if (pPresentationParameters == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    SetDepthStencilSurface(nullptr);
+
+    for (uint32_t i = 0; i < caps::MaxSimultaneousRenderTargets; i++)
+      SetRenderTarget(0, nullptr);
+
+    SetRenderState(D3DRS_ZENABLE, pPresentationParameters->EnableAutoDepthStencil != FALSE ? D3DZB_TRUE : D3DZB_FALSE);
+    SetRenderState(D3DRS_FILLMODE, D3DFILL_SOLID);
+    SetRenderState(D3DRS_SHADEMODE, D3DSHADE_GOURAUD);
+    SetRenderState(D3DRS_ZWRITEENABLE, TRUE);
+    SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
+    SetRenderState(D3DRS_LASTPIXEL, TRUE);
+    SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
+    SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ZERO);
+    SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW);
+    SetRenderState(D3DRS_ZFUNC, D3DCMP_LESSEQUAL);
+    SetRenderState(D3DRS_ALPHAREF, 0);
+    SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_ALWAYS);
+    SetRenderState(D3DRS_DITHERENABLE, FALSE);
+    SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
+    SetRenderState(D3DRS_FOGENABLE, FALSE);
+    SetRenderState(D3DRS_SPECULARENABLE, FALSE);
+    //	SetRenderState(D3DRS_ZVISIBLE, 0);
+    SetRenderState(D3DRS_FOGCOLOR, 0);
+    SetRenderState(D3DRS_FOGTABLEMODE, D3DFOG_NONE);
+    SetRenderState(D3DRS_FOGSTART, bit::cast<DWORD>(0.0f));
+    SetRenderState(D3DRS_FOGEND, bit::cast<DWORD>(1.0f));
+    SetRenderState(D3DRS_FOGDENSITY, bit::cast<DWORD>(1.0f));
+    SetRenderState(D3DRS_RANGEFOGENABLE, FALSE);
+    SetRenderState(D3DRS_STENCILENABLE, FALSE);
+    SetRenderState(D3DRS_STENCILFAIL, D3DSTENCILOP_KEEP);
+    SetRenderState(D3DRS_STENCILZFAIL, D3DSTENCILOP_KEEP);
+    SetRenderState(D3DRS_STENCILPASS, D3DSTENCILOP_KEEP);
+    SetRenderState(D3DRS_STENCILFUNC, D3DCMP_ALWAYS);
+    SetRenderState(D3DRS_STENCILREF, 0);
+    SetRenderState(D3DRS_STENCILMASK, 0xFFFFFFFF);
+    SetRenderState(D3DRS_STENCILWRITEMASK, 0xFFFFFFFF);
+    SetRenderState(D3DRS_TEXTUREFACTOR, 0xFFFFFFFF);
+    SetRenderState(D3DRS_WRAP0, 0);
+    SetRenderState(D3DRS_WRAP1, 0);
+    SetRenderState(D3DRS_WRAP2, 0);
+    SetRenderState(D3DRS_WRAP3, 0);
+    SetRenderState(D3DRS_WRAP4, 0);
+    SetRenderState(D3DRS_WRAP5, 0);
+    SetRenderState(D3DRS_WRAP6, 0);
+    SetRenderState(D3DRS_WRAP7, 0);
+    SetRenderState(D3DRS_CLIPPING, TRUE);
+    SetRenderState(D3DRS_LIGHTING, TRUE);
+    SetRenderState(D3DRS_AMBIENT, 0);
+    SetRenderState(D3DRS_FOGVERTEXMODE, D3DFOG_NONE);
+    SetRenderState(D3DRS_COLORVERTEX, TRUE);
+    SetRenderState(D3DRS_LOCALVIEWER, TRUE);
+    SetRenderState(D3DRS_NORMALIZENORMALS, FALSE);
+    SetRenderState(D3DRS_DIFFUSEMATERIALSOURCE, D3DMCS_COLOR1);
+    SetRenderState(D3DRS_SPECULARMATERIALSOURCE, D3DMCS_COLOR2);
+    SetRenderState(D3DRS_AMBIENTMATERIALSOURCE, D3DMCS_MATERIAL);
+    SetRenderState(D3DRS_EMISSIVEMATERIALSOURCE, D3DMCS_MATERIAL);
+    SetRenderState(D3DRS_VERTEXBLEND, D3DVBF_DISABLE);
+    SetRenderState(D3DRS_CLIPPLANEENABLE, 0);
+    SetRenderState(D3DRS_POINTSIZE, bit::cast<DWORD>(1.0f));
+    SetRenderState(D3DRS_POINTSIZE_MIN, bit::cast<DWORD>(1.0f));
+    SetRenderState(D3DRS_POINTSPRITEENABLE, FALSE);
+    SetRenderState(D3DRS_POINTSCALEENABLE, FALSE);
+    SetRenderState(D3DRS_POINTSCALE_A, bit::cast<DWORD>(1.0f));
+    SetRenderState(D3DRS_POINTSCALE_B, bit::cast<DWORD>(0.0f));
+    SetRenderState(D3DRS_POINTSCALE_C, bit::cast<DWORD>(0.0f));
+    SetRenderState(D3DRS_MULTISAMPLEANTIALIAS, TRUE);
+    SetRenderState(D3DRS_MULTISAMPLEMASK, 0xFFFFFFFF);
+    SetRenderState(D3DRS_PATCHEDGESTYLE, D3DPATCHEDGE_DISCRETE);
+    SetRenderState(D3DRS_DEBUGMONITORTOKEN, D3DDMT_ENABLE);
+    SetRenderState(D3DRS_POINTSIZE_MAX, bit::cast<DWORD>(64.0f));
+    SetRenderState(D3DRS_INDEXEDVERTEXBLENDENABLE, FALSE);
+    SetRenderState(D3DRS_COLORWRITEENABLE, 0x0000000F);
+    SetRenderState(D3DRS_TWEENFACTOR, bit::cast<DWORD>(0.0f));
+    SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+    SetRenderState(D3DRS_POSITIONDEGREE, D3DDEGREE_CUBIC);
+    SetRenderState(D3DRS_NORMALDEGREE, D3DDEGREE_LINEAR);
+    SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
+    SetRenderState(D3DRS_SLOPESCALEDEPTHBIAS, bit::cast<DWORD>(0.0f));
+    SetRenderState(D3DRS_ANTIALIASEDLINEENABLE, FALSE);
+    SetRenderState(D3DRS_MINTESSELLATIONLEVEL, bit::cast<DWORD>(1.0f));
+    SetRenderState(D3DRS_MAXTESSELLATIONLEVEL, bit::cast<DWORD>(1.0f));
+    SetRenderState(D3DRS_ADAPTIVETESS_X, bit::cast<DWORD>(0.0f));
+    SetRenderState(D3DRS_ADAPTIVETESS_Y, bit::cast<DWORD>(0.0f));
+    SetRenderState(D3DRS_ADAPTIVETESS_Z, bit::cast<DWORD>(1.0f));
+    SetRenderState(D3DRS_ADAPTIVETESS_W, bit::cast<DWORD>(0.0f));
+    SetRenderState(D3DRS_ENABLEADAPTIVETESSELLATION, FALSE);
+    SetRenderState(D3DRS_TWOSIDEDSTENCILMODE, FALSE);
+    SetRenderState(D3DRS_CCW_STENCILFAIL, D3DSTENCILOP_KEEP);
+    SetRenderState(D3DRS_CCW_STENCILZFAIL, D3DSTENCILOP_KEEP);
+    SetRenderState(D3DRS_CCW_STENCILPASS, D3DSTENCILOP_KEEP);
+    SetRenderState(D3DRS_CCW_STENCILFUNC, D3DCMP_ALWAYS);
+    SetRenderState(D3DRS_COLORWRITEENABLE1, 0x0000000F);
+    SetRenderState(D3DRS_COLORWRITEENABLE2, 0x0000000F);
+    SetRenderState(D3DRS_COLORWRITEENABLE3, 0x0000000F);
+    SetRenderState(D3DRS_BLENDFACTOR, 0xFFFFFFFF);
+    SetRenderState(D3DRS_SRGBWRITEENABLE, 0);
+    SetRenderState(D3DRS_DEPTHBIAS, bit::cast<DWORD>(0.0f));
+    SetRenderState(D3DRS_WRAP8, 0);
+    SetRenderState(D3DRS_WRAP9, 0);
+    SetRenderState(D3DRS_WRAP10, 0);
+    SetRenderState(D3DRS_WRAP11, 0);
+    SetRenderState(D3DRS_WRAP12, 0);
+    SetRenderState(D3DRS_WRAP13, 0);
+    SetRenderState(D3DRS_WRAP14, 0);
+    SetRenderState(D3DRS_WRAP15, 0);
+    SetRenderState(D3DRS_SEPARATEALPHABLENDENABLE, FALSE);
+    SetRenderState(D3DRS_SRCBLENDALPHA, D3DBLEND_ONE);
+    SetRenderState(D3DRS_DESTBLENDALPHA, D3DBLEND_ZERO);
+    SetRenderState(D3DRS_BLENDOPALPHA, D3DBLENDOP_ADD);
+
+    for (uint32_t i = 0; i < caps::MaxTextureBlendStages; i++)
+    {
+      SetTextureStageState(i, D3DTSS_COLOROP, i == 0 ? D3DTOP_MODULATE : D3DTOP_DISABLE);
+      SetTextureStageState(i, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+      SetTextureStageState(i, D3DTSS_COLORARG2, D3DTA_CURRENT);
+      SetTextureStageState(i, D3DTSS_ALPHAOP, i == 0 ? D3DTOP_SELECTARG1 : D3DTOP_DISABLE);
+      SetTextureStageState(i, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+      SetTextureStageState(i, D3DTSS_ALPHAARG2, D3DTA_CURRENT);
+      SetTextureStageState(i, D3DTSS_BUMPENVMAT00, bit::cast<DWORD>(0.0f));
+      SetTextureStageState(i, D3DTSS_BUMPENVMAT01, bit::cast<DWORD>(0.0f));
+      SetTextureStageState(i, D3DTSS_BUMPENVMAT10, bit::cast<DWORD>(0.0f));
+      SetTextureStageState(i, D3DTSS_BUMPENVMAT11, bit::cast<DWORD>(0.0f));
+      SetTextureStageState(i, D3DTSS_TEXCOORDINDEX, i);
+      SetTextureStageState(i, D3DTSS_BUMPENVLSCALE, bit::cast<DWORD>(0.0f));
+      SetTextureStageState(i, D3DTSS_BUMPENVLOFFSET, bit::cast<DWORD>(0.0f));
+      SetTextureStageState(i, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);
+      SetTextureStageState(i, D3DTSS_COLORARG0, D3DTA_CURRENT);
+      SetTextureStageState(i, D3DTSS_ALPHAARG0, D3DTA_CURRENT);
+      SetTextureStageState(i, D3DTSS_RESULTARG, D3DTA_CURRENT);
+      SetTextureStageState(i, D3DTSS_CONSTANT, 0x00000000);
+    }
+
+    forEachSampler([&](uint32_t i)
+    {
+      SetTexture(i, 0);
+      SetSamplerState(i, D3DSAMP_ADDRESSU, D3DTADDRESS_WRAP);
+      SetSamplerState(i, D3DSAMP_ADDRESSV, D3DTADDRESS_WRAP);
+      SetSamplerState(i, D3DSAMP_ADDRESSW, D3DTADDRESS_WRAP);
+      SetSamplerState(i, D3DSAMP_BORDERCOLOR, 0x00000000);
+      SetSamplerState(i, D3DSAMP_MAGFILTER, D3DTEXF_POINT);
+      SetSamplerState(i, D3DSAMP_MINFILTER, D3DTEXF_POINT);
+      SetSamplerState(i, D3DSAMP_MIPFILTER, D3DTEXF_NONE);
+      SetSamplerState(i, D3DSAMP_MIPMAPLODBIAS, 0);
+      SetSamplerState(i, D3DSAMP_MAXMIPLEVEL, 0);
+      SetSamplerState(i, D3DSAMP_MAXANISOTROPY, 1);
+      SetSamplerState(i, D3DSAMP_SRGBTEXTURE, 0);
+      SetSamplerState(i, D3DSAMP_ELEMENTINDEX, 0);
+      SetSamplerState(i, D3DSAMP_DMAPOFFSET, 0);
+    });
+
+    for (uint32_t i = 0; i < caps::MaxClipPlanes; i++) {
+      float plane[4] = { 0, 0, 0, 0 };
+      SetClipPlane(i, plane);
+    }
+
+    // TODO: Flush and Sync here.
+
+    HRESULT hr;
+    auto* implicitSwapchain = getInternalSwapchain(0);
+    if (implicitSwapchain == nullptr) {
+      Com<IDirect3DSwapChain9> swapchain;
+      hr = CreateAdditionalSwapChain(pPresentationParameters, &swapchain);
+      if (FAILED(hr))
+        throw DxvkError("Reset: failed to create implicit swapchain");
+    }
+    else {
+      hr = implicitSwapchain->Reset(pPresentationParameters);
+      if (FAILED(hr))
+        throw DxvkError("Reset: failed to reset swapchain");
+    }
+
+    Com<IDirect3DSurface9> backbuffer;
+    hr = m_swapchains[0]->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &backbuffer);
+    if (FAILED(hr))
+      throw DxvkError("Reset: failed to get implicit swapchain backbuffers");
+
+    SetRenderTarget(0, backbuffer.ptr());
+
+    if (pPresentationParameters->EnableAutoDepthStencil) {
+      Com<IDirect3DSurface9> autoDepthStencil;
+      CreateDepthStencilSurface(
+        pPresentationParameters->BackBufferWidth,
+        pPresentationParameters->BackBufferHeight,
+        pPresentationParameters->AutoDepthStencilFormat,
+        pPresentationParameters->MultiSampleType,
+        pPresentationParameters->MultiSampleQuality,
+        FALSE,
+        &autoDepthStencil,
+        nullptr);
+
+      SetDepthStencilSurface(autoDepthStencil.ptr());
+    }
+
+    ShowCursor(FALSE);
+
     return D3D_OK;
   }
 
@@ -1047,7 +1252,7 @@ namespace dxvk {
     if (index >= m_swapchains.size())
       return nullptr;
 
-    return static_cast<Direct3DSwapChain9Ex*>(m_swapchains[index].ptr());
+    return static_cast<Direct3DSwapChain9Ex*>(m_swapchains[index]);
   }
 
 }
