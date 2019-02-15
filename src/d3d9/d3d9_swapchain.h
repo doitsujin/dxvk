@@ -49,6 +49,12 @@ namespace dxvk {
 
     HRESULT WaitForVBlank();
 
+    void    SetGammaRamp(
+      DWORD Flags,
+      const D3DGAMMARAMP* pRamp);
+
+    void    GetGammaRamp(D3DGAMMARAMP* pRamp);
+
     HWND GetPresentWindow(HWND windowOverride = nullptr);
 
   private:

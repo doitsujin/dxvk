@@ -168,13 +168,23 @@ namespace dxvk {
     UINT iBackBuffer,
     D3DBACKBUFFER_TYPE Type,
     IDirect3DSurface9** ppBackBuffer) {
-    Logger::warn("Direct3DDevice9Ex::GetBackBuffer: Stub");
-    return D3D_OK;
+    InitReturnPtr(ppBackBuffer);
+
+    auto* swapchain = getInternalSwapchain(iSwapChain);
+
+    if (swapchain == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    return swapchain->GetBackBuffer(iBackBuffer, Type, ppBackBuffer);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetRasterStatus(UINT iSwapChain, D3DRASTER_STATUS* pRasterStatus) {
-    Logger::warn("Direct3DDevice9Ex::GetRasterStatus: Stub");
-    return D3D_OK;
+    auto* swapchain = getInternalSwapchain(iSwapChain);
+
+    if (swapchain == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    return swapchain->GetRasterStatus(pRasterStatus);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetDialogBoxMode(BOOL bEnableDialogs) {
@@ -186,11 +196,21 @@ namespace dxvk {
     UINT iSwapChain,
     DWORD Flags,
     const D3DGAMMARAMP* pRamp) {
-    Logger::warn("Direct3DDevice9Ex::SetGammaRamp: Stub");
+    auto* swapchain = getInternalSwapchain(iSwapChain);
+
+    if (swapchain == nullptr)
+      return;
+
+    swapchain->SetGammaRamp(Flags, pRamp);
   }
 
   void    STDMETHODCALLTYPE Direct3DDevice9Ex::GetGammaRamp(UINT iSwapChain, D3DGAMMARAMP* pRamp) {
-    Logger::warn("Direct3DDevice9Ex::GetGammaRamp: Stub");
+    auto* swapchain = getInternalSwapchain(iSwapChain);
+
+    if (swapchain == nullptr)
+      return;
+
+    swapchain->GetGammaRamp(pRamp);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateTexture(UINT Width,
@@ -299,8 +319,12 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetFrontBufferData(UINT iSwapChain, IDirect3DSurface9* pDestSurface) {
-    Logger::warn("Direct3DDevice9Ex::GetFrontBufferData: Stub");
-    return D3D_OK;
+    auto* swapchain = getInternalSwapchain(iSwapChain);
+
+    if (swapchain == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    return swapchain->GetFrontBufferData(pDestSurface);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::StretchRect(
@@ -877,8 +901,12 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::WaitForVBlank(UINT iSwapChain) {
-    Logger::warn("Direct3DDevice9Ex::WaitForVBlank: Stub");
-    return D3D_OK;
+    auto* swapchain = getInternalSwapchain(iSwapChain);
+
+    if (swapchain == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    return swapchain->WaitForVBlank();
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CheckResourceResidency(IDirect3DResource9** pResourceArray, UINT32 NumResources) {
@@ -960,8 +988,12 @@ namespace dxvk {
     UINT iSwapChain,
     D3DDISPLAYMODEEX* pMode,
     D3DDISPLAYROTATION* pRotation) {
-    Logger::warn("Direct3DDevice9Ex::GetDisplayModeEx: Stub");
-    return D3D_OK;
+    auto* swapchain = getInternalSwapchain(iSwapChain);
+
+    if (swapchain == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    return swapchain->GetDisplayModeEx(pMode, pRotation);
   }
 
   bool Direct3DDevice9Ex::IsExtended() {

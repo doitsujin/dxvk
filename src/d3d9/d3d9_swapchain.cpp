@@ -180,6 +180,16 @@ namespace dxvk {
     return D3D_OK;
   }
 
+  void    Direct3DSwapChain9Ex::SetGammaRamp(
+    DWORD Flags,
+    const D3DGAMMARAMP* pRamp) {
+    Logger::warn("Direct3DSwapChain9Ex::SetGammaRamp: Stub");
+  }
+
+  void    Direct3DSwapChain9Ex::GetGammaRamp(D3DGAMMARAMP* pRamp) {
+    Logger::warn("Direct3DSwapChain9Ex::GetGammaRamp: Stub");
+  }
+
   D3D9Presenter& Direct3DSwapChain9Ex::GetOrMakePresenter(HWND window) {
     for (const auto& presenter : m_presenters) {
       if (presenter->window() == window)
