@@ -27,7 +27,8 @@ namespace dxvk {
     , m_dxvkAdapter{ dxvkAdapter }
     , m_device{ dxvkDevice }
     , m_deviceType{ deviceType }
-    , m_window{ window } {
+    , m_window{ window }
+    , m_d3d9Formats{ m_dxvkAdapter } {
     HRESULT hr = this->Reset(presentParams);
 
     if (FAILED(hr))
@@ -1253,6 +1254,12 @@ namespace dxvk {
       return nullptr;
 
     return static_cast<Direct3DSwapChain9Ex*>(m_swapchains[index]);
+  }
+
+  D3D9_VK_FORMAT_INFO Direct3DDevice9Ex::LookupFormat(
+    D3D9Format            Format,
+    bool                  srgb) const {
+    return m_d3d9Formats.GetFormatInfo(Format, srgb);
   }
 
 }

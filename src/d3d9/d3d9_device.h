@@ -3,8 +3,8 @@
 #include "../dxvk/dxvk_device.h"
 
 #include "d3d9_include.h"
-
 #include "d3d9_cursor.h"
+#include "d3d9_format.h"
 
 #include <vector>
 
@@ -522,7 +522,17 @@ namespace dxvk {
 
     HWND GetWindow();
 
+    Rc<DxvkDevice> GetDXVKDevice() {
+      return m_device;
+    }
+
+    D3D9_VK_FORMAT_INFO LookupFormat(
+      D3D9Format            Format,
+      bool                  srgb) const;
+
   private:
+
+    const D3D9VkFormatTable         m_d3d9Formats;
 
     Direct3DSwapChain9Ex* getInternalSwapchain(UINT index);
 

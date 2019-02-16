@@ -2,6 +2,11 @@
 
 #include "d3d9_include.h"
 
+#include "../dxvk/dxvk_adapter.h"
+#include "../dxvk/dxvk_format.h"
+
+#include <unordered_map>
+
 namespace dxvk {
 
   enum class D3D9Format : uint32_t {
@@ -93,5 +98,79 @@ namespace dxvk {
   }
 
   std::ostream& operator << (std::ostream& os, D3D9Format format);
+
+  /**
+   * \brief Format mapping
+   * 
+   * Maps a D3D9 format to a set of Vulkan formats.
+   */
+  struct D3D9_VK_FORMAT_MAPPING {
+    VkFormat              Format        = VK_FORMAT_UNDEFINED;  ///< Corresponding color format
+    VkFormat              FormatSrgb    = VK_FORMAT_UNDEFINED;  ///< Corresponding color format
+    VkImageAspectFlags    Aspect        = 0;                    ///< Defined aspects for the color format
+    VkComponentMapping    Swizzle       = {                     ///< Color component swizzle
+      VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
+      VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
+  };
+  
+  /**
+   * \brief Format info
+   * 
+   * Stores a Vulkan image format for a given
+   * D3D9 format and some additional information
+   * on how resources with the particular format
+   * are supposed to be used.
+   */
+  struct D3D9_VK_FORMAT_INFO {
+    VkFormat              Format      = VK_FORMAT_UNDEFINED;  ///< Corresponding color format
+    VkImageAspectFlags    Aspect      = 0;                    ///< Defined image aspect mask
+    VkComponentMapping    Swizzle     = {                     ///< Component swizzle
+      VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
+      VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
+  };
+
+  /**
+   * \brief Format table
+   *
+   * Initializes a format table for a specific
+   * device and provides methods to look up
+   * formats.
+   */
+  class D3D9VkFormatTable {
+
+  public:
+
+    D3D9VkFormatTable(
+      const Rc<DxvkAdapter>& adapter);
+    ~D3D9VkFormatTable();
+
+    /**
+     * \brief Retrieves info for a given D3D9 format
+     *
+     * \param [in] Format The D3D9 format to look up
+     * \param [in] Mode the format lookup mode
+     * \returns Format info
+     */
+    D3D9_VK_FORMAT_INFO GetFormatInfo(
+      D3D9Format          Format,
+      bool                Srgb) const;
+
+  private:
+
+    std::unordered_map<D3D9Format, D3D9_VK_FORMAT_MAPPING>& m_d3d9Formats;
+
+    const D3D9_VK_FORMAT_MAPPING* GetFormatMapping(
+      D3D9Format            Format) const;
+
+    bool CheckImageFormatSupport(
+      const Rc<DxvkAdapter>&      Adapter,
+      VkFormat              Format,
+      VkFormatFeatureFlags  Features) const;
+
+    void RemapDepthFormat(
+      D3D9Format            Format,
+      VkFormat              Target);
+
+  };
 
 }
