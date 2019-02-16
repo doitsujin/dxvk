@@ -442,7 +442,9 @@ namespace dxvk {
     {D3D9Format::INTZ, {
       VK_FORMAT_D24_UNORM_S8_UINT,
       VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_DEPTH_BIT }}
+      VK_IMAGE_ASPECT_DEPTH_BIT }},
+
+    {D3D9Format::RAWZ, {}}, // Unsupported
   };
 
   D3D9VkFormatTable::D3D9VkFormatTable(const Rc<DxvkAdapter>& adapter)

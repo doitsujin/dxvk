@@ -90,7 +90,8 @@ namespace dxvk {
     A2M1 = MAKEFOURCC('A', '2', 'M', '1'),
     A2M0 = MAKEFOURCC('A', '2', 'M', '0'),
     ATOC = MAKEFOURCC('A', 'T', 'O', 'C'),
-    INTZ = MAKEFOURCC('I', 'N', 'T', 'Z')
+    INTZ = MAKEFOURCC('I', 'N', 'T', 'Z'),
+    RAWZ = MAKEFOURCC('R', 'A', 'W', 'Z'),
   };
 
   inline D3D9Format fixupFormat(D3DFORMAT format) {
