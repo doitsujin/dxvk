@@ -158,9 +158,7 @@ namespace dxvk {
 
   private:
 
-    std::unordered_map<D3D9Format, D3D9_VK_FORMAT_MAPPING>& m_d3d9Formats;
-
-    const D3D9_VK_FORMAT_MAPPING* GetFormatMapping(
+    D3D9_VK_FORMAT_MAPPING GetFormatMapping(
       D3D9Format            Format) const;
 
     bool CheckImageFormatSupport(
@@ -168,9 +166,10 @@ namespace dxvk {
       VkFormat              Format,
       VkFormatFeatureFlags  Features) const;
 
-    void RemapDepthFormat(
-      D3D9Format            Format,
-      VkFormat              Target);
+    bool m_d24s8Support;
+    bool m_x8d24Support;
+    bool m_d16Support;
+    bool m_d16s8Support;
 
   };
 

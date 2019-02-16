@@ -93,409 +93,400 @@ namespace dxvk {
   }
 
   // It is also worth noting that the msb/lsb-ness is flipped between VK and D3D9.
-  std::unordered_map<D3D9Format, D3D9_VK_FORMAT_MAPPING> g_d3d9Formats = {
-    {D3D9Format::Unknown, {}},
-
-    {D3D9Format::R8G8B8, {
-      VK_FORMAT_B8G8R8_UNORM,
-      VK_FORMAT_B8G8R8_SRGB,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::A8R8G8B8, {
-      VK_FORMAT_B8G8R8A8_UNORM,
-      VK_FORMAT_B8G8R8A8_SRGB,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::X8R8G8B8, {
-      VK_FORMAT_B8G8R8A8_UNORM,
-      VK_FORMAT_B8G8R8A8_SRGB,
-      VK_IMAGE_ASPECT_COLOR_BIT,
-      { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G,
-        VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_ONE }}},
-
-    {D3D9Format::R5G6B5, {
-      VK_FORMAT_B5G6R5_UNORM_PACK16,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::X1R5G5B5, {
-      VK_FORMAT_B5G5R5A1_UNORM_PACK16,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_COLOR_BIT,
-      { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G,
-        VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_ONE }}},
-
-    {D3D9Format::A1R5G5B5, {
-      VK_FORMAT_B5G5R5A1_UNORM_PACK16,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::A4R4G4B4, {
-      VK_FORMAT_B4G4R4A4_UNORM_PACK16,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::A4R4G4B4, {
-      VK_FORMAT_B4G4R4A4_UNORM_PACK16,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::R3G3B2, {}}, // Unsupported
-
-    {D3D9Format::A8, {
-      VK_FORMAT_R8_UNORM,
-      VK_FORMAT_R8_SRGB,
-      VK_IMAGE_ASPECT_COLOR_BIT,
-      { VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_ZERO,
-        VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_ONE }}},
-
-    {D3D9Format::A8R3G3B2, {}}, // Unsupported
-
-    {D3D9Format::X4R4G4B4, {
-      VK_FORMAT_B4G4R4A4_UNORM_PACK16,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_COLOR_BIT,
-      { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G,
-        VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_ONE }}},
-
-    {D3D9Format::A2B10G10R10, {
-      VK_FORMAT_A2R10G10B10_UNORM_PACK32, // The A2 is out of place here. This should be investigated.
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::A8R8G8B8, {
-      VK_FORMAT_B8G8R8A8_UNORM,
-      VK_FORMAT_B8G8R8A8_SRGB,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::X8R8G8B8, {
-      VK_FORMAT_B8G8R8A8_UNORM,
-      VK_FORMAT_B8G8R8A8_SRGB,
-      VK_IMAGE_ASPECT_COLOR_BIT,
-      { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G,
-        VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_ONE }}},
-
-    {D3D9Format::G16R16, {
-      VK_FORMAT_R16G16_UNORM,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::A2R10G10B10, {
-      VK_FORMAT_A2B10G10R10_UNORM_PACK32,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::A16B16G16R16, {
-      VK_FORMAT_R16G16B16A16_UNORM,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::A8P8, {}}, // Unsupported
-
-    {D3D9Format::P8, {}}, // Unsupported
-
-    {D3D9Format::L8, {
-      VK_FORMAT_R8_UNORM,
-      VK_FORMAT_R8_SRGB,
-      VK_IMAGE_ASPECT_COLOR_BIT,
-      { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R,
-        VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R }}},
-
-    {D3D9Format::A8L8, {
-      VK_FORMAT_R8G8_UNORM,
-      VK_FORMAT_R8G8_SRGB,
-      VK_IMAGE_ASPECT_COLOR_BIT,
-      { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R,
-        VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G }}},
-
-    {D3D9Format::A4L4, {
-      VK_FORMAT_R4G4_UNORM_PACK8,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_COLOR_BIT,
-      { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R,
-        VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G }}},
-
-    {D3D9Format::V8U8, {
-      VK_FORMAT_R8G8_SNORM,
-      VK_FORMAT_R8G8_SRGB,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::L6V5U5, {}}, // Unsupported
-
-    {D3D9Format::X8L8V8U8, {}}, // Unsupported
-
-    {D3D9Format::Q8W8V8U8, {
-      VK_FORMAT_R8G8B8A8_SNORM,
-      VK_FORMAT_R8G8B8A8_SRGB,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::V16U16, {
-      VK_FORMAT_R16G16_SNORM,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::A2W10V10U10, {}}, // Unsupported
-
-    {D3D9Format::UYVY, {}}, // Unsupported
-
-    {D3D9Format::R8G8_B8G8, {
-      VK_FORMAT_G8B8G8R8_422_UNORM, // This format may have been _SCALED in DX9.
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::UYVY, {}}, // Unsupported
-
-    {D3D9Format::R8G8_B8G8, {
-      VK_FORMAT_G8B8G8R8_422_UNORM, // This format may have been _SCALED in DX9.
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::DXT1, {
-      VK_FORMAT_BC1_RGBA_UNORM_BLOCK,
-      VK_FORMAT_BC1_RGBA_SRGB_BLOCK,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::DXT2, {
-      VK_FORMAT_BC1_RGBA_UNORM_BLOCK,
-      VK_FORMAT_BC1_RGBA_SRGB_BLOCK,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::DXT3, {
-      VK_FORMAT_BC2_UNORM_BLOCK,
-      VK_FORMAT_BC2_SRGB_BLOCK,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::DXT4, {
-      VK_FORMAT_BC3_UNORM_BLOCK,
-      VK_FORMAT_BC3_SRGB_BLOCK,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::DXT5, {
-      VK_FORMAT_BC3_UNORM_BLOCK,
-      VK_FORMAT_BC3_SRGB_BLOCK,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::D16_LOCKABLE, {
-      VK_FORMAT_D16_UNORM,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_DEPTH_BIT }},
-
-    {D3D9Format::D32, {
-      VK_FORMAT_D32_SFLOAT,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_DEPTH_BIT }},
-
-    {D3D9Format::D15S1, {
-      VK_FORMAT_D16_UNORM_S8_UINT,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_DEPTH_BIT }},
-
-    {D3D9Format::D24S8, {
-      VK_FORMAT_D24_UNORM_S8_UINT,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_DEPTH_BIT }},
-
-    {D3D9Format::D24X8, {
-      VK_FORMAT_X8_D24_UNORM_PACK32,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_DEPTH_BIT }},
-
-    {D3D9Format::D24X4S4, {
-      VK_FORMAT_D24_UNORM_S8_UINT,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_DEPTH_BIT }},
-
-    {D3D9Format::D16, {
-      VK_FORMAT_D16_UNORM,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_DEPTH_BIT }},
-
-    {D3D9Format::D32F_LOCKABLE, {
-      VK_FORMAT_D32_SFLOAT,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_DEPTH_BIT }},
-
-    {D3D9Format::D24FS8, {
-      VK_FORMAT_D24_UNORM_S8_UINT,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_DEPTH_BIT }},
-
-    {D3D9Format::D32_LOCKABLE, {
-      VK_FORMAT_D32_SFLOAT,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_DEPTH_BIT }},
-
-    {D3D9Format::S8_LOCKABLE, {
-      VK_FORMAT_S8_UINT,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_DEPTH_BIT }},
-
-    {D3D9Format::L16, {
-      VK_FORMAT_R16_UNORM,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_COLOR_BIT,
-      { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R,
-        VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R }}},
-
-    {D3D9Format::VERTEXDATA, {
-      VK_FORMAT_R8_UINT,
-      VK_FORMAT_UNDEFINED,
-      0 }},
-
-    {D3D9Format::INDEX16, {
-      VK_FORMAT_R16_UINT,
-      VK_FORMAT_UNDEFINED,
-      0 }},
-
-    {D3D9Format::INDEX32, {
-      VK_FORMAT_R32_UINT,
-      VK_FORMAT_UNDEFINED,
-      0 }},
-
-    {D3D9Format::Q16W16V16U16, {
-      VK_FORMAT_R16G16B16A16_SNORM,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::MULTI2_ARGB8, {}}, // Unsupported
-
-    {D3D9Format::R16F, {
-      VK_FORMAT_R16_SFLOAT,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::G16R16F, {
-      VK_FORMAT_R16G16_SFLOAT,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::A16B16G16R16F, {
-      VK_FORMAT_R16G16B16A16_SFLOAT,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::R32F, {
-      VK_FORMAT_R32_SFLOAT,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::G32R32F, {
-      VK_FORMAT_R32G32_SFLOAT,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::A32B32G32R32F, {
-      VK_FORMAT_R32G32B32A32_SFLOAT,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::CxV8U8, {}}, // Unsupported
-
-    {D3D9Format::A1, {}}, // Unsupported
-
-    {D3D9Format::A2B10G10R10_XR_BIAS, {
-      VK_FORMAT_A2R10G10B10_SNORM_PACK32,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::BINARYBUFFER, {
-      VK_FORMAT_R8_UINT,
-      VK_FORMAT_UNDEFINED,
-      0 }},
-
-    {D3D9Format::ATI1, {
-      VK_FORMAT_BC4_UNORM_BLOCK,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::ATI2, {
-      VK_FORMAT_BC4_UNORM_BLOCK,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_COLOR_BIT }},
-
-    {D3D9Format::INST, {}}, // Driver hack, handled elsewhere
-
-    {D3D9Format::DF24, {
-      VK_FORMAT_X8_D24_UNORM_PACK32,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_DEPTH_BIT }},
-
-    {D3D9Format::DF16, {
-      VK_FORMAT_D16_UNORM,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_DEPTH_BIT }},
-
-    {D3D9Format::NULL_FORMAT, {}}, // Driver hack, handled elsewhere
-
-    {D3D9Format::GET4, {}}, // Unsupported
-
-    {D3D9Format::GET1, {}}, // Unsupported
-
-    {D3D9Format::NVDB, {}}, // Unsupported
-
-    {D3D9Format::A2M1, {}}, // Unsupported
-
-    {D3D9Format::A2M0, {}}, // Unsupported
-
-    {D3D9Format::ATOC, {}}, // Unsupported
-
-    {D3D9Format::INTZ, {
-      VK_FORMAT_D24_UNORM_S8_UINT,
-      VK_FORMAT_UNDEFINED,
-      VK_IMAGE_ASPECT_DEPTH_BIT }},
-
-    {D3D9Format::RAWZ, {}}, // Unsupported
-  };
-
-  D3D9VkFormatTable::D3D9VkFormatTable(const Rc<DxvkAdapter>& adapter)
-    : m_d3d9Formats(g_d3d9Formats) {
+  D3D9_VK_FORMAT_MAPPING ConvertFormat(D3D9Format Format) {
+    switch (Format) {
+      case D3D9Format::Unknown: return {};
+
+      case D3D9Format::R8G8B8: return {
+        VK_FORMAT_B8G8R8_UNORM,
+        VK_FORMAT_B8G8R8_SRGB,
+        VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::A8R8G8B8: return {
+        VK_FORMAT_B8G8R8A8_UNORM,
+        VK_FORMAT_B8G8R8A8_SRGB,
+        VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::X8R8G8B8: return {
+        VK_FORMAT_B8G8R8A8_UNORM,
+        VK_FORMAT_B8G8R8A8_SRGB,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+        { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G,
+          VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_ONE }};
+
+      case D3D9Format::R5G6B5: return {
+        VK_FORMAT_B5G6R5_UNORM_PACK16,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::X1R5G5B5: return {
+        VK_FORMAT_B5G5R5A1_UNORM_PACK16,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+        { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G,
+          VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_ONE }};
+
+      case D3D9Format::A1R5G5B5: return {
+        VK_FORMAT_B5G5R5A1_UNORM_PACK16,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::A4R4G4B4: return {
+        VK_FORMAT_B4G4R4A4_UNORM_PACK16,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::R3G3B2: return {}; // Unsupported
+
+      case D3D9Format::A8: return {
+        VK_FORMAT_R8_UNORM,
+        VK_FORMAT_R8_SRGB,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+        { VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_ZERO,
+          VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_ONE }};
+
+      case D3D9Format::A8R3G3B2: return {}; // Unsupported
+
+      case D3D9Format::X4R4G4B4: return {
+        VK_FORMAT_B4G4R4A4_UNORM_PACK16,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+        { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G,
+          VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_ONE }};
+
+      case D3D9Format::A2B10G10R10: return {
+        VK_FORMAT_A2R10G10B10_UNORM_PACK32, // The A2 is out of place here. This should be investigated.
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::A8B8G8R8: return {
+        VK_FORMAT_R8G8B8A8_UNORM,
+        VK_FORMAT_B8G8R8A8_SRGB,
+        VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::X8B8G8R8: return {
+        VK_FORMAT_R8G8B8A8_UNORM,
+        VK_FORMAT_B8G8R8A8_SRGB,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+        { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G,
+          VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_ONE }};
+
+      case D3D9Format::G16R16: return {
+        VK_FORMAT_R16G16_UNORM,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::A2R10G10B10: return {
+        VK_FORMAT_A2B10G10R10_UNORM_PACK32,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::A16B16G16R16: return {
+        VK_FORMAT_R16G16B16A16_UNORM,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::A8P8: return {}; // Unsupported
+
+      case D3D9Format::P8: return {}; // Unsupported
+
+      case D3D9Format::L8: return {
+        VK_FORMAT_R8_UNORM,
+        VK_FORMAT_R8_SRGB,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+        { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R,
+          VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R }};
+
+      case D3D9Format::A8L8: return {
+        VK_FORMAT_R8G8_UNORM,
+        VK_FORMAT_R8G8_SRGB,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+        { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R,
+          VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G }};
+
+      case D3D9Format::A4L4: return {
+        VK_FORMAT_R4G4_UNORM_PACK8,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+        { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R,
+          VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G }};
+
+      case D3D9Format::V8U8: return {
+        VK_FORMAT_R8G8_SNORM,
+        VK_FORMAT_R8G8_SRGB,
+        VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::L6V5U5: return {}; // Unsupported
+
+      case D3D9Format::X8L8V8U8: return {}; // Unsupported
+
+      case D3D9Format::Q8W8V8U8: return {
+        VK_FORMAT_R8G8B8A8_SNORM,
+        VK_FORMAT_R8G8B8A8_SRGB,
+        VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::V16U16: return {
+        VK_FORMAT_R16G16_SNORM,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::A2W10V10U10: return {}; // Unsupported
+
+      case D3D9Format::UYVY: return {}; // Unsupported
+
+      case D3D9Format::R8G8_B8G8: return {
+        VK_FORMAT_G8B8G8R8_422_UNORM, // This format may have been _SCALED in DX9.
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::YUY2: return {}; // Unsupported
+
+      case D3D9Format::G8R8_G8B8: return {
+        VK_FORMAT_B8G8R8G8_422_UNORM, // This format may have been _SCALED in DX9.
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::DXT1: return {
+        VK_FORMAT_BC1_RGBA_UNORM_BLOCK,
+        VK_FORMAT_BC1_RGBA_SRGB_BLOCK,
+        VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::DXT2: return {
+        VK_FORMAT_BC1_RGBA_UNORM_BLOCK,
+        VK_FORMAT_BC1_RGBA_SRGB_BLOCK,
+        VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::DXT3: return {
+        VK_FORMAT_BC2_UNORM_BLOCK,
+        VK_FORMAT_BC2_SRGB_BLOCK,
+        VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::DXT4: return {
+        VK_FORMAT_BC3_UNORM_BLOCK,
+        VK_FORMAT_BC3_SRGB_BLOCK,
+        VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::DXT5: return {
+        VK_FORMAT_BC3_UNORM_BLOCK,
+        VK_FORMAT_BC3_SRGB_BLOCK,
+        VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::D16_LOCKABLE: return {
+        VK_FORMAT_D16_UNORM,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_DEPTH_BIT };
+
+      case D3D9Format::D32: return {
+        VK_FORMAT_D32_SFLOAT,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_DEPTH_BIT };
+
+      case D3D9Format::D15S1: return {
+        VK_FORMAT_D16_UNORM_S8_UINT,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_DEPTH_BIT };
+
+      case D3D9Format::D24S8: return {
+        VK_FORMAT_D24_UNORM_S8_UINT,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_DEPTH_BIT };
+
+      case D3D9Format::D24X8: return {
+        VK_FORMAT_X8_D24_UNORM_PACK32,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_DEPTH_BIT };
+
+      case D3D9Format::D24X4S4: return {
+        VK_FORMAT_D24_UNORM_S8_UINT,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_DEPTH_BIT };
+
+      case D3D9Format::D16: return {
+        VK_FORMAT_D16_UNORM,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_DEPTH_BIT };
+
+      case D3D9Format::D32F_LOCKABLE: return {
+        VK_FORMAT_D32_SFLOAT,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_DEPTH_BIT };
+
+      case D3D9Format::D24FS8: return {
+        VK_FORMAT_D24_UNORM_S8_UINT,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_DEPTH_BIT };
+
+      case D3D9Format::D32_LOCKABLE: return {
+        VK_FORMAT_D32_SFLOAT,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_DEPTH_BIT };
+
+      case D3D9Format::S8_LOCKABLE: return {
+        VK_FORMAT_S8_UINT,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_DEPTH_BIT };
+
+      case D3D9Format::L16: return {
+        VK_FORMAT_R16_UNORM,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+        { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R,
+          VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R }};
+
+      case D3D9Format::VERTEXDATA: return {
+        VK_FORMAT_R8_UINT,
+        VK_FORMAT_UNDEFINED,
+        0 };
+
+      case D3D9Format::INDEX16: return {
+        VK_FORMAT_R16_UINT,
+        VK_FORMAT_UNDEFINED,
+        0 };
+
+      case D3D9Format::INDEX32: return {
+        VK_FORMAT_R32_UINT,
+        VK_FORMAT_UNDEFINED,
+        0 };
+
+      case D3D9Format::Q16W16V16U16: return {
+        VK_FORMAT_R16G16B16A16_SNORM,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::MULTI2_ARGB8: return {}; // Unsupported
+
+      case D3D9Format::R16F: return {
+        VK_FORMAT_R16_SFLOAT,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::G16R16F: return {
+        VK_FORMAT_R16G16_SFLOAT,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::A16B16G16R16F: return {
+        VK_FORMAT_R16G16B16A16_SFLOAT,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::R32F: return {
+        VK_FORMAT_R32_SFLOAT,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::G32R32F: return {
+        VK_FORMAT_R32G32_SFLOAT,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::A32B32G32R32F: return {
+        VK_FORMAT_R32G32B32A32_SFLOAT,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::CxV8U8: return {}; // Unsupported
+
+      case D3D9Format::A1: return {}; // Unsupported
+
+      case D3D9Format::A2B10G10R10_XR_BIAS: return {
+        VK_FORMAT_A2R10G10B10_SNORM_PACK32,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::BINARYBUFFER: return {
+        VK_FORMAT_R8_UINT,
+        VK_FORMAT_UNDEFINED,
+        0 };
+
+      case D3D9Format::ATI1: return {
+        VK_FORMAT_BC4_UNORM_BLOCK,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::ATI2: return {
+        VK_FORMAT_BC4_UNORM_BLOCK,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_COLOR_BIT };
+
+      case D3D9Format::INST: return {}; // Driver hack, handled elsewhere
+
+      case D3D9Format::DF24: return {
+        VK_FORMAT_X8_D24_UNORM_PACK32,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_DEPTH_BIT };
+
+      case D3D9Format::DF16: return {
+        VK_FORMAT_D16_UNORM,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_DEPTH_BIT };
+
+      case D3D9Format::NULL_FORMAT: return {}; // Driver hack, handled elsewhere
+
+      case D3D9Format::GET4: return {}; // Unsupported
+
+      case D3D9Format::GET1: return {}; // Unsupported
+
+      case D3D9Format::NVDB: return {}; // Unsupported
+
+      case D3D9Format::A2M1: return {}; // Unsupported
+
+      case D3D9Format::A2M0: return {}; // Unsupported
+
+      case D3D9Format::ATOC: return {}; // Unsupported
+
+      case D3D9Format::INTZ: return {
+        VK_FORMAT_D24_UNORM_S8_UINT,
+        VK_FORMAT_UNDEFINED,
+        VK_IMAGE_ASPECT_DEPTH_BIT };
+
+      case D3D9Format::RAWZ: return {}; // Unsupported
+    }
+  }
+
+  D3D9VkFormatTable::D3D9VkFormatTable(const Rc<DxvkAdapter>& adapter) {
     // AMD do not support 24-bit depth buffers on Vulkan,
     // so we have to fall back to a 32-bit depth format.
-    if (!CheckImageFormatSupport(adapter, VK_FORMAT_D24_UNORM_S8_UINT,
+    m_d24s8Support = CheckImageFormatSupport(adapter, VK_FORMAT_D24_UNORM_S8_UINT,
       VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT |
-      VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)) {
-      Logger::warn("D3D9: VK_FORMAT_D24_UNORM_S8_UINT -> VK_FORMAT_D24_UNORM_S8_UINT");
-      RemapDepthFormat(D3D9Format::D24X4S4, VK_FORMAT_D32_SFLOAT_S8_UINT);
-      RemapDepthFormat(D3D9Format::D24FS8, VK_FORMAT_D32_SFLOAT_S8_UINT);
-      RemapDepthFormat(D3D9Format::D24S8, VK_FORMAT_D32_SFLOAT_S8_UINT);
-      RemapDepthFormat(D3D9Format::INTZ, VK_FORMAT_D32_SFLOAT_S8_UINT);
-    }
+      VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT);
 
-    if (!CheckImageFormatSupport(adapter, VK_FORMAT_X8_D24_UNORM_PACK32,
+    m_x8d24Support = CheckImageFormatSupport(adapter, VK_FORMAT_X8_D24_UNORM_PACK32,
       VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT |
-      VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)) {
-      Logger::warn("D3D9: VK_FORMAT_X8_D24_UNORM_PACK32 -> VK_FORMAT_D32_SFLOAT");
-      RemapDepthFormat(D3D9Format::D24X8, VK_FORMAT_D32_SFLOAT);
-      RemapDepthFormat(D3D9Format::DF24, VK_FORMAT_D32_SFLOAT);
-    }
+      VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT);
 
     // NVIDIA do not support 16-bit depth buffers on Vulkan,
     // so we have to fall back to a 32-bit depth format.
-    if (!CheckImageFormatSupport(adapter, VK_FORMAT_D16_UNORM,
-      VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT |
-      VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)) {
-      Logger::warn("D3D9: VK_FORMAT_D16_UNORM -> VK_FORMAT_D32_SFLOAT");
-      RemapDepthFormat(D3D9Format::D16, VK_FORMAT_D32_SFLOAT);
-      RemapDepthFormat(D3D9Format::D16_LOCKABLE, VK_FORMAT_D32_SFLOAT);
-      RemapDepthFormat(D3D9Format::DF16, VK_FORMAT_D32_SFLOAT);
-    }
 
-    if (!CheckImageFormatSupport(adapter, VK_FORMAT_D16_UNORM_S8_UINT,
+    m_d16Support = CheckImageFormatSupport(adapter, VK_FORMAT_D16_UNORM,
       VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT |
-      VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)) {
+      VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT);
+
+    m_d16s8Support = CheckImageFormatSupport(adapter, VK_FORMAT_D16_UNORM_S8_UINT,
+      VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT |
+      VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT);
+
+    if (!m_d24s8Support)
+      Logger::warn("D3D9: VK_FORMAT_D24_UNORM_S8_UINT -> VK_FORMAT_D32_SFLOAT_S8_UINT");
+
+    if (!m_x8d24Support)
+      Logger::warn("D3D9: VK_FORMAT_X8_D24_UNORM_PACK32 -> VK_FORMAT_D32_SFLOAT");
+
+    if (!m_d16Support)
+      Logger::warn("D3D9: VK_FORMAT_D16_UNORM -> VK_FORMAT_D32_SFLOAT");
+
+    if (!m_d16s8Support)
       Logger::warn("D3D9: VK_FORMAT_D16_UNORM_S8_UINT -> VK_FORMAT_D32_SFLOAT_S8_UINT");
-      RemapDepthFormat(D3D9Format::D15S1, VK_FORMAT_D32_SFLOAT_S8_UINT);
-    }
   }
 
   D3D9_VK_FORMAT_INFO D3D9VkFormatTable::GetFormatInfo(
           D3D9Format          Format,
           bool                srgb) const {
-    const D3D9_VK_FORMAT_MAPPING* mapping = GetFormatMapping(Format);
+    D3D9_VK_FORMAT_MAPPING mapping = GetFormatMapping(Format);
 
-    return (!srgb || mapping->FormatSrgb == VK_FORMAT_UNDEFINED)
-      ? D3D9_VK_FORMAT_INFO{ mapping->Format, mapping->Aspect, mapping->Swizzle }
-      : D3D9_VK_FORMAT_INFO{ mapping->FormatSrgb, mapping->Aspect, mapping->Swizzle };
+    return (!srgb || mapping.FormatSrgb == VK_FORMAT_UNDEFINED)
+      ? D3D9_VK_FORMAT_INFO{ mapping.Format, mapping.Aspect, mapping.Swizzle }
+      : D3D9_VK_FORMAT_INFO{ mapping.FormatSrgb, mapping.Aspect, mapping.Swizzle };
     
     
     Logger::err("D3D9VkFormatTable::GetFormatInfo: Internal error");
@@ -503,13 +494,23 @@ namespace dxvk {
   }
 
 
-  const D3D9_VK_FORMAT_MAPPING* D3D9VkFormatTable::GetFormatMapping(
+  D3D9_VK_FORMAT_MAPPING D3D9VkFormatTable::GetFormatMapping(
           D3D9Format          Format) const {
-    auto key = m_d3d9Formats.find(Format);
-    if (key == m_d3d9Formats.end())
-      return &m_d3d9Formats.find(D3D9Format::Unknown)->second;
+    D3D9_VK_FORMAT_MAPPING mapping = ConvertFormat(Format);
+    
+    if (!m_d24s8Support && mapping.Format == VK_FORMAT_D24_UNORM_S8_UINT)
+      mapping.Format = VK_FORMAT_D32_SFLOAT_S8_UINT;
 
-    return &key->second;
+    if (!m_x8d24Support && mapping.Format == VK_FORMAT_X8_D24_UNORM_PACK32)
+      mapping.Format = VK_FORMAT_D32_SFLOAT;
+
+    if (!m_d16Support && mapping.Format == VK_FORMAT_D16_UNORM)
+      mapping.Format = VK_FORMAT_D32_SFLOAT;
+
+    if (!m_d16s8Support && mapping.Format == VK_FORMAT_D16_UNORM_S8_UINT)
+      mapping.Format = VK_FORMAT_D32_SFLOAT_S8_UINT;
+
+    return mapping;
   }
   
 
@@ -522,11 +523,5 @@ namespace dxvk {
     return (supported.linearTilingFeatures  & Features) == Features
         || (supported.optimalTilingFeatures & Features) == Features;
   }
-  
-  
-  void D3D9VkFormatTable::RemapDepthFormat(
-          D3D9Format          Format,
-          VkFormat            Target) {
-    m_d3d9Formats[Format].Format = Target;
-  }
+
 }
