@@ -143,7 +143,6 @@ namespace dxvk {
 
     D3D9VkFormatTable(
       const Rc<DxvkAdapter>& adapter);
-    ~D3D9VkFormatTable();
 
     /**
      * \brief Retrieves info for a given D3D9 format
@@ -167,8 +166,6 @@ namespace dxvk {
       VkFormatFeatureFlags  Features) const;
 
     bool m_d24s8Support;
-    bool m_x8d24Support;
-    bool m_d16Support;
     bool m_d16s8Support;
 
   };

@@ -292,9 +292,9 @@ namespace dxvk {
         VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT };
 
       case D3D9Format::D24X8: return {
-        VK_FORMAT_X8_D24_UNORM_PACK32,
+        VK_FORMAT_D32_SFLOAT,
         VK_FORMAT_UNDEFINED,
-        VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT };
+        VK_IMAGE_ASPECT_DEPTH_BIT };
 
       case D3D9Format::D24X4S4: return {
         VK_FORMAT_D24_UNORM_S8_UINT,
@@ -451,29 +451,14 @@ namespace dxvk {
       VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT |
       VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT);
 
-    m_x8d24Support = CheckImageFormatSupport(adapter, VK_FORMAT_X8_D24_UNORM_PACK32,
-      VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT |
-      VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT);
-
-    // NVIDIA do not support 16-bit depth buffers on Vulkan,
+    // NVIDIA do not support 16-bit depth buffers with stencil on Vulkan,
     // so we have to fall back to a 32-bit depth format.
-
-    m_d16Support = CheckImageFormatSupport(adapter, VK_FORMAT_D16_UNORM,
-      VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT |
-      VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT);
-
     m_d16s8Support = CheckImageFormatSupport(adapter, VK_FORMAT_D16_UNORM_S8_UINT,
       VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT |
       VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT);
 
     if (!m_d24s8Support)
       Logger::warn("D3D9: VK_FORMAT_D24_UNORM_S8_UINT -> VK_FORMAT_D32_SFLOAT_S8_UINT");
-
-    if (!m_x8d24Support)
-      Logger::warn("D3D9: VK_FORMAT_X8_D24_UNORM_PACK32 -> VK_FORMAT_D32_SFLOAT");
-
-    if (!m_d16Support)
-      Logger::warn("D3D9: VK_FORMAT_D16_UNORM -> VK_FORMAT_D32_SFLOAT");
 
     if (!m_d16s8Support)
       Logger::warn("D3D9: VK_FORMAT_D16_UNORM_S8_UINT -> VK_FORMAT_D32_SFLOAT_S8_UINT");
@@ -500,12 +485,6 @@ namespace dxvk {
     
     if (!m_d24s8Support && mapping.Format == VK_FORMAT_D24_UNORM_S8_UINT)
       mapping.Format = VK_FORMAT_D32_SFLOAT_S8_UINT;
-
-    if (!m_x8d24Support && mapping.Format == VK_FORMAT_X8_D24_UNORM_PACK32)
-      mapping.Format = VK_FORMAT_D32_SFLOAT;
-
-    if (!m_d16Support && mapping.Format == VK_FORMAT_D16_UNORM)
-      mapping.Format = VK_FORMAT_D32_SFLOAT;
 
     if (!m_d16s8Support && mapping.Format == VK_FORMAT_D16_UNORM_S8_UINT)
       mapping.Format = VK_FORMAT_D32_SFLOAT_S8_UINT;
