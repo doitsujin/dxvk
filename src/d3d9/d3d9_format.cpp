@@ -284,22 +284,22 @@ namespace dxvk {
       case D3D9Format::D15S1: return {
         VK_FORMAT_D16_UNORM_S8_UINT,
         VK_FORMAT_UNDEFINED,
-        VK_IMAGE_ASPECT_DEPTH_BIT };
+        VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT };
 
       case D3D9Format::D24S8: return {
         VK_FORMAT_D24_UNORM_S8_UINT,
         VK_FORMAT_UNDEFINED,
-        VK_IMAGE_ASPECT_DEPTH_BIT };
+        VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT };
 
       case D3D9Format::D24X8: return {
         VK_FORMAT_X8_D24_UNORM_PACK32,
         VK_FORMAT_UNDEFINED,
-        VK_IMAGE_ASPECT_DEPTH_BIT };
+        VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT };
 
       case D3D9Format::D24X4S4: return {
         VK_FORMAT_D24_UNORM_S8_UINT,
         VK_FORMAT_UNDEFINED,
-        VK_IMAGE_ASPECT_DEPTH_BIT };
+        VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT };
 
       case D3D9Format::D16: return {
         VK_FORMAT_D16_UNORM,
@@ -314,7 +314,7 @@ namespace dxvk {
       case D3D9Format::D24FS8: return {
         VK_FORMAT_D24_UNORM_S8_UINT,
         VK_FORMAT_UNDEFINED,
-        VK_IMAGE_ASPECT_DEPTH_BIT };
+        VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT };
 
       case D3D9Format::D32_LOCKABLE: return {
         VK_FORMAT_D32_SFLOAT,
@@ -324,7 +324,7 @@ namespace dxvk {
       case D3D9Format::S8_LOCKABLE: return {
         VK_FORMAT_S8_UINT,
         VK_FORMAT_UNDEFINED,
-        VK_IMAGE_ASPECT_DEPTH_BIT };
+        VK_IMAGE_ASPECT_STENCIL_BIT };
 
       case D3D9Format::L16: return {
         VK_FORMAT_R16_UNORM,
@@ -438,7 +438,7 @@ namespace dxvk {
       case D3D9Format::INTZ: return {
         VK_FORMAT_D24_UNORM_S8_UINT,
         VK_FORMAT_UNDEFINED,
-        VK_IMAGE_ASPECT_DEPTH_BIT };
+        VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT };
 
       case D3D9Format::RAWZ: return {}; // Unsupported
     }
