@@ -20,7 +20,7 @@ namespace dxvk {
     const auto& deviceProps = adapter->deviceProperties();
     
     if (m_flags.test(DxvkDeviceFilterFlag::MatchDeviceName)) {
-      if (deviceProps.deviceName != m_matchDeviceName)
+      if (std::string (deviceProps.deviceName).find(m_matchDeviceName) == std::string::npos)
         return false;
     }
       
