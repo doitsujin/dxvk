@@ -441,6 +441,10 @@ namespace dxvk {
         VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT };
 
       case D3D9Format::RAWZ: return {}; // Unsupported
+
+      default:
+        Logger::warn(str::format("ConvertFormat: Unknown format encountered: ", Format));
+        return {}; // Unsupported
     }
   }
 
