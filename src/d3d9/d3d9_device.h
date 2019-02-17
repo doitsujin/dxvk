@@ -11,6 +11,7 @@
 namespace dxvk {
 
   class Direct3DSwapChain9Ex;
+  class Direct3DCommonTexture9;
 
   class Direct3DDevice9Ex final : public ComObject<IDirect3DDevice9Ex> {
 
@@ -529,6 +530,37 @@ namespace dxvk {
     D3D9_VK_FORMAT_INFO LookupFormat(
       D3D9Format            Format,
       bool                  srgb) const;
+
+    bool WaitForResource(
+      const Rc<DxvkResource>&                 Resource,
+            DWORD                             MapFlags);
+
+    /**
+     * \brief Locks a subresource of an image
+     * 
+     * \param [in] Subresource The subresource of the image to lock
+     * \param [out] pLockedBox The returned locked box of the image, containing data ptr and strides
+     * \param [in] pBox The region of the subresource to lock. This offsets the returned data ptr
+     * \param [in] Flags The D3DLOCK_* flags to lock the image with
+     * \returns \c D3D_OK if the parameters are valid or D3DERR_INVALIDCALL if it fails.
+     */
+    HRESULT LockImage(
+            Direct3DCommonTexture9* pResource,
+            UINT                    Subresource,
+            D3DLOCKED_BOX*          pLockedBox,
+      const D3DBOX*                 pBox,
+            DWORD                   Flags);
+
+    /**
+     * \brief Unlocks a subresource of an image
+     * 
+     * Passthrough to device unlock.
+     * \param [in] Subresource The subresource of the image to unlock
+     * \returns \c D3D_OK if the parameters are valid or D3DERR_INVALIDCALL if it fails.
+     */
+    HRESULT UnlockImage(
+            Direct3DCommonTexture9* pResource,
+            UINT                    Subresource);
 
   private:
 

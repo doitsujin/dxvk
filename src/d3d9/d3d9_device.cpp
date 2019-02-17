@@ -3,8 +3,10 @@
 #include "d3d9_swapchain.h"
 #include "d3d9_caps.h"
 #include "d3d9_util.h"
+#include "d3d9_texture.h"
 
 #include "../util/util_bit.h"
+#include "../util/util_math.h"
 
 #include <algorithm>
 
@@ -1260,6 +1262,211 @@ namespace dxvk {
     D3D9Format            Format,
     bool                  srgb) const {
     return m_d3d9Formats.GetFormatInfo(Format, srgb);
+  }
+
+  bool Direct3DDevice9Ex::WaitForResource(
+  const Rc<DxvkResource>&                 Resource,
+        DWORD                             MapFlags) {
+    // Wait for the any pending D3D9 command to be executed
+    // on the CS thread so that we can determine whether the
+    // resource is currently in use or not.
+
+    //SynchronizeCsThread();
+
+    if (Resource->isInUse()) {
+      if (MapFlags & D3DLOCK_DONOTWAIT) {
+        // We don't have to wait, but misbehaving games may
+        // still try to spin on `Map` until the resource is
+        // idle, so we should flush pending commands
+        //FlushImplicit(FALSE);
+        return false;
+      }
+      else {
+        // Make sure pending commands using the resource get
+        // executed on the the GPU if we have to wait for it
+        //Flush();
+        //SynchronizeCsThread();
+
+        while (Resource->isInUse())
+          dxvk::this_thread::yield();
+      }
+    }
+
+    return true;
+  }
+
+  HRESULT Direct3DDevice9Ex::LockImage(
+            Direct3DCommonTexture9* pResource,
+            UINT                    Subresource,
+            D3DLOCKED_BOX*          pLockedBox,
+      const D3DBOX*                 pBox,
+            DWORD                   Flags) {
+    const Rc<DxvkImage>  mappedImage  = pResource->GetImage();
+    const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer();
+    
+    auto formatInfo = imageFormatInfo(mappedImage->info().format);
+    auto subresource = pResource->GetSubresourceFromIndex(
+        formatInfo->aspectMask, Subresource);
+    
+    pResource->SetMappedSubresource(subresource, Flags);
+
+    uint32_t dimOffsets[3] = { 0, 0, 0 };
+    if (pBox != nullptr) {
+      dimOffsets[0] = formatInfo->elementSize * align(pBox->Left, formatInfo->blockSize.width);
+      dimOffsets[1] = formatInfo->elementSize * align(pBox->Top, formatInfo->blockSize.height);
+      dimOffsets[2] = formatInfo->elementSize * align(pBox->Front, formatInfo->blockSize.depth);
+    }
+    
+    if (pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_DIRECT) {
+      const VkImageType imageType = mappedImage->info().type;
+      
+      // Wait for the resource to become available
+      if (!WaitForResource(mappedImage, Flags))
+        return D3DERR_WASSTILLDRAWING;
+      
+      // Query the subresource's memory layout and hope that
+      // the application respects the returned pitch values.
+      VkSubresourceLayout layout  = mappedImage->querySubresourceLayout(subresource);
+      pLockedBox->RowPitch   = imageType >= VK_IMAGE_TYPE_2D ? layout.rowPitch   : layout.size;
+      pLockedBox->SlicePitch = imageType >= VK_IMAGE_TYPE_3D ? layout.depthPitch : layout.size;
+
+      uint8_t* data = reinterpret_cast<uint8_t*>(mappedImage->mapPtr(layout.offset));
+      data += dimOffsets[2] * pLockedBox->SlicePitch
+           +  dimOffsets[1] * pLockedBox->RowPitch
+           +  dimOffsets[0];
+      pLockedBox->pBits = data;
+      return S_OK;
+    } else if (formatInfo->aspectMask == (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+      VkExtent3D levelExtent = mappedImage->mipLevelExtent(subresource.mipLevel);
+
+      // The actual Vulkan image format may differ
+      // from the format requested by the application
+      VkFormat packFormat = GetPackedDepthStencilFormat(pResource->Desc()->Format);
+      auto packFormatInfo = imageFormatInfo(packFormat);
+
+      // This is slow, but we have to dispatch a pack
+      // operation and then immediately synchronize.
+      /*EmitCs([
+        cImageBuffer = mappedBuffer,
+        cImage       = mappedImage,
+        cSubresource = subresource,
+        cFormat      = packFormat
+      ] (DxvkContext* ctx) {
+        auto layers = vk::makeSubresourceLayers(cSubresource);
+        auto x = cImage->mipLevelExtent(cSubresource.mipLevel);
+
+        VkOffset2D offset = { 0, 0 };
+        VkExtent2D extent = { x.width, x.height };
+
+        ctx->copyDepthStencilImageToPackedBuffer(
+          cImageBuffer, 0, cImage, layers, offset, extent, cFormat);
+      });*/
+
+      WaitForResource(mappedBuffer, 0);
+
+      DxvkBufferSliceHandle physSlice = mappedBuffer->getSliceHandle();
+      pLockedBox->RowPitch   = packFormatInfo->elementSize * levelExtent.width;
+      pLockedBox->SlicePitch = packFormatInfo->elementSize * levelExtent.width * levelExtent.height;
+
+      uint8_t* data = reinterpret_cast<uint8_t*>(physSlice.mapPtr);
+      data += dimOffsets[2] * pLockedBox->SlicePitch
+           +  dimOffsets[1] * pLockedBox->RowPitch
+           +  dimOffsets[0];
+      pLockedBox->pBits = data;
+      return S_OK;
+    } else {
+      VkExtent3D levelExtent = mappedImage->mipLevelExtent(subresource.mipLevel);
+      VkExtent3D blockCount = util::computeBlockCount(levelExtent, formatInfo->blockSize);
+      
+      DxvkBufferSliceHandle physSlice;
+      
+      if (Flags & D3DLOCK_DISCARD) {
+        // We do not have to preserve the contents of the
+        // buffer if the entire image gets discarded.
+        physSlice = mappedBuffer->allocSlice();
+        
+        /*EmitCs([
+          cImageBuffer = mappedBuffer,
+          cBufferSlice = physSlice
+        ] (DxvkContext* ctx) {
+          ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
+        });*/
+      } else {
+        // When using any map mode which requires the image contents
+        // to be preserved, and if the GPU has write access to the
+        // image, copy the current image contents into the buffer.
+        const bool copyExistingData = pResource->Desc()->Pool == D3DPOOL_SYSTEMMEM || pResource->Desc()->Pool == D3DPOOL_SCRATCH;
+        
+        if (copyExistingData) {
+          auto subresourceLayers = vk::makeSubresourceLayers(subresource);
+          
+          /*EmitCs([
+            cImageBuffer  = mappedBuffer,
+            cImage        = mappedImage,
+            cSubresources = subresourceLayers,
+            cLevelExtent  = levelExtent
+          ] (DxvkContext* ctx) {
+            ctx->copyImageToBuffer(
+              cImageBuffer, 0, VkExtent2D { 0u, 0u },
+              cImage, cSubresources, VkOffset3D { 0, 0, 0 },
+              cLevelExtent);
+          });*/
+        }
+        
+        WaitForResource(mappedBuffer, 0);
+        physSlice = mappedBuffer->getSliceHandle();
+      }
+      
+      // Set up map pointer. Data is tightly packed within the mapped buffer.
+      pLockedBox->RowPitch   = formatInfo->elementSize * blockCount.width;
+      pLockedBox->SlicePitch = formatInfo->elementSize * blockCount.width * blockCount.height;
+
+      uint8_t* data = reinterpret_cast<uint8_t*>(physSlice.mapPtr);
+      data += dimOffsets[2] * pLockedBox->SlicePitch
+           +  dimOffsets[1] * pLockedBox->RowPitch
+           +  dimOffsets[0];
+      pLockedBox->pBits = data;
+      return S_OK;
+    }
+  }
+
+  HRESULT Direct3DDevice9Ex::UnlockImage(
+        Direct3DCommonTexture9* pResource,
+        UINT                    Subresource) {
+    if (pResource->GetMapFlags() & D3DLOCK_READONLY)
+      return D3D_OK;
+
+    if (pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER) {
+      // Now that data has been written into the buffer,
+      // we need to copy its contents into the image
+      const Rc<DxvkImage>  mappedImage = pResource->GetImage();
+      const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer();
+
+      VkImageSubresource subresource = pResource->GetMappedSubresource();
+
+      VkExtent3D levelExtent = mappedImage
+        ->mipLevelExtent(subresource.mipLevel);
+
+      VkImageSubresourceLayers subresourceLayers = {
+        subresource.aspectMask,
+        subresource.mipLevel,
+        subresource.arrayLayer, 1 };
+
+      /*EmitCs([
+        cSrcBuffer = mappedBuffer,
+          cDstImage = mappedImage,
+          cDstLayers = subresourceLayers,
+          cDstLevelExtent = levelExtent
+      ] (DxvkContext* ctx) {
+          ctx->copyBufferToImage(cDstImage, cDstLayers,
+            VkOffset3D{ 0, 0, 0 }, cDstLevelExtent,
+            cSrcBuffer, 0, { 0u, 0u });
+        });*/
+    }
+
+    pResource->ClearMappedSubresource();
+
+    return D3D_OK;
   }
 
 }
