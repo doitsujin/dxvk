@@ -3,6 +3,8 @@
 #include "d3d9_monitor.h"
 #include "d3d9_format.h"
 
+#include <cfloat>
+
 namespace dxvk::caps {
 
   HRESULT checkDeviceFormat(
