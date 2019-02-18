@@ -21,6 +21,8 @@
 #include "d3d11_swapchain.h"
 #include "d3d11_texture.h"
 
+#include <dxvk.h>
+
 namespace dxvk {
   
   constexpr uint32_t D3D11DXGIDevice::DefaultFrameLatency;
@@ -1726,9 +1728,18 @@ namespace dxvk {
     // Make sure the back buffer size is not zero
     DXGI_SWAP_CHAIN_DESC1 desc = *pDesc;
     
+#ifndef DXVK_NATIVE
     GetWindowClientSize(hWnd,
       desc.Width  ? nullptr : &desc.Width,
       desc.Height ? nullptr : &desc.Height);
+#else
+    if(!desc.Width || !desc.Height)
+    {
+      // TODO
+      Logger::err("d3d11_device.cpp, CreateSwapChainForHwnd");
+      std::terminate();
+    }
+#endif
     
     // If necessary, set up a default set of
     // fullscreen parameters for the swap chain
@@ -1749,8 +1760,12 @@ namespace dxvk {
         m_container, m_device, hWnd, &desc);
       
       // Create the actual swap chain
+#ifndef DXVK_NATIVE
       *ppSwapChain = ref(new DxgiSwapChain(
         pFactory, presenter.ptr(), hWnd, &desc, &fsDesc));
+#else
+      *ppSwapChain = ::g_native_info.pfn_create_dxgi_swapchain(presenter.ptr(), pFactory, hWnd, &desc, &fsDesc);
+#endif
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());

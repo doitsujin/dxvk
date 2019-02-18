@@ -10,6 +10,8 @@
 
 #include "../dxvk/dxvk_util.h"
 
+#include <dxvk.h>
+
 namespace dxvk {
 #ifndef DXVK_NATIVE
   Logger Logger::s_instance("d3d11.log");
@@ -262,13 +264,16 @@ extern "C" {
           ID3D11Device**        ppDevice,
           D3D_FEATURE_LEVEL*    pFeatureLevel,
           ID3D11DeviceContext** ppImmediateContext) {
+Logger::err(str::format("adapter = ", pAdapter));
 
-      env::g_native_info = native_info;
+      g_native_info = native_info;
 
       return D3D11CreateDevice(pAdapter, DriverType,
         Software, Flags, pFeatureLevels, FeatureLevels,
         SDKVersion, ppDevice, pFeatureLevel, ppImmediateContext);
     }
   #endif
-  
+
 }
+
+dxvk_native_info g_native_info;

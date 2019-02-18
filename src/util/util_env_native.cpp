@@ -14,6 +14,7 @@ namespace dxvk::env {
   
   std::string getExeName() {
     // TODO
+    return "";
   }
   
   
@@ -21,6 +22,9 @@ namespace dxvk::env {
     // TODO
   }
 
-  dxvk_native_info g_native_info;
+  bool createDirectory(const std::string& path) {
+    // TODO
+    return false;
+  }
   
 }

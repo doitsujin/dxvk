@@ -13,6 +13,7 @@ util_src_files = [
 
 if dxvk_native
   util_src_files += 'util_env_native.cpp'
+  util_src_files += 'thread_generic.cpp'
 else
   util_src_files += 'util_env.cpp'
   util_src_files += 'util_string.cpp'

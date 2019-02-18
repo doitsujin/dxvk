@@ -7,6 +7,8 @@
 
 #include "../dxgi/dxgi_adapter.h"
 
+#include <dxvk.h>
+
 #ifndef DXVK_NATIVE
 namespace dxvk {
   Logger Logger::s_instance("d3d10.log");
@@ -160,7 +162,7 @@ extern "C" {
     UINT                    SDKVersion,
     ID3D10Device1**         ppDevice) {
 
-    env::g_native_info = native_info;
+    g_native_info = native_info;
 
     return D3D10CreateDevice1(pAdapter, DriverType,
       Software, Flags, HardwareLevel, SDKVersion, ppDevice);

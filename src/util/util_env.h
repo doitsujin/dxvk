@@ -1,7 +1,5 @@
 #pragma once
 
-#include "../include/dxvk.h"
-
 #include "util_string.h"
 
 namespace dxvk::env {
@@ -40,6 +38,4 @@ namespace dxvk::env {
    * \returns \c true on success
    */
   bool createDirectory(const std::string& path);
-  
-  extern dxvk_native_info g_native_info;
 }

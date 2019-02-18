@@ -2,6 +2,8 @@
 
 #include "../dxvk/dxvk_format.h"
 
+#include <dxvk.h>
+
 namespace dxvk::vk {
 
   Presenter::Presenter(
@@ -334,8 +336,8 @@ namespace dxvk::vk {
     VkResult status = VK_ERROR_FEATURE_NOT_PRESENT;
 
 #ifdef DXVK_NATIVE
-    if(env::g_native_info.pfn_create_vulkan_surface) {
-      status = env::g_native_info.pfn_create_vulkan_surface(window, &m_surface);
+    if(::g_native_info.pfn_create_vulkan_surface) {
+      status = ::g_native_info.pfn_create_vulkan_surface(m_vki->instance(), window, &m_surface);
     }
 #else
     HINSTANCE instance = reinterpret_cast<HINSTANCE>(

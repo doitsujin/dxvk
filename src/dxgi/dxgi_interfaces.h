@@ -1,9 +1,12 @@
 #pragma once
 
+#ifndef DXVK_NATIVE
 #include "../dxvk/dxvk_include.h"
+#endif
 
 #include "dxgi_format.h"
 #include "dxgi_include.h"
+
 
 namespace dxvk {
   class DxgiAdapter;

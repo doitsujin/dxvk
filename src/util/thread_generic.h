@@ -2,8 +2,6 @@
 
 #include <functional>
 
-#include <dxvk.h>
-
 #include <sys/sysinfo.h>
 #include <pthread.h>
 
@@ -39,48 +37,24 @@ namespace dxvk {
     using Proc = std::function<void()>;
   public:
 
-    ThreadFn(Proc&& proc) {
-      // Reference for the thread function
-      this->incRef();
+    ThreadFn(Proc&& proc);
 
-      m_handle = env::g_native_info.pfn_create_thread(ThreadFn::threadProc, this);
-
-      if(m_handle == nullptr)
-        throw DxvkError("Failed to create thread");
-    }
-
-    ~ThreadFn() {
-      if (this->joinable())
-        std::terminate();
-    }
+    ~ThreadFn();
     
-    void detach() {
-      env::g_native_info.pfn_detach_thread(m_handle);
-    }
+    void detach();
 
-    void join() {
-      env::g_native_info.pfn_join_thread(m_handle);
-      this->detach();
-    }
+    void join();
 
-    bool joinable() const {
-      return m_handle != nullptr;
-    }
+    bool joinable() const;
 
-    void set_priority(ThreadPriority priority) {
-      // TODO
-    }
+    void set_priority(ThreadPriority priority);
 
   private:
 
     Proc  m_proc;
     void  *m_handle;
 
-    static void threadProc(void *arg) {
-      auto thread = reinterpret_cast<ThreadFn*>(arg);
-      thread->m_proc();
-      thread->decRef();
-    }
+    static void threadProc(void *arg);
 
   };
 

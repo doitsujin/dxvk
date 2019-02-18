@@ -1,5 +1,8 @@
 #include "vulkan_loader.h"
 
+#define DXVK_NO_VULKAN_H
+#include <dxvk.h>
+
 namespace dxvk::vk {
 
 #if defined(__WINE__)
@@ -8,6 +11,9 @@ namespace dxvk::vk {
   PFN_vkVoidFunction native_vkGetInstanceProcAddrWINE(VkInstance instance, const char *name);
   static const PFN_vkGetInstanceProcAddr GetInstanceProcAddr = native_vkGetInstanceProcAddrWINE;
 
+#elif defined(DXVK_NATIVE)
+  // Set this later
+  static PFN_vkGetInstanceProcAddr GetInstanceProcAddr;
 #else
 
   static const PFN_vkGetInstanceProcAddr GetInstanceProcAddr = vkGetInstanceProcAddr;
@@ -15,6 +21,7 @@ namespace dxvk::vk {
 #endif
 
   PFN_vkVoidFunction LibraryLoader::sym(const char* name) const {
+    GetInstanceProcAddr = ::g_native_info.pfn_vkGetInstanceProcAddr;
     return dxvk::vk::GetInstanceProcAddr(nullptr, name);
   }
   
