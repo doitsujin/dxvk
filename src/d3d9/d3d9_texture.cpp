@@ -439,4 +439,66 @@ namespace dxvk {
       Subresource);
   }
 
+  // Direct3DTexture9
+
+  D3DRESOURCETYPE STDMETHODCALLTYPE Direct3DTexture9::GetType() {
+    return D3DRTYPE_TEXTURE;
+  }
+
+  HRESULT STDMETHODCALLTYPE Direct3DTexture9::GetLevelDesc(UINT Level, D3DSURFACE_DESC *pDesc) {
+    auto* surface = GetSubresource(Level);
+    if (surface == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    return surface->GetDesc(pDesc);
+  }
+
+  HRESULT STDMETHODCALLTYPE Direct3DTexture9::GetSurfaceLevel(UINT Level, IDirect3DSurface9** ppSurfaceLevel) {
+    InitReturnPtr(ppSurfaceLevel);
+    auto* surface = GetSubresource(Level);
+
+    if (ppSurfaceLevel == nullptr || surface == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    *ppSurfaceLevel = ref(surface);
+    return D3D_OK;
+  }
+
+  HRESULT STDMETHODCALLTYPE Direct3DTexture9::LockRect(UINT Level, D3DLOCKED_RECT* pLockedRect, CONST RECT* pRect, DWORD Flags) {
+    auto* surface = GetSubresource(Level);
+    if (surface == nullptr || pLockedRect == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    D3DBOX box;
+    if (pRect != nullptr) {
+      box.Left = pRect->left;
+      box.Right = pRect->right;
+      box.Top = pRect->top;
+      box.Bottom = pRect->bottom;
+      box.Front = 0;
+      box.Back = 1;
+    }
+
+    D3DLOCKED_BOX lockedBox;
+
+    HRESULT hr = m_texture->Lock(Level, &lockedBox, pRect != nullptr ? &box : nullptr, Flags);
+
+    pLockedRect->pBits = lockedBox.pBits;
+    pLockedRect->Pitch = lockedBox.RowPitch;
+
+    return hr;
+  }
+
+  HRESULT STDMETHODCALLTYPE Direct3DTexture9::UnlockRect(UINT Level) {
+    auto* surface = GetSubresource(Level);
+    if (surface == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    return m_texture->Unlock(Level);
+  }
+
+  HRESULT STDMETHODCALLTYPE Direct3DTexture9::AddDirtyRect(CONST RECT* pDirtyRect) {
+    Logger::warn("Direct3DTexture9::AddDirtyRect: Stub");
+    return D3D_OK;
+  }
 }
