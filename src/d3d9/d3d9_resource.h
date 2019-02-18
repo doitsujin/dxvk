@@ -21,9 +21,13 @@ namespace dxvk {
       DWORD       SizeOfData,
       DWORD       Flags) final {
       HRESULT hr;
-      if (Flags & D3DSPD_IUNKNOWN)
+      if (Flags & D3DSPD_IUNKNOWN) {
+        IUnknown* unknown =
+          const_cast<IUnknown*>(
+            reinterpret_cast<const IUnknown*>(pData));
         hr = m_privateData.setInterface(
-          refguid, pData);
+          refguid, unknown);
+      }
       else
         hr = m_privateData.setData(
           refguid, SizeOfData, pData);
@@ -39,7 +43,7 @@ namespace dxvk {
       void*       pData,
       DWORD*      pSizeOfData) final {
       HRESULT hr = m_privateData.getData(
-        guid, pDataSize, pData);
+        refguid, reinterpret_cast<UINT*>(pSizeOfData), pData);
 
       if (FAILED(hr))
         return D3DERR_INVALIDCALL;
@@ -48,7 +52,7 @@ namespace dxvk {
     }
 
     HRESULT STDMETHODCALLTYPE FreePrivateData(REFGUID refguid) final {
-      HRESULT hr = m_privateData.FreePrivateData(refguid);
+      HRESULT hr = m_privateData.setData(refguid, 0, nullptr);
 
       if (FAILED(hr))
         return D3DERR_INVALIDCALL;
