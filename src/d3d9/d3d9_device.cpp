@@ -232,8 +232,35 @@ namespace dxvk {
     D3DPOOL Pool,
     IDirect3DTexture9** ppTexture,
     HANDLE* pSharedHandle) {
-    Logger::warn("Direct3DDevice9Ex::CreateTexture: Stub");
-    return D3D_OK;
+    InitReturnPtr(ppTexture);
+    InitReturnPtr(pSharedHandle);
+
+    if (ppTexture == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    D3D9TextureDesc desc;
+    desc.Type = D3DRTYPE_TEXTURE;
+    desc.Width = Width;
+    desc.Height = Height;
+    desc.Depth = 1;
+    desc.MipLevels = Levels;
+    desc.Usage = Usage;
+    desc.Format = fixupFormat(Format);
+    desc.Pool = Pool;
+    desc.Discard = FALSE;
+    desc.MultiSample = D3DMULTISAMPLE_NONE;
+    desc.MultisampleQuality = 0;
+    desc.Lockable = FALSE;
+
+    try {
+      const Com<Direct3DTexture9> texture = new Direct3DTexture9{ this, &desc };
+      *ppTexture = texture.ref();
+      return D3D_OK;
+    }
+    catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return D3DERR_INVALIDCALL;
+    }
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateVolumeTexture(
