@@ -320,8 +320,16 @@ namespace dxvk {
     BOOL Lockable,
     IDirect3DSurface9** ppSurface,
     HANDLE* pSharedHandle) {
-    Logger::warn("Direct3DDevice9Ex::CreateRenderTarget: Stub");
-    return D3D_OK;
+    return CreateRenderTargetEx(
+      Width,
+      Height,
+      Format,
+      MultiSample,
+      MultisampleQuality,
+      Lockable,
+      ppSurface,
+      pSharedHandle,
+      0);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateDepthStencilSurface(
@@ -333,8 +341,16 @@ namespace dxvk {
     BOOL Discard,
     IDirect3DSurface9** ppSurface,
     HANDLE* pSharedHandle) {
-    Logger::warn("Direct3DDevice9Ex::CreateDepthStencilSurface: Stub");
-    return D3D_OK;
+    return CreateDepthStencilSurfaceEx(
+      Width,
+      Height,
+      Format,
+      MultiSample,
+      MultisampleQuality,
+      Discard,
+      ppSurface,
+      pSharedHandle,
+      0);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::UpdateSurface(
@@ -390,8 +406,14 @@ namespace dxvk {
     D3DPOOL Pool,
     IDirect3DSurface9** ppSurface,
     HANDLE* pSharedHandle) {
-    Logger::warn("Direct3DDevice9Ex::CreateOffscreenPlainSurface: Stub");
-    return D3D_OK;
+    return CreateOffscreenPlainSurfaceEx(
+      Width,
+      Height,
+      Format,
+      Pool,
+      ppSurface,
+      pSharedHandle,
+      0);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetRenderTarget(DWORD RenderTargetIndex, IDirect3DSurface9* pRenderTarget) {
@@ -987,8 +1009,35 @@ namespace dxvk {
     IDirect3DSurface9** ppSurface,
     HANDLE* pSharedHandle,
     DWORD Usage) {
-    Logger::warn("Direct3DDevice9Ex::CreateRenderTargetEx: Stub");
-    return D3D_OK;
+    InitReturnPtr(ppSurface);
+    InitReturnPtr(pSharedHandle);
+
+    if (ppSurface == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    D3D9TextureDesc desc;
+    desc.Type = D3DRTYPE_SURFACE;
+    desc.Width = Width;
+    desc.Height = Height;
+    desc.Depth = 1;
+    desc.MipLevels = 1;
+    desc.Usage = Usage | D3DUSAGE_RENDERTARGET;
+    desc.Format = fixupFormat(Format);
+    desc.Pool = D3DPOOL_DEFAULT;
+    desc.Discard = FALSE;
+    desc.MultiSample = MultiSample;
+    desc.MultisampleQuality = MultisampleQuality;
+    desc.Lockable = Lockable;
+
+    try {
+      const Com<Direct3DSurface9> surface = new Direct3DSurface9{ this, &desc };
+      *ppSurface = surface.ref();
+      return D3D_OK;
+    }
+    catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return D3DERR_INVALIDCALL;
+    }
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateOffscreenPlainSurfaceEx(
@@ -999,8 +1048,35 @@ namespace dxvk {
     IDirect3DSurface9** ppSurface,
     HANDLE* pSharedHandle,
     DWORD Usage) {
-    Logger::warn("Direct3DDevice9Ex::CreateOffscreenPlainSurfaceEx: Stub");
-    return D3D_OK;
+    InitReturnPtr(ppSurface);
+    InitReturnPtr(pSharedHandle);
+
+    if (ppSurface == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    D3D9TextureDesc desc;
+    desc.Type = D3DRTYPE_SURFACE;
+    desc.Width = Width;
+    desc.Height = Height;
+    desc.Depth = 1;
+    desc.MipLevels = 1;
+    desc.Usage = Usage | D3DUSAGE_DEPTHSTENCIL;
+    desc.Format = fixupFormat(Format);
+    desc.Pool = D3DPOOL_DEFAULT;
+    desc.Discard = FALSE;
+    desc.MultiSample = D3DMULTISAMPLE_NONE;
+    desc.MultisampleQuality = 0;
+    desc.Lockable = TRUE;
+
+    try {
+      const Com<Direct3DSurface9> surface = new Direct3DSurface9{ this, &desc };
+      *ppSurface = surface.ref();
+      return D3D_OK;
+    }
+    catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return D3DERR_INVALIDCALL;
+    }
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateDepthStencilSurfaceEx(
@@ -1013,8 +1089,41 @@ namespace dxvk {
     IDirect3DSurface9** ppSurface,
     HANDLE* pSharedHandle,
     DWORD Usage) {
-    Logger::warn("Direct3DDevice9Ex::CreateDepthStencilSurfaceEx: Stub");
-    return D3D_OK;
+    InitReturnPtr(ppSurface);
+    InitReturnPtr(pSharedHandle);
+
+    if (ppSurface == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    auto format = fixupFormat(Format);
+    bool lockable = format == D3D9Format::D32_LOCKABLE
+                 || format == D3D9Format::D32F_LOCKABLE
+                 || format == D3D9Format::D16_LOCKABLE
+                 || format == D3D9Format::S8_LOCKABLE;
+
+    D3D9TextureDesc desc;
+    desc.Type = D3DRTYPE_SURFACE;
+    desc.Width = Width;
+    desc.Height = Height;
+    desc.Depth = 1;
+    desc.MipLevels = 1;
+    desc.Usage = Usage | D3DUSAGE_DEPTHSTENCIL;
+    desc.Format = format;
+    desc.Pool = D3DPOOL_DEFAULT;
+    desc.Discard = Discard;
+    desc.MultiSample = MultiSample;
+    desc.MultisampleQuality = MultisampleQuality;
+    desc.Lockable = lockable;
+
+    try {
+      const Com<Direct3DSurface9> surface = new Direct3DSurface9{ this, &desc };
+      *ppSurface = surface.ref();
+      return D3D_OK;
+    }
+    catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return D3DERR_INVALIDCALL;
+    }
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::ResetEx(D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX *pFullscreenDisplayMode) {
