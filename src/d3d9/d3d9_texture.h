@@ -33,11 +33,16 @@ namespace dxvk {
             m_texture,
             subresource,
             this};
-          subObj->AddPrivateRef();
+          subObj->AddRefPrivate();
 
           m_subresources[subresource] = subObj;
         }
       }
+    }
+
+    ~Direct3DBaseTexture9() {
+      for (auto* subresource : m_subresources)
+        subresource->ReleasePrivate();
     }
 
     DWORD STDMETHODCALLTYPE SetLOD(DWORD LODNew) final {
