@@ -101,6 +101,7 @@ extern "C" {
       Logger::err("D3D11CoreCreateDevice: Failed to create D3D11 device");
       return E_FAIL;
     }
+
   }
   
   
@@ -261,27 +262,27 @@ extern "C" {
   }
 
   /* Native Entry-Point */
-  #ifdef DXVK_NATIVE
-    HRESULT dxvk_native_create_d3d11_device(
-          dxvk_native_info      native_info,
-          IDXGIAdapter*         pAdapter,
-          D3D_DRIVER_TYPE       DriverType,
-          HMODULE               Software,
-          UINT                  Flags,
-    const D3D_FEATURE_LEVEL*    pFeatureLevels,
-          UINT                  FeatureLevels,
-          UINT                  SDKVersion,
-          ID3D11Device**        ppDevice,
-          D3D_FEATURE_LEVEL*    pFeatureLevel,
-          ID3D11DeviceContext** ppImmediateContext) {
-      if(!g_native_info.pfn_create_vulkan_surface)
-        g_native_info = native_info;
+#ifdef DXVK_NATIVE
+  HRESULT dxvk_native_create_d3d11_device(
+        dxvk_native_info      native_info,
+        IDXGIAdapter*         pAdapter,
+        D3D_DRIVER_TYPE       DriverType,
+        HMODULE               Software,
+        UINT                  Flags,
+  const D3D_FEATURE_LEVEL*    pFeatureLevels,
+        UINT                  FeatureLevels,
+        UINT                  SDKVersion,
+        ID3D11Device**        ppDevice,
+        D3D_FEATURE_LEVEL*    pFeatureLevel,
+        ID3D11DeviceContext** ppImmediateContext) {
+    if(!g_native_info.pfn_create_vulkan_surface)
+      g_native_info = native_info;
 
-      return D3D11CreateDevice(pAdapter, DriverType,
-        Software, Flags, pFeatureLevels, FeatureLevels,
-        SDKVersion, ppDevice, pFeatureLevel, ppImmediateContext);
+    return D3D11CreateDevice(pAdapter, DriverType,
+      Software, Flags, pFeatureLevels, FeatureLevels,
+      SDKVersion, ppDevice, pFeatureLevel, ppImmediateContext);
     }
-  #endif
+#endif
 
 }
 
