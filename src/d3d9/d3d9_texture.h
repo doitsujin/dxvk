@@ -261,11 +261,15 @@ namespace dxvk {
       return m_texture;
     }
 
-    SubresourceType* GetSubresource(UINT Level) {
-      if (Level >= m_subresources.size())
+    static UINT CalcSubresource(UINT Level, UINT ArraySlice) {
+      return (ArraySlice * m_texture->Desc()->MipSlices) + Level;
+    }
+
+    SubresourceType* GetSubresource(UINT Subresource) {
+      if (Subresource >= m_subresources.size())
         return nullptr;
 
-      return m_subresources[Level];
+      return m_subresources[Subresource];
     }
 
   protected:
