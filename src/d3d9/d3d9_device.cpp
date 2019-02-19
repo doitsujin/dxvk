@@ -168,10 +168,15 @@ namespace dxvk {
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::Present(
     const RECT* pSourceRect,
-    const RECT* pDestRect, HWND hDestWindowOverride,
+    const RECT* pDestRect,
+          HWND hDestWindowOverride,
     const RGNDATA* pDirtyRegion) {
-    Logger::warn("Direct3DDevice9Ex::Present: Stub");
-    return D3D_OK;
+    return PresentEx(
+      pSourceRect,
+      pDestRect,
+      hDestWindowOverride,
+      pDirtyRegion,
+      0);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetBackBuffer(
@@ -992,11 +997,19 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::PresentEx(
     const RECT* pSourceRect,
     const RECT* pDestRect,
-    HWND hDestWindowOverride,
+          HWND hDestWindowOverride,
     const RGNDATA* pDirtyRegion,
-    DWORD dwFlags) {
-    Logger::warn("Direct3DDevice9Ex::PresentEx: Stub");
-    return D3D_OK;
+          DWORD dwFlags) {
+    auto* swapchain = getInternalSwapchain(0);
+    if (swapchain == nullptr)
+      return D3DERR_INVALIDCALL;
+    
+    return swapchain->Present(
+      pSourceRect,
+      pDestRect,
+      hDestWindowOverride,
+      pDirtyRegion,
+      dwFlags);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateRenderTargetEx(
