@@ -136,6 +136,7 @@ extern "C" {
         Logger::err("D3D11CreateDevice: No default adapter available");
         return E_FAIL;
       }
+
     } else {
       // We should be able to query the DXGI factory from the adapter
       if (FAILED(dxgiAdapter->GetParent(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&dxgiFactory)))) {
