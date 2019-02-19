@@ -1723,7 +1723,6 @@ namespace dxvk {
     
     if (!ppSwapChain || !pDesc || !hWnd)
       return DXGI_ERROR_INVALID_CALL;
-
     
     // Make sure the back buffer size is not zero
     DXGI_SWAP_CHAIN_DESC1 desc = *pDesc;
@@ -1732,13 +1731,6 @@ namespace dxvk {
     GetWindowClientSize(hWnd,
       desc.Width  ? nullptr : &desc.Width,
       desc.Height ? nullptr : &desc.Height);
-#else
-    if(!desc.Width || !desc.Height)
-    {
-      // TODO
-      Logger::err("d3d11_device.cpp, CreateSwapChainForHwnd");
-      std::terminate();
-    }
 #endif
     
     // If necessary, set up a default set of
