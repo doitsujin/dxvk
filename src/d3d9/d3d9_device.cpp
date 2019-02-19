@@ -1060,7 +1060,7 @@ namespace dxvk {
     desc.Height = Height;
     desc.Depth = 1;
     desc.MipLevels = 1;
-    desc.Usage = Usage | D3DUSAGE_DEPTHSTENCIL;
+    desc.Usage = Usage;
     desc.Format = fixupFormat(Format);
     desc.Pool = D3DPOOL_DEFAULT;
     desc.Discard = FALSE;
