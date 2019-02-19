@@ -47,19 +47,15 @@ extern "C" {
 
   HRESULT dxvk_native_create_d3d11_device(
     dxvk_native_info            native_info,
+    IDXGIFactory*               pFactory,
     IDXGIAdapter*               pAdapter,
-    D3D_DRIVER_TYPE             DriverType,
-    HMODULE                     Software,
     UINT                        Flags,
     const D3D_FEATURE_LEVEL*    pFeatureLevels,
     UINT                        FeatureLevels,
-    UINT                        SDKVersion,
-    ID3D11Device**              ppDevice,
-    D3D_FEATURE_LEVEL*          pFeatureLevel,
-    ID3D11DeviceContext**       ppImmediateContext
+    ID3D11Device**              ppDevice
   );
 
-  typedef HRESULT (*PFN_dxvk_native_create_d3d11_device)(dxvk_native_info,IDXGIAdapter*,D3D_DRIVER_TYPE,HMODULE,UINT,const D3D_FEATURE_LEVEL*,UINT,UINT,ID3D11Device**,D3D_FEATURE_LEVEL*,ID3D11DeviceContext**);
+  typedef HRESULT (*PFN_dxvk_native_create_d3d11_device)(dxvk_native_info,IDXGIFactory*,IDXGIAdapter*,UINT,const D3D_FEATURE_LEVEL*,UINT,ID3D11Device**);
 
   HRESULT dxvk_native_create_d3d10_device(
     dxvk_native_info        native_info,
