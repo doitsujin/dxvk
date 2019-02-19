@@ -6601,7 +6601,10 @@ namespace dxvk {
     
     this->emitOutputSetup();
     this->emitOutputMapping();
-    this->emitOutputDepthClamp();
+
+    if (m_moduleInfo.options.useDepthClipWorkaround)
+      this->emitOutputDepthClamp();
+    
     this->emitFunctionEnd();
   }
   
