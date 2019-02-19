@@ -43,7 +43,7 @@ extern "C" {
 #define VK_VERSION_MINOR(version) (((uint32_t)(version) >> 12) & 0x3ff)
 #define VK_VERSION_PATCH(version) ((uint32_t)(version) & 0xfff)
 // Version of this file
-#define VK_HEADER_VERSION 97
+#define VK_HEADER_VERSION 101
 
 
 #define VK_NULL_HANDLE 0
@@ -349,6 +349,8 @@ typedef enum VkStructureType {
     VK_STRUCTURE_TYPE_PIPELINE_DISCARD_RECTANGLE_STATE_CREATE_INFO_EXT = 1000099001,
     VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT = 1000101000,
     VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT = 1000101001,
+    VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT = 1000102000,
+    VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT = 1000102001,
     VK_STRUCTURE_TYPE_HDR_METADATA_EXT = 1000105000,
     VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2_KHR = 1000109000,
     VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2_KHR = 1000109001,
@@ -431,6 +433,8 @@ typedef enum VkStructureType {
     VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_INFO_NV = 1000165012,
     VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_REPRESENTATIVE_FRAGMENT_TEST_FEATURES_NV = 1000166000,
     VK_STRUCTURE_TYPE_PIPELINE_REPRESENTATIVE_FRAGMENT_TEST_STATE_CREATE_INFO_NV = 1000166001,
+    VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_IMAGE_FORMAT_INFO_EXT = 1000170000,
+    VK_STRUCTURE_TYPE_FILTER_CUBIC_IMAGE_VIEW_IMAGE_FORMAT_PROPERTIES_EXT = 1000170001,
     VK_STRUCTURE_TYPE_DEVICE_QUEUE_GLOBAL_PRIORITY_CREATE_INFO_EXT = 1000174000,
     VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES_KHR = 1000177000,
     VK_STRUCTURE_TYPE_IMPORT_MEMORY_HOST_POINTER_INFO_EXT = 1000178000,
@@ -466,11 +470,15 @@ typedef enum VkStructureType {
     VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT = 1000237000,
     VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT = 1000238000,
     VK_STRUCTURE_TYPE_MEMORY_PRIORITY_ALLOCATE_INFO_EXT = 1000238001,
+    VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEDICATED_ALLOCATION_IMAGE_ALIASING_FEATURES_NV = 1000240000,
     VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_ADDRESS_FEATURES_EXT = 1000244000,
     VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_EXT = 1000244001,
     VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_CREATE_INFO_EXT = 1000244002,
     VK_STRUCTURE_TYPE_IMAGE_STENCIL_USAGE_CREATE_INFO_EXT = 1000246000,
     VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT = 1000247000,
+    VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_FEATURES_NV = 1000249000,
+    VK_STRUCTURE_TYPE_COOPERATIVE_MATRIX_PROPERTIES_NV = 1000249001,
+    VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COOPERATIVE_MATRIX_PROPERTIES_NV = 1000249002,
     VK_STRUCTURE_TYPE_DEBUG_REPORT_CREATE_INFO_EXT = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT,
     VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO_KHR = VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO,
     VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES,
@@ -1141,6 +1149,7 @@ typedef enum VkFilter {
     VK_FILTER_NEAREST = 0,
     VK_FILTER_LINEAR = 1,
     VK_FILTER_CUBIC_IMG = 1000015000,
+    VK_FILTER_CUBIC_EXT = VK_FILTER_CUBIC_IMG,
     VK_FILTER_BEGIN_RANGE = VK_FILTER_NEAREST,
     VK_FILTER_END_RANGE = VK_FILTER_LINEAR,
     VK_FILTER_RANGE_SIZE = (VK_FILTER_LINEAR - VK_FILTER_NEAREST + 1),
@@ -1352,6 +1361,7 @@ typedef enum VkFormatFeatureFlagBits {
     VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_FORCEABLE_BIT_KHR = VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_FORCEABLE_BIT,
     VK_FORMAT_FEATURE_DISJOINT_BIT_KHR = VK_FORMAT_FEATURE_DISJOINT_BIT,
     VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT_KHR = VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT,
+    VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_CUBIC_BIT_EXT = VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_CUBIC_BIT_IMG,
     VK_FORMAT_FEATURE_FLAG_BITS_MAX_ENUM = 0x7FFFFFFF
 } VkFormatFeatureFlagBits;
 typedef VkFlags VkFormatFeatureFlags;
@@ -6244,7 +6254,7 @@ typedef struct VkPhysicalDeviceDepthStencilResolvePropertiesKHR {
 
 
 #define VK_KHR_vulkan_memory_model 1
-#define VK_KHR_VULKAN_MEMORY_MODEL_SPEC_VERSION 2
+#define VK_KHR_VULKAN_MEMORY_MODEL_SPEC_VERSION 3
 #define VK_KHR_VULKAN_MEMORY_MODEL_EXTENSION_NAME "VK_KHR_vulkan_memory_model"
 
 typedef struct VkPhysicalDeviceVulkanMemoryModelFeaturesKHR {
@@ -6252,6 +6262,7 @@ typedef struct VkPhysicalDeviceVulkanMemoryModelFeaturesKHR {
     void*              pNext;
     VkBool32           vulkanMemoryModel;
     VkBool32           vulkanMemoryModelDeviceScope;
+    VkBool32           vulkanMemoryModelAvailabilityVisibilityChains;
 } VkPhysicalDeviceVulkanMemoryModelFeaturesKHR;
 
 
@@ -7456,6 +7467,27 @@ typedef struct VkPipelineRasterizationConservativeStateCreateInfoEXT {
 
 
 
+#define VK_EXT_depth_clip_enable 1
+#define VK_EXT_DEPTH_CLIP_ENABLE_SPEC_VERSION 1
+#define VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME "VK_EXT_depth_clip_enable"
+
+typedef VkFlags VkPipelineRasterizationDepthClipStateCreateFlagsEXT;
+
+typedef struct VkPhysicalDeviceDepthClipEnableFeaturesEXT {
+    VkStructureType    sType;
+    void*              pNext;
+    VkBool32           depthClipEnable;
+} VkPhysicalDeviceDepthClipEnableFeaturesEXT;
+
+typedef struct VkPipelineRasterizationDepthClipStateCreateInfoEXT {
+    VkStructureType                                        sType;
+    const void*                                            pNext;
+    VkPipelineRasterizationDepthClipStateCreateFlagsEXT    flags;
+    VkBool32                                               depthClipEnable;
+} VkPipelineRasterizationDepthClipStateCreateInfoEXT;
+
+
+
 #define VK_EXT_swapchain_colorspace 1
 #define VK_EXT_SWAPCHAIN_COLOR_SPACE_SPEC_VERSION 3
 #define VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME "VK_EXT_swapchain_colorspace"
@@ -8551,6 +8583,25 @@ typedef struct VkPipelineRepresentativeFragmentTestStateCreateInfoNV {
 
 
 
+#define VK_EXT_filter_cubic 1
+#define VK_EXT_FILTER_CUBIC_SPEC_VERSION  1
+#define VK_EXT_FILTER_CUBIC_EXTENSION_NAME "VK_EXT_filter_cubic"
+
+typedef struct VkPhysicalDeviceImageViewImageFormatInfoEXT {
+    VkStructureType    sType;
+    void*              pNext;
+    VkImageViewType    imageViewType;
+} VkPhysicalDeviceImageViewImageFormatInfoEXT;
+
+typedef struct VkFilterCubicImageViewImageFormatPropertiesEXT {
+    VkStructureType    sType;
+    void*              pNext;
+    VkBool32           filterCubic;
+    VkBool32           filterCubicMinmax ;
+} VkFilterCubicImageViewImageFormatPropertiesEXT;
+
+
+
 #define VK_EXT_global_priority 1
 #define VK_EXT_GLOBAL_PRIORITY_SPEC_VERSION 2
 #define VK_EXT_GLOBAL_PRIORITY_EXTENSION_NAME "VK_EXT_global_priority"
@@ -9003,6 +9054,18 @@ typedef struct VkMemoryPriorityAllocateInfoEXT {
 
 
 
+#define VK_NV_dedicated_allocation_image_aliasing 1
+#define VK_NV_DEDICATED_ALLOCATION_IMAGE_ALIASING_SPEC_VERSION 1
+#define VK_NV_DEDICATED_ALLOCATION_IMAGE_ALIASING_EXTENSION_NAME "VK_NV_dedicated_allocation_image_aliasing"
+
+typedef struct VkPhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV {
+    VkStructureType    sType;
+    void*              pNext;
+    VkBool32           dedicatedAllocationImageAliasing;
+} VkPhysicalDeviceDedicatedAllocationImageAliasingFeaturesNV;
+
+
+
 #define VK_EXT_buffer_device_address 1
 typedef uint64_t VkDeviceAddress;
 
@@ -9088,6 +9151,76 @@ typedef struct VkValidationFeaturesEXT {
 } VkValidationFeaturesEXT;
 
 
+
+#define VK_NV_cooperative_matrix 1
+#define VK_NV_COOPERATIVE_MATRIX_SPEC_VERSION 1
+#define VK_NV_COOPERATIVE_MATRIX_EXTENSION_NAME "VK_NV_cooperative_matrix"
+
+
+typedef enum VkComponentTypeNV {
+    VK_COMPONENT_TYPE_FLOAT16_NV = 0,
+    VK_COMPONENT_TYPE_FLOAT32_NV = 1,
+    VK_COMPONENT_TYPE_FLOAT64_NV = 2,
+    VK_COMPONENT_TYPE_SINT8_NV = 3,
+    VK_COMPONENT_TYPE_SINT16_NV = 4,
+    VK_COMPONENT_TYPE_SINT32_NV = 5,
+    VK_COMPONENT_TYPE_SINT64_NV = 6,
+    VK_COMPONENT_TYPE_UINT8_NV = 7,
+    VK_COMPONENT_TYPE_UINT16_NV = 8,
+    VK_COMPONENT_TYPE_UINT32_NV = 9,
+    VK_COMPONENT_TYPE_UINT64_NV = 10,
+    VK_COMPONENT_TYPE_BEGIN_RANGE_NV = VK_COMPONENT_TYPE_FLOAT16_NV,
+    VK_COMPONENT_TYPE_END_RANGE_NV = VK_COMPONENT_TYPE_UINT64_NV,
+    VK_COMPONENT_TYPE_RANGE_SIZE_NV = (VK_COMPONENT_TYPE_UINT64_NV - VK_COMPONENT_TYPE_FLOAT16_NV + 1),
+    VK_COMPONENT_TYPE_MAX_ENUM_NV = 0x7FFFFFFF
+} VkComponentTypeNV;
+
+typedef enum VkScopeNV {
+    VK_SCOPE_DEVICE_NV = 1,
+    VK_SCOPE_WORKGROUP_NV = 2,
+    VK_SCOPE_SUBGROUP_NV = 3,
+    VK_SCOPE_QUEUE_FAMILY_NV = 5,
+    VK_SCOPE_BEGIN_RANGE_NV = VK_SCOPE_DEVICE_NV,
+    VK_SCOPE_END_RANGE_NV = VK_SCOPE_QUEUE_FAMILY_NV,
+    VK_SCOPE_RANGE_SIZE_NV = (VK_SCOPE_QUEUE_FAMILY_NV - VK_SCOPE_DEVICE_NV + 1),
+    VK_SCOPE_MAX_ENUM_NV = 0x7FFFFFFF
+} VkScopeNV;
+
+typedef struct VkCooperativeMatrixPropertiesNV {
+    VkStructureType      sType;
+    void*                pNext;
+    uint32_t             MSize;
+    uint32_t             NSize;
+    uint32_t             KSize;
+    VkComponentTypeNV    AType;
+    VkComponentTypeNV    BType;
+    VkComponentTypeNV    CType;
+    VkComponentTypeNV    DType;
+    VkScopeNV            scope;
+} VkCooperativeMatrixPropertiesNV;
+
+typedef struct VkPhysicalDeviceCooperativeMatrixFeaturesNV {
+    VkStructureType    sType;
+    void*              pNext;
+    VkBool32           cooperativeMatrix;
+    VkBool32           cooperativeMatrixRobustBufferAccess;
+} VkPhysicalDeviceCooperativeMatrixFeaturesNV;
+
+typedef struct VkPhysicalDeviceCooperativeMatrixPropertiesNV {
+    VkStructureType       sType;
+    void*                 pNext;
+    VkShaderStageFlags    cooperativeMatrixSupportedStages;
+} VkPhysicalDeviceCooperativeMatrixPropertiesNV;
+
+
+typedef VkResult (VKAPI_PTR *PFN_vkGetPhysicalDeviceCooperativeMatrixPropertiesNV)(VkPhysicalDevice physicalDevice, uint32_t* pPropertyCount, VkCooperativeMatrixPropertiesNV* pProperties);
+
+#ifndef VK_NO_PROTOTYPES
+VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceCooperativeMatrixPropertiesNV(
+    VkPhysicalDevice                            physicalDevice,
+    uint32_t*                                   pPropertyCount,
+    VkCooperativeMatrixPropertiesNV*            pProperties);
+#endif
 
 #ifdef __cplusplus
 }
