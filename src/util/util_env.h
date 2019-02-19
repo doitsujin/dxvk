@@ -38,4 +38,5 @@ namespace dxvk::env {
    * \returns \c true on success
    */
   bool createDirectory(const std::string& path);
+  
 }
