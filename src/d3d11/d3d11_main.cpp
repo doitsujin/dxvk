@@ -118,8 +118,8 @@ extern "C" {
     Com<IDXGIFactory> dxgiFactory = nullptr;
     Com<IDXGIAdapter> dxgiAdapter = pAdapter;
     
-    if (dxgiAdapter == nullptr) {
 #ifndef DXVK_NATIVE
+    if (dxgiAdapter == nullptr) {
       // We'll treat everything as hardware, even if the
       // Vulkan device is actually a software device.
       if (DriverType != D3D_DRIVER_TYPE_HARDWARE)
@@ -135,9 +135,6 @@ extern "C" {
         Logger::err("D3D11CreateDevice: No default adapter available");
         return E_FAIL;
       }
-#else
-      return E_INVALIDARG;
-#endif
     } else {
       // We should be able to query the DXGI factory from the adapter
       if (FAILED(dxgiAdapter->GetParent(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&dxgiFactory)))) {
@@ -153,6 +150,19 @@ extern "C" {
       if (DriverType != D3D_DRIVER_TYPE_UNKNOWN || Software != nullptr)
         return E_INVALIDARG;
     }
+#else
+    if (dxgiAdapter == nullptr)
+    {
+      Logger::err("Wine should have set up our adapter");
+      return E_INVALIDARG;
+    }
+
+    // We should be able to query the DXGI factory from the adapter
+    if (FAILED(dxgiAdapter->GetParent(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&dxgiFactory)))) {
+      Logger::err("D3D11CreateDevice: Failed to query DXGI factory from DXGI adapter");
+      return E_FAIL;
+    }
+#endif
     
     // Create the actual device
     Com<ID3D11Device> device;
@@ -264,9 +274,8 @@ extern "C" {
           ID3D11Device**        ppDevice,
           D3D_FEATURE_LEVEL*    pFeatureLevel,
           ID3D11DeviceContext** ppImmediateContext) {
-Logger::err(str::format("adapter = ", pAdapter));
-
-      g_native_info = native_info;
+      if(!g_native_info.pfn_create_vulkan_surface)
+        g_native_info = native_info;
 
       return D3D11CreateDevice(pAdapter, DriverType,
         Software, Flags, pFeatureLevels, FeatureLevels,
