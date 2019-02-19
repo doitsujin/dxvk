@@ -1370,6 +1370,7 @@ namespace dxvk {
       enabled.core.features.shaderClipDistance                    = VK_TRUE;
       enabled.core.features.shaderCullDistance                    = VK_TRUE;
       enabled.core.features.textureCompressionBC                  = VK_TRUE;
+      enabled.extDepthClipEnable.depthClipEnable                  = supported.extDepthClipEnable.depthClipEnable;
     }
     
     if (featureLevel >= D3D_FEATURE_LEVEL_9_2) {

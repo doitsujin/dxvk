@@ -215,6 +215,8 @@ namespace dxvk {
                 || !required.core.features.variableMultisampleRate)
         && (m_deviceFeatures.core.features.inheritedQueries
                 || !required.core.features.inheritedQueries)
+        && (m_deviceFeatures.extDepthClipEnable.depthClipEnable
+                || !required.extDepthClipEnable.depthClipEnable)
         && (m_deviceFeatures.extMemoryPriority.memoryPriority
                 || !required.extMemoryPriority.memoryPriority)
         && (m_deviceFeatures.extTransformFeedback.transformFeedback
@@ -271,6 +273,12 @@ namespace dxvk {
     // Create pNext chain for additional device features
     enabledFeatures.core.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
     enabledFeatures.core.pNext = nullptr;
+
+    if (devExtensions.extDepthClipEnable) {
+      enabledFeatures.extDepthClipEnable.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT;
+      enabledFeatures.extDepthClipEnable.pNext = enabledFeatures.core.pNext;
+      enabledFeatures.core.pNext = &enabledFeatures.extDepthClipEnable;
+    }
 
     if (devExtensions.extMemoryPriority) {
       enabledFeatures.extMemoryPriority.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT;
@@ -469,6 +477,11 @@ namespace dxvk {
     m_deviceFeatures = DxvkDeviceFeatures();
     m_deviceFeatures.core.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
     m_deviceFeatures.core.pNext = nullptr;
+
+    if (m_deviceExtensions.supports(VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME)) {
+      m_deviceFeatures.extDepthClipEnable.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_CLIP_ENABLE_FEATURES_EXT;
+      m_deviceFeatures.extDepthClipEnable.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extDepthClipEnable);
+    }
 
     if (m_deviceExtensions.supports(VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME)) {
       m_deviceFeatures.extMemoryPriority.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT;
