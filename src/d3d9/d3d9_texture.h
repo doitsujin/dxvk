@@ -102,6 +102,8 @@ namespace dxvk {
 
   public:
 
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
+
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType();
 
     HRESULT STDMETHODCALLTYPE GetLevelDesc(UINT Level, D3DSURFACE_DESC *pDesc);

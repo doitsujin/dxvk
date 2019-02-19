@@ -8,6 +8,8 @@ namespace dxvk {
 
   public:
 
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
+
     D3DRESOURCETYPE STDMETHODCALLTYPE GetType() final;
 
     HRESULT STDMETHODCALLTYPE GetDesc(D3DSURFACE_DESC *pDesc) final;

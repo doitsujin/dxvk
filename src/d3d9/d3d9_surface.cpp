@@ -2,6 +2,24 @@
 
 namespace dxvk {
 
+    HRESULT STDMETHODCALLTYPE Direct3DSurface9::QueryInterface(REFIID riid, void** ppvObject) {
+    if (ppvObject == nullptr)
+      return E_POINTER;
+
+    *ppvObject = nullptr;
+
+    if (riid == __uuidof(IUnknown)
+     || riid == __uuidof(IDirect3DResource9)
+     || riid == __uuidof(IDirect3DSurface9)) {
+      *ppvObject = ref(this);
+      return S_OK;
+    }
+
+    Logger::warn("Direct3DSurface9::QueryInterface: Unknown interface query");
+    Logger::warn(str::format(riid));
+    return E_NOINTERFACE;
+  }
+
   D3DRESOURCETYPE STDMETHODCALLTYPE Direct3DSurface9::GetType() {
     return D3DRTYPE_SURFACE;
   }
