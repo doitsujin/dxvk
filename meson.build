@@ -1,4 +1,4 @@
-project('dxvk', ['c', 'cpp'], version : 'v0.96', meson_version : '>= 0.43')
+project('dxvk', ['c', 'cpp'], version : 'v0.96', meson_version : '>= 0.46')
 
 cpu_family = target_machine.cpu_family()
 
@@ -107,6 +107,14 @@ if enable_tests
   subdir('tests')
 endif
 
-if dxvk_compiler.get_id() != 'msvc'
+if dxvk_compiler.get_id() != 'msvc' and not dxvk_native
   subdir('utils')
+endif
+
+if dxvk_native
+  pkg = import('pkgconfig')
+  pkg.generate(
+    d3d11_dll,
+    description : 'D3D10-11 Layer On Vulkan',
+    subdirs : 'dxvk')
 endif

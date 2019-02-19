@@ -16,3 +16,5 @@ idl_files = files([
 ])
 
 com_headers = com_header_generator.process(idl_files)
+
+install_headers('dxvk.h', subdir : 'dxvk')
