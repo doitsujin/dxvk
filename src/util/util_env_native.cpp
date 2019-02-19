@@ -1,6 +1,7 @@
 #include "util_env.h"
 
 #include <string>
+#include <sys/stat.h>
 
 namespace dxvk::env {
 
@@ -23,8 +24,7 @@ namespace dxvk::env {
   }
 
   bool createDirectory(const std::string& path) {
-    // TODO
-    return false;
+    return !mkdir(path.c_str(), DEFFILEMODE);
   }
   
 }
