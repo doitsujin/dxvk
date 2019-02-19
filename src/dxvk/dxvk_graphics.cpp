@@ -315,11 +315,17 @@ namespace dxvk {
     xfbStreamInfo.flags           = 0;
     xfbStreamInfo.rasterizationStream = uint32_t(rasterizedStream);
 
+    VkPipelineRasterizationDepthClipStateCreateInfoEXT rsDepthClipInfo;
+    rsDepthClipInfo.sType         = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT;
+    rsDepthClipInfo.pNext         = nullptr;
+    rsDepthClipInfo.flags         = 0;
+    rsDepthClipInfo.depthClipEnable = state.rsDepthClipEnable;
+
     VkPipelineRasterizationStateCreateInfo rsInfo;
     rsInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    rsInfo.pNext                  = nullptr;
+    rsInfo.pNext                  = &rsDepthClipInfo;
     rsInfo.flags                  = 0;
-    rsInfo.depthClampEnable       = !state.rsDepthClipEnable;
+    rsInfo.depthClampEnable       = VK_TRUE;
     rsInfo.rasterizerDiscardEnable = rasterizedStream < 0;
     rsInfo.polygonMode            = state.rsPolygonMode;
     rsInfo.cullMode               = state.rsCullMode;
@@ -331,7 +337,12 @@ namespace dxvk {
     rsInfo.lineWidth              = 1.0f;
     
     if (rasterizedStream > 0)
-      rsInfo.pNext = &xfbStreamInfo;
+      rsDepthClipInfo.pNext = &xfbStreamInfo;
+    
+    if (!m_pipeMgr->m_device->features().extDepthClipEnable.depthClipEnable) {
+      rsInfo.pNext                = rsDepthClipInfo.pNext;
+      rsInfo.depthClampEnable     = !state.rsDepthClipEnable;
+    }
 
     VkPipelineMultisampleStateCreateInfo msInfo;
     msInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
