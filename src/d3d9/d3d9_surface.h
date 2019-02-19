@@ -2,11 +2,20 @@
 
 #include "d3d9_subresource.h"
 
+#include "d3d9_common_texture.h"
+
 namespace dxvk {
 
-  class Direct3DSurface9 final : public Direct3DSubresource9<IDirect3DSurface9> {
+  using Direct3DSurface9Base = Direct3DSubresource9<IDirect3DSurface9>;
+  class Direct3DSurface9 final : public Direct3DSurface9Base {
 
   public:
+
+    Direct3DSurface9(
+      Direct3DDevice9Ex* device,
+      Rc<Direct3DCommonTexture9> texture,
+      UINT subresource,
+      IUnknown* container);
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
 

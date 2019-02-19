@@ -14,7 +14,8 @@ namespace dxvk {
     Direct3DBaseTexture9(
             Direct3DDevice9Ex*      pDevice,
       const D3D9TextureDesc*        pDesc)
-      : m_texture{ new Direct3DCommonTexture9{ pDevice, pDesc } }
+      : Direct3DResource9<Type...>{ pDevice }
+      , m_texture{ new Direct3DCommonTexture9{ pDevice, pDesc } }
       , m_lod{ 0 }
       , m_autogenFilter{ D3DTEXF_LINEAR } {
       auto& desc = *m_texture->Desc();
@@ -26,7 +27,7 @@ namespace dxvk {
 
       for (uint32_t i = 0; i < mipLevels; i++) {
         for (uint32_t j = 0; j < arraySlices; j++) {
-          uint32_t subresource = CalcSubresource(i, j);
+          uint32_t subresource = CalcSubresource(i, j, mipLevels);
 
           SubresourceType* subObj = new SubresourceType{
             pDevice,
@@ -76,8 +77,8 @@ namespace dxvk {
       return m_texture;
     }
 
-    static UINT CalcSubresource(UINT Level, UINT ArraySlice) {
-      return (ArraySlice * m_texture->Desc()->MipSlices) + Level;
+    static UINT CalcSubresource(UINT Level, UINT ArraySlice, UINT MipLevels) {
+      return (ArraySlice * MipLevels) + Level;
     }
 
     SubresourceType* GetSubresource(UINT Subresource) {
@@ -98,9 +99,14 @@ namespace dxvk {
 
   };
 
-  class Direct3DTexture9 final : public Direct3DBaseTexture9<Direct3DSurface9, IDirect3DTexture9> {
+  using Direct3DTexture9Base = Direct3DBaseTexture9<Direct3DSurface9, IDirect3DTexture9>;
+  class Direct3DTexture9 final : public Direct3DTexture9Base {
 
   public:
+
+    Direct3DTexture9(
+          Direct3DDevice9Ex*      pDevice,
+    const D3D9TextureDesc*        pDesc);
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
 

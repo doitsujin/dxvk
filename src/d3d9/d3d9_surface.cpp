@@ -2,7 +2,18 @@
 
 namespace dxvk {
 
-    HRESULT STDMETHODCALLTYPE Direct3DSurface9::QueryInterface(REFIID riid, void** ppvObject) {
+  Direct3DSurface9::Direct3DSurface9(
+    Direct3DDevice9Ex* device,
+    Rc<Direct3DCommonTexture9> texture,
+    UINT subresource,
+    IUnknown* container) 
+    : Direct3DSurface9Base{
+        device,
+        texture,
+        subresource,
+        container } {}
+
+  HRESULT STDMETHODCALLTYPE Direct3DSurface9::QueryInterface(REFIID riid, void** ppvObject) {
     if (ppvObject == nullptr)
       return E_POINTER;
 
