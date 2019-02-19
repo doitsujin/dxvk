@@ -1,11 +1,12 @@
 #include "d3d9_common_texture.h"
 
+#include "d3d9_caps.h"
 #include "d3d9_util.h"
 
 namespace dxvk {
 
   Direct3DCommonTexture9::Direct3DCommonTexture9(
-    Direct3DDevice9Ex*      pDevice,
+          Direct3DDevice9Ex*      pDevice,
     const D3D9TextureDesc*        pDesc)
     : m_device{ pDevice }, m_desc{ *pDesc } {
 
