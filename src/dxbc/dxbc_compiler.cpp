@@ -904,13 +904,27 @@ namespace dxvk {
     
     // Declare additional capabilities if necessary
     switch (resourceType) {
-      case DxbcResourceDim::Buffer:         m_module.enableCapability(spv::CapabilityImageBuffer);    break;
-      case DxbcResourceDim::Texture1D:      m_module.enableCapability(spv::CapabilityImage1D);        break;
-      case DxbcResourceDim::Texture1DArr:   m_module.enableCapability(spv::CapabilityImage1D);        break;
-      case DxbcResourceDim::TextureCubeArr: m_module.enableCapability(spv::CapabilityImageCubeArray); break;
-      case DxbcResourceDim::Texture2DMs:    m_module.enableCapability(spv::CapabilityImageMSArray);   break;
-      case DxbcResourceDim::Texture2DMsArr: m_module.enableCapability(spv::CapabilityImageMSArray);   break;
-      default: break; // No additional capabilities required
+      case DxbcResourceDim::Buffer:
+        m_module.enableCapability(isUav
+          ? spv::CapabilityImageBuffer
+          : spv::CapabilitySampledBuffer);
+        break;
+      
+      case DxbcResourceDim::Texture1D:
+      case DxbcResourceDim::Texture1DArr:
+        m_module.enableCapability(isUav
+          ? spv::CapabilityImage1D
+          : spv::CapabilitySampled1D);
+        break;
+      
+      case DxbcResourceDim::TextureCubeArr:
+        m_module.enableCapability(
+          spv::CapabilitySampledCubeArray);
+        break;
+      
+      default:
+        // No additional capabilities required
+        break;
     }
     
     // If the read-without-format capability is not set and this
@@ -1090,7 +1104,9 @@ namespace dxvk {
     } else {
       // Structured and raw buffers are represented as
       // texel buffers consisting of 32-bit integers.
-      m_module.enableCapability(spv::CapabilityImageBuffer);
+      m_module.enableCapability(isUav
+        ? spv::CapabilityImageBuffer
+        : spv::CapabilitySampledBuffer);
       
       resTypeId = m_module.defImageType(sampledTypeId,
         typeInfo.dim, 0, typeInfo.array, typeInfo.ms, typeInfo.sampled,
