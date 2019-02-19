@@ -3,10 +3,19 @@
 namespace dxvk {
 
   Direct3DSurface9::Direct3DSurface9(
-    Direct3DDevice9Ex* device,
-    Rc<Direct3DCommonTexture9> texture,
-    UINT subresource,
-    IUnknown* container) 
+          Direct3DDevice9Ex*        device,
+    const D3D9TextureDesc*          desc)
+    : Direct3DSurface9Base{
+        device,
+        new Direct3DCommonTexture9{ device, desc },
+        0,
+        device } {}
+
+  Direct3DSurface9::Direct3DSurface9(
+          Direct3DDevice9Ex*         device,
+          Rc<Direct3DCommonTexture9> texture,
+          UINT                       subresource,
+          IUnknown*                  container)
     : Direct3DSurface9Base{
         device,
         texture,

@@ -12,10 +12,14 @@ namespace dxvk {
   public:
 
     Direct3DSurface9(
-      Direct3DDevice9Ex* device,
-      Rc<Direct3DCommonTexture9> texture,
-      UINT subresource,
-      IUnknown* container);
+            Direct3DDevice9Ex*        device,
+      const D3D9TextureDesc*          desc);
+
+    Direct3DSurface9(
+            Direct3DDevice9Ex*         device,
+            Rc<Direct3DCommonTexture9> texture,
+            UINT                       subresource,
+            IUnknown*                  container);
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
 
