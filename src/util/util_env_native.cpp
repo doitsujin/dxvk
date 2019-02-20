@@ -2,7 +2,9 @@
 
 #include <string>
 #include <fstream>
+
 #include <sys/stat.h>
+#include <pthread.h>
 
 namespace dxvk::env {
 
@@ -32,7 +34,7 @@ namespace dxvk::env {
   
   
   void setThreadName(const std::string& name) {
-    // TODO
+    pthread_setname_np(pthread_self(), name.c_str());
   }
 
   bool createDirectory(const std::string& path) {
