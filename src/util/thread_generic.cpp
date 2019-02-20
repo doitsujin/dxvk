@@ -39,7 +39,37 @@ namespace dxvk {
 
     void ThreadFn::set_priority(ThreadPriority priority)
     {
-        // TODO
+      // Based on wine staging server-Realtime_Priority patch
+
+      struct sched_param param;
+      int policy;
+
+      switch (priority) {
+        case ThreadPriority::Highest:
+          policy = SCHED_FIFO;
+          param.sched_priority = 2;
+          break;
+
+        case ThreadPriority::High:
+          policy = SCHED_FIFO;
+          param.sched_priority = 0;
+          break;
+
+        case ThreadPriority::Normal:
+          policy = SCHED_OTHER;
+          break;
+
+        case ThreadPriority::Low:
+          policy = SCHED_IDLE;
+          break;
+
+        case ThreadPriority::Lowest:
+          policy = SCHED_BATCH;
+          break;
+      }
+
+      if (pthread_setschedparam(pthread_self(), policy, &param) == -1)
+        Logger::warn("Failed to set thread priority");
     }
 
     void ThreadFn::threadProc(void *arg) {
