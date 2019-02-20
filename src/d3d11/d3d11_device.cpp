@@ -1727,6 +1727,7 @@ namespace dxvk {
     // Make sure the back buffer size is not zero
     DXGI_SWAP_CHAIN_DESC1 desc = *pDesc;
     
+    // This is handled by wine when using DXVK_NATIVE
 #ifndef DXVK_NATIVE
     GetWindowClientSize(hWnd,
       desc.Width  ? nullptr : &desc.Width,

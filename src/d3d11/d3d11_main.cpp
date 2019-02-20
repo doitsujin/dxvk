@@ -251,7 +251,7 @@ extern "C" {
 
 #else
 
-  /* Native Entry-Point */
+  // Native Entry-Point
   HRESULT dxvk_native_create_d3d11_device(
         dxvk_native_info      native_info,
         IDXGIFactory*         pFactory,
