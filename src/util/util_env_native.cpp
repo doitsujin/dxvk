@@ -1,6 +1,7 @@
 #include "util_env.h"
 
 #include <string>
+#include <fstream>
 #include <sys/stat.h>
 
 namespace dxvk::env {
@@ -14,8 +15,19 @@ namespace dxvk::env {
   
   
   std::string getExeName() {
-    // TODO
-    return "";
+    std::string fullPath;
+
+    std::ifstream cmdLineFile;
+    cmdLineFile.open("/proc/self/cmdline");
+      if(cmdLineFile.good())
+        std::getline(cmdLineFile, fullPath);
+    cmdLineFile.close();
+
+    auto n = fullPath.find_last_of('/');
+    
+    return (n != std::string::npos)
+      ? fullPath.substr(n + 1)
+      : fullPath;
   }
   
   
