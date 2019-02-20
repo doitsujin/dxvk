@@ -1,5 +1,9 @@
 #include "d3d10_device.h"
 
+#ifdef DXVK_NATIVE
+#include <pthread.h>
+#endif
+
 namespace dxvk {
 
   void D3D10DeviceMutex::lock() {
