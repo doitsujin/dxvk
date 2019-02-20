@@ -61,6 +61,7 @@ extern "C" {
     return S_OK;
   }
 
+#ifndef DXVK_NATIVE
 
   DLLEXPORT HRESULT __stdcall D3D10CreateDevice1(
           IDXGIAdapter*           pAdapter,
@@ -78,7 +79,6 @@ extern "C" {
     Com<IDXGIAdapter> dxgiAdapter = pAdapter;
 
     if (dxgiAdapter == nullptr) {
-#ifndef DXVK_NATIVE
       if (DriverType != D3D10_DRIVER_TYPE_HARDWARE)
         Logger::warn("D3D10CreateDevice: Unsupported driver type");
       
@@ -91,9 +91,6 @@ extern "C" {
         Logger::err("D3D10CreateDevice: No default adapter available");
         return E_FAIL;
       }
-#else
-      return E_INVALIDARG;
-#endif
     } else {
       if (FAILED(dxgiAdapter->GetParent(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&dxgiFactory)))) {
         Logger::err("D3D10CreateDevice: Failed to query DXGI factory from DXGI adapter");
@@ -150,26 +147,7 @@ extern "C" {
     } return S_FALSE;
   }
 
-  /* Native Entry-Point */
-#ifdef DXVK_NATIVE
-  HRESULT dxvk_native_create_d3d10_device(
-    dxvk_native_info        native_info,
-    IDXGIAdapter*           pAdapter,
-    D3D10_DRIVER_TYPE       DriverType,
-    HMODULE                 Software,
-    UINT                    Flags,
-    D3D10_FEATURE_LEVEL1    HardwareLevel,
-    UINT                    SDKVersion,
-    ID3D10Device1**         ppDevice) {
-
-    g_native_info = native_info;
-
-    return D3D10CreateDevice1(pAdapter, DriverType,
-      Software, Flags, HardwareLevel, SDKVersion, ppDevice);
-  }
-#endif
-
-#ifndef DXVK_NATIVE
+  
   DLLEXPORT HRESULT __stdcall D3D10CreateDeviceAndSwapChain1(
           IDXGIAdapter*           pAdapter,
           D3D10_DRIVER_TYPE       DriverType,
@@ -404,6 +382,25 @@ extern "C" {
       ppShaderText,
       ppErrorMsgs);
   }
+
+#else
+
+  /* Native Entry-Point */
+  HRESULT dxvk_native_create_d3d10_device(
+    dxvk_native_info        native_info,
+    IDXGIFactory*           pFactory,
+    IDXGIAdapter*           pAdapter,
+    UINT                    Flags,
+    D3D_FEATURE_LEVEL       FeatureLevel,
+    ID3D10Device**          ppDevice) {
+
+    if(!g_native_info.pfn_create_vulkan_surface)
+      g_native_info = native_info;
+
+    return D3D10CoreCreateDevice(pFactory, pAdapter,
+      Flags, FeatureLevel, ppDevice);
+  }
+
 #endif
 
 }

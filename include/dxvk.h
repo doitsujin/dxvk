@@ -59,14 +59,14 @@ extern "C" {
 
   HRESULT dxvk_native_create_d3d10_device(
     dxvk_native_info        native_info,
+    IDXGIFactory*           pFactory,
     IDXGIAdapter*           pAdapter,
-    D3D10_DRIVER_TYPE       DriverType,
-    HMODULE                 Software,
     UINT                    Flags,
-    D3D10_FEATURE_LEVEL1    HardwareLevel,
-    UINT                    SDKVersion,
-    ID3D10Device1**         ppDevice
+    D3D_FEATURE_LEVEL       FeatureLevel,
+    ID3D10Device**         ppDevice
   );
+
+  typedef HRESULT (*PFN_dxvk_native_create_d3d10_device)(dxvk_native_info,IDXGIFactory*,IDXGIAdapter*,UINT,D3D_FEATURE_LEVEL,ID3D10Device**);
 
   extern dxvk_native_info g_native_info;
 
