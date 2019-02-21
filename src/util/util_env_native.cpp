@@ -29,7 +29,7 @@ namespace dxvk::env {
     auto e = fullPath.rfind(".exe");
     
     return (n != std::string::npos && e != std::string::npos)
-      ? fullPath.substr(n + 1, e - n + 4)
+      ? fullPath.substr(n + 1, e - n + 3)
       : fullPath;
   }
   
