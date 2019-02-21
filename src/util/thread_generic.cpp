@@ -42,7 +42,7 @@ namespace dxvk {
       // Based on wine staging server-Realtime_Priority patch
 
       struct sched_param param;
-      int policy;
+      int policy = SCHED_OTHER;
 
       switch (priority) {
         case ThreadPriority::Highest:
