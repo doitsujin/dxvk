@@ -133,6 +133,17 @@ namespace dxvk::vk {
             uint32_t&       index);
     
     /**
+     * \brief Waits for fence to get signaled
+     *
+     * Helper method that can be used in conjunction
+     * with the fence passed to \ref acquireNextImage.
+     * \param [in] fence Fence to wait on
+     * \returns Status of the operation
+     */
+    VkResult waitForFence(
+            VkFence         fence);
+    
+    /**
      * \brief Presents current image
      * 
      * Presents the current image. If this returns

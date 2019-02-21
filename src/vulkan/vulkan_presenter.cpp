@@ -66,6 +66,15 @@ namespace dxvk::vk {
     return status;
   }
 
+
+  VkResult Presenter::waitForFence(VkFence fence) {
+    // Ignore timeouts, we don't want to block the
+    // app indefinitely if something goes wrong
+    return m_vkd->vkWaitForFences(
+      m_vkd->device(), 1, &fence, VK_FALSE,
+      1'000'000'000ull);
+  }
+
   
   VkResult Presenter::presentImage(VkSemaphore wait) {
     VkPresentInfoKHR info;
