@@ -61,11 +61,13 @@ namespace dxvk::vk {
   /**
    * \brief Presenter semaphores
    * 
-   * Pair of semaphores used for acquire
-   * and present operations, including
-   * the command buffers used in between.
+   * Pair of semaphores used for acquire and present
+   * operations, including the command buffers used
+   * in between. Also stores a fence to signal on
+   * image acquisition.
    */
   struct PresenterSync {
+    VkFence     fence;
     VkSemaphore acquire;
     VkSemaphore present;
   };

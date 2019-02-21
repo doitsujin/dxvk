@@ -188,17 +188,26 @@ namespace dxvk::vk {
     m_semaphores.resize(m_info.imageCount);
 
     for (uint32_t i = 0; i < m_info.imageCount; i++) {
-      VkSemaphoreCreateInfo info;
-      info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-      info.pNext = nullptr;
-      info.flags = 0;
+      VkFenceCreateInfo fenceInfo;
+      fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+      fenceInfo.pNext = nullptr;
+      fenceInfo.flags = 0;
+
+      if ((status = m_vkd->vkCreateFence(m_vkd->device(),
+          &fenceInfo, nullptr, &m_semaphores[i].fence)) != VK_SUCCESS)
+        return status;
+
+      VkSemaphoreCreateInfo semInfo;
+      semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+      semInfo.pNext = nullptr;
+      semInfo.flags = 0;
 
       if ((status = m_vkd->vkCreateSemaphore(m_vkd->device(),
-          &info, nullptr, &m_semaphores[i].acquire)) != VK_SUCCESS)
+          &semInfo, nullptr, &m_semaphores[i].acquire)) != VK_SUCCESS)
         return status;
 
       if ((status = m_vkd->vkCreateSemaphore(m_vkd->device(),
-          &info, nullptr, &m_semaphores[i].present)) != VK_SUCCESS)
+          &semInfo, nullptr, &m_semaphores[i].present)) != VK_SUCCESS)
         return status;
     }
     
@@ -385,6 +394,7 @@ namespace dxvk::vk {
       m_vkd->vkDestroyImageView(m_vkd->device(), img.view, nullptr);
     
     for (const auto& sem : m_semaphores) {
+      m_vkd->vkDestroyFence(m_vkd->device(), sem.fence, nullptr);
       m_vkd->vkDestroySemaphore(m_vkd->device(), sem.acquire, nullptr);
       m_vkd->vkDestroySemaphore(m_vkd->device(), sem.present, nullptr);
     }
