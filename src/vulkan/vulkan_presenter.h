@@ -123,11 +123,13 @@ namespace dxvk::vk {
      * must be recreated and a new image must
      * be acquired before proceeding.
      * \param [in] signal Semaphore to signal
+     * \param [in] fence Fence to signal (optional)
      * \param [out] index Acquired image index
      * \returns Status of the operation
      */
     VkResult acquireNextImage(
             VkSemaphore     signal,
+            VkFence         fence,
             uint32_t&       index);
     
     /**

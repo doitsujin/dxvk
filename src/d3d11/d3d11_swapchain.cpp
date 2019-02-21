@@ -227,7 +227,7 @@ namespace dxvk {
       uint32_t imageIndex = 0;
 
       VkResult status = m_presenter->acquireNextImage(
-        sync.acquire, imageIndex);
+        sync.acquire, VK_NULL_HANDLE, imageIndex);
 
       while (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR) {
         RecreateSwapChain(m_vsync);
@@ -236,7 +236,7 @@ namespace dxvk {
         sync = m_presenter->getSyncSemaphores();
 
         status = m_presenter->acquireNextImage(
-          sync.acquire, imageIndex);
+          sync.acquire, VK_NULL_HANDLE, imageIndex);
       }
 
       // Use an appropriate texture filter depending on whether

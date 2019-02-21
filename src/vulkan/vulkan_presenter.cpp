@@ -42,11 +42,18 @@ namespace dxvk::vk {
 
   VkResult Presenter::acquireNextImage(
           VkSemaphore     signal,
+          VkFence         fence,
           uint32_t&       index) {
-    VkResult status = m_vkd->vkAcquireNextImageKHR(
+    VkResult status;
+
+    if (fence && ((status = m_vkd->vkResetFences(
+        m_vkd->device(), 1, &fence)) != VK_SUCCESS))
+      return status;
+
+    status = m_vkd->vkAcquireNextImageKHR(
       m_vkd->device(), m_swapchain,
       std::numeric_limits<uint64_t>::max(),
-      signal, VK_NULL_HANDLE, &m_imageIndex);
+      signal, fence, &m_imageIndex);
     
     if (status != VK_SUCCESS
      && status != VK_SUBOPTIMAL_KHR)
