@@ -26,9 +26,10 @@ namespace dxvk::env {
     cmdLineFile.close();
 
     auto n = fullPath.find_last_of('/');
+    auto e = fullPath.rfind(".exe");
     
-    return (n != std::string::npos)
-      ? fullPath.substr(n + 1)
+    return (n != std::string::npos && e != std::string::npos)
+      ? fullPath.substr(n + 1, e - n + 4)
       : fullPath;
   }
   
