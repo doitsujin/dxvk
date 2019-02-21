@@ -95,9 +95,7 @@ dxvk_version = vcs_tag(
   input:  'version.h.in',
   output: 'version.h')
 
-if dxvk_native
-  subdir('include')
-endif
+subdir('include')
 
 subdir('src')
 

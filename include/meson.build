@@ -15,6 +15,10 @@ idl_files = files([
     'native/d3d11sdklayers.idl'
 ])
 
-com_headers = com_header_generator.process(idl_files)
+if dxvk_native
+  com_headers = com_header_generator.process(idl_files)
 
-install_headers('dxvk.h', subdir : 'dxvk')
+  install_headers('dxvk.h', subdir : 'dxvk')
+else
+  com_headers = []
+endif
