@@ -21,7 +21,9 @@ namespace dxvk::vk {
 #endif
 
   PFN_vkVoidFunction LibraryLoader::sym(const char* name) const {
+#ifdef DXVK_NATIVE
     GetInstanceProcAddr = ::g_native_info.pfn_vkGetInstanceProcAddr;
+#endif
     return dxvk::vk::GetInstanceProcAddr(nullptr, name);
   }
   
