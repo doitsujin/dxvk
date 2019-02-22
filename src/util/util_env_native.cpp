@@ -25,11 +25,15 @@ namespace dxvk::env {
         std::getline(cmdLineFile, fullPath);
     cmdLineFile.close();
 
+    // Find first null character, arguments are specified after it
+    auto f = fullPath.find_first_of('\0');
+
+    fullPath.erase(f, std::string::npos);
+
     auto n = fullPath.find_last_of('/');
-    auto e = fullPath.rfind(".exe");
     
-    return (n != std::string::npos && e != std::string::npos)
-      ? fullPath.substr(n + 1, e - n + 3)
+    return (n != std::string::npos)
+      ? fullPath.substr(n + 1)
       : fullPath;
   }
   
