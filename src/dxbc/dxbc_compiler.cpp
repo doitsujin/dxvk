@@ -7098,8 +7098,14 @@ namespace dxvk {
     const char*             name) {
     const uint32_t varId = emitNewVariable(info);
     
-    m_module.decorateBuiltIn(varId, builtIn);
     m_module.setDebugName(varId, name);
+    m_module.decorateBuiltIn(varId, builtIn);
+
+    if (m_programInfo.type() == DxbcProgramType::PixelShader
+     && info.type.ctype != DxbcScalarType::Float32
+     && info.type.ctype != DxbcScalarType::Bool
+     && info.sclass == spv::StorageClassInput)
+      m_module.decorate(varId, spv::DecorationFlat);
     
     m_entryPointInterfaces.push_back(varId);
     return varId;
