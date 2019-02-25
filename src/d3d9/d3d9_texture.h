@@ -49,6 +49,9 @@ namespace dxvk {
     DWORD STDMETHODCALLTYPE SetLOD(DWORD LODNew) final {
       DWORD oldLod = m_lod;
       m_lod = LODNew;
+
+      m_texture->RecreateImageView(LODNew);
+
       return oldLod;
     }
 

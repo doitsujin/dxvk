@@ -175,7 +175,16 @@ namespace dxvk {
      */
     HRESULT Unlock(UINT     Subresource);
 
+    Rc<DxvkImageView> GetImageView(bool srgb) const {
+      return srgb ? m_imageViewSrgb : m_imageView;
+    }
+
+    void RecreateImageView(UINT Lod);
+
   private:
+
+    Rc<DxvkImageView>                 m_imageView;
+    Rc<DxvkImageView>                 m_imageViewSrgb;
 
     Direct3DDevice9Ex*   m_device;
     D3D9TextureDesc      m_desc;
