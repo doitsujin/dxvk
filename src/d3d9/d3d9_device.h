@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../dxvk/dxvk_device.h"
+#include "../dxvk/dxvk_cs.h"
 
 #include "d3d9_include.h"
 #include "d3d9_cursor.h"
@@ -9,6 +10,9 @@
 #include <vector>
 
 namespace dxvk {
+
+  constexpr static uint32_t MinFlushIntervalUs = 1250;
+  constexpr static uint32_t MaxPendingSubmits = 3;
 
   class Direct3DSwapChain9Ex;
   class Direct3DCommonTexture9;
@@ -28,6 +32,8 @@ namespace dxvk {
       DWORD flags,
       D3DPRESENT_PARAMETERS* presentParams,
       D3DDISPLAYMODEEX* displayMode);
+
+    ~Direct3DDevice9Ex();
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
 
@@ -562,6 +568,10 @@ namespace dxvk {
             Direct3DCommonTexture9* pResource,
             UINT                    Subresource);
 
+    void SynchronizeCsThread();
+
+    void Flush();
+
   private:
 
     const D3D9VkFormatTable         m_d3d9Formats;
@@ -571,8 +581,13 @@ namespace dxvk {
     Com<IDirect3D9Ex> m_parent;
 
     UINT m_adapter;
+
     Rc<DxvkAdapter> m_dxvkAdapter;
     Rc<DxvkDevice> m_device;
+    Rc<DxvkDataBuffer>          m_updateBuffer;
+    DxvkCsChunkPool m_csChunkPool;
+
+    DxvkCsChunkRef              m_csChunk;
 
     D3DDEVTYPE m_deviceType;
     HWND m_window;
@@ -585,6 +600,40 @@ namespace dxvk {
     D3D9Cursor m_cursor;
 
     std::vector<IDirect3DSwapChain9Ex*> m_swapchains;
+
+    DxvkCsThread m_csThread;
+    bool         m_csIsBusy = false;
+
+    std::chrono::high_resolution_clock::time_point m_lastFlush
+      = std::chrono::high_resolution_clock::now();
+
+    DxvkCsChunkRef AllocCsChunk() {
+      DxvkCsChunk* chunk = m_csChunkPool.allocChunk(DxvkCsChunkFlag::SingleUse);
+      return DxvkCsChunkRef(chunk, &m_csChunkPool);
+    }
+
+    template<typename Cmd>
+    void EmitCs(Cmd&& command) {
+      if (!m_csChunk->push(command)) {
+        EmitCsChunk(std::move(m_csChunk));
+
+        m_csChunk = AllocCsChunk();
+        m_csChunk->push(command);
+      }
+    }
+
+    void FlushCsChunk() {
+      if (m_csChunk->commandCount() != 0) {
+        EmitCsChunk(std::move(m_csChunk));
+        m_csChunk = AllocCsChunk();
+      }
+    }
+
+    void SynchronizeDevice();
+
+    void EmitCsChunk(DxvkCsChunkRef&& chunk);
+
+    void FlushImplicit(BOOL StrongHint);
 
   };
 

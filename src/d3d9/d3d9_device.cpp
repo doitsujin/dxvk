@@ -30,11 +30,17 @@ namespace dxvk {
     , m_device{ dxvkDevice }
     , m_deviceType{ deviceType }
     , m_window{ window }
-    , m_d3d9Formats{ m_dxvkAdapter } {
+    , m_d3d9Formats{ m_dxvkAdapter }
+    , m_csChunk{ AllocCsChunk() }
+    , m_csThread{ m_device->createContext() }{
     HRESULT hr = this->Reset(presentParams);
 
     if (FAILED(hr))
       throw DxvkError("Direct3DDevice9Ex: device initial reset failed.");
+  }
+
+  Direct3DDevice9Ex::~Direct3DDevice9Ex() {
+
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::QueryInterface(REFIID riid, void** ppvObject) {
@@ -449,7 +455,7 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::EndScene() {
-    // We may want to flush cmds here.
+    FlushImplicit(true);
 
     return D3D_OK;
   }
@@ -1298,7 +1304,8 @@ namespace dxvk {
       SetClipPlane(i, plane);
     }
 
-    // TODO: Flush and Sync here.
+    Flush();
+    SynchronizeCsThread();
 
     HRESULT hr;
     auto* implicitSwapchain = getInternalSwapchain(0);
@@ -1420,21 +1427,21 @@ namespace dxvk {
     // on the CS thread so that we can determine whether the
     // resource is currently in use or not.
 
-    //SynchronizeCsThread();
+    SynchronizeCsThread();
 
     if (Resource->isInUse()) {
       if (MapFlags & D3DLOCK_DONOTWAIT) {
         // We don't have to wait, but misbehaving games may
         // still try to spin on `Map` until the resource is
         // idle, so we should flush pending commands
-        //FlushImplicit(FALSE);
+        FlushImplicit(FALSE);
         return false;
       }
       else {
         // Make sure pending commands using the resource get
         // executed on the the GPU if we have to wait for it
-        //Flush();
-        //SynchronizeCsThread();
+        Flush();
+        SynchronizeCsThread();
 
         while (Resource->isInUse())
           dxvk::this_thread::yield();
@@ -1495,7 +1502,7 @@ namespace dxvk {
 
       // This is slow, but we have to dispatch a pack
       // operation and then immediately synchronize.
-      /*EmitCs([
+      EmitCs([
         cImageBuffer = mappedBuffer,
         cImage       = mappedImage,
         cSubresource = subresource,
@@ -1509,7 +1516,7 @@ namespace dxvk {
 
         ctx->copyDepthStencilImageToPackedBuffer(
           cImageBuffer, 0, cImage, layers, offset, extent, cFormat);
-      });*/
+      });
 
       WaitForResource(mappedBuffer, 0);
 
@@ -1534,12 +1541,12 @@ namespace dxvk {
         // buffer if the entire image gets discarded.
         physSlice = mappedBuffer->allocSlice();
         
-        /*EmitCs([
+        EmitCs([
           cImageBuffer = mappedBuffer,
           cBufferSlice = physSlice
         ] (DxvkContext* ctx) {
           ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
-        });*/
+        });
       } else {
         // When using any map mode which requires the image contents
         // to be preserved, and if the GPU has write access to the
@@ -1549,7 +1556,7 @@ namespace dxvk {
         if (copyExistingData) {
           auto subresourceLayers = vk::makeSubresourceLayers(subresource);
           
-          /*EmitCs([
+          EmitCs([
             cImageBuffer  = mappedBuffer,
             cImage        = mappedImage,
             cSubresources = subresourceLayers,
@@ -1559,7 +1566,7 @@ namespace dxvk {
               cImageBuffer, 0, VkExtent2D { 0u, 0u },
               cImage, cSubresources, VkOffset3D { 0, 0, 0 },
               cLevelExtent);
-          });*/
+          });
         }
         
         WaitForResource(mappedBuffer, 0);
@@ -1601,7 +1608,7 @@ namespace dxvk {
         subresource.mipLevel,
         subresource.arrayLayer, 1 };
 
-      /*EmitCs([
+      EmitCs([
         cSrcBuffer = mappedBuffer,
           cDstImage = mappedImage,
           cDstLayers = subresourceLayers,
@@ -1610,12 +1617,58 @@ namespace dxvk {
           ctx->copyBufferToImage(cDstImage, cDstLayers,
             VkOffset3D{ 0, 0, 0 }, cDstLevelExtent,
             cSrcBuffer, 0, { 0u, 0u });
-        });*/
+        });
     }
 
     pResource->ClearMappedSubresource();
 
     return D3D_OK;
+  }
+
+  void Direct3DDevice9Ex::EmitCsChunk(DxvkCsChunkRef&& chunk) {
+    m_csThread.dispatchChunk(std::move(chunk));
+    m_csIsBusy = true;
+  }
+
+
+  void Direct3DDevice9Ex::  FlushImplicit(BOOL StrongHint) {
+    // Flush only if the GPU is about to go idle, in
+    // order to keep the number of submissions low.
+    if (StrongHint || m_device->pendingSubmissions() <= MaxPendingSubmits) {
+      auto now = std::chrono::high_resolution_clock::now();
+
+      // Prevent flushing too often in short intervals.
+      if (now - m_lastFlush >= std::chrono::microseconds(MinFlushIntervalUs))
+        Flush();
+    }
+  }
+
+  void Direct3DDevice9Ex::SynchronizeCsThread() {
+    //D3D10DeviceLock lock = LockContext();
+
+    // Dispatch current chunk so that all commands
+    // recorded prior to this function will be run
+    FlushCsChunk();
+
+    m_csThread.synchronize();
+  }
+
+  void Direct3DDevice9Ex::Flush() {
+    //D3D10DeviceLock lock = LockContext();
+
+    if (m_csIsBusy || m_csChunk->commandCount() != 0) {
+      // Add commands to flush the threaded
+      // context, then flush the command list
+      EmitCs([](DxvkContext* ctx) {
+        ctx->flushCommandList();
+      });
+
+      FlushCsChunk();
+
+      // Reset flush timer used for implicit flushes
+      m_lastFlush = std::chrono::high_resolution_clock::now();
+      m_csIsBusy = false;
+    }
   }
 
 }

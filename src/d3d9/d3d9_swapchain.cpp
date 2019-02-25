@@ -38,6 +38,10 @@ namespace dxvk {
     HWND window = GetPresentWindow(hDestWindowOverride);
 
     auto& presenter = GetOrMakePresenter(window);
+
+    m_parent->Flush();
+    m_parent->SynchronizeCsThread();
+
     presenter.present();
 
     return D3D_OK;
