@@ -6,6 +6,7 @@
 #include "d3d9_include.h"
 #include "d3d9_cursor.h"
 #include "d3d9_format.h"
+#include "d3d9_multithread.h"
 
 #include <vector>
 
@@ -572,7 +573,13 @@ namespace dxvk {
 
     void Flush();
 
+    Direct3DDeviceLock9 LockDevice() {
+      return m_multithread.AcquireLock();
+    }
+
   private:
+
+    Direct3DMultithread9            m_multithread;
 
     const D3D9VkFormatTable         m_d3d9Formats;
 

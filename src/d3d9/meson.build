@@ -11,6 +11,7 @@ d3d9_src = [
   'd3d9_common_texture.cpp',
   'd3d9_texture.cpp',
   'd3d9_surface.cpp',
+  'd3d9_multithread.cpp',
   'd3d9_util.cpp'
 ]
 

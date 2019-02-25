@@ -35,6 +35,8 @@ namespace dxvk {
     HWND hDestWindowOverride,
     const RGNDATA* pDirtyRegion,
     DWORD dwFlags) {
+    m_parent->LockDevice();
+
     HWND window = GetPresentWindow(hDestWindowOverride);
 
     auto& presenter = GetOrMakePresenter(window);

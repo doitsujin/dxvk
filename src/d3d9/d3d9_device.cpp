@@ -32,7 +32,8 @@ namespace dxvk {
     , m_window{ window }
     , m_d3d9Formats{ m_dxvkAdapter }
     , m_csChunk{ AllocCsChunk() }
-    , m_csThread{ m_device->createContext() }{
+    , m_csThread{ m_device->createContext() }
+    , m_multithread{ flags & D3DCREATE_MULTITHREADED } {
     HRESULT hr = this->Reset(presentParams);
 
     if (FAILED(hr))
@@ -99,6 +100,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetDisplayMode(UINT iSwapChain, D3DDISPLAYMODE* pMode) {
+    auto lock = LockDevice();
+
     auto* swapchain = getInternalSwapchain(iSwapChain);
 
     if (swapchain == nullptr)
@@ -128,6 +131,8 @@ namespace dxvk {
   }
 
   void    STDMETHODCALLTYPE Direct3DDevice9Ex::SetCursorPosition(int X, int Y, DWORD Flags) {
+    auto lock = LockDevice();
+
     m_cursor.updateCursor(X, Y, Flags & D3DCURSOR_IMMEDIATE_UPDATE);
   }
 
@@ -141,6 +146,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateAdditionalSwapChain(D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DSwapChain9** ppSwapChain) {
+    auto lock = LockDevice();
+
     InitReturnPtr(ppSwapChain);
 
     if (ppSwapChain == nullptr || pPresentationParameters == nullptr)
@@ -152,6 +159,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetSwapChain(UINT iSwapChain, IDirect3DSwapChain9** pSwapChain) {
+    auto lock = LockDevice();
+
     InitReturnPtr(pSwapChain);
 
     auto* swapchain = getInternalSwapchain(iSwapChain);
@@ -165,6 +174,8 @@ namespace dxvk {
   }
 
   UINT    STDMETHODCALLTYPE Direct3DDevice9Ex::GetNumberOfSwapChains() {
+    auto lock = LockDevice();
+
     return UINT(m_swapchains.size());
   }
 
@@ -190,6 +201,8 @@ namespace dxvk {
     UINT iBackBuffer,
     D3DBACKBUFFER_TYPE Type,
     IDirect3DSurface9** ppBackBuffer) {
+    auto lock = LockDevice();
+
     InitReturnPtr(ppBackBuffer);
 
     auto* swapchain = getInternalSwapchain(iSwapChain);
@@ -201,6 +214,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetRasterStatus(UINT iSwapChain, D3DRASTER_STATUS* pRasterStatus) {
+    auto lock = LockDevice();
+
     auto* swapchain = getInternalSwapchain(iSwapChain);
 
     if (swapchain == nullptr)
@@ -218,6 +233,8 @@ namespace dxvk {
     UINT iSwapChain,
     DWORD Flags,
     const D3DGAMMARAMP* pRamp) {
+    auto lock = LockDevice();
+
     auto* swapchain = getInternalSwapchain(iSwapChain);
 
     if (swapchain == nullptr)
@@ -227,6 +244,8 @@ namespace dxvk {
   }
 
   void    STDMETHODCALLTYPE Direct3DDevice9Ex::GetGammaRamp(UINT iSwapChain, D3DGAMMARAMP* pRamp) {
+    auto lock = LockDevice();
+
     auto* swapchain = getInternalSwapchain(iSwapChain);
 
     if (swapchain == nullptr)
@@ -384,6 +403,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetFrontBufferData(UINT iSwapChain, IDirect3DSurface9* pDestSurface) {
+    auto lock = LockDevice();
+
     auto* swapchain = getInternalSwapchain(iSwapChain);
 
     if (swapchain == nullptr)
@@ -972,6 +993,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::WaitForVBlank(UINT iSwapChain) {
+    auto lock = LockDevice();
+
     auto* swapchain = getInternalSwapchain(iSwapChain);
 
     if (swapchain == nullptr)
@@ -1006,6 +1029,8 @@ namespace dxvk {
           HWND hDestWindowOverride,
     const RGNDATA* pDirtyRegion,
           DWORD dwFlags) {
+    auto lock = LockDevice();
+
     auto* swapchain = getInternalSwapchain(0);
     if (swapchain == nullptr)
       return D3DERR_INVALIDCALL;
@@ -1146,6 +1171,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::ResetEx(D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX *pFullscreenDisplayMode) {
+    auto lock = LockDevice();
+
     if (pPresentationParameters == nullptr)
       return D3DERR_INVALIDCALL;
 
@@ -1352,6 +1379,8 @@ namespace dxvk {
     UINT iSwapChain,
     D3DDISPLAYMODEEX* pMode,
     D3DDISPLAYROTATION* pRotation) {
+    auto lock = LockDevice();
+
     auto* swapchain = getInternalSwapchain(iSwapChain);
 
     if (swapchain == nullptr)
@@ -1457,6 +1486,8 @@ namespace dxvk {
             D3DLOCKED_BOX*          pLockedBox,
       const D3DBOX*                 pBox,
             DWORD                   Flags) {
+    auto lock = LockDevice();
+
     const Rc<DxvkImage>  mappedImage  = pResource->GetImage();
     const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer();
     
@@ -1589,6 +1620,8 @@ namespace dxvk {
   HRESULT Direct3DDevice9Ex::UnlockImage(
         Direct3DCommonTexture9* pResource,
         UINT                    Subresource) {
+    auto lock = LockDevice();
+
     if (pResource->GetMapFlags() & D3DLOCK_READONLY)
       return D3D_OK;
 
@@ -1631,7 +1664,7 @@ namespace dxvk {
   }
 
 
-  void Direct3DDevice9Ex::  FlushImplicit(BOOL StrongHint) {
+  void Direct3DDevice9Ex::FlushImplicit(BOOL StrongHint) {
     // Flush only if the GPU is about to go idle, in
     // order to keep the number of submissions low.
     if (StrongHint || m_device->pendingSubmissions() <= MaxPendingSubmits) {
@@ -1644,7 +1677,7 @@ namespace dxvk {
   }
 
   void Direct3DDevice9Ex::SynchronizeCsThread() {
-    //D3D10DeviceLock lock = LockContext();
+    auto lock = LockDevice();
 
     // Dispatch current chunk so that all commands
     // recorded prior to this function will be run
@@ -1654,7 +1687,7 @@ namespace dxvk {
   }
 
   void Direct3DDevice9Ex::Flush() {
-    //D3D10DeviceLock lock = LockContext();
+    auto lock = LockDevice();
 
     if (m_csIsBusy || m_csChunk->commandCount() != 0) {
       // Add commands to flush the threaded
