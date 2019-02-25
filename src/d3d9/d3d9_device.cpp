@@ -41,7 +41,9 @@ namespace dxvk {
   }
 
   Direct3DDevice9Ex::~Direct3DDevice9Ex() {
-
+    Flush();
+    SynchronizeCsThread();
+    m_device->waitForIdle(); // Sync Device
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::QueryInterface(REFIID riid, void** ppvObject) {
