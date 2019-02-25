@@ -24,7 +24,7 @@ Verify that your application uses DXVK instead of wined3d by checking for the pr
 In order to remove DXVK from a prefix, run the following command:
 ```
 export WINEPREFIX=/path/to/.wine-prefix
-./setup-dxvk.sh uninstall
+./setup_dxvk.sh uninstall
 ```
 
 ## Build instructions
