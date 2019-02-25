@@ -10,13 +10,22 @@ In order to install a DXVK package obtained from the [release](https://github.co
 
 ```
 export WINEPREFIX=/path/to/.wine-prefix
-winetricks --force setup_dxvk.verb
+./setup_dxvk.sh install
 ```
 
 This will **copy** the DLLs into the `system32` and `syswow64` directories of your wine prefix and set up the required DLL overrides. Pure 32-bit prefixes are also supported.
 
-Verify that your application uses DXVK instead of wined3d by checking for the presence of the log files `d3d11.log` and `dxgi.log` in the application's directory, or by enabling the HUD (see notes below).
+The setup script optionally takes the following arguments:
+- `--symlink`: Create symbolic links to the DLL files instead of copying them. This is especially useful for development.
+- `--without-dxgi`: Do not install DXVK's DXGI implementation and use the one provided by wine instead. This is necessary for both vkd3d and DXVK to work within the same wine prefix.
 
+Verify that your application uses DXVK instead of wined3d by checking for the presence of the log file `d3d11.log` in the application's directory, or by enabling the HUD (see notes below).
+
+In order to remove DXVK from a prefix, run the following command:
+```
+export WINEPREFIX=/path/to/.wine-prefix
+./setup-dxvk.sh uninstall
+```
 
 ## Build instructions
 
@@ -36,17 +45,25 @@ Inside the DXVK directory, run:
 
 This will create a folder `dxvk-master` in `/your/target/directory`, which contains both 32-bit and 64-bit versions of DXVK, which can be set up in the same way as the release versions as noted above.
 
+In order to preserve the build directories for development, pass `--dev-build` to the script. This option implies `--no-package`. After making changes to the source code, you can then do the following to rebuild DXVK:
+```
+# change to build.32 for 32-bit
+cd /your/target/directory/build.64
+ninja install
+```
+
+A winelib build can be created by adding the `--winelib` argument.
+
 #### Compiling manually
 ```
 # 64-bit build. For 32-bit builds, replace
 # build-win64.txt with build-win32.txt
 meson --cross-file build-win64.txt --buildtype release --prefix /your/dxvk/directory build.w64
 cd build.w64
-ninja
 ninja install
 ```
 
-The D3D10, D3D11 and DXGI DLLs as well as a shell script to set up DXVK for a specific wine prefix will be located in `/your/dxvk/directory/bin`.
+The D3D10, D3D11 and DXGI DLLs will be located in `/your/dxvk/directory/bin`. Setup has to be done manually in this case.
 
 ### Notes on Vulkan drivers
 Before reporting an issue, please check the [Wiki](https://github.com/doitsujin/dxvk/wiki/Driver-support) page on the current driver status and make sure you run a recent enough driver version for your hardware.
