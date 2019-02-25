@@ -155,7 +155,10 @@ namespace dxvk {
     if (ppSwapChain == nullptr || pPresentationParameters == nullptr)
       return D3DERR_INVALIDCALL;
 
-    *ppSwapChain = new Direct3DSwapChain9Ex(this, pPresentationParameters);
+    auto* swapchain = new Direct3DSwapChain9Ex(this, pPresentationParameters);
+    swapchain->AddRefPrivate();
+    m_swapchains.push_back(swapchain);
+    *ppSwapChain = ref(swapchain);
 
     return D3D_OK;
   }
