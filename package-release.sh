@@ -2,8 +2,10 @@
 
 set -e
 
+shopt -s extglob
+
 if [ -z "$1" ] || [ -z "$2" ]; then
-  echo "Usage: package-release.sh version destdir [--no-package]"
+  echo "Usage: $0 version destdir [--no-package] [--dev-build] [--winelib]"
   exit 1
 fi
 
@@ -17,32 +19,59 @@ if [ -e "$DXVK_BUILD_DIR" ]; then
   exit 1
 fi
 
+shift 2
+
+opt_nopackage=0
+opt_devbuild=0
+opt_winelib=0
+
+crossfile="build-win"
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+  "--no-package")
+    opt_nopackage=1
+    ;;
+  "--dev-build")
+    opt_nopackage=1
+    opt_devbuild=1
+    ;;
+  "--winelib")
+    opt_winelib=1
+    crossfile="build-wine"
+    ;;
+  *)
+    echo "Unrecognized option: $1" >&2
+    exit 1
+  esac
+  shift
+done
+
 function build_arch {
   export WINEARCH="win$1"
   export WINEPREFIX="$DXVK_BUILD_DIR/wine.$1"
   
   cd "$DXVK_SRC_DIR"
 
-  meson --cross-file "$DXVK_SRC_DIR/build-win$1.txt"  \
+  meson --cross-file "$DXVK_SRC_DIR/$crossfile$1.txt" \
         --buildtype "release"                         \
-        --prefix "$DXVK_BUILD_DIR/install.$1"         \
+        --prefix "$DXVK_BUILD_DIR"                    \
         --strip                                       \
+        --bindir "x$1"                                \
+        --libdir "x$1"                                \
         -Denable_tests=false                          \
         "$DXVK_BUILD_DIR/build.$1"
 
   cd "$DXVK_BUILD_DIR/build.$1"
   ninja install
 
-  mkdir "$DXVK_BUILD_DIR/x$1"
-
-  cp "$DXVK_BUILD_DIR/install.$1/bin/d3d10.dll" "$DXVK_BUILD_DIR/x$1/d3d10.dll"
-  cp "$DXVK_BUILD_DIR/install.$1/bin/d3d10_1.dll" "$DXVK_BUILD_DIR/x$1/d3d10_1.dll"
-  cp "$DXVK_BUILD_DIR/install.$1/bin/d3d10core.dll" "$DXVK_BUILD_DIR/x$1/d3d10core.dll"
-  cp "$DXVK_BUILD_DIR/install.$1/bin/d3d11.dll" "$DXVK_BUILD_DIR/x$1/d3d11.dll"
-  cp "$DXVK_BUILD_DIR/install.$1/bin/dxgi.dll" "$DXVK_BUILD_DIR/x$1/dxgi.dll"
-  
-  rm -R "$DXVK_BUILD_DIR/build.$1"
-  rm -R "$DXVK_BUILD_DIR/install.$1"
+  if [ $opt_devbuild -eq 0 ]; then
+    if [ $opt_winelib -eq 0 ]; then
+      # get rid of some useless .a files
+      rm "$DXVK_BUILD_DIR/x$1/"*.!(dll)
+    fi
+    rm -R "$DXVK_BUILD_DIR/build.$1"
+  fi
 }
 
 function build_script {
@@ -60,6 +89,6 @@ build_arch 64
 build_arch 32
 build_script
 
-if [ "$3" != "--no-package" ]; then
+if [ $opt_nopackage -eq 0 ]; then
   package
 fi
