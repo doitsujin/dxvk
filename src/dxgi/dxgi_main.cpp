@@ -11,7 +11,7 @@ namespace dxvk {
       HRESULT hr = factory->QueryInterface(riid, ppFactory);
 
       if (FAILED(hr))
-        return DXGI_ERROR_UNSUPPORTED;
+        return hr;
       
       return S_OK;
     } catch (const DxvkError& e) {
