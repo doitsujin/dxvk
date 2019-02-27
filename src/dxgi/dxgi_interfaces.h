@@ -250,7 +250,7 @@ IWineDXGISwapChainHelper : public IUnknown {
 
     virtual HRESULT STDMETHODCALLTYPE GetMonitor(
             HWND          hWnd,
-            HMONITOR      pMonitor) = 0;
+            HMONITOR*     pMonitor) = 0;
 
     virtual HRESULT STDMETHODCALLTYPE GetWindowInfo(
             HWND  hWnd,
@@ -292,7 +292,7 @@ struct __declspec(uuid("e2ef5fa5-dc21-4af7-90c4-f67ef6a09323")) IDXGIVkInteropDe
 struct __declspec(uuid("5546cf8c-77e7-4341-b05d-8d4d5000e77d")) IDXGIVkInteropSurface;
 struct __declspec(uuid("104001a6-7f36-4957-b932-86ade9567d91")) IDXGIVkSwapChain;
 struct __declspec(uuid("53cb4ff0-c25a-4164-a891-0e83db0a7aac")) IWineDXGISwapChainFactory;
-struct __declspec(uuid("d922ca90-6152-41f9-8b44-47adaac22b40")) IWINEDXGISwapChainHelper;
+struct __declspec(uuid("d922ca90-6152-41f9-8b44-47adaac22b40")) IWineDXGISwapChainHelper;
 #else
 DXVK_DEFINE_GUID(IDXGIVkAdapter);
 DXVK_DEFINE_GUID(IDXGIVkInteropDevice);
