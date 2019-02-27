@@ -249,8 +249,8 @@ IWineDXGISwapChainHelper : public IUnknown {
     static const GUID guid;
 
     virtual HRESULT STDMETHODCALLTYPE GetMonitor(
-            HWND          hWnd,
-            HMONITOR*     pMonitor) = 0;
+            HWND      hWnd,
+            HMONITOR* pMonitor) = 0;
 
     virtual HRESULT STDMETHODCALLTYPE GetWindowInfo(
             HWND  hWnd,
@@ -271,7 +271,7 @@ IWineDXGISwapChainHelper : public IUnknown {
             UINT Height) = 0;
 
     virtual HRESULT STDMETHODCALLTYPE SetWindowStyles(
-            HWND hWnd,
+            HWND  hWnd,
       const LONG* pStyle,
       const LONG* pExstyle) = 0;
 

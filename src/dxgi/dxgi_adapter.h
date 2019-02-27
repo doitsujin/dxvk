@@ -9,8 +9,65 @@
 
 namespace dxvk {
   
+  class DxgiAdapter;
   class DxgiFactory;
   class DxgiOutput;
+
+  class WineDXGISwapChainHelper : public IWineDXGISwapChainHelper {
+
+public:
+
+    WineDXGISwapChainHelper(
+            DxgiAdapter* pAdapter);
+
+    ULONG STDMETHODCALLTYPE AddRef();
+
+    ULONG STDMETHODCALLTYPE Release();
+
+    HRESULT STDMETHODCALLTYPE QueryInterface(
+            REFIID                  riid,
+            void**                  ppvObject);
+
+    HRESULT STDMETHODCALLTYPE GetMonitor(
+            HWND      hWnd,
+            HMONITOR* pMonitor);
+
+    HRESULT STDMETHODCALLTYPE GetWindowInfo(
+            HWND  hWnd,
+            RECT* pRect,
+            RECT* pClientRect,
+            LONG* pStyle,
+            LONG* pExStyle);
+    
+    HRESULT STDMETHODCALLTYPE SetWindowPos(
+            HWND hWnd,
+            HWND hWndInsertAfter,
+            RECT Position,
+            UINT Flags);
+    
+    HRESULT STDMETHODCALLTYPE ResizeWindow(
+            HWND hWnd,
+            UINT Width,
+            UINT Height);
+
+    HRESULT STDMETHODCALLTYPE SetWindowStyles(
+            HWND  hWnd,
+      const LONG* pStyle,
+      const LONG* pExstyle);
+
+    HRESULT STDMETHODCALLTYPE GetDisplayMode(
+            HMONITOR        hMonitor,
+            DWORD           ModeNum,
+            DXGI_MODE_DESC* pMode);
+
+    HRESULT STDMETHODCALLTYPE SetDisplayMode(
+            HMONITOR        hMonitor,
+      const DXGI_MODE_DESC* pMode);
+
+private:
+
+    DxgiAdapter* m_adapter;
+  };
   
   class DxgiAdapter : public DxgiObject<IDXGIVkAdapter> {
     
@@ -74,8 +131,9 @@ namespace dxvk {
     
   private:
     
-    Com<DxgiFactory>  m_factory;
-    Rc<DxvkAdapter>   m_adapter;
+    Com<DxgiFactory>        m_factory;
+    WineDXGISwapChainHelper m_wineHelper;
+    Rc<DxvkAdapter>         m_adapter;
     
     UINT64            m_memReservation[2] = { 0, 0 };
     

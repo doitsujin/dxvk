@@ -12,11 +12,187 @@
 
 namespace dxvk {
 
+  WineDXGISwapChainHelper::WineDXGISwapChainHelper(
+    DxgiAdapter* pAdapter)
+  : m_adapter(pAdapter) {
+
+  }
+
+  ULONG STDMETHODCALLTYPE WineDXGISwapChainHelper::AddRef() {
+    return m_adapter->AddRef();
+  }
+
+  ULONG STDMETHODCALLTYPE WineDXGISwapChainHelper::Release() {
+    return m_adapter->Release();
+  }
+
+  HRESULT STDMETHODCALLTYPE WineDXGISwapChainHelper::QueryInterface(
+          REFIID                  riid,
+          void**                  ppvObject) {
+    return m_adapter->QueryInterface(riid, ppvObject);
+  }
+
+  HRESULT STDMETHODCALLTYPE WineDXGISwapChainHelper::GetMonitor(
+          HWND                    hWnd, 
+          HMONITOR*               pMonitor) {
+    if (!IsWindow(hWnd))
+      return DXGI_ERROR_INVALID_CALL;
+    
+    RECT windowRect = { 0, 0, 0, 0 };
+    ::GetWindowRect(hWnd, &windowRect);
+    
+    *pMonitor = ::MonitorFromPoint(
+      { (windowRect.left + windowRect.right) / 2,
+        (windowRect.top + windowRect.bottom) / 2 },
+      MONITOR_DEFAULTTOPRIMARY);
+
+    return S_OK;
+  }
+
+  HRESULT STDMETHODCALLTYPE WineDXGISwapChainHelper::GetWindowInfo(
+          HWND                    hWnd,
+          RECT*                   pRect,
+          RECT*                   pClientRect,
+          LONG*                   pStyle,
+          LONG*                   pExstyle) {
+    if (!IsWindow(hWnd))
+      return DXGI_ERROR_INVALID_CALL;
+
+    if (pRect)
+      ::GetWindowRect(hWnd, pRect);
+
+    if (pClientRect)
+      ::GetClientRect(hWnd, pClientRect);
+
+    if (pStyle)
+      *pStyle = ::GetWindowLongW(hWnd, GWL_STYLE);
+
+    if (pExstyle)
+      *pExstyle = ::GetWindowLongW(hWnd, GWL_EXSTYLE);
+
+    return S_OK;
+  }
+
+  HRESULT STDMETHODCALLTYPE WineDXGISwapChainHelper::SetWindowPos(
+          HWND                    hWnd,
+          HWND                    hWndInsertAfter,
+          RECT                    Position,
+          UINT                    Flags) {
+    if (!IsWindow(hWnd))
+      return DXGI_ERROR_INVALID_CALL;
+
+    ::SetWindowPos(hWnd, hWndInsertAfter, Position.left, Position.top, Position.right - Position.left, 
+      Position.bottom - Position.top, Flags);
+
+    return S_OK;
+  }
+
+  HRESULT STDMETHODCALLTYPE WineDXGISwapChainHelper::ResizeWindow(
+          HWND                    hWnd,
+          UINT                    Width,
+          UINT                    Height) {
+    if (!IsWindow(hWnd))
+      return DXGI_ERROR_INVALID_CALL;
+
+    RECT oldRect = {0, 0, 0, 0};
+    RECT newRect = {0, 0, 0, 0};
+
+    ::GetWindowRect(hWnd, &oldRect);
+    ::SetRect(&newRect, 0, 0, Width, Height);
+    ::AdjustWindowRectEx(&newRect,
+      ::GetWindowLongW(hWnd, GWL_STYLE), FALSE,
+      ::GetWindowLongW(hWnd, GWL_EXSTYLE));
+    ::SetRect(&newRect, 0, 0, newRect.right - newRect.left, newRect.bottom - newRect.top);
+    ::OffsetRect(&newRect, oldRect.left, oldRect.top);
+    ::MoveWindow(hWnd, newRect.left, newRect.top,
+        newRect.right - newRect.left, newRect.bottom - newRect.top, TRUE);
+
+    return S_OK;
+  }
+
+  HRESULT STDMETHODCALLTYPE WineDXGISwapChainHelper::SetWindowStyles(
+          HWND                    hWnd,
+    const LONG*                   pStyle,
+    const LONG*                   pExstyle) {
+    if (!IsWindow(hWnd))
+      return DXGI_ERROR_INVALID_CALL;
+
+    if (pStyle)
+      ::SetWindowLongW(hWnd, GWL_STYLE, *pStyle);
+
+    if (pExstyle)
+      ::SetWindowLongW(hWnd, GWL_EXSTYLE, *pExstyle);
+
+    return S_OK;
+  }
+
+  HRESULT STDMETHODCALLTYPE WineDXGISwapChainHelper::GetDisplayMode(
+          HMONITOR                hMonitor,
+          DWORD                   ModeNum,
+          DXGI_MODE_DESC*         pMode) {
+    ::MONITORINFOEXW monInfo;
+    monInfo.cbSize = sizeof(monInfo);
+
+    if (!::GetMonitorInfoW(hMonitor, reinterpret_cast<MONITORINFO*>(&monInfo))) {
+      Logger::err("DXGI: Failed to query monitor info");
+      return E_FAIL;
+    }
+    
+    DEVMODEW devMode = { };
+    devMode.dmSize = sizeof(devMode);
+    
+    if (!::EnumDisplaySettingsW(monInfo.szDevice, ModeNum, &devMode))
+      return DXGI_ERROR_NOT_FOUND;
+    
+    pMode->Width            = devMode.dmPelsWidth;
+    pMode->Height           = devMode.dmPelsHeight;
+    pMode->RefreshRate      = { devMode.dmDisplayFrequency, 1 };
+    pMode->Format           = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB; // FIXME
+    pMode->ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_PROGRESSIVE;
+    pMode->Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
+    return S_OK;
+  }
+
+  HRESULT STDMETHODCALLTYPE WineDXGISwapChainHelper::SetDisplayMode(
+          HMONITOR                hMonitor,
+    const DXGI_MODE_DESC*         pMode) {
+    ::MONITORINFOEXW monInfo;
+    monInfo.cbSize = sizeof(monInfo);
+
+    if (!::GetMonitorInfoW(hMonitor, reinterpret_cast<MONITORINFO*>(&monInfo))) {
+      Logger::err("DXGI: Failed to query monitor info");
+      return E_FAIL;
+    }
+    
+    DEVMODEW devMode = { };
+    devMode.dmSize       = sizeof(devMode);
+    devMode.dmFields     = DM_PELSWIDTH | DM_PELSHEIGHT | DM_BITSPERPEL;
+    devMode.dmPelsWidth  = pMode->Width;
+    devMode.dmPelsHeight = pMode->Height;
+    devMode.dmBitsPerPel = GetMonitorFormatBpp(pMode->Format);
+    
+    if (pMode->RefreshRate.Numerator != 0)  {
+      devMode.dmFields |= DM_DISPLAYFREQUENCY;
+      devMode.dmDisplayFrequency = pMode->RefreshRate.Numerator
+                                 / pMode->RefreshRate.Denominator;
+    }
+    
+    Logger::info(str::format("DXGI: Setting display mode: ",
+      devMode.dmPelsWidth, "x", devMode.dmPelsHeight, "@",
+      devMode.dmDisplayFrequency));
+    
+    LONG status = ::ChangeDisplaySettingsExW(
+      monInfo.szDevice, &devMode, nullptr, CDS_FULLSCREEN, nullptr);
+    
+    return status == DISP_CHANGE_SUCCESSFUL ? S_OK : DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
+  }
+
   DxgiAdapter::DxgiAdapter(
           DxgiFactory*      factory,
     const Rc<DxvkAdapter>&  adapter)
-  : m_factory (factory),
-    m_adapter (adapter) {
+  : m_factory    (factory),
+    m_wineHelper (this),
+    m_adapter    (adapter) {
     
   }
   
@@ -40,6 +216,11 @@ namespace dxvk {
      || riid == __uuidof(IDXGIAdapter3)
      || riid == __uuidof(IDXGIVkAdapter)) {
       *ppvObject = ref(this);
+      return S_OK;
+    }
+
+    if (riid == __uuidof(IWineDXGISwapChainHelper)) {
+      *ppvObject = ref(&m_wineHelper);
       return S_OK;
     }
     
