@@ -1,8 +1,6 @@
 #include "d3d10_device.h"
 
-#ifdef DXVK_NATIVE
-#include <pthread.h>
-#endif
+#include "../util/thread.h"
 
 namespace dxvk {
 
@@ -21,14 +19,8 @@ namespace dxvk {
 
 
   bool D3D10DeviceMutex::try_lock() {
-    uint32_t threadId;
+    uint32_t threadId = this_thread::get_id();
     uint32_t expected = 0;
-
-#ifdef DXVK_NATIVE
-    threadId = pthread_self();
-#else
-    threadId = GetCurrentThreadId();
-#endif
 
     bool status = m_owner.compare_exchange_weak(
       expected, threadId, std::memory_order_acquire);

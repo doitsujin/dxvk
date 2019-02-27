@@ -143,5 +143,9 @@ namespace dxvk {
     inline void yield() {
       Sleep(0);
     }
+
+    inline uint32_t get_id() {
+      return ::GetCurrentThreadId();
+    }
   }
 }

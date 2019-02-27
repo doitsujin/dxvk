@@ -114,5 +114,9 @@ namespace dxvk {
     inline void yield() {
       pthread_yield();
     }
+
+    inline uint32_t get_id() {
+      return pthread_self();
+    }
   }
 }
