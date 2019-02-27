@@ -515,18 +515,21 @@ namespace dxvk {
     InitReturnPtr(ppBlendState);
 
     D3D11_BLEND_DESC d3d11Desc;
-    d3d11Desc.AlphaToCoverageEnable   = pBlendStateDesc->AlphaToCoverageEnable;
-    d3d11Desc.IndependentBlendEnable  = TRUE;
 
-    for (uint32_t i = 0; i < 8; i++) {
-      d3d11Desc.RenderTarget[i].BlendEnable           = pBlendStateDesc->BlendEnable[i];
-      d3d11Desc.RenderTarget[i].SrcBlend              = D3D11_BLEND   (pBlendStateDesc->SrcBlend);
-      d3d11Desc.RenderTarget[i].DestBlend             = D3D11_BLEND   (pBlendStateDesc->DestBlend);
-      d3d11Desc.RenderTarget[i].BlendOp               = D3D11_BLEND_OP(pBlendStateDesc->BlendOp);
-      d3d11Desc.RenderTarget[i].SrcBlendAlpha         = D3D11_BLEND   (pBlendStateDesc->SrcBlendAlpha);
-      d3d11Desc.RenderTarget[i].DestBlendAlpha        = D3D11_BLEND   (pBlendStateDesc->DestBlendAlpha);
-      d3d11Desc.RenderTarget[i].BlendOpAlpha          = D3D11_BLEND_OP(pBlendStateDesc->BlendOpAlpha);
-      d3d11Desc.RenderTarget[i].RenderTargetWriteMask = pBlendStateDesc->RenderTargetWriteMask[i];
+    if (pBlendStateDesc != nullptr) {
+      d3d11Desc.AlphaToCoverageEnable   = pBlendStateDesc->AlphaToCoverageEnable;
+      d3d11Desc.IndependentBlendEnable  = TRUE;
+
+      for (uint32_t i = 0; i < 8; i++) {
+        d3d11Desc.RenderTarget[i].BlendEnable           = pBlendStateDesc->BlendEnable[i];
+        d3d11Desc.RenderTarget[i].SrcBlend              = D3D11_BLEND   (pBlendStateDesc->SrcBlend);
+        d3d11Desc.RenderTarget[i].DestBlend             = D3D11_BLEND   (pBlendStateDesc->DestBlend);
+        d3d11Desc.RenderTarget[i].BlendOp               = D3D11_BLEND_OP(pBlendStateDesc->BlendOp);
+        d3d11Desc.RenderTarget[i].SrcBlendAlpha         = D3D11_BLEND   (pBlendStateDesc->SrcBlendAlpha);
+        d3d11Desc.RenderTarget[i].DestBlendAlpha        = D3D11_BLEND   (pBlendStateDesc->DestBlendAlpha);
+        d3d11Desc.RenderTarget[i].BlendOpAlpha          = D3D11_BLEND_OP(pBlendStateDesc->BlendOpAlpha);
+        d3d11Desc.RenderTarget[i].RenderTargetWriteMask = pBlendStateDesc->RenderTargetWriteMask[i];
+      }
     }
 
     ID3D11BlendState* d3d11BlendState = nullptr;
