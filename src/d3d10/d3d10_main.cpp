@@ -27,10 +27,9 @@ extern "C" {
           UINT                    Flags,
           D3D_FEATURE_LEVEL       FeatureLevel,
           ID3D10Device**          ppDevice) {
-    Com<ID3D11Device> d3d11Device;
+    InitReturnPtr(ppDevice);
 
-    if (ppDevice != nullptr)
-      *ppDevice = nullptr;
+    Com<ID3D11Device> d3d11Device;
 
     HRESULT hr = pAdapter->CheckInterfaceSupport(
       __uuidof(ID3D10Device), nullptr);
