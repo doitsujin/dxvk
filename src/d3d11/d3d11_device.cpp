@@ -1727,13 +1727,6 @@ namespace dxvk {
     // Make sure the back buffer size is not zero
     DXGI_SWAP_CHAIN_DESC1 desc = *pDesc;
     
-    // This is handled by wine when using DXVK_NATIVE
-#ifndef DXVK_NATIVE
-    GetWindowClientSize(hWnd,
-      desc.Width  ? nullptr : &desc.Width,
-      desc.Height ? nullptr : &desc.Height);
-#endif
-    
     // If necessary, set up a default set of
     // fullscreen parameters for the swap chain
     DXGI_SWAP_CHAIN_FULLSCREEN_DESC fsDesc;
@@ -1753,12 +1746,8 @@ namespace dxvk {
         m_container, m_device, hWnd, &desc);
       
       // Create the actual swap chain
-#ifndef DXVK_NATIVE
       *ppSwapChain = ref(new DxgiSwapChain(
         pFactory, presenter.ptr(), hWnd, &desc, &fsDesc));
-#else
-      *ppSwapChain = ::g_native_info.pfn_create_dxgi_swapchain(presenter.ptr(), pFactory, hWnd, &desc, &fsDesc);
-#endif
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());

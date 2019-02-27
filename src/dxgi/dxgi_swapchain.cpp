@@ -25,7 +25,14 @@ namespace dxvk {
     
     if (FAILED(m_presenter->GetAdapter(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&m_adapter))))
       throw DxvkError("DXGI: Failed to get adapter for present device");
+
+    if (FAILED(m_adapter->QueryInterface(__uuidof(IWineDXGISwapChainHelper), reinterpret_cast<void**>(&m_helper))))
+      throw DxvkError("DXGI: Failed to get helper from adapter");
     
+    GetWindowClientSize(hWnd,
+      m_desc.Width  ? nullptr : &m_desc.Width,
+      m_desc.Height ? nullptr : &m_desc.Height);
+
     // Apply initial window mode and fullscreen state
     if (!m_descFs.Windowed && FAILED(EnterFullscreenMode(nullptr)))
       throw DxvkError("DXGI: Failed to set initial fullscreen state");
@@ -93,17 +100,10 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetContainingOutput(IDXGIOutput** ppOutput) {
     InitReturnPtr(ppOutput);
     
-    if (!IsWindow(m_window))
+    HMONITOR monitor;
+    if( FAILED(m_helper->GetMonitor(m_window, &monitor)))
       return DXGI_ERROR_INVALID_CALL;
-    
-    RECT windowRect = { 0, 0, 0, 0 };
-    ::GetWindowRect(m_window, &windowRect);
-    
-    HMONITOR monitor = ::MonitorFromPoint(
-      { (windowRect.left + windowRect.right) / 2,
-        (windowRect.top + windowRect.bottom) / 2 },
-      MONITOR_DEFAULTTOPRIMARY);
-    
+
     return GetOutputFromMonitor(monitor, ppOutput);
   }
   
@@ -173,7 +173,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::GetFullscreenState(
           BOOL*         pFullscreen,
           IDXGIOutput** ppTarget) {
-    if (!IsWindow(m_window))
+    if (FAILED(m_helper->GetWindowInfo(m_window, nullptr, nullptr, nullptr, nullptr)))
       return DXGI_ERROR_INVALID_CALL;
     
     HRESULT hr = S_OK;
@@ -247,7 +247,7 @@ namespace dxvk {
           UINT                      SyncInterval,
           UINT                      PresentFlags,
     const DXGI_PRESENT_PARAMETERS*  pPresentParameters) {
-    if (!IsWindow(m_window))
+    if (FAILED(m_helper->GetWindowInfo(m_window, nullptr, nullptr, nullptr, nullptr)))
       return DXGI_ERROR_INVALID_CALL;
     
     if (PresentFlags & DXGI_PRESENT_TEST)
@@ -277,7 +277,7 @@ namespace dxvk {
           UINT        Height,
           DXGI_FORMAT NewFormat,
           UINT        SwapChainFlags) {
-    if (!IsWindow(m_window))
+    if (FAILED(m_helper->GetWindowInfo(m_window, nullptr, nullptr, nullptr, nullptr)))
       return DXGI_ERROR_INVALID_CALL;
     
     std::lock_guard<std::mutex> lock(m_lockBuffer);
@@ -322,7 +322,7 @@ namespace dxvk {
     if (pNewTargetParameters == nullptr)
       return DXGI_ERROR_INVALID_CALL;
     
-    if (!IsWindow(m_window))
+    if (FAILED(m_helper->GetWindowInfo(m_window, nullptr, nullptr, nullptr, nullptr)))
       return DXGI_ERROR_INVALID_CALL;
 
     // Update the swap chain description
@@ -333,19 +333,8 @@ namespace dxvk {
     m_descFs.Scaling          = pNewTargetParameters->Scaling;
     
     if (m_descFs.Windowed) {
-      // Adjust window position and size
-      RECT newRect = { 0, 0, 0, 0 };
-      RECT oldRect = { 0, 0, 0, 0 };
-      
-      ::GetWindowRect(m_window, &oldRect);
-      ::SetRect(&newRect, 0, 0, pNewTargetParameters->Width, pNewTargetParameters->Height);
-      ::AdjustWindowRectEx(&newRect,
-        ::GetWindowLongW(m_window, GWL_STYLE), FALSE,
-        ::GetWindowLongW(m_window, GWL_EXSTYLE));
-      ::SetRect(&newRect, 0, 0, newRect.right - newRect.left, newRect.bottom - newRect.top);
-      ::OffsetRect(&newRect, oldRect.left, oldRect.top);    
-      ::MoveWindow(m_window, newRect.left, newRect.top,
-          newRect.right - newRect.left, newRect.bottom - newRect.top, TRUE);
+      m_helper->ResizeWindow(
+        m_window, pNewTargetParameters->Width, pNewTargetParameters->Height);
     } else {
       Com<IDXGIOutput> output;
       
@@ -364,8 +353,7 @@ namespace dxvk {
       
       RECT newRect = desc.DesktopCoordinates;
       
-      ::MoveWindow(m_window, newRect.left, newRect.top,
-          newRect.right - newRect.left, newRect.bottom - newRect.top, TRUE);
+      m_helper->SetWindowPos(m_window, 0, newRect, SWP_NOZORDER | SWP_NOACTIVATE);
     }
     
     return S_OK;
@@ -489,7 +477,7 @@ namespace dxvk {
   HRESULT DxgiSwapChain::EnterFullscreenMode(IDXGIOutput* pTarget) {
     Com<IDXGIOutput> output = static_cast<DxgiOutput*>(pTarget);
 
-    if (!IsWindow(m_window))
+    if (FAILED(m_helper->GetWindowInfo(m_window, nullptr, nullptr, nullptr, nullptr)))
       return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
     
     if (output == nullptr) {
@@ -500,7 +488,7 @@ namespace dxvk {
     }
     
     // Find a display mode that matches what we need
-    ::GetWindowRect(m_window, &m_windowState.rect);
+    m_helper->GetWindowInfo(m_window, &m_windowState.rect, nullptr, nullptr, nullptr);
     
     if (m_desc.Flags & DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH) {
       DXGI_MODE_DESC displayMode;
@@ -523,17 +511,16 @@ namespace dxvk {
     m_descFs.Windowed = FALSE;
     
     // Change the window flags to remove the decoration etc.
-    LONG style   = ::GetWindowLongW(m_window, GWL_STYLE);
-    LONG exstyle = ::GetWindowLongW(m_window, GWL_EXSTYLE);
-    
+    LONG style, exstyle;
+    m_helper->GetWindowInfo(m_window, nullptr, nullptr, &style, &exstyle);
+
     m_windowState.style = style;
     m_windowState.exstyle = exstyle;
     
     style   &= ~WS_OVERLAPPEDWINDOW;
     exstyle &= ~WS_EX_OVERLAPPEDWINDOW;
     
-    ::SetWindowLongW(m_window, GWL_STYLE, style);
-    ::SetWindowLongW(m_window, GWL_EXSTYLE, exstyle);
+    m_helper->SetWindowStyles(m_window, &style, &exstyle);
     
     // Move the window so that it covers the entire output
     DXGI_OUTPUT_DESC desc;
@@ -541,9 +528,7 @@ namespace dxvk {
     
     const RECT rect = desc.DesktopCoordinates;
     
-    ::SetWindowPos(m_window, HWND_TOPMOST,
-      rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
-      SWP_FRAMECHANGED | SWP_SHOWWINDOW | SWP_NOACTIVATE);
+    m_helper->SetWindowPos(m_window, HWND_TOPMOST, rect, SWP_FRAMECHANGED | SWP_SHOWWINDOW | SWP_NOACTIVATE);
     
     m_monitor = desc.Monitor;
 
@@ -563,7 +548,7 @@ namespace dxvk {
   
   
   HRESULT DxgiSwapChain::LeaveFullscreenMode() {
-    if (!IsWindow(m_window))
+    if (FAILED(m_helper->GetWindowInfo(m_window, nullptr, nullptr, nullptr, nullptr)))
       return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
     
     if (FAILED(RestoreDisplayMode(m_monitor)))
@@ -586,21 +571,20 @@ namespace dxvk {
     
     // Only restore the window style if the application hasn't
     // changed them. This is in line with what native DXGI does.
-    LONG curStyle   = ::GetWindowLongW(m_window, GWL_STYLE) & ~WS_VISIBLE;
-    LONG curExstyle = ::GetWindowLongW(m_window, GWL_EXSTYLE) & ~WS_EX_TOPMOST;
+    LONG curStyle, curExstyle;
+    m_helper->GetWindowInfo(m_window, nullptr, nullptr, &curStyle, &curExstyle);
+    curStyle &= ~WS_VISIBLE;
+    curExstyle &= ~WS_EX_TOPMOST;
     
     if (curStyle == (m_windowState.style & ~(WS_VISIBLE | WS_OVERLAPPEDWINDOW))
      && curExstyle == (m_windowState.exstyle & ~(WS_EX_TOPMOST | WS_EX_OVERLAPPEDWINDOW))) {
-      ::SetWindowLongW(m_window, GWL_STYLE,   m_windowState.style);
-      ::SetWindowLongW(m_window, GWL_EXSTYLE, m_windowState.exstyle);
+      m_helper->SetWindowStyles(m_window, &curStyle, &curExstyle);
     }
     
     // Restore window position and apply the style
     const RECT rect = m_windowState.rect;
-    
-    ::SetWindowPos(m_window, 0,
-      rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
-      SWP_FRAMECHANGED | SWP_NOZORDER | SWP_NOACTIVATE);
+
+    m_helper->SetWindowPos(m_window, 0, rect, SWP_FRAMECHANGED | SWP_NOZORDER | SWP_NOACTIVATE);
     
     return S_OK;
   }
@@ -634,7 +618,7 @@ namespace dxvk {
       return hr;
     }
     
-    return SetMonitorDisplayMode(outputDesc.Monitor, &selectedMode);
+    return m_helper->SetDisplayMode(outputDesc.Monitor, &selectedMode);
   }
   
   
@@ -645,13 +629,13 @@ namespace dxvk {
     // Restore registry settings
     DXGI_MODE_DESC mode;
     
-    HRESULT hr = GetMonitorDisplayMode(
+    HRESULT hr = m_helper->GetDisplayMode(
       hMonitor, ENUM_REGISTRY_SETTINGS, &mode);
     
     if (FAILED(hr))
       return hr;
     
-    return SetMonitorDisplayMode(hMonitor, &mode);
+    return m_helper->SetDisplayMode(hMonitor, &mode);
   }
   
   
@@ -686,6 +670,21 @@ namespace dxvk {
     }
     
     return DXGI_ERROR_NOT_FOUND;
+  }
+
+
+  void DxgiSwapChain::GetWindowClientSize(
+          HWND                    hWnd,
+          UINT*                   pWidth,
+          UINT*                   pHeight) {
+    RECT rect = { };
+    m_helper->GetWindowInfo(hWnd, nullptr, &rect, nullptr, nullptr);
+    
+    if (pWidth)
+      *pWidth = rect.right - rect.left;
+    
+    if (pHeight)
+      *pHeight = rect.bottom - rect.top;
   }
   
 }

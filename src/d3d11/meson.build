@@ -1,12 +1,8 @@
-if not dxvk_native
 dxgi_common_src = [
   '../dxgi/dxgi_format.cpp',
   '../dxgi/dxgi_monitor.cpp',
   '../dxgi/dxgi_swapchain.cpp',
 ]
-else
-  dxgi_common_src = ['../dxgi/dxgi_format.cpp']
-endif
 
 d3d10_src = [
   '../d3d10/d3d10_blend.cpp',

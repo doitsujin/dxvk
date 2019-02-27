@@ -238,6 +238,53 @@ IWineDXGISwapChainFactory : public IUnknown {
             IDXGISwapChain1**       ppSwapChain) = 0;
 };
 
+/**
+ * \brief IWineDXGISwapChainHelper adapter interface
+ * 
+ * Allows our swap chain implementation to rely on the
+ * adapter for win32 function calls
+ */
+MIDL_INTERFACE("d922ca90-6152-41f9-8b44-47adaac22b40")
+IWineDXGISwapChainHelper : public IUnknown {
+    static const GUID guid;
+
+    virtual HRESULT STDMETHODCALLTYPE GetMonitor(
+            HWND          hWnd,
+            HMONITOR      pMonitor) = 0;
+
+    virtual HRESULT STDMETHODCALLTYPE GetWindowInfo(
+            HWND  hWnd,
+            RECT* pRect,
+            RECT* pClientRect,
+            LONG* pStyle,
+            LONG* pExStyle) = 0;
+
+    virtual HRESULT STDMETHODCALLTYPE SetWindowPos(
+            HWND hWnd,
+            HWND hWndInsertAfter,
+            RECT Position,
+            UINT Flags) = 0;
+
+    virtual HRESULT STDMETHODCALLTYPE ResizeWindow(
+            HWND hWnd,
+            UINT Width,
+            UINT Height) = 0;
+
+    virtual HRESULT STDMETHODCALLTYPE SetWindowStyles(
+            HWND hWnd,
+      const LONG* pStyle,
+      const LONG* pExstyle) = 0;
+
+    virtual HRESULT STDMETHODCALLTYPE GetDisplayMode(
+            HMONITOR        hMonitor,
+            DWORD           ModeNum,
+            DXGI_MODE_DESC* pMode) = 0;
+
+    virtual HRESULT STDMETHODCALLTYPE SetDisplayMode(
+            HMONITOR        hMonitor,
+      const DXGI_MODE_DESC* pMode) = 0;
+};
+
 
 #ifdef _MSC_VER
 struct __declspec(uuid("907bf281-ea3c-43b4-a8e4-9f231107b4ff")) IDXGIVkAdapter;
@@ -245,10 +292,12 @@ struct __declspec(uuid("e2ef5fa5-dc21-4af7-90c4-f67ef6a09323")) IDXGIVkInteropDe
 struct __declspec(uuid("5546cf8c-77e7-4341-b05d-8d4d5000e77d")) IDXGIVkInteropSurface;
 struct __declspec(uuid("104001a6-7f36-4957-b932-86ade9567d91")) IDXGIVkSwapChain;
 struct __declspec(uuid("53cb4ff0-c25a-4164-a891-0e83db0a7aac")) IWineDXGISwapChainFactory;
+struct __declspec(uuid("d922ca90-6152-41f9-8b44-47adaac22b40")) IWINEDXGISwapChainHelper;
 #else
 DXVK_DEFINE_GUID(IDXGIVkAdapter);
 DXVK_DEFINE_GUID(IDXGIVkInteropDevice);
 DXVK_DEFINE_GUID(IDXGIVkInteropSurface);
 DXVK_DEFINE_GUID(IDXGIVkSwapChain);
 DXVK_DEFINE_GUID(IWineDXGISwapChainFactory);
+DXVK_DEFINE_GUID(IWineDXGISwapChainHelper);
 #endif

@@ -11,10 +11,6 @@
   #include <dxgi1_2.h>
 #endif
 
-#ifndef DXVK_NO_INTERFACE_H
-#include "../dxgi/dxgi_interfaces.h"
-#endif
-
 #ifndef DXVK_NO_VULKAN_H
   #include <vulkan/vulkan.h>
 #endif
@@ -29,12 +25,6 @@ extern "C" {
   typedef int (*PFN_dxvk_join_thread)(void *thread);
   typedef void (*PFN_dxvk_detach_thread)(void *thread);
   typedef VkResult (*PFN_dxvk_create_vulkan_surface)(VkInstance instance, void* window, VkSurfaceKHR *surface);
-  typedef IDXGISwapChain1* (*PFN_dxvk_create_dxgi_swapchain)(IDXGIVkSwapChain *presenter, 
-                                                              IDXGIFactory *pFactory, 
-                                                              HWND hwnd, 
-                                                              const DXGI_SWAP_CHAIN_DESC1 *pDesc, 
-                                                              const DXGI_SWAP_CHAIN_FULLSCREEN_DESC *pFullscreenDesc);
-
   typedef struct tag_dxvk_native_info
   {
       PFN_dxvk_create_thread          pfn_create_thread;
@@ -42,7 +32,6 @@ extern "C" {
       PFN_dxvk_detach_thread          pfn_detach_thread;
       PFN_vkGetInstanceProcAddr       pfn_vkGetInstanceProcAddr;
       PFN_dxvk_create_vulkan_surface  pfn_create_vulkan_surface;
-      PFN_dxvk_create_dxgi_swapchain  pfn_create_dxgi_swapchain;
   } dxvk_native_info;
 
   HRESULT dxvk_native_create_d3d11_device(

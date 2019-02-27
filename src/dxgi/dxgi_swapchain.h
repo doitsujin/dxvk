@@ -172,6 +172,7 @@ namespace dxvk {
 
     Com<IDXGIFactory>               m_factory;
     Com<IDXGIAdapter>               m_adapter;
+    Com<IWineDXGISwapChainHelper>   m_helper;
     
     HWND                            m_window;
     DXGI_SWAP_CHAIN_DESC1           m_desc;
@@ -202,6 +203,11 @@ namespace dxvk {
     HRESULT GetOutputFromMonitor(
             HMONITOR                Monitor,
             IDXGIOutput**           ppOutput);
+
+    void GetWindowClientSize(
+            HWND                    hWnd,
+            UINT*                   pWidth,
+            UINT*                   pHeight);
     
   };
   

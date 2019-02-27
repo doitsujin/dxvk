@@ -61,41 +61,4 @@ namespace dxvk {
    */
   void ReleaseMonitorData();
 
-
-  /**
-   * \brief Retrieves monitor display mode
-   *
-   * \param [in] hMonitor Monitor handle
-   * \param [in] ModeNum Mode number
-   * \param [out] Display mode properties
-   * \returns S_OK on success
-   */
-  HRESULT GetMonitorDisplayMode(
-          HMONITOR                hMonitor,
-          DWORD                   ModeNum,
-          DXGI_MODE_DESC*         pMode);
-
-  /**
-   * \brief Sets monitor display mode
-   * 
-   * \param [in] hMonitor Monitor handle
-   * \param [in] pMode Display mode properties
-   * \returns S_OK on success
-   */
-  HRESULT SetMonitorDisplayMode(
-          HMONITOR                hMonitor,
-    const DXGI_MODE_DESC*         pMode);
-  
-  /**
-   * \brief Queries window client size
-   * 
-   * \param [in] hWnd Window to query
-   * \param [out] pWidth Client width
-   * \param [out] pHeight Client height
-   */
-  void GetWindowClientSize(
-          HWND                    hWnd,
-          UINT*                   pWidth,
-          UINT*                   pHeight);
-
 }
