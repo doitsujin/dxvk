@@ -76,6 +76,9 @@ namespace dxvk {
           ID3D11Buffer**          ppBuffer) {
     InitReturnPtr(ppBuffer);
     
+    if (pDesc == nullptr)
+      return E_INVALIDARG;
+
     if (ppBuffer == nullptr)
       return S_FALSE;
     
@@ -88,7 +91,7 @@ namespace dxvk {
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
-      return E_FAIL;
+      return E_INVALIDARG;
     }
   }
   
@@ -98,6 +101,9 @@ namespace dxvk {
     const D3D11_SUBRESOURCE_DATA* pInitialData,
           ID3D11Texture1D**       ppTexture1D) {
     InitReturnPtr(ppTexture1D);
+
+    if (pDesc == nullptr)
+      return E_INVALIDARG;
     
     D3D11_COMMON_TEXTURE_DESC desc;
     desc.Width          = pDesc->Width;
@@ -125,7 +131,7 @@ namespace dxvk {
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
-      return E_FAIL;
+      return E_INVALIDARG;
     }
   }
   
@@ -135,6 +141,9 @@ namespace dxvk {
     const D3D11_SUBRESOURCE_DATA* pInitialData,
           ID3D11Texture2D**       ppTexture2D) {
     InitReturnPtr(ppTexture2D);
+
+    if (pDesc == nullptr)
+      return E_INVALIDARG;
     
     D3D11_COMMON_TEXTURE_DESC desc;
     desc.Width          = pDesc->Width;
@@ -162,7 +171,7 @@ namespace dxvk {
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
-      return E_FAIL;
+      return E_INVALIDARG;
     }
   }
   
@@ -172,6 +181,9 @@ namespace dxvk {
     const D3D11_SUBRESOURCE_DATA* pInitialData,
           ID3D11Texture3D**       ppTexture3D) {
     InitReturnPtr(ppTexture3D);
+
+    if (pDesc == nullptr)
+      return E_INVALIDARG;
     
     D3D11_COMMON_TEXTURE_DESC desc;
     desc.Width          = pDesc->Width;
@@ -199,7 +211,7 @@ namespace dxvk {
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
-      return E_FAIL;
+      return E_INVALIDARG;
     }
   }
   
@@ -247,7 +259,7 @@ namespace dxvk {
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
-      return E_FAIL;
+      return E_INVALIDARG;
     }
   }
   
@@ -295,7 +307,7 @@ namespace dxvk {
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
-      return E_FAIL;
+      return E_INVALIDARG;
     }
   }
   
@@ -349,7 +361,7 @@ namespace dxvk {
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
-      return E_FAIL;
+      return E_INVALIDARG;
     }
   }
   
@@ -397,7 +409,7 @@ namespace dxvk {
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
-      return E_FAIL;
+      return E_INVALIDARG;
     }
   }
   
@@ -409,6 +421,9 @@ namespace dxvk {
           SIZE_T                      BytecodeLength,
           ID3D11InputLayout**         ppInputLayout) {
     InitReturnPtr(ppInputLayout);
+
+    if (pInputElementDescs == nullptr)
+      return E_INVALIDARG;
     
     try {
       DxbcReader dxbcReader(reinterpret_cast<const char*>(
@@ -533,7 +548,7 @@ namespace dxvk {
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
-      return E_FAIL;
+      return E_INVALIDARG;
     }
   }
   
@@ -916,6 +931,10 @@ namespace dxvk {
     const D3D11_SAMPLER_DESC*         pSamplerDesc,
           ID3D11SamplerState**        ppSamplerState) {
     InitReturnPtr(ppSamplerState);
+
+    if (pSamplerDesc == nullptr)
+      return E_INVALIDARG;
+
     D3D11_SAMPLER_DESC desc = *pSamplerDesc;
     
     if (FAILED(D3D11SamplerState::NormalizeDesc(&desc)))
@@ -929,7 +948,7 @@ namespace dxvk {
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
-      return E_FAIL;
+      return E_INVALIDARG;
     }
   }
   
@@ -938,6 +957,9 @@ namespace dxvk {
     const D3D11_QUERY_DESC*           pQueryDesc,
           ID3D11Query**               ppQuery) {
     InitReturnPtr(ppQuery);
+
+    if (pQueryDesc == nullptr)
+      return E_INVALIDARG;
     
     if (ppQuery == nullptr)
       return S_FALSE;
@@ -947,7 +969,7 @@ namespace dxvk {
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
-      return E_FAIL;
+      return E_INVALIDARG;
     }
   }
   
@@ -957,7 +979,7 @@ namespace dxvk {
           ID3D11Predicate**           ppPredicate) {
     InitReturnPtr(ppPredicate);
     
-    if (pPredicateDesc->Query != D3D11_QUERY_OCCLUSION_PREDICATE)
+    if (pPredicateDesc == nullptr || pPredicateDesc->Query != D3D11_QUERY_OCCLUSION_PREDICATE)
       return E_INVALIDARG;
     
     if (ppPredicate == nullptr)
@@ -968,7 +990,7 @@ namespace dxvk {
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
-      return E_FAIL;
+      return E_INVALIDARG;
     }
   }
   
@@ -1478,7 +1500,7 @@ namespace dxvk {
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());
-      return E_FAIL;
+      return E_INVALIDARG;
     }
   }
 
