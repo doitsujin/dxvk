@@ -126,8 +126,9 @@ namespace dxvk {
     
   private:
     
-    Com<DxgiAdapter> m_adapter = nullptr;
-    HMONITOR         m_monitor = nullptr;
+    Com<DxgiAdapter>              m_adapter = nullptr;
+    Com<IWineDXGISwapChainHelper> m_helper = nullptr;
+    HMONITOR                      m_monitor = nullptr;
     
   };
 

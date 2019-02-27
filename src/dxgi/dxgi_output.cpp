@@ -32,6 +32,10 @@ namespace dxvk {
     }
     
     InitMonitorData(monitor, &monitorData);    
+
+    // Setup a swapchain helper since dxgi_monitor lost some functions
+    if (FAILED(m_adapter->QueryInterface(__uuidof(IWineDXGISwapChainHelper), reinterpret_cast<void**>(&m_helper))))
+      throw DxvkError("DXGI: Failed to get helper from adapter");
   }
   
   
@@ -170,7 +174,7 @@ namespace dxvk {
 
     if (targetWidth == 0 || targetHeight == 0) {
       DXGI_MODE_DESC activeMode = { };
-      GetMonitorDisplayMode(m_monitor,
+      m_helper->GetDisplayMode(m_monitor,
         ENUM_CURRENT_SETTINGS, &activeMode);
 
       targetWidth  = activeMode.Width;
