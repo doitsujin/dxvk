@@ -19,17 +19,9 @@
 extern "C" {
 #endif
 
-  typedef void (*PFN_dxvk_thread_proc)(void *data);
-
-  typedef void* (*PFN_dxvk_create_thread)(PFN_dxvk_thread_proc proc, void *data);
-  typedef int (*PFN_dxvk_join_thread)(void *thread);
-  typedef void (*PFN_dxvk_detach_thread)(void *thread);
   typedef VkResult (*PFN_dxvk_create_vulkan_surface)(VkInstance instance, void* window, VkSurfaceKHR *surface);
   typedef struct tag_dxvk_native_info
   {
-      PFN_dxvk_create_thread          pfn_create_thread;
-      PFN_dxvk_join_thread            pfn_join_thread;
-      PFN_dxvk_detach_thread          pfn_detach_thread;
       PFN_vkGetInstanceProcAddr       pfn_vkGetInstanceProcAddr;
       PFN_dxvk_create_vulkan_surface  pfn_create_vulkan_surface;
   } dxvk_native_info;
