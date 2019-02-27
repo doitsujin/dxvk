@@ -94,6 +94,9 @@ namespace dxvk {
           ID3D10Buffer**                    ppBuffer) {
     InitReturnPtr(ppBuffer);
 
+    if (pDesc == nullptr)
+      return E_INVALIDARG;
+
     D3D11_BUFFER_DESC d3d11Desc;
     d3d11Desc.ByteWidth       = pDesc->ByteWidth;
     d3d11Desc.Usage           = D3D11_USAGE(pDesc->Usage);
@@ -122,6 +125,9 @@ namespace dxvk {
     const D3D10_SUBRESOURCE_DATA*           pInitialData,
           ID3D10Texture1D**                 ppTexture1D) {
     InitReturnPtr(ppTexture1D);
+
+    if (pDesc == nullptr)
+      return E_INVALIDARG;
 
     D3D11_TEXTURE1D_DESC d3d11Desc;
     d3d11Desc.Width           = pDesc->Width;
@@ -153,6 +159,9 @@ namespace dxvk {
     const D3D10_SUBRESOURCE_DATA*           pInitialData,
           ID3D10Texture2D**                 ppTexture2D) {
     InitReturnPtr(ppTexture2D);
+
+    if (pDesc == nullptr)
+      return E_INVALIDARG;
 
     D3D11_TEXTURE2D_DESC d3d11Desc;
     d3d11Desc.Width           = pDesc->Width;
@@ -187,6 +196,9 @@ namespace dxvk {
           ID3D10Texture3D**                 ppTexture3D) {
     InitReturnPtr(ppTexture3D);
 
+    if (pDesc == nullptr)
+      return E_INVALIDARG;
+
     D3D11_TEXTURE3D_DESC d3d11Desc;
     d3d11Desc.Width           = pDesc->Width;
     d3d11Desc.Height          = pDesc->Height;
@@ -217,6 +229,11 @@ namespace dxvk {
           ID3D10Resource*                   pResource,
     const D3D10_SHADER_RESOURCE_VIEW_DESC*  pDesc,
           ID3D10ShaderResourceView**        ppSRView) {
+    InitReturnPtr(ppSRView);
+
+    if (pResource == nullptr)
+      return E_INVALIDARG;
+
     Com<ID3D11Resource> d3d11Resource;
     GetD3D11Resource(pResource, &d3d11Resource);
 
@@ -239,6 +256,11 @@ namespace dxvk {
           ID3D10Resource*                   pResource,
     const D3D10_SHADER_RESOURCE_VIEW_DESC1* pDesc,
           ID3D10ShaderResourceView1**       ppSRView) {
+    InitReturnPtr(ppSRView);
+
+    if (pResource == nullptr)
+      return E_INVALIDARG;
+
     Com<ID3D11Resource> d3d11Resource;
     GetD3D11Resource(pResource, &d3d11Resource);
 
@@ -261,6 +283,11 @@ namespace dxvk {
           ID3D10Resource*                   pResource,
     const D3D10_RENDER_TARGET_VIEW_DESC*    pDesc,
           ID3D10RenderTargetView**          ppRTView) {
+    InitReturnPtr(ppRTView);
+
+    if (pResource == nullptr)
+      return E_INVALIDARG;
+
     Com<ID3D11Resource> d3d11Resource;
     GetD3D11Resource(pResource, &d3d11Resource);
 
@@ -283,6 +310,11 @@ namespace dxvk {
           ID3D10Resource*                   pResource,
     const D3D10_DEPTH_STENCIL_VIEW_DESC*    pDesc,
           ID3D10DepthStencilView**          ppDepthStencilView) {
+    InitReturnPtr(ppDepthStencilView);
+
+    if (pResource == nullptr)
+      return E_INVALIDARG;
+
     Com<ID3D11Resource> d3d11Resource;
     GetD3D11Resource(pResource, &d3d11Resource);
 
@@ -361,13 +393,13 @@ namespace dxvk {
       NumElements, pShaderBytecodeWithInputSignature, BytecodeLength,
       ppInputLayout ? &d3d11InputLayout : nullptr);
     
-    if (FAILED(hr))
+    if (FAILED(hr) || hr == S_FALSE)
       return hr;
     
-    if (ppInputLayout) {
+    if (ppInputLayout)
       *ppInputLayout = static_cast<D3D11InputLayout*>(d3d11InputLayout)->GetD3D10Iface();
-      return S_OK;
-    } return S_FALSE;
+
+    return hr;
   }
 
 
@@ -576,6 +608,9 @@ namespace dxvk {
           ID3D10SamplerState**              ppSamplerState) {
     InitReturnPtr(ppSamplerState);
 
+    if (pSamplerDesc == nullptr)
+      return E_INVALIDARG;
+
     D3D11_SAMPLER_DESC d3d11Desc;
     d3d11Desc.Filter            = D3D11_FILTER(pSamplerDesc->Filter);
     d3d11Desc.AddressU          = D3D11_TEXTURE_ADDRESS_MODE(pSamplerDesc->AddressU);
@@ -608,6 +643,9 @@ namespace dxvk {
     const D3D10_QUERY_DESC*                 pQueryDesc,
           ID3D10Query**                     ppQuery) {
     InitReturnPtr(ppQuery);
+
+    if (pQueryDesc == nullptr)
+      return E_INVALIDARG;
 
     D3D11_QUERY_DESC d3d11Desc;
     d3d11Desc.Query      = D3D11_QUERY(pQueryDesc->Query);
