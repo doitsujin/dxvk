@@ -90,6 +90,14 @@ namespace dxvk::hud {
       position.y += 24.0f;
     }
 
+    if (m_config.elements.test(HudElement::DxvkClientApi)) {
+      m_renderer.drawText(ctx, 16.0f,
+        { position.x, position.y },
+        { 1.0f, 1.0f, 1.0f, 1.0f },
+        m_device->clientApi());
+      position.y += 24.0f;
+    }
+
     if (m_config.elements.test(HudElement::DeviceInfo)) {
       position = m_hudDeviceInfo.render(
         ctx, m_renderer, position);

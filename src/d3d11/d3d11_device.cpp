@@ -1353,18 +1353,14 @@ namespace dxvk {
     DxvkDeviceFeatures supported = adapter->features();
     DxvkDeviceFeatures enabled   = {};
 
-    enabled.core.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
-    enabled.core.pNext = nullptr;
+    // Geometry shaders are used for some meta ops
+    enabled.core.features.geometryShader                          = VK_TRUE;
+    enabled.core.features.robustBufferAccess                      = VK_TRUE;
 
-    enabled.extMemoryPriority.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT;
-    enabled.extMemoryPriority.pNext = nullptr;
-    enabled.extMemoryPriority.memoryPriority = supported.extMemoryPriority.memoryPriority;
+    enabled.extMemoryPriority.memoryPriority                      = supported.extMemoryPriority.memoryPriority;
 
-    enabled.extTransformFeedback.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT;
-    enabled.extTransformFeedback.pNext = nullptr;
-
-    enabled.extVertexAttributeDivisor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT;
-    enabled.extVertexAttributeDivisor.pNext = nullptr;
+    enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor      = supported.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor;
+    enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor  = supported.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor;
     
     if (featureLevel >= D3D_FEATURE_LEVEL_9_1) {
       enabled.core.features.depthClamp                            = VK_TRUE;
@@ -1375,7 +1371,7 @@ namespace dxvk {
       enabled.core.features.samplerAnisotropy                     = VK_TRUE;
       enabled.core.features.shaderClipDistance                    = VK_TRUE;
       enabled.core.features.shaderCullDistance                    = VK_TRUE;
-      enabled.core.features.robustBufferAccess                    = VK_TRUE;
+      enabled.core.features.textureCompressionBC                  = VK_TRUE;
     }
     
     if (featureLevel >= D3D_FEATURE_LEVEL_9_2) {
@@ -1383,17 +1379,14 @@ namespace dxvk {
     }
     
     if (featureLevel >= D3D_FEATURE_LEVEL_9_3) {
-      enabled.core.features.multiViewport                         = VK_TRUE;
       enabled.core.features.independentBlend                      = VK_TRUE;
+      enabled.core.features.multiViewport                         = VK_TRUE;
     }
     
     if (featureLevel >= D3D_FEATURE_LEVEL_10_0) {
       enabled.core.features.fullDrawIndexUint32                   = VK_TRUE;
-      enabled.core.features.fragmentStoresAndAtomics              = VK_TRUE;
-      enabled.core.features.geometryShader                        = VK_TRUE;
       enabled.core.features.logicOp                               = supported.core.features.logicOp;
       enabled.core.features.shaderImageGatherExtended             = VK_TRUE;
-      enabled.core.features.textureCompressionBC                  = VK_TRUE;
       enabled.core.features.variableMultisampleRate               = supported.core.features.variableMultisampleRate;
       enabled.extTransformFeedback.transformFeedback              = supported.extTransformFeedback.transformFeedback;
       enabled.extTransformFeedback.geometryStreams                = supported.extTransformFeedback.geometryStreams;
@@ -1405,14 +1398,13 @@ namespace dxvk {
     }
     
     if (featureLevel >= D3D_FEATURE_LEVEL_11_0) {
-      enabled.core.features.multiDrawIndirect                     = supported.core.features.multiDrawIndirect;
       enabled.core.features.drawIndirectFirstInstance             = VK_TRUE;
+      enabled.core.features.fragmentStoresAndAtomics              = VK_TRUE;
+      enabled.core.features.multiDrawIndirect                     = supported.core.features.multiDrawIndirect;
       enabled.core.features.shaderFloat64                         = supported.core.features.shaderFloat64;
       enabled.core.features.shaderInt64                           = supported.core.features.shaderInt64;
-      enabled.core.features.tessellationShader                    = VK_TRUE;
-      // TODO enable unconditionally once RADV gains support
-      enabled.core.features.shaderStorageImageMultisample         = supported.core.features.shaderStorageImageMultisample;
       enabled.core.features.shaderStorageImageWriteWithoutFormat  = VK_TRUE;
+      enabled.core.features.tessellationShader                    = VK_TRUE;
     }
     
     if (featureLevel >= D3D_FEATURE_LEVEL_11_1) {
@@ -1421,12 +1413,6 @@ namespace dxvk {
       enabled.core.features.vertexPipelineStoresAndAtomics        = VK_TRUE;
     }
     
-    if (supported.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor
-     && supported.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor) {
-      enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor      = VK_TRUE;
-      enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor  = VK_TRUE;
-    }
-
     return enabled;
   }
   
@@ -1975,7 +1961,12 @@ namespace dxvk {
 
   Rc<DxvkDevice> D3D11DXGIDevice::CreateDevice(D3D_FEATURE_LEVEL FeatureLevel) {
     DxvkDeviceFeatures deviceFeatures = D3D11Device::GetDeviceFeatures(m_dxvkAdapter, FeatureLevel);
-    return m_dxvkAdapter->createDevice(deviceFeatures);
+
+    uint32_t flHi = (uint32_t(FeatureLevel) >> 12);
+    uint32_t flLo = (uint32_t(FeatureLevel) >> 8) & 0x7;
+
+    std::string apiName = str::format("D3D11 FL ", flHi, "_", flLo);
+    return m_dxvkAdapter->createDevice(apiName, deviceFeatures);
   }
 
 }

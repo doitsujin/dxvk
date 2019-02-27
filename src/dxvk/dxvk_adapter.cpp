@@ -231,7 +231,7 @@ namespace dxvk {
   }
 
 
-  Rc<DxvkDevice> DxvkAdapter::createDevice(DxvkDeviceFeatures enabledFeatures) {
+  Rc<DxvkDevice> DxvkAdapter::createDevice(std::string clientApi, DxvkDeviceFeatures enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
     std::array<DxvkExt*, 15> devExtensionList = {{
@@ -268,19 +268,23 @@ namespace dxvk {
     this->logNameList(extensionNameList);
 
     // Create pNext chain for additional device features
+    enabledFeatures.core.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
     enabledFeatures.core.pNext = nullptr;
 
     if (devExtensions.extMemoryPriority) {
+      enabledFeatures.extMemoryPriority.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT;
       enabledFeatures.extMemoryPriority.pNext = enabledFeatures.core.pNext;
       enabledFeatures.core.pNext = &enabledFeatures.extMemoryPriority;
     }
 
     if (devExtensions.extTransformFeedback) {
+      enabledFeatures.extTransformFeedback.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT;
       enabledFeatures.extTransformFeedback.pNext = enabledFeatures.core.pNext;
       enabledFeatures.core.pNext = &enabledFeatures.extTransformFeedback;
     }
 
     if (devExtensions.extVertexAttributeDivisor.revision() >= 3) {
+      enabledFeatures.extVertexAttributeDivisor.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT;
       enabledFeatures.extVertexAttributeDivisor.pNext = enabledFeatures.core.pNext;
       enabledFeatures.core.pNext = &enabledFeatures.extVertexAttributeDivisor;
     }
@@ -333,7 +337,7 @@ namespace dxvk {
     if (m_vki->vkCreateDevice(m_handle, &info, nullptr, &device) != VK_SUCCESS)
       throw DxvkError("DxvkAdapter: Failed to create device");
     
-    Rc<DxvkDevice> result = new DxvkDevice(this,
+    Rc<DxvkDevice> result = new DxvkDevice(clientApi, this,
       new vk::DeviceFn(true, m_vki->instance(), device),
       devExtensions, enabledFeatures);
     result->initResources();
