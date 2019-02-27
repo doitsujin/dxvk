@@ -52,9 +52,9 @@ namespace dxvk {
   private:
 
     Proc  m_proc;
-    void  *m_handle;
+    pthread_t m_handle;
 
-    static void threadProc(void *arg);
+    static void* threadProc(void *arg);
 
   };
 
