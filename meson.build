@@ -105,10 +105,6 @@ if enable_tests
   subdir('tests')
 endif
 
-if dxvk_compiler.get_id() != 'msvc' and not dxvk_native
-  subdir('utils')
-endif
-
 if dxvk_native
   pkg = import('pkgconfig')
   pkg.generate(
