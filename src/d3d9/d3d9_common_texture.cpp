@@ -15,8 +15,6 @@ namespace dxvk {
 
     D3D9_VK_FORMAT_INFO   formatInfo = m_device->LookupFormat(m_desc.Format, false);
 
-    uint32_t layers = m_desc.Type == D3DRTYPE_CUBETEXTURE ? 6 : 1;
-
     DxvkImageCreateInfo imageInfo;
     imageInfo.type = GetImageTypeFromResourceType(m_desc.Type);
     imageInfo.format = formatInfo.Format;
@@ -25,7 +23,7 @@ namespace dxvk {
     imageInfo.extent.width = m_desc.Width;
     imageInfo.extent.height = m_desc.Height;
     imageInfo.extent.depth = m_desc.Depth;
-    imageInfo.numLayers = layers;
+    imageInfo.numLayers = GetLayerCount();
     imageInfo.mipLevels = std::max(1u, m_desc.MipLevels);
     imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT
       | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
@@ -129,7 +127,7 @@ namespace dxvk {
         "x", m_desc.Height,
         "x", m_desc.Depth,
         "\n  Samples: ", m_desc.MultiSample,
-        "\n  Layers:  ", layers,
+        "\n  Layers:  ", GetLayerCount(),
         "\n  Levels:  ", m_desc.MipLevels,
         "\n  Usage:   ", std::hex, m_desc.Usage));
     }
@@ -476,7 +474,7 @@ namespace dxvk {
       viewInfo.minLevel = Lod;
       viewInfo.numLevels = m_desc.MipLevels;
       viewInfo.minLayer = 0;
-      viewInfo.numLayers = m_desc.Type == D3DRTYPE_CUBETEXTURE ? 6 : 1;
+      viewInfo.numLayers = GetLayerCount();
 
       // Create the underlying image view object
       return m_device->GetDXVKDevice()->createImageView(GetImage(), viewInfo);

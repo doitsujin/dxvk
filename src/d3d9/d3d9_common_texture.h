@@ -179,6 +179,10 @@ namespace dxvk {
       return srgb ? m_imageViewSrgb : m_imageView;
     }
 
+    UINT GetLayerCount() const {
+      return m_desc.Type == D3DRTYPE_CUBETEXTURE ? 6 : 1;
+    }
+
     void RecreateImageView(UINT Lod);
 
   private:
