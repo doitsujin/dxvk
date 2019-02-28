@@ -10,6 +10,10 @@ namespace dxvk {
     DxbcOptions();
     DxbcOptions(const Rc<DxvkDevice>& device, const D3D11Options& options);
 
+    // Clamp oDepth in fragment shaders if the depth
+    // clip device feature is not supported
+    bool useDepthClipWorkaround = false;
+
     /// Use the ShaderImageReadWithoutFormat capability.
     bool useStorageImageReadWithoutFormat = false;
 

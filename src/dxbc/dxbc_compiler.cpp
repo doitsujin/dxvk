@@ -2607,13 +2607,19 @@ namespace dxvk {
     
     // The 'Hi' variants are counted from the MSB in DXBC
     // rather than the LSB, so we have to invert the number
-    if (ins.op == DxbcOpcode::FirstBitHi
-     || ins.op == DxbcOpcode::FirstBitShi) {
+    if (ins.op == DxbcOpcode::FirstBitHi || ins.op == DxbcOpcode::FirstBitShi) {
+      uint32_t boolTypeId = m_module.defBoolType();
+
+      if (dst.type.ccount > 1)
+        boolTypeId = m_module.defVectorType(boolTypeId, dst.type.ccount);
+
+      DxbcRegisterValue const31 = emitBuildConstVecu32(31u, 31u, 31u, 31u, ins.dst[0].mask);
+      DxbcRegisterValue constff = emitBuildConstVecu32(~0u, ~0u, ~0u, ~0u, ins.dst[0].mask);
+
       dst.id = m_module.opSelect(typeId,
-        m_module.opINotEqual(m_module.defBoolType(),
-          dst.id, m_module.constu32(0xFFFFFFFF)),
-        m_module.opISub(typeId, m_module.constu32(31), dst.id),
-        m_module.constu32(0xFFFFFFFF));
+        m_module.opINotEqual(boolTypeId, dst.id, constff.id),
+        m_module.opISub(typeId, const31.id, dst.id),
+        constff.id);
     }
     
     // No modifiers are supported
@@ -6601,7 +6607,10 @@ namespace dxvk {
     
     this->emitOutputSetup();
     this->emitOutputMapping();
-    this->emitOutputDepthClamp();
+
+    if (m_moduleInfo.options.useDepthClipWorkaround)
+      this->emitOutputDepthClamp();
+    
     this->emitFunctionEnd();
   }
   
@@ -7095,8 +7104,14 @@ namespace dxvk {
     const char*             name) {
     const uint32_t varId = emitNewVariable(info);
     
-    m_module.decorateBuiltIn(varId, builtIn);
     m_module.setDebugName(varId, name);
+    m_module.decorateBuiltIn(varId, builtIn);
+
+    if (m_programInfo.type() == DxbcProgramType::PixelShader
+     && info.type.ctype != DxbcScalarType::Float32
+     && info.type.ctype != DxbcScalarType::Bool
+     && info.sclass == spv::StorageClassInput)
+      m_module.decorate(varId, spv::DecorationFlat);
     
     m_entryPointInterfaces.push_back(varId);
     return varId;

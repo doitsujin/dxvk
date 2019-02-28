@@ -15,6 +15,8 @@ namespace dxvk {
     const DxvkDeviceFeatures& devFeatures = device->features();
     const DxvkDeviceInfo& devInfo = adapter->devicePropertiesExt();
     
+    useDepthClipWorkaround
+      = !devFeatures.extDepthClipEnable.depthClipEnable;
     useStorageImageReadWithoutFormat
       = devFeatures.core.features.shaderStorageImageReadWithoutFormat;
     useSubgroupOpsForEarlyDiscard

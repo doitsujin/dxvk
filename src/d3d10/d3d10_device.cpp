@@ -94,6 +94,9 @@ namespace dxvk {
           ID3D10Buffer**                    ppBuffer) {
     InitReturnPtr(ppBuffer);
 
+    if (pDesc == nullptr)
+      return E_INVALIDARG;
+
     D3D11_BUFFER_DESC d3d11Desc;
     d3d11Desc.ByteWidth       = pDesc->ByteWidth;
     d3d11Desc.Usage           = D3D11_USAGE(pDesc->Usage);
@@ -107,13 +110,12 @@ namespace dxvk {
       reinterpret_cast<const D3D11_SUBRESOURCE_DATA*>(pInitialData),
       ppBuffer != nullptr ? &d3d11Buffer : nullptr);
     
-    if (FAILED(hr))
+    if (FAILED(hr) || hr == S_FALSE)
       return hr;
     
-    if (ppBuffer != nullptr) {
-      *ppBuffer = static_cast<D3D11Buffer*>(d3d11Buffer)->GetD3D10Iface();
-      return S_OK;
-    } return S_FALSE;
+    *ppBuffer = static_cast<D3D11Buffer*>(d3d11Buffer)->GetD3D10Iface();
+
+    return S_OK;
   }
 
 
@@ -122,6 +124,9 @@ namespace dxvk {
     const D3D10_SUBRESOURCE_DATA*           pInitialData,
           ID3D10Texture1D**                 ppTexture1D) {
     InitReturnPtr(ppTexture1D);
+
+    if (pDesc == nullptr)
+      return E_INVALIDARG;
 
     D3D11_TEXTURE1D_DESC d3d11Desc;
     d3d11Desc.Width           = pDesc->Width;
@@ -138,13 +143,12 @@ namespace dxvk {
       reinterpret_cast<const D3D11_SUBRESOURCE_DATA*>(pInitialData),
       ppTexture1D != nullptr ? &d3d11Texture1D : nullptr);
     
-    if (FAILED(hr))
+    if (FAILED(hr) || hr == S_FALSE)
       return hr;
 
-    if (ppTexture1D != nullptr) {
-      *ppTexture1D = static_cast<D3D11Texture1D*>(d3d11Texture1D)->GetD3D10Iface();
-      return S_OK;
-    } return S_FALSE;
+    *ppTexture1D = static_cast<D3D11Texture1D*>(d3d11Texture1D)->GetD3D10Iface();
+
+    return S_OK;
   }
 
 
@@ -153,6 +157,9 @@ namespace dxvk {
     const D3D10_SUBRESOURCE_DATA*           pInitialData,
           ID3D10Texture2D**                 ppTexture2D) {
     InitReturnPtr(ppTexture2D);
+
+    if (pDesc == nullptr)
+      return E_INVALIDARG;
 
     D3D11_TEXTURE2D_DESC d3d11Desc;
     d3d11Desc.Width           = pDesc->Width;
@@ -171,13 +178,12 @@ namespace dxvk {
       reinterpret_cast<const D3D11_SUBRESOURCE_DATA*>(pInitialData),
       ppTexture2D != nullptr ? &d3d11Texture2D : nullptr);
 
-    if (FAILED(hr))
+    if (FAILED(hr) || hr == S_FALSE)
       return hr;
 
-    if (ppTexture2D != nullptr) {
-      *ppTexture2D = static_cast<D3D11Texture2D*>(d3d11Texture2D)->GetD3D10Iface();
-      return S_OK;
-    } return S_FALSE;
+    *ppTexture2D = static_cast<D3D11Texture2D*>(d3d11Texture2D)->GetD3D10Iface();
+
+    return S_OK;
   }
 
 
@@ -186,6 +192,9 @@ namespace dxvk {
     const D3D10_SUBRESOURCE_DATA*           pInitialData,
           ID3D10Texture3D**                 ppTexture3D) {
     InitReturnPtr(ppTexture3D);
+
+    if (pDesc == nullptr)
+      return E_INVALIDARG;
 
     D3D11_TEXTURE3D_DESC d3d11Desc;
     d3d11Desc.Width           = pDesc->Width;
@@ -203,13 +212,12 @@ namespace dxvk {
       reinterpret_cast<const D3D11_SUBRESOURCE_DATA*>(pInitialData),
       ppTexture3D != nullptr ? &d3d11Texture3D : nullptr);
 
-    if (FAILED(hr))
+    if (FAILED(hr) || hr == S_FALSE)
       return hr;
 
-    if (ppTexture3D != nullptr) {
-      *ppTexture3D = static_cast<D3D11Texture3D*>(d3d11Texture3D)->GetD3D10Iface();
-      return S_OK;
-    } return S_FALSE;
+    *ppTexture3D = static_cast<D3D11Texture3D*>(d3d11Texture3D)->GetD3D10Iface();
+
+    return S_OK;
   }
 
 
@@ -217,6 +225,11 @@ namespace dxvk {
           ID3D10Resource*                   pResource,
     const D3D10_SHADER_RESOURCE_VIEW_DESC*  pDesc,
           ID3D10ShaderResourceView**        ppSRView) {
+    InitReturnPtr(ppSRView);
+
+    if (pResource == nullptr)
+      return E_INVALIDARG;
+
     Com<ID3D11Resource> d3d11Resource;
     GetD3D11Resource(pResource, &d3d11Resource);
 
@@ -225,13 +238,12 @@ namespace dxvk {
       reinterpret_cast<const D3D11_SHADER_RESOURCE_VIEW_DESC*>(pDesc),
       ppSRView ? &d3d11Srv : nullptr);
     
-    if (FAILED(hr))
+    if (FAILED(hr) || hr == S_FALSE)
       return hr;
     
-    if (ppSRView != nullptr) {
-      *ppSRView = static_cast<D3D11ShaderResourceView*>(d3d11Srv)->GetD3D10Iface();
-      return S_OK;
-    } return S_FALSE;
+    *ppSRView = static_cast<D3D11ShaderResourceView*>(d3d11Srv)->GetD3D10Iface();
+
+    return S_OK;
   }
 
 
@@ -239,6 +251,11 @@ namespace dxvk {
           ID3D10Resource*                   pResource,
     const D3D10_SHADER_RESOURCE_VIEW_DESC1* pDesc,
           ID3D10ShaderResourceView1**       ppSRView) {
+    InitReturnPtr(ppSRView);
+
+    if (pResource == nullptr)
+      return E_INVALIDARG;
+
     Com<ID3D11Resource> d3d11Resource;
     GetD3D11Resource(pResource, &d3d11Resource);
 
@@ -247,13 +264,12 @@ namespace dxvk {
       reinterpret_cast<const D3D11_SHADER_RESOURCE_VIEW_DESC*>(pDesc),
       ppSRView ? &d3d11View : nullptr);
     
-    if (FAILED(hr))
+    if (FAILED(hr) || hr == S_FALSE)
       return hr;
     
-    if (ppSRView != nullptr) {
-      *ppSRView = static_cast<D3D11ShaderResourceView*>(d3d11View)->GetD3D10Iface();
-      return S_OK;
-    } return S_FALSE;
+    *ppSRView = static_cast<D3D11ShaderResourceView*>(d3d11View)->GetD3D10Iface();
+
+    return S_OK;
   }
 
 
@@ -261,6 +277,11 @@ namespace dxvk {
           ID3D10Resource*                   pResource,
     const D3D10_RENDER_TARGET_VIEW_DESC*    pDesc,
           ID3D10RenderTargetView**          ppRTView) {
+    InitReturnPtr(ppRTView);
+
+    if (pResource == nullptr)
+      return E_INVALIDARG;
+
     Com<ID3D11Resource> d3d11Resource;
     GetD3D11Resource(pResource, &d3d11Resource);
 
@@ -269,13 +290,12 @@ namespace dxvk {
       reinterpret_cast<const D3D11_RENDER_TARGET_VIEW_DESC*>(pDesc),
       ppRTView ? &d3d11View : nullptr);
     
-    if (FAILED(hr))
+    if (FAILED(hr) || hr == S_FALSE)
       return hr;
     
-    if (ppRTView != nullptr) {
-      *ppRTView = static_cast<D3D11RenderTargetView*>(d3d11View)->GetD3D10Iface();
-      return S_OK;
-    } return S_FALSE;
+    *ppRTView = static_cast<D3D11RenderTargetView*>(d3d11View)->GetD3D10Iface();
+
+    return S_OK;
   }
 
 
@@ -283,6 +303,11 @@ namespace dxvk {
           ID3D10Resource*                   pResource,
     const D3D10_DEPTH_STENCIL_VIEW_DESC*    pDesc,
           ID3D10DepthStencilView**          ppDepthStencilView) {
+    InitReturnPtr(ppDepthStencilView);
+
+    if (pResource == nullptr)
+      return E_INVALIDARG;
+
     Com<ID3D11Resource> d3d11Resource;
     GetD3D11Resource(pResource, &d3d11Resource);
 
@@ -334,13 +359,12 @@ namespace dxvk {
       d3d11Resource.ptr(), pDesc ? &d3d11Desc : nullptr,
       ppDepthStencilView ? &d3d11View : nullptr);
     
-    if (FAILED(hr))
+    if (FAILED(hr) || hr == S_FALSE)
       return hr;
     
-    if (ppDepthStencilView != nullptr) {
-      *ppDepthStencilView = static_cast<D3D11DepthStencilView*>(d3d11View)->GetD3D10Iface();
-      return S_OK;
-    } return S_FALSE;
+    *ppDepthStencilView = static_cast<D3D11DepthStencilView*>(d3d11View)->GetD3D10Iface();
+
+    return S_OK;
   }
 
 
@@ -361,13 +385,12 @@ namespace dxvk {
       NumElements, pShaderBytecodeWithInputSignature, BytecodeLength,
       ppInputLayout ? &d3d11InputLayout : nullptr);
     
-    if (FAILED(hr))
+    if (FAILED(hr) || hr == S_FALSE)
       return hr;
     
-    if (ppInputLayout) {
-      *ppInputLayout = static_cast<D3D11InputLayout*>(d3d11InputLayout)->GetD3D10Iface();
-      return S_OK;
-    } return S_FALSE;
+    *ppInputLayout = static_cast<D3D11InputLayout*>(d3d11InputLayout)->GetD3D10Iface();
+
+    return hr;
   }
 
 
@@ -383,13 +406,12 @@ namespace dxvk {
       pShaderBytecode, BytecodeLength, nullptr,
       ppVertexShader ? &d3d11Shader : nullptr);
     
-    if (FAILED(hr))
+    if (FAILED(hr) || hr == S_FALSE)
       return hr;
     
-    if (ppVertexShader != nullptr) {
-      *ppVertexShader = static_cast<D3D11VertexShader*>(d3d11Shader)->GetD3D10Iface();
-      return S_OK;
-    } return S_FALSE;
+    *ppVertexShader = static_cast<D3D11VertexShader*>(d3d11Shader)->GetD3D10Iface();
+
+    return S_OK;
   }
 
 
@@ -405,13 +427,12 @@ namespace dxvk {
       pShaderBytecode, BytecodeLength, nullptr,
       ppGeometryShader ? &d3d11Shader : nullptr);
     
-    if (FAILED(hr))
+    if (FAILED(hr) || hr == S_FALSE)
       return hr;
     
-    if (ppGeometryShader != nullptr) {
-      *ppGeometryShader = static_cast<D3D11GeometryShader*>(d3d11Shader)->GetD3D10Iface();
-      return S_OK;
-    } return S_FALSE;
+    *ppGeometryShader = static_cast<D3D11GeometryShader*>(d3d11Shader)->GetD3D10Iface();
+
+    return S_OK;
   }
 
 
@@ -445,13 +466,12 @@ namespace dxvk {
       D3D11_SO_NO_RASTERIZED_STREAM, nullptr,
       ppGeometryShader ? &d3d11Shader : nullptr);
     
-    if (FAILED(hr))
+    if (FAILED(hr) || hr == S_FALSE)
       return hr;
     
-    if (ppGeometryShader != nullptr) {
-      *ppGeometryShader = static_cast<D3D11GeometryShader*>(d3d11Shader)->GetD3D10Iface();
-      return S_OK;
-    } return S_FALSE;
+    *ppGeometryShader = static_cast<D3D11GeometryShader*>(d3d11Shader)->GetD3D10Iface();
+
+    return S_OK;
   }
 
 
@@ -467,13 +487,12 @@ namespace dxvk {
       pShaderBytecode, BytecodeLength, nullptr,
       ppPixelShader ? &d3d11Shader : nullptr);
     
-    if (FAILED(hr))
+    if (FAILED(hr) || hr == S_FALSE)
       return hr;
     
-    if (ppPixelShader != nullptr) {
-      *ppPixelShader = static_cast<D3D11PixelShader*>(d3d11Shader)->GetD3D10Iface();
-      return S_OK;
-    } return S_FALSE;
+    *ppPixelShader = static_cast<D3D11PixelShader*>(d3d11Shader)->GetD3D10Iface();
+
+    return S_OK;
   }
 
 
@@ -483,31 +502,33 @@ namespace dxvk {
     InitReturnPtr(ppBlendState);
 
     D3D11_BLEND_DESC d3d11Desc;
-    d3d11Desc.AlphaToCoverageEnable   = pBlendStateDesc->AlphaToCoverageEnable;
-    d3d11Desc.IndependentBlendEnable  = TRUE;
 
-    for (uint32_t i = 0; i < 8; i++) {
-      d3d11Desc.RenderTarget[i].BlendEnable           = pBlendStateDesc->BlendEnable[i];
-      d3d11Desc.RenderTarget[i].SrcBlend              = D3D11_BLEND   (pBlendStateDesc->SrcBlend);
-      d3d11Desc.RenderTarget[i].DestBlend             = D3D11_BLEND   (pBlendStateDesc->DestBlend);
-      d3d11Desc.RenderTarget[i].BlendOp               = D3D11_BLEND_OP(pBlendStateDesc->BlendOp);
-      d3d11Desc.RenderTarget[i].SrcBlendAlpha         = D3D11_BLEND   (pBlendStateDesc->SrcBlendAlpha);
-      d3d11Desc.RenderTarget[i].DestBlendAlpha        = D3D11_BLEND   (pBlendStateDesc->DestBlendAlpha);
-      d3d11Desc.RenderTarget[i].BlendOpAlpha          = D3D11_BLEND_OP(pBlendStateDesc->BlendOpAlpha);
-      d3d11Desc.RenderTarget[i].RenderTargetWriteMask = pBlendStateDesc->RenderTargetWriteMask[i];
+    if (pBlendStateDesc != nullptr) {
+      d3d11Desc.AlphaToCoverageEnable   = pBlendStateDesc->AlphaToCoverageEnable;
+      d3d11Desc.IndependentBlendEnable  = TRUE;
+
+      for (uint32_t i = 0; i < 8; i++) {
+        d3d11Desc.RenderTarget[i].BlendEnable           = pBlendStateDesc->BlendEnable[i];
+        d3d11Desc.RenderTarget[i].SrcBlend              = D3D11_BLEND   (pBlendStateDesc->SrcBlend);
+        d3d11Desc.RenderTarget[i].DestBlend             = D3D11_BLEND   (pBlendStateDesc->DestBlend);
+        d3d11Desc.RenderTarget[i].BlendOp               = D3D11_BLEND_OP(pBlendStateDesc->BlendOp);
+        d3d11Desc.RenderTarget[i].SrcBlendAlpha         = D3D11_BLEND   (pBlendStateDesc->SrcBlendAlpha);
+        d3d11Desc.RenderTarget[i].DestBlendAlpha        = D3D11_BLEND   (pBlendStateDesc->DestBlendAlpha);
+        d3d11Desc.RenderTarget[i].BlendOpAlpha          = D3D11_BLEND_OP(pBlendStateDesc->BlendOpAlpha);
+        d3d11Desc.RenderTarget[i].RenderTargetWriteMask = pBlendStateDesc->RenderTargetWriteMask[i];
+      }
     }
 
     ID3D11BlendState* d3d11BlendState = nullptr;
     HRESULT hr = m_device->CreateBlendState(&d3d11Desc,
       ppBlendState ? &d3d11BlendState : nullptr);
     
-    if (FAILED(hr))
+    if (FAILED(hr) || hr == S_FALSE)
       return hr;
     
-    if (ppBlendState != nullptr) {
-      *ppBlendState = static_cast<D3D11BlendState*>(d3d11BlendState)->GetD3D10Iface();
-      return S_OK;
-    } return S_FALSE;
+    *ppBlendState = static_cast<D3D11BlendState*>(d3d11BlendState)->GetD3D10Iface();
+
+    return S_OK;
   }
 
 
@@ -521,13 +542,12 @@ namespace dxvk {
       reinterpret_cast<const D3D11_BLEND_DESC*>(pBlendStateDesc),
       ppBlendState ? &d3d11BlendState : nullptr);
     
-    if (FAILED(hr))
+    if (FAILED(hr) || hr == S_FALSE)
       return hr;
     
-    if (ppBlendState != nullptr) {
-      *ppBlendState = static_cast<D3D11BlendState*>(d3d11BlendState)->GetD3D10Iface();
-      return S_OK;
-    } return S_FALSE;
+    *ppBlendState = static_cast<D3D11BlendState*>(d3d11BlendState)->GetD3D10Iface();
+
+    return S_OK;
   }
 
 
@@ -541,13 +561,12 @@ namespace dxvk {
       reinterpret_cast<const D3D11_DEPTH_STENCIL_DESC*>(pDepthStencilDesc),
       ppDepthStencilState ? &d3d11DepthStencilState : nullptr);
     
-    if (FAILED(hr))
+    if (FAILED(hr) || hr == S_FALSE)
       return hr;
     
-    if (ppDepthStencilState != nullptr) {
-      *ppDepthStencilState = static_cast<D3D11DepthStencilState*>(d3d11DepthStencilState)->GetD3D10Iface();
-      return S_OK;
-    } return S_FALSE;
+    *ppDepthStencilState = static_cast<D3D11DepthStencilState*>(d3d11DepthStencilState)->GetD3D10Iface();
+
+    return S_OK;
   }
 
 
@@ -561,13 +580,12 @@ namespace dxvk {
       reinterpret_cast<const D3D11_RASTERIZER_DESC*>(pRasterizerDesc),
       ppRasterizerState ? &d3d11RasterizerState : nullptr);
     
-    if (FAILED(hr))
+    if (FAILED(hr) || hr == S_FALSE)
       return hr;
     
-    if (ppRasterizerState != nullptr) {
-      *ppRasterizerState = static_cast<D3D11RasterizerState*>(d3d11RasterizerState)->GetD3D10Iface();
-      return S_OK;
-    } return S_FALSE;
+    *ppRasterizerState = static_cast<D3D11RasterizerState*>(d3d11RasterizerState)->GetD3D10Iface();
+
+    return S_OK;
   }
 
 
@@ -575,6 +593,9 @@ namespace dxvk {
     const D3D10_SAMPLER_DESC*               pSamplerDesc,
           ID3D10SamplerState**              ppSamplerState) {
     InitReturnPtr(ppSamplerState);
+
+    if (pSamplerDesc == nullptr)
+      return E_INVALIDARG;
 
     D3D11_SAMPLER_DESC d3d11Desc;
     d3d11Desc.Filter            = D3D11_FILTER(pSamplerDesc->Filter);
@@ -594,13 +615,12 @@ namespace dxvk {
     HRESULT hr = m_device->CreateSamplerState(&d3d11Desc,
       ppSamplerState ? &d3d11SamplerState : nullptr);
     
-    if (FAILED(hr))
+    if (FAILED(hr) || hr == S_FALSE)
       return hr;
 
-    if (ppSamplerState) {
-      *ppSamplerState = static_cast<D3D11SamplerState*>(d3d11SamplerState)->GetD3D10Iface();
-      return S_OK;
-    } return S_FALSE;
+    *ppSamplerState = static_cast<D3D11SamplerState*>(d3d11SamplerState)->GetD3D10Iface();
+
+    return S_OK;
   }
 
 
@@ -608,6 +628,9 @@ namespace dxvk {
     const D3D10_QUERY_DESC*                 pQueryDesc,
           ID3D10Query**                     ppQuery) {
     InitReturnPtr(ppQuery);
+
+    if (pQueryDesc == nullptr)
+      return E_INVALIDARG;
 
     D3D11_QUERY_DESC d3d11Desc;
     d3d11Desc.Query      = D3D11_QUERY(pQueryDesc->Query);
@@ -617,13 +640,12 @@ namespace dxvk {
     HRESULT hr = m_device->CreateQuery(&d3d11Desc,
       ppQuery ? &d3d11Query : nullptr);
 
-    if (FAILED(hr))
+    if (FAILED(hr) || hr == S_FALSE)
       return hr;
-    
-    if (ppQuery != nullptr) {
-      *ppQuery = static_cast<D3D11Query*>(d3d11Query)->GetD3D10Iface();
-      return S_OK;
-    } return S_FALSE;
+
+    *ppQuery = static_cast<D3D11Query*>(d3d11Query)->GetD3D10Iface();
+
+     return S_OK;
   }
 
 
@@ -640,13 +662,12 @@ namespace dxvk {
     HRESULT hr = m_device->CreatePredicate(&d3d11Desc,
       ppPredicate ? &d3d11Predicate : nullptr);
 
-    if (FAILED(hr))
+    if (FAILED(hr) || hr == S_FALSE)
       return hr;
     
-    if (ppPredicate != nullptr) {
-      *ppPredicate = static_cast<D3D11Query*>(d3d11Predicate)->GetD3D10Iface();
-      return S_OK;
-    } return S_FALSE;
+    *ppPredicate = static_cast<D3D11Query*>(d3d11Predicate)->GetD3D10Iface();
+
+    return S_OK;
   }
 
 

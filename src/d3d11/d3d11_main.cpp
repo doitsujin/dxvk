@@ -30,6 +30,8 @@ extern "C" {
     const D3D_FEATURE_LEVEL*  pFeatureLevels,
           UINT                FeatureLevels,
           ID3D11Device**      ppDevice) {
+    InitReturnPtr(ppDevice);
+
     Rc<DxvkAdapter>  dxvkAdapter;
     Rc<DxvkInstance> dxvkInstance;
 
@@ -117,6 +119,9 @@ extern "C" {
           ID3D11Device**        ppDevice,
           D3D_FEATURE_LEVEL*    pFeatureLevel,
           ID3D11DeviceContext** ppImmediateContext) {
+    InitReturnPtr(ppDevice);
+    InitReturnPtr(ppImmediateContext);
+
     Com<IDXGIFactory> dxgiFactory = nullptr;
     Com<IDXGIAdapter> dxgiAdapter = pAdapter;
     
@@ -197,6 +202,10 @@ extern "C" {
           ID3D11Device**        ppDevice,
           D3D_FEATURE_LEVEL*    pFeatureLevel,
           ID3D11DeviceContext** ppImmediateContext) {
+    InitReturnPtr(ppDevice);
+    InitReturnPtr(ppSwapChain);
+    InitReturnPtr(ppImmediateContext);
+
     Com<ID3D11Device>        d3d11Device;
     Com<ID3D11DeviceContext> d3d11Context;
     

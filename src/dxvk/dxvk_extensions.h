@@ -258,6 +258,7 @@ namespace dxvk {
    */
   struct DxvkDeviceExtensions {
     DxvkExt amdMemoryOverallocationBehaviour= { VK_AMD_MEMORY_OVERALLOCATION_BEHAVIOR_EXTENSION_NAME,   DxvkExtMode::Optional };
+    DxvkExt extDepthClipEnable              = { VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME,                DxvkExtMode::Optional };
     DxvkExt extMemoryPriority               = { VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME,                  DxvkExtMode::Optional };
     DxvkExt extShaderViewportIndexLayer     = { VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME,      DxvkExtMode::Optional };
     DxvkExt extTransformFeedback            = { VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME,               DxvkExtMode::Optional };
