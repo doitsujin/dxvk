@@ -1,7 +1,9 @@
 #include "vulkan_loader.h"
 
-#define DXVK_NO_VULKAN_H
-#include <dxvk.h>
+#ifdef DXVK_NATIVE
+  #define EXTERNAL_D3D_NO_VULKAN_H
+  #include <external_d3d.h>
+#endif
 
 namespace dxvk::vk {
 

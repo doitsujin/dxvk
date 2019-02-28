@@ -10,13 +10,13 @@
 
 #include "../dxvk/dxvk_util.h"
 
-#include <dxvk.h>
 
 namespace dxvk {
 #ifndef DXVK_NATIVE
   Logger Logger::s_instance("d3d11.log");
 #else
   Logger Logger::s_instance("dxvk.log");
+  #include <external_d3d.h>
 #endif
 }
   
@@ -261,8 +261,8 @@ extern "C" {
 #else
 
   // Native Entry-Point
-  HRESULT dxvk_native_create_d3d11_device(
-        dxvk_native_info      native_info,
+  HRESULT native_core_create_d3d11_device(
+        native_info      native_info,
         IDXGIFactory*         pFactory,
         IDXGIAdapter*         pAdapter,
         UINT                  Flags,
@@ -280,4 +280,4 @@ extern "C" {
 
 }
 
-dxvk_native_info g_native_info;
+native_info g_native_info;

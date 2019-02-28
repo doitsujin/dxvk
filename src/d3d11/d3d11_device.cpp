@@ -21,7 +21,9 @@
 #include "d3d11_swapchain.h"
 #include "d3d11_texture.h"
 
-#include <dxvk.h>
+#ifdef DXVK_NATIVE
+  #include <external_d3d.h>
+#endif
 
 namespace dxvk {
   

@@ -2,8 +2,6 @@
 
 #include "./log/log.h"
 
-#include <dxvk.h>
-
 namespace dxvk {
 
     ThreadFn::ThreadFn(Proc&& proc)

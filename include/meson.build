@@ -17,8 +17,6 @@ idl_files = files([
 
 if dxvk_native
   com_headers = com_header_generator.process(idl_files)
-
-  install_headers('dxvk.h', subdir : 'dxvk')
 else
   com_headers = []
 endif

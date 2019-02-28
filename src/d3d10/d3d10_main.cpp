@@ -7,12 +7,12 @@
 
 #include "../dxgi/dxgi_adapter.h"
 
-#include <dxvk.h>
-
 #ifndef DXVK_NATIVE
 namespace dxvk {
   Logger Logger::s_instance("d3d10.log");
 }
+#else
+  #include <external_d3d.h>
 #endif
 
 extern "C" {
@@ -387,8 +387,8 @@ extern "C" {
 #else
 
   // Native Entry-Point
-  HRESULT dxvk_native_create_d3d10_device(
-    dxvk_native_info        native_info,
+  HRESULT native_core_create_d3d10_device(
+    native_info        native_info,
     IDXGIFactory*           pFactory,
     IDXGIAdapter*           pAdapter,
     UINT                    Flags,
