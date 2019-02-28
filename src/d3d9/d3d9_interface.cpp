@@ -369,7 +369,8 @@ namespace dxvk {
     if (dxvkAdapter == nullptr)
       return D3DERR_INVALIDCALL;
 
-    auto dxvkDevice = dxvkAdapter->createDevice(Direct3DDevice9Ex::GetDeviceFeatures(dxvkAdapter));
+    std::string clientApi = str::format("D3D9", extended ? "Ex" : "");
+    auto dxvkDevice = dxvkAdapter->createDevice(clientApi, Direct3DDevice9Ex::GetDeviceFeatures(dxvkAdapter));
 
     *outDevice = ref(new Direct3DDevice9Ex{ 
       extended,
