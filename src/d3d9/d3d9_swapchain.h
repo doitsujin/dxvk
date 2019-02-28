@@ -66,7 +66,7 @@ namespace dxvk {
     std::vector<Rc<D3D9Presenter>> m_presenters;
 
     D3DPRESENT_PARAMETERS m_presentParams;
-    std::vector<Direct3DSurface9*> m_buffers;
+    Direct3DSurface9* m_backBuffer;
 
   };
 

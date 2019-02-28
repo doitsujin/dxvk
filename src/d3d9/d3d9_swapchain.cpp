@@ -59,7 +59,13 @@ namespace dxvk {
     UINT iBackBuffer,
     D3DBACKBUFFER_TYPE Type,
     IDirect3DSurface9** ppBackBuffer) {
-    Logger::warn("Direct3DSwapChain9Ex::GetBackBuffer: Stub");
+    InitReturnPtr(ppBackBuffer);
+
+    if (ppBackBuffer == nullptr || iBackBuffer != 0)
+      return D3DERR_INVALIDCALL;
+
+    *ppBackBuffer = ref(m_backBuffer);
+
     return D3D_OK;
   }
 
@@ -164,12 +170,16 @@ namespace dxvk {
 
     if (originalWindow == parameters->hDeviceWindow) {
       auto& presenter = GetOrMakePresenter(window);
-      presenter.recreateSwapChain(
-        fixupFormat(parameters->BackBufferFormat),
-        parameters->BackBufferWidth,
-        parameters->BackBufferHeight,
-        parameters->BackBufferCount,
-        parameters->PresentationInterval != 0);
+
+      D3D9PresenterDesc desc;
+      desc.bufferCount = parameters->BackBufferCount;
+      desc.width = parameters->BackBufferWidth;
+      desc.height = parameters->BackBufferHeight;
+      desc.format = fixupFormat(parameters->BackBufferFormat);
+      desc.presentInterval = parameters->PresentationInterval;
+      desc.multisample = parameters->MultiSampleType;
+
+      presenter.recreateSwapChain(&desc);
     }
     else {
       m_presenters.clear();
@@ -178,17 +188,17 @@ namespace dxvk {
     m_presentParams = *parameters;
 
     auto& presenter = GetOrMakePresenter(window);
-    auto& buffers = presenter.getBuffers();
 
-    m_buffers.clear();
-    m_buffers.reserve(buffers.size());
-    for (Rc<Direct3DCommonTexture9> buffer : buffers) {
-      m_buffers.push_back(new Direct3DSurface9{
-          m_parent,
-          buffer,
-          0,
-          this });
-    }
+    if (m_backBuffer != nullptr)
+      m_backBuffer->ReleasePrivate();
+
+    m_backBuffer = new Direct3DSurface9{
+      m_parent,
+      presenter.getBackBuffer(),
+      0,
+      this };
+
+    m_backBuffer->AddRefPrivate();
 
     return D3D_OK;
   }
@@ -214,15 +224,18 @@ namespace dxvk {
         return *presenter;
     }
 
+    D3D9PresenterDesc desc;
+    desc.bufferCount = m_presentParams.BackBufferCount;
+    desc.width = m_presentParams.BackBufferWidth;
+    desc.height = m_presentParams.BackBufferHeight;
+    desc.format = fixupFormat(m_presentParams.BackBufferFormat);
+    desc.presentInterval = m_presentParams.PresentationInterval;
+    desc.multisample = m_presentParams.MultiSampleType;
+
     auto* presenter = new D3D9Presenter(
       m_parent,
       window,
-      fixupFormat(m_presentParams.BackBufferFormat),
-      m_presentParams.BackBufferWidth,
-      m_presentParams.BackBufferHeight,
-      m_presentParams.BackBufferCount,
-      m_presentParams.PresentationInterval != 0
-    );
+      &desc);
 
     m_presenters.push_back(presenter);
 
