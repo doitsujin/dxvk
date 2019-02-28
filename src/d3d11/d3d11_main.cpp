@@ -280,4 +280,6 @@ extern "C" {
 
 }
 
+#ifdef DXVK_NATIVE
 native_info g_native_info;
+#endif
