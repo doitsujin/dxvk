@@ -149,6 +149,12 @@ namespace dxvk {
     m_image = m_device->GetDXVKDevice()->createImage(imageInfo, memoryProperties);
 
     RecreateImageView(0);
+
+    if (m_desc.Usage & D3DUSAGE_DEPTHSTENCIL)
+      CreateDepthStencilView();
+
+    if (m_desc.Usage & D3DUSAGE_RENDERTARGET)
+      CreateRenderTargetView();
   }
 
   VkImageSubresource Direct3DCommonTexture9::GetSubresourceFromIndex(
@@ -439,49 +445,66 @@ namespace dxvk {
       Subresource);
   }
 
+  VkImageViewType Direct3DCommonTexture9::GetImageViewType() const {
+    switch (m_desc.Type) {
+    default:
+    case D3DRTYPE_SURFACE:
+    case D3DRTYPE_TEXTURE:
+      return VK_IMAGE_VIEW_TYPE_2D;
+
+    case D3DRTYPE_VOLUME:
+    case D3DRTYPE_VOLUMETEXTURE:
+      return VK_IMAGE_VIEW_TYPE_3D;
+
+    case D3DRTYPE_CUBETEXTURE:
+      return VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
+    }
+  }
+
+  Rc<DxvkImageView> Direct3DCommonTexture9::CreateView(
+    VkImageUsageFlags UsageFlags,
+    bool              srgb,
+    UINT              Lod) {
+    const D3D9_VK_FORMAT_INFO formatInfo = m_device->LookupFormat(m_desc.Format, srgb);
+
+    DxvkImageViewCreateInfo viewInfo;
+    viewInfo.format = formatInfo.Format;
+    viewInfo.aspect = formatInfo.Aspect;
+    viewInfo.swizzle = formatInfo.Swizzle;
+    viewInfo.usage = UsageFlags;
+
+    // Shaders expect the stencil value in the G component
+    if (viewInfo.aspect == VK_IMAGE_ASPECT_STENCIL_BIT) {
+      viewInfo.swizzle = VkComponentMapping{
+        VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_R,
+        VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_ZERO };
+    }
+
+    viewInfo.type = GetImageViewType();
+
+    viewInfo.minLevel = Lod;
+    viewInfo.numLevels = m_desc.MipLevels;
+    viewInfo.minLayer = 0;
+    viewInfo.numLayers = GetLayerCount();
+
+    // Create the underlying image view object
+    return m_device->GetDXVKDevice()->createImageView(GetImage(), viewInfo);
+  }
+
   void Direct3DCommonTexture9::RecreateImageView(UINT Lod) {
     // TODO: Signal to device that this resource is dirty and needs to be rebound.
 
-    auto setupImageView = [&](bool srgb) {
-      const D3D9_VK_FORMAT_INFO formatInfo = m_device->LookupFormat(m_desc.Format, srgb);
+    m_imageView = CreateView(VK_IMAGE_USAGE_SAMPLED_BIT, false, Lod);
+    m_imageViewSrgb = CreateView(VK_IMAGE_USAGE_SAMPLED_BIT, true, Lod);
+  }
 
-      DxvkImageViewCreateInfo viewInfo;
-      viewInfo.format = formatInfo.Format;
-      viewInfo.aspect = formatInfo.Aspect;
-      viewInfo.swizzle = formatInfo.Swizzle;
-      viewInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+  void Direct3DCommonTexture9::CreateDepthStencilView() {
+    m_depthStencilView = CreateView(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, false, 0);
+  }
 
-      // Shaders expect the stencil value in the G component
-      if (viewInfo.aspect == VK_IMAGE_ASPECT_STENCIL_BIT) {
-        viewInfo.swizzle = VkComponentMapping{
-          VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_R,
-          VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_ZERO };
-      }
-
-      switch (m_desc.Type) {
-        case D3DRTYPE_SURFACE:
-        case D3DRTYPE_TEXTURE:
-          viewInfo.type = VK_IMAGE_VIEW_TYPE_2D; break;
-
-        case D3DRTYPE_VOLUME:
-        case D3DRTYPE_VOLUMETEXTURE:
-          viewInfo.type = VK_IMAGE_VIEW_TYPE_3D; break;
-
-        case D3DRTYPE_CUBETEXTURE:
-          viewInfo.type = VK_IMAGE_VIEW_TYPE_CUBE_ARRAY; break;
-      }
-
-      viewInfo.minLevel = Lod;
-      viewInfo.numLevels = m_desc.MipLevels;
-      viewInfo.minLayer = 0;
-      viewInfo.numLayers = GetLayerCount();
-
-      // Create the underlying image view object
-      return m_device->GetDXVKDevice()->createImageView(GetImage(), viewInfo);
-    };
-
-    m_imageView = setupImageView(false);
-    m_imageViewSrgb = setupImageView(true);
+  void Direct3DCommonTexture9::CreateRenderTargetView() {
+    m_renderTargetView = CreateView(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, false, 0);
+    m_renderTargetViewSrgb = CreateView(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, true, 0);
   }
 
 }

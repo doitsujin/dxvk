@@ -18,6 +18,11 @@ namespace dxvk {
     D3D9_COMMON_TEXTURE_MAP_MODE_DIRECT, ///< Directly mapped to host mem
   };
 
+  struct Direct3DView9 {
+    Rc<DxvkImageView> View;
+    VkImageLayout Layout;
+  };
+
   struct D3D9TextureDesc {
     D3DRESOURCETYPE Type;
     UINT Width;
@@ -179,16 +184,51 @@ namespace dxvk {
       return srgb ? m_imageViewSrgb : m_imageView;
     }
 
+    Rc<DxvkImageView> GetRenderTargetView(bool srgb) const {
+      return srgb ? m_renderTargetViewSrgb : m_renderTargetView;
+    }
+
+    Rc<DxvkImageView> GetDepthStencilView() const {
+      return m_depthStencilView;
+    }
+
     UINT GetLayerCount() const {
       return m_desc.Type == D3DRTYPE_CUBETEXTURE ? 6 : 1;
     }
 
+    VkImageViewType GetImageViewType() const;
+
     void RecreateImageView(UINT Lod);
+    void CreateDepthStencilView();
+    void CreateRenderTargetView();
+
+    VkImageLayout GetDepthLayout() const {
+      if (m_depthStencilView->imageInfo().tiling == VK_IMAGE_TILING_OPTIMAL) {
+        if (m_desc.Lockable)
+          return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        else
+          return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+      }
+      else {
+        return VK_IMAGE_LAYOUT_GENERAL;
+      }
+    }
+
+    VkImageLayout GetRenderTargetLayout(bool srgb) const {
+      return GetRenderTargetView(srgb)->imageInfo().tiling == VK_IMAGE_TILING_OPTIMAL
+        ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
+        : VK_IMAGE_LAYOUT_GENERAL;
+    }
 
   private:
 
     Rc<DxvkImageView>                 m_imageView;
     Rc<DxvkImageView>                 m_imageViewSrgb;
+
+    Rc<DxvkImageView>                 m_renderTargetView;
+    Rc<DxvkImageView>                 m_renderTargetViewSrgb;
+
+    Rc<DxvkImageView>                 m_depthStencilView;
 
     Direct3DDevice9Ex*   m_device;
     D3D9TextureDesc      m_desc;
@@ -227,6 +267,11 @@ namespace dxvk {
 
     static VkImageLayout OptimizeLayout(
       VkImageUsageFlags         Usage);
+
+    Rc<DxvkImageView> CreateView(
+      VkImageUsageFlags UsageFlags,
+      bool              srgb,
+      UINT              Lod);
 
   };
 
