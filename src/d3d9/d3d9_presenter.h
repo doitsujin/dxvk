@@ -2,8 +2,8 @@
 
 #include "d3d9_include.h"
 #include "d3d9_format.h"
-
-#include "../dxvk/dxvk_device.h"
+#include "d3d9_device.h"
+#include "d3d9_common_texture.h"
 
 namespace dxvk {
 
@@ -12,7 +12,7 @@ namespace dxvk {
   public:
 
     D3D9Presenter(
-      Rc<DxvkDevice>      device,
+      Direct3DDevice9Ex*  parent,
       HWND                window,
       D3D9Format          format,
       uint32_t            width,
@@ -32,6 +32,10 @@ namespace dxvk {
     }
 
     void present();
+
+    std::vector<Rc<Direct3DCommonTexture9>>& getBuffers() {
+      return m_buffers;
+    }
 
   private:
 
@@ -53,15 +57,20 @@ namespace dxvk {
       uint32_t            bufferCount,
       bool                vsync);
 
+    VkFormat makeSrgb(VkFormat format);
+
     void createRenderTargetViews();
 
-    Rc<DxvkDevice> m_device;
+    Direct3DDevice9Ex* m_parent;
+    Rc<DxvkDevice>     m_device;
 
     HWND m_window;
 
     Rc<vk::Presenter> m_presenter;
 
-    std::vector<Rc<DxvkImageView>> m_imageViews;
+    std::vector<Rc<Direct3DCommonTexture9>> m_buffers;
+
+    D3D9Format m_format;
 
   };
 

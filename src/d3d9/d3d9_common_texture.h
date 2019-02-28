@@ -46,6 +46,13 @@ namespace dxvk {
       Direct3DDevice9Ex*      pDevice,
       const D3D9TextureDesc*        pDesc);
 
+    Direct3DCommonTexture9(
+            Direct3DDevice9Ex*      pDevice,
+            Rc<DxvkImage>           Image,
+            Rc<DxvkImageView>       ImageView,
+            Rc<DxvkImageView>       ImageViewSrgb,
+      const D3D9TextureDesc*        pDesc);
+
     /**
      * \brief Texture properties
      *

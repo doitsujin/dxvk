@@ -1,6 +1,7 @@
 #include "d3d9_swapchain.h"
 
 #include "d3d9_monitor.h"
+#include "d3d9_surface.h"
 
 #include <algorithm>
 
@@ -176,7 +177,18 @@ namespace dxvk {
 
     m_presentParams = *parameters;
 
-    GetOrMakePresenter(window);
+    auto& presenter = GetOrMakePresenter(window);
+    auto& buffers = presenter.getBuffers();
+
+    m_buffers.clear();
+    m_buffers.reserve(buffers.size());
+    for (Rc<Direct3DCommonTexture9> buffer : buffers) {
+      m_buffers.push_back(new Direct3DSurface9{
+          m_parent,
+          buffer,
+          0,
+          this });
+    }
 
     return D3D_OK;
   }
@@ -203,7 +215,7 @@ namespace dxvk {
     }
 
     auto* presenter = new D3D9Presenter(
-      m_device,
+      m_parent,
       window,
       fixupFormat(m_presentParams.BackBufferFormat),
       m_presentParams.BackBufferWidth,

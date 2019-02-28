@@ -3,7 +3,7 @@
 namespace dxvk {
 
   D3D9Presenter::D3D9Presenter(
-    Rc<DxvkDevice>      device,
+    Direct3DDevice9Ex*  parent,
     HWND                window,
     D3D9Format          format,
     uint32_t            width,
@@ -11,7 +11,8 @@ namespace dxvk {
     uint32_t            bufferCount,
     bool                vsync)
     : m_window{ window }
-    , m_device{ device } {
+    , m_parent{ parent }
+    , m_device{ parent->GetDXVKDevice() } {
     createPresenter(
       format,
       width,
@@ -40,6 +41,14 @@ namespace dxvk {
 
   void D3D9Presenter::present() {
 
+  }
+
+  VkFormat D3D9Presenter::makeSrgb(VkFormat format) {
+    switch (format) {
+    case VK_FORMAT_R8G8B8A8_UNORM: return VK_FORMAT_R8G8B8A8_SRGB;
+    case VK_FORMAT_B8G8R8A8_UNORM: return VK_FORMAT_B8G8R8A8_SRGB;
+    default: return format; // TODO: make this srgb-ness more correct.
+    }
   }
 
   uint32_t D3D9Presenter::pickFormats(
@@ -107,6 +116,8 @@ namespace dxvk {
     uint32_t            height,
     uint32_t            bufferCount,
     bool                vsync) {
+    m_format = format;
+
     DxvkDeviceQueue graphicsQueue = m_device->graphicsQueue();
 
     vk::PresenterDevice presenterDevice;
@@ -132,8 +143,8 @@ namespace dxvk {
   void D3D9Presenter::createRenderTargetViews() {
     vk::PresenterInfo info = m_presenter->info();
 
-    m_imageViews.clear();
-    m_imageViews.resize(info.imageCount);
+    m_buffers.clear();
+    m_buffers.resize(info.imageCount);
 
     DxvkImageCreateInfo imageInfo;
     imageInfo.type = VK_IMAGE_TYPE_2D;
@@ -165,8 +176,34 @@ namespace dxvk {
       Rc<DxvkImage> image = new DxvkImage(
         m_device->vkd(), imageInfo, imageHandle);
 
-      m_imageViews[i] = new DxvkImageView(
+      Rc<DxvkImageView> view = new DxvkImageView(
         m_device->vkd(), image, viewInfo);
+
+      viewInfo.format = makeSrgb(info.format.format);
+
+      Rc<DxvkImageView> viewSrgb = new DxvkImageView(
+        m_device->vkd(), image, viewInfo);
+
+      D3D9TextureDesc desc;
+      desc.Depth = 1;
+      desc.Discard = FALSE;
+      desc.Format = m_format;
+      desc.Height = image->info().extent.height;
+      desc.Lockable = TRUE;
+      desc.MipLevels = 1;
+      desc.MultiSample = D3DMULTISAMPLE_NONE; // TODO: Multisample on presenter/swapchain
+      desc.MultisampleQuality = 0;
+      desc.Pool = D3DPOOL_DEFAULT;
+      desc.Type = D3DRTYPE_SURFACE;
+      desc.Usage = D3DUSAGE_RENDERTARGET;
+      desc.Width = image->info().extent.width;
+
+      m_buffers[i] = new Direct3DCommonTexture9(
+        m_parent,
+        image,
+        view,
+        viewSrgb,
+        &desc);
     }
   }
 
