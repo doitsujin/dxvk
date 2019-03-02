@@ -446,6 +446,8 @@ namespace dxvk {
       default:
         Logger::warn(str::format("D3D9Presenter: Unexpected format: ", format));
 
+      case D3D9Format::A8R8G8B8:
+      case D3D9Format::X8R8G8B8:
       case D3D9Format::A8B8G8R8:
       case D3D9Format::X8B8G8R8: {
         dstFormats[n++] = { VK_FORMAT_R8G8B8A8_UNORM, VK_COLOR_SPACE_SRGB_NONLINEAR_KHR };
