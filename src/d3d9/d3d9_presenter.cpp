@@ -321,8 +321,8 @@ namespace dxvk {
   void D3D9Presenter::present() {
     // Wait for the sync event so that we
     // respect the maximum frame latency
-    //Rc<DxvkEvent> syncEvent = m_dxgiDevice->GetFrameSyncEvent();
-    //syncEvent->wait();
+    Rc<DxvkEvent> syncEvent = m_parent->GetFrameSyncEvent();
+    syncEvent->wait();
 
     if (m_hud != nullptr)
       m_hud->update();
@@ -417,12 +417,12 @@ namespace dxvk {
       if (m_hud != nullptr)
         m_hud->render(m_context, info.imageExtent);
 
-      /*if (i + 1 >= m_desc.presentInterval) {
+      if (i + 1 >= m_desc.presentInterval) {
         DxvkEventRevision eventRev;
         eventRev.event = syncEvent;
         eventRev.revision = syncEvent->reset();
         m_context->signalEvent(eventRev);
-      }*/
+      }
 
       m_device->submitCommandList(
         m_context->endRecording(),

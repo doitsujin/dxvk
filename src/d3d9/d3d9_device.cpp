@@ -33,7 +33,11 @@ namespace dxvk {
     , m_d3d9Formats{ dxvkAdapter }
     , m_csChunk{ AllocCsChunk() }
     , m_csThread{ dxvkDevice->createContext() }
-    , m_multithread{ flags & D3DCREATE_MULTITHREADED } {
+    , m_multithread{ flags & D3DCREATE_MULTITHREADED }
+    , m_frameLatency{ DefaultFrameLatency }
+    , m_frameId{ 0 } {
+    for (uint32_t i = 0; i < m_frameEvents.size(); i++)
+      m_frameEvents[i] = new DxvkEvent();
 
     EmitCs([
       cDevice = m_device
@@ -1127,12 +1131,27 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetMaximumFrameLatency(UINT MaxLatency) {
-    Logger::warn("Direct3DDevice9Ex::SetMaximumFrameLatency: Stub");
+    auto lock = LockDevice();
+
+    if (MaxLatency == 0)
+      MaxLatency = DefaultFrameLatency;
+
+    if (MaxLatency > m_frameEvents.size())
+      MaxLatency = m_frameEvents.size();
+
+    m_frameLatency = MaxLatency;
+
     return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetMaximumFrameLatency(UINT* pMaxLatency) {
-    Logger::warn("Direct3DDevice9Ex::GetMaximumFrameLatency: Stub");
+    auto lock = LockDevice();
+
+    if (pMaxLatency == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    *pMaxLatency = m_frameLatency;
+
     return D3D_OK;
   }
 
@@ -1513,6 +1532,13 @@ namespace dxvk {
 
   HWND Direct3DDevice9Ex::GetWindow() {
     return m_window;
+  }
+
+  Rc<DxvkEvent> Direct3DDevice9Ex::GetFrameSyncEvent() {
+    uint32_t frameLatency = m_frameLatency;
+
+    uint32_t frameId = m_frameId++ % frameLatency;
+    return m_frameEvents[frameId];
   }
 
   DxvkDeviceFeatures Direct3DDevice9Ex::GetDeviceFeatures(const Rc<DxvkAdapter>& adapter) {

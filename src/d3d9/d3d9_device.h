@@ -21,7 +21,8 @@ namespace dxvk {
   class Direct3DCommonTexture9;
 
   class Direct3DDevice9Ex final : public ComObject<IDirect3DDevice9Ex> {
-
+    constexpr static uint32_t DefaultFrameLatency = 3;
+    constexpr static uint32_t MaxFrameLatency = 20;
   public:
 
     Direct3DDevice9Ex(
@@ -536,6 +537,8 @@ namespace dxvk {
       return m_device;
     }
 
+    Rc<DxvkEvent> GetFrameSyncEvent();
+
     D3D9_VK_FORMAT_INFO LookupFormat(
       D3D9Format            Format,
       bool                  srgb) const;
@@ -604,6 +607,10 @@ namespace dxvk {
     D3DDEVTYPE m_deviceType;
     HWND m_window;
     DWORD m_flags;
+
+    uint32_t m_frameLatency;
+    uint32_t m_frameId;
+    std::array<Rc<DxvkEvent>, MaxFrameLatency> m_frameEvents;
 
     bool m_extended;
 
