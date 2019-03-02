@@ -18,6 +18,9 @@ namespace dxvk {
 
     std::array<Direct3DSurface9*, caps::MaxSimultaneousRenderTargets> renderTargets;
     Direct3DSurface9* depthStencil;
+
+    D3DVIEWPORT9 viewport;
+    RECT scissorRect;
   };
 
 }

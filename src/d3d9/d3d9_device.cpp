@@ -35,7 +35,8 @@ namespace dxvk {
     , m_csThread{ dxvkDevice->createContext() }
     , m_multithread{ flags & D3DCREATE_MULTITHREADED }
     , m_frameLatency{ DefaultFrameLatency }
-    , m_frameId{ 0 } {
+    , m_frameId{ 0 }
+    , m_deferViewportBinding{ false } {
     for (uint32_t i = 0; i < m_frameEvents.size(); i++)
       m_frameEvents[i] = new DxvkEvent();
 
@@ -483,6 +484,22 @@ namespace dxvk {
     
     BindFramebuffer();
 
+    if (RenderTargetIndex == 0) {
+      m_deferViewportBinding = true;
+
+      SetViewport(nullptr);
+
+      auto rtv = rt->GetRenderTargetView(false);
+
+      RECT scissorRect;
+      scissorRect.left = 0;
+      scissorRect.top = 0;
+      scissorRect.right = rtv->image()->info().extent.width;
+      scissorRect.bottom = rtv->image()->info().extent.height;
+
+      SetScissorRect(&scissorRect);
+    }
+
     return D3D_OK;
   }
 
@@ -630,12 +647,40 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetViewport(const D3DVIEWPORT9* pViewport) {
-    Logger::warn("Direct3DDevice9Ex::SetViewport: Stub");
+    auto lock = LockDevice();
+
+    D3DVIEWPORT9 viewport;
+    if (pViewport == nullptr) {
+      auto rtv = m_state.renderTargets[0]->GetRenderTargetView(false);
+
+      viewport.X = 0;
+      viewport.Y = 0;
+      viewport.Width = rtv->image()->info().extent.width;
+      viewport.Height = rtv->image()->info().extent.height;
+      viewport.MinZ = 0.0f;
+      viewport.MaxZ = 1.0f;
+    }
+    else
+      viewport = *pViewport;
+
+    m_state.viewport = viewport;
+
+    if (m_deferViewportBinding)
+      m_deferViewportBinding = false;
+    else
+      BindViewportAndScissor();
+
     return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetViewport(D3DVIEWPORT9* pViewport) {
-    Logger::warn("Direct3DDevice9Ex::GetViewport: Stub");
+    auto lock = LockDevice();
+
+    if (pViewport == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    *pViewport = m_state.viewport;
+
     return D3D_OK;
   }
 
@@ -784,12 +829,26 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetScissorRect(const RECT* pRect) {
-    Logger::warn("Direct3DDevice9Ex::SetScissorRect: Stub");
+    auto lock = LockDevice();
+
+    if (pRect == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    m_state.scissorRect = *pRect;
+
+    BindViewportAndScissor();
+
     return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetScissorRect(RECT* pRect) {
-    Logger::warn("Direct3DDevice9Ex::GetScissorRect: Stub");
+    auto lock = LockDevice();
+
+    if (pRect == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    *pRect = m_state.scissorRect;
+
     return D3D_OK;
   }
 
@@ -1874,6 +1933,64 @@ namespace dxvk {
     ] (DxvkContext * ctx) {
         ctx->bindRenderTargets(cAttachments, false);
       });
+  }
+
+  void Direct3DDevice9Ex::BindViewportAndScissor() {
+    VkViewport viewport;
+    VkRect2D scissor;
+
+    // D3D9's coordinate system has its origin in the bottom left,
+    // but the viewport coordinates are aligned to the top-left
+    // corner so we can get away with flipping the viewport.
+    const D3DVIEWPORT9& vp = m_state.viewport;
+
+    viewport = VkViewport{
+      float(vp.X),       float(vp.Height + vp.Y),
+      float(vp.Width),   -float(vp.Height),
+      vp.MinZ,           vp.MaxZ,
+    };
+
+    // Scissor rectangles. Vulkan does not provide an easy way
+    // to disable the scissor test, so we'll have to set scissor
+    // rects that are at least as large as the framebuffer.
+    bool enableScissorTest = false;
+
+    // TODO: Hook up scissor rect enabled when we get state in.
+
+    if (enableScissorTest) {
+      RECT sr = m_state.scissorRect;
+
+      VkOffset2D srPosA;
+      srPosA.x = std::max<int32_t>(0, sr.left);
+      srPosA.y = std::max<int32_t>(0, sr.top);
+
+      VkOffset2D srPosB;
+      srPosB.x = std::max<int32_t>(srPosA.x, sr.right);
+      srPosB.y = std::max<int32_t>(srPosA.y, sr.bottom);
+
+      VkExtent2D srSize;
+      srSize.width = uint32_t(srPosB.x - srPosA.x);
+      srSize.height = uint32_t(srPosB.y - srPosA.y);
+
+      scissor = VkRect2D{ srPosA, srSize };
+    }
+    else {
+      scissor = VkRect2D{
+        VkOffset2D { 0, 0 },
+        VkExtent2D {
+          16383,
+          16383 } };
+    }
+
+    EmitCs([
+      cViewport = viewport,
+      cScissor = scissor
+    ] (DxvkContext * ctx) {
+      ctx->setViewports(
+        1,
+        &cViewport,
+        &cScissor);
+    });
   }
 
 }

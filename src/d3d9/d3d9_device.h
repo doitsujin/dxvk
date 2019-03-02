@@ -580,6 +580,8 @@ namespace dxvk {
 
     void BindFramebuffer();
 
+    void BindViewportAndScissor();
+
     Direct3DDeviceLock9 LockDevice() {
       return m_multithread.AcquireLock();
     }
@@ -613,6 +615,8 @@ namespace dxvk {
     std::array<Rc<DxvkEvent>, MaxFrameLatency> m_frameEvents;
 
     bool m_extended;
+
+    bool m_deferViewportBinding;
 
     D3DPRESENT_PARAMETERS m_presentParams;
 
