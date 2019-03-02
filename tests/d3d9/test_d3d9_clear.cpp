@@ -69,6 +69,8 @@ public:
 
     if (m_windowSize.w != newSize.w
      || m_windowSize.h != newSize.h) {
+      m_windowSize = newSize;
+
       D3DPRESENT_PARAMETERS params;
       getPresentParams(params);
       HRESULT status = m_device->ResetEx(&params, nullptr);
