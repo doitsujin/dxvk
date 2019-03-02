@@ -7,6 +7,8 @@
 
 namespace dxvk::vk {
 
+PFN_vkGetInstanceProcAddr LibraryLoader::g_get_instance_proc_address = nullptr;
+
 #if defined(__WINE__)
 
   extern "C"
@@ -14,8 +16,10 @@ namespace dxvk::vk {
   static const PFN_vkGetInstanceProcAddr GetInstanceProcAddr = native_vkGetInstanceProcAddrWINE;
 
 #elif defined(DXVK_NATIVE)
+
   // Set this later
   static PFN_vkGetInstanceProcAddr GetInstanceProcAddr;
+
 #else
 
   static const PFN_vkGetInstanceProcAddr GetInstanceProcAddr = vkGetInstanceProcAddr;
@@ -23,9 +27,8 @@ namespace dxvk::vk {
 #endif
 
   PFN_vkVoidFunction LibraryLoader::sym(const char* name) const {
-#ifdef DXVK_NATIVE
-    GetInstanceProcAddr = ::g_native_info.pfn_vkGetInstanceProcAddr;
-#endif
+    if (g_get_instance_proc_address)
+      GetInstanceProcAddr = g_get_instance_proc_address;
     return dxvk::vk::GetInstanceProcAddr(nullptr, name);
   }
   

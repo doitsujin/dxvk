@@ -15,6 +15,9 @@ namespace dxvk::vk {
    */
   struct LibraryLoader : public RcObject {
     PFN_vkVoidFunction sym(const char* name) const;
+
+    // Global variable for platform specific function retreival
+    static PFN_vkGetInstanceProcAddr g_get_instance_proc_address;
   };
   
   

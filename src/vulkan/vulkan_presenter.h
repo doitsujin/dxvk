@@ -10,6 +10,8 @@
 
 #include "vulkan_loader.h"
 
+typedef VkResult (*PFN_create_vulkan_surface)(VkInstance instance, void* window, VkSurfaceKHR *surface);
+
 namespace dxvk::vk {
 
   /**
@@ -165,6 +167,9 @@ namespace dxvk::vk {
      */
     VkResult recreateSwapChain(
       const PresenterDesc&  desc);
+
+    // Global variable for platform specific surface creation function pointer
+    static PFN_create_vulkan_surface g_create_surface_func;
 
   private:
 

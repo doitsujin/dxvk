@@ -360,13 +360,17 @@ namespace dxvk::vk {
   }
 
 
+  PFN_create_vulkan_surface Presenter::g_create_surface_func = nullptr;
+
+
   VkResult Presenter::createSurface(HWND window) {
     VkResult status = VK_ERROR_FEATURE_NOT_PRESENT;
 
 #ifdef DXVK_NATIVE
-    if(::g_native_info.pfn_create_vulkan_surface) {
-      status = ::g_native_info.pfn_create_vulkan_surface(m_vki->instance(), window, &m_surface);
-    }
+    if (g_create_surface_func) {
+      status = g_create_surface_func(m_vki->instance(), window, &m_surface);
+    } else
+      return VK_ERROR_FEATURE_NOT_PRESENT;
 #else
     HINSTANCE instance = reinterpret_cast<HINSTANCE>(
       GetWindowLongPtr(window, GWLP_HINSTANCE));

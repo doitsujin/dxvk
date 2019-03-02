@@ -3,9 +3,12 @@
 #include "d3d10_reflection.h"
 #endif
 
+
 #include "d3d10_include.h"
 
 #include "../dxgi/dxgi_adapter.h"
+
+#include "../vulkan/vulkan_presenter.h"
 
 #ifndef DXVK_NATIVE
 namespace dxvk {
@@ -388,15 +391,15 @@ extern "C" {
 
   // Native Entry-Point
   HRESULT native_core_create_d3d10_device(
-    native_info        native_info,
+    native_info        info,
     IDXGIFactory*           pFactory,
     IDXGIAdapter*           pAdapter,
     UINT                    Flags,
     D3D_FEATURE_LEVEL       FeatureLevel,
     ID3D10Device**          ppDevice) {
 
-    if(!g_native_info.pfn_create_vulkan_surface)
-      g_native_info = native_info;
+    vk::Presenter::g_create_surface_func           = info.pfn_create_vulkan_surface;
+    vk::LibraryLoader::g_get_instance_proc_address = info.pfn_vkGetInstanceProcAddr;
 
     return D3D10CoreCreateDevice(pFactory, pAdapter,
       Flags, FeatureLevel, ppDevice);
