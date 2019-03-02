@@ -49,6 +49,8 @@ namespace dxvk {
 
     HRESULT WaitForVBlank();
 
+    void SetDefaultGamma();
+
     void    SetGammaRamp(
       DWORD Flags,
       const D3DGAMMARAMP* pRamp);
@@ -67,6 +69,9 @@ namespace dxvk {
 
     D3DPRESENT_PARAMETERS m_presentParams;
     Direct3DSurface9* m_backBuffer;
+
+    DWORD m_gammaFlags;
+    D3DGAMMARAMP m_gammaRamp;
 
   };
 

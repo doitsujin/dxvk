@@ -8,12 +8,14 @@ namespace dxvk {
   D3D9Presenter::D3D9Presenter(
         Direct3DDevice9Ex*  parent,
         HWND                window,
-  const D3D9PresenterDesc*  desc)
+  const D3D9PresenterDesc*  desc,
+        DWORD               gammaFlags,
+  const D3DGAMMARAMP*       gammaRamp)
     : m_window{ window }
     , m_parent{ parent }
     , m_device{ parent->GetDXVKDevice() }
     , m_context{ m_device->createContext() }
-    , m_desc{ *desc }{
+    , m_desc{ *desc } {
     createPresenter();
 
     createBackBuffer();
@@ -23,31 +25,22 @@ namespace dxvk {
     initSamplers();
     initShaders();
 
-    setGammaRamp(0, nullptr);
+    setGammaRamp(gammaFlags, gammaRamp);
   }
 
-  HRESULT D3D9Presenter::setGammaRamp(
-          DWORD         flags,
+  void D3D9Presenter::setGammaRamp(
+    DWORD               Flags,
     const D3DGAMMARAMP* pRamp) {
     std::array<D3D9_VK_GAMMA_CP, GammaPointCount> cp;
 
-    if (pRamp != nullptr) {
-      for (uint32_t i = 0; i < GammaPointCount; i++) {
-        cp[i].R = pRamp->red[i];
-        cp[i].G = pRamp->green[i];
-        cp[i].B = pRamp->blue[i];
-        cp[i].A = 0;
-      }
-    }
-    else {
-      for (uint32_t i = 0; i < cp.size(); i++) {
-        const uint16_t value = 257 * i;
-        cp[i] = { value, value, value, 0 };
-      }
+    for (uint32_t i = 0; i < GammaPointCount; i++) {
+      cp[i].R = pRamp->red[i];
+      cp[i].G = pRamp->green[i];
+      cp[i].B = pRamp->blue[i];
+      cp[i].A = 0;
     }
 
     createGammaTexture(cp.data());
-    return D3D_OK;
   }
 
   void D3D9Presenter::createGammaTexture(const D3D9_VK_GAMMA_CP* pControlPoints) {

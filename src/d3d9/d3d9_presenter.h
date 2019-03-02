@@ -38,7 +38,9 @@ namespace dxvk {
     D3D9Presenter(
             Direct3DDevice9Ex*  parent,
             HWND                window,
-      const D3D9PresenterDesc*  desc);
+      const D3D9PresenterDesc*  desc,
+            DWORD               gammaFlags,
+      const D3DGAMMARAMP*       gammaRamp);
 
     void recreateSwapChain(const D3D9PresenterDesc* desc);
 
@@ -52,6 +54,10 @@ namespace dxvk {
       return m_backBuffer;
     }
 
+    void setGammaRamp(
+      DWORD               Flags,
+      const D3DGAMMARAMP* pRamp);
+
   private:
 
     void createBackBuffer();
@@ -63,10 +69,6 @@ namespace dxvk {
     void initSamplers();
 
     void initShaders();
-
-    HRESULT setGammaRamp(
-            DWORD         flags,
-      const D3DGAMMARAMP* pRamp);
 
     void createGammaTexture(const D3D9_VK_GAMMA_CP* pControlPoints);
 

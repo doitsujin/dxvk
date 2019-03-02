@@ -9,7 +9,9 @@ namespace dxvk {
 
   Direct3DSwapChain9Ex::Direct3DSwapChain9Ex(Direct3DDevice9Ex* device, D3DPRESENT_PARAMETERS* presentParams)
     : Direct3DSwapChain9ExBase{ device }
-    , m_backBuffer{ nullptr }{
+    , m_backBuffer{ nullptr }
+    , m_gammaFlags{ 0 } {
+    SetDefaultGamma();
     Reset(presentParams);
   }
 
@@ -209,14 +211,32 @@ namespace dxvk {
     return D3D_OK;
   }
 
+  void Direct3DSwapChain9Ex::SetDefaultGamma() {
+    for (uint32_t i = 0; i < 256; i++) {
+      m_gammaRamp.red[i] = i * 257;
+      m_gammaRamp.green[i] = i * 257;
+      m_gammaRamp.blue[i] = i * 257;
+    }
+  }
+
   void    Direct3DSwapChain9Ex::SetGammaRamp(
     DWORD Flags,
     const D3DGAMMARAMP* pRamp) {
-    Logger::warn("Direct3DSwapChain9Ex::SetGammaRamp: Stub");
+    m_gammaFlags = Flags;
+
+    if (pRamp != nullptr)
+      m_gammaRamp = *pRamp;
+    else
+      SetDefaultGamma();
+
+    auto& presenter = GetOrMakePresenter(GetPresentWindow());
+
+    presenter.setGammaRamp(Flags, &m_gammaRamp);
   }
 
   void    Direct3DSwapChain9Ex::GetGammaRamp(D3DGAMMARAMP* pRamp) {
-    Logger::warn("Direct3DSwapChain9Ex::GetGammaRamp: Stub");
+    if (pRamp != nullptr)
+      *pRamp = m_gammaRamp;
   }
 
   D3D9Presenter& Direct3DSwapChain9Ex::GetOrMakePresenter(HWND window) {
@@ -236,7 +256,9 @@ namespace dxvk {
     auto* presenter = new D3D9Presenter(
       m_parent,
       window,
-      &desc);
+      &desc,
+      m_gammaFlags,
+      &m_gammaRamp);
 
     m_presenters.push_back(presenter);
 
