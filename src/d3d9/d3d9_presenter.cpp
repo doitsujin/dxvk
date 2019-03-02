@@ -528,10 +528,12 @@ namespace dxvk {
     m_imageViews.resize(info.imageCount);
     m_imageViewsSrgb.resize(info.imageCount);
 
+    VkFormat srgbFormat = makeSrgb(info.format.format);
+
     DxvkImageCreateInfo imageInfo;
     imageInfo.type = VK_IMAGE_TYPE_2D;
     imageInfo.format = info.format.format;
-    imageInfo.flags = 0;
+    imageInfo.flags = srgbFormat != info.format.format ? VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT : 0;
     imageInfo.sampleCount = VK_SAMPLE_COUNT_1_BIT;
     imageInfo.extent = { info.imageExtent.width, info.imageExtent.height, 1 };
     imageInfo.numLayers = 1;

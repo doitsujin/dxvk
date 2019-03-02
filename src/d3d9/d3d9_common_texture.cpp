@@ -14,6 +14,7 @@ namespace dxvk {
       return;
 
     D3D9_VK_FORMAT_INFO   formatInfo = m_device->LookupFormat(m_desc.Format, false);
+    D3D9_VK_FORMAT_INFO   formatInfoSrgb = m_device->LookupFormat(m_desc.Format, true);
 
     DxvkImageCreateInfo imageInfo;
     imageInfo.type = GetImageTypeFromResourceType(m_desc.Type);
@@ -41,7 +42,7 @@ namespace dxvk {
     auto formatProperties = imageFormatInfo(formatInfo.Format);
 
     bool isTypeless = formatInfo.Aspect == 0;
-    bool isMutable = formatInfo.Format != VK_FORMAT_UNDEFINED;
+    bool isMutable = formatInfo.Format != formatInfoSrgb.Format;
     bool isColorFormat = (formatProperties->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) != 0;
 
     if (isMutable && isColorFormat) {
