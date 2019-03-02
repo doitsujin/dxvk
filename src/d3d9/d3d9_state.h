@@ -10,7 +10,7 @@ namespace dxvk {
 
   struct Direct3DState9 {
     Direct3DState9() {
-      for (uint32_t i = 0; i < caps::MaxSimultaneousRenderTargets; i++)
+      for (uint32_t i = 0; i < renderTargets.size(); i++)
         renderTargets[i] = nullptr;
 
       depthStencil = nullptr;

@@ -30,6 +30,7 @@ namespace dxvk {
     , m_device{ dxvkDevice }
     , m_deviceType{ deviceType }
     , m_window{ window }
+    , m_flags{ flags }
     , m_d3d9Formats{ dxvkAdapter }
     , m_csChunk{ AllocCsChunk() }
     , m_csThread{ dxvkDevice->createContext() }
