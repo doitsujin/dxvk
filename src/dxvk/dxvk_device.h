@@ -141,6 +141,12 @@ namespace dxvk {
     const DxvkDeviceFeatures& features() const {
       return m_features;
     }
+
+    /**
+     * \brief Queries supported shader stages
+     * \returns Supported shader pipeline stages
+     */
+    VkPipelineStageFlags getShaderPipelineStages() const;
     
     /**
      * \brief Retrieves device options
