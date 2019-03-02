@@ -551,7 +551,62 @@ namespace dxvk {
     D3DCOLOR Color,
     float Z,
     DWORD Stencil) {
-    Logger::warn("Direct3DDevice9Ex::Clear: Stub");
+    auto lock = LockDevice();
+
+    if (Flags & D3DCLEAR_STENCIL || Flags & D3DCLEAR_ZBUFFER) {
+      auto dsv = m_state.depthStencil != nullptr ? m_state.depthStencil->GetCommonTexture()->GetDepthStencilView() : nullptr;
+
+      if (dsv != nullptr) {
+        VkImageAspectFlags aspectMask = 0;
+
+        if (Flags & D3DCLEAR_ZBUFFER)
+          aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
+
+        if (Flags & D3DCLEAR_STENCIL)
+          aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+
+        aspectMask &= imageFormatInfo(dsv->info().format)->aspectMask;
+
+        if (aspectMask != 0) {
+          VkClearValue clearValue;
+          clearValue.depthStencil.depth = Z;
+          clearValue.depthStencil.stencil = Stencil;
+
+          EmitCs([
+            cClearValue = clearValue,
+            cAspectMask = aspectMask,
+            cImageView  = dsv
+          ] (DxvkContext * ctx) {
+              ctx->clearRenderTarget(
+                cImageView,
+                cAspectMask,
+                cClearValue);
+            });
+        }
+      }
+    }
+
+    if (Flags & D3DCLEAR_TARGET) {
+      VkClearValue clearValue;
+      DecodeD3DCOLOR(Color, clearValue.color.float32);
+
+      for (auto rt : m_state.renderTargets) {
+        auto rtv = rt != nullptr ? rt->GetCommonTexture()->GetRenderTargetView(false) : nullptr; // TODO: handle srgb-ness
+
+        if (rtv != nullptr) {
+          EmitCs([
+            cClearValue = clearValue,
+            cImageView  = rtv
+          ] (DxvkContext* ctx) {
+            ctx->clearRenderTarget(
+              cImageView,
+              VK_IMAGE_ASPECT_COLOR_BIT,
+              cClearValue);
+          });
+        }
+      }
+    }
+
     return D3D_OK;
   }
 
