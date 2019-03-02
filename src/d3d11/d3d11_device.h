@@ -295,7 +295,9 @@ namespace dxvk {
     
     void FlushInitContext();
     
-    VkPipelineStageFlags GetEnabledShaderStages() const;
+    VkPipelineStageFlags GetEnabledShaderStages() const {
+      return m_dxvkDevice->getShaderPipelineStages();
+    }
     
     DXGI_VK_FORMAT_INFO LookupFormat(
             DXGI_FORMAT           Format,

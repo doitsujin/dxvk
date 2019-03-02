@@ -1331,24 +1331,6 @@ namespace dxvk {
   }
   
   
-  VkPipelineStageFlags D3D11Device::GetEnabledShaderStages() const {
-    VkPipelineStageFlags enabledShaderPipelineStages
-      = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
-      | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
-      | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-    
-    if (m_dxvkDevice->features().core.features.geometryShader)
-      enabledShaderPipelineStages |= VK_PIPELINE_STAGE_GEOMETRY_SHADER_BIT;
-    
-    if (m_dxvkDevice->features().core.features.tessellationShader) {
-      enabledShaderPipelineStages |= VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT
-                                  |  VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT;
-    }
-    
-    return enabledShaderPipelineStages;
-  }
-  
-  
   bool D3D11Device::CheckFeatureLevelSupport(
     const Rc<DxvkAdapter>&  adapter,
           D3D_FEATURE_LEVEL featureLevel) {
