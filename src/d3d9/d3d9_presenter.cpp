@@ -12,6 +12,7 @@ namespace dxvk {
     : m_window{ window }
     , m_parent{ parent }
     , m_device{ parent->GetDXVKDevice() }
+    , m_context{ m_device->createContext() }
     , m_desc{ *desc }{
     createPresenter();
 

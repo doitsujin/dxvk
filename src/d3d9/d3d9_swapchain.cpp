@@ -8,7 +8,8 @@
 namespace dxvk {
 
   Direct3DSwapChain9Ex::Direct3DSwapChain9Ex(Direct3DDevice9Ex* device, D3DPRESENT_PARAMETERS* presentParams)
-    : Direct3DSwapChain9ExBase{ device } {
+    : Direct3DSwapChain9ExBase{ device }
+    , m_backBuffer{ nullptr }{
     Reset(presentParams);
   }
 
