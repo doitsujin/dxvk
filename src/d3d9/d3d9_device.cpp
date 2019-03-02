@@ -32,8 +32,16 @@ namespace dxvk {
     , m_window{ window }
     , m_d3d9Formats{ dxvkAdapter }
     , m_csChunk{ AllocCsChunk() }
-    , m_csThread{ m_device->createContext() }
+    , m_csThread{ dxvkDevice->createContext() }
     , m_multithread{ flags & D3DCREATE_MULTITHREADED } {
+
+    EmitCs([
+      cDevice = m_device
+    ] (DxvkContext * ctx) {
+        ctx->beginRecording(cDevice->createCommandList());
+    });
+
+
     HRESULT hr = this->Reset(presentParams);
 
     if (FAILED(hr))
