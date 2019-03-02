@@ -454,22 +454,72 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetRenderTarget(DWORD RenderTargetIndex, IDirect3DSurface9* pRenderTarget) {
-    Logger::warn("Direct3DDevice9Ex::SetRenderTarget: Stub");
+    auto lock = LockDevice();
+
+    if (RenderTargetIndex >= caps::MaxSimultaneousRenderTargets
+     || (pRenderTarget == nullptr && RenderTargetIndex == 0) )
+      return D3DERR_INVALIDCALL;
+
+    Direct3DSurface9* rt = static_cast<Direct3DSurface9*>(pRenderTarget);
+
+    if (m_state.renderTargets[RenderTargetIndex] == rt)
+      return D3D_OK;
+
+    FlushImplicit(FALSE);
+
+    changePrivate(m_state.renderTargets[RenderTargetIndex], rt);
+    
+    BindFramebuffer();
+
     return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetRenderTarget(DWORD RenderTargetIndex, IDirect3DSurface9** ppRenderTarget) {
-    Logger::warn("Direct3DDevice9Ex::GetRenderTarget: Stub");
+    auto lock = LockDevice();
+
+    InitReturnPtr(ppRenderTarget);
+
+    if (ppRenderTarget == nullptr || RenderTargetIndex > caps::MaxSimultaneousRenderTargets)
+      return D3DERR_INVALIDCALL;
+
+    if (m_state.renderTargets[RenderTargetIndex] == nullptr)
+      return D3DERR_NOTFOUND;
+
+    *ppRenderTarget = ref(m_state.renderTargets[RenderTargetIndex]);
+
     return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetDepthStencilSurface(IDirect3DSurface9* pNewZStencil) {
-    Logger::warn("Direct3DDevice9Ex::SetDepthStencilSurface: Stub");
+    auto lock = LockDevice();
+
+    Direct3DSurface9* ds = static_cast<Direct3DSurface9*>(pNewZStencil);
+
+    if (m_state.depthStencil == ds)
+      return D3D_OK;
+
+    FlushImplicit(FALSE);
+
+    changePrivate(m_state.depthStencil, ds);
+
+    BindFramebuffer();
+
     return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetDepthStencilSurface(IDirect3DSurface9** ppZStencilSurface) {
-    Logger::warn("Direct3DDevice9Ex::GetDepthStencilSurface: Stub");
+    auto lock = LockDevice();
+
+    InitReturnPtr(ppZStencilSurface);
+
+    if (ppZStencilSurface == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    if (m_state.depthStencil == nullptr)
+      return D3DERR_NOTFOUND;
+
+    *ppZStencilSurface = ref(m_state.depthStencil);
+
     return D3D_OK;
   }
 
@@ -1707,6 +1757,34 @@ namespace dxvk {
       m_lastFlush = std::chrono::high_resolution_clock::now();
       m_csIsBusy = false;
     }
+  }
+
+  void Direct3DDevice9Ex::BindFramebuffer() {
+    DxvkRenderTargets attachments;
+
+    // D3D9 doesn't have the concept of a framebuffer object,
+    // so we'll just create a new one every time the render
+    // target bindings are updated. Set up the attachments.
+    for (UINT i = 0; i < m_state.renderTargets.size(); i++) {
+      if (m_state.renderTargets.at(i) != nullptr) {
+        attachments.color[i] = {
+          m_state.renderTargets.at(i)->GetCommonTexture()->GetRenderTargetView(false), // TODO: SRGB-ness here. Use state when that is hooked up.
+          m_state.renderTargets.at(i)->GetCommonTexture()->GetRenderTargetLayout(false) };
+      }
+    }
+
+    if (m_state.depthStencil != nullptr) {
+      attachments.depth = {
+        m_state.depthStencil->GetCommonTexture()->GetDepthStencilView(),
+        m_state.depthStencil->GetCommonTexture()->GetDepthLayout() };
+    }
+
+    // Create and bind the framebuffer object to the context
+    EmitCs([
+      cAttachments = std::move(attachments)
+    ] (DxvkContext * ctx) {
+        ctx->bindRenderTargets(cAttachments, false);
+      });
   }
 
 }

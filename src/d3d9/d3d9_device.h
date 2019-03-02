@@ -8,6 +8,8 @@
 #include "d3d9_format.h"
 #include "d3d9_multithread.h"
 
+#include "d3d9_state.h"
+
 #include <vector>
 
 namespace dxvk {
@@ -573,6 +575,8 @@ namespace dxvk {
 
     void Flush();
 
+    void BindFramebuffer();
+
     Direct3DDeviceLock9 LockDevice() {
       return m_multithread.AcquireLock();
     }
@@ -582,6 +586,7 @@ namespace dxvk {
     Direct3DMultithread9            m_multithread;
 
     const D3D9VkFormatTable         m_d3d9Formats;
+    Direct3DState9                  m_state;
 
     Direct3DSwapChain9Ex* getInternalSwapchain(UINT index);
 
