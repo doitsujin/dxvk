@@ -2532,20 +2532,34 @@ namespace dxvk {
   void DxvkContext::resetRenderPassOps(
     const DxvkRenderTargets&    renderTargets,
           DxvkRenderPassOps&    renderPassOps) {
-    renderPassOps.barrier.srcStages = VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT;
+    VkPipelineStageFlags shaderStages = m_device->getShaderPipelineStages()
+                                      & ~VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+    
+    renderPassOps.barrier.srcStages = shaderStages
+                                    | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT
+                                    | VK_PIPELINE_STAGE_VERTEX_INPUT_BIT
+                                    | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+                                    | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT
+                                    | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+                                    | VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
     renderPassOps.barrier.srcAccess = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
                                     | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
                                     | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT
                                     | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT
-                                    | VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT
-                                    | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT
-                                    | VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT
                                     | VK_ACCESS_INDIRECT_COMMAND_READ_BIT
                                     | VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT
                                     | VK_ACCESS_INDEX_READ_BIT
                                     | VK_ACCESS_UNIFORM_READ_BIT
                                     | VK_ACCESS_SHADER_READ_BIT
                                     | VK_ACCESS_SHADER_WRITE_BIT;
+    
+    if (m_device->features().extTransformFeedback.transformFeedback) {
+      renderPassOps.barrier.srcStages |= VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT;
+      renderPassOps.barrier.srcAccess |= VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT
+                                      |  VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT
+                                      |  VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT;
+    }
+
     renderPassOps.barrier.dstStages = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
     renderPassOps.barrier.dstAccess = renderPassOps.barrier.srcAccess
                                     | VK_ACCESS_TRANSFER_READ_BIT
