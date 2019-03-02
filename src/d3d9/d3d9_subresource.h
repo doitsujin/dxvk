@@ -54,6 +54,30 @@ namespace dxvk {
       return m_texture;
     }
 
+    Rc<DxvkImageView> GetImageView(bool srgb) {
+      return m_texture->GetImageView(srgb);
+    }
+
+    VkImageLayout GetImageLayout(bool srgb) {
+      return m_texture->GetImageLayout(srgb);
+    }
+
+    Rc<DxvkImageView> GetRenderTargetView(bool srgb) {
+      return m_texture->GetRenderTargetView(srgb);
+    }
+
+    VkImageLayout GetRenderTargetLayout(bool srgb) {
+      return m_texture->GetRenderTargetLayout(srgb);
+    }
+
+    Rc<DxvkImageView> GetDepthStencilView() {
+      return m_texture->GetDepthStencilView();
+    }
+
+    VkImageLayout GetDepthLayout() {
+      return m_texture->GetDepthLayout();
+    }
+
   protected:
 
     Rc<Direct3DCommonTexture9> m_texture;

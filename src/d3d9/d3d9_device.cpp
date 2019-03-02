@@ -554,7 +554,7 @@ namespace dxvk {
     auto lock = LockDevice();
 
     if (Flags & D3DCLEAR_STENCIL || Flags & D3DCLEAR_ZBUFFER) {
-      auto dsv = m_state.depthStencil != nullptr ? m_state.depthStencil->GetCommonTexture()->GetDepthStencilView() : nullptr;
+      auto dsv = m_state.depthStencil != nullptr ? m_state.depthStencil->GetDepthStencilView() : nullptr;
 
       if (dsv != nullptr) {
         VkImageAspectFlags aspectMask = 0;
@@ -591,7 +591,7 @@ namespace dxvk {
       DecodeD3DCOLOR(Color, clearValue.color.float32);
 
       for (auto rt : m_state.renderTargets) {
-        auto rtv = rt != nullptr ? rt->GetCommonTexture()->GetRenderTargetView(false) : nullptr; // TODO: handle srgb-ness
+        auto rtv = rt != nullptr ? rt->GetRenderTargetView(false) : nullptr; // TODO: handle srgb-ness
 
         if (rtv != nullptr) {
           EmitCs([
@@ -1831,15 +1831,15 @@ namespace dxvk {
     for (UINT i = 0; i < m_state.renderTargets.size(); i++) {
       if (m_state.renderTargets.at(i) != nullptr) {
         attachments.color[i] = {
-          m_state.renderTargets.at(i)->GetCommonTexture()->GetRenderTargetView(false), // TODO: SRGB-ness here. Use state when that is hooked up.
-          m_state.renderTargets.at(i)->GetCommonTexture()->GetRenderTargetLayout(false) };
+          m_state.renderTargets.at(i)->GetRenderTargetView(false), // TODO: SRGB-ness here. Use state when that is hooked up.
+          m_state.renderTargets.at(i)->GetRenderTargetLayout(false) };
       }
     }
 
     if (m_state.depthStencil != nullptr) {
       attachments.depth = {
-        m_state.depthStencil->GetCommonTexture()->GetDepthStencilView(),
-        m_state.depthStencil->GetCommonTexture()->GetDepthLayout() };
+        m_state.depthStencil->GetDepthStencilView(),
+        m_state.depthStencil->GetDepthLayout() };
     }
 
     // Create and bind the framebuffer object to the context
