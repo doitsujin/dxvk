@@ -50,6 +50,10 @@ namespace dxvk {
       return m_container->QueryInterface(riid, ppContainer);
     }
 
+    Rc<Direct3DCommonTexture9> GetCommonTexture() {
+      return m_texture;
+    }
+
   protected:
 
     Rc<Direct3DCommonTexture9> m_texture;
