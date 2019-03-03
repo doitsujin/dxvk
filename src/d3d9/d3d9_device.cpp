@@ -5,6 +5,7 @@
 #include "d3d9_util.h"
 #include "d3d9_texture.h"
 #include "d3d9_buffer.h"
+#include "d3d9_vertex_declaration.h"
 
 #include "../util/util_bit.h"
 #include "../util/util_math.h"
@@ -966,8 +967,26 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateVertexDeclaration(const D3DVERTEXELEMENT9* pVertexElements, IDirect3DVertexDeclaration9** ppDecl) {
-    Logger::warn("Direct3DDevice9Ex::CreateVertexDeclaration: Stub");
-    return D3D_OK;
+    InitReturnPtr(ppDecl);
+
+    if (ppDecl == nullptr || pVertexElements == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    const D3DVERTEXELEMENT9* counter = pVertexElements;
+    while (counter->Stream != 0xFF)
+      counter++;
+
+    const uint32_t declCount = uint32_t(counter - pVertexElements);
+
+    try {
+      const Com<Direct3DVertexDeclaration9> decl = new Direct3DVertexDeclaration9{ this, pVertexElements, declCount };
+      *ppDecl = decl.ref();
+      return D3D_OK;
+    }
+    catch (const DxvkError & e) {
+      Logger::err(e.message());
+      return D3DERR_INVALIDCALL;
+    }
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetVertexDeclaration(IDirect3DVertexDeclaration9* pDecl) {
