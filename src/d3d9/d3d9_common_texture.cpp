@@ -204,6 +204,8 @@ namespace dxvk {
       // view type and view format is actually supported
       VkFormatFeatureFlags features = GetImageFormatFeatures(Usage);
 
+      VkFormat srgbCorrectedViewFormat = PickSRGB(viewFormat.Format, viewFormat.FormatSrgb, srgb);
+
       if (!CheckFormatFeatureSupport(viewFormat.Format, features))
         return false;
 
@@ -214,17 +216,17 @@ namespace dxvk {
       // If there is a list of compatible formats, the
       // view format must be included in that list.
       for (size_t i = 0; i < imageInfo.viewFormatCount; i++) {
-        if (imageInfo.viewFormats[i] == viewFormat.Format)
+        if (imageInfo.viewFormats[i] == srgbCorrectedViewFormat)
           return true;
       }
 
       // Otherwise, all bit-compatible formats can be used.
       if (imageInfo.viewFormatCount == 0) {
         auto baseFormatInfo = imageFormatInfo(baseFormat.Format);
-        auto viewFormatInfo = imageFormatInfo(viewFormat.Format);
+        auto viewFormatInfo = imageFormatInfo(srgbCorrectedViewFormat);
 
-        return baseFormatInfo->aspectMask == viewFormatInfo->aspectMask
-          && baseFormatInfo->elementSize == viewFormatInfo->elementSize;
+        return baseFormatInfo->aspectMask  == viewFormatInfo->aspectMask
+            && baseFormatInfo->elementSize == viewFormatInfo->elementSize;
       }
 
       return false;
