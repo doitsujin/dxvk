@@ -127,7 +127,6 @@ namespace dxvk {
     HWND m_window;
 
     std::vector<Rc<DxvkImageView>> m_imageViews;
-    std::vector<Rc<DxvkImageView>> m_imageViewsSrgb;
 
     Rc<Direct3DCommonTexture9> m_backBuffer;
 

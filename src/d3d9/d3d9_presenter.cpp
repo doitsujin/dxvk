@@ -525,17 +525,12 @@ namespace dxvk {
     vk::PresenterInfo info = m_presenter->info();
 
     m_imageViews.clear();
-    m_imageViewsSrgb.clear();
 
     m_imageViews.resize(info.imageCount);
-    m_imageViewsSrgb.resize(info.imageCount);
-
-    VkFormat srgbFormat = makeSrgb(info.format.format);
 
     DxvkImageCreateInfo imageInfo;
     imageInfo.type = VK_IMAGE_TYPE_2D;
     imageInfo.format = info.format.format;
-    imageInfo.flags = srgbFormat != info.format.format ? VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT : 0;
     imageInfo.sampleCount = VK_SAMPLE_COUNT_1_BIT;
     imageInfo.extent = { info.imageExtent.width, info.imageExtent.height, 1 };
     imageInfo.numLayers = 1;
@@ -545,6 +540,7 @@ namespace dxvk {
     imageInfo.access = 0;
     imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    imageInfo.flags = 0;
 
     DxvkImageViewCreateInfo viewInfo;
     viewInfo.type = VK_IMAGE_VIEW_TYPE_2D;
@@ -563,11 +559,6 @@ namespace dxvk {
         m_device->vkd(), imageInfo, imageHandle);
 
       m_imageViews[i] = new DxvkImageView(
-        m_device->vkd(), image, viewInfo);
-
-      viewInfo.format = makeSrgb(info.format.format);
-
-      m_imageViewsSrgb[i] = new DxvkImageView(
         m_device->vkd(), image, viewInfo);
     }
   }

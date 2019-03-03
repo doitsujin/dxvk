@@ -13,8 +13,7 @@ namespace dxvk {
     if (m_desc.Format == D3D9Format::NULL_FORMAT)
       return;
 
-    D3D9_VK_FORMAT_INFO   formatInfo = m_device->LookupFormat(m_desc.Format, false);
-    D3D9_VK_FORMAT_INFO   formatInfoSrgb = m_device->LookupFormat(m_desc.Format, true);
+    D3D9_VK_FORMAT_MAPPING formatInfo = m_device->LookupFormat(m_desc.Format);
 
     DxvkImageCreateInfo imageInfo;
     imageInfo.type = GetImageTypeFromResourceType(m_desc.Type);
@@ -41,14 +40,13 @@ namespace dxvk {
     // be reinterpreted in Vulkan, so we'll ignore those.
     auto formatProperties = imageFormatInfo(formatInfo.Format);
 
-    bool isTypeless = formatInfo.Aspect == 0;
-    bool isMutable = formatInfo.Format != formatInfoSrgb.Format;
+    bool isMutable = formatInfo.FormatSrgb != VK_FORMAT_UNDEFINED;
     bool isColorFormat = (formatProperties->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) != 0;
 
     if (isMutable && isColorFormat) {
       imageInfo.flags |= VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT;
       imageInfo.viewFormatCount = 2;
-      imageInfo.viewFormats = reinterpret_cast<VkFormat*>(&formatInfo);
+      imageInfo.viewFormats = reinterpret_cast<VkFormat*>(&formatInfo); // Starts with VkFormat, VkFormat
     }
 
     // Some games will try to create an SRGB image with the UAV
@@ -198,8 +196,8 @@ namespace dxvk {
       return false;
 
     // Check whether the view format is compatible
-    D3D9_VK_FORMAT_INFO viewFormat = m_device->LookupFormat(Format, srgb);
-    D3D9_VK_FORMAT_INFO baseFormat = m_device->LookupFormat(m_desc.Format, false);
+    D3D9_VK_FORMAT_MAPPING viewFormat = m_device->LookupFormat(Format);
+    D3D9_VK_FORMAT_MAPPING baseFormat = m_device->LookupFormat(m_desc.Format);
 
     if (imageInfo.flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT) {
       // Check whether the given combination of image
@@ -377,7 +375,7 @@ namespace dxvk {
 
   Rc<DxvkBuffer> Direct3DCommonTexture9::CreateMappedBuffer() const {
     const DxvkFormatInfo* formatInfo = imageFormatInfo(
-      m_device->LookupFormat(m_desc.Format, false).Format);
+      m_device->LookupFormat(m_desc.Format).Format);
 
     const VkExtent3D blockCount = util::computeBlockCount(
       VkExtent3D{ m_desc.Width, m_desc.Height, m_desc.Depth },
@@ -486,10 +484,10 @@ namespace dxvk {
     VkImageUsageFlags UsageFlags,
     bool              srgb,
     UINT              Lod) {
-    const D3D9_VK_FORMAT_INFO formatInfo = m_device->LookupFormat(m_desc.Format, srgb);
+    const D3D9_VK_FORMAT_MAPPING formatInfo = m_device->LookupFormat(m_desc.Format);
 
     DxvkImageViewCreateInfo viewInfo;
-    viewInfo.format = formatInfo.Format;
+    viewInfo.format = PickSRGB(formatInfo.Format, formatInfo.FormatSrgb, srgb);
     viewInfo.aspect = formatInfo.Aspect;
     viewInfo.swizzle = formatInfo.Swizzle;
     viewInfo.usage = UsageFlags;

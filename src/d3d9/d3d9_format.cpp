@@ -468,21 +468,6 @@ namespace dxvk {
       Logger::warn("D3D9: VK_FORMAT_D16_UNORM_S8_UINT -> VK_FORMAT_D32_SFLOAT_S8_UINT");
   }
 
-  D3D9_VK_FORMAT_INFO D3D9VkFormatTable::GetFormatInfo(
-          D3D9Format          Format,
-          bool                srgb) const {
-    D3D9_VK_FORMAT_MAPPING mapping = GetFormatMapping(Format);
-
-    return (!srgb || mapping.FormatSrgb == VK_FORMAT_UNDEFINED)
-      ? D3D9_VK_FORMAT_INFO{ mapping.Format, mapping.Aspect, mapping.Swizzle }
-      : D3D9_VK_FORMAT_INFO{ mapping.FormatSrgb, mapping.Aspect, mapping.Swizzle };
-    
-    
-    Logger::err("D3D9VkFormatTable::GetFormatInfo: Internal error");
-    return D3D9_VK_FORMAT_INFO();
-  }
-
-
   D3D9_VK_FORMAT_MAPPING D3D9VkFormatTable::GetFormatMapping(
           D3D9Format          Format) const {
     D3D9_VK_FORMAT_MAPPING mapping = ConvertFormat(Format);

@@ -540,9 +540,8 @@ namespace dxvk {
 
     Rc<DxvkEvent> GetFrameSyncEvent();
 
-    D3D9_VK_FORMAT_INFO LookupFormat(
-      D3D9Format            Format,
-      bool                  srgb) const;
+    D3D9_VK_FORMAT_MAPPING LookupFormat(
+      D3D9Format            Format) const;
 
     bool WaitForResource(
       const Rc<DxvkResource>&                 Resource,

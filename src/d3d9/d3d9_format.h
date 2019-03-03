@@ -113,22 +113,6 @@ namespace dxvk {
       VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
       VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
   };
-  
-  /**
-   * \brief Format info
-   * 
-   * Stores a Vulkan image format for a given
-   * D3D9 format and some additional information
-   * on how resources with the particular format
-   * are supposed to be used.
-   */
-  struct D3D9_VK_FORMAT_INFO {
-    VkFormat              Format      = VK_FORMAT_UNDEFINED;  ///< Corresponding color format
-    VkImageAspectFlags    Aspect      = 0;                    ///< Defined image aspect mask
-    VkComponentMapping    Swizzle     = {                     ///< Component swizzle
-      VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
-      VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
-  };
 
   /**
    * \brief Format table
@@ -151,14 +135,10 @@ namespace dxvk {
      * \param [in] Mode the format lookup mode
      * \returns Format info
      */
-    D3D9_VK_FORMAT_INFO GetFormatInfo(
-      D3D9Format          Format,
-      bool                Srgb) const;
-
-  private:
-
     D3D9_VK_FORMAT_MAPPING GetFormatMapping(
       D3D9Format            Format) const;
+
+  private:
 
     bool CheckImageFormatSupport(
       const Rc<DxvkAdapter>&      Adapter,
