@@ -4,6 +4,7 @@
 #include "d3d9_caps.h"
 #include "d3d9_util.h"
 #include "d3d9_texture.h"
+#include "d3d9_buffer.h"
 
 #include "../util/util_bit.h"
 #include "../util/util_math.h"
@@ -345,8 +346,28 @@ namespace dxvk {
     D3DPOOL Pool,
     IDirect3DVertexBuffer9** ppVertexBuffer,
     HANDLE* pSharedHandle) {
-    Logger::warn("Direct3DDevice9Ex::CreateVertexBuffer: Stub");
-    return D3D_OK;
+    auto lock = LockDevice();
+
+    if (ppVertexBuffer == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    D3D9_BUFFER_DESC desc;
+    desc.Format = D3D9Format::VERTEXDATA;
+    desc.FVF = FVF;
+    desc.Pool = Pool;
+    desc.Size = Length;
+    desc.Type = D3DRTYPE_VERTEXBUFFER;
+    desc.Usage = Usage;
+
+    try {
+      const Com<Direct3DVertexBuffer9> buffer = new Direct3DVertexBuffer9{ this, &desc };
+      *ppVertexBuffer = buffer.ref();
+      return D3D_OK;
+    }
+    catch (const DxvkError & e) {
+      Logger::err(e.message());
+      return D3DERR_INVALIDCALL;
+    }
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateIndexBuffer(
@@ -356,8 +377,27 @@ namespace dxvk {
     D3DPOOL Pool,
     IDirect3DIndexBuffer9** ppIndexBuffer,
     HANDLE* pSharedHandle) {
-    Logger::warn("Direct3DDevice9Ex::CreateIndexBuffer: Stub");
-    return D3D_OK;
+    auto lock = LockDevice();
+
+    if (ppIndexBuffer == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    D3D9_BUFFER_DESC desc;
+    desc.Format = fixupFormat(Format);
+    desc.Pool = Pool;
+    desc.Size = Length;
+    desc.Type = D3DRTYPE_INDEXBUFFER;
+    desc.Usage = Usage;
+
+    try {
+      const Com<Direct3DIndexBuffer9> buffer = new Direct3DIndexBuffer9{ this, &desc };
+      *ppIndexBuffer = buffer.ref();
+      return D3D_OK;
+    }
+    catch (const DxvkError & e) {
+      Logger::err(e.message());
+      return D3DERR_INVALIDCALL;
+    }
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateRenderTarget(
@@ -1858,6 +1898,91 @@ namespace dxvk {
     }
 
     pResource->ClearMappedSubresource();
+
+    return D3D_OK;
+  }
+
+  HRESULT Direct3DDevice9Ex::LockBuffer(
+          Direct3DCommonBuffer9*  pResource,
+          UINT                    OffsetToLock,
+          UINT                    SizeToLock,
+          void**                  ppbData,
+          DWORD                   Flags) {
+    auto lock = LockDevice();
+
+    if (ppbData == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    pResource->SetMapFlags(Flags);
+
+    if (Flags & D3DLOCK_DISCARD) {
+      // Allocate a new backing slice for the buffer and set
+      // it as the 'new' mapped slice. This assumes that the
+      // only way to invalidate a buffer is by mapping it.
+
+      // TODO: Investigate locking regions rather than the whole resource.
+      auto physSlice = pResource->DiscardMapSlice();
+      uint8_t* data =  reinterpret_cast<uint8_t*>(physSlice.mapPtr);
+               data += OffsetToLock;
+
+      *ppbData = reinterpret_cast<void*>(data);
+
+      EmitCs([
+        cBuffer      = pResource->GetBuffer(D3D9_COMMON_BUFFER_TYPE_MAPPING),
+        cBufferSlice = physSlice
+      ] (DxvkContext * ctx) {
+          ctx->invalidateBuffer(cBuffer, cBufferSlice);
+      });
+
+      return D3D_OK;
+    }
+    else {
+      // Wait until the resource is no longer in use
+      if (!(Flags & D3DLOCK_NOOVERWRITE) && pResource->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_DIRECT) {
+        if (!WaitForResource(pResource->GetBuffer(D3D9_COMMON_BUFFER_TYPE_REAL), Flags))
+          return D3DERR_WASSTILLDRAWING;
+      }
+
+      // Use map pointer from previous map operation. This
+      // way we don't have to synchronize with the CS thread
+      // if the map mode is D3DLOCK_NOOVERWRITE.
+      DxvkBufferSliceHandle physSlice = pResource->GetMappedSlice();
+
+      uint8_t* data =  reinterpret_cast<uint8_t*>(physSlice.mapPtr);
+               data += OffsetToLock;
+
+      *ppbData = reinterpret_cast<void*>(data);
+
+      return D3D_OK;
+    }
+  }
+
+  HRESULT Direct3DDevice9Ex::UnlockBuffer(
+        Direct3DCommonBuffer9* pResource) {
+    auto lock = LockDevice();
+
+    if (pResource->GetMapMode() != D3D9_COMMON_BUFFER_MAP_MODE_BUFFER)
+      return D3D_OK;
+
+    if (pResource->SetMapFlags(0) & D3DLOCK_READONLY)
+      return D3D_OK;
+
+    FlushImplicit(FALSE);
+
+    auto dstBuffer = pResource->GetBufferSlice(D3D9_COMMON_BUFFER_TYPE_REAL);
+    auto srcBuffer = pResource->GetBufferSlice(D3D9_COMMON_BUFFER_TYPE_STAGING);
+
+    EmitCs([
+      cDstSlice = dstBuffer,
+      cSrcSlice = srcBuffer
+    ] (DxvkContext * ctx) {
+      ctx->copyBuffer(
+        cDstSlice.buffer(),
+        cDstSlice.offset(),
+        cSrcSlice.buffer(),
+        cSrcSlice.offset(),
+        cSrcSlice.length());
+    });
 
     return D3D_OK;
   }

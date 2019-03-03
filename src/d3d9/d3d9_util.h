@@ -30,6 +30,9 @@ namespace dxvk {
 
   VkImageUsageFlags GetImageUsageFlags(DWORD Usage);
 
+  VkMemoryPropertyFlags GetMemoryFlagsForUsage(
+          DWORD                   Usage);
+
   template <typename T>
   void changePrivate(T*& srcPtr, T* newPtr) {
     if (srcPtr != nullptr)

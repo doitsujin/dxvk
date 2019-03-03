@@ -94,4 +94,19 @@ namespace dxvk {
     return usage;
   }
 
+  VkMemoryPropertyFlags GetMemoryFlagsForUsage(
+          DWORD                   Usage) {
+    VkMemoryPropertyFlags memoryFlags = 0;
+
+    if (Usage & D3DUSAGE_DYNAMIC) {
+      memoryFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                  |  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    }
+    else {
+      memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    }
+
+    return memoryFlags;
+  }
+
 }

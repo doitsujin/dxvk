@@ -19,6 +19,7 @@ namespace dxvk {
 
   class Direct3DSwapChain9Ex;
   class Direct3DCommonTexture9;
+  class Direct3DCommonBuffer9;
 
   class Direct3DDevice9Ex final : public ComObject<IDirect3DDevice9Ex> {
     constexpr static uint32_t DefaultFrameLatency = 3;
@@ -573,6 +574,16 @@ namespace dxvk {
     HRESULT UnlockImage(
             Direct3DCommonTexture9* pResource,
             UINT                    Subresource);
+
+    HRESULT LockBuffer(
+            Direct3DCommonBuffer9*  pResource,
+            UINT                    OffsetToLock,
+            UINT                    SizeToLock,
+            void**                  ppbData,
+            DWORD                   Flags);
+
+    HRESULT UnlockBuffer(
+            Direct3DCommonBuffer9* pResource);
 
     void SynchronizeCsThread();
 
