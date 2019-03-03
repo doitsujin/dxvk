@@ -22,8 +22,6 @@ namespace dxvk {
         DWORD                     Usage,
         D3DPOOL                   Pool);
 
-  VkPipelineStageFlags EnabledShaderStages();
-
   VkFormat GetPackedDepthStencilFormat(D3D9Format Format);
 
   VkFormatFeatureFlags GetImageFormatFeatures(DWORD Usage);

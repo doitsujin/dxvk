@@ -57,7 +57,7 @@ namespace dxvk {
 
     // Adjust image flags based on the corresponding D3D flags
     imageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
-    imageInfo.stages |= EnabledShaderStages();
+    imageInfo.stages |= m_device->GetEnabledShaderStages();
     imageInfo.access |= VK_ACCESS_SHADER_READ_BIT;
 
     if (m_desc.Usage & D3DUSAGE_RENDERTARGET) {

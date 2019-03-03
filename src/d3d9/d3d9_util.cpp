@@ -31,12 +31,6 @@ namespace dxvk {
     return true;
   }
 
-  VkPipelineStageFlags EnabledShaderStages() {
-    return VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
-         | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT
-         | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-  }
-
   VkFormat GetPackedDepthStencilFormat(D3D9Format Format) {
     switch (Format) {
     case D3D9Format::D15S1:

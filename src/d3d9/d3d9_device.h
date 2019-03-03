@@ -528,6 +528,10 @@ namespace dxvk {
       D3DDISPLAYMODEEX* pMode,
       D3DDISPLAYROTATION* pRotation);
 
+    VkPipelineStageFlags GetEnabledShaderStages() const {
+      return m_device->getShaderPipelineStages();
+    }
+
     static DxvkDeviceFeatures GetDeviceFeatures(const Rc<DxvkAdapter>& adapter);
 
     bool IsExtended();
