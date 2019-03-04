@@ -17,12 +17,10 @@ namespace dxvk {
     default: return D3DERR_INVALIDCALL;
     }
 
-    if (pCount != nullptr) {
+    if (pCount != nullptr)
       *pCount = flag;
-      return D3D_OK;
-    }
 
-    return D3DERR_INVALIDCALL;
+    return D3D_OK;
   }
 
   bool    ResourceBindable(

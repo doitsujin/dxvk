@@ -303,6 +303,9 @@ namespace dxvk {
     desc.MultisampleQuality = 0;
     desc.Lockable = FALSE;
 
+    if (FAILED(Direct3DCommonTexture9::NormalizeTextureProperties(&desc)))
+      return D3DERR_INVALIDCALL;
+
     try {
       const Com<Direct3DTexture9> texture = new Direct3DTexture9{ this, &desc };
       *ppTexture = texture.ref();
@@ -1329,6 +1332,9 @@ namespace dxvk {
     desc.MultisampleQuality = MultisampleQuality;
     desc.Lockable = Lockable;
 
+    if (FAILED(Direct3DCommonTexture9::NormalizeTextureProperties(&desc)))
+      return D3DERR_INVALIDCALL;
+
     try {
       const Com<Direct3DSurface9> surface = new Direct3DSurface9{ this, &desc };
       *ppSurface = surface.ref();
@@ -1367,6 +1373,9 @@ namespace dxvk {
     desc.MultiSample = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
     desc.Lockable = TRUE;
+
+    if (FAILED(Direct3DCommonTexture9::NormalizeTextureProperties(&desc)))
+      return D3DERR_INVALIDCALL;
 
     try {
       const Com<Direct3DSurface9> surface = new Direct3DSurface9{ this, &desc };
@@ -1414,6 +1423,9 @@ namespace dxvk {
     desc.MultiSample = MultiSample;
     desc.MultisampleQuality = MultisampleQuality;
     desc.Lockable = lockable;
+
+    if (FAILED(Direct3DCommonTexture9::NormalizeTextureProperties(&desc)))
+      return D3DERR_INVALIDCALL;
 
     try {
       const Com<Direct3DSurface9> surface = new Direct3DSurface9{ this, &desc };
