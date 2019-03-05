@@ -7,6 +7,9 @@
 #include "d3d9_buffer.h"
 #include "d3d9_vertex_declaration.h"
 
+#include "../dxvk/dxvk_adapter.h"
+#include "../dxvk/dxvk_instance.h"
+
 #include "../util/util_bit.h"
 #include "../util/util_math.h"
 
@@ -34,12 +37,15 @@ namespace dxvk {
     , m_window{ window }
     , m_flags{ flags }
     , m_d3d9Formats{ dxvkAdapter }
+    , m_d3d9Options{ dxvkAdapter->instance()->config() }
     , m_csChunk{ AllocCsChunk() }
     , m_csThread{ dxvkDevice->createContext() }
     , m_multithread{ flags & D3DCREATE_MULTITHREADED }
     , m_frameLatency{ DefaultFrameLatency }
     , m_frameId{ 0 }
     , m_deferViewportBinding{ false } {
+    m_frameLatencyCap = m_d3d9Options.maxFrameLatency;
+
     for (uint32_t i = 0; i < m_frameEvents.size(); i++)
       m_frameEvents[i] = new DxvkEvent();
 
@@ -1667,6 +1673,10 @@ namespace dxvk {
 
   Rc<DxvkEvent> Direct3DDevice9Ex::GetFrameSyncEvent() {
     uint32_t frameLatency = m_frameLatency;
+
+    if (m_frameLatencyCap != 0
+      && m_frameLatencyCap <= frameLatency)
+      frameLatency = m_frameLatencyCap;
 
     uint32_t frameId = m_frameId++ % frameLatency;
     return m_frameEvents[frameId];

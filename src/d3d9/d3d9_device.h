@@ -10,6 +10,8 @@
 
 #include "d3d9_state.h"
 
+#include "d3d9_options.h"
+
 #include <vector>
 
 namespace dxvk {
@@ -600,6 +602,10 @@ namespace dxvk {
       return m_multithread.AcquireLock();
     }
 
+    const D3D9Options* GetOptions() const {
+      return &m_d3d9Options;
+    }
+
   private:
 
     Direct3DMultithread9            m_multithread;
@@ -624,6 +630,9 @@ namespace dxvk {
     HWND m_window;
     DWORD m_flags;
 
+    const D3D9Options               m_d3d9Options;
+
+    uint32_t m_frameLatencyCap;
     uint32_t m_frameLatency;
     uint32_t m_frameId;
     std::array<Rc<DxvkEvent>, MaxFrameLatency> m_frameEvents;
