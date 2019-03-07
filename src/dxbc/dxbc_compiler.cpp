@@ -189,7 +189,7 @@ namespace dxvk {
 
     for (auto e = m_isgn->begin(); e != m_isgn->end(); e++) {
       emitDclInput(e->registerId, 1,
-        e->componentMask, e->systemValue,
+        e->componentMask, DxbcSystemValue::None,
         DxbcInterpolationMode::Undefined);
     }
 
