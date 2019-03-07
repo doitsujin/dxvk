@@ -662,9 +662,13 @@ namespace dxvk {
     if (!buf || !uav)
       return;
 
+    auto counterSlice = uav->GetCounterSlice();
+    if (!counterSlice.defined())
+      return;
+
     EmitCs([
       cDstSlice = buf->GetBufferSlice(DstAlignedByteOffset),
-      cSrcSlice = uav->GetCounterSlice()
+      cSrcSlice = std::move(counterSlice)
     ] (DxvkContext* ctx) {
       ctx->copyBuffer(
         cDstSlice.buffer(),
