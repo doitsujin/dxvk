@@ -202,8 +202,9 @@ namespace dxvk {
      * \returns Device handle
      */
     Rc<DxvkDevice> createDevice(
-            std::string         clientApi,
-            DxvkDeviceFeatures  enabledFeatures);
+            std::string                clientApi,
+            DxvkDeviceFeatures         enabledFeatures,
+            PFN_vkGetInstanceProcAddr  getInstanceProcAddr);
     
     /**
      * \brief Registers memory allocation

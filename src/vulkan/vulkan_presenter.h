@@ -86,7 +86,7 @@ namespace dxvk::vk {
   public:
 
     Presenter(
-            HWND            window,
+            VkSurfaceKHR    surface,
       const Rc<InstanceFn>& vki,
       const Rc<DeviceFn>&   vkd,
             PresenterDevice device,
@@ -218,7 +218,7 @@ namespace dxvk::vk {
             VkPresentModeKHR          presentMode,
             uint32_t                  desired);
 
-    VkResult createSurface(HWND window);
+    VkResult checkSurface();
 
     void destroySwapchain();
 

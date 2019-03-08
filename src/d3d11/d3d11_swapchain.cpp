@@ -339,7 +339,16 @@ namespace dxvk {
     presenterDesc.numFormats      = PickFormats(m_desc.Format, presenterDesc.formats);
     presenterDesc.numPresentModes = PickPresentModes(false, presenterDesc.presentModes);
 
-    m_presenter = new vk::Presenter(m_window,
+    IWineDXGISwapChainHelper* helper;
+    this->GetAdapter(__uuidof(IWineDXGISwapChainHelper), (void**)&helper);
+
+    VkSurfaceKHR surface;
+    if (helper->CreateSurface(m_window, m_device->adapter()->vki()->instance(), &surface) != VK_SUCCESS)
+      throw DxvkError("Failed to create surface");
+
+    helper->Release();
+
+    m_presenter = new vk::Presenter(surface,
       m_device->adapter()->vki(),
       m_device->vkd(),
       presenterDevice,

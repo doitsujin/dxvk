@@ -233,7 +233,7 @@ namespace dxvk {
   }
 
 
-  Rc<DxvkDevice> DxvkAdapter::createDevice(std::string clientApi, DxvkDeviceFeatures enabledFeatures) {
+  Rc<DxvkDevice> DxvkAdapter::createDevice(std::string clientApi, DxvkDeviceFeatures enabledFeatures, PFN_vkGetInstanceProcAddr getInstanceProcAddr) {
     DxvkDeviceExtensions devExtensions;
 
     std::array<DxvkExt*, 16> devExtensionList = {{
@@ -347,7 +347,7 @@ namespace dxvk {
       throw DxvkError("DxvkAdapter: Failed to create device");
     
     Rc<DxvkDevice> result = new DxvkDevice(clientApi, this,
-      new vk::DeviceFn(true, m_vki->instance(), device),
+      new vk::DeviceFn(getInstanceProcAddr, true, m_vki->instance(), device),
       devExtensions, enabledFeatures);
     result->initResources();
     return result;

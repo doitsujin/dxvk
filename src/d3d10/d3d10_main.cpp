@@ -397,10 +397,6 @@ extern "C" {
     UINT                    Flags,
     D3D_FEATURE_LEVEL       FeatureLevel,
     ID3D10Device**          ppDevice) {
-
-    vk::Presenter::g_create_surface_func           = info.pfn_create_vulkan_surface;
-    vk::LibraryLoader::g_get_instance_proc_address = info.pfn_vkGetInstanceProcAddr;
-
     return D3D10CoreCreateDevice(pFactory, pAdapter,
       Flags, FeatureLevel, ppDevice);
   }

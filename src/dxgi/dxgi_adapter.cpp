@@ -187,6 +187,42 @@ namespace dxvk {
     return status == DISP_CHANGE_SUCCESSFUL ? S_OK : DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
   }
 
+#if defined(__WINE__)
+
+  extern "C"
+  PFN_vkVoidFunction native_vkGetInstanceProcAddrWINE(VkInstance instance, const char *name);
+  static const PFN_vkGetInstanceProcAddr GetInstanceProcAddr = native_vkGetInstanceProcAddrWINE;
+
+#else
+
+  static const PFN_vkGetInstanceProcAddr GetInstanceProcAddr = vkGetInstanceProcAddr;
+
+#endif
+
+  HRESULT STDMETHODCALLTYPE WineDXGISwapChainHelper::GetVulkanFuncFinder(
+    pfn_vkGetInstanceProcAddr* pFuncFinder) {
+    *pFuncFinder = GetInstanceProcAddr;
+    
+    return S_OK;
+  }
+
+  VkResult STDMETHODCALLTYPE WineDXGISwapChainHelper::CreateSurface(
+    HWND window,
+    VkInstance instance,
+    VkSurfaceKHR* pSurface) {
+    HINSTANCE instance = reinterpret_cast<HINSTANCE>(
+      GetWindowLongPtr(window, GWLP_HINSTANCE));
+
+    VkWin32SurfaceCreateInfoKHR info;
+    info.sType      = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+    info.pNext      = nullptr;
+    info.flags      = 0;
+    info.hinstance  = instance;
+    info.hwnd = window;
+
+    return m_vki->vkCreateWin32SurfaceKHR(m_vki->instance(), &info, nullptr, pSurface);
+  }
+
   DxgiAdapter::DxgiAdapter(
           DxgiFactory*      factory,
     const Rc<DxvkAdapter>&  adapter)

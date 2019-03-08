@@ -64,6 +64,14 @@ public:
             HMONITOR        hMonitor,
       const DXGI_MODE_DESC* pMode);
 
+    HRESULT STDMETHODCALLTYPE GetVulkanFuncFinder(
+            PFN_vkGetInstanceProcAddr* pFuncFinder);
+
+    VkResult STDMETHODCALLTYPE CreateSurface(
+            HWND window,
+            VkInstance instance,
+            VkSurfaceKHR* pSurface);
+
 private:
 
     DxgiAdapter* m_adapter;

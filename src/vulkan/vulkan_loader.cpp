@@ -7,44 +7,26 @@
 
 namespace dxvk::vk {
 
-PFN_vkGetInstanceProcAddr LibraryLoader::g_get_instance_proc_address = nullptr;
-
-#if defined(__WINE__)
-
-  extern "C"
-  PFN_vkVoidFunction native_vkGetInstanceProcAddrWINE(VkInstance instance, const char *name);
-  static const PFN_vkGetInstanceProcAddr GetInstanceProcAddr = native_vkGetInstanceProcAddrWINE;
-
-#elif defined(DXVK_NATIVE)
-
-  // Set this later
-  static PFN_vkGetInstanceProcAddr GetInstanceProcAddr;
-
-#else
-
-  static const PFN_vkGetInstanceProcAddr GetInstanceProcAddr = vkGetInstanceProcAddr;
-
-#endif
+  LibraryLoader::LibraryLoader(PFN_vkGetInstanceProcAddr getInstanceProcAddr)
+  : m_getInstanceProcAddr(getInstanceProcAddr) { }
 
   PFN_vkVoidFunction LibraryLoader::sym(const char* name) const {
-    if (g_get_instance_proc_address)
-      GetInstanceProcAddr = g_get_instance_proc_address;
-    return dxvk::vk::GetInstanceProcAddr(nullptr, name);
+    return m_getInstanceProcAddr(nullptr, name);
   }
   
   
-  InstanceLoader::InstanceLoader(bool owned, VkInstance instance)
-  : m_instance(instance), m_owned(owned) { }
+  InstanceLoader::InstanceLoader(PFN_vkGetInstanceProcAddr getInstanceProcAddr, bool owned, VkInstance instance)
+  : m_getInstanceProcAddr(getInstanceProcAddr), m_instance(instance), m_owned(owned) { }
   
   
   PFN_vkVoidFunction InstanceLoader::sym(const char* name) const {
-    return dxvk::vk::GetInstanceProcAddr(m_instance, name);
+    return m_getInstanceProcAddr(m_instance, name);
   }
   
   
-  DeviceLoader::DeviceLoader(bool owned, VkInstance instance, VkDevice device)
+  DeviceLoader::DeviceLoader(PFN_vkGetInstanceProcAddr getInstanceProcAddr, bool owned, VkInstance instance, VkDevice device)
   : m_getDeviceProcAddr(reinterpret_cast<PFN_vkGetDeviceProcAddr>(
-      dxvk::vk::GetInstanceProcAddr(instance, "vkGetDeviceProcAddr"))),
+      getInstanceProcAddr(instance, "vkGetDeviceProcAddr"))),
     m_device(device), m_owned(owned) { }
   
   
@@ -53,20 +35,21 @@ PFN_vkGetInstanceProcAddr LibraryLoader::g_get_instance_proc_address = nullptr;
   }
   
   
-  LibraryFn::LibraryFn() { }
+  LibraryFn::LibraryFn(PFN_vkGetInstanceProcAddr getInstanceProcAddr)
+  : LibraryLoader(getInstanceProcAddr) { }
   LibraryFn::~LibraryFn() { }
   
   
-  InstanceFn::InstanceFn(bool owned, VkInstance instance)
-  : InstanceLoader(owned, instance) { }
+  InstanceFn::InstanceFn(PFN_vkGetInstanceProcAddr getInstanceProcAddr, bool owned, VkInstance instance)
+  : InstanceLoader(getInstanceProcAddr, owned, instance) { }
   InstanceFn::~InstanceFn() {
     if (m_owned)
       this->vkDestroyInstance(m_instance, nullptr);
   }
   
   
-  DeviceFn::DeviceFn(bool owned, VkInstance instance, VkDevice device)
-  : DeviceLoader(owned, instance, device) { }
+  DeviceFn::DeviceFn(PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr, bool owned, VkInstance instance, VkDevice device)
+  : DeviceLoader(vkGetInstanceProcAddr, owned, instance, device) { }
   DeviceFn::~DeviceFn() {
     if (m_owned)
       this->vkDestroyDevice(m_device, nullptr);

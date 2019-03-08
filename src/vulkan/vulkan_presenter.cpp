@@ -10,13 +10,13 @@
 namespace dxvk::vk {
 
   Presenter::Presenter(
-          HWND            window,
+          VkSurfaceKHR    surface,
     const Rc<InstanceFn>& vki,
     const Rc<DeviceFn>&   vkd,
           PresenterDevice device,
     const PresenterDesc&  desc)
-  : m_vki(vki), m_vkd(vkd), m_device(device) {
-    if (createSurface(window) != VK_SUCCESS)
+  : m_vki(vki), m_vkd(vkd), m_device(device), m_surface(surface) {
+    if (checkSurface() != VK_SUCCESS)
       throw DxvkError("Failed to create surface");
 
     if (recreateSwapChain(desc) != VK_SUCCESS)
@@ -363,31 +363,8 @@ namespace dxvk::vk {
   PFN_create_vulkan_surface Presenter::g_create_surface_func = nullptr;
 
 
-  VkResult Presenter::createSurface(HWND window) {
+  VkResult Presenter::checkSurface() {
     VkResult status = VK_ERROR_FEATURE_NOT_PRESENT;
-
-#ifdef DXVK_NATIVE
-    if (g_create_surface_func) {
-      status = g_create_surface_func(m_vki->instance(), window, &m_surface);
-    } else
-      return VK_ERROR_FEATURE_NOT_PRESENT;
-#else
-    HINSTANCE instance = reinterpret_cast<HINSTANCE>(
-      GetWindowLongPtr(window, GWLP_HINSTANCE));
-    
-    VkWin32SurfaceCreateInfoKHR info;
-    info.sType      = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-    info.pNext      = nullptr;
-    info.flags      = 0;
-    info.hinstance  = instance;
-    info.hwnd       = window;
-    
-    status = m_vki->vkCreateWin32SurfaceKHR(
-      m_vki->instance(), &info, nullptr, &m_surface);
-#endif
-
-    if (status != VK_SUCCESS)
-      return status;
     
     VkBool32 supportStatus = VK_FALSE;
 

@@ -46,7 +46,20 @@ extern "C" {
       DXGI_ADAPTER_DESC desc;
       pAdapter->GetDesc(&desc);
 
-      dxvkInstance = new DxvkInstance();
+      IWineDXGISwapChainHelper* helper;
+      pAdapter->QueryInterface(__uuidof(IWineDXGISwapChainHelper), (void**)&helper);
+
+      PFN_vkGetInstanceProcAddr getInstanceProcAddr;
+      if (FAILED(helper->GetVulkanFuncFinder(&getInstanceProcAddr)))
+      {
+        Logger::err("D3D11CoreCreateDevice: Failed to create D3D11 device");
+        helper->Release();
+        return E_FAIL;
+      }
+      dxvkInstance = new DxvkInstance(getInstanceProcAddr);
+
+      helper->Release();
+
       dxvkAdapter  = dxvkInstance->findAdapterByLuid(&desc.AdapterLuid);
 
       if (dxvkAdapter == nullptr)
@@ -269,9 +282,6 @@ extern "C" {
   const D3D_FEATURE_LEVEL*    pFeatureLevels,
         UINT                  FeatureLevels,
         ID3D11Device**        ppDevice) {
-    vk::Presenter::g_create_surface_func           = info.pfn_create_vulkan_surface;
-    vk::LibraryLoader::g_get_instance_proc_address = info.pfn_vkGetInstanceProcAddr;
-
     return D3D11CoreCreateDevice(pFactory, pAdapter,
       Flags, pFeatureLevels, FeatureLevels, ppDevice);
   }

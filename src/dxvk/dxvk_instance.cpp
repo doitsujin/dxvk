@@ -7,7 +7,7 @@
 
 namespace dxvk {
   
-  DxvkInstance::DxvkInstance() {
+  DxvkInstance::DxvkInstance(PFN_vkGetInstanceProcAddr getInstanceProcAddr) {
     Logger::info(str::format("Game: ", env::getExeName()));
     Logger::info(str::format("DXVK: ", DXVK_VERSION));
 
@@ -17,8 +17,8 @@ namespace dxvk {
 
     g_vrInstance.initInstanceExtensions();
 
-    m_vkl = new vk::LibraryFn();
-    m_vki = new vk::InstanceFn(true, this->createInstance());
+    m_vkl = new vk::LibraryFn(getInstanceProcAddr);
+    m_vki = new vk::InstanceFn(getInstanceProcAddr, true, this->createInstance());
 
     m_adapters = this->queryAdapters();
     g_vrInstance.initDeviceExtensions(this);

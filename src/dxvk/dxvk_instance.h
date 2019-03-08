@@ -20,7 +20,7 @@ namespace dxvk {
     
   public:
     
-    DxvkInstance();
+    DxvkInstance(PFN_vkGetInstanceProcAddr functionFinder);
     ~DxvkInstance();
     
     /**

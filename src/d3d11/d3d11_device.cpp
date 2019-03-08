@@ -1985,13 +1985,21 @@ namespace dxvk {
 
 
   Rc<DxvkDevice> D3D11DXGIDevice::CreateDevice(D3D_FEATURE_LEVEL FeatureLevel) {
+    IWineDXGISwapChainHelper* helper;
+    m_dxgiAdapter->QueryInterface(__uuidof(IWineDXGISwapChainHelper), (void**)&helper);
+
+    PFN_vkGetInstanceProcAddr getInstanceProcAddr;
+    helper->GetVulkanFuncFinder(&getInstanceProcAddr);
+
+    helper->Release();
+
     DxvkDeviceFeatures deviceFeatures = D3D11Device::GetDeviceFeatures(m_dxvkAdapter, FeatureLevel);
 
     uint32_t flHi = (uint32_t(FeatureLevel) >> 12);
     uint32_t flLo = (uint32_t(FeatureLevel) >> 8) & 0x7;
 
     std::string apiName = str::format("D3D11 FL ", flHi, "_", flLo);
-    return m_dxvkAdapter->createDevice(apiName, deviceFeatures);
+    return m_dxvkAdapter->createDevice(apiName, deviceFeatures, getInstanceProcAddr);
   }
 
 }

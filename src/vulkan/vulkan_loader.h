@@ -14,10 +14,11 @@ namespace dxvk::vk {
    * can be called before creating a  instance.
    */
   struct LibraryLoader : public RcObject {
-    PFN_vkVoidFunction sym(const char* name) const;
+    LibraryLoader(PFN_vkGetInstanceProcAddr functionFinder);
 
-    // Global variable for platform specific function retreival
-    static PFN_vkGetInstanceProcAddr g_get_instance_proc_address;
+    PFN_vkVoidFunction sym(const char* name) const;
+protected:
+    const PFN_vkGetInstanceProcAddr m_getInstanceProcAddr;
   };
   
   
@@ -28,10 +29,11 @@ namespace dxvk::vk {
    * called for a specific instance.
    */
   struct InstanceLoader : public RcObject {
-    InstanceLoader(bool owned, VkInstance instance);
+    InstanceLoader(PFN_vkGetInstanceProcAddr getInstanceProcAddr, bool owned, VkInstance instance);
     PFN_vkVoidFunction sym(const char* name) const;
     VkInstance instance() const { return m_instance; }
   protected:
+    const PFN_vkGetInstanceProcAddr m_getInstanceProcAddr;
     const VkInstance m_instance;
     const bool       m_owned;
   };
@@ -44,7 +46,7 @@ namespace dxvk::vk {
    * specific device.
    */
   struct DeviceLoader : public RcObject {
-    DeviceLoader(bool owned, VkInstance instance, VkDevice device);
+    DeviceLoader(PFN_vkGetInstanceProcAddr getInstanceProcAddr, bool owned, VkInstance instance, VkDevice device);
     PFN_vkVoidFunction sym(const char* name) const;
     VkDevice device() const { return m_device; }
   protected:
@@ -61,7 +63,7 @@ namespace dxvk::vk {
    * creating an actual Vulkan instance.
    */
   struct LibraryFn : LibraryLoader {
-    LibraryFn();
+    LibraryFn(PFN_vkGetInstanceProcAddr getInstanceProcAddr);
     ~LibraryFn();
     
     VULKAN_FN(vkCreateInstance);
@@ -77,7 +79,7 @@ namespace dxvk::vk {
    * are independent of any Vulkan devices.
    */
   struct InstanceFn : InstanceLoader {
-    InstanceFn(bool owned, VkInstance instance);
+    InstanceFn(PFN_vkGetInstanceProcAddr getInstanceProcAddr, bool owned, VkInstance instance);
     ~InstanceFn();
     
     VULKAN_FN(vkCreateDevice);
@@ -146,7 +148,7 @@ namespace dxvk::vk {
    * This ensures that no slow dispatch code is executed.
    */
   struct DeviceFn : DeviceLoader {
-    DeviceFn(bool owned, VkInstance instance, VkDevice device);
+    DeviceFn(PFN_vkGetInstanceProcAddr getInstanceProcAddr, bool owned, VkInstance instance, VkDevice device);
     ~DeviceFn();
     
     VULKAN_FN(vkDestroyDevice);

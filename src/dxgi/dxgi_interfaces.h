@@ -283,6 +283,14 @@ IWineDXGISwapChainHelper : public IUnknown {
     virtual HRESULT STDMETHODCALLTYPE SetDisplayMode(
             HMONITOR        hMonitor,
       const DXGI_MODE_DESC* pMode) = 0;
+
+    virtual HRESULT STDMETHODCALLTYPE GetVulkanFuncFinder(
+            PFN_vkGetInstanceProcAddr* pFuncFinder) = 0;
+
+    virtual VkResult STDMETHODCALLTYPE CreateSurface(
+            HWND hWnd,
+            VkInstance instance,
+            VkSurfaceKHR* pSurface) = 0;
 };
 
 
