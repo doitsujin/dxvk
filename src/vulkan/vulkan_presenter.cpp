@@ -359,10 +359,6 @@ namespace dxvk::vk {
     return count;
   }
 
-
-  PFN_create_vulkan_surface Presenter::g_create_surface_func = nullptr;
-
-
   VkResult Presenter::checkSurface() {
     VkResult status = VK_ERROR_FEATURE_NOT_PRESENT;
     

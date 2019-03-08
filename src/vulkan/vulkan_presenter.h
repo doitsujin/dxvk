@@ -168,9 +168,6 @@ namespace dxvk::vk {
     VkResult recreateSwapChain(
       const PresenterDesc&  desc);
 
-    // Global variable for platform specific surface creation function pointer
-    static PFN_create_vulkan_surface g_create_surface_func;
-
   private:
 
     Rc<InstanceFn>    m_vki;
