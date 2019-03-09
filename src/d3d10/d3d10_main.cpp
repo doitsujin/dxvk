@@ -14,8 +14,6 @@
 namespace dxvk {
   Logger Logger::s_instance("d3d10.log");
 }
-#else
-  #include <external_d3d.h>
 #endif
 
 extern "C" {
@@ -385,20 +383,6 @@ extern "C" {
       pInclude,
       ppShaderText,
       ppErrorMsgs);
-  }
-
-#else
-
-  // Native Entry-Point
-  HRESULT native_core_create_d3d10_device(
-    native_info        info,
-    IDXGIFactory*           pFactory,
-    IDXGIAdapter*           pAdapter,
-    UINT                    Flags,
-    D3D_FEATURE_LEVEL       FeatureLevel,
-    ID3D10Device**          ppDevice) {
-    return D3D10CoreCreateDevice(pFactory, pAdapter,
-      Flags, FeatureLevel, ppDevice);
   }
 
 #endif

@@ -16,7 +16,6 @@ namespace dxvk {
   Logger Logger::s_instance("d3d11.log");
 #else
   Logger Logger::s_instance("dxvk.log");
-  #include <external_d3d.h>
 #endif
 }
   
@@ -269,21 +268,6 @@ extern "C" {
       *ppImmediateContext = d3d11Context.ref();
     
     return S_OK;
-  }
-
-#else
-
-  // Native Entry-Point
-  HRESULT native_core_create_d3d11_device(
-        native_info      info,
-        IDXGIFactory*         pFactory,
-        IDXGIAdapter*         pAdapter,
-        UINT                  Flags,
-  const D3D_FEATURE_LEVEL*    pFeatureLevels,
-        UINT                  FeatureLevels,
-        ID3D11Device**        ppDevice) {
-    return D3D11CoreCreateDevice(pFactory, pAdapter,
-      Flags, pFeatureLevels, FeatureLevels, ppDevice);
   }
 
 #endif

@@ -21,10 +21,6 @@
 #include "d3d11_swapchain.h"
 #include "d3d11_texture.h"
 
-#ifdef DXVK_NATIVE
-  #include <external_d3d.h>
-#endif
-
 namespace dxvk {
   
   constexpr uint32_t D3D11DXGIDevice::DefaultFrameLatency;
