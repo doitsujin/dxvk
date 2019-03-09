@@ -25,6 +25,8 @@ namespace dxvk {
      && (devInfo.coreSubgroup.supportedOperations & VK_SUBGROUP_FEATURE_BALLOT_BIT);
     useRawSsbo
       = (devInfo.core.properties.limits.minStorageBufferOffsetAlignment <= sizeof(uint32_t));
+    useSdivForBufferIndex
+      = adapter->matchesDriver(DxvkGpuVendor::Nvidia, VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0);
     
     strictDivision          = options.strictDivision;
     zeroInitWorkgroupMemory = options.zeroInitWorkgroupMemory;
