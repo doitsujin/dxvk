@@ -49,15 +49,14 @@ extern "C" {
       pAdapter->QueryInterface(__uuidof(IWineDXGISwapChainHelper), (void**)&helper);
 
       PFN_vkGetInstanceProcAddr getInstanceProcAddr;
-      if (FAILED(helper->GetVulkanFuncFinder(&getInstanceProcAddr)))
-      {
+      if (FAILED(helper->GetVulkanFuncFinder(&getInstanceProcAddr))) {
         Logger::err("D3D11CoreCreateDevice: Failed to create D3D11 device");
         helper->Release();
         return E_FAIL;
       }
-      dxvkInstance = new DxvkInstance(getInstanceProcAddr);
-
       helper->Release();
+
+      dxvkInstance = new DxvkInstance(getInstanceProcAddr);
 
       dxvkAdapter  = dxvkInstance->findAdapterByLuid(&desc.AdapterLuid);
 
@@ -115,7 +114,6 @@ extern "C" {
       Logger::err("D3D11CoreCreateDevice: Failed to create D3D11 device");
       return E_FAIL;
     }
-
   }
   
 #ifndef DXVK_NATIVE
@@ -153,7 +151,7 @@ extern "C" {
         Logger::err("D3D11CreateDevice: No default adapter available");
         return E_FAIL;
       }
-
+      
     } else {
       // We should be able to query the DXGI factory from the adapter
       if (FAILED(dxgiAdapter->GetParent(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&dxgiFactory)))) {

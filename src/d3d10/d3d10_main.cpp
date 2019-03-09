@@ -91,7 +91,7 @@ extern "C" {
         Logger::err("D3D10CreateDevice: No default adapter available");
         return E_FAIL;
       }
-
+      
     } else {
       if (FAILED(dxgiAdapter->GetParent(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&dxgiFactory)))) {
         Logger::err("D3D10CreateDevice: Failed to query DXGI factory from DXGI adapter");
