@@ -5124,7 +5124,7 @@ namespace dxvk {
     
     result.id = m_module.opIAdd(typeId,
       m_module.opIMul(typeId, structId.id, m_module.consti32(structStride / 4)),
-      m_module.opShiftRightLogical(typeId, structOffset.id, m_module.consti32(2)));
+      m_module.opShiftRightArithmetic(typeId, structOffset.id, m_module.consti32(2)));
     return result;
   }
   
@@ -5134,7 +5134,7 @@ namespace dxvk {
     DxbcRegisterValue result;
     result.type.ctype  = DxbcScalarType::Sint32;
     result.type.ccount = 1;
-    result.id = m_module.opShiftRightLogical(
+    result.id = m_module.opShiftRightArithmetic(
       getVectorTypeId(result.type),
       byteOffset.id,
       m_module.consti32(2));
