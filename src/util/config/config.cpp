@@ -94,6 +94,10 @@ namespace dxvk {
     { "re7.exe", {{
       { "d3d11.relaxedBarriers",            "True" },
     }} },
+    /* Devil May Cry 5                            */
+    { "DevilMayCry5.exe", {{
+      { "d3d11.relaxedBarriers",            "True" },
+    }} },
     /* Call of Duty WW2                           */
     { "s2_sp64_ship.exe", {{
       { "dxgi.nvapiHack",                   "False" },
