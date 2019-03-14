@@ -32,6 +32,7 @@ namespace dxvk {
   struct DxvkDeviceFeatures {
     VkPhysicalDeviceFeatures2KHR                        core;
     VkPhysicalDeviceDepthClipEnableFeaturesEXT          extDepthClipEnable;
+    VkPhysicalDeviceHostQueryResetFeaturesEXT           extHostQueryReset;
     VkPhysicalDeviceMemoryPriorityFeaturesEXT           extMemoryPriority;
     VkPhysicalDeviceTransformFeedbackFeaturesEXT        extTransformFeedback;
     VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT   extVertexAttributeDivisor;
