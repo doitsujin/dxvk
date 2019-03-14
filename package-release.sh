@@ -1,8 +1,7 @@
-#!/bin/bash
+#!/bin/sh
 
 set -e
 
-shopt -s extglob
 
 if [ -z "$1" ] || [ -z "$2" ]; then
   echo "Usage: $0 version destdir [--no-package] [--dev-build] [--winelib]"
@@ -10,9 +9,9 @@ if [ -z "$1" ] || [ -z "$2" ]; then
 fi
 
 DXVK_VERSION="$1"
-DXVK_SRC_DIR=`dirname $(readlink -f $0)`
-DXVK_BUILD_DIR=$(realpath "$2")"/dxvk-$DXVK_VERSION"
-DXVK_ARCHIVE_PATH=$(realpath "$2")"/dxvk-$DXVK_VERSION.tar.gz"
+DXVK_SRC_DIR="$(readlink -f "$0")"; DXVK_SRC_DIR="${DXVK_SRC_DIR%/*}"
+DXVK_BUILD_DIR="$(realpath "$2")/dxvk-$DXVK_VERSION"
+DXVK_ARCHIVE_PATH="${DXVK_BUILD_DIR}.tar.gz"
 
 if [ -e "$DXVK_BUILD_DIR" ]; then
   echo "Build directory $DXVK_BUILD_DIR already exists"
@@ -47,7 +46,7 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-function build_arch {
+build_arch() {
   export WINEARCH="win$1"
   export WINEPREFIX="$DXVK_BUILD_DIR/wine.$1"
   
@@ -68,18 +67,18 @@ function build_arch {
   if [ $opt_devbuild -eq 0 ]; then
     if [ $opt_winelib -eq 0 ]; then
       # get rid of some useless .a files
-      rm "$DXVK_BUILD_DIR/x$1/"*.!(dll)
+      find "${DXVK_BUILD_DIR}/x$1" -name '*.*' -a ! -name '.*' -a ! -name '*.dll' -exec rm \{\} \;
     fi
     rm -R "$DXVK_BUILD_DIR/build.$1"
   fi
 }
 
-function build_script {
+build_script() {
   cp "$DXVK_SRC_DIR/setup_dxvk.sh" "$DXVK_BUILD_DIR/setup_dxvk.sh"
   chmod +x "$DXVK_BUILD_DIR/setup_dxvk.sh"
 }
 
-function package {
+package() {
   cd "$DXVK_BUILD_DIR/.."
   tar -czf "$DXVK_ARCHIVE_PATH" "dxvk-$DXVK_VERSION"
   rm -R "dxvk-$DXVK_VERSION"

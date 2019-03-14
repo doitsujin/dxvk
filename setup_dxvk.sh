@@ -1,7 +1,7 @@
-#!/bin/bash
+#!/bin/sh
 
 # figure out where we are
-basedir=`dirname "$(readlink -f $0)"`
+basedir="$(readlink -f "$0")"; basedir="${basedir%/*}"; basedir="${basedir:-/}"
 
 # figure out which action to perform
 action="$1"
@@ -31,6 +31,10 @@ while [ $# -gt 0 ]; do
   "--symlink")
     file_cmd="ln -s"
     ;;
+  *)
+    echo "Unrecognized option: $1"
+    exit 1
+    ;;
   esac
   shift
 done
@@ -38,7 +42,7 @@ done
 # check wine prefix before invoking wine, so that we
 # don't accidentally create one if the user screws up
 if [ -n "$WINEPREFIX" ] && ! [ -f "$WINEPREFIX/system.reg" ]; then
-  echo "$WINEPREFIX:"' Not a valid wine prefix.' >&2
+  printf '%s\n' "${WINEPREFIX}: Not a valid wine prefix." >&2
   exit 1
 fi
 
@@ -52,14 +56,14 @@ fi
 wine64="${wine}64"
 
 # resolve 32-bit and 64-bit system32 path
-winever=`$wine --version | grep wine`
+winever="$($wine --version | grep -F wine)"
 if [ -z "$winever" ]; then
-    echo "$wine:"' Not a wine executable. Check your $wine.' >&2
+    printf '%s\n' "${wine}: Not a wine executable. Check your \$wine." >&2
     exit 1
 fi
 
-win32_sys_path=$($wine winepath -u 'C:\windows\system32' 2> /dev/null)
-win64_sys_path=$($wine64 winepath -u 'C:\windows\system32' 2> /dev/null)
+win32_sys_path="$($wine winepath -u 'C:\windows\system32' 2>/dev/null)"
+win64_sys_path="$($wine64 winepath -u 'C:\windows\system32' 2>/dev/null)"
 
 if [ -z "$win32_sys_path" ] && [ -z "$win64_sys_path" ]; then
   echo 'Failed to resolve C:\windows\system32.' >&2
@@ -68,16 +72,16 @@ fi
 
 # create native dll override
 overrideDll() {
-  $wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1 /d native /f >/dev/null 2>&1
+  $wine reg add 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "$1" /d native /f >/dev/null 2>&1
   if [ $? -ne 0 ]; then
-    echo -e "Failed to add override for $1"
+    echo "Failed to add override for $1"
     exit 1
   fi
 }
 
 # remove dll override
 restoreDll() {
-  $wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v $1 /f > /dev/null 2>&1
+  $wine reg delete 'HKEY_CURRENT_USER\Software\Wine\DllOverrides' /v "$1" /f > /dev/null 2>&1
   if [ $? -ne 0 ]; then
     echo "Failed to remove override for $1"
   fi
@@ -136,7 +140,7 @@ uninstall() {
 
 # skip dxgi during install if not explicitly
 # enabled, but always try to uninstall it
-if [ $with_dxgi -ne 0 ] || [ "$action" == "uninstall" ]; then
+if [ $with_dxgi -ne 0 ] || [ "$action" = "uninstall" ]; then
   $action dxgi
 fi
 
