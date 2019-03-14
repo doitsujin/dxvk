@@ -4,9 +4,10 @@
 namespace dxvk {
   
   DxgiFactory::DxgiFactory(UINT Flags)
-  : m_instance(new DxvkInstance()),
-    m_options (m_instance->config()),
-    m_flags   (Flags) {
+  : m_instance    (new DxvkInstance()),
+    m_monitorInfo (this),
+    m_options     (m_instance->config()),
+    m_flags       (Flags) {
     for (uint32_t i = 0; m_instance->enumAdapters(i) != nullptr; i++)
       m_instance->enumAdapters(i)->logAdapterInfo();
   }
@@ -31,6 +32,11 @@ namespace dxvk {
      || riid == __uuidof(IDXGIFactory3)
      || riid == __uuidof(IDXGIFactory4)) {
       *ppvObject = ref(this);
+      return S_OK;
+    }
+
+    if (riid == __uuidof(IDXGIVkMonitorInfo)) {
+      *ppvObject = ref(&m_monitorInfo);
       return S_OK;
     }
     
