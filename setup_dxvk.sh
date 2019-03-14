@@ -1,5 +1,9 @@
 #!/bin/sh
 
+usage() {
+  echo "Usage: ${0#*/} [install|uninstall] [--without-dxgi] [--symlink]"
+}
+
 # figure out where we are
 basedir="$(readlink -f "$0")"; basedir="${basedir%/*}"; basedir="${basedir:-/}"
 
@@ -11,9 +15,13 @@ install)
   ;;
 uninstall)
   ;;
+'')
+  usage
+  exit 1
+  ;;
 *)
   echo "Unrecognized action: $action"
-  echo "Usage: $0 [install|uninstall] [--without-dxgi] [--symlink]"
+  usage
   exit 1
 esac
 
@@ -33,6 +41,7 @@ while [ $# -gt 0 ]; do
     ;;
   *)
     echo "Unrecognized option: $1"
+    usage
     exit 1
     ;;
   esac

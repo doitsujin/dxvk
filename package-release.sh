@@ -2,9 +2,12 @@
 
 set -e
 
+usage() {
+  echo "Usage: ${0#*/} version destdir [--no-package] [--dev-build] [--winelib]"
+}
 
 if [ -z "$1" ] || [ -z "$2" ]; then
-  echo "Usage: $0 version destdir [--no-package] [--dev-build] [--winelib]"
+  usage
   exit 1
 fi
 
@@ -41,6 +44,7 @@ while [ $# -gt 0 ]; do
     ;;
   *)
     echo "Unrecognized option: $1" >&2
+    usage
     exit 1
   esac
   shift
