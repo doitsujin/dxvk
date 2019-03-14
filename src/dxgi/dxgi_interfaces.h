@@ -7,6 +7,7 @@
 
 namespace dxvk {
   class DxgiAdapter;
+  class DxgiSwapChain;
   class DxvkAdapter;
   class DxvkBuffer;
   class DxvkDevice;
@@ -15,6 +16,17 @@ namespace dxvk {
 }
 
 struct IDXGIVkInteropDevice;
+
+
+/**
+ * \brief Per-monitor data
+ */
+struct DXGI_VK_MONITOR_DATA {
+  dxvk::DxgiSwapChain*  pSwapChain;
+  DXGI_FRAME_STATISTICS FrameStats;
+  DXGI_GAMMA_CONTROL    GammaCurve;
+};
+
 
 /**
  * \brief Private DXGI presenter
@@ -75,6 +87,52 @@ IDXGIVkAdapter : public IDXGIAdapter3 {
   
   virtual dxvk::Rc<dxvk::DxvkAdapter> STDMETHODCALLTYPE GetDXVKAdapter() = 0;
   
+};
+
+
+/**
+ * \brief Private DXGI monitor info interface
+ * 
+ * Can be queried from the DXGI factory to store monitor
+ * info globally, with a lifetime that exceeds that of
+ * the \c IDXGIOutput or \c IDXGIAdapter objects.
+ */
+MIDL_INTERFACE("c06a236f-5be3-448a-8943-89c611c0c2c1")
+IDXGIVkMonitorInfo : public IUnknown {
+  static const GUID guid;
+
+  /**
+   * \brief Initializes monitor data
+   * 
+   * Fails if data for the given monitor already exists.
+   * \param [in] hMonitor The monitor handle
+   * \param [in] pData Initial data
+   */
+  virtual HRESULT STDMETHODCALLTYPE InitMonitorData(
+          HMONITOR                hMonitor,
+    const DXGI_VK_MONITOR_DATA*   pData) = 0;
+
+  /**
+   * \brief Retrieves and locks monitor data
+   * 
+   * Fails if no data for the given monitor exists.
+   * \param [in] hMonitor The monitor handle
+   * \param [out] Pointer to monitor data
+   * \returns S_OK on success
+   */
+  virtual HRESULT STDMETHODCALLTYPE AcquireMonitorData(
+          HMONITOR                hMonitor,
+          DXGI_VK_MONITOR_DATA**  ppData) = 0;
+  
+  /**
+   * \brief Unlocks monitor data
+   * 
+   * Must be called after each successful
+   * call to \ref AcquireMonitorData.
+   * \param [in] hMonitor The monitor handle
+   */
+  virtual void STDMETHODCALLTYPE ReleaseMonitorData() = 0;
+
 };
 
 
@@ -241,12 +299,14 @@ IWineDXGISwapChainFactory : public IUnknown {
 
 #ifdef _MSC_VER
 struct __declspec(uuid("907bf281-ea3c-43b4-a8e4-9f231107b4ff")) IDXGIVkAdapter;
+struct __declspec(uuid("c06a236f-5be3-448a-8943-89c611c0c2c1")) IDXGIVkMonitorInfo;
 struct __declspec(uuid("e2ef5fa5-dc21-4af7-90c4-f67ef6a09323")) IDXGIVkInteropDevice;
 struct __declspec(uuid("5546cf8c-77e7-4341-b05d-8d4d5000e77d")) IDXGIVkInteropSurface;
 struct __declspec(uuid("104001a6-7f36-4957-b932-86ade9567d91")) IDXGIVkSwapChain;
 struct __declspec(uuid("53cb4ff0-c25a-4164-a891-0e83db0a7aac")) IWineDXGISwapChainFactory;
 #else
 DXVK_DEFINE_GUID(IDXGIVkAdapter);
+DXVK_DEFINE_GUID(IDXGIVkMonitorInfo);
 DXVK_DEFINE_GUID(IDXGIVkInteropDevice);
 DXVK_DEFINE_GUID(IDXGIVkInteropSurface);
 DXVK_DEFINE_GUID(IDXGIVkSwapChain);

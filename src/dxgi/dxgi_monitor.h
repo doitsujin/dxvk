@@ -3,21 +3,11 @@
 #include <mutex>
 #include <unordered_map>
 
-#include "dxgi_include.h"
+#include "dxgi_interfaces.h"
 
 namespace dxvk {
 
   class DxgiSwapChain;
-
-  /**
-   * \brief Per-monitor data
-   */
-  struct DXGI_VK_MONITOR_DATA {
-    DxgiSwapChain*        pSwapChain;
-    DXGI_FRAME_STATISTICS FrameStats;
-    DXGI_GAMMA_CONTROL    GammaCurve;
-  };
-
 
   /**
    * \brief Queries bits per pixel for a format
