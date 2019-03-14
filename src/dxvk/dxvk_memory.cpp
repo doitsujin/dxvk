@@ -186,10 +186,13 @@ namespace dxvk {
           float                             priority) {
     std::lock_guard<std::mutex> lock(m_mutex);
 
-    DxvkMemory result = this->tryAlloc(req, dedAllocInfo, flags, priority);
+    VkMemoryPropertyFlags optFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+                                   | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
     
-    if (!result && (flags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT))
-      result = this->tryAlloc(req, dedAllocInfo, flags & ~VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, priority);
+    DxvkMemory result = this->tryAlloc(req, dedAllocInfo, flags, priority);
+
+    if (!result && (flags & optFlags))
+      result = this->tryAlloc(req, dedAllocInfo, flags & ~optFlags, priority);
     
     if (!result) {
       Logger::err(str::format(
