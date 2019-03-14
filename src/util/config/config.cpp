@@ -110,6 +110,14 @@ namespace dxvk {
     { "MassEffectAndromeda.exe", {{
       { "dxgi.nvapiHack",                   "False" },
     }} },
+    /* Star Wars Battlefront (2015)               */
+    { "starwarsbattlefront.exe", {{
+      { "dxgi.nvapiHack",                   "False" },
+    }} },
+    /* Star Wars Battlefront (2015) Trial         */
+    { "starwarsbattlefronttrial.exe", {{
+      { "dxgi.nvapiHack",                   "False" },
+    }} },
   }};
 
 
