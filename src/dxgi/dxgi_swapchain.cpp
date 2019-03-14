@@ -26,6 +26,9 @@ namespace dxvk {
     if (FAILED(m_presenter->GetAdapter(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&m_adapter))))
       throw DxvkError("DXGI: Failed to get adapter for present device");
     
+    // Query monitor info form DXVK's DXGI factory, if available
+    m_factory->QueryInterface(__uuidof(IDXGIVkMonitorInfo), reinterpret_cast<void**>(&m_monitorInfo));
+    
     // Apply initial window mode and fullscreen state
     if (!m_descFs.Windowed && FAILED(EnterFullscreenMode(nullptr)))
       throw DxvkError("DXGI: Failed to set initial fullscreen state");
@@ -686,6 +689,21 @@ namespace dxvk {
     }
     
     return DXGI_ERROR_NOT_FOUND;
+  }
+
+
+  HRESULT DxgiSwapChain::AcquireMonitorData(
+          HMONITOR                hMonitor,
+          DXGI_VK_MONITOR_DATA**  ppData) {
+    return m_monitorInfo != nullptr
+      ? m_monitorInfo->AcquireMonitorData(hMonitor, ppData)
+      : E_NOINTERFACE;
+  }
+
+  
+  void DxgiSwapChain::ReleaseMonitorData() {
+    if (m_monitorInfo != nullptr)
+      m_monitorInfo->ReleaseMonitorData();
   }
   
 }

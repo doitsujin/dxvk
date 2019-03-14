@@ -4,6 +4,7 @@
 #include <mutex>
 
 #include "dxgi_interfaces.h"
+#include "dxgi_monitor.h"
 #include "dxgi_object.h"
 
 #include "../d3d11/d3d11_interfaces.h"
@@ -172,6 +173,7 @@ namespace dxvk {
 
     Com<IDXGIFactory>               m_factory;
     Com<IDXGIAdapter>               m_adapter;
+    Com<IDXGIVkMonitorInfo>         m_monitorInfo;
     
     HWND                            m_window;
     DXGI_SWAP_CHAIN_DESC1           m_desc;
@@ -202,6 +204,12 @@ namespace dxvk {
     HRESULT GetOutputFromMonitor(
             HMONITOR                Monitor,
             IDXGIOutput**           ppOutput);
+    
+    HRESULT AcquireMonitorData(
+            HMONITOR                hMonitor,
+            DXGI_VK_MONITOR_DATA**  ppData);
+    
+    void ReleaseMonitorData();
     
   };
   
