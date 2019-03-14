@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include "dxvk_cmdlist.h"
+#include "dxvk_device.h"
 #include "dxvk_gpu_query.h"
 
 namespace dxvk {
@@ -90,13 +91,17 @@ namespace dxvk {
     DxvkQueryData tmpData;
 
     // Wait for the query to be reset first
-    VkResult result = m_vkd->vkGetEventStatus(
-      m_vkd->device(), handle.resetEvent);
+    VkResult result;
     
-    if (result == VK_EVENT_RESET)
-      return DxvkGpuQueryStatus::Pending;
-    else if (result != VK_EVENT_SET)
-      return DxvkGpuQueryStatus::Failed;
+    if (handle.resetEvent) {
+      result = m_vkd->vkGetEventStatus(
+        m_vkd->device(), handle.resetEvent);
+    
+      if (result == VK_EVENT_RESET)
+        return DxvkGpuQueryStatus::Pending;
+      else if (result != VK_EVENT_SET)
+        return DxvkGpuQueryStatus::Failed;
+    }
     
     // Try to copy query data to temporary structure
     result = m_vkd->vkGetQueryPoolResults(m_vkd->device(),
@@ -150,10 +155,11 @@ namespace dxvk {
   
   
   DxvkGpuQueryAllocator::DxvkGpuQueryAllocator(
-    const Rc<vk::DeviceFn>&   vkd,
+    const Rc<DxvkDevice>&     device,
           VkQueryType         queryType,
           uint32_t            queryPoolSize)
-  : m_vkd           (vkd),
+  : m_device        (device),
+    m_vkd           (device->vkd()),
     m_queryType     (queryType),
     m_queryPoolSize (queryPoolSize) {
 
@@ -235,7 +241,8 @@ namespace dxvk {
     for (uint32_t i = 0; i < m_queryPoolSize; i++) {
       VkEvent event = VK_NULL_HANDLE;
 
-      if (m_vkd->vkCreateEvent(m_vkd->device(), &eventInfo, nullptr, &event)) {
+      if (!m_device->features().extHostQueryReset.hostQueryReset
+       && m_vkd->vkCreateEvent(m_vkd->device(), &eventInfo, nullptr, &event) != VK_SUCCESS) {
         Logger::err("DXVK: Failed to create query reset event");
         return;
       }
@@ -247,11 +254,11 @@ namespace dxvk {
 
 
 
-  DxvkGpuQueryPool::DxvkGpuQueryPool(const Rc<vk::DeviceFn>& vkd)
-  : m_occlusion(vkd, VK_QUERY_TYPE_OCCLUSION,                     256),
-    m_statistic(vkd, VK_QUERY_TYPE_PIPELINE_STATISTICS,           64),
-    m_timestamp(vkd, VK_QUERY_TYPE_TIMESTAMP,                     64),
-    m_xfbStream(vkd, VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT, 64) {
+  DxvkGpuQueryPool::DxvkGpuQueryPool(const Rc<DxvkDevice>& device)
+  : m_occlusion(device, VK_QUERY_TYPE_OCCLUSION,                     256),
+    m_statistic(device, VK_QUERY_TYPE_PIPELINE_STATISTICS,           64),
+    m_timestamp(device, VK_QUERY_TYPE_TIMESTAMP,                     64),
+    m_xfbStream(device, VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT, 64) {
     
   }
   

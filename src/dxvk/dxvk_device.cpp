@@ -20,7 +20,7 @@ namespace dxvk {
     m_renderPassPool    (new DxvkRenderPassPool     (vkd)),
     m_pipelineManager   (new DxvkPipelineManager    (this, m_renderPassPool.ptr())),
     m_gpuEventPool      (new DxvkGpuEventPool       (vkd)),
-    m_gpuQueryPool      (new DxvkGpuQueryPool       (vkd)),
+    m_gpuQueryPool      (new DxvkGpuQueryPool       (this)),
     m_metaClearObjects  (new DxvkMetaClearObjects   (vkd)),
     m_metaCopyObjects   (new DxvkMetaCopyObjects    (vkd)),
     m_metaMipGenObjects (new DxvkMetaMipGenObjects  (vkd)),
