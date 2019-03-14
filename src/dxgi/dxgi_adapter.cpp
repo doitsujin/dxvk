@@ -89,7 +89,7 @@ namespace dxvk {
     
     // TODO support multiple monitors
     HMONITOR monitor = ::MonitorFromPoint({ 0, 0 }, MONITOR_DEFAULTTOPRIMARY);
-    *ppOutput = ref(new DxgiOutput(this, monitor));
+    *ppOutput = ref(new DxgiOutput(m_factory, this, monitor));
     return S_OK;
   }
   

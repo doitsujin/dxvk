@@ -7,6 +7,7 @@
 #include <string>
 
 #include "dxgi_adapter.h"
+#include "dxgi_factory.h"
 #include "dxgi_output.h"
 #include "dxgi_swapchain.h"
 
@@ -15,9 +16,11 @@
 namespace dxvk {
   
   DxgiOutput::DxgiOutput(
+    const Com<DxgiFactory>& factory,
     const Com<DxgiAdapter>& adapter,
               HMONITOR      monitor)
-  : m_adapter(adapter),
+  : m_monitorInfo(factory->GetMonitorInfo()),
+    m_adapter(adapter),
     m_monitor(monitor) {
     // Init monitor info if necessary
     DXGI_VK_MONITOR_DATA monitorData;
@@ -31,7 +34,7 @@ namespace dxvk {
       monitorData.GammaCurve.GammaCurve[i] = { value, value, value };
     }
     
-    InitMonitorData(monitor, &monitorData);    
+    m_monitorInfo->InitMonitorData(monitor, &monitorData);    
   }
   
   
@@ -333,26 +336,26 @@ namespace dxvk {
   
   HRESULT STDMETHODCALLTYPE DxgiOutput::GetFrameStatistics(DXGI_FRAME_STATISTICS* pStats) {
     DXGI_VK_MONITOR_DATA* monitorInfo = nullptr;
-    HRESULT hr = AcquireMonitorData(m_monitor, &monitorInfo);
+    HRESULT hr = m_monitorInfo->AcquireMonitorData(m_monitor, &monitorInfo);
 
     if (FAILED(hr))
       return hr;
     
     *pStats = monitorInfo->FrameStats;
-    ReleaseMonitorData();
+    m_monitorInfo->ReleaseMonitorData();
     return S_OK;
   }
   
   
   HRESULT STDMETHODCALLTYPE DxgiOutput::GetGammaControl(DXGI_GAMMA_CONTROL* pArray) {
     DXGI_VK_MONITOR_DATA* monitorInfo = nullptr;
-    HRESULT hr = AcquireMonitorData(m_monitor, &monitorInfo);
+    HRESULT hr = m_monitorInfo->AcquireMonitorData(m_monitor, &monitorInfo);
 
     if (FAILED(hr))
       return hr;
     
     *pArray = monitorInfo->GammaCurve;
-    ReleaseMonitorData();
+    m_monitorInfo->ReleaseMonitorData();
     return S_OK;
   }
   
@@ -388,7 +391,7 @@ namespace dxvk {
   
   HRESULT STDMETHODCALLTYPE DxgiOutput::SetGammaControl(const DXGI_GAMMA_CONTROL* pArray) {
     DXGI_VK_MONITOR_DATA* monitorInfo = nullptr;
-    HRESULT hr = AcquireMonitorData(m_monitor, &monitorInfo);
+    HRESULT hr = m_monitorInfo->AcquireMonitorData(m_monitor, &monitorInfo);
 
     if (FAILED(hr))
       return hr;
@@ -400,7 +403,7 @@ namespace dxvk {
         DXGI_VK_GAMMA_CP_COUNT, pArray->GammaCurve);
     }
 
-    ReleaseMonitorData();
+    m_monitorInfo->ReleaseMonitorData();
     return hr;
   }
   

@@ -116,6 +116,10 @@ namespace dxvk {
     const DxgiOptions* GetOptions() const {
       return &m_options;
     }
+
+    DxgiMonitorInfo* GetMonitorInfo() {
+      return &m_monitorInfo;
+    }
     
   private:
     

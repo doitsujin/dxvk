@@ -6,6 +6,7 @@
 namespace dxvk {
   
   class DxgiAdapter;
+  class DxgiFactory;
   
   /**
    * \brief Number of gamma control points
@@ -22,24 +23,13 @@ namespace dxvk {
     return float(CpIndex) / float(DXGI_VK_GAMMA_CP_COUNT - 1);
   }
   
-  /**
-   * \brief Per-output data
-   * 
-   * Persistent data for a single output, which
-   * is addressed using the \c HMONITOR handle.
-   */
-  struct DXGI_VK_OUTPUT_DATA {
-    DXGI_FRAME_STATISTICS FrameStats;
-    DXGI_GAMMA_CONTROL    GammaCurve;
-    BOOL                  GammaDirty;
-  };
-  
   
   class DxgiOutput : public DxgiObject<IDXGIOutput4> {
     
   public:
     
     DxgiOutput(
+      const Com<DxgiFactory>& factory,
       const Com<DxgiAdapter>& adapter,
             HMONITOR          monitor);
     
@@ -126,6 +116,7 @@ namespace dxvk {
     
   private:
     
+    DxgiMonitorInfo* m_monitorInfo = nullptr;
     Com<DxgiAdapter> m_adapter = nullptr;
     HMONITOR         m_monitor = nullptr;
     
