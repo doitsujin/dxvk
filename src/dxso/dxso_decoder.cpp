@@ -126,6 +126,11 @@ namespace dxvk {
       this->decodeDestinationRegister(code);
       this->decodeDefinition(opcode, code);
     }
+    else if (opcode == DxsoOpcode::Comment) {
+      // TODO: handle CTAB
+      for (uint32_t i = 0; i  < instructionLength; i++)
+        code.read();
+    }
     else {
       for (uint32_t i = 0; i < instructionLength; i++) {
         if (i == 0)

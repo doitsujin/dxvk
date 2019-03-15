@@ -3,12 +3,6 @@
 namespace dxvk {
 
   DxsoCtab::DxsoCtab(DxsoReader& reader, uint32_t commentTokenCount) {
-    const uint32_t tableSize = (commentTokenCount - 1) * DxsoReader::TokenSize;
-
-    DxbcTag tag = reader.readTag();
-    if (tag != DxbcTag("CTAB"))
-      throw DxvkError("DxsoCtab: ctab header invalid");
-
     m_size          = reader.readu32();
 
     if (m_size != sizeof(DxsoCtab))
