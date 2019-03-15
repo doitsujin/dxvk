@@ -4,6 +4,7 @@
 
 #include "d3d9_format.h"
 
+#include "../dxso/dxso_common.h"
 #include "../dxvk/dxvk_device.h"
 
 namespace dxvk {
@@ -36,7 +37,9 @@ namespace dxvk {
     if (srcPtr != nullptr)
       srcPtr->ReleasePrivate();
 
-    newPtr->AddRefPrivate();
+    if (newPtr != nullptr)
+      newPtr->AddRefPrivate();
+
     srcPtr = newPtr;
   }
 
@@ -53,6 +56,14 @@ namespace dxvk {
       return format;
 
     return srgbFormat;
+  }
+
+  inline VkShaderStageFlagBits GetShaderStage(DxsoProgramType ProgramType) {
+    switch (ProgramType) {
+      case DxsoProgramType::VertexShader:   return VK_SHADER_STAGE_VERTEX_BIT;
+      case DxsoProgramType::PixelShader:    return VK_SHADER_STAGE_FRAGMENT_BIT;
+      default:                              return VkShaderStageFlagBits(0);
+    }
   }
 
 }
