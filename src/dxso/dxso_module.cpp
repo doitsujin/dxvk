@@ -12,7 +12,7 @@ namespace dxvk {
 
   Rc<DxvkShader> DxsoModule::compile(
     const DxsoModuleInfo& moduleInfo,
-    const std::string&    fileName) const {
+    const std::string&    fileName) {
     if (m_code == nullptr)
       throw DxvkError("DxsoModule::compile: no code");
 
@@ -21,6 +21,11 @@ namespace dxvk {
       m_header.info() );
 
     this->runCompiler(compiler, m_code->slice());
+
+    uint32_t declCount = compiler.getDeclCount();
+    m_decl.resize(declCount);
+    const auto* declData = compiler.getDeclarations().data();
+    std::copy(declData, declData + declCount, m_decl.data());
 
     return compiler.finalize();
   }

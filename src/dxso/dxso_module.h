@@ -5,6 +5,8 @@
 #include "dxso_header.h"
 #include "dxso_ctab.h"
 
+#include "dxso_decoder.h"
+
 namespace dxvk {
 
   class DxsoCompiler;
@@ -34,7 +36,11 @@ namespace dxvk {
      */
     Rc<DxvkShader> compile(
       const DxsoModuleInfo& moduleInfo,
-      const std::string&    fileName) const;
+      const std::string&    fileName);
+
+    const std::vector<DxsoDeclaration>& getDeclarations() {
+      return m_decl;
+    }
 
   private:
 
@@ -44,6 +50,7 @@ namespace dxvk {
 
     DxsoHeader      m_header;
     Rc<DxsoCode>    m_code;
+    std::vector<DxsoDeclaration> m_decl;
 
   };
 

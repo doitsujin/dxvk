@@ -71,6 +71,14 @@ namespace dxvk {
      */
     Rc<DxvkShader> finalize();
 
+    const std::array<DxsoDeclaration, 16>& getDeclarations() const {
+      return m_vDecls;
+    }
+
+    const uint32_t getDeclCount() const {
+      return m_nextInputSlot;
+    }
+
   private:
 
     DxsoModuleInfo      m_moduleInfo;
