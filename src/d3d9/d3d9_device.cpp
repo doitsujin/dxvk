@@ -6,6 +6,7 @@
 #include "d3d9_texture.h"
 #include "d3d9_buffer.h"
 #include "d3d9_vertex_declaration.h"
+#include "d3d9_shader.h"
 
 #include "../dxvk/dxvk_adapter.h"
 #include "../dxvk/dxvk_instance.h"
@@ -38,12 +39,14 @@ namespace dxvk {
     , m_flags{ flags }
     , m_d3d9Formats{ dxvkAdapter }
     , m_d3d9Options{ dxvkAdapter->instance()->config() }
+    , m_dxsoOptions{ m_device, m_d3d9Options }
     , m_csChunk{ AllocCsChunk() }
     , m_csThread{ dxvkDevice->createContext() }
     , m_multithread{ flags & D3DCREATE_MULTITHREADED }
     , m_frameLatency{ DefaultFrameLatency }
     , m_frameId{ 0 }
-    , m_deferViewportBinding{ false } {
+    , m_deferViewportBinding{ false }
+    , m_shaderModules{ new D3D9ShaderModuleSet } {
     m_frameLatencyCap = m_d3d9Options.maxFrameLatency;
 
     for (uint32_t i = 0; i < m_frameEvents.size(); i++)
@@ -999,12 +1002,33 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetVertexDeclaration(IDirect3DVertexDeclaration9* pDecl) {
-    Logger::warn("Direct3DDevice9Ex::SetVertexDeclaration: Stub");
+    auto lock = LockDevice();
+
+    Direct3DVertexDeclaration9* decl = static_cast<Direct3DVertexDeclaration9*>(pDecl);
+
+    if (decl == m_state.vertexDecl)
+      return D3D_OK;
+
+    changePrivate(m_state.vertexDecl, decl);
+
+    BindInputLayout();
+
     return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetVertexDeclaration(IDirect3DVertexDeclaration9** ppDecl) {
-    Logger::warn("Direct3DDevice9Ex::GetVertexDeclaration: Stub");
+    auto lock = LockDevice();
+
+    InitReturnPtr(ppDecl);
+
+    if (ppDecl == nullptr)
+      return D3D_OK;
+
+    if (m_state.vertexDecl == nullptr)
+      return D3DERR_NOTFOUND;
+
+    *ppDecl = ref(m_state.vertexDecl);
+
     return D3D_OK;
   }
 
@@ -1019,17 +1043,60 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateVertexShader(const DWORD* pFunction, IDirect3DVertexShader9** ppShader) {
-    Logger::warn("Direct3DDevice9Ex::CreateVertexShader: Stub");
+    InitReturnPtr(ppShader);
+
+    if (ppShader == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    DxsoModuleInfo moduleInfo;
+    moduleInfo.options = m_dxsoOptions;
+
+    size_t bytecodeLength = DXSOBytecodeLength(
+      reinterpret_cast<const uint32_t*>(pFunction));
+
+    Sha1Hash hash = Sha1Hash::compute(
+      pFunction, bytecodeLength);
+
+    D3D9CommonShader module;
+
+    if (FAILED(this->CreateShaderModule(&module,
+      DxvkShaderKey{ VK_SHADER_STAGE_VERTEX_BIT, hash },
+      pFunction, bytecodeLength,
+      &moduleInfo)))
+      return D3DERR_INVALIDCALL;
+
+    *ppShader = ref(new D3D9VertexShader(this, module));
+
     return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetVertexShader(IDirect3DVertexShader9* pShader) {
-    Logger::warn("Direct3DDevice9Ex::SetVertexShader: Stub");
+    auto lock = LockDevice();
+
+    D3D9VertexShader* shader = static_cast<D3D9VertexShader*>(pShader);
+
+    if (shader == m_state.vertexShader)
+      return D3D_OK;
+
+    changePrivate(m_state.vertexShader, shader);
+
+    BindShader(
+      DxsoProgramType::VertexShader,
+      shader->GetCommonShader());
+
+    BindInputLayout();
+
     return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetVertexShader(IDirect3DVertexShader9** ppShader) {
-    Logger::warn("Direct3DDevice9Ex::GetVertexShader: Stub");
+    InitReturnPtr(ppShader);
+
+    if (ppShader == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    *ppShader = ref(m_state.vertexShader);
+
     return D3D_OK;
   }
 
@@ -1086,7 +1153,20 @@ namespace dxvk {
     IDirect3DVertexBuffer9* pStreamData,
     UINT OffsetInBytes,
     UINT Stride) {
-    Logger::warn("Direct3DDevice9Ex::SetStreamSource: Stub");
+    auto lock = LockDevice();
+
+    if (StreamNumber >= caps::MaxStreams)
+      return D3DERR_INVALIDCALL;
+
+    Direct3DVertexBuffer9* buffer = static_cast<Direct3DVertexBuffer9*>(pStreamData);
+    auto& vbo = m_state.vertexBuffers[StreamNumber];
+
+    changePrivate(vbo.vertexBuffer, buffer);
+    vbo.offset = OffsetInBytes;
+    vbo.stride = Stride;
+
+    BindVertexBuffer(StreamNumber, buffer, OffsetInBytes, Stride);
+
     return D3D_OK;
   }
 
@@ -1095,7 +1175,31 @@ namespace dxvk {
     IDirect3DVertexBuffer9** ppStreamData,
     UINT* pOffsetInBytes,
     UINT* pStride) {
-    Logger::warn("Direct3DDevice9Ex::GetStreamSource: Stub");
+    auto lock = LockDevice();
+
+    InitReturnPtr(ppStreamData);
+
+    if (pOffsetInBytes != nullptr)
+      *pOffsetInBytes = 0;
+
+    if (pStride != nullptr)
+      *pStride = 0;
+    
+    if (ppStreamData == nullptr || pOffsetInBytes == nullptr || pStride == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    if (StreamNumber >= caps::MaxStreams)
+      return D3DERR_INVALIDCALL;
+
+    const auto& vbo = m_state.vertexBuffers[StreamNumber];
+
+    if (vbo.vertexBuffer == nullptr)
+      return D3DERR_NOTFOUND;
+
+    *ppStreamData = ref(vbo.vertexBuffer);
+    *pOffsetInBytes = vbo.offset;
+    *pStride = vbo.stride;
+
     return D3D_OK;
   }
 
@@ -1120,17 +1224,60 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreatePixelShader(const DWORD* pFunction, IDirect3DPixelShader9** ppShader) {
-    Logger::warn("Direct3DDevice9Ex::CreatePixelShader: Stub");
+    InitReturnPtr(ppShader);
+
+    if (ppShader == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    DxsoModuleInfo moduleInfo;
+    moduleInfo.options = m_dxsoOptions;
+
+    size_t bytecodeLength = DXSOBytecodeLength(
+      reinterpret_cast<const uint32_t*>(pFunction));
+
+    Sha1Hash hash = Sha1Hash::compute(
+      pFunction, bytecodeLength);
+
+    D3D9CommonShader module;
+
+    if (FAILED(this->CreateShaderModule(&module,
+      DxvkShaderKey{ VK_SHADER_STAGE_FRAGMENT_BIT, hash },
+      pFunction, bytecodeLength,
+      &moduleInfo)))
+      return D3DERR_INVALIDCALL;
+
+    *ppShader = ref(new D3D9PixelShader(this, module));
+
     return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetPixelShader(IDirect3DPixelShader9* pShader) {
-    Logger::warn("Direct3DDevice9Ex::SetPixelShader: Stub");
+    auto lock = LockDevice();
+
+    D3D9PixelShader* shader = static_cast<D3D9PixelShader*>(pShader);
+
+    if (shader == m_state.pixelShader)
+      return D3D_OK;
+
+    changePrivate(m_state.pixelShader, shader);
+
+    BindShader(
+      DxsoProgramType::PixelShader,
+      shader->GetCommonShader());
+
+    BindInputLayout();
+
     return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetPixelShader(IDirect3DPixelShader9** ppShader) {
-    Logger::warn("Direct3DDevice9Ex::GetPixelShader: Stub");
+    InitReturnPtr(ppShader);
+
+    if (ppShader == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    *ppShader = ref(m_state.pixelShader);
+
     return D3D_OK;
   }
 
@@ -1733,6 +1880,32 @@ namespace dxvk {
     return m_d3d9Formats.GetFormatMapping(Format);
   }
 
+  VkFormat Direct3DDevice9Ex::LookupDecltype(D3DDECLTYPE d3d9DeclType) {
+    switch (d3d9DeclType) {
+      case D3DDECLTYPE_FLOAT1:    return VK_FORMAT_R32_SFLOAT;
+      case D3DDECLTYPE_FLOAT2:    return VK_FORMAT_R32G32_SFLOAT;
+      case D3DDECLTYPE_FLOAT3:    return VK_FORMAT_R32G32B32_SFLOAT;
+      case D3DDECLTYPE_FLOAT4:    return VK_FORMAT_R32G32B32A32_SFLOAT;
+      case D3DDECLTYPE_D3DCOLOR:  return VK_FORMAT_B8G8R8A8_UNORM;
+      case D3DDECLTYPE_UBYTE4:    return VK_FORMAT_R8G8B8A8_USCALED;
+      case D3DDECLTYPE_SHORT2:    return VK_FORMAT_R16G16_SSCALED;
+      case D3DDECLTYPE_SHORT4:    return VK_FORMAT_R16G16B16A16_SSCALED;
+      case D3DDECLTYPE_UBYTE4N:   return VK_FORMAT_R8G8B8A8_UNORM;
+      case D3DDECLTYPE_SHORT2N:   return VK_FORMAT_R16G16_SNORM;
+      case D3DDECLTYPE_SHORT4N:   return VK_FORMAT_R16G16B16A16_SNORM;
+      case D3DDECLTYPE_USHORT2N:  return VK_FORMAT_R16G16_UNORM;
+      case D3DDECLTYPE_USHORT4N:  return VK_FORMAT_R16G16B16A16_UNORM;
+      case D3DDECLTYPE_UDEC3:     return VK_FORMAT_A2B10G10R10_UINT_PACK32;
+      case D3DDECLTYPE_FLOAT16_2: return VK_FORMAT_R16G16_SFLOAT;
+      case D3DDECLTYPE_FLOAT16_4: return VK_FORMAT_R16G16B16A16_SFLOAT;
+
+      case D3DDECLTYPE_DEC3N: 
+        Logger::warn("Direct3DDevice9Ex::LookupDecltype: D3DDECLTYPE_DEC3N unsupported.");
+      case D3DDECLTYPE_UNUSED:
+      default:                    return VK_FORMAT_UNDEFINED;
+    }
+  }
+
   bool Direct3DDevice9Ex::WaitForResource(
   const Rc<DxvkResource>&                 Resource,
         DWORD                             MapFlags) {
@@ -2157,6 +2330,114 @@ namespace dxvk {
         &cViewport,
         &cScissor);
     });
+  }
+
+  void Direct3DDevice9Ex::BindShader(
+        DxsoProgramType                   ShaderStage,
+  const D3D9CommonShader*                 pShaderModule) {
+    EmitCs([
+      cStage  = GetShaderStage(ShaderStage),
+      cShader = pShaderModule->GetShader()
+    ] (DxvkContext * ctx) {
+      ctx->bindShader(cStage, cShader);
+    });
+  }
+
+  void Direct3DDevice9Ex::BindInputLayout() {
+    if (m_state.vertexShader == nullptr || m_state.vertexDecl == nullptr) {
+      EmitCs([](DxvkContext * ctx) {
+        ctx->setInputLayout(0, nullptr, 0, nullptr);
+      });
+    }
+    else {
+      std::array<DxvkVertexAttribute, caps::InputRegisterCount> attrList;
+      std::array<DxvkVertexBinding,   caps::InputRegisterCount> bindList;
+
+      uint32_t attrMask = 0;
+
+      const auto& shaderDecls = m_state.vertexShader->GetCommonShader()->GetDeclarations();
+      const auto& elements = m_state.vertexDecl->GetElements();
+
+      for (uint32_t attribIdx = 0; attribIdx < shaderDecls.size(); attribIdx++) {
+        for (const auto& element : elements) {
+          const auto& shaderDecl = shaderDecls[attribIdx];
+          const DxsoUsage elementUsage = static_cast<DxsoUsage>(element.Usage);
+          if (elementUsage != shaderDecl.usage || element.UsageIndex != shaderDecl.usageIndex)
+            continue;
+
+          DxvkVertexAttribute attrib;
+          attrib.location = attribIdx;
+          attrib.binding = uint32_t(element.Stream);
+          attrib.format = LookupDecltype(D3DDECLTYPE(element.Type));
+          attrib.offset = element.Offset;
+
+          attrList.at(attribIdx) = attrib;
+
+          DxvkVertexBinding binding;
+          binding.binding = attribIdx; // TODO: Instancing
+          binding.fetchRate = 0;
+          binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+          bindList.at(attribIdx) = binding;
+
+          attrMask |= 1u << attribIdx;
+
+          break;
+        }
+      }
+
+      // Compact the attribute and binding lists to filter
+      // out attributes and bindings not used by the shader
+      uint32_t attrCount = CompactSparseList(attrList.data(), attrMask);
+                           CompactSparseList(bindList.data(), attrMask);
+
+      
+      EmitCs([
+        cAttrCount  = attrCount,
+        cAttributes = attrList,
+        cBindings   = bindList
+      ](DxvkContext * ctx) {
+        ctx->setInputLayout(
+          cAttrCount,
+          cAttributes.data(),
+          cAttrCount,
+          cBindings.data());
+      });
+    }
+  }
+
+  void Direct3DDevice9Ex::BindVertexBuffer(
+        UINT                              Slot,
+        Direct3DVertexBuffer9*            pBuffer,
+        UINT                              Offset,
+        UINT                              Stride) {
+    EmitCs([
+      cSlotId       = Slot,
+      cBufferSlice  = pBuffer != nullptr ? 
+        pBuffer->GetCommonBuffer()->GetBufferSlice(D3D9_COMMON_BUFFER_TYPE_REAL, Offset) 
+      : DxvkBufferSlice(),
+      cStride       = pBuffer != nullptr ? Stride                          : 0
+    ] (DxvkContext* ctx) {
+      ctx->bindVertexBuffer(cSlotId, cBufferSlice, cStride);
+    });
+  }
+
+  HRESULT Direct3DDevice9Ex::CreateShaderModule(
+        D3D9CommonShader*     pShaderModule,
+        DxvkShaderKey         ShaderKey,
+  const DWORD*                pShaderBytecode,
+        size_t                BytecodeLength,
+  const DxsoModuleInfo*       pModuleInfo) {
+    try {
+      *pShaderModule = m_shaderModules->GetShaderModule(this,
+        &ShaderKey, pModuleInfo, pShaderBytecode, BytecodeLength);
+
+      return D3D_OK;
+    }
+    catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return D3DERR_INVALIDCALL;
+    }
   }
 
 }

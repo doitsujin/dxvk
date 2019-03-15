@@ -13,6 +13,7 @@ d3d9_src = [
   'd3d9_surface.cpp',
   'd3d9_common_buffer.cpp',
   'd3d9_buffer.cpp',
+  'd3d9_shader.cpp',
   'd3d9_vertex_declaration.cpp',
   'd3d9_multithread.cpp',
   'd3d9_options.cpp',
@@ -21,7 +22,7 @@ d3d9_src = [
 
 d3d9_dll = shared_library('d3d9'+dll_ext, d3d9_src, glsl_generator.process(dxgi_shaders),
   name_prefix         : '',
-  dependencies        : [ dx9asm_dep, dxvk_dep ],
+  dependencies        : [ dxso_dep, dxvk_dep ],
   include_directories : dxvk_include_path,
   install             : true,
   objects             : not dxvk_msvc ? 'd3d9'+def_spec_ext : [],

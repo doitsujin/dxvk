@@ -33,6 +33,10 @@ namespace dxvk {
       return m_buffer->Unlock();
     }
 
+    Rc<Direct3DCommonBuffer9> GetCommonBuffer() {
+      return m_buffer;
+    }
+
   protected:
 
     Rc<Direct3DCommonBuffer9> m_buffer;

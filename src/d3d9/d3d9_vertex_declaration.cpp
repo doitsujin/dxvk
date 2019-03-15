@@ -47,11 +47,4 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  const D3DVERTEXELEMENT9* Direct3DVertexDeclaration9::GetElement(uint32_t index) {
-    if (index >= m_elements.size())
-      return nullptr;
-
-    return &m_elements[index];
-  }
-
 }

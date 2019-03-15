@@ -12,6 +12,11 @@
 
 #include "d3d9_options.h"
 
+#include "../dxso/dxso_module.h"
+#include "../dxso/dxso_util.h"
+#include "../dxso/dxso_options.h"
+#include "../dxso/dxso_modinfo.h"
+
 #include <vector>
 
 namespace dxvk {
@@ -22,6 +27,8 @@ namespace dxvk {
   class Direct3DSwapChain9Ex;
   class Direct3DCommonTexture9;
   class Direct3DCommonBuffer9;
+  class D3D9CommonShader;
+  class D3D9ShaderModuleSet;
 
   class Direct3DDevice9Ex final : public ComObject<IDirect3DDevice9Ex> {
     constexpr static uint32_t DefaultFrameLatency = 3;
@@ -549,6 +556,8 @@ namespace dxvk {
     D3D9_VK_FORMAT_MAPPING LookupFormat(
       D3D9Format            Format) const;
 
+    VkFormat LookupDecltype(D3DDECLTYPE d3d9DeclType);
+
     bool WaitForResource(
       const Rc<DxvkResource>&                 Resource,
             DWORD                             MapFlags);
@@ -598,15 +607,36 @@ namespace dxvk {
 
     void BindViewportAndScissor();
 
+    void BindShader(
+            DxsoProgramType                   ShaderStage,
+      const D3D9CommonShader*                 pShaderModule);
+
+    void BindInputLayout();
+
+    void BindVertexBuffer(
+            UINT                              Slot,
+            Direct3DVertexBuffer9*            pBuffer,
+            UINT                              Offset,
+            UINT                              Stride);
+
     Direct3DDeviceLock9 LockDevice() {
       return m_multithread.AcquireLock();
     }
 
     const D3D9Options* GetOptions() const {
       return &m_d3d9Options;
-    }
+    }       
 
   private:
+
+    Rc<D3D9ShaderModuleSet>        m_shaderModules;
+
+    HRESULT CreateShaderModule(
+            D3D9CommonShader*     pShaderModule,
+            DxvkShaderKey         ShaderKey,
+      const DWORD*                pShaderBytecode,
+            size_t                BytecodeLength,
+      const DxsoModuleInfo*       pModuleInfo);
 
     Direct3DMultithread9            m_multithread;
 
@@ -631,6 +661,7 @@ namespace dxvk {
     DWORD m_flags;
 
     const D3D9Options               m_d3d9Options;
+    const DxsoOptions               m_dxsoOptions;
 
     uint32_t m_frameLatencyCap;
     uint32_t m_frameLatency;
@@ -649,6 +680,9 @@ namespace dxvk {
 
     DxvkCsThread m_csThread;
     bool         m_csIsBusy = false;
+
+    std::vector<DxvkVertexAttribute> m_workingAttributes;
+    std::vector<DxvkVertexBinding>   m_workingBindings;
 
     std::chrono::high_resolution_clock::time_point m_lastFlush
       = std::chrono::high_resolution_clock::now();

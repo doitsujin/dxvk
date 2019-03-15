@@ -24,7 +24,9 @@ namespace dxvk {
             D3DVERTEXELEMENT9* pElement,
             UINT*              pNumElements);
 
-    const D3DVERTEXELEMENT9* GetElement(uint32_t index);
+    const std::vector<D3DVERTEXELEMENT9>& GetElements() {
+      return m_elements;
+    }
 
   private:
 
