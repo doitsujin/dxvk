@@ -83,7 +83,7 @@ namespace dxvk {
   }
 
   void DxsoDecodeContext::decodeDefinition(DxsoOpcode opcode, DxsoCodeSlice& code) {
-    const uint32_t instructionLength = std::min(m_ctx.instruction.instructionLength(), 4u);
+    const uint32_t instructionLength = std::min(m_ctx.instruction.instructionLength() - 1, 4u);
 
     std::memset(m_ctx.def.data(), 0, sizeof(m_ctx.def));
 
