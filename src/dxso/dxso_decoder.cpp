@@ -117,8 +117,8 @@ namespace dxvk {
         this->decodeSourceRegister(i, code);
     }
     else if (opcode == DxsoOpcode::Dcl) {
-      this->decodeDestinationRegister(code);
       this->decodeDeclaration(code);
+      this->decodeDestinationRegister(code);
     }
     else if (opcode == DxsoOpcode::Def
           || opcode == DxsoOpcode::DefI
