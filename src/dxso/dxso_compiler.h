@@ -151,7 +151,18 @@ namespace dxvk {
 
     uint32_t emitNewVariable(DxsoRegisterType regType, spv::StorageClass storageClass);
 
+    uint32_t emitRegisterLoad(const DxsoRegister& reg);
+
+    uint32_t emitRegisterSwizzle(uint32_t typeId, uint32_t varId, DxsoRegSwizzle swizzle);
+
+    uint32_t emitSrcOperandModifier(uint32_t typeId, uint32_t varId, DxsoRegModifier modifier);
+
+    uint32_t emitDstOperandModifier(uint32_t typeId, uint32_t varId, bool saturate, bool partialPrecision);
+
+    uint32_t emitWriteMask(uint32_t typeId, uint32_t dst, uint32_t src, DxsoRegMask writeMask);
+
     void emitVectorAlu(const DxsoInstructionContext& ctx);
+
     void emitDcl(const DxsoInstructionContext& ctx);
     void emitDef(const DxsoInstructionContext& ctx);
 
@@ -166,6 +177,9 @@ namespace dxvk {
     DxsoSpirvRegister& mapSpirvRegister(const DxsoRegister& reg, const DxsoDeclaration* optionalPremadeDecl);
 
     uint32_t getTypeId(DxsoRegisterType regType);
+    uint32_t spvType(const DxsoRegister& reg) {
+      return getTypeId(reg.registerId().type());
+    }
     uint32_t getPointerTypeId(DxsoRegisterType regType, spv::StorageClass storageClass) {
       return m_module.defPointerType(
         this->getTypeId(regType),

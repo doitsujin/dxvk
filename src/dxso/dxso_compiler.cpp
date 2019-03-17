@@ -283,27 +283,132 @@ namespace dxvk {
       storageClass);
   }
 
+  uint32_t DxsoCompiler::emitRegisterSwizzle(uint32_t typeId, uint32_t varId, DxsoRegSwizzle swizzle) {
+    if (swizzle == IdentitySwizzle)
+      return varId;
+
+    std::array<uint32_t, 4> indices;
+
+    for (uint32_t i = 0; i < 4; i++)
+      indices[i] = swizzle[i];
+
+    return m_module.opVectorShuffle(typeId, varId, varId, 4, indices.data());
+  }
+
+  uint32_t DxsoCompiler::emitSrcOperandModifier(uint32_t typeId, uint32_t varId, DxsoRegModifier modifier) {
+    uint32_t result = varId;
+
+    // 1 - r
+    if (modifier == DxsoRegModifier::Comp) {
+      uint32_t vec1 = m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f);
+      result = m_module.opFSub(typeId, vec1, varId);
+    }
+
+    // r * 2
+    if (modifier == DxsoRegModifier::X2
+     || modifier == DxsoRegModifier::X2Neg) {
+      uint32_t vec2 = m_module.constvec4f32(2.0f, 2.0f, 2.0f, 2.0f);
+      result = m_module.opFMul(typeId, vec2, varId);
+    }
+
+    // abs( r )
+    if (modifier == DxsoRegModifier::Abs
+     || modifier == DxsoRegModifier::AbsNeg) {
+      result = m_module.opFAbs(typeId, varId);
+    }
+
+    // !r
+    if (modifier == DxsoRegModifier::Not) {
+      uint32_t one = m_module.constBool(true);
+      result = m_module.opBitwiseXor(typeId, varId, one);
+    }
+
+    // r / r.z
+    // r / r.w
+    if (modifier == DxsoRegModifier::Dz
+     || modifier == DxsoRegModifier::Dw) {
+      const uint32_t index = modifier == DxsoRegModifier::Dz ? 2 : 3;
+
+      std::array<uint32_t, 4> indices = { index, index, index, index };
+
+      uint32_t component = m_module.opVectorShuffle(typeId, result, result, 4, indices.data());
+      result = m_module.opFDiv(typeId, result, component);
+    }
+
+    // -r
+    // Treating as -r
+    // Treating as -r
+    // -r * 2
+    // -abs(r)
+    if (modifier == DxsoRegModifier::Neg
+     || modifier == DxsoRegModifier::BiasNeg
+     || modifier == DxsoRegModifier::SignNeg
+     || modifier == DxsoRegModifier::X2Neg
+     || modifier == DxsoRegModifier::AbsNeg) {
+      result = m_module.opFNegate(typeId, result);
+    }
+
+    return result;
+  }
+
+  uint32_t DxsoCompiler::emitRegisterLoad(const DxsoRegister& reg) {
+    const uint32_t typeId = spvType(reg);
+
+    uint32_t result = spvId(reg);
+    result = emitRegisterSwizzle(typeId, result, reg.swizzle());
+    result = emitSrcOperandModifier(typeId, result, reg.modifier());
+
+    return result;
+  }
+
+  uint32_t DxsoCompiler::emitDstOperandModifier(uint32_t typeId, uint32_t varId, bool saturate, bool partialPrecision) {
+    uint32_t result = varId;
+
+    if (saturate) {
+      uint32_t vec0 = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
+      uint32_t vec1 = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
+
+      result = m_module.opFClamp(typeId, result, vec0, vec1);
+    }
+
+    // Partial precision is currently ignored.
+    // I'll wait for issues when some game needs this for some stupid assumption
+    // about crap being truncated until this gets implemented.
+
+    return result;
+  }
+
+  uint32_t DxsoCompiler::emitWriteMask(uint32_t typeId, uint32_t dst, uint32_t src, DxsoRegMask writeMask) {
+    std::array<uint32_t, 4> components;
+    for (uint32_t i = 0; i < 4; i++)
+      components[i] = writeMask[i] ? 4 + i : i;
+
+    return m_module.opVectorShuffle(typeId, dst, src, 4, components.data());
+  }
+
   void DxsoCompiler::emitVectorAlu(const DxsoInstructionContext& ctx) {
-    auto& dst = getSpirvRegister(ctx.dst);
-    uint32_t dstVarId = dst.varId;
-
-    auto dstRegId = ctx.dst.registerId();
-    auto& src = ctx.src;
-
-    const uint32_t typeId = getTypeId(dstRegId.type());
+    const auto& dst = ctx.dst;
+    const auto& src = ctx.src;
+    const uint32_t typeId = spvType(dst);
 
     const auto opcode = ctx.instruction.opcode();
+    uint32_t result;
     switch (opcode) {
       case DxsoOpcode::Mov:
-        dst.varId = spvId(src[0]);
+        result = emitRegisterLoad(src[0]);
         break;
       case DxsoOpcode::Add:
-        dst.varId = m_module.opFAdd(typeId, spvId(src[0]), spvId(src[1]));
+        result = m_module.opFAdd(typeId, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
         break;
       default:
         Logger::warn(str::format("DxsoCompiler::emitVectorAlu: unimplemented op {0}", opcode));
-        break;
+        return;
     }
+
+    result = emitDstOperandModifier(typeId, result, dst.saturate(), dst.partialPrecision());
+
+    auto& dstSpvReg = getSpirvRegister(dst);
+    dstSpvReg.varId = emitWriteMask(typeId, dstSpvReg.varId, result, dst.writeMask());
   }
   void DxsoCompiler::emitDcl(const DxsoInstructionContext& ctx) {
     const auto type    = ctx.dst.registerId().type();

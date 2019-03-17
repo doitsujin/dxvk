@@ -95,6 +95,51 @@ namespace dxvk {
 
   };
 
+  class DxsoRegMask {
+
+  public:
+
+    DxsoRegMask(uint32_t token)
+      : m_mask{ static_cast<uint8_t>( (token & 0x000f0000) >> 16 ) } {}
+
+    uint32_t operator [] (uint32_t id) const {
+      return ((m_mask & (1u << id)) == 1);
+    }
+
+    bool operator == (const DxsoRegMask& other) const { return m_mask == other.m_mask; }
+    bool operator != (const DxsoRegMask& other) const { return m_mask != other.m_mask; }
+
+  private:
+
+    uint8_t m_mask;
+
+  };
+
+  class DxsoRegSwizzle {
+
+  public:
+
+    DxsoRegSwizzle(uint32_t token)
+      : m_mask{ static_cast<uint8_t>( (token & 0x00ff0000) >> 16 ) } {}
+
+    DxsoRegSwizzle(uint32_t x, uint32_t y, uint32_t z, uint32_t w)
+      : m_mask((x << 0) | (y << 2) | (z << 4) | (w << 6)) {}
+
+    uint32_t operator [] (uint32_t id) const {
+      return (m_mask >> (id + id)) & 0x3;
+    }
+
+    bool operator == (const DxsoRegSwizzle& other) const { return m_mask == other.m_mask; }
+    bool operator != (const DxsoRegSwizzle& other) const { return m_mask != other.m_mask; }
+
+  private:
+
+    uint8_t m_mask;
+
+  };
+
+  const DxsoRegSwizzle IdentitySwizzle{ 1, 2, 3, 4 };
+
   class DxsoRegister {
 
   public:
@@ -134,18 +179,18 @@ namespace dxvk {
         (m_token & 0x0f000000) >> 24);
     }
 
-    uint32_t writeMask() const {
+    DxsoRegMask writeMask() const {
       if (m_type == DxsoInstructionArgumentType::Source)
         throw DxvkError("Attempted to read the modifier of a Src register.");
 
-      return m_token & 0x000f0000;
+      return DxsoRegMask{ m_token };
     }
 
-    uint32_t swizzle() const {
+    DxsoRegSwizzle swizzle() const {
       if (m_type == DxsoInstructionArgumentType::Destination)
         throw DxvkError("Attempted to read the modifier of a Dst register.");
 
-      return m_token & 0x00ff0000;
+      return DxsoRegSwizzle{ m_token };
     }
 
   private:
