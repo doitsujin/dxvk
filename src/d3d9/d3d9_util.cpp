@@ -136,4 +136,38 @@ namespace dxvk {
     }
   }
 
+  VkBlendFactor DecodeBlendFactor(D3DBLEND BlendFactor, bool IsAlpha) {
+    switch (BlendFactor) {
+      case D3DBLEND_ZERO:            return VK_BLEND_FACTOR_ZERO;
+      default:
+      case D3DBLEND_ONE:             return VK_BLEND_FACTOR_ONE;
+      case D3DBLEND_SRCCOLOR:        return VK_BLEND_FACTOR_SRC_COLOR;
+      case D3DBLEND_INVSRCCOLOR:     return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+      case D3DBLEND_SRCALPHA:        return VK_BLEND_FACTOR_SRC_ALPHA;
+      case D3DBLEND_INVSRCALPHA:     return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+      case D3DBLEND_DESTALPHA:       return VK_BLEND_FACTOR_DST_ALPHA;
+      case D3DBLEND_INVDESTALPHA:    return VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA;
+      case D3DBLEND_DESTCOLOR:       return VK_BLEND_FACTOR_DST_COLOR;
+      case D3DBLEND_INVDESTCOLOR:    return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+      case D3DBLEND_SRCALPHASAT:     return VK_BLEND_FACTOR_SRC_ALPHA_SATURATE;
+      case D3DBLEND_BOTHSRCALPHA:    return VK_BLEND_FACTOR_SRC1_ALPHA;
+      case D3DBLEND_BOTHINVSRCALPHA: return VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA;
+      case D3DBLEND_BLENDFACTOR:     return IsAlpha ? VK_BLEND_FACTOR_CONSTANT_ALPHA : VK_BLEND_FACTOR_CONSTANT_COLOR;
+      case D3DBLEND_INVBLENDFACTOR:  return IsAlpha ? VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA : VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_COLOR;
+      case D3DBLEND_SRCCOLOR2:       return VK_BLEND_FACTOR_SRC1_COLOR;
+      case D3DBLEND_INVSRCCOLOR2:    return VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR;
+    }
+  }
+
+  VkBlendOp DecodeBlendOp(D3DBLENDOP BlendOp) {
+    switch (BlendOp) {
+      default:
+      case D3DBLENDOP_ADD:          return VK_BLEND_OP_ADD;
+      case D3DBLENDOP_SUBTRACT:     return VK_BLEND_OP_SUBTRACT;
+      case D3DBLENDOP_REVSUBTRACT:  return VK_BLEND_OP_REVERSE_SUBTRACT;
+      case D3DBLENDOP_MIN:          return VK_BLEND_OP_MIN;
+      case D3DBLENDOP_MAX:          return VK_BLEND_OP_MAX;
+    }
+  }
+
 }

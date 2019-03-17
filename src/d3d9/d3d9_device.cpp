@@ -58,7 +58,6 @@ namespace dxvk {
         ctx->beginRecording(cDevice->createCommandList());
     });
 
-
     HRESULT hr = this->Reset(presentParams);
 
     if (FAILED(hr))
@@ -779,12 +778,41 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetRenderState(D3DRENDERSTATETYPE State, DWORD Value) {
-    Logger::warn("Direct3DDevice9Ex::SetRenderState: Stub");
+    auto lock = LockDevice();
+    auto& states = m_state.renderStates;
+
+    bool changed = states[State] != Value;
+
+    if (likely(changed)) {
+      states[State] = Value;
+
+      switch (State) {
+        case D3DRS_SEPARATEALPHABLENDENABLE:
+        case D3DRS_ALPHABLENDENABLE:
+        case D3DRS_BLENDOP:
+        case D3DRS_BLENDOPALPHA:
+        case D3DRS_DESTBLEND:
+        case D3DRS_DESTBLENDALPHA:
+        case D3DRS_COLORWRITEENABLE:
+        case D3DRS_COLORWRITEENABLE1:
+        case D3DRS_COLORWRITEENABLE2:
+        case D3DRS_COLORWRITEENABLE3:
+        case D3DRS_SRCBLEND:
+        case D3DRS_SRCBLENDALPHA:
+          BindBlendState();
+          break;
+        default:
+          Logger::warn(str::format("Direct3DDevice9Ex::SetRenderState: Unhandled render state {0}", State));
+          break;
+      }
+    }
+
     return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetRenderState(D3DRENDERSTATETYPE State, DWORD* pValue) {
-    Logger::warn("Direct3DDevice9Ex::GetRenderState: Stub");
+    auto lock = LockDevice();
+
     return D3D_OK;
   }
 
@@ -2339,6 +2367,46 @@ namespace dxvk {
         1,
         &cViewport,
         &cScissor);
+    });
+  }
+
+  void Direct3DDevice9Ex::BindBlendState() {
+    auto& state = m_state.renderStates;
+
+    bool separateAlpha  = state[D3DRS_SEPARATEALPHABLENDENABLE] != FALSE;
+
+    DxvkBlendMode baseMode;
+    baseMode.enableBlending = state[D3DRS_ALPHABLENDENABLE] != FALSE;
+
+    baseMode.colorSrcFactor = DecodeBlendFactor(D3DBLEND  ( state[D3DRS_SRCBLEND] ),  false);
+    baseMode.colorDstFactor = DecodeBlendFactor(D3DBLEND  ( state[D3DRS_DESTBLEND] ), false);
+    baseMode.colorBlendOp   = DecodeBlendOp    (D3DBLENDOP( state[D3DRS_BLENDOP] ));
+
+    baseMode.alphaSrcFactor = DecodeBlendFactor(separateAlpha ? D3DBLEND  ( state[D3DRS_SRCBLENDALPHA] )  : D3DBLEND_ONE, true);
+    baseMode.alphaDstFactor = DecodeBlendFactor(separateAlpha ? D3DBLEND  ( state[D3DRS_DESTBLENDALPHA] ) : D3DBLEND_ONE, true);
+    baseMode.alphaBlendOp   = DecodeBlendOp    (separateAlpha ? D3DBLENDOP( state[D3DRS_BLENDOPALPHA] )   : D3DBLENDOP_ADD);
+
+    std::array<DxvkBlendMode, 4> modes;
+    for (uint32_t i = 0; i < modes.size(); i++) {
+      auto& mode = modes[i];
+      mode = baseMode;
+
+      // These state indices are non-contiguous... Of course.
+      if (i == 0)
+        mode.writeMask = state[D3DRS_COLORWRITEENABLE];
+      else if (i == 1)
+        mode.writeMask = state[D3DRS_COLORWRITEENABLE1];
+      else if (i == 2)
+        mode.writeMask = state[D3DRS_COLORWRITEENABLE2];
+      else if (i == 3)
+        mode.writeMask = state[D3DRS_COLORWRITEENABLE3];
+    }
+
+    EmitCs([
+      cModes = modes
+    ](DxvkContext * ctx) {
+      for (uint32_t i = 0; i < cModes.size(); i++)
+        ctx->setBlendMode(i, cModes.at(i));
     });
   }
 

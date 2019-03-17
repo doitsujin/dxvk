@@ -69,6 +69,9 @@ namespace dxvk {
   uint32_t VertexCount(D3DPRIMITIVETYPE type, UINT count);
   DxvkInputAssemblyState InputAssemblyState(D3DPRIMITIVETYPE type);
 
+  VkBlendFactor DecodeBlendFactor(D3DBLEND BlendFactor, bool IsAlpha);
+  VkBlendOp DecodeBlendOp(D3DBLENDOP BlendOp);
+
   template<typename T>
   UINT CompactSparseList(T* pData, UINT Mask) {
     uint32_t count = 0;

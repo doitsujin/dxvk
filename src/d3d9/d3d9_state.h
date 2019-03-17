@@ -46,6 +46,7 @@ namespace dxvk {
     D3DVIEWPORT9 viewport;
     RECT scissorRect;
 
+    std::array<DWORD, D3DRS_BLENDOPALPHA + 1> renderStates;
     
   };
 
