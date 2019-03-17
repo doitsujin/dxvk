@@ -48,6 +48,8 @@ namespace dxvk {
     case DxsoOpcode::Mul:
     case DxsoOpcode::Rcp:
     case DxsoOpcode::Rsq:
+    case DxsoOpcode::Dp3:
+    case DxsoOpcode::Dp4:
     case DxsoOpcode::Min:
     case DxsoOpcode::Max:
     case DxsoOpcode::Abs:
@@ -55,6 +57,7 @@ namespace dxvk {
     case DxsoOpcode::LogP:
     case DxsoOpcode::Log:
     case DxsoOpcode::Frc:
+    case DxsoOpcode::Dp2Add:
       return this->emitVectorAlu(ctx);
 
     default:
@@ -438,6 +441,12 @@ namespace dxvk {
       case DxsoOpcode::Rsq:
         result = m_module.opInverseSqrt(typeId, emitRegisterLoad(src[0]));
         break;
+      case DxsoOpcode::Dp3:
+        result = m_module.opDot(typeId, emitRegisterLoad(src[0], 3), emitRegisterLoad(src[1], 3));
+        break;
+      case DxsoOpcode::Dp4:
+        result = m_module.opDot(typeId, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
+        break;
       case DxsoOpcode::Min:
         result = m_module.opFMin(typeId, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
         break;
@@ -466,6 +475,10 @@ namespace dxvk {
         break;
       case DxsoOpcode::Frc:
         result = m_module.opFract(typeId, emitRegisterLoad(src[0]));
+        break;
+      case DxsoOpcode::Dp2Add:
+        result = m_module.opDot(typeId, emitRegisterLoad(src[0], 2), emitRegisterLoad(src[1], 2));
+        result = m_module.opFAdd(typeId, result, emitRegisterLoad(src[2]));
         break;
       default:
         Logger::warn(str::format("DxsoCompiler::emitVectorAlu: unimplemented op {0}", opcode));
