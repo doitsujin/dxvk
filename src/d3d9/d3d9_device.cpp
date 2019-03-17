@@ -2402,14 +2402,14 @@ namespace dxvk {
       mode = baseMode;
 
       // These state indices are non-contiguous... Of course.
-      if (i == 0)
-        mode.writeMask = state[D3DRS_COLORWRITEENABLE];
-      else if (i == 1)
-        mode.writeMask = state[D3DRS_COLORWRITEENABLE1];
-      else if (i == 2)
-        mode.writeMask = state[D3DRS_COLORWRITEENABLE2];
-      else if (i == 3)
-        mode.writeMask = state[D3DRS_COLORWRITEENABLE3];
+      static const std::array<D3DRENDERSTATETYPE, 4> colorWriteIndices = {
+        D3DRS_COLORWRITEENABLE,
+        D3DRS_COLORWRITEENABLE1,
+        D3DRS_COLORWRITEENABLE2,
+        D3DRS_COLORWRITEENABLE3
+      };
+
+      mode.writeMask = state[colorWriteIndices[i]];
     }
 
     EmitCs([
