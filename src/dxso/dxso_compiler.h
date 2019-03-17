@@ -99,12 +99,6 @@ namespace dxvk {
     std::vector<uint32_t> m_entryPointInterfaces;
     uint32_t m_entryPointId = 0;
 
-    ////////////////////////////////////////////////////
-    // Per-vertex input and output blocks. Depending on
-    // the shader stage, these may be declared as arrays.
-    uint32_t m_perVertexIn = 0;
-    uint32_t m_perVertexOut = 0;
-
     ///////////////////////////////////////////////////////////
     // v# and o# register definitions
     std::array<DxsoDeclaration, 16> m_vDecls;
@@ -146,8 +140,6 @@ namespace dxvk {
     void emitFunctionLabel();
     
     void emitMainFunctionBegin();
-
-    uint32_t getPerVertexBlockId();
 
     uint32_t emitNewVariable(DxsoRegisterType regType, spv::StorageClass storageClass);
 

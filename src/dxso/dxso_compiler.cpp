@@ -178,17 +178,6 @@ namespace dxvk {
 
     m_module.enableExtension("SPV_KHR_shader_draw_parameters");
 
-    // Declare the per-vertex output block. This is where
-    // the vertex shader will write the vertex position.
-    const uint32_t perVertexStruct = this->getPerVertexBlockId();
-    const uint32_t perVertexPointer = m_module.defPointerType(
-      perVertexStruct, spv::StorageClassOutput);
-
-    m_perVertexOut = m_module.newVar(
-      perVertexPointer, spv::StorageClassOutput);
-    m_entryPointInterfaces.push_back(m_perVertexOut);
-    m_module.setDebugName(m_perVertexOut, "vs_vertex_out");
-
     // Main function of the vertex shader
     m_vs.functionId = m_module.allocateId();
     m_module.setDebugName(m_vs.functionId, "vs_main");
@@ -280,25 +269,6 @@ namespace dxvk {
       m_module.defFunctionType(
         m_module.defVoidType(), 0, nullptr));
     this->emitFunctionLabel();
-  }
-
-  uint32_t DxsoCompiler::getPerVertexBlockId() {
-    uint32_t floatVectorTypeId = m_module.defVectorType(
-      m_module.defFloatType(32),  
-      4);
-
-    std::array<uint32_t, 1> members;
-    members[0] = floatVectorTypeId;
-
-    uint32_t typeId = m_module.defStructTypeUnique(
-      members.size(), members.data());
-
-    m_module.memberDecorateBuiltIn(typeId, 0, spv::BuiltInPosition);
-    m_module.decorateBlock(typeId);
-
-    m_module.setDebugName(typeId, "s_per_vertex");
-    m_module.setDebugMemberName(typeId, 0, "position");
-    return typeId;
   }
 
   uint32_t DxsoCompiler::emitNewVariable(DxsoRegisterType regType, spv::StorageClass storageClass) {
@@ -583,14 +553,24 @@ namespace dxvk {
 
     auto regType = regId.type();
 
+    spv::BuiltIn builtIn = spv::BuiltInMax;
+
     if (optionalPremadeDecl != nullptr) {
       const bool input = regType == DxsoRegisterType::Input
                       || regType == DxsoRegisterType::Texture;
 
+      auto& decl = *optionalPremadeDecl;
+
       if (input)
-        m_vDecls[inputSlot  = allocateInputSlot()]  = *optionalPremadeDecl;
-      else
-        m_oDecls[outputSlot = allocateOutputSlot()] = *optionalPremadeDecl;
+        m_vDecls[inputSlot = allocateInputSlot()]   = decl;
+      else {
+        m_oDecls[outputSlot = allocateOutputSlot()] = decl;
+
+        if (decl.usage == DxsoUsage::Position)
+          builtIn = spv::BuiltInPosition;
+        else if (decl.usage == DxsoUsage::PointSize)
+          builtIn = spv::BuiltInPointSize;
+      }
     }
     else {
       if (regType == DxsoRegisterType::Input) {
@@ -605,12 +585,16 @@ namespace dxvk {
         auto& dcl = m_oDecls[outputSlot = allocateOutputSlot()];
         dcl.reg = reg;
 
-        if (regNum == RasterOutPosition)
+        if (regNum == RasterOutPosition) {
           dcl.usage = DxsoUsage::Position;
+          builtIn = spv::BuiltInPosition;
+        }
         else if (regNum == RasterOutFog)
           dcl.usage = DxsoUsage::Fog;
-        else
+        else {
           dcl.usage = DxsoUsage::PointSize;
+          builtIn = spv::BuiltInPointSize;
+        }
 
         dcl.usageIndex = 0;
       }
@@ -674,6 +658,9 @@ namespace dxvk {
       if (m_programInfo.type() == DxsoProgramType::PixelShader)
         m_module.decorateIndex(ptrId, 0);
     }
+
+    if (builtIn != spv::BuiltInMax)
+      m_module.decorateBuiltIn(ptrId, builtIn);
 
     if (inputSlot != InvalidInputSlot)
       spirvRegister.varId = m_module.opLoad(spvType(reg), ptrId);
