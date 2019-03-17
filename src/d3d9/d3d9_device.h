@@ -609,6 +609,8 @@ namespace dxvk {
 
     void BindBlendState();
 
+    void BindBlendFactor();
+
     void BindShader(
             DxsoProgramType                   ShaderStage,
       const D3D9CommonShader*                 pShaderModule);

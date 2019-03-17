@@ -801,6 +801,9 @@ namespace dxvk {
         case D3DRS_SRCBLENDALPHA:
           BindBlendState();
           break;
+        case D3DRS_BLENDFACTOR:
+          BindBlendFactor();
+          break;
         default:
           Logger::warn(str::format("Direct3DDevice9Ex::SetRenderState: Unhandled render state {0}", State));
           break;
@@ -1655,7 +1658,10 @@ namespace dxvk {
     rs[D3DRS_SRCBLEND] = D3DBLEND_ONE;
     rs[D3DRS_SRCBLENDALPHA] = D3DBLEND_ONE;
 
+    rs[D3DRS_BLENDFACTOR] = 0xffffffff;
+
     BindBlendState();
+    BindBlendFactor();
 
     SetRenderState(D3DRS_ZENABLE, pPresentationParameters->EnableAutoDepthStencil != FALSE ? D3DZB_TRUE : D3DZB_FALSE);
     SetRenderState(D3DRS_FILLMODE, D3DFILL_SOLID);
@@ -1738,7 +1744,6 @@ namespace dxvk {
     SetRenderState(D3DRS_CCW_STENCILZFAIL, D3DSTENCILOP_KEEP);
     SetRenderState(D3DRS_CCW_STENCILPASS, D3DSTENCILOP_KEEP);
     SetRenderState(D3DRS_CCW_STENCILFUNC, D3DCMP_ALWAYS);
-    SetRenderState(D3DRS_BLENDFACTOR, 0xFFFFFFFF);
     SetRenderState(D3DRS_SRGBWRITEENABLE, 0);
     SetRenderState(D3DRS_DEPTHBIAS, bit::cast<DWORD>(0.0f));
     SetRenderState(D3DRS_WRAP8, 0);
@@ -2409,9 +2414,22 @@ namespace dxvk {
 
     EmitCs([
       cModes = modes
-    ](DxvkContext * ctx) {
+    ](DxvkContext* ctx) {
       for (uint32_t i = 0; i < cModes.size(); i++)
         ctx->setBlendMode(i, cModes.at(i));
+    });
+  }
+
+  void Direct3DDevice9Ex::BindBlendFactor() {
+    DxvkBlendConstants blendConstants;
+    DecodeD3DCOLOR(
+      D3DCOLOR(m_state.renderStates[D3DRS_BLENDFACTOR]),
+      reinterpret_cast<float*>(&blendConstants));
+
+    EmitCs([
+      cBlendConstants = blendConstants
+    ](DxvkContext* ctx) {
+      ctx->setBlendConstants(cBlendConstants);
     });
   }
 
