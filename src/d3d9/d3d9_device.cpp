@@ -933,15 +933,11 @@ namespace dxvk {
     auto lock = LockDevice();
 
     EmitCs([
-      cState = InputAssemblyState(PrimitiveType)
-    ](DxvkContext* ctx) {
-        ctx->setInputAssemblyState(cState);
-    });
-
-    EmitCs([
+      cState       = InputAssemblyState(PrimitiveType),
       cVertexCount = VertexCount(PrimitiveType, PrimitiveCount),
       cStartVertex = StartVertex
     ](DxvkContext* ctx) {
+      ctx->setInputAssemblyState(cState);
       ctx->draw(
         cVertexCount, 1,
         cStartVertex, 0);
