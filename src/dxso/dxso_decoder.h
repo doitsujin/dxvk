@@ -165,8 +165,8 @@ namespace dxvk {
     }
 
     bool saturate() const {
-      if (m_type == DxsoInstructionArgumentType::Destination)
-        throw DxvkError("Attempted to read the modifier of a Dst register.");
+      if (m_type == DxsoInstructionArgumentType::Source)
+        throw DxvkError("Attempted to read the saturate of a Src register.");
 
       return (m_token & (1 << 20)) != 0;
     }
