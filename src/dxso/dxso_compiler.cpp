@@ -41,6 +41,11 @@ namespace dxvk {
     case DxsoOpcode::Dcl:
       return this->emitDcl(ctx);
 
+    case DxsoOpcode::Def:
+    case DxsoOpcode::DefI:
+    case DxsoOpcode::DefB:
+      return this->emitDef(opcode, ctx);
+
     case DxsoOpcode::Mov:
     case DxsoOpcode::Add:
     case DxsoOpcode::Sub:
@@ -505,6 +510,47 @@ namespace dxvk {
     }
 
     mapSpirvRegister(ctx.dst, &ctx.dcl);
+  }
+
+  void DxsoCompiler::emitDef(DxsoOpcode opcode, const DxsoInstructionContext& ctx) {
+    switch (opcode) {
+      case DxsoOpcode::Def:  this->emitDefF(ctx); break;
+      case DxsoOpcode::DefI: this->emitDefI(ctx); break;
+      case DxsoOpcode::DefB: this->emitDefB(ctx); break;
+      default:
+        throw DxvkError("DxsoCompiler::emitDef: Invalid definition opcode");
+        break;
+    }
+  }
+
+  void DxsoCompiler::emitDefF(const DxsoInstructionContext& ctx) {
+    DxsoSpirvRegister reg;
+    reg.regId = ctx.dst.registerId();
+
+    const float* data = reinterpret_cast<const float*>(ctx.def.data());
+    reg.varId = m_module.constvec4f32(data[0], data[1], data[2], data[3]);
+
+    m_regs.push_back(reg);
+  }
+
+  void DxsoCompiler::emitDefI(const DxsoInstructionContext& ctx) {
+    DxsoSpirvRegister reg;
+    reg.regId = ctx.dst.registerId();
+
+    const auto& data = ctx.def;
+    reg.varId = m_module.constvec4i32(data[0], data[1], data[2], data[3]);
+
+    m_regs.push_back(reg);
+  }
+
+  void DxsoCompiler::emitDefB(const DxsoInstructionContext& ctx) {
+    DxsoSpirvRegister reg;
+    reg.regId = ctx.dst.registerId();
+
+    bool data = ctx.def[0] != 0;
+    reg.varId = m_module.constBool(data);
+
+    m_regs.push_back(reg);
   }
 
   DxsoSpirvRegister& DxsoCompiler::getSpirvRegister(const DxsoRegister& reg){

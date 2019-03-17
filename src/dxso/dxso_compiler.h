@@ -164,7 +164,11 @@ namespace dxvk {
     void emitVectorAlu(const DxsoInstructionContext& ctx);
 
     void emitDcl(const DxsoInstructionContext& ctx);
-    void emitDef(const DxsoInstructionContext& ctx);
+
+    void emitDef(DxsoOpcode opcode, const DxsoInstructionContext& ctx);
+    void emitDefF(const DxsoInstructionContext& ctx);
+    void emitDefI(const DxsoInstructionContext& ctx);
+    void emitDefB(const DxsoInstructionContext& ctx);
 
 
     ///////////////////////////////////
