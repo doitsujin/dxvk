@@ -217,8 +217,8 @@ public:
     params.AutoDepthStencilFormat = D3DFMT_UNKNOWN;
     params.BackBufferCount = 1;
     params.BackBufferFormat = D3DFMT_X8R8G8B8;
-    params.BackBufferHeight = m_windowSize.w;
-    params.BackBufferWidth = m_windowSize.h;
+    params.BackBufferWidth = m_windowSize.w;
+    params.BackBufferHeight = m_windowSize.h;
     params.EnableAutoDepthStencil = FALSE;
     params.Flags = 0;
     params.FullScreen_RefreshRateInHz = 0;
