@@ -195,6 +195,8 @@ namespace dxvk {
     uint32_t allocateInputSlot();
     uint32_t allocateOutputSlot();
 
+    std::array<uint32_t, 16> m_oPtrs;
+
     uint32_t m_nextInputSlot = 0;
     uint32_t m_nextOutputSlot = 0;
 

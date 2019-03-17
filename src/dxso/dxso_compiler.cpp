@@ -28,6 +28,7 @@ namespace dxvk {
     for (uint32_t i = 0; i < 16; i++) {
       m_vDecls.at(i) = DxsoDeclaration{ };
       m_oDecls.at(i) = DxsoDeclaration{ };
+      m_oPtrs.at(i) = 0;
     }
 
     this->emitInit();
@@ -72,6 +73,9 @@ namespace dxvk {
   }
 
   Rc<DxvkShader> DxsoCompiler::finalize() {
+    for (uint32_t i = 0; i < m_nextOutputSlot; i++)
+      m_module.opStore(m_oPtrs[i], getSpirvRegister(m_oDecls[i].reg).varId);
+
     if (m_programInfo.type() == DxsoProgramType::VertexShader)
       this->emitVsFinalize();
     else
@@ -648,24 +652,30 @@ namespace dxvk {
     else
       storageClass = spv::StorageClassOutput;
 
-    spirvRegister.varId = this->emitNewVariable(regType, storageClass);
-    const auto varId = spirvRegister.varId;
+    uint32_t ptrId = this->emitNewVariable(regType, storageClass);
 
     if (inputSlot != InvalidInputSlot) {
-      m_module.decorateLocation(varId, inputSlot);
-      m_entryPointInterfaces.push_back(varId);
+      m_module.decorateLocation(ptrId, inputSlot);
+      m_entryPointInterfaces.push_back(ptrId);
 
       auto& reg = m_vDecls[inputSlot].reg;
       if (reg.centroid())
-        m_module.decorate(varId, spv::DecorationCentroid);
+        m_module.decorate(ptrId, spv::DecorationCentroid);
     }
     else if (outputSlot != InvalidOutputSlot) {
-      m_module.decorateLocation(varId, outputSlot);
-      m_entryPointInterfaces.push_back(varId);
+      m_oPtrs[outputSlot] = ptrId;
+
+      m_module.decorateLocation(ptrId, outputSlot);
+      m_entryPointInterfaces.push_back(ptrId);
 
       if (m_programInfo.type() == DxsoProgramType::PixelShader)
-        m_module.decorateIndex(varId, 0);
+        m_module.decorateIndex(ptrId, 0);
     }
+
+    if (inputSlot != InvalidInputSlot)
+      spirvRegister.varId = m_module.opLoad(spvType(reg), ptrId);
+    else
+      spirvRegister.varId = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
 
     m_regs.push_back(spirvRegister);
     return m_regs[m_regs.size() - 1];
