@@ -101,4 +101,39 @@ namespace dxvk {
     return memoryFlags;
   }
 
+  uint32_t VertexCount(D3DPRIMITIVETYPE type, UINT count) {
+    switch (type) {
+      default:
+      case D3DPT_TRIANGLELIST: return count * 3;
+      case D3DPT_POINTLIST: return count;
+      case D3DPT_LINELIST: return count * 2;
+      case D3DPT_LINESTRIP: return count + 1;
+      case D3DPT_TRIANGLESTRIP: return count + 2;
+      case D3DPT_TRIANGLEFAN: return count + 2;
+    }
+  }
+
+  DxvkInputAssemblyState InputAssemblyState(D3DPRIMITIVETYPE type) {
+    switch (type) {
+      default:
+      case D3DPT_TRIANGLELIST:
+        return { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_FALSE, 0 };
+
+      case D3DPT_POINTLIST:
+        return { VK_PRIMITIVE_TOPOLOGY_POINT_LIST, VK_FALSE, 0 };
+
+      case D3DPT_LINELIST:
+        return { VK_PRIMITIVE_TOPOLOGY_LINE_LIST, VK_FALSE, 0 };
+
+      case D3DPT_LINESTRIP:
+        return { VK_PRIMITIVE_TOPOLOGY_LINE_STRIP, VK_TRUE, 0 };
+
+      case D3DPT_TRIANGLESTRIP:
+        return { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, VK_TRUE, 0 };
+
+      case D3DPT_TRIANGLEFAN:
+        return { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN, VK_TRUE, 0 };
+    }
+  }
+
 }

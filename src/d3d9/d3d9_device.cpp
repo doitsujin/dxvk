@@ -930,7 +930,23 @@ namespace dxvk {
     D3DPRIMITIVETYPE PrimitiveType,
     UINT StartVertex,
     UINT PrimitiveCount) {
-    Logger::warn("Direct3DDevice9Ex::DrawPrimitive: Stub");
+    auto lock = LockDevice();
+
+    EmitCs([
+      cState = InputAssemblyState(PrimitiveType)
+    ](DxvkContext* ctx) {
+        ctx->setInputAssemblyState(cState);
+    });
+
+    EmitCs([
+      cVertexCount = VertexCount(PrimitiveType, PrimitiveCount),
+      cStartVertex = StartVertex
+    ](DxvkContext* ctx) {
+      ctx->draw(
+        cVertexCount, 1,
+        cStartVertex, 0);
+    });
+
     return D3D_OK;
   }
 

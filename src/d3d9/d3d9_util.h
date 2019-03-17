@@ -66,6 +66,9 @@ namespace dxvk {
     }
   }
 
+  uint32_t VertexCount(D3DPRIMITIVETYPE type, UINT count);
+  DxvkInputAssemblyState InputAssemblyState(D3DPRIMITIVETYPE type);
+
   template<typename T>
   UINT CompactSparseList(T* pData, UINT Mask) {
     uint32_t count = 0;
