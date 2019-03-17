@@ -444,6 +444,11 @@ namespace dxvk {
           typeId,
           emitRegisterLoad(src[0]),
           m_module.opInverseSqrt(typeId, emitRegisterLoad(src[0])));
+      case DxsoOpcode::LogP:
+      case DxsoOpcode::Log:
+        result = m_module.opLog2(typeId, emitRegisterLoad(src[0]));
+      case DxsoOpcode::Frc:
+        result = m_module.opFract(typeId, emitRegisterLoad(src[0]));
       default:
         Logger::warn(str::format("DxsoCompiler::emitVectorAlu: unimplemented op {0}", opcode));
         return;
