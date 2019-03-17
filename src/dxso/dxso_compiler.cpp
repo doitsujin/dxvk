@@ -380,8 +380,9 @@ namespace dxvk {
 
   uint32_t DxsoCompiler::emitWriteMask(uint32_t typeId, uint32_t dst, uint32_t src, DxsoRegMask writeMask) {
     std::array<uint32_t, 4> components;
+    uint32_t srcId = 4;
     for (uint32_t i = 0; i < 4; i++)
-      components[i] = writeMask[i] ? 4 + i : i;
+      components[i] = writeMask[i] ? srcId++ : i;
 
     return m_module.opVectorShuffle(typeId, dst, src, 4, components.data());
   }
