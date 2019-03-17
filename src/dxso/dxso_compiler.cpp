@@ -652,11 +652,13 @@ namespace dxvk {
     else if (outputSlot != InvalidOutputSlot) {
       m_oPtrs[outputSlot] = ptrId;
 
-      m_module.decorateLocation(ptrId, outputSlot);
-      m_entryPointInterfaces.push_back(ptrId);
+      if (builtIn == spv::BuiltInMax) {
+        m_module.decorateLocation(ptrId, outputSlot);
 
-      if (m_programInfo.type() == DxsoProgramType::PixelShader)
-        m_module.decorateIndex(ptrId, 0);
+        if (m_programInfo.type() == DxsoProgramType::PixelShader)
+          m_module.decorateIndex(ptrId, 0);
+      }
+      m_entryPointInterfaces.push_back(ptrId);
     }
 
     if (builtIn != spv::BuiltInMax)
