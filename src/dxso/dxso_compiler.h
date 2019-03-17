@@ -151,11 +151,11 @@ namespace dxvk {
 
     uint32_t emitNewVariable(DxsoRegisterType regType, spv::StorageClass storageClass);
 
-    uint32_t emitRegisterLoad(const DxsoRegister& reg);
+    uint32_t emitRegisterLoad(const DxsoRegister& reg, uint32_t count = 4);
 
-    uint32_t emitRegisterSwizzle(uint32_t typeId, uint32_t varId, DxsoRegSwizzle swizzle);
+    uint32_t emitRegisterSwizzle(uint32_t typeId, uint32_t varId, DxsoRegSwizzle swizzle, uint32_t count);
 
-    uint32_t emitSrcOperandModifier(uint32_t typeId, uint32_t varId, DxsoRegModifier modifier);
+    uint32_t emitSrcOperandModifier(uint32_t typeId, uint32_t varId, DxsoRegModifier modifier, uint32_t count);
 
     uint32_t emitDstOperandModifier(uint32_t typeId, uint32_t varId, bool saturate, bool partialPrecision);
 

@@ -295,25 +295,29 @@ namespace dxvk {
       storageClass);
   }
 
-  uint32_t DxsoCompiler::emitRegisterSwizzle(uint32_t typeId, uint32_t varId, DxsoRegSwizzle swizzle) {
+  uint32_t DxsoCompiler::emitRegisterSwizzle(uint32_t typeId, uint32_t varId, DxsoRegSwizzle swizzle, uint32_t count) {
     if (swizzle == IdentitySwizzle)
       return varId;
 
     std::array<uint32_t, 4> indices;
 
-    for (uint32_t i = 0; i < 4; i++)
+    for (uint32_t i = 0; i < count; i++)
       indices[i] = swizzle[i];
 
-    return m_module.opVectorShuffle(typeId, varId, varId, 4, indices.data());
+    return m_module.opVectorShuffle(typeId, varId, varId, count, indices.data());
   }
 
-  uint32_t DxsoCompiler::emitSrcOperandModifier(uint32_t typeId, uint32_t varId, DxsoRegModifier modifier) {
+  uint32_t DxsoCompiler::emitSrcOperandModifier(uint32_t typeId, uint32_t varId, DxsoRegModifier modifier, uint32_t count) {
     uint32_t result = varId;
 
     // 1 - r
     if (modifier == DxsoRegModifier::Comp) {
-      uint32_t vec1 = m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f);
-      result = m_module.opFSub(typeId, vec1, varId);
+      uint32_t vec = m_module.constvec4f32(
+        count >= 1 ? 1.0f : 0.0f,
+        count >= 2 ? 1.0f : 0.0f,
+        count >= 3 ? 1.0f : 0.0f,
+        count >= 4 ? 1.0f : 0.0f);
+      result = m_module.opFSub(typeId, vec, varId);
     }
 
     // r * 2
@@ -363,12 +367,12 @@ namespace dxvk {
     return result;
   }
 
-  uint32_t DxsoCompiler::emitRegisterLoad(const DxsoRegister& reg) {
+  uint32_t DxsoCompiler::emitRegisterLoad(const DxsoRegister& reg, uint32_t count) {
     const uint32_t typeId = spvType(reg);
 
     uint32_t result = spvId(reg);
-    result = emitRegisterSwizzle(typeId, result, reg.swizzle());
-    result = emitSrcOperandModifier(typeId, result, reg.modifier());
+    result = emitRegisterSwizzle(typeId, result, reg.swizzle(), count);
+    result = emitSrcOperandModifier(typeId, result, reg.modifier(), count);
 
     return result;
   }
@@ -443,12 +447,19 @@ namespace dxvk {
       case DxsoOpcode::Abs:
         result = m_module.opFAbs(typeId, emitRegisterLoad(src[0]));
         break;
-      case DxsoOpcode::Nrm:
+      case DxsoOpcode::Nrm: {
+        // Nrm is 3D...
+
+        uint32_t vec3 = emitRegisterLoad(src[0], 3);
+
+        // r * rsq(r . r);
         result = m_module.opFMul(
           typeId,
           emitRegisterLoad(src[0]),
-          m_module.opInverseSqrt(typeId, emitRegisterLoad(src[0])));
-        break;
+          m_module.opInverseSqrt(
+            typeId,
+            m_module.opDot(typeId, vec3, vec3)));
+      } break;
       case DxsoOpcode::LogP:
       case DxsoOpcode::Log:
         result = m_module.opLog2(typeId, emitRegisterLoad(src[0]));
