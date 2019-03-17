@@ -102,6 +102,10 @@ namespace dxvk {
     DxsoRegMask(uint32_t token)
       : m_mask{ static_cast<uint8_t>( (token & 0x000f0000) >> 16 ) } {}
 
+    DxsoRegMask(bool x, bool y, bool z, bool w)
+    : m_mask((x ? 0x1 : 0) | (y ? 0x2 : 0)
+           | (z ? 0x4 : 0) | (w ? 0x8 : 0)) { }
+
     uint32_t operator [] (uint32_t id) const {
       return ((m_mask & (1u << id)) == 1);
     }
@@ -114,6 +118,8 @@ namespace dxvk {
     uint8_t m_mask;
 
   };
+
+  const DxsoRegMask IdentityWriteMask = DxsoRegMask(true, true, true, true);
 
   class DxsoRegSwizzle {
 
