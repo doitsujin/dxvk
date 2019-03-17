@@ -1277,8 +1277,6 @@ namespace dxvk {
       DxsoProgramType::PixelShader,
       shader->GetCommonShader());
 
-    BindInputLayout();
-
     return D3D_OK;
   }
 
