@@ -723,7 +723,7 @@ namespace dxvk {
     const uint32_t slot = m_nextInputSlot;
     m_nextInputSlot++;
 
-    m_interfaceSlots.inputSlots |= slot;
+    m_interfaceSlots.inputSlots |= 1u << slot;
     return slot;
   }
 
@@ -731,7 +731,7 @@ namespace dxvk {
     const uint32_t slot = m_nextOutputSlot;
     m_nextOutputSlot++;
 
-    m_interfaceSlots.outputSlots |= slot;
+    m_interfaceSlots.outputSlots |= 1u << slot;
     return slot;
   }
 
