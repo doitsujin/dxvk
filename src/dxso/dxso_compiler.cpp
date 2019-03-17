@@ -51,6 +51,7 @@ namespace dxvk {
     case DxsoOpcode::Min:
     case DxsoOpcode::Max:
     case DxsoOpcode::Abs:
+    case DxsoOpcode::Nrm:
       return this->emitVectorAlu(ctx);
 
     default:
@@ -438,6 +439,11 @@ namespace dxvk {
         break;
       case DxsoOpcode::Abs:
         result = m_module.opFAbs(typeId, emitRegisterLoad(src[0]));
+      case DxsoOpcode::Nrm:
+        result = m_module.opFMul(
+          typeId,
+          emitRegisterLoad(src[0]),
+          m_module.opInverseSqrt(typeId, emitRegisterLoad(src[0])));
       default:
         Logger::warn(str::format("DxsoCompiler::emitVectorAlu: unimplemented op {0}", opcode));
         return;
