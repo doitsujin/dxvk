@@ -1,5 +1,8 @@
 #include "d3d9_vertex_declaration.h"
 
+#include <algorithm>
+#include <cstring>
+
 namespace dxvk {
 
   Direct3DVertexDeclaration9::Direct3DVertexDeclaration9(
