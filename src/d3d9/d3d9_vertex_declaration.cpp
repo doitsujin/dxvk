@@ -44,7 +44,7 @@ namespace dxvk {
       return D3D_OK;
     }
 
-    const UINT count = std::min(*pNumElements, m_elements.size());
+    const UINT count = std::min(*pNumElements, UINT{ m_elements.size() });
     std::memcpy(pElement, m_elements.data(), sizeof(D3DVERTEXELEMENT9) * count);
 
     return D3D_OK;
