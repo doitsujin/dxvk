@@ -181,14 +181,14 @@ namespace dxvk {
 
     DxsoRegMask writeMask() const {
       if (m_type == DxsoInstructionArgumentType::Source)
-        throw DxvkError("Attempted to read the modifier of a Src register.");
+        throw DxvkError("Attempted to read the write mask of a Src register.");
 
       return DxsoRegMask{ m_token };
     }
 
     DxsoRegSwizzle swizzle() const {
       if (m_type == DxsoInstructionArgumentType::Destination)
-        throw DxvkError("Attempted to read the modifier of a Dst register.");
+        throw DxvkError("Attempted to read the swizzle of a Dst register.");
 
       return DxsoRegSwizzle{ m_token };
     }
