@@ -1640,20 +1640,34 @@ namespace dxvk {
     for (uint32_t i = 0; i < caps::MaxSimultaneousRenderTargets; i++)
       SetRenderTarget(0, nullptr);
 
+    auto& rs = m_state.renderStates;
+
+    rs[D3DRS_SEPARATEALPHABLENDENABLE] = FALSE;
+    rs[D3DRS_ALPHABLENDENABLE] = FALSE;
+    rs[D3DRS_BLENDOP] = D3DBLENDOP_ADD;
+    rs[D3DRS_BLENDOPALPHA] = D3DBLENDOP_ADD;
+    rs[D3DRS_DESTBLEND] = D3DBLEND_ZERO;
+    rs[D3DRS_DESTBLENDALPHA] = D3DBLEND_ZERO;
+    rs[D3DRS_COLORWRITEENABLE] = 0x0000000f;
+    rs[D3DRS_COLORWRITEENABLE1] = 0x0000000f;
+    rs[D3DRS_COLORWRITEENABLE2] = 0x0000000f;
+    rs[D3DRS_COLORWRITEENABLE3] = 0x0000000f;
+    rs[D3DRS_SRCBLEND] = D3DBLEND_ONE;
+    rs[D3DRS_SRCBLENDALPHA] = D3DBLEND_ONE;
+
+    BindBlendState();
+
     SetRenderState(D3DRS_ZENABLE, pPresentationParameters->EnableAutoDepthStencil != FALSE ? D3DZB_TRUE : D3DZB_FALSE);
     SetRenderState(D3DRS_FILLMODE, D3DFILL_SOLID);
     SetRenderState(D3DRS_SHADEMODE, D3DSHADE_GOURAUD);
     SetRenderState(D3DRS_ZWRITEENABLE, TRUE);
     SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
     SetRenderState(D3DRS_LASTPIXEL, TRUE);
-    SetRenderState(D3DRS_SRCBLEND, D3DBLEND_ONE);
-    SetRenderState(D3DRS_DESTBLEND, D3DBLEND_ZERO);
     SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW);
     SetRenderState(D3DRS_ZFUNC, D3DCMP_LESSEQUAL);
     SetRenderState(D3DRS_ALPHAREF, 0);
     SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_ALWAYS);
     SetRenderState(D3DRS_DITHERENABLE, FALSE);
-    SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
     SetRenderState(D3DRS_FOGENABLE, FALSE);
     SetRenderState(D3DRS_SPECULARENABLE, FALSE);
     //	SetRenderState(D3DRS_ZVISIBLE, 0);
@@ -1706,9 +1720,7 @@ namespace dxvk {
     SetRenderState(D3DRS_DEBUGMONITORTOKEN, D3DDMT_ENABLE);
     SetRenderState(D3DRS_POINTSIZE_MAX, bit::cast<DWORD>(64.0f));
     SetRenderState(D3DRS_INDEXEDVERTEXBLENDENABLE, FALSE);
-    SetRenderState(D3DRS_COLORWRITEENABLE, 0x0000000F);
     SetRenderState(D3DRS_TWEENFACTOR, bit::cast<DWORD>(0.0f));
-    SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
     SetRenderState(D3DRS_POSITIONDEGREE, D3DDEGREE_CUBIC);
     SetRenderState(D3DRS_NORMALDEGREE, D3DDEGREE_LINEAR);
     SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
@@ -1726,9 +1738,6 @@ namespace dxvk {
     SetRenderState(D3DRS_CCW_STENCILZFAIL, D3DSTENCILOP_KEEP);
     SetRenderState(D3DRS_CCW_STENCILPASS, D3DSTENCILOP_KEEP);
     SetRenderState(D3DRS_CCW_STENCILFUNC, D3DCMP_ALWAYS);
-    SetRenderState(D3DRS_COLORWRITEENABLE1, 0x0000000F);
-    SetRenderState(D3DRS_COLORWRITEENABLE2, 0x0000000F);
-    SetRenderState(D3DRS_COLORWRITEENABLE3, 0x0000000F);
     SetRenderState(D3DRS_BLENDFACTOR, 0xFFFFFFFF);
     SetRenderState(D3DRS_SRGBWRITEENABLE, 0);
     SetRenderState(D3DRS_DEPTHBIAS, bit::cast<DWORD>(0.0f));
@@ -1740,10 +1749,6 @@ namespace dxvk {
     SetRenderState(D3DRS_WRAP13, 0);
     SetRenderState(D3DRS_WRAP14, 0);
     SetRenderState(D3DRS_WRAP15, 0);
-    SetRenderState(D3DRS_SEPARATEALPHABLENDENABLE, FALSE);
-    SetRenderState(D3DRS_SRCBLENDALPHA, D3DBLEND_ONE);
-    SetRenderState(D3DRS_DESTBLENDALPHA, D3DBLEND_ZERO);
-    SetRenderState(D3DRS_BLENDOPALPHA, D3DBLENDOP_ADD);
 
     for (uint32_t i = 0; i < caps::MaxTextureBlendStages; i++)
     {
