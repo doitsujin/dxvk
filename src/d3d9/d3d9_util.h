@@ -15,6 +15,19 @@ namespace dxvk {
       func(i);
   }
 
+  inline bool InvalidSampler(DWORD Sampler) {
+    return ((Sampler >= 16 && Sampler <= D3DDMAPSAMPLER) || Sampler > D3DVERTEXTEXTURESAMPLER3);
+  }
+
+  inline void RemapSampler(DWORD* Sampler) {
+    DWORD& sampler = *Sampler;
+
+    if (sampler >= D3DVERTEXTEXTURESAMPLER0)
+      sampler = 16 + (sampler - D3DVERTEXTEXTURESAMPLER0);
+
+    *Sampler = sampler;
+  }
+
   HRESULT DecodeMultiSampleType(
         D3DMULTISAMPLE_TYPE       MultiSample,
         VkSampleCountFlagBits*    pCount);
@@ -71,6 +84,11 @@ namespace dxvk {
 
   VkBlendFactor DecodeBlendFactor(D3DBLEND BlendFactor, bool IsAlpha);
   VkBlendOp DecodeBlendOp(D3DBLENDOP BlendOp);
+
+  VkFilter DecodeFilter(D3DTEXTUREFILTERTYPE Filter);
+  VkSamplerMipmapMode DecodeMipFilter(D3DTEXTUREFILTERTYPE Filter);
+  bool IsAnisotropic(D3DTEXTUREFILTERTYPE Filter);
+  VkSamplerAddressMode DecodeAddressMode(D3DTEXTUREADDRESS Mode);
 
   template<typename T>
   UINT CompactSparseList(T* pData, UINT Mask) {

@@ -47,6 +47,7 @@ namespace dxvk {
     RECT scissorRect;
 
     std::array<DWORD, D3DRS_BLENDOPALPHA + 1> renderStates;
+    std::array<std::array<DWORD, D3DSAMP_DMAPOFFSET + 1>, 20> samplerStates;
     
   };
 

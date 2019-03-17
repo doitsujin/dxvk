@@ -46,7 +46,8 @@ namespace dxvk {
     , m_frameLatency{ DefaultFrameLatency }
     , m_frameId{ 0 }
     , m_deferViewportBinding{ false }
-    , m_shaderModules{ new D3D9ShaderModuleSet } {
+    , m_shaderModules{ new D3D9ShaderModuleSet }
+    , m_dirtySamplerStates{ 0 } {
     m_frameLatencyCap = m_d3d9Options.maxFrameLatency;
 
     for (uint32_t i = 0; i < m_frameEvents.size(); i++)
@@ -874,7 +875,20 @@ namespace dxvk {
     DWORD Sampler,
     D3DSAMPLERSTATETYPE Type,
     DWORD* pValue) {
-    Logger::warn("Direct3DDevice9Ex::GetSamplerState: Stub");
+    auto lock = LockDevice();
+
+    if (pValue == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    *pValue = 0;
+
+    if (InvalidSampler(Sampler))
+      return D3D_OK;
+
+    RemapSampler(&Sampler);
+
+    *pValue = m_state.samplerStates[Sampler][Type];
+
     return D3D_OK;
   }
 
@@ -882,7 +896,32 @@ namespace dxvk {
     DWORD Sampler,
     D3DSAMPLERSTATETYPE Type,
     DWORD Value) {
-    Logger::warn("Direct3DDevice9Ex::SetSamplerState: Stub");
+    auto lock = LockDevice();
+    if (InvalidSampler(Sampler))
+      return D3D_OK;
+
+    auto& state = m_state.samplerStates;
+
+    RemapSampler(&Sampler);
+
+    bool changed = state[Sampler][Type] != Value;
+
+    if (likely(changed)) {
+      state[Sampler][Type] = Value;
+
+      if (Type == D3DSAMP_ADDRESSU
+       || Type == D3DSAMP_ADDRESSV
+       || Type == D3DSAMP_ADDRESSW
+       || Type == D3DSAMP_MAGFILTER
+       || Type == D3DSAMP_MINFILTER
+       || Type == D3DSAMP_MIPFILTER
+       || Type == D3DSAMP_MAXANISOTROPY
+       || Type == D3DSAMP_MIPMAPLODBIAS
+       || Type == D3DSAMP_MAXMIPLEVEL
+       || Type == D3DSAMP_BORDERCOLOR)
+        m_dirtySamplerStates |= 1u << Sampler;
+    }
+
     return D3D_OK;
   }
 
@@ -962,6 +1001,8 @@ namespace dxvk {
     UINT StartVertex,
     UINT PrimitiveCount) {
     auto lock = LockDevice();
+
+    PrepareDraw();
 
     EmitCs([
       cState       = InputAssemblyState(PrimitiveType),
@@ -1780,20 +1821,30 @@ namespace dxvk {
     forEachSampler([&](uint32_t i)
     {
       SetTexture(i, 0);
-      SetSamplerState(i, D3DSAMP_ADDRESSU, D3DTADDRESS_WRAP);
-      SetSamplerState(i, D3DSAMP_ADDRESSV, D3DTADDRESS_WRAP);
-      SetSamplerState(i, D3DSAMP_ADDRESSW, D3DTADDRESS_WRAP);
-      SetSamplerState(i, D3DSAMP_BORDERCOLOR, 0x00000000);
-      SetSamplerState(i, D3DSAMP_MAGFILTER, D3DTEXF_POINT);
-      SetSamplerState(i, D3DSAMP_MINFILTER, D3DTEXF_POINT);
-      SetSamplerState(i, D3DSAMP_MIPFILTER, D3DTEXF_NONE);
-      SetSamplerState(i, D3DSAMP_MIPMAPLODBIAS, 0);
-      SetSamplerState(i, D3DSAMP_MAXMIPLEVEL, 0);
-      SetSamplerState(i, D3DSAMP_MAXANISOTROPY, 1);
-      SetSamplerState(i, D3DSAMP_SRGBTEXTURE, 0);
-      SetSamplerState(i, D3DSAMP_ELEMENTINDEX, 0);
-      SetSamplerState(i, D3DSAMP_DMAPOFFSET, 0);
     });
+
+    auto& ss = m_state.samplerStates;
+    for (uint32_t i = 0; i < ss.size(); i++) {
+      auto& state = ss[i];
+      state[D3DSAMP_ADDRESSU] = D3DTADDRESS_WRAP;
+      state[D3DSAMP_ADDRESSV] = D3DTADDRESS_WRAP;
+      state[D3DSAMP_ADDRESSU] = D3DTADDRESS_WRAP;
+      state[D3DSAMP_ADDRESSW] = D3DTADDRESS_WRAP;
+      state[D3DSAMP_BORDERCOLOR] = 0x00000000;
+      state[D3DSAMP_MAGFILTER] = D3DTEXF_POINT;
+      state[D3DSAMP_MINFILTER] = D3DTEXF_POINT;
+      state[D3DSAMP_MIPFILTER] = D3DTEXF_NONE;
+      state[D3DSAMP_MIPMAPLODBIAS] = bit::cast<float>(0.0f);
+      state[D3DSAMP_MAXMIPLEVEL] = 0;
+      state[D3DSAMP_MAXANISOTROPY] = 1;
+      state[D3DSAMP_SRGBTEXTURE] = 0;
+      state[D3DSAMP_ELEMENTINDEX] = 0;
+      state[D3DSAMP_DMAPOFFSET] = 0;
+
+      BindSampler(i);
+    }
+
+    m_dirtySamplerStates = 0;
 
     for (uint32_t i = 0; i < caps::MaxClipPlanes; i++) {
       float plane[4] = { 0, 0, 0, 0 };
@@ -2431,6 +2482,73 @@ namespace dxvk {
     ](DxvkContext* ctx) {
       ctx->setBlendConstants(cBlendConstants);
     });
+  }
+
+  Rc<DxvkSampler> Direct3DDevice9Ex::CreateSampler(DWORD Sampler) {
+    auto& state = m_state.samplerStates[Sampler];
+
+    D3D9SamplerKey key;
+    key.AddressU      = D3DTEXTUREADDRESS(state[D3DSAMP_ADDRESSU]);
+    key.AddressV      = D3DTEXTUREADDRESS(state[D3DSAMP_ADDRESSV]);
+    key.AddressW      = D3DTEXTUREADDRESS(state[D3DSAMP_ADDRESSW]);
+    key.MagFilter     = D3DTEXTUREFILTERTYPE(state[D3DSAMP_MAGFILTER]);
+    key.MinFilter     = D3DTEXTUREFILTERTYPE(state[D3DSAMP_MINFILTER]);
+    key.MipFilter     = D3DTEXTUREFILTERTYPE(state[D3DSAMP_MIPFILTER]);
+    key.MaxAnisotropy = state[D3DSAMP_MAXANISOTROPY];
+    key.MipmapLodBias = bit::cast<float>(state[D3DSAMP_MIPMAPLODBIAS]);
+    key.MaxMipLevel   = state[D3DSAMP_MAXMIPLEVEL];
+    key.BorderColor   = D3DCOLOR(state[D3DSAMP_BORDERCOLOR]);
+
+    auto pair = m_samplers.find(key);
+    if (pair != m_samplers.end())
+      return pair->second;
+
+    DxvkSamplerCreateInfo info;
+    info.addressModeU   = DecodeAddressMode(key.AddressU);
+    info.addressModeV   = DecodeAddressMode(key.AddressV);
+    info.addressModeW   = DecodeAddressMode(key.AddressW);
+    info.compareToDepth = VK_FALSE;
+    info.compareOp      = VK_COMPARE_OP_NEVER;
+    info.magFilter      = DecodeFilter   (key.MagFilter);
+    info.minFilter      = DecodeFilter   (key.MinFilter);
+    info.mipmapMode     = DecodeMipFilter(key.MipFilter);
+    info.maxAnisotropy  = std::clamp(float(key.MaxAnisotropy), 1.0f, 16.0f);
+    info.useAnisotropy  = IsAnisotropic(key.MinFilter)
+                       || IsAnisotropic(key.MagFilter);
+    info.mipmapLodBias  = key.MipmapLodBias;
+    info.mipmapLodMin   = float(key.MaxMipLevel);
+    info.mipmapLodMax   = -FLT_MAX;
+    info.usePixelCoord  = VK_FALSE;
+    DecodeD3DCOLOR(key.BorderColor, reinterpret_cast<float*>(&info.borderColor));
+
+    Rc<DxvkSampler> sampler = m_device->createSampler(info);
+
+    m_samplers.insert(std::make_pair(key, sampler));
+    return sampler;
+  }
+
+  void Direct3DDevice9Ex::BindSampler(DWORD Sampler) {
+    Rc<DxvkSampler> sampler = CreateSampler(Sampler);
+
+    EmitCs([
+      cSlot    = uint32_t(Sampler),
+      cSampler = sampler
+    ] (DxvkContext* ctx) {
+        ctx->bindResourceSampler(cSlot, cSampler);
+    });
+  }
+
+  void Direct3DDevice9Ex::UndirtySamplers() {
+    for (uint32_t i = 0; i < 20; i++) {
+      if (m_dirtySamplerStates & (1u << i))
+        BindSampler(i);
+    }
+
+    m_dirtySamplerStates = 0;
+  }
+
+  void Direct3DDevice9Ex::PrepareDraw() {
+    UndirtySamplers();
   }
 
   void Direct3DDevice9Ex::BindShader(

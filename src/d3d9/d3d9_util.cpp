@@ -170,4 +170,44 @@ namespace dxvk {
     }
   }
 
+  VkFilter DecodeFilter(D3DTEXTUREFILTERTYPE Filter) {
+    switch (Filter) {
+    case D3DTEXF_NONE:
+    case D3DTEXF_POINT:
+      return VK_FILTER_NEAREST;
+    default:
+      return VK_FILTER_LINEAR;
+    }
+  }
+
+  VkSamplerMipmapMode DecodeMipFilter(D3DTEXTUREFILTERTYPE Filter) {
+    switch (Filter) {
+    case D3DTEXF_POINT:
+    case D3DTEXF_NONE:
+      return VK_SAMPLER_MIPMAP_MODE_NEAREST;
+    default:
+      return VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    }
+  }
+
+  bool IsAnisotropic(D3DTEXTUREFILTERTYPE Filter) {
+    return Filter == D3DTEXF_ANISOTROPIC;
+  }
+
+  VkSamplerAddressMode DecodeAddressMode(D3DTEXTUREADDRESS Mode) {
+    switch (Mode) {
+      default:
+      case D3DTADDRESS_WRAP:
+        return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+      case D3DTADDRESS_MIRROR:
+        return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+      case D3DTADDRESS_CLAMP:
+        return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+      case D3DTADDRESS_BORDER:
+        return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+      case D3DTADDRESS_MIRRORONCE:
+        return VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
+    }
+  }
+
 }

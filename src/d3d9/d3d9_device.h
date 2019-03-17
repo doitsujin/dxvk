@@ -17,7 +17,10 @@
 #include "../dxso/dxso_options.h"
 #include "../dxso/dxso_modinfo.h"
 
+#include "d3d9_sampler.h"
+
 #include <vector>
+#include <unordered_map>
 
 namespace dxvk {
 
@@ -611,6 +614,14 @@ namespace dxvk {
 
     void BindBlendFactor();
 
+    Rc<DxvkSampler> CreateSampler(DWORD Sampler);
+
+    void BindSampler(DWORD Sampler);
+
+    void UndirtySamplers();
+
+    void PrepareDraw();
+
     void BindShader(
             DxsoProgramType                   ShaderStage,
       const D3D9CommonShader*                 pShaderModule);
@@ -632,6 +643,8 @@ namespace dxvk {
     }       
 
   private:
+
+    uint32_t                       m_dirtySamplerStates;
 
     Rc<D3D9ShaderModuleSet>        m_shaderModules;
 
@@ -687,6 +700,12 @@ namespace dxvk {
 
     std::vector<DxvkVertexAttribute> m_workingAttributes;
     std::vector<DxvkVertexBinding>   m_workingBindings;
+
+    std::unordered_map<
+      D3D9SamplerKey,
+      Rc<DxvkSampler>,
+      D3D9SamplerKeyHash,
+      D3D9SamplerKeyEq> m_samplers;
 
     std::chrono::high_resolution_clock::time_point m_lastFlush
       = std::chrono::high_resolution_clock::now();
