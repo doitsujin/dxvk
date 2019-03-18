@@ -1174,6 +1174,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetVertexShader(IDirect3DVertexShader9** ppShader) {
+    auto lock = LockDevice();
+
     InitReturnPtr(ppShader);
 
     if (ppShader == nullptr)
@@ -1353,6 +1355,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetPixelShader(IDirect3DPixelShader9** ppShader) {
+    auto lock = LockDevice();
+
     InitReturnPtr(ppShader);
 
     if (ppShader == nullptr)

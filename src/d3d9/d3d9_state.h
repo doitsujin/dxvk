@@ -22,6 +22,15 @@ namespace dxvk {
     UINT stride;
   };
 
+  struct D3D9ShaderConstants {
+    using FloatVector = std::array<float, 4>;
+    using IntVector = std::array<int, 4>;
+
+    std::array<FloatVector, 256> fConst;
+    std::array<IntVector, 16> iConst;
+    std::array<bool, 16> bConst;
+  };
+
   struct Direct3DState9 {
     Direct3DState9() {
       for (uint32_t i = 0; i < renderTargets.size(); i++)
