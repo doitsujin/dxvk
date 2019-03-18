@@ -267,6 +267,22 @@ namespace dxvk {
   HRESULT D3D11CommonTexture::NormalizeTextureProperties(D3D11_COMMON_TEXTURE_DESC* pDesc) {
     if (pDesc->Width == 0 || pDesc->Height == 0 || pDesc->Depth == 0)
       return E_INVALIDARG;
+
+    // The rules for invalid 2D textures are the same as 1D textures
+    bool invalid2D = pDesc->Width  > D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION   // 16384
+                  || pDesc->Height > D3D11_REQ_TEXTURE2D_U_OR_V_DIMENSION;
+
+    bool invalid3D = pDesc->Width  > D3D11_REQ_TEXTURE3D_U_V_OR_W_DIMENSION // 2048
+                  || pDesc->Height > D3D11_REQ_TEXTURE3D_U_V_OR_W_DIMENSION
+                  || pDesc->Depth  > D3D11_REQ_TEXTURE3D_U_V_OR_W_DIMENSION;
+
+    // If we exceed the max extent for 2D textures
+    if (invalid2D)
+      return E_INVALIDARG;
+
+    // If we are a 3D texture and exceed the max extent for 2D textures
+    if (pDesc->Depth > 1 && invalid3D)
+      return E_INVALIDARG;
     
     if (FAILED(DecodeSampleCount(pDesc->SampleDesc.Count, nullptr)))
       return E_INVALIDARG;
