@@ -1186,19 +1186,34 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetVertexShaderConstantF(
     UINT StartRegister,
     const float* pConstantData,
     UINT Vector4fCount) {
-    Logger::warn("Direct3DDevice9Ex::SetVertexShaderConstantF: Stub");
-    return D3D_OK;
+    auto lock = LockDevice();
+
+    return SetShaderConstants(
+      StartRegister,
+      pConstantData,
+      Vector4fCount,
+      m_state.psConsts.fConsts.data(),
+      caps::MaxFloatConstants);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetVertexShaderConstantF(
     UINT StartRegister,
     float* pConstantData,
     UINT Vector4fCount) {
-    Logger::warn("Direct3DDevice9Ex::GetVertexShaderConstantF: Stub");
+    auto lock = LockDevice();
+
+    return GetShaderConstants(
+      StartRegister,
+      pConstantData,
+      Vector4fCount,
+      m_state.psConsts.fConsts.data(),
+      caps::MaxFloatConstants);
+
     return D3D_OK;
   }
 
@@ -1206,15 +1221,29 @@ namespace dxvk {
     UINT StartRegister,
     const int* pConstantData,
     UINT Vector4iCount) {
-    Logger::warn("Direct3DDevice9Ex::SetVertexShaderConstantI: Stub");
-    return D3D_OK;
+    auto lock = LockDevice();
+
+    return SetShaderConstants(
+      StartRegister,
+      pConstantData,
+      Vector4iCount,
+      m_state.psConsts.iConsts.data(),
+      caps::MaxOtherConstants);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetVertexShaderConstantI(
     UINT StartRegister,
     int* pConstantData,
     UINT Vector4iCount) {
-    Logger::warn("Direct3DDevice9Ex::GetVertexShaderConstantI: Stub");
+    auto lock = LockDevice();
+
+    return GetShaderConstants(
+      StartRegister,
+      pConstantData,
+      Vector4iCount,
+      m_state.psConsts.iConsts.data(),
+      caps::MaxOtherConstants);
+
     return D3D_OK;
   }
 
@@ -1222,16 +1251,28 @@ namespace dxvk {
     UINT StartRegister,
     const BOOL* pConstantData,
     UINT BoolCount) {
-    Logger::warn("Direct3DDevice9Ex::SetVertexShaderConstantB: Stub");
-    return D3D_OK;
+    auto lock = LockDevice();
+
+    return SetShaderConstants(
+      StartRegister,
+      pConstantData,
+      BoolCount,
+      m_state.psConsts.bConsts.data(),
+      caps::MaxOtherConstants);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetVertexShaderConstantB(
     UINT StartRegister,
     BOOL* pConstantData,
     UINT BoolCount) {
-    Logger::warn("Direct3DDevice9Ex::GetVertexShaderConstantB: Stub");
-    return D3D_OK;
+    auto lock = LockDevice();
+
+    return GetShaderConstants(
+      StartRegister,
+      pConstantData,
+      BoolCount,
+      m_state.psConsts.bConsts.data(),
+      caps::MaxOtherConstants);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetStreamSource(
@@ -1371,15 +1412,29 @@ namespace dxvk {
     UINT StartRegister,
     const float* pConstantData,
     UINT Vector4fCount) {
-    Logger::warn("Direct3DDevice9Ex::SetPixelShaderConstantF: Stub");
-    return D3D_OK;
+    auto lock = LockDevice();
+
+    return SetShaderConstants(
+      StartRegister,
+      pConstantData,
+      Vector4fCount,
+      m_state.psConsts.fConsts.data(),
+      caps::MaxFloatConstants);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetPixelShaderConstantF(
     UINT StartRegister,
     float* pConstantData,
     UINT Vector4fCount) {
-    Logger::warn("Direct3DDevice9Ex::GetPixelShaderConstantF: Stub");
+    auto lock = LockDevice();
+
+    return GetShaderConstants(
+      StartRegister,
+      pConstantData,
+      Vector4fCount,
+      m_state.psConsts.fConsts.data(),
+      caps::MaxFloatConstants);
+
     return D3D_OK;
   }
 
@@ -1387,15 +1442,29 @@ namespace dxvk {
     UINT StartRegister,
     const int* pConstantData,
     UINT Vector4iCount) {
-    Logger::warn("Direct3DDevice9Ex::SetPixelShaderConstantI: Stub");
-    return D3D_OK;
+    auto lock = LockDevice();
+
+    return SetShaderConstants(
+      StartRegister,
+      pConstantData,
+      Vector4iCount,
+      m_state.psConsts.iConsts.data(),
+      caps::MaxOtherConstants);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetPixelShaderConstantI(
     UINT StartRegister,
     int* pConstantData,
     UINT Vector4iCount) {
-    Logger::warn("Direct3DDevice9Ex::GetPixelShaderConstantI: Stub");
+    auto lock = LockDevice();
+
+    return GetShaderConstants(
+      StartRegister,
+      pConstantData,
+      Vector4iCount,
+      m_state.psConsts.iConsts.data(),
+      caps::MaxOtherConstants);
+
     return D3D_OK;
   }
 
@@ -1403,16 +1472,28 @@ namespace dxvk {
     UINT StartRegister,
     const BOOL* pConstantData,
     UINT BoolCount) {
-    Logger::warn("Direct3DDevice9Ex::SetPixelShaderConstantB: Stub");
-    return D3D_OK;
+    auto lock = LockDevice();
+
+    return SetShaderConstants(
+      StartRegister,
+      pConstantData,
+      BoolCount,
+      m_state.psConsts.bConsts.data(),
+      caps::MaxOtherConstants);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetPixelShaderConstantB(
     UINT StartRegister,
     BOOL* pConstantData,
     UINT BoolCount) {
-    Logger::warn("Direct3DDevice9Ex::GetPixelShaderConstantB: Stub");
-    return D3D_OK;
+    auto lock = LockDevice();
+
+    return GetShaderConstants(
+      StartRegister,
+      pConstantData,
+      BoolCount,
+      m_state.psConsts.bConsts.data(),
+      caps::MaxOtherConstants);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::DrawRectPatch(
@@ -2662,5 +2743,4 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
     }
   }
-
 }

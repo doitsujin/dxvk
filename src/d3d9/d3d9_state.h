@@ -26,9 +26,9 @@ namespace dxvk {
     using FloatVector = std::array<float, 4>;
     using IntVector = std::array<int, 4>;
 
-    std::array<FloatVector, 256> fConst;
-    std::array<IntVector, 16> iConst;
-    std::array<bool, 16> bConst;
+    std::array<FloatVector, caps::MaxFloatConstants> fConsts;
+    std::array<IntVector,   caps::MaxOtherConstants> iConsts;
+    std::array<int,         caps::MaxOtherConstants> bConsts;
   };
 
   struct Direct3DState9 {
@@ -57,6 +57,9 @@ namespace dxvk {
 
     std::array<DWORD, D3DRS_BLENDOPALPHA + 1> renderStates;
     std::array<std::array<DWORD, D3DSAMP_DMAPOFFSET + 1>, 20> samplerStates;
+
+    D3D9ShaderConstants vsConsts;
+    D3D9ShaderConstants psConsts;
     
   };
 

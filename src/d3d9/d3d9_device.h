@@ -732,6 +732,52 @@ namespace dxvk {
       }
     }
 
+    template <typename RegType>
+    HRESULT SetShaderConstants(
+            UINT      StartRegister,
+      const void*     pConstantData,
+            UINT      Count,
+            RegType*  pDestination,
+            UINT      MaxRegCount) {
+      Count = std::max<UINT>(std::min<INT>(Count + StartRegister, MaxRegCount) - StartRegister, 0);
+
+      if (Count == 0)
+        return D3D_OK;
+
+      if (pConstantData == nullptr)
+        return D3DERR_INVALIDCALL;
+
+      std::memcpy(
+        pDestination + StartRegister,
+        pConstantData,
+        sizeof(RegType));
+
+      return D3D_OK;
+    }
+
+    template <typename RegType>
+    HRESULT GetShaderConstants(
+            UINT     StartRegister,
+            void*    pConstantData,
+            UINT     Count,
+      const RegType* pSource,
+            UINT     MaxRegCount) {
+      Count = std::max<UINT>(std::min<INT>(Count + StartRegister, MaxRegCount) - StartRegister, 0);
+
+      if (Count == 0)
+        return D3D_OK;
+
+      if (pConstantData == nullptr)
+        return D3DERR_INVALIDCALL;
+
+      std::memcpy(
+        pConstantData,
+        pSource + StartRegister,
+        sizeof(RegType));
+
+      return D3D_OK;
+    }
+
     void SynchronizeDevice();
 
     void EmitCsChunk(DxvkCsChunkRef&& chunk);
