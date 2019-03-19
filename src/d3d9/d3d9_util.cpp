@@ -210,4 +210,18 @@ namespace dxvk {
     }
   }
 
+  VkCompareOp DecodeCompareOp(D3DCMPFUNC Func) {
+    switch (Func) {
+      default:
+      case D3DCMP_NEVER:        return VK_COMPARE_OP_NEVER;
+      case D3DCMP_LESS:         return VK_COMPARE_OP_LESS;
+      case D3DCMP_EQUAL:        return VK_COMPARE_OP_EQUAL;
+      case D3DCMP_LESSEQUAL:    return VK_COMPARE_OP_LESS_OR_EQUAL;
+      case D3DCMP_GREATER:      return VK_COMPARE_OP_GREATER;
+      case D3DCMP_NOTEQUAL:     return VK_COMPARE_OP_NOT_EQUAL;
+      case D3DCMP_GREATEREQUAL: return VK_COMPARE_OP_GREATER_OR_EQUAL;
+      case D3DCMP_ALWAYS:       return VK_COMPARE_OP_ALWAYS;
+    }
+  }
+
 }

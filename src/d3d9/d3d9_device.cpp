@@ -802,9 +802,30 @@ namespace dxvk {
         case D3DRS_SRCBLENDALPHA:
           BindBlendState();
           break;
+
         case D3DRS_BLENDFACTOR:
           BindBlendFactor();
           break;
+
+        case D3DRS_ZENABLE:
+        case D3DRS_ZFUNC:
+        case D3DRS_TWOSIDEDSTENCILMODE:
+        case D3DRS_ZWRITEENABLE:
+        case D3DRS_STENCILENABLE:
+        case D3DRS_STENCILFAIL:
+        case D3DRS_STENCILZFAIL:
+        case D3DRS_STENCILPASS:
+        case D3DRS_STENCILFUNC:
+        case D3DRS_CCW_STENCILFAIL:
+        case D3DRS_CCW_STENCILZFAIL:
+        case D3DRS_CCW_STENCILPASS:
+        case D3DRS_CCW_STENCILFUNC:
+        case D3DRS_STENCILREF:
+        case D3DRS_STENCILMASK:
+        case D3DRS_STENCILWRITEMASK:
+          BindDepthStencilState();
+          break;
+
         default:
           Logger::warn(str::format("Direct3DDevice9Ex::SetRenderState: Unhandled render state {0}", State));
           break;
@@ -1789,14 +1810,30 @@ namespace dxvk {
     BindBlendState();
     BindBlendFactor();
 
-    SetRenderState(D3DRS_ZENABLE, pPresentationParameters->EnableAutoDepthStencil != FALSE ? D3DZB_TRUE : D3DZB_FALSE);
+    rs[D3DRS_ZENABLE] = pPresentationParameters->EnableAutoDepthStencil != FALSE ? D3DZB_TRUE : D3DZB_FALSE;
+    rs[D3DRS_ZFUNC] = D3DCMP_LESSEQUAL;
+    rs[D3DRS_TWOSIDEDSTENCILMODE] = FALSE;
+    rs[D3DRS_ZWRITEENABLE] = TRUE;
+    rs[D3DRS_STENCILENABLE] = FALSE;
+    rs[D3DRS_STENCILFAIL] = D3DSTENCILOP_KEEP;
+    rs[D3DRS_STENCILZFAIL] = D3DSTENCILOP_KEEP;
+    rs[D3DRS_STENCILPASS] = D3DSTENCILOP_KEEP;
+    rs[D3DRS_STENCILFUNC] = D3DCMP_ALWAYS;
+    rs[D3DRS_CCW_STENCILFAIL] = D3DSTENCILOP_KEEP;
+    rs[D3DRS_CCW_STENCILZFAIL] = D3DSTENCILOP_KEEP;
+    rs[D3DRS_CCW_STENCILPASS] = D3DSTENCILOP_KEEP;
+    rs[D3DRS_CCW_STENCILFUNC] = D3DCMP_ALWAYS;
+    rs[D3DRS_STENCILREF] = 0;
+    rs[D3DRS_STENCILMASK] = 0xFFFFFFFF;
+    rs[D3DRS_STENCILWRITEMASK] = 0xFFFFFFFF;
+
+    BindDepthStencilState();
+
     SetRenderState(D3DRS_FILLMODE, D3DFILL_SOLID);
     SetRenderState(D3DRS_SHADEMODE, D3DSHADE_GOURAUD);
-    SetRenderState(D3DRS_ZWRITEENABLE, TRUE);
     SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
     SetRenderState(D3DRS_LASTPIXEL, TRUE);
     SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW);
-    SetRenderState(D3DRS_ZFUNC, D3DCMP_LESSEQUAL);
     SetRenderState(D3DRS_ALPHAREF, 0);
     SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_ALWAYS);
     SetRenderState(D3DRS_DITHERENABLE, FALSE);
@@ -1809,14 +1846,6 @@ namespace dxvk {
     SetRenderState(D3DRS_FOGEND, bit::cast<DWORD>(1.0f));
     SetRenderState(D3DRS_FOGDENSITY, bit::cast<DWORD>(1.0f));
     SetRenderState(D3DRS_RANGEFOGENABLE, FALSE);
-    SetRenderState(D3DRS_STENCILENABLE, FALSE);
-    SetRenderState(D3DRS_STENCILFAIL, D3DSTENCILOP_KEEP);
-    SetRenderState(D3DRS_STENCILZFAIL, D3DSTENCILOP_KEEP);
-    SetRenderState(D3DRS_STENCILPASS, D3DSTENCILOP_KEEP);
-    SetRenderState(D3DRS_STENCILFUNC, D3DCMP_ALWAYS);
-    SetRenderState(D3DRS_STENCILREF, 0);
-    SetRenderState(D3DRS_STENCILMASK, 0xFFFFFFFF);
-    SetRenderState(D3DRS_STENCILWRITEMASK, 0xFFFFFFFF);
     SetRenderState(D3DRS_TEXTUREFACTOR, 0xFFFFFFFF);
     SetRenderState(D3DRS_WRAP0, 0);
     SetRenderState(D3DRS_WRAP1, 0);
@@ -1865,11 +1894,6 @@ namespace dxvk {
     SetRenderState(D3DRS_ADAPTIVETESS_Z, bit::cast<DWORD>(1.0f));
     SetRenderState(D3DRS_ADAPTIVETESS_W, bit::cast<DWORD>(0.0f));
     SetRenderState(D3DRS_ENABLEADAPTIVETESSELLATION, FALSE);
-    SetRenderState(D3DRS_TWOSIDEDSTENCILMODE, FALSE);
-    SetRenderState(D3DRS_CCW_STENCILFAIL, D3DSTENCILOP_KEEP);
-    SetRenderState(D3DRS_CCW_STENCILZFAIL, D3DSTENCILOP_KEEP);
-    SetRenderState(D3DRS_CCW_STENCILPASS, D3DSTENCILOP_KEEP);
-    SetRenderState(D3DRS_CCW_STENCILFUNC, D3DCMP_ALWAYS);
     SetRenderState(D3DRS_SRGBWRITEENABLE, 0);
     SetRenderState(D3DRS_DEPTHBIAS, bit::cast<DWORD>(0.0f));
     SetRenderState(D3DRS_WRAP8, 0);
@@ -2566,6 +2590,41 @@ namespace dxvk {
       cBlendConstants = blendConstants
     ](DxvkContext* ctx) {
       ctx->setBlendConstants(cBlendConstants);
+    });
+  }
+
+  void Direct3DDevice9Ex::BindDepthStencilState() {
+    auto& rs = m_state.renderStates;
+
+    bool stencil            = rs[D3DRS_STENCILENABLE] != FALSE;
+    bool twoSidedStencil    = stencil && (rs[D3DRS_TWOSIDEDSTENCILMODE] != FALSE);
+
+    DxvkDepthStencilState state;
+    state.enableDepthTest   = rs[D3DRS_ZENABLE]       != FALSE;
+    state.enableDepthWrite  = rs[D3DRS_ZWRITEENABLE]  != FALSE;
+    state.enableStencilTest = stencil;
+    state.depthCompareOp    = DecodeCompareOp(D3DCMPFUNC(rs[D3DRS_ZFUNC]));
+
+    state.stencilOpFront.failOp      = stencil ? DecodeStencilOp(D3DSTENCILOP(rs[D3DRS_STENCILFAIL]))  : VK_STENCIL_OP_KEEP;
+    state.stencilOpFront.passOp      = stencil ? DecodeStencilOp(D3DSTENCILOP(rs[D3DRS_STENCILPASS]))  : VK_STENCIL_OP_KEEP;
+    state.stencilOpFront.depthFailOp = stencil ? DecodeStencilOp(D3DSTENCILOP(rs[D3DRS_STENCILZFAIL])) : VK_STENCIL_OP_KEEP;
+    state.stencilOpFront.compareOp   = stencil ? DecodeCompareOp(D3DCMPFUNC  (rs[D3DRS_STENCILFUNC]))  : VK_COMPARE_OP_ALWAYS;
+    state.stencilOpFront.compareMask = uint32_t(rs[D3DRS_STENCILMASK]);
+    state.stencilOpFront.writeMask   = uint32_t(rs[D3DRS_STENCILWRITEMASK]);
+    state.stencilOpFront.reference   = uint32_t(rs[D3DRS_STENCILREF]);
+
+    state.stencilOpBack.failOp      = twoSidedStencil ? DecodeStencilOp(D3DSTENCILOP(rs[D3DRS_CCW_STENCILFAIL]))  : VK_STENCIL_OP_KEEP;
+    state.stencilOpBack.passOp      = twoSidedStencil ? DecodeStencilOp(D3DSTENCILOP(rs[D3DRS_CCW_STENCILPASS]))  : VK_STENCIL_OP_KEEP;
+    state.stencilOpBack.depthFailOp = twoSidedStencil ? DecodeStencilOp(D3DSTENCILOP(rs[D3DRS_CCW_STENCILZFAIL])) : VK_STENCIL_OP_KEEP;
+    state.stencilOpBack.compareOp   = twoSidedStencil ? DecodeCompareOp(D3DCMPFUNC  (rs[D3DRS_CCW_STENCILFUNC]))  : VK_COMPARE_OP_ALWAYS;
+    state.stencilOpBack.compareMask = state.stencilOpFront.compareMask;
+    state.stencilOpBack.writeMask   = state.stencilOpFront.writeMask;
+    state.stencilOpBack.reference   = state.stencilOpFront.reference;
+
+    EmitCs([
+      cState = state
+    ](DxvkContext* ctx) {
+      ctx->setDepthStencilState(cState);
     });
   }
 

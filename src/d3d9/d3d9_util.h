@@ -89,6 +89,8 @@ namespace dxvk {
   VkSamplerMipmapMode DecodeMipFilter(D3DTEXTUREFILTERTYPE Filter);
   bool IsAnisotropic(D3DTEXTUREFILTERTYPE Filter);
   VkSamplerAddressMode DecodeAddressMode(D3DTEXTUREADDRESS Mode);
+  VkCompareOp DecodeCompareOp(D3DCMPFUNC Func);
+  VkStencilOp DecodeStencilOp(D3DSTENCILOP Op);
 
   template<typename T>
   UINT CompactSparseList(T* pData, UINT Mask) {
