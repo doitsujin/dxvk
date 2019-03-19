@@ -1807,10 +1807,9 @@ namespace dxvk {
     rs[D3DRS_COLORWRITEENABLE3] = 0x0000000f;
     rs[D3DRS_SRCBLEND] = D3DBLEND_ONE;
     rs[D3DRS_SRCBLENDALPHA] = D3DBLEND_ONE;
+    BindBlendState();
 
     rs[D3DRS_BLENDFACTOR] = 0xffffffff;
-
-    BindBlendState();
     BindBlendFactor();
 
     rs[D3DRS_ZENABLE] = pPresentationParameters->EnableAutoDepthStencil != FALSE ? D3DZB_TRUE : D3DZB_FALSE;
@@ -1828,11 +1827,9 @@ namespace dxvk {
     rs[D3DRS_CCW_STENCILFUNC] = D3DCMP_ALWAYS;
     rs[D3DRS_STENCILMASK] = 0xFFFFFFFF;
     rs[D3DRS_STENCILWRITEMASK] = 0xFFFFFFFF;
-
     BindDepthStencilState();
 
     rs[D3DRS_STENCILREF] = 0;
-
     BindDepthStencilRefrence();
 
     SetRenderState(D3DRS_FILLMODE, D3DFILL_SOLID);
