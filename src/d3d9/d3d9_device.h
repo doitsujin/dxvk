@@ -616,6 +616,8 @@ namespace dxvk {
 
     void BindDepthStencilState();
 
+    void BindDepthStencilRefrence();
+
     void BindRasterizerState();
 
     Rc<DxvkSampler> CreateSampler(DWORD Sampler);

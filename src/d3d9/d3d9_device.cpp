@@ -820,10 +820,13 @@ namespace dxvk {
         case D3DRS_CCW_STENCILZFAIL:
         case D3DRS_CCW_STENCILPASS:
         case D3DRS_CCW_STENCILFUNC:
-        case D3DRS_STENCILREF:
         case D3DRS_STENCILMASK:
         case D3DRS_STENCILWRITEMASK:
           BindDepthStencilState();
+          break;
+
+        case D3DRS_STENCILREF:
+          BindDepthStencilRefrence();
           break;
 
         default:
@@ -1823,11 +1826,14 @@ namespace dxvk {
     rs[D3DRS_CCW_STENCILZFAIL] = D3DSTENCILOP_KEEP;
     rs[D3DRS_CCW_STENCILPASS] = D3DSTENCILOP_KEEP;
     rs[D3DRS_CCW_STENCILFUNC] = D3DCMP_ALWAYS;
-    rs[D3DRS_STENCILREF] = 0;
     rs[D3DRS_STENCILMASK] = 0xFFFFFFFF;
     rs[D3DRS_STENCILWRITEMASK] = 0xFFFFFFFF;
 
     BindDepthStencilState();
+
+    rs[D3DRS_STENCILREF] = 0;
+
+    BindDepthStencilRefrence();
 
     SetRenderState(D3DRS_FILLMODE, D3DFILL_SOLID);
     SetRenderState(D3DRS_SHADEMODE, D3DSHADE_GOURAUD);
@@ -2611,7 +2617,7 @@ namespace dxvk {
     state.stencilOpFront.compareOp   = stencil ? DecodeCompareOp(D3DCMPFUNC  (rs[D3DRS_STENCILFUNC]))  : VK_COMPARE_OP_ALWAYS;
     state.stencilOpFront.compareMask = uint32_t(rs[D3DRS_STENCILMASK]);
     state.stencilOpFront.writeMask   = uint32_t(rs[D3DRS_STENCILWRITEMASK]);
-    state.stencilOpFront.reference   = uint32_t(rs[D3DRS_STENCILREF]);
+    state.stencilOpFront.reference   = 0;
 
     state.stencilOpBack.failOp      = twoSidedStencil ? DecodeStencilOp(D3DSTENCILOP(rs[D3DRS_CCW_STENCILFAIL]))  : VK_STENCIL_OP_KEEP;
     state.stencilOpBack.passOp      = twoSidedStencil ? DecodeStencilOp(D3DSTENCILOP(rs[D3DRS_CCW_STENCILPASS]))  : VK_STENCIL_OP_KEEP;
@@ -2619,12 +2625,24 @@ namespace dxvk {
     state.stencilOpBack.compareOp   = twoSidedStencil ? DecodeCompareOp(D3DCMPFUNC  (rs[D3DRS_CCW_STENCILFUNC]))  : VK_COMPARE_OP_ALWAYS;
     state.stencilOpBack.compareMask = state.stencilOpFront.compareMask;
     state.stencilOpBack.writeMask   = state.stencilOpFront.writeMask;
-    state.stencilOpBack.reference   = state.stencilOpFront.reference;
+    state.stencilOpBack.reference   = 0;
 
     EmitCs([
       cState = state
     ](DxvkContext* ctx) {
       ctx->setDepthStencilState(cState);
+    });
+  }
+
+  void Direct3DDevice9Ex::BindDepthStencilRefrence() {
+    auto& rs = m_state.renderStates;
+
+    uint32_t ref = uint32_t(rs[D3DRS_STENCILREF]);
+
+    EmitCs([
+      cRef = ref
+    ](DxvkContext* ctx) {
+      ctx->setStencilReference(cRef);
     });
   }
 
