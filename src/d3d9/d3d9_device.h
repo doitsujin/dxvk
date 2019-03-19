@@ -739,7 +739,7 @@ namespace dxvk {
             UINT      Count,
             RegType*  pDestination,
             UINT      MaxRegCount) {
-      Count = std::max<UINT>(std::min<INT>(Count + StartRegister, MaxRegCount) - StartRegister, 0);
+      Count = UINT(std::max(std::min<INT>(Count + StartRegister, MaxRegCount) - StartRegister, 0));
 
       if (Count == 0)
         return D3D_OK;
@@ -762,7 +762,7 @@ namespace dxvk {
             UINT     Count,
       const RegType* pSource,
             UINT     MaxRegCount) {
-      Count = std::max<UINT>(std::min<INT>(Count + StartRegister, MaxRegCount) - StartRegister, 0);
+      Count = UINT(std::max(std::min<INT>(Count + StartRegister, MaxRegCount) - StartRegister, 0));
 
       if (Count == 0)
         return D3D_OK;
