@@ -2715,7 +2715,8 @@ namespace dxvk {
 
     if (m_flags.test(D3D9DeviceFlag::DirtyBlendState))
       BindBlendState();
-    else if (m_flags.test(D3D9DeviceFlag::DirtyDepthStencilState))
+    
+    if (m_flags.test(D3D9DeviceFlag::DirtyDepthStencilState))
       BindDepthStencilState();
   }
 
