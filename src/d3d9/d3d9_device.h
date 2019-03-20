@@ -33,6 +33,13 @@ namespace dxvk {
   class D3D9CommonShader;
   class D3D9ShaderModuleSet;
 
+  enum class D3D9DeviceFlag : uint64_t {
+    DirtyDepthStencilState,
+    DirtyBlendState,
+  };
+
+  using D3D9DeviceFlags = Flags<D3D9DeviceFlag>;
+
   class Direct3DDevice9Ex final : public ComObject<IDirect3DDevice9Ex> {
     constexpr static uint32_t DefaultFrameLatency = 3;
     constexpr static uint32_t MaxFrameLatency = 20;
@@ -650,6 +657,8 @@ namespace dxvk {
 
   private:
 
+    D3D9DeviceFlags                m_flags;
+
     uint32_t                       m_dirtySamplerStates;
 
     Rc<D3D9ShaderModuleSet>        m_shaderModules;
@@ -681,7 +690,7 @@ namespace dxvk {
 
     D3DDEVTYPE m_deviceType;
     HWND m_window;
-    DWORD m_flags;
+    DWORD m_behaviourFlags;
 
     const D3D9Options               m_d3d9Options;
     const DxsoOptions               m_dxsoOptions;

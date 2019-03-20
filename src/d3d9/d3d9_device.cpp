@@ -36,7 +36,7 @@ namespace dxvk {
     , m_device{ dxvkDevice }
     , m_deviceType{ deviceType }
     , m_window{ window }
-    , m_flags{ flags }
+    , m_behaviourFlags{ flags }
     , m_d3d9Formats{ dxvkAdapter }
     , m_d3d9Options{ dxvkAdapter->instance()->config() }
     , m_dxsoOptions{ m_device, m_d3d9Options }
@@ -142,7 +142,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     pParameters->AdapterOrdinal = m_adapter;
-    pParameters->BehaviorFlags = m_flags;
+    pParameters->BehaviorFlags = m_behaviourFlags;
     pParameters->DeviceType = m_deviceType;
     pParameters->hFocusWindow = m_window;
 
@@ -800,7 +800,7 @@ namespace dxvk {
         case D3DRS_COLORWRITEENABLE3:
         case D3DRS_SRCBLEND:
         case D3DRS_SRCBLENDALPHA:
-          BindBlendState();
+          m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
 
         case D3DRS_BLENDFACTOR:
@@ -822,7 +822,7 @@ namespace dxvk {
         case D3DRS_CCW_STENCILFUNC:
         case D3DRS_STENCILMASK:
         case D3DRS_STENCILWRITEMASK:
-          BindDepthStencilState();
+          m_flags.set(D3D9DeviceFlag::DirtyDepthStencilState);
           break;
 
         case D3DRS_STENCILREF:
@@ -2544,6 +2544,8 @@ namespace dxvk {
   }
 
   void Direct3DDevice9Ex::BindBlendState() {
+    m_flags.clr(D3D9DeviceFlag::DirtyBlendState);
+
     auto& state = m_state.renderStates;
 
     bool separateAlpha  = state[D3DRS_SEPARATEALPHABLENDENABLE] != FALSE;
@@ -2597,6 +2599,8 @@ namespace dxvk {
   }
 
   void Direct3DDevice9Ex::BindDepthStencilState() {
+    m_flags.clr(D3D9DeviceFlag::DirtyDepthStencilState);
+
     auto& rs = m_state.renderStates;
 
     bool stencil            = rs[D3DRS_STENCILENABLE] != FALSE;
@@ -2708,6 +2712,11 @@ namespace dxvk {
 
   void Direct3DDevice9Ex::PrepareDraw() {
     UndirtySamplers();
+
+    if (m_flags.test(D3D9DeviceFlag::DirtyBlendState))
+      BindBlendState();
+    else if (m_flags.test(D3D9DeviceFlag::DirtyDepthStencilState))
+      BindDepthStencilState();
   }
 
   void Direct3DDevice9Ex::BindShader(
