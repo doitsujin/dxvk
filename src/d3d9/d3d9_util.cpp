@@ -224,4 +224,18 @@ namespace dxvk {
     }
   }
 
+  VkStencilOp DecodeStencilOp(D3DSTENCILOP Op) {
+    switch (Op) {
+      default:
+      case D3DSTENCILOP_KEEP:    return VK_STENCIL_OP_KEEP;
+      case D3DSTENCILOP_ZERO:    return VK_STENCIL_OP_ZERO;
+      case D3DSTENCILOP_REPLACE: return VK_STENCIL_OP_REPLACE;
+      case D3DSTENCILOP_INCRSAT: return VK_STENCIL_OP_INCREMENT_AND_CLAMP;
+      case D3DSTENCILOP_DECRSAT: return VK_STENCIL_OP_DECREMENT_AND_CLAMP;
+      case D3DSTENCILOP_INVERT:  return VK_STENCIL_OP_INVERT;
+      case D3DSTENCILOP_INCR:    return VK_STENCIL_OP_INCREMENT_AND_WRAP;
+      case D3DSTENCILOP_DECR:    return VK_STENCIL_OP_DECREMENT_AND_WRAP;
+    }
+  }
+
 }
