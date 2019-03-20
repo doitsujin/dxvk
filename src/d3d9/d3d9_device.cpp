@@ -1946,7 +1946,7 @@ namespace dxvk {
       state[D3DSAMP_MAGFILTER] = D3DTEXF_POINT;
       state[D3DSAMP_MINFILTER] = D3DTEXF_POINT;
       state[D3DSAMP_MIPFILTER] = D3DTEXF_NONE;
-      state[D3DSAMP_MIPMAPLODBIAS] = bit::cast<float>(0.0f);
+      state[D3DSAMP_MIPMAPLODBIAS] = bit::cast<DWORD>(0.0f);
       state[D3DSAMP_MAXMIPLEVEL] = 0;
       state[D3DSAMP_MAXANISOTROPY] = 1;
       state[D3DSAMP_SRGBTEXTURE] = 0;
