@@ -38,8 +38,12 @@ namespace dxvk::caps {
   constexpr uint32_t MaxStreams = 16;
   constexpr uint32_t MaxTextureBlendStages = 8;
   constexpr uint32_t MaxSimultaneousRenderTargets = D3D_MAX_SIMULTANEOUS_RENDERTARGETS;
+
   constexpr uint32_t MaxFloatConstants = 256;
   constexpr uint32_t MaxOtherConstants = 16;
+  constexpr uint32_t MaxFloatConstantsSoftware = 8192;
+  constexpr uint32_t MaxOtherConstantsSoftware = 2048;
+
   constexpr uint32_t InputRegisterCount = 16;
 
 }

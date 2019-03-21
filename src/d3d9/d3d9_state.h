@@ -26,9 +26,9 @@ namespace dxvk {
     using FloatVector = std::array<float, 4>;
     using IntVector = std::array<int, 4>;
 
-    std::array<FloatVector, caps::MaxFloatConstants> fConsts;
-    std::array<IntVector,   caps::MaxOtherConstants> iConsts;
-    std::array<int,         caps::MaxOtherConstants> bConsts;
+    std::array<FloatVector, caps::MaxFloatConstantsSoftware> fConsts;
+    std::array<IntVector,   caps::MaxOtherConstantsSoftware> iConsts;
+    std::array<int,         caps::MaxOtherConstantsSoftware> bConsts;
   };
 
   struct Direct3DState9 {

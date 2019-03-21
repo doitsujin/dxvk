@@ -1222,7 +1222,8 @@ namespace dxvk {
       pConstantData,
       Vector4fCount,
       m_state.psConsts.fConsts.data(),
-      caps::MaxFloatConstants);
+      caps::MaxFloatConstants,
+      caps::MaxFloatConstantsSoftware);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetVertexShaderConstantF(
@@ -1236,7 +1237,7 @@ namespace dxvk {
       pConstantData,
       Vector4fCount,
       m_state.psConsts.fConsts.data(),
-      caps::MaxFloatConstants);
+      caps::MaxFloatConstantsSoftware);
 
     return D3D_OK;
   }
@@ -1252,7 +1253,8 @@ namespace dxvk {
       pConstantData,
       Vector4iCount,
       m_state.psConsts.iConsts.data(),
-      caps::MaxOtherConstants);
+      caps::MaxOtherConstants,
+      caps::MaxOtherConstantsSoftware);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetVertexShaderConstantI(
@@ -1266,7 +1268,7 @@ namespace dxvk {
       pConstantData,
       Vector4iCount,
       m_state.psConsts.iConsts.data(),
-      caps::MaxOtherConstants);
+      caps::MaxOtherConstantsSoftware);
 
     return D3D_OK;
   }
@@ -1282,7 +1284,8 @@ namespace dxvk {
       pConstantData,
       BoolCount,
       m_state.psConsts.bConsts.data(),
-      caps::MaxOtherConstants);
+      caps::MaxOtherConstants,
+      caps::MaxOtherConstantsSoftware);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetVertexShaderConstantB(
@@ -1296,7 +1299,7 @@ namespace dxvk {
       pConstantData,
       BoolCount,
       m_state.psConsts.bConsts.data(),
-      caps::MaxOtherConstants);
+      caps::MaxOtherConstantsSoftware);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetStreamSource(
@@ -1443,7 +1446,8 @@ namespace dxvk {
       pConstantData,
       Vector4fCount,
       m_state.psConsts.fConsts.data(),
-      caps::MaxFloatConstants);
+      caps::MaxFloatConstants,
+      caps::MaxFloatConstantsSoftware);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetPixelShaderConstantF(
@@ -1457,7 +1461,7 @@ namespace dxvk {
       pConstantData,
       Vector4fCount,
       m_state.psConsts.fConsts.data(),
-      caps::MaxFloatConstants);
+      caps::MaxFloatConstantsSoftware);
 
     return D3D_OK;
   }
@@ -1473,7 +1477,8 @@ namespace dxvk {
       pConstantData,
       Vector4iCount,
       m_state.psConsts.iConsts.data(),
-      caps::MaxOtherConstants);
+      caps::MaxOtherConstants,
+      caps::MaxOtherConstantsSoftware);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetPixelShaderConstantI(
@@ -1487,7 +1492,7 @@ namespace dxvk {
       pConstantData,
       Vector4iCount,
       m_state.psConsts.iConsts.data(),
-      caps::MaxOtherConstants);
+      caps::MaxOtherConstantsSoftware);
 
     return D3D_OK;
   }
@@ -1503,7 +1508,8 @@ namespace dxvk {
       pConstantData,
       BoolCount,
       m_state.psConsts.bConsts.data(),
-      caps::MaxOtherConstants);
+      caps::MaxOtherConstants,
+      caps::MaxOtherConstantsSoftware);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetPixelShaderConstantB(
@@ -1517,7 +1523,7 @@ namespace dxvk {
       pConstantData,
       BoolCount,
       m_state.psConsts.bConsts.data(),
-      caps::MaxOtherConstants);
+      caps::MaxOtherConstantsSoftware);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::DrawRectPatch(

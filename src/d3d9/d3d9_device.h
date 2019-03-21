@@ -43,6 +43,7 @@ namespace dxvk {
   class Direct3DDevice9Ex final : public ComObject<IDirect3DDevice9Ex> {
     constexpr static uint32_t DefaultFrameLatency = 3;
     constexpr static uint32_t MaxFrameLatency = 20;
+
   public:
 
     Direct3DDevice9Ex(
@@ -753,11 +754,10 @@ namespace dxvk {
       const void*     pConstantData,
             UINT      Count,
             RegType*  pDestination,
-            UINT      MaxRegCount) {
-      Count = UINT(
-        std::max<INT>(
-          std::min<INT>(Count + StartRegister, MaxRegCount) - StartRegister,
-          0));
+            UINT      MaxRegCountHardware,
+            UINT      MaxRegCountSoftware) {
+      if (StartRegister + Count >= MaxRegCountSoftware)
+        return D3DERR_INVALIDCALL;
 
       if (Count == 0)
         return D3D_OK;
@@ -770,6 +770,13 @@ namespace dxvk {
         pConstantData,
         sizeof(RegType));
 
+      Count = UINT(
+        std::max<INT>(
+          std::min<INT>(Count + StartRegister, MaxRegCountHardware) - StartRegister,
+          0));
+
+      // TODO: Constant buffer crap here with our current slice.
+
       return D3D_OK;
     }
 
@@ -779,11 +786,9 @@ namespace dxvk {
             void*    pConstantData,
             UINT     Count,
       const RegType* pSource,
-            UINT     MaxRegCount) {
-      Count = UINT(
-        std::max<INT>(
-          std::min<INT>(Count + StartRegister, MaxRegCount) - StartRegister,
-          0));
+            UINT     MaxRegCountSoftware) {
+      if (StartRegister + Count >= MaxRegCountSoftware)
+        return D3DERR_INVALIDCALL;
 
       if (Count == 0)
         return D3D_OK;
