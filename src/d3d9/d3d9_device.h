@@ -44,6 +44,8 @@ namespace dxvk {
     constexpr static uint32_t DefaultFrameLatency = 3;
     constexpr static uint32_t MaxFrameLatency = 20;
 
+    constexpr static uint32_t ConstantBufferSize = 256 + 16 + sizeof(uint32_t); // Bools are a bitfield
+    constexpr static uint32_t ConstantSetDuplicates = 14; // Magic number for now. May change later
   public:
 
     Direct3DDevice9Ex(
@@ -716,6 +718,9 @@ namespace dxvk {
 
     std::vector<DxvkVertexAttribute> m_workingAttributes;
     std::vector<DxvkVertexBinding>   m_workingBindings;
+
+    Rc<Direct3DCommonBuffer9> m_vsConst;
+    Rc<Direct3DCommonBuffer9> m_psConst;
 
     std::unordered_map<
       D3D9SamplerKey,

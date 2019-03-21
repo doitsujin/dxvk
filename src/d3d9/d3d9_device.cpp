@@ -63,6 +63,17 @@ namespace dxvk {
 
     if (FAILED(hr))
       throw DxvkError("Direct3DDevice9Ex: device initial reset failed.");
+
+    D3D9_BUFFER_DESC constDesc;
+    constDesc.Format = D3D9Format::R8G8B8;
+    constDesc.FVF    = 0;
+    constDesc.Pool   = D3DPOOL_DEFAULT;
+    constDesc.Size   = ConstantBufferSize * ConstantSetDuplicates;
+    constDesc.Type   = D3DRTYPE_FORCE_DWORD;
+    constDesc.Usage  = D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY;
+
+    m_vsConst = new Direct3DCommonBuffer9(this, &constDesc);
+    m_psConst = new Direct3DCommonBuffer9(this, &constDesc);
   }
 
   Direct3DDevice9Ex::~Direct3DDevice9Ex() {
