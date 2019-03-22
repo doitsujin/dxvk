@@ -26,10 +26,10 @@ namespace dxvk {
     imageInfo.numLayers = GetLayerCount();
     imageInfo.mipLevels = std::max(1u, m_desc.MipLevels);
     imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT
-      | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+                    | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     imageInfo.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
     imageInfo.access = VK_ACCESS_TRANSFER_READ_BIT
-      | VK_ACCESS_TRANSFER_WRITE_BIT;
+                     | VK_ACCESS_TRANSFER_WRITE_BIT;
     imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.layout = VK_IMAGE_LAYOUT_GENERAL;
 
@@ -49,35 +49,29 @@ namespace dxvk {
       imageInfo.viewFormats = reinterpret_cast<VkFormat*>(&formatInfo); // Starts with VkFormat, VkFormat
     }
 
-    // Some games will try to create an SRGB image with the UAV
-    // bind flag set. This works on Windows, but no UAVs can be
-    // created for the image in practice.
-    bool noUav = formatProperties->flags.test(DxvkFormatFlag::ColorSpaceSrgb)
-      && !CheckFormatFeatureSupport(formatInfo.Format, VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT);
-
     // Adjust image flags based on the corresponding D3D flags
-    imageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+    imageInfo.usage  |= VK_IMAGE_USAGE_SAMPLED_BIT;
     imageInfo.stages |= m_device->GetEnabledShaderStages();
     imageInfo.access |= VK_ACCESS_SHADER_READ_BIT;
 
     if (m_desc.Usage & D3DUSAGE_RENDERTARGET) {
-      imageInfo.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+      imageInfo.usage  |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
       imageInfo.stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
       imageInfo.access |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
-        | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                       | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
     }
 
     if (m_desc.Usage & D3DUSAGE_DEPTHSTENCIL) {
-      imageInfo.usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+      imageInfo.usage  |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
       imageInfo.stages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
-        | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+                       |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
       imageInfo.access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT
-        | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                       | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
     }
 
     // Access pattern for meta-resolve operations
     if (imageInfo.sampleCount != VK_SAMPLE_COUNT_1_BIT && isColorFormat) {
-      imageInfo.usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+      imageInfo.usage  |= VK_IMAGE_USAGE_SAMPLED_BIT;
       imageInfo.stages |= VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
       imageInfo.access |= VK_ACCESS_SHADER_READ_BIT;
     }
@@ -98,7 +92,7 @@ namespace dxvk {
     // the image can be accessed by the host.
     if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_DIRECT) {
       imageInfo.stages |= VK_PIPELINE_STAGE_HOST_BIT;
-      imageInfo.tiling = VK_IMAGE_TILING_LINEAR;
+      imageInfo.tiling  = VK_IMAGE_TILING_LINEAR;
       imageInfo.access |= VK_ACCESS_HOST_WRITE_BIT;
 
       if (!(m_desc.Usage & D3DUSAGE_WRITEONLY))
