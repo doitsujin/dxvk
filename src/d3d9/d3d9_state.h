@@ -22,14 +22,17 @@ namespace dxvk {
     UINT stride;
   };
 
+  // We make an assumption later based on the packing of this struct for copying.
+  #pragma pack(push, 1)
   struct D3D9ShaderConstants {
     using FloatVector = std::array<float, 4>;
-    using IntVector = std::array<int, 4>;
+    using IntVector   = std::array<int, 4>;
 
     std::array<FloatVector, caps::MaxFloatConstantsSoftware> fConsts;
     std::array<IntVector,   caps::MaxOtherConstantsSoftware> iConsts;
     std::array<int,         caps::MaxOtherConstantsSoftware> bConsts;
   };
+  #pragma pack(pop)
 
   struct Direct3DState9 {
     Direct3DState9() {

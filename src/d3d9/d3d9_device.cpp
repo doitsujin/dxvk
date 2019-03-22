@@ -55,25 +55,18 @@ namespace dxvk {
 
     EmitCs([
       cDevice = m_device
-    ] (DxvkContext * ctx) {
-        ctx->beginRecording(cDevice->createCommandList());
+    ] (DxvkContext* ctx) {
+      ctx->beginRecording(cDevice->createCommandList());
     });
+
+    SetupConstantBuffers();
 
     HRESULT hr = this->Reset(presentParams);
 
     if (FAILED(hr))
       throw DxvkError("Direct3DDevice9Ex: device initial reset failed.");
 
-    D3D9_BUFFER_DESC constDesc;
-    constDesc.Format = D3D9Format::R8G8B8;
-    constDesc.FVF    = 0;
-    constDesc.Pool   = D3DPOOL_DEFAULT;
-    constDesc.Size   = ConstantBufferSize * ConstantSetDuplicates;
-    constDesc.Type   = D3DRTYPE_FORCE_DWORD;
-    constDesc.Usage  = D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY;
-
-    m_vsConst = new Direct3DCommonBuffer9(this, &constDesc);
-    m_psConst = new Direct3DCommonBuffer9(this, &constDesc);
+    UpdateConstants();
   }
 
   Direct3DDevice9Ex::~Direct3DDevice9Ex() {
@@ -1229,6 +1222,7 @@ namespace dxvk {
     auto lock = LockDevice();
 
     return SetShaderConstants(
+      DxsoProgramType::VertexShader,
       StartRegister,
       pConstantData,
       Vector4fCount,
@@ -1260,6 +1254,7 @@ namespace dxvk {
     auto lock = LockDevice();
 
     return SetShaderConstants(
+      DxsoProgramType::VertexShader,
       StartRegister,
       pConstantData,
       Vector4iCount,
@@ -1291,6 +1286,7 @@ namespace dxvk {
     auto lock = LockDevice();
 
     return SetShaderConstants(
+      DxsoProgramType::VertexShader,
       StartRegister,
       pConstantData,
       BoolCount,
@@ -1453,6 +1449,7 @@ namespace dxvk {
     auto lock = LockDevice();
 
     return SetShaderConstants(
+      DxsoProgramType::PixelShader,
       StartRegister,
       pConstantData,
       Vector4fCount,
@@ -1484,6 +1481,7 @@ namespace dxvk {
     auto lock = LockDevice();
 
     return SetShaderConstants(
+      DxsoProgramType::PixelShader,
       StartRegister,
       pConstantData,
       Vector4iCount,
@@ -1515,6 +1513,7 @@ namespace dxvk {
     auto lock = LockDevice();
 
     return SetShaderConstants(
+      DxsoProgramType::PixelShader,
       StartRegister,
       pConstantData,
       BoolCount,
@@ -2456,6 +2455,87 @@ namespace dxvk {
     m_csThread.synchronize();
   }
 
+  void Direct3DDevice9Ex::SetupConstantBuffers() {
+    D3D9_BUFFER_DESC constDesc;
+    constDesc.Format = D3D9Format::R8G8B8;
+    constDesc.FVF = 0;
+    constDesc.Pool = D3DPOOL_DEFAULT;
+    constDesc.Size = D3D9ConstantSets::BufferSize;
+    constDesc.Type = D3DRTYPE_FORCE_DWORD;
+    constDesc.Usage = D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY;
+
+    m_vsConst.buffer = new Direct3DCommonBuffer9(this, &constDesc);
+    m_psConst.buffer = new Direct3DCommonBuffer9(this, &constDesc);
+  }
+
+  void Direct3DDevice9Ex::BindConstants(DxsoProgramType ShaderStage) {
+    D3D9ConstantSets& constSet =
+      ShaderStage == DxsoProgramType::VertexShader ?
+        m_vsConst
+      : m_psConst;
+
+    const uint32_t offset = D3D9ConstantSets::SetSize * constSet.setIndex;
+
+    const uint32_t slotId = computeResourceSlotId(
+      ShaderStage, DxsoBindingType::ConstantBuffer,
+      0);
+
+    EmitCs([
+      cSlotId      = slotId,
+      cBufferSlice = constSet.buffer != nullptr
+        ? constSet.buffer->GetBufferSlice(
+            D3D9_COMMON_BUFFER_TYPE_REAL,
+            offset,
+            D3D9ConstantSets::SetSize)
+        : DxvkBufferSlice()
+    ] (DxvkContext* ctx) {
+      ctx->bindResourceBuffer(cSlotId, cBufferSlice);
+    });
+  }
+
+  bool Direct3DDevice9Ex::UploadConstants(DxsoProgramType ShaderStage) {
+    D3D9ConstantSets& constSet =
+      ShaderStage == DxsoProgramType::VertexShader ?
+        m_vsConst
+      : m_psConst;
+
+    if (!constSet.dirty)
+      return false;
+
+    constSet.dirty = false;
+
+    const void* constantData =
+      ShaderStage == DxsoProgramType::VertexShader ?
+      &m_state.vsConsts
+    : &m_state.psConsts;
+
+    DWORD flags = D3DLOCK_NOOVERWRITE;
+
+    if (++constSet.setIndex >= D3D9ConstantSets::SetCount) {
+      constSet.setIndex = 0;
+      flags = D3DLOCK_DISCARD;
+    }
+
+    const uint32_t offset = D3D9ConstantSets::SetSize * constSet.setIndex;
+
+    void* bufferData = nullptr;
+    HRESULT result = LockBuffer(
+      constSet.buffer,
+      offset,
+      D3D9ConstantSets::SetSize,
+      &bufferData,
+      flags);
+
+    if (FAILED(result))
+      Logger::warn("Direct3DDevice9Ex::UploadConstants: failed to lock constant buffer");
+
+    std::memcpy(bufferData, constantData, D3D9ConstantSets::SetSize);
+
+    UnlockBuffer(constSet.buffer);
+
+    return true;
+  }
+
   void Direct3DDevice9Ex::Flush() {
     auto lock = LockDevice();
 
@@ -2735,6 +2815,8 @@ namespace dxvk {
     
     if (m_flags.test(D3D9DeviceFlag::DirtyDepthStencilState))
       BindDepthStencilState();
+
+    UpdateConstants();
   }
 
   void Direct3DDevice9Ex::BindShader(

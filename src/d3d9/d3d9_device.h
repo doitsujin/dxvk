@@ -7,6 +7,7 @@
 #include "d3d9_cursor.h"
 #include "d3d9_format.h"
 #include "d3d9_multithread.h"
+#include "d3d9_constant_set.h"
 
 #include "d3d9_state.h"
 
@@ -43,9 +44,6 @@ namespace dxvk {
   class Direct3DDevice9Ex final : public ComObject<IDirect3DDevice9Ex> {
     constexpr static uint32_t DefaultFrameLatency = 3;
     constexpr static uint32_t MaxFrameLatency = 20;
-
-    constexpr static uint32_t ConstantBufferSize = 256 + 16 + sizeof(uint32_t); // Bools are a bitfield
-    constexpr static uint32_t ConstantSetDuplicates = 14; // Magic number for now. May change later
   public:
 
     Direct3DDevice9Ex(
@@ -612,6 +610,8 @@ namespace dxvk {
     HRESULT UnlockBuffer(
             Direct3DCommonBuffer9* pResource);
 
+    void SetupConstantBuffers();
+
     void SynchronizeCsThread();
 
     void Flush();
@@ -628,7 +628,19 @@ namespace dxvk {
 
     void BindDepthStencilRefrence();
 
+    void BindConstants(DxsoProgramType ShaderStage);
+
     void BindRasterizerState();
+
+    bool UploadConstants(DxsoProgramType ShaderStage);
+
+    inline void UpdateConstants() {
+      if (UploadConstants(DxsoProgramType::VertexShader))
+        BindConstants(DxsoProgramType::VertexShader);
+
+      if (UploadConstants(DxsoProgramType::PixelShader))
+        BindConstants(DxsoProgramType::PixelShader);
+    }
 
     Rc<DxvkSampler> CreateSampler(DWORD Sampler);
 
@@ -719,8 +731,8 @@ namespace dxvk {
     std::vector<DxvkVertexAttribute> m_workingAttributes;
     std::vector<DxvkVertexBinding>   m_workingBindings;
 
-    Rc<Direct3DCommonBuffer9> m_vsConst;
-    Rc<Direct3DCommonBuffer9> m_psConst;
+    D3D9ConstantSets m_vsConst;
+    D3D9ConstantSets m_psConst;
 
     std::unordered_map<
       D3D9SamplerKey,
@@ -755,12 +767,13 @@ namespace dxvk {
 
     template <typename RegType>
     HRESULT SetShaderConstants(
-            UINT      StartRegister,
-      const void*     pConstantData,
-            UINT      Count,
-            RegType*  pDestination,
-            UINT      MaxRegCountHardware,
-            UINT      MaxRegCountSoftware) {
+            DxsoProgramType ShaderStage,
+            UINT            StartRegister,
+      const void*           pConstantData,
+            UINT            Count,
+            RegType*        pDestination,
+            UINT            MaxRegCountHardware,
+            UINT            MaxRegCountSoftware) {
       if (StartRegister + Count >= MaxRegCountSoftware)
         return D3DERR_INVALIDCALL;
 
@@ -775,12 +788,12 @@ namespace dxvk {
         pConstantData,
         sizeof(RegType));
 
-      Count = UINT(
-        std::max<INT>(
-          std::min<INT>(Count + StartRegister, MaxRegCountHardware) - StartRegister,
-          0));
+      D3D9ConstantSets& constSet =
+        ShaderStage == DxsoProgramType::VertexShader ?
+          m_vsConst
+        : m_psConst;
 
-      // TODO: Constant buffer crap here with our current slice.
+      constSet.dirty = true;
 
       return D3D_OK;
     }
