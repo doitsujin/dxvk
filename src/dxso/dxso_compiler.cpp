@@ -67,7 +67,7 @@ namespace dxvk {
       return this->emitVectorAlu(ctx);
 
     default:
-      Logger::warn(str::format("DxsoCompiler::processInstruction: unhandled opcode: {0}", opcode));
+      Logger::warn(str::format("DxsoCompiler::processInstruction: unhandled opcode: ", opcode));
       break;
     }
   }
@@ -463,7 +463,7 @@ namespace dxvk {
         result = m_module.opFAdd(typeId, result, emitRegisterLoad(src[2]));
         break;
       default:
-        Logger::warn(str::format("DxsoCompiler::emitVectorAlu: unimplemented op {0}", opcode));
+        Logger::warn(str::format("DxsoCompiler::emitVectorAlu: unimplemented op ", opcode));
         return;
     }
 

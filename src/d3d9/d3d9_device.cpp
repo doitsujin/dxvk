@@ -826,7 +826,7 @@ namespace dxvk {
           break;
 
         default:
-          Logger::warn(str::format("Direct3DDevice9Ex::SetRenderState: Unhandled render state {0}", State));
+          Logger::warn(str::format("Direct3DDevice9Ex::SetRenderState: Unhandled render state ", State));
           break;
       }
     }
