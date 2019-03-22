@@ -2061,6 +2061,9 @@ namespace dxvk {
     enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor = supported.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor;
     enabled.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor = supported.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor;
 
+    // DXVK Meta
+    enabled.core.features.shaderStorageImageWriteWithoutFormat = VK_TRUE;
+
     // SM1 level hardware
     enabled.core.features.depthClamp = VK_TRUE;
     enabled.core.features.depthBiasClamp = VK_TRUE;
