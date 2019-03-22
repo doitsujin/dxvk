@@ -210,15 +210,10 @@ namespace dxvk {
     void CreateRenderTargetView();
 
     VkImageLayout GetDepthLayout() const {
-      if (m_depthStencilView->imageInfo().tiling == VK_IMAGE_TILING_OPTIMAL) {
-        if (m_desc.Lockable)
-          return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-        else
-          return VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
-      }
-      else {
+      if (m_depthStencilView->imageInfo().tiling == VK_IMAGE_TILING_OPTIMAL)
+        return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+      else
         return VK_IMAGE_LAYOUT_GENERAL;
-      }
     }
 
     VkImageLayout GetRenderTargetLayout(bool srgb) const {
