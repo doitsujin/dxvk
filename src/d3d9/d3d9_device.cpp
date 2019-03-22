@@ -27,7 +27,6 @@ namespace dxvk {
     D3DDEVTYPE deviceType,
     HWND window,
     DWORD flags,
-    D3DPRESENT_PARAMETERS* presentParams,
     D3DDISPLAYMODEEX* displayMode)
     : m_extended{ extended }
     , m_parent{ parent }
@@ -60,13 +59,6 @@ namespace dxvk {
     });
 
     SetupConstantBuffers();
-
-    HRESULT hr = this->Reset(presentParams);
-
-    if (FAILED(hr))
-      throw DxvkError("Direct3DDevice9Ex: device initial reset failed.");
-
-    UpdateConstants();
   }
 
   Direct3DDevice9Ex::~Direct3DDevice9Ex() {

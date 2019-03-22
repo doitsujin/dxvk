@@ -381,8 +381,13 @@ namespace dxvk {
       deviceType,
       window,
       flags,
-      presentParams,
       displayMode });
+
+    HRESULT hr = (*outDevice)->Reset(presentParams);
+
+    if (FAILED(hr))
+      throw DxvkError("Direct3D9Ex::createDeviceInternal: device initial reset failed.");
+
 
     return D3D_OK;
   }

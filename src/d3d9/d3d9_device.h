@@ -55,7 +55,6 @@ namespace dxvk {
       D3DDEVTYPE deviceType,
       HWND window,
       DWORD flags,
-      D3DPRESENT_PARAMETERS* presentParams,
       D3DDISPLAYMODEEX* displayMode);
 
     ~Direct3DDevice9Ex();
