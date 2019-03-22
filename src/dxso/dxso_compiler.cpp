@@ -388,10 +388,17 @@ namespace dxvk {
     return m_module.opVectorShuffle(typeId, dst, src, 4, components.data());
   }
 
+  uint32_t DxsoCompiler::emitScalarReplicant(uint32_t vectorTypeId, uint32_t varId) {
+    std::array<uint32_t, 4> replicantIndices = { varId, varId, varId, varId };
+    return m_module.opCompositeConstruct(vectorTypeId, replicantIndices.size(), replicantIndices.data());
+  }
+
   void DxsoCompiler::emitVectorAlu(const DxsoInstructionContext& ctx) {
     const auto& dst = ctx.dst;
     const auto& src = ctx.src;
+
     const uint32_t typeId = spvType(dst);
+    const uint32_t scalarTypeId = spvTypeScalar(dst);
 
     const auto opcode = ctx.instruction.opcode();
     uint32_t result;
@@ -424,10 +431,12 @@ namespace dxvk {
         result = m_module.opInverseSqrt(typeId, emitRegisterLoad(src[0]));
         break;
       case DxsoOpcode::Dp3:
-        result = m_module.opDot(typeId, emitRegisterLoad(src[0], 3), emitRegisterLoad(src[1], 3));
+        result = m_module.opDot(scalarTypeId, emitRegisterLoad(src[0], 3), emitRegisterLoad(src[1], 3));
+        result = this->emitScalarReplicant(typeId, result);
         break;
       case DxsoOpcode::Dp4:
-        result = m_module.opDot(typeId, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
+        result = m_module.opDot(scalarTypeId, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
+        result = this->emitScalarReplicant(typeId, result);
         break;
       case DxsoOpcode::Min:
         result = m_module.opFMin(typeId, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
@@ -459,7 +468,8 @@ namespace dxvk {
         result = m_module.opFract(typeId, emitRegisterLoad(src[0]));
         break;
       case DxsoOpcode::Dp2Add:
-        result = m_module.opDot(typeId, emitRegisterLoad(src[0], 2), emitRegisterLoad(src[1], 2));
+        result = m_module.opDot(scalarTypeId, emitRegisterLoad(src[0], 2), emitRegisterLoad(src[1], 2));
+        result = this->emitScalarReplicant(typeId, result);
         result = m_module.opFAdd(typeId, result, emitRegisterLoad(src[2]));
         break;
       default:
@@ -673,7 +683,7 @@ namespace dxvk {
     return m_regs[m_regs.size() - 1];
   }
 
-  uint32_t DxsoCompiler::getTypeId(DxsoRegisterType regType) {
+  uint32_t DxsoCompiler::getTypeId(DxsoRegisterType regType, bool vector) {
     switch (regType) {
     case DxsoRegisterType::Temp:
     case DxsoRegisterType::Input:
@@ -692,12 +702,12 @@ namespace dxvk {
     case DxsoRegisterType::TempFloat16:
     case DxsoRegisterType::MiscType: {
       uint32_t floatType = m_module.defFloatType(32);
-      return m_module.defVectorType(floatType, 4);
+      return vector ? m_module.defVectorType(floatType, 4) : floatType;
     }
 
     case DxsoRegisterType::ConstInt: {
       uint32_t intType = m_module.defIntType(32, true);
-      return m_module.defVectorType(intType, 4);
+      return vector ? m_module.defVectorType(intType, 4) : intType;
     }
 
     case DxsoRegisterType::ConstBool:
@@ -707,7 +717,7 @@ namespace dxvk {
 
     case DxsoRegisterType::Predicate: {
       uint32_t boolType = m_module.defBoolType();
-      return m_module.defVectorType(boolType, 4);
+      return vector ? m_module.defVectorType(boolType, 4) : boolType;
     }
 
     case DxsoRegisterType::Label:

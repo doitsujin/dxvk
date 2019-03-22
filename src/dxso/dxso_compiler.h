@@ -153,6 +153,8 @@ namespace dxvk {
 
     uint32_t emitWriteMask(uint32_t typeId, uint32_t dst, uint32_t src, DxsoRegMask writeMask);
 
+    uint32_t emitScalarReplicant(uint32_t typeId, uint32_t varId);
+
     void emitVectorAlu(const DxsoInstructionContext& ctx);
 
     void emitDcl(const DxsoInstructionContext& ctx);
@@ -172,9 +174,12 @@ namespace dxvk {
     }
     DxsoSpirvRegister& mapSpirvRegister(const DxsoRegister& reg, const DxsoDeclaration* optionalPremadeDecl);
 
-    uint32_t getTypeId(DxsoRegisterType regType);
+    uint32_t getTypeId(DxsoRegisterType regType, bool vector = true);
     uint32_t spvType(const DxsoRegister& reg) {
       return getTypeId(reg.registerId().type());
+    }
+    uint32_t spvTypeScalar(const DxsoRegister& reg) {
+      return getTypeId(reg.registerId().type(), false);
     }
     uint32_t getPointerTypeId(DxsoRegisterType regType, spv::StorageClass storageClass) {
       return m_module.defPointerType(
