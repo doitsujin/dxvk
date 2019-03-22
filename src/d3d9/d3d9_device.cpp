@@ -1186,7 +1186,7 @@ namespace dxvk {
 
     BindShader(
       DxsoProgramType::VertexShader,
-      shader->GetCommonShader());
+      GetCommonShader(shader));
 
     BindInputLayout();
 
@@ -1416,7 +1416,7 @@ namespace dxvk {
 
     BindShader(
       DxsoProgramType::PixelShader,
-      shader->GetCommonShader());
+      GetCommonShader(shader));
 
     return D3D_OK;
   }
@@ -2816,7 +2816,9 @@ namespace dxvk {
   const D3D9CommonShader*                 pShaderModule) {
     EmitCs([
       cStage  = GetShaderStage(ShaderStage),
-      cShader = pShaderModule->GetShader()
+      cShader = pShaderModule != nullptr
+        ? pShaderModule->GetShader()
+        : nullptr
     ] (DxvkContext * ctx) {
       ctx->bindShader(cStage, cShader);
     });

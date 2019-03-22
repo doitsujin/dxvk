@@ -747,6 +747,11 @@ namespace dxvk {
       return DxvkCsChunkRef(chunk, &m_csChunkPool);
     }
 
+    template<typename T>
+    const D3D9CommonShader* GetCommonShader(T* pShader) const {
+      return pShader != nullptr ? pShader->GetCommonShader() : nullptr;
+    }
+
     template<typename Cmd>
     void EmitCs(Cmd&& command) {
       if (!m_csChunk->push(command)) {
