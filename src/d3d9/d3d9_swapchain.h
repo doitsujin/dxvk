@@ -61,6 +61,8 @@ namespace dxvk {
 
   private:
 
+    D3D9PresenterDesc CalcPresenterDesc(D3DPRESENT_PARAMETERS* parameters);
+
     D3D9Presenter& GetOrMakePresenter(HWND window);
 
     Rc<DxvkDevice> m_device;

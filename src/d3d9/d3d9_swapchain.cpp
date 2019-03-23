@@ -174,14 +174,7 @@ namespace dxvk {
     if (originalWindow == parameters->hDeviceWindow) {
       auto& presenter = GetOrMakePresenter(window);
 
-      D3D9PresenterDesc desc;
-      desc.bufferCount = parameters->BackBufferCount;
-      desc.width = parameters->BackBufferWidth;
-      desc.height = parameters->BackBufferHeight;
-      desc.format = fixupFormat(parameters->BackBufferFormat);
-      desc.presentInterval = parameters->PresentationInterval;
-      desc.multisample = parameters->MultiSampleType;
-
+      D3D9PresenterDesc desc = CalcPresenterDesc(parameters);
       presenter.recreateSwapChain(&desc);
       presenter.createBackBuffer();
     }
@@ -240,24 +233,33 @@ namespace dxvk {
       *pRamp = m_gammaRamp;
   }
 
+  D3D9PresenterDesc Direct3DSwapChain9Ex::CalcPresenterDesc(D3DPRESENT_PARAMETERS* parameters) {
+    auto options = m_parent->GetOptions();
+
+    D3D9PresenterDesc desc;
+    desc.bufferCount     = m_presentParams.BackBufferCount;
+    desc.width           = m_presentParams.BackBufferWidth;
+    desc.height          = m_presentParams.BackBufferHeight;
+    desc.format          = fixupFormat(m_presentParams.BackBufferFormat);
+    desc.presentInterval = m_presentParams.PresentationInterval;
+    desc.multisample     = m_presentParams.MultiSampleType;
+
+    if (desc.presentInterval == D3DPRESENT_INTERVAL_IMMEDIATE)
+      desc.presentInterval = 0;
+
+    if (options->presentInterval >= 0)
+      desc.presentInterval = options->presentInterval;
+
+    return desc;
+  }
+
   D3D9Presenter& Direct3DSwapChain9Ex::GetOrMakePresenter(HWND window) {
     for (const auto& presenter : m_presenters) {
       if (presenter->window() == window)
         return *presenter;
     }
 
-    auto options = m_parent->GetOptions();
-
-    D3D9PresenterDesc desc;
-    desc.bufferCount = m_presentParams.BackBufferCount;
-    desc.width = m_presentParams.BackBufferWidth;
-    desc.height = m_presentParams.BackBufferHeight;
-    desc.format = fixupFormat(m_presentParams.BackBufferFormat);
-    desc.presentInterval = m_presentParams.PresentationInterval;
-    desc.multisample = m_presentParams.MultiSampleType;
-
-    if (options->presentInterval >= 0)
-      desc.presentInterval = options->presentInterval;
+    D3D9PresenterDesc desc = CalcPresenterDesc(&m_presentParams);
 
     auto* presenter = new D3D9Presenter(
       m_parent,
