@@ -59,7 +59,7 @@ namespace dxvk {
     RECT scissorRect;
 
     std::array<DWORD, D3DRS_BLENDOPALPHA + 1> renderStates;
-    std::array<std::array<DWORD, D3DSAMP_DMAPOFFSET + 1>, 20> samplerStates;
+    std::array<std::array<DWORD, D3DSAMP_DMAPOFFSET + 1>, 21> samplerStates;
 
     D3D9ShaderConstants vsConsts;
     D3D9ShaderConstants psConsts;

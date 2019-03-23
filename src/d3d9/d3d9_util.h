@@ -9,21 +9,21 @@
 
 namespace dxvk {
 
-  template <typename T>
-  inline void forEachSampler(T func) {
-    for (uint32_t i = 0; i <= D3DVERTEXTEXTURESAMPLER3; i = (i != 15) ? (i + 1) : D3DVERTEXTEXTURESAMPLER0)
-      func(i);
-  }
-
   inline bool InvalidSampler(DWORD Sampler) {
-    return ((Sampler >= 16 && Sampler <= D3DDMAPSAMPLER) || Sampler > D3DVERTEXTEXTURESAMPLER3);
+    if (Sampler > 15 && Sampler < D3DDMAPSAMPLER)
+      return false;
+
+    if (Sampler > D3DVERTEXTEXTURESAMPLER3)
+      return false;
+    
+    return true;
   }
 
   inline void RemapSampler(DWORD* Sampler) {
     DWORD& sampler = *Sampler;
 
-    if (sampler >= D3DVERTEXTEXTURESAMPLER0)
-      sampler = 16 + (sampler - D3DVERTEXTEXTURESAMPLER0);
+    if (sampler >= D3DDMAPSAMPLER)
+      sampler = 16 + (sampler - D3DDMAPSAMPLER);
 
     *Sampler = sampler;
   }
