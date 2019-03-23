@@ -326,9 +326,11 @@ namespace dxvk {
     
     DxvkBufferSlice AllocUavCounterSlice() { return m_uavCounters->AllocSlice(); }
     DxvkBufferSlice AllocXfbCounterSlice() { return m_xfbCounters->AllocSlice(); }
+    DxvkBufferSlice AllocPredicateSlice () { return m_predicates ->AllocSlice(); }
     
     void FreeUavCounterSlice(const DxvkBufferSlice& Slice) { m_uavCounters->FreeSlice(Slice); }
     void FreeXfbCounterSlice(const DxvkBufferSlice& Slice) { m_xfbCounters->FreeSlice(Slice); }
+    void FreePredicateSlice (const DxvkBufferSlice& Slice) { m_predicates ->FreeSlice(Slice); }
     
     static bool CheckFeatureLevelSupport(
       const Rc<DxvkAdapter>&  adapter,
@@ -360,6 +362,7 @@ namespace dxvk {
 
     Rc<D3D11CounterBuffer>          m_uavCounters;
     Rc<D3D11CounterBuffer>          m_xfbCounters;
+    Rc<D3D11CounterBuffer>          m_predicates;
     
     D3D11StateObjectSet<D3D11BlendState>        m_bsStateObjects;
     D3D11StateObjectSet<D3D11DepthStencilState> m_dsStateObjects;
@@ -369,6 +372,7 @@ namespace dxvk {
     
     Rc<D3D11CounterBuffer> CreateUAVCounterBuffer();
     Rc<D3D11CounterBuffer> CreateXFBCounterBuffer();
+    Rc<D3D11CounterBuffer> CreatePredicateBuffer();
 
     HRESULT CreateShaderModule(
             D3D11CommonShader*      pShaderModule,

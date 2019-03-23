@@ -6,7 +6,16 @@ namespace dxvk {
   D3D11Query::D3D11Query(
           D3D11Device*      device,
     const D3D11_QUERY_DESC& desc)
-  : m_device(device), m_desc(desc),
+  : D3D11Query(device, desc, DxvkBufferSlice()) {
+    
+  }
+
+
+  D3D11Query::D3D11Query(
+          D3D11Device*      device,
+    const D3D11_QUERY_DESC& desc,
+    const DxvkBufferSlice&  predicate)
+  : m_device(device), m_desc(desc), m_predicate(predicate),
     m_d3d10(this, device->GetD3D10Interface()) {
     Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
 
@@ -75,7 +84,8 @@ namespace dxvk {
   
   
   D3D11Query::~D3D11Query() {
-    
+    if (m_predicate.defined())
+      m_device->FreePredicateSlice(m_predicate);
   }
   
     
@@ -198,6 +208,9 @@ namespace dxvk {
       default:
         ctx->endQuery(m_query);
     }
+
+    if (m_predicate.defined())
+      ctx->writePredicate(m_predicate, m_query);
   }
   
   
