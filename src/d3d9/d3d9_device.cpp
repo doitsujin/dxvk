@@ -1218,7 +1218,7 @@ namespace dxvk {
       StartRegister,
       pConstantData,
       Vector4fCount,
-      m_state.psConsts.fConsts.data(),
+      m_state.vsConsts.fConsts.data(),
       caps::MaxFloatConstants,
       caps::MaxFloatConstantsSoftware);
   }
@@ -1233,7 +1233,7 @@ namespace dxvk {
       StartRegister,
       pConstantData,
       Vector4fCount,
-      m_state.psConsts.fConsts.data(),
+      m_state.vsConsts.fConsts.data(),
       caps::MaxFloatConstantsSoftware);
 
     return D3D_OK;
@@ -1250,7 +1250,7 @@ namespace dxvk {
       StartRegister,
       pConstantData,
       Vector4iCount,
-      m_state.psConsts.iConsts.data(),
+      m_state.vsConsts.iConsts.data(),
       caps::MaxOtherConstants,
       caps::MaxOtherConstantsSoftware);
   }
@@ -1265,7 +1265,7 @@ namespace dxvk {
       StartRegister,
       pConstantData,
       Vector4iCount,
-      m_state.psConsts.iConsts.data(),
+      m_state.vsConsts.iConsts.data(),
       caps::MaxOtherConstantsSoftware);
 
     return D3D_OK;
@@ -1282,7 +1282,7 @@ namespace dxvk {
       StartRegister,
       pConstantData,
       BoolCount,
-      m_state.psConsts.bConsts.data(),
+      m_state.vsConsts.bConsts.data(),
       caps::MaxOtherConstants,
       caps::MaxOtherConstantsSoftware);
   }
@@ -1297,7 +1297,7 @@ namespace dxvk {
       StartRegister,
       pConstantData,
       BoolCount,
-      m_state.psConsts.bConsts.data(),
+      m_state.vsConsts.bConsts.data(),
       caps::MaxOtherConstantsSoftware);
   }
 
