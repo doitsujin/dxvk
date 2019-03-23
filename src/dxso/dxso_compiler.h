@@ -134,6 +134,8 @@ namespace dxvk {
 
     void emitOutputDepthClamp();
 
+    void emitDclConstantBuffer();
+
     void emitFunctionBegin(
         uint32_t                entryPoint,
         uint32_t                returnType,

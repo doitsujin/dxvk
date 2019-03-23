@@ -170,7 +170,15 @@ namespace dxvk {
     m_module.enableCapability(spv::CapabilityShader);
     m_module.enableCapability(spv::CapabilityImageQuery);
 
-    // Uniform buffer
+    this->emitDclConstantBuffer();
+
+    if (m_programInfo.type() == DxsoProgramType::VertexShader)
+      this->emitVsInit();
+    else
+      this->emitPsInit();
+  }
+
+  void DxsoCompiler::emitDclConstantBuffer() {
     const uint32_t arrayType = m_module.defArrayTypeUnique(
       getTypeId(DxsoRegisterType::Temp),
       m_module.constu32(D3D9ConstantSets::SetSize / sizeof(uint32_t)));
@@ -199,11 +207,6 @@ namespace dxvk {
     resource.view   = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
     resource.access = VK_ACCESS_UNIFORM_READ_BIT;
     m_resourceSlots.push_back(resource);
-
-    if (m_programInfo.type() == DxsoProgramType::VertexShader)
-      this->emitVsInit();
-    else
-      this->emitPsInit();
   }
 
   void DxsoCompiler::emitVsInit() {
