@@ -258,6 +258,7 @@ namespace dxvk {
    */
   struct DxvkDeviceExtensions {
     DxvkExt amdMemoryOverallocationBehaviour= { VK_AMD_MEMORY_OVERALLOCATION_BEHAVIOR_EXTENSION_NAME,   DxvkExtMode::Optional };
+    DxvkExt extConditionalRendering         = { VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME,            DxvkExtMode::Optional };
     DxvkExt extDepthClipEnable              = { VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME,                DxvkExtMode::Optional };
     DxvkExt extHostQueryReset               = { VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME,                 DxvkExtMode::Optional };
     DxvkExt extMemoryPriority               = { VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME,                  DxvkExtMode::Optional };
