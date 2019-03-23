@@ -58,9 +58,9 @@ namespace dxvk {
       DWORD               Flags,
       const D3DGAMMARAMP* pRamp);
 
-  private:
-
     void createBackBuffer();
+
+  private:
 
     void createHud();
 

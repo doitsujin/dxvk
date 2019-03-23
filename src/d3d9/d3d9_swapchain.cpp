@@ -183,6 +183,7 @@ namespace dxvk {
       desc.multisample = parameters->MultiSampleType;
 
       presenter.recreateSwapChain(&desc);
+      presenter.createBackBuffer();
     }
     else {
       m_presenters.clear();
