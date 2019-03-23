@@ -790,7 +790,7 @@ namespace dxvk {
       std::memcpy(
         pDestination + StartRegister,
         pConstantData,
-        sizeof(RegType));
+        Count * sizeof(RegType));
 
       D3D9ConstantSets& constSet =
         ShaderStage == DxsoProgramType::VertexShader ?
@@ -821,7 +821,7 @@ namespace dxvk {
       std::memcpy(
         pConstantData,
         pSource + StartRegister,
-        sizeof(RegType));
+        Count * sizeof(RegType));
 
       return D3D_OK;
     }
