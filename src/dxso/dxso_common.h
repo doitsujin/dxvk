@@ -13,8 +13,8 @@ namespace dxvk {
  * module has been compiled for.
  */
   enum class DxsoProgramType : uint16_t {
-    PixelShader = 1,
-    VertexShader = 2,
+    VertexShader = 0,
+    PixelShader  = 1,
   };
 
   class DxsoProgramInfo {
