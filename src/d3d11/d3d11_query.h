@@ -50,8 +50,6 @@ namespace dxvk {
     
     Rc<DxvkGpuQuery>  m_query = nullptr;
     Rc<DxvkGpuEvent>  m_event = nullptr;
-    
-    uint32_t m_revision = 0;
 
     D3D10Query m_d3d10;
 
