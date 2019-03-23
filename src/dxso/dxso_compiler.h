@@ -91,7 +91,9 @@ namespace dxvk {
     std::vector<DxvkResourceSlot> m_resourceSlots;
 
     std::vector<DxsoSpirvRegister> m_regs;
+    std::vector<DxsoSpirvRegister> m_relativeRegs;
 
+    uint32_t m_constantBufferVarId = 0;
 
     ///////////////////////////////////////////////////
     // Entry point description - we'll need to declare
@@ -118,6 +120,8 @@ namespace dxvk {
     // Shader-specific data structures
     DxsoCompilerVsPart m_vs;
     DxsoCompilerPsPart m_ps;
+
+    uint32_t m_cBuffer = 0;
 
     /////////////////////////////////////////////////////
     // Shader interface and metadata declaration methods

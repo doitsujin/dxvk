@@ -49,19 +49,19 @@ namespace dxvk {
   }
 
   DxsoRegister::DxsoRegister()
-    : m_type{ DxsoInstructionArgumentType::Source }, m_token{ 0 }, m_relativeIndex{ 0 } {}
+    : m_type{ DxsoInstructionArgumentType::Source }, m_token{ 0 }, m_relativeToken{ 0 } {}
 
   DxsoRegister::DxsoRegister(DxsoInstructionArgumentType type, uint32_t token, uint32_t relativeToken) 
-    : m_type{ type }, m_token{ token }, m_relativeIndex{ relativeToken } {}
+    : m_type{ type }, m_token{ token }, m_relativeToken{ relativeToken } {}
 
   DxsoRegister::DxsoRegister(DxsoInstructionArgumentType type, const DxsoDecodeContext& context, DxsoCodeSlice& slice)
     : m_type{ type } {
     m_token         = slice.read();
-    m_relativeIndex = 0;
+    m_relativeToken = 0;
 
     if (this->isRelative()
      && this->relativeAddressingUsesToken(context)) {
-      m_relativeIndex = slice.read();
+      m_relativeToken = slice.read();
     }
   }
 

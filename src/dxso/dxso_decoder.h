@@ -83,6 +83,15 @@ namespace dxvk {
       return m_num;
     }
 
+    bool constant() const {
+      return m_type == DxsoRegisterType::Const
+          || m_type == DxsoRegisterType::ConstInt
+          || m_type == DxsoRegisterType::ConstBool
+          || m_type == DxsoRegisterType::Const2
+          || m_type == DxsoRegisterType::Const3
+          || m_type == DxsoRegisterType::Const4;
+    }
+
     bool operator == (const DxsoRegisterId& other) const { return m_type == other.m_type
                                                                && m_num  == other.m_num; }
     bool operator != (const DxsoRegisterId& other) const { return m_type != other.m_type
@@ -162,6 +171,10 @@ namespace dxvk {
       return (m_token & (1 << 13)) == 8192 ? 1 : 0;
     }
 
+    DxsoRegister relativeRegister() const {
+      return DxsoRegister(DxsoInstructionArgumentType::Source, m_relativeToken, m_relativeToken);
+    }
+
     bool centroid() const {
       return m_token & (4 << 20);
     }
@@ -214,7 +227,7 @@ namespace dxvk {
     bool relativeAddressingUsesToken(const DxsoDecodeContext& context) const;
 
     uint32_t                    m_token;
-    uint32_t                    m_relativeIndex;
+    uint32_t                    m_relativeToken;
 
     DxsoInstructionArgumentType m_type;
 

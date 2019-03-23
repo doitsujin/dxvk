@@ -1,5 +1,8 @@
 #include "dxso_compiler.h"
 
+#include "../d3d9/d3d9_constant_set.h"
+#include "dxso_util.h"
+
 namespace dxvk {
 
   DxsoCompiler::DxsoCompiler(
@@ -166,6 +169,29 @@ namespace dxvk {
     // Set up common capabilities for all shaders
     m_module.enableCapability(spv::CapabilityShader);
     m_module.enableCapability(spv::CapabilityImageQuery);
+
+    // Uniform buffer
+    const uint32_t arrayType = m_module.defArrayTypeUnique(
+      getTypeId(DxsoRegisterType::Temp),
+      m_module.constu32(D3D9ConstantSets::SetSize / sizeof(uint32_t)));
+
+    m_module.decorateArrayStride(arrayType, 16);
+
+    const uint32_t structType = m_module.defStructTypeUnique(1, &arrayType);
+
+    m_module.decorateBlock(structType);
+    m_module.memberDecorateOffset(structType, 0, 0);
+
+    m_cBuffer = m_module.newVar(
+      m_module.defPointerType(structType, spv::StorageClassUniform),
+      spv::StorageClassUniform);
+
+    const uint32_t bindingId = computeResourceSlotId(
+      m_programInfo.type(), DxsoBindingType::ConstantBuffer,
+      0);
+
+    m_module.decorateDescriptorSet(m_cBuffer, 0);
+    m_module.decorateBinding(m_cBuffer, bindingId);
 
     if (m_programInfo.type() == DxsoProgramType::VertexShader)
       this->emitVsInit();
@@ -543,9 +569,11 @@ namespace dxvk {
   DxsoSpirvRegister& DxsoCompiler::getSpirvRegister(const DxsoRegister& reg){
     auto lookupId = reg.registerId();
 
-    for (auto& regMapping : m_regs) {
-      if (regMapping.regId == lookupId)
-        return regMapping;
+    if (!lookupId.constant() || (lookupId.constant() && !reg.isRelative())) {
+      for (auto& regMapping : m_regs) {
+        if (regMapping.regId == lookupId)
+          return regMapping;
+      }
     }
 
     return this->mapSpirvRegister(reg, nullptr);
@@ -642,42 +670,95 @@ namespace dxvk {
       }
     }
 
-    auto storageClass = spv::StorageClassPrivate;
+    const bool input = inputSlot != InvalidInputSlot;
+    const bool output = outputSlot != InvalidOutputSlot;
 
-    if (inputSlot != InvalidInputSlot)
-      storageClass = spv::StorageClassInput;
-    else
-      storageClass = spv::StorageClassOutput;
+    uint32_t varId = 0;
 
-    uint32_t ptrId = this->emitNewVariable(regType, storageClass);
-
-    if (inputSlot != InvalidInputSlot) {
-      m_module.decorateLocation(ptrId, inputSlot);
-      m_entryPointInterfaces.push_back(ptrId);
-
-      auto& reg = m_vDecls[inputSlot].reg;
-      if (reg.centroid())
-        m_module.decorate(ptrId, spv::DecorationCentroid);
-    }
-    else if (outputSlot != InvalidOutputSlot) {
-      m_oPtrs[outputSlot] = ptrId;
-
-      if (builtIn == spv::BuiltInMax) {
-        m_module.decorateLocation(ptrId, outputSlot);
-
-        if (m_programInfo.type() == DxsoProgramType::PixelShader)
-          m_module.decorateIndex(ptrId, 0);
+    if (regId.constant()) {
+      uint32_t offset;
+      switch (regId.type()) {
+        default:
+          //Logger::warn(str::format("Unhandled register type: ", regId.type()));
+        case DxsoRegisterType::Const:     offset = 0;    break;
+        case DxsoRegisterType::ConstInt:  offset = 256;  break;
+        case DxsoRegisterType::ConstBool: offset = 256 + 16;  break;
       }
-      m_entryPointInterfaces.push_back(ptrId);
+
+      uint32_t idx = m_module.consti32(offset + regId.num());
+
+      if (reg.isRelative()) {
+        uint32_t r = emitRegisterLoad(reg.relativeRegister());
+
+        r = m_module.opVectorExtractDynamic(
+          m_module.defFloatType(32),
+          r, 0);
+
+        r = m_module.opRound(
+          m_module.defFloatType(32),
+          r);
+
+        r = m_module.opConvertFtoS(
+          m_module.defIntType(32, 1),
+          r);
+
+        idx = m_module.opIAdd(
+          m_module.defIntType(32, 1),
+          idx, r);
+      }
+
+      const std::array<uint32_t, 2> indices =
+      { { m_module.consti32(0), idx } };
+
+      const uint32_t ptrType = getPointerTypeId(regType, spv::StorageClassUniform);
+      uint32_t regPtr = m_module.opAccessChain(ptrType,
+        m_cBuffer,
+        indices.size(), indices.data());
+
+      varId = m_module.opLoad(getTypeId(regType), regPtr);
+    } else if (input || output) {
+      uint32_t ptrId = this->emitNewVariable(
+        regType,
+        inputSlot != InvalidInputSlot
+        ? spv::StorageClassInput
+        : spv::StorageClassOutput);
+
+      if (input) {
+        m_module.decorateLocation(ptrId, inputSlot);
+        m_entryPointInterfaces.push_back(ptrId);
+
+        auto& reg = m_vDecls[inputSlot].reg;
+        if (reg.centroid())
+          m_module.decorate(ptrId, spv::DecorationCentroid);
+
+        varId = m_module.opLoad(spvType(reg), ptrId);
+      }
+      else {
+        m_oPtrs[outputSlot] = ptrId;
+
+        if (builtIn == spv::BuiltInMax) {
+          m_module.decorateLocation(ptrId, outputSlot);
+
+          if (m_programInfo.type() == DxsoProgramType::PixelShader)
+            m_module.decorateIndex(ptrId, 0);
+        }
+        m_entryPointInterfaces.push_back(ptrId);
+      }
+
+      if (builtIn != spv::BuiltInMax)
+        m_module.decorateBuiltIn(ptrId, builtIn);
     }
 
-    if (builtIn != spv::BuiltInMax)
-      m_module.decorateBuiltIn(ptrId, builtIn);
+    if (varId == 0)
+      varId = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
 
-    if (inputSlot != InvalidInputSlot)
-      spirvRegister.varId = m_module.opLoad(spvType(reg), ptrId);
-    else
-      spirvRegister.varId = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
+    spirvRegister.varId = varId;
+
+    if (regId.constant() && reg.isRelative())
+    {
+      m_relativeRegs.push_back(spirvRegister);
+      return m_relativeRegs[m_regs.size() - 1];
+    }
 
     m_regs.push_back(spirvRegister);
     return m_regs[m_regs.size() - 1];
