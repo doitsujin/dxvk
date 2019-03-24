@@ -81,7 +81,7 @@ namespace dxvk {
   Rc<DxvkShader> DxsoCompiler::finalize() {
     for (uint32_t i = 0; i < 32; i++) {
       if (m_interfaceSlots.outputSlots & (1u << i))
-        m_module.opStore(m_oPtrs[i], getSpirvRegister(m_oDecls[i].reg).varId);
+        m_module.opStore(m_oPtrs[i], getSpirvRegister(m_oDecls[i].id, false, nullptr).varId);
     }
 
     if (m_programInfo.type() == DxsoProgramType::VertexShader)
@@ -557,6 +557,7 @@ namespace dxvk {
                       || type == DxsoRegisterType::Texture;
 
     auto dcl = ctx.dcl;
+    dcl.id = ctx.dst.registerId();
 
     if (type == DxsoRegisterType::Input) {
       if (m_programInfo.majorVersion() != 3 && m_programInfo.type() == DxsoProgramType::PixelShader)
@@ -651,7 +652,7 @@ namespace dxvk {
       return;
     }
 
-    mapSpirvRegister(ctx.dst, &dcl);
+    mapSpirvRegister(ctx.dst.registerId(), ctx.dst.centroid(), nullptr, &dcl);
   }
 
   void DxsoCompiler::emitDef(DxsoOpcode opcode, const DxsoInstructionContext& ctx) {
@@ -695,44 +696,48 @@ namespace dxvk {
     m_regs.push_back(reg);
   }
 
-  DxsoSpirvRegister& DxsoCompiler::getSpirvRegister(const DxsoRegister& reg){
-    auto lookupId = reg.registerId();
-
-    if (!lookupId.constant() || (lookupId.constant() && !reg.isRelative())) {
+  DxsoSpirvRegister& DxsoCompiler::getSpirvRegister(DxsoRegisterId id, bool centroid, DxsoRegister* relative) {
+    if (!id.constant() || (id.constant() && relative == nullptr)) {
       for (auto& regMapping : m_regs) {
-        if (regMapping.regId == lookupId)
+        if (regMapping.regId == id)
           return regMapping;
       }
     }
 
-    return this->mapSpirvRegister(reg, nullptr);
+    return this->mapSpirvRegister(id, centroid, relative, nullptr);
   }
 
-  DxsoSpirvRegister& DxsoCompiler::mapSpirvRegister(const DxsoRegister& reg, const DxsoDeclaration* optionalPremadeDecl) {
-    const auto regId = reg.registerId();
-    const uint32_t regNum = regId.num();
+  DxsoSpirvRegister& DxsoCompiler::getSpirvRegister(const DxsoRegister& reg) {
+    DxsoRegister relativeReg = reg.relativeRegister();
 
+    return this->getSpirvRegister(
+      reg.registerId(),
+      reg.centroid(),
+      reg.isRelative()
+        ? &relativeReg
+        : nullptr);
+  }
+
+  DxsoSpirvRegister& DxsoCompiler::mapSpirvRegister(DxsoRegisterId id, bool centroid, DxsoRegister* relative, const DxsoDeclaration* optionalPremadeDecl) {
     DxsoSpirvRegister spirvRegister;
-    spirvRegister.regId = reg.registerId();
+    spirvRegister.regId = id;
 
-    uint32_t inputSlot = InvalidInputSlot;
+    uint32_t inputSlot  = InvalidInputSlot;
     uint32_t outputSlot = InvalidOutputSlot;
-
-    auto regType = regId.type();
 
     spv::BuiltIn builtIn = spv::BuiltInMax;
 
     if (optionalPremadeDecl != nullptr) {
-      const bool input = regType == DxsoRegisterType::Input
-                      || regType == DxsoRegisterType::Texture;
+      const bool input = id.type() == DxsoRegisterType::Input
+                      || id.type() == DxsoRegisterType::Texture;
 
       auto& decl = *optionalPremadeDecl;
       auto& semantic = decl.semantic;
 
       if (input)
-        m_vDecls[inputSlot = allocateSlot(true, regId, semantic)]   = decl;
+        m_vDecls[inputSlot = allocateSlot(true, id, semantic)]   = decl;
       else {
-        m_oDecls[outputSlot = allocateSlot(false, regId, semantic)] = decl;
+        m_oDecls[outputSlot = allocateSlot(false, id, semantic)] = decl;
 
         if (decl.semantic.usage == DxsoUsage::Position)
           builtIn = spv::BuiltInPosition;
@@ -741,68 +746,68 @@ namespace dxvk {
       }
     }
     else {
-      if (regType == DxsoRegisterType::Input) {
+      if (id.type() == DxsoRegisterType::Input) {
         if (m_programInfo.majorVersion() != 3 && m_programInfo.type() == DxsoProgramType::PixelShader) {
-          DxsoSemantic semantic = { DxsoUsage::Color, regNum };
+          DxsoSemantic semantic = { DxsoUsage::Color, id.num() };
 
-          auto& dcl = m_vDecls[inputSlot = allocateSlot(true, regId, semantic)];
-          dcl.reg = reg;
+          auto& dcl = m_vDecls[inputSlot = allocateSlot(true, id, semantic)];
+          dcl.id = id;
           dcl.semantic = semantic;
         }
       }
-      else if (regType == DxsoRegisterType::RasterizerOut) {
+      else if (id.type() == DxsoRegisterType::RasterizerOut) {
         DxsoSemantic semantic;
 
         semantic.usageIndex = 0;
-        if (regNum == RasterOutPosition) {
+        if (id.num() == RasterOutPosition) {
           semantic.usage = DxsoUsage::Position;
           builtIn = spv::BuiltInPosition;
         }
-        else if (regNum == RasterOutFog)
+        else if (id.num() == RasterOutFog)
           semantic.usage = DxsoUsage::Fog;
         else {
           semantic.usage = DxsoUsage::PointSize;
           builtIn = spv::BuiltInPointSize;
         }
 
-        auto& dcl = m_oDecls[outputSlot = allocateSlot(false, regId, semantic)];
-        dcl.reg = reg;
+        auto& dcl = m_oDecls[outputSlot = allocateSlot(false, id, semantic)];
+        dcl.id = id;
         dcl.semantic = semantic;
       }
-      else if (regType == DxsoRegisterType::Output) { // TexcoordOut
-        DxsoSemantic semantic = { DxsoUsage::Texcoord , regNum };
+      else if (id.type() == DxsoRegisterType::Output) { // TexcoordOut
+        DxsoSemantic semantic = { DxsoUsage::Texcoord , id.num() };
 
-        auto& dcl = m_oDecls[outputSlot = allocateSlot(false, regId, semantic)];
-        dcl.reg = reg;
+        auto& dcl = m_oDecls[outputSlot = allocateSlot(false, id, semantic)];
+        dcl.id = id;
         dcl.semantic = semantic;
       }
-      else if (regType == DxsoRegisterType::AttributeOut) {
-        DxsoSemantic semantic = { DxsoUsage::Color, regNum };
+      else if (id.type() == DxsoRegisterType::AttributeOut) {
+        DxsoSemantic semantic = { DxsoUsage::Color, id.num() };
 
-        auto& dcl = m_oDecls[outputSlot = allocateSlot(false, regId, semantic)];
-        dcl.reg = reg;
+        auto& dcl = m_oDecls[outputSlot = allocateSlot(false, id, semantic)];
+        dcl.id = id;
         dcl.semantic = semantic;
       }
-      else if (regType == DxsoRegisterType::Texture) {
+      else if (id.type() == DxsoRegisterType::Texture) {
         if (m_programInfo.type() == DxsoProgramType::PixelShader) {
 
           // SM 2+ or 1.4
           if (m_programInfo.majorVersion() >= 2
             || (m_programInfo.majorVersion() == 1
              && m_programInfo.minorVersion() == 4)) {
-            DxsoSemantic semantic = { DxsoUsage::Texcoord, regNum };
+            DxsoSemantic semantic = { DxsoUsage::Texcoord, id.num() };
 
-            auto& dcl = m_vDecls[inputSlot = allocateSlot(true, regId, semantic)];
-            dcl.reg = reg;
+            auto& dcl = m_vDecls[inputSlot = allocateSlot(true, id, semantic)];
+            dcl.id = id;
             dcl.semantic = semantic;
           }
         }
       }
-      else if (regType == DxsoRegisterType::ColorOut) {
-        DxsoSemantic semantic = { DxsoUsage::Color, regNum };
+      else if (id.type() == DxsoRegisterType::ColorOut) {
+        DxsoSemantic semantic = { DxsoUsage::Color, id.num() };
 
-        auto& dcl = m_oDecls[outputSlot = allocateSlot(false, regId, semantic)];
-        dcl.reg = reg;
+        auto& dcl = m_oDecls[outputSlot = allocateSlot(false, id, semantic)];
+        dcl.id = id;
         dcl.semantic = semantic;
       }
     }
@@ -812,9 +817,9 @@ namespace dxvk {
 
     uint32_t varId = 0;
 
-    if (regId.constant()) {
+    if (id.constant()) {
       uint32_t offset;
-      switch (regId.type()) {
+      switch (id.type()) {
         default:
           //Logger::warn(str::format("Unhandled register type: ", regId.type()));
         case DxsoRegisterType::Const:     offset = 0;    break;
@@ -822,10 +827,10 @@ namespace dxvk {
         case DxsoRegisterType::ConstBool: offset = 256 + 16;  break;
       }
 
-      uint32_t idx = m_module.consti32(offset + regId.num());
+      uint32_t idx = m_module.consti32(offset + id.num());
 
-      if (reg.isRelative()) {
-        uint32_t r = emitRegisterLoad(reg.relativeRegister());
+      if (relative != nullptr) {
+        uint32_t r = emitRegisterLoad(*relative);
 
         r = m_module.opVectorExtractDynamic(
           m_module.defFloatType(32),
@@ -847,15 +852,15 @@ namespace dxvk {
       const std::array<uint32_t, 2> indices =
       { { m_module.consti32(0), idx } };
 
-      const uint32_t ptrType = getPointerTypeId(regType, spv::StorageClassUniform);
+      const uint32_t ptrType = getPointerTypeId(id.type(), spv::StorageClassUniform);
       uint32_t regPtr = m_module.opAccessChain(ptrType,
         m_cBuffer,
         indices.size(), indices.data());
 
-      varId = m_module.opLoad(getTypeId(regType), regPtr);
+      varId = m_module.opLoad(getTypeId(id.type()), regPtr);
     } else if (input || output) {
       uint32_t ptrId = this->emitNewVariable(
-        regType,
+        id.type(),
         inputSlot != InvalidInputSlot
         ? spv::StorageClassInput
         : spv::StorageClassOutput);
@@ -864,11 +869,10 @@ namespace dxvk {
         m_module.decorateLocation(ptrId, inputSlot);
         m_entryPointInterfaces.push_back(ptrId);
 
-        auto& reg = m_vDecls[inputSlot].reg;
-        if (reg.centroid())
+        if (centroid)
           m_module.decorate(ptrId, spv::DecorationCentroid);
 
-        varId = m_module.opLoad(spvType(reg), ptrId);
+        varId = m_module.opLoad(getTypeId(id.type()), ptrId);
       }
       else {
         m_oPtrs[outputSlot] = ptrId;
@@ -891,7 +895,7 @@ namespace dxvk {
 
     spirvRegister.varId = varId;
 
-    if (regId.constant() && reg.isRelative())
+    if (id.constant() && relative != nullptr)
     {
       m_relativeRegs.push_back(spirvRegister);
       return m_relativeRegs[m_regs.size() - 1];

@@ -254,7 +254,7 @@ namespace dxvk {
   // and that would include the implicit declarations in
   // lower shader model versions.
   struct DxsoDeclaration {
-    DxsoRegister    reg;
+    DxsoRegisterId  id;
 
     DxsoSemantic    semantic;
 

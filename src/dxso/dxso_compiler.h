@@ -176,11 +176,12 @@ namespace dxvk {
     ///////////////////////////////////
     // Health Warning: Can cause m_regs to be
     // realloced. Don't call me unless you accept this fact.
+    DxsoSpirvRegister& getSpirvRegister(DxsoRegisterId id, bool centroid, DxsoRegister* relative);
     DxsoSpirvRegister& getSpirvRegister(const DxsoRegister& reg);
     uint32_t spvId(const DxsoRegister& reg) {
       return getSpirvRegister(reg).varId;
     }
-    DxsoSpirvRegister& mapSpirvRegister(const DxsoRegister& reg, const DxsoDeclaration* optionalPremadeDecl);
+    DxsoSpirvRegister& mapSpirvRegister(DxsoRegisterId id, bool centroid, DxsoRegister* relative, const DxsoDeclaration* optionalPremadeDecl);
 
     uint32_t getTypeId(DxsoRegisterType regType, bool vector = true);
     uint32_t spvType(const DxsoRegister& reg) {

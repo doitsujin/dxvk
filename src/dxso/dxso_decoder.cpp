@@ -99,7 +99,6 @@ namespace dxvk {
   void DxsoDecodeContext::decodeDeclaration(DxsoCodeSlice& code) {
     uint32_t dclToken = code.read();
 
-    m_ctx.dcl.reg                  = m_ctx.dst;
     m_ctx.dcl.textureType          = static_cast<DxsoTextureType>((dclToken & 0x78000000) >> 27);
     m_ctx.dcl.semantic.usage       = static_cast<DxsoUsage>(dclToken & 0x0000000f);
     m_ctx.dcl.semantic.usageIndex  = (dclToken & 0x000f0000) >> 16;
