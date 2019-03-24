@@ -9,7 +9,7 @@ namespace dxvk {
   Direct3DTexture9::Direct3DTexture9(
         Direct3DDevice9Ex*      pDevice,
   const D3D9TextureDesc*        pDesc)
-        : Direct3DTexture9Base{ pDevice, pDesc } {}
+        : Direct3DTexture9Base ( pDevice, pDesc ) { }
 
   HRESULT STDMETHODCALLTYPE Direct3DTexture9::QueryInterface(REFIID riid, void** ppvObject) {
     if (ppvObject == nullptr)

@@ -9,7 +9,7 @@ namespace dxvk {
   Direct3DVertexBuffer9::Direct3DVertexBuffer9(
           Direct3DDevice9Ex* pDevice,
     const D3D9_BUFFER_DESC*  pDesc)
-    : Direct3DVertexBuffer9Base { pDevice, pDesc } {}
+    : Direct3DVertexBuffer9Base ( pDevice, pDesc ) { }
 
   HRESULT STDMETHODCALLTYPE Direct3DVertexBuffer9::QueryInterface(
           REFIID  riid,

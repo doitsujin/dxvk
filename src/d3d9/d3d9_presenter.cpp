@@ -11,11 +11,11 @@ namespace dxvk {
   const D3D9PresenterDesc*  desc,
         DWORD               gammaFlags,
   const D3DGAMMARAMP*       gammaRamp)
-    : m_window{ window }
-    , m_parent{ parent }
-    , m_device{ parent->GetDXVKDevice() }
-    , m_context{ m_device->createContext() }
-    , m_desc{ *desc } {
+    : m_window  ( window )
+    , m_parent  ( parent )
+    , m_device  ( parent->GetDXVKDevice() )
+    , m_context ( m_device->createContext() )
+    , m_desc    ( *desc ) {
     createPresenter();
 
     createBackBuffer();

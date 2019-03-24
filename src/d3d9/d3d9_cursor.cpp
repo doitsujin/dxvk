@@ -5,9 +5,9 @@
 namespace dxvk {
 
   D3D9Cursor::D3D9Cursor()
-    : m_updatePending{ false }
-    , m_pendingX{ 0 }
-    , m_pendingY{ 0 } {}
+    : m_updatePending( false )
+    , m_pendingX     ( 0 )
+    , m_pendingY     ( 0 ) {}
 
   void D3D9Cursor::updateCursor(int x, int y, bool immediate) {
     m_updatePending = true;

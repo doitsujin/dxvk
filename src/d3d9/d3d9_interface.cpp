@@ -9,8 +9,8 @@
 namespace dxvk {
 
   Direct3D9Ex::Direct3D9Ex(bool extended)
-    : m_instance{ new DxvkInstance() }
-    , m_extended{ extended } {
+    : m_instance ( new DxvkInstance() )
+    , m_extended ( extended ) {
     for (uint32_t i = 0; m_instance->enumAdapters(i) != nullptr; i++)
       m_instance->enumAdapters(i)->logAdapterInfo();
   }

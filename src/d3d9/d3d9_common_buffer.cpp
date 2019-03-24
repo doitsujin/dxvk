@@ -7,8 +7,7 @@ namespace dxvk {
   Direct3DCommonBuffer9::Direct3DCommonBuffer9(
           Direct3DDevice9Ex* pDevice,
     const D3D9_BUFFER_DESC*  pDesc) 
-    : m_parent { pDevice }
-    , m_desc   { *pDesc } {
+    : m_parent ( pDevice ), m_desc ( *pDesc ) {
     DxvkBufferCreateInfo  info;
     info.size   = m_desc.Size;
     info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT

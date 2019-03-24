@@ -9,8 +9,8 @@ namespace dxvk {
           Direct3DDevice9Ex* pDevice,
     const D3DVERTEXELEMENT9* pVertexElements,
           uint32_t           DeclCount)
-    : Direct3DVertexDeclaration9Base{ pDevice }
-    , m_elements{ DeclCount } {
+    : Direct3DVertexDeclaration9Base ( pDevice )
+    , m_elements                     ( DeclCount ) {
     std::memcpy(m_elements.data(), pVertexElements, sizeof(D3DVERTEXELEMENT9) * DeclCount);
   }
 

@@ -38,6 +38,8 @@ namespace dxvk {
   enum class D3D9DeviceFlag : uint64_t {
     DirtyDepthStencilState,
     DirtyBlendState,
+    ExtendedDevice,
+    DeferViewportBinding
   };
 
   using D3D9DeviceFlags = Flags<D3D9DeviceFlag>;
@@ -549,7 +551,7 @@ namespace dxvk {
       D3DDISPLAYROTATION* pRotation);
 
     VkPipelineStageFlags GetEnabledShaderStages() const {
-      return m_device->getShaderPipelineStages();
+      return m_dxvkDevice->getShaderPipelineStages();
     }
 
     static DxvkDeviceFeatures GetDeviceFeatures(const Rc<DxvkAdapter>& adapter);
@@ -559,7 +561,7 @@ namespace dxvk {
     HWND GetWindow();
 
     Rc<DxvkDevice> GetDXVKDevice() {
-      return m_device;
+      return m_dxvkDevice;
     }
 
     Rc<DxvkEvent> GetFrameSyncEvent();
@@ -672,87 +674,32 @@ namespace dxvk {
 
   private:
 
-    D3D9DeviceFlags                m_flags;
+    D3D9DeviceFlags                 m_flags;
+    uint32_t                        m_dirtySamplerStates = 0;
 
-    uint32_t                       m_dirtySamplerStates;
+    Rc<DxvkAdapter>                 m_dxvkAdapter;
+    Rc<DxvkDevice>                  m_dxvkDevice;
 
-    Rc<D3D9ShaderModuleSet>        m_shaderModules;
-
-    HRESULT CreateShaderModule(
-            D3D9CommonShader*     pShaderModule,
-            DxvkShaderKey         ShaderKey,
-      const DWORD*                pShaderBytecode,
-            size_t                BytecodeLength,
-      const DxsoModuleInfo*       pModuleInfo);
-
-    Direct3DMultithread9            m_multithread;
-
-    const D3D9VkFormatTable         m_d3d9Formats;
-    Direct3DState9                  m_state;
-
-    Direct3DSwapChain9Ex* getInternalSwapchain(UINT index);
-
-    Com<IDirect3D9Ex> m_parent;
-
-    UINT m_adapter;
-
-    Rc<DxvkAdapter> m_dxvkAdapter;
-    Rc<DxvkDevice> m_device;
-    Rc<DxvkDataBuffer>          m_updateBuffer;
-    DxvkCsChunkPool m_csChunkPool;
-
-    D3D9Initializer*                 m_initializer = nullptr;
-
-    DxvkCsChunkRef              m_csChunk;
-
-    D3DDEVTYPE m_deviceType;
-    HWND m_window;
-    DWORD m_behaviourFlags;
-
-    const D3D9Options               m_d3d9Options;
-    const DxsoOptions               m_dxsoOptions;
-
-    uint32_t m_frameLatencyCap;
-    uint32_t m_frameLatency;
-    uint32_t m_frameId;
-    std::array<Rc<DxvkEvent>, MaxFrameLatency> m_frameEvents;
-
-    bool m_extended;
-
-    bool m_deferViewportBinding;
-
-    D3DPRESENT_PARAMETERS m_presentParams;
-
-    D3D9Cursor m_cursor;
-
-    std::vector<IDirect3DSwapChain9Ex*> m_swapchains;
-
-    DxvkCsThread m_csThread;
-    bool         m_csIsBusy = false;
-
-    std::vector<DxvkVertexAttribute> m_workingAttributes;
-    std::vector<DxvkVertexBinding>   m_workingBindings;
-
-    D3D9ConstantSets m_vsConst;
-    D3D9ConstantSets m_psConst;
-
-    std::unordered_map<
-      D3D9SamplerKey,
-      Rc<DxvkSampler>,
-      D3D9SamplerKeyHash,
-      D3D9SamplerKeyEq> m_samplers;
-
+    Rc<DxvkDataBuffer>              m_updateBuffer;
+    DxvkCsChunkPool                 m_csChunkPool;
     std::chrono::high_resolution_clock::time_point m_lastFlush
       = std::chrono::high_resolution_clock::now();
+    DxvkCsThread                    m_csThread;
+    bool                            m_csIsBusy = false;
+
+    uint32_t                        m_frameLatencyCap;
+    uint32_t                        m_frameLatency;
+    uint32_t                        m_frameId = 0;
+    std::array<Rc<DxvkEvent>,
+      MaxFrameLatency>              m_frameEvents;
+
+    D3D9Initializer*                m_initializer = nullptr;
+
+    DxvkCsChunkRef                  m_csChunk;
 
     DxvkCsChunkRef AllocCsChunk() {
       DxvkCsChunk* chunk = m_csChunkPool.allocChunk(DxvkCsChunkFlag::SingleUse);
       return DxvkCsChunkRef(chunk, &m_csChunkPool);
-    }
-
-    template<typename T>
-    const D3D9CommonShader* GetCommonShader(T* pShader) const {
-      return pShader != nullptr ? pShader->GetCommonShader() : nullptr;
     }
 
     template<typename Cmd>
@@ -765,11 +712,60 @@ namespace dxvk {
       }
     }
 
+    void EmitCsChunk(DxvkCsChunkRef&& chunk);
+
     void FlushCsChunk() {
       if (m_csChunk->commandCount() != 0) {
         EmitCsChunk(std::move(m_csChunk));
         m_csChunk = AllocCsChunk();
       }
+    }
+
+    void FlushImplicit(BOOL StrongHint);
+
+    Com<IDirect3D9Ex>               m_parent;
+    UINT                            m_adapter;
+    D3DDEVTYPE                      m_deviceType;
+    HWND                            m_window;
+
+    DWORD                           m_behaviourFlags;
+    Direct3DState9                  m_state;
+    Direct3DMultithread9            m_multithread;
+
+    Rc<D3D9ShaderModuleSet>         m_shaderModules;
+
+    D3D9ConstantSets                m_vsConst;
+    D3D9ConstantSets                m_psConst;
+
+    const D3D9VkFormatTable         m_d3d9Formats;
+    const D3D9Options               m_d3d9Options;
+    const DxsoOptions               m_dxsoOptions;
+
+    D3DPRESENT_PARAMETERS           m_presentParams;
+
+    D3D9Cursor                      m_cursor;
+
+    std::vector<
+      IDirect3DSwapChain9Ex*>       m_swapchains;
+
+    std::unordered_map<
+      D3D9SamplerKey,
+      Rc<DxvkSampler>,
+      D3D9SamplerKeyHash,
+      D3D9SamplerKeyEq>             m_samplers;
+
+    Direct3DSwapChain9Ex* GetInternalSwapchain(UINT index);
+
+    HRESULT               CreateShaderModule(
+            D3D9CommonShader*     pShaderModule,
+            DxvkShaderKey         ShaderKey,
+      const DWORD*                pShaderBytecode,
+            size_t                BytecodeLength,
+      const DxsoModuleInfo*       pModuleInfo);
+
+    template<typename T>
+    const D3D9CommonShader* GetCommonShader(T* pShader) const {
+      return pShader != nullptr ? pShader->GetCommonShader() : nullptr;
     }
 
     template <typename RegType>
@@ -828,12 +824,6 @@ namespace dxvk {
 
       return D3D_OK;
     }
-
-    void SynchronizeDevice();
-
-    void EmitCsChunk(DxvkCsChunkRef&& chunk);
-
-    void FlushImplicit(BOOL StrongHint);
 
   };
 

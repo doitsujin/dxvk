@@ -5,11 +5,11 @@ namespace dxvk {
   Direct3DSurface9::Direct3DSurface9(
           Direct3DDevice9Ex*        device,
     const D3D9TextureDesc*          desc)
-    : Direct3DSurface9Base{
+    : Direct3DSurface9Base(
         device,
         new Direct3DCommonTexture9{ device, desc },
         0,
-        device } {}
+        device ) { }
 
   Direct3DSurface9::Direct3DSurface9(
           Direct3DDevice9Ex*         device,

@@ -8,7 +8,7 @@ namespace dxvk {
   Direct3DCommonTexture9::Direct3DCommonTexture9(
           Direct3DDevice9Ex*      pDevice,
     const D3D9TextureDesc*        pDesc)
-    : m_device{ pDevice }, m_desc{ *pDesc } {
+    : m_device( pDevice ), m_desc( *pDesc ) {
 
     if (m_desc.Format == D3D9Format::NULL_FORMAT)
       return;
