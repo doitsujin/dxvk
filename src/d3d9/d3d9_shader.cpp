@@ -35,7 +35,7 @@ namespace dxvk {
     // geometry shader for vertex shader stream output
 
     m_shader = module.compile(*pDxsoModuleInfo, name);
-    m_decl = module.getDeclarations();
+    m_decl = module.getDecls();
     m_shader->setShaderKey(*pShaderKey);
     
     if (dumpPath.size() != 0) {

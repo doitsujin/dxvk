@@ -79,8 +79,10 @@ namespace dxvk {
   }
 
   Rc<DxvkShader> DxsoCompiler::finalize() {
-    for (uint32_t i = 0; i < m_nextOutputSlot; i++)
-      m_module.opStore(m_oPtrs[i], getSpirvRegister(m_oDecls[i].reg).varId);
+    for (uint32_t i = 0; i < 32; i++) {
+      if (m_interfaceSlots.outputSlots & (1u << i))
+        m_module.opStore(m_oPtrs[i], getSpirvRegister(m_oDecls[i].reg).varId);
+    }
 
     if (m_programInfo.type() == DxsoProgramType::VertexShader)
       this->emitVsFinalize();
@@ -714,55 +716,61 @@ namespace dxvk {
                       || regType == DxsoRegisterType::Texture;
 
       auto& decl = *optionalPremadeDecl;
+      auto& semantic = decl.semantic;
 
       if (input)
-        m_vDecls[inputSlot = allocateInputSlot()]   = decl;
+        m_vDecls[inputSlot = allocateSlot(true, regId, semantic)]   = decl;
       else {
-        m_oDecls[outputSlot = allocateOutputSlot()] = decl;
+        m_oDecls[outputSlot = allocateSlot(false, regId, semantic)] = decl;
 
-        if (decl.usage == DxsoUsage::Position)
+        if (decl.semantic.usage == DxsoUsage::Position)
           builtIn = spv::BuiltInPosition;
-        else if (decl.usage == DxsoUsage::PointSize)
+        else if (decl.semantic.usage == DxsoUsage::PointSize)
           builtIn = spv::BuiltInPointSize;
       }
     }
     else {
       if (regType == DxsoRegisterType::Input) {
         if (m_programInfo.majorVersion() != 3 && m_programInfo.type() == DxsoProgramType::PixelShader) {
-          auto& dcl = m_vDecls[inputSlot = allocateInputSlot()];
+          DxsoSemantic semantic = { DxsoUsage::Color, regNum };
+
+          auto& dcl = m_vDecls[inputSlot = allocateSlot(true, regId, semantic)];
           dcl.reg = reg;
-          dcl.usage = DxsoUsage::Color;
-          dcl.usageIndex = regNum;
+          dcl.semantic = semantic;
         }
       }
       else if (regType == DxsoRegisterType::RasterizerOut) {
-        auto& dcl = m_oDecls[outputSlot = allocateOutputSlot()];
-        dcl.reg = reg;
+        DxsoSemantic semantic;
 
+        semantic.usageIndex = 0;
         if (regNum == RasterOutPosition) {
-          dcl.usage = DxsoUsage::Position;
+          semantic.usage = DxsoUsage::Position;
           builtIn = spv::BuiltInPosition;
         }
         else if (regNum == RasterOutFog)
-          dcl.usage = DxsoUsage::Fog;
+          semantic.usage = DxsoUsage::Fog;
         else {
-          dcl.usage = DxsoUsage::PointSize;
+          semantic.usage = DxsoUsage::PointSize;
           builtIn = spv::BuiltInPointSize;
         }
 
-        dcl.usageIndex = 0;
+        auto& dcl = m_oDecls[outputSlot = allocateSlot(false, regId, semantic)];
+        dcl.reg = reg;
+        dcl.semantic = semantic;
       }
       else if (regType == DxsoRegisterType::Output) { // TexcoordOut
-        auto& dcl = m_oDecls[outputSlot = allocateOutputSlot()];
+        DxsoSemantic semantic = { DxsoUsage::Texcoord , regNum };
+
+        auto& dcl = m_oDecls[outputSlot = allocateSlot(false, regId, semantic)];
         dcl.reg = reg;
-        dcl.usage = DxsoUsage::Texcoord;
-        dcl.usageIndex = regNum;
+        dcl.semantic = semantic;
       }
       else if (regType == DxsoRegisterType::AttributeOut) {
-        auto& dcl = m_oDecls[outputSlot = allocateOutputSlot()];
+        DxsoSemantic semantic = { DxsoUsage::Color, regNum };
+
+        auto& dcl = m_oDecls[outputSlot = allocateSlot(false, regId, semantic)];
         dcl.reg = reg;
-        dcl.usage = DxsoUsage::Color;
-        dcl.usageIndex = regNum;
+        dcl.semantic = semantic;
       }
       else if (regType == DxsoRegisterType::Texture) {
         if (m_programInfo.type() == DxsoProgramType::PixelShader) {
@@ -771,18 +779,20 @@ namespace dxvk {
           if (m_programInfo.majorVersion() >= 2
             || (m_programInfo.majorVersion() == 1
              && m_programInfo.minorVersion() == 4)) {
-            auto& dcl = m_vDecls[inputSlot = allocateInputSlot()];
+            DxsoSemantic semantic = { DxsoUsage::Texcoord, regNum };
+
+            auto& dcl = m_vDecls[inputSlot = allocateSlot(true, regId, semantic)];
             dcl.reg = reg;
-            dcl.usage = DxsoUsage::Texcoord;
-            dcl.usageIndex = regNum;
+            dcl.semantic = semantic;
           }
         }
       }
       else if (regType == DxsoRegisterType::ColorOut) {
-        auto& dcl = m_oDecls[outputSlot = allocateOutputSlot()];
+        DxsoSemantic semantic = { DxsoUsage::Color, regNum };
+
+        auto& dcl = m_oDecls[outputSlot = allocateSlot(false, regId, semantic)];
         dcl.reg = reg;
-        dcl.usage = DxsoUsage::Color;
-        dcl.usageIndex = regNum;
+        dcl.semantic = semantic;
       }
     }
 
@@ -926,19 +936,54 @@ namespace dxvk {
     }
   }
 
-  uint32_t DxsoCompiler::allocateInputSlot() {
-    const uint32_t slot = m_nextInputSlot;
-    m_nextInputSlot++;
+  // Maps a Usage and Usage Index to an I/O slot for Shader Models less than 3 that don't have general purpose IO registers
+  static std::unordered_map<
+    DxsoSemantic,
+    uint32_t,
+    DxsoSemanticHash,
+    DxsoSemanticEq> g_transientMappings = {
+      {{DxsoUsage::Position,   0}, 0},
 
-    m_interfaceSlots.inputSlots |= 1u << slot;
-    return slot;
-  }
+      {{DxsoUsage::Texcoord,   0}, 1},
+      {{DxsoUsage::Texcoord,   1}, 2},
+      {{DxsoUsage::Texcoord,   2}, 3},
+      {{DxsoUsage::Texcoord,   3}, 4},
+      {{DxsoUsage::Texcoord,   4}, 5},
+      {{DxsoUsage::Texcoord,   5}, 6},
+      {{DxsoUsage::Texcoord,   6}, 7},
+      {{DxsoUsage::Texcoord,   7}, 8},
 
-  uint32_t DxsoCompiler::allocateOutputSlot() {
-    const uint32_t slot = m_nextOutputSlot;
-    m_nextOutputSlot++;
+      {{DxsoUsage::Color,      0}, 9},
+      {{DxsoUsage::Color,      1}, 10},
 
-    m_interfaceSlots.outputSlots |= 1u << slot;
+      {{DxsoUsage::Fog,        0}, 11},
+      {{DxsoUsage::PointSize,  0}, 12},
+  };
+
+  uint32_t DxsoCompiler::allocateSlot(bool input, DxsoRegisterId id, DxsoSemantic semantic) {
+    uint32_t slot;
+
+    bool transient = (input  && m_programInfo.type() == DxsoProgramType::PixelShader)
+                  || (!input && m_programInfo.type() == DxsoProgramType::VertexShader);
+
+    transient = transient && m_programInfo.majorVersion() < 3;
+
+    if (!transient)
+      slot = id.num();
+    else {
+      auto idx = g_transientMappings.find(semantic);
+      if (idx != g_transientMappings.end()) {
+        slot = idx->second;
+      } else {
+        slot = 0;
+        //Logger::warn(str::format("Could not find transient mapping for DxsoSemantic{", semantic.usage, ", ", semantic.usageIndex, "}"));
+      }
+    }
+
+    input
+    ? m_interfaceSlots.inputSlots  |= 1u << slot
+    : m_interfaceSlots.outputSlots |= 1u << slot;
+
     return slot;
   }
 

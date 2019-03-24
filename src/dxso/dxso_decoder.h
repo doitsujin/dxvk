@@ -233,6 +233,22 @@ namespace dxvk {
 
   };
 
+  struct DxsoSemantic {
+    DxsoUsage       usage;
+    uint32_t        usageIndex;
+
+    bool operator== (const DxsoSemantic& b) const;
+    bool operator!= (const DxsoSemantic& b) const;
+  };
+
+  struct DxsoSemanticHash {
+    size_t operator () (const DxsoSemantic& key) const;
+  };
+
+  struct DxsoSemanticEq {
+    bool operator () (const DxsoSemantic& a, const DxsoSemantic& b) const;
+  };
+
   // This struct doesn't work off the single tokens
   // because we want to make a list of declarations
   // and that would include the implicit declarations in
@@ -240,8 +256,7 @@ namespace dxvk {
   struct DxsoDeclaration {
     DxsoRegister    reg;
 
-    DxsoUsage       usage;
-    uint32_t        usageIndex;
+    DxsoSemantic    semantic;
 
     DxsoTextureType textureType;
   };

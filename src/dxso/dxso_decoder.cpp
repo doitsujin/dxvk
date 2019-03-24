@@ -48,6 +48,29 @@ namespace dxvk {
     return length;
   }
 
+  bool DxsoSemantic::operator== (const DxsoSemantic& b) const {
+    return usage == b.usage && usageIndex == b.usageIndex;
+  }
+
+  bool DxsoSemantic::operator!= (const DxsoSemantic& b) const {
+    return usage != b.usage || usageIndex != b.usageIndex;
+  }
+
+  size_t DxsoSemanticHash::operator () (const DxsoSemantic& key) const {
+    std::hash<DxsoUsage> ehash;
+    std::hash<uint32_t>  uhash;
+
+    DxvkHashState state;
+    state.add(ehash(key.usage));
+    state.add(uhash(key.usageIndex));
+
+    return state;
+  }
+
+  bool DxsoSemanticEq::operator () (const DxsoSemantic& a, const DxsoSemantic& b) const {
+    return a == b;
+  }
+
   DxsoRegister::DxsoRegister()
     : m_type{ DxsoInstructionArgumentType::Source }, m_token{ 0 }, m_relativeToken{ 0 } {}
 
@@ -76,10 +99,10 @@ namespace dxvk {
   void DxsoDecodeContext::decodeDeclaration(DxsoCodeSlice& code) {
     uint32_t dclToken = code.read();
 
-    m_ctx.dcl.reg         = m_ctx.dst;
-    m_ctx.dcl.textureType = static_cast<DxsoTextureType>((dclToken & 0x78000000) >> 27);
-    m_ctx.dcl.usage       = static_cast<DxsoUsage>(dclToken & 0x0000000f);
-    m_ctx.dcl.usageIndex  = (dclToken & 0x000f0000) >> 16;
+    m_ctx.dcl.reg                  = m_ctx.dst;
+    m_ctx.dcl.textureType          = static_cast<DxsoTextureType>((dclToken & 0x78000000) >> 27);
+    m_ctx.dcl.semantic.usage       = static_cast<DxsoUsage>(dclToken & 0x0000000f);
+    m_ctx.dcl.semantic.usageIndex  = (dclToken & 0x000f0000) >> 16;
   }
 
   void DxsoDecodeContext::decodeDefinition(DxsoOpcode opcode, DxsoCodeSlice& code) {

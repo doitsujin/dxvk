@@ -22,10 +22,7 @@ namespace dxvk {
 
     this->runCompiler(compiler, m_code->slice());
 
-    uint32_t declCount = compiler.getDeclCount();
-    m_decl.resize(declCount);
-    const auto* declData = compiler.getDeclarations().data();
-    std::copy(declData, declData + declCount, m_decl.data());
+    m_decls = compiler.getDeclarations();
 
     return compiler.finalize();
   }

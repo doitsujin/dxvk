@@ -75,10 +75,6 @@ namespace dxvk {
       return m_vDecls;
     }
 
-    const uint32_t getDeclCount() const {
-      return m_nextInputSlot;
-    }
-
   private:
 
     DxsoModuleInfo      m_moduleInfo;
@@ -201,13 +197,9 @@ namespace dxvk {
 
     ///////////////////////////////////////////
     // Reads decls and generates an input slot.
-    uint32_t allocateInputSlot();
-    uint32_t allocateOutputSlot();
+    uint32_t allocateSlot(bool input, DxsoRegisterId id, DxsoSemantic semantic);
 
     std::array<uint32_t, 16> m_oPtrs;
-
-    uint32_t m_nextInputSlot = 0;
-    uint32_t m_nextOutputSlot = 0;
 
     uint32_t getTypeId(DxsoSpirvRegister& reg) {
       return getTypeId(reg.regId.type());

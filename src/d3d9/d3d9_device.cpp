@@ -2925,14 +2925,19 @@ namespace dxvk {
 
       uint32_t attrMask = 0;
 
-      const auto& shaderDecls = m_state.vertexShader->GetCommonShader()->GetDeclarations();
+      const auto* commonShader = m_state.vertexShader->GetCommonShader();
+      const auto& shaderDecls = commonShader->GetDeclarations();
+      const auto inputSlots = commonShader->GetShader()->interfaceSlots();
       const auto& elements = m_state.vertexDecl->GetElements();
 
       for (uint32_t attribIdx = 0; attribIdx < shaderDecls.size(); attribIdx++) {
+        if (!(inputSlots.inputSlots & (1u << attribIdx)))
+          continue;
+
         for (const auto& element : elements) {
           const auto& shaderDecl = shaderDecls[attribIdx];
-          const DxsoUsage elementUsage = static_cast<DxsoUsage>(element.Usage);
-          if (elementUsage != shaderDecl.usage || element.UsageIndex != shaderDecl.usageIndex)
+          DxsoSemantic elementSemantic = { static_cast<DxsoUsage>(element.Usage), element.UsageIndex };
+          if (elementSemantic != shaderDecl.semantic)
             continue;
 
           DxvkVertexAttribute attrib;

@@ -39,13 +39,13 @@ namespace dxvk {
       return m_bytecode;
     }
 
-    const std::vector<DxsoDeclaration>& GetDeclarations() const {
+    const std::array<DxsoDeclaration, 16>& GetDeclarations() const {
       return m_decl;
     }
 
   private:
 
-    std::vector<DxsoDeclaration> m_decl;
+    std::array<DxsoDeclaration, 16> m_decl;
 
     Rc<DxvkShader>        m_shader;
 
