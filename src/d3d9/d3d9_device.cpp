@@ -2834,16 +2834,22 @@ namespace dxvk {
   void Direct3DDevice9Ex::BindSampler(DWORD Sampler) {
     Rc<DxvkSampler> sampler = CreateSampler(Sampler);
 
+    auto samplerInfo = RemapStateSamplerShader(Sampler);
+
+    const uint32_t slotId = computeResourceSlotId(
+      samplerInfo.first, DxsoBindingType::ImageSampler,
+      samplerInfo.second);
+
     EmitCs([
-      cSlot    = uint32_t(Sampler),
+      cSlot    = slotId,
       cSampler = sampler
     ] (DxvkContext* ctx) {
-        ctx->bindResourceSampler(cSlot, cSampler);
+      ctx->bindResourceSampler(cSlot, cSampler);
     });
   }
 
   void Direct3DDevice9Ex::UndirtySamplers() {
-    for (uint32_t i = 0; i < 20; i++) {
+    for (uint32_t i = 0; i < 21; i++) {
       if (m_dirtySamplerStates & (1u << i))
         BindSampler(i);
     }

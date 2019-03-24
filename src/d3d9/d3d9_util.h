@@ -26,13 +26,17 @@ namespace dxvk {
     return Sampler;
   }
 
-  inline std::pair<DxsoProgramType, DWORD> RemapSamplerShader(DWORD Sampler) {
-    RemapSamplerState(Sampler);
-
+  inline std::pair<DxsoProgramType, DWORD> RemapStateSamplerShader(DWORD Sampler) {
     if (Sampler > 16)
       return std::make_pair(DxsoProgramType::VertexShader, Sampler - 16);
 
     return std::make_pair(DxsoProgramType::PixelShader, Sampler);
+  }
+
+  inline std::pair<DxsoProgramType, DWORD> RemapSamplerShader(DWORD Sampler) {
+    Sampler = RemapSamplerState(Sampler);
+
+    return RemapStateSamplerShader(Sampler);
   }
 
   template <typename T, typename J>
