@@ -89,7 +89,7 @@ namespace dxvk {
     HRESULT hr = this->GetDisplayModeEx(&mode, nullptr);
 
     if (FAILED(hr))
-      return D3DERR_INVALIDCALL;
+      return hr;
 
     pMode->Width = mode.Width;
     pMode->Height = mode.Height;
@@ -167,7 +167,7 @@ namespace dxvk {
     D3DDISPLAYMODEEX mode;
     HRESULT hr = this->GetDisplayModeEx(&mode, nullptr);
     if (FAILED(hr))
-      return D3DERR_INVALIDCALL;
+      return hr;
     
     D3DFORMAT format = parameters->BackBufferFormat;
     if (format == D3DFMT_UNKNOWN)
