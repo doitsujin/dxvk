@@ -22,6 +22,7 @@ namespace dxvk {
    */
   enum class DxvkContextFlag : uint64_t  {
     GpRenderPassBound,          ///< Render pass is currently bound
+    GpCondActive,               ///< Conditional rendering is enabled
     GpXfbActive,                ///< Transform feedback is enabled
     GpClearRenderTargets,       ///< Render targets need to be cleared
     GpDirtyFramebuffer,         ///< Framebuffer binding is out of date
@@ -38,6 +39,7 @@ namespace dxvk {
     GpDirtyDepthBias,           ///< Depth bias has changed
     GpDirtyStencilRef,          ///< Stencil reference has changed
     GpDirtyViewport,            ///< Viewport state has changed
+    GpDirtyPredicate,           ///< Predicate has changed
     GpDynamicBlendConstants,    ///< Blend constants are dynamic
     GpDynamicDepthBias,         ///< Depth bias is dynamic
     GpDynamicStencilRef,        ///< Stencil reference is dynamic
@@ -134,6 +136,12 @@ namespace dxvk {
     DxvkDepthBias       depthBias         = { 0.0f, 0.0f, 0.0f };
     uint32_t            stencilReference  = 0;
   };
+
+
+  struct DxvkCondRenderState {
+    DxvkBufferSlice                 predicate;
+    VkConditionalRenderingFlagsEXT  flags;
+  };
   
   
   /**
@@ -149,6 +157,7 @@ namespace dxvk {
     DxvkOutputMergerState     om;
     DxvkXfbState              xfb;
     DxvkDynamicState          dyn;
+    DxvkCondRenderState       cond;
     
     DxvkGraphicsPipelineState gp;
     DxvkComputePipelineState  cp;

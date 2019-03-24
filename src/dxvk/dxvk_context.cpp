@@ -2032,6 +2032,28 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::setPredicate(
+    const DxvkBufferSlice&    predicate,
+          VkConditionalRenderingFlagsEXT flags) {
+    if (!m_state.cond.predicate.matches(predicate)) {
+      m_state.cond.predicate = predicate;
+
+      if (m_predicateWrites.find(predicate.getSliceHandle())
+       != m_predicateWrites.end()) {
+        spillRenderPass();
+        commitPredicateUpdates();
+      }
+
+      m_flags.set(DxvkContextFlag::GpDirtyPredicate);
+    }
+
+    if (m_state.cond.flags != flags) {
+      m_state.cond.flags = flags;
+      m_flags.set(DxvkContextFlag::GpDirtyPredicate);
+    }
+  }
+
+
   void DxvkContext::setBarrierControl(DxvkBarrierControlFlags control) {
     m_barrierControl = control;
   }
@@ -2055,6 +2077,21 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::writePredicate(
+    const DxvkBufferSlice&    predicate,
+    const Rc<DxvkGpuQuery>&   query) {
+    DxvkBufferSliceHandle predicateHandle = predicate.getSliceHandle();
+    DxvkGpuQueryHandle    queryHandle     = query->handle();
+
+    if (m_flags.test(DxvkContextFlag::GpRenderPassBound))
+      m_predicateWrites.insert({ predicateHandle, queryHandle });
+    else
+      updatePredicate(predicateHandle, queryHandle);
+
+    m_cmd->trackResource(predicate.buffer());
+  }
+
+
   void DxvkContext::writeTimestamp(const Rc<DxvkGpuQuery>& query) {
     m_queryManager.writeTimestamp(m_cmd, query);
   }
@@ -2669,6 +2706,30 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::updatePredicate(
+    const DxvkBufferSliceHandle&    predicate,
+    const DxvkGpuQueryHandle&       query) {
+    m_cmd->cmdCopyQueryPoolResults(
+      query.queryPool, query.queryId, 1,
+      predicate.handle, predicate.offset, sizeof(uint32_t),
+      VK_QUERY_RESULT_WAIT_BIT);
+    
+    m_barriers.accessBuffer(predicate,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT,
+      VK_PIPELINE_STAGE_CONDITIONAL_RENDERING_BIT_EXT,
+      VK_ACCESS_CONDITIONAL_RENDERING_READ_BIT_EXT);
+  }
+
+
+  void DxvkContext::commitPredicateUpdates() {
+    for (const auto& update : m_predicateWrites)
+      updatePredicate(update.first, update.second);
+    
+    m_predicateWrites.clear();
+  }
+
+
   void DxvkContext::startRenderPass() {
     if (!m_flags.test(DxvkContextFlag::GpRenderPassBound)
      && (m_state.om.framebuffer != nullptr)) {
@@ -2710,6 +2771,7 @@ namespace dxvk {
       
       this->renderPassUnbindFramebuffer();
       this->unbindGraphicsPipeline();
+      this->commitPredicateUpdates();
 
       m_flags.clr(DxvkContextFlag::GpDirtyXfbCounters);
     }
@@ -2865,6 +2927,33 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::startConditionalRendering() {
+    if (!m_flags.test(DxvkContextFlag::GpCondActive)) {
+      m_flags.set(DxvkContextFlag::GpCondActive);
+
+      auto predicateSlice = m_state.cond.predicate.getSliceHandle();
+
+      VkConditionalRenderingBeginInfoEXT info;
+      info.sType  = VK_STRUCTURE_TYPE_CONDITIONAL_RENDERING_BEGIN_INFO_EXT;
+      info.pNext  = nullptr;
+      info.buffer = predicateSlice.handle;
+      info.offset = predicateSlice.offset;
+      info.flags  = m_state.cond.flags;
+
+      m_cmd->cmdBeginConditionalRendering(&info);
+    }
+  }
+
+
+  void DxvkContext::pauseConditionalRendering() {
+    if (m_flags.test(DxvkContextFlag::GpCondActive)) {
+      m_flags.clr(DxvkContextFlag::GpCondActive);
+
+      m_cmd->cmdEndConditionalRendering();
+    }
+  }
+
+
   void DxvkContext::startTransformFeedback() {
     if (!m_flags.test(DxvkContextFlag::GpXfbActive)) {
       m_flags.set(DxvkContextFlag::GpXfbActive);
@@ -2980,7 +3069,8 @@ namespace dxvk {
       DxvkContextFlag::GpDirtyBlendConstants,
       DxvkContextFlag::GpDirtyStencilRef,
       DxvkContextFlag::GpDirtyViewport,
-      DxvkContextFlag::GpDirtyDepthBias);
+      DxvkContextFlag::GpDirtyDepthBias,
+      DxvkContextFlag::GpDirtyPredicate);
     
     m_gpActivePipeline = VK_NULL_HANDLE;
   }
@@ -3442,6 +3532,18 @@ namespace dxvk {
   }
 
   
+  void DxvkContext::updateConditionalRendering() {
+    if (m_flags.test(DxvkContextFlag::GpDirtyPredicate)) {
+      m_flags.clr(DxvkContextFlag::GpDirtyPredicate);
+
+      pauseConditionalRendering();
+
+      if (m_state.cond.predicate.defined())
+        startConditionalRendering();
+    }
+  }
+
+
   void DxvkContext::updateDynamicState() {
     if (m_gpActivePipeline == VK_NULL_HANDLE)
       return;
@@ -3548,6 +3650,9 @@ namespace dxvk {
     
     if (m_state.gp.flags.test(DxvkGraphicsPipelineFlag::HasTransformFeedback))
       this->updateTransformFeedbackState();
+    
+    if (m_flags.test(DxvkContextFlag::GpDirtyPredicate))
+      this->updateConditionalRendering();
 
     if (m_flags.any(
           DxvkContextFlag::GpDirtyDescriptorSet,
