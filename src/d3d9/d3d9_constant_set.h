@@ -8,7 +8,7 @@ namespace dxvk {
 
   struct D3D9ConstantSets {
     constexpr static uint32_t SetSize    = (256 + 16 + 16) * sizeof(uint32_t);
-    constexpr static uint32_t SetCount   = 7; // Magic number for now. May change later
+    constexpr static uint32_t SetCount   = 8; // Magic number for now. May change later
     constexpr static uint32_t BufferSize = SetSize * SetCount;
 
     Direct3DCommonBuffer9* buffer   = nullptr;
