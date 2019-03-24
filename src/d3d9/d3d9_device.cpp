@@ -2547,7 +2547,7 @@ namespace dxvk {
         m_vsConst
       : m_psConst;
 
-    const uint32_t offset = D3D9ConstantSets::SetSize * constSet.setIndex;
+    const uint32_t offset = D3D9ConstantSets::SetAligned * constSet.setIndex;
 
     const uint32_t slotId = computeResourceSlotId(
       ShaderStage, DxsoBindingType::ConstantBuffer,
@@ -2589,7 +2589,7 @@ namespace dxvk {
       flags = D3DLOCK_DISCARD;
     }
 
-    const uint32_t offset = D3D9ConstantSets::SetSize * constSet.setIndex;
+    const uint32_t offset = D3D9ConstantSets::SetAligned * constSet.setIndex;
 
     void* bufferData = nullptr;
     HRESULT result = LockBuffer(
