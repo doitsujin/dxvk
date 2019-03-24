@@ -38,8 +38,7 @@ namespace dxvk {
       const Rc<DxvkMetaClearObjects>&   metaClearObjects,
       const Rc<DxvkMetaCopyObjects>&    metaCopyObjects,
       const Rc<DxvkMetaMipGenObjects>&  metaMipGenObjects,
-      const Rc<DxvkMetaPackObjects>&    metaPackObjects,
-      const Rc<DxvkMetaResolveObjects>& metaResolveObjects);
+      const Rc<DxvkMetaPackObjects>&    metaPackObjects);
     ~DxvkContext();
     
     /**
@@ -795,7 +794,6 @@ namespace dxvk {
     const Rc<DxvkMetaCopyObjects>     m_metaCopy;
     const Rc<DxvkMetaMipGenObjects>   m_metaMipGen;
     const Rc<DxvkMetaPackObjects>     m_metaPack;
-    const Rc<DxvkMetaResolveObjects>  m_metaResolve;
     
     Rc<DxvkCommandList>     m_cmd;
     Rc<DxvkDescriptorPool>  m_descPool;

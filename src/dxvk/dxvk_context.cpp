@@ -14,8 +14,7 @@ namespace dxvk {
     const Rc<DxvkMetaClearObjects>&   metaClearObjects,
     const Rc<DxvkMetaCopyObjects>&    metaCopyObjects,
     const Rc<DxvkMetaMipGenObjects>&  metaMipGenObjects,
-    const Rc<DxvkMetaPackObjects>&    metaPackObjects,
-    const Rc<DxvkMetaResolveObjects>& metaResolveObjects)
+    const Rc<DxvkMetaPackObjects>&    metaPackObjects)
   : m_device      (device),
     m_pipeMgr     (pipelineManager),
     m_gpuEvents   (gpuEventPool),
@@ -23,7 +22,6 @@ namespace dxvk {
     m_metaCopy    (metaCopyObjects),
     m_metaMipGen  (metaMipGenObjects),
     m_metaPack    (metaPackObjects),
-    m_metaResolve (metaResolveObjects),
     m_queryManager(gpuQueryPool) {
 
   }

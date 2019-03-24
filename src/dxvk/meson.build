@@ -27,13 +27,10 @@ dxvk_shaders = files([
 
   'shaders/dxvk_pack_d24s8.comp',
   'shaders/dxvk_pack_d32s8.comp',
-  
-  'shaders/dxvk_resolve_vert.vert',
-  'shaders/dxvk_resolve_geom.geom',
-  'shaders/dxvk_resolve_frag_f.frag',
-  'shaders/dxvk_resolve_frag_i.frag',
-  'shaders/dxvk_resolve_frag_u.frag',
 
+  'shaders/dxvk_resolve_geom.geom',
+  'shaders/dxvk_resolve_vert.vert',
+  
   'hud/shaders/hud_line.frag',
   'hud/shaders/hud_text.frag',
   'hud/shaders/hud_vert.vert',

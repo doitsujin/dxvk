@@ -423,7 +423,6 @@ namespace dxvk {
     Rc<DxvkMetaCopyObjects>     m_metaCopyObjects;
     Rc<DxvkMetaMipGenObjects>   m_metaMipGenObjects;
     Rc<DxvkMetaPackObjects>     m_metaPackObjects;
-    Rc<DxvkMetaResolveObjects>  m_metaResolveObjects;
     
     DxvkUnboundResources        m_unboundResources;
     
