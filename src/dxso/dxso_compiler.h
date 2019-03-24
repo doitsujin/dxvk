@@ -166,6 +166,7 @@ namespace dxvk {
     void emitTextureSample(const DxsoInstructionContext& ctx);
 
     void emitDcl(const DxsoInstructionContext& ctx);
+    void emitDclSampler(uint32_t idx, DxsoTextureType type);
 
     void emitDef(DxsoOpcode opcode, const DxsoInstructionContext& ctx);
     void emitDefF(const DxsoInstructionContext& ctx);
