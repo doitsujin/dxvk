@@ -35,8 +35,6 @@ namespace dxvk {
     InitSamplers();
     InitShaders();
 
-    SetGammaControl(0, nullptr);
-
     // The present fence seems to introduce stutter on ANV
     if (m_device->adapter()->matchesDriver(DxvkGpuVendor::Intel, VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA_KHR, 0, 0))
       m_usePresentFence = false;
@@ -135,30 +133,33 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D11SwapChain::SetGammaControl(
           UINT                      NumControlPoints,
     const DXGI_RGB*                 pControlPoints) {
-    if (NumControlPoints > 0) {
+    bool isIdentity = true;
+
+    if (NumControlPoints > 1) {
       std::array<D3D11_VK_GAMMA_CP, 1025> cp;
 
       if (NumControlPoints > cp.size())
         return E_INVALIDARG;
       
       for (uint32_t i = 0; i < NumControlPoints; i++) {
+        uint16_t identity = MapGammaControlPoint(float(i) / float(NumControlPoints - 1));
+
         cp[i].R = MapGammaControlPoint(pControlPoints[i].Red);
         cp[i].G = MapGammaControlPoint(pControlPoints[i].Green);
         cp[i].B = MapGammaControlPoint(pControlPoints[i].Blue);
         cp[i].A = 0;
+
+        isIdentity &= cp[i].R == identity
+                   && cp[i].G == identity
+                   && cp[i].B == identity;
       }
 
-      CreateGammaTexture(NumControlPoints, cp.data());
-    } else {
-      std::array<D3D11_VK_GAMMA_CP, 256> cp;
-
-      for (uint32_t i = 0; i < cp.size(); i++) {
-        const uint16_t value = 257 * i;
-        cp[i] = { value, value, value, 0 };
-      }
-
-      CreateGammaTexture(cp.size(), cp.data());
+      if (!isIdentity)
+        CreateGammaTexture(NumControlPoints, cp.data());
     }
+
+    if (isIdentity)
+      DestroyGammaTexture();
 
     return S_OK;
   }
@@ -567,6 +568,12 @@ namespace dxvk {
       m_context->endRecording(),
       VK_NULL_HANDLE,
       VK_NULL_HANDLE);
+  }
+
+
+  void D3D11SwapChain::DestroyGammaTexture() {
+    m_gammaTexture     = nullptr;
+    m_gammaTextureView = nullptr;
   }
 
 

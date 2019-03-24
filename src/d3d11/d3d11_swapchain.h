@@ -139,6 +139,8 @@ namespace dxvk {
             UINT                NumControlPoints,
       const D3D11_VK_GAMMA_CP*  pControlPoints);
     
+    void DestroyGammaTexture();
+    
     void CreateHud();
 
     void InitRenderState();
