@@ -44,6 +44,10 @@ namespace dxvk {
             void*                             pData,
             UINT                              GetDataFlags);
     
+    DxvkBufferSlice GetPredicate() const {
+      return m_predicate;
+    }
+    
     D3D10Query* GetD3D10Iface() {
       return &m_d3d10;
     }

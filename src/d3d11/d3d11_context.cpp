@@ -273,15 +273,24 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeviceContext::SetPredication(
           ID3D11Predicate*                  pPredicate,
           BOOL                              PredicateValue) {
-    static bool s_errorShown = false;
-    
-    if (pPredicate && !std::exchange(s_errorShown, true))
-      Logger::err("D3D11DeviceContext::SetPredication: Stub");
-    
     D3D10DeviceLock lock = LockContext();
-    
-    m_state.pr.predicateObject = static_cast<D3D11Query*>(pPredicate);
+
+    auto predicate = static_cast<D3D11Query*>(pPredicate);
+    m_state.pr.predicateObject = predicate;
     m_state.pr.predicateValue  = PredicateValue;
+
+    if (!m_device->features().extConditionalRendering.conditionalRendering)
+      return;
+
+    EmitCs([
+      cPredicate = predicate
+        ? predicate->GetPredicate()
+        : DxvkBufferSlice(),
+      cValue     = PredicateValue
+    ] (DxvkContext* ctx) {
+      ctx->setPredicate(cPredicate,
+        cValue ? VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT : 0);
+    });
   }
   
   
