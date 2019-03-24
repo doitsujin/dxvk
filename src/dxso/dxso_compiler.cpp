@@ -69,6 +69,9 @@ namespace dxvk {
     case DxsoOpcode::Dp2Add:
       return this->emitVectorAlu(ctx);
 
+    case DxsoOpcode::Tex:
+      return this->emitTextureSample(ctx);
+
     default:
       Logger::warn(str::format("DxsoCompiler::processInstruction: unhandled opcode: ", opcode));
       break;
@@ -518,6 +521,33 @@ namespace dxvk {
     auto& dstSpvReg = getSpirvRegister(dst);
     dstSpvReg.varId = emitWriteMask(typeId, dstSpvReg.varId, result, dst.writeMask());
   }
+
+  void DxsoCompiler::emitTextureSample(const DxsoInstructionContext& ctx) {
+    const auto& dst = ctx.dst;
+
+    const uint32_t typeId = spvType(dst);
+
+    // TODO: This only handles SM2+ for now!
+    uint32_t texcoordVarId = emitRegisterLoad(ctx.src[0]);
+    uint32_t samplerId = ctx.src[1].registerId().num();
+
+    uint32_t imageVarId = m_module.opSampledImage(
+      m_module.defSampledImageType(m_textureTypes.at(samplerId)),
+      m_module.opLoad(m_textureTypes.at(samplerId), m_textures.at(samplerId)),
+      m_module.opLoad(m_module.defSamplerType(),    m_samplers.at(samplerId)));
+
+    SpirvImageOperands imageOperands;
+    uint32_t result = m_module.opImageSampleImplicitLod(
+      spvType(dst),
+      imageVarId,
+      texcoordVarId,
+      imageOperands);
+
+    result = emitDstOperandModifier(typeId, result, dst.saturate(), dst.partialPrecision());
+    auto& dstSpvReg = getSpirvRegister(dst);
+    dstSpvReg.varId = emitWriteMask(typeId, dstSpvReg.varId, result, dst.writeMask());
+  }
+
   void DxsoCompiler::emitDcl(const DxsoInstructionContext& ctx) {
     const auto type    = ctx.dst.registerId().type();
 
@@ -527,8 +557,84 @@ namespace dxvk {
     const bool sampler = type == DxsoRegisterType::Sampler;
 
     if (sampler) {
-      // Do something else.
-      Logger::warn("DxsoCompiler::emitDcl: samplers not implemented.");
+      const uint32_t idx = ctx.dst.registerId().num();
+
+      // Sampler Setup
+      {
+        const uint32_t samplerType = m_module.defSamplerType();
+        const uint32_t samplerPtrType = m_module.defPointerType(
+          samplerType, spv::StorageClassUniformConstant);
+
+        const uint32_t varId = m_module.newVar(samplerPtrType,
+          spv::StorageClassUniformConstant);
+
+        m_samplers.at(idx) = varId;
+
+        const uint32_t bindingId = computeResourceSlotId(
+          m_programInfo.type(), DxsoBindingType::ImageSampler, idx);
+
+        m_module.decorateDescriptorSet(varId, 0);
+        m_module.decorateBinding(varId, bindingId);
+
+        DxvkResourceSlot resource;
+        resource.slot = bindingId;
+        resource.type = VK_DESCRIPTOR_TYPE_SAMPLER;
+        resource.view = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+        resource.access = 0;
+        m_resourceSlots.push_back(resource);
+      }
+
+      // Resource Setup
+      {
+        spv::Dim dimensionality;
+        VkImageViewType viewType;
+
+        switch (ctx.dcl.textureType) {
+        default:
+        case DxsoTextureType::Texture2D:
+          dimensionality = spv::Dim2D;
+          viewType = VK_IMAGE_VIEW_TYPE_2D;
+          break;
+        case DxsoTextureType::TextureCube:
+          dimensionality = spv::DimCube;
+          viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+          m_module.enableCapability(
+            spv::CapabilitySampledCubeArray);
+          break;
+        case DxsoTextureType::Texture3D:
+          dimensionality = spv::Dim3D;
+          viewType = VK_IMAGE_VIEW_TYPE_3D;
+          break;
+        }
+
+        const uint32_t imageTypeId = m_module.defImageType(m_module.defFloatType(32),
+          dimensionality, 0, 0, 0, 1,
+          spv::ImageFormatR32f);
+
+        const uint32_t resourcePtrType = m_module.defPointerType(
+          imageTypeId, spv::StorageClassUniformConstant);
+
+        const uint32_t varId = m_module.newVar(resourcePtrType,
+          spv::StorageClassUniformConstant);
+
+        m_textures.at(idx) = varId;
+        m_textureTypes.at(idx) = imageTypeId;
+
+        const uint32_t bindingId = computeResourceSlotId(
+          m_programInfo.type(), DxsoBindingType::Image, idx);
+
+        m_module.decorateDescriptorSet(varId, 0);
+        m_module.decorateBinding(varId, bindingId);
+
+        // Store descriptor info for the shader interface
+        DxvkResourceSlot resource;
+        resource.slot = bindingId;
+        resource.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        resource.view = viewType;
+        resource.access = VK_ACCESS_SHADER_READ_BIT;
+        m_resourceSlots.push_back(resource);
+      }
+
       return;
     }
 

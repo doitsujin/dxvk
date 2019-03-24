@@ -123,6 +123,10 @@ namespace dxvk {
 
     uint32_t m_cBuffer = 0;
 
+    std::array<uint32_t, 17> m_samplers;
+    std::array<uint32_t, 17> m_textures;
+    std::array<uint32_t, 17> m_textureTypes;
+
     /////////////////////////////////////////////////////
     // Shader interface and metadata declaration methods
     void emitInit();
@@ -162,6 +166,8 @@ namespace dxvk {
     uint32_t emitScalarReplicant(uint32_t typeId, uint32_t varId);
 
     void emitVectorAlu(const DxsoInstructionContext& ctx);
+
+    void emitTextureSample(const DxsoInstructionContext& ctx);
 
     void emitDcl(const DxsoInstructionContext& ctx);
 
