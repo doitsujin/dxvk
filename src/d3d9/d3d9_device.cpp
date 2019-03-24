@@ -866,12 +866,52 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetTexture(DWORD Stage, IDirect3DBaseTexture9** ppTexture) {
-    Logger::warn("Direct3DDevice9Ex::GetTexture: Stub");
+    auto lock = LockDevice();
+
+    if (ppTexture == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    *ppTexture = nullptr;
+
+    if (InvalidSampler(Stage))
+      return D3D_OK;
+
+    DWORD stateSampler = RemapSamplerState(Stage);
+
+    *ppTexture = ref(m_state.textures[stateSampler]);
+
     return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetTexture(DWORD Stage, IDirect3DBaseTexture9* pTexture) {
-    Logger::warn("Direct3DDevice9Ex::SetTexture: Stub");
+    auto lock = LockDevice();
+
+    if (InvalidSampler(Stage))
+      return D3D_OK;
+
+    DWORD stateSampler = RemapSamplerState(Stage);
+
+    if (m_state.textures[stateSampler] == pTexture)
+      return D3D_OK;
+    
+    TextureRefPrivate(m_state.textures[stateSampler], false); // Release old texture
+    TextureRefPrivate(pTexture,                       true);  // Reference new texture
+    m_state.textures[stateSampler] = pTexture;
+
+    auto shaderSampler = RemapSamplerShader(Stage);
+    uint32_t slot = computeResourceSlotId(shaderSampler.first, DxsoBindingType::Image, uint32_t(shaderSampler.second));
+
+    Rc<Direct3DCommonTexture9> commonTex = GetCommonTexture(pTexture);
+
+    EmitCs([
+      cSlot      = slot,
+      cImageView = commonTex == nullptr
+                 ? commonTex->GetImageView(false)
+                 : nullptr // TODO: SRGB-ness
+    ](DxvkContext* ctx) {
+      ctx->bindResourceView(cSlot, cImageView, nullptr);
+    });
+
     return D3D_OK;
   }
 
@@ -905,7 +945,7 @@ namespace dxvk {
     if (InvalidSampler(Sampler))
       return D3D_OK;
 
-    RemapSampler(&Sampler);
+    Sampler = RemapSamplerState(Sampler);
 
     *pValue = m_state.samplerStates[Sampler][Type];
 
@@ -922,7 +962,7 @@ namespace dxvk {
 
     auto& state = m_state.samplerStates;
 
-    RemapSampler(&Sampler);
+    Sampler = RemapSamplerState(Sampler);
 
     bool changed = state[Sampler][Type] != Value;
 
@@ -1790,7 +1830,7 @@ namespace dxvk {
     }
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::ResetEx(D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX *pFullscreenDisplayMode) {
+  HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::ResetEx(D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX* pFullscreenDisplayMode) {
     auto lock = LockDevice();
 
     if (pPresentationParameters == nullptr)
@@ -1801,7 +1841,7 @@ namespace dxvk {
     for (uint32_t i = 0; i < caps::MaxSimultaneousRenderTargets; i++)
       SetRenderTarget(0, nullptr);
 
-    auto& rs = m_state.renderStates;
+    auto & rs = m_state.renderStates;
 
     rs[D3DRS_SEPARATEALPHABLENDENABLE] = FALSE;
     rs[D3DRS_ALPHABLENDENABLE] = FALSE;
@@ -1938,10 +1978,19 @@ namespace dxvk {
       SetTextureStageState(i, D3DTSS_CONSTANT, 0x00000000);
     }
 
-    forEachSampler([&](uint32_t i)
-    {
-      SetTexture(i, 0);
-    });
+    for (uint32_t i = 0; i < m_state.textures.size(); i++) {
+      m_state.textures[i] = nullptr;
+
+      DWORD sampler = i;
+      auto samplerInfo = RemapSamplerShader(sampler);
+      uint32_t slot = computeResourceSlotId(samplerInfo.first, DxsoBindingType::Image, uint32_t(samplerInfo.second));
+
+      EmitCs([
+        cSlot = slot
+      ](DxvkContext* ctx) {
+        ctx->bindResourceView(cSlot, nullptr, nullptr);
+      });
+    }
 
     auto& ss = m_state.samplerStates;
     for (uint32_t i = 0; i < ss.size(); i++) {

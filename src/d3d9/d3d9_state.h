@@ -60,6 +60,7 @@ namespace dxvk {
 
     std::array<DWORD, D3DRS_BLENDOPALPHA + 1> renderStates;
     std::array<std::array<DWORD, D3DSAMP_DMAPOFFSET + 1>, 21> samplerStates;
+    std::array<IDirect3DBaseTexture9*, 21> textures;
 
     D3D9ShaderConstants vsConsts;
     D3D9ShaderConstants psConsts;

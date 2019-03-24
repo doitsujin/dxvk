@@ -11,21 +11,37 @@ namespace dxvk {
 
   inline bool InvalidSampler(DWORD Sampler) {
     if (Sampler > 15 && Sampler < D3DDMAPSAMPLER)
-      return false;
+      return true;
 
     if (Sampler > D3DVERTEXTEXTURESAMPLER3)
-      return false;
+      return true;
     
-    return true;
+    return false;
   }
 
-  inline void RemapSampler(DWORD* Sampler) {
-    DWORD& sampler = *Sampler;
+  inline DWORD RemapSamplerState(DWORD Sampler) {
+    if (Sampler >= D3DDMAPSAMPLER)
+      Sampler = 16 + (Sampler - D3DDMAPSAMPLER);
 
-    if (sampler >= D3DDMAPSAMPLER)
-      sampler = 16 + (sampler - D3DDMAPSAMPLER);
+    return Sampler;
+  }
 
-    *Sampler = sampler;
+  inline std::pair<DxsoProgramType, DWORD> RemapSamplerShader(DWORD Sampler) {
+    RemapSamplerState(Sampler);
+
+    if (Sampler > 16)
+      return std::make_pair(DxsoProgramType::VertexShader, Sampler - 16);
+
+    return std::make_pair(DxsoProgramType::PixelShader, Sampler);
+  }
+
+  template <typename T, typename J>
+  void CastRefPrivate(J* ptr, bool AddRef) {
+    if (ptr == nullptr)
+      return;
+
+    T* castedPtr = static_cast<T*>(ptr);
+    AddRef ? castedPtr->AddRefPrivate() : castedPtr->ReleasePrivate();
   }
 
   HRESULT DecodeMultiSampleType(
