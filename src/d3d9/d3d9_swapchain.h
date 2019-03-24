@@ -57,11 +57,11 @@ namespace dxvk {
 
     void    GetGammaRamp(D3DGAMMARAMP* pRamp);
 
-    HWND GetPresentWindow(HWND windowOverride = nullptr);
+    HWND GetPresentWindow(D3DPRESENT_PARAMETERS* parameters, HWND windowOverride = nullptr);
 
   private:
 
-    D3D9PresenterDesc CalcPresenterDesc(D3DPRESENT_PARAMETERS* parameters);
+    D3D9PresenterDesc CalcPresenterDesc();
 
     D3D9Presenter& GetOrMakePresenter(HWND window);
 

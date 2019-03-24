@@ -11,6 +11,8 @@ namespace dxvk {
     : Direct3DSwapChain9ExBase{ device }
     , m_backBuffer{ nullptr }
     , m_gammaFlags{ 0 } {
+    std::memset(&m_presentParams, 0, sizeof(m_presentParams));
+
     SetDefaultGamma();
     Reset(presentParams);
   }
@@ -41,7 +43,7 @@ namespace dxvk {
     DWORD dwFlags) {
     auto lock = m_parent->LockDevice();
 
-    HWND window = GetPresentWindow(hDestWindowOverride);
+    HWND window = GetPresentWindow(&m_presentParams, hDestWindowOverride);
 
     auto& presenter = GetOrMakePresenter(window);
 
@@ -147,16 +149,14 @@ namespace dxvk {
   }
 
   HRESULT Direct3DSwapChain9Ex::Reset(D3DPRESENT_PARAMETERS* parameters) {
-    HWND originalWindow = m_presentParams.hDeviceWindow;
-
-    m_presentParams.hDeviceWindow = parameters->hDeviceWindow;
+    HWND newWindow      = GetPresentWindow(parameters);
+    HWND originalWindow = GetPresentWindow(&m_presentParams);
     
-    HWND window = GetPresentWindow();
     RECT clientRect;
-    GetClientRect(window, &clientRect);
+    GetClientRect(newWindow, &clientRect);
 
-    parameters->BackBufferCount = std::max(parameters->BackBufferCount, 1u);
-    parameters->BackBufferWidth = parameters->BackBufferWidth ? parameters->BackBufferWidth : clientRect.right;
+    parameters->BackBufferCount  = std::max(parameters->BackBufferCount, 1u);
+    parameters->BackBufferWidth  = parameters->BackBufferWidth  ? parameters->BackBufferWidth  : clientRect.right;
     parameters->BackBufferHeight = parameters->BackBufferHeight ? parameters->BackBufferHeight : clientRect.bottom;
 
     D3DDISPLAYMODEEX mode;
@@ -171,10 +171,12 @@ namespace dxvk {
     if (!parameters->Windowed)
       Logger::warn("Direct3DSwapChain9Ex::Reset: fullscreen not implemented.");
 
-    if (originalWindow == parameters->hDeviceWindow) {
-      auto& presenter = GetOrMakePresenter(window);
+    m_presentParams = *parameters;
 
-      D3D9PresenterDesc desc = CalcPresenterDesc(parameters);
+    if (!m_presenters.empty() && newWindow == originalWindow) {
+      auto& presenter = GetOrMakePresenter(newWindow);
+
+      D3D9PresenterDesc desc = CalcPresenterDesc();
       presenter.recreateSwapChain(&desc);
       presenter.createBackBuffer();
     }
@@ -182,9 +184,7 @@ namespace dxvk {
       m_presenters.clear();
     }
 
-    m_presentParams = *parameters;
-
-    auto& presenter = GetOrMakePresenter(window);
+    auto& presenter = GetOrMakePresenter(newWindow);
 
     if (m_backBuffer != nullptr)
       m_backBuffer->ReleasePrivate();
@@ -223,7 +223,7 @@ namespace dxvk {
     else
       SetDefaultGamma();
 
-    auto& presenter = GetOrMakePresenter(GetPresentWindow());
+    auto& presenter = GetOrMakePresenter(GetPresentWindow(&m_presentParams));
 
     presenter.setGammaRamp(Flags, &m_gammaRamp);
   }
@@ -233,7 +233,7 @@ namespace dxvk {
       *pRamp = m_gammaRamp;
   }
 
-  D3D9PresenterDesc Direct3DSwapChain9Ex::CalcPresenterDesc(D3DPRESENT_PARAMETERS* parameters) {
+  D3D9PresenterDesc Direct3DSwapChain9Ex::CalcPresenterDesc() {
     auto options = m_parent->GetOptions();
 
     D3D9PresenterDesc desc;
@@ -259,7 +259,7 @@ namespace dxvk {
         return *presenter;
     }
 
-    D3D9PresenterDesc desc = CalcPresenterDesc(&m_presentParams);
+    D3D9PresenterDesc desc = CalcPresenterDesc();
 
     auto* presenter = new D3D9Presenter(
       m_parent,
@@ -273,11 +273,11 @@ namespace dxvk {
     return *presenter;
   }
 
-  HWND Direct3DSwapChain9Ex::GetPresentWindow(HWND windowOverride) {
+  HWND Direct3DSwapChain9Ex::GetPresentWindow(D3DPRESENT_PARAMETERS* parameters, HWND windowOverride) {
     if (windowOverride != nullptr)
       return windowOverride;
 
-    return m_presentParams.hDeviceWindow ? m_presentParams.hDeviceWindow : m_parent->GetWindow();
+    return parameters->hDeviceWindow ? parameters->hDeviceWindow : m_parent->GetWindow();
   }
 
 }
