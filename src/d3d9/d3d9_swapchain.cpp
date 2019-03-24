@@ -10,9 +10,8 @@ namespace dxvk {
   Direct3DSwapChain9Ex::Direct3DSwapChain9Ex(Direct3DDevice9Ex* device, D3DPRESENT_PARAMETERS* presentParams)
     : Direct3DSwapChain9ExBase{ device }
     , m_backBuffer{ nullptr }
-    , m_gammaFlags{ 0 } {
-    std::memset(&m_presentParams, 0, sizeof(m_presentParams));
-
+    , m_gammaFlags{ 0 }
+    , m_presentParams{ } {
     SetDefaultGamma();
     Reset(presentParams);
   }
@@ -83,7 +82,7 @@ namespace dxvk {
     if (pMode == nullptr)
       return D3DERR_INVALIDCALL;
 
-    std::memset(pMode, 0, sizeof(D3DDISPLAYMODE));
+    *pMode = D3DDISPLAYMODE();
 
     D3DDISPLAYMODEEX mode;
     HRESULT hr = this->GetDisplayModeEx(&mode, nullptr);
