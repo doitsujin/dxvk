@@ -905,7 +905,7 @@ namespace dxvk {
 
     EmitCs([
       cSlot      = slot,
-      cImageView = commonTex == nullptr
+      cImageView = commonTex != nullptr
                  ? commonTex->GetImageView(false)
                  : nullptr // TODO: SRGB-ness
     ](DxvkContext* ctx) {
