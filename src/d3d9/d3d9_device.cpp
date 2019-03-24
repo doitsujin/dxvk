@@ -59,6 +59,17 @@ namespace dxvk {
       cDevice = m_device
     ] (DxvkContext* ctx) {
       ctx->beginRecording(cDevice->createCommandList());
+
+      DxvkMultisampleState msState;
+      msState.sampleMask            = 0xffffffff;
+      msState.enableAlphaToOne      = VK_FALSE;
+      msState.enableAlphaToCoverage = VK_FALSE;
+      ctx->setMultisampleState(msState);
+
+      DxvkLogicOpState loState;
+      loState.enableLogicOp = VK_FALSE;
+      loState.logicOp       = VK_LOGIC_OP_CLEAR;
+      ctx->setLogicOpState(loState);
     });
 
     SetupConstantBuffers();
