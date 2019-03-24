@@ -354,6 +354,9 @@ namespace dxvk {
     if (m_desc.Usage & D3DUSAGE_DYNAMIC)
       return D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER;
 
+    if (m_desc.Pool == D3DPOOL_DEFAULT)
+      return D3D9_COMMON_TEXTURE_MAP_MODE_NONE;
+
     // Depth-stencil formats in D3D9 can be mapped and follow special
     // packing rules, so we need to copy that data into a buffer first
     if (GetPackedDepthStencilFormat(m_desc.Format))
