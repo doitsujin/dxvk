@@ -324,7 +324,7 @@ namespace dxvk {
     desc.Discard = FALSE;
     desc.MultiSample = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
-    desc.Lockable = FALSE;
+    desc.Lockable = Pool != D3DPOOL_DEFAULT || Usage & D3DUSAGE_DYNAMIC;
 
     if (FAILED(Direct3DCommonTexture9::NormalizeTextureProperties(&desc)))
       return D3DERR_INVALIDCALL;
@@ -1782,11 +1782,11 @@ namespace dxvk {
     desc.MipLevels = 1;
     desc.Usage = Usage;
     desc.Format = fixupFormat(Format);
-    desc.Pool = D3DPOOL_DEFAULT;
+    desc.Pool = Pool;
     desc.Discard = FALSE;
     desc.MultiSample = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
-    desc.Lockable = TRUE;
+    desc.Lockable = TRUE; // Offscreen surfaces are always lockable.
 
     if (FAILED(Direct3DCommonTexture9::NormalizeTextureProperties(&desc)))
       return D3DERR_INVALIDCALL;
