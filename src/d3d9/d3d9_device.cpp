@@ -14,6 +14,8 @@
 #include "../util/util_bit.h"
 #include "../util/util_math.h"
 
+#include "d3d9_initializer.h"
+
 #include <algorithm>
 
 namespace dxvk {
@@ -47,6 +49,7 @@ namespace dxvk {
     , m_deferViewportBinding{ false }
     , m_shaderModules{ new D3D9ShaderModuleSet }
     , m_dirtySamplerStates{ 0 } {
+    m_initializer = new D3D9Initializer(m_device);
     m_frameLatencyCap = m_d3d9Options.maxFrameLatency;
 
     for (uint32_t i = 0; i < m_frameEvents.size(); i++)
@@ -64,6 +67,9 @@ namespace dxvk {
   Direct3DDevice9Ex::~Direct3DDevice9Ex() {
     Flush();
     SynchronizeCsThread();
+
+    delete m_initializer;
+
     m_device->waitForIdle(); // Sync Device
   }
 
@@ -313,6 +319,7 @@ namespace dxvk {
 
     try {
       const Com<Direct3DTexture9> texture = new Direct3DTexture9{ this, &desc };
+      m_initializer->InitTexture(texture->GetCommonTexture().ptr());
       *ppTexture = texture.ref();
       return D3D_OK;
     }
@@ -370,6 +377,7 @@ namespace dxvk {
 
     try {
       const Com<Direct3DVertexBuffer9> buffer = new Direct3DVertexBuffer9{ this, &desc };
+      m_initializer->InitBuffer(buffer->GetCommonBuffer().ptr());
       *ppVertexBuffer = buffer.ref();
       return D3D_OK;
     }
@@ -400,6 +408,7 @@ namespace dxvk {
 
     try {
       const Com<Direct3DIndexBuffer9> buffer = new Direct3DIndexBuffer9{ this, &desc };
+      m_initializer->InitBuffer(buffer->GetCommonBuffer().ptr());
       *ppIndexBuffer = buffer.ref();
       return D3D_OK;
     }
@@ -1729,6 +1738,7 @@ namespace dxvk {
 
     try {
       const Com<Direct3DSurface9> surface = new Direct3DSurface9{ this, &desc };
+      m_initializer->InitTexture(surface->GetCommonTexture().ptr());
       *ppSurface = surface.ref();
       return D3D_OK;
     }
@@ -1771,6 +1781,7 @@ namespace dxvk {
 
     try {
       const Com<Direct3DSurface9> surface = new Direct3DSurface9{ this, &desc };
+      m_initializer->InitTexture(surface->GetCommonTexture().ptr());
       *ppSurface = surface.ref();
       return D3D_OK;
     }
@@ -1821,6 +1832,7 @@ namespace dxvk {
 
     try {
       const Com<Direct3DSurface9> surface = new Direct3DSurface9{ this, &desc };
+      m_initializer->InitTexture(surface->GetCommonTexture().ptr());
       *ppSurface = surface.ref();
       return D3D_OK;
     }
@@ -2510,6 +2522,9 @@ namespace dxvk {
 
     m_vsConst.buffer = new Direct3DCommonBuffer9(this, &constDesc);
     m_psConst.buffer = new Direct3DCommonBuffer9(this, &constDesc);
+
+    m_initializer->InitBuffer(m_vsConst.buffer);
+    m_initializer->InitBuffer(m_psConst.buffer);
   }
 
   void Direct3DDevice9Ex::BindConstants(DxsoProgramType ShaderStage) {
@@ -2582,6 +2597,8 @@ namespace dxvk {
 
   void Direct3DDevice9Ex::Flush() {
     auto lock = LockDevice();
+
+    m_initializer->Flush();
 
     if (m_csIsBusy || m_csChunk->commandCount() != 0) {
       // Add commands to flush the threaded

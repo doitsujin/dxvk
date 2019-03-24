@@ -33,6 +33,7 @@ namespace dxvk {
   class Direct3DCommonBuffer9;
   class D3D9CommonShader;
   class D3D9ShaderModuleSet;
+  class D3D9Initializer;
 
   enum class D3D9DeviceFlag : uint64_t {
     DirtyDepthStencilState,
@@ -699,6 +700,8 @@ namespace dxvk {
     Rc<DxvkDevice> m_device;
     Rc<DxvkDataBuffer>          m_updateBuffer;
     DxvkCsChunkPool m_csChunkPool;
+
+    D3D9Initializer*                 m_initializer = nullptr;
 
     DxvkCsChunkRef              m_csChunk;
 
