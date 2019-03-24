@@ -556,6 +556,17 @@ namespace dxvk {
     const bool input   = type == DxsoRegisterType::Input
                       || type == DxsoRegisterType::Texture;
 
+    auto dcl = ctx.dcl;
+
+    if (type == DxsoRegisterType::Input) {
+      if (m_programInfo.majorVersion() != 3 && m_programInfo.type() == DxsoProgramType::PixelShader)
+        return;
+    }
+    else if (type == DxsoRegisterType::Texture) {
+      dcl.semantic.usage      = DxsoUsage::Texcoord;
+      dcl.semantic.usageIndex = ctx.dst.registerId().num();
+    }
+
     const bool sampler = type == DxsoRegisterType::Sampler;
 
     if (sampler) {
@@ -640,7 +651,7 @@ namespace dxvk {
       return;
     }
 
-    mapSpirvRegister(ctx.dst, &ctx.dcl);
+    mapSpirvRegister(ctx.dst, &dcl);
   }
 
   void DxsoCompiler::emitDef(DxsoOpcode opcode, const DxsoInstructionContext& ctx) {
