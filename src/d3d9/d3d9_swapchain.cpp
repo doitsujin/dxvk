@@ -83,8 +83,13 @@ namespace dxvk {
     if (pMode == nullptr)
       return D3DERR_INVALIDCALL;
 
+    std::memset(pMode, 0, sizeof(D3DDISPLAYMODE));
+
     D3DDISPLAYMODEEX mode;
-    this->GetDisplayModeEx(&mode, nullptr);
+    HRESULT hr = this->GetDisplayModeEx(&mode, nullptr);
+
+    if (FAILED(hr))
+      return D3DERR_INVALIDCALL;
 
     pMode->Width = mode.Width;
     pMode->Height = mode.Height;
@@ -160,7 +165,9 @@ namespace dxvk {
     parameters->BackBufferHeight = parameters->BackBufferHeight ? parameters->BackBufferHeight : clientRect.bottom;
 
     D3DDISPLAYMODEEX mode;
-    this->GetDisplayModeEx(&mode, nullptr);
+    HRESULT hr = this->GetDisplayModeEx(&mode, nullptr);
+    if (FAILED(hr))
+      return D3DERR_INVALIDCALL;
     
     D3DFORMAT format = parameters->BackBufferFormat;
     if (format == D3DFMT_UNKNOWN)
