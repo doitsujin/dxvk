@@ -93,6 +93,10 @@ namespace dxvk {
       return m_stagingImage;
     }
 
+    Rc<DxvkImage> GetFixupImage() const {
+      return m_fixupImage;
+    }
+
     /**
      * \brief The DXVK buffer
      * \returns The DXVK buffer
@@ -251,6 +255,7 @@ namespace dxvk {
 
     Rc<DxvkImage>   m_image;
     Rc<DxvkImage>   m_stagingImage;
+    Rc<DxvkImage>   m_fixupImage;
     Rc<DxvkBuffer>  m_buffer;
 
     VkImageSubresource m_mappedSubresource

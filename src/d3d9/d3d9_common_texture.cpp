@@ -100,8 +100,11 @@ namespace dxvk {
       // Determine map mode based on our findings
       m_mapMode = DetermineMapMode(&imageInfo);
 
-      if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_STAGING)
+      if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_STAGING) {
         m_stagingImage = CreateImage(pDesc, true);
+        if (m_desc.Format == D3D9Format::R8G8B8)
+          m_fixupImage = CreateImage(pDesc, true);
+      }
     }
 
     // If the image is mapped directly to host memory, we need
@@ -372,10 +375,14 @@ namespace dxvk {
     if (GetPackedDepthStencilFormat(m_desc.Format))
       return D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER;
 
+    // This needs to be fixed up into a 8888 format.
+    if (m_desc.Format == D3D9Format::R8G8B8)
+      return D3D9_COMMON_TEXTURE_MAP_MODE_STAGING;
+
     // Images that can be read by the host should be mapped directly in
     // order to avoid expensive synchronization with the GPU. This does
     // however require linear tiling, which may not be supported for all
-    // combinations of image parameters.
+    // combinations of image parameters.COH
     return this->CheckImageSupport(pImageInfo, VK_IMAGE_TILING_LINEAR)
       ? D3D9_COMMON_TEXTURE_MAP_MODE_STAGING
       : D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER;

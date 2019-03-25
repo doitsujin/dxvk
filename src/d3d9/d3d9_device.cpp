@@ -2452,12 +2452,42 @@ namespace dxvk {
         });
     }
     else if (pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_STAGING) {
+      bool fixup8888 = pResource->Desc()->Format == D3D9Format::R8G8B8;
+
       const Rc<DxvkImage>  realImage    = pResource->GetImage();
+      const Rc<DxvkImage>  fixupImage   = pResource->GetFixupImage();
       const Rc<DxvkImage>  stagingImage = pResource->GetStagingImage();
 
-      VkImageSubresource subresource = pResource->GetMappedSubresource();
+      VkImageSubresource   subresource  = pResource->GetMappedSubresource();
 
-      VkExtent3D levelExtent = stagingImage
+      if (fixup8888) {
+        const VkImageType imageType = stagingImage->info().type;
+        VkSubresourceLayout layout  = stagingImage->querySubresourceLayout(subresource);
+        uint32_t rowPitch   = imageType >= VK_IMAGE_TYPE_2D ? layout.rowPitch   : layout.size;
+        uint32_t slicePitch = imageType >= VK_IMAGE_TYPE_3D ? layout.depthPitch : layout.size;
+
+        uint8_t* dstData = reinterpret_cast<uint8_t*>(fixupImage->mapPtr(layout.offset));
+        uint8_t* srcData = reinterpret_cast<uint8_t*>(stagingImage->mapPtr(layout.offset));
+
+        uint32_t mippedDepth  = std::max(1u, pResource->Desc()->Depth  >> subresource.mipLevel);
+        uint32_t mippedHeight = std::max(1u, pResource->Desc()->Height >> subresource.mipLevel);
+        uint32_t mippedWidth  = std::max(1u, pResource->Desc()->Width  >> subresource.mipLevel);
+
+        for (uint32_t z = 0; z < mippedDepth; z++) {
+          for (uint32_t y = 0; y < mippedHeight; y++) {
+            for (uint32_t x = 0; x < mippedWidth; x++) {
+              for (uint32_t c = 0; c < 3; c++) {
+                dstData[z * slicePitch + y * rowPitch + x * 4 + c] = srcData[z * slicePitch + y * rowPitch + x * 3 + c];
+              }
+              dstData[z * slicePitch + y * rowPitch + x * 4 + 3] = 255;
+            }
+          }
+        }
+      }
+
+      const Rc<DxvkImage>  copySrc = fixup8888 ? fixupImage : stagingImage;
+
+      VkExtent3D levelExtent = copySrc
         ->mipLevelExtent(subresource.mipLevel);
 
       VkImageSubresourceLayers subresourceLayers = {
@@ -2467,7 +2497,7 @@ namespace dxvk {
 
       EmitCs([
         cRealImage          = realImage,
-        cStagingImage       = stagingImage,
+        cStagingImage       = copySrc,
         cSubresourceLayers  = subresourceLayers,
         cDstLevelExtent     = levelExtent
       ](DxvkContext* ctx) {
