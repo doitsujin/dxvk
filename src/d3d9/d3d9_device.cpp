@@ -1428,12 +1428,32 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetIndices(IDirect3DIndexBuffer9* pIndexData) {
-    Logger::warn("Direct3DDevice9Ex::SetIndices: Stub");
+    auto lock = LockDevice();
+
+    Direct3DIndexBuffer9* buffer = static_cast<Direct3DIndexBuffer9*>(pIndexData);
+
+    if (buffer == m_state.indices)
+      return D3D_OK;
+
+    changePrivate(m_state.indices, buffer);
+
+    BindIndices();
+
     return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetIndices(IDirect3DIndexBuffer9** ppIndexData) {
-    Logger::warn("Direct3DDevice9Ex::GetIndices: Stub");
+    auto lock = LockDevice();
+    InitReturnPtr(ppIndexData);
+
+    if (ppIndexData == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    if (m_state.indices == nullptr)
+      return D3DERR_NOTFOUND;
+
+    *ppIndexData = ref(m_state.indices);
+
     return D3D_OK;
   }
 
@@ -3027,6 +3047,27 @@ namespace dxvk {
       cStride       = pBuffer != nullptr ? Stride                          : 0
     ] (DxvkContext* ctx) {
       ctx->bindVertexBuffer(cSlotId, cBufferSlice, cStride);
+    });
+  }
+
+  void Direct3DDevice9Ex::BindIndices() {
+    Direct3DCommonBuffer9* buffer = m_state.indices != nullptr
+                                  ? m_state.indices->GetCommonBuffer().ptr()
+                                  : nullptr;
+
+    D3D9Format format = buffer != nullptr
+                      ? buffer->Desc()->Format
+                      : D3D9Format::INDEX32;
+
+    VkIndexType indexType = format == D3D9Format::INDEX16
+                          ? VK_INDEX_TYPE_UINT16
+                          : VK_INDEX_TYPE_UINT32;
+
+    EmitCs([
+      cBufferSlice = buffer != nullptr ? buffer->GetBufferSlice(D3D9_COMMON_BUFFER_TYPE_REAL) : DxvkBufferSlice(),
+      cIndexType   = indexType
+    ](DxvkContext* ctx) {
+      ctx->bindIndexBuffer(cBufferSlice, cIndexType);
     });
   }
 

@@ -664,6 +664,8 @@ namespace dxvk {
             UINT                              Offset,
             UINT                              Stride);
 
+    void BindIndices();
+
     Direct3DDeviceLock9 LockDevice() {
       return m_multithread.AcquireLock();
     }

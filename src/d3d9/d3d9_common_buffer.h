@@ -100,6 +100,10 @@ namespace dxvk {
       return old;
     }
 
+    const D3D9_BUFFER_DESC* Desc() const {
+      return &m_desc;
+    }
+
   private:
 
     Rc<DxvkBuffer> GetMapBuffer() const {

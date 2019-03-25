@@ -11,6 +11,7 @@ namespace dxvk {
   class D3D9PixelShader;
   class Direct3DVertexDeclaration9;
   class Direct3DVertexBuffer9;
+  class Direct3DIndexBuffer9;
 
   struct D3D9VBO {
     D3D9VBO() {
@@ -43,10 +44,13 @@ namespace dxvk {
 	  vertexShader = nullptr;
 	  pixelShader = nullptr;
       vertexDecl = nullptr;
+      indices = nullptr;
     }
 
     std::array<Direct3DSurface9*, caps::MaxSimultaneousRenderTargets> renderTargets;
     std::array<D3D9VBO, caps::MaxStreams> vertexBuffers;
+
+    Direct3DIndexBuffer9* indices;
 
     Direct3DSurface9* depthStencil;
 
