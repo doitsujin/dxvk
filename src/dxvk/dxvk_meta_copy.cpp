@@ -1,14 +1,13 @@
 #include "dxvk_meta_copy.h"
 
+#include <dxvk_copy_vert.h>
+#include <dxvk_copy_geom.h>
 #include <dxvk_copy_color_1d.h>
 #include <dxvk_copy_color_2d.h>
 #include <dxvk_copy_color_ms.h>
 #include <dxvk_copy_depth_1d.h>
 #include <dxvk_copy_depth_2d.h>
 #include <dxvk_copy_depth_ms.h>
-
-#include <dxvk_resolve_vert.h>
-#include <dxvk_resolve_geom.h>
 
 namespace dxvk {
 
@@ -120,8 +119,8 @@ namespace dxvk {
   DxvkMetaCopyObjects::DxvkMetaCopyObjects(const Rc<vk::DeviceFn>& vkd)
   : m_vkd         (vkd),
     m_sampler     (createSampler()),
-    m_shaderVert  (createShaderModule(dxvk_resolve_vert)),
-    m_shaderGeom  (createShaderModule(dxvk_resolve_geom)),
+    m_shaderVert  (createShaderModule(dxvk_copy_vert)),
+    m_shaderGeom  (createShaderModule(dxvk_copy_geom)),
     m_color {
       createShaderModule(dxvk_copy_color_1d),
       createShaderModule(dxvk_copy_color_2d),
