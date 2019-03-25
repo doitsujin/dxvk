@@ -923,7 +923,7 @@ namespace dxvk {
     if (id.constant() && relative != nullptr)
     {
       m_relativeRegs.push_back(spirvRegister);
-      return m_relativeRegs[m_regs.size() - 1];
+      return m_relativeRegs[m_relativeRegs.size() - 1];
     }
 
     m_regs.push_back(spirvRegister);
