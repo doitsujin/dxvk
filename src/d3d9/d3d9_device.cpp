@@ -2247,7 +2247,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
     }
 
-    const Rc<DxvkImage>  mappedImage  = pResource->GetImage();
+    const Rc<DxvkImage>  mappedImage  = pResource->GetMappedImage();
     const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer();
     
     auto formatInfo = imageFormatInfo(mappedImage->info().format);
@@ -2263,7 +2263,7 @@ namespace dxvk {
       dimOffsets[2] = formatInfo->elementSize * align(pBox->Front, formatInfo->blockSize.depth);
     }
     
-    if (pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_DIRECT) {
+    if (pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_STAGING) {
       const VkImageType imageType = mappedImage->info().type;
       
       // Wait for the resource to become available
@@ -2387,7 +2387,7 @@ namespace dxvk {
     if (pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER) {
       // Now that data has been written into the buffer,
       // we need to copy its contents into the image
-      const Rc<DxvkImage>  mappedImage = pResource->GetImage();
+      const Rc<DxvkImage>  mappedImage = pResource->GetMappedImage();
       const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer();
 
       VkImageSubresource subresource = pResource->GetMappedSubresource();
@@ -2410,6 +2410,36 @@ namespace dxvk {
             VkOffset3D{ 0, 0, 0 }, cDstLevelExtent,
             cSrcBuffer, 0, { 0u, 0u });
         });
+    }
+    else if (pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_STAGING) {
+      const Rc<DxvkImage>  realImage    = pResource->GetImage();
+      const Rc<DxvkImage>  stagingImage = pResource->GetStagingImage();
+
+      VkImageSubresource subresource = pResource->GetMappedSubresource();
+
+      VkExtent3D levelExtent = stagingImage
+        ->mipLevelExtent(subresource.mipLevel);
+
+      VkImageSubresourceLayers subresourceLayers = {
+        subresource.aspectMask,
+        subresource.mipLevel,
+        subresource.arrayLayer, 1 };
+
+      EmitCs([
+        cRealImage          = realImage,
+        cStagingImage       = stagingImage,
+        cSubresourceLayers  = subresourceLayers,
+        cDstLevelExtent     = levelExtent
+      ](DxvkContext* ctx) {
+        ctx->copyImage(
+          cRealImage,
+          cSubresourceLayers,
+          VkOffset3D{ 0, 0, 0 },
+          cStagingImage,
+          cSubresourceLayers,
+          VkOffset3D{ 0, 0, 0 },
+          cDstLevelExtent);
+      });
     }
 
     pResource->ClearMappedSubresource();

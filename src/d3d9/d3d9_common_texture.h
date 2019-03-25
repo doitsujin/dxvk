@@ -14,9 +14,9 @@ namespace dxvk {
  * behave when mapping an image.
  */
   enum D3D9_COMMON_TEXTURE_MAP_MODE {
-    D3D9_COMMON_TEXTURE_MAP_MODE_NONE,   ///< Not mapped
-    D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER, ///< Mapped through buffer
-    D3D9_COMMON_TEXTURE_MAP_MODE_DIRECT, ///< Directly mapped to host mem
+    D3D9_COMMON_TEXTURE_MAP_MODE_NONE,      ///< Not mapped
+    D3D9_COMMON_TEXTURE_MAP_MODE_STAGING,   ///< Mapped through staging
+    D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER,    ///< Mapped through buffer
   };
 
   struct Direct3DView9 {
@@ -54,6 +54,8 @@ namespace dxvk {
             Rc<DxvkImageView>       ImageViewSrgb,
       const D3D9TextureDesc*        pDesc);
 
+    Rc<DxvkImage> CreateImage(const D3D9TextureDesc* pDesc, bool Staging);
+
     /**
      * \brief Texture properties
      *
@@ -79,6 +81,16 @@ namespace dxvk {
      */
     Rc<DxvkImage> GetImage() const {
       return m_image;
+    }
+
+    Rc<DxvkImage> GetMappedImage() const {
+      return m_stagingImage != nullptr 
+           ? m_stagingImage
+           : m_image;
+    }
+
+    Rc<DxvkImage> GetStagingImage() const {
+      return m_stagingImage;
     }
 
     /**
@@ -238,6 +250,7 @@ namespace dxvk {
     D3D9_COMMON_TEXTURE_MAP_MODE m_mapMode;
 
     Rc<DxvkImage>   m_image;
+    Rc<DxvkImage>   m_stagingImage;
     Rc<DxvkBuffer>  m_buffer;
 
     VkImageSubresource m_mappedSubresource
