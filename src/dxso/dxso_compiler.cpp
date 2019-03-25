@@ -45,6 +45,9 @@ namespace dxvk {
     const DxsoOpcode opcode = ctx.instruction.opcode();
 
     switch (opcode) {
+    case DxsoOpcode::Nop:
+      return;
+
     case DxsoOpcode::Dcl:
       return this->emitDcl(ctx);
 
