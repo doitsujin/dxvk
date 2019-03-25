@@ -351,8 +351,11 @@ namespace dxvk {
     D3DPOOL Pool,
     IDirect3DVolumeTexture9** ppVolumeTexture,
     HANDLE* pSharedHandle) {
+    InitReturnPtr(ppVolumeTexture);
+    InitReturnPtr(pSharedHandle);
+
     Logger::warn("Direct3DDevice9Ex::CreateVolumeTexture: Stub");
-    return D3D_OK;
+    return D3DERR_INVALIDCALL;
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateCubeTexture(
@@ -363,8 +366,11 @@ namespace dxvk {
     D3DPOOL Pool,
     IDirect3DCubeTexture9** ppCubeTexture,
     HANDLE* pSharedHandle) {
+    InitReturnPtr(ppCubeTexture);
+    InitReturnPtr(pSharedHandle);
+
     Logger::warn("Direct3DDevice9Ex::CreateCubeTexture: Stub");
-    return D3D_OK;
+    return D3DERR_INVALIDCALL;
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateVertexBuffer(
