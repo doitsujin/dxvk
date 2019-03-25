@@ -151,7 +151,7 @@ namespace dxvk {
     }
     
     std::sort(result.begin(), result.end(),
-      [this] (const Rc<DxvkAdapter>& a, const Rc<DxvkAdapter>& b) -> bool {
+      [] (const Rc<DxvkAdapter>& a, const Rc<DxvkAdapter>& b) -> bool {
         return a->deviceProperties().deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
             && b->deviceProperties().deviceType != VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
       });
