@@ -329,12 +329,12 @@ namespace dxvk {
     if (swizzle == IdentitySwizzle)
       return varId;
 
-    std::array<uint32_t, 4> indices;
+    std::array<uint32_t, 4> indices = { 0,0,0,0 };
 
-    for (uint32_t i = 0; i < count; i++)
-      indices[i] = swizzle[i];
+    for (uint32_t i = 0; i < 4; i++)
+      indices[i] = i < count ? swizzle[i] : swizzle[0];
 
-    return m_module.opVectorShuffle(typeId, varId, varId, count, indices.data());
+    return m_module.opVectorShuffle(typeId, varId, varId, 4, indices.data());
   }
 
   uint32_t DxsoCompiler::emitSrcOperandModifier(uint32_t typeId, uint32_t varId, DxsoRegModifier modifier, uint32_t count) {
