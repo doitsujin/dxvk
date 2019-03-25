@@ -71,6 +71,7 @@ namespace dxvk {
     case DxsoOpcode::Nrm:
     case DxsoOpcode::LogP:
     case DxsoOpcode::Log:
+    case DxsoOpcode::Lrp:
     case DxsoOpcode::Frc:
     case DxsoOpcode::Dp2Add:
       return this->emitVectorAlu(ctx);
@@ -512,6 +513,19 @@ namespace dxvk {
       case DxsoOpcode::Log:
         result = m_module.opLog2(typeId, emitRegisterLoad(src[0]));
         break;
+      case DxsoOpcode::Lrp: {
+        uint32_t src0 = emitRegisterLoad(src[0]);
+        uint32_t src1 = emitRegisterLoad(src[1]);
+        uint32_t src2 = emitRegisterLoad(src[2]);
+        // We are implementing like:
+        // src2 + src0 * (src1 - src2)
+
+        // X = src1 - src2
+        result = m_module.opFSub(typeId, src1, src2);
+        // result = src2 + src0 * X
+        result = m_module.opFFma(typeId, src0, result, src2);
+        break;
+      }
       case DxsoOpcode::Frc:
         result = m_module.opFract(typeId, emitRegisterLoad(src[0]));
         break;
