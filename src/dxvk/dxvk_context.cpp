@@ -2033,9 +2033,12 @@ namespace dxvk {
           VkImageSubresourceLayers srcSubresource,
           VkOffset3D            srcOffset,
           VkExtent3D            extent) {
-    m_barriers.recordCommands(m_cmd);
-
+    auto dstSubresourceRange = vk::makeSubresourceRange(dstSubresource);
     auto srcSubresourceRange = vk::makeSubresourceRange(srcSubresource);
+    
+    if (m_barriers.isImageDirty(dstImage, dstSubresourceRange, DxvkAccess::Write)
+     || m_barriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write))
+      m_barriers.recordCommands(m_cmd);
 
     // Source image needs to be readable
     if (!(srcImage->info().usage & VK_IMAGE_USAGE_SAMPLED_BIT)) {
@@ -2208,21 +2211,26 @@ namespace dxvk {
     m_cmd->cmdDraw(1, tgtSubresource.layerCount, 0, 0);
     m_cmd->cmdEndRenderPass();
 
+    m_barriers.accessImage(
+      srcImage, srcSubresourceRange,
+      srcLayout,
+      VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+      VK_ACCESS_SHADER_READ_BIT,
+      srcImage->info().layout,
+      srcImage->info().stages,
+      srcImage->info().access);
+    
+    m_barriers.accessImage(
+      dstImage, dstSubresourceRange,
+      dstImage->info().layout,
+      VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
+      dstImage->info().layout,
+      dstImage->info().stages,
+      dstImage->info().access);
+
     m_cmd->trackResource(tgtImage);
     m_cmd->trackResource(srcImage);
     m_cmd->trackResource(fb);
-
-    // If necessary, transition source image back
-    if (srcImage->info().layout != srcLayout) {
-      m_barriers.accessImage(
-        srcImage, srcSubresourceRange,
-        srcLayout,
-        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-        VK_ACCESS_SHADER_READ_BIT,
-        srcImage->info().layout,
-        srcImage->info().stages,
-        srcImage->info().access);
-    }
     
     // If necessary, copy the temporary image
     // to the original destination image
