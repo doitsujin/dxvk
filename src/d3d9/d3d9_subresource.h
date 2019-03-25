@@ -33,12 +33,13 @@ namespace dxvk {
     }
 
     ULONG STDMETHODCALLTYPE Release() final {
+      IUnknown* container = m_container;
       ULONG refCount = Direct3DResource9<Type...>::Release();
 
       // If that was our last public reference gone, dereference our container
       // so that it can be deleted now this subresource is no longer publically referenced.
-      if (refCount == 0 && m_container != nullptr)
-        m_container->Release();
+      if (refCount == 0 && container != nullptr)
+        container->Release();
 
       return refCount;
     }
