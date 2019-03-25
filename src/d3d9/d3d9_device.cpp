@@ -1106,7 +1106,23 @@ namespace dxvk {
     UINT NumVertices,
     UINT startIndex,
     UINT primCount) {
-    Logger::warn("Direct3DDevice9Ex::DrawIndexedPrimitive: Stub");
+    auto lock = LockDevice();
+
+    PrepareDraw();
+    
+    EmitCs([
+      cState           = InputAssemblyState(PrimitiveType),
+      cIndexCount      = VertexCount(PrimitiveType, primCount),
+      cStartIndex      = startIndex,
+      cBaseVertexIndex = BaseVertexIndex
+    ](DxvkContext* ctx) {
+      ctx->setInputAssemblyState(cState);
+      ctx->drawIndexed(
+        cIndexCount, 1,
+        cStartIndex,
+        cBaseVertexIndex, 0);
+    });
+
     return D3D_OK;
   }
 
