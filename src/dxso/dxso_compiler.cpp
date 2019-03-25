@@ -73,6 +73,7 @@ namespace dxvk {
       return this->emitVectorAlu(ctx);
 
     case DxsoOpcode::Tex:
+    case DxsoOpcode::TexLdl:
       return this->emitTextureSample(ctx);
 
     default:
