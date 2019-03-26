@@ -328,7 +328,7 @@ namespace dxvk {
   }
 
   uint32_t DxsoCompiler::emitRegisterSwizzle(uint32_t typeId, uint32_t varId, DxsoRegSwizzle swizzle, uint32_t count) {
-    if (swizzle == IdentitySwizzle)
+    if (swizzle == IdentitySwizzle && count == 4)
       return varId;
 
     std::array<uint32_t, 4> indices = { 0,0,0,0 };
