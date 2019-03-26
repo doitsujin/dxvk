@@ -1776,6 +1776,46 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::updateDepthStencilImage(
+    const Rc<DxvkImage>&            image,
+    const VkImageSubresourceLayers& subresources,
+          VkOffset2D                imageOffset,
+          VkExtent2D                imageExtent,
+    const void*                     data,
+          VkDeviceSize              pitchPerRow,
+          VkDeviceSize              pitchPerLayer,
+          VkFormat                  format) {
+    auto formatInfo = imageFormatInfo(format);
+    
+    VkExtent3D extent3D;
+    extent3D.width  = imageExtent.width;
+    extent3D.height = imageExtent.height;
+    extent3D.depth  = subresources.layerCount;
+
+    VkDeviceSize pixelCount = extent3D.width * extent3D.height * extent3D.depth;
+
+    DxvkBufferCreateInfo tmpBufferInfo;
+    tmpBufferInfo.size      = pixelCount * formatInfo->elementSize;
+    tmpBufferInfo.usage     = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+    tmpBufferInfo.stages    = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+    tmpBufferInfo.access    = VK_ACCESS_SHADER_READ_BIT;
+
+    auto tmpBuffer = m_device->createBuffer(tmpBufferInfo,
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+    util::packImageData(
+      reinterpret_cast<char*>(tmpBuffer->mapPtr(0)),
+      reinterpret_cast<const char*>(data),
+      extent3D, formatInfo->elementSize,
+      pitchPerRow, pitchPerLayer);
+    
+    copyPackedBufferToDepthStencilImage(
+      image, subresources, imageOffset, imageExtent,
+      tmpBuffer, 0, format);
+  }
+
+
   void DxvkContext::setViewports(
           uint32_t            viewportCount,
     const VkViewport*         viewports,
