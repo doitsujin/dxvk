@@ -406,7 +406,7 @@ namespace dxvk {
   
   Rc<DxvkBuffer> D3D11CommonTexture::CreateMappedBuffer() const {
     const DxvkFormatInfo* formatInfo = imageFormatInfo(
-      m_device->LookupFormat(m_desc.Format, GetFormatMode()).Format);
+      m_device->LookupPackedFormat(m_desc.Format, GetFormatMode()).Format);
     
     const VkExtent3D blockCount = util::computeBlockCount(
       VkExtent3D { m_desc.Width, m_desc.Height, m_desc.Depth },
