@@ -555,16 +555,19 @@ namespace dxvk {
         break;
       case DxsoOpcode::Nrm: {
         // Nrm is 3D...
+        const uint32_t scalarTypeId = spvType(dst, 1);
 
         uint32_t vec3 = emitRegisterLoad(src[0], 3);
+
+        result = m_module.opDot(scalarTypeId, vec3, vec3);
+        result = m_module.opInverseSqrt(scalarTypeId, result);
+        result = emitScalarReplicant(typeId, result);
 
         // r * rsq(r . r);
         result = m_module.opFMul(
           typeId,
           emitRegisterLoad(src[0]),
-          m_module.opInverseSqrt(
-            typeId,
-            m_module.opDot(typeId, vec3, vec3)));
+          result);
       } break;
       case DxsoOpcode::LogP:
       case DxsoOpcode::Log:
