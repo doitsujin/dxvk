@@ -420,7 +420,7 @@ namespace dxvk {
 
     if (saturate) {
       uint32_t vec0 = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
-      uint32_t vec1 = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
+      uint32_t vec1 = m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f);
 
       result = m_module.opFClamp(typeId, result, vec0, vec1);
     }
