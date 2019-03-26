@@ -1319,6 +1319,13 @@ namespace dxvk {
   }
   
   
+  DXGI_VK_FORMAT_INFO D3D11Device::LookupPackedFormat(
+          DXGI_FORMAT           Format,
+          DXGI_VK_FORMAT_MODE   Mode) const {
+    return m_d3d11Formats.GetPackedFormatInfo(Format, Mode);
+  }
+  
+  
   DXGI_VK_FORMAT_FAMILY D3D11Device::LookupFamily(
           DXGI_FORMAT           Format,
           DXGI_VK_FORMAT_MODE   Mode) const {
