@@ -90,8 +90,10 @@ namespace dxvk {
 
   Rc<DxvkShader> DxsoCompiler::finalize() {
     for (uint32_t i = 0; i < 32; i++) {
-      if (m_interfaceSlots.outputSlots & (1u << i))
+      if (m_interfaceSlots.outputSlots & (1u << i)) {
+        emitDebugName(m_oPtrs[i], m_oDecls[i].id);
         m_module.opStore(m_oPtrs[i], getSpirvRegister(m_oDecls[i].id, false, nullptr).varId);
+      }
     }
 
     if (m_programInfo.type() == DxsoProgramType::VertexShader)
@@ -205,6 +207,9 @@ namespace dxvk {
 
     m_module.decorateBlock(structType);
     m_module.memberDecorateOffset(structType, 0, 0);
+
+    m_module.setDebugName(structType, "c");
+    m_module.setDebugMemberName(structType, 0, "f");
 
     m_cBuffer = m_module.newVar(
       m_module.defPointerType(structType, spv::StorageClassUniform),
@@ -447,6 +452,39 @@ namespace dxvk {
     return m_module.opVectorShuffle(typeId, dst, src, 4, components.data());
   }
 
+  void DxsoCompiler::emitDebugName(uint32_t varId, DxsoRegisterId id) {
+    bool ps = m_programInfo.type() == DxsoProgramType::PixelShader;
+
+    std::string name = "";
+    switch (id.type()) {
+      case DxsoRegisterType::Temp:          name = str::format("r", id.num()); break;
+      case DxsoRegisterType::Input:         name = str::format("v", id.num()); break;
+      case DxsoRegisterType::Addr:          name = str::format(ps ? "t" : "a", id.num()); break;
+      case DxsoRegisterType::RasterizerOut: {
+        std::string suffix = "Unknown";
+        if (id.num() == RasterOutPosition)
+          suffix = "Pos";
+        else if (id.num() == RasterOutFog)
+          suffix = "Fog";
+        else
+          suffix = "Psize";
+        name = str::format("o", suffix);
+        break;
+      }
+      case DxsoRegisterType::AttributeOut:  name = str::format("oC", id.num()); break;
+      case DxsoRegisterType::Output:        name = str::format("o", id.num()); break;
+      case DxsoRegisterType::ColorOut:      name = str::format("oC", id.num()); break;
+      case DxsoRegisterType::DepthOut:      name = str::format("oDepth", id.num()); break;
+      case DxsoRegisterType::Loop:          name = str::format("l", id.num()); break;
+      case DxsoRegisterType::TempFloat16:   name = str::format("h", id.num()); break;
+      case DxsoRegisterType::MiscType:      name = str::format("m", id.num()); break;
+      case DxsoRegisterType::Predicate:     name = str::format("p", id.num()); break;
+    }
+
+    if (!name.empty())
+      m_module.setDebugName(varId, name.c_str());
+  }
+
   uint32_t DxsoCompiler::emitScalarReplicant(uint32_t vectorTypeId, uint32_t varId) {
     std::array<uint32_t, 4> replicantIndices = { varId, varId, varId, varId };
     return m_module.opCompositeConstruct(vectorTypeId, replicantIndices.size(), replicantIndices.data());
@@ -565,6 +603,7 @@ namespace dxvk {
 
     auto& dstSpvReg = getSpirvRegister(dst);
     dstSpvReg.varId = emitWriteMask(typeId, dstSpvReg.varId, result, dst.writeMask());
+    emitDebugName(dstSpvReg.varId, dst.registerId());
   }
 
   void DxsoCompiler::emitTextureSample(const DxsoInstructionContext& ctx) {
@@ -612,6 +651,7 @@ namespace dxvk {
     result = emitDstOperandModifier(typeId, result, dst.saturate(), dst.partialPrecision());
     auto& dstSpvReg = getSpirvRegister(dst);
     dstSpvReg.varId = emitWriteMask(typeId, dstSpvReg.varId, result, dst.writeMask());
+    emitDebugName(dstSpvReg.varId, dst.registerId());
   }
 
   void DxsoCompiler::emitDclSampler(uint32_t idx, DxsoTextureType type) {
@@ -930,6 +970,8 @@ namespace dxvk {
         ? spv::StorageClassInput
         : spv::StorageClassOutput);
 
+      emitDebugName(ptrId, id);
+
       if (input) {
         m_module.decorateLocation(ptrId, inputSlot);
         m_entryPointInterfaces.push_back(ptrId);
@@ -958,6 +1000,7 @@ namespace dxvk {
     if (varId == 0)
       varId = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
 
+    emitDebugName(varId, id);
     spirvRegister.varId = varId;
 
     if (id.constant() && relative != nullptr)

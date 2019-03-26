@@ -161,6 +161,8 @@ namespace dxvk {
 
     uint32_t emitWriteMask(uint32_t typeId, uint32_t dst, uint32_t src, DxsoRegMask writeMask);
 
+    void     emitDebugName(uint32_t varId, DxsoRegisterId id);
+
     uint32_t emitScalarReplicant(uint32_t typeId, uint32_t varId);
 
     void emitVectorAlu(const DxsoInstructionContext& ctx);
