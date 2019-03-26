@@ -832,6 +832,11 @@ namespace dxvk {
     uint32_t opLog2(
             uint32_t                resultType,
             uint32_t                operand);
+
+    uint32_t opPow(
+            uint32_t                resultType,
+            uint32_t                base,
+            uint32_t                exponent);
     
     uint32_t opFract(
             uint32_t                resultType,
