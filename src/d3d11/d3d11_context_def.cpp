@@ -208,15 +208,11 @@ namespace dxvk {
       return E_INVALIDARG;
     }
     
-    auto formatInfo = imageFormatInfo(image->info().format);
+    VkFormat packedFormat = m_parent->LookupPackedFormat(
+      pTexture->Desc()->Format, pTexture->GetFormatMode()).Format;
     
-    if (formatInfo->aspectMask != VK_IMAGE_ASPECT_COLOR_BIT) {
-      Logger::err("D3D11: Cannot map a depth-stencil texture");
-      return E_INVALIDARG;
-    }
-    
-    VkImageSubresource subresource =
-      pTexture->GetSubresourceFromIndex(
+    auto formatInfo = imageFormatInfo(packedFormat);
+    auto subresource = pTexture->GetSubresourceFromIndex(
         formatInfo->aspectMask, Subresource);
     
     VkExtent3D levelExtent = image->mipLevelExtent(subresource.mipLevel);
@@ -278,20 +274,36 @@ namespace dxvk {
         VK_IMAGE_ASPECT_COLOR_BIT, Subresource),
       cDataSlice          = pMapEntry->DataSlice,
       cDataPitchPerRow    = pMapEntry->RowPitch,
-      cDataPitchPerLayer  = pMapEntry->DepthPitch
+      cDataPitchPerLayer  = pMapEntry->DepthPitch,
+      cPackedFormat       = GetPackedDepthStencilFormat(pTexture->Desc()->Format)
     ] (DxvkContext* ctx) {
       VkImageSubresourceLayers srLayers;
       srLayers.aspectMask     = cSubresource.aspectMask;
       srLayers.mipLevel       = cSubresource.mipLevel;
       srLayers.baseArrayLayer = cSubresource.arrayLayer;
       srLayers.layerCount     = 1;
+
+      VkOffset3D mipLevelOffset = { 0, 0, 0 };
+      VkExtent3D mipLevelExtent = cImage->mipLevelExtent(srLayers.mipLevel);
       
-      ctx->updateImage(
-        cImage, srLayers, VkOffset3D { 0, 0, 0 },
-        cImage->mipLevelExtent(cSubresource.mipLevel),
-        cDataSlice.ptr(),
-        cDataPitchPerRow,
-        cDataPitchPerLayer);
+      if (cPackedFormat == VK_FORMAT_UNDEFINED) {
+        ctx->updateImage(
+          cImage, srLayers,
+          mipLevelOffset,
+          mipLevelExtent,
+          cDataSlice.ptr(),
+          cDataPitchPerRow,
+          cDataPitchPerLayer);
+      } else {
+        ctx->updateDepthStencilImage(
+          cImage, srLayers,
+          VkOffset2D { mipLevelOffset.x,     mipLevelOffset.y      },
+          VkExtent2D { mipLevelExtent.width, mipLevelExtent.height },
+          cDataSlice.ptr(),
+          cDataPitchPerRow,
+          cDataPitchPerLayer,
+          cPackedFormat);
+      }
     });
   }
   
