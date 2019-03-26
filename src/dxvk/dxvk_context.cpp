@@ -974,7 +974,7 @@ namespace dxvk {
     this->unbindComputePipeline();
 
     // Retrieve compute pipeline for the given format
-    auto pipeInfo = m_metaPack->getPipeline(format);
+    auto pipeInfo = m_metaPack->getPackPipeline(format);
 
     if (!pipeInfo.pipeHandle)
       return;

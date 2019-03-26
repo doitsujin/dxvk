@@ -20,6 +20,18 @@ namespace dxvk {
 
 
   /**
+   * \brief Unpacking arguments
+   * 
+   * Passed in as push constants
+   * to the compute shader.
+   */
+  struct DxvkMetaUnpackArgs {
+    VkExtent2D dstExtent;
+    VkExtent2D srcExtent;
+  };
+
+
+  /**
    * \brief Packing pipeline
    * 
    * Stores the objects for a single pipeline
@@ -45,6 +57,16 @@ namespace dxvk {
 
 
   /**
+   * \brief Unpacking descriptors
+   */
+  struct DxvkMetaUnpackDescriptors {
+    VkBufferView            dstDepth;
+    VkBufferView            dstStencil;
+    VkDescriptorBufferInfo  srcBuffer;
+  };
+
+
+  /**
    * \brief Depth-stencil pack objects
    *
    * Stores compute shaders and related objects
@@ -58,12 +80,23 @@ namespace dxvk {
     ~DxvkMetaPackObjects();
 
     /**
-     * \brief Retrieves pipeline for a packed format
+     * \brief Retrieves depth-stencil packing pipeline
      * 
      * \param [in] format Destination format
-     * \returns Packed pipeline
+     * \returns Data packing pipeline
      */
-    DxvkMetaPackPipeline getPipeline(VkFormat format);
+    DxvkMetaPackPipeline getPackPipeline(VkFormat format);
+
+    /**
+     * \brief Retrieves depth-stencil unpacking pipeline
+     * 
+     * \param [in] dstFormat Destination image format
+     * \param [in] srcFormat Source buffer format
+     * \returns Data unpacking pipeline
+     */
+    DxvkMetaPackPipeline getUnpackPipeline(
+            VkFormat        dstFormat,
+            VkFormat        srcFormat);
 
   private:
 
@@ -71,26 +104,38 @@ namespace dxvk {
 
     VkSampler             m_sampler;
 
-    VkDescriptorSetLayout m_dsetLayout;
-    VkPipelineLayout      m_pipeLayout;
+    VkDescriptorSetLayout m_dsetLayoutPack;
+    VkDescriptorSetLayout m_dsetLayoutUnpack;
 
-    VkDescriptorUpdateTemplateKHR m_template;
+    VkPipelineLayout      m_pipeLayoutPack;
+    VkPipelineLayout      m_pipeLayoutUnpack;
 
-    VkShaderModule        m_shaderD24S8;
-    VkShaderModule        m_shaderD32S8;
+    VkDescriptorUpdateTemplateKHR m_templatePack;
+    VkDescriptorUpdateTemplateKHR m_templateUnpack;
 
-    VkPipeline            m_pipeD24S8;
-    VkPipeline            m_pipeD32S8;
+    VkPipeline            m_pipePackD24S8;
+    VkPipeline            m_pipePackD32S8;
+
+    VkPipeline            m_pipeUnpackD24S8AsD32S8;
+    VkPipeline            m_pipeUnpackD24S8;
+    VkPipeline            m_pipeUnpackD32S8;
 
     VkSampler createSampler();
 
-    VkDescriptorSetLayout createDescriptorSetLayout();
+    VkDescriptorSetLayout createPackDescriptorSetLayout();
 
-    VkPipelineLayout createPipelineLayout();
+    VkDescriptorSetLayout createUnpackDescriptorSetLayout();
 
-    VkDescriptorUpdateTemplateKHR createDescriptorUpdateTemplate();
+    VkPipelineLayout createPipelineLayout(
+            VkDescriptorSetLayout       dsetLayout,
+            size_t                      pushLayout);
+
+    VkDescriptorUpdateTemplateKHR createPackDescriptorUpdateTemplate();
+
+    VkDescriptorUpdateTemplateKHR createUnpackDescriptorUpdateTemplate();
     
     VkPipeline createPipeline(
+            VkPipelineLayout      pipeLayout,
       const SpirvCodeBuffer&      code);
     
   };
