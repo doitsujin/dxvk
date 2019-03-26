@@ -445,9 +445,8 @@ namespace dxvk {
       return src;
     
     std::array<uint32_t, 4> components;
-    uint32_t srcId = 4;
     for (uint32_t i = 0; i < 4; i++)
-      components[i] = writeMask[i] ? srcId++ : i;
+      components[i] = writeMask[i] ? i + 4 : i;
 
     return m_module.opVectorShuffle(typeId, dst, src, 4, components.data());
   }
