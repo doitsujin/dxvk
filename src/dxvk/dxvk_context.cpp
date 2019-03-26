@@ -1072,6 +1072,182 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::copyPackedBufferToDepthStencilImage(
+    const Rc<DxvkImage>&        dstImage,
+          VkImageSubresourceLayers dstSubresource,
+          VkOffset2D            dstOffset,
+          VkExtent2D            dstExtent,
+    const Rc<DxvkBuffer>&       srcBuffer,
+          VkDeviceSize          srcOffset,
+          VkFormat              format) {
+    this->spillRenderPass();
+    this->unbindComputePipeline();
+
+    if (m_barriers.isBufferDirty(srcBuffer->getSliceHandle(), DxvkAccess::Read))
+      m_barriers.recordCommands(m_cmd);
+    
+    // Retrieve compute pipeline for the given format
+    auto pipeInfo = m_metaPack->getUnpackPipeline(
+      dstImage->info().format, format);
+
+    if (!pipeInfo.pipeHandle) {
+      Logger::err(str::format(
+        "DxvkContext: copyPackedBufferToDepthStencilImage: Unhandled formats"
+        "\n  dstFormat = ", dstImage->info().format,
+        "\n  srcFormat = ", format));
+      return;
+    }
+    
+    // Pick depth and stencil data formats
+    VkFormat dataFormatD = VK_FORMAT_UNDEFINED;
+    VkFormat dataFormatS = VK_FORMAT_UNDEFINED;
+
+    const std::array<std::tuple<VkFormat, VkFormat, VkFormat>, 2> formats = {{
+      { VK_FORMAT_D24_UNORM_S8_UINT,  VK_FORMAT_R32_UINT,   VK_FORMAT_R8_UINT },
+      { VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_R32_SFLOAT, VK_FORMAT_R8_UINT },
+    }};
+
+    for (const auto& e : formats) {
+      if (std::get<0>(e) == dstImage->info().format) {
+        dataFormatD = std::get<1>(e);
+        dataFormatS = std::get<2>(e);
+      }
+    }
+
+    // Create temporary buffer for depth/stencil data
+    VkDeviceSize pixelCount = dstExtent.width * dstExtent.height * dstSubresource.layerCount;
+    VkDeviceSize dataSizeD = align(pixelCount * imageFormatInfo(dataFormatD)->elementSize, 256);
+    VkDeviceSize dataSizeS = align(pixelCount * imageFormatInfo(dataFormatS)->elementSize, 256);
+
+    DxvkBufferCreateInfo tmpBufferInfo;
+    tmpBufferInfo.size    = dataSizeD + dataSizeS;
+    tmpBufferInfo.usage   = VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT
+                          | VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    tmpBufferInfo.stages  = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT
+                          | VK_PIPELINE_STAGE_TRANSFER_BIT;
+    tmpBufferInfo.access  = VK_ACCESS_SHADER_WRITE_BIT
+                          | VK_ACCESS_TRANSFER_READ_BIT;
+    
+    auto tmpBuffer = m_device->createBuffer(tmpBufferInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    // Create formatted buffer views
+    DxvkBufferViewCreateInfo tmpViewInfoD;
+    tmpViewInfoD.format      = dataFormatD;
+    tmpViewInfoD.rangeOffset = 0;
+    tmpViewInfoD.rangeLength = dataSizeD;
+
+    DxvkBufferViewCreateInfo tmpViewInfoS;
+    tmpViewInfoS.format      = dataFormatS;
+    tmpViewInfoS.rangeOffset = dataSizeD;
+    tmpViewInfoS.rangeLength = dataSizeS;
+
+    auto tmpBufferViewD = m_device->createBufferView(tmpBuffer, tmpViewInfoD);
+    auto tmpBufferViewS = m_device->createBufferView(tmpBuffer, tmpViewInfoS);
+
+    // Create descriptor set for the unpack operation
+    DxvkMetaUnpackDescriptors descriptors;
+    descriptors.dstDepth   = tmpBufferViewD->handle();
+    descriptors.dstStencil = tmpBufferViewS->handle();
+    descriptors.srcBuffer  = srcBuffer->getDescriptor(srcOffset, VK_WHOLE_SIZE).buffer;
+
+    VkDescriptorSet dset = allocateDescriptorSet(pipeInfo.dsetLayout);
+    m_cmd->updateDescriptorSetWithTemplate(dset, pipeInfo.dsetTemplate, &descriptors);
+
+    // Unpack the source buffer to temporary buffers
+    DxvkMetaUnpackArgs args;
+    args.dstExtent = dstExtent;
+    args.srcExtent = dstExtent;
+
+    m_cmd->cmdBindPipeline(
+      VK_PIPELINE_BIND_POINT_COMPUTE,
+      pipeInfo.pipeHandle);
+    
+    m_cmd->cmdBindDescriptorSet(
+      VK_PIPELINE_BIND_POINT_COMPUTE,
+      pipeInfo.pipeLayout, dset,
+      0, nullptr);
+    
+    m_cmd->cmdPushConstants(
+      pipeInfo.pipeLayout,
+      VK_SHADER_STAGE_COMPUTE_BIT,
+      0, sizeof(args), &args);
+    
+    m_cmd->cmdDispatch(
+      (dstExtent.width + 63) / 64,
+      dstExtent.height,
+      dstSubresource.layerCount);
+    
+    m_barriers.accessBuffer(
+      tmpBuffer->getSliceHandle(),
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+      VK_ACCESS_SHADER_WRITE_BIT,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_READ_BIT);
+
+    m_barriers.accessBuffer(
+      srcBuffer->getSliceHandle(),
+      VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+      VK_ACCESS_SHADER_READ_BIT,
+      srcBuffer->info().stages,
+      srcBuffer->info().access);
+    
+    // Prepare image for the data transfer operation
+    VkOffset3D dstOffset3D = { dstOffset.x,     dstOffset.y,      0 };
+    VkExtent3D dstExtent3D = { dstExtent.width, dstExtent.height, 1 };
+
+    VkImageLayout initialImageLayout = dstImage->info().layout;
+
+    if (dstImage->isFullSubresource(dstSubresource, dstExtent3D))
+      initialImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+    m_barriers.accessImage(
+      dstImage, vk::makeSubresourceRange(dstSubresource),
+      initialImageLayout,
+      dstImage->info().stages,
+      dstImage->info().access,
+      dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT);
+
+    m_barriers.recordCommands(m_cmd);
+
+    // Copy temporary buffer data to depth-stencil image
+    VkImageSubresourceLayers dstSubresourceD = dstSubresource;
+    dstSubresourceD.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+
+    VkImageSubresourceLayers dstSubresourceS = dstSubresource;
+    dstSubresourceS.aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT;
+
+    std::array<VkBufferImageCopy, 2> copyRegions = {{
+      { tmpBufferViewD->info().rangeOffset, 0, 0, dstSubresourceD, dstOffset3D, dstExtent3D },
+      { tmpBufferViewS->info().rangeOffset, 0, 0, dstSubresourceS, dstOffset3D, dstExtent3D },
+    }};
+
+    m_cmd->cmdCopyBufferToImage(
+      tmpBuffer->getSliceHandle().handle,
+      dstImage->handle(),
+      dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+      copyRegions.size(),
+      copyRegions.data());
+    
+    m_barriers.accessImage(
+      dstImage, vk::makeSubresourceRange(dstSubresource),
+      dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT,
+      dstImage->info().layout,
+      dstImage->info().stages,
+      dstImage->info().access);
+
+    // Track all involved resources
+    m_cmd->trackResource(dstImage);
+    m_cmd->trackResource(srcBuffer);
+
+    m_cmd->trackResource(tmpBufferViewD);
+    m_cmd->trackResource(tmpBufferViewS);
+  }
+
+
   void DxvkContext::discardBuffer(
     const Rc<DxvkBuffer>&       buffer) {
     if (m_barriers.isBufferDirty(buffer->getSliceHandle(), DxvkAccess::Write))

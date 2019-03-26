@@ -426,6 +426,29 @@ namespace dxvk {
             VkFormat              format);
     
     /**
+     * \brief Unpacks buffer data to a depth-stencil image
+     * 
+     * Writes the packed depth-stencil data to an image.
+     * See \ref copyDepthStencilImageToPackedBuffer for
+     * which formats are supported and how they are packed.
+     * \param [in] dstImage Destination image
+     * \param [in] dstSubresource Destination subresource
+     * \param [in] dstOffset Image area offset
+     * \param [in] dstExtent Image area size
+     * \param [in] srcBuffer Packed data buffer
+     * \param [in] srcOffset Packed data offset
+     * \param [in] format Packed data format
+     */
+    void copyPackedBufferToDepthStencilImage(
+      const Rc<DxvkImage>&        dstImage,
+            VkImageSubresourceLayers dstSubresource,
+            VkOffset2D            dstOffset,
+            VkExtent2D            dstExtent,
+      const Rc<DxvkBuffer>&       srcBuffer,
+            VkDeviceSize          srcOffset,
+            VkFormat              format);
+    
+    /**
      * \brief Discards a buffer
      * 
      * Renames the buffer in case it is currently
