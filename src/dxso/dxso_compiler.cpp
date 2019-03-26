@@ -65,6 +65,8 @@ namespace dxvk {
     case DxsoOpcode::Rsq:
     case DxsoOpcode::Dp3:
     case DxsoOpcode::Dp4:
+    case DxsoOpcode::Slt:
+    case DxsoOpcode::Sge:
     case DxsoOpcode::Min:
     case DxsoOpcode::ExpP:
     case DxsoOpcode::Exp:
@@ -540,6 +542,14 @@ namespace dxvk {
         result = this->emitScalarReplicant(typeId, result);
         break;
       }
+      case DxsoOpcode::Slt:
+      case DxsoOpcode::Sge:
+        result = opcode == DxsoOpcode::Slt
+          ? m_module.opFOrdLessThan   (m_module.defBoolType(), emitRegisterLoad(src[0]), emitRegisterLoad(src[1]))
+          : m_module.opFOrdGreaterThan(m_module.defBoolType(), emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
+
+        result = m_module.opSelect(typeId, result, m_module.constvec4f32(1, 1, 1, 1), m_module.constvec4f32(0, 0, 0, 0));
+        break;
       case DxsoOpcode::Min:
         result = m_module.opFMin(typeId, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
         break;
