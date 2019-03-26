@@ -853,26 +853,16 @@ namespace dxvk {
   DXGI_VK_FORMAT_INFO DXGIVkFormatTable::GetFormatInfo(
           DXGI_FORMAT         Format,
           DXGI_VK_FORMAT_MODE Mode) const {
-    const DXGI_VK_FORMAT_MAPPING* mapping = GetFormatMapping(Format);
-    
-    switch (Mode) {
-      case DXGI_VK_FORMAT_MODE_ANY:
-        return mapping->FormatColor != VK_FORMAT_UNDEFINED
-          ? DXGI_VK_FORMAT_INFO { mapping->FormatColor, mapping->AspectColor, mapping->Swizzle }
-          : DXGI_VK_FORMAT_INFO { mapping->FormatDepth, mapping->AspectDepth };
-      
-      case DXGI_VK_FORMAT_MODE_COLOR:
-        return { mapping->FormatColor, mapping->AspectColor, mapping->Swizzle };
-      
-      case DXGI_VK_FORMAT_MODE_DEPTH:
-        return { mapping->FormatDepth, mapping->AspectDepth };
-      
-      case DXGI_VK_FORMAT_MODE_RAW:
-        return { mapping->FormatRaw, mapping->AspectColor };
-    }
-    
-    Logger::err("DXGI: GetFormatInfo: Internal error");
-    return DXGI_VK_FORMAT_INFO();
+    return GetFormatInfoFromMapping(
+      GetFormatMapping(Format), Mode);
+  }
+
+
+  DXGI_VK_FORMAT_INFO DXGIVkFormatTable::GetPackedFormatInfo(
+          DXGI_FORMAT         Format,
+          DXGI_VK_FORMAT_MODE Mode) const {
+    return GetFormatInfoFromMapping(
+      GetPackedFormatMapping(Format), Mode);
   }
   
   
@@ -890,6 +880,30 @@ namespace dxvk {
   }
 
 
+  DXGI_VK_FORMAT_INFO DXGIVkFormatTable::GetFormatInfoFromMapping(
+    const DXGI_VK_FORMAT_MAPPING* pMapping,
+          DXGI_VK_FORMAT_MODE   Mode) const {
+    switch (Mode) {
+      case DXGI_VK_FORMAT_MODE_ANY:
+        return pMapping->FormatColor != VK_FORMAT_UNDEFINED
+          ? DXGI_VK_FORMAT_INFO { pMapping->FormatColor, pMapping->AspectColor, pMapping->Swizzle }
+          : DXGI_VK_FORMAT_INFO { pMapping->FormatDepth, pMapping->AspectDepth };
+      
+      case DXGI_VK_FORMAT_MODE_COLOR:
+        return { pMapping->FormatColor, pMapping->AspectColor, pMapping->Swizzle };
+      
+      case DXGI_VK_FORMAT_MODE_DEPTH:
+        return { pMapping->FormatDepth, pMapping->AspectDepth };
+      
+      case DXGI_VK_FORMAT_MODE_RAW:
+        return { pMapping->FormatRaw, pMapping->AspectColor };
+    }
+    
+    Logger::err("DXGI: GetFormatInfoFromMapping: Internal error");
+    return DXGI_VK_FORMAT_INFO();
+  }
+
+
   const DXGI_VK_FORMAT_MAPPING* DXGIVkFormatTable::GetFormatMapping(
           DXGI_FORMAT         Format) const {
     const size_t formatId = size_t(Format);
@@ -897,6 +911,16 @@ namespace dxvk {
     return formatId < m_dxgiFormats.size()
       ? &m_dxgiFormats[formatId]
       : &m_dxgiFormats[0];
+  }
+  
+
+  const DXGI_VK_FORMAT_MAPPING* DXGIVkFormatTable::GetPackedFormatMapping(
+          DXGI_FORMAT         Format) const {
+    const size_t formatId = size_t(Format);
+    
+    return formatId < g_dxgiFormats.size()
+      ? &g_dxgiFormats[formatId]
+      : &g_dxgiFormats[0];
   }
   
 

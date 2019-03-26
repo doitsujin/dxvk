@@ -115,6 +115,20 @@ namespace dxvk {
             DXGI_VK_FORMAT_MODE Mode) const;
     
     /**
+     * \brief Retrieves original info for a given DXGI format
+     * 
+     * Doesn't perform any format adjustment, so this
+     * can be used to determine the packed data format
+     * of a DXGI format for things like data uploads.
+     * \param [in] Format The DXGI format to look up
+     * \param [in] Mode the format lookup mode
+     * \returns Format info
+     */
+    DXGI_VK_FORMAT_INFO GetPackedFormatInfo(
+            DXGI_FORMAT         Format,
+            DXGI_VK_FORMAT_MODE Mode) const;
+    
+    /**
      * \brief Retrieves a format family
      * 
      * \param [in] Format The format to query
@@ -129,8 +143,15 @@ namespace dxvk {
     
     std::array<DXGI_VK_FORMAT_MAPPING, 133> m_dxgiFormats;
     std::array<DXGI_VK_FORMAT_FAMILY,  133> m_dxgiFamilies;
+
+    DXGI_VK_FORMAT_INFO GetFormatInfoFromMapping(
+      const DXGI_VK_FORMAT_MAPPING* pMapping,
+            DXGI_VK_FORMAT_MODE   Mode) const;
     
     const DXGI_VK_FORMAT_MAPPING* GetFormatMapping(
+            DXGI_FORMAT           Format) const;
+
+    const DXGI_VK_FORMAT_MAPPING* GetPackedFormatMapping(
             DXGI_FORMAT           Format) const;
 
     bool CheckImageFormatSupport(
