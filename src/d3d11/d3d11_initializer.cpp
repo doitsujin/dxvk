@@ -1,12 +1,15 @@
 #include <cstring>
 
+#include "d3d11_device.h"
 #include "d3d11_initializer.h"
 
 namespace dxvk {
 
   D3D11Initializer::D3D11Initializer(
-    const Rc<DxvkDevice>&             Device)
-  : m_device(Device), m_context(m_device->createContext()) {
+          D3D11Device*                pParent)
+  : m_parent(pParent),
+    m_device(pParent->GetDXVKDevice()),
+    m_context(m_device->createContext()) {
     m_context->beginRecording(
       m_device->createCommandList());
   }
@@ -104,6 +107,9 @@ namespace dxvk {
     
     Rc<DxvkImage> image = pTexture->GetImage();
 
+    VkFormat packedFormat = m_parent->LookupPackedFormat(
+      pTexture->Desc()->Format, pTexture->GetFormatMode()).Format;
+    
     auto formatInfo = imageFormatInfo(image->info().format);
 
     if (pInitialData != nullptr && pInitialData->pSysMem != nullptr) {
@@ -131,13 +137,24 @@ namespace dxvk {
           m_transferMemory   += util::computeImageDataSize(
             image->info().format, mipLevelExtent);
           
-          m_context->updateImage(
-            image, subresourceLayers,
-            mipLevelOffset,
-            mipLevelExtent,
-            pInitialData[id].pSysMem,
-            pInitialData[id].SysMemPitch,
-            pInitialData[id].SysMemSlicePitch);
+          if (formatInfo->aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+            m_context->updateImage(
+              image, subresourceLayers,
+              mipLevelOffset,
+              mipLevelExtent,
+              pInitialData[id].pSysMem,
+              pInitialData[id].SysMemPitch,
+              pInitialData[id].SysMemSlicePitch);
+          } else {
+            m_context->updateDepthStencilImage(
+              image, subresourceLayers,
+              VkOffset2D { mipLevelOffset.x,     mipLevelOffset.y      },
+              VkExtent2D { mipLevelExtent.width, mipLevelExtent.height },
+              pInitialData[id].pSysMem,
+              pInitialData[id].SysMemPitch,
+              pInitialData[id].SysMemSlicePitch,
+              packedFormat);
+          }
         }
       }
     } else {

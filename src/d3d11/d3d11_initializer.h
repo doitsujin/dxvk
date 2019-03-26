@@ -5,6 +5,8 @@
 
 namespace dxvk {
 
+  class D3D11Device;
+
   /**
    * \brief Resource initialization context
    * 
@@ -19,7 +21,7 @@ namespace dxvk {
   public:
 
     D3D11Initializer(
-      const Rc<DxvkDevice>&             Device);
+            D3D11Device*                pParent);
     
     ~D3D11Initializer();
 
@@ -37,6 +39,7 @@ namespace dxvk {
 
     std::mutex        m_mutex;
 
+    D3D11Device*      m_parent;
     Rc<DxvkDevice>    m_device;
     Rc<DxvkContext>   m_context;
 

@@ -39,7 +39,7 @@ namespace dxvk {
     m_d3d11Formats  (m_dxvkAdapter),
     m_d3d11Options  (m_dxvkAdapter->instance()->config()),
     m_dxbcOptions   (m_dxvkDevice, m_d3d11Options) {
-    m_initializer = new D3D11Initializer(m_dxvkDevice);
+    m_initializer = new D3D11Initializer(this);
     m_context     = new D3D11ImmediateContext(this, m_dxvkDevice);
     m_d3d10Device = new D3D10Device(this, m_context);
 
