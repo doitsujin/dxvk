@@ -3025,10 +3025,9 @@ namespace dxvk {
       });
     }
     else {
+      uint32_t attrCount = 0;
       std::array<DxvkVertexAttribute, caps::InputRegisterCount> attrList;
       std::array<DxvkVertexBinding,   caps::InputRegisterCount> bindList;
-
-      uint32_t attrMask = 0;
 
       const auto* commonShader = m_state.vertexShader->GetCommonShader();
       const auto& shaderDecls = commonShader->GetDeclarations();
@@ -3051,26 +3050,18 @@ namespace dxvk {
           attrib.format = LookupDecltype(D3DDECLTYPE(element.Type));
           attrib.offset = element.Offset;
 
-          attrList.at(attribIdx) = attrib;
+          attrList.at(attrCount) = attrib;
 
           DxvkVertexBinding binding;
           binding.binding = attribIdx; // TODO: Instancing
           binding.fetchRate = 0;
           binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-          bindList.at(attribIdx) = binding;
-
-          attrMask |= 1u << attribIdx;
+          bindList.at(attrCount++) = binding;
 
           break;
         }
       }
-
-      // Compact the attribute and binding lists to filter
-      // out attributes and bindings not used by the shader
-      uint32_t attrCount = CompactSparseList(attrList.data(), attrMask);
-                           CompactSparseList(bindList.data(), attrMask);
-
       
       EmitCs([
         cAttrCount  = attrCount,
