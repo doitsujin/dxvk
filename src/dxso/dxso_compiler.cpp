@@ -66,6 +66,8 @@ namespace dxvk {
     case DxsoOpcode::Dp3:
     case DxsoOpcode::Dp4:
     case DxsoOpcode::Min:
+    case DxsoOpcode::ExpP:
+    case DxsoOpcode::Exp:
     case DxsoOpcode::Max:
     case DxsoOpcode::Abs:
     case DxsoOpcode::Nrm:
@@ -505,6 +507,10 @@ namespace dxvk {
         break;
       case DxsoOpcode::Max:
         result = m_module.opFMax(typeId, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
+        break;
+      case DxsoOpcode::ExpP:
+      case DxsoOpcode::Exp:
+        result = m_module.opExp2(typeId, emitRegisterLoad(src[0]));
         break;
       case DxsoOpcode::Abs:
         result = m_module.opFAbs(typeId, emitRegisterLoad(src[0]));
