@@ -3020,7 +3020,7 @@ namespace dxvk {
 
   void Direct3DDevice9Ex::BindInputLayout() {
     if (m_state.vertexShader == nullptr || m_state.vertexDecl == nullptr) {
-      EmitCs([](DxvkContext * ctx) {
+      EmitCs([](DxvkContext* ctx) {
         ctx->setInputLayout(0, nullptr, 0, nullptr);
       });
     }
@@ -3032,59 +3032,69 @@ namespace dxvk {
       uint32_t bindMask = 0;
 
       const auto* commonShader = m_state.vertexShader->GetCommonShader();
-      const auto& shaderDecls = commonShader->GetDeclarations();
-      const auto inputSlots = commonShader->GetShader()->interfaceSlots();
-      const auto& elements = m_state.vertexDecl->GetElements();
+      const auto& shaderDecls  = commonShader->GetDeclarations();
+      const auto  slots        = commonShader->GetShader()->interfaceSlots();
+      const auto& elements     = m_state.vertexDecl->GetElements();
 
-      for (uint32_t attribIdx = 0; attribIdx < shaderDecls.size(); attribIdx++) {
-        if (!(inputSlots.inputSlots & (1u << attribIdx)))
+      for (uint32_t i = 0; i < shaderDecls.size(); i++) {
+        if (!(slots.inputSlots & (1u << i)))
           continue;
 
+        const auto& decl = shaderDecls[i];
+
+        DxvkVertexAttribute attrib;
+        attrib.location = i;
+        attrib.binding  = 0;
+        attrib.format   = VK_FORMAT_R8_UNORM;
+        attrib.offset   = 0;
+
+        bool attribDefined = false;
+
         for (const auto& element : elements) {
-          const auto& shaderDecl = shaderDecls[attribIdx];
           DxsoSemantic elementSemantic = { static_cast<DxsoUsage>(element.Usage), element.UsageIndex };
-          if (elementSemantic != shaderDecl.semantic)
+
+          if (elementSemantic == decl.semantic) {
+            attrib.binding = uint32_t(element.Stream);
+            attrib.format  = LookupDecltype(D3DDECLTYPE(element.Type));
+            attrib.offset  = element.Offset;
+
+            attribDefined = true;
+            break;
+          }
+        }
+
+        attrList.at(i) = attrib;
+
+        DxvkVertexBinding binding;
+        binding.binding   = attrib.binding; // TODO: Instancing
+        binding.fetchRate = 0;
+        binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+        // Check if the binding was already defined.
+        bool bindingDefined = false;
+
+        for (uint32_t j = 0; j < i; j++) {
+          if (!(slots.inputSlots & (1u << j)))
             continue;
 
-          DxvkVertexAttribute attrib;
-          attrib.location = attribIdx;
-          attrib.binding = uint32_t(element.Stream);
-          attrib.format = LookupDecltype(D3DDECLTYPE(element.Type));
-          attrib.offset = element.Offset;
+          uint32_t bindingId = attrList.at(j).binding;
 
-          attrList.at(attribIdx) = attrib;
-
-          DxvkVertexBinding binding;
-          binding.binding = uint32_t(element.Stream); // TODO: Instancing
-          binding.fetchRate = 0;
-          binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-
-          // Check if the binding was already defined.
-          bool bindingDefined = false;
-
-          for (uint32_t j = 0; j < attribIdx; j++) {
-            uint32_t bindingId = attrList.at(j).binding;
-
-            if (binding.binding == bindingId) {
-              bindingDefined = true;
-            }
+          if (binding.binding == bindingId) {
+            bindingDefined = true;
           }
-
-          if (!bindingDefined)
-            bindList.at(binding.binding) = binding;
-
-          attrMask |= 1u << attribIdx;
-          bindMask |= 1u << binding.binding;
-
-          break;
         }
+
+        if (!bindingDefined)
+          bindList.at(binding.binding) = binding;
+
+        attrMask |= 1u << i;
+        bindMask |= 1u << binding.binding;
       }
 
       // Compact the attribute and binding lists to filter
       // out attributes and bindings not used by the shader
       uint32_t attrCount    = CompactSparseList(attrList.data(), attrMask);
       uint32_t bindCount    = CompactSparseList(bindList.data(), bindMask);
-
       
       EmitCs([
         cAttrCount  = attrCount,
