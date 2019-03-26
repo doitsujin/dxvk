@@ -165,7 +165,7 @@ namespace dxvk {
     
     // If necessary, create the mapped linear buffer
     if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER)
-      m_buffer = CreateMappedBuffer();
+      m_buffer = CreateMappedBuffer(m_desc.CPUAccessFlags);
     
     // Create the image on a host-visible memory type
     // in case it is going to be mapped directly.
@@ -173,8 +173,10 @@ namespace dxvk {
     
     if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT) {
       memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-                       | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-                       | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+                       | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+      
+      if (m_desc.CPUAccessFlags & D3D11_CPU_ACCESS_READ)
+        memoryProperties |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
     }
     
     m_image = m_device->GetDXVKDevice()->createImage(imageInfo, memoryProperties);
@@ -404,7 +406,7 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkBuffer> D3D11CommonTexture::CreateMappedBuffer() const {
+  Rc<DxvkBuffer> D3D11CommonTexture::CreateMappedBuffer(UINT CPUAccessFlags) const {
     const DxvkFormatInfo* formatInfo = imageFormatInfo(
       m_device->LookupPackedFormat(m_desc.Format, GetFormatMode()).Format);
     
@@ -424,9 +426,13 @@ namespace dxvk {
     info.access = VK_ACCESS_TRANSFER_READ_BIT
                 | VK_ACCESS_TRANSFER_WRITE_BIT;
     
-    return m_device->GetDXVKDevice()->createBuffer(info,
-      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    auto memoryType = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                    | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    
+    if (CPUAccessFlags & D3D11_CPU_ACCESS_READ)
+      memoryType |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+    
+    return m_device->GetDXVKDevice()->createBuffer(info, memoryType);
   }
   
   
