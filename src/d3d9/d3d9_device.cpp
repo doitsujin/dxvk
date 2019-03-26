@@ -3025,9 +3025,11 @@ namespace dxvk {
       });
     }
     else {
-      uint32_t attrCount = 0;
       std::array<DxvkVertexAttribute, caps::InputRegisterCount> attrList;
       std::array<DxvkVertexBinding,   caps::InputRegisterCount> bindList;
+
+      uint32_t attrMask = 0;
+      uint32_t bindMask = 0;
 
       const auto* commonShader = m_state.vertexShader->GetCommonShader();
       const auto& shaderDecls = commonShader->GetDeclarations();
@@ -3050,28 +3052,50 @@ namespace dxvk {
           attrib.format = LookupDecltype(D3DDECLTYPE(element.Type));
           attrib.offset = element.Offset;
 
-          attrList.at(attrCount) = attrib;
+          attrList.at(attribIdx) = attrib;
 
           DxvkVertexBinding binding;
-          binding.binding = attribIdx; // TODO: Instancing
+          binding.binding = uint32_t(element.Stream); // TODO: Instancing
           binding.fetchRate = 0;
           binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-          bindList.at(attrCount++) = binding;
+          // Check if the binding was already defined.
+          bool bindingDefined = false;
+
+          for (uint32_t j = 0; j < attribIdx; j++) {
+            uint32_t bindingId = attrList.at(j).binding;
+
+            if (binding.binding == bindingId) {
+              bindingDefined = true;
+            }
+          }
+
+          if (!bindingDefined)
+            bindList.at(binding.binding) = binding;
+
+          attrMask |= 1u << attribIdx;
+          bindMask |= 1u << binding.binding;
 
           break;
         }
       }
+
+      // Compact the attribute and binding lists to filter
+      // out attributes and bindings not used by the shader
+      uint32_t attrCount    = CompactSparseList(attrList.data(), attrMask);
+      uint32_t bindCount    = CompactSparseList(bindList.data(), bindMask);
+
       
       EmitCs([
         cAttrCount  = attrCount,
         cAttributes = attrList,
+        cBindCount  = bindCount,
         cBindings   = bindList
       ](DxvkContext * ctx) {
         ctx->setInputLayout(
           cAttrCount,
           cAttributes.data(),
-          cAttrCount,
+          cBindCount,
           cBindings.data());
       });
     }

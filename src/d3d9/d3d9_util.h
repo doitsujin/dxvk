@@ -112,4 +112,17 @@ namespace dxvk {
   VkCompareOp DecodeCompareOp(D3DCMPFUNC Func);
   VkStencilOp DecodeStencilOp(D3DSTENCILOP Op);
 
+  template<typename T>
+  UINT CompactSparseList(T* pData, UINT Mask) {
+    uint32_t count = 0;
+
+    while (Mask != 0) {
+      uint32_t id = bit::tzcnt(Mask);
+      pData[count++] = pData[id];
+      Mask &= Mask - 1;
+    }
+
+    return count;
+  }
+
 }
