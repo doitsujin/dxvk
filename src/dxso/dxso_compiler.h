@@ -153,6 +153,8 @@ namespace dxvk {
 
     uint32_t emitRegisterSwizzle(uint32_t typeId, uint32_t varId, DxsoRegSwizzle swizzle, uint32_t count);
 
+    uint32_t emitVecTrunc(uint32_t typeId, uint32_t varId, uint32_t count);
+
     uint32_t emitSrcOperandModifier(uint32_t typeId, uint32_t varId, DxsoRegModifier modifier, uint32_t count);
 
     uint32_t emitDstOperandModifier(uint32_t typeId, uint32_t varId, bool saturate, bool partialPrecision);
@@ -184,12 +186,9 @@ namespace dxvk {
     }
     DxsoSpirvRegister& mapSpirvRegister(DxsoRegisterId id, bool centroid, DxsoRegister* relative, const DxsoDeclaration* optionalPremadeDecl);
 
-    uint32_t getTypeId(DxsoRegisterType regType, bool vector = true);
-    uint32_t spvType(const DxsoRegister& reg) {
-      return getTypeId(reg.registerId().type());
-    }
-    uint32_t spvTypeScalar(const DxsoRegister& reg) {
-      return getTypeId(reg.registerId().type(), false);
+    uint32_t getTypeId(DxsoRegisterType regType, uint32_t count = 4);
+    uint32_t spvType(const DxsoRegister& reg, uint32_t count = 4) {
+      return getTypeId(reg.registerId().type(), count);
     }
     uint32_t getPointerTypeId(DxsoRegisterType regType, spv::StorageClass storageClass) {
       return m_module.defPointerType(
