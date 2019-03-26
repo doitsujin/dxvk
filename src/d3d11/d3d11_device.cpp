@@ -1362,9 +1362,9 @@ namespace dxvk {
     DxvkDeviceFeatures supported = adapter->features();
     DxvkDeviceFeatures enabled   = {};
 
-    // Geometry shaders are used for some meta ops
     enabled.core.features.geometryShader                          = VK_TRUE;
     enabled.core.features.robustBufferAccess                      = VK_TRUE;
+    enabled.core.features.shaderStorageImageExtendedFormats       = VK_TRUE;
 
     enabled.extMemoryPriority.memoryPriority                      = supported.extMemoryPriority.memoryPriority;
 
