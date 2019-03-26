@@ -192,9 +192,10 @@ namespace dxvk {
   }
 
   void DxsoCompiler::emitDclConstantBuffer() {
+    const uint32_t vecSize = sizeof(float) * 4;
     const uint32_t arrayType = m_module.defArrayTypeUnique(
       getTypeId(DxsoRegisterType::Temp),
-      m_module.constu32(D3D9ConstantSets::SetSize / sizeof(uint32_t)));
+      m_module.constu32(D3D9ConstantSets::SetSize / vecSize));
 
     m_module.decorateArrayStride(arrayType, 16);
 
