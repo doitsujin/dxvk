@@ -1123,9 +1123,13 @@ namespace dxvk {
     } else {
       const D3D11CommonTexture* textureInfo = GetCommonTexture(pDstResource);
       
-      const VkImageSubresource subresource =
-        textureInfo->GetSubresourceFromIndex(
-          VK_IMAGE_ASPECT_COLOR_BIT, DstSubresource);
+      VkFormat packedFormat = m_parent->LookupPackedFormat(
+        textureInfo->Desc()->Format,
+        textureInfo->GetFormatMode()).Format;
+
+      auto formatInfo = imageFormatInfo(packedFormat);
+      auto subresource = textureInfo->GetSubresourceFromIndex(
+          formatInfo->aspectMask, DstSubresource);
       
       VkExtent3D mipExtent = textureInfo->GetImage()->mipLevelExtent(subresource.mipLevel);
 
@@ -1152,9 +1156,6 @@ namespace dxvk {
         subresource.mipLevel,
         subresource.arrayLayer, 1 };
       
-      auto formatInfo = imageFormatInfo(
-        textureInfo->GetImage()->info().format);
-      
       if (!util::isBlockAligned(offset, formatInfo->blockSize)
        || !util::isBlockAligned(offset, extent, formatInfo->blockSize, mipExtent))
         return;
@@ -1180,11 +1181,20 @@ namespace dxvk {
         cDstExtent        = extent,
         cSrcData          = std::move(imageDataBuffer),
         cSrcBytesPerRow   = bytesPerRow,
-        cSrcBytesPerLayer = bytesPerLayer
+        cSrcBytesPerLayer = bytesPerLayer,
+        cPackedFormat     = packedFormat
       ] (DxvkContext* ctx) {
-        ctx->updateImage(cDstImage, cDstLayers,
-          cDstOffset, cDstExtent, cSrcData.ptr(),
-          cSrcBytesPerRow, cSrcBytesPerLayer);
+        if (cDstLayers.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+          ctx->updateImage(cDstImage, cDstLayers,
+            cDstOffset, cDstExtent, cSrcData.ptr(),
+            cSrcBytesPerRow, cSrcBytesPerLayer);
+        } else {
+          ctx->updateDepthStencilImage(cDstImage, cDstLayers,
+            VkOffset2D { cDstOffset.x,     cDstOffset.y      },
+            VkExtent2D { cDstExtent.width, cDstExtent.height },
+            cSrcData.ptr(), cSrcBytesPerRow, cSrcBytesPerLayer,
+            cPackedFormat);
+        }
       });
     }
   }
