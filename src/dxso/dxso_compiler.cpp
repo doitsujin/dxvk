@@ -476,7 +476,7 @@ namespace dxvk {
           emitRegisterLoad(src[2]));
         break;
       case DxsoOpcode::Mul:
-        result = m_module.opFSub(typeId, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
+        result = m_module.opFMul(typeId, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
         break;
       case DxsoOpcode::Rcp:
         result = m_module.opFDiv(typeId,
