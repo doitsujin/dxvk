@@ -78,6 +78,7 @@ namespace dxvk {
     case DxsoOpcode::Log:
     case DxsoOpcode::Lrp:
     case DxsoOpcode::Frc:
+    case DxsoOpcode::Cmp:
     case DxsoOpcode::Dp2Add:
       return this->emitVectorAlu(ctx);
 
@@ -605,6 +606,21 @@ namespace dxvk {
       case DxsoOpcode::Frc:
         result = m_module.opFract(typeId, emitRegisterLoad(src[0]));
         break;
+      case DxsoOpcode::Cmp: {
+        const uint32_t boolVec = m_module.defVectorType(m_module.defBoolType(), 4);
+
+        result = m_module.opFOrdGreaterThanEqual(
+          boolVec,
+          emitRegisterLoad(src[0]),
+          m_module.constvec4f32(0, 0, 0, 0));
+
+        result = m_module.opSelect(
+          typeId,
+          result,
+          emitRegisterLoad(src[1]),
+          emitRegisterLoad(src[2]));
+        break;
+      }
       case DxsoOpcode::Dp2Add: {
         const uint32_t scalarTypeId = spvType(dst, 1);
 
