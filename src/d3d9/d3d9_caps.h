@@ -3,6 +3,10 @@
 #include "d3d9_include.h"
 #include "d3d9_format.h"
 
+namespace dxvk {
+  struct D3D9Options;
+}
+
 namespace dxvk::caps {
 
   HRESULT checkDeviceFormat(
@@ -31,7 +35,7 @@ namespace dxvk::caps {
     D3D9Format backBufferFormat,
     BOOL windowed);
 
-  HRESULT getDeviceCaps(UINT adapter, D3DDEVTYPE type, D3DCAPS9* pCaps);
+  HRESULT getDeviceCaps(const dxvk::D3D9Options& options, UINT adapter, D3DDEVTYPE type, D3DCAPS9* pCaps);
 
   constexpr uint32_t MaxClipPlanes = 6;
   constexpr uint32_t MaxSamplers = 16;

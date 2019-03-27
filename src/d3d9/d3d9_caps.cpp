@@ -2,6 +2,7 @@
 
 #include "d3d9_monitor.h"
 #include "d3d9_format.h"
+#include "d3d9_options.h"
 
 #include <cfloat>
 
@@ -508,7 +509,7 @@ namespace dxvk::caps {
     return D3D_OK;
   }
 
-  HRESULT getDeviceCaps(UINT adapter, D3DDEVTYPE type, D3DCAPS9* pCaps) {
+  HRESULT getDeviceCaps(const dxvk::D3D9Options& options, UINT adapter, D3DDEVTYPE type, D3DCAPS9* pCaps) {
     if (pCaps == nullptr)
       return D3DERR_INVALIDCALL;
 
@@ -567,18 +568,18 @@ namespace dxvk::caps {
     pCaps->MaxStreams = MaxStreams;
     pCaps->MaxStreamStride = 508;
 
-    //if (shaderModel == "3") {
+    if      (options.shaderModel == 3) {
       pCaps->VertexShaderVersion = D3DVS_VERSION(3, 0);
-      pCaps->PixelShaderVersion = D3DPS_VERSION(3, 0);
-    //}
-    //else if (shaderModel == "2b" || shaderModel == "2B" || shaderModel == "2") {
-    //  pCaps->VertexShaderVersion = D3DVS_VERSION(2, 0);
-    //  pCaps->PixelShaderVersion = D3DPS_VERSION(2, 0);
-    //}
-    //else if (shaderModel == "1") {
-    //  pCaps->VertexShaderVersion = D3DVS_VERSION(1, 4);
-    //  pCaps->PixelShaderVersion = D3DPS_VERSION(1, 4);
-    //}
+      pCaps->PixelShaderVersion  = D3DPS_VERSION(3, 0);
+    }
+    else if (options.shaderModel == 2) {
+      pCaps->VertexShaderVersion = D3DVS_VERSION(2, 0);
+      pCaps->PixelShaderVersion  = D3DPS_VERSION(2, 0);
+    }
+    else if (options.shaderModel == 1) {
+      pCaps->VertexShaderVersion = D3DVS_VERSION(1, 4);
+      pCaps->PixelShaderVersion  = D3DPS_VERSION(1, 4);
+    }
 
     pCaps->MaxVertexShaderConst = MaxFloatConstants;
     pCaps->PixelShader1xMaxValue = FLT_MAX;

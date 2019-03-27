@@ -9,8 +9,9 @@
 namespace dxvk {
 
   Direct3D9Ex::Direct3D9Ex(bool extended)
-    : m_instance ( new DxvkInstance() )
-    , m_extended ( extended ) {
+    : m_instance    ( new DxvkInstance() )
+    , m_extended    ( extended ) 
+    , m_d3d9Options ( m_instance->config() ){
     for (uint32_t i = 0; m_instance->enumAdapters(i) != nullptr; i++)
       m_instance->enumAdapters(i)->logAdapterInfo();
   }
@@ -146,7 +147,7 @@ namespace dxvk {
     if (Adapter >= this->GetAdapterCount())
       return D3DERR_INVALIDCALL;
 
-    return caps::getDeviceCaps(Adapter, DeviceType, pCaps);
+    return caps::getDeviceCaps(m_d3d9Options, Adapter, DeviceType, pCaps);
   }
 
   HMONITOR STDMETHODCALLTYPE Direct3D9Ex::GetAdapterMonitor(UINT Adapter) {

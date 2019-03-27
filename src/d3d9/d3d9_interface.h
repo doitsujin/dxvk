@@ -4,6 +4,7 @@
 
 #include "d3d9_include.h"
 #include "d3d9_format.h"
+#include "d3d9_options.h"
 
 namespace dxvk {
 
@@ -138,6 +139,8 @@ namespace dxvk {
     bool m_extended;
 
     Rc<DxvkInstance> m_instance;
+
+    D3D9Options m_d3d9Options;
 
   };
 
