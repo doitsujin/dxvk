@@ -1065,7 +1065,7 @@ namespace dxvk {
     VkImageLayout layout = srcImage->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
 
     DxvkMetaPackDescriptors descriptors;
-    descriptors.dstBuffer  = dstBuffer->getDescriptor(0, VK_WHOLE_SIZE).buffer;
+    descriptors.dstBuffer  = dstBuffer->getDescriptor(dstOffset, VK_WHOLE_SIZE).buffer;
     descriptors.srcDepth   = dView->getDescriptor(VK_IMAGE_VIEW_TYPE_2D_ARRAY, layout).image;
     descriptors.srcStencil = sView->getDescriptor(VK_IMAGE_VIEW_TYPE_2D_ARRAY, layout).image;
 
