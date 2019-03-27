@@ -852,6 +852,10 @@ namespace dxvk {
           BindDepthStencilRefrence();
           break;
 
+        case D3DRS_SCISSORTESTENABLE:
+          BindViewportAndScissor();
+          break;
+
         case D3DRS_DEPTHBIAS:
         case D3DRS_SLOPESCALEDEPTHBIAS:
         case D3DRS_CULLMODE:
@@ -2789,7 +2793,7 @@ namespace dxvk {
     // Scissor rectangles. Vulkan does not provide an easy way
     // to disable the scissor test, so we'll have to set scissor
     // rects that are at least as large as the framebuffer.
-    bool enableScissorTest = false;
+    bool enableScissorTest = m_state.renderStates[D3DRS_SCISSORTESTENABLE] != FALSE;
 
     // TODO: Hook up scissor rect enabled when we get state in.
 
