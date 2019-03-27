@@ -1053,19 +1053,7 @@ namespace dxvk {
     TextureRefPrivate(pTexture,                       true);  // Reference new texture
     m_state.textures[stateSampler] = pTexture;
 
-    auto shaderSampler = RemapSamplerShader(Stage);
-    uint32_t slot = computeResourceSlotId(shaderSampler.first, DxsoBindingType::Image, uint32_t(shaderSampler.second));
-
-    Rc<Direct3DCommonTexture9> commonTex = GetCommonTexture(pTexture);
-
-    EmitCs([
-      cSlot      = slot,
-      cImageView = commonTex != nullptr
-                 ? commonTex->GetImageView(false)
-                 : nullptr // TODO: SRGB-ness
-    ](DxvkContext* ctx) {
-      ctx->bindResourceView(cSlot, cImageView, nullptr);
-    });
+    BindTexture(Stage);
 
     return D3D_OK;
   }
@@ -1135,6 +1123,8 @@ namespace dxvk {
        || Type == D3DSAMP_MAXMIPLEVEL
        || Type == D3DSAMP_BORDERCOLOR)
         m_dirtySamplerStates |= 1u << Sampler;
+      else if (Type == D3DSAMP_SRGBTEXTURE)
+        BindTexture(Sampler);
     }
 
     return D3D_OK;
@@ -3147,6 +3137,25 @@ namespace dxvk {
       cSampler = sampler
     ] (DxvkContext* ctx) {
       ctx->bindResourceSampler(cSlot, cSampler);
+    });
+  }
+
+  void Direct3DDevice9Ex::BindTexture(DWORD Sampler) {
+    auto stateSampler  = RemapSamplerState(Sampler);
+    auto shaderSampler = RemapSamplerShader(Sampler);
+    uint32_t slot      = computeResourceSlotId(shaderSampler.first, DxsoBindingType::Image, uint32_t(shaderSampler.second));
+
+    const bool srgb = m_state.samplerStates[stateSampler][D3DSAMP_SRGBTEXTURE] != FALSE;
+
+    Rc<Direct3DCommonTexture9> commonTex = GetCommonTexture(m_state.textures[stateSampler]);
+
+    EmitCs([
+      cSlot      = slot,
+      cImageView = commonTex != nullptr
+                 ? commonTex->GetImageView(srgb)
+                 : nullptr // TODO: SRGB-ness
+    ](DxvkContext* ctx) {
+      ctx->bindResourceView(cSlot, cImageView, nullptr);
     });
   }
 

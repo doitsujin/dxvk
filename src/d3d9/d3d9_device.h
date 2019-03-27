@@ -649,6 +649,8 @@ namespace dxvk {
 
     void BindSampler(DWORD Sampler);
 
+    void BindTexture(DWORD Sampler);
+
     void UndirtySamplers();
 
     void PrepareDraw();
