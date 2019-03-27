@@ -1089,8 +1089,9 @@ namespace dxvk {
       else
         varId = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
     }
+    else
+      emitDebugName(varId, id);
 
-    emitDebugName(varId, id);
     spirvRegister.varId = varId;
 
     if (id.constant() && relative != nullptr)
