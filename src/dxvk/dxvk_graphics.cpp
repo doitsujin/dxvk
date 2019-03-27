@@ -491,6 +491,15 @@ namespace dxvk {
     if (m_tes != nullptr) Logger::log(level, str::format("  tes : ", m_tes->shader()->debugName()));
     if (m_gs  != nullptr) Logger::log(level, str::format("  gs  : ", m_gs ->shader()->debugName()));
     if (m_fs  != nullptr) Logger::log(level, str::format("  fs  : ", m_fs ->shader()->debugName()));
+
+    for (uint32_t i = 0; i < state.ilAttributeCount; i++) {
+      const VkVertexInputAttributeDescription& attr = state.ilAttributes[i];
+      Logger::log(level, str::format("  attr ", i, " : location ", attr.location, ", binding ", attr.binding, ", format ", attr.format, ", offset ", attr.offset));
+    }
+    for (uint32_t i = 0; i < state.ilBindingCount; i++) {
+      const VkVertexInputBindingDescription& bind = state.ilBindings[i];
+      Logger::log(level, str::format("  binding ", i, " : binding ", bind.binding, ", stride ", bind.stride, ", rate ", bind.inputRate, ", divisor ", state.ilDivisors[i]));
+    }
     
     // TODO log more pipeline state
   }
