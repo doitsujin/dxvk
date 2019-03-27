@@ -57,6 +57,7 @@ namespace dxvk {
       return this->emitDef(opcode, ctx);
 
     case DxsoOpcode::Mov:
+    case DxsoOpcode::Mova:
     case DxsoOpcode::Add:
     case DxsoOpcode::Sub:
     case DxsoOpcode::Mad:
@@ -200,24 +201,35 @@ namespace dxvk {
   }
 
   void DxsoCompiler::emitDclConstantBuffer() {
-    const uint32_t vecSize = sizeof(float) * 4;
-    const uint32_t arrayType = m_module.defArrayTypeUnique(
-      getTypeId(DxsoRegisterType::Temp),
-      m_module.constu32(D3D9ConstantSets::SetSize / vecSize));
+    const uint32_t floatArray   = m_module.defArrayTypeUnique(getTypeId(DxsoRegisterType::Const),     m_module.constu32(256));
+    const uint32_t intArray     = m_module.defArrayTypeUnique(getTypeId(DxsoRegisterType::ConstInt),  m_module.constu32(16));
+    const uint32_t boolBitfield = m_module.defIntType(32, false);
 
-    m_module.decorateArrayStride(arrayType, 16);
+    std::array<uint32_t, 3> constantTypes{ floatArray, intArray, boolBitfield };
 
-    const uint32_t structType = m_module.defStructTypeUnique(1, &arrayType);
+    m_module.decorateArrayStride(floatArray, 16);
+    m_module.decorateArrayStride(intArray,   16);
+
+    const uint32_t structType = m_module.defStructTypeUnique(constantTypes.size(), constantTypes.data());
+
+    const uint32_t floatArraySize = 4 * sizeof(float)    * 256;
+    const uint32_t intArraySize   = 4 * sizeof(uint32_t) * 16;
 
     m_module.decorateBlock(structType);
     m_module.memberDecorateOffset(structType, 0, 0);
+    m_module.memberDecorateOffset(structType, 1, floatArraySize);
+    m_module.memberDecorateOffset(structType, 2, floatArraySize + intArraySize);
 
-    m_module.setDebugName(structType, "c");
+    m_module.setDebugName(structType, "cBuffer");
     m_module.setDebugMemberName(structType, 0, "f");
+    m_module.setDebugMemberName(structType, 1, "i");
+    m_module.setDebugMemberName(structType, 2, "b");
 
     m_cBuffer = m_module.newVar(
       m_module.defPointerType(structType, spv::StorageClassUniform),
       spv::StorageClassUniform);
+
+    m_module.setDebugName(structType, "c");
 
     const uint32_t bindingId = computeResourceSlotId(
       m_programInfo.type(), DxsoBindingType::ConstantBuffer,
@@ -347,7 +359,10 @@ namespace dxvk {
     for (uint32_t i = 0; i < count; i++)
       indices[i] = swizzle[i];
 
-    return m_module.opVectorShuffle(typeId, varId, varId, count, indices.data());
+    if (count == 1)
+      return m_module.opCompositeExtract(typeId, varId, 1, indices.data());
+    else
+      return m_module.opVectorShuffle(typeId, varId, varId, count, indices.data());
   }
 
   uint32_t DxsoCompiler::emitVecTrunc(uint32_t typeId, uint32_t varId, uint32_t count) {
@@ -505,6 +520,20 @@ namespace dxvk {
       case DxsoOpcode::Mov:
         result = emitRegisterLoad(src[0]);
         break;
+      case DxsoOpcode::Mova: {
+        if (src[0].registerId().type() != DxsoRegisterType::ConstInt) {
+          result = m_module.opRound(
+            m_module.defVectorType(m_module.defFloatType(32), 4),
+            emitRegisterLoad(src[0]));
+
+          result = m_module.opConvertFtoS(typeId, result);
+        }
+        else {
+          result = emitRegisterLoad(src[0]);
+        }
+
+        break;
+      }
       case DxsoOpcode::Add:
         result = m_module.opFAdd(typeId, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
         break;
@@ -677,11 +706,23 @@ namespace dxvk {
       m_module.opLoad(m_module.defSamplerType(),     m_samplers.at(samplerIdx)));
 
     SpirvImageOperands imageOperands;
-    uint32_t result = m_module.opImageSampleImplicitLod(
-      spvType(dst),
-      imageVarId,
-      texcoordVarId,
-      imageOperands);
+    if (m_programInfo.type() == DxsoProgramType::VertexShader) {
+      imageOperands.sLod = m_module.constf32(0.0f);
+      imageOperands.flags |= spv::ImageOperandsLodMask;
+    }
+
+    uint32_t result =
+      m_programInfo.type() == DxsoProgramType::PixelShader
+      ? m_module.opImageSampleImplicitLod(
+        typeId,
+        imageVarId,
+        texcoordVarId,
+        imageOperands)
+      : m_module.opImageSampleExplicitLod(
+        typeId,
+        imageVarId,
+        texcoordVarId,
+        imageOperands);
 
     result = emitDstOperandModifier(typeId, result, dst.saturate(), dst.partialPrecision());
     auto& dstSpvReg = getSpirvRegister(dst);
@@ -958,46 +999,51 @@ namespace dxvk {
     uint32_t varId = 0;
 
     if (id.constant()) {
-      uint32_t offset;
+      uint32_t member;
       switch (id.type()) {
         default:
           //Logger::warn(str::format("Unhandled register type: ", regId.type()));
-        case DxsoRegisterType::Const:     offset = 0;    break;
-        case DxsoRegisterType::ConstInt:  offset = 256;  break;
-        case DxsoRegisterType::ConstBool: offset = 256 + 16;  break;
+        case DxsoRegisterType::Const:     member = 0;    break;
+        case DxsoRegisterType::ConstInt:  member = 1;  break;
+        case DxsoRegisterType::ConstBool: member = 2;  break;
       }
 
-      uint32_t idx = m_module.consti32(offset + id.num());
+      const uint32_t memberId = m_module.consti32(member);
+
+      uint32_t constantIdx = m_module.consti32(id.num());
+
+      uint32_t typeId = id.type() != DxsoRegisterType::ConstBool
+        ? getTypeId(id.type())
+        : m_module.defIntType(32, false);
 
       if (relative != nullptr) {
-        uint32_t r = emitRegisterLoad(*relative);
+        DxsoRegisterId id = { DxsoRegisterType::Addr, relative->registerId().num() };
+        uint32_t r = getSpirvRegister(id, false, nullptr).varId;
 
-        r = m_module.opVectorExtractDynamic(
-          m_module.defFloatType(32),
-          r, 0);
+        r = emitRegisterSwizzle(m_module.defIntType(32, 1), r, relative->swizzle(), 1);
 
-        r = m_module.opRound(
-          m_module.defFloatType(32),
-          r);
-
-        r = m_module.opConvertFtoS(
+        constantIdx = m_module.opIAdd(
           m_module.defIntType(32, 1),
-          r);
-
-        idx = m_module.opIAdd(
-          m_module.defIntType(32, 1),
-          idx, r);
+          constantIdx, r);
       }
 
-      const std::array<uint32_t, 2> indices =
-      { { m_module.consti32(0), idx } };
+      uint32_t idx = id.type() != DxsoRegisterType::ConstBool
+        ? constantIdx
+        : m_module.consti32(0);
 
-      const uint32_t ptrType = getPointerTypeId(id.type(), spv::StorageClassUniform);
+      const std::array<uint32_t, 2> indices =
+      { { memberId, idx } };
+
+      const uint32_t ptrType = m_module.defPointerType(typeId, spv::StorageClassUniform);
       uint32_t regPtr = m_module.opAccessChain(ptrType,
         m_cBuffer,
         indices.size(), indices.data());
 
-      varId = m_module.opLoad(getTypeId(id.type()), regPtr);
+      varId = m_module.opLoad(typeId, regPtr);
+
+      if (id.type() == DxsoRegisterType::ConstBool) {
+        varId = m_module.opBitFieldUExtract(getTypeId(id.type()), varId, constantIdx, 1);
+      }
     } else if (input || output) {
       uint32_t ptrId = this->emitNewVariable(
         id.type(),
@@ -1032,8 +1078,17 @@ namespace dxvk {
         m_module.decorateBuiltIn(ptrId, builtIn);
     }
 
-    if (varId == 0)
-      varId = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
+    if (varId == 0) {
+      if ((m_programInfo.type() == DxsoProgramType::VertexShader && id.type() == DxsoRegisterType::Addr)
+        || id.type() == DxsoRegisterType::ConstInt)
+        varId = m_module.constvec4i32(0, 0, 0, 0);
+      else if (id.type() == DxsoRegisterType::Loop)
+        varId = m_module.consti32(0);
+      else if (id.type() == DxsoRegisterType::ConstBool)
+        varId = m_module.constBool(0);
+      else
+        varId = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
+    }
 
     emitDebugName(varId, id);
     spirvRegister.varId = varId;
@@ -1050,11 +1105,15 @@ namespace dxvk {
 
   uint32_t DxsoCompiler::getTypeId(DxsoRegisterType regType, uint32_t count) {
     switch (regType) {
+    case DxsoRegisterType::Addr: {
+      if (m_programInfo.type() == DxsoProgramType::VertexShader) {
+        uint32_t intType = m_module.defIntType(32, 1);
+        return count > 1 ? m_module.defVectorType(intType, count) : intType;
+      }
+    }
     case DxsoRegisterType::Temp:
     case DxsoRegisterType::Input:
     case DxsoRegisterType::Const:
-    case DxsoRegisterType::Texture:
-    //case DxsoRegisterType::Addr:
     case DxsoRegisterType::RasterizerOut:
     case DxsoRegisterType::AttributeOut:
     case DxsoRegisterType::Output:
@@ -1071,14 +1130,14 @@ namespace dxvk {
     }
 
     case DxsoRegisterType::ConstInt: {
-      uint32_t intType = m_module.defIntType(32, true);
+      uint32_t intType = m_module.defIntType(32, 1);
       return count > 1 ? m_module.defVectorType(intType, count) : intType;
     }
 
     case DxsoRegisterType::ConstBool:
-    case DxsoRegisterType::Loop: {
+      return m_module.defBoolType();
+    case DxsoRegisterType::Loop:
       return m_module.defIntType(32, true);
-    }
 
     case DxsoRegisterType::Predicate: {
       uint32_t boolType = m_module.defBoolType();
