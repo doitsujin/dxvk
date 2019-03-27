@@ -875,6 +875,14 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetRenderState(D3DRENDERSTATETYPE State, DWORD* pValue) {
     auto lock = LockDevice();
 
+    if (pValue == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    if (State < D3DRS_ZENABLE || State > D3DRS_BLENDOPALPHA)
+      *pValue = 0;
+    else
+      *pValue = m_state.renderStates[State];
+
     return D3D_OK;
   }
 
