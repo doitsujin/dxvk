@@ -55,6 +55,10 @@ namespace dxvk {
       return m_texture;
     }
 
+    UINT GetSubresource() const {
+      return m_subresource;
+    }
+
     Rc<DxvkImageView> GetImageView(bool srgb) {
       return m_texture->GetImageView(srgb);
     }

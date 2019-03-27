@@ -44,7 +44,7 @@ namespace dxvk {
     if (ptr == nullptr)
       return;
 
-    T* castedPtr = static_cast<T*>(ptr);
+    T* castedPtr = reinterpret_cast<T*>(ptr);
     AddRef ? castedPtr->AddRefPrivate() : castedPtr->ReleasePrivate();
   }
 

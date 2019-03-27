@@ -302,7 +302,8 @@ namespace dxvk {
       return nullptr;
 
     switch (ptr->GetType()) {
-      case D3DRTYPE_TEXTURE:       return static_cast<Direct3DTexture9*>      (ptr)->GetCommonTexture();
+      case D3DRTYPE_SURFACE:       return reinterpret_cast<Direct3DSurface9*>      (ptr)->GetCommonTexture();
+      case D3DRTYPE_TEXTURE:       return reinterpret_cast<Direct3DTexture9*>      (ptr)->GetCommonTexture();
       //case D3DRTYPE_CUBETEXTURE:   return static_cast<Direct3DCubeTexture9*>  (ptr)->GetCommonTexture();
       //case D3DRTYPE_VOLUMETEXTURE: return static_cast<Direct3DVolumeTexture9*>(ptr)->GetCommonTexture();
       default:
@@ -318,6 +319,7 @@ namespace dxvk {
       return;
 
     switch (tex->GetType()) {
+      case D3DRTYPE_SURFACE:       CastRefPrivate<Direct3DSurface9>(tex, AddRef);      break;
       case D3DRTYPE_TEXTURE:       CastRefPrivate<Direct3DTexture9>(tex, AddRef);       break;
       //case D3DRTYPE_CUBETEXTURE:   CastRefPrivate<Direct3DCubeTexture9*>(tex, AddRef);   break;
       //case D3DRTYPE_VOLUMETEXTURE: CastRefPrivate<Direct3DVolumeTexture9*>(tex, AddRef); break;

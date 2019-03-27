@@ -509,12 +509,117 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::StretchRect(
-    IDirect3DSurface9* pSourceSurface,
-    const RECT* pSourceRect,
-    IDirect3DSurface9* pDestSurface,
-    const RECT* pDestRect,
-    D3DTEXTUREFILTERTYPE Filter) {
-    Logger::warn("Direct3DDevice9Ex::StretchRect: Stub");
+          IDirect3DSurface9*   pSourceSurface,
+    const RECT*                pSourceRect,
+          IDirect3DSurface9*   pDestSurface,
+    const RECT*                pDestRect,
+          D3DTEXTUREFILTERTYPE Filter) {
+    auto lock = LockDevice();
+
+    Direct3DSurface9* src = static_cast<Direct3DSurface9*>(pSourceSurface);
+    Direct3DSurface9* dst = static_cast<Direct3DSurface9*>(pDestSurface);
+
+    // This only handles non-stretching ATM.
+    // And similar type copies. No blitting yet!
+    // This will be the fast path when we do not need to blit.
+
+    Direct3DCommonTexture9* srcTextureInfo = GetCommonTexture(src).ptr();
+    Direct3DCommonTexture9* dstTextureInfo = GetCommonTexture(dst).ptr();
+
+    Rc<DxvkImage> srcImage = src->GetCommonTexture()->GetImage();
+    Rc<DxvkImage> dstImage = dst->GetCommonTexture()->GetImage();
+
+    const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(dstImage->info().format);
+    const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcImage->info().format);
+
+    const VkImageSubresource dstSubresource = dstTextureInfo->GetSubresourceFromIndex(dstFormatInfo->aspectMask, dst->GetSubresource());
+    const VkImageSubresource srcSubresource = srcTextureInfo->GetSubresourceFromIndex(srcFormatInfo->aspectMask, src->GetSubresource());
+
+    // Copies are only supported on size-compatible formats
+    if (dstFormatInfo->elementSize != srcFormatInfo->elementSize) {
+      Logger::err(str::format(
+        "D3D9: StretchRect: Incompatible texel size"
+        "\n  Dst texel size: ", dstFormatInfo->elementSize,
+        "\n  Src texel size: ", srcFormatInfo->elementSize));
+      return D3D_OK;
+    }
+
+    // Copies are only supported if the sample count matches
+    if (dstImage->info().sampleCount != srcImage->info().sampleCount) {
+      Logger::err(str::format(
+        "D3D9: StretchRect: Incompatible sample count",
+        "\n  Dst sample count: ", dstImage->info().sampleCount,
+        "\n  Src sample count: ", srcImage->info().sampleCount));
+      return D3D_OK;
+    }
+
+    VkOffset3D srcOffset = { 0,0,0 };
+    VkOffset3D dstOffset = { 0,0,0 };
+
+    VkExtent3D srcExtent = srcImage->mipLevelExtent(srcSubresource.mipLevel);
+    VkExtent3D dstExtent = dstImage->mipLevelExtent(dstSubresource.mipLevel);
+
+    VkExtent3D regExtent = srcExtent;
+
+    if (pSourceRect != nullptr && pDestRect != nullptr) {
+      srcOffset = { pSourceRect->left, pSourceRect->top, 0 };
+      dstOffset = { pDestRect->left,   pDestRect->top,   0 };
+
+      regExtent = { 
+        uint32_t(pSourceRect->right  - pSourceRect->left),
+        uint32_t(pSourceRect->bottom - pSourceRect->top),
+        0 };
+    }
+
+    VkImageSubresourceLayers dstLayers = {
+      dstSubresource.aspectMask,
+      dstSubresource.mipLevel,
+      dstSubresource.arrayLayer, 1 };
+      
+    VkImageSubresourceLayers srcLayers = {
+      srcSubresource.aspectMask,
+      srcSubresource.mipLevel,
+      srcSubresource.arrayLayer, 1 };
+
+    VkExtent3D regBlockCount = util::computeBlockCount(regExtent, srcFormatInfo->blockSize);
+    VkExtent3D dstBlockCount = util::computeMaxBlockCount(dstOffset, dstExtent, dstFormatInfo->blockSize);
+    VkExtent3D srcBlockCount = util::computeMaxBlockCount(srcOffset, srcExtent, srcFormatInfo->blockSize);
+
+    regBlockCount = util::minExtent3D(regBlockCount, dstBlockCount);
+    regBlockCount = util::minExtent3D(regBlockCount, srcBlockCount);
+
+    regExtent = util::minExtent3D(regExtent, util::computeBlockExtent(regBlockCount, srcFormatInfo->blockSize));
+
+    // Don't perform the copy if the image extent is not aligned and
+    // if it does not touch the image border for unaligned dimensons
+    if (!util::isBlockAligned(srcOffset, regExtent, srcFormatInfo->blockSize, srcExtent)) {
+      Logger::err(str::format(
+        "D3D9: StretchRect: Unaligned block size",
+        "\n  Src offset:     (", srcOffset.x, ",", srcOffset.y, ",", srcOffset.z, ")",
+        "\n  Src extent:     (", srcExtent.width, "x", srcExtent.height, "x", srcExtent.depth, ")",
+        "\n  Src block size: (", srcFormatInfo->blockSize.width, "x", srcFormatInfo->blockSize.height, "x", srcFormatInfo->blockSize.depth, ")",
+        "\n  Dst offset:     (", dstOffset.x, ",", dstOffset.y, ",", dstOffset.z, ")",
+        "\n  Dst extent:     (", dstExtent.width, "x", dstExtent.height, "x", dstExtent.depth, ")",
+        "\n  Dst block size: (", dstFormatInfo->blockSize.width, "x", dstFormatInfo->blockSize.height, "x", dstFormatInfo->blockSize.depth, ")",
+        "\n  Region extent:  (", regExtent.width, "x", regExtent.height, "x", regExtent.depth, ")"));
+      return D3D_OK;
+    }
+
+    EmitCs([
+      cDstImage  = dstImage,
+      cSrcImage  = srcImage,
+      cDstLayers = dstLayers,
+      cSrcLayers = srcLayers,
+      cDstOffset = dstOffset,
+      cSrcOffset = srcOffset,
+      cExtent    = regExtent
+    ] (DxvkContext* ctx) {
+      ctx->copyImage(
+        cDstImage, cDstLayers, cDstOffset,
+        cSrcImage, cSrcLayers, cSrcOffset,
+        cExtent);
+    });
+
     return D3D_OK;
   }
 

@@ -196,11 +196,11 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE GetFrontBufferData(UINT iSwapChain, IDirect3DSurface9* pDestSurface);
 
     HRESULT STDMETHODCALLTYPE StretchRect(
-      IDirect3DSurface9* pSourceSurface,
-      const RECT* pSourceRect,
-      IDirect3DSurface9* pDestSurface,
-      const RECT* pDestRect,
-      D3DTEXTUREFILTERTYPE Filter);
+            IDirect3DSurface9*   pSourceSurface,
+      const RECT*                pSourceRect,
+            IDirect3DSurface9*   pDestSurface,
+      const RECT*                pDestRect,
+            D3DTEXTUREFILTERTYPE Filter);
 
     HRESULT STDMETHODCALLTYPE ColorFill(
       IDirect3DSurface9* pSurface,
