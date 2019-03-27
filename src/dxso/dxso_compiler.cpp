@@ -543,13 +543,16 @@ namespace dxvk {
         break;
       }
       case DxsoOpcode::Slt:
-      case DxsoOpcode::Sge:
+      case DxsoOpcode::Sge: {
+        const uint32_t boolVec = m_module.defVectorType(m_module.defBoolType(), 4);
+
         result = opcode == DxsoOpcode::Slt
-          ? m_module.opFOrdLessThan   (m_module.defBoolType(), emitRegisterLoad(src[0]), emitRegisterLoad(src[1]))
-          : m_module.opFOrdGreaterThan(m_module.defBoolType(), emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
+          ? m_module.opFOrdLessThan   (boolVec, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]))
+          : m_module.opFOrdGreaterThan(boolVec, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
 
         result = m_module.opSelect(typeId, result, m_module.constvec4f32(1, 1, 1, 1), m_module.constvec4f32(0, 0, 0, 0));
         break;
+      }
       case DxsoOpcode::Min:
         result = m_module.opFMin(typeId, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
         break;
