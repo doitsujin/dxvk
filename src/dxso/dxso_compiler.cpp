@@ -229,7 +229,7 @@ namespace dxvk {
       m_module.defPointerType(structType, spv::StorageClassUniform),
       spv::StorageClassUniform);
 
-    m_module.setDebugName(structType, "c");
+    m_module.setDebugName(m_cBuffer, "c");
 
     const uint32_t bindingId = computeResourceSlotId(
       m_programInfo.type(), DxsoBindingType::ConstantBuffer,
