@@ -21,6 +21,7 @@
 #include "d3d9_sampler.h"
 
 #include <vector>
+#include <type_traits>
 #include <unordered_map>
 
 namespace dxvk {
@@ -785,16 +786,32 @@ namespace dxvk {
       if (StartRegister + Count >= MaxRegCountSoftware)
         return D3DERR_INVALIDCALL;
 
+      Count = std::clamp<UINT>(Count + StartRegister, 0, MaxRegCountHardware) - StartRegister;
+
       if (Count == 0)
         return D3D_OK;
 
       if (pConstantData == nullptr)
         return D3DERR_INVALIDCALL;
 
-      std::memcpy(
-        pDestination + StartRegister,
-        pConstantData,
-        Count * sizeof(RegType));
+      if constexpr (std::is_same<RegType, uint32_t>()) {
+        // Update bool bitfield.
+        const RegType* constantData = reinterpret_cast<const RegType*>(pConstantData);
+
+        for (uint32_t i = 0; i < Count; i++) {
+          const uint32_t idx = StartRegister + i;
+
+          *pDestination &= ~idx;
+          if (constantData[i])
+            *pDestination |= 1u << idx;
+        }
+      }
+      else {
+        std::memcpy(
+          pDestination + StartRegister,
+          pConstantData,
+          Count * sizeof(RegType));
+      }
 
       D3D9ConstantSets& constSet =
         ShaderStage == DxsoProgramType::VertexShader ?
@@ -812,9 +829,12 @@ namespace dxvk {
             void*    pConstantData,
             UINT     Count,
       const RegType* pSource,
+            UINT     MaxRegCountHardware,
             UINT     MaxRegCountSoftware) {
       if (StartRegister + Count >= MaxRegCountSoftware)
         return D3DERR_INVALIDCALL;
+
+      Count = std::clamp<UINT>(Count + StartRegister, 0, MaxRegCountHardware) - StartRegister;
 
       if (Count == 0)
         return D3D_OK;
@@ -822,10 +842,23 @@ namespace dxvk {
       if (pConstantData == nullptr)
         return D3DERR_INVALIDCALL;
 
-      std::memcpy(
-        pConstantData,
-        pSource + StartRegister,
-        Count * sizeof(RegType));
+      if constexpr (std::is_same<RegType, uint32_t>()) {
+        // Retrieve from bool bitfield.
+        RegType* constantData = reinterpret_cast<RegType*>(pConstantData);
+
+        for (uint32_t i = 0; i < Count; i++) {
+          const uint32_t idx = StartRegister + i;
+
+          bool constantValue = *pSource & 1u << idx;
+          constantData[i] = constantValue;
+        }
+      }
+      else {
+        std::memcpy(
+          pConstantData,
+          pSource + StartRegister,
+          Count * sizeof(RegType));
+      }
 
       return D3D_OK;
     }
