@@ -1967,13 +1967,17 @@ namespace dxvk {
     rs[D3DRS_STENCILREF] = 0;
     BindDepthStencilRefrence();
 
+    rs[D3DRS_FILLMODE]            = D3DFILL_SOLID;
+    rs[D3DRS_CULLMODE]            = D3DCULL_CCW;
+    rs[D3DRS_DEPTHBIAS]           = bit::cast<DWORD>(0.0f);
+    rs[D3DRS_SLOPESCALEDEPTHBIAS] = bit::cast<DWORD>(0.0f);
     BindRasterizerState();
 
-    SetRenderState(D3DRS_FILLMODE, D3DFILL_SOLID);
+    rs[D3DRS_SCISSORTESTENABLE]   = FALSE;
+
     SetRenderState(D3DRS_SHADEMODE, D3DSHADE_GOURAUD);
     SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
     SetRenderState(D3DRS_LASTPIXEL, TRUE);
-    SetRenderState(D3DRS_CULLMODE, D3DCULL_CCW);
     SetRenderState(D3DRS_ALPHAREF, 0);
     SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_ALWAYS);
     SetRenderState(D3DRS_DITHERENABLE, FALSE);
@@ -2024,8 +2028,6 @@ namespace dxvk {
     SetRenderState(D3DRS_TWEENFACTOR, bit::cast<DWORD>(0.0f));
     SetRenderState(D3DRS_POSITIONDEGREE, D3DDEGREE_CUBIC);
     SetRenderState(D3DRS_NORMALDEGREE, D3DDEGREE_LINEAR);
-    SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
-    SetRenderState(D3DRS_SLOPESCALEDEPTHBIAS, bit::cast<DWORD>(0.0f));
     SetRenderState(D3DRS_ANTIALIASEDLINEENABLE, FALSE);
     SetRenderState(D3DRS_MINTESSELLATIONLEVEL, bit::cast<DWORD>(1.0f));
     SetRenderState(D3DRS_MAXTESSELLATIONLEVEL, bit::cast<DWORD>(1.0f));
@@ -2035,7 +2037,6 @@ namespace dxvk {
     SetRenderState(D3DRS_ADAPTIVETESS_W, bit::cast<DWORD>(0.0f));
     SetRenderState(D3DRS_ENABLEADAPTIVETESSELLATION, FALSE);
     SetRenderState(D3DRS_SRGBWRITEENABLE, 0);
-    SetRenderState(D3DRS_DEPTHBIAS, bit::cast<DWORD>(0.0f));
     SetRenderState(D3DRS_WRAP8, 0);
     SetRenderState(D3DRS_WRAP9, 0);
     SetRenderState(D3DRS_WRAP10, 0);
@@ -2149,6 +2150,9 @@ namespace dxvk {
     }
 
     ShowCursor(FALSE);
+
+    // Force this if we end up binding the same RT to make scissor change go into effect.
+    BindViewportAndScissor();
 
     return D3D_OK;
   }
