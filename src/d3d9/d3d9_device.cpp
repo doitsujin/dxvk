@@ -961,6 +961,10 @@ namespace dxvk {
           BindViewportAndScissor();
           break;
 
+        case D3DRS_SRGBWRITEENABLE:
+          BindFramebuffer();
+          break;
+
         case D3DRS_DEPTHBIAS:
         case D3DRS_SLOPESCALEDEPTHBIAS:
         case D3DRS_CULLMODE:
@@ -2867,14 +2871,16 @@ namespace dxvk {
   void Direct3DDevice9Ex::BindFramebuffer() {
     DxvkRenderTargets attachments;
 
+    bool srgb = m_state.renderStates[D3DRS_SRGBWRITEENABLE] != FALSE;
+
     // D3D9 doesn't have the concept of a framebuffer object,
     // so we'll just create a new one every time the render
     // target bindings are updated. Set up the attachments.
     for (UINT i = 0; i < m_state.renderTargets.size(); i++) {
       if (m_state.renderTargets.at(i) != nullptr) {
         attachments.color[i] = {
-          m_state.renderTargets.at(i)->GetRenderTargetView(false), // TODO: SRGB-ness here. Use state when that is hooked up.
-          m_state.renderTargets.at(i)->GetRenderTargetLayout(false) };
+          m_state.renderTargets.at(i)->GetRenderTargetView(srgb),
+          m_state.renderTargets.at(i)->GetRenderTargetLayout(srgb) };
       }
     }
 
