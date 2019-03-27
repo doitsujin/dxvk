@@ -18,6 +18,9 @@ namespace dxvk {
     /// a higher value. May help with frame timing issues.
     int32_t maxFrameLatency;
 
+    /// Set the max shader model the device can support in the caps.
+    int32_t shaderModel;
+
   };
 
 }
