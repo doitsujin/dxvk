@@ -111,6 +111,8 @@ namespace dxvk {
   VkSamplerAddressMode DecodeAddressMode(D3DTEXTUREADDRESS Mode);
   VkCompareOp DecodeCompareOp(D3DCMPFUNC Func);
   VkStencilOp DecodeStencilOp(D3DSTENCILOP Op);
+  VkCullModeFlags DecodeCullMode(D3DCULL Mode);
+  VkPolygonMode DecodeFillMode(D3DFILLMODE Mode);
 
   template<typename T>
   UINT CompactSparseList(T* pData, UINT Mask) {

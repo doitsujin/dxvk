@@ -852,6 +852,13 @@ namespace dxvk {
           BindDepthStencilRefrence();
           break;
 
+        case D3DRS_DEPTHBIAS:
+        case D3DRS_SLOPESCALEDEPTHBIAS:
+        case D3DRS_CULLMODE:
+        case D3DRS_FILLMODE:
+          m_flags.set(D3D9DeviceFlag::DirtyRasterizerState);
+          break;
+
         default:
           Logger::warn(str::format("Direct3DDevice9Ex::SetRenderState: Unhandled render state ", State));
           break;
@@ -1948,6 +1955,8 @@ namespace dxvk {
     rs[D3DRS_STENCILREF] = 0;
     BindDepthStencilRefrence();
 
+    BindRasterizerState();
+
     SetRenderState(D3DRS_FILLMODE, D3DFILL_SOLID);
     SetRenderState(D3DRS_SHADEMODE, D3DSHADE_GOURAUD);
     SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
@@ -2912,6 +2921,36 @@ namespace dxvk {
     });
   }
 
+  void Direct3DDevice9Ex::BindRasterizerState() {
+    m_flags.clr(D3D9DeviceFlag::DirtyRasterizerState);
+
+    auto& rs = m_state.renderStates;
+
+    float depthBias            = bit::cast<float>(rs[D3DRS_DEPTHBIAS]);
+    float slopeScaledDepthBias = bit::cast<float>(rs[D3DRS_SLOPESCALEDEPTHBIAS]);
+
+    DxvkRasterizerState state;
+    state.cullMode        = DecodeCullMode(D3DCULL(rs[D3DRS_CULLMODE]));
+    state.depthBiasEnable = depthBias != 0.0f || slopeScaledDepthBias != 0.0f;
+    state.depthClipEnable = true;
+    state.frontFace       = VK_FRONT_FACE_CLOCKWISE;
+    state.polygonMode     = DecodeFillMode(D3DFILLMODE(rs[D3DRS_FILLMODE]));
+    state.sampleCount     = 1; // TODO: Multisampling
+
+    DxvkDepthBias biases;
+    biases.depthBiasConstant = depthBias;
+    biases.depthBiasSlope    = slopeScaledDepthBias;
+    biases.depthBiasClamp    = 0.0f;
+
+    EmitCs([
+      cState  = state,
+      cBiases = biases
+    ](DxvkContext* ctx) {
+      ctx->setRasterizerState(cState);
+      ctx->setDepthBias(cBiases);
+    });
+  }
+
   void Direct3DDevice9Ex::BindDepthStencilRefrence() {
     auto& rs = m_state.renderStates;
 
@@ -3001,6 +3040,9 @@ namespace dxvk {
     
     if (m_flags.test(D3D9DeviceFlag::DirtyDepthStencilState))
       BindDepthStencilState();
+
+    if (m_flags.test(D3D9DeviceFlag::DirtyRasterizerState))
+      BindRasterizerState();
 
     UpdateConstants();
   }

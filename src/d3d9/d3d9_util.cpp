@@ -238,4 +238,22 @@ namespace dxvk {
     }
   }
 
+  VkCullModeFlags DecodeCullMode(D3DCULL Mode) {
+    switch (Mode) {
+      case D3DCULL_NONE: return VK_CULL_MODE_NONE;
+      case D3DCULL_CW:   return VK_CULL_MODE_FRONT_BIT;
+      default:
+      case D3DCULL_CCW:  return VK_CULL_MODE_BACK_BIT;
+    }
+  }
+
+  VkPolygonMode DecodeFillMode(D3DFILLMODE Mode) {
+    switch (Mode) {
+      case D3DFILL_POINT:     return VK_POLYGON_MODE_POINT;
+      case D3DFILL_WIREFRAME: return VK_POLYGON_MODE_LINE;
+      default:
+      case D3DFILL_SOLID:     return VK_POLYGON_MODE_FILL;
+    }
+  }
+
 }

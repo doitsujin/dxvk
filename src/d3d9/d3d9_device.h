@@ -38,6 +38,7 @@ namespace dxvk {
   enum class D3D9DeviceFlag : uint64_t {
     DirtyDepthStencilState,
     DirtyBlendState,
+    DirtyRasterizerState,
     ExtendedDevice,
     DeferViewportBinding
   };
