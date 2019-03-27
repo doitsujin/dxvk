@@ -2947,7 +2947,7 @@ namespace dxvk {
     state.depthClipEnable = true;
     state.frontFace       = VK_FRONT_FACE_CLOCKWISE;
     state.polygonMode     = DecodeFillMode(D3DFILLMODE(rs[D3DRS_FILLMODE]));
-    state.sampleCount     = 1; // TODO: Multisampling
+    state.sampleCount     = 0;
 
     DxvkDepthBias biases;
     biases.depthBiasConstant = depthBias;
