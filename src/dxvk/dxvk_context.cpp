@@ -252,6 +252,71 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::blitImage(
+    const Rc<DxvkImage>&        dstImage,
+    const Rc<DxvkImage>&        srcImage,
+    const VkImageBlit&          region,
+          VkFilter              filter) {
+    this->spillRenderPass();
+
+    auto dstSubresourceRange = vk::makeSubresourceRange(region.dstSubresource);
+    auto srcSubresourceRange = vk::makeSubresourceRange(region.srcSubresource);
+
+    if (m_barriers.isImageDirty(dstImage, dstSubresourceRange, DxvkAccess::Write)
+     || m_barriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write))
+      m_barriers.recordCommands(m_cmd);
+
+    // Prepare the two images for transfer ops if necessary
+    auto dstLayout = dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    auto srcLayout = srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+    if (dstImage->info().layout != dstLayout) {
+      m_transitions.accessImage(
+        dstImage, dstSubresourceRange,
+        dstImage->info().layout, 0, 0,
+        dstLayout,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_TRANSFER_WRITE_BIT);
+    }
+
+    if (srcImage->info().layout != srcLayout) {
+      m_transitions.accessImage(
+        srcImage, srcSubresourceRange,
+        srcImage->info().layout, 0, 0,
+        srcLayout,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_ACCESS_TRANSFER_READ_BIT);
+    }
+
+    m_transitions.recordCommands(m_cmd);
+
+    // Perform the blit operation
+    m_cmd->cmdBlitImage(
+      srcImage->handle(), srcLayout,
+      dstImage->handle(), dstLayout,
+      1, &region, filter);
+    
+    m_barriers.accessImage(
+      dstImage, dstSubresourceRange, dstLayout,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT,
+      dstImage->info().layout,
+      dstImage->info().stages,
+      dstImage->info().access);
+    
+    m_barriers.accessImage(
+      srcImage, srcSubresourceRange, srcLayout,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_READ_BIT,
+      srcImage->info().layout,
+      srcImage->info().stages,
+      srcImage->info().access);
+
+    m_cmd->trackResource(dstImage);
+    m_cmd->trackResource(srcImage);
+  }
+
+
   void DxvkContext::clearBuffer(
     const Rc<DxvkBuffer>&       buffer,
           VkDeviceSize          offset,

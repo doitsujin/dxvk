@@ -196,6 +196,20 @@ namespace dxvk {
       const DxvkBufferSlice&      counter);
     
     /**
+     * \brief Blits an image
+     * 
+     * \param [in] dstImage Destination image
+     * \param [in] srcImage Source image
+     * \param [in] region Blit region
+     * \param [in] filter Texture filter
+     */
+    void blitImage(
+      const Rc<DxvkImage>&        dstImage,
+      const Rc<DxvkImage>&        srcImage,
+      const VkImageBlit&          region,
+            VkFilter              filter);
+    
+    /**
      * \brief Clears a buffer with a fixed value
      * 
      * Note that both \c offset and \c length must
