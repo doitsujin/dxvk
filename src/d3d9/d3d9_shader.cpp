@@ -1,5 +1,9 @@
 #include "d3d9_shader.h"
 
+#include <C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include\d3dx9.h>
+
+#pragma comment(lib, "C:\\Program Files (x86)\\Microsoft DirectX SDK (June 2010)\\Lib\\x86\\d3dx9.lib")
+
 namespace dxvk {
 
   D3D9CommonShader::D3D9CommonShader() {}
@@ -29,6 +33,17 @@ namespace dxvk {
     if (dumpPath.size() != 0) {
       reader.store(std::ofstream(str::format(dumpPath, "/", name, ".dxso"),
         std::ios_base::binary | std::ios_base::trunc));
+
+      char comment[2048];
+      ID3DXBuffer * buffer = nullptr;
+      HRESULT hr = D3DXDisassembleShader((const DWORD*)pShaderBytecode, TRUE, comment, &buffer);
+      
+        if (SUCCEEDED(hr)) {
+        std::ofstream disassembledOut(str::format(dumpPath, "/", name, ".dxso.dis"), std::ios_base::binary | std::ios_base::trunc);
+        disassembledOut.write((const char*)buffer->GetBufferPointer(), buffer->GetBufferSize());
+        buffer->Release();
+        
+      }
     }
     
     // Decide whether we need to create a pass-through
