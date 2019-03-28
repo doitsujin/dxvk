@@ -14,9 +14,9 @@ namespace dxvk {
  * behave when mapping an image.
  */
   enum D3D9_COMMON_TEXTURE_MAP_MODE {
-    D3D9_COMMON_TEXTURE_MAP_MODE_NONE,      ///< Not mapped
-    D3D9_COMMON_TEXTURE_MAP_MODE_STAGING,   ///< Mapped through staging
-    D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER,    ///< Mapped through buffer
+    D3D9_COMMON_TEXTURE_MAP_MODE_NONE,   ///< Not mapped
+    D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER, ///< Mapped through buffer
+    D3D9_COMMON_TEXTURE_MAP_MODE_DIRECT, ///< Directly mapped to host mem
   };
 
   struct Direct3DView9 {
@@ -54,8 +54,6 @@ namespace dxvk {
             Rc<DxvkImageView>       ImageViewSrgb,
       const D3D9TextureDesc*        pDesc);
 
-    Rc<DxvkImage> CreateImage(const D3D9TextureDesc* pDesc, bool Staging);
-
     /**
      * \brief Texture properties
      *
@@ -83,22 +81,16 @@ namespace dxvk {
       return m_image;
     }
 
-    Rc<DxvkImage> GetMappedImage() const {
-      return m_stagingImage != nullptr 
-           ? m_stagingImage
-           : m_image;
-    }
-
-    Rc<DxvkImage> GetStagingImage() const {
-      return m_stagingImage;
-    }
-
-    Rc<DxvkImage> GetFixupImage() const {
-      return m_fixupImage;
+    /**
+     * \brief The DXVK buffer used for fixup
+     * \returns The DXVK buffer
+     */
+    Rc<DxvkBuffer> GetFixupBuffer() const {
+      return m_fixupBuffer;
     }
 
     /**
-     * \brief The DXVK buffer
+     * \brief The DXVK buffer used for mapping
      * \returns The DXVK buffer
      */
     Rc<DxvkBuffer> GetMappedBuffer() const {
@@ -254,9 +246,8 @@ namespace dxvk {
     D3D9_COMMON_TEXTURE_MAP_MODE m_mapMode;
 
     Rc<DxvkImage>   m_image;
-    Rc<DxvkImage>   m_stagingImage;
-    Rc<DxvkImage>   m_fixupImage;
     Rc<DxvkBuffer>  m_buffer;
+    Rc<DxvkBuffer>  m_fixupBuffer;
 
     VkImageSubresource m_mappedSubresource
       = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0 };
@@ -302,8 +293,7 @@ namespace dxvk {
       return nullptr;
 
     switch (ptr->GetType()) {
-      case D3DRTYPE_SURFACE:       return reinterpret_cast<Direct3DSurface9*>      (ptr)->GetCommonTexture();
-      case D3DRTYPE_TEXTURE:       return reinterpret_cast<Direct3DTexture9*>      (ptr)->GetCommonTexture();
+      case D3DRTYPE_TEXTURE:       return static_cast<Direct3DTexture9*>      (ptr)->GetCommonTexture();
       //case D3DRTYPE_CUBETEXTURE:   return static_cast<Direct3DCubeTexture9*>  (ptr)->GetCommonTexture();
       //case D3DRTYPE_VOLUMETEXTURE: return static_cast<Direct3DVolumeTexture9*>(ptr)->GetCommonTexture();
       default:
@@ -319,7 +309,6 @@ namespace dxvk {
       return;
 
     switch (tex->GetType()) {
-      case D3DRTYPE_SURFACE:       CastRefPrivate<Direct3DSurface9>(tex, AddRef);      break;
       case D3DRTYPE_TEXTURE:       CastRefPrivate<Direct3DTexture9>(tex, AddRef);       break;
       //case D3DRTYPE_CUBETEXTURE:   CastRefPrivate<Direct3DCubeTexture9*>(tex, AddRef);   break;
       //case D3DRTYPE_VOLUMETEXTURE: CastRefPrivate<Direct3DVolumeTexture9*>(tex, AddRef); break;

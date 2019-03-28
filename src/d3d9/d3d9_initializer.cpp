@@ -118,8 +118,6 @@ namespace dxvk {
     };
 
     InitImage(pTexture->GetImage());
-    InitImage(pTexture->GetStagingImage());
-    InitImage(pTexture->GetFixupImage());
 
     FlushImplicit();
   }

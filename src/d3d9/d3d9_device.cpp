@@ -525,12 +525,15 @@ namespace dxvk {
     Direct3DSurface9* src = static_cast<Direct3DSurface9*>(pSourceSurface);
     Direct3DSurface9* dst = static_cast<Direct3DSurface9*>(pDestSurface);
 
+    if (src == nullptr || dst == nullptr)
+      return D3DERR_INVALIDCALL;
+
     // This only handles non-stretching ATM.
     // And similar type copies. No blitting yet!
     // This will be the fast path when we do not need to blit.
 
-    Direct3DCommonTexture9* srcTextureInfo = GetCommonTexture(src).ptr();
-    Direct3DCommonTexture9* dstTextureInfo = GetCommonTexture(dst).ptr();
+    Direct3DCommonTexture9* srcTextureInfo = src->GetCommonTexture().ptr();
+    Direct3DCommonTexture9* dstTextureInfo = dst->GetCommonTexture().ptr();
 
     Rc<DxvkImage> srcImage = src->GetCommonTexture()->GetImage();
     Rc<DxvkImage> dstImage = dst->GetCommonTexture()->GetImage();
@@ -2409,7 +2412,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
     }
 
-    const Rc<DxvkImage>  mappedImage  = pResource->GetMappedImage();
+    const Rc<DxvkImage>  mappedImage  = pResource->GetImage();
     const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer();
     
     auto formatInfo = imageFormatInfo(mappedImage->info().format);
@@ -2425,7 +2428,7 @@ namespace dxvk {
       dimOffsets[2] = formatInfo->elementSize * align(pBox->Front, formatInfo->blockSize.depth);
     }
     
-    if (pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_STAGING) {
+    if (pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_DIRECT) {
       const VkImageType imageType = mappedImage->info().type;
       
       // Wait for the resource to become available
@@ -2549,10 +2552,52 @@ namespace dxvk {
     if (pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER) {
       // Now that data has been written into the buffer,
       // we need to copy its contents into the image
-      const Rc<DxvkImage>  mappedImage = pResource->GetMappedImage();
+      const Rc<DxvkImage>  mappedImage  = pResource->GetImage();
       const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer();
+      const Rc<DxvkBuffer> fixupBuffer  = pResource->GetFixupBuffer();
 
-      VkImageSubresource subresource = pResource->GetMappedSubresource();
+      VkImageSubresource subresource    = pResource->GetMappedSubresource();
+
+      bool fixup8888 = pResource->Desc()->Format == D3D9Format::R8G8B8;
+
+      const Rc<DxvkBuffer>& copyImage = fixup8888
+        ? fixupBuffer
+        : mappedBuffer;
+
+      if (fixup8888) {
+        DxvkBufferSliceHandle physSlice = fixupBuffer->allocSlice();
+
+        EmitCs([
+          cImageBuffer = fixupBuffer,
+          cBufferSlice = physSlice
+        ] (DxvkContext* ctx) {
+          ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
+        });
+
+        const VkImageType imageType = mappedImage->info().type;
+        VkSubresourceLayout layout  = mappedImage->querySubresourceLayout(subresource);
+
+        uint32_t rowPitch   = imageType >= VK_IMAGE_TYPE_2D ? layout.rowPitch   : layout.size;
+        uint32_t slicePitch = imageType >= VK_IMAGE_TYPE_3D ? layout.depthPitch : layout.size;
+
+        uint32_t mippedDepth  = std::max(1u, pResource->Desc()->Depth  >> subresource.mipLevel);
+        uint32_t mippedHeight = std::max(1u, pResource->Desc()->Height >> subresource.mipLevel);
+        uint32_t mippedWidth  = std::max(1u, pResource->Desc()->Width  >> subresource.mipLevel);
+
+        uint8_t* dst = reinterpret_cast<uint8_t*>(physSlice.mapPtr);
+        uint8_t* src = reinterpret_cast<uint8_t*>(mappedBuffer->mapPtr(0));
+
+        for (uint32_t z = 0; z < mippedDepth; z++) {
+          for (uint32_t y = 0; y < mippedHeight; y++) {
+            for (uint32_t x = 0; x < mippedWidth; x++) {
+              for (uint32_t c = 0; c < 3; c++)
+                dst[z * slicePitch + y * rowPitch + x * 4 + c] = src[z * slicePitch + y * rowPitch + x * 3 + c];
+
+              dst[z * slicePitch + y * rowPitch + x * 4 + 3] = 255;
+            }
+          }
+        }
+      }
 
       VkExtent3D levelExtent = mappedImage
         ->mipLevelExtent(subresource.mipLevel);
@@ -2564,73 +2609,13 @@ namespace dxvk {
 
       EmitCs([
         cSrcBuffer = mappedBuffer,
-          cDstImage = mappedImage,
-          cDstLayers = subresourceLayers,
-          cDstLevelExtent = levelExtent
+        cDstImage = mappedImage,
+        cDstLayers = subresourceLayers,
+        cDstLevelExtent = levelExtent
       ] (DxvkContext* ctx) {
-          ctx->copyBufferToImage(cDstImage, cDstLayers,
-            VkOffset3D{ 0, 0, 0 }, cDstLevelExtent,
-            cSrcBuffer, 0, { 0u, 0u });
-        });
-    }
-    else if (pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_STAGING) {
-      bool fixup8888 = pResource->Desc()->Format == D3D9Format::R8G8B8;
-
-      const Rc<DxvkImage>  realImage    = pResource->GetImage();
-      const Rc<DxvkImage>  fixupImage   = pResource->GetFixupImage();
-      const Rc<DxvkImage>  stagingImage = pResource->GetStagingImage();
-
-      VkImageSubresource   subresource  = pResource->GetMappedSubresource();
-
-      if (fixup8888) {
-        const VkImageType imageType = stagingImage->info().type;
-        VkSubresourceLayout layout  = stagingImage->querySubresourceLayout(subresource);
-        uint32_t rowPitch   = imageType >= VK_IMAGE_TYPE_2D ? layout.rowPitch   : layout.size;
-        uint32_t slicePitch = imageType >= VK_IMAGE_TYPE_3D ? layout.depthPitch : layout.size;
-
-        uint8_t* dstData = reinterpret_cast<uint8_t*>(fixupImage->mapPtr(layout.offset));
-        uint8_t* srcData = reinterpret_cast<uint8_t*>(stagingImage->mapPtr(layout.offset));
-
-        uint32_t mippedDepth  = std::max(1u, pResource->Desc()->Depth  >> subresource.mipLevel);
-        uint32_t mippedHeight = std::max(1u, pResource->Desc()->Height >> subresource.mipLevel);
-        uint32_t mippedWidth  = std::max(1u, pResource->Desc()->Width  >> subresource.mipLevel);
-
-        for (uint32_t z = 0; z < mippedDepth; z++) {
-          for (uint32_t y = 0; y < mippedHeight; y++) {
-            for (uint32_t x = 0; x < mippedWidth; x++) {
-              for (uint32_t c = 0; c < 3; c++) {
-                dstData[z * slicePitch + y * rowPitch + x * 4 + c] = srcData[z * slicePitch + y * rowPitch + x * 3 + c];
-              }
-              dstData[z * slicePitch + y * rowPitch + x * 4 + 3] = 255;
-            }
-          }
-        }
-      }
-
-      const Rc<DxvkImage>  copySrc = fixup8888 ? fixupImage : stagingImage;
-
-      VkExtent3D levelExtent = copySrc
-        ->mipLevelExtent(subresource.mipLevel);
-
-      VkImageSubresourceLayers subresourceLayers = {
-        subresource.aspectMask,
-        subresource.mipLevel,
-        subresource.arrayLayer, 1 };
-
-      EmitCs([
-        cRealImage          = realImage,
-        cStagingImage       = copySrc,
-        cSubresourceLayers  = subresourceLayers,
-        cDstLevelExtent     = levelExtent
-      ](DxvkContext* ctx) {
-        ctx->copyImage(
-          cRealImage,
-          cSubresourceLayers,
-          VkOffset3D{ 0, 0, 0 },
-          cStagingImage,
-          cSubresourceLayers,
-          VkOffset3D{ 0, 0, 0 },
-          cDstLevelExtent);
+        ctx->copyBufferToImage(cDstImage, cDstLayers,
+          VkOffset3D{ 0, 0, 0 }, cDstLevelExtent,
+          cSrcBuffer, 0, { 0u, 0u });
       });
     }
 

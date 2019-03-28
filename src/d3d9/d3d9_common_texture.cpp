@@ -13,18 +13,6 @@ namespace dxvk {
     if (m_desc.Format == D3D9Format::NULL_FORMAT)
       return;
 
-    m_image = CreateImage(pDesc, false);
-
-    RecreateImageView(0);
-
-    if (m_desc.Usage & D3DUSAGE_DEPTHSTENCIL)
-      CreateDepthStencilView();
-
-    if (m_desc.Usage & D3DUSAGE_RENDERTARGET)
-      CreateRenderTargetView();
-  }
-
-  Rc<DxvkImage> Direct3DCommonTexture9::CreateImage(const D3D9TextureDesc* pDesc, bool Staging) {
     D3D9_VK_FORMAT_MAPPING formatInfo = m_device->LookupFormat(m_desc.Format);
 
     DxvkImageCreateInfo imageInfo;
@@ -70,7 +58,7 @@ namespace dxvk {
       imageInfo.usage  |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
       imageInfo.stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
       imageInfo.access |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
-                       |  VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                       | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
     }
 
     if (m_desc.Usage & D3DUSAGE_DEPTHSTENCIL) {
@@ -78,7 +66,7 @@ namespace dxvk {
       imageInfo.stages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
                        |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
       imageInfo.access |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT
-                       |  VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+                       | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
     }
 
     // Access pattern for meta-resolve operations
@@ -96,22 +84,13 @@ namespace dxvk {
     if (!CheckImageSupport(&imageInfo, VK_IMAGE_TILING_OPTIMAL))
       imageInfo.tiling = VK_IMAGE_TILING_LINEAR;
 
-    if (!Staging) {
-      // Determine map mode based on our findings
-      m_mapMode = DetermineMapMode(&imageInfo);
-
-      if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_STAGING) {
-        m_stagingImage = CreateImage(pDesc, true);
-        if (m_desc.Format == D3D9Format::R8G8B8)
-          m_fixupImage = CreateImage(pDesc, true);
-      }
-    }
+    // Determine map mode based on our findings
+    m_mapMode = DetermineMapMode(&imageInfo);
 
     // If the image is mapped directly to host memory, we need
     // to enable linear tiling, and DXVK needs to be aware that
     // the image can be accessed by the host.
-
-    if (Staging) {
+    if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_DIRECT) {
       imageInfo.stages |= VK_PIPELINE_STAGE_HOST_BIT;
       imageInfo.tiling  = VK_IMAGE_TILING_LINEAR;
       imageInfo.access |= VK_ACCESS_HOST_WRITE_BIT;
@@ -147,20 +126,32 @@ namespace dxvk {
     }
 
     // If necessary, create the mapped linear buffer
-    if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER)
+    if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER) {
       m_buffer = CreateMappedBuffer();
+
+      if (m_desc.Format == D3D9Format::R8G8B8)
+        m_fixupBuffer = CreateMappedBuffer();
+    }
 
     // Create the image on a host-visible memory type
     // in case it is going to be mapped directly.
     VkMemoryPropertyFlags memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 
-    if (Staging) {
+    if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_DIRECT) {
       memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
                        | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
                        | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
     }
 
-    return m_device->GetDXVKDevice()->createImage(imageInfo, memoryProperties);
+    m_image = m_device->GetDXVKDevice()->createImage(imageInfo, memoryProperties);
+
+    RecreateImageView(0);
+
+    if (m_desc.Usage & D3DUSAGE_DEPTHSTENCIL)
+      CreateDepthStencilView();
+
+    if (m_desc.Usage & D3DUSAGE_RENDERTARGET)
+      CreateRenderTargetView();
   }
 
   Direct3DCommonTexture9::Direct3DCommonTexture9(
@@ -175,7 +166,7 @@ namespace dxvk {
     , m_imageView{ ImageView }
     , m_imageViewSrgb{ ImageViewSrgb } {
     m_mapMode = m_image->info().tiling == VK_IMAGE_TILING_LINEAR
-      ? D3D9_COMMON_TEXTURE_MAP_MODE_STAGING
+      ? D3D9_COMMON_TEXTURE_MAP_MODE_DIRECT
       : D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER;
 
     // If necessary, create the mapped linear buffer
@@ -364,7 +355,11 @@ namespace dxvk {
     // 2. Since the image will most likely be read for rendering by the GPU,
     //    writing the image to device-local image may be more efficient than
     //    reading its contents from host-visible memory.
-    if (m_desc.Usage & D3DUSAGE_DYNAMIC)
+    if (m_desc.Usage & D3DUSAGE_DYNAMIC )
+      return D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER;
+
+    // This format requires fixup to an 8888.
+    if (m_desc.Format == D3D9Format::R8G8B8)
       return D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER;
 
     if (!m_desc.Lockable)
@@ -375,16 +370,12 @@ namespace dxvk {
     if (GetPackedDepthStencilFormat(m_desc.Format))
       return D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER;
 
-    // This needs to be fixed up into a 8888 format.
-    if (m_desc.Format == D3D9Format::R8G8B8)
-      return D3D9_COMMON_TEXTURE_MAP_MODE_STAGING;
-
     // Images that can be read by the host should be mapped directly in
     // order to avoid expensive synchronization with the GPU. This does
     // however require linear tiling, which may not be supported for all
-    // combinations of image parameters.COH
+    // combinations of image parameters.
     return this->CheckImageSupport(pImageInfo, VK_IMAGE_TILING_LINEAR)
-      ? D3D9_COMMON_TEXTURE_MAP_MODE_STAGING
+      ? D3D9_COMMON_TEXTURE_MAP_MODE_DIRECT
       : D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER;
   }
 
@@ -403,14 +394,14 @@ namespace dxvk {
       * blockCount.height
       * blockCount.depth;
     info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
-      | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+               | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
     info.access = VK_ACCESS_TRANSFER_READ_BIT
-      | VK_ACCESS_TRANSFER_WRITE_BIT;
+                | VK_ACCESS_TRANSFER_WRITE_BIT;
 
     return m_device->GetDXVKDevice()->createBuffer(info,
-      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+      | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
   }
 
 
@@ -436,7 +427,7 @@ namespace dxvk {
     // Filter out unnecessary flags. Transfer operations
     // are handled by the backend in a transparent manner.
     Usage &= ~(VK_IMAGE_USAGE_TRANSFER_DST_BIT
-      | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+             | VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
 
     // If the image is used only as an attachment, we never
     // have to transform the image back to a different layout
@@ -529,7 +520,7 @@ namespace dxvk {
   void Direct3DCommonTexture9::RecreateImageView(UINT Lod) {
     // TODO: Signal to device that this resource is dirty and needs to be rebound.
 
-    m_imageView = CreateView(VK_IMAGE_USAGE_SAMPLED_BIT, false, Lod);
+    m_imageView     = CreateView(VK_IMAGE_USAGE_SAMPLED_BIT, false, Lod);
     m_imageViewSrgb = CreateView(VK_IMAGE_USAGE_SAMPLED_BIT, true, Lod);
   }
 
@@ -538,7 +529,7 @@ namespace dxvk {
   }
 
   void Direct3DCommonTexture9::CreateRenderTargetView() {
-    m_renderTargetView = CreateView(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, false, 0);
+    m_renderTargetView     = CreateView(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, false, 0);
     m_renderTargetViewSrgb = CreateView(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, true, 0);
   }
 
