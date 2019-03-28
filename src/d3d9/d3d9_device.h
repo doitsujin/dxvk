@@ -792,19 +792,35 @@ namespace dxvk {
       return pShader != nullptr ? pShader->GetCommonShader() : nullptr;
     }
 
-    template <typename RegType>
+    inline static constexpr uint32_t DetermineRegCount(
+            D3D9ConstantType ConstantType,
+            bool             Software) {
+      switch (ConstantType) {
+        default:
+        case D3D9ConstantType::Float:  return Software ? 8192 : 256;
+        case D3D9ConstantType::Int:    return Software ? 256  : 16;
+        case D3D9ConstantType::Bool:   return Software ? 256 : 16;
+      }
+    }
+
+    template <
+      DxsoProgramType  ProgramType,
+      D3D9ConstantType ConstantType,
+      typename         T>
     HRESULT SetShaderConstants(
-            DxsoProgramType ShaderStage,
-            UINT            StartRegister,
-      const void*           pConstantData,
-            UINT            Count,
-            RegType*        pDestination,
-            UINT            MaxRegCountHardware,
-            UINT            MaxRegCountSoftware) {
-      if (StartRegister + Count >= MaxRegCountSoftware)
+            UINT  StartRegister,
+      const T*    pConstantData,
+            UINT  Count) {
+      constexpr uint32_t regCountHardware = DetermineRegCount(ConstantType, false);
+      constexpr uint32_t regCountSoftware = DetermineRegCount(ConstantType, true);
+
+      if (StartRegister + Count > regCountSoftware)
         return D3DERR_INVALIDCALL;
 
-      Count = std::clamp<UINT>(Count + StartRegister, 0, MaxRegCountHardware) - StartRegister;
+      Count = UINT(
+        std::max<INT>(
+          std::clamp<INT>(Count + StartRegister, 0, regCountHardware) - INT(StartRegister),
+          0));
 
       if (Count == 0)
         return D3D_OK;
@@ -812,47 +828,58 @@ namespace dxvk {
       if (pConstantData == nullptr)
         return D3DERR_INVALIDCALL;
 
-      if constexpr (std::is_same<RegType, uint32_t>()) {
-        // Update bool bitfield.
-        const RegType* constantData = reinterpret_cast<const RegType*>(pConstantData);
+      bool& dirtyFlag = ProgramType == DxsoProgramType::VertexShader
+        ? m_vsConst.dirty
+        : m_psConst.dirty;
 
-        for (uint32_t i = 0; i < Count; i++) {
-          const uint32_t idx = StartRegister + i;
+      dirtyFlag = true;
 
-          *pDestination &= ~idx;
-          if (constantData[i])
-            *pDestination |= 1u << idx;
-        }
+      auto& set = ProgramType == DxsoProgramType::VertexShader
+        ? m_state.vsConsts
+        : m_state.psConsts;
+
+      if constexpr (ConstantType == D3D9ConstantType::Float) {
+        auto& consts = set.hardware.fConsts;
+        std::memcpy(consts.data() + StartRegister, pConstantData, Count * sizeof(*consts.data()));
+      }
+      else if constexpr (ConstantType == D3D9ConstantType::Int) {
+        auto& consts = set.hardware.iConsts;
+        std::memcpy(consts.data() + StartRegister, pConstantData, Count * sizeof(*consts.data()));
       }
       else {
-        std::memcpy(
-          pDestination + StartRegister,
-          pConstantData,
-          Count * sizeof(RegType));
+        uint32_t& bitfield = set.hardware.boolBitfield;
+
+        for (uint32_t i = 0; i < Count; i++) {
+          const uint32_t idx    = StartRegister + i;
+          const uint32_t idxBit = 1u << idx;
+
+          bitfield &= ~idxBit;
+          if (pConstantData[i])
+            bitfield |= idxBit;
+        }
       }
-
-      D3D9ConstantSets& constSet =
-        ShaderStage == DxsoProgramType::VertexShader ?
-          m_vsConst
-        : m_psConst;
-
-      constSet.dirty = true;
 
       return D3D_OK;
     }
 
-    template <typename RegType>
+    template <
+      DxsoProgramType  ProgramType,
+      D3D9ConstantType ConstantType,
+      typename         T>
     HRESULT GetShaderConstants(
-            UINT     StartRegister,
-            void*    pConstantData,
-            UINT     Count,
-      const RegType* pSource,
-            UINT     MaxRegCountHardware,
-            UINT     MaxRegCountSoftware) {
-      if (StartRegister + Count >= MaxRegCountSoftware)
+            UINT StartRegister,
+            T*   pConstantData,
+            UINT Count) {
+      constexpr uint32_t regCountHardware = DetermineRegCount(ConstantType, false);
+      constexpr uint32_t regCountSoftware = DetermineRegCount(ConstantType, true);
+
+      if (StartRegister + Count > regCountSoftware)
         return D3DERR_INVALIDCALL;
 
-      Count = std::clamp<UINT>(Count + StartRegister, 0, MaxRegCountHardware) - StartRegister;
+      Count = UINT(
+        std::max<INT>(
+          std::clamp<INT>(Count + StartRegister, 0, regCountHardware) - INT(StartRegister),
+          0));
 
       if (Count == 0)
         return D3D_OK;
@@ -860,22 +887,28 @@ namespace dxvk {
       if (pConstantData == nullptr)
         return D3DERR_INVALIDCALL;
 
-      if constexpr (std::is_same<RegType, uint32_t>()) {
-        // Retrieve from bool bitfield.
-        RegType* constantData = reinterpret_cast<RegType*>(pConstantData);
+      auto& set = ProgramType == DxsoProgramType::VertexShader
+        ? m_state.vsConsts
+        : m_state.psConsts;
+
+      if constexpr (ConstantType == D3D9ConstantType::Float) {
+        auto& consts = set.hardware.fConsts;
+        std::memcpy(pConstantData, consts.data(), Count * sizeof(*consts.data()));
+      }
+      else if constexpr (ConstantType == D3D9ConstantType::Int) {
+        auto& consts = set.hardware.iConsts;
+        std::memcpy(pConstantData, consts.data(), Count * sizeof(*consts.data()));
+      }
+      else {
+        uint32_t& bitfield = set.hardware.boolBitfield;
 
         for (uint32_t i = 0; i < Count; i++) {
           const uint32_t idx = StartRegister + i;
+          const uint32_t idxBit = 1u << idx;
 
-          bool constantValue = *pSource & 1u << idx;
-          constantData[i] = constantValue;
+          bool constValue = bitfield & idxBit;
+          pConstantData[i] = constValue ? TRUE : FALSE;
         }
-      }
-      else {
-        std::memcpy(
-          pConstantData,
-          pSource + StartRegister,
-          Count * sizeof(RegType));
       }
 
       return D3D_OK;

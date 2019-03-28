@@ -1430,14 +1430,12 @@ namespace dxvk {
           UINT   Vector4fCount) {
     auto lock = LockDevice();
 
-    return SetShaderConstants(
+    return SetShaderConstants<
       DxsoProgramType::VertexShader,
-      StartRegister,
-      pConstantData,
-      Vector4fCount,
-      m_state.vsConsts.fConsts.data(),
-      caps::MaxFloatConstants,
-      caps::MaxFloatConstantsSoftware);
+      D3D9ConstantType::Float>(
+        StartRegister,
+        pConstantData,
+        Vector4fCount);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetVertexShaderConstantF(
@@ -1446,15 +1444,12 @@ namespace dxvk {
           UINT   Vector4fCount) {
     auto lock = LockDevice();
 
-    return GetShaderConstants(
-      StartRegister,
-      pConstantData,
-      Vector4fCount,
-      m_state.vsConsts.fConsts.data(),
-      caps::MaxFloatConstants,
-      caps::MaxFloatConstantsSoftware);
-
-    return D3D_OK;
+    return GetShaderConstants<
+      DxsoProgramType::VertexShader,
+      D3D9ConstantType::Float>(
+        StartRegister,
+        pConstantData,
+        Vector4fCount);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetVertexShaderConstantI(
@@ -1463,14 +1458,12 @@ namespace dxvk {
           UINT Vector4iCount) {
     auto lock = LockDevice();
 
-    return SetShaderConstants(
+    return SetShaderConstants<
       DxsoProgramType::VertexShader,
-      StartRegister,
-      pConstantData,
-      Vector4iCount,
-      m_state.vsConsts.iConsts.data(),
-      caps::MaxOtherConstants,
-      caps::MaxOtherConstantsSoftware);
+      D3D9ConstantType::Int>(
+        StartRegister,
+        pConstantData,
+        Vector4iCount);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetVertexShaderConstantI(
@@ -1479,15 +1472,12 @@ namespace dxvk {
           UINT Vector4iCount) {
     auto lock = LockDevice();
 
-    return GetShaderConstants(
-      StartRegister,
-      pConstantData,
-      Vector4iCount,
-      m_state.vsConsts.iConsts.data(),
-      caps::MaxOtherConstants,
-      caps::MaxOtherConstantsSoftware);
-
-    return D3D_OK;
+    return GetShaderConstants<
+      DxsoProgramType::VertexShader,
+      D3D9ConstantType::Int>(
+        StartRegister,
+        pConstantData,
+        Vector4iCount);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetVertexShaderConstantB(
@@ -1496,14 +1486,12 @@ namespace dxvk {
           UINT  BoolCount) {
     auto lock = LockDevice();
 
-    return SetShaderConstants(
+    return SetShaderConstants<
       DxsoProgramType::VertexShader,
-      StartRegister,
-      pConstantData,
-      BoolCount,
-      &m_state.vsConsts.boolBitfield,
-      caps::MaxOtherConstants,
-      caps::MaxOtherConstantsSoftware);
+      D3D9ConstantType::Bool>(
+        StartRegister,
+        pConstantData,
+        BoolCount);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetVertexShaderConstantB(
@@ -1512,13 +1500,12 @@ namespace dxvk {
           UINT  BoolCount) {
     auto lock = LockDevice();
 
-    return GetShaderConstants(
-      StartRegister,
-      pConstantData,
-      BoolCount,
-      &m_state.vsConsts.boolBitfield,
-      caps::MaxOtherConstants,
-      caps::MaxOtherConstantsSoftware);
+    return GetShaderConstants<
+      DxsoProgramType::VertexShader,
+      D3D9ConstantType::Bool>(
+        StartRegister,
+        pConstantData,
+        BoolCount);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetStreamSource(
@@ -1677,100 +1664,87 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetPixelShaderConstantF(
-          UINT   StartRegister,
+    UINT   StartRegister,
     const float* pConstantData,
-          UINT   Vector4fCount) {
+    UINT   Vector4fCount) {
     auto lock = LockDevice();
 
-    return SetShaderConstants(
+    return SetShaderConstants <
       DxsoProgramType::PixelShader,
-      StartRegister,
-      pConstantData,
-      Vector4fCount,
-      m_state.psConsts.fConsts.data(),
-      caps::MaxFloatConstants,
-      caps::MaxFloatConstantsSoftware);
+      D3D9ConstantType::Float>(
+        StartRegister,
+        pConstantData,
+        Vector4fCount);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetPixelShaderConstantF(
-          UINT   StartRegister,
-          float* pConstantData,
-          UINT   Vector4fCount) {
+    UINT   StartRegister,
+    float* pConstantData,
+    UINT   Vector4fCount) {
     auto lock = LockDevice();
 
-    return GetShaderConstants(
-      StartRegister,
-      pConstantData,
-      Vector4fCount,
-      m_state.psConsts.fConsts.data(),
-      caps::MaxFloatConstants,
-      caps::MaxFloatConstantsSoftware);
-
-    return D3D_OK;
+    return GetShaderConstants<
+      DxsoProgramType::PixelShader,
+      D3D9ConstantType::Float>(
+        StartRegister,
+        pConstantData,
+        Vector4fCount);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetPixelShaderConstantI(
-          UINT StartRegister,
+    UINT StartRegister,
     const int* pConstantData,
-          UINT Vector4iCount) {
+    UINT Vector4iCount) {
     auto lock = LockDevice();
 
-    return SetShaderConstants(
+    return SetShaderConstants<
       DxsoProgramType::PixelShader,
-      StartRegister,
-      pConstantData,
-      Vector4iCount,
-      m_state.psConsts.iConsts.data(),
-      caps::MaxOtherConstants,
-      caps::MaxOtherConstantsSoftware);
+      D3D9ConstantType::Int>(
+        StartRegister,
+        pConstantData,
+        Vector4iCount);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetPixelShaderConstantI(
-          UINT StartRegister,
-          int* pConstantData,
-          UINT Vector4iCount) {
+    UINT StartRegister,
+    int* pConstantData,
+    UINT Vector4iCount) {
     auto lock = LockDevice();
 
-    return GetShaderConstants(
-      StartRegister,
-      pConstantData,
-      Vector4iCount,
-      m_state.psConsts.iConsts.data(),
-      caps::MaxOtherConstants,
-      caps::MaxOtherConstantsSoftware);
-
-    return D3D_OK;
+    return GetShaderConstants<
+      DxsoProgramType::PixelShader,
+      D3D9ConstantType::Int>(
+        StartRegister,
+        pConstantData,
+        Vector4iCount);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetPixelShaderConstantB(
-          UINT  StartRegister,
+    UINT  StartRegister,
     const BOOL* pConstantData,
-          UINT  BoolCount) {
+    UINT  BoolCount) {
     auto lock = LockDevice();
 
-    return SetShaderConstants(
+    return SetShaderConstants<
       DxsoProgramType::PixelShader,
-      StartRegister,
-      pConstantData,
-      BoolCount,
-      &m_state.psConsts.boolBitfield,
-      caps::MaxOtherConstants,
-      caps::MaxOtherConstantsSoftware);
+      D3D9ConstantType::Bool>(
+        StartRegister,
+        pConstantData,
+        BoolCount);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetPixelShaderConstantB(
-          UINT  StartRegister,
-          BOOL* pConstantData,
-          UINT  BoolCount) {
+    UINT  StartRegister,
+    BOOL* pConstantData,
+    UINT  BoolCount) {
     auto lock = LockDevice();
 
-    return GetShaderConstants(
-      StartRegister,
-      pConstantData,
-      BoolCount,
-      &m_state.psConsts.boolBitfield,
-      caps::MaxOtherConstants,
-      caps::MaxOtherConstantsSoftware);
+    return GetShaderConstants<
+      DxsoProgramType::PixelShader,
+      D3D9ConstantType::Bool>(
+        StartRegister,
+        pConstantData,
+        BoolCount);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::DrawRectPatch(

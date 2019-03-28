@@ -1,6 +1,7 @@
 #pragma once
 
 #include "d3d9_caps.h"
+#include "d3d9_constant_set.h"
 
 #include <array>
 
@@ -22,18 +23,6 @@ namespace dxvk {
     UINT offset;
     UINT stride;
   };
-
-  // We make an assumption later based on the packing of this struct for copying.
-  #pragma pack(push, 1)
-  struct D3D9ShaderConstants {
-    using FloatVector = std::array<float, 4>;
-    using IntVector   = std::array<int, 4>;
-
-    std::array<FloatVector, caps::MaxFloatConstants> fConsts;
-    std::array<IntVector,   caps::MaxOtherConstants> iConsts;
-    uint32_t boolBitfield = 0;
-  };
-  #pragma pack(pop)
 
   struct Direct3DState9 {
     Direct3DState9() {
