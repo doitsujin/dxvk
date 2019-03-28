@@ -11,14 +11,20 @@ namespace dxvk {
   public:
 
     Direct3DSubresource9(
-      Direct3DDevice9Ex* device,
-      Rc<Direct3DCommonTexture9> texture,
-      UINT subresource,
-      IUnknown* container)
-      : Direct3DResource9<Type...>{ device }
-      , m_texture{ texture }
-      , m_subresource{ subresource }
-      , m_container{ container } {
+            Direct3DDevice9Ex*      pDevice,
+            Direct3DCommonTexture9* pTexture,
+            UINT                    Subresource,
+            IUnknown*               pContainer,
+            bool                    OwnsTexture)
+      : Direct3DResource9<Type...> ( pDevice )
+      , m_texture                  ( pTexture )
+      , m_subresource              ( Subresource )
+      , m_container                ( pContainer )
+      , m_ownsTexture              ( OwnsTexture ) { }
+
+    ~Direct3DSubresource9() {
+      if (m_ownsTexture)
+        delete m_texture;
     }
 
     ULONG STDMETHODCALLTYPE AddRef() final {
@@ -51,7 +57,7 @@ namespace dxvk {
       return m_container->QueryInterface(riid, ppContainer);
     }
 
-    Rc<Direct3DCommonTexture9> GetCommonTexture() {
+    Direct3DCommonTexture9* GetCommonTexture() {
       return m_texture;
     }
 
@@ -85,10 +91,12 @@ namespace dxvk {
 
   protected:
 
-    Rc<Direct3DCommonTexture9> m_texture;
-    UINT m_subresource;
+    IUnknown*               m_container;
 
-    IUnknown* m_container;
+    Direct3DCommonTexture9* m_texture;
+    UINT                    m_subresource;
+
+    bool                    m_ownsTexture;
 
   };
 

@@ -7,20 +7,22 @@ namespace dxvk {
     const D3D9TextureDesc*          desc)
     : Direct3DSurface9Base(
         device,
-        new Direct3DCommonTexture9{ device, desc },
+        new Direct3DCommonTexture9( device, desc ),
         0,
-        device ) { }
+        device,
+        true) { }
 
   Direct3DSurface9::Direct3DSurface9(
-          Direct3DDevice9Ex*         device,
-          Rc<Direct3DCommonTexture9> texture,
-          UINT                       subresource,
-          IUnknown*                  container)
-    : Direct3DSurface9Base{
-        device,
-        texture,
-        subresource,
-        container } {}
+          Direct3DDevice9Ex*         pDevice,
+          Direct3DCommonTexture9*    pTexture,
+          UINT                       Subresource,
+          IUnknown*                  pContainer)
+    : Direct3DSurface9Base(
+        pDevice,
+        pTexture,
+        Subresource,
+        pContainer,
+        false) { }
 
   HRESULT STDMETHODCALLTYPE Direct3DSurface9::QueryInterface(REFIID riid, void** ppvObject) {
     if (ppvObject == nullptr)

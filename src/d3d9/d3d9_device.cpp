@@ -333,7 +333,7 @@ namespace dxvk {
 
     try {
       const Com<Direct3DTexture9> texture = new Direct3DTexture9(this, &desc);
-      m_initializer->InitTexture(texture->GetCommonTexture().ptr());
+      m_initializer->InitTexture(texture->GetCommonTexture());
       *ppTexture = texture.ref();
       return D3D_OK;
     }
@@ -532,8 +532,8 @@ namespace dxvk {
     // And similar type copies. No blitting yet!
     // This will be the fast path when we do not need to blit.
 
-    Direct3DCommonTexture9* srcTextureInfo = src->GetCommonTexture().ptr();
-    Direct3DCommonTexture9* dstTextureInfo = dst->GetCommonTexture().ptr();
+    Direct3DCommonTexture9* srcTextureInfo = src->GetCommonTexture();
+    Direct3DCommonTexture9* dstTextureInfo = dst->GetCommonTexture();
 
     Rc<DxvkImage> srcImage = src->GetCommonTexture()->GetImage();
     Rc<DxvkImage> dstImage = dst->GetCommonTexture()->GetImage();
@@ -1911,7 +1911,7 @@ namespace dxvk {
 
     try {
       const Com<Direct3DSurface9> surface = new Direct3DSurface9(this, &desc);
-      m_initializer->InitTexture(surface->GetCommonTexture().ptr());
+      m_initializer->InitTexture(surface->GetCommonTexture());
       *ppSurface = surface.ref();
       return D3D_OK;
     }
@@ -1954,7 +1954,7 @@ namespace dxvk {
 
     try {
       const Com<Direct3DSurface9> surface = new Direct3DSurface9(this, &desc);
-      m_initializer->InitTexture(surface->GetCommonTexture().ptr());
+      m_initializer->InitTexture(surface->GetCommonTexture());
       *ppSurface = surface.ref();
       return D3D_OK;
     }
@@ -2005,7 +2005,7 @@ namespace dxvk {
 
     try {
       const Com<Direct3DSurface9> surface = new Direct3DSurface9(this, &desc);
-      m_initializer->InitTexture(surface->GetCommonTexture().ptr());
+      m_initializer->InitTexture(surface->GetCommonTexture());
       *ppSurface = surface.ref();
       return D3D_OK;
     }
@@ -3121,7 +3121,7 @@ namespace dxvk {
 
     const bool srgb = m_state.samplerStates[stateSampler][D3DSAMP_SRGBTEXTURE] != FALSE;
 
-    Rc<Direct3DCommonTexture9> commonTex = GetCommonTexture(m_state.textures[stateSampler]);
+    Direct3DCommonTexture9* commonTex = GetCommonTexture(m_state.textures[stateSampler]);
 
     EmitCs([
       cSlot      = slot,

@@ -12,14 +12,14 @@ namespace dxvk {
   public:
 
     Direct3DSurface9(
-            Direct3DDevice9Ex*        device,
-      const D3D9TextureDesc*          desc);
+            Direct3DDevice9Ex*        pDevice,
+      const D3D9TextureDesc*          pDesc);
 
     Direct3DSurface9(
-            Direct3DDevice9Ex*         device,
-            Rc<Direct3DCommonTexture9> texture,
-            UINT                       subresource,
-            IUnknown*                  container);
+            Direct3DDevice9Ex*         pDevice,
+            Direct3DCommonTexture9*    pTexture,
+            UINT                       Subresource,
+            IUnknown*                  pContainer);
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
 
@@ -34,6 +34,10 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE GetDC(HDC *phdc) final;
 
     HRESULT STDMETHODCALLTYPE ReleaseDC(HDC hdc) final;
+
+  private:
+
+    bool m_ownsTexture;
 
   };
 }

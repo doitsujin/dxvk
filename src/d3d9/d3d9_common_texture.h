@@ -39,12 +39,12 @@ namespace dxvk {
     BOOL Lockable;
   };
 
-  class Direct3DCommonTexture9 : public RcObject {
+  class Direct3DCommonTexture9 {
 
   public:
 
     Direct3DCommonTexture9(
-      Direct3DDevice9Ex*      pDevice,
+            Direct3DDevice9Ex*      pDevice,
       const D3D9TextureDesc*        pDesc);
 
     Direct3DCommonTexture9(
@@ -288,7 +288,7 @@ namespace dxvk {
   };
 
   template <typename T>
-  Rc<Direct3DCommonTexture9> GetCommonTexture(T* ptr) {
+  Direct3DCommonTexture9* GetCommonTexture(T* ptr) {
     if (ptr == nullptr)
       return nullptr;
 

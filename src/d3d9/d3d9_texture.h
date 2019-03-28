@@ -14,11 +14,11 @@ namespace dxvk {
     Direct3DBaseTexture9(
             Direct3DDevice9Ex*      pDevice,
       const D3D9TextureDesc*        pDesc)
-      : Direct3DResource9<Type...>{ pDevice }
-      , m_texture{ new Direct3DCommonTexture9{ pDevice, pDesc } }
-      , m_lod{ 0 }
-      , m_autogenFilter{ D3DTEXF_LINEAR } {
-      auto& desc = *m_texture->Desc();
+      : Direct3DResource9<Type...> ( pDevice )
+      , m_texture                  ( pDevice, pDesc )
+      , m_lod                      ( 0 )
+      , m_autogenFilter            ( D3DTEXF_LINEAR ) {
+      auto& desc = *m_texture.Desc();
 
       const uint32_t arraySlices = desc.Type == D3DRTYPE_CUBETEXTURE ? 6 : 1;
       const uint32_t mipLevels = desc.MipLevels;
@@ -29,11 +29,11 @@ namespace dxvk {
         for (uint32_t j = 0; j < arraySlices; j++) {
           uint32_t subresource = CalcSubresource(i, j, mipLevels);
 
-          SubresourceType* subObj = new SubresourceType{
+          SubresourceType* subObj = new SubresourceType(
             pDevice,
-            m_texture,
+            &m_texture,
             subresource,
-            this};
+            this);
           subObj->AddRefPrivate();
 
           m_subresources[subresource] = subObj;
@@ -50,7 +50,7 @@ namespace dxvk {
       DWORD oldLod = m_lod;
       m_lod = LODNew;
 
-      m_texture->RecreateImageView(LODNew);
+      m_texture.RecreateImageView(LODNew);
 
       return oldLod;
     }
@@ -60,7 +60,7 @@ namespace dxvk {
     }
 
     DWORD STDMETHODCALLTYPE GetLevelCount() final {
-      return m_texture->Desc()->MipLevels;
+      return m_texture.Desc()->MipLevels;
     }
 
     HRESULT STDMETHODCALLTYPE SetAutoGenFilterType(D3DTEXTUREFILTERTYPE FilterType) final {
@@ -76,8 +76,8 @@ namespace dxvk {
       Logger::warn("Direct3DBaseTexture9::GenerateMipSubLevels: Stub");
     }
 
-    Rc<Direct3DCommonTexture9> GetCommonTexture() {
-      return m_texture;
+    Direct3DCommonTexture9* GetCommonTexture() {
+      return &m_texture;
     }
 
     static UINT CalcSubresource(UINT Level, UINT ArraySlice, UINT MipLevels) {
@@ -93,7 +93,7 @@ namespace dxvk {
 
   protected:
 
-    Rc<Direct3DCommonTexture9> m_texture;
+    Direct3DCommonTexture9 m_texture;
 
     DWORD m_lod;
     D3DTEXTUREFILTERTYPE m_autogenFilter;

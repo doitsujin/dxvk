@@ -50,7 +50,7 @@ namespace dxvk {
 
     void present();
 
-    Rc<Direct3DCommonTexture9> getBackBuffer() {
+    Direct3DCommonTexture9* getBackBuffer() {
       return m_backBuffer;
     }
 
@@ -128,7 +128,7 @@ namespace dxvk {
 
     std::vector<Rc<DxvkImageView>> m_imageViews;
 
-    Rc<Direct3DCommonTexture9> m_backBuffer;
+    Direct3DCommonTexture9* m_backBuffer;
 
     D3D9PresenterDesc m_desc;
 
