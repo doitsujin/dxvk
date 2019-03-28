@@ -617,7 +617,8 @@ namespace dxvk {
       } break;
       case DxsoOpcode::LogP:
       case DxsoOpcode::Log:
-        result = m_module.opLog2(typeId, emitRegisterLoad(src[0]));
+        result = m_module.opFAbs(typeId, emitRegisterLoad(src[0]));
+        result = m_module.opLog2(typeId, result);
         break;
       case DxsoOpcode::Lrp: {
         uint32_t src0 = emitRegisterLoad(src[0]);
