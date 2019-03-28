@@ -2753,87 +2753,78 @@ namespace dxvk {
   }
 
   void Direct3DDevice9Ex::CreateConstantBuffers() {
-    D3D9_BUFFER_DESC constDesc;
-    constDesc.Format = D3D9Format::R8G8B8;
-    constDesc.FVF = 0;
-    constDesc.Pool = D3DPOOL_DEFAULT;
-    constDesc.Size = D3D9ConstantSets::BufferSize;
-    constDesc.Type = D3DRTYPE_FORCE_DWORD;
-    constDesc.Usage = D3DUSAGE_DYNAMIC | D3DUSAGE_WRITEONLY;
+    DxvkBufferCreateInfo info;
+    info.size  = D3D9ConstantSets::SetSize;
 
-    m_vsConst.buffer = new Direct3DCommonBuffer9(this, &constDesc);
-    m_psConst.buffer = new Direct3DCommonBuffer9(this, &constDesc);
+    info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
+               | VK_BUFFER_USAGE_TRANSFER_DST_BIT
+               | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 
-    m_initializer->InitBuffer(m_vsConst.buffer);
-    m_initializer->InitBuffer(m_psConst.buffer);
+    info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT
+                | VK_PIPELINE_STAGE_HOST_BIT;
+
+    info.access = VK_ACCESS_TRANSFER_READ_BIT
+                | VK_ACCESS_TRANSFER_WRITE_BIT
+                | VK_ACCESS_UNIFORM_READ_BIT
+                | VK_ACCESS_HOST_WRITE_BIT;
+
+    VkMemoryPropertyFlags memoryFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                                      | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+    info.stages |=  VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+    m_vsConst.buffer = m_dxvkDevice->createBuffer(info, memoryFlags);
+    info.stages &= ~VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+
+    info.stages |=  VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    m_psConst.buffer = m_dxvkDevice->createBuffer(info, memoryFlags);
+
+    auto BindConstantBuffer = [this](
+      DxsoProgramType shaderStage,
+      Rc<DxvkBuffer>  buffer) {
+      const uint32_t slotId = computeResourceSlotId(
+        shaderStage, DxsoBindingType::ConstantBuffer,
+        0);
+
+      EmitCs([
+        cSlotId = slotId,
+        cBuffer = buffer
+      ] (DxvkContext* ctx) {
+        ctx->bindResourceBuffer(
+          cSlotId,
+          DxvkBufferSlice(cBuffer, 0, D3D9ConstantSets::SetSize));
+      });
+    };
+
+    BindConstantBuffer(DxsoProgramType::VertexShader, m_vsConst.buffer);
+    BindConstantBuffer(DxsoProgramType::PixelShader,  m_psConst.buffer);
   }
 
-  void Direct3DDevice9Ex::BindConstants(DxsoProgramType ShaderStage) {
+  void Direct3DDevice9Ex::UploadConstants(DxsoProgramType ShaderStage) {
     D3D9ConstantSets& constSet =
-      ShaderStage == DxsoProgramType::VertexShader ?
-        m_vsConst
-      : m_psConst;
-
-    const uint32_t offset = D3D9ConstantSets::SetAligned * constSet.setIndex;
-
-    const uint32_t slotId = computeResourceSlotId(
-      ShaderStage, DxsoBindingType::ConstantBuffer,
-      0);
-
-    EmitCs([
-      cSlotId      = slotId,
-      cBufferSlice = constSet.buffer != nullptr
-        ? constSet.buffer->GetBufferSlice(
-            D3D9_COMMON_BUFFER_TYPE_REAL,
-            offset,
-            D3D9ConstantSets::SetSize)
-        : DxvkBufferSlice()
-    ] (DxvkContext* ctx) {
-      ctx->bindResourceBuffer(cSlotId, cBufferSlice);
-    });
-  }
-
-  bool Direct3DDevice9Ex::UploadConstants(DxsoProgramType ShaderStage) {
-    D3D9ConstantSets& constSet =
-      ShaderStage == DxsoProgramType::VertexShader ?
-        m_vsConst
-      : m_psConst;
+      ShaderStage == DxsoProgramType::VertexShader
+        ? m_vsConst
+        : m_psConst;
 
     if (!constSet.dirty)
-      return false;
+      return;
 
     constSet.dirty = false;
 
     const void* constantData =
-      ShaderStage == DxsoProgramType::VertexShader ?
-      &m_state.vsConsts
-    : &m_state.psConsts;
+      ShaderStage == DxsoProgramType::VertexShader
+      ? &m_state.vsConsts
+      : &m_state.psConsts;
 
-    DWORD flags = D3DLOCK_NOOVERWRITE;
+    DxvkBufferSliceHandle slice = constSet.buffer->allocSlice();
 
-    if (++constSet.setIndex >= D3D9ConstantSets::SetCount) {
-      constSet.setIndex = 0;
-      flags = D3DLOCK_DISCARD;
-    }
+    std::memcpy(slice.mapPtr, constantData, D3D9ConstantSets::SetSize);
 
-    const uint32_t offset = D3D9ConstantSets::SetAligned * constSet.setIndex;
-
-    void* bufferData = nullptr;
-    HRESULT result = LockBuffer(
-      constSet.buffer,
-      offset,
-      D3D9ConstantSets::SetSize,
-      &bufferData,
-      flags);
-
-    if (FAILED(result))
-      Logger::warn("Direct3DDevice9Ex::UploadConstants: failed to lock constant buffer");
-
-    std::memcpy(bufferData, constantData, D3D9ConstantSets::SetSize);
-
-    UnlockBuffer(constSet.buffer);
-
-    return true;
+    EmitCs([
+      cBuffer = constSet.buffer,
+      cSlice  = slice
+    ] (DxvkContext* ctx) {
+      ctx->invalidateBuffer(cBuffer, cSlice);
+    });
   }
 
   void Direct3DDevice9Ex::Flush() {

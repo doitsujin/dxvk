@@ -26,11 +26,6 @@ namespace dxvk {
       info.stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
       info.access |= VK_ACCESS_INDEX_READ_BIT;
     }
-    else if (pDesc->Type == D3DRTYPE_FORCE_DWORD) { // Constant Buffer
-      info.usage  |= VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-      info.stages |= m_parent->GetEnabledShaderStages();
-      info.access |= VK_ACCESS_UNIFORM_READ_BIT;
-    }
 
     if (pDesc->Usage & D3DUSAGE_DYNAMIC) {
       info.stages |= VK_PIPELINE_STAGE_HOST_BIT;

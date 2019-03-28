@@ -650,18 +650,13 @@ namespace dxvk {
 
     void BindDepthStencilRefrence();
 
-    void BindConstants(DxsoProgramType ShaderStage);
-
     void BindRasterizerState();
 
-    bool UploadConstants(DxsoProgramType ShaderStage);
+    void UploadConstants(DxsoProgramType ShaderStage);
 
     inline void UpdateConstants() {
-      if (UploadConstants(DxsoProgramType::VertexShader))
-        BindConstants(DxsoProgramType::VertexShader);
-
-      if (UploadConstants(DxsoProgramType::PixelShader))
-        BindConstants(DxsoProgramType::PixelShader);
+      UploadConstants(DxsoProgramType::VertexShader);
+      UploadConstants(DxsoProgramType::PixelShader);
     }
 
     Rc<DxvkSampler> CreateSampler(DWORD Sampler);
