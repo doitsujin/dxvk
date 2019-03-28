@@ -122,6 +122,10 @@ namespace dxvk {
     { "DarkSoulsRemastered.exe", {{
       { "d3d11.checkConstantBufferBounds",  "True" },
     }} },
+    /* Grim Dawn                                  */
+    { "Grim Dawn.exe", {{
+      { "d3d11.checkConstantBufferBounds",  "True" },
+    }} },
   }};
 
 
