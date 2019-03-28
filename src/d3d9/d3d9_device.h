@@ -52,15 +52,15 @@ namespace dxvk {
   public:
 
     Direct3DDevice9Ex(
-      bool extended,
-      IDirect3D9Ex* parent,
-      UINT adapter,
-      Rc<DxvkAdapter> dxvkAdapter,
-      Rc<DxvkDevice> dxvkDevice,
-      D3DDEVTYPE deviceType,
-      HWND window,
-      DWORD flags,
-      D3DDISPLAYMODEEX* displayMode);
+            bool              extended,
+            IDirect3D9Ex*     parent,
+            UINT              adapter,
+            Rc<DxvkAdapter>   dxvkAdapter,
+            Rc<DxvkDevice>    dxvkDevice,
+            D3DDEVTYPE        deviceType,
+            HWND              window,
+            DWORD             flags,
+            D3DDISPLAYMODEEX* displayMode);
 
     ~Direct3DDevice9Ex();
 
@@ -81,15 +81,17 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE GetCreationParameters(D3DDEVICE_CREATION_PARAMETERS *pParameters);
 
     HRESULT STDMETHODCALLTYPE SetCursorProperties(
-      UINT XHotSpot,
-      UINT YHotSpot,
-      IDirect3DSurface9* pCursorBitmap);
+            UINT               XHotSpot,
+            UINT               YHotSpot,
+            IDirect3DSurface9* pCursorBitmap);
 
     void    STDMETHODCALLTYPE SetCursorPosition(int X, int Y, DWORD Flags);
 
     BOOL    STDMETHODCALLTYPE ShowCursor(BOOL bShow);
 
-    HRESULT STDMETHODCALLTYPE CreateAdditionalSwapChain(D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DSwapChain9** ppSwapChain);
+    HRESULT STDMETHODCALLTYPE CreateAdditionalSwapChain(
+            D3DPRESENT_PARAMETERS* pPresentationParameters,
+            IDirect3DSwapChain9**  ppSwapChain);
 
     HRESULT STDMETHODCALLTYPE GetSwapChain(UINT iSwapChain, IDirect3DSwapChain9** pSwapChain);
 
@@ -120,79 +122,83 @@ namespace dxvk {
     void    STDMETHODCALLTYPE GetGammaRamp(UINT iSwapChain, D3DGAMMARAMP* pRamp);
 
     HRESULT STDMETHODCALLTYPE CreateTexture(UINT Width,
-      UINT Height,
-      UINT Levels,
-      DWORD Usage,
-      D3DFORMAT Format,
-      D3DPOOL Pool,
-      IDirect3DTexture9** ppTexture,
-      HANDLE* pSharedHandle);
+            UINT                Height,
+            UINT                Levels,
+            DWORD               Usage,
+            D3DFORMAT           Format,
+            D3DPOOL             Pool,
+            IDirect3DTexture9** ppTexture,
+            HANDLE*             pSharedHandle);
 
     HRESULT STDMETHODCALLTYPE CreateVolumeTexture(
-      UINT Width,
-      UINT Height,
-      UINT Depth,
-      UINT Levels,
-      DWORD Usage,
-      D3DFORMAT Format,
-      D3DPOOL Pool,
-      IDirect3DVolumeTexture9** ppVolumeTexture,
-      HANDLE* pSharedHandle);
+            UINT                      Width,
+            UINT                      Height,
+            UINT                      Depth,
+            UINT                      Levels,
+            DWORD                     Usage,
+            D3DFORMAT                 Format,
+            D3DPOOL                   Pool,
+            IDirect3DVolumeTexture9** ppVolumeTexture,
+            HANDLE*                   pSharedHandle);
 
     HRESULT STDMETHODCALLTYPE CreateCubeTexture(
-      UINT EdgeLength,
-      UINT Levels,
-      DWORD Usage,
-      D3DFORMAT Format,
-      D3DPOOL Pool,
-      IDirect3DCubeTexture9** ppCubeTexture,
-      HANDLE* pSharedHandle);
+          UINT                      EdgeLength,
+            UINT                    Levels,
+            DWORD                   Usage,
+            D3DFORMAT               Format,
+            D3DPOOL                 Pool,
+            IDirect3DCubeTexture9** ppCubeTexture,
+            HANDLE*                 pSharedHandle);
 
     HRESULT STDMETHODCALLTYPE CreateVertexBuffer(
-      UINT Length,
-      DWORD Usage,
-      DWORD FVF,
-      D3DPOOL Pool,
-      IDirect3DVertexBuffer9** ppVertexBuffer,
-      HANDLE* pSharedHandle);
+            UINT                     Length,
+            DWORD                    Usage,
+            DWORD                    FVF,
+            D3DPOOL                  Pool,
+            IDirect3DVertexBuffer9** ppVertexBuffer,
+            HANDLE*                  pSharedHandle);
 
     HRESULT STDMETHODCALLTYPE CreateIndexBuffer(
-      UINT Length,
-      DWORD Usage,
-      D3DFORMAT Format,
-      D3DPOOL Pool,
-      IDirect3DIndexBuffer9** ppIndexBuffer,
-      HANDLE* pSharedHandle);
+            UINT                    Length,
+            DWORD                   Usage,
+            D3DFORMAT               Format,
+            D3DPOOL                 Pool,
+            IDirect3DIndexBuffer9** ppIndexBuffer,
+            HANDLE*                 pSharedHandle);
 
     HRESULT STDMETHODCALLTYPE CreateRenderTarget(
-      UINT Width,
-      UINT Height,
-      D3DFORMAT Format,
-      D3DMULTISAMPLE_TYPE MultiSample,
-      DWORD MultisampleQuality,
-      BOOL Lockable,
-      IDirect3DSurface9** ppSurface,
-      HANDLE* pSharedHandle);
+            UINT                Width,
+            UINT                Height,
+            D3DFORMAT           Format,
+            D3DMULTISAMPLE_TYPE MultiSample,
+            DWORD               MultisampleQuality,
+            BOOL                Lockable,
+            IDirect3DSurface9** ppSurface,
+            HANDLE*             pSharedHandle);
 
     HRESULT STDMETHODCALLTYPE CreateDepthStencilSurface(
-      UINT Width,
-      UINT Height,
-      D3DFORMAT Format,
-      D3DMULTISAMPLE_TYPE MultiSample,
-      DWORD MultisampleQuality,
-      BOOL Discard,
-      IDirect3DSurface9** ppSurface,
-      HANDLE* pSharedHandle);
+            UINT                Width,
+            UINT                Height,
+            D3DFORMAT           Format,
+            D3DMULTISAMPLE_TYPE MultiSample,
+            DWORD               MultisampleQuality,
+            BOOL                Discard,
+            IDirect3DSurface9** ppSurface,
+            HANDLE*             pSharedHandle);
 
     HRESULT STDMETHODCALLTYPE UpdateSurface(
-      IDirect3DSurface9* pSourceSurface,
-      const RECT* pSourceRect,
-      IDirect3DSurface9* pDestinationSurface,
-      const POINT* pDestPoint);
+            IDirect3DSurface9* pSourceSurface,
+      const RECT*              pSourceRect,
+            IDirect3DSurface9* pDestinationSurface,
+      const POINT*             pDestPoint);
 
-    HRESULT STDMETHODCALLTYPE UpdateTexture(IDirect3DBaseTexture9* pSourceTexture, IDirect3DBaseTexture9* pDestinationTexture);
+    HRESULT STDMETHODCALLTYPE UpdateTexture(
+            IDirect3DBaseTexture9* pSourceTexture,
+            IDirect3DBaseTexture9* pDestinationTexture);
 
-    HRESULT STDMETHODCALLTYPE GetRenderTargetData(IDirect3DSurface9* pRenderTarget, IDirect3DSurface9* pDestSurface);
+    HRESULT STDMETHODCALLTYPE GetRenderTargetData(
+            IDirect3DSurface9* pRenderTarget,
+            IDirect3DSurface9* pDestSurface);
 
     HRESULT STDMETHODCALLTYPE GetFrontBufferData(UINT iSwapChain, IDirect3DSurface9* pDestSurface);
 
@@ -204,9 +210,9 @@ namespace dxvk {
             D3DTEXTUREFILTERTYPE Filter);
 
     HRESULT STDMETHODCALLTYPE ColorFill(
-      IDirect3DSurface9* pSurface,
-      const RECT* pRect,
-      D3DCOLOR color);
+            IDirect3DSurface9* pSurface,
+      const RECT*              pRect,
+            D3DCOLOR           Color);
 
     HRESULT STDMETHODCALLTYPE CreateOffscreenPlainSurface(
       UINT Width,
@@ -216,9 +222,13 @@ namespace dxvk {
       IDirect3DSurface9** ppSurface,
       HANDLE* pSharedHandle);
 
-    HRESULT STDMETHODCALLTYPE SetRenderTarget(DWORD RenderTargetIndex, IDirect3DSurface9* pRenderTarget);
+    HRESULT STDMETHODCALLTYPE SetRenderTarget(
+            DWORD              RenderTargetIndex,
+            IDirect3DSurface9* pRenderTarget);
 
-    HRESULT STDMETHODCALLTYPE GetRenderTarget(DWORD RenderTargetIndex, IDirect3DSurface9** ppRenderTarget);
+    HRESULT STDMETHODCALLTYPE GetRenderTarget(
+            DWORD               RenderTargetIndex,
+            IDirect3DSurface9** ppRenderTarget);
 
     HRESULT STDMETHODCALLTYPE SetDepthStencilSurface(IDirect3DSurface9* pNewZStencil);
 
@@ -229,12 +239,12 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE EndScene();
 
     HRESULT STDMETHODCALLTYPE Clear(
-      DWORD Count,
+            DWORD    Count,
       const D3DRECT* pRects,
-      DWORD Flags,
-      D3DCOLOR Color,
-      float Z,
-      DWORD Stencil);
+            DWORD    Flags,
+            D3DCOLOR Color,
+            float    Z,
+            DWORD    Stencil);
 
     HRESULT STDMETHODCALLTYPE SetTransform(D3DTRANSFORMSTATETYPE State, const D3DMATRIX* pMatrix);
 
@@ -266,7 +276,9 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE GetRenderState(D3DRENDERSTATETYPE State, DWORD* pValue);
 
-    HRESULT STDMETHODCALLTYPE CreateStateBlock(D3DSTATEBLOCKTYPE Type, IDirect3DStateBlock9** ppSB);
+    HRESULT STDMETHODCALLTYPE CreateStateBlock(
+            D3DSTATEBLOCKTYPE      Type,
+            IDirect3DStateBlock9** ppSB);
 
     HRESULT STDMETHODCALLTYPE BeginStateBlock();
 
@@ -281,24 +293,24 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE SetTexture(DWORD Stage, IDirect3DBaseTexture9* pTexture);
 
     HRESULT STDMETHODCALLTYPE GetTextureStageState(
-      DWORD Stage,
-      D3DTEXTURESTAGESTATETYPE Type,
-      DWORD* pValue);
+            DWORD                    Stage,
+            D3DTEXTURESTAGESTATETYPE Type,
+            DWORD*                   pValue);
 
     HRESULT STDMETHODCALLTYPE SetTextureStageState(
-      DWORD Stage,
-      D3DTEXTURESTAGESTATETYPE Type,
-      DWORD Value);
+            DWORD                    Stage,
+            D3DTEXTURESTAGESTATETYPE Type,
+            DWORD                    Value);
 
     HRESULT STDMETHODCALLTYPE GetSamplerState(
-      DWORD Sampler,
-      D3DSAMPLERSTATETYPE Type,
-      DWORD* pValue);
+            DWORD               Sampler,
+            D3DSAMPLERSTATETYPE Type,
+            DWORD*              pValue);
 
     HRESULT STDMETHODCALLTYPE SetSamplerState(
-      DWORD Sampler,
-      D3DSAMPLERSTATETYPE Type,
-      DWORD Value);
+            DWORD               Sampler,
+            D3DSAMPLERSTATETYPE Type,
+            DWORD               Value);
 
     HRESULT STDMETHODCALLTYPE ValidateDevice(DWORD* pNumPasses);
 
@@ -323,43 +335,45 @@ namespace dxvk {
     float   STDMETHODCALLTYPE GetNPatchMode();
 
     HRESULT STDMETHODCALLTYPE DrawPrimitive(
-      D3DPRIMITIVETYPE PrimitiveType,
-      UINT StartVertex,
-      UINT PrimitiveCount);
+            D3DPRIMITIVETYPE PrimitiveType,
+            UINT             StartVertex,
+            UINT             PrimitiveCount);
 
     HRESULT STDMETHODCALLTYPE DrawIndexedPrimitive(
-      D3DPRIMITIVETYPE PrimitiveType,
-      INT BaseVertexIndex,
-      UINT MinVertexIndex,
-      UINT NumVertices,
-      UINT startIndex,
-      UINT primCount);
+            D3DPRIMITIVETYPE PrimitiveType,
+            INT              BaseVertexIndex,
+            UINT             MinVertexIndex,
+            UINT             NumVertices,
+            UINT             StartIndex,
+            UINT             PrimitiveCount);
 
     HRESULT STDMETHODCALLTYPE DrawPrimitiveUP(
-      D3DPRIMITIVETYPE PrimitiveType,
-      UINT PrimitiveCount,
-      const void* pVertexStreamZeroData,
-      UINT VertexStreamZeroStride);
+            D3DPRIMITIVETYPE PrimitiveType,
+            UINT             PrimitiveCount,
+      const void*            pVertexStreamZeroData,
+            UINT             VertexStreamZeroStride);
 
     HRESULT STDMETHODCALLTYPE DrawIndexedPrimitiveUP(
-      D3DPRIMITIVETYPE PrimitiveType,
-      UINT MinVertexIndex,
-      UINT NumVertices,
-      UINT PrimitiveCount,
-      const void* pIndexData,
-      D3DFORMAT IndexDataFormat,
-      const void* pVertexStreamZeroData,
-      UINT VertexStreamZeroStride);
+            D3DPRIMITIVETYPE PrimitiveType,
+            UINT             MinVertexIndex,
+            UINT             NumVertices,
+            UINT             PrimitiveCount,
+      const void*            pIndexData,
+            D3DFORMAT        IndexDataFormat,
+      const void*            pVertexStreamZeroData,
+            UINT             VertexStreamZeroStride);
 
     HRESULT STDMETHODCALLTYPE ProcessVertices(
-      UINT SrcStartIndex,
-      UINT DestIndex,
-      UINT VertexCount,
-      IDirect3DVertexBuffer9* pDestBuffer,
-      IDirect3DVertexDeclaration9* pVertexDecl,
-      DWORD Flags);
+            UINT                         SrcStartIndex,
+            UINT                         DestIndex,
+            UINT                         VertexCount,
+            IDirect3DVertexBuffer9*      pDestBuffer,
+            IDirect3DVertexDeclaration9* pVertexDecl,
+            DWORD                        Flags);
 
-    HRESULT STDMETHODCALLTYPE CreateVertexDeclaration(const D3DVERTEXELEMENT9* pVertexElements, IDirect3DVertexDeclaration9** ppDecl);
+    HRESULT STDMETHODCALLTYPE CreateVertexDeclaration(
+      const D3DVERTEXELEMENT9*            pVertexElements,
+            IDirect3DVertexDeclaration9** ppDecl);
 
     HRESULT STDMETHODCALLTYPE SetVertexDeclaration(IDirect3DVertexDeclaration9* pDecl);
 
@@ -369,53 +383,55 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE GetFVF(DWORD* pFVF);
 
-    HRESULT STDMETHODCALLTYPE CreateVertexShader(const DWORD* pFunction, IDirect3DVertexShader9** ppShader);
+    HRESULT STDMETHODCALLTYPE CreateVertexShader(
+      const DWORD*                   pFunction,
+            IDirect3DVertexShader9** ppShader);
 
     HRESULT STDMETHODCALLTYPE SetVertexShader(IDirect3DVertexShader9* pShader);
 
     HRESULT STDMETHODCALLTYPE GetVertexShader(IDirect3DVertexShader9** ppShader);
 
     HRESULT STDMETHODCALLTYPE SetVertexShaderConstantF(
-      UINT StartRegister,
+            UINT   StartRegister,
       const float* pConstantData,
-      UINT Vector4fCount);
+            UINT   Vector4fCount);
 
     HRESULT STDMETHODCALLTYPE GetVertexShaderConstantF(
-      UINT StartRegister,
-      float* pConstantData,
-      UINT Vector4fCount);
+            UINT   StartRegister,
+            float* pConstantData,
+            UINT   Vector4fCount);
 
     HRESULT STDMETHODCALLTYPE SetVertexShaderConstantI(
-      UINT StartRegister,
+            UINT StartRegister,
       const int* pConstantData,
-      UINT Vector4iCount);
+            UINT Vector4iCount);
 
     HRESULT STDMETHODCALLTYPE GetVertexShaderConstantI(
-      UINT StartRegister,
-      int* pConstantData,
-      UINT Vector4iCount);
+            UINT StartRegister,
+            int* pConstantData,
+            UINT Vector4iCount);
 
     HRESULT STDMETHODCALLTYPE SetVertexShaderConstantB(
-      UINT StartRegister,
+            UINT  StartRegister,
       const BOOL* pConstantData,
-      UINT BoolCount);
+            UINT  BoolCount);
 
     HRESULT STDMETHODCALLTYPE GetVertexShaderConstantB(
-      UINT StartRegister,
-      BOOL* pConstantData,
-      UINT BoolCount);
+            UINT  StartRegister,
+            BOOL* pConstantData,
+            UINT  BoolCount);
 
     HRESULT STDMETHODCALLTYPE SetStreamSource(
-      UINT StreamNumber,
-      IDirect3DVertexBuffer9* pStreamData,
-      UINT OffsetInBytes,
-      UINT Stride);
+            UINT                    StreamNumber,
+            IDirect3DVertexBuffer9* pStreamData,
+            UINT                    OffsetInBytes,
+            UINT                    Stride);
 
     HRESULT STDMETHODCALLTYPE GetStreamSource(
-      UINT StreamNumber,
-      IDirect3DVertexBuffer9** ppStreamData,
-      UINT* pOffsetInBytes,
-      UINT* pStride);
+            UINT                     StreamNumber,
+            IDirect3DVertexBuffer9** ppStreamData,
+            UINT*                    pOffsetInBytes,
+            UINT*                    pStride);
 
     HRESULT STDMETHODCALLTYPE SetStreamSourceFreq(UINT StreamNumber, UINT Setting);
 
@@ -425,50 +441,52 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE GetIndices(IDirect3DIndexBuffer9** ppIndexData);
 
-    HRESULT STDMETHODCALLTYPE CreatePixelShader(const DWORD* pFunction, IDirect3DPixelShader9** ppShader);
+    HRESULT STDMETHODCALLTYPE CreatePixelShader(
+      const DWORD*                  pFunction, 
+            IDirect3DPixelShader9** ppShader);
 
     HRESULT STDMETHODCALLTYPE SetPixelShader(IDirect3DPixelShader9* pShader);
 
     HRESULT STDMETHODCALLTYPE GetPixelShader(IDirect3DPixelShader9** ppShader);
 
     HRESULT STDMETHODCALLTYPE SetPixelShaderConstantF(
-      UINT StartRegister,
+            UINT   StartRegister,
       const float* pConstantData,
-      UINT Vector4fCount);
+            UINT   Vector4fCount);
 
     HRESULT STDMETHODCALLTYPE GetPixelShaderConstantF(
-      UINT StartRegister,
-      float* pConstantData,
-      UINT Vector4fCount);
+            UINT   StartRegister,
+            float* pConstantData,
+            UINT   Vector4fCount);
 
     HRESULT STDMETHODCALLTYPE SetPixelShaderConstantI(
-      UINT StartRegister,
+            UINT StartRegister,
       const int* pConstantData,
-      UINT Vector4iCount);
+            UINT Vector4iCount);
 
     HRESULT STDMETHODCALLTYPE GetPixelShaderConstantI(
-      UINT StartRegister,
-      int* pConstantData,
-      UINT Vector4iCount);
+            UINT StartRegister,
+            int* pConstantData,
+            UINT Vector4iCount);
 
     HRESULT STDMETHODCALLTYPE SetPixelShaderConstantB(
-      UINT StartRegister,
+            UINT  StartRegister,
       const BOOL* pConstantData,
-      UINT BoolCount);
+            UINT  BoolCount);
 
     HRESULT STDMETHODCALLTYPE GetPixelShaderConstantB(
-      UINT StartRegister,
-      BOOL* pConstantData,
-      UINT BoolCount);
+            UINT  StartRegister,
+            BOOL* pConstantData,
+            UINT  BoolCount);
 
     HRESULT STDMETHODCALLTYPE DrawRectPatch(
-      UINT Handle,
-      const float* pNumSegs,
+            UINT               Handle,
+      const float*             pNumSegs,
       const D3DRECTPATCH_INFO* pRectPatchInfo);
 
     HRESULT STDMETHODCALLTYPE DrawTriPatch(
-      UINT Handle,
-      const float* pNumSegs,
+            UINT              Handle,
+      const float*            pNumSegs,
       const D3DTRIPATCH_INFO* pTriPatchInfo);
 
     HRESULT STDMETHODCALLTYPE DeletePatch(UINT Handle);
@@ -614,7 +632,7 @@ namespace dxvk {
     HRESULT UnlockBuffer(
             Direct3DCommonBuffer9* pResource);
 
-    void SetupConstantBuffers();
+    void CreateConstantBuffers();
 
     void SynchronizeCsThread();
 

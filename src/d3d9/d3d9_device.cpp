@@ -21,15 +21,15 @@
 namespace dxvk {
 
   Direct3DDevice9Ex::Direct3DDevice9Ex(
-    bool extended,
-    IDirect3D9Ex* parent,
-    UINT adapter,
-    Rc<DxvkAdapter> dxvkAdapter,
-    Rc<DxvkDevice> dxvkDevice,
-    D3DDEVTYPE deviceType,
-    HWND window,
-    DWORD flags,
-    D3DDISPLAYMODEEX* displayMode)
+          bool              extended,
+          IDirect3D9Ex*     parent,
+          UINT              adapter,
+          Rc<DxvkAdapter>   dxvkAdapter,
+          Rc<DxvkDevice>    dxvkDevice,
+          D3DDEVTYPE        deviceType,
+          HWND              window,
+          DWORD             flags,
+          D3DDISPLAYMODEEX* displayMode)
     : m_parent         ( parent )
     , m_adapter        ( adapter )
     , m_dxvkAdapter    ( dxvkAdapter )
@@ -71,7 +71,7 @@ namespace dxvk {
       ctx->setLogicOpState(loState);
     });
 
-    SetupConstantBuffers();
+    CreateConstantBuffers();
   }
 
   Direct3DDevice9Ex::~Direct3DDevice9Ex() {
@@ -164,9 +164,9 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetCursorProperties(
-    UINT XHotSpot,
-    UINT YHotSpot,
-    IDirect3DSurface9* pCursorBitmap) {
+          UINT               XHotSpot,
+          UINT               YHotSpot,
+          IDirect3DSurface9* pCursorBitmap) {
     Logger::warn("Direct3DDevice9Ex::SetCursorProperties: Stub");
     return D3D_OK;
   }
@@ -186,7 +186,9 @@ namespace dxvk {
     return TRUE;
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateAdditionalSwapChain(D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DSwapChain9** ppSwapChain) {
+  HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateAdditionalSwapChain(
+          D3DPRESENT_PARAMETERS* pPresentationParameters,
+          IDirect3DSwapChain9**  ppSwapChain) {
     auto lock = LockDevice();
 
     InitReturnPtr(ppSwapChain);
@@ -299,13 +301,13 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateTexture(UINT Width,
-    UINT Height,
-    UINT Levels,
-    DWORD Usage,
-    D3DFORMAT Format,
-    D3DPOOL Pool,
-    IDirect3DTexture9** ppTexture,
-    HANDLE* pSharedHandle) {
+          UINT                Height,
+          UINT                Levels,
+          DWORD               Usage,
+          D3DFORMAT           Format,
+          D3DPOOL             Pool,
+          IDirect3DTexture9** ppTexture,
+          HANDLE*             pSharedHandle) {
     InitReturnPtr(ppTexture);
     InitReturnPtr(pSharedHandle);
 
@@ -313,18 +315,18 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     D3D9TextureDesc desc;
-    desc.Type = D3DRTYPE_TEXTURE;
-    desc.Width = Width;
-    desc.Height = Height;
-    desc.Depth = 1;
-    desc.MipLevels = Levels;
-    desc.Usage = Usage;
-    desc.Format = fixupFormat(Format);
-    desc.Pool = Pool;
-    desc.Discard = FALSE;
-    desc.MultiSample = D3DMULTISAMPLE_NONE;
+    desc.Type               = D3DRTYPE_TEXTURE;
+    desc.Width              = Width;
+    desc.Height             = Height;
+    desc.Depth              = 1;
+    desc.MipLevels          = Levels;
+    desc.Usage              = Usage;
+    desc.Format             = fixupFormat(Format);
+    desc.Pool               = Pool;
+    desc.Discard            = FALSE;
+    desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
-    desc.Lockable = Pool != D3DPOOL_DEFAULT || Usage & D3DUSAGE_DYNAMIC;
+    desc.Lockable           = Pool != D3DPOOL_DEFAULT || Usage & D3DUSAGE_DYNAMIC;
 
     if (FAILED(Direct3DCommonTexture9::NormalizeTextureProperties(&desc)))
       return D3DERR_INVALIDCALL;
@@ -342,15 +344,15 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateVolumeTexture(
-    UINT Width,
-    UINT Height,
-    UINT Depth,
-    UINT Levels,
-    DWORD Usage,
-    D3DFORMAT Format,
-    D3DPOOL Pool,
-    IDirect3DVolumeTexture9** ppVolumeTexture,
-    HANDLE* pSharedHandle) {
+          UINT                      Width,
+          UINT                      Height,
+          UINT                      Depth,
+          UINT                      Levels,
+          DWORD                     Usage,
+          D3DFORMAT                 Format,
+          D3DPOOL                   Pool,
+          IDirect3DVolumeTexture9** ppVolumeTexture,
+          HANDLE*                   pSharedHandle) {
     InitReturnPtr(ppVolumeTexture);
     InitReturnPtr(pSharedHandle);
 
@@ -359,13 +361,13 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateCubeTexture(
-    UINT EdgeLength,
-    UINT Levels,
-    DWORD Usage,
-    D3DFORMAT Format,
-    D3DPOOL Pool,
-    IDirect3DCubeTexture9** ppCubeTexture,
-    HANDLE* pSharedHandle) {
+          UINT                    EdgeLength,
+          UINT                    Levels,
+          DWORD                   Usage,
+          D3DFORMAT               Format,
+          D3DPOOL                 Pool,
+          IDirect3DCubeTexture9** ppCubeTexture,
+          HANDLE*                 pSharedHandle) {
     InitReturnPtr(ppCubeTexture);
     InitReturnPtr(pSharedHandle);
 
@@ -374,12 +376,12 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateVertexBuffer(
-    UINT Length,
-    DWORD Usage,
-    DWORD FVF,
-    D3DPOOL Pool,
-    IDirect3DVertexBuffer9** ppVertexBuffer,
-    HANDLE* pSharedHandle) {
+          UINT                     Length,
+          DWORD                    Usage,
+          DWORD                    FVF,
+          D3DPOOL                  Pool,
+          IDirect3DVertexBuffer9** ppVertexBuffer,
+          HANDLE*                  pSharedHandle) {
     auto lock = LockDevice();
 
     if (ppVertexBuffer == nullptr)
@@ -387,11 +389,11 @@ namespace dxvk {
 
     D3D9_BUFFER_DESC desc;
     desc.Format = D3D9Format::VERTEXDATA;
-    desc.FVF = FVF;
-    desc.Pool = Pool;
-    desc.Size = Length;
-    desc.Type = D3DRTYPE_VERTEXBUFFER;
-    desc.Usage = Usage;
+    desc.FVF    = FVF;
+    desc.Pool   = Pool;
+    desc.Size   = Length;
+    desc.Type   = D3DRTYPE_VERTEXBUFFER;
+    desc.Usage  = Usage;
 
     try {
       const Com<Direct3DVertexBuffer9> buffer = new Direct3DVertexBuffer9(this, &desc);
@@ -406,12 +408,12 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateIndexBuffer(
-    UINT Length,
-    DWORD Usage,
-    D3DFORMAT Format,
-    D3DPOOL Pool,
-    IDirect3DIndexBuffer9** ppIndexBuffer,
-    HANDLE* pSharedHandle) {
+          UINT                    Length,
+          DWORD                   Usage,
+          D3DFORMAT               Format,
+          D3DPOOL                 Pool,
+          IDirect3DIndexBuffer9** ppIndexBuffer,
+          HANDLE*                 pSharedHandle) {
     auto lock = LockDevice();
 
     if (ppIndexBuffer == nullptr)
@@ -437,14 +439,14 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateRenderTarget(
-    UINT Width,
-    UINT Height,
-    D3DFORMAT Format,
-    D3DMULTISAMPLE_TYPE MultiSample,
-    DWORD MultisampleQuality,
-    BOOL Lockable,
-    IDirect3DSurface9** ppSurface,
-    HANDLE* pSharedHandle) {
+          UINT                Width,
+          UINT                Height,
+          D3DFORMAT           Format,
+          D3DMULTISAMPLE_TYPE MultiSample,
+          DWORD               MultisampleQuality,
+          BOOL                Lockable,
+          IDirect3DSurface9** ppSurface,
+          HANDLE*             pSharedHandle) {
     return CreateRenderTargetEx(
       Width,
       Height,
@@ -458,14 +460,14 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateDepthStencilSurface(
-    UINT Width,
-    UINT Height,
-    D3DFORMAT Format,
-    D3DMULTISAMPLE_TYPE MultiSample,
-    DWORD MultisampleQuality,
-    BOOL Discard,
-    IDirect3DSurface9** ppSurface,
-    HANDLE* pSharedHandle) {
+          UINT                Width,
+          UINT                Height,
+          D3DFORMAT           Format,
+          D3DMULTISAMPLE_TYPE MultiSample,
+          DWORD               MultisampleQuality,
+          BOOL                Discard,
+          IDirect3DSurface9** ppSurface,
+          HANDLE*             pSharedHandle) {
     return CreateDepthStencilSurfaceEx(
       Width,
       Height,
@@ -479,20 +481,24 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::UpdateSurface(
-    IDirect3DSurface9* pSourceSurface,
-    const RECT* pSourceRect,
-    IDirect3DSurface9* pDestinationSurface,
-    const POINT* pDestPoint) {
+          IDirect3DSurface9* pSourceSurface,
+    const RECT*              pSourceRect,
+          IDirect3DSurface9* pDestinationSurface,
+    const POINT*             pDestPoint) {
     Logger::warn("Direct3DDevice9Ex::UpdateSurface: Stub");
     return D3D_OK;
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::UpdateTexture(IDirect3DBaseTexture9* pSourceTexture, IDirect3DBaseTexture9* pDestinationTexture) {
+  HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::UpdateTexture(
+          IDirect3DBaseTexture9* pSourceTexture,
+          IDirect3DBaseTexture9* pDestinationTexture) {
     Logger::warn("Direct3DDevice9Ex::UpdateTexture: Stub");
     return D3D_OK;
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetRenderTargetData(IDirect3DSurface9* pRenderTarget, IDirect3DSurface9* pDestSurface) {
+  HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetRenderTargetData(
+          IDirect3DSurface9* pRenderTarget,
+          IDirect3DSurface9* pDestSurface) {
     Logger::warn("Direct3DDevice9Ex::GetRenderTargetData: Stub");
     return D3D_OK;
   }
@@ -624,9 +630,9 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::ColorFill(
-    IDirect3DSurface9* pSurface,
-    const RECT* pRect,
-    D3DCOLOR color) {
+          IDirect3DSurface9* pSurface,
+    const RECT*              pRect,
+          D3DCOLOR           Color) {
     Logger::warn("Direct3DDevice9Ex::ColorFill: Stub");
     return D3D_OK;
   }
@@ -648,7 +654,9 @@ namespace dxvk {
       0);
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetRenderTarget(DWORD RenderTargetIndex, IDirect3DSurface9* pRenderTarget) {
+  HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetRenderTarget(
+          DWORD              RenderTargetIndex,
+          IDirect3DSurface9* pRenderTarget) {
     auto lock = LockDevice();
 
     if (RenderTargetIndex >= caps::MaxSimultaneousRenderTargets
@@ -685,7 +693,9 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetRenderTarget(DWORD RenderTargetIndex, IDirect3DSurface9** ppRenderTarget) {
+  HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetRenderTarget(
+          DWORD               RenderTargetIndex,
+          IDirect3DSurface9** ppRenderTarget) {
     auto lock = LockDevice();
 
     InitReturnPtr(ppRenderTarget);
@@ -748,12 +758,12 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::Clear(
-    DWORD Count,
+          DWORD    Count,
     const D3DRECT* pRects,
-    DWORD Flags,
-    D3DCOLOR Color,
-    float Z,
-    DWORD Stencil) {
+          DWORD    Flags,
+          D3DCOLOR Color,
+          float    Z,
+          DWORD    Stencil) {
     auto lock = LockDevice();
 
     if (Flags & D3DCLEAR_STENCIL || Flags & D3DCLEAR_ZBUFFER) {
@@ -995,7 +1005,9 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateStateBlock(D3DSTATEBLOCKTYPE Type, IDirect3DStateBlock9** ppSB) {
+  HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateStateBlock(
+          D3DSTATEBLOCKTYPE      Type,
+          IDirect3DStateBlock9** ppSB) {
     Logger::warn("Direct3DDevice9Ex::CreateStateBlock: Stub");
     return D3D_OK;
   }
@@ -1059,25 +1071,25 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetTextureStageState(
-    DWORD Stage,
-    D3DTEXTURESTAGESTATETYPE Type,
-    DWORD* pValue) {
+          DWORD                    Stage,
+          D3DTEXTURESTAGESTATETYPE Type,
+          DWORD*                   pValue) {
     Logger::warn("Direct3DDevice9Ex::GetTextureStageState: Stub");
     return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetTextureStageState(
-    DWORD Stage,
-    D3DTEXTURESTAGESTATETYPE Type,
-    DWORD Value) {
+          DWORD                    Stage,
+          D3DTEXTURESTAGESTATETYPE Type,
+          DWORD                    Value) {
     Logger::warn("Direct3DDevice9Ex::SetTextureStageState: Stub");
     return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetSamplerState(
-    DWORD Sampler,
-    D3DSAMPLERSTATETYPE Type,
-    DWORD* pValue) {
+          DWORD               Sampler,
+          D3DSAMPLERSTATETYPE Type,
+          DWORD*              pValue) {
     auto lock = LockDevice();
 
     if (pValue == nullptr)
@@ -1096,9 +1108,9 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetSamplerState(
-    DWORD Sampler,
-    D3DSAMPLERSTATETYPE Type,
-    DWORD Value) {
+          DWORD               Sampler,
+          D3DSAMPLERSTATETYPE Type,
+          DWORD               Value) {
     auto lock = LockDevice();
     if (InvalidSampler(Sampler))
       return D3D_OK;
@@ -1202,9 +1214,9 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::DrawPrimitive(
-    D3DPRIMITIVETYPE PrimitiveType,
-    UINT StartVertex,
-    UINT PrimitiveCount) {
+          D3DPRIMITIVETYPE PrimitiveType,
+          UINT             StartVertex,
+          UINT             PrimitiveCount) {
     auto lock = LockDevice();
 
     PrepareDraw();
@@ -1224,20 +1236,20 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::DrawIndexedPrimitive(
-    D3DPRIMITIVETYPE PrimitiveType,
-    INT BaseVertexIndex,
-    UINT MinVertexIndex,
-    UINT NumVertices,
-    UINT startIndex,
-    UINT primCount) {
+          D3DPRIMITIVETYPE PrimitiveType,
+          INT              BaseVertexIndex,
+          UINT             MinVertexIndex,
+          UINT             NumVertices,
+          UINT             StartIndex,
+          UINT             PrimitiveCount) {
     auto lock = LockDevice();
 
     PrepareDraw();
     
     EmitCs([
       cState           = InputAssemblyState(PrimitiveType),
-      cIndexCount      = VertexCount(PrimitiveType, primCount),
-      cStartIndex      = startIndex,
+      cIndexCount      = VertexCount       (PrimitiveType, PrimitiveCount),
+      cStartIndex      = StartIndex,
       cBaseVertexIndex = BaseVertexIndex
     ](DxvkContext* ctx) {
       ctx->setInputAssemblyState(cState);
@@ -1251,39 +1263,41 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::DrawPrimitiveUP(
-    D3DPRIMITIVETYPE PrimitiveType,
-    UINT PrimitiveCount,
-    const void* pVertexStreamZeroData,
-    UINT VertexStreamZeroStride) {
+          D3DPRIMITIVETYPE PrimitiveType,
+          UINT             PrimitiveCount,
+    const void*            pVertexStreamZeroData,
+          UINT             VertexStreamZeroStride) {
     Logger::warn("Direct3DDevice9Ex::DrawPrimitiveUP: Stub");
     return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::DrawIndexedPrimitiveUP(
-    D3DPRIMITIVETYPE PrimitiveType,
-    UINT MinVertexIndex,
-    UINT NumVertices,
-    UINT PrimitiveCount,
-    const void* pIndexData,
-    D3DFORMAT IndexDataFormat,
-    const void* pVertexStreamZeroData,
-    UINT VertexStreamZeroStride) {
+          D3DPRIMITIVETYPE PrimitiveType,
+          UINT             MinVertexIndex,
+          UINT             NumVertices,
+          UINT             PrimitiveCount,
+    const void*            pIndexData,
+          D3DFORMAT        IndexDataFormat,
+    const void*            pVertexStreamZeroData,
+          UINT             VertexStreamZeroStride) {
     Logger::warn("Direct3DDevice9Ex::DrawIndexedPrimitiveUP: Stub");
     return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::ProcessVertices(
-    UINT SrcStartIndex,
-    UINT DestIndex,
-    UINT VertexCount,
-    IDirect3DVertexBuffer9* pDestBuffer,
-    IDirect3DVertexDeclaration9* pVertexDecl,
-    DWORD Flags) {
+          UINT                         SrcStartIndex,
+          UINT                         DestIndex,
+          UINT                         VertexCount,
+          IDirect3DVertexBuffer9*      pDestBuffer,
+          IDirect3DVertexDeclaration9* pVertexDecl,
+          DWORD                        Flags) {
     Logger::warn("Direct3DDevice9Ex::ProcessVertices: Stub");
     return D3D_OK;
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateVertexDeclaration(const D3DVERTEXELEMENT9* pVertexElements, IDirect3DVertexDeclaration9** ppDecl) {
+  HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateVertexDeclaration(
+    const D3DVERTEXELEMENT9*            pVertexElements,
+          IDirect3DVertexDeclaration9** ppDecl) {
     InitReturnPtr(ppDecl);
 
     if (ppDecl == nullptr || pVertexElements == nullptr)
@@ -1347,7 +1361,9 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateVertexShader(const DWORD* pFunction, IDirect3DVertexShader9** ppShader) {
+  HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateVertexShader(
+    const DWORD*                   pFunction,
+          IDirect3DVertexShader9** ppShader) {
     InitReturnPtr(ppShader);
 
     if (ppShader == nullptr)
@@ -1409,9 +1425,9 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetVertexShaderConstantF(
-    UINT StartRegister,
+          UINT   StartRegister,
     const float* pConstantData,
-    UINT Vector4fCount) {
+          UINT   Vector4fCount) {
     auto lock = LockDevice();
 
     return SetShaderConstants(
@@ -1425,9 +1441,9 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetVertexShaderConstantF(
-    UINT StartRegister,
-    float* pConstantData,
-    UINT Vector4fCount) {
+          UINT   StartRegister,
+          float* pConstantData,
+          UINT   Vector4fCount) {
     auto lock = LockDevice();
 
     return GetShaderConstants(
@@ -1442,9 +1458,9 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetVertexShaderConstantI(
-    UINT StartRegister,
+          UINT StartRegister,
     const int* pConstantData,
-    UINT Vector4iCount) {
+          UINT Vector4iCount) {
     auto lock = LockDevice();
 
     return SetShaderConstants(
@@ -1458,9 +1474,9 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetVertexShaderConstantI(
-    UINT StartRegister,
-    int* pConstantData,
-    UINT Vector4iCount) {
+          UINT StartRegister,
+          int* pConstantData,
+          UINT Vector4iCount) {
     auto lock = LockDevice();
 
     return GetShaderConstants(
@@ -1475,9 +1491,9 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetVertexShaderConstantB(
-    UINT StartRegister,
+          UINT  StartRegister,
     const BOOL* pConstantData,
-    UINT BoolCount) {
+          UINT  BoolCount) {
     auto lock = LockDevice();
 
     return SetShaderConstants(
@@ -1491,9 +1507,9 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetVertexShaderConstantB(
-    UINT StartRegister,
-    BOOL* pConstantData,
-    UINT BoolCount) {
+          UINT  StartRegister,
+          BOOL* pConstantData,
+          UINT  BoolCount) {
     auto lock = LockDevice();
 
     return GetShaderConstants(
@@ -1506,10 +1522,10 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetStreamSource(
-    UINT StreamNumber,
-    IDirect3DVertexBuffer9* pStreamData,
-    UINT OffsetInBytes,
-    UINT Stride) {
+          UINT                    StreamNumber,
+          IDirect3DVertexBuffer9* pStreamData,
+          UINT                    OffsetInBytes,
+          UINT                    Stride) {
     auto lock = LockDevice();
 
     if (StreamNumber >= caps::MaxStreams)
@@ -1528,10 +1544,10 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetStreamSource(
-    UINT StreamNumber,
-    IDirect3DVertexBuffer9** ppStreamData,
-    UINT* pOffsetInBytes,
-    UINT* pStride) {
+          UINT                     StreamNumber,
+          IDirect3DVertexBuffer9** ppStreamData,
+          UINT*                    pOffsetInBytes,
+          UINT*                    pStride) {
     auto lock = LockDevice();
 
     InitReturnPtr(ppStreamData);
@@ -1600,7 +1616,9 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreatePixelShader(const DWORD* pFunction, IDirect3DPixelShader9** ppShader) {
+  HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreatePixelShader(
+    const DWORD*                  pFunction,
+          IDirect3DPixelShader9** ppShader) {
     InitReturnPtr(ppShader);
 
     if (ppShader == nullptr)
@@ -1659,9 +1677,9 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetPixelShaderConstantF(
-    UINT StartRegister,
+          UINT   StartRegister,
     const float* pConstantData,
-    UINT Vector4fCount) {
+          UINT   Vector4fCount) {
     auto lock = LockDevice();
 
     return SetShaderConstants(
@@ -1675,9 +1693,9 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetPixelShaderConstantF(
-    UINT StartRegister,
-    float* pConstantData,
-    UINT Vector4fCount) {
+          UINT   StartRegister,
+          float* pConstantData,
+          UINT   Vector4fCount) {
     auto lock = LockDevice();
 
     return GetShaderConstants(
@@ -1692,9 +1710,9 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetPixelShaderConstantI(
-    UINT StartRegister,
+          UINT StartRegister,
     const int* pConstantData,
-    UINT Vector4iCount) {
+          UINT Vector4iCount) {
     auto lock = LockDevice();
 
     return SetShaderConstants(
@@ -1708,9 +1726,9 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetPixelShaderConstantI(
-    UINT StartRegister,
-    int* pConstantData,
-    UINT Vector4iCount) {
+          UINT StartRegister,
+          int* pConstantData,
+          UINT Vector4iCount) {
     auto lock = LockDevice();
 
     return GetShaderConstants(
@@ -1725,9 +1743,9 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetPixelShaderConstantB(
-    UINT StartRegister,
+          UINT  StartRegister,
     const BOOL* pConstantData,
-    UINT BoolCount) {
+          UINT  BoolCount) {
     auto lock = LockDevice();
 
     return SetShaderConstants(
@@ -1741,9 +1759,9 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetPixelShaderConstantB(
-    UINT StartRegister,
-    BOOL* pConstantData,
-    UINT BoolCount) {
+          UINT  StartRegister,
+          BOOL* pConstantData,
+          UINT  BoolCount) {
     auto lock = LockDevice();
 
     return GetShaderConstants(
@@ -1756,16 +1774,16 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::DrawRectPatch(
-    UINT Handle,
-    const float* pNumSegs,
+          UINT               Handle,
+    const float*             pNumSegs,
     const D3DRECTPATCH_INFO* pRectPatchInfo) {
     Logger::warn("Direct3DDevice9Ex::DrawRectPatch: Stub");
     return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::DrawTriPatch(
-    UINT Handle,
-    const float* pNumSegs,
+          UINT              Handle,
+    const float*            pNumSegs,
     const D3DTRIPATCH_INFO* pTriPatchInfo) {
     Logger::warn("Direct3DDevice9Ex::DrawTriPatch: Stub");
     return D3D_OK;
@@ -2760,7 +2778,7 @@ namespace dxvk {
     m_csThread.synchronize();
   }
 
-  void Direct3DDevice9Ex::SetupConstantBuffers() {
+  void Direct3DDevice9Ex::CreateConstantBuffers() {
     D3D9_BUFFER_DESC constDesc;
     constDesc.Format = D3D9Format::R8G8B8;
     constDesc.FVF = 0;
