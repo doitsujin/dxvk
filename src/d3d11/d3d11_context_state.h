@@ -19,6 +19,7 @@ namespace dxvk {
     Com<D3D11Buffer> buffer         = nullptr;
     UINT             constantOffset = 0;
     UINT             constantCount  = 0;
+    UINT             constantBound  = 0;
   };
   
   using D3D11ConstantBufferBindings = std::array<

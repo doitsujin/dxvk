@@ -3262,10 +3262,10 @@ namespace dxvk {
     const D3D11ConstantBufferBinding*       pBufferBinding) {
     EmitCs([
       cSlotId      = Slot,
-      cBufferSlice = pBufferBinding->buffer != nullptr
+      cBufferSlice = pBufferBinding->constantBound
         ? pBufferBinding->buffer->GetBufferSlice(
             pBufferBinding->constantOffset * 16,
-            pBufferBinding->constantCount  * 16)
+            pBufferBinding->constantBound  * 16)
         : DxvkBufferSlice()
     ] (DxvkContext* ctx) {
       ctx->bindResourceBuffer(cSlotId, cBufferSlice);
@@ -3371,14 +3371,28 @@ namespace dxvk {
     for (uint32_t i = 0; i < NumBuffers; i++) {
       auto newBuffer = static_cast<D3D11Buffer*>(ppConstantBuffers[i]);
       
-      UINT constantOffset = 0;
-      UINT constantCount  = newBuffer != nullptr
-        ? newBuffer->Desc()->ByteWidth / 16
-        : 0;
-      
-      if (newBuffer != nullptr && pFirstConstant != nullptr && pNumConstants != nullptr) {
-        constantOffset = pFirstConstant[i];
-        constantCount  = pNumConstants [i];
+      UINT constantOffset;
+      UINT constantCount;
+      UINT constantBound;
+
+      if (likely(newBuffer != nullptr)) {
+        constantBound = newBuffer->Desc()->ByteWidth / 16;
+
+        if (pFirstConstant && pNumConstants) {
+          constantOffset  = pFirstConstant[i];
+          constantCount   = pNumConstants [i];
+
+          constantBound = (constantOffset + constantCount > constantBound)
+            ? constantBound - std::min(constantOffset, constantBound)
+            : constantCount;
+        } else {
+          constantOffset  = 0;
+          constantCount   = constantBound;
+        }
+      } else {
+        constantOffset  = 0;
+        constantCount   = 0;
+        constantBound   = 0;
       }
       
       if (Bindings[StartSlot + i].buffer         != newBuffer
@@ -3387,6 +3401,7 @@ namespace dxvk {
         Bindings[StartSlot + i].buffer         = newBuffer;
         Bindings[StartSlot + i].constantOffset = constantOffset;
         Bindings[StartSlot + i].constantCount  = constantCount;
+        Bindings[StartSlot + i].constantBound  = constantBound;
         
         BindConstantBuffer(slotId + i, &Bindings[StartSlot + i]);
       }
