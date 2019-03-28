@@ -75,6 +75,7 @@ namespace dxvk {
     case DxsoOpcode::Pow:
     case DxsoOpcode::Abs:
     case DxsoOpcode::Nrm:
+    case DxsoOpcode::SinCos:
     case DxsoOpcode::LogP:
     case DxsoOpcode::Log:
     case DxsoOpcode::Lrp:
@@ -615,6 +616,20 @@ namespace dxvk {
           emitRegisterLoad(src[0]),
           result);
       } break;
+      case DxsoOpcode::SinCos: {
+        const uint32_t scalarTypeId = spvType(dst, 1);
+
+        std::array<uint32_t, 4> sincosVectorIndices = {
+          m_module.opSin(scalarTypeId, emitRegisterLoad(src[0], 1)),
+          m_module.opCos(scalarTypeId, emitRegisterLoad(src[0], 1)),
+          m_module.constf32(0.0f),
+          m_module.constf32(0.0f)
+        };
+
+        result = m_module.opCompositeConstruct(typeId, sincosVectorIndices.size(), sincosVectorIndices.data());
+
+        break;
+      }
       case DxsoOpcode::LogP:
       case DxsoOpcode::Log:
         result = m_module.opFAbs(typeId, emitRegisterLoad(src[0]));
