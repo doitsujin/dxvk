@@ -38,8 +38,16 @@ namespace dxvk {
 
 
   void D3D11CounterBuffer::CreateBuffer() {
-    Rc<DxvkBuffer> buffer = m_device->createBuffer(
-      m_bufferInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    VkMemoryPropertyFlags memoryType = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+    // Workaround for predicate buffer sync issues on RADV
+    if ((m_bufferInfo.usage & VK_BUFFER_USAGE_CONDITIONAL_RENDERING_BIT_EXT)
+     && (m_device->adapter()->matchesDriver(DxvkGpuVendor::Amd, VK_DRIVER_ID_MESA_RADV_KHR, 0, 0))) {
+      memoryType |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                 |  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    }
+
+    Rc<DxvkBuffer> buffer = m_device->createBuffer(m_bufferInfo, memoryType);
     
     VkDeviceSize sliceCount = m_bufferInfo.size / m_sliceLength;
     
