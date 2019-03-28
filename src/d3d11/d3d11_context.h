@@ -739,6 +739,13 @@ namespace dxvk {
             D3D11ConstantBufferBindings&      Bindings,
             UINT                              StartSlot,
             UINT                              NumBuffers,
+            ID3D11Buffer* const*              ppConstantBuffers);
+    
+    void SetConstantBuffers1(
+            DxbcProgramType                   ShaderStage,
+            D3D11ConstantBufferBindings&      Bindings,
+            UINT                              StartSlot,
+            UINT                              NumBuffers,
             ID3D11Buffer* const*              ppConstantBuffers,
       const UINT*                             pFirstConstant,
       const UINT*                             pNumConstants);
