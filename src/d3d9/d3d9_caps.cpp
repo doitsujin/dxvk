@@ -555,7 +555,7 @@ namespace dxvk::caps {
     pCaps->TextureOpCaps = 67108863;
     pCaps->MaxTextureBlendStages = MaxTextureBlendStages;
 
-    pCaps->MaxSimultaneousTextures = MaxSimultaneousRenderTargets;
+    pCaps->MaxSimultaneousTextures = 8;
 
     pCaps->VertexProcessingCaps = 379;
     pCaps->MaxActiveLights = 8;
