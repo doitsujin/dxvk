@@ -2,6 +2,35 @@
 
 namespace dxvk {
 
+  typedef HRESULT (STDMETHODCALLTYPE *D3DXDisassembleShader) (
+    const void*      pShader, 
+          BOOL       EnableColorCode, 
+          char*      pComments, 
+          ID3DBlob** ppDisassembly); // ppDisassembly is actually a D3DXBUFFER, but it has the exact same vtable as a ID3DBlob at the start.
+
+  D3DXDisassembleShader g_pfnDisassembleShader = nullptr;
+
+  HRESULT DisassembleShader(
+    const void*      pShader, 
+          BOOL       EnableColorCode, 
+          char*      pComments, 
+          ID3DBlob** ppDisassembly) {
+    if (g_pfnDisassembleShader == nullptr) {
+      HMODULE d3d9x = LoadLibraryA("d3d9x.dll");
+      g_pfnDisassembleShader = 
+        reinterpret_cast<D3DXDisassembleShader>(GetProcAddress(d3d9x, "D3DXDisassembleShader"));
+    }
+
+    if (g_pfnDisassembleShader == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    return g_pfnDisassembleShader(
+      pShader,
+      EnableColorCode,
+      pComments,
+      ppDisassembly);
+  }
+
   HRESULT DecodeMultiSampleType(
         D3DMULTISAMPLE_TYPE       MultiSample,
         VkSampleCountFlagBits*    pCount) {

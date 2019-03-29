@@ -7,6 +7,8 @@
 #include "../dxso/dxso_common.h"
 #include "../dxvk/dxvk_device.h"
 
+#include <d3dcommon.h>
+
 namespace dxvk {
 
   inline bool InvalidSampler(DWORD Sampler) {
@@ -47,6 +49,12 @@ namespace dxvk {
     T* castedPtr = reinterpret_cast<T*>(ptr);
     AddRef ? castedPtr->AddRefPrivate() : castedPtr->ReleasePrivate();
   }
+
+  HRESULT DisassembleShader(
+    const void*      pShader, 
+          BOOL       EnableColorCode, 
+          char*      pComments, 
+          ID3DBlob** ppDisassembly);
 
   HRESULT DecodeMultiSampleType(
         D3DMULTISAMPLE_TYPE       MultiSample,

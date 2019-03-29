@@ -1,8 +1,6 @@
 #include "d3d9_shader.h"
 
-#include <C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)\Include\d3dx9.h>
-
-#pragma comment(lib, "C:\\Program Files (x86)\\Microsoft DirectX SDK (June 2010)\\Lib\\x86\\d3dx9.lib")
+#include "d3d9_util.h"
 
 namespace dxvk {
 
@@ -35,14 +33,18 @@ namespace dxvk {
         std::ios_base::binary | std::ios_base::trunc));
 
       char comment[2048];
-      ID3DXBuffer * buffer = nullptr;
-      HRESULT hr = D3DXDisassembleShader((const DWORD*)pShaderBytecode, TRUE, comment, &buffer);
+      Com<ID3DBlob> blob;
+      HRESULT hr = DisassembleShader(
+        pShaderBytecode,
+        TRUE,
+        comment, 
+        &blob);
       
-        if (SUCCEEDED(hr)) {
+      if (SUCCEEDED(hr)) {
         std::ofstream disassembledOut(str::format(dumpPath, "/", name, ".dxso.dis"), std::ios_base::binary | std::ios_base::trunc);
-        disassembledOut.write((const char*)buffer->GetBufferPointer(), buffer->GetBufferSize());
-        buffer->Release();
-        
+        disassembledOut.write(
+          reinterpret_cast<const char*>(blob->GetBufferPointer()),
+          blob->GetBufferSize());
       }
     }
     
