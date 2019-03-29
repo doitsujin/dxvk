@@ -1120,12 +1120,12 @@ namespace dxvk {
 
     auto& state = m_state.samplerStates;
 
-    Sampler = RemapSamplerState(Sampler);
+    uint32_t stateSampler = RemapSamplerState(Sampler);
 
-    bool changed = state[Sampler][Type] != Value;
+    bool changed = state[stateSampler][Type] != Value;
 
     if (likely(changed)) {
-      state[Sampler][Type] = Value;
+      state[stateSampler][Type] = Value;
 
       if (Type == D3DSAMP_ADDRESSU
        || Type == D3DSAMP_ADDRESSV
@@ -1137,7 +1137,7 @@ namespace dxvk {
        || Type == D3DSAMP_MIPMAPLODBIAS
        || Type == D3DSAMP_MAXMIPLEVEL
        || Type == D3DSAMP_BORDERCOLOR)
-        m_dirtySamplerStates |= 1u << Sampler;
+        m_dirtySamplerStates |= 1u << stateSampler;
       else if (Type == D3DSAMP_SRGBTEXTURE)
         BindTexture(Sampler);
     }
