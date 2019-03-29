@@ -2568,8 +2568,6 @@ namespace dxvk {
         ->mipLevelExtent(subresource.mipLevel);
 
       if (fixup8888) {
-        WaitForResource(mappedBuffer, 0);
-
         DxvkBufferSliceHandle mappingSlice  = mappedBuffer->getSliceHandle();
         DxvkBufferSliceHandle fixupSlice    = fixupBuffer->allocSlice();
 
