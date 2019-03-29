@@ -2577,6 +2577,8 @@ namespace dxvk {
           ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
         });
 
+        WaitForResource(fixupBuffer, 0);
+
         const VkImageType imageType = mappedImage->info().type;
         VkSubresourceLayout layout  = mappedImage->querySubresourceLayout(subresource);
 
