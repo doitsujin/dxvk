@@ -34,8 +34,12 @@ namespace dxvk {
       m_oPtrs.at(i) = 0;
     }
 
-    for (uint32_t i = 0; i < m_samplers.size(); i++)
-      m_samplers.at(i) = 0;
+    for (uint32_t i = 0; i < m_samplers.size(); i++) {
+      m_samplers.at(i).samplerVarId = 0;
+      m_samplers.at(i).imageVarId   = 0;
+      m_samplers.at(i).imageTypeId  = 0;
+      m_samplers.at(i).type         = DxsoTextureType::Texture2D;
+    }
 
     this->emitInit();
   }
@@ -710,16 +714,19 @@ namespace dxvk {
       samplerIdx = ctx.dst.registerId().num();
     }
 
-    if (m_samplers.at(samplerIdx) == 0) {
+    DxsoSamplerDesc sampler = m_samplers.at(samplerIdx);
+
+    if (sampler.samplerVarId == 0) {
       Logger::warn("DxsoCompiler::emitTextureSample: Adding implicit 2D sampler");
       emitDclSampler(samplerIdx, DxsoTextureType::Texture2D);
+      sampler = m_samplers.at(samplerIdx);
     }
 
     uint32_t imageVarId = m_module.opSampledImage(
-      m_module.defSampledImageType(m_textureTypes.at(samplerIdx)),
+      m_module.defSampledImageType(sampler.imageTypeId),
 
-      m_module.opLoad(m_textureTypes.at(samplerIdx), m_textures.at(samplerIdx)),
-      m_module.opLoad(m_module.defSamplerType(),     m_samplers.at(samplerIdx)));
+      m_module.opLoad(sampler.imageTypeId,       sampler.imageVarId),
+      m_module.opLoad(m_module.defSamplerType(), sampler.samplerVarId));
 
     SpirvImageOperands imageOperands;
     if (m_programInfo.type() == DxsoProgramType::VertexShader) {
@@ -748,6 +755,9 @@ namespace dxvk {
 
   void DxsoCompiler::emitDclSampler(uint32_t idx, DxsoTextureType type) {
     // Sampler Setup
+    DxsoSamplerDesc sampler;
+    sampler.type = type;
+
     {
       const uint32_t samplerType = m_module.defSamplerType();
       const uint32_t samplerPtrType = m_module.defPointerType(
@@ -756,7 +766,7 @@ namespace dxvk {
       const uint32_t varId = m_module.newVar(samplerPtrType,
         spv::StorageClassUniformConstant);
 
-      m_samplers.at(idx) = varId;
+      sampler.imageVarId = varId;
 
       const uint32_t bindingId = computeResourceSlotId(
         m_programInfo.type(), DxsoBindingType::ImageSampler, idx);
@@ -805,8 +815,8 @@ namespace dxvk {
       const uint32_t varId = m_module.newVar(resourcePtrType,
         spv::StorageClassUniformConstant);
 
-      m_textures.at(idx) = varId;
-      m_textureTypes.at(idx) = imageTypeId;
+      sampler.imageVarId = varId;
+      sampler.imageTypeId = imageTypeId;
 
       const uint32_t bindingId = computeResourceSlotId(
         m_programInfo.type(), DxsoBindingType::Image, idx);

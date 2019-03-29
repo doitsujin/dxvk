@@ -119,9 +119,15 @@ namespace dxvk {
 
     uint32_t m_cBuffer = 0;
 
-    std::array<uint32_t, 17> m_samplers;
-    std::array<uint32_t, 17> m_textures;
-    std::array<uint32_t, 17> m_textureTypes;
+    struct DxsoSamplerDesc {
+      DxsoTextureType type;
+
+      uint32_t samplerVarId;
+      uint32_t imageVarId;
+      uint32_t imageTypeId;
+    };
+
+    std::array<DxsoSamplerDesc, 17> m_samplers;
 
     /////////////////////////////////////////////////////
     // Shader interface and metadata declaration methods
