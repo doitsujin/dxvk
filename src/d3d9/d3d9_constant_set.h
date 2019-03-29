@@ -22,7 +22,7 @@ namespace dxvk {
     using vec4  = std::array<float, 4>;
     using ivec4 = std::array<int,   4>;
 
-    union {
+    struct {
       std::array<vec4,  caps::MaxFloatConstants> fConsts;
       std::array<ivec4, caps::MaxOtherConstants> iConsts;
       uint32_t boolBitfield = 0;
