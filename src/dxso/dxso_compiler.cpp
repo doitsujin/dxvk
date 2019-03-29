@@ -832,6 +832,8 @@ namespace dxvk {
       resource.access = VK_ACCESS_SHADER_READ_BIT;
       m_resourceSlots.push_back(resource);
     }
+
+    m_samplers.at(idx) = sampler;
   }
 
   void DxsoCompiler::emitDcl(const DxsoInstructionContext& ctx) {
