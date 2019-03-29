@@ -64,6 +64,10 @@ namespace dxvk {
     { "Frostpunk.exe", {{
       { "dxgi.deferSurfaceCreation",        "True" },
     }} },
+    /* Nioh: See Frostpunk, apparently?           */
+    { "nioh.exe", {{
+      { "dxgi.deferSurfaceCreation",        "True" },
+    }} },
     /* Quantum Break: Mever initializes shared    *
      * memory in one of its compute shaders       */
     { "QuantumBreak.exe", {{
