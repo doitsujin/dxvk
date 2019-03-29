@@ -256,7 +256,7 @@ namespace dxvk {
     if (PresentFlags & DXGI_PRESENT_TEST)
       return S_OK;
     
-    std::lock_guard<std::mutex> lockWin(m_lockWindow);
+    std::lock_guard<std::recursive_mutex> lockWin(m_lockWindow);
     std::lock_guard<std::mutex> lockBuf(m_lockBuffer);
 
     // Higher values are not allowed according to the Microsoft documentation:
@@ -320,7 +320,7 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::ResizeTarget(const DXGI_MODE_DESC* pNewTargetParameters) {
-    std::lock_guard<std::mutex> lock(m_lockWindow);
+    std::lock_guard<std::recursive_mutex> lock(m_lockWindow);
 
     if (pNewTargetParameters == nullptr)
       return DXGI_ERROR_INVALID_CALL;
@@ -378,7 +378,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE DxgiSwapChain::SetFullscreenState(
           BOOL          Fullscreen,
           IDXGIOutput*  pTarget) {
-    std::lock_guard<std::mutex> lock(m_lockWindow);
+    std::lock_guard<std::recursive_mutex> lock(m_lockWindow);
 
     if (m_descFs.Windowed && Fullscreen)
       return this->EnterFullscreenMode(pTarget);
