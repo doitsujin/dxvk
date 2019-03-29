@@ -2569,7 +2569,6 @@ namespace dxvk {
 
       if (fixup8888) {
         WaitForResource(mappedBuffer, 0);
-        WaitForResource(fixupBuffer, 0);
 
         DxvkBufferSliceHandle mappingSlice  = mappedBuffer->getSliceHandle();
         DxvkBufferSliceHandle fixupSlice    = fixupBuffer->allocSlice();
