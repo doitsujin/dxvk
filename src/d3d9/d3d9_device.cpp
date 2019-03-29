@@ -2172,7 +2172,7 @@ namespace dxvk {
       m_state.textures[i] = nullptr;
 
       DWORD sampler = i;
-      auto samplerInfo = RemapSamplerShader(sampler);
+      auto samplerInfo = RemapStateSamplerShader(sampler);
       uint32_t slot = computeResourceSlotId(samplerInfo.first, DxsoBindingType::Image, uint32_t(samplerInfo.second));
 
       EmitCs([
