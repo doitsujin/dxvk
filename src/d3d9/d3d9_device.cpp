@@ -2560,10 +2560,6 @@ namespace dxvk {
 
       bool fixup8888 = pResource->Desc()->Format == D3D9Format::R8G8B8;
 
-      const Rc<DxvkBuffer>& copyImage = fixup8888
-        ? fixupBuffer
-        : mappedBuffer;
-
       VkExtent3D levelExtent = mappedImage
         ->mipLevelExtent(subresource.mipLevel);
 
@@ -2608,9 +2604,9 @@ namespace dxvk {
         subresource.arrayLayer, 1 };
 
       EmitCs([
-        cSrcBuffer = mappedBuffer,
-        cDstImage = mappedImage,
-        cDstLayers = subresourceLayers,
+        cSrcBuffer      = fixup8888 ? fixupBuffer : mappedBuffer,
+        cDstImage       = mappedImage,
+        cDstLayers      = subresourceLayers,
         cDstLevelExtent = levelExtent
       ] (DxvkContext* ctx) {
         ctx->copyBufferToImage(cDstImage, cDstLayers,
