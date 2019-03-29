@@ -27,7 +27,7 @@ namespace dxvk {
   }
 
   inline std::pair<DxsoProgramType, DWORD> RemapStateSamplerShader(DWORD Sampler) {
-    if (Sampler > 16)
+    if (Sampler >= 16)
       return std::make_pair(DxsoProgramType::VertexShader, Sampler - 16);
 
     return std::make_pair(DxsoProgramType::PixelShader, Sampler);
