@@ -766,7 +766,7 @@ namespace dxvk {
       const uint32_t varId = m_module.newVar(samplerPtrType,
         spv::StorageClassUniformConstant);
 
-      sampler.imageVarId = varId;
+      sampler.samplerVarId = varId;
 
       const uint32_t bindingId = computeResourceSlotId(
         m_programInfo.type(), DxsoBindingType::ImageSampler, idx);
