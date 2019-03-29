@@ -2580,10 +2580,13 @@ namespace dxvk {
         WaitForResource(fixupBuffer, 0);
 
         const VkImageType imageType = mappedImage->info().type;
-        VkSubresourceLayout layout  = mappedImage->querySubresourceLayout(subresource);
+        
+        auto formatInfo        = imageFormatInfo(mappedImage->info().format);
+        VkExtent3D levelExtent = mappedImage->mipLevelExtent(subresource.mipLevel);
+        VkExtent3D blockCount  = util::computeBlockCount(levelExtent, formatInfo->blockSize);
 
-        uint32_t rowPitch   = imageType >= VK_IMAGE_TYPE_2D ? layout.rowPitch   : layout.size;
-        uint32_t slicePitch = imageType >= VK_IMAGE_TYPE_3D ? layout.depthPitch : layout.size;
+        uint32_t rowPitch   = formatInfo->elementSize * blockCount.width;
+        uint32_t slicePitch = formatInfo->elementSize * blockCount.width * blockCount.height;
 
         uint8_t* dst = reinterpret_cast<uint8_t*>(physSlice.mapPtr);
         uint8_t* src = reinterpret_cast<uint8_t*>(mappedBuffer->mapPtr(0));
