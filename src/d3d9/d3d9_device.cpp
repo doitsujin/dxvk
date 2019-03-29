@@ -2568,16 +2568,18 @@ namespace dxvk {
         ->mipLevelExtent(subresource.mipLevel);
 
       if (fixup8888) {
-        DxvkBufferSliceHandle physSlice = fixupBuffer->allocSlice();
+        WaitForResource(mappedBuffer, 0);
+        WaitForResource(fixupBuffer, 0);
+
+        DxvkBufferSliceHandle mappingSlice  = mappedBuffer->getSliceHandle();
+        DxvkBufferSliceHandle fixupSlice    = fixupBuffer->allocSlice();
 
         EmitCs([
           cImageBuffer = fixupBuffer,
-          cBufferSlice = physSlice
+          cBufferSlice = fixupSlice
         ] (DxvkContext* ctx) {
           ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
         });
-
-        WaitForResource(fixupBuffer, 0);
 
         const VkImageType imageType = mappedImage->info().type;
         
@@ -2588,8 +2590,8 @@ namespace dxvk {
         uint32_t rowPitch   = formatInfo->elementSize * blockCount.width;
         uint32_t slicePitch = formatInfo->elementSize * blockCount.width * blockCount.height;
 
-        uint8_t* dst = reinterpret_cast<uint8_t*>(physSlice.mapPtr);
-        uint8_t* src = reinterpret_cast<uint8_t*>(mappedBuffer->mapPtr(0));
+        uint8_t* dst = reinterpret_cast<uint8_t*>(fixupSlice.mapPtr);
+        uint8_t* src = reinterpret_cast<uint8_t*>(mappingSlice.mapPtr);
 
         for (uint32_t z = 0; z < levelExtent.depth; z++) {
           for (uint32_t y = 0; y < levelExtent.height; y++) {
