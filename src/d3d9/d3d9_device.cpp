@@ -2425,7 +2425,7 @@ namespace dxvk {
     pResource->AllocBuffers(Face, MipLevel);
 
     const Rc<DxvkImage>  mappedImage  = pResource->GetImage();
-    const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer(Face, MipLevel);
+    const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer(Subresource);
     
     auto formatInfo = imageFormatInfo(mappedImage->info().format);
     auto subresource = pResource->GetSubresourceFromIndex(
@@ -2604,8 +2604,8 @@ namespace dxvk {
         // Now that data has been written into the buffer,
         // we need to copy its contents into the image
         const Rc<DxvkImage>  mappedImage  = pResource->GetImage();
-        const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer(l, i);
-        const Rc<DxvkBuffer> fixupBuffer  = pResource->GetFixupBuffer(l, i);
+        const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer(Subresource);
+        const Rc<DxvkBuffer> fixupBuffer  = pResource->GetFixupBuffer(Subresource);
 
         auto formatInfo  = imageFormatInfo(mappedImage->info().format);
         auto subresource = pResource->GetSubresourceFromIndex(
@@ -2647,8 +2647,8 @@ namespace dxvk {
     UINT Subresource = pResource->CalcSubresource(Face, MipLevel);
 
     const Rc<DxvkImage>  mappedImage  = pResource->GetImage();
-    const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer(Face, MipLevel);
-    const Rc<DxvkBuffer> fixupBuffer  = pResource->GetFixupBuffer(Face, MipLevel);
+    const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer(Subresource);
+    const Rc<DxvkBuffer> fixupBuffer  = pResource->GetFixupBuffer(Subresource);
 
     auto formatInfo = imageFormatInfo(mappedImage->info().format);
     auto subresource = pResource->GetSubresourceFromIndex(

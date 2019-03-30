@@ -246,15 +246,11 @@ namespace dxvk {
 
     void AllocBuffers(UINT Face, UINT MipLevel);
 
-    Rc<DxvkBuffer> GetMappedBuffer(UINT Face, UINT MipLevel) {
-      UINT Subresource = CalcSubresource(Face, MipLevel);
-
+    Rc<DxvkBuffer> GetMappedBuffer(UINT Subresource) {
       return m_mappingBuffers.at(Subresource);
     }
 
-    Rc<DxvkBuffer> GetFixupBuffer(UINT Face, UINT MipLevel) {
-      UINT Subresource = CalcSubresource(Face, MipLevel);
-
+    Rc<DxvkBuffer> GetFixupBuffer(UINT Subresource) {
       return m_fixupBuffers.at(Subresource);
     }
 
