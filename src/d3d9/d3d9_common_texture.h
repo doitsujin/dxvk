@@ -37,6 +37,7 @@ namespace dxvk {
     D3DMULTISAMPLE_TYPE MultiSample;
     DWORD MultisampleQuality;
     BOOL Lockable;
+    BOOL Offscreen;
   };
 
   class Direct3DCommonTexture9 {

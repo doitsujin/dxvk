@@ -112,6 +112,7 @@ namespace dxvk {
     desc.Type = D3DRTYPE_SURFACE;
     desc.Usage = D3DUSAGE_RENDERTARGET;
     desc.Width = std::max(1u, m_desc.width);
+    desc.Offscreen = FALSE;
 
     m_backBuffer = new Direct3DCommonTexture9{ m_parent, &desc };
 

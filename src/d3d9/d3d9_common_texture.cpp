@@ -370,6 +370,9 @@ namespace dxvk {
     if (GetPackedDepthStencilFormat(m_desc.Format))
       return D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER;
 
+    if (!m_desc.Offscreen)
+      return D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER;
+
     // Images that can be read by the host should be mapped directly in
     // order to avoid expensive synchronization with the GPU. This does
     // however require linear tiling, which may not be supported for all

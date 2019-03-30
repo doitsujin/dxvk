@@ -328,6 +328,7 @@ namespace dxvk {
     desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
     desc.Lockable           = Pool != D3DPOOL_DEFAULT || Usage & D3DUSAGE_DYNAMIC;
+    desc.Offscreen          = FALSE;
 
     if (FAILED(Direct3DCommonTexture9::NormalizeTextureProperties(&desc)))
       return D3DERR_INVALIDCALL;
@@ -1906,6 +1907,7 @@ namespace dxvk {
     desc.MultiSample = MultiSample;
     desc.MultisampleQuality = MultisampleQuality;
     desc.Lockable = Lockable;
+    desc.Offscreen = FALSE;
 
     if (FAILED(Direct3DCommonTexture9::NormalizeTextureProperties(&desc)))
       return D3DERR_INVALIDCALL;
@@ -1949,6 +1951,7 @@ namespace dxvk {
     desc.MultiSample = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
     desc.Lockable = TRUE; // Offscreen surfaces are always lockable.
+    desc.Offscreen = TRUE;
 
     if (FAILED(Direct3DCommonTexture9::NormalizeTextureProperties(&desc)))
       return D3DERR_INVALIDCALL;
@@ -2000,6 +2003,7 @@ namespace dxvk {
     desc.MultiSample = MultiSample;
     desc.MultisampleQuality = MultisampleQuality;
     desc.Lockable = lockable;
+    desc.Offscreen = FALSE;
 
     if (FAILED(Direct3DCommonTexture9::NormalizeTextureProperties(&desc)))
       return D3DERR_INVALIDCALL;
