@@ -19,12 +19,11 @@ namespace dxvk {
       , m_texture                  ( pDevice, pDesc )
       , m_lod                      ( 0 )
       , m_autogenFilter            ( D3DTEXF_LINEAR ) {
-      auto& desc = *m_texture.Desc();
+      const uint32_t arraySlices = m_texture.GetLayerCount();
+      const uint32_t mipLevels   = m_texture.GetMipCount();
 
-      const uint32_t arraySlices = desc.Type == D3DRTYPE_CUBETEXTURE ? 6 : 1;
-      const uint32_t mipLevels = desc.MipLevels;
-
-      m_subresources.resize(arraySlices * mipLevels);
+      m_subresources.resize(
+        m_texture.GetSubresourceCount());
 
       for (uint32_t i = 0; i < mipLevels; i++) {
         for (uint32_t j = 0; j < arraySlices; j++) {

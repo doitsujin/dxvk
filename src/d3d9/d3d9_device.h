@@ -606,7 +606,8 @@ namespace dxvk {
      */
     HRESULT LockImage(
             Direct3DCommonTexture9* pResource,
-            UINT                    Subresource,
+            UINT                    Face,
+            UINT                    Mip,
             D3DLOCKED_BOX*          pLockedBox,
       const D3DBOX*                 pBox,
             DWORD                   Flags);
@@ -620,7 +621,16 @@ namespace dxvk {
      */
     HRESULT UnlockImage(
             Direct3DCommonTexture9* pResource,
-            UINT                    Subresource);
+            UINT                    Face,
+            UINT                    MipLevel);
+
+    void FixupFormat(
+            Direct3DCommonTexture9* pResource,
+            UINT                    Face,
+            UINT                    MipLevel);
+
+    HRESULT FlushImage(
+        Direct3DCommonTexture9* pResource);
 
     HRESULT LockBuffer(
             Direct3DCommonBuffer9*  pResource,

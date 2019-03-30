@@ -83,54 +83,6 @@ namespace dxvk {
     }
 
     /**
-     * \brief The DXVK buffer used for fixup
-     * \returns The DXVK buffer
-     */
-    Rc<DxvkBuffer> GetFixupBuffer() const {
-      return m_fixupBuffer;
-    }
-
-    /**
-     * \brief The DXVK buffer used for mapping
-     * \returns The DXVK buffer
-     */
-    Rc<DxvkBuffer> GetMappedBuffer() const {
-      return m_buffer;
-    }
-
-    /**
-     * \brief Currently mapped subresource
-     * \returns Mapped subresource
-     */
-    VkImageSubresource GetMappedSubresource() const {
-      return m_mappedSubresource;
-    }
-
-    /**
-     * \brief Current map flags
-     */
-    DWORD GetMapFlags() const {
-      return m_mapFlags;
-    }
-
-    /**
-     * \brief Sets mapped subresource
-     * \param [in] Subresource The subresource
-     */
-    void SetMappedSubresource(VkImageSubresource Subresource, DWORD Flags) {
-      m_mappedSubresource = Subresource;
-      m_mapFlags = Flags;
-    }
-
-    /**
-     * \brief Resets mapped subresource
-     * Marks the texture as not mapped.
-     */
-    void ClearMappedSubresource() {
-      m_mappedSubresource = VkImageSubresource{ };
-    }
-
-    /**
      * \brief Computes subresource from the subresource index
      *
      * Used by some functions that operate on only
@@ -183,7 +135,7 @@ namespace dxvk {
      * \returns \c D3D_OK if the parameters are valid or D3DERR_INVALIDCALL if it fails.
      */
     HRESULT Lock(
-      UINT            Subresource,
+      UINT            MipLevel,
       D3DLOCKED_BOX*  pLockedBox,
       const D3DBOX*         pBox,
       DWORD           Flags);
@@ -195,7 +147,7 @@ namespace dxvk {
      * \param [in] Subresource The subresource of the image to unlock
      * \returns \c D3D_OK if the parameters are valid or D3DERR_INVALIDCALL if it fails.
      */
-    HRESULT Unlock(UINT     Subresource);
+    HRESULT Unlock(UINT     MipLevel);
 
     Rc<DxvkImageView> GetImageView(bool srgb) const {
       return srgb ? m_imageViewSrgb : m_imageView;
@@ -209,8 +161,16 @@ namespace dxvk {
       return m_depthStencilView;
     }
 
+    UINT GetMipCount() const {
+      return m_desc.MipLevels;
+    }
+
     UINT GetLayerCount() const {
       return m_desc.Type == D3DRTYPE_CUBETEXTURE ? 6 : 1;
+    }
+
+    UINT GetSubresourceCount() const {
+      return GetLayerCount()* m_desc.MipLevels;
     }
 
     VkImageViewType GetImageViewType() const;
@@ -232,6 +192,77 @@ namespace dxvk {
         : VK_IMAGE_LAYOUT_GENERAL;
     }
 
+    VkDeviceSize GetMipLength(UINT MipLevel) const;
+
+    void MarkSubresourceMapped(UINT Face, UINT MipLevel, DWORD LockFlags) {
+      const uint32_t mipBit = 1u << MipLevel;
+
+      LockFlags & D3DLOCK_READONLY
+        ? m_readOnlySubresources[Face] |= mipBit
+        : m_mappedSubresources[Face]   |= mipBit;
+    }
+
+    bool IsReadOnlyLock(UINT Face, UINT MipLevel) {
+      const uint32_t mipBit = 1u << MipLevel;
+
+      return m_readOnlySubresources[Face] & mipBit;
+    }
+
+    bool MarkSubresourceUnmapped(UINT Face, UINT MipLevel) {
+      const uint32_t mipBit = 1u << MipLevel;
+
+      m_readOnlySubresources[Face] &= ~mipBit;
+      m_unmappedSubresources[Face] |= mipBit;
+
+      return m_mappedSubresources == m_unmappedSubresources;
+    }
+
+    bool ReadLocksRemaining() {
+      for (uint32_t mask : m_readOnlySubresources) {
+        if (mask != 0)
+          return true;
+      }
+
+      return false;
+    }
+
+    std::array<uint32_t, 6> DiscardSubresourceMasking() {
+      std::array<uint32_t, 6> copy = m_mappedSubresources;
+
+      for (uint32_t i = 0; i < m_mappedSubresources.size(); i++) {
+        m_mappedSubresources.at(i) = 0;
+        m_unmappedSubresources.at(i) = 0;
+      }
+
+      return copy;
+    }
+
+    UINT CalcSubresource(UINT Face, UINT MipLevel) const {
+      return Face * m_desc.MipLevels + MipLevel;
+    }
+
+    void AllocBuffers(UINT Face, UINT MipLevel);
+
+    Rc<DxvkBuffer> GetMappedBuffer(UINT Face, UINT MipLevel) {
+      UINT Subresource = CalcSubresource(Face, MipLevel);
+
+      return m_mappingBuffers.at(Subresource);
+    }
+
+    Rc<DxvkBuffer> GetFixupBuffer(UINT Face, UINT MipLevel) {
+      UINT Subresource = CalcSubresource(Face, MipLevel);
+
+      return m_fixupBuffers.at(Subresource);
+    }
+
+    bool IsWriteOnly() {
+      return m_desc.Usage & D3DUSAGE_WRITEONLY;
+    }
+
+    void DeallocMappingBuffers();
+    void DeallocFixupBuffers();
+    void DeallocFixupBuffer(UINT Subresource);
+
   private:
 
     Direct3DDevice9Ex*   m_device;
@@ -239,12 +270,9 @@ namespace dxvk {
     D3D9_COMMON_TEXTURE_MAP_MODE m_mapMode;
 
     Rc<DxvkImage>   m_image;
-    Rc<DxvkBuffer>  m_buffer;
-    Rc<DxvkBuffer>  m_fixupBuffer;
 
-    VkImageSubresource m_mappedSubresource
-      = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0 };
-    DWORD m_mapFlags = 0;
+    std::vector<Rc<DxvkBuffer>>       m_mappingBuffers;
+    std::vector<Rc<DxvkBuffer>>       m_fixupBuffers;
 
     Rc<DxvkImageView>                 m_imageView;
     Rc<DxvkImageView>                 m_imageViewSrgb;
@@ -254,7 +282,9 @@ namespace dxvk {
 
     Rc<DxvkImageView>                 m_depthStencilView;
 
-    Rc<DxvkBuffer> CreateMappedBuffer() const;
+    std::array<uint32_t, 6>           m_mappedSubresources;
+    std::array<uint32_t, 6>           m_unmappedSubresources;
+    std::array<uint32_t, 6>           m_readOnlySubresources;
 
     BOOL CheckImageSupport(
       const DxvkImageCreateInfo*  pImageInfo,

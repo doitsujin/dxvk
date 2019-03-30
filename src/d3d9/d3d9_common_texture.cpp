@@ -125,14 +125,6 @@ namespace dxvk {
         "\n  Usage:   ", std::hex, m_desc.Usage));
     }
 
-    // If necessary, create the mapped linear buffer
-    if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER) {
-      m_buffer = CreateMappedBuffer();
-
-      if (m_desc.Format == D3D9Format::R8G8B8)
-        m_fixupBuffer = CreateMappedBuffer();
-    }
-
     // Create the image on a host-visible memory type
     // in case it is going to be mapped directly.
     VkMemoryPropertyFlags memoryProperties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
@@ -152,6 +144,10 @@ namespace dxvk {
 
     if (m_desc.Usage & D3DUSAGE_RENDERTARGET)
       CreateRenderTargetView();
+
+    DiscardSubresourceMasking();
+    DeallocFixupBuffers();
+    DeallocMappingBuffers();
   }
 
   Direct3DCommonTexture9::Direct3DCommonTexture9(
@@ -168,10 +164,6 @@ namespace dxvk {
     m_mapMode = m_image->info().tiling == VK_IMAGE_TILING_LINEAR
       ? D3D9_COMMON_TEXTURE_MAP_MODE_DIRECT
       : D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER;
-
-    // If necessary, create the mapped linear buffer
-    if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER)
-      m_buffer = CreateMappedBuffer();
   }
 
   VkImageSubresource Direct3DCommonTexture9::GetSubresourceFromIndex(
@@ -355,7 +347,7 @@ namespace dxvk {
     // 2. Since the image will most likely be read for rendering by the GPU,
     //    writing the image to device-local image may be more efficient than
     //    reading its contents from host-visible memory.
-    if (m_desc.Usage & D3DUSAGE_DYNAMIC )
+    if (m_desc.Usage & D3DUSAGE_DYNAMIC)
       return D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER;
 
     if (!m_desc.Lockable)
@@ -382,31 +374,58 @@ namespace dxvk {
       : D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER;
   }
 
-
-  Rc<DxvkBuffer> Direct3DCommonTexture9::CreateMappedBuffer() const {
+  VkDeviceSize Direct3DCommonTexture9::GetMipLength(UINT MipLevel) const {
     const DxvkFormatInfo* formatInfo = imageFormatInfo(
       m_device->LookupFormat(m_desc.Format).Format);
 
-    const VkExtent3D blockCount = util::computeBlockCount(
-      VkExtent3D{ m_desc.Width, m_desc.Height, m_desc.Depth },
-      formatInfo->blockSize);
+    const VkExtent3D levelExtent = m_image->mipLevelExtent(MipLevel);
+    const VkExtent3D blockCount  = util::computeBlockCount(levelExtent, formatInfo->blockSize);
 
-    DxvkBufferCreateInfo info;
-    info.size = formatInfo->elementSize
+    return formatInfo->elementSize
       * blockCount.width
       * blockCount.height
       * blockCount.depth;
+  }
+
+  void Direct3DCommonTexture9::AllocBuffers(UINT Face, UINT MipLevel) {
+    UINT Subresource = CalcSubresource(Face, MipLevel);
+
+    if (m_mappingBuffers.at(Subresource) != nullptr)
+      return;
+
+    DxvkBufferCreateInfo info;
+    info.size  = GetMipLength(MipLevel);
     info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
                | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
     info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
     info.access = VK_ACCESS_TRANSFER_READ_BIT
                 | VK_ACCESS_TRANSFER_WRITE_BIT;
 
-    return m_device->GetDXVKDevice()->createBuffer(info,
+    m_mappingBuffers.at(Subresource) = m_device->GetDXVKDevice()->createBuffer(info,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
       | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+    if (m_desc.Format == D3D9Format::R8G8B8) {
+      m_fixupBuffers.at(Subresource) =
+        m_device->GetDXVKDevice()->createBuffer(info,
+          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+        | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    }
   }
 
+  void Direct3DCommonTexture9::DeallocMappingBuffers() {
+    m_mappingBuffers.clear();
+    m_mappingBuffers.resize(GetSubresourceCount());
+  }
+
+  void Direct3DCommonTexture9::DeallocFixupBuffers() {
+    m_fixupBuffers.clear();
+    m_fixupBuffers.resize(GetSubresourceCount());
+  }
+
+  void Direct3DCommonTexture9::DeallocFixupBuffer(UINT Subresource) {
+    m_fixupBuffers.at(Subresource) = nullptr;
+  }
 
   VkImageType Direct3DCommonTexture9::GetImageTypeFromResourceType(D3DRESOURCETYPE Type) {
     switch (Type) {
@@ -456,22 +475,24 @@ namespace dxvk {
   }
 
   HRESULT Direct3DCommonTexture9::Lock(
-    UINT            Subresource,
+    UINT            MipLevel,
     D3DLOCKED_BOX*  pLockedBox,
     const D3DBOX*         pBox,
     DWORD           Flags) {
     return m_device->LockImage(
       this,
-      Subresource,
+      0,
+      MipLevel,
       pLockedBox,
       pBox,
       Flags);
   }
 
-  HRESULT Direct3DCommonTexture9::Unlock(UINT     Subresource) {
+  HRESULT Direct3DCommonTexture9::Unlock(UINT     MipLevel) {
     return m_device->UnlockImage(
       this,
-      Subresource);
+      0,
+      MipLevel);
   }
 
   VkImageViewType Direct3DCommonTexture9::GetImageViewType() const {

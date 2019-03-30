@@ -2406,7 +2406,8 @@ namespace dxvk {
 
   HRESULT Direct3DDevice9Ex::LockImage(
             Direct3DCommonTexture9* pResource,
-            UINT                    Subresource,
+            UINT                    Face,
+            UINT                    MipLevel,
             D3DLOCKED_BOX*          pLockedBox,
       const D3DBOX*                 pBox,
             DWORD                   Flags) {
@@ -2417,19 +2418,25 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
     }
 
+    // TODO: Some fastpath for D3DLOCK_READONLY.
+
+    UINT Subresource = pResource->CalcSubresource(Face, MipLevel);
+
+    pResource->AllocBuffers(Face, MipLevel);
+
     const Rc<DxvkImage>  mappedImage  = pResource->GetImage();
-    const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer();
+    const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer(Face, MipLevel);
     
     auto formatInfo = imageFormatInfo(mappedImage->info().format);
     auto subresource = pResource->GetSubresourceFromIndex(
         formatInfo->aspectMask, Subresource);
     
-    pResource->SetMappedSubresource(subresource, Flags);
+    pResource->MarkSubresourceMapped(Face, MipLevel, Flags);
 
     uint32_t dimOffsets[3] = { 0, 0, 0 };
     if (pBox != nullptr) {
-      dimOffsets[0] = formatInfo->elementSize * align(pBox->Left, formatInfo->blockSize.width);
-      dimOffsets[1] = formatInfo->elementSize * align(pBox->Top, formatInfo->blockSize.height);
+      dimOffsets[0] = formatInfo->elementSize * align(pBox->Left,  formatInfo->blockSize.width);
+      dimOffsets[1] = formatInfo->elementSize * align(pBox->Top,   formatInfo->blockSize.height);
       dimOffsets[2] = formatInfo->elementSize * align(pBox->Front, formatInfo->blockSize.depth);
     }
     
@@ -2481,6 +2488,7 @@ namespace dxvk {
       WaitForResource(mappedBuffer, 0);
 
       DxvkBufferSliceHandle physSlice = mappedBuffer->getSliceHandle();
+
       pLockedBox->RowPitch   = packFormatInfo->elementSize * levelExtent.width;
       pLockedBox->SlicePitch = packFormatInfo->elementSize * levelExtent.width * levelExtent.height;
 
@@ -2492,7 +2500,7 @@ namespace dxvk {
       return S_OK;
     } else {
       VkExtent3D levelExtent = mappedImage->mipLevelExtent(subresource.mipLevel);
-      VkExtent3D blockCount = util::computeBlockCount(levelExtent, formatInfo->blockSize);
+      VkExtent3D blockCount  = util::computeBlockCount(levelExtent, formatInfo->blockSize);
       
       DxvkBufferSliceHandle physSlice;
       
@@ -2511,7 +2519,7 @@ namespace dxvk {
         // When using any map mode which requires the image contents
         // to be preserved, and if the GPU has write access to the
         // image, copy the current image contents into the buffer.
-        const bool copyExistingData = pResource->Desc()->Pool == D3DPOOL_SYSTEMMEM || pResource->Desc()->Pool == D3DPOOL_SCRATCH;
+        const bool copyExistingData = !pResource->IsWriteOnly();
         
         if (copyExistingData) {
           auto subresourceLayers = vk::makeSubresourceLayers(subresource);
@@ -2548,79 +2556,134 @@ namespace dxvk {
 
   HRESULT Direct3DDevice9Ex::UnlockImage(
         Direct3DCommonTexture9* pResource,
-        UINT                    Subresource) {
+        UINT                    Face,
+        UINT                    MipLevel) {
     auto lock = LockDevice();
 
-    if (pResource->GetMapFlags() & D3DLOCK_READONLY)
-      return D3D_OK;
+    bool readOnly      = pResource->IsReadOnlyLock(Face, MipLevel);
 
+    bool fullyUnlocked = pResource->MarkSubresourceUnmapped(Face, MipLevel);
+
+    bool readRemaining = pResource->ReadLocksRemaining();
+
+    // Do we have a pending copy?
     if (pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER) {
-      // Now that data has been written into the buffer,
-      // we need to copy its contents into the image
-      const Rc<DxvkImage>  mappedImage  = pResource->GetImage();
-      const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer();
-      const Rc<DxvkBuffer> fixupBuffer  = pResource->GetFixupBuffer();
-
-      VkImageSubresource subresource    = pResource->GetMappedSubresource();
-
       bool fixup8888 = pResource->Desc()->Format == D3D9Format::R8G8B8;
 
-      VkExtent3D levelExtent = mappedImage
-        ->mipLevelExtent(subresource.mipLevel);
+      // Do we need to do some fixup before copying to image?
+      if (fixup8888 && !readOnly)
+        FixupFormat(pResource, Face, MipLevel);
 
-      if (fixup8888) {
-        DxvkBufferSliceHandle mappingSlice  = mappedBuffer->getSliceHandle();
-        DxvkBufferSliceHandle fixupSlice    = fixupBuffer->allocSlice();
+      // Are we fully unlocked to flush me to the GPU?
+      if (fullyUnlocked) {
+        this->FlushImage(pResource);
 
-        EmitCs([
-          cImageBuffer = fixupBuffer,
-          cBufferSlice = fixupSlice
-        ] (DxvkContext* ctx) {
-          ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
-        });
-        
-        auto formatInfo        = imageFormatInfo(mappedImage->info().format);
-        VkExtent3D levelExtent = mappedImage->mipLevelExtent(subresource.mipLevel);
-        VkExtent3D blockCount  = util::computeBlockCount(levelExtent, formatInfo->blockSize);
-
-        uint32_t rowPitch   = formatInfo->elementSize * blockCount.width;
-        uint32_t slicePitch = formatInfo->elementSize * blockCount.width * blockCount.height;
-
-        uint8_t* dst = reinterpret_cast<uint8_t*>(fixupSlice.mapPtr);
-        uint8_t* src = reinterpret_cast<uint8_t*>(mappingSlice.mapPtr);
-
-        for (uint32_t z = 0; z < levelExtent.depth; z++) {
-          for (uint32_t y = 0; y < levelExtent.height; y++) {
-            for (uint32_t x = 0; x < levelExtent.width; x++) {
-              for (uint32_t c = 0; c < 3; c++)
-                dst[z * slicePitch + y * rowPitch + x * 4 + c] = src[z * slicePitch + y * rowPitch + x * 3 + c];
-
-              dst[z * slicePitch + y * rowPitch + x * 4 + 3] = 255;
-            }
-          }
-        }
+        // If we have no remaining read-only locks we can clear our mapping buffers.
+        if (!readRemaining)
+          pResource->DeallocMappingBuffers();
       }
-
-      VkImageSubresourceLayers subresourceLayers = {
-        subresource.aspectMask,
-        subresource.mipLevel,
-        subresource.arrayLayer, 1 };
-
-      EmitCs([
-        cSrcBuffer      = fixup8888 ? fixupBuffer : mappedBuffer,
-        cDstImage       = mappedImage,
-        cDstLayers      = subresourceLayers,
-        cDstLevelExtent = levelExtent
-      ] (DxvkContext* ctx) {
-        ctx->copyBufferToImage(cDstImage, cDstLayers,
-          VkOffset3D{ 0, 0, 0 }, cDstLevelExtent,
-          cSrcBuffer, 0, { 0u, 0u });
-      });
     }
 
-    pResource->ClearMappedSubresource();
+    return D3D_OK;
+  }
+
+  HRESULT Direct3DDevice9Ex::FlushImage(
+    Direct3DCommonTexture9* pResource) {
+    auto dirtySubresources = pResource->DiscardSubresourceMasking();
+
+    for (uint32_t l = 0; l < pResource->GetLayerCount(); l++) {
+      uint32_t mask = dirtySubresources[l];
+
+      for (uint32_t i = 0; i < 32; i++) {
+        if (!(mask & 1u << i))
+          continue;
+
+        const UINT Subresource = pResource->CalcSubresource(l, i);
+        const bool fixup8888   = pResource->Desc()->Format == D3D9Format::R8G8B8;
+
+        // Now that data has been written into the buffer,
+        // we need to copy its contents into the image
+        const Rc<DxvkImage>  mappedImage  = pResource->GetImage();
+        const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer(l, i);
+        const Rc<DxvkBuffer> fixupBuffer  = pResource->GetFixupBuffer(l, i);
+
+        auto formatInfo  = imageFormatInfo(mappedImage->info().format);
+        auto subresource = pResource->GetSubresourceFromIndex(
+          formatInfo->aspectMask, Subresource);
+
+        auto copySubresource = pResource->GetSubresourceFromIndex(
+          formatInfo->aspectMask, i);
+
+        VkExtent3D levelExtent = mappedImage
+          ->mipLevelExtent(copySubresource.mipLevel);
+
+        VkImageSubresourceLayers subresourceLayers = {
+          copySubresource.aspectMask,
+          copySubresource.mipLevel,
+          copySubresource.arrayLayer, 1 };
+
+        EmitCs([
+          cSrcBuffer = fixup8888 ? fixupBuffer : mappedBuffer,
+          cDstImage = mappedImage,
+          cDstLayers = subresourceLayers,
+          cDstLevelExtent = levelExtent
+        ] (DxvkContext* ctx) {
+          ctx->copyBufferToImage(cDstImage, cDstLayers,
+            VkOffset3D{ 0, 0, 0 }, cDstLevelExtent,
+            cSrcBuffer, 0, { 0u, 0u });
+        });
+      }
+    }
 
     return D3D_OK;
+  }
+
+  void Direct3DDevice9Ex::FixupFormat(
+        Direct3DCommonTexture9* pResource,
+        UINT                    Face,
+        UINT                    MipLevel) {
+    UINT Subresource = pResource->CalcSubresource(Face, MipLevel);
+
+    const Rc<DxvkImage>  mappedImage  = pResource->GetImage();
+    const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer(Face, MipLevel);
+    const Rc<DxvkBuffer> fixupBuffer  = pResource->GetFixupBuffer(Face, MipLevel);
+
+    auto formatInfo = imageFormatInfo(mappedImage->info().format);
+    auto subresource = pResource->GetSubresourceFromIndex(
+      formatInfo->aspectMask, Subresource);
+
+    DxvkBufferSliceHandle mappingSlice = mappedBuffer->getSliceHandle();
+    DxvkBufferSliceHandle fixupSlice   = fixupBuffer->allocSlice();
+
+    EmitCs([
+      cImageBuffer = fixupBuffer,
+      cBufferSlice = fixupSlice
+    ] (DxvkContext* ctx) {
+      ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
+    });
+
+    VkExtent3D levelExtent = mappedImage
+      ->mipLevelExtent(subresource.mipLevel);
+    VkExtent3D blockCount = util::computeBlockCount(levelExtent, formatInfo->blockSize);
+
+    uint32_t rowPitch   = formatInfo->elementSize * blockCount.width;
+    uint32_t slicePitch = formatInfo->elementSize * blockCount.width * blockCount.height;
+
+    uint8_t * dst = reinterpret_cast<uint8_t*>(fixupSlice.mapPtr);
+    uint8_t * src = reinterpret_cast<uint8_t*>(mappingSlice.mapPtr);
+
+    for (uint32_t z = 0; z < levelExtent.depth; z++) {
+      for (uint32_t y = 0; y < levelExtent.height; y++) {
+        for (uint32_t x = 0; x < levelExtent.width; x++) {
+          for (uint32_t c = 0; c < 3; c++)
+            dst[z * slicePitch + y * rowPitch + x * 4 + c] = src[z * slicePitch + y * rowPitch + x * 3 + c];
+
+          dst[z * slicePitch + y * rowPitch + x * 4 + 3] = 255;
+        }
+      }
+    }
+
+    pResource->DeallocFixupBuffer(Subresource);
   }
 
   HRESULT Direct3DDevice9Ex::LockBuffer(
