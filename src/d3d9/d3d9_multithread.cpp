@@ -36,7 +36,7 @@ namespace dxvk {
 
   Direct3DMultithread9::Direct3DMultithread9(
           BOOL                  Protected)
-    : m_protected{ Protected } {
+    : m_protected( Protected ) {
     
   }
 

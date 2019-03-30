@@ -9,10 +9,10 @@
 namespace dxvk::caps {
 
   HRESULT checkDeviceFormat(
-    D3D9Format adapterFormat,
-    DWORD usage,
-    D3DRESOURCETYPE resourceType,
-    D3D9Format checkFormat) {
+          D3D9Format      adapterFormat,
+          DWORD           usage,
+          D3DRESOURCETYPE resourceType,
+          D3D9Format      checkFormat) {
     // TODO: Handle SRGB checks here.
 
     if (!IsSupportedMonitorFormat(adapterFormat) && adapterFormat != D3D9Format::Unknown)
@@ -21,107 +21,55 @@ namespace dxvk::caps {
     if (checkFormat == D3D9Format::INST)
       return D3DERR_NOTAVAILABLE;
 
-      switch (resourceType) {
-      case D3DRTYPE_SURFACE:
-        if (usage & D3DUSAGE_RENDERTARGET) {
-          switch (checkFormat) {
-          case D3D9Format::NULL_FORMAT:
-          case D3D9Format::R8G8B8:
-          case D3D9Format::R5G6B5:
-          case D3D9Format::X1R5G5B5:
-          case D3D9Format::A1R5G5B5:
-          case D3D9Format::A4R4G4B4:
-          case D3D9Format::R3G3B2:
-          case D3D9Format::A8R3G3B2:
-          case D3D9Format::X4R4G4B4:
-          case D3D9Format::A8R8G8B8:
-          case D3D9Format::X8R8G8B8:
-          case D3D9Format::A8B8G8R8:
-          case D3D9Format::X8B8G8R8:
-          case D3D9Format::G16R16:
-          case D3D9Format::A2B10G10R10:
-          case D3D9Format::A2R10G10B10:
-          case D3D9Format::A16B16G16R16:
-          case D3D9Format::R16F:
-          case D3D9Format::G16R16F:
-          case D3D9Format::A16B16G16R16F:
-          case D3D9Format::R32F:
-          case D3D9Format::G32R32F:
-          case D3D9Format::A32B32G32R32F:
-            return D3D_OK;
-          default:
-            return D3DERR_NOTAVAILABLE;
-          }
+    switch (resourceType) {
+    case D3DRTYPE_SURFACE:
+      if (usage & D3DUSAGE_RENDERTARGET) {
+        switch (checkFormat) {
+        case D3D9Format::NULL_FORMAT:
+        case D3D9Format::R8G8B8:
+        case D3D9Format::R5G6B5:
+        case D3D9Format::X1R5G5B5:
+        case D3D9Format::A1R5G5B5:
+        case D3D9Format::A4R4G4B4:
+        case D3D9Format::R3G3B2:
+        case D3D9Format::A8R3G3B2:
+        case D3D9Format::X4R4G4B4:
+        case D3D9Format::A8R8G8B8:
+        case D3D9Format::X8R8G8B8:
+        case D3D9Format::A8B8G8R8:
+        case D3D9Format::X8B8G8R8:
+        case D3D9Format::G16R16:
+        case D3D9Format::A2B10G10R10:
+        case D3D9Format::A2R10G10B10:
+        case D3D9Format::A16B16G16R16:
+        case D3D9Format::R16F:
+        case D3D9Format::G16R16F:
+        case D3D9Format::A16B16G16R16F:
+        case D3D9Format::R32F:
+        case D3D9Format::G32R32F:
+        case D3D9Format::A32B32G32R32F:
+          return D3D_OK;
+        default:
+          return D3DERR_NOTAVAILABLE;
         }
-        else if (usage & D3DUSAGE_DEPTHSTENCIL) {
-          switch (checkFormat) {
-          case D3D9Format::D32:
-          case D3D9Format::D24S8:
-          case D3D9Format::D24X8:
-          case D3D9Format::D16:
-          case D3D9Format::D24FS8:
-          case D3D9Format::D32F_LOCKABLE:
-          case D3D9Format::DF24:
-          case D3D9Format::DF16:
-          case D3D9Format::INTZ:
-            return D3D_OK;
-          default:
-            return D3DERR_NOTAVAILABLE;
-          }
+      }
+      else if (usage & D3DUSAGE_DEPTHSTENCIL) {
+        switch (checkFormat) {
+        case D3D9Format::D32:
+        case D3D9Format::D24S8:
+        case D3D9Format::D24X8:
+        case D3D9Format::D16:
+        case D3D9Format::D24FS8:
+        case D3D9Format::D32F_LOCKABLE:
+        case D3D9Format::DF24:
+        case D3D9Format::DF16:
+        case D3D9Format::INTZ:
+          return D3D_OK;
+        default:
+          return D3DERR_NOTAVAILABLE;
         }
-        else {
-          switch (checkFormat) {
-          case D3D9Format::A8:
-          case D3D9Format::R5G6B5:
-          case D3D9Format::X1R5G5B5:
-          case D3D9Format::A1R5G5B5:
-          case D3D9Format::A4R4G4B4:
-          case D3D9Format::R3G3B2:
-          case D3D9Format::A8R3G3B2:
-          case D3D9Format::X4R4G4B4:
-          case D3D9Format::R8G8B8:
-          case D3D9Format::X8R8G8B8:
-          case D3D9Format::A8R8G8B8:
-          case D3D9Format::X8B8G8R8:
-          case D3D9Format::A8B8G8R8:
-          case D3D9Format::P8:
-          case D3D9Format::A8P8:
-          case D3D9Format::G16R16:
-          case D3D9Format::A2R10G10B10:
-          case D3D9Format::A2B10G10R10:
-          case D3D9Format::A16B16G16R16:
-          case D3D9Format::DXT1:
-          case D3D9Format::DXT2:
-          case D3D9Format::DXT3:
-          case D3D9Format::DXT4:
-          case D3D9Format::DXT5:
-          case D3D9Format::ATI1:
-          case D3D9Format::ATI2:
-          case D3D9Format::R16F:
-          case D3D9Format::G16R16F:
-          case D3D9Format::A16B16G16R16F:
-          case D3D9Format::R32F:
-          case D3D9Format::G32R32F:
-          case D3D9Format::A32B32G32R32F:
-          case D3D9Format::V8U8:
-          case D3D9Format::L6V5U5:
-          case D3D9Format::X8L8V8U8:
-          case D3D9Format::Q8W8V8U8:
-          case D3D9Format::V16U16:
-          case D3D9Format::A2W10V10U10:
-          case D3D9Format::Q16W16V16U16:
-          case D3D9Format::L8:
-          case D3D9Format::A4L4:
-          case D3D9Format::L16:
-          case D3D9Format::A8L8:
-          case D3D9Format::NVDB:
-          case D3D9Format::ATOC:
-            return D3D_OK;
-          default:
-            return D3DERR_NOTAVAILABLE;
-          }
-        }
-      case D3DRTYPE_VOLUME:
+      }
+      else {
         switch (checkFormat) {
         case D3D9Format::A8:
         case D3D9Format::R5G6B5:
@@ -166,285 +114,337 @@ namespace dxvk::caps {
         case D3D9Format::A4L4:
         case D3D9Format::L16:
         case D3D9Format::A8L8:
+        case D3D9Format::NVDB:
+        case D3D9Format::ATOC:
           return D3D_OK;
         default:
           return D3DERR_NOTAVAILABLE;
         }
-      case D3DRTYPE_CUBETEXTURE:
-        if (usage & D3DUSAGE_RENDERTARGET) {
-          switch (checkFormat) {
-          case D3D9Format::NULL_FORMAT:
-          case D3D9Format::R8G8B8:
-          case D3D9Format::R5G6B5:
-          case D3D9Format::X1R5G5B5:
-          case D3D9Format::A1R5G5B5:
-          case D3D9Format::A4R4G4B4:
-          case D3D9Format::R3G3B2:
-          case D3D9Format::A8R3G3B2:
-          case D3D9Format::X4R4G4B4:
-          case D3D9Format::A8R8G8B8:
-          case D3D9Format::X8R8G8B8:
-          case D3D9Format::A8B8G8R8:
-          case D3D9Format::X8B8G8R8:
-          case D3D9Format::G16R16:
-          case D3D9Format::A2B10G10R10:
-          case D3D9Format::A2R10G10B10:
-          case D3D9Format::A16B16G16R16:
-          case D3D9Format::R16F:
-          case D3D9Format::G16R16F:
-          case D3D9Format::A16B16G16R16F:
-          case D3D9Format::R32F:
-          case D3D9Format::G32R32F:
-          case D3D9Format::A32B32G32R32F:
-            return D3D_OK;
-          default:
-            return D3DERR_NOTAVAILABLE;
-          }
-        }
-        else if (usage & D3DUSAGE_DEPTHSTENCIL) {
-          switch (checkFormat) {
-          case D3D9Format::D32:
-          case D3D9Format::D24S8:
-          case D3D9Format::D24X8:
-          case D3D9Format::D16:
-          case D3D9Format::D24FS8:
-          case D3D9Format::D32F_LOCKABLE:
-          case D3D9Format::DF24:
-          case D3D9Format::DF16:
-          case D3D9Format::INTZ:
-            return D3D_OK;
-          default:
-            return D3DERR_NOTAVAILABLE;
-          }
-        }
-        else {
-          switch (checkFormat) {
-          case D3D9Format::A8:
-          case D3D9Format::R5G6B5:
-          case D3D9Format::X1R5G5B5:
-          case D3D9Format::A1R5G5B5:
-          case D3D9Format::A4R4G4B4:
-          case D3D9Format::R3G3B2:
-          case D3D9Format::A8R3G3B2:
-          case D3D9Format::X4R4G4B4:
-          case D3D9Format::R8G8B8:
-          case D3D9Format::X8R8G8B8:
-          case D3D9Format::A8R8G8B8:
-          case D3D9Format::X8B8G8R8:
-          case D3D9Format::A8B8G8R8:
-          case D3D9Format::P8:
-          case D3D9Format::A8P8:
-          case D3D9Format::G16R16:
-          case D3D9Format::A2R10G10B10:
-          case D3D9Format::A2B10G10R10:
-          case D3D9Format::A16B16G16R16:
-          case D3D9Format::DXT1:
-          case D3D9Format::DXT2:
-          case D3D9Format::DXT3:
-          case D3D9Format::DXT4:
-          case D3D9Format::DXT5:
-          case D3D9Format::ATI1:
-          case D3D9Format::ATI2:
-          case D3D9Format::R16F:
-          case D3D9Format::G16R16F:
-          case D3D9Format::A16B16G16R16F:
-          case D3D9Format::R32F:
-          case D3D9Format::G32R32F:
-          case D3D9Format::A32B32G32R32F:
-          case D3D9Format::V8U8:
-          case D3D9Format::L6V5U5:
-          case D3D9Format::X8L8V8U8:
-          case D3D9Format::Q8W8V8U8:
-          case D3D9Format::V16U16:
-          case D3D9Format::A2W10V10U10:
-          case D3D9Format::Q16W16V16U16:
-          case D3D9Format::L8:
-          case D3D9Format::A4L4:
-          case D3D9Format::L16:
-          case D3D9Format::A8L8:
-            return D3D_OK;
-          default:
-            return D3DERR_NOTAVAILABLE;
-          }
-        }
-      case D3DRTYPE_VOLUMETEXTURE:
-        switch (checkFormat) {
-        case D3D9Format::A8:
-        case D3D9Format::R5G6B5:
-        case D3D9Format::X1R5G5B5:
-        case D3D9Format::A1R5G5B5:
-        case D3D9Format::A4R4G4B4:
-        case D3D9Format::R3G3B2:
-        case D3D9Format::A8R3G3B2:
-        case D3D9Format::X4R4G4B4:
-        case D3D9Format::R8G8B8:
-        case D3D9Format::X8R8G8B8:
-        case D3D9Format::A8R8G8B8:
-        case D3D9Format::X8B8G8R8:
-        case D3D9Format::A8B8G8R8:
-        case D3D9Format::P8:
-        case D3D9Format::A8P8:
-        case D3D9Format::G16R16:
-        case D3D9Format::A2R10G10B10:
-        case D3D9Format::A2B10G10R10:
-        case D3D9Format::A16B16G16R16:
-        case D3D9Format::DXT1:
-        case D3D9Format::DXT2:
-        case D3D9Format::DXT3:
-        case D3D9Format::DXT4:
-        case D3D9Format::DXT5:
-        case D3D9Format::ATI1:
-        case D3D9Format::ATI2:
-        case D3D9Format::R16F:
-        case D3D9Format::G16R16F:
-        case D3D9Format::A16B16G16R16F:
-        case D3D9Format::R32F:
-        case D3D9Format::G32R32F:
-        case D3D9Format::A32B32G32R32F:
-        case D3D9Format::V8U8:
-        case D3D9Format::L6V5U5:
-        case D3D9Format::X8L8V8U8:
-        case D3D9Format::Q8W8V8U8:
-        case D3D9Format::V16U16:
-        case D3D9Format::A2W10V10U10:
-        case D3D9Format::Q16W16V16U16:
-        case D3D9Format::L8:
-        case D3D9Format::A4L4:
-        case D3D9Format::L16:
-        case D3D9Format::A8L8:
-          return D3D_OK;
-        default:
-          return D3DERR_NOTAVAILABLE;
-        }
-      case D3DRTYPE_TEXTURE:
-        if (usage & D3DUSAGE_RENDERTARGET) {
-          switch (checkFormat) {
-          case D3D9Format::NULL_FORMAT:
-          case D3D9Format::R8G8B8:
-          case D3D9Format::R5G6B5:
-          case D3D9Format::X1R5G5B5:
-          case D3D9Format::A1R5G5B5:
-          case D3D9Format::A4R4G4B4:
-          case D3D9Format::R3G3B2:
-          case D3D9Format::A8R3G3B2:
-          case D3D9Format::X4R4G4B4:
-          case D3D9Format::A8R8G8B8:
-          case D3D9Format::X8R8G8B8:
-          case D3D9Format::A8B8G8R8:
-          case D3D9Format::X8B8G8R8:
-          case D3D9Format::G16R16:
-          case D3D9Format::A2B10G10R10:
-          case D3D9Format::A2R10G10B10:
-          case D3D9Format::A16B16G16R16:
-          case D3D9Format::R16F:
-          case D3D9Format::G16R16F:
-          case D3D9Format::A16B16G16R16F:
-          case D3D9Format::R32F:
-          case D3D9Format::G32R32F:
-          case D3D9Format::A32B32G32R32F:
-            return D3D_OK;
-          default:
-            return D3DERR_NOTAVAILABLE;
-          }
-        }
-        else if (usage & D3DUSAGE_DEPTHSTENCIL) {
-          switch (checkFormat) {
-          case D3D9Format::D32:
-          case D3D9Format::D24S8:
-          case D3D9Format::D24X8:
-          case D3D9Format::D16:
-          case D3D9Format::D24FS8:
-          case D3D9Format::D32F_LOCKABLE:
-          case D3D9Format::DF24:
-          case D3D9Format::DF16:
-          case D3D9Format::INTZ:
-            return D3D_OK;
-          default:
-            return D3DERR_NOTAVAILABLE;
-          }
-        }
-        else {
-          switch (checkFormat) {
-          case D3D9Format::NULL_FORMAT:
-          case D3D9Format::A8:
-          case D3D9Format::R5G6B5:
-          case D3D9Format::X1R5G5B5:
-          case D3D9Format::A1R5G5B5:
-          case D3D9Format::A4R4G4B4:
-          case D3D9Format::R3G3B2:
-          case D3D9Format::A8R3G3B2:
-          case D3D9Format::X4R4G4B4:
-          case D3D9Format::R8G8B8:
-          case D3D9Format::X8R8G8B8:
-          case D3D9Format::A8R8G8B8:
-          case D3D9Format::X8B8G8R8:
-          case D3D9Format::A8B8G8R8:
-          case D3D9Format::P8:
-          case D3D9Format::A8P8:
-          case D3D9Format::G16R16:
-          case D3D9Format::A2R10G10B10:
-          case D3D9Format::A2B10G10R10:
-          case D3D9Format::A16B16G16R16:
-          case D3D9Format::DXT1:
-          case D3D9Format::DXT2:
-          case D3D9Format::DXT3:
-          case D3D9Format::DXT4:
-          case D3D9Format::DXT5:
-          case D3D9Format::ATI1:
-          case D3D9Format::ATI2:
-          case D3D9Format::R16F:
-          case D3D9Format::G16R16F:
-          case D3D9Format::A16B16G16R16F:
-          case D3D9Format::R32F:
-          case D3D9Format::G32R32F:
-          case D3D9Format::A32B32G32R32F:
-          case D3D9Format::V8U8:
-          case D3D9Format::L6V5U5:
-          case D3D9Format::X8L8V8U8:
-          case D3D9Format::Q8W8V8U8:
-          case D3D9Format::V16U16:
-          case D3D9Format::A2W10V10U10:
-          case D3D9Format::Q16W16V16U16:
-          case D3D9Format::L8:
-          case D3D9Format::A4L4:
-          case D3D9Format::L16:
-          case D3D9Format::A8L8:
-          case D3D9Format::D32:
-          case D3D9Format::D24S8:
-          case D3D9Format::D24X8:
-          case D3D9Format::D16:
-          case D3D9Format::D24FS8:
-          case D3D9Format::D32F_LOCKABLE:
-          case D3D9Format::DF24:
-          case D3D9Format::DF16:
-          case D3D9Format::INTZ:
-            return D3D_OK;
-          default:
-            return D3DERR_NOTAVAILABLE;
-          }
-        }
-      case D3DRTYPE_VERTEXBUFFER:
-        if (checkFormat == D3D9Format::VERTEXDATA)
-          return D3D_OK;
-        else
-          return D3DERR_NOTAVAILABLE;
-      case D3DRTYPE_INDEXBUFFER:
-        switch (checkFormat) {
-        case D3D9Format::INDEX16:
-        case D3D9Format::INDEX32:
-          return D3D_OK;
-        default:
-          return D3DERR_NOTAVAILABLE;
-        };
+      }
+    case D3DRTYPE_VOLUME:
+      switch (checkFormat) {
+      case D3D9Format::A8:
+      case D3D9Format::R5G6B5:
+      case D3D9Format::X1R5G5B5:
+      case D3D9Format::A1R5G5B5:
+      case D3D9Format::A4R4G4B4:
+      case D3D9Format::R3G3B2:
+      case D3D9Format::A8R3G3B2:
+      case D3D9Format::X4R4G4B4:
+      case D3D9Format::R8G8B8:
+      case D3D9Format::X8R8G8B8:
+      case D3D9Format::A8R8G8B8:
+      case D3D9Format::X8B8G8R8:
+      case D3D9Format::A8B8G8R8:
+      case D3D9Format::P8:
+      case D3D9Format::A8P8:
+      case D3D9Format::G16R16:
+      case D3D9Format::A2R10G10B10:
+      case D3D9Format::A2B10G10R10:
+      case D3D9Format::A16B16G16R16:
+      case D3D9Format::DXT1:
+      case D3D9Format::DXT2:
+      case D3D9Format::DXT3:
+      case D3D9Format::DXT4:
+      case D3D9Format::DXT5:
+      case D3D9Format::ATI1:
+      case D3D9Format::ATI2:
+      case D3D9Format::R16F:
+      case D3D9Format::G16R16F:
+      case D3D9Format::A16B16G16R16F:
+      case D3D9Format::R32F:
+      case D3D9Format::G32R32F:
+      case D3D9Format::A32B32G32R32F:
+      case D3D9Format::V8U8:
+      case D3D9Format::L6V5U5:
+      case D3D9Format::X8L8V8U8:
+      case D3D9Format::Q8W8V8U8:
+      case D3D9Format::V16U16:
+      case D3D9Format::A2W10V10U10:
+      case D3D9Format::Q16W16V16U16:
+      case D3D9Format::L8:
+      case D3D9Format::A4L4:
+      case D3D9Format::L16:
+      case D3D9Format::A8L8:
+        return D3D_OK;
       default:
         return D3DERR_NOTAVAILABLE;
       }
+    case D3DRTYPE_CUBETEXTURE:
+      if (usage & D3DUSAGE_RENDERTARGET) {
+        switch (checkFormat) {
+        case D3D9Format::NULL_FORMAT:
+        case D3D9Format::R8G8B8:
+        case D3D9Format::R5G6B5:
+        case D3D9Format::X1R5G5B5:
+        case D3D9Format::A1R5G5B5:
+        case D3D9Format::A4R4G4B4:
+        case D3D9Format::R3G3B2:
+        case D3D9Format::A8R3G3B2:
+        case D3D9Format::X4R4G4B4:
+        case D3D9Format::A8R8G8B8:
+        case D3D9Format::X8R8G8B8:
+        case D3D9Format::A8B8G8R8:
+        case D3D9Format::X8B8G8R8:
+        case D3D9Format::G16R16:
+        case D3D9Format::A2B10G10R10:
+        case D3D9Format::A2R10G10B10:
+        case D3D9Format::A16B16G16R16:
+        case D3D9Format::R16F:
+        case D3D9Format::G16R16F:
+        case D3D9Format::A16B16G16R16F:
+        case D3D9Format::R32F:
+        case D3D9Format::G32R32F:
+        case D3D9Format::A32B32G32R32F:
+          return D3D_OK;
+        default:
+          return D3DERR_NOTAVAILABLE;
+        }
+      }
+      else if (usage & D3DUSAGE_DEPTHSTENCIL) {
+        switch (checkFormat) {
+        case D3D9Format::D32:
+        case D3D9Format::D24S8:
+        case D3D9Format::D24X8:
+        case D3D9Format::D16:
+        case D3D9Format::D24FS8:
+        case D3D9Format::D32F_LOCKABLE:
+        case D3D9Format::DF24:
+        case D3D9Format::DF16:
+        case D3D9Format::INTZ:
+          return D3D_OK;
+        default:
+          return D3DERR_NOTAVAILABLE;
+        }
+      }
+      else {
+        switch (checkFormat) {
+        case D3D9Format::A8:
+        case D3D9Format::R5G6B5:
+        case D3D9Format::X1R5G5B5:
+        case D3D9Format::A1R5G5B5:
+        case D3D9Format::A4R4G4B4:
+        case D3D9Format::R3G3B2:
+        case D3D9Format::A8R3G3B2:
+        case D3D9Format::X4R4G4B4:
+        case D3D9Format::R8G8B8:
+        case D3D9Format::X8R8G8B8:
+        case D3D9Format::A8R8G8B8:
+        case D3D9Format::X8B8G8R8:
+        case D3D9Format::A8B8G8R8:
+        case D3D9Format::P8:
+        case D3D9Format::A8P8:
+        case D3D9Format::G16R16:
+        case D3D9Format::A2R10G10B10:
+        case D3D9Format::A2B10G10R10:
+        case D3D9Format::A16B16G16R16:
+        case D3D9Format::DXT1:
+        case D3D9Format::DXT2:
+        case D3D9Format::DXT3:
+        case D3D9Format::DXT4:
+        case D3D9Format::DXT5:
+        case D3D9Format::ATI1:
+        case D3D9Format::ATI2:
+        case D3D9Format::R16F:
+        case D3D9Format::G16R16F:
+        case D3D9Format::A16B16G16R16F:
+        case D3D9Format::R32F:
+        case D3D9Format::G32R32F:
+        case D3D9Format::A32B32G32R32F:
+        case D3D9Format::V8U8:
+        case D3D9Format::L6V5U5:
+        case D3D9Format::X8L8V8U8:
+        case D3D9Format::Q8W8V8U8:
+        case D3D9Format::V16U16:
+        case D3D9Format::A2W10V10U10:
+        case D3D9Format::Q16W16V16U16:
+        case D3D9Format::L8:
+        case D3D9Format::A4L4:
+        case D3D9Format::L16:
+        case D3D9Format::A8L8:
+          return D3D_OK;
+        default:
+          return D3DERR_NOTAVAILABLE;
+        }
+      }
+    case D3DRTYPE_VOLUMETEXTURE:
+      switch (checkFormat) {
+      case D3D9Format::A8:
+      case D3D9Format::R5G6B5:
+      case D3D9Format::X1R5G5B5:
+      case D3D9Format::A1R5G5B5:
+      case D3D9Format::A4R4G4B4:
+      case D3D9Format::R3G3B2:
+      case D3D9Format::A8R3G3B2:
+      case D3D9Format::X4R4G4B4:
+      case D3D9Format::R8G8B8:
+      case D3D9Format::X8R8G8B8:
+      case D3D9Format::A8R8G8B8:
+      case D3D9Format::X8B8G8R8:
+      case D3D9Format::A8B8G8R8:
+      case D3D9Format::P8:
+      case D3D9Format::A8P8:
+      case D3D9Format::G16R16:
+      case D3D9Format::A2R10G10B10:
+      case D3D9Format::A2B10G10R10:
+      case D3D9Format::A16B16G16R16:
+      case D3D9Format::DXT1:
+      case D3D9Format::DXT2:
+      case D3D9Format::DXT3:
+      case D3D9Format::DXT4:
+      case D3D9Format::DXT5:
+      case D3D9Format::ATI1:
+      case D3D9Format::ATI2:
+      case D3D9Format::R16F:
+      case D3D9Format::G16R16F:
+      case D3D9Format::A16B16G16R16F:
+      case D3D9Format::R32F:
+      case D3D9Format::G32R32F:
+      case D3D9Format::A32B32G32R32F:
+      case D3D9Format::V8U8:
+      case D3D9Format::L6V5U5:
+      case D3D9Format::X8L8V8U8:
+      case D3D9Format::Q8W8V8U8:
+      case D3D9Format::V16U16:
+      case D3D9Format::A2W10V10U10:
+      case D3D9Format::Q16W16V16U16:
+      case D3D9Format::L8:
+      case D3D9Format::A4L4:
+      case D3D9Format::L16:
+      case D3D9Format::A8L8:
+        return D3D_OK;
+      default:
+        return D3DERR_NOTAVAILABLE;
+      }
+    case D3DRTYPE_TEXTURE:
+      if (usage & D3DUSAGE_RENDERTARGET) {
+        switch (checkFormat) {
+        case D3D9Format::NULL_FORMAT:
+        case D3D9Format::R8G8B8:
+        case D3D9Format::R5G6B5:
+        case D3D9Format::X1R5G5B5:
+        case D3D9Format::A1R5G5B5:
+        case D3D9Format::A4R4G4B4:
+        case D3D9Format::R3G3B2:
+        case D3D9Format::A8R3G3B2:
+        case D3D9Format::X4R4G4B4:
+        case D3D9Format::A8R8G8B8:
+        case D3D9Format::X8R8G8B8:
+        case D3D9Format::A8B8G8R8:
+        case D3D9Format::X8B8G8R8:
+        case D3D9Format::G16R16:
+        case D3D9Format::A2B10G10R10:
+        case D3D9Format::A2R10G10B10:
+        case D3D9Format::A16B16G16R16:
+        case D3D9Format::R16F:
+        case D3D9Format::G16R16F:
+        case D3D9Format::A16B16G16R16F:
+        case D3D9Format::R32F:
+        case D3D9Format::G32R32F:
+        case D3D9Format::A32B32G32R32F:
+          return D3D_OK;
+        default:
+          return D3DERR_NOTAVAILABLE;
+        }
+      }
+      else if (usage & D3DUSAGE_DEPTHSTENCIL) {
+        switch (checkFormat) {
+        case D3D9Format::D32:
+        case D3D9Format::D24S8:
+        case D3D9Format::D24X8:
+        case D3D9Format::D16:
+        case D3D9Format::D24FS8:
+        case D3D9Format::D32F_LOCKABLE:
+        case D3D9Format::DF24:
+        case D3D9Format::DF16:
+        case D3D9Format::INTZ:
+          return D3D_OK;
+        default:
+          return D3DERR_NOTAVAILABLE;
+        }
+      }
+      else {
+        switch (checkFormat) {
+        case D3D9Format::NULL_FORMAT:
+        case D3D9Format::A8:
+        case D3D9Format::R5G6B5:
+        case D3D9Format::X1R5G5B5:
+        case D3D9Format::A1R5G5B5:
+        case D3D9Format::A4R4G4B4:
+        case D3D9Format::R3G3B2:
+        case D3D9Format::A8R3G3B2:
+        case D3D9Format::X4R4G4B4:
+        case D3D9Format::R8G8B8:
+        case D3D9Format::X8R8G8B8:
+        case D3D9Format::A8R8G8B8:
+        case D3D9Format::X8B8G8R8:
+        case D3D9Format::A8B8G8R8:
+        case D3D9Format::P8:
+        case D3D9Format::A8P8:
+        case D3D9Format::G16R16:
+        case D3D9Format::A2R10G10B10:
+        case D3D9Format::A2B10G10R10:
+        case D3D9Format::A16B16G16R16:
+        case D3D9Format::DXT1:
+        case D3D9Format::DXT2:
+        case D3D9Format::DXT3:
+        case D3D9Format::DXT4:
+        case D3D9Format::DXT5:
+        case D3D9Format::ATI1:
+        case D3D9Format::ATI2:
+        case D3D9Format::R16F:
+        case D3D9Format::G16R16F:
+        case D3D9Format::A16B16G16R16F:
+        case D3D9Format::R32F:
+        case D3D9Format::G32R32F:
+        case D3D9Format::A32B32G32R32F:
+        case D3D9Format::V8U8:
+        case D3D9Format::L6V5U5:
+        case D3D9Format::X8L8V8U8:
+        case D3D9Format::Q8W8V8U8:
+        case D3D9Format::V16U16:
+        case D3D9Format::A2W10V10U10:
+        case D3D9Format::Q16W16V16U16:
+        case D3D9Format::L8:
+        case D3D9Format::A4L4:
+        case D3D9Format::L16:
+        case D3D9Format::A8L8:
+        case D3D9Format::D32:
+        case D3D9Format::D24S8:
+        case D3D9Format::D24X8:
+        case D3D9Format::D16:
+        case D3D9Format::D24FS8:
+        case D3D9Format::D32F_LOCKABLE:
+        case D3D9Format::DF24:
+        case D3D9Format::DF16:
+        case D3D9Format::INTZ:
+          return D3D_OK;
+        default:
+          return D3DERR_NOTAVAILABLE;
+        }
+      }
+    case D3DRTYPE_VERTEXBUFFER:
+      if (checkFormat == D3D9Format::VERTEXDATA)
+        return D3D_OK;
+      else
+        return D3DERR_NOTAVAILABLE;
+    case D3DRTYPE_INDEXBUFFER:
+      switch (checkFormat) {
+      case D3D9Format::INDEX16:
+      case D3D9Format::INDEX32:
+        return D3D_OK;
+      default:
+        return D3DERR_NOTAVAILABLE;
+      };
+    default:
+      return D3DERR_NOTAVAILABLE;
     }
+  }
 
   HRESULT checkDepthStencilMatch(
-    D3D9Format adapterFormat,
-    D3D9Format renderTargetFormat,
-    D3D9Format depthStencilFormat) {
+          D3D9Format adapterFormat,
+          D3D9Format renderTargetFormat,
+          D3D9Format depthStencilFormat) {
     if (!IsSupportedMonitorFormat(adapterFormat) && adapterFormat != D3D9Format::Unknown)
       return D3DERR_NOTAVAILABLE;
 
@@ -452,16 +452,16 @@ namespace dxvk::caps {
   }
 
   HRESULT checkDeviceFormatConversion(
-    D3D9Format srcFormat,
-    D3D9Format dstFormat) {
+          D3D9Format srcFormat,
+          D3D9Format dstFormat) {
     return D3D_OK; // Any format combo is OK!
   }
 
   HRESULT checkDeviceMultiSampleType(
-    D3D9Format surfaceFormat,
-    BOOL windowed,
-    D3DMULTISAMPLE_TYPE multiSampleType,
-    DWORD* qualityLevels) {
+          D3D9Format          surfaceFormat,
+          BOOL                windowed,
+          D3DMULTISAMPLE_TYPE multiSampleType,
+          DWORD*              qualityLevels) {
     if (qualityLevels != nullptr) {
       if (multiSampleType == D3DMULTISAMPLE_NONMASKABLE)
         *qualityLevels = 4;
@@ -483,9 +483,9 @@ namespace dxvk::caps {
   }
 
   HRESULT checkDeviceType(
-    D3D9Format adapterFormat,
-    D3D9Format backBufferFormat,
-    BOOL windowed) {
+          D3D9Format adapterFormat,
+          D3D9Format backBufferFormat,
+          BOOL       windowed) {
     if (adapterFormat == D3D9Format::Unknown) {
       if (windowed == FALSE)
         return D3DERR_INVALIDCALL;
