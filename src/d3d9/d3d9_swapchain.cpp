@@ -199,6 +199,7 @@ namespace dxvk {
       m_parent,
       presenter.getBackBuffer(),
       0,
+      0,
       this };
 
     m_backBuffer->AddRefPrivate();
