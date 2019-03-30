@@ -2404,6 +2404,19 @@ namespace dxvk {
     return true;
   }
 
+  uint32_t Direct3DDevice9Ex::CalcImageLockOffset(
+            uint32_t                SlicePitch,
+            uint32_t                RowPitch,
+      const DxvkFormatInfo*         FormatInfo,
+      const D3DBOX*                 pBox) {
+    if (pBox == nullptr)
+      return 0;
+
+    return pBox->Front * SlicePitch +
+           pBox->Top   * RowPitch   +
+           FormatInfo->elementSize * align(pBox->Left, FormatInfo->blockSize.width);
+  }
+
   HRESULT Direct3DDevice9Ex::LockImage(
             Direct3DCommonTexture9* pResource,
             UINT                    Face,
@@ -2432,13 +2445,6 @@ namespace dxvk {
         formatInfo->aspectMask, Subresource);
     
     pResource->MarkSubresourceMapped(Face, MipLevel, Flags);
-
-    uint32_t dimOffsets[3] = { 0, 0, 0 };
-    if (pBox != nullptr) {
-      dimOffsets[0] = formatInfo->elementSize * align(pBox->Left,  formatInfo->blockSize.width);
-      dimOffsets[1] = formatInfo->elementSize * align(pBox->Top,   formatInfo->blockSize.height);
-      dimOffsets[2] = formatInfo->elementSize * align(pBox->Front, formatInfo->blockSize.depth);
-    }
     
     if (pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_DIRECT) {
       const VkImageType imageType = mappedImage->info().type;
@@ -2453,10 +2459,14 @@ namespace dxvk {
       pLockedBox->RowPitch   = imageType >= VK_IMAGE_TYPE_2D ? layout.rowPitch   : layout.size;
       pLockedBox->SlicePitch = imageType >= VK_IMAGE_TYPE_3D ? layout.depthPitch : layout.size;
 
+      const uint32_t offset = CalcImageLockOffset(
+        pLockedBox->SlicePitch,
+        pLockedBox->RowPitch,
+        formatInfo,
+        pBox);
+
       uint8_t* data = reinterpret_cast<uint8_t*>(mappedImage->mapPtr(layout.offset));
-      data += dimOffsets[2] * pLockedBox->SlicePitch
-           +  dimOffsets[1] * pLockedBox->RowPitch
-           +  dimOffsets[0];
+      data += offset;
       pLockedBox->pBits = data;
       return S_OK;
     } else if (formatInfo->aspectMask == (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
@@ -2492,10 +2502,14 @@ namespace dxvk {
       pLockedBox->RowPitch   = packFormatInfo->elementSize * levelExtent.width;
       pLockedBox->SlicePitch = packFormatInfo->elementSize * levelExtent.width * levelExtent.height;
 
+      const uint32_t offset = CalcImageLockOffset(
+        pLockedBox->SlicePitch,
+        pLockedBox->RowPitch,
+        packFormatInfo,
+        pBox);
+
       uint8_t* data = reinterpret_cast<uint8_t*>(physSlice.mapPtr);
-      data += dimOffsets[2] * pLockedBox->SlicePitch
-           +  dimOffsets[1] * pLockedBox->RowPitch
-           +  dimOffsets[0];
+      data += offset;
       pLockedBox->pBits = data;
       return S_OK;
     } else {
@@ -2545,10 +2559,14 @@ namespace dxvk {
       pLockedBox->RowPitch   = formatInfo->elementSize * blockCount.width;
       pLockedBox->SlicePitch = formatInfo->elementSize * blockCount.width * blockCount.height;
 
+      const uint32_t offset = CalcImageLockOffset(
+        pLockedBox->SlicePitch,
+        pLockedBox->RowPitch,
+        formatInfo,
+        pBox);
+
       uint8_t* data = reinterpret_cast<uint8_t*>(physSlice.mapPtr);
-      data += dimOffsets[2] * pLockedBox->SlicePitch
-           +  dimOffsets[1] * pLockedBox->RowPitch
-           +  dimOffsets[0];
+      data += offset;
       pLockedBox->pBits = data;
       return S_OK;
     }

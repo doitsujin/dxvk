@@ -612,6 +612,12 @@ namespace dxvk {
       const D3DBOX*                 pBox,
             DWORD                   Flags);
 
+    uint32_t CalcImageLockOffset(
+            uint32_t                SlicePitch,
+            uint32_t                RowPitch,
+      const DxvkFormatInfo*         FormatInfo,
+      const D3DBOX*                 pBox);
+
     /**
      * \brief Unlocks a subresource of an image
      * 
