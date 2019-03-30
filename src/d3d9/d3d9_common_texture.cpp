@@ -131,8 +131,10 @@ namespace dxvk {
 
     if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_DIRECT) {
       memoryProperties = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-                       | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-                       | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+                       | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+      if (!IsWriteOnly())
+        memoryProperties |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
     }
 
     m_image = m_device->GetDXVKDevice()->createImage(imageInfo, memoryProperties);
@@ -404,15 +406,17 @@ namespace dxvk {
     info.access = VK_ACCESS_TRANSFER_READ_BIT
                 | VK_ACCESS_TRANSFER_WRITE_BIT;
 
-    m_mappingBuffers.at(Subresource) = m_device->GetDXVKDevice()->createBuffer(info,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-      | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    auto memoryType = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                    | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+    if (!IsWriteOnly())
+      memoryType |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+
+    m_mappingBuffers.at(Subresource) = m_device->GetDXVKDevice()->createBuffer(info, memoryType);
 
     if (m_desc.Format == D3D9Format::R8G8B8) {
       m_fixupBuffers.at(Subresource) =
-        m_device->GetDXVKDevice()->createBuffer(info,
-          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-        | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        m_device->GetDXVKDevice()->createBuffer(info, memoryType);
     }
   }
 
