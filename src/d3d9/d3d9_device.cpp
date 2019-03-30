@@ -2612,16 +2612,13 @@ namespace dxvk {
         auto subresource = pResource->GetSubresourceFromIndex(
           formatInfo->aspectMask, Subresource);
 
-        auto copySubresource = pResource->GetSubresourceFromIndex(
-          formatInfo->aspectMask, i);
-
         VkExtent3D levelExtent = mappedImage
-          ->mipLevelExtent(copySubresource.mipLevel);
+          ->mipLevelExtent(subresource.mipLevel);
 
         VkImageSubresourceLayers subresourceLayers = {
-          copySubresource.aspectMask,
-          copySubresource.mipLevel,
-          copySubresource.arrayLayer, 1 };
+          subresource.aspectMask,
+          subresource.mipLevel,
+          subresource.arrayLayer, 1 };
 
         EmitCs([
           cSrcBuffer = fixup8888 ? fixupBuffer : mappedBuffer,
