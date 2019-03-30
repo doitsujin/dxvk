@@ -2632,6 +2632,8 @@ namespace dxvk {
             VkOffset3D{ 0, 0, 0 }, cDstLevelExtent,
             cSrcBuffer, 0, { 0u, 0u });
         });
+
+        pResource->DeallocFixupBuffer(Subresource);
       }
     }
 
@@ -2682,8 +2684,6 @@ namespace dxvk {
         }
       }
     }
-
-    pResource->DeallocFixupBuffer(Subresource);
   }
 
   HRESULT Direct3DDevice9Ex::LockBuffer(
