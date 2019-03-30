@@ -19,6 +19,10 @@ namespace dxvk {
     { "Dishonored2.exe", {{
       { "d3d11.allowMapFlagNoWait",         "True" }
     }} },
+    /* Dissidia Final Fantasy NT Free Edition */
+    { "dffnt.exe", {{
+      { "dxgi.deferSurfaceCreation",        "True" },
+    }} },
     /* Elite Dangerous: Compiles weird shaders    *
      * when running on AMD hardware               */
     { "EliteDangerous64.exe", {{
