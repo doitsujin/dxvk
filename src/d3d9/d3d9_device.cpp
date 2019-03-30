@@ -3149,8 +3149,8 @@ namespace dxvk {
     info.useAnisotropy  = IsAnisotropic(key.MinFilter)
                        || IsAnisotropic(key.MagFilter);
     info.mipmapLodBias  = key.MipmapLodBias;
-    info.mipmapLodMin   = -FLT_MAX;
-    info.mipmapLodMax   = float(key.MaxMipLevel);
+    info.mipmapLodMin   = float(key.MaxMipLevel);
+    info.mipmapLodMax   = FLT_MAX;
     info.usePixelCoord  = VK_FALSE;
     DecodeD3DCOLOR(key.BorderColor, reinterpret_cast<float*>(&info.borderColor));
 
