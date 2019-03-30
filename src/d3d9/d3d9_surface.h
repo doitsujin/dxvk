@@ -18,7 +18,8 @@ namespace dxvk {
     Direct3DSurface9(
             Direct3DDevice9Ex*         pDevice,
             Direct3DCommonTexture9*    pTexture,
-            UINT                       Subresource,
+            UINT                       Face,
+            UINT                       MipLevel,
             IUnknown*                  pContainer);
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);

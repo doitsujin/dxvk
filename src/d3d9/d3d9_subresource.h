@@ -13,13 +13,15 @@ namespace dxvk {
     Direct3DSubresource9(
             Direct3DDevice9Ex*      pDevice,
             Direct3DCommonTexture9* pTexture,
-            UINT                    Subresource,
+            UINT                    Face,
+            UINT                    MipLevel,
             IUnknown*               pContainer,
             bool                    OwnsTexture)
       : Direct3DResource9<Type...> ( pDevice )
       , m_container                ( pContainer )
       , m_texture                  ( pTexture )
-      , m_subresource              ( Subresource )
+      , m_face                     ( Face )
+      , m_mipLevel                 ( MipLevel )
       , m_ownsTexture              ( OwnsTexture ) { }
 
     ~Direct3DSubresource9() {
@@ -61,8 +63,16 @@ namespace dxvk {
       return m_texture;
     }
 
+    UINT GetFace() const {
+      return m_face;
+    }
+
+    UINT GetMipLevel() const {
+      return m_mipLevel;
+    }
+
     UINT GetSubresource() const {
-      return m_subresource;
+      return m_texture->CalcSubresource(m_face, m_mipLevel);
     }
 
     Rc<DxvkImageView> GetImageView(bool srgb) {
@@ -90,7 +100,8 @@ namespace dxvk {
     IUnknown*               m_container;
 
     Direct3DCommonTexture9* m_texture;
-    UINT                    m_subresource;
+    UINT                    m_face;
+    UINT                    m_mipLevel;
 
     bool                    m_ownsTexture;
 

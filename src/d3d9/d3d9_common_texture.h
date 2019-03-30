@@ -135,10 +135,11 @@ namespace dxvk {
      * \returns \c D3D_OK if the parameters are valid or D3DERR_INVALIDCALL if it fails.
      */
     HRESULT Lock(
-      UINT            MipLevel,
-      D3DLOCKED_BOX*  pLockedBox,
+            UINT            Face,
+            UINT            MipLevel,
+            D3DLOCKED_BOX*  pLockedBox,
       const D3DBOX*         pBox,
-      DWORD           Flags);
+            DWORD           Flags);
 
     /**
      * \brief Unlocks a subresource of an image
@@ -147,7 +148,9 @@ namespace dxvk {
      * \param [in] Subresource The subresource of the image to unlock
      * \returns \c D3D_OK if the parameters are valid or D3DERR_INVALIDCALL if it fails.
      */
-    HRESULT Unlock(UINT     MipLevel);
+    HRESULT Unlock(
+            UINT Face,
+            UINT MipLevel);
 
     Rc<DxvkImageView> GetImageView(bool srgb) const {
       return srgb ? m_imageViewSrgb : m_imageView;

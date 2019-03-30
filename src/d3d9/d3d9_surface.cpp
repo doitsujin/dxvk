@@ -9,18 +9,21 @@ namespace dxvk {
         device,
         new Direct3DCommonTexture9( device, desc ),
         0,
+        0,
         device,
         true) { }
 
   Direct3DSurface9::Direct3DSurface9(
           Direct3DDevice9Ex*         pDevice,
           Direct3DCommonTexture9*    pTexture,
-          UINT                       Subresource,
+          UINT                       Face,
+          UINT                       MipLevel,
           IUnknown*                  pContainer)
     : Direct3DSurface9Base(
         pDevice,
         pTexture,
-        Subresource,
+        Face,
+        MipLevel,
         pContainer,
         false) { }
 
@@ -78,7 +81,12 @@ namespace dxvk {
 
     D3DLOCKED_BOX lockedBox;
 
-    HRESULT hr = m_texture->Lock(m_subresource, &lockedBox, pRect != nullptr ? &box : nullptr, Flags);
+    HRESULT hr = m_texture->Lock(
+      m_face,
+      m_mipLevel,
+      &lockedBox,
+      pRect != nullptr ? &box : nullptr,
+      Flags);
 
     pLockedRect->pBits = lockedBox.pBits;
     pLockedRect->Pitch = lockedBox.RowPitch;
@@ -87,7 +95,9 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DSurface9::UnlockRect() {
-    return m_texture->Unlock(m_subresource);
+    return m_texture->Unlock(
+      m_face,
+      m_mipLevel);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DSurface9::GetDC(HDC *phdc) {

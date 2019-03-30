@@ -475,23 +475,26 @@ namespace dxvk {
   }
 
   HRESULT Direct3DCommonTexture9::Lock(
-    UINT            MipLevel,
-    D3DLOCKED_BOX*  pLockedBox,
+          UINT            Face,
+          UINT            MipLevel,
+          D3DLOCKED_BOX*  pLockedBox,
     const D3DBOX*         pBox,
-    DWORD           Flags) {
+          DWORD           Flags) {
     return m_device->LockImage(
       this,
-      0,
+      Face,
       MipLevel,
       pLockedBox,
       pBox,
       Flags);
   }
 
-  HRESULT Direct3DCommonTexture9::Unlock(UINT     MipLevel) {
+  HRESULT Direct3DCommonTexture9::Unlock(
+          UINT Face,
+          UINT MipLevel) {
     return m_device->UnlockImage(
       this,
-      0,
+      Face,
       MipLevel);
   }
 

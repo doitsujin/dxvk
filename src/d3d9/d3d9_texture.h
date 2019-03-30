@@ -25,14 +25,16 @@ namespace dxvk {
       m_subresources.resize(
         m_texture.GetSubresourceCount());
 
-      for (uint32_t i = 0; i < mipLevels; i++) {
-        for (uint32_t j = 0; j < arraySlices; j++) {
-          uint32_t subresource = CalcSubresource(i, j, mipLevels);
+      for (uint32_t i = 0; i < arraySlices; i++) {
+        for (uint32_t j = 0; j < mipLevels; j++) {
+
+          uint32_t subresource = CalcSubresource(j, i, mipLevels);
 
           SubresourceType* subObj = new SubresourceType(
             pDevice,
             &m_texture,
-            subresource,
+            i,
+            j,
             this);
           subObj->AddRefPrivate();
 
