@@ -2576,7 +2576,8 @@ namespace dxvk {
 
       // Are we fully unlocked to flush me to the GPU?
       if (fullyUnlocked) {
-        this->FlushImage(pResource);
+        if (!readOnly)
+          this->FlushImage(pResource);
 
         // If we have no remaining read-only locks we can clear our mapping buffers.
         if (!readRemaining)
