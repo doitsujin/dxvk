@@ -226,10 +226,10 @@ namespace dxvk {
 
     bool relativeAddressingUsesToken(const DxsoDecodeContext& context) const;
 
+    DxsoInstructionArgumentType m_type;
+
     uint32_t                    m_token;
     uint32_t                    m_relativeToken;
-
-    DxsoInstructionArgumentType m_type;
 
   };
 

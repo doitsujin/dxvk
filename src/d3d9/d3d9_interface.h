@@ -136,9 +136,9 @@ namespace dxvk {
     std::vector<D3DDISPLAYMODEEX> m_modes;
     D3D9Format m_modeCacheFormat;
 
-    bool m_extended;
-
     Rc<DxvkInstance> m_instance;
+
+    bool m_extended;
 
     D3D9Options m_d3d9Options;
 

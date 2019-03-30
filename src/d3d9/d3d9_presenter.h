@@ -97,6 +97,7 @@ namespace dxvk {
     };
 
     Direct3DDevice9Ex* m_parent;
+    HWND m_window;
     Rc<DxvkDevice>     m_device;
     Rc<DxvkContext> m_context;
     Rc<vk::Presenter> m_presenter;
@@ -124,7 +125,6 @@ namespace dxvk {
     DxvkLogicOpState        m_loState;
     DxvkBlendMode m_blendMode;
 
-    HWND m_window;
 
     std::vector<Rc<DxvkImageView>> m_imageViews;
 

@@ -17,9 +17,9 @@ namespace dxvk {
             IUnknown*               pContainer,
             bool                    OwnsTexture)
       : Direct3DResource9<Type...> ( pDevice )
+      , m_container                ( pContainer )
       , m_texture                  ( pTexture )
       , m_subresource              ( Subresource )
-      , m_container                ( pContainer )
       , m_ownsTexture              ( OwnsTexture ) { }
 
     ~Direct3DSubresource9() {
@@ -67,10 +67,6 @@ namespace dxvk {
 
     Rc<DxvkImageView> GetImageView(bool srgb) {
       return m_texture->GetImageView(srgb);
-    }
-
-    VkImageLayout GetImageLayout(bool srgb) {
-      return m_texture->GetImageLayout(srgb);
     }
 
     Rc<DxvkImageView> GetRenderTargetView(bool srgb) {

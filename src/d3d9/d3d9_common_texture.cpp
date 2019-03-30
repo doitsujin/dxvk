@@ -160,11 +160,11 @@ namespace dxvk {
           Rc<DxvkImageView>       ImageView,
           Rc<DxvkImageView>       ImageViewSrgb,
     const D3D9TextureDesc*        pDesc)
-    : m_device{ pDevice }
-    , m_desc{ *pDesc }
-    , m_image{ Image }
-    , m_imageView{ ImageView }
-    , m_imageViewSrgb{ ImageViewSrgb } {
+    : m_device        ( pDevice )
+    , m_desc          ( *pDesc )
+    , m_image         ( Image )
+    , m_imageView     ( ImageView )
+    , m_imageViewSrgb ( ImageViewSrgb ) {
     m_mapMode = m_image->info().tiling == VK_IMAGE_TILING_LINEAR
       ? D3D9_COMMON_TEXTURE_MAP_MODE_DIRECT
       : D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER;

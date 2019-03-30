@@ -502,6 +502,12 @@ namespace dxvk {
       case DxsoRegisterType::TempFloat16:   name = str::format("h", id.num()); break;
       case DxsoRegisterType::MiscType:      name = str::format("m", id.num()); break;
       case DxsoRegisterType::Predicate:     name = str::format("p", id.num()); break;
+
+      case DxsoRegisterType::Const:         name = str::format("c", id.num()); break;
+      case DxsoRegisterType::ConstInt:      name = str::format("i", id.num()); break;
+      case DxsoRegisterType::ConstBool:     name = str::format("b", id.num()); break;
+
+      default: break;
     }
 
     if (!name.empty())
@@ -838,9 +844,6 @@ namespace dxvk {
 
   void DxsoCompiler::emitDcl(const DxsoInstructionContext& ctx) {
     const auto type    = ctx.dst.registerId().type();
-
-    const bool input   = type == DxsoRegisterType::Input
-                      || type == DxsoRegisterType::Texture;
 
     auto dcl = ctx.dcl;
     dcl.id = ctx.dst.registerId();

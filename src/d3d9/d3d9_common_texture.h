@@ -233,14 +233,6 @@ namespace dxvk {
 
   private:
 
-    Rc<DxvkImageView>                 m_imageView;
-    Rc<DxvkImageView>                 m_imageViewSrgb;
-
-    Rc<DxvkImageView>                 m_renderTargetView;
-    Rc<DxvkImageView>                 m_renderTargetViewSrgb;
-
-    Rc<DxvkImageView>                 m_depthStencilView;
-
     Direct3DDevice9Ex*   m_device;
     D3D9TextureDesc      m_desc;
     D3D9_COMMON_TEXTURE_MAP_MODE m_mapMode;
@@ -252,6 +244,14 @@ namespace dxvk {
     VkImageSubresource m_mappedSubresource
       = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0 };
     DWORD m_mapFlags = 0;
+
+    Rc<DxvkImageView>                 m_imageView;
+    Rc<DxvkImageView>                 m_imageViewSrgb;
+
+    Rc<DxvkImageView>                 m_renderTargetView;
+    Rc<DxvkImageView>                 m_renderTargetViewSrgb;
+
+    Rc<DxvkImageView>                 m_depthStencilView;
 
     Rc<DxvkBuffer> CreateMappedBuffer() const;
 
@@ -286,35 +286,5 @@ namespace dxvk {
       UINT              Lod);
 
   };
-
-  template <typename T>
-  Direct3DCommonTexture9* GetCommonTexture(T* ptr) {
-    if (ptr == nullptr)
-      return nullptr;
-
-    switch (ptr->GetType()) {
-      case D3DRTYPE_TEXTURE:       return static_cast<Direct3DTexture9*>      (ptr)->GetCommonTexture();
-      //case D3DRTYPE_CUBETEXTURE:   return static_cast<Direct3DCubeTexture9*>  (ptr)->GetCommonTexture();
-      //case D3DRTYPE_VOLUMETEXTURE: return static_cast<Direct3DVolumeTexture9*>(ptr)->GetCommonTexture();
-      default:
-        Logger::warn("Unknown texture resource type."); break;
-    }
-
-    return nullptr;
-  }
-
-  template <typename T>
-  void TextureRefPrivate(T* tex, bool AddRef) {
-    if (tex == nullptr)
-      return;
-
-    switch (tex->GetType()) {
-      case D3DRTYPE_TEXTURE:       CastRefPrivate<Direct3DTexture9>(tex, AddRef);       break;
-      //case D3DRTYPE_CUBETEXTURE:   CastRefPrivate<Direct3DCubeTexture9*>(tex, AddRef);   break;
-      //case D3DRTYPE_VOLUMETEXTURE: CastRefPrivate<Direct3DVolumeTexture9*>(tex, AddRef); break;
-    default:
-      Logger::warn("Unknown texture resource type."); break;
-    }
-  }
 
 }

@@ -1,5 +1,3 @@
-#pragma once
-
 #include "d3d9_texture.h"
 
 #include "d3d9_util.h"

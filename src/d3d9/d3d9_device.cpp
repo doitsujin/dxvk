@@ -17,6 +17,7 @@
 #include "d3d9_initializer.h"
 
 #include <algorithm>
+#include <cfloat>
 
 namespace dxvk {
 
@@ -30,21 +31,21 @@ namespace dxvk {
           HWND              window,
           DWORD             flags,
           D3DDISPLAYMODEEX* displayMode)
-    : m_parent         ( parent )
-    , m_adapter        ( adapter )
-    , m_dxvkAdapter    ( dxvkAdapter )
+    : m_dxvkAdapter    ( dxvkAdapter )
     , m_dxvkDevice     ( dxvkDevice )
+    , m_csThread       ( dxvkDevice->createContext() )
+    , m_frameLatency   ( DefaultFrameLatency )
+    , m_csChunk        ( AllocCsChunk() )
+    , m_parent         ( parent )
+    , m_adapter        ( adapter )
     , m_deviceType     ( deviceType )
     , m_window         ( window )
     , m_behaviourFlags ( flags )
+    , m_multithread    ( flags & D3DCREATE_MULTITHREADED )
+    , m_shaderModules  ( new D3D9ShaderModuleSet )
     , m_d3d9Formats    ( dxvkAdapter )
     , m_d3d9Options    ( dxvkAdapter->instance()->config() )
-    , m_dxsoOptions    ( m_dxvkDevice, m_d3d9Options )
-    , m_csChunk        ( AllocCsChunk() )
-    , m_csThread       ( dxvkDevice->createContext() )
-    , m_multithread    ( flags & D3DCREATE_MULTITHREADED )
-    , m_frameLatency   ( DefaultFrameLatency )
-    , m_shaderModules  ( new D3D9ShaderModuleSet ) {
+    , m_dxsoOptions    ( m_dxvkDevice, m_d3d9Options ) {
     if (extended)
       m_flags.set(D3D9DeviceFlag::ExtendedDevice);
 
@@ -2573,8 +2574,6 @@ namespace dxvk {
         ] (DxvkContext* ctx) {
           ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
         });
-
-        const VkImageType imageType = mappedImage->info().type;
         
         auto formatInfo        = imageFormatInfo(mappedImage->info().format);
         VkExtent3D levelExtent = mappedImage->mipLevelExtent(subresource.mipLevel);
@@ -3196,8 +3195,6 @@ namespace dxvk {
         attrib.format   = VK_FORMAT_R8_UNORM;
         attrib.offset   = 0;
 
-        bool attribDefined = false;
-
         for (const auto& element : elements) {
           DxsoSemantic elementSemantic = { static_cast<DxsoUsage>(element.Usage), element.UsageIndex };
 
@@ -3205,8 +3202,6 @@ namespace dxvk {
             attrib.binding = uint32_t(element.Stream);
             attrib.format  = LookupDecltype(D3DDECLTYPE(element.Type));
             attrib.offset  = element.Offset;
-
-            attribDefined = true;
             break;
           }
         }

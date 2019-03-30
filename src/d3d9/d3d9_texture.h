@@ -1,20 +1,21 @@
 #pragma once
 
 #include "d3d9_surface.h"
+#include "d3d9_util.h"
 
 #include <vector>
 
 namespace dxvk {
 
-  template <typename SubresourceType, typename... Type>
-  class Direct3DBaseTexture9 : public Direct3DResource9<Type...> {
+  template <typename SubresourceType, typename... Base>
+  class Direct3DBaseTexture9 : public Direct3DResource9<Base...> {
 
   public:
 
     Direct3DBaseTexture9(
             Direct3DDevice9Ex*      pDevice,
       const D3D9TextureDesc*        pDesc)
-      : Direct3DResource9<Type...> ( pDevice )
+      : Direct3DResource9<Base...> ( pDevice )
       , m_texture                  ( pDevice, pDesc )
       , m_lod                      ( 0 )
       , m_autogenFilter            ( D3DTEXF_LINEAR ) {
@@ -126,5 +127,35 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE AddDirtyRect(CONST RECT* pDirtyRect);
 
   };
+
+  template <typename T>
+  Direct3DCommonTexture9* GetCommonTexture(T* ptr) {
+    if (ptr == nullptr)
+      return nullptr;
+
+    switch (ptr->GetType()) {
+      case D3DRTYPE_TEXTURE:       return static_cast<Direct3DTexture9*>      (ptr)->GetCommonTexture();
+      //case D3DRTYPE_CUBETEXTURE:   return static_cast<Direct3DCubeTexture9*>  (ptr)->GetCommonTexture();
+      //case D3DRTYPE_VOLUMETEXTURE: return static_cast<Direct3DVolumeTexture9*>(ptr)->GetCommonTexture();
+      default:
+        Logger::warn("Unknown texture resource type."); break;
+    }
+
+    return nullptr;
+  }
+
+  template <typename T>
+  void TextureRefPrivate(T* tex, bool AddRef) {
+    if (tex == nullptr)
+      return;
+
+    switch (tex->GetType()) {
+      case D3DRTYPE_TEXTURE:       CastRefPrivate<Direct3DTexture9>(tex, AddRef);       break;
+      //case D3DRTYPE_CUBETEXTURE:   CastRefPrivate<Direct3DCubeTexture9*>(tex, AddRef);   break;
+      //case D3DRTYPE_VOLUMETEXTURE: CastRefPrivate<Direct3DVolumeTexture9*>(tex, AddRef); break;
+    default:
+      Logger::warn("Unknown texture resource type."); break;
+    }
+  }
 
 }

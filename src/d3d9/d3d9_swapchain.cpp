@@ -9,9 +9,9 @@ namespace dxvk {
 
   Direct3DSwapChain9Ex::Direct3DSwapChain9Ex(Direct3DDevice9Ex* device, D3DPRESENT_PARAMETERS* presentParams)
     : Direct3DSwapChain9ExBase ( device )
+    , m_presentParams          ( )
     , m_backBuffer             ( nullptr )
-    , m_gammaFlags             ( 0 )
-    , m_presentParams          ( ) {
+    , m_gammaFlags             ( 0 ) {
     SetDefaultGamma();
     Reset(presentParams);
   }
