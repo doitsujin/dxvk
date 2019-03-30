@@ -145,6 +145,9 @@ namespace dxvk {
     if (m_desc.Usage & D3DUSAGE_RENDERTARGET)
       CreateRenderTargetView();
 
+    for (uint32_t i = 0; i < m_readOnlySubresources.size(); i++)
+      m_readOnlySubresources.at(i) = 0;
+
     DiscardSubresourceMasking();
     DeallocFixupBuffers();
     DeallocMappingBuffers();
