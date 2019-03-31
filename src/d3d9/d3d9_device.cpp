@@ -3000,11 +3000,12 @@ namespace dxvk {
     m_psConst.buffer = m_dxvkDevice->createBuffer(info, memoryFlags);
 
     auto BindConstantBuffer = [this](
-      DxsoProgramType shaderStage,
-      Rc<DxvkBuffer>  buffer) {
+      DxsoProgramType     shaderStage,
+      Rc<DxvkBuffer>      buffer,
+      DxsoConstantBuffers cbuffer) {
       const uint32_t slotId = computeResourceSlotId(
         shaderStage, DxsoBindingType::ConstantBuffer,
-        0);
+        cbuffer);
 
       EmitCs([
         cSlotId = slotId,
@@ -3016,8 +3017,8 @@ namespace dxvk {
       });
     };
 
-    BindConstantBuffer(DxsoProgramType::VertexShader, m_vsConst.buffer);
-    BindConstantBuffer(DxsoProgramType::PixelShader,  m_psConst.buffer);
+    BindConstantBuffer(DxsoProgramType::VertexShader, m_vsConst.buffer, DxsoConstantBuffers::VSConstantBuffer);
+    BindConstantBuffer(DxsoProgramType::PixelShader,  m_psConst.buffer, DxsoConstantBuffers::PSConstantBuffer);
   }
 
   void Direct3DDevice9Ex::UploadConstants(DxsoProgramType ShaderStage) {
