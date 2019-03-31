@@ -729,10 +729,7 @@ namespace dxvk {
       niceRect       &=  (pDestRect->top      % dstFormatInfo->blockSize.height == 0);
     }
 
-    bool niceCopyRegion  = pSourceRect == nullptr && pDestRect == nullptr;
-         niceCopyRegion |= niceRect;
-
-    fastPath            &= niceCopyRegion;
+    fastPath         &= niceRect;
 
     if (fastPath) {
       POINT destPoint;
