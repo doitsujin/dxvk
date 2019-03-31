@@ -90,12 +90,12 @@ namespace dxvk {
     if (riid == __uuidof(IUnknown)
      || riid == __uuidof(IDirect3DResource9)
      || riid == __uuidof(IDirect3DBaseTexture9)
-     || riid == __uuidof(IDirect3DTexture9)) {
+     || riid == __uuidof(IDirect3DVolumeTexture9)) {
       *ppvObject = ref(this);
       return S_OK;
     }
 
-    Logger::warn("Direct3DTexture9::QueryInterface: Unknown interface query");
+    Logger::warn("Direct3DVolumeTexture9::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
     return E_NOINTERFACE;
   }
