@@ -2975,29 +2975,17 @@ namespace dxvk {
 
   void Direct3DDevice9Ex::CreateConstantBuffers() {
     DxvkBufferCreateInfo info;
-    info.size  = D3D9ConstantSets::SetSize;
-
-    info.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT
-               | VK_BUFFER_USAGE_TRANSFER_DST_BIT
-               | VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-
-    info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT
-                | VK_PIPELINE_STAGE_HOST_BIT;
-
-    info.access = VK_ACCESS_TRANSFER_READ_BIT
-                | VK_ACCESS_TRANSFER_WRITE_BIT
-                | VK_ACCESS_UNIFORM_READ_BIT
-                | VK_ACCESS_HOST_WRITE_BIT;
+    info.size   = D3D9ConstantSets::SetSize;
+    info.usage  = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+    info.access = VK_ACCESS_UNIFORM_READ_BIT;
+    info.stages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
+                | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 
     VkMemoryPropertyFlags memoryFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
                                       | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
                                       | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
-    info.stages |=  VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
     m_vsConst.buffer = m_dxvkDevice->createBuffer(info, memoryFlags);
-    info.stages &= ~VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
-
-    info.stages |=  VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
     m_psConst.buffer = m_dxvkDevice->createBuffer(info, memoryFlags);
 
     auto BindConstantBuffer = [this](
