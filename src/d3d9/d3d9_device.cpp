@@ -63,7 +63,6 @@ namespace dxvk {
 
       DxvkMultisampleState msState;
       msState.sampleMask            = 0xffffffff;
-      msState.enableAlphaToOne      = VK_FALSE;
       msState.enableAlphaToCoverage = VK_FALSE;
       ctx->setMultisampleState(msState);
 
