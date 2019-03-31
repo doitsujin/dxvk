@@ -18,6 +18,10 @@ namespace dxvk {
     float coeff[4];
   };
 
+  struct D3D9RenderStateInfo {
+    float alphaRef;
+  };
+  
   struct D3D9VBO {
     D3D9VBO() {
       vertexBuffer = nullptr;

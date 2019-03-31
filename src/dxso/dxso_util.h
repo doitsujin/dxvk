@@ -23,6 +23,7 @@ namespace dxvk {
     VSCount,
 
     PSConstantBuffer = 0,
+    PSRenderStates   = 1,
     PSCount
   };
 

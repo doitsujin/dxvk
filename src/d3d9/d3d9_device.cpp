@@ -1233,6 +1233,10 @@ namespace dxvk {
           m_flags.set(D3D9DeviceFlag::DirtyClipPlanes);
           break;
 
+        case D3DRS_ALPHAREF:
+          m_flags.set(D3D9DeviceFlag::DirtyRenderStateBuffer);
+          break;
+
         default:
           Logger::warn(str::format("Direct3DDevice9Ex::SetRenderState: Unhandled render state ", State));
           break;
@@ -3089,6 +3093,9 @@ namespace dxvk {
 
     info.size = caps::MaxClipPlanes * sizeof(D3D9ClipPlane);
     m_vsClipPlanes = m_dxvkDevice->createBuffer(info, memoryFlags);
+    
+    info.size = sizeof(D3D9RenderStateInfo);
+    m_psRenderStates = m_dxvkDevice->createBuffer(info, memoryFlags);
 
     auto BindConstantBuffer = [this](
       DxsoProgramType     shaderStage,
@@ -3110,8 +3117,11 @@ namespace dxvk {
     BindConstantBuffer(DxsoProgramType::VertexShader, m_vsConst.buffer, DxsoConstantBuffers::VSConstantBuffer);
     BindConstantBuffer(DxsoProgramType::PixelShader,  m_psConst.buffer, DxsoConstantBuffers::PSConstantBuffer);
     BindConstantBuffer(DxsoProgramType::VertexShader, m_vsClipPlanes,   DxsoConstantBuffers::VSClipPlanes);
+    BindConstantBuffer(DxsoProgramType::PixelShader,  m_psRenderStates, DxsoConstantBuffers::PSRenderStates);
     
-    m_flags.set(D3D9DeviceFlag::DirtyClipPlanes);
+    m_flags.set(
+      D3D9DeviceFlag::DirtyClipPlanes,
+      D3D9DeviceFlag::DirtyRenderStateBuffer);
   }
 
   void Direct3DDevice9Ex::UploadConstants(DxsoProgramType ShaderStage) {
@@ -3156,6 +3166,24 @@ namespace dxvk {
     
     EmitCs([
       cBuffer = m_vsClipPlanes,
+      cSlice  = slice
+    ] (DxvkContext* ctx) {
+      ctx->invalidateBuffer(cBuffer, cSlice);
+    });
+  }
+  
+  void Direct3DDevice9Ex::UpdateRenderStateBuffer() {
+    m_flags.clr(D3D9DeviceFlag::DirtyRenderStateBuffer);
+    
+    auto& rs = m_state.renderStates;
+    
+    auto slice = m_psRenderStates->allocSlice();
+    auto dst = reinterpret_cast<D3D9RenderStateInfo*>(slice.mapPtr);
+    
+    dst->alphaRef = float(rs[D3DRS_ALPHAREF]) / 255.0f;
+    
+    EmitCs([
+      cBuffer = m_psRenderStates,
       cSlice  = slice
     ] (DxvkContext* ctx) {
       ctx->invalidateBuffer(cBuffer, cSlice);
@@ -3528,6 +3556,9 @@ namespace dxvk {
     
     if (m_flags.test(D3D9DeviceFlag::DirtyClipPlanes))
       UpdateClipPlanes();
+
+    if (m_flags.test(D3D9DeviceFlag::DirtyRenderStateBuffer))
+      UpdateRenderStateBuffer();
 
     UpdateConstants();
   }

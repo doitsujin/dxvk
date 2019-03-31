@@ -30,10 +30,10 @@ namespace dxvk {
     }
     else { // Pixel Shader
       switch (bindingType) {
-      case DxsoBindingType::ConstantBuffer: return bindingIndex + stageOffset + 0;  // 0 + 1 = 1
+      case DxsoBindingType::ConstantBuffer: return bindingIndex + stageOffset + 0;  // 0 + 2 = 2
         // The extra sampler here is being reserved for DMAP stuff later on.
-      case DxsoBindingType::ImageSampler:   return bindingIndex + stageOffset + 1;  // 1 + 17 = 18
-      case DxsoBindingType::Image:          return bindingIndex + stageOffset + 18; // 18 + 17 = 35
+      case DxsoBindingType::ImageSampler:   return bindingIndex + stageOffset + 2;  // 2 + 17 = 19
+      case DxsoBindingType::Image:          return bindingIndex + stageOffset + 19; // 19 + 17 = 36
       default: Logger::err("computeResourceSlotId: Invalid resource type");
       }
     }

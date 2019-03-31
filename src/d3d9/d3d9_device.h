@@ -43,6 +43,7 @@ namespace dxvk {
     DirtyBlendState,
     DirtyRasterizerState,
     DirtyExtraState,
+    DirtyRenderStateBuffer,
     ExtendedDevice,
     DeferViewportBinding
   };
@@ -682,6 +683,8 @@ namespace dxvk {
     
     void UpdateClipPlanes();
     
+    void UpdateRenderStateBuffer();
+    
     Rc<DxvkSampler> CreateSampler(DWORD Sampler);
 
     void BindSampler(DWORD Sampler);
@@ -783,6 +786,7 @@ namespace dxvk {
     D3D9ConstantSets                m_psConst;
 
     Rc<DxvkBuffer>                  m_vsClipPlanes;
+    Rc<DxvkBuffer>                  m_psRenderStates;
 
     const D3D9VkFormatTable         m_d3d9Formats;
     const D3D9Options               m_d3d9Options;
