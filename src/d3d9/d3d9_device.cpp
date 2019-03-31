@@ -650,7 +650,64 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::UpdateTexture(
           IDirect3DBaseTexture9* pSourceTexture,
           IDirect3DBaseTexture9* pDestinationTexture) {
-    Logger::warn("Direct3DDevice9Ex::UpdateTexture: Stub");
+    auto lock = LockDevice();
+
+    Direct3DCommonTexture9* src = GetCommonTexture(pSourceTexture);
+    Direct3DCommonTexture9* dst = GetCommonTexture(pDestinationTexture);
+
+    if (src == nullptr || dst == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    const Rc<DxvkImage> dstImage = src->GetImage();
+    const Rc<DxvkImage> srcImage = dst->GetImage();
+
+    const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(dstImage->info().format);
+    const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcImage->info().format);
+
+    // Copies are only supported on size-compatible formats
+    if (dstFormatInfo->elementSize != srcFormatInfo->elementSize) {
+      Logger::err(str::format(
+        "D3D9: UpdateTexture: Incompatible texel size"
+        "\n  Dst texel size: ", dstFormatInfo->elementSize,
+        "\n  Src texel size: ", srcFormatInfo->elementSize));
+      return D3DERR_INVALIDCALL;
+    }
+
+    // Layer count, mip level count, and sample count must match
+    if ( srcImage->info().numLayers   != dstImage->info().numLayers
+      || srcImage->info().mipLevels   != dstImage->info().mipLevels
+      || srcImage->info().sampleCount != dstImage->info().sampleCount) {
+      Logger::err(str::format(
+        "D3D9: UpdateTexture: Incompatible images"
+        "\n  Dst: (", dstImage->info().numLayers,
+                  ",", dstImage->info().mipLevels,
+                  ",", dstImage->info().sampleCount, ")",
+        "\n  Src: (", srcImage->info().numLayers,
+                  ",", srcImage->info().mipLevels,
+                  ",", srcImage->info().sampleCount, ")"));
+      return D3DERR_INVALIDCALL;
+    }
+      
+    for (uint32_t i = 0; i < srcImage->info().mipLevels; i++) {
+      VkImageSubresourceLayers dstLayers = { dstFormatInfo->aspectMask, i, 0, dstImage->info().numLayers };
+      VkImageSubresourceLayers srcLayers = { srcFormatInfo->aspectMask, i, 0, srcImage->info().numLayers };
+        
+      VkExtent3D extent = srcImage->mipLevelExtent(i);
+        
+      EmitCs([
+        cDstImage  = dstImage,
+        cSrcImage  = srcImage,
+        cDstLayers = dstLayers,
+        cSrcLayers = srcLayers,
+        cExtent    = extent
+      ] (DxvkContext* ctx) {
+        ctx->copyImage(
+          cDstImage, cDstLayers, VkOffset3D { 0, 0, 0 },
+          cSrcImage, cSrcLayers, VkOffset3D { 0, 0, 0 },
+          cExtent);
+      });
+    }
+
     return D3D_OK;
   }
 
