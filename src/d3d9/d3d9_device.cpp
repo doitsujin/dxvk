@@ -582,21 +582,19 @@ namespace dxvk {
           D3DTEXTUREFILTERTYPE Filter) {
     auto lock = LockDevice();
 
-    Direct3DSurface9* src = static_cast<Direct3DSurface9*>(pSourceSurface);
     Direct3DSurface9* dst = static_cast<Direct3DSurface9*>(pDestSurface);
+    Direct3DSurface9* src = static_cast<Direct3DSurface9*>(pSourceSurface);
 
     if (src == nullptr || dst == nullptr)
       return D3DERR_INVALIDCALL;
 
-    // This only handles non-stretching ATM.
-    // And similar type copies. No blitting yet!
-    // This will be the fast path when we do not need to blit.
+    bool fastPath = true;
 
-    Direct3DCommonTexture9* srcTextureInfo = src->GetCommonTexture();
     Direct3DCommonTexture9* dstTextureInfo = dst->GetCommonTexture();
+    Direct3DCommonTexture9* srcTextureInfo = src->GetCommonTexture();
 
-    Rc<DxvkImage> srcImage = src->GetCommonTexture()->GetImage();
     Rc<DxvkImage> dstImage = dst->GetCommonTexture()->GetImage();
+    Rc<DxvkImage> srcImage = src->GetCommonTexture()->GetImage();
 
     const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(dstImage->info().format);
     const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcImage->info().format);
@@ -604,90 +602,81 @@ namespace dxvk {
     const VkImageSubresource dstSubresource = dstTextureInfo->GetSubresourceFromIndex(dstFormatInfo->aspectMask, dst->GetSubresource());
     const VkImageSubresource srcSubresource = srcTextureInfo->GetSubresourceFromIndex(srcFormatInfo->aspectMask, src->GetSubresource());
 
-    // Copies are only supported on size-compatible formats
-    if (dstFormatInfo->elementSize != srcFormatInfo->elementSize) {
-      Logger::err(str::format(
-        "D3D9: StretchRect: Incompatible texel size"
-        "\n  Dst texel size: ", dstFormatInfo->elementSize,
-        "\n  Src texel size: ", srcFormatInfo->elementSize));
-      return D3D_OK;
-    }
-
-    // Copies are only supported if the sample count matches
-    if (dstImage->info().sampleCount != srcImage->info().sampleCount) {
-      Logger::err(str::format(
-        "D3D9: StretchRect: Incompatible sample count",
-        "\n  Dst sample count: ", dstImage->info().sampleCount,
-        "\n  Src sample count: ", srcImage->info().sampleCount));
-      return D3D_OK;
-    }
-
-    VkOffset3D srcOffset = { 0,0,0 };
-    VkOffset3D dstOffset = { 0,0,0 };
-
     VkExtent3D srcExtent = srcImage->mipLevelExtent(srcSubresource.mipLevel);
     VkExtent3D dstExtent = dstImage->mipLevelExtent(dstSubresource.mipLevel);
 
-    VkExtent3D regExtent = srcExtent;
+    // Copies are only supported on size-compatible formats
+    fastPath &= dstFormatInfo->elementSize != srcFormatInfo->elementSize;
 
-    if (pSourceRect != nullptr && pDestRect != nullptr) {
-      srcOffset = { pSourceRect->left, pSourceRect->top, 0 };
-      dstOffset = { pDestRect->left,   pDestRect->top,   0 };
+    // Copies are only supported if the sample count matches
+    fastPath &= dstImage->info().sampleCount != srcImage->info().sampleCount;
 
-      regExtent = { 
-        uint32_t(pSourceRect->right  - pSourceRect->left),
-        uint32_t(pSourceRect->bottom - pSourceRect->top),
-        0 };
+    // Copies would only work if the extents match. (ie. no stretching)
+    bool niceRect        =  (pSourceRect->right  - pSourceRect->left) == (pDestRect->right  - pDestRect->left);
+         niceRect       &=  (pSourceRect->bottom - pSourceRect->top)  == (pDestRect->bottom - pDestRect->top);
+
+    bool niceCopyRegion  = pSourceRect == nullptr && pDestRect == nullptr;
+         niceCopyRegion |= niceRect;
+
+    fastPath            &= niceCopyRegion;
+
+    if (fastPath) {
+      POINT destPoint;
+      if (pDestRect != nullptr) {
+        destPoint.x = pDestRect->left;
+        destPoint.y = pDestRect->top;
+      }
+
+      return UpdateSurface(
+        pSourceSurface,
+        pSourceRect,
+        pDestSurface,
+        pDestRect != nullptr ? &destPoint : nullptr);
     }
 
-    VkImageSubresourceLayers dstLayers = {
+    VkImageSubresourceLayers dstSubresourceLayers = {
       dstSubresource.aspectMask,
       dstSubresource.mipLevel,
       dstSubresource.arrayLayer, 1 };
-      
-    VkImageSubresourceLayers srcLayers = {
+
+    VkImageSubresourceLayers srcSubresourceLayers = {
       srcSubresource.aspectMask,
       srcSubresource.mipLevel,
       srcSubresource.arrayLayer, 1 };
 
-    VkExtent3D regBlockCount = util::computeBlockCount(regExtent, srcFormatInfo->blockSize);
-    VkExtent3D dstBlockCount = util::computeMaxBlockCount(dstOffset, dstExtent, dstFormatInfo->blockSize);
-    VkExtent3D srcBlockCount = util::computeMaxBlockCount(srcOffset, srcExtent, srcFormatInfo->blockSize);
+    VkImageBlit blitInfo;
+    blitInfo.dstSubresource = dstSubresourceLayers;
+    blitInfo.srcSubresource = srcSubresourceLayers;
 
-    regBlockCount = util::minExtent3D(regBlockCount, dstBlockCount);
-    regBlockCount = util::minExtent3D(regBlockCount, srcBlockCount);
+    blitInfo.dstOffsets[0] = pDestRect != nullptr
+      ? VkOffset3D{ int32_t(pDestRect->left), int32_t(pDestRect->top), 0 }
+      : VkOffset3D{ 0,                        0,                       0 };
 
-    regExtent = util::minExtent3D(regExtent, util::computeBlockExtent(regBlockCount, srcFormatInfo->blockSize));
+    blitInfo.dstOffsets[1] = pDestRect != nullptr
+      ? VkOffset3D{ int32_t(pDestRect->right), int32_t(pDestRect->bottom), 1 }
+      : VkOffset3D{ int32_t(dstExtent.width),  int32_t(dstExtent.height),  1 };
 
-    // Don't perform the copy if the image extent is not aligned and
-    // if it does not touch the image border for unaligned dimensons
-    if (!util::isBlockAligned(srcOffset, regExtent, srcFormatInfo->blockSize, srcExtent)) {
-      Logger::err(str::format(
-        "D3D9: StretchRect: Unaligned block size",
-        "\n  Src offset:     (", srcOffset.x, ",", srcOffset.y, ",", srcOffset.z, ")",
-        "\n  Src extent:     (", srcExtent.width, "x", srcExtent.height, "x", srcExtent.depth, ")",
-        "\n  Src block size: (", srcFormatInfo->blockSize.width, "x", srcFormatInfo->blockSize.height, "x", srcFormatInfo->blockSize.depth, ")",
-        "\n  Dst offset:     (", dstOffset.x, ",", dstOffset.y, ",", dstOffset.z, ")",
-        "\n  Dst extent:     (", dstExtent.width, "x", dstExtent.height, "x", dstExtent.depth, ")",
-        "\n  Dst block size: (", dstFormatInfo->blockSize.width, "x", dstFormatInfo->blockSize.height, "x", dstFormatInfo->blockSize.depth, ")",
-        "\n  Region extent:  (", regExtent.width, "x", regExtent.height, "x", regExtent.depth, ")"));
-      return D3D_OK;
-    }
+    blitInfo.srcOffsets[0] = pSourceRect != nullptr
+      ? VkOffset3D{ int32_t(pSourceRect->left), int32_t(pSourceRect->top), 0 }
+      : VkOffset3D{ 0,                          0,                         0 };
+
+    blitInfo.srcOffsets[1] = pSourceRect != nullptr
+      ? VkOffset3D{ int32_t(pSourceRect->right), int32_t(pSourceRect->bottom), 1 }
+      : VkOffset3D{ int32_t(srcExtent.width),    int32_t(srcExtent.height),    1 };
 
     EmitCs([
-      cDstImage  = dstImage,
-      cSrcImage  = srcImage,
-      cDstLayers = dstLayers,
-      cSrcLayers = srcLayers,
-      cDstOffset = dstOffset,
-      cSrcOffset = srcOffset,
-      cExtent    = regExtent
+      cDstImage = dstImage,
+      cSrcImage = srcImage,
+      cBlitInfo = blitInfo,
+      cFilter   = DecodeFilter(Filter)
     ] (DxvkContext* ctx) {
-      ctx->copyImage(
-        cDstImage, cDstLayers, cDstOffset,
-        cSrcImage, cSrcLayers, cSrcOffset,
-        cExtent);
+      ctx->blitImage(
+        cDstImage,
+        cSrcImage,
+        cBlitInfo,
+        cFilter);
     });
+    
 
     return D3D_OK;
   }
