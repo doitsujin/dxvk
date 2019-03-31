@@ -154,6 +154,7 @@ namespace dxvk {
         code.read();
     }
     else {
+      uint32_t sourceIdx = 0;
       for (uint32_t i = 0; i < instructionLength; i++) {
         if (i == 0) {
           this->decodeDestinationRegister(code);
@@ -161,10 +162,11 @@ namespace dxvk {
             i++;
         }
         else {
-          const uint32_t sourceIndex = i - 1u; // We used the first instruction for the dst, hence the i - 1.
-          this->decodeSourceRegister(sourceIndex, code);
-          if (m_ctx.src[sourceIndex].isRelative())
+          this->decodeSourceRegister(sourceIdx, code);
+          if (m_ctx.src[sourceIdx].isRelative())
             i++;
+
+          sourceIdx++;
         }
       }
     }
