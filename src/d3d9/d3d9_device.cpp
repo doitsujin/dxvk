@@ -95,7 +95,7 @@ namespace dxvk {
 
     if (riid == __uuidof(IUnknown)
      || riid == __uuidof(IDirect3DDevice9)
-     || (extended && riid == __uuidof(IDirect3DDevice9Ex))) {
+     || riid == __uuidof(IDirect3DDevice9Ex)) {
       *ppvObject = ref(this);
       return S_OK;
     }
