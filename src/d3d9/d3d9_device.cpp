@@ -545,7 +545,104 @@ namespace dxvk {
     const RECT*              pSourceRect,
           IDirect3DSurface9* pDestinationSurface,
     const POINT*             pDestPoint) {
-    Logger::warn("Direct3DDevice9Ex::UpdateSurface: Stub");
+        auto lock = LockDevice();
+
+    Direct3DSurface9* src = static_cast<Direct3DSurface9*>(pSourceSurface);
+    Direct3DSurface9* dst = static_cast<Direct3DSurface9*>(pDestinationSurface);
+
+    if (src == nullptr || dst == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    Direct3DCommonTexture9* srcTextureInfo = src->GetCommonTexture();
+    Direct3DCommonTexture9* dstTextureInfo = dst->GetCommonTexture();
+
+    Rc<DxvkImage> srcImage = src->GetCommonTexture()->GetImage();
+    Rc<DxvkImage> dstImage = dst->GetCommonTexture()->GetImage();
+
+    const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(dstImage->info().format);
+    const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcImage->info().format);
+
+    const VkImageSubresource dstSubresource = dstTextureInfo->GetSubresourceFromIndex(dstFormatInfo->aspectMask, dst->GetSubresource());
+    const VkImageSubresource srcSubresource = srcTextureInfo->GetSubresourceFromIndex(srcFormatInfo->aspectMask, src->GetSubresource());
+
+    // Copies are only supported on size-compatible formats
+    if (dstFormatInfo->elementSize != srcFormatInfo->elementSize) {
+      Logger::err(str::format(
+        "D3D9: UpdateSurface: Incompatible texel size"
+        "\n  Dst texel size: ", dstFormatInfo->elementSize,
+        "\n  Src texel size: ", srcFormatInfo->elementSize));
+      return D3D_OK;
+    }
+
+    // Copies are only supported if the sample count matches
+    if (dstImage->info().sampleCount != srcImage->info().sampleCount) {
+      Logger::err(str::format(
+        "D3D9: UpdateSurface: Incompatible sample count",
+        "\n  Dst sample count: ", dstImage->info().sampleCount,
+        "\n  Src sample count: ", srcImage->info().sampleCount));
+      return D3D_OK;
+    }
+
+    VkOffset3D srcOffset = { 0,0,0 };
+    VkOffset3D dstOffset = { 0,0,0 };
+
+    VkExtent3D srcExtent = srcImage->mipLevelExtent(srcSubresource.mipLevel);
+    VkExtent3D dstExtent = dstImage->mipLevelExtent(dstSubresource.mipLevel);
+
+    VkExtent3D regExtent = srcExtent;
+
+    if (pDestPoint != nullptr) {
+      dstOffset = { align(pDestPoint->x, dstFormatInfo->blockSize.width),
+                    align(pDestPoint->y, dstFormatInfo->blockSize.height),
+                    0 };
+    }
+
+    if (pSourceRect != nullptr) {
+      srcOffset = { 
+        align(pSourceRect->left, srcFormatInfo->blockSize.width),
+        align(pSourceRect->top,  srcFormatInfo->blockSize.height),
+        0 };
+
+      regExtent = { 
+        align(uint32_t(pSourceRect->right  - pSourceRect->left), srcFormatInfo->blockSize.width),
+        align(uint32_t(pSourceRect->bottom - pSourceRect->top),  srcFormatInfo->blockSize.height),
+        0 };
+    }
+
+    VkImageSubresourceLayers dstLayers = {
+      dstSubresource.aspectMask,
+      dstSubresource.mipLevel,
+      dstSubresource.arrayLayer, 1 };
+      
+    VkImageSubresourceLayers srcLayers = {
+      srcSubresource.aspectMask,
+      srcSubresource.mipLevel,
+      srcSubresource.arrayLayer, 1 };
+
+    VkExtent3D regBlockCount = util::computeBlockCount(regExtent, srcFormatInfo->blockSize);
+    VkExtent3D dstBlockCount = util::computeMaxBlockCount(dstOffset, dstExtent, dstFormatInfo->blockSize);
+    VkExtent3D srcBlockCount = util::computeMaxBlockCount(srcOffset, srcExtent, srcFormatInfo->blockSize);
+
+    regBlockCount = util::minExtent3D(regBlockCount, dstBlockCount);
+    regBlockCount = util::minExtent3D(regBlockCount, srcBlockCount);
+
+    regExtent = util::minExtent3D(regExtent, util::computeBlockExtent(regBlockCount, srcFormatInfo->blockSize));
+
+    EmitCs([
+      cDstImage  = dstImage,
+      cSrcImage  = srcImage,
+      cDstLayers = dstLayers,
+      cSrcLayers = srcLayers,
+      cDstOffset = dstOffset,
+      cSrcOffset = srcOffset,
+      cExtent    = regExtent
+    ] (DxvkContext* ctx) {
+      ctx->copyImage(
+        cDstImage, cDstLayers, cDstOffset,
+        cSrcImage, cSrcLayers, cSrcOffset,
+        cExtent);
+    });
+
     return D3D_OK;
   }
 
