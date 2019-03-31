@@ -1,5 +1,6 @@
 #include "dxso_compiler.h"
 
+#include "../d3d9/d3d9_caps.h"
 #include "../d3d9/d3d9_constant_set.h"
 #include "dxso_util.h"
 
@@ -139,6 +140,7 @@ namespace dxvk {
     m_module.opFunctionCall(
       m_module.defVoidType(),
       m_vs.functionId, 0, nullptr);
+    this->emitVsClipping();
     this->emitFunctionEnd();
   }
 
@@ -168,6 +170,76 @@ namespace dxvk {
     //this->emitOutputMapping();
     this->emitOutputDepthClamp();
     this->emitFunctionEnd();
+  }
+
+  void DxsoCompiler::emitVsClipping() {
+    uint32_t clipPlaneCountId = m_module.constu32(caps::MaxClipPlanes);
+    
+    uint32_t floatType = m_module.defFloatType(32);
+    uint32_t vec4Type  = m_module.defVectorType(floatType, 4);
+    
+    // Declare uniform buffer containing clip planes
+    uint32_t clipPlaneArray  = m_module.defArrayTypeUnique(vec4Type, clipPlaneCountId);
+    uint32_t clipPlaneStruct = m_module.defStructTypeUnique(1, &clipPlaneArray);
+    uint32_t clipPlaneBlock  = m_module.newVar(
+      m_module.defPointerType(clipPlaneStruct, spv::StorageClassUniform),
+      spv::StorageClassUniform);
+    
+    m_module.decorateArrayStride  (clipPlaneArray, 16);
+    
+    m_module.setDebugName         (clipPlaneStruct, "clip_info_t");
+    m_module.setDebugMemberName   (clipPlaneStruct, 0, "clip_planes");
+    m_module.decorate             (clipPlaneStruct, spv::DecorationBlock);
+    m_module.memberDecorateOffset (clipPlaneStruct, 0, 0);
+    
+    uint32_t bindingId = computeResourceSlotId(
+      m_programInfo.type(), DxsoBindingType::ConstantBuffer,
+      DxsoConstantBuffers::VSClipPlanes);
+    
+    m_module.setDebugName         (clipPlaneBlock, "clip_info");
+    m_module.decorateDescriptorSet(clipPlaneBlock, 0);
+    m_module.decorateBinding      (clipPlaneBlock, bindingId);
+    
+    DxvkResourceSlot resource;
+    resource.slot   = bindingId;
+    resource.type   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    resource.view   = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    resource.access = VK_ACCESS_UNIFORM_READ_BIT;
+    m_resourceSlots.push_back(resource);
+    
+    // Declare output array for clip distances
+    uint32_t clipDistArray = m_module.newVar(
+      m_module.defPointerType(
+        m_module.defArrayType(floatType, clipPlaneCountId),
+        spv::StorageClassOutput),
+      spv::StorageClassOutput);
+
+    m_module.decorateBuiltIn(clipDistArray, spv::BuiltInClipDistance);
+    m_entryPointInterfaces.push_back(clipDistArray);
+    
+    // Compute clip distances
+    uint32_t positionId = m_module.opLoad(vec4Type,
+      findBuiltInOutputPtr(DxsoUsage::Position).varId);
+    
+    for (uint32_t i = 0; i < caps::MaxClipPlanes; i++) {
+      std::array<uint32_t, 2> blockMembers = {{
+        m_module.constu32(0),
+        m_module.constu32(i),
+      }};
+      
+      uint32_t planeId = m_module.opLoad(vec4Type,
+        m_module.opAccessChain(
+          m_module.defPointerType(vec4Type, spv::StorageClassUniform),
+          clipPlaneBlock, blockMembers.size(), blockMembers.data()));
+      
+      uint32_t distId = m_module.opDot(floatType, positionId, planeId);
+      
+      m_module.opStore(
+        m_module.opAccessChain(
+          m_module.defPointerType(floatType, spv::StorageClassOutput),
+          clipDistArray, 1, &blockMembers[1]),
+        distId);
+    }
   }
 
   void DxsoCompiler::emitOutputDepthClamp() {

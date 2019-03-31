@@ -137,6 +137,8 @@ namespace dxvk {
 
     void emitVsFinalize();
     void emitPsFinalize();
+    
+    void emitVsClipping();
 
     void emitOutputDepthClamp();
 
