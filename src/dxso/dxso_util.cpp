@@ -18,13 +18,13 @@ namespace dxvk {
         DxsoProgramType shaderStage,
         DxsoBindingType bindingType,
         uint32_t        bindingIndex) {
-    const uint32_t stageOffset = 9 * uint32_t(shaderStage);
+    const uint32_t stageOffset = 10 * uint32_t(shaderStage);
 
     if (shaderStage == DxsoProgramType::VertexShader) {
       switch (bindingType) {
-        case DxsoBindingType::ConstantBuffer: return bindingIndex + stageOffset + 0; // 0 + 1 = 1
-        case DxsoBindingType::ImageSampler:   return bindingIndex + stageOffset + 1; // 1 + 4 = 5
-        case DxsoBindingType::Image:          return bindingIndex + stageOffset + 5; // 5 + 4 = 9
+        case DxsoBindingType::ConstantBuffer: return bindingIndex + stageOffset + 0; // 0 + 2 = 2
+        case DxsoBindingType::ImageSampler:   return bindingIndex + stageOffset + 2; // 2 + 4 = 6
+        case DxsoBindingType::Image:          return bindingIndex + stageOffset + 6; // 6 + 4 = 10
         default: Logger::err("computeResourceSlotId: Invalid resource type");
       }
     }

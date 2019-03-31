@@ -17,6 +17,15 @@ namespace dxvk {
     Image
   };
 
+  enum DxsoConstantBuffers : uint32_t {
+    VSConstantBuffer = 0,
+    VSClipPlanes     = 1,
+    VSCount,
+
+    PSConstantBuffer = 0,
+    PSCount
+  };
+
   uint32_t computeResourceSlotId(
           DxsoProgramType shaderStage,
           DxsoBindingType bindingType,
