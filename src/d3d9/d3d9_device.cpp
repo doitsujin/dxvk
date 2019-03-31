@@ -70,6 +70,10 @@ namespace dxvk {
       loState.enableLogicOp = VK_FALSE;
       loState.logicOp       = VK_LOGIC_OP_CLEAR;
       ctx->setLogicOpState(loState);
+      
+      DxvkExtraState xsState;
+      xsState.alphaCompareOp = VK_COMPARE_OP_ALWAYS;
+      ctx->setExtraState(xsState);
     });
 
     CreateConstantBuffers();
@@ -1177,6 +1181,11 @@ namespace dxvk {
         case D3DRS_SRCBLEND:
         case D3DRS_SRCBLENDALPHA:
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
+          break;
+        
+        case D3DRS_ALPHATESTENABLE:
+        case D3DRS_ALPHAFUNC:
+          m_flags.set(D3D9DeviceFlag::DirtyExtraState);
           break;
 
         case D3DRS_BLENDFACTOR:
@@ -3386,6 +3395,22 @@ namespace dxvk {
     });
   }
 
+  void Direct3DDevice9Ex::BindExtraState() {
+    m_flags.clr(D3D9DeviceFlag::DirtyExtraState);
+    
+    auto& rs = m_state.renderStates;
+    
+    VkCompareOp alphaOp = rs[D3DRS_ALPHATESTENABLE]
+      ? DecodeCompareOp(D3DCMPFUNC(rs[D3DRS_ALPHAFUNC]))
+      : VK_COMPARE_OP_ALWAYS;
+    
+    EmitCs([cAlphaOp = alphaOp] (DxvkContext* ctx) {
+      DxvkExtraState xs;
+      xs.alphaCompareOp = cAlphaOp;
+      ctx->setExtraState(xs);
+    });
+  }
+  
   void Direct3DDevice9Ex::BindDepthStencilRefrence() {
     auto& rs = m_state.renderStates;
 
@@ -3497,6 +3522,9 @@ namespace dxvk {
 
     if (m_flags.test(D3D9DeviceFlag::DirtyRasterizerState))
       BindRasterizerState();
+    
+    if (m_flags.test(D3D9DeviceFlag::DirtyExtraState))
+      BindExtraState();
     
     if (m_flags.test(D3D9DeviceFlag::DirtyClipPlanes))
       UpdateClipPlanes();

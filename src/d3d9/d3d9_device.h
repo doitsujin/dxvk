@@ -42,6 +42,7 @@ namespace dxvk {
     DirtyDepthStencilState,
     DirtyBlendState,
     DirtyRasterizerState,
+    DirtyExtraState,
     ExtendedDevice,
     DeferViewportBinding
   };
@@ -659,7 +660,7 @@ namespace dxvk {
     void BindFramebuffer();
 
     void BindViewportAndScissor();
-
+    
     void BindBlendState();
 
     void BindBlendFactor();
@@ -670,6 +671,8 @@ namespace dxvk {
 
     void BindRasterizerState();
 
+    void BindExtraState();
+    
     void UploadConstants(DxsoProgramType ShaderStage);
 
     inline void UpdateConstants() {
@@ -678,7 +681,7 @@ namespace dxvk {
     }
     
     void UpdateClipPlanes();
-
+    
     Rc<DxvkSampler> CreateSampler(DWORD Sampler);
 
     void BindSampler(DWORD Sampler);
