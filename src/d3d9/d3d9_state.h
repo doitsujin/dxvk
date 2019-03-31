@@ -30,8 +30,8 @@ namespace dxvk {
         renderTargets[i] = nullptr;
 
       depthStencil = nullptr;
-	  vertexShader = nullptr;
-	  pixelShader = nullptr;
+      vertexShader = nullptr;
+      pixelShader = nullptr;
       vertexDecl = nullptr;
       indices = nullptr;
     }
