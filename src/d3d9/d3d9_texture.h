@@ -183,8 +183,8 @@ namespace dxvk {
 
     switch (ptr->GetType()) {
       case D3DRTYPE_TEXTURE:       return static_cast<Direct3DTexture9*>      (ptr)->GetCommonTexture();
-      //case D3DRTYPE_CUBETEXTURE:   return static_cast<Direct3DCubeTexture9*>  (ptr)->GetCommonTexture();
-      //case D3DRTYPE_VOLUMETEXTURE: return static_cast<Direct3DVolumeTexture9*>(ptr)->GetCommonTexture();
+      case D3DRTYPE_CUBETEXTURE:   return static_cast<Direct3DCubeTexture9*>  (ptr)->GetCommonTexture();
+      case D3DRTYPE_VOLUMETEXTURE: return static_cast<Direct3DVolumeTexture9*>(ptr)->GetCommonTexture();
       default:
         Logger::warn("Unknown texture resource type."); break;
     }
@@ -198,9 +198,9 @@ namespace dxvk {
       return;
 
     switch (tex->GetType()) {
-      case D3DRTYPE_TEXTURE:       CastRefPrivate<Direct3DTexture9>(tex, AddRef);       break;
-      //case D3DRTYPE_CUBETEXTURE:   CastRefPrivate<Direct3DCubeTexture9*>(tex, AddRef);   break;
-      //case D3DRTYPE_VOLUMETEXTURE: CastRefPrivate<Direct3DVolumeTexture9*>(tex, AddRef); break;
+      case D3DRTYPE_TEXTURE:       CastRefPrivate<Direct3DTexture9>       (tex, AddRef); break;
+      case D3DRTYPE_CUBETEXTURE:   CastRefPrivate<Direct3DCubeTexture9>  (tex, AddRef); break;
+      case D3DRTYPE_VOLUMETEXTURE: CastRefPrivate<Direct3DVolumeTexture9>(tex, AddRef); break;
     default:
       Logger::warn("Unknown texture resource type."); break;
     }
