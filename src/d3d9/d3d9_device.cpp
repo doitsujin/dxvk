@@ -711,6 +711,12 @@ namespace dxvk {
     // Copies would only work if the extents match. (ie. no stretching)
     bool niceRect        =  (pSourceRect->right  - pSourceRect->left) == (pDestRect->right  - pDestRect->left);
          niceRect       &=  (pSourceRect->bottom - pSourceRect->top)  == (pDestRect->bottom - pDestRect->top);
+         niceRect       &=  (pSourceRect->left   % srcFormatInfo->blockSize.width  == 0);
+         niceRect       &=  (pSourceRect->right  % srcFormatInfo->blockSize.width  == 0);
+         niceRect       &=  (pSourceRect->top    % srcFormatInfo->blockSize.height == 0);
+         niceRect       &=  (pSourceRect->bottom % srcFormatInfo->blockSize.height == 0);
+         niceRect       &=  (pDestRect->left     % dstFormatInfo->blockSize.width  == 0);
+         niceRect       &=  (pDestRect->top      % dstFormatInfo->blockSize.height == 0);
 
     bool niceCopyRegion  = pSourceRect == nullptr && pDestRect == nullptr;
          niceCopyRegion |= niceRect;
