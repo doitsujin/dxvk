@@ -2949,9 +2949,12 @@ namespace dxvk {
     // corner so we can get away with flipping the viewport.
     const D3DVIEWPORT9& vp = m_state.viewport;
 
+    // Correctness Factor
+    float cf = m_d3d9Options.halfPixelOffset ? 0.5f : 0.0f;
+
     viewport = VkViewport{
-      float(vp.X),       float(vp.Height + vp.Y),
-      float(vp.Width),   -float(vp.Height),
+      float(vp.X)     + cf,    float(vp.Height + vp.Y) + cf,
+      float(vp.Width) + cf,   -float(vp.Height)        - cf,
       vp.MinZ,           vp.MaxZ,
     };
 
