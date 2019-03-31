@@ -35,6 +35,7 @@ namespace dxvk {
   class D3D9CommonShader;
   class D3D9ShaderModuleSet;
   class D3D9Initializer;
+  class D3D9Query;
 
   enum class D3D9DeviceFlag : uint64_t {
     DirtyClipPlanes,
@@ -709,6 +710,9 @@ namespace dxvk {
     const D3D9Options* GetOptions() const {
       return &m_d3d9Options;
     }       
+
+    void Begin(D3D9Query* pQuery);
+    void End(D3D9Query* pQuery);
 
   private:
 

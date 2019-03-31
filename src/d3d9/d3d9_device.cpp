@@ -7,6 +7,7 @@
 #include "d3d9_buffer.h"
 #include "d3d9_vertex_declaration.h"
 #include "d3d9_shader.h"
+#include "d3d9_query.h"
 
 #include "../dxvk/dxvk_adapter.h"
 #include "../dxvk/dxvk_instance.h"
@@ -1953,8 +1954,19 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateQuery(D3DQUERYTYPE Type, IDirect3DQuery9** ppQuery) {
-    Logger::warn("Direct3DDevice9Ex::CreateQuery: Stub");
-    return D3D_OK;
+    InitReturnPtr(ppQuery);
+
+    if (ppQuery == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    try {
+      *ppQuery = ref(new D3D9Query(this, Type));
+      return S_OK;
+    }
+    catch (const DxvkError & e) {
+      Logger::err(e.message());
+      return E_INVALIDARG;
+    }
   }
 
   // Ex Methods
@@ -3574,6 +3586,26 @@ namespace dxvk {
     });
   }
 
+  void Direct3DDevice9Ex::Begin(D3D9Query* pQuery) {
+    auto lock = LockDevice();
+
+    Com<D3D9Query> queryPtr = pQuery;
+
+    EmitCs([queryPtr](DxvkContext* ctx) {
+      queryPtr->Begin(ctx);
+    });
+  }
+
+  void Direct3DDevice9Ex::End(D3D9Query* pQuery) {
+    auto lock = LockDevice();
+
+    Com<D3D9Query> queryPtr = pQuery;
+
+    EmitCs([queryPtr](DxvkContext* ctx) {
+      queryPtr->End(ctx);
+    });
+  }
+
   HRESULT Direct3DDevice9Ex::CreateShaderModule(
         D3D9CommonShader*     pShaderModule,
         DxvkShaderKey         ShaderKey,
@@ -3591,4 +3623,5 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
     }
   }
+
 }
