@@ -675,6 +675,8 @@ namespace dxvk {
       UploadConstants(DxsoProgramType::VertexShader);
       UploadConstants(DxsoProgramType::PixelShader);
     }
+    
+    void UpdateClipPlanes();
 
     Rc<DxvkSampler> CreateSampler(DWORD Sampler);
 
@@ -772,6 +774,8 @@ namespace dxvk {
 
     D3D9ConstantSets                m_vsConst;
     D3D9ConstantSets                m_psConst;
+
+    Rc<DxvkBuffer>                  m_vsClipPlanes;
 
     const D3D9VkFormatTable         m_d3d9Formats;
     const D3D9Options               m_d3d9Options;

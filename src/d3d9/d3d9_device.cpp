@@ -3009,6 +3009,9 @@ namespace dxvk {
     m_vsConst.buffer = m_dxvkDevice->createBuffer(info, memoryFlags);
     m_psConst.buffer = m_dxvkDevice->createBuffer(info, memoryFlags);
 
+    info.size = caps::MaxClipPlanes * sizeof(D3D9ClipPlane);
+    m_vsClipPlanes = m_dxvkDevice->createBuffer(info, memoryFlags);
+
     auto BindConstantBuffer = [this](
       DxsoProgramType     shaderStage,
       Rc<DxvkBuffer>      buffer,
@@ -3021,14 +3024,16 @@ namespace dxvk {
         cSlotId = slotId,
         cBuffer = buffer
       ] (DxvkContext* ctx) {
-        ctx->bindResourceBuffer(
-          cSlotId,
-          DxvkBufferSlice(cBuffer, 0, D3D9ConstantSets::SetSize));
+        ctx->bindResourceBuffer(cSlotId,
+          DxvkBufferSlice(cBuffer, 0, cBuffer->info().size));
       });
     };
 
     BindConstantBuffer(DxsoProgramType::VertexShader, m_vsConst.buffer, DxsoConstantBuffers::VSConstantBuffer);
     BindConstantBuffer(DxsoProgramType::PixelShader,  m_psConst.buffer, DxsoConstantBuffers::PSConstantBuffer);
+    BindConstantBuffer(DxsoProgramType::VertexShader, m_vsClipPlanes,   DxsoConstantBuffers::VSClipPlanes);
+    
+    m_flags.set(D3D9DeviceFlag::DirtyClipPlanes);
   }
 
   void Direct3DDevice9Ex::UploadConstants(DxsoProgramType ShaderStage) {
@@ -3053,6 +3058,26 @@ namespace dxvk {
 
     EmitCs([
       cBuffer = constSet.buffer,
+      cSlice  = slice
+    ] (DxvkContext* ctx) {
+      ctx->invalidateBuffer(cBuffer, cSlice);
+    });
+  }
+  
+  void Direct3DDevice9Ex::UpdateClipPlanes() {
+    m_flags.clr(D3D9DeviceFlag::DirtyClipPlanes);
+    
+    auto slice = m_vsClipPlanes->allocSlice();
+    auto dst = reinterpret_cast<D3D9ClipPlane*>(slice.mapPtr);
+    
+    for (uint32_t i = 0; i < caps::MaxClipPlanes; i++) {
+      dst[i] = (m_state.renderStates[D3DRS_CLIPPLANEENABLE] & (1 << i))
+        ? m_state.clipPlanes[i]
+        : D3D9ClipPlane();
+    }
+    
+    EmitCs([
+      cBuffer = m_vsClipPlanes,
       cSlice  = slice
     ] (DxvkContext* ctx) {
       ctx->invalidateBuffer(cBuffer, cSlice);
@@ -3403,6 +3428,9 @@ namespace dxvk {
 
     if (m_flags.test(D3D9DeviceFlag::DirtyRasterizerState))
       BindRasterizerState();
+    
+    if (m_flags.test(D3D9DeviceFlag::DirtyClipPlanes))
+      UpdateClipPlanes();
 
     UpdateConstants();
   }
