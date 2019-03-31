@@ -165,7 +165,6 @@ namespace dxvk {
     D3DPRESENT_PARAMETERS* pPresentationParameters,
     IDirect3DDevice9** ppReturnedDeviceInterface) {
     return createDeviceInternal(
-      false,
       Adapter,
       DeviceType,
       hFocusWindow,
@@ -271,7 +270,6 @@ namespace dxvk {
     D3DDISPLAYMODEEX* pFullscreenDisplayMode,
     IDirect3DDevice9Ex** ppReturnedDeviceInterface) {
     return createDeviceInternal(
-      true,
       Adapter,
       DeviceType,
       hFocusWindow,
@@ -352,7 +350,6 @@ namespace dxvk {
   }
 
   HRESULT Direct3D9Ex::createDeviceInternal(
-    bool extended,
     UINT adapter,
     D3DDEVTYPE deviceType,
     HWND window,
@@ -370,11 +367,11 @@ namespace dxvk {
     if (dxvkAdapter == nullptr)
       return D3DERR_INVALIDCALL;
 
-    std::string clientApi = str::format("D3D9", extended ? "Ex" : "");
+    std::string clientApi = str::format("D3D9", m_extended ? "Ex" : "");
     auto dxvkDevice = dxvkAdapter->createDevice(clientApi, Direct3DDevice9Ex::GetDeviceFeatures(dxvkAdapter));
 
     *outDevice = ref(new Direct3DDevice9Ex{ 
-      extended,
+      m_extended,
       this,
       adapter,
       dxvkAdapter,

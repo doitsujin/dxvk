@@ -122,7 +122,6 @@ namespace dxvk {
   private:
 
     HRESULT createDeviceInternal(
-      bool extended,
       UINT adapter,
       D3DDEVTYPE deviceType,
       HWND window,
