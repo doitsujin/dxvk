@@ -2989,7 +2989,8 @@ namespace dxvk {
                 | VK_ACCESS_UNIFORM_READ_BIT
                 | VK_ACCESS_HOST_WRITE_BIT;
 
-    VkMemoryPropertyFlags memoryFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+    VkMemoryPropertyFlags memoryFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+                                      | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
                                       | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
     info.stages |=  VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
