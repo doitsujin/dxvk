@@ -1,6 +1,7 @@
 #pragma once
 
 #include "d3d9_surface.h"
+#include "d3d9_volume.h"
 #include "d3d9_util.h"
 
 #include <vector>
@@ -126,6 +127,31 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE UnlockRect(UINT Level);
 
     HRESULT STDMETHODCALLTYPE AddDirtyRect(CONST RECT* pDirtyRect);
+
+  };
+
+  using Direct3DVolumeTexture9Base = Direct3DBaseTexture9<Direct3DVolume9, IDirect3DVolumeTexture9>;
+  class Direct3DVolumeTexture9 final : public Direct3DVolumeTexture9Base {
+
+  public:
+
+    Direct3DVolumeTexture9(
+          Direct3DDevice9Ex*      pDevice,
+    const D3D9TextureDesc*        pDesc);
+
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
+
+    D3DRESOURCETYPE STDMETHODCALLTYPE GetType();
+
+    HRESULT STDMETHODCALLTYPE GetLevelDesc(UINT Level, D3DVOLUME_DESC *pDesc);
+
+    HRESULT STDMETHODCALLTYPE GetVolumeLevel(UINT Level, IDirect3DVolume9** ppSurfaceLevel);
+
+    HRESULT STDMETHODCALLTYPE LockBox(UINT Level, D3DLOCKED_BOX* pLockedBox, CONST D3DBOX* pBox, DWORD Flags);
+
+    HRESULT STDMETHODCALLTYPE UnlockBox(UINT Level);
+
+    HRESULT STDMETHODCALLTYPE AddDirtyBox(CONST D3DBOX* pDirtyBox);
 
   };
 

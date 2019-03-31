@@ -60,17 +60,17 @@ namespace dxvk {
       return D3D_OK;
     }
 
-    DWORD STDMETHODCALLTYPE SetPriority(DWORD PriorityNew) final {
+    DWORD STDMETHODCALLTYPE SetPriority(DWORD PriorityNew) {
       DWORD oldPriority = m_priority;
       m_priority = PriorityNew;
       return oldPriority;
     }
 
-    DWORD STDMETHODCALLTYPE GetPriority() final {
+    DWORD STDMETHODCALLTYPE GetPriority() {
       return m_priority;
     }
 
-    void STDMETHODCALLTYPE PreLoad() final {
+    void STDMETHODCALLTYPE PreLoad() {
       Logger::warn("Direct3DResource9::PreLoad: Stub");
     }
 
