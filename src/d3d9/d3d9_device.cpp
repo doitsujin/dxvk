@@ -657,7 +657,60 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetRenderTargetData(
           IDirect3DSurface9* pRenderTarget,
           IDirect3DSurface9* pDestSurface) {
-    Logger::warn("Direct3DDevice9Ex::GetRenderTargetData: Stub");
+    auto lock = LockDevice();
+
+    Direct3DSurface9* src = static_cast<Direct3DSurface9*>(pRenderTarget);
+    Direct3DSurface9* dst = static_cast<Direct3DSurface9*>(pDestSurface);
+
+    if (src == nullptr || dst == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    Direct3DCommonTexture9* srcTextureInfo = src->GetCommonTexture();
+    Direct3DCommonTexture9* dstTextureInfo = dst->GetCommonTexture();
+
+    auto* srcDesc = srcTextureInfo->Desc();
+    auto* dstDesc = dstTextureInfo->Desc();
+
+    if (srcDesc->Format != dstDesc->Format)
+      return D3DERR_INVALIDCALL;
+
+    if (srcDesc->MultiSample > D3DMULTISAMPLE_NONMASKABLE || dstDesc->MultiSample > D3DMULTISAMPLE_NONMASKABLE)
+      return D3DERR_INVALIDCALL;
+
+    Rc<DxvkImage> srcImage = srcTextureInfo->GetImage();
+    Rc<DxvkImage> dstImage = srcTextureInfo->GetImage();
+
+    const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcImage->info().format);
+    const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(dstImage->info().format);
+
+    const VkImageSubresource srcSubresource = srcTextureInfo->GetSubresourceFromIndex(srcFormatInfo->aspectMask, src->GetSubresource());
+    const VkImageSubresource dstSubresource = dstTextureInfo->GetSubresourceFromIndex(dstFormatInfo->aspectMask, dst->GetSubresource());
+
+    VkImageSubresourceLayers srcSubresourceLayers = {
+      srcSubresource.aspectMask,
+      srcSubresource.mipLevel,
+      srcSubresource.arrayLayer, 1 };
+
+    VkImageSubresourceLayers dstSubresourceLayers = {
+      dstSubresource.aspectMask,
+      dstSubresource.mipLevel,
+      dstSubresource.arrayLayer, 1 };
+
+    VkExtent3D extent = srcImage->mipLevelExtent(srcSubresource.mipLevel);
+
+    EmitCs([
+      cSrcImage       = srcImage,
+      cSrcSubresource = srcSubresourceLayers,
+      cDstImage       = dstImage,
+      cDstSubresource = dstSubresourceLayers,
+      cExtent         = extent
+    ] (DxvkContext* ctx) {
+      ctx->copyImage(
+        cDstImage, cDstSubresource, VkOffset3D{ 0,0,0 },
+        cSrcImage, cSrcSubresource, VkOffset3D{ 0,0,0 },
+        cExtent);
+    });
+
     return D3D_OK;
   }
 
