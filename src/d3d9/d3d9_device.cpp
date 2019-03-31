@@ -1070,12 +1070,29 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetClipPlane(DWORD Index, const float* pPlane) {
-    Logger::warn("Direct3DDevice9Ex::SetClipPlane: Stub");
+    if (Index >= caps::MaxClipPlanes || !pPlane)
+      return D3DERR_INVALIDCALL;
+    
+    bool dirty = false;
+    
+    for (uint32_t i = 0; i < 4; i++) {
+      dirty |= m_state.clipPlanes[Index].coeff[i] != pPlane[i];
+      m_state.clipPlanes[Index].coeff[i] = pPlane[i];
+    }
+    
+    if (dirty)
+      m_flags.set(D3D9DeviceFlag::DirtyClipPlanes);
+    
     return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetClipPlane(DWORD Index, float* pPlane) {
-    Logger::warn("Direct3DDevice9Ex::GetClipPlane: Stub");
+    if (Index >= caps::MaxClipPlanes || !pPlane)
+      return D3DERR_INVALIDCALL;
+    
+    for (uint32_t i = 0; i < 4; i++)
+      pPlane[i] = m_state.clipPlanes[Index].coeff[i];
+    
     return D3D_OK;
   }
 
