@@ -1145,6 +1145,10 @@ namespace dxvk {
           m_flags.set(D3D9DeviceFlag::DirtyRasterizerState);
           break;
 
+        case D3DRS_CLIPPLANEENABLE:
+          m_flags.set(D3D9DeviceFlag::DirtyClipPlanes);
+          break;
+
         default:
           Logger::warn(str::format("Direct3DDevice9Ex::SetRenderState: Unhandled render state ", State));
           break;

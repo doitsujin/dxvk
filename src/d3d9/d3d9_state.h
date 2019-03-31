@@ -13,6 +13,10 @@ namespace dxvk {
   class Direct3DVertexDeclaration9;
   class Direct3DVertexBuffer9;
   class Direct3DIndexBuffer9;
+  
+  struct D3D9ClipPlane {
+    float coeff[4];
+  };
 
   struct D3D9VBO {
     D3D9VBO() {
@@ -34,6 +38,9 @@ namespace dxvk {
       pixelShader = nullptr;
       vertexDecl = nullptr;
       indices = nullptr;
+      
+      for (uint32_t i = 0; i < clipPlanes.size(); i++)
+        clipPlanes[i] = D3D9ClipPlane();
     }
 
     std::array<Direct3DSurface9*, caps::MaxSimultaneousRenderTargets> renderTargets;
@@ -57,6 +64,8 @@ namespace dxvk {
 
     D3D9ShaderConstants vsConsts;
     D3D9ShaderConstants psConsts;
+    
+    std::array<D3D9ClipPlane, caps::MaxClipPlanes> clipPlanes;
     
   };
 

@@ -37,6 +37,7 @@ namespace dxvk {
   class D3D9Initializer;
 
   enum class D3D9DeviceFlag : uint64_t {
+    DirtyClipPlanes,
     DirtyDepthStencilState,
     DirtyBlendState,
     DirtyRasterizerState,
