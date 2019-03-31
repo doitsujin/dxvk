@@ -1135,6 +1135,15 @@ namespace dxvk {
     return m_regs[m_regs.size() - 1];
   }
 
+  DxsoSpirvRegister DxsoCompiler::findBuiltInOutputPtr(DxsoUsage usage) {
+    for (uint32_t i = 0; i < m_oDecls.size(); i++) {
+      if (m_oDecls[i].semantic.usage == usage)
+        return DxsoSpirvRegister { m_oDecls[i].id, m_oPtrs[i] };
+    }
+    
+    return DxsoSpirvRegister();
+  }
+
   uint32_t DxsoCompiler::getTypeId(DxsoRegisterType regType, uint32_t count) {
     switch (regType) {
     case DxsoRegisterType::Addr: {
