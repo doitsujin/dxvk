@@ -21,6 +21,9 @@ namespace dxvk {
     /// Set the max shader model the device can support in the caps.
     int32_t shaderModel;
 
+    /// Whether or not we should correct for the half-pixel offset in d3d9.
+    bool halfPixelOffset;
+
   };
 
 }
