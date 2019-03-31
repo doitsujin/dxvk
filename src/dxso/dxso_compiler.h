@@ -139,6 +139,7 @@ namespace dxvk {
     void emitPsFinalize();
     
     void emitVsClipping();
+    void emitPsProcessing();
 
     void emitOutputDepthClamp();
 
@@ -196,7 +197,7 @@ namespace dxvk {
     }
     DxsoSpirvRegister& mapSpirvRegister(DxsoRegisterId id, bool centroid, DxsoRegister* relative, const DxsoDeclaration* optionalPremadeDecl);
     
-    DxsoSpirvRegister findBuiltInOutputPtr(DxsoUsage usage);
+    DxsoSpirvRegister findBuiltInOutputPtr(DxsoUsage usage, uint32_t index);
 
     uint32_t getTypeId(DxsoRegisterType regType, uint32_t count = 4);
     uint32_t spvType(const DxsoRegister& reg, uint32_t count = 4) {

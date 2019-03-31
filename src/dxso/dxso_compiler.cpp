@@ -2,6 +2,7 @@
 
 #include "../d3d9/d3d9_caps.h"
 #include "../d3d9/d3d9_constant_set.h"
+#include "../d3d9/d3d9_state.h"
 #include "dxso_util.h"
 
 namespace dxvk {
@@ -168,6 +169,7 @@ namespace dxvk {
     }*/
 
     //this->emitOutputMapping();
+    this->emitPsProcessing();
     this->emitOutputDepthClamp();
     this->emitFunctionEnd();
   }
@@ -219,7 +221,7 @@ namespace dxvk {
     
     // Compute clip distances
     uint32_t positionId = m_module.opLoad(vec4Type,
-      findBuiltInOutputPtr(DxsoUsage::Position).varId);
+      findBuiltInOutputPtr(DxsoUsage::Position, 0).varId);
     
     for (uint32_t i = 0; i < caps::MaxClipPlanes; i++) {
       std::array<uint32_t, 2> blockMembers = {{
@@ -239,6 +241,149 @@ namespace dxvk {
           m_module.defPointerType(floatType, spv::StorageClassOutput),
           clipDistArray, 1, &blockMembers[1]),
         distId);
+    }
+  }
+  
+  void DxsoCompiler::emitPsProcessing() {
+    uint32_t boolType  = m_module.defBoolType();
+    uint32_t floatType = m_module.defFloatType(32);
+    uint32_t floatPtr  = m_module.defPointerType(floatType, spv::StorageClassUniform);
+    
+    // Declare uniform buffer containing render states
+    enum RenderStateMember : uint32_t {
+      RsAlphaRef = 0,
+    };
+    
+    std::array<uint32_t, 1> rsMembers = {{
+      floatType,
+    }};
+    
+    uint32_t rsStruct = m_module.defStructTypeUnique(rsMembers.size(), rsMembers.data());
+    uint32_t rsBlock  = m_module.newVar(
+      m_module.defPointerType(rsStruct, spv::StorageClassUniform),
+      spv::StorageClassUniform);
+    
+    m_module.setDebugName         (rsStruct, "render_state_t");
+    m_module.decorate             (rsStruct, spv::DecorationBlock);
+    m_module.setDebugMemberName   (rsStruct, 0, "alpha_ref");
+    m_module.memberDecorateOffset (rsStruct, 0, offsetof(D3D9RenderStateInfo, alphaRef));
+    
+    uint32_t bindingId = computeResourceSlotId(
+      m_programInfo.type(), DxsoBindingType::ConstantBuffer,
+      DxsoConstantBuffers::PSRenderStates);
+    
+    m_module.setDebugName         (rsBlock, "render_state");
+    m_module.decorateDescriptorSet(rsBlock, 0);
+    m_module.decorateBinding      (rsBlock, bindingId);
+    
+    DxvkResourceSlot resource;
+    resource.slot   = bindingId;
+    resource.type   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    resource.view   = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    resource.access = VK_ACCESS_UNIFORM_READ_BIT;
+    m_resourceSlots.push_back(resource);
+    
+    // Declare spec constants for render states
+    uint32_t alphaTestId = m_module.specConstBool(false);
+    uint32_t alphaFuncId = m_module.specConst32(m_module.defIntType(32, 0), uint32_t(VK_COMPARE_OP_ALWAYS));
+    
+    m_module.setDebugName   (alphaTestId, "alpha_test");
+    m_module.decorateSpecId (alphaTestId, uint32_t(DxvkSpecConstantId::AlphaTestEnable));
+    
+    m_module.setDebugName   (alphaFuncId, "alpha_func");
+    m_module.decorateSpecId (alphaFuncId, uint32_t(DxvkSpecConstantId::AlphaCompareOp));
+    
+    // Implement alpha test
+    auto oC0 = findBuiltInOutputPtr(DxsoUsage::Color, 0);
+    
+    if (oC0.varId) {
+      // Labels for the alpha test
+      std::array<SpirvSwitchCaseLabel, 8> atestCaseLabels = {{
+        { uint32_t(VK_COMPARE_OP_NEVER),            m_module.allocateId() },
+        { uint32_t(VK_COMPARE_OP_LESS),             m_module.allocateId() },
+        { uint32_t(VK_COMPARE_OP_EQUAL),            m_module.allocateId() },
+        { uint32_t(VK_COMPARE_OP_LESS_OR_EQUAL),    m_module.allocateId() },
+        { uint32_t(VK_COMPARE_OP_GREATER),          m_module.allocateId() },
+        { uint32_t(VK_COMPARE_OP_NOT_EQUAL),        m_module.allocateId() },
+        { uint32_t(VK_COMPARE_OP_GREATER_OR_EQUAL), m_module.allocateId() },
+        { uint32_t(VK_COMPARE_OP_ALWAYS),           m_module.allocateId() },
+      }};
+      
+      uint32_t atestBeginLabel   = m_module.allocateId();
+      uint32_t atestTestLabel    = m_module.allocateId();
+      uint32_t atestDiscardLabel = m_module.allocateId();
+      uint32_t atestKeepLabel    = m_module.allocateId();
+      uint32_t atestSkipLabel    = m_module.allocateId();
+      
+      // if (alpha_test) { ... }
+      m_module.opSelectionMerge(atestSkipLabel, spv::SelectionControlMaskNone);
+      m_module.opBranchConditional(alphaTestId, atestBeginLabel, atestSkipLabel);
+      m_module.opLabel(atestBeginLabel);
+      
+      // Load alpha component
+      uint32_t alphaComponentId = 3;
+      uint32_t alphaId = m_module.opCompositeExtract(floatType,
+        m_module.opLoad(m_module.defVectorType(floatType, 4), oC0.varId),
+        1, &alphaComponentId);
+      
+      // Load alpha reference
+      uint32_t alphaRefMember = m_module.constu32(RsAlphaRef);
+      uint32_t alphaRefId = m_module.opLoad(floatType,
+        m_module.opAccessChain(floatPtr, rsBlock, 1, &alphaRefMember));
+      
+      // switch (alpha_func) { ... }
+      m_module.opSelectionMerge(atestTestLabel, spv::SelectionControlMaskNone);
+      m_module.opSwitch(alphaFuncId,
+        atestCaseLabels[uint32_t(VK_COMPARE_OP_ALWAYS)].labelId,
+        atestCaseLabels.size(),
+        atestCaseLabels.data());
+      
+      std::array<SpirvPhiLabel, 8> atestVariables;
+      
+      for (uint32_t i = 0; i < atestCaseLabels.size(); i++) {
+        m_module.opLabel(atestCaseLabels[i].labelId);
+        
+        atestVariables[i].labelId = atestCaseLabels[i].labelId;
+        atestVariables[i].varId   = [&] {
+          switch (VkCompareOp(atestCaseLabels[i].literal)) {
+            case VK_COMPARE_OP_NEVER:            return m_module.constBool(false);
+            case VK_COMPARE_OP_LESS:             return m_module.opFOrdLessThan        (boolType, alphaId, alphaRefId);
+            case VK_COMPARE_OP_EQUAL:            return m_module.opFOrdEqual           (boolType, alphaId, alphaRefId);
+            case VK_COMPARE_OP_LESS_OR_EQUAL:    return m_module.opFOrdLessThanEqual   (boolType, alphaId, alphaRefId);
+            case VK_COMPARE_OP_GREATER:          return m_module.opFOrdGreaterThan     (boolType, alphaId, alphaRefId);
+            case VK_COMPARE_OP_NOT_EQUAL:        return m_module.opFOrdNotEqual        (boolType, alphaId, alphaRefId);
+            case VK_COMPARE_OP_GREATER_OR_EQUAL: return m_module.opFOrdGreaterThanEqual(boolType, alphaId, alphaRefId);
+            default:
+            case VK_COMPARE_OP_ALWAYS:           return m_module.constBool(true);
+          }
+        }();
+        
+        m_module.opBranch(atestTestLabel);
+      }
+      
+      // end switch
+      m_module.opLabel(atestTestLabel);
+      
+      uint32_t atestResult = m_module.opPhi(boolType,
+        atestVariables.size(),
+        atestVariables.data());
+      uint32_t atestDiscard = m_module.opLogicalNot(boolType, atestResult);
+      
+      atestResult = m_module.opLogicalNot(boolType, atestResult);
+      
+      // if (do_discard) { ... }
+      m_module.opSelectionMerge(atestKeepLabel, spv::SelectionControlMaskNone);
+      m_module.opBranchConditional(atestDiscard, atestDiscardLabel, atestKeepLabel);
+      
+      m_module.opLabel(atestDiscardLabel);
+      m_module.opKill();
+      
+      // end if (do_discard)
+      m_module.opLabel(atestKeepLabel);
+      m_module.opBranch(atestSkipLabel);
+      
+      // end if (alpha_test)
+      m_module.opLabel(atestSkipLabel);
     }
   }
 
@@ -1207,9 +1352,10 @@ namespace dxvk {
     return m_regs[m_regs.size() - 1];
   }
 
-  DxsoSpirvRegister DxsoCompiler::findBuiltInOutputPtr(DxsoUsage usage) {
+  DxsoSpirvRegister DxsoCompiler::findBuiltInOutputPtr(DxsoUsage usage, uint32_t index) {
     for (uint32_t i = 0; i < m_oDecls.size(); i++) {
-      if (m_oDecls[i].semantic.usage == usage)
+      if (m_oDecls[i].semantic.usage      == usage
+       && m_oDecls[i].semantic.usageIndex == index)
         return DxsoSpirvRegister { m_oDecls[i].id, m_oPtrs[i] };
     }
     
