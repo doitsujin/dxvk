@@ -11,6 +11,8 @@ namespace dxvk {
   
   DxvkSpecConstantMap::DxvkSpecConstantMap() {
     SET_CONSTANT_ENTRY(DxvkSpecConstantId::RasterizerSampleCount, rasterizerSampleCount);
+    SET_CONSTANT_ENTRY(DxvkSpecConstantId::AlphaTestEnable,       alphaTestEnable);
+    SET_CONSTANT_ENTRY(DxvkSpecConstantId::AlphaCompareOp,        alphaCompareOp);
 
     for (uint32_t i = 0; i < MaxNumActiveBindings; i++)
       this->setBindingEntry(i);

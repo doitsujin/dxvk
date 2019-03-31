@@ -204,6 +204,8 @@ namespace dxvk {
     // Set up some specialization constants
     DxvkSpecConstantData specData;
     specData.rasterizerSampleCount = uint32_t(sampleCount);
+    specData.alphaTestEnable       = state.xsAlphaCompareOp != VK_COMPARE_OP_ALWAYS;
+    specData.alphaCompareOp        = state.xsAlphaCompareOp;
     
     for (uint32_t i = 0; i < MaxNumActiveBindings; i++)
       specData.activeBindings[i] = state.bsBindingMask.isBound(i) ? VK_TRUE : VK_FALSE;
@@ -353,7 +355,7 @@ namespace dxvk {
     msInfo.minSampleShading       = m_common.msSampleShadingFactor;
     msInfo.pSampleMask            = &state.msSampleMask;
     msInfo.alphaToCoverageEnable  = state.msEnableAlphaToCoverage;
-    msInfo.alphaToOneEnable       = state.msEnableAlphaToOne;
+    msInfo.alphaToOneEnable       = VK_FALSE;
     
     VkPipelineDepthStencilStateCreateInfo dsInfo;
     dsInfo.sType                  = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;

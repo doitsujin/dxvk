@@ -18,6 +18,8 @@ namespace dxvk {
    */
   struct DxvkSpecConstantData {
     uint32_t rasterizerSampleCount;
+    VkBool32 alphaTestEnable;
+    VkCompareOp alphaCompareOp;
     uint32_t outputMappings[MaxNumRenderTargets * 4];
     VkBool32 activeBindings[MaxNumActiveBindings];
   };

@@ -2031,6 +2031,14 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::setExtraState(
+    const DxvkExtraState&     xs) {
+    m_state.gp.state.xsAlphaCompareOp = xs.alphaCompareOp;
+    
+    m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+  }
+  
+  
   void DxvkContext::setPredicate(
     const DxvkBufferSlice&    predicate,
           VkConditionalRenderingFlagsEXT flags) {

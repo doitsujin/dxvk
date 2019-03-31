@@ -30,10 +30,12 @@ namespace dxvk {
     // Specialization constants for pipeline state
     SpecConstantRangeStart      = ColorComponentMappings + MaxNumRenderTargets * 4,
     RasterizerSampleCount       = SpecConstantRangeStart + 0,
+    AlphaTestEnable,
+    AlphaCompareOp,
 
     /// Lowest and highest known spec constant IDs
     SpecConstantIdMin           = RasterizerSampleCount,
-    SpecConstantIdMax           = RasterizerSampleCount,
+    SpecConstantIdMax           = AlphaCompareOp,
   };
   
   
