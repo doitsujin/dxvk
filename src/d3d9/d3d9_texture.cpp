@@ -144,4 +144,81 @@ namespace dxvk {
     return D3D_OK;
   }
 
+  // Direct3DCubeTexture9
+
+  Direct3DCubeTexture9::Direct3DCubeTexture9(
+        Direct3DDevice9Ex*      pDevice,
+  const D3D9TextureDesc*        pDesc)
+        : Direct3DCubeTexture9Base ( pDevice, pDesc ) { }
+
+  HRESULT STDMETHODCALLTYPE Direct3DCubeTexture9::QueryInterface(REFIID riid, void** ppvObject) {
+    if (ppvObject == nullptr)
+      return E_POINTER;
+
+    *ppvObject = nullptr;
+
+    if (riid == __uuidof(IUnknown)
+     || riid == __uuidof(IDirect3DResource9)
+     || riid == __uuidof(IDirect3DBaseTexture9)
+     || riid == __uuidof(IDirect3DCubeTexture9)) {
+      *ppvObject = ref(this);
+      return S_OK;
+    }
+
+    Logger::warn("Direct3DCubeTexture9::QueryInterface: Unknown interface query");
+    Logger::warn(str::format(riid));
+    return E_NOINTERFACE;
+  }
+
+  D3DRESOURCETYPE STDMETHODCALLTYPE Direct3DCubeTexture9::GetType() {
+    return D3DRTYPE_CUBETEXTURE;
+  }
+
+  HRESULT STDMETHODCALLTYPE Direct3DCubeTexture9::GetLevelDesc(UINT Level, D3DSURFACE_DESC *pDesc) {
+    auto* surface = GetSubresource(Level);
+
+    if (surface == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    return surface->GetDesc(pDesc);
+  }
+
+  HRESULT STDMETHODCALLTYPE Direct3DCubeTexture9::GetCubeMapSurface(D3DCUBEMAP_FACES Face, UINT Level, IDirect3DSurface9** ppSurfaceLevel) {
+    InitReturnPtr(ppSurfaceLevel);
+
+    auto* surface = GetSubresource(
+      m_texture.CalcSubresource(UINT(Face), Level));
+
+    if (ppSurfaceLevel == nullptr || surface == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    *ppSurfaceLevel = ref(surface);
+    return D3D_OK;
+  }
+
+  HRESULT STDMETHODCALLTYPE Direct3DCubeTexture9::LockRect(D3DCUBEMAP_FACES Face, UINT Level, D3DLOCKED_RECT* pLockedRect, CONST RECT* pRect, DWORD Flags) {
+    auto* surface = GetSubresource(
+      m_texture.CalcSubresource(UINT(Face), Level));
+
+    if (surface == nullptr || pLockedRect == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    return surface->LockRect(pLockedRect, pRect, Flags);
+  }
+
+  HRESULT STDMETHODCALLTYPE Direct3DCubeTexture9::UnlockRect(D3DCUBEMAP_FACES Face, UINT Level) {
+    auto* surface = GetSubresource(
+      m_texture.CalcSubresource(UINT(Face), Level));
+
+    if (surface == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    return surface->UnlockRect();
+  }
+
+  HRESULT STDMETHODCALLTYPE Direct3DCubeTexture9::AddDirtyRect(D3DCUBEMAP_FACES Face, CONST RECT* pDirtyRect) {
+    Logger::warn("Direct3DCubeTexture9::AddDirtyRect: Stub");
+    return D3D_OK;
+  }
+
 }

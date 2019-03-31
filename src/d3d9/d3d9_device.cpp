@@ -402,8 +402,37 @@ namespace dxvk {
     InitReturnPtr(ppCubeTexture);
     InitReturnPtr(pSharedHandle);
 
-    Logger::warn("Direct3DDevice9Ex::CreateCubeTexture: Stub");
-    return D3DERR_INVALIDCALL;
+    if (ppCubeTexture == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    D3D9TextureDesc desc;
+    desc.Type               = D3DRTYPE_CUBETEXTURE;
+    desc.Width              = EdgeLength;
+    desc.Height             = EdgeLength;
+    desc.Depth              = 1;
+    desc.MipLevels          = Levels;
+    desc.Usage              = Usage;
+    desc.Format             = fixupFormat(Format);
+    desc.Pool               = Pool;
+    desc.Discard            = FALSE;
+    desc.MultiSample        = D3DMULTISAMPLE_NONE;
+    desc.MultisampleQuality = 0;
+    desc.Lockable           = Pool != D3DPOOL_DEFAULT || Usage & D3DUSAGE_DYNAMIC;
+    desc.Offscreen          = FALSE;
+
+    if (FAILED(Direct3DCommonTexture9::NormalizeTextureProperties(&desc)))
+      return D3DERR_INVALIDCALL;
+
+    try {
+      const Com<Direct3DCubeTexture9> texture = new Direct3DCubeTexture9(this, &desc);
+      m_initializer->InitTexture(texture->GetCommonTexture());
+      *ppCubeTexture = texture.ref();
+      return D3D_OK;
+    }
+    catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return D3DERR_INVALIDCALL;
+    }
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateVertexBuffer(

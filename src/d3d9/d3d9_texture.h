@@ -29,7 +29,7 @@ namespace dxvk {
       for (uint32_t i = 0; i < arraySlices; i++) {
         for (uint32_t j = 0; j < mipLevels; j++) {
 
-          uint32_t subresource = CalcSubresource(j, i, mipLevels);
+          uint32_t subresource = m_texture.CalcSubresource(i, j);
 
           SubresourceType* subObj = new SubresourceType(
             pDevice,
@@ -81,10 +81,6 @@ namespace dxvk {
 
     Direct3DCommonTexture9* GetCommonTexture() {
       return &m_texture;
-    }
-
-    static UINT CalcSubresource(UINT Level, UINT ArraySlice, UINT MipLevels) {
-      return (ArraySlice * MipLevels) + Level;
     }
 
     SubresourceType* GetSubresource(UINT Subresource) {
@@ -152,6 +148,31 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE UnlockBox(UINT Level);
 
     HRESULT STDMETHODCALLTYPE AddDirtyBox(CONST D3DBOX* pDirtyBox);
+
+  };
+
+  using Direct3DCubeTexture9Base = Direct3DBaseTexture9<Direct3DSurface9, IDirect3DCubeTexture9>;
+  class Direct3DCubeTexture9 final : public Direct3DCubeTexture9Base {
+
+  public:
+
+    Direct3DCubeTexture9(
+          Direct3DDevice9Ex*      pDevice,
+    const D3D9TextureDesc*        pDesc);
+
+    HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
+
+    D3DRESOURCETYPE STDMETHODCALLTYPE GetType();
+
+    HRESULT STDMETHODCALLTYPE GetLevelDesc(UINT Level, D3DSURFACE_DESC *pDesc);
+
+    HRESULT STDMETHODCALLTYPE GetCubeMapSurface(D3DCUBEMAP_FACES Face, UINT Level, IDirect3DSurface9** ppSurfaceLevel);
+
+    HRESULT STDMETHODCALLTYPE LockRect(D3DCUBEMAP_FACES Face, UINT Level, D3DLOCKED_RECT* pLockedRect, CONST RECT* pRect, DWORD Flags);
+
+    HRESULT STDMETHODCALLTYPE UnlockRect(D3DCUBEMAP_FACES Face, UINT Level);
+
+    HRESULT STDMETHODCALLTYPE AddDirtyRect(D3DCUBEMAP_FACES Face, CONST RECT* pDirtyRect);
 
   };
 
