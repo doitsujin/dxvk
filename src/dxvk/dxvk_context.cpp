@@ -1990,7 +1990,6 @@ namespace dxvk {
   void DxvkContext::setMultisampleState(const DxvkMultisampleState& ms) {
     m_state.gp.state.msSampleMask            = ms.sampleMask;
     m_state.gp.state.msEnableAlphaToCoverage = ms.enableAlphaToCoverage;
-    m_state.gp.state.msEnableAlphaToOne      = ms.enableAlphaToOne;
     
     m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
   }

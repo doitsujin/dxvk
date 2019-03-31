@@ -20,7 +20,6 @@ namespace dxvk {
     // Multisample state is part of the blend state in D3D11
     m_msState.sampleMask            = 0; // Set during bind
     m_msState.enableAlphaToCoverage = desc.AlphaToCoverageEnable;
-    m_msState.enableAlphaToOne      = VK_FALSE;
     
     // Vulkan only supports a global logic op for the blend
     // state, which might be problematic in some cases.
