@@ -174,6 +174,7 @@ namespace dxvk::vk {
     PresenterDevice   m_device;
     PresenterInfo     m_info;
 
+    HWND              m_window      = nullptr;
     VkSurfaceKHR      m_surface     = VK_NULL_HANDLE;
     VkSwapchainKHR    m_swapchain   = VK_NULL_HANDLE;
 
@@ -213,7 +214,7 @@ namespace dxvk::vk {
             VkPresentModeKHR          presentMode,
             uint32_t                  desired);
 
-    VkResult createSurface(HWND window);
+    VkResult createSurface();
 
     void destroySwapchain();
 
