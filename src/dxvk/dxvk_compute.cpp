@@ -101,7 +101,7 @@ namespace dxvk {
 
     auto csm = m_cs->createShaderModule(m_vkd, m_slotMapping, moduleInfo);
 
-    DxvkSpecConstantData specData;
+    DxvkSpecConstantData specData = { };
     
     for (uint32_t i = 0; i < MaxNumActiveBindings; i++)
       specData.activeBindings[i] = state.bsBindingMask.isBound(i) ? VK_TRUE : VK_FALSE;
