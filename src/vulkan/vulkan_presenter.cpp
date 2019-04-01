@@ -10,8 +10,8 @@ namespace dxvk::vk {
     const Rc<DeviceFn>&   vkd,
           PresenterDevice device,
     const PresenterDesc&  desc)
-  : m_vki(vki), m_vkd(vkd), m_device(device) {
-    if (createSurface(window) != VK_SUCCESS)
+  : m_vki(vki), m_vkd(vkd), m_device(device), m_window(window) {
+    if (createSurface() != VK_SUCCESS)
       throw DxvkError("Failed to create surface");
 
     if (recreateSwapChain(desc) != VK_SUCCESS)
@@ -105,8 +105,20 @@ namespace dxvk::vk {
     VkResult status;
     
     if ((status = m_vki->vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
-        m_device.adapter, m_surface, &caps)) != VK_SUCCESS)
-      return status;
+        m_device.adapter, m_surface, &caps)) != VK_SUCCESS) {
+      while (status == VK_ERROR_SURFACE_LOST_KHR) {
+        // Recreate the surface and try again.
+        if (m_surface)
+          destroySurface();
+        if ((status = createSurface()) != VK_SUCCESS)
+          continue;
+        if ((status = m_vki->vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+            m_device.adapter, m_surface, &caps)) != VK_SUCCESS)
+          continue;
+      }
+      if (status != VK_SUCCESS)
+        return status;
+    }
 
     if ((status = getSupportedFormats(formats)) != VK_SUCCESS)
       return status;
@@ -355,16 +367,16 @@ namespace dxvk::vk {
   }
 
 
-  VkResult Presenter::createSurface(HWND window) {
+  VkResult Presenter::createSurface() {
     HINSTANCE instance = reinterpret_cast<HINSTANCE>(
-      GetWindowLongPtr(window, GWLP_HINSTANCE));
+      GetWindowLongPtr(m_window, GWLP_HINSTANCE));
     
     VkWin32SurfaceCreateInfoKHR info;
     info.sType      = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
     info.pNext      = nullptr;
     info.flags      = 0;
     info.hinstance  = instance;
-    info.hwnd       = window;
+    info.hwnd       = m_window;
     
     VkResult status = m_vki->vkCreateWin32SurfaceKHR(
       m_vki->instance(), &info, nullptr, &m_surface);
