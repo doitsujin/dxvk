@@ -1583,7 +1583,7 @@ namespace dxvk {
 
     changePrivate(m_state.vertexDecl, decl);
 
-    BindInputLayout();
+    m_flags.set(D3D9DeviceFlag::DirtyInputLayout);
 
     return D3D_OK;
   }
@@ -1658,7 +1658,7 @@ namespace dxvk {
       DxsoProgramType::VertexShader,
       GetCommonShader(shader));
 
-    BindInputLayout();
+    m_flags.set(D3D9DeviceFlag::DirtyInputLayout);
 
     return D3D_OK;
   }
@@ -3561,6 +3561,9 @@ namespace dxvk {
     if (m_flags.test(D3D9DeviceFlag::DirtyRenderStateBuffer))
       UpdateRenderStateBuffer();
 
+    if (m_flags.test(D3D9DeviceFlag::DirtyInputLayout))
+      BindInputLayout();
+
     UpdateConstants();
   }
 
@@ -3578,6 +3581,8 @@ namespace dxvk {
   }
 
   void Direct3DDevice9Ex::BindInputLayout() {
+    m_flags.clr(D3D9DeviceFlag::DirtyInputLayout);
+
     if (m_state.vertexShader == nullptr || m_state.vertexDecl == nullptr) {
       EmitCs([](DxvkContext* ctx) {
         ctx->setInputLayout(0, nullptr, 0, nullptr);

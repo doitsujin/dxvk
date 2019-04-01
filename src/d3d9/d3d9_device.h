@@ -44,6 +44,7 @@ namespace dxvk {
     DirtyRasterizerState,
     DirtyExtraState,
     DirtyRenderStateBuffer,
+    DirtyInputLayout,
     ExtendedDevice,
     DeferViewportBinding
   };
