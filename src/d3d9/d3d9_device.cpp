@@ -94,8 +94,6 @@ namespace dxvk {
 
     *ppvObject = nullptr;
 
-    const bool extended = m_flags.test(D3D9DeviceFlag::ExtendedDevice);
-
     if (riid == __uuidof(IUnknown)
      || riid == __uuidof(IDirect3DDevice9)
      || riid == __uuidof(IDirect3DDevice9Ex)) {
