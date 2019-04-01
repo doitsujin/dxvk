@@ -202,7 +202,7 @@ namespace dxvk {
       sampleCount = VkSampleCountFlagBits(state.rsSampleCount);
     
     // Set up some specialization constants
-    DxvkSpecConstantData specData;
+    DxvkSpecConstantData specData = { };
     specData.rasterizerSampleCount = uint32_t(sampleCount);
     
     for (uint32_t i = 0; i < MaxNumActiveBindings; i++)

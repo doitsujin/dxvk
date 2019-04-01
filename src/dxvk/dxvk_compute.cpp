@@ -101,7 +101,7 @@ namespace dxvk {
       Logger::debug(str::format("  cs  : ", m_cs->shader()->debugName()));
     }
     
-    DxvkSpecConstantData specData;
+    DxvkSpecConstantData specData = { };
     
     for (uint32_t i = 0; i < MaxNumActiveBindings; i++)
       specData.activeBindings[i] = state.bsBindingMask.isBound(i) ? VK_TRUE : VK_FALSE;
