@@ -184,7 +184,7 @@ namespace dxvk {
       sampleCount = VkSampleCountFlagBits(state.rsSampleCount);
     
     // Set up some specialization constants
-    DxvkSpecConstantData specData;
+    DxvkSpecConstantData specData = { };
     specData.rasterizerSampleCount = uint32_t(sampleCount);
     specData.alphaTestEnable       = state.xsAlphaCompareOp != VK_COMPARE_OP_ALWAYS;
     specData.alphaCompareOp        = state.xsAlphaCompareOp;
