@@ -1895,10 +1895,14 @@ namespace dxvk {
       m_state.vp.scissorRects[i] = scissorRects[i];
       
       // Vulkan viewports are not allowed to have a width or
-      // height of zero, so we fall back to a dummy viewport.
+      // height of zero, so we fall back to a dummy viewport
+      // and instead set an empty scissor rect, which is legal.
       if (viewports[i].width == 0.0f || viewports[i].height == 0.0f) {
         m_state.vp.viewports[i] = VkViewport {
           0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 1.0f };
+        m_state.vp.scissorRects[i] = VkRect2D {
+          VkOffset2D { 0, 0 },
+          VkExtent2D { 0, 0 } };
       }
     }
     
