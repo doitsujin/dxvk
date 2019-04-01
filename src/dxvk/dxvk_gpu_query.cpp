@@ -320,10 +320,9 @@ namespace dxvk {
       query);
     
     if (iter != m_activeQueries.end()) {
-      m_activeQueries.erase(iter);
-
       if (m_activeTypes & getQueryTypeBit((*iter)->type()))
         endSingleQuery(cmd, query);
+      m_activeQueries.erase(iter);
       
       query->end();
     }
