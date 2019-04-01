@@ -159,9 +159,9 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     pParameters->AdapterOrdinal = m_adapter;
-    pParameters->BehaviorFlags = m_behaviourFlags;
-    pParameters->DeviceType = m_deviceType;
-    pParameters->hFocusWindow = m_window;
+    pParameters->BehaviorFlags  = m_behaviourFlags;
+    pParameters->DeviceType     = m_deviceType;
+    pParameters->hFocusWindow   = m_window;
 
     return D3D_OK;
   }
@@ -483,10 +483,10 @@ namespace dxvk {
 
     D3D9_BUFFER_DESC desc;
     desc.Format = fixupFormat(Format);
-    desc.Pool = Pool;
-    desc.Size = Length;
-    desc.Type = D3DRTYPE_INDEXBUFFER;
-    desc.Usage = Usage;
+    desc.Pool   = Pool;
+    desc.Size   = Length;
+    desc.Type   = D3DRTYPE_INDEXBUFFER;
+    desc.Usage  = Usage;
 
     try {
       const Com<Direct3DIndexBuffer9> buffer = new Direct3DIndexBuffer9(this, &desc);
@@ -547,7 +547,7 @@ namespace dxvk {
     const RECT*              pSourceRect,
           IDirect3DSurface9* pDestinationSurface,
     const POINT*             pDestPoint) {
-        auto lock = LockDevice();
+    auto lock = LockDevice();
 
     Direct3DSurface9* src = static_cast<Direct3DSurface9*>(pSourceSurface);
     Direct3DSurface9* dst = static_cast<Direct3DSurface9*>(pDestinationSurface);
@@ -1068,12 +1068,12 @@ namespace dxvk {
     if (pViewport == nullptr) {
       auto rtv = m_state.renderTargets[0]->GetRenderTargetView(false);
 
-      viewport.X = 0;
-      viewport.Y = 0;
-      viewport.Width = rtv->image()->info().extent.width;
+      viewport.X      = 0;
+      viewport.Y      = 0;
+      viewport.Width  = rtv->image()->info().extent.width;
       viewport.Height = rtv->image()->info().extent.height;
-      viewport.MinZ = 0.0f;
-      viewport.MaxZ = 1.0f;
+      viewport.MinZ   = 0.0f;
+      viewport.MaxZ   = 1.0f;
     }
     else
       viewport = *pViewport;
@@ -1809,9 +1809,9 @@ namespace dxvk {
     if (vbo.vertexBuffer == nullptr)
       return D3DERR_NOTFOUND;
 
-    *ppStreamData = ref(vbo.vertexBuffer);
+    *ppStreamData   = ref(vbo.vertexBuffer);
     *pOffsetInBytes = vbo.offset;
-    *pStride = vbo.stride;
+    *pStride        = vbo.stride;
 
     return D3D_OK;
   }
@@ -1876,7 +1876,7 @@ namespace dxvk {
     D3D9CommonShader module;
 
     if (FAILED(this->CreateShaderModule(&module,
-      DxvkShaderKey{ VK_SHADER_STAGE_FRAGMENT_BIT, hash },
+      DxvkShaderKey( VK_SHADER_STAGE_FRAGMENT_BIT, hash ),
       pFunction, bytecodeLength,
       &moduleInfo)))
       return D3DERR_INVALIDCALL;
@@ -2040,23 +2040,23 @@ namespace dxvk {
   // Ex Methods
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetConvolutionMonoKernel(
-    UINT width,
-    UINT height,
-    float* rows,
-    float* columns) {
+          UINT   width,
+          UINT   height,
+          float* rows,
+          float* columns) {
     Logger::warn("Direct3DDevice9Ex::SetConvolutionMonoKernel: Stub");
     return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::ComposeRects(
-    IDirect3DSurface9* pSrc,
-    IDirect3DSurface9* pDst,
-    IDirect3DVertexBuffer9* pSrcRectDescs,
-    UINT NumRects,
-    IDirect3DVertexBuffer9* pDstRectDescs,
-    D3DCOMPOSERECTSOP Operation,
-    int Xoffset,
-    int Yoffset) {
+          IDirect3DSurface9*      pSrc,
+          IDirect3DSurface9*      pDst,
+          IDirect3DVertexBuffer9* pSrcRectDescs,
+          UINT                    NumRects,
+          IDirect3DVertexBuffer9* pDstRectDescs,
+          D3DCOMPOSERECTSOP       Operation,
+          int                     Xoffset,
+          int                     Yoffset) {
     Logger::warn("Direct3DDevice9Ex::ComposeRects: Stub");
     return D3D_OK;
   }
@@ -2154,19 +2154,19 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     D3D9TextureDesc desc;
-    desc.Type = D3DRTYPE_SURFACE;
-    desc.Width = Width;
-    desc.Height = Height;
-    desc.Depth = 1;
-    desc.MipLevels = 1;
-    desc.Usage = Usage | D3DUSAGE_RENDERTARGET;
-    desc.Format = fixupFormat(Format);
-    desc.Pool = D3DPOOL_DEFAULT;
-    desc.Discard = FALSE;
-    desc.MultiSample = MultiSample;
+    desc.Type               = D3DRTYPE_SURFACE;
+    desc.Width              = Width;
+    desc.Height             = Height;
+    desc.Depth              = 1;
+    desc.MipLevels          = 1;
+    desc.Usage              = Usage | D3DUSAGE_RENDERTARGET;
+    desc.Format             = fixupFormat(Format);
+    desc.Pool               = D3DPOOL_DEFAULT;
+    desc.Discard            = FALSE;
+    desc.MultiSample        = MultiSample;
     desc.MultisampleQuality = MultisampleQuality;
-    desc.Lockable = Lockable;
-    desc.Offscreen = FALSE;
+    desc.Lockable           = Lockable;
+    desc.Offscreen          = FALSE;
 
     if (FAILED(Direct3DCommonTexture9::NormalizeTextureProperties(&desc)))
       return D3DERR_INVALIDCALL;
@@ -2198,19 +2198,19 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     D3D9TextureDesc desc;
-    desc.Type = D3DRTYPE_SURFACE;
-    desc.Width = Width;
-    desc.Height = Height;
-    desc.Depth = 1;
-    desc.MipLevels = 1;
-    desc.Usage = Usage;
-    desc.Format = fixupFormat(Format);
-    desc.Pool = Pool;
-    desc.Discard = FALSE;
-    desc.MultiSample = D3DMULTISAMPLE_NONE;
+    desc.Type               = D3DRTYPE_SURFACE;
+    desc.Width              = Width;
+    desc.Height             = Height;
+    desc.Depth              = 1;
+    desc.MipLevels          = 1;
+    desc.Usage              = Usage;
+    desc.Format             = fixupFormat(Format);
+    desc.Pool               = Pool;
+    desc.Discard            = FALSE;
+    desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
-    desc.Lockable = TRUE; // Offscreen surfaces are always lockable.
-    desc.Offscreen = TRUE;
+    desc.Lockable           = TRUE; // Offscreen surfaces are always lockable.
+    desc.Offscreen          = TRUE;
 
     if (FAILED(Direct3DCommonTexture9::NormalizeTextureProperties(&desc)))
       return D3DERR_INVALIDCALL;
@@ -2250,19 +2250,19 @@ namespace dxvk {
                  || format == D3D9Format::S8_LOCKABLE;
 
     D3D9TextureDesc desc;
-    desc.Type = D3DRTYPE_SURFACE;
-    desc.Width = Width;
-    desc.Height = Height;
-    desc.Depth = 1;
-    desc.MipLevels = 1;
-    desc.Usage = Usage | D3DUSAGE_DEPTHSTENCIL;
-    desc.Format = format;
-    desc.Pool = D3DPOOL_DEFAULT;
-    desc.Discard = Discard;
-    desc.MultiSample = MultiSample;
+    desc.Type               = D3DRTYPE_SURFACE;
+    desc.Width              = Width;
+    desc.Height             = Height;
+    desc.Depth              = 1;
+    desc.MipLevels          = 1;
+    desc.Usage              = Usage | D3DUSAGE_DEPTHSTENCIL;
+    desc.Format             = format;
+    desc.Pool               = D3DPOOL_DEFAULT;
+    desc.Discard            = Discard;
+    desc.MultiSample        = MultiSample;
     desc.MultisampleQuality = MultisampleQuality;
-    desc.Lockable = lockable;
-    desc.Offscreen = FALSE;
+    desc.Lockable           = lockable;
+    desc.Offscreen          = FALSE;
 
     if (FAILED(Direct3DCommonTexture9::NormalizeTextureProperties(&desc)))
       return D3DERR_INVALIDCALL;
