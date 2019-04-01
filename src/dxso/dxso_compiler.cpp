@@ -621,8 +621,7 @@ namespace dxvk {
 
     // !r
     if (modifier == DxsoRegModifier::Not) {
-      uint32_t one = m_module.constBool(true);
-      result = m_module.opBitwiseXor(typeId, varId, one);
+      result = m_module.opNot(typeId, varId);
     }
 
     // r / r.z
