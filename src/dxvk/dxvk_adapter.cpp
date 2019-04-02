@@ -215,6 +215,8 @@ namespace dxvk {
                 || !required.core.features.variableMultisampleRate)
         && (m_deviceFeatures.core.features.inheritedQueries
                 || !required.core.features.inheritedQueries)
+        && (m_deviceFeatures.extConditionalRendering.conditionalRendering
+                || !required.extConditionalRendering.conditionalRendering)
         && (m_deviceFeatures.extDepthClipEnable.depthClipEnable
                 || !required.extDepthClipEnable.depthClipEnable)
         && (m_deviceFeatures.extHostQueryReset.hostQueryReset
