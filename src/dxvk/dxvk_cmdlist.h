@@ -22,12 +22,12 @@ namespace dxvk {
    * A set of flags used to specify which of
    * the command buffers need to be submitted.
    */
-  enum class DxvkCmdBufferFlag : uint32_t {
+  enum class DxvkCmdBuffer : uint32_t {
     InitBuffer = 0,
     ExecBuffer = 1,
   };
   
-  using DxvkCmdBufferFlags = Flags<DxvkCmdBufferFlag>;
+  using DxvkCmdBufferFlags = Flags<DxvkCmdBuffer>;
   
   /**
    * \brief DXVK command list
@@ -577,7 +577,7 @@ namespace dxvk {
         m_vkd->vkResetQueryPoolEXT(
           m_vkd->device(), queryPool, queryId, 1);
       } else {
-        m_cmdBuffersUsed.set(DxvkCmdBufferFlag::InitBuffer);
+        m_cmdBuffersUsed.set(DxvkCmdBuffer::InitBuffer);
 
         m_vkd->vkResetEvent(
           m_vkd->device(), event);
@@ -595,7 +595,7 @@ namespace dxvk {
             VkQueryPool             queryPool,
             uint32_t                firstQuery,
             uint32_t                queryCount) {
-      m_cmdBuffersUsed.set(DxvkCmdBufferFlag::InitBuffer);
+      m_cmdBuffersUsed.set(DxvkCmdBuffer::InitBuffer);
       
       m_vkd->vkCmdResetQueryPool(m_initBuffer,
         queryPool, firstQuery, queryCount);

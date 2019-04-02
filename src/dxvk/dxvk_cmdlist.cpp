@@ -55,9 +55,9 @@ namespace dxvk {
     std::array<VkCommandBuffer, 2> cmdBuffers;
     uint32_t cmdBufferCount = 0;
     
-    if (m_cmdBuffersUsed.test(DxvkCmdBufferFlag::InitBuffer))
+    if (m_cmdBuffersUsed.test(DxvkCmdBuffer::InitBuffer))
       cmdBuffers[cmdBufferCount++] = m_initBuffer;
-    if (m_cmdBuffersUsed.test(DxvkCmdBufferFlag::ExecBuffer))
+    if (m_cmdBuffersUsed.test(DxvkCmdBuffer::ExecBuffer))
       cmdBuffers[cmdBufferCount++] = m_execBuffer;
     
     const VkPipelineStageFlags waitStageMask
@@ -110,7 +110,7 @@ namespace dxvk {
     
     // Unconditionally mark the exec buffer as used. There
     // is virtually no use case where this isn't correct.
-    m_cmdBuffersUsed.set(DxvkCmdBufferFlag::ExecBuffer);
+    m_cmdBuffersUsed.set(DxvkCmdBuffer::ExecBuffer);
   }
   
   
