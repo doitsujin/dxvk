@@ -42,6 +42,7 @@ if dxvk_winelib
   exe_ext = '.exe.so'
   dll_ext = '.dll'
   def_spec_ext = '.spec'
+  wrc = [ find_program('wrc'), '-i', '@INPUT@', '-o', '@OUTPUT@' ]
 else
   lib_vulkan  = dxvk_compiler.find_library('vulkan-1', dirs : dxvk_library_path)
   lib_d3d11   = dxvk_compiler.find_library('d3d11')
@@ -50,8 +51,14 @@ else
   
   if dxvk_compiler.get_id() == 'msvc'
     lib_d3dcompiler_47 = dxvk_compiler.find_library('d3dcompiler')
+    wrc = [ find_program('windres'), '-i', '@INPUT@', '-o', '@OUTPUT@' ]
   else
     lib_d3dcompiler_47 = dxvk_compiler.find_library('d3dcompiler_47')
+    if (cpu_family == 'x86_64')
+      wrc = [ find_program('x86_64-w64-mingw32-windres'), '-i', '@INPUT@', '-o', '@OUTPUT@' ]
+    else
+      wrc = [ find_program('i686-w64-mingw32-windres'), '-i', '@INPUT@', '-o', '@OUTPUT@' ]
+    endif
   endif
   exe_ext = ''
   dll_ext = ''
