@@ -25,6 +25,8 @@ else
   dxvk_library_path = meson.source_root() + '/lib32'
 endif
 
+wrc = cpu_family == 'x86_64' ? find_program('x86_64-w64-mingw32-windres') : find_program('i686-w64-mingw32-windres')
+
 code = '''#ifndef __WINE__
 #error 1
 #endif'''
