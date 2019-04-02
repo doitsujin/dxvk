@@ -21,6 +21,10 @@ namespace dxvk {
           VkAccessFlags             dstAccess) {
     DxvkAccessFlags access = this->getAccessTypes(srcAccess);
     
+    if (srcStages == VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
+     || dstStages == VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT)
+      access.set(DxvkAccess::Write);
+    
     m_srcStages |= srcStages;
     m_dstStages |= dstStages;
     
@@ -42,6 +46,11 @@ namespace dxvk {
           VkAccessFlags             dstAccess) {
     DxvkAccessFlags access = this->getAccessTypes(srcAccess);
 
+    if (srcStages == VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
+     || dstStages == VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
+     || srcLayout != dstLayout)
+      access.set(DxvkAccess::Write);
+    
     m_srcStages |= srcStages;
     m_dstStages |= dstStages;
     
