@@ -139,16 +139,19 @@ namespace dxvk {
   
   
   void DxvkCommandList::stagedBufferCopy(
+          DxvkCmdBuffer           cmdBuffer,
           VkBuffer                dstBuffer,
           VkDeviceSize            dstOffset,
           VkDeviceSize            dataSize,
     const DxvkStagingBufferSlice& dataSlice) {
+    m_cmdBuffersUsed.set(cmdBuffer);
+    
     VkBufferCopy region;
     region.srcOffset = dataSlice.offset;
     region.dstOffset = dstOffset;
     region.size      = dataSize;
     
-    m_vkd->vkCmdCopyBuffer(m_execBuffer,
+    m_vkd->vkCmdCopyBuffer(getCmdBuffer(cmdBuffer),
       dataSlice.buffer, dstBuffer, 1, &region);
   }
   

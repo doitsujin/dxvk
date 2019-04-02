@@ -620,11 +620,14 @@ namespace dxvk {
     
     
     void cmdUpdateBuffer(
+            DxvkCmdBuffer           cmdBuffer,
             VkBuffer                dstBuffer,
             VkDeviceSize            dstOffset,
             VkDeviceSize            dataSize,
       const void*                   pData) {
-      m_vkd->vkCmdUpdateBuffer(m_execBuffer,
+      m_cmdBuffersUsed.set(cmdBuffer);
+
+      m_vkd->vkCmdUpdateBuffer(getCmdBuffer(cmdBuffer),
         dstBuffer, dstOffset, dataSize, pData);
     }
     
@@ -692,6 +695,7 @@ namespace dxvk {
     
     
     void stagedBufferCopy(
+            DxvkCmdBuffer           cmdBuffer,
             VkBuffer                dstBuffer,
             VkDeviceSize            dstOffset,
             VkDeviceSize            dataSize,
