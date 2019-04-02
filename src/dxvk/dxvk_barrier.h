@@ -37,12 +37,6 @@ namespace dxvk {
             VkPipelineStageFlags      dstStages,
             VkAccessFlags             dstAccess);
     
-    void accessMemory(
-            VkPipelineStageFlags      srcStages,
-            VkAccessFlags             srcAccess,
-            VkPipelineStageFlags      dstStages,
-            VkAccessFlags             dstAccess);
-    
     bool isBufferDirty(
       const DxvkBufferSliceHandle&    bufSlice,
             DxvkAccessFlags           bufAccess);
@@ -89,8 +83,7 @@ namespace dxvk {
     VkAccessFlags m_srcAccess = 0;
     VkAccessFlags m_dstAccess = 0;
     
-    std::vector<VkBufferMemoryBarrier>  m_bufBarriers;
-    std::vector<VkImageMemoryBarrier>   m_imgBarriers;
+    std::vector<VkImageMemoryBarrier> m_imgBarriers;
 
     std::vector<BufSlice> m_bufSlices;
     std::vector<ImgSlice> m_imgSlices;

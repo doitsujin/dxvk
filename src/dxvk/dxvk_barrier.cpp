@@ -24,23 +24,8 @@ namespace dxvk {
     m_srcStages |= srcStages;
     m_dstStages |= dstStages;
     
-    if (srcStages == VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
-     || dstStages == VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT)
-      access.set(DxvkAccess::Write);
-    
-    if (access.test(DxvkAccess::Write)) {
-      VkBufferMemoryBarrier barrier;
-      barrier.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-      barrier.pNext               = nullptr;
-      barrier.srcAccessMask       = srcAccess;
-      barrier.dstAccessMask       = dstAccess;
-      barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-      barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-      barrier.buffer              = bufSlice.handle;
-      barrier.offset              = bufSlice.offset;
-      barrier.size                = bufSlice.length;
-      m_bufBarriers.push_back(barrier);
-    }
+    m_srcAccess |= srcAccess;
+    m_dstAccess |= dstAccess;
 
     m_bufSlices.push_back({ bufSlice, access });
   }
@@ -60,12 +45,10 @@ namespace dxvk {
     m_srcStages |= srcStages;
     m_dstStages |= dstStages;
     
-    if (srcStages == VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT
-     || dstStages == VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT
-     || srcLayout != dstLayout)
-      access.set(DxvkAccess::Write);
-    
-    if (access.test(DxvkAccess::Write)) {
+    if (srcLayout == dstLayout) {
+      m_srcAccess |= srcAccess;
+      m_dstAccess |= dstAccess;
+    } else {
       VkImageMemoryBarrier barrier;
       barrier.sType                       = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
       barrier.pNext                       = nullptr;
@@ -85,23 +68,10 @@ namespace dxvk {
   }
 
 
-  void DxvkBarrierSet::accessMemory(
-          VkPipelineStageFlags      srcStages,
-          VkAccessFlags             srcAccess,
-          VkPipelineStageFlags      dstStages,
-          VkAccessFlags             dstAccess) {
-    m_srcStages |= srcStages;
-    m_dstStages |= dstStages;
-
-    m_srcAccess |= srcAccess;
-    m_dstAccess |= dstAccess;
-  }
-  
-  
   bool DxvkBarrierSet::isBufferDirty(
     const DxvkBufferSliceHandle&    bufSlice,
           DxvkAccessFlags           bufAccess) {
-    bool result = m_srcAccess || m_dstAccess;
+    bool result = false;
 
     for (uint32_t i = 0; i < m_bufSlices.size() && !result; i++) {
       const DxvkBufferSliceHandle& dstSlice = m_bufSlices[i].slice;
@@ -119,8 +89,7 @@ namespace dxvk {
     const Rc<DxvkImage>&            image,
     const VkImageSubresourceRange&  imgSubres,
           DxvkAccessFlags           imgAccess) {
-    bool result = (m_srcStages & image->info().stages)
-               && (m_srcAccess & image->info().access);
+    bool result = false;
 
     for (uint32_t i = 0; i < m_imgSlices.size() && !result; i++) {
       const VkImageSubresourceRange& dstSubres = m_imgSlices[i].subres;
@@ -138,7 +107,7 @@ namespace dxvk {
 
   DxvkAccessFlags DxvkBarrierSet::getBufferAccess(
     const DxvkBufferSliceHandle&    bufSlice) {
-    DxvkAccessFlags access = getAccessTypes(m_srcAccess);
+    DxvkAccessFlags access;
 
     for (uint32_t i = 0; i < m_bufSlices.size(); i++) {
       const DxvkBufferSliceHandle& dstSlice = m_bufSlices[i].slice;
@@ -156,7 +125,7 @@ namespace dxvk {
   DxvkAccessFlags DxvkBarrierSet::getImageAccess(
     const Rc<DxvkImage>&            image,
     const VkImageSubresourceRange&  imgSubres) {
-    DxvkAccessFlags access = getAccessTypes(m_srcAccess & image->info().access);
+    DxvkAccessFlags access;
 
     for (uint32_t i = 0; i < m_imgSlices.size(); i++) {
       const VkImageSubresourceRange& dstSubres = m_imgSlices[i].subres;
@@ -194,8 +163,9 @@ namespace dxvk {
       commandList->cmdPipelineBarrier(
         m_cmdBuffer, srcFlags, dstFlags, 0,
         pMemBarrier ? 1 : 0, pMemBarrier,
-        m_bufBarriers.size(), m_bufBarriers.data(),
-        m_imgBarriers.size(), m_imgBarriers.data());
+        0, nullptr,
+        m_imgBarriers.size(),
+        m_imgBarriers.data());
       
       this->reset();
     }
@@ -206,7 +176,6 @@ namespace dxvk {
     m_srcStages = 0;
     m_dstStages = 0;
     
-    m_bufBarriers.resize(0);
     m_imgBarriers.resize(0);
 
     m_bufSlices.resize(0);
