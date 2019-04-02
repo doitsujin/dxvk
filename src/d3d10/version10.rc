@@ -1,0 +1,32 @@
+#include <windows.h>
+
+// DLL version information.
+VS_VERSION_INFO    VERSIONINFO
+FILEVERSION        10,0,17763,1
+PRODUCTVERSION     10,0,17763,1
+FILEFLAGSMASK      VS_FFI_FILEFLAGSMASK
+FILEFLAGS          0
+FILEOS VOS_NT_WINDOWS32
+FILETYPE VFT_DLL
+FILESUBTYPE VFT2_UNKNOWN
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "080904b0"
+    BEGIN
+      VALUE "CompanyName",      "DXVK"
+      VALUE "FileDescription",  "Direct3D 10 Runtime"
+      VALUE "FileVersion",      "10.0.17763.1 (WinBuild.160101.0800)"
+      VALUE "InternalName",     "D3D10.dll"
+      VALUE "LegalCopyright",   "zlib/libpng license"
+      VALUE "OriginalFilename", "D3D10.dll"
+      VALUE "ProductName",      "DXVK"
+      VALUE "ProductVersion",   "10.0.17763.1"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x0809, 1200
+  END
+END
+

@@ -1,3 +1,24 @@
+d3d10_res = custom_target(
+  'version10.res',
+  input   : 'version10.rc',
+  output  : 'version10.o',
+  command : [ wrc, '@INPUT@', '@OUTPUT@' ],
+)
+
+d3d10_1_res = custom_target(
+  'version10_1.res',
+  input   : 'version10_1.rc',
+  output  : 'version10_1.o',
+  command : [ wrc, '@INPUT@', '@OUTPUT@' ],
+)
+
+d3d10_core_res = custom_target(
+  'version10_core.res',
+  input   : 'version10_core.rc',
+  output  : 'version10_core.o',
+  command : [ wrc, '@INPUT@', '@OUTPUT@' ],
+)
+
 d3d10_main_src = [
   'd3d10_main.cpp',
   'd3d10_reflection.cpp',
@@ -6,7 +27,7 @@ d3d10_main_src = [
 d3d10_deps = [ lib_d3dcompiler_43, lib_dxgi ]
 d3d10_deps += dxvk_winelib ? lib_d3d11 : d3d11_dep
 
-d3d10_core_dll = shared_library('d3d10core'+dll_ext, d3d10_main_src,
+d3d10_core_dll = shared_library('d3d10core'+dll_ext, d3d10_main_src, not dxvk_winelib ? d3d10_core_res : [],
   name_prefix         : '',
   dependencies        : [ d3d10_deps, dxbc_dep, dxvk_dep ],
   include_directories : dxvk_include_path,
@@ -15,7 +36,7 @@ d3d10_core_dll = shared_library('d3d10core'+dll_ext, d3d10_main_src,
   vs_module_defs      : 'd3d10core'+def_spec_ext,
   override_options    : ['cpp_std='+dxvk_cpp_std])
 
-d3d10_dll = shared_library('d3d10'+dll_ext, d3d10_main_src,
+d3d10_dll = shared_library('d3d10'+dll_ext, d3d10_main_src, not dxvk_winelib ? d3d10_res : [],
   name_prefix         : '',
   dependencies        : [ d3d10_deps, dxbc_dep, dxvk_dep ],
   include_directories : dxvk_include_path,
@@ -24,7 +45,7 @@ d3d10_dll = shared_library('d3d10'+dll_ext, d3d10_main_src,
   vs_module_defs      : 'd3d10'+def_spec_ext,
   override_options    : ['cpp_std='+dxvk_cpp_std])
 
-d3d10_1_dll = shared_library('d3d10_1'+dll_ext, d3d10_main_src,
+d3d10_1_dll = shared_library('d3d10_1'+dll_ext, d3d10_main_src, not dxvk_winelib ? d3d10_1_res : [],
   name_prefix         : '',
   dependencies        : [ d3d10_deps, dxbc_dep, dxvk_dep ],
   include_directories : dxvk_include_path,
