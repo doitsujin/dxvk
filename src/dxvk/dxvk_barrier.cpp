@@ -184,6 +184,9 @@ namespace dxvk {
   void DxvkBarrierSet::reset() {
     m_srcStages = 0;
     m_dstStages = 0;
+
+    m_srcAccess = 0;
+    m_dstAccess = 0;
     
     m_imgBarriers.resize(0);
 
