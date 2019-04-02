@@ -22,6 +22,9 @@ namespace dxvk {
     m_metaCopy    (metaCopyObjects),
     m_metaMipGen  (metaMipGenObjects),
     m_metaPack    (metaPackObjects),
+    m_barriers    (DxvkCmdBuffer::ExecBuffer),
+    m_transfers   (DxvkCmdBuffer::InitBuffer),
+    m_transitions (DxvkCmdBuffer::ExecBuffer),
     m_queryManager(gpuQueryPool) {
 
   }
@@ -3843,7 +3846,8 @@ namespace dxvk {
     barrier.srcAccessMask = srcAccess;
     barrier.dstAccessMask = dstAccess;
 
-    m_cmd->cmdPipelineBarrier(srcStages, dstStages,
+    m_cmd->cmdPipelineBarrier(
+      DxvkCmdBuffer::ExecBuffer, srcStages, dstStages,
       0, 1, &barrier, 0, nullptr, 0, nullptr);
   }
 

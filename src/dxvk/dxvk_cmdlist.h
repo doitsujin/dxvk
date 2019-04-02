@@ -541,6 +541,7 @@ namespace dxvk {
     
     
     void cmdPipelineBarrier(
+            DxvkCmdBuffer           cmdBuffer,
             VkPipelineStageFlags    srcStageMask,
             VkPipelineStageFlags    dstStageMask,
             VkDependencyFlags       dependencyFlags,
@@ -550,7 +551,9 @@ namespace dxvk {
       const VkBufferMemoryBarrier*  pBufferMemoryBarriers,
             uint32_t                imageMemoryBarrierCount,
       const VkImageMemoryBarrier*   pImageMemoryBarriers) {
-      m_vkd->vkCmdPipelineBarrier(m_execBuffer,
+      m_cmdBuffersUsed.set(cmdBuffer);
+
+      m_vkd->vkCmdPipelineBarrier(getCmdBuffer(cmdBuffer),
         srcStageMask, dstStageMask, dependencyFlags,
         memoryBarrierCount,       pMemoryBarriers,
         bufferMemoryBarrierCount, pBufferMemoryBarriers,
@@ -720,6 +723,10 @@ namespace dxvk {
     DxvkGpuQueryTracker m_gpuQueryTracker;
     DxvkBufferTracker   m_bufferTracker;
     DxvkStatCounters    m_statCounters;
+
+    VkCommandBuffer getCmdBuffer(DxvkCmdBuffer cmdBuffer) const {
+      return cmdBuffer == DxvkCmdBuffer::ExecBuffer ? m_execBuffer : m_initBuffer;
+    }
     
   };
   

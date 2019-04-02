@@ -2,8 +2,16 @@
 
 namespace dxvk {
   
-  DxvkBarrierSet:: DxvkBarrierSet() { }
-  DxvkBarrierSet::~DxvkBarrierSet() { }
+  DxvkBarrierSet:: DxvkBarrierSet(DxvkCmdBuffer cmdBuffer)
+  : m_cmdBuffer(cmdBuffer) {
+
+  }
+
+
+  DxvkBarrierSet::~DxvkBarrierSet() {
+
+  }
+
   
   void DxvkBarrierSet::accessBuffer(
     const DxvkBufferSliceHandle&    bufSlice,
@@ -184,7 +192,7 @@ namespace dxvk {
         pMemBarrier = &memBarrier;
       
       commandList->cmdPipelineBarrier(
-        srcFlags, dstFlags, 0,
+        m_cmdBuffer, srcFlags, dstFlags, 0,
         pMemBarrier ? 1 : 0, pMemBarrier,
         m_bufBarriers.size(), m_bufBarriers.data(),
         m_imgBarriers.size(), m_imgBarriers.data());

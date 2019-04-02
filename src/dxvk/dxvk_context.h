@@ -895,6 +895,7 @@ namespace dxvk {
     DxvkContextState        m_state;
 
     DxvkBarrierSet          m_barriers;
+    DxvkBarrierSet          m_transfers;
     DxvkBarrierSet          m_transitions;
     DxvkBarrierControlFlags m_barrierControl;
     

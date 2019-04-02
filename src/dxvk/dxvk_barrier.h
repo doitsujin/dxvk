@@ -17,7 +17,7 @@ namespace dxvk {
     
   public:
     
-    DxvkBarrierSet();
+    DxvkBarrierSet(DxvkCmdBuffer cmdBuffer);
     ~DxvkBarrierSet();
         
     void accessBuffer(
@@ -80,6 +80,8 @@ namespace dxvk {
       VkImageSubresourceRange subres;
       DxvkAccessFlags         access;
     };
+
+    DxvkCmdBuffer m_cmdBuffer;
     
     VkPipelineStageFlags m_srcStages = 0;
     VkPipelineStageFlags m_dstStages = 0;
