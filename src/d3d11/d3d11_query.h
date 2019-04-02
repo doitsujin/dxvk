@@ -17,11 +17,6 @@ namespace dxvk {
             D3D11Device*      device,
       const D3D11_QUERY_DESC& desc);
     
-    D3D11Query(
-            D3D11Device*      device,
-      const D3D11_QUERY_DESC& desc,
-      const DxvkBufferSlice&  predicate);
-    
     ~D3D11Query();
     
     HRESULT STDMETHODCALLTYPE QueryInterface(
@@ -44,9 +39,7 @@ namespace dxvk {
             void*                             pData,
             UINT                              GetDataFlags);
     
-    DxvkBufferSlice GetPredicate() const {
-      return m_predicate;
-    }
+    DxvkBufferSlice GetPredicate(DxvkContext* ctx);
     
     D3D10Query* GetD3D10Iface() {
       return &m_d3d10;
@@ -60,6 +53,7 @@ namespace dxvk {
     Rc<DxvkGpuQuery>  m_query = nullptr;
     Rc<DxvkGpuEvent>  m_event = nullptr;
 
+    sync::Spinlock  m_predicateLock;
     DxvkBufferSlice m_predicate;
 
     D3D10Query m_d3d10;
