@@ -919,8 +919,8 @@ namespace dxvk {
 
   uint32_t DxsoCompiler::emitInfinityClamp(uint32_t typeId, uint32_t varId, bool vector) {
     return m_module.opFClamp(typeId, varId,
-      vector ? m_module.constf32(-FLT_MAX) : m_module.constvec4f32(-FLT_MAX, -FLT_MAX, -FLT_MAX, -FLT_MAX),
-      vector ? m_module.constf32( FLT_MAX) : m_module.constvec4f32( FLT_MAX,  FLT_MAX,  FLT_MAX,  FLT_MAX));
+     !vector ? m_module.constf32(-FLT_MAX) : m_module.constvec4f32(-FLT_MAX, -FLT_MAX, -FLT_MAX, -FLT_MAX),
+     !vector ? m_module.constf32( FLT_MAX) : m_module.constvec4f32( FLT_MAX,  FLT_MAX,  FLT_MAX,  FLT_MAX));
   }
 
   void DxsoCompiler::emitTextureSample(const DxsoInstructionContext& ctx) {
