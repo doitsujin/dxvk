@@ -44,35 +44,22 @@ namespace dxvk {
     const Rc<DxvkShader>&           tes,
     const Rc<DxvkShader>&           gs,
     const Rc<DxvkShader>&           fs)
-  : m_vkd(pipeMgr->m_device->vkd()), m_pipeMgr(pipeMgr) {
-    DxvkDescriptorSlotMapping slotMapping;
-    if (vs  != nullptr) vs ->defineResourceSlots(slotMapping);
-    if (tcs != nullptr) tcs->defineResourceSlots(slotMapping);
-    if (tes != nullptr) tes->defineResourceSlots(slotMapping);
-    if (gs  != nullptr) gs ->defineResourceSlots(slotMapping);
-    if (fs  != nullptr) fs ->defineResourceSlots(slotMapping);
+  : m_vkd(pipeMgr->m_device->vkd()), m_pipeMgr(pipeMgr),
+    m_vs(vs), m_tcs(tcs), m_tes(tes), m_gs(gs), m_fs(fs) {
+    if (vs  != nullptr) vs ->defineResourceSlots(m_slotMapping);
+    if (tcs != nullptr) tcs->defineResourceSlots(m_slotMapping);
+    if (tes != nullptr) tes->defineResourceSlots(m_slotMapping);
+    if (gs  != nullptr) gs ->defineResourceSlots(m_slotMapping);
+    if (fs  != nullptr) fs ->defineResourceSlots(m_slotMapping);
     
-    slotMapping.makeDescriptorsDynamic(
+    m_slotMapping.makeDescriptorsDynamic(
       pipeMgr->m_device->options().maxNumDynamicUniformBuffers,
       pipeMgr->m_device->options().maxNumDynamicStorageBuffers);
     
     m_layout = new DxvkPipelineLayout(m_vkd,
-      slotMapping.bindingCount(),
-      slotMapping.bindingInfos(),
+      m_slotMapping.bindingCount(),
+      m_slotMapping.bindingInfos(),
       VK_PIPELINE_BIND_POINT_GRAPHICS);
-    
-    DxvkShaderModuleCreateInfo moduleInfo;
-    moduleInfo.fsDualSrcBlend = false;
-    
-    DxvkShaderModuleCreateInfo moduleInfoDualSrc;
-    moduleInfoDualSrc.fsDualSrcBlend = true;
-    
-    if (vs  != nullptr) m_vs  = vs ->createShaderModule(m_vkd, slotMapping, moduleInfo);
-    if (tcs != nullptr) m_tcs = tcs->createShaderModule(m_vkd, slotMapping, moduleInfo);
-    if (tes != nullptr) m_tes = tes->createShaderModule(m_vkd, slotMapping, moduleInfo);
-    if (gs  != nullptr) m_gs  = gs ->createShaderModule(m_vkd, slotMapping, moduleInfo);
-    if (fs  != nullptr) m_fs  = fs ->createShaderModule(m_vkd, slotMapping, moduleInfo);
-    if (fs  != nullptr) m_fs2 = fs ->createShaderModule(m_vkd, slotMapping, moduleInfoDualSrc);
     
     m_vsIn  = vs != nullptr ? vs->interfaceSlots().inputSlots  : 0;
     m_fsOut = fs != nullptr ? fs->interfaceSlots().outputSlots : 0;
@@ -102,16 +89,11 @@ namespace dxvk {
   Rc<DxvkShader> DxvkGraphicsPipeline::getShader(
           VkShaderStageFlagBits             stage) const {
     switch (stage) {
-      case VK_SHADER_STAGE_VERTEX_BIT:
-        return m_vs != nullptr ? m_vs->shader() : nullptr;
-      case VK_SHADER_STAGE_GEOMETRY_BIT:
-        return m_gs != nullptr ? m_gs->shader() : nullptr;
-      case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
-        return m_tcs != nullptr ? m_tcs->shader() : nullptr;
-      case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
-        return m_tes != nullptr ? m_tes->shader() : nullptr;
-      case VK_SHADER_STAGE_FRAGMENT_BIT:
-        return m_fs != nullptr ? m_fs->shader() : nullptr;
+      case VK_SHADER_STAGE_VERTEX_BIT:                  return m_vs;
+      case VK_SHADER_STAGE_GEOMETRY_BIT:                return m_gs;
+      case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:    return m_tcs;
+      case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT: return m_tes;
+      case VK_SHADER_STAGE_FRAGMENT_BIT:                return m_fs;
       default:
         return nullptr;
     }
@@ -218,19 +200,24 @@ namespace dxvk {
     
     std::vector<VkPipelineShaderStageCreateInfo> stages;
 
-    bool useDualSrcBlend = state.omBlendAttachments[0].blendEnable && (
+    DxvkShaderModuleCreateInfo moduleInfo;
+    moduleInfo.fsDualSrcBlend = state.omBlendAttachments[0].blendEnable && (
       util::isDualSourceBlendFactor(state.omBlendAttachments[0].srcColorBlendFactor) ||
       util::isDualSourceBlendFactor(state.omBlendAttachments[0].dstColorBlendFactor) ||
       util::isDualSourceBlendFactor(state.omBlendAttachments[0].srcAlphaBlendFactor) ||
       util::isDualSourceBlendFactor(state.omBlendAttachments[0].dstAlphaBlendFactor));
+    
+    auto vsm  = createShaderModule(m_vs,  moduleInfo);
+    auto gsm  = createShaderModule(m_gs,  moduleInfo);
+    auto tcsm = createShaderModule(m_tcs, moduleInfo);
+    auto tesm = createShaderModule(m_tes, moduleInfo);
+    auto fsm  = createShaderModule(m_fs,  moduleInfo);
 
-    Rc<DxvkShaderModule> fs = useDualSrcBlend ? m_fs2 : m_fs;
-
-    if (m_vs  != nullptr) stages.push_back(m_vs->stageInfo(&specInfo));
-    if (m_tcs != nullptr) stages.push_back(m_tcs->stageInfo(&specInfo));
-    if (m_tes != nullptr) stages.push_back(m_tes->stageInfo(&specInfo));
-    if (m_gs  != nullptr) stages.push_back(m_gs->stageInfo(&specInfo));
-    if (fs    != nullptr) stages.push_back(fs->stageInfo(&specInfo));
+    if (m_vs  != nullptr) stages.push_back(vsm->stageInfo(&specInfo));
+    if (m_tcs != nullptr) stages.push_back(tcsm->stageInfo(&specInfo));
+    if (m_tes != nullptr) stages.push_back(tesm->stageInfo(&specInfo));
+    if (m_gs  != nullptr) stages.push_back(gsm->stageInfo(&specInfo));
+    if (m_fs  != nullptr) stages.push_back(fsm->stageInfo(&specInfo));
 
     // Fix up color write masks using the component mappings
     std::array<VkPipelineColorBlendAttachmentState, MaxNumRenderTargets> omBlendAttachments;
@@ -264,7 +251,7 @@ namespace dxvk {
     }
 
     int32_t rasterizedStream = m_gs != nullptr
-      ? m_gs->shader()->shaderOptions().rasterizedStream
+      ? m_gs->shaderOptions().rasterizedStream
       : 0;
 
     VkPipelineVertexInputDivisorStateCreateInfoEXT viDivisorInfo;
@@ -441,6 +428,15 @@ namespace dxvk {
   }
 
 
+  Rc<DxvkShaderModule> DxvkGraphicsPipeline::createShaderModule(
+    const Rc<DxvkShader>&                shader,
+    const DxvkShaderModuleCreateInfo&    info) const {
+    return shader != nullptr
+      ? shader->createShaderModule(m_vkd, m_slotMapping, info)
+      : nullptr;
+  }
+
+
   bool DxvkGraphicsPipeline::validatePipelineState(
     const DxvkGraphicsPipelineStateInfo& state) const {
     // Validate vertex input - each input slot consumed by the
@@ -488,11 +484,11 @@ namespace dxvk {
   void DxvkGraphicsPipeline::logPipelineState(
           LogLevel                       level,
     const DxvkGraphicsPipelineStateInfo& state) const {
-    if (m_vs  != nullptr) Logger::log(level, str::format("  vs  : ", m_vs ->shader()->debugName()));
-    if (m_tcs != nullptr) Logger::log(level, str::format("  tcs : ", m_tcs->shader()->debugName()));
-    if (m_tes != nullptr) Logger::log(level, str::format("  tes : ", m_tes->shader()->debugName()));
-    if (m_gs  != nullptr) Logger::log(level, str::format("  gs  : ", m_gs ->shader()->debugName()));
-    if (m_fs  != nullptr) Logger::log(level, str::format("  fs  : ", m_fs ->shader()->debugName()));
+    if (m_vs  != nullptr) Logger::log(level, str::format("  vs  : ", m_vs ->debugName()));
+    if (m_tcs != nullptr) Logger::log(level, str::format("  tcs : ", m_tcs->debugName()));
+    if (m_tes != nullptr) Logger::log(level, str::format("  tes : ", m_tes->debugName()));
+    if (m_gs  != nullptr) Logger::log(level, str::format("  gs  : ", m_gs ->debugName()));
+    if (m_fs  != nullptr) Logger::log(level, str::format("  fs  : ", m_fs ->debugName()));
 
     for (uint32_t i = 0; i < state.ilAttributeCount; i++) {
       const VkVertexInputAttributeDescription& attr = state.ilAttributes[i];
