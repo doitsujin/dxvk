@@ -30,26 +30,17 @@ namespace dxvk {
     }
 
     ULONG STDMETHODCALLTYPE AddRef() final {
-      ULONG refCount = Direct3DResource9<Type...>::AddRef();
-
-      // If this is our first reference, add a ref to our container
-      // so it doesn't get released during my lifespan.
-      if (refCount == 0 && m_container != nullptr)
+      if (m_container != nullptr)
         m_container->AddRef();
 
-      return refCount;
+      return Direct3DResource9<Type...>::AddRef();
     }
 
     ULONG STDMETHODCALLTYPE Release() final {
-      IUnknown* container = m_container;
-      ULONG refCount = Direct3DResource9<Type...>::Release();
+      if (m_container != nullptr)
+        m_container->Release();
 
-      // If that was our last public reference gone, dereference our container
-      // so that it can be deleted now this subresource is no longer publically referenced.
-      if (refCount == 0 && container != nullptr)
-        container->Release();
-
-      return refCount;
+      return Direct3DResource9<Type...>::Release();
     }
 
     HRESULT STDMETHODCALLTYPE GetContainer(REFIID riid, void** ppContainer) final {
