@@ -72,10 +72,8 @@ namespace dxvk {
   private:
 
     enum BindingIds : uint32_t {
-      Sampler   = 0,
-      Texture   = 1,
-      GammaSmp  = 2,
-      GammaTex  = 3,
+      Image = 0,
+      Gamma = 1,
     };
 
     Com<D3D11DXGIDevice>    m_dxgiDevice;
