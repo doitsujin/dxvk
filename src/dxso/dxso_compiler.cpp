@@ -4,6 +4,7 @@
 #include "../d3d9/d3d9_constant_set.h"
 #include "../d3d9/d3d9_state.h"
 #include "dxso_util.h"
+#include <cfloat>
 
 namespace dxvk {
 
@@ -781,9 +782,12 @@ namespace dxvk {
         result = m_module.opFDiv(typeId,
           m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f),
           emitRegisterLoad(src[0]));
+
+        result = this->emitInfinityClamp(typeId, result);
         break;
       case DxsoOpcode::Rsq:
         result = m_module.opInverseSqrt(typeId, emitRegisterLoad(src[0]));
+        result = this->emitInfinityClamp(typeId, result);
         break;
       case DxsoOpcode::Dp3: {
         const uint32_t scalarTypeId = spvType(dst, 1);
@@ -835,6 +839,7 @@ namespace dxvk {
         result = m_module.opDot(scalarTypeId, vec3, vec3);
         result = m_module.opInverseSqrt(scalarTypeId, result);
         result = emitScalarReplicant(typeId, result);
+        result = this->emitInfinityClamp(typeId, result);
 
         // r * rsq(r . r);
         result = m_module.opFMul(
@@ -860,6 +865,7 @@ namespace dxvk {
       case DxsoOpcode::Log:
         result = m_module.opFAbs(typeId, emitRegisterLoad(src[0]));
         result = m_module.opLog2(typeId, result);
+        result = this->emitInfinityClamp(typeId, result);
         break;
       case DxsoOpcode::Lrp: {
         uint32_t src0 = emitRegisterLoad(src[0]);
@@ -910,6 +916,12 @@ namespace dxvk {
     auto& dstSpvReg = getSpirvRegister(dst);
     dstSpvReg.varId = emitWriteMask(typeId, dstSpvReg.varId, result, dst.writeMask());
     emitDebugName(dstSpvReg.varId, dst.registerId());
+  }
+
+  uint32_t DxsoCompiler::emitInfinityClamp(uint32_t typeId, uint32_t varId) {
+    return m_module.opFClamp(typeId, varId,
+      m_module.constvec4f32(-FLT_MAX, -FLT_MAX, -FLT_MAX, -FLT_MAX),
+      m_module.constvec4f32( FLT_MAX,  FLT_MAX,  FLT_MAX,  FLT_MAX));
   }
 
   void DxsoCompiler::emitTextureSample(const DxsoInstructionContext& ctx) {

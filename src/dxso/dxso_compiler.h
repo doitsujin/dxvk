@@ -176,6 +176,8 @@ namespace dxvk {
 
     void emitVectorAlu(const DxsoInstructionContext& ctx);
 
+    uint32_t emitInfinityClamp(uint32_t typeId, uint32_t varId);
+
     void emitTextureSample(const DxsoInstructionContext& ctx);
 
     void emitDcl(const DxsoInstructionContext& ctx);
