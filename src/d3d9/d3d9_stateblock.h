@@ -5,12 +5,28 @@
 
 namespace dxvk {
 
+  enum class D3D9StateBlockType :uint32_t {
+    None,
+    VertexState,
+    PixelState,
+    All
+  };
+
+  inline D3D9StateBlockType ConvertStateBlockType(D3DSTATEBLOCKTYPE type) {
+    switch (type) {
+      case D3DSBT_PIXELSTATE:  return D3D9StateBlockType::PixelState;
+      case D3DSBT_VERTEXSTATE: return D3D9StateBlockType::VertexState;
+      default:
+      case D3DSBT_ALL:         return D3D9StateBlockType::All;
+    }
+  }
+
   using D3D9StateBlockBase = Direct3DDeviceChild9<IDirect3DStateBlock9>;
   class D3D9StateBlock : public D3D9StateBlockBase {
 
   public:
 
-    D3D9StateBlock(Direct3DDevice9Ex* pDevice, D3DSTATEBLOCKTYPE Type);
+    D3D9StateBlock(Direct3DDevice9Ex* pDevice, D3D9StateBlockType Type);
 
     HRESULT STDMETHODCALLTYPE QueryInterface(
         REFIID  riid,
@@ -251,7 +267,7 @@ namespace dxvk {
     void CaptureVertexSamplerStates();
     void CaptureVertexShaderStates();
 
-    void CaptureType(D3DSTATEBLOCKTYPE State);
+    void CaptureType(D3D9StateBlockType State);
 
     D3D9CapturableState  m_state;
     D3D9StateCaptures    m_captures;

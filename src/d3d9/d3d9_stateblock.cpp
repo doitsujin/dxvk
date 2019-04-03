@@ -9,7 +9,7 @@
 
 namespace dxvk {
 
-  D3D9StateBlock::D3D9StateBlock(Direct3DDevice9Ex* pDevice, D3DSTATEBLOCKTYPE Type)
+  D3D9StateBlock::D3D9StateBlock(Direct3DDevice9Ex* pDevice, D3D9StateBlockType Type)
     : D3D9StateBlockBase(pDevice)
     , m_deviceState     (pDevice->GetRawState()) {
     CaptureType(Type);
@@ -374,14 +374,14 @@ namespace dxvk {
     m_captures.vsConsts.bConsts.flip();
   }
 
-  void D3D9StateBlock::CaptureType(D3DSTATEBLOCKTYPE Type) {
-    if (Type == D3DSBT_PIXELSTATE || Type == D3DSBT_ALL) {
+  void D3D9StateBlock::CaptureType(D3D9StateBlockType Type) {
+    if (Type == D3D9StateBlockType::PixelState || Type == D3D9StateBlockType::All) {
       CapturePixelRenderStates();
       CapturePixelSamplerStates();
       CapturePixelShaderStates();
     }
 
-    if (Type == D3DSBT_VERTEXSTATE || Type == D3DSBT_ALL) {
+    if (Type == D3D9StateBlockType::VertexState || Type == D3D9StateBlockType::All) {
       CaptureVertexRenderStates();
       CaptureVertexSamplerStates();
       CaptureVertexShaderStates();
@@ -389,7 +389,7 @@ namespace dxvk {
       m_captures.flags.set(D3D9CapturedStateFlag::VertexDecl);
     }
 
-    if (Type == D3DSBT_ALL) {
+    if (Type == D3D9StateBlockType::All) {
       m_captures.flags.set(D3D9CapturedStateFlag::Textures);
       m_captures.textures.flip();
 
@@ -404,7 +404,8 @@ namespace dxvk {
       m_captures.clipPlanes.flip();
     }
 
-    this->Capture();
+    if (Type != D3D9StateBlockType::None)
+      this->Capture();
   }
 
 }
