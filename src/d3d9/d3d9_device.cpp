@@ -1311,16 +1311,7 @@ namespace dxvk {
 
     DWORD stateSampler = RemapSamplerState(Stage);
 
-    if (m_state.textures[stateSampler] == pTexture)
-      return D3D_OK;
-    
-    TextureRefPrivate(m_state.textures[stateSampler], false); // Release old texture
-    TextureRefPrivate(pTexture,                       true);  // Reference new texture
-    m_state.textures[stateSampler] = pTexture;
-
-    BindTexture(Stage);
-
-    return D3D_OK;
+    return SetStateTexture(stateSampler, pTexture);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetTextureStageState(
@@ -1368,31 +1359,9 @@ namespace dxvk {
     if (InvalidSampler(Sampler))
       return D3D_OK;
 
-    auto& state = m_state.samplerStates;
-
     uint32_t stateSampler = RemapSamplerState(Sampler);
 
-    bool changed = state[stateSampler][Type] != Value;
-
-    if (likely(changed)) {
-      state[stateSampler][Type] = Value;
-
-      if (Type == D3DSAMP_ADDRESSU
-       || Type == D3DSAMP_ADDRESSV
-       || Type == D3DSAMP_ADDRESSW
-       || Type == D3DSAMP_MAGFILTER
-       || Type == D3DSAMP_MINFILTER
-       || Type == D3DSAMP_MIPFILTER
-       || Type == D3DSAMP_MAXANISOTROPY
-       || Type == D3DSAMP_MIPMAPLODBIAS
-       || Type == D3DSAMP_MAXMIPLEVEL
-       || Type == D3DSAMP_BORDERCOLOR)
-        m_dirtySamplerStates |= 1u << stateSampler;
-      else if (Type == D3DSAMP_SRGBTEXTURE)
-        BindTexture(Sampler);
-    }
-
-    return D3D_OK;
+    return SetStateSamplerState(stateSampler, Type, Value);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::ValidateDevice(DWORD* pNumPasses) {
@@ -2535,6 +2504,50 @@ namespace dxvk {
     return swapchain->GetDisplayModeEx(pMode, pRotation);
   }
 
+  HRESULT Direct3DDevice9Ex::SetStateSamplerState(
+    DWORD               StateSampler,
+    D3DSAMPLERSTATETYPE Type,
+    DWORD               Value) {
+    auto lock = LockDevice();
+
+    auto& state = m_state.samplerStates;
+
+    bool changed = state[StateSampler][Type] != Value;
+
+    if (likely(changed)) {
+      state[StateSampler][Type] = Value;
+
+      if (Type == D3DSAMP_ADDRESSU
+       || Type == D3DSAMP_ADDRESSV
+       || Type == D3DSAMP_ADDRESSW
+       || Type == D3DSAMP_MAGFILTER
+       || Type == D3DSAMP_MINFILTER
+       || Type == D3DSAMP_MIPFILTER
+       || Type == D3DSAMP_MAXANISOTROPY
+       || Type == D3DSAMP_MIPMAPLODBIAS
+       || Type == D3DSAMP_MAXMIPLEVEL
+       || Type == D3DSAMP_BORDERCOLOR)
+        m_dirtySamplerStates |= 1u << StateSampler;
+      else if (Type == D3DSAMP_SRGBTEXTURE)
+        BindTexture(StateSampler);
+    }
+
+    return D3D_OK;
+  }
+
+  HRESULT Direct3DDevice9Ex::SetStateTexture(DWORD StateSampler, IDirect3DBaseTexture9* pTexture) {
+    auto lock = LockDevice();
+
+    if (m_state.textures[StateSampler] == pTexture)
+      return D3D_OK;
+    
+    TextureChangePrivate(m_state.textures[StateSampler], pTexture);
+
+    BindTexture(StateSampler);
+
+    return D3D_OK;
+  }
+
   bool Direct3DDevice9Ex::IsExtended() {
     return m_flags.test(D3D9DeviceFlag::ExtendedDevice);
   }
@@ -3512,14 +3525,13 @@ namespace dxvk {
     });
   }
 
-  void Direct3DDevice9Ex::BindTexture(DWORD Sampler) {
-    auto stateSampler  = RemapSamplerState(Sampler);
-    auto shaderSampler = RemapSamplerShader(Sampler);
+  void Direct3DDevice9Ex::BindTexture(DWORD StateSampler) {
+    auto shaderSampler = RemapStateSamplerShader(StateSampler);
     uint32_t slot      = computeResourceSlotId(shaderSampler.first, DxsoBindingType::Image, uint32_t(shaderSampler.second));
 
-    const bool srgb = m_state.samplerStates[stateSampler][D3DSAMP_SRGBTEXTURE] != FALSE;
+    const bool srgb = m_state.samplerStates[StateSampler][D3DSAMP_SRGBTEXTURE] != FALSE;
 
-    Direct3DCommonTexture9* commonTex = GetCommonTexture(m_state.textures[stateSampler]);
+    Direct3DCommonTexture9* commonTex = GetCommonTexture(m_state.textures[StateSampler]);
 
     EmitCs([
       cSlot      = slot,
@@ -3726,6 +3738,20 @@ namespace dxvk {
     EmitCs([queryPtr](DxvkContext* ctx) {
       queryPtr->End(ctx);
     });
+  }
+
+  void Direct3DDevice9Ex::SetVertexBoolBitfield(uint32_t mask, uint32_t bits) {
+    m_state.vsConsts.hardware.boolBitfield &= ~mask;
+    m_state.vsConsts.hardware.boolBitfield |= bits & mask;
+
+    m_vsConst.dirty = true;
+  }
+
+  void Direct3DDevice9Ex::SetPixelBoolBitfield(uint32_t mask, uint32_t bits) {
+    m_state.psConsts.hardware.boolBitfield &= ~mask;
+    m_state.psConsts.hardware.boolBitfield |= bits & mask;
+
+    m_psConst.dirty = true;
   }
 
   HRESULT Direct3DDevice9Ex::CreateShaderModule(

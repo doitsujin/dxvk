@@ -206,4 +206,11 @@ namespace dxvk {
     }
   }
 
+  template <typename T>
+  void TextureChangePrivate(T*& dst, T* src) {
+    TextureRefPrivate(dst, false);
+    TextureRefPrivate(src, true);
+    dst = src;
+  }
+
 }

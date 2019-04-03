@@ -2,6 +2,7 @@
 
 #include "d3d9_caps.h"
 #include "d3d9_constant_set.h"
+#include "../dxso/dxso_common.h"
 
 #include <array>
 #include <bitset>
@@ -45,7 +46,7 @@ namespace dxvk {
     Direct3DVertexDeclaration9*                      vertexDecl = nullptr;
     Direct3DIndexBuffer9*                            indices    = nullptr;
 
-    std::array<DWORD, RenderStateCount>              renderStates;
+    std::array<DWORD, RenderStateCount>              renderStates = { 0 };
 
     std::array<
       std::array<DWORD, SamplerStateCount>,
@@ -71,7 +72,44 @@ namespace dxvk {
     D3D9ShaderConstants                              psConsts;
   };
 
-  enum class CapturedStateFlag : uint32_t {
+  template <
+    DxsoProgramType  ProgramType,
+    D3D9ConstantType ConstantType,
+    typename         T>
+  HRESULT UpdateStateConstants(
+          D3D9CapturableState* pState,
+          UINT                 StartRegister,
+    const T*                   pConstantData,
+          UINT                 Count) {
+    auto& set = ProgramType == DxsoProgramType::VertexShader
+      ? pState->vsConsts
+      : pState->psConsts;
+
+    if constexpr (ConstantType == D3D9ConstantType::Float) {
+      auto& consts = set.hardware.fConsts;
+      std::memcpy(consts.data() + StartRegister, pConstantData, Count * sizeof(*consts.data()));
+    }
+    else if constexpr (ConstantType == D3D9ConstantType::Int) {
+      auto& consts = set.hardware.iConsts;
+      std::memcpy(consts.data() + StartRegister, pConstantData, Count * sizeof(*consts.data()));
+    }
+    else {
+      uint32_t& bitfield = set.hardware.boolBitfield;
+
+      for (uint32_t i = 0; i < Count; i++) {
+        const uint32_t idx    = StartRegister + i;
+        const uint32_t idxBit = 1u << idx;
+
+        bitfield &= ~idxBit;
+        if (pConstantData[i])
+          bitfield |= idxBit;
+      }
+    }
+
+    return D3D_OK;
+  }
+
+  enum class D3D9CapturedStateFlag : uint32_t {
     VertexDecl,
     Indices,
     RenderStates,
@@ -87,13 +125,14 @@ namespace dxvk {
     PsConstants
   };
 
-  using CapturedStateFlags = Flags<CapturedStateFlag>;
+  using D3D9CapturedStateFlags = Flags<D3D9CapturedStateFlag>;
 
   struct D3D9StateCaptures {
-    CapturedStateFlags flags;
+    D3D9CapturedStateFlags flags;
 
     std::bitset<RenderStateCount>                       renderStates;
 
+    std::bitset<SamplerCount>                           samplers;
     std::array<
       std::bitset<SamplerStateCount>,
       SamplerCount>                                     samplerStates;
@@ -101,6 +140,12 @@ namespace dxvk {
     std::bitset<caps::MaxStreams>                       vertexBuffers;
     std::bitset<SamplerCount>                           textures;
     std::bitset<caps::MaxClipPlanes>                    clipPlanes;
+
+    struct {
+      std::bitset<caps::MaxFloatConstants>              fConsts;
+      std::bitset<caps::MaxOtherConstants>              iConsts;
+      std::bitset<caps::MaxOtherConstants>              bConsts;
+    } vsConsts, psConsts;
   };
 
   struct Direct3DState9 : public D3D9CapturableState {

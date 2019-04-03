@@ -575,6 +575,13 @@ namespace dxvk {
       D3DDISPLAYMODEEX* pMode,
       D3DDISPLAYROTATION* pRotation);
 
+    HRESULT SetStateSamplerState(
+        DWORD               StateSampler,
+        D3DSAMPLERSTATETYPE Type,
+        DWORD               Value);
+
+    HRESULT SetStateTexture(DWORD StateSampler, IDirect3DBaseTexture9* pTexture);
+
     VkPipelineStageFlags GetEnabledShaderStages() const {
       return m_dxvkDevice->getShaderPipelineStages();
     }
@@ -690,7 +697,7 @@ namespace dxvk {
 
     void BindSampler(DWORD Sampler);
 
-    void BindTexture(DWORD Sampler);
+    void BindTexture(DWORD SamplerSampler);
 
     void UndirtySamplers();
 
@@ -716,10 +723,17 @@ namespace dxvk {
 
     const D3D9Options* GetOptions() const {
       return &m_d3d9Options;
-    }       
+    }
+
+    Direct3DState9* GetRawState() {
+      return &m_state;
+    }
 
     void Begin(D3D9Query* pQuery);
     void End(D3D9Query* pQuery);
+
+    void SetVertexBoolBitfield(uint32_t mask, uint32_t bits);
+    void SetPixelBoolBitfield(uint32_t mask, uint32_t bits);
 
   private:
 
@@ -862,30 +876,14 @@ namespace dxvk {
 
       dirtyFlag = true;
 
-      auto& set = ProgramType == DxsoProgramType::VertexShader
-        ? m_state.vsConsts
-        : m_state.psConsts;
-
-      if constexpr (ConstantType == D3D9ConstantType::Float) {
-        auto& consts = set.hardware.fConsts;
-        std::memcpy(consts.data() + StartRegister, pConstantData, Count * sizeof(*consts.data()));
-      }
-      else if constexpr (ConstantType == D3D9ConstantType::Int) {
-        auto& consts = set.hardware.iConsts;
-        std::memcpy(consts.data() + StartRegister, pConstantData, Count * sizeof(*consts.data()));
-      }
-      else {
-        uint32_t& bitfield = set.hardware.boolBitfield;
-
-        for (uint32_t i = 0; i < Count; i++) {
-          const uint32_t idx    = StartRegister + i;
-          const uint32_t idxBit = 1u << idx;
-
-          bitfield &= ~idxBit;
-          if (pConstantData[i])
-            bitfield |= idxBit;
-        }
-      }
+      UpdateStateConstants<
+        ProgramType,
+        ConstantType,
+        T>(
+        &m_state,
+        StartRegister,
+        pConstantData,
+        Count);
 
       return D3D_OK;
     }

@@ -1,0 +1,259 @@
+#pragma once
+
+#include "d3d9_device_child.h"
+#include "d3d9_state.h"
+
+namespace dxvk {
+
+  using D3D9StateBlockBase = Direct3DDeviceChild9<IDirect3DStateBlock9>;
+  class D3D9StateBlock : public D3D9StateBlockBase {
+
+  public:
+
+    D3D9StateBlock(Direct3DDevice9Ex* pDevice, D3DSTATEBLOCKTYPE Type);
+
+    HRESULT STDMETHODCALLTYPE Capture() final;
+    HRESULT STDMETHODCALLTYPE Apply() final;
+
+    void SetVertexDeclaration(Direct3DVertexDeclaration9* pDecl);
+
+    void SetIndices(Direct3DIndexBuffer9* pIndexData);
+
+    void SetRenderState(D3DRENDERSTATETYPE State, DWORD Value);
+
+    void SetStateSamplerState(
+            DWORD               StateSampler,
+            D3DSAMPLERSTATETYPE Type,
+            DWORD               Value);
+
+    void SetStreamSource(
+            UINT                    StreamNumber,
+            Direct3DVertexBuffer9*  pStreamData,
+            UINT                    OffsetInBytes,
+            UINT                    Stride);
+
+    void SetStateTexture(DWORD StateSampler, IDirect3DBaseTexture9* pTexture);
+
+    void SetVertexShader(D3D9VertexShader* pShader);
+
+    void SetPixelShader(D3D9PixelShader* pShader);
+
+    void SetViewport(const D3DVIEWPORT9* pViewport);
+
+    void SetScissorRect(const RECT* pRect);
+
+    void SetClipPlane(DWORD Index, const float* pPlane);
+
+
+    void SetVertexShaderConstantF(
+            UINT   StartRegister,
+      const float* pConstantData,
+            UINT   Vector4fCount);
+
+    void SetVertexShaderConstantI(
+            UINT StartRegister,
+      const int* pConstantData,
+            UINT Vector4iCount);
+
+    void SetVertexShaderConstantB(
+            UINT  StartRegister,
+      const BOOL* pConstantData,
+            UINT  BoolCount);
+
+
+    void SetPixelShaderConstantF(
+            UINT   StartRegister,
+      const float* pConstantData,
+            UINT   Vector4fCount);
+
+    void SetPixelShaderConstantI(
+            UINT StartRegister,
+      const int* pConstantData,
+            UINT Vector4iCount);
+
+    void SetPixelShaderConstantB(
+            UINT  StartRegister,
+      const BOOL* pConstantData,
+            UINT  BoolCount);
+
+    enum class D3D9StateFunction {
+      Apply,
+      Capture
+    };
+
+    template <typename Dst, typename Src>
+    void ApplyOrCapture(Dst* dst, const Src* src) {
+      if (m_captures.flags.test(D3D9CapturedStateFlag::VertexDecl))
+        dst->SetVertexDeclaration(src->vertexDecl);
+
+      if (m_captures.flags.test(D3D9CapturedStateFlag::Indices))
+        dst->SetIndices(src->indices);
+
+      if (m_captures.flags.test(D3D9CapturedStateFlag::RenderStates)) {
+        for (uint32_t i = 0; i < m_captures.renderStates.size(); i++) {
+          if (m_captures.renderStates[i])
+            dst->SetRenderState(D3DRENDERSTATETYPE(i), src->renderStates[i]);
+        }
+      }
+
+      if (m_captures.flags.test(D3D9CapturedStateFlag::SamplerStates)) {
+        for (uint32_t i = 0; i < m_captures.samplerStates.size(); i++) {
+          if (m_captures.samplers[i]) {
+            for (uint32_t j = 0; j < m_captures.samplerStates[i].size(); j++) {
+              if (m_captures.samplerStates[i][j])
+                dst->SetStateSamplerState(i, D3DSAMPLERSTATETYPE(j), src->samplerStates[i][j]);
+            }
+          }
+        }
+      }
+
+      if (m_captures.flags.test(D3D9CapturedStateFlag::VertexBuffers)) {
+        for (uint32_t i = 0; i < m_captures.vertexBuffers.size(); i++) {
+          if (m_captures.vertexBuffers[i]) {
+            const auto& vbo = src->vertexBuffers[i];
+            dst->SetStreamSource(
+              i,
+              vbo.vertexBuffer,
+              vbo.offset,
+              vbo.stride);
+          }
+        }
+      }
+
+      if (m_captures.flags.test(D3D9CapturedStateFlag::Textures)) {
+        for (uint32_t i = 0; i < m_captures.textures.size(); i++) {
+          if (m_captures.textures[i])
+            dst->SetStateTexture(i, src->textures[i]);
+        }
+      }
+
+      if (m_captures.flags.test(D3D9CapturedStateFlag::VertexShader))
+        dst->SetVertexShader(src->vertexShader);
+
+      if (m_captures.flags.test(D3D9CapturedStateFlag::PixelShader))
+        dst->SetPixelShader(src->pixelShader);
+
+      if (m_captures.flags.test(D3D9CapturedStateFlag::Viewport))
+        dst->SetViewport(&src->viewport);
+
+      if (m_captures.flags.test(D3D9CapturedStateFlag::ScissorRect))
+        dst->SetScissorRect(&src->scissorRect);
+
+      if (m_captures.flags.test(D3D9CapturedStateFlag::ClipPlanes)) {
+        for (uint32_t i = 0; i < m_captures.clipPlanes.size(); i++) {
+          if (m_captures.clipPlanes[i])
+            dst->SetClipPlane(i, src->clipPlanes[i].coeff);
+        }
+      }
+
+      if (m_captures.flags.test(D3D9CapturedStateFlag::VsConstants)) {
+        for (uint32_t i = 0; i < m_captures.vsConsts.fConsts.size(); i++) {
+          if (m_captures.vsConsts.fConsts[i])
+            dst->SetVertexShaderConstantF(i, (float*)&src->vsConsts.hardware.fConsts[i], 1);
+        }
+
+        for (uint32_t i = 0; i < m_captures.vsConsts.iConsts.size(); i++) {
+          if (m_captures.vsConsts.iConsts[i])
+            dst->SetVertexShaderConstantI(i, (int*)&src->vsConsts.hardware.iConsts[i], 1);
+        }
+
+        uint32_t boolMask = 0;
+        for (uint32_t i = 0; i < m_captures.vsConsts.bConsts.size(); i++) {
+          if (m_captures.vsConsts.bConsts[i])
+            boolMask |= 1u << i;
+        }
+
+        dst->SetVertexBoolBitfield(boolMask, src->vsConsts.hardware.boolBitfield);
+      }
+
+      if (m_captures.flags.test(D3D9CapturedStateFlag::PsConstants)) {
+        for (uint32_t i = 0; i < m_captures.psConsts.fConsts.size(); i++) {
+          if (m_captures.psConsts.fConsts[i])
+            dst->SetPixelShaderConstantF(i, (float*)&src->psConsts.hardware.fConsts[i], 1);
+        }
+
+        for (uint32_t i = 0; i < m_captures.psConsts.iConsts.size(); i++) {
+          if (m_captures.psConsts.iConsts[i])
+            dst->SetPixelShaderConstantI(i, (int*)&src->psConsts.hardware.iConsts[i], 1);
+        }
+
+        uint32_t boolMask = 0;
+        for (uint32_t i = 0; i < m_captures.psConsts.bConsts.size(); i++) {
+          if (m_captures.psConsts.bConsts[i])
+            boolMask |= 1u << i;
+        }
+
+        dst->SetPixelBoolBitfield(boolMask, src->psConsts.hardware.boolBitfield);
+      }
+    }
+
+    template <D3D9StateFunction Func>
+    void ApplyOrCapture() {
+      if      constexpr (Func == D3D9StateFunction::Apply)
+        ApplyOrCapture(m_parent, &m_state);
+      else if constexpr (Func == D3D9StateFunction::Capture)
+        ApplyOrCapture(this, m_deviceState);
+    }
+
+    template <
+      DxsoProgramType  ProgramType,
+      D3D9ConstantType ConstantType,
+      typename         T>
+    HRESULT SetShaderConstants(
+            UINT  StartRegister,
+      const T*    pConstantData,
+            UINT  Count) {
+      if constexpr (ProgramType == DxsoProgramType::VertexShader)
+        m_captures.flags.set(D3D9CapturedStateFlag::VsConstants);
+      else
+        m_captures.flags.set(D3D9CapturedStateFlag::PsConstants);
+
+      auto& captureSet = ProgramType == DxsoProgramType::VertexShader
+        ? m_captures.vsConsts
+        : m_captures.psConsts;
+
+      for (uint32_t i = 0; i < Count; i++) {
+        uint32_t reg = StartRegister + i;
+        if      constexpr (ConstantType == D3D9ConstantType::Float)
+          captureSet.fConsts[reg] = true;
+        else if constexpr (ConstantType == D3D9ConstantType::Int)
+          captureSet.iConsts[reg] = true;
+        else if constexpr (ConstantType == D3D9ConstantType::Bool)
+          captureSet.bConsts[reg] = true;
+      }
+
+      UpdateStateConstants<
+        ProgramType,
+        ConstantType,
+        T>(
+        &m_state,
+        StartRegister,
+        pConstantData,
+        Count);
+
+      return D3D_OK;
+    }
+
+    void SetVertexBoolBitfield(uint32_t mask, uint32_t bits);
+    void SetPixelBoolBitfield(uint32_t mask, uint32_t bits);
+
+  private:
+
+    void CapturePixelRenderStates();
+    void CapturePixelSamplerStates();
+    void CapturePixelShaderStates();
+
+    void CaptureVertexRenderStates();
+    void CaptureVertexSamplerStates();
+    void CaptureVertexShaderStates();
+
+    void CaptureType(D3DSTATEBLOCKTYPE State);
+
+    D3D9CapturableState  m_state;
+    D3D9StateCaptures    m_captures;
+
+    D3D9CapturableState* m_deviceState;
+
+  };
+
+}
