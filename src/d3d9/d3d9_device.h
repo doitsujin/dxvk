@@ -46,8 +46,7 @@ namespace dxvk {
     DirtyExtraState,
     DirtyRenderStateBuffer,
     DirtyInputLayout,
-    ExtendedDevice,
-    DeferViewportBinding
+    ExtendedDevice
   };
 
   using D3D9DeviceFlags = Flags<D3D9DeviceFlag>;

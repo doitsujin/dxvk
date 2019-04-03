@@ -899,19 +899,25 @@ namespace dxvk {
     BindFramebuffer();
 
     if (RenderTargetIndex == 0) {
-      m_flags.set(D3D9DeviceFlag::DeferViewportBinding);
+      auto rtv = m_state.renderTargets[0]->GetRenderTargetView(false);
 
-      SetViewport(nullptr);
-
-      auto rtv = rt->GetRenderTargetView(false);
+      D3DVIEWPORT9 viewport;
+      viewport.X = 0;
+      viewport.Y = 0;
+      viewport.Width = rtv->image()->info().extent.width;
+      viewport.Height = rtv->image()->info().extent.height;
+      viewport.MinZ = 0.0f;
+      viewport.MaxZ = 1.0f;
+      m_state.viewport = viewport;
 
       RECT scissorRect;
       scissorRect.left = 0;
       scissorRect.top = 0;
       scissorRect.right = rtv->image()->info().extent.width;
       scissorRect.bottom = rtv->image()->info().extent.height;
+      m_state.scissorRect = scissorRect;
 
-      SetScissorRect(&scissorRect);
+      BindViewportAndScissor();
     }
 
     return D3D_OK;
@@ -1084,10 +1090,7 @@ namespace dxvk {
 
     m_state.viewport = viewport;
 
-    if (m_flags.test(D3D9DeviceFlag::DeferViewportBinding))
-      m_flags.clr(D3D9DeviceFlag::DeferViewportBinding);
-    else
-      BindViewportAndScissor();
+    BindViewportAndScissor();
 
     return D3D_OK;
   }
