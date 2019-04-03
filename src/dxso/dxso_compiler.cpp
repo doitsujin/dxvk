@@ -838,11 +838,10 @@ namespace dxvk {
 
         result = m_module.opDot(scalarTypeId, vec3, vec3);
         result = m_module.opInverseSqrt(scalarTypeId, result);
-        result = emitScalarReplicant(typeId, result);
-        result = this->emitInfinityClamp(typeId, result);
+        result = this->emitInfinityClamp(scalarTypeId, result, false);
 
         // r * rsq(r . r);
-        result = m_module.opFMul(
+        result = m_module.opVectorTimesScalar(
           typeId,
           emitRegisterLoad(src[0]),
           result);
@@ -918,10 +917,10 @@ namespace dxvk {
     emitDebugName(dstSpvReg.varId, dst.registerId());
   }
 
-  uint32_t DxsoCompiler::emitInfinityClamp(uint32_t typeId, uint32_t varId) {
+  uint32_t DxsoCompiler::emitInfinityClamp(uint32_t typeId, uint32_t varId, bool vector) {
     return m_module.opFClamp(typeId, varId,
-      m_module.constvec4f32(-FLT_MAX, -FLT_MAX, -FLT_MAX, -FLT_MAX),
-      m_module.constvec4f32( FLT_MAX,  FLT_MAX,  FLT_MAX,  FLT_MAX));
+      vector ? m_module.constf32(-FLT_MAX) : m_module.constvec4f32(-FLT_MAX, -FLT_MAX, -FLT_MAX, -FLT_MAX),
+      vector ? m_module.constf32( FLT_MAX) : m_module.constvec4f32( FLT_MAX,  FLT_MAX,  FLT_MAX,  FLT_MAX));
   }
 
   void DxsoCompiler::emitTextureSample(const DxsoInstructionContext& ctx) {
