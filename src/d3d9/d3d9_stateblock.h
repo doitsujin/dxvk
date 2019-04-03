@@ -12,6 +12,10 @@ namespace dxvk {
 
     D3D9StateBlock(Direct3DDevice9Ex* pDevice, D3DSTATEBLOCKTYPE Type);
 
+    HRESULT STDMETHODCALLTYPE QueryInterface(
+        REFIID  riid,
+        void** ppvObject) final;
+
     HRESULT STDMETHODCALLTYPE Capture() final;
     HRESULT STDMETHODCALLTYPE Apply() final;
 
