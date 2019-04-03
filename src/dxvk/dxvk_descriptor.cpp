@@ -17,7 +17,7 @@ namespace dxvk {
       { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,   MaxSets / 8 },
       { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, MaxSets * 3 },
       { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, MaxSets / 8 },
-      { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MaxSets / 16 } }};
+      { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MaxSets * 2 } }};
     
     VkDescriptorPoolCreateInfo info;
     info.sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;

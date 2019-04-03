@@ -487,6 +487,16 @@ namespace dxvk {
       return m_unboundResources.imageViewDescriptor(type);
     }
     
+    /**
+     * \brief Dummy combined image sampler descriptor
+     * 
+     * \param [in] type Required view type
+     * \returns Descriptor that points to a dummy image
+     */
+    VkDescriptorImageInfo dummyImageSamplerDescriptor(VkImageViewType type) const {
+      return m_unboundResources.imageSamplerDescriptor(type);
+    }
+    
   };
   
 }

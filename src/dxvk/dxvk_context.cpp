@@ -3331,6 +3331,26 @@ namespace dxvk {
             m_descInfos[i].image = m_device->dummyImageViewDescriptor(binding.view);
           } break;
         
+        case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+          if (res.sampler != nullptr && res.imageView != nullptr
+           && res.imageView->handle(binding.view) != VK_NULL_HANDLE) {
+            updatePipelineState |= bindMask.setBound(i);
+
+            m_descInfos[i].image.sampler     = res.sampler->handle();
+            m_descInfos[i].image.imageView   = res.imageView->handle(binding.view);
+            m_descInfos[i].image.imageLayout = res.imageView->imageInfo().layout;
+            
+            if (res.imageView->imageHandle() == depthImage)
+              m_descInfos[i].image.imageLayout = depthLayout;
+            
+            m_cmd->trackResource(res.sampler);
+            m_cmd->trackResource(res.imageView);
+            m_cmd->trackResource(res.imageView->image());
+          } else {
+            updatePipelineState |= bindMask.setUnbound(i);
+            m_descInfos[i].image = m_device->dummyImageSamplerDescriptor(binding.view);
+          } break;
+        
         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
         case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
           if (res.bufferView != nullptr) {
@@ -3750,6 +3770,7 @@ namespace dxvk {
             /* fall through */
 
           case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
             srcAccess = m_barriers.getImageAccess(
               slot.imageView->image(),
               slot.imageView->subresources());
@@ -3824,6 +3845,7 @@ namespace dxvk {
             /* fall through */
 
           case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
             m_barriers.accessImage(
               slot.imageView->image(),
               slot.imageView->subresources(),

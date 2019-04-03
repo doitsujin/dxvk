@@ -79,6 +79,23 @@ namespace dxvk {
     }
     
     /**
+     * \brief Dummy combined image sampler descriptor
+     * 
+     * Contains both an image view and a sampler
+     * descriptor for the given image view type.
+     * \returns Dummy image view descriptor
+     */
+    VkDescriptorImageInfo imageSamplerDescriptor(VkImageViewType type) const {
+      auto view = getImageView(type);
+      
+      VkDescriptorImageInfo result;
+      result.sampler     = m_sampler->handle();
+      result.imageView   = view->handle();
+      result.imageLayout = view->imageInfo().layout;
+      return result;
+    }
+    
+    /**
      * \brief Dummy image view descriptor
      * 
      * Points to an image view which, instead of
