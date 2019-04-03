@@ -23,23 +23,17 @@ namespace dxvk {
           DxvkPipelineManager*    pipeMgr,
     const Rc<DxvkShader>&         cs)
   : m_vkd(pipeMgr->m_device->vkd()),
-    m_pipeMgr(pipeMgr) {
-    DxvkDescriptorSlotMapping slotMapping;
-    cs->defineResourceSlots(slotMapping);
+    m_pipeMgr(pipeMgr), m_cs(cs) {
+    cs->defineResourceSlots(m_slotMapping);
 
-    slotMapping.makeDescriptorsDynamic(
+    m_slotMapping.makeDescriptorsDynamic(
       m_pipeMgr->m_device->options().maxNumDynamicUniformBuffers,
       m_pipeMgr->m_device->options().maxNumDynamicStorageBuffers);
     
     m_layout = new DxvkPipelineLayout(m_vkd,
-      slotMapping.bindingCount(),
-      slotMapping.bindingInfos(),
+      m_slotMapping.bindingCount(),
+      m_slotMapping.bindingInfos(),
       VK_PIPELINE_BIND_POINT_COMPUTE);
-    
-    DxvkShaderModuleCreateInfo moduleInfo;
-    moduleInfo.fsDualSrcBlend = false;
-
-    m_cs = cs->createShaderModule(m_vkd, slotMapping, moduleInfo);
   }
   
   
@@ -98,9 +92,15 @@ namespace dxvk {
 
     if (Logger::logLevel() <= LogLevel::Debug) {
       Logger::debug("Compiling compute pipeline..."); 
-      Logger::debug(str::format("  cs  : ", m_cs->shader()->debugName()));
+      Logger::debug(str::format("  cs  : ", m_cs->debugName()));
     }
     
+    
+    DxvkShaderModuleCreateInfo moduleInfo;
+    moduleInfo.fsDualSrcBlend = false;
+
+    auto csm = m_cs->createShaderModule(m_vkd, m_slotMapping, moduleInfo);
+
     DxvkSpecConstantData specData;
     
     for (uint32_t i = 0; i < MaxNumActiveBindings; i++)
@@ -118,7 +118,7 @@ namespace dxvk {
     info.flags                = baseHandle == VK_NULL_HANDLE
       ? VK_PIPELINE_CREATE_ALLOW_DERIVATIVES_BIT
       : VK_PIPELINE_CREATE_DERIVATIVE_BIT;
-    info.stage                = m_cs->stageInfo(&specInfo);
+    info.stage                = csm->stageInfo(&specInfo);
     info.layout               = m_layout->pipelineLayout();
     info.basePipelineHandle   = baseHandle;
     info.basePipelineIndex    = -1;
@@ -130,7 +130,7 @@ namespace dxvk {
     if (m_vkd->vkCreateComputePipelines(m_vkd->device(),
           m_pipeMgr->m_cache->handle(), 1, &info, nullptr, &pipeline) != VK_SUCCESS) {
       Logger::err("DxvkComputePipeline: Failed to compile pipeline");
-      Logger::err(str::format("  cs  : ", m_cs->shader()->debugName()));
+      Logger::err(str::format("  cs  : ", m_cs->debugName()));
       return VK_NULL_HANDLE;
     }
     
