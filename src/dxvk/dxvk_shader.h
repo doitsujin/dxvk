@@ -175,7 +175,7 @@ namespace dxvk {
      * \param [in] info Module create info
      * \returns The shader module
      */
-    Rc<DxvkShaderModule> createShaderModule(
+    DxvkShaderModule createShaderModule(
       const Rc<vk::DeviceFn>&          vkd,
       const DxvkDescriptorSlotMapping& mapping,
       const DxvkShaderModuleCreateInfo& info);
@@ -269,9 +269,13 @@ namespace dxvk {
    * context will create pipeline objects on the
    * fly when executing draw calls.
    */
-  class DxvkShaderModule : public RcObject {
+  class DxvkShaderModule {
     
   public:
+
+    DxvkShaderModule();
+
+    DxvkShaderModule(DxvkShaderModule&& other);
     
     DxvkShaderModule(
       const Rc<vk::DeviceFn>&     vkd,
@@ -279,14 +283,8 @@ namespace dxvk {
       const SpirvCodeBuffer&      code);
     
     ~DxvkShaderModule();
-    
-    /**
-     * \brief Shader module handle
-     * \returns Shader module handle
-     */
-    VkShaderModule handle() const {
-      return m_module;
-    }
+
+    DxvkShaderModule& operator = (DxvkShaderModule&& other);
     
     /**
      * \brief Shader stage creation info
@@ -295,29 +293,24 @@ namespace dxvk {
      * \returns Shader stage create info
      */
     VkPipelineShaderStageCreateInfo stageInfo(
-      const VkSpecializationInfo* specInfo) const;
+      const VkSpecializationInfo* specInfo) const {
+      VkPipelineShaderStageCreateInfo info = m_info;
+      info.pSpecializationInfo = specInfo;
+      return info;
+    }
     
     /**
-     * \brief Shader object
-     * \returns The shader
+     * \brief Checks whether module is valid
+     * \returns \c true if module is valid
      */
-    Rc<DxvkShader> shader() const {
-      return m_shader;
-    }
-
-    /**
-     * \brief Retrieves shader key
-     * \returns Unique shader key
-     */
-    DxvkShaderKey getShaderKey() const {
-      return m_shader->getShaderKey();
+    operator bool () const {
+      return m_info.module != VK_NULL_HANDLE;
     }
     
   private:
     
-    Rc<vk::DeviceFn>      m_vkd;
-    Rc<DxvkShader>        m_shader;
-    VkShaderModule        m_module;
+    Rc<vk::DeviceFn>                m_vkd;
+    VkPipelineShaderStageCreateInfo m_info;
     
   };
   

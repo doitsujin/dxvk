@@ -280,7 +280,7 @@ namespace dxvk {
     void destroyPipeline(
             VkPipeline                     pipeline) const;
     
-    Rc<DxvkShaderModule> createShaderModule(
+    DxvkShaderModule createShaderModule(
       const Rc<DxvkShader>&                shader,
       const DxvkShaderModuleCreateInfo&    info) const;
     

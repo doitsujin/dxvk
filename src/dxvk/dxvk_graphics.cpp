@@ -213,11 +213,11 @@ namespace dxvk {
     auto tesm = createShaderModule(m_tes, moduleInfo);
     auto fsm  = createShaderModule(m_fs,  moduleInfo);
 
-    if (m_vs  != nullptr) stages.push_back(vsm->stageInfo(&specInfo));
-    if (m_tcs != nullptr) stages.push_back(tcsm->stageInfo(&specInfo));
-    if (m_tes != nullptr) stages.push_back(tesm->stageInfo(&specInfo));
-    if (m_gs  != nullptr) stages.push_back(gsm->stageInfo(&specInfo));
-    if (m_fs  != nullptr) stages.push_back(fsm->stageInfo(&specInfo));
+    if (vsm)  stages.push_back(vsm.stageInfo(&specInfo));
+    if (tcsm) stages.push_back(tcsm.stageInfo(&specInfo));
+    if (tesm) stages.push_back(tesm.stageInfo(&specInfo));
+    if (gsm)  stages.push_back(gsm.stageInfo(&specInfo));
+    if (fsm)  stages.push_back(fsm.stageInfo(&specInfo));
 
     // Fix up color write masks using the component mappings
     std::array<VkPipelineColorBlendAttachmentState, MaxNumRenderTargets> omBlendAttachments;
@@ -428,12 +428,12 @@ namespace dxvk {
   }
 
 
-  Rc<DxvkShaderModule> DxvkGraphicsPipeline::createShaderModule(
+  DxvkShaderModule DxvkGraphicsPipeline::createShaderModule(
     const Rc<DxvkShader>&                shader,
     const DxvkShaderModuleCreateInfo&    info) const {
     return shader != nullptr
       ? shader->createShaderModule(m_vkd, m_slotMapping, info)
-      : nullptr;
+      : DxvkShaderModule();
   }
 
 

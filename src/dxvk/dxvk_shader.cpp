@@ -38,11 +38,28 @@ namespace dxvk {
   }
 
 
+  DxvkShaderModule::DxvkShaderModule()
+  : m_vkd(nullptr), m_info {
+      VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+      nullptr, 0, VkShaderStageFlagBits(0), VK_NULL_HANDLE, nullptr, nullptr } {
+    
+  }
+
+
+  DxvkShaderModule::DxvkShaderModule(DxvkShaderModule&& other)
+  : m_vkd (std::move(other.m_vkd)),
+    m_info(std::exchange(m_info, VkPipelineShaderStageCreateInfo())) {
+    
+  }
+
+
   DxvkShaderModule::DxvkShaderModule(
     const Rc<vk::DeviceFn>&     vkd,
     const Rc<DxvkShader>&       shader,
     const SpirvCodeBuffer&      code)
-  : m_vkd(vkd), m_shader(shader) {
+  : m_vkd(vkd), m_info {
+      VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+      nullptr, 0, shader->stage(), VK_NULL_HANDLE, "main", nullptr } {
     VkShaderModuleCreateInfo info;
     info.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     info.pNext    = nullptr;
@@ -50,31 +67,26 @@ namespace dxvk {
     info.codeSize = code.size();
     info.pCode    = code.data();
     
-    if (m_vkd->vkCreateShaderModule(m_vkd->device(),
-          &info, nullptr, &m_module) != VK_SUCCESS)
+    if (m_vkd->vkCreateShaderModule(m_vkd->device(), &info, nullptr, &m_info.module) != VK_SUCCESS)
       throw DxvkError("DxvkComputePipeline::DxvkComputePipeline: Failed to create shader module");
   }
   
   
   DxvkShaderModule::~DxvkShaderModule() {
-    m_vkd->vkDestroyShaderModule(
-      m_vkd->device(), m_module, nullptr);
+    if (m_vkd != nullptr) {
+      m_vkd->vkDestroyShaderModule(
+        m_vkd->device(), m_info.module, nullptr);
+    }
   }
   
   
-  VkPipelineShaderStageCreateInfo DxvkShaderModule::stageInfo(const VkSpecializationInfo* specInfo) const {
-    VkPipelineShaderStageCreateInfo info;
-    info.sType                = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    info.pNext                = nullptr;
-    info.flags                = 0;
-    info.stage                = m_shader->stage();
-    info.module               = m_module;
-    info.pName                = "main";
-    info.pSpecializationInfo  = specInfo;
-    return info;
+  DxvkShaderModule& DxvkShaderModule::operator = (DxvkShaderModule&& other) {
+    m_vkd  = std::move(other.m_vkd);
+    m_info = std::exchange(other.m_info, VkPipelineShaderStageCreateInfo());
+    return *this;
   }
-  
-  
+
+
   DxvkShader::DxvkShader(
           VkShaderStageFlagBits   stage,
           uint32_t                slotCount,
@@ -137,7 +149,7 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkShaderModule> DxvkShader::createShaderModule(
+  DxvkShaderModule DxvkShader::createShaderModule(
     const Rc<vk::DeviceFn>&          vkd,
     const DxvkDescriptorSlotMapping& mapping,
     const DxvkShaderModuleCreateInfo& info) {
@@ -155,7 +167,7 @@ namespace dxvk {
     if (info.fsDualSrcBlend && m_o1IdxOffset && m_o1LocOffset)
       std::swap(code[m_o1IdxOffset], code[m_o1LocOffset]);
     
-    return new DxvkShaderModule(vkd, this, spirvCode);
+    return DxvkShaderModule(vkd, this, spirvCode);
   }
   
   

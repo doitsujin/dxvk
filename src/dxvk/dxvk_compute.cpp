@@ -118,7 +118,7 @@ namespace dxvk {
     info.flags                = baseHandle == VK_NULL_HANDLE
       ? VK_PIPELINE_CREATE_ALLOW_DERIVATIVES_BIT
       : VK_PIPELINE_CREATE_DERIVATIVE_BIT;
-    info.stage                = csm->stageInfo(&specInfo);
+    info.stage                = csm.stageInfo(&specInfo);
     info.layout               = m_layout->pipelineLayout();
     info.basePipelineHandle   = baseHandle;
     info.basePipelineIndex    = -1;
