@@ -641,6 +641,11 @@ namespace dxvk {
             uint32_t                resultType,
             uint32_t                a,
             uint32_t                b);
+
+    uint32_t opVectorTimesScalar(
+            uint32_t                resultType,
+            uint32_t                vector,
+            uint32_t                scalar);
     
     uint32_t opFFma(
             uint32_t                resultType,
