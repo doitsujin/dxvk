@@ -1753,8 +1753,23 @@ namespace dxvk {
     m_code.putWord(b);
     return resultId;
   }
-  
-  
+
+
+  uint32_t SpirvModule::opVectorTimesScalar(
+    uint32_t                resultType,
+    uint32_t                vector,
+    uint32_t                scalar) {
+    uint32_t resultId = this->allocateId();
+
+    m_code.putIns(spv::OpVectorTimesScalar, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(vector);
+    m_code.putWord(scalar);
+    return resultId;
+  }
+
+
   uint32_t SpirvModule::opFFma(
           uint32_t                resultType,
           uint32_t                a,
