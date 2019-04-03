@@ -50,7 +50,7 @@ namespace dxvk::hud {
       sizeof(HudVertex));
     
     context->bindResourceSampler(1, m_fontSampler);
-    context->bindResourceView   (2, m_fontView, nullptr);
+    context->bindResourceView   (1, m_fontView, nullptr);
     
     m_mode = Mode::RenderNone;
     m_vertexIndex = 0;
@@ -203,9 +203,8 @@ namespace dxvk::hud {
     const SpirvCodeBuffer codeBuffer(hud_text);
     
     // Two shader resources: Font texture and sampler
-    const std::array<DxvkResourceSlot, 2> resourceSlots = {{
-      { 1, VK_DESCRIPTOR_TYPE_SAMPLER,       VK_IMAGE_VIEW_TYPE_MAX_ENUM },
-      { 2, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, VK_IMAGE_VIEW_TYPE_2D       },
+    const std::array<DxvkResourceSlot, 1> resourceSlots = {{
+      { 1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_IMAGE_VIEW_TYPE_2D },
     }};
     
     return device->createShader(

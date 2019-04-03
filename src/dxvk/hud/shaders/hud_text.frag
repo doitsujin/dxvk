@@ -1,7 +1,6 @@
 #version 450
 
-layout(set = 0, binding = 1) uniform sampler   s_font;
-layout(set = 0, binding = 2) uniform texture2D t_font;
+layout(set = 0, binding = 1) uniform sampler2D s_font;
 
 layout(location = 0) in vec2 v_texcoord;
 layout(location = 1) in vec4 v_color;
@@ -9,7 +8,7 @@ layout(location = 1) in vec4 v_color;
 layout(location = 0) out vec4 o_color;
 
 float sampleAlpha(float alpha_bias, float dist_range) {
-  float value = texture(sampler2D(t_font, s_font), v_texcoord).r + alpha_bias - 0.5f;
+  float value = texture(s_font, v_texcoord).r + alpha_bias - 0.5f;
   float dist  = value * dot(vec2(dist_range, dist_range), 1.0f / fwidth(v_texcoord.xy));
   return clamp(dist + 0.5f, 0.0f, 1.0f);
 }
