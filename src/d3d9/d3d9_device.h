@@ -36,6 +36,7 @@ namespace dxvk {
   class D3D9ShaderModuleSet;
   class D3D9Initializer;
   class D3D9Query;
+  class D3D9StateBlock;
 
   enum class D3D9DeviceFlag : uint64_t {
     DirtyClipPlanes,
@@ -793,6 +794,7 @@ namespace dxvk {
 
     DWORD                           m_behaviourFlags;
     Direct3DState9                  m_state;
+    Com<D3D9StateBlock>             m_recorder;
     Direct3DMultithread9            m_multithread;
 
     Rc<D3D9ShaderModuleSet>         m_shaderModules;
@@ -821,6 +823,8 @@ namespace dxvk {
       D3D9SamplerKeyEq>             m_samplers;
 
     Direct3DSwapChain9Ex* GetInternalSwapchain(UINT index);
+
+    bool ShouldRecord();
 
     HRESULT               CreateShaderModule(
             D3D9CommonShader*     pShaderModule,
@@ -869,6 +873,15 @@ namespace dxvk {
 
       if (pConstantData == nullptr)
         return D3DERR_INVALIDCALL;
+
+      if (ShouldRecord())
+        return m_recorder->SetShaderConstants<
+          ProgramType,
+          ConstantType,
+          T>(
+            StartRegister,
+            pConstantData,
+            Count);
 
       bool& dirtyFlag = ProgramType == DxsoProgramType::VertexShader
         ? m_vsConst.dirty

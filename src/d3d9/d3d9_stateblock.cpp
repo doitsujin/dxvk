@@ -36,34 +36,41 @@ namespace dxvk {
 
   HRESULT STDMETHODCALLTYPE D3D9StateBlock::Capture() {
     ApplyOrCapture<D3D9StateFunction::Capture>();
+
     return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE D3D9StateBlock::Apply() {
+    m_applying = true;
     ApplyOrCapture<D3D9StateFunction::Apply>();
+    m_applying = false;
+
     return D3D_OK;
   }
 
-  void D3D9StateBlock::SetVertexDeclaration(Direct3DVertexDeclaration9* pDecl) {
+  HRESULT D3D9StateBlock::SetVertexDeclaration(Direct3DVertexDeclaration9* pDecl) {
     changePrivate(m_state.vertexDecl, pDecl);
 
     m_captures.flags.set(D3D9CapturedStateFlag::VertexDecl);
+    return D3D_OK;
   }
 
-  void D3D9StateBlock::SetIndices(Direct3DIndexBuffer9* pIndexData) {
+  HRESULT D3D9StateBlock::SetIndices(Direct3DIndexBuffer9* pIndexData) {
     changePrivate(m_state.indices, pIndexData);
 
     m_captures.flags.set(D3D9CapturedStateFlag::Indices);
+    return D3D_OK;
   }
 
-  void D3D9StateBlock::SetRenderState(D3DRENDERSTATETYPE State, DWORD Value) {
+  HRESULT D3D9StateBlock::SetRenderState(D3DRENDERSTATETYPE State, DWORD Value) {
     m_state.renderStates[State] = Value;
 
     m_captures.flags.set(D3D9CapturedStateFlag::RenderStates);
     m_captures.renderStates[State] = true;
+    return D3D_OK;
   }
 
-  void D3D9StateBlock::SetStateSamplerState(
+  HRESULT D3D9StateBlock::SetStateSamplerState(
           DWORD               StateSampler,
           D3DSAMPLERSTATETYPE Type,
           DWORD               Value) {
@@ -72,9 +79,10 @@ namespace dxvk {
     m_captures.flags.set(D3D9CapturedStateFlag::SamplerStates);
     m_captures.samplers[StateSampler] = true;
     m_captures.samplerStates[StateSampler][Type] = true;
+    return D3D_OK;
   }
 
-  void D3D9StateBlock::SetStreamSource(
+  HRESULT D3D9StateBlock::SetStreamSource(
           UINT                    StreamNumber,
           Direct3DVertexBuffer9*  pStreamData,
           UINT                    OffsetInBytes,
@@ -85,53 +93,60 @@ namespace dxvk {
 
     m_captures.flags.set(D3D9CapturedStateFlag::VertexBuffers);
     m_captures.vertexBuffers[StreamNumber] = true;
+    return D3D_OK;
   }
 
-  void D3D9StateBlock::SetStateTexture(DWORD StateSampler, IDirect3DBaseTexture9* pTexture) {
+  HRESULT D3D9StateBlock::SetStateTexture(DWORD StateSampler, IDirect3DBaseTexture9* pTexture) {
     TextureChangePrivate(m_state.textures[StateSampler], pTexture);
 
     m_captures.flags.set(D3D9CapturedStateFlag::Textures);
     m_captures.textures[StateSampler] = true;
+    return D3D_OK;
   }
 
-  void D3D9StateBlock::SetVertexShader(D3D9VertexShader* pShader) {
+  HRESULT D3D9StateBlock::SetVertexShader(D3D9VertexShader* pShader) {
     changePrivate(m_state.vertexShader, pShader);
 
     m_captures.flags.set(D3D9CapturedStateFlag::VertexShader);
+    return D3D_OK;
   }
 
-  void D3D9StateBlock::SetPixelShader(D3D9PixelShader* pShader) {
+  HRESULT D3D9StateBlock::SetPixelShader(D3D9PixelShader* pShader) {
     changePrivate(m_state.pixelShader, pShader);
 
     m_captures.flags.set(D3D9CapturedStateFlag::PixelShader);
+    return D3D_OK;
   }
 
-  void D3D9StateBlock::SetViewport(const D3DVIEWPORT9* pViewport) {
+  HRESULT D3D9StateBlock::SetViewport(const D3DVIEWPORT9* pViewport) {
     m_state.viewport = *pViewport;
 
     m_captures.flags.set(D3D9CapturedStateFlag::Viewport);
+    return D3D_OK;
   }
 
-  void D3D9StateBlock::SetScissorRect(const RECT* pRect) {
+  HRESULT D3D9StateBlock::SetScissorRect(const RECT* pRect) {
     m_state.scissorRect = *pRect;
 
     m_captures.flags.set(D3D9CapturedStateFlag::ScissorRect);
+    return D3D_OK;
   }
 
-  void D3D9StateBlock::SetClipPlane(DWORD Index, const float* pPlane) {
+  HRESULT D3D9StateBlock::SetClipPlane(DWORD Index, const float* pPlane) {
     for (uint32_t i = 0; i < 4; i++)
       m_state.clipPlanes[Index].coeff[i] = pPlane[i];
 
     m_captures.flags.set(D3D9CapturedStateFlag::ClipPlanes);
     m_captures.clipPlanes[Index] = true;
+    return D3D_OK;
   }
 
 
-  void D3D9StateBlock::SetVertexShaderConstantF(
+  HRESULT D3D9StateBlock::SetVertexShaderConstantF(
           UINT   StartRegister,
     const float* pConstantData,
           UINT   Vector4fCount) {
-    SetShaderConstants<
+    return SetShaderConstants<
       DxsoProgramType::VertexShader,
       D3D9ConstantType::Float>(
         StartRegister,
@@ -139,11 +154,11 @@ namespace dxvk {
         Vector4fCount);
   }
 
-  void D3D9StateBlock::SetVertexShaderConstantI(
+  HRESULT D3D9StateBlock::SetVertexShaderConstantI(
           UINT StartRegister,
     const int* pConstantData,
           UINT Vector4iCount) {
-    SetShaderConstants<
+    return SetShaderConstants<
       DxsoProgramType::VertexShader,
       D3D9ConstantType::Int>(
         StartRegister,
@@ -151,11 +166,11 @@ namespace dxvk {
         Vector4iCount);
   }
 
-  void D3D9StateBlock::SetVertexShaderConstantB(
+  HRESULT D3D9StateBlock::SetVertexShaderConstantB(
           UINT  StartRegister,
     const BOOL* pConstantData,
           UINT  BoolCount) {
-    SetShaderConstants<
+    return SetShaderConstants<
       DxsoProgramType::VertexShader,
       D3D9ConstantType::Bool>(
         StartRegister,
@@ -164,11 +179,11 @@ namespace dxvk {
   }
 
 
-  void D3D9StateBlock::SetPixelShaderConstantF(
+  HRESULT D3D9StateBlock::SetPixelShaderConstantF(
           UINT   StartRegister,
     const float* pConstantData,
           UINT   Vector4fCount) {
-    SetShaderConstants<
+    return SetShaderConstants<
       DxsoProgramType::PixelShader,
       D3D9ConstantType::Float>(
         StartRegister,
@@ -176,11 +191,11 @@ namespace dxvk {
         Vector4fCount);
   }
 
-  void D3D9StateBlock::SetPixelShaderConstantI(
+  HRESULT D3D9StateBlock::SetPixelShaderConstantI(
           UINT StartRegister,
     const int* pConstantData,
           UINT Vector4iCount) {
-    SetShaderConstants<
+    return SetShaderConstants<
       DxsoProgramType::PixelShader,
       D3D9ConstantType::Int>(
         StartRegister,
@@ -188,11 +203,11 @@ namespace dxvk {
         Vector4iCount);
   }
 
-  void D3D9StateBlock::SetPixelShaderConstantB(
+  HRESULT D3D9StateBlock::SetPixelShaderConstantB(
           UINT  StartRegister,
     const BOOL* pConstantData,
           UINT  BoolCount) {
-    SetShaderConstants<
+    return SetShaderConstants<
       DxsoProgramType::PixelShader,
       D3D9ConstantType::Bool>(
         StartRegister,
@@ -200,14 +215,16 @@ namespace dxvk {
         BoolCount);
   }
 
-  void D3D9StateBlock::SetVertexBoolBitfield(uint32_t mask, uint32_t bits) {
+  HRESULT D3D9StateBlock::SetVertexBoolBitfield(uint32_t mask, uint32_t bits) {
     m_state.vsConsts.hardware.boolBitfield &= ~mask;
     m_state.vsConsts.hardware.boolBitfield |= bits & mask;
+    return D3D_OK;
   }
 
-  void D3D9StateBlock::SetPixelBoolBitfield(uint32_t mask, uint32_t bits) {
+  HRESULT D3D9StateBlock::SetPixelBoolBitfield(uint32_t mask, uint32_t bits) {
     m_state.psConsts.hardware.boolBitfield &= ~mask;
     m_state.psConsts.hardware.boolBitfield |= bits & mask;
+    return D3D_OK;
   }
 
   void D3D9StateBlock::CapturePixelRenderStates() {

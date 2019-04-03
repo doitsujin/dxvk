@@ -8,6 +8,7 @@
 #include "d3d9_vertex_declaration.h"
 #include "d3d9_shader.h"
 #include "d3d9_query.h"
+#include "d3d9_stateblock.h"
 
 #include "../dxvk/dxvk_adapter.h"
 #include "../dxvk/dxvk_instance.h"
@@ -1078,6 +1079,9 @@ namespace dxvk {
     else
       viewport = *pViewport;
 
+    if (ShouldRecord())
+      return m_recorder->SetViewport(&viewport);
+
     m_state.viewport = viewport;
 
     if (m_flags.test(D3D9DeviceFlag::DeferViewportBinding))
@@ -1132,6 +1136,9 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetClipPlane(DWORD Index, const float* pPlane) {
     if (Index >= caps::MaxClipPlanes || !pPlane)
       return D3DERR_INVALIDCALL;
+
+    if (ShouldRecord())
+      return m_recorder->SetClipPlane(Index, pPlane);
     
     bool dirty = false;
     
@@ -1158,6 +1165,10 @@ namespace dxvk {
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetRenderState(D3DRENDERSTATETYPE State, DWORD Value) {
     auto lock = LockDevice();
+
+    if (ShouldRecord())
+      return m_recorder->SetRenderState(State, Value);
+
     auto& states = m_state.renderStates;
 
     bool changed = states[State] != Value;
@@ -1261,17 +1272,46 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateStateBlock(
           D3DSTATEBLOCKTYPE      Type,
           IDirect3DStateBlock9** ppSB) {
-    Logger::warn("Direct3DDevice9Ex::CreateStateBlock: Stub");
-    return D3D_OK;
+    auto lock = LockDevice();
+
+    InitReturnPtr(ppSB);
+
+    if (ppSB == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    try {
+      const Com<D3D9StateBlock> sb = new D3D9StateBlock(this, ConvertStateBlockType(Type));
+      *ppSB = sb.ref();
+      return D3D_OK;
+    }
+    catch (const DxvkError & e) {
+      Logger::err(e.message());
+      return D3DERR_INVALIDCALL;
+    }
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::BeginStateBlock() {
-    Logger::warn("Direct3DDevice9Ex::BeginStateBlock: Stub");
+    auto lock = LockDevice();
+
+    if (m_recorder != nullptr)
+      return D3DERR_INVALIDCALL;
+
+    m_recorder = new D3D9StateBlock(this, D3D9StateBlockType::None);
+
     return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::EndStateBlock(IDirect3DStateBlock9** ppSB) {
-    Logger::warn("Direct3DDevice9Ex::EndStateBlock: Stub");
+    auto lock = LockDevice();
+
+    InitReturnPtr(ppSB);
+
+    if (ppSB == nullptr || m_recorder == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    *ppSB = m_recorder.ref();
+    m_recorder = nullptr;
+
     return D3D_OK;
   }
 
@@ -1396,6 +1436,9 @@ namespace dxvk {
 
     if (pRect == nullptr)
       return D3DERR_INVALIDCALL;
+
+    if (ShouldRecord())
+      return m_recorder->SetScissorRect(pRect);
 
     m_state.scissorRect = *pRect;
 
@@ -1547,6 +1590,9 @@ namespace dxvk {
 
     Direct3DVertexDeclaration9* decl = static_cast<Direct3DVertexDeclaration9*>(pDecl);
 
+    if (ShouldRecord())
+      return m_recorder->SetVertexDeclaration(decl);
+
     if (decl == m_state.vertexDecl)
       return D3D_OK;
 
@@ -1617,6 +1663,9 @@ namespace dxvk {
     auto lock = LockDevice();
 
     D3D9VertexShader* shader = static_cast<D3D9VertexShader*>(pShader);
+
+    if (ShouldRecord())
+      return m_recorder->SetVertexShader(shader);
 
     if (shader == m_state.vertexShader)
       return D3D_OK;
@@ -1741,8 +1790,15 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     Direct3DVertexBuffer9* buffer = static_cast<Direct3DVertexBuffer9*>(pStreamData);
-    auto& vbo = m_state.vertexBuffers[StreamNumber];
 
+    if (ShouldRecord())
+      return m_recorder->SetStreamSource(
+        StreamNumber,
+        buffer,
+        OffsetInBytes,
+        Stride);
+
+    auto& vbo = m_state.vertexBuffers[StreamNumber];
     changePrivate(vbo.vertexBuffer, buffer);
     vbo.offset = OffsetInBytes;
     vbo.stride = Stride;
@@ -1799,6 +1855,9 @@ namespace dxvk {
     auto lock = LockDevice();
 
     Direct3DIndexBuffer9* buffer = static_cast<Direct3DIndexBuffer9*>(pIndexData);
+
+    if (ShouldRecord())
+      return m_recorder->SetIndices(buffer);
 
     if (buffer == m_state.indices)
       return D3D_OK;
@@ -1859,6 +1918,9 @@ namespace dxvk {
     auto lock = LockDevice();
 
     D3D9PixelShader* shader = static_cast<D3D9PixelShader*>(pShader);
+
+    if (ShouldRecord())
+      return m_recorder->SetPixelShader(shader);
 
     if (shader == m_state.pixelShader)
       return D3D_OK;
@@ -2510,6 +2572,9 @@ namespace dxvk {
     DWORD               Value) {
     auto lock = LockDevice();
 
+    if (ShouldRecord())
+      return m_recorder->SetStateSamplerState(StateSampler, Type, Value);
+
     auto& state = m_state.samplerStates;
 
     bool changed = state[StateSampler][Type] != Value;
@@ -2537,6 +2602,9 @@ namespace dxvk {
 
   HRESULT Direct3DDevice9Ex::SetStateTexture(DWORD StateSampler, IDirect3DBaseTexture9* pTexture) {
     auto lock = LockDevice();
+
+    if (ShouldRecord())
+      return m_recorder->SetStateTexture(StateSampler, pTexture);
 
     if (m_state.textures[StateSampler] == pTexture)
       return D3D_OK;
@@ -2617,6 +2685,10 @@ namespace dxvk {
       return nullptr;
 
     return static_cast<Direct3DSwapChain9Ex*>(m_swapchains[index]);
+  }
+
+  bool Direct3DDevice9Ex::ShouldRecord() {
+    return m_recorder != nullptr && !m_recorder->IsApplying();
   }
 
   D3D9_VK_FORMAT_MAPPING Direct3DDevice9Ex::LookupFormat(

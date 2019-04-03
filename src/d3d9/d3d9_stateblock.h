@@ -35,63 +35,63 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE Capture() final;
     HRESULT STDMETHODCALLTYPE Apply() final;
 
-    void SetVertexDeclaration(Direct3DVertexDeclaration9* pDecl);
+    HRESULT SetVertexDeclaration(Direct3DVertexDeclaration9* pDecl);
 
-    void SetIndices(Direct3DIndexBuffer9* pIndexData);
+    HRESULT SetIndices(Direct3DIndexBuffer9* pIndexData);
 
-    void SetRenderState(D3DRENDERSTATETYPE State, DWORD Value);
+    HRESULT SetRenderState(D3DRENDERSTATETYPE State, DWORD Value);
 
-    void SetStateSamplerState(
+    HRESULT SetStateSamplerState(
             DWORD               StateSampler,
             D3DSAMPLERSTATETYPE Type,
             DWORD               Value);
 
-    void SetStreamSource(
+    HRESULT SetStreamSource(
             UINT                    StreamNumber,
             Direct3DVertexBuffer9*  pStreamData,
             UINT                    OffsetInBytes,
             UINT                    Stride);
 
-    void SetStateTexture(DWORD StateSampler, IDirect3DBaseTexture9* pTexture);
+    HRESULT SetStateTexture(DWORD StateSampler, IDirect3DBaseTexture9* pTexture);
 
-    void SetVertexShader(D3D9VertexShader* pShader);
+    HRESULT SetVertexShader(D3D9VertexShader* pShader);
 
-    void SetPixelShader(D3D9PixelShader* pShader);
+    HRESULT SetPixelShader(D3D9PixelShader* pShader);
 
-    void SetViewport(const D3DVIEWPORT9* pViewport);
+    HRESULT SetViewport(const D3DVIEWPORT9* pViewport);
 
-    void SetScissorRect(const RECT* pRect);
+    HRESULT SetScissorRect(const RECT* pRect);
 
-    void SetClipPlane(DWORD Index, const float* pPlane);
+    HRESULT SetClipPlane(DWORD Index, const float* pPlane);
 
 
-    void SetVertexShaderConstantF(
+    HRESULT SetVertexShaderConstantF(
             UINT   StartRegister,
       const float* pConstantData,
             UINT   Vector4fCount);
 
-    void SetVertexShaderConstantI(
+    HRESULT SetVertexShaderConstantI(
             UINT StartRegister,
       const int* pConstantData,
             UINT Vector4iCount);
 
-    void SetVertexShaderConstantB(
+    HRESULT SetVertexShaderConstantB(
             UINT  StartRegister,
       const BOOL* pConstantData,
             UINT  BoolCount);
 
 
-    void SetPixelShaderConstantF(
+    HRESULT SetPixelShaderConstantF(
             UINT   StartRegister,
       const float* pConstantData,
             UINT   Vector4fCount);
 
-    void SetPixelShaderConstantI(
+    HRESULT SetPixelShaderConstantI(
             UINT StartRegister,
       const int* pConstantData,
             UINT Vector4iCount);
 
-    void SetPixelShaderConstantB(
+    HRESULT SetPixelShaderConstantB(
             UINT  StartRegister,
       const BOOL* pConstantData,
             UINT  BoolCount);
@@ -254,8 +254,12 @@ namespace dxvk {
       return D3D_OK;
     }
 
-    void SetVertexBoolBitfield(uint32_t mask, uint32_t bits);
-    void SetPixelBoolBitfield(uint32_t mask, uint32_t bits);
+    HRESULT SetVertexBoolBitfield(uint32_t mask, uint32_t bits);
+    HRESULT SetPixelBoolBitfield(uint32_t mask, uint32_t bits);
+
+    inline bool IsApplying() {
+      return m_applying;
+    }
 
   private:
 
@@ -273,6 +277,8 @@ namespace dxvk {
     D3D9StateCaptures    m_captures;
 
     D3D9CapturableState* m_deviceState;
+
+    bool                 m_applying;
 
   };
 
