@@ -550,6 +550,8 @@ namespace dxvk {
     const POINT*             pDestPoint) {
     auto lock = LockDevice();
 
+    FlushImplicit(FALSE);
+
     Direct3DSurface9* src = static_cast<Direct3DSurface9*>(pSourceSurface);
     Direct3DSurface9* dst = static_cast<Direct3DSurface9*>(pDestinationSurface);
 
@@ -656,6 +658,8 @@ namespace dxvk {
           IDirect3DBaseTexture9* pSourceTexture,
           IDirect3DBaseTexture9* pDestinationTexture) {
     auto lock = LockDevice();
+
+    FlushImplicit(FALSE);
 
     Direct3DCommonTexture9* src = GetCommonTexture(pSourceTexture);
     Direct3DCommonTexture9* dst = GetCommonTexture(pDestinationTexture);
