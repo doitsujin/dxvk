@@ -50,4 +50,7 @@ namespace dxvk::caps {
 
   constexpr uint32_t InputRegisterCount = 16;
 
+  constexpr uint32_t MaxTextureDimension = 16384;
+  constexpr uint32_t MaxMipLevels = 15;
+
 }

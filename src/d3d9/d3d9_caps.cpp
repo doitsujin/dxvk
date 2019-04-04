@@ -538,8 +538,8 @@ namespace dxvk::caps {
     pCaps->TextureAddressCaps = 63;
     pCaps->VolumeTextureAddressCaps = 63;
     pCaps->LineCaps = 31;
-    pCaps->MaxTextureWidth = 16384;
-    pCaps->MaxTextureHeight = 16384;
+    pCaps->MaxTextureWidth = MaxTextureDimension;
+    pCaps->MaxTextureHeight = MaxTextureDimension;
     pCaps->MaxVolumeExtent = 8192;
     pCaps->MaxTextureRepeat = 8192;
     pCaps->MaxTextureAspectRatio = 8192;
