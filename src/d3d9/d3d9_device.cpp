@@ -661,14 +661,14 @@ namespace dxvk {
 
     FlushImplicit(FALSE);
 
-    Direct3DCommonTexture9* src = GetCommonTexture(pSourceTexture);
-    Direct3DCommonTexture9* dst = GetCommonTexture(pDestinationTexture);
-
-    if (src == nullptr || dst == nullptr)
+    if (!pDestinationTexture || !pSourceTexture)
       return D3DERR_INVALIDCALL;
 
-    const Rc<DxvkImage> dstImage = src->GetImage();
-    const Rc<DxvkImage> srcImage = dst->GetImage();
+    if (pDestinationTexture == pSourceTexture)
+      return D3D_OK;
+
+    const Rc<DxvkImage> dstImage = GetCommonTexture(pDestinationTexture)->GetImage();
+    const Rc<DxvkImage> srcImage = GetCommonTexture(pSourceTexture)->GetImage();
 
     const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(dstImage->info().format);
     const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcImage->info().format);
