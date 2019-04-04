@@ -158,12 +158,12 @@ namespace dxvk {
       for (uint32_t i = 0; i < instructionLength; i++) {
         if (i == 0) {
           this->decodeDestinationRegister(code);
-          if (m_ctx.dst.isRelative())
+          if (m_ctx.dst.advanceExtra(*this))
             i++;
         }
         else {
           this->decodeSourceRegister(sourceIdx, code);
-          if (m_ctx.src[sourceIdx].isRelative())
+          if (m_ctx.src[sourceIdx].advanceExtra(*this))
             i++;
 
           sourceIdx++;

@@ -212,6 +212,10 @@ namespace dxvk {
       return DxsoRegSwizzle{ m_token };
     }
 
+    bool advanceExtra(const DxsoDecodeContext& context) {
+      return isRelative() && relativeAddressingUsesToken(context);
+    }
+
   private:
 
     DxsoRegisterType registerType() const {
