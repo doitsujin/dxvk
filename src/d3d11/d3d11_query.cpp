@@ -6,16 +6,7 @@ namespace dxvk {
   D3D11Query::D3D11Query(
           D3D11Device*      device,
     const D3D11_QUERY_DESC& desc)
-  : D3D11Query(device, desc, DxvkBufferSlice()) {
-    
-  }
-
-
-  D3D11Query::D3D11Query(
-          D3D11Device*      device,
-    const D3D11_QUERY_DESC& desc,
-    const DxvkBufferSlice&  predicate)
-  : m_device(device), m_desc(desc), m_predicate(predicate),
+  : m_device(device), m_desc(desc),
     m_d3d10(this, device->GetD3D10Interface()) {
     Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
 
@@ -308,6 +299,18 @@ namespace dxvk {
   }
   
   
+  DxvkBufferSlice D3D11Query::GetPredicate(DxvkContext* ctx) {
+    std::lock_guard<sync::Spinlock> lock(m_predicateLock);
+
+    if (unlikely(!m_predicate.defined())) {
+      m_predicate = m_device->AllocPredicateSlice();
+      ctx->writePredicate(m_predicate, m_query);
+    }
+
+    return m_predicate;
+  }
+
+
   UINT64 D3D11Query::GetTimestampQueryFrequency() const {
     Rc<DxvkDevice>  device  = m_device->GetDXVKDevice();
     Rc<DxvkAdapter> adapter = device->adapter();

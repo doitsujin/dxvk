@@ -283,12 +283,15 @@ namespace dxvk {
       return;
 
     EmitCs([
-      cPredicate = predicate
-        ? predicate->GetPredicate()
-        : DxvkBufferSlice(),
+      cPredicate = Com<D3D11Query>(predicate),
       cValue     = PredicateValue
     ] (DxvkContext* ctx) {
-      ctx->setPredicate(cPredicate,
+      DxvkBufferSlice predSlice;
+
+      if (cPredicate != nullptr)
+        predSlice = cPredicate->GetPredicate(ctx);
+      
+      ctx->setPredicate(predSlice,
         cValue ? VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT : 0);
     });
   }

@@ -22,12 +22,12 @@ namespace dxvk {
    * A set of flags used to specify which of
    * the command buffers need to be submitted.
    */
-  enum class DxvkCmdBufferFlag : uint32_t {
+  enum class DxvkCmdBuffer : uint32_t {
     InitBuffer = 0,
     ExecBuffer = 1,
   };
   
-  using DxvkCmdBufferFlags = Flags<DxvkCmdBufferFlag>;
+  using DxvkCmdBufferFlags = Flags<DxvkCmdBuffer>;
   
   /**
    * \brief DXVK command list
@@ -541,6 +541,7 @@ namespace dxvk {
     
     
     void cmdPipelineBarrier(
+            DxvkCmdBuffer           cmdBuffer,
             VkPipelineStageFlags    srcStageMask,
             VkPipelineStageFlags    dstStageMask,
             VkDependencyFlags       dependencyFlags,
@@ -550,7 +551,9 @@ namespace dxvk {
       const VkBufferMemoryBarrier*  pBufferMemoryBarriers,
             uint32_t                imageMemoryBarrierCount,
       const VkImageMemoryBarrier*   pImageMemoryBarriers) {
-      m_vkd->vkCmdPipelineBarrier(m_execBuffer,
+      m_cmdBuffersUsed.set(cmdBuffer);
+
+      m_vkd->vkCmdPipelineBarrier(getCmdBuffer(cmdBuffer),
         srcStageMask, dstStageMask, dependencyFlags,
         memoryBarrierCount,       pMemoryBarriers,
         bufferMemoryBarrierCount, pBufferMemoryBarriers,
@@ -577,7 +580,7 @@ namespace dxvk {
         m_vkd->vkResetQueryPoolEXT(
           m_vkd->device(), queryPool, queryId, 1);
       } else {
-        m_cmdBuffersUsed.set(DxvkCmdBufferFlag::InitBuffer);
+        m_cmdBuffersUsed.set(DxvkCmdBuffer::InitBuffer);
 
         m_vkd->vkResetEvent(
           m_vkd->device(), event);
@@ -595,7 +598,7 @@ namespace dxvk {
             VkQueryPool             queryPool,
             uint32_t                firstQuery,
             uint32_t                queryCount) {
-      m_cmdBuffersUsed.set(DxvkCmdBufferFlag::InitBuffer);
+      m_cmdBuffersUsed.set(DxvkCmdBuffer::InitBuffer);
       
       m_vkd->vkCmdResetQueryPool(m_initBuffer,
         queryPool, firstQuery, queryCount);
@@ -617,11 +620,14 @@ namespace dxvk {
     
     
     void cmdUpdateBuffer(
+            DxvkCmdBuffer           cmdBuffer,
             VkBuffer                dstBuffer,
             VkDeviceSize            dstOffset,
             VkDeviceSize            dataSize,
       const void*                   pData) {
-      m_vkd->vkCmdUpdateBuffer(m_execBuffer,
+      m_cmdBuffersUsed.set(cmdBuffer);
+
+      m_vkd->vkCmdUpdateBuffer(getCmdBuffer(cmdBuffer),
         dstBuffer, dstOffset, dataSize, pData);
     }
     
@@ -689,6 +695,7 @@ namespace dxvk {
     
     
     void stagedBufferCopy(
+            DxvkCmdBuffer           cmdBuffer,
             VkBuffer                dstBuffer,
             VkDeviceSize            dstOffset,
             VkDeviceSize            dataSize,
@@ -720,6 +727,10 @@ namespace dxvk {
     DxvkGpuQueryTracker m_gpuQueryTracker;
     DxvkBufferTracker   m_bufferTracker;
     DxvkStatCounters    m_statCounters;
+
+    VkCommandBuffer getCmdBuffer(DxvkCmdBuffer cmdBuffer) const {
+      return cmdBuffer == DxvkCmdBuffer::ExecBuffer ? m_execBuffer : m_initBuffer;
+    }
     
   };
   

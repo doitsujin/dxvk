@@ -22,10 +22,13 @@ namespace dxvk {
     m_metaCopy    (metaCopyObjects),
     m_metaMipGen  (metaMipGenObjects),
     m_metaPack    (metaPackObjects),
+    m_barriers    (DxvkCmdBuffer::ExecBuffer),
+    m_transfers   (DxvkCmdBuffer::InitBuffer),
+    m_transitions (DxvkCmdBuffer::ExecBuffer),
     m_queryManager(gpuQueryPool) {
 
   }
-    
+  
   
   DxvkContext::~DxvkContext() {
     
@@ -65,6 +68,7 @@ namespace dxvk {
   Rc<DxvkCommandList> DxvkContext::endRecording() {
     this->spillRenderPass();
     
+    m_transfers.recordCommands(m_cmd);
     m_barriers.recordCommands(m_cmd);
 
     m_cmd->endRecording();
@@ -339,6 +343,7 @@ namespace dxvk {
         data[i] = value;
       
       m_cmd->cmdUpdateBuffer(
+        DxvkCmdBuffer::ExecBuffer,
         slice.handle,
         slice.offset,
         slice.length,
@@ -1716,20 +1721,39 @@ namespace dxvk {
           VkDeviceSize              offset,
           VkDeviceSize              size,
     const void*                     data) {
-    this->spillRenderPass();
+    bool replaceBuffer = (size == buffer->info().size)
+                      && (size <= (1 << 20)) /* 1 MB */
+                      && (m_flags.test(DxvkContextFlag::GpRenderPassBound));
     
+    DxvkBufferSliceHandle bufferSlice;
+    DxvkCmdBuffer         cmdBuffer;
+
+    if (replaceBuffer) {
+      // As an optimization, allocate a free slice and perform
+      // the copy in the initialization command buffer instead
+      // interrupting the render pass and stalling the pipeline.
+      bufferSlice = buffer->allocSlice();
+      cmdBuffer   = DxvkCmdBuffer::InitBuffer;
+
+      this->invalidateBuffer(buffer, bufferSlice);
+    } else {
+      this->spillRenderPass();
+    
+      bufferSlice = buffer->getSliceHandle(offset, size);
+      cmdBuffer   = DxvkCmdBuffer::ExecBuffer;
+
+      if (m_barriers.isBufferDirty(bufferSlice, DxvkAccess::Write))
+        m_barriers.recordCommands(m_cmd);
+    }
+
     // Vulkan specifies that small amounts of data (up to 64kB) can
     // be copied to a buffer directly if the size is a multiple of
     // four. Anything else must be copied through a staging buffer.
     // We'll limit the size to 4kB in order to keep command buffers
     // reasonably small, we do not know how much data apps may upload.
-    auto bufferSlice = buffer->getSliceHandle(offset, size);
-
-    if (m_barriers.isBufferDirty(bufferSlice, DxvkAccess::Write))
-      m_barriers.recordCommands(m_cmd);
-    
     if ((size <= 4096) && ((size & 0x3) == 0) && ((offset & 0x3) == 0)) {
       m_cmd->cmdUpdateBuffer(
+        cmdBuffer,
         bufferSlice.handle,
         bufferSlice.offset,
         bufferSlice.length,
@@ -1739,13 +1763,18 @@ namespace dxvk {
       std::memcpy(slice.mapPtr, data, size);
 
       m_cmd->stagedBufferCopy(
+        cmdBuffer,
         bufferSlice.handle,
         bufferSlice.offset,
         bufferSlice.length,
         slice);
     }
 
-    m_barriers.accessBuffer(
+    auto& barriers = replaceBuffer
+      ? m_transfers
+      : m_barriers;
+
+    barriers.accessBuffer(
       bufferSlice,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT,
@@ -3302,6 +3331,26 @@ namespace dxvk {
             m_descInfos[i].image = m_device->dummyImageViewDescriptor(binding.view);
           } break;
         
+        case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+          if (res.sampler != nullptr && res.imageView != nullptr
+           && res.imageView->handle(binding.view) != VK_NULL_HANDLE) {
+            updatePipelineState |= bindMask.setBound(i);
+
+            m_descInfos[i].image.sampler     = res.sampler->handle();
+            m_descInfos[i].image.imageView   = res.imageView->handle(binding.view);
+            m_descInfos[i].image.imageLayout = res.imageView->imageInfo().layout;
+            
+            if (res.imageView->imageHandle() == depthImage)
+              m_descInfos[i].image.imageLayout = depthLayout;
+            
+            m_cmd->trackResource(res.sampler);
+            m_cmd->trackResource(res.imageView);
+            m_cmd->trackResource(res.imageView->image());
+          } else {
+            updatePipelineState |= bindMask.setUnbound(i);
+            m_descInfos[i].image = m_device->dummyImageSamplerDescriptor(binding.view);
+          } break;
+        
         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
         case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
           if (res.bufferView != nullptr) {
@@ -3721,6 +3770,7 @@ namespace dxvk {
             /* fall through */
 
           case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
             srcAccess = m_barriers.getImageAccess(
               slot.imageView->image(),
               slot.imageView->subresources());
@@ -3795,6 +3845,7 @@ namespace dxvk {
             /* fall through */
 
           case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+          case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
             m_barriers.accessImage(
               slot.imageView->image(),
               slot.imageView->subresources(),
@@ -3843,7 +3894,8 @@ namespace dxvk {
     barrier.srcAccessMask = srcAccess;
     barrier.dstAccessMask = dstAccess;
 
-    m_cmd->cmdPipelineBarrier(srcStages, dstStages,
+    m_cmd->cmdPipelineBarrier(
+      DxvkCmdBuffer::ExecBuffer, srcStages, dstStages,
       0, 1, &barrier, 0, nullptr, 0, nullptr);
   }
 

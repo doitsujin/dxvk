@@ -987,7 +987,7 @@ namespace dxvk {
       return S_FALSE;
     
     try {
-      *ppPredicate = ref(new D3D11Query(this, *pPredicateDesc, AllocPredicateSlice()));
+      *ppPredicate = ref(new D3D11Query(this, *pPredicateDesc));
       return S_OK;
     } catch (const DxvkError& e) {
       Logger::err(e.message());

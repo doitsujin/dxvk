@@ -21,6 +21,7 @@ namespace dxvk {
   public:
     
     SpirvCodeBuffer();
+    explicit SpirvCodeBuffer(uint32_t size);
     SpirvCodeBuffer(uint32_t size, const uint32_t* data);
     SpirvCodeBuffer(std::istream& stream);
     
@@ -36,6 +37,14 @@ namespace dxvk {
      */
     const uint32_t* data() const { return m_code.data(); }
           uint32_t* data()       { return m_code.data(); }
+    
+    /**
+     * \brief Code size, in dwords
+     * \returns Code size, in dwords
+     */
+    uint32_t dwords() const {
+      return m_code.size();
+    }
     
     /**
      * \brief Code size, in bytes

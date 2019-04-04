@@ -71,11 +71,13 @@ namespace dxvk {
       VkPipeline                   pipeline;
     };
     
-    Rc<vk::DeviceFn>        m_vkd;
-    DxvkPipelineManager*    m_pipeMgr;
+    Rc<vk::DeviceFn>          m_vkd;
+    DxvkPipelineManager*      m_pipeMgr;
+
+    DxvkDescriptorSlotMapping m_slotMapping;
     
-    Rc<DxvkPipelineLayout>  m_layout;
-    Rc<DxvkShaderModule>    m_cs;
+    Rc<DxvkShader>            m_cs;
+    Rc<DxvkPipelineLayout>    m_layout;
     
     sync::Spinlock              m_mutex;
     std::vector<PipelineStruct> m_pipelines;
