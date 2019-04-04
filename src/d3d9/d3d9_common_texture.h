@@ -198,7 +198,7 @@ namespace dxvk {
     VkDeviceSize GetMipLength(UINT MipLevel) const;
 
     void MarkSubresourceMapped(UINT Face, UINT MipLevel, DWORD LockFlags) {
-      const uint32_t mipBit = 1u << MipLevel;
+      const uint16_t mipBit = 1u << MipLevel;
 
       LockFlags & D3DLOCK_READONLY
         ? m_readOnlySubresources[Face] |= mipBit
@@ -206,13 +206,13 @@ namespace dxvk {
     }
 
     bool IsReadOnlyLock(UINT Face, UINT MipLevel) {
-      const uint32_t mipBit = 1u << MipLevel;
+      const uint16_t mipBit = 1u << MipLevel;
 
       return m_readOnlySubresources[Face] & mipBit;
     }
 
     bool MarkSubresourceUnmapped(UINT Face, UINT MipLevel) {
-      const uint32_t mipBit = 1u << MipLevel;
+      const uint16_t mipBit = 1u << MipLevel;
 
       m_readOnlySubresources[Face] &= ~mipBit;
       m_unmappedSubresources[Face] |= mipBit;
@@ -221,7 +221,7 @@ namespace dxvk {
     }
 
     bool ReadLocksRemaining() {
-      for (uint32_t mask : m_readOnlySubresources) {
+      for (uint16_t mask : m_readOnlySubresources) {
         if (mask != 0)
           return true;
       }
@@ -229,8 +229,8 @@ namespace dxvk {
       return false;
     }
 
-    std::array<uint32_t, 6> DiscardSubresourceMasking() {
-      std::array<uint32_t, 6> copy = m_mappedSubresources;
+    std::array<uint16_t, 6> DiscardSubresourceMasking() {
+      std::array<uint16_t, 6> copy = m_mappedSubresources;
 
       for (uint32_t i = 0; i < m_mappedSubresources.size(); i++) {
         m_mappedSubresources.at(i) = 0;
@@ -281,9 +281,9 @@ namespace dxvk {
 
     Rc<DxvkImageView>                 m_depthStencilView;
 
-    std::array<uint32_t, 6>           m_mappedSubresources;
-    std::array<uint32_t, 6>           m_unmappedSubresources;
-    std::array<uint32_t, 6>           m_readOnlySubresources;
+    std::array<uint16_t, 6>           m_mappedSubresources;
+    std::array<uint16_t, 6>           m_unmappedSubresources;
+    std::array<uint16_t, 6>           m_readOnlySubresources;
 
     BOOL CheckImageSupport(
       const DxvkImageCreateInfo*  pImageInfo,

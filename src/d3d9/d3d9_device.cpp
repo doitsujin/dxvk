@@ -3024,9 +3024,9 @@ namespace dxvk {
     auto dirtySubresources = pResource->DiscardSubresourceMasking();
 
     for (uint32_t l = 0; l < pResource->GetLayerCount(); l++) {
-      uint32_t mask = dirtySubresources[l];
+      uint16_t mask = dirtySubresources[l];
 
-      for (uint32_t i = 0; i < 32; i++) {
+      for (uint32_t i = 0; i < caps::MaxMipLevels; i++) {
         if (!(mask & 1u << i))
           continue;
 
