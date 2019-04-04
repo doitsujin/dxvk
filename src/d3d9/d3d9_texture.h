@@ -76,7 +76,7 @@ namespace dxvk {
     }
 
     void STDMETHODCALLTYPE GenerateMipSubLevels() final {
-      Logger::warn("Direct3DBaseTexture9::GenerateMipSubLevels: Stub");
+      m_parent->GenerateMips(&m_texture);
     }
 
     Direct3DCommonTexture9* GetCommonTexture() {

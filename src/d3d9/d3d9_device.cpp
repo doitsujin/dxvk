@@ -646,6 +646,9 @@ namespace dxvk {
         cExtent);
     });
 
+    if (dst->GetCommonTexture()->Desc()->Usage & D3DUSAGE_AUTOGENMIPMAP)
+      GenerateMips(dst->GetCommonTexture());
+
     return D3D_OK;
   }
 
@@ -3000,8 +3003,12 @@ namespace dxvk {
           this->FlushImage(pResource);
 
         // If we have no remaining read-only locks we can clear our mapping buffers.
-        if (!readRemaining)
+        if (!readRemaining) {
           pResource->DeallocMappingBuffers();
+
+          if (pResource->Desc()->Usage & D3DUSAGE_AUTOGENMIPMAP)
+            GenerateMips(pResource);
+        }
       }
     }
 
@@ -3056,6 +3063,15 @@ namespace dxvk {
     }
 
     return D3D_OK;
+  }
+
+  void Direct3DDevice9Ex::GenerateMips(
+    Direct3DCommonTexture9* pResource) {
+    EmitCs([
+      cImageView = pResource->GetImageView(false)
+    ] (DxvkContext* ctx) {
+      ctx->generateMipmaps(cImageView);
+    });
   }
 
   void Direct3DDevice9Ex::FixupFormat(

@@ -651,6 +651,9 @@ namespace dxvk {
     HRESULT FlushImage(
         Direct3DCommonTexture9* pResource);
 
+    void GenerateMips(
+      Direct3DCommonTexture9* pResource);
+
     HRESULT LockBuffer(
             Direct3DCommonBuffer9*  pResource,
             UINT                    OffsetToLock,
