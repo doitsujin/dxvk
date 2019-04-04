@@ -92,7 +92,7 @@ namespace dxvk {
           uint32_t                slotCount,
     const DxvkResourceSlot*       slotInfos,
     const DxvkInterfaceSlots&     iface,
-    const SpirvCodeBuffer&        code,
+          SpirvCodeBuffer         code,
     const DxvkShaderOptions&      options,
           DxvkShaderConstData&&   constData)
   : m_stage(stage), m_code(code), m_interface(iface),
@@ -105,7 +105,7 @@ namespace dxvk {
     // are stored so we can quickly remap them.
     uint32_t o1VarId = 0;
     
-    for (auto ins : m_code) {
+    for (auto ins : code) {
       if (ins.opCode() == spv::OpDecorate) {
         if (ins.arg(2) == spv::DecorationBinding
          || ins.arg(2) == spv::DecorationSpecId)
@@ -151,7 +151,7 @@ namespace dxvk {
     const Rc<vk::DeviceFn>&          vkd,
     const DxvkDescriptorSlotMapping& mapping,
     const DxvkShaderModuleCreateInfo& info) {
-    SpirvCodeBuffer spirvCode = m_code;
+    SpirvCodeBuffer spirvCode = m_code.decompress();
     uint32_t* code = spirvCode.data();
     
     // Remap resource binding IDs
@@ -170,7 +170,7 @@ namespace dxvk {
   
   
   void DxvkShader::dump(std::ostream& outputStream) const {
-    m_code.store(outputStream);
+    m_code.decompress().store(outputStream);
   }
   
 }

@@ -8,6 +8,7 @@
 #include "dxvk_shader_key.h"
 
 #include "../spirv/spirv_code_buffer.h"
+#include "../spirv/spirv_compression.h"
 
 namespace dxvk {
   
@@ -130,7 +131,7 @@ namespace dxvk {
             uint32_t                slotCount,
       const DxvkResourceSlot*       slotInfos,
       const DxvkInterfaceSlots&     iface,
-      const SpirvCodeBuffer&        code,
+            SpirvCodeBuffer         code,
       const DxvkShaderOptions&      options,
             DxvkShaderConstData&&   constData);
     
@@ -246,7 +247,7 @@ namespace dxvk {
   private:
     
     VkShaderStageFlagBits m_stage;
-    SpirvCodeBuffer       m_code;
+    SpirvCompressedBuffer m_code;
     
     std::vector<DxvkResourceSlot> m_slots;
     std::vector<size_t>           m_idOffsets;
