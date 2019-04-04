@@ -3909,4 +3909,57 @@ namespace dxvk {
     }
   }
 
+  template <
+    DxsoProgramType  ProgramType,
+    D3D9ConstantType ConstantType,
+    typename         T>
+    HRESULT Direct3DDevice9Ex::SetShaderConstants(
+      UINT  StartRegister,
+      const T* pConstantData,
+      UINT  Count)
+    {
+      constexpr uint32_t regCountHardware = DetermineRegCount(ConstantType, false);
+      constexpr uint32_t regCountSoftware = DetermineRegCount(ConstantType, true);
+
+      if (StartRegister + Count > regCountSoftware)
+        return D3DERR_INVALIDCALL;
+
+      Count = UINT(
+        std::max<INT>(
+          std::clamp<INT>(Count + StartRegister, 0, regCountHardware) - INT(StartRegister),
+          0));
+
+      if (Count == 0)
+        return D3D_OK;
+
+      if (pConstantData == nullptr)
+        return D3DERR_INVALIDCALL;
+
+      if (ShouldRecord())
+        return m_recorder->SetShaderConstants<
+          ProgramType,
+          ConstantType,
+          T>(
+            StartRegister,
+            pConstantData,
+            Count);
+
+      bool& dirtyFlag = ProgramType == DxsoProgramType::VertexShader
+        ? m_vsConst.dirty
+        : m_psConst.dirty;
+
+      dirtyFlag = true;
+
+      UpdateStateConstants<
+        ProgramType,
+        ConstantType,
+        T>(
+        &m_state,
+        StartRegister,
+        pConstantData,
+        Count);
+
+      return D3D_OK;
+    }
+
 }
