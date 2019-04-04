@@ -54,11 +54,14 @@ namespace dxvk {
     imageInfo.stages |= m_device->GetEnabledShaderStages();
     imageInfo.access |= VK_ACCESS_SHADER_READ_BIT;
 
-    if (m_desc.Usage & D3DUSAGE_RENDERTARGET) {
+    if (m_desc.Usage & D3DUSAGE_RENDERTARGET || m_desc.Usage & D3DUSAGE_AUTOGENMIPMAP) {
       imageInfo.usage  |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-      imageInfo.stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-      imageInfo.access |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
-                       | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+      if (m_desc.Usage & D3DUSAGE_RENDERTARGET) {
+        imageInfo.stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        imageInfo.access |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
+                         | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+      }
     }
 
     if (m_desc.Usage & D3DUSAGE_DEPTHSTENCIL) {
