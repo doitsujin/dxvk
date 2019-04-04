@@ -6,6 +6,8 @@
 #include <intrin.h>
 #endif
 
+#include "util_likely.h"
+
 namespace dxvk::bit {
   
   template<typename T>
@@ -45,6 +47,24 @@ namespace dxvk::bit {
     r -= (n & 0x55555555) ?  1 : 0;
     return n != 0 ? r : 32;
     #endif
+  }
+
+  template<typename T>
+  uint32_t pack(T& dst, uint32_t& shift, T src, uint32_t count) {
+    constexpr uint32_t Bits = 8 * sizeof(T);
+    if (likely(shift < Bits))
+      dst |= src << shift;
+    shift += count;
+    return shift > Bits ? shift - Bits : 0;
+  }
+
+  template<typename T>
+  uint32_t unpack(T& dst, T src, uint32_t& shift, uint32_t count) {
+    constexpr uint32_t Bits = 8 * sizeof(T);
+    if (likely(shift < Bits))
+      dst = (src >> shift) & ((T(1) << count) - 1);
+    shift += count;
+    return shift > Bits ? shift - Bits : 0;
   }
   
 }
