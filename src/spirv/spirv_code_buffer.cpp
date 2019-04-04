@@ -9,6 +9,12 @@ namespace dxvk {
   SpirvCodeBuffer::~SpirvCodeBuffer() { }
   
   
+  SpirvCodeBuffer::SpirvCodeBuffer(uint32_t size)
+  : m_ptr(size) {
+    m_code.resize(size);
+  }
+
+
   SpirvCodeBuffer::SpirvCodeBuffer(uint32_t size, const uint32_t* data)
   : m_ptr(size) {
     m_code.resize(size);
