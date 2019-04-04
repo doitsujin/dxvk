@@ -21,8 +21,10 @@ dxvk_include_path = include_directories('./include')
 
 if (cpu_family == 'x86_64')
   dxvk_library_path = meson.source_root() + '/lib'
+  target_arch = '-m64'
 else
   dxvk_library_path = meson.source_root() + '/lib32'
+  target_arch = '-m32'
 endif
 
 code = '''#ifndef __WINE__
@@ -42,7 +44,6 @@ if dxvk_winelib
   exe_ext = '.exe.so'
   dll_ext = '.dll'
   def_spec_ext = '.spec'
-  wrc = [ find_program('wrc'), '-i', '@INPUT@', '-o', '@OUTPUT@' ]
 else
   lib_vulkan  = dxvk_compiler.find_library('vulkan-1', dirs : dxvk_library_path)
   lib_d3d11   = dxvk_compiler.find_library('d3d11')

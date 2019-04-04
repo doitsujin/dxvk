@@ -1,9 +1,17 @@
-d3d11_res = custom_target(
-  'version_11.res',
+if dxvk_winelib
+  d3d11_res = custom_target('version_11.res',
   input   : 'version.rc',
-  output  : 'version.o',
-  command : wrc,
-)
+  output  : 'version.res',
+  command : [ find_program('wrc'), '-o', '@OUTPUT@', '@INPUT@' ],
+  install : false)
+else
+  d3d11_res = custom_target(
+    'version_11.res',
+    input   : 'version.rc',
+    output  : 'version.o',
+    command : wrc,
+  )
+endif
 
 dxgi_common_src = [
   '../dxgi/dxgi_format.cpp',
@@ -69,6 +77,15 @@ d3d11_dll = shared_library('d3d11'+dll_ext, dxgi_common_src + d3d11_src + d3d10_
   objects             : not dxvk_msvc ? 'd3d11'+def_spec_ext : [],
   vs_module_defs      : 'd3d11'+def_spec_ext,
   override_options    : ['cpp_std='+dxvk_cpp_std])
+
+if dxvk_winelib
+  d3d11_dll_target = custom_target('d3d11.dll',
+    output  : 'd3d11.dll',
+    input   : [ 'd3d11.spec', d3d11_res ],
+    command : [ find_program('winebuild'), target_arch, '--dll', '--fake-module', '-E', '@INPUT@', '-o', '@OUTPUT@', '-F', 'd3d11.dll' ],
+    install : true,
+    install_dir : 'fakedlls')
+endif
 
 d3d11_dep = declare_dependency(
   link_with           : [ d3d11_dll ],

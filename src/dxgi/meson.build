@@ -1,9 +1,17 @@
-dxgi_res = custom_target(
-  'version_dxgi.res',
+if dxvk_winelib
+  dxgi_res = custom_target('dxgi.res',
   input   : 'version.rc',
-  output  : 'version.o',
-  command : wrc,
-)
+  output  : 'version.res',
+  command : [ find_program('wrc'), '-o', '@OUTPUT@', '@INPUT@' ],
+  install : false)
+else
+  dxgi_res = custom_target(
+    'version_dxgi.res',
+    input   : 'version.rc',
+    output  : 'version.o',
+    command : wrc,
+  )
+endif
 
 dxgi_shaders = files([
   'shaders/dxgi_presenter_frag.frag',
@@ -30,6 +38,15 @@ dxgi_dll = shared_library('dxgi'+dll_ext, dxgi_src, not dxvk_winelib ? dxgi_res 
   vs_module_defs      : 'dxgi'+def_spec_ext,
   objects             : not dxvk_msvc ? 'dxgi'+def_spec_ext : [],
   override_options    : ['cpp_std='+dxvk_cpp_std])
+
+if dxvk_winelib
+  dxgi_dll_target = custom_target('dxgi.dll',
+    output  : 'dxgi.dll',
+    input   : [ 'dxgi.spec', dxgi_res ],
+    command : [ find_program('winebuild'), target_arch, '--dll', '--fake-module', '-E', '@INPUT@', '-o', '@OUTPUT@', '-F', 'dxgi.dll' ],
+    install : true,
+    install_dir : 'fakedlls')
+endif
 
 dxgi_dep = declare_dependency(
   link_with           : [ dxgi_dll ],
