@@ -297,9 +297,9 @@ namespace dxvk {
      */
     VkPipelineShaderStageCreateInfo stageInfo(
       const VkSpecializationInfo* specInfo) const {
-      VkPipelineShaderStageCreateInfo info = m_info;
-      info.pSpecializationInfo = specInfo;
-      return info;
+      VkPipelineShaderStageCreateInfo stage = m_stage;
+      stage.pSpecializationInfo = specInfo;
+      return stage;
     }
     
     /**
@@ -307,13 +307,13 @@ namespace dxvk {
      * \returns \c true if module is valid
      */
     operator bool () const {
-      return m_info.module != VK_NULL_HANDLE;
+      return m_stage.module != VK_NULL_HANDLE;
     }
     
   private:
     
     Rc<vk::DeviceFn>                m_vkd;
-    VkPipelineShaderStageCreateInfo m_info;
+    VkPipelineShaderStageCreateInfo m_stage;
     
   };
   
