@@ -46,6 +46,7 @@ namespace dxvk {
     DirtyExtraState,
     DirtyRenderStateBuffer,
     DirtyInputLayout,
+    UpDirtied,
     ExtendedDevice
   };
 
@@ -701,7 +702,7 @@ namespace dxvk {
 
     void UndirtySamplers();
 
-    void PrepareDraw();
+    void PrepareDraw(bool up = false);
 
     void BindShader(
             DxsoProgramType                   ShaderStage,
@@ -804,6 +805,8 @@ namespace dxvk {
     Rc<DxvkBuffer>                  m_vsClipPlanes;
     Rc<DxvkBuffer>                  m_psRenderStates;
 
+    Rc<DxvkBuffer>                  m_upBuffer;
+
     const D3D9VkFormatTable         m_d3d9Formats;
     const D3D9Options               m_d3d9Options;
     const DxsoOptions               m_dxsoOptions;
@@ -820,6 +823,8 @@ namespace dxvk {
       Rc<DxvkSampler>,
       D3D9SamplerKeyHash,
       D3D9SamplerKeyEq>             m_samplers;
+
+    void AllocUpBuffer(uint32_t size);
 
     Direct3DSwapChain9Ex* GetInternalSwapchain(UINT index);
 

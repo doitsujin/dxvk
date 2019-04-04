@@ -1535,7 +1535,36 @@ namespace dxvk {
           UINT             PrimitiveCount,
     const void*            pVertexStreamZeroData,
           UINT             VertexStreamZeroStride) {
-    Logger::warn("Direct3DDevice9Ex::DrawPrimitiveUP: Stub");
+    auto lock = LockDevice();
+
+    PrepareDraw(true);
+
+    const uint32_t vertexCount = VertexCount(PrimitiveType, PrimitiveCount);
+    const uint32_t upSize      = vertexCount * VertexStreamZeroStride;
+
+    AllocUpBuffer(upSize);
+
+    DxvkBufferSliceHandle physSlice = m_upBuffer->allocSlice();
+
+    std::memcpy(physSlice.mapPtr, pVertexStreamZeroData, upSize);
+
+    EmitCs([
+      cState        = InputAssemblyState(PrimitiveType),
+      cVertexCount  = vertexCount,
+      cBuffer       = m_upBuffer,
+      cBufferSlice  = physSlice,
+      cStride       = VertexStreamZeroStride
+    ](DxvkContext* ctx) {
+      ctx->invalidateBuffer(cBuffer, cBufferSlice);
+      ctx->bindVertexBuffer(0, DxvkBufferSlice(cBuffer), cStride);
+      ctx->setInputAssemblyState(cState);
+      ctx->draw(
+        cVertexCount, 1,
+        0, 0);
+    });
+
+    m_flags.set(D3D9DeviceFlag::UpDirtied);
+
     return D3D_OK;
   }
 
@@ -2683,6 +2712,29 @@ namespace dxvk {
     return enabled;
   }
 
+  void Direct3DDevice9Ex::AllocUpBuffer(uint32_t size) {
+    const uint32_t currentSize = m_upBuffer != nullptr
+      ? m_upBuffer->info().size
+      : 0;
+
+    if (currentSize >= size)
+      return;
+
+    DxvkBufferCreateInfo  info;
+    info.size   = size;
+    info.usage  = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+                | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+    info.access = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT
+                | VK_ACCESS_INDEX_READ_BIT;
+    info.stages = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+
+    VkMemoryPropertyFlags memoryFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+                                      | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                                      | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+    m_upBuffer = m_dxvkDevice->createBuffer(info, memoryFlags);
+  }
+
   Direct3DSwapChain9Ex* Direct3DDevice9Ex::GetInternalSwapchain(UINT index) {
     if (index >= m_swapchains.size())
       return nullptr;
@@ -3627,7 +3679,7 @@ namespace dxvk {
     m_dirtySamplerStates = 0;
   }
 
-  void Direct3DDevice9Ex::PrepareDraw() {
+  void Direct3DDevice9Ex::PrepareDraw(bool up) {
     UndirtySamplers();
 
     if (m_flags.test(D3D9DeviceFlag::DirtyBlendState))
@@ -3650,6 +3702,16 @@ namespace dxvk {
 
     if (m_flags.test(D3D9DeviceFlag::DirtyInputLayout))
       BindInputLayout();
+
+    if (!up && m_flags.test(D3D9DeviceFlag::UpDirtied)) {
+      m_flags.clr(D3D9DeviceFlag::UpDirtied);
+      if (m_state.vertexBuffers[0].vertexBuffer != nullptr)
+        BindVertexBuffer(
+          0,
+          m_state.vertexBuffers[0].vertexBuffer,
+          m_state.vertexBuffers[0].offset,
+          m_state.vertexBuffers[0].stride);
+    }
 
     UpdateConstants();
   }
