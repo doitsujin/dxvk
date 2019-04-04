@@ -39,17 +39,15 @@ namespace dxvk {
 
 
   DxvkShaderModule::DxvkShaderModule()
-  : m_vkd(nullptr), m_info {
-      VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-      nullptr, 0, VkShaderStageFlagBits(0), VK_NULL_HANDLE, nullptr, nullptr } {
-    
+  : m_vkd(nullptr), m_stage() {
+
   }
 
 
   DxvkShaderModule::DxvkShaderModule(DxvkShaderModule&& other)
-  : m_vkd (std::move(other.m_vkd)),
-    m_info(std::exchange(m_info, VkPipelineShaderStageCreateInfo())) {
-    
+  : m_vkd(std::move(other.m_vkd)) {
+    this->m_stage = other.m_stage;
+    other.m_stage = VkPipelineShaderStageCreateInfo();
   }
 
 
@@ -57,9 +55,15 @@ namespace dxvk {
     const Rc<vk::DeviceFn>&     vkd,
     const Rc<DxvkShader>&       shader,
     const SpirvCodeBuffer&      code)
-  : m_vkd(vkd), m_info {
-      VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-      nullptr, 0, shader->stage(), VK_NULL_HANDLE, "main", nullptr } {
+  : m_vkd(vkd), m_stage() {
+    m_stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    m_stage.pNext = nullptr;
+    m_stage.flags = 0;
+    m_stage.stage = shader->stage();
+    m_stage.module = VK_NULL_HANDLE;
+    m_stage.pName = "main";
+    m_stage.pSpecializationInfo = nullptr;
+
     VkShaderModuleCreateInfo info;
     info.sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     info.pNext    = nullptr;
@@ -67,7 +71,7 @@ namespace dxvk {
     info.codeSize = code.size();
     info.pCode    = code.data();
     
-    if (m_vkd->vkCreateShaderModule(m_vkd->device(), &info, nullptr, &m_info.module) != VK_SUCCESS)
+    if (m_vkd->vkCreateShaderModule(m_vkd->device(), &info, nullptr, &m_stage.module) != VK_SUCCESS)
       throw DxvkError("DxvkComputePipeline::DxvkComputePipeline: Failed to create shader module");
   }
   
@@ -75,14 +79,15 @@ namespace dxvk {
   DxvkShaderModule::~DxvkShaderModule() {
     if (m_vkd != nullptr) {
       m_vkd->vkDestroyShaderModule(
-        m_vkd->device(), m_info.module, nullptr);
+        m_vkd->device(), m_stage.module, nullptr);
     }
   }
   
   
   DxvkShaderModule& DxvkShaderModule::operator = (DxvkShaderModule&& other) {
-    m_vkd  = std::move(other.m_vkd);
-    m_info = std::exchange(other.m_info, VkPipelineShaderStageCreateInfo());
+    this->m_vkd   = std::move(other.m_vkd);
+    this->m_stage = other.m_stage;
+    other.m_stage = VkPipelineShaderStageCreateInfo();
     return *this;
   }
 
