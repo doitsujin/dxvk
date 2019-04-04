@@ -95,6 +95,9 @@ namespace dxvk {
     case DxsoOpcode::TexLdl:
       return this->emitTextureSample(ctx);
 
+    case DxsoOpcode::Comment:
+      break;
+
     default:
       Logger::warn(str::format("DxsoCompiler::processInstruction: unhandled opcode: ", opcode));
       break;
