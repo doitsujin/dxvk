@@ -119,6 +119,9 @@ namespace dxvk {
         if (ins.arg(2) == spv::DecorationIndex && ins.arg(1) == o1VarId)
           m_o1IdxOffset = ins.offset() + 3;
       }
+
+      if (ins.opCode() == spv::OpCapability)
+        m_capabilities.push_back(spv::Capability(ins.arg(1)));
     }
   }
   
@@ -129,16 +132,11 @@ namespace dxvk {
   
   
   bool DxvkShader::hasCapability(spv::Capability cap) {
-    for (auto ins : m_code) {
-      // OpCapability instructions come first
-      if (ins.opCode() != spv::OpCapability)
-        return false;
-      
-      if (ins.arg(1) == cap)
-        return true;
-    }
+    auto entry = std::find(
+      m_capabilities.begin(),
+      m_capabilities.end(), cap);
     
-    return false;
+    return entry != m_capabilities.end();
   }
   
   

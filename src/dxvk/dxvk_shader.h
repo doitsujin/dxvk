@@ -255,6 +255,8 @@ namespace dxvk {
     DxvkShaderConstData           m_constData;
     DxvkShaderKey                 m_key;
 
+    std::vector<spv::Capability>  m_capabilities;
+
     size_t m_o1IdxOffset = 0;
     size_t m_o1LocOffset = 0;
     
