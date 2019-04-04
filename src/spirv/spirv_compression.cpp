@@ -20,7 +20,7 @@ namespace dxvk {
     // the number of bytes it takes in the compressed buffer.
     // This way, it can achieve a compression ratio of ~50%.
     m_mask.reserve((m_size + NumMaskWords - 1) / NumMaskWords);
-    m_code.reserve(m_size * 4);
+    m_code.reserve((m_size + 1) / 2);
 
     uint64_t dstWord  = 0;
     uint32_t dstShift = 0;
