@@ -154,6 +154,10 @@ namespace dxvk {
       m_readOnlySubresources.at(i) = 0;
 
     DiscardSubresourceMasking();
+
+    m_mappingBuffers.resize(GetSubresourceCount());
+    m_fixupBuffers.resize(GetSubresourceCount());
+
     DeallocFixupBuffers();
     DeallocMappingBuffers();
   }
@@ -426,13 +430,13 @@ namespace dxvk {
   }
 
   void Direct3DCommonTexture9::DeallocMappingBuffers() {
-    m_mappingBuffers.clear();
-    m_mappingBuffers.resize(GetSubresourceCount());
+    for (auto& buf : m_mappingBuffers)
+      buf = nullptr;
   }
 
   void Direct3DCommonTexture9::DeallocFixupBuffers() {
-    m_fixupBuffers.clear();
-    m_fixupBuffers.resize(GetSubresourceCount());
+    for (auto& buf : m_fixupBuffers)
+      buf = nullptr;
   }
 
   void Direct3DCommonTexture9::DeallocFixupBuffer(UINT Subresource) {
