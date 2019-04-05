@@ -126,6 +126,14 @@ namespace dxvk {
     { "starwarsbattlefronttrial.exe", {{
       { "dxgi.nvapiHack",                   "False" },
     }} },
+    /* Dark Souls Remastered                      */
+    { "DarkSoulsRemastered.exe", {{
+      { "d3d11.constantBufferRangeCheck",   "True" },
+    }} },
+    /* Grim Dawn                                  */
+    { "Grim Dawn.exe", {{
+      { "d3d11.constantBufferRangeCheck",   "True" },
+    }} },
   }};
 
 
