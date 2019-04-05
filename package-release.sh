@@ -71,9 +71,6 @@ function build_arch {
       rm "$DXVK_BUILD_DIR/x$1/"*.!(dll)
     fi
     rm -R "$DXVK_BUILD_DIR/build.$1"
-    if [ $opt_winelib -eq 1 ]; then
-      mv "$DXVK_BUILD_DIR/fakedlls" "$DXVK_BUILD_DIR/fakedlls$1"
-    fi
   fi
 }
 

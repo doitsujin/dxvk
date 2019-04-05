@@ -21,11 +21,11 @@ dxvk_include_path = include_directories('./include')
 
 if (cpu_family == 'x86_64')
   dxvk_library_path = meson.source_root() + '/lib'
-  target_arch = '-m64'
 else
   dxvk_library_path = meson.source_root() + '/lib32'
-  target_arch = '-m32'
 endif
+
+wrc = cpu_family == 'x86_64' ? find_program('x86_64-w64-mingw32-windres') : find_program('i686-w64-mingw32-windres')
 
 code = '''#ifndef __WINE__
 #error 1
@@ -52,14 +52,8 @@ else
   
   if dxvk_compiler.get_id() == 'msvc'
     lib_d3dcompiler_47 = dxvk_compiler.find_library('d3dcompiler')
-    wrc = [ find_program('windres'), '-i', '@INPUT@', '-o', '@OUTPUT@' ]
   else
     lib_d3dcompiler_47 = dxvk_compiler.find_library('d3dcompiler_47')
-    if (cpu_family == 'x86_64')
-      wrc = [ find_program('x86_64-w64-mingw32-windres'), '-i', '@INPUT@', '-o', '@OUTPUT@' ]
-    else
-      wrc = [ find_program('i686-w64-mingw32-windres'), '-i', '@INPUT@', '-o', '@OUTPUT@' ]
-    endif
   endif
   exe_ext = ''
   dll_ext = ''
