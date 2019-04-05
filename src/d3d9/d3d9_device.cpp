@@ -3029,10 +3029,13 @@ namespace dxvk {
     Direct3DCommonTexture9* pResource) {
     auto dirtySubresources = pResource->DiscardSubresourceMasking();
 
+    const Rc<DxvkImage>  mappedImage = pResource->GetImage();
+    const uint32_t       mipLevels   = mappedImage->info().mipLevels;
+
     for (uint32_t l = 0; l < pResource->GetLayerCount(); l++) {
       uint16_t mask = dirtySubresources[l];
 
-      for (uint32_t i = 0; i < caps::MaxMipLevels; i++) {
+      for (uint32_t i = 0; i < mipLevels; i++) {
         if (!(mask & 1u << i))
           continue;
 
@@ -3041,7 +3044,6 @@ namespace dxvk {
 
         // Now that data has been written into the buffer,
         // we need to copy its contents into the image
-        const Rc<DxvkImage>  mappedImage  = pResource->GetImage();
         const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer(Subresource);
         const Rc<DxvkBuffer> fixupBuffer  = pResource->GetFixupBuffer(Subresource);
 
