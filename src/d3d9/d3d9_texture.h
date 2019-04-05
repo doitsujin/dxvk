@@ -37,7 +37,7 @@ namespace dxvk {
             i,
             j,
             this);
-          subObj->AddRefPrivate();
+          subObj->AddRef();
 
           m_subresources[subresource] = subObj;
         }
