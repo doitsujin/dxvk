@@ -214,8 +214,10 @@ namespace dxvk {
     bool MarkSubresourceUnmapped(UINT Face, UINT MipLevel) {
       const uint16_t mipBit = 1u << MipLevel;
 
+      if (!(m_readOnlySubresources[Face] & mipBit))
+        m_unmappedSubresources[Face] |= mipBit;
+
       m_readOnlySubresources[Face] &= ~mipBit;
-      m_unmappedSubresources[Face] |= mipBit;
 
       return m_mappedSubresources == m_unmappedSubresources;
     }
