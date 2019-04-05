@@ -28,8 +28,9 @@ namespace dxvk {
     useSdivForBufferIndex
       = adapter->matchesDriver(DxvkGpuVendor::Nvidia, VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0);
     
-    strictDivision          = options.strictDivision;
-    zeroInitWorkgroupMemory = options.zeroInitWorkgroupMemory;
+    strictDivision           = options.strictDivision;
+    constantBufferRangeCheck = options.constantBufferRangeCheck;
+    zeroInitWorkgroupMemory  = options.zeroInitWorkgroupMemory;
     
     // Disable early discard on RADV due to GPU hangs
     // Disable early discard on Nvidia because it may hurt performance
