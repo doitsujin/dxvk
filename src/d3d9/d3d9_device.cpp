@@ -20,7 +20,9 @@
 
 #include <algorithm>
 #include <cfloat>
+#ifdef MSC_VER
 #pragma fenv_access (on)
+#endif
 
 namespace dxvk {
 
@@ -3244,6 +3246,10 @@ namespace dxvk {
   void Direct3DDevice9Ex::SetupFPU() {
     // Should match d3d9 float behaviour.
 
+#if defined(_MSC_VER)
+    // For MSVC we can use these cross arch and platform funcs to set the FPU.
+    // This will work on any platform, x86, x64, ARM, etc.
+
     // Clear exceptions.
     _clearfp();
 
@@ -3255,6 +3261,28 @@ namespace dxvk {
 
     // Round to nearest
     _controlfp(_RC_NEAR, _MCW_RC);
+#elif (defined(__GNUC__) || defined(__MINGW32__)) && (defined(__i386__) || defined(__x86_64__) || defined(__ia64))
+    // For GCC/MinGW we can use inline asm to set it.
+    // This only works for x86 and x64 processors however.
+
+    uint16_t control;
+
+    // Get current control word.
+    __asm__ __volatile__("fnstcw %0" : "=m" (*&control));
+
+    // Clear existing settings.
+    control &= 0xF0C0;
+
+    // Disable exceptions
+    // Use 24 bit precision
+    // Round to nearest
+    control |= 0x003F;
+
+    // Set new control word.
+    __asm__ __volatile__("fldcw %0" : : "m" (*&control));
+#else
+    Logger::warn("Direct3DDevice9Ex::SetupFPU: not supported on this arch.");
+#endif
   }
 
   void Direct3DDevice9Ex::CreateConstantBuffers() {
