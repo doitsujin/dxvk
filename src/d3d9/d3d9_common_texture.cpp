@@ -24,7 +24,7 @@ namespace dxvk {
     imageInfo.extent.height = m_desc.Height;
     imageInfo.extent.depth = m_desc.Depth;
     imageInfo.numLayers = GetLayerCount();
-    imageInfo.mipLevels = std::max(1u, m_desc.MipLevels);
+    imageInfo.mipLevels = m_desc.MipLevels;
     imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT
                     | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     imageInfo.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
