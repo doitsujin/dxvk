@@ -664,6 +664,8 @@ namespace dxvk {
     HRESULT UnlockBuffer(
             Direct3DCommonBuffer9* pResource);
 
+    void SetupFPU();
+
     void CreateConstantBuffers();
 
     void SynchronizeCsThread();

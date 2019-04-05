@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <cfloat>
+#pragma fenv_access (on)
 
 namespace dxvk {
 
@@ -78,6 +79,9 @@ namespace dxvk {
     });
 
     CreateConstantBuffers();
+
+    if (!(m_behaviourFlags & D3DCREATE_FPU_PRESERVE))
+      SetupFPU();
   }
 
   Direct3DDevice9Ex::~Direct3DDevice9Ex() {
@@ -3235,6 +3239,22 @@ namespace dxvk {
     FlushCsChunk();
 
     m_csThread.synchronize();
+  }
+
+  void Direct3DDevice9Ex::SetupFPU() {
+    // Should match d3d9 float behaviour.
+
+    // Clear exceptions.
+    _clearfp();
+
+    // Disable exceptions
+    _controlfp(_MCW_EM, _MCW_EM);
+
+    // Use 24 bit precision
+    _controlfp(_PC_24, _MCW_PC);
+
+    // Round to nearest
+    _controlfp(_RC_NEAR, _MCW_RC);
   }
 
   void Direct3DDevice9Ex::CreateConstantBuffers() {
