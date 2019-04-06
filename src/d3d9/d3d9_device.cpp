@@ -2190,7 +2190,6 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CheckDeviceState(HWND hDestinationWindow) {
-    Logger::warn("Direct3DDevice9Ex::CheckDeviceState: Stub");
     return D3D_OK;
   }
 
