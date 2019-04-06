@@ -76,7 +76,7 @@ namespace dxvk {
     }
 
     void STDMETHODCALLTYPE GenerateMipSubLevels() final {
-      this->m_parent->GenerateMips(&m_texture);
+      m_texture.GenerateMipSubLevels();
     }
 
     Direct3DCommonTexture9* GetCommonTexture() {

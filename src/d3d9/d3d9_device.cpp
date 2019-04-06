@@ -654,8 +654,7 @@ namespace dxvk {
         cExtent);
     });
 
-    if (dst->GetCommonTexture()->Desc()->Usage & D3DUSAGE_AUTOGENMIPMAP)
-      GenerateMips(dst->GetCommonTexture());
+    dst->GetCommonTexture()->GenerateMipSubLevels();
 
     return D3D_OK;
   }
@@ -722,6 +721,8 @@ namespace dxvk {
           cExtent);
       });
     }
+
+    pDestinationTexture->GenerateMipSubLevels();
 
     return D3D_OK;
   }
@@ -3016,8 +3017,7 @@ namespace dxvk {
         if (!readRemaining) {
           pResource->DeallocMappingBuffers();
 
-          if (pResource->Desc()->Usage & D3DUSAGE_AUTOGENMIPMAP)
-            GenerateMips(pResource);
+          pResource->GenerateMipSubLevels();
         }
       }
     }

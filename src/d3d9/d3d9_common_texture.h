@@ -176,6 +176,11 @@ namespace dxvk {
       return GetLayerCount()* m_desc.MipLevels;
     }
 
+    void GenerateMipSubLevels() {
+      if (m_desc.Usage & D3DUSAGE_AUTOGENMIPMAP)
+        m_device->GenerateMips(this);
+    }
+
     VkImageViewType GetImageViewType() const;
 
     void RecreateImageView(UINT Lod);
