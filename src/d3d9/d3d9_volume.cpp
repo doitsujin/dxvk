@@ -56,8 +56,9 @@ namespace dxvk {
     pDesc->Usage  = desc.Usage;
     pDesc->Pool   = desc.Pool;
 
-    pDesc->Width  = desc.Width;
-    pDesc->Height = desc.Height;
+    pDesc->Width  = std::max(1u, desc.Width  >> m_mipLevel);
+    pDesc->Height = std::max(1u, desc.Height >> m_mipLevel);
+    pDesc->Depth  = std::max(1u, desc.Depth  >> m_mipLevel);
 
     return D3D_OK;
   }

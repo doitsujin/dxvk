@@ -55,15 +55,15 @@ namespace dxvk {
 
     auto& desc = *(m_texture->Desc());
 
-    pDesc->Format = static_cast<D3DFORMAT>(desc.Format);
-    pDesc->Type = D3DRTYPE_SURFACE;
-    pDesc->Usage = desc.Usage;
-    pDesc->Pool = desc.Pool;
+    pDesc->Format             = static_cast<D3DFORMAT>(desc.Format);
+    pDesc->Type               = D3DRTYPE_SURFACE;
+    pDesc->Usage              = desc.Usage;
+    pDesc->Pool               = desc.Pool;
     
-    pDesc->MultiSampleType = desc.MultiSample;
+    pDesc->MultiSampleType    = desc.MultiSample;
     pDesc->MultiSampleQuality = desc.MultisampleQuality;
-    pDesc->Width = desc.Width;
-    pDesc->Height = desc.Height;
+    pDesc->Width              = std::max(1u, desc.Width >> m_mipLevel);
+    pDesc->Height             = std::max(1u, desc.Height >> m_mipLevel);
 
     return D3D_OK;
   }
