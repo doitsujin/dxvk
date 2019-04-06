@@ -36,9 +36,5 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE ReleaseDC(HDC hdc) final;
 
-  private:
-
-    bool m_ownsTexture;
-
   };
 }
