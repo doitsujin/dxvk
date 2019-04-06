@@ -778,10 +778,10 @@ namespace dxvk {
     VkExtent3D dstExtent = dstImage->mipLevelExtent(dstSubresource.mipLevel);
 
     // Copies are only supported on size-compatible formats
-    fastPath &= dstFormatInfo->elementSize != srcFormatInfo->elementSize;
+    fastPath &= dstFormatInfo->elementSize == srcFormatInfo->elementSize;
 
     // Copies are only supported if the sample count matches
-    fastPath &= dstImage->info().sampleCount != srcImage->info().sampleCount;
+    fastPath &= dstImage->info().sampleCount == srcImage->info().sampleCount;
 
     // Copies would only work if the extents match. (ie. no stretching)
     bool niceRect = true;
