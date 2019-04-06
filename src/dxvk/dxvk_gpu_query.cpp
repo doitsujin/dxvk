@@ -155,7 +155,7 @@ namespace dxvk {
   
   
   DxvkGpuQueryAllocator::DxvkGpuQueryAllocator(
-    const Rc<DxvkDevice>&     device,
+          DxvkDevice*         device,
           VkQueryType         queryType,
           uint32_t            queryPoolSize)
   : m_device        (device),
@@ -254,7 +254,7 @@ namespace dxvk {
 
 
 
-  DxvkGpuQueryPool::DxvkGpuQueryPool(const Rc<DxvkDevice>& device)
+  DxvkGpuQueryPool::DxvkGpuQueryPool(DxvkDevice* device)
   : m_occlusion(device, VK_QUERY_TYPE_OCCLUSION,                     256),
     m_statistic(device, VK_QUERY_TYPE_PIPELINE_STATISTICS,           64),
     m_timestamp(device, VK_QUERY_TYPE_TIMESTAMP,                     64),

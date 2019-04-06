@@ -247,7 +247,7 @@ namespace dxvk {
   public:
 
     DxvkGpuQueryAllocator(
-      const Rc<DxvkDevice>&     device,
+            DxvkDevice*         device,
             VkQueryType         queryType,
             uint32_t            queryPoolSize);
     
@@ -275,7 +275,7 @@ namespace dxvk {
 
   private:
 
-    Rc<DxvkDevice>    m_device;
+    DxvkDevice*       m_device;
     Rc<vk::DeviceFn>  m_vkd;
     VkQueryType       m_queryType;
     uint32_t          m_queryPoolSize;
@@ -299,8 +299,7 @@ namespace dxvk {
 
   public:
 
-    DxvkGpuQueryPool(
-      const Rc<DxvkDevice>& device);
+    DxvkGpuQueryPool(DxvkDevice* device);
     
     ~DxvkGpuQueryPool();
     
