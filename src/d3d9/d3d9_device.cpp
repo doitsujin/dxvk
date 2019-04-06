@@ -3014,13 +3014,13 @@ namespace dxvk {
           this->FlushImage(pResource);
 
         // If we have no remaining read-only locks we can clear our mapping buffers.
-        if (!readRemaining) {
+        if (!readRemaining)
           pResource->DeallocMappingBuffers();
-
-          pResource->GenerateMipSubLevels();
-        }
       }
     }
+
+    if (fullyUnlocked && !readRemaining)
+      pResource->GenerateMipSubLevels();
 
     return D3D_OK;
   }
