@@ -3080,7 +3080,7 @@ namespace dxvk {
   void Direct3DDevice9Ex::GenerateMips(
     Direct3DCommonTexture9* pResource) {
     EmitCs([
-      cImageView = pResource->GetImageView(false)
+      cImageView = pResource->GetRenderTargetView(false)
     ] (DxvkContext* ctx) {
       ctx->generateMipmaps(cImageView);
     });
