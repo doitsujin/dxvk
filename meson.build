@@ -42,6 +42,7 @@ if dxvk_winelib
   dxvk_extradep += [ declare_dependency(link_args: [ '-ldl' ]) ]
   exe_ext = '.exe.so'
   dll_ext = '.dll'
+  res_ext = '.res'
   def_spec_ext = '.spec'
 else
   wrc = cpu_family == 'x86_64' ? find_program('x86_64-w64-mingw32-windres') : find_program('i686-w64-mingw32-windres')
@@ -57,6 +58,7 @@ else
   endif
   exe_ext = ''
   dll_ext = ''
+  res_ext = '.o'
   def_spec_ext = '.def'
 endif
 
@@ -64,6 +66,10 @@ glsl_compiler = find_program('glslangValidator')
 glsl_generator = generator(glsl_compiler,
   output    : [ '@BASENAME@.h' ],
   arguments : [ '-V', '--vn', '@BASENAME@', '@INPUT@', '-o', '@OUTPUT@' ])
+
+wrc_generator = generator(wrc,
+  output    : [ '@BASENAME@' + res_ext ],
+  arguments : [ '-i', '@INPUT@', '-o', '@OUTPUT@' ])
 
 dxvk_version = vcs_tag(
   command: ['git', 'describe', '--dirty=+'],
