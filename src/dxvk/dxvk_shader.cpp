@@ -1,5 +1,7 @@
 #include "dxvk_shader.h"
 
+#include <algorithm>
+
 namespace dxvk {
   
   DxvkShaderConstData::DxvkShaderConstData() {
