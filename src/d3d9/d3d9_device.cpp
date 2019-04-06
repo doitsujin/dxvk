@@ -2106,11 +2106,11 @@ namespace dxvk {
 
     try {
       *ppQuery = ref(new D3D9Query(this, Type));
-      return S_OK;
+      return D3D_OK;
     }
     catch (const DxvkError & e) {
       Logger::err(e.message());
-      return E_INVALIDARG;
+      return D3DERR_INVALIDCALL;
     }
   }
 
@@ -2884,7 +2884,7 @@ namespace dxvk {
       uint8_t* data = reinterpret_cast<uint8_t*>(mappedImage->mapPtr(layout.offset));
       data += offset;
       pLockedBox->pBits = data;
-      return S_OK;
+      return D3D_OK;
     } else if (formatInfo->aspectMask == (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
       VkExtent3D levelExtent = mappedImage->mipLevelExtent(subresource.mipLevel);
 
@@ -2927,7 +2927,7 @@ namespace dxvk {
       uint8_t* data = reinterpret_cast<uint8_t*>(physSlice.mapPtr);
       data += offset;
       pLockedBox->pBits = data;
-      return S_OK;
+      return D3D_OK;
     } else {
       VkExtent3D levelExtent = mappedImage->mipLevelExtent(subresource.mipLevel);
       VkExtent3D blockCount  = util::computeBlockCount(levelExtent, formatInfo->blockSize);
@@ -2984,7 +2984,7 @@ namespace dxvk {
       uint8_t* data = reinterpret_cast<uint8_t*>(physSlice.mapPtr);
       data += offset;
       pLockedBox->pBits = data;
-      return S_OK;
+      return D3D_OK;
     }
   }
 
