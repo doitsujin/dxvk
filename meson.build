@@ -25,8 +25,6 @@ else
   dxvk_library_path = meson.source_root() + '/lib32'
 endif
 
-wrc = cpu_family == 'x86_64' ? find_program('x86_64-w64-mingw32-windres') : find_program('i686-w64-mingw32-windres')
-
 code = '''#ifndef __WINE__
 #error 1
 #endif'''
@@ -35,6 +33,7 @@ dxvk_winelib = dxvk_compiler.compiles(code, name: 'winelib check')
 dxvk_extradep = [ ]
 
 if dxvk_winelib
+  wrc = find_program('wrc')
   lib_vulkan  = declare_dependency(link_args: [ '-lwinevulkan' ])
   lib_d3d11   = declare_dependency(link_args: [ '-ld3d11' ])
   lib_dxgi    = declare_dependency(link_args: [ '-ldxgi' ])
@@ -45,6 +44,7 @@ if dxvk_winelib
   dll_ext = '.dll'
   def_spec_ext = '.spec'
 else
+  wrc = cpu_family == 'x86_64' ? find_program('x86_64-w64-mingw32-windres') : find_program('i686-w64-mingw32-windres')
   lib_vulkan  = dxvk_compiler.find_library('vulkan-1', dirs : dxvk_library_path)
   lib_d3d11   = dxvk_compiler.find_library('d3d11')
   lib_dxgi    = dxvk_compiler.find_library('dxgi')
