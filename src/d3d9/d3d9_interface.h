@@ -132,6 +132,8 @@ namespace dxvk {
 
     void cacheModes(D3D9Format enumFormat);
 
+    static const char* GetDriverDllName(DxvkGpuVendor vendor);
+
     std::vector<D3DDISPLAYMODEEX> m_modes;
     D3D9Format m_modeCacheFormat;
 

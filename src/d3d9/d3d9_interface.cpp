@@ -52,15 +52,19 @@ namespace dxvk {
     if (dxvkAdapter == nullptr || pIdentifier == nullptr)
       return D3DERR_INVALIDCALL;
     
-    std::memcpy(pIdentifier->Description, dxvkAdapter->deviceProperties().deviceName, 256); // The description is actually the device name.
-    pIdentifier->DeviceId = dxvkAdapter->deviceProperties().deviceID;
+    const auto& props = dxvkAdapter->deviceProperties();
+
+    uint32_t vendorId = props.vendorID;
+
+    std::memcpy(pIdentifier->Description, props.deviceName, 256); // The description is actually the device name.
+    pIdentifier->DeviceId = props.deviceID;
     std::memcpy(&pIdentifier->DeviceIdentifier, dxvkAdapter->devicePropertiesExt().coreDeviceId.deviceUUID, sizeof(GUID));
     std::strcpy(pIdentifier->DeviceName, R"(\\.\DISPLAY1)"); // The GDI device name. Not the actual device name.
-    std::strcpy(pIdentifier->Driver, "d3d9.dll"); // This is the driver's dll. It is important that it ends in dll.
-    pIdentifier->DriverVersion.QuadPart = dxvkAdapter->deviceProperties().driverVersion;
+    std::strcpy(pIdentifier->Driver, this->GetDriverDllName(DxvkGpuVendor(vendorId))); // This is the driver's dll.
+    pIdentifier->DriverVersion.QuadPart = props.driverVersion;
     pIdentifier->Revision = 0;
     pIdentifier->SubSysId = 0;
-    pIdentifier->VendorId = dxvkAdapter->deviceProperties().vendorID;
+    pIdentifier->VendorId = vendorId;
     pIdentifier->WHQLLevel = m_extended ? 1 : 0; // This doesn't check with the driver on Direct3D9Ex and is always 1.
 
     return D3D_OK;
@@ -347,6 +351,21 @@ namespace dxvk {
 
         return b.RefreshRate < a.RefreshRate;
     });
+  }
+
+  const char* Direct3D9Ex::GetDriverDllName(DxvkGpuVendor vendor) {
+    switch (vendor) {
+      default:
+      case DxvkGpuVendor::Nvidia: return "nvd3dum.dll";
+
+#if defined(__x86_64__) || defined(_M_X64)
+      case DxvkGpuVendor::Amd:    return "aticfx64.dll";
+      case DxvkGpuVendor::Intel:  return "igdumd64.dll";
+#else
+      case DxvkGpuVendor::Amd:    return "aticfx32.dll";
+      case DxvkGpuVendor::Intel:  return "igdumd32.dll";
+#endif
+    }
   }
 
   HRESULT Direct3D9Ex::createDeviceInternal(
