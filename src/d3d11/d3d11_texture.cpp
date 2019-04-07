@@ -424,9 +424,13 @@ namespace dxvk {
     info.access = VK_ACCESS_TRANSFER_READ_BIT
                 | VK_ACCESS_TRANSFER_WRITE_BIT;
     
-    return m_device->GetDXVKDevice()->createBuffer(info,
-      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    VkMemoryPropertyFlags memType = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+                                  | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    
+    if (m_desc.Usage == D3D11_USAGE_STAGING)
+      memType |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+    
+    return m_device->GetDXVKDevice()->createBuffer(info, memType);
   }
   
   
