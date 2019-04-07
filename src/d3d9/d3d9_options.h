@@ -10,6 +10,12 @@ namespace dxvk {
 
     D3D9Options(const Config& config);
 
+    /// Override PCI vendor and device IDs reported to the
+    /// application. This may make apps think they are running
+    /// on a different GPU than they do and behave differently.
+    int32_t customVendorId;
+    int32_t customDeviceId;
+
     /// Present interval. Overrides the value
     /// in D3DPRESENT_PARAMS used in swapchain present.
     int32_t presentInterval;
