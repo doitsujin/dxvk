@@ -255,10 +255,10 @@ namespace dxvk {
 
 
   DxvkGpuQueryPool::DxvkGpuQueryPool(DxvkDevice* device)
-  : m_occlusion(device, VK_QUERY_TYPE_OCCLUSION,                     256),
-    m_statistic(device, VK_QUERY_TYPE_PIPELINE_STATISTICS,           64),
-    m_timestamp(device, VK_QUERY_TYPE_TIMESTAMP,                     64),
-    m_xfbStream(device, VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT, 64) {
+  : m_occlusion(device, VK_QUERY_TYPE_OCCLUSION,                     2048),
+    m_statistic(device, VK_QUERY_TYPE_PIPELINE_STATISTICS,           256),
+    m_timestamp(device, VK_QUERY_TYPE_TIMESTAMP,                     256),
+    m_xfbStream(device, VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT, 256) {
     
   }
   
