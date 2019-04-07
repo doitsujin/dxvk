@@ -45,20 +45,32 @@ if dxvk_winelib
   res_ext = '.res'
   def_spec_ext = '.spec'
 else
-  wrc = cpu_family == 'x86_64' ? find_program('x86_64-w64-mingw32-windres') : find_program('i686-w64-mingw32-windres')
+  if dxvk_compiler.get_id() == 'msvc'
+    wrc = find_program('rc')
+  else
+    wrc = cpu_family == 'x86_64' ? find_program('x86_64-w64-mingw32-windres') : find_program('i686-w64-mingw32-windres')
+  endif
+
   lib_vulkan  = dxvk_compiler.find_library('vulkan-1', dirs : dxvk_library_path)
   lib_d3d11   = dxvk_compiler.find_library('d3d11')
   lib_dxgi    = dxvk_compiler.find_library('dxgi')
   lib_d3dcompiler_43 = dxvk_compiler.find_library('d3dcompiler_43', dirs : dxvk_library_path)
-  
+
   if dxvk_compiler.get_id() == 'msvc'
     lib_d3dcompiler_47 = dxvk_compiler.find_library('d3dcompiler')
   else
     lib_d3dcompiler_47 = dxvk_compiler.find_library('d3dcompiler_47')
   endif
+
   exe_ext = ''
   dll_ext = ''
-  res_ext = '.o'
+
+  if dxvk_compiler.get_id() == 'msvc'
+    res_ext = '.res'
+  else
+    res_ext = '.o'
+  endif
+
   def_spec_ext = '.def'
 endif
 
@@ -67,9 +79,15 @@ glsl_generator = generator(glsl_compiler,
   output    : [ '@BASENAME@.h' ],
   arguments : [ '-V', '--vn', '@BASENAME@', '@INPUT@', '-o', '@OUTPUT@' ])
 
-wrc_generator = generator(wrc,
+if dxvk_compiler.get_id() == 'msvc'
+  wrc_generator = generator(wrc,
+  output    : [ '@BASENAME@' + res_ext ],
+  arguments : [ '/fo', '@OUTPUT@', '@INPUT@' ])
+else
+  wrc_generator = generator(wrc,
   output    : [ '@BASENAME@' + res_ext ],
   arguments : [ '-i', '@INPUT@', '-o', '@OUTPUT@' ])
+endif
 
 dxvk_version = vcs_tag(
   command: ['git', 'describe', '--dirty=+'],
