@@ -198,8 +198,7 @@ namespace dxvk {
       = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0 };
     D3D11_MAP m_mapType = D3D11_MAP_READ;
     
-    Rc<DxvkBuffer> CreateMappedBuffer(
-            UINT                  CPUAccessFlags) const;
+    Rc<DxvkBuffer> CreateMappedBuffer() const;
     
     BOOL CheckImageSupport(
       const DxvkImageCreateInfo*  pImageInfo,
