@@ -2681,6 +2681,20 @@ namespace dxvk {
      || m_barriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write))
       m_barriers.recordCommands(m_cmd);
 
+    // We might have to transition the source image layout
+    VkImageLayout srcLayout = srcImage->pickLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    
+    if (srcImage->info().layout != srcLayout) {
+      m_transitions.accessImage(
+        srcImage, srcSubresourceRange,
+        srcImage->info().layout, 0, 0,
+        srcLayout,
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        VK_ACCESS_SHADER_READ_BIT);
+      
+      m_transitions.recordCommands(m_cmd);
+    }
+
     // Create image views covering the requested subresourcs
     DxvkImageViewCreateInfo dstViewInfo;
     dstViewInfo.type      = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
@@ -2695,7 +2709,7 @@ namespace dxvk {
     DxvkImageViewCreateInfo srcViewInfo;
     srcViewInfo.type      = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
     srcViewInfo.format    = format;
-    srcViewInfo.usage     = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    srcViewInfo.usage     = VK_IMAGE_USAGE_SAMPLED_BIT;
     srcViewInfo.aspect    = srcSubresources.aspectMask;
     srcViewInfo.minLevel  = srcSubresources.mipLevel;
     srcViewInfo.numLevels = 1;
@@ -2709,8 +2723,41 @@ namespace dxvk {
     Rc<DxvkMetaResolveRenderPass> fb = new DxvkMetaResolveRenderPass(
       m_device->vkd(), dstImageView, srcImageView);
 
-    // Render pass info
     VkExtent3D passExtent = dstImageView->mipLevelExtent(0);
+
+    auto pipeInfo = m_metaResolve->getPipeline(
+      format, srcImage->info().sampleCount);
+    
+    VkDescriptorImageInfo descriptorImage;
+    descriptorImage.sampler          = VK_NULL_HANDLE;
+    descriptorImage.imageView        = srcImageView->handle();
+    descriptorImage.imageLayout      = srcLayout;
+
+    VkWriteDescriptorSet descriptorWrite;
+    descriptorWrite.sType            = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    descriptorWrite.pNext            = nullptr;
+    descriptorWrite.dstBinding       = 0;
+    descriptorWrite.dstArrayElement  = 0;
+    descriptorWrite.descriptorCount  = 1;
+    descriptorWrite.descriptorType   = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    descriptorWrite.pImageInfo       = &descriptorImage;
+    descriptorWrite.pBufferInfo      = nullptr;
+    descriptorWrite.pTexelBufferView = nullptr;
+    
+    descriptorWrite.dstSet = allocateDescriptorSet(pipeInfo.dsetLayout);
+    m_cmd->updateDescriptorSets(1, &descriptorWrite);
+
+    VkViewport viewport;
+    viewport.x        = 0.0f;
+    viewport.y        = 0.0f;
+    viewport.width    = float(passExtent.width);
+    viewport.height   = float(passExtent.height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+
+    VkRect2D scissor;
+    scissor.offset    = { 0, 0 };
+    scissor.extent    = { passExtent.width, passExtent.height };
 
     VkRenderPassBeginInfo info;
     info.sType              = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -2724,6 +2771,12 @@ namespace dxvk {
     
     // Perform the actual resolve operation
     m_cmd->cmdBeginRenderPass(&info, VK_SUBPASS_CONTENTS_INLINE);
+    m_cmd->cmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeHandle);
+    m_cmd->cmdBindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS,
+      pipeInfo.pipeLayout, descriptorWrite.dstSet, 0, nullptr);
+    m_cmd->cmdSetViewport(0, 1, &viewport);
+    m_cmd->cmdSetScissor (0, 1, &scissor);
+    m_cmd->cmdDraw(1, dstSubresources.layerCount, 0, 0);
     m_cmd->cmdEndRenderPass();
 
     m_barriers.accessImage(
@@ -2735,9 +2788,8 @@ namespace dxvk {
       dstImage->info().access);
 
     m_barriers.accessImage(
-      srcImage, srcSubresourceRange,
-      srcImage->info().layout,
-      VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
+      srcImage, srcSubresourceRange, srcLayout,
+      VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
       srcImage->info().layout,
       srcImage->info().stages,
       srcImage->info().access);

@@ -41,7 +41,7 @@ namespace dxvk {
     
     VkAttachmentReference dstRef;
     dstRef.attachment    = 0;
-    dstRef.layout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+    dstRef.layout        = m_dstImageView->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
     
     VkSubpassDescription subpass;
     subpass.flags               = 0;
