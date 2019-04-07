@@ -23,6 +23,7 @@ namespace dxvk {
     m_gpuQueryPool      (new DxvkGpuQueryPool       (this)),
     m_metaClearObjects  (new DxvkMetaClearObjects   (vkd)),
     m_metaCopyObjects   (new DxvkMetaCopyObjects    (vkd)),
+    m_metaResolveObjects(new DxvkMetaResolveObjects (this)),
     m_metaMipGenObjects (new DxvkMetaMipGenObjects  (vkd)),
     m_metaPackObjects   (new DxvkMetaPackObjects    (vkd)),
     m_unboundResources  (this),
@@ -145,6 +146,7 @@ namespace dxvk {
       m_gpuQueryPool,
       m_metaClearObjects,
       m_metaCopyObjects,
+      m_metaResolveObjects,
       m_metaMipGenObjects,
       m_metaPackObjects);
   }

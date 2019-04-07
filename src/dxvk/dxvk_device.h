@@ -421,6 +421,7 @@ namespace dxvk {
 
     Rc<DxvkMetaClearObjects>    m_metaClearObjects;
     Rc<DxvkMetaCopyObjects>     m_metaCopyObjects;
+    Rc<DxvkMetaResolveObjects>  m_metaResolveObjects;
     Rc<DxvkMetaMipGenObjects>   m_metaMipGenObjects;
     Rc<DxvkMetaPackObjects>     m_metaPackObjects;
     

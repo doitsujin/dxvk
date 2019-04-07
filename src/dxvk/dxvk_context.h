@@ -37,6 +37,7 @@ namespace dxvk {
       const Rc<DxvkGpuQueryPool>&       gpuQueryPool,
       const Rc<DxvkMetaClearObjects>&   metaClearObjects,
       const Rc<DxvkMetaCopyObjects>&    metaCopyObjects,
+      const Rc<DxvkMetaResolveObjects>& metaResolveObjects,
       const Rc<DxvkMetaMipGenObjects>&  metaMipGenObjects,
       const Rc<DxvkMetaPackObjects>&    metaPackObjects);
     ~DxvkContext();
@@ -885,6 +886,7 @@ namespace dxvk {
     const Rc<DxvkGpuEventPool>        m_gpuEvents;
     const Rc<DxvkMetaClearObjects>    m_metaClear;
     const Rc<DxvkMetaCopyObjects>     m_metaCopy;
+    const Rc<DxvkMetaResolveObjects>  m_metaResolve;
     const Rc<DxvkMetaMipGenObjects>   m_metaMipGen;
     const Rc<DxvkMetaPackObjects>     m_metaPack;
     
