@@ -1,4 +1,4 @@
-project('dxvk', ['c', 'cpp'], version : 'v1.0.1', meson_version : '>= 0.43')
+project('dxvk', ['c', 'cpp'], version : 'v1.0.1', meson_version : '>= 0.49')
 
 cpu_family = target_machine.cpu_family()
 
@@ -61,6 +61,13 @@ else
   res_ext = '.o'
   def_spec_ext = '.def'
 endif
+
+# Common kwargs for targets
+common_opts = { 'override_options': ['cpp_std=' + dxvk_cpp_std] }
+
+common_exe_opts    = common_opts + { 'install': true }
+common_static_opts = common_opts + { 'include_directories': dxvk_include_path }
+common_shared_opts = common_opts + { 'include_directories': dxvk_include_path, 'name_prefix': '', 'install': true }
 
 glsl_compiler = find_program('glslangValidator')
 glsl_generator = generator(glsl_compiler,
