@@ -20,34 +20,20 @@ namespace dxvk {
 
 
   VkRenderPass DxvkMetaResolveRenderPass::createRenderPass() const {
-    std::array<VkAttachmentDescription, 2> attachments;
-    attachments[0].flags            = 0;
-    attachments[0].format           = m_dstImageView->info().format;
-    attachments[0].samples          = VK_SAMPLE_COUNT_1_BIT;
-    attachments[0].loadOp           = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    attachments[0].storeOp          = VK_ATTACHMENT_STORE_OP_STORE;
-    attachments[0].stencilLoadOp    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    attachments[0].stencilStoreOp   = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    attachments[0].initialLayout    = VK_IMAGE_LAYOUT_UNDEFINED;
-    attachments[0].finalLayout      = m_dstImageView->imageInfo().layout;
-
-    attachments[1].flags            = 0;
-    attachments[1].format           = m_dstImageView->info().format;
-    attachments[1].samples          = m_srcImageView->imageInfo().sampleCount;
-    attachments[1].loadOp           = VK_ATTACHMENT_LOAD_OP_LOAD;
-    attachments[1].storeOp          = VK_ATTACHMENT_STORE_OP_STORE;
-    attachments[1].stencilLoadOp    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    attachments[1].stencilStoreOp   = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    attachments[1].initialLayout    = m_srcImageView->imageInfo().layout;
-    attachments[1].finalLayout      = m_srcImageView->imageInfo().layout;
+    VkAttachmentDescription attachment;
+    attachment.flags            = 0;
+    attachment.format           = m_dstImageView->info().format;
+    attachment.samples          = VK_SAMPLE_COUNT_1_BIT;
+    attachment.loadOp           = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachment.storeOp          = VK_ATTACHMENT_STORE_OP_STORE;
+    attachment.stencilLoadOp    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachment.stencilStoreOp   = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachment.initialLayout    = VK_IMAGE_LAYOUT_UNDEFINED;
+    attachment.finalLayout      = m_dstImageView->imageInfo().layout;
     
     VkAttachmentReference dstRef;
     dstRef.attachment    = 0;
     dstRef.layout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    
-    VkAttachmentReference srcRef;
-    srcRef.attachment    = 1;
-    srcRef.layout        = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     
     VkSubpassDescription subpass;
     subpass.flags               = 0;
@@ -55,8 +41,8 @@ namespace dxvk {
     subpass.inputAttachmentCount = 0;
     subpass.pInputAttachments   = nullptr;
     subpass.colorAttachmentCount = 1;
-    subpass.pColorAttachments   = &srcRef;
-    subpass.pResolveAttachments = &dstRef;
+    subpass.pColorAttachments   = &dstRef;
+    subpass.pResolveAttachments = nullptr;
     subpass.pDepthStencilAttachment = nullptr;
     subpass.preserveAttachmentCount = 0;
     subpass.pPreserveAttachments = nullptr;
@@ -65,8 +51,8 @@ namespace dxvk {
     info.sType                  = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     info.pNext                  = nullptr;
     info.flags                  = 0;
-    info.attachmentCount        = attachments.size();
-    info.pAttachments           = attachments.data();
+    info.attachmentCount        = 1;
+    info.pAttachments           = &attachment;
     info.subpassCount           = 1;
     info.pSubpasses             = &subpass;
     info.dependencyCount        = 0;
@@ -82,19 +68,15 @@ namespace dxvk {
   VkFramebuffer DxvkMetaResolveRenderPass::createFramebuffer() const {
     VkImageSubresourceRange dstSubresources = m_dstImageView->subresources();
     VkExtent3D              dstExtent       = m_dstImageView->mipLevelExtent(0);
-    
-    std::array<VkImageView, 2> viewHandles = {
-      m_dstImageView->handle(),
-      m_srcImageView->handle(),
-    };
+    VkImageView             dstHandle       = m_dstImageView->handle();
 
     VkFramebufferCreateInfo fboInfo;
     fboInfo.sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     fboInfo.pNext           = nullptr;
     fboInfo.flags           = 0;
     fboInfo.renderPass      = m_renderPass;
-    fboInfo.attachmentCount = viewHandles.size();
-    fboInfo.pAttachments    = viewHandles.data();
+    fboInfo.attachmentCount = 1;
+    fboInfo.pAttachments    = &dstHandle;
     fboInfo.width           = dstExtent.width;
     fboInfo.height          = dstExtent.height;
     fboInfo.layers          = dstSubresources.layerCount;
