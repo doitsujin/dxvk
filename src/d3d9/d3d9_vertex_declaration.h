@@ -13,6 +13,10 @@ namespace dxvk {
 
     Direct3DVertexDeclaration9(
             Direct3DDevice9Ex* pDevice,
+            DWORD              FVF);
+
+    Direct3DVertexDeclaration9(
+            Direct3DDevice9Ex* pDevice,
       const D3DVERTEXELEMENT9* pVertexElements,
             uint32_t           DeclCount);
 
@@ -24,6 +28,12 @@ namespace dxvk {
             D3DVERTEXELEMENT9* pElement,
             UINT*              pNumElements);
 
+    inline DWORD GetFVF() {
+      return m_fvf;
+    }
+
+    void SetFVF(DWORD FVF);
+
     const std::vector<D3DVERTEXELEMENT9>& GetElements() {
       return m_elements;
     }
@@ -31,6 +41,8 @@ namespace dxvk {
   private:
 
     std::vector<D3DVERTEXELEMENT9> m_elements;
+
+    DWORD                          m_fvf;
 
   };
 

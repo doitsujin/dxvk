@@ -122,6 +122,8 @@ namespace dxvk {
   VkCullModeFlags DecodeCullMode(D3DCULL Mode);
   VkPolygonMode DecodeFillMode(D3DFILLMODE Mode);
 
+  uint32_t DecltypeSize(D3DDECLTYPE Type);
+
   template<typename T>
   UINT CompactSparseList(T* pData, UINT Mask) {
     uint32_t count = 0;

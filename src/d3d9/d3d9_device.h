@@ -829,6 +829,10 @@ namespace dxvk {
       D3D9SamplerKeyHash,
       D3D9SamplerKeyEq>             m_samplers;
 
+    std::unordered_map<
+      DWORD,
+      Com<Direct3DVertexDeclaration9>> m_fvfTable;
+
     void AllocUpBuffer(uint32_t size);
 
     Direct3DSwapChain9Ex* GetInternalSwapchain(UINT index);

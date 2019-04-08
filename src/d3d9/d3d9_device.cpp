@@ -1666,12 +1666,35 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetFVF(DWORD FVF) {
-    Logger::warn("Direct3DDevice9Ex::SetFVF: Stub");
-    return D3D_OK;
+    auto lock = LockDevice();
+
+    if (FVF == 0)
+      return D3D_OK;
+
+    Direct3DVertexDeclaration9* decl = nullptr;
+
+    auto iter = m_fvfTable.find(FVF);
+
+    if (iter == m_fvfTable.end()) {
+      decl = new Direct3DVertexDeclaration9(this, FVF);
+      m_fvfTable.insert(std::make_pair(FVF, decl));
+    }
+    else
+      decl = iter->second.ptr();
+
+    return this->SetVertexDeclaration(decl);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetFVF(DWORD* pFVF) {
-    Logger::warn("Direct3DDevice9Ex::GetFVF: Stub");
+    auto lock = LockDevice();
+
+    if (pFVF == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    *pFVF = m_state.vertexDecl != nullptr
+      ? m_state.vertexDecl->GetFVF()
+      : 0;
+
     return D3D_OK;
   }
 
