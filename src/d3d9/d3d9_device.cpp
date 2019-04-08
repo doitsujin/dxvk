@@ -1099,7 +1099,7 @@ namespace dxvk {
     else
       viewport = *pViewport;
 
-    if (ShouldRecord())
+    if (unlikely(ShouldRecord()))
       return m_recorder->SetViewport(&viewport);
 
     m_state.viewport = viewport;
@@ -1154,7 +1154,7 @@ namespace dxvk {
     if (Index >= caps::MaxClipPlanes || !pPlane)
       return D3DERR_INVALIDCALL;
 
-    if (ShouldRecord())
+    if (unlikely(ShouldRecord()))
       return m_recorder->SetClipPlane(Index, pPlane);
     
     bool dirty = false;
@@ -1183,7 +1183,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetRenderState(D3DRENDERSTATETYPE State, DWORD Value) {
     auto lock = LockDevice();
 
-    if (ShouldRecord())
+    if (unlikely(ShouldRecord()))
       return m_recorder->SetRenderState(State, Value);
 
     auto& states = m_state.renderStates;
@@ -1454,7 +1454,7 @@ namespace dxvk {
     if (pRect == nullptr)
       return D3DERR_INVALIDCALL;
 
-    if (ShouldRecord())
+    if (unlikely(ShouldRecord()))
       return m_recorder->SetScissorRect(pRect);
 
     m_state.scissorRect = *pRect;
@@ -1636,7 +1636,7 @@ namespace dxvk {
 
     Direct3DVertexDeclaration9* decl = static_cast<Direct3DVertexDeclaration9*>(pDecl);
 
-    if (ShouldRecord())
+    if (unlikely(ShouldRecord()))
       return m_recorder->SetVertexDeclaration(decl);
 
     if (decl == m_state.vertexDecl)
@@ -1733,7 +1733,7 @@ namespace dxvk {
 
     D3D9VertexShader* shader = static_cast<D3D9VertexShader*>(pShader);
 
-    if (ShouldRecord())
+    if (unlikely(ShouldRecord()))
       return m_recorder->SetVertexShader(shader);
 
     if (shader == m_state.vertexShader)
@@ -1860,7 +1860,7 @@ namespace dxvk {
 
     Direct3DVertexBuffer9* buffer = static_cast<Direct3DVertexBuffer9*>(pStreamData);
 
-    if (ShouldRecord())
+    if (unlikely(ShouldRecord()))
       return m_recorder->SetStreamSource(
         StreamNumber,
         buffer,
@@ -1925,7 +1925,7 @@ namespace dxvk {
 
     Direct3DIndexBuffer9* buffer = static_cast<Direct3DIndexBuffer9*>(pIndexData);
 
-    if (ShouldRecord())
+    if (unlikely(ShouldRecord()))
       return m_recorder->SetIndices(buffer);
 
     if (buffer == m_state.indices)
@@ -1988,7 +1988,7 @@ namespace dxvk {
 
     D3D9PixelShader* shader = static_cast<D3D9PixelShader*>(pShader);
 
-    if (ShouldRecord())
+    if (unlikely(ShouldRecord()))
       return m_recorder->SetPixelShader(shader);
 
     if (shader == m_state.pixelShader)
@@ -2640,7 +2640,7 @@ namespace dxvk {
     DWORD               Value) {
     auto lock = LockDevice();
 
-    if (ShouldRecord())
+    if (unlikely(ShouldRecord()))
       return m_recorder->SetStateSamplerState(StateSampler, Type, Value);
 
     auto& state = m_state.samplerStates;
@@ -2671,7 +2671,7 @@ namespace dxvk {
   HRESULT Direct3DDevice9Ex::SetStateTexture(DWORD StateSampler, IDirect3DBaseTexture9* pTexture) {
     auto lock = LockDevice();
 
-    if (ShouldRecord())
+    if (unlikely(ShouldRecord()))
       return m_recorder->SetStateTexture(StateSampler, pTexture);
 
     if (m_state.textures[StateSampler] == pTexture)
@@ -4027,7 +4027,7 @@ namespace dxvk {
       if (pConstantData == nullptr)
         return D3DERR_INVALIDCALL;
 
-      if (ShouldRecord())
+      if (unlikely(ShouldRecord()))
         return m_recorder->SetShaderConstants<
           ProgramType,
           ConstantType,
