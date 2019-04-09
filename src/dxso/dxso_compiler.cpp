@@ -32,9 +32,9 @@ namespace dxvk {
 
     // Make sure our interface registers are clear
     for (uint32_t i = 0; i < 16; i++) {
-      m_vDecls.at(i) = DxsoDeclaration{ };
-      m_oDecls.at(i) = DxsoDeclaration{ };
-      m_oPtrs.at(i) = 0;
+      m_vDecls.at(i) = DxsoDeclaration();
+      m_oDecls.at(i) = DxsoDeclaration();
+      m_oPtrs.at(i)  = 0;
     }
 
     for (uint32_t i = 0; i < m_samplers.size(); i++) {
@@ -105,13 +105,6 @@ namespace dxvk {
   }
 
   Rc<DxvkShader> DxsoCompiler::finalize() {
-    for (uint32_t i = 0; i < 32; i++) {
-      if (m_interfaceSlots.outputSlots & (1u << i)) {
-        emitDebugName(m_oPtrs[i], m_oDecls[i].id);
-        m_module.opStore(m_oPtrs[i], getSpirvRegister(m_oDecls[i].id, false, nullptr).varId);
-      }
-    }
-
     if (m_programInfo.type() == DxsoProgramType::VertexShader)
       this->emitVsFinalize();
     else
@@ -225,7 +218,7 @@ namespace dxvk {
     
     // Compute clip distances
     uint32_t positionId = m_module.opLoad(vec4Type,
-      findBuiltInOutputPtr(DxsoUsage::Position, 0).varId);
+      findBuiltInOutputPtr(DxsoUsage::Position, 0).ptrId);
     
     for (uint32_t i = 0; i < caps::MaxClipPlanes; i++) {
       std::array<uint32_t, 2> blockMembers = {{
@@ -300,7 +293,7 @@ namespace dxvk {
     // Implement alpha test
     auto oC0 = findBuiltInOutputPtr(DxsoUsage::Color, 0);
     
-    if (oC0.varId) {
+    if (oC0.ptrId) {
       // Labels for the alpha test
       std::array<SpirvSwitchCaseLabel, 8> atestCaseLabels = {{
         { uint32_t(VK_COMPARE_OP_NEVER),            m_module.allocateId() },
@@ -327,7 +320,7 @@ namespace dxvk {
       // Load alpha component
       uint32_t alphaComponentId = 3;
       uint32_t alphaId = m_module.opCompositeExtract(floatType,
-        m_module.opLoad(m_module.defVectorType(floatType, 4), oC0.varId),
+        m_module.opLoad(m_module.defVectorType(floatType, 4), oC0.ptrId),
         1, &alphaComponentId);
       
       // Load alpha reference
@@ -427,8 +420,8 @@ namespace dxvk {
   }
 
   void DxsoCompiler::emitDclConstantBuffer() {
-    const uint32_t floatArray   = m_module.defArrayTypeUnique(getTypeId(DxsoRegisterType::Const),     m_module.constu32(256));
-    const uint32_t intArray     = m_module.defArrayTypeUnique(getTypeId(DxsoRegisterType::ConstInt),  m_module.constu32(16));
+    const uint32_t floatArray   = m_module.defArrayTypeUnique(spvTypeVar(DxsoRegisterType::Const),     m_module.constu32(256));
+    const uint32_t intArray     = m_module.defArrayTypeUnique(spvTypeVar(DxsoRegisterType::ConstInt),  m_module.constu32(16));
     const uint32_t boolBitfield = m_module.defIntType(32, false);
 
     std::array<uint32_t, 3> constantTypes{ floatArray, intArray, boolBitfield };
@@ -570,10 +563,18 @@ namespace dxvk {
     this->emitFunctionLabel();
   }
 
-  uint32_t DxsoCompiler::emitNewVariable(DxsoRegisterType regType, spv::StorageClass storageClass) {
-    return m_module.newVar(
-      getPointerTypeId(regType, storageClass),
-      storageClass);
+  uint32_t DxsoCompiler::emitNewVariable(DxsoRegisterType regType, uint32_t value) {
+    uint32_t ptrId = m_module.newVar(
+      spvTypePtr(regType),
+      spvStorage(regType));
+
+    if (value != 0) {
+      m_module.opStore(
+        ptrId,
+        value);
+    }
+
+    return ptrId;
   }
 
   uint32_t DxsoCompiler::emitRegisterSwizzle(uint32_t typeId, uint32_t varId, DxsoRegSwizzle swizzle, uint32_t count) {
@@ -657,9 +658,9 @@ namespace dxvk {
   }
 
   uint32_t DxsoCompiler::emitRegisterLoad(const DxsoRegister& reg, uint32_t count) {
-    const uint32_t typeId = spvType(reg, count);
+    const uint32_t typeId = spvTypeVar(reg, count);
 
-    uint32_t result = spvId(reg);
+    uint32_t result = spvLoad(reg);
 
     result = emitRegisterSwizzle(typeId, result, reg.swizzle(), count);
     result = emitSrcOperandModifier(typeId, result, reg.modifier(), count);
@@ -695,7 +696,7 @@ namespace dxvk {
     return m_module.opVectorShuffle(typeId, dst, src, 4, components.data());
   }
 
-  void DxsoCompiler::emitDebugName(uint32_t varId, DxsoRegisterId id) {
+  void DxsoCompiler::emitDebugName(uint32_t varId, DxsoRegisterId id, bool deffed) {
     bool ps = m_programInfo.type() == DxsoProgramType::PixelShader;
 
     std::string name = "";
@@ -723,12 +724,15 @@ namespace dxvk {
       case DxsoRegisterType::MiscType:      name = str::format("m", id.num()); break;
       case DxsoRegisterType::Predicate:     name = str::format("p", id.num()); break;
 
-      case DxsoRegisterType::Const:         name = str::format("c", id.num()); break;
-      case DxsoRegisterType::ConstInt:      name = str::format("i", id.num()); break;
-      case DxsoRegisterType::ConstBool:     name = str::format("b", id.num()); break;
+      case DxsoRegisterType::Const:         name = str::format("cf", id.num()); break;
+      case DxsoRegisterType::ConstInt:      name = str::format("ci", id.num()); break;
+      case DxsoRegisterType::ConstBool:     name = str::format("cb", id.num()); break;
 
       default: break;
     }
+
+    if (deffed)
+      name += "_def";
 
     if (!name.empty())
       m_module.setDebugName(varId, name.c_str());
@@ -743,7 +747,7 @@ namespace dxvk {
     const auto& dst = ctx.dst;
     const auto& src = ctx.src;
 
-    const uint32_t typeId = spvType(dst);
+    const uint32_t typeId = spvTypeVar(dst);
 
     const auto opcode = ctx.instruction.opcode();
     uint32_t result;
@@ -793,14 +797,14 @@ namespace dxvk {
         result = this->emitInfinityClamp(typeId, result);
         break;
       case DxsoOpcode::Dp3: {
-        const uint32_t scalarTypeId = spvType(dst, 1);
+        const uint32_t scalarTypeId = spvTypeVar(dst, 1);
 
         result = m_module.opDot(scalarTypeId, emitRegisterLoad(src[0], 3), emitRegisterLoad(src[1], 3));
         result = this->emitScalarReplicant(typeId, result);
         break;
       }
       case DxsoOpcode::Dp4: {
-        const uint32_t scalarTypeId = spvType(dst, 1);
+        const uint32_t scalarTypeId = spvTypeVar(dst, 1);
 
         result = m_module.opDot(scalarTypeId, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
         result = this->emitScalarReplicant(typeId, result);
@@ -835,7 +839,7 @@ namespace dxvk {
         break;
       case DxsoOpcode::Nrm: {
         // Nrm is 3D...
-        const uint32_t scalarTypeId = spvType(dst, 1);
+        const uint32_t scalarTypeId = spvTypeVar(dst, 1);
 
         uint32_t vec3 = emitRegisterLoad(src[0], 3);
 
@@ -850,7 +854,7 @@ namespace dxvk {
           result);
       } break;
       case DxsoOpcode::SinCos: {
-        const uint32_t scalarTypeId = spvType(dst, 1);
+        const uint32_t scalarTypeId = spvTypeVar(dst, 1);
 
         std::array<uint32_t, 4> sincosVectorIndices = {
           m_module.opSin(scalarTypeId, emitRegisterLoad(src[0], 1)),
@@ -901,7 +905,7 @@ namespace dxvk {
         break;
       }
       case DxsoOpcode::Dp2Add: {
-        const uint32_t scalarTypeId = spvType(dst, 1);
+        const uint32_t scalarTypeId = spvTypeVar(dst, 1);
 
         result = m_module.opDot(scalarTypeId, emitRegisterLoad(src[0], 2), emitRegisterLoad(src[1], 2));
         result = m_module.opFAdd(scalarTypeId, result, emitRegisterLoad(src[2], 1));
@@ -915,9 +919,9 @@ namespace dxvk {
 
     result = emitDstOperandModifier(typeId, result, dst.saturate(), dst.partialPrecision());
 
-    auto& dstSpvReg = getSpirvRegister(dst);
-    dstSpvReg.varId = emitWriteMask(typeId, dstSpvReg.varId, result, dst.writeMask());
-    emitDebugName(dstSpvReg.varId, dst.registerId());
+    m_module.opStore(
+      spvPtr(dst),
+      emitWriteMask(typeId, spvLoad(dst), result, dst.writeMask()));
   }
 
   uint32_t DxsoCompiler::emitInfinityClamp(uint32_t typeId, uint32_t varId, bool vector) {
@@ -929,7 +933,7 @@ namespace dxvk {
   void DxsoCompiler::emitTextureSample(const DxsoInstructionContext& ctx) {
     const auto& dst = ctx.dst;
 
-    const uint32_t typeId = spvType(dst);
+    const uint32_t typeId = spvTypeVar(dst);
 
     uint32_t texcoordVarId;
     uint32_t samplerIdx;
@@ -946,7 +950,7 @@ namespace dxvk {
     else { // SM 1.0-1.3
       DxsoRegisterId texcoordId = { DxsoRegisterType::TexcoordOut, ctx.dst.registerId().num() };
 
-      texcoordVarId = getSpirvRegister(texcoordId, ctx.dst.centroid(), nullptr).varId;
+      texcoordVarId = spvLoad(texcoordId);
       samplerIdx = ctx.dst.registerId().num();
     }
 
@@ -984,9 +988,10 @@ namespace dxvk {
         imageOperands);
 
     result = emitDstOperandModifier(typeId, result, dst.saturate(), dst.partialPrecision());
-    auto& dstSpvReg = getSpirvRegister(dst);
-    dstSpvReg.varId = emitWriteMask(typeId, dstSpvReg.varId, result, dst.writeMask());
-    emitDebugName(dstSpvReg.varId, dst.registerId());
+
+    m_module.opStore(
+      spvPtr(dst),
+      emitWriteMask(typeId, spvLoad(dst), result, dst.writeMask()));
   }
 
   void DxsoCompiler::emitDclSampler(uint32_t idx, DxsoTextureType type) {
@@ -1109,38 +1114,50 @@ namespace dxvk {
   }
 
   void DxsoCompiler::emitDefF(const DxsoInstructionContext& ctx) {
+    const float* data = reinterpret_cast<const float*>(ctx.def.data());
+
     DxsoSpirvRegister reg;
     reg.regId = ctx.dst.registerId();
+    reg.ptrId = this->emitNewVariable(
+      reg.regId.type(),
+      m_module.constvec4f32(data[0], data[1], data[2], data[3]));
 
-    const float* data = reinterpret_cast<const float*>(ctx.def.data());
-    reg.varId = m_module.constvec4f32(data[0], data[1], data[2], data[3]);
+    this->emitDebugName(reg.ptrId, reg.regId, true);
 
     m_regs.push_back(reg);
   }
 
   void DxsoCompiler::emitDefI(const DxsoInstructionContext& ctx) {
+    const int* data = reinterpret_cast<const int*>(ctx.def.data());
+
     DxsoSpirvRegister reg;
     reg.regId = ctx.dst.registerId();
+    reg.ptrId = this->emitNewVariable(
+      reg.regId.type(),
+      m_module.constvec4i32(data[0], data[1], data[2], data[3]));
 
-    const auto& data = ctx.def;
-    reg.varId = m_module.constvec4i32(data[0], data[1], data[2], data[3]);
+    this->emitDebugName(reg.ptrId, reg.regId, true);
 
     m_regs.push_back(reg);
   }
 
   void DxsoCompiler::emitDefB(const DxsoInstructionContext& ctx) {
+    const int* data = reinterpret_cast<const int*>(ctx.def.data());
+
     DxsoSpirvRegister reg;
     reg.regId = ctx.dst.registerId();
+    reg.ptrId = this->emitNewVariable(
+      reg.regId.type(),
+      m_module.constBool(*data != 0));
 
-    bool data = ctx.def[0] != 0;
-    reg.varId = m_module.constBool(data);
+    this->emitDebugName(reg.ptrId, reg.regId, true);
 
     m_regs.push_back(reg);
   }
 
-  DxsoSpirvRegister& DxsoCompiler::getSpirvRegister(DxsoRegisterId id, bool centroid, DxsoRegister* relative) {
+  DxsoSpirvRegister DxsoCompiler::getSpirvRegister(DxsoRegisterId id, bool centroid, DxsoRegister* relative) {
     if (!id.constant() || (id.constant() && relative == nullptr)) {
-      for (auto& regMapping : m_regs) {
+      for (const auto& regMapping : m_regs) {
         if (regMapping.regId == id)
           return regMapping;
       }
@@ -1149,7 +1166,7 @@ namespace dxvk {
     return this->mapSpirvRegister(id, centroid, relative, nullptr);
   }
 
-  DxsoSpirvRegister& DxsoCompiler::getSpirvRegister(const DxsoRegister& reg) {
+  DxsoSpirvRegister DxsoCompiler::getSpirvRegister(const DxsoRegister& reg) {
     DxsoRegister relativeReg = reg.relativeRegister();
 
     return this->getSpirvRegister(
@@ -1160,7 +1177,7 @@ namespace dxvk {
         : nullptr);
   }
 
-  DxsoSpirvRegister& DxsoCompiler::mapSpirvRegister(DxsoRegisterId id, bool centroid, DxsoRegister* relative, const DxsoDeclaration* optionalPremadeDecl) {
+  DxsoSpirvRegister DxsoCompiler::mapSpirvRegister(DxsoRegisterId id, bool centroid, DxsoRegister* relative, const DxsoDeclaration* optionalPremadeDecl) {
     DxsoSpirvRegister spirvRegister;
     spirvRegister.regId = id;
 
@@ -1168,6 +1185,7 @@ namespace dxvk {
     uint32_t outputSlot = InvalidOutputSlot;
 
     spv::BuiltIn builtIn = spv::BuiltInMax;
+    uint32_t ptrId = 0;
 
     if (optionalPremadeDecl != nullptr) {
       const bool input = id.type() == DxsoRegisterType::Input
@@ -1257,8 +1275,6 @@ namespace dxvk {
     const bool input = inputSlot != InvalidInputSlot;
     const bool output = outputSlot != InvalidOutputSlot;
 
-    uint32_t varId = 0;
-
     if (id.constant()) {
       uint32_t member;
       switch (id.type()) {
@@ -1273,13 +1289,13 @@ namespace dxvk {
 
       uint32_t constantIdx = m_module.consti32(id.num());
 
-      uint32_t typeId = id.type() != DxsoRegisterType::ConstBool
-        ? getTypeId(id.type())
+      uint32_t uniformTypeId = id.type() != DxsoRegisterType::ConstBool
+        ? spvTypeVar(id.type())
         : m_module.defIntType(32, false);
 
       if (relative != nullptr) {
         DxsoRegisterId id = { DxsoRegisterType::Addr, relative->registerId().num() };
-        uint32_t r = getSpirvRegister(id, false, nullptr).varId;
+        uint32_t r = spvLoad(id);
 
         r = emitRegisterSwizzle(m_module.defIntType(32, 1), r, relative->swizzle(), 1);
 
@@ -1295,24 +1311,23 @@ namespace dxvk {
       const std::array<uint32_t, 2> indices =
       { { memberId, idx } };
 
-      const uint32_t ptrType = m_module.defPointerType(typeId, spv::StorageClassUniform);
-      uint32_t regPtr = m_module.opAccessChain(ptrType,
+      const uint32_t ptrType = m_module.defPointerType(uniformTypeId, spv::StorageClassUniform);
+      ptrId = m_module.opAccessChain(ptrType,
         m_cBuffer,
         indices.size(), indices.data());
 
-      varId = m_module.opLoad(typeId, regPtr);
-
       if (id.type() == DxsoRegisterType::ConstBool) {
-        varId = m_module.opBitFieldUExtract(getTypeId(id.type()), varId, constantIdx, 1);
+        uint32_t varId = m_module.opLoad(uniformTypeId, ptrId);
+
+        uint32_t boolTypeId = spvTypeVar(id.type());
+        varId = m_module.opBitFieldUExtract(boolTypeId, varId, constantIdx, 1);
+
+        uint32_t boolPtrTypeId = m_module.defPointerType(boolTypeId, spv::StorageClassPrivate);
+        ptrId = m_module.newVar(boolPtrTypeId, spv::StorageClassPrivate);
+        m_module.opStore(ptrId, varId);
       }
     } else if (input || output) {
-      uint32_t ptrId = this->emitNewVariable(
-        id.type(),
-        inputSlot != InvalidInputSlot
-        ? spv::StorageClassInput
-        : spv::StorageClassOutput);
-
-      emitDebugName(ptrId, id);
+      ptrId = this->emitNewVariable(id.type());
 
       if (input) {
         m_module.decorateLocation(ptrId, inputSlot);
@@ -1320,8 +1335,6 @@ namespace dxvk {
 
         if (centroid)
           m_module.decorate(ptrId, spv::DecorationCentroid);
-
-        varId = m_module.opLoad(getTypeId(id.type()), ptrId);
       }
       else {
         m_oPtrs[outputSlot] = ptrId;
@@ -1339,43 +1352,59 @@ namespace dxvk {
         m_module.decorateBuiltIn(ptrId, builtIn);
     }
 
-    if (varId == 0) {
+    if (ptrId == 0) {
+      ptrId = this->emitNewVariable(id.type());
+
       if ((m_programInfo.type() == DxsoProgramType::VertexShader && id.type() == DxsoRegisterType::Addr)
         || id.type() == DxsoRegisterType::ConstInt)
-        varId = m_module.constvec4i32(0, 0, 0, 0);
+        m_module.opStore(ptrId, m_module.constvec4i32(0, 0, 0, 0));
       else if (id.type() == DxsoRegisterType::Loop)
-        varId = m_module.consti32(0);
+        m_module.opStore(ptrId, m_module.consti32(0));
       else if (id.type() == DxsoRegisterType::ConstBool)
-        varId = m_module.constBool(0);
+        m_module.opStore(ptrId, m_module.constBool(0));
       else
-        varId = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
+        m_module.opStore(ptrId, m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f));
     }
-    else
-      emitDebugName(varId, id);
 
-    spirvRegister.varId = varId;
+    this->emitDebugName(ptrId, id);
+    spirvRegister.ptrId = ptrId;
 
     if (id.constant() && relative != nullptr)
-    {
-      m_relativeRegs.push_back(spirvRegister);
-      return m_relativeRegs[m_relativeRegs.size() - 1];
-    }
+      return spirvRegister;
 
     m_regs.push_back(spirvRegister);
-    return m_regs[m_regs.size() - 1];
+    return spirvRegister;
+  }
+
+  spv::StorageClass DxsoCompiler::spvStorage(DxsoRegisterType regType) {
+    if (m_programInfo.type() == DxsoProgramType::VertexShader
+     && regType == DxsoRegisterType::Addr)
+      return spv::StorageClassPrivate;
+
+    if (regType == DxsoRegisterType::Input
+     || regType == DxsoRegisterType::Texture)
+      return spv::StorageClassInput;
+
+    if (regType == DxsoRegisterType::RasterizerOut
+     || regType == DxsoRegisterType::Output
+     || regType == DxsoRegisterType::AttributeOut
+     || regType == DxsoRegisterType::ColorOut)
+      return spv::StorageClassOutput;
+
+    return spv::StorageClassPrivate;
   }
 
   DxsoSpirvRegister DxsoCompiler::findBuiltInOutputPtr(DxsoUsage usage, uint32_t index) {
     for (uint32_t i = 0; i < m_oDecls.size(); i++) {
-      if (m_oDecls[i].semantic.usage      == usage
-       && m_oDecls[i].semantic.usageIndex == index)
-        return DxsoSpirvRegister { m_oDecls[i].id, m_oPtrs[i] };
+      if (m_oDecls[i].semantic.usage == usage
+        && m_oDecls[i].semantic.usageIndex == index)
+        return DxsoSpirvRegister{ m_oDecls[i].id, m_oPtrs[i] };
     }
-    
+
     return DxsoSpirvRegister();
   }
 
-  uint32_t DxsoCompiler::getTypeId(DxsoRegisterType regType, uint32_t count) {
+  uint32_t DxsoCompiler::spvTypeVar(DxsoRegisterType regType, uint32_t count) {
     switch (regType) {
     case DxsoRegisterType::Addr: {
       if (m_programInfo.type() == DxsoProgramType::VertexShader) {

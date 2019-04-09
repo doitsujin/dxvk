@@ -8,11 +8,10 @@
 
 namespace dxvk {
 
-  using SpirvId = uint32_t;
-
   struct DxsoSpirvRegister {
-    DxsoRegisterId  regId;
-    SpirvId         varId;
+    DxsoRegisterId    regId = DxsoRegisterId(DxsoRegisterType::Temp, 0);
+
+    uint32_t          ptrId = 0;
   };
 
   /**
@@ -87,7 +86,6 @@ namespace dxvk {
     std::vector<DxvkResourceSlot> m_resourceSlots;
 
     std::vector<DxsoSpirvRegister> m_regs;
-    std::vector<DxsoSpirvRegister> m_relativeRegs;
 
     uint32_t m_constantBufferVarId = 0;
 
@@ -156,7 +154,7 @@ namespace dxvk {
     
     void emitMainFunctionBegin();
 
-    uint32_t emitNewVariable(DxsoRegisterType regType, spv::StorageClass storageClass);
+    uint32_t emitNewVariable(DxsoRegisterType regType, uint32_t value = 0);
 
     uint32_t emitRegisterLoad(const DxsoRegister& reg, uint32_t count = 4);
 
@@ -170,7 +168,7 @@ namespace dxvk {
 
     uint32_t emitWriteMask(uint32_t typeId, uint32_t dst, uint32_t src, DxsoRegMask writeMask);
 
-    void     emitDebugName(uint32_t varId, DxsoRegisterId id);
+    void     emitDebugName(uint32_t varId, DxsoRegisterId id, bool deffed = false);
 
     uint32_t emitScalarReplicant(uint32_t typeId, uint32_t varId);
 
@@ -192,23 +190,44 @@ namespace dxvk {
     ///////////////////////////////////
     // Health Warning: Can cause m_regs to be
     // realloced. Don't call me unless you accept this fact.
-    DxsoSpirvRegister& getSpirvRegister(DxsoRegisterId id, bool centroid, DxsoRegister* relative);
-    DxsoSpirvRegister& getSpirvRegister(const DxsoRegister& reg);
-    uint32_t spvId(const DxsoRegister& reg) {
-      return getSpirvRegister(reg).varId;
+    DxsoSpirvRegister getSpirvRegister(DxsoRegisterId id, bool centroid, DxsoRegister* relative);
+    DxsoSpirvRegister getSpirvRegister(const DxsoRegister& reg);
+
+    uint32_t spvPtr(const DxsoRegister& reg) {
+      return getSpirvRegister(reg).ptrId;
     }
-    DxsoSpirvRegister& mapSpirvRegister(DxsoRegisterId id, bool centroid, DxsoRegister* relative, const DxsoDeclaration* optionalPremadeDecl);
-    
+
+    DxsoSpirvRegister mapSpirvRegister(DxsoRegisterId id, bool centroid, DxsoRegister* relative, const DxsoDeclaration* optionalPremadeDecl);
+
+    spv::StorageClass spvStorage(DxsoRegisterType regType);
+
     DxsoSpirvRegister findBuiltInOutputPtr(DxsoUsage usage, uint32_t index);
 
-    uint32_t getTypeId(DxsoRegisterType regType, uint32_t count = 4);
-    uint32_t spvType(const DxsoRegister& reg, uint32_t count = 4) {
-      return getTypeId(reg.registerId().type(), count);
+    uint32_t spvLoad(DxsoRegisterId regId) {
+      return m_module.opLoad(
+        spvTypeVar(regId.type()),
+        getSpirvRegister(regId, false, nullptr).ptrId);
     }
-    uint32_t getPointerTypeId(DxsoRegisterType regType, spv::StorageClass storageClass) {
+
+    uint32_t spvLoad(const DxsoRegister& reg) {
+      return m_module.opLoad(
+        spvTypeVar(reg.registerId().type()),
+        getSpirvRegister(reg).ptrId);
+    }
+
+    uint32_t spvTypeVar(DxsoRegisterType regType, uint32_t count = 4);
+    uint32_t spvTypeVar(const DxsoRegister& reg, uint32_t count = 4) {
+      return spvTypeVar(reg.registerId().type(), count);
+    }
+    uint32_t spvTypePtr(DxsoRegisterType regType, uint32_t count = 4) {
       return m_module.defPointerType(
-        this->getTypeId(regType),
-        storageClass);
+        this->spvTypeVar(regType, count),
+        this->spvStorage(regType));
+    }
+    uint32_t spvTypePtr(const DxsoRegister& reg, uint32_t count = 4) {
+      return spvTypePtr(
+        reg.registerId().type(),
+        count);
     }
 
     ///////////////////////////////////////////
@@ -216,10 +235,6 @@ namespace dxvk {
     uint32_t allocateSlot(bool input, DxsoRegisterId id, DxsoSemantic semantic);
 
     std::array<uint32_t, 16> m_oPtrs;
-
-    uint32_t getTypeId(DxsoSpirvRegister& reg) {
-      return getTypeId(reg.regId.type());
-    }
 
   };
 
