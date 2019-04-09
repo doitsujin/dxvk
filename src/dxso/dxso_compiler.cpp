@@ -91,6 +91,14 @@ namespace dxvk {
     case DxsoOpcode::Dp2Add:
       return this->emitVectorAlu(ctx);
 
+    case DxsoOpcode::If:
+    case DxsoOpcode::Ifc:
+      return this->emitControlFlowIf(ctx);
+    case DxsoOpcode::Else:
+      return this->emitControlFlowElse(ctx);
+    case DxsoOpcode::EndIf:
+      return this->emitControlFlowEndIf(ctx);
+
     case DxsoOpcode::Tex:
     case DxsoOpcode::TexLdl:
       return this->emitTextureSample(ctx);
@@ -743,6 +751,95 @@ namespace dxvk {
     return m_module.opCompositeConstruct(vectorTypeId, replicantIndices.size(), replicantIndices.data());
   }
 
+  void DxsoCompiler::emitControlFlowIf(const DxsoInstructionContext& ctx) {
+    const auto opcode = ctx.instruction.opcode();
+
+    uint32_t result;
+
+    if (opcode == DxsoOpcode::Ifc) {
+      const uint32_t typeId = m_module.defBoolType();
+
+      uint32_t a = emitRegisterLoad(ctx.src[0]);
+      uint32_t b = emitRegisterLoad(ctx.src[1]);
+
+      switch (ctx.instruction.comparison()) {
+        case DxsoComparison::Never:        result = m_module.constBool             (false); break;
+        case DxsoComparison::GreaterThan:  result = m_module.opFOrdGreaterThan     (typeId, a, b); break;
+        case DxsoComparison::Equal:        result = m_module.opFOrdEqual           (typeId, a, b); break;
+        case DxsoComparison::GreaterEqual: result = m_module.opFOrdGreaterThanEqual(typeId, a, b); break;
+        case DxsoComparison::LessThan:     result = m_module.opFOrdLessThan        (typeId, a, b); break;
+        case DxsoComparison::NotEqual:     result = m_module.opFOrdNotEqual        (typeId, a, b); break;
+        case DxsoComparison::LessEqual:    result = m_module.opFOrdLessThanEqual   (typeId, a, b); break;
+        case DxsoComparison::Always:       result = m_module.constBool             (true); break;
+      }
+    } else
+      result = emitRegisterLoad(ctx.src[0]);
+
+    // Declare the 'if' block. We do not know if there
+    // will be an 'else' block or not, so we'll assume
+    // that there is one and leave it empty otherwise.
+    DxsoCfgBlock block;
+    block.type = DxsoCfgBlockType::If;
+    block.b_if.ztestId   = result;
+    block.b_if.labelIf   = m_module.allocateId();
+    block.b_if.labelElse = 0;
+    block.b_if.labelEnd  = m_module.allocateId();
+    block.b_if.headerPtr = m_module.getInsertionPtr();
+    m_controlFlowBlocks.push_back(block);
+
+    // We'll insert the branch instruction when closing
+    // the block, since we don't know whether or not an
+    // else block is needed right now.
+    m_module.opLabel(block.b_if.labelIf);
+  }
+
+  void DxsoCompiler::emitControlFlowElse(const DxsoInstructionContext& ctx) {
+    if (m_controlFlowBlocks.size() == 0
+     || m_controlFlowBlocks.back().type != DxsoCfgBlockType::If
+     || m_controlFlowBlocks.back().b_if.labelElse != 0)
+      throw DxvkError("DxsoCompiler: 'Else' without 'If' found");
+    
+    // Set the 'Else' flag so that we do
+    // not insert a dummy block on 'EndIf'
+    DxsoCfgBlock& block = m_controlFlowBlocks.back();
+    block.b_if.labelElse = m_module.allocateId();
+    
+    // Close the 'If' block by branching to
+    // the merge block we declared earlier
+    m_module.opBranch(block.b_if.labelEnd);
+    m_module.opLabel (block.b_if.labelElse);
+  }
+
+  void DxsoCompiler::emitControlFlowEndIf(const DxsoInstructionContext& ctx) {
+    if (m_controlFlowBlocks.size() == 0
+     || m_controlFlowBlocks.back().type != DxsoCfgBlockType::If)
+      throw DxvkError("DxsoCompiler: 'EndIf' without 'If' found");
+    
+    // Remove the block from the stack, it's closed
+    DxsoCfgBlock block = m_controlFlowBlocks.back();
+    m_controlFlowBlocks.pop_back();
+    
+    // Write out the 'if' header
+    m_module.beginInsertion(block.b_if.headerPtr);
+    
+    m_module.opSelectionMerge(
+      block.b_if.labelEnd,
+      spv::SelectionControlMaskNone);
+    
+    m_module.opBranchConditional(
+      block.b_if.ztestId,
+      block.b_if.labelIf,
+      block.b_if.labelElse != 0
+        ? block.b_if.labelElse
+        : block.b_if.labelEnd);
+    
+    m_module.endInsertion();
+    
+    // End the active 'if' or 'else' block
+    m_module.opBranch(block.b_if.labelEnd);
+    m_module.opLabel (block.b_if.labelEnd);
+  }
+
   void DxsoCompiler::emitVectorAlu(const DxsoInstructionContext& ctx) {
     const auto& dst = ctx.dst;
     const auto& src = ctx.src;
@@ -1294,8 +1391,7 @@ namespace dxvk {
         : m_module.defIntType(32, false);
 
       if (relative != nullptr) {
-        DxsoRegisterId id = { DxsoRegisterType::Addr, relative->registerId().num() };
-        uint32_t r = spvLoad(id);
+        uint32_t r = spvLoad(relative->registerId());
 
         r = emitRegisterSwizzle(m_module.defIntType(32, 1), r, relative->swizzle(), 1);
 

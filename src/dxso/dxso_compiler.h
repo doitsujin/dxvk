@@ -26,6 +26,26 @@ namespace dxvk {
     uint32_t builtinBaseInstance = 0;
   };
 
+  struct DxsoCfgBlockIf {
+    uint32_t ztestId;
+    uint32_t labelIf;
+    uint32_t labelElse;
+    uint32_t labelEnd;
+    size_t   headerPtr;
+  };
+
+  enum class DxsoCfgBlockType : uint32_t {
+    If
+  };
+
+  struct DxsoCfgBlock {
+    DxsoCfgBlockType type;
+    
+    union {
+      DxsoCfgBlockIf     b_if;
+    };
+  };
+
   /**
    * \brief Pixel shader-specific structure
    */
@@ -172,6 +192,10 @@ namespace dxvk {
 
     uint32_t emitScalarReplicant(uint32_t typeId, uint32_t varId);
 
+    void emitControlFlowIf(const DxsoInstructionContext& ctx);
+    void emitControlFlowElse(const DxsoInstructionContext& ctx);
+    void emitControlFlowEndIf(const DxsoInstructionContext& ctx);
+
     void emitVectorAlu(const DxsoInstructionContext& ctx);
 
     uint32_t emitInfinityClamp(uint32_t typeId, uint32_t varId, bool vector = true);
@@ -229,6 +253,11 @@ namespace dxvk {
         reg.registerId().type(),
         count);
     }
+
+    ///////////////////////////////////////////////
+    // Control flow information. Stores labels for
+    // currently active if-else blocks and loops.
+    std::vector<DxsoCfgBlock> m_controlFlowBlocks;
 
     ///////////////////////////////////////////
     // Reads decls and generates an input slot.

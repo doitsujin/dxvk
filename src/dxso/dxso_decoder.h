@@ -38,6 +38,18 @@ namespace dxvk {
     Destination
   };
 
+  enum class DxsoComparison : uint32_t {
+                             // < = >
+    Never        = 0,        // 0 0 0
+    GreaterThan  = 1,        // 0 0 1
+    Equal        = 2,        // 0 1 0
+    GreaterEqual = 3,        // 0 1 1
+    LessThan     = 4,        // 1 0 0
+    NotEqual     = 5,        // 1 0 1
+    LessEqual    = 6,        // 1 1 0
+    Always       = 7         // 1 1 1
+  };
+
   class DxsoShaderInstruction {
 
   public:
@@ -55,6 +67,10 @@ namespace dxvk {
 
     uint32_t instructionLength() const {
       return m_instructionLength;
+    }
+
+    DxsoComparison comparison() const {
+      return static_cast<DxsoComparison>(this->opcodeSpecificData());
     }
 
   private:
