@@ -1400,23 +1400,25 @@ namespace dxvk {
           constantIdx, r);
       }
 
-      uint32_t idx = id.type() != DxsoRegisterType::ConstBool
-        ? constantIdx
-        : m_module.consti32(0);
-
       const std::array<uint32_t, 2> indices =
-      { { memberId, idx } };
+      { { memberId, constantIdx } };
 
       const uint32_t ptrType = m_module.defPointerType(uniformTypeId, spv::StorageClassUniform);
       ptrId = m_module.opAccessChain(ptrType,
         m_cBuffer,
-        indices.size(), indices.data());
+        id.type() != DxsoRegisterType::ConstBool ? 2 : 1, indices.data());
 
       if (id.type() == DxsoRegisterType::ConstBool) {
         uint32_t varId = m_module.opLoad(uniformTypeId, ptrId);
 
         uint32_t boolTypeId = spvTypeVar(id.type());
-        varId = m_module.opBitFieldUExtract(boolTypeId, varId, constantIdx, 1);
+        varId = m_module.opBitFieldUExtract(
+          uniformTypeId,
+          varId,
+          constantIdx,
+          m_module.consti32(1));
+
+        varId = m_module.opINotEqual(boolTypeId, varId, m_module.constu32(0));
 
         uint32_t boolPtrTypeId = m_module.defPointerType(boolTypeId, spv::StorageClassPrivate);
         ptrId = m_module.newVar(boolPtrTypeId, spv::StorageClassPrivate);
