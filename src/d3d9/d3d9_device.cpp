@@ -3630,7 +3630,7 @@ namespace dxvk {
     m_flags.clr(D3D9DeviceFlag::DirtyRasterizerState);
 
     // TODO: Can we get a specific non-magic number in Vulkan for this based on device/adapter?
-    constexpr float DepthBiasFactor = 2e23f;
+    constexpr float DepthBiasFactor = float(1 << 23);
 
     auto& rs = m_state.renderStates;
 
