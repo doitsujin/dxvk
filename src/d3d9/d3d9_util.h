@@ -121,6 +121,7 @@ namespace dxvk {
   VkStencilOp DecodeStencilOp(D3DSTENCILOP Op);
   VkCullModeFlags DecodeCullMode(D3DCULL Mode);
   VkPolygonMode DecodeFillMode(D3DFILLMODE Mode);
+  VkIndexType DecodeIndexType(D3D9Format Format);
 
   uint32_t DecltypeSize(D3DDECLTYPE Type);
 

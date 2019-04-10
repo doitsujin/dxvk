@@ -289,6 +289,12 @@ namespace dxvk {
     }
   }
 
+  VkIndexType DecodeIndexType(D3D9Format Format) {
+    return Format == D3D9Format::INDEX16
+                   ? VK_INDEX_TYPE_UINT16
+                   : VK_INDEX_TYPE_UINT32;
+  }
+
   uint32_t DecltypeSize(D3DDECLTYPE Type) {
     switch (Type) {
       case D3DDECLTYPE_FLOAT1:    return 1 * sizeof(float);

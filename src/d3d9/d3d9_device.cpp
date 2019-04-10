@@ -1577,7 +1577,7 @@ namespace dxvk {
         0, 0);
     });
 
-    m_flags.set(D3D9DeviceFlag::UpDirtied);
+    m_flags.set(D3D9DeviceFlag::UpDirtiedVertices);
 
     return D3D_OK;
   }
@@ -1591,7 +1591,47 @@ namespace dxvk {
           D3DFORMAT        IndexDataFormat,
     const void*            pVertexStreamZeroData,
           UINT             VertexStreamZeroStride) {
-    Logger::warn("Direct3DDevice9Ex::DrawIndexedPrimitiveUP: Stub");
+    auto lock = LockDevice();
+
+    PrepareDraw(true);
+
+    const uint32_t indexCount  = VertexCount(PrimitiveType, PrimitiveCount);
+    const uint32_t vertexSize  = (MinVertexIndex + NumVertices) * VertexStreamZeroStride;
+
+    const uint32_t indexSize = IndexDataFormat == D3DFMT_INDEX16 ? 2 : 4;
+    const uint32_t indicesSize = indexCount * indexSize;
+
+    const uint32_t upSize = vertexSize + indicesSize;
+
+    AllocUpBuffer(upSize);
+
+    DxvkBufferSliceHandle physSlice = m_upBuffer->allocSlice();
+
+    std::memcpy(physSlice.mapPtr, pVertexStreamZeroData, upSize);
+
+    EmitCs([
+      cState        = InputAssemblyState(PrimitiveType),
+      cIndexCount   = indexCount,
+      cVertexSize   = vertexSize,
+      cBuffer       = m_upBuffer,
+      cBufferSlice  = physSlice,
+      cStride       = VertexStreamZeroStride,
+      cIndexType    = DecodeIndexType(
+                        static_cast<D3D9Format>(IndexDataFormat))
+    ](DxvkContext* ctx) {
+      ctx->invalidateBuffer(cBuffer, cBufferSlice);
+      ctx->bindVertexBuffer(0, DxvkBufferSlice(cBuffer), cStride);
+      ctx->bindIndexBuffer(DxvkBufferSlice(cBuffer, cVertexSize, cBuffer->info().size - cVertexSize), cIndexType);
+      ctx->setInputAssemblyState(cState);
+      ctx->drawIndexed(
+        cIndexCount, 1,
+        0,
+        0, 0);
+    });
+
+    m_flags.set(D3D9DeviceFlag::UpDirtiedVertices);
+    m_flags.set(D3D9DeviceFlag::UpDirtiedIndices);
+
     return D3D_OK;
   }
 
@@ -3798,14 +3838,19 @@ namespace dxvk {
     if (m_flags.test(D3D9DeviceFlag::DirtyInputLayout))
       BindInputLayout();
 
-    if (!up && m_flags.test(D3D9DeviceFlag::UpDirtied)) {
-      m_flags.clr(D3D9DeviceFlag::UpDirtied);
+    if (!up && m_flags.test(D3D9DeviceFlag::UpDirtiedVertices)) {
+      m_flags.clr(D3D9DeviceFlag::UpDirtiedVertices);
       if (m_state.vertexBuffers[0].vertexBuffer != nullptr)
         BindVertexBuffer(
           0,
           m_state.vertexBuffers[0].vertexBuffer,
           m_state.vertexBuffers[0].offset,
           m_state.vertexBuffers[0].stride);
+    }
+
+    if (!up && m_flags.test(D3D9DeviceFlag::UpDirtiedIndices)) {
+      m_flags.clr(D3D9DeviceFlag::UpDirtiedIndices);
+      BindIndices();
     }
 
     UpdateConstants();
@@ -3940,9 +3985,7 @@ namespace dxvk {
                       ? buffer->Desc()->Format
                       : D3D9Format::INDEX32;
 
-    VkIndexType indexType = format == D3D9Format::INDEX16
-                          ? VK_INDEX_TYPE_UINT16
-                          : VK_INDEX_TYPE_UINT32;
+    const VkIndexType indexType = DecodeIndexType(format);
 
     EmitCs([
       cBufferSlice = buffer != nullptr ? buffer->GetBufferSlice(D3D9_COMMON_BUFFER_TYPE_REAL) : DxvkBufferSlice(),

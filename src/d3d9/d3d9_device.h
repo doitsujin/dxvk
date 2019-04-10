@@ -46,7 +46,8 @@ namespace dxvk {
     DirtyExtraState,
     DirtyRenderStateBuffer,
     DirtyInputLayout,
-    UpDirtied,
+    UpDirtiedVertices,
+    UpDirtiedIndices,
     ExtendedDevice
   };
 
