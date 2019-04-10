@@ -1395,7 +1395,13 @@ namespace dxvk {
         : m_module.defIntType(32, false);
 
       if (relative != nullptr) {
-        DxsoRegisterId id = { DxsoRegisterType::Addr, relative->registerId().num() };
+        DxsoRegisterId id;
+
+        if (relative->hasRelativeToken())
+          id = relative->registerId();
+        else
+          id = { DxsoRegisterType::Addr, relative->registerId().num() };
+
         uint32_t r = spvLoad(id);
 
         r = emitRegisterSwizzle(m_module.defIntType(32, 1), r, relative->swizzle(), 1);

@@ -232,6 +232,10 @@ namespace dxvk {
       return isRelative() && relativeAddressingUsesToken(context);
     }
 
+    bool hasRelativeToken() const {
+      return m_hasRelativeToken;
+    }
+
   private:
 
     DxsoRegisterType registerType() const {
@@ -250,6 +254,7 @@ namespace dxvk {
 
     uint32_t                    m_token;
     uint32_t                    m_relativeToken;
+    bool                        m_hasRelativeToken;
 
   };
 

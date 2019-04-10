@@ -85,6 +85,7 @@ namespace dxvk {
     if (this->isRelative()
      && this->relativeAddressingUsesToken(context)) {
       m_relativeToken = slice.read();
+      m_hasRelativeToken = true;
     }
   }
 
