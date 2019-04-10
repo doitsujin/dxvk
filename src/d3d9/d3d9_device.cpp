@@ -1606,8 +1606,10 @@ namespace dxvk {
     AllocUpBuffer(upSize);
 
     DxvkBufferSliceHandle physSlice = m_upBuffer->allocSlice();
+    uint8_t* data = reinterpret_cast<uint8_t*>(physSlice.mapPtr);
 
-    std::memcpy(physSlice.mapPtr, pVertexStreamZeroData, upSize);
+    std::memcpy(data, pVertexStreamZeroData, vertexSize);
+    std::memcpy(data + vertexSize, pIndexData, indicesSize);
 
     EmitCs([
       cState        = InputAssemblyState(PrimitiveType),
