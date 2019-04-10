@@ -854,10 +854,10 @@ namespace dxvk {
     uint32_t result;
     switch (opcode) {
       case DxsoOpcode::Mov:
-        result = emitRegisterLoad(src[0]);
-        break;
       case DxsoOpcode::Mova: {
-        if (src[0].registerId().type() != DxsoRegisterType::ConstInt) {
+        if (dst.registerId().type() == DxsoRegisterType::Addr
+         && m_programInfo.type() == DxsoProgramType::VertexShader
+         && src[0].registerId().type() != DxsoRegisterType::ConstInt) {
           result = m_module.opRound(
             m_module.defVectorType(m_module.defFloatType(32), 4),
             emitRegisterLoad(src[0]));
@@ -1395,7 +1395,8 @@ namespace dxvk {
         : m_module.defIntType(32, false);
 
       if (relative != nullptr) {
-        uint32_t r = spvLoad(relative->registerId());
+        DxsoRegisterId id = { DxsoRegisterType::Addr, relative->registerId().num() };
+        uint32_t r = spvLoad(id);
 
         r = emitRegisterSwizzle(m_module.defIntType(32, 1), r, relative->swizzle(), 1);
 
