@@ -54,14 +54,15 @@ namespace dxvk {
     imageInfo.stages |= m_device->GetEnabledShaderStages();
     imageInfo.access |= VK_ACCESS_SHADER_READ_BIT;
 
-    if (m_desc.Usage & D3DUSAGE_RENDERTARGET || m_desc.Usage & D3DUSAGE_AUTOGENMIPMAP) {
-      imageInfo.usage  |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    bool possibleRT = m_desc.Usage & D3DUSAGE_RENDERTARGET
+                   || m_desc.Offscreen
+                   || m_desc.Usage & D3DUSAGE_AUTOGENMIPMAP;
 
-      if (m_desc.Usage & D3DUSAGE_RENDERTARGET) {
-        imageInfo.stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        imageInfo.access |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
-                         | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-      }
+    if (possibleRT) {
+      imageInfo.usage  |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+      imageInfo.stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+      imageInfo.access |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
+                        | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
     }
 
     if (m_desc.Usage & D3DUSAGE_DEPTHSTENCIL) {
@@ -147,7 +148,7 @@ namespace dxvk {
     if (m_desc.Usage & D3DUSAGE_DEPTHSTENCIL)
       CreateDepthStencilView();
 
-    if (m_desc.Usage & D3DUSAGE_RENDERTARGET)
+    if (possibleRT)
       CreateRenderTargetView();
 
     for (uint32_t i = 0; i < m_readOnlySubresources.size(); i++)
