@@ -3736,7 +3736,7 @@ namespace dxvk {
     auto samplerInfo = RemapStateSamplerShader(Sampler);
 
     const uint32_t slotId = computeResourceSlotId(
-      samplerInfo.first, DxsoBindingType::ImageSampler,
+      samplerInfo.first, DxsoBindingType::Image,
       samplerInfo.second);
 
     EmitCs([
