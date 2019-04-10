@@ -670,7 +670,11 @@ namespace dxvk {
 
     uint32_t result = spvLoad(reg);
 
-    result = emitRegisterSwizzle(typeId, result, reg.swizzle(), count);
+    // These two are scalar types so we don't want to swizzle them.
+    if (reg.registerId().type() != DxsoRegisterType::ConstBool
+     && reg.registerId().type() != DxsoRegisterType::Loop)
+      result = emitRegisterSwizzle(typeId, result, reg.swizzle(), count);
+
     result = emitSrcOperandModifier(typeId, result, reg.modifier(), count);
 
     return result;
