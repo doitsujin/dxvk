@@ -278,10 +278,8 @@ namespace dxvk {
     const SpirvCodeBuffer fsCode(dxgi_presenter_frag);
 
     const std::array<DxvkResourceSlot, 4> fsResourceSlots = { {
-      { BindingIds::Sampler,  VK_DESCRIPTOR_TYPE_SAMPLER,        VK_IMAGE_VIEW_TYPE_MAX_ENUM },
-      { BindingIds::Texture,  VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  VK_IMAGE_VIEW_TYPE_2D       },
-      { BindingIds::GammaSmp, VK_DESCRIPTOR_TYPE_SAMPLER,        VK_IMAGE_VIEW_TYPE_MAX_ENUM },
-      { BindingIds::GammaTex, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,  VK_IMAGE_VIEW_TYPE_1D       },
+      { BindingIds::Image,  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,  VK_IMAGE_VIEW_TYPE_2D },
+      { BindingIds::Gamma,  VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,  VK_IMAGE_VIEW_TYPE_1D },
     } };
 
     m_vertShader = m_device->createShader(
@@ -399,11 +397,11 @@ namespace dxvk {
       m_context->setInputAssemblyState(m_iaState);
       m_context->setInputLayout(0, nullptr, 0, nullptr);
 
-      m_context->bindResourceSampler(BindingIds::Sampler, fitSize ? m_samplerFitting : m_samplerScaling);
-      m_context->bindResourceSampler(BindingIds::GammaSmp, m_gammaSampler);
+      m_context->bindResourceSampler(BindingIds::Image, fitSize ? m_samplerFitting : m_samplerScaling);
+      m_context->bindResourceSampler(BindingIds::Gamma, m_gammaSampler);
 
-      m_context->bindResourceView(BindingIds::Texture, m_swapImageView, nullptr);
-      m_context->bindResourceView(BindingIds::GammaTex, m_gammaTextureView, nullptr);
+      m_context->bindResourceView(BindingIds::Image, m_swapImageView, nullptr);
+      m_context->bindResourceView(BindingIds::Gamma, m_gammaTextureView, nullptr);
 
       m_context->draw(4, 1, 0, 0);
 

@@ -90,10 +90,8 @@ namespace dxvk {
     void createRenderTargetViews();
 
     enum BindingIds : uint32_t {
-      Sampler = 0,
-      Texture = 1,
-      GammaSmp = 2,
-      GammaTex = 3,
+      Image,
+      Gamma
     };
 
     Direct3DDevice9Ex* m_parent;
