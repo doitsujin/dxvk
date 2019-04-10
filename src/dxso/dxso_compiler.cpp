@@ -1601,8 +1601,6 @@ namespace dxvk {
     bool transient = (input  && m_programInfo.type() == DxsoProgramType::PixelShader)
                   || (!input && m_programInfo.type() == DxsoProgramType::VertexShader);
 
-    transient = transient && m_programInfo.majorVersion() < 3;
-
     if (!transient)
       slot = id.num();
     else {
