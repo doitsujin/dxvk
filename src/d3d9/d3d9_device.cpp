@@ -3629,9 +3629,12 @@ namespace dxvk {
   void Direct3DDevice9Ex::BindRasterizerState() {
     m_flags.clr(D3D9DeviceFlag::DirtyRasterizerState);
 
+    // TODO: Can we get a specific non-magic number in Vulkan for this based on device/adapter?
+    constexpr float DepthBiasFactor = 2e23f;
+
     auto& rs = m_state.renderStates;
 
-    float depthBias            = bit::cast<float>(rs[D3DRS_DEPTHBIAS]);
+    float depthBias            = bit::cast<float>(rs[D3DRS_DEPTHBIAS]) * DepthBiasFactor;
     float slopeScaledDepthBias = bit::cast<float>(rs[D3DRS_SLOPESCALEDEPTHBIAS]);
 
     DxvkRasterizerState state;
