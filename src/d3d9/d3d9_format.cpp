@@ -203,7 +203,7 @@ namespace dxvk {
 
       case D3D9Format::A8L8: return {
         VK_FORMAT_R8G8_UNORM,
-        VK_FORMAT_R8G8_SRGB,
+        VK_FORMAT_UNDEFINED,
         VK_IMAGE_ASPECT_COLOR_BIT,
         { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R,
           VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G }};
@@ -217,7 +217,7 @@ namespace dxvk {
 
       case D3D9Format::V8U8: return {
         VK_FORMAT_R8G8_SNORM,
-        VK_FORMAT_R8G8_SRGB,
+        VK_FORMAT_UNDEFINED,
         VK_IMAGE_ASPECT_COLOR_BIT };
 
       case D3D9Format::L6V5U5: return {}; // Unsupported
