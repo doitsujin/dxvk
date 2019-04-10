@@ -1620,7 +1620,7 @@ namespace dxvk {
                         static_cast<D3D9Format>(IndexDataFormat))
     ](DxvkContext* ctx) {
       ctx->invalidateBuffer(cBuffer, cBufferSlice);
-      ctx->bindVertexBuffer(0, DxvkBufferSlice(cBuffer), cStride);
+      ctx->bindVertexBuffer(0, DxvkBufferSlice(cBuffer, 0, cVertexSize), cStride);
       ctx->bindIndexBuffer(DxvkBufferSlice(cBuffer, cVertexSize, cBuffer->info().size - cVertexSize), cIndexType);
       ctx->setInputAssemblyState(cState);
       ctx->drawIndexed(
