@@ -785,6 +785,7 @@ namespace dxvk {
       uint32_t b = emitRegisterLoad(ctx.src[1]);
 
       switch (ctx.instruction.comparison()) {
+        default:
         case DxsoComparison::Never:        result = m_module.constBool             (false); break;
         case DxsoComparison::GreaterThan:  result = m_module.opFOrdGreaterThan     (typeId, a, b); break;
         case DxsoComparison::Equal:        result = m_module.opFOrdEqual           (typeId, a, b); break;
