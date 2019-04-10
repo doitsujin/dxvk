@@ -1483,8 +1483,16 @@ namespace dxvk {
      && regType == DxsoRegisterType::Addr)
       return spv::StorageClassPrivate;
 
+    bool texture = m_programInfo.type() == DxsoProgramType::PixelShader
+                && regType == DxsoRegisterType::Texture;
+
+    // SM 2+ or 1.4
+    texture &= m_programInfo.majorVersion() >= 2
+           || (m_programInfo.majorVersion() == 1
+            && m_programInfo.minorVersion() == 4);
+
     if (regType == DxsoRegisterType::Input
-     || regType == DxsoRegisterType::Texture)
+     || texture)
       return spv::StorageClassInput;
 
     if (regType == DxsoRegisterType::RasterizerOut
