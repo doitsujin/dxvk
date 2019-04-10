@@ -155,4 +155,9 @@ namespace dxvk {
     RasterOutPointSize = 2
   };
 
+  enum DxsoMiscTypeIndices : uint32_t {
+    MiscTypePosition,
+    MiscTypeFace,
+  };
+
 }

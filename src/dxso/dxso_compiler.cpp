@@ -733,7 +733,7 @@ namespace dxvk {
     switch (id.type()) {
       case DxsoRegisterType::Temp:          name = str::format("r", id.num()); break;
       case DxsoRegisterType::Input:         name = str::format("v", id.num()); break;
-      case DxsoRegisterType::Addr:          name = str::format(ps ? "t" : "a", id.num()); break;
+      case DxsoRegisterType::Addr:          name = ps ? str::format("t", id.num()) : "a"; break;
       case DxsoRegisterType::RasterizerOut: {
         std::string suffix = "Unknown";
         if (id.num() == RasterOutPosition)
@@ -741,17 +741,22 @@ namespace dxvk {
         else if (id.num() == RasterOutFog)
           suffix = "Fog";
         else
-          suffix = "Psize";
+          suffix = "Pts";
         name = str::format("o", suffix);
         break;
       }
       case DxsoRegisterType::AttributeOut:  name = str::format("oC", id.num()); break;
       case DxsoRegisterType::Output:        name = str::format("o", id.num()); break;
       case DxsoRegisterType::ColorOut:      name = str::format("oC", id.num()); break;
-      case DxsoRegisterType::DepthOut:      name = str::format("oDepth", id.num()); break;
+      case DxsoRegisterType::DepthOut:      name = "oDepth"; break;
       case DxsoRegisterType::Loop:          name = str::format("l", id.num()); break;
       case DxsoRegisterType::TempFloat16:   name = str::format("h", id.num()); break;
-      case DxsoRegisterType::MiscType:      name = str::format("m", id.num()); break;
+      case DxsoRegisterType::MiscType: {
+        if (id.num() == MiscTypePosition)
+          name = "vPos";
+        else
+          name = "vFace";
+      }
       case DxsoRegisterType::Predicate:     name = str::format("p", id.num()); break;
 
       case DxsoRegisterType::Const:         name = str::format("cf", id.num()); break;
@@ -1400,6 +1405,14 @@ namespace dxvk {
         auto& dcl = m_oDecls[outputSlot = allocateSlot(false, id, semantic)];
         dcl.id = id;
         dcl.semantic = semantic;
+      }
+      else if (id.type() == DxsoRegisterType::MiscType) {
+        if (id.num() == MiscTypePosition) {
+          Logger::warn("DxsoCompiler::mapSpirvRegister: unimplemented vPos used.");
+        }
+        else { // MiscTypeFace
+          Logger::warn("DxsoCompiler::mapSpirvRegister: unimplemented vFace used.");
+        }
       }
     }
 
