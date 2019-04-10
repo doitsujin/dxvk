@@ -913,13 +913,13 @@ namespace dxvk {
     BindFramebuffer();
 
     if (RenderTargetIndex == 0) {
-      auto rtv = m_state.renderTargets[0]->GetRenderTargetView(false);
+      const auto* desc = m_state.renderTargets[0]->GetCommonTexture()->Desc();
 
       D3DVIEWPORT9 viewport;
       viewport.X = 0;
       viewport.Y = 0;
-      viewport.Width = rtv->image()->info().extent.width;
-      viewport.Height = rtv->image()->info().extent.height;
+      viewport.Width = desc->Width;
+      viewport.Height = desc->Height;
       viewport.MinZ = 0.0f;
       viewport.MaxZ = 1.0f;
       m_state.viewport = viewport;
@@ -927,8 +927,8 @@ namespace dxvk {
       RECT scissorRect;
       scissorRect.left = 0;
       scissorRect.top = 0;
-      scissorRect.right = rtv->image()->info().extent.width;
-      scissorRect.bottom = rtv->image()->info().extent.height;
+      scissorRect.right = desc->Width;
+      scissorRect.bottom = desc->Height;
       m_state.scissorRect = scissorRect;
 
       BindViewportAndScissor();
