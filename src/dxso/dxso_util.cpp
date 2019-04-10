@@ -18,13 +18,12 @@ namespace dxvk {
         DxsoProgramType shaderStage,
         DxsoBindingType bindingType,
         uint32_t        bindingIndex) {
-    const uint32_t stageOffset = 10 * uint32_t(shaderStage);
+    const uint32_t stageOffset = 6 * uint32_t(shaderStage);
 
     if (shaderStage == DxsoProgramType::VertexShader) {
       switch (bindingType) {
         case DxsoBindingType::ConstantBuffer: return bindingIndex + stageOffset + 0; // 0 + 2 = 2
-        case DxsoBindingType::ImageSampler:   return bindingIndex + stageOffset + 2; // 2 + 4 = 6
-        case DxsoBindingType::Image:          return bindingIndex + stageOffset + 6; // 6 + 4 = 10
+        case DxsoBindingType::Image:   return bindingIndex + stageOffset + 2;        // 2 + 4 = 6
         default: Logger::err("computeResourceSlotId: Invalid resource type");
       }
     }
@@ -32,8 +31,7 @@ namespace dxvk {
       switch (bindingType) {
       case DxsoBindingType::ConstantBuffer: return bindingIndex + stageOffset + 0;  // 0 + 2 = 2
         // The extra sampler here is being reserved for DMAP stuff later on.
-      case DxsoBindingType::ImageSampler:   return bindingIndex + stageOffset + 2;  // 2 + 17 = 19
-      case DxsoBindingType::Image:          return bindingIndex + stageOffset + 19; // 19 + 17 = 36
+      case DxsoBindingType::Image:   return bindingIndex + stageOffset + 2;         // 2 + 17 = 19
       default: Logger::err("computeResourceSlotId: Invalid resource type");
       }
     }

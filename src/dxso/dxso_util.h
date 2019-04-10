@@ -13,7 +13,6 @@ namespace dxvk {
 
   enum class DxsoBindingType : uint32_t {
     ConstantBuffer,
-    ImageSampler,
     Image
   };
 
