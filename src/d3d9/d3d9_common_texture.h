@@ -195,6 +195,9 @@ namespace dxvk {
     }
 
     VkImageLayout GetRenderTargetLayout(bool srgb) const {
+      if (GetRenderTargetView(srgb) == nullptr)
+        return VK_IMAGE_LAYOUT_GENERAL;
+
       return GetRenderTargetView(srgb)->imageInfo().tiling == VK_IMAGE_TILING_OPTIMAL
         ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
         : VK_IMAGE_LAYOUT_GENERAL;
