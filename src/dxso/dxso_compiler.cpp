@@ -396,22 +396,23 @@ namespace dxvk {
     // HACK: Some drivers do not clamp FragDepth to [minDepth..maxDepth]
     // before writing to the depth attachment, but we do not have acccess
     // to those. Clamp to [0..1] instead.
-    /*if (m_ps.builtinDepth) {
-      DxbcRegisterPointer ptr;
-      ptr.type = { DxbcScalarType::Float32, 1 };
-      ptr.id = m_ps.builtinDepth;
 
-      DxbcRegisterValue value = emitValueLoad(ptr);
+    auto reg = findBuiltInOutputPtr(DxsoUsage::Depth, 0);
 
-      value.id = m_module.opFClamp(
-        getVectorTypeId(ptr.type),
-        value.id,
+    if (reg.ptrId != 0) {
+      uint32_t typeId = spvTypeVar(DxsoRegisterType::DepthOut);
+      uint32_t result = spvLoad(DxsoRegisterId(DxsoRegisterType::DepthOut, 0));
+
+      result = m_module.opFClamp(
+        typeId,
+        result,
         m_module.constf32(0.0f),
         m_module.constf32(1.0f));
 
-      emitValueStore(ptr, value,
-        DxbcRegMask::firstN(1));
-    }*/
+      m_module.opStore(
+        reg.ptrId,
+        result);
+    }
   }
 
   void DxsoCompiler::emitInit() {
@@ -603,7 +604,10 @@ namespace dxvk {
   uint32_t DxsoCompiler::emitVecTrunc(uint32_t typeId, uint32_t varId, uint32_t count) {
     std::array<uint32_t, 4> identityShuffle = { 0, 1, 2, 3 };
 
-    return m_module.opVectorShuffle(typeId, varId, varId, count, identityShuffle.data());
+    if (count == 1)
+      return m_module.opCompositeExtract(typeId, varId, 1, identityShuffle.data());
+    else
+      return m_module.opVectorShuffle(typeId, varId, varId, count, identityShuffle.data());
   }
 
   uint32_t DxsoCompiler::emitSrcOperandModifier(uint32_t typeId, uint32_t varId, DxsoRegModifier modifier, uint32_t count) {
@@ -665,15 +669,24 @@ namespace dxvk {
     return result;
   }
 
+  bool DxsoCompiler::isVectorReg(DxsoRegisterType type) {
+    return type != DxsoRegisterType::ConstBool
+        && type != DxsoRegisterType::Loop
+        && type != DxsoRegisterType::DepthOut;
+  }
+
   uint32_t DxsoCompiler::emitRegisterLoad(const DxsoRegister& reg, uint32_t count) {
+    bool vector = isVectorReg(reg.registerId().type());
+
     const uint32_t typeId = spvTypeVar(reg, count);
 
     uint32_t result = spvLoad(reg);
 
-    // These two are scalar types so we don't want to swizzle them.
-    if (reg.registerId().type() != DxsoRegisterType::ConstBool
-     && reg.registerId().type() != DxsoRegisterType::Loop)
+    // These three are scalar types so we don't want to swizzle them.
+    if (vector)
       result = emitRegisterSwizzle(typeId, result, reg.swizzle(), count);
+    else
+      count = 1;
 
     result = emitSrcOperandModifier(typeId, result, reg.modifier(), count);
 
@@ -697,15 +710,20 @@ namespace dxvk {
     return result;
   }
 
-  uint32_t DxsoCompiler::emitWriteMask(uint32_t typeId, uint32_t dst, uint32_t src, DxsoRegMask writeMask) {
-    if (writeMask == IdentityWriteMask)
+  uint32_t DxsoCompiler::emitWriteMask(bool vector, uint32_t typeId, uint32_t dst, uint32_t src, DxsoRegMask writeMask) {
+    if (writeMask == IdentityWriteMask && vector)
       return src;
     
     std::array<uint32_t, 4> components;
     for (uint32_t i = 0; i < 4; i++)
       components[i] = writeMask[i] ? i + 4 : i;
 
-    return m_module.opVectorShuffle(typeId, dst, src, 4, components.data());
+    if (vector)
+      return m_module.opVectorShuffle(typeId, dst, src, 4, components.data());
+    else {
+      uint32_t idx = components[0] - 4;
+      return m_module.opCompositeExtract(typeId, src, 1, &idx);
+    }
   }
 
   void DxsoCompiler::emitDebugName(uint32_t varId, DxsoRegisterId id, bool deffed) {
@@ -1022,7 +1040,7 @@ namespace dxvk {
 
     m_module.opStore(
       spvPtr(dst),
-      emitWriteMask(typeId, spvLoad(dst), result, dst.writeMask()));
+      emitWriteMask(isVectorReg(dst.registerId().type()), typeId, spvLoad(dst), result, dst.writeMask()));
   }
 
   uint32_t DxsoCompiler::emitInfinityClamp(uint32_t typeId, uint32_t varId, bool vector) {
@@ -1092,7 +1110,7 @@ namespace dxvk {
 
     m_module.opStore(
       spvPtr(dst),
-      emitWriteMask(typeId, spvLoad(dst), result, dst.writeMask()));
+      emitWriteMask(isVectorReg(dst.registerId().type()), typeId, spvLoad(dst), result, dst.writeMask()));
   }
 
   void DxsoCompiler::emitDclSampler(uint32_t idx, DxsoTextureType type) {
@@ -1372,6 +1390,9 @@ namespace dxvk {
         dcl.semantic = semantic;
       }
       else if (id.type() == DxsoRegisterType::DepthOut) {
+        m_module.setExecutionMode(m_entryPointId,
+          spv::ExecutionModeDepthReplacing);
+
         DxsoSemantic semantic = { DxsoUsage::Depth, id.num() };
 
         builtIn = spv::BuiltInFragDepth;
@@ -1513,7 +1534,8 @@ namespace dxvk {
     if (regType == DxsoRegisterType::RasterizerOut
      || regType == DxsoRegisterType::Output
      || regType == DxsoRegisterType::AttributeOut
-     || regType == DxsoRegisterType::ColorOut)
+     || regType == DxsoRegisterType::ColorOut
+     || regType == DxsoRegisterType::DepthOut)
       return spv::StorageClassOutput;
 
     return spv::StorageClassPrivate;
@@ -1545,7 +1567,6 @@ namespace dxvk {
     case DxsoRegisterType::Output:
     //case DxsoRegisterType::TexcoordOut:
     case DxsoRegisterType::ColorOut:
-    case DxsoRegisterType::DepthOut:
     case DxsoRegisterType::Const2:
     case DxsoRegisterType::Const3:
     case DxsoRegisterType::Const4:
@@ -1554,6 +1575,9 @@ namespace dxvk {
       uint32_t floatType = m_module.defFloatType(32);
       return count > 1 ? m_module.defVectorType(floatType, count) : floatType;
     }
+
+    case DxsoRegisterType::DepthOut:
+      return m_module.defFloatType(32);
 
     case DxsoRegisterType::ConstInt: {
       uint32_t intType = m_module.defIntType(32, 1);

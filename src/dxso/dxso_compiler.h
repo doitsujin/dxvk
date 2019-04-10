@@ -176,6 +176,8 @@ namespace dxvk {
 
     uint32_t emitNewVariable(DxsoRegisterType regType, uint32_t value = 0);
 
+    bool isVectorReg(DxsoRegisterType type);
+
     uint32_t emitRegisterLoad(const DxsoRegister& reg, uint32_t count = 4);
 
     uint32_t emitRegisterSwizzle(uint32_t typeId, uint32_t varId, DxsoRegSwizzle swizzle, uint32_t count);
@@ -186,7 +188,7 @@ namespace dxvk {
 
     uint32_t emitDstOperandModifier(uint32_t typeId, uint32_t varId, bool saturate, bool partialPrecision);
 
-    uint32_t emitWriteMask(uint32_t typeId, uint32_t dst, uint32_t src, DxsoRegMask writeMask);
+    uint32_t emitWriteMask(bool vector, uint32_t typeId, uint32_t dst, uint32_t src, DxsoRegMask writeMask);
 
     void     emitDebugName(uint32_t varId, DxsoRegisterId id, bool deffed = false);
 
