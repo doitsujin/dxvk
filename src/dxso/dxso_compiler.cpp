@@ -1371,6 +1371,14 @@ namespace dxvk {
         dcl.id = id;
         dcl.semantic = semantic;
       }
+      else if (id.type() == DxsoRegisterType::DepthOut) {
+        DxsoSemantic semantic = { DxsoUsage::Depth, id.num() };
+
+        builtIn = spv::BuiltInFragDepth;
+        auto& dcl = m_oDecls[outputSlot = allocateSlot(false, id, semantic)];
+        dcl.id = id;
+        dcl.semantic = semantic;
+      }
     }
 
     const bool input = inputSlot != InvalidInputSlot;
