@@ -36,6 +36,9 @@ namespace dxvk {
 
   void D3D9Initializer::InitTexture(
           Direct3DCommonTexture9* pTexture) {
+    if (pTexture->GetImage() == nullptr)
+      return;
+
     VkMemoryPropertyFlags memFlags = pTexture->GetImage()->memFlags();
     
     (memFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
