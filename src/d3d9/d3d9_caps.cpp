@@ -19,7 +19,7 @@ namespace dxvk::caps {
       return D3DERR_NOTAVAILABLE;
 
     if (checkFormat == D3D9Format::INST)
-      return D3DERR_NOTAVAILABLE;
+      return D3D_OK;
 
     switch (resourceType) {
     case D3DRTYPE_SURFACE:

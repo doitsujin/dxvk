@@ -52,6 +52,8 @@ namespace dxvk {
             UINT                    OffsetInBytes,
             UINT                    Stride);
 
+    HRESULT SetStreamSourceFreq(UINT StreamNumber, UINT Setting);
+
     HRESULT SetStateTexture(DWORD StateSampler, IDirect3DBaseTexture9* pTexture);
 
     HRESULT SetVertexShader(D3D9VertexShader* pShader);
@@ -105,6 +107,13 @@ namespace dxvk {
     void ApplyOrCapture(Dst* dst, const Src* src) {
       if (m_captures.flags.test(D3D9CapturedStateFlag::VertexDecl))
         dst->SetVertexDeclaration(src->vertexDecl);
+
+      if (m_captures.flags.test(D3D9CapturedStateFlag::StreamFreq)) {
+        for (uint32_t i = 0; i < caps::MaxStreams; i++) {
+          if (m_captures.streamFreq[i])
+            dst->SetStreamSourceFreq(i, src->streamFreq[i]);
+        }
+      }
 
       if (m_captures.flags.test(D3D9CapturedStateFlag::Indices))
         dst->SetIndices(src->indices);

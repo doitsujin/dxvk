@@ -1503,14 +1503,17 @@ namespace dxvk {
 
     PrepareDraw();
 
+    auto drawInfo = GenerateDrawInfo();
+
     EmitCs([
       cState       = InputAssemblyState(PrimitiveType),
       cVertexCount = VertexCount(PrimitiveType, PrimitiveCount),
-      cStartVertex = StartVertex
+      cStartVertex = StartVertex,
+      cDrawInfo    = drawInfo
     ](DxvkContext* ctx) {
       ctx->setInputAssemblyState(cState);
       ctx->draw(
-        cVertexCount, 1,
+        cVertexCount, cDrawInfo.instanceCount,
         cStartVertex, 0);
     });
 
@@ -1527,16 +1530,19 @@ namespace dxvk {
     auto lock = LockDevice();
 
     PrepareDraw();
+
+    auto drawInfo = GenerateDrawInfo();
     
     EmitCs([
       cState           = InputAssemblyState(PrimitiveType),
       cIndexCount      = VertexCount       (PrimitiveType, PrimitiveCount),
       cStartIndex      = StartIndex,
-      cBaseVertexIndex = BaseVertexIndex
+      cBaseVertexIndex = BaseVertexIndex,
+      cDrawInfo        = drawInfo
     ](DxvkContext* ctx) {
       ctx->setInputAssemblyState(cState);
       ctx->drawIndexed(
-        cIndexCount, 1,
+        cIndexCount, cDrawInfo.instanceCount,
         cStartIndex,
         cBaseVertexIndex, 0);
     });
@@ -1553,6 +1559,8 @@ namespace dxvk {
 
     PrepareDraw(true);
 
+    auto drawInfo = GenerateDrawInfo();
+
     const uint32_t vertexCount = VertexCount(PrimitiveType, PrimitiveCount);
     const uint32_t upSize      = vertexCount * VertexStreamZeroStride;
 
@@ -1567,13 +1575,14 @@ namespace dxvk {
       cVertexCount  = vertexCount,
       cBuffer       = m_upBuffer,
       cBufferSlice  = physSlice,
-      cStride       = VertexStreamZeroStride
+      cStride       = VertexStreamZeroStride,
+      cDrawInfo     = drawInfo
     ](DxvkContext* ctx) {
       ctx->invalidateBuffer(cBuffer, cBufferSlice);
       ctx->bindVertexBuffer(0, DxvkBufferSlice(cBuffer), cStride);
       ctx->setInputAssemblyState(cState);
       ctx->draw(
-        cVertexCount, 1,
+        cVertexCount, cDrawInfo.instanceCount,
         0, 0);
     });
 
@@ -1594,6 +1603,8 @@ namespace dxvk {
     auto lock = LockDevice();
 
     PrepareDraw(true);
+
+    auto drawInfo = GenerateDrawInfo();
 
     const uint32_t indexCount  = VertexCount(PrimitiveType, PrimitiveCount);
     const uint32_t vertexSize  = (MinVertexIndex + NumVertices) * VertexStreamZeroStride;
@@ -1619,14 +1630,15 @@ namespace dxvk {
       cBufferSlice  = physSlice,
       cStride       = VertexStreamZeroStride,
       cIndexType    = DecodeIndexType(
-                        static_cast<D3D9Format>(IndexDataFormat))
+                        static_cast<D3D9Format>(IndexDataFormat)),
+      cDrawInfo     = drawInfo
     ](DxvkContext* ctx) {
       ctx->invalidateBuffer(cBuffer, cBufferSlice);
       ctx->bindVertexBuffer(0, DxvkBufferSlice(cBuffer, 0, cVertexSize), cStride);
       ctx->bindIndexBuffer(DxvkBufferSlice(cBuffer, cVertexSize, cBuffer->info().size - cVertexSize), cIndexType);
       ctx->setInputAssemblyState(cState);
       ctx->drawIndexed(
-        cIndexCount, 1,
+        cIndexCount, cDrawInfo.instanceCount,
         0,
         0, 0);
     });
@@ -1953,7 +1965,38 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetStreamSourceFreq(UINT StreamNumber, UINT Setting) {
-    Logger::warn("Direct3DDevice9Ex::SetStreamSourceFreq: Stub");
+    auto lock = LockDevice();
+
+    if (StreamNumber >= caps::MaxStreams)
+      return D3DERR_INVALIDCALL;
+
+    const bool indexed  = Setting & D3DSTREAMSOURCE_INDEXEDDATA;
+    const bool instanced = Setting & D3DSTREAMSOURCE_INSTANCEDATA;
+
+    if (StreamNumber == 0 && instanced)
+      return D3DERR_INVALIDCALL;
+
+    if (instanced && indexed)
+      return D3DERR_INVALIDCALL;
+
+    if (Setting == 0)
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(ShouldRecord()))
+      return m_recorder->SetStreamSourceFreq(StreamNumber, Setting);
+
+    if (m_state.streamFreq[StreamNumber] == Setting)
+      return D3D_OK;
+
+    m_state.streamFreq[StreamNumber] = Setting;
+
+    if (instanced)
+      m_instancedData |=   1u << StreamNumber;
+    else
+      m_instancedData &= ~(1u << StreamNumber);
+
+    m_flags.set(D3D9DeviceFlag::DirtyInputLayout);
+
     return D3D_OK;
   }
 
@@ -2572,6 +2615,9 @@ namespace dxvk {
       SetTextureStageState(i, D3DTSS_RESULTARG, D3DTA_CURRENT);
       SetTextureStageState(i, D3DTSS_CONSTANT, 0x00000000);
     }
+
+    for (uint32_t i = 0; i < caps::MaxStreams; i++)
+      m_state.streamFreq[i] = 1;
 
     for (uint32_t i = 0; i < m_state.textures.size(); i++) {
       m_state.textures[i] = nullptr;
@@ -3816,6 +3862,16 @@ namespace dxvk {
     m_dirtySamplerStates = 0;
   }
 
+  D3D9DrawInfo Direct3DDevice9Ex::GenerateDrawInfo() {
+    D3D9DrawInfo drawInfo;
+
+    drawInfo.instanceCount = 1;
+    if (m_instancedData & m_streamUsageMask)
+      drawInfo.instanceCount = std::max<uint32_t>(m_state.streamFreq[0] & 0x7FFFFF, 1);
+
+    return drawInfo;
+  }
+
   void Direct3DDevice9Ex::PrepareDraw(bool up) {
     UndirtySamplers();
 
@@ -3874,6 +3930,8 @@ namespace dxvk {
   void Direct3DDevice9Ex::BindInputLayout() {
     m_flags.clr(D3D9DeviceFlag::DirtyInputLayout);
 
+    m_streamUsageMask = 0;
+
     if (m_state.vertexShader == nullptr || m_state.vertexDecl == nullptr) {
       EmitCs([](DxvkContext* ctx) {
         ctx->setInputLayout(0, nullptr, 0, nullptr);
@@ -3910,6 +3968,9 @@ namespace dxvk {
             attrib.binding = uint32_t(element.Stream);
             attrib.format  = LookupDecltype(D3DDECLTYPE(element.Type));
             attrib.offset  = element.Offset;
+
+            m_streamUsageMask |= 1u << attrib.binding;
+
             break;
           }
         }
@@ -3917,9 +3978,17 @@ namespace dxvk {
         attrList.at(i) = attrib;
 
         DxvkVertexBinding binding;
-        binding.binding   = attrib.binding; // TODO: Instancing
-        binding.fetchRate = 0;
-        binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        binding.binding     = attrib.binding;
+
+        uint32_t instanceData = m_state.streamFreq[binding.binding];
+        if (instanceData & D3DSTREAMSOURCE_INSTANCEDATA) {
+          binding.fetchRate = instanceData & 0x7FFFFF; // Remove instance packed-in flags in the data.
+          binding.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
+        }
+        else {
+          binding.fetchRate = 0;
+          binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+        }
 
         // Check if the binding was already defined.
         bool bindingDefined = false;

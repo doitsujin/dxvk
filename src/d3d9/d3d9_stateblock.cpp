@@ -96,6 +96,14 @@ namespace dxvk {
     return D3D_OK;
   }
 
+  HRESULT D3D9StateBlock::SetStreamSourceFreq(UINT StreamNumber, UINT Setting) {
+    m_state.streamFreq[StreamNumber] = Setting;
+
+    m_captures.flags.set(D3D9CapturedStateFlag::StreamFreq);
+    m_captures.streamFreq[StreamNumber] = true;
+    return D3D_OK;
+  }
+
   HRESULT D3D9StateBlock::SetStateTexture(DWORD StateSampler, IDirect3DBaseTexture9* pTexture) {
     TextureChangePrivate(m_state.textures[StateSampler], pTexture);
 
@@ -402,8 +410,12 @@ namespace dxvk {
       CaptureVertexRenderStates();
       CaptureVertexSamplerStates();
       CaptureVertexShaderStates();
-      
+
       m_captures.flags.set(D3D9CapturedStateFlag::VertexDecl);
+      m_captures.flags.set(D3D9CapturedStateFlag::StreamFreq);
+
+      for (uint32_t i = 0; i < caps::MaxStreams; i++)
+        m_captures.streamFreq[i] = true;
     }
 
     if (Type == D3D9StateBlockType::All) {

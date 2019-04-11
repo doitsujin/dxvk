@@ -41,6 +41,9 @@ namespace dxvk {
 
       for (uint32_t i = 0; i < clipPlanes.size(); i++)
         clipPlanes[i] = D3D9ClipPlane();
+
+      for (uint32_t i = 0; i < streamFreq.size(); i++)
+        streamFreq[i] = 1;
     }
 
     Direct3DVertexDeclaration9*                      vertexDecl = nullptr;
@@ -70,6 +73,8 @@ namespace dxvk {
 
     D3D9ShaderConstants                              vsConsts;
     D3D9ShaderConstants                              psConsts;
+
+    std::array<UINT, caps::MaxStreams>               streamFreq;
   };
 
   template <
@@ -122,7 +127,8 @@ namespace dxvk {
     ScissorRect,
     ClipPlanes,
     VsConstants,
-    PsConstants
+    PsConstants,
+    StreamFreq
   };
 
   using D3D9CapturedStateFlags = Flags<D3D9CapturedStateFlag>;
@@ -140,6 +146,7 @@ namespace dxvk {
     std::bitset<caps::MaxStreams>                       vertexBuffers;
     std::bitset<SamplerCount>                           textures;
     std::bitset<caps::MaxClipPlanes>                    clipPlanes;
+    std::bitset<caps::MaxStreams>                       streamFreq;
 
     struct {
       std::bitset<caps::MaxFloatConstants>              fConsts;

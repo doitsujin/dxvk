@@ -53,6 +53,10 @@ namespace dxvk {
 
   using D3D9DeviceFlags = Flags<D3D9DeviceFlag>;
 
+  struct D3D9DrawInfo {
+    uint32_t instanceCount;
+  };
+
   class Direct3DDevice9Ex final : public ComObject<IDirect3DDevice9Ex> {
     constexpr static uint32_t DefaultFrameLatency = 3;
     constexpr static uint32_t MaxFrameLatency = 20;
@@ -708,6 +712,8 @@ namespace dxvk {
 
     void UndirtySamplers();
 
+    D3D9DrawInfo GenerateDrawInfo();
+
     void PrepareDraw(bool up = false);
 
     void BindShader(
@@ -833,6 +839,9 @@ namespace dxvk {
     std::unordered_map<
       DWORD,
       Com<Direct3DVertexDeclaration9>> m_fvfTable;
+
+    uint32_t                        m_streamUsageMask = 0;
+    uint32_t                        m_instancedData   = 0;
 
     void AllocUpBuffer(uint32_t size);
 
