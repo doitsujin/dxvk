@@ -1132,11 +1132,11 @@ namespace dxvk {
       uint32_t y = 1;
       uint32_t z = 2;
 
-      uint32_t couple1 = m_module.opBitwiseOr(m_module.defBoolType(),
+      uint32_t couple1 = m_module.opLogicalOr(m_module.defBoolType(),
         m_module.opCompositeExtract(boolType, result, 1, &x),
         m_module.opCompositeExtract(boolType, result, 1, &y));
 
-      result = m_module.opBitwiseOr(m_module.defBoolType(),
+      result = m_module.opLogicalOr(m_module.defBoolType(),
         couple1,
         m_module.opCompositeExtract(boolType, result, 1, &z));
 
