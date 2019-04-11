@@ -70,7 +70,6 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DTexture9::AddDirtyRect(CONST RECT* pDirtyRect) {
-    Logger::warn("Direct3DTexture9::AddDirtyRect: Stub");
     return D3D_OK;
   }
 
@@ -140,7 +139,6 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DVolumeTexture9::AddDirtyBox(CONST D3DBOX* pDirtyBox) {
-    Logger::warn("Direct3DVolumeTexture9::AddDirtyBox: Stub");
     return D3D_OK;
   }
 
@@ -217,7 +215,6 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DCubeTexture9::AddDirtyRect(D3DCUBEMAP_FACES Face, CONST RECT* pDirtyRect) {
-    Logger::warn("Direct3DCubeTexture9::AddDirtyRect: Stub");
     return D3D_OK;
   }
 
