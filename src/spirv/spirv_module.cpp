@@ -296,6 +296,22 @@ namespace dxvk {
     return this->constComposite(vectorTypeId, args.size(), args.data());
   }
   
+
+  uint32_t SpirvModule::constvec3f32(
+          float                   x,
+          float                   y,
+          float                   z) {
+    std::array<uint32_t, 3> args = {{
+      this->constf32(x), this->constf32(y),
+      this->constf32(z),
+    }};
+    
+    uint32_t scalarTypeId = this->defFloatType(32);
+    uint32_t vectorTypeId = this->defVectorType(scalarTypeId, 3);
+    
+    return this->constComposite(vectorTypeId, args.size(), args.data());
+  }
+
   
   uint32_t SpirvModule::constvec4f32(
           float                   x,
