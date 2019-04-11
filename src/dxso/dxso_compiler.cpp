@@ -100,6 +100,7 @@ namespace dxvk {
 
     case DxsoOpcode::Tex:
     case DxsoOpcode::TexLdl:
+    case DxsoOpcode::TexKill:
       return this->emitTextureSample(ctx);
 
     case DxsoOpcode::Comment:
@@ -1057,7 +1058,7 @@ namespace dxvk {
   void DxsoCompiler::emitTextureSample(const DxsoInstructionContext& ctx) {
     const auto& dst = ctx.dst;
 
-    const uint32_t typeId = spvTypeVar(dst);
+    bool sample = ctx.instruction.opcode() != DxsoOpcode::TexKill;
 
     uint32_t texcoordVarId;
     uint32_t samplerIdx;
@@ -1078,44 +1079,64 @@ namespace dxvk {
       samplerIdx = ctx.dst.registerId().num();
     }
 
-    DxsoSamplerDesc sampler = m_samplers.at(samplerIdx);
+    if (sample) {
+      const uint32_t typeId = spvTypeVar(dst);
 
-    if (sampler.samplerPtrId == 0) {
-      Logger::warn("DxsoCompiler::emitTextureSample: Adding implicit 2D sampler");
-      emitDclSampler(samplerIdx, DxsoTextureType::Texture2D);
-      sampler = m_samplers.at(samplerIdx);
+      DxsoSamplerDesc sampler = m_samplers.at(samplerIdx);
+
+      if (sampler.samplerPtrId == 0) {
+        Logger::warn("DxsoCompiler::emitTextureSample: Adding implicit 2D sampler");
+        emitDclSampler(samplerIdx, DxsoTextureType::Texture2D);
+        sampler = m_samplers.at(samplerIdx);
+      }
+
+      uint32_t imageVarId = m_module.opSampledImage(
+        sampler.imageTypeId,
+
+        m_module.opLoad(sampler.imageTypeId, sampler.samplerPtrId),
+        m_module.opLoad(m_module.defSamplerType(), sampler.samplerPtrId));
+
+      SpirvImageOperands imageOperands;
+      if (m_programInfo.type() == DxsoProgramType::VertexShader) {
+        imageOperands.sLod = m_module.constf32(0.0f);
+        imageOperands.flags |= spv::ImageOperandsLodMask;
+      }
+
+      uint32_t result =
+        m_programInfo.type() == DxsoProgramType::PixelShader
+        ? m_module.opImageSampleImplicitLod(
+          typeId,
+          imageVarId,
+          texcoordVarId,
+          imageOperands)
+        : m_module.opImageSampleExplicitLod(
+          typeId,
+          imageVarId,
+          texcoordVarId,
+          imageOperands);
+
+      result = emitDstOperandModifier(typeId, result, dst.saturate(), dst.partialPrecision());
+
+      m_module.opStore(
+        spvPtr(dst),
+        emitWriteMask(isVectorReg(dst.registerId().type()), typeId, spvLoad(dst), result, dst.writeMask()));
     }
+    else {
+      uint32_t result = m_module.opFOrdLessThan(
+        m_module.defBoolType(),
+        texcoordVarId,
+        m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f));
 
-    uint32_t imageVarId = m_module.opSampledImage(
-      sampler.imageTypeId,
+      uint32_t testLabel    = m_module.allocateId();
+      uint32_t discardLabel = m_module.allocateId();
+      uint32_t skipLabel    = m_module.allocateId();
 
-      m_module.opLoad(sampler.imageTypeId,       sampler.samplerPtrId),
-      m_module.opLoad(m_module.defSamplerType(), sampler.samplerPtrId));
-
-    SpirvImageOperands imageOperands;
-    if (m_programInfo.type() == DxsoProgramType::VertexShader) {
-      imageOperands.sLod = m_module.constf32(0.0f);
-      imageOperands.flags |= spv::ImageOperandsLodMask;
+      m_module.opSelectionMerge(testLabel, spv::SelectionControlMaskNone);
+      m_module.opBranchConditional(result, discardLabel, skipLabel);
+      m_module.opLabel(discardLabel);
+      m_module.opKill();
+      m_module.opLabel(skipLabel);
     }
-
-    uint32_t result =
-      m_programInfo.type() == DxsoProgramType::PixelShader
-      ? m_module.opImageSampleImplicitLod(
-        typeId,
-        imageVarId,
-        texcoordVarId,
-        imageOperands)
-      : m_module.opImageSampleExplicitLod(
-        typeId,
-        imageVarId,
-        texcoordVarId,
-        imageOperands);
-
-    result = emitDstOperandModifier(typeId, result, dst.saturate(), dst.partialPrecision());
-
-    m_module.opStore(
-      spvPtr(dst),
-      emitWriteMask(isVectorReg(dst.registerId().type()), typeId, spvLoad(dst), result, dst.writeMask()));
   }
 
   void DxsoCompiler::emitDclSampler(uint32_t idx, DxsoTextureType type) {
