@@ -786,8 +786,8 @@ namespace dxvk {
     if (opcode == DxsoOpcode::Ifc) {
       const uint32_t typeId = m_module.defBoolType();
 
-      uint32_t a = emitRegisterLoad(ctx.src[0]);
-      uint32_t b = emitRegisterLoad(ctx.src[1]);
+      uint32_t a = emitRegisterLoad(ctx.src[0], 1);
+      uint32_t b = emitRegisterLoad(ctx.src[1], 1);
 
       switch (ctx.instruction.comparison()) {
         default:
@@ -1118,10 +1118,27 @@ namespace dxvk {
         emitWriteMask(isVectorReg(dst.registerId().type()), typeId, spvLoad(dst), result, dst.writeMask()));
     }
     else {
+      texcoordVarId = this->emitVecTrunc(
+        m_module.defVectorType(m_module.defFloatType(32), 3), texcoordVarId, 3);
+
+      uint32_t boolType = m_module.defBoolType();
+
       uint32_t result = m_module.opFOrdLessThan(
-        m_module.defBoolType(),
+        m_module.defVectorType(boolType, 3),
         texcoordVarId,
         m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f));
+
+      uint32_t x = 0;
+      uint32_t y = 1;
+      uint32_t z = 2;
+
+      uint32_t couple1 = m_module.opBitwiseOr(m_module.defBoolType(),
+        m_module.opCompositeExtract(boolType, result, 1, &x),
+        m_module.opCompositeExtract(boolType, result, 1, &y));
+
+      result = m_module.opBitwiseOr(m_module.defBoolType(),
+        couple1,
+        m_module.opCompositeExtract(boolType, result, 1, &z));
 
       uint32_t discardLabel = m_module.allocateId();
       uint32_t skipLabel    = m_module.allocateId();
