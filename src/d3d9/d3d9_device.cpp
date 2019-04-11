@@ -1510,17 +1510,15 @@ namespace dxvk {
 
     PrepareDraw();
 
-    auto drawInfo = GenerateDrawInfo();
+    auto drawInfo = GenerateDrawInfo(PrimitiveType, PrimitiveCount);
 
     EmitCs([
-      cState       = InputAssemblyState(PrimitiveType),
-      cVertexCount = VertexCount(PrimitiveType, PrimitiveCount),
-      cStartVertex = StartVertex,
-      cDrawInfo    = drawInfo
+      cDrawInfo    = drawInfo,
+      cStartVertex = StartVertex
     ](DxvkContext* ctx) {
-      ctx->setInputAssemblyState(cState);
+      ctx->setInputAssemblyState(cDrawInfo.iaState);
       ctx->draw(
-        cVertexCount, cDrawInfo.instanceCount,
+        cDrawInfo.vertexCount, cDrawInfo.instanceCount,
         cStartVertex, 0);
     });
 
@@ -1538,18 +1536,16 @@ namespace dxvk {
 
     PrepareDraw();
 
-    auto drawInfo = GenerateDrawInfo();
+    auto drawInfo = GenerateDrawInfo(PrimitiveType, PrimitiveCount);
     
     EmitCs([
-      cState           = InputAssemblyState(PrimitiveType),
-      cIndexCount      = VertexCount       (PrimitiveType, PrimitiveCount),
+      cDrawInfo        = drawInfo,
       cStartIndex      = StartIndex,
-      cBaseVertexIndex = BaseVertexIndex,
-      cDrawInfo        = drawInfo
+      cBaseVertexIndex = BaseVertexIndex
     ](DxvkContext* ctx) {
-      ctx->setInputAssemblyState(cState);
+      ctx->setInputAssemblyState(cDrawInfo.iaState);
       ctx->drawIndexed(
-        cIndexCount, cDrawInfo.instanceCount,
+        cDrawInfo.vertexCount, cDrawInfo.instanceCount,
         cStartIndex,
         cBaseVertexIndex, 0);
     });
@@ -1566,10 +1562,9 @@ namespace dxvk {
 
     PrepareDraw(true);
 
-    auto drawInfo = GenerateDrawInfo();
+    auto drawInfo = GenerateDrawInfo(PrimitiveType, PrimitiveCount);
 
-    const uint32_t vertexCount = VertexCount(PrimitiveType, PrimitiveCount);
-    const uint32_t upSize      = vertexCount * VertexStreamZeroStride;
+    const uint32_t upSize = drawInfo.vertexCount * VertexStreamZeroStride;
 
     AllocUpBuffer(upSize);
 
@@ -1578,18 +1573,16 @@ namespace dxvk {
     std::memcpy(physSlice.mapPtr, pVertexStreamZeroData, upSize);
 
     EmitCs([
-      cState        = InputAssemblyState(PrimitiveType),
-      cVertexCount  = vertexCount,
+      cDrawInfo     = drawInfo,
       cBuffer       = m_upBuffer,
       cBufferSlice  = physSlice,
-      cStride       = VertexStreamZeroStride,
-      cDrawInfo     = drawInfo
+      cStride       = VertexStreamZeroStride
     ](DxvkContext* ctx) {
       ctx->invalidateBuffer(cBuffer, cBufferSlice);
       ctx->bindVertexBuffer(0, DxvkBufferSlice(cBuffer), cStride);
-      ctx->setInputAssemblyState(cState);
+      ctx->setInputAssemblyState(cDrawInfo.iaState);
       ctx->draw(
-        cVertexCount, cDrawInfo.instanceCount,
+        cDrawInfo.vertexCount, cDrawInfo.instanceCount,
         0, 0);
     });
 
@@ -1611,13 +1604,12 @@ namespace dxvk {
 
     PrepareDraw(true);
 
-    auto drawInfo = GenerateDrawInfo();
+    auto drawInfo = GenerateDrawInfo(PrimitiveType, PrimitiveCount);
 
-    const uint32_t indexCount  = VertexCount(PrimitiveType, PrimitiveCount);
     const uint32_t vertexSize  = (MinVertexIndex + NumVertices) * VertexStreamZeroStride;
 
     const uint32_t indexSize = IndexDataFormat == D3DFMT_INDEX16 ? 2 : 4;
-    const uint32_t indicesSize = indexCount * indexSize;
+    const uint32_t indicesSize = drawInfo.vertexCount * indexSize;
 
     const uint32_t upSize = vertexSize + indicesSize;
 
@@ -1630,22 +1622,20 @@ namespace dxvk {
     std::memcpy(data + vertexSize, pIndexData, indicesSize);
 
     EmitCs([
-      cState        = InputAssemblyState(PrimitiveType),
-      cIndexCount   = indexCount,
+      cDrawInfo     = drawInfo,
       cVertexSize   = vertexSize,
       cBuffer       = m_upBuffer,
       cBufferSlice  = physSlice,
       cStride       = VertexStreamZeroStride,
       cIndexType    = DecodeIndexType(
-                        static_cast<D3D9Format>(IndexDataFormat)),
-      cDrawInfo     = drawInfo
+                        static_cast<D3D9Format>(IndexDataFormat))
     ](DxvkContext* ctx) {
       ctx->invalidateBuffer(cBuffer, cBufferSlice);
       ctx->bindVertexBuffer(0, DxvkBufferSlice(cBuffer, 0, cVertexSize), cStride);
       ctx->bindIndexBuffer(DxvkBufferSlice(cBuffer, cVertexSize, cBuffer->info().size - cVertexSize), cIndexType);
-      ctx->setInputAssemblyState(cState);
+      ctx->setInputAssemblyState(cDrawInfo.iaState);
       ctx->drawIndexed(
-        cIndexCount, cDrawInfo.instanceCount,
+        cDrawInfo.vertexCount, cDrawInfo.instanceCount,
         0,
         0, 0);
     });
@@ -3869,8 +3859,13 @@ namespace dxvk {
     m_dirtySamplerStates = 0;
   }
 
-  D3D9DrawInfo Direct3DDevice9Ex::GenerateDrawInfo() {
+  D3D9DrawInfo Direct3DDevice9Ex::GenerateDrawInfo(
+          D3DPRIMITIVETYPE PrimitiveType,
+          UINT             PrimitiveCount) {
     D3D9DrawInfo drawInfo;
+
+    drawInfo.iaState     = InputAssemblyState(PrimitiveType);
+    drawInfo.vertexCount = VertexCount(PrimitiveType, PrimitiveCount);
 
     drawInfo.instanceCount = 1;
     if (m_instancedData & m_streamUsageMask)

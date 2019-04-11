@@ -54,7 +54,9 @@ namespace dxvk {
   using D3D9DeviceFlags = Flags<D3D9DeviceFlag>;
 
   struct D3D9DrawInfo {
-    uint32_t instanceCount;
+    DxvkInputAssemblyState iaState;
+    uint32_t               vertexCount;
+    uint32_t               instanceCount;
   };
 
   class Direct3DDevice9Ex final : public ComObject<IDirect3DDevice9Ex> {
@@ -712,7 +714,9 @@ namespace dxvk {
 
     void UndirtySamplers();
 
-    D3D9DrawInfo GenerateDrawInfo();
+    D3D9DrawInfo GenerateDrawInfo(
+      D3DPRIMITIVETYPE PrimitiveType,
+      UINT             PrimitiveCount);
 
     void PrepareDraw(bool up = false);
 
