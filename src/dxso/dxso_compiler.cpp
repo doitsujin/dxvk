@@ -38,9 +38,9 @@ namespace dxvk {
     }
 
     for (uint32_t i = 0; i < m_samplers.size(); i++) {
-      m_samplers.at(i).samplerPtrId = 0;
-      m_samplers.at(i).imageTypeId  = 0;
-      m_samplers.at(i).type         = DxsoTextureType::Texture2D;
+      m_samplers.at(i).imageTypeId = 0;
+      m_samplers.at(i).imagePtrId  = 0;
+      m_samplers.at(i).type        = DxsoTextureType::Texture2D;
     }
 
     this->emitInit();
@@ -1084,17 +1084,13 @@ namespace dxvk {
 
       DxsoSamplerDesc sampler = m_samplers.at(samplerIdx);
 
-      if (sampler.samplerPtrId == 0) {
+      if (sampler.imagePtrId == 0) {
         Logger::warn("DxsoCompiler::emitTextureSample: Adding implicit 2D sampler");
         emitDclSampler(samplerIdx, DxsoTextureType::Texture2D);
         sampler = m_samplers.at(samplerIdx);
       }
 
-      uint32_t imageVarId = m_module.opSampledImage(
-        sampler.imageTypeId,
-
-        m_module.opLoad(sampler.imageTypeId, sampler.samplerPtrId),
-        m_module.opLoad(m_module.defSamplerType(), sampler.samplerPtrId));
+      const uint32_t imageVarId = m_module.opLoad(sampler.imageTypeId, sampler.imagePtrId);
 
       SpirvImageOperands imageOperands;
       if (m_programInfo.type() == DxsoProgramType::VertexShader) {
@@ -1174,17 +1170,17 @@ namespace dxvk {
       const uint32_t resourcePtrType = m_module.defPointerType(
         imageTypeId, spv::StorageClassUniformConstant);
 
-      const uint32_t varId = m_module.newVar(resourcePtrType,
+      const uint32_t ptrId = m_module.newVar(resourcePtrType,
         spv::StorageClassUniformConstant);
-
-      sampler.samplerPtrId = varId;
-      sampler.imageTypeId = imageTypeId;
 
       const uint32_t bindingId = computeResourceSlotId(
         m_programInfo.type(), DxsoBindingType::Image, idx);
 
-      m_module.decorateDescriptorSet(varId, 0);
-      m_module.decorateBinding(varId, bindingId);
+      m_module.decorateDescriptorSet(ptrId, 0);
+      m_module.decorateBinding(ptrId, bindingId);
+
+      sampler.imagePtrId  = ptrId;
+      sampler.imageTypeId = imageTypeId;
 
       // Store descriptor info for the shader interface
       DxvkResourceSlot resource;

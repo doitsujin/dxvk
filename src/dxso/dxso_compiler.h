@@ -140,8 +140,8 @@ namespace dxvk {
     struct DxsoSamplerDesc {
       DxsoTextureType type;
 
-      uint32_t samplerPtrId;
       uint32_t imageTypeId;
+      uint32_t imagePtrId;
     };
 
     std::array<DxsoSamplerDesc, 17> m_samplers;
