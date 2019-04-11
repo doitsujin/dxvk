@@ -101,12 +101,19 @@ namespace dxvk {
 
     *ppvObject = nullptr;
 
+    bool extended = m_flags.test(D3D9DeviceFlag::ExtendedDevice)
+                 && riid == __uuidof(IDirect3DDevice9Ex);
+
     if (riid == __uuidof(IUnknown)
      || riid == __uuidof(IDirect3DDevice9)
-     || riid == __uuidof(IDirect3DDevice9Ex)) {
+     || extended) {
       *ppvObject = ref(this);
       return S_OK;
     }
+
+    // We want to ignore this if the extended device is queried and we weren't made extended.
+    if (riid == __uuidof(IDirect3DDevice9Ex))
+      return E_NOINTERFACE;
 
     Logger::warn("Direct3DDevice9Ex::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
