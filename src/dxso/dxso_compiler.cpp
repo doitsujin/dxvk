@@ -1127,11 +1127,10 @@ namespace dxvk {
         texcoordVarId,
         m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f));
 
-      uint32_t testLabel    = m_module.allocateId();
       uint32_t discardLabel = m_module.allocateId();
       uint32_t skipLabel    = m_module.allocateId();
 
-      m_module.opSelectionMerge(testLabel, spv::SelectionControlMaskNone);
+      m_module.opSelectionMerge(skipLabel, spv::SelectionControlMaskNone);
       m_module.opBranchConditional(result, discardLabel, skipLabel);
       m_module.opLabel(discardLabel);
       m_module.opKill();
