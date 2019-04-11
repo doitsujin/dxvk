@@ -1126,7 +1126,7 @@ namespace dxvk {
       uint32_t result = m_module.opFOrdLessThan(
         m_module.defVectorType(boolType, 3),
         texcoordVarId,
-        m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f));
+        m_module.constvec3f32(0.0f, 0.0f, 0.0f));
 
       uint32_t x = 0;
       uint32_t y = 1;
