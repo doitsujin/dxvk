@@ -82,6 +82,7 @@ namespace dxvk {
     case DxsoOpcode::Abs:
     case DxsoOpcode::Nrm:
     case DxsoOpcode::SinCos:
+    case DxsoOpcode::Lit:
     case DxsoOpcode::LogP:
     case DxsoOpcode::Log:
     case DxsoOpcode::Lrp:
@@ -990,6 +991,46 @@ namespace dxvk {
 
         result = m_module.opCompositeConstruct(typeId, sincosVectorIndices.size(), sincosVectorIndices.data());
 
+        break;
+      }
+      case DxsoOpcode::Lit: {
+        const uint32_t scalarTypeId = spvTypeVar(dst, 1);
+
+        uint32_t srcOp = emitRegisterLoad(src[0]);
+
+        const uint32_t x = 0;
+        const uint32_t y = 1;
+        const uint32_t z = 2;
+        const uint32_t w = 3;
+        
+        uint32_t srcX = m_module.opCompositeExtract(scalarTypeId, srcOp, 1, &x);
+        uint32_t srcY = m_module.opCompositeExtract(scalarTypeId, srcOp, 1, &y);
+        uint32_t srcZ = m_module.opCompositeExtract(scalarTypeId, srcOp, 1, &z);
+        uint32_t srcW = m_module.opCompositeExtract(scalarTypeId, srcOp, 1, &w);
+
+        uint32_t power = m_module.opFClamp(
+          scalarTypeId, srcW,
+          m_module.constf32(-127.9961f), m_module.constf32(127.9961f));
+
+        std::array<uint32_t, 4> resultIndices;
+
+        resultIndices[0] = m_module.constf32(1.0f);
+        resultIndices[1] = m_module.opFMax(scalarTypeId, srcX, m_module.constf32(0));
+        resultIndices[2] = m_module.opPow(scalarTypeId, srcY, power);
+        resultIndices[3] = m_module.constf32(1.0f);
+
+        const uint32_t boolType = m_module.defBoolType();
+        uint32_t zTestX = m_module.opFOrdGreaterThanEqual(boolType, srcX, m_module.constf32(0));
+        uint32_t zTestY = m_module.opFOrdGreaterThanEqual(boolType, srcY, m_module.constf32(0));
+        uint32_t zTest = m_module.opLogicalAnd(boolType, zTestX, zTestY);
+
+        resultIndices[2] = m_module.opSelect(
+          scalarTypeId,
+          zTest,
+          resultIndices[2],
+          m_module.constf32(0.0f));
+
+        result = m_module.opCompositeConstruct(typeId, resultIndices.size(), resultIndices.data());
         break;
       }
       case DxsoOpcode::LogP:
