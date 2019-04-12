@@ -1970,8 +1970,7 @@ namespace dxvk {
     const bool indexed  = Setting & D3DSTREAMSOURCE_INDEXEDDATA;
     const bool instanced = Setting & D3DSTREAMSOURCE_INSTANCEDATA;
 
-    if ((StreamNumber == 0 && instanced)
-     || (StreamNumber != 0 && indexed))
+    if (StreamNumber == 0 && instanced)
       return D3DERR_INVALIDCALL;
 
     if (instanced && indexed)
