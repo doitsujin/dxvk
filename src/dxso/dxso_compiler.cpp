@@ -1169,25 +1169,17 @@ namespace dxvk {
         texcoordVarId,
         m_module.constvec3f32(0.0f, 0.0f, 0.0f));
 
-      uint32_t x = 0;
-      uint32_t y = 1;
-      uint32_t z = 2;
-
-      uint32_t couple1 = m_module.opLogicalOr(m_module.defBoolType(),
-        m_module.opCompositeExtract(boolType, result, 1, &x),
-        m_module.opCompositeExtract(boolType, result, 1, &y));
-
-      result = m_module.opLogicalOr(m_module.defBoolType(),
-        couple1,
-        m_module.opCompositeExtract(boolType, result, 1, &z));
+      result = m_module.opAny(boolType, result);
 
       uint32_t discardLabel = m_module.allocateId();
       uint32_t skipLabel    = m_module.allocateId();
 
       m_module.opSelectionMerge(skipLabel, spv::SelectionControlMaskNone);
       m_module.opBranchConditional(result, discardLabel, skipLabel);
+
       m_module.opLabel(discardLabel);
       m_module.opKill();
+
       m_module.opLabel(skipLabel);
     }
   }
