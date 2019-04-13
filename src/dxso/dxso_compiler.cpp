@@ -1537,6 +1537,8 @@ namespace dxvk {
       m_entryPointInterfaces.push_back(ptrId);
 
       uint32_t frontFacingVar = m_module.opLoad(m_module.defBoolType(), ptrId);
+      frontFacingVar = this->emitScalarReplicant(
+        m_module.defVectorType(m_module.defBoolType(), 4), frontFacingVar);
 
       ptrId = this->emitNewVariable(id.type());
       m_module.opStore(
