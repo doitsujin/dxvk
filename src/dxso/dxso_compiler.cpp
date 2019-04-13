@@ -1323,7 +1323,7 @@ namespace dxvk {
   }
 
   DxsoSpirvRegister DxsoCompiler::getSpirvRegister(DxsoRegisterId id, bool centroid, DxsoRegister* relative) {
-    if (!id.constant() || (id.constant() && relative == nullptr)) {
+    if (!id.constant()) {
       for (const auto& regMapping : m_regs) {
         if (regMapping.regId == id)
           return regMapping;
@@ -1563,7 +1563,7 @@ namespace dxvk {
     this->emitDebugName(ptrId, id);
     spirvRegister.ptrId = ptrId;
 
-    if (id.constant() && relative != nullptr)
+    if (id.constant())
       return spirvRegister;
 
     m_regs.push_back(spirvRegister);
