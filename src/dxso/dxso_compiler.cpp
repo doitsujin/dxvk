@@ -427,8 +427,6 @@ namespace dxvk {
       this->emitVsInit();
     else
       this->emitPsInit();
-
-    m_dclInsertionPtr = m_module.getInsertionPtr();
   }
 
   void DxsoCompiler::emitDclConstantBuffer() {
@@ -1187,8 +1185,6 @@ namespace dxvk {
   }
 
   void DxsoCompiler::emitDclSampler(uint32_t idx, DxsoTextureType type) {
-    m_module.beginInsertion(m_dclInsertionPtr);
-
     // Combined Sampler Setup
     DxsoSamplerDesc sampler;
     sampler.type = type;
@@ -1246,9 +1242,6 @@ namespace dxvk {
     }
 
     m_samplers.at(idx) = sampler;
-
-    m_dclInsertionPtr = m_module.getInsertionPtr();
-    m_module.endInsertion();
   }
 
   void DxsoCompiler::emitDcl(const DxsoInstructionContext& ctx) {
@@ -1352,9 +1345,6 @@ namespace dxvk {
   }
 
   DxsoSpirvRegister DxsoCompiler::mapSpirvRegister(DxsoRegisterId id, bool centroid, DxsoRegister* relative, const DxsoDeclaration* optionalPremadeDecl) {
-
-    m_module.beginInsertion(m_dclInsertionPtr);
-
     DxsoSpirvRegister spirvRegister;
     spirvRegister.regId = id;
 
@@ -1572,9 +1562,6 @@ namespace dxvk {
 
     this->emitDebugName(ptrId, id);
     spirvRegister.ptrId = ptrId;
-
-    m_dclInsertionPtr = m_module.getInsertionPtr();
-    m_module.endInsertion();
 
     if (id.constant() && relative != nullptr)
       return spirvRegister;

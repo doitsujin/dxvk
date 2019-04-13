@@ -266,8 +266,6 @@ namespace dxvk {
 
     std::array<uint32_t, 16> m_oPtrs;
 
-    uint32_t m_dclInsertionPtr = 0;
-
   };
 
 }
