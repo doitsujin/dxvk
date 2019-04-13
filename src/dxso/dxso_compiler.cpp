@@ -1358,18 +1358,25 @@ namespace dxvk {
       const bool input = id.type() == DxsoRegisterType::Input
                       || id.type() == DxsoRegisterType::Texture;
 
-      auto& decl = *optionalPremadeDecl;
-      auto& semantic = decl.semantic;
-
-      if (input)
-        m_vDecls[inputSlot = allocateSlot(true, id, semantic)]   = decl;
+      bool misc = id.type() == DxsoRegisterType::MiscType;
+      if (misc) {
+        if (id.num() == MiscTypeFace)
+          builtIn = spv::BuiltInFrontFacing;
+      }
       else {
-        m_oDecls[outputSlot = allocateSlot(false, id, semantic)] = decl;
+        auto& decl = *optionalPremadeDecl;
+        auto& semantic = decl.semantic;
 
-        if (decl.semantic.usage == DxsoUsage::Position)
-          builtIn = spv::BuiltInPosition;
-        else if (decl.semantic.usage == DxsoUsage::PointSize)
-          builtIn = spv::BuiltInPointSize;
+        if (input)
+          m_vDecls[inputSlot = allocateSlot(true, id, semantic)] = decl;
+        else {
+          m_oDecls[outputSlot = allocateSlot(false, id, semantic)] = decl;
+
+          if (decl.semantic.usage == DxsoUsage::Position)
+            builtIn = spv::BuiltInPosition;
+          else if (decl.semantic.usage == DxsoUsage::PointSize)
+            builtIn = spv::BuiltInPointSize;
+        }
       }
     }
     else {
@@ -1453,7 +1460,7 @@ namespace dxvk {
           Logger::warn("DxsoCompiler::mapSpirvRegister: unimplemented vPos used.");
         }
         else { // MiscTypeFace
-          Logger::warn("DxsoCompiler::mapSpirvRegister: unimplemented vFace used.");
+          builtIn = spv::BuiltInFrontFacing;
         }
       }
     }
@@ -1520,7 +1527,25 @@ namespace dxvk {
         ptrId = m_module.newVar(boolPtrTypeId, spv::StorageClassPrivate);
         m_module.opStore(ptrId, varId);
       }
-    } else if (input || output) {
+    }
+    else if (builtIn == spv::BuiltInFrontFacing) {
+      uint32_t boolPtr = m_module.defPointerType(
+        m_module.defBoolType(), spv::StorageClassInput);
+
+      ptrId = m_module.newVar(boolPtr, spv::StorageClassInput);
+      m_module.decorateBuiltIn(ptrId, builtIn);
+      m_entryPointInterfaces.push_back(ptrId);
+
+      uint32_t frontFacingVar = m_module.opLoad(m_module.defBoolType(), ptrId);
+
+      ptrId = this->emitNewVariable(id.type());
+      m_module.opStore(
+        ptrId,
+        m_module.opSelect(spvTypeVar(id.type()), frontFacingVar,
+          m_module.constvec4f32 (1.0f,  1.0f,  1.0f,  1.0f),
+          m_module.constvec4f32(-1.0f, -1.0f, -1.0f, -1.0f)));
+    }
+    else if (input || output) {
       ptrId = this->emitNewVariable(id.type());
 
       if (input) {
