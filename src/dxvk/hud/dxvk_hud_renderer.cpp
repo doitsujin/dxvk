@@ -8,6 +8,7 @@ namespace dxvk::hud {
   
   HudRenderer::HudRenderer(const Rc<DxvkDevice>& device)
   : m_mode          (Mode::RenderNone),
+    m_surfaceSize   { 0, 0 },
     m_vertShader    (createVertexShader(device)),
     m_textShader    (createTextShader(device)),
     m_lineShader    (createLineShader(device)),
@@ -25,7 +26,7 @@ namespace dxvk::hud {
   }
   
   
-  void HudRenderer::beginFrame(const Rc<DxvkContext>& context) {
+  void HudRenderer::beginFrame(const Rc<DxvkContext>& context, VkExtent2D surfaceSize) {
     auto vertexSlice = m_vertexBuffer->allocSlice();
     context->invalidateBuffer(m_vertexBuffer, vertexSlice);
     
@@ -52,7 +53,8 @@ namespace dxvk::hud {
     context->bindResourceSampler(1, m_fontSampler);
     context->bindResourceView   (1, m_fontView, nullptr);
     
-    m_mode = Mode::RenderNone;
+    m_mode        = Mode::RenderNone;
+    m_surfaceSize = surfaceSize;
     m_vertexIndex = 0;
   }
   

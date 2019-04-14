@@ -76,6 +76,7 @@ namespace dxvk::hud {
     DxvkRasterizerState   m_rsState;
     DxvkBlendMode         m_blendMode;
 
+    HudUniformData        m_uniformData;
     HudRenderer           m_renderer;
     HudDeviceInfo         m_hudDeviceInfo;
     HudFps                m_hudFramerate;
