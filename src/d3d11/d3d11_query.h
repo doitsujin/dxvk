@@ -9,6 +9,12 @@
 
 namespace dxvk {
   
+  enum D3D11_VK_QUERY_STATE : uint32_t {
+    D3D11_VK_QUERY_INITIAL,
+    D3D11_VK_QUERY_BEGUN,
+    D3D11_VK_QUERY_ENDED,
+  };
+  
   class D3D11Query : public D3D11DeviceChild<ID3D11Predicate> {
     
   public:
@@ -49,6 +55,8 @@ namespace dxvk {
     
     D3D11Device* const m_device;
     D3D11_QUERY_DESC   m_desc;
+
+    D3D11_VK_QUERY_STATE m_state;
     
     Rc<DxvkGpuQuery>  m_query = nullptr;
     Rc<DxvkGpuEvent>  m_event = nullptr;

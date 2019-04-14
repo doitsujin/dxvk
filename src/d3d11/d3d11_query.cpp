@@ -7,6 +7,7 @@ namespace dxvk {
           D3D11Device*      device,
     const D3D11_QUERY_DESC& desc)
   : m_device(device), m_desc(desc),
+    m_state(D3D11_VK_QUERY_INITIAL),
     m_d3d10(this, device->GetD3D10Interface()) {
     Rc<DxvkDevice> dxvkDevice = m_device->GetDXVKDevice();
 
@@ -171,6 +172,9 @@ namespace dxvk {
   
   
   void D3D11Query::Begin(DxvkContext* ctx) {
+    if (unlikely(m_state == D3D11_VK_QUERY_BEGUN))
+      return;
+    
     switch (m_desc.Query) {
       case D3D11_QUERY_EVENT:
       case D3D11_QUERY_TIMESTAMP:
@@ -180,6 +184,8 @@ namespace dxvk {
       default:
         ctx->beginQuery(m_query);
     }
+
+    m_state = D3D11_VK_QUERY_BEGUN;
   }
   
   
@@ -197,11 +203,16 @@ namespace dxvk {
         break;
       
       default:
+        if (unlikely(m_state != D3D11_VK_QUERY_BEGUN))
+          return;
+        
         ctx->endQuery(m_query);
     }
 
     if (m_predicate.defined())
       ctx->writePredicate(m_predicate, m_query);
+    
+    m_state = D3D11_VK_QUERY_ENDED;
   }
   
   
@@ -303,6 +314,9 @@ namespace dxvk {
     std::lock_guard<sync::Spinlock> lock(m_predicateLock);
 
     if (unlikely(m_desc.Query != D3D11_QUERY_OCCLUSION_PREDICATE))
+      return DxvkBufferSlice();
+
+    if (unlikely(m_state != D3D11_VK_QUERY_ENDED))
       return DxvkBufferSlice();
 
     if (unlikely(!m_predicate.defined())) {
