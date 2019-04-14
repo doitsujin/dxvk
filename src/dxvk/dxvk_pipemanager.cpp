@@ -121,5 +121,11 @@ namespace dxvk {
     result.numGraphicsPipelines = m_numGraphicsPipelines.load();
     return result;
   }
+
+
+  bool DxvkPipelineManager::isCompilingShaders() const {
+    return m_stateCache != nullptr
+        && m_stateCache->isCompilingShaders();
+  }
   
 }

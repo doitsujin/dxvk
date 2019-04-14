@@ -80,6 +80,8 @@ namespace dxvk {
     Logger::info(str::format("DXVK: Using ", numWorkers, " compiler threads"));
     
     // Start the worker threads and the file writer
+    m_workerBusy.store(numWorkers);
+
     for (uint32_t i = 0; i < numWorkers; i++) {
       m_workerThreads.emplace_back([this] () { workerFunc(); });
       m_workerThreads[i].set_priority(ThreadPriority::Lowest);
@@ -410,12 +412,18 @@ namespace dxvk {
 
       { std::unique_lock<std::mutex> lock(m_workerLock);
 
-        m_workerCond.wait(lock, [this] () {
-          return m_workerQueue.size()
-              || m_stopThreads.load();
-        });
+        if (m_workerQueue.empty()) {
+          m_workerBusy -= 1;
+          m_workerCond.wait(lock, [this] () {
+            return m_workerQueue.size()
+                || m_stopThreads.load();
+          });
 
-        if (m_workerQueue.size() == 0)
+          if (!m_workerQueue.empty())
+            m_workerBusy += 1;
+        }
+
+        if (m_workerQueue.empty())
           break;
         
         item = m_workerQueue.front();
