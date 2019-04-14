@@ -125,6 +125,14 @@ namespace dxvk {
      */
     void registerShader(
       const Rc<DxvkShader>&                 shader);
+    
+    /**
+     * \brief Checks whether compiler threads are busy
+     * \returns \c true if we're compiling shaders
+     */
+    bool isCompilingShaders() {
+      return m_workerBusy.load() > 0;
+    }
 
   private:
 
@@ -162,6 +170,7 @@ namespace dxvk {
     std::mutex                        m_workerLock;
     std::condition_variable           m_workerCond;
     std::queue<WorkerItem>            m_workerQueue;
+    std::atomic<uint32_t>             m_workerBusy;
     std::vector<dxvk::thread>         m_workerThreads;
 
     std::mutex                        m_writerLock;

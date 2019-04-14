@@ -127,6 +127,13 @@ namespace dxvk {
      * \returns Number of compute/graphics pipelines
      */
     DxvkPipelineCount getPipelineCount() const;
+
+    /**
+     * \brief Checks whether async compiler is busy
+     * \returns \c true if shaders are being compiled
+     */
+    bool isCompilingShaders() const;
+    
   private:
     
     const DxvkDevice*         m_device;

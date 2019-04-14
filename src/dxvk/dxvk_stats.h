@@ -19,6 +19,7 @@ namespace dxvk {
     MemoryUsed,               ///< Amount of memory used
     PipeCountGraphics,        ///< Number of graphics pipelines
     PipeCountCompute,         ///< Number of compute pipelines
+    PipeCompilerBusy,         ///< Boolean indicating compiler activity
     QueueSubmitCount,         ///< Number of command buffer submissions
     QueuePresentCount,        ///< Number of present calls / frames
     NumCounters,              ///< Number of counters available
