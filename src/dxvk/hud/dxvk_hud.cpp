@@ -49,10 +49,9 @@ namespace dxvk::hud {
   
   
   void Hud::render(const Rc<DxvkContext>& ctx, VkExtent2D surfaceSize) {
-    HudUniformData uniformData;
-    uniformData.surfaceSize = surfaceSize;
+    m_uniformData.surfaceSize = surfaceSize;
     
-    this->updateUniformBuffer(ctx, uniformData);
+    this->updateUniformBuffer(ctx, m_uniformData);
 
     this->setupRendererState(ctx);
     this->renderHudElements(ctx);
@@ -75,7 +74,7 @@ namespace dxvk::hud {
     ctx->bindResourceBuffer(0,
       DxvkBufferSlice(m_uniformBuffer));
 
-    m_renderer.beginFrame(ctx);
+    m_renderer.beginFrame(ctx, m_uniformData.surfaceSize);
   }
 
 

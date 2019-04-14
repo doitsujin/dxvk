@@ -66,7 +66,8 @@ namespace dxvk::hud {
     ~HudRenderer();
     
     void beginFrame(
-      const Rc<DxvkContext>&  context);
+      const Rc<DxvkContext>&  context,
+            VkExtent2D        surfaceSize);
     
     void drawText(
       const Rc<DxvkContext>&  context,
@@ -80,6 +81,10 @@ namespace dxvk::hud {
             size_t            vertexCount,
       const HudVertex*        vertexData);
     
+    VkExtent2D surfaceSize() const {
+      return m_surfaceSize;
+    }
+    
   private:
     
     enum class Mode {
@@ -91,6 +96,7 @@ namespace dxvk::hud {
     std::array<uint8_t, 256> m_charMap;
     
     Mode                m_mode;
+    VkExtent2D          m_surfaceSize;
     
     Rc<DxvkShader>      m_vertShader;
     Rc<DxvkShader>      m_textShader;
