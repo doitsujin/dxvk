@@ -56,6 +56,11 @@ namespace dxvk::hud {
             HudRenderer&      renderer,
             HudPos            position);
     
+    HudPos printCompilerActivity(
+      const Rc<DxvkContext>&  context,
+            HudRenderer&      renderer,
+            HudPos            position);
+    
     static HudElements filterElements(HudElements elements);
     
   };

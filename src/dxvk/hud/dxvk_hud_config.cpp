@@ -14,6 +14,7 @@ namespace dxvk::hud {
     { "memory",       HudElement::StatMemory        },
     { "version",      HudElement::DxvkVersion       },
     { "api",          HudElement::DxvkClientApi     },
+    { "compiler",     HudElement::CompilerActivity  },
   }};
   
   

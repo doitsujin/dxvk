@@ -39,6 +39,11 @@ namespace dxvk::hud {
     if (m_elements.test(HudElement::StatMemory))
       position = this->printMemoryStats(context, renderer, position);
     
+    if (m_elements.test(HudElement::CompilerActivity)) {
+      this->printCompilerActivity(context, renderer,
+        { position.x, float(renderer.surfaceSize().height) - 20.0f });
+    }
+    
     return position;
   }
   
@@ -142,6 +147,22 @@ namespace dxvk::hud {
     
     return { position.x, position.y + 44.0f };
   }
+
+
+  HudPos HudStats::printCompilerActivity(
+    const Rc<DxvkContext>&  context,
+          HudRenderer&      renderer,
+          HudPos            position) {
+    
+    if (m_prevCounters.getCtr(DxvkStatCounter::PipeCompilerBusy)) {
+      renderer.drawText(context, 16.0f,
+        { position.x, position.y },
+        { 1.0f, 1.0f, 1.0f, 1.0f },
+        "Compiling shaders...");
+    }
+    
+    return { position.x, position.y + 24.0f };
+  }
   
   
   HudElements HudStats::filterElements(HudElements elements) {
@@ -149,7 +170,8 @@ namespace dxvk::hud {
       HudElement::StatDrawCalls,
       HudElement::StatSubmissions,
       HudElement::StatPipelines,
-      HudElement::StatMemory);
+      HudElement::StatMemory,
+      HudElement::CompilerActivity);
   }
   
 }
