@@ -302,6 +302,9 @@ namespace dxvk {
   DxvkBufferSlice D3D11Query::GetPredicate(DxvkContext* ctx) {
     std::lock_guard<sync::Spinlock> lock(m_predicateLock);
 
+    if (unlikely(m_desc.Query != D3D11_QUERY_OCCLUSION_PREDICATE))
+      return DxvkBufferSlice();
+
     if (unlikely(!m_predicate.defined())) {
       m_predicate = m_device->AllocPredicateSlice();
       ctx->writePredicate(m_predicate, m_query);
