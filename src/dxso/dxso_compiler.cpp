@@ -1336,10 +1336,14 @@ namespace dxvk {
         else {
           m_oDecls[outputSlot = allocateSlot(false, id, semantic)] = decl;
 
-          if (decl.semantic.usage == DxsoUsage::Position)
+          if (decl.semantic.usage == DxsoUsage::Position) {
             builtIn = spv::BuiltInPosition;
-          else if (decl.semantic.usage == DxsoUsage::PointSize)
+            m_oDecls[outputSlot].semantic.usageIndex = 0;
+          }
+          else if (decl.semantic.usage == DxsoUsage::PointSize) {
             builtIn = spv::BuiltInPointSize;
+            m_oDecls[outputSlot].semantic.usageIndex = 0;
+          }
         }
       }
     }
