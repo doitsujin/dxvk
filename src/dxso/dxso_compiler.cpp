@@ -209,9 +209,14 @@ namespace dxvk {
     m_module.decorateBuiltIn(clipDistArray, spv::BuiltInClipDistance);
     m_entryPointInterfaces.push_back(clipDistArray);
     
+    uint32_t positionPtr = findBuiltInOutputPtr(DxsoUsage::Position, 0).ptrId;
+
+    // We generated a bad shader, let's not make it even worse.
+    if (positionPtr)
+      return;
+
     // Compute clip distances
-    uint32_t positionId = m_module.opLoad(vec4Type,
-      findBuiltInOutputPtr(DxsoUsage::Position, 0).ptrId);
+    uint32_t positionId = m_module.opLoad(vec4Type, positionPtr);
     
     for (uint32_t i = 0; i < caps::MaxClipPlanes; i++) {
       std::array<uint32_t, 2> blockMembers = {{
