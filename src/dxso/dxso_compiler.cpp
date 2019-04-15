@@ -1641,11 +1641,13 @@ namespace dxvk {
     case DxsoRegisterType::Const3:
     case DxsoRegisterType::Const4:
     case DxsoRegisterType::TempFloat16:
-    case DxsoRegisterType::MiscType:
-    case DxsoRegisterType::DepthOut: {
+    case DxsoRegisterType::MiscType: {
       uint32_t floatType = m_module.defFloatType(32);
       return count > 1 ? m_module.defVectorType(floatType, count) : floatType;
     }
+
+    case DxsoRegisterType::DepthOut:
+      return m_module.defFloatType(32);
 
     case DxsoRegisterType::ConstInt: {
       uint32_t intType = m_module.defIntType(32, 1);
