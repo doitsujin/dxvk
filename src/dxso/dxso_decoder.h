@@ -340,4 +340,6 @@ namespace dxvk {
 
   };
 
+  std::ostream& operator << (std::ostream& os, DxsoUsage usage);
+
 }
