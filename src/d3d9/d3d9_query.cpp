@@ -102,6 +102,9 @@ namespace dxvk {
       if (pData != nullptr)
         * static_cast<BOOL*>(pData) = signaled;
 
+      if (!signaled)
+        m_parent->FlushImplicit(FALSE);
+
       return signaled ? D3D_OK : S_FALSE;
     }
     else {
