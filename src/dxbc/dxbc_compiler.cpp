@@ -2196,7 +2196,8 @@ namespace dxvk {
     bool doCut = ins.op != DxbcOpcode::Emit && ins.op != DxbcOpcode::EmitStream;
 
     if (doEmit) {
-      emitOutputSetup();
+      if (m_perVertexOut)
+        emitOutputSetup();
       emitClipCullStore(DxbcSystemValue::ClipDistance, m_clipDistances);
       emitClipCullStore(DxbcSystemValue::CullDistance, m_cullDistances);
       emitXfbOutputSetup(streamId, false);
@@ -6427,14 +6428,16 @@ namespace dxvk {
     // Declare the per-vertex output block. Outputs are not
     // declared as arrays, instead they will be flushed when
     // calling EmitVertex.
-    const uint32_t perVertexStruct = this->getPerVertexBlockId();
-    const uint32_t perVertexPointer = m_module.defPointerType(
-      perVertexStruct, spv::StorageClassOutput);
-    
-    m_perVertexOut = m_module.newVar(
-      perVertexPointer, spv::StorageClassOutput);
-    m_entryPointInterfaces.push_back(m_perVertexOut);
-    m_module.setDebugName(m_perVertexOut, "gs_vertex_out");
+    if (!m_moduleInfo.xfb || m_moduleInfo.xfb->rasterizedStream >= 0) {
+      const uint32_t perVertexStruct = this->getPerVertexBlockId();
+      const uint32_t perVertexPointer = m_module.defPointerType(
+        perVertexStruct, spv::StorageClassOutput);
+      
+      m_perVertexOut = m_module.newVar(
+        perVertexPointer, spv::StorageClassOutput);
+      m_entryPointInterfaces.push_back(m_perVertexOut);
+      m_module.setDebugName(m_perVertexOut, "gs_vertex_out");
+    }
     
     // Cull/clip distances as outputs
     m_clipDistances = emitDclClipCullDistanceArray(
