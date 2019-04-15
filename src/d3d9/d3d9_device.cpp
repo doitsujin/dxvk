@@ -4086,6 +4086,9 @@ namespace dxvk {
     EmitCs([queryPtr](DxvkContext* ctx) {
       queryPtr->End(ctx);
     });
+
+    if (queryPtr->GetType() == D3DQUERYTYPE_EVENT)
+      FlushImplicit(TRUE);
   }
 
   void Direct3DDevice9Ex::SetVertexBoolBitfield(uint32_t mask, uint32_t bits) {

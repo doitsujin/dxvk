@@ -752,6 +752,8 @@ namespace dxvk {
     void SetVertexBoolBitfield(uint32_t mask, uint32_t bits);
     void SetPixelBoolBitfield(uint32_t mask, uint32_t bits);
 
+    void FlushImplicit(BOOL StrongHint);
+
   private:
 
     D3D9DeviceFlags                 m_flags;
@@ -800,8 +802,6 @@ namespace dxvk {
         m_csChunk = AllocCsChunk();
       }
     }
-
-    void FlushImplicit(BOOL StrongHint);
 
     Com<IDirect3D9Ex>               m_parent;
     UINT                            m_adapter;

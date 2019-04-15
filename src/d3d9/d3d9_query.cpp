@@ -89,6 +89,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D9Query::GetData(void* pData, DWORD dwSize, DWORD dwGetDataFlags) {
+    m_parent->SynchronizeCsThread();
+
     if (m_queryType == D3DQUERYTYPE_EVENT) {
       DxvkGpuEventStatus status = m_event->test();
 
@@ -112,8 +114,10 @@ namespace dxvk {
           || status == DxvkGpuQueryStatus::Failed)
           return D3DERR_INVALIDCALL;
 
-        if (status == DxvkGpuQueryStatus::Pending)
+        if (status == DxvkGpuQueryStatus::Pending) {
+          m_parent->FlushImplicit(FALSE);
           return S_FALSE;
+        }
       }
 
       if (pData == nullptr)
