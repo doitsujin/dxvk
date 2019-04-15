@@ -3,7 +3,8 @@
 namespace dxvk::hud {
   
   HudStats::HudStats(HudElements elements)
-  : m_elements(filterElements(elements)) { }
+  : m_elements(filterElements(elements)),
+    m_compilerShowTime(std::chrono::high_resolution_clock::now()) { }
   
   
   HudStats::~HudStats() {
@@ -153,8 +154,19 @@ namespace dxvk::hud {
     const Rc<DxvkContext>&  context,
           HudRenderer&      renderer,
           HudPos            position) {
+    auto now    = std::chrono::high_resolution_clock::now();
+    bool doShow = m_prevCounters.getCtr(DxvkStatCounter::PipeCompilerBusy);
+
+    if (m_prevCounters.getCtr(DxvkStatCounter::PipeCompilerBusy)
+     && m_diffCounters.getCtr(DxvkStatCounter::PipeCompilerBusy))
+      m_compilerShowTime = now;
     
-    if (m_prevCounters.getCtr(DxvkStatCounter::PipeCompilerBusy)) {
+    if (!doShow) {
+      doShow |= std::chrono::duration_cast<std::chrono::milliseconds>(now - m_compilerShowTime)
+              < std::chrono::milliseconds(1000);
+    }
+    
+    if (doShow) {
       renderer.drawText(context, 16.0f,
         { position.x, position.y },
         { 1.0f, 1.0f, 1.0f, 1.0f },
