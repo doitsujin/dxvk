@@ -158,22 +158,6 @@ namespace dxvk {
       m_module.defVoidType(),
       m_ps.functionId, 0, nullptr);
 
-    /*if (m_ps.killState != 0) {
-      DxbcConditional cond;
-      cond.labelIf = m_module.allocateId();
-      cond.labelEnd = m_module.allocateId();
-
-      uint32_t killTest = m_module.opLoad(m_module.defBoolType(), m_ps.killState);
-
-      m_module.opSelectionMerge(cond.labelEnd, spv::SelectionControlMaskNone);
-      m_module.opBranchConditional(killTest, cond.labelIf, cond.labelEnd);
-
-      m_module.opLabel(cond.labelIf);
-      m_module.opKill();
-
-      m_module.opLabel(cond.labelEnd);
-    }*/
-
     //this->emitOutputMapping();
     this->emitPsProcessing();
     this->emitOutputDepthClamp();
@@ -391,6 +375,20 @@ namespace dxvk {
       // end if (alpha_test)
       m_module.opLabel(atestSkipLabel);
     }
+
+    if (m_ps.discardPtr) {
+      uint32_t discardLabel = m_module.allocateId();
+      uint32_t skipLabel = m_module.allocateId();
+
+      uint32_t discard = m_module.opLoad(m_module.defBoolType(), m_ps.discardPtr);
+      m_module.opSelectionMerge(skipLabel, spv::SelectionControlMaskNone);
+      m_module.opBranchConditional(discard, discardLabel, skipLabel);
+
+      m_module.opLabel(discardLabel);
+      m_module.opKill();
+
+      m_module.opLabel(skipLabel);
+    }
   }
 
   void DxsoCompiler::emitOutputDepthClamp() {
@@ -508,34 +506,6 @@ namespace dxvk {
       m_module.defFunctionType(
         m_module.defVoidType(), 0, nullptr));
     this->emitFunctionLabel();
-
-    // We may have to defer kill operations to the end of
-    // the shader in order to keep derivatives correct.
-    /*if (m_analysis->usesKill && m_analysis->usesDerivatives) {
-      m_ps.killState = m_module.newVarInit(
-        m_module.defPointerType(m_module.defBoolType(), spv::StorageClassPrivate),
-        spv::StorageClassPrivate, m_module.constBool(false));
-
-      m_module.setDebugName(m_ps.killState, "ps_kill");
-
-      if (m_moduleInfo.options.useSubgroupOpsForEarlyDiscard) {
-        m_module.enableCapability(spv::CapabilityGroupNonUniform);
-        m_module.enableCapability(spv::CapabilityGroupNonUniformBallot);
-
-        DxbcRegisterInfo invocationMask;
-        invocationMask.type = { DxbcScalarType::Uint32, 4, 0 };
-        invocationMask.sclass = spv::StorageClassFunction;
-
-        m_ps.invocationMask = emitNewVariable(invocationMask);
-        m_module.setDebugName(m_ps.invocationMask, "fInvocationMask");
-
-        m_module.opStore(m_ps.invocationMask,
-          m_module.opGroupNonUniformBallot(
-            getVectorTypeId({ DxbcScalarType::Uint32, 4 }),
-            m_module.constu32(spv::ScopeSubgroup),
-            m_module.constBool(true)));
-      }
-    }*/
   }
 
   void DxsoCompiler::emitFunctionBegin(
@@ -1164,16 +1134,17 @@ namespace dxvk {
 
       result = m_module.opAny(boolType, result);
 
-      uint32_t discardLabel = m_module.allocateId();
-      uint32_t skipLabel    = m_module.allocateId();
+      uint32_t b = m_module.defBoolType();
+      if (m_ps.discardPtr == 0) {
+        m_ps.discardPtr = m_module.newVar(
+          m_module.defPointerType(b, spv::StorageClassPrivate), spv::StorageClassPrivate);
 
-      m_module.opSelectionMerge(skipLabel, spv::SelectionControlMaskNone);
-      m_module.opBranchConditional(result, discardLabel, skipLabel);
+        m_module.opStore(m_ps.discardPtr, m_module.constBool(false));
+      }
 
-      m_module.opLabel(discardLabel);
-      m_module.opKill();
-
-      m_module.opLabel(skipLabel);
+      uint32_t discard = m_module.opLoad(b, m_ps.discardPtr);
+      discard = m_module.opLogicalOr(b, discard, result);
+      m_module.opStore(m_ps.discardPtr, discard);
     }
   }
 
@@ -1364,8 +1335,6 @@ namespace dxvk {
           m_vDecls[inputSlot = allocateSlot(true, id, semantic)] = decl;
         else {
           m_oDecls[outputSlot = allocateSlot(false, id, semantic)] = decl;
-
-          m_oPtrs[outputSlot] = ptrId;
 
           if (decl.semantic.usage == DxsoUsage::Position)
             builtIn = spv::BuiltInPosition;

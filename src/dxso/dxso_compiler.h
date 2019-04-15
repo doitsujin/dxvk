@@ -52,17 +52,7 @@ namespace dxvk {
   struct DxsoCompilerPsPart {
     uint32_t functionId = 0;
 
-    uint32_t builtinFragCoord = 0;
-    uint32_t builtinDepth = 0;
-    uint32_t builtinIsFrontFace = 0;
-    uint32_t builtinSampleId = 0;
-    uint32_t builtinSampleMaskIn = 0;
-    uint32_t builtinSampleMaskOut = 0;
-    uint32_t builtinLayer = 0;
-    uint32_t builtinViewportId = 0;
-
-    uint32_t invocationMask = 0;
-    uint32_t killState = 0;
+    uint32_t discardPtr = 0;
   };
 
   class DxsoCompiler {
