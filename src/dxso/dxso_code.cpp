@@ -5,7 +5,7 @@ namespace dxvk {
   DxsoCode::DxsoCode(DxsoReader& reader) {
     size_t codeSize = reader.remaining();
 
-    m_code.resize(codeSize / DxsoReader::TokenSize);
+    m_code.resize(codeSize);
     reader.read(m_code.data(), codeSize);
   }
 
