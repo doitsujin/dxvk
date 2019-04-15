@@ -990,12 +990,10 @@ namespace dxvk {
 
         const uint32_t x = 0;
         const uint32_t y = 1;
-        const uint32_t z = 2;
         const uint32_t w = 3;
 
         uint32_t srcX = m_module.opCompositeExtract(floatScalarType, srcOp, 1, &x);
         uint32_t srcY = m_module.opCompositeExtract(floatScalarType, srcOp, 1, &y);
-        uint32_t srcZ = m_module.opCompositeExtract(floatScalarType, srcOp, 1, &z);
         uint32_t srcW = m_module.opCompositeExtract(floatScalarType, srcOp, 1, &w);
 
         uint32_t power = m_module.opFClamp(
