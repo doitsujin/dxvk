@@ -1,5 +1,7 @@
 #pragma once
 
+#include <chrono>
+
 #include "../dxvk_stats.h"
 
 #include "dxvk_hud_config.h"
@@ -35,6 +37,8 @@ namespace dxvk::hud {
     
     DxvkStatCounters  m_prevCounters;
     DxvkStatCounters  m_diffCounters;
+
+    std::chrono::high_resolution_clock::time_point m_compilerShowTime;
     
     HudPos printDrawCallStats(
       const Rc<DxvkContext>&  context,
