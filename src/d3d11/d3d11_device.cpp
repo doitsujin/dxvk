@@ -676,10 +676,21 @@ namespace dxvk {
     
     // Compute hash from both the xfb info and the source
     // code, because both influence the generated code
-    std::array<Sha1Data, 2> chunks = {{
-      { pShaderBytecode, BytecodeLength },
-      { &xfb,            sizeof(xfb)    },
+    DxbcXfbInfo hashXfb = xfb;
+
+    std::vector<Sha1Data> chunks = {{
+      { pShaderBytecode, BytecodeLength  },
+      { &hashXfb,        sizeof(hashXfb) },
     }};
+
+    for (uint32_t i = 0; i < hashXfb.entryCount; i++) {
+      const char* semantic = hashXfb.entries[i].semanticName;
+
+      if (semantic) {
+        chunks.push_back({ semantic, std::strlen(semantic) });
+        hashXfb.entries[i].semanticName = nullptr;
+      }
+    }
 
     Sha1Hash hash = Sha1Hash::compute(chunks.size(), chunks.data());
     
