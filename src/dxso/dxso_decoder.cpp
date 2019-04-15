@@ -136,8 +136,14 @@ namespace dxvk {
      || opcode == DxsoOpcode::Loop
      || opcode == DxsoOpcode::BreakC
      || opcode == DxsoOpcode::BreakP) {
-      for (uint32_t i = 0; i < instructionLength; i++)
+      uint32_t sourceIdx = 0;
+      for (uint32_t i = 0; i < instructionLength; i++) {
         this->decodeSourceRegister(i, code);
+        if (m_ctx.src[sourceIdx].advanceExtra(*this))
+          i++;
+
+        sourceIdx++;
+      }
     }
     else if (opcode == DxsoOpcode::Dcl) {
       this->decodeDeclaration(code);
