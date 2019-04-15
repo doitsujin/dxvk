@@ -43,11 +43,11 @@ namespace dxvk {
     switch (MultiSample) {
     case D3DMULTISAMPLE_NONE:
     case D3DMULTISAMPLE_NONMASKABLE: flag = VK_SAMPLE_COUNT_1_BIT;  break;
-    case D3DMULTISAMPLE_2_SAMPLES: flag = VK_SAMPLE_COUNT_2_BIT;  break;
-    case D3DMULTISAMPLE_4_SAMPLES: flag = VK_SAMPLE_COUNT_4_BIT;  break;
-    case D3DMULTISAMPLE_8_SAMPLES: flag = VK_SAMPLE_COUNT_8_BIT;  break;
-    case D3DMULTISAMPLE_16_SAMPLES: flag = VK_SAMPLE_COUNT_16_BIT; break;
-    default: return D3DERR_INVALIDCALL;
+    case D3DMULTISAMPLE_2_SAMPLES:   flag = VK_SAMPLE_COUNT_2_BIT;  break;
+    case D3DMULTISAMPLE_4_SAMPLES:   flag = VK_SAMPLE_COUNT_4_BIT;  break;
+    case D3DMULTISAMPLE_8_SAMPLES:   flag = VK_SAMPLE_COUNT_8_BIT;  break;
+    case D3DMULTISAMPLE_16_SAMPLES:  flag = VK_SAMPLE_COUNT_16_BIT; break;
+    default:                         return D3DERR_INVALIDCALL;
     }
 
     if (pCount != nullptr)
