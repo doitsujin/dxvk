@@ -1692,8 +1692,8 @@ namespace dxvk {
       if (idx != g_transientMappings.end()) {
         slot = idx->second;
       } else {
-        slot = 0;
-        //Logger::warn(str::format("Could not find transient mapping for DxsoSemantic{", semantic.usage, ", ", semantic.usageIndex, "}"));
+        slot = 1;
+        Logger::warn(str::format("Could not find transient mapping for DxsoSemantic{", semantic.usage, ", ", semantic.usageIndex, "}"));
       }
     }
 

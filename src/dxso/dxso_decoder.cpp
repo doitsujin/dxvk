@@ -173,4 +173,27 @@ namespace dxvk {
     }
   }
 
+  std::ostream& operator << (std::ostream& os, DxsoUsage usage) {
+    switch (usage) {
+      case DxsoUsage::Position:     os << "Position"; break;
+      case DxsoUsage::BlendWeight:  os << "BlendWeight"; break;
+      case DxsoUsage::BlendIndices: os << "BlendIndices"; break;
+      case DxsoUsage::Normal:       os << "Normal"; break;
+      case DxsoUsage::PointSize:    os << "PointSize"; break;
+      case DxsoUsage::Texcoord:     os << "Texcoord"; break;
+      case DxsoUsage::Tangent:      os << "Tangent"; break;
+      case DxsoUsage::Binormal:     os << "Binormal"; break;
+      case DxsoUsage::TessFactor:   os << "TessFactor"; break;
+      case DxsoUsage::PositionT:    os << "PositionT"; break;
+      case DxsoUsage::Color:        os << "Color"; break;
+      case DxsoUsage::Fog:          os << "Fog"; break;
+      case DxsoUsage::Depth:        os << "Depth"; break;
+      case DxsoUsage::Sample:       os << "Sample"; break;
+      default:
+        os << "Invalid Format (" << static_cast<uint32_t>(usage) << ")"; break;
+    }
+
+    return os;
+  }
+
 }
