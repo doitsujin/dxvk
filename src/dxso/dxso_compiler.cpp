@@ -1676,12 +1676,13 @@ namespace dxvk {
       {{DxsoUsage::Texcoord,   6}, 7},
       {{DxsoUsage::Texcoord,   7}, 8},
       {{DxsoUsage::Texcoord,   8}, 9},
+      {{DxsoUsage::Texcoord,   9}, 10},
 
-      {{DxsoUsage::Color,      0}, 10},
-      {{DxsoUsage::Color,      1}, 11},
+      {{DxsoUsage::Color,      0}, 11},
+      {{DxsoUsage::Color,      1}, 12},
 
-      {{DxsoUsage::Fog,        0}, 12},
-      {{DxsoUsage::PointSize,  0}, 13},
+      {{DxsoUsage::Fog,        0}, 13},
+      {{DxsoUsage::PointSize,  0}, 14},
   };
 
   uint32_t DxsoCompiler::allocateSlot(bool input, DxsoRegisterId id, DxsoSemantic semantic) {
