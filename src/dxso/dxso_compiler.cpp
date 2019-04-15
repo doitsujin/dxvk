@@ -1034,10 +1034,10 @@ namespace dxvk {
         result = this->emitScalarReplicant(floatVecType, result);
         break;
       case DxsoOpcode::DsX:
-        result = m_module.opDpdx(floatVecType, result);
+        result = m_module.opDpdx(floatVecType, emitRegisterLoad(src[0]));
         break;
       case DxsoOpcode::DsY:
-        result = m_module.opDpdy(floatVecType, result);
+        result = m_module.opDpdy(floatVecType, emitRegisterLoad(src[0]));
         break;
       default:
         Logger::warn(str::format("DxsoCompiler::emitVectorAlu: unimplemented op ", opcode));
