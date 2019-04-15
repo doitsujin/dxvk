@@ -1359,6 +1359,8 @@ namespace dxvk {
         else {
           m_oDecls[outputSlot = allocateSlot(false, id, semantic)] = decl;
 
+          m_oPtrs[outputSlot] = ptrId;
+
           if (decl.semantic.usage == DxsoUsage::Position)
             builtIn = spv::BuiltInPosition;
           else if (decl.semantic.usage == DxsoUsage::PointSize)
