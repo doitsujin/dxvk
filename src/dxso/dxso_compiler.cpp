@@ -722,7 +722,7 @@ namespace dxvk {
     if (vector)
       return m_module.opVectorShuffle(typeId, dst, src, 4, components.data());
     else {
-      uint32_t idx = components[0] - 4;
+      uint32_t idx = 0;
       return m_module.opCompositeExtract(typeId, src, 1, &idx);
     }
   }
@@ -873,7 +873,8 @@ namespace dxvk {
     const auto& dst = ctx.dst;
     const auto& src = ctx.src;
 
-    const uint32_t typeId = spvTypeVar(dst);
+    const uint32_t floatScalarType  = m_module.defFloatType(32);
+    const uint32_t floatVecType     = m_module.defVectorType(floatScalarType, 4);
 
     const auto opcode = ctx.instruction.opcode();
     uint32_t result;
@@ -884,10 +885,10 @@ namespace dxvk {
          && m_programInfo.type() == DxsoProgramType::VertexShader
          && src[0].registerId().type() != DxsoRegisterType::ConstInt) {
           result = m_module.opRound(
-            m_module.defVectorType(m_module.defFloatType(32), 4),
+            floatVecType,
             emitRegisterLoad(src[0]));
 
-          result = m_module.opConvertFtoS(typeId, result);
+          result = m_module.opConvertFtoS(spvTypeVar(dst), result);
         }
         else {
           result = emitRegisterLoad(src[0]);
@@ -896,46 +897,40 @@ namespace dxvk {
         break;
       }
       case DxsoOpcode::Add:
-        result = m_module.opFAdd(typeId, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
+        result = m_module.opFAdd(floatVecType, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
         break;
       case DxsoOpcode::Sub:
-        result = m_module.opFSub(typeId, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
+        result = m_module.opFSub(floatVecType, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
         break;
       case DxsoOpcode::Mad:
         result = m_module.opFFma(
-          typeId,
+          floatVecType,
           emitRegisterLoad(src[0]),
           emitRegisterLoad(src[1]),
           emitRegisterLoad(src[2]));
         break;
       case DxsoOpcode::Mul:
-        result = m_module.opFMul(typeId, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
+        result = m_module.opFMul(floatVecType, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
         break;
       case DxsoOpcode::Rcp:
-        result = m_module.opFDiv(typeId,
+        result = m_module.opFDiv(floatVecType,
           m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f),
           emitRegisterLoad(src[0]));
 
-        result = this->emitInfinityClamp(typeId, result);
+        result = this->emitInfinityClamp(floatVecType, result);
         break;
       case DxsoOpcode::Rsq:
-        result = m_module.opInverseSqrt(typeId, emitRegisterLoad(src[0]));
-        result = this->emitInfinityClamp(typeId, result);
+        result = m_module.opInverseSqrt(floatVecType, emitRegisterLoad(src[0]));
+        result = this->emitInfinityClamp(floatVecType, result);
         break;
-      case DxsoOpcode::Dp3: {
-        const uint32_t scalarTypeId = spvTypeVar(dst, 1);
-
-        result = m_module.opDot(scalarTypeId, emitRegisterLoad(src[0], 3), emitRegisterLoad(src[1], 3));
-        result = this->emitScalarReplicant(typeId, result);
+      case DxsoOpcode::Dp3:
+        result = m_module.opDot(floatScalarType, emitRegisterLoad(src[0], 3), emitRegisterLoad(src[1], 3));
+        result = this->emitScalarReplicant(floatVecType, result);
         break;
-      }
-      case DxsoOpcode::Dp4: {
-        const uint32_t scalarTypeId = spvTypeVar(dst, 1);
-
-        result = m_module.opDot(scalarTypeId, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
-        result = this->emitScalarReplicant(typeId, result);
+      case DxsoOpcode::Dp4:
+        result = m_module.opDot(floatScalarType, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
+        result = this->emitScalarReplicant(floatVecType, result);
         break;
-      }
       case DxsoOpcode::Slt:
       case DxsoOpcode::Sge: {
         const uint32_t boolVec = m_module.defVectorType(m_module.defBoolType(), 4);
@@ -944,79 +939,74 @@ namespace dxvk {
           ? m_module.opFOrdLessThan        (boolVec, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]))
           : m_module.opFOrdGreaterThanEqual(boolVec, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
 
-        result = m_module.opSelect(typeId, result, m_module.constvec4f32(1, 1, 1, 1), m_module.constvec4f32(0, 0, 0, 0));
+        result = m_module.opSelect(floatVecType, result, m_module.constvec4f32(1, 1, 1, 1), m_module.constvec4f32(0, 0, 0, 0));
         break;
       }
       case DxsoOpcode::Min:
-        result = m_module.opFMin(typeId, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
+        result = m_module.opFMin(floatVecType, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
         break;
       case DxsoOpcode::Max:
-        result = m_module.opFMax(typeId, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
+        result = m_module.opFMax(floatVecType, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
         break;
       case DxsoOpcode::ExpP:
       case DxsoOpcode::Exp:
-        result = m_module.opExp2(typeId, emitRegisterLoad(src[0]));
+        result = m_module.opExp2(floatVecType, emitRegisterLoad(src[0]));
         break;
       case DxsoOpcode::Pow:
-        result = m_module.opPow(typeId, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
+        result = m_module.opPow(floatVecType, emitRegisterLoad(src[0]), emitRegisterLoad(src[1]));
         break;
       case DxsoOpcode::Abs:
-        result = m_module.opFAbs(typeId, emitRegisterLoad(src[0]));
+        result = m_module.opFAbs(floatVecType, emitRegisterLoad(src[0]));
         break;
       case DxsoOpcode::Nrm: {
         // Nrm is 3D...
-        const uint32_t scalarTypeId = spvTypeVar(dst, 1);
-
         uint32_t vec3 = emitRegisterLoad(src[0], 3);
 
-        result = m_module.opDot(scalarTypeId, vec3, vec3);
-        result = m_module.opInverseSqrt(scalarTypeId, result);
-        result = this->emitInfinityClamp(scalarTypeId, result, false);
+        result = m_module.opDot(floatScalarType, vec3, vec3);
+        result = m_module.opInverseSqrt(floatScalarType, result);
+        result = this->emitInfinityClamp(floatScalarType, result, false);
 
         // r * rsq(r . r);
         result = m_module.opVectorTimesScalar(
-          typeId,
+          floatVecType,
           emitRegisterLoad(src[0]),
           result);
-      } break;
+        break;
+      }
       case DxsoOpcode::SinCos: {
-        const uint32_t scalarTypeId = spvTypeVar(dst, 1);
-
         std::array<uint32_t, 4> sincosVectorIndices = {
-          m_module.opSin(scalarTypeId, emitRegisterLoad(src[0], 1)),
-          m_module.opCos(scalarTypeId, emitRegisterLoad(src[0], 1)),
+          m_module.opSin(floatScalarType, emitRegisterLoad(src[0], 1)),
+          m_module.opCos(floatScalarType, emitRegisterLoad(src[0], 1)),
           m_module.constf32(0.0f),
           m_module.constf32(0.0f)
         };
 
-        result = m_module.opCompositeConstruct(typeId, sincosVectorIndices.size(), sincosVectorIndices.data());
+        result = m_module.opCompositeConstruct(floatVecType, sincosVectorIndices.size(), sincosVectorIndices.data());
 
         break;
       }
       case DxsoOpcode::Lit: {
-        const uint32_t scalarTypeId = spvTypeVar(dst, 1);
-
         uint32_t srcOp = emitRegisterLoad(src[0]);
 
         const uint32_t x = 0;
         const uint32_t y = 1;
         const uint32_t z = 2;
         const uint32_t w = 3;
-        
-        uint32_t srcX = m_module.opCompositeExtract(scalarTypeId, srcOp, 1, &x);
-        uint32_t srcY = m_module.opCompositeExtract(scalarTypeId, srcOp, 1, &y);
-        uint32_t srcZ = m_module.opCompositeExtract(scalarTypeId, srcOp, 1, &z);
-        uint32_t srcW = m_module.opCompositeExtract(scalarTypeId, srcOp, 1, &w);
+
+        uint32_t srcX = m_module.opCompositeExtract(floatScalarType, srcOp, 1, &x);
+        uint32_t srcY = m_module.opCompositeExtract(floatScalarType, srcOp, 1, &y);
+        uint32_t srcZ = m_module.opCompositeExtract(floatScalarType, srcOp, 1, &z);
+        uint32_t srcW = m_module.opCompositeExtract(floatScalarType, srcOp, 1, &w);
 
         uint32_t power = m_module.opFClamp(
-          scalarTypeId, srcW,
+          floatScalarType, srcW,
           m_module.constf32(-127.9961f), m_module.constf32(127.9961f));
 
         std::array<uint32_t, 4> resultIndices;
 
         resultIndices[0] = m_module.constf32(1.0f);
-        resultIndices[1] = m_module.opFMax(scalarTypeId, srcX, m_module.constf32(0));
-        resultIndices[2] = m_module.opPow(scalarTypeId, srcY, power);
+        resultIndices[1] = m_module.opFMax(floatScalarType, srcX, m_module.constf32(0));
+        resultIndices[2] = m_module.opPow(floatScalarType, srcY, power);
         resultIndices[3] = m_module.constf32(1.0f);
 
         const uint32_t boolType = m_module.defBoolType();
@@ -1025,19 +1015,19 @@ namespace dxvk {
         uint32_t zTest = m_module.opLogicalAnd(boolType, zTestX, zTestY);
 
         resultIndices[2] = m_module.opSelect(
-          scalarTypeId,
+          floatScalarType,
           zTest,
           resultIndices[2],
           m_module.constf32(0.0f));
 
-        result = m_module.opCompositeConstruct(typeId, resultIndices.size(), resultIndices.data());
+        result = m_module.opCompositeConstruct(floatVecType, resultIndices.size(), resultIndices.data());
         break;
       }
       case DxsoOpcode::LogP:
       case DxsoOpcode::Log:
-        result = m_module.opFAbs(typeId, emitRegisterLoad(src[0]));
-        result = m_module.opLog2(typeId, result);
-        result = this->emitInfinityClamp(typeId, result);
+        result = m_module.opFAbs(floatVecType, emitRegisterLoad(src[0]));
+        result = m_module.opLog2(floatVecType, result);
+        result = this->emitInfinityClamp(floatVecType, result);
         break;
       case DxsoOpcode::Lrp: {
         uint32_t src0 = emitRegisterLoad(src[0]);
@@ -1047,13 +1037,13 @@ namespace dxvk {
         // src2 + src0 * (src1 - src2)
 
         // X = src1 - src2
-        result = m_module.opFSub(typeId, src1, src2);
+        result = m_module.opFSub(floatVecType, src1, src2);
         // result = src2 + src0 * X
-        result = m_module.opFFma(typeId, src0, result, src2);
+        result = m_module.opFFma(floatVecType, src0, result, src2);
         break;
       }
       case DxsoOpcode::Frc:
-        result = m_module.opFract(typeId, emitRegisterLoad(src[0]));
+        result = m_module.opFract(floatVecType, emitRegisterLoad(src[0]));
         break;
       case DxsoOpcode::Cmp: {
         const uint32_t boolVec = m_module.defVectorType(m_module.defBoolType(), 4);
@@ -1064,30 +1054,29 @@ namespace dxvk {
           m_module.constvec4f32(0, 0, 0, 0));
 
         result = m_module.opSelect(
-          typeId,
+          floatVecType,
           result,
           emitRegisterLoad(src[1]),
           emitRegisterLoad(src[2]));
         break;
       }
-      case DxsoOpcode::Dp2Add: {
-        const uint32_t scalarTypeId = spvTypeVar(dst, 1);
-
-        result = m_module.opDot(scalarTypeId, emitRegisterLoad(src[0], 2), emitRegisterLoad(src[1], 2));
-        result = m_module.opFAdd(scalarTypeId, result, emitRegisterLoad(src[2], 1));
-        result = this->emitScalarReplicant(typeId, result);
+      case DxsoOpcode::Dp2Add:
+        result = m_module.opDot(floatScalarType, emitRegisterLoad(src[0], 2), emitRegisterLoad(src[1], 2));
+        result = m_module.opFAdd(floatScalarType, result, emitRegisterLoad(src[2], 1));
+        result = this->emitScalarReplicant(floatVecType, result);
         break;
-      }
       default:
         Logger::warn(str::format("DxsoCompiler::emitVectorAlu: unimplemented op ", opcode));
         return;
     }
 
-    result = emitDstOperandModifier(typeId, result, dst.saturate(), dst.partialPrecision());
+    if (dst.registerId().type() != DxsoRegisterType::Addr
+     || m_programInfo.type() != DxsoProgramType::VertexShader)
+      result = emitDstOperandModifier(floatVecType, result, dst.saturate(), dst.partialPrecision());
 
     m_module.opStore(
       spvPtr(dst),
-      emitWriteMask(isVectorReg(dst.registerId().type()), typeId, spvLoad(dst), result, dst.writeMask()));
+      emitWriteMask(isVectorReg(dst.registerId().type()), spvTypeVar(dst), spvLoad(dst), result, dst.writeMask()));
   }
 
   uint32_t DxsoCompiler::emitInfinityClamp(uint32_t typeId, uint32_t varId, bool vector) {
@@ -1654,13 +1643,11 @@ namespace dxvk {
     case DxsoRegisterType::Const3:
     case DxsoRegisterType::Const4:
     case DxsoRegisterType::TempFloat16:
-    case DxsoRegisterType::MiscType: {
+    case DxsoRegisterType::MiscType:
+    case DxsoRegisterType::DepthOut: {
       uint32_t floatType = m_module.defFloatType(32);
       return count > 1 ? m_module.defVectorType(floatType, count) : floatType;
     }
-
-    case DxsoRegisterType::DepthOut:
-      return m_module.defFloatType(32);
 
     case DxsoRegisterType::ConstInt: {
       uint32_t intType = m_module.defIntType(32, 1);
