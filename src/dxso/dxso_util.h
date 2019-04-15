@@ -19,10 +19,12 @@ namespace dxvk {
   enum DxsoConstantBuffers : uint32_t {
     VSConstantBuffer = 0,
     VSClipPlanes     = 1,
+    VSFixedFunction  = 2,
     VSCount,
 
     PSConstantBuffer = 0,
     PSRenderStates   = 1,
+    PSFixedFunction  = 2,
     PSCount
   };
 
