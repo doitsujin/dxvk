@@ -1678,10 +1678,10 @@ namespace dxvk {
       if (relative != nullptr) {
         DxsoRegisterId id;
 
-        if (relative->hasRelativeToken())
+        if (m_programInfo.majorVersion() == 3)
           id = relative->registerId();
         else
-          id = { DxsoRegisterType::Addr, relative->registerId().num() };
+          id = { DxsoRegisterType::Addr, 0 };
 
         uint32_t r = spvLoad(id);
 
