@@ -2052,9 +2052,6 @@ namespace dxvk {
     Sha1Hash hash = Sha1Hash::compute(
       pFunction, bytecodeLength);
 
-    if (hash.toString().substr(0, 4) == "a9aa")
-      printf("frog");
-
     D3D9CommonShader module;
 
     if (FAILED(this->CreateShaderModule(&module,
