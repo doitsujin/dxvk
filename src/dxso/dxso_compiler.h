@@ -34,8 +34,16 @@ namespace dxvk {
     size_t   headerPtr;
   };
 
+  struct DxsoCfgBlockRep {
+    uint32_t labelHeader;
+    uint32_t labelBegin;
+    uint32_t labelContinue;
+    uint32_t labelBreak;
+    uint32_t iteratorPtr;
+  };
+
   enum class DxsoCfgBlockType : uint32_t {
-    If
+    If, Rep
   };
 
   struct DxsoCfgBlock {
@@ -43,6 +51,7 @@ namespace dxvk {
     
     union {
       DxsoCfgBlockIf     b_if;
+      DxsoCfgBlockRep    b_rep;
     };
   };
 
@@ -182,6 +191,9 @@ namespace dxvk {
     void     emitDebugName(uint32_t varId, DxsoRegisterId id, bool deffed = false);
 
     uint32_t emitScalarReplicant(uint32_t typeId, uint32_t varId);
+
+    void emitControlFlowRep(const DxsoInstructionContext& ctx);
+    void emitControlFlowEndRep(const DxsoInstructionContext& ctx);
 
     void emitControlFlowIf(const DxsoInstructionContext& ctx);
     void emitControlFlowElse(const DxsoInstructionContext& ctx);

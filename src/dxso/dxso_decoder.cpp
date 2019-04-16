@@ -133,6 +133,7 @@ namespace dxvk {
 
     if (opcode == DxsoOpcode::If
      || opcode == DxsoOpcode::Ifc
+     || opcode == DxsoOpcode::Rep
      || opcode == DxsoOpcode::Loop
      || opcode == DxsoOpcode::BreakC
      || opcode == DxsoOpcode::BreakP) {

@@ -91,6 +91,11 @@ namespace dxvk {
     case DxsoOpcode::Dp2Add:
       return this->emitVectorAlu(ctx);
 
+    case DxsoOpcode::Rep:
+      return this->emitControlFlowRep(ctx);
+    case DxsoOpcode::EndRep:
+      return this->emitControlFlowEndRep(ctx);
+
     case DxsoOpcode::If:
     case DxsoOpcode::Ifc:
       return this->emitControlFlowIf(ctx);
@@ -752,6 +757,75 @@ namespace dxvk {
   uint32_t DxsoCompiler::emitScalarReplicant(uint32_t vectorTypeId, uint32_t varId) {
     std::array<uint32_t, 4> replicantIndices = { varId, varId, varId, varId };
     return m_module.opCompositeConstruct(vectorTypeId, replicantIndices.size(), replicantIndices.data());
+  }
+
+  void DxsoCompiler::emitControlFlowRep(const DxsoInstructionContext& ctx) {
+    const uint32_t itType = m_module.defIntType(32, 0);
+
+    DxsoCfgBlock block;
+    block.type = DxsoCfgBlockType::Rep;
+    block.b_rep.labelHeader   = m_module.allocateId();
+    block.b_rep.labelBegin    = m_module.allocateId();
+    block.b_rep.labelContinue = m_module.allocateId();
+    block.b_rep.labelBreak    = m_module.allocateId();
+    block.b_rep.iteratorPtr   = m_module.newVar(
+      m_module.defPointerType(itType, spv::StorageClassPrivate), spv::StorageClassPrivate);
+
+    m_module.setDebugName(block.b_rep.iteratorPtr, "iter");
+
+    m_module.opStore(block.b_rep.iteratorPtr, emitRegisterLoad(ctx.src[0], 1));
+
+    m_module.opBranch(block.b_rep.labelHeader);
+    m_module.opLabel (block.b_rep.labelHeader);
+
+    m_module.opLoopMerge(
+      block.b_rep.labelBreak,
+      block.b_rep.labelContinue,
+      spv::LoopControlMaskNone);
+
+    m_module.opBranch(block.b_rep.labelBegin);
+    m_module.opLabel (block.b_rep.labelBegin);
+
+    uint32_t iterator = m_module.opLoad(itType, block.b_rep.iteratorPtr);
+    uint32_t complete = m_module.opIEqual(m_module.defBoolType(), iterator, m_module.consti32(0));
+
+    const uint32_t breakBlock = m_module.allocateId();
+    const uint32_t mergeBlock = m_module.allocateId();
+
+    m_module.opSelectionMerge(mergeBlock,
+      spv::SelectionControlMaskNone);
+
+    m_module.opBranchConditional(
+      complete, breakBlock, mergeBlock);
+
+    m_module.opLabel(breakBlock);
+
+    m_module.opBranch(block.b_rep.labelBreak);
+
+    m_module.opLabel(mergeBlock);
+
+    iterator = m_module.opISub(itType, iterator, m_module.consti32(1));
+    m_module.opStore(block.b_rep.iteratorPtr, iterator);
+
+    m_controlFlowBlocks.push_back(block);
+  }
+
+  void DxsoCompiler::emitControlFlowEndRep(const DxsoInstructionContext& ctx) {
+    if (m_controlFlowBlocks.size() == 0
+      || m_controlFlowBlocks.back().type != DxsoCfgBlockType::Rep)
+      throw DxvkError("DxsoCompiler: 'EndRep' without 'Rep' found");
+
+    // Remove the block from the stack, it's closed
+    const DxsoCfgBlock block = m_controlFlowBlocks.back();
+    m_controlFlowBlocks.pop_back();
+
+    // Declare the continue block
+    m_module.opBranch(block.b_rep.labelContinue);
+    m_module.opLabel (block.b_rep.labelContinue);
+
+    // Declare the merge block
+    m_module.opBranch(block.b_rep.labelHeader);
+    m_module.opLabel (block.b_rep.labelBreak);
   }
 
   void DxsoCompiler::emitControlFlowIf(const DxsoInstructionContext& ctx) {
