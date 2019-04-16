@@ -34,16 +34,19 @@ namespace dxvk {
     size_t   headerPtr;
   };
 
-  struct DxsoCfgBlockRep {
+  struct DxsoCfgBlockLoop {
     uint32_t labelHeader;
     uint32_t labelBegin;
     uint32_t labelContinue;
     uint32_t labelBreak;
     uint32_t iteratorPtr;
+
+    uint32_t strideVar;
+    uint32_t countBackup;
   };
 
   enum class DxsoCfgBlockType : uint32_t {
-    If, Rep
+    If, Loop
   };
 
   struct DxsoCfgBlock {
@@ -51,7 +54,7 @@ namespace dxvk {
     
     union {
       DxsoCfgBlockIf     b_if;
-      DxsoCfgBlockRep    b_rep;
+      DxsoCfgBlockLoop   b_loop;
     };
   };
 
@@ -196,6 +199,14 @@ namespace dxvk {
 
     DxsoCfgBlock* cfgFindBlock(
       const std::initializer_list<DxsoCfgBlockType>& types);
+
+    void emitControlFlowGenericLoop(
+            bool     count,
+            uint32_t initialVar,
+            uint32_t strideVar,
+            uint32_t iterationCountVar);
+
+    void emitControlFlowGenericLoopEnd();
 
     void emitControlFlowRep(const DxsoInstructionContext& ctx);
     void emitControlFlowEndRep(const DxsoInstructionContext& ctx);

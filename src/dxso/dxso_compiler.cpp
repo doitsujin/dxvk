@@ -792,34 +792,51 @@ namespace dxvk {
     return nullptr;
   }
 
-  void DxsoCompiler::emitControlFlowRep(const DxsoInstructionContext& ctx) {
+  void DxsoCompiler::emitControlFlowGenericLoop(
+          bool     count,
+          uint32_t initialVar,
+          uint32_t strideVar,
+          uint32_t iterationCountVar) {
     const uint32_t itType = m_module.defIntType(32, 0);
 
+    DxsoRegisterId loop = { DxsoRegisterType::Loop, 0 };
+    uint32_t loopCounterPtr = count
+      ? getSpirvRegister(loop, false, nullptr).ptrId
+      : 0;
+    uint32_t loopCounterVar = count
+      ? m_module.opLoad(spvTypeVar(loop.type()), loopCounterPtr)
+      : 0;
+
     DxsoCfgBlock block;
-    block.type = DxsoCfgBlockType::Rep;
-    block.b_rep.labelHeader   = m_module.allocateId();
-    block.b_rep.labelBegin    = m_module.allocateId();
-    block.b_rep.labelContinue = m_module.allocateId();
-    block.b_rep.labelBreak    = m_module.allocateId();
-    block.b_rep.iteratorPtr   = m_module.newVar(
+    block.type = DxsoCfgBlockType::Loop;
+    block.b_loop.labelHeader   = m_module.allocateId();
+    block.b_loop.labelBegin    = m_module.allocateId();
+    block.b_loop.labelContinue = m_module.allocateId();
+    block.b_loop.labelBreak    = m_module.allocateId();
+    block.b_loop.iteratorPtr   = m_module.newVar(
       m_module.defPointerType(itType, spv::StorageClassPrivate), spv::StorageClassPrivate);
+    block.b_loop.strideVar     = strideVar;
+    block.b_loop.countBackup   = loopCounterVar;
 
-    m_module.setDebugName(block.b_rep.iteratorPtr, "iter");
+    if (count)
+      m_module.opStore(loopCounterPtr, initialVar);
 
-    m_module.opStore(block.b_rep.iteratorPtr, emitRegisterLoad(ctx.src[0], 1));
+    m_module.setDebugName(block.b_loop.iteratorPtr, "iter");
 
-    m_module.opBranch(block.b_rep.labelHeader);
-    m_module.opLabel (block.b_rep.labelHeader);
+    m_module.opStore(block.b_loop.iteratorPtr, iterationCountVar);
+
+    m_module.opBranch(block.b_loop.labelHeader);
+    m_module.opLabel (block.b_loop.labelHeader);
 
     m_module.opLoopMerge(
-      block.b_rep.labelBreak,
-      block.b_rep.labelContinue,
+      block.b_loop.labelBreak,
+      block.b_loop.labelContinue,
       spv::LoopControlMaskNone);
 
-    m_module.opBranch(block.b_rep.labelBegin);
-    m_module.opLabel (block.b_rep.labelBegin);
+    m_module.opBranch(block.b_loop.labelBegin);
+    m_module.opLabel (block.b_loop.labelBegin);
 
-    uint32_t iterator = m_module.opLoad(itType, block.b_rep.iteratorPtr);
+    uint32_t iterator = m_module.opLoad(itType, block.b_loop.iteratorPtr);
     uint32_t complete = m_module.opIEqual(m_module.defBoolType(), iterator, m_module.consti32(0));
 
     const uint32_t breakBlock = m_module.allocateId();
@@ -833,42 +850,70 @@ namespace dxvk {
 
     m_module.opLabel(breakBlock);
 
-    m_module.opBranch(block.b_rep.labelBreak);
+    m_module.opBranch(block.b_loop.labelBreak);
 
     m_module.opLabel(mergeBlock);
 
     iterator = m_module.opISub(itType, iterator, m_module.consti32(1));
-    m_module.opStore(block.b_rep.iteratorPtr, iterator);
+    m_module.opStore(block.b_loop.iteratorPtr, iterator);
 
     m_controlFlowBlocks.push_back(block);
   }
 
-  void DxsoCompiler::emitControlFlowEndRep(const DxsoInstructionContext& ctx) {
+  void DxsoCompiler::emitControlFlowGenericLoopEnd() {
     if (m_controlFlowBlocks.size() == 0
-      || m_controlFlowBlocks.back().type != DxsoCfgBlockType::Rep)
-      throw DxvkError("DxsoCompiler: 'EndRep' without 'Rep' found");
+      || m_controlFlowBlocks.back().type != DxsoCfgBlockType::Loop)
+      throw DxvkError("DxsoCompiler: 'EndRep' without 'Rep' or 'Loop' found");
 
     // Remove the block from the stack, it's closed
     const DxsoCfgBlock block = m_controlFlowBlocks.back();
     m_controlFlowBlocks.pop_back();
 
+    if (block.b_loop.strideVar) {
+      DxsoRegisterId loop = { DxsoRegisterType::Loop, 0 };
+      uint32_t loopCounterPtr = getSpirvRegister(loop, false, nullptr).ptrId;
+      uint32_t loopCounterVar = m_module.opLoad(spvTypeVar(loop.type()), loopCounterPtr);
+
+      loopCounterVar = m_module.opIAdd(spvTypeVar(loop.type()), loopCounterVar, block.b_loop.strideVar);
+      m_module.opStore(loopCounterPtr, loopCounterVar);
+    }
+
     // Declare the continue block
-    m_module.opBranch(block.b_rep.labelContinue);
-    m_module.opLabel (block.b_rep.labelContinue);
+    m_module.opBranch(block.b_loop.labelContinue);
+    m_module.opLabel(block.b_loop.labelContinue);
 
     // Declare the merge block
-    m_module.opBranch(block.b_rep.labelHeader);
-    m_module.opLabel (block.b_rep.labelBreak);
+    m_module.opBranch(block.b_loop.labelHeader);
+    m_module.opLabel(block.b_loop.labelBreak);
+
+    if (block.b_loop.countBackup) {
+      DxsoRegisterId loop = { DxsoRegisterType::Loop, 0 };
+      uint32_t loopCounterPtr = getSpirvRegister(loop, false, nullptr).ptrId;
+
+      m_module.opStore(loopCounterPtr, block.b_loop.countBackup);
+    }
+  }
+
+  void DxsoCompiler::emitControlFlowRep(const DxsoInstructionContext& ctx) {
+    this->emitControlFlowGenericLoop(
+      false,
+      0,
+      0,
+      emitRegisterLoad(ctx.src[0], 1));
+  }
+
+  void DxsoCompiler::emitControlFlowEndRep(const DxsoInstructionContext& ctx) {
+    emitControlFlowGenericLoopEnd();
   }
 
   void DxsoCompiler::emitControlFlowBreak(const DxsoInstructionContext& ctx) {
     DxsoCfgBlock* cfgBlock =
-      cfgFindBlock({ DxsoCfgBlockType::Rep });
+      cfgFindBlock({ DxsoCfgBlockType::Loop });
 
     if (cfgBlock == nullptr)
-      throw DxvkError("DxbcCompiler: 'Break' outside 'Rep' found");
+      throw DxvkError("DxbcCompiler: 'Break' outside 'Rep' or 'Loop' found");
 
-    m_module.opBranch(cfgBlock->b_rep.labelBreak);
+    m_module.opBranch(cfgBlock->b_loop.labelBreak);
 
     // Subsequent instructions assume that there is an open block
     const uint32_t labelId = m_module.allocateId();
@@ -877,10 +922,10 @@ namespace dxvk {
 
   void DxsoCompiler::emitControlFlowBreakC(const DxsoInstructionContext& ctx) {
     DxsoCfgBlock* cfgBlock =
-      cfgFindBlock({ DxsoCfgBlockType::Rep });
+      cfgFindBlock({ DxsoCfgBlockType::Loop });
 
     if (cfgBlock == nullptr)
-      throw DxvkError("DxbcCompiler: 'BreakC' outside 'Rep' found");
+      throw DxvkError("DxbcCompiler: 'BreakC' outside 'Rep' or 'Loop' found");
 
     uint32_t a = emitRegisterLoad(ctx.src[0], 1);
     uint32_t b = emitRegisterLoad(ctx.src[1], 1);
@@ -899,7 +944,7 @@ namespace dxvk {
 
     m_module.opLabel(breakBlock);
 
-    m_module.opBranch(cfgBlock->b_rep.labelBreak);
+    m_module.opBranch(cfgBlock->b_loop.labelBreak);
 
     m_module.opLabel(mergeBlock);
   }
