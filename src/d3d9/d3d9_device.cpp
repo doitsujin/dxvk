@@ -343,7 +343,7 @@ namespace dxvk {
     desc.Discard            = FALSE;
     desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
-    desc.Lockable           = Pool != D3DPOOL_DEFAULT || Usage & D3DUSAGE_DYNAMIC;
+    desc.Lockable           = TRUE;
     desc.Offscreen          = FALSE;
 
     if (FAILED(Direct3DCommonTexture9::NormalizeTextureProperties(&desc)))
@@ -389,7 +389,7 @@ namespace dxvk {
     desc.Discard            = FALSE;
     desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
-    desc.Lockable           = Pool != D3DPOOL_DEFAULT || Usage & D3DUSAGE_DYNAMIC;
+    desc.Lockable           = TRUE;
     desc.Offscreen          = FALSE;
 
     if (FAILED(Direct3DCommonTexture9::NormalizeTextureProperties(&desc)))
@@ -433,7 +433,7 @@ namespace dxvk {
     desc.Discard            = FALSE;
     desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
-    desc.Lockable           = Pool != D3DPOOL_DEFAULT || Usage & D3DUSAGE_DYNAMIC;
+    desc.Lockable           = TRUE;
     desc.Offscreen          = FALSE;
 
     if (FAILED(Direct3DCommonTexture9::NormalizeTextureProperties(&desc)))
@@ -2051,6 +2051,9 @@ namespace dxvk {
 
     Sha1Hash hash = Sha1Hash::compute(
       pFunction, bytecodeLength);
+
+    if (hash.toString().substr(0, 4) == "a9aa")
+      printf("frog");
 
     D3D9CommonShader module;
 
