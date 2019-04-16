@@ -1958,10 +1958,7 @@ namespace dxvk {
 
     const auto& vbo = m_state.vertexBuffers[StreamNumber];
 
-    if (vbo.vertexBuffer == nullptr)
-      return D3DERR_NOTFOUND;
-
-    *ppStreamData   = ref(vbo.vertexBuffer);
+    *ppStreamData   = vbo.vertexBuffer ? ref(vbo.vertexBuffer) : nullptr;
     *pOffsetInBytes = vbo.offset;
     *pStride        = vbo.stride;
 
