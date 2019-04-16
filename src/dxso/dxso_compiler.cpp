@@ -89,6 +89,8 @@ namespace dxvk {
     case DxsoOpcode::Frc:
     case DxsoOpcode::Cmp:
     case DxsoOpcode::Dp2Add:
+    case DxsoOpcode::DsX:
+    case DxsoOpcode::DsY:
       return this->emitVectorAlu(ctx);
 
     case DxsoOpcode::Loop:
