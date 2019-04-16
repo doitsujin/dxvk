@@ -802,7 +802,7 @@ namespace dxvk {
           uint32_t initialVar,
           uint32_t strideVar,
           uint32_t iterationCountVar) {
-    const uint32_t itType = m_module.defIntType(32, 0);
+    const uint32_t itType = m_module.defIntType(32, 1);
 
     DxsoRegisterId loop = { DxsoRegisterType::Loop, 0 };
     uint32_t loopCounterPtr = count
@@ -912,7 +912,7 @@ namespace dxvk {
   }
 
   void DxsoCompiler::emitControlFlowLoop(const DxsoInstructionContext& ctx) {
-    const uint32_t itType = m_module.defIntType(32, 0);
+    const uint32_t itType = m_module.defIntType(32, 1);
 
     uint32_t integerRegister = emitRegisterLoad(ctx.src[1]);
     uint32_t x = 0;
@@ -1855,7 +1855,7 @@ namespace dxvk {
     case DxsoRegisterType::ConstBool:
       return m_module.defBoolType();
     case DxsoRegisterType::Loop:
-      return m_module.defIntType(32, true);
+      return m_module.defIntType(32, 1);
 
     case DxsoRegisterType::Predicate: {
       uint32_t boolType = m_module.defBoolType();
