@@ -3,44 +3,26 @@
 namespace dxvk {
 
   DxsoCode::DxsoCode(DxsoReader& reader) {
-    size_t codeSize = reader.remaining();
-
-    m_code.resize(codeSize);
-    reader.read(m_code.data(), codeSize);
+    m_code =
+      reinterpret_cast<const uint32_t*>(reader.currentPtr());
   }
 
-  const uint32_t* DxsoCodeSlice::ptrAt(uint32_t id) const {
-    if (m_ptr + id >= m_end)
-      throw DxvkError("DxsoCodeSlice: End of stream");
+  const uint32_t* DxsoCodeIter::ptrAt(uint32_t id) const {
     return m_ptr + id;
   }
 
 
-  uint32_t DxsoCodeSlice::at(uint32_t id) const {
-    if (m_ptr + id >= m_end)
-      throw DxvkError("DxsoCodeSlice: End of stream");
+  uint32_t DxsoCodeIter::at(uint32_t id) const {
     return m_ptr[id];
   }
 
 
-  uint32_t DxsoCodeSlice::read() {
-    if (m_ptr >= m_end)
-      throw DxvkError("DxsoCodeSlice: End of stream");
+  uint32_t DxsoCodeIter::read() {
     return *(m_ptr++);
   }
 
-
-  DxsoCodeSlice DxsoCodeSlice::take(uint32_t n) const {
-    if (m_ptr + n > m_end)
-      throw DxvkError("DxsoCodeSlice: End of stream");
-    return DxsoCodeSlice(m_ptr, m_ptr + n);
-  }
-
-
-  DxsoCodeSlice DxsoCodeSlice::skip(uint32_t n) const {
-    if (m_ptr + n > m_end)
-      throw DxvkError("DxsoCodeSlice: End of stream");
-    return DxsoCodeSlice(m_ptr + n, m_end);
+  DxsoCodeIter DxsoCodeIter::skip(uint32_t n) const {
+    return DxsoCodeIter(m_ptr + n);
   }
 
 }

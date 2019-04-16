@@ -6,6 +6,7 @@
 #include "dxso_ctab.h"
 
 #include "dxso_decoder.h"
+#include "dxso_analysis.h"
 
 namespace dxvk {
 
@@ -25,6 +26,8 @@ namespace dxvk {
     const DxsoProgramInfo& info() {
       return m_header.info();
     }
+
+    DxsoAnalysisInfo analyze();
 
     /**
      * \brief Compiles DXSO shader to SPIR-V module
@@ -46,7 +49,11 @@ namespace dxvk {
 
     void runCompiler(
             DxsoCompiler&       compiler,
-            DxsoCodeSlice       slice) const;
+            DxsoCodeIter        iter) const;
+
+    void runAnalyzer(
+            DxsoAnalyzer&       analyzer,
+            DxsoCodeIter        iter) const;
 
     DxsoHeader      m_header;
     Rc<DxsoCode>    m_code;

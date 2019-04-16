@@ -119,6 +119,7 @@ namespace dxvk {
     case DxsoOpcode::TexKill:
       return this->emitTextureSample(ctx);
 
+    case DxsoOpcode::End:
     case DxsoOpcode::Comment:
       break;
 

@@ -55,7 +55,7 @@ namespace dxvk {
   public:
 
     DxsoShaderInstruction();
-    DxsoShaderInstruction(const DxsoDecodeContext& context, DxsoCodeSlice& slice);
+    DxsoShaderInstruction(const DxsoDecodeContext& context, DxsoCodeIter& iter);
 
     DxsoOpcode opcode() const {
       return static_cast<DxsoOpcode>(m_token & 0x0000ffff);
@@ -177,7 +177,7 @@ namespace dxvk {
 
     DxsoRegister();
     DxsoRegister(DxsoInstructionArgumentType type, uint32_t token, uint32_t relativeToken);
-    DxsoRegister(DxsoInstructionArgumentType type, const DxsoDecodeContext& context, DxsoCodeSlice& slice);
+    DxsoRegister(DxsoInstructionArgumentType type, const DxsoDecodeContext& context, DxsoCodeIter& iter);
 
     DxsoRegisterId registerId() const {
       return DxsoRegisterId{ registerType(), registerNumber() };
@@ -325,14 +325,18 @@ namespace dxvk {
      * number of dwords consumed by the instruction.
      * \param [in] code Code slice
      */
-    void decodeInstruction(DxsoCodeSlice& code);
+    void decodeInstruction(DxsoCodeIter& iter);
+
+    bool eof() {
+      return m_ctx.instruction.opcode() == DxsoOpcode::End;
+    }
 
   private:
 
-    void decodeDestinationRegister(DxsoCodeSlice& code);
-    void decodeSourceRegister(uint32_t i, DxsoCodeSlice& code);
-    void decodeDeclaration(DxsoCodeSlice& code);
-    void decodeDefinition(DxsoOpcode opcode, DxsoCodeSlice& code);
+    void decodeDestinationRegister(DxsoCodeIter& iter);
+    void decodeSourceRegister(uint32_t i, DxsoCodeIter& iter);
+    void decodeDeclaration(DxsoCodeIter& iter);
+    void decodeDefinition(DxsoOpcode opcode, DxsoCodeIter& iter);
 
     const DxsoProgramInfo&      m_programInfo;
 
