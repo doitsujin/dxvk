@@ -192,8 +192,16 @@ namespace dxvk {
 
     uint32_t emitScalarReplicant(uint32_t typeId, uint32_t varId);
 
+    uint32_t emitBoolComparison(DxsoComparison cmp, uint32_t a, uint32_t b);
+
+    DxsoCfgBlock* cfgFindBlock(
+      const std::initializer_list<DxsoCfgBlockType>& types);
+
     void emitControlFlowRep(const DxsoInstructionContext& ctx);
     void emitControlFlowEndRep(const DxsoInstructionContext& ctx);
+
+    void emitControlFlowBreak(const DxsoInstructionContext& ctx);
+    void emitControlFlowBreakC(const DxsoInstructionContext& ctx);
 
     void emitControlFlowIf(const DxsoInstructionContext& ctx);
     void emitControlFlowElse(const DxsoInstructionContext& ctx);

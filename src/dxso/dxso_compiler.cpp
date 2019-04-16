@@ -96,6 +96,11 @@ namespace dxvk {
     case DxsoOpcode::EndRep:
       return this->emitControlFlowEndRep(ctx);
 
+    case DxsoOpcode::Break:
+      return this->emitControlFlowBreak(ctx);
+    case DxsoOpcode::BreakC:
+      return this->emitControlFlowBreakC(ctx);
+
     case DxsoOpcode::If:
     case DxsoOpcode::Ifc:
       return this->emitControlFlowIf(ctx);
@@ -759,6 +764,34 @@ namespace dxvk {
     return m_module.opCompositeConstruct(vectorTypeId, replicantIndices.size(), replicantIndices.data());
   }
 
+  uint32_t DxsoCompiler::emitBoolComparison(DxsoComparison cmp, uint32_t a, uint32_t b) {
+    const uint32_t typeId = m_module.defBoolType();
+    switch (cmp) {
+      default:
+      case DxsoComparison::Never:        return m_module.constBool             (false); break;
+      case DxsoComparison::GreaterThan:  return m_module.opFOrdGreaterThan     (typeId, a, b); break;
+      case DxsoComparison::Equal:        return m_module.opFOrdEqual           (typeId, a, b); break;
+      case DxsoComparison::GreaterEqual: return m_module.opFOrdGreaterThanEqual(typeId, a, b); break;
+      case DxsoComparison::LessThan:     return m_module.opFOrdLessThan        (typeId, a, b); break;
+      case DxsoComparison::NotEqual:     return m_module.opFOrdNotEqual        (typeId, a, b); break;
+      case DxsoComparison::LessEqual:    return m_module.opFOrdLessThanEqual   (typeId, a, b); break;
+      case DxsoComparison::Always:       return m_module.constBool             (true); break;
+    }
+  }
+
+  DxsoCfgBlock* DxsoCompiler::cfgFindBlock(
+    const std::initializer_list<DxsoCfgBlockType>& types) {
+    for (auto cur = m_controlFlowBlocks.rbegin();
+      cur != m_controlFlowBlocks.rend(); cur++) {
+      for (auto type : types) {
+        if (cur->type == type)
+          return &(*cur);
+      }
+    }
+
+    return nullptr;
+  }
+
   void DxsoCompiler::emitControlFlowRep(const DxsoInstructionContext& ctx) {
     const uint32_t itType = m_module.defIntType(32, 0);
 
@@ -828,28 +861,59 @@ namespace dxvk {
     m_module.opLabel (block.b_rep.labelBreak);
   }
 
+  void DxsoCompiler::emitControlFlowBreak(const DxsoInstructionContext& ctx) {
+    DxsoCfgBlock* cfgBlock =
+      cfgFindBlock({ DxsoCfgBlockType::Rep });
+
+    if (cfgBlock == nullptr)
+      throw DxvkError("DxbcCompiler: 'Break' outside 'Rep' found");
+
+    m_module.opBranch(cfgBlock->b_rep.labelBreak);
+
+    // Subsequent instructions assume that there is an open block
+    const uint32_t labelId = m_module.allocateId();
+    m_module.opLabel(labelId);
+  }
+
+  void DxsoCompiler::emitControlFlowBreakC(const DxsoInstructionContext& ctx) {
+    DxsoCfgBlock* cfgBlock =
+      cfgFindBlock({ DxsoCfgBlockType::Rep });
+
+    if (cfgBlock == nullptr)
+      throw DxvkError("DxbcCompiler: 'BreakC' outside 'Rep' found");
+
+    uint32_t a = emitRegisterLoad(ctx.src[0], 1);
+    uint32_t b = emitRegisterLoad(ctx.src[1], 1);
+
+    uint32_t result = this->emitBoolComparison(ctx.instruction.comparison(), a, b);
+
+    // We basically have to wrap this into an 'if' block
+    const uint32_t breakBlock = m_module.allocateId();
+    const uint32_t mergeBlock = m_module.allocateId();
+
+    m_module.opSelectionMerge(mergeBlock,
+      spv::SelectionControlMaskNone);
+
+    m_module.opBranchConditional(
+      result, breakBlock, mergeBlock);
+
+    m_module.opLabel(breakBlock);
+
+    m_module.opBranch(cfgBlock->b_rep.labelBreak);
+
+    m_module.opLabel(mergeBlock);
+  }
+
   void DxsoCompiler::emitControlFlowIf(const DxsoInstructionContext& ctx) {
     const auto opcode = ctx.instruction.opcode();
 
     uint32_t result;
 
     if (opcode == DxsoOpcode::Ifc) {
-      const uint32_t typeId = m_module.defBoolType();
-
       uint32_t a = emitRegisterLoad(ctx.src[0], 1);
       uint32_t b = emitRegisterLoad(ctx.src[1], 1);
 
-      switch (ctx.instruction.comparison()) {
-        default:
-        case DxsoComparison::Never:        result = m_module.constBool             (false); break;
-        case DxsoComparison::GreaterThan:  result = m_module.opFOrdGreaterThan     (typeId, a, b); break;
-        case DxsoComparison::Equal:        result = m_module.opFOrdEqual           (typeId, a, b); break;
-        case DxsoComparison::GreaterEqual: result = m_module.opFOrdGreaterThanEqual(typeId, a, b); break;
-        case DxsoComparison::LessThan:     result = m_module.opFOrdLessThan        (typeId, a, b); break;
-        case DxsoComparison::NotEqual:     result = m_module.opFOrdNotEqual        (typeId, a, b); break;
-        case DxsoComparison::LessEqual:    result = m_module.opFOrdLessThanEqual   (typeId, a, b); break;
-        case DxsoComparison::Always:       result = m_module.constBool             (true); break;
-      }
+      result = this->emitBoolComparison(ctx.instruction.comparison(), a, b);
     } else
       result = emitRegisterLoad(ctx.src[0]);
 
