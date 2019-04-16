@@ -2031,9 +2031,6 @@ namespace dxvk {
     if (ppIndexData == nullptr)
       return D3DERR_INVALIDCALL;
 
-    if (m_state.indices == nullptr)
-      return D3DERR_NOTFOUND;
-
     *ppIndexData = ref(m_state.indices);
 
     return D3D_OK;
