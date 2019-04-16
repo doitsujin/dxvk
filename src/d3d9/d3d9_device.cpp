@@ -2346,7 +2346,7 @@ namespace dxvk {
     desc.MultiSample        = MultiSample;
     desc.MultisampleQuality = MultisampleQuality;
     desc.Lockable           = Lockable;
-    desc.Offscreen          = FALSE;
+    desc.Offscreen          = TRUE;
 
     if (FAILED(Direct3DCommonTexture9::NormalizeTextureProperties(&desc)))
       return D3DERR_INVALIDCALL;
@@ -3539,7 +3539,7 @@ namespace dxvk {
       if (m_state.renderTargets.at(i) != nullptr) {
         attachments.color[i] = {
           m_state.renderTargets.at(i)->GetRenderTargetView(srgb),
-          m_state.renderTargets.at(i)->GetRenderTargetLayout(srgb) };
+          m_state.renderTargets.at(i)->GetRenderTargetLayout() };
       }
     }
 

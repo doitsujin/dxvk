@@ -50,9 +50,11 @@ namespace dxvk {
     }
 
     // Adjust image flags based on the corresponding D3D flags
-    imageInfo.usage  |= VK_IMAGE_USAGE_SAMPLED_BIT;
-    imageInfo.stages |= m_device->GetEnabledShaderStages();
-    imageInfo.access |= VK_ACCESS_SHADER_READ_BIT;
+    if (!m_desc.Offscreen) {
+      imageInfo.usage  |= VK_IMAGE_USAGE_SAMPLED_BIT;
+      imageInfo.stages |= m_device->GetEnabledShaderStages();
+      imageInfo.access |= VK_ACCESS_SHADER_READ_BIT;
+    }
 
     bool possibleRT = m_desc.Usage & D3DUSAGE_RENDERTARGET
                    || m_desc.Offscreen
@@ -143,7 +145,8 @@ namespace dxvk {
 
     m_image = m_device->GetDXVKDevice()->createImage(imageInfo, memoryProperties);
 
-    RecreateImageView(0);
+    if (!m_desc.Offscreen)
+      RecreateImageView(0);
 
     if (m_desc.Usage & D3DUSAGE_DEPTHSTENCIL)
       CreateDepthStencilView();

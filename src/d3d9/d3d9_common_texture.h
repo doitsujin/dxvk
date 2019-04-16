@@ -194,11 +194,11 @@ namespace dxvk {
         return VK_IMAGE_LAYOUT_GENERAL;
     }
 
-    VkImageLayout GetRenderTargetLayout(bool srgb) const {
-      if (GetRenderTargetView(srgb) == nullptr)
+    VkImageLayout GetRenderTargetLayout() const {
+      if (GetRenderTargetView(false) == nullptr)
         return VK_IMAGE_LAYOUT_GENERAL;
 
-      return GetRenderTargetView(srgb)->imageInfo().tiling == VK_IMAGE_TILING_OPTIMAL
+      return GetRenderTargetView(false)->imageInfo().tiling == VK_IMAGE_TILING_OPTIMAL
         ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
         : VK_IMAGE_LAYOUT_GENERAL;
     }

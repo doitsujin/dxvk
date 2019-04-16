@@ -74,8 +74,8 @@ namespace dxvk {
       return m_texture->GetRenderTargetView(srgb);
     }
 
-    VkImageLayout GetRenderTargetLayout(bool srgb) {
-      return m_texture->GetRenderTargetLayout(srgb);
+    VkImageLayout GetRenderTargetLayout() {
+      return m_texture->GetRenderTargetLayout();
     }
 
     Rc<DxvkImageView> GetDepthStencilView() {
