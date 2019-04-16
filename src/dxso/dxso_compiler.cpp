@@ -1680,7 +1680,8 @@ namespace dxvk {
 
         uint32_t r = spvLoad(id);
 
-        r = emitRegisterSwizzle(m_module.defIntType(32, 1), r, relative->swizzle(), 1);
+        if (isVectorReg(id.type()))
+          r = emitRegisterSwizzle(m_module.defIntType(32, 1), r, relative->swizzle(), 1);
 
         constantIdx = m_module.opIAdd(
           m_module.defIntType(32, 1),
