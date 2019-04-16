@@ -1760,17 +1760,11 @@ namespace dxvk {
     DxsoModuleInfo moduleInfo;
     moduleInfo.options = m_dxsoOptions;
 
-    size_t bytecodeLength = DXSOBytecodeLength(
-      reinterpret_cast<const uint32_t*>(pFunction));
-
-    Sha1Hash hash = Sha1Hash::compute(
-      pFunction, bytecodeLength);
-
     D3D9CommonShader module;
 
     if (FAILED(this->CreateShaderModule(&module,
-      DxvkShaderKey{ VK_SHADER_STAGE_VERTEX_BIT, hash },
-      pFunction, bytecodeLength,
+      VK_SHADER_STAGE_VERTEX_BIT,
+      pFunction,
       &moduleInfo)))
       return D3DERR_INVALIDCALL;
 
@@ -2046,17 +2040,11 @@ namespace dxvk {
     DxsoModuleInfo moduleInfo;
     moduleInfo.options = m_dxsoOptions;
 
-    size_t bytecodeLength = DXSOBytecodeLength(
-      reinterpret_cast<const uint32_t*>(pFunction));
-
-    Sha1Hash hash = Sha1Hash::compute(
-      pFunction, bytecodeLength);
-
     D3D9CommonShader module;
 
     if (FAILED(this->CreateShaderModule(&module,
-      DxvkShaderKey( VK_SHADER_STAGE_FRAGMENT_BIT, hash ),
-      pFunction, bytecodeLength,
+      VK_SHADER_STAGE_FRAGMENT_BIT,
+      pFunction,
       &moduleInfo)))
       return D3DERR_INVALIDCALL;
 
@@ -4111,13 +4099,12 @@ namespace dxvk {
 
   HRESULT Direct3DDevice9Ex::CreateShaderModule(
         D3D9CommonShader*     pShaderModule,
-        DxvkShaderKey         ShaderKey,
+        VkShaderStageFlagBits ShaderStage,
   const DWORD*                pShaderBytecode,
-        size_t                BytecodeLength,
   const DxsoModuleInfo*       pModuleInfo) {
     try {
       *pShaderModule = m_shaderModules->GetShaderModule(this,
-        &ShaderKey, pModuleInfo, pShaderBytecode, BytecodeLength);
+        ShaderStage, pModuleInfo, pShaderBytecode);
 
       return D3D_OK;
     }

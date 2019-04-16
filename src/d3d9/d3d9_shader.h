@@ -24,7 +24,8 @@ namespace dxvk {
       const DxvkShaderKey*        pShaderKey,
       const DxsoModuleInfo*       pDxbcModuleInfo,
       const void*                 pShaderBytecode,
-            size_t                BytecodeLength);
+            size_t                BytecodeLength,
+            DxsoModule*           pModule);
 
 
     Rc<DxvkShader> GetShader() const {
@@ -152,11 +153,10 @@ namespace dxvk {
   public:
     
     D3D9CommonShader GetShaderModule(
-            Direct3DDevice9Ex* pDevice,
-      const DxvkShaderKey*     pShaderKey,
-      const DxsoModuleInfo*    pDxbcModuleInfo,
-      const void*              pShaderBytecode,
-            size_t             BytecodeLength);
+            Direct3DDevice9Ex*    pDevice,
+            VkShaderStageFlagBits ShaderStage,
+      const DxsoModuleInfo*       pDxbcModuleInfo,
+      const void*                 pShaderBytecode);
     
   private:
     
