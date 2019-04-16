@@ -114,7 +114,13 @@ namespace dxvk {
   VkBlendOp DecodeBlendOp(D3DBLENDOP BlendOp);
 
   VkFilter DecodeFilter(D3DTEXTUREFILTERTYPE Filter);
-  VkSamplerMipmapMode DecodeMipFilter(D3DTEXTUREFILTERTYPE Filter);
+
+  struct D3D9MipFilter {
+    bool                MipsEnabled;
+    VkSamplerMipmapMode MipFilter;
+  };
+
+  D3D9MipFilter DecodeMipFilter(D3DTEXTUREFILTERTYPE Filter);
   bool IsAnisotropic(D3DTEXTUREFILTERTYPE Filter);
   VkSamplerAddressMode DecodeAddressMode(D3DTEXTUREADDRESS Mode);
   VkCompareOp DecodeCompareOp(D3DCMPFUNC Func);

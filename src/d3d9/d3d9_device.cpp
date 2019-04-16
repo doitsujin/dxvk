@@ -3790,6 +3790,8 @@ namespace dxvk {
     if (pair != m_samplers.end())
       return pair->second;
 
+    auto mipFilter = DecodeMipFilter(key.MipFilter);
+
     DxvkSamplerCreateInfo info;
     info.addressModeU   = DecodeAddressMode(key.AddressU);
     info.addressModeV   = DecodeAddressMode(key.AddressV);
@@ -3798,13 +3800,13 @@ namespace dxvk {
     info.compareOp      = VK_COMPARE_OP_NEVER;
     info.magFilter      = DecodeFilter   (key.MagFilter);
     info.minFilter      = DecodeFilter   (key.MinFilter);
-    info.mipmapMode     = DecodeMipFilter(key.MipFilter);
+    info.mipmapMode     = mipFilter.MipFilter;
     info.maxAnisotropy  = std::clamp(float(key.MaxAnisotropy), 1.0f, 16.0f);
     info.useAnisotropy  = IsAnisotropic(key.MinFilter)
                        || IsAnisotropic(key.MagFilter);
     info.mipmapLodBias  = key.MipmapLodBias;
-    info.mipmapLodMin   = float(key.MaxMipLevel);
-    info.mipmapLodMax   = FLT_MAX;
+    info.mipmapLodMin   = mipFilter.MipsEnabled ? float(key.MaxMipLevel) : 0;
+    info.mipmapLodMax   = mipFilter.MipsEnabled ? FLT_MAX                : 0;
     info.usePixelCoord  = VK_FALSE;
     DecodeD3DCOLOR(key.BorderColor, reinterpret_cast<float*>(&info.borderColor));
 

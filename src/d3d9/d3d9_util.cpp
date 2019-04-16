@@ -213,14 +213,19 @@ namespace dxvk {
     }
   }
 
-  VkSamplerMipmapMode DecodeMipFilter(D3DTEXTUREFILTERTYPE Filter) {
+  D3D9MipFilter DecodeMipFilter(D3DTEXTUREFILTERTYPE Filter) {
+    D3D9MipFilter filter;
+    filter.MipsEnabled = Filter != D3DTEXF_NONE;
+
     switch (Filter) {
     case D3DTEXF_POINT:
     case D3DTEXF_NONE:
-      return VK_SAMPLER_MIPMAP_MODE_NEAREST;
+      filter.MipFilter = VK_SAMPLER_MIPMAP_MODE_NEAREST; break;
     default:
-      return VK_SAMPLER_MIPMAP_MODE_LINEAR;
+      filter.MipFilter = VK_SAMPLER_MIPMAP_MODE_LINEAR; break;
     }
+
+    return filter;
   }
 
   bool IsAnisotropic(D3DTEXTUREFILTERTYPE Filter) {
