@@ -543,6 +543,12 @@ namespace dxvk {
     viewInfo.swizzle = formatInfo.Swizzle;
     viewInfo.usage = UsageFlags;
 
+    // Remove the stencil aspect if we are trying to create an image view of a depth stencil format 
+    if (UsageFlags & VK_IMAGE_USAGE_SAMPLED_BIT
+     && viewInfo.aspect == (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+      viewInfo.aspect &= ~VK_IMAGE_ASPECT_STENCIL_BIT;
+    }
+
     // Shaders expect the stencil value in the G component
     if (viewInfo.aspect == VK_IMAGE_ASPECT_STENCIL_BIT) {
       viewInfo.swizzle = VkComponentMapping{
