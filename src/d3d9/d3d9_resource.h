@@ -71,7 +71,6 @@ namespace dxvk {
     }
 
     void STDMETHODCALLTYPE PreLoad() {
-      Logger::warn("Direct3DResource9::PreLoad: Stub");
     }
 
 
