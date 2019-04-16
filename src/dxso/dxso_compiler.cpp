@@ -228,8 +228,10 @@ namespace dxvk {
     uint32_t positionPtr = findBuiltInOutputPtr(DxsoUsage::Position, 0).ptrId;
 
     // We generated a bad shader, let's not make it even worse.
-    if (positionPtr)
+    if (positionPtr == 0) {
+      Logger::warn("Shader without Position output. Something is likely wrong here.");
       return;
+    }
 
     // Compute clip distances
     uint32_t positionId = m_module.opLoad(vec4Type, positionPtr);
