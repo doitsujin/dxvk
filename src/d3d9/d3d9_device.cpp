@@ -2206,8 +2206,12 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateQuery(D3DQUERYTYPE Type, IDirect3DQuery9** ppQuery) {
     InitReturnPtr(ppQuery);
 
-    if (ppQuery == nullptr)
-      return D3DERR_INVALIDCALL;
+    if (ppQuery == nullptr) {
+      if (D3D9Query::QuerySupported(Type))
+        return D3D_OK;
+      else
+        return D3DERR_NOTAVAILABLE;
+    }
 
     try {
       *ppQuery = ref(new D3D9Query(this, Type));

@@ -25,6 +25,8 @@ namespace dxvk {
     void Begin(DxvkContext* ctx);
     void End(DxvkContext* ctx);
 
+    static bool QuerySupported(D3DQUERYTYPE QueryType);
+
   private:
 
     D3DQUERYTYPE      m_queryType;

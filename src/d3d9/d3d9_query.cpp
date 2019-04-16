@@ -197,4 +197,19 @@ namespace dxvk {
     }
   }
 
+  bool D3D9Query::QuerySupported(D3DQUERYTYPE QueryType) {
+    switch (QueryType) {
+      case D3DQUERYTYPE_VCACHE:
+      case D3DQUERYTYPE_EVENT:
+      case D3DQUERYTYPE_OCCLUSION:
+      case D3DQUERYTYPE_TIMESTAMP:
+      case D3DQUERYTYPE_TIMESTAMPDISJOINT:
+      case D3DQUERYTYPE_TIMESTAMPFREQ:
+        return true;
+
+      default:
+        return false;
+    }
+  }
+
 }
