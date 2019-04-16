@@ -1747,35 +1747,6 @@ namespace dxvk {
           m_module.constvec4f32 (1.0f,  1.0f,  1.0f,  1.0f),
           m_module.constvec4f32(-1.0f, -1.0f, -1.0f, -1.0f)));
     }
-    else if (builtIn == spv::BuiltInFragCoord) {
-      uint32_t floatType = m_module.defFloatType(32);
-
-      uint32_t vec2Type = m_module.defVectorType(floatType, 2);
-
-      uint32_t vec2Ptr = m_module.defPointerType(vec2Type, spv::StorageClassInput);
-
-      ptrId = m_module.newVar(vec2Ptr, spv::StorageClassInput);
-      m_module.decorateBuiltIn(ptrId, builtIn);
-      m_entryPointInterfaces.push_back(ptrId);
-
-      uint32_t fragCoord = m_module.opLoad(vec2Type, ptrId);
-
-      uint32_t x = 0;
-      uint32_t y = 1;
-
-      std::array<uint32_t, 4> indices = {
-        m_module.opCompositeExtract(floatType, fragCoord, 1, &x),
-        m_module.opCompositeExtract(floatType, fragCoord, 1, &y),
-        m_module.constf32(0),
-        m_module.constf32(0)
-      };
-
-      uint32_t vPos = m_module.opCompositeConstruct(
-        spvTypeVar(id.type()), 4, indices.data());
-
-      ptrId = this->emitNewVariable(id.type());
-      m_module.opStore(ptrId, vPos);
-    }
     else if (input || output) {
       ptrId = this->emitNewVariable(id.type());
 
