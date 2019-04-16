@@ -2942,7 +2942,7 @@ namespace dxvk {
     auto lock = LockDevice();
 
     if (unlikely(pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_NONE)) {
-      Logger::err("D3D11: Cannot map a device-local image");
+      Logger::err("D3D9: Cannot map a device-local image");
       return D3DERR_INVALIDCALL;
     }
 
