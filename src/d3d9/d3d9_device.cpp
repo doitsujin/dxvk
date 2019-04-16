@@ -2442,7 +2442,7 @@ namespace dxvk {
     desc.MultiSample        = MultiSample;
     desc.MultisampleQuality = MultisampleQuality;
     desc.Lockable           = lockable;
-    desc.Offscreen          = FALSE;
+    desc.Offscreen          = TRUE;
 
     if (FAILED(Direct3DCommonTexture9::NormalizeTextureProperties(&desc)))
       return D3DERR_INVALIDCALL;
