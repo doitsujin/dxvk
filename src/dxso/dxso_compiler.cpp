@@ -91,6 +91,11 @@ namespace dxvk {
     case DxsoOpcode::Dp2Add:
       return this->emitVectorAlu(ctx);
 
+    case DxsoOpcode::Loop:
+      return this->emitControlFlowLoop(ctx);
+    case DxsoOpcode::EndLoop:
+      return this->emitControlFlowEndLoop(ctx);
+
     case DxsoOpcode::Rep:
       return this->emitControlFlowRep(ctx);
     case DxsoOpcode::EndRep:
@@ -904,6 +909,29 @@ namespace dxvk {
 
   void DxsoCompiler::emitControlFlowEndRep(const DxsoInstructionContext& ctx) {
     emitControlFlowGenericLoopEnd();
+  }
+
+  void DxsoCompiler::emitControlFlowLoop(const DxsoInstructionContext& ctx) {
+    const uint32_t itType = m_module.defIntType(32, 0);
+
+    uint32_t integerRegister = emitRegisterLoad(ctx.src[1]);
+    uint32_t x = 0;
+    uint32_t y = 1;
+    uint32_t z = 2;
+
+    uint32_t iterCount    = m_module.opCompositeExtract(itType, integerRegister, 1, &x);
+    uint32_t initialValue = m_module.opCompositeExtract(itType, integerRegister, 1, &y);
+    uint32_t strideSize   = m_module.opCompositeExtract(itType, integerRegister, 1, &z);
+
+    this->emitControlFlowGenericLoop(
+      true,
+      initialValue,
+      strideSize,
+      iterCount);
+  }
+
+  void DxsoCompiler::emitControlFlowEndLoop(const DxsoInstructionContext& ctx) {
+    this->emitControlFlowGenericLoopEnd();
   }
 
   void DxsoCompiler::emitControlFlowBreak(const DxsoInstructionContext& ctx) {

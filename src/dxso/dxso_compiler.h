@@ -211,6 +211,9 @@ namespace dxvk {
     void emitControlFlowRep(const DxsoInstructionContext& ctx);
     void emitControlFlowEndRep(const DxsoInstructionContext& ctx);
 
+    void emitControlFlowLoop(const DxsoInstructionContext& ctx);
+    void emitControlFlowEndLoop(const DxsoInstructionContext& ctx);
+
     void emitControlFlowBreak(const DxsoInstructionContext& ctx);
     void emitControlFlowBreakC(const DxsoInstructionContext& ctx);
 
