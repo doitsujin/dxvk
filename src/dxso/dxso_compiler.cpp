@@ -176,8 +176,9 @@ namespace dxvk {
       m_module.defVoidType(),
       m_ps.functionId, 0, nullptr);
 
-    // r0 in SM1 is the colour output register. Move r0 -> cO0 here.
-    if (m_programInfo.majorVersion() == 1) {
+    // r0 in PS1 is the colour output register. Move r0 -> cO0 here.
+    if (m_programInfo.majorVersion() == 1
+    && m_programInfo.type() == DxsoProgramType::PixelShader) {
       uint32_t r0 = spvLoad({ DxsoRegisterType::Temp, 0 });
       uint32_t cOutPtr = getSpirvRegister({ DxsoRegisterType::ColorOut, 0 }, false, nullptr).ptrId;
       m_module.opStore(cOutPtr, r0);
