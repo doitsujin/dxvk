@@ -118,8 +118,9 @@ namespace dxvk {
 
     case DxsoOpcode::Tex:
     case DxsoOpcode::TexLdl:
-    case DxsoOpcode::TexKill:
       return this->emitTextureSample(ctx);
+    case DxsoOpcode::TexKill:
+      return this->emitTextureKill(ctx);
 
     case DxsoOpcode::End:
     case DxsoOpcode::Comment:
@@ -1288,10 +1289,46 @@ namespace dxvk {
      !vector ? m_module.constf32( FLT_MAX) : m_module.constvec4f32( FLT_MAX,  FLT_MAX,  FLT_MAX,  FLT_MAX));
   }
 
+  void DxsoCompiler::emitTextureKill(const DxsoInstructionContext& ctx) {
+    uint32_t texReg;
+
+    if (m_programInfo.majorVersion() >= 2 ||
+       (m_programInfo.majorVersion() == 1
+     && m_programInfo.minorVersion() == 4)) // SM 2.0+ or 1.4
+      texReg = spvLoad(ctx.dst);
+    else { // SM 1.0-1.3
+      DxsoRegisterId texcoordId = { DxsoRegisterType::TexcoordOut, ctx.dst.registerId().num() };
+
+      texReg = spvLoad(texcoordId);
+    }
+
+    uint32_t var = this->emitVecTrunc(
+      m_module.defVectorType(m_module.defFloatType(32), 3), texReg, 3);
+
+    uint32_t boolType = m_module.defBoolType();
+
+    uint32_t result = m_module.opFOrdLessThan(
+      m_module.defVectorType(boolType, 3),
+      var,
+      m_module.constvec3f32(0.0f, 0.0f, 0.0f));
+
+    result = m_module.opAny(boolType, result);
+
+    uint32_t b = m_module.defBoolType();
+    if (m_ps.discardPtr == 0) {
+      m_ps.discardPtr = m_module.newVar(
+        m_module.defPointerType(b, spv::StorageClassPrivate), spv::StorageClassPrivate);
+
+      m_module.opStore(m_ps.discardPtr, m_module.constBool(false));
+    }
+
+    uint32_t discard = m_module.opLoad(b, m_ps.discardPtr);
+    discard = m_module.opLogicalOr(b, discard, result);
+    m_module.opStore(m_ps.discardPtr, discard);
+  }
+
   void DxsoCompiler::emitTextureSample(const DxsoInstructionContext& ctx) {
     const auto& dst = ctx.dst;
-
-    bool sample = ctx.instruction.opcode() != DxsoOpcode::TexKill;
 
     uint32_t texcoordVarId;
     uint32_t samplerIdx;
@@ -1312,69 +1349,42 @@ namespace dxvk {
       samplerIdx = ctx.dst.registerId().num();
     }
 
-    if (sample) {
-      const uint32_t typeId = spvTypeVar(dst);
+    const uint32_t typeId = spvTypeVar(dst);
 
-      DxsoSamplerDesc sampler = m_samplers.at(samplerIdx);
+    DxsoSamplerDesc sampler = m_samplers.at(samplerIdx);
 
-      if (sampler.imagePtrId == 0) {
-        Logger::warn("DxsoCompiler::emitTextureSample: Adding implicit 2D sampler");
-        emitDclSampler(samplerIdx, DxsoTextureType::Texture2D);
-        sampler = m_samplers.at(samplerIdx);
-      }
-
-      const uint32_t imageVarId = m_module.opLoad(sampler.imageTypeId, sampler.imagePtrId);
-
-      SpirvImageOperands imageOperands;
-      if (m_programInfo.type() == DxsoProgramType::VertexShader) {
-        imageOperands.sLod = m_module.constf32(0.0f);
-        imageOperands.flags |= spv::ImageOperandsLodMask;
-      }
-
-      uint32_t result =
-        m_programInfo.type() == DxsoProgramType::PixelShader
-        ? m_module.opImageSampleImplicitLod(
-          typeId,
-          imageVarId,
-          texcoordVarId,
-          imageOperands)
-        : m_module.opImageSampleExplicitLod(
-          typeId,
-          imageVarId,
-          texcoordVarId,
-          imageOperands);
-
-      result = emitDstOperandModifier(typeId, result, dst.saturate(), dst.partialPrecision());
-
-      m_module.opStore(
-        spvPtr(dst),
-        emitWriteMask(isVectorReg(dst.registerId().type()), typeId, spvLoad(dst), result, dst.writeMask()));
+    if (sampler.imagePtrId == 0) {
+      Logger::warn("DxsoCompiler::emitTextureSample: Adding implicit 2D sampler");
+      emitDclSampler(samplerIdx, DxsoTextureType::Texture2D);
+      sampler = m_samplers.at(samplerIdx);
     }
-    else {
-      texcoordVarId = this->emitVecTrunc(
-        m_module.defVectorType(m_module.defFloatType(32), 3), texcoordVarId, 3);
 
-      uint32_t boolType = m_module.defBoolType();
+    const uint32_t imageVarId = m_module.opLoad(sampler.imageTypeId, sampler.imagePtrId);
 
-      uint32_t result = m_module.opFOrdLessThan(
-        m_module.defVectorType(boolType, 3),
+    SpirvImageOperands imageOperands;
+    if (m_programInfo.type() == DxsoProgramType::VertexShader) {
+      imageOperands.sLod = m_module.constf32(0.0f);
+      imageOperands.flags |= spv::ImageOperandsLodMask;
+    }
+
+    uint32_t result =
+      m_programInfo.type() == DxsoProgramType::PixelShader
+      ? m_module.opImageSampleImplicitLod(
+        typeId,
+        imageVarId,
         texcoordVarId,
-        m_module.constvec3f32(0.0f, 0.0f, 0.0f));
+        imageOperands)
+      : m_module.opImageSampleExplicitLod(
+        typeId,
+        imageVarId,
+        texcoordVarId,
+        imageOperands);
 
-      result = m_module.opAny(boolType, result);
+    result = emitDstOperandModifier(typeId, result, dst.saturate(), dst.partialPrecision());
 
-      uint32_t b = m_module.defBoolType();
-      if (m_ps.discardPtr == 0) {
-        m_ps.discardPtr = m_module.newVar(
-          m_module.defPointerType(b, spv::StorageClassPrivate), spv::StorageClassPrivate);
-
-        m_module.opStore(m_ps.discardPtr, m_module.constBool(false));
-      }
-
-      uint32_t discard = m_module.opLoad(b, m_ps.discardPtr);
-      discard = m_module.opLogicalOr(b, discard, result);
-      m_module.opStore(m_ps.discardPtr, discard);
-    }
+    m_module.opStore(
+      spvPtr(dst),
+      emitWriteMask(isVectorReg(dst.registerId().type()), typeId, spvLoad(dst), result, dst.writeMask()));
   }
 
   void DxsoCompiler::emitDclSampler(uint32_t idx, DxsoTextureType type) {
