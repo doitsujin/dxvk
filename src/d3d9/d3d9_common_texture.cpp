@@ -379,7 +379,7 @@ namespace dxvk {
 
     // We want to use a buffer for anything on-screen to get optimal
     // We want to use a linear mapping for anything staging.
-    if (!m_desc.Offscreen || (m_desc.Pool != D3DPOOL_SYSTEMMEM && m_desc.Pool != D3DPOOL_SCRATCH))
+    if (m_desc.Pool != D3DPOOL_SYSTEMMEM && m_desc.Pool != D3DPOOL_SCRATCH)
       return D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER;
 
     // Images that can be read by the host should be mapped directly in
