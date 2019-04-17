@@ -18,15 +18,15 @@ namespace dxvk {
 
     const std::string name = pShaderKey->toString();
     Logger::debug(str::format("Compiling shader ", name));
-
-    DxsoReader reader(
-      reinterpret_cast<const char*>(pShaderBytecode));
     
     // If requested by the user, dump both the raw DXBC
     // shader and the compiled SPIR-V module to a file.
     const std::string dumpPath = env::getEnvVar("DXVK_SHADER_DUMP_PATH");
     
     if (dumpPath.size() != 0) {
+      DxsoReader reader(
+        reinterpret_cast<const char*>(pShaderBytecode));
+
       reader.store(std::ofstream(str::format(dumpPath, "/", name, ".dxso"),
         std::ios_base::binary | std::ios_base::trunc), BytecodeLength);
 
