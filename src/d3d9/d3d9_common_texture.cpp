@@ -57,7 +57,6 @@ namespace dxvk {
     }
 
     bool possibleRT = m_desc.Usage & D3DUSAGE_RENDERTARGET
-                   || (m_desc.Offscreen && !(m_desc.Usage & D3DUSAGE_DEPTHSTENCIL))
                    || m_desc.Usage & D3DUSAGE_AUTOGENMIPMAP;
 
     if (possibleRT) {
