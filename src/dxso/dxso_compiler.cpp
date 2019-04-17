@@ -1686,16 +1686,16 @@ namespace dxvk {
         : m_module.defIntType(32, false);
 
       if (relative != nullptr) {
-        DxsoRegisterId id;
+        DxsoRegisterId relId;
 
         if (m_programInfo.majorVersion() == 3)
-          id = relative->registerId();
+          relId = relative->registerId();
         else
-          id = { DxsoRegisterType::Addr, 0 };
+          relId = { DxsoRegisterType::Addr, 0 };
 
-        uint32_t r = spvLoad(id);
+        uint32_t r = spvLoad(relId);
 
-        if (isVectorReg(id.type()))
+        if (isVectorReg(relId.type()))
           r = emitRegisterSwizzle(m_module.defIntType(32, 1), r, relative->swizzle(), 1);
 
         constantIdx = m_module.opIAdd(
