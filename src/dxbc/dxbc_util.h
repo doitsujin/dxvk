@@ -4,35 +4,108 @@
 #include "dxbc_enums.h"
 
 namespace dxvk {
-  
+
   /**
-   * \brief Resource type
-   * 
-   * The type of a shader resource. Used
-   * to determine the DXVK resource slot.
+   * \brief Binding numbers and properties
    */
-  enum DxbcBindingType : uint32_t {
-    ConstantBuffer      = 0,
-    ShaderResource      = 1,
-    ImageSampler        = 2,
-    UnorderedAccessView = 3,
-    StreamOutputBuffer  = 4,
-    UavCounter          = 5,
+  enum DxbcBindingProperties : uint32_t {
+    DxbcConstBufBindingIndex  = 0,
+    DxbcConstBufBindingCount  = 16,
+    DxbcSamplerBindingIndex   = DxbcConstBufBindingIndex
+                              + DxbcConstBufBindingCount,
+    DxbcSamplerBindingCount   = 16,
+    DxbcResourceBindingIndex  = DxbcSamplerBindingIndex
+                              + DxbcSamplerBindingCount,
+    DxbcResourceBindingCount  = 128,
+    DxbcStageBindingCount     = DxbcConstBufBindingCount
+                              + DxbcSamplerBindingCount
+                              + DxbcResourceBindingCount,
+    DxbcUavBindingIndex       = DxbcStageBindingCount * 6,
+    DxbcUavBindingCount       = 64,
   };
+
+  
+  /**
+   * \brief Computes first binding index for a given stage
+   *
+   * \param [in] stage The shader stage
+   * \returns Index of first binding
+   */
+  inline uint32_t computeStageBindingOffset(DxbcProgramType stage) {
+    return DxbcStageBindingCount * uint32_t(stage);
+  }
+
+
+  /**
+   * \brief Computes first UAV binding index offset for a given stage
+   *
+   * \param [in] stage The shader stage
+   * \returns Index of first UAV binding
+   */
+  inline uint32_t computeStageUavBindingOffset(DxbcProgramType stage) {
+    return DxbcUavBindingIndex
+         + DxbcUavBindingCount * (stage == DxbcProgramType::ComputeShader ? 2 : 0);
+  }
+
+
+  /**
+   * \brief Computes constant buffer binding index
+   * 
+   * \param [in] stage Shader stage
+   * \param [in] index Constant buffer index
+   * \returns Binding index
+   */
+  inline uint32_t computeConstantBufferBinding(DxbcProgramType stage, uint32_t index) {
+    return computeStageBindingOffset(stage) + DxbcConstBufBindingIndex + index;
+  }
+
+
+  /**
+   * \brief Computes sampler binding index
+   * 
+   * \param [in] stage Shader stage
+   * \param [in] index Sampler index
+   * \returns Binding index
+   */
+  inline uint32_t computeSamplerBinding(DxbcProgramType stage, uint32_t index) {
+    return computeStageBindingOffset(stage) + DxbcSamplerBindingIndex + index;
+  }
+
+
+  /**
+   * \brief Computes resource binding index
+   * 
+   * \param [in] stage Shader stage
+   * \param [in] index Resource index
+   * \returns Binding index
+   */
+  inline uint32_t computeSrvBinding(DxbcProgramType stage, uint32_t index) {
+    return computeStageBindingOffset(stage) + DxbcResourceBindingIndex + index;
+  }
+
+
+  /**
+   * \brief Computes UAV binding offset
+   *
+   * \param [in] stage Shader stage
+   * \param [in] index UAV index
+   * \returns Binding index
+   */
+  inline uint32_t computeUavBinding(DxbcProgramType stage, uint32_t index) {
+    return computeStageUavBindingOffset(stage) + index;
+  }
   
   
   /**
-   * \brief Computes the DXVK resource slot for a binding
-   * 
-   * \param [in] shaderStage The target shader stage
-   * \param [in] bindingType Type of the resource
-   * \param [in] bindingIndex Resource binding index
-   * \returns DXVK resource slot index
+   * \brief Computes UAV counter binding offset
+   *
+   * \param [in] stage Shader stage
+   * \param [in] index UAV index
+   * \returns Binding index
    */
-  uint32_t computeResourceSlotId(
-          DxbcProgramType shaderStage,
-          DxbcBindingType bindingType,
-          uint32_t        bindingIndex);
+  inline uint32_t computeUavCounterBinding(DxbcProgramType stage, uint32_t index) {
+    return computeStageUavBindingOffset(stage) + DxbcUavBindingCount + index;
+  }
   
   /**
    * \brief Primitive vertex count

@@ -777,9 +777,8 @@ namespace dxvk {
     
     // Compute the DXVK binding slot index for the buffer.
     // D3D11 needs to bind the actual buffers to this slot.
-    const uint32_t bindingId = computeResourceSlotId(
-      m_programInfo.type(), DxbcBindingType::ConstantBuffer,
-      regIdx);
+    uint32_t bindingId = computeConstantBufferBinding(
+      m_programInfo.type(), regIdx);
     
     m_module.decorateDescriptorSet(varId, 0);
     m_module.decorateBinding(varId, bindingId);
@@ -828,8 +827,8 @@ namespace dxvk {
     m_samplers.at(samplerId).typeId = samplerType;
     
     // Compute binding slot index for the sampler
-    const uint32_t bindingId = computeResourceSlotId(
-      m_programInfo.type(), DxbcBindingType::ImageSampler, samplerId);
+    uint32_t bindingId = computeSamplerBinding(
+      m_programInfo.type(), samplerId);
     
     m_module.decorateDescriptorSet(varId, 0);
     m_module.decorateBinding(varId, bindingId);
@@ -959,11 +958,9 @@ namespace dxvk {
     
     // Compute the DXVK binding slot index for the resource.
     // D3D11 needs to bind the actual resource to this slot.
-    const uint32_t bindingId = computeResourceSlotId(
-      m_programInfo.type(), isUav
-        ? DxbcBindingType::UnorderedAccessView
-        : DxbcBindingType::ShaderResource,
-      registerId);
+    uint32_t bindingId = isUav
+      ? computeUavBinding(m_programInfo.type(), registerId)
+      : computeSrvBinding(m_programInfo.type(), registerId);
     
     m_module.decorateDescriptorSet(varId, 0);
     m_module.decorateBinding(varId, bindingId);
@@ -1076,11 +1073,9 @@ namespace dxvk {
       : 0;
     
     // Compute the DXVK binding slot index for the resource.
-    uint32_t bindingId = computeResourceSlotId(
-      m_programInfo.type(), isUav
-        ? DxbcBindingType::UnorderedAccessView
-        : DxbcBindingType::ShaderResource,
-      registerId);
+    uint32_t bindingId = isUav
+      ? computeUavBinding(m_programInfo.type(), registerId)
+      : computeSrvBinding(m_programInfo.type(), registerId);
     
     if (m_moduleInfo.options.useRawSsbo) {
       uint32_t elemType   = getScalarTypeId(DxbcScalarType::Uint32);
@@ -1398,9 +1393,8 @@ namespace dxvk {
     m_module.setDebugName(varId,
       str::format("u", regId, "_meta").c_str());
     
-    const uint32_t bindingId = computeResourceSlotId(
-      m_programInfo.type(), DxbcBindingType::UavCounter,
-      regId);
+    uint32_t bindingId = computeUavCounterBinding(
+      m_programInfo.type(), regId);
     
     m_module.decorateDescriptorSet(varId, 0);
     m_module.decorateBinding(varId, bindingId);

@@ -3116,8 +3116,7 @@ namespace dxvk {
           DxbcProgramType       ShaderStage,
     const D3D11CommonShader*    pShaderModule) {
     // Bind the shader and the ICB at once
-    const uint32_t slotId = computeResourceSlotId(
-      ShaderStage, DxbcBindingType::ConstantBuffer,
+    uint32_t slotId = computeConstantBufferBinding(ShaderStage,
       D3D11_COMMONSHADER_CONSTANT_BUFFER_API_SLOT_COUNT);
     
     EmitCs([
@@ -3359,9 +3358,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumBuffers,
           ID3D11Buffer* const*              ppConstantBuffers) {
-    const uint32_t slotId = computeResourceSlotId(
-      ShaderStage, DxbcBindingType::ConstantBuffer,
-      StartSlot);
+    uint32_t slotId = computeConstantBufferBinding(ShaderStage, StartSlot);
     
     for (uint32_t i = 0; i < NumBuffers; i++) {
       auto newBuffer = static_cast<D3D11Buffer*>(ppConstantBuffers[i]);
@@ -3391,9 +3388,7 @@ namespace dxvk {
           ID3D11Buffer* const*              ppConstantBuffers,
     const UINT*                             pFirstConstant,
     const UINT*                             pNumConstants) {
-    const uint32_t slotId = computeResourceSlotId(
-      ShaderStage, DxbcBindingType::ConstantBuffer,
-      StartSlot);
+    uint32_t slotId = computeConstantBufferBinding(ShaderStage, StartSlot);
     
     for (uint32_t i = 0; i < NumBuffers; i++) {
       auto newBuffer = static_cast<D3D11Buffer*>(ppConstantBuffers[i]);
@@ -3442,9 +3437,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumSamplers,
           ID3D11SamplerState* const*        ppSamplers) {
-    const uint32_t slotId = computeResourceSlotId(
-      ShaderStage, DxbcBindingType::ImageSampler,
-      StartSlot);
+    uint32_t slotId = computeSamplerBinding(ShaderStage, StartSlot);
     
     for (uint32_t i = 0; i < NumSamplers; i++) {
       auto sampler = static_cast<D3D11SamplerState*>(ppSamplers[i]);
@@ -3463,9 +3456,7 @@ namespace dxvk {
           UINT                              StartSlot,
           UINT                              NumResources,
           ID3D11ShaderResourceView* const*  ppResources) {
-    const uint32_t slotId = computeResourceSlotId(
-      ShaderStage, DxbcBindingType::ShaderResource,
-      StartSlot);
+    uint32_t slotId = computeSrvBinding(ShaderStage, StartSlot);
     
     for (uint32_t i = 0; i < NumResources; i++) {
       auto resView = static_cast<D3D11ShaderResourceView*>(ppResources[i]);
@@ -3485,13 +3476,8 @@ namespace dxvk {
           UINT                              NumUAVs,
           ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
     const UINT*                             pUAVInitialCounts) {
-    const uint32_t uavSlotId = computeResourceSlotId(
-      ShaderStage, DxbcBindingType::UnorderedAccessView,
-      StartSlot);
-    
-    const uint32_t ctrSlotId = computeResourceSlotId(
-      ShaderStage, DxbcBindingType::UavCounter,
-      StartSlot);
+    uint32_t uavSlotId = computeUavBinding       (ShaderStage, StartSlot);
+    uint32_t ctrSlotId = computeUavCounterBinding(ShaderStage, StartSlot);
     
     for (uint32_t i = 0; i < NumUAVs; i++) {
       auto uav = static_cast<D3D11UnorderedAccessView*>(ppUnorderedAccessViews[i]);
@@ -3613,8 +3599,7 @@ namespace dxvk {
   void D3D11DeviceContext::RestoreConstantBuffers(
           DxbcProgramType                   Stage,
           D3D11ConstantBufferBindings&      Bindings) {
-    const uint32_t slotId = computeResourceSlotId(
-      Stage, DxbcBindingType::ConstantBuffer, 0);
+    uint32_t slotId = computeConstantBufferBinding(Stage, 0);
     
     for (uint32_t i = 0; i < Bindings.size(); i++)
       BindConstantBuffer(slotId + i, &Bindings[i]);
@@ -3624,8 +3609,7 @@ namespace dxvk {
   void D3D11DeviceContext::RestoreSamplers(
           DxbcProgramType                   Stage,
           D3D11SamplerBindings&             Bindings) {
-    const uint32_t slotId = computeResourceSlotId(
-      Stage, DxbcBindingType::ImageSampler, 0);
+    uint32_t slotId = computeSamplerBinding(Stage, 0);
     
     for (uint32_t i = 0; i < Bindings.size(); i++)
       BindSampler(slotId + i, Bindings[i].ptr());
@@ -3635,8 +3619,7 @@ namespace dxvk {
   void D3D11DeviceContext::RestoreShaderResources(
           DxbcProgramType                   Stage,
           D3D11ShaderResourceBindings&      Bindings) {
-    const uint32_t slotId = computeResourceSlotId(
-      Stage, DxbcBindingType::ShaderResource, 0);
+    uint32_t slotId = computeSrvBinding(Stage, 0);
     
     for (uint32_t i = 0; i < Bindings.size(); i++)
       BindShaderResource(slotId + i, Bindings[i].ptr());
@@ -3646,11 +3629,8 @@ namespace dxvk {
   void D3D11DeviceContext::RestoreUnorderedAccessViews(
           DxbcProgramType                   Stage,
           D3D11UnorderedAccessBindings&     Bindings) {
-    const uint32_t uavSlotId = computeResourceSlotId(
-      Stage, DxbcBindingType::UnorderedAccessView, 0);
-    
-    const uint32_t ctrSlotId = computeResourceSlotId(
-      Stage, DxbcBindingType::UavCounter, 0);
+    uint32_t uavSlotId = computeUavBinding       (Stage, 0);
+    uint32_t ctrSlotId = computeUavCounterBinding(Stage, 0);
     
     for (uint32_t i = 0; i < Bindings.size(); i++) {
       BindUnorderedAccessView(
