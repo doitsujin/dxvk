@@ -6,7 +6,8 @@ namespace dxvk {
         Direct3DDevice9Ex* pDevice,
         D3DQUERYTYPE       QueryType)
     : Direct3DDeviceChild9<IDirect3DQuery9>(pDevice)
-    , m_queryType                          (QueryType) {
+    , m_queryType                          (QueryType)
+    , m_state                              (D3D9_VK_QUERY_INITIAL) {
     Rc<DxvkDevice> dxvkDevice = m_parent->GetDXVKDevice();
 
     switch (m_queryType) {
@@ -81,14 +82,43 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D9Query::Issue(DWORD dwIssueFlags) {
-    dwIssueFlags & D3DISSUE_END
-      ? m_parent->End(this)
-      : m_parent->Begin(this);
+    // Note: No need to submit to CS if we don't do anything!
+
+    if (dwIssueFlags == D3DISSUE_BEGIN) {
+      if (m_state == D3D9_VK_QUERY_BEGUN && QueryEndable(m_queryType))
+        m_parent->End(this);
+
+      if (QueryBeginnable(m_queryType))
+        m_parent->Begin(this);
+
+      m_state = D3D9_VK_QUERY_BEGUN;
+    }
+    else {
+      if (m_state != D3D9_VK_QUERY_BEGUN && QueryBeginnable(m_queryType))
+        m_parent->Begin(this);
+
+      if (QueryEndable(m_queryType))
+        m_parent->End(this);
+
+      m_state = D3D9_VK_QUERY_ENDED;
+
+    }
       
     return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE D3D9Query::GetData(void* pData, DWORD dwSize, DWORD dwGetDataFlags) {
+
+    // Let the game know that calling end might be a good idea...
+    if (m_state == D3D9_VK_QUERY_BEGUN)
+      return S_FALSE;
+
+    // The game forgot to even issue the query!
+    // Let's do it for them...
+    // This will issue both the begin, and the end.
+    if (m_state == D3D9_VK_QUERY_INITIAL)
+      this->Issue(D3DISSUE_END);
+
     m_parent->SynchronizeCsThread();
 
     if (m_queryType == D3DQUERYTYPE_EVENT) {
@@ -186,6 +216,9 @@ namespace dxvk {
         break;
 
       case D3DQUERYTYPE_OCCLUSION:
+        if (unlikely(m_state != D3D9_VK_QUERY_BEGUN))
+          return;
+
         ctx->endQuery(m_query);
         break;
 
@@ -195,6 +228,17 @@ namespace dxvk {
 
       default: break;
     }
+  }
+
+  bool D3D9Query::QueryBeginnable(D3DQUERYTYPE QueryType) {
+    return QueryType == D3DQUERYTYPE_TIMESTAMP
+        || QueryType == D3DQUERYTYPE_OCCLUSION;
+  }
+
+  bool D3D9Query::QueryEndable(D3DQUERYTYPE QueryType) {
+    return QueryType == D3DQUERYTYPE_TIMESTAMP
+        || QueryType == D3DQUERYTYPE_OCCLUSION
+        || QueryType == D3DQUERYTYPE_EVENT;
   }
 
   bool D3D9Query::QuerySupported(D3DQUERYTYPE QueryType) {

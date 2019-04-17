@@ -4,6 +4,12 @@
 
 namespace dxvk {
 
+  enum D3D9_VK_QUERY_STATE : uint32_t {
+    D3D9_VK_QUERY_INITIAL,
+    D3D9_VK_QUERY_BEGUN,
+    D3D9_VK_QUERY_ENDED,
+  };
+
   class D3D9Query : public Direct3DDeviceChild9<IDirect3DQuery9> {
 
   public:
@@ -25,11 +31,16 @@ namespace dxvk {
     void Begin(DxvkContext* ctx);
     void End(DxvkContext* ctx);
 
+    static bool QueryBeginnable(D3DQUERYTYPE QueryType);
+    static bool QueryEndable(D3DQUERYTYPE QueryType);
+
     static bool QuerySupported(D3DQUERYTYPE QueryType);
 
   private:
 
     D3DQUERYTYPE      m_queryType;
+
+    D3D9_VK_QUERY_STATE m_state;
 
     Rc<DxvkGpuQuery>  m_query;
     Rc<DxvkGpuEvent>  m_event;
