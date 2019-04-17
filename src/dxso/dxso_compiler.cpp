@@ -87,6 +87,7 @@ namespace dxvk {
     case DxsoOpcode::Nrm:
     case DxsoOpcode::SinCos:
     case DxsoOpcode::Lit:
+    case DxsoOpcode::Dst:
     case DxsoOpcode::LogP:
     case DxsoOpcode::Log:
     case DxsoOpcode::Lrp:
@@ -1267,6 +1268,33 @@ namespace dxvk {
 
         result = m_module.opCompositeConstruct(floatVecType, resultIndices.size(), resultIndices.data());
         break;
+      }
+      case DxsoOpcode::Dst: {
+        //dest.x = 1;
+        //dest.y = src0.y * src1.y;
+        //dest.z = src0.z;
+        //dest.w = src1.w;
+
+        uint32_t src0 = emitRegisterLoad(src[0]);
+        uint32_t src1 = emitRegisterLoad(src[1]);
+
+        const uint32_t y = 1;
+        const uint32_t z = 2;
+        const uint32_t w = 3;
+
+        uint32_t src0Y = m_module.opCompositeExtract(floatScalarType, src0, 1, &y);
+        uint32_t src1Y = m_module.opCompositeExtract(floatScalarType, src1, 1, &y);
+
+        uint32_t src0Z = m_module.opCompositeExtract(floatScalarType, src0, 1, &z);
+        uint32_t src1W = m_module.opCompositeExtract(floatScalarType, src1, 1, &w);
+
+        std::array<uint32_t, 4> resultIndices;
+        resultIndices[0] = m_module.constf32(1.0f);
+        resultIndices[1] = m_module.opFMul(floatScalarType, src0Y, src1Y);
+        resultIndices[2] = src0Z;
+        resultIndices[3] = src1W;
+
+        result = m_module.opCompositeConstruct(floatVecType, resultIndices.size(), resultIndices.data());
       }
       case DxsoOpcode::LogP:
       case DxsoOpcode::Log:
