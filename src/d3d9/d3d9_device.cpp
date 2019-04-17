@@ -2816,6 +2816,8 @@ namespace dxvk {
     enabled.core.features.shaderStorageImageWriteWithoutFormat = VK_TRUE;
     enabled.core.features.shaderStorageImageExtendedFormats    = VK_TRUE;
 
+    enabled.core.features.imageCubeArray = VK_TRUE;
+
     // SM1 level hardware
     enabled.core.features.depthClamp = VK_TRUE;
     enabled.core.features.depthBiasClamp = VK_TRUE;
