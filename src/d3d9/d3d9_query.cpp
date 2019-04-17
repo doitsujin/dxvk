@@ -108,7 +108,6 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D9Query::GetData(void* pData, DWORD dwSize, DWORD dwGetDataFlags) {
-
     // Let the game know that calling end might be a good idea...
     if (m_state == D3D9_VK_QUERY_BEGUN)
       return S_FALSE;
@@ -216,9 +215,6 @@ namespace dxvk {
         break;
 
       case D3DQUERYTYPE_OCCLUSION:
-        if (unlikely(m_state != D3D9_VK_QUERY_BEGUN))
-          return;
-
         ctx->endQuery(m_query);
         break;
 
