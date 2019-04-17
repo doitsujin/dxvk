@@ -2814,6 +2814,7 @@ namespace dxvk {
 
     // DXVK Meta
     enabled.core.features.shaderStorageImageWriteWithoutFormat = VK_TRUE;
+    enabled.core.features.shaderStorageImageExtendedFormats    = VK_TRUE;
 
     // SM1 level hardware
     enabled.core.features.depthClamp = VK_TRUE;
