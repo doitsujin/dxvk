@@ -325,6 +325,8 @@ namespace dxvk {
           D3DPOOL             Pool,
           IDirect3DTexture9** ppTexture,
           HANDLE*             pSharedHandle) {
+    auto lock = LockDevice();
+
     InitReturnPtr(ppTexture);
     InitReturnPtr(pSharedHandle);
 
@@ -371,6 +373,8 @@ namespace dxvk {
           D3DPOOL                   Pool,
           IDirect3DVolumeTexture9** ppVolumeTexture,
           HANDLE*                   pSharedHandle) {
+    auto lock = LockDevice();
+
     InitReturnPtr(ppVolumeTexture);
     InitReturnPtr(pSharedHandle);
 
@@ -415,6 +419,8 @@ namespace dxvk {
           D3DPOOL                 Pool,
           IDirect3DCubeTexture9** ppCubeTexture,
           HANDLE*                 pSharedHandle) {
+    auto lock = LockDevice();
+
     InitReturnPtr(ppCubeTexture);
     InitReturnPtr(pSharedHandle);
 
@@ -2327,6 +2333,8 @@ namespace dxvk {
     IDirect3DSurface9** ppSurface,
     HANDLE* pSharedHandle,
     DWORD Usage) {
+    auto lock = LockDevice();
+
     InitReturnPtr(ppSurface);
     InitReturnPtr(pSharedHandle);
 
@@ -2371,6 +2379,8 @@ namespace dxvk {
     IDirect3DSurface9** ppSurface,
     HANDLE* pSharedHandle,
     DWORD Usage) {
+    auto lock = LockDevice();
+
     InitReturnPtr(ppSurface);
     InitReturnPtr(pSharedHandle);
 
@@ -2417,6 +2427,8 @@ namespace dxvk {
     IDirect3DSurface9** ppSurface,
     HANDLE* pSharedHandle,
     DWORD Usage) {
+    auto lock = LockDevice();
+
     InitReturnPtr(ppSurface);
     InitReturnPtr(pSharedHandle);
 
