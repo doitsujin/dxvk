@@ -1508,7 +1508,7 @@ namespace dxvk {
 
   BOOL    STDMETHODCALLTYPE Direct3DDevice9Ex::GetSoftwareVertexProcessing() {
     Logger::warn("Direct3DDevice9Ex::GetSoftwareVertexProcessing: Stub");
-    return D3D_OK;
+    return FALSE;
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetNPatchMode(float nSegments) {
