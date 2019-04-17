@@ -1130,7 +1130,7 @@ namespace dxvk {
 
     m_state.viewport = viewport;
 
-    BindViewportAndScissor();
+    m_flags.set(D3D9DeviceFlag::DirtyViewportScissor);
 
     return D3D_OK;
   }
@@ -1267,7 +1267,7 @@ namespace dxvk {
           break;
 
         case D3DRS_SCISSORTESTENABLE:
-          BindViewportAndScissor();
+          m_flags.set(D3D9DeviceFlag::DirtyViewportScissor);
           break;
 
         case D3DRS_SRGBWRITEENABLE:
@@ -1485,7 +1485,7 @@ namespace dxvk {
 
     m_state.scissorRect = *pRect;
 
-    BindViewportAndScissor();
+    m_flags.set(D3D9DeviceFlag::DirtyViewportScissor);
 
     return D3D_OK;
   }
@@ -3571,6 +3571,8 @@ namespace dxvk {
   }
 
   void Direct3DDevice9Ex::BindViewportAndScissor() {
+    m_flags.clr(D3D9DeviceFlag::DirtyViewportScissor);
+
     VkViewport viewport;
     VkRect2D scissor;
 
@@ -3889,6 +3891,9 @@ namespace dxvk {
   }
 
   void Direct3DDevice9Ex::PrepareDraw(bool up) {
+    if (m_flags.test(D3D9DeviceFlag::DirtyViewportScissor))
+      BindViewportAndScissor();
+
     UndirtySamplers();
 
     if (m_flags.test(D3D9DeviceFlag::DirtyBlendState))
