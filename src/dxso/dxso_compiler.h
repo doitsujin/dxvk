@@ -22,10 +22,7 @@ namespace dxvk {
   struct DxsoCompilerVsPart {
     uint32_t functionId = 0;
 
-    uint32_t builtinVertexId = 0;
-    uint32_t builtinInstanceId = 0;
-    uint32_t builtinBaseVertex = 0;
-    uint32_t builtinBaseInstance = 0;
+    uint32_t builtInPointSize = 0;
   };
 
   struct DxsoCfgBlockIf {
@@ -243,6 +240,7 @@ namespace dxvk {
     void emitDefI(const DxsoInstructionContext& ctx);
     void emitDefB(const DxsoInstructionContext& ctx);
 
+    void emitPointSize();
 
     ///////////////////////////////////
     // Health Warning: Can cause m_regs to be

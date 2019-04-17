@@ -172,6 +172,19 @@ namespace dxvk {
       m_module.defVoidType(),
       m_vs.functionId, 0, nullptr);
     this->emitVsClipping();
+
+    if (m_vs.builtInPointSize != 0) {
+      uint32_t x = 0;
+
+      const uint32_t floatType = m_module.defFloatType(32);
+      uint32_t var = spvLoad(DxsoRegisterId(DxsoRegisterType::RasterizerOut, RasterOutPointSize));
+      uint32_t ps  = m_module.opCompositeExtract(floatType, var, 1, &x);
+
+      m_module.opStore(
+        m_vs.builtInPointSize,
+        ps);
+    }
+
     this->emitFunctionEnd();
   }
 
@@ -1604,6 +1617,16 @@ namespace dxvk {
     m_regs.push_back(reg);
   }
 
+  void DxsoCompiler::emitPointSize() {
+    uint32_t typeId = m_module.defPointerType(
+      m_module.defFloatType(32), spv::StorageClassOutput);
+
+    m_vs.builtInPointSize = m_module.newVar(typeId, spv::StorageClassOutput);
+
+    m_entryPointInterfaces.push_back(m_vs.builtInPointSize);
+    m_module.decorateBuiltIn(m_vs.builtInPointSize, spv::BuiltInPointSize);
+  }
+
   DxsoSpirvRegister DxsoCompiler::getSpirvRegister(DxsoRegisterId id, bool centroid, DxsoRegister* relative) {
     if (!id.constant() || (id.constant() && relative == nullptr)) {
       for (const auto& regMapping : m_regs) {
@@ -1661,7 +1684,8 @@ namespace dxvk {
             m_oDecls[outputSlot].semantic.usageIndex = 0;
           }
           else if (decl.semantic.usage == DxsoUsage::PointSize) {
-            builtIn = spv::BuiltInPointSize;
+            this->emitPointSize();
+
             m_oDecls[outputSlot].semantic.usageIndex = 0;
           }
         }
@@ -1688,8 +1712,8 @@ namespace dxvk {
         else if (id.num() == RasterOutFog)
           semantic.usage = DxsoUsage::Fog;
         else {
+          this->emitPointSize();
           semantic.usage = DxsoUsage::PointSize;
-          builtIn = spv::BuiltInPointSize;
         }
 
         auto& dcl = m_oDecls[outputSlot = allocateSlot(false, id, semantic)];
