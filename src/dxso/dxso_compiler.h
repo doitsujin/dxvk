@@ -66,7 +66,9 @@ namespace dxvk {
   struct DxsoCompilerPsPart {
     uint32_t functionId = 0;
 
-    uint32_t discardPtr = 0;
+    uint32_t killState = 0;
+    uint32_t invocationMask = 0;
+    uint32_t ballotType = 0;
   };
 
   class DxsoCompiler {

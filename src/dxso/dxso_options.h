@@ -10,6 +10,10 @@ namespace dxvk {
   struct DxsoOptions {
     DxsoOptions();
     DxsoOptions(const Rc<DxvkDevice>& device, const D3D9Options& options);
+
+    /// Use subgroup operations to discard fragment
+    /// shader invocations if derivatives remain valid.
+    bool useSubgroupOpsForEarlyDiscard = false;
   };
 
 }
