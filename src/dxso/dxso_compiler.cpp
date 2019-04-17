@@ -122,6 +122,7 @@ namespace dxvk {
 
     case DxsoOpcode::Tex:
     case DxsoOpcode::TexLdl:
+    case DxsoOpcode::TexLdd:
       return this->emitTextureSample(ctx);
     case DxsoOpcode::TexKill:
       return this->emitTextureKill(ctx);
@@ -1400,6 +1401,8 @@ namespace dxvk {
   void DxsoCompiler::emitTextureSample(const DxsoInstructionContext& ctx) {
     const auto& dst = ctx.dst;
 
+    const DxsoOpcode opcode = ctx.instruction.opcode();
+
     uint32_t texcoordVarId;
     uint32_t samplerIdx;
 
@@ -1435,6 +1438,12 @@ namespace dxvk {
     if (m_programInfo.type() == DxsoProgramType::VertexShader) {
       imageOperands.sLod = m_module.constf32(0.0f);
       imageOperands.flags |= spv::ImageOperandsLodMask;
+    }
+
+    if (opcode == DxsoOpcode::TexLdd) {
+      imageOperands.flags |= spv::ImageOperandsGradMask;
+      imageOperands.sGradX = emitRegisterLoad(ctx.src[2]);
+      imageOperands.sGradY = emitRegisterLoad(ctx.src[3]);
     }
 
     uint32_t result =
