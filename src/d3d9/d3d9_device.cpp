@@ -3050,6 +3050,7 @@ namespace dxvk {
     } else {
       VkExtent3D levelExtent = mappedImage->mipLevelExtent(subresource.mipLevel);
       VkExtent3D blockCount  = util::computeBlockCount(levelExtent, formatInfo->blockSize);
+      bool managed = pResource->Desc()->Pool == D3DPOOL_MANAGED;
       
       DxvkBufferSliceHandle physSlice;
       
@@ -3064,7 +3065,14 @@ namespace dxvk {
         ] (DxvkContext* ctx) {
           ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
         });
-      } else {
+      }
+      else if (managed) {
+        // Managed resources are meant to be able to provide readback without waiting.
+        // We always keep a copy of them in system memory for this reason.
+        // No need to wait as its not in use.
+        physSlice = mappedBuffer->getSliceHandle();
+      }
+      else {
         // When using any map mode which requires the image contents
         // to be preserved, and if the GPU has write access to the
         // image, copy the current image contents into the buffer.
@@ -3119,6 +3127,8 @@ namespace dxvk {
 
     bool readRemaining = pResource->ReadLocksRemaining();
 
+    bool managed = pResource->Desc()->Pool == D3DPOOL_MANAGED;
+
     // Do we have a pending copy?
     if (pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER) {
       bool fixup8888 = pResource->Desc()->Format == D3D9Format::R8G8B8;
@@ -3133,7 +3143,7 @@ namespace dxvk {
           this->FlushImage(pResource);
 
         // If we have no remaining read-only locks we can clear our mapping buffers.
-        if (!readRemaining)
+        if (!readRemaining && !managed)
           pResource->DeallocMappingBuffers();
       }
     }
