@@ -35,7 +35,7 @@ namespace dxvk {
     
   };
 
-  class DxsoCode : public RcObject {
+  class DxsoCode {
 
   public:
 

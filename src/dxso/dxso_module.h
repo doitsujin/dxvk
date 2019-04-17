@@ -56,7 +56,7 @@ namespace dxvk {
             DxsoCodeIter        iter) const;
 
     DxsoHeader      m_header;
-    Rc<DxsoCode>    m_code;
+    DxsoCode        m_code;
 
     std::array<DxsoDeclaration, 16> m_decls;
 

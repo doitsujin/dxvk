@@ -19,11 +19,13 @@ namespace dxvk {
     if (opcode() == DxsoOpcode::Comment)
       return (m_token & 0x7fff000) >> 16;
 
+    if (opcode() == DxsoOpcode::End)
+      return 0;
+
     // SM2.0 and above has the length of the op in instruction count baked into it.
     // SM1.4 and below have fixed lengths and run off expectation.
-    // Phase and End do not respect the following rules. :shrug:
-    if (opcode() != DxsoOpcode::Phase
-     && opcode() != DxsoOpcode::End) {
+    // Phase does not respect the following rules. :shrug:
+    if (opcode() != DxsoOpcode::Phase) {
       if (info.majorVersion() >= 2)
         length = (m_token & 0x0f000000) >> 24;
       else
@@ -125,11 +127,14 @@ namespace dxvk {
     m_ctx.src[i] = DxsoRegister(DxsoInstructionArgumentType::Source, *this, iter);
   }
 
-  void DxsoDecodeContext::decodeInstruction(DxsoCodeIter& iter) {
+  bool DxsoDecodeContext::decodeInstruction(DxsoCodeIter& iter) {
     m_ctx.instruction = DxsoShaderInstruction(*this, iter);
 
     const uint32_t instructionLength = m_ctx.instruction.instructionLength();
     const DxsoOpcode opcode          = m_ctx.instruction.opcode();
+
+    if (opcode == DxsoOpcode::End)
+      return false;
 
     if (opcode == DxsoOpcode::If
      || opcode == DxsoOpcode::Ifc
@@ -178,6 +183,8 @@ namespace dxvk {
         }
       }
     }
+
+    return true;
   }
 
   std::ostream& operator << (std::ostream& os, DxsoUsage usage) {

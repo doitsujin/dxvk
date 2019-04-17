@@ -325,11 +325,7 @@ namespace dxvk {
      * number of dwords consumed by the instruction.
      * \param [in] code Code slice
      */
-    void decodeInstruction(DxsoCodeIter& iter);
-
-    bool eof() {
-      return m_ctx.instruction.opcode() == DxsoOpcode::End;
-    }
+    bool decodeInstruction(DxsoCodeIter& iter);
 
   private:
 

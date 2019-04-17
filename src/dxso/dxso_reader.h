@@ -34,8 +34,6 @@ namespace dxvk {
 
     void skip(size_t n);
 
-    DxsoReader clone(size_t pos) const;
-
     void store(std::ostream&& stream, size_t size) const;
 
     const char* currentPtr() {

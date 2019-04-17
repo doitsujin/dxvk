@@ -19,11 +19,6 @@ namespace dxvk {
     m_pos += n;
   }
 
-  DxsoReader DxsoReader::clone(size_t pos) const {
-    return DxsoReader(m_data + pos);
-  }
-
-
   void DxsoReader::store(std::ostream && stream, size_t size) const {
     stream.write(m_data, size);
   }
