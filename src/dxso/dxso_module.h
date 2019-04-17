@@ -38,8 +38,9 @@ namespace dxvk {
      * \returns The compiled shader object
      */
     Rc<DxvkShader> compile(
-      const DxsoModuleInfo& moduleInfo,
-      const std::string&    fileName);
+      const DxsoModuleInfo&   moduleInfo,
+      const std::string&      fileName,
+      const DxsoAnalysisInfo& analysis);
 
     const std::array<DxsoDeclaration, 16>& getDecls() {
       return m_decls;

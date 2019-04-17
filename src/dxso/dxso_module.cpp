@@ -20,11 +20,12 @@ namespace dxvk {
   }
 
   Rc<DxvkShader> DxsoModule::compile(
-    const DxsoModuleInfo& moduleInfo,
-    const std::string&    fileName) {
+    const DxsoModuleInfo&   moduleInfo,
+    const std::string&      fileName,
+    const DxsoAnalysisInfo& analysis) {
     DxsoCompiler compiler(
       fileName, moduleInfo,
-      m_header.info() );
+      m_header.info(), analysis);
 
     this->runCompiler(compiler, m_code.iter());
 

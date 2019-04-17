@@ -1,5 +1,7 @@
 #include "dxso_compiler.h"
 
+#include "dxso_analysis.h"
+
 #include "../d3d9/d3d9_caps.h"
 #include "../d3d9/d3d9_constant_set.h"
 #include "../d3d9/d3d9_state.h"
@@ -9,11 +11,13 @@
 namespace dxvk {
 
   DxsoCompiler::DxsoCompiler(
-    const std::string&     fileName,
-    const DxsoModuleInfo&  moduleInfo,
-    const DxsoProgramInfo& programInfo)
-    : m_moduleInfo{ moduleInfo }
-    , m_programInfo{ programInfo } {
+    const std::string&      fileName,
+    const DxsoModuleInfo&   moduleInfo,
+    const DxsoProgramInfo&  programInfo,
+    const DxsoAnalysisInfo& analysis)
+    : m_moduleInfo ( moduleInfo )
+    , m_programInfo( programInfo )
+    , m_analysis   ( &analysis ) {
     // Declare an entry point ID. We'll need it during the
     // initialization phase where the execution mode is set.
     m_entryPointId = m_module.allocateId();

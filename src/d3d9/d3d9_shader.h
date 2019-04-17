@@ -24,7 +24,7 @@ namespace dxvk {
       const DxvkShaderKey*        pShaderKey,
       const DxsoModuleInfo*       pDxbcModuleInfo,
       const void*                 pShaderBytecode,
-            size_t                BytecodeLength,
+      const DxsoAnalysisInfo&     AnalysisInfo,
             DxsoModule*           pModule);
 
 

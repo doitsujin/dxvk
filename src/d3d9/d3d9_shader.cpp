@@ -11,10 +11,11 @@ namespace dxvk {
       const DxvkShaderKey*        pShaderKey,
       const DxsoModuleInfo*       pDxsoModuleInfo,
       const void*                 pShaderBytecode,
-            size_t                BytecodeLength,
+      const DxsoAnalysisInfo&     AnalysisInfo,
             DxsoModule*           pModule) {
-    m_bytecode.resize(BytecodeLength);
-    std::memcpy(m_bytecode.data(), pShaderBytecode, BytecodeLength);
+    const uint32_t bytecodeLength = AnalysisInfo.bytecodeByteLength;
+    m_bytecode.resize(bytecodeLength);
+    std::memcpy(m_bytecode.data(), pShaderBytecode, bytecodeLength);
 
     const std::string name = pShaderKey->toString();
     Logger::debug(str::format("Compiling shader ", name));
@@ -28,7 +29,7 @@ namespace dxvk {
         reinterpret_cast<const char*>(pShaderBytecode));
 
       reader.store(std::ofstream(str::format(dumpPath, "/", name, ".dxso"),
-        std::ios_base::binary | std::ios_base::trunc), BytecodeLength);
+        std::ios_base::binary | std::ios_base::trunc), bytecodeLength);
 
       char comment[2048];
       Com<ID3DBlob> blob;
@@ -49,7 +50,7 @@ namespace dxvk {
     // Decide whether we need to create a pass-through
     // geometry shader for vertex shader stream output
 
-    m_shader = pModule->compile(*pDxsoModuleInfo, name);
+    m_shader = pModule->compile(*pDxsoModuleInfo, name, AnalysisInfo);
     m_decl = pModule->getDecls();
     m_shader->setShaderKey(*pShaderKey);
     
@@ -94,7 +95,7 @@ namespace dxvk {
     D3D9CommonShader commonShader(
       pDevice, pShaderKey,
       pDxbcModuleInfo, pShaderBytecode,
-      info.bytecodeByteLength, &module);
+      info, &module);
     
     // Insert the new module into the lookup table. If another thread
     // has compiled the same shader in the meantime, we should return

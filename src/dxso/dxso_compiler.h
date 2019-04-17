@@ -14,6 +14,8 @@ namespace dxvk {
     uint32_t          ptrId = 0;
   };
 
+  struct DxsoAnalysisInfo;
+
   /**
    * \brief Vertex shader-specific structure
    */
@@ -75,9 +77,10 @@ namespace dxvk {
     static constexpr uint32_t InvalidOutputSlot = UINT32_MAX;
 
     DxsoCompiler(
-      const std::string&     fileName,
-      const DxsoModuleInfo&  moduleInfo,
-      const DxsoProgramInfo& programInfo);
+      const std::string&      fileName,
+      const DxsoModuleInfo&   moduleInfo,
+      const DxsoProgramInfo&  programInfo,
+      const DxsoAnalysisInfo& analysis);
 
     /**
      * \brief Processes a single instruction
@@ -98,8 +101,10 @@ namespace dxvk {
 
   private:
 
-    DxsoModuleInfo      m_moduleInfo;
-    DxsoProgramInfo     m_programInfo;
+    DxsoModuleInfo             m_moduleInfo;
+    DxsoProgramInfo            m_programInfo;
+    const DxsoAnalysisInfo*    m_analysis;
+
     SpirvModule         m_module;
 
     ///////////////////////////////////////////////////////
