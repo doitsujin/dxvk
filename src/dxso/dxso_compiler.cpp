@@ -121,6 +121,9 @@ namespace dxvk {
     case DxsoOpcode::EndIf:
       return this->emitControlFlowEndIf(ctx);
 
+    case DxsoOpcode::TexCoord:
+      return this->emitTexCoord(ctx);
+
     case DxsoOpcode::Tex:
     case DxsoOpcode::TexLdl:
     case DxsoOpcode::TexLdd:
@@ -1437,6 +1440,19 @@ namespace dxvk {
         m_module.opLabel(labelEnd);
       }
     }
+  }
+
+  void DxsoCompiler::emitTexCoord(const DxsoInstructionContext& ctx) {
+    const auto& dst = ctx.dst;
+    const uint32_t typeId = spvTypeVar(dst);
+
+    DxsoRegisterId texcoordId = { DxsoRegisterType::TexcoordOut, ctx.dst.registerId().num() };
+
+    uint32_t result = spvLoad(texcoordId);
+
+    m_module.opStore(
+      spvPtr(dst),
+      emitWriteMask(isVectorReg(dst.registerId().type()), typeId, spvLoad(dst), result, dst.writeMask()));
   }
 
   void DxsoCompiler::emitTextureSample(const DxsoInstructionContext& ctx) {

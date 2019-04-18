@@ -229,6 +229,7 @@ namespace dxvk {
 
     uint32_t emitInfinityClamp(uint32_t typeId, uint32_t varId, bool vector = true);
 
+    void emitTexCoord(const DxsoInstructionContext& ctx);
     void emitTextureKill(const DxsoInstructionContext& ctx);
     void emitTextureSample(const DxsoInstructionContext& ctx);
 
