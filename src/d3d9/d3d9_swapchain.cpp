@@ -13,7 +13,7 @@ namespace dxvk {
     , m_backBuffer             ( nullptr )
     , m_gammaFlags             ( 0 ) {
     SetDefaultGamma();
-    Reset(presentParams);
+    Reset(presentParams, true);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DSwapChain9Ex::QueryInterface(REFIID riid, void** ppvObject) {
@@ -152,7 +152,7 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  HRESULT Direct3DSwapChain9Ex::Reset(D3DPRESENT_PARAMETERS* parameters) {
+  HRESULT Direct3DSwapChain9Ex::Reset(D3DPRESENT_PARAMETERS* parameters, bool first) {
     HWND newWindow      = GetPresentWindow(parameters);
     HWND originalWindow = GetPresentWindow(&m_presentParams);
     
@@ -174,8 +174,64 @@ namespace dxvk {
 
     parameters->BackBufferFormat = format;
 
-    if (!parameters->Windowed)
+    if (!parameters->Windowed && (m_presentParams.Windowed || first)) {
       Logger::warn("Direct3DSwapChain9Ex::Reset: fullscreen not implemented.");
+
+      RECT windowRect = { 0, 0, 0, 0 };
+      ::GetWindowRect(newWindow, &windowRect);
+      
+      HMONITOR monitor = ::MonitorFromPoint(
+        { (windowRect.left + windowRect.right) / 2,
+          (windowRect.top + windowRect.bottom) / 2 },
+        MONITOR_DEFAULTTOPRIMARY);
+
+      // TODO: change display mode via win32
+
+      // Change the window flags to remove the decoration etc.
+      LONG style   = ::GetWindowLongW(newWindow, GWL_STYLE);
+      LONG exstyle = ::GetWindowLongW(newWindow, GWL_EXSTYLE);
+    
+      m_windowState.style = style;
+      m_windowState.exstyle = exstyle;
+    
+      style   &= ~WS_OVERLAPPEDWINDOW;
+      exstyle &= ~WS_EX_OVERLAPPEDWINDOW;
+
+      ::SetWindowLongW(newWindow, GWL_STYLE, style);
+      ::SetWindowLongW(newWindow, GWL_EXSTYLE, exstyle);
+
+      // Move the window so that it covers the entire output
+      ::MONITORINFO monInfo;
+      monInfo.cbSize = sizeof(monInfo);
+
+      if (!::GetMonitorInfoW(monitor, reinterpret_cast<MONITORINFO*>(&monInfo))) {
+        Logger::err("D3D9: Failed to query monitor info");
+        return E_FAIL;
+      }
+
+      const RECT rect = monInfo.rcMonitor;
+
+      ::SetWindowPos(newWindow, HWND_TOPMOST,
+        rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
+        SWP_FRAMECHANGED | SWP_SHOWWINDOW | SWP_NOACTIVATE);
+      
+	} else if (parameters->Windowed && !m_presentParams.Windowed && !first) {
+      LONG curStyle   = ::GetWindowLongW(originalWindow, GWL_STYLE) & ~WS_VISIBLE;
+      LONG curExstyle = ::GetWindowLongW(originalWindow, GWL_EXSTYLE) & ~WS_EX_TOPMOST;
+      
+      if (curStyle == (m_windowState.style & ~(WS_VISIBLE | WS_OVERLAPPEDWINDOW))
+       && curExstyle == (m_windowState.exstyle & ~(WS_EX_TOPMOST | WS_EX_OVERLAPPEDWINDOW))) {
+        ::SetWindowLongW(originalWindow, GWL_STYLE,   m_windowState.style);
+        ::SetWindowLongW(originalWindow, GWL_EXSTYLE, m_windowState.exstyle);
+      }
+      
+      // Restore window position and apply the style
+      const RECT rect = m_windowState.rect;
+      
+      ::SetWindowPos(originalWindow, 0,
+        rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
+        SWP_FRAMECHANGED | SWP_NOZORDER | SWP_NOACTIVATE);
+	}
 
     m_presentParams = *parameters;
 

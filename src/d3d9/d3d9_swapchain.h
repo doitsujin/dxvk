@@ -45,7 +45,7 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE GetDisplayModeEx(D3DDISPLAYMODEEX* pMode, D3DDISPLAYROTATION* pRotation);
 
-    HRESULT Reset(D3DPRESENT_PARAMETERS* parameters);
+    HRESULT Reset(D3DPRESENT_PARAMETERS* parameters, bool = false);
 
     HRESULT WaitForVBlank();
 
@@ -61,6 +61,12 @@ namespace dxvk {
 
   private:
 
+    struct WindowState {
+    	LONG style = 0;
+    	LONG exstyle = 0;
+    	RECT rect = { 0, 0, 0, 0 };
+    };
+
     D3D9PresenterDesc CalcPresenterDesc();
 
     D3D9Presenter& GetOrMakePresenter(HWND window);
@@ -70,6 +76,8 @@ namespace dxvk {
     std::vector<Rc<D3D9Presenter>> m_presenters;
 
     D3DPRESENT_PARAMETERS m_presentParams;
+    WindowState m_windowState;
+    
     Direct3DSurface9* m_backBuffer;
 
     DWORD m_gammaFlags;
