@@ -629,7 +629,7 @@ namespace dxvk {
 
       if (m_barriers.isImageDirty(
           imageView->image(),
-          imageView->subresources(),
+          imageView->imageSubresources(),
           DxvkAccess::Write))
         m_barriers.recordCommands(m_cmd);
       
@@ -656,7 +656,7 @@ namespace dxvk {
 
       m_barriers.accessImage(
         imageView->image(),
-        imageView->subresources(),
+        imageView->imageSubresources(),
         imageView->imageInfo().layout,
         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
         imageView->imageInfo().layout,
@@ -2158,7 +2158,7 @@ namespace dxvk {
 
       if (m_barriers.isImageDirty(
           imageView->image(),
-          imageView->subresources(),
+          imageView->imageSubresources(),
           DxvkAccess::Write))
         m_barriers.recordCommands(m_cmd);
       
@@ -2194,7 +2194,7 @@ namespace dxvk {
       
       m_barriers.accessImage(
         imageView->image(),
-        imageView->subresources(),
+        imageView->imageSubresources(),
         imageView->imageInfo().layout,
         VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
         imageView->imageInfo().layout,
@@ -2237,7 +2237,7 @@ namespace dxvk {
     
     if (m_barriers.isImageDirty(
           imageView->image(),
-          imageView->subresources(),
+          imageView->imageSubresources(),
           DxvkAccess::Write))
       m_barriers.recordCommands(m_cmd);
     
@@ -2298,7 +2298,7 @@ namespace dxvk {
     
     m_barriers.accessImage(
       imageView->image(),
-      imageView->subresources(),
+      imageView->imageSubresources(),
       imageView->imageInfo().layout,
       VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
       VK_ACCESS_SHADER_WRITE_BIT,
@@ -2883,7 +2883,7 @@ namespace dxvk {
 
         flushBarriers |= m_barriers.isImageDirty(
           attachment.view->image(),
-          attachment.view->subresources(),
+          attachment.view->imageSubresources(),
           DxvkAccess::Write);
       }
 
@@ -2907,7 +2907,7 @@ namespace dxvk {
 
         m_barriers.accessImage(
           attachment.view->image(),
-          attachment.view->subresources(),
+          attachment.view->imageSubresources(),
           attachment.view->imageInfo().layout,
           VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
           attachment.view->imageInfo().layout,
@@ -3827,7 +3827,7 @@ namespace dxvk {
           case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
             srcAccess = m_barriers.getImageAccess(
               slot.imageView->image(),
-              slot.imageView->subresources());
+              slot.imageView->imageSubresources());
             break;
 
           default:
@@ -3902,7 +3902,7 @@ namespace dxvk {
           case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
             m_barriers.accessImage(
               slot.imageView->image(),
-              slot.imageView->subresources(),
+              slot.imageView->imageSubresources(),
               slot.imageView->imageInfo().layout,
               stages, access,
               slot.imageView->imageInfo().layout,
