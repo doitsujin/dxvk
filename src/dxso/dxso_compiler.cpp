@@ -93,6 +93,7 @@ namespace dxvk {
     case DxsoOpcode::Lrp:
     case DxsoOpcode::Frc:
     case DxsoOpcode::Cmp:
+    case DxsoOpcode::Cnd:
     case DxsoOpcode::Dp2Add:
     case DxsoOpcode::DsX:
     case DxsoOpcode::DsY:
@@ -1328,6 +1329,21 @@ namespace dxvk {
           boolVec,
           emitRegisterLoad(src[0]),
           m_module.constvec4f32(0, 0, 0, 0));
+
+        result = m_module.opSelect(
+          floatVecType,
+          result,
+          emitRegisterLoad(src[1]),
+          emitRegisterLoad(src[2]));
+        break;
+      }
+      case DxsoOpcode::Cnd: {
+        const uint32_t boolVec = m_module.defVectorType(m_module.defBoolType(), 4);
+
+        result = m_module.opFOrdGreaterThan(
+          boolVec,
+          emitRegisterLoad(src[0]),
+          m_module.constvec4f32(0.5f, 0.5f, 0.5f, 0.5f));
 
         result = m_module.opSelect(
           floatVecType,
