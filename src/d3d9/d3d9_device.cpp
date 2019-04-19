@@ -3829,6 +3829,8 @@ namespace dxvk {
     key.MaxMipLevel   = state[D3DSAMP_MAXMIPLEVEL];
     key.BorderColor   = D3DCOLOR(state[D3DSAMP_BORDERCOLOR]);
 
+    NormalizeSamplerKey(key);
+
     auto pair = m_samplers.find(key);
     if (pair != m_samplers.end())
       return pair->second;
@@ -3844,14 +3846,14 @@ namespace dxvk {
     info.magFilter      = DecodeFilter   (key.MagFilter);
     info.minFilter      = DecodeFilter   (key.MinFilter);
     info.mipmapMode     = mipFilter.MipFilter;
-    info.maxAnisotropy  = std::clamp(float(key.MaxAnisotropy), 1.0f, 16.0f);
+    info.maxAnisotropy  = float(key.MaxAnisotropy);
     info.useAnisotropy  = IsAnisotropic(key.MinFilter)
                        || IsAnisotropic(key.MagFilter);
     info.mipmapLodBias  = key.MipmapLodBias;
     info.mipmapLodMin   = mipFilter.MipsEnabled ? float(key.MaxMipLevel) : 0;
     info.mipmapLodMax   = mipFilter.MipsEnabled ? FLT_MAX                : 0;
     info.usePixelCoord  = VK_FALSE;
-    DecodeD3DCOLOR(key.BorderColor, reinterpret_cast<float*>(&info.borderColor));
+    DecodeD3DCOLOR(key.BorderColor, info.borderColor.float32);
 
     Rc<DxvkSampler> sampler = m_dxvkDevice->createSampler(info);
 

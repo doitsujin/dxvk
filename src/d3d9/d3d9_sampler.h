@@ -27,4 +27,21 @@ namespace dxvk {
     bool operator () (const D3D9SamplerKey& a, const D3D9SamplerKey& b) const;
   };
 
+  inline void NormalizeSamplerKey(D3D9SamplerKey& key) {
+    key.AddressU = std::clamp(key.AddressU, D3DTADDRESS_WRAP, D3DTADDRESS_MIRRORONCE);
+    key.AddressV = std::clamp(key.AddressV, D3DTADDRESS_WRAP, D3DTADDRESS_MIRRORONCE);
+    key.AddressW = std::clamp(key.AddressW, D3DTADDRESS_WRAP, D3DTADDRESS_MIRRORONCE);
+
+    key.MagFilter = std::clamp(key.MagFilter, D3DTEXF_NONE, D3DTEXF_ANISOTROPIC);
+    key.MinFilter = std::clamp(key.MinFilter, D3DTEXF_NONE, D3DTEXF_ANISOTROPIC);
+    key.MipFilter = std::clamp(key.MipFilter, D3DTEXF_NONE, D3DTEXF_ANISOTROPIC);
+
+    key.MaxAnisotropy = std::clamp<DWORD>(key.MaxAnisotropy, 0, 16);
+
+    if ( key.AddressU != D3DTADDRESS_BORDER
+      && key.AddressV != D3DTADDRESS_BORDER
+      && key.AddressW != D3DTADDRESS_BORDER)
+      key.BorderColor = 0;
+  }
+
 }
