@@ -3889,7 +3889,7 @@ namespace dxvk {
     });
   }
 
-  Rc<DxvkSampler> Direct3DDevice9Ex::CreateSampler(DWORD Sampler) {
+  void Direct3DDevice9Ex::BindSampler(DWORD Sampler) {
     auto& state = m_state.samplerStates[Sampler];
 
     D3D9SamplerKey key;
@@ -3906,47 +3906,6 @@ namespace dxvk {
 
     NormalizeSamplerKey(key);
 
-    auto pair = m_samplers.find(key);
-    if (pair != m_samplers.end())
-      return pair->second;
-
-    auto mipFilter = DecodeMipFilter(key.MipFilter);
-
-    DxvkSamplerCreateInfo info;
-    info.addressModeU   = DecodeAddressMode(key.AddressU);
-    info.addressModeV   = DecodeAddressMode(key.AddressV);
-    info.addressModeW   = DecodeAddressMode(key.AddressW);
-    info.compareToDepth = VK_FALSE;
-    info.compareOp      = VK_COMPARE_OP_NEVER;
-    info.magFilter      = DecodeFilter   (key.MagFilter);
-    info.minFilter      = DecodeFilter   (key.MinFilter);
-    info.mipmapMode     = mipFilter.MipFilter;
-    info.maxAnisotropy  = float(key.MaxAnisotropy);
-    info.useAnisotropy  = IsAnisotropic(key.MinFilter)
-                       || IsAnisotropic(key.MagFilter);
-    info.mipmapLodBias  = key.MipmapLodBias;
-    info.mipmapLodMin   = mipFilter.MipsEnabled ? float(key.MaxMipLevel) : 0;
-    info.mipmapLodMax   = mipFilter.MipsEnabled ? FLT_MAX                : 0;
-    info.usePixelCoord  = VK_FALSE;
-    DecodeD3DCOLOR(key.BorderColor, info.borderColor.float32);
-
-    try {
-      Rc<DxvkSampler> sampler = m_dxvkDevice->createSampler(info);
-      m_samplers.insert(std::make_pair(key, sampler));
-      return sampler;
-    }
-    catch (const DxvkError& e) {
-      Logger::err(e.message());
-      return nullptr;
-    }
-  }
-
-  void Direct3DDevice9Ex::BindSampler(DWORD Sampler) {
-    Rc<DxvkSampler> sampler = CreateSampler(Sampler);
-
-    if (sampler == nullptr)
-      return;
-
     auto samplerInfo = RemapStateSamplerShader(Sampler);
 
     const uint32_t slotId = computeResourceSlotId(
@@ -3954,10 +3913,45 @@ namespace dxvk {
       samplerInfo.second);
 
     EmitCs([
-      cSlot    = slotId,
-      cSampler = sampler
+      cDevice    = m_dxvkDevice,
+      &cSamplers = m_samplers,
+      cSlotId    = slotId,
+      cKey       = key
     ] (DxvkContext* ctx) {
-      ctx->bindResourceSampler(cSlot, cSampler);
+      auto pair = cSamplers.find(cKey);
+      if (pair != cSamplers.end()) {
+        ctx->bindResourceSampler(cSlotId, pair->second);
+        return;
+      }
+
+      auto mipFilter = DecodeMipFilter(cKey.MipFilter);
+
+      DxvkSamplerCreateInfo info;
+      info.addressModeU   = DecodeAddressMode(cKey.AddressU);
+      info.addressModeV   = DecodeAddressMode(cKey.AddressV);
+      info.addressModeW   = DecodeAddressMode(cKey.AddressW);
+      info.compareToDepth = VK_FALSE;
+      info.compareOp      = VK_COMPARE_OP_NEVER;
+      info.magFilter      = DecodeFilter(cKey.MagFilter);
+      info.minFilter      = DecodeFilter(cKey.MinFilter);
+      info.mipmapMode     = mipFilter.MipFilter;
+      info.maxAnisotropy  = float(cKey.MaxAnisotropy);
+      info.useAnisotropy  = IsAnisotropic(cKey.MinFilter)
+                         || IsAnisotropic(cKey.MagFilter);
+      info.mipmapLodBias  = cKey.MipmapLodBias;
+      info.mipmapLodMin   = mipFilter.MipsEnabled ? float(cKey.MaxMipLevel) : 0;
+      info.mipmapLodMax   = mipFilter.MipsEnabled ? FLT_MAX                 : 0;
+      info.usePixelCoord  = VK_FALSE;
+      DecodeD3DCOLOR(cKey.BorderColor, info.borderColor.float32);
+
+      try {
+        Rc<DxvkSampler> sampler = cDevice->createSampler(info);
+        cSamplers.insert(std::make_pair(cKey, sampler));
+        ctx->bindResourceSampler(cSlotId, sampler);
+      }
+      catch (const DxvkError& e) {
+        Logger::err(e.message());
+      }
     });
   }
 
