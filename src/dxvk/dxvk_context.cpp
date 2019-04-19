@@ -636,13 +636,23 @@ namespace dxvk {
       // Set up and bind a temporary framebuffer
       DxvkRenderTargets attachments;
       DxvkRenderPassOps ops;
+
+      VkPipelineStageFlags clearStages = 0;
+      VkAccessFlags        clearAccess = 0;
       
       if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT) {
+        clearStages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        clearAccess |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
         attachments.color[0].view   = imageView;
         attachments.color[0].layout = imageView->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
         
         ops.colorOps[0] = colorOp;
       } else {
+        clearStages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+                    |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        clearAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
         attachments.depth.view   = imageView;
         attachments.depth.layout = imageView->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
         
@@ -658,7 +668,7 @@ namespace dxvk {
         imageView->image(),
         imageView->imageSubresources(),
         imageView->imageInfo().layout,
-        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
+        clearStages, clearAccess,
         imageView->imageInfo().layout,
         imageView->imageInfo().stages,
         imageView->imageInfo().access);
@@ -2161,8 +2171,14 @@ namespace dxvk {
       // Set up a temporary framebuffer
       DxvkRenderTargets attachments;
       DxvkRenderPassOps ops;
+
+      VkPipelineStageFlags clearStages = 0;
+      VkAccessFlags        clearAccess = 0;
       
       if (imageView->info().aspect & VK_IMAGE_ASPECT_COLOR_BIT) {
+        clearStages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        clearAccess |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
         attachments.color[0].view   = imageView;
         attachments.color[0].layout = imageView->pickLayout(VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
 
@@ -2171,6 +2187,10 @@ namespace dxvk {
         ops.colorOps[0].storeOp     = VK_ATTACHMENT_STORE_OP_STORE;
         ops.colorOps[0].storeLayout = imageView->imageInfo().layout;
       } else {
+        clearStages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
+                    |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+        clearAccess |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
         attachments.depth.view   = imageView;
         attachments.depth.layout = imageView->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
@@ -2192,7 +2212,7 @@ namespace dxvk {
         imageView->image(),
         imageView->imageSubresources(),
         imageView->imageInfo().layout,
-        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
+        clearStages, clearAccess,
         imageView->imageInfo().layout,
         imageView->imageInfo().stages,
         imageView->imageInfo().access);
@@ -2579,7 +2599,11 @@ namespace dxvk {
     m_barriers.accessImage(
       dstImage, dstSubresourceRange,
       dstImage->info().layout,
-      VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
+      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+      VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT    |
+      VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+      VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT          |
+      VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
       dstImage->info().layout,
       dstImage->info().stages,
       dstImage->info().access);
@@ -2782,7 +2806,8 @@ namespace dxvk {
     m_barriers.accessImage(
       dstImage, dstSubresourceRange,
       dstImage->info().layout,
-      VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
+      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+      VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
       dstImage->info().layout,
       dstImage->info().stages,
       dstImage->info().access);
@@ -2909,7 +2934,11 @@ namespace dxvk {
           attachment.view->image(),
           attachment.view->imageSubresources(),
           attachment.view->imageInfo().layout,
-          VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0,
+          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+          VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT    |
+          VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT          |
+          VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
           attachment.view->imageInfo().layout,
           attachment.view->imageInfo().stages,
           attachment.view->imageInfo().access);
