@@ -981,7 +981,7 @@ namespace dxvk {
       scissorRect.bottom = desc->Height;
       m_state.scissorRect = scissorRect;
 
-      BindViewportAndScissor();
+      m_flags.set(D3D9DeviceFlag::DirtyViewportScissor);
     }
 
     return D3D_OK;
