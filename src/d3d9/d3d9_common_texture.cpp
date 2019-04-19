@@ -404,11 +404,11 @@ namespace dxvk {
       * blockCount.depth;
   }
 
-  void Direct3DCommonTexture9::AllocBuffers(UINT Face, UINT MipLevel) {
+  bool Direct3DCommonTexture9::AllocBuffers(UINT Face, UINT MipLevel) {
     UINT Subresource = CalcSubresource(Face, MipLevel);
 
     if (m_mappingBuffers.at(Subresource) != nullptr)
-      return;
+      return false;
 
     DxvkBufferCreateInfo info;
     info.size  = GetMipLength(MipLevel);
@@ -430,6 +430,8 @@ namespace dxvk {
       m_fixupBuffers.at(Subresource) =
         m_device->GetDXVKDevice()->createBuffer(info, memoryType);
     }
+
+    return true;
   }
 
   void Direct3DCommonTexture9::DeallocMappingBuffers() {

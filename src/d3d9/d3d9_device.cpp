@@ -2996,7 +2996,7 @@ namespace dxvk {
 
     UINT Subresource = pResource->CalcSubresource(Face, MipLevel);
 
-    pResource->AllocBuffers(Face, MipLevel);
+    bool alloced = pResource->AllocBuffers(Face, MipLevel);
 
     const Rc<DxvkImage>  mappedImage  = pResource->GetImage();
     const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer(Subresource);
@@ -3092,8 +3092,9 @@ namespace dxvk {
           ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
         });
       }
-      else if (managed) {
-        // Managed resources are meant to be able to provide readback without waiting.
+      else if (!alloced) {
+        // Managed resources and ones we haven't newly allocated
+        // are meant to be able to provide readback without waiting.
         // We always keep a copy of them in system memory for this reason.
         // No need to wait as its not in use.
         physSlice = mappedBuffer->getSliceHandle();

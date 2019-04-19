@@ -253,7 +253,7 @@ namespace dxvk {
       return Face * m_desc.MipLevels + MipLevel;
     }
 
-    void AllocBuffers(UINT Face, UINT MipLevel);
+    bool AllocBuffers(UINT Face, UINT MipLevel);
 
     Rc<DxvkBuffer> GetMappedBuffer(UINT Subresource) {
       return m_mappingBuffers.at(Subresource);
