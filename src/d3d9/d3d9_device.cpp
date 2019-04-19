@@ -850,31 +850,47 @@ namespace dxvk {
     blitInfo.srcOffsets[1] = pSourceRect != nullptr
       ? VkOffset3D{ int32_t(pSourceRect->right), int32_t(pSourceRect->bottom), 1 }
       : VkOffset3D{ int32_t(srcExtent.width),    int32_t(srcExtent.height),    1 };
-
-    if (fastPath && !needsResolve) {
+    
+    if (fastPath) {
       VkExtent3D regExtent =
       { uint32_t(blitInfo.srcOffsets[1].x - blitInfo.srcOffsets[0].x),
         uint32_t(blitInfo.srcOffsets[1].y - blitInfo.srcOffsets[0].y),
         uint32_t(blitInfo.srcOffsets[1].z - blitInfo.srcOffsets[0].z) };
-
-      EmitCs([
-        cDstImage  = dstImage,
-        cSrcImage  = srcImage,
-        cDstLayers = blitInfo.dstSubresource,
-        cSrcLayers = blitInfo.srcSubresource,
-        cDstOffset = blitInfo.dstOffsets[0],
-        cSrcOffset = blitInfo.srcOffsets[0],
-        cExtent    = regExtent
-      ] (DxvkContext* ctx) {
-        ctx->copyImage(
-          cDstImage, cDstLayers, cDstOffset,
-          cSrcImage, cSrcLayers, cSrcOffset,
-          cExtent);
-      });
+      
+      if (needsResolve) {
+        VkImageResolve region;
+        region.srcSubresource = blitInfo.srcSubresource;
+        region.srcOffset      = blitInfo.srcOffsets[0];
+        region.dstSubresource = blitInfo.dstSubresource;
+        region.dstOffset      = blitInfo.dstOffsets[0];
+        region.extent         = regExtent;
+        
+        EmitCs([
+          cDstImage = dstImage,
+          cSrcImage = srcImage,
+          cRegion   = region
+        ] (DxvkContext* ctx) {
+          ctx->resolveImage(
+            cDstImage, cSrcImage, cRegion,
+            VK_FORMAT_UNDEFINED);
+        });
+      } else {
+        EmitCs([
+          cDstImage  = dstImage,
+          cSrcImage  = srcImage,
+          cDstLayers = blitInfo.dstSubresource,
+          cSrcLayers = blitInfo.srcSubresource,
+          cDstOffset = blitInfo.dstOffsets[0],
+          cSrcOffset = blitInfo.srcOffsets[0],
+          cExtent    = regExtent
+        ] (DxvkContext* ctx) {
+          ctx->copyImage(
+            cDstImage, cDstLayers, cDstOffset,
+            cSrcImage, cSrcLayers, cSrcOffset,
+            cExtent);
+        });
+      }
     }
-    /*else if (fastPath && needsResolve) {
-
-    }*/
     else {
       EmitCs([
         cDstImage = dstImage,
