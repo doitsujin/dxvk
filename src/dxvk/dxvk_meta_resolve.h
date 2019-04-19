@@ -58,7 +58,8 @@ namespace dxvk {
     DxvkMetaResolveRenderPass(
       const Rc<vk::DeviceFn>&   vkd,
       const Rc<DxvkImageView>&  dstImageView,
-      const Rc<DxvkImageView>&  srcImageView);
+      const Rc<DxvkImageView>&  srcImageView,
+            bool                discardDst);
     
     ~DxvkMetaResolveRenderPass();
     
@@ -80,7 +81,7 @@ namespace dxvk {
     VkRenderPass  m_renderPass  = VK_NULL_HANDLE;
     VkFramebuffer m_framebuffer = VK_NULL_HANDLE;
 
-    VkRenderPass createRenderPass() const;
+    VkRenderPass createRenderPass(bool discard) const;
 
     VkFramebuffer createFramebuffer() const;
 

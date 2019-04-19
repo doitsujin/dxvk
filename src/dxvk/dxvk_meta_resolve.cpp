@@ -13,11 +13,12 @@ namespace dxvk {
   DxvkMetaResolveRenderPass::DxvkMetaResolveRenderPass(
     const Rc<vk::DeviceFn>&   vkd,
     const Rc<DxvkImageView>&  dstImageView,
-    const Rc<DxvkImageView>&  srcImageView)
+    const Rc<DxvkImageView>&  srcImageView,
+          bool                discardDst)
   : m_vkd(vkd),
     m_dstImageView(dstImageView),
     m_srcImageView(srcImageView),
-    m_renderPass  (createRenderPass ()),
+    m_renderPass  (createRenderPass(discardDst)),
     m_framebuffer (createFramebuffer()) { }
   
 
@@ -27,17 +28,22 @@ namespace dxvk {
   }
 
 
-  VkRenderPass DxvkMetaResolveRenderPass::createRenderPass() const {
+  VkRenderPass DxvkMetaResolveRenderPass::createRenderPass(bool discard) const {
     VkAttachmentDescription attachment;
     attachment.flags            = 0;
     attachment.format           = m_dstImageView->info().format;
     attachment.samples          = VK_SAMPLE_COUNT_1_BIT;
-    attachment.loadOp           = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    attachment.loadOp           = VK_ATTACHMENT_LOAD_OP_LOAD;
     attachment.storeOp          = VK_ATTACHMENT_STORE_OP_STORE;
     attachment.stencilLoadOp    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     attachment.stencilStoreOp   = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    attachment.initialLayout    = VK_IMAGE_LAYOUT_UNDEFINED;
+    attachment.initialLayout    = m_dstImageView->imageInfo().layout;
     attachment.finalLayout      = m_dstImageView->imageInfo().layout;
+
+    if (discard) {
+      attachment.loadOp         = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+      attachment.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
+    }
     
     VkAttachmentReference dstRef;
     dstRef.attachment    = 0;
@@ -274,14 +280,19 @@ namespace dxvk {
 
   VkPipelineLayout DxvkMetaResolveObjects::createPipelineLayout(
           VkDescriptorSetLayout  descriptorSetLayout) const {
+    VkPushConstantRange push;
+    push.stageFlags             = VK_SHADER_STAGE_FRAGMENT_BIT;
+    push.offset                 = 0;
+    push.size                   = sizeof(VkOffset2D);
+
     VkPipelineLayoutCreateInfo info;
     info.sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     info.pNext                  = nullptr;
     info.flags                  = 0;
     info.setLayoutCount         = 1;
     info.pSetLayouts            = &descriptorSetLayout;
-    info.pushConstantRangeCount = 0;
-    info.pPushConstantRanges    = nullptr;
+    info.pushConstantRangeCount = 1;
+    info.pPushConstantRanges    = &push;
     
     VkPipelineLayout result = VK_NULL_HANDLE;
     if (m_vkd->vkCreatePipelineLayout(m_vkd->device(), &info, nullptr, &result) != VK_SUCCESS)

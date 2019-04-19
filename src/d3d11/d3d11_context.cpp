@@ -1321,10 +1321,14 @@ namespace dxvk {
         cSrcSubres = srcSubresourceLayers,
         cFormat    = format
       ] (DxvkContext* ctx) {
-        ctx->resolveImage(
-          cDstImage, cDstSubres,
-          cSrcImage, cSrcSubres,
-          cFormat);
+        VkImageResolve region;
+        region.srcSubresource = cSrcSubres;
+        region.srcOffset      = VkOffset3D { 0, 0, 0 };
+        region.dstSubresource = cDstSubres;
+        region.dstOffset      = VkOffset3D { 0, 0, 0 };
+        region.extent         = cDstImage->mipLevelExtent(cDstSubres.mipLevel);
+
+        ctx->resolveImage(cDstImage, cSrcImage, region, cFormat);
       });
     }
   }

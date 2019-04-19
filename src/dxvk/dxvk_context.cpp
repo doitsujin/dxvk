@@ -1671,9 +1671,8 @@ namespace dxvk {
   
   void DxvkContext::resolveImage(
     const Rc<DxvkImage>&            dstImage,
-    const VkImageSubresourceLayers& dstSubresources,
     const Rc<DxvkImage>&            srcImage,
-    const VkImageSubresourceLayers& srcSubresources,
+    const VkImageResolve&           region,
           VkFormat                  format) {
     this->spillRenderPass();
     
@@ -1683,13 +1682,10 @@ namespace dxvk {
     if (srcImage->info().format == format
      && dstImage->info().format == format) {
       this->resolveImageHw(
-        dstImage, dstSubresources,
-        srcImage, srcSubresources);
+        dstImage, srcImage, region);
     } else {
       this->resolveImageFb(
-        dstImage, dstSubresources,
-        srcImage, srcSubresources,
-        format);
+        dstImage, srcImage, region, format);
     }
   }
   
@@ -2605,11 +2601,10 @@ namespace dxvk {
 
   void DxvkContext::resolveImageHw(
     const Rc<DxvkImage>&            dstImage,
-    const VkImageSubresourceLayers& dstSubresources,
     const Rc<DxvkImage>&            srcImage,
-    const VkImageSubresourceLayers& srcSubresources) {
-    auto dstSubresourceRange = vk::makeSubresourceRange(dstSubresources);
-    auto srcSubresourceRange = vk::makeSubresourceRange(srcSubresources);
+    const VkImageResolve&           region) {
+    auto dstSubresourceRange = vk::makeSubresourceRange(region.dstSubresource);
+    auto srcSubresourceRange = vk::makeSubresourceRange(region.srcSubresource);
     
     if (m_barriers.isImageDirty(dstImage, dstSubresourceRange, DxvkAccess::Write)
      || m_barriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write))
@@ -2617,9 +2612,14 @@ namespace dxvk {
     
     // We only support resolving to the entire image
     // area, so we might as well discard its contents
+    VkImageLayout initialLayout = dstImage->info().layout;
+
+    if (dstImage->isFullSubresource(region.dstSubresource, region.extent))
+      initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
     m_transitions.accessImage(
       dstImage, dstSubresourceRange,
-      VK_IMAGE_LAYOUT_UNDEFINED, 0, 0,
+      initialLayout, 0, 0,
       dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT);
@@ -2633,17 +2633,10 @@ namespace dxvk {
 
     m_transitions.recordCommands(m_cmd);
     
-    VkImageResolve imageRegion;
-    imageRegion.srcSubresource = srcSubresources;
-    imageRegion.srcOffset      = VkOffset3D { 0, 0, 0 };
-    imageRegion.dstSubresource = dstSubresources;
-    imageRegion.dstOffset      = VkOffset3D { 0, 0, 0 };
-    imageRegion.extent         = srcImage->mipLevelExtent(srcSubresources.mipLevel);
-    
     m_cmd->cmdResolveImage(
       srcImage->handle(), srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
       dstImage->handle(), dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
-      1, &imageRegion);
+      1, &region);
   
     m_barriers.accessImage(
       dstImage, dstSubresourceRange,
@@ -2670,12 +2663,11 @@ namespace dxvk {
   
   void DxvkContext::resolveImageFb(
     const Rc<DxvkImage>&            dstImage,
-    const VkImageSubresourceLayers& dstSubresources,
     const Rc<DxvkImage>&            srcImage,
-    const VkImageSubresourceLayers& srcSubresources,
+    const VkImageResolve&           region,
           VkFormat                  format) {
-    auto dstSubresourceRange = vk::makeSubresourceRange(dstSubresources);
-    auto srcSubresourceRange = vk::makeSubresourceRange(srcSubresources);
+    auto dstSubresourceRange = vk::makeSubresourceRange(region.dstSubresource);
+    auto srcSubresourceRange = vk::makeSubresourceRange(region.srcSubresource);
     
     if (m_barriers.isImageDirty(dstImage, dstSubresourceRange, DxvkAccess::Write)
      || m_barriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write))
@@ -2700,30 +2692,31 @@ namespace dxvk {
     dstViewInfo.type      = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
     dstViewInfo.format    = format;
     dstViewInfo.usage     = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-    dstViewInfo.aspect    = dstSubresources.aspectMask;
-    dstViewInfo.minLevel  = dstSubresources.mipLevel;
+    dstViewInfo.aspect    = region.dstSubresource.aspectMask;
+    dstViewInfo.minLevel  = region.dstSubresource.mipLevel;
     dstViewInfo.numLevels = 1;
-    dstViewInfo.minLayer  = dstSubresources.baseArrayLayer;
-    dstViewInfo.numLayers = dstSubresources.layerCount;
+    dstViewInfo.minLayer  = region.dstSubresource.baseArrayLayer;
+    dstViewInfo.numLayers = region.dstSubresource.layerCount;
 
     DxvkImageViewCreateInfo srcViewInfo;
     srcViewInfo.type      = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
     srcViewInfo.format    = format;
     srcViewInfo.usage     = VK_IMAGE_USAGE_SAMPLED_BIT;
-    srcViewInfo.aspect    = srcSubresources.aspectMask;
-    srcViewInfo.minLevel  = srcSubresources.mipLevel;
+    srcViewInfo.aspect    = region.srcSubresource.aspectMask;
+    srcViewInfo.minLevel  = region.srcSubresource.mipLevel;
     srcViewInfo.numLevels = 1;
-    srcViewInfo.minLayer  = srcSubresources.baseArrayLayer;
-    srcViewInfo.numLayers = srcSubresources.layerCount;
+    srcViewInfo.minLayer  = region.srcSubresource.baseArrayLayer;
+    srcViewInfo.numLayers = region.srcSubresource.layerCount;
 
     Rc<DxvkImageView> dstImageView = m_device->createImageView(dstImage, dstViewInfo);
     Rc<DxvkImageView> srcImageView = m_device->createImageView(srcImage, srcViewInfo);
 
     // Create a framebuffer and pipeline for the resolve op
-    Rc<DxvkMetaResolveRenderPass> fb = new DxvkMetaResolveRenderPass(
-      m_device->vkd(), dstImageView, srcImageView);
-
     VkExtent3D passExtent = dstImageView->mipLevelExtent(0);
+
+    Rc<DxvkMetaResolveRenderPass> fb = new DxvkMetaResolveRenderPass(
+      m_device->vkd(), dstImageView, srcImageView,
+      dstImage->isFullSubresource(region.dstSubresource, region.extent));
 
     auto pipeInfo = m_metaResolve->getPipeline(
       format, srcImage->info().sampleCount);
@@ -2748,16 +2741,16 @@ namespace dxvk {
     m_cmd->updateDescriptorSets(1, &descriptorWrite);
 
     VkViewport viewport;
-    viewport.x        = 0.0f;
-    viewport.y        = 0.0f;
-    viewport.width    = float(passExtent.width);
-    viewport.height   = float(passExtent.height);
+    viewport.x        = float(region.dstOffset.x);
+    viewport.y        = float(region.dstOffset.y);
+    viewport.width    = float(region.extent.width);
+    viewport.height   = float(region.extent.height);
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 
     VkRect2D scissor;
-    scissor.offset    = { 0, 0 };
-    scissor.extent    = { passExtent.width, passExtent.height };
+    scissor.offset    = { region.dstOffset.x,  region.dstOffset.y   };
+    scissor.extent    = { region.extent.width, region.extent.height };
 
     VkRenderPassBeginInfo info;
     info.sType              = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -2770,13 +2763,20 @@ namespace dxvk {
     info.pClearValues       = nullptr;
     
     // Perform the actual resolve operation
+    VkOffset2D srcOffset = {
+      region.srcOffset.x,
+      region.srcOffset.y };
+    
     m_cmd->cmdBeginRenderPass(&info, VK_SUBPASS_CONTENTS_INLINE);
     m_cmd->cmdBindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, pipeInfo.pipeHandle);
     m_cmd->cmdBindDescriptorSet(VK_PIPELINE_BIND_POINT_GRAPHICS,
       pipeInfo.pipeLayout, descriptorWrite.dstSet, 0, nullptr);
     m_cmd->cmdSetViewport(0, 1, &viewport);
     m_cmd->cmdSetScissor (0, 1, &scissor);
-    m_cmd->cmdDraw(1, dstSubresources.layerCount, 0, 0);
+    m_cmd->cmdPushConstants(pipeInfo.pipeLayout,
+      VK_SHADER_STAGE_FRAGMENT_BIT,
+      0, sizeof(srcOffset), &srcOffset);
+    m_cmd->cmdDraw(1, region.dstSubresource.layerCount, 0, 0);
     m_cmd->cmdEndRenderPass();
 
     m_barriers.accessImage(

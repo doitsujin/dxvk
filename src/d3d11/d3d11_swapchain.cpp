@@ -213,16 +213,22 @@ namespace dxvk {
       // Resolve back buffer if it is multisampled. We
       // only have to do it only for the first frame.
       if (m_swapImageResolve != nullptr && i == 0) {
-        VkImageSubresourceLayers resolveSubresources;
-        resolveSubresources.aspectMask      = VK_IMAGE_ASPECT_COLOR_BIT;
-        resolveSubresources.mipLevel        = 0;
-        resolveSubresources.baseArrayLayer  = 0;
-        resolveSubresources.layerCount      = 1;
+        VkImageSubresourceLayers resolveSubresource;
+        resolveSubresource.aspectMask      = VK_IMAGE_ASPECT_COLOR_BIT;
+        resolveSubresource.mipLevel        = 0;
+        resolveSubresource.baseArrayLayer  = 0;
+        resolveSubresource.layerCount      = 1;
+
+        VkImageResolve resolveRegion;
+        resolveRegion.srcSubresource = resolveSubresource;
+        resolveRegion.srcOffset      = VkOffset3D { 0, 0, 0 };
+        resolveRegion.dstSubresource = resolveSubresource;
+        resolveRegion.dstOffset      = VkOffset3D { 0, 0, 0 };
+        resolveRegion.extent         = m_swapImage->info().extent;
         
         m_context->resolveImage(
-          m_swapImageResolve, resolveSubresources,
-          m_swapImage,        resolveSubresources,
-          VK_FORMAT_UNDEFINED);
+          m_swapImageResolve, m_swapImage,
+          resolveRegion, VK_FORMAT_UNDEFINED);
       }
       
       // Presentation semaphores and WSI swap chain image
