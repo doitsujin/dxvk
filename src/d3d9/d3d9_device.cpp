@@ -142,6 +142,8 @@ namespace dxvk {
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::EvictManagedResources() {
     // Remove our mapping/staging buffers. Will force readback.
+    auto lock = std::lock_guard(g_managedTextureMutex);
+
     for (auto texture : g_managedTextures) {
       Direct3DCommonTexture9* commonTex = GetCommonTexture(texture);
       if (commonTex != nullptr) {

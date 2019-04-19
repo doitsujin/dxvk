@@ -6,9 +6,11 @@
 
 #include <vector>
 #include <list>
+#include <mutex>
 
 namespace dxvk {
 
+  extern std::mutex g_managedTextureMutex;
   extern std::list<IDirect3DBaseTexture9*> g_managedTextures;
 
   template <typename SubresourceType, typename... Base>
@@ -46,12 +48,16 @@ namespace dxvk {
         }
       }
 
-      if (pDesc->Pool == D3DPOOL_MANAGED)
+      if (pDesc->Pool == D3DPOOL_MANAGED) {
+        auto lock = std::lock_guard(g_managedTextureMutex);
         g_managedTextures.push_back(this);
+      }
     }
 
     ~Direct3DBaseTexture9() {
       if (m_texture.Desc()->Pool == D3DPOOL_MANAGED) {
+        auto lock = std::lock_guard(g_managedTextureMutex);
+
         auto iter = std::find(g_managedTextures.begin(), g_managedTextures.end(), this);
         if (iter != g_managedTextures.end())
           g_managedTextures.erase(iter);

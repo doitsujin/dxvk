@@ -6,6 +6,7 @@ namespace dxvk {
 
   // Direct3DTexture9
 
+  std::mutex g_managedTextureMutex;
   std::list<IDirect3DBaseTexture9*> g_managedTextures;
 
   Direct3DTexture9::Direct3DTexture9(
