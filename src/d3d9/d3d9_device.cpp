@@ -141,7 +141,15 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::EvictManagedResources() {
-    Logger::warn("Direct3DDevice9Ex::EvictManagedResources: Stub");
+    // Remove our mapping/staging buffers. Will force readback.
+    for (auto texture : g_managedTextures) {
+      Direct3DCommonTexture9* commonTex = GetCommonTexture(texture);
+      if (commonTex != nullptr) {
+        commonTex->DeallocFixupBuffers();
+        commonTex->DeallocMappingBuffers();
+      }
+    }
+
     return D3D_OK;
   }
 

@@ -6,6 +6,8 @@ namespace dxvk {
 
   // Direct3DTexture9
 
+  std::list<IDirect3DBaseTexture9*> g_managedTextures;
+
   Direct3DTexture9::Direct3DTexture9(
         Direct3DDevice9Ex*      pDevice,
   const D3D9TextureDesc*        pDesc)

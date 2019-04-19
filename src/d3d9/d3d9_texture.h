@@ -5,8 +5,11 @@
 #include "d3d9_util.h"
 
 #include <vector>
+#include <list>
 
 namespace dxvk {
+
+  extern std::list<IDirect3DBaseTexture9*> g_managedTextures;
 
   template <typename SubresourceType, typename... Base>
   class Direct3DBaseTexture9 : public Direct3DResource9<Base...> {
@@ -42,9 +45,18 @@ namespace dxvk {
           m_subresources[subresource] = subObj;
         }
       }
+
+      if (pDesc->Pool == D3DPOOL_MANAGED)
+        g_managedTextures.push_back(this);
     }
 
     ~Direct3DBaseTexture9() {
+      if (m_texture.Desc()->Pool == D3DPOOL_MANAGED) {
+        auto iter = std::find(g_managedTextures.begin(), g_managedTextures.end(), this);
+        if (iter != g_managedTextures.end())
+          g_managedTextures.erase(iter);
+      }
+
       for (auto* subresource : m_subresources)
         subresource->ReleasePrivate();
     }
