@@ -1746,10 +1746,11 @@ namespace dxvk {
 
           if (decl.semantic.usage == DxsoUsage::Position)
             m_oDecls[outputSlot].semantic.usageIndex = 0;
-          else if (decl.semantic.usage == DxsoUsage::PointSize)
+          else if (decl.semantic.usage == DxsoUsage::PointSize) {
             this->emitPointSize();
 
             m_oDecls[outputSlot].semantic.usageIndex = 0;
+          }
         }
       }
     }
