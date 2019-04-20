@@ -210,7 +210,9 @@ namespace dxvk {
   
   Rc<DxvkSampler> DxvkDevice::createSampler(
     const DxvkSamplerCreateInfo&  createInfo) {
-    return new DxvkSampler(m_vkd, createInfo);
+    Rc<DxvkSampler> sampler = new DxvkSampler(m_vkd, createInfo);
+    m_numSamplers++;
+    return sampler;
   }
   
   
@@ -237,6 +239,7 @@ namespace dxvk {
     result.setCtr(DxvkStatCounter::PipeCountGraphics, pipe.numGraphicsPipelines);
     result.setCtr(DxvkStatCounter::PipeCountCompute,  pipe.numComputePipelines);
     result.setCtr(DxvkStatCounter::PipeCompilerBusy,  m_pipelineManager->isCompilingShaders());
+    result.setCtr(DxvkStatCounter::SamplerCount,      m_numSamplers.load());
 
     std::lock_guard<sync::Spinlock> lock(m_statLock);
     result.merge(m_statCounters);

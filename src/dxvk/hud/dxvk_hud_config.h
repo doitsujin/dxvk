@@ -21,6 +21,7 @@ namespace dxvk::hud {
     DxvkVersion       = 7,
     DxvkClientApi     = 8,
     CompilerActivity  = 9,
+    StatSamplers      = 10
   };
   
   using HudElements = Flags<HudElement>;

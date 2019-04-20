@@ -433,6 +433,8 @@ namespace dxvk {
     std::mutex                  m_submissionLock;
     DxvkDeviceQueue             m_graphicsQueue;
     DxvkDeviceQueue             m_presentQueue;
+
+    std::atomic<uint32_t>       m_numSamplers = { 0 };
     
     DxvkRecycler<DxvkCommandList,    16> m_recycledCommandLists;
     DxvkRecycler<DxvkDescriptorPool, 16> m_recycledDescriptorPools;
