@@ -46,6 +46,7 @@ namespace dxvk {
     }
     else {
       // Clamp between 0.0f and 15.0f, matching limits of d3d9.
+      // Games also pass NAN/INF here, this accounts for that.
       key.MipmapLodBias = fclamp(key.MipmapLodBias, 0.0f, 15.0f);
     }
 
