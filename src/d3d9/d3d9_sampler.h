@@ -4,6 +4,8 @@
 
 #include "../dxvk/dxvk_hash.h"
 
+#include "../util/util_math.h"
+
 namespace dxvk {
 
   struct D3D9SamplerKey {
@@ -38,8 +40,14 @@ namespace dxvk {
 
     key.MaxAnisotropy = std::clamp<DWORD>(key.MaxAnisotropy, 0, 16);
 
-    if (key.MipFilter == D3DTEXF_NONE)
+    if (key.MipFilter == D3DTEXF_NONE) {
+      // May as well try and keep slots down.
       key.MipmapLodBias = 0;
+    }
+    else {
+      // Clamp between 0.0f and 15.0f, matching limits of d3d9.
+      key.MipmapLodBias = fclamp(key.MipmapLodBias, 0.0f, 15.0f);
+    }
 
     if ( key.AddressU != D3DTADDRESS_BORDER
       && key.AddressV != D3DTADDRESS_BORDER
