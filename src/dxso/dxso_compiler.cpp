@@ -2092,8 +2092,12 @@ namespace dxvk {
     bool transient = (input  && m_programInfo.type() == DxsoProgramType::PixelShader)
                   || (!input && m_programInfo.type() == DxsoProgramType::VertexShader);
 
-    if (!transient)
+    if (!transient) {
       slot = id.num();
+
+      if (id.type() == DxsoRegisterType::DepthOut)
+        slot = 4;
+    }
     else {
       auto idx = g_transientMappings.find(semantic);
       if (idx != g_transientMappings.end()) {
