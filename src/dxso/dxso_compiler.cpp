@@ -1735,19 +1735,19 @@ namespace dxvk {
         auto& semantic = decl.semantic;
 
         if (input)
-          m_vDecls[inputSlot = allocateSlot(true, id, semantic)] = decl;
+          m_vDecls[inputSlot = allocateSlot(true, id, semantic, builtIn)] = decl;
         else {
-          m_oDecls[outputSlot = allocateSlot(false, id, semantic)] = decl;
-
-          if (decl.semantic.usage == DxsoUsage::Position) {
+          if (decl.semantic.usage == DxsoUsage::Position)
             builtIn = spv::BuiltInPosition;
+
+          m_oDecls[outputSlot = allocateSlot(false, id, semantic, builtIn)] = decl;
+
+          if (decl.semantic.usage == DxsoUsage::Position)
             m_oDecls[outputSlot].semantic.usageIndex = 0;
-          }
-          else if (decl.semantic.usage == DxsoUsage::PointSize) {
+          else if (decl.semantic.usage == DxsoUsage::PointSize)
             this->emitPointSize();
 
             m_oDecls[outputSlot].semantic.usageIndex = 0;
-          }
         }
       }
     }
@@ -1756,7 +1756,7 @@ namespace dxvk {
         if (m_programInfo.majorVersion() != 3 && m_programInfo.type() == DxsoProgramType::PixelShader) {
           DxsoSemantic semantic = { DxsoUsage::Color, id.num() };
 
-          auto& dcl = m_vDecls[inputSlot = allocateSlot(true, id, semantic)];
+          auto& dcl = m_vDecls[inputSlot = allocateSlot(true, id, semantic, builtIn)];
           dcl.id = id;
           dcl.semantic = semantic;
         }
@@ -1776,21 +1776,21 @@ namespace dxvk {
           semantic.usage = DxsoUsage::PointSize;
         }
 
-        auto& dcl = m_oDecls[outputSlot = allocateSlot(false, id, semantic)];
+        auto& dcl = m_oDecls[outputSlot = allocateSlot(false, id, semantic, builtIn)];
         dcl.id = id;
         dcl.semantic = semantic;
       }
       else if (id.type() == DxsoRegisterType::Output) { // TexcoordOut
         DxsoSemantic semantic = { DxsoUsage::Texcoord , id.num() };
 
-        auto& dcl = m_oDecls[outputSlot = allocateSlot(false, id, semantic)];
+        auto& dcl = m_oDecls[outputSlot = allocateSlot(false, id, semantic, builtIn)];
         dcl.id = id;
         dcl.semantic = semantic;
       }
       else if (id.type() == DxsoRegisterType::AttributeOut) {
         DxsoSemantic semantic = { DxsoUsage::Color, id.num() };
 
-        auto& dcl = m_oDecls[outputSlot = allocateSlot(false, id, semantic)];
+        auto& dcl = m_oDecls[outputSlot = allocateSlot(false, id, semantic, builtIn)];
         dcl.id = id;
         dcl.semantic = semantic;
       }
@@ -1803,7 +1803,7 @@ namespace dxvk {
              && m_programInfo.minorVersion() == 4)) {
             DxsoSemantic semantic = { DxsoUsage::Texcoord, id.num() };
 
-            auto& dcl = m_vDecls[inputSlot = allocateSlot(true, id, semantic)];
+            auto& dcl = m_vDecls[inputSlot = allocateSlot(true, id, semantic, builtIn)];
             dcl.id = id;
             dcl.semantic = semantic;
           }
@@ -1812,7 +1812,7 @@ namespace dxvk {
       else if (id.type() == DxsoRegisterType::ColorOut) {
         DxsoSemantic semantic = { DxsoUsage::Color, id.num() };
 
-        auto& dcl = m_oDecls[outputSlot = allocateSlot(false, id, semantic)];
+        auto& dcl = m_oDecls[outputSlot = allocateSlot(false, id, semantic, builtIn)];
         dcl.id = id;
         dcl.semantic = semantic;
       }
@@ -1823,7 +1823,7 @@ namespace dxvk {
         DxsoSemantic semantic = { DxsoUsage::Depth, id.num() };
 
         builtIn = spv::BuiltInFragDepth;
-        auto& dcl = m_oDecls[outputSlot = allocateSlot(false, id, semantic)];
+        auto& dcl = m_oDecls[outputSlot = allocateSlot(false, id, semantic, builtIn)];
         dcl.id = id;
         dcl.semantic = semantic;
       }
@@ -2086,7 +2086,7 @@ namespace dxvk {
       {{DxsoUsage::PointSize,  0}, 15},
   };
 
-  uint32_t DxsoCompiler::allocateSlot(bool input, DxsoRegisterId id, DxsoSemantic semantic) {
+  uint32_t DxsoCompiler::allocateSlot(bool input, DxsoRegisterId id, DxsoSemantic semantic, spv::BuiltIn builtin) {
     uint32_t slot;
 
     bool transient = (input  && m_programInfo.type() == DxsoProgramType::PixelShader)
@@ -2104,9 +2104,11 @@ namespace dxvk {
       }
     }
 
-    input
-    ? m_interfaceSlots.inputSlots  |= 1u << slot
-    : m_interfaceSlots.outputSlots |= 1u << slot;
+    if (builtin != spv::BuiltInMax) {
+      input
+        ? m_interfaceSlots.inputSlots  |= 1u << slot
+        : m_interfaceSlots.outputSlots |= 1u << slot;
+    }
 
     return slot;
   }

@@ -293,7 +293,7 @@ namespace dxvk {
 
     ///////////////////////////////////////////
     // Reads decls and generates an input slot.
-    uint32_t allocateSlot(bool input, DxsoRegisterId id, DxsoSemantic semantic);
+    uint32_t allocateSlot(bool input, DxsoRegisterId id, DxsoSemantic semantic, spv::BuiltIn builtin);
 
     std::array<uint32_t, 16> m_oPtrs;
 
