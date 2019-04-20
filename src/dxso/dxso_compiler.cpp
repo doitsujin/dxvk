@@ -2117,11 +2117,9 @@ namespace dxvk {
       }
     }
 
-    if (builtin != spv::BuiltInMax) {
-      input
-        ? m_interfaceSlots.inputSlots  |= 1u << slot
-        : m_interfaceSlots.outputSlots |= 1u << slot;
-    }
+    input
+      ? m_interfaceSlots.inputSlots  |= 1u << slot
+      : m_interfaceSlots.outputSlots |= 1u << slot;
 
     return slot;
   }
