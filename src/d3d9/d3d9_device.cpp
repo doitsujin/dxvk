@@ -808,28 +808,20 @@ namespace dxvk {
     // otherwise we need to resolve.
     needsResolve = dstImage->info().sampleCount != srcImage->info().sampleCount;
 
-    // Copies would only work if the extents match. (ie. no stretching)
     bool niceRect = true;
-
-    if (pSourceRect != nullptr && pDestRect != nullptr) {
-      niceRect       &=  (pSourceRect->right  - pSourceRect->left) == (pDestRect->right  - pDestRect->left);
-      niceRect       &=  (pSourceRect->bottom - pSourceRect->top)  == (pDestRect->bottom - pDestRect->top);
-    }
 
     // Copies would only work if we are block aligned.
     if (pSourceRect != nullptr) {
-      niceRect       &=  (pSourceRect->left   % srcFormatInfo->blockSize.width  == 0);
-      niceRect       &=  (pSourceRect->right  % srcFormatInfo->blockSize.width  == 0);
-      niceRect       &=  (pSourceRect->top    % srcFormatInfo->blockSize.height == 0);
-      niceRect       &=  (pSourceRect->bottom % srcFormatInfo->blockSize.height == 0);
+      fastPath       &=  (pSourceRect->left   % srcFormatInfo->blockSize.width  == 0);
+      fastPath       &=  (pSourceRect->right  % srcFormatInfo->blockSize.width  == 0);
+      fastPath       &=  (pSourceRect->top    % srcFormatInfo->blockSize.height == 0);
+      fastPath       &=  (pSourceRect->bottom % srcFormatInfo->blockSize.height == 0);
     }
 
     if (pDestRect != nullptr) {
-      niceRect       &=  (pDestRect->left     % dstFormatInfo->blockSize.width  == 0);
-      niceRect       &=  (pDestRect->top      % dstFormatInfo->blockSize.height == 0);
+      fastPath       &=  (pDestRect->left     % dstFormatInfo->blockSize.width  == 0);
+      fastPath       &=  (pDestRect->top      % dstFormatInfo->blockSize.height == 0);
     }
-
-    fastPath         &= niceRect;
 
     VkImageSubresourceLayers dstSubresourceLayers = {
       dstSubresource.aspectMask,
@@ -861,19 +853,27 @@ namespace dxvk {
       ? VkOffset3D{ int32_t(pSourceRect->right), int32_t(pSourceRect->bottom), 1 }
       : VkOffset3D{ int32_t(srcExtent.width),    int32_t(srcExtent.height),    1 };
     
+    VkExtent3D srcCopyExtent =
+    { uint32_t(blitInfo.srcOffsets[1].x - blitInfo.srcOffsets[0].x),
+      uint32_t(blitInfo.srcOffsets[1].y - blitInfo.srcOffsets[0].y),
+      uint32_t(blitInfo.srcOffsets[1].z - blitInfo.srcOffsets[0].z) };
+
+    VkExtent3D dstCopyExtent =
+    { uint32_t(blitInfo.dstOffsets[1].x - blitInfo.dstOffsets[0].x),
+      uint32_t(blitInfo.dstOffsets[1].y - blitInfo.dstOffsets[0].y),
+      uint32_t(blitInfo.dstOffsets[1].z - blitInfo.dstOffsets[0].z) };
+
+    // Copies would only work if the extents match. (ie. no stretching)
+    fastPath &= srcExtent == dstExtent;
+
     if (fastPath) {
-      VkExtent3D regExtent =
-      { uint32_t(blitInfo.srcOffsets[1].x - blitInfo.srcOffsets[0].x),
-        uint32_t(blitInfo.srcOffsets[1].y - blitInfo.srcOffsets[0].y),
-        uint32_t(blitInfo.srcOffsets[1].z - blitInfo.srcOffsets[0].z) };
-      
       if (needsResolve) {
         VkImageResolve region;
         region.srcSubresource = blitInfo.srcSubresource;
         region.srcOffset      = blitInfo.srcOffsets[0];
         region.dstSubresource = blitInfo.dstSubresource;
         region.dstOffset      = blitInfo.dstOffsets[0];
-        region.extent         = regExtent;
+        region.extent         = srcCopyExtent;
         
         EmitCs([
           cDstImage = dstImage,
@@ -892,7 +892,7 @@ namespace dxvk {
           cSrcLayers = blitInfo.srcSubresource,
           cDstOffset = blitInfo.dstOffsets[0],
           cSrcOffset = blitInfo.srcOffsets[0],
-          cExtent    = regExtent
+          cExtent    = srcCopyExtent
         ] (DxvkContext* ctx) {
           ctx->copyImage(
             cDstImage, cDstLayers, cDstOffset,
