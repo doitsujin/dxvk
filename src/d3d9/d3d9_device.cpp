@@ -3154,6 +3154,7 @@ namespace dxvk {
     bool readRemaining = pResource->ReadLocksRemaining();
 
     bool managed = pResource->Desc()->Pool == D3DPOOL_MANAGED;
+    bool evict   = !managed || (managed && m_d3d9Options.evictManagedOnUnlock);
 
     // Do we have a pending copy?
     if (pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER) {
@@ -3169,7 +3170,7 @@ namespace dxvk {
           this->FlushImage(pResource);
 
         // If we have no remaining read-only locks we can clear our mapping buffers.
-        if (!readRemaining && !managed)
+        if (!readRemaining && evict)
           pResource->DeallocMappingBuffers();
       }
     }

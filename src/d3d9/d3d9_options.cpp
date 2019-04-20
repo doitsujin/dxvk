@@ -33,6 +33,7 @@ namespace dxvk {
     this->presentInterval       = config.getOption<int32_t>("d3d9.presentInterval", -1);
     this->shaderModel           = config.getOption<int32_t>("d3d9.shaderModel",     3);
     this->halfPixelOffset       = config.getOption<bool>   ("d3d9.halfPixelOffset", true);
+    this->evictManagedOnUnlock  = config.getOption<bool>   ("d3d9.evictManagedOnUnlock", false);
   }
 
 }
