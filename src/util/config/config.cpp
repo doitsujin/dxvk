@@ -150,6 +150,10 @@ namespace dxvk {
     { "NieRAutomata.exe", {{
       { "d3d11.constantBufferRangeCheck",   "True" },
     }} },
+    /* The Surge                                  */
+    { "TheSurge.exe", {{
+      { "d3d11.allowMapFlagNoWait",         "True" },
+    }} }
   }};
 
 
