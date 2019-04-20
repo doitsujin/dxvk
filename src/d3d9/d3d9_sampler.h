@@ -38,6 +38,9 @@ namespace dxvk {
 
     key.MaxAnisotropy = std::clamp<DWORD>(key.MaxAnisotropy, 0, 16);
 
+    if (key.MipFilter == D3DTEXF_NONE)
+      key.MipmapLodBias = 0;
+
     if ( key.AddressU != D3DTADDRESS_BORDER
       && key.AddressV != D3DTADDRESS_BORDER
       && key.AddressW != D3DTADDRESS_BORDER)
