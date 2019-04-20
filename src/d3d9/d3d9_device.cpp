@@ -3746,10 +3746,10 @@ namespace dxvk {
     state.stencilOpFront.writeMask   = uint32_t(rs[D3DRS_STENCILWRITEMASK]);
     state.stencilOpFront.reference   = 0;
 
-    state.stencilOpBack.failOp      = twoSidedStencil ? DecodeStencilOp(D3DSTENCILOP(rs[D3DRS_CCW_STENCILFAIL]))  : VK_STENCIL_OP_KEEP;
-    state.stencilOpBack.passOp      = twoSidedStencil ? DecodeStencilOp(D3DSTENCILOP(rs[D3DRS_CCW_STENCILPASS]))  : VK_STENCIL_OP_KEEP;
-    state.stencilOpBack.depthFailOp = twoSidedStencil ? DecodeStencilOp(D3DSTENCILOP(rs[D3DRS_CCW_STENCILZFAIL])) : VK_STENCIL_OP_KEEP;
-    state.stencilOpBack.compareOp   = twoSidedStencil ? DecodeCompareOp(D3DCMPFUNC  (rs[D3DRS_CCW_STENCILFUNC]))  : VK_COMPARE_OP_ALWAYS;
+    state.stencilOpBack.failOp      = twoSidedStencil ? DecodeStencilOp(D3DSTENCILOP(rs[D3DRS_CCW_STENCILFAIL]))  : state.stencilOpFront.failOp;
+    state.stencilOpBack.passOp      = twoSidedStencil ? DecodeStencilOp(D3DSTENCILOP(rs[D3DRS_CCW_STENCILPASS]))  : state.stencilOpFront.passOp;
+    state.stencilOpBack.depthFailOp = twoSidedStencil ? DecodeStencilOp(D3DSTENCILOP(rs[D3DRS_CCW_STENCILZFAIL])) : state.stencilOpFront.depthFailOp;
+    state.stencilOpBack.compareOp   = twoSidedStencil ? DecodeCompareOp(D3DCMPFUNC  (rs[D3DRS_CCW_STENCILFUNC]))  : state.stencilOpFront.compareOp;
     state.stencilOpBack.compareMask = state.stencilOpFront.compareMask;
     state.stencilOpBack.writeMask   = state.stencilOpFront.writeMask;
     state.stencilOpBack.reference   = 0;
