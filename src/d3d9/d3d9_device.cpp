@@ -3864,14 +3864,22 @@ namespace dxvk {
     info.usePixelCoord  = VK_FALSE;
     DecodeD3DCOLOR(key.BorderColor, info.borderColor.float32);
 
-    Rc<DxvkSampler> sampler = m_dxvkDevice->createSampler(info);
-
-    m_samplers.insert(std::make_pair(key, sampler));
-    return sampler;
+    try {
+      Rc<DxvkSampler> sampler = m_dxvkDevice->createSampler(info);
+      m_samplers.insert(std::make_pair(key, sampler));
+      return sampler;
+    }
+    catch (const DxvkError& e) {
+      Logger::err(e.message());
+      return nullptr;
+    }
   }
 
   void Direct3DDevice9Ex::BindSampler(DWORD Sampler) {
     Rc<DxvkSampler> sampler = CreateSampler(Sampler);
+
+    if (sampler == nullptr)
+      return;
 
     auto samplerInfo = RemapStateSamplerShader(Sampler);
 
