@@ -3078,7 +3078,6 @@ namespace dxvk {
     } else {
       VkExtent3D levelExtent = mappedImage->mipLevelExtent(subresource.mipLevel);
       VkExtent3D blockCount  = util::computeBlockCount(levelExtent, formatInfo->blockSize);
-      bool managed = pResource->Desc()->Pool == D3DPOOL_MANAGED;
       
       DxvkBufferSliceHandle physSlice;
       
