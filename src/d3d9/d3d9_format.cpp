@@ -409,7 +409,7 @@ namespace dxvk {
         VK_IMAGE_ASPECT_COLOR_BIT };
 
       case D3D9Format::ATI2: return {
-        VK_FORMAT_BC4_UNORM_BLOCK,
+        VK_FORMAT_BC5_UNORM_BLOCK,
         VK_FORMAT_UNDEFINED,
         VK_IMAGE_ASPECT_COLOR_BIT };
 
