@@ -1301,6 +1301,7 @@ namespace dxvk {
         resultIndices[3] = src1W;
 
         result = m_module.opCompositeConstruct(floatVecType, resultIndices.size(), resultIndices.data());
+        break;
       }
       case DxsoOpcode::LogP:
       case DxsoOpcode::Log:
