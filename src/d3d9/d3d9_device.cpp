@@ -808,8 +808,6 @@ namespace dxvk {
     // otherwise we need to resolve.
     needsResolve = dstImage->info().sampleCount != srcImage->info().sampleCount;
 
-    bool niceRect = true;
-
     // Copies would only work if we are block aligned.
     if (pSourceRect != nullptr) {
       fastPath       &=  (pSourceRect->left   % srcFormatInfo->blockSize.width  == 0);
@@ -864,7 +862,7 @@ namespace dxvk {
       uint32_t(blitInfo.dstOffsets[1].z - blitInfo.dstOffsets[0].z) };
 
     // Copies would only work if the extents match. (ie. no stretching)
-    fastPath &= srcExtent == dstExtent;
+    fastPath &= srcCopyExtent == dstCopyExtent;
 
     if (fastPath) {
       if (needsResolve) {
