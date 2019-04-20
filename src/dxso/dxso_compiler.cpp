@@ -2011,6 +2011,9 @@ namespace dxvk {
 
   DxsoSpirvRegister DxsoCompiler::findBuiltInOutputPtr(DxsoUsage usage, uint32_t index) {
     for (uint32_t i = 0; i < m_oDecls.size(); i++) {
+      if (!(m_interfaceSlots.outputSlots & 1u << i))
+        continue;
+
       if (m_oDecls[i].semantic.usage == usage
         && m_oDecls[i].semantic.usageIndex == index)
         return DxsoSpirvRegister{ m_oDecls[i].id, m_oPtrs[i] };
