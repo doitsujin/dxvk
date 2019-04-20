@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cmath>
+
 namespace dxvk {
   
   constexpr size_t CACHE_LINE_SIZE = 64;
@@ -14,6 +16,14 @@ namespace dxvk {
   template<typename T, typename U = T>
   constexpr T align(T what, U to) {
     return (what + to - 1) & ~(to - 1);
+  }
+
+  // Equivalent of std::clamp for use with floating point numbers
+  // Handles (-){INFINITY,NAN} cases.
+  // Will return min in cases of NAN, etc.
+  inline float fclamp(float value, float min, float max) {
+    return std::fmin(
+      std::fmax(value, min), max);
   }
   
 }
