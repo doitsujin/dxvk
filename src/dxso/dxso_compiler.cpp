@@ -803,7 +803,9 @@ namespace dxvk {
         break;
       }
       case DxsoRegisterType::AttributeOut:  name = str::format("oC", id.num()); break;
-      case DxsoRegisterType::Output:        name = str::format("o", id.num()); break;
+      case DxsoRegisterType::Output:        name = ps ? str::format("tCrd", id.num())
+                                                      : str::format("o", id.num());
+                                            break;
       case DxsoRegisterType::ColorOut:      name = str::format("oC", id.num()); break;
       case DxsoRegisterType::DepthOut:      name = "oDepth"; break;
       case DxsoRegisterType::Loop:          name = str::format("l", id.num()); break;
@@ -1783,9 +1785,17 @@ namespace dxvk {
       else if (id.type() == DxsoRegisterType::Output) { // TexcoordOut
         DxsoSemantic semantic = { DxsoUsage::Texcoord , id.num() };
 
-        auto& dcl = m_oDecls[outputSlot = allocateSlot(false, id, semantic, builtIn)];
-        dcl.id = id;
-        dcl.semantic = semantic;
+        if (m_programInfo.type() == DxsoProgramType::PixelShader) {
+          auto& dcl = m_vDecls[inputSlot = allocateSlot(true, id, semantic, builtIn)];
+          dcl.id = id;
+          dcl.semantic = semantic;
+        }
+        else {
+          auto& dcl = m_oDecls[outputSlot = allocateSlot(false, id, semantic, builtIn)];
+          dcl.id = id;
+          dcl.semantic = semantic;
+        }
+
       }
       else if (id.type() == DxsoRegisterType::AttributeOut) {
         DxsoSemantic semantic = { DxsoUsage::Color, id.num() };
