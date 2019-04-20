@@ -411,7 +411,9 @@ namespace dxvk {
       case D3D9Format::ATI2: return {
         VK_FORMAT_BC5_UNORM_BLOCK,
         VK_FORMAT_UNDEFINED,
-        VK_IMAGE_ASPECT_COLOR_BIT };
+        VK_IMAGE_ASPECT_COLOR_BIT,
+        { VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_R,
+          VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A }};
 
       case D3D9Format::INST: return {}; // Driver hack, handled elsewhere
 
