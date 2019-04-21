@@ -1201,6 +1201,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetClipPlane(DWORD Index, const float* pPlane) {
+    auto lock = LockDevice();
+
     if (Index >= caps::MaxClipPlanes || !pPlane)
       return D3DERR_INVALIDCALL;
 
@@ -1221,6 +1223,8 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetClipPlane(DWORD Index, float* pPlane) {
+    auto lock = LockDevice();
+
     if (Index >= caps::MaxClipPlanes || !pPlane)
       return D3DERR_INVALIDCALL;
     
