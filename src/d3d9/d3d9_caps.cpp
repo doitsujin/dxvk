@@ -8,516 +8,149 @@
 
 namespace dxvk::caps {
 
-  HRESULT checkDeviceFormat(
-          D3D9Format      adapterFormat,
-          DWORD           usage,
-          D3DRESOURCETYPE resourceType,
-          D3D9Format      checkFormat) {
-    // TODO: Handle SRGB checks here.
+  bool IsDepthFormat(D3D9Format Format) {
+    return Format == D3D9Format::D16_LOCKABLE
+        || Format == D3D9Format::D32
+        || Format == D3D9Format::D15S1
+        || Format == D3D9Format::D24S8
+        || Format == D3D9Format::D24X8
+        || Format == D3D9Format::D24X4S4
+        || Format == D3D9Format::D16
+        || Format == D3D9Format::D32F_LOCKABLE
+        || Format == D3D9Format::D24FS8
+        || Format == D3D9Format::D32_LOCKABLE
+        || Format == D3D9Format::DF16
+        || Format == D3D9Format::DF24
+        || Format == D3D9Format::INTZ;
+  }
 
-    if (!IsSupportedMonitorFormat(adapterFormat) && adapterFormat != D3D9Format::Unknown)
+  HRESULT CheckDeviceFormat(
+          D3D9Format      AdapterFormat,
+          DWORD           Usage,
+          D3DRESOURCETYPE ResourceType,
+          D3D9Format      CheckFormat) {
+    if (!IsSupportedMonitorFormat(AdapterFormat, FALSE))
       return D3DERR_NOTAVAILABLE;
 
-    if (checkFormat == D3D9Format::INST)
+    const bool dmap = Usage & D3DUSAGE_DMAP;
+    const bool rt   = Usage & D3DUSAGE_RENDERTARGET;
+    const bool ds   = Usage & D3DUSAGE_DEPTHSTENCIL;
+
+    const bool surface = ResourceType == D3DRTYPE_SURFACE;
+    const bool texture = ResourceType == D3DRTYPE_TEXTURE;
+
+    const bool twoDimensional = surface || texture;
+
+    const bool srgb = (Usage & (D3DUSAGE_QUERY_SRGBREAD | D3DUSAGE_QUERY_SRGBWRITE)) != 0;
+
+    if (CheckFormat == D3D9Format::INST)
       return D3D_OK;
 
-    switch (resourceType) {
-    case D3DRTYPE_SURFACE:
-      if (usage & D3DUSAGE_RENDERTARGET) {
-        switch (checkFormat) {
-        case D3D9Format::NULL_FORMAT:
-        case D3D9Format::R8G8B8:
-        case D3D9Format::R5G6B5:
-        case D3D9Format::X1R5G5B5:
-        case D3D9Format::A1R5G5B5:
-        case D3D9Format::A4R4G4B4:
-        case D3D9Format::R3G3B2:
-        case D3D9Format::A8R3G3B2:
-        case D3D9Format::X4R4G4B4:
-        case D3D9Format::A8R8G8B8:
-        case D3D9Format::X8R8G8B8:
-        case D3D9Format::A8B8G8R8:
-        case D3D9Format::X8B8G8R8:
-        case D3D9Format::G16R16:
-        case D3D9Format::A2B10G10R10:
-        case D3D9Format::A2R10G10B10:
-        case D3D9Format::A16B16G16R16:
-        case D3D9Format::R16F:
-        case D3D9Format::G16R16F:
-        case D3D9Format::A16B16G16R16F:
-        case D3D9Format::R32F:
-        case D3D9Format::G32R32F:
-        case D3D9Format::A32B32G32R32F:
-          return D3D_OK;
-        default:
-          return D3DERR_NOTAVAILABLE;
-        }
-      }
-      else if (usage & D3DUSAGE_DEPTHSTENCIL) {
-        switch (checkFormat) {
-        case D3D9Format::D32:
-        case D3D9Format::D24S8:
-        case D3D9Format::D24X8:
-        case D3D9Format::D16:
-        case D3D9Format::D24FS8:
-        case D3D9Format::D32F_LOCKABLE:
-        case D3D9Format::DF24:
-        case D3D9Format::DF16:
-        case D3D9Format::INTZ:
-          return D3D_OK;
-        default:
-          return D3DERR_NOTAVAILABLE;
-        }
-      }
-      else {
-        switch (checkFormat) {
-        case D3D9Format::A8:
-        case D3D9Format::R5G6B5:
-        case D3D9Format::X1R5G5B5:
-        case D3D9Format::A1R5G5B5:
-        case D3D9Format::A4R4G4B4:
-        case D3D9Format::R3G3B2:
-        case D3D9Format::A8R3G3B2:
-        case D3D9Format::X4R4G4B4:
-        case D3D9Format::R8G8B8:
-        case D3D9Format::X8R8G8B8:
-        case D3D9Format::A8R8G8B8:
-        case D3D9Format::X8B8G8R8:
-        case D3D9Format::A8B8G8R8:
-        case D3D9Format::P8:
-        case D3D9Format::A8P8:
-        case D3D9Format::G16R16:
-        case D3D9Format::A2R10G10B10:
-        case D3D9Format::A2B10G10R10:
-        case D3D9Format::A16B16G16R16:
-        case D3D9Format::DXT1:
-        case D3D9Format::DXT2:
-        case D3D9Format::DXT3:
-        case D3D9Format::DXT4:
-        case D3D9Format::DXT5:
-        case D3D9Format::ATI1:
-        case D3D9Format::ATI2:
-        case D3D9Format::R16F:
-        case D3D9Format::G16R16F:
-        case D3D9Format::A16B16G16R16F:
-        case D3D9Format::R32F:
-        case D3D9Format::G32R32F:
-        case D3D9Format::A32B32G32R32F:
-        case D3D9Format::V8U8:
-        case D3D9Format::L6V5U5:
-        case D3D9Format::X8L8V8U8:
-        case D3D9Format::Q8W8V8U8:
-        case D3D9Format::V16U16:
-        case D3D9Format::A2W10V10U10:
-        case D3D9Format::Q16W16V16U16:
-        case D3D9Format::L8:
-        case D3D9Format::A4L4:
-        case D3D9Format::L16:
-        case D3D9Format::A8L8:
-        case D3D9Format::NVDB:
-        case D3D9Format::ATOC:
-          return D3D_OK;
-        default:
-          return D3DERR_NOTAVAILABLE;
-        }
-      }
-    case D3DRTYPE_VOLUME:
-      switch (checkFormat) {
-      case D3D9Format::A8:
-      case D3D9Format::R5G6B5:
-      case D3D9Format::X1R5G5B5:
-      case D3D9Format::A1R5G5B5:
-      case D3D9Format::A4R4G4B4:
-      case D3D9Format::R3G3B2:
-      case D3D9Format::A8R3G3B2:
-      case D3D9Format::X4R4G4B4:
-      case D3D9Format::R8G8B8:
-      case D3D9Format::X8R8G8B8:
-      case D3D9Format::A8R8G8B8:
-      case D3D9Format::X8B8G8R8:
-      case D3D9Format::A8B8G8R8:
-      case D3D9Format::P8:
-      case D3D9Format::A8P8:
-      case D3D9Format::G16R16:
-      case D3D9Format::A2R10G10B10:
-      case D3D9Format::A2B10G10R10:
-      case D3D9Format::A16B16G16R16:
-      case D3D9Format::DXT1:
-      case D3D9Format::DXT2:
-      case D3D9Format::DXT3:
-      case D3D9Format::DXT4:
-      case D3D9Format::DXT5:
-      case D3D9Format::ATI1:
-      case D3D9Format::ATI2:
-      case D3D9Format::R16F:
-      case D3D9Format::G16R16F:
-      case D3D9Format::A16B16G16R16F:
-      case D3D9Format::R32F:
-      case D3D9Format::G32R32F:
-      case D3D9Format::A32B32G32R32F:
-      case D3D9Format::V8U8:
-      case D3D9Format::L6V5U5:
-      case D3D9Format::X8L8V8U8:
-      case D3D9Format::Q8W8V8U8:
-      case D3D9Format::V16U16:
-      case D3D9Format::A2W10V10U10:
-      case D3D9Format::Q16W16V16U16:
-      case D3D9Format::L8:
-      case D3D9Format::A4L4:
-      case D3D9Format::L16:
-      case D3D9Format::A8L8:
-        return D3D_OK;
-      default:
-        return D3DERR_NOTAVAILABLE;
-      }
-    case D3DRTYPE_CUBETEXTURE:
-      if (usage & D3DUSAGE_RENDERTARGET) {
-        switch (checkFormat) {
-        case D3D9Format::NULL_FORMAT:
-        case D3D9Format::R8G8B8:
-        case D3D9Format::R5G6B5:
-        case D3D9Format::X1R5G5B5:
-        case D3D9Format::A1R5G5B5:
-        case D3D9Format::A4R4G4B4:
-        case D3D9Format::R3G3B2:
-        case D3D9Format::A8R3G3B2:
-        case D3D9Format::X4R4G4B4:
-        case D3D9Format::A8R8G8B8:
-        case D3D9Format::X8R8G8B8:
-        case D3D9Format::A8B8G8R8:
-        case D3D9Format::X8B8G8R8:
-        case D3D9Format::G16R16:
-        case D3D9Format::A2B10G10R10:
-        case D3D9Format::A2R10G10B10:
-        case D3D9Format::A16B16G16R16:
-        case D3D9Format::R16F:
-        case D3D9Format::G16R16F:
-        case D3D9Format::A16B16G16R16F:
-        case D3D9Format::R32F:
-        case D3D9Format::G32R32F:
-        case D3D9Format::A32B32G32R32F:
-          return D3D_OK;
-        default:
-          return D3DERR_NOTAVAILABLE;
-        }
-      }
-      else if (usage & D3DUSAGE_DEPTHSTENCIL) {
-        switch (checkFormat) {
-        case D3D9Format::D32:
-        case D3D9Format::D24S8:
-        case D3D9Format::D24X8:
-        case D3D9Format::D16:
-        case D3D9Format::D24FS8:
-        case D3D9Format::D32F_LOCKABLE:
-        case D3D9Format::DF24:
-        case D3D9Format::DF16:
-        case D3D9Format::INTZ:
-          return D3D_OK;
-        default:
-          return D3DERR_NOTAVAILABLE;
-        }
-      }
-      else {
-        switch (checkFormat) {
-        case D3D9Format::A8:
-        case D3D9Format::R5G6B5:
-        case D3D9Format::X1R5G5B5:
-        case D3D9Format::A1R5G5B5:
-        case D3D9Format::A4R4G4B4:
-        case D3D9Format::R3G3B2:
-        case D3D9Format::A8R3G3B2:
-        case D3D9Format::X4R4G4B4:
-        case D3D9Format::R8G8B8:
-        case D3D9Format::X8R8G8B8:
-        case D3D9Format::A8R8G8B8:
-        case D3D9Format::X8B8G8R8:
-        case D3D9Format::A8B8G8R8:
-        case D3D9Format::P8:
-        case D3D9Format::A8P8:
-        case D3D9Format::G16R16:
-        case D3D9Format::A2R10G10B10:
-        case D3D9Format::A2B10G10R10:
-        case D3D9Format::A16B16G16R16:
-        case D3D9Format::DXT1:
-        case D3D9Format::DXT2:
-        case D3D9Format::DXT3:
-        case D3D9Format::DXT4:
-        case D3D9Format::DXT5:
-        case D3D9Format::ATI1:
-        case D3D9Format::ATI2:
-        case D3D9Format::R16F:
-        case D3D9Format::G16R16F:
-        case D3D9Format::A16B16G16R16F:
-        case D3D9Format::R32F:
-        case D3D9Format::G32R32F:
-        case D3D9Format::A32B32G32R32F:
-        case D3D9Format::V8U8:
-        case D3D9Format::L6V5U5:
-        case D3D9Format::X8L8V8U8:
-        case D3D9Format::Q8W8V8U8:
-        case D3D9Format::V16U16:
-        case D3D9Format::A2W10V10U10:
-        case D3D9Format::Q16W16V16U16:
-        case D3D9Format::L8:
-        case D3D9Format::A4L4:
-        case D3D9Format::L16:
-        case D3D9Format::A8L8:
-          return D3D_OK;
-        default:
-          return D3DERR_NOTAVAILABLE;
-        }
-      }
-    case D3DRTYPE_VOLUMETEXTURE:
-      switch (checkFormat) {
-      case D3D9Format::A8:
-      case D3D9Format::R5G6B5:
-      case D3D9Format::X1R5G5B5:
-      case D3D9Format::A1R5G5B5:
-      case D3D9Format::A4R4G4B4:
-      case D3D9Format::R3G3B2:
-      case D3D9Format::A8R3G3B2:
-      case D3D9Format::X4R4G4B4:
-      case D3D9Format::R8G8B8:
-      case D3D9Format::X8R8G8B8:
-      case D3D9Format::A8R8G8B8:
-      case D3D9Format::X8B8G8R8:
-      case D3D9Format::A8B8G8R8:
-      case D3D9Format::P8:
-      case D3D9Format::A8P8:
-      case D3D9Format::G16R16:
-      case D3D9Format::A2R10G10B10:
-      case D3D9Format::A2B10G10R10:
-      case D3D9Format::A16B16G16R16:
-      case D3D9Format::DXT1:
-      case D3D9Format::DXT2:
-      case D3D9Format::DXT3:
-      case D3D9Format::DXT4:
-      case D3D9Format::DXT5:
-      case D3D9Format::ATI1:
-      case D3D9Format::ATI2:
-      case D3D9Format::R16F:
-      case D3D9Format::G16R16F:
-      case D3D9Format::A16B16G16R16F:
-      case D3D9Format::R32F:
-      case D3D9Format::G32R32F:
-      case D3D9Format::A32B32G32R32F:
-      case D3D9Format::V8U8:
-      case D3D9Format::L6V5U5:
-      case D3D9Format::X8L8V8U8:
-      case D3D9Format::Q8W8V8U8:
-      case D3D9Format::V16U16:
-      case D3D9Format::A2W10V10U10:
-      case D3D9Format::Q16W16V16U16:
-      case D3D9Format::L8:
-      case D3D9Format::A4L4:
-      case D3D9Format::L16:
-      case D3D9Format::A8L8:
-        return D3D_OK;
-      default:
-        return D3DERR_NOTAVAILABLE;
-      }
-    case D3DRTYPE_TEXTURE:
-      if (usage & D3DUSAGE_RENDERTARGET) {
-        switch (checkFormat) {
-        case D3D9Format::NULL_FORMAT:
-        case D3D9Format::R8G8B8:
-        case D3D9Format::R5G6B5:
-        case D3D9Format::X1R5G5B5:
-        case D3D9Format::A1R5G5B5:
-        case D3D9Format::A4R4G4B4:
-        case D3D9Format::R3G3B2:
-        case D3D9Format::A8R3G3B2:
-        case D3D9Format::X4R4G4B4:
-        case D3D9Format::A8R8G8B8:
-        case D3D9Format::X8R8G8B8:
-        case D3D9Format::A8B8G8R8:
-        case D3D9Format::X8B8G8R8:
-        case D3D9Format::G16R16:
-        case D3D9Format::A2B10G10R10:
-        case D3D9Format::A2R10G10B10:
-        case D3D9Format::A16B16G16R16:
-        case D3D9Format::R16F:
-        case D3D9Format::G16R16F:
-        case D3D9Format::A16B16G16R16F:
-        case D3D9Format::R32F:
-        case D3D9Format::G32R32F:
-        case D3D9Format::A32B32G32R32F:
-          return D3D_OK;
-        default:
-          return D3DERR_NOTAVAILABLE;
-        }
-      }
-      else if (usage & D3DUSAGE_DEPTHSTENCIL) {
-        switch (checkFormat) {
-        case D3D9Format::D32:
-        case D3D9Format::D24S8:
-        case D3D9Format::D24X8:
-        case D3D9Format::D16:
-        case D3D9Format::D24FS8:
-        case D3D9Format::D32F_LOCKABLE:
-        case D3D9Format::DF24:
-        case D3D9Format::DF16:
-        case D3D9Format::INTZ:
-          return D3D_OK;
-        default:
-          return D3DERR_NOTAVAILABLE;
-        }
-      }
-      else {
-        switch (checkFormat) {
-        case D3D9Format::NULL_FORMAT:
-        case D3D9Format::A8:
-        case D3D9Format::R5G6B5:
-        case D3D9Format::X1R5G5B5:
-        case D3D9Format::A1R5G5B5:
-        case D3D9Format::A4R4G4B4:
-        case D3D9Format::R3G3B2:
-        case D3D9Format::A8R3G3B2:
-        case D3D9Format::X4R4G4B4:
-        case D3D9Format::R8G8B8:
-        case D3D9Format::X8R8G8B8:
-        case D3D9Format::A8R8G8B8:
-        case D3D9Format::X8B8G8R8:
-        case D3D9Format::A8B8G8R8:
-        case D3D9Format::P8:
-        case D3D9Format::A8P8:
-        case D3D9Format::G16R16:
-        case D3D9Format::A2R10G10B10:
-        case D3D9Format::A2B10G10R10:
-        case D3D9Format::A16B16G16R16:
-        case D3D9Format::DXT1:
-        case D3D9Format::DXT2:
-        case D3D9Format::DXT3:
-        case D3D9Format::DXT4:
-        case D3D9Format::DXT5:
-        case D3D9Format::ATI1:
-        case D3D9Format::ATI2:
-        case D3D9Format::R16F:
-        case D3D9Format::G16R16F:
-        case D3D9Format::A16B16G16R16F:
-        case D3D9Format::R32F:
-        case D3D9Format::G32R32F:
-        case D3D9Format::A32B32G32R32F:
-        case D3D9Format::V8U8:
-        case D3D9Format::L6V5U5:
-        case D3D9Format::X8L8V8U8:
-        case D3D9Format::Q8W8V8U8:
-        case D3D9Format::V16U16:
-        case D3D9Format::A2W10V10U10:
-        case D3D9Format::Q16W16V16U16:
-        case D3D9Format::L8:
-        case D3D9Format::A4L4:
-        case D3D9Format::L16:
-        case D3D9Format::A8L8:
-        case D3D9Format::D32:
-        case D3D9Format::D24S8:
-        case D3D9Format::D24X8:
-        case D3D9Format::D16:
-        case D3D9Format::D24FS8:
-        case D3D9Format::D32F_LOCKABLE:
-        case D3D9Format::DF24:
-        case D3D9Format::DF16:
-        case D3D9Format::INTZ:
-          return D3D_OK;
-        default:
-          return D3DERR_NOTAVAILABLE;
-        }
-      }
-    case D3DRTYPE_VERTEXBUFFER:
-      if (checkFormat == D3D9Format::VERTEXDATA)
-        return D3D_OK;
-      else
-        return D3DERR_NOTAVAILABLE;
-    case D3DRTYPE_INDEXBUFFER:
-      switch (checkFormat) {
-      case D3D9Format::INDEX16:
-      case D3D9Format::INDEX32:
-        return D3D_OK;
-      default:
-        return D3DERR_NOTAVAILABLE;
-      };
-    default:
-      return D3DERR_NOTAVAILABLE;
-    }
-  }
-
-  HRESULT checkDepthStencilMatch(
-          D3D9Format adapterFormat,
-          D3D9Format renderTargetFormat,
-          D3D9Format depthStencilFormat) {
-    if (!IsSupportedMonitorFormat(adapterFormat) && adapterFormat != D3D9Format::Unknown)
+    if (ds && !IsDepthFormat(CheckFormat))
       return D3DERR_NOTAVAILABLE;
 
-    return D3D_OK; // Any format combo is OK!
-  }
+    if (rt && CheckFormat == D3D9Format::NULL_FORMAT && twoDimensional)
+      return D3D_OK;
 
-  HRESULT checkDeviceFormatConversion(
-          D3D9Format srcFormat,
-          D3D9Format dstFormat) {
-    return D3D_OK; // Any format combo is OK!
-  }
-
-  HRESULT checkDeviceMultiSampleType(
-          D3D9Format          surfaceFormat,
-          BOOL                windowed,
-          D3DMULTISAMPLE_TYPE multiSampleType,
-          DWORD*              qualityLevels) {
-    if (qualityLevels != nullptr) {
-      if (multiSampleType == D3DMULTISAMPLE_NONMASKABLE)
-        *qualityLevels = 4;
-      else
-        *qualityLevels = 1;
-    }
-
-    if (surfaceFormat == D3D9Format::D32F_LOCKABLE || surfaceFormat == D3D9Format::D16_LOCKABLE)
+    // I really don't want to support this...
+    if (dmap)
       return D3DERR_NOTAVAILABLE;
 
-    if ((multiSampleType % 2 == 0 || multiSampleType == 1) && multiSampleType <= 16) {
-      if (checkDeviceFormat(D3D9Format::X8R8G8B8, D3DUSAGE_RENDERTARGET, D3DRTYPE_SURFACE, surfaceFormat) == D3D_OK
-        || checkDeviceFormat(D3D9Format::X8R8G8B8, D3DUSAGE_DEPTHSTENCIL, D3DRTYPE_SURFACE, surfaceFormat) == D3D_OK) {
-        return D3D_OK;
-      }
-    }
-
-    return D3DERR_NOTAVAILABLE;
-  }
-
-  HRESULT checkDeviceType(
-          D3D9Format adapterFormat,
-          D3D9Format backBufferFormat,
-          BOOL       windowed) {
-    if (adapterFormat == D3D9Format::Unknown) {
-      if (windowed == FALSE)
-        return D3DERR_INVALIDCALL;
-      else
-        return D3DERR_NOTAVAILABLE;
-    }
-
-    if (!IsSupportedMonitorFormat(adapterFormat))
-      return D3DERR_NOTAVAILABLE;
-
-    if (backBufferFormat == D3D9Format::Unknown) {
-      if (windowed == FALSE)
-        return D3DERR_INVALIDCALL;
-      else
-        return D3DERR_NOTAVAILABLE;
-    }
-
-    if (!IsSupportedMonitorFormat(backBufferFormat))
+    auto mapping = ConvertFormatUnfixed(CheckFormat);
+    if (mapping.Format     == VK_FORMAT_UNDEFINED &&
+       (mapping.FormatSrgb == VK_FORMAT_UNDEFINED) && !srgb)
       return D3DERR_NOTAVAILABLE;
 
     return D3D_OK;
   }
 
-  HRESULT getDeviceCaps(const dxvk::D3D9Options& options, UINT adapter, D3DDEVTYPE type, D3DCAPS9* pCaps) {
+  HRESULT CheckDepthStencilMatch(
+          D3D9Format AdapterFormat,
+          D3D9Format RenderTargetFormat,
+          D3D9Format DepthStencilFormat) {
+    if (!IsSupportedMonitorFormat(AdapterFormat, FALSE))
+      return D3DERR_NOTAVAILABLE;
+
+    if (!IsDepthFormat(DepthStencilFormat))
+      return D3DERR_NOTAVAILABLE;
+
+    auto mapping = ConvertFormatUnfixed(RenderTargetFormat);
+    if (mapping.Format == VK_FORMAT_UNDEFINED)
+      return D3DERR_NOTAVAILABLE;
+
+    return D3D_OK;
+  }
+
+  HRESULT CheckDeviceFormatConversion(
+          D3D9Format SrcFormat,
+          D3D9Format DstFormat) {
+    auto src = ConvertFormatUnfixed(SrcFormat);
+    auto dst = ConvertFormatUnfixed(DstFormat);
+    if (src.Format == VK_FORMAT_UNDEFINED
+     || dst.Format == VK_FORMAT_UNDEFINED)
+      return D3DERR_NOTAVAILABLE;
+
+    return D3D_OK;
+  }
+
+  HRESULT CheckDeviceMultiSampleType(
+        D3D9Format          SurfaceFormat,
+        BOOL                Windowed,
+        D3DMULTISAMPLE_TYPE MultiSampleType,
+        DWORD*              pQualityLevels) {
+    if (pQualityLevels != nullptr)
+      *pQualityLevels = 1;
+
+    auto dst = ConvertFormatUnfixed(SurfaceFormat);
+    if (dst.Format == VK_FORMAT_UNDEFINED)
+      return D3DERR_NOTAVAILABLE;
+
+    if (SurfaceFormat == D3D9Format::D32_LOCKABLE
+     || SurfaceFormat == D3D9Format::D32F_LOCKABLE
+     || SurfaceFormat == D3D9Format::D16_LOCKABLE)
+      return D3DERR_NOTAVAILABLE;
+
+    // Not a multiple of 2
+    // Not nonmaskable
+    // Not greater than 8
+    if ((MultiSampleType % 2 != 0 && MultiSampleType != 1)
+      || MultiSampleType <= 8)
+      return D3DERR_NOTAVAILABLE;
+
+    if (pQualityLevels != nullptr) {
+      if (MultiSampleType == D3DMULTISAMPLE_NONMASKABLE)
+        *pQualityLevels = 4;
+      else
+        *pQualityLevels = 1;
+    }
+
+    return D3D_OK;
+  }
+
+  HRESULT CheckDeviceType(
+          D3D9Format AdapterFormat,
+          D3D9Format BackBufferFormat,
+          BOOL       Windowed) {
+    if (!IsSupportedBackBufferFormat(
+      AdapterFormat, BackBufferFormat, Windowed))
+      return D3DERR_NOTAVAILABLE;
+
+    return D3D_OK;
+  }
+
+  HRESULT GetDeviceCaps(
+    const dxvk::D3D9Options& Options,
+          UINT               Adapter,
+          D3DDEVTYPE         Type,
+          D3DCAPS9*          pCaps) {
     if (pCaps == nullptr)
       return D3DERR_INVALIDCALL;
 
     // Based off what I get from native D3D.
     // TODO: Make this more based in reality of the adapter.
 
-    pCaps->DeviceType = type;
-    pCaps->AdapterOrdinal = adapter;
+    pCaps->DeviceType = Type;
+    pCaps->AdapterOrdinal = Adapter;
     pCaps->Caps = 131072;
     pCaps->Caps2 = 3758227456;
     pCaps->Caps3 = 928;
@@ -568,15 +201,15 @@ namespace dxvk::caps {
     pCaps->MaxStreams = MaxStreams;
     pCaps->MaxStreamStride = 508;
 
-    if      (options.shaderModel == 3) {
+    if      (Options.shaderModel == 3) {
       pCaps->VertexShaderVersion = D3DVS_VERSION(3, 0);
       pCaps->PixelShaderVersion  = D3DPS_VERSION(3, 0);
     }
-    else if (options.shaderModel == 2) {
+    else if (Options.shaderModel == 2) {
       pCaps->VertexShaderVersion = D3DVS_VERSION(2, 0);
       pCaps->PixelShaderVersion  = D3DPS_VERSION(2, 0);
     }
-    else if (options.shaderModel == 1) {
+    else if (Options.shaderModel == 1) {
       pCaps->VertexShaderVersion = D3DVS_VERSION(1, 4);
       pCaps->PixelShaderVersion  = D3DPS_VERSION(1, 4);
     }
@@ -603,23 +236,23 @@ namespace dxvk::caps {
     pCaps->PS20Caps.NumTemps = 32;
     pCaps->PS20Caps.StaticFlowControlDepth = 4;
 
-    //if (shaderModel == "3" || shaderModel == "2b" || shaderModel == "2B")
+    if (Options.shaderModel >= 2)
       pCaps->PS20Caps.NumInstructionSlots = 512;
-    //else
-    //  pCaps->PS20Caps.NumInstructionSlots = 256;
+    else
+      pCaps->PS20Caps.NumInstructionSlots = 256;
 
     pCaps->VertexTextureFilterCaps = 50332416;
     pCaps->MaxVShaderInstructionsExecuted = 4294967295;
     pCaps->MaxPShaderInstructionsExecuted = 4294967295;
 
-    //if (shaderModel == "3") {
+    if (Options.shaderModel == 3) {
       pCaps->MaxVertexShader30InstructionSlots = 32768;
       pCaps->MaxPixelShader30InstructionSlots = 32768;
-    //}
-    //else {
-    //  pCaps->MaxVertexShader30InstructionSlots = 0;
-    //  pCaps->MaxPixelShader30InstructionSlots = 0;
-    //}
+    }
+    else {
+      pCaps->MaxVertexShader30InstructionSlots = 0;
+      pCaps->MaxPixelShader30InstructionSlots = 0;
+    }
 
     return D3D_OK;
   }

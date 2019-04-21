@@ -93,7 +93,7 @@ namespace dxvk {
   }
 
   // It is also worth noting that the msb/lsb-ness is flipped between VK and D3D9.
-  D3D9_VK_FORMAT_MAPPING ConvertFormat(D3D9Format Format) {
+  D3D9_VK_FORMAT_MAPPING ConvertFormatUnfixed(D3D9Format Format) {
     switch (Format) {
       case D3D9Format::Unknown: return {};
 
@@ -476,7 +476,7 @@ namespace dxvk {
 
   D3D9_VK_FORMAT_MAPPING D3D9VkFormatTable::GetFormatMapping(
           D3D9Format          Format) const {
-    D3D9_VK_FORMAT_MAPPING mapping = ConvertFormat(Format);
+    D3D9_VK_FORMAT_MAPPING mapping = ConvertFormatUnfixed(Format);
     
     if (!m_d24s8Support && mapping.Format == VK_FORMAT_D24_UNORM_S8_UINT)
       mapping.Format = VK_FORMAT_D32_SFLOAT_S8_UINT;

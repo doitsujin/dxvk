@@ -23,7 +23,13 @@ namespace dxvk {
   * \returns If it is supported as a swapchain/backbuffer format.
   */
   bool IsSupportedMonitorFormat(
-    D3D9Format             Format);
+          D3D9Format Format,
+          BOOL       Windowed);
+
+  bool IsSupportedBackBufferFormat(
+          D3D9Format AdapterFormat,
+          D3D9Format BackBufferFormat,
+          BOOL       Windowed);
 
   HMONITOR GetDefaultMonitor();
 

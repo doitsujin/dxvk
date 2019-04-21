@@ -92,7 +92,7 @@ namespace dxvk {
     if (Adapter >= this->GetAdapterCount())
       return D3DERR_INVALIDCALL;
 
-    return caps::checkDeviceType(fixupFormat(AdapterFormat), fixupFormat(BackBufferFormat), bWindowed);
+    return caps::CheckDeviceType(fixupFormat(AdapterFormat), fixupFormat(BackBufferFormat), bWindowed);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3D9Ex::CheckDeviceFormat(
@@ -105,7 +105,7 @@ namespace dxvk {
     if (Adapter >= this->GetAdapterCount())
       return D3DERR_INVALIDCALL;
 
-    return caps::checkDeviceFormat(fixupFormat(AdapterFormat), Usage, RType, fixupFormat(CheckFormat));
+    return caps::CheckDeviceFormat(fixupFormat(AdapterFormat), Usage, RType, fixupFormat(CheckFormat));
   }
 
   HRESULT STDMETHODCALLTYPE Direct3D9Ex::CheckDeviceMultiSampleType(
@@ -118,7 +118,7 @@ namespace dxvk {
     if (Adapter >= this->GetAdapterCount())
       return D3DERR_INVALIDCALL;
 
-    return caps::checkDeviceMultiSampleType(fixupFormat(SurfaceFormat), Windowed, MultiSampleType, pQualityLevels);
+    return caps::CheckDeviceMultiSampleType(fixupFormat(SurfaceFormat), Windowed, MultiSampleType, pQualityLevels);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3D9Ex::CheckDepthStencilMatch(
@@ -130,7 +130,7 @@ namespace dxvk {
     if (Adapter >= this->GetAdapterCount())
       return D3DERR_INVALIDCALL;
 
-    return caps::checkDepthStencilMatch(fixupFormat(AdapterFormat), fixupFormat(RenderTargetFormat), fixupFormat(DepthStencilFormat));
+    return caps::CheckDepthStencilMatch(fixupFormat(AdapterFormat), fixupFormat(RenderTargetFormat), fixupFormat(DepthStencilFormat));
   }
 
   HRESULT STDMETHODCALLTYPE Direct3D9Ex::CheckDeviceFormatConversion(
@@ -141,7 +141,7 @@ namespace dxvk {
     if (Adapter >= this->GetAdapterCount())
       return D3DERR_INVALIDCALL;
 
-    return caps::checkDeviceFormatConversion(fixupFormat(SourceFormat), fixupFormat(TargetFormat));
+    return caps::CheckDeviceFormatConversion(fixupFormat(SourceFormat), fixupFormat(TargetFormat));
   }
 
   HRESULT STDMETHODCALLTYPE Direct3D9Ex::GetDeviceCaps(
@@ -151,7 +151,7 @@ namespace dxvk {
     if (Adapter >= this->GetAdapterCount())
       return D3DERR_INVALIDCALL;
 
-    return caps::getDeviceCaps(m_d3d9Options, Adapter, DeviceType, pCaps);
+    return caps::GetDeviceCaps(m_d3d9Options, Adapter, DeviceType, pCaps);
   }
 
   HMONITOR STDMETHODCALLTYPE Direct3D9Ex::GetAdapterMonitor(UINT Adapter) {
@@ -234,7 +234,7 @@ namespace dxvk {
     if (Adapter >= this->GetAdapterCount())
       return D3DERR_INVALIDCALL;
 
-    if (!IsSupportedMonitorFormat(format))
+    if (!IsSupportedMonitorFormat(format, FALSE))
       return D3DERR_INVALIDCALL;
 
     cacheModes(format);

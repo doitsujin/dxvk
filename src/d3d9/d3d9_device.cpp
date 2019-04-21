@@ -164,7 +164,7 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetDeviceCaps(D3DCAPS9* pCaps) {
-    return caps::getDeviceCaps(m_d3d9Options, m_adapter, m_deviceType, pCaps);
+    return caps::GetDeviceCaps(m_d3d9Options, m_adapter, m_deviceType, pCaps);
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::GetDisplayMode(UINT iSwapChain, D3DDISPLAYMODE* pMode) {

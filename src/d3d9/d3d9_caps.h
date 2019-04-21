@@ -9,33 +9,37 @@ namespace dxvk {
 
 namespace dxvk::caps {
 
-  HRESULT checkDeviceFormat(
-          D3D9Format      adapterFormat,
-          DWORD           usage,
-          D3DRESOURCETYPE resourceType,
-          D3D9Format      checkFormat);
+  HRESULT CheckDeviceFormat(
+          D3D9Format      AdapterFormat,
+          DWORD           Usage,
+          D3DRESOURCETYPE ResourceType,
+          D3D9Format      CheckFormat);
 
-  HRESULT checkDepthStencilMatch(
+  HRESULT CheckDepthStencilMatch(
           D3D9Format AdapterFormat,
           D3D9Format RenderTargetFormat,
           D3D9Format DepthStencilFormat);
 
-  HRESULT checkDeviceFormatConversion(
-          D3D9Format srcFormat,
-          D3D9Format dstFormat);
+  HRESULT CheckDeviceFormatConversion(
+          D3D9Format SrcFormat,
+          D3D9Format DstFormat);
 
-  HRESULT checkDeviceMultiSampleType(
+  HRESULT CheckDeviceMultiSampleType(
           D3D9Format          SurfaceFormat,
           BOOL                Windowed,
           D3DMULTISAMPLE_TYPE MultiSampleType,
           DWORD*              pQualityLevels);
 
-  HRESULT checkDeviceType(
-          D3D9Format adapterFormat,
-          D3D9Format backBufferFormat,
-          BOOL       windowed);
+  HRESULT CheckDeviceType(
+          D3D9Format AdapterFormat,
+          D3D9Format BackBufferFormat,
+          BOOL       Windowed);
 
-  HRESULT getDeviceCaps(const dxvk::D3D9Options& options, UINT adapter, D3DDEVTYPE type, D3DCAPS9* pCaps);
+  HRESULT GetDeviceCaps(
+    const dxvk::D3D9Options& Options,
+          UINT               Adapter,
+          D3DDEVTYPE         Type,
+          D3DCAPS9*          pCaps);
 
   constexpr uint32_t MaxClipPlanes = 6;
   constexpr uint32_t MaxSamplers = 16;
