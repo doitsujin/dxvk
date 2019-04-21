@@ -116,7 +116,7 @@ namespace dxvk::caps {
     // Not nonmaskable
     // Not greater than 8
     if ((MultiSampleType % 2 != 0 && MultiSampleType != 1)
-      || MultiSampleType <= 8)
+      || MultiSampleType > 8)
       return D3DERR_NOTAVAILABLE;
 
     if (pQualityLevels != nullptr) {
