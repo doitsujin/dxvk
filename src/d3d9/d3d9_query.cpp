@@ -205,7 +205,6 @@ namespace dxvk {
 
   void D3D9Query::Begin(DxvkContext* ctx) {
     switch (m_queryType) {
-      case D3DQUERYTYPE_TIMESTAMP:
       case D3DQUERYTYPE_OCCLUSION:
       case D3DQUERYTYPE_VERTEXSTATS:
         ctx->beginQuery(m_query);
@@ -235,8 +234,7 @@ namespace dxvk {
   }
 
   bool D3D9Query::QueryBeginnable(D3DQUERYTYPE QueryType) {
-    return QueryType == D3DQUERYTYPE_TIMESTAMP
-        || QueryType == D3DQUERYTYPE_OCCLUSION
+    return QueryType == D3DQUERYTYPE_OCCLUSION
         || QueryType == D3DQUERYTYPE_VERTEXSTATS;
   }
 
