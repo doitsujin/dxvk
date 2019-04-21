@@ -1518,6 +1518,14 @@ namespace dxvk {
       imageOperands.flags |= spv::ImageOperandsLodMask;
     }
 
+    if (opcode == DxsoOpcode::TexLdl) {
+      implicitLod = false;
+      uint32_t w = 3;
+      imageOperands.sLod = m_module.opCompositeExtract(
+        m_module.defFloatType(32), texcoordVarId, 1, &w);
+      imageOperands.flags |= spv::ImageOperandsLodMask;
+    }
+
     if (opcode == DxsoOpcode::TexLdd) {
       implicitLod = false;
       imageOperands.flags |= spv::ImageOperandsGradMask;
