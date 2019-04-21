@@ -57,8 +57,10 @@ namespace dxvk::caps {
       return D3DERR_NOTAVAILABLE;
 
     auto mapping = ConvertFormatUnfixed(CheckFormat);
-    if (mapping.Format     == VK_FORMAT_UNDEFINED &&
-       (mapping.FormatSrgb == VK_FORMAT_UNDEFINED) && !srgb)
+    if (mapping.Format     == VK_FORMAT_UNDEFINED)
+      return D3DERR_NOTAVAILABLE;
+
+    if (mapping.FormatSrgb == VK_FORMAT_UNDEFINED && srgb)
       return D3DERR_NOTAVAILABLE;
 
     return D3D_OK;
