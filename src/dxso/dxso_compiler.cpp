@@ -1511,19 +1511,21 @@ namespace dxvk {
     const uint32_t imageVarId = m_module.opLoad(sampler.imageTypeId, sampler.imagePtrId);
 
     SpirvImageOperands imageOperands;
+    bool implicitLod = true;
     if (m_programInfo.type() == DxsoProgramType::VertexShader) {
+      implicitLod = false;
       imageOperands.sLod = m_module.constf32(0.0f);
       imageOperands.flags |= spv::ImageOperandsLodMask;
     }
 
     if (opcode == DxsoOpcode::TexLdd) {
+      implicitLod = false;
       imageOperands.flags |= spv::ImageOperandsGradMask;
       imageOperands.sGradX = emitRegisterLoad(ctx.src[2]);
       imageOperands.sGradY = emitRegisterLoad(ctx.src[3]);
     }
 
-    uint32_t result =
-      m_programInfo.type() == DxsoProgramType::PixelShader
+    uint32_t result = implicitLod
       ? m_module.opImageSampleImplicitLod(
         typeId,
         imageVarId,
