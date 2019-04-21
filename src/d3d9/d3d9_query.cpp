@@ -183,6 +183,12 @@ namespace dxvk {
           *static_cast<UINT64*>(pData) = GetTimestampQueryFrequency();
           return D3D_OK;
 
+        case D3DQUERYTYPE_VERTEXSTATS: {
+          auto data = static_cast<D3DDEVINFO_D3DVERTEXSTATS*>(pData);
+          data->NumRenderedTriangles = queryData.statistic.iaPrimitives;
+          data->NumRenderedTriangles = queryData.statistic.clipPrimitives;
+        } return D3D_OK;
+
         default:
           return D3D_OK;
       }
@@ -201,6 +207,7 @@ namespace dxvk {
     switch (m_queryType) {
       case D3DQUERYTYPE_TIMESTAMP:
       case D3DQUERYTYPE_OCCLUSION:
+      case D3DQUERYTYPE_VERTEXSTATS:
         ctx->beginQuery(m_query);
         break;
 
@@ -214,6 +221,7 @@ namespace dxvk {
         ctx->writeTimestamp(m_query);
         break;
 
+      case D3DQUERYTYPE_VERTEXSTATS:
       case D3DQUERYTYPE_OCCLUSION:
         ctx->endQuery(m_query);
         break;
@@ -228,13 +236,15 @@ namespace dxvk {
 
   bool D3D9Query::QueryBeginnable(D3DQUERYTYPE QueryType) {
     return QueryType == D3DQUERYTYPE_TIMESTAMP
-        || QueryType == D3DQUERYTYPE_OCCLUSION;
+        || QueryType == D3DQUERYTYPE_OCCLUSION
+        || QueryType == D3DQUERYTYPE_VERTEXSTATS;
   }
 
   bool D3D9Query::QueryEndable(D3DQUERYTYPE QueryType) {
     return QueryType == D3DQUERYTYPE_TIMESTAMP
         || QueryType == D3DQUERYTYPE_OCCLUSION
-        || QueryType == D3DQUERYTYPE_EVENT;
+        || QueryType == D3DQUERYTYPE_EVENT
+        || QueryType == D3DQUERYTYPE_VERTEXSTATS;
   }
 
   HRESULT D3D9Query::QuerySupported(D3DQUERYTYPE QueryType) {
@@ -245,6 +255,7 @@ namespace dxvk {
       case D3DQUERYTYPE_TIMESTAMP:
       case D3DQUERYTYPE_TIMESTAMPDISJOINT:
       case D3DQUERYTYPE_TIMESTAMPFREQ:
+      case D3DQUERYTYPE_VERTEXSTATS:
         return D3D_OK;
 
       default:
