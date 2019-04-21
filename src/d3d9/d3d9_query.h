@@ -34,7 +34,7 @@ namespace dxvk {
     static bool QueryBeginnable(D3DQUERYTYPE QueryType);
     static bool QueryEndable(D3DQUERYTYPE QueryType);
 
-    static bool QuerySupported(D3DQUERYTYPE QueryType);
+    static HRESULT QuerySupported(D3DQUERYTYPE QueryType);
 
   private:
 

@@ -82,8 +82,8 @@ namespace dxvk {
 
     CreateConstantBuffers();
 
-    if (!(m_behaviourFlags & D3DCREATE_FPU_PRESERVE))
-      SetupFPU();
+    /*if (!(m_behaviourFlags & D3DCREATE_FPU_PRESERVE))
+      SetupFPU();*/
   }
 
   Direct3DDevice9Ex::~Direct3DDevice9Ex() {
@@ -2231,12 +2231,10 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::CreateQuery(D3DQUERYTYPE Type, IDirect3DQuery9** ppQuery) {
     InitReturnPtr(ppQuery);
 
-    if (ppQuery == nullptr) {
-      if (D3D9Query::QuerySupported(Type))
-        return D3D_OK;
-      else
-        return D3DERR_NOTAVAILABLE;
-    }
+    HRESULT hr = D3D9Query::QuerySupported(Type);
+
+    if (ppQuery == nullptr || hr != D3D_OK)
+      return hr;
 
     try {
       *ppQuery = ref(new D3D9Query(this, Type));

@@ -237,7 +237,7 @@ namespace dxvk {
         || QueryType == D3DQUERYTYPE_EVENT;
   }
 
-  bool D3D9Query::QuerySupported(D3DQUERYTYPE QueryType) {
+  HRESULT D3D9Query::QuerySupported(D3DQUERYTYPE QueryType) {
     switch (QueryType) {
       case D3DQUERYTYPE_VCACHE:
       case D3DQUERYTYPE_EVENT:
@@ -245,10 +245,10 @@ namespace dxvk {
       case D3DQUERYTYPE_TIMESTAMP:
       case D3DQUERYTYPE_TIMESTAMPDISJOINT:
       case D3DQUERYTYPE_TIMESTAMPFREQ:
-        return true;
+        return D3D_OK;
 
       default:
-        return false;
+        return D3DERR_NOTAVAILABLE;
     }
   }
 
