@@ -82,8 +82,8 @@ namespace dxvk {
 
     CreateConstantBuffers();
 
-    /*if (!(m_behaviourFlags & D3DCREATE_FPU_PRESERVE))
-      SetupFPU();*/
+    if (!(m_behaviourFlags & D3DCREATE_FPU_PRESERVE))
+      SetupFPU();
   }
 
   Direct3DDevice9Ex::~Direct3DDevice9Ex() {
