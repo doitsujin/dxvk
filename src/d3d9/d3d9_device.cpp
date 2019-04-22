@@ -1118,7 +1118,10 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE Direct3DDevice9Ex::SetTransform(D3DTRANSFORMSTATETYPE State, const D3DMATRIX* pMatrix) {
-    Logger::warn("Direct3DDevice9Ex::SetTransform: Stub");
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("Direct3DDevice9Ex::SetTransform: Stub");
     return D3D_OK;
   }
 
@@ -1318,7 +1321,10 @@ namespace dxvk {
           break;
 
         default:
-          Logger::warn(str::format("Direct3DDevice9Ex::SetRenderState: Unhandled render state ", State));
+          static bool s_errorShown[256];
+
+          if (State > 255 || !std::exchange(s_errorShown[State], true))
+            Logger::warn(str::format("Direct3DDevice9Ex::SetRenderState: Unhandled render state ", State));
           break;
       }
     }
@@ -1437,7 +1443,10 @@ namespace dxvk {
           DWORD                    Stage,
           D3DTEXTURESTAGESTATETYPE Type,
           DWORD                    Value) {
-    Logger::warn("Direct3DDevice9Ex::SetTextureStageState: Stub");
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("Direct3DDevice9Ex::SetTextureStageState: Stub");
     return D3D_OK;
   }
 
