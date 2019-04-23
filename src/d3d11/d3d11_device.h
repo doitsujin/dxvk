@@ -500,7 +500,8 @@ namespace dxvk {
     
     void STDMETHODCALLTYPE Trim() final;
     
-    Rc<DxvkEvent> STDMETHODCALLTYPE GetFrameSyncEvent();
+    Rc<DxvkEvent> STDMETHODCALLTYPE GetFrameSyncEvent(
+            UINT                  BufferCount);
 
     Rc<DxvkDevice> STDMETHODCALLTYPE GetDXVKDevice();
 

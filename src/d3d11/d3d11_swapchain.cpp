@@ -200,7 +200,7 @@ namespace dxvk {
   void D3D11SwapChain::PresentImage(UINT SyncInterval) {
     // Wait for the sync event so that we
     // respect the maximum frame latency
-    Rc<DxvkEvent> syncEvent = m_dxgiDevice->GetFrameSyncEvent();
+    Rc<DxvkEvent> syncEvent = m_dxgiDevice->GetFrameSyncEvent(m_desc.BufferCount);
     syncEvent->wait();
     
     if (m_hud != nullptr)
