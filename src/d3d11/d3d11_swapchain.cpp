@@ -326,7 +326,7 @@ namespace dxvk {
   void D3D11SwapChain::RecreateSwapChain(BOOL Vsync) {
     vk::PresenterDesc presenterDesc;
     presenterDesc.imageExtent     = { m_desc.Width, m_desc.Height };
-    presenterDesc.imageCount      = PickImageCount(m_desc.BufferCount);
+    presenterDesc.imageCount      = PickImageCount(m_desc.BufferCount + 1);
     presenterDesc.numFormats      = PickFormats(m_desc.Format, presenterDesc.formats);
     presenterDesc.numPresentModes = PickPresentModes(Vsync, presenterDesc.presentModes);
 
