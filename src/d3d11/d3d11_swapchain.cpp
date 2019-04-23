@@ -34,10 +34,6 @@ namespace dxvk {
     InitRenderState();
     InitSamplers();
     InitShaders();
-
-    // The present fence seems to introduce stutter on ANV
-    if (m_device->adapter()->matchesDriver(DxvkGpuVendor::Intel, VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA_KHR, 0, 0))
-      m_usePresentFence = false;
   }
 
 
@@ -238,7 +234,7 @@ namespace dxvk {
       uint32_t imageIndex = 0;
 
       VkResult status = m_presenter->acquireNextImage(
-        sync.acquire, sync.fence, imageIndex);
+        sync.acquire, VK_NULL_HANDLE, imageIndex);
 
       while (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR) {
         RecreateSwapChain(m_vsync);
@@ -247,12 +243,8 @@ namespace dxvk {
         sync = m_presenter->getSyncSemaphores();
 
         status = m_presenter->acquireNextImage(
-          sync.acquire, sync.fence, imageIndex);
+          sync.acquire, VK_NULL_HANDLE, imageIndex);
       }
-
-      // Wait for image to become actually available
-      if (m_usePresentFence)
-        m_presenter->waitForFence(sync.fence);
 
       // Use an appropriate texture filter depending on whether
       // the back buffer size matches the swap image size
