@@ -163,7 +163,7 @@ namespace dxvk {
     DxvkRenderPassFormat passFormat = renderPass.format();
     
     // Set up dynamic states as needed
-    std::array<VkDynamicState, 5> dynamicStates;
+    std::array<VkDynamicState, 6> dynamicStates;
     uint32_t                      dynamicStateCount = 0;
     
     dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_VIEWPORT;
@@ -171,6 +171,9 @@ namespace dxvk {
 
     if (state.useDynamicDepthBias())
       dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BIAS;
+    
+    if (state.useDynamicDepthBounds())
+      dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_DEPTH_BOUNDS;
     
     if (state.useDynamicBlendConstants())
       dynamicStates[dynamicStateCount++] = VK_DYNAMIC_STATE_BLEND_CONSTANTS;

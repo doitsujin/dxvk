@@ -55,6 +55,10 @@ namespace dxvk {
       return rsDepthBiasEnable;
     }
 
+    bool useDynamicDepthBounds() const {
+      return dsEnableDepthBoundsTest;
+    }
+
     bool useDynamicBlendConstants() const {
       bool result = false;
       
@@ -97,6 +101,7 @@ namespace dxvk {
     
     VkBool32                            dsEnableDepthTest;
     VkBool32                            dsEnableDepthWrite;
+    VkBool32                            dsEnableDepthBoundsTest;
     VkBool32                            dsEnableStencilTest;
     VkCompareOp                         dsDepthCompareOp;
     VkStencilOpState                    dsStencilOpFront;
