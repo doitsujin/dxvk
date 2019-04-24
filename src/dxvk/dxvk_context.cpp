@@ -3732,13 +3732,8 @@ namespace dxvk {
   
   
   bool DxvkContext::validateGraphicsState() {
-    if (m_gpActivePipeline == VK_NULL_HANDLE)
-      return false;
-    
-    if (!m_flags.test(DxvkContextFlag::GpRenderPassBound))
-      return false;
-    
-    return true;
+    return m_gpActivePipeline != VK_NULL_HANDLE
+        && m_flags.test(DxvkContextFlag::GpRenderPassBound);
   }
   
   
