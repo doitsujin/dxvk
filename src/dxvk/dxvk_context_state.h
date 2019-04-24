@@ -37,11 +37,13 @@ namespace dxvk {
     GpDirtyXfbCounters,         ///< Counter buffer values are dirty
     GpDirtyBlendConstants,      ///< Blend constants have changed
     GpDirtyDepthBias,           ///< Depth bias has changed
+    GpDirtyDepthBounds,         ///< Depth bounds have changed
     GpDirtyStencilRef,          ///< Stencil reference has changed
     GpDirtyViewport,            ///< Viewport state has changed
     GpDirtyPredicate,           ///< Predicate has changed
     GpDynamicBlendConstants,    ///< Blend constants are dynamic
     GpDynamicDepthBias,         ///< Depth bias is dynamic
+    GpDynamicDepthBounds,       ///< Depth bounds are dynamic
     GpDynamicStencilRef,        ///< Stencil reference is dynamic
     
     CpDirtyPipeline,            ///< Compute pipeline binding are out of date
@@ -135,6 +137,7 @@ namespace dxvk {
   struct DxvkDynamicState {
     DxvkBlendConstants  blendConstants    = { 0.0f, 0.0f, 0.0f, 0.0f };
     DxvkDepthBias       depthBias         = { 0.0f, 0.0f, 0.0f };
+    DxvkDepthBounds     depthBounds       = { false, 0.0f, 1.0f };
     uint32_t            stencilReference  = 0;
   };
 

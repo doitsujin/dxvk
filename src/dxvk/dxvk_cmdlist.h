@@ -672,6 +672,15 @@ namespace dxvk {
     }
 
 
+    void cmdSetDepthBounds(
+            float                   minDepthBounds,
+            float                   maxDepthBounds) {
+      m_vkd->vkCmdSetDepthBounds(m_execBuffer,
+        minDepthBounds,
+        maxDepthBounds);
+    }
+
+
     void cmdSetEvent(
             VkEvent                 event,
             VkPipelineStageFlags    stages) {

@@ -60,6 +60,7 @@ namespace dxvk {
       DxvkContextFlag::GpDirtyStencilRef,
       DxvkContextFlag::GpDirtyViewport,
       DxvkContextFlag::GpDirtyDepthBias,
+      DxvkContextFlag::GpDirtyDepthBounds,
       DxvkContextFlag::CpDirtyPipeline,
       DxvkContextFlag::CpDirtyPipelineState,
       DxvkContextFlag::CpDirtyResources,
@@ -2018,6 +2019,20 @@ namespace dxvk {
       m_flags.set(DxvkContextFlag::GpDirtyDepthBias);
     }
   }
+
+
+  void DxvkContext::setDepthBounds(
+          DxvkDepthBounds     depthBounds) {
+    if (m_state.dyn.depthBounds != depthBounds) {
+      m_state.dyn.depthBounds = depthBounds;
+      m_flags.set(DxvkContextFlag::GpDirtyDepthBounds);
+    }
+
+    if (m_state.gp.state.dsEnableDepthBoundsTest != depthBounds.enableDepthBounds) {
+      m_state.gp.state.dsEnableDepthBoundsTest = depthBounds.enableDepthBounds;
+      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+    }
+  }
   
   
   void DxvkContext::setStencilReference(
@@ -3250,6 +3265,7 @@ namespace dxvk {
       DxvkContextFlag::GpDirtyStencilRef,
       DxvkContextFlag::GpDirtyViewport,
       DxvkContextFlag::GpDirtyDepthBias,
+      DxvkContextFlag::GpDirtyDepthBounds,
       DxvkContextFlag::GpDirtyPredicate);
     
     m_gpActivePipeline = VK_NULL_HANDLE;
@@ -3298,6 +3314,7 @@ namespace dxvk {
       // are not dynamic will be invalidated in the command buffer.
       m_flags.clr(DxvkContextFlag::GpDynamicBlendConstants,
                   DxvkContextFlag::GpDynamicDepthBias,
+                  DxvkContextFlag::GpDynamicDepthBounds,
                   DxvkContextFlag::GpDynamicStencilRef);
       
       m_flags.set(m_state.gp.state.useDynamicBlendConstants()
@@ -3307,6 +3324,10 @@ namespace dxvk {
       m_flags.set(m_state.gp.state.useDynamicDepthBias()
         ? DxvkContextFlag::GpDynamicDepthBias
         : DxvkContextFlag::GpDirtyDepthBias);
+      
+      m_flags.set(m_state.gp.state.useDynamicDepthBounds()
+        ? DxvkContextFlag::GpDynamicDepthBounds
+        : DxvkContextFlag::GpDirtyDepthBounds);
       
       m_flags.set(m_state.gp.state.useDynamicStencilRef()
         ? DxvkContextFlag::GpDynamicStencilRef
@@ -3780,6 +3801,15 @@ namespace dxvk {
         m_state.dyn.depthBias.depthBiasClamp,
         m_state.dyn.depthBias.depthBiasSlope);
     }
+    
+    if (m_flags.all(DxvkContextFlag::GpDirtyDepthBounds,
+                    DxvkContextFlag::GpDynamicDepthBounds)) {
+      m_flags.clr(DxvkContextFlag::GpDirtyDepthBounds);
+
+      m_cmd->cmdSetDepthBounds(
+        m_state.dyn.depthBounds.minDepthBounds,
+        m_state.dyn.depthBounds.maxDepthBounds);
+    }
   }
   
   
@@ -3858,7 +3888,8 @@ namespace dxvk {
           DxvkContextFlag::GpDirtyViewport,
           DxvkContextFlag::GpDirtyBlendConstants,
           DxvkContextFlag::GpDirtyStencilRef,
-          DxvkContextFlag::GpDirtyDepthBias))
+          DxvkContextFlag::GpDirtyDepthBias,
+          DxvkContextFlag::GpDirtyDepthBounds))
       this->updateDynamicState();
   }
   

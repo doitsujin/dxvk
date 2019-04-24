@@ -779,6 +779,16 @@ namespace dxvk {
             DxvkDepthBias       depthBias);
     
     /**
+     * \brief Sets depth bounds
+     *
+     * Enables or disables the depth bounds test,
+     * and updates the values if necessary.
+     * \param [in] depthBounds Depth bounds
+     */
+    void setDepthBounds(
+            DxvkDepthBounds     depthBounds);
+    
+    /**
      * \brief Sets stencil reference
      * 
      * Sets the reference value for stencil compare operations.
