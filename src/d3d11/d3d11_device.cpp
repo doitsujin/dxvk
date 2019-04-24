@@ -1772,9 +1772,14 @@ namespace dxvk {
   
   BOOL STDMETHODCALLTYPE D3D11DeviceExt::GetExtensionSupport(
           D3D11_VK_EXTENSION      Extension) {
+    const auto& deviceFeatures = m_device->GetDXVKDevice()->features();
+    
     switch (Extension) {
       case D3D11_VK_EXT_BARRIER_CONTROL:
         return true;
+      
+      case D3D11_VK_EXT_MULTI_DRAW_INDIRECT:
+        return deviceFeatures.core.features.multiDrawIndirect;
         
       default:
         return false;
