@@ -273,6 +273,11 @@ namespace dxvk::vk {
     VULKAN_FN(vkUpdateDescriptorSetWithTemplateKHR);
     VULKAN_FN(vkCmdPushDescriptorSetWithTemplateKHR);
     #endif
+
+    #ifdef VK_KHR_draw_indirect_count
+    VULKAN_FN(vkCmdDrawIndirectCountKHR);
+    VULKAN_FN(vkCmdDrawIndexedIndirectCountKHR);
+    #endif
     
     #ifdef VK_KHR_swapchain
     VULKAN_FN(vkCreateSwapchainKHR);
