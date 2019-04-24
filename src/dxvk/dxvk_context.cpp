@@ -128,10 +128,13 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::bindDrawBuffer(
-    const DxvkBufferSlice&      buffer) {
-    if (!m_state.id.argBuffer.matches(buffer)) {
-      m_state.id.argBuffer = buffer;
+  void DxvkContext::bindDrawBuffers(
+    const DxvkBufferSlice&      argBuffer,
+    const DxvkBufferSlice&      cntBuffer) {
+    if (!m_state.id.argBuffer.matches(argBuffer)
+     || !m_state.id.argBuffer.matches(cntBuffer)) {
+      m_state.id.argBuffer = argBuffer;
+      m_state.id.cntBuffer = cntBuffer;
 
       m_flags.set(DxvkContextFlag::DirtyDrawBuffer);
     }
@@ -1458,6 +1461,32 @@ namespace dxvk {
   }
   
   
+  void DxvkContext::drawIndirectCount(
+          VkDeviceSize      offset,
+          VkDeviceSize      countOffset,
+          uint32_t          maxCount,
+          uint32_t          stride) {
+    this->commitGraphicsState(false);
+    
+    if (this->validateGraphicsState()) {
+      auto argDescriptor = m_state.id.argBuffer.getDescriptor();
+      auto cntDescriptor = m_state.id.cntBuffer.getDescriptor();
+      
+      m_cmd->cmdDrawIndirectCount(
+        argDescriptor.buffer.buffer,
+        argDescriptor.buffer.offset + offset,
+        cntDescriptor.buffer.buffer,
+        cntDescriptor.buffer.offset + countOffset,
+        maxCount, stride);
+      
+      this->commitGraphicsPostBarriers();
+      this->trackDrawBuffer();
+    }
+    
+    m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
+  }
+  
+  
   void DxvkContext::drawIndexed(
           uint32_t indexCount,
           uint32_t instanceCount,
@@ -1492,6 +1521,32 @@ namespace dxvk {
         descriptor.buffer.buffer,
         descriptor.buffer.offset + offset,
         count, stride);
+      
+      this->commitGraphicsPostBarriers();
+      this->trackDrawBuffer();
+    }
+    
+    m_cmd->addStatCtr(DxvkStatCounter::CmdDrawCalls, 1);
+  }
+  
+  
+  void DxvkContext::drawIndexedIndirectCount(
+          VkDeviceSize      offset,
+          VkDeviceSize      countOffset,
+          uint32_t          maxCount,
+          uint32_t          stride) {
+    this->commitGraphicsState(true);
+    
+    if (this->validateGraphicsState()) {
+      auto argDescriptor = m_state.id.argBuffer.getDescriptor();
+      auto cntDescriptor = m_state.id.cntBuffer.getDescriptor();
+      
+      m_cmd->cmdDrawIndexedIndirectCount(
+        argDescriptor.buffer.buffer,
+        argDescriptor.buffer.offset + offset,
+        cntDescriptor.buffer.buffer,
+        cntDescriptor.buffer.offset + countOffset,
+        maxCount, stride);
       
       this->commitGraphicsPostBarriers();
       this->trackDrawBuffer();
@@ -4004,6 +4059,9 @@ namespace dxvk {
 
       if (m_state.id.argBuffer.defined())
         m_cmd->trackResource(m_state.id.argBuffer.buffer());
+
+      if (m_state.id.cntBuffer.defined())
+        m_cmd->trackResource(m_state.id.cntBuffer.buffer());
     }
   }
   

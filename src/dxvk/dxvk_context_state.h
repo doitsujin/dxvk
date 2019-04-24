@@ -71,6 +71,7 @@ namespace dxvk {
 
   struct DxvkIndirectDrawState {
     DxvkBufferSlice argBuffer;
+    DxvkBufferSlice cntBuffer;
   };
   
   

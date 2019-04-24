@@ -105,12 +105,14 @@ namespace dxvk {
     /**
      * \brief Binds indirect argument buffer
      * 
-     * Sets the buffer that is going to be used
+     * Sets the buffers that are going to be used
      * for indirect draw and dispatch operations.
-     * \param [in] buffer New argument buffer
+     * \param [in] argBuffer New argument buffer
+     * \param [in] cntBuffer New count buffer
      */
-    void bindDrawBuffer(
-      const DxvkBufferSlice&      buffer);
+    void bindDrawBuffers(
+      const DxvkBufferSlice&      argBuffer,
+      const DxvkBufferSlice&      cntBuffer);
     
     /**
      * \brief Binds index buffer
@@ -525,17 +527,33 @@ namespace dxvk {
             uint32_t          firstInstance);
     
     /**
-     * \brief Indirect indexed draw call
+     * \brief Indirect draw call
      * 
      * Takes arguments from a buffer. The structure stored
      * in the buffer must be of type \c VkDrawIndirectCommand.
      * \param [in] offset Draw buffer offset
-     * \param [in] count Number of dispatch calls
+     * \param [in] count Number of draws
      * \param [in] stride Stride between dispatch calls
      */
     void drawIndirect(
             VkDeviceSize      offset,
             uint32_t          count,
+            uint32_t          stride);
+    
+    /**
+     * \brief Indirect draw call
+     * 
+     * Takes arguments from a buffer. The structure stored
+     * in the buffer must be of type \c VkDrawIndirectCommand.
+     * \param [in] offset Draw buffer offset
+     * \param [in] countOffset Draw count offset
+     * \param [in] maxCount Maximum number of draws
+     * \param [in] stride Stride between dispatch calls
+     */
+    void drawIndirectCount(
+            VkDeviceSize      offset,
+            VkDeviceSize      countOffset,
+            uint32_t          maxCount,
             uint32_t          stride);
     
     /**
@@ -560,12 +578,28 @@ namespace dxvk {
      * Takes arguments from a buffer. The structure type for
      * the draw buffer is \c VkDrawIndexedIndirectCommand.
      * \param [in] offset Draw buffer offset
-     * \param [in] count Number of dispatch calls
+     * \param [in] count Number of draws
      * \param [in] stride Stride between dispatch calls
      */
     void drawIndexedIndirect(
             VkDeviceSize      offset,
             uint32_t          count,
+            uint32_t          stride);
+    
+    /**
+     * \brief Indirect indexed draw call
+     * 
+     * Takes arguments from a buffer. The structure type for
+     * the draw buffer is \c VkDrawIndexedIndirectCommand.
+     * \param [in] offset Draw buffer offset
+     * \param [in] countOffset Draw count offset
+     * \param [in] maxCount Maximum number of draws
+     * \param [in] stride Stride between dispatch calls
+     */
+    void drawIndexedIndirectCount(
+            VkDeviceSize      offset,
+            VkDeviceSize      countOffset,
+            uint32_t          maxCount,
             uint32_t          stride);
     
     /**

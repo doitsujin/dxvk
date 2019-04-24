@@ -3195,7 +3195,7 @@ namespace dxvk {
         ? pBuffer->GetBufferSlice()
         : DxvkBufferSlice()
     ] (DxvkContext* ctx) {
-      ctx->bindDrawBuffer(cBufferSlice);
+      ctx->bindDrawBuffers(cBufferSlice, DxvkBufferSlice());
     });
   }
 
