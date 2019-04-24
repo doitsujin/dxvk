@@ -69,7 +69,17 @@ namespace dxvk {
           ID3D11Buffer*           pBufferForArgs,
           UINT                    ByteOffsetForArgs,
           UINT                    ByteStrideForArgs) {
-    
+    D3D10DeviceLock lock = m_ctx->LockContext();
+    m_ctx->SetDrawBuffers(pBufferForArgs, pBufferForCount);
+
+    m_ctx->EmitCs([
+      cMaxCount  = MaxDrawCount,
+      cArgOffset = ByteOffsetForArgs,
+      cCntOffset = ByteOffsetForCount,
+      cStride    = ByteStrideForArgs
+    ] (DxvkContext* ctx) {
+      ctx->drawIndirectCount(cArgOffset, cCntOffset, cMaxCount, cStride);
+    });
   }
   
   
@@ -80,7 +90,17 @@ namespace dxvk {
           ID3D11Buffer*           pBufferForArgs,
           UINT                    ByteOffsetForArgs,
           UINT                    ByteStrideForArgs) {
-    
+    D3D10DeviceLock lock = m_ctx->LockContext();
+    m_ctx->SetDrawBuffers(pBufferForArgs, pBufferForCount);
+
+    m_ctx->EmitCs([
+      cMaxCount  = MaxDrawCount,
+      cArgOffset = ByteOffsetForArgs,
+      cCntOffset = ByteOffsetForCount,
+      cStride    = ByteStrideForArgs
+    ] (DxvkContext* ctx) {
+      ctx->drawIndexedIndirectCount(cArgOffset, cCntOffset, cMaxCount, cStride);
+    });
   }
   
   
