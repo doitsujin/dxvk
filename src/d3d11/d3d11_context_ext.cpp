@@ -76,7 +76,15 @@ namespace dxvk {
   
   void STDMETHODCALLTYPE D3D11DeviceContextExt::SetBarrierControl(
           UINT                    ControlFlags) {
+    D3D10DeviceLock lock = m_ctx->LockContext();
+    DxvkBarrierControlFlags flags;
     
+    if (ControlFlags & D3D11_VK_BARRIER_CONTROL_IGNORE_WRITE_AFTER_WRITE)
+      flags.set(DxvkBarrierControl::IgnoreWriteAfterWrite);
+    
+    m_ctx->EmitCs([cFlags = flags] (DxvkContext* ctx) {
+      ctx->setBarrierControl(cFlags);
+    });
   }
   
 }

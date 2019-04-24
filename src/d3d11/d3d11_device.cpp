@@ -1772,7 +1772,13 @@ namespace dxvk {
   
   BOOL STDMETHODCALLTYPE D3D11DeviceExt::GetExtensionSupport(
           D3D11_VK_EXTENSION      Extension) {
-    return FALSE;
+    switch (Extension) {
+      case D3D11_VK_EXT_BARRIER_CONTROL:
+        return true;
+        
+      default:
+        return false;
+    }
   }
   
   
