@@ -14,6 +14,7 @@ namespace dxvk {
     const Rc<DxvkDevice>&         Device,
           DxvkCsChunkFlags        CsFlags)
   : m_parent    (pParent),
+    m_contextExt(this),
     m_annotation(this),
     m_multithread(this, false),
     m_device    (Device),
@@ -55,6 +56,11 @@ namespace dxvk {
      || riid == __uuidof(ID3D11DeviceContext)
      || riid == __uuidof(ID3D11DeviceContext1)) {
       *ppvObject = ref(this);
+      return S_OK;
+    }
+    
+    if (riid == __uuidof(ID3D11VkExtContext)) {
+      *ppvObject = ref(&m_contextExt);
       return S_OK;
     }
     

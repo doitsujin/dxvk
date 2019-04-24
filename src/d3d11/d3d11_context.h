@@ -8,6 +8,7 @@
 
 #include "d3d11_annotation.h"
 #include "d3d11_cmd.h"
+#include "d3d11_context_ext.h"
 #include "d3d11_context_state.h"
 #include "d3d11_device_child.h"
 #include "d3d11_texture.h"
@@ -17,7 +18,7 @@ namespace dxvk {
   class D3D11Device;
   
   class D3D11DeviceContext : public D3D11DeviceChild<ID3D11DeviceContext1> {
-    
+    friend class D3D11DeviceContextExt;
   public:
     
     D3D11DeviceContext(
@@ -645,6 +646,7 @@ namespace dxvk {
   protected:
     
     D3D11Device* const          m_parent;
+    D3D11DeviceContextExt       m_contextExt;
     D3D11UserDefinedAnnotation  m_annotation;
     D3D10Multithread            m_multithread;
     
