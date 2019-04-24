@@ -1411,6 +1411,7 @@ namespace dxvk {
     enabled.core.features.robustBufferAccess                      = VK_TRUE;
     enabled.core.features.shaderStorageImageExtendedFormats       = VK_TRUE;
     enabled.core.features.shaderStorageImageWriteWithoutFormat    = VK_TRUE;
+    enabled.core.features.depthBounds                             = supported.core.features.depthBounds;
 
     enabled.extMemoryPriority.memoryPriority                      = supported.extMemoryPriority.memoryPriority;
 
@@ -1785,7 +1786,10 @@ namespace dxvk {
       case D3D11_VK_EXT_MULTI_DRAW_INDIRECT_COUNT:
         return deviceFeatures.core.features.multiDrawIndirect
             && deviceExtensions.khrDrawIndirectCount;
-        
+      
+      case D3D11_VK_EXT_DEPTH_BOUNDS:
+        return deviceFeatures.core.features.depthBounds;
+
       default:
         return false;
     }
