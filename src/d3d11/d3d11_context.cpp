@@ -1433,8 +1433,7 @@ namespace dxvk {
           ID3D11Buffer*   pBufferForArgs,
           UINT            AlignedByteOffsetForArgs) {
     D3D10DeviceLock lock = LockContext();
-    
-    SetDrawBuffer(pBufferForArgs);
+    SetDrawBuffers(pBufferForArgs, nullptr);
     
     // If possible, batch up multiple indirect draw calls of
     // the same type into one single multiDrawIndirect call
@@ -1465,8 +1464,7 @@ namespace dxvk {
           ID3D11Buffer*   pBufferForArgs,
           UINT            AlignedByteOffsetForArgs) {
     D3D10DeviceLock lock = LockContext();
-    
-    SetDrawBuffer(pBufferForArgs);
+    SetDrawBuffers(pBufferForArgs, nullptr);
 
     // If possible, batch up multiple indirect draw calls of
     // the same type into one single multiDrawIndirect call
@@ -1512,8 +1510,7 @@ namespace dxvk {
           ID3D11Buffer*   pBufferForArgs,
           UINT            AlignedByteOffsetForArgs) {
     D3D10DeviceLock lock = LockContext();
-    
-    SetDrawBuffer(pBufferForArgs);
+    SetDrawBuffers(pBufferForArgs, nullptr);
     
     EmitCs([cOffset = AlignedByteOffsetForArgs]
     (DxvkContext* ctx) {
@@ -3194,14 +3191,14 @@ namespace dxvk {
   }
   
   
-  void D3D11DeviceContext::BindDrawBuffer(
-          D3D11Buffer*                      pBuffer) {
+  void D3D11DeviceContext::BindDrawBuffers(
+          D3D11Buffer*                     pBufferForArgs,
+          D3D11Buffer*                     pBufferForCount) {
     EmitCs([
-      cBufferSlice = pBuffer != nullptr
-        ? pBuffer->GetBufferSlice()
-        : DxvkBufferSlice()
+      cArgBuffer = pBufferForArgs  ? pBufferForArgs->GetBufferSlice()  : DxvkBufferSlice(),
+      cCntBuffer = pBufferForCount ? pBufferForCount->GetBufferSlice() : DxvkBufferSlice()
     ] (DxvkContext* ctx) {
-      ctx->bindDrawBuffers(cBufferSlice, DxvkBufferSlice());
+      ctx->bindDrawBuffers(cArgBuffer, cCntBuffer);
     });
   }
 
@@ -3365,13 +3362,18 @@ namespace dxvk {
   }
 
 
-  void D3D11DeviceContext::SetDrawBuffer(
-          ID3D11Buffer*                     pBuffer) {
-    auto buffer = static_cast<D3D11Buffer*>(pBuffer);
+  void D3D11DeviceContext::SetDrawBuffers(
+          ID3D11Buffer*                     pBufferForArgs,
+          ID3D11Buffer*                     pBufferForCount) {
+    auto argBuffer = static_cast<D3D11Buffer*>(pBufferForArgs);
+    auto cntBuffer = static_cast<D3D11Buffer*>(pBufferForCount);
 
-    if (m_state.id.argBuffer != buffer) {
-      m_state.id.argBuffer = buffer;
-      BindDrawBuffer(buffer);
+    if (m_state.id.argBuffer != argBuffer
+     || m_state.id.cntBuffer != cntBuffer) {
+      m_state.id.argBuffer = argBuffer;
+      m_state.id.cntBuffer = cntBuffer;
+
+      BindDrawBuffers(argBuffer, cntBuffer);
     }
   }
 
@@ -3577,8 +3579,9 @@ namespace dxvk {
     ApplyViewportState();
     ApplyUnusedState();
 
-    BindDrawBuffer(
-      m_state.id.argBuffer.ptr());
+    BindDrawBuffers(
+      m_state.id.argBuffer.ptr(),
+      m_state.id.cntBuffer.ptr());
     
     BindIndexBuffer(
       m_state.ia.indexBuffer.buffer.ptr(),

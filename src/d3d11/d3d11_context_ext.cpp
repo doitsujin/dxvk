@@ -32,7 +32,7 @@ namespace dxvk {
           UINT                    ByteOffsetForArgs,
           UINT                    ByteStrideForArgs) {
     D3D10DeviceLock lock = m_ctx->LockContext();
-    m_ctx->SetDrawBuffer(pBufferForArgs);
+    m_ctx->SetDrawBuffers(pBufferForArgs, nullptr);
     
     m_ctx->EmitCs([
       cCount  = DrawCount,
@@ -50,7 +50,7 @@ namespace dxvk {
           UINT                    ByteOffsetForArgs,
           UINT                    ByteStrideForArgs) {
     D3D10DeviceLock lock = m_ctx->LockContext();
-    m_ctx->SetDrawBuffer(pBufferForArgs);
+    m_ctx->SetDrawBuffers(pBufferForArgs, nullptr);
     
     m_ctx->EmitCs([
       cCount  = DrawCount,

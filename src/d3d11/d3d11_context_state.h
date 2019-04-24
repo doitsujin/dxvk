@@ -104,6 +104,7 @@ namespace dxvk {
 
   struct D3D11ContextStateID {
     Com<D3D11Buffer> argBuffer = nullptr;
+    Com<D3D11Buffer> cntBuffer = nullptr;
   };
   
   
