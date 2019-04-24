@@ -1745,6 +1745,39 @@ namespace dxvk {
 
 
 
+  D3D11DeviceExt::D3D11DeviceExt(
+          D3D11DXGIDevice*        pContainer,
+          D3D11Device*            pDevice)
+  : m_container(pContainer), m_device(pDevice) {
+    
+  }
+  
+  
+  ULONG STDMETHODCALLTYPE D3D11DeviceExt::AddRef() {
+    return m_container->AddRef();
+  }
+  
+  
+  ULONG STDMETHODCALLTYPE D3D11DeviceExt::Release() {
+    return m_container->Release();
+  }
+  
+  
+  HRESULT STDMETHODCALLTYPE D3D11DeviceExt::QueryInterface(
+          REFIID                  riid,
+          void**                  ppvObject) {
+    return m_container->QueryInterface(riid, ppvObject);
+  }
+  
+  
+  BOOL STDMETHODCALLTYPE D3D11DeviceExt::GetExtensionSupport(
+          D3D11_VK_EXTENSION      Extension) {
+    return FALSE;
+  }
+  
+  
+  
+  
   WineDXGISwapChainFactory::WineDXGISwapChainFactory(
           D3D11DXGIDevice*        pContainer,
           D3D11Device*            pDevice)
@@ -1829,6 +1862,7 @@ namespace dxvk {
     m_dxvkAdapter   (pDxvkAdapter),
     m_dxvkDevice    (CreateDevice(FeatureLevel)),
     m_d3d11Device   (this, FeatureLevel, FeatureFlags),
+    m_d3d11DeviceExt(this, &m_d3d11Device),
     m_d3d11Interop  (this, &m_d3d11Device),
     m_wineFactory   (this, &m_d3d11Device),
     m_frameLatencyCap(m_d3d11Device.GetOptions()->maxFrameLatency) {
@@ -1872,6 +1906,11 @@ namespace dxvk {
     if (riid == __uuidof(ID3D11Device)
      || riid == __uuidof(ID3D11Device1)) {
       *ppvObject = ref(&m_d3d11Device);
+      return S_OK;
+    }
+    
+    if (riid == __uuidof(ID3D11VkExtDevice)) {
+      *ppvObject = ref(&m_d3d11DeviceExt);
       return S_OK;
     }
     

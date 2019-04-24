@@ -398,6 +398,36 @@ namespace dxvk {
   
   
   /**
+   * \brief Extended D3D11 device
+   */
+  class D3D11DeviceExt : public ID3D11VkExtDevice {
+    
+  public:
+    
+    D3D11DeviceExt(
+            D3D11DXGIDevice*        pContainer,
+            D3D11Device*            pDevice);
+    
+    ULONG STDMETHODCALLTYPE AddRef();
+    
+    ULONG STDMETHODCALLTYPE Release();
+    
+    HRESULT STDMETHODCALLTYPE QueryInterface(
+            REFIID                  riid,
+            void**                  ppvObject);
+    
+    BOOL STDMETHODCALLTYPE GetExtensionSupport(
+            D3D11_VK_EXTENSION      Extension);
+    
+  private:
+    
+    D3D11DXGIDevice* m_container;
+    D3D11Device*     m_device;
+    
+  };
+  
+  
+  /**
    * \brief DXGI swap chain factory
    */
   class WineDXGISwapChainFactory : public IWineDXGISwapChainFactory {
@@ -513,6 +543,7 @@ namespace dxvk {
     Rc<DxvkDevice>      m_dxvkDevice;
 
     D3D11Device         m_d3d11Device;
+    D3D11DeviceExt      m_d3d11DeviceExt;
     D3D11VkInterop      m_d3d11Interop;
     
     WineDXGISwapChainFactory m_wineFactory;
