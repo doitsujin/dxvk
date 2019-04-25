@@ -991,8 +991,13 @@ namespace dxvk {
           ID3D11Predicate**           ppPredicate) {
     InitReturnPtr(ppPredicate);
     
-    if (pPredicateDesc == nullptr || pPredicateDesc->Query != D3D11_QUERY_OCCLUSION_PREDICATE)
+    if (pPredicateDesc == nullptr)
       return E_INVALIDARG;
+
+    if (pPredicateDesc->Query != D3D11_QUERY_OCCLUSION_PREDICATE) {
+      Logger::warn(str::format("D3D11: Unhandled predicate type: ", pPredicateDesc->Query));
+      return E_INVALIDARG;
+    }
     
     if (ppPredicate == nullptr)
       return S_FALSE;
