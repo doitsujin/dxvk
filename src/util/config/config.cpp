@@ -138,6 +138,10 @@ namespace dxvk {
     { "Grim Dawn.exe", {{
       { "d3d11.constantBufferRangeCheck",   "True" },
     }} },
+    /* NieR:Automata                              */
+    { "NieRAutomata.exe", {{
+      { "d3d11.constantBufferRangeCheck",   "True" },
+    }} },
   }};
 
 
