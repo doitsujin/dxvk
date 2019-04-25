@@ -279,21 +279,27 @@ namespace dxvk {
     m_state.pr.predicateObject = predicate;
     m_state.pr.predicateValue  = PredicateValue;
 
-    if (!m_device->features().extConditionalRendering.conditionalRendering)
-      return;
+    static bool s_errorShown = false;
 
-    EmitCs([
-      cPredicate = Com<D3D11Query>(predicate),
-      cValue     = PredicateValue
-    ] (DxvkContext* ctx) {
-      DxvkBufferSlice predSlice;
+    if (pPredicate && !std::exchange(s_errorShown, true))
+      Logger::err("D3D11DeviceContext::SetPredication: Stub");
 
-      if (cPredicate != nullptr)
-        predSlice = cPredicate->GetPredicate(ctx);
+    // TODO: Figure out why this breaks Watch Dogs and crashes War Thunder
+    // if (!m_device->features().extConditionalRendering.conditionalRendering)
+    //   return;
+
+    // EmitCs([
+    //   cPredicate = Com<D3D11Query>(predicate),
+    //   cValue     = PredicateValue
+    // ] (DxvkContext* ctx) {
+    //   DxvkBufferSlice predSlice;
+
+    //   if (cPredicate != nullptr)
+    //     predSlice = cPredicate->GetPredicate(ctx);
       
-      ctx->setPredicate(predSlice,
-        cValue ? VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT : 0);
-    });
+    //   ctx->setPredicate(predSlice,
+    //     cValue ? VK_CONDITIONAL_RENDERING_INVERTED_BIT_EXT : 0);
+    // });
   }
   
   
