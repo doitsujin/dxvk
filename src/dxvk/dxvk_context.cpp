@@ -3404,7 +3404,7 @@ namespace dxvk {
             m_descInfos[i].image.imageView   = res.imageView->handle(binding.view);
             m_descInfos[i].image.imageLayout = res.imageView->imageInfo().layout;
             
-            if (res.imageView->imageHandle() == depthImage)
+            if (unlikely(res.imageView->imageHandle() == depthImage))
               m_descInfos[i].image.imageLayout = depthLayout;
             
             m_cmd->trackResource(res.imageView);
@@ -3423,7 +3423,7 @@ namespace dxvk {
             m_descInfos[i].image.imageView   = res.imageView->handle(binding.view);
             m_descInfos[i].image.imageLayout = res.imageView->imageInfo().layout;
             
-            if (res.imageView->imageHandle() == depthImage)
+            if (unlikely(res.imageView->imageHandle() == depthImage))
               m_descInfos[i].image.imageLayout = depthLayout;
             
             m_cmd->trackResource(res.sampler);
