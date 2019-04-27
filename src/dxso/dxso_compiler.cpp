@@ -750,8 +750,10 @@ namespace dxvk {
         var, m_module.constu32(0));
 
       result = this->emitRegisterPtr(
-        "boolIndex", DxsoScalarType::Bool, 1, var,
+        "boolIndex", DxsoScalarType::Bool, 1, 0,
         spv::StorageClassPrivate);
+
+      m_module.opStore(result.id, var);
     }
 
     return result;
