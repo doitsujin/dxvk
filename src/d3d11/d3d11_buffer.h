@@ -6,6 +6,7 @@
 
 #include "d3d11_device_child.h"
 #include "d3d11_interfaces.h"
+#include "d3d11_resource.h"
 
 namespace dxvk {
   
@@ -120,6 +121,7 @@ namespace dxvk {
     DxvkBufferSlice             m_soCounter;
     DxvkBufferSliceHandle       m_mapped;
 
+    D3D11DXGIResource           m_resource;
     D3D10Buffer                 m_d3d10;
 
     BOOL CheckFormatFeatureSupport(

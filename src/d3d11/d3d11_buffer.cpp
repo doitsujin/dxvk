@@ -11,6 +11,7 @@ namespace dxvk {
     const D3D11_BUFFER_DESC*          pDesc)
   : m_device      (pDevice),
     m_desc        (*pDesc),
+    m_resource    (this),
     m_d3d10       (this, pDevice->GetD3D10Interface()) {
     DxvkBufferCreateInfo  info;
     info.size   = pDesc->ByteWidth;
@@ -131,6 +132,12 @@ namespace dxvk {
      || riid == __uuidof(ID3D10Buffer)) {
       *ppvObject = ref(&m_d3d10);
       return S_OK;
+    }
+
+    if (riid == __uuidof(IDXGIResource)
+     || riid == __uuidof(IDXGIResource1)) {
+       *ppvObject = ref(&m_resource);
+       return S_OK;
     }
     
     Logger::warn("D3D11Buffer::QueryInterface: Unknown interface query");
