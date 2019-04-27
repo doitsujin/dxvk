@@ -2196,6 +2196,8 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       outputPtr.type.ctype  = DxsoScalarType::Float32;
       outputPtr.type.ccount = 4;
 
+      DxsoRegMask mask = elem.mask;
+
       if (builtIn == spv::BuiltInMax) {
         outputPtr.id = emitNewVariableDefault(info,
           m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f));
@@ -2215,6 +2217,10 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         else if (builtIn == spv::BuiltInPointSize) {
           info.type.ccount = 1;
           name = "oPSize";
+          bool maskValues[4];
+          for (uint32_t i = 0; i < 4; i++)
+            maskValues[i] = i == elem.mask.firstSet();
+          mask = DxsoRegMask(maskValues[0], maskValues[1], maskValues[2], maskValues[3]);
         }
 
         outputPtr.id = emitNewBuiltinVariable(info, builtIn, name,
@@ -2239,7 +2245,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       indexPtr.type.ccount = 4;
 
       this->emitValueStore(outputPtr,
-        this->emitValueLoad(indexPtr), elem.mask);
+        this->emitValueLoad(indexPtr), mask);
     }
   }
 
