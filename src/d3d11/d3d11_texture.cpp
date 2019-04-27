@@ -476,6 +476,158 @@ namespace dxvk {
   }
   
   
+
+
+  D3D11DXGISurface::D3D11DXGISurface(
+          ID3D11DeviceChild*  pContainer,
+          D3D11CommonTexture* pTexture)
+  : m_container (pContainer),
+    m_texture   (pTexture) {
+
+  }
+
+  
+  D3D11DXGISurface::~D3D11DXGISurface() {
+
+  }
+
+  
+  ULONG STDMETHODCALLTYPE D3D11DXGISurface::AddRef() {
+    return m_container->AddRef();
+  }
+
+  
+  ULONG STDMETHODCALLTYPE D3D11DXGISurface::Release() {
+    return m_container->Release();
+  }
+
+  
+  HRESULT STDMETHODCALLTYPE D3D11DXGISurface::QueryInterface(
+          REFIID                  riid,
+          void**                  ppvObject) {
+    return m_container->QueryInterface(riid, ppvObject);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGISurface::GetPrivateData(
+          REFGUID                 Name,
+          UINT*                   pDataSize,
+          void*                   pData) {
+    return m_container->GetPrivateData(Name, pDataSize, pData);
+  }
+
+  
+  HRESULT STDMETHODCALLTYPE D3D11DXGISurface::SetPrivateData(
+          REFGUID                 Name,
+          UINT                    DataSize,
+    const void*                   pData) {
+    return m_container->SetPrivateData(Name, DataSize, pData);
+  }
+
+  
+  HRESULT STDMETHODCALLTYPE D3D11DXGISurface::SetPrivateDataInterface(
+          REFGUID                 Name,
+    const IUnknown*               pUnknown) {
+    return m_container->SetPrivateDataInterface(Name, pUnknown);
+  }
+
+  
+  HRESULT STDMETHODCALLTYPE D3D11DXGISurface::GetParent(
+          REFIID                  riid,
+          void**                  ppParent) {
+    return GetDevice(riid, ppParent);
+  }
+
+  
+  HRESULT STDMETHODCALLTYPE D3D11DXGISurface::GetDevice(
+          REFIID                  riid,
+          void**                  ppDevice) {
+    Com<ID3D11Device> device;
+    m_container->GetDevice(&device);
+    return device->QueryInterface(riid, ppDevice);
+  }
+
+  
+  HRESULT STDMETHODCALLTYPE D3D11DXGISurface::GetDesc(
+          DXGI_SURFACE_DESC*      pDesc) {
+    if (!pDesc)
+      return DXGI_ERROR_INVALID_CALL;
+
+    auto desc = m_texture->Desc();
+    pDesc->Width      = desc->Width;
+    pDesc->Height     = desc->Height;
+    pDesc->Format     = desc->Format;
+    pDesc->SampleDesc = desc->SampleDesc;
+    return S_OK;
+  }
+
+  
+  HRESULT STDMETHODCALLTYPE D3D11DXGISurface::Map(
+          DXGI_MAPPED_RECT*       pLockedRect,
+          UINT                    MapFlags) {
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::err("D3D11DXGISurface::Map: Stub");
+
+    return E_NOTIMPL;
+  }
+
+  
+  HRESULT STDMETHODCALLTYPE D3D11DXGISurface::Unmap() {
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::err("D3D11DXGISurface::Unmap: Stub");
+
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGISurface::GetDC(
+          BOOL                    Discard,
+          HDC*                    phdc) {
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::err("D3D11DXGISurface::GetDC: Stub");
+
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGISurface::ReleaseDC(
+          RECT*                   pDirtyRect) {
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::err("D3D11DXGISurface::ReleaseDC: Stub");
+
+    return E_NOTIMPL;
+  }
+
+  
+  HRESULT STDMETHODCALLTYPE D3D11DXGISurface::GetResource(
+          REFIID                  riid,
+          void**                  ppParentResource,
+          UINT*                   pSubresourceIndex) {
+    HRESULT hr = m_container->QueryInterface(riid, ppParentResource);
+    if (pSubresourceIndex)
+      *pSubresourceIndex = 0;
+    return hr;
+  }
+  
+  
+  bool D3D11DXGISurface::isSurfaceCompatible() const {
+    auto desc = m_texture->Desc();
+
+    return desc->ArraySize == 1
+        && desc->MipLevels == 1;
+  }
+
+
+
+
   D3D11VkInteropSurface::D3D11VkInteropSurface(
           ID3D11DeviceChild*  pContainer,
           D3D11CommonTexture* pTexture)
@@ -646,6 +798,7 @@ namespace dxvk {
     const D3D11_COMMON_TEXTURE_DESC*  pDesc)
   : m_texture (pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE2D),
     m_interop (this, &m_texture),
+    m_surface (this, &m_texture),
     m_d3d10   (this, pDevice->GetD3D10Interface()) {
     
   }
@@ -674,6 +827,14 @@ namespace dxvk {
      || riid == __uuidof(ID3D10Resource)
      || riid == __uuidof(ID3D10Texture2D)) {
       *ppvObject = ref(&m_d3d10);
+      return S_OK;
+    }
+
+    if (m_surface.isSurfaceCompatible()
+     && (riid == __uuidof(IDXGISurface)
+      || riid == __uuidof(IDXGISurface1)
+      || riid == __uuidof(IDXGISurface2))) {
+      *ppvObject = ref(&m_surface);
       return S_OK;
     }
     
