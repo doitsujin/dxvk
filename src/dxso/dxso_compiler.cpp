@@ -2210,11 +2210,13 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         const char* name = "unknown_builtin";
         if (builtIn == spv::BuiltInPosition)
           name = "oPos";
-        else if (builtIn == spv::BuiltInPointSize)
+        else if (builtIn == spv::BuiltInPointSize) {
+          info.type.ccount = 1;
           name = "oPSize";
+        }
 
         outputPtr.id = emitNewBuiltinVariable(info, builtIn, name,
-          m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f));
+          m_module.constfReplicant(0.0f, info.type.ccount));
 
         if (builtIn == spv::BuiltInPosition)
           m_vs.oPos = outputPtr;
