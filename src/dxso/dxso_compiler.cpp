@@ -746,7 +746,7 @@ namespace dxvk {
 
       typeId = getVectorTypeId(result.type);
 
-      var = m_module.opLogicalNotEqual(typeId,
+      var = m_module.opINotEqual(typeId,
         var, m_module.constu32(0));
 
       result = this->emitRegisterPtr(
