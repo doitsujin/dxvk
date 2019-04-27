@@ -1,6 +1,151 @@
+#include "d3d11_buffer.h"
+#include "d3d11_texture.h"
 #include "d3d11_resource.h"
 
 namespace dxvk {
+
+  D3D11DXGIResource::D3D11DXGIResource(
+          ID3D11Resource*         pResource)
+  : m_resource(pResource) {
+
+  }
+
+
+  D3D11DXGIResource::~D3D11DXGIResource() {
+
+  }
+
+
+  ULONG STDMETHODCALLTYPE D3D11DXGIResource::AddRef() {
+    return m_resource->AddRef();
+  }
+  
+
+  ULONG STDMETHODCALLTYPE D3D11DXGIResource::Release() {
+    return m_resource->AddRef();
+  }
+
+  
+  HRESULT STDMETHODCALLTYPE D3D11DXGIResource::QueryInterface(
+          REFIID                  riid,
+          void**                  ppvObject) {
+    return m_resource->QueryInterface(riid, ppvObject);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIResource::GetPrivateData(
+          REFGUID                 Name,
+          UINT*                   pDataSize,
+          void*                   pData) {
+    return m_resource->GetPrivateData(Name, pDataSize, pData);
+  }
+
+  
+  HRESULT STDMETHODCALLTYPE D3D11DXGIResource::SetPrivateData(
+          REFGUID                 Name,
+          UINT                    DataSize,
+    const void*                   pData) {
+    return m_resource->SetPrivateData(Name, DataSize, pData);
+  }
+
+  
+  HRESULT STDMETHODCALLTYPE D3D11DXGIResource::SetPrivateDataInterface(
+          REFGUID                 Name,
+    const IUnknown*               pUnknown) {
+    return m_resource->SetPrivateDataInterface(Name, pUnknown);
+  }
+
+  
+  HRESULT STDMETHODCALLTYPE D3D11DXGIResource::GetParent(
+          REFIID                  riid,
+          void**                  ppParent) {
+    return GetDevice(riid, ppParent);
+  }
+
+  
+  HRESULT STDMETHODCALLTYPE D3D11DXGIResource::GetDevice(
+          REFIID                  riid,
+          void**                  ppDevice) {
+    Com<ID3D11Device> device;
+    m_resource->GetDevice(&device);
+    return device->QueryInterface(riid, ppDevice);
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIResource::GetEvictionPriority(
+          UINT*                   pEvictionPriority) {
+    *pEvictionPriority = m_resource->GetEvictionPriority();
+    return S_OK;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIResource::GetSharedHandle(
+          HANDLE*                 pSharedHandle) {
+    InitReturnPtr(pSharedHandle);
+    Logger::err("D3D11DXGIResource::GetSharedHandle: Stub");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIResource::GetUsage(
+          DXGI_USAGE*             pUsage) {
+    D3D11_COMMON_RESOURCE_DESC desc;
+
+    HRESULT hr = GetCommonResourceDesc(m_resource, &desc);
+
+    if (FAILED(hr))
+      return hr;
+    
+    DXGI_USAGE usage = 0;
+
+    switch (desc.Usage) {
+      case D3D11_USAGE_IMMUTABLE: usage |= DXGI_CPU_ACCESS_NONE;       break;
+      case D3D11_USAGE_DEFAULT:   usage |= DXGI_CPU_ACCESS_NONE;       break;
+      case D3D11_USAGE_DYNAMIC:   usage |= DXGI_CPU_ACCESS_DYNAMIC;    break;
+      case D3D11_USAGE_STAGING:   usage |= DXGI_CPU_ACCESS_READ_WRITE; break;
+    }
+
+    // TODO add flags for swap chain back buffers
+    if (desc.BindFlags & (D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_CONSTANT_BUFFER))
+      usage |= DXGI_USAGE_SHADER_INPUT;
+    
+    if (desc.BindFlags & D3D11_BIND_RENDER_TARGET)
+      usage |= DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    
+    if (desc.BindFlags & D3D11_BIND_UNORDERED_ACCESS)
+      usage |= DXGI_USAGE_UNORDERED_ACCESS;
+
+    *pUsage = usage;
+    return S_OK;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIResource::SetEvictionPriority(
+          UINT                    EvictionPriority) {
+    m_resource->SetEvictionPriority(EvictionPriority);
+    return S_OK;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIResource::CreateSharedHandle(
+    const SECURITY_ATTRIBUTES*    pAttributes,
+          DWORD                   dwAccess,
+          LPCWSTR                 lpName,
+          HANDLE*                 pHandle) {
+    InitReturnPtr(pHandle);
+    Logger::err("D3D11DXGIResource::CreateSharedHandle: Stub");
+    return E_NOTIMPL;
+  }
+
+
+  HRESULT STDMETHODCALLTYPE D3D11DXGIResource::CreateSubresourceSurface(
+          UINT                    index,
+          IDXGISurface2**         ppSurface) {
+    InitReturnPtr(ppSurface);
+    Logger::err("D3D11DXGIResource::CreateSubresourceSurface: Stub");
+    return E_NOTIMPL;
+  }
+  
 
   HRESULT GetCommonResourceDesc(
           ID3D11Resource*             pResource,

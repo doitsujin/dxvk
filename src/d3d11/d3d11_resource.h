@@ -1,7 +1,6 @@
 #pragma once
 
-#include "d3d11_buffer.h"
-#include "d3d11_texture.h"
+#include "d3d11_include.h"
 
 namespace dxvk {
 
@@ -19,6 +18,77 @@ namespace dxvk {
     UINT                      BindFlags;
     UINT                      CPUAccessFlags;
     UINT                      MiscFlags;
+  };
+  
+
+  /**
+   * \brief IDXGIResource implementation for D3D11 resources
+   */
+  class D3D11DXGIResource : public IDXGIResource1 {
+
+  public:
+    
+    D3D11DXGIResource(
+            ID3D11Resource*         pResource);
+
+    ~D3D11DXGIResource();
+
+    ULONG STDMETHODCALLTYPE AddRef();
+    
+    ULONG STDMETHODCALLTYPE Release();
+    
+    HRESULT STDMETHODCALLTYPE QueryInterface(
+            REFIID                  riid,
+            void**                  ppvObject);
+
+    HRESULT STDMETHODCALLTYPE GetPrivateData(
+            REFGUID                 Name,
+            UINT*                   pDataSize,
+            void*                   pData);
+    
+    HRESULT STDMETHODCALLTYPE SetPrivateData(
+            REFGUID                 Name,
+            UINT                    DataSize,
+      const void*                   pData);
+    
+    HRESULT STDMETHODCALLTYPE SetPrivateDataInterface(
+            REFGUID                 Name,
+      const IUnknown*               pUnknown);
+    
+    HRESULT STDMETHODCALLTYPE GetParent(
+            REFIID                  riid,
+            void**                  ppParent);
+    
+    HRESULT STDMETHODCALLTYPE GetDevice(
+            REFIID                  riid,
+            void**                  ppDevice);
+
+    HRESULT STDMETHODCALLTYPE GetEvictionPriority(
+            UINT*                   pEvictionPriority);
+
+    HRESULT STDMETHODCALLTYPE GetSharedHandle(
+            HANDLE*                 pSharedHandle);
+
+    HRESULT STDMETHODCALLTYPE GetUsage(
+            DXGI_USAGE*             pUsage);
+
+    HRESULT STDMETHODCALLTYPE SetEvictionPriority(
+            UINT                    EvictionPriority);
+
+    HRESULT STDMETHODCALLTYPE CreateSharedHandle(
+      const SECURITY_ATTRIBUTES*    pAttributes,
+            DWORD                   dwAccess,
+            LPCWSTR                 lpName,
+            HANDLE*                 pHandle);
+
+    HRESULT STDMETHODCALLTYPE CreateSubresourceSurface(
+            UINT                    index,
+            IDXGISurface2**         ppSurface);
+
+  private:
+
+    ID3D11Resource* m_resource;
+
   };
 
 
