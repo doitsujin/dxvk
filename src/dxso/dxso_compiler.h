@@ -131,6 +131,10 @@ namespace dxvk {
     DxsoRegisterPointer vPos;
     DxsoRegisterPointer vFace;
 
+    ///////////////////
+    // Colour Outputs
+    std::array<DxsoRegisterPointer, 4> oColor;
+
     ////////////////
     // Depth output
     DxsoRegisterPointer oDepth;
@@ -514,7 +518,7 @@ namespace dxvk {
     void emitPsProcessing();
     void emitOutputDepthClamp();
 
-    void emitOutputSetup();
+    void emitLinkerOutputSetup();
 
     void emitVsFinalize();
     void emitPsFinalize();

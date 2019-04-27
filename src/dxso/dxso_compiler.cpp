@@ -51,6 +51,8 @@ namespace dxvk {
     m_vs.oFog        = DxsoRegisterPointer{ };
     m_vs.oPSize      = DxsoRegisterPointer{ };
 
+    for (uint32_t i = 0; i < m_ps.oColor.size(); i++)
+      m_ps.oColor.at(i) = DxsoRegisterPointer{ };
     m_ps.oDepth      = DxsoRegisterPointer{ };
     m_ps.vFace       = DxsoRegisterPointer{ };
     m_ps.vPos        = DxsoRegisterPointer{ };
@@ -191,7 +193,6 @@ namespace dxvk {
 
     this->emitDclConstantBuffer();
     this->emitDclInputArray();
-    this->emitDclOutputArray();
 
     // Initialize the shader module with capabilities
     // etc. Each shader type has its own peculiarities.
@@ -305,6 +306,10 @@ namespace dxvk {
     m_module.enableCapability(spv::CapabilityDrawParameters);
 
     m_module.enableExtension("SPV_KHR_shader_draw_parameters");
+
+    // Only VS needs this, because PS has
+    // non-indexable specialized output regs
+    this->emitDclOutputArray();
 
     // Main function of the vertex shader
     m_vs.functionId = m_module.allocateId();
@@ -890,7 +895,25 @@ namespace dxvk {
             return m_vs.oPSize;
         }
 
-      case DxsoRegisterType::ColorOut:
+      case DxsoRegisterType::ColorOut: {
+        uint32_t idx = std::min(reg.id.num, 4u);
+
+        if (m_ps.oColor[idx].id == 0) {
+          std::string name = str::format("oC", idx);
+          m_ps.oColor[idx] = this->emitRegisterPtr(
+            name.c_str(), DxsoScalarType::Float32, 4,
+            m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f),
+            spv::StorageClassOutput);
+
+          m_interfaceSlots.outputSlots |= 1u << idx;
+          m_module.decorateLocation(m_ps.oColor[idx].id, idx);
+          m_module.decorateIndex(m_ps.oColor[idx].id, 0);
+
+          m_entryPointInterfaces.push_back(m_ps.oColor[idx].id);
+        }
+        return m_ps.oColor[idx];
+      }
+
       case DxsoRegisterType::AttributeOut: {
         if (!(m_explicitOutputs & 1u << reg.id.num)) {
           this->emitDclInterface(
@@ -2178,7 +2201,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
   }
 
 
-  void DxsoCompiler::emitOutputSetup() {
+  void DxsoCompiler::emitLinkerOutputSetup() {
     for (uint32_t i = 0; i < m_osgn.elemCount; i++) {
       const auto& elem = m_osgn.elems[i];
       const uint32_t slot = elem.slot;
@@ -2202,9 +2225,6 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         outputPtr.id = emitNewVariableDefault(info,
           m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f));
         m_module.decorateLocation(outputPtr.id, slot);
-
-        if (m_programInfo.type() == DxsoProgramType::PixelShader)
-          m_module.decorateIndex(outputPtr.id, 0);
 
         std::string name =
           str::format("out_", elem.semantic.usage, elem.semantic.usageIndex);
@@ -2502,7 +2522,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     m_module.opFunctionCall(
       m_module.defVoidType(),
       m_vs.functionId, 0, nullptr);
-    this->emitOutputSetup();
+    this->emitLinkerOutputSetup();
 
     this->emitVsClipping();
 
@@ -2540,7 +2560,8 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       m_module.opStore(cOutPtr, r0);
     }*/
 
-    this->emitOutputSetup();
+    // No need to setup output here as it's non-indexable
+    // everything has already gone to the right place!
 
     this->emitPsProcessing();
     this->emitOutputDepthClamp();
