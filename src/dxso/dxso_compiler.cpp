@@ -2017,12 +2017,13 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       imageOperands.flags |= spv::ImageOperandsLodMask;
     }
 
-    /*if (opcode == DxsoOpcode::TexLdd) {
+    if (opcode == DxsoOpcode::TexLdd) {
+      DxsoRegMask gradMask(true, false, false, false);
       implicitLod = false;
       imageOperands.flags |= spv::ImageOperandsGradMask;
-      imageOperands.sGradX = emitRegisterLoad(ctx.src[2]);
-      imageOperands.sGradY = emitRegisterLoad(ctx.src[3]);
-    }*/
+      imageOperands.sGradX = emitRegisterLoad(ctx.src[2], gradMask).id;
+      imageOperands.sGradY = emitRegisterLoad(ctx.src[3], gradMask).id;
+    }
 
     result.id   = implicitLod
       ? m_module.opImageSampleImplicitLod(
