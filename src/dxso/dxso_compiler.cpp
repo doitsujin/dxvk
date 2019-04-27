@@ -1357,12 +1357,14 @@ namespace dxvk {
 
     DxsoRegisterValue src0 = emitRegisterLoad(ctx.src[0], ctx.dst.mask);
 
-    DxsoRegisterValue result;
-    result.type.ctype  = dst.type.ctype;
-    result.type.ccount = ctx.dst.mask.popCount();
+    DxsoRegMask mask = ctx.dst.mask;
 
     if (isScalarRegister(ctx.dst.id))
-      result.type.ccount = 1;
+      mask = DxsoRegMask(true, false, false, false);
+
+    DxsoRegisterValue result;
+    result.type.ctype  = dst.type.ctype;
+    result.type.ccount = mask.popCount();
 
     const uint32_t typeId = getVectorTypeId(result.type);
 
@@ -1379,7 +1381,7 @@ namespace dxvk {
     else // No special stuff needed!
       result.id = src0.id;
 
-    this->emitDstStore(dst, result, ctx.dst.mask, ctx.dst.saturate);
+    this->emitDstStore(dst, result, mask, ctx.dst.saturate);
   }
 
 
@@ -1390,12 +1392,12 @@ namespace dxvk {
 
     DxsoRegisterPointer dst = emitGetOperandPtr(ctx.dst);
 
+    if (isScalarRegister(ctx.dst.id))
+      mask = DxsoRegMask(true, false, false, false);
+
     DxsoRegisterValue result;
     result.type.ctype  = dst.type.ctype;
-    result.type.ccount = ctx.dst.mask.popCount();
-
-    if (isScalarRegister(ctx.dst.id))
-      result.type.ccount = 1;
+    result.type.ccount = mask.popCount();
 
     DxsoVectorType scalarType = result.type;
     scalarType.ccount = 1;
