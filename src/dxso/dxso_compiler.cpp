@@ -952,14 +952,15 @@ namespace dxvk {
               "ps_is_front_face", DxsoScalarType::Bool, 1, 0,
               spv::StorageClassInput, spv::BuiltInFrontFacing);
 
-            uint32_t var = m_module.opLoad(getVectorTypeId(faceBool.type), faceBool.id);
+            DxsoRegisterValue frontFace = emitValueLoad(faceBool);
+            DxsoRegisterValue selectOp = emitRegisterExtend(frontFace, 4);
 
             m_ps.vFace = this->emitRegisterPtr(
               "vFace", DxsoScalarType::Float32, 4, 0);
 
             m_module.opStore(
               m_ps.vFace.id,
-              m_module.opSelect(getVectorTypeId(m_ps.vFace.type), var,
+              m_module.opSelect(getVectorTypeId(m_ps.vFace.type), selectOp.id,
                 m_module.constvec4f32( 1.0f,  1.0f,  1.0f,  1.0f),
                 m_module.constvec4f32(-1.0f, -1.0f, -1.0f, -1.0f)));
           }
