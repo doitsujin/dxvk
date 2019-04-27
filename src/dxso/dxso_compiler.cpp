@@ -1176,7 +1176,7 @@ namespace dxvk {
     // !r
     if (modifier == DxsoRegModifier::Not) {
       value.id =
-        m_module.opNot(getVectorTypeId(value.type), value.id);
+        m_module.opLogicalNot(getVectorTypeId(value.type), value.id);
     }
 
     // r / r.z
