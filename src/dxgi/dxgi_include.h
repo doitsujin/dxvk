@@ -35,3 +35,11 @@
   #define DXGI_RESOURCE_PRIORITY_HIGH (0xa0000000)
   #define DXGI_RESOURCE_PRIORITY_MAXIMUM (0xc8000000)
 #endif
+
+#ifndef DXGI_CPU_ACCESS_NONE
+  #define DXGI_CPU_ACCESS_NONE       (0)
+  #define DXGI_CPU_ACCESS_DYNAMIC    (1)
+  #define DXGI_CPU_ACCESS_READ_WRITE (2)
+  #define DXGI_CPU_ACCESS_SCRATCH    (3)
+  #define DXGI_CPU_ACCESS_FIELD      (0xf)
+#endif
