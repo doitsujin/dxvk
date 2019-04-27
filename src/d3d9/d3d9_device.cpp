@@ -4025,13 +4025,10 @@ namespace dxvk {
 
       const auto* commonShader = m_state.vertexShader->GetCommonShader();
       const auto& isgn         = commonShader->GetIsgn();
-      const auto  slots        = commonShader->GetShader()->interfaceSlots();
       const auto& elements     = m_state.vertexDecl->GetElements();
 
       for (uint32_t i = 0; i < isgn.elemCount; i++) {
         const auto& decl = isgn.elems[i];
-
-        const uint32_t slot = decl.slot;
 
         DxvkVertexAttribute attrib;
         attrib.location = i;

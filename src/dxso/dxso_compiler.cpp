@@ -502,8 +502,8 @@ namespace dxvk {
       // Any slot will do! Let's chose the next one
       slot = i;
     }
-    else if (!input && vertex
-           || input && pixel) {
+    else if ( (!input && vertex)
+           || (input  && pixel ) ) {
       // Don't register the slot if it belongs to a builtin
       if (!builtin) {
         // Lock, because games could be trying
@@ -784,8 +784,6 @@ namespace dxvk {
   DxsoRegisterPointer DxsoCompiler::emitGetOperandPtr(
       const DxsoBaseRegister& reg,
       const DxsoBaseRegister* relative) {
-    DxsoRegisterPointer result = DxsoRegisterPointer{ };
-
     switch (reg.id.type) {
       case DxsoRegisterType::Temp: {
         DxsoRegisterPointer& ptr = m_rRegs.at(reg.id.num);
