@@ -479,7 +479,7 @@ namespace dxvk {
 
 
   D3D11DXGISurface::D3D11DXGISurface(
-          ID3D11DeviceChild*  pContainer,
+          ID3D11Resource*     pContainer,
           D3D11CommonTexture* pTexture)
   : m_container (pContainer),
     m_texture   (pTexture) {
@@ -563,24 +563,54 @@ namespace dxvk {
 
   
   HRESULT STDMETHODCALLTYPE D3D11DXGISurface::Map(
-          DXGI_MAPPED_RECT*       pLockedRect,
-          UINT                    MapFlags) {
-    static bool s_errorShown = false;
+            DXGI_MAPPED_RECT*       pLockedRect,
+            UINT                    MapFlags) {
+    Com<ID3D11Device>        device;
+    Com<ID3D11DeviceContext> context;
 
-    if (!std::exchange(s_errorShown, true))
-      Logger::err("D3D11DXGISurface::Map: Stub");
+    m_container->GetDevice(&device);
+    device->GetImmediateContext(&context);
 
-    return E_NOTIMPL;
+    if (pLockedRect) {
+      pLockedRect->Pitch = 0;
+      pLockedRect->pBits = nullptr;
+    }
+
+    D3D11_MAP mapType;
+
+    if (MapFlags & (DXGI_MAP_READ | DXGI_MAP_WRITE))
+      mapType = D3D11_MAP_READ_WRITE;
+    else if (MapFlags & DXGI_MAP_READ)
+      mapType = D3D11_MAP_READ;
+    else if (MapFlags & (DXGI_MAP_WRITE | DXGI_MAP_DISCARD))
+      mapType = D3D11_MAP_WRITE_DISCARD;
+    else if (MapFlags & DXGI_MAP_WRITE)
+      mapType = D3D11_MAP_WRITE;
+    else
+      return DXGI_ERROR_INVALID_CALL;
+    
+    D3D11_MAPPED_SUBRESOURCE sr;
+    HRESULT hr = context->Map(m_container, 0,
+      mapType, 0, pLockedRect ? &sr : nullptr);
+
+    if (hr != S_OK)
+      return hr;
+
+    pLockedRect->Pitch = sr.RowPitch;
+    pLockedRect->pBits = reinterpret_cast<unsigned char*>(sr.pData);
+    return hr;
   }
 
   
   HRESULT STDMETHODCALLTYPE D3D11DXGISurface::Unmap() {
-    static bool s_errorShown = false;
+    Com<ID3D11Device>        device;
+    Com<ID3D11DeviceContext> context;
 
-    if (!std::exchange(s_errorShown, true))
-      Logger::err("D3D11DXGISurface::Unmap: Stub");
-
-    return E_NOTIMPL;
+    m_container->GetDevice(&device);
+    device->GetImmediateContext(&context);
+    
+    context->Unmap(m_container, 0);
+    return S_OK;
   }
 
 

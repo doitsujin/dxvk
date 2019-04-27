@@ -239,7 +239,7 @@ namespace dxvk {
   public:
 
     D3D11DXGISurface(
-            ID3D11DeviceChild*  pContainer,
+            ID3D11Resource*     pContainer,
             D3D11CommonTexture* pTexture);
     
     ~D3D11DXGISurface();
@@ -299,7 +299,7 @@ namespace dxvk {
 
   private:
     
-    ID3D11DeviceChild*  m_container;
+    ID3D11Resource*     m_container;
     D3D11CommonTexture* m_texture;
 
   };
