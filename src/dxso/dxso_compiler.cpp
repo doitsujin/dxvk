@@ -1355,12 +1355,12 @@ namespace dxvk {
   void DxsoCompiler::emitMov(const DxsoInstructionContext& ctx) {
     DxsoRegisterPointer dst = emitGetOperandPtr(ctx.dst);
 
-    DxsoRegisterValue src0 = emitRegisterLoad(ctx.src[0], ctx.dst.mask);
-
     DxsoRegMask mask = ctx.dst.mask;
 
     if (isScalarRegister(ctx.dst.id))
       mask = DxsoRegMask(true, false, false, false);
+
+    DxsoRegisterValue src0 = emitRegisterLoad(ctx.src[0], mask);
 
     DxsoRegisterValue result;
     result.type.ctype  = dst.type.ctype;
