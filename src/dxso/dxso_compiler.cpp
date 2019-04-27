@@ -740,10 +740,14 @@ namespace dxvk {
       // TODO: A better way of doing this.
 
       uint32_t var = m_module.opLoad(typeId, result.id);
-      typeId = getVectorTypeId(result.type);
 
       var = m_module.opBitFieldUExtract(
         typeId, var, arrayIdx, m_module.constu32(1));
+
+      typeId = getVectorTypeId(result.type);
+
+      var = m_module.opLogicalNotEqual(typeId,
+        var, m_module.constu32(0));
 
       result = this->emitRegisterPtr(
         "boolIndex", DxsoScalarType::Bool, 1,
