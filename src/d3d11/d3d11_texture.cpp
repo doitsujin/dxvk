@@ -479,10 +479,10 @@ namespace dxvk {
 
 
   D3D11DXGISurface::D3D11DXGISurface(
-          ID3D11Resource*     pContainer,
+          ID3D11Resource*     pResource,
           D3D11CommonTexture* pTexture)
-  : m_container (pContainer),
-    m_texture   (pTexture) {
+  : m_resource(pResource),
+    m_texture (pTexture) {
 
   }
 
@@ -493,19 +493,19 @@ namespace dxvk {
 
   
   ULONG STDMETHODCALLTYPE D3D11DXGISurface::AddRef() {
-    return m_container->AddRef();
+    return m_resource->AddRef();
   }
 
   
   ULONG STDMETHODCALLTYPE D3D11DXGISurface::Release() {
-    return m_container->Release();
+    return m_resource->Release();
   }
 
   
   HRESULT STDMETHODCALLTYPE D3D11DXGISurface::QueryInterface(
           REFIID                  riid,
           void**                  ppvObject) {
-    return m_container->QueryInterface(riid, ppvObject);
+    return m_resource->QueryInterface(riid, ppvObject);
   }
 
 
@@ -513,7 +513,7 @@ namespace dxvk {
           REFGUID                 Name,
           UINT*                   pDataSize,
           void*                   pData) {
-    return m_container->GetPrivateData(Name, pDataSize, pData);
+    return m_resource->GetPrivateData(Name, pDataSize, pData);
   }
 
   
@@ -521,14 +521,14 @@ namespace dxvk {
           REFGUID                 Name,
           UINT                    DataSize,
     const void*                   pData) {
-    return m_container->SetPrivateData(Name, DataSize, pData);
+    return m_resource->SetPrivateData(Name, DataSize, pData);
   }
 
   
   HRESULT STDMETHODCALLTYPE D3D11DXGISurface::SetPrivateDataInterface(
           REFGUID                 Name,
     const IUnknown*               pUnknown) {
-    return m_container->SetPrivateDataInterface(Name, pUnknown);
+    return m_resource->SetPrivateDataInterface(Name, pUnknown);
   }
 
   
@@ -543,7 +543,7 @@ namespace dxvk {
           REFIID                  riid,
           void**                  ppDevice) {
     Com<ID3D11Device> device;
-    m_container->GetDevice(&device);
+    m_resource->GetDevice(&device);
     return device->QueryInterface(riid, ppDevice);
   }
 
@@ -568,7 +568,7 @@ namespace dxvk {
     Com<ID3D11Device>        device;
     Com<ID3D11DeviceContext> context;
 
-    m_container->GetDevice(&device);
+    m_resource->GetDevice(&device);
     device->GetImmediateContext(&context);
 
     if (pLockedRect) {
@@ -590,7 +590,7 @@ namespace dxvk {
       return DXGI_ERROR_INVALID_CALL;
     
     D3D11_MAPPED_SUBRESOURCE sr;
-    HRESULT hr = context->Map(m_container, 0,
+    HRESULT hr = context->Map(m_resource, 0,
       mapType, 0, pLockedRect ? &sr : nullptr);
 
     if (hr != S_OK)
@@ -606,10 +606,10 @@ namespace dxvk {
     Com<ID3D11Device>        device;
     Com<ID3D11DeviceContext> context;
 
-    m_container->GetDevice(&device);
+    m_resource->GetDevice(&device);
     device->GetImmediateContext(&context);
     
-    context->Unmap(m_container, 0);
+    context->Unmap(m_resource, 0);
     return S_OK;
   }
 
@@ -641,7 +641,7 @@ namespace dxvk {
           REFIID                  riid,
           void**                  ppParentResource,
           UINT*                   pSubresourceIndex) {
-    HRESULT hr = m_container->QueryInterface(riid, ppParentResource);
+    HRESULT hr = m_resource->QueryInterface(riid, ppParentResource);
     if (pSubresourceIndex)
       *pSubresourceIndex = 0;
     return hr;
@@ -659,10 +659,10 @@ namespace dxvk {
 
 
   D3D11VkInteropSurface::D3D11VkInteropSurface(
-          ID3D11DeviceChild*  pContainer,
+          ID3D11Resource*     pResource,
           D3D11CommonTexture* pTexture)
-  : m_container (pContainer),
-    m_texture   (pTexture) {
+  : m_resource(pResource),
+    m_texture (pTexture) {
       
   }
   
@@ -673,26 +673,26 @@ namespace dxvk {
   
   
   ULONG STDMETHODCALLTYPE D3D11VkInteropSurface::AddRef() {
-    return m_container->AddRef();
+    return m_resource->AddRef();
   }
   
   
   ULONG STDMETHODCALLTYPE D3D11VkInteropSurface::Release() {
-    return m_container->Release();
+    return m_resource->Release();
   }
   
   
   HRESULT STDMETHODCALLTYPE D3D11VkInteropSurface::QueryInterface(
           REFIID                  riid,
           void**                  ppvObject) {
-    return m_container->QueryInterface(riid, ppvObject);
+    return m_resource->QueryInterface(riid, ppvObject);
   }
   
   
   HRESULT STDMETHODCALLTYPE D3D11VkInteropSurface::GetDevice(
           IDXGIVkInteropDevice**  ppDevice) {
     Com<ID3D11Device> device;
-    m_container->GetDevice(&device);
+    m_resource->GetDevice(&device);
     
     return device->QueryInterface(
       __uuidof(IDXGIVkInteropDevice),

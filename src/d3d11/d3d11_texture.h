@@ -239,7 +239,7 @@ namespace dxvk {
   public:
 
     D3D11DXGISurface(
-            ID3D11Resource*     pContainer,
+            ID3D11Resource*     pResource,
             D3D11CommonTexture* pTexture);
     
     ~D3D11DXGISurface();
@@ -299,7 +299,7 @@ namespace dxvk {
 
   private:
     
-    ID3D11Resource*     m_container;
+    ID3D11Resource*     m_resource;
     D3D11CommonTexture* m_texture;
 
   };
@@ -316,7 +316,7 @@ namespace dxvk {
   public:
     
     D3D11VkInteropSurface(
-            ID3D11DeviceChild*  pContainer,
+            ID3D11Resource*     pResource,
             D3D11CommonTexture* pTexture);
     
     ~D3D11VkInteropSurface();
@@ -339,7 +339,7 @@ namespace dxvk {
     
   private:
     
-    ID3D11DeviceChild*  m_container;
+    ID3D11Resource*     m_resource;
     D3D11CommonTexture* m_texture;
     
   };
