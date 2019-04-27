@@ -1669,7 +1669,7 @@ namespace dxvk {
           emitRegisterLoad(src[0], dotSrcMask).id,
           emitRegisterLoad(src[1], dotSrcMask).id);
 
-        dot.id = m_module.opFAdd(typeId,
+        dot.id = m_module.opFAdd(scalarTypeId,
           dot.id, emitRegisterLoad(src[2], addSrcMask).id);
 
         result.id = emitRegisterExtend(dot, result.type.ccount).id;
