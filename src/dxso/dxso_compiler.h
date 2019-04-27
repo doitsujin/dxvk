@@ -476,6 +476,8 @@ namespace dxvk {
     void emitDefI(const DxsoInstructionContext& ctx);
     void emitDefB(const DxsoInstructionContext& ctx);
 
+    bool isScalarRegister(DxsoRegisterId id);
+
     void emitMov(const DxsoInstructionContext& ctx);
     void emitVectorAlu(const DxsoInstructionContext& ctx);
 

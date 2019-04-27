@@ -1346,6 +1346,12 @@ namespace dxvk {
   }
 
 
+  bool DxsoCompiler::isScalarRegister(DxsoRegisterId id) {
+    return id == DxsoRegisterId{DxsoRegisterType::DepthOut, 0}
+        || id == DxsoRegisterId{DxsoRegisterType::RasterizerOut, RasterOutPointSize};
+  }
+
+
   void DxsoCompiler::emitMov(const DxsoInstructionContext& ctx) {
     DxsoRegisterPointer dst = emitGetOperandPtr(ctx.dst);
 
@@ -1354,6 +1360,9 @@ namespace dxvk {
     DxsoRegisterValue result;
     result.type.ctype  = dst.type.ctype;
     result.type.ccount = ctx.dst.mask.popCount();
+
+    if (isScalarRegister(ctx.dst.id))
+      result.type.ccount = 1;
 
     const uint32_t typeId = getVectorTypeId(result.type);
 
@@ -1384,6 +1393,9 @@ namespace dxvk {
     DxsoRegisterValue result;
     result.type.ctype  = dst.type.ctype;
     result.type.ccount = ctx.dst.mask.popCount();
+
+    if (isScalarRegister(ctx.dst.id))
+      result.type.ccount = 1;
 
     DxsoVectorType scalarType = result.type;
     scalarType.ccount = 1;
