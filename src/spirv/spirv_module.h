@@ -160,6 +160,10 @@ namespace dxvk {
             float                   y,
             float                   z,
             float                   w);
+
+    uint32_t constfReplicant(
+            float                   replicant,
+            uint32_t                count);
     
     uint32_t constComposite(
             uint32_t                typeId,
