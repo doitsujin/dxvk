@@ -2215,6 +2215,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         if (builtIn == spv::BuiltInPosition)
           name = "oPos";
         else if (builtIn == spv::BuiltInPointSize) {
+          outputPtr.type.ccount = 1;
           info.type.ccount = 1;
           name = "oPSize";
           bool maskValues[4];
