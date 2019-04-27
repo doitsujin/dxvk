@@ -8,7 +8,7 @@ namespace dxvk {
 
   void DxsoAnalyzer::processInstruction(
     const DxsoInstructionContext& ctx) {
-    DxsoOpcode opcode = ctx.instruction.opcode();
+    DxsoOpcode opcode = ctx.instruction.opcode;
 
     if (opcode == DxsoOpcode::TexKill)
       m_analysis->usesKill = true;

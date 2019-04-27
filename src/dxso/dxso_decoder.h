@@ -4,6 +4,8 @@
 #include "dxso_enums.h"
 #include "dxso_code.h"
 
+#include "dxso_util.h"
+
 namespace dxvk {
 
   constexpr uint32_t DxsoRegModifierShift = 24;
@@ -50,82 +52,33 @@ namespace dxvk {
     Always       = 7         // 1 1 1
   };
 
-  class DxsoShaderInstruction {
+  union DxsoOpcodeSpecificData {
+    DxsoComparison comparison;
 
-  public:
-
-    DxsoShaderInstruction();
-    DxsoShaderInstruction(const DxsoDecodeContext& context, DxsoCodeIter& iter);
-
-    DxsoOpcode opcode() const {
-      return static_cast<DxsoOpcode>(m_token & 0x0000ffff);
-    }
-
-    uint32_t opcodeSpecificData() const {
-      return (m_token & 0x00ff0000) >> 16;
-    }
-
-    uint32_t instructionLength() const {
-      return m_instructionLength;
-    }
-
-    DxsoComparison comparison() const {
-      return static_cast<DxsoComparison>(this->opcodeSpecificData());
-    }
-
-  private:
-
-    uint32_t updateInstructionLength(const DxsoDecodeContext& context);
-
-    uint32_t m_token;
-    uint32_t m_instructionLength;
-
+    uint32_t       uint32;
   };
 
-  class DxsoRegisterId {
+  struct DxsoShaderInstruction {
+    DxsoOpcode             opcode;
+    DxsoOpcodeSpecificData specificData;
 
-  public:
+    uint32_t               tokenLength;
+  };
 
-    DxsoRegisterId() {}
+  struct DxsoRegisterId {
+    DxsoRegisterType type;
+    uint32_t         num;
 
-    DxsoRegisterId(DxsoRegisterType type, uint32_t num)
-      : m_type{ type }, m_num{ num } {}
-
-    DxsoRegisterType type() const {
-      return m_type;
-    }
-
-    uint32_t num() const {
-      return m_num;
-    }
-
-    bool constant() const {
-      return m_type == DxsoRegisterType::Const
-          || m_type == DxsoRegisterType::ConstInt
-          || m_type == DxsoRegisterType::ConstBool
-          || m_type == DxsoRegisterType::Const2
-          || m_type == DxsoRegisterType::Const3
-          || m_type == DxsoRegisterType::Const4;
-    }
-
-    bool operator == (const DxsoRegisterId& other) const { return m_type == other.m_type
-                                                               && m_num  == other.m_num; }
-    bool operator != (const DxsoRegisterId& other) const { return m_type != other.m_type
-                                                               || m_num  != other.m_num; }
-
-  private:
-
-    DxsoRegisterType m_type;
-    uint32_t         m_num;
-
+    bool operator == (const DxsoRegisterId& other) const { return type == other.type && num == other.num; }
+    bool operator != (const DxsoRegisterId& other) const { return type != other.type || num != other.num; }
   };
 
   class DxsoRegMask {
 
   public:
 
-    DxsoRegMask(uint32_t token)
-      : m_mask{ static_cast<uint8_t>( (token & 0x000f0000) >> 16 ) } {}
+    DxsoRegMask(uint8_t mask)
+      : m_mask(mask) { }
 
     DxsoRegMask(bool x, bool y, bool z, bool w)
     : m_mask((x ? 0x1 : 0) | (y ? 0x2 : 0)
@@ -133,6 +86,24 @@ namespace dxvk {
 
     bool operator [] (uint32_t id) const {
       return ((m_mask & (1u << id)) != 0);
+    }
+
+    uint32_t popCount() const {
+      const uint8_t n[16] = { 0, 1, 1, 2, 1, 2, 2, 3,
+                              1, 2, 2, 3, 2, 3, 3, 4 };
+      return n[m_mask & 0xF];
+    }
+    
+    uint32_t firstSet() const {
+      const uint8_t n[16] = { 4, 0, 1, 0, 2, 0, 1, 0,
+                              3, 0, 1, 0, 2, 0, 1, 0 };
+      return n[m_mask & 0xF];
+    }
+    
+    uint32_t minComponents() const {
+      const uint8_t n[16] = { 0, 1, 2, 2, 3, 3, 3, 3,
+                              4, 4, 4, 4, 4, 4, 4, 4 };
+      return n[m_mask & 0xF];
     }
 
     bool operator == (const DxsoRegMask& other) const { return m_mask == other.m_mask; }
@@ -150,8 +121,8 @@ namespace dxvk {
 
   public:
 
-    DxsoRegSwizzle(uint32_t token)
-      : m_mask{ static_cast<uint8_t>( (token & 0x00ff0000) >> 16 ) } {}
+    DxsoRegSwizzle(uint8_t mask)
+      : m_mask(mask) { }
 
     DxsoRegSwizzle(uint32_t x, uint32_t y, uint32_t z, uint32_t w)
       : m_mask((x << 0) | (y << 2) | (z << 4) | (w << 6)) {}
@@ -171,91 +142,19 @@ namespace dxvk {
 
   const DxsoRegSwizzle IdentitySwizzle{ 1, 2, 3, 4 };
 
-  class DxsoRegister {
+  struct DxsoBaseRegister {
+    DxsoRegisterId  id               = { DxsoRegisterType::Temp, 0 };
+    bool            centroid         = false;
+    bool            partialPrecision = false;
+    bool            saturate         = false;
+    DxsoRegModifier modifier         = DxsoRegModifier::None;
+    DxsoRegMask     mask             = IdentityWriteMask;
+    DxsoRegSwizzle  swizzle          = IdentitySwizzle;
+  };
 
-  public:
-
-    DxsoRegister();
-    DxsoRegister(DxsoInstructionArgumentType type, uint32_t token, uint32_t relativeToken);
-    DxsoRegister(DxsoInstructionArgumentType type, const DxsoDecodeContext& context, DxsoCodeIter& iter);
-
-    DxsoRegisterId registerId() const {
-      return DxsoRegisterId{ registerType(), registerNumber() };
-    }
-
-    bool isRelative() const {
-      return (m_token & (1 << 13)) == 8192 ? 1 : 0;
-    }
-
-    DxsoRegister relativeRegister() const {
-      return DxsoRegister(DxsoInstructionArgumentType::Source, m_relativeToken, m_relativeToken);
-    }
-
-    bool centroid() const {
-      return m_token & (4 << 20);
-    }
-
-    bool partialPrecision() const {
-      return m_token & (2 << 20);
-    }
-
-    bool saturate() const {
-      if (m_type == DxsoInstructionArgumentType::Source)
-        throw DxvkError("Attempted to read the saturate of a Src register.");
-
-      return (m_token & (1 << 20)) != 0;
-    }
-
-    DxsoRegModifier modifier() const {
-      if (m_type == DxsoInstructionArgumentType::Destination)
-        throw DxvkError("Attempted to read the modifier of a Dst register.");
-
-      return static_cast<DxsoRegModifier>(
-        (m_token & 0x0f000000) >> 24);
-    }
-
-    DxsoRegMask writeMask() const {
-      if (m_type == DxsoInstructionArgumentType::Source)
-        throw DxvkError("Attempted to read the write mask of a Src register.");
-
-      return DxsoRegMask{ m_token };
-    }
-
-    DxsoRegSwizzle swizzle() const {
-      if (m_type == DxsoInstructionArgumentType::Destination)
-        throw DxvkError("Attempted to read the swizzle of a Dst register.");
-
-      return DxsoRegSwizzle{ m_token };
-    }
-
-    bool advanceExtra(const DxsoDecodeContext& context) {
-      return isRelative() && relativeAddressingUsesToken(context);
-    }
-
-    bool hasRelativeToken() const {
-      return m_hasRelativeToken;
-    }
-
-  private:
-
-    DxsoRegisterType registerType() const {
-      return static_cast<DxsoRegisterType>(
-        ((m_token & 0x00001800) >> 8)
-      | ((m_token & 0x70000000) >> 28));
-    }
-
-    uint32_t registerNumber() const {
-      return m_token & 0x000007ff;
-    }
-
-    bool relativeAddressingUsesToken(const DxsoDecodeContext& context) const;
-
-    DxsoInstructionArgumentType m_type;
-
-    uint32_t                    m_token;
-    uint32_t                    m_relativeToken;
-    bool                        m_hasRelativeToken;
-
+  struct DxsoRegister : public DxsoBaseRegister {
+    bool hasRelative = false;
+    DxsoBaseRegister relative;
   };
 
   struct DxsoSemantic {
@@ -266,33 +165,29 @@ namespace dxvk {
     bool operator!= (const DxsoSemantic& b) const;
   };
 
-  struct DxsoSemanticHash {
-    size_t operator () (const DxsoSemantic& key) const;
-  };
-
-  struct DxsoSemanticEq {
-    bool operator () (const DxsoSemantic& a, const DxsoSemantic& b) const;
-  };
-
-  // This struct doesn't work off the single tokens
-  // because we want to make a list of declarations
-  // and that would include the implicit declarations in
-  // lower shader model versions.
   struct DxsoDeclaration {
-    DxsoRegisterId  id;
-
     DxsoSemantic    semantic;
 
     DxsoTextureType textureType;
+  };
+
+  union DxsoDefinition {
+    float    float32[4];
+    int32_t  int32[4];
+
+    // Not a type we actually use in compiler, but used for decoding.
+    uint32_t uint32[4];
   };
 
   struct DxsoInstructionContext {
     DxsoShaderInstruction       instruction;
 
     DxsoRegister                dst;
-    std::array<DxsoRegister, 4> src;
+    std::array<
+      DxsoRegister,
+      DxsoMaxOperandCount>      src;
 
-    std::array<uint32_t, 4>     def;
+    DxsoDefinition              def;
 
     DxsoDeclaration             dcl;
   };
@@ -302,7 +197,7 @@ namespace dxvk {
   public:
 
     DxsoDecodeContext(const DxsoProgramInfo& programInfo)
-      : m_programInfo{ programInfo } {}
+      : m_programInfo( programInfo ) { }
 
     /**
      * \brief Retrieves current instruction context
@@ -329,10 +224,26 @@ namespace dxvk {
 
   private:
 
-    void decodeDestinationRegister(DxsoCodeIter& iter);
-    void decodeSourceRegister(uint32_t i, DxsoCodeIter& iter);
+    uint32_t decodeInstructionLength(uint32_t token);
+
+    void decodeBaseRegister(
+            DxsoBaseRegister& reg,
+            uint32_t          token);
+    void decodeGenericRegister(
+            DxsoRegister& reg,
+            uint32_t      token);
+    void decodeRelativeRegister(
+            DxsoBaseRegister& reg,
+            uint32_t          token);
+
+    // Returns whether an extra token was read.
+    bool decodeDestinationRegister(DxsoCodeIter& iter);
+    bool decodeSourceRegister(uint32_t i, DxsoCodeIter& iter);
+
     void decodeDeclaration(DxsoCodeIter& iter);
     void decodeDefinition(DxsoOpcode opcode, DxsoCodeIter& iter);
+
+    bool relativeAddressingUsesToken(DxsoInstructionArgumentType type);
 
     const DxsoProgramInfo&      m_programInfo;
 

@@ -3,15 +3,102 @@
 #include "dxso_decoder.h"
 #include "dxso_header.h"
 #include "dxso_modinfo.h"
+#include "dxso_isgn.h"
 
 #include "../spirv/spirv_module.h"
 
 namespace dxvk {
 
-  struct DxsoSpirvRegister {
-    DxsoRegisterId    regId = DxsoRegisterId(DxsoRegisterType::Temp, 0);
+  /**
+   * \brief Scalar value type
+   * 
+   * Enumerates possible register component
+   * types. Scalar types are represented as
+   * a one-component vector type.
+   */
+  enum class DxsoScalarType : uint32_t {
+    Uint32    = 0,
+    Sint32    = 1,
+    Float32   = 2,
+    Bool      = 3,
+  };
 
-    uint32_t          ptrId = 0;
+  /**
+   * \brief Vector type
+   * 
+   * Convenience struct that stores a scalar
+   * type and a component count. The compiler
+   * can use this to generate SPIR-V types.
+   */
+  struct DxsoVectorType {
+    DxsoScalarType    ctype;
+    uint32_t          ccount;
+  };
+  
+  
+  /**
+   * \brief Array type
+   * 
+   * Convenience struct that stores a scalar type, a
+   * component count and an array size. An array of
+   * length 0 will be evaluated to a vector type. The
+   * compiler can use this to generate SPIR-V types.
+   */
+  struct DxsoArrayType {
+    DxsoScalarType    ctype;
+    uint32_t          ccount;
+    uint32_t          alength;
+  };
+  
+  
+  /**
+   * \brief Register info
+   * 
+   * Stores the array type of a register and
+   * its storage class. The compiler can use
+   * this to generate SPIR-V pointer types.
+   */
+  struct DxsoRegisterInfo {
+    DxsoArrayType     type;
+    spv::StorageClass sclass;
+  };
+  
+  
+  /**
+   * \brief Register value
+   * 
+   * Stores a vector type and a SPIR-V ID that
+   * represents an intermediate value. This is
+   * used to track the type of such values.
+   */
+  struct DxsoRegisterValue {
+    DxsoVectorType    type;
+    uint32_t          id;
+  };
+
+  
+  /**
+   * \brief Register pointer
+   * 
+   * Stores a vector type and a SPIR-V ID that
+   * represents a pointer to such a vector. This
+   * can be used to load registers conveniently.
+   */
+  struct DxsoRegisterPointer {
+    DxsoVectorType    type;
+    uint32_t          id   = 0;
+  };
+
+  /**
+   * \brief Sampler info
+   *
+   * Stores a vector type and a SPIR-V ID that
+   * represents a pointer to such a vector. This
+   * can be used to load registers conveniently.
+   */
+  struct DxsoSampler {
+    uint32_t varId = 0;
+    uint32_t typeId = 0;
   };
 
   struct DxsoAnalysisInfo;
@@ -20,9 +107,37 @@ namespace dxvk {
    * \brief Vertex shader-specific structure
    */
   struct DxsoCompilerVsPart {
-    uint32_t functionId = 0;
+    uint32_t functionId       = 0;
 
-    uint32_t builtInPointSize = 0;
+    ////////////////////
+    // Address register
+    DxsoRegisterPointer addr;
+
+    //////////////////////////////
+    // Rasterizer output registers
+    DxsoRegisterPointer oPos;
+    DxsoRegisterPointer oPSize;
+    DxsoRegisterPointer oFog;
+  };
+
+  /**
+   * \brief Pixel shader-specific structure
+   */
+  struct DxsoCompilerPsPart {
+    uint32_t functionId         = 0;
+
+    //////////////
+    // Misc Types
+    DxsoRegisterPointer vPos;
+    DxsoRegisterPointer vFace;
+
+    ////////////////
+    // Depth output
+    DxsoRegisterPointer oDepth;
+
+    uint32_t killState          = 0;
+    uint32_t invocationMask     = 0;
+    uint32_t ballotType         = 0;
   };
 
   struct DxsoCfgBlockIf {
@@ -57,23 +172,11 @@ namespace dxvk {
     };
   };
 
-  /**
-   * \brief Pixel shader-specific structure
-   */
-  struct DxsoCompilerPsPart {
-    uint32_t functionId = 0;
-
-    uint32_t killState = 0;
-    uint32_t invocationMask = 0;
-    uint32_t ballotType = 0;
-  };
+  using DxsoSrcArray = std::array<DxsoRegisterValue, DxsoMaxOperandCount>;
 
   class DxsoCompiler {
 
   public:
-
-    static constexpr uint32_t InvalidInputSlot = UINT32_MAX;
-    static constexpr uint32_t InvalidOutputSlot = UINT32_MAX;
 
     DxsoCompiler(
       const std::string&      fileName,
@@ -94,9 +197,8 @@ namespace dxvk {
      */
     Rc<DxvkShader> finalize();
 
-    const std::array<DxsoDeclaration, 16>& getDeclarations() const {
-      return m_vDecls;
-    }
+    const DxsoIsgn& isgn() { return m_isgn; }
+    const DxsoIsgn& osgn() { return m_osgn; }
 
   private:
 
@@ -104,16 +206,78 @@ namespace dxvk {
     DxsoProgramInfo            m_programInfo;
     const DxsoAnalysisInfo*    m_analysis;
 
-    SpirvModule         m_module;
+    SpirvModule                m_module;
 
     ///////////////////////////////////////////////////////
     // Resource slot description for the shader. This will
-    // be used to map D3D11 bindings to DXVK bindings.
+    // be used to map D3D9 bindings to DXVK bindings.
     std::vector<DxvkResourceSlot> m_resourceSlots;
 
-    std::vector<DxsoSpirvRegister> m_regs;
+    ////////////////////////////////////////////////
+    // Temporary r# vector registers with immediate
+    // indexing, and x# vector array registers.
+    std::array<
+      DxsoRegisterPointer,
+      DxsoMaxTempRegs> m_rRegs;
 
-    uint32_t m_constantBufferVarId = 0;
+    //////////////////////////////////////////////////////////////////
+    // Array of input values. Since v# and o# registers are indexable
+    // in DXSO, we need to copy them into an array first.
+    uint32_t m_vArray = 0;
+    uint32_t m_oArray = 0;
+
+    ////////////////////////////////
+    // Input and output signatures
+    DxsoIsgn m_isgn;
+    DxsoIsgn m_osgn;
+
+    ////////////////////////////////////
+    // Ptr to the constant buffer array
+    uint32_t m_cBuffer;
+
+    ////////////////////////////////////////
+    // Constant buffer deffed mappings
+    std::array<
+      DxsoRegisterPointer,
+      256> m_cFloat;
+
+    std::array<
+      DxsoRegisterPointer,
+      16> m_cInt;
+
+    std::array<
+      DxsoRegisterPointer,
+      16> m_cBool;
+
+    //////////////////////
+    // Loop counter
+    DxsoRegisterPointer m_loopCounter;
+
+    ///////////////////////////////////
+    // Working tex/coord registers (PS)
+    std::array<
+      DxsoRegisterPointer,
+      DxsoMaxTextureRegs> m_tRegs;
+
+    ///////////////////////////////////////////////
+    // Control flow information. Stores labels for
+    // currently active if-else blocks and loops.
+    std::vector<DxsoCfgBlock> m_controlFlowBlocks;
+
+    //////////////////////////////////////////////
+    // Function state tracking. Required in order
+    // to properly end functions in some cases.
+    bool m_insideFunction = false;
+
+    ////////////
+    // Samplers
+    std::array<DxsoSampler, 17> m_samplers;
+
+    ////////////////////////////////////////////
+    // What io regswe need to
+    // NOT generate semantics for
+    uint16_t m_explicitInputs  = 0;
+    uint16_t m_explicitOutputs = 0;
 
     ///////////////////////////////////////////////////
     // Entry point description - we'll need to declare
@@ -121,88 +285,199 @@ namespace dxvk {
     std::vector<uint32_t> m_entryPointInterfaces;
     uint32_t m_entryPointId = 0;
 
-    ///////////////////////////////////////////////////////////
-    // v# and o# register definitions
-    std::array<DxsoDeclaration, 16> m_vDecls;
-    std::array<DxsoDeclaration, 16> m_oDecls;
-
     ////////////////////////////////////////////
     // Inter-stage shader interface slots. Also
     // covers vertex input and fragment output.
     DxvkInterfaceSlots m_interfaceSlots;
-
-    //////////////////////////////////////////////
-    // Function state tracking. Required in order
-    // to properly end functions in some cases.
-    bool m_insideFunction = false;
 
     ///////////////////////////////////
     // Shader-specific data structures
     DxsoCompilerVsPart m_vs;
     DxsoCompilerPsPart m_ps;
 
-    uint32_t m_cBuffer = 0;
-
-    struct DxsoSamplerDesc {
-      DxsoTextureType type;
-
-      uint32_t imageTypeId;
-      uint32_t imagePtrId;
-    };
-
-    std::array<DxsoSamplerDesc, 17> m_samplers;
-
-    /////////////////////////////////////////////////////
-    // Shader interface and metadata declaration methods
+    //////////////////////////////////////
+    // Common function definition methods
     void emitInit();
+
+    //////////////////////
+    // Common shader dcls
+    void emitDclConstantBuffer();
+
+    void emitDclInputArray();
+    void emitDclOutputArray();
+
+    /////////////////////////////////
+    // Shader initialization methods
     void emitVsInit();
     void emitPsInit();
 
-    void emitVsFinalize();
-    void emitPsFinalize();
-    
-    void emitVsClipping();
-    void emitPsProcessing();
-
-    void emitOutputDepthClamp();
-
-    void emitDclConstantBuffer();
-
     void emitFunctionBegin(
-        uint32_t                entryPoint,
-        uint32_t                returnType,
-        uint32_t                funcType);
-    
+            uint32_t                entryPoint,
+            uint32_t                returnType,
+            uint32_t                funcType);
+
     void emitFunctionEnd();
-    
+
     void emitFunctionLabel();
-    
+
     void emitMainFunctionBegin();
 
-    uint32_t emitNewVariable(DxsoRegisterType regType, uint32_t value = 0);
+    ///////////////////////////////
+    // Variable definition methods
+    uint32_t emitNewVariable(
+      const DxsoRegisterInfo& info);
 
-    bool isVectorReg(DxsoRegisterType type);
-
-    uint32_t emitRegisterLoad(const DxsoRegister& reg, uint32_t count = 4);
-
-    uint32_t emitRegisterSwizzle(uint32_t typeId, uint32_t varId, DxsoRegSwizzle swizzle, uint32_t count);
-
-    uint32_t emitVecTrunc(uint32_t typeId, uint32_t varId, uint32_t count);
-
-    uint32_t emitSrcOperandModifier(uint32_t typeId, uint32_t varId, DxsoRegModifier modifier, uint32_t count);
-
-    uint32_t emitDstOperandModifier(uint32_t typeId, uint32_t varId, bool saturate, bool partialPrecision);
-
-    uint32_t emitWriteMask(bool vector, uint32_t typeId, uint32_t dst, uint32_t src, DxsoRegMask writeMask);
-
-    void     emitDebugName(uint32_t varId, DxsoRegisterId id, bool deffed = false);
-
-    uint32_t emitScalarReplicant(uint32_t typeId, uint32_t varId);
-
-    uint32_t emitBoolComparison(DxsoComparison cmp, uint32_t a, uint32_t b);
+    uint32_t emitNewVariableDefault(
+      const DxsoRegisterInfo& info,
+            uint32_t          value);
+    
+    uint32_t emitNewBuiltinVariable(
+      const DxsoRegisterInfo& info,
+            spv::BuiltIn      builtIn,
+      const char*             name,
+            uint32_t          value);
 
     DxsoCfgBlock* cfgFindBlock(
       const std::initializer_list<DxsoCfgBlockType>& types);
+
+    void emitDclInterface(
+            bool         input,
+            uint32_t     regNumber,
+            DxsoSemantic semantic,
+            DxsoRegMask  mask,
+            bool         centroid);
+
+    void emitDclSampler(
+            uint32_t        idx,
+            DxsoTextureType type);
+
+    bool defineInput(uint32_t idx) {
+      bool alreadyDefined = m_interfaceSlots.inputSlots & 1u << idx;
+      m_interfaceSlots.inputSlots |= 1u << idx;
+      return alreadyDefined;
+    }
+
+    bool defineOutput(uint32_t idx) {
+      bool alreadyDefined = m_interfaceSlots.outputSlots & 1u << idx;
+      m_interfaceSlots.outputSlots |= 1u << idx;
+      return alreadyDefined;
+    }
+
+    uint32_t emitArrayIndex(
+            uint32_t          idx,
+      const DxsoBaseRegister* relative);
+
+    DxsoRegisterPointer emitInputPtr(
+            bool              texture,
+      const DxsoBaseRegister& reg,
+      const DxsoBaseRegister* relative);
+
+    DxsoRegisterPointer emitRegisterPtr(
+      const char*             name,
+            DxsoScalarType    ctype,
+            uint32_t          ccount,
+            uint32_t          defaultVal,
+            spv::StorageClass storageClass = spv::StorageClassPrivate,
+            spv::BuiltIn      builtIn      = spv::BuiltInMax);
+
+    DxsoRegisterPointer emitConstantPtr(
+            DxsoRegisterType  type,
+      const DxsoBaseRegister& reg,
+      const DxsoBaseRegister* relative);
+
+    DxsoRegisterPointer emitOutputPtr(
+            bool              texcrdOut,
+      const DxsoBaseRegister& reg,
+      const DxsoBaseRegister* relative);
+
+    DxsoRegisterPointer emitGetOperandPtr(
+      const DxsoBaseRegister& reg,
+      const DxsoBaseRegister* relative);
+
+    DxsoRegisterPointer emitGetOperandPtr(
+      const DxsoRegister& reg) {
+      return this->emitGetOperandPtr(
+        reg,
+        reg.hasRelative ? &reg.relative : nullptr);
+    }
+
+    uint32_t emitBoolComparison(DxsoComparison cmp, uint32_t a, uint32_t b);
+
+    DxsoRegisterValue emitValueLoad(
+            DxsoRegisterPointer ptr);
+
+    void emitDstStore(
+            DxsoRegisterPointer     ptr,
+            DxsoRegisterValue       value,
+            DxsoRegMask             writeMask,
+            bool                    saturate) {
+      if (value.type.ctype == DxsoScalarType::Float32) {
+        // Saturating only makes sense on floats
+        if (saturate) {
+          value.id = m_module.opNClamp(
+            getVectorTypeId(value.type), value.id,
+            m_module.constfReplicant(0.0f, value.type.ccount),
+            m_module.constfReplicant(1.0f, value.type.ccount));
+        }
+      }
+
+      this->emitValueStore(ptr, value, writeMask);
+    }
+
+    void emitValueStore(
+            DxsoRegisterPointer     ptr,
+            DxsoRegisterValue       value,
+            DxsoRegMask             writeMask);
+
+    DxsoRegisterValue emitRegisterInsert(
+            DxsoRegisterValue       dstValue,
+            DxsoRegisterValue       srcValue,
+            DxsoRegMask             srcMask);
+
+    DxsoRegisterValue emitRegisterLoadRaw(
+      const DxsoBaseRegister& reg,
+      const DxsoBaseRegister* relative);
+
+    DxsoRegisterValue emitRegisterExtend(
+            DxsoRegisterValue       value,
+            uint32_t size);
+
+    DxsoRegisterValue emitSrcOperandModifiers(
+            DxsoRegisterValue       value,
+            DxsoRegModifier         modifier);
+
+    DxsoRegisterValue emitRegisterSwizzle(
+            DxsoRegisterValue       value,
+            DxsoRegSwizzle          swizzle,
+            DxsoRegMask             writeMask);
+
+    DxsoRegisterValue emitRegisterLoad(
+      const DxsoBaseRegister& reg,
+            DxsoRegMask       writeMask,
+      const DxsoBaseRegister* relative);
+
+    DxsoRegisterValue emitRegisterLoad(
+      const DxsoRegister& reg,
+            DxsoRegMask   writeMask) {
+      return this->emitRegisterLoad(
+        reg, writeMask,
+        reg.hasRelative ? &reg.relative : nullptr);
+    }
+
+    DxsoRegisterValue emitInfinityClamp(
+            DxsoRegisterValue value);
+
+    ///////////////////////////////
+    // Handle shader ops
+    void emitDcl(const DxsoInstructionContext& ctx);
+
+    void emitDef(const DxsoInstructionContext& ctx);
+    void emitDefF(const DxsoInstructionContext& ctx);
+    void emitDefI(const DxsoInstructionContext& ctx);
+    void emitDefB(const DxsoInstructionContext& ctx);
+
+    void emitMov(const DxsoInstructionContext& ctx);
+    void emitVectorAlu(const DxsoInstructionContext& ctx);
 
     void emitControlFlowGenericLoop(
             bool     count,
@@ -225,77 +500,36 @@ namespace dxvk {
     void emitControlFlowElse(const DxsoInstructionContext& ctx);
     void emitControlFlowEndIf(const DxsoInstructionContext& ctx);
 
-    void emitVectorAlu(const DxsoInstructionContext& ctx);
-
-    uint32_t emitInfinityClamp(uint32_t typeId, uint32_t varId, bool vector = true);
-
     void emitTexCoord(const DxsoInstructionContext& ctx);
-    void emitTextureKill(const DxsoInstructionContext& ctx);
     void emitTextureSample(const DxsoInstructionContext& ctx);
+    void emitTextureKill(const DxsoInstructionContext& ctx);
 
-    void emitDcl(const DxsoInstructionContext& ctx);
-    void emitDclSampler(uint32_t idx, DxsoTextureType type);
+    ///////////////////////////////
+    // Shader finalization methods
+    void emitInputSetup();
 
-    void emitDef(DxsoOpcode opcode, const DxsoInstructionContext& ctx);
-    void emitDefF(const DxsoInstructionContext& ctx);
-    void emitDefI(const DxsoInstructionContext& ctx);
-    void emitDefB(const DxsoInstructionContext& ctx);
+    void emitVsClipping();
+    void emitPsProcessing();
+    void emitOutputDepthClamp();
 
-    void emitPointSize();
+    void emitOutputSetup();
 
-    ///////////////////////////////////
-    // Health Warning: Can cause m_regs to be
-    // realloced. Don't call me unless you accept this fact.
-    DxsoSpirvRegister getSpirvRegister(DxsoRegisterId id, bool centroid, DxsoRegister* relative);
-    DxsoSpirvRegister getSpirvRegister(const DxsoRegister& reg);
+    void emitVsFinalize();
+    void emitPsFinalize();
 
-    uint32_t spvPtr(const DxsoRegister& reg) {
-      return getSpirvRegister(reg).ptrId;
-    }
-
-    DxsoSpirvRegister mapSpirvRegister(DxsoRegisterId id, bool centroid, DxsoRegister* relative, const DxsoDeclaration* optionalPremadeDecl);
-
-    spv::StorageClass spvStorage(DxsoRegisterType regType);
-
-    DxsoSpirvRegister findBuiltInOutputPtr(DxsoUsage usage, uint32_t index);
-
-    uint32_t spvLoad(DxsoRegisterId regId) {
-      return m_module.opLoad(
-        spvTypeVar(regId.type()),
-        getSpirvRegister(regId, false, nullptr).ptrId);
-    }
-
-    uint32_t spvLoad(const DxsoRegister& reg) {
-      return m_module.opLoad(
-        spvTypeVar(reg.registerId().type()),
-        getSpirvRegister(reg).ptrId);
-    }
-
-    uint32_t spvTypeVar(DxsoRegisterType regType, uint32_t count = 4);
-    uint32_t spvTypeVar(const DxsoRegister& reg, uint32_t count = 4) {
-      return spvTypeVar(reg.registerId().type(), count);
-    }
-    uint32_t spvTypePtr(DxsoRegisterType regType, uint32_t count = 4) {
-      return m_module.defPointerType(
-        this->spvTypeVar(regType, count),
-        this->spvStorage(regType));
-    }
-    uint32_t spvTypePtr(const DxsoRegister& reg, uint32_t count = 4) {
-      return spvTypePtr(
-        reg.registerId().type(),
-        count);
-    }
-
-    ///////////////////////////////////////////////
-    // Control flow information. Stores labels for
-    // currently active if-else blocks and loops.
-    std::vector<DxsoCfgBlock> m_controlFlowBlocks;
-
-    ///////////////////////////////////////////
-    // Reads decls and generates an input slot.
-    uint32_t allocateSlot(bool input, DxsoRegisterId id, DxsoSemantic semantic, spv::BuiltIn builtin);
-
-    std::array<uint32_t, 16> m_oPtrs;
+    ///////////////////////////
+    // Type definition methods
+    uint32_t getScalarTypeId(
+            DxsoScalarType type);
+    
+    uint32_t getVectorTypeId(
+      const DxsoVectorType& type);
+    
+    uint32_t getArrayTypeId(
+      const DxsoArrayType& type);
+    
+    uint32_t getPointerTypeId(
+      const DxsoRegisterInfo& type);
 
   };
 

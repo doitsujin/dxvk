@@ -28,8 +28,7 @@ namespace dxvk {
       m_header.info(), analysis);
 
     this->runCompiler(compiler, m_code.iter());
-
-    m_decls = compiler.getDeclarations();
+    m_isgn = compiler.isgn();
 
     return compiler.finalize();
   }

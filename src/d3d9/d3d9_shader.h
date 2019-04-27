@@ -2,7 +2,6 @@
 
 #include "d3d9_resource.h"
 #include "../dxso/dxso_module.h"
-#include "../dxso/dxso_decoder.h"
 
 namespace dxvk {
 
@@ -40,13 +39,13 @@ namespace dxvk {
       return m_bytecode;
     }
 
-    const std::array<DxsoDeclaration, 16>& GetDeclarations() const {
-      return m_decl;
+    const DxsoIsgn& GetIsgn() const {
+      return m_isgn;
     }
 
   private:
 
-    std::array<DxsoDeclaration, 16> m_decl;
+    DxsoIsgn              m_isgn;
 
     Rc<DxvkShader>        m_shader;
 

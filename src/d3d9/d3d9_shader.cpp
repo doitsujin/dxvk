@@ -51,7 +51,7 @@ namespace dxvk {
     // geometry shader for vertex shader stream output
 
     m_shader = pModule->compile(*pDxsoModuleInfo, name, AnalysisInfo);
-    m_decl = pModule->getDecls();
+    m_isgn   = pModule->isgn();
     m_shader->setShaderKey(*pShaderKey);
     
     if (dumpPath.size() != 0) {

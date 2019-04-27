@@ -5,7 +5,7 @@
 #include "dxso_header.h"
 #include "dxso_ctab.h"
 
-#include "dxso_decoder.h"
+#include "dxso_isgn.h"
 #include "dxso_analysis.h"
 
 namespace dxvk {
@@ -42,8 +42,8 @@ namespace dxvk {
       const std::string&      fileName,
       const DxsoAnalysisInfo& analysis);
 
-    const std::array<DxsoDeclaration, 16>& getDecls() {
-      return m_decls;
+    const DxsoIsgn& isgn() {
+      return m_isgn;
     }
 
   private:
@@ -59,7 +59,7 @@ namespace dxvk {
     DxsoHeader      m_header;
     DxsoCode        m_code;
 
-    std::array<DxsoDeclaration, 16> m_decls;
+    DxsoIsgn        m_isgn;
 
   };
 

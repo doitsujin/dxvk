@@ -23,6 +23,11 @@ namespace dxvk {
     PSCount
   };
 
+  constexpr size_t DxsoMaxTempRegs      = 32;
+  constexpr size_t DxsoMaxTextureRegs   = 10;
+  constexpr size_t DxsoMaxInterfaceRegs = 16;
+  constexpr size_t DxsoMaxOperandCount  = 8;
+
   uint32_t computeResourceSlotId(
           DxsoProgramType shaderStage,
           DxsoBindingType bindingType,

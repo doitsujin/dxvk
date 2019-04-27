@@ -4017,22 +4017,21 @@ namespace dxvk {
       });
     }
     else {
-      std::array<DxvkVertexAttribute, caps::InputRegisterCount> attrList;
-      std::array<DxvkVertexBinding,   caps::InputRegisterCount> bindList;
+      std::array<DxvkVertexAttribute, 2 * caps::InputRegisterCount> attrList;
+      std::array<DxvkVertexBinding,   2 * caps::InputRegisterCount> bindList;
 
       uint32_t attrMask = 0;
       uint32_t bindMask = 0;
 
       const auto* commonShader = m_state.vertexShader->GetCommonShader();
-      const auto& shaderDecls  = commonShader->GetDeclarations();
+      const auto& isgn         = commonShader->GetIsgn();
       const auto  slots        = commonShader->GetShader()->interfaceSlots();
       const auto& elements     = m_state.vertexDecl->GetElements();
 
-      for (uint32_t i = 0; i < shaderDecls.size(); i++) {
-        if (!(slots.inputSlots & (1u << i)))
-          continue;
+      for (uint32_t i = 0; i < isgn.elemCount; i++) {
+        const auto& decl = isgn.elems[i];
 
-        const auto& decl = shaderDecls[i];
+        const uint32_t slot = decl.slot;
 
         DxvkVertexAttribute attrib;
         attrib.location = i;
@@ -4040,6 +4039,7 @@ namespace dxvk {
         attrib.format   = VK_FORMAT_R8_UNORM;
         attrib.offset   = 0;
 
+        bool attribFound = false;
         for (const auto& element : elements) {
           DxsoSemantic elementSemantic = { static_cast<DxsoUsage>(element.Usage), element.UsageIndex };
 
@@ -4049,10 +4049,13 @@ namespace dxvk {
             attrib.offset  = element.Offset;
 
             m_streamUsageMask |= 1u << attrib.binding;
-
+            attribFound = true;
             break;
           }
         }
+
+        if (!attribFound)
+          continue;
 
         attrList.at(i) = attrib;
 
@@ -4073,9 +4076,6 @@ namespace dxvk {
         bool bindingDefined = false;
 
         for (uint32_t j = 0; j < i; j++) {
-          if (!(slots.inputSlots & (1u << j)))
-            continue;
-
           uint32_t bindingId = attrList.at(j).binding;
 
           if (binding.binding == bindingId) {

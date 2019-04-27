@@ -4,32 +4,35 @@
 
 namespace dxvk {
 
-  DxsoShaderInstruction::DxsoShaderInstruction() {}
-
-  DxsoShaderInstruction::DxsoShaderInstruction(const DxsoDecodeContext& context, DxsoCodeIter& iter) {
-    m_token             = iter.read();
-    m_instructionLength = updateInstructionLength(context);
+  bool DxsoSemantic::operator== (const DxsoSemantic& b) const {
+    return usage == b.usage && usageIndex == b.usageIndex;
   }
 
-  uint32_t DxsoShaderInstruction::updateInstructionLength(const DxsoDecodeContext& context) {
+  bool DxsoSemantic::operator!= (const DxsoSemantic& b) const {
+    return usage != b.usage || usageIndex != b.usageIndex;
+  }
+  
+  uint32_t DxsoDecodeContext::decodeInstructionLength(uint32_t token) {
+    auto opcode = m_ctx.instruction.opcode;
+
     uint32_t length  = 0;
-    const auto& info = context.getProgramInfo();
+    const auto& info = this->getProgramInfo();
 
     // Comment ops have their own system for getting length.
-    if (opcode() == DxsoOpcode::Comment)
-      return (m_token & 0x7fff000) >> 16;
+    if (opcode == DxsoOpcode::Comment)
+      return (token & 0x7fff000) >> 16;
 
-    if (opcode() == DxsoOpcode::End)
+    if (opcode == DxsoOpcode::End)
       return 0;
 
     // SM2.0 and above has the length of the op in instruction count baked into it.
     // SM1.4 and below have fixed lengths and run off expectation.
     // Phase does not respect the following rules. :shrug:
-    if (opcode() != DxsoOpcode::Phase) {
+    if (opcode != DxsoOpcode::Phase) {
       if (info.majorVersion() >= 2)
-        length = (m_token & 0x0f000000) >> 24;
+        length = (token & 0x0f000000) >> 24;
       else
-        length = DxsoGetDefaultOpcodeLength(opcode());
+        length = DxsoGetDefaultOpcodeLength(opcode);
     }
 
     // We've already logged this...
@@ -40,7 +43,7 @@ namespace dxvk {
     // As stated before, it also doesn't have the length of the op baked into the opcode
     if (info.majorVersion() == 1
      && info.minorVersion() == 4) {
-      switch (opcode()) {
+      switch (opcode) {
         case DxsoOpcode::TexCoord:
         case DxsoOpcode::Tex: length += 1;
         default: break;
@@ -50,54 +53,13 @@ namespace dxvk {
     return length;
   }
 
-  bool DxsoSemantic::operator== (const DxsoSemantic& b) const {
-    return usage == b.usage && usageIndex == b.usageIndex;
+  bool DxsoDecodeContext::relativeAddressingUsesToken(
+          DxsoInstructionArgumentType type) {
+    auto& info = this->getProgramInfo();
+
+    return (info.majorVersion() >= 2 && type == DxsoInstructionArgumentType::Source)
+        || (info.majorVersion() >= 3 && type == DxsoInstructionArgumentType::Destination);
   }
-
-  bool DxsoSemantic::operator!= (const DxsoSemantic& b) const {
-    return usage != b.usage || usageIndex != b.usageIndex;
-  }
-
-  size_t DxsoSemanticHash::operator () (const DxsoSemantic& key) const {
-    std::hash<DxsoUsage> ehash;
-    std::hash<uint32_t>  uhash;
-
-    DxvkHashState state;
-    state.add(ehash(key.usage));
-    state.add(uhash(key.usageIndex));
-
-    return state;
-  }
-
-  bool DxsoSemanticEq::operator () (const DxsoSemantic& a, const DxsoSemantic& b) const {
-    return a == b;
-  }
-
-  DxsoRegister::DxsoRegister()
-    : m_type{ DxsoInstructionArgumentType::Source }, m_token{ 0 }, m_relativeToken{ 0 } {}
-
-  DxsoRegister::DxsoRegister(DxsoInstructionArgumentType type, uint32_t token, uint32_t relativeToken) 
-    : m_type{ type }, m_token{ token }, m_relativeToken{ relativeToken } {}
-
-  DxsoRegister::DxsoRegister(DxsoInstructionArgumentType type, const DxsoDecodeContext& context, DxsoCodeIter& iter)
-    : m_type{ type } {
-    m_token         = iter.read();
-    m_relativeToken = 0;
-
-    if (this->isRelative()
-     && this->relativeAddressingUsesToken(context)) {
-      m_relativeToken = iter.read();
-      m_hasRelativeToken = true;
-    }
-  }
-
-  bool DxsoRegister::relativeAddressingUsesToken(const DxsoDecodeContext& context) const {
-    auto& info = context.getProgramInfo();
-
-    return (info.majorVersion() >= 2 && m_type == DxsoInstructionArgumentType::Source)
-        || (info.majorVersion() >= 3 && m_type == DxsoInstructionArgumentType::Destination);
-  }
-
 
   void DxsoDecodeContext::decodeDeclaration(DxsoCodeIter& iter) {
     uint32_t dclToken = iter.read();
@@ -108,83 +70,159 @@ namespace dxvk {
   }
 
   void DxsoDecodeContext::decodeDefinition(DxsoOpcode opcode, DxsoCodeIter& iter) {
-    const uint32_t instructionLength = std::min(m_ctx.instruction.instructionLength() - 1, 4u);
-
-    std::memset(m_ctx.def.data(), 0, sizeof(m_ctx.def));
+    const uint32_t instructionLength = std::min(m_ctx.instruction.tokenLength - 1, 4u);
 
     for (uint32_t i = 0; i < instructionLength; i++)
-      m_ctx.def[i] = iter.read();
+      m_ctx.def.uint32[i] = iter.read();
   }
 
-  void DxsoDecodeContext::decodeDestinationRegister(DxsoCodeIter& iter) {
-    m_ctx.dst = DxsoRegister(DxsoInstructionArgumentType::Destination, *this, iter);
+  void DxsoDecodeContext::decodeBaseRegister(
+            DxsoBaseRegister& reg,
+            uint32_t          token) {
+    reg.id.type = static_cast<DxsoRegisterType>(
+        ((token & 0x00001800) >> 8)
+      | ((token & 0x70000000) >> 28));
+
+    reg.id.num = token & 0x000007ff;
   }
 
-  void DxsoDecodeContext::decodeSourceRegister(uint32_t i, DxsoCodeIter& iter) {
+  void DxsoDecodeContext::decodeGenericRegister(
+            DxsoRegister& reg,
+            uint32_t      token) {
+    this->decodeBaseRegister(reg, token);
+
+    reg.hasRelative = (token & (1 << 13)) == 8192;
+    reg.relative.id = DxsoRegisterId {
+      DxsoRegisterType::Addr, 0 };
+
+    reg.centroid         = token & (4 << 20);
+    reg.partialPrecision = token & (2 << 20);
+  }
+
+   void DxsoDecodeContext::decodeRelativeRegister(
+            DxsoBaseRegister& reg,
+            uint32_t          token) {
+    this->decodeBaseRegister(reg, token);
+
+    reg.swizzle = DxsoRegSwizzle(
+      uint8_t((token & 0x00ff0000) >> 16));
+  }
+
+  bool DxsoDecodeContext::decodeDestinationRegister(DxsoCodeIter& iter) {
+    uint32_t token = iter.read();
+
+    this->decodeGenericRegister(m_ctx.dst, token);
+
+    m_ctx.dst.mask = DxsoRegMask(
+      uint8_t((token & 0x000f0000) >> 16));
+
+    m_ctx.dst.saturate = (token & (1 << 20)) != 0;
+
+    const bool extraToken =
+      relativeAddressingUsesToken(DxsoInstructionArgumentType::Destination);
+
+    if (m_ctx.dst.hasRelative && extraToken) {
+      this->decodeRelativeRegister(m_ctx.dst.relative, iter.read());
+      return true;
+    }
+
+    return false;
+  }
+
+  bool DxsoDecodeContext::decodeSourceRegister(uint32_t i, DxsoCodeIter& iter) {
     if (i >= m_ctx.src.size())
       throw DxvkError("DxsoDecodeContext::decodeSourceRegister: source register out of range.");
 
-    m_ctx.src[i] = DxsoRegister(DxsoInstructionArgumentType::Source, *this, iter);
+    uint32_t token = iter.read();
+
+    this->decodeGenericRegister(m_ctx.src[i], token);
+
+    m_ctx.src[i].swizzle = DxsoRegSwizzle(
+      uint8_t((token & 0x00ff0000) >> 16));
+
+    m_ctx.src[i].modifier = static_cast<DxsoRegModifier>(
+      (token & 0x0f000000) >> 24);
+
+    const bool extraToken =
+      relativeAddressingUsesToken(DxsoInstructionArgumentType::Source);
+
+    if (m_ctx.src[i].hasRelative && extraToken) {
+      this->decodeRelativeRegister(m_ctx.src[i].relative, iter.read());
+      return true;
+    }
+
+    return false;
   }
 
   bool DxsoDecodeContext::decodeInstruction(DxsoCodeIter& iter) {
-    m_ctx.instruction = DxsoShaderInstruction(*this, iter);
+    uint32_t token = iter.read();
 
-    const uint32_t instructionLength = m_ctx.instruction.instructionLength();
-    const DxsoOpcode opcode          = m_ctx.instruction.opcode();
+    m_ctx.instruction.opcode = static_cast<DxsoOpcode>(
+      token & 0x0000ffff);
 
-    if (opcode == DxsoOpcode::End)
-      return false;
+    m_ctx.instruction.specificData.uint32 =
+      (token & 0x00ff0000) >> 16;
 
-    if (opcode == DxsoOpcode::If
-     || opcode == DxsoOpcode::Ifc
-     || opcode == DxsoOpcode::Rep
-     || opcode == DxsoOpcode::Loop
-     || opcode == DxsoOpcode::BreakC
-     || opcode == DxsoOpcode::BreakP) {
-      uint32_t sourceIdx = 0;
-      for (uint32_t i = 0; i < instructionLength; i++) {
-        this->decodeSourceRegister(i, iter);
-        if (m_ctx.src[sourceIdx].advanceExtra(*this))
-          i++;
+    m_ctx.instruction.tokenLength =
+      this->decodeInstructionLength(token);
 
-        sourceIdx++;
-      }
-    }
-    else if (opcode == DxsoOpcode::Dcl) {
-      this->decodeDeclaration(iter);
-      this->decodeDestinationRegister(iter);
-    }
-    else if (opcode == DxsoOpcode::Def
-          || opcode == DxsoOpcode::DefI
-          || opcode == DxsoOpcode::DefB) {
-      this->decodeDestinationRegister(iter);
-      this->decodeDefinition(opcode, iter);
-    }
-    else if (opcode == DxsoOpcode::Comment) {
-      // TODO: handle CTAB
-      for (uint32_t i = 0; i  < instructionLength; i++)
-        iter.read();
-    }
-    else {
-      uint32_t sourceIdx = 0;
-      for (uint32_t i = 0; i < instructionLength; i++) {
-        if (i == 0) {
-          this->decodeDestinationRegister(iter);
-          if (m_ctx.dst.advanceExtra(*this))
-            i++;
-        }
-        else {
-          this->decodeSourceRegister(sourceIdx, iter);
-          if (m_ctx.src[sourceIdx].advanceExtra(*this))
+    const uint32_t tokenLength =
+      m_ctx.instruction.tokenLength;
+
+    switch (m_ctx.instruction.opcode) {
+      case DxsoOpcode::If:
+      case DxsoOpcode::Ifc:
+      case DxsoOpcode::Rep:
+      case DxsoOpcode::Loop:
+      case DxsoOpcode::BreakC:
+      case DxsoOpcode::BreakP: {
+        uint32_t sourceIdx = 0;
+        for (uint32_t i = 0; i < tokenLength; i++) {
+          if (this->decodeSourceRegister(i, iter))
             i++;
 
           sourceIdx++;
         }
+        return true;
       }
-    }
 
-    return true;
+      case DxsoOpcode::Dcl:
+        this->decodeDeclaration(iter);
+        this->decodeDestinationRegister(iter);
+        return true;
+
+      case DxsoOpcode::Def:
+      case DxsoOpcode::DefI:
+      case DxsoOpcode::DefB:
+        this->decodeDestinationRegister(iter);
+        this->decodeDefinition(
+          m_ctx.instruction.opcode, iter);
+        return true;
+
+      case DxsoOpcode::Comment:
+        iter = iter.skip(tokenLength);
+        return true;
+
+      default: {
+        uint32_t sourceIdx = 0;
+        for (uint32_t i = 0; i < tokenLength; i++) {
+          if (i == 0) {
+            if (this->decodeDestinationRegister(iter))
+              i++;
+          }
+          else {
+            if (this->decodeSourceRegister(sourceIdx, iter))
+              i++;
+
+            sourceIdx++;
+          }
+        }
+        return true;
+      }
+
+      case DxsoOpcode::End:
+        return false;
+    }
   }
 
   std::ostream& operator << (std::ostream& os, DxsoUsage usage) {

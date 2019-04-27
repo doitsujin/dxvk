@@ -123,7 +123,8 @@ namespace dxvk {
     TempFloat16    = 16, // 16-bit float temp register file
     MiscType       = 17, // Miscellaneous (single) registers.
     Label          = 18, // Label
-    Predicate      = 19  // Predicate register
+    Predicate      = 19, // Predicate register
+    PixelTexcoord  = 20
   };
 
   enum class DxsoUsage : uint32_t {
