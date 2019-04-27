@@ -2244,8 +2244,11 @@ void DxsoCompiler::emitControlFlowGenericLoop(
           mask = DxsoRegMask(maskValues[0], maskValues[1], maskValues[2], maskValues[3]);
         }
 
-        outputPtr.id = emitNewBuiltinVariable(info, builtIn, name,
+        outputPtr.id = emitNewVariableDefault(info,
           m_module.constfReplicant(0.0f, info.type.ccount));
+
+        m_module.setDebugName(outputPtr.id, name);
+        m_module.decorateBuiltIn(outputPtr.id, builtIn);
 
         if (builtIn == spv::BuiltInPosition)
           m_vs.oPos = outputPtr;
