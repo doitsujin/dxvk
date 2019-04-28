@@ -146,8 +146,8 @@ namespace dxvk {
 
   enum class DxsoTextureType : uint32_t {
     Texture2D   = 2,
-    Texture3D   = 3,
-    TextureCube = 4
+    TextureCube = 3,
+    Texture3D   = 4
   };
 
   enum DxsoReasterizerOutIndices : uint32_t {
