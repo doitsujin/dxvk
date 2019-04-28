@@ -2556,12 +2556,18 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     }
 
     // r0 in PS1 is the colour output register. Move r0 -> cO0 here.
-    /*if (m_programInfo.majorVersion() == 1
+    if (m_programInfo.majorVersion() == 1
     && m_programInfo.type() == DxsoProgramType::PixelShader) {
-      uint32_t r0 = spvLoad({ DxsoRegisterType::Temp, 0 });
-      uint32_t cOutPtr = getSpirvRegister({ DxsoRegisterType::ColorOut, 0 }, false, nullptr).ptrId;
-      m_module.opStore(cOutPtr, r0);
-    }*/
+      DxsoRegister r0;
+      r0.id = { DxsoRegisterType::Temp, 0 };
+
+      DxsoRegister c0;
+      c0.id = { DxsoRegisterType::ColorOut, 0 };
+
+      DxsoRegisterValue val   = emitRegisterLoadRaw(r0, nullptr);
+      DxsoRegisterPointer out = emitGetOperandPtr(c0);
+      m_module.opStore(out.id, val.id);
+    }
 
     // No need to setup output here as it's non-indexable
     // everything has already gone to the right place!
