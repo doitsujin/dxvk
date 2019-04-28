@@ -312,7 +312,7 @@ namespace dxvk {
   void D3D9Presenter::present() {
     // Wait for the sync event so that we
     // respect the maximum frame latency
-    Rc<DxvkEvent> syncEvent = m_parent->GetFrameSyncEvent();
+    Rc<DxvkEvent> syncEvent = m_parent->GetFrameSyncEvent(m_desc.bufferCount);
     syncEvent->wait();
 
     if (m_hud != nullptr)
@@ -350,7 +350,7 @@ namespace dxvk {
       uint32_t imageIndex = 0;
 
       VkResult status = m_presenter->acquireNextImage(
-        sync.acquire, sync.fence, imageIndex);
+        sync.acquire, VK_NULL_HANDLE, imageIndex);
 
       while (status != VK_SUCCESS && status != VK_SUBOPTIMAL_KHR) {
         recreateSwapChain(&m_desc);
@@ -359,11 +359,8 @@ namespace dxvk {
         sync = m_presenter->getSyncSemaphores();
 
         status = m_presenter->acquireNextImage(
-          sync.acquire, sync.fence, imageIndex);
+          sync.acquire, VK_NULL_HANDLE, imageIndex);
       }
-
-      // Wait for image to become actually available
-      m_presenter->waitForFence(sync.fence);
 
       // Use an appropriate texture filter depending on whether
       // the back buffer size matches the swap image size
@@ -512,7 +509,7 @@ namespace dxvk {
 
     vk::PresenterDesc presenterDesc;
     presenterDesc.imageExtent = { m_desc.width, m_desc.height };
-    presenterDesc.imageCount = pickImageCount(m_desc.bufferCount);
+    presenterDesc.imageCount = pickImageCount(m_desc.bufferCount + 1); // Account for front buffer
     presenterDesc.numFormats = pickFormats(m_desc.format, presenterDesc.formats);
     presenterDesc.numPresentModes = pickPresentModes(m_desc.presentInterval != 0, presenterDesc.presentModes);
 

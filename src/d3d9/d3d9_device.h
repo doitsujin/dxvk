@@ -605,7 +605,7 @@ namespace dxvk {
       return m_dxvkDevice;
     }
 
-    Rc<DxvkEvent> GetFrameSyncEvent();
+    Rc<DxvkEvent> GetFrameSyncEvent(UINT BufferCount);
 
     D3D9_VK_FORMAT_MAPPING LookupFormat(
       D3D9Format            Format) const;

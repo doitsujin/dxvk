@@ -2823,8 +2823,12 @@ namespace dxvk {
     return m_window;
   }
 
-  Rc<DxvkEvent> Direct3DDevice9Ex::GetFrameSyncEvent() {
+  Rc<DxvkEvent> Direct3DDevice9Ex::GetFrameSyncEvent(UINT BufferCount) {
     uint32_t frameLatency = m_frameLatency;
+
+    if (BufferCount != 0
+     && BufferCount <= frameLatency)
+      frameLatency = BufferCount;
 
     if (m_frameLatencyCap != 0
       && m_frameLatencyCap <= frameLatency)
