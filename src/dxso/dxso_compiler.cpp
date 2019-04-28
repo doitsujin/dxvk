@@ -590,6 +590,9 @@ namespace dxvk {
         sampler.typeId, spv::StorageClassUniformConstant),
       spv::StorageClassUniformConstant);
 
+    std::string name = str::format("s", idx);
+    m_module.setDebugName(sampler.varId, name.c_str());
+
     const uint32_t bindingId = computeResourceSlotId(
       m_programInfo.type(), DxsoBindingType::Image, idx);
 
