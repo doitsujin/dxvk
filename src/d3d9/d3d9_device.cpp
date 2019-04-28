@@ -3644,8 +3644,18 @@ namespace dxvk {
     // corner so we can get away with flipping the viewport.
     const D3DVIEWPORT9& vp = m_state.viewport;
 
-    // Correctness Factor
-    float cf = m_d3d9Options.halfPixelOffset ? 0.5f : 0.0f;
+    // Correctness Factor for 1/2 texel offset
+    float cf = 0.0f;
+    if (m_d3d9Options.halfPixelOffset) {
+      cf = 0.5f;
+
+      // HACK: UE3 bug re. tonemapper + shadow sampling being red:-
+      // We need to bias this if the render targets are powers of two
+      // in order to make imprecision biased towards infinity.
+      if (vp.Width  & (vp.Width  - 1)
+       && vp.Height & (vp.Height - 1))
+        cf -= 1.0f / 128.0f;
+    }
 
     viewport = VkViewport{
       float(vp.X)     + cf,    float(vp.Height + vp.Y) + cf,
