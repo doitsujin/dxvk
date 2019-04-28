@@ -2090,13 +2090,21 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     if (m_programInfo.majorVersion() >= 2 ||
        (m_programInfo.majorVersion() == 1
      && m_programInfo.minorVersion() == 4)) // SM 2.0+ or 1.4
-      texReg = emitRegisterLoad(ctx.dst, srcMask);
+      texReg = emitRegisterLoadRaw(ctx.dst, ctx.dst.hasRelative ? &ctx.dst.relative : nullptr);
     else { // SM 1.0-1.3
       DxsoRegister texcoord;
       texcoord.id = { DxsoRegisterType::PixelTexcoord, ctx.dst.id.num };
 
-      texReg = emitRegisterLoad(texcoord, srcMask);
+      texReg = emitRegisterLoadRaw(texcoord, nullptr);
     }
+
+    std::array<uint32_t, 3> indices = { 0, 1, 2 };
+
+    texReg.type.ccount = 3;
+    texReg.id = m_module.opVectorShuffle(
+      getVectorTypeId(texReg.type),
+      texReg.id, texReg.id,
+      indices.size(), indices.data());
 
     const uint32_t boolVecTypeId =
       getVectorTypeId({ DxsoScalarType::Bool, texReg.type.ccount });
