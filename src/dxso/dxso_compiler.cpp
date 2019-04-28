@@ -2203,8 +2203,30 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       indexPtr.type = inputPtr.type;
       indexPtr.type.ccount = 4;
 
-      this->emitValueStore(indexPtr,
-        this->emitValueLoad(inputPtr), elem.mask);
+      DxsoRegisterValue indexVal = this->emitValueLoad(inputPtr);
+
+      DxsoRegisterValue workingReg;
+      workingReg.type = indexVal.type;
+
+      workingReg.id = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
+
+      DxsoRegMask mask = elem.mask;
+      if (mask.popCount() == 0)
+        mask = DxsoRegMask(true, true, true, true);
+
+      std::array<uint32_t, 4> indices = { 0, 1, 2, 3 };
+      uint32_t count = 0;
+      for (uint32_t i = 0; i < 4; i++) {
+        if (mask[i]) {
+          indices[i] = i + 4;
+          count++;
+        }
+      }
+
+      workingReg.id = m_module.opVectorShuffle(getVectorTypeId(workingReg.type),
+        workingReg.id, indexVal.id, 4, indices.data());
+
+      m_module.opStore(indexPtr.id, workingReg.id);
     }
   }
 
@@ -2276,8 +2298,27 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       indexPtr.type = outputPtr.type;
       indexPtr.type.ccount = 4;
 
-      this->emitValueStore(outputPtr,
-        this->emitValueLoad(indexPtr), mask);
+      DxsoRegisterValue indexVal = this->emitValueLoad(indexPtr);
+
+      DxsoRegisterValue workingReg;
+      workingReg.type = indexVal.type;
+
+      workingReg.id = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
+
+      if (mask.popCount() == 0)
+        mask = DxsoRegMask(true, true, true, true);
+
+      std::array<uint32_t, 4> indices = { 0, 1, 2, 3 };
+      uint32_t count = 0;
+      for (uint32_t i = 0; i < 4; i++) {
+        if (mask[i])
+          indices[count++] = i + 4;
+      }
+
+      workingReg.id = m_module.opVectorShuffle(getVectorTypeId(workingReg.type),
+        workingReg.id, indexVal.id, 4, indices.data());
+
+      m_module.opStore(outputPtr.id, workingReg.id);
     }
   }
 
