@@ -3173,10 +3173,10 @@ namespace dxvk {
 
     // Do we have a pending copy?
     if (pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER) {
-      bool fixup8888 = pResource->Desc()->Format == D3D9Format::R8G8B8;
+      bool fixup = pResource->RequiresFixup();
 
       // Do we need to do some fixup before copying to image?
-      if (fixup8888 && !readOnly)
+      if (fixup && !readOnly)
         FixupFormat(pResource, Face, MipLevel);
 
       // Are we fully unlocked to flush me to the GPU?
@@ -3261,6 +3261,7 @@ namespace dxvk {
         Direct3DCommonTexture9* pResource,
         UINT                    Face,
         UINT                    MipLevel) {
+    D3D9Format format = pResource->Desc()->Format;
     UINT Subresource = pResource->CalcSubresource(Face, MipLevel);
 
     const Rc<DxvkImage>  mappedImage  = pResource->GetImage();
@@ -3291,13 +3292,23 @@ namespace dxvk {
     uint8_t * dst = reinterpret_cast<uint8_t*>(fixupSlice.mapPtr);
     uint8_t * src = reinterpret_cast<uint8_t*>(mappingSlice.mapPtr);
 
-    for (uint32_t z = 0; z < levelExtent.depth; z++) {
-      for (uint32_t y = 0; y < levelExtent.height; y++) {
-        for (uint32_t x = 0; x < levelExtent.width; x++) {
-          for (uint32_t c = 0; c < 3; c++)
-            dst[z * slicePitch + y * rowPitch + x * 4 + c] = src[z * slicePitch + y * rowPitch + x * 3 + c];
-
-          dst[z * slicePitch + y * rowPitch + x * 4 + 3] = 255;
+    if (format == D3D9Format::R8G8B8) {
+      for (uint32_t z = 0; z < levelExtent.depth; z++) {
+        for (uint32_t y = 0; y < levelExtent.height; y++) {
+          for (uint32_t x = 0; x < levelExtent.width; x++) {
+            for (uint32_t c = 0; c < 3; c++)
+              dst[z * slicePitch + y * rowPitch + x * 4 + c] = src[z * slicePitch + y * rowPitch + x * 3 + c];
+          }
+        }
+      }
+    }
+    else if (format == D3D9Format::A8L8) {
+      for (uint32_t z = 0; z < levelExtent.depth; z++) {
+        for (uint32_t y = 0; y < levelExtent.height; y++) {
+          for (uint32_t x = 0; x < levelExtent.width; x++) {
+            for (uint32_t c = 0; c < 2; c++)
+              dst[z * slicePitch + y * rowPitch + x * 4 + c * 3] = src[z * slicePitch + y * rowPitch + x * 3 + c];
+          }
         }
       }
     }

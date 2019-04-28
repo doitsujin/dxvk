@@ -164,6 +164,11 @@ namespace dxvk {
       return m_depthStencilView;
     }
 
+    bool RequiresFixup() const {
+      return m_desc.Format == D3D9Format::R8G8B8
+          || m_desc.Format == D3D9Format::A8L8;
+    }
+
     UINT GetMipCount() const {
       return m_desc.MipLevels;
     }

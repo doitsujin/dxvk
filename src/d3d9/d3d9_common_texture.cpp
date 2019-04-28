@@ -368,8 +368,8 @@ namespace dxvk {
     if (!m_desc.Lockable)
       return D3D9_COMMON_TEXTURE_MAP_MODE_NONE;
 
-    // This format requires fixup to an 8888.
-    if (m_desc.Format == D3D9Format::R8G8B8)
+    // These format requires fixup to an 8888.
+    if (this->RequiresFixup())
       return D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER;
 
     // Depth-stencil formats in D3D9 can be mapped and follow special
@@ -426,7 +426,7 @@ namespace dxvk {
 
     m_mappingBuffers.at(Subresource) = m_device->GetDXVKDevice()->createBuffer(info, memoryType);
 
-    if (m_desc.Format == D3D9Format::R8G8B8) {
+    if (this->RequiresFixup()) {
       m_fixupBuffers.at(Subresource) =
         m_device->GetDXVKDevice()->createBuffer(info, memoryType);
     }
