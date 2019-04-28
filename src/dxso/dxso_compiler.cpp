@@ -581,7 +581,7 @@ namespace dxvk {
     sampler.typeId = m_module.defImageType(
       m_module.defFloatType(32),
       dimensionality, 0, 0, 0, 1,
-      spv::ImageFormatR32f);
+      spv::ImageFormatUnknown);
 
     sampler.typeId = m_module.defSampledImageType(sampler.typeId);
 
