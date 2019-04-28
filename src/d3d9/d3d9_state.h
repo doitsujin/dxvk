@@ -14,8 +14,8 @@ namespace dxvk {
   static constexpr uint32_t SamplerCount      = 21;
 
   namespace hacks::PointSize {
-    DWORD AlphaToCoverageDisabled = MAKEFOURCC('A', '2', 'M', '0');
-    DWORD AlphaToCoverageEnabled  = MAKEFOURCC('A', '2', 'M', '1');;
+    static constexpr DWORD AlphaToCoverageDisabled = MAKEFOURCC('A', '2', 'M', '0');
+    static constexpr DWORD AlphaToCoverageEnabled  = MAKEFOURCC('A', '2', 'M', '1');;
   }
 
   class Direct3DSurface9;
