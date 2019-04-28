@@ -52,6 +52,9 @@ namespace dxvk::caps {
     if (rt && CheckFormat == D3D9Format::NULL_FORMAT && twoDimensional)
       return D3D_OK;
 
+    if (CheckFormat == D3D9Format::ATOC && surface)
+      return D3D_OK;
+
     // I really don't want to support this...
     if (dmap)
       return D3DERR_NOTAVAILABLE;

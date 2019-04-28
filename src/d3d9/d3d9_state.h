@@ -13,6 +13,11 @@ namespace dxvk {
   static constexpr uint32_t SamplerStateCount = D3DSAMP_DMAPOFFSET + 1;
   static constexpr uint32_t SamplerCount      = 21;
 
+  namespace hacks::PointSize {
+    DWORD AlphaToCoverageDisabled = MAKEFOURCC('A', '2', 'M', '0');
+    DWORD AlphaToCoverageEnabled  = MAKEFOURCC('A', '2', 'M', '1');;
+  }
+
   class Direct3DSurface9;
   class D3D9VertexShader;
   class D3D9PixelShader;
