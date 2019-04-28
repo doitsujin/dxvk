@@ -531,7 +531,7 @@ namespace dxvk {
       return VK_IMAGE_VIEW_TYPE_3D;
 
     case D3DRTYPE_CUBETEXTURE:
-      return VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
+      return VK_IMAGE_VIEW_TYPE_CUBE;
     }
   }
 

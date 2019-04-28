@@ -568,9 +568,6 @@ namespace dxvk {
         break;
 
       case DxsoTextureType::TextureCube:
-        m_module.enableCapability(
-          spv::CapabilitySampledCubeArray);
-
         dimensionality = spv::DimCube;
         viewType = VK_IMAGE_VIEW_TYPE_CUBE;
         break;
