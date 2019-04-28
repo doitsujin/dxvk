@@ -1251,7 +1251,7 @@ namespace dxvk {
 
   DxsoRegisterValue DxsoCompiler::emitInfinityClamp(
             DxsoRegisterValue value) {
-    value.id = m_module.opFClamp(getVectorTypeId(value.type), value.id,
+    value.id = m_module.opNClamp(getVectorTypeId(value.type), value.id,
       m_module.constfReplicant(-FLT_MAX, value.type.ccount),
       m_module.constfReplicant( FLT_MAX, value.type.ccount));
 
