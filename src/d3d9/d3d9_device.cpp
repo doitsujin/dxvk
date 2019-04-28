@@ -3307,7 +3307,7 @@ namespace dxvk {
         for (uint32_t y = 0; y < levelExtent.height; y++) {
           for (uint32_t x = 0; x < levelExtent.width; x++) {
             for (uint32_t c = 0; c < 2; c++)
-              dst[z * slicePitch + y * rowPitch + x * 4 + c * 3] = src[z * slicePitch + y * rowPitch + x * 3 + c];
+              dst[z * slicePitch + y * rowPitch + x * 4 + c * 3] = src[z * slicePitch + y * rowPitch + x * 2 + c];
           }
         }
       }
