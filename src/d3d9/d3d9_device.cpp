@@ -3750,9 +3750,9 @@ namespace dxvk {
     baseMode.colorDstFactor = DecodeBlendFactor(D3DBLEND  ( state[D3DRS_DESTBLEND] ), false);
     baseMode.colorBlendOp   = DecodeBlendOp    (D3DBLENDOP( state[D3DRS_BLENDOP] ));
 
-    baseMode.alphaSrcFactor = DecodeBlendFactor(separateAlpha ? D3DBLEND  ( state[D3DRS_SRCBLENDALPHA] )  : D3DBLEND_ONE, true);
-    baseMode.alphaDstFactor = DecodeBlendFactor(separateAlpha ? D3DBLEND  ( state[D3DRS_DESTBLENDALPHA] ) : D3DBLEND_ONE, true);
-    baseMode.alphaBlendOp   = DecodeBlendOp    (separateAlpha ? D3DBLENDOP( state[D3DRS_BLENDOPALPHA] )   : D3DBLENDOP_ADD);
+    baseMode.alphaSrcFactor = DecodeBlendFactor(separateAlpha ? D3DBLEND  ( state[D3DRS_SRCBLENDALPHA] )  : D3DBLEND  ( state[D3DRS_SRCBLEND] ),  true);
+    baseMode.alphaDstFactor = DecodeBlendFactor(separateAlpha ? D3DBLEND  ( state[D3DRS_DESTBLENDALPHA] ) : D3DBLEND  ( state[D3DRS_DESTBLEND] ), true);
+    baseMode.alphaBlendOp   = DecodeBlendOp    (separateAlpha ? D3DBLENDOP( state[D3DRS_BLENDOPALPHA] )   : D3DBLENDOP( state[D3DRS_BLENDOP] ));
 
     std::array<DxvkBlendMode, 4> modes;
     for (uint32_t i = 0; i < modes.size(); i++) {
