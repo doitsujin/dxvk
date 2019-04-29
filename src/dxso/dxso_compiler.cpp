@@ -2030,7 +2030,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
     DxsoRegisterValue result;
     result.type.ctype  = dst.type.ctype;
-    result.type.ccount = ctx.dst.mask.popCount();
+    result.type.ccount = 4;
 
     const uint32_t typeId = getVectorTypeId(result.type);
 
