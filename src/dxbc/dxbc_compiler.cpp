@@ -2666,7 +2666,6 @@ namespace dxvk {
     //    (src0) Structure index
     //    (src1) Byte offset
     //    (src2) Source register
-    // TODO Check if resource is bound
     const bool isStructured = ins.op == DxbcOpcode::LdStructured;
     
     // Source register. The exact way we access
@@ -2701,7 +2700,6 @@ namespace dxvk {
     //    (src0) Structure index
     //    (src1) Byte offset
     //    (src2) Source register
-    // TODO Check if resource is bound
     const bool isStructured = ins.op == DxbcOpcode::StoreStructured;
     
     // Source register. The exact way we access
