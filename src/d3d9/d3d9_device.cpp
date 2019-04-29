@@ -965,6 +965,16 @@ namespace dxvk {
     if (RenderTargetIndex == 0) {
       const auto* desc = m_state.renderTargets[0]->GetCommonTexture()->Desc();
 
+      bool validSampleMask = desc->MultiSample > D3DMULTISAMPLE_NONMASKABLE;
+
+      if (validSampleMask != m_flags.test(D3D9DeviceFlag::ValidSampleMask)) {
+        m_flags.clr(D3D9DeviceFlag::ValidSampleMask);
+        if (validSampleMask)
+          m_flags.set(D3D9DeviceFlag::ValidSampleMask);
+
+        BindMultiSampleState();
+      }
+
       D3DVIEWPORT9 viewport;
       viewport.X = 0;
       viewport.Y = 0;
@@ -1273,6 +1283,11 @@ namespace dxvk {
 
         case D3DRS_BLENDFACTOR:
           BindBlendFactor();
+          break;
+
+        case D3DRS_MULTISAMPLEMASK:
+          if (m_flags.test(D3D9DeviceFlag::ValidSampleMask))
+            BindMultiSampleState();
           break;
 
         case D3DRS_ZENABLE:
@@ -3704,6 +3719,20 @@ namespace dxvk {
         1,
         &cViewport,
         &cScissor);
+    });
+  }
+
+  void Direct3DDevice9Ex::BindMultiSampleState() {
+    DxvkMultisampleState msState;
+    msState.sampleMask            = m_flags.test(D3D9DeviceFlag::ValidSampleMask)
+      ? m_state.renderStates[D3DRS_MULTISAMPLEMASK]
+      : 0xffffffff;    
+    msState.enableAlphaToCoverage = false;
+
+    EmitCs([
+      cState = msState
+    ] (DxvkContext* ctx) {
+      ctx->setMultisampleState(cState);
     });
   }
 

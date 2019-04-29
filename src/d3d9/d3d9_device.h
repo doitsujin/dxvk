@@ -49,6 +49,7 @@ namespace dxvk {
     DirtyViewportScissor,
     UpDirtiedVertices,
     UpDirtiedIndices,
+    ValidSampleMask,
     ExtendedDevice
   };
 
@@ -683,6 +684,8 @@ namespace dxvk {
     void BindFramebuffer();
 
     void BindViewportAndScissor();
+
+    void BindMultiSampleState();
     
     void BindBlendState();
 
