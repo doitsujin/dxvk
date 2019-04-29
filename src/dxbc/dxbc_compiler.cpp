@@ -3078,7 +3078,6 @@ namespace dxvk {
     // sampleinfo has two operands:
     //    (dst0) The destination register
     //    (src0) Resource to query
-    // TODO Check if resource is bound
     DxbcRegisterValue sampleCount = emitQueryTextureSamples(ins.src[0]);
     
     if (ins.controls.returnType() != DxbcInstructionReturnType::Uint) {
@@ -3097,7 +3096,6 @@ namespace dxvk {
     //    (dst0) The destination register
     //    (src0) Resource to query 
     //    (src1) Sample index
-    // TODO Check if resource is bound
     if (m_samplePositions == 0)
       m_samplePositions = emitSamplePosArray();
     
@@ -5056,6 +5054,10 @@ namespace dxvk {
       result.id = m_module.opImageQuerySamples(
         getVectorTypeId(result.type),
         m_module.opLoad(info.typeId, info.varId));
+      
+      // Report a sample count of 0 for unbound images
+      result.id = m_module.opSelect(getVectorTypeId(result.type),
+        info.specId, result.id, m_module.constu32(0));
       return result;
     }
   }
