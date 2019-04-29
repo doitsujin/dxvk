@@ -144,6 +144,10 @@ namespace dxvk {
             uint32_t                z,
             uint32_t                w);
 
+    uint32_t constvec2f32(
+            float                   x,
+            float                   y);
+
     uint32_t constvec3f32(
             float                   x,
             float                   y,
