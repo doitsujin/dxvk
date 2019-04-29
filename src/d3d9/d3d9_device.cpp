@@ -3660,7 +3660,7 @@ namespace dxvk {
 
     viewport = VkViewport{
       float(vp.X)     + cf,    float(vp.Height + vp.Y) + cf,
-      float(vp.Width) + cf,   -float(vp.Height)        - cf,
+      float(vp.Width),        -float(vp.Height),
       vp.MinZ,           vp.MaxZ,
     };
 
