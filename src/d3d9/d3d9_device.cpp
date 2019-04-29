@@ -3650,8 +3650,8 @@ namespace dxvk {
       cf = 0.5f;
 
       // HACK: UE3 bug re. tonemapper + shadow sampling being red:-
-      // We need to bias this if the render targets except when
-      // they are powers of two in order to make
+      // We need to bias this, except when it's
+      // NOT powers of two in order to make
       // imprecision biased towards infinity.
       if ((vp.Width  & (vp.Width  - 1)) == 0
        && (vp.Height & (vp.Height - 1)) == 0)
