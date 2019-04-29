@@ -3133,16 +3133,25 @@ namespace dxvk {
     // components to the destination register.
     DxbcRegisterPointer samplePos;
     samplePos.type.ctype  = DxbcScalarType::Float32;
-    samplePos.type.ccount = 4;
+    samplePos.type.ccount = 2;
     samplePos.id = m_module.opAccessChain(
       m_module.defPointerType(
         getVectorTypeId(samplePos.type),
         spv::StorageClassPrivate),
       m_samplePositions, 1, &lookupIndex);
     
+    // Expand to vec4 by appending zeroes
+    DxbcRegisterValue result = emitValueLoad(samplePos);
+
+    DxbcRegisterValue zero;
+    zero.type.ctype  = DxbcScalarType::Float32;
+    zero.type.ccount = 2;
+    zero.id = m_module.constvec2f32(0.0f, 0.0f);
+
+    result = emitRegisterConcat(result, zero);
+    
     emitRegisterStore(ins.dst[0],
-      emitRegisterSwizzle(
-        emitValueLoad(samplePos),
+      emitRegisterSwizzle(result,
         ins.src[0].swizzle,
         ins.dst[0].mask));
   }
@@ -7086,47 +7095,47 @@ namespace dxvk {
   uint32_t DxbcCompiler::emitSamplePosArray() {
     const std::array<uint32_t, 32> samplePosVectors = {{
       // Invalid sample count / unbound resource
-      m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f),
+      m_module.constvec2f32(0.0f, 0.0f),
       // VK_SAMPLE_COUNT_1_BIT
-      m_module.constvec4f32(0.5f, 0.5f, 0.0f, 0.0f),
+      m_module.constvec2f32(0.5f, 0.5f),
       // VK_SAMPLE_COUNT_2_BIT
-      m_module.constvec4f32(0.75f, 0.75f, 0.0f, 0.0f),
-      m_module.constvec4f32(0.25f, 0.25f, 0.0f, 0.0f),
+      m_module.constvec2f32(0.75f, 0.75f),
+      m_module.constvec2f32(0.25f, 0.25f),
       // VK_SAMPLE_COUNT_4_BIT
-      m_module.constvec4f32(0.375f, 0.125f, 0.0f, 0.0f),
-      m_module.constvec4f32(0.875f, 0.375f, 0.0f, 0.0f),
-      m_module.constvec4f32(0.125f, 0.625f, 0.0f, 0.0f),
-      m_module.constvec4f32(0.625f, 0.875f, 0.0f, 0.0f),
+      m_module.constvec2f32(0.375f, 0.125f),
+      m_module.constvec2f32(0.875f, 0.375f),
+      m_module.constvec2f32(0.125f, 0.625f),
+      m_module.constvec2f32(0.625f, 0.875f),
       // VK_SAMPLE_COUNT_8_BIT
-      m_module.constvec4f32(0.5625f, 0.3125f, 0.0f, 0.0f),
-      m_module.constvec4f32(0.4375f, 0.6875f, 0.0f, 0.0f),
-      m_module.constvec4f32(0.8125f, 0.5625f, 0.0f, 0.0f),
-      m_module.constvec4f32(0.3125f, 0.1875f, 0.0f, 0.0f),
-      m_module.constvec4f32(0.1875f, 0.8125f, 0.0f, 0.0f),
-      m_module.constvec4f32(0.0625f, 0.4375f, 0.0f, 0.0f),
-      m_module.constvec4f32(0.6875f, 0.9375f, 0.0f, 0.0f),
-      m_module.constvec4f32(0.9375f, 0.0625f, 0.0f, 0.0f),
+      m_module.constvec2f32(0.5625f, 0.3125f),
+      m_module.constvec2f32(0.4375f, 0.6875f),
+      m_module.constvec2f32(0.8125f, 0.5625f),
+      m_module.constvec2f32(0.3125f, 0.1875f),
+      m_module.constvec2f32(0.1875f, 0.8125f),
+      m_module.constvec2f32(0.0625f, 0.4375f),
+      m_module.constvec2f32(0.6875f, 0.9375f),
+      m_module.constvec2f32(0.9375f, 0.0625f),
       // VK_SAMPLE_COUNT_16_BIT
-      m_module.constvec4f32(0.5625f, 0.5625f, 0.0f, 0.0f),
-      m_module.constvec4f32(0.4375f, 0.3125f, 0.0f, 0.0f),
-      m_module.constvec4f32(0.3125f, 0.6250f, 0.0f, 0.0f),
-      m_module.constvec4f32(0.7500f, 0.4375f, 0.0f, 0.0f),
-      m_module.constvec4f32(0.1875f, 0.3750f, 0.0f, 0.0f),
-      m_module.constvec4f32(0.6250f, 0.8125f, 0.0f, 0.0f),
-      m_module.constvec4f32(0.8125f, 0.6875f, 0.0f, 0.0f),
-      m_module.constvec4f32(0.6875f, 0.1875f, 0.0f, 0.0f),
-      m_module.constvec4f32(0.3750f, 0.8750f, 0.0f, 0.0f),
-      m_module.constvec4f32(0.5000f, 0.0625f, 0.0f, 0.0f),
-      m_module.constvec4f32(0.2500f, 0.1250f, 0.0f, 0.0f),
-      m_module.constvec4f32(0.1250f, 0.7500f, 0.0f, 0.0f),
-      m_module.constvec4f32(0.0000f, 0.5000f, 0.0f, 0.0f),
-      m_module.constvec4f32(0.9375f, 0.2500f, 0.0f, 0.0f),
-      m_module.constvec4f32(0.8750f, 0.9375f, 0.0f, 0.0f),
-      m_module.constvec4f32(0.0625f, 0.0000f, 0.0f, 0.0f),
+      m_module.constvec2f32(0.5625f, 0.5625f),
+      m_module.constvec2f32(0.4375f, 0.3125f),
+      m_module.constvec2f32(0.3125f, 0.6250f),
+      m_module.constvec2f32(0.7500f, 0.4375f),
+      m_module.constvec2f32(0.1875f, 0.3750f),
+      m_module.constvec2f32(0.6250f, 0.8125f),
+      m_module.constvec2f32(0.8125f, 0.6875f),
+      m_module.constvec2f32(0.6875f, 0.1875f),
+      m_module.constvec2f32(0.3750f, 0.8750f),
+      m_module.constvec2f32(0.5000f, 0.0625f),
+      m_module.constvec2f32(0.2500f, 0.1250f),
+      m_module.constvec2f32(0.1250f, 0.7500f),
+      m_module.constvec2f32(0.0000f, 0.5000f),
+      m_module.constvec2f32(0.9375f, 0.2500f),
+      m_module.constvec2f32(0.8750f, 0.9375f),
+      m_module.constvec2f32(0.0625f, 0.0000f),
     }};
     
     uint32_t arrayTypeId = getArrayTypeId({
-      DxbcScalarType::Float32, 4,
+      DxbcScalarType::Float32, 2,
       static_cast<uint32_t>(samplePosVectors.size()) });
     
     uint32_t samplePosArray = m_module.constComposite(
