@@ -2626,7 +2626,6 @@ namespace dxvk {
     // bufinfo takes two arguments
     //    (dst0) The destination register
     //    (src0) The buffer register to query
-    // TODO Check if resource is bound
     const DxbcBufferInfo bufferInfo = getBufferInfo(ins.src[0]);
 
     bool isSsbo = m_moduleInfo.options.useRawSsbo
@@ -2649,7 +2648,7 @@ namespace dxvk {
       result.id = m_module.opUDiv(typeId, result.id,
         m_module.constu32(bufferInfo.stride / 4));
     }
-    
+
     // Store the result. The scalar will be extended to a
     // vector if the write mask consists of more than one
     // component, which is the desired behaviour.
@@ -4988,6 +4987,10 @@ namespace dxvk {
     result.id = m_module.opArrayLength(
       getVectorTypeId(result.type),
       bufferInfo.varId, 0);
+
+    // Report a size of 0 if resource is not bound
+    result.id = m_module.opSelect(getVectorTypeId(result.type),
+      bufferInfo.specId, result.id, m_module.constu32(0));
     return result;
   }
   
@@ -5007,6 +5010,10 @@ namespace dxvk {
     result.type.ccount = 1;
     result.id = m_module.opImageQuerySize(
       getVectorTypeId(result.type), bufferId);
+
+    // Report a size of 0 if resource is not bound
+    result.id = m_module.opSelect(getVectorTypeId(result.type),
+      bufferInfo.specId, result.id, m_module.constu32(0));
     return result;
   }
   
