@@ -2945,7 +2945,6 @@ namespace dxvk {
     //    (dst0) The destination register
     //    (src0) Resource LOD to query
     //    (src1) Resource to query
-    // TODO Check if resource is bound
     const DxbcBufferInfo resourceInfo = getBufferInfo(ins.src[1]);
     const DxbcResinfoType resinfoType = ins.controls.resinfoType();
     
@@ -5034,6 +5033,10 @@ namespace dxvk {
       // Report one LOD in case of UAVs
       result.id = m_module.constu32(1);
     }
+
+    // Report zero LODs for unbound images
+    result.id = m_module.opSelect(getVectorTypeId(result.type),
+      info.specId, result.id, m_module.constu32(0));
     return result;
   }
   
@@ -5077,7 +5080,27 @@ namespace dxvk {
         getVectorTypeId(result.type),
         m_module.opLoad(info.typeId, info.varId));
     }
-    
+
+    // Report a size of zero for unbound textures
+    uint32_t zero = m_module.constu32(0);
+    uint32_t cond = info.specId;
+
+    if (result.type.ccount > 1) {
+      std::array<uint32_t, 4> zeroes = {{ zero, zero, zero, zero }};
+      std::array<uint32_t, 4> conds  = {{ cond, cond, cond, cond }};
+
+      zero = m_module.opCompositeConstruct(
+        getVectorTypeId(result.type),
+        result.type.ccount, zeroes.data());
+      
+      cond = m_module.opCompositeConstruct(
+        m_module.defVectorType(m_module.defBoolType(), result.type.ccount),
+        result.type.ccount, conds.data());
+    }
+
+    result.id = m_module.opSelect(
+      getVectorTypeId(result.type),
+      cond, result.id, zero);
     return result;
   }
   
