@@ -9,32 +9,20 @@ namespace dxvk {
   : m_device(device), m_desc(desc), m_d3d10(this) {
     // Polygon mode. Determines whether the rasterizer fills
     // a polygon or renders lines connecting the vertices.
-    m_state.polygonMode = VK_POLYGON_MODE_FILL;
-    
     switch (desc.FillMode) {
-      case D3D11_FILL_WIREFRAME: m_state.polygonMode = VK_POLYGON_MODE_LINE; break;
-      case D3D11_FILL_SOLID:     m_state.polygonMode = VK_POLYGON_MODE_FILL; break;
-      
       default:
-        Logger::err(str::format(
-          "D3D11RasterizerState: Unsupported fill mode: ",
-          desc.FillMode));
+      case D3D11_FILL_SOLID:     m_state.polygonMode = VK_POLYGON_MODE_FILL; break;
+      case D3D11_FILL_WIREFRAME: m_state.polygonMode = VK_POLYGON_MODE_LINE; break;
     }
     
     // Face culling properties. The rasterizer may discard
     // polygons that are facing towards or away from the
     // viewer, depending on the options below.
-    m_state.cullMode = VK_CULL_MODE_NONE;
-    
     switch (desc.CullMode) {
+      default:
       case D3D11_CULL_NONE:  m_state.cullMode = VK_CULL_MODE_NONE;      break;
       case D3D11_CULL_FRONT: m_state.cullMode = VK_CULL_MODE_FRONT_BIT; break;
       case D3D11_CULL_BACK:  m_state.cullMode = VK_CULL_MODE_BACK_BIT;  break;
-      
-      default:
-        Logger::err(str::format(
-          "D3D11RasterizerState: Unsupported cull mode: ",
-          desc.CullMode));
     }
     
     m_state.frontFace = desc.FrontCounterClockwise
