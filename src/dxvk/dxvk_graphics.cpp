@@ -184,22 +184,26 @@ namespace dxvk {
       sampleCount = VkSampleCountFlagBits(state.rsSampleCount);
     
     // Set up some specialization constants
-    DxvkSpecConstantData specData = { };
-    specData.rasterizerSampleCount = uint32_t(sampleCount);
-    specData.alphaTestEnable       = state.xsAlphaCompareOp != VK_COMPARE_OP_ALWAYS;
-    specData.alphaCompareOp        = state.xsAlphaCompareOp;
+    DxvkSpecConstants specData;
+    specData.set(uint32_t(DxvkSpecConstantId::RasterizerSampleCount), sampleCount, VK_SAMPLE_COUNT_1_BIT);
+    specData.set(uint32_t(DxvkSpecConstantId::AlphaTestEnable), state.xsAlphaCompareOp != VK_COMPARE_OP_ALWAYS, false);
+    specData.set(uint32_t(DxvkSpecConstantId::AlphaCompareOp),  state.xsAlphaCompareOp, VK_COMPARE_OP_ALWAYS);
     
-    for (uint32_t i = 0; i < MaxNumActiveBindings; i++)
-      specData.activeBindings[i] = state.bsBindingMask.isBound(i) ? VK_TRUE : VK_FALSE;
+    for (uint32_t i = 0; i < m_layout->bindingCount(); i++)
+      specData.set(i, state.bsBindingMask.isBound(i), true);
     
-    VkSpecializationInfo specInfo;
-    specInfo.mapEntryCount        = g_specConstantMap.mapEntryCount();
-    specInfo.pMapEntries          = g_specConstantMap.mapEntryData();
-    specInfo.dataSize             = sizeof(specData);
-    specInfo.pData                = &specData;
+    for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
+      if ((m_fsOut & (1 << i)) != 0) {
+        uint32_t specId = uint32_t(DxvkSpecConstantId::ColorComponentMappings) + 4 * i;
+        specData.set(specId + 0, util::getComponentIndex(state.omComponentMapping[i].r, 0), 0u);
+        specData.set(specId + 1, util::getComponentIndex(state.omComponentMapping[i].g, 1), 1u);
+        specData.set(specId + 2, util::getComponentIndex(state.omComponentMapping[i].b, 2), 2u);
+        specData.set(specId + 3, util::getComponentIndex(state.omComponentMapping[i].a, 3), 3u);
+      }
+    }
     
-    std::vector<VkPipelineShaderStageCreateInfo> stages;
-
+    VkSpecializationInfo specInfo = specData.getSpecInfo();
+    
     DxvkShaderModuleCreateInfo moduleInfo;
     moduleInfo.fsDualSrcBlend = state.omBlendAttachments[0].blendEnable && (
       util::isDualSourceBlendFactor(state.omBlendAttachments[0].srcColorBlendFactor) ||
@@ -213,6 +217,7 @@ namespace dxvk {
     auto tesm = createShaderModule(m_tes, moduleInfo);
     auto fsm  = createShaderModule(m_fs,  moduleInfo);
 
+    std::vector<VkPipelineShaderStageCreateInfo> stages;
     if (vsm)  stages.push_back(vsm.stageInfo(&specInfo));
     if (tcsm) stages.push_back(tcsm.stageInfo(&specInfo));
     if (tesm) stages.push_back(tesm.stageInfo(&specInfo));
@@ -230,11 +235,6 @@ namespace dxvk {
       
       if ((m_fsOut & (1 << i)) == 0)
         omBlendAttachments[i].colorWriteMask = 0;
-      
-      specData.outputMappings[4 * i + 0] = util::getComponentIndex(state.omComponentMapping[i].r, 0);
-      specData.outputMappings[4 * i + 1] = util::getComponentIndex(state.omComponentMapping[i].g, 1);
-      specData.outputMappings[4 * i + 2] = util::getComponentIndex(state.omComponentMapping[i].b, 2);
-      specData.outputMappings[4 * i + 3] = util::getComponentIndex(state.omComponentMapping[i].a, 3);
     }
 
     // Generate per-instance attribute divisors
