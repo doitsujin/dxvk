@@ -3,6 +3,8 @@
 #include "d3d9_monitor.h"
 #include "d3d9_surface.h"
 
+#include "../util/util_env.h"
+
 #include <algorithm>
 
 namespace dxvk {
@@ -173,6 +175,9 @@ namespace dxvk {
       format = mode.Format;
 
     parameters->BackBufferFormat = format;
+
+    if (env::getEnvVar("DXVK_FORCE_WINDOWED") == "1")
+      parameters->Windowed = TRUE;
 
     if (!parameters->Windowed && (m_presentParams.Windowed || first)) {
       RECT windowRect = { 0, 0, 0, 0 };
