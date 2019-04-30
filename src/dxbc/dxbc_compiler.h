@@ -471,13 +471,6 @@ namespace dxvk {
     // to properly end functions in some cases.
     bool m_insideFunction = false;
     
-    ///////////////////////////////////////////////
-    // Specialization constants. These are defined
-    // as needed by the getSpecConstant method.
-    std::array<DxbcRegisterValue,
-      uint32_t(DxvkSpecConstantId::SpecConstantIdMax) -
-      uint32_t(DxvkSpecConstantId::SpecConstantIdMin) + 1> m_specConstants;
-    
     ///////////////////////////////////////////////////////////
     // Array of input values. Since v# registers are indexable
     // in DXBC, we need to copy them into an array first.
@@ -994,12 +987,6 @@ namespace dxvk {
             uint32_t                value,
       const char*                   name);
 
-    DxbcRegisterValue getSpecConstant(
-            DxvkSpecConstantId      specId);
-    
-    DxbcSpecConstant getSpecConstantProperties(
-            DxvkSpecConstantId      specId);
-    
     ////////////////////////////
     // Input/output preparation
     void emitInputSetup();

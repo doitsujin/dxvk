@@ -44,13 +44,6 @@ namespace dxvk {
       m_oRegs.at(i) = DxbcRegisterPointer { };
     }
     
-    // Clear spec constants
-    for (uint32_t i = 0; i < m_specConstants.size(); i++) {
-      m_specConstants.at(i) = DxbcRegisterValue {
-        DxbcVectorType { DxbcScalarType::Uint32, 0 },
-        0 };
-    }
-    
     this->emitInit();
   }
   
@@ -5449,43 +5442,6 @@ namespace dxvk {
     m_module.decorateSpecId(id, uint32_t(specId));
     m_module.setDebugName(id, name);
     return id;
-  }
-
-
-  DxbcRegisterValue DxbcCompiler::getSpecConstant(DxvkSpecConstantId specId) {
-    const uint32_t specIdOffset = uint32_t(specId) - uint32_t(DxvkSpecConstantId::SpecConstantIdMin);
-    
-    // Look up spec constant in the array
-    DxbcRegisterValue value = m_specConstants.at(specIdOffset);
-    
-    if (value.id != 0)
-      return value;
-    
-    // Declare a new specialization constant if needed
-    DxbcSpecConstant info = getSpecConstantProperties(specId);
-    
-    value.type.ctype  = info.ctype;
-    value.type.ccount = info.ccount;
-    value.id = m_module.specConst32(
-      getVectorTypeId(value.type),
-      info.value);
-    
-    m_module.decorateSpecId(value.id, uint32_t(specId));
-    m_module.setDebugName(value.id, info.name);
-    
-    m_specConstants.at(specIdOffset) = value;
-    return value;
-  }
-  
-  
-  DxbcSpecConstant DxbcCompiler::getSpecConstantProperties(DxvkSpecConstantId specId) {
-    static const std::array<DxbcSpecConstant,
-      uint32_t(DxvkSpecConstantId::SpecConstantIdMax) -
-      uint32_t(DxvkSpecConstantId::SpecConstantIdMin) + 1> s_specConstants = {{
-        { DxbcScalarType::Uint32,   1,   1, "RasterizerSampleCount" },
-    }};
-    
-    return s_specConstants.at(uint32_t(specId) - uint32_t(DxvkSpecConstantId::SpecConstantIdMin));
   }
   
   
