@@ -180,6 +180,8 @@ namespace dxvk {
     
     uint32_t builtinLaneId        = 0;
     uint32_t killState            = 0;
+
+    uint32_t specRsSampleCount    = 0;
   };
   
   

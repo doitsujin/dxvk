@@ -5069,7 +5069,18 @@ namespace dxvk {
     if (resource.type == DxbcOperandType::Rasterizer) {
       // SPIR-V has no gl_NumSamples equivalent, so we have
       // to work around it using a specialization constant
-      return getSpecConstant(DxvkSpecConstantId::RasterizerSampleCount);
+      if (!m_ps.specRsSampleCount) {
+        m_ps.specRsSampleCount = emitNewSpecConstant(
+          DxvkSpecConstantId::RasterizerSampleCount,
+          DxbcScalarType::Uint32, 1,
+          "RasterizerSampleCount");
+      }
+
+      DxbcRegisterValue result;
+      result.type.ctype  = DxbcScalarType::Uint32;
+      result.type.ccount = 1;
+      result.id = m_ps.specRsSampleCount;
+      return result;
     } else {
       DxbcBufferInfo info = getBufferInfo(resource);
       
