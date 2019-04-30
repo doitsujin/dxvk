@@ -5427,6 +5427,20 @@ namespace dxvk {
   }
   
   
+  uint32_t DxbcCompiler::emitNewSpecConstant(
+          DxvkSpecConstantId      specId,
+          DxbcScalarType          type,
+          uint32_t                value,
+    const char*                   name) {
+    uint32_t id = m_module.specConst32(
+      getScalarTypeId(type), value);
+    
+    m_module.decorateSpecId(id, uint32_t(specId));
+    m_module.setDebugName(id, name);
+    return id;
+  }
+
+
   DxbcRegisterValue DxbcCompiler::getSpecConstant(DxvkSpecConstantId specId) {
     const uint32_t specIdOffset = uint32_t(specId) - uint32_t(DxvkSpecConstantId::SpecConstantIdMin);
     

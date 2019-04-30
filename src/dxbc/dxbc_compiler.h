@@ -986,6 +986,12 @@ namespace dxvk {
     
     ////////////////////////////////////////
     // Spec constant declaration and access
+    uint32_t emitNewSpecConstant(
+            DxvkSpecConstantId      specId,
+            DxbcScalarType          type,
+            uint32_t                value,
+      const char*                   name);
+
     DxbcRegisterValue getSpecConstant(
             DxvkSpecConstantId      specId);
     
