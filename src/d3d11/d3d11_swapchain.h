@@ -109,6 +109,7 @@ namespace dxvk {
     DxvkMultisampleState    m_msState;
     DxvkDepthStencilState   m_dsState;
     DxvkLogicOpState        m_loState;
+    DxvkExtraState          m_xsState;
     DxvkBlendMode           m_blendMode;
 
     D3D11Texture2D*         m_backBuffer = nullptr;
