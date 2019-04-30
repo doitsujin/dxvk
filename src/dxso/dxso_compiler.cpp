@@ -114,6 +114,13 @@ namespace dxvk {
     case DxsoOpcode::DsY:
       return this->emitVectorAlu(ctx);
 
+    case DxsoOpcode::M3x2:
+    case DxsoOpcode::M3x3:
+    case DxsoOpcode::M3x4:
+    case DxsoOpcode::M4x3:
+    case DxsoOpcode::M4x4:
+      return this->emitMatrixAlu(ctx);
+
     case DxsoOpcode::Loop:
       return this->emitControlFlowLoop(ctx);
     case DxsoOpcode::EndLoop:
@@ -1710,6 +1717,75 @@ namespace dxvk {
         Logger::warn(str::format("DxsoCompiler::emitVectorAlu: unimplemented op ", opcode));
         return;
     }
+
+    this->emitDstStore(dst, result, mask, ctx.dst.saturate);
+  }
+
+
+  void DxsoCompiler::emitMatrixAlu(const DxsoInstructionContext& ctx) {
+    const auto& src = ctx.src;
+
+    DxsoRegMask mask = ctx.dst.mask;
+
+    DxsoRegisterPointer dst = emitGetOperandPtr(ctx.dst);
+
+    DxsoRegisterValue result;
+    result.type.ctype = dst.type.ctype;
+    result.type.ccount = mask.popCount();
+
+    DxsoVectorType scalarType = result.type;
+    scalarType.ccount = 1;
+
+    const uint32_t typeId = getVectorTypeId(result.type);
+    const uint32_t scalarTypeId = getVectorTypeId(scalarType);
+
+    const DxsoOpcode opcode = ctx.instruction.opcode;
+
+    uint32_t dotCount;
+    uint32_t iterCount;
+
+    switch (opcode) {
+      case DxsoOpcode::M3x2:
+        dotCount  = 3;
+        iterCount = 2;
+        break;
+      case DxsoOpcode::M3x3:
+        dotCount  = 3;
+        iterCount = 3;
+        break;
+      case DxsoOpcode::M3x4:
+        dotCount  = 3;
+        iterCount = 4;
+        break;
+      case DxsoOpcode::M4x3:
+        dotCount  = 4;
+        iterCount = 3;
+        break;
+      case DxsoOpcode::M4x4:
+        dotCount  = 4;
+        iterCount = 4;
+        break;
+      default:
+        Logger::warn(str::format("DxsoCompiler::emitMatrixAlu: unimplemented op ", opcode));
+        return;
+    }
+
+    DxsoRegMask srcMask(true, true, true, dotCount == 4);
+    std::array<uint32_t, 4> indices;
+
+    DxsoRegister src0 = src[0];
+    DxsoRegister src1 = src[1];
+
+    for (uint32_t i = 0; i < iterCount; i++) {
+      indices[i] = m_module.opDot(scalarTypeId,
+        emitRegisterLoad(src0, srcMask).id,
+        emitRegisterLoad(src1, srcMask).id);
+
+      src1.id.num++;
+    }
+
+    result.id = m_module.opCompositeConstruct(
+      typeId, iterCount, indices.data());
 
     this->emitDstStore(dst, result, mask, ctx.dst.saturate);
   }

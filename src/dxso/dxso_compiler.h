@@ -484,6 +484,7 @@ namespace dxvk {
 
     void emitMov(const DxsoInstructionContext& ctx);
     void emitVectorAlu(const DxsoInstructionContext& ctx);
+    void emitMatrixAlu(const DxsoInstructionContext& ctx);
 
     void emitControlFlowGenericLoop(
             bool     count,
