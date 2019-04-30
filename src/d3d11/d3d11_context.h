@@ -680,6 +680,8 @@ namespace dxvk {
     void ApplyRasterizerState();
     
     void ApplyViewportState();
+
+    void ApplyUnusedState();
     
     void BindShader(
             DxbcProgramType                   ShaderStage,
