@@ -62,7 +62,7 @@ namespace dxvk {
    */
   struct DxvkStateCacheHeader {
     char     magic[4]   = { 'D', 'X', 'V', 'K' };
-    uint32_t version    = 3;
+    uint32_t version    = 4;
     uint32_t entrySize  = sizeof(DxvkStateCacheEntry);
   };
 
@@ -211,6 +211,9 @@ namespace dxvk {
             DxvkStateCacheEntry&      entry) const;
     
     bool convertEntryV2(
+            DxvkStateCacheEntry&      entry) const;
+    
+    bool convertEntryV3(
             DxvkStateCacheEntry&      entry) const;
     
     void workerFunc();

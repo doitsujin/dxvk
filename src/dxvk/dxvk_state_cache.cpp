@@ -289,8 +289,8 @@ namespace dxvk {
     }
 
     // Discard caches of unsupported versions
-    if (curHeader.version != 2 && curHeader.version != 3) {
-      Logger::warn("DXVK: State cache out of date");
+    if (curHeader.version < 2 || curHeader.version > newHeader.version) {
+      Logger::warn("DXVK: State cache version not supported");
       return false;
     }
 
@@ -307,8 +307,10 @@ namespace dxvk {
       DxvkStateCacheEntry entry;
 
       if (readCacheEntry(ifile, entry)) {
-        if (curHeader.version == 2)
-          convertEntryV2(entry);
+        switch (curHeader.version) {
+          case 2: convertEntryV2(entry); /* fall through */
+          case 3: convertEntryV3(entry); /* fall through */
+        }
         
         size_t entryId = m_entries.size();
         m_entries.push_back(entry);
@@ -400,6 +402,16 @@ namespace dxvk {
     // Frontend changed: Depth bias
     // will typically be disabled
     entry.gpState.rsDepthBiasEnable = VK_FALSE;
+    return true;
+  }
+
+
+  bool DxvkStateCache::convertEntryV3(
+          DxvkStateCacheEntry&      entry) const {
+    // Semantics changed:
+    // v3: Unused, always set to 0
+    // v4: Alpha test compare op
+    entry.gpState.xsAlphaCompareOp = VK_COMPARE_OP_ALWAYS;
     return true;
   }
 
