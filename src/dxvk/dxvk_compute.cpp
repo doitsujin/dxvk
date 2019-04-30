@@ -95,23 +95,17 @@ namespace dxvk {
       Logger::debug(str::format("  cs  : ", m_cs->debugName()));
     }
     
+    DxvkSpecConstants specData;
+    for (uint32_t i = 0; i < m_layout->bindingCount(); i++)
+      specData.set(i, state.bsBindingMask.isBound(i), true);
+    
+    VkSpecializationInfo specInfo = specData.getSpecInfo();
     
     DxvkShaderModuleCreateInfo moduleInfo;
     moduleInfo.fsDualSrcBlend = false;
 
     auto csm = m_cs->createShaderModule(m_vkd, m_slotMapping, moduleInfo);
 
-    DxvkSpecConstantData specData = { };
-    
-    for (uint32_t i = 0; i < MaxNumActiveBindings; i++)
-      specData.activeBindings[i] = state.bsBindingMask.isBound(i) ? VK_TRUE : VK_FALSE;
-    
-    VkSpecializationInfo specInfo;
-    specInfo.mapEntryCount        = g_specConstantMap.mapEntryCount();
-    specInfo.pMapEntries          = g_specConstantMap.mapEntryData();
-    specInfo.dataSize             = sizeof(specData);
-    specInfo.pData                = &specData;
-    
     VkComputePipelineCreateInfo info;
     info.sType                = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
     info.pNext                = nullptr;
