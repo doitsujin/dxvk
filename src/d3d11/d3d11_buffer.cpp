@@ -134,7 +134,9 @@ namespace dxvk {
       return S_OK;
     }
 
-    if (riid == __uuidof(IDXGIResource)
+    if (riid == __uuidof(IDXGIObject)
+     || riid == __uuidof(IDXGIDeviceSubObject)
+     || riid == __uuidof(IDXGIResource)
      || riid == __uuidof(IDXGIResource1)) {
        *ppvObject = ref(&m_resource);
        return S_OK;
