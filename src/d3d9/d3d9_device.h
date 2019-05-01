@@ -718,6 +718,8 @@ namespace dxvk {
 
     void UndirtySamplers();
 
+    void MarkSamplersDirty();
+
     D3D9DrawInfo GenerateDrawInfo(
       D3DPRIMITIVETYPE PrimitiveType,
       UINT             PrimitiveCount);

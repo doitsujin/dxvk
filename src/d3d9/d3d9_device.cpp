@@ -3958,6 +3958,10 @@ namespace dxvk {
     m_dirtySamplerStates = 0;
   }
 
+  void D3D9DeviceEx::MarkSamplersDirty() {
+    m_dirtySamplerStates = 0x001fffff; // 21 bits.
+  }
+
   D3D9DrawInfo D3D9DeviceEx::GenerateDrawInfo(
           D3DPRIMITIVETYPE PrimitiveType,
           UINT             PrimitiveCount) {

@@ -72,6 +72,8 @@ namespace dxvk {
       m_lod = LODNew;
 
       m_texture.RecreateImageView(LODNew);
+      if (this->GetPrivateRefCount() > 0)
+        this->m_parent->MarkSamplersDirty();
 
       return oldLod;
     }
