@@ -35,7 +35,6 @@ namespace dxvk {
 
     similar |= AdapterFormat == D3D9Format::X8R8G8B8 && BackBufferFormat == D3D9Format::A8R8G8B8;
     similar |= AdapterFormat == D3D9Format::X1R5G5B5 && BackBufferFormat == D3D9Format::A1R5G5B5;
-    similar |= AdapterFormat == D3D9Format::X1R5G5B5 && BackBufferFormat == D3D9Format::A1R5G5B5;
 
     return similar;
   }
