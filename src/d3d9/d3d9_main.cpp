@@ -30,34 +30,27 @@ extern "C" {
   }
 
   DLLEXPORT int __stdcall D3DPERF_BeginEvent(D3DCOLOR col, LPCWSTR wszName) {
-    dxvk::Logger::warn("D3DPERF_BeginEvent: Stub");
     return 0;
   }
 
   DLLEXPORT int __stdcall D3DPERF_EndEvent(void) {
-    dxvk::Logger::warn("D3DPERF_EndEvent: Stub");
     return 0;
   }
 
   DLLEXPORT void __stdcall D3DPERF_SetMarker(D3DCOLOR col, LPCWSTR wszName) {
-    dxvk::Logger::warn("D3DPERF_SetMarker: Stub");
   }
 
   DLLEXPORT void __stdcall D3DPERF_SetRegion(D3DCOLOR col, LPCWSTR wszName) {
-    dxvk::Logger::warn("D3DPERF_SetRegion: Stub");
   }
 
   DLLEXPORT BOOL __stdcall D3DPERF_QueryRepeatFrame(void) {
-    dxvk::Logger::warn("D3DPERF_QueryRepeatFrame: Stub");
     return FALSE;
   }
 
   DLLEXPORT void __stdcall D3DPERF_SetOptions(DWORD dwOptions) {
-    dxvk::Logger::warn("D3DPERF_SetOptions: Stub");
   }
 
   DLLEXPORT DWORD __stdcall D3DPERF_GetStatus(void) {
-    dxvk::Logger::warn("D3DPERF_GetStatus: Stub");
     return 0;
   }
 
