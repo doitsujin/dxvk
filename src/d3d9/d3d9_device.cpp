@@ -281,7 +281,7 @@ namespace dxvk {
 
     auto* swapchain = GetInternalSwapchain(iSwapChain);
 
-    if (swapchain == nullptr)
+    if (unlikely(swapchain == nullptr))
       return D3DERR_INVALIDCALL;
 
     return swapchain->GetBackBuffer(iBackBuffer, Type, ppBackBuffer);
@@ -292,7 +292,7 @@ namespace dxvk {
 
     auto* swapchain = GetInternalSwapchain(iSwapChain);
 
-    if (swapchain == nullptr)
+    if (unlikely(swapchain == nullptr))
       return D3DERR_INVALIDCALL;
 
     return swapchain->GetRasterStatus(pRasterStatus);
@@ -311,7 +311,7 @@ namespace dxvk {
 
     auto* swapchain = GetInternalSwapchain(iSwapChain);
 
-    if (swapchain == nullptr)
+    if (unlikely(swapchain == nullptr))
       return;
 
     swapchain->SetGammaRamp(Flags, pRamp);
@@ -322,7 +322,7 @@ namespace dxvk {
 
     auto* swapchain = GetInternalSwapchain(iSwapChain);
 
-    if (swapchain == nullptr)
+    if (unlikely(swapchain == nullptr))
       return;
 
     swapchain->GetGammaRamp(pRamp);
@@ -339,7 +339,7 @@ namespace dxvk {
     InitReturnPtr(ppTexture);
     InitReturnPtr(pSharedHandle);
 
-    if (ppTexture == nullptr)
+    if (unlikely(ppTexture == nullptr))
       return D3DERR_INVALIDCALL;
 
     D3D9TextureDesc desc;
@@ -384,7 +384,7 @@ namespace dxvk {
     InitReturnPtr(ppVolumeTexture);
     InitReturnPtr(pSharedHandle);
 
-    if (ppVolumeTexture == nullptr)
+    if (unlikely(ppVolumeTexture == nullptr))
       return D3DERR_INVALIDCALL;
 
     D3D9TextureDesc desc;
@@ -427,7 +427,7 @@ namespace dxvk {
     InitReturnPtr(ppCubeTexture);
     InitReturnPtr(pSharedHandle);
 
-    if (ppCubeTexture == nullptr)
+    if (unlikely(ppCubeTexture == nullptr))
       return D3DERR_INVALIDCALL;
 
     D3D9TextureDesc desc;
@@ -466,7 +466,7 @@ namespace dxvk {
           D3DPOOL                  Pool,
           IDirect3DVertexBuffer9** ppVertexBuffer,
           HANDLE*                  pSharedHandle) {
-    if (ppVertexBuffer == nullptr)
+    if (unlikely(ppVertexBuffer == nullptr))
       return D3DERR_INVALIDCALL;
 
     D3D9_BUFFER_DESC desc;
@@ -496,7 +496,7 @@ namespace dxvk {
           D3DPOOL                 Pool,
           IDirect3DIndexBuffer9** ppIndexBuffer,
           HANDLE*                 pSharedHandle) {
-    if (ppIndexBuffer == nullptr)
+    if (unlikely(ppIndexBuffer == nullptr))
       return D3DERR_INVALIDCALL;
 
     D3D9_BUFFER_DESC desc;
@@ -572,7 +572,7 @@ namespace dxvk {
     D3D9Surface* src = static_cast<D3D9Surface*>(pSourceSurface);
     D3D9Surface* dst = static_cast<D3D9Surface*>(pDestinationSurface);
 
-    if (src == nullptr || dst == nullptr)
+    if (unlikely(src == nullptr || dst == nullptr))
       return D3DERR_INVALIDCALL;
 
     D3D9CommonTexture* srcTextureInfo = src->GetCommonTexture();
@@ -751,7 +751,7 @@ namespace dxvk {
 
     auto* swapchain = GetInternalSwapchain(iSwapChain);
 
-    if (swapchain == nullptr)
+    if (unlikely(swapchain == nullptr))
       return D3DERR_INVALIDCALL;
 
     return swapchain->GetFrontBufferData(pDestSurface);
@@ -768,7 +768,7 @@ namespace dxvk {
     D3D9Surface* dst = static_cast<D3D9Surface*>(pDestSurface);
     D3D9Surface* src = static_cast<D3D9Surface*>(pSourceSurface);
 
-    if (src == nullptr || dst == nullptr)
+    if (unlikely(src == nullptr || dst == nullptr))
       return D3DERR_INVALIDCALL;
 
     bool fastPath     = true;
@@ -935,8 +935,8 @@ namespace dxvk {
           IDirect3DSurface9* pRenderTarget) {
     auto lock = LockDevice();
 
-    if (RenderTargetIndex >= caps::MaxSimultaneousRenderTargets
-     || (pRenderTarget == nullptr && RenderTargetIndex == 0) )
+    if (unlikely(RenderTargetIndex >= caps::MaxSimultaneousRenderTargets
+     || (pRenderTarget == nullptr && RenderTargetIndex == 0)))
       return D3DERR_INVALIDCALL;
 
     D3D9Surface* rt = static_cast<D3D9Surface*>(pRenderTarget);
@@ -992,7 +992,7 @@ namespace dxvk {
 
     InitReturnPtr(ppRenderTarget);
 
-    if (ppRenderTarget == nullptr || RenderTargetIndex > caps::MaxSimultaneousRenderTargets)
+    if (unlikely(ppRenderTarget == nullptr || RenderTargetIndex > caps::MaxSimultaneousRenderTargets))
       return D3DERR_INVALIDCALL;
 
     if (m_state.renderTargets[RenderTargetIndex] == nullptr)
@@ -1025,7 +1025,7 @@ namespace dxvk {
 
     InitReturnPtr(ppZStencilSurface);
 
-    if (ppZStencilSurface == nullptr)
+    if (unlikely(ppZStencilSurface == nullptr))
       return D3DERR_INVALIDCALL;
 
     if (m_state.depthStencil == nullptr)
@@ -1204,7 +1204,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetClipPlane(DWORD Index, const float* pPlane) {
     auto lock = LockDevice();
 
-    if (Index >= caps::MaxClipPlanes || !pPlane)
+    if (unlikely(Index >= caps::MaxClipPlanes || !pPlane))
       return D3DERR_INVALIDCALL;
 
     if (unlikely(ShouldRecord()))
@@ -1226,7 +1226,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetClipPlane(DWORD Index, float* pPlane) {
     auto lock = LockDevice();
 
-    if (Index >= caps::MaxClipPlanes || !pPlane)
+    if (unlikely(Index >= caps::MaxClipPlanes || !pPlane))
       return D3DERR_INVALIDCALL;
     
     for (uint32_t i = 0; i < 4; i++)
@@ -1338,7 +1338,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetRenderState(D3DRENDERSTATETYPE State, DWORD* pValue) {
     auto lock = LockDevice();
 
-    if (pValue == nullptr)
+    if (unlikely(pValue == nullptr))
       return D3DERR_INVALIDCALL;
 
     if (State < D3DRS_ZENABLE || State > D3DRS_BLENDOPALPHA)
@@ -1356,7 +1356,7 @@ namespace dxvk {
 
     InitReturnPtr(ppSB);
 
-    if (ppSB == nullptr)
+    if (unlikely(ppSB == nullptr))
       return D3DERR_INVALIDCALL;
 
     try {
@@ -1373,7 +1373,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::BeginStateBlock() {
     auto lock = LockDevice();
 
-    if (m_recorder != nullptr)
+    if (unlikely(m_recorder != nullptr))
       return D3DERR_INVALIDCALL;
 
     m_recorder = new D3D9StateBlock(this, D3D9StateBlockType::None);
@@ -1386,7 +1386,7 @@ namespace dxvk {
 
     InitReturnPtr(ppSB);
 
-    if (ppSB == nullptr || m_recorder == nullptr)
+    if (unlikely(ppSB == nullptr || m_recorder == nullptr))
       return D3DERR_INVALIDCALL;
 
     *ppSB = m_recorder.ref();
@@ -1413,7 +1413,7 @@ namespace dxvk {
 
     *ppTexture = nullptr;
 
-    if (InvalidSampler(Stage))
+    if (unlikely(InvalidSampler(Stage)))
       return D3D_OK;
 
     DWORD stateSampler = RemapSamplerState(Stage);
@@ -1426,7 +1426,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetTexture(DWORD Stage, IDirect3DBaseTexture9* pTexture) {
     auto lock = LockDevice();
 
-    if (InvalidSampler(Stage))
+    if (unlikely(InvalidSampler(Stage)))
       return D3D_OK;
 
     DWORD stateSampler = RemapSamplerState(Stage);
@@ -1459,12 +1459,12 @@ namespace dxvk {
           DWORD*              pValue) {
     auto lock = LockDevice();
 
-    if (pValue == nullptr)
+    if (unlikely(pValue == nullptr))
       return D3DERR_INVALIDCALL;
 
     *pValue = 0;
 
-    if (InvalidSampler(Sampler))
+    if (unlikely(InvalidSampler(Sampler)))
       return D3D_OK;
 
     Sampler = RemapSamplerState(Sampler);
@@ -1479,7 +1479,7 @@ namespace dxvk {
           D3DSAMPLERSTATETYPE Type,
           DWORD               Value) {
     auto lock = LockDevice();
-    if (InvalidSampler(Sampler))
+    if (unlikely(InvalidSampler(Sampler)))
       return D3D_OK;
 
     uint32_t stateSampler = RemapSamplerState(Sampler);
@@ -1517,7 +1517,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetScissorRect(const RECT* pRect) {
     auto lock = LockDevice();
 
-    if (pRect == nullptr)
+    if (unlikely(pRect == nullptr))
       return D3DERR_INVALIDCALL;
 
     if (unlikely(ShouldRecord()))
@@ -1533,7 +1533,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetScissorRect(RECT* pRect) {
     auto lock = LockDevice();
 
-    if (pRect == nullptr)
+    if (unlikely(pRect == nullptr))
       return D3DERR_INVALIDCALL;
 
     *pRect = m_state.scissorRect;
@@ -1721,7 +1721,7 @@ namespace dxvk {
           IDirect3DVertexDeclaration9** ppDecl) {
     InitReturnPtr(ppDecl);
 
-    if (ppDecl == nullptr || pVertexElements == nullptr)
+    if (unlikely(ppDecl == nullptr || pVertexElements == nullptr))
       return D3DERR_INVALIDCALL;
 
     const D3DVERTEXELEMENT9* counter = pVertexElements;
@@ -1813,7 +1813,7 @@ namespace dxvk {
           IDirect3DVertexShader9** ppShader) {
     InitReturnPtr(ppShader);
 
-    if (ppShader == nullptr)
+    if (unlikely(ppShader == nullptr))
       return D3DERR_INVALIDCALL;
 
     DxsoModuleInfo moduleInfo;
@@ -1859,7 +1859,7 @@ namespace dxvk {
 
     InitReturnPtr(ppShader);
 
-    if (ppShader == nullptr)
+    if (unlikely(ppShader == nullptr))
       return D3DERR_INVALIDCALL;
 
     *ppShader = ref(m_state.vertexShader);
@@ -1959,7 +1959,7 @@ namespace dxvk {
           UINT                    Stride) {
     auto lock = LockDevice();
 
-    if (StreamNumber >= caps::MaxStreams)
+    if (unlikely(StreamNumber >= caps::MaxStreams))
       return D3DERR_INVALIDCALL;
 
     D3D9VertexBuffer* buffer = static_cast<D3D9VertexBuffer*>(pStreamData);
@@ -1990,16 +1990,16 @@ namespace dxvk {
 
     InitReturnPtr(ppStreamData);
 
-    if (pOffsetInBytes != nullptr)
+    if (unlikely(pOffsetInBytes != nullptr))
       *pOffsetInBytes = 0;
 
-    if (pStride != nullptr)
+    if (unlikely(pStride != nullptr))
       *pStride = 0;
     
-    if (ppStreamData == nullptr || pOffsetInBytes == nullptr || pStride == nullptr)
+    if (unlikely(ppStreamData == nullptr || pOffsetInBytes == nullptr || pStride == nullptr))
       return D3DERR_INVALIDCALL;
 
-    if (StreamNumber >= caps::MaxStreams)
+    if (unlikely(StreamNumber >= caps::MaxStreams))
       return D3DERR_INVALIDCALL;
 
     const auto& vbo = m_state.vertexBuffers[StreamNumber];
@@ -2014,19 +2014,19 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetStreamSourceFreq(UINT StreamNumber, UINT Setting) {
     auto lock = LockDevice();
 
-    if (StreamNumber >= caps::MaxStreams)
+    if (unlikely(StreamNumber >= caps::MaxStreams))
       return D3DERR_INVALIDCALL;
 
     const bool indexed  = Setting & D3DSTREAMSOURCE_INDEXEDDATA;
     const bool instanced = Setting & D3DSTREAMSOURCE_INSTANCEDATA;
 
-    if (StreamNumber == 0 && instanced)
+    if (unlikely(StreamNumber == 0 && instanced))
       return D3DERR_INVALIDCALL;
 
-    if (instanced && indexed)
+    if (unlikely(instanced && indexed))
       return D3DERR_INVALIDCALL;
 
-    if (Setting == 0)
+    if (unlikely(Setting == 0))
       return D3DERR_INVALIDCALL;
 
     if (unlikely(ShouldRecord()))
@@ -2074,7 +2074,7 @@ namespace dxvk {
     auto lock = LockDevice();
     InitReturnPtr(ppIndexData);
 
-    if (ppIndexData == nullptr)
+    if (unlikely(ppIndexData == nullptr))
       return D3DERR_INVALIDCALL;
 
     *ppIndexData = ref(m_state.indices);
@@ -2087,7 +2087,7 @@ namespace dxvk {
           IDirect3DPixelShader9** ppShader) {
     InitReturnPtr(ppShader);
 
-    if (ppShader == nullptr)
+    if (unlikely(ppShader == nullptr))
       return D3DERR_INVALIDCALL;
 
     DxsoModuleInfo moduleInfo;
@@ -2131,7 +2131,7 @@ namespace dxvk {
 
     InitReturnPtr(ppShader);
 
-    if (ppShader == nullptr)
+    if (unlikely(ppShader == nullptr))
       return D3DERR_INVALIDCALL;
 
     *ppShader = ref(m_state.pixelShader);
@@ -2329,7 +2329,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetMaximumFrameLatency(UINT* pMaxLatency) {
     auto lock = LockDevice();
 
-    if (pMaxLatency == nullptr)
+    if (unlikely(pMaxLatency == nullptr))
       return D3DERR_INVALIDCALL;
 
     *pMaxLatency = m_frameLatency;
@@ -2374,7 +2374,7 @@ namespace dxvk {
     InitReturnPtr(ppSurface);
     InitReturnPtr(pSharedHandle);
 
-    if (ppSurface == nullptr)
+    if (unlikely(ppSurface == nullptr))
       return D3DERR_INVALIDCALL;
 
     D3D9TextureDesc desc;
@@ -2417,7 +2417,7 @@ namespace dxvk {
     InitReturnPtr(ppSurface);
     InitReturnPtr(pSharedHandle);
 
-    if (ppSurface == nullptr)
+    if (unlikely(ppSurface == nullptr))
       return D3DERR_INVALIDCALL;
 
     D3D9TextureDesc desc;
@@ -2462,7 +2462,7 @@ namespace dxvk {
     InitReturnPtr(ppSurface);
     InitReturnPtr(pSharedHandle);
 
-    if (ppSurface == nullptr)
+    if (unlikely(ppSurface == nullptr))
       return D3DERR_INVALIDCALL;
 
     D3D9TextureDesc desc;
@@ -2499,7 +2499,7 @@ namespace dxvk {
           D3DDISPLAYMODEEX*      pFullscreenDisplayMode) {
     auto lock = LockDevice();
 
-    if (pPresentationParameters == nullptr)
+    if (unlikely(pPresentationParameters == nullptr))
       return D3DERR_INVALIDCALL;
 
     SetDepthStencilSurface(nullptr);
@@ -2749,7 +2749,7 @@ namespace dxvk {
 
     auto* swapchain = GetInternalSwapchain(iSwapChain);
 
-    if (swapchain == nullptr)
+    if (unlikely(swapchain == nullptr))
       return D3DERR_INVALIDCALL;
 
     return swapchain->GetDisplayModeEx(pMode, pRotation);
@@ -2881,7 +2881,7 @@ namespace dxvk {
       ? m_upBuffer->info().size
       : 0;
 
-    if (currentSize >= size)
+    if (likely(currentSize >= size))
       return;
 
     DxvkBufferCreateInfo  info;
@@ -3307,7 +3307,7 @@ namespace dxvk {
           DWORD                   Flags) {
     auto lock = LockDevice();
 
-    if (ppbData == nullptr)
+    if (unlikely(ppbData == nullptr))
       return D3DERR_INVALIDCALL;
 
     pResource->SetMapFlags(Flags);
@@ -4228,7 +4228,7 @@ namespace dxvk {
       constexpr uint32_t regCountHardware = DetermineRegCount(ConstantType, false);
       constexpr uint32_t regCountSoftware = DetermineRegCount(ConstantType, true);
 
-      if (StartRegister + Count > regCountSoftware)
+      if (unlikely(StartRegister + Count > regCountSoftware))
         return D3DERR_INVALIDCALL;
 
       Count = UINT(
@@ -4236,10 +4236,10 @@ namespace dxvk {
           std::clamp<INT>(Count + StartRegister, 0, regCountHardware) - INT(StartRegister),
           0));
 
-      if (Count == 0)
+      if (unlikely(Count == 0))
         return D3D_OK;
 
-      if (pConstantData == nullptr)
+      if (unlikely(pConstantData == nullptr))
         return D3DERR_INVALIDCALL;
 
       if (unlikely(ShouldRecord()))
