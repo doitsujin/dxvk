@@ -1559,8 +1559,8 @@ namespace dxvk {
         uint32_t src0 = emitRegisterLoad(src[0], srcMask).id;
 
         std::array<uint32_t, 4> sincosVectorIndices = {
-          m_module.opSin(scalarTypeId, src0),
           m_module.opCos(scalarTypeId, src0),
+          m_module.opSin(scalarTypeId, src0),
           m_module.constf32(0.0f),
           m_module.constf32(0.0f)
         };
