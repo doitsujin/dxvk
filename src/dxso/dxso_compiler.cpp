@@ -972,9 +972,19 @@ namespace dxvk {
       case DxsoRegisterType::MiscType:
         if (reg.id.num == MiscTypePosition) {
           if (m_ps.vPos.id == 0) {
-            m_ps.vPos = this->emitRegisterPtr(
-              "vPos", DxsoScalarType::Float32, 4, 0,
+            DxsoRegisterPointer fragCoord = this->emitRegisterPtr(
+              "ps_frag_coord", DxsoScalarType::Float32, 4, 0,
               spv::StorageClassInput, spv::BuiltInFragCoord);
+
+            DxsoRegisterValue val = this->emitValueLoad(fragCoord);
+            val.id = m_module.opFSub(
+              getVectorTypeId(val.type), val.id,
+              m_module.constvec4f32(0.5f, 0.5f, 0.0f, 0.0f));
+
+            m_ps.vPos = this->emitRegisterPtr(
+              "vPos", DxsoScalarType::Float32, 4, 0);
+
+            m_module.opStore(m_ps.vPos.id, val.id);
           }
           return m_ps.vPos;
         }
