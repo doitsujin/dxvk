@@ -35,7 +35,7 @@ namespace dxvk {
     D3D9_COMMON_BUFFER_TYPE_REAL
   };
 
-  class D3D9CommonBuffer : public RcObject {
+  class D3D9CommonBuffer {
     static constexpr VkDeviceSize BufferSliceAlignment = 64;
   public:
 

@@ -15,14 +15,14 @@ namespace dxvk {
             D3D9DeviceEx*      pDevice,
       const D3D9_BUFFER_DESC*  pDesc)
       : D3D9Resource<Type...>  ( pDevice )
-      , m_buffer               ( new D3D9CommonBuffer( pDevice, pDesc ) ) { }
+      , m_buffer               ( pDevice, pDesc ) { }
 
     HRESULT STDMETHODCALLTYPE Lock(
             UINT   OffsetToLock,
             UINT   SizeToLock,
             void** ppbData,
             DWORD  Flags) final {
-      return m_buffer->Lock(
+      return m_buffer.Lock(
         OffsetToLock,
         SizeToLock,
         ppbData,
@@ -30,16 +30,16 @@ namespace dxvk {
     }
 
     HRESULT STDMETHODCALLTYPE Unlock() final {
-      return m_buffer->Unlock();
+      return m_buffer.Unlock();
     }
 
-    Rc<D3D9CommonBuffer> GetCommonBuffer() {
-      return m_buffer;
+    D3D9CommonBuffer* GetCommonBuffer() {
+      return &m_buffer;
     }
 
   protected:
 
-    Rc<D3D9CommonBuffer> m_buffer;
+    D3D9CommonBuffer m_buffer;
 
   };
 

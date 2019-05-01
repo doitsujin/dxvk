@@ -41,7 +41,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     D3D9_BUFFER_DESC desc;
-    m_buffer->GetDesc(&desc);
+    m_buffer.GetDesc(&desc);
 
     pDesc->Format = static_cast<D3DFORMAT>(desc.Format);
     pDesc->Type   = desc.Type;
@@ -92,7 +92,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     D3D9_BUFFER_DESC desc;
-    m_buffer->GetDesc(&desc);
+    m_buffer.GetDesc(&desc);
 
     pDesc->Format = static_cast<D3DFORMAT>(desc.Format);
     pDesc->Type   = desc.Type;

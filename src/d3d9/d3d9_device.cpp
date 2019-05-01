@@ -487,7 +487,7 @@ namespace dxvk {
 
     try {
       const Com<D3D9VertexBuffer> buffer = new D3D9VertexBuffer(this, &desc);
-      m_initializer->InitBuffer(buffer->GetCommonBuffer().ptr());
+      m_initializer->InitBuffer(buffer->GetCommonBuffer());
       *ppVertexBuffer = buffer.ref();
       return D3D_OK;
     }
@@ -518,7 +518,7 @@ namespace dxvk {
 
     try {
       const Com<D3D9IndexBuffer> buffer = new D3D9IndexBuffer(this, &desc);
-      m_initializer->InitBuffer(buffer->GetCommonBuffer().ptr());
+      m_initializer->InitBuffer(buffer->GetCommonBuffer());
       *ppIndexBuffer = buffer.ref();
       return D3D_OK;
     }
@@ -4161,7 +4161,7 @@ namespace dxvk {
 
   void D3D9DeviceEx::BindIndices() {
     D3D9CommonBuffer* buffer = m_state.indices != nullptr
-      ? m_state.indices->GetCommonBuffer().ptr()
+      ? m_state.indices->GetCommonBuffer()
       : nullptr;
 
     D3D9Format format = buffer != nullptr
