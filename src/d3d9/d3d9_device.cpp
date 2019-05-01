@@ -3597,10 +3597,10 @@ namespace dxvk {
     // so we'll just create a new one every time the render
     // target bindings are updated. Set up the attachments.
     for (UINT i = 0; i < m_state.renderTargets.size(); i++) {
-      if (m_state.renderTargets.at(i) != nullptr) {
+      if (m_state.renderTargets[i] != nullptr) {
         attachments.color[i] = {
-          m_state.renderTargets.at(i)->GetRenderTargetView(srgb),
-          m_state.renderTargets.at(i)->GetRenderTargetLayout() };
+          m_state.renderTargets[i]->GetRenderTargetView(srgb),
+          m_state.renderTargets[i]->GetRenderTargetLayout() };
       }
     }
 
@@ -3744,7 +3744,7 @@ namespace dxvk {
       cModes = modes
     ](DxvkContext* ctx) {
       for (uint32_t i = 0; i < cModes.size(); i++)
-        ctx->setBlendMode(i, cModes.at(i));
+        ctx->setBlendMode(i, cModes[i]);
     });
   }
 
@@ -4074,7 +4074,7 @@ namespace dxvk {
         if (!attribFound)
           continue;
 
-        attrList.at(i) = attrib;
+        attrList[i] = attrib;
 
         DxvkVertexBinding binding;
         binding.binding     = attrib.binding;
