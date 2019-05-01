@@ -36,8 +36,8 @@ namespace dxvk {
   }
 
   HRESULT DecodeMultiSampleType(
-        D3DMULTISAMPLE_TYPE       MultiSample,
-        VkSampleCountFlagBits*    pCount) {
+          D3DMULTISAMPLE_TYPE       MultiSample,
+          VkSampleCountFlagBits*    pCount) {
     VkSampleCountFlagBits flag;
 
     switch (MultiSample) {
@@ -137,12 +137,12 @@ namespace dxvk {
   uint32_t VertexCount(D3DPRIMITIVETYPE type, UINT count) {
     switch (type) {
       default:
-      case D3DPT_TRIANGLELIST: return count * 3;
-      case D3DPT_POINTLIST: return count;
-      case D3DPT_LINELIST: return count * 2;
-      case D3DPT_LINESTRIP: return count + 1;
+      case D3DPT_TRIANGLELIST:  return count * 3;
+      case D3DPT_POINTLIST:     return count;
+      case D3DPT_LINELIST:      return count * 2;
+      case D3DPT_LINESTRIP:     return count + 1;
       case D3DPT_TRIANGLESTRIP: return count + 2;
-      case D3DPT_TRIANGLEFAN: return count + 2;
+      case D3DPT_TRIANGLEFAN:   return count + 2;
     }
   }
 
@@ -150,22 +150,22 @@ namespace dxvk {
     switch (type) {
       default:
       case D3DPT_TRIANGLELIST:
-        return { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, VK_FALSE, 0 };
+        return { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,  VK_FALSE, 0 };
 
       case D3DPT_POINTLIST:
-        return { VK_PRIMITIVE_TOPOLOGY_POINT_LIST, VK_FALSE, 0 };
+        return { VK_PRIMITIVE_TOPOLOGY_POINT_LIST,     VK_FALSE, 0 };
 
       case D3DPT_LINELIST:
-        return { VK_PRIMITIVE_TOPOLOGY_LINE_LIST, VK_FALSE, 0 };
+        return { VK_PRIMITIVE_TOPOLOGY_LINE_LIST,      VK_FALSE, 0 };
 
       case D3DPT_LINESTRIP:
-        return { VK_PRIMITIVE_TOPOLOGY_LINE_STRIP, VK_TRUE, 0 };
+        return { VK_PRIMITIVE_TOPOLOGY_LINE_STRIP,     VK_TRUE,  0 };
 
       case D3DPT_TRIANGLESTRIP:
-        return { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, VK_TRUE, 0 };
+        return { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, VK_TRUE,  0 };
 
       case D3DPT_TRIANGLEFAN:
-        return { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN, VK_TRUE, 0 };
+        return { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN,   VK_TRUE,  0 };
     }
   }
 

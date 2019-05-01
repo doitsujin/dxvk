@@ -14,17 +14,17 @@ namespace dxvk {
   extern std::list<IDirect3DBaseTexture9*> g_managedTextures;
 
   template <typename SubresourceType, typename... Base>
-  class Direct3DBaseTexture9 : public Direct3DResource9<Base...> {
+  class D3D9BaseTexture : public D3D9Resource<Base...> {
 
   public:
 
-    Direct3DBaseTexture9(
-            Direct3DDevice9Ex*      pDevice,
+    D3D9BaseTexture(
+            D3D9DeviceEx*           pDevice,
       const D3D9TextureDesc*        pDesc)
-      : Direct3DResource9<Base...> ( pDevice )
-      , m_texture                  ( pDevice, pDesc )
-      , m_lod                      ( 0 )
-      , m_autogenFilter            ( D3DTEXF_LINEAR ) {
+      : D3D9Resource<Base...> ( pDevice )
+      , m_texture             ( pDevice, pDesc )
+      , m_lod                 ( 0 )
+      , m_autogenFilter       ( D3DTEXF_LINEAR ) {
       const uint32_t arraySlices = m_texture.GetLayerCount();
       const uint32_t mipLevels   = m_texture.GetMipCount();
 
@@ -54,7 +54,7 @@ namespace dxvk {
       }
     }
 
-    ~Direct3DBaseTexture9() {
+    ~D3D9BaseTexture() {
       if (m_texture.Desc()->Pool == D3DPOOL_MANAGED) {
         auto lock = std::lock_guard(g_managedTextureMutex);
 
@@ -97,7 +97,7 @@ namespace dxvk {
       m_texture.GenerateMipSubLevels();
     }
 
-    Direct3DCommonTexture9* GetCommonTexture() {
+    D3D9CommonTexture* GetCommonTexture() {
       return &m_texture;
     }
 
@@ -110,7 +110,7 @@ namespace dxvk {
 
   protected:
 
-    Direct3DCommonTexture9 m_texture;
+    D3D9CommonTexture m_texture;
 
     DWORD m_lod;
     D3DTEXTUREFILTERTYPE m_autogenFilter;
@@ -119,13 +119,13 @@ namespace dxvk {
 
   };
 
-  using Direct3DTexture9Base = Direct3DBaseTexture9<Direct3DSurface9, IDirect3DTexture9>;
-  class Direct3DTexture9 final : public Direct3DTexture9Base {
+  using D3D9Texture2DBase = D3D9BaseTexture<D3D9Surface, IDirect3DTexture9>;
+  class D3D9Texture2D final : public D3D9Texture2DBase {
 
   public:
 
-    Direct3DTexture9(
-          Direct3DDevice9Ex*      pDevice,
+    D3D9Texture2D(
+          D3D9DeviceEx*           pDevice,
     const D3D9TextureDesc*        pDesc);
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
@@ -144,13 +144,13 @@ namespace dxvk {
 
   };
 
-  using Direct3DVolumeTexture9Base = Direct3DBaseTexture9<Direct3DVolume9, IDirect3DVolumeTexture9>;
-  class Direct3DVolumeTexture9 final : public Direct3DVolumeTexture9Base {
+  using D3D9Texture3DBase = D3D9BaseTexture<D3D9Volume, IDirect3DVolumeTexture9>;
+  class D3D9Texture3D final : public D3D9Texture3DBase {
 
   public:
 
-    Direct3DVolumeTexture9(
-          Direct3DDevice9Ex*      pDevice,
+    D3D9Texture3D(
+          D3D9DeviceEx*           pDevice,
     const D3D9TextureDesc*        pDesc);
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
@@ -169,13 +169,13 @@ namespace dxvk {
 
   };
 
-  using Direct3DCubeTexture9Base = Direct3DBaseTexture9<Direct3DSurface9, IDirect3DCubeTexture9>;
-  class Direct3DCubeTexture9 final : public Direct3DCubeTexture9Base {
+  using D3D9TextureCubeBase = D3D9BaseTexture<D3D9Surface, IDirect3DCubeTexture9>;
+  class D3D9TextureCube final : public D3D9TextureCubeBase {
 
   public:
 
-    Direct3DCubeTexture9(
-          Direct3DDevice9Ex*      pDevice,
+    D3D9TextureCube(
+          D3D9DeviceEx*           pDevice,
     const D3D9TextureDesc*        pDesc);
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
@@ -195,14 +195,14 @@ namespace dxvk {
   };
 
   template <typename T>
-  Direct3DCommonTexture9* GetCommonTexture(T* ptr) {
+  D3D9CommonTexture* GetCommonTexture(T* ptr) {
     if (ptr == nullptr)
       return nullptr;
 
     switch (ptr->GetType()) {
-      case D3DRTYPE_TEXTURE:       return static_cast<Direct3DTexture9*>      (ptr)->GetCommonTexture();
-      case D3DRTYPE_CUBETEXTURE:   return static_cast<Direct3DCubeTexture9*>  (ptr)->GetCommonTexture();
-      case D3DRTYPE_VOLUMETEXTURE: return static_cast<Direct3DVolumeTexture9*>(ptr)->GetCommonTexture();
+      case D3DRTYPE_TEXTURE:       return static_cast<D3D9Texture2D*>  (ptr)->GetCommonTexture();
+      case D3DRTYPE_CUBETEXTURE:   return static_cast<D3D9TextureCube*>(ptr)->GetCommonTexture();
+      case D3DRTYPE_VOLUMETEXTURE: return static_cast<D3D9Texture3D*>  (ptr)->GetCommonTexture();
       default:
         Logger::warn("Unknown texture resource type."); break;
     }
@@ -216,9 +216,9 @@ namespace dxvk {
       return;
 
     switch (tex->GetType()) {
-      case D3DRTYPE_TEXTURE:       CastRefPrivate<Direct3DTexture9>       (tex, AddRef); break;
-      case D3DRTYPE_CUBETEXTURE:   CastRefPrivate<Direct3DCubeTexture9>  (tex, AddRef); break;
-      case D3DRTYPE_VOLUMETEXTURE: CastRefPrivate<Direct3DVolumeTexture9>(tex, AddRef); break;
+      case D3DRTYPE_TEXTURE:       CastRefPrivate<D3D9Texture2D>  (tex, AddRef); break;
+      case D3DRTYPE_CUBETEXTURE:   CastRefPrivate<D3D9TextureCube>(tex, AddRef); break;
+      case D3DRTYPE_VOLUMETEXTURE: CastRefPrivate<D3D9Texture3D>  (tex, AddRef); break;
     default:
       Logger::warn("Unknown texture resource type."); break;
     }

@@ -3,15 +3,15 @@
 namespace dxvk {
 
   ////////////////////////
-  // Direct3DVertexBuffer9
+  // D3D9VertexBuffer
   ////////////////////////
 
-  Direct3DVertexBuffer9::Direct3DVertexBuffer9(
-          Direct3DDevice9Ex* pDevice,
+  D3D9VertexBuffer::D3D9VertexBuffer(
+          D3D9DeviceEx*      pDevice,
     const D3D9_BUFFER_DESC*  pDesc)
-    : Direct3DVertexBuffer9Base ( pDevice, pDesc ) { }
+    : D3D9VertexBufferBase( pDevice, pDesc ) { }
 
-  HRESULT STDMETHODCALLTYPE Direct3DVertexBuffer9::QueryInterface(
+  HRESULT STDMETHODCALLTYPE D3D9VertexBuffer::QueryInterface(
           REFIID  riid,
           void** ppvObject) {
     if (ppvObject == nullptr)
@@ -26,16 +26,16 @@ namespace dxvk {
       return S_OK;
     }
 
-    Logger::warn("Direct3DVertexBuffer9::QueryInterface: Unknown interface query");
+    Logger::warn("D3D9VertexBuffer::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
     return E_NOINTERFACE;
   }
 
-  D3DRESOURCETYPE STDMETHODCALLTYPE Direct3DVertexBuffer9::GetType() {
+  D3DRESOURCETYPE STDMETHODCALLTYPE D3D9VertexBuffer::GetType() {
     return D3DRTYPE_VERTEXBUFFER;
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DVertexBuffer9::GetDesc(
+  HRESULT STDMETHODCALLTYPE D3D9VertexBuffer::GetDesc(
           D3DVERTEXBUFFER_DESC* pDesc) {
     if (pDesc == nullptr)
       return D3DERR_INVALIDCALL;
@@ -54,15 +54,15 @@ namespace dxvk {
   }
 
   //////////////////////
-  //Direct3DIndexBuffer9
+  // D3D9IndexBuffer
   //////////////////////
 
-  Direct3DIndexBuffer9::Direct3DIndexBuffer9(
-          Direct3DDevice9Ex* pDevice,
+  D3D9IndexBuffer::D3D9IndexBuffer(
+          D3D9DeviceEx*      pDevice,
     const D3D9_BUFFER_DESC*  pDesc)
-    : Direct3DIndexBuffer9Base { pDevice, pDesc } {}
+    : D3D9IndexBufferBase( pDevice, pDesc ) { }
 
-  HRESULT STDMETHODCALLTYPE Direct3DIndexBuffer9::QueryInterface(
+  HRESULT STDMETHODCALLTYPE D3D9IndexBuffer::QueryInterface(
           REFIID  riid,
           void** ppvObject) {
     if (ppvObject == nullptr)
@@ -77,16 +77,16 @@ namespace dxvk {
       return S_OK;
     }
 
-    Logger::warn("Direct3DIndexBuffer9::QueryInterface: Unknown interface query");
+    Logger::warn("D3D9IndexBuffer::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
     return E_NOINTERFACE;
   }
 
-  D3DRESOURCETYPE STDMETHODCALLTYPE Direct3DIndexBuffer9::GetType() {
+  D3DRESOURCETYPE STDMETHODCALLTYPE D3D9IndexBuffer::GetType() {
     return D3DRTYPE_INDEXBUFFER;
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DIndexBuffer9::GetDesc(
+  HRESULT STDMETHODCALLTYPE D3D9IndexBuffer::GetDesc(
           D3DINDEXBUFFER_DESC* pDesc) {
     if (pDesc == nullptr)
       return D3DERR_INVALIDCALL;

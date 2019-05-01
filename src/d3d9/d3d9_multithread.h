@@ -10,7 +10,7 @@ namespace dxvk {
    * Effectively implements a recursive spinlock
    * which is used to lock the D3D9 device.
    */
-  class Direct3DDeviceMutex9 {
+  class D3D9DeviceMutex {
 
   public:
 
@@ -36,24 +36,24 @@ namespace dxvk {
    * \c std::unique_lock, with the goal of being
    * cheaper to construct and destroy.
    */
-  class Direct3DDeviceLock9 {
+  class D3D9DeviceLock {
 
   public:
 
-    Direct3DDeviceLock9()
+    D3D9DeviceLock()
       : m_mutex(nullptr) { }
 
-    Direct3DDeviceLock9(Direct3DDeviceMutex9& mutex)
+    D3D9DeviceLock(D3D9DeviceMutex& mutex)
       : m_mutex(&mutex) {
       mutex.lock();
     }
 
-    Direct3DDeviceLock9(Direct3DDeviceLock9&& other)
+    D3D9DeviceLock(D3D9DeviceLock&& other)
       : m_mutex(other.m_mutex) {
       other.m_mutex = nullptr;
     }
 
-    Direct3DDeviceLock9& operator = (Direct3DDeviceLock9&& other) {
+    D3D9DeviceLock& operator = (D3D9DeviceLock&& other) {
       if (m_mutex)
         m_mutex->unlock();
 
@@ -62,14 +62,14 @@ namespace dxvk {
       return *this;
     }
 
-    ~Direct3DDeviceLock9() {
+    ~D3D9DeviceLock() {
       if (m_mutex != nullptr)
         m_mutex->unlock();
     }
 
   private:
 
-    Direct3DDeviceMutex9* m_mutex;
+    D3D9DeviceMutex* m_mutex;
 
   };
 
@@ -77,26 +77,24 @@ namespace dxvk {
   /**
    * \brief D3D9 context lock
    */
-  class Direct3DMultithread9 {
+  class D3D9Multithread {
 
   public:
 
-    Direct3DMultithread9(
+    D3D9Multithread(
       BOOL                  Protected);
 
-    ~Direct3DMultithread9();
-
-    Direct3DDeviceLock9 AcquireLock() {
+    D3D9DeviceLock AcquireLock() {
       return m_protected
-        ? Direct3DDeviceLock9(m_mutex)
-        : Direct3DDeviceLock9();
+        ? D3D9DeviceLock(m_mutex)
+        : D3D9DeviceLock();
     }
 
   private:
 
-    BOOL      m_protected;
+    BOOL            m_protected;
 
-    Direct3DDeviceMutex9 m_mutex;
+    D3D9DeviceMutex m_mutex;
 
   };
 

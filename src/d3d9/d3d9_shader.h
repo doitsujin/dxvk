@@ -19,7 +19,7 @@ namespace dxvk {
     D3D9CommonShader();
 
     D3D9CommonShader(
-            Direct3DDevice9Ex*    pDevice,
+            D3D9DeviceEx*         pDevice,
       const DxvkShaderKey*        pShaderKey,
       const DxsoModuleInfo*       pDxbcModuleInfo,
       const void*                 pShaderBytecode,
@@ -61,15 +61,15 @@ namespace dxvk {
    * module object.
    */
   template <typename Base>
-  class D3D9Shader : public Direct3DDeviceChild9<Base> {
+  class D3D9Shader : public D3D9DeviceChild<Base> {
 
   public:
 
     D3D9Shader(
-            Direct3DDevice9Ex* device,
-      const D3D9CommonShader&  shader)
-      : Direct3DDeviceChild9<Base>{ device }
-      , m_shader{ shader } {}
+            D3D9DeviceEx*      pDevice,
+      const D3D9CommonShader&  CommonShader)
+      : D3D9DeviceChild<Base>( pDevice )
+      , m_shader             ( CommonShader ) { }
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject) {
       if (ppvObject == nullptr)
@@ -122,9 +122,9 @@ namespace dxvk {
   public:
 
     D3D9VertexShader(
-            Direct3DDevice9Ex* device,
-      const D3D9CommonShader&  shader)
-      : D3D9Shader<IDirect3DVertexShader9>{ device, shader } {}
+            D3D9DeviceEx*      pDevice,
+      const D3D9CommonShader&  CommonShader)
+      : D3D9Shader<IDirect3DVertexShader9>( pDevice, CommonShader ) { }
 
   };
 
@@ -133,9 +133,9 @@ namespace dxvk {
   public:
 
     D3D9PixelShader(
-            Direct3DDevice9Ex* device,
-      const D3D9CommonShader&  shader)
-      : D3D9Shader<IDirect3DPixelShader9>{ device, shader } {}
+            D3D9DeviceEx*      pDevice,
+      const D3D9CommonShader&  CommonShader)
+      : D3D9Shader<IDirect3DPixelShader9>( pDevice, CommonShader ) { }
 
   };
 
@@ -152,7 +152,7 @@ namespace dxvk {
   public:
     
     D3D9CommonShader GetShaderModule(
-            Direct3DDevice9Ex*    pDevice,
+            D3D9DeviceEx*         pDevice,
             VkShaderStageFlagBits ShaderStage,
       const DxsoModuleInfo*       pDxbcModuleInfo,
       const void*                 pShaderBytecode);

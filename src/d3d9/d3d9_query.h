@@ -10,12 +10,12 @@ namespace dxvk {
     D3D9_VK_QUERY_ENDED,
   };
 
-  class D3D9Query : public Direct3DDeviceChild9<IDirect3DQuery9> {
+  class D3D9Query : public D3D9DeviceChild<IDirect3DQuery9> {
 
   public:
 
     D3D9Query(
-            Direct3DDevice9Ex* pDevice,
+            D3D9DeviceEx*      pDevice,
             D3DQUERYTYPE       QueryType);
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);

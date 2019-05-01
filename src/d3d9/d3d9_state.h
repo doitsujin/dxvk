@@ -18,12 +18,12 @@ namespace dxvk {
     static constexpr DWORD AlphaToCoverageEnabled  = MAKEFOURCC('A', '2', 'M', '1');;
   }
 
-  class Direct3DSurface9;
+  class D3D9Surface;
   class D3D9VertexShader;
   class D3D9PixelShader;
-  class Direct3DVertexDeclaration9;
-  class Direct3DVertexBuffer9;
-  class Direct3DIndexBuffer9;
+  class D3D9VertexDecl;
+  class D3D9VertexBuffer;
+  class D3D9IndexBuffer;
   
   struct D3D9ClipPlane {
     float coeff[4];
@@ -34,9 +34,9 @@ namespace dxvk {
   };
   
   struct D3D9VBO {
-    Direct3DVertexBuffer9* vertexBuffer = nullptr;
-    UINT                   offset = 0;
-    UINT                   stride = 0;
+    D3D9VertexBuffer* vertexBuffer = nullptr;
+    UINT              offset = 0;
+    UINT              stride = 0;
   };
 
   struct D3D9CapturableState {
@@ -51,8 +51,8 @@ namespace dxvk {
         streamFreq[i] = 1;
     }
 
-    Direct3DVertexDeclaration9*                      vertexDecl = nullptr;
-    Direct3DIndexBuffer9*                            indices    = nullptr;
+    D3D9VertexDecl*                                  vertexDecl = nullptr;
+    D3D9IndexBuffer*                                 indices    = nullptr;
 
     std::array<DWORD, RenderStateCount>              renderStates = { 0 };
 
@@ -166,9 +166,9 @@ namespace dxvk {
         renderTargets[i] = nullptr;
     }
 
-    std::array<Direct3DSurface9*, caps::MaxSimultaneousRenderTargets> renderTargets;
+    std::array<D3D9Surface*, caps::MaxSimultaneousRenderTargets> renderTargets;
 
-    Direct3DSurface9* depthStencil = nullptr;
+    D3D9Surface* depthStencil = nullptr;
     
   };
 

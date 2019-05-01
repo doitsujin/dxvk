@@ -21,12 +21,12 @@ namespace dxvk {
     }
   }
 
-  using D3D9StateBlockBase = Direct3DDeviceChild9<IDirect3DStateBlock9>;
+  using D3D9StateBlockBase = D3D9DeviceChild<IDirect3DStateBlock9>;
   class D3D9StateBlock : public D3D9StateBlockBase {
 
   public:
 
-    D3D9StateBlock(Direct3DDevice9Ex* pDevice, D3D9StateBlockType Type);
+    D3D9StateBlock(D3D9DeviceEx* pDevice, D3D9StateBlockType Type);
 
     HRESULT STDMETHODCALLTYPE QueryInterface(
         REFIID  riid,
@@ -35,9 +35,9 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE Capture() final;
     HRESULT STDMETHODCALLTYPE Apply() final;
 
-    HRESULT SetVertexDeclaration(Direct3DVertexDeclaration9* pDecl);
+    HRESULT SetVertexDeclaration(D3D9VertexDecl* pDecl);
 
-    HRESULT SetIndices(Direct3DIndexBuffer9* pIndexData);
+    HRESULT SetIndices(D3D9IndexBuffer* pIndexData);
 
     HRESULT SetRenderState(D3DRENDERSTATETYPE State, DWORD Value);
 
@@ -47,10 +47,10 @@ namespace dxvk {
             DWORD               Value);
 
     HRESULT SetStreamSource(
-            UINT                    StreamNumber,
-            Direct3DVertexBuffer9*  pStreamData,
-            UINT                    OffsetInBytes,
-            UINT                    Stride);
+            UINT               StreamNumber,
+            D3D9VertexBuffer*  pStreamData,
+            UINT               OffsetInBytes,
+            UINT               Stride);
 
     HRESULT SetStreamSourceFreq(UINT StreamNumber, UINT Setting);
 

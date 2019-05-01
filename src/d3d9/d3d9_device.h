@@ -29,9 +29,9 @@ namespace dxvk {
   constexpr static uint32_t MinFlushIntervalUs = 1250;
   constexpr static uint32_t MaxPendingSubmits = 3;
 
-  class Direct3DSwapChain9Ex;
-  class Direct3DCommonTexture9;
-  class Direct3DCommonBuffer9;
+  class D3D9SwapChainEx;
+  class D3D9CommonTexture;
+  class D3D9CommonBuffer;
   class D3D9CommonShader;
   class D3D9ShaderModuleSet;
   class D3D9Initializer;
@@ -61,23 +61,23 @@ namespace dxvk {
     uint32_t               instanceCount;
   };
 
-  class Direct3DDevice9Ex final : public ComObject<IDirect3DDevice9Ex> {
+  class D3D9DeviceEx final : public ComObject<IDirect3DDevice9Ex> {
     constexpr static uint32_t DefaultFrameLatency = 3;
-    constexpr static uint32_t MaxFrameLatency = 20;
+    constexpr static uint32_t MaxFrameLatency     = 20;
   public:
 
-    Direct3DDevice9Ex(
-            bool              extended,
-            IDirect3D9Ex*     parent,
-            UINT              adapter,
+    D3D9DeviceEx(
+            IDirect3D9Ex*     pParent,
+            UINT              Adapter,
+            D3DDEVTYPE        DeviceType,
+            HWND              hFocusWindow,
+            DWORD             BehaviorFlags,
+            D3DDISPLAYMODEEX* pDisplayMode,
+            bool              bExtended,
             Rc<DxvkAdapter>   dxvkAdapter,
-            Rc<DxvkDevice>    dxvkDevice,
-            D3DDEVTYPE        deviceType,
-            HWND              window,
-            DWORD             flags,
-            D3DDISPLAYMODEEX* displayMode);
+            Rc<DxvkDevice>    dxvkDevice);
 
-    ~Direct3DDevice9Ex();
+    ~D3D9DeviceEx();
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
 
@@ -541,49 +541,51 @@ namespace dxvk {
     HRESULT STDMETHODCALLTYPE CheckDeviceState(HWND hDestinationWindow);
 
     HRESULT STDMETHODCALLTYPE PresentEx(
-      const RECT* pSourceRect,
-      const RECT* pDestRect,
-      HWND hDestWindowOverride,
+      const RECT*    pSourceRect,
+      const RECT*    pDestRect,
+            HWND     hDestWindowOverride,
       const RGNDATA* pDirtyRegion,
-      DWORD dwFlags);
+            DWORD    dwFlags);
 
     HRESULT STDMETHODCALLTYPE CreateRenderTargetEx(
-      UINT Width,
-      UINT Height,
-      D3DFORMAT Format,
-      D3DMULTISAMPLE_TYPE MultiSample,
-      DWORD MultisampleQuality,
-      BOOL Lockable,
-      IDirect3DSurface9** ppSurface,
-      HANDLE* pSharedHandle,
-      DWORD Usage);
+            UINT                Width,
+            UINT                Height,
+            D3DFORMAT           Format,
+            D3DMULTISAMPLE_TYPE MultiSample,
+            DWORD               MultisampleQuality,
+            BOOL                Lockable,
+            IDirect3DSurface9** ppSurface,
+            HANDLE*             pSharedHandle,
+            DWORD               Usage);
 
     HRESULT STDMETHODCALLTYPE CreateOffscreenPlainSurfaceEx(
-      UINT Width,
-      UINT Height,
-      D3DFORMAT Format,
-      D3DPOOL Pool,
-      IDirect3DSurface9** ppSurface,
-      HANDLE* pSharedHandle,
-      DWORD Usage);
+            UINT                Width,
+            UINT                Height,
+            D3DFORMAT           Format,
+            D3DPOOL             Pool,
+            IDirect3DSurface9** ppSurface,
+            HANDLE*             pSharedHandle,
+            DWORD               Usage);
 
     HRESULT STDMETHODCALLTYPE CreateDepthStencilSurfaceEx(
-      UINT Width,
-      UINT Height,
-      D3DFORMAT Format,
-      D3DMULTISAMPLE_TYPE MultiSample,
-      DWORD MultisampleQuality,
-      BOOL Discard,
-      IDirect3DSurface9** ppSurface,
-      HANDLE* pSharedHandle,
-      DWORD Usage);
+            UINT                Width,
+            UINT                Height,
+            D3DFORMAT           Format,
+            D3DMULTISAMPLE_TYPE MultiSample,
+            DWORD               MultisampleQuality,
+            BOOL                Discard,
+            IDirect3DSurface9** ppSurface,
+            HANDLE*             pSharedHandle,
+            DWORD               Usage);
 
-    HRESULT STDMETHODCALLTYPE ResetEx(D3DPRESENT_PARAMETERS* pPresentationParameters, D3DDISPLAYMODEEX *pFullscreenDisplayMode);
+    HRESULT STDMETHODCALLTYPE ResetEx(
+            D3DPRESENT_PARAMETERS* pPresentationParameters,
+            D3DDISPLAYMODEEX*      pFullscreenDisplayMode);
 
     HRESULT STDMETHODCALLTYPE GetDisplayModeEx(
-      UINT iSwapChain,
-      D3DDISPLAYMODEEX* pMode,
-      D3DDISPLAYROTATION* pRotation);
+            UINT                iSwapChain,
+            D3DDISPLAYMODEEX*   pMode,
+            D3DDISPLAYROTATION* pRotation);
 
     HRESULT SetStateSamplerState(
         DWORD               StateSampler,
@@ -627,7 +629,7 @@ namespace dxvk {
      * \returns \c D3D_OK if the parameters are valid or D3DERR_INVALIDCALL if it fails.
      */
     HRESULT LockImage(
-            Direct3DCommonTexture9* pResource,
+            D3D9CommonTexture* pResource,
             UINT                    Face,
             UINT                    Mip,
             D3DLOCKED_BOX*          pLockedBox,
@@ -648,30 +650,30 @@ namespace dxvk {
      * \returns \c D3D_OK if the parameters are valid or D3DERR_INVALIDCALL if it fails.
      */
     HRESULT UnlockImage(
-            Direct3DCommonTexture9* pResource,
+            D3D9CommonTexture*      pResource,
             UINT                    Face,
             UINT                    MipLevel);
 
     void FixupFormat(
-            Direct3DCommonTexture9* pResource,
+            D3D9CommonTexture*      pResource,
             UINT                    Face,
             UINT                    MipLevel);
 
     HRESULT FlushImage(
-        Direct3DCommonTexture9* pResource);
+            D3D9CommonTexture* pResource);
 
     void GenerateMips(
-      Direct3DCommonTexture9* pResource);
+            D3D9CommonTexture* pResource);
 
     HRESULT LockBuffer(
-            Direct3DCommonBuffer9*  pResource,
+            D3D9CommonBuffer*       pResource,
             UINT                    OffsetToLock,
             UINT                    SizeToLock,
             void**                  ppbData,
             DWORD                   Flags);
 
     HRESULT UnlockBuffer(
-            Direct3DCommonBuffer9* pResource);
+            D3D9CommonBuffer*       pResource);
 
     void SetupFPU();
 
@@ -730,13 +732,13 @@ namespace dxvk {
 
     void BindVertexBuffer(
             UINT                              Slot,
-            Direct3DVertexBuffer9*            pBuffer,
+            D3D9VertexBuffer*                 pBuffer,
             UINT                              Offset,
             UINT                              Stride);
 
     void BindIndices();
 
-    Direct3DDeviceLock9 LockDevice() {
+    D3D9DeviceLock LockDevice() {
       return m_multithread.AcquireLock();
     }
 
@@ -810,10 +812,10 @@ namespace dxvk {
     D3DDEVTYPE                      m_deviceType;
     HWND                            m_window;
 
-    DWORD                           m_behaviourFlags;
+    DWORD                           m_behaviorFlags;
     Direct3DState9                  m_state;
     Com<D3D9StateBlock>             m_recorder;
-    Direct3DMultithread9            m_multithread;
+    D3D9Multithread                 m_multithread;
 
     Rc<D3D9ShaderModuleSet>         m_shaderModules;
 
@@ -844,14 +846,14 @@ namespace dxvk {
 
     std::unordered_map<
       DWORD,
-      Com<Direct3DVertexDeclaration9>> m_fvfTable;
+      Com<D3D9VertexDecl>> m_fvfTable;
 
     uint32_t                        m_streamUsageMask = 0;
     uint32_t                        m_instancedData   = 0;
 
     void AllocUpBuffer(uint32_t size);
 
-    Direct3DSwapChain9Ex* GetInternalSwapchain(UINT index);
+    D3D9SwapChainEx* GetInternalSwapchain(UINT index);
 
     bool ShouldRecord();
 

@@ -3,9 +3,9 @@
 namespace dxvk {
 
   D3D9Query::D3D9Query(
-        Direct3DDevice9Ex* pDevice,
+        D3D9DeviceEx*      pDevice,
         D3DQUERYTYPE       QueryType)
-    : Direct3DDeviceChild9<IDirect3DQuery9>(pDevice)
+    : D3D9DeviceChild<IDirect3DQuery9>(pDevice)
     , m_queryType                          (QueryType)
     , m_state                              (D3D9_VK_QUERY_INITIAL) {
     Rc<DxvkDevice> dxvkDevice = m_parent->GetDXVKDevice();

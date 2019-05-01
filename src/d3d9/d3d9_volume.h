@@ -6,21 +6,21 @@
 
 namespace dxvk {
 
-  using Direct3DVolume9Base = Direct3DSubresource9<IDirect3DVolume9>;
-  class Direct3DVolume9 final : public Direct3DVolume9Base {
+  using D3D9VolumeBase = D3D9Subresource<IDirect3DVolume9>;
+  class D3D9Volume final : public D3D9VolumeBase {
 
   public:
 
-    Direct3DVolume9(
-            Direct3DDevice9Ex*        pDevice,
+    D3D9Volume(
+            D3D9DeviceEx*             pDevice,
       const D3D9TextureDesc*          pDesc);
 
-    Direct3DVolume9(
-            Direct3DDevice9Ex*         pDevice,
-            Direct3DCommonTexture9*    pTexture,
-            UINT                       Face,
-            UINT                       MipLevel,
-            IUnknown*                  pContainer);
+    D3D9Volume(
+            D3D9DeviceEx*             pDevice,
+            D3D9CommonTexture*        pTexture,
+            UINT                      Face,
+            UINT                      MipLevel,
+            IUnknown*                 pContainer);
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
 

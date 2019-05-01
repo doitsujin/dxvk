@@ -7,7 +7,7 @@ namespace dxvk {
   D3D9CommonShader::D3D9CommonShader() {}
 
   D3D9CommonShader::D3D9CommonShader(
-            Direct3DDevice9Ex*    pDevice,
+            D3D9DeviceEx*         pDevice,
       const DxvkShaderKey*        pShaderKey,
       const DxsoModuleInfo*       pDxsoModuleInfo,
       const void*                 pShaderBytecode,
@@ -66,7 +66,7 @@ namespace dxvk {
   }
 
   D3D9CommonShader D3D9ShaderModuleSet::GetShaderModule(
-            Direct3DDevice9Ex*    pDevice,
+            D3D9DeviceEx*         pDevice,
             VkShaderStageFlagBits ShaderStage,
       const DxsoModuleInfo*       pDxbcModuleInfo,
       const void*                 pShaderBytecode) {

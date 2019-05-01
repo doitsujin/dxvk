@@ -2,24 +2,24 @@
 
 namespace dxvk {
 
-  Direct3DSurface9::Direct3DSurface9(
-          Direct3DDevice9Ex*        device,
-    const D3D9TextureDesc*          desc)
-    : Direct3DSurface9Base(
-        device,
-        new Direct3DCommonTexture9( device, desc ),
+  D3D9Surface::D3D9Surface(
+          D3D9DeviceEx*             pDevice,
+    const D3D9TextureDesc*          pDesc)
+    : D3D9SurfaceBase(
+        pDevice,
+        new D3D9CommonTexture( pDevice, pDesc ),
         0,
         0,
-        device,
+        pDevice,
         true) { }
 
-  Direct3DSurface9::Direct3DSurface9(
-          Direct3DDevice9Ex*         pDevice,
-          Direct3DCommonTexture9*    pTexture,
-          UINT                       Face,
-          UINT                       MipLevel,
-          IUnknown*                  pContainer)
-    : Direct3DSurface9Base(
+  D3D9Surface::D3D9Surface(
+          D3D9DeviceEx*             pDevice,
+          D3D9CommonTexture*        pTexture,
+          UINT                      Face,
+          UINT                      MipLevel,
+          IUnknown*                 pContainer)
+    : D3D9SurfaceBase(
         pDevice,
         pTexture,
         Face,
@@ -27,7 +27,7 @@ namespace dxvk {
         pContainer,
         false) { }
 
-  HRESULT STDMETHODCALLTYPE Direct3DSurface9::QueryInterface(REFIID riid, void** ppvObject) {
+  HRESULT STDMETHODCALLTYPE D3D9Surface::QueryInterface(REFIID riid, void** ppvObject) {
     if (ppvObject == nullptr)
       return E_POINTER;
 
@@ -40,16 +40,16 @@ namespace dxvk {
       return S_OK;
     }
 
-    Logger::warn("Direct3DSurface9::QueryInterface: Unknown interface query");
+    Logger::warn("D3D9Surface::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
     return E_NOINTERFACE;
   }
 
-  D3DRESOURCETYPE STDMETHODCALLTYPE Direct3DSurface9::GetType() {
+  D3DRESOURCETYPE STDMETHODCALLTYPE D3D9Surface::GetType() {
     return D3DRTYPE_SURFACE;
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DSurface9::GetDesc(D3DSURFACE_DESC *pDesc) {
+  HRESULT STDMETHODCALLTYPE D3D9Surface::GetDesc(D3DSURFACE_DESC *pDesc) {
     if (pDesc == nullptr)
       return D3DERR_INVALIDCALL;
 
@@ -68,7 +68,7 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DSurface9::LockRect(D3DLOCKED_RECT* pLockedRect, CONST RECT* pRect, DWORD Flags) {
+  HRESULT STDMETHODCALLTYPE D3D9Surface::LockRect(D3DLOCKED_RECT* pLockedRect, CONST RECT* pRect, DWORD Flags) {
     D3DBOX box;
     if (pRect != nullptr) {
       box.Left = pRect->left;
@@ -94,19 +94,19 @@ namespace dxvk {
     return hr;
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DSurface9::UnlockRect() {
+  HRESULT STDMETHODCALLTYPE D3D9Surface::UnlockRect() {
     return m_texture->Unlock(
       m_face,
       m_mipLevel);
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DSurface9::GetDC(HDC *phdc) {
-    Logger::warn("Direct3DSurface9::GetDC: Stub");
+  HRESULT STDMETHODCALLTYPE D3D9Surface::GetDC(HDC *phdc) {
+    Logger::warn("D3D9Surface::GetDC: Stub");
     return D3DERR_INVALIDCALL;
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DSurface9::ReleaseDC(HDC hdc) {
-    Logger::warn("Direct3DSurface9::ReleaseDC: Stub");
+  HRESULT STDMETHODCALLTYPE D3D9Surface::ReleaseDC(HDC hdc) {
+    Logger::warn("D3D9Surface::ReleaseDC: Stub");
     return D3DERR_INVALIDCALL;
   }
 

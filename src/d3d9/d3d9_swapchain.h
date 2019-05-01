@@ -8,14 +8,16 @@
 
 namespace dxvk {
 
-  class Direct3DSurface9;
+  class D3D9Surface;
 
-  using Direct3DSwapChain9ExBase = Direct3DDeviceChild9<IDirect3DSwapChain9Ex>;
-  class Direct3DSwapChain9Ex final : public Direct3DSwapChain9ExBase {
+  using D3D9SwapChainExBase = D3D9DeviceChild<IDirect3DSwapChain9Ex>;
+  class D3D9SwapChainEx final : public D3D9SwapChainExBase {
 
   public:
 
-    Direct3DSwapChain9Ex(Direct3DDevice9Ex* device, D3DPRESENT_PARAMETERS* presentParams);
+    D3D9SwapChainEx(
+            D3D9DeviceEx*          pDevice,
+            D3DPRESENT_PARAMETERS* pPresentParams);
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
 
@@ -52,7 +54,7 @@ namespace dxvk {
     void SetDefaultGamma();
 
     void    SetGammaRamp(
-      DWORD Flags,
+            DWORD         Flags,
       const D3DGAMMARAMP* pRamp);
 
     void    GetGammaRamp(D3DGAMMARAMP* pRamp);
@@ -78,7 +80,7 @@ namespace dxvk {
     D3DPRESENT_PARAMETERS m_presentParams;
     WindowState m_windowState;
     
-    Direct3DSurface9* m_backBuffer;
+    D3D9Surface* m_backBuffer;
 
     DWORD m_gammaFlags;
     D3DGAMMARAMP m_gammaRamp;

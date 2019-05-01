@@ -6,7 +6,7 @@
 namespace dxvk {
 
   D3D9Presenter::D3D9Presenter(
-        Direct3DDevice9Ex*  parent,
+        D3D9DeviceEx*       parent,
         HWND                window,
   const D3D9PresenterDesc*  desc,
         DWORD               gammaFlags,
@@ -113,7 +113,7 @@ namespace dxvk {
     desc.Width = std::max(1u, m_desc.width);
     desc.Offscreen = FALSE;
 
-    m_backBuffer = new Direct3DCommonTexture9{ m_parent, &desc };
+    m_backBuffer = new D3D9CommonTexture{ m_parent, &desc };
 
     m_swapImage = m_backBuffer->GetImage();
 

@@ -7,11 +7,13 @@
 namespace dxvk {
   Logger Logger::s_instance("d3d9.log");
 
-  HRESULT CreateD3D9(bool ex, IDirect3D9Ex** ppDirect3D9Ex) {
+  HRESULT CreateD3D9(
+          bool           Extended,
+          IDirect3D9Ex** ppDirect3D9Ex) {
     if (!ppDirect3D9Ex)
       return D3DERR_INVALIDCALL;
 
-    *ppDirect3D9Ex = ref(new Direct3D9Ex{ ex });
+    *ppDirect3D9Ex = ref(new D3D9InterfaceEx( Extended ));
     return D3D_OK;
   }
 }

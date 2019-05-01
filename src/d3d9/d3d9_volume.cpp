@@ -2,24 +2,23 @@
 
 namespace dxvk {
 
-  Direct3DVolume9::Direct3DVolume9(
-          Direct3DDevice9Ex*        device,
-    const D3D9TextureDesc*          desc)
-    : Direct3DVolume9Base(
-        device,
-        new Direct3DCommonTexture9( device, desc ),
-        0,
-        0,
-        device,
+  D3D9Volume::D3D9Volume(
+          D3D9DeviceEx*             pDevice,
+    const D3D9TextureDesc*          pDesc)
+    : D3D9VolumeBase(
+        pDevice,
+        new D3D9CommonTexture( pDevice, pDesc ),
+        0, 0,
+        pDevice,
         true) { }
 
-  Direct3DVolume9::Direct3DVolume9(
-          Direct3DDevice9Ex*         pDevice,
-          Direct3DCommonTexture9*    pTexture,
-          UINT                       Face,
-          UINT                       MipLevel,
-          IUnknown*                  pContainer)
-    : Direct3DVolume9Base(
+  D3D9Volume::D3D9Volume(
+          D3D9DeviceEx*             pDevice,
+          D3D9CommonTexture*        pTexture,
+          UINT                      Face,
+          UINT                      MipLevel,
+          IUnknown*                 pContainer)
+    : D3D9VolumeBase(
         pDevice,
         pTexture,
         Face,
@@ -27,7 +26,7 @@ namespace dxvk {
         pContainer,
         false) { }
 
-  HRESULT STDMETHODCALLTYPE Direct3DVolume9::QueryInterface(REFIID riid, void** ppvObject) {
+  HRESULT STDMETHODCALLTYPE D3D9Volume::QueryInterface(REFIID riid, void** ppvObject) {
     if (ppvObject == nullptr)
       return E_POINTER;
 
@@ -40,12 +39,12 @@ namespace dxvk {
       return S_OK;
     }
 
-    Logger::warn("Direct3DVolume9::QueryInterface: Unknown interface query");
+    Logger::warn("D3D9Volume::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
     return E_NOINTERFACE;
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DVolume9::GetDesc(D3DVOLUME_DESC *pDesc) {
+  HRESULT STDMETHODCALLTYPE D3D9Volume::GetDesc(D3DVOLUME_DESC *pDesc) {
     if (pDesc == nullptr)
       return D3DERR_INVALIDCALL;
 
@@ -63,7 +62,7 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DVolume9::LockBox(D3DLOCKED_BOX* pLockedBox, CONST D3DBOX* pBox, DWORD Flags) {
+  HRESULT STDMETHODCALLTYPE D3D9Volume::LockBox(D3DLOCKED_BOX* pLockedBox, CONST D3DBOX* pBox, DWORD Flags) {
     return m_texture->Lock(
       m_face,
       m_mipLevel,
@@ -72,7 +71,7 @@ namespace dxvk {
       Flags);
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DVolume9::UnlockBox() {
+  HRESULT STDMETHODCALLTYPE D3D9Volume::UnlockBox() {
     return m_texture->Unlock(
       m_face,
       m_mipLevel);

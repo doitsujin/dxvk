@@ -6,25 +6,25 @@
 
 namespace dxvk {
 
-  Direct3DVertexDeclaration9::Direct3DVertexDeclaration9(
-          Direct3DDevice9Ex* pDevice,
+  D3D9VertexDecl::D3D9VertexDecl(
+          D3D9DeviceEx*      pDevice,
           DWORD              FVF)
-    : Direct3DVertexDeclaration9Base(pDevice) {
+    : D3D9VertexDeclBase(pDevice) {
     m_elements.reserve(16);
     this->SetFVF(FVF);
   }
 
-  Direct3DVertexDeclaration9::Direct3DVertexDeclaration9(
-          Direct3DDevice9Ex* pDevice,
+  D3D9VertexDecl::D3D9VertexDecl(
+          D3D9DeviceEx*      pDevice,
     const D3DVERTEXELEMENT9* pVertexElements,
           uint32_t           DeclCount)
-    : Direct3DVertexDeclaration9Base ( pDevice )
-    , m_elements                     ( DeclCount )
-    , m_fvf                          ( 0 ) {
+    : D3D9VertexDeclBase( pDevice )
+    , m_elements        ( DeclCount )
+    , m_fvf             ( 0 ) {
     std::memcpy(m_elements.data(), pVertexElements, sizeof(D3DVERTEXELEMENT9) * DeclCount);
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DVertexDeclaration9::QueryInterface(
+  HRESULT STDMETHODCALLTYPE D3D9VertexDecl::QueryInterface(
           REFIID  riid,
           void** ppvObject) {
     if (ppvObject == nullptr)
@@ -38,12 +38,12 @@ namespace dxvk {
       return S_OK;
     }
 
-    Logger::warn("Direct3DVertexDeclaration9::QueryInterface: Unknown interface query");
+    Logger::warn("D3D9VertexDecl::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
     return E_NOINTERFACE;
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DVertexDeclaration9::GetDeclaration(
+  HRESULT STDMETHODCALLTYPE D3D9VertexDecl::GetDeclaration(
           D3DVERTEXELEMENT9* pElement,
           UINT*              pNumElements) {
     if (pNumElements == nullptr)
@@ -64,7 +64,7 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  void Direct3DVertexDeclaration9::SetFVF(DWORD FVF) {
+  void D3D9VertexDecl::SetFVF(DWORD FVF) {
     m_fvf = FVF;
 
     std::array<D3DVERTEXELEMENT9, 16> elements;

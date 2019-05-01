@@ -6,25 +6,25 @@
 namespace dxvk {
 
   template <typename... Type>
-  class Direct3DSubresource9 : public Direct3DResource9<Type...> {
+  class D3D9Subresource : public D3D9Resource<Type...> {
 
   public:
 
-    Direct3DSubresource9(
-            Direct3DDevice9Ex*      pDevice,
-            Direct3DCommonTexture9* pTexture,
+    D3D9Subresource(
+            D3D9DeviceEx*           pDevice,
+            D3D9CommonTexture*      pTexture,
             UINT                    Face,
             UINT                    MipLevel,
             IUnknown*               pContainer,
             bool                    OwnsTexture)
-      : Direct3DResource9<Type...> ( pDevice )
+      : D3D9Resource<Type...> ( pDevice )
       , m_container                ( pContainer )
       , m_texture                  ( pTexture )
       , m_face                     ( Face )
       , m_mipLevel                 ( MipLevel )
       , m_ownsTexture              ( OwnsTexture ) { }
 
-    ~Direct3DSubresource9() {
+    ~D3D9Subresource() {
       if (m_ownsTexture)
         delete m_texture;
     }
@@ -33,14 +33,14 @@ namespace dxvk {
       if (m_container != nullptr)
         m_container->AddRef();
 
-      return Direct3DResource9<Type...>::AddRef();
+      return D3D9Resource<Type...>::AddRef();
     }
 
     ULONG STDMETHODCALLTYPE Release() final {
       if (m_container != nullptr)
         m_container->Release();
 
-      return Direct3DResource9<Type...>::Release();
+      return D3D9Resource<Type...>::Release();
     }
 
     HRESULT STDMETHODCALLTYPE GetContainer(REFIID riid, void** ppContainer) final {
@@ -50,7 +50,7 @@ namespace dxvk {
       return m_container->QueryInterface(riid, ppContainer);
     }
 
-    Direct3DCommonTexture9* GetCommonTexture() {
+    D3D9CommonTexture* GetCommonTexture() {
       return m_texture;
     }
 
@@ -90,7 +90,7 @@ namespace dxvk {
 
     IUnknown*               m_container;
 
-    Direct3DCommonTexture9* m_texture;
+    D3D9CommonTexture*      m_texture;
     UINT                    m_face;
     UINT                    m_mipLevel;
 

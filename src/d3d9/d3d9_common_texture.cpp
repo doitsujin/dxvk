@@ -5,8 +5,8 @@
 
 namespace dxvk {
 
-  Direct3DCommonTexture9::Direct3DCommonTexture9(
-          Direct3DDevice9Ex*      pDevice,
+  D3D9CommonTexture::D3D9CommonTexture(
+          D3D9DeviceEx*           pDevice,
     const D3D9TextureDesc*        pDesc)
     : m_device( pDevice ), m_desc( *pDesc ) {
 
@@ -16,22 +16,22 @@ namespace dxvk {
     D3D9_VK_FORMAT_MAPPING formatInfo = m_device->LookupFormat(m_desc.Format);
 
     DxvkImageCreateInfo imageInfo;
-    imageInfo.type = GetImageTypeFromResourceType(m_desc.Type);
-    imageInfo.format = formatInfo.Format;
-    imageInfo.flags = 0;
-    imageInfo.sampleCount = VK_SAMPLE_COUNT_1_BIT;
-    imageInfo.extent.width = m_desc.Width;
+    imageInfo.type          = GetImageTypeFromResourceType(m_desc.Type);
+    imageInfo.format        = formatInfo.Format;
+    imageInfo.flags         = 0;
+    imageInfo.sampleCount   = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.extent.width  = m_desc.Width;
     imageInfo.extent.height = m_desc.Height;
-    imageInfo.extent.depth = m_desc.Depth;
-    imageInfo.numLayers = GetLayerCount();
-    imageInfo.mipLevels = m_desc.MipLevels;
-    imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT
-                    | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    imageInfo.stages = VK_PIPELINE_STAGE_TRANSFER_BIT;
-    imageInfo.access = VK_ACCESS_TRANSFER_READ_BIT
-                     | VK_ACCESS_TRANSFER_WRITE_BIT;
-    imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-    imageInfo.layout = VK_IMAGE_LAYOUT_GENERAL;
+    imageInfo.extent.depth  = m_desc.Depth;
+    imageInfo.numLayers     = GetLayerCount();
+    imageInfo.mipLevels     = m_desc.MipLevels;
+    imageInfo.usage         = VK_IMAGE_USAGE_TRANSFER_SRC_BIT
+                            | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    imageInfo.stages        = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    imageInfo.access        = VK_ACCESS_TRANSFER_READ_BIT
+                            | VK_ACCESS_TRANSFER_WRITE_BIT;
+    imageInfo.tiling        = VK_IMAGE_TILING_OPTIMAL;
+    imageInfo.layout        = VK_IMAGE_LAYOUT_GENERAL;
 
     DecodeMultiSampleType(m_desc.MultiSample, &imageInfo.sampleCount);
 
@@ -40,7 +40,7 @@ namespace dxvk {
     // be reinterpreted in Vulkan, so we'll ignore those.
     auto formatProperties = imageFormatInfo(formatInfo.Format);
 
-    bool isMutable = formatInfo.FormatSrgb != VK_FORMAT_UNDEFINED;
+    bool isMutable     = formatInfo.FormatSrgb != VK_FORMAT_UNDEFINED;
     bool isColorFormat = (formatProperties->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) != 0;
 
     if (isMutable && isColorFormat) {
@@ -63,7 +63,7 @@ namespace dxvk {
       imageInfo.usage  |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
       imageInfo.stages |= VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
       imageInfo.access |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT
-                        | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+                       |  VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
     }
 
     if (m_desc.Usage & D3DUSAGE_DEPTHSTENCIL) {
@@ -165,8 +165,8 @@ namespace dxvk {
     DeallocMappingBuffers();
   }
 
-  Direct3DCommonTexture9::Direct3DCommonTexture9(
-          Direct3DDevice9Ex*      pDevice,
+  D3D9CommonTexture::D3D9CommonTexture(
+          D3D9DeviceEx*      pDevice,
           Rc<DxvkImage>           Image,
           Rc<DxvkImageView>       ImageView,
           Rc<DxvkImageView>       ImageViewSrgb,
@@ -181,7 +181,7 @@ namespace dxvk {
       : D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER;
   }
 
-  VkImageSubresource Direct3DCommonTexture9::GetSubresourceFromIndex(
+  VkImageSubresource D3D9CommonTexture::GetSubresourceFromIndex(
     VkImageAspectFlags    Aspect,
     UINT                  Subresource) const {
     VkImageSubresource result;
@@ -191,7 +191,7 @@ namespace dxvk {
     return result;
   }
 
-  bool Direct3DCommonTexture9::CheckViewCompatibility(DWORD Usage, D3D9Format Format, bool srgb) const {
+  bool D3D9CommonTexture::CheckViewCompatibility(DWORD Usage, D3D9Format Format, bool srgb) const {
     const DxvkImageCreateInfo& imageInfo = m_image->info();
 
     // Check whether the given bind flags are supported
@@ -244,7 +244,7 @@ namespace dxvk {
   }
 
 
-  HRESULT Direct3DCommonTexture9::NormalizeTextureProperties(D3D9TextureDesc* pDesc) {
+  HRESULT D3D9CommonTexture::NormalizeTextureProperties(D3D9TextureDesc* pDesc) {
     if (pDesc->Width == 0 || pDesc->Height == 0 || pDesc->Depth == 0)
       return D3DERR_INVALIDCALL;
 
@@ -264,7 +264,7 @@ namespace dxvk {
   }
 
 
-  BOOL Direct3DCommonTexture9::CheckImageSupport(
+  BOOL D3D9CommonTexture::CheckImageSupport(
     const DxvkImageCreateInfo*  pImageInfo,
     VkImageTiling         Tiling) const {
     const Rc<DxvkAdapter> adapter = m_device->GetDXVKDevice()->adapter();
@@ -278,16 +278,16 @@ namespace dxvk {
     if (status != VK_SUCCESS)
       return FALSE;
 
-    return (pImageInfo->extent.width <= formatProps.maxExtent.width)
-      && (pImageInfo->extent.height <= formatProps.maxExtent.height)
-      && (pImageInfo->extent.depth <= formatProps.maxExtent.depth)
-      && (pImageInfo->numLayers <= formatProps.maxArrayLayers)
-      && (pImageInfo->mipLevels <= formatProps.maxMipLevels)
-      && (pImageInfo->sampleCount    & formatProps.sampleCounts);
+    return (pImageInfo->extent.width  <= formatProps.maxExtent.width)
+        && (pImageInfo->extent.height <= formatProps.maxExtent.height)
+        && (pImageInfo->extent.depth  <= formatProps.maxExtent.depth)
+        && (pImageInfo->numLayers     <= formatProps.maxArrayLayers)
+        && (pImageInfo->mipLevels     <= formatProps.maxMipLevels)
+       && (pImageInfo->sampleCount     & formatProps.sampleCounts);
   }
 
 
-  BOOL Direct3DCommonTexture9::CheckFormatFeatureSupport(
+  BOOL D3D9CommonTexture::CheckFormatFeatureSupport(
     VkFormat              Format,
     VkFormatFeatureFlags  Features) const {
     VkFormatProperties properties = m_device->GetDXVKDevice()->adapter()->formatProperties(Format);
@@ -297,19 +297,19 @@ namespace dxvk {
   }
 
 
-  VkImageUsageFlags Direct3DCommonTexture9::EnableMetaCopyUsage(
+  VkImageUsageFlags D3D9CommonTexture::EnableMetaCopyUsage(
     VkFormat              Format,
     VkImageTiling         Tiling) const {
     VkFormatFeatureFlags requestedFeatures = 0;
 
     if (Format == VK_FORMAT_D16_UNORM || Format == VK_FORMAT_D32_SFLOAT) {
       requestedFeatures |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT
-        | VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+                        |  VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
     }
 
     if (Format == VK_FORMAT_R16_UNORM || Format == VK_FORMAT_R32_SFLOAT) {
       requestedFeatures |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT
-        | VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+                        |  VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
     }
 
     if (requestedFeatures == 0)
@@ -337,7 +337,7 @@ namespace dxvk {
   }
 
 
-  VkImageUsageFlags Direct3DCommonTexture9::EnableMetaPackUsage(
+  VkImageUsageFlags D3D9CommonTexture::EnableMetaPackUsage(
     VkFormat              Format,
     BOOL                  WriteOnly) const {
     if (WriteOnly)
@@ -354,7 +354,7 @@ namespace dxvk {
   }
 
 
-  D3D9_COMMON_TEXTURE_MAP_MODE Direct3DCommonTexture9::DetermineMapMode(
+  D3D9_COMMON_TEXTURE_MAP_MODE D3D9CommonTexture::DetermineMapMode(
     const DxvkImageCreateInfo*  pImageInfo) const {
     // Write-only images should go through a buffer for multiple reasons:
     // 1. Some games do not respect the row and depth pitch that is returned
@@ -388,7 +388,7 @@ namespace dxvk {
       : D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER;
   }
 
-  VkDeviceSize Direct3DCommonTexture9::GetMipLength(UINT MipLevel) const {
+  VkDeviceSize D3D9CommonTexture::GetMipLength(UINT MipLevel) const {
     const DxvkFormatInfo* formatInfo = imageFormatInfo(
       m_device->LookupFormat(m_desc.Format).Format);
 
@@ -401,7 +401,7 @@ namespace dxvk {
       * blockCount.depth;
   }
 
-  bool Direct3DCommonTexture9::AllocBuffers(UINT Face, UINT MipLevel) {
+  bool D3D9CommonTexture::AllocBuffers(UINT Face, UINT MipLevel) {
     UINT Subresource = CalcSubresource(Face, MipLevel);
 
     if (m_mappingBuffers.at(Subresource) != nullptr)
@@ -431,21 +431,21 @@ namespace dxvk {
     return true;
   }
 
-  void Direct3DCommonTexture9::DeallocMappingBuffers() {
+  void D3D9CommonTexture::DeallocMappingBuffers() {
     for (auto& buf : m_mappingBuffers)
       buf = nullptr;
   }
 
-  void Direct3DCommonTexture9::DeallocFixupBuffers() {
+  void D3D9CommonTexture::DeallocFixupBuffers() {
     for (auto& buf : m_fixupBuffers)
       buf = nullptr;
   }
 
-  void Direct3DCommonTexture9::DeallocFixupBuffer(UINT Subresource) {
+  void D3D9CommonTexture::DeallocFixupBuffer(UINT Subresource) {
     m_fixupBuffers.at(Subresource) = nullptr;
   }
 
-  VkImageType Direct3DCommonTexture9::GetImageTypeFromResourceType(D3DRESOURCETYPE Type) {
+  VkImageType D3D9CommonTexture::GetImageTypeFromResourceType(D3DRESOURCETYPE Type) {
     switch (Type) {
     case D3DRTYPE_CUBETEXTURE:
     case D3DRTYPE_TEXTURE:
@@ -456,12 +456,12 @@ namespace dxvk {
     case D3DRTYPE_VOLUMETEXTURE:
       return VK_IMAGE_TYPE_3D;
 
-    default: throw DxvkError("Direct3DCommonTexture9: Unhandled resource type");
+    default: throw DxvkError("D3D9CommonTexture: Unhandled resource type");
     }
   }
 
 
-  VkImageLayout Direct3DCommonTexture9::OptimizeLayout(VkImageUsageFlags Usage) {
+  VkImageLayout D3D9CommonTexture::OptimizeLayout(VkImageUsageFlags Usage) {
     const VkImageUsageFlags usageFlags = Usage;
 
     // Filter out unnecessary flags. Transfer operations
@@ -478,7 +478,7 @@ namespace dxvk {
       return VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
     Usage &= ~(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
-      | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+             | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
     // If the image is used for reading but not as a storage
     // image, we can optimize the image for texture access
@@ -492,7 +492,7 @@ namespace dxvk {
     return VK_IMAGE_LAYOUT_GENERAL;
   }
 
-  HRESULT Direct3DCommonTexture9::Lock(
+  HRESULT D3D9CommonTexture::Lock(
           UINT            Face,
           UINT            MipLevel,
           D3DLOCKED_BOX*  pLockedBox,
@@ -507,7 +507,7 @@ namespace dxvk {
       Flags);
   }
 
-  HRESULT Direct3DCommonTexture9::Unlock(
+  HRESULT D3D9CommonTexture::Unlock(
           UINT Face,
           UINT MipLevel) {
     return m_device->UnlockImage(
@@ -516,7 +516,7 @@ namespace dxvk {
       MipLevel);
   }
 
-  VkImageViewType Direct3DCommonTexture9::GetImageViewType() const {
+  VkImageViewType D3D9CommonTexture::GetImageViewType() const {
     switch (m_desc.Type) {
     default:
     case D3DRTYPE_SURFACE:
@@ -532,17 +532,17 @@ namespace dxvk {
     }
   }
 
-  Rc<DxvkImageView> Direct3DCommonTexture9::CreateView(
+  Rc<DxvkImageView> D3D9CommonTexture::CreateView(
     VkImageUsageFlags UsageFlags,
     bool              srgb,
     UINT              Lod) {
     const D3D9_VK_FORMAT_MAPPING formatInfo = m_device->LookupFormat(m_desc.Format);
 
     DxvkImageViewCreateInfo viewInfo;
-    viewInfo.format = PickSRGB(formatInfo.Format, formatInfo.FormatSrgb, srgb);
-    viewInfo.aspect = formatInfo.Aspect;
+    viewInfo.format  = PickSRGB(formatInfo.Format, formatInfo.FormatSrgb, srgb);
+    viewInfo.aspect  = formatInfo.Aspect;
     viewInfo.swizzle = formatInfo.Swizzle;
-    viewInfo.usage = UsageFlags;
+    viewInfo.usage   = UsageFlags;
 
     // Remove the stencil aspect if we are trying to create an image view of a depth stencil format 
     if (UsageFlags & VK_IMAGE_USAGE_SAMPLED_BIT
@@ -568,18 +568,18 @@ namespace dxvk {
     return m_device->GetDXVKDevice()->createImageView(GetImage(), viewInfo);
   }
 
-  void Direct3DCommonTexture9::RecreateImageView(UINT Lod) {
+  void D3D9CommonTexture::RecreateImageView(UINT Lod) {
     // TODO: Signal to device that this resource is dirty and needs to be rebound.
 
     m_imageView     = CreateView(VK_IMAGE_USAGE_SAMPLED_BIT, false, Lod);
     m_imageViewSrgb = CreateView(VK_IMAGE_USAGE_SAMPLED_BIT, true, Lod);
   }
 
-  void Direct3DCommonTexture9::CreateDepthStencilView() {
+  void D3D9CommonTexture::CreateDepthStencilView() {
     m_depthStencilView = CreateView(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, false, 0);
   }
 
-  void Direct3DCommonTexture9::CreateRenderTargetView() {
+  void D3D9CommonTexture::CreateRenderTargetView() {
     m_renderTargetView     = CreateView(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, false, 0);
     m_renderTargetViewSrgb = CreateView(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, true, 0);
   }

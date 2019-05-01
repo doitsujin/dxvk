@@ -2,13 +2,13 @@
 
 namespace dxvk {
 
-  void Direct3DDeviceMutex9::lock() {
+  void D3D9DeviceMutex::lock() {
     while (!try_lock())
       dxvk::this_thread::yield();
   }
 
 
-  void Direct3DDeviceMutex9::unlock() {
+  void D3D9DeviceMutex::unlock() {
     if (likely(m_counter == 0))
       m_owner.store(0, std::memory_order_release);
     else
@@ -16,7 +16,7 @@ namespace dxvk {
   }
 
 
-  bool Direct3DDeviceMutex9::try_lock() {
+  bool D3D9DeviceMutex::try_lock() {
     uint32_t threadId = GetCurrentThreadId();
     uint32_t expected = 0;
 
@@ -34,15 +34,8 @@ namespace dxvk {
   }
 
 
-  Direct3DMultithread9::Direct3DMultithread9(
+  D3D9Multithread::D3D9Multithread(
           BOOL                  Protected)
-    : m_protected( Protected ) {
-    
-  }
-
-
-  Direct3DMultithread9::~Direct3DMultithread9() {
-
-  }
+    : m_protected( Protected ) { }
 
 }

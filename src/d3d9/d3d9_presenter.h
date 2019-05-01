@@ -36,7 +36,7 @@ namespace dxvk {
     constexpr static uint32_t GammaPointCount = 256;
 
     D3D9Presenter(
-            Direct3DDevice9Ex*  parent,
+            D3D9DeviceEx*       parent,
             HWND                window,
       const D3D9PresenterDesc*  desc,
             DWORD               gammaFlags,
@@ -50,7 +50,7 @@ namespace dxvk {
 
     void present();
 
-    Direct3DCommonTexture9* getBackBuffer() {
+    D3D9CommonTexture* getBackBuffer() {
       return m_backBuffer;
     }
 
@@ -94,7 +94,7 @@ namespace dxvk {
       Gamma
     };
 
-    Direct3DDevice9Ex* m_parent;
+    D3D9DeviceEx* m_parent;
     HWND m_window;
     Rc<DxvkDevice>     m_device;
     Rc<DxvkContext> m_context;
@@ -126,7 +126,7 @@ namespace dxvk {
 
     std::vector<Rc<DxvkImageView>> m_imageViews;
 
-    Direct3DCommonTexture9* m_backBuffer;
+    D3D9CommonTexture* m_backBuffer;
 
     D3D9PresenterDesc m_desc;
 

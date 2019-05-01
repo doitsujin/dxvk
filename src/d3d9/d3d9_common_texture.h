@@ -38,16 +38,16 @@ namespace dxvk {
     BOOL Offscreen;
   };
 
-  class Direct3DCommonTexture9 {
+  class D3D9CommonTexture {
 
   public:
 
-    Direct3DCommonTexture9(
-            Direct3DDevice9Ex*      pDevice,
+    D3D9CommonTexture(
+            D3D9DeviceEx*           pDevice,
       const D3D9TextureDesc*        pDesc);
 
-    Direct3DCommonTexture9(
-            Direct3DDevice9Ex*      pDevice,
+    D3D9CommonTexture(
+            D3D9DeviceEx*           pDevice,
             Rc<DxvkImage>           Image,
             Rc<DxvkImageView>       ImageView,
             Rc<DxvkImageView>       ImageViewSrgb,
@@ -276,7 +276,7 @@ namespace dxvk {
 
   private:
 
-    Direct3DDevice9Ex*   m_device;
+    D3D9DeviceEx*        m_device;
     D3D9TextureDesc      m_desc;
     D3D9_COMMON_TEXTURE_MAP_MODE m_mapMode;
 

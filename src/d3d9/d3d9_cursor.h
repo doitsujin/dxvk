@@ -8,9 +8,9 @@ namespace dxvk {
 
     D3D9Cursor();
 
-    void updateCursor(int x, int y, bool immediate);
+    void UpdateCursor(int x, int y, bool immediate);
 
-    void flushCursor();
+    void FlushCursor();
 
   private:
 

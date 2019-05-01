@@ -94,7 +94,7 @@ namespace dxvk {
     RAWZ = MAKEFOURCC('R', 'A', 'W', 'Z'),
   };
 
-  inline D3D9Format fixupFormat(D3DFORMAT format) {
+  inline D3D9Format EnumerateFormat(D3DFORMAT format) {
     return static_cast<D3D9Format>(format);
   }
 

@@ -6,17 +6,17 @@
 
 namespace dxvk {
 
-  using Direct3DVertexDeclaration9Base = Direct3DDeviceChild9<IDirect3DVertexDeclaration9>;
-  class Direct3DVertexDeclaration9 final : public Direct3DVertexDeclaration9Base {
+  using D3D9VertexDeclBase = D3D9DeviceChild<IDirect3DVertexDeclaration9>;
+  class D3D9VertexDecl final : public D3D9VertexDeclBase {
 
   public:
 
-    Direct3DVertexDeclaration9(
-            Direct3DDevice9Ex* pDevice,
+    D3D9VertexDecl(
+            D3D9DeviceEx*      pDevice,
             DWORD              FVF);
 
-    Direct3DVertexDeclaration9(
-            Direct3DDevice9Ex* pDevice,
+    D3D9VertexDecl(
+            D3D9DeviceEx*      pDevice,
       const D3DVERTEXELEMENT9* pVertexElements,
             uint32_t           DeclCount);
 

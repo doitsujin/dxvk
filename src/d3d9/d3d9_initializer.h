@@ -25,10 +25,10 @@ namespace dxvk {
     void Flush();
 
     void InitBuffer(
-            Direct3DCommonBuffer9*  pBuffer);
+            D3D9CommonBuffer*  pBuffer);
     
     void InitTexture(
-            Direct3DCommonTexture9* pTexture);
+            D3D9CommonTexture* pTexture);
     
   private:
 
@@ -41,16 +41,16 @@ namespace dxvk {
     size_t            m_transferMemory    = 0;
 
     void InitDeviceLocalBuffer(
-            Direct3DCommonBuffer9*  pBuffer);
+            D3D9CommonBuffer*  pBuffer);
 
     void InitHostVisibleBuffer(
-            Direct3DCommonBuffer9*  pBuffer);
+            D3D9CommonBuffer*  pBuffer);
 
     void InitDeviceLocalTexture(
-            Direct3DCommonTexture9* pTexture);
+            D3D9CommonTexture* pTexture);
 
     void InitHostVisibleTexture(
-            Direct3DCommonTexture9* pTexture);
+            D3D9CommonTexture* pTexture);
     
     void FlushImplicit();
     void FlushInternal();

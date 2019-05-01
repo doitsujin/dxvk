@@ -8,8 +8,6 @@
 
 namespace dxvk {
 
-  class Direct3DCommonBuffer9;
-
   enum class D3D9ConstantType {
     Float,
     Int,

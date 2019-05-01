@@ -35,12 +35,12 @@ namespace dxvk {
     D3D9_COMMON_BUFFER_TYPE_REAL
   };
 
-  class Direct3DCommonBuffer9 : public RcObject {
+  class D3D9CommonBuffer : public RcObject {
     static constexpr VkDeviceSize BufferSliceAlignment = 64;
   public:
 
-    Direct3DCommonBuffer9(
-            Direct3DDevice9Ex* pDevice,
+    D3D9CommonBuffer(
+            D3D9DeviceEx*      pDevice,
       const D3D9_BUFFER_DESC*  pDesc);
 
     HRESULT Lock(
@@ -118,7 +118,7 @@ namespace dxvk {
       return m_buffer;
     }
 
-    Direct3DDevice9Ex*          m_parent;
+    D3D9DeviceEx*               m_parent;
     const D3D9_BUFFER_DESC      m_desc;
     DWORD                       m_mapFlags;
 

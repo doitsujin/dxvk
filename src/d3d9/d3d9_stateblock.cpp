@@ -9,7 +9,7 @@
 
 namespace dxvk {
 
-  D3D9StateBlock::D3D9StateBlock(Direct3DDevice9Ex* pDevice, D3D9StateBlockType Type)
+  D3D9StateBlock::D3D9StateBlock(D3D9DeviceEx* pDevice, D3D9StateBlockType Type)
     : D3D9StateBlockBase(pDevice)
     , m_deviceState     (pDevice->GetRawState()) {
     CaptureType(Type);
@@ -48,14 +48,14 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  HRESULT D3D9StateBlock::SetVertexDeclaration(Direct3DVertexDeclaration9* pDecl) {
+  HRESULT D3D9StateBlock::SetVertexDeclaration(D3D9VertexDecl* pDecl) {
     changePrivate(m_state.vertexDecl, pDecl);
 
     m_captures.flags.set(D3D9CapturedStateFlag::VertexDecl);
     return D3D_OK;
   }
 
-  HRESULT D3D9StateBlock::SetIndices(Direct3DIndexBuffer9* pIndexData) {
+  HRESULT D3D9StateBlock::SetIndices(D3D9IndexBuffer* pIndexData) {
     changePrivate(m_state.indices, pIndexData);
 
     m_captures.flags.set(D3D9CapturedStateFlag::Indices);
@@ -83,10 +83,10 @@ namespace dxvk {
   }
 
   HRESULT D3D9StateBlock::SetStreamSource(
-          UINT                    StreamNumber,
-          Direct3DVertexBuffer9*  pStreamData,
-          UINT                    OffsetInBytes,
-          UINT                    Stride) {
+          UINT                StreamNumber,
+          D3D9VertexBuffer*   pStreamData,
+          UINT                OffsetInBytes,
+          UINT                Stride) {
     changePrivate(m_state.vertexBuffers[StreamNumber].vertexBuffer, pStreamData);
     m_state.vertexBuffers[StreamNumber].offset = OffsetInBytes;
     m_state.vertexBuffers[StreamNumber].stride = Stride;

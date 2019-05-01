@@ -5,12 +5,12 @@
 namespace dxvk {
 
   template <typename... Base>
-  class Direct3DDeviceChild9 : public ComObject<Base...> {
+  class D3D9DeviceChild : public ComObject<Base...> {
 
   public:
 
-    Direct3DDeviceChild9(Direct3DDevice9Ex* device)
-      : m_parent{ device } {}
+    D3D9DeviceChild(D3D9DeviceEx* pDevice)
+      : m_parent( pDevice ) { }
 
     HRESULT STDMETHODCALLTYPE GetDevice(IDirect3DDevice9** ppDevice) {
       InitReturnPtr(ppDevice);
@@ -22,13 +22,13 @@ namespace dxvk {
       return D3D_OK;
     }
 
-    Direct3DDevice9Ex* GetParent() {
+    D3D9DeviceEx* GetParent() {
       return m_parent;
     }
 
   protected:
 
-    Direct3DDevice9Ex* m_parent;
+    D3D9DeviceEx* m_parent;
 
   };
 

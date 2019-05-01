@@ -7,19 +7,19 @@
 namespace dxvk {
 
   template <typename... Type>
-  class Direct3DResource9 : public Direct3DDeviceChild9<Type...> {
+  class D3D9Resource : public D3D9DeviceChild<Type...> {
 
   public:
 
-    Direct3DResource9(Direct3DDevice9Ex* device)
-      : Direct3DDeviceChild9<Type...>{ device }
-      , m_priority{ 0 } {}
+    D3D9Resource(D3D9DeviceEx* pDevice)
+      : D3D9DeviceChild<Type...>(pDevice)
+      , m_priority              ( 0 ) { }
 
     HRESULT STDMETHODCALLTYPE SetPrivateData(
-      REFGUID     refguid,
-      const void* pData,
-      DWORD       SizeOfData,
-      DWORD       Flags) final {
+            REFGUID     refguid,
+      const void*       pData,
+            DWORD       SizeOfData,
+            DWORD       Flags) final {
       HRESULT hr;
       if (Flags & D3DSPD_IUNKNOWN) {
         IUnknown* unknown =
@@ -39,9 +39,9 @@ namespace dxvk {
     }
 
     HRESULT STDMETHODCALLTYPE GetPrivateData(
-      REFGUID     refguid,
-      void*       pData,
-      DWORD*      pSizeOfData) final {
+            REFGUID     refguid,
+            void*       pData,
+            DWORD*      pSizeOfData) final {
       HRESULT hr = m_privateData.getData(
         refguid, reinterpret_cast<UINT*>(pSizeOfData), pData);
 

@@ -7,21 +7,21 @@
 namespace dxvk {
 
   template <typename... Type>
-  class Direct3DBuffer9 : public Direct3DResource9<Type...> {
+  class D3D9Buffer : public D3D9Resource<Type...> {
 
   public:
 
-    Direct3DBuffer9(
-            Direct3DDevice9Ex* pDevice,
+    D3D9Buffer(
+            D3D9DeviceEx*      pDevice,
       const D3D9_BUFFER_DESC*  pDesc)
-      : Direct3DResource9<Type...>{ pDevice }
-      , m_buffer{ new Direct3DCommonBuffer9{ pDevice, pDesc } } {}
+      : D3D9Resource<Type...>  ( pDevice )
+      , m_buffer               ( new D3D9CommonBuffer( pDevice, pDesc ) ) { }
 
     HRESULT STDMETHODCALLTYPE Lock(
-      UINT OffsetToLock,
-      UINT SizeToLock,
-      void** ppbData,
-      DWORD Flags) final {
+            UINT   OffsetToLock,
+            UINT   SizeToLock,
+            void** ppbData,
+            DWORD  Flags) final {
       return m_buffer->Lock(
         OffsetToLock,
         SizeToLock,
@@ -33,24 +33,24 @@ namespace dxvk {
       return m_buffer->Unlock();
     }
 
-    Rc<Direct3DCommonBuffer9> GetCommonBuffer() {
+    Rc<D3D9CommonBuffer> GetCommonBuffer() {
       return m_buffer;
     }
 
   protected:
 
-    Rc<Direct3DCommonBuffer9> m_buffer;
+    Rc<D3D9CommonBuffer> m_buffer;
 
   };
 
 
-  using Direct3DVertexBuffer9Base = Direct3DBuffer9<IDirect3DVertexBuffer9>;
-  class Direct3DVertexBuffer9 final : public Direct3DVertexBuffer9Base {
+  using D3D9VertexBufferBase = D3D9Buffer<IDirect3DVertexBuffer9>;
+  class D3D9VertexBuffer final : public D3D9VertexBufferBase {
 
   public:
 
-    Direct3DVertexBuffer9(
-            Direct3DDevice9Ex* pDevice,
+    D3D9VertexBuffer(
+            D3D9DeviceEx*      pDevice,
       const D3D9_BUFFER_DESC*  pDesc);
 
     HRESULT STDMETHODCALLTYPE QueryInterface(
@@ -64,13 +64,13 @@ namespace dxvk {
 
   };
 
-  using Direct3DIndexBuffer9Base = Direct3DBuffer9<IDirect3DIndexBuffer9>;
-  class Direct3DIndexBuffer9 final : public Direct3DIndexBuffer9Base {
+  using D3D9IndexBufferBase = D3D9Buffer<IDirect3DIndexBuffer9>;
+  class D3D9IndexBuffer final : public D3D9IndexBufferBase {
 
   public:
 
-    Direct3DIndexBuffer9(
-            Direct3DDevice9Ex* pDevice,
+    D3D9IndexBuffer(
+            D3D9DeviceEx*      pDevice,
       const D3D9_BUFFER_DESC*  pDesc);
 
     HRESULT STDMETHODCALLTYPE QueryInterface(

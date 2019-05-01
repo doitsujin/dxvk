@@ -4,8 +4,8 @@
 
 namespace dxvk {
 
-  Direct3DCommonBuffer9::Direct3DCommonBuffer9(
-          Direct3DDevice9Ex* pDevice,
+  D3D9CommonBuffer::D3D9CommonBuffer(
+          D3D9DeviceEx*      pDevice,
     const D3D9_BUFFER_DESC*  pDesc) 
     : m_parent ( pDevice ), m_desc ( *pDesc ) {
     DxvkBufferCreateInfo  info;
@@ -54,7 +54,7 @@ namespace dxvk {
     }
   }
 
-  HRESULT Direct3DCommonBuffer9::Lock(
+  HRESULT D3D9CommonBuffer::Lock(
           UINT   OffsetToLock,
           UINT   SizeToLock,
           void** ppbData,
@@ -67,11 +67,11 @@ namespace dxvk {
       Flags);
   }
 
-  HRESULT Direct3DCommonBuffer9::Unlock() {
+  HRESULT D3D9CommonBuffer::Unlock() {
     return m_parent->UnlockBuffer(this);
   }
 
-  void Direct3DCommonBuffer9::GetDesc(
+  void D3D9CommonBuffer::GetDesc(
           D3D9_BUFFER_DESC* pDesc) {
     *pDesc = m_desc;
   }

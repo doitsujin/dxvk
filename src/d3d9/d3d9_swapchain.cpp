@@ -9,16 +9,18 @@
 
 namespace dxvk {
 
-  Direct3DSwapChain9Ex::Direct3DSwapChain9Ex(Direct3DDevice9Ex* device, D3DPRESENT_PARAMETERS* presentParams)
-    : Direct3DSwapChain9ExBase ( device )
+  D3D9SwapChainEx::D3D9SwapChainEx(
+          D3D9DeviceEx*          pDevice,
+          D3DPRESENT_PARAMETERS* pPresentParams)
+    : D3D9SwapChainExBase      ( pDevice )
     , m_presentParams          ( )
     , m_backBuffer             ( nullptr )
     , m_gammaFlags             ( 0 ) {
     SetDefaultGamma();
-    Reset(presentParams, true);
+    Reset(pPresentParams, true);
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DSwapChain9Ex::QueryInterface(REFIID riid, void** ppvObject) {
+  HRESULT STDMETHODCALLTYPE D3D9SwapChainEx::QueryInterface(REFIID riid, void** ppvObject) {
     if (ppvObject == nullptr)
       return E_POINTER;
 
@@ -31,12 +33,12 @@ namespace dxvk {
       return S_OK;
     }
 
-    Logger::warn("Direct3DSwapChain9Ex::QueryInterface: Unknown interface query");
+    Logger::warn("D3D9SwapChainEx::QueryInterface: Unknown interface query");
     Logger::warn(str::format(riid));
     return E_NOINTERFACE;
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DSwapChain9Ex::Present(
+  HRESULT STDMETHODCALLTYPE D3D9SwapChainEx::Present(
     const RECT* pSourceRect,
     const RECT* pDestRect,
     HWND hDestWindowOverride,
@@ -56,15 +58,15 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DSwapChain9Ex::GetFrontBufferData(IDirect3DSurface9* pDestSurface) {
-    Logger::warn("Direct3DSwapChain9Ex::GetFrontBufferData: Stub");
+  HRESULT STDMETHODCALLTYPE D3D9SwapChainEx::GetFrontBufferData(IDirect3DSurface9* pDestSurface) {
+    Logger::warn("D3D9SwapChainEx::GetFrontBufferData: Stub");
     return D3D_OK;
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DSwapChain9Ex::GetBackBuffer(
-    UINT iBackBuffer,
-    D3DBACKBUFFER_TYPE Type,
-    IDirect3DSurface9** ppBackBuffer) {
+  HRESULT STDMETHODCALLTYPE D3D9SwapChainEx::GetBackBuffer(
+          UINT                iBackBuffer,
+          D3DBACKBUFFER_TYPE  Type,
+          IDirect3DSurface9** ppBackBuffer) {
     InitReturnPtr(ppBackBuffer);
 
     if (ppBackBuffer == nullptr || iBackBuffer != 0)
@@ -75,12 +77,12 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DSwapChain9Ex::GetRasterStatus(D3DRASTER_STATUS* pRasterStatus) {
-    Logger::warn("Direct3DSwapChain9Ex::GetRasterStatus: Stub");
+  HRESULT STDMETHODCALLTYPE D3D9SwapChainEx::GetRasterStatus(D3DRASTER_STATUS* pRasterStatus) {
+    Logger::warn("D3D9SwapChainEx::GetRasterStatus: Stub");
     return D3D_OK;
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DSwapChain9Ex::GetDisplayMode(D3DDISPLAYMODE* pMode) {
+  HRESULT STDMETHODCALLTYPE D3D9SwapChainEx::GetDisplayMode(D3DDISPLAYMODE* pMode) {
     if (pMode == nullptr)
       return D3DERR_INVALIDCALL;
 
@@ -100,7 +102,7 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DSwapChain9Ex::GetPresentParameters(D3DPRESENT_PARAMETERS* pPresentationParameters) {
+  HRESULT STDMETHODCALLTYPE D3D9SwapChainEx::GetPresentParameters(D3DPRESENT_PARAMETERS* pPresentationParameters) {
     if (pPresentationParameters == nullptr)
       return D3DERR_INVALIDCALL;
 
@@ -109,17 +111,17 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DSwapChain9Ex::GetLastPresentCount(UINT* pLastPresentCount) {
-    Logger::warn("Direct3DSwapChain9Ex::GetLastPresentCount: Stub");
+  HRESULT STDMETHODCALLTYPE D3D9SwapChainEx::GetLastPresentCount(UINT* pLastPresentCount) {
+    Logger::warn("D3D9SwapChainEx::GetLastPresentCount: Stub");
     return D3D_OK;
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DSwapChain9Ex::GetPresentStats(D3DPRESENTSTATS* pPresentationStatistics) {
-    Logger::warn("Direct3DSwapChain9Ex::GetPresentStats: Stub");
+  HRESULT STDMETHODCALLTYPE D3D9SwapChainEx::GetPresentStats(D3DPRESENTSTATS* pPresentationStatistics) {
+    Logger::warn("D3D9SwapChainEx::GetPresentStats: Stub");
     return D3D_OK;
   }
 
-  HRESULT STDMETHODCALLTYPE Direct3DSwapChain9Ex::GetDisplayModeEx(D3DDISPLAYMODEEX* pMode, D3DDISPLAYROTATION* pRotation) {
+  HRESULT STDMETHODCALLTYPE D3D9SwapChainEx::GetDisplayModeEx(D3DDISPLAYMODEEX* pMode, D3DDISPLAYROTATION* pRotation) {
     if (pMode == nullptr && pRotation == nullptr)
       return D3DERR_INVALIDCALL;
 
@@ -131,7 +133,7 @@ namespace dxvk {
       monInfo.cbSize = sizeof(monInfo);
 
       if (!::GetMonitorInfoW(GetDefaultMonitor(), reinterpret_cast<MONITORINFO*>(&monInfo))) {
-        Logger::err("Direct3DSwapChain9Ex::GetDisplayModeEx: Failed to query monitor info");
+        Logger::err("D3D9SwapChainEx::GetDisplayModeEx: Failed to query monitor info");
         return D3DERR_INVALIDCALL;
       }
 
@@ -139,7 +141,7 @@ namespace dxvk {
       devMode.dmSize = sizeof(devMode);
 
       if (!::EnumDisplaySettingsW(monInfo.szDevice, ENUM_CURRENT_SETTINGS, &devMode)) {
-        Logger::err("Direct3DSwapChain9Ex::GetDisplayModeEx: Failed to enum display settings");
+        Logger::err("D3D9SwapChainEx::GetDisplayModeEx: Failed to enum display settings");
         return D3DERR_INVALIDCALL;
       }
 
@@ -154,7 +156,7 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  HRESULT Direct3DSwapChain9Ex::Reset(D3DPRESENT_PARAMETERS* parameters, bool first) {
+  HRESULT D3D9SwapChainEx::Reset(D3DPRESENT_PARAMETERS* parameters, bool first) {
     HWND newWindow      = GetPresentWindow(parameters);
     HWND originalWindow = GetPresentWindow(&m_presentParams);
 
@@ -254,33 +256,32 @@ namespace dxvk {
     if (m_backBuffer != nullptr)
       m_backBuffer->ReleasePrivate();
 
-    m_backBuffer = new Direct3DSurface9{
+    m_backBuffer = new D3D9Surface(
       m_parent,
       presenter.getBackBuffer(),
-      0,
-      0,
-      this };
+      0, 0,
+      this );
 
     m_backBuffer->AddRefPrivate();
 
     return D3D_OK;
   }
 
-  HRESULT Direct3DSwapChain9Ex::WaitForVBlank() {
-    Logger::warn("Direct3DSwapChain9Ex::WaitForVBlank: Stub");
+  HRESULT D3D9SwapChainEx::WaitForVBlank() {
+    Logger::warn("D3D9SwapChainEx::WaitForVBlank: Stub");
     return D3D_OK;
   }
 
-  void Direct3DSwapChain9Ex::SetDefaultGamma() {
+  void D3D9SwapChainEx::SetDefaultGamma() {
     for (uint32_t i = 0; i < 256; i++) {
-      m_gammaRamp.red[i] = i * 257;
+      m_gammaRamp.red[i]   = i * 257;
       m_gammaRamp.green[i] = i * 257;
-      m_gammaRamp.blue[i] = i * 257;
+      m_gammaRamp.blue[i]  = i * 257;
     }
   }
 
-  void    Direct3DSwapChain9Ex::SetGammaRamp(
-    DWORD Flags,
+  void    D3D9SwapChainEx::SetGammaRamp(
+          DWORD         Flags,
     const D3DGAMMARAMP* pRamp) {
     m_gammaFlags = Flags;
 
@@ -294,19 +295,19 @@ namespace dxvk {
     presenter.setGammaRamp(Flags, &m_gammaRamp);
   }
 
-  void    Direct3DSwapChain9Ex::GetGammaRamp(D3DGAMMARAMP* pRamp) {
+  void    D3D9SwapChainEx::GetGammaRamp(D3DGAMMARAMP* pRamp) {
     if (pRamp != nullptr)
       *pRamp = m_gammaRamp;
   }
 
-  D3D9PresenterDesc Direct3DSwapChain9Ex::CalcPresenterDesc() {
+  D3D9PresenterDesc D3D9SwapChainEx::CalcPresenterDesc() {
     auto options = m_parent->GetOptions();
 
     D3D9PresenterDesc desc;
     desc.bufferCount     = m_presentParams.BackBufferCount;
     desc.width           = m_presentParams.BackBufferWidth;
     desc.height          = m_presentParams.BackBufferHeight;
-    desc.format          = fixupFormat(m_presentParams.BackBufferFormat);
+    desc.format          = EnumerateFormat(m_presentParams.BackBufferFormat);
     desc.presentInterval = m_presentParams.PresentationInterval;
     desc.multisample     = m_presentParams.MultiSampleType;
 
@@ -319,7 +320,7 @@ namespace dxvk {
     return desc;
   }
 
-  D3D9Presenter& Direct3DSwapChain9Ex::GetOrMakePresenter(HWND window) {
+  D3D9Presenter& D3D9SwapChainEx::GetOrMakePresenter(HWND window) {
     for (const auto& presenter : m_presenters) {
       if (presenter->window() == window)
         return *presenter;
@@ -339,7 +340,7 @@ namespace dxvk {
     return *presenter;
   }
 
-  HWND Direct3DSwapChain9Ex::GetPresentWindow(D3DPRESENT_PARAMETERS* parameters, HWND windowOverride) {
+  HWND D3D9SwapChainEx::GetPresentWindow(D3DPRESENT_PARAMETERS* parameters, HWND windowOverride) {
     if (windowOverride != nullptr)
       return windowOverride;
 
