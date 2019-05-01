@@ -3356,10 +3356,10 @@ namespace dxvk {
 
   HRESULT D3D9DeviceEx::UnlockBuffer(
         D3D9CommonBuffer*       pResource) {
-    auto lock = LockDevice();
-
     if (pResource->GetMapMode() != D3D9_COMMON_BUFFER_MAP_MODE_BUFFER)
       return D3D_OK;
+
+    auto lock = LockDevice();
 
     if (pResource->SetMapFlags(0) & D3DLOCK_READONLY)
       return D3D_OK;
