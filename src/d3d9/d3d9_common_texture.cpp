@@ -560,7 +560,7 @@ namespace dxvk {
     viewInfo.type = GetImageViewType();
 
     viewInfo.minLevel = Lod;
-    viewInfo.numLevels = m_desc.MipLevels;
+    viewInfo.numLevels = m_desc.MipLevels - Lod;
     viewInfo.minLayer = 0;
     viewInfo.numLayers = GetLayerCount();
 
