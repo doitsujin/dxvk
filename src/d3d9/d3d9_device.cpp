@@ -466,6 +466,8 @@ namespace dxvk {
           D3DPOOL                  Pool,
           IDirect3DVertexBuffer9** ppVertexBuffer,
           HANDLE*                  pSharedHandle) {
+    InitReturnPtr(ppVertexBuffer);
+
     if (unlikely(ppVertexBuffer == nullptr))
       return D3DERR_INVALIDCALL;
 
@@ -496,6 +498,8 @@ namespace dxvk {
           D3DPOOL                 Pool,
           IDirect3DIndexBuffer9** ppIndexBuffer,
           HANDLE*                 pSharedHandle) {
+    InitReturnPtr(ppIndexBuffer);
+
     if (unlikely(ppIndexBuffer == nullptr))
       return D3DERR_INVALIDCALL;
 
