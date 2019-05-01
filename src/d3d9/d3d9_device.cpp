@@ -355,7 +355,6 @@ namespace dxvk {
     desc.Discard            = FALSE;
     desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
-    desc.Lockable           = TRUE;
     desc.Offscreen          = FALSE;
 
     if (FAILED(Direct3DCommonTexture9::NormalizeTextureProperties(&desc)))
@@ -403,7 +402,6 @@ namespace dxvk {
     desc.Discard            = FALSE;
     desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
-    desc.Lockable           = TRUE;
     desc.Offscreen          = FALSE;
 
     if (FAILED(Direct3DCommonTexture9::NormalizeTextureProperties(&desc)))
@@ -449,7 +447,6 @@ namespace dxvk {
     desc.Discard            = FALSE;
     desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
-    desc.Lockable           = TRUE;
     desc.Offscreen          = FALSE;
 
     if (FAILED(Direct3DCommonTexture9::NormalizeTextureProperties(&desc)))
@@ -2403,7 +2400,6 @@ namespace dxvk {
     desc.Discard            = FALSE;
     desc.MultiSample        = MultiSample;
     desc.MultisampleQuality = MultisampleQuality;
-    desc.Lockable           = Lockable;
     desc.Offscreen          = TRUE;
 
     if (FAILED(Direct3DCommonTexture9::NormalizeTextureProperties(&desc)))
@@ -2449,7 +2445,6 @@ namespace dxvk {
     desc.Discard            = FALSE;
     desc.MultiSample        = D3DMULTISAMPLE_NONE;
     desc.MultisampleQuality = 0;
-    desc.Lockable           = TRUE; // Offscreen surfaces are always lockable.
     desc.Offscreen          = TRUE;
 
     if (FAILED(Direct3DCommonTexture9::NormalizeTextureProperties(&desc)))
@@ -2486,10 +2481,6 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     auto format = fixupFormat(Format);
-    bool lockable = format == D3D9Format::D32_LOCKABLE
-                 || format == D3D9Format::D32F_LOCKABLE
-                 || format == D3D9Format::D16_LOCKABLE
-                 || format == D3D9Format::S8_LOCKABLE;
 
     D3D9TextureDesc desc;
     desc.Type               = D3DRTYPE_SURFACE;
@@ -2503,7 +2494,6 @@ namespace dxvk {
     desc.Discard            = Discard;
     desc.MultiSample        = MultiSample;
     desc.MultisampleQuality = MultisampleQuality;
-    desc.Lockable           = lockable;
     desc.Offscreen          = TRUE;
 
     if (FAILED(Direct3DCommonTexture9::NormalizeTextureProperties(&desc)))
@@ -3016,11 +3006,6 @@ namespace dxvk {
       const D3DBOX*                 pBox,
             DWORD                   Flags) {
     auto lock = LockDevice();
-
-    if (unlikely(pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_NONE)) {
-      Logger::err("D3D9: Cannot map a device-local image");
-      return D3DERR_INVALIDCALL;
-    }
 
     // TODO: Some fastpath for D3DLOCK_READONLY.
 

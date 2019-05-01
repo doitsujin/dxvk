@@ -104,7 +104,6 @@ namespace dxvk {
     desc.Discard = FALSE;
     desc.Format = m_desc.format;
     desc.Height = std::max(1u, m_desc.height);
-    desc.Lockable = FALSE;
     desc.MipLevels = 1;
     desc.MultiSample = m_desc.multisample;
     desc.MultisampleQuality = 0;

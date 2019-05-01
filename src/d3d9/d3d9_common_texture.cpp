@@ -365,9 +365,6 @@ namespace dxvk {
     if (m_desc.Usage & D3DUSAGE_DYNAMIC)
       return D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER;
 
-    if (!m_desc.Lockable)
-      return D3D9_COMMON_TEXTURE_MAP_MODE_NONE;
-
     // These format requires fixup to an 8888.
     if (this->RequiresFixup())
       return D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER;

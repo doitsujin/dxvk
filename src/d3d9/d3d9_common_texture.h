@@ -14,7 +14,6 @@ namespace dxvk {
  * behave when mapping an image.
  */
   enum D3D9_COMMON_TEXTURE_MAP_MODE {
-    D3D9_COMMON_TEXTURE_MAP_MODE_NONE,   ///< Not mapped
     D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER, ///< Mapped through buffer
     D3D9_COMMON_TEXTURE_MAP_MODE_DIRECT, ///< Directly mapped to host mem
   };
@@ -36,7 +35,6 @@ namespace dxvk {
     BOOL Discard;
     D3DMULTISAMPLE_TYPE MultiSample;
     DWORD MultisampleQuality;
-    BOOL Lockable;
     BOOL Offscreen;
   };
 
