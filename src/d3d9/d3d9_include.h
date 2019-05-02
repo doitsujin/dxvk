@@ -1,5 +1,12 @@
 #pragma once
 
+#ifndef _MSC_VER
+#ifdef _WIN32_WINNT
+#undef _WIN32_WINNT
+#endif
+#define _WIN32_WINNT 0x0A00
+#endif
+
 #include <stdint.h>
 #include <d3d9.h>
 
@@ -73,4 +80,6 @@ typedef struct _D3DDEVINFO_RESOURCEMANAGER
 {
   char dummy;
 } D3DDEVINFO_RESOURCEMANAGER, * LPD3DDEVINFO_RESOURCEMANAGER;
+
+WINUSERAPI WINBOOL WINAPI SetProcessDPIAware(VOID);
 #endif

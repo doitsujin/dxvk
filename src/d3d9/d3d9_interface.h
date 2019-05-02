@@ -1,10 +1,10 @@
 #pragma once
 
-#include "../dxvk/dxvk_instance.h"
-
 #include "d3d9_include.h"
 #include "d3d9_format.h"
 #include "d3d9_options.h"
+
+#include "../dxvk/dxvk_instance.h"
 
 namespace dxvk {
 
