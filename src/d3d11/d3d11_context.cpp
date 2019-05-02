@@ -1361,7 +1361,7 @@ namespace dxvk {
     EmitCs([=] (DxvkContext* ctx) {
       ctx->drawIndirectXfb(ctrBuf,
         vtxBuf.buffer()->getXfbVertexStride(),
-        0); // FIXME offset?
+        vtxBuf.offset());
     });
   }
   
