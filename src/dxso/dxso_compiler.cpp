@@ -2193,11 +2193,14 @@ void DxsoCompiler::emitControlFlowGenericLoop(
             imageOperands);
       }
       else {
+        imageOperands.flags |= spv::ImageOperandsLodMask;
+        imageOperands.sLod = m_module.constf32(0.0f);
+
         uint32_t z = 2;
         uint32_t refVar = m_module.opCompositeExtract(
           m_module.defFloatType(32), texcoordVarId, 1, &z);
 
-        result.id = m_module.opImageSampleDrefImplicitLod(
+        result.id = m_module.opImageSampleDrefExplicitLod(
           typeId,
           imageVarId,
           texcoordVarId,
