@@ -3896,36 +3896,46 @@ namespace dxvk {
     ] (DxvkContext* ctx) {
       auto pair = cSamplers.find(cKey);
       if (pair != cSamplers.end()) {
-        ctx->bindResourceSampler(cColorSlot, pair->second);
-        ctx->bindResourceSampler(cDepthSlot, pair->second);
+        ctx->bindResourceSampler(cColorSlot, pair->second.color);
+        ctx->bindResourceSampler(cDepthSlot, pair->second.depth);
         return;
       }
 
       auto mipFilter = DecodeMipFilter(cKey.MipFilter);
 
-      DxvkSamplerCreateInfo info;
-      info.addressModeU   = DecodeAddressMode(cKey.AddressU);
-      info.addressModeV   = DecodeAddressMode(cKey.AddressV);
-      info.addressModeW   = DecodeAddressMode(cKey.AddressW);
-      info.compareToDepth = VK_FALSE;
-      info.compareOp      = VK_COMPARE_OP_NEVER;
-      info.magFilter      = DecodeFilter(cKey.MagFilter);
-      info.minFilter      = DecodeFilter(cKey.MinFilter);
-      info.mipmapMode     = mipFilter.MipFilter;
-      info.maxAnisotropy  = float(cKey.MaxAnisotropy);
-      info.useAnisotropy  = IsAnisotropic(cKey.MinFilter)
-                         || IsAnisotropic(cKey.MagFilter);
-      info.mipmapLodBias  = cKey.MipmapLodBias;
-      info.mipmapLodMin   = mipFilter.MipsEnabled ? float(cKey.MaxMipLevel) : 0;
-      info.mipmapLodMax   = mipFilter.MipsEnabled ? FLT_MAX                 : 0;
-      info.usePixelCoord  = VK_FALSE;
-      DecodeD3DCOLOR(cKey.BorderColor, info.borderColor.float32);
+      DxvkSamplerCreateInfo colorInfo;
+      colorInfo.addressModeU   = DecodeAddressMode(cKey.AddressU);
+      colorInfo.addressModeV   = DecodeAddressMode(cKey.AddressV);
+      colorInfo.addressModeW   = DecodeAddressMode(cKey.AddressW);
+      colorInfo.compareToDepth = VK_FALSE;
+      colorInfo.compareOp      = VK_COMPARE_OP_NEVER;
+      colorInfo.magFilter      = DecodeFilter(cKey.MagFilter);
+      colorInfo.minFilter      = DecodeFilter(cKey.MinFilter);
+      colorInfo.mipmapMode     = mipFilter.MipFilter;
+      colorInfo.maxAnisotropy  = float(cKey.MaxAnisotropy);
+      colorInfo.useAnisotropy  = IsAnisotropic(cKey.MinFilter)
+                              || IsAnisotropic(cKey.MagFilter);
+      colorInfo.mipmapLodBias  = cKey.MipmapLodBias;
+      colorInfo.mipmapLodMin   = mipFilter.MipsEnabled ? float(cKey.MaxMipLevel) : 0;
+      colorInfo.mipmapLodMax   = mipFilter.MipsEnabled ? FLT_MAX                 : 0;
+      colorInfo.usePixelCoord  = VK_FALSE;
+      DecodeD3DCOLOR(cKey.BorderColor, colorInfo.borderColor.float32);
+
+      DxvkSamplerCreateInfo depthInfo = colorInfo;
+      depthInfo.compareToDepth = VK_TRUE;
+      depthInfo.compareOp      = VK_COMPARE_OP_LESS_OR_EQUAL;
+      depthInfo.magFilter      = VK_FILTER_LINEAR;
+      depthInfo.minFilter      = VK_FILTER_LINEAR;
 
       try {
-        Rc<DxvkSampler> sampler = cDevice->createSampler(info);
-        cSamplers.insert(std::make_pair(cKey, sampler));
-        ctx->bindResourceSampler(cColorSlot, sampler);
-        ctx->bindResourceSampler(cDepthSlot, sampler);
+        D3D9SamplerPair pair;
+
+        pair.color = cDevice->createSampler(colorInfo);
+        pair.depth = cDevice->createSampler(depthInfo);
+
+        cSamplers.insert(std::make_pair(cKey, pair));
+        ctx->bindResourceSampler(cColorSlot, pair.color);
+        ctx->bindResourceSampler(cDepthSlot, pair.depth);
       }
       catch (const DxvkError& e) {
         Logger::err(e.message());

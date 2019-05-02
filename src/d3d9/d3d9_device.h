@@ -61,6 +61,11 @@ namespace dxvk {
     uint32_t               instanceCount;
   };
 
+  struct D3D9SamplerPair {
+    Rc<DxvkSampler> color;
+    Rc<DxvkSampler> depth;
+  };
+
   class D3D9DeviceEx final : public ComObject<IDirect3DDevice9Ex> {
     constexpr static uint32_t DefaultFrameLatency = 3;
     constexpr static uint32_t MaxFrameLatency     = 20;
@@ -842,7 +847,7 @@ namespace dxvk {
 
     std::unordered_map<
       D3D9SamplerKey,
-      Rc<DxvkSampler>,
+      D3D9SamplerPair,
       D3D9SamplerKeyHash,
       D3D9SamplerKeyEq>             m_samplers;
 
