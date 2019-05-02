@@ -14,6 +14,11 @@ namespace dxvk {
     , m_d3d9Options ( m_instance->config() ){
     for (uint32_t i = 0; m_instance->enumAdapters(i) != nullptr; i++)
       m_instance->enumAdapters(i)->logAdapterInfo();
+
+    if (m_d3d9Options.dpiAware) {
+      Logger::info("Process set as DPI aware");
+      SetProcessDPIAware();
+    }
   }
 
   HRESULT STDMETHODCALLTYPE D3D9InterfaceEx::QueryInterface(REFIID riid, void** ppvObject) {
