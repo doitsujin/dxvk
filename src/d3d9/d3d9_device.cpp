@@ -3634,18 +3634,15 @@ namespace dxvk {
     const D3DVIEWPORT9& vp = m_state.viewport;
 
     // Correctness Factor for 1/2 texel offset
-    float cf = 0.0f;
-    if (m_d3d9Options.halfPixelOffset) {
-      cf = 0.5f;
+    float cf = 0.5f;
 
-      // HACK: UE3 bug re. tonemapper + shadow sampling being red:-
-      // We need to bias this, except when it's
-      // NOT powers of two in order to make
-      // imprecision biased towards infinity.
-      if ((vp.Width  & (vp.Width  - 1)) == 0
-       && (vp.Height & (vp.Height - 1)) == 0)
-        cf -= 1.0f / 128.0f;
-    }
+    // HACK: UE3 bug re. tonemapper + shadow sampling being red:-
+    // We need to bias this, except when it's
+    // NOT powers of two in order to make
+    // imprecision biased towards infinity.
+    if ((vp.Width  & (vp.Width  - 1)) == 0
+     && (vp.Height & (vp.Height - 1)) == 0)
+      cf -= 1.0f / 128.0f;
 
     viewport = VkViewport{
       float(vp.X)     + cf,    float(vp.Height + vp.Y) + cf,
