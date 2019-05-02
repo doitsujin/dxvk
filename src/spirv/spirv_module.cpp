@@ -2903,6 +2903,44 @@ namespace dxvk {
     putImageOperands(operands);
     return resultId;
   }
+
+
+  uint32_t SpirvModule::opImageSampleProjImplicitLod(
+          uint32_t                resultType,
+          uint32_t                sampledImage,
+          uint32_t                coordinates,
+    const SpirvImageOperands&     operands) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns(spv::OpImageSampleProjImplicitLod,
+      5 + getImageOperandWordCount(operands));
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(sampledImage);
+    m_code.putWord(coordinates);
+    
+    putImageOperands(operands);
+    return resultId;
+  }
+  
+  
+  uint32_t SpirvModule::opImageSampleProjExplicitLod(
+          uint32_t                resultType,
+          uint32_t                sampledImage,
+          uint32_t                coordinates,
+    const SpirvImageOperands&     operands) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns(spv::OpImageSampleProjExplicitLod,
+      5 + getImageOperandWordCount(operands));
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(sampledImage);
+    m_code.putWord(coordinates);
+    
+    putImageOperands(operands);
+    return resultId;
+  }
   
   
   uint32_t SpirvModule::opImageSampleDrefImplicitLod(
@@ -2946,6 +2984,48 @@ namespace dxvk {
     return resultId;
   }
   
+
+  uint32_t SpirvModule::opImageSampleProjDrefImplicitLod(
+          uint32_t                resultType,
+          uint32_t                sampledImage,
+          uint32_t                coordinates,
+          uint32_t                reference,
+    const SpirvImageOperands&     operands) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns(spv::OpImageSampleProjDrefImplicitLod,
+      6 + getImageOperandWordCount(operands));
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(sampledImage);
+    m_code.putWord(coordinates);
+    m_code.putWord(reference);
+    
+    putImageOperands(operands);
+    return resultId;
+  }
+
+
+  uint32_t SpirvModule::opImageSampleProjDrefExplicitLod(
+          uint32_t                resultType,
+          uint32_t                sampledImage,
+          uint32_t                coordinates,
+          uint32_t                reference,
+    const SpirvImageOperands&     operands) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns(spv::OpImageSampleProjDrefExplicitLod,
+      6 + getImageOperandWordCount(operands));
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(sampledImage);
+    m_code.putWord(coordinates);
+    m_code.putWord(reference);
+    
+    putImageOperands(operands);
+    return resultId;
+  }
+
   
   uint32_t SpirvModule::opGroupNonUniformBallot(
           uint32_t                resultType,
