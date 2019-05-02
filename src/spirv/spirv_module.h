@@ -1001,6 +1001,18 @@ namespace dxvk {
             uint32_t                sampledImage,
             uint32_t                coordinates,
       const SpirvImageOperands&     operands);
+
+    uint32_t opImageSampleProjImplicitLod(
+            uint32_t                resultType,
+            uint32_t                sampledImage,
+            uint32_t                coordinates,
+      const SpirvImageOperands&     operands);
+
+    uint32_t opImageSampleProjExplicitLod(
+            uint32_t                resultType,
+            uint32_t                sampledImage,
+            uint32_t                coordinates,
+      const SpirvImageOperands&     operands);
     
     uint32_t opImageSampleDrefImplicitLod(
             uint32_t                resultType,
@@ -1010,6 +1022,20 @@ namespace dxvk {
       const SpirvImageOperands&     operands);
     
     uint32_t opImageSampleDrefExplicitLod(
+            uint32_t                resultType,
+            uint32_t                sampledImage,
+            uint32_t                coordinates,
+            uint32_t                reference,
+      const SpirvImageOperands&     operands);
+
+    uint32_t opImageSampleProjDrefImplicitLod(
+            uint32_t                resultType,
+            uint32_t                sampledImage,
+            uint32_t                coordinates,
+            uint32_t                reference,
+      const SpirvImageOperands&     operands);
+
+    uint32_t opImageSampleProjDrefExplicitLod(
             uint32_t                resultType,
             uint32_t                sampledImage,
             uint32_t                coordinates,
