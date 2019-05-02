@@ -163,6 +163,17 @@ namespace dxvk {
 
     DeallocFixupBuffers();
     DeallocMappingBuffers();
+
+    std::array<D3D9Format, 3> shadowBlacklist = {
+      D3D9Format::INTZ, D3D9Format::DF16, D3D9Format::DF24
+    };
+
+    m_shadow = caps::IsDepthFormat(m_desc.Format);
+
+    for (uint32_t i = 0; i < shadowBlacklist.size(); i++) {
+      if (shadowBlacklist[i] == m_desc.Format)
+        m_shadow = false;
+    }
   }
 
   D3D9CommonTexture::D3D9CommonTexture(

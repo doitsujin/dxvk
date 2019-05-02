@@ -561,58 +561,82 @@ namespace dxvk {
   void DxsoCompiler::emitDclSampler(
           uint32_t        idx,
           DxsoTextureType type) {
-    // Setup our combines sampler.
+
+    auto DclSampler = [this](
+      uint32_t        idx,
+      DxsoTextureType type,
+      bool            depth) {
+      // Setup our combines sampler.
+      DxsoSamplerInfo& sampler = !depth
+        ? m_samplers[idx].color
+        : m_samplers[idx].depth;
+
+      spv::Dim dimensionality;
+      VkImageViewType viewType;
+
+      switch (type) {
+        default:
+        case DxsoTextureType::Texture2D:
+          dimensionality = spv::Dim2D;
+          viewType = VK_IMAGE_VIEW_TYPE_2D;
+          break;
+
+        case DxsoTextureType::TextureCube:
+          dimensionality = spv::DimCube;
+          viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+          break;
+
+        case DxsoTextureType::Texture3D:
+          dimensionality = spv::Dim3D;
+          viewType = VK_IMAGE_VIEW_TYPE_3D;
+          break;
+      }
+
+      sampler.typeId = m_module.defImageType(
+        m_module.defFloatType(32),
+        dimensionality, depth ? 1 : 0, 0, 0, 1,
+        spv::ImageFormatUnknown);
+
+      sampler.typeId = m_module.defSampledImageType(sampler.typeId);
+
+      sampler.varId = m_module.newVar(
+        m_module.defPointerType(
+          sampler.typeId, spv::StorageClassUniformConstant),
+        spv::StorageClassUniformConstant);
+
+      std::string name = str::format("s", idx, depth ? "_shadow" : "");
+      m_module.setDebugName(sampler.varId, name.c_str());
+
+      const uint32_t bindingId = computeResourceSlotId(m_programInfo.type(),
+        !depth ? DxsoBindingType::ColorImage : DxsoBindingType::DepthImage,
+        idx);
+
+      m_module.decorateDescriptorSet(sampler.varId, 0);
+      m_module.decorateBinding      (sampler.varId, bindingId);
+
+      // Store descriptor info for the shader interface
+      DxvkResourceSlot resource;
+      resource.slot   = bindingId;
+      resource.type   = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      resource.view   = viewType;
+      resource.access = VK_ACCESS_SHADER_READ_BIT;
+      m_resourceSlots.push_back(resource);
+    };
+
+    DclSampler(idx, type, false);
+    DclSampler(idx, type, true);
+
+    // Declare a specialization constant which will
+    // store whether or not the depth view is bound.
+    const uint32_t depthBinding = computeResourceSlotId(m_programInfo.type(),
+      DxsoBindingType::DepthImage, idx);
+
     DxsoSampler& sampler = m_samplers[idx];
 
-    spv::Dim dimensionality;
-    VkImageViewType viewType;
-
-    switch (type) {
-      default:
-      case DxsoTextureType::Texture2D:
-        dimensionality = spv::Dim2D;
-        viewType = VK_IMAGE_VIEW_TYPE_2D;
-        break;
-
-      case DxsoTextureType::TextureCube:
-        dimensionality = spv::DimCube;
-        viewType = VK_IMAGE_VIEW_TYPE_CUBE;
-        break;
-
-      case DxsoTextureType::Texture3D:
-        dimensionality = spv::Dim3D;
-        viewType = VK_IMAGE_VIEW_TYPE_3D;
-        break;
-    }
-
-    sampler.typeId = m_module.defImageType(
-      m_module.defFloatType(32),
-      dimensionality, 0, 0, 0, 1,
-      spv::ImageFormatUnknown);
-
-    sampler.typeId = m_module.defSampledImageType(sampler.typeId);
-
-    sampler.varId = m_module.newVar(
-      m_module.defPointerType(
-        sampler.typeId, spv::StorageClassUniformConstant),
-      spv::StorageClassUniformConstant);
-
-    std::string name = str::format("s", idx);
-    m_module.setDebugName(sampler.varId, name.c_str());
-
-    const uint32_t bindingId = computeResourceSlotId(
-      m_programInfo.type(), DxsoBindingType::Image, idx);
-
-    m_module.decorateDescriptorSet(sampler.varId, 0);
-    m_module.decorateBinding      (sampler.varId, bindingId);
-
-    // Store descriptor info for the shader interface
-    DxvkResourceSlot resource;
-    resource.slot   = bindingId;
-    resource.type   = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    resource.view   = viewType;
-    resource.access = VK_ACCESS_SHADER_READ_BIT;
-    m_resourceSlots.push_back(resource);
+    sampler.depthSpecConst = m_module.specConstBool(false);
+    m_module.decorateSpecId(sampler.depthSpecConst, depthBinding);
+    m_module.setDebugName(sampler.depthSpecConst,
+      str::format("s", idx, "_useShadow").c_str());
   }
 
 
@@ -2114,59 +2138,92 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       samplerIdx = ctx.dst.id.num;
     }
 
-    DxsoRegisterValue result;
-    result.type.ctype  = dst.type.ctype;
-    result.type.ccount = 4;
-
-    const uint32_t typeId = getVectorTypeId(result.type);
-
     DxsoSampler sampler = m_samplers.at(samplerIdx);
 
-    if (sampler.varId == 0) {
+    if (sampler.color.varId == 0) {
       Logger::warn("DxsoCompiler::emitTextureSample: Adding implicit 2D sampler");
       emitDclSampler(samplerIdx, DxsoTextureType::Texture2D);
       sampler = m_samplers.at(samplerIdx);
     }
 
-    const uint32_t imageVarId = m_module.opLoad(sampler.typeId, sampler.varId);
+    auto SampleImage = [this, opcode, dst, texcoordVarId, ctx](DxsoSamplerInfo& sampler, bool depth) {
+      DxsoRegisterValue result;
+      result.type.ctype  = dst.type.ctype;
+      result.type.ccount = depth ? 1 : 4;
 
-    SpirvImageOperands imageOperands;
-    bool implicitLod = true;
-    if (m_programInfo.type() == DxsoProgramType::VertexShader) {
-      implicitLod = false;
-      imageOperands.sLod = m_module.constf32(0.0f);
-      imageOperands.flags |= spv::ImageOperandsLodMask;
-    }
+      const uint32_t typeId = getVectorTypeId(result.type);
 
-    if (opcode == DxsoOpcode::TexLdl) {
-      implicitLod = false;
-      uint32_t w = 3;
-      imageOperands.sLod = m_module.opCompositeExtract(
-        m_module.defFloatType(32), texcoordVarId, 1, &w);
-      imageOperands.flags |= spv::ImageOperandsLodMask;
-    }
+      const uint32_t imageVarId = m_module.opLoad(sampler.typeId, sampler.varId);
 
-    if (opcode == DxsoOpcode::TexLdd) {
-      DxsoRegMask gradMask(true, false, false, false);
-      implicitLod = false;
-      imageOperands.flags |= spv::ImageOperandsGradMask;
-      imageOperands.sGradX = emitRegisterLoad(ctx.src[2], gradMask).id;
-      imageOperands.sGradY = emitRegisterLoad(ctx.src[3], gradMask).id;
-    }
+      SpirvImageOperands imageOperands;
+      bool implicitLod = true;
+      if (m_programInfo.type() == DxsoProgramType::VertexShader) {
+        implicitLod = false;
+        imageOperands.sLod = m_module.constf32(0.0f);
+        imageOperands.flags |= spv::ImageOperandsLodMask;
+      }
 
-    result.id   = implicitLod
-      ? m_module.opImageSampleImplicitLod(
-        typeId,
-        imageVarId,
-        texcoordVarId,
-        imageOperands)
-      : m_module.opImageSampleExplicitLod(
-        typeId,
-        imageVarId,
-        texcoordVarId,
-        imageOperands);
+      if (opcode == DxsoOpcode::TexLdl) {
+        implicitLod = false;
+        uint32_t w = 3;
+        imageOperands.sLod = m_module.opCompositeExtract(
+          m_module.defFloatType(32), texcoordVarId, 1, &w);
+        imageOperands.flags |= spv::ImageOperandsLodMask;
+      }
 
-    this->emitDstStore(dst, result, ctx.dst.mask, ctx.dst.saturate);
+      if (opcode == DxsoOpcode::TexLdd) {
+        DxsoRegMask gradMask(true, false, false, false);
+        implicitLod = false;
+        imageOperands.flags |= spv::ImageOperandsGradMask;
+        imageOperands.sGradX = emitRegisterLoad(ctx.src[2], gradMask).id;
+        imageOperands.sGradY = emitRegisterLoad(ctx.src[3], gradMask).id;
+      }
+
+      if (!depth) {
+        result.id   = implicitLod
+          ? m_module.opImageSampleImplicitLod(
+            typeId,
+            imageVarId,
+            texcoordVarId,
+            imageOperands)
+          : m_module.opImageSampleExplicitLod(
+            typeId,
+            imageVarId,
+            texcoordVarId,
+            imageOperands);
+      }
+      else {
+        uint32_t z = 2;
+        uint32_t refVar = m_module.opCompositeExtract(
+          m_module.defFloatType(32), texcoordVarId, 1, &z);
+
+        result.id = m_module.opImageSampleDrefImplicitLod(
+          typeId,
+          imageVarId,
+          texcoordVarId,
+          refVar,
+          imageOperands);
+      }
+
+      this->emitDstStore(dst, result, ctx.dst.mask, ctx.dst.saturate);
+    };
+
+    uint32_t colorLabel  = m_module.allocateId();
+    uint32_t depthLabel  = m_module.allocateId();
+    uint32_t endLabel    = m_module.allocateId();
+
+    m_module.opSelectionMerge(endLabel, spv::SelectionControlMaskNone);
+    m_module.opBranchConditional(sampler.depthSpecConst, depthLabel, colorLabel);
+
+    m_module.opLabel(colorLabel);
+    SampleImage(sampler.color, false);
+    m_module.opBranch(endLabel);
+
+    m_module.opLabel(depthLabel);
+    SampleImage(sampler.depth, true);
+    m_module.opBranch(endLabel);
+
+    m_module.opLabel(endLabel);
   }
 
   void DxsoCompiler::emitTextureKill(const DxsoInstructionContext& ctx) {

@@ -9,6 +9,8 @@ namespace dxvk {
 
 namespace dxvk::caps {
 
+  bool    IsDepthFormat(D3D9Format Format);
+
   HRESULT CheckDeviceFormat(
           D3D9Format      AdapterFormat,
           DWORD           Usage,

@@ -2661,7 +2661,7 @@ namespace dxvk {
 
       DWORD sampler = i;
       auto samplerInfo = RemapStateSamplerShader(sampler);
-      uint32_t slot = computeResourceSlotId(samplerInfo.first, DxsoBindingType::Image, uint32_t(samplerInfo.second));
+      uint32_t slot = computeResourceSlotId(samplerInfo.first, DxsoBindingType::ColorImage, uint32_t(samplerInfo.second));
 
       EmitCs([
         cSlot = slot
@@ -3879,19 +3879,25 @@ namespace dxvk {
 
     auto samplerInfo = RemapStateSamplerShader(Sampler);
 
-    const uint32_t slotId = computeResourceSlotId(
-      samplerInfo.first, DxsoBindingType::Image,
+    const uint32_t colorSlot = computeResourceSlotId(
+      samplerInfo.first, DxsoBindingType::ColorImage,
+      samplerInfo.second);
+
+    const uint32_t depthSlot = computeResourceSlotId(
+      samplerInfo.first, DxsoBindingType::DepthImage,
       samplerInfo.second);
 
     EmitCs([
       cDevice    = m_dxvkDevice,
       &cSamplers = m_samplers,
-      cSlotId    = slotId,
+      cColorSlot = colorSlot,
+      cDepthSlot = depthSlot,
       cKey       = key
     ] (DxvkContext* ctx) {
       auto pair = cSamplers.find(cKey);
       if (pair != cSamplers.end()) {
-        ctx->bindResourceSampler(cSlotId, pair->second);
+        ctx->bindResourceSampler(cColorSlot, pair->second);
+        ctx->bindResourceSampler(cDepthSlot, pair->second);
         return;
       }
 
@@ -3918,7 +3924,8 @@ namespace dxvk {
       try {
         Rc<DxvkSampler> sampler = cDevice->createSampler(info);
         cSamplers.insert(std::make_pair(cKey, sampler));
-        ctx->bindResourceSampler(cSlotId, sampler);
+        ctx->bindResourceSampler(cColorSlot, sampler);
+        ctx->bindResourceSampler(cDepthSlot, sampler);
       }
       catch (const DxvkError& e) {
         Logger::err(e.message());
@@ -3928,7 +3935,12 @@ namespace dxvk {
 
   void D3D9DeviceEx::BindTexture(DWORD StateSampler) {
     auto shaderSampler = RemapStateSamplerShader(StateSampler);
-    uint32_t slot      = computeResourceSlotId(shaderSampler.first, DxsoBindingType::Image, uint32_t(shaderSampler.second));
+
+    uint32_t colorSlot = computeResourceSlotId(shaderSampler.first,
+      DxsoBindingType::ColorImage, uint32_t(shaderSampler.second));
+
+    uint32_t depthSlot = computeResourceSlotId(shaderSampler.first,
+      DxsoBindingType::DepthImage, uint32_t(shaderSampler.second));
 
     const bool srgb =
       m_state.samplerStates[StateSampler][D3DSAMP_SRGBTEXTURE] != FALSE;
@@ -3936,13 +3948,18 @@ namespace dxvk {
     D3D9CommonTexture* commonTex =
       GetCommonTexture(m_state.textures[StateSampler]);
 
+    const bool depth = commonTex ? commonTex->ShouldShadow() : false;
+
     EmitCs([
-      cSlot      = slot,
+      cColorSlot = colorSlot,
+      cDepthSlot = depthSlot,
+      cDepth     = depth,
       cImageView = commonTex != nullptr
                  ? commonTex->GetImageView(srgb)
                  : nullptr // TODO: SRGB-ness
     ](DxvkContext* ctx) {
-      ctx->bindResourceView(cSlot, cImageView, nullptr);
+      ctx->bindResourceView(cColorSlot, !cDepth ? cImageView : nullptr, nullptr);
+      ctx->bindResourceView(cDepthSlot,  cDepth ? cImageView : nullptr, nullptr);
     });
   }
 

@@ -96,9 +96,16 @@ namespace dxvk {
    * represents a pointer to such a vector. This
    * can be used to load registers conveniently.
    */
-  struct DxsoSampler {
+  struct DxsoSamplerInfo {
     uint32_t varId = 0;
     uint32_t typeId = 0;
+  };
+
+  struct DxsoSampler {
+    DxsoSamplerInfo color;
+    DxsoSamplerInfo depth;
+
+    uint32_t depthSpecConst;
   };
 
   struct DxsoAnalysisInfo;

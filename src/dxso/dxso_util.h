@@ -8,7 +8,8 @@ namespace dxvk {
 
   enum class DxsoBindingType : uint32_t {
     ConstantBuffer,
-    Image
+    ColorImage,
+    DepthImage // <-- We use whatever one is bound to determine whether an image should be 'shadow' sampled or not.
   };
 
   enum DxsoConstantBuffers : uint32_t {

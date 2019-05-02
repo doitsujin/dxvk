@@ -270,6 +270,10 @@ namespace dxvk {
       return m_desc.Usage & D3DUSAGE_WRITEONLY;
     }
 
+    bool ShouldShadow() {
+      return m_shadow;
+    }
+
     void DeallocMappingBuffers();
     void DeallocFixupBuffers();
     void DeallocFixupBuffer(UINT Subresource);
@@ -296,6 +300,8 @@ namespace dxvk {
     std::array<uint16_t, 6>           m_mappedSubresources;
     std::array<uint16_t, 6>           m_unmappedSubresources;
     std::array<uint16_t, 6>           m_readOnlySubresources;
+
+    bool                              m_shadow;
 
     BOOL CheckImageSupport(
       const DxvkImageCreateInfo*  pImageInfo,
