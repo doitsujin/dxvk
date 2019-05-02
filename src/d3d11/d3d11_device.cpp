@@ -1382,6 +1382,7 @@ namespace dxvk {
     enabled.core.features.geometryShader                          = VK_TRUE;
     enabled.core.features.robustBufferAccess                      = VK_TRUE;
     enabled.core.features.shaderStorageImageExtendedFormats       = VK_TRUE;
+    enabled.core.features.shaderStorageImageWriteWithoutFormat    = VK_TRUE;
 
     enabled.extMemoryPriority.memoryPriority                      = supported.extMemoryPriority.memoryPriority;
 
@@ -1432,7 +1433,6 @@ namespace dxvk {
       enabled.core.features.multiDrawIndirect                     = supported.core.features.multiDrawIndirect;
       enabled.core.features.shaderFloat64                         = supported.core.features.shaderFloat64;
       enabled.core.features.shaderInt64                           = supported.core.features.shaderInt64;
-      enabled.core.features.shaderStorageImageWriteWithoutFormat  = VK_TRUE;
       enabled.core.features.tessellationShader                    = VK_TRUE;
     }
     
