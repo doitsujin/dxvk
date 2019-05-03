@@ -1292,17 +1292,6 @@ namespace dxvk {
     return result;
   }
 
-
-  DxsoRegisterValue DxsoCompiler::emitInfinityClamp(
-            DxsoRegisterValue value) {
-    value.id = m_module.opNClamp(getVectorTypeId(value.type), value.id,
-      m_module.constfReplicant(-FLT_MAX, value.type.ccount),
-      m_module.constfReplicant( FLT_MAX, value.type.ccount));
-
-    return value;
-  }
-
-
   void DxsoCompiler::emitDcl(const DxsoInstructionContext& ctx) {
     auto id = ctx.dst.id;
 
@@ -1499,14 +1488,18 @@ namespace dxvk {
           m_module.constfReplicant(1.0f, result.type.ccount),
           emitRegisterLoad(src[0], mask).id);
 
-        result = this->emitInfinityClamp(result);
+        result.id = m_module.opNMin(typeId, result.id,
+          m_module.constfReplicant(FLT_MAX, result.type.ccount));
         break;
-      case DxsoOpcode::Rsq:
+      case DxsoOpcode::Rsq: 
         result.id = m_module.opFAbs(typeId,
           emitRegisterLoad(src[0], mask).id);
 
         result.id = m_module.opInverseSqrt(typeId,
           result.id);
+
+        result.id = m_module.opNMin(typeId, result.id,
+          m_module.constfReplicant(FLT_MAX, result.type.ccount));
         break;
       case DxsoOpcode::Dp3: {
         DxsoRegMask srcMask(true, true, true, false);
@@ -1570,7 +1563,8 @@ namespace dxvk {
         dot.type.ccount = 1;
         dot.id = m_module.opDot         (scalarTypeId, vec3, vec3);
         dot.id = m_module.opInverseSqrt (scalarTypeId, dot.id);
-        dot = this->emitInfinityClamp(dot);
+        dot.id = m_module.opNMin        (scalarTypeId, dot.id,
+          m_module.constf32(FLT_MAX));
 
         // r * rsq(r . r);
         result.id = m_module.opVectorTimesScalar(
@@ -1674,7 +1668,8 @@ namespace dxvk {
       case DxsoOpcode::Log:
         result.id = m_module.opFAbs(typeId, emitRegisterLoad(src[0], mask).id);
         result.id = m_module.opLog2(typeId, result.id);
-        result = this->emitInfinityClamp(result);
+        result.id = m_module.opNMax(typeId, result.id,
+          m_module.constfReplicant(-FLT_MAX, result.type.ccount));
         break;
       case DxsoOpcode::Lrp: {
         uint32_t src0 = emitRegisterLoad(src[0], mask).id;

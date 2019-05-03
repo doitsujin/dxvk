@@ -475,9 +475,6 @@ namespace dxvk {
         reg.hasRelative ? &reg.relative : nullptr);
     }
 
-    DxsoRegisterValue emitInfinityClamp(
-            DxsoRegisterValue value);
-
     ///////////////////////////////
     // Handle shader ops
     void emitDcl(const DxsoInstructionContext& ctx);
