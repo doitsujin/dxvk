@@ -159,6 +159,13 @@ namespace dxvk {
   }
   
   
+  void STDMETHODCALLTYPE D3D11DeferredContext::SwapDeviceContextState(
+          ID3DDeviceContextState*           pState,
+          ID3DDeviceContextState**          ppPreviousState) {
+    Logger::err("D3D11: SwapDeviceContextState called on a deferred context");
+  }
+
+
   HRESULT D3D11DeferredContext::MapBuffer(
           ID3D11Resource*               pResource,
           D3D11_MAP                     MapType,

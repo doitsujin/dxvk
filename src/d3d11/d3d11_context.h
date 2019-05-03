@@ -39,10 +39,6 @@ namespace dxvk {
       const D3D11_RECT*                      pRects,
             UINT                             NumRects);
 
-    void STDMETHODCALLTYPE SwapDeviceContextState(
-           ID3DDeviceContextState*           pState,
-           ID3DDeviceContextState**          ppPreviousState);
-
     void STDMETHODCALLTYPE GetDevice(ID3D11Device **ppDevice);
     
     void STDMETHODCALLTYPE ClearState();

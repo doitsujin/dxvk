@@ -3,6 +3,7 @@
 #include <chrono>
 
 #include "d3d11_context.h"
+#include "d3d11_state_object.h"
 
 namespace dxvk {
   
@@ -121,6 +122,10 @@ namespace dxvk {
             ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
       const UINT*                             pUAVInitialCounts);
     
+    void STDMETHODCALLTYPE SwapDeviceContextState(
+           ID3DDeviceContextState*           pState,
+           ID3DDeviceContextState**          ppPreviousState);
+
     void SynchronizeCsThread();
     
   private:
@@ -130,6 +135,8 @@ namespace dxvk {
 
     std::chrono::high_resolution_clock::time_point m_lastFlush
       = std::chrono::high_resolution_clock::now();
+    
+    Com<D3D11DeviceContextState> m_stateObject;
     
     HRESULT MapBuffer(
             D3D11Buffer*                pResource,

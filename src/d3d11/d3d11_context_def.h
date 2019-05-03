@@ -61,6 +61,10 @@ namespace dxvk {
             ID3D11Resource*             pResource,
             UINT                        Subresource);
     
+    void STDMETHODCALLTYPE SwapDeviceContextState(
+           ID3DDeviceContextState*           pState,
+           ID3DDeviceContextState**          ppPreviousState);
+
   private:
     
     const UINT m_contextFlags;

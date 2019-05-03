@@ -127,13 +127,6 @@ namespace dxvk {
   }
 
 
-  void STDMETHODCALLTYPE D3D11DeviceContext::SwapDeviceContextState(
-          ID3DDeviceContextState*  pState, 
-          ID3DDeviceContextState** ppPreviousState) {
-    Logger::err("D3D11DeviceContext::SwapDeviceContextState: Not implemented");
-  }
-  
-
   void STDMETHODCALLTYPE D3D11DeviceContext::GetDevice(ID3D11Device **ppDevice) {
     *ppDevice = ref(m_parent);
   }

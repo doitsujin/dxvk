@@ -535,6 +535,32 @@ namespace dxvk {
   }
   
   
+  void STDMETHODCALLTYPE D3D11ImmediateContext::SwapDeviceContextState(
+          ID3DDeviceContextState*           pState,
+          ID3DDeviceContextState**          ppPreviousState) {
+    InitReturnPtr(ppPreviousState);
+
+    if (!pState)
+      return;
+    
+    Com<D3D11DeviceContextState> oldState = std::move(m_stateObject);
+    Com<D3D11DeviceContextState> newState = static_cast<D3D11DeviceContextState*>(pState);
+
+    if (oldState == nullptr)
+      oldState = new D3D11DeviceContextState(m_parent);
+    
+    if (ppPreviousState)
+      *ppPreviousState = oldState.ref();
+    
+    m_stateObject = newState;
+
+    oldState->SetState(m_state);
+    newState->GetState(m_state);
+
+    RestoreState();
+  }
+
+
   void D3D11ImmediateContext::SynchronizeCsThread() {
     D3D10DeviceLock lock = LockContext();
 
