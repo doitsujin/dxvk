@@ -16,3 +16,12 @@ EXPORTS
     D3D10DisassembleEffect
     D3D10DisassembleShader
     D3D10PreprocessShader
+    D3D10CreateStateBlock
+    D3D10StateBlockMaskDifference
+    D3D10StateBlockMaskDisableAll
+    D3D10StateBlockMaskDisableCapture
+    D3D10StateBlockMaskEnableAll
+    D3D10StateBlockMaskEnableCapture
+    D3D10StateBlockMaskGetSetting
+    D3D10StateBlockMaskIntersect
+    D3D10StateBlockMaskUnion

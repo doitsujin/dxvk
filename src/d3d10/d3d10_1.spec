@@ -19,3 +19,13 @@
 @ stub D3D10DisassembleEffect
 @ stdcall D3D10DisassembleShader(ptr long long ptr ptr)
 @ stub D3D10PreprocessShader
+
+@ stdcall D3D10CreateStateBlock(ptr ptr ptr)
+@ stdcall D3D10StateBlockMaskDifference(ptr ptr ptr)
+@ stdcall D3D10StateBlockMaskDisableAll(ptr)
+@ stdcall D3D10StateBlockMaskDisableCapture(ptr long long long)
+@ stdcall D3D10StateBlockMaskEnableAll(ptr)
+@ stdcall D3D10StateBlockMaskEnableCapture(ptr long long long)
+@ stdcall D3D10StateBlockMaskGetSetting(ptr long long)
+@ stdcall D3D10StateBlockMaskIntersect(ptr ptr ptr)
+@ stdcall D3D10StateBlockMaskUnion(ptr ptr ptr)

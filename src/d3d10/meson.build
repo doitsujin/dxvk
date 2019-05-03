@@ -5,6 +5,7 @@ d3d10_core_res = wrc_generator.process('version10_core.rc')
 d3d10_main_src = [
   'd3d10_main.cpp',
   'd3d10_reflection.cpp',
+  'd3d10_state_block.cpp',
 ]
 
 d3d10_deps = [ lib_d3dcompiler_43, lib_dxgi ]
