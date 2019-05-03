@@ -52,8 +52,15 @@ namespace dxvk {
     Always       = 7         // 1 1 1
   };
 
+  enum class DxsoTexLdMode : uint32_t {
+    Regular,
+    Project,
+    Bias
+  };
+
   union DxsoOpcodeSpecificData {
     DxsoComparison comparison;
+    DxsoTexLdMode  texld;
 
     uint32_t       uint32;
   };

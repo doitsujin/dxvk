@@ -2156,15 +2156,12 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       const uint32_t imageVarId = m_module.opLoad(sampler.typeId, sampler.varId);
 
       SpirvImageOperands imageOperands;
-      bool implicitLod = true;
       if (m_programInfo.type() == DxsoProgramType::VertexShader) {
-        implicitLod = false;
         imageOperands.sLod = m_module.constf32(0.0f);
         imageOperands.flags |= spv::ImageOperandsLodMask;
       }
 
       if (opcode == DxsoOpcode::TexLdl) {
-        implicitLod = false;
         uint32_t w = 3;
         imageOperands.sLod = m_module.opCompositeExtract(
           m_module.defFloatType(32), texcoordVarId, 1, &w);
@@ -2173,40 +2170,41 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
       if (opcode == DxsoOpcode::TexLdd) {
         DxsoRegMask gradMask(true, false, false, false);
-        implicitLod = false;
         imageOperands.flags |= spv::ImageOperandsGradMask;
         imageOperands.sGradX = emitRegisterLoad(ctx.src[2], gradMask).id;
         imageOperands.sGradY = emitRegisterLoad(ctx.src[3], gradMask).id;
       }
 
-      if (!depth) {
-        result.id   = implicitLod
-          ? m_module.opImageSampleImplicitLod(
-            typeId,
-            imageVarId,
-            texcoordVarId,
-            imageOperands)
-          : m_module.opImageSampleExplicitLod(
-            typeId,
-            imageVarId,
-            texcoordVarId,
-            imageOperands);
-      }
-      else {
-        imageOperands.flags |= spv::ImageOperandsLodMask;
-        imageOperands.sLod = m_module.constf32(0.0f);
+      bool project = false;
 
+      if (opcode == DxsoOpcode::Tex
+        && m_programInfo.majorVersion() >= 2) {
+        if (ctx.instruction.specificData.texld == DxsoTexLdMode::Project) {
+          project = true;
+        }
+        else if (ctx.instruction.specificData.texld == DxsoTexLdMode::Bias) {
+          uint32_t w = 3;
+          imageOperands.sLodBias = m_module.opCompositeExtract(
+            m_module.defFloatType(32), texcoordVarId, 1, &w);
+          imageOperands.flags |= spv::ImageOperandsBiasMask;
+        }
+      }
+
+      uint32_t reference = 0;
+
+      if (depth) {
         uint32_t z = 2;
-        uint32_t refVar = m_module.opCompositeExtract(
+        reference = m_module.opCompositeExtract(
           m_module.defFloatType(32), texcoordVarId, 1, &z);
-
-        result.id = m_module.opImageSampleDrefExplicitLod(
-          typeId,
-          imageVarId,
-          texcoordVarId,
-          refVar,
-          imageOperands);
       }
+
+      result.id = m_module.sampleGeneric(
+        project,
+        typeId,
+        imageVarId,
+        texcoordVarId,
+        reference,
+        imageOperands);
 
       this->emitDstStore(dst, result, ctx.dst.mask, ctx.dst.saturate);
     };
