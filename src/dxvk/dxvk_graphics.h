@@ -274,7 +274,7 @@ namespace dxvk {
     
     VkPipeline compilePipeline(
       const DxvkGraphicsPipelineStateInfo& state,
-            VkRenderPass                   renderPass,
+      const DxvkRenderPass&                renderPass,
             VkPipeline                     baseHandle) const;
     
     void destroyPipeline(

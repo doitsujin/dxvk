@@ -121,7 +121,7 @@ namespace dxvk {
       
       // If no pipeline instance exists with the given state
       // vector, create a new one and add it to the list.
-      newPipelineHandle = this->compilePipeline(state, renderPassHandle, m_basePipeline);
+      newPipelineHandle = this->compilePipeline(state, renderPass, m_basePipeline);
 
       // Add new pipeline to the set
       m_pipelines.emplace_back(state, renderPassHandle, newPipelineHandle);
@@ -152,12 +152,15 @@ namespace dxvk {
   
   VkPipeline DxvkGraphicsPipeline::compilePipeline(
     const DxvkGraphicsPipelineStateInfo& state,
-          VkRenderPass                   renderPass,
+    const DxvkRenderPass&                renderPass,
           VkPipeline                     baseHandle) const {
     if (Logger::logLevel() <= LogLevel::Debug) {
       Logger::debug("Compiling graphics pipeline...");
       this->logPipelineState(LogLevel::Debug, state);
     }
+
+    // Render pass format and image layouts
+    DxvkRenderPassFormat passFormat = renderPass.format();
     
     // Set up dynamic states as needed
     std::array<VkDynamicState, 5> dynamicStates;
@@ -349,7 +352,7 @@ namespace dxvk {
     dsInfo.pNext                  = nullptr;
     dsInfo.flags                  = 0;
     dsInfo.depthTestEnable        = state.dsEnableDepthTest;
-    dsInfo.depthWriteEnable       = state.dsEnableDepthWrite;
+    dsInfo.depthWriteEnable       = state.dsEnableDepthWrite && !util::isDepthReadOnlyLayout(passFormat.depth.layout);
     dsInfo.depthCompareOp         = state.dsDepthCompareOp;
     dsInfo.depthBoundsTestEnable  = VK_FALSE;
     dsInfo.stencilTestEnable      = state.dsEnableStencilTest;
@@ -393,7 +396,7 @@ namespace dxvk {
     info.pColorBlendState         = &cbInfo;
     info.pDynamicState            = &dyInfo;
     info.layout                   = m_layout->pipelineLayout();
-    info.renderPass               = renderPass;
+    info.renderPass               = renderPass.getDefaultHandle();
     info.subpass                  = 0;
     info.basePipelineHandle       = baseHandle;
     info.basePipelineIndex        = -1;
