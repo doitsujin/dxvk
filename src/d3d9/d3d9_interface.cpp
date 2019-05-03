@@ -321,8 +321,11 @@ namespace dxvk {
 
     HRESULT hr = (*ppReturnedDeviceInterface)->Reset(pPresentationParameters);
 
-    if (FAILED(hr))
-      throw DxvkError("D3D9InterfaceEx::CreateDeviceEx: device initial reset failed.");
+    if (FAILED(hr)) {
+      Logger::warn("D3D9InterfaceEx::CreateDeviceEx: device initial reset failed.");
+      *ppReturnedDeviceInterface = nullptr;
+      return hr;
+    }
 
     return D3D_OK;
   }
@@ -365,6 +368,10 @@ namespace dxvk {
     while (::EnumDisplaySettingsW(monInfo.szDevice, modeIndex++, &devMode)) {
       // Skip interlaced modes altogether
       if (devMode.dmDisplayFlags & DM_INTERLACED)
+        continue;
+
+      // Skip unsupported formats
+      if (!IsSupportedMonitorFormat(Format, FALSE))
         continue;
 
       // Skip modes with incompatible formats

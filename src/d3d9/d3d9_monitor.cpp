@@ -54,6 +54,19 @@ namespace dxvk {
     return false;
   }
 
+  bool IsSupportedBackBufferFormat(
+          D3D9Format BackBufferFormat,
+          BOOL       Windowed) {
+    if (IsSupportedMonitorFormat(BackBufferFormat, Windowed))
+      return true;
+
+    if (BackBufferFormat == D3D9Format::A8R8G8B8
+     || BackBufferFormat == D3D9Format::A1R5G5B5)
+      return true;
+
+    return false;
+  }
+
   HMONITOR GetDefaultMonitor() {
     return ::MonitorFromPoint({ 0, 0 }, MONITOR_DEFAULTTOPRIMARY);
   }

@@ -9,6 +9,7 @@
 #include "d3d9_shader.h"
 #include "d3d9_query.h"
 #include "d3d9_stateblock.h"
+#include "d3d9_monitor.h"
 
 #include "../dxvk/dxvk_adapter.h"
 #include "../dxvk/dxvk_instance.h"
@@ -2504,6 +2505,11 @@ namespace dxvk {
     auto lock = LockDevice();
 
     if (unlikely(pPresentationParameters == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    if (!IsSupportedBackBufferFormat(
+      EnumerateFormat(pPresentationParameters->BackBufferFormat),
+      pPresentationParameters->Windowed))
       return D3DERR_INVALIDCALL;
 
     SetDepthStencilSurface(nullptr);

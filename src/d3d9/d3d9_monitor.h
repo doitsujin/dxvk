@@ -27,6 +27,10 @@ namespace dxvk {
           BOOL       Windowed);
 
   bool IsSupportedBackBufferFormat(
+          D3D9Format BackBufferFormat,
+          BOOL       Windowed);
+
+  bool IsSupportedBackBufferFormat(
           D3D9Format AdapterFormat,
           D3D9Format BackBufferFormat,
           BOOL       Windowed);
