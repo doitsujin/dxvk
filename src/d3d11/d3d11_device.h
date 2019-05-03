@@ -344,8 +344,8 @@ namespace dxvk {
     
     IDXGIObject*                    m_container;
 
-    const D3D_FEATURE_LEVEL         m_featureLevel;
-    const UINT                      m_featureFlags;
+    D3D_FEATURE_LEVEL               m_featureLevel;
+    UINT                            m_featureFlags;
     
     const Rc<DxvkDevice>            m_dxvkDevice;
     const Rc<DxvkAdapter>           m_dxvkAdapter;

@@ -18,6 +18,7 @@
 #include "d3d11_resource.h"
 #include "d3d11_sampler.h"
 #include "d3d11_shader.h"
+#include "d3d11_state_object.h"
 #include "d3d11_swapchain.h"
 #include "d3d11_texture.h"
 
@@ -1045,9 +1046,36 @@ namespace dxvk {
           D3D_FEATURE_LEVEL*          pChosenFeatureLevel, 
           ID3DDeviceContextState**    ppContextState) {
     InitReturnPtr(ppContextState);
+
+    if (!pFeatureLevels || FeatureLevels == 0)
+      return E_INVALIDARG;
     
-    Logger::err("D3D11Device::CreateDeviceContextState: Not implemented");
-    return E_NOTIMPL;
+    if (EmulatedInterface != __uuidof(ID3D10Device)
+     && EmulatedInterface != __uuidof(ID3D10Device1)
+     && EmulatedInterface != __uuidof(ID3D11Device)
+     && EmulatedInterface != __uuidof(ID3D11Device1))
+      return E_INVALIDARG;
+    
+    UINT flId;
+    for (flId = 0; flId < FeatureLevels; flId++) {
+      if (CheckFeatureLevelSupport(m_dxvkAdapter, pFeatureLevels[flId]))
+        break;
+    }
+
+    if (flId == FeatureLevels)
+      return E_INVALIDARG;
+
+    if (pFeatureLevels[flId] > m_featureLevel)
+      m_featureLevel = pFeatureLevels[flId];
+    
+    if (pChosenFeatureLevel)
+      *pChosenFeatureLevel = pFeatureLevels[flId];
+    
+    if (!ppContextState)
+      return S_FALSE;
+    
+    *ppContextState = ref(new D3D11DeviceContextState(this));
+    return S_OK;
   }
   
   HRESULT STDMETHODCALLTYPE D3D11Device::OpenSharedResource(
