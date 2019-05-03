@@ -1502,10 +1502,11 @@ namespace dxvk {
         result = this->emitInfinityClamp(result);
         break;
       case DxsoOpcode::Rsq:
-        result.id = m_module.opInverseSqrt(typeId,
+        result.id = m_module.opFAbs(typeId,
           emitRegisterLoad(src[0], mask).id);
 
-        result = this->emitInfinityClamp(result);
+        result.id = m_module.opInverseSqrt(typeId,
+          result.id);
         break;
       case DxsoOpcode::Dp3: {
         DxsoRegMask srcMask(true, true, true, false);
