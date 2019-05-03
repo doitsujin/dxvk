@@ -160,6 +160,17 @@ namespace dxvk::util {
   inline uint32_t flattenImageExtent(VkExtent3D extent) {
     return extent.width * extent.height * extent.depth;
   }
+
+  /**
+   * \brief Checks whether the depth aspect is read-only in a layout
+   * 
+   * \param [in] layout Image layout. Must be a valid depth-stencil attachment laoyut.
+   * \returns \c true if the depth aspect for images in this layout is read-only.
+   */
+  inline bool isDepthReadOnlyLayout(VkImageLayout layout) {
+    return layout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL
+        || layout == VK_IMAGE_LAYOUT_DEPTH_READ_ONLY_STENCIL_ATTACHMENT_OPTIMAL;
+  }
   
   /**
    * \brief Computes image data size, in bytes
