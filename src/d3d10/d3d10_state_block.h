@@ -47,6 +47,7 @@ namespace dxvk {
   class D3D10StateBlock : public ComObject<ID3D10StateBlock> {
 
   public:
+    static const GUID guid;
 
     D3D10StateBlock(
             ID3D10Device*             pDevice,

@@ -31,6 +31,9 @@ namespace dxvk {
     MAKE_STATE_TYPE(Predication,              1),
   }};
 
+  // MinGW fails on __uuidof(ID3D10StateBlock), winelib builds fail to link
+  const GUID D3D10StateBlock::guid = {0x0803425a,0x57f5,0x4dd6,{0x94,0x65,0xa8,0x75,0x70,0x83,0x4a,0x08}};
+
 
   D3D10StateBlock::D3D10StateBlock(
           ID3D10Device*             pDevice,
@@ -54,7 +57,7 @@ namespace dxvk {
     *ppvObject = nullptr;
 
     if (riid == __uuidof(IUnknown)
-     || riid == IID_ID3D10StateBlock) {
+     || riid == D3D10StateBlock::guid) {
       *ppvObject = ref(this);
       return S_OK;
     }
