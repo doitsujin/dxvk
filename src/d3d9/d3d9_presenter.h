@@ -121,6 +121,7 @@ namespace dxvk {
     DxvkMultisampleState    m_msState;
     DxvkDepthStencilState   m_dsState;
     DxvkLogicOpState        m_loState;
+    DxvkExtraState          m_xsState;
     DxvkBlendMode m_blendMode;
 
 
