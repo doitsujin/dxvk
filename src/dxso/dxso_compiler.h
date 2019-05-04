@@ -147,8 +147,7 @@ namespace dxvk {
     DxsoRegisterPointer oDepth;
 
     uint32_t killState          = 0;
-    uint32_t invocationMask     = 0;
-    uint32_t ballotType         = 0;
+    uint32_t builtinLaneId      = 0;
   };
 
   struct DxsoCfgBlockIf {
