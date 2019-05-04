@@ -184,6 +184,16 @@ namespace dxvk {
         m_device->GenerateMips(this);
     }
 
+    bool HasBeenEvicted() {
+      return m_evicted;
+    }
+
+    void Evict() {
+      this->DeallocFixupBuffers();
+      this->DeallocMappingBuffers();
+      m_evicted = true;
+    }
+
     VkImageViewType GetImageViewType() const;
 
     void RecreateImageView(UINT Lod);
@@ -302,6 +312,8 @@ namespace dxvk {
     std::array<uint16_t, 6>           m_readOnlySubresources;
 
     bool                              m_shadow;
+
+    bool                              m_evicted = false;
 
     BOOL CheckImageSupport(
       const DxvkImageCreateInfo*  pImageInfo,

@@ -147,10 +147,8 @@ namespace dxvk {
 
     for (auto texture : g_managedTextures) {
       D3D9CommonTexture* commonTex = GetCommonTexture(texture);
-      if (commonTex != nullptr) {
-        commonTex->DeallocFixupBuffers();
-        commonTex->DeallocMappingBuffers();
-      }
+      if (commonTex != nullptr)
+        commonTex->Evict();
     }
 
     return D3D_OK;
@@ -3008,6 +3006,7 @@ namespace dxvk {
 
     bool alloced = pResource->AllocBuffers(Face, MipLevel);
     bool managed = pResource->Desc()->Pool == D3DPOOL_MANAGED;
+    bool evicted = pResource->HasBeenEvicted();
 
     const Rc<DxvkImage>  mappedImage  = pResource->GetImage();
     const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer(Subresource);
@@ -3102,7 +3101,7 @@ namespace dxvk {
           ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
         });
       }
-      else if (!alloced || managed) {
+      else if (!alloced || (managed && !evicted)) {
         // Managed resources and ones we haven't newly allocated
         // are meant to be able to provide readback without waiting.
         // We always keep a copy of them in system memory for this reason.
