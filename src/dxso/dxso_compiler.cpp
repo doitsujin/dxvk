@@ -628,7 +628,7 @@ namespace dxvk {
 
     DxsoSampler& sampler = m_samplers[idx];
 
-    sampler.depthSpecConst = m_module.specConstBool(false);
+    sampler.depthSpecConst = m_module.specConstBool(true);
     m_module.decorateSpecId(sampler.depthSpecConst, depthBinding);
     m_module.setDebugName(sampler.depthSpecConst,
       str::format("s", idx, "_useShadow").c_str());
