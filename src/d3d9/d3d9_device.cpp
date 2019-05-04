@@ -3107,16 +3107,10 @@ namespace dxvk {
         // We always keep a copy of them in system memory for this reason.
         // No need to wait as its not in use.
 
-        if (alloced) {
-          physSlice = mappedBuffer->allocSlice();
-          EmitCs([
-            cImageBuffer = mappedBuffer,
-            cBufferSlice = physSlice
-          ] (DxvkContext* ctx) {
-            ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
-          });
-        } else
-          physSlice = mappedBuffer->getSliceHandle();
+        physSlice = mappedBuffer->getSliceHandle();
+
+        if (alloced)
+          std::memset(physSlice.mapPtr, 0, mappedBuffer->info().size);
       }
       else {
         // When using any map mode which requires the image contents
