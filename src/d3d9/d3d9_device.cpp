@@ -2988,7 +2988,9 @@ namespace dxvk {
 
     return pBox->Front * SlicePitch +
            pBox->Top   * RowPitch   +
-           FormatInfo->elementSize * align(pBox->Left, FormatInfo->blockSize.width);
+           FormatInfo != nullptr
+            ? FormatInfo->elementSize * align(pBox->Left, FormatInfo->blockSize.width)
+            : pBox->Left;
   }
 
   HRESULT D3D9DeviceEx::LockImage(
@@ -3003,9 +3005,9 @@ namespace dxvk {
     // TODO: Some fastpath for D3DLOCK_READONLY.
 
     UINT Subresource = pResource->CalcSubresource(Face, MipLevel);
+    auto& desc = *(pResource->Desc());
 
     bool alloced = pResource->AllocBuffers(Face, MipLevel);
-    bool managed = pResource->Desc()->Pool == D3DPOOL_MANAGED;
     bool evicted = pResource->HasBeenEvicted();
 
     const Rc<DxvkImage>  mappedImage  = pResource->GetImage();
@@ -3101,7 +3103,7 @@ namespace dxvk {
           ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
         });
       }
-      else if (!alloced || (managed && !evicted)) {
+      else if (!alloced || (desc.Pool == D3DPOOL_MANAGED && !evicted)) {
         // Managed resources and ones we haven't newly allocated
         // are meant to be able to provide readback without waiting.
         // We always keep a copy of them in system memory for this reason.
@@ -3138,14 +3140,24 @@ namespace dxvk {
         physSlice = mappedBuffer->getSliceHandle();
       }
       
-      // Set up map pointer. Data is tightly packed within the mapped buffer.
-      pLockedBox->RowPitch   = formatInfo->elementSize * blockCount.width;
-      pLockedBox->SlicePitch = formatInfo->elementSize * blockCount.width * blockCount.height;
+      const bool atiHack = desc.Format == D3D9Format::ATI1 || desc.Format == D3D9Format::ATI2;
+      // Set up map pointer.
+      if (atiHack) {
+        // We need to lie here. The game is expected to use this info and do a workaround.
+        // It's stupid. I know.
+        pLockedBox->RowPitch   = desc.Width;
+        pLockedBox->SlicePitch = desc.Width * desc.Height;
+      }
+      else {
+        // Data is tightly packed within the mapped buffer.
+        pLockedBox->RowPitch   = formatInfo->elementSize * blockCount.width;
+        pLockedBox->SlicePitch = formatInfo->elementSize * blockCount.width * blockCount.height;
+      }
 
       const uint32_t offset = CalcImageLockOffset(
         pLockedBox->SlicePitch,
         pLockedBox->RowPitch,
-        formatInfo,
+        !atiHack ? formatInfo : nullptr,
         pBox);
 
       uint8_t* data = reinterpret_cast<uint8_t*>(physSlice.mapPtr);
