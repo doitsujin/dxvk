@@ -1,5 +1,6 @@
 #pragma once
 
+#include "d3d11_device.h"
 #include "d3d11_context_state.h"
 #include "d3d11_device_child.h"
 
