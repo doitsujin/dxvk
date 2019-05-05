@@ -857,13 +857,6 @@ namespace dxvk {
       const DxvkBlendMode&      blendMode);
     
     /**
-     * \brief Sets extra pipeline state
-     * \param [in] xs New state object
-     */
-    void setExtraState(
-      const DxvkExtraState&     xs);
-    
-    /**
      * \brief Sets predicate
      *
      * Enables or disables conditional rendering,

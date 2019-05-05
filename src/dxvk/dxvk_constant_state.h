@@ -204,16 +204,4 @@ namespace dxvk {
     std::array<DxvkVertexBinding,   DxvkLimits::MaxNumVertexBindings>   bindings;
   };
   
-  
-  /**
-   * \brief Extra state
-   * 
-   * Additional state that will be passed to
-   * the graphics pipeline as specialization
-   * constants.
-   */
-  struct DxvkExtraState {
-    VkCompareOp           alphaCompareOp;
-  };
-  
 }

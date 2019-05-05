@@ -97,8 +97,6 @@ namespace dxvk {
     uint32_t                            msSampleMask;
     VkBool32                            msEnableAlphaToCoverage;
     
-    VkCompareOp                         xsAlphaCompareOp;
-    
     VkBool32                            dsEnableDepthTest;
     VkBool32                            dsEnableDepthWrite;
     VkBool32                            dsEnableDepthBoundsTest;

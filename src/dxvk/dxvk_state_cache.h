@@ -213,9 +213,6 @@ namespace dxvk {
     bool convertEntryV2(
             DxvkStateCacheEntry&      entry) const;
     
-    bool convertEntryV3(
-            DxvkStateCacheEntry&      entry) const;
-    
     void workerFunc();
 
     void writerFunc();

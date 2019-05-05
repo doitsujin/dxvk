@@ -192,8 +192,6 @@ namespace dxvk {
     // Set up some specialization constants
     DxvkSpecConstants specData;
     specData.set(uint32_t(DxvkSpecConstantId::RasterizerSampleCount), sampleCount, VK_SAMPLE_COUNT_1_BIT);
-    specData.set(uint32_t(DxvkSpecConstantId::AlphaTestEnable), state.xsAlphaCompareOp != VK_COMPARE_OP_ALWAYS, false);
-    specData.set(uint32_t(DxvkSpecConstantId::AlphaCompareOp),  state.xsAlphaCompareOp, VK_COMPARE_OP_ALWAYS);
     
     for (uint32_t i = 0; i < m_layout->bindingCount(); i++)
       specData.set(i, state.bsBindingMask.isBound(i), true);

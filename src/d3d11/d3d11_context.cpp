@@ -3121,17 +3121,6 @@ namespace dxvk {
     });
   }
 
-
-  void D3D11DeviceContext::ApplyUnusedState() {
-    // Initialize state that isn't exposed in D3D11
-    EmitCs([] (DxvkContext* ctx) {
-      DxvkExtraState xs;
-      xs.alphaCompareOp = VK_COMPARE_OP_ALWAYS;
-
-      ctx->setExtraState(xs);
-    });
-  }
-
   
   void D3D11DeviceContext::BindShader(
           DxbcProgramType       ShaderStage,
@@ -3577,7 +3566,6 @@ namespace dxvk {
     ApplyStencilRef();
     ApplyRasterizerState();
     ApplyViewportState();
-    ApplyUnusedState();
 
     BindDrawBuffers(
       m_state.id.argBuffer.ptr(),

@@ -679,8 +679,6 @@ namespace dxvk {
     
     void ApplyViewportState();
 
-    void ApplyUnusedState();
-    
     void BindShader(
             DxbcProgramType                   ShaderStage,
       const D3D11CommonShader*                pShaderModule);
