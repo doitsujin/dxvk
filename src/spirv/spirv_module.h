@@ -608,6 +608,12 @@ namespace dxvk {
     uint32_t opFAbs(
             uint32_t                resultType,
             uint32_t                operand);
+
+    uint32_t opFMix(
+            uint32_t                resultType,
+            uint32_t                x,
+            uint32_t                y,
+            uint32_t                a);
     
     uint32_t opIAdd(
             uint32_t                resultType,
