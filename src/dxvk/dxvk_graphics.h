@@ -109,6 +109,8 @@ namespace dxvk {
     VkLogicOp                           omLogicOp;
     VkPipelineColorBlendAttachmentState omBlendAttachments[MaxNumRenderTargets];
     VkComponentMapping                  omComponentMapping[MaxNumRenderTargets];
+
+    uint32_t                            scSpecConstants[MaxNumSpecConstants];
   };
   
   

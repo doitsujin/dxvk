@@ -205,6 +205,9 @@ namespace dxvk {
         specData.set(specId + 3, util::getComponentIndex(state.omComponentMapping[i].a, 3), 3u);
       }
     }
+
+    for (uint32_t i = 0; i < MaxNumSpecConstants; i++)
+      specData.set(getSpecId(i), state.scSpecConstants[i], 0u);
     
     VkSpecializationInfo specInfo = specData.getSpecInfo();
     

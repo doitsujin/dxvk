@@ -30,7 +30,8 @@ namespace dxvk {
 
     // Specialization constants for pipeline state
     SpecConstantRangeStart      = ColorComponentMappings + MaxNumRenderTargets * 4,
-    RasterizerSampleCount       = SpecConstantRangeStart,
+    RasterizerSampleCount       = SpecConstantRangeStart + 0,
+    FirstPipelineConstant
   };
   
   

@@ -2142,6 +2142,16 @@ namespace dxvk {
     
     m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
   }
+
+
+  void DxvkContext::setSpecConstant(
+          uint32_t            index,
+          uint32_t            value) {
+    if (m_state.gp.state.scSpecConstants[index] != value) {
+      m_state.gp.state.scSpecConstants[index] = value;
+      m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
+    }
+  }
   
   
   void DxvkContext::setPredicate(

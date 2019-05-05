@@ -857,6 +857,19 @@ namespace dxvk {
       const DxvkBlendMode&      blendMode);
     
     /**
+     * \brief Sets specialization constants
+     * 
+     * Replaces current specialization constants with
+     * the given list of constant entries. The specId
+     * in the shader can be computed with \c getSpecId.
+     * \param [in] index Constant index
+     * \param [in] value Constant value
+     */
+    void setSpecConstant(
+            uint32_t            index,
+            uint32_t            value);
+    
+    /**
      * \brief Sets predicate
      *
      * Enables or disables conditional rendering,
