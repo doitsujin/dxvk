@@ -1425,10 +1425,8 @@ namespace dxvk {
       // and vice versa
       if (dst.type.ctype == DxsoScalarType::Sint32)
         result.id = m_module.opConvertFtoS(typeId, src0.id);
-      else { // Float32
-        result.id = m_module.opRound(getVectorTypeId(src0.type), src0.id);
-        result.id = m_module.opConvertStoF(typeId, result.id);
-      }
+      else // Float32
+        result.id = m_module.opConvertStoF(typeId, src0.id);
     }
     else // No special stuff needed!
       result.id = src0.id;
@@ -1547,7 +1545,15 @@ namespace dxvk {
 
         uint32_t exponent = emitRegisterLoad(src[1], mask).id;
 
+        DxsoRegisterValue cmp;
+        cmp.type = { DxsoScalarType::Bool, result.type.ccount };
+        cmp.id = m_module.opFOrdEqual(getVectorTypeId(cmp.type),
+          exponent, m_module.constfReplicant(0.0f, cmp.type.ccount));
+
         result.id = m_module.opPow(typeId, base, exponent);
+
+        result.id = m_module.opSelect(typeId, cmp.id,
+          m_module.constfReplicant(1.0f, cmp.type.ccount), result.id);
         break;
       }
       case DxsoOpcode::Abs:
