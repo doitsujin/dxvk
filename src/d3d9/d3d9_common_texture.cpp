@@ -13,6 +13,15 @@ namespace dxvk {
     if (m_desc.Format == D3D9Format::NULL_FORMAT)
       return;
 
+    bool unknown      = m_desc.Format == D3D9Format::Unknown;
+    bool depthStencil = m_desc.Usage & D3DUSAGE_DEPTHSTENCIL;
+    if (unknown) {
+      if (!depthStencil)
+        m_desc.Format = D3D9Format::X8R8G8B8;
+      else
+        m_desc.Format = D3D9Format::D32;
+    }
+
     D3D9_VK_FORMAT_MAPPING formatInfo = m_device->LookupFormat(m_desc.Format);
 
     DxvkImageCreateInfo imageInfo;
