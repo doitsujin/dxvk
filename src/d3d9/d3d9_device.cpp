@@ -3055,49 +3055,6 @@ namespace dxvk {
       data += offset;
       pLockedBox->pBits = data;
       return D3D_OK;
-    } else if (formatInfo->aspectMask == (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-      VkExtent3D levelExtent = mappedImage->mipLevelExtent(subresource.mipLevel);
-
-      // The actual Vulkan image format may differ
-      // from the format requested by the application
-      VkFormat packFormat = GetPackedDepthStencilFormat(pResource->Desc()->Format);
-      auto packFormatInfo = imageFormatInfo(packFormat);
-
-      // This is slow, but we have to dispatch a pack
-      // operation and then immediately synchronize.
-      EmitCs([
-        cImageBuffer = mappedBuffer,
-        cImage       = mappedImage,
-        cSubresource = subresource,
-        cFormat      = packFormat
-      ] (DxvkContext* ctx) {
-        auto layers = vk::makeSubresourceLayers(cSubresource);
-        auto x = cImage->mipLevelExtent(cSubresource.mipLevel);
-
-        VkOffset2D offset = { 0, 0 };
-        VkExtent2D extent = { x.width, x.height };
-
-        ctx->copyDepthStencilImageToPackedBuffer(
-          cImageBuffer, 0, cImage, layers, offset, extent, cFormat);
-      });
-
-      WaitForResource(mappedBuffer, 0);
-
-      DxvkBufferSliceHandle physSlice = mappedBuffer->getSliceHandle();
-
-      pLockedBox->RowPitch   = packFormatInfo->elementSize * levelExtent.width;
-      pLockedBox->SlicePitch = packFormatInfo->elementSize * levelExtent.width * levelExtent.height;
-
-      const uint32_t offset = CalcImageLockOffset(
-        pLockedBox->SlicePitch,
-        pLockedBox->RowPitch,
-        packFormatInfo,
-        pBox);
-
-      uint8_t* data = reinterpret_cast<uint8_t*>(physSlice.mapPtr);
-      data += offset;
-      pLockedBox->pBits = data;
-      return D3D_OK;
     } else {
       VkExtent3D levelExtent = mappedImage->mipLevelExtent(subresource.mipLevel);
       VkExtent3D blockCount  = util::computeBlockCount(levelExtent, formatInfo->blockSize);
