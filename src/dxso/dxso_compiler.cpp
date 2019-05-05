@@ -1731,7 +1731,8 @@ namespace dxvk {
         dot.id = m_module.opFAdd(scalarTypeId,
           dot.id, emitRegisterLoad(src[2], addSrcMask).id);
 
-        result.id = emitRegisterExtend(dot, result.type.ccount).id;
+        result.id   = dot.id;
+        result.type = scalarType;
         break;
       }
       case DxsoOpcode::DsX:
