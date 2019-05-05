@@ -2516,10 +2516,12 @@ namespace dxvk {
       "    - Auto Depth Stencil: ", pPresentationParameters->EnableAutoDepthStencil ? "true" : "false", "\n",
       "    - Windowed:           ", pPresentationParameters->Windowed ? "true" : "false", "\n"));
 
-    if (!IsSupportedBackBufferFormat(
-      backBufferFmt,
-      pPresentationParameters->Windowed))
-      return D3DERR_INVALIDCALL;
+    if (backBufferFmt != D3D9Format::Unknown) {
+      if (!IsSupportedBackBufferFormat(
+        backBufferFmt,
+        pPresentationParameters->Windowed))
+        return D3DERR_INVALIDCALL;
+    }
 
     SetDepthStencilSurface(nullptr);
 
