@@ -1539,11 +1539,15 @@ namespace dxvk {
         result.id = m_module.opExp2(typeId,
           emitRegisterLoad(src[0], mask).id);
         break;
-      case DxsoOpcode::Pow:
-        result.id = m_module.opPow(typeId,
-          emitRegisterLoad(src[0], mask).id,
-          emitRegisterLoad(src[1], mask).id);
+      case DxsoOpcode::Pow: {
+        uint32_t base = emitRegisterLoad(src[0], mask).id;
+        base = m_module.opFAbs(typeId, base);
+
+        uint32_t exponent = emitRegisterLoad(src[1], mask).id;
+
+        result.id = m_module.opPow(typeId, base, exponent);
         break;
+      }
       case DxsoOpcode::Abs:
         result.id = m_module.opFAbs(typeId,
           emitRegisterLoad(src[0], mask).id);
