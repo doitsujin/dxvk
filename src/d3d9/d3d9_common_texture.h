@@ -313,16 +313,18 @@ namespace dxvk {
 
     Rc<DxvkImageView>                 m_depthStencilView;
 
-    std::array<uint16_t, 6>           m_mappedSubresources;
-    std::array<uint16_t, 6>           m_unmappedSubresources;
-    std::array<uint16_t, 6>           m_readOnlySubresources;
-    std::array<uint16_t, 6>           m_evictedSubresources;
+    std::array<uint16_t, 6>           m_mappedSubresources   = { 0 };
+    std::array<uint16_t, 6>           m_unmappedSubresources = { 0 };
+    std::array<uint16_t, 6>           m_readOnlySubresources = { 0 };
+    std::array<uint16_t, 6>           m_evictedSubresources  = { 0 };
 
-    bool                              m_shadow;
+    bool                              m_shadow               = false;
 
     BOOL CheckImageSupport(
       const DxvkImageCreateInfo*  pImageInfo,
       VkImageTiling         Tiling) const;
+
+    BOOL CalcShadowState() const;
 
     BOOL CheckFormatFeatureSupport(
       VkFormat              Format,
