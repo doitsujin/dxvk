@@ -142,6 +142,9 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::EvictManagedResources() {
+    if (!m_d3d9Options.trustEvictions)
+      return D3D_OK;
+
     // Remove our mapping/staging buffers. Will force readback.
     auto lock = std::lock_guard(g_managedTextureMutex);
 
