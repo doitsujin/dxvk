@@ -3015,13 +3015,11 @@ namespace dxvk {
             DWORD                   Flags) {
     auto lock = LockDevice();
 
-    // TODO: Some fastpath for D3DLOCK_READONLY.
-
     UINT Subresource = pResource->CalcSubresource(Face, MipLevel);
     auto& desc = *(pResource->Desc());
 
     bool alloced = pResource->AllocBuffers(Face, MipLevel);
-    bool evicted = pResource->HasBeenEvicted();
+    bool needsReadback = pResource->UnevictSubresource(Face, MipLevel);
 
     const Rc<DxvkImage>  mappedImage  = pResource->GetImage();
     const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer(Subresource);
@@ -3073,16 +3071,13 @@ namespace dxvk {
           ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
         });
       }
-      else if (!alloced || (desc.Pool == D3DPOOL_MANAGED && !evicted)) {
+      else if (!alloced || (desc.Pool == D3DPOOL_MANAGED && !needsReadback)) {
         // Managed resources and ones we haven't newly allocated
         // are meant to be able to provide readback without waiting.
         // We always keep a copy of them in system memory for this reason.
         // No need to wait as its not in use.
 
         physSlice = mappedBuffer->getSliceHandle();
-
-        if (alloced)
-          std::memset(physSlice.mapPtr, 0, mappedBuffer->info().size);
       }
       else {
         // When using any map mode which requires the image contents

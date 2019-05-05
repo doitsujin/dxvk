@@ -66,7 +66,7 @@ namespace dxvk {
                        |  VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
     }
 
-    if (m_desc.Usage & D3DUSAGE_DEPTHSTENCIL) {
+    if (depthStencil) {
       imageInfo.usage  |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
       imageInfo.stages |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT
                        |  VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
@@ -155,6 +155,9 @@ namespace dxvk {
 
     for (uint32_t i = 0; i < m_readOnlySubresources.size(); i++)
       m_readOnlySubresources.at(i) = 0;
+
+    for (uint32_t i = 0; i < m_evictedSubresources.size(); i++)
+      m_evictedSubresources.at(i) = 0;
 
     DiscardSubresourceMasking();
 
