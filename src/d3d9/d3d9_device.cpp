@@ -2505,8 +2505,19 @@ namespace dxvk {
     if (unlikely(pPresentationParameters == nullptr))
       return D3DERR_INVALIDCALL;
 
+    D3D9Format backBufferFmt = EnumerateFormat(pPresentationParameters->BackBufferFormat);
+
+    Logger::info(str::format(
+      "D3D9DeviceEx::ResetEx:\n",
+      "  Requested Presentation Parameters\n",
+      "    - Width:              ", pPresentationParameters->BackBufferWidth, "\n",
+      "    - Height:             ", pPresentationParameters->BackBufferHeight, "\n",
+      "    - Format:             ", backBufferFmt, "\n"
+      "    - Auto Depth Stencil: ", pPresentationParameters->EnableAutoDepthStencil ? "true" : "false", "\n",
+      "    - Windowed:           ", pPresentationParameters->Windowed ? "true" : "false", "\n"));
+
     if (!IsSupportedBackBufferFormat(
-      EnumerateFormat(pPresentationParameters->BackBufferFormat),
+      backBufferFmt,
       pPresentationParameters->Windowed))
       return D3DERR_INVALIDCALL;
 
