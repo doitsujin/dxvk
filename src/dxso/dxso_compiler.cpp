@@ -1678,19 +1678,12 @@ namespace dxvk {
         result.id = m_module.opNMax(typeId, result.id,
           m_module.constfReplicant(-FLT_MAX, result.type.ccount));
         break;
-      case DxsoOpcode::Lrp: {
-        uint32_t src0 = emitRegisterLoad(src[0], mask).id;
-        uint32_t src1 = emitRegisterLoad(src[1], mask).id;
-        uint32_t src2 = emitRegisterLoad(src[2], mask).id;
-        // We are implementing like:
-        // src2 + src0 * (src1 - src2)
-
-        // X = src1 - src2
-        uint32_t X = m_module.opFSub(typeId, src1, src2);
-        // result = src2 + src0 * X
-        result.id = m_module.opFFma(typeId, src0, X, src2);
+      case DxsoOpcode::Lrp:
+        result.id = m_module.opFMix(typeId,
+          emitRegisterLoad(src[2], mask).id,
+          emitRegisterLoad(src[1], mask).id,
+          emitRegisterLoad(src[0], mask).id);
         break;
-      }
       case DxsoOpcode::Frc:
         result.id = m_module.opFract(typeId,
           emitRegisterLoad(src[0], mask).id);
