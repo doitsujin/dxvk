@@ -146,7 +146,8 @@ namespace dxvk {
       return D3D_OK;
 
     // Remove our mapping/staging buffers. Will force readback.
-    auto lock = std::lock_guard(g_managedTextureMutex);
+    auto managedLock = std::lock_guard(g_managedTextureMutex);
+    auto contextLock = LockDevice();
 
     for (auto texture : g_managedTextures) {
       D3D9CommonTexture* commonTex = GetCommonTexture(texture);
