@@ -2008,8 +2008,10 @@ namespace dxvk {
       m_state.gp.state.ilDivisors[i]            = bindings[i].fetchRate;
     }
     
-    for (uint32_t i = bindingCount; i < m_state.gp.state.ilBindingCount; i++)
+    for (uint32_t i = bindingCount; i < m_state.gp.state.ilBindingCount; i++) {
       m_state.gp.state.ilBindings[i] = VkVertexInputBindingDescription();
+      m_state.gp.state.ilDivisors[i] = 0;
+    }
     
     m_state.gp.state.ilAttributeCount = attributeCount;
     m_state.gp.state.ilBindingCount   = bindingCount;
