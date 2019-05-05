@@ -20,8 +20,8 @@ namespace dxvk {
     using ivec4 = std::array<int,   4>;
 
     struct alignas(32) {
-      std::array<vec4,  caps::MaxFloatConstants> fConsts;
-      std::array<ivec4, caps::MaxOtherConstants> iConsts;
+      std::array<vec4,  caps::MaxFloatConstants> fConsts = { 0.0f };
+      std::array<ivec4, caps::MaxOtherConstants> iConsts = { 0 };
       uint32_t boolBitfield = 0;
     } hardware;
   };
