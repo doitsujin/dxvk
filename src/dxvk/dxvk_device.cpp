@@ -262,8 +262,10 @@ namespace dxvk {
   VkResult DxvkDevice::presentImage(
     const Rc<vk::Presenter>&        presenter,
           VkSemaphore               semaphore) {
-    std::lock_guard<std::mutex> queueLock(m_submissionLock);
-    VkResult status = presenter->presentImage(semaphore);
+    DxvkPresentInfo presentInfo;
+    presentInfo.presenter = presenter;
+    presentInfo.waitSync  = semaphore;
+    VkResult status = m_submissionQueue.present(presentInfo);
 
     if (status != VK_SUCCESS)
       return status;
@@ -278,32 +280,22 @@ namespace dxvk {
     const Rc<DxvkCommandList>&      commandList,
           VkSemaphore               waitSync,
           VkSemaphore               wakeSync) {
-    VkResult status;
-    
-    { // Queue submissions are not thread safe
-      std::lock_guard<std::mutex> queueLock(m_submissionLock);
-      std::lock_guard<sync::Spinlock> statLock(m_statLock);
-      
-      m_statCounters.merge(commandList->statCounters());
-      m_statCounters.addCtr(DxvkStatCounter::QueueSubmitCount, 1);
-      
-      status = commandList->submit(
-        m_graphicsQueue.queueHandle,
-        waitSync, wakeSync);
-    }
-    
-    if (status == VK_SUCCESS) {
-      // Add this to the set of running submissions
-      m_submissionQueue.submit(commandList);
-    } else {
-      Logger::err(str::format(
-        "DxvkDevice: Command buffer submission failed: ",
-        status));
-    }
+    DxvkSubmitInfo submitInfo;
+    submitInfo.cmdList  = commandList;
+    submitInfo.queue    = m_graphicsQueue.queueHandle;
+    submitInfo.waitSync = waitSync;
+    submitInfo.wakeSync = wakeSync;
+    m_submissionQueue.submit(submitInfo);
+
+    std::lock_guard<sync::Spinlock> statLock(m_statLock);
+    m_statCounters.merge(commandList->statCounters());
+    m_statCounters.addCtr(DxvkStatCounter::QueueSubmitCount, 1);
   }
   
   
   void DxvkDevice::waitForIdle() {
+    m_submissionQueue.synchronize();
+
     if (m_vkd->vkDeviceWaitIdle(m_vkd->device()) != VK_SUCCESS)
       Logger::err("DxvkDevice: waitForIdle: Operation failed");
   }
