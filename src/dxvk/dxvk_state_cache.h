@@ -8,66 +8,11 @@
 #include <unordered_map>
 #include <vector>
 
-#include "dxvk_pipemanager.h"
-#include "dxvk_renderpass.h"
+#include "dxvk_state_cache_types.h"
 
 namespace dxvk {
 
   class DxvkDevice;
-
-  /**
-   * \brief State cache entry key
-   * 
-   * Stores the shader keys for all
-   * graphics shader stages. Used to
-   * look up cached state entries.
-   */
-  struct DxvkStateCacheKey {
-    DxvkShaderKey vs;
-    DxvkShaderKey tcs;
-    DxvkShaderKey tes;
-    DxvkShaderKey gs;
-    DxvkShaderKey fs;
-    DxvkShaderKey cs;
-
-    bool eq(const DxvkStateCacheKey& key) const;
-
-    size_t hash() const;
-  };
-
-  
-  /**
-   * \brief State entry
-   * 
-   * Stores the shaders used in a pipeline, as well
-   * as the full state vector, including its render
-   * pass format. This also includes a SHA-1 hash
-   * that is used as a check sum to verify integrity.
-   */
-  struct DxvkStateCacheEntry {
-    DxvkStateCacheKey             shaders;
-    DxvkGraphicsPipelineStateInfo gpState;
-    DxvkComputePipelineStateInfo  cpState;
-    DxvkRenderPassFormat          format;
-    Sha1Hash                      hash;
-  };
-
-
-  /**
-   * \brief State cache header
-   * 
-   * Stores the state cache format version. If an
-   * existing cache file is incompatible to the
-   * current version, it will be discarded.
-   */
-  struct DxvkStateCacheHeader {
-    char     magic[4]   = { 'D', 'X', 'V', 'K' };
-    uint32_t version    = 4;
-    uint32_t entrySize  = sizeof(DxvkStateCacheEntry);
-  };
-
-  static_assert(sizeof(DxvkStateCacheHeader) == 12);
-
 
   /**
    * \brief State cache
@@ -203,6 +148,7 @@ namespace dxvk {
             DxvkStateCacheHeader&     header) const;
 
     bool readCacheEntry(
+            uint32_t                  version,
             std::istream&             stream, 
             DxvkStateCacheEntry&      entry) const;
     
@@ -211,7 +157,11 @@ namespace dxvk {
             DxvkStateCacheEntry&      entry) const;
     
     bool convertEntryV2(
-            DxvkStateCacheEntry&      entry) const;
+            DxvkStateCacheEntryV4&    entry) const;
+    
+    bool convertEntryV4(
+      const DxvkStateCacheEntryV4&    in,
+            DxvkStateCacheEntry&      out) const;
     
     void workerFunc();
 
