@@ -3003,11 +3003,15 @@ namespace dxvk {
     if (pBox == nullptr)
       return 0;
 
+    uint32_t rowOffset;
+    if (FormatInfo != nullptr)
+      rowOffset = uint32_t(FormatInfo->elementSize) * align(pBox->Left, uint32_t(FormatInfo->blockSize.width));
+    else
+      rowOffset = pBox->Left;
+
     return pBox->Front * SlicePitch +
            pBox->Top   * RowPitch   +
-           FormatInfo != nullptr
-            ? FormatInfo->elementSize * align(pBox->Left, FormatInfo->blockSize.width)
-            : pBox->Left;
+           rowOffset;
   }
 
   HRESULT D3D9DeviceEx::LockImage(
