@@ -43,7 +43,7 @@ namespace dxvk {
     DirtyDepthStencilState,
     DirtyBlendState,
     DirtyRasterizerState,
-    DirtyExtraState,
+    DirtyAlphaTestState,
     DirtyRenderStateBuffer,
     DirtyInputLayout,
     DirtyViewportScissor,
@@ -706,7 +706,7 @@ namespace dxvk {
 
     void BindRasterizerState();
 
-    void BindExtraState();
+    void BindAlphaTestState();
     
     void UploadConstants(DxsoProgramType ShaderStage);
 

@@ -10,6 +10,7 @@
 #include "d3d9_query.h"
 #include "d3d9_stateblock.h"
 #include "d3d9_monitor.h"
+#include "d3d9_spec_constants.h"
 
 #include "../dxvk/dxvk_adapter.h"
 #include "../dxvk/dxvk_instance.h"
@@ -75,10 +76,6 @@ namespace dxvk {
       loState.enableLogicOp = VK_FALSE;
       loState.logicOp       = VK_LOGIC_OP_CLEAR;
       ctx->setLogicOpState(loState);
-      
-      DxvkExtraState xsState;
-      xsState.alphaCompareOp = VK_COMPARE_OP_ALWAYS;
-      ctx->setExtraState(xsState);
     });
 
     CreateConstantBuffers();
@@ -1273,7 +1270,7 @@ namespace dxvk {
         
         case D3DRS_ALPHATESTENABLE:
         case D3DRS_ALPHAFUNC:
-          m_flags.set(D3D9DeviceFlag::DirtyExtraState);
+          m_flags.set(D3D9DeviceFlag::DirtyAlphaTestState);
           break;
 
         case D3DRS_BLENDFACTOR:
@@ -2608,11 +2605,13 @@ namespace dxvk {
 
     rs[D3DRS_SCISSORTESTENABLE]   = FALSE;
 
+    rs[D3DRS_ALPHATESTENABLE]     = FALSE;
+    rs[D3DRS_ALPHAREF]            = FALSE;
+    rs[D3DRS_ALPHAFUNC]           = D3DCMP_ALWAYS;
+    BindAlphaTestState();
+
     SetRenderState(D3DRS_SHADEMODE, D3DSHADE_GOURAUD);
-    SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
     SetRenderState(D3DRS_LASTPIXEL, TRUE);
-    SetRenderState(D3DRS_ALPHAREF, 0);
-    SetRenderState(D3DRS_ALPHAFUNC, D3DCMP_ALWAYS);
     SetRenderState(D3DRS_DITHERENABLE, FALSE);
     SetRenderState(D3DRS_FOGENABLE, FALSE);
     SetRenderState(D3DRS_SPECULARENABLE, FALSE);
@@ -3876,8 +3875,8 @@ namespace dxvk {
     });
   }
 
-  void D3D9DeviceEx::BindExtraState() {
-    m_flags.clr(D3D9DeviceFlag::DirtyExtraState);
+  void D3D9DeviceEx::BindAlphaTestState() {
+    m_flags.clr(D3D9DeviceFlag::DirtyAlphaTestState);
     
     auto& rs = m_state.renderStates;
     
@@ -3886,9 +3885,8 @@ namespace dxvk {
       : VK_COMPARE_OP_ALWAYS;
     
     EmitCs([cAlphaOp = alphaOp] (DxvkContext* ctx) {
-      DxvkExtraState xs;
-      xs.alphaCompareOp = cAlphaOp;
-      ctx->setExtraState(xs);
+      ctx->setSpecConstant(D3D9SpecConstantId::AlphaTestEnable, cAlphaOp != VK_COMPARE_OP_ALWAYS);
+      ctx->setSpecConstant(D3D9SpecConstantId::AlphaCompareOp,  cAlphaOp);
     });
   }
   
@@ -4060,8 +4058,8 @@ namespace dxvk {
     if (m_flags.test(D3D9DeviceFlag::DirtyRasterizerState))
       BindRasterizerState();
     
-    if (m_flags.test(D3D9DeviceFlag::DirtyExtraState))
-      BindExtraState();
+    if (m_flags.test(D3D9DeviceFlag::DirtyAlphaTestState))
+      BindAlphaTestState();
     
     if (m_flags.test(D3D9DeviceFlag::DirtyClipPlanes))
       UpdateClipPlanes();
