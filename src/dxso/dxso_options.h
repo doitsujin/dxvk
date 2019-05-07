@@ -14,6 +14,11 @@ namespace dxvk {
     /// Use subgroup operations to discard fragment
     /// shader invocations if derivatives remain valid.
     bool useSubgroupOpsForEarlyDiscard = false;
+
+    /// True:  Copy our constant set into UBO if we are relative indexing ever.
+    /// False: Copy our constant set into UBO if we are relative indexing at the start of a defined constant
+    /// Why?:  In theory, FXC should never generate code where this would be an issue.
+    bool strictConstantCopies;
   };
 
 }

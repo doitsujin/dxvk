@@ -35,6 +35,7 @@ namespace dxvk {
     this->trustEvictions        = config.getOption<bool>   ("d3d9.trustEvictions",  false);
     this->evictManagedOnUnlock  = config.getOption<bool>   ("d3d9.evictManagedOnUnlock", false);
     this->dpiAware              = config.getOption<bool>   ("d3d9.dpiAware", true);
+    this->strictConstantCopies  = config.getOption<bool>   ("d3d9.strictConstantCopies", false);
   }
 
 }

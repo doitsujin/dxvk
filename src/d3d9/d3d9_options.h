@@ -35,6 +35,11 @@ namespace dxvk {
 
     /// Whether or not to set the process as DPI aware in Windows when the API interface is created.
     bool dpiAware;
+
+    /// True:  Copy our constant set into UBO if we are relative indexing ever.
+    /// False: Copy our constant set into UBO if we are relative indexing at the start of a defined constant
+    /// Why?:  In theory, FXC should never generate code where this would be an issue.
+    bool strictConstantCopies;
   };
 
 }
