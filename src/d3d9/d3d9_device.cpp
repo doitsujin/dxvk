@@ -82,6 +82,7 @@ namespace dxvk {
     });
 
     CreateConstantBuffers();
+    CreateNullStream();
 
     if (!(BehaviorFlags & D3DCREATE_FPU_PRESERVE))
       SetupFPU();
@@ -3532,6 +3533,25 @@ namespace dxvk {
       D3D9DeviceFlag::DirtyRenderStateBuffer);
   }
 
+  void D3D9DeviceEx::CreateNullStream() {
+    constexpr uint32_t NullStreamSize = sizeof(float) * 4; // float4(0, 0, 0, 0);
+
+    DxvkBufferCreateInfo info;
+    info.size    = NullStreamSize;
+    info.usage   = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+    info.stages  = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+    info.access  = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+
+    m_nullStream = m_dxvkDevice->createBuffer(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    EmitCs([
+      cSlice = DxvkBufferSlice(m_nullStream, 0, NullStreamSize)
+    ](DxvkContext* ctx) {
+      ctx->clearBuffer(cSlice.buffer(), cSlice.offset(), cSlice.length(), 0u);
+      ctx->bindVertexBuffer(NullStreamIdx, cSlice, NullStreamSize);
+    });
+  }
+
   void D3D9DeviceEx::UploadConstants(DxsoProgramType ShaderStage) {
     D3D9ConstantSets& constSet =
       ShaderStage == DxsoProgramType::VertexShader
@@ -4128,11 +4148,10 @@ namespace dxvk {
 
         DxvkVertexAttribute attrib;
         attrib.location = i;
-        attrib.binding  = 0;
-        attrib.format   = VK_FORMAT_R8_UNORM;
+        attrib.binding  = NullStreamIdx;
+        attrib.format   = VK_FORMAT_R32G32B32A32_SFLOAT;
         attrib.offset   = 0;
 
-        bool attribFound = false;
         for (const auto& element : elements) {
           DxsoSemantic elementSemantic = { static_cast<DxsoUsage>(element.Usage), element.UsageIndex };
 
@@ -4142,20 +4161,16 @@ namespace dxvk {
             attrib.offset  = element.Offset;
 
             m_streamUsageMask |= 1u << attrib.binding;
-            attribFound = true;
             break;
           }
         }
-
-        if (!attribFound)
-          continue;
 
         attrList[i] = attrib;
 
         DxvkVertexBinding binding;
         binding.binding     = attrib.binding;
 
-        uint32_t instanceData = m_state.streamFreq[binding.binding];
+        uint32_t instanceData = m_state.streamFreq[binding.binding % caps::MaxStreams];
         if (instanceData & D3DSTREAMSOURCE_INSTANCEDATA) {
           binding.fetchRate = instanceData & 0x7FFFFF; // Remove instance packed-in flags in the data.
           binding.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;

@@ -69,6 +69,8 @@ namespace dxvk {
   class D3D9DeviceEx final : public ComObject<IDirect3DDevice9Ex> {
     constexpr static uint32_t DefaultFrameLatency = 3;
     constexpr static uint32_t MaxFrameLatency     = 20;
+
+    constexpr static uint32_t NullStreamIdx = caps::MaxStreams;
   public:
 
     D3D9DeviceEx(
@@ -684,6 +686,8 @@ namespace dxvk {
 
     void CreateConstantBuffers();
 
+    void CreateNullStream();
+
     void SynchronizeCsThread();
 
     void Flush();
@@ -854,6 +858,8 @@ namespace dxvk {
     std::unordered_map<
       DWORD,
       Com<D3D9VertexDecl>> m_fvfTable;
+
+    Rc<DxvkBuffer>                  m_nullStream;
 
     uint32_t                        m_streamUsageMask = 0;
     uint32_t                        m_instancedData   = 0;
