@@ -19,6 +19,9 @@ namespace dxvk {
     /// False: Copy our constant set into UBO if we are relative indexing at the start of a defined constant
     /// Why?:  In theory, FXC should never generate code where this would be an issue.
     bool strictConstantCopies;
+
+    /// Whether or not we should care about pow(0, 0) = 1
+    bool strictPow;
   };
 
 }

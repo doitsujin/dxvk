@@ -1559,15 +1559,17 @@ namespace dxvk {
 
         uint32_t exponent = emitRegisterLoad(src[1], mask).id;
 
-        DxsoRegisterValue cmp;
-        cmp.type = { DxsoScalarType::Bool, result.type.ccount };
-        cmp.id = m_module.opFOrdEqual(getVectorTypeId(cmp.type),
-          exponent, m_module.constfReplicant(0.0f, cmp.type.ccount));
-
         result.id = m_module.opPow(typeId, base, exponent);
 
-        result.id = m_module.opSelect(typeId, cmp.id,
-          m_module.constfReplicant(1.0f, cmp.type.ccount), result.id);
+        if (m_moduleInfo.options.strictPow) {
+          DxsoRegisterValue cmp;
+          cmp.type  = { DxsoScalarType::Bool, result.type.ccount };
+          cmp.id    = m_module.opFOrdEqual(getVectorTypeId(cmp.type),
+            exponent, m_module.constfReplicant(0.0f, cmp.type.ccount));
+
+          result.id = m_module.opSelect(typeId, cmp.id,
+            m_module.constfReplicant(1.0f, cmp.type.ccount), result.id);
+        }
         break;
       }
       case DxsoOpcode::Abs:

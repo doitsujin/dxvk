@@ -23,6 +23,8 @@ namespace dxvk {
     applyTristate(useSubgroupOpsForEarlyDiscard, device->config().useEarlyDiscard);
 
     strictConstantCopies = options.strictConstantCopies;
+
+    strictPow            = options.strictPow;
   }
 
 }

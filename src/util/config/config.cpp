@@ -152,6 +152,15 @@ namespace dxvk {
     { R"(\\Crysis3\.exe$)", {{
       { "dxgi.customVendorId",              "10de" },
     }} },
+
+    /**********************************************/
+    /* D3D9 GAMES                                 */
+    /**********************************************/
+
+    /* A Hat in Time                              */
+    { "HatinTimeGame.exe", {{
+      { "d3d9.strictPow",                   "False" },
+    }} },
   }};
 
 
