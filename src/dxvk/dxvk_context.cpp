@@ -3678,50 +3678,46 @@ namespace dxvk {
       std::array<VkDeviceSize, MaxNumVertexBindings> offsets;
       
       // Set buffer handles and offsets for active bindings
-      uint32_t bindingCount = 0;
-      uint32_t bindingMask  = 0;
+      uint32_t bindingMask = 0;
       
       for (uint32_t i = 0; i < m_state.gp.state.ilBindingCount; i++) {
-        const uint32_t binding = m_state.gp.state.ilBindings[i].binding;
-        bindingCount = std::max(bindingCount, binding + 1);
+        uint32_t binding = m_state.gp.state.ilBindings[i].binding;
+        bindingMask |= 1u << binding;
         
-        if (m_state.vi.vertexBuffers[binding].defined()) {
+        if (likely(m_state.vi.vertexBuffers[binding].defined())) {
           auto vbo = m_state.vi.vertexBuffers[binding].getDescriptor();
           
           buffers[binding] = vbo.buffer.buffer;
           offsets[binding] = vbo.buffer.offset;
           
-          bindingMask |= 1u << binding;
-          
           m_cmd->trackResource(m_state.vi.vertexBuffers[binding].buffer());
+        } else {
+          buffers[binding] = m_device->dummyBufferHandle();
+          offsets[binding] = 0;
         }
       }
       
-      // Bind a dummy buffer to the remaining bindings
-      uint32_t bindingsUsed = (1u << bindingCount) - 1u;
-      uint32_t bindingsSet  = bindingMask;
-      
-      while (bindingsSet != bindingsUsed) {
-        uint32_t binding = bit::tzcnt(~bindingsSet);
-        
-        buffers[binding] = m_device->dummyBufferHandle();
-        offsets[binding] = 0;
-        
-        bindingsSet |= 1u << binding;
-      }
-      
-      // Bind all vertex buffers at once
-      if (bindingCount != 0) {
-        m_cmd->cmdBindVertexBuffers(0, bindingCount,
-          buffers.data(), offsets.data());
-      }
-      
-      // If the set of active bindings has changed, we'll
-      // need to adjust the strides of the inactive ones
-      // and compile a new pipeline
+      // Adjust stride of inactive bindings if needed
       if (m_state.vi.bindingMask != bindingMask) {
         m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
         m_state.vi.bindingMask = bindingMask;
+      }
+
+      // Actually bind all the vertex buffers
+      uint32_t bindingIndex = 0;
+      
+      while (bindingMask) {
+        uint32_t shift = bit::tzcnt(bindingMask);
+        uint32_t count = bit::tzcnt(~bindingMask >> shift);
+        uint32_t index = bindingIndex + shift;
+
+        m_cmd->cmdBindVertexBuffers(
+          index, count,
+          &buffers[index],
+          &offsets[index]);
+        
+        bindingIndex += shift + count;
+        bindingMask >>= shift + count;
       }
     }
   }
