@@ -32,10 +32,8 @@ namespace dxvk::sync {
     }
     
     bool try_lock() {
-      uint32_t expected = 0;
-      return m_lock.compare_exchange_strong(expected, 1,
-        std::memory_order_acquire,
-        std::memory_order_relaxed);
+      return !m_lock.load()
+          && !m_lock.exchange(1, std::memory_order_acquire);
     }
     
   private:
