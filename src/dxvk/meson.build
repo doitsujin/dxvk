@@ -39,9 +39,11 @@ dxvk_shaders = files([
   'shaders/dxvk_unpack_d24s8.comp',
   'shaders/dxvk_unpack_d32s8.comp',
   
-  'hud/shaders/hud_line.frag',
-  'hud/shaders/hud_text.frag',
-  'hud/shaders/hud_vert.vert',
+  'hud/shaders/hud_line_frag.frag',
+  'hud/shaders/hud_line_vert.vert',
+
+  'hud/shaders/hud_text_frag.frag',
+  'hud/shaders/hud_text_vert.vert',
 ])
 
 dxvk_src = files([

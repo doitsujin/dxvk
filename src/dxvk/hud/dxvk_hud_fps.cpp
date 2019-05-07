@@ -77,7 +77,7 @@ namespace dxvk::hud {
     const Rc<DxvkContext>&  context,
           HudRenderer&      renderer,
           HudPos            position) {
-    std::array<HudVertex, NumDataPoints * 2> vData;
+    std::array<HudLineVertex, NumDataPoints * 2> vData;
     
     // 60 FPS = optimal, 10 FPS = worst
     const float targetUs =  16'666.6f;
@@ -100,8 +100,10 @@ namespace dxvk::hud {
       float g = std::min(std::max( 3.0f - us / targetUs, 0.0f), 1.0f);
       float l = std::sqrt(r * r + g * g);
       
-      HudTexCoord tc = { 0u, 0u };
-      HudColor color = { r / l, g / l, 0.0f, 1.0f };
+      HudNormColor color = {
+        uint8_t(255.0f * (r / l)),
+        uint8_t(255.0f * (g / l)),
+        uint8_t(0), uint8_t(255) };
       
       float x = position.x + float(i);
       float y = position.y + 24.0f;
@@ -110,8 +112,8 @@ namespace dxvk::hud {
                  / std::log2((maxUs - minUs) / targetUs);
       float h = std::min(std::max(40.0f * hVal, 2.0f), 40.0f);
       
-      vData[2 * i + 0] = HudVertex { { x, y     }, tc, color };
-      vData[2 * i + 1] = HudVertex { { x, y - h }, tc, color };
+      vData[2 * i + 0] = HudLineVertex { { x, y     }, color };
+      vData[2 * i + 1] = HudLineVertex { { x, y - h }, color };
     }
     
     renderer.drawLines(context, vData.size(), vData.data());

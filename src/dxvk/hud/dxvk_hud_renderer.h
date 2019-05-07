@@ -40,14 +40,32 @@ namespace dxvk::hud {
     float b;
     float a;
   };
+
+  /**
+   * \brief Normalized color
+   * SRGB color with alpha channel.
+   */
+  struct HudNormColor {
+    uint8_t r;
+    uint8_t g;
+    uint8_t b;
+    uint8_t a;
+  };
   
   /**
-   * \brief Vertex
+   * \brief Text vertex and texture coordinates
    */
-  struct HudVertex {
-    HudPos      position;
-    HudTexCoord texcoord;
-    HudColor    color;
+  struct HudTextVertex {
+    HudPos        position;
+    HudTexCoord   texcoord;
+  };
+
+  /**
+   * \brief Line vertex and color
+   */
+  struct HudLineVertex {
+    HudPos        position;
+    HudNormColor  color;
   };
   
   /**
@@ -57,7 +75,7 @@ namespace dxvk::hud {
    * display performance and driver information.
    */
   class HudRenderer {
-    constexpr static VkDeviceSize MaxVertexCount = 1 << 16;
+
   public:
     
     HudRenderer(
@@ -79,7 +97,7 @@ namespace dxvk::hud {
     void drawLines(
       const Rc<DxvkContext>&  context,
             size_t            vertexCount,
-      const HudVertex*        vertexData);
+      const HudLineVertex*    vertexData);
     
     VkExtent2D surfaceSize() const {
       return m_surfaceSize;
@@ -92,34 +110,41 @@ namespace dxvk::hud {
       RenderText,
       RenderLines,
     };
+
+    struct ShaderPair {
+      Rc<DxvkShader> vert;
+      Rc<DxvkShader> frag;
+    };
     
     std::array<uint8_t, 256> m_charMap;
     
     Mode                m_mode;
     VkExtent2D          m_surfaceSize;
     
-    Rc<DxvkShader>      m_vertShader;
-    Rc<DxvkShader>      m_textShader;
-    Rc<DxvkShader>      m_lineShader;
+    ShaderPair          m_textShaders;
+    ShaderPair          m_lineShaders;
     
     Rc<DxvkImage>       m_fontImage;
     Rc<DxvkImageView>   m_fontView;
     Rc<DxvkSampler>     m_fontSampler;
     
     Rc<DxvkBuffer>      m_vertexBuffer;
-    size_t              m_vertexIndex = 0;
+    VkDeviceSize        m_vertexOffset = 0;
     
-    void setRenderMode(
+    DxvkBufferSlice allocVertexBuffer(
       const Rc<DxvkContext>&  context,
-            Mode              mode);
+            VkDeviceSize      dataSize);
+
+    void beginTextRendering(
+      const Rc<DxvkContext>&  context);
     
-    Rc<DxvkShader> createVertexShader(
+    void beginLineRendering(
+      const Rc<DxvkContext>&  context);
+    
+    ShaderPair createTextShaders(
       const Rc<DxvkDevice>& device);
     
-    Rc<DxvkShader> createTextShader(
-      const Rc<DxvkDevice>& device);
-    
-    Rc<DxvkShader> createLineShader(
+    ShaderPair createLineShaders(
       const Rc<DxvkDevice>& device);
     
     Rc<DxvkImage> createFontImage(
