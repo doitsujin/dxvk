@@ -242,6 +242,9 @@ namespace dxvk {
       m_flags.set(DxvkContextFlag::GpDirtyVertexBuffers);
     }
     
+    if (unlikely(!buffer.defined()))
+      stride = 0;
+    
     if (m_state.vi.vertexStrides[binding] != stride) {
       m_state.vi.vertexStrides[binding] = stride;
       m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
@@ -3316,14 +3319,10 @@ namespace dxvk {
       
       this->pauseTransformFeedback();
 
-      // Fix up vertex binding strides for unbound buffers
+      // Set up vertex buffer strides for active bindings
       for (uint32_t i = 0; i < m_state.gp.state.ilBindingCount; i++) {
         const uint32_t binding = m_state.gp.state.ilBindings[i].binding;
-        
-        m_state.gp.state.ilBindings[i].stride
-          = (m_state.vi.bindingMask & (1u << binding)) != 0
-            ? m_state.vi.vertexStrides[binding]
-            : 0;
+        m_state.gp.state.ilBindings[i].stride = m_state.vi.vertexStrides[binding];
       }
       
       for (uint32_t i = m_state.gp.state.ilBindingCount; i < MaxNumVertexBindings; i++)
@@ -3679,10 +3678,10 @@ namespace dxvk {
       
       // Set buffer handles and offsets for active bindings
       uint32_t bindingMask = 0;
-      uint32_t bindingDead = 0;
       
       for (uint32_t i = 0; i < m_state.gp.state.ilBindingCount; i++) {
         uint32_t binding = m_state.gp.state.ilBindings[i].binding;
+        bindingMask |= 1u << binding;
         
         if (likely(m_state.vi.vertexBuffers[binding].defined())) {
           auto vbo = m_state.vi.vertexBuffers[binding].getDescriptor();
@@ -3690,24 +3689,14 @@ namespace dxvk {
           buffers[binding] = vbo.buffer.buffer;
           offsets[binding] = vbo.buffer.offset;
           
-          bindingMask |= 1u << binding;
           m_cmd->trackResource(m_state.vi.vertexBuffers[binding].buffer());
         } else {
           buffers[binding] = m_device->dummyBufferHandle();
           offsets[binding] = 0;
-
-          bindingDead |= 1u << binding;
         }
       }
       
-      // Adjust stride of inactive bindings if needed
-      if (unlikely(m_state.vi.bindingMask != bindingMask)) {
-        m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
-        m_state.vi.bindingMask = bindingMask;
-      }
-
       // Actually bind all the vertex buffers.
-      bindingMask |= bindingDead;
       uint32_t bindingIndex = 0;
       
       while (bindingMask) {

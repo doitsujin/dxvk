@@ -3200,7 +3200,7 @@ namespace dxvk {
     EmitCs([
       cSlotId       = Slot,
       cBufferSlice  = pBuffer != nullptr ? pBuffer->GetBufferSlice(Offset) : DxvkBufferSlice(),
-      cStride       = pBuffer != nullptr ? Stride                          : 0
+      cStride       = Stride
     ] (DxvkContext* ctx) {
       ctx->bindVertexBuffer(cSlotId, cBufferSlice, cStride);
     });
