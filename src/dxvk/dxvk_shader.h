@@ -43,8 +43,10 @@ namespace dxvk {
    * purely for validation purposes.
    */
   struct DxvkInterfaceSlots {
-    uint32_t inputSlots  = 0;
-    uint32_t outputSlots = 0;
+    uint32_t inputSlots      = 0;
+    uint32_t outputSlots     = 0;
+    uint32_t pushConstOffset = 0;
+    uint32_t pushConstSize   = 0;
   };
 
 

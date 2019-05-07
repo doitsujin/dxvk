@@ -151,6 +151,12 @@ namespace dxvk {
           DxvkDescriptorSlotMapping& mapping) const {
     for (const auto& slot : m_slots)
       mapping.defineSlot(slot.slot, slot.type, slot.view, m_stage, slot.access);
+    
+    if (m_interface.pushConstSize) {
+      mapping.definePushConstRange(m_stage,
+        m_interface.pushConstOffset,
+        m_interface.pushConstSize);
+    }
   }
   
   

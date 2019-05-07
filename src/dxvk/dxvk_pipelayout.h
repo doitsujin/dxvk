@@ -65,6 +65,14 @@ namespace dxvk {
     const DxvkDescriptorSlot* bindingInfos() const {
       return m_descriptorSlots.data();
     }
+
+    /**
+     * \brief Push constant range
+     * \returns Push constant range
+     */
+    VkPushConstantRange pushConstRange() const {
+      return m_pushConstRange;
+    }
     
     /**
      * \brief Defines a new slot
@@ -85,6 +93,18 @@ namespace dxvk {
             VkImageViewType       view,
             VkShaderStageFlagBits stage,
             VkAccessFlags         access);
+
+    /**
+     * \brief Defines new push constant range
+     *
+     * \param [in] stage Shader stage
+     * \param [in] offset Range offset
+     * \param [in] size Range size
+     */
+    void definePushConstRange(
+            VkShaderStageFlagBits stage,
+            uint32_t              offset,
+            uint32_t              size);
     
     /**
      * \brief Gets binding ID for a slot
@@ -112,6 +132,7 @@ namespace dxvk {
   private:
     
     std::vector<DxvkDescriptorSlot> m_descriptorSlots;
+    VkPushConstantRange             m_pushConstRange = { };
 
     uint32_t countDescriptors(
             VkDescriptorType      type) const;
@@ -164,6 +185,14 @@ namespace dxvk {
      */
     const DxvkDescriptorSlot* bindings() const {
       return m_bindingSlots.data();
+    }
+    
+    /**
+     * \brief Push constant range
+     * \returns Push constant range
+     */
+    const VkPushConstantRange& pushConstRange() const {
+      return m_pushConstRange;
     }
     
     /**
@@ -244,6 +273,7 @@ namespace dxvk {
     
     Rc<vk::DeviceFn> m_vkd;
     
+    VkPushConstantRange             m_pushConstRange      = { };
     VkDescriptorSetLayout           m_descriptorSetLayout = VK_NULL_HANDLE;
     VkPipelineLayout                m_pipelineLayout      = VK_NULL_HANDLE;
     VkDescriptorUpdateTemplateKHR   m_descriptorTemplate  = VK_NULL_HANDLE;

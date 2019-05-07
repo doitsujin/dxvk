@@ -30,6 +30,16 @@ namespace dxvk {
       m_descriptorSlots.push_back(slotInfo);
     }
   }
+
+
+  void DxvkDescriptorSlotMapping::definePushConstRange(
+          VkShaderStageFlagBits stage,
+          uint32_t              offset,
+          uint32_t              size) {
+    m_pushConstRange.stageFlags |= stage;
+    m_pushConstRange.size = std::max(
+      m_pushConstRange.size, offset + size);
+  }
   
   
   uint32_t DxvkDescriptorSlotMapping::getBindingId(uint32_t slot) const {
@@ -81,7 +91,9 @@ namespace dxvk {
     const Rc<vk::DeviceFn>&   vkd,
     const DxvkDescriptorSlotMapping& slotMapping,
           VkPipelineBindPoint pipelineBindPoint)
-  : m_vkd(vkd), m_bindingSlots(slotMapping.bindingCount()) {
+  : m_vkd           (vkd),
+    m_pushConstRange(slotMapping.pushConstRange()),
+    m_bindingSlots  (slotMapping.bindingCount()) {
 
     auto bindingCount = slotMapping.bindingCount();
     auto bindingInfos = slotMapping.bindingInfos();
@@ -137,6 +149,11 @@ namespace dxvk {
     pipeInfo.pSetLayouts            = &m_descriptorSetLayout;
     pipeInfo.pushConstantRangeCount = 0;
     pipeInfo.pPushConstantRanges    = nullptr;
+
+    if (m_pushConstRange.size) {
+      pipeInfo.pushConstantRangeCount = 1;
+      pipeInfo.pPushConstantRanges    = &m_pushConstRange;
+    }
     
     if (m_vkd->vkCreatePipelineLayout(m_vkd->device(),
         &pipeInfo, nullptr, &m_pipelineLayout) != VK_SUCCESS) {
