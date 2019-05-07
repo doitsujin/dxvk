@@ -79,10 +79,12 @@ namespace dxvk {
 
   DxvkPipelineLayout::DxvkPipelineLayout(
     const Rc<vk::DeviceFn>&   vkd,
-          uint32_t            bindingCount,
-    const DxvkDescriptorSlot* bindingInfos,
+    const DxvkDescriptorSlotMapping& slotMapping,
           VkPipelineBindPoint pipelineBindPoint)
-  : m_vkd(vkd), m_bindingSlots(bindingCount) {
+  : m_vkd(vkd), m_bindingSlots(slotMapping.bindingCount()) {
+
+    auto bindingCount = slotMapping.bindingCount();
+    auto bindingInfos = slotMapping.bindingInfos();
     
     for (uint32_t i = 0; i < bindingCount; i++)
       m_bindingSlots[i] = bindingInfos[i];

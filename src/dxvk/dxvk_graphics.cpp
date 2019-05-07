@@ -57,9 +57,7 @@ namespace dxvk {
       pipeMgr->m_device->options().maxNumDynamicStorageBuffers);
     
     m_layout = new DxvkPipelineLayout(m_vkd,
-      m_slotMapping.bindingCount(),
-      m_slotMapping.bindingInfos(),
-      VK_PIPELINE_BIND_POINT_GRAPHICS);
+      m_slotMapping, VK_PIPELINE_BIND_POINT_GRAPHICS);
     
     m_vsIn  = vs != nullptr ? vs->interfaceSlots().inputSlots  : 0;
     m_fsOut = fs != nullptr ? fs->interfaceSlots().outputSlots : 0;

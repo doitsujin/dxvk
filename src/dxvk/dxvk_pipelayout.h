@@ -135,8 +135,7 @@ namespace dxvk {
     
     DxvkPipelineLayout(
       const Rc<vk::DeviceFn>&   vkd,
-            uint32_t            bindingCount,
-      const DxvkDescriptorSlot* bindingInfos,
+      const DxvkDescriptorSlotMapping& slotMapping,
             VkPipelineBindPoint pipelineBindPoint);
     
     ~DxvkPipelineLayout();
