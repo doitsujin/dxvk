@@ -82,7 +82,6 @@ namespace dxvk {
     });
 
     CreateConstantBuffers();
-    CreateNullStream();
 
     if (!(BehaviorFlags & D3DCREATE_FPU_PRESERVE))
       SetupFPU();
@@ -3531,25 +3530,6 @@ namespace dxvk {
     m_flags.set(
       D3D9DeviceFlag::DirtyClipPlanes,
       D3D9DeviceFlag::DirtyRenderStateBuffer);
-  }
-
-  void D3D9DeviceEx::CreateNullStream() {
-    constexpr uint32_t NullStreamSize = sizeof(float) * 4; // float4(0, 0, 0, 0);
-
-    DxvkBufferCreateInfo info;
-    info.size    = NullStreamSize;
-    info.usage   = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-    info.stages  = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-    info.access  = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
-
-    m_nullStream = m_dxvkDevice->createBuffer(info, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-    EmitCs([
-      cSlice = DxvkBufferSlice(m_nullStream, 0, NullStreamSize)
-    ](DxvkContext* ctx) {
-      ctx->clearBuffer(cSlice.buffer(), cSlice.offset(), cSlice.length(), 0u);
-      ctx->bindVertexBuffer(NullStreamIdx, cSlice, NullStreamSize);
-    });
   }
 
   void D3D9DeviceEx::UploadConstants(DxsoProgramType ShaderStage) {

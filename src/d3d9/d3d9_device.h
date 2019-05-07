@@ -686,8 +686,6 @@ namespace dxvk {
 
     void CreateConstantBuffers();
 
-    void CreateNullStream();
-
     void SynchronizeCsThread();
 
     void Flush();
@@ -858,8 +856,6 @@ namespace dxvk {
     std::unordered_map<
       DWORD,
       Com<D3D9VertexDecl>> m_fvfTable;
-
-    Rc<DxvkBuffer>                  m_nullStream;
 
     uint32_t                        m_streamUsageMask = 0;
     uint32_t                        m_instancedData   = 0;
