@@ -52,6 +52,10 @@ namespace dxvk {
 
     m_shader = pModule->compile(*pDxsoModuleInfo, name, AnalysisInfo);
     m_isgn   = pModule->isgn();
+
+    m_meta      = pModule->meta();
+    m_constants = pModule->constants();
+
     m_shader->setShaderKey(*pShaderKey);
     
     if (dumpPath.size() != 0) {

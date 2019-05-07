@@ -1850,11 +1850,25 @@ namespace dxvk {
     if (shader == m_state.vertexShader)
       return D3D_OK;
 
+    auto* oldShader = GetCommonShader(m_state.vertexShader);
+    auto* newShader = GetCommonShader(shader);
+
+    bool oldCopies = oldShader && oldShader->GetMeta().needsConstantCopies;
+    bool newCopies = newShader && newShader->GetMeta().needsConstantCopies;
+
+    bool dirtyConstants = oldCopies || newCopies;
+
+    if (dirtyConstants) {
+      m_vsConst.dirty = true;
+      m_vsConst.shaderConstantCopies = newCopies;
+    }
+
     changePrivate(m_state.vertexShader, shader);
 
     BindShader(
       DxsoProgramType::VertexShader,
       GetCommonShader(shader));
+
 
     m_flags.set(D3D9DeviceFlag::DirtyInputLayout);
 
@@ -2123,6 +2137,19 @@ namespace dxvk {
 
     if (shader == m_state.pixelShader)
       return D3D_OK;
+
+    auto* oldShader = GetCommonShader(m_state.pixelShader);
+    auto* newShader = GetCommonShader(shader);
+
+    bool oldCopies = oldShader && oldShader->GetMeta().needsConstantCopies;
+    bool newCopies = newShader && newShader->GetMeta().needsConstantCopies;
+
+    bool dirtyConstants = oldCopies || newCopies;
+
+    if (dirtyConstants) {
+      m_psConst.dirty = true;
+      m_psConst.shaderConstantCopies = newCopies;
+    }
 
     changePrivate(m_state.pixelShader, shader);
 
@@ -3006,7 +3033,8 @@ namespace dxvk {
     uint32_t rowOffset;
     if (FormatInfo != nullptr) {
       uint32_t blockSize  = uint32_t(FormatInfo->blockSize.width);
-      uint32_t blockCount = (pBox->Left + blockSize - 1) / blockSize;
+      // Align down the block count to get the block that contains this pixel.
+      uint32_t blockCount = (pBox->Left - blockSize + 1) / blockSize;
       rowOffset = uint32_t(FormatInfo->elementSize) * blockCount;
     }
     else
@@ -3523,6 +3551,24 @@ namespace dxvk {
     DxvkBufferSliceHandle slice = constSet.buffer->allocSlice();
 
     std::memcpy(slice.mapPtr, constantData, D3D9ConstantSets::SetSize);
+
+    if (constSet.shaderConstantCopies) {
+      D3D9ShaderConstants::vec4* data =
+        reinterpret_cast<D3D9ShaderConstants::vec4*>(slice.mapPtr);
+
+      if (ShaderStage == DxsoProgramType::VertexShader) {
+        auto& shaderConsts = GetCommonShader(m_state.vertexShader)->GetConstants();
+
+        for (const auto& constant : shaderConsts)
+          std::memcpy(data + constant.uboIdx, constant.float32, sizeof(D3D9ShaderConstants::vec4));
+      }
+      else {
+        auto& shaderConsts = GetCommonShader(m_state.pixelShader)->GetConstants();
+
+        for (const auto& constant : shaderConsts)
+          std::memcpy(data + constant.uboIdx, constant.float32, sizeof(D3D9ShaderConstants::vec4));
+      }
+    }
 
     EmitCs([
       cBuffer = constSet.buffer,

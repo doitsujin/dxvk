@@ -19,4 +19,18 @@ namespace dxvk {
     uint32_t elemCount = 0;
   };
 
+  struct DxsoDefinedConstant {
+    uint32_t uboIdx;
+
+    // Only float constants may be indexed.
+    // So that's the only ones we care about putting in the UBO.
+    float    float32[4];
+  };
+
+  using DxsoDefinedConstants = std::vector<DxsoDefinedConstant>;
+
+  struct DxsoShaderMetaInfo {
+    bool needsConstantCopies = false;
+  };
+
 }

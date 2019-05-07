@@ -43,9 +43,15 @@ namespace dxvk {
       return m_isgn;
     }
 
+    const DxsoShaderMetaInfo& GetMeta() const { return m_meta; }
+    const DxsoDefinedConstants& GetConstants() const { return m_constants; }
+
   private:
 
     DxsoIsgn              m_isgn;
+
+    DxsoShaderMetaInfo    m_meta;
+    DxsoDefinedConstants  m_constants;
 
     Rc<DxvkShader>        m_shader;
 

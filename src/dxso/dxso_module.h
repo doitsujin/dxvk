@@ -8,6 +8,8 @@
 #include "dxso_isgn.h"
 #include "dxso_analysis.h"
 
+#include <vector>
+
 namespace dxvk {
 
   class DxsoCompiler;
@@ -46,6 +48,10 @@ namespace dxvk {
       return m_isgn;
     }
 
+    const DxsoShaderMetaInfo& meta() { return m_meta; }
+
+    const DxsoDefinedConstants& constants() { return m_constants; }
+
   private:
 
     void runCompiler(
@@ -60,6 +66,9 @@ namespace dxvk {
     DxsoCode        m_code;
 
     DxsoIsgn        m_isgn;
+
+    DxsoShaderMetaInfo   m_meta;
+    DxsoDefinedConstants m_constants;
 
   };
 

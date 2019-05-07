@@ -820,6 +820,12 @@ namespace dxvk {
   DxsoRegisterPointer DxsoCompiler::emitGetOperandPtr(
       const DxsoBaseRegister& reg,
       const DxsoBaseRegister* relative) {
+    // Only float constants (+ io regs) may be indexed.
+    if (relative != nullptr && reg.id.type == DxsoRegisterType::Const) {
+      if (m_moduleInfo.options.strictConstantCopies || m_cFloat.at(reg.id.num).id != 0)
+        m_meta.needsConstantCopies = true;
+    }
+
     switch (reg.id.type) {
       case DxsoRegisterType::Temp: {
         DxsoRegisterPointer& ptr = m_rRegs.at(reg.id.num);
@@ -1355,6 +1361,12 @@ namespace dxvk {
 
     std::string name = str::format("cF", num, "_def");
     m_module.setDebugName(ptr.id, name.c_str());
+
+    DxsoDefinedConstant constant;
+    constant.uboIdx = ctx.dst.id.num;
+    for (uint32_t i = 0; i < 4; i++)
+      constant.float32[i] = data[i];
+    m_constants.push_back(constant);
   }
 
   void DxsoCompiler::emitDefI(const DxsoInstructionContext& ctx) {

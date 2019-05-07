@@ -30,6 +30,7 @@ namespace dxvk {
     constexpr static uint32_t SetSize    = sizeof(D3D9ShaderConstants);
     Rc<DxvkBuffer> buffer;
     bool           dirty = true;
+    bool           shaderConstantCopies = false;
   };
 
 }

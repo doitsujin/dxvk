@@ -210,11 +210,17 @@ namespace dxvk {
     const DxsoIsgn& isgn() { return m_isgn; }
     const DxsoIsgn& osgn() { return m_osgn; }
 
+    const DxsoShaderMetaInfo& meta() { return m_meta; }
+    const DxsoDefinedConstants& constants() { return m_constants; }
+
   private:
 
     DxsoModuleInfo             m_moduleInfo;
     DxsoProgramInfo            m_programInfo;
     const DxsoAnalysisInfo*    m_analysis;
+
+    DxsoShaderMetaInfo         m_meta;
+    DxsoDefinedConstants       m_constants;
 
     SpirvModule                m_module;
 
