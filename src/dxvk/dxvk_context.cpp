@@ -1733,6 +1733,16 @@ namespace dxvk {
       }
     }
   }
+
+
+  void DxvkContext::pushConstants(
+          uint32_t                  offset,
+          uint32_t                  size,
+    const void*                     data) {
+    std::memcpy(&m_state.pc.data[offset], data, size);
+
+    m_flags.set(DxvkContextFlag::DirtyPushConstants);
+  }
   
   
   void DxvkContext::resolveImage(
@@ -3232,8 +3242,12 @@ namespace dxvk {
       m_state.cp.state.bsBindingMask.clear();
       m_state.cp.pipeline = m_pipeMgr->createComputePipeline(m_state.cp.cs.shader);
       
-      if (m_state.cp.pipeline != nullptr)
+      if (m_state.cp.pipeline != nullptr) {
         m_cmd->trackResource(m_state.cp.pipeline);
+
+        if (m_state.cp.pipeline->layout()->pushConstRange().size)
+          m_flags.set(DxvkContextFlag::DirtyPushConstants);
+      }
     }
   }
   
@@ -3288,6 +3302,9 @@ namespace dxvk {
       if (m_state.gp.pipeline != nullptr) {
         m_state.gp.flags = m_state.gp.pipeline->flags();
         m_cmd->trackResource(m_state.gp.pipeline);
+
+        if (m_state.gp.pipeline->layout()->pushConstRange().size)
+          m_flags.set(DxvkContextFlag::DirtyPushConstants);
       }
     }
   }
@@ -3813,6 +3830,31 @@ namespace dxvk {
         m_state.dyn.depthBounds.maxDepthBounds);
     }
   }
+
+
+  void DxvkContext::updatePushConstants(VkPipelineBindPoint bindPoint) {
+    if (m_flags.test(DxvkContextFlag::DirtyPushConstants)) {
+      m_flags.clr(DxvkContextFlag::DirtyPushConstants);
+
+      auto layout = bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
+        ? (m_state.gp.pipeline != nullptr ? m_state.gp.pipeline->layout() : nullptr)
+        : (m_state.cp.pipeline != nullptr ? m_state.cp.pipeline->layout() : nullptr);
+      
+      if (!layout)
+        return;
+      
+      VkPushConstantRange pushConstRange = layout->pushConstRange();
+      if (!pushConstRange.size)
+        return;
+      
+      m_cmd->cmdPushConstants(
+        layout->pipelineLayout(),
+        pushConstRange.stageFlags,
+        pushConstRange.offset,
+        pushConstRange.size,
+        &m_state.pc.data[pushConstRange.offset]);
+    }
+  }
   
   
   bool DxvkContext::validateComputeState() {
@@ -3848,6 +3890,9 @@ namespace dxvk {
           DxvkContextFlag::CpDirtyDescriptorSet,
           DxvkContextFlag::CpDirtyDescriptorOffsets))
       this->updateComputeShaderDescriptors();
+    
+    if (m_flags.test(DxvkContextFlag::DirtyPushConstants))
+      this->updatePushConstants(VK_PIPELINE_BIND_POINT_COMPUTE);
   }
   
   
@@ -3893,6 +3938,9 @@ namespace dxvk {
           DxvkContextFlag::GpDirtyDepthBias,
           DxvkContextFlag::GpDirtyDepthBounds))
       this->updateDynamicState();
+    
+    if (m_flags.test(DxvkContextFlag::DirtyPushConstants))
+      this->updatePushConstants(VK_PIPELINE_BIND_POINT_GRAPHICS);
   }
   
   

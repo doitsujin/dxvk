@@ -53,6 +53,7 @@ namespace dxvk {
     CpDirtyDescriptorSet,       ///< Compute descriptor set needs to be updated
     
     DirtyDrawBuffer,            ///< Indirect argument buffer is dirty
+    DirtyPushConstants,         ///< Push constant data has changed
   };
   
   using DxvkContextFlags = Flags<DxvkContextFlag>;
@@ -99,6 +100,11 @@ namespace dxvk {
     DxvkRenderTargets   renderTargets;
     DxvkRenderPassOps   renderPassOps;
     Rc<DxvkFramebuffer> framebuffer       = nullptr;
+  };
+
+
+  struct DxvkPushConstantState {
+    alignas(64) char data[MaxPushConstantSize];
   };
 
 
@@ -159,6 +165,7 @@ namespace dxvk {
     DxvkVertexInputState      vi;
     DxvkViewportState         vp;
     DxvkOutputMergerState     om;
+    DxvkPushConstantState     pc;
     DxvkXfbState              xfb;
     DxvkDynamicState          dyn;
     DxvkCondRenderState       cond;

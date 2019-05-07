@@ -654,6 +654,19 @@ namespace dxvk {
       const DxvkBufferSliceHandle&    slice);
     
     /**
+     * \brief Updates push constants
+     * 
+     * Updates the given push constant range.
+     * \param [in] offset Byte offset of data to update
+     * \param [in] size Number of bytes to update
+     * \param [in] data Pointer to raw data
+     */
+    void pushConstants(
+            uint32_t                  offset,
+            uint32_t                  size,
+      const void*                     data);
+    
+    /**
      * \brief Resolves a multisampled image resource
      * 
      * Resolves a multisampled image into a non-multisampled
@@ -1074,6 +1087,9 @@ namespace dxvk {
     void updateConditionalRendering();
     
     void updateDynamicState();
+
+    void updatePushConstants(
+            VkPipelineBindPoint     bindPoint);
     
     bool validateComputeState();
     bool validateGraphicsState();
