@@ -1100,7 +1100,8 @@ namespace dxvk {
       DecodeD3DCOLOR(Color, clearValue.color.float32);
 
       for (auto rt : m_state.renderTargets) {
-        auto rtv = rt != nullptr ? rt->GetRenderTargetView(false) : nullptr; // TODO: handle srgb-ness
+        bool srgb = m_state.renderStates[D3DRS_SRGBWRITEENABLE] != FALSE;
+        auto rtv = rt != nullptr ? rt->GetRenderTargetView(srgb) : nullptr;
 
         if (rtv != nullptr) {
           EmitCs([
