@@ -3697,8 +3697,6 @@ namespace dxvk {
     // rects that are at least as large as the framebuffer.
     bool enableScissorTest = m_state.renderStates[D3DRS_SCISSORTESTENABLE] != FALSE;
 
-    // TODO: Hook up scissor rect enabled when we get state in.
-
     if (enableScissorTest) {
       RECT sr = m_state.scissorRect;
 
@@ -4007,7 +4005,7 @@ namespace dxvk {
       cDepth     = depth,
       cImageView = commonTex != nullptr
                  ? commonTex->GetImageView(srgb)
-                 : nullptr // TODO: SRGB-ness
+                 : nullptr
     ](DxvkContext* ctx) {
       ctx->bindResourceView(cColorSlot, !cDepth ? cImageView : nullptr, nullptr);
       ctx->bindResourceView(cDepthSlot,  cDepth ? cImageView : nullptr, nullptr);
