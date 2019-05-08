@@ -118,6 +118,9 @@ namespace dxvk {
 
     m_ctx.dst.saturate = (token & (1 << 20)) != 0;
 
+    m_ctx.dst.shift    = (token & 0x0f000000) >> 24;
+    m_ctx.dst.shift    = (m_ctx.dst.shift & 0x7) - (m_ctx.dst.shift & 0x8);
+
     const bool extraToken =
       relativeAddressingUsesToken(DxsoInstructionArgumentType::Destination);
 

@@ -157,6 +157,7 @@ namespace dxvk {
     DxsoRegModifier modifier         = DxsoRegModifier::None;
     DxsoRegMask     mask             = IdentityWriteMask;
     DxsoRegSwizzle  swizzle          = IdentitySwizzle;
+    int8_t          shift            = 0;
   };
 
   struct DxsoRegister : public DxsoBaseRegister {

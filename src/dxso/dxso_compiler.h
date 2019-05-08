@@ -426,14 +426,32 @@ namespace dxvk {
             DxsoRegisterPointer     ptr,
             DxsoRegisterValue       value,
             DxsoRegMask             writeMask,
-            bool                    saturate) {
+            bool                    saturate,
+            int8_t                  shift) {
       if (value.type.ctype == DxsoScalarType::Float32) {
+        const uint32_t typeId = getVectorTypeId(value.type);
+
         // Saturating only makes sense on floats
         if (saturate) {
           value.id = m_module.opNClamp(
-            getVectorTypeId(value.type), value.id,
+            typeId, value.id,
             m_module.constfReplicant(0.0f, value.type.ccount),
             m_module.constfReplicant(1.0f, value.type.ccount));
+        }
+
+        // There doesn't seem to be a nice float bitshift method for float vectors
+        // in Spirv that I can see... Resorting to multiplication.
+        if (shift != 0) {
+          float shiftAmount = shift < 0
+            ? 1.0f / (1 << -shift)
+            : float(1 << shift);
+
+          uint32_t shiftConst = m_module.constf32(shiftAmount);
+
+          if (value.type.ccount == 1)
+            value.id = m_module.opFMul(typeId, value.id, shiftConst);
+          else
+            value.id = m_module.opVectorTimesScalar(typeId, value.id, shiftConst);
         }
       }
 

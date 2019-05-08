@@ -1448,7 +1448,7 @@ namespace dxvk {
     else // No special stuff needed!
       result.id = src0.id;
 
-    this->emitDstStore(dst, result, mask, ctx.dst.saturate);
+    this->emitDstStore(dst, result, mask, ctx.dst.saturate, ctx.dst.shift);
   }
 
 
@@ -1768,7 +1768,7 @@ namespace dxvk {
         return;
     }
 
-    this->emitDstStore(dst, result, mask, ctx.dst.saturate);
+    this->emitDstStore(dst, result, mask, ctx.dst.saturate, ctx.dst.shift);
   }
 
 
@@ -1837,7 +1837,7 @@ namespace dxvk {
     result.id = m_module.opCompositeConstruct(
       typeId, iterCount, indices.data());
 
-    this->emitDstStore(dst, result, mask, ctx.dst.saturate);
+    this->emitDstStore(dst, result, mask, ctx.dst.saturate, ctx.dst.shift);
   }
 
 
@@ -2222,7 +2222,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         reference,
         imageOperands);
 
-      this->emitDstStore(dst, result, ctx.dst.mask, ctx.dst.saturate);
+      this->emitDstStore(dst, result, ctx.dst.mask, ctx.dst.saturate, ctx.dst.shift);
     };
 
     uint32_t colorLabel  = m_module.allocateId();
