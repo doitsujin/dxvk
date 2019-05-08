@@ -8,6 +8,8 @@
 #include "../d3d9/d3d9_spec_constants.h"
 #include "dxso_util.h"
 
+#include "../dxvk/dxvk_spec_const.h"
+
 #include <cfloat>
 
 namespace dxvk {
@@ -2620,10 +2622,10 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     uint32_t alphaFuncId = m_module.specConst32(m_module.defIntType(32, 0), uint32_t(VK_COMPARE_OP_ALWAYS));
     
     m_module.setDebugName   (alphaTestId, "alpha_test");
-    m_module.decorateSpecId (alphaTestId, uint32_t(D3D9SpecConstantId::AlphaTestEnable));
+    m_module.decorateSpecId (alphaTestId, getSpecId(D3D9SpecConstantId::AlphaTestEnable));
     
     m_module.setDebugName   (alphaFuncId, "alpha_func");
-    m_module.decorateSpecId (alphaFuncId, uint32_t(D3D9SpecConstantId::AlphaCompareOp));
+    m_module.decorateSpecId (alphaFuncId, getSpecId(D3D9SpecConstantId::AlphaCompareOp));
     
     // Implement alpha test
     DxsoRegister color0;
