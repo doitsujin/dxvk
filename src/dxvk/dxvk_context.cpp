@@ -3672,46 +3672,35 @@ namespace dxvk {
   void DxvkContext::updateVertexBufferBindings() {
     if (m_flags.test(DxvkContextFlag::GpDirtyVertexBuffers)) {
       m_flags.clr(DxvkContextFlag::GpDirtyVertexBuffers);
+
+      if (unlikely(!m_state.gp.state.ilBindingCount))
+        return;
       
       std::array<VkBuffer,     MaxNumVertexBindings> buffers;
       std::array<VkDeviceSize, MaxNumVertexBindings> offsets;
       
       // Set buffer handles and offsets for active bindings
-      uint32_t bindingMask = 0;
-      
       for (uint32_t i = 0; i < m_state.gp.state.ilBindingCount; i++) {
         uint32_t binding = m_state.gp.state.ilBindings[i].binding;
-        bindingMask |= 1u << binding;
         
         if (likely(m_state.vi.vertexBuffers[binding].defined())) {
           auto vbo = m_state.vi.vertexBuffers[binding].getDescriptor();
           
-          buffers[binding] = vbo.buffer.buffer;
-          offsets[binding] = vbo.buffer.offset;
+          buffers[i] = vbo.buffer.buffer;
+          offsets[i] = vbo.buffer.offset;
           
           m_cmd->trackResource(m_state.vi.vertexBuffers[binding].buffer());
         } else {
-          buffers[binding] = m_device->dummyBufferHandle();
-          offsets[binding] = 0;
+          buffers[i] = m_device->dummyBufferHandle();
+          offsets[i] = 0;
         }
       }
       
-      // Actually bind all the vertex buffers.
-      uint32_t bindingIndex = 0;
-      
-      while (bindingMask) {
-        uint32_t shift = bit::tzcnt(bindingMask);
-        uint32_t count = bit::tzcnt(~bindingMask >> shift);
-        uint32_t index = bindingIndex + shift;
-
-        m_cmd->cmdBindVertexBuffers(
-          index, count,
-          &buffers[index],
-          &offsets[index]);
-        
-        bindingIndex += shift + count;
-        bindingMask >>= shift + count;
-      }
+      // Vertex bindigs get remapped when compiling the
+      // pipeline, so this actually does the right thing
+      m_cmd->cmdBindVertexBuffers(
+        0, m_state.gp.state.ilBindingCount,
+        buffers.data(), offsets.data());
     }
   }
   

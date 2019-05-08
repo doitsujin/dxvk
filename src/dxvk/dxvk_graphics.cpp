@@ -258,6 +258,22 @@ namespace dxvk {
     int32_t rasterizedStream = m_gs != nullptr
       ? m_gs->shaderOptions().rasterizedStream
       : 0;
+    
+    // Compact vertex bindings so that we can more easily update vertex buffers
+    std::array<VkVertexInputAttributeDescription, MaxNumVertexAttributes> viAttribs;
+    std::array<VkVertexInputBindingDescription,   MaxNumVertexBindings>   viBindings;
+    std::array<uint32_t,                          MaxNumVertexBindings>   viBindingMap = { };
+
+    for (uint32_t i = 0; i < state.ilBindingCount; i++) {
+      viBindings[i] = state.ilBindings[i];
+      viBindings[i].binding = i;
+      viBindingMap[state.ilBindings[i].binding] = i;
+    }
+
+    for (uint32_t i = 0; i < state.ilAttributeCount; i++) {
+      viAttribs[i] = state.ilAttributes[i];
+      viAttribs[i].binding = viBindingMap[state.ilAttributes[i].binding];
+    }
 
     VkPipelineVertexInputDivisorStateCreateInfoEXT viDivisorInfo;
     viDivisorInfo.sType                     = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT;
@@ -270,9 +286,9 @@ namespace dxvk {
     viInfo.pNext                            = &viDivisorInfo;
     viInfo.flags                            = 0;
     viInfo.vertexBindingDescriptionCount    = state.ilBindingCount;
-    viInfo.pVertexBindingDescriptions       = state.ilBindings;
+    viInfo.pVertexBindingDescriptions       = viBindings.data();
     viInfo.vertexAttributeDescriptionCount  = state.ilAttributeCount;
-    viInfo.pVertexAttributeDescriptions     = state.ilAttributes;
+    viInfo.pVertexAttributeDescriptions     = viAttribs.data();
     
     if (viDivisorCount == 0)
       viInfo.pNext = viDivisorInfo.pNext;
