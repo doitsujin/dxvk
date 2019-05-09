@@ -2501,14 +2501,15 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         ? m_module.constf32(0.0f)
         : m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
 
+      std::array<uint32_t, 4> indices = { 0, 1, 2, 3 };
+
       if (scalar) {
-        workingReg.id = m_module.opLoad(getVectorTypeId(workingReg.type),
-          indexVal.id);
+        workingReg.id = m_module.opCompositeExtract(getVectorTypeId(workingReg.type),
+          indexVal.id, 1, indices.data());
       } else {
         if (mask.popCount() == 0)
           mask = DxsoRegMask(true, true, true, true);
 
-        std::array<uint32_t, 4> indices = { 0, 1, 2, 3 };
         uint32_t count = 0;
         for (uint32_t i = 0; i < 4; i++) {
           if (mask[i])
