@@ -2206,7 +2206,7 @@ namespace dxvk {
     DxvkGpuEventHandle handle = m_gpuEvents->allocEvent();
 
     m_cmd->cmdSetEvent(handle.event,
-      VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+      VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
 
     m_cmd->trackGpuEvent(event->reset(handle));
     m_cmd->trackResource(event);
