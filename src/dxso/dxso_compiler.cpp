@@ -2433,6 +2433,8 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
       DxsoRegMask mask = elem.mask;
 
+      bool scalar = false;
+
       if (builtIn == spv::BuiltInMax) {
         outputPtr.id = emitNewVariableDefault(info,
           m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f));
@@ -2464,8 +2466,10 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
         if (builtIn == spv::BuiltInPosition)
           m_vs.oPos = outputPtr;
-        else if (builtIn == spv::BuiltInPointSize)
+        else if (builtIn == spv::BuiltInPointSize) {
+          scalar = true;
           m_vs.oPSize = outputPtr;
+        }
       }
 
       m_entryPointInterfaces.push_back(outputPtr.id);
@@ -2483,22 +2487,31 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       DxsoRegisterValue indexVal = this->emitValueLoad(indexPtr);
 
       DxsoRegisterValue workingReg;
-      workingReg.type = indexVal.type;
+      workingReg.type.ctype  = indexVal.type.ctype;
+      workingReg.type.ccount = scalar ? 1 : 4;
 
-      workingReg.id = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
+      workingReg.id = scalar
+        ? m_module.constf32(0.0f)
+        : m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
 
-      if (mask.popCount() == 0)
-        mask = DxsoRegMask(true, true, true, true);
+      if (scalar) {
+        workingReg.id = m_module.opLoad(getVectorTypeId(workingReg.type),
+          indexVal.id);
+      } else {
+        if (mask.popCount() == 0)
+          mask = DxsoRegMask(true, true, true, true);
 
-      std::array<uint32_t, 4> indices = { 0, 1, 2, 3 };
-      uint32_t count = 0;
-      for (uint32_t i = 0; i < 4; i++) {
-        if (mask[i])
-          indices[count++] = i + 4;
+        std::array<uint32_t, 4> indices = { 0, 1, 2, 3 };
+        uint32_t count = 0;
+        for (uint32_t i = 0; i < 4; i++) {
+          if (mask[i])
+            indices[count++] = i + 4;
+        }
+
+
+        workingReg.id = m_module.opVectorShuffle(getVectorTypeId(workingReg.type),
+          workingReg.id, indexVal.id, 4, indices.data());
       }
-
-      workingReg.id = m_module.opVectorShuffle(getVectorTypeId(workingReg.type),
-        workingReg.id, indexVal.id, 4, indices.data());
 
       m_module.opStore(outputPtr.id, workingReg.id);
     }
