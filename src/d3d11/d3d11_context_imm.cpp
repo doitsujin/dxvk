@@ -54,20 +54,6 @@ namespace dxvk {
   }
   
   
-  void STDMETHODCALLTYPE D3D11ImmediateContext::End(
-          ID3D11Asynchronous*               pAsync) {
-    D3D11DeviceContext::End(pAsync);
-
-    if (pAsync) {
-      D3D11_QUERY_DESC desc;
-      static_cast<D3D11Query*>(pAsync)->GetDesc(&desc);
-      
-      if (desc.Query == D3D11_QUERY_EVENT)
-        FlushImplicit(TRUE);
-    }
-  }
-
-
   HRESULT STDMETHODCALLTYPE D3D11ImmediateContext::GetData(
           ID3D11Asynchronous*               pAsync,
           void*                             pData,
@@ -214,61 +200,6 @@ namespace dxvk {
       UnmapImage(GetCommonTexture(pResource), Subresource);
     }
   }
-  
-  
-  void STDMETHODCALLTYPE D3D11ImmediateContext::CopySubresourceRegion(
-          ID3D11Resource*                   pDstResource,
-          UINT                              DstSubresource,
-          UINT                              DstX,
-          UINT                              DstY,
-          UINT                              DstZ,
-          ID3D11Resource*                   pSrcResource,
-          UINT                              SrcSubresource,
-    const D3D11_BOX*                        pSrcBox) {
-    FlushImplicit(FALSE);
-
-    D3D11DeviceContext::CopySubresourceRegion(
-      pDstResource, DstSubresource, DstX, DstY, DstZ,
-      pSrcResource, SrcSubresource, pSrcBox);
-  }
-  
-
-  void STDMETHODCALLTYPE D3D11ImmediateContext::CopySubresourceRegion1(
-          ID3D11Resource*                   pDstResource,
-          UINT                              DstSubresource,
-          UINT                              DstX,
-          UINT                              DstY,
-          UINT                              DstZ,
-          ID3D11Resource*                   pSrcResource,
-          UINT                              SrcSubresource,
-    const D3D11_BOX*                        pSrcBox,
-          UINT                              CopyFlags) {
-    FlushImplicit(FALSE);
-
-    D3D11DeviceContext::CopySubresourceRegion1(
-      pDstResource, DstSubresource, DstX, DstY, DstZ,
-      pSrcResource, SrcSubresource, pSrcBox, CopyFlags);
-  }
-
-  
-  void STDMETHODCALLTYPE D3D11ImmediateContext::CopyResource(
-          ID3D11Resource*                   pDstResource,
-          ID3D11Resource*                   pSrcResource) {
-    FlushImplicit(FALSE);
-
-    D3D11DeviceContext::CopyResource(
-      pDstResource, pSrcResource);
-  }
-
-  
-  void STDMETHODCALLTYPE D3D11ImmediateContext::GenerateMips(
-          ID3D11ShaderResourceView*         pShaderResourceView) {
-    FlushImplicit(FALSE);
-
-    D3D11DeviceContext::GenerateMips(
-      pShaderResourceView);
-  }
-  
 
   void STDMETHODCALLTYPE D3D11ImmediateContext::UpdateSubresource(
           ID3D11Resource*                   pDstResource,
@@ -301,27 +232,12 @@ namespace dxvk {
       CopyFlags);
   }
   
-
-  void STDMETHODCALLTYPE D3D11ImmediateContext::ResolveSubresource(
-          ID3D11Resource*                   pDstResource,
-          UINT                              DstSubresource,
-          ID3D11Resource*                   pSrcResource,
-          UINT                              SrcSubresource,
-          DXGI_FORMAT                       Format) {
-    FlushImplicit(FALSE);
-
-    D3D11DeviceContext::ResolveSubresource(
-      pDstResource, DstSubresource,
-      pSrcResource, SrcSubresource,
-      Format);
-  }
-
-
+  
   void STDMETHODCALLTYPE D3D11ImmediateContext::OMSetRenderTargets(
           UINT                              NumViews,
           ID3D11RenderTargetView* const*    ppRenderTargetViews,
           ID3D11DepthStencilView*           pDepthStencilView) {
-    FlushImplicit(FALSE);
+    FlushImplicit(TRUE);
     
     D3D11DeviceContext::OMSetRenderTargets(
       NumViews, ppRenderTargetViews, pDepthStencilView);
@@ -336,7 +252,7 @@ namespace dxvk {
           UINT                              NumUAVs,
           ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
     const UINT*                             pUAVInitialCounts) {
-    FlushImplicit(FALSE);
+    FlushImplicit(TRUE);
 
     D3D11DeviceContext::OMSetRenderTargetsAndUnorderedAccessViews(
       NumRTVs, ppRenderTargetViews, pDepthStencilView,
