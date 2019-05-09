@@ -1607,13 +1607,20 @@ namespace dxvk {
         DxsoRegMask srcMask(true, false, false, false);
         uint32_t src0 = emitRegisterLoad(src[0], srcMask).id;
 
-        std::array<uint32_t, 4> sincosVectorIndices = {
-          m_module.opCos(scalarTypeId, src0),
-          m_module.opSin(scalarTypeId, src0),
-          m_module.constf32(0.0f),
-          m_module.constf32(0.0f)
-        };
+        std::array<uint32_t, 4> sincosVectorIndices = { 0, 0, 0, 0 };
 
+        uint32_t index = 0;
+        if (mask[0])
+          sincosVectorIndices[index++] = m_module.opCos(scalarTypeId, src0);
+
+        if (mask[1])
+          sincosVectorIndices[index++] = m_module.opSin(scalarTypeId, src0);
+
+        for (index; index < result.type.ccount; index++) {
+          if (sincosVectorIndices[index] == 0)
+            sincosVectorIndices[index] = m_module.constf32(0.0f);
+        }
+            
         if (result.type.ccount == 1)
           result.id = sincosVectorIndices[0];
         else
