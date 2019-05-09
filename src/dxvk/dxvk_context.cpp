@@ -2303,6 +2303,10 @@ namespace dxvk {
         imageView->imageInfo().layout,
         imageView->imageInfo().stages,
         imageView->imageInfo().access);
+    } else {
+      // Make sure the render pass is active so
+      // that we can actually perform the clear
+      this->startRenderPass();
     }
 
     // Perform the actual clear operation
