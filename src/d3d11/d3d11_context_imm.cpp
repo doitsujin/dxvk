@@ -383,11 +383,14 @@ namespace dxvk {
         // When using any map mode which requires the image contents
         // to be preserved, and if the GPU has write access to the
         // image, copy the current image contents into the buffer.
-        if (pResource->Desc()->Usage == D3D11_USAGE_STAGING && !pResource->SupportsEarlyBufferCopy()) {
+        bool copyToBuffer = pResource->Desc()->Usage == D3D11_USAGE_STAGING && !pResource->SupportsEarlyBufferCopy();
+        if (copyToBuffer) {
           CopyTextureToMappedBuffer(pResource, Subresource);
         }
 
-        WaitForResource(mappedBuffer, 0);
+        if (!WaitForResource(mappedBuffer, copyToBuffer ? 0 : MapFlags))
+          return DXGI_ERROR_WAS_STILL_DRAWING;
+
         physSlice = mappedBuffer->getSliceHandle();
       }
       
