@@ -80,17 +80,33 @@ namespace dxvk {
     SynchronizeCsThread();
 
     // Get query status directly from the query object
-    HRESULT hr = static_cast<D3D11Query*>(pAsync)->GetData(pData, GetDataFlags);
+    auto query = static_cast<D3D11Query*>(pAsync);
+    HRESULT hr = query->GetData(pData, GetDataFlags);
     
     // If we're likely going to spin on the asynchronous object,
     // flush the context so that we're keeping the GPU busy
-    if (hr == S_FALSE)
+    if (hr == S_FALSE) {
+      query->NotifyStall();
       FlushImplicit(FALSE);
+    }
     
     return hr;
   }
   
   
+  void STDMETHODCALLTYPE D3D11ImmediateContext::End(ID3D11Asynchronous* pAsync) {
+    D3D11DeviceContext::End(pAsync);
+
+    auto query = static_cast<D3D11Query*>(pAsync);
+    if (unlikely(query && query->IsEvent())) {
+      query->NotifyEnd();
+      query->IsStalling()
+        ? Flush()
+        : FlushImplicit(TRUE);
+    }
+  }
+
+
   void STDMETHODCALLTYPE D3D11ImmediateContext::Flush() {
     m_parent->FlushInitContext();
     

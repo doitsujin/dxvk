@@ -46,6 +46,23 @@ namespace dxvk {
             UINT                              GetDataFlags);
     
     DxvkBufferSlice GetPredicate(DxvkContext* ctx);
+
+    bool IsEvent() const {
+      return m_desc.Query == D3D11_QUERY_EVENT;
+    }
+
+    bool IsStalling() const {
+      return m_stallFlag;
+    }
+
+    void NotifyEnd() {
+      m_stallMask <<= 1;
+    }
+
+    void NotifyStall() {
+      m_stallMask |= 1;
+      m_stallFlag |= bit::popcnt(m_stallMask) >= 16;
+    }
     
     D3D10Query* GetD3D10Iface() {
       return &m_d3d10;
@@ -65,6 +82,9 @@ namespace dxvk {
     DxvkBufferSlice m_predicate;
 
     D3D10Query m_d3d10;
+
+    uint32_t m_stallMask = 0;
+    bool     m_stallFlag = false;
 
     UINT64 GetTimestampQueryFrequency() const;
     

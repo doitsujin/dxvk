@@ -32,6 +32,8 @@ namespace dxvk {
             UINT                              DataSize,
             UINT                              GetDataFlags);
     
+    void STDMETHODCALLTYPE End(ID3D11Asynchronous *pAsync);
+    
     void STDMETHODCALLTYPE Flush();
     
     void STDMETHODCALLTYPE ExecuteCommandList(
