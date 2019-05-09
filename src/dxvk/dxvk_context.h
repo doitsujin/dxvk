@@ -300,12 +300,14 @@ namespace dxvk {
      * \param [in] imageView The image view
      * \param [in] offset Offset of the rect to clear
      * \param [in] extent Extent of the rect to clear
+     * \param [in] aspect Aspect mask to clear
      * \param [in] value The clear value
      */
     void clearImageView(
       const Rc<DxvkImageView>&    imageView,
             VkOffset3D            offset,
             VkExtent3D            extent,
+            VkImageAspectFlags    aspect,
             VkClearValue          value);
     
     /**
@@ -983,6 +985,7 @@ namespace dxvk {
       const Rc<DxvkImageView>&    imageView,
             VkOffset3D            offset,
             VkExtent3D            extent,
+            VkImageAspectFlags    aspect,
             VkClearValue          value);
     
     void clearImageViewCs(

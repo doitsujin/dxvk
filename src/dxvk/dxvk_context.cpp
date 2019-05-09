@@ -734,11 +734,12 @@ namespace dxvk {
     const Rc<DxvkImageView>&    imageView,
           VkOffset3D            offset,
           VkExtent3D            extent,
+          VkImageAspectFlags    aspect,
           VkClearValue          value) {
     const VkImageUsageFlags viewUsage = imageView->info().usage;
 
     if (viewUsage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))
-      this->clearImageViewFb(imageView, offset, extent, value);
+      this->clearImageViewFb(imageView, offset, extent, aspect, value);
     else if (viewUsage & VK_IMAGE_USAGE_STORAGE_BIT)
       this->clearImageViewCs(imageView, offset, extent, value);
   }
@@ -2236,6 +2237,7 @@ namespace dxvk {
     const Rc<DxvkImageView>&    imageView,
           VkOffset3D            offset,
           VkExtent3D            extent,
+          VkImageAspectFlags    aspect,
           VkClearValue          value) {
     this->updateFramebuffer();
 
@@ -2311,7 +2313,7 @@ namespace dxvk {
 
     // Perform the actual clear operation
     VkClearAttachment clearInfo;
-    clearInfo.aspectMask          = imageView->info().aspect;
+    clearInfo.aspectMask          = aspect;
     clearInfo.colorAttachment     = attachmentIndex;
     clearInfo.clearValue          = value;
 

@@ -812,6 +812,7 @@ namespace dxvk {
         ctx->clearImageView(cDstView,
           VkOffset3D { 0, 0, 0 },
           cDstView->mipLevelExtent(0),
+          VK_IMAGE_ASPECT_COLOR_BIT,
           cClearValue);
       });
     }
@@ -852,6 +853,7 @@ namespace dxvk {
         ctx->clearImageView(cDstView,
           VkOffset3D { 0, 0, 0 },
           cDstView->mipLevelExtent(0),
+          VK_IMAGE_ASPECT_COLOR_BIT,
           cClearValue);
       });
     }
@@ -954,9 +956,12 @@ namespace dxvk {
     // Convert the clear color format. ClearView takes
     // the clear value for integer formats as a set of
     // integral floats, so we'll have to convert.
-    VkClearValue clearValue;
+    VkClearValue        clearValue;
+    VkImageAspectFlags  clearAspect;
 
     if (imgView == nullptr || imgView->info().aspect & VK_IMAGE_ASPECT_COLOR_BIT) {
+      clearAspect = VK_IMAGE_ASPECT_COLOR_BIT;
+
       for (uint32_t i = 0; i < 4; i++) {
         if (formatInfo->flags.test(DxvkFormatFlag::SampledUInt))
           clearValue.color.uint32[i] = uint32_t(Color[i]);
@@ -966,6 +971,7 @@ namespace dxvk {
           clearValue.color.float32[i] = Color[i];
       }
     } else {
+      clearAspect = VK_IMAGE_ASPECT_DEPTH_BIT;
       clearValue.depthStencil.depth   = Color[0];
       clearValue.depthStencil.stencil = 0;
     }
@@ -1004,12 +1010,14 @@ namespace dxvk {
           cImageView    = imgView,
           cAreaOffset   = offset,
           cAreaExtent   = extent,
+          cClearAspect  = clearAspect,
           cClearValue   = clearValue
         ] (DxvkContext* ctx) {
           ctx->clearImageView(
             cImageView,
             cAreaOffset,
             cAreaExtent,
+            cClearAspect,
             cClearValue);
         });
       }
@@ -1034,13 +1042,17 @@ namespace dxvk {
       if (imgView != nullptr) {
         EmitCs([
           cImageView    = imgView,
+          cClearAspect  = clearAspect,
           cClearValue   = clearValue
         ] (DxvkContext* ctx) {
           VkOffset3D offset = { 0, 0, 0 };
           VkExtent3D extent = cImageView->mipLevelExtent(0);
 
-          ctx->clearImageView(cImageView,
-            offset, extent, cClearValue);
+          ctx->clearImageView(
+            cImageView,
+            offset, extent,
+            cClearAspect,
+            cClearValue);
         });
       }
     }
