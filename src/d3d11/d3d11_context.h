@@ -857,6 +857,8 @@ namespace dxvk {
         m_cmdData = nullptr;
       }
     }
+
+    void CopyTextureToMappedBuffer(const D3D11CommonTexture* pTexture, uint32_t subresourceIndex);
     
     virtual void EmitCsChunk(DxvkCsChunkRef&& chunk) = 0;
     

@@ -554,6 +554,9 @@ namespace dxvk {
             cExtent);
         }
       });
+
+      if (dstTextureInfo->SupportsEarlyBufferCopy())
+        CopyTextureToMappedBuffer(dstTextureInfo, 0);
     }
   }
   
@@ -604,8 +607,11 @@ namespace dxvk {
           cSrcBuffer.length());
       });
     } else {
-      const Rc<DxvkImage> dstImage = GetCommonTexture(pDstResource)->GetImage();
-      const Rc<DxvkImage> srcImage = GetCommonTexture(pSrcResource)->GetImage();
+      const D3D11CommonTexture* dstTextureInfo = GetCommonTexture(pDstResource);
+      const D3D11CommonTexture* srcTextureInfo = GetCommonTexture(pSrcResource);
+
+      const Rc<DxvkImage> dstImage = dstTextureInfo->GetImage();
+      const Rc<DxvkImage> srcImage = srcTextureInfo->GetImage();
 
       const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(dstImage->info().format);
       const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcImage->info().format);
@@ -653,6 +659,9 @@ namespace dxvk {
             cExtent);
         });
       }
+
+      if (dstTextureInfo->SupportsEarlyBufferCopy())
+        CopyTextureToMappedBuffer(dstTextureInfo, 0);
     }
   }
 
@@ -1229,6 +1238,9 @@ namespace dxvk {
             cPackedFormat);
         }
       });
+
+      if (textureInfo->SupportsEarlyBufferCopy())
+        CopyTextureToMappedBuffer(textureInfo, 0);
     }
   }
   
@@ -3733,4 +3745,39 @@ namespace dxvk {
     return m_parent->AllocCsChunk(m_csFlags);
   }
   
+  
+  void D3D11DeviceContext::CopyTextureToMappedBuffer(const D3D11CommonTexture* pTexture, uint32_t subresourceIndex) {
+    const Rc<DxvkImage>  mappedImage  = pTexture->GetImage();
+    const Rc<DxvkBuffer> mappedBuffer = pTexture->GetMappedBuffer();
+    VkFormat packedFormat = m_parent->LookupPackedFormat(
+      pTexture->Desc()->Format, pTexture->GetFormatMode()).Format;
+    auto formatInfo = imageFormatInfo(packedFormat);
+    auto subresource = pTexture->GetSubresourceFromIndex(
+        formatInfo->aspectMask, subresourceIndex);
+    auto subresourceLayers = vk::makeSubresourceLayers(subresource);
+    VkExtent3D levelExtent = mappedImage->mipLevelExtent(subresource.mipLevel);
+    VkExtent3D blockCount = util::computeBlockCount(levelExtent, formatInfo->blockSize);
+
+    EmitCs([
+      cImageBuffer  = mappedBuffer,
+      cImage        = mappedImage,
+      cSubresources = subresourceLayers,
+      cLevelExtent  = levelExtent,
+      cPackedFormat = packedFormat
+    ] (DxvkContext* ctx) {
+      if (cSubresources.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+        ctx->copyImageToBuffer(
+          cImageBuffer, 0, VkExtent2D { 0u, 0u },
+          cImage, cSubresources, VkOffset3D { 0, 0, 0 },
+          cLevelExtent);
+      } else {
+        ctx->copyDepthStencilImageToPackedBuffer(
+          cImageBuffer, 0, cImage, cSubresources,
+          VkOffset2D { 0, 0 },
+          VkExtent2D { cLevelExtent.width, cLevelExtent.height },
+          cPackedFormat);
+      }
+    });
+  }
+
 }

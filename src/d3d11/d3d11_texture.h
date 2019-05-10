@@ -185,6 +185,10 @@ namespace dxvk {
      */
     static HRESULT NormalizeTextureProperties(
             D3D11_COMMON_TEXTURE_DESC* pDesc);
+
+    bool SupportsEarlyBufferCopy() const {
+      return m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER && m_desc.Usage == D3D11_USAGE_STAGING && m_desc.MipLevels == 1 && m_desc.ArraySize == 1;
+    }
     
   private:
     
