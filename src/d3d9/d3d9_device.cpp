@@ -466,6 +466,10 @@ namespace dxvk {
     }
     catch (const DxvkError& e) {
       Logger::err(e.message());
+
+      if (m_failedAlloc)
+        return D3DERR_OUTOFVIDEOMEMORY;
+
       return D3DERR_INVALIDCALL;
     }
   }
@@ -2527,6 +2531,10 @@ namespace dxvk {
     }
     catch (const DxvkError& e) {
       Logger::err(e.message());
+
+      if (m_failedAlloc)
+        return D3DERR_OUTOFVIDEOMEMORY;
+
       return D3DERR_INVALIDCALL;
     }
   }
@@ -2570,6 +2578,10 @@ namespace dxvk {
     }
     catch (const DxvkError& e) {
       Logger::err(e.message());
+
+      if (m_failedAlloc)
+        return D3DERR_OUTOFVIDEOMEMORY;
+
       return D3DERR_INVALIDCALL;
     }
   }
@@ -2615,6 +2627,10 @@ namespace dxvk {
     }
     catch (const DxvkError& e) {
       Logger::err(e.message());
+
+      if (m_failedAlloc)
+        return D3DERR_OUTOFVIDEOMEMORY;
+
       return D3DERR_INVALIDCALL;
     }
   }
