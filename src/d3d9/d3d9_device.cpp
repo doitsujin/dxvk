@@ -148,7 +148,7 @@ namespace dxvk {
   UINT    STDMETHODCALLTYPE D3D9DeviceEx::GetAvailableTextureMem() {
     // This is not meant to be accurate.
     // The values are also wildly incorrect in d3d9... But some games rely
-    // on this inacurate value...
+    // on this inaccurate value...
 
     int64_t memory = m_availableMemory.load();
     return (UINT(memory) / 1024) * 1024; // As per the specification.
