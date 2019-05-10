@@ -1071,8 +1071,8 @@ namespace dxvk {
       // If pRects is null, or our first rect encompasses the viewport:
       if (!pRects)
         Count = 0;
-      else if (pRects[0].x1 <= offset.x                && pRects[0].y1 <= offset.y
-            && pRects[0].x2 >= offset.x + extent.width && pRects[0].y2 >= offset.y + extent.height)
+      else if (pRects[0].x1 <= offset.x                         && pRects[0].y1 <= offset.y
+            && pRects[0].x2 >= offset.x + int32_t(extent.width) && pRects[0].y2 >= offset.y + int32_t(extent.height))
         Count = 0;
     }
 
