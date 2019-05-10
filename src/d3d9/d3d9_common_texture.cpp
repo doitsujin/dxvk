@@ -153,6 +153,10 @@ namespace dxvk {
 
     m_image = m_device->GetDXVKDevice()->createImage(imageInfo, memoryProperties);
 
+    m_size = CalcMemoryConsumption();
+    if (!m_device->ChangeReportedMemory(-m_size))
+      throw DxvkError("D3D9: Reporting out of memory from tracking.");
+
     if (!m_desc.Offscreen)
       RecreateImageView(0);
 
@@ -193,6 +197,14 @@ namespace dxvk {
     DeallocFixupBuffers();
 
     m_shadow = CalcShadowState();
+    m_size   = CalcMemoryConsumption();
+
+    if (!m_device->ChangeReportedMemory(-m_size))
+      throw DxvkError("D3D9: Reporting out of memory from tracking.");
+  }
+
+  D3D9CommonTexture::~D3D9CommonTexture() {
+    m_device->ChangeReportedMemory(m_size);
   }
 
   VkImageSubresource D3D9CommonTexture::GetSubresourceFromIndex(
@@ -314,6 +326,18 @@ namespace dxvk {
     }
 
     return shadow;
+  }
+
+  int64_t D3D9CommonTexture::CalcMemoryConsumption() const {
+    // This is not accurate. It's not meant to be.
+    // We're just trying to persuade some applications
+    // to not infinitely allocate resources.
+    int64_t faceSize = 0;
+
+    for (uint32_t i = 0; i < m_desc.MipLevels; i++)
+      faceSize += int64_t(align(GetMipLength(i), 256));
+   
+    return faceSize * int64_t(GetLayerCount());
   }
 
 

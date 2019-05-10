@@ -82,6 +82,28 @@ namespace dxvk {
 
     if (!(BehaviorFlags & D3DCREATE_FPU_PRESERVE))
       SetupFPU();
+
+    auto memoryProp = m_dxvkAdapter->memoryProperties();
+
+    VkDeviceSize availableTextureMemory = 0;
+
+    for (uint32_t i = 0; i < memoryProp.memoryHeapCount; i++) {
+      VkMemoryHeap& heap = memoryProp.memoryHeaps[i];
+
+      if (heap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+        availableTextureMemory += memoryProp.memoryHeaps[i].size;
+    }
+
+    // The value returned is a 32-bit value, so we need to clamp it.
+#ifndef _WIN64
+    VkDeviceSize maxMemory = 0xC0000000;
+    availableTextureMemory = std::min(availableTextureMemory, maxMemory);
+#else
+    VkDeviceSize maxMemory = UINT32_MAX;
+    availableTextureMemory = std::min(availableTextureMemory, maxMemory);
+#endif
+
+    m_availableMemory = int64_t(availableTextureMemory);
   }
 
   D3D9DeviceEx::~D3D9DeviceEx() {
@@ -124,18 +146,12 @@ namespace dxvk {
   }
 
   UINT    STDMETHODCALLTYPE D3D9DeviceEx::GetAvailableTextureMem() {
-    auto memoryProp = m_dxvkAdapter->memoryProperties();
+    // This is not meant to be accurate.
+    // The values are also wildly incorrect in d3d9... But some games rely
+    // on this inacurate value...
 
-    VkDeviceSize availableTextureMemory = 0;
-
-    for (uint32_t i = 0; i < memoryProp.memoryHeapCount; i++)
-      availableTextureMemory += memoryProp.memoryHeaps[i].size;
-
-    // The value returned is a 32-bit value, so we need to clamp it.
-    VkDeviceSize maxMemory = UINT32_MAX;
-    availableTextureMemory = std::min(availableTextureMemory, maxMemory);
-
-    return UINT(availableTextureMemory);
+    int64_t memory = m_availableMemory.load();
+    return (UINT(memory) / 1024) * 1024; // As per the specification.
   }
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::EvictManagedResources() {
@@ -354,6 +370,10 @@ namespace dxvk {
     }
     catch (const DxvkError& e) {
       Logger::err(e.message());
+
+      if (m_failedAlloc)
+        return D3DERR_OUTOFVIDEOMEMORY;
+
       return D3DERR_INVALIDCALL;
     }
   }
@@ -399,6 +419,10 @@ namespace dxvk {
     }
     catch (const DxvkError& e) {
       Logger::err(e.message());
+
+      if (m_failedAlloc)
+        return D3DERR_OUTOFVIDEOMEMORY;
+
       return D3DERR_INVALIDCALL;
     }
   }

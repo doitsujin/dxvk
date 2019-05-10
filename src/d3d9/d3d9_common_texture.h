@@ -53,6 +53,8 @@ namespace dxvk {
             Rc<DxvkImageView>       ImageViewSrgb,
       const D3D9TextureDesc*        pDesc);
 
+    ~D3D9CommonTexture();
+
     /**
      * \brief Texture properties
      *
@@ -303,11 +305,15 @@ namespace dxvk {
 
     bool                              m_shadow               = false;
 
+    int64_t                           m_size                 = 0;
+
     BOOL CheckImageSupport(
       const DxvkImageCreateInfo*  pImageInfo,
       VkImageTiling         Tiling) const;
 
     BOOL CalcShadowState() const;
+
+    int64_t CalcMemoryConsumption() const;
 
     BOOL CheckFormatFeatureSupport(
       VkFormat              Format,
