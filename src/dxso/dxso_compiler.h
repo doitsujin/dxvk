@@ -97,6 +97,8 @@ namespace dxvk {
    * can be used to load registers conveniently.
    */
   struct DxsoSamplerInfo {
+    uint32_t dimensions = 0;
+
     uint32_t varId = 0;
     uint32_t typeId = 0;
   };

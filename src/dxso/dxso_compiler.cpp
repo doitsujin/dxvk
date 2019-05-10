@@ -575,16 +575,19 @@ namespace dxvk {
       switch (type) {
         default:
         case DxsoTextureType::Texture2D:
+          sampler.dimensions = 2;
           dimensionality = spv::Dim2D;
           viewType = VK_IMAGE_VIEW_TYPE_2D;
           break;
 
         case DxsoTextureType::TextureCube:
+          sampler.dimensions = 3;
           dimensionality = spv::DimCube;
           viewType = VK_IMAGE_VIEW_TYPE_CUBE;
           break;
 
         case DxsoTextureType::Texture3D:
+          sampler.dimensions = 3;
           dimensionality = spv::Dim3D;
           viewType = VK_IMAGE_VIEW_TYPE_3D;
           break;
@@ -2143,26 +2146,26 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
     const DxsoOpcode opcode = ctx.instruction.opcode;
 
-    uint32_t texcoordVarId;
+    DxsoRegisterValue texcoordVar;
     uint32_t samplerIdx;
 
     DxsoRegMask srcMask(true, true, true, true);
     if (m_programInfo.majorVersion() >= 2) { // SM 2.0+
-      texcoordVarId = emitRegisterLoad(ctx.src[0], srcMask).id;
-      samplerIdx = ctx.src[1].id.num;
+      texcoordVar = emitRegisterLoad(ctx.src[0], srcMask);
+      samplerIdx  = ctx.src[1].id.num;
     } else if (
       m_programInfo.majorVersion() == 1
    && m_programInfo.minorVersion() == 4) { // SM 1.4
-      texcoordVarId = emitRegisterLoad(ctx.src[0], srcMask).id;
-      samplerIdx = ctx.dst.id.num;
+      texcoordVar = emitRegisterLoad(ctx.src[0], srcMask);
+      samplerIdx  = ctx.dst.id.num;
     }
     else { // SM 1.0-1.3
       DxsoRegister texcoord;
       texcoord.id.type = DxsoRegisterType::PixelTexcoord;
       texcoord.id.num  = ctx.dst.id.num;
 
-      texcoordVarId = emitRegisterLoadRaw(texcoord, nullptr).id;
-      samplerIdx = ctx.dst.id.num;
+      texcoordVar = emitRegisterLoadRaw(texcoord, nullptr);
+      samplerIdx  = ctx.dst.id.num;
     }
 
     DxsoSampler sampler = m_samplers.at(samplerIdx);
@@ -2173,7 +2176,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       sampler = m_samplers.at(samplerIdx);
     }
 
-    auto SampleImage = [this, opcode, dst, texcoordVarId, ctx](DxsoSamplerInfo& sampler, bool depth) {
+    auto SampleImage = [this, opcode, dst, ctx](DxsoRegisterValue texcoordVar, DxsoSamplerInfo& sampler, bool depth) {
       DxsoRegisterValue result;
       result.type.ctype  = dst.type.ctype;
       result.type.ccount = depth ? 1 : 4;
@@ -2191,7 +2194,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       if (opcode == DxsoOpcode::TexLdl) {
         uint32_t w = 3;
         imageOperands.sLod = m_module.opCompositeExtract(
-          m_module.defFloatType(32), texcoordVarId, 1, &w);
+          m_module.defFloatType(32), texcoordVar.id, 1, &w);
         imageOperands.flags |= spv::ImageOperandsLodMask;
       }
 
@@ -2202,17 +2205,19 @@ void DxsoCompiler::emitControlFlowGenericLoop(
         imageOperands.sGradY = emitRegisterLoad(ctx.src[3], gradMask).id;
       }
 
-      bool project = false;
+      uint32_t projDivider = 0;
 
       if (opcode == DxsoOpcode::Tex
         && m_programInfo.majorVersion() >= 2) {
         if (ctx.instruction.specificData.texld == DxsoTexLdMode::Project) {
-          project = true;
+          uint32_t w = 3;
+          projDivider = m_module.opCompositeExtract(
+            m_module.defFloatType(32), texcoordVar.id, 1, &w);
         }
         else if (ctx.instruction.specificData.texld == DxsoTexLdMode::Bias) {
           uint32_t w = 3;
           imageOperands.sLodBias = m_module.opCompositeExtract(
-            m_module.defFloatType(32), texcoordVarId, 1, &w);
+            m_module.defFloatType(32), texcoordVar.id, 1, &w);
           imageOperands.flags |= spv::ImageOperandsBiasMask;
         }
       }
@@ -2220,16 +2225,21 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       uint32_t reference = 0;
 
       if (depth) {
-        uint32_t z = 2;
+        uint32_t component = sampler.dimensions;
         reference = m_module.opCompositeExtract(
-          m_module.defFloatType(32), texcoordVarId, 1, &z);
+          m_module.defFloatType(32), texcoordVar.id, 1, &component);
+      }
+
+      if (projDivider != 0) {
+        texcoordVar.id = m_module.opCompositeInsert(getVectorTypeId(texcoordVar.type),
+          projDivider, texcoordVar.id, 1, &sampler.dimensions);
       }
 
       result.id = m_module.sampleGeneric(
-        project,
+        projDivider != 0,
         typeId,
         imageVarId,
-        texcoordVarId,
+        texcoordVar.id,
         reference,
         imageOperands);
 
@@ -2244,11 +2254,11 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     m_module.opBranchConditional(sampler.depthSpecConst, depthLabel, colorLabel);
 
     m_module.opLabel(colorLabel);
-    SampleImage(sampler.color, false);
+    SampleImage(texcoordVar, sampler.color, false);
     m_module.opBranch(endLabel);
 
     m_module.opLabel(depthLabel);
-    SampleImage(sampler.depth, true);
+    SampleImage(texcoordVar, sampler.depth, true);
     m_module.opBranch(endLabel);
 
     m_module.opLabel(endLabel);
