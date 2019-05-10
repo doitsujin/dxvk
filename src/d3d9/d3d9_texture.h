@@ -47,22 +47,9 @@ namespace dxvk {
           m_subresources[subresource] = subObj;
         }
       }
-
-      if (pDesc->Pool == D3DPOOL_MANAGED) {
-        auto lock = std::lock_guard(g_managedTextureMutex);
-        g_managedTextures.push_back(this);
-      }
     }
 
     ~D3D9BaseTexture() {
-      if (m_texture.Desc()->Pool == D3DPOOL_MANAGED) {
-        auto lock = std::lock_guard(g_managedTextureMutex);
-
-        auto iter = std::find(g_managedTextures.begin(), g_managedTextures.end(), this);
-        if (iter != g_managedTextures.end())
-          g_managedTextures.erase(iter);
-      }
-
       for (auto* subresource : m_subresources)
         subresource->ReleasePrivate();
     }

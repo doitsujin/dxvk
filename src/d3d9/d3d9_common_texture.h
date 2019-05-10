@@ -184,14 +184,6 @@ namespace dxvk {
         m_device->GenerateMips(this);
     }
 
-    void Evict() {
-      this->DeallocFixupBuffers();
-      this->DeallocMappingBuffers();
-      
-      for (uint32_t i = 0; i < 6; i++)
-        m_evictedSubresources[i] = 0xffff;
-    }
-
     VkImageViewType GetImageViewType() const;
 
     void RecreateImageView(UINT Lod);
@@ -247,14 +239,6 @@ namespace dxvk {
       }
 
       return false;
-    }
-
-    bool UnevictSubresource(UINT Face, UINT MipLevel) {
-      const uint16_t mipBit = 1u << MipLevel;
-
-      bool shouldUnevict = (m_evictedSubresources[Face] & mipBit) != 0;
-      m_evictedSubresources[Face] &= ~mipBit;
-      return shouldUnevict;
     }
 
     std::array<uint16_t, 6> DiscardSubresourceMasking() {
@@ -316,7 +300,6 @@ namespace dxvk {
     std::array<uint16_t, 6>           m_mappedSubresources   = { 0 };
     std::array<uint16_t, 6>           m_unmappedSubresources = { 0 };
     std::array<uint16_t, 6>           m_readOnlySubresources = { 0 };
-    std::array<uint16_t, 6>           m_evictedSubresources  = { 0 };
 
     bool                              m_shadow               = false;
 

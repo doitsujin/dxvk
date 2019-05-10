@@ -139,19 +139,6 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::EvictManagedResources() {
-    if (!m_d3d9Options.trustEvictions)
-      return D3D_OK;
-
-    // Remove our mapping/staging buffers. Will force readback.
-    auto managedLock = std::lock_guard(g_managedTextureMutex);
-    auto contextLock = LockDevice();
-
-    for (auto texture : g_managedTextures) {
-      D3D9CommonTexture* commonTex = GetCommonTexture(texture);
-      if (commonTex != nullptr)
-        commonTex->Evict();
-    }
-
     return D3D_OK;
   }
 
@@ -3139,7 +3126,6 @@ namespace dxvk {
     auto& desc = *(pResource->Desc());
 
     bool alloced = pResource->AllocBuffers(Face, MipLevel);
-    bool needsReadback = pResource->UnevictSubresource(Face, MipLevel);
 
     const Rc<DxvkImage>  mappedImage  = pResource->GetImage();
     const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer(Subresource);
@@ -3191,7 +3177,7 @@ namespace dxvk {
           ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
         });
       }
-      else if (!alloced || (desc.Pool == D3DPOOL_MANAGED && !needsReadback)) {
+      else if (!alloced || desc.Pool == D3DPOOL_MANAGED) {
         // Managed resources and ones we haven't newly allocated
         // are meant to be able to provide readback without waiting.
         // We always keep a copy of them in system memory for this reason.

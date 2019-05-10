@@ -27,9 +27,6 @@ namespace dxvk {
     /// Set the max shader model the device can support in the caps.
     int32_t shaderModel;
 
-    /// Whather or not to disregard evicting managed textures when an application tells us to.
-    bool trustEvictions;
-
     /// Whether or not managed resources should stay in memory until unlock, or until manually evicted.
     bool evictManagedOnUnlock;
 
