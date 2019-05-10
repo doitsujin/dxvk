@@ -1616,7 +1616,7 @@ namespace dxvk {
         if (mask[1])
           sincosVectorIndices[index++] = m_module.opSin(scalarTypeId, src0);
 
-        for (index; index < result.type.ccount; index++) {
+        for (; index < result.type.ccount; index++) {
           if (sincosVectorIndices[index] == 0)
             sincosVectorIndices[index] = m_module.constf32(0.0f);
         }
