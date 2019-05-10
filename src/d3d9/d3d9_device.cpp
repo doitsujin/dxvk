@@ -1062,58 +1062,140 @@ namespace dxvk {
           DWORD    Stencil) {
     auto lock = LockDevice();
 
-    if (Flags & D3DCLEAR_STENCIL || Flags & D3DCLEAR_ZBUFFER) {
-      auto dsv = m_state.depthStencil != nullptr ? m_state.depthStencil->GetDepthStencilView() : nullptr;
+    const auto& vp = m_state.viewport;
+    const auto& sc = m_state.scissorRect;
 
-      if (dsv != nullptr) {
-        VkImageAspectFlags aspectMask = 0;
+    bool srgb      = m_state.renderStates[D3DRS_SRGBWRITEENABLE]   != FALSE;
+    bool scissor   = m_state.renderStates[D3DRS_SCISSORTESTENABLE] != FALSE;
 
-        if (Flags & D3DCLEAR_ZBUFFER)
-          aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
+    VkOffset3D offset = { int32_t(vp.X),    int32_t(vp.Y),      0  };
+    VkExtent3D extent = {         vp.Width,         vp.Height,  1u };
 
-        if (Flags & D3DCLEAR_STENCIL)
-          aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+    if (scissor) {
+      offset.x = std::max<int32_t> (offset.x, sc.left);
+      offset.y = std::max<int32_t> (offset.y, sc.top);
 
-        aspectMask &= imageFormatInfo(dsv->info().format)->aspectMask;
-
-        if (aspectMask != 0) {
-          VkClearValue clearValue;
-          clearValue.depthStencil.depth = Z;
-          clearValue.depthStencil.stencil = Stencil;
-
-          EmitCs([
-            cClearValue = clearValue,
-            cAspectMask = aspectMask,
-            cImageView  = dsv
-          ] (DxvkContext* ctx) {
-              ctx->clearRenderTarget(
-                cImageView,
-                cAspectMask,
-                cClearValue);
-            });
-        }
-      }
+      extent.width  = std::min<uint32_t>(extent.width,  sc.right  - offset.x);
+      extent.height = std::min<uint32_t>(extent.height, sc.bottom - offset.y);
     }
 
-    if (Flags & D3DCLEAR_TARGET) {
-      VkClearValue clearValue;
-      DecodeD3DCOLOR(Color, clearValue.color.float32);
+    // This becomes pretty unreadable in one singular if statement...
+    if (Count) {
+      // If pRects is null, or our first rect encompasses the viewport:
+      if (!pRects)
+        Count = 0;
+      else if (pRects[0].x1 <= offset.x                && pRects[0].y1 <= offset.y
+            && pRects[0].x2 >= offset.x + extent.width && pRects[0].y2 >= offset.y + extent.height)
+        Count = 0;
+    }
 
-      for (auto rt : m_state.renderTargets) {
-        bool srgb = m_state.renderStates[D3DRS_SRGBWRITEENABLE] != FALSE;
-        auto rtv = rt != nullptr ? rt->GetRenderTargetView(srgb) : nullptr;
+    // Here, Count of 0 will denote whether or not to care about user rects.
 
-        if (rtv != nullptr) {
-          EmitCs([
-            cClearValue = clearValue,
-            cImageView  = rtv
-          ] (DxvkContext* ctx) {
-            ctx->clearRenderTarget(
-              cImageView,
-              VK_IMAGE_ASPECT_COLOR_BIT,
-              cClearValue);
-          });
+    auto* rt0Desc = m_state.renderTargets[0]->GetCommonTexture()->Desc();
+
+    VkClearValue clearValueDepth;
+    clearValueDepth.depthStencil.depth   = Z;
+    clearValueDepth.depthStencil.stencil = Stencil;
+
+    VkClearValue clearValueColor;
+    DecodeD3DCOLOR(Color, clearValueColor.color.float32);
+
+    auto dsv = m_state.depthStencil != nullptr ? m_state.depthStencil->GetDepthStencilView() : nullptr;
+    VkImageAspectFlags depthAspectMask = 0;
+    if (dsv != nullptr) {
+      if (Flags & D3DCLEAR_ZBUFFER)
+        depthAspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT;
+
+      if (Flags & D3DCLEAR_STENCIL)
+        depthAspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+
+      depthAspectMask &= imageFormatInfo(dsv->info().format)->aspectMask;
+    }
+
+    auto ClearImageView = [this](
+      bool               fullClear,
+      VkOffset3D         offset,
+      VkExtent3D         extent,
+      Rc<DxvkImageView>  imageView,
+      VkImageAspectFlags aspectMask,
+      VkClearValue       clearValue) {
+      if (fullClear) {
+        EmitCs([
+          cClearValue = clearValue,
+          cAspectMask = aspectMask,
+          cImageView  = imageView
+        ] (DxvkContext* ctx) {
+          ctx->clearRenderTarget(
+            cImageView,
+            cAspectMask,
+            cClearValue);
+        });
+      }
+      else {
+        EmitCs([
+          cClearValue = clearValue,
+          cAspectMask = aspectMask,
+          cImageView  = imageView,
+          cOffset     = offset,
+          cExtent     = extent
+        ] (DxvkContext* ctx) {
+          ctx->clearImageView(
+            cImageView,
+            cOffset, cExtent,
+            cAspectMask,
+            cClearValue);
+        });
+      }
+    };
+
+    auto ClearViewRect = [&](
+      bool               fullClear,
+      VkOffset3D         offset,
+      VkExtent3D         extent) {
+      // Clear depth if we need to.
+      if (depthAspectMask != 0)
+        ClearImageView(fullClear, offset, extent, dsv, depthAspectMask, clearValueDepth);
+
+      // Clear render targets if we need to.
+      if (Flags & D3DCLEAR_TARGET) {
+        for (auto rt : m_state.renderTargets) {
+          auto rtv = rt != nullptr ? rt->GetRenderTargetView(srgb) : nullptr;
+
+          if (unlikely(rtv != nullptr))
+            ClearImageView(fullClear, offset, extent, rtv, VK_IMAGE_ASPECT_COLOR_BIT, clearValueColor);
         }
+      }
+    };
+
+    bool rtSizeMatchesClearSize =
+         offset.x     == 0              && offset.y      == 0
+      && extent.width == rt0Desc->Width && extent.height == rt0Desc->Height;
+
+    if (likely(!Count && rtSizeMatchesClearSize)) {
+      // Fast path w/ ClearRenderTarget for when
+      // our viewport and stencils match the RT size
+      ClearViewRect(true, offset, extent);
+    }
+    else if (!Count) {
+      // Clear our viewport & scissor minified region in this rendertarget.
+      ClearViewRect(false, offset, extent);
+    }
+    else {
+      // Clear the application provided rects.
+      for (uint32_t i = 0; i < Count; i++) {
+        VkOffset3D rectOffset = {
+          std::max<int32_t>(pRects[i].x1, offset.x),
+          std::max<int32_t>(pRects[i].y1, offset.y),
+          0
+        };
+
+        VkExtent3D rectExtent = {
+          std::min<uint32_t>(pRects[i].x2, offset.x + extent.width)  - rectOffset.x,
+          std::min<uint32_t>(pRects[i].y2, offset.y + extent.height) - rectOffset.y,
+          1u
+        };
+
+        ClearViewRect(false, rectOffset, rectExtent);
       }
     }
 
