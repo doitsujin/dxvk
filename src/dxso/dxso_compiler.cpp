@@ -2233,6 +2233,12 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       if (projDivider != 0) {
         texcoordVar.id = m_module.opCompositeInsert(getVectorTypeId(texcoordVar.type),
           projDivider, texcoordVar.id, 1, &sampler.dimensions);
+
+        uint32_t w = 3;
+        if (sampler.dimensions != w) {
+          texcoordVar.id = m_module.opCompositeInsert(getVectorTypeId(texcoordVar.type),
+            projDivider, texcoordVar.id, 1, &w);
+        }
       }
 
       result.id = m_module.sampleGeneric(
