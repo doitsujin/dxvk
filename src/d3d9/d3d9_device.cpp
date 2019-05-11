@@ -959,7 +959,8 @@ namespace dxvk {
     if (m_state.renderTargets[RenderTargetIndex] == rt)
       return D3D_OK;
 
-    FlushImplicit(FALSE);
+    // Do a strong flush if the first render target is changed.
+    FlushImplicit(RenderTargetIndex == 0 ? TRUE : FALSE);
 
     changePrivate(m_state.renderTargets[RenderTargetIndex], rt);
     
