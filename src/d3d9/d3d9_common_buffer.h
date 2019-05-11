@@ -55,30 +55,34 @@ namespace dxvk {
             D3D9_BUFFER_DESC* pDesc);
 
     D3D9_COMMON_BUFFER_MAP_MODE GetMapMode() const {
-      return (m_buffer->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+      return m_desc.Usage & D3DUSAGE_DYNAMIC
         ? D3D9_COMMON_BUFFER_MAP_MODE_DIRECT
         : D3D9_COMMON_BUFFER_MAP_MODE_BUFFER;
     }
 
-    Rc<DxvkBuffer> GetBuffer(D3D9_COMMON_BUFFER_TYPE type) const {
-      if (type == D3D9_COMMON_BUFFER_TYPE_MAPPING)
+    template <D3D9_COMMON_BUFFER_TYPE Type>
+    Rc<DxvkBuffer> GetBuffer() const {
+      if constexpr (Type == D3D9_COMMON_BUFFER_TYPE_MAPPING)
         return GetMapBuffer();
-      else if (type == D3D9_COMMON_BUFFER_TYPE_STAGING)
+      else if constexpr (Type == D3D9_COMMON_BUFFER_TYPE_STAGING)
         return GetStagingBuffer();
-      else //if (type == D3D9_COMMON_BUFFER_TYPE_REAL)
+      else //if constexpr (Type == D3D9_COMMON_BUFFER_TYPE_REAL)
         return GetRealBuffer();
     }
 
-    DxvkBufferSlice GetBufferSlice(D3D9_COMMON_BUFFER_TYPE type) const {
-      return GetBufferSlice(type, 0, m_desc.Size);
+    template <D3D9_COMMON_BUFFER_TYPE Type>
+    DxvkBufferSlice GetBufferSlice() const {
+      return GetBufferSlice<Type>(0, m_desc.Size);
     }
 
-    DxvkBufferSlice GetBufferSlice(D3D9_COMMON_BUFFER_TYPE type, VkDeviceSize offset) const {
-      return GetBufferSlice(type, offset, m_desc.Size - offset);
+    template <D3D9_COMMON_BUFFER_TYPE Type>
+    DxvkBufferSlice GetBufferSlice(VkDeviceSize offset) const {
+      return GetBufferSlice<Type>(offset, m_desc.Size - offset);
     }
 
-    DxvkBufferSlice GetBufferSlice(D3D9_COMMON_BUFFER_TYPE type, VkDeviceSize offset, VkDeviceSize length) const {
-      return DxvkBufferSlice(GetBuffer(type), offset, length);
+    template <D3D9_COMMON_BUFFER_TYPE Type>
+    DxvkBufferSlice GetBufferSlice(VkDeviceSize offset, VkDeviceSize length) const {
+      return DxvkBufferSlice(GetBuffer<Type>(), offset, length);
     }
 
     DxvkBufferSliceHandle AllocMapSlice() {
@@ -86,12 +90,12 @@ namespace dxvk {
     }
 
     DxvkBufferSliceHandle DiscardMapSlice() {
-      m_mapped = GetMapBuffer()->allocSlice();
-      return m_mapped;
+      m_sliceHandle = GetMapBuffer()->allocSlice();
+      return m_sliceHandle;
     }
 
     DxvkBufferSliceHandle GetMappedSlice() const {
-      return m_mapped;
+      return m_sliceHandle;
     }
 
     DWORD SetMapFlags(DWORD Flags) {
@@ -105,6 +109,8 @@ namespace dxvk {
     }
 
   private:
+
+    Rc<DxvkBuffer> CreateBuffer(bool staging) const;
 
     Rc<DxvkBuffer> GetMapBuffer() const {
       return m_stagingBuffer != nullptr ? m_stagingBuffer : m_buffer;
@@ -123,9 +129,9 @@ namespace dxvk {
     DWORD                       m_mapFlags;
 
     Rc<DxvkBuffer>              m_buffer;
-
     Rc<DxvkBuffer>              m_stagingBuffer;
-    DxvkBufferSliceHandle       m_mapped;
+
+    DxvkBufferSliceHandle       m_sliceHandle;
 
   };
 

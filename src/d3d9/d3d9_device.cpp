@@ -3454,7 +3454,6 @@ namespace dxvk {
       // it as the 'new' mapped slice. This assumes that the
       // only way to invalidate a buffer is by mapping it.
 
-      // TODO: Investigate locking regions rather than the whole resource.
       auto physSlice = pResource->DiscardMapSlice();
       uint8_t* data =  reinterpret_cast<uint8_t*>(physSlice.mapPtr);
                data += OffsetToLock;
@@ -3462,10 +3461,10 @@ namespace dxvk {
       *ppbData = reinterpret_cast<void*>(data);
 
       EmitCs([
-        cBuffer      = pResource->GetBuffer(D3D9_COMMON_BUFFER_TYPE_MAPPING),
+        cBuffer      = pResource->GetBuffer<D3D9_COMMON_BUFFER_TYPE_MAPPING>(),
         cBufferSlice = physSlice
       ] (DxvkContext* ctx) {
-          ctx->invalidateBuffer(cBuffer, cBufferSlice);
+        ctx->invalidateBuffer(cBuffer, cBufferSlice);
       });
 
       return D3D_OK;
@@ -3473,7 +3472,7 @@ namespace dxvk {
     else {
       // Wait until the resource is no longer in use
       if (!(Flags & D3DLOCK_NOOVERWRITE) && pResource->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_DIRECT) {
-        if (!WaitForResource(pResource->GetBuffer(D3D9_COMMON_BUFFER_TYPE_REAL), Flags))
+        if (!WaitForResource(pResource->GetBuffer<D3D9_COMMON_BUFFER_TYPE_REAL>(), Flags))
           return D3DERR_WASSTILLDRAWING;
       }
 
@@ -3503,8 +3502,8 @@ namespace dxvk {
 
     FlushImplicit(FALSE);
 
-    auto dstBuffer = pResource->GetBufferSlice(D3D9_COMMON_BUFFER_TYPE_REAL);
-    auto srcBuffer = pResource->GetBufferSlice(D3D9_COMMON_BUFFER_TYPE_STAGING);
+    auto dstBuffer = pResource->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>();
+    auto srcBuffer = pResource->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_STAGING>();
 
     EmitCs([
       cDstSlice = dstBuffer,
@@ -4310,7 +4309,7 @@ namespace dxvk {
     EmitCs([
       cSlotId       = Slot,
       cBufferSlice  = pBuffer != nullptr ? 
-          pBuffer->GetCommonBuffer()->GetBufferSlice(D3D9_COMMON_BUFFER_TYPE_REAL, Offset) 
+          pBuffer->GetCommonBuffer()->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>(Offset) 
         : DxvkBufferSlice(),
       cStride       = pBuffer != nullptr ? Stride : 0
     ] (DxvkContext* ctx) {
@@ -4330,7 +4329,7 @@ namespace dxvk {
     const VkIndexType indexType = DecodeIndexType(format);
 
     EmitCs([
-      cBufferSlice = buffer != nullptr ? buffer->GetBufferSlice(D3D9_COMMON_BUFFER_TYPE_REAL) : DxvkBufferSlice(),
+      cBufferSlice = buffer != nullptr ? buffer->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>() : DxvkBufferSlice(),
       cIndexType   = indexType
     ](DxvkContext* ctx) {
       ctx->bindIndexBuffer(cBufferSlice, cIndexType);
