@@ -961,10 +961,9 @@ namespace dxvk {
 
     // Do a strong flush if the first render target is changed.
     FlushImplicit(RenderTargetIndex == 0 ? TRUE : FALSE);
+    m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
 
     changePrivate(m_state.renderTargets[RenderTargetIndex], rt);
-    
-    BindFramebuffer();
 
     if (RenderTargetIndex == 0) {
       const auto* desc = m_state.renderTargets[0]->GetCommonTexture()->Desc();
@@ -1028,10 +1027,9 @@ namespace dxvk {
       return D3D_OK;
 
     FlushImplicit(FALSE);
+    m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
 
     changePrivate(m_state.depthStencil, ds);
-
-    BindFramebuffer();
 
     return D3D_OK;
   }
@@ -1404,7 +1402,7 @@ namespace dxvk {
           break;
 
         case D3DRS_SRGBWRITEENABLE:
-          BindFramebuffer();
+          m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
           break;
 
         case D3DRS_DEPTHBIAS:
@@ -3740,6 +3738,8 @@ namespace dxvk {
   }
 
   void D3D9DeviceEx::BindFramebuffer() {
+    m_flags.clr(D3D9DeviceFlag::DirtyFramebuffer);
+
     DxvkRenderTargets attachments;
 
     bool srgb = m_state.renderStates[D3DRS_SRGBWRITEENABLE] != FALSE;
@@ -4146,6 +4146,9 @@ namespace dxvk {
   }
 
   void D3D9DeviceEx::PrepareDraw(bool up) {
+    if (m_flags.test(D3D9DeviceFlag::DirtyFramebuffer))
+      BindFramebuffer();
+
     if (m_flags.test(D3D9DeviceFlag::DirtyViewportScissor))
       BindViewportAndScissor();
 
