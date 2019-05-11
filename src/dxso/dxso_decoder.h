@@ -147,7 +147,7 @@ namespace dxvk {
 
   };
 
-  const DxsoRegSwizzle IdentitySwizzle{ 1, 2, 3, 4 };
+  const DxsoRegSwizzle IdentitySwizzle{ 0, 1, 2, 3 };
 
   struct DxsoBaseRegister {
     DxsoRegisterId  id               = { DxsoRegisterType::Temp, 0 };
