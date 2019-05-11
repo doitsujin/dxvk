@@ -3524,11 +3524,16 @@ namespace dxvk {
   void D3D9DeviceEx::FlushImplicit(BOOL StrongHint) {
     // Flush only if the GPU is about to go idle, in
     // order to keep the number of submissions low.
-    if (StrongHint || m_dxvkDevice->pendingSubmissions() <= MaxPendingSubmits) {
+    uint32_t pending = m_dxvkDevice->pendingSubmissions();
+
+    if (StrongHint || pending <= MaxPendingSubmits) {
       auto now = std::chrono::high_resolution_clock::now();
 
+      uint32_t delay = MinFlushIntervalUs
+                     + IncFlushIntervalUs * pending;
+
       // Prevent flushing too often in short intervals.
-      if (now - m_lastFlush >= std::chrono::microseconds(MinFlushIntervalUs))
+      if (now - m_lastFlush >= std::chrono::microseconds(delay))
         Flush();
     }
   }

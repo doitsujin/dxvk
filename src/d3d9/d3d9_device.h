@@ -26,9 +26,6 @@
 
 namespace dxvk {
 
-  constexpr static uint32_t MinFlushIntervalUs = 1250;
-  constexpr static uint32_t MaxPendingSubmits = 3;
-
   class D3D9SwapChainEx;
   class D3D9CommonTexture;
   class D3D9CommonBuffer;
@@ -70,6 +67,10 @@ namespace dxvk {
   class D3D9DeviceEx final : public ComObject<IDirect3DDevice9Ex> {
     constexpr static uint32_t DefaultFrameLatency = 3;
     constexpr static uint32_t MaxFrameLatency     = 20;
+
+    constexpr static uint32_t MinFlushIntervalUs = 750;
+    constexpr static uint32_t IncFlushIntervalUs = 250;
+    constexpr static uint32_t MaxPendingSubmits = 6;
 
     constexpr static uint32_t NullStreamIdx = caps::MaxStreams;
   public:
