@@ -586,8 +586,6 @@ namespace dxvk {
     const POINT*             pDestPoint) {
     auto lock = LockDevice();
 
-    FlushImplicit(FALSE);
-
     D3D9Surface* src = static_cast<D3D9Surface*>(pSourceSurface);
     D3D9Surface* dst = static_cast<D3D9Surface*>(pDestinationSurface);
 
@@ -693,8 +691,6 @@ namespace dxvk {
           IDirect3DBaseTexture9* pSourceTexture,
           IDirect3DBaseTexture9* pDestinationTexture) {
     auto lock = LockDevice();
-
-    FlushImplicit(FALSE);
 
     if (!pDestinationTexture || !pSourceTexture)
       return D3DERR_INVALIDCALL;
@@ -4354,9 +4350,6 @@ namespace dxvk {
     EmitCs([queryPtr](DxvkContext* ctx) {
       queryPtr->End(ctx);
     });
-
-    if (queryPtr->GetType() == D3DQUERYTYPE_EVENT)
-      FlushImplicit(TRUE);
   }
 
   void D3D9DeviceEx::SetVertexBoolBitfield(uint32_t mask, uint32_t bits) {
