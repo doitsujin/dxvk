@@ -94,6 +94,7 @@ namespace dxvk {
     reg.hasRelative = (token & (1 << 13)) == 8192;
     reg.relative.id = DxsoRegisterId {
       DxsoRegisterType::Addr, 0 };
+    reg.relative.swizzle = IdentitySwizzle;
 
     reg.centroid         = token & (4 << 20);
     reg.partialPrecision = token & (2 << 20);
