@@ -8,9 +8,9 @@ namespace dxvk {
           D3D9DeviceEx*      pDevice,
     const D3D9_BUFFER_DESC*  pDesc) 
     : m_parent ( pDevice ), m_desc ( *pDesc ) {
-    m_buffer = CreateBuffer(false);
+    m_buffer = CreateBuffer();
     if (GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_BUFFER)
-      m_stagingBuffer = CreateBuffer(true);
+      m_stagingBuffer = CreateStagingBuffer();
 
     m_sliceHandle = GetMapBuffer()->getSliceHandle();
   }
@@ -37,7 +37,7 @@ namespace dxvk {
     *pDesc = m_desc;
   }
 
-  Rc<DxvkBuffer> D3D9CommonBuffer::CreateBuffer(bool staging) const {
+  Rc<DxvkBuffer> D3D9CommonBuffer::CreateBuffer() const {
     DxvkBufferCreateInfo  info;
     info.size   = m_desc.Size;
     info.usage  = 0;
@@ -46,56 +46,57 @@ namespace dxvk {
 
     VkMemoryPropertyFlags memoryFlags = 0;
 
-    if (!staging) {
-      if (m_desc.Type == D3DRTYPE_VERTEXBUFFER) {
-        info.usage  |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
-        info.stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-        info.access |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
-      }
-      else if (m_desc.Type == D3DRTYPE_INDEXBUFFER) {
-        info.usage  |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-        info.stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-        info.access |= VK_ACCESS_INDEX_READ_BIT;
-      }
-
-      if (m_desc.Usage & D3DUSAGE_DYNAMIC) {
-        info.stages |= VK_PIPELINE_STAGE_HOST_BIT;
-
-        info.access |= VK_ACCESS_HOST_WRITE_BIT;
-
-        if (!(m_desc.Usage & D3DUSAGE_WRITEONLY))
-          info.access |= VK_ACCESS_HOST_READ_BIT;
-        
-        memoryFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-                    |  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-                    |  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-      }
-      else {
-        info.stages |= VK_PIPELINE_STAGE_TRANSFER_BIT;
-
-        info.usage  |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-
-        info.access |= VK_ACCESS_TRANSFER_WRITE_BIT;
-
-        memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
-      }
+    if (m_desc.Type == D3DRTYPE_VERTEXBUFFER) {
+      info.usage  |= VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+      info.stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+      info.access |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
     }
-    else {
-      info.stages |= VK_PIPELINE_STAGE_HOST_BIT
-                  |  VK_PIPELINE_STAGE_TRANSFER_BIT;
+    else if (m_desc.Type == D3DRTYPE_INDEXBUFFER) {
+      info.usage  |= VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+      info.stages |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+      info.access |= VK_ACCESS_INDEX_READ_BIT;
+    }
 
-      info.usage  |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-
-      info.access |= VK_ACCESS_HOST_WRITE_BIT
-                  |  VK_ACCESS_TRANSFER_READ_BIT;
+    if (m_desc.Usage & D3DUSAGE_DYNAMIC) {
+      info.stages |= VK_PIPELINE_STAGE_HOST_BIT;
+      info.access |= VK_ACCESS_HOST_WRITE_BIT;
 
       if (!(m_desc.Usage & D3DUSAGE_WRITEONLY))
         info.access |= VK_ACCESS_HOST_READ_BIT;
-
+        
       memoryFlags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
                   |  VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
-                  |  VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+                  |  VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
     }
+    else {
+      info.stages |= VK_PIPELINE_STAGE_TRANSFER_BIT;
+      info.usage  |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+      info.access |= VK_ACCESS_TRANSFER_WRITE_BIT;
+
+      memoryFlags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    }
+
+    return m_parent->GetDXVKDevice()->createBuffer(info, memoryFlags);
+  }
+
+  Rc<DxvkBuffer> D3D9CommonBuffer::CreateStagingBuffer() const {
+    DxvkBufferCreateInfo  info;
+    info.size   = m_desc.Size;
+    info.stages = VK_PIPELINE_STAGE_HOST_BIT
+                | VK_PIPELINE_STAGE_TRANSFER_BIT;
+
+    info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+
+    info.access = VK_ACCESS_HOST_WRITE_BIT
+                | VK_ACCESS_TRANSFER_READ_BIT;
+
+    if (!(m_desc.Usage & D3DUSAGE_WRITEONLY))
+      info.access |= VK_ACCESS_HOST_READ_BIT;
+
+    VkMemoryPropertyFlags memoryFlags = 
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+    | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
+    | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
 
     return m_parent->GetDXVKDevice()->createBuffer(info, memoryFlags);
   }

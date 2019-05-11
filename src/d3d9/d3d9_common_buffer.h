@@ -110,7 +110,8 @@ namespace dxvk {
 
   private:
 
-    Rc<DxvkBuffer> CreateBuffer(bool staging) const;
+    Rc<DxvkBuffer> CreateBuffer() const;
+    Rc<DxvkBuffer> CreateStagingBuffer() const;
 
     Rc<DxvkBuffer> GetMapBuffer() const {
       return m_stagingBuffer != nullptr ? m_stagingBuffer : m_buffer;
