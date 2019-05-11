@@ -119,7 +119,7 @@ namespace dxvk {
       this->Issue(D3DISSUE_END);
 
     m_parent->SynchronizeCsThread();
-    
+
     bool flush = dwGetDataFlags & D3DGETDATA_FLUSH;
 
     if (m_queryType == D3DQUERYTYPE_EVENT) {
@@ -133,8 +133,10 @@ namespace dxvk {
       if (pData != nullptr)
         * static_cast<BOOL*>(pData) = signaled;
 
-      if (!signaled && flush)
+      if (!signaled && flush) {
+        this->NotifyStall();
         m_parent->FlushImplicit(FALSE);
+      }
 
       return signaled ? D3D_OK : S_FALSE;
     }
@@ -149,6 +151,7 @@ namespace dxvk {
           return D3DERR_INVALIDCALL;
 
         if (status == DxvkGpuQueryStatus::Pending) {
+          this->NotifyStall();
           if (flush)
             m_parent->FlushImplicit(FALSE);
           return S_FALSE;

@@ -4359,6 +4359,13 @@ namespace dxvk {
     EmitCs([queryPtr](DxvkContext* ctx) {
       queryPtr->End(ctx);
     });
+
+    if (unlikely(pQuery->IsEvent())) {
+      pQuery->NotifyEnd();
+      pQuery->IsStalling()
+        ? Flush()
+        : FlushImplicit(TRUE);
+    }
   }
 
   void D3D9DeviceEx::SetVertexBoolBitfield(uint32_t mask, uint32_t bits) {

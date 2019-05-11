@@ -36,6 +36,23 @@ namespace dxvk {
 
     static HRESULT QuerySupported(D3DQUERYTYPE QueryType);
 
+    bool IsEvent() const {
+      return m_queryType == D3DQUERYTYPE_EVENT;
+    }
+
+    bool IsStalling() const {
+      return m_stallFlag;
+    }
+
+    void NotifyEnd() {
+      m_stallMask <<= 1;
+    }
+
+    void NotifyStall() {
+      m_stallMask |= 1;
+      m_stallFlag |= bit::popcnt(m_stallMask) >= 16;
+    }
+
   private:
 
     D3DQUERYTYPE      m_queryType;
@@ -44,6 +61,9 @@ namespace dxvk {
 
     Rc<DxvkGpuQuery>  m_query;
     Rc<DxvkGpuEvent>  m_event;
+
+    uint32_t m_stallMask = 0;
+    bool     m_stallFlag = false;
 
     UINT64 GetTimestampQueryFrequency() const;
 
