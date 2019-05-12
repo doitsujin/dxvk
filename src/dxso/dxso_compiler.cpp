@@ -1441,16 +1441,17 @@ namespace dxvk {
 
       // Convert float -> int32_t
       // and vice versa
-      if (dst.type.ctype == DxsoScalarType::Sint32)
-        result.id = m_module.opConvertFtoS(typeId, src0.id);
-      else { // Float32
+      if (dst.type.ctype == DxsoScalarType::Sint32) {
         // We need to floor for VS 1.1 and below, the documentation is a dirty stinking liar.
         if (m_programInfo.majorVersion() < 2 && m_programInfo.minorVersion() < 2)
           result.id = m_module.opFloor(getVectorTypeId(src0.type), src0.id);
         else
           result.id = m_module.opRound(getVectorTypeId(src0.type), src0.id);
-        result.id = m_module.opConvertStoF(typeId, result.id);
+
+        result.id = m_module.opConvertFtoS(typeId, result.id);
       }
+      else // Float32
+        result.id = m_module.opConvertStoF(typeId, result.id);
     }
     else // No special stuff needed!
       result.id = src0.id;
