@@ -779,7 +779,7 @@ namespace dxvk {
       uint32_t var = m_module.opLoad(typeId, result.id);
 
       var = m_module.opBitFieldUExtract(
-        typeId, var, arrayIdx, m_module.constu32(1));
+        typeId, var, relativeIdx, m_module.constu32(1));
 
       typeId = getVectorTypeId(result.type);
 
