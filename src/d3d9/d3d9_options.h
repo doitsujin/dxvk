@@ -40,6 +40,9 @@ namespace dxvk {
 
     /// Whether or not we should care about pow(0, 0) = 1
     bool strictPow;
+
+    /// Whether or not to do a fast path clear if we're close enough to the whole render target.
+    bool lenientClear;
   };
 
 }

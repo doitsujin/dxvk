@@ -36,6 +36,7 @@ namespace dxvk {
     this->dpiAware              = config.getOption<bool>   ("d3d9.dpiAware", true);
     this->strictConstantCopies  = config.getOption<bool>   ("d3d9.strictConstantCopies", false);
     this->strictPow             = config.getOption<bool>   ("d3d9.strictPow",            true);
+    this->lenientClear          = config.getOption<bool>   ("d3d9.lenientClear",         false);
   }
 
 }
