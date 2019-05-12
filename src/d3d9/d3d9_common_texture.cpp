@@ -158,13 +158,13 @@ namespace dxvk {
       throw DxvkError("D3D9: Reporting out of memory from tracking.");
 
     if (!m_desc.Offscreen)
-      RecreateImageView(0);
+      RecreateImageViews(0);
 
     if (m_desc.Usage & D3DUSAGE_DEPTHSTENCIL)
-      CreateDepthStencilView();
+      CreateDepthStencilViews();
 
     if (possibleRT)
-      CreateRenderTargetView();
+      CreateRenderTargetViews();
 
     m_mappingBuffers.resize(GetSubresourceCount());
     m_fixupBuffers.resize(GetSubresourceCount());
@@ -587,6 +587,7 @@ namespace dxvk {
   }
 
   Rc<DxvkImageView> D3D9CommonTexture::CreateView(
+    int32_t           Index,
     VkImageUsageFlags UsageFlags,
     bool              srgb,
     UINT              Lod) {
@@ -613,29 +614,47 @@ namespace dxvk {
 
     viewInfo.type = GetImageViewType();
 
+    if (Index != -1 && viewInfo.type == VK_IMAGE_VIEW_TYPE_CUBE)
+      viewInfo.type = VK_IMAGE_VIEW_TYPE_2D;
+
     viewInfo.minLevel  = Lod;
     viewInfo.numLevels = m_desc.MipLevels - Lod;
-    viewInfo.minLayer  = 0;
-    viewInfo.numLayers = GetLayerCount();
+    viewInfo.minLayer  = Index == -1 ? 0 : Index;
+    viewInfo.numLayers = Index == -1 ? GetLayerCount() : 1;
 
     // Create the underlying image view object
     return m_device->GetDXVKDevice()->createImageView(GetImage(), viewInfo);
   }
 
-  void D3D9CommonTexture::RecreateImageView(UINT Lod) {
+  void D3D9CommonTexture::RecreateImageViews(UINT Lod) {
     // TODO: Signal to device that this resource is dirty and needs to be rebound.
 
-    m_imageView     = CreateView(VK_IMAGE_USAGE_SAMPLED_BIT, false, Lod);
-    m_imageViewSrgb = CreateView(VK_IMAGE_USAGE_SAMPLED_BIT, true, Lod);
+    m_imageView     = CreateView(-1, VK_IMAGE_USAGE_SAMPLED_BIT, false, Lod);
+    m_imageViewSrgb = CreateView(-1, VK_IMAGE_USAGE_SAMPLED_BIT, true, Lod);
+
+    uint32_t layerCount = GetLayerCount();
+    for (uint32_t i = 0; i < layerCount; i++) {
+      m_imageViewFaces[i]     = CreateView(i, VK_IMAGE_USAGE_SAMPLED_BIT, false, Lod);
+      m_imageViewSrgbFaces[i] = CreateView(i, VK_IMAGE_USAGE_SAMPLED_BIT, true, Lod);
+    }
   }
 
-  void D3D9CommonTexture::CreateDepthStencilView() {
-    m_depthStencilView = CreateView(VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, false, 0);
+  void D3D9CommonTexture::CreateDepthStencilViews() {
+    uint32_t layerCount = GetLayerCount();
+
+    for (uint32_t i = 0; i < layerCount; i++)
+      m_depthStencilView[i] = CreateView(i, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, false, 0);
   }
 
-  void D3D9CommonTexture::CreateRenderTargetView() {
-    m_renderTargetView     = CreateView(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, false, 0);
-    m_renderTargetViewSrgb = CreateView(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, true, 0);
+  void D3D9CommonTexture::CreateRenderTargetViews() {
+    uint32_t layerCount = GetLayerCount();
+
+    for (uint32_t i = 0; i < layerCount; i++) {
+      m_renderTargetView[i]     = CreateView(i, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, false, 0);
+      m_renderTargetViewSrgb[i] = CreateView(i, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, true, 0);
+    }
+
+    m_mipGenView = CreateView(-1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, false, 0);
   }
 
 }

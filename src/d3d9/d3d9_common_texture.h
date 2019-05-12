@@ -152,16 +152,24 @@ namespace dxvk {
             UINT Face,
             UINT MipLevel);
 
+    Rc<DxvkImageView> GetMipGenView() const {
+      return m_mipGenView;
+    }
+
     Rc<DxvkImageView> GetImageView(bool srgb) const {
       return srgb ? m_imageViewSrgb : m_imageView;
     }
 
-    Rc<DxvkImageView> GetRenderTargetView(bool srgb) const {
-      return srgb ? m_renderTargetViewSrgb : m_renderTargetView;
+    Rc<DxvkImageView> GetImageViewLayer(uint32_t face, bool srgb) const {
+      return srgb ? m_imageViewSrgbFaces[face] : m_imageViewFaces[face];
     }
 
-    Rc<DxvkImageView> GetDepthStencilView() const {
-      return m_depthStencilView;
+    Rc<DxvkImageView> GetRenderTargetView(uint32_t face, bool srgb) const {
+      return srgb ? m_renderTargetViewSrgb[face] : m_renderTargetView[face];
+    }
+
+    Rc<DxvkImageView> GetDepthStencilView(uint32_t face) const {
+      return m_depthStencilView[face];
     }
 
     bool RequiresFixup() const {
@@ -188,21 +196,20 @@ namespace dxvk {
 
     VkImageViewType GetImageViewType() const;
 
-    void RecreateImageView(UINT Lod);
-    void CreateDepthStencilView();
-    void CreateRenderTargetView();
+    void RecreateImageViews(UINT Lod);
+    void CreateDepthStencilViews();
+    void CreateRenderTargetViews();
 
     VkImageLayout GetDepthLayout() const {
-      return m_depthStencilView->imageInfo().tiling == VK_IMAGE_TILING_OPTIMAL
+      return (m_depthStencilView[0] != nullptr
+           && m_depthStencilView[0]->imageInfo().tiling == VK_IMAGE_TILING_OPTIMAL)
         ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
         : VK_IMAGE_LAYOUT_GENERAL;
     }
 
     VkImageLayout GetRenderTargetLayout() const {
-      if (GetRenderTargetView(false) == nullptr)
-        return VK_IMAGE_LAYOUT_GENERAL;
-
-      return GetRenderTargetView(false)->imageInfo().tiling == VK_IMAGE_TILING_OPTIMAL
+      return (m_renderTargetView[0] != nullptr
+           && m_renderTargetView[0]->imageInfo().tiling == VK_IMAGE_TILING_OPTIMAL)
         ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
         : VK_IMAGE_LAYOUT_GENERAL;
     }
@@ -294,10 +301,15 @@ namespace dxvk {
     Rc<DxvkImageView>                 m_imageView;
     Rc<DxvkImageView>                 m_imageViewSrgb;
 
-    Rc<DxvkImageView>                 m_renderTargetView;
-    Rc<DxvkImageView>                 m_renderTargetViewSrgb;
+    std::array<Rc<DxvkImageView>, 6>  m_imageViewFaces;
+    std::array<Rc<DxvkImageView>, 6>  m_imageViewSrgbFaces;
 
-    Rc<DxvkImageView>                 m_depthStencilView;
+    Rc<DxvkImageView>                 m_mipGenView;
+
+    std::array<Rc<DxvkImageView>, 6>  m_renderTargetView;
+    std::array<Rc<DxvkImageView>, 6>  m_renderTargetViewSrgb;
+
+    std::array<Rc<DxvkImageView>, 6>  m_depthStencilView;
 
     std::array<uint16_t, 6>           m_mappedSubresources   = { 0 };
     std::array<uint16_t, 6>           m_unmappedSubresources = { 0 };
@@ -337,6 +349,7 @@ namespace dxvk {
       VkImageUsageFlags         Usage);
 
     Rc<DxvkImageView> CreateView(
+      int32_t           Index,
       VkImageUsageFlags UsageFlags,
       bool              srgb,
       UINT              Lod);

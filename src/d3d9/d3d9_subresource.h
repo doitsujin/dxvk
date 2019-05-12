@@ -67,11 +67,11 @@ namespace dxvk {
     }
 
     Rc<DxvkImageView> GetImageView(bool srgb) {
-      return m_texture->GetImageView(srgb);
+      return m_texture->GetImageView(m_face, srgb);
     }
 
     Rc<DxvkImageView> GetRenderTargetView(bool srgb) {
-      return m_texture->GetRenderTargetView(srgb);
+      return m_texture->GetRenderTargetView(m_face, srgb);
     }
 
     VkImageLayout GetRenderTargetLayout() {
@@ -79,7 +79,7 @@ namespace dxvk {
     }
 
     Rc<DxvkImageView> GetDepthStencilView() {
-      return m_texture->GetDepthStencilView();
+      return m_texture->GetDepthStencilView(m_face);
     }
 
     VkImageLayout GetDepthLayout() {
