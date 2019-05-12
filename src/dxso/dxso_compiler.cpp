@@ -1451,7 +1451,7 @@ namespace dxvk {
         result.id = m_module.opConvertFtoS(typeId, result.id);
       }
       else // Float32
-        result.id = m_module.opConvertStoF(typeId, result.id);
+        result.id = m_module.opConvertStoF(typeId, src0.id);
     }
     else // No special stuff needed!
       result.id = src0.id;
