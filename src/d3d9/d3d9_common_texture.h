@@ -82,6 +82,8 @@ namespace dxvk {
       return m_image;
     }
 
+    Rc<DxvkImage> GetResolveImage();
+
     /**
      * \brief Computes subresource from the subresource index
      *
@@ -294,6 +296,8 @@ namespace dxvk {
     D3D9_COMMON_TEXTURE_MAP_MODE m_mapMode;
 
     Rc<DxvkImage>   m_image;
+
+    Rc<DxvkImage>   m_resolveImage;
 
     std::vector<Rc<DxvkBuffer>>       m_mappingBuffers;
     std::vector<Rc<DxvkBuffer>>       m_fixupBuffers;

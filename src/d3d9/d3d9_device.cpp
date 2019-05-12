@@ -786,8 +786,9 @@ namespace dxvk {
     if (unlikely(src == nullptr || dst == nullptr))
       return D3DERR_INVALIDCALL;
 
-    bool fastPath     = true;
-    bool needsResolve = false;
+    bool fastPath         = true;
+    bool needsCopyResolve = false;
+    bool needsBlitResolve = false;
 
     D3D9CommonTexture* dstTextureInfo = dst->GetCommonTexture();
     D3D9CommonTexture* srcTextureInfo = src->GetCommonTexture();
@@ -809,7 +810,8 @@ namespace dxvk {
 
     // Copies are only supported if the sample count matches,
     // otherwise we need to resolve.
-    needsResolve = dstImage->info().sampleCount != srcImage->info().sampleCount;
+    needsCopyResolve = dstImage->info().sampleCount != srcImage->info().sampleCount;
+    needsBlitResolve = srcImage->info().sampleCount != VK_SAMPLE_COUNT_1_BIT;
 
     // Copies would only work if we are block aligned.
     if (pSourceRect != nullptr) {
@@ -868,7 +870,7 @@ namespace dxvk {
     fastPath &= srcCopyExtent == dstCopyExtent;
 
     if (fastPath) {
-      if (needsResolve) {
+      if (needsCopyResolve) {
         VkImageResolve region;
         region.srcSubresource = blitInfo.srcSubresource;
         region.srcOffset      = blitInfo.srcOffsets[0];
@@ -903,6 +905,29 @@ namespace dxvk {
       }
     }
     else {
+      if (needsBlitResolve) {
+        auto resolveSrc = src->GetCommonTexture()->GetResolveImage();
+
+        VkImageResolve region;
+        region.srcSubresource = blitInfo.srcSubresource;
+        region.srcOffset      = blitInfo.srcOffsets[0];
+        region.dstSubresource = blitInfo.srcSubresource;
+        region.dstOffset      = blitInfo.srcOffsets[0];
+        region.extent         = srcCopyExtent;
+        
+        EmitCs([
+          cDstImage = resolveSrc,
+          cSrcImage = srcImage,
+          cRegion   = region
+        ] (DxvkContext* ctx) {
+          ctx->resolveImage(
+            cDstImage, cSrcImage, cRegion,
+            VK_FORMAT_UNDEFINED);
+        });
+
+        srcImage = resolveSrc;
+      }
+
       EmitCs([
         cDstImage = dstImage,
         cSrcImage = srcImage,

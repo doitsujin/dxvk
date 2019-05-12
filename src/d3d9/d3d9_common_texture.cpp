@@ -207,6 +207,17 @@ namespace dxvk {
     m_device->ChangeReportedMemory(m_size);
   }
 
+  Rc<DxvkImage> D3D9CommonTexture::GetResolveImage() {
+    if (m_resolveImage != nullptr)
+      return m_resolveImage;
+    
+    DxvkImageCreateInfo imageInfo = m_image->info();
+    imageInfo.sampleCount = VK_SAMPLE_COUNT_1_BIT;
+    m_resolveImage = m_device->GetDXVKDevice()->createImage(imageInfo, m_image->memFlags());
+
+    return m_resolveImage;
+  }
+
   VkImageSubresource D3D9CommonTexture::GetSubresourceFromIndex(
     VkImageAspectFlags    Aspect,
     UINT                  Subresource) const {
