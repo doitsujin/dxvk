@@ -67,7 +67,7 @@ namespace dxvk {
     }
 
     Rc<DxvkImageView> GetImageView(bool srgb) {
-      return m_texture->GetImageView(m_face, srgb);
+      return m_texture->GetImageViewLayer(m_face, srgb);
     }
 
     Rc<DxvkImageView> GetRenderTargetView(bool srgb) {
