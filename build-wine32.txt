@@ -7,8 +7,8 @@ strip = 'strip'
 [properties]
 needs_exe_wrapper = true
 
-c_args=['-m32', '-msse', '-msse2']
-cpp_args=['-m32', '--no-gnu-unique', '-msse', '-msse2']
+c_args=['-m32', '-msse', '-msse2', '-fvisibility=hidden']
+cpp_args=['-m32', '--no-gnu-unique', '-msse', '-msse2', '-fvisibility=hidden', '-fvisibility-inlines-hidden']
 cpp_link_args=['-m32', '-mwindows']
 
 [host_machine]
