@@ -622,6 +622,12 @@ namespace dxvk {
       depthOp.loadLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
     }
     
+    // Make sure the color components are ordered correctly
+    if (clearAspects & VK_IMAGE_ASPECT_COLOR_BIT) {
+      clearValue.color = util::swizzleClearColor(clearValue.color,
+        util::invertComponentMapping(imageView->info().swizzle));
+    }
+    
     // Check whether the render target view is an attachment
     // of the current framebuffer and is included entirely.
     // If not, we need to create a temporary framebuffer.
@@ -738,6 +744,11 @@ namespace dxvk {
           VkClearValue          value) {
     const VkImageUsageFlags viewUsage = imageView->info().usage;
 
+    if (aspect & VK_IMAGE_ASPECT_COLOR_BIT) {
+      value.color = util::swizzleClearColor(value.color,
+        util::invertComponentMapping(imageView->info().swizzle));
+    }
+    
     if (viewUsage & (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))
       this->clearImageViewFb(imageView, offset, extent, aspect, value);
     else if (viewUsage & VK_IMAGE_USAGE_STORAGE_BIT)
