@@ -150,6 +150,21 @@ namespace dxvk::util {
   }
 
 
+  VkClearColorValue swizzleClearColor(
+          VkClearColorValue           color,
+          VkComponentMapping          mapping) {
+    VkClearColorValue result;
+    auto swizzles = &mapping.r;
+
+    for (uint32_t i = 0; i < 4; i++) {
+      uint32_t index = getComponentIndex(swizzles[i], i);
+      result.uint32[i] = color.uint32[index];
+    }
+
+    return result;
+  }
+
+
   bool isBlendConstantBlendFactor(VkBlendFactor factor) {
     return factor == VK_BLEND_FACTOR_CONSTANT_COLOR
         || factor == VK_BLEND_FACTOR_CONSTANT_ALPHA

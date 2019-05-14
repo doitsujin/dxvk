@@ -223,6 +223,10 @@ namespace dxvk::util {
           VkComponentSwizzle          component,
           uint32_t                    identity);
   
+  VkClearColorValue swizzleClearColor(
+          VkClearColorValue           color,
+          VkComponentMapping          mapping);
+  
   bool isBlendConstantBlendFactor(
           VkBlendFactor               factor);
   
