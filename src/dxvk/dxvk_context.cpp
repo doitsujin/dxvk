@@ -589,7 +589,7 @@ namespace dxvk {
   void DxvkContext::clearRenderTarget(
     const Rc<DxvkImageView>&    imageView,
           VkImageAspectFlags    clearAspects,
-    const VkClearValue&         clearValue) {
+          VkClearValue          clearValue) {
     this->updateFramebuffer();
 
     // Prepare attachment ops

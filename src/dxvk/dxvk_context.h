@@ -289,7 +289,7 @@ namespace dxvk {
     void clearRenderTarget(
       const Rc<DxvkImageView>&    imageView,
             VkImageAspectFlags    clearAspects,
-      const VkClearValue&         clearValue);
+            VkClearValue          clearValue);
     
     /**
      * \brief Clears an image view
