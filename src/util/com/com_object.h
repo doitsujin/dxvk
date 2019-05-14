@@ -58,8 +58,8 @@ namespace dxvk {
     
   private:
     
-    std::atomic<ULONG> m_refCount   = { 0ul };
-    std::atomic<ULONG> m_refPrivate = { 0ul };
+    std::atomic<uint32_t> m_refCount   = { 0ul };
+    std::atomic<uint32_t> m_refPrivate = { 0ul };
     
   };
   
