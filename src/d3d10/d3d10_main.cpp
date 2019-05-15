@@ -147,7 +147,9 @@ extern "C" {
     return D3D10InternalCreateDeviceAndSwapChain(
       pAdapter, DriverType, Software, Flags,
       D3D10_FEATURE_LEVEL_10_0, SDKVersion,
-      nullptr, nullptr, IID_PPV_ARGS(ppDevice));
+      nullptr, nullptr,
+      __uuidof(ID3D10Device),
+      reinterpret_cast<void**>(ppDevice));
   }
 
 
@@ -162,7 +164,9 @@ extern "C" {
     return D3D10InternalCreateDeviceAndSwapChain(
       pAdapter, DriverType, Software, Flags,
       HardwareLevel, SDKVersion,
-      nullptr, nullptr, IID_PPV_ARGS(ppDevice));
+      nullptr, nullptr,
+      __uuidof(ID3D10Device1),
+      reinterpret_cast<void**>(ppDevice));
   }
 
 
@@ -179,7 +183,8 @@ extern "C" {
       pAdapter, DriverType, Software, Flags,
       D3D10_FEATURE_LEVEL_10_0, SDKVersion,
       pSwapChainDesc, ppSwapChain,
-      IID_PPV_ARGS(ppDevice));
+      __uuidof(ID3D10Device),
+      reinterpret_cast<void**>(ppDevice));
   }
 
 
@@ -197,7 +202,8 @@ extern "C" {
       pAdapter, DriverType, Software, Flags,
       HardwareLevel, SDKVersion,
       pSwapChainDesc, ppSwapChain,
-      IID_PPV_ARGS(ppDevice));
+      __uuidof(ID3D10Device1),
+      reinterpret_cast<void**>(ppDevice));
   }
 
 
