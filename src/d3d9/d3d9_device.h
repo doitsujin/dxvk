@@ -596,6 +596,11 @@ namespace dxvk {
             D3DDISPLAYMODEEX*   pMode,
             D3DDISPLAYROTATION* pRotation);
 
+    HRESULT STDMETHODCALLTYPE CreateAdditionalSwapChainEx(
+            D3DPRESENT_PARAMETERS* pPresentationParameters,
+      const D3DDISPLAYMODEEX*      pFullscreenDisplayMode,
+            IDirect3DSwapChain9**  ppSwapChain);
+
     HRESULT SetStateSamplerState(
         DWORD               StateSampler,
         D3DSAMPLERSTATETYPE Type,

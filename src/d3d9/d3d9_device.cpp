@@ -219,20 +219,7 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::CreateAdditionalSwapChain(
           D3DPRESENT_PARAMETERS* pPresentationParameters,
           IDirect3DSwapChain9**  ppSwapChain) {
-    auto lock = LockDevice();
-
-    InitReturnPtr(ppSwapChain);
-
-    if (ppSwapChain == nullptr || pPresentationParameters == nullptr)
-      return D3DERR_INVALIDCALL;
-
-    auto* swapchain = new D3D9SwapChainEx(this, pPresentationParameters);
-    *ppSwapChain = ref(swapchain);
-
-    m_swapchains.push_back(swapchain);
-    swapchain->AddRefPrivate();
-
-    return D3D_OK;
+    return CreateAdditionalSwapChainEx(pPresentationParameters, nullptr, ppSwapChain);
   }
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetSwapChain(UINT iSwapChain, IDirect3DSwapChain9** pSwapChain) {
@@ -2888,12 +2875,12 @@ namespace dxvk {
     auto* implicitSwapchain = GetInternalSwapchain(0);
     if (implicitSwapchain == nullptr) {
       Com<IDirect3DSwapChain9> swapchain;
-      hr = CreateAdditionalSwapChain(pPresentationParameters, &swapchain);
+      hr = CreateAdditionalSwapChainEx(pPresentationParameters, pFullscreenDisplayMode, &swapchain);
       if (FAILED(hr))
         throw DxvkError("Reset: failed to create implicit swapchain");
     }
     else {
-      hr = implicitSwapchain->Reset(pPresentationParameters);
+      hr = implicitSwapchain->Reset(pPresentationParameters, pFullscreenDisplayMode);
       if (FAILED(hr))
         throw DxvkError("Reset: failed to reset swapchain");
     }
@@ -2943,6 +2930,26 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     return swapchain->GetDisplayModeEx(pMode, pRotation);
+  }
+
+  HRESULT STDMETHODCALLTYPE D3D9DeviceEx::CreateAdditionalSwapChainEx(
+          D3DPRESENT_PARAMETERS* pPresentationParameters,
+    const D3DDISPLAYMODEEX*      pFullscreenDisplayMode,
+          IDirect3DSwapChain9**  ppSwapChain) {
+    auto lock = LockDevice();
+
+    InitReturnPtr(ppSwapChain);
+
+    if (ppSwapChain == nullptr || pPresentationParameters == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    auto* swapchain = new D3D9SwapChainEx(this, pPresentationParameters, pFullscreenDisplayMode);
+    *ppSwapChain = ref(swapchain);
+
+    m_swapchains.push_back(swapchain);
+    swapchain->AddRefPrivate();
+
+    return D3D_OK;
   }
 
   HRESULT D3D9DeviceEx::SetStateSamplerState(

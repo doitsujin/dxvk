@@ -71,4 +71,86 @@ namespace dxvk {
     return ::MonitorFromPoint({ 0, 0 }, MONITOR_DEFAULTTOPRIMARY);
   }
 
+  HRESULT SetMonitorDisplayMode(
+          HMONITOR                hMonitor,
+    const D3DDISPLAYMODEEX*       pMode) {
+    ::MONITORINFOEXW monInfo;
+    monInfo.cbSize = sizeof(monInfo);
+
+    if (!::GetMonitorInfoW(hMonitor, reinterpret_cast<MONITORINFO*>(&monInfo))) {
+      Logger::err("D3D9: Failed to query monitor info");
+      return E_FAIL;
+    }
+    
+    DEVMODEW devMode = { };
+    devMode.dmSize       = sizeof(devMode);
+    devMode.dmFields     = DM_PELSWIDTH | DM_PELSHEIGHT | DM_BITSPERPEL;
+    devMode.dmPelsWidth  = pMode->Width;
+    devMode.dmPelsHeight = pMode->Height;
+    devMode.dmBitsPerPel = GetMonitorFormatBpp(EnumerateFormat(pMode->Format));
+    
+    if (pMode->RefreshRate != 0)  {
+      devMode.dmFields |= DM_DISPLAYFREQUENCY;
+      devMode.dmDisplayFrequency = pMode->RefreshRate;
+    }
+    
+    Logger::info(str::format("D3D9: Setting display mode: ",
+      devMode.dmPelsWidth, "x", devMode.dmPelsHeight, "@",
+      devMode.dmDisplayFrequency));
+    
+    LONG status = ::ChangeDisplaySettingsExW(
+      monInfo.szDevice, &devMode, nullptr, CDS_FULLSCREEN, nullptr);
+    
+    return status == DISP_CHANGE_SUCCESSFUL ? D3D_OK : D3DERR_NOTAVAILABLE;
+  }
+
+  void GetWindowClientSize(
+          HWND                    hWnd,
+          UINT*                   pWidth,
+          UINT*                   pHeight) {
+    RECT rect = { };
+    ::GetClientRect(hWnd, &rect);
+    
+    if (pWidth)
+      *pWidth = rect.right - rect.left;
+    
+    if (pHeight)
+      *pHeight = rect.bottom - rect.top;
+  }
+
+  void GetMonitorClientSize(
+          HMONITOR                hMonitor,
+          UINT*                   pWidth,
+          UINT*                   pHeight) {
+    ::MONITORINFOEXW monInfo;
+    monInfo.cbSize = sizeof(monInfo);
+
+    if (!::GetMonitorInfoW(hMonitor, reinterpret_cast<MONITORINFO*>(&monInfo))) {
+      Logger::err("D3D9: Failed to query monitor info");
+      return;
+    }
+    
+    auto rect = monInfo.rcMonitor;
+
+    if (pWidth)
+      *pWidth = rect.right - rect.left;
+    
+    if (pHeight)
+      *pHeight = rect.bottom - rect.top;
+  }
+
+  void GetMonitorRect(
+          HMONITOR                hMonitor,
+          RECT*                   pRect) {
+    ::MONITORINFOEXW monInfo;
+    monInfo.cbSize = sizeof(monInfo);
+
+    if (!::GetMonitorInfoW(hMonitor, reinterpret_cast<MONITORINFO*>(&monInfo))) {
+      Logger::err("D3D9: Failed to query monitor info");
+      return;
+    }
+
+    *pRect = monInfo.rcMonitor;
+  }
+
 }
