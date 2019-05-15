@@ -18,6 +18,26 @@ namespace dxvk {
     return object;
   }
 
+
+  /**
+   * \brief Ref count methods for public references
+   */
+  template<typename T, bool Public>
+  struct ComRef_ {
+    static void incRef(T* ptr) { ptr->AddRef(); }
+    static void decRef(T* ptr) { ptr->Release(); }
+  };
+
+
+  /**
+   * \brief Ref count methods for private references
+   */
+  template<typename T>
+  struct ComRef_<T, false> {
+    static void incRef(T* ptr) { ptr->AddRefPrivate(); }
+    static void decRef(T* ptr) { ptr->ReleasePrivate(); }
+  };
+
   
   /**
    * \brief COM pointer
@@ -27,7 +47,7 @@ namespace dxvk {
    */
   template<typename T, bool Public = true>
   class Com {
-    
+    using ComRef = ComRef_<T, Public>;
   public:
     
     Com() { }
@@ -107,21 +127,13 @@ namespace dxvk {
     T* m_ptr = nullptr;
     
     void incRef() const {
-      if (m_ptr != nullptr) {
-        if constexpr (Public)
-          m_ptr->AddRef();
-        else
-          m_ptr->AddRefPrivate();
-      }
+      if (m_ptr != nullptr)
+        ComRef::incRef(m_ptr);
     }
     
     void decRef() const {
-      if (m_ptr != nullptr) {
-        if constexpr (Public)
-          m_ptr->Release();
-        else
-          m_ptr->ReleasePrivate();
-      }
+      if (m_ptr != nullptr)
+        ComRef::decRef(m_ptr);
     }
     
   };
