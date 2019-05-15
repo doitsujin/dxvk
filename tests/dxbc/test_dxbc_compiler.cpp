@@ -42,6 +42,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
     DxbcModule module(reader);
     
     DxbcModuleInfo moduleInfo;
+    moduleInfo.options.useSubgroupOpsForAtomicCounters = true;
     moduleInfo.options.useSubgroupOpsForEarlyDiscard = true;
     moduleInfo.options.useRawSsbo = true;
     moduleInfo.xfb = nullptr;
