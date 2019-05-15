@@ -85,23 +85,24 @@ namespace dxvk {
     // Note: No need to submit to CS if we don't do anything!
 
     if (dwIssueFlags == D3DISSUE_BEGIN) {
-      if (m_state == D3D9_VK_QUERY_BEGUN && QueryEndable(m_queryType))
-        m_parent->End(this);
+      if (QueryBeginnable(m_queryType)) {
+        if (m_state == D3D9_VK_QUERY_BEGUN && QueryEndable(m_queryType))
+          m_parent->End(this);
 
-      if (QueryBeginnable(m_queryType))
         m_parent->Begin(this);
 
-      m_state = D3D9_VK_QUERY_BEGUN;
+        m_state = D3D9_VK_QUERY_BEGUN;
+      }
     }
     else {
-      if (m_state != D3D9_VK_QUERY_BEGUN && QueryBeginnable(m_queryType))
-        m_parent->Begin(this);
+      if (QueryEndable(m_queryType)) {
+        if (m_state != D3D9_VK_QUERY_BEGUN && QueryBeginnable(m_queryType))
+          m_parent->Begin(this);
 
-      if (QueryEndable(m_queryType))
         m_parent->End(this);
 
+      }
       m_state = D3D9_VK_QUERY_ENDED;
-
     }
       
     return D3D_OK;
