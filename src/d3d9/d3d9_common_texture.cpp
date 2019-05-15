@@ -607,7 +607,6 @@ namespace dxvk {
     DxvkImageViewCreateInfo viewInfo;
     viewInfo.format  = PickSRGB(formatInfo.Format, formatInfo.FormatSrgb, srgb);
     viewInfo.aspect  = formatInfo.Aspect;
-    viewInfo.swizzle = formatInfo.Swizzle;
     viewInfo.usage   = UsageFlags;
 
     // Remove the stencil aspect if we are trying to create an image view of a depth stencil format 
@@ -616,11 +615,14 @@ namespace dxvk {
       viewInfo.aspect &= ~VK_IMAGE_ASPECT_STENCIL_BIT;
     }
 
-    // Shaders expect the stencil value in the G component
-    if (viewInfo.aspect == VK_IMAGE_ASPECT_STENCIL_BIT) {
-      viewInfo.swizzle = VkComponentMapping{
-        VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_R,
-        VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_ZERO };
+    if (!(UsageFlags & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
+      viewInfo.swizzle = formatInfo.Swizzle;
+      // Shaders expect the stencil value in the G component
+      if (viewInfo.aspect == VK_IMAGE_ASPECT_STENCIL_BIT) {
+        viewInfo.swizzle = VkComponentMapping{
+          VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_R,
+          VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_ZERO };
+      }
     }
 
     viewInfo.type = GetImageViewType();
