@@ -43,6 +43,10 @@ namespace dxvk {
 
     /// Whether or not to do a fast path clear if we're close enough to the whole render target.
     bool lenientClear;
+
+    /// Back buffer count for the Vulkan swap chain.
+    /// Overrides buffer count in present parameters.
+    int32_t numBackBuffers;
   };
 
 }
