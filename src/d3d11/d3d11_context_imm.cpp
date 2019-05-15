@@ -543,12 +543,6 @@ namespace dxvk {
     
     return true;
   }
-  
-  
-  void D3D11ImmediateContext::EmitCsChunk(DxvkCsChunkRef&& chunk) {
-    m_csThread.dispatchChunk(std::move(chunk));
-    m_csIsBusy = true;
-  }
 
 
   void D3D11ImmediateContext::FlushImplicit(BOOL StrongHint) {
@@ -566,6 +560,12 @@ namespace dxvk {
       if (now - m_lastFlush >= std::chrono::microseconds(delay))
         Flush();
     }
+  }
+  
+  
+  void STDMETHODCALLTYPE D3D11ImmediateContext::EmitCsChunk(DxvkCsChunkRef&& chunk) {
+    m_csThread.dispatchChunk(std::move(chunk));
+    m_csIsBusy = true;
   }
   
 }

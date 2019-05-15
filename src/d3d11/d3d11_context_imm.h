@@ -125,10 +125,10 @@ namespace dxvk {
       const Rc<DxvkResource>&                 Resource,
             UINT                              MapFlags);
     
-    void EmitCsChunk(DxvkCsChunkRef&& chunk);
-
     void FlushImplicit(BOOL StrongHint);
     
+    void STDMETHODCALLTYPE EmitCsChunk(DxvkCsChunkRef&& chunk);
+
   };
   
 }

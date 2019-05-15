@@ -320,7 +320,7 @@ namespace dxvk {
   }
   
   
-  void D3D11DeferredContext::EmitCsChunk(DxvkCsChunkRef&& chunk) {
+  void STDMETHODCALLTYPE D3D11DeferredContext::EmitCsChunk(DxvkCsChunkRef&& chunk) {
     m_commandList->AddChunk(std::move(chunk));
   }
 
