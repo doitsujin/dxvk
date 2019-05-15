@@ -164,6 +164,9 @@ namespace dxvk {
             uint32_t                constCount,
       const uint32_t*               constIds);
     
+    uint32_t constUndef(
+            uint32_t                typeId);
+    
     uint32_t specConstBool(
             bool                    v);
     
@@ -310,7 +313,7 @@ namespace dxvk {
             uint32_t                parameterType);
     
     void functionEnd();
-    
+
     uint32_t opAccessChain(
             uint32_t                resultType,
             uint32_t                composite,
@@ -1053,12 +1056,14 @@ namespace dxvk {
             uint32_t                operation,
             uint32_t                ballot);
     
-    uint32_t opGroupNonUniformLogicalAnd(
+    uint32_t opGroupNonUniformElect(
+            uint32_t                resultType,
+            uint32_t                execution);
+    
+    uint32_t opGroupNonUniformBroadcastFirst(
             uint32_t                resultType,
             uint32_t                execution,
-            uint32_t                operation,
-            uint32_t                value,
-            uint32_t                clusterSize);
+            uint32_t                value);
     
     void opControlBarrier(
             uint32_t                execution,
