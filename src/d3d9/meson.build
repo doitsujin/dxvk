@@ -1,3 +1,8 @@
+d3d9_shaders = files([
+  '../dxgi/shaders/dxgi_presenter_frag.frag',
+  '../dxgi/shaders/dxgi_presenter_vert.vert',
+])
+
 d3d9_src = [
   'd3d9_main.cpp',
   'd3d9_interface.cpp',
@@ -24,7 +29,7 @@ d3d9_src = [
   'd3d9_initializer.cpp'
 ]
 
-d3d9_dll = shared_library('d3d9'+dll_ext, d3d9_src, glsl_generator.process(dxgi_shaders),
+d3d9_dll = shared_library('d3d9'+dll_ext, d3d9_src, glsl_generator.process(d3d9_shaders),
   name_prefix         : '',
   dependencies        : [ dxso_dep, dxvk_dep ],
   include_directories : dxvk_include_path,
