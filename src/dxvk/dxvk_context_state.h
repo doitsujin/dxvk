@@ -103,7 +103,7 @@ namespace dxvk {
 
 
   struct DxvkPushConstantState {
-    alignas(64) char data[MaxPushConstantSize];
+    char data[MaxPushConstantSize];
   };
 
 
