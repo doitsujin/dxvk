@@ -98,88 +98,7 @@ extern "C" {
   }
   
   
-  DLLEXPORT HRESULT __stdcall D3D11CreateDevice(
-          IDXGIAdapter*         pAdapter,
-          D3D_DRIVER_TYPE       DriverType,
-          HMODULE               Software,
-          UINT                  Flags,
-    const D3D_FEATURE_LEVEL*    pFeatureLevels,
-          UINT                  FeatureLevels,
-          UINT                  SDKVersion,
-          ID3D11Device**        ppDevice,
-          D3D_FEATURE_LEVEL*    pFeatureLevel,
-          ID3D11DeviceContext** ppImmediateContext) {
-    InitReturnPtr(ppDevice);
-    InitReturnPtr(ppImmediateContext);
-
-    Com<IDXGIFactory> dxgiFactory = nullptr;
-    Com<IDXGIAdapter> dxgiAdapter = pAdapter;
-    
-    if (dxgiAdapter == nullptr) {
-      // We'll treat everything as hardware, even if the
-      // Vulkan device is actually a software device.
-      if (DriverType != D3D_DRIVER_TYPE_HARDWARE)
-        Logger::warn("D3D11CreateDevice: Unsupported driver type");
-      
-      // We'll use the first adapter returned by a DXGI factory
-      if (FAILED(CreateDXGIFactory1(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&dxgiFactory)))) {
-        Logger::err("D3D11CreateDevice: Failed to create a DXGI factory");
-        return E_FAIL;
-      }
-      
-      if (FAILED(dxgiFactory->EnumAdapters(0, &dxgiAdapter))) {
-        Logger::err("D3D11CreateDevice: No default adapter available");
-        return E_FAIL;
-      }
-      
-    } else {
-      // We should be able to query the DXGI factory from the adapter
-      if (FAILED(dxgiAdapter->GetParent(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&dxgiFactory)))) {
-        Logger::err("D3D11CreateDevice: Failed to query DXGI factory from DXGI adapter");
-        return E_FAIL;
-      }
-      
-      // In theory we could ignore these, but the Microsoft docs explicitly
-      // state that we need to return E_INVALIDARG in case the arguments are
-      // invalid. Both the driver type and software parameter can only be
-      // set if the adapter itself is unspecified.
-      // See: https://msdn.microsoft.com/en-us/library/windows/desktop/ff476082(v=vs.85).aspx
-      if (DriverType != D3D_DRIVER_TYPE_UNKNOWN || Software != nullptr)
-        return E_INVALIDARG;
-    }
-    
-    // Create the actual device
-    Com<ID3D11Device> device;
-    
-    HRESULT hr = D3D11CoreCreateDevice(
-      dxgiFactory.ptr(), dxgiAdapter.ptr(),
-      Flags, pFeatureLevels, FeatureLevels,
-      &device);
-    
-    if (FAILED(hr))
-      return hr;
-    
-    // Write back whatever info the application requested
-    if (pFeatureLevel != nullptr)
-      *pFeatureLevel = device->GetFeatureLevel();
-    
-    if (ppDevice != nullptr)
-      *ppDevice = device.ref();
-    
-    if (ppImmediateContext != nullptr)
-      device->GetImmediateContext(ppImmediateContext);
-    
-    // If we were unable to write back the device and the
-    // swap chain, the application has no way of working
-    // with the device so we should report S_FALSE here.
-    if (ppDevice == nullptr && ppImmediateContext == nullptr)
-      return S_FALSE;
-    
-    return S_OK;
-  }
-  
-  
-  DLLEXPORT HRESULT __stdcall D3D11CreateDeviceAndSwapChain(
+  static HRESULT D3D11InternalCreateDeviceAndSwapChain(
           IDXGIAdapter*         pAdapter,
           D3D_DRIVER_TYPE       DriverType,
           HMODULE               Software,
@@ -196,56 +115,128 @@ extern "C" {
     InitReturnPtr(ppSwapChain);
     InitReturnPtr(ppImmediateContext);
 
-    Com<ID3D11Device>        d3d11Device;
-    Com<ID3D11DeviceContext> d3d11Context;
+    HRESULT hr;
+
+    Com<IDXGIFactory> dxgiFactory = nullptr;
+    Com<IDXGIAdapter> dxgiAdapter = pAdapter;
+    Com<ID3D11Device> device      = nullptr;
     
     if (ppSwapChain && !pSwapChainDesc)
       return E_INVALIDARG;
     
-    // Try to create a device first.
-    HRESULT status = D3D11CreateDevice(pAdapter, DriverType,
-      Software, Flags, pFeatureLevels, FeatureLevels,
-      SDKVersion, &d3d11Device, pFeatureLevel, &d3d11Context);
-    
-    if (FAILED(status))
-      return status;
-    
-    // Again, the documentation does not exactly tell us what we
-    // need to do in case one of the arguments is a null pointer.
-    if (ppSwapChain) {
-      Com<IDXGIDevice>  dxgiDevice  = nullptr;
-      Com<IDXGIAdapter> dxgiAdapter = nullptr;
-      Com<IDXGIFactory> dxgiFactory = nullptr;
+    if (!pAdapter) {
+      // We'll treat everything as hardware, even if the
+      // Vulkan device is actually a software device.
+      if (DriverType != D3D_DRIVER_TYPE_HARDWARE)
+        Logger::warn("D3D11CreateDevice: Unsupported driver type");
       
-      if (FAILED(d3d11Device->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&dxgiDevice)))) {
-        Logger::err("D3D11CreateDeviceAndSwapChain: Failed to query DXGI device");
-        return E_FAIL;
+      // We'll use the first adapter returned by a DXGI factory
+      hr = CreateDXGIFactory1(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&dxgiFactory));
+
+      if (FAILED(hr)) {
+        Logger::err("D3D11CreateDevice: Failed to create a DXGI factory");
+        return hr;
       }
-      
-      if (FAILED(dxgiDevice->GetParent(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&dxgiAdapter)))) {
-        Logger::err("D3D11CreateDeviceAndSwapChain: Failed to query DXGI adapter");
-        return E_FAIL;
+
+      hr = dxgiFactory->EnumAdapters(0, &dxgiAdapter);
+
+      if (FAILED(hr)) {
+        Logger::err("D3D11CreateDevice: No default adapter available");
+        return hr;
       }
-      
+    } else {
+      // We should be able to query the DXGI factory from the adapter
       if (FAILED(dxgiAdapter->GetParent(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&dxgiFactory)))) {
-        Logger::err("D3D11CreateDeviceAndSwapChain: Failed to query DXGI factory");
-        return E_FAIL;
+        Logger::err("D3D11CreateDevice: Failed to query DXGI factory from DXGI adapter");
+        return E_INVALIDARG;
       }
       
+      // In theory we could ignore these, but the Microsoft docs explicitly
+      // state that we need to return E_INVALIDARG in case the arguments are
+      // invalid. Both the driver type and software parameter can only be
+      // set if the adapter itself is unspecified.
+      // See: https://msdn.microsoft.com/en-us/library/windows/desktop/ff476082(v=vs.85).aspx
+      if (DriverType != D3D_DRIVER_TYPE_UNKNOWN || Software)
+        return E_INVALIDARG;
+    }
+    
+    // Create the actual device
+    hr = D3D11CoreCreateDevice(
+      dxgiFactory.ptr(), dxgiAdapter.ptr(),
+      Flags, pFeatureLevels, FeatureLevels,
+      &device);
+    
+    if (FAILED(hr))
+      return hr;
+    
+    // Create the swap chain, if requested
+    if (ppSwapChain) {
       DXGI_SWAP_CHAIN_DESC desc = *pSwapChainDesc;
-      if (FAILED(dxgiFactory->CreateSwapChain(d3d11Device.ptr(), &desc, ppSwapChain))) {
-        Logger::err("D3D11CreateDeviceAndSwapChain: Failed to create swap chain");
-        return E_FAIL;
+      hr = dxgiFactory->CreateSwapChain(device.ptr(), &desc, ppSwapChain);
+
+      if (FAILED(hr)) {
+        Logger::err("D3D11CreateDevice: Failed to create swap chain");
+        return hr;
       }
     }
     
-    if (ppDevice != nullptr)
-      *ppDevice = d3d11Device.ref();
+    // Write back whatever info the application requested
+    if (pFeatureLevel)
+      *pFeatureLevel = device->GetFeatureLevel();
     
-    if (ppImmediateContext != nullptr)
-      *ppImmediateContext = d3d11Context.ref();
+    if (ppDevice)
+      *ppDevice = device.ref();
+    
+    if (ppImmediateContext)
+      device->GetImmediateContext(ppImmediateContext);
+
+    // If we were unable to write back the device and the
+    // swap chain, the application has no way of working
+    // with the device so we should report S_FALSE here.
+    if (!ppDevice && !ppImmediateContext && !ppSwapChain)
+      return S_FALSE;
     
     return S_OK;
+  }
+  
+
+  DLLEXPORT HRESULT __stdcall D3D11CreateDevice(
+          IDXGIAdapter*         pAdapter,
+          D3D_DRIVER_TYPE       DriverType,
+          HMODULE               Software,
+          UINT                  Flags,
+    const D3D_FEATURE_LEVEL*    pFeatureLevels,
+          UINT                  FeatureLevels,
+          UINT                  SDKVersion,
+          ID3D11Device**        ppDevice,
+          D3D_FEATURE_LEVEL*    pFeatureLevel,
+          ID3D11DeviceContext** ppImmediateContext) {
+    return D3D11InternalCreateDeviceAndSwapChain(
+      pAdapter, DriverType, Software, Flags,
+      pFeatureLevels, FeatureLevels, SDKVersion,
+      nullptr, nullptr,
+      ppDevice, pFeatureLevel, ppImmediateContext);
+  }
+  
+  
+  DLLEXPORT HRESULT __stdcall D3D11CreateDeviceAndSwapChain(
+          IDXGIAdapter*         pAdapter,
+          D3D_DRIVER_TYPE       DriverType,
+          HMODULE               Software,
+          UINT                  Flags,
+    const D3D_FEATURE_LEVEL*    pFeatureLevels,
+          UINT                  FeatureLevels,
+          UINT                  SDKVersion,
+    const DXGI_SWAP_CHAIN_DESC* pSwapChainDesc,
+          IDXGISwapChain**      ppSwapChain,
+          ID3D11Device**        ppDevice,
+          D3D_FEATURE_LEVEL*    pFeatureLevel,
+          ID3D11DeviceContext** ppImmediateContext) {
+    return D3D11InternalCreateDeviceAndSwapChain(
+      pAdapter, DriverType, Software, Flags,
+      pFeatureLevels, FeatureLevels, SDKVersion,
+      pSwapChainDesc, ppSwapChain,
+      ppDevice, pFeatureLevel, ppImmediateContext);
   }
   
 }
