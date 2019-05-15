@@ -1,5 +1,10 @@
 d3d11_res = wrc_generator.process('version.rc')
 
+dxgi_shaders = files([
+  '../dxgi/shaders/dxgi_presenter_frag.frag',
+  '../dxgi/shaders/dxgi_presenter_vert.vert',
+])
+
 dxgi_common_src = [
   '../dxgi/dxgi_format.cpp',
   '../dxgi/dxgi_monitor.cpp',
