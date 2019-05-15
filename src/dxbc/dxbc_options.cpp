@@ -14,11 +14,16 @@ namespace dxvk {
 
     const DxvkDeviceFeatures& devFeatures = device->features();
     const DxvkDeviceInfo& devInfo = adapter->devicePropertiesExt();
+
+    const VkShaderStageFlags allShaderStages = device->getShaderPipelineStages();
     
     useDepthClipWorkaround
       = !devFeatures.extDepthClipEnable.depthClipEnable;
     useStorageImageReadWithoutFormat
       = devFeatures.core.features.shaderStorageImageReadWithoutFormat;
+    useSubgroupOpsForAtomicCounters
+      = (devInfo.coreSubgroup.supportedStages     & allShaderStages) == allShaderStages
+     && (devInfo.coreSubgroup.supportedOperations & VK_SUBGROUP_FEATURE_BALLOT_BIT);
     useSubgroupOpsForEarlyDiscard
       = (devInfo.coreSubgroup.subgroupSize >= 4)
      && (devInfo.coreSubgroup.supportedStages     & VK_SHADER_STAGE_FRAGMENT_BIT)
