@@ -35,6 +35,11 @@ namespace dxvk {
       case D3DQUERYTYPE_TIMESTAMPFREQ:
         break;
 
+      case D3DQUERYTYPE_VERTEXSTATS:
+        m_query = dxvkDevice->createGpuQuery(
+          VK_QUERY_TYPE_PIPELINE_STATISTICS, 0, 0);
+        break;
+
       default:
         throw DxvkError(str::format("D3D9Query: Unsupported query type ", m_queryType));
     }
