@@ -243,15 +243,6 @@ namespace dxvk {
       return m_mappedSubresources == m_unmappedSubresources;
     }
 
-    bool ReadLocksRemaining() {
-      for (uint16_t mask : m_readOnlySubresources) {
-        if (mask != 0)
-          return true;
-      }
-
-      return false;
-    }
-
     std::array<uint16_t, 6> DiscardSubresourceMasking() {
       std::array<uint16_t, 6> copy = m_mappedSubresources;
 
@@ -287,6 +278,7 @@ namespace dxvk {
 
     void DeallocMappingBuffers();
     void DeallocFixupBuffers();
+    void DeallocMappingBuffer(UINT Subresource);
     void DeallocFixupBuffer(UINT Subresource);
 
   private:

@@ -506,6 +506,10 @@ namespace dxvk {
       buf = nullptr;
   }
 
+  void D3D9CommonTexture::DeallocMappingBuffer(UINT Subresource) {
+    m_mappingBuffers.at(Subresource) = nullptr;
+  }
+
   void D3D9CommonTexture::DeallocFixupBuffer(UINT Subresource) {
     m_fixupBuffers.at(Subresource) = nullptr;
   }

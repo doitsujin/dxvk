@@ -3318,7 +3318,7 @@ namespace dxvk {
   }
 
   HRESULT D3D9DeviceEx::UnlockImage(
-        D3D9CommonTexture* pResource,
+        D3D9CommonTexture*      pResource,
         UINT                    Face,
         UINT                    MipLevel) {
     auto lock = LockDevice();
@@ -3327,84 +3327,70 @@ namespace dxvk {
 
     bool fullyUnlocked = pResource->MarkSubresourceUnmapped(Face, MipLevel);
 
-    bool readRemaining = pResource->ReadLocksRemaining();
-
     bool managed = pResource->Desc()->Pool == D3DPOOL_MANAGED;
     bool evict   = !managed || m_d3d9Options.evictManagedOnUnlock;
 
     // Do we have a pending copy?
     if (pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER) {
-      bool fixup = pResource->RequiresFixup();
+      if (!readOnly) {
+        // Do we need to do some fixup before copying to image?
+        if (pResource->RequiresFixup())
+          FixupFormat(pResource, Face, MipLevel);
 
-      // Do we need to do some fixup before copying to image?
-      if (fixup && !readOnly)
-        FixupFormat(pResource, Face, MipLevel);
-
-      // Are we fully unlocked to flush me to the GPU?
-      if (fullyUnlocked) {
-        if (!readOnly)
-          this->FlushImage(pResource);
-
-        // If we have no remaining read-only locks we can clear our mapping buffers.
-        if (!readRemaining && evict)
-          pResource->DeallocMappingBuffers();
+        this->FlushImage(pResource, Face, MipLevel);
       }
+
+      if (evict)
+        pResource->DeallocMappingBuffer(pResource->CalcSubresource(Face, MipLevel));
     }
 
-    if (fullyUnlocked && !readRemaining)
+    if (fullyUnlocked)
       pResource->GenerateMipSubLevels();
 
     return D3D_OK;
   }
 
   HRESULT D3D9DeviceEx::FlushImage(
-    D3D9CommonTexture* pResource) {
+        D3D9CommonTexture*      pResource,
+        UINT                    Face,
+        UINT                    MipLevel) {
     auto dirtySubresources = pResource->DiscardSubresourceMasking();
 
     const Rc<DxvkImage>  mappedImage = pResource->GetImage();
     const uint32_t       mipLevels   = mappedImage->info().mipLevels;
 
-    for (uint32_t l = 0; l < pResource->GetLayerCount(); l++) {
-      uint16_t mask = dirtySubresources[l];
+    const UINT Subresource = pResource->CalcSubresource(Face, MipLevel);
+    const bool fixup8888   = pResource->Desc()->Format == D3D9Format::R8G8B8;
 
-      for (uint32_t i = 0; i < mipLevels; i++) {
-        if (!(mask & 1u << i))
-          continue;
+    // Now that data has been written into the buffer,
+    // we need to copy its contents into the image
+    const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer(Subresource);
+    const Rc<DxvkBuffer> fixupBuffer  = pResource->GetFixupBuffer(Subresource);
 
-        const UINT Subresource = pResource->CalcSubresource(l, i);
-        const bool fixup8888   = pResource->Desc()->Format == D3D9Format::R8G8B8;
+    auto formatInfo  = imageFormatInfo(mappedImage->info().format);
+    auto subresource = pResource->GetSubresourceFromIndex(
+      formatInfo->aspectMask, Subresource);
 
-        // Now that data has been written into the buffer,
-        // we need to copy its contents into the image
-        const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer(Subresource);
-        const Rc<DxvkBuffer> fixupBuffer  = pResource->GetFixupBuffer(Subresource);
+    VkExtent3D levelExtent = mappedImage
+      ->mipLevelExtent(subresource.mipLevel);
 
-        auto formatInfo  = imageFormatInfo(mappedImage->info().format);
-        auto subresource = pResource->GetSubresourceFromIndex(
-          formatInfo->aspectMask, Subresource);
+    VkImageSubresourceLayers subresourceLayers = {
+      subresource.aspectMask,
+      subresource.mipLevel,
+      subresource.arrayLayer, 1 };
 
-        VkExtent3D levelExtent = mappedImage
-          ->mipLevelExtent(subresource.mipLevel);
+    EmitCs([
+      cSrcBuffer      = fixup8888 ? fixupBuffer : mappedBuffer,
+      cDstImage       = mappedImage,
+      cDstLayers      = subresourceLayers,
+      cDstLevelExtent = levelExtent
+    ] (DxvkContext* ctx) {
+      ctx->copyBufferToImage(cDstImage, cDstLayers,
+        VkOffset3D{ 0, 0, 0 }, cDstLevelExtent,
+        cSrcBuffer, 0, { 0u, 0u });
+    });
 
-        VkImageSubresourceLayers subresourceLayers = {
-          subresource.aspectMask,
-          subresource.mipLevel,
-          subresource.arrayLayer, 1 };
-
-        EmitCs([
-          cSrcBuffer = fixup8888 ? fixupBuffer : mappedBuffer,
-          cDstImage = mappedImage,
-          cDstLayers = subresourceLayers,
-          cDstLevelExtent = levelExtent
-        ] (DxvkContext* ctx) {
-          ctx->copyBufferToImage(cDstImage, cDstLayers,
-            VkOffset3D{ 0, 0, 0 }, cDstLevelExtent,
-            cSrcBuffer, 0, { 0u, 0u });
-        });
-
-        pResource->DeallocFixupBuffer(Subresource);
-      }
-    }
+    pResource->DeallocFixupBuffer(Subresource);
 
     return D3D_OK;
   }
