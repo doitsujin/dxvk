@@ -3260,6 +3260,9 @@ namespace dxvk {
         // No need to wait as its not in use.
 
         physSlice = mappedBuffer->getSliceHandle();
+
+        if (alloced)
+          std::memset(physSlice.mapPtr, 0, physSlice.length);
       }
       else {
         // When using any map mode which requires the image contents
