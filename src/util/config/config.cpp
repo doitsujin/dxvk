@@ -122,13 +122,13 @@ namespace dxvk {
     { "MassEffectAndromeda.exe", {{
       { "dxgi.nvapiHack",                   "False" },
     }} },
-    /* Mirror`s Edge Catalyst                     */
+    /* Mirror`s Edge Catalyst: Crashes on AMD     */
     { "MirrorsEdgeCatalyst.exe", {{
-      { "dxgi.nvapiHack",                   "False" },
+      { "dxgi.customVendorId",              "10de" },
     }} },
     /* Mirror`s Edge Catalyst Trial               */
     { "MirrorsEdgeCatalystTrial.exe", {{
-      { "dxgi.nvapiHack",                   "False" },
+      { "dxgi.customVendorId",              "10de" },
     }} },
     /* Star Wars Battlefront (2015)               */
     { "starwarsbattlefront.exe", {{
