@@ -3212,7 +3212,7 @@ namespace dxvk {
     
     pResource->MarkSubresourceMapped(Face, MipLevel, Flags);
     
-    if (pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_DIRECT) {
+    if (unlikely(pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_DIRECT)) {
       const VkImageType imageType = mappedImage->info().type;
       
       // Wait for the resource to become available
@@ -3331,7 +3331,7 @@ namespace dxvk {
     bool evict   = !managed || m_d3d9Options.evictManagedOnUnlock;
 
     // Do we have a pending copy?
-    if (pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER) {
+    if (likely(pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER)) {
       if (write) {
         // Do we need to do some fixup before copying to image?
         if (pResource->RequiresFixup())
