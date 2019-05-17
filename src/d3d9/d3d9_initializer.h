@@ -41,10 +41,10 @@ namespace dxvk {
     size_t            m_transferMemory    = 0;
 
     void InitDeviceLocalBuffer(
-            D3D9CommonBuffer*  pBuffer);
+            DxvkBufferSlice    Slice);
 
     void InitHostVisibleBuffer(
-            D3D9CommonBuffer*  pBuffer);
+            DxvkBufferSlice    Slice);
 
     void InitDeviceLocalTexture(
             D3D9CommonTexture* pTexture);

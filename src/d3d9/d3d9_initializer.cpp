@@ -29,8 +29,11 @@ namespace dxvk {
     VkMemoryPropertyFlags memFlags = pBuffer->GetBuffer<D3D9_COMMON_BUFFER_TYPE_REAL>()->memFlags();
 
     (memFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
-      ? InitHostVisibleBuffer(pBuffer)
-      : InitDeviceLocalBuffer(pBuffer);
+      ? InitHostVisibleBuffer(pBuffer->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>())
+      : InitDeviceLocalBuffer(pBuffer->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>());
+
+    if (pBuffer->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_BUFFER)
+      InitHostVisibleBuffer(pBuffer->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_STAGING>());
   }
   
 
@@ -48,17 +51,15 @@ namespace dxvk {
 
 
   void D3D9Initializer::InitDeviceLocalBuffer(
-          D3D9CommonBuffer*  pBuffer) {
+          DxvkBufferSlice    Slice) {
     std::lock_guard<std::mutex> lock(m_mutex);
-
-    DxvkBufferSlice bufferSlice = pBuffer->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>();
 
     m_transferCommands += 1;
 
     m_context->clearBuffer(
-      bufferSlice.buffer(),
-      bufferSlice.offset(),
-      bufferSlice.length(),
+      Slice.buffer(),
+      Slice.offset(),
+      Slice.length(),
       0u);
 
     FlushImplicit();
@@ -66,15 +67,13 @@ namespace dxvk {
 
 
   void D3D9Initializer::InitHostVisibleBuffer(
-          D3D9CommonBuffer*  pBuffer) {
+          DxvkBufferSlice    Slice) {
     // If the buffer is mapped, we can write data directly
     // to the mapped memory region instead of doing it on
     // the GPU. Same goes for zero-initialization.
-    DxvkBufferSlice bufferSlice = pBuffer->GetBufferSlice<D3D9_COMMON_BUFFER_TYPE_REAL>();
-
     std::memset(
-      bufferSlice.mapPtr(0), 0,
-      bufferSlice.length());
+      Slice.mapPtr(0), 0,
+      Slice.length());
   }
 
 
