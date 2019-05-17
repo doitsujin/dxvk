@@ -3323,18 +3323,18 @@ namespace dxvk {
         UINT                    MipLevel) {
     auto lock = LockDevice();
 
-    bool write   = pResource->IsWriteLock(Face, MipLevel);
+    const bool write   = pResource->IsWriteLock(Face, MipLevel);
+    const bool managed = pResource->Desc()->Pool == D3DPOOL_MANAGED;
+    const bool evict   = !managed || m_d3d9Options.evictManagedOnUnlock;
+    const bool fixup   = pResource->RequiresFixup();
 
     pResource->MarkSubresourceUnmapped(Face, MipLevel);
-
-    bool managed = pResource->Desc()->Pool == D3DPOOL_MANAGED;
-    bool evict   = !managed || m_d3d9Options.evictManagedOnUnlock;
 
     // Do we have a pending copy?
     if (likely(pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER)) {
       if (write) {
         // Do we need to do some fixup before copying to image?
-        if (pResource->RequiresFixup())
+        if (fixup)
           FixupFormat(pResource, Face, MipLevel);
 
         this->FlushImage(pResource, Face, MipLevel);
