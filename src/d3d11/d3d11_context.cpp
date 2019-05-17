@@ -554,6 +554,9 @@ namespace dxvk {
             cExtent);
         }
       });
+
+      if (dstTextureInfo->CanUpdateMappedBufferEarly())
+        UpdateMappedBuffer(dstTextureInfo, dstSubresource);
     }
   }
   
@@ -604,8 +607,11 @@ namespace dxvk {
           cSrcBuffer.length());
       });
     } else {
-      const Rc<DxvkImage> dstImage = GetCommonTexture(pDstResource)->GetImage();
-      const Rc<DxvkImage> srcImage = GetCommonTexture(pSrcResource)->GetImage();
+      auto dstTexture = GetCommonTexture(pDstResource);
+      auto srcTexture = GetCommonTexture(pSrcResource);
+
+      const Rc<DxvkImage> dstImage = dstTexture->GetImage();
+      const Rc<DxvkImage> srcImage = srcTexture->GetImage();
 
       const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(dstImage->info().format);
       const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcImage->info().format);
@@ -652,6 +658,11 @@ namespace dxvk {
             cSrcImage, cSrcLayers, VkOffset3D { 0, 0, 0 },
             cExtent);
         });
+
+        if (dstTexture->CanUpdateMappedBufferEarly()) {
+          for (uint32_t j = 0; j < dstImage->info().numLayers; j++)
+            UpdateMappedBuffer(dstTexture, { dstLayers.aspectMask, i, j });
+        }
       }
     }
   }
@@ -1229,6 +1240,9 @@ namespace dxvk {
             cPackedFormat);
         }
       });
+
+      if (textureInfo->CanUpdateMappedBufferEarly())
+        UpdateMappedBuffer(textureInfo, subresource);
     }
   }
   
@@ -3666,6 +3680,40 @@ namespace dxvk {
         Bindings[i].ptr(),
         ctrSlotId + i, ~0u);
     }
+  }
+
+
+  void D3D11DeviceContext::UpdateMappedBuffer(
+    const D3D11CommonTexture*               pTexture,
+          VkImageSubresource                Subresource) {
+    Rc<DxvkImage>  mappedImage  = pTexture->GetImage();
+    Rc<DxvkBuffer> mappedBuffer = pTexture->GetMappedBuffer();
+
+    VkFormat packedFormat = m_parent->LookupPackedFormat(
+      pTexture->Desc()->Format, pTexture->GetFormatMode()).Format;
+    
+    VkExtent3D levelExtent = mappedImage->mipLevelExtent(Subresource.mipLevel);
+    
+    EmitCs([
+      cImageBuffer  = std::move(mappedBuffer),
+      cImage        = std::move(mappedImage),
+      cSubresources = vk::makeSubresourceLayers(Subresource),
+      cLevelExtent  = levelExtent,
+      cPackedFormat = packedFormat
+    ] (DxvkContext* ctx) {
+      if (cSubresources.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+        ctx->copyImageToBuffer(
+          cImageBuffer, 0, VkExtent2D { 0u, 0u },
+          cImage, cSubresources, VkOffset3D { 0, 0, 0 },
+          cLevelExtent);
+      } else {
+        ctx->copyDepthStencilImageToPackedBuffer(
+          cImageBuffer, 0, cImage, cSubresources,
+          VkOffset2D { 0, 0 },
+          VkExtent2D { cLevelExtent.width, cLevelExtent.height },
+          cPackedFormat);
+      }
+    });
   }
   
   

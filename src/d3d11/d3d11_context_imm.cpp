@@ -383,32 +383,16 @@ namespace dxvk {
         // When using any map mode which requires the image contents
         // to be preserved, and if the GPU has write access to the
         // image, copy the current image contents into the buffer.
-        if (pResource->Desc()->Usage == D3D11_USAGE_STAGING) {
-          auto subresourceLayers = vk::makeSubresourceLayers(subresource);
-          
-          EmitCs([
-            cImageBuffer  = mappedBuffer,
-            cImage        = mappedImage,
-            cSubresources = subresourceLayers,
-            cLevelExtent  = levelExtent,
-            cPackedFormat = packedFormat
-          ] (DxvkContext* ctx) {
-            if (cSubresources.aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-              ctx->copyImageToBuffer(
-                cImageBuffer, 0, VkExtent2D { 0u, 0u },
-                cImage, cSubresources, VkOffset3D { 0, 0, 0 },
-                cLevelExtent);
-            } else {
-              ctx->copyDepthStencilImageToPackedBuffer(
-                cImageBuffer, 0, cImage, cSubresources,
-                VkOffset2D { 0, 0 },
-                VkExtent2D { cLevelExtent.width, cLevelExtent.height },
-                cPackedFormat);
-            }
-          });
+        if (pResource->Desc()->Usage == D3D11_USAGE_STAGING
+         && !pResource->CanUpdateMappedBufferEarly()) {
+          UpdateMappedBuffer(pResource, subresource);
+          MapFlags &= ~D3D11_MAP_FLAG_DO_NOT_WAIT;
         }
         
-        WaitForResource(mappedBuffer, 0);
+        // Wait for mapped buffer to become available
+        if (!WaitForResource(mappedBuffer, MapFlags))
+          return DXGI_ERROR_WAS_STILL_DRAWING;
+        
         physSlice = mappedBuffer->getSliceHandle();
       }
       

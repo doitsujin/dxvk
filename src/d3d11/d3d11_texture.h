@@ -130,6 +130,22 @@ namespace dxvk {
     void ClearMappedSubresource() {
       m_mappedSubresource = VkImageSubresource { };
     }
+
+    /**
+     * \brief Checks whether we can update the mapped buffer early
+     * 
+     * For images which are mapped through a buffer and that are
+     * only used for transfer operations, we can update the mapped
+     * buffer right after performing those transfers to avoid stalls.
+     * \returns \c true if the mapped buffer can be updated early
+     */
+    bool CanUpdateMappedBufferEarly() const {
+      return m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER
+          && (m_desc.BindFlags & ~D3D11_BIND_SHADER_RESOURCE) == 0
+          && m_desc.Usage     == D3D11_USAGE_STAGING
+          && m_desc.MipLevels == 1
+          && m_desc.ArraySize == 1;
+    }
     
     /**
      * \brief Computes subresource from the subresource index
