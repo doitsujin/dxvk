@@ -107,7 +107,7 @@ setup_dxvk_sh_conf = configuration_data()
 if get_option('enable_dxgi')
   setup_dxvk_sh_conf.set('action_dxgi', '$action dxgi')
 else
-  setup_dxvk_sh_conf.set('action_dxgi', '')
+  setup_dxvk_sh_conf.set('action_dxgi', 'true')
 endif
 
 if get_option('enable_d3d10')
