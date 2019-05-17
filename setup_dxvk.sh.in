@@ -137,10 +137,10 @@ uninstall() {
 # skip dxgi during install if not explicitly
 # enabled, but always try to uninstall it
 if [ $with_dxgi -ne 0 ] || [ "$action" == "uninstall" ]; then
-  $action dxgi
+  @action_dxgi@
 fi
 
-$action d3d10
-$action d3d10_1
-$action d3d10core
-$action d3d11
+@action_d3d10@
+@action_d3d10_1@
+@action_d3d10core@
+@action_d3d11@

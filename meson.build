@@ -101,3 +101,31 @@ enable_tests = get_option('enable_tests')
 if enable_tests
   subdir('tests')
 endif
+
+setup_dxvk_sh_conf = configuration_data()
+
+if get_option('enable_dxgi')
+  setup_dxvk_sh_conf.set('action_dxgi', '$action dxgi')
+else
+  setup_dxvk_sh_conf.set('action_dxgi', '')
+endif
+
+if get_option('enable_d3d10')
+  setup_dxvk_sh_conf.set('action_d3d10', '$action d3d10')
+  setup_dxvk_sh_conf.set('action_d3d10_1', '$action d3d10_1')
+  setup_dxvk_sh_conf.set('action_d3d10core', '$action d3d10core')
+else
+  setup_dxvk_sh_conf.set('action_d3d10', '')
+  setup_dxvk_sh_conf.set('action_d3d10_1', '')
+  setup_dxvk_sh_conf.set('action_d3d10core', '')
+endif
+
+if get_option('enable_d3d11')
+  setup_dxvk_sh_conf.set('action_d3d11', '$action d3d11')
+else
+  setup_dxvk_sh_conf.set('action_d3d11', '')
+endif
+
+configure_file(input : 'setup_dxvk.sh.in',
+               output : 'setup_dxvk.sh',
+               configuration : setup_dxvk_sh_conf)
