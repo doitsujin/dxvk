@@ -218,43 +218,20 @@ namespace dxvk {
 
     VkDeviceSize GetMipLength(UINT MipLevel) const;
 
-    void MarkSubresourceMapped(UINT Face, UINT MipLevel, DWORD LockFlags) {
-      const uint16_t mipBit = 1u << MipLevel;
-
-      LockFlags & D3DLOCK_READONLY
-        ? m_readOnlySubresources[Face] |= mipBit
-        : m_mappedSubresources[Face]   |= mipBit;
+    inline void MarkSubresourceMapped(UINT Face, UINT MipLevel, DWORD LockFlags) {
+      if (!(LockFlags & D3DLOCK_READONLY))
+        m_writeableSubresources[Face] |= (1u << MipLevel);
     }
 
-    bool IsReadOnlyLock(UINT Face, UINT MipLevel) {
-      const uint16_t mipBit = 1u << MipLevel;
-
-      return m_readOnlySubresources[Face] & mipBit;
+    inline bool IsWriteLock(UINT Face, UINT MipLevel) {
+      return m_writeableSubresources[Face] & (1u << MipLevel);
     }
 
-    bool MarkSubresourceUnmapped(UINT Face, UINT MipLevel) {
-      const uint16_t mipBit = 1u << MipLevel;
-
-      if (!(m_readOnlySubresources[Face] & mipBit))
-        m_unmappedSubresources[Face] |= mipBit;
-
-      m_readOnlySubresources[Face] &= ~mipBit;
-
-      return m_mappedSubresources == m_unmappedSubresources;
+    inline void MarkSubresourceUnmapped(UINT Face, UINT MipLevel) {
+      m_writeableSubresources[Face] &= ~(1u << MipLevel);
     }
 
-    std::array<uint16_t, 6> DiscardSubresourceMasking() {
-      std::array<uint16_t, 6> copy = m_mappedSubresources;
-
-      for (uint32_t i = 0; i < m_mappedSubresources.size(); i++) {
-        m_mappedSubresources.at(i) = 0;
-        m_unmappedSubresources.at(i) = 0;
-      }
-
-      return copy;
-    }
-
-    UINT CalcSubresource(UINT Face, UINT MipLevel) const {
+    inline UINT CalcSubresource(UINT Face, UINT MipLevel) const {
       return Face * m_desc.MipLevels + MipLevel;
     }
 
@@ -307,9 +284,7 @@ namespace dxvk {
 
     std::array<Rc<DxvkImageView>, 6>  m_depthStencilView;
 
-    std::array<uint16_t, 6>           m_mappedSubresources   = { 0 };
-    std::array<uint16_t, 6>           m_unmappedSubresources = { 0 };
-    std::array<uint16_t, 6>           m_readOnlySubresources = { 0 };
+    std::array<uint16_t, 6>           m_writeableSubresources = { 0 };
 
     bool                              m_shadow               = false;
 

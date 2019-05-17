@@ -669,7 +669,7 @@ namespace dxvk {
         cExtent);
     });
 
-    dst->GetCommonTexture()->GenerateMipSubLevels();
+    dstTextureInfo->GenerateMipSubLevels();
 
     return D3D_OK;
   }
@@ -3323,16 +3323,16 @@ namespace dxvk {
         UINT                    MipLevel) {
     auto lock = LockDevice();
 
-    bool readOnly      = pResource->IsReadOnlyLock(Face, MipLevel);
+    bool write   = pResource->IsWriteLock(Face, MipLevel);
 
-    bool fullyUnlocked = pResource->MarkSubresourceUnmapped(Face, MipLevel);
+    pResource->MarkSubresourceUnmapped(Face, MipLevel);
 
     bool managed = pResource->Desc()->Pool == D3DPOOL_MANAGED;
     bool evict   = !managed || m_d3d9Options.evictManagedOnUnlock;
 
     // Do we have a pending copy?
     if (pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BUFFER) {
-      if (!readOnly) {
+      if (write) {
         // Do we need to do some fixup before copying to image?
         if (pResource->RequiresFixup())
           FixupFormat(pResource, Face, MipLevel);
@@ -3344,8 +3344,7 @@ namespace dxvk {
         pResource->DeallocMappingBuffer(pResource->CalcSubresource(Face, MipLevel));
     }
 
-    if (fullyUnlocked)
-      pResource->GenerateMipSubLevels();
+    pResource->GenerateMipSubLevels();
 
     return D3D_OK;
   }
@@ -3354,8 +3353,6 @@ namespace dxvk {
         D3D9CommonTexture*      pResource,
         UINT                    Face,
         UINT                    MipLevel) {
-    auto dirtySubresources = pResource->DiscardSubresourceMasking();
-
     const Rc<DxvkImage>  mappedImage = pResource->GetImage();
     const uint32_t       mipLevels   = mappedImage->info().mipLevels;
 
