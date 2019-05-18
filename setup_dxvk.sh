@@ -103,7 +103,7 @@ installFile() {
   fi
 
   if [ -n "$1" ]; then
-    if [ -f "${dstfile}" ]; then
+    if [ -f "${dstfile}" ] || [ -h "${dstfile}" ]; then
       if ! [ -f "${dstfile}.old" ]; then
         mv "${dstfile}" "${dstfile}.old"
       else
@@ -132,7 +132,7 @@ uninstallFile() {
     return 1
   fi
 
-  if ! [ -f "${dstfile}" ];then
+  if ! [ -f "${dstfile}" ] && ! [ -h "${dstfile}" ]; then
     echo "${dstfile}: File not found. Skipping." >&2
     return 1
   fi
