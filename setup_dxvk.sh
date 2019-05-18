@@ -50,6 +50,7 @@ if [ -z "$wine" ]; then
 fi
 
 wine64="${wine}64"
+wineboot="${wine}boot"
 
 # resolve 32-bit and 64-bit system32 path
 winever=`$wine --version | grep wine`
@@ -57,6 +58,10 @@ if [ -z "$winever" ]; then
     echo "$wine:"' Not a wine executable. Check your $wine.' >&2
     exit 1
 fi
+
+# ensure wine placeholder dlls are recreated
+# if they are missing
+$wineboot -u
 
 win32_sys_path=$($wine winepath -u 'C:\windows\system32' 2> /dev/null)
 win64_sys_path=$($wine64 winepath -u 'C:\windows\system32' 2> /dev/null)
@@ -91,12 +96,12 @@ installFile() {
   if [ -f "${srcfile}.so" ]; then
     srcfile="${srcfile}.so"
   fi
-  
+
   if ! [ -f "${srcfile}" ]; then
-    echo "${srcfile}: File not found" >&2
-    exit 1
+    echo "${srcfile}: File not found. Skipping." >&2
+    return 1
   fi
-  
+
   if [ -n "$1" ]; then
     if [ -f "${dstfile}" ]; then
       if ! [ -f "${dstfile}.old" ]; then
@@ -107,31 +112,58 @@ installFile() {
       $file_cmd "${srcfile}" "${dstfile}"
     else
       echo "${dstfile}: File not found in wine prefix" >&2
-      exit 1
+      return 1
     fi
   fi
+  return 0
 }
 
 # remove dxvk dll, restore original file
 uninstallFile() {
-  dstfile="${1}/${2}.dll"
-  
+  dstfile="${1}/${3}.dll"
+  srcfile="${basedir}/${2}/${3}.dll"
+
+  if [ -f "${srcfile}.so" ]; then
+    srcfile="${srcfile}.so"
+  fi
+
+  if ! [ -f "${srcfile}" ]; then
+    echo "${srcfile}: File not found. Skipping." >&2
+    return 1
+  fi
+
+  if ! [ -f "${dstfile}" ];then
+    echo "${dstfile}: File not found. Skipping." >&2
+    return 1
+  fi
+
   if [ -f "${dstfile}.old" ]; then
     rm "${dstfile}"
     mv "${dstfile}.old" "${dstfile}"
+    return 0
+  else
+    return 1
   fi
 }
 
 install() {
   installFile "$win32_sys_path" "x32" "$1"
+  inst32_ret="$?"
   installFile "$win64_sys_path" "x64" "$1"
-  overrideDll "$1"
+  inst64_ret="$?"
+  if [ "$inst32_ret" -eq 0 ] || [ "$inst64_ret" -eq 0 ]; then
+    overrideDll "$1"
+  fi
 }
 
 uninstall() {
-  uninstallFile "$win32_sys_path" "$1"
-  uninstallFile "$win64_sys_path" "$1"
-  restoreDll "$1"
+  uninstallFile "$win32_sys_path" "x32" "$1"
+  uninst32_ret="$?"
+  uninstallFile "$win64_sys_path" "x64" "$1"
+  uninst64_ret="$?"
+  if [ "$uninst32_ret" -eq 0 ] || [ "$uninst64_ret" -eq 0 ]; then
+    restoreDll "$1"
+  fi
 }
 
 # skip dxgi during install if not explicitly
