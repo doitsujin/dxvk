@@ -101,7 +101,7 @@ namespace dxvk {
     
     Com<D3D11CommandList> CreateCommandList();
     
-    void STDMETHODCALLTYPE EmitCsChunk(DxvkCsChunkRef&& chunk);
+    void EmitCsChunk(DxvkCsChunkRef&& chunk);
 
     static DxvkCsChunkFlags GetCsChunkFlags(
             D3D11Device*                  pDevice);

@@ -393,7 +393,7 @@ namespace dxvk {
             UINT                              NumBuffers,
             ID3D11Buffer* const*              ppConstantBuffers);
     
-    void STDMETHODCALLTYPE GSSetConstantBuffers1(
+    virtual void STDMETHODCALLTYPE GSSetConstantBuffers1(
             UINT                              StartSlot,
             UINT                              NumBuffers,
             ID3D11Buffer* const*              ppConstantBuffers,
@@ -862,7 +862,7 @@ namespace dxvk {
       }
     }
     
-    virtual void STDMETHODCALLTYPE EmitCsChunk(DxvkCsChunkRef&& chunk) = 0;
+    virtual void EmitCsChunk(DxvkCsChunkRef&& chunk) = 0;
     
   };
   
