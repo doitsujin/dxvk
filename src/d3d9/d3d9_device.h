@@ -619,6 +619,10 @@ namespace dxvk {
 
     HWND GetWindow();
 
+    void FlushCursor() {
+      return m_cursor.FlushCursor();
+    }
+
     Rc<DxvkDevice> GetDXVKDevice() {
       return m_dxvkDevice;
     }

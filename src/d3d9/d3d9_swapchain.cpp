@@ -77,6 +77,8 @@ namespace dxvk {
           DWORD    dwFlags) {
     auto lock = m_parent->LockDevice();
 
+    m_parent->FlushCursor();
+
     uint32_t presentInterval = m_presentParams.PresentationInterval;
 
     auto options = m_parent->GetOptions();
