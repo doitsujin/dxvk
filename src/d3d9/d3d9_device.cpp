@@ -67,11 +67,6 @@ namespace dxvk {
     ] (DxvkContext* ctx) {
       ctx->beginRecording(cDevice->createCommandList());
 
-      DxvkMultisampleState msState;
-      msState.sampleMask            = 0xffffffff;
-      msState.enableAlphaToCoverage = VK_FALSE;
-      ctx->setMultisampleState(msState);
-
       DxvkLogicOpState loState;
       loState.enableLogicOp = VK_FALSE;
       loState.logicOp       = VK_LOGIC_OP_CLEAR;
@@ -410,7 +405,7 @@ namespace dxvk {
       if (m_failedAlloc)
         return D3DERR_OUTOFVIDEOMEMORY;
 
-      return D3DERR_INVALIDCALL;
+      return D3DERR_INVALIDCALL; 
     }
   }
 
@@ -1361,6 +1356,44 @@ namespace dxvk {
     bool changed = states[State] != Value;
 
     if (likely(changed)) {
+      const bool oldATOC = IsAlphaToCoverageEnabled();
+
+      // AMD's driver hack for ATOC.
+      if (unlikely(State == D3DRS_POINTSIZE)) {
+        constexpr uint32_t AlphaToCoverageEnable  = MAKEFOURCC('A', '2', 'M', '1');
+        constexpr uint32_t AlphaToCoverageDisable = MAKEFOURCC('A', '2', 'M', '0');
+
+        if (Value == AlphaToCoverageEnable
+         || Value == AlphaToCoverageDisable) {
+          m_amdATOC = Value == AlphaToCoverageEnable;
+
+          bool newATOC = IsAlphaToCoverageEnabled();
+
+          if (oldATOC != newATOC)
+            BindMultiSampleState();
+
+          return D3D_OK;
+        }
+      }
+
+      // NV's driver hack for ATOC.
+      if (unlikely(State == D3DRS_ADAPTIVETESS_Y)) {
+        constexpr uint32_t AlphaToCoverageEnable  = MAKEFOURCC('A', 'T', 'O', 'C');
+        constexpr uint32_t AlphaToCoverageDisable = 0;
+
+        if (Value == AlphaToCoverageEnable
+         || Value == AlphaToCoverageDisable) {
+          m_nvATOC = Value == AlphaToCoverageEnable;
+
+          bool newATOC = IsAlphaToCoverageEnabled();
+          
+          if (oldATOC != newATOC)
+            BindMultiSampleState();
+
+          return D3D_OK;
+        }
+      }
+
       states[State] = Value;
 
       switch (State) {
@@ -1379,7 +1412,12 @@ namespace dxvk {
           m_flags.set(D3D9DeviceFlag::DirtyBlendState);
           break;
         
-        case D3DRS_ALPHATESTENABLE:
+        case D3DRS_ALPHATESTENABLE: {
+          bool newATOC = IsAlphaToCoverageEnabled();
+
+          if (oldATOC != newATOC)
+            BindMultiSampleState();
+        }
         case D3DRS_ALPHAFUNC:
           m_flags.set(D3D9DeviceFlag::DirtyAlphaTestState);
           break;
@@ -3874,8 +3912,8 @@ namespace dxvk {
     DxvkMultisampleState msState;
     msState.sampleMask            = m_flags.test(D3D9DeviceFlag::ValidSampleMask)
       ? m_state.renderStates[D3DRS_MULTISAMPLEMASK]
-      : 0xffffffff;    
-    msState.enableAlphaToCoverage = false;
+      : 0xffffffff;
+    msState.enableAlphaToCoverage = IsAlphaToCoverageEnabled();
 
     EmitCs([
       cState = msState
