@@ -982,7 +982,7 @@ namespace dxvk {
         if (validSampleMask)
           m_flags.set(D3D9DeviceFlag::ValidSampleMask);
 
-        BindMultiSampleState();
+        m_flags.set(D3D9DeviceFlag::DirtyMultiSampleState);
       }
 
       D3DVIEWPORT9 viewport;
@@ -1370,7 +1370,7 @@ namespace dxvk {
           bool newATOC = IsAlphaToCoverageEnabled();
 
           if (oldATOC != newATOC)
-            BindMultiSampleState();
+            m_flags.set(D3D9DeviceFlag::DirtyMultiSampleState);
 
           return D3D_OK;
         }
@@ -1388,7 +1388,7 @@ namespace dxvk {
           bool newATOC = IsAlphaToCoverageEnabled();
           
           if (oldATOC != newATOC)
-            BindMultiSampleState();
+            m_flags.set(D3D9DeviceFlag::DirtyMultiSampleState);
 
           return D3D_OK;
         }
@@ -1416,7 +1416,7 @@ namespace dxvk {
           bool newATOC = IsAlphaToCoverageEnabled();
 
           if (oldATOC != newATOC)
-            BindMultiSampleState();
+            m_flags.set(D3D9DeviceFlag::DirtyMultiSampleState);
         }
         case D3DRS_ALPHAFUNC:
           m_flags.set(D3D9DeviceFlag::DirtyAlphaTestState);
@@ -1428,7 +1428,7 @@ namespace dxvk {
 
         case D3DRS_MULTISAMPLEMASK:
           if (m_flags.test(D3D9DeviceFlag::ValidSampleMask))
-            BindMultiSampleState();
+            m_flags.set(D3D9DeviceFlag::DirtyMultiSampleState);
           break;
 
         case D3DRS_ZENABLE:
@@ -3909,6 +3909,8 @@ namespace dxvk {
   }
 
   void D3D9DeviceEx::BindMultiSampleState() {
+    m_flags.clr(D3D9DeviceFlag::DirtyMultiSampleState);
+
     DxvkMultisampleState msState;
     msState.sampleMask            = m_flags.test(D3D9DeviceFlag::ValidSampleMask)
       ? m_state.renderStates[D3DRS_MULTISAMPLEMASK]
@@ -4233,6 +4235,9 @@ namespace dxvk {
     if (m_flags.test(D3D9DeviceFlag::DirtyRasterizerState))
       BindRasterizerState();
     
+    if (m_flags.test(D3D9DeviceFlag::DirtyMultiSampleState))
+      BindMultiSampleState();
+
     if (m_flags.test(D3D9DeviceFlag::DirtyAlphaTestState))
       BindAlphaTestState();
     
