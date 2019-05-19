@@ -1,6 +1,7 @@
 #include "d3d9_cursor.h"
 
 #include <windows.h>
+#include <utility>
 
 namespace dxvk {
 
@@ -22,6 +23,10 @@ namespace dxvk {
     ::SetCursorPos(m_pendingX, m_pendingY);
 
     m_updatePending = false;
+  }
+
+  BOOL D3D9Cursor::ShowCursor(BOOL bShow) {
+    return std::exchange(m_updatePending, bShow);
   }
 
 }

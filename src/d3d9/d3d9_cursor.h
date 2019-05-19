@@ -12,11 +12,15 @@ namespace dxvk {
 
     void FlushCursor();
 
+    BOOL ShowCursor(BOOL bShow);
+
   private:
 
     bool m_updatePending;
-    int m_pendingX;
-    int m_pendingY;
+    int  m_pendingX;
+    int  m_pendingY;
+
+    BOOL m_visible;
 
   };
 

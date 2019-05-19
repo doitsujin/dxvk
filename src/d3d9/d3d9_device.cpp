@@ -203,12 +203,10 @@ namespace dxvk {
   }
 
   BOOL    STDMETHODCALLTYPE D3D9DeviceEx::ShowCursor(BOOL bShow) {
-    // Ok so if they call FALSE here it means they want to use the regular windows cursor.
-    // if they call TRUE here it means they want to use some weird bitmap cursor that I currently dont care about.
-    // Therefore we always want to show the regular cursor no matter what!
-    ::ShowCursor(true);
+    // This should be a no-op until the application gives us a cursor to set.
+    // Which we currently do not support.
 
-    return TRUE;
+    return m_cursor.ShowCursor(bShow);
   }
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::CreateAdditionalSwapChain(
