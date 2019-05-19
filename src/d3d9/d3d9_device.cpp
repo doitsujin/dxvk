@@ -2771,6 +2771,9 @@ namespace dxvk {
     rs[D3DRS_ALPHAFUNC]           = D3DCMP_ALWAYS;
     BindAlphaTestState();
 
+    rs[D3DRS_MULTISAMPLEMASK]     = 0xffffffff;
+    BindMultiSampleState();
+
     SetRenderState(D3DRS_SHADEMODE, D3DSHADE_GOURAUD);
     SetRenderState(D3DRS_LASTPIXEL, TRUE);
     SetRenderState(D3DRS_DITHERENABLE, FALSE);
@@ -2813,7 +2816,6 @@ namespace dxvk {
     SetRenderState(D3DRS_POINTSCALE_B, bit::cast<DWORD>(0.0f));
     SetRenderState(D3DRS_POINTSCALE_C, bit::cast<DWORD>(0.0f));
     SetRenderState(D3DRS_MULTISAMPLEANTIALIAS, TRUE);
-    SetRenderState(D3DRS_MULTISAMPLEMASK, 0xFFFFFFFF);
     SetRenderState(D3DRS_PATCHEDGESTYLE, D3DPATCHEDGE_DISCRETE);
     SetRenderState(D3DRS_DEBUGMONITORTOKEN, D3DDMT_ENABLE);
     SetRenderState(D3DRS_POINTSIZE_MAX, bit::cast<DWORD>(64.0f));
