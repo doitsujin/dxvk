@@ -203,6 +203,8 @@ namespace dxvk {
   }
 
   BOOL    STDMETHODCALLTYPE D3D9DeviceEx::ShowCursor(BOOL bShow) {
+    auto lock = LockDevice();
+
     // This should be a no-op until the application gives us a cursor to set.
     // Which we currently do not support.
 
