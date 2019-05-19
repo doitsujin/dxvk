@@ -393,7 +393,7 @@ namespace dxvk {
             UINT                              NumBuffers,
             ID3D11Buffer* const*              ppConstantBuffers);
     
-    virtual void STDMETHODCALLTYPE GSSetConstantBuffers1(
+    void STDMETHODCALLTYPE GSSetConstantBuffers1(
             UINT                              StartSlot,
             UINT                              NumBuffers,
             ID3D11Buffer* const*              ppConstantBuffers,
