@@ -84,7 +84,7 @@ namespace dxvk {
     }
 
     SubresourceType* GetSubresource(UINT Subresource) {
-      if (Subresource >= m_subresources.size())
+      if (unlikely(Subresource >= m_subresources.size()))
         return nullptr;
 
       return reinterpret_cast<SubresourceType*>(&m_subresources[Subresource]);
