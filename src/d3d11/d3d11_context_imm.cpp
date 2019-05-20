@@ -332,21 +332,21 @@ namespace dxvk {
           UINT                        MapFlags,
           D3D11_MAPPED_SUBRESOURCE*   pMappedResource) {
     const Rc<DxvkImage>  mappedImage  = pResource->GetImage();
-    const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer();
+    const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer(Subresource);
     
     if (unlikely(pResource->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_NONE)) {
       Logger::err("D3D11: Cannot map a device-local image");
       return E_INVALIDARG;
     }
 
+    pResource->SetMapType(Subresource, MapType);
+
     VkFormat packedFormat = m_parent->LookupPackedFormat(
       pResource->Desc()->Format, pResource->GetFormatMode()).Format;
     
     auto formatInfo = imageFormatInfo(packedFormat);
     auto subresource = pResource->GetSubresourceFromIndex(
-        formatInfo->aspectMask, Subresource);
-    
-    pResource->SetMappedSubresource(subresource, MapType);
+      formatInfo->aspectMask, Subresource);
     
     if (pResource->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_DIRECT) {
       const VkImageType imageType = mappedImage->info().type;
@@ -408,17 +408,26 @@ namespace dxvk {
   void D3D11ImmediateContext::UnmapImage(
           D3D11CommonTexture*         pResource,
           UINT                        Subresource) {
-    if (pResource->GetMapType() == D3D11_MAP_READ)
+    D3D11_MAP mapType = pResource->GetMapType(Subresource);
+    pResource->SetMapType(Subresource, D3D11_MAP(~0u));
+
+    if (mapType == D3D11_MAP(~0u)
+     || mapType == D3D11_MAP_READ)
       return;
     
     if (pResource->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER) {
       // Now that data has been written into the buffer,
       // we need to copy its contents into the image
       const Rc<DxvkImage>  mappedImage  = pResource->GetImage();
-      const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer();
-      
-      VkImageSubresource subresource = pResource->GetMappedSubresource();
-      
+      const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappedBuffer(Subresource);
+
+      VkFormat packedFormat = m_parent->LookupPackedFormat(
+        pResource->Desc()->Format, pResource->GetFormatMode()).Format;
+
+      auto formatInfo = imageFormatInfo(packedFormat);
+      auto subresource = pResource->GetSubresourceFromIndex(
+        formatInfo->aspectMask, Subresource);
+
       VkExtent3D levelExtent = mappedImage
         ->mipLevelExtent(subresource.mipLevel);
       
@@ -447,8 +456,6 @@ namespace dxvk {
         }
       });
     }
-    
-    pResource->ClearMappedSubresource();
   }
   
   

@@ -164,8 +164,14 @@ namespace dxvk {
     }
     
     // If necessary, create the mapped linear buffer
-    if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER)
-      m_buffer = CreateMappedBuffer();
+    for (uint32_t i = 0; i < m_desc.ArraySize; i++) {
+      for (uint32_t j = 0; j < m_desc.MipLevels; j++) {
+        if (m_mapMode == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER)
+          m_buffers.push_back(CreateMappedBuffer(j));
+        if (m_mapMode != D3D11_COMMON_TEXTURE_MAP_MODE_NONE)
+          m_mapTypes.push_back(D3D11_MAP(~0u));
+      }
+    }
     
     // Create the image on a host-visible memory type
     // in case it is going to be mapped directly.
@@ -404,13 +410,16 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkBuffer> D3D11CommonTexture::CreateMappedBuffer() const {
+  Rc<DxvkBuffer> D3D11CommonTexture::CreateMappedBuffer(UINT MipLevel) const {
     const DxvkFormatInfo* formatInfo = imageFormatInfo(
       m_device->LookupPackedFormat(m_desc.Format, GetFormatMode()).Format);
     
-    const VkExtent3D blockCount = util::computeBlockCount(
+    const VkExtent3D mipExtent = util::computeMipLevelExtent(
       VkExtent3D { m_desc.Width, m_desc.Height, m_desc.Depth },
-      formatInfo->blockSize);
+      MipLevel);
+    
+    const VkExtent3D blockCount = util::computeBlockCount(
+      mipExtent, formatInfo->blockSize);
     
     DxvkBufferCreateInfo info;
     info.size   = formatInfo->elementSize

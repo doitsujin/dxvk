@@ -3686,8 +3686,12 @@ namespace dxvk {
   void D3D11DeviceContext::UpdateMappedBuffer(
     const D3D11CommonTexture*               pTexture,
           VkImageSubresource                Subresource) {
+    UINT SubresourceIndex = D3D11CalcSubresource(
+      Subresource.mipLevel, Subresource.arrayLayer,
+      pTexture->Desc()->MipLevels);
+
     Rc<DxvkImage>  mappedImage  = pTexture->GetImage();
-    Rc<DxvkBuffer> mappedBuffer = pTexture->GetMappedBuffer();
+    Rc<DxvkBuffer> mappedBuffer = pTexture->GetMappedBuffer(SubresourceIndex);
 
     VkFormat packedFormat = m_parent->LookupPackedFormat(
       pTexture->Desc()->Format, pTexture->GetFormatMode()).Format;
