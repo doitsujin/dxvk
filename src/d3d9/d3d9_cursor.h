@@ -1,5 +1,7 @@
 #pragma once
 
+#include "d3d9_include.h"
+
 namespace dxvk {
 
   class D3D9Cursor {

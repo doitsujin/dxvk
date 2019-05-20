@@ -1,6 +1,5 @@
 #include "d3d9_cursor.h"
 
-#include <windows.h>
 #include <utility>
 
 namespace dxvk {
