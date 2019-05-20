@@ -11,9 +11,6 @@
 
 namespace dxvk {
 
-  extern std::mutex g_managedTextureMutex;
-  extern std::list<IDirect3DBaseTexture9*> g_managedTextures;
-
   template <typename SubresourceType, typename... Base>
   class D3D9BaseTexture : public D3D9Resource<Base...> {
 
