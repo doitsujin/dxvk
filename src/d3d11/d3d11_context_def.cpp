@@ -214,6 +214,9 @@ namespace dxvk {
       Logger::err("D3D11: Cannot map a device-local image");
       return E_INVALIDARG;
     }
+
+    if (unlikely(Subresource >= pTexture->CountSubresources()))
+      return E_INVALIDARG;
     
     VkFormat packedFormat = m_parent->LookupPackedFormat(
       pTexture->Desc()->Format, pTexture->GetFormatMode()).Format;

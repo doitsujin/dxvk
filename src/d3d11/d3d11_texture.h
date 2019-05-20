@@ -74,6 +74,14 @@ namespace dxvk {
     const D3D11_COMMON_TEXTURE_DESC* Desc() const {
       return &m_desc;
     }
+
+    /**
+     * \brief Counts number of subresources
+     * \returns Number of subresources
+     */
+    UINT CountSubresources() const {
+      return m_desc.ArraySize * m_desc.MipLevels;
+    }
     
     /**
      * \brief Map mode

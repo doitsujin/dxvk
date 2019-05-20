@@ -339,6 +339,9 @@ namespace dxvk {
       return E_INVALIDARG;
     }
 
+    if (unlikely(Subresource >= pResource->CountSubresources()))
+      return E_INVALIDARG;
+
     pResource->SetMapType(Subresource, MapType);
 
     VkFormat packedFormat = m_parent->LookupPackedFormat(
