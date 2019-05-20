@@ -320,10 +320,11 @@ namespace dxvk {
       VkImageUsageFlags         Usage);
 
     Rc<DxvkImageView> CreateView(
-      int32_t           Index,
-      VkImageUsageFlags UsageFlags,
-      bool              srgb,
-      UINT              Lod);
+      D3D9_VK_FORMAT_MAPPING FormatInfo,
+      int32_t                Index,
+      VkImageUsageFlags      UsageFlags,
+      bool                   Srgb,
+      UINT                   Lod);
 
   };
 

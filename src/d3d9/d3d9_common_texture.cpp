@@ -602,15 +602,14 @@ namespace dxvk {
   }
 
   Rc<DxvkImageView> D3D9CommonTexture::CreateView(
-    int32_t           Index,
-    VkImageUsageFlags UsageFlags,
-    bool              srgb,
-    UINT              Lod) {
-    const D3D9_VK_FORMAT_MAPPING formatInfo = m_device->LookupFormat(m_desc.Format);
-
+          D3D9_VK_FORMAT_MAPPING FormatInfo,
+          int32_t                Index,
+          VkImageUsageFlags      UsageFlags,
+          bool                   Srgb,
+          UINT                   Lod) {
     DxvkImageViewCreateInfo viewInfo;
-    viewInfo.format  = PickSRGB(formatInfo.Format, formatInfo.FormatSrgb, srgb);
-    viewInfo.aspect  = formatInfo.Aspect;
+    viewInfo.format  = PickSRGB(FormatInfo.Format, FormatInfo.FormatSrgb, Srgb);
+    viewInfo.aspect  = FormatInfo.Aspect;
     viewInfo.usage   = UsageFlags;
 
     // Remove the stencil aspect if we are trying to create an image view of a depth stencil format 
@@ -620,7 +619,7 @@ namespace dxvk {
     }
 
     if (!(UsageFlags & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
-      viewInfo.swizzle = formatInfo.Swizzle;
+      viewInfo.swizzle = FormatInfo.Swizzle;
       // Shaders expect the stencil value in the G component
       if (viewInfo.aspect == VK_IMAGE_ASPECT_STENCIL_BIT) {
         viewInfo.swizzle = VkComponentMapping{
@@ -644,34 +643,49 @@ namespace dxvk {
   }
 
   void D3D9CommonTexture::RecreateImageViews(UINT Lod) {
-    // TODO: Signal to device that this resource is dirty and needs to be rebound.
+    const D3D9_VK_FORMAT_MAPPING formatInfo = m_device->LookupFormat(m_desc.Format);
 
-    m_imageView     = CreateView(-1, VK_IMAGE_USAGE_SAMPLED_BIT, false, Lod);
-    m_imageViewSrgb = CreateView(-1, VK_IMAGE_USAGE_SAMPLED_BIT, true, Lod);
+    m_imageView       = CreateView(formatInfo, -1, VK_IMAGE_USAGE_SAMPLED_BIT, false, Lod);
+
+    if (formatInfo.FormatSrgb != VK_FORMAT_UNDEFINED)
+      m_imageViewSrgb = CreateView(formatInfo, -1, VK_IMAGE_USAGE_SAMPLED_BIT, true, Lod);
+    else
+      m_imageViewSrgb = m_imageView;
 
     uint32_t layerCount = GetLayerCount();
     for (uint32_t i = 0; i < layerCount; i++) {
-      m_imageViewFaces[i]     = CreateView(i, VK_IMAGE_USAGE_SAMPLED_BIT, false, Lod);
-      m_imageViewSrgbFaces[i] = CreateView(i, VK_IMAGE_USAGE_SAMPLED_BIT, true, Lod);
+      m_imageViewFaces[i]       = CreateView(formatInfo, i, VK_IMAGE_USAGE_SAMPLED_BIT, false, Lod);
+
+      if (formatInfo.FormatSrgb != VK_FORMAT_UNDEFINED)
+        m_imageViewSrgbFaces[i] = CreateView(formatInfo, i, VK_IMAGE_USAGE_SAMPLED_BIT, true, Lod);
+      else
+        m_imageViewSrgbFaces[i] = m_imageViewFaces[i];
     }
   }
 
   void D3D9CommonTexture::CreateDepthStencilViews() {
+    const D3D9_VK_FORMAT_MAPPING formatInfo = m_device->LookupFormat(m_desc.Format);
+
     uint32_t layerCount = GetLayerCount();
 
     for (uint32_t i = 0; i < layerCount; i++)
-      m_depthStencilView[i] = CreateView(i, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, false, 0);
+      m_depthStencilView[i] = CreateView(formatInfo, i, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, false, 0);
   }
 
   void D3D9CommonTexture::CreateRenderTargetViews() {
+    const D3D9_VK_FORMAT_MAPPING formatInfo = m_device->LookupFormat(m_desc.Format);
+
     uint32_t layerCount = GetLayerCount();
 
     for (uint32_t i = 0; i < layerCount; i++) {
-      m_renderTargetView[i]     = CreateView(i, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, false, 0);
-      m_renderTargetViewSrgb[i] = CreateView(i, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, true, 0);
+      m_renderTargetView[i]       = CreateView(formatInfo, i, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, false, 0);
+      if (formatInfo.FormatSrgb != VK_FORMAT_UNDEFINED)
+        m_renderTargetViewSrgb[i] = CreateView(formatInfo, i, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, true, 0);
+      else
+        m_renderTargetViewSrgb[i] = m_renderTargetView[i];
     }
 
-    m_mipGenView = CreateView(-1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, false, 0);
+    m_mipGenView = CreateView(formatInfo , -1, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, false, 0);
   }
 
 }

@@ -90,10 +90,7 @@ namespace dxvk {
   }
 
   inline VkFormat PickSRGB(VkFormat format, VkFormat srgbFormat, bool srgb) {
-    if (srgbFormat == VK_FORMAT_UNDEFINED || !srgb)
-      return format;
-
-    return srgbFormat;
+    return srgb ? srgbFormat : format;
   }
 
   inline VkShaderStageFlagBits GetShaderStage(DxsoProgramType ProgramType) {
