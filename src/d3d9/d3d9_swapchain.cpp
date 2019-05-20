@@ -81,11 +81,6 @@ namespace dxvk {
 
     uint32_t presentInterval = m_presentParams.PresentationInterval;
 
-    auto options = m_parent->GetOptions();
-
-    if (options->presentInterval >= 0)
-      presentInterval = options->presentInterval;
-
     // This is not true directly in d3d9 to to timing differences that don't matter for us.
     // For our purposes...
     // D3DPRESENT_INTERVAL_DEFAULT (0) == D3DPRESENT_INTERVAL_ONE (1) which means VSYNC.
@@ -93,6 +88,11 @@ namespace dxvk {
 
     if (presentInterval == D3DPRESENT_INTERVAL_IMMEDIATE || (dwFlags & D3DPRESENT_FORCEIMMEDIATE))
       presentInterval = 0;
+
+    auto options = m_parent->GetOptions();
+
+    if (options->presentInterval >= 0)
+      presentInterval = options->presentInterval;
 
     bool vsync  = presentInterval != 0;
 
