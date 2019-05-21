@@ -83,6 +83,7 @@ The `DXVK_HUD` environment variable controls a HUD which can display the framera
 - `gpuload`: Shows estimated GPU load. May be inaccurate.
 - `version`: Shows DXVK version.
 - `api`: Shows the D3D feature level used by the application. Does not work correctly for D3D10 at the moment.
+- `compiler`: Shows shader compiler activity
 
 Additionally, `DXVK_HUD=1` has the same effect as `DXVK_HUD=devinfo,fps`, and `DXVK_HUD=full` enables all available HUD elements.
 
