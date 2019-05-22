@@ -176,8 +176,7 @@ namespace dxvk {
 
   };
 
-  template <typename T>
-  D3D9CommonTexture* GetCommonTexture(T* ptr) {
+  inline D3D9CommonTexture* GetCommonTexture(IDirect3DBaseTexture9* ptr) {
     if (ptr == nullptr)
       return nullptr;
 
@@ -192,8 +191,18 @@ namespace dxvk {
     return nullptr;
   }
 
-  template <typename T>
-  void TextureRefPrivate(T* tex, bool AddRef) {
+  inline D3D9CommonTexture* GetCommonTexture(D3D9Surface* ptr) {
+    if (ptr == nullptr)
+      return nullptr;
+
+    return ptr->GetCommonTexture();
+  }
+
+  inline D3D9CommonTexture* GetCommonTexture(IDirect3DSurface9* ptr) {
+    return GetCommonTexture(static_cast<D3D9Surface*>(ptr));
+  }
+
+  inline void TextureRefPrivate(IDirect3DBaseTexture9* tex, bool AddRef) {
     if (tex == nullptr)
       return;
 
@@ -206,8 +215,7 @@ namespace dxvk {
     }
   }
 
-  template <typename T>
-  void TextureChangePrivate(T*& dst, T* src) {
+  inline void TextureChangePrivate(IDirect3DBaseTexture9*& dst, IDirect3DBaseTexture9* src) {
     TextureRefPrivate(dst, false);
     TextureRefPrivate(src, true);
     dst = src;
