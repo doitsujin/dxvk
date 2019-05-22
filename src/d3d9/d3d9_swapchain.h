@@ -119,6 +119,7 @@ namespace dxvk {
     DxvkBlendMode           m_blendMode;
 
     D3D9Surface*            m_backBuffer = nullptr;
+    VkExtent2D              m_presentExtent;
 
     std::vector<Rc<DxvkImageView>> m_imageViews;
 
@@ -180,6 +181,8 @@ namespace dxvk {
       const D3DDISPLAYMODEEX*       pFullscreenDisplayMode);
     
     HRESULT RestoreDisplayMode(HMONITOR hMonitor);
+
+    bool    UpdatePresentExtent(const RECT* pSourceRect);
 
   };
 
