@@ -790,9 +790,7 @@ namespace dxvk {
     bool ChangeReportedMemory(int64_t delta) {
       m_availableMemory += delta;
 
-      bool success = m_availableMemory > 0;
-      m_failedAlloc = !success;
-      return success;
+      return m_availableMemory > 0;
     }
 
     void ResolveZ();
@@ -892,7 +890,6 @@ namespace dxvk {
     uint32_t                        m_streamUsageMask = 0;
     uint32_t                        m_instancedData   = 0;
 
-    std::atomic<bool>               m_failedAlloc     = false;
     std::atomic<int64_t>            m_availableMemory = 0;
 
     bool                            m_amdATOC         = false;

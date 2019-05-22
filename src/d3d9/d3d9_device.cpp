@@ -352,11 +352,7 @@ namespace dxvk {
     }
     catch (const DxvkError& e) {
       Logger::err(e.message());
-
-      if (m_failedAlloc)
-        return D3DERR_OUTOFVIDEOMEMORY;
-
-      return D3DERR_INVALIDCALL;
+      return D3DERR_OUTOFVIDEOMEMORY;
     }
   }
 
@@ -401,11 +397,7 @@ namespace dxvk {
     }
     catch (const DxvkError& e) {
       Logger::err(e.message());
-
-      if (m_failedAlloc)
-        return D3DERR_OUTOFVIDEOMEMORY;
-
-      return D3DERR_INVALIDCALL; 
+      return D3DERR_OUTOFVIDEOMEMORY;
     }
   }
 
@@ -448,11 +440,7 @@ namespace dxvk {
     }
     catch (const DxvkError& e) {
       Logger::err(e.message());
-
-      if (m_failedAlloc)
-        return D3DERR_OUTOFVIDEOMEMORY;
-
-      return D3DERR_INVALIDCALL;
+      return D3DERR_OUTOFVIDEOMEMORY;
     }
   }
 
@@ -2590,11 +2578,7 @@ namespace dxvk {
     }
     catch (const DxvkError& e) {
       Logger::err(e.message());
-
-      if (m_failedAlloc)
-        return D3DERR_OUTOFVIDEOMEMORY;
-
-      return D3DERR_INVALIDCALL;
+      return D3DERR_OUTOFVIDEOMEMORY;
     }
   }
 
@@ -2637,11 +2621,7 @@ namespace dxvk {
     }
     catch (const DxvkError& e) {
       Logger::err(e.message());
-
-      if (m_failedAlloc)
-        return D3DERR_OUTOFVIDEOMEMORY;
-
-      return D3DERR_INVALIDCALL;
+      return D3DERR_OUTOFVIDEOMEMORY;
     }
   }
 
@@ -2686,11 +2666,7 @@ namespace dxvk {
     }
     catch (const DxvkError& e) {
       Logger::err(e.message());
-
-      if (m_failedAlloc)
-        return D3DERR_OUTOFVIDEOMEMORY;
-
-      return D3DERR_INVALIDCALL;
+      return D3DERR_OUTOFVIDEOMEMORY;
     }
   }
 
