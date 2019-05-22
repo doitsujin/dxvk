@@ -1007,10 +1007,15 @@ namespace dxvk {
       devMode.dmPelsWidth, "x", devMode.dmPelsHeight, "@",
       devMode.dmDisplayFrequency));
     
-    LONG status = ::ChangeDisplaySettingsExW(
-      monInfo.szDevice, &devMode, nullptr, CDS_FULLSCREEN, nullptr);
-    
-    return status == DISP_CHANGE_SUCCESSFUL ? D3D_OK : D3DERR_NOTAVAILABLE;
+    D3DDISPLAYMODEEX mode;
+    mode.Width            = devMode.dmPelsWidth;
+    mode.Height           = devMode.dmPelsHeight;
+    mode.RefreshRate      = devMode.dmDisplayFrequency;
+    mode.Format           = D3DFMT_X8R8G8B8; // Fix me
+    mode.ScanLineOrdering = D3DSCANLINEORDERING_PROGRESSIVE;
+    mode.Size             = sizeof(D3DDISPLAYMODEEX);
+
+    return SetMonitorDisplayMode(GetDefaultMonitor(), &mode);
   }
 
   bool    D3D9SwapChainEx::UpdatePresentExtent(const RECT* pSourceRect) {
