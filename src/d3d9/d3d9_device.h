@@ -795,6 +795,8 @@ namespace dxvk {
       return success;
     }
 
+    void ResolveZ();
+
   private:
 
     D3D9DeviceFlags                 m_flags;

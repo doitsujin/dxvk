@@ -92,6 +92,7 @@ namespace dxvk {
     ATOC = MAKEFOURCC('A', 'T', 'O', 'C'),
     INTZ = MAKEFOURCC('I', 'N', 'T', 'Z'),
     RAWZ = MAKEFOURCC('R', 'A', 'W', 'Z'),
+    RESZ = MAKEFOURCC('R', 'E', 'S', 'Z'),
   };
 
   inline D3D9Format EnumerateFormat(D3DFORMAT format) {
