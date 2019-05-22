@@ -577,8 +577,8 @@ namespace dxvk {
     D3D9CommonTexture* srcTextureInfo = src->GetCommonTexture();
     D3D9CommonTexture* dstTextureInfo = dst->GetCommonTexture();
 
-    Rc<DxvkImage> srcImage = src->GetCommonTexture()->GetImage();
-    Rc<DxvkImage> dstImage = dst->GetCommonTexture()->GetImage();
+    Rc<DxvkImage> srcImage = srcTextureInfo->GetImage();
+    Rc<DxvkImage> dstImage = dstTextureInfo->GetImage();
 
     const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(dstImage->info().format);
     const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcImage->info().format);
@@ -775,8 +775,8 @@ namespace dxvk {
     D3D9CommonTexture* dstTextureInfo = dst->GetCommonTexture();
     D3D9CommonTexture* srcTextureInfo = src->GetCommonTexture();
 
-    Rc<DxvkImage> dstImage = dst->GetCommonTexture()->GetImage();
-    Rc<DxvkImage> srcImage = src->GetCommonTexture()->GetImage();
+    Rc<DxvkImage> dstImage = dstTextureInfo->GetImage();
+    Rc<DxvkImage> srcImage = srcTextureInfo->GetImage();
 
     const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(dstImage->info().format);
     const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcImage->info().format);
@@ -888,7 +888,7 @@ namespace dxvk {
     }
     else {
       if (needsBlitResolve) {
-        auto resolveSrc = src->GetCommonTexture()->GetResolveImage();
+        auto resolveSrc = srcTextureInfo->GetResolveImage();
 
         VkImageResolve region;
         region.srcSubresource = blitInfo.srcSubresource;
