@@ -3612,8 +3612,10 @@ namespace dxvk {
     // Disable exceptions
     _controlfp(_MCW_EM, _MCW_EM);
 
+#ifndef _WIN64
     // Use 24 bit precision
     _controlfp(_PC_24, _MCW_PC);
+#endif
 
     // Round to nearest
     _controlfp(_RC_NEAR, _MCW_RC);
