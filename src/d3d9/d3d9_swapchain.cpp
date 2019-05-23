@@ -1027,6 +1027,8 @@ namespace dxvk {
     else
       m_presentExtent = VkExtent2D{ m_presentParams.BackBufferWidth, m_presentParams.BackBufferHeight };
 
+    m_presentExtent   = VkExtent2D{ std::max(m_presentExtent.width, 1u), std::max(m_presentExtent.height, 1u) };
+
     return m_presentExtent != oldExtent;
   }
 
