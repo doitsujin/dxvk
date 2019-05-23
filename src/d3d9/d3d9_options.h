@@ -47,6 +47,9 @@ namespace dxvk {
     /// Back buffer count for the Vulkan swap chain.
     /// Overrides buffer count in present parameters.
     int32_t numBackBuffers;
+
+    /// Defer surface creation
+    bool deferSurfaceCreation;
   };
 
 }

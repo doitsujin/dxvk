@@ -26,7 +26,8 @@ namespace dxvk {
     m_window = m_presentParams.hDeviceWindow;
 
     UpdatePresentExtent(nullptr);
-    CreatePresenter();
+    if (!pDevice->GetOptions()->deferSurfaceCreation)
+      CreatePresenter();
 
     CreateBackBuffer();
     CreateHud();
