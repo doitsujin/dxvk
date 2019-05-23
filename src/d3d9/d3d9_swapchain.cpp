@@ -501,7 +501,7 @@ namespace dxvk {
     presenterDevice.adapter       = m_device->adapter()->handle();
 
     vk::PresenterDesc presenterDesc;
-    presenterDesc.imageExtent     = { m_presentParams.BackBufferWidth, m_presentParams.BackBufferHeight };
+    presenterDesc.imageExtent     = m_presentExtent;
     presenterDesc.imageCount      = PickImageCount(m_presentParams.BackBufferCount + 1);
     presenterDesc.numFormats      = PickFormats(EnumerateFormat(m_presentParams.BackBufferFormat), presenterDesc.formats);
     presenterDesc.numPresentModes = PickPresentModes(false, presenterDesc.presentModes);
