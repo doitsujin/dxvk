@@ -1111,6 +1111,9 @@ namespace dxvk {
     if (!pDstResource)
       return;
     
+    // Filter out invalid copy flags
+    CopyFlags &= D3D11_COPY_NO_OVERWRITE | D3D11_COPY_DISCARD;
+
     // We need a different code path for buffers
     D3D11_RESOURCE_DIMENSION resourceType;
     pDstResource->GetType(&resourceType);
@@ -1118,9 +1121,6 @@ namespace dxvk {
     if (resourceType == D3D11_RESOURCE_DIMENSION_BUFFER) {
       const auto bufferResource = static_cast<D3D11Buffer*>(pDstResource);
       const auto bufferSlice = bufferResource->GetBufferSlice();
-
-      if (CopyFlags & D3D11_COPY_DISCARD)
-        DiscardBuffer(bufferResource);
       
       VkDeviceSize offset = bufferSlice.offset();
       VkDeviceSize size   = bufferSlice.length();
@@ -1130,26 +1130,25 @@ namespace dxvk {
         size   = pDstBox->right - pDstBox->left;
       }
       
-      if (offset + size > bufferSlice.length()) {
-        Logger::err(str::format(
-          "D3D11: UpdateSubresource: Buffer update range out of bounds",
-          "\n  Dst slice offset: ", bufferSlice.offset(),
-          "\n  Dst slice length: ", bufferSlice.length(),
-          "\n  Src slice offset: ", offset,
-          "\n  Src slice length: ", size));
+      if (!size || offset + size > bufferSlice.length())
         return;
-      }
+
+      bool useMap = (bufferSlice.buffer()->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+                 && (size == bufferSlice.length() || CopyFlags);
       
-      if (size == 0)
-        return;
-      
-      if (((size == bufferSlice.length())
-       && (bufferSlice.buffer()->memFlags() & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT))) {
+      if (useMap) {
+        D3D11_MAP mapType = (CopyFlags & D3D11_COPY_NO_OVERWRITE)
+          ? D3D11_MAP_WRITE_NO_OVERWRITE
+          : D3D11_MAP_WRITE_DISCARD;
+
         D3D11_MAPPED_SUBRESOURCE mappedSr;
-        Map(pDstResource, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSr);
-        std::memcpy(mappedSr.pData, pSrcData, size);
+        Map(pDstResource, 0, mapType, 0, &mappedSr);
+        std::memcpy(reinterpret_cast<char*>(mappedSr.pData) + offset, pSrcData, size);
         Unmap(pDstResource, 0);
       } else {
+        if (CopyFlags & D3D11_COPY_DISCARD)
+          DiscardBuffer(bufferResource);
+        
         DxvkDataSlice dataSlice = AllocUpdateBufferSlice(size);
         std::memcpy(dataSlice.ptr(), pSrcData, size);
         
