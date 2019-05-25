@@ -63,10 +63,10 @@ namespace dxvk::caps {
       return D3DERR_NOTAVAILABLE;
 
     auto mapping = ConvertFormatUnfixed(CheckFormat);
-    if (mapping.Format     == VK_FORMAT_UNDEFINED)
+    if (mapping.FormatColor == VK_FORMAT_UNDEFINED)
       return D3DERR_NOTAVAILABLE;
 
-    if (mapping.FormatSrgb == VK_FORMAT_UNDEFINED && srgb)
+    if (mapping.FormatSrgb  == VK_FORMAT_UNDEFINED && srgb)
       return D3DERR_NOTAVAILABLE;
 
     return D3D_OK;
@@ -83,7 +83,7 @@ namespace dxvk::caps {
       return D3DERR_NOTAVAILABLE;
 
     auto mapping = ConvertFormatUnfixed(RenderTargetFormat);
-    if (mapping.Format == VK_FORMAT_UNDEFINED)
+    if (mapping.FormatColor == VK_FORMAT_UNDEFINED)
       return D3DERR_NOTAVAILABLE;
 
     return D3D_OK;
@@ -94,8 +94,8 @@ namespace dxvk::caps {
           D3D9Format DstFormat) {
     auto src = ConvertFormatUnfixed(SrcFormat);
     auto dst = ConvertFormatUnfixed(DstFormat);
-    if (src.Format == VK_FORMAT_UNDEFINED
-     || dst.Format == VK_FORMAT_UNDEFINED)
+    if (src.FormatColor == VK_FORMAT_UNDEFINED
+     || dst.FormatColor == VK_FORMAT_UNDEFINED)
       return D3DERR_NOTAVAILABLE;
 
     return D3D_OK;
@@ -110,7 +110,7 @@ namespace dxvk::caps {
       *pQualityLevels = 1;
 
     auto dst = ConvertFormatUnfixed(SurfaceFormat);
-    if (dst.Format == VK_FORMAT_UNDEFINED)
+    if (dst.FormatColor == VK_FORMAT_UNDEFINED)
       return D3DERR_NOTAVAILABLE;
 
     if (SurfaceFormat == D3D9Format::D32_LOCKABLE

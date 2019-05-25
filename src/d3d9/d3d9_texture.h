@@ -19,14 +19,15 @@ namespace dxvk {
     struct alignas(16) SubresourceData { uint8_t data[sizeof(SubresourceType)]; };
 
     D3D9BaseTexture(
-            D3D9DeviceEx*           pDevice,
-      const D3D9TextureDesc*        pDesc)
+            D3D9DeviceEx*             pDevice,
+      const D3D9_COMMON_TEXTURE_DESC* pDesc,
+            D3DRESOURCETYPE           ResourceType)
       : D3D9Resource<Base...> ( pDevice )
-      , m_texture             ( pDevice, pDesc )
+      , m_texture             ( pDevice, pDesc, ResourceType )
       , m_lod                 ( 0 )
       , m_autogenFilter       ( D3DTEXF_LINEAR ) {
-      const uint32_t arraySlices = m_texture.GetLayerCount();
-      const uint32_t mipLevels   = m_texture.GetMipCount();
+      const uint32_t arraySlices = m_texture.Desc()->ArraySize;
+      const uint32_t mipLevels   = m_texture.Desc()->MipLevels;
 
       m_subresources.resize(arraySlices * mipLevels);
 
@@ -51,7 +52,7 @@ namespace dxvk {
       DWORD oldLod = m_lod;
       m_lod = LODNew;
 
-      m_texture.RecreateImageViews(LODNew);
+      m_texture.RecreateSampledView(LODNew);
       if (this->GetPrivateRefCount() > 0)
         this->m_parent->MarkSamplersDirty();
 
@@ -76,7 +77,8 @@ namespace dxvk {
     }
 
     void STDMETHODCALLTYPE GenerateMipSubLevels() final {
-      m_texture.GenerateMipSubLevels();
+      if (m_texture.IsAutomaticMip())
+        m_parent->GenerateMips(&m_texture);
     }
 
     D3D9CommonTexture* GetCommonTexture() {
@@ -107,8 +109,8 @@ namespace dxvk {
   public:
 
     D3D9Texture2D(
-          D3D9DeviceEx*           pDevice,
-    const D3D9TextureDesc*        pDesc);
+            D3D9DeviceEx*             pDevice,
+      const D3D9_COMMON_TEXTURE_DESC* pDesc);
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
 
@@ -132,8 +134,8 @@ namespace dxvk {
   public:
 
     D3D9Texture3D(
-          D3D9DeviceEx*           pDevice,
-    const D3D9TextureDesc*        pDesc);
+            D3D9DeviceEx*             pDevice,
+      const D3D9_COMMON_TEXTURE_DESC* pDesc);
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
 
@@ -157,8 +159,8 @@ namespace dxvk {
   public:
 
     D3D9TextureCube(
-          D3D9DeviceEx*           pDevice,
-    const D3D9TextureDesc*        pDesc);
+            D3D9DeviceEx*             pDevice,
+      const D3D9_COMMON_TEXTURE_DESC* pDesc);
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
 

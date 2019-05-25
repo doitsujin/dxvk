@@ -500,11 +500,11 @@ namespace dxvk {
           D3D9Format          Format) const {
     D3D9_VK_FORMAT_MAPPING mapping = ConvertFormatUnfixed(Format);
     
-    if (!m_d24s8Support && mapping.Format == VK_FORMAT_D24_UNORM_S8_UINT)
-      mapping.Format = VK_FORMAT_D32_SFLOAT_S8_UINT;
+    if (!m_d24s8Support && mapping.FormatColor == VK_FORMAT_D24_UNORM_S8_UINT)
+      mapping.FormatColor = VK_FORMAT_D32_SFLOAT_S8_UINT;
 
-    if (!m_d16s8Support && mapping.Format == VK_FORMAT_D16_UNORM_S8_UINT)
-      mapping.Format = VK_FORMAT_D32_SFLOAT_S8_UINT;
+    if (!m_d16s8Support && mapping.FormatColor == VK_FORMAT_D16_UNORM_S8_UINT)
+      mapping.FormatColor = VK_FORMAT_D32_SFLOAT_S8_UINT;
 
     return mapping;
   }

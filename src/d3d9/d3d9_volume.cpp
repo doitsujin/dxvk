@@ -4,10 +4,10 @@ namespace dxvk {
 
   D3D9Volume::D3D9Volume(
           D3D9DeviceEx*             pDevice,
-    const D3D9TextureDesc*          pDesc)
+    const D3D9_COMMON_TEXTURE_DESC* pDesc)
     : D3D9VolumeBase(
         pDevice,
-        new D3D9CommonTexture( pDevice, pDesc ),
+        new D3D9CommonTexture( pDevice, pDesc, D3DRTYPE_VOLUMETEXTURE ),
         0, 0,
         pDevice,
         true) { }
@@ -21,8 +21,7 @@ namespace dxvk {
     : D3D9VolumeBase(
         pDevice,
         pTexture,
-        Face,
-        MipLevel,
+        Face, MipLevel,
         pContainer,
         false) { }
 
@@ -63,18 +62,18 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D9Volume::LockBox(D3DLOCKED_BOX* pLockedBox, CONST D3DBOX* pBox, DWORD Flags) {
-    return m_texture->Lock(
-      m_face,
-      m_mipLevel,
+    return m_parent->LockImage(
+      m_texture,
+      m_face, m_mipLevel,
       pLockedBox,
       pBox,
       Flags);
   }
 
   HRESULT STDMETHODCALLTYPE D3D9Volume::UnlockBox() {
-    return m_texture->Unlock(
-      m_face,
-      m_mipLevel);
+    return m_parent->UnlockImage(
+      m_texture,
+      m_face, m_mipLevel);
   }
 
 }

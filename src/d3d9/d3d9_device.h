@@ -680,8 +680,7 @@ namespace dxvk {
 
     HRESULT FlushImage(
             D3D9CommonTexture*      pResource,
-            UINT                    Face,
-            UINT                    MipLevel);
+            UINT                    Subresource);
 
     void GenerateMips(
             D3D9CommonTexture* pResource);

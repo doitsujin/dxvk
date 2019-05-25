@@ -578,18 +578,17 @@ namespace dxvk {
     m_backBuffer        = nullptr;
 
     // Create new back buffer
-    D3D9TextureDesc desc;
+    D3D9_COMMON_TEXTURE_DESC desc;
     desc.Width              = std::max(m_presentParams.BackBufferWidth,  1u);
     desc.Height             = std::max(m_presentParams.BackBufferHeight, 1u);
     desc.Depth              = 1;
     desc.MipLevels          = 1;
+    desc.ArraySize          = 1;
     desc.Format             = EnumerateFormat(m_presentParams.BackBufferFormat);
     desc.MultiSample        = m_presentParams.MultiSampleType;
     desc.MultisampleQuality = m_presentParams.MultiSampleQuality;
-    desc.Type               = D3DRTYPE_SURFACE;
     desc.Pool               = D3DPOOL_DEFAULT;
     desc.Usage              = D3DUSAGE_RENDERTARGET;
-    desc.Offscreen          = FALSE;
     desc.Discard            = FALSE;
 
     m_backBuffer = new D3D9Surface(m_parent, &desc);

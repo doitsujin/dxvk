@@ -4,10 +4,10 @@ namespace dxvk {
 
   D3D9Surface::D3D9Surface(
           D3D9DeviceEx*             pDevice,
-    const D3D9TextureDesc*          pDesc)
+    const D3D9_COMMON_TEXTURE_DESC* pDesc)
     : D3D9SurfaceBase(
         pDevice,
-        new D3D9CommonTexture( pDevice, pDesc ),
+        new D3D9CommonTexture( pDevice, pDesc, D3DRTYPE_TEXTURE ),
         0,
         0,
         pDevice,
@@ -71,19 +71,19 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9Surface::LockRect(D3DLOCKED_RECT* pLockedRect, CONST RECT* pRect, DWORD Flags) {
     D3DBOX box;
     if (pRect != nullptr) {
-      box.Left = pRect->left;
-      box.Right = pRect->right;
-      box.Top = pRect->top;
+      box.Left   = pRect->left;
+      box.Right  = pRect->right;
+      box.Top    = pRect->top;
       box.Bottom = pRect->bottom;
-      box.Front = 0;
-      box.Back = 1;
+      box.Front  = 0;
+      box.Back   = 1;
     }
 
     D3DLOCKED_BOX lockedBox;
 
-    HRESULT hr = m_texture->Lock(
-      m_face,
-      m_mipLevel,
+    HRESULT hr = m_parent->LockImage(
+      m_texture,
+      m_face, m_mipLevel,
       &lockedBox,
       pRect != nullptr ? &box : nullptr,
       Flags);
@@ -95,9 +95,9 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D9Surface::UnlockRect() {
-    return m_texture->Unlock(
-      m_face,
-      m_mipLevel);
+    return m_parent->UnlockImage(
+      m_texture,
+      m_face, m_mipLevel);
   }
 
   HRESULT STDMETHODCALLTYPE D3D9Surface::GetDC(HDC *phdc) {

@@ -66,24 +66,28 @@ namespace dxvk {
       return m_texture->CalcSubresource(m_face, m_mipLevel);
     }
 
-    Rc<DxvkImageView> GetImageView(bool srgb) {
-      return m_texture->GetImageViewLayer(m_face, srgb);
+    Rc<DxvkImageView> GetImageView(bool Srgb) {
+      return m_texture->GetViews().FaceSample[m_face].Pick(Srgb);
     }
 
-    Rc<DxvkImageView> GetRenderTargetView(bool srgb) {
-      return m_texture->GetRenderTargetView(m_face, srgb);
+    Rc<DxvkImageView> GetRenderTargetView(bool Srgb) {
+      return m_texture->GetViews().FaceRenderTarget[m_face].Pick(Srgb);
     }
 
     VkImageLayout GetRenderTargetLayout() {
-      return m_texture->GetRenderTargetLayout();
+      return m_texture->GetViews().GetRTLayout();
     }
 
     Rc<DxvkImageView> GetDepthStencilView() {
-      return m_texture->GetDepthStencilView(m_face);
+      return m_texture->GetViews().FaceDepth[m_face];
     }
 
     VkImageLayout GetDepthLayout() {
-      return m_texture->GetDepthLayout();
+      return m_texture->GetViews().GetDepthLayout();
+    }
+
+    bool IsNull() {
+      return m_texture->Desc()->Format == D3D9Format::NULL_FORMAT;
     }
 
   protected:

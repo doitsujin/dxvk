@@ -107,8 +107,13 @@ namespace dxvk {
    * Maps a D3D9 format to a set of Vulkan formats.
    */
   struct D3D9_VK_FORMAT_MAPPING {
-    VkFormat              Format        = VK_FORMAT_UNDEFINED;  ///< Corresponding color format
-    VkFormat              FormatSrgb    = VK_FORMAT_UNDEFINED;  ///< Corresponding color format
+    union {
+      struct {
+        VkFormat          FormatColor;                          ///< Corresponding color format
+        VkFormat          FormatSrgb;                           ///< Corresponding color format
+      };
+      VkFormat            Formats[2];
+    };
     VkImageAspectFlags    Aspect        = 0;                    ///< Defined aspects for the color format
     VkComponentMapping    Swizzle       = {                     ///< Color component swizzle
       VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
