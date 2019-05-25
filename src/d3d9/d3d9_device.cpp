@@ -345,6 +345,11 @@ namespace dxvk {
 
     try {
       const Com<D3D9Texture2D> texture = new D3D9Texture2D(this, &desc);
+
+      void* initialData = Pool == D3DPOOL_SYSTEMMEM && Levels == 1
+                        ? reinterpret_cast<void*>(pSharedHandle)
+                        : nullptr;
+
       m_initializer->InitTexture(texture->GetCommonTexture());
       *ppTexture = texture.ref();
       return D3D_OK;

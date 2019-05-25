@@ -38,15 +38,14 @@ namespace dxvk {
   
 
   void D3D9Initializer::InitTexture(
-          D3D9CommonTexture* pTexture) {
-    if (pTexture->GetImage() == nullptr)
+          D3D9CommonTexture* pTexture,
+          void*              pInitialData) {    
+    if (pTexture->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_NONE)
       return;
 
-    VkMemoryPropertyFlags memFlags = pTexture->GetImage()->memFlags();
-    
-    (memFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
-      ? InitHostVisibleTexture(pTexture)
-      : InitDeviceLocalTexture(pTexture);
+    (pTexture->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED)
+      ? InitDeviceLocalTexture(pTexture)
+      : InitHostVisibleTexture(pTexture, pInitialData);
   }
 
 
@@ -126,9 +125,38 @@ namespace dxvk {
 
 
   void D3D9Initializer::InitHostVisibleTexture(
-          D3D9CommonTexture* pTexture) {
-    // TODO implement properly with memset/memcpy
-    InitDeviceLocalTexture(pTexture);
+          D3D9CommonTexture* pTexture,
+          void*              pInitialData) {
+    // If the buffer is mapped, we can write data directly
+    // to the mapped memory region instead of doing it on
+    // the GPU. Same goes for zero-initialization.
+    DxvkBufferSliceHandle mapSlice  = pTexture->GetMappingBuffer(0)->getSliceHandle();
+    DxvkBufferSliceHandle copySlice = pTexture->GetCopyBuffer(0)->getSliceHandle();
+
+    if (pInitialData != nullptr) {
+      std::memcpy(
+        mapSlice.mapPtr,
+        pInitialData,
+        mapSlice.length);
+    } else {
+      std::memset(
+        mapSlice.mapPtr, 0,
+        mapSlice.length);
+    }
+
+    if (pTexture->RequiresFixup()) {
+      if (pInitialData != nullptr) {
+        std::memcpy(
+          copySlice.mapPtr,
+          pInitialData,
+          copySlice.length);
+      }
+      else {
+        std::memset(
+          copySlice.mapPtr, 0,
+          copySlice.length);
+      }
+    }
   }
 
 
