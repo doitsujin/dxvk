@@ -3201,7 +3201,7 @@ namespace dxvk {
         ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
       });
     }
-    else if (!alloced || desc.Pool == D3DPOOL_MANAGED) {
+    else if (!alloced || desc.Pool == D3DPOOL_MANAGED || desc.Pool == D3DPOOL_SYSTEMMEM) {
       // Managed resources and ones we haven't newly allocated
       // are meant to be able to provide readback without waiting.
       // We always keep a copy of them in system memory for this reason.
@@ -3212,12 +3212,14 @@ namespace dxvk {
       // calling app promises not to overwrite data that is in use
       // or is reading. Remember! This will only trigger for MANAGED resources
       // that cannot get affected by GPU, therefore readonly is A-OK for NOT waiting.
-      const bool noOverwrite = Flags & D3DLOCK_NOOVERWRITE;
-      const bool readOnly    = Flags & D3DLOCK_READONLY;
+      const bool noOverwrite  = Flags & D3DLOCK_NOOVERWRITE;
+      const bool readOnly     = Flags & D3DLOCK_READONLY;
+      const bool managed      = desc.Pool == D3DPOOL_MANAGED;
+      const bool gpuImmutable = readOnly && managed;
 
       if (alloced)
         std::memset(physSlice.mapPtr, 0, physSlice.length);
-      else if (!noOverwrite && !readOnly) {
+      else if (!noOverwrite && !gpuImmutable) {
         if (!WaitForResource(mappedBuffer, Flags))
           return D3DERR_WASSTILLDRAWING;
       }
