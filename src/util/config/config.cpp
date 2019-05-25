@@ -162,6 +162,10 @@ namespace dxvk {
       { "d3d9.strictPow",                   "False" },
       { "d3d9.lenientClear",                "True" },
     }} },
+    /* Risen                                      */
+    { "Risen.exe", {{
+      { "d3d9.allowLockFlagReadonly",       "False" },
+    }} },
   }};
 
 
