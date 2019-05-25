@@ -78,7 +78,7 @@ namespace dxvk {
 
     void STDMETHODCALLTYPE GenerateMipSubLevels() final {
       if (m_texture.IsAutomaticMip())
-        m_parent->GenerateMips(&m_texture);
+        this->m_parent->GenerateMips(&m_texture);
     }
 
     D3D9CommonTexture* GetCommonTexture() {
