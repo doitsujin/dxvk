@@ -3201,7 +3201,10 @@ namespace dxvk {
         ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
       });
     }
-    else if (!alloced || desc.Pool == D3DPOOL_MANAGED || desc.Pool == D3DPOOL_SYSTEMMEM) {
+    else if (!alloced
+          || desc.Pool == D3DPOOL_MANAGED
+          || desc.Pool == D3DPOOL_SYSTEMMEM
+          || desc.Pool == D3DPOOL_SCRATCH) {
       // Managed resources and ones we haven't newly allocated
       // are meant to be able to provide readback without waiting.
       // We always keep a copy of them in system memory for this reason.
@@ -3215,7 +3218,8 @@ namespace dxvk {
       const bool noOverwrite  = Flags & D3DLOCK_NOOVERWRITE;
       const bool readOnly     = Flags & D3DLOCK_READONLY;
       const bool managed      = desc.Pool == D3DPOOL_MANAGED;
-      const bool gpuImmutable = readOnly && managed;
+      const bool scratch      = desc.Pool == D3DPOOL_SCRATCH;
+      const bool gpuImmutable = (readOnly && managed) || scratch;
 
       if (alloced)
         std::memset(physSlice.mapPtr, 0, physSlice.length);
