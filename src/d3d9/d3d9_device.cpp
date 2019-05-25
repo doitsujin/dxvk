@@ -2208,7 +2208,16 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetStreamSourceFreq(UINT StreamNumber, UINT* pSetting) {
-    Logger::warn("D3D9DeviceEx::GetStreamSourceFreq: Stub");
+    auto lock = LockDevice();
+
+    if (unlikely(StreamNumber >= caps::MaxStreams))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(pSetting == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    *pSetting = m_state.streamFreq[StreamNumber];
+
     return D3D_OK;
   }
 
