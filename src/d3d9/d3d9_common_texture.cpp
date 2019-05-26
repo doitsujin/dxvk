@@ -18,19 +18,17 @@ namespace dxvk {
     m_mapMode = DetermineMapMode();
     m_shadow  = DetermineShadowState();
 
-    if (m_mapMode != D3D9_COMMON_TEXTURE_MAP_MODE_NONE) {
-      if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED) {
-        m_image = CreatePrimaryImage(ResourceType);
-        CreateInitialViews();
+    if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED) {
+      m_image = CreatePrimaryImage(ResourceType);
+      CreateInitialViews();
 
-        m_size = DetermineMemoryConsumption();
-        if (!m_device->ChangeReportedMemory(-m_size))
-          throw DxvkError("D3D9: Reporting out of memory from tracking.");
-      }
-
-      if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_SYSTEMMEM)
-        CreateBuffers();
+      m_size = DetermineMemoryConsumption();
+      if (!m_device->ChangeReportedMemory(-m_size))
+        throw DxvkError("D3D9: Reporting out of memory from tracking.");
     }
+
+    if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_SYSTEMMEM)
+      CreateBuffers();
   }
 
 
