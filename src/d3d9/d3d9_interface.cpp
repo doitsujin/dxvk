@@ -359,6 +359,10 @@ namespace dxvk {
     m_modes.clear();
     m_modeCacheFormat = Format;
 
+    // Skip unsupported formats
+    if (!IsSupportedMonitorFormat(Format, FALSE))
+      return;
+
     // Walk over all modes that the display supports and
     // return those that match the requested format etc.
     DEVMODEW devMode;
@@ -368,10 +372,6 @@ namespace dxvk {
     while (::EnumDisplaySettingsW(monInfo.szDevice, modeIndex++, &devMode)) {
       // Skip interlaced modes altogether
       if (devMode.dmDisplayFlags & DM_INTERLACED)
-        continue;
-
-      // Skip unsupported formats
-      if (!IsSupportedMonitorFormat(Format, FALSE))
         continue;
 
       // Skip modes with incompatible formats
