@@ -12,7 +12,7 @@
 
 @ stdcall DebugSetMute()
 @ stdcall DebugSetLevel()
-@ stdcall PSGPError(ptr, long, long)
-@ stdcall PSGPSampleTexture(ptr, long, ptr, long, ptr)
+@ stdcall PSGPError(ptr long long)
+@ stdcall PSGPSampleTexture(ptr long ptr long ptr)
 @ stdcall Direct3DShaderValidatorCreate9()
 @ stdcall Direct3D9EnableMaximizedWindowedModeShim(long)
