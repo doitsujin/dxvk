@@ -10,3 +10,9 @@ EXPORTS
   D3DPERF_SetOptions
   D3DPERF_GetStatus
 
+  DebugSetMute
+  DebugSetLevel
+  PSGPError
+  PSGPSampleTexture
+  Direct3DShaderValidatorCreate9
+  Direct3D9EnableMaximizedWindowedModeShim

@@ -9,3 +9,10 @@
 @ stdcall D3DPERF_QueryRepeatFrame()
 @ stdcall D3DPERF_SetOptions(long)
 @ stdcall D3DPERF_GetStatus()
+
+@ stdcall DebugSetMute()
+@ stdcall DebugSetLevel()
+@ stdcall PSGPError(ptr, long, long)
+@ stdcall PSGPSampleTexture(ptr, long, ptr, long, ptr)
+@ stdcall Direct3DShaderValidatorCreate9()
+@ stdcall Direct3D9EnableMaximizedWindowedModeShim(long)
