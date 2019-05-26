@@ -388,19 +388,6 @@ namespace dxvk {
 
       m_modes.push_back(mode);
     }
-
-    // Sort display modes by width, height and refresh rate,
-    // in that order. Some games rely on correct ordering.
-    std::sort(m_modes.begin(), m_modes.end(),
-      [](const D3DDISPLAYMODEEX & a, const D3DDISPLAYMODEEX & b) {
-        if (a.Width < b.Width)   return true;
-        if (a.Width > b.Width)   return false;
-        
-        if (a.Height < b.Height) return true;
-        if (a.Height > b.Height) return false;
-        
-        return a.RefreshRate < b.RefreshRate;
-    });
   }
 
   const char* D3D9InterfaceEx::GetDriverDllName(DxvkGpuVendor vendor) {
