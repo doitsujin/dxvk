@@ -94,6 +94,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Vulkan Format
+     * \returns The Vulkan format of the resource
+     */
+    VkFormat Format() const {
+      return m_format;
+    }
+
+    /**
      * \brief Counts number of subresources
      * \returns Number of subresources
      */
@@ -295,6 +303,8 @@ namespace dxvk {
     D3D9SubresourceArray<DWORD>   m_lockFlags;
 
     D3D9ViewSet                   m_views;
+
+    VkFormat                      m_format;
 
     bool                          m_shadow; //< Depth Compare-ness
 

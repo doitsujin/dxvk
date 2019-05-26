@@ -15,6 +15,7 @@ namespace dxvk {
                     ? D3D9Format::D32
                     : D3D9Format::X8R8G8B8;
 
+    m_format  = m_device->LookupFormat(m_desc.Format).FormatColor;
     m_mapMode = DetermineMapMode();
     m_shadow  = DetermineShadowState();
 
