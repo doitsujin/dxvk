@@ -4,7 +4,11 @@
 
 #include "d3d9_common_texture.h"
 
+#include "../util/util_gdi.h"
+
 namespace dxvk {
+
+  using D3D9GDIDesc = D3DKMT_DESTROYDCFROMMEMORY;
 
   using D3D9SurfaceBase = D3D9Subresource<IDirect3DSurface9>;
   class D3D9Surface final : public D3D9SurfaceBase {
@@ -32,9 +36,13 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE UnlockRect() final;
 
-    HRESULT STDMETHODCALLTYPE GetDC(HDC *phdc) final;
+    HRESULT STDMETHODCALLTYPE GetDC(HDC *phDC) final;
 
-    HRESULT STDMETHODCALLTYPE ReleaseDC(HDC hdc) final;
+    HRESULT STDMETHODCALLTYPE ReleaseDC(HDC hDC) final;
+
+  private:
+
+    D3D9GDIDesc m_dcDesc;
 
   };
 }
