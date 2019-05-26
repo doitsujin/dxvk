@@ -682,7 +682,44 @@ namespace dxvk {
           IDirect3DSurface9* pDestSurface) {
     auto lock = LockDevice();
 
-    return UpdateSurface(pRenderTarget, nullptr, pDestSurface, nullptr);
+    D3D9Surface* src = static_cast<D3D9Surface*>(pRenderTarget);
+    D3D9Surface* dst = static_cast<D3D9Surface*>(pDestSurface);
+
+    if (unlikely(src == nullptr || dst == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    if (pRenderTarget == pDestSurface)
+      return D3D_OK;
+
+    D3D9CommonTexture* dstTexInfo = GetCommonTexture(dst);
+    D3D9CommonTexture* srcTexInfo = GetCommonTexture(src);
+
+    Rc<DxvkImage>  image  = srcTexInfo->GetImage();
+    Rc<DxvkBuffer> buffer = dstTexInfo->GetMappingBuffer(dst->GetSubresource());
+
+    const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(image->info().format);
+    const VkImageSubresource dstSubresource = dstTexInfo->GetSubresourceFromIndex(dstFormatInfo->aspectMask, dst->GetSubresource());
+
+    VkImageSubresourceLayers dstSubresourceLayers = {
+      dstSubresource.aspectMask,
+      dstSubresource.mipLevel,
+      dstSubresource.arrayLayer, 1 };
+
+    VkExtent3D levelExtent = image->mipLevelExtent(dstSubresource.mipLevel);
+
+    EmitCs([
+      cBuffer       = buffer,
+      cImage        = image,
+      cSubresources = dstSubresourceLayers,
+      cLevelExtent  = levelExtent
+    ] (DxvkContext* ctx) {
+      ctx->copyImageToBuffer(
+        cBuffer, 0, VkExtent2D { 0u, 0u },
+        cImage, cSubresources, VkOffset3D { 0, 0, 0 },
+        cLevelExtent);
+    });
+
+    return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetFrontBufferData(UINT iSwapChain, IDirect3DSurface9* pDestSurface) {
