@@ -313,7 +313,8 @@ namespace dxvk {
     swapchain->GetGammaRamp(pRamp);
   }
 
-  HRESULT STDMETHODCALLTYPE D3D9DeviceEx::CreateTexture(UINT Width,
+  HRESULT STDMETHODCALLTYPE D3D9DeviceEx::CreateTexture(
+          UINT                Width,
           UINT                Height,
           UINT                Levels,
           DWORD               Usage,
@@ -3399,7 +3400,7 @@ namespace dxvk {
   }
 
   void D3D9DeviceEx::FixupFormat(
-        D3D9CommonTexture* pResource,
+        D3D9CommonTexture*      pResource,
         UINT                    Face,
         UINT                    MipLevel) {
     D3D9Format format = pResource->Desc()->Format;
@@ -3409,8 +3410,6 @@ namespace dxvk {
     const Rc<DxvkBuffer> fixupBuffer  = pResource->GetCopyBuffer(Subresource);
 
     auto formatInfo = imageFormatInfo(pResource->Format());
-    auto subresource = pResource->GetSubresourceFromIndex(
-      formatInfo->aspectMask, Subresource);
 
     DxvkBufferSliceHandle mappingSlice = mappedBuffer->getSliceHandle();
     DxvkBufferSliceHandle fixupSlice   = fixupBuffer->allocSlice();
@@ -3428,8 +3427,8 @@ namespace dxvk {
     uint32_t rowPitch   = formatInfo->elementSize * blockCount.width;
     uint32_t slicePitch = formatInfo->elementSize * blockCount.width * blockCount.height;
 
-    uint8_t * dst = reinterpret_cast<uint8_t*>(fixupSlice.mapPtr);
-    uint8_t * src = reinterpret_cast<uint8_t*>(mappingSlice.mapPtr);
+    uint8_t* dst = reinterpret_cast<uint8_t*>(fixupSlice.mapPtr);
+    uint8_t* src = reinterpret_cast<uint8_t*>(mappingSlice.mapPtr);
 
     if (format == D3D9Format::R8G8B8) {
       for (uint32_t z = 0; z < levelExtent.depth; z++) {

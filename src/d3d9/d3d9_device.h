@@ -146,7 +146,8 @@ namespace dxvk {
 
     void    STDMETHODCALLTYPE GetGammaRamp(UINT iSwapChain, D3DGAMMARAMP* pRamp);
 
-    HRESULT STDMETHODCALLTYPE CreateTexture(UINT Width,
+    HRESULT STDMETHODCALLTYPE CreateTexture(
+            UINT                Width,
             UINT                Height,
             UINT                Levels,
             DWORD               Usage,
