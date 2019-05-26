@@ -287,6 +287,15 @@ namespace dxvk {
       return VkExtent3D{ m_desc.Width, m_desc.Height, m_desc.Depth };
     }
 
+    /**
+     * \brief Mip Extent
+     * \returns The extent of a mip or subresource
+     */
+    VkExtent3D GetExtentMip(UINT Subresource) const {
+      UINT MipLevel = Subresource % m_desc.MipLevels;
+      return util::computeMipLevelExtent(GetExtent(), MipLevel);
+    }
+
   private:
 
     D3D9DeviceEx*                 m_device;
