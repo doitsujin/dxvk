@@ -567,6 +567,9 @@ namespace dxvk {
     D3D9CommonTexture* srcTextureInfo = src->GetCommonTexture();
     D3D9CommonTexture* dstTextureInfo = dst->GetCommonTexture();
 
+    if (unlikely(srcTextureInfo->Desc()->Pool != D3DPOOL_SYSTEMMEM || dstTextureInfo->Desc()->Pool != D3DPOOL_DEFAULT))
+      return D3DERR_INVALIDCALL;
+
     Rc<DxvkBuffer> srcBuffer = srcTextureInfo->GetCopyBuffer(src->GetSubresource());
     Rc<DxvkImage> dstImage   = dstTextureInfo->GetImage();
 
@@ -640,11 +643,11 @@ namespace dxvk {
     if (!pDestinationTexture || !pSourceTexture)
       return D3DERR_INVALIDCALL;
 
-    if (pDestinationTexture == pSourceTexture)
-      return D3D_OK;
-
     D3D9CommonTexture* dstTexInfo = GetCommonTexture(pDestinationTexture);
     D3D9CommonTexture* srcTexInfo = GetCommonTexture(pSourceTexture);
+
+    if (unlikely(srcTexInfo->Desc()->Pool != D3DPOOL_SYSTEMMEM || dstTexInfo->Desc()->Pool != D3DPOOL_DEFAULT))
+      return D3DERR_INVALIDCALL;
 
     const Rc<DxvkImage> dstImage  = dstTexInfo->GetImage();
       
