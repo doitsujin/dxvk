@@ -69,8 +69,8 @@ extern "C" {
   // for P3 SIMD/AMD 3DNow...
   // lol...
 
-  class  D3DFE_PROCESSVERTICES;
-  enum   PSGPERRORID;
+  class D3DFE_PROCESSVERTICES;
+  using PSGPERRORID = UINT;
 
   DLLEXPORT void __stdcall PSGPError(D3DFE_PROCESSVERTICES* a, PSGPERRORID b, UINT c) {
   }
