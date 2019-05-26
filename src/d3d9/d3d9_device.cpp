@@ -3220,16 +3220,15 @@ namespace dxvk {
 
     bool alloced = pResource->CreateBufferSubresource(Subresource);
 
-    const Rc<DxvkImage>  mappedImage  = pResource->GetImage();
     const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappingBuffer(Subresource);
     
-    auto formatInfo = imageFormatInfo(mappedImage->info().format);
+    auto formatInfo = imageFormatInfo(pResource->Format());
     auto subresource = pResource->GetSubresourceFromIndex(
         formatInfo->aspectMask, Subresource);
     
     pResource->SetLockFlags(Subresource, Flags);
-    
-    VkExtent3D levelExtent = mappedImage->mipLevelExtent(subresource.mipLevel);
+
+    VkExtent3D levelExtent = pResource->GetExtentMip(MipLevel);
     VkExtent3D blockCount  = util::computeBlockCount(levelExtent, formatInfo->blockSize);
       
     DxvkBufferSliceHandle physSlice;
@@ -3274,6 +3273,8 @@ namespace dxvk {
       }
     }
     else {
+      const Rc<DxvkImage>  mappedImage = pResource->GetImage();
+
       // When using any map mode which requires the image contents
       // to be preserved, and if the GPU has write access to the
       // image, copy the current image contents into the buffer.
