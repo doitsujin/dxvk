@@ -651,25 +651,28 @@ namespace dxvk {
 
     const Rc<DxvkImage> dstImage  = dstTexInfo->GetImage();
       
-    uint32_t mipLevels = std::min(srcTexInfo->Desc()->MipLevels, dstTexInfo->Desc()->MipLevels);
-    for (uint32_t i = 0; i < mipLevels; i++) {
-      Rc<DxvkBuffer> srcBuffer = srcTexInfo->GetCopyBuffer(i);
+    uint32_t mipLevels   = std::min(srcTexInfo->Desc()->MipLevels, dstTexInfo->Desc()->MipLevels);
+    uint32_t arraySlices = std::min(srcTexInfo->Desc()->ArraySize, dstTexInfo->Desc()->ArraySize);
+    for (uint32_t a = 0; a < arraySlices; a++) {
+      for (uint32_t m = 0; m < mipLevels; m++) {
+        Rc<DxvkBuffer> srcBuffer = srcTexInfo->GetCopyBuffer(srcTexInfo->CalcSubresource(a, m));
 
-      VkImageSubresourceLayers dstLayers = { VK_IMAGE_ASPECT_COLOR_BIT, i, 0, dstImage->info().numLayers };
+        VkImageSubresourceLayers dstLayers = { VK_IMAGE_ASPECT_COLOR_BIT, m, a, 1 };
         
-      VkExtent3D extent = dstImage->mipLevelExtent(i);
+        VkExtent3D extent = dstImage->mipLevelExtent(m);
         
-      EmitCs([
-        cDstImage  = dstImage,
-        cSrcBuffer = srcBuffer,
-        cDstLayers = dstLayers,
-        cExtent    = extent
-      ] (DxvkContext* ctx) {
-        ctx->copyBufferToImage(
-          cDstImage,  cDstLayers, VkOffset3D { 0, 0, 0 },
-          cExtent,    cSrcBuffer, 0,
-          { cExtent.width, cExtent.height });
-      });
+        EmitCs([
+          cDstImage  = dstImage,
+          cSrcBuffer = srcBuffer,
+          cDstLayers = dstLayers,
+          cExtent    = extent
+        ] (DxvkContext* ctx) {
+          ctx->copyBufferToImage(
+            cDstImage,  cDstLayers, VkOffset3D { 0, 0, 0 },
+            cExtent,    cSrcBuffer, 0,
+            { cExtent.width, cExtent.height });
+        });
+      }
     }
 
     pDestinationTexture->GenerateMipSubLevels();
