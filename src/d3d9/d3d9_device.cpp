@@ -3406,8 +3406,8 @@ namespace dxvk {
     UINT Subresource = pResource->CalcSubresource(Face, MipLevel);
 
     const Rc<DxvkImage>  mappedImage  = pResource->GetImage();
-    const Rc<DxvkBuffer> mappedBuffer = pResource->GetCopyBuffer(Subresource);
-    const Rc<DxvkBuffer> fixupBuffer  = pResource->GetMappingBuffer(Subresource);
+    const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappingBuffer(Subresource);
+    const Rc<DxvkBuffer> fixupBuffer  = pResource->GetCopyBuffer(Subresource);
 
     auto formatInfo = imageFormatInfo(mappedImage->info().format);
     auto subresource = pResource->GetSubresourceFromIndex(
