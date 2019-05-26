@@ -582,7 +582,7 @@ namespace dxvk {
     VkOffset3D srcOffset = { 0,0,0 };
     VkOffset3D dstOffset = { 0,0,0 };
 
-    VkExtent3D srcExtent = util::computeMipLevelExtent(srcTextureInfo->GetExtent(), src->GetMipLevel());
+    VkExtent3D srcExtent = srcTextureInfo->GetExtentMip(src->GetMipLevel());
     VkExtent3D regExtent = srcExtent;
 
     if (pDestPoint != nullptr) {
