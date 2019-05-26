@@ -130,31 +130,33 @@ namespace dxvk {
     // If the buffer is mapped, we can write data directly
     // to the mapped memory region instead of doing it on
     // the GPU. Same goes for zero-initialization.
-    DxvkBufferSliceHandle mapSlice  = pTexture->GetMappingBuffer(0)->getSliceHandle();
-    DxvkBufferSliceHandle copySlice = pTexture->GetCopyBuffer(0)->getSliceHandle();
+    for (uint32_t i = 0; i < pTexture->CountSubresources(); i++) {
+      DxvkBufferSliceHandle mapSlice  = pTexture->GetMappingBuffer(i)->getSliceHandle();
+      DxvkBufferSliceHandle copySlice = pTexture->GetCopyBuffer(i)->getSliceHandle();
 
-    if (pInitialData != nullptr) {
-      std::memcpy(
-        mapSlice.mapPtr,
-        pInitialData,
-        mapSlice.length);
-    } else {
-      std::memset(
-        mapSlice.mapPtr, 0,
-        mapSlice.length);
-    }
-
-    if (pTexture->RequiresFixup()) {
       if (pInitialData != nullptr) {
         std::memcpy(
-          copySlice.mapPtr,
+          mapSlice.mapPtr,
           pInitialData,
-          copySlice.length);
-      }
-      else {
+          mapSlice.length);
+      } else {
         std::memset(
-          copySlice.mapPtr, 0,
-          copySlice.length);
+          mapSlice.mapPtr, 0,
+          mapSlice.length);
+      }
+
+      if (pTexture->RequiresFixup()) {
+        if (pInitialData != nullptr) {
+          std::memcpy(
+            copySlice.mapPtr,
+            pInitialData,
+            copySlice.length);
+        }
+        else {
+          std::memset(
+            copySlice.mapPtr, 0,
+            copySlice.length);
+        }
       }
     }
   }
