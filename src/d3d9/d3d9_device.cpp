@@ -322,7 +322,6 @@ namespace dxvk {
           IDirect3DTexture9** ppTexture,
           HANDLE*             pSharedHandle) {
     InitReturnPtr(ppTexture);
-    InitReturnPtr(pSharedHandle);
 
     if (unlikely(ppTexture == nullptr))
       return D3DERR_INVALIDCALL;
@@ -346,11 +345,14 @@ namespace dxvk {
     try {
       const Com<D3D9Texture2D> texture = new D3D9Texture2D(this, &desc);
 
-      void* initialData = Pool == D3DPOOL_SYSTEMMEM && Levels == 1
-                        ? reinterpret_cast<void*>(pSharedHandle)
-                        : nullptr;
+      void* initialData = nullptr;
 
-      m_initializer->InitTexture(texture->GetCommonTexture());
+      if (Pool == D3DPOOL_SYSTEMMEM && Levels == 1 && pSharedHandle != nullptr)
+        initialData = *(reinterpret_cast<void**>(pSharedHandle));
+      else // This must be a shared resource.
+        InitReturnPtr(pSharedHandle);
+
+      m_initializer->InitTexture(texture->GetCommonTexture(), initialData);
       *ppTexture = texture.ref();
       return D3D_OK;
     }
