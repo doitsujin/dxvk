@@ -33,6 +33,11 @@ namespace dxvk {
   }
 
 
+  D3D9CommonTexture::~D3D9CommonTexture() {
+    m_device->ChangeReportedMemory(m_size);
+  }
+
+
   VkImageSubresource D3D9CommonTexture::GetSubresourceFromIndex(
           VkImageAspectFlags    Aspect,
           UINT                  Subresource) const {

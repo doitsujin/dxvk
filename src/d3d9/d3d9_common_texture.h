@@ -82,6 +82,8 @@ namespace dxvk {
       const D3D9_COMMON_TEXTURE_DESC* pDesc,
             D3DRESOURCETYPE           ResourceType);
 
+    ~D3D9CommonTexture();
+
     /**
       * \brief Texture properties
       *
@@ -317,7 +319,7 @@ namespace dxvk {
 
     bool                          m_shadow; //< Depth Compare-ness
 
-    int64_t                       m_size;
+    int64_t                       m_size = 0;
 
     /**
      * \brief Mip level
