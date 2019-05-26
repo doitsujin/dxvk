@@ -3405,11 +3405,10 @@ namespace dxvk {
     D3D9Format format = pResource->Desc()->Format;
     UINT Subresource = pResource->CalcSubresource(Face, MipLevel);
 
-    const Rc<DxvkImage>  mappedImage  = pResource->GetImage();
     const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappingBuffer(Subresource);
     const Rc<DxvkBuffer> fixupBuffer  = pResource->GetCopyBuffer(Subresource);
 
-    auto formatInfo = imageFormatInfo(mappedImage->info().format);
+    auto formatInfo = imageFormatInfo(pResource->Format());
     auto subresource = pResource->GetSubresourceFromIndex(
       formatInfo->aspectMask, Subresource);
 
@@ -3423,8 +3422,7 @@ namespace dxvk {
       ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
     });
 
-    VkExtent3D levelExtent = mappedImage
-      ->mipLevelExtent(subresource.mipLevel);
+    VkExtent3D levelExtent = pResource->GetExtentMip(MipLevel);
     VkExtent3D blockCount = util::computeBlockCount(levelExtent, formatInfo->blockSize);
 
     uint32_t rowPitch   = formatInfo->elementSize * blockCount.width;
