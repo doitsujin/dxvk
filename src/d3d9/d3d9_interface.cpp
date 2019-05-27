@@ -85,7 +85,10 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D9InterfaceEx::GetAdapterDisplayMode(UINT Adapter, D3DDISPLAYMODE* pMode) {
-    return this->EnumAdapterModes(Adapter, D3DFMT_X8R8G8B8, 0, pMode);
+    constexpr D3DFORMAT format = D3DFMT_X8R8G8B8;
+    const UINT mode = GetAdapterModeCount(Adapter, format) - 1;
+
+    return this->EnumAdapterModes(Adapter, format, mode, pMode);
   }
 
   HRESULT STDMETHODCALLTYPE D3D9InterfaceEx::CheckDeviceType(
