@@ -43,6 +43,10 @@ namespace dxvk {
       return D3D9Resource<Type...>::Release();
     }
 
+    ULONG AddRefNoContainer() {
+      return D3D9Resource<Type...>::AddRef();
+    }
+
     HRESULT STDMETHODCALLTYPE GetContainer(REFIID riid, void** ppContainer) final {
       if (m_container == nullptr)
         return D3DERR_INVALIDCALL;

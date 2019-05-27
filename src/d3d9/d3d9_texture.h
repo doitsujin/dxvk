@@ -43,6 +43,7 @@ namespace dxvk {
             i, j,
             this);
 
+          subObj->AddRefNoContainer();
           subObj->AddRefPrivate();
         }
       }
