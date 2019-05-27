@@ -85,6 +85,14 @@ namespace dxvk {
     ~D3D9CommonTexture();
 
     /**
+     * \brief Device
+     * \returns The parent device
+     */
+    D3D9DeviceEx* Device() const {
+      return m_device;
+    }
+
+    /**
       * \brief Texture properties
       *
       * The returned data can be used to fill in
@@ -325,7 +333,7 @@ namespace dxvk {
      * \brief Mip level
      * \returns Size of packed mip level in bytes
      */
-    VkDeviceSize GetMipSize(UINT Subresource) const;
+    VkDeviceSize GetMipSize(UINT Subresource, bool Fixup = false) const;
 
     Rc<DxvkImage> CreatePrimaryImage(D3DRESOURCETYPE ResourceType) const;
 

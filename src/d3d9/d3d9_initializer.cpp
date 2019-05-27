@@ -132,7 +132,6 @@ namespace dxvk {
     // the GPU. Same goes for zero-initialization.
     for (uint32_t i = 0; i < pTexture->CountSubresources(); i++) {
       DxvkBufferSliceHandle mapSlice  = pTexture->GetMappingBuffer(i)->getSliceHandle();
-      DxvkBufferSliceHandle copySlice = pTexture->GetCopyBuffer(i)->getSliceHandle();
 
       if (pInitialData != nullptr) {
         std::memcpy(
@@ -145,19 +144,8 @@ namespace dxvk {
           mapSlice.length);
       }
 
-      if (pTexture->RequiresFixup()) {
-        if (pInitialData != nullptr) {
-          std::memcpy(
-            copySlice.mapPtr,
-            pInitialData,
-            copySlice.length);
-        }
-        else {
-          std::memset(
-            copySlice.mapPtr, 0,
-            copySlice.length);
-        }
-      }
+      if (pTexture->RequiresFixup())
+        pTexture->Device()->FixupFormat(pTexture, i);
     }
   }
 

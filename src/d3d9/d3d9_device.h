@@ -676,8 +676,7 @@ namespace dxvk {
 
     void FixupFormat(
             D3D9CommonTexture*      pResource,
-            UINT                    Face,
-            UINT                    MipLevel);
+            UINT                    Subresource);
 
     HRESULT FlushImage(
             D3D9CommonTexture*      pResource,

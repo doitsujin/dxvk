@@ -3321,9 +3321,14 @@ namespace dxvk {
       pLockedBox->SlicePitch = desc.Width * desc.Height;
     }
     else {
+      uint32_t elemSize = formatInfo->elementSize;
+
+      if (pResource->Desc()->Format == D3D9Format::R8G8B8)
+        elemSize = 3;
+
       // Data is tightly packed within the mapped buffer.
-      pLockedBox->RowPitch   = formatInfo->elementSize * blockCount.width;
-      pLockedBox->SlicePitch = formatInfo->elementSize * blockCount.width * blockCount.height;
+      pLockedBox->RowPitch   = elemSize * blockCount.width;
+      pLockedBox->SlicePitch = elemSize * blockCount.width * blockCount.height;
     }
 
     const uint32_t offset = CalcImageLockOffset(
@@ -3350,7 +3355,7 @@ namespace dxvk {
     if (!(pResource->GetLockFlags(Subresource) & D3DLOCK_READONLY)) {
       // Do we need to do some fixup before copying to image?
       if (pResource->RequiresFixup())
-        FixupFormat(pResource, Face, MipLevel);
+        FixupFormat(pResource, Subresource);
 
       // Only flush buffer -> image if we actually have an image
       if (pResource->GetMapMode() == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED)
@@ -3413,10 +3418,8 @@ namespace dxvk {
 
   void D3D9DeviceEx::FixupFormat(
         D3D9CommonTexture*      pResource,
-        UINT                    Face,
-        UINT                    MipLevel) {
+        UINT                    Subresource) {
     D3D9Format format = pResource->Desc()->Format;
-    UINT Subresource = pResource->CalcSubresource(Face, MipLevel);
 
     const Rc<DxvkBuffer> mappedBuffer = pResource->GetMappingBuffer(Subresource);
     const Rc<DxvkBuffer> fixupBuffer  = pResource->GetCopyBuffer(Subresource);
@@ -3433,21 +3436,25 @@ namespace dxvk {
       ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
     });
 
-    VkExtent3D levelExtent = pResource->GetExtentMip(MipLevel);
+    VkExtent3D levelExtent = pResource->GetExtentMip(Subresource);
     VkExtent3D blockCount = util::computeBlockCount(levelExtent, formatInfo->blockSize);
 
-    uint32_t rowPitch   = formatInfo->elementSize * blockCount.width;
-    uint32_t slicePitch = formatInfo->elementSize * blockCount.width * blockCount.height;
+    uint32_t dstRowPitch   = formatInfo->elementSize * blockCount.width;
+    uint32_t dstSlicePitch = formatInfo->elementSize * blockCount.width * blockCount.height;
 
     uint8_t* dst = reinterpret_cast<uint8_t*>(fixupSlice.mapPtr);
     uint8_t* src = reinterpret_cast<uint8_t*>(mappingSlice.mapPtr);
 
     if (format == D3D9Format::R8G8B8) {
+      uint32_t srcRowPitch   = 3 * blockCount.width;
+      uint32_t srcSlicePitch = 3 * blockCount.width * blockCount.height;
+
       for (uint32_t z = 0; z < levelExtent.depth; z++) {
         for (uint32_t y = 0; y < levelExtent.height; y++) {
           for (uint32_t x = 0; x < levelExtent.width; x++) {
             for (uint32_t c = 0; c < 3; c++)
-              dst[z * slicePitch + y * rowPitch + x * 4 + c] = src[z * slicePitch + y * rowPitch + x * 3 + c];
+                dst[z * dstSlicePitch + y * dstRowPitch + x * 4 + c]
+              = src[z * srcSlicePitch + y * srcRowPitch + x * 3 + c];
           }
         }
       }
