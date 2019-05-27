@@ -29,7 +29,7 @@ extern "C" {
   }
 
   DLLEXPORT HRESULT __stdcall Direct3DCreate9Ex(UINT nSDKVersion, IDirect3D9Ex** ppDirect3D9Ex) {
-    return dxvk::CreateD3D9(false, ppDirect3D9Ex);
+    return dxvk::CreateD3D9(true, ppDirect3D9Ex);
   }
 
   DLLEXPORT int __stdcall D3DPERF_BeginEvent(D3DCOLOR col, LPCWSTR wszName) {
