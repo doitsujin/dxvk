@@ -601,7 +601,7 @@ namespace dxvk {
       regExtent = { 
         align(uint32_t(pSourceRect->right  - pSourceRect->left), dstFormatInfo->blockSize.width),
         align(uint32_t(pSourceRect->bottom - pSourceRect->top),  dstFormatInfo->blockSize.height),
-        0 };
+        1 };
     }
 
     VkImageSubresourceLayers dstLayers = {
