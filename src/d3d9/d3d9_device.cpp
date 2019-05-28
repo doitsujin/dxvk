@@ -3320,8 +3320,8 @@ namespace dxvk {
     if (atiHack) {
       // We need to lie here. The game is expected to use this info and do a workaround.
       // It's stupid. I know.
-      pLockedBox->RowPitch   = desc.Width;
-      pLockedBox->SlicePitch = desc.Width * desc.Height;
+      pLockedBox->RowPitch   = std::max(desc.Width >> MipLevel, 1u);
+      pLockedBox->SlicePitch = pLockedBox->RowPitch * std::max(desc.Height >> MipLevel, 1u);
     }
     else {
       uint32_t elemSize = formatInfo->elementSize;
