@@ -700,6 +700,9 @@ namespace dxvk {
     D3D9CommonTexture* dstTexInfo = GetCommonTexture(dst);
     D3D9CommonTexture* srcTexInfo = GetCommonTexture(src);
 
+    if (dstTexInfo->Desc()->Pool == D3DPOOL_DEFAULT)
+      return this->StretchRect(pRenderTarget, nullptr, pDestSurface, nullptr, D3DTEXF_NONE);
+
     Rc<DxvkImage>  image  = srcTexInfo->GetImage();
     Rc<DxvkBuffer> buffer = dstTexInfo->GetMappingBuffer(dst->GetSubresource());
 
