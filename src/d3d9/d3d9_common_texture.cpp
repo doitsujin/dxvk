@@ -384,6 +384,11 @@ namespace dxvk {
     if (UsageFlags != VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
       viewInfo.aspect &= ~VK_IMAGE_ASPECT_STENCIL_BIT;
 
+    // Remove swizzle on depth views.
+    if (UsageFlags == VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+      viewInfo.swizzle = { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
+                           VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY };
+
     // Create the underlying image view object
     return m_device->GetDXVKDevice()->createImageView(GetImage(), viewInfo);
   }
