@@ -20,7 +20,11 @@ namespace dxvk {
             D3D9CommonTexture*        pTexture,
             UINT                      Face,
             UINT                      MipLevel,
-            IUnknown*                 pContainer);
+            IDirect3DBaseTexture9*    pContainer);
+
+    void AddRefPrivate();
+
+    void ReleasePrivate();
 
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, void** ppvObject);
 

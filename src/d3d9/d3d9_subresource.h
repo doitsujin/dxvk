@@ -15,43 +15,38 @@ namespace dxvk {
             D3D9CommonTexture*      pTexture,
             UINT                    Face,
             UINT                    MipLevel,
-            IUnknown*               pContainer,
-            bool                    OwnsTexture)
-      : D3D9Resource<Type...> ( pDevice )
+            IDirect3DBaseTexture9*  pContainer)
+      : D3D9Resource<Type...>      ( pDevice )
       , m_container                ( pContainer )
       , m_texture                  ( pTexture )
       , m_face                     ( Face )
-      , m_mipLevel                 ( MipLevel )
-      , m_ownsTexture              ( OwnsTexture ) { }
+      , m_mipLevel                 ( MipLevel ) { }
 
     ~D3D9Subresource() {
-      if (m_ownsTexture)
+      // We own the texture!
+      if (m_container == nullptr)
         delete m_texture;
     }
 
     ULONG STDMETHODCALLTYPE AddRef() final {
       if (m_container != nullptr)
-        m_container->AddRef();
+        return m_container->AddRef();
 
       return D3D9Resource<Type...>::AddRef();
     }
 
     ULONG STDMETHODCALLTYPE Release() final {
       if (m_container != nullptr)
-        m_container->Release();
+        return m_container->Release();
 
       return D3D9Resource<Type...>::Release();
     }
 
-    ULONG AddRefNoContainer() {
-      return D3D9Resource<Type...>::AddRef();
-    }
-
     HRESULT STDMETHODCALLTYPE GetContainer(REFIID riid, void** ppContainer) final {
-      if (m_container == nullptr)
-        return D3DERR_INVALIDCALL;
+      if (m_container != nullptr)
+        return m_container->QueryInterface(riid, ppContainer);
 
-      return m_container->QueryInterface(riid, ppContainer);
+      return this->m_parent->QueryInterface(riid, ppContainer);
     }
 
     D3D9CommonTexture* GetCommonTexture() {
@@ -96,13 +91,11 @@ namespace dxvk {
 
   protected:
 
-    IUnknown*               m_container;
+    IDirect3DBaseTexture9*  m_container;
 
     D3D9CommonTexture*      m_texture;
     UINT                    m_face;
     UINT                    m_mipLevel;
-
-    bool                    m_ownsTexture;
 
   };
 

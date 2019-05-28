@@ -1,5 +1,7 @@
 #include "d3d9_volume.h"
 
+#include "d3d9_texture.h"
+
 namespace dxvk {
 
   D3D9Volume::D3D9Volume(
@@ -9,21 +11,41 @@ namespace dxvk {
         pDevice,
         new D3D9CommonTexture( pDevice, pDesc, D3DRTYPE_VOLUMETEXTURE ),
         0, 0,
-        pDevice,
-        true) { }
+        nullptr) { }
 
   D3D9Volume::D3D9Volume(
           D3D9DeviceEx*             pDevice,
           D3D9CommonTexture*        pTexture,
           UINT                      Face,
           UINT                      MipLevel,
-          IUnknown*                 pContainer)
+          IDirect3DBaseTexture9*    pContainer)
     : D3D9VolumeBase(
         pDevice,
         pTexture,
         Face, MipLevel,
-        pContainer,
-        false) { }
+        pContainer) { }
+
+  void D3D9Volume::AddRefPrivate() {
+    IDirect3DBaseTexture9* pContainer = this->m_container;
+
+    if (pContainer != nullptr) {
+      reinterpret_cast<D3D9Texture3D*> (pContainer)->AddRefPrivate();
+      return;
+    }
+
+    D3D9VolumeBase::AddRefPrivate();
+  }
+
+  void D3D9Volume::ReleasePrivate() {
+    IDirect3DBaseTexture9* pContainer = this->m_container;
+
+    if (pContainer != nullptr) {
+      reinterpret_cast<D3D9Texture3D*> (pContainer)->ReleasePrivate();
+      return;
+    }
+
+    D3D9VolumeBase::ReleasePrivate();
+  }
 
   HRESULT STDMETHODCALLTYPE D3D9Volume::QueryInterface(REFIID riid, void** ppvObject) {
     if (ppvObject == nullptr)

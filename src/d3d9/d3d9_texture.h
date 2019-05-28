@@ -42,10 +42,14 @@ namespace dxvk {
             &m_texture,
             i, j,
             this);
-
-          subObj->AddRefNoContainer();
-          subObj->AddRefPrivate();
         }
+      }
+    }
+
+    ~D3D9BaseTexture() {
+      for (uint32_t i = 0; i < m_subresources.size(); i++) {
+        SubresourceType* subObj = this->GetSubresource(i);
+        subObj->~SubresourceType();
       }
     }
 

@@ -1,4 +1,5 @@
 #include "d3d9_surface.h"
+#include "d3d9_texture.h"
 
 namespace dxvk {
 
@@ -8,24 +9,52 @@ namespace dxvk {
     : D3D9SurfaceBase(
         pDevice,
         new D3D9CommonTexture( pDevice, pDesc, D3DRTYPE_TEXTURE ),
-        0,
-        0,
-        pDevice,
-        true) { }
+        0, 0,
+        nullptr) { }
 
   D3D9Surface::D3D9Surface(
           D3D9DeviceEx*             pDevice,
           D3D9CommonTexture*        pTexture,
           UINT                      Face,
           UINT                      MipLevel,
-          IUnknown*                 pContainer)
+          IDirect3DBaseTexture9*    pContainer)
     : D3D9SurfaceBase(
         pDevice,
         pTexture,
-        Face,
-        MipLevel,
-        pContainer,
-        false) { }
+        Face, MipLevel,
+        pContainer) { }
+
+  void D3D9Surface::AddRefPrivate() {
+    IDirect3DBaseTexture9* pContainer = this->m_container;
+
+    if (pContainer != nullptr) {
+      D3DRESOURCETYPE type = pContainer->GetType();
+      if (type == D3DRTYPE_TEXTURE)
+        reinterpret_cast<D3D9Texture2D*>  (pContainer)->AddRefPrivate();
+      else //if (type == D3DRTYPE_CUBETEXTURE)
+        reinterpret_cast<D3D9TextureCube*>(pContainer)->AddRefPrivate();
+
+      return;
+    }
+
+    D3D9SurfaceBase::AddRefPrivate();
+  }
+
+  void D3D9Surface::ReleasePrivate() {
+    IDirect3DBaseTexture9* pContainer = this->m_container;
+
+    if (pContainer != nullptr) {
+      D3DRESOURCETYPE type = pContainer->GetType();
+      if (type == D3DRTYPE_TEXTURE)
+        reinterpret_cast<D3D9Texture2D*>  (pContainer)->ReleasePrivate();
+      else //if (type == D3DRTYPE_CUBETEXTURE)
+        reinterpret_cast<D3D9TextureCube*>(pContainer)->ReleasePrivate();
+
+      return;
+    }
+
+    D3D9SurfaceBase::ReleasePrivate();
+  }
 
   HRESULT STDMETHODCALLTYPE D3D9Surface::QueryInterface(REFIID riid, void** ppvObject) {
     if (ppvObject == nullptr)
