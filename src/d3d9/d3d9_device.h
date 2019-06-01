@@ -871,7 +871,7 @@ namespace dxvk {
 
     D3D9Cursor                      m_cursor;
 
-    Com<IDirect3DSurface9>          m_autoDepthStencil;
+    Com<D3D9Surface, false>         m_autoDepthStencil;
 
     std::vector<
       IDirect3DSwapChain9Ex*>       m_swapchains;
