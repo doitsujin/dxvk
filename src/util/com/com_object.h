@@ -33,7 +33,7 @@ namespace dxvk {
       ULONG refCount = m_refCount++;
       if (refCount == 0ul)
         AddRefPrivate();
-      return refCount;
+      return refCount + 1;
     }
     
     ULONG STDMETHODCALLTYPE Release() {
