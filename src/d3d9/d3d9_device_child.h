@@ -5,7 +5,7 @@
 namespace dxvk {
 
   template <typename... Base>
-  class D3D9DeviceChild : public ComObject<Base...> {
+  class D3D9DeviceChild : public ComObjectClamp<Base...> {
 
   public:
 

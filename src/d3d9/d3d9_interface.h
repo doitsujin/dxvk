@@ -15,7 +15,7 @@ namespace dxvk {
   * which provides the way to get adapters and create other objects such as \ref IDirect3DDevice9Ex.
   * similar to \ref DxgiFactory but for D3D9.
   */
-  class D3D9InterfaceEx final : public ComObject<IDirect3D9Ex> {
+  class D3D9InterfaceEx final : public ComObjectClamp<IDirect3D9Ex> {
 
   public:
 

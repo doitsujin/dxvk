@@ -13,7 +13,7 @@ namespace dxvk {
     virtual LONG STDMETHODCALLTYPE End() = 0;
   };
 
-  class D3D9ShaderValidator : public ComObject<IDirect3DShaderValidator9> {
+  class D3D9ShaderValidator : public ComObjectClamp<IDirect3DShaderValidator9> {
 
   public:
 

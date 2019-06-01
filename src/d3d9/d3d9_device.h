@@ -65,7 +65,7 @@ namespace dxvk {
     Rc<DxvkSampler> depth;
   };
 
-  class D3D9DeviceEx final : public ComObject<IDirect3DDevice9Ex> {
+  class D3D9DeviceEx final : public ComObjectClamp<IDirect3DDevice9Ex> {
     constexpr static uint32_t DefaultFrameLatency = 3;
     constexpr static uint32_t MaxFrameLatency     = 20;
 
