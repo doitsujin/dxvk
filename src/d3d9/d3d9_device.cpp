@@ -1336,6 +1336,11 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetRenderState(D3DRENDERSTATETYPE State, DWORD Value) {
     auto lock = LockDevice();
 
+    // D3D9 only allows reading for values 0 and 7-255 so we don't need to do anything but return OK
+    if (unlikely(State > 255 || (State < D3DRS_ZENABLE && State != 0))) {
+      return D3D_OK;
+    }
+
     if (unlikely(ShouldRecord()))
       return m_recorder->SetRenderState(State, Value);
 
@@ -1475,7 +1480,7 @@ namespace dxvk {
         default:
           static bool s_errorShown[256];
 
-          if (State > 255 || !std::exchange(s_errorShown[State], true))
+          if (!std::exchange(s_errorShown[State], true))
             Logger::warn(str::format("D3D9DeviceEx::SetRenderState: Unhandled render state ", State));
           break;
       }
@@ -1489,6 +1494,10 @@ namespace dxvk {
 
     if (unlikely(pValue == nullptr))
       return D3DERR_INVALIDCALL;
+
+    if (unlikely(State > 255 || (State < D3DRS_ZENABLE && State != 0))) {
+      return D3DERR_INVALIDCALL;
+    }
 
     if (State < D3DRS_ZENABLE || State > D3DRS_BLENDOPALPHA)
       *pValue = 0;
