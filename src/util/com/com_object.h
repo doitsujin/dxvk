@@ -72,11 +72,42 @@ namespace dxvk {
       return m_refPrivate.load();
     }
     
-  private:
+  protected:
     
     std::atomic<uint32_t> m_refCount   = { 0ul };
     std::atomic<uint32_t> m_refPrivate = { 0ul };
     
+  };
+
+  /**
+   * \brief Clamped, reference-counted COM object
+   *
+   * This version of ComObject ensures that the reference
+   * count does not wrap around if a release happens at zero.
+   * eg. [m_refCount = 0]
+   *     Release()
+   *     [m_refCount = 0]
+   * This is a notable quirk of D3D9's COM implementation
+   * and is relied upon by some games.
+   */
+  template<typename Base>
+  class ComObjectClamp : public ComObject<Base> {
+
+  public:
+
+    ULONG STDMETHODCALLTYPE Release() {
+      ULONG refCount = this->m_refCount;
+      if (likely(refCount != 0ul)) {
+        this->m_refCount--;
+        refCount--;
+
+        if (refCount == 0ul)
+          this->ReleasePrivate();
+      }
+
+      return refCount;
+    }
+
   };
   
   template<typename T>
