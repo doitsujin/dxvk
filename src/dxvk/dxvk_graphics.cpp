@@ -247,10 +247,11 @@ namespace dxvk {
     uint32_t                                                                    viDivisorCount = 0;
     
     for (uint32_t i = 0; i < state.ilBindingCount; i++) {
-      if (state.ilBindings[i].inputRate == VK_VERTEX_INPUT_RATE_INSTANCE) {
+      if (state.ilBindings[i].inputRate == VK_VERTEX_INPUT_RATE_INSTANCE
+       && state.ilDivisors[i]           != 1) {
         const uint32_t id = viDivisorCount++;
         
-        viDivisorDesc[id].binding = state.ilBindings[i].binding;
+        viDivisorDesc[id].binding = i;
         viDivisorDesc[id].divisor = state.ilDivisors[i];
       }
     }
