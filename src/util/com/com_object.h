@@ -3,6 +3,8 @@
 #include <atomic>
 
 #include "com_include.h"
+
+#include "../util_likely.h"
   
 namespace dxvk {
   
@@ -30,15 +32,15 @@ namespace dxvk {
     virtual ~ComObject() { }
     
     ULONG STDMETHODCALLTYPE AddRef() {
-      ULONG refCount = m_refCount++;
-      if (refCount == 0ul)
+      uint32_t refCount = m_refCount++;
+      if (unlikely(!refCount))
         AddRefPrivate();
       return refCount + 1;
     }
     
     ULONG STDMETHODCALLTYPE Release() {
-      ULONG refCount = --m_refCount;
-      if (refCount == 0ul)
+      uint32_t refCount = --m_refCount;
+      if (unlikely(!refCount))
         ReleasePrivate();
       return refCount;
     }
@@ -50,7 +52,8 @@ namespace dxvk {
 
 
     void ReleasePrivate() {
-      if (--m_refPrivate == 0ul) {
+      uint32_t refPrivate = --m_refPrivate;
+      if (unlikely(!refPrivate)) {
         m_refPrivate += 0x80000000;
         delete this;
       }
