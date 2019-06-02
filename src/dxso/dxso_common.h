@@ -12,10 +12,14 @@ namespace dxvk {
  * Defines the shader stage that a DXSO
  * module has been compiled for.
  */
-  enum class DxsoProgramType : uint16_t {
-    VertexShader = 0,
-    PixelShader  = 1,
-  };
+  namespace DxsoProgramTypes {
+    enum DxsoProgramType : uint16_t {
+      VertexShader = 0,
+      PixelShader  = 1,
+      Count        = 2,
+    };
+  }
+  using DxsoProgramType = DxsoProgramTypes::DxsoProgramType;
 
   class DxsoProgramInfo {
 

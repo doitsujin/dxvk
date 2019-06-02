@@ -76,8 +76,7 @@ namespace dxvk {
       D3D9ClipPlane,
       caps::MaxClipPlanes>                           clipPlanes;
 
-    D3D9ShaderConstants                              vsConsts;
-    D3D9ShaderConstants                              psConsts;
+    D3D9ShaderConstants                              consts[DxsoProgramTypes::Count];
 
     std::array<UINT, caps::MaxStreams>               streamFreq;
   };
@@ -91,9 +90,7 @@ namespace dxvk {
           UINT                 StartRegister,
     const T*                   pConstantData,
           UINT                 Count) {
-    auto& set = ProgramType == DxsoProgramType::VertexShader
-      ? pState->vsConsts
-      : pState->psConsts;
+    auto& set = pState->consts[ProgramType];
 
     if constexpr (ConstantType == D3D9ConstantType::Float) {
       auto& consts = set.hardware.fConsts;

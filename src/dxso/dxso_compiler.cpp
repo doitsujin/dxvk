@@ -168,7 +168,7 @@ namespace dxvk {
   }
 
   Rc<DxvkShader> DxsoCompiler::finalize() {
-    if (m_programInfo.type() == DxsoProgramType::VertexShader)
+    if (m_programInfo.type() == DxsoProgramTypes::VertexShader)
       this->emitVsFinalize();
     else
       this->emitPsFinalize();
@@ -207,8 +207,9 @@ namespace dxvk {
     // Initialize the shader module with capabilities
     // etc. Each shader type has its own peculiarities.
     switch (m_programInfo.type()) {
-      case DxsoProgramType::VertexShader: return this->emitVsInit();
-      case DxsoProgramType::PixelShader:  return this->emitPsInit();
+      case DxsoProgramTypes::VertexShader: return this->emitVsInit();
+      case DxsoProgramTypes::PixelShader:  return this->emitPsInit();
+      default: break;
     }
   }
 
@@ -293,7 +294,7 @@ namespace dxvk {
     DxsoArrayType info;
     info.ctype   = DxsoScalarType::Float32;
     info.ccount  = 4;
-    info.alength = m_programInfo.type() == DxsoProgramType::VertexShader
+    info.alength = m_programInfo.type() == DxsoProgramTypes::VertexShader
       ? DxsoMaxInterfaceRegs
       : caps::MaxSimultaneousRenderTargets;
 
@@ -441,7 +442,7 @@ namespace dxvk {
     m_module.setDebugName(varId, name);
     m_module.decorateBuiltIn(varId, builtIn);
 
-    if (m_programInfo.type() == DxsoProgramType::PixelShader
+    if (m_programInfo.type() == DxsoProgramTypes::PixelShader
      && info.type.ctype != DxsoScalarType::Float32
      && info.type.ctype != DxsoScalarType::Bool
      && info.sclass == spv::StorageClassInput)
@@ -490,7 +491,7 @@ namespace dxvk {
     auto& sgn = input
       ? m_isgn : m_osgn;
 
-    const bool pixel  = m_programInfo.type() == DxsoProgramType::PixelShader;
+    const bool pixel  = m_programInfo.type() == DxsoProgramTypes::PixelShader;
     const bool vertex = !pixel;
 
     uint32_t slot = 0;
@@ -862,7 +863,7 @@ namespace dxvk {
 
       case DxsoRegisterType::PixelTexcoord:
       case DxsoRegisterType::Texture: {
-        if (m_programInfo.type() == DxsoProgramType::PixelShader) {
+        if (m_programInfo.type() == DxsoProgramTypes::PixelShader) {
           // Texture register
 
           // SM2, or SM 1.4
@@ -964,7 +965,7 @@ namespace dxvk {
       }
 
       case DxsoRegisterType::Output: {
-        bool texcrdOut = m_programInfo.type() == DxsoProgramType::VertexShader
+        bool texcrdOut = m_programInfo.type() == DxsoProgramTypes::VertexShader
                       && m_programInfo.majorVersion() != 3;
 
         if (texcrdOut) {
@@ -1314,7 +1315,7 @@ namespace dxvk {
 
       uint32_t vIndex = id.num;
 
-      if (m_programInfo.type() == DxsoProgramType::PixelShader) {
+      if (m_programInfo.type() == DxsoProgramTypes::PixelShader) {
         // Semantic in PS < 3 is based upon id.
         if (m_programInfo.majorVersion() < 3) {
           // Account for the two color registers.
@@ -2187,7 +2188,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       const uint32_t imageVarId = m_module.opLoad(sampler.typeId, sampler.varId);
 
       SpirvImageOperands imageOperands;
-      if (m_programInfo.type() == DxsoProgramType::VertexShader) {
+      if (m_programInfo.type() == DxsoProgramTypes::VertexShader) {
         imageOperands.sLod = m_module.constf32(0.0f);
         imageOperands.flags |= spv::ImageOperandsLodMask;
       }
@@ -2826,7 +2827,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
     // r0 in PS1 is the colour output register. Move r0 -> cO0 here.
     if (m_programInfo.majorVersion() == 1
-    && m_programInfo.type() == DxsoProgramType::PixelShader) {
+    && m_programInfo.type() == DxsoProgramTypes::PixelShader) {
       DxsoRegister r0;
       r0.id = { DxsoRegisterType::Temp, 0 };
 

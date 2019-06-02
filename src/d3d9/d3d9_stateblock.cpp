@@ -155,7 +155,7 @@ namespace dxvk {
     const float* pConstantData,
           UINT   Vector4fCount) {
     return SetShaderConstants<
-      DxsoProgramType::VertexShader,
+      DxsoProgramTypes::VertexShader,
       D3D9ConstantType::Float>(
         StartRegister,
         pConstantData,
@@ -167,7 +167,7 @@ namespace dxvk {
     const int* pConstantData,
           UINT Vector4iCount) {
     return SetShaderConstants<
-      DxsoProgramType::VertexShader,
+      DxsoProgramTypes::VertexShader,
       D3D9ConstantType::Int>(
         StartRegister,
         pConstantData,
@@ -179,7 +179,7 @@ namespace dxvk {
     const BOOL* pConstantData,
           UINT  BoolCount) {
     return SetShaderConstants<
-      DxsoProgramType::VertexShader,
+      DxsoProgramTypes::VertexShader,
       D3D9ConstantType::Bool>(
         StartRegister,
         pConstantData,
@@ -192,7 +192,7 @@ namespace dxvk {
     const float* pConstantData,
           UINT   Vector4fCount) {
     return SetShaderConstants<
-      DxsoProgramType::PixelShader,
+      DxsoProgramTypes::PixelShader,
       D3D9ConstantType::Float>(
         StartRegister,
         pConstantData,
@@ -204,7 +204,7 @@ namespace dxvk {
     const int* pConstantData,
           UINT Vector4iCount) {
     return SetShaderConstants<
-      DxsoProgramType::PixelShader,
+      DxsoProgramTypes::PixelShader,
       D3D9ConstantType::Int>(
         StartRegister,
         pConstantData,
@@ -216,7 +216,7 @@ namespace dxvk {
     const BOOL* pConstantData,
           UINT  BoolCount) {
     return SetShaderConstants<
-      DxsoProgramType::PixelShader,
+      DxsoProgramTypes::PixelShader,
       D3D9ConstantType::Bool>(
         StartRegister,
         pConstantData,
@@ -224,14 +224,14 @@ namespace dxvk {
   }
 
   HRESULT D3D9StateBlock::SetVertexBoolBitfield(uint32_t mask, uint32_t bits) {
-    m_state.vsConsts.hardware.boolBitfield &= ~mask;
-    m_state.vsConsts.hardware.boolBitfield |= bits & mask;
+    m_state.consts[DxsoProgramTypes::VertexShader].hardware.boolBitfield &= ~mask;
+    m_state.consts[DxsoProgramTypes::VertexShader].hardware.boolBitfield |= bits & mask;
     return D3D_OK;
   }
 
   HRESULT D3D9StateBlock::SetPixelBoolBitfield(uint32_t mask, uint32_t bits) {
-    m_state.psConsts.hardware.boolBitfield &= ~mask;
-    m_state.psConsts.hardware.boolBitfield |= bits & mask;
+    m_state.consts[DxsoProgramTypes::PixelShader].hardware.boolBitfield &= ~mask;
+    m_state.consts[DxsoProgramTypes::PixelShader].hardware.boolBitfield |= bits & mask;
     return D3D_OK;
   }
 

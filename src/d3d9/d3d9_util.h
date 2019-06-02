@@ -30,9 +30,9 @@ namespace dxvk {
 
   inline std::pair<DxsoProgramType, DWORD> RemapStateSamplerShader(DWORD Sampler) {
     if (Sampler >= 17)
-      return std::make_pair(DxsoProgramType::VertexShader, Sampler - 17);
+      return std::make_pair(DxsoProgramTypes::VertexShader, Sampler - 17);
 
-    return std::make_pair(DxsoProgramType::PixelShader, Sampler);
+    return std::make_pair(DxsoProgramTypes::PixelShader, Sampler);
   }
 
   inline std::pair<DxsoProgramType, DWORD> RemapSamplerShader(DWORD Sampler) {
@@ -95,8 +95,8 @@ namespace dxvk {
 
   inline VkShaderStageFlagBits GetShaderStage(DxsoProgramType ProgramType) {
     switch (ProgramType) {
-      case DxsoProgramType::VertexShader:   return VK_SHADER_STAGE_VERTEX_BIT;
-      case DxsoProgramType::PixelShader:    return VK_SHADER_STAGE_FRAGMENT_BIT;
+      case DxsoProgramTypes::VertexShader:  return VK_SHADER_STAGE_VERTEX_BIT;
+      case DxsoProgramTypes::PixelShader:   return VK_SHADER_STAGE_FRAGMENT_BIT;
       default:                              return VkShaderStageFlagBits(0);
     }
   }

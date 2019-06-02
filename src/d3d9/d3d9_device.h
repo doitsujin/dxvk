@@ -727,11 +727,12 @@ namespace dxvk {
 
     void BindAlphaTestState();
     
-    void UploadConstants(DxsoProgramType ShaderStage);
+    template <DxsoProgramType ShaderStage>
+    void UploadConstants();
 
     inline void UpdateConstants() {
-      UploadConstants(DxsoProgramType::VertexShader);
-      UploadConstants(DxsoProgramType::PixelShader);
+      UploadConstants<DxsoProgramTypes::VertexShader>();
+      UploadConstants<DxsoProgramTypes::PixelShader>();
     }
     
     void UpdateClipPlanes();
@@ -855,8 +856,7 @@ namespace dxvk {
 
     Rc<D3D9ShaderModuleSet>         m_shaderModules;
 
-    D3D9ConstantSets                m_vsConst;
-    D3D9ConstantSets                m_psConst;
+    D3D9ConstantSets                m_consts[DxsoProgramTypes::Count];
 
     Rc<DxvkBuffer>                  m_vsClipPlanes;
     Rc<DxvkBuffer>                  m_psRenderStates;
@@ -956,9 +956,7 @@ namespace dxvk {
       if (pConstantData == nullptr)
         return D3DERR_INVALIDCALL;
 
-      auto& set = ProgramType == DxsoProgramType::VertexShader
-        ? m_state.vsConsts
-        : m_state.psConsts;
+      auto& set = m_state.consts[ProgramType];
 
       if constexpr (ConstantType == D3D9ConstantType::Float) {
         auto& consts = set.hardware.fConsts;

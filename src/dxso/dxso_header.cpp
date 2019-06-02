@@ -9,9 +9,9 @@ namespace dxvk {
 
     DxsoProgramType programType;
     if (headerTypeMask == 0xffff0000)
-      programType = DxsoProgramType::PixelShader;
+      programType = DxsoProgramTypes::PixelShader;
     else if (headerTypeMask == 0xfffe0000)
-      programType = DxsoProgramType::VertexShader;
+      programType = DxsoProgramTypes::VertexShader;
     else
       throw DxvkError("DxsoHeader: invalid header - invalid version");
 

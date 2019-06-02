@@ -2010,14 +2010,14 @@ namespace dxvk {
     bool dirtyConstants = oldCopies || newCopies;
 
     if (dirtyConstants) {
-      m_vsConst.dirty = true;
-      m_vsConst.shaderConstantCopies = newCopies;
+      m_consts[DxsoProgramTypes::VertexShader].dirty = true;
+      m_consts[DxsoProgramTypes::VertexShader].shaderConstantCopies = newCopies;
     }
 
     changePrivate(m_state.vertexShader, shader);
 
     BindShader(
-      DxsoProgramType::VertexShader,
+      DxsoProgramTypes::VertexShader,
       GetCommonShader(shader));
 
 
@@ -2047,7 +2047,7 @@ namespace dxvk {
     auto lock = LockDevice();
 
     return SetShaderConstants<
-      DxsoProgramType::VertexShader,
+      DxsoProgramTypes::VertexShader,
       D3D9ConstantType::Float>(
         StartRegister,
         pConstantData,
@@ -2061,7 +2061,7 @@ namespace dxvk {
     auto lock = LockDevice();
 
     return GetShaderConstants<
-      DxsoProgramType::VertexShader,
+      DxsoProgramTypes::VertexShader,
       D3D9ConstantType::Float>(
         StartRegister,
         pConstantData,
@@ -2075,7 +2075,7 @@ namespace dxvk {
     auto lock = LockDevice();
 
     return SetShaderConstants<
-      DxsoProgramType::VertexShader,
+      DxsoProgramTypes::VertexShader,
       D3D9ConstantType::Int>(
         StartRegister,
         pConstantData,
@@ -2089,7 +2089,7 @@ namespace dxvk {
     auto lock = LockDevice();
 
     return GetShaderConstants<
-      DxsoProgramType::VertexShader,
+      DxsoProgramTypes::VertexShader,
       D3D9ConstantType::Int>(
         StartRegister,
         pConstantData,
@@ -2103,7 +2103,7 @@ namespace dxvk {
     auto lock = LockDevice();
 
     return SetShaderConstants<
-      DxsoProgramType::VertexShader,
+      DxsoProgramTypes::VertexShader,
       D3D9ConstantType::Bool>(
         StartRegister,
         pConstantData,
@@ -2117,7 +2117,7 @@ namespace dxvk {
     auto lock = LockDevice();
 
     return GetShaderConstants<
-      DxsoProgramType::VertexShader,
+      DxsoProgramTypes::VertexShader,
       D3D9ConstantType::Bool>(
         StartRegister,
         pConstantData,
@@ -2307,14 +2307,14 @@ namespace dxvk {
     bool dirtyConstants = oldCopies || newCopies;
 
     if (dirtyConstants) {
-      m_psConst.dirty = true;
-      m_psConst.shaderConstantCopies = newCopies;
+      m_consts[DxsoProgramTypes::PixelShader].dirty = true;
+      m_consts[DxsoProgramTypes::PixelShader].shaderConstantCopies = newCopies;
     }
 
     changePrivate(m_state.pixelShader, shader);
 
     BindShader(
-      DxsoProgramType::PixelShader,
+      DxsoProgramTypes::PixelShader,
       GetCommonShader(shader));
 
     return D3D_OK;
@@ -2340,7 +2340,7 @@ namespace dxvk {
     auto lock = LockDevice();
 
     return SetShaderConstants <
-      DxsoProgramType::PixelShader,
+      DxsoProgramTypes::PixelShader,
       D3D9ConstantType::Float>(
         StartRegister,
         pConstantData,
@@ -2354,7 +2354,7 @@ namespace dxvk {
     auto lock = LockDevice();
 
     return GetShaderConstants<
-      DxsoProgramType::PixelShader,
+      DxsoProgramTypes::PixelShader,
       D3D9ConstantType::Float>(
         StartRegister,
         pConstantData,
@@ -2368,7 +2368,7 @@ namespace dxvk {
     auto lock = LockDevice();
 
     return SetShaderConstants<
-      DxsoProgramType::PixelShader,
+      DxsoProgramTypes::PixelShader,
       D3D9ConstantType::Int>(
         StartRegister,
         pConstantData,
@@ -2382,7 +2382,7 @@ namespace dxvk {
     auto lock = LockDevice();
 
     return GetShaderConstants<
-      DxsoProgramType::PixelShader,
+      DxsoProgramTypes::PixelShader,
       D3D9ConstantType::Int>(
         StartRegister,
         pConstantData,
@@ -2396,7 +2396,7 @@ namespace dxvk {
     auto lock = LockDevice();
 
     return SetShaderConstants<
-      DxsoProgramType::PixelShader,
+      DxsoProgramTypes::PixelShader,
       D3D9ConstantType::Bool>(
         StartRegister,
         pConstantData,
@@ -2410,7 +2410,7 @@ namespace dxvk {
     auto lock = LockDevice();
 
     return GetShaderConstants<
-      DxsoProgramType::PixelShader,
+      DxsoProgramTypes::PixelShader,
       D3D9ConstantType::Bool>(
         StartRegister,
         pConstantData,
@@ -3649,8 +3649,8 @@ namespace dxvk {
                                       | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
                                       | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
-    m_vsConst.buffer = m_dxvkDevice->createBuffer(info, memoryFlags);
-    m_psConst.buffer = m_dxvkDevice->createBuffer(info, memoryFlags);
+    m_consts[DxsoProgramTypes::VertexShader].buffer = m_dxvkDevice->createBuffer(info, memoryFlags);
+    m_consts[DxsoProgramTypes::PixelShader].buffer  = m_dxvkDevice->createBuffer(info, memoryFlags);
 
     info.size = caps::MaxClipPlanes * sizeof(D3D9ClipPlane);
     m_vsClipPlanes = m_dxvkDevice->createBuffer(info, memoryFlags);
@@ -3675,33 +3675,35 @@ namespace dxvk {
       });
     };
 
-    BindConstantBuffer(DxsoProgramType::VertexShader, m_vsConst.buffer, DxsoConstantBuffers::VSConstantBuffer);
-    BindConstantBuffer(DxsoProgramType::PixelShader,  m_psConst.buffer, DxsoConstantBuffers::PSConstantBuffer);
-    BindConstantBuffer(DxsoProgramType::VertexShader, m_vsClipPlanes,   DxsoConstantBuffers::VSClipPlanes);
-    BindConstantBuffer(DxsoProgramType::PixelShader,  m_psRenderStates, DxsoConstantBuffers::PSRenderStates);
+    BindConstantBuffer(DxsoProgramTypes::VertexShader, m_consts[DxsoProgramTypes::VertexShader].buffer, DxsoConstantBuffers::VSConstantBuffer);
+    BindConstantBuffer(DxsoProgramTypes::PixelShader,  m_consts[DxsoProgramTypes::PixelShader].buffer,  DxsoConstantBuffers::PSConstantBuffer);
+    BindConstantBuffer(DxsoProgramTypes::VertexShader, m_vsClipPlanes,                                  DxsoConstantBuffers::VSClipPlanes);
+    BindConstantBuffer(DxsoProgramTypes::PixelShader,  m_psRenderStates,                                DxsoConstantBuffers::PSRenderStates);
     
     m_flags.set(
       D3D9DeviceFlag::DirtyClipPlanes,
       D3D9DeviceFlag::DirtyRenderStateBuffer);
   }
 
-  void D3D9DeviceEx::UploadConstants(DxsoProgramType ShaderStage) {
-    D3D9ConstantSets& constSet =
-      ShaderStage == DxsoProgramType::VertexShader
-        ? m_vsConst
-        : m_psConst;
+  template <DxsoProgramType ShaderStage>
+  void D3D9DeviceEx::UploadConstants() {
+    D3D9ConstantSets& constSet = m_consts[ShaderStage];
 
     if (!constSet.dirty)
       return;
 
     constSet.dirty = false;
 
-    const void* constantData =
-      ShaderStage == DxsoProgramType::VertexShader
-      ? &m_state.vsConsts
-      : &m_state.psConsts;
+    const void* constantData = &m_state.consts[ShaderStage].hardware;
 
     DxvkBufferSliceHandle slice = constSet.buffer->allocSlice();
+
+    EmitCs([
+      cBuffer = constSet.buffer,
+      cSlice  = slice
+    ] (DxvkContext* ctx) {
+      ctx->invalidateBuffer(cBuffer, cSlice);
+    });
 
     std::memcpy(slice.mapPtr, constantData, D3D9ConstantSets::SetSize);
 
@@ -3709,7 +3711,7 @@ namespace dxvk {
       D3D9ShaderConstants::vec4* data =
         reinterpret_cast<D3D9ShaderConstants::vec4*>(slice.mapPtr);
 
-      if (ShaderStage == DxsoProgramType::VertexShader) {
+      if (ShaderStage == DxsoProgramTypes::VertexShader) {
         auto& shaderConsts = GetCommonShader(m_state.vertexShader)->GetConstants();
 
         for (const auto& constant : shaderConsts)
@@ -3722,13 +3724,6 @@ namespace dxvk {
           std::memcpy(data + constant.uboIdx, constant.float32, sizeof(D3D9ShaderConstants::vec4));
       }
     }
-
-    EmitCs([
-      cBuffer = constSet.buffer,
-      cSlice  = slice
-    ] (DxvkContext* ctx) {
-      ctx->invalidateBuffer(cBuffer, cSlice);
-    });
   }
   
   void D3D9DeviceEx::UpdateClipPlanes() {
@@ -4430,17 +4425,17 @@ namespace dxvk {
   }
 
   void D3D9DeviceEx::SetVertexBoolBitfield(uint32_t mask, uint32_t bits) {
-    m_state.vsConsts.hardware.boolBitfield &= ~mask;
-    m_state.vsConsts.hardware.boolBitfield |= bits & mask;
+    m_state.consts[DxsoProgramTypes::VertexShader].hardware.boolBitfield &= ~mask;
+    m_state.consts[DxsoProgramTypes::VertexShader].hardware.boolBitfield |= bits & mask;
 
-    m_vsConst.dirty = true;
+    m_consts[DxsoProgramTypes::VertexShader].dirty = true;
   }
 
   void D3D9DeviceEx::SetPixelBoolBitfield(uint32_t mask, uint32_t bits) {
-    m_state.psConsts.hardware.boolBitfield &= ~mask;
-    m_state.psConsts.hardware.boolBitfield |= bits & mask;
+    m_state.consts[DxsoProgramTypes::PixelShader].hardware.boolBitfield &= ~mask;
+    m_state.consts[DxsoProgramTypes::PixelShader].hardware.boolBitfield |= bits & mask;
 
-    m_psConst.dirty = true;
+    m_consts[DxsoProgramTypes::PixelShader].dirty = true;
   }
 
   HRESULT D3D9DeviceEx::CreateShaderModule(
@@ -4495,11 +4490,7 @@ namespace dxvk {
             pConstantData,
             Count);
 
-      bool& dirtyFlag = ProgramType == DxsoProgramType::VertexShader
-        ? m_vsConst.dirty
-        : m_psConst.dirty;
-
-      dirtyFlag = true;
+      m_consts[ProgramType].dirty = true;
 
       UpdateStateConstants<
         ProgramType,

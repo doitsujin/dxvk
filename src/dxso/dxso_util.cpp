@@ -10,7 +10,7 @@ namespace dxvk {
         uint32_t        bindingIndex) {
     const uint32_t stageOffset = 11 * uint32_t(shaderStage);
 
-    if (shaderStage == DxsoProgramType::VertexShader) {
+    if (shaderStage == DxsoProgramTypes::VertexShader) {
       switch (bindingType) {
         case DxsoBindingType::ConstantBuffer: return bindingIndex + stageOffset + 0; // 0 + 3 = 3
         case DxsoBindingType::ColorImage:     return bindingIndex + stageOffset + 3; // 3 + 4 = 7
