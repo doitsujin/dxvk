@@ -829,7 +829,7 @@ namespace dxvk {
     void EmitCs(Cmd&& command) {
       m_cmdData = nullptr;
 
-      if (!m_csChunk->push(command)) {
+      if (unlikely(!m_csChunk->push(command))) {
         EmitCsChunk(std::move(m_csChunk));
         
         m_csChunk = AllocCsChunk();
@@ -842,7 +842,7 @@ namespace dxvk {
       M* data = m_csChunk->pushCmd<M, Cmd, Args...>(
         command, std::forward<Args>(args)...);
 
-      if (!data) {
+      if (unlikely(!data)) {
         EmitCsChunk(std::move(m_csChunk));
         
         m_csChunk = AllocCsChunk();
@@ -855,7 +855,7 @@ namespace dxvk {
     }
     
     void FlushCsChunk() {
-      if (m_csChunk->commandCount() != 0) {
+      if (likely(m_csChunk->commandCount())) {
         EmitCsChunk(std::move(m_csChunk));
         m_csChunk = AllocCsChunk();
         m_cmdData = nullptr;
