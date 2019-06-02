@@ -826,7 +826,7 @@ namespace dxvk {
 
     template<typename Cmd>
     void EmitCs(Cmd&& command) {
-      if (!m_csChunk->push(command)) {
+      if (unlikely(!m_csChunk->push(command))) {
         EmitCsChunk(std::move(m_csChunk));
 
         m_csChunk = AllocCsChunk();
@@ -837,7 +837,7 @@ namespace dxvk {
     void EmitCsChunk(DxvkCsChunkRef&& chunk);
 
     void FlushCsChunk() {
-      if (m_csChunk->commandCount() != 0) {
+      if (likely(m_csChunk->commandCount())) {
         EmitCsChunk(std::move(m_csChunk));
         m_csChunk = AllocCsChunk();
       }
