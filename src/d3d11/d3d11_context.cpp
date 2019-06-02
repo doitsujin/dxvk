@@ -1588,11 +1588,15 @@ namespace dxvk {
     for (uint32_t i = 0; i < NumBuffers; i++) {
       auto newBuffer = static_cast<D3D11Buffer*>(ppVertexBuffers[i]);
       
-      m_state.ia.vertexBuffers[StartSlot + i].buffer = newBuffer;
-      m_state.ia.vertexBuffers[StartSlot + i].offset = pOffsets[i];
-      m_state.ia.vertexBuffers[StartSlot + i].stride = pStrides[i];
-      
-      BindVertexBuffer(StartSlot + i, newBuffer, pOffsets[i], pStrides[i]);
+      if (m_state.ia.vertexBuffers[StartSlot + i].buffer != newBuffer
+       || m_state.ia.vertexBuffers[StartSlot + i].offset != pOffsets[i]
+       || m_state.ia.vertexBuffers[StartSlot + i].stride != pStrides[i]) {
+        m_state.ia.vertexBuffers[StartSlot + i].buffer = newBuffer;
+        m_state.ia.vertexBuffers[StartSlot + i].offset = pOffsets[i];
+        m_state.ia.vertexBuffers[StartSlot + i].stride = pStrides[i];
+
+        BindVertexBuffer(StartSlot + i, newBuffer, pOffsets[i], pStrides[i]);
+      }
     }
   }
   
@@ -1605,11 +1609,15 @@ namespace dxvk {
     
     auto newBuffer = static_cast<D3D11Buffer*>(pIndexBuffer);
     
-    m_state.ia.indexBuffer.buffer = newBuffer;
-    m_state.ia.indexBuffer.offset = Offset;
-    m_state.ia.indexBuffer.format = Format;
-    
-    BindIndexBuffer(newBuffer, Offset, Format);
+    if (m_state.ia.indexBuffer.buffer != newBuffer
+     || m_state.ia.indexBuffer.offset != Offset
+     || m_state.ia.indexBuffer.format != Format) {
+      m_state.ia.indexBuffer.buffer = newBuffer;
+      m_state.ia.indexBuffer.offset = Offset;
+      m_state.ia.indexBuffer.format = Format;
+
+      BindIndexBuffer(newBuffer, Offset, Format);
+    }
   }
   
   
