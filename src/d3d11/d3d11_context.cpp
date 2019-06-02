@@ -883,10 +883,8 @@ namespace dxvk {
     if (!dsv)
       return;
     
-    // Figure out which aspects to clear based
-    // on the image format and the clear flags.
-    const Rc<DxvkImageView> view = dsv->GetImageView();
-    
+    // Figure out which aspects to clear based on
+    // the image view properties and clear flags.
     VkImageAspectFlags aspectMask = 0;
     
     if (ClearFlags & D3D11_CLEAR_DEPTH)
@@ -895,7 +893,10 @@ namespace dxvk {
     if (ClearFlags & D3D11_CLEAR_STENCIL)
       aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
     
-    aspectMask &= imageFormatInfo(view->info().format)->aspectMask;
+    aspectMask &= dsv->GetWritableAspectMask();
+
+    if (!aspectMask)
+      return;
     
     VkClearValue clearValue;
     clearValue.depthStencil.depth   = Depth;
@@ -904,7 +905,7 @@ namespace dxvk {
     EmitCs([
       cClearValue = clearValue,
       cAspectMask = aspectMask,
-      cImageView  = view
+      cImageView  = dsv->GetImageView()
     ] (DxvkContext* ctx) {
       ctx->clearRenderTarget(
         cImageView,
