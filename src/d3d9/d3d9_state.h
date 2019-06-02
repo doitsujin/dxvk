@@ -9,7 +9,7 @@
 
 namespace dxvk {
 
-  static constexpr uint32_t RenderStateCount  = D3DRS_BLENDOPALPHA + 1;
+  static constexpr uint32_t RenderStateCount  = 256;
   static constexpr uint32_t SamplerStateCount = D3DSAMP_DMAPOFFSET + 1;
   static constexpr uint32_t SamplerCount      = 21;
 
