@@ -196,11 +196,8 @@ namespace dxvk {
         pMappedResource);
     }
 
-    if (unlikely(FAILED(hr))) {
-      pMappedResource->pData      = nullptr;
-      pMappedResource->RowPitch   = 0;
-      pMappedResource->DepthPitch = 0;
-    }
+    if (unlikely(FAILED(hr)))
+      *pMappedResource = D3D11_MAPPED_SUBRESOURCE();
 
     return hr;
   }

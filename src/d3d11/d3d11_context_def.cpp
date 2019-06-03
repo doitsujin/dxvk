@@ -84,14 +84,11 @@ namespace dxvk {
           D3D11_MAPPED_SUBRESOURCE*   pMappedResource) {
     D3D10DeviceLock lock = LockContext();
 
+    if (unlikely(!pResource || !pMappedResource))
+      return E_INVALIDARG;
+    
     D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
     pResource->GetType(&resourceDim);
-    
-    if (pMappedResource != nullptr) {
-      pMappedResource->pData      = nullptr;
-      pMappedResource->RowPitch   = 0;
-      pMappedResource->DepthPitch = 0;
-    }
     
     if (MapType == D3D11_MAP_WRITE_DISCARD) {
       D3D11DeferredContextMapEntry entry;
@@ -100,8 +97,10 @@ namespace dxvk {
         ? MapBuffer(pResource,              MapType, MapFlags, &entry)
         : MapImage (pResource, Subresource, MapType, MapFlags, &entry);
       
-      if (FAILED(status))
+      if (unlikely(FAILED(status))) {
+        *pMappedResource = D3D11_MAPPED_SUBRESOURCE();
         return status;
+      }
       
       // Adding a new map entry actually overrides the
       // old one in practice because the lookup function
@@ -118,8 +117,10 @@ namespace dxvk {
       // before it can be mapped with D3D11_MAP_WRITE_NO_OVERWRITE.
       auto entry = FindMapEntry(pResource, Subresource);
       
-      if (entry == m_mappedResources.rend())
+      if (unlikely(entry == m_mappedResources.rend())) {
+        *pMappedResource = D3D11_MAPPED_SUBRESOURCE();
         return E_INVALIDARG;
+      }
       
       // Return same memory region as earlier
       entry->MapType = D3D11_MAP_WRITE_NO_OVERWRITE;
@@ -130,6 +131,7 @@ namespace dxvk {
       return S_OK;
     } else {
       // Not allowed on deferred contexts
+      *pMappedResource = D3D11_MAPPED_SUBRESOURCE();
       return E_INVALIDARG;
     }
   }
@@ -140,21 +142,19 @@ namespace dxvk {
           UINT                        Subresource) {
     D3D10DeviceLock lock = LockContext();
 
-    D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
-    pResource->GetType(&resourceDim);
-    
     auto entry = FindMapEntry(pResource, Subresource);
-    
-    if (entry == m_mappedResources.rend()) {
+    if (unlikely(entry == m_mappedResources.rend())) {
       Logger::err("D3D11DeferredContext::Unmap: Subresource not mapped");
       return;
     }
     
     if (entry->MapType == D3D11_MAP_WRITE_DISCARD) {
-      if (resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER)
-        UnmapBuffer(pResource, &(*entry));
-      else
-        UnmapImage(pResource, Subresource, &(*entry));
+      D3D11_RESOURCE_DIMENSION resourceDim = D3D11_RESOURCE_DIMENSION_UNKNOWN;
+      pResource->GetType(&resourceDim);
+      
+      (resourceDim == D3D11_RESOURCE_DIMENSION_BUFFER)
+        ? UnmapBuffer(pResource,              &(*entry))
+        : UnmapImage (pResource, Subresource, &(*entry));
     }
   }
   
@@ -184,7 +184,7 @@ namespace dxvk {
     pMapEntry->RowPitch     = pBuffer->Desc()->ByteWidth;
     pMapEntry->DepthPitch   = pBuffer->Desc()->ByteWidth;
     
-    if (pBuffer->Desc()->Usage == D3D11_USAGE_DYNAMIC && m_csFlags.test(DxvkCsChunkFlag::SingleUse)) {
+    if (likely(pBuffer->Desc()->Usage == D3D11_USAGE_DYNAMIC && m_csFlags.test(DxvkCsChunkFlag::SingleUse))) {
       // For resources that cannot be written by the GPU,
       // we may write to the buffer resource directly and
       // just swap in the buffer slice as needed.
@@ -210,7 +210,7 @@ namespace dxvk {
     const D3D11CommonTexture* pTexture = GetCommonTexture(pResource);
     const Rc<DxvkImage> image = pTexture->GetImage();
     
-    if (pTexture->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_NONE) {
+    if (unlikely(pTexture->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_NONE)) {
       Logger::err("D3D11: Cannot map a device-local image");
       return E_INVALIDARG;
     }
@@ -250,7 +250,7 @@ namespace dxvk {
     const D3D11DeferredContextMapEntry* pMapEntry) {
     D3D11Buffer* pBuffer = static_cast<D3D11Buffer*>(pResource);
     
-    if (pBuffer->Desc()->Usage == D3D11_USAGE_DYNAMIC && m_csFlags.test(DxvkCsChunkFlag::SingleUse)) {
+    if (likely(pBuffer->Desc()->Usage == D3D11_USAGE_DYNAMIC && m_csFlags.test(DxvkCsChunkFlag::SingleUse))) {
       EmitCs([
         cDstBuffer = pBuffer->GetBuffer(),
         cPhysSlice = pMapEntry->BufferSlice
