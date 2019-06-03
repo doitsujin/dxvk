@@ -158,12 +158,20 @@ namespace dxvk {
   void DxvkContext::bindResourceBuffer(
           uint32_t              slot,
     const DxvkBufferSlice&      buffer) {
-    if (!m_rc[slot].bufferSlice.matches(buffer)) {
+    if (!m_rc[slot].bufferSlice.matchesBuffer(buffer)) {
       m_rc[slot].bufferSlice = buffer;
       
       m_flags.set(
         DxvkContextFlag::CpDirtyResources,
         DxvkContextFlag::GpDirtyResources);
+    } else if (!m_rc[slot].bufferSlice.matchesRange(buffer)) {
+      m_rc[slot].bufferSlice.updateRange(
+        buffer.offset(),
+        buffer.length());
+      
+      m_flags.set(
+        DxvkContextFlag::CpDirtyDescriptorOffsets,
+        DxvkContextFlag::GpDirtyDescriptorOffsets);
     }
   }
   

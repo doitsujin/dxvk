@@ -434,7 +434,7 @@ namespace dxvk {
         ? m_buffer->mapPtr(m_offset + offset)
         : nullptr;
     }
-    
+
     /**
      * \brief Checks whether two slices are equal
      * 
@@ -447,6 +447,45 @@ namespace dxvk {
       return this->m_buffer == other.m_buffer
           && this->m_offset == other.m_offset
           && this->m_length == other.m_length;
+    }
+
+    /**
+     * \brief Checks whether two slices are from the same buffer
+     *
+     * This returns \c true if the two slices are taken
+     * from the same buffer, but may have different ranges.
+     * \param [in] other The slice to compare to
+     * \returns \c true if the buffer objects are the same
+     */
+    bool matchesBuffer(const DxvkBufferSlice& other) const {
+      return this->m_buffer == other.m_buffer;
+    }
+
+    /**
+     * \brief Checks whether two slices have the same range
+     * 
+     * This returns \c true if the two slices have the same
+     * offset and size, even if the buffers are different.
+     * May be useful if the buffers are know to be the same.
+     * \param [in] other The slice to compare to
+     * \returns \c true if the buffer objects are the same
+     */
+    bool matchesRange(const DxvkBufferSlice& other) const {
+      return this->m_offset == other.m_offset
+          && this->m_length == other.m_length;
+    }
+
+    /**
+     * \brief Changes offset and size, but not the buffer
+     *
+     * Slightly faster alternative to overriding the full
+     * buffer slice object in case only the range changes.
+     * \param [in] offset New slice offset
+     * \param [in] length New slice length
+     */
+    void updateRange(VkDeviceSize offset, VkDeviceSize length) {
+      m_offset = offset;
+      m_length = length;
     }
     
   private:
