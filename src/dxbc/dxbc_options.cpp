@@ -32,6 +32,7 @@ namespace dxvk {
       = (devInfo.core.properties.limits.minStorageBufferOffsetAlignment <= sizeof(uint32_t));
     useSdivForBufferIndex
       = adapter->matchesDriver(DxvkGpuVendor::Nvidia, VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0);
+    minSsboAlignment = devInfo.core.properties.limits.minStorageBufferOffsetAlignment;
     
     strictDivision           = options.strictDivision;
     zeroInitWorkgroupMemory  = options.zeroInitWorkgroupMemory;

@@ -42,6 +42,9 @@ namespace dxvk {
 
     /// Clear thread-group shared memory to zero
     bool zeroInitWorkgroupMemory = false;
+
+    /// Minimum storage buffer alignment
+    VkDeviceSize minSsboAlignment = 0;
   };
   
 }
