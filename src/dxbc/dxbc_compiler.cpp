@@ -985,6 +985,7 @@ namespace dxvk {
       uav.sampledTypeId = sampledTypeId;
       uav.imageTypeId   = imageTypeId;
       uav.structStride  = 0;
+      uav.structAlign   = 0;
       m_uavs.at(registerId) = uav;
     } else {
       DxbcShaderResource res;
@@ -998,6 +999,7 @@ namespace dxvk {
       res.colorTypeId   = imageTypeId;
       res.depthTypeId   = 0;
       res.structStride  = 0;
+      res.structAlign   = 0;
       
       if ((sampledType == DxbcScalarType::Float32)
        && (resourceType == DxbcResourceDim::Texture2D
@@ -1064,6 +1066,10 @@ namespace dxvk {
     uint32_t resStride = isStructured
       ? ins.imm[0].u32
       : 0;
+    
+    uint32_t resAlign = isStructured
+      ? (resStride & -resStride)
+      : 16;
     
     // Compute the DXVK binding slot index for the resource.
     uint32_t bindingId = isUav
@@ -1132,6 +1138,7 @@ namespace dxvk {
       uav.sampledTypeId = sampledTypeId;
       uav.imageTypeId   = resTypeId;
       uav.structStride  = resStride;
+      uav.structAlign   = resAlign;
       m_uavs.at(registerId) = uav;
     } else {
       DxbcShaderResource res;
@@ -1145,6 +1152,7 @@ namespace dxvk {
       res.colorTypeId   = resTypeId;
       res.depthTypeId   = 0;
       res.structStride  = resStride;
+      res.structAlign   = resAlign;
       m_textures.at(registerId) = res;
     }
     
@@ -7298,6 +7306,7 @@ namespace dxvk {
         result.varId  = m_textures.at(registerId).varId;
         result.specId = m_textures.at(registerId).specId;
         result.stride = m_textures.at(registerId).structStride;
+        result.align  = m_textures.at(registerId).structAlign;
         return result;
       } break;
         
@@ -7310,6 +7319,7 @@ namespace dxvk {
         result.varId  = m_uavs.at(registerId).varId;
         result.specId = m_uavs.at(registerId).specId;
         result.stride = m_uavs.at(registerId).structStride;
+        result.align  = m_uavs.at(registerId).structAlign;
         return result;
       } break;
         
@@ -7324,6 +7334,7 @@ namespace dxvk {
         result.varId  = m_gRegs.at(registerId).varId;
         result.specId = 0;
         result.stride = m_gRegs.at(registerId).elementStride;
+        result.align  = 0;
         return result;
       } break;
         
