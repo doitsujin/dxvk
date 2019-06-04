@@ -1587,11 +1587,15 @@ namespace dxvk {
     
     for (uint32_t i = 0; i < NumBuffers; i++) {
       auto newBuffer = static_cast<D3D11Buffer*>(ppVertexBuffers[i]);
-      
-      if (m_state.ia.vertexBuffers[StartSlot + i].buffer != newBuffer
-       || m_state.ia.vertexBuffers[StartSlot + i].offset != pOffsets[i]
-       || m_state.ia.vertexBuffers[StartSlot + i].stride != pStrides[i]) {
+      bool needsUpdate = m_state.ia.vertexBuffers[StartSlot + i].buffer != newBuffer;
+
+      if (needsUpdate)
         m_state.ia.vertexBuffers[StartSlot + i].buffer = newBuffer;
+
+      needsUpdate |= m_state.ia.vertexBuffers[StartSlot + i].offset != pOffsets[i]
+                  || m_state.ia.vertexBuffers[StartSlot + i].stride != pStrides[i];
+
+      if (needsUpdate) {
         m_state.ia.vertexBuffers[StartSlot + i].offset = pOffsets[i];
         m_state.ia.vertexBuffers[StartSlot + i].stride = pStrides[i];
 
@@ -1608,11 +1612,15 @@ namespace dxvk {
     D3D10DeviceLock lock = LockContext();
     
     auto newBuffer = static_cast<D3D11Buffer*>(pIndexBuffer);
-    
-    if (m_state.ia.indexBuffer.buffer != newBuffer
-     || m_state.ia.indexBuffer.offset != Offset
-     || m_state.ia.indexBuffer.format != Format) {
+    bool needsUpdate = m_state.ia.indexBuffer.buffer != newBuffer;
+
+    if (needsUpdate)
       m_state.ia.indexBuffer.buffer = newBuffer;
+
+    needsUpdate |= m_state.ia.indexBuffer.offset != Offset
+                || m_state.ia.indexBuffer.format != Format;
+
+    if (needsUpdate) {
       m_state.ia.indexBuffer.offset = Offset;
       m_state.ia.indexBuffer.format = Format;
 
@@ -3465,11 +3473,16 @@ namespace dxvk {
         constantCount   = 0;
         constantBound   = 0;
       }
+
+      bool needsUpdate = Bindings[StartSlot + i].buffer != newBuffer;
+
+      if (needsUpdate)
+        Bindings[StartSlot + i].buffer = newBuffer;
+
+      needsUpdate |= Bindings[StartSlot + i].constantOffset != constantOffset
+                  || Bindings[StartSlot + i].constantCount  != constantCount;
       
-      if (Bindings[StartSlot + i].buffer         != newBuffer
-       || Bindings[StartSlot + i].constantOffset != constantOffset
-       || Bindings[StartSlot + i].constantCount  != constantCount) {
-        Bindings[StartSlot + i].buffer         = newBuffer;
+      if (needsUpdate) {
         Bindings[StartSlot + i].constantOffset = constantOffset;
         Bindings[StartSlot + i].constantCount  = constantCount;
         Bindings[StartSlot + i].constantBound  = constantBound;
