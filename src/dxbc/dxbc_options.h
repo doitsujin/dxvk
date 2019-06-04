@@ -25,10 +25,6 @@ namespace dxvk {
     /// shader invocations if derivatives remain valid.
     bool useSubgroupOpsForEarlyDiscard = false;
 
-    /// Use SSBOs instead of texel buffers
-    /// for raw and structured buffers.
-    bool useRawSsbo = false;
-    
     /// Use SDiv instead of SHR to converte byte offsets to
     /// dword offsets. Fixes RE2 and DMC5 on Nvidia drivers.
     bool useSdivForBufferIndex = false;

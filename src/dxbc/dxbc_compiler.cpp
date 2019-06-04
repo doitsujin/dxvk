@@ -1077,8 +1077,7 @@ namespace dxvk {
       : computeSrvBinding(m_programInfo.type(), registerId);
     
     // Test whether we should use a raw SSBO for this resource
-    bool useRawSsbo = m_moduleInfo.options.useRawSsbo
-                   && m_moduleInfo.options.minSsboAlignment <= resAlign;
+    bool useRawSsbo = m_moduleInfo.options.minSsboAlignment <= resAlign;
     
     if (useRawSsbo) {
       uint32_t elemType   = getScalarTypeId(DxbcScalarType::Uint32);
@@ -2696,8 +2695,7 @@ namespace dxvk {
     //    (src0) The buffer register to query
     const DxbcBufferInfo bufferInfo = getBufferInfo(ins.src[0]);
 
-    bool isSsbo = m_moduleInfo.options.useRawSsbo
-               && m_moduleInfo.options.minSsboAlignment <= bufferInfo.align
+    bool isSsbo = m_moduleInfo.options.minSsboAlignment <= bufferInfo.align
                && bufferInfo.type != DxbcResourceType::Typed;
     
     // We'll store this as a scalar unsigned integer
@@ -4839,8 +4837,7 @@ namespace dxvk {
     // For UAVs and shared memory, different methods
     // of obtaining the final pointer are used.
     bool isTgsm = operand.type == DxbcOperandType::ThreadGroupSharedMemory;
-    bool isSsbo = m_moduleInfo.options.useRawSsbo
-               && m_moduleInfo.options.minSsboAlignment <= resourceInfo.align
+    bool isSsbo = m_moduleInfo.options.minSsboAlignment <= resourceInfo.align
                && resourceInfo.type != DxbcResourceType::Typed
                && !isTgsm;
     
@@ -4905,8 +4902,7 @@ namespace dxvk {
     // Shared memory is the only type of buffer that
     // is not accessed through a texel buffer view
     bool isTgsm = operand.type == DxbcOperandType::ThreadGroupSharedMemory;
-    bool isSsbo = m_moduleInfo.options.useRawSsbo
-               && m_moduleInfo.options.minSsboAlignment <= bufferInfo.align
+    bool isSsbo = m_moduleInfo.options.minSsboAlignment <= bufferInfo.align
                && !isTgsm;
     
     // Common types and IDs used while loading the data
@@ -4993,8 +4989,7 @@ namespace dxvk {
     
     // Thread Group Shared Memory is not accessed through a texel buffer view
     bool isTgsm = operand.type == DxbcOperandType::ThreadGroupSharedMemory;
-    bool isSsbo = m_moduleInfo.options.useRawSsbo
-               && m_moduleInfo.options.minSsboAlignment <= bufferInfo.align
+    bool isSsbo = m_moduleInfo.options.minSsboAlignment <= bufferInfo.align
                && !isTgsm;
     
     // Perform UAV writes only if the UAV is bound and if there

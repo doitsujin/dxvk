@@ -28,11 +28,14 @@ namespace dxvk {
       = (devInfo.coreSubgroup.subgroupSize >= 4)
      && (devInfo.coreSubgroup.supportedStages     & VK_SHADER_STAGE_FRAGMENT_BIT)
      && (devInfo.coreSubgroup.supportedOperations & VK_SUBGROUP_FEATURE_BALLOT_BIT);
-    useRawSsbo
-      = (devInfo.core.properties.limits.minStorageBufferOffsetAlignment <= sizeof(uint32_t));
     useSdivForBufferIndex
       = adapter->matchesDriver(DxvkGpuVendor::Nvidia, VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0);
-    minSsboAlignment = devInfo.core.properties.limits.minStorageBufferOffsetAlignment;
+    
+    switch (device->config().useRawSsbo) {
+      case Tristate::Auto:  minSsboAlignment = devInfo.core.properties.limits.minStorageBufferOffsetAlignment; break;
+      case Tristate::True:  minSsboAlignment = 4u;
+      case Tristate::False: minSsboAlignment = ~0u;
+    }
     
     strictDivision           = options.strictDivision;
     zeroInitWorkgroupMemory  = options.zeroInitWorkgroupMemory;
@@ -48,7 +51,6 @@ namespace dxvk {
     
     // Apply shader-related options
     applyTristate(useSubgroupOpsForEarlyDiscard, device->config().useEarlyDiscard);
-    applyTristate(useRawSsbo,                    device->config().useRawSsbo);
   }
   
 }
