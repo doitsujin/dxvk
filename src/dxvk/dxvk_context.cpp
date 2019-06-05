@@ -165,9 +165,7 @@ namespace dxvk {
         DxvkContextFlag::CpDirtyResources,
         DxvkContextFlag::GpDirtyResources);
     } else if (!m_rc[slot].bufferSlice.matchesRange(buffer)) {
-      m_rc[slot].bufferSlice.updateRange(
-        buffer.offset(),
-        buffer.length());
+      m_rc[slot].bufferSlice = buffer;
       
       m_flags.set(
         DxvkContextFlag::CpDirtyDescriptorOffsets,
