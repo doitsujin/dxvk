@@ -166,7 +166,7 @@ namespace dxvk {
     bool push(T& command) {
       using FuncType = DxvkCsTypedCmd<T>;
       
-      if (m_commandOffset + sizeof(FuncType) > MaxBlockSize)
+      if (unlikely(m_commandOffset > MaxBlockSize - sizeof(FuncType)))
         return false;
       
       DxvkCsCmd* tail = m_tail;
@@ -174,7 +174,7 @@ namespace dxvk {
       m_tail = new (m_data + m_commandOffset)
         FuncType(std::move(command));
       
-      if (tail != nullptr)
+      if (likely(tail != nullptr))
         tail->setNext(m_tail);
       else
         m_head = m_tail;
@@ -195,13 +195,13 @@ namespace dxvk {
     M* pushCmd(T& command, Args&&... args) {
       using FuncType = DxvkCsDataCmd<T, M>;
       
-      if (m_commandOffset + sizeof(FuncType) > MaxBlockSize)
+      if (unlikely(m_commandOffset > MaxBlockSize - sizeof(FuncType)))
         return nullptr;
       
       FuncType* func = new (m_data + m_commandOffset)
         FuncType(std::move(command), std::forward<Args>(args)...);
       
-      if (m_tail != nullptr)
+      if (likely(m_tail != nullptr))
         m_tail->setNext(func);
       else
         m_head = func;
