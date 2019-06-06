@@ -24,7 +24,7 @@ namespace dxvk {
 
   using D3D9SwapChainExBase = D3D9DeviceChild<IDirect3DSwapChain9Ex>;
   class D3D9SwapChainEx final : public D3D9SwapChainExBase {
-
+    static constexpr uint32_t NumControlPoints = 256;
   public:
 
     D3D9SwapChainEx(
@@ -89,6 +89,7 @@ namespace dxvk {
     };
 
     D3DPRESENT_PARAMETERS   m_presentParams;
+    D3DGAMMARAMP            m_ramp;
 
     Rc<DxvkDevice>          m_device;
     Rc<DxvkContext>         m_context;
@@ -156,6 +157,8 @@ namespace dxvk {
     void InitSamplers();
 
     void InitShaders();
+
+    void InitRamp();
 
     uint32_t PickFormats(
             D3D9Format                Format,

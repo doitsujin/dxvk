@@ -35,6 +35,7 @@ namespace dxvk {
     InitRenderState();
     InitSamplers();
     InitShaders();
+    InitRamp();
 
     // Apply initial window mode and fullscreen state
     if (!m_presentParams.Windowed && FAILED(EnterFullscreenMode(pPresentParams, pFullscreenDisplayMode)))
@@ -307,8 +308,9 @@ namespace dxvk {
     if (unlikely(pRamp == nullptr))
       return;
 
+    m_ramp = *pRamp;
+
     bool isIdentity = true;
-    constexpr uint32_t NumControlPoints = 256;
 
     std::array<D3D9_VK_GAMMA_CP, NumControlPoints> cp;
       
@@ -333,7 +335,8 @@ namespace dxvk {
 
 
   void    D3D9SwapChainEx::GetGammaRamp(D3DGAMMARAMP* pRamp) {
-    Logger::warn("D3D9SwapChainEx::GetGammaRamp: Stub");
+    if (likely(pRamp != nullptr))
+      *pRamp = m_ramp;
   }
 
 
@@ -835,6 +838,17 @@ namespace dxvk {
       fsResourceSlots.size(),
       fsResourceSlots.data(),
       { 1u, 1u }, fsCode);
+  }
+
+
+  void D3D9SwapChainEx::InitRamp() {
+    for (uint32_t i = 0; i < NumControlPoints; i++) {
+      DWORD identity = DWORD(MapGammaControlPoint(float(i) / float(NumControlPoints - 1)));
+
+      m_ramp.red[i]   = identity;
+      m_ramp.green[i] = identity;
+      m_ramp.blue[i]  = identity;
+    }
   }
 
 
