@@ -700,6 +700,8 @@ namespace dxvk {
 
     void SetupFPU();
 
+    int64_t DetermineInitialTextureMemory();
+
     void CreateConstantBuffers();
 
     void SynchronizeCsThread();

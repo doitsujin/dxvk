@@ -78,27 +78,7 @@ namespace dxvk {
     if (!(BehaviorFlags & D3DCREATE_FPU_PRESERVE))
       SetupFPU();
 
-    auto memoryProp = m_dxvkAdapter->memoryProperties();
-
-    VkDeviceSize availableTextureMemory = 0;
-
-    for (uint32_t i = 0; i < memoryProp.memoryHeapCount; i++) {
-      VkMemoryHeap& heap = memoryProp.memoryHeaps[i];
-
-      if (heap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
-        availableTextureMemory += memoryProp.memoryHeaps[i].size;
-    }
-
-    // The value returned is a 32-bit value, so we need to clamp it.
-#ifndef _WIN64
-    VkDeviceSize maxMemory = 0xC0000000;
-    availableTextureMemory = std::min(availableTextureMemory, maxMemory);
-#else
-    VkDeviceSize maxMemory = UINT32_MAX;
-    availableTextureMemory = std::min(availableTextureMemory, maxMemory);
-#endif
-
-    m_availableMemory = int64_t(availableTextureMemory);
+    m_availableMemory = DetermineInitialTextureMemory();
   }
 
   D3D9DeviceEx::~D3D9DeviceEx() {
@@ -3660,6 +3640,30 @@ namespace dxvk {
 #else
     Logger::warn("D3D9DeviceEx::SetupFPU: not supported on this arch.");
 #endif
+  }
+
+  int64_t D3D9DeviceEx::DetermineInitialTextureMemory() {
+    auto memoryProp = m_dxvkAdapter->memoryProperties();
+
+    VkDeviceSize availableTextureMemory = 0;
+
+    for (uint32_t i = 0; i < memoryProp.memoryHeapCount; i++) {
+      VkMemoryHeap& heap = memoryProp.memoryHeaps[i];
+
+      if (heap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT)
+        availableTextureMemory += memoryProp.memoryHeaps[i].size;
+    }
+
+    // The value returned is a 32-bit value, so we need to clamp it.
+#ifndef _WIN64
+    VkDeviceSize maxMemory = 0xC0000000;
+    availableTextureMemory = std::min(availableTextureMemory, maxMemory);
+#else
+    VkDeviceSize maxMemory = UINT32_MAX;
+    availableTextureMemory = std::min(availableTextureMemory, maxMemory);
+#endif
+
+    return int64_t(availableTextureMemory);
   }
 
   void D3D9DeviceEx::CreateConstantBuffers() {
