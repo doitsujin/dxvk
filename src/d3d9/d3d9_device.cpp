@@ -4005,7 +4005,7 @@ namespace dxvk {
     viewport = VkViewport{
       float(vp.X)     + cf,    float(vp.Height + vp.Y) + cf,
       float(vp.Width),        -float(vp.Height),
-      vp.MinZ,           vp.MaxZ,
+      vp.MinZ,                 vp.MaxZ,
     };
 
     // Scissor rectangles. Vulkan does not provide an easy way
