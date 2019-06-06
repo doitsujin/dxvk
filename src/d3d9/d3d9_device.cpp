@@ -158,7 +158,7 @@ namespace dxvk {
 
     auto* swapchain = GetInternalSwapchain(iSwapChain);
 
-    if (swapchain == nullptr)
+    if (unlikely(swapchain == nullptr))
       return D3DERR_INVALIDCALL;
 
     return swapchain->GetDisplayMode(pMode);
@@ -218,7 +218,7 @@ namespace dxvk {
 
     auto* swapchain = GetInternalSwapchain(iSwapChain);
 
-    if (swapchain == nullptr || pSwapChain == nullptr)
+    if (unlikely(swapchain == nullptr || pSwapChain == nullptr))
       return D3DERR_INVALIDCALL;
 
     *pSwapChain = static_cast<IDirect3DSwapChain9*>(ref(swapchain));
