@@ -304,6 +304,9 @@ namespace dxvk {
   void    D3D9SwapChainEx::SetGammaRamp(
             DWORD         Flags,
       const D3DGAMMARAMP* pRamp) {
+    if (unlikely(pRamp == nullptr))
+      return;
+
     bool isIdentity = true;
     constexpr uint32_t NumControlPoints = 256;
 
