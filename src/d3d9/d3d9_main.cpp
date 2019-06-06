@@ -5,6 +5,9 @@
 #include "d3d9_interface.h"
 #include "d3d9_shader_validator.h"
 
+class D3DFE_PROCESSVERTICES;
+using PSGPERRORID = UINT;
+
 namespace dxvk {
   Logger Logger::s_instance("d3d9.log");
 
@@ -66,11 +69,7 @@ extern "C" {
   }
 
   // Processor Specific Geometry Pipeline
-  // for P3 SIMD/AMD 3DNow...
-  // lol...
-
-  class D3DFE_PROCESSVERTICES;
-  using PSGPERRORID = UINT;
+  // for P3 SIMD/AMD 3DNow.
 
   DLLEXPORT void __stdcall PSGPError(D3DFE_PROCESSVERTICES* a, PSGPERRORID b, UINT c) {
   }

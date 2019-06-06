@@ -24,6 +24,7 @@ namespace dxvk {
       FlushInternal();
   }
 
+
   void D3D9Initializer::InitBuffer(
           D3D9CommonBuffer*  pBuffer) {
     VkMemoryPropertyFlags memFlags = pBuffer->GetBuffer<D3D9_COMMON_BUFFER_TYPE_REAL>()->memFlags();

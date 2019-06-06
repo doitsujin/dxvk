@@ -24,6 +24,7 @@ namespace dxvk {
     return id;
   }
 
+
   D3D9Options::D3D9Options(const Config& config) {
     // Fetch these as a string representing a hexadecimal number and parse it.
     this->customVendorId        = parsePciId(config.getOption<std::string>("d3d9.customVendorId"));

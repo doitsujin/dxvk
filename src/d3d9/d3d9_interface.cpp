@@ -21,6 +21,7 @@ namespace dxvk {
     }
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9InterfaceEx::QueryInterface(REFIID riid, void** ppvObject) {
     if (ppvObject == nullptr)
       return E_POINTER;
@@ -39,14 +40,17 @@ namespace dxvk {
     return E_NOINTERFACE;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9InterfaceEx::RegisterSoftwareDevice(void* pInitializeFunction) {
     Logger::warn("D3D9InterfaceEx::RegisterSoftwareDevice: Stub");
     return D3D_OK;
   }
 
+
   UINT STDMETHODCALLTYPE D3D9InterfaceEx::GetAdapterCount() {
     return UINT(m_instance->adapterCount());
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9InterfaceEx::GetAdapterIdentifier(
           UINT                    Adapter,
@@ -75,6 +79,7 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   UINT STDMETHODCALLTYPE D3D9InterfaceEx::GetAdapterModeCount(UINT Adapter, D3DFORMAT Format) {
     D3DDISPLAYMODEFILTER filter;
     filter.Size             = sizeof(D3DDISPLAYMODEFILTER);
@@ -84,12 +89,14 @@ namespace dxvk {
     return this->GetAdapterModeCountEx(Adapter, &filter);
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9InterfaceEx::GetAdapterDisplayMode(UINT Adapter, D3DDISPLAYMODE* pMode) {
     constexpr D3DFORMAT format = D3DFMT_X8R8G8B8;
     const UINT mode = GetAdapterModeCount(Adapter, format) - 1;
 
     return this->EnumAdapterModes(Adapter, format, mode, pMode);
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9InterfaceEx::CheckDeviceType(
           UINT       Adapter,
@@ -105,6 +112,7 @@ namespace dxvk {
       EnumerateFormat(BackBufferFormat),
       bWindowed);
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9InterfaceEx::CheckDeviceFormat(
           UINT            Adapter,
@@ -122,6 +130,7 @@ namespace dxvk {
       EnumerateFormat(CheckFormat));
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9InterfaceEx::CheckDeviceMultiSampleType(
           UINT                Adapter,
           D3DDEVTYPE          DeviceType,
@@ -138,6 +147,7 @@ namespace dxvk {
       MultiSampleType, pQualityLevels);
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9InterfaceEx::CheckDepthStencilMatch(
           UINT       Adapter,
           D3DDEVTYPE DeviceType,
@@ -153,6 +163,7 @@ namespace dxvk {
       EnumerateFormat(DepthStencilFormat));
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9InterfaceEx::CheckDeviceFormatConversion(
           UINT       Adapter,
           D3DDEVTYPE DeviceType,
@@ -166,6 +177,7 @@ namespace dxvk {
       EnumerateFormat(TargetFormat));
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9InterfaceEx::GetDeviceCaps(
           UINT       Adapter,
           D3DDEVTYPE DeviceType,
@@ -176,12 +188,14 @@ namespace dxvk {
     return caps::GetDeviceCaps(m_d3d9Options, Adapter, DeviceType, pCaps);
   }
 
+
   HMONITOR STDMETHODCALLTYPE D3D9InterfaceEx::GetAdapterMonitor(UINT Adapter) {
     if (Adapter >= this->GetAdapterCount())
       return nullptr;
 
     return GetDefaultMonitor();
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9InterfaceEx::CreateDevice(
           UINT                   Adapter,
@@ -199,6 +213,7 @@ namespace dxvk {
       nullptr, // <-- pFullscreenDisplayMode
       reinterpret_cast<IDirect3DDevice9Ex**>(ppReturnedDeviceInterface));
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9InterfaceEx::EnumAdapterModes(
           UINT            Adapter,
@@ -227,7 +242,9 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   // Ex Methods
+
 
   UINT STDMETHODCALLTYPE D3D9InterfaceEx::GetAdapterModeCountEx(UINT Adapter, CONST D3DDISPLAYMODEFILTER* pFilter) {
     if (pFilter == nullptr)
@@ -243,6 +260,7 @@ namespace dxvk {
     CacheModes(EnumerateFormat(pFilter->Format));
     return m_modes.size();
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9InterfaceEx::EnumAdapterModesEx(
           UINT                  Adapter,
@@ -277,6 +295,7 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9InterfaceEx::GetAdapterDisplayModeEx(
           UINT                Adapter,
           D3DDISPLAYMODEEX*   pMode,
@@ -288,6 +307,7 @@ namespace dxvk {
 
     return this->EnumAdapterModesEx(Adapter, &filter, 0, pMode);
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9InterfaceEx::CreateDeviceEx(
           UINT                   Adapter,
@@ -333,6 +353,7 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9InterfaceEx::GetAdapterLUID(UINT Adapter, LUID* pLUID) {
     if (pLUID == nullptr)
       return D3DERR_INVALIDCALL;
@@ -346,6 +367,7 @@ namespace dxvk {
 
     return D3D_OK;
   }
+
 
   void D3D9InterfaceEx::CacheModes(D3D9Format Format) {
     if (!m_modes.empty() && m_modeCacheFormat == Format)
@@ -405,6 +427,7 @@ namespace dxvk {
         return a.RefreshRate < b.RefreshRate;
     });
   }
+
 
   const char* D3D9InterfaceEx::GetDriverDllName(DxvkGpuVendor vendor) {
     switch (vendor) {

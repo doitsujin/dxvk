@@ -13,6 +13,11 @@
 
 namespace dxvk {
 
+  struct D3D9MipFilter {
+    bool                MipsEnabled;
+    VkSamplerMipmapMode MipFilter;
+  };
+
   inline bool InvalidSampler(DWORD Sampler) {
     if (Sampler > 15 && Sampler < D3DDMAPSAMPLER)
       return true;
@@ -62,10 +67,6 @@ namespace dxvk {
         D3DMULTISAMPLE_TYPE       MultiSample,
         VkSampleCountFlagBits*    pCount);
 
-  bool    ResourceBindable(
-        DWORD                     Usage,
-        D3DPOOL                   Pool);
-
   VkFormat GetPackedDepthStencilFormat(D3D9Format Format);
 
   VkFormatFeatureFlags GetImageFormatFeatures(DWORD Usage);
@@ -87,8 +88,8 @@ namespace dxvk {
     // Encoded in D3DCOLOR as argb
     rgba[3] = (float)((color & 0xff000000) >> 24) / 255.0f;
     rgba[0] = (float)((color & 0x00ff0000) >> 16) / 255.0f;
-    rgba[1] = (float)((color & 0x0000ff00) >> 8) / 255.0f;
-    rgba[2] = (float)((color & 0x000000ff)) / 255.0f;
+    rgba[1] = (float)((color & 0x0000ff00) >> 8)  / 255.0f;
+    rgba[2] = (float)((color & 0x000000ff))       / 255.0f;
   }
 
   inline VkFormat PickSRGB(VkFormat format, VkFormat srgbFormat, bool srgb) {
@@ -123,29 +124,35 @@ namespace dxvk {
     return *(reinterpret_cast<const Matrix4*>(Matrix));
   }
 
-  uint32_t VertexCount(D3DPRIMITIVETYPE type, UINT count);
-  DxvkInputAssemblyState InputAssemblyState(D3DPRIMITIVETYPE type);
+  uint32_t GetVertexCount(D3DPRIMITIVETYPE type, UINT count);
+
+  DxvkInputAssemblyState DecodeInputAssemblyState(D3DPRIMITIVETYPE type);
 
   VkBlendFactor DecodeBlendFactor(D3DBLEND BlendFactor, bool IsAlpha);
+
   VkBlendOp DecodeBlendOp(D3DBLENDOP BlendOp);
 
   VkFilter DecodeFilter(D3DTEXTUREFILTERTYPE Filter);
 
-  struct D3D9MipFilter {
-    bool                MipsEnabled;
-    VkSamplerMipmapMode MipFilter;
-  };
-
   D3D9MipFilter DecodeMipFilter(D3DTEXTUREFILTERTYPE Filter);
+
   bool IsAnisotropic(D3DTEXTUREFILTERTYPE Filter);
+
   VkSamplerAddressMode DecodeAddressMode(D3DTEXTUREADDRESS Mode);
+
   VkCompareOp DecodeCompareOp(D3DCMPFUNC Func);
+
   VkStencilOp DecodeStencilOp(D3DSTENCILOP Op);
+
   VkCullModeFlags DecodeCullMode(D3DCULL Mode);
+
   VkPolygonMode DecodeFillMode(D3DFILLMODE Mode);
+
   VkIndexType DecodeIndexType(D3D9Format Format);
 
-  uint32_t DecltypeSize(D3DDECLTYPE Type);
+  VkFormat DecodeDecltype(D3DDECLTYPE Type);
+
+  uint32_t GetDecltypeSize(D3DDECLTYPE Type);
 
   template<typename T>
   UINT CompactSparseList(T* pData, UINT Mask) {

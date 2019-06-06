@@ -24,6 +24,7 @@ namespace dxvk {
     return state;
   }
 
+
   bool D3D9SamplerKeyEq::operator () (const D3D9SamplerKey& a, const D3D9SamplerKey& b) const {
     return a.AddressU      == b.AddressU
         && a.AddressV      == b.AddressV

@@ -69,6 +69,7 @@ namespace dxvk {
     pDevice->GetDXVKDevice()->registerShader(m_shader);
   }
 
+
   D3D9CommonShader D3D9ShaderModuleSet::GetShaderModule(
             D3D9DeviceEx*         pDevice,
             VkShaderStageFlagBits ShaderStage,

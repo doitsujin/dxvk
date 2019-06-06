@@ -15,6 +15,7 @@ namespace dxvk {
     m_sliceHandle = GetMapBuffer()->getSliceHandle();
   }
 
+
   HRESULT D3D9CommonBuffer::Lock(
           UINT   OffsetToLock,
           UINT   SizeToLock,
@@ -28,14 +29,17 @@ namespace dxvk {
       Flags);
   }
 
+
   HRESULT D3D9CommonBuffer::Unlock() {
     return m_parent->UnlockBuffer(this);
   }
+
 
   void D3D9CommonBuffer::GetDesc(
           D3D9_BUFFER_DESC* pDesc) {
     *pDesc = m_desc;
   }
+
 
   Rc<DxvkBuffer> D3D9CommonBuffer::CreateBuffer() const {
     DxvkBufferCreateInfo  info;
@@ -78,6 +82,7 @@ namespace dxvk {
 
     return m_parent->GetDXVKDevice()->createBuffer(info, memoryFlags);
   }
+
 
   Rc<DxvkBuffer> D3D9CommonBuffer::CreateStagingBuffer() const {
     DxvkBufferCreateInfo  info;

@@ -14,6 +14,7 @@ namespace dxvk {
     this->SetFVF(FVF);
   }
 
+
   D3D9VertexDecl::D3D9VertexDecl(
           D3D9DeviceEx*      pDevice,
     const D3DVERTEXELEMENT9* pVertexElements,
@@ -23,6 +24,7 @@ namespace dxvk {
     , m_fvf             ( 0 ) {
     std::memcpy(m_elements.data(), pVertexElements, sizeof(D3DVERTEXELEMENT9) * DeclCount);
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9VertexDecl::QueryInterface(
           REFIID  riid,
@@ -42,6 +44,7 @@ namespace dxvk {
     Logger::warn(str::format(riid));
     return E_NOINTERFACE;
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9VertexDecl::GetDeclaration(
           D3DVERTEXELEMENT9* pElement,
@@ -63,6 +66,7 @@ namespace dxvk {
 
     return D3D_OK;
   }
+
 
   void D3D9VertexDecl::SetFVF(DWORD FVF) {
     m_fvf = FVF;
@@ -194,7 +198,7 @@ namespace dxvk {
       elements[i].Stream = 0;
       elements[i].Offset = (i == 0) 
         ? 0
-        : (elements[i - 1].Offset + DecltypeSize(D3DDECLTYPE(elements[i - 1].Type)));
+        : (elements[i - 1].Offset + GetDecltypeSize(D3DDECLTYPE(elements[i - 1].Type)));
 
       elements[i].Method = D3DDECLMETHOD_DEFAULT;
     }

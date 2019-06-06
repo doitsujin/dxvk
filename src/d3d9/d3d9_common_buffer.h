@@ -19,11 +19,11 @@ namespace dxvk {
    */
   struct D3D9_BUFFER_DESC {
     D3DRESOURCETYPE Type;
-    UINT Size;
-    DWORD Usage;
-    D3D9Format Format;
-    D3DPOOL Pool;
-    DWORD FVF;
+    UINT            Size;
+    DWORD           Usage;
+    D3D9Format      Format;
+    D3DPOOL         Pool;
+    DWORD           FVF;
   };
 
   /**

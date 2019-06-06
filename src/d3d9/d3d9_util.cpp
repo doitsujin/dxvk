@@ -35,6 +35,7 @@ namespace dxvk {
       ppDisassembly);
   }
 
+
   HRESULT DecodeMultiSampleType(
           D3DMULTISAMPLE_TYPE       MultiSample,
           VkSampleCountFlagBits*    pCount) {
@@ -56,11 +57,6 @@ namespace dxvk {
     return D3D_OK;
   }
 
-  bool    ResourceBindable(
-      DWORD                     Usage,
-      D3DPOOL                   Pool) {
-    return true;
-  }
 
   VkFormat GetPackedDepthStencilFormat(D3D9Format Format) {
     switch (Format) {
@@ -95,6 +91,7 @@ namespace dxvk {
     }
   }
 
+
   VkFormatFeatureFlags GetImageFormatFeatures(DWORD Usage) {
     VkFormatFeatureFlags features = VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
 
@@ -106,6 +103,7 @@ namespace dxvk {
 
     return features;
   }
+
 
   VkImageUsageFlags GetImageUsageFlags(DWORD Usage) {
     VkImageUsageFlags usage = VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -119,7 +117,8 @@ namespace dxvk {
     return usage;
   }
 
-  uint32_t VertexCount(D3DPRIMITIVETYPE type, UINT count) {
+
+  uint32_t GetVertexCount(D3DPRIMITIVETYPE type, UINT count) {
     switch (type) {
       default:
       case D3DPT_TRIANGLELIST:  return count * 3;
@@ -131,7 +130,8 @@ namespace dxvk {
     }
   }
 
-  DxvkInputAssemblyState InputAssemblyState(D3DPRIMITIVETYPE type) {
+
+  DxvkInputAssemblyState DecodeInputAssemblyState(D3DPRIMITIVETYPE type) {
     switch (type) {
       default:
       case D3DPT_TRIANGLELIST:
@@ -153,6 +153,7 @@ namespace dxvk {
         return { VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN,   VK_TRUE,  0 };
     }
   }
+
 
   VkBlendFactor DecodeBlendFactor(D3DBLEND BlendFactor, bool IsAlpha) {
     switch (BlendFactor) {
@@ -177,6 +178,7 @@ namespace dxvk {
     }
   }
 
+
   VkBlendOp DecodeBlendOp(D3DBLENDOP BlendOp) {
     switch (BlendOp) {
       default:
@@ -188,6 +190,7 @@ namespace dxvk {
     }
   }
 
+
   VkFilter DecodeFilter(D3DTEXTUREFILTERTYPE Filter) {
     switch (Filter) {
     case D3DTEXF_NONE:
@@ -197,6 +200,7 @@ namespace dxvk {
       return VK_FILTER_LINEAR;
     }
   }
+
 
   D3D9MipFilter DecodeMipFilter(D3DTEXTUREFILTERTYPE Filter) {
     D3D9MipFilter filter;
@@ -213,9 +217,11 @@ namespace dxvk {
     return filter;
   }
 
+
   bool IsAnisotropic(D3DTEXTUREFILTERTYPE Filter) {
     return Filter == D3DTEXF_ANISOTROPIC;
   }
+
 
   VkSamplerAddressMode DecodeAddressMode(D3DTEXTUREADDRESS Mode) {
     switch (Mode) {
@@ -233,6 +239,7 @@ namespace dxvk {
     }
   }
 
+
   VkCompareOp DecodeCompareOp(D3DCMPFUNC Func) {
     switch (Func) {
       default:
@@ -246,6 +253,7 @@ namespace dxvk {
       case D3DCMP_ALWAYS:       return VK_COMPARE_OP_ALWAYS;
     }
   }
+
 
   VkStencilOp DecodeStencilOp(D3DSTENCILOP Op) {
     switch (Op) {
@@ -261,6 +269,7 @@ namespace dxvk {
     }
   }
 
+
   VkCullModeFlags DecodeCullMode(D3DCULL Mode) {
     switch (Mode) {
       case D3DCULL_NONE: return VK_CULL_MODE_NONE;
@@ -269,6 +278,7 @@ namespace dxvk {
       case D3DCULL_CCW:  return VK_CULL_MODE_BACK_BIT;
     }
   }
+
 
   VkPolygonMode DecodeFillMode(D3DFILLMODE Mode) {
     switch (Mode) {
@@ -279,13 +289,39 @@ namespace dxvk {
     }
   }
 
+
   VkIndexType DecodeIndexType(D3D9Format Format) {
     return Format == D3D9Format::INDEX16
                    ? VK_INDEX_TYPE_UINT16
                    : VK_INDEX_TYPE_UINT32;
   }
 
-  uint32_t DecltypeSize(D3DDECLTYPE Type) {
+
+  VkFormat DecodeDecltype(D3DDECLTYPE Type) {
+    switch (Type) {
+      case D3DDECLTYPE_FLOAT1:    return VK_FORMAT_R32_SFLOAT;
+      case D3DDECLTYPE_FLOAT2:    return VK_FORMAT_R32G32_SFLOAT;
+      case D3DDECLTYPE_FLOAT3:    return VK_FORMAT_R32G32B32_SFLOAT;
+      case D3DDECLTYPE_FLOAT4:    return VK_FORMAT_R32G32B32A32_SFLOAT;
+      case D3DDECLTYPE_D3DCOLOR:  return VK_FORMAT_B8G8R8A8_UNORM;
+      case D3DDECLTYPE_UBYTE4:    return VK_FORMAT_R8G8B8A8_USCALED;
+      case D3DDECLTYPE_SHORT2:    return VK_FORMAT_R16G16_SSCALED;
+      case D3DDECLTYPE_SHORT4:    return VK_FORMAT_R16G16B16A16_SSCALED;
+      case D3DDECLTYPE_UBYTE4N:   return VK_FORMAT_R8G8B8A8_UNORM;
+      case D3DDECLTYPE_SHORT2N:   return VK_FORMAT_R16G16_SNORM;
+      case D3DDECLTYPE_SHORT4N:   return VK_FORMAT_R16G16B16A16_SNORM;
+      case D3DDECLTYPE_USHORT2N:  return VK_FORMAT_R16G16_UNORM;
+      case D3DDECLTYPE_USHORT4N:  return VK_FORMAT_R16G16B16A16_UNORM;
+      case D3DDECLTYPE_UDEC3:     return VK_FORMAT_A2B10G10R10_USCALED_PACK32;
+      case D3DDECLTYPE_FLOAT16_2: return VK_FORMAT_R16G16_SFLOAT;
+      case D3DDECLTYPE_FLOAT16_4: return VK_FORMAT_R16G16B16A16_SFLOAT;
+      case D3DDECLTYPE_DEC3N:     return VK_FORMAT_A2B10G10R10_SNORM_PACK32;
+      case D3DDECLTYPE_UNUSED:
+      default:                    return VK_FORMAT_UNDEFINED;
+    }
+  }
+
+  uint32_t GetDecltypeSize(D3DDECLTYPE Type) {
     switch (Type) {
       case D3DDECLTYPE_FLOAT1:    return 1 * sizeof(float);
       case D3DDECLTYPE_FLOAT2:    return 2 * sizeof(float);

@@ -24,6 +24,7 @@ namespace dxvk {
     }
   }
 
+
   bool IsSupportedBackBufferFormat(
           D3D9Format AdapterFormat,
           D3D9Format BackBufferFormat,
@@ -38,6 +39,7 @@ namespace dxvk {
 
     return similar;
   }
+
 
   bool IsSupportedMonitorFormat(
           D3D9Format Format,
@@ -54,6 +56,7 @@ namespace dxvk {
     return false;
   }
 
+
   bool IsSupportedBackBufferFormat(
           D3D9Format BackBufferFormat,
           BOOL       Windowed) {
@@ -67,9 +70,11 @@ namespace dxvk {
     return false;
   }
 
+
   HMONITOR GetDefaultMonitor() {
     return ::MonitorFromPoint({ 0, 0 }, MONITOR_DEFAULTTOPRIMARY);
   }
+
 
   HRESULT SetMonitorDisplayMode(
           HMONITOR                hMonitor,
@@ -104,6 +109,7 @@ namespace dxvk {
     return status == DISP_CHANGE_SUCCESSFUL ? D3D_OK : D3DERR_NOTAVAILABLE;
   }
 
+
   void GetWindowClientSize(
           HWND                    hWnd,
           UINT*                   pWidth,
@@ -117,6 +123,7 @@ namespace dxvk {
     if (pHeight)
       *pHeight = rect.bottom - rect.top;
   }
+
 
   void GetMonitorClientSize(
           HMONITOR                hMonitor,
@@ -138,6 +145,7 @@ namespace dxvk {
     if (pHeight)
       *pHeight = rect.bottom - rect.top;
   }
+
 
   void GetMonitorRect(
           HMONITOR                hMonitor,

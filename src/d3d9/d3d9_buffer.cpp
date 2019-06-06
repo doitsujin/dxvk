@@ -11,6 +11,7 @@ namespace dxvk {
     const D3D9_BUFFER_DESC*  pDesc)
     : D3D9VertexBufferBase( pDevice, pDesc ) { }
 
+
   HRESULT STDMETHODCALLTYPE D3D9VertexBuffer::QueryInterface(
           REFIID  riid,
           void** ppvObject) {
@@ -31,9 +32,11 @@ namespace dxvk {
     return E_NOINTERFACE;
   }
 
+
   D3DRESOURCETYPE STDMETHODCALLTYPE D3D9VertexBuffer::GetType() {
     return D3DRTYPE_VERTEXBUFFER;
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9VertexBuffer::GetDesc(
           D3DVERTEXBUFFER_DESC* pDesc) {
@@ -53,14 +56,17 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   //////////////////////
   // D3D9IndexBuffer
   //////////////////////
+
 
   D3D9IndexBuffer::D3D9IndexBuffer(
           D3D9DeviceEx*      pDevice,
     const D3D9_BUFFER_DESC*  pDesc)
     : D3D9IndexBufferBase( pDevice, pDesc ) { }
+
 
   HRESULT STDMETHODCALLTYPE D3D9IndexBuffer::QueryInterface(
           REFIID  riid,
@@ -82,9 +88,11 @@ namespace dxvk {
     return E_NOINTERFACE;
   }
 
+
   D3DRESOURCETYPE STDMETHODCALLTYPE D3D9IndexBuffer::GetType() {
     return D3DRTYPE_INDEXBUFFER;
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9IndexBuffer::GetDesc(
           D3DINDEXBUFFER_DESC* pDesc) {

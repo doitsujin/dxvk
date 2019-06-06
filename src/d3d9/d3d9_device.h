@@ -636,8 +636,6 @@ namespace dxvk {
     D3D9_VK_FORMAT_MAPPING LookupFormat(
       D3D9Format            Format) const;
 
-    VkFormat LookupDecltype(D3DDECLTYPE d3d9DeclType);
-
     bool WaitForResource(
       const Rc<DxvkResource>&                 Resource,
             DWORD                             MapFlags);

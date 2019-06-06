@@ -81,6 +81,7 @@ namespace dxvk {
     m_availableMemory = DetermineInitialTextureMemory();
   }
 
+
   D3D9DeviceEx::~D3D9DeviceEx() {
     Flush();
     SynchronizeCsThread();
@@ -89,6 +90,7 @@ namespace dxvk {
 
     m_dxvkDevice->waitForIdle(); // Sync Device
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::QueryInterface(REFIID riid, void** ppvObject) {
     if (ppvObject == nullptr)
@@ -115,10 +117,12 @@ namespace dxvk {
     return E_NOINTERFACE;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::TestCooperativeLevel() {
     // Equivelant of D3D11/DXGI present tests. We can always present.
     return D3D_OK;
   }
+
 
   UINT    STDMETHODCALLTYPE D3D9DeviceEx::GetAvailableTextureMem() {
     // This is not meant to be accurate.
@@ -129,9 +133,11 @@ namespace dxvk {
     return (UINT(memory) / 1024) * 1024; // As per the specification.
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::EvictManagedResources() {
     return D3D_OK;
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetDirect3D(IDirect3D9** ppD3D9) {
     if (ppD3D9 == nullptr)
@@ -141,12 +147,14 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetDeviceCaps(D3DCAPS9* pCaps) {
     return caps::GetDeviceCaps(m_d3d9Options, m_adapter, m_deviceType, pCaps);
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetDisplayMode(UINT iSwapChain, D3DDISPLAYMODE* pMode) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     auto* swapchain = GetInternalSwapchain(iSwapChain);
 
@@ -155,6 +163,7 @@ namespace dxvk {
 
     return swapchain->GetDisplayMode(pMode);
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetCreationParameters(D3DDEVICE_CREATION_PARAMETERS *pParameters) {
     if (pParameters == nullptr)
@@ -168,6 +177,7 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetCursorProperties(
           UINT               XHotSpot,
           UINT               YHotSpot,
@@ -176,14 +186,16 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   void    STDMETHODCALLTYPE D3D9DeviceEx::SetCursorPosition(int X, int Y, DWORD Flags) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     m_cursor.UpdateCursor(X, Y, Flags & D3DCURSOR_IMMEDIATE_UPDATE);
   }
 
+
   BOOL    STDMETHODCALLTYPE D3D9DeviceEx::ShowCursor(BOOL bShow) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     // This should be a no-op until the application gives us a cursor to set.
     // Which we currently do not support.
@@ -191,14 +203,16 @@ namespace dxvk {
     return m_cursor.ShowCursor(bShow);
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::CreateAdditionalSwapChain(
           D3DPRESENT_PARAMETERS* pPresentationParameters,
           IDirect3DSwapChain9**  ppSwapChain) {
     return CreateAdditionalSwapChainEx(pPresentationParameters, nullptr, ppSwapChain);
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetSwapChain(UINT iSwapChain, IDirect3DSwapChain9** pSwapChain) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     InitReturnPtr(pSwapChain);
 
@@ -212,15 +226,18 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   UINT    STDMETHODCALLTYPE D3D9DeviceEx::GetNumberOfSwapChains() {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     return UINT(m_swapchains.size());
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::Reset(D3DPRESENT_PARAMETERS* pPresentationParameters) {
     return ResetEx(pPresentationParameters, nullptr);
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::Present(
     const RECT* pSourceRect,
@@ -235,12 +252,13 @@ namespace dxvk {
       0);
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetBackBuffer(
     UINT iSwapChain,
     UINT iBackBuffer,
     D3DBACKBUFFER_TYPE Type,
     IDirect3DSurface9** ppBackBuffer) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     InitReturnPtr(ppBackBuffer);
 
@@ -252,8 +270,9 @@ namespace dxvk {
     return swapchain->GetBackBuffer(iBackBuffer, Type, ppBackBuffer);
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetRasterStatus(UINT iSwapChain, D3DRASTER_STATUS* pRasterStatus) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     auto* swapchain = GetInternalSwapchain(iSwapChain);
 
@@ -263,16 +282,18 @@ namespace dxvk {
     return swapchain->GetRasterStatus(pRasterStatus);
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetDialogBoxMode(BOOL bEnableDialogs) {
     Logger::warn("D3D9DeviceEx::SetDialogBoxMode: Stub");
     return D3D_OK;
   }
 
+
   void    STDMETHODCALLTYPE D3D9DeviceEx::SetGammaRamp(
-    UINT iSwapChain,
-    DWORD Flags,
+          UINT          iSwapChain,
+          DWORD         Flags,
     const D3DGAMMARAMP* pRamp) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     auto* swapchain = GetInternalSwapchain(iSwapChain);
 
@@ -282,8 +303,9 @@ namespace dxvk {
     swapchain->SetGammaRamp(Flags, pRamp);
   }
 
+
   void    STDMETHODCALLTYPE D3D9DeviceEx::GetGammaRamp(UINT iSwapChain, D3DGAMMARAMP* pRamp) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     auto* swapchain = GetInternalSwapchain(iSwapChain);
 
@@ -292,6 +314,7 @@ namespace dxvk {
 
     swapchain->GetGammaRamp(pRamp);
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::CreateTexture(
           UINT                Width,
@@ -343,6 +366,7 @@ namespace dxvk {
     }
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::CreateVolumeTexture(
           UINT                      Width,
           UINT                      Height,
@@ -387,6 +411,7 @@ namespace dxvk {
     }
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::CreateCubeTexture(
           UINT                    EdgeLength,
           UINT                    Levels,
@@ -429,6 +454,7 @@ namespace dxvk {
     }
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::CreateVertexBuffer(
           UINT                     Length,
           DWORD                    Usage,
@@ -461,6 +487,7 @@ namespace dxvk {
     }
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::CreateIndexBuffer(
           UINT                    Length,
           DWORD                   Usage,
@@ -492,6 +519,7 @@ namespace dxvk {
     }
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::CreateRenderTarget(
           UINT                Width,
           UINT                Height,
@@ -512,6 +540,7 @@ namespace dxvk {
       pSharedHandle,
       0);
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::CreateDepthStencilSurface(
           UINT                Width,
@@ -534,12 +563,13 @@ namespace dxvk {
       0);
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::UpdateSurface(
           IDirect3DSurface9* pSourceSurface,
     const RECT*              pSourceRect,
           IDirect3DSurface9* pDestinationSurface,
     const POINT*             pDestPoint) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     D3D9Surface* src = static_cast<D3D9Surface*>(pSourceSurface);
     D3D9Surface* dst = static_cast<D3D9Surface*>(pDestinationSurface);
@@ -618,10 +648,11 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::UpdateTexture(
           IDirect3DBaseTexture9* pSourceTexture,
           IDirect3DBaseTexture9* pDestinationTexture) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     if (!pDestinationTexture || !pSourceTexture)
       return D3DERR_INVALIDCALL;
@@ -663,10 +694,11 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetRenderTargetData(
           IDirect3DSurface9* pRenderTarget,
           IDirect3DSurface9* pDestSurface) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     D3D9Surface* src = static_cast<D3D9Surface*>(pRenderTarget);
     D3D9Surface* dst = static_cast<D3D9Surface*>(pDestSurface);
@@ -711,8 +743,9 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetFrontBufferData(UINT iSwapChain, IDirect3DSurface9* pDestSurface) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     auto* swapchain = GetInternalSwapchain(iSwapChain);
 
@@ -722,13 +755,14 @@ namespace dxvk {
     return swapchain->GetFrontBufferData(pDestSurface);
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::StretchRect(
           IDirect3DSurface9*   pSourceSurface,
     const RECT*                pSourceRect,
           IDirect3DSurface9*   pDestSurface,
     const RECT*                pDestRect,
           D3DTEXTUREFILTERTYPE Filter) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     D3D9Surface* dst = static_cast<D3D9Surface*>(pDestSurface);
     D3D9Surface* src = static_cast<D3D9Surface*>(pSourceSurface);
@@ -895,6 +929,7 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::ColorFill(
           IDirect3DSurface9* pSurface,
     const RECT*              pRect,
@@ -902,6 +937,7 @@ namespace dxvk {
     Logger::warn("D3D9DeviceEx::ColorFill: Stub");
     return D3D_OK;
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::CreateOffscreenPlainSurface(
     UINT Width,
@@ -911,19 +947,17 @@ namespace dxvk {
     IDirect3DSurface9** ppSurface,
     HANDLE* pSharedHandle) {
     return CreateOffscreenPlainSurfaceEx(
-      Width,
-      Height,
-      Format,
-      Pool,
-      ppSurface,
-      pSharedHandle,
+      Width,     Height,
+      Format,    Pool,
+      ppSurface, pSharedHandle,
       0);
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetRenderTarget(
           DWORD              RenderTargetIndex,
           IDirect3DSurface9* pRenderTarget) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     if (unlikely(RenderTargetIndex >= caps::MaxSimultaneousRenderTargets
      || (pRenderTarget == nullptr && RenderTargetIndex == 0)))
@@ -975,10 +1009,11 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetRenderTarget(
           DWORD               RenderTargetIndex,
           IDirect3DSurface9** ppRenderTarget) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     InitReturnPtr(ppRenderTarget);
 
@@ -993,8 +1028,9 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetDepthStencilSurface(IDirect3DSurface9* pNewZStencil) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     D3D9Surface* ds = static_cast<D3D9Surface*>(pNewZStencil);
 
@@ -1009,8 +1045,9 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetDepthStencilSurface(IDirect3DSurface9** ppZStencilSurface) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     InitReturnPtr(ppZStencilSurface);
 
@@ -1032,11 +1069,13 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::EndScene() {
     FlushImplicit(true);
 
     return D3D_OK;
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::Clear(
           DWORD    Count,
@@ -1045,7 +1084,7 @@ namespace dxvk {
           D3DCOLOR Color,
           float    Z,
           DWORD    Stencil) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     const auto& vp = m_state.viewport;
     const auto& sc = m_state.scissorRect;
@@ -1193,12 +1232,14 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetTransform(D3DTRANSFORMSTATETYPE State, const D3DMATRIX* pMatrix) {
     return SetStateTransform(GetTransformIndex(State), pMatrix);
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetTransform(D3DTRANSFORMSTATETYPE State, D3DMATRIX* pMatrix) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     if (unlikely(pMatrix == nullptr))
       return D3DERR_INVALIDCALL;
@@ -1208,8 +1249,9 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::MultiplyTransform(D3DTRANSFORMSTATETYPE TransformState, const D3DMATRIX* pMatrix) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     if (unlikely(ShouldRecord()))
       return m_recorder->MultiplyStateTransform(TransformState, pMatrix);
@@ -1223,8 +1265,9 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetViewport(const D3DVIEWPORT9* pViewport) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     D3DVIEWPORT9 viewport;
     if (pViewport == nullptr) {
@@ -1250,8 +1293,9 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetViewport(D3DVIEWPORT9* pViewport) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     if (pViewport == nullptr)
       return D3DERR_INVALIDCALL;
@@ -1261,38 +1305,45 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetMaterial(const D3DMATERIAL9* pMaterial) {
     Logger::warn("D3D9DeviceEx::SetMaterial: Stub");
     return D3D_OK;
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetMaterial(D3DMATERIAL9* pMaterial) {
     Logger::warn("D3D9DeviceEx::GetMaterial: Stub");
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetLight(DWORD Index, const D3DLIGHT9* pLight) {
     Logger::warn("D3D9DeviceEx::SetLight: Stub");
     return D3D_OK;
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetLight(DWORD Index, D3DLIGHT9* pLight) {
     Logger::warn("D3D9DeviceEx::GetLight: Stub");
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::LightEnable(DWORD Index, BOOL Enable) {
     Logger::warn("D3D9DeviceEx::LightEnable: Stub");
     return D3D_OK;
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetLightEnable(DWORD Index, BOOL* pEnable) {
     Logger::warn("D3D9DeviceEx::GetLightEnable: Stub");
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetClipPlane(DWORD Index, const float* pPlane) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     if (unlikely(Index >= caps::MaxClipPlanes || !pPlane))
       return D3DERR_INVALIDCALL;
@@ -1313,8 +1364,9 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetClipPlane(DWORD Index, float* pPlane) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     if (unlikely(Index >= caps::MaxClipPlanes || !pPlane))
       return D3DERR_INVALIDCALL;
@@ -1325,8 +1377,9 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetRenderState(D3DRENDERSTATETYPE State, DWORD Value) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     // D3D9 only allows reading for values 0 and 7-255 so we don't need to do anything but return OK
     if (unlikely(State > 255 || (State < D3DRS_ZENABLE && State != 0))) {
@@ -1481,8 +1534,9 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetRenderState(D3DRENDERSTATETYPE State, DWORD* pValue) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     if (unlikely(pValue == nullptr))
       return D3DERR_INVALIDCALL;
@@ -1499,10 +1553,11 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::CreateStateBlock(
           D3DSTATEBLOCKTYPE      Type,
           IDirect3DStateBlock9** ppSB) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     InitReturnPtr(ppSB);
 
@@ -1520,8 +1575,9 @@ namespace dxvk {
     }
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::BeginStateBlock() {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     if (unlikely(m_recorder != nullptr))
       return D3DERR_INVALIDCALL;
@@ -1531,8 +1587,9 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::EndStateBlock(IDirect3DStateBlock9** ppSB) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     InitReturnPtr(ppSB);
 
@@ -1545,18 +1602,21 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetClipStatus(const D3DCLIPSTATUS9* pClipStatus) {
     Logger::warn("D3D9DeviceEx::SetClipStatus: Stub");
     return D3D_OK;
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetClipStatus(D3DCLIPSTATUS9* pClipStatus) {
     Logger::warn("D3D9DeviceEx::GetClipStatus: Stub");
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetTexture(DWORD Stage, IDirect3DBaseTexture9** ppTexture) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     if (ppTexture == nullptr)
       return D3DERR_INVALIDCALL;
@@ -1573,8 +1633,9 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetTexture(DWORD Stage, IDirect3DBaseTexture9* pTexture) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     if (unlikely(InvalidSampler(Stage)))
       return D3D_OK;
@@ -1583,6 +1644,7 @@ namespace dxvk {
 
     return SetStateTexture(stateSampler, pTexture);
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetTextureStageState(
           DWORD                    Stage,
@@ -1603,11 +1665,12 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetSamplerState(
           DWORD               Sampler,
           D3DSAMPLERSTATETYPE Type,
           DWORD*              pValue) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     if (unlikely(pValue == nullptr))
       return D3DERR_INVALIDCALL;
@@ -1624,11 +1687,12 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetSamplerState(
           DWORD               Sampler,
           D3DSAMPLERSTATETYPE Type,
           DWORD               Value) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
     if (unlikely(InvalidSampler(Sampler)))
       return D3D_OK;
 
@@ -1637,6 +1701,7 @@ namespace dxvk {
     return SetStateSamplerState(stateSampler, Type, Value);
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::ValidateDevice(DWORD* pNumPasses) {
     if (pNumPasses != nullptr)
       *pNumPasses = 1;
@@ -1644,28 +1709,33 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetPaletteEntries(UINT PaletteNumber, const PALETTEENTRY* pEntries) {
     Logger::warn("D3D9DeviceEx::SetPaletteEntries: Stub");
     return D3D_OK;
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetPaletteEntries(UINT PaletteNumber, PALETTEENTRY* pEntries) {
     Logger::warn("D3D9DeviceEx::GetPaletteEntries: Stub");
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetCurrentTexturePalette(UINT PaletteNumber) {
     Logger::warn("D3D9DeviceEx::SetCurrentTexturePalette: Stub");
     return D3D_OK;
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetCurrentTexturePalette(UINT *PaletteNumber) {
     Logger::warn("D3D9DeviceEx::GetCurrentTexturePalette: Stub");
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetScissorRect(const RECT* pRect) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     if (unlikely(pRect == nullptr))
       return D3DERR_INVALIDCALL;
@@ -1680,8 +1750,9 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetScissorRect(RECT* pRect) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     if (unlikely(pRect == nullptr))
       return D3DERR_INVALIDCALL;
@@ -1691,31 +1762,36 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetSoftwareVertexProcessing(BOOL bSoftware) {
     Logger::warn("D3D9DeviceEx::SetSoftwareVertexProcessing: Stub");
     return D3D_OK;
   }
+
 
   BOOL    STDMETHODCALLTYPE D3D9DeviceEx::GetSoftwareVertexProcessing() {
     Logger::warn("D3D9DeviceEx::GetSoftwareVertexProcessing: Stub");
     return FALSE;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetNPatchMode(float nSegments) {
     Logger::warn("D3D9DeviceEx::SetNPatchMode: Stub");
     return D3D_OK;
   }
+
 
   float   STDMETHODCALLTYPE D3D9DeviceEx::GetNPatchMode() {
     Logger::warn("D3D9DeviceEx::GetNPatchMode: Stub");
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::DrawPrimitive(
           D3DPRIMITIVETYPE PrimitiveType,
           UINT             StartVertex,
           UINT             PrimitiveCount) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     PrepareDraw();
 
@@ -1734,6 +1810,7 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::DrawIndexedPrimitive(
           D3DPRIMITIVETYPE PrimitiveType,
           INT              BaseVertexIndex,
@@ -1741,7 +1818,7 @@ namespace dxvk {
           UINT             NumVertices,
           UINT             StartIndex,
           UINT             PrimitiveCount) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     PrepareDraw();
 
@@ -1762,12 +1839,13 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::DrawPrimitiveUP(
           D3DPRIMITIVETYPE PrimitiveType,
           UINT             PrimitiveCount,
     const void*            pVertexStreamZeroData,
           UINT             VertexStreamZeroStride) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     PrepareDraw(true);
 
@@ -1800,6 +1878,7 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::DrawIndexedPrimitiveUP(
           D3DPRIMITIVETYPE PrimitiveType,
           UINT             MinVertexIndex,
@@ -1809,7 +1888,7 @@ namespace dxvk {
           D3DFORMAT        IndexDataFormat,
     const void*            pVertexStreamZeroData,
           UINT             VertexStreamZeroStride) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     PrepareDraw(true);
 
@@ -1855,6 +1934,7 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::ProcessVertices(
           UINT                         SrcStartIndex,
           UINT                         DestIndex,
@@ -1865,6 +1945,7 @@ namespace dxvk {
     Logger::warn("D3D9DeviceEx::ProcessVertices: Stub");
     return D3D_OK;
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::CreateVertexDeclaration(
     const D3DVERTEXELEMENT9*            pVertexElements,
@@ -1891,8 +1972,9 @@ namespace dxvk {
     }
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetVertexDeclaration(IDirect3DVertexDeclaration9* pDecl) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     D3D9VertexDecl* decl = static_cast<D3D9VertexDecl*>(pDecl);
 
@@ -1909,8 +1991,9 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetVertexDeclaration(IDirect3DVertexDeclaration9** ppDecl) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     InitReturnPtr(ppDecl);
 
@@ -1925,8 +2008,9 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetFVF(DWORD FVF) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     if (FVF == 0)
       return D3D_OK;
@@ -1945,8 +2029,9 @@ namespace dxvk {
     return this->SetVertexDeclaration(decl);
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetFVF(DWORD* pFVF) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     if (pFVF == nullptr)
       return D3DERR_INVALIDCALL;
@@ -1957,6 +2042,7 @@ namespace dxvk {
 
     return D3D_OK;
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::CreateVertexShader(
     const DWORD*                   pFunction,
@@ -1982,8 +2068,9 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetVertexShader(IDirect3DVertexShader9* pShader) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     D3D9VertexShader* shader = static_cast<D3D9VertexShader*>(pShader);
 
@@ -2018,8 +2105,9 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetVertexShader(IDirect3DVertexShader9** ppShader) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     InitReturnPtr(ppShader);
 
@@ -2036,7 +2124,7 @@ namespace dxvk {
           UINT   StartRegister,
     const float* pConstantData,
           UINT   Vector4fCount) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     return SetShaderConstants<
       DxsoProgramTypes::VertexShader,
@@ -2045,12 +2133,13 @@ namespace dxvk {
         pConstantData,
         Vector4fCount);
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetVertexShaderConstantF(
           UINT   StartRegister,
           float* pConstantData,
           UINT   Vector4fCount) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     return GetShaderConstants<
       DxsoProgramTypes::VertexShader,
@@ -2060,11 +2149,12 @@ namespace dxvk {
         Vector4fCount);
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetVertexShaderConstantI(
           UINT StartRegister,
     const int* pConstantData,
           UINT Vector4iCount) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     return SetShaderConstants<
       DxsoProgramTypes::VertexShader,
@@ -2073,12 +2163,13 @@ namespace dxvk {
         pConstantData,
         Vector4iCount);
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetVertexShaderConstantI(
           UINT StartRegister,
           int* pConstantData,
           UINT Vector4iCount) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     return GetShaderConstants<
       DxsoProgramTypes::VertexShader,
@@ -2088,11 +2179,12 @@ namespace dxvk {
         Vector4iCount);
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetVertexShaderConstantB(
           UINT  StartRegister,
     const BOOL* pConstantData,
           UINT  BoolCount) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     return SetShaderConstants<
       DxsoProgramTypes::VertexShader,
@@ -2102,11 +2194,12 @@ namespace dxvk {
         BoolCount);
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetVertexShaderConstantB(
           UINT  StartRegister,
           BOOL* pConstantData,
           UINT  BoolCount) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     return GetShaderConstants<
       DxsoProgramTypes::VertexShader,
@@ -2115,13 +2208,14 @@ namespace dxvk {
         pConstantData,
         BoolCount);
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetStreamSource(
           UINT                    StreamNumber,
           IDirect3DVertexBuffer9* pStreamData,
           UINT                    OffsetInBytes,
           UINT                    Stride) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     if (unlikely(StreamNumber >= caps::MaxStreams))
       return D3DERR_INVALIDCALL;
@@ -2145,12 +2239,13 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetStreamSource(
           UINT                     StreamNumber,
           IDirect3DVertexBuffer9** ppStreamData,
           UINT*                    pOffsetInBytes,
           UINT*                    pStride) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     InitReturnPtr(ppStreamData);
 
@@ -2175,8 +2270,9 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetStreamSourceFreq(UINT StreamNumber, UINT Setting) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     if (unlikely(StreamNumber >= caps::MaxStreams))
       return D3DERR_INVALIDCALL;
@@ -2211,8 +2307,9 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetStreamSourceFreq(UINT StreamNumber, UINT* pSetting) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     if (unlikely(StreamNumber >= caps::MaxStreams))
       return D3DERR_INVALIDCALL;
@@ -2225,8 +2322,9 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetIndices(IDirect3DIndexBuffer9* pIndexData) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     D3D9IndexBuffer* buffer = static_cast<D3D9IndexBuffer*>(pIndexData);
 
@@ -2243,8 +2341,9 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetIndices(IDirect3DIndexBuffer9** ppIndexData) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
     InitReturnPtr(ppIndexData);
 
     if (unlikely(ppIndexData == nullptr))
@@ -2254,6 +2353,7 @@ namespace dxvk {
 
     return D3D_OK;
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::CreatePixelShader(
     const DWORD*                  pFunction,
@@ -2279,8 +2379,9 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetPixelShader(IDirect3DPixelShader9* pShader) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     D3D9PixelShader* shader = static_cast<D3D9PixelShader*>(pShader);
 
@@ -2312,8 +2413,9 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetPixelShader(IDirect3DPixelShader9** ppShader) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     InitReturnPtr(ppShader);
 
@@ -2325,11 +2427,12 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetPixelShaderConstantF(
     UINT   StartRegister,
     const float* pConstantData,
     UINT   Vector4fCount) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     return SetShaderConstants <
       DxsoProgramTypes::PixelShader,
@@ -2339,11 +2442,12 @@ namespace dxvk {
         Vector4fCount);
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetPixelShaderConstantF(
     UINT   StartRegister,
     float* pConstantData,
     UINT   Vector4fCount) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     return GetShaderConstants<
       DxsoProgramTypes::PixelShader,
@@ -2353,11 +2457,12 @@ namespace dxvk {
         Vector4fCount);
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetPixelShaderConstantI(
     UINT StartRegister,
     const int* pConstantData,
     UINT Vector4iCount) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     return SetShaderConstants<
       DxsoProgramTypes::PixelShader,
@@ -2366,12 +2471,13 @@ namespace dxvk {
         pConstantData,
         Vector4iCount);
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetPixelShaderConstantI(
     UINT StartRegister,
     int* pConstantData,
     UINT Vector4iCount) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     return GetShaderConstants<
       DxsoProgramTypes::PixelShader,
@@ -2381,11 +2487,12 @@ namespace dxvk {
         Vector4iCount);
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetPixelShaderConstantB(
     UINT  StartRegister,
     const BOOL* pConstantData,
     UINT  BoolCount) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     return SetShaderConstants<
       DxsoProgramTypes::PixelShader,
@@ -2395,11 +2502,12 @@ namespace dxvk {
         BoolCount);
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetPixelShaderConstantB(
     UINT  StartRegister,
     BOOL* pConstantData,
     UINT  BoolCount) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     return GetShaderConstants<
       DxsoProgramTypes::PixelShader,
@@ -2408,6 +2516,7 @@ namespace dxvk {
         pConstantData,
         BoolCount);
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::DrawRectPatch(
           UINT               Handle,
@@ -2417,6 +2526,7 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::DrawTriPatch(
           UINT              Handle,
     const float*            pNumSegs,
@@ -2425,10 +2535,12 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::DeletePatch(UINT Handle) {
     Logger::warn("D3D9DeviceEx::DeletePatch: Stub");
     return D3D_OK;
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::CreateQuery(D3DQUERYTYPE Type, IDirect3DQuery9** ppQuery) {
     InitReturnPtr(ppQuery);
@@ -2448,7 +2560,9 @@ namespace dxvk {
     }
   }
 
+
   // Ex Methods
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetConvolutionMonoKernel(
           UINT   width,
@@ -2458,6 +2572,7 @@ namespace dxvk {
     Logger::warn("D3D9DeviceEx::SetConvolutionMonoKernel: Stub");
     return D3D_OK;
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::ComposeRects(
           IDirect3DSurface9*      pSrc,
@@ -2472,18 +2587,21 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetGPUThreadPriority(INT* pPriority) {
     Logger::warn("D3D9DeviceEx::GetGPUThreadPriority: Stub");
     return D3D_OK;
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetGPUThreadPriority(INT Priority) {
     Logger::warn("D3D9DeviceEx::SetGPUThreadPriority: Stub");
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::WaitForVBlank(UINT iSwapChain) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     auto* swapchain = GetInternalSwapchain(iSwapChain);
 
@@ -2493,13 +2611,15 @@ namespace dxvk {
     return swapchain->WaitForVBlank();
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::CheckResourceResidency(IDirect3DResource9** pResourceArray, UINT32 NumResources) {
     Logger::warn("D3D9DeviceEx::CheckResourceResidency: Stub");
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetMaximumFrameLatency(UINT MaxLatency) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     if (MaxLatency == 0)
       MaxLatency = DefaultFrameLatency;
@@ -2512,8 +2632,9 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetMaximumFrameLatency(UINT* pMaxLatency) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     if (unlikely(pMaxLatency == nullptr))
       return D3DERR_INVALIDCALL;
@@ -2523,9 +2644,11 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::CheckDeviceState(HWND hDestinationWindow) {
     return D3D_OK;
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::PresentEx(
     const RECT* pSourceRect,
@@ -2533,7 +2656,7 @@ namespace dxvk {
           HWND hDestWindowOverride,
     const RGNDATA* pDirtyRegion,
           DWORD dwFlags) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     auto* swapchain = GetInternalSwapchain(0);
     if (swapchain == nullptr)
@@ -2546,6 +2669,7 @@ namespace dxvk {
       pDirtyRegion,
       dwFlags);
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::CreateRenderTargetEx(
           UINT                Width,
@@ -2591,6 +2715,7 @@ namespace dxvk {
     }
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::CreateOffscreenPlainSurfaceEx(
           UINT                Width,
           UINT                Height,
@@ -2632,6 +2757,7 @@ namespace dxvk {
       return D3DERR_OUTOFVIDEOMEMORY;
     }
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::CreateDepthStencilSurfaceEx(
           UINT                Width,
@@ -2677,10 +2803,11 @@ namespace dxvk {
     }
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::ResetEx(
           D3DPRESENT_PARAMETERS* pPresentationParameters,
           D3DDISPLAYMODEEX*      pFullscreenDisplayMode) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     if (unlikely(pPresentationParameters == nullptr))
       return D3DERR_INVALIDCALL;
@@ -2949,11 +3076,12 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetDisplayModeEx(
           UINT                iSwapChain,
           D3DDISPLAYMODEEX*   pMode,
           D3DDISPLAYROTATION* pRotation) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     auto* swapchain = GetInternalSwapchain(iSwapChain);
 
@@ -2963,11 +3091,12 @@ namespace dxvk {
     return swapchain->GetDisplayModeEx(pMode, pRotation);
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::CreateAdditionalSwapChainEx(
           D3DPRESENT_PARAMETERS* pPresentationParameters,
     const D3DDISPLAYMODEEX*      pFullscreenDisplayMode,
           IDirect3DSwapChain9**  ppSwapChain) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     InitReturnPtr(ppSwapChain);
 
@@ -2983,11 +3112,12 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT D3D9DeviceEx::SetStateSamplerState(
     DWORD               StateSampler,
     D3DSAMPLERSTATETYPE Type,
     DWORD               Value) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     if (unlikely(ShouldRecord()))
       return m_recorder->SetStateSamplerState(StateSampler, Type, Value);
@@ -3017,8 +3147,9 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT D3D9DeviceEx::SetStateTexture(DWORD StateSampler, IDirect3DBaseTexture9* pTexture) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     if (unlikely(ShouldRecord()))
       return m_recorder->SetStateTexture(StateSampler, pTexture);
@@ -3033,8 +3164,9 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT D3D9DeviceEx::SetStateTransform(uint32_t idx, const D3DMATRIX* pMatrix) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     if (unlikely(ShouldRecord()))
       return m_recorder->SetStateTransform(idx, pMatrix);
@@ -3046,13 +3178,16 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   bool D3D9DeviceEx::IsExtended() {
     return m_flags.test(D3D9DeviceFlag::ExtendedDevice);
   }
 
+
   HWND D3D9DeviceEx::GetWindow() {
     return m_window;
   }
+
 
   Rc<DxvkEvent> D3D9DeviceEx::GetFrameSyncEvent(UINT BufferCount) {
     uint32_t frameLatency = m_frameLatency;
@@ -3068,6 +3203,7 @@ namespace dxvk {
     uint32_t frameId = m_frameId++ % frameLatency;
     return m_frameEvents[frameId];
   }
+
 
   DxvkDeviceFeatures D3D9DeviceEx::GetDeviceFeatures(const Rc<DxvkAdapter>& adapter) {
     DxvkDeviceFeatures supported = adapter->features();
@@ -3117,6 +3253,7 @@ namespace dxvk {
     return enabled;
   }
 
+
   void D3D9DeviceEx::AllocUpBuffer(uint32_t size) {
     const uint32_t currentSize = m_upBuffer != nullptr
       ? m_upBuffer->info().size
@@ -3140,6 +3277,7 @@ namespace dxvk {
     m_upBuffer = m_dxvkDevice->createBuffer(info, memoryFlags);
   }
 
+
   D3D9SwapChainEx* D3D9DeviceEx::GetInternalSwapchain(UINT index) {
     if (index >= m_swapchains.size())
       return nullptr;
@@ -3147,37 +3285,15 @@ namespace dxvk {
     return static_cast<D3D9SwapChainEx*>(m_swapchains[index]);
   }
 
+
   bool D3D9DeviceEx::ShouldRecord() {
     return m_recorder != nullptr && !m_recorder->IsApplying();
   }
 
+
   D3D9_VK_FORMAT_MAPPING D3D9DeviceEx::LookupFormat(
     D3D9Format            Format) const {
     return m_d3d9Formats.GetFormatMapping(Format);
-  }
-
-  VkFormat D3D9DeviceEx::LookupDecltype(D3DDECLTYPE d3d9DeclType) {
-    switch (d3d9DeclType) {
-      case D3DDECLTYPE_FLOAT1:    return VK_FORMAT_R32_SFLOAT;
-      case D3DDECLTYPE_FLOAT2:    return VK_FORMAT_R32G32_SFLOAT;
-      case D3DDECLTYPE_FLOAT3:    return VK_FORMAT_R32G32B32_SFLOAT;
-      case D3DDECLTYPE_FLOAT4:    return VK_FORMAT_R32G32B32A32_SFLOAT;
-      case D3DDECLTYPE_D3DCOLOR:  return VK_FORMAT_B8G8R8A8_UNORM;
-      case D3DDECLTYPE_UBYTE4:    return VK_FORMAT_R8G8B8A8_USCALED;
-      case D3DDECLTYPE_SHORT2:    return VK_FORMAT_R16G16_SSCALED;
-      case D3DDECLTYPE_SHORT4:    return VK_FORMAT_R16G16B16A16_SSCALED;
-      case D3DDECLTYPE_UBYTE4N:   return VK_FORMAT_R8G8B8A8_UNORM;
-      case D3DDECLTYPE_SHORT2N:   return VK_FORMAT_R16G16_SNORM;
-      case D3DDECLTYPE_SHORT4N:   return VK_FORMAT_R16G16B16A16_SNORM;
-      case D3DDECLTYPE_USHORT2N:  return VK_FORMAT_R16G16_UNORM;
-      case D3DDECLTYPE_USHORT4N:  return VK_FORMAT_R16G16B16A16_UNORM;
-      case D3DDECLTYPE_UDEC3:     return VK_FORMAT_A2B10G10R10_USCALED_PACK32;
-      case D3DDECLTYPE_FLOAT16_2: return VK_FORMAT_R16G16_SFLOAT;
-      case D3DDECLTYPE_FLOAT16_4: return VK_FORMAT_R16G16B16A16_SFLOAT;
-      case D3DDECLTYPE_DEC3N:     return VK_FORMAT_A2B10G10R10_SNORM_PACK32;
-      case D3DDECLTYPE_UNUSED:
-      default:                    return VK_FORMAT_UNDEFINED;
-    }
   }
 
   bool D3D9DeviceEx::WaitForResource(
@@ -3211,6 +3327,7 @@ namespace dxvk {
     return true;
   }
 
+
   uint32_t D3D9DeviceEx::CalcImageLockOffset(
             uint32_t                SlicePitch,
             uint32_t                RowPitch,
@@ -3233,6 +3350,7 @@ namespace dxvk {
            rowOffset;
   }
 
+
   HRESULT D3D9DeviceEx::LockImage(
             D3D9CommonTexture* pResource,
             UINT                    Face,
@@ -3240,7 +3358,7 @@ namespace dxvk {
             D3DLOCKED_BOX*          pLockedBox,
       const D3DBOX*                 pBox,
             DWORD                   Flags) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     if (!m_d3d9Options.allowLockFlagReadonly)
       Flags &= ~D3DLOCK_READONLY;
@@ -3360,11 +3478,12 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT D3D9DeviceEx::UnlockImage(
         D3D9CommonTexture*      pResource,
         UINT                    Face,
         UINT                    MipLevel) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     UINT Subresource = pResource->CalcSubresource(Face, MipLevel);
 
@@ -3388,6 +3507,7 @@ namespace dxvk {
 
     return D3D_OK;
   }
+
 
   HRESULT D3D9DeviceEx::FlushImage(
         D3D9CommonTexture*      pResource,
@@ -3424,6 +3544,7 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   void D3D9DeviceEx::GenerateMips(
     D3D9CommonTexture* pResource) {
     EmitCs([
@@ -3432,6 +3553,7 @@ namespace dxvk {
       ctx->generateMipmaps(cImageView);
     });
   }
+
 
   void D3D9DeviceEx::FixupFormat(
         D3D9CommonTexture*      pResource,
@@ -3478,13 +3600,14 @@ namespace dxvk {
     }
   }
 
+
   HRESULT D3D9DeviceEx::LockBuffer(
           D3D9CommonBuffer*       pResource,
           UINT                    OffsetToLock,
           UINT                    SizeToLock,
           void**                  ppbData,
           DWORD                   Flags) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     if (unlikely(ppbData == nullptr))
       return D3DERR_INVALIDCALL;
@@ -3535,12 +3658,13 @@ namespace dxvk {
     }
   }
 
+
   HRESULT D3D9DeviceEx::UnlockBuffer(
         D3D9CommonBuffer*       pResource) {
     if (pResource->GetMapMode() != D3D9_COMMON_BUFFER_MAP_MODE_BUFFER)
       return D3D_OK;
 
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     if (pResource->SetMapFlags(0) & D3DLOCK_READONLY)
       return D3D_OK;
@@ -3565,6 +3689,7 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   void D3D9DeviceEx::EmitCsChunk(DxvkCsChunkRef&& chunk) {
     m_csThread.dispatchChunk(std::move(chunk));
     m_csIsBusy = true;
@@ -3588,8 +3713,9 @@ namespace dxvk {
     }
   }
 
+
   void D3D9DeviceEx::SynchronizeCsThread() {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     // Dispatch current chunk so that all commands
     // recorded prior to this function will be run
@@ -3597,6 +3723,7 @@ namespace dxvk {
 
     m_csThread.synchronize();
   }
+
 
   void D3D9DeviceEx::SetupFPU() {
     // Should match d3d9 float behaviour.
@@ -3642,6 +3769,7 @@ namespace dxvk {
 #endif
   }
 
+
   int64_t D3D9DeviceEx::DetermineInitialTextureMemory() {
     auto memoryProp = m_dxvkAdapter->memoryProperties();
 
@@ -3665,6 +3793,7 @@ namespace dxvk {
 
     return int64_t(availableTextureMemory);
   }
+
 
   void D3D9DeviceEx::CreateConstantBuffers() {
     DxvkBufferCreateInfo info;
@@ -3714,6 +3843,7 @@ namespace dxvk {
       D3D9DeviceFlag::DirtyRenderStateBuffer);
   }
 
+
   template <DxsoProgramType ShaderStage>
   void D3D9DeviceEx::UploadConstants() {
     D3D9ConstantSets& constSet = m_consts[ShaderStage];
@@ -3754,7 +3884,8 @@ namespace dxvk {
       }
     }
   }
-  
+
+
   void D3D9DeviceEx::UpdateClipPlanes() {
     m_flags.clr(D3D9DeviceFlag::DirtyClipPlanes);
     
@@ -3774,7 +3905,8 @@ namespace dxvk {
       ctx->invalidateBuffer(cBuffer, cSlice);
     });
   }
-  
+
+
   void D3D9DeviceEx::UpdateRenderStateBuffer() {
     m_flags.clr(D3D9DeviceFlag::DirtyRenderStateBuffer);
     
@@ -3793,8 +3925,9 @@ namespace dxvk {
     });
   }
 
+
   void D3D9DeviceEx::Flush() {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     m_initializer->Flush();
 
@@ -3812,6 +3945,7 @@ namespace dxvk {
       m_csIsBusy = false;
     }
   }
+
 
   void D3D9DeviceEx::BindFramebuffer() {
     m_flags.clr(D3D9DeviceFlag::DirtyFramebuffer);
@@ -3844,6 +3978,7 @@ namespace dxvk {
         ctx->bindRenderTargets(cAttachments, false);
     });
   }
+
 
   void D3D9DeviceEx::BindViewportAndScissor() {
     m_flags.clr(D3D9DeviceFlag::DirtyViewportScissor);
@@ -3914,6 +4049,7 @@ namespace dxvk {
     });
   }
 
+
   void D3D9DeviceEx::BindMultiSampleState() {
     m_flags.clr(D3D9DeviceFlag::DirtyMultiSampleState);
 
@@ -3929,6 +4065,7 @@ namespace dxvk {
       ctx->setMultisampleState(cState);
     });
   }
+
 
   void D3D9DeviceEx::BindBlendState() {
     m_flags.clr(D3D9DeviceFlag::DirtyBlendState);
@@ -3972,6 +4109,7 @@ namespace dxvk {
     });
   }
 
+
   void D3D9DeviceEx::BindBlendFactor() {
     DxvkBlendConstants blendConstants;
     DecodeD3DCOLOR(
@@ -3984,6 +4122,7 @@ namespace dxvk {
       ctx->setBlendConstants(cBlendConstants);
     });
   }
+
 
   void D3D9DeviceEx::BindDepthStencilState() {
     m_flags.clr(D3D9DeviceFlag::DirtyDepthStencilState);
@@ -4022,6 +4161,7 @@ namespace dxvk {
     });
   }
 
+
   void D3D9DeviceEx::BindRasterizerState() {
     m_flags.clr(D3D9DeviceFlag::DirtyRasterizerState);
 
@@ -4055,6 +4195,7 @@ namespace dxvk {
     });
   }
 
+
   void D3D9DeviceEx::BindAlphaTestState() {
     m_flags.clr(D3D9DeviceFlag::DirtyAlphaTestState);
     
@@ -4069,7 +4210,8 @@ namespace dxvk {
       ctx->setSpecConstant(D3D9SpecConstantId::AlphaCompareOp,  cAlphaOp);
     });
   }
-  
+
+
   void D3D9DeviceEx::BindDepthStencilRefrence() {
     auto& rs = m_state.renderStates;
 
@@ -4081,6 +4223,7 @@ namespace dxvk {
       ctx->setStencilReference(cRef);
     });
   }
+
 
   void D3D9DeviceEx::BindSampler(DWORD Sampler) {
     auto& state = m_state.samplerStates[Sampler];
@@ -4165,6 +4308,7 @@ namespace dxvk {
     });
   }
 
+
   void D3D9DeviceEx::BindTexture(DWORD StateSampler) {
     auto shaderSampler = RemapStateSamplerShader(StateSampler);
 
@@ -4204,6 +4348,7 @@ namespace dxvk {
     });
   }
 
+
   void D3D9DeviceEx::UndirtySamplers() {
     for (uint32_t i = 0; i < 21; i++) {
       if (m_dirtySamplerStates & (1u << i))
@@ -4213,17 +4358,19 @@ namespace dxvk {
     m_dirtySamplerStates = 0;
   }
 
+
   void D3D9DeviceEx::MarkSamplersDirty() {
     m_dirtySamplerStates = 0x001fffff; // 21 bits.
   }
+
 
   D3D9DrawInfo D3D9DeviceEx::GenerateDrawInfo(
           D3DPRIMITIVETYPE PrimitiveType,
           UINT             PrimitiveCount) {
     D3D9DrawInfo drawInfo;
 
-    drawInfo.iaState     = InputAssemblyState(PrimitiveType);
-    drawInfo.vertexCount = VertexCount(PrimitiveType, PrimitiveCount);
+    drawInfo.iaState     = DecodeInputAssemblyState(PrimitiveType);
+    drawInfo.vertexCount = GetVertexCount(PrimitiveType, PrimitiveCount);
 
     drawInfo.instanceCount = 1;
     if (m_instancedData & m_streamUsageMask)
@@ -4231,6 +4378,7 @@ namespace dxvk {
 
     return drawInfo;
   }
+
 
   void D3D9DeviceEx::PrepareDraw(bool up) {
     if (m_flags.test(D3D9DeviceFlag::DirtyFramebuffer))
@@ -4282,6 +4430,7 @@ namespace dxvk {
     UpdateConstants();
   }
 
+
   void D3D9DeviceEx::BindShader(
         DxsoProgramType                   ShaderStage,
   const D3D9CommonShader*                 pShaderModule) {
@@ -4294,6 +4443,7 @@ namespace dxvk {
       ctx->bindShader(cStage, cShader);
     });
   }
+
 
   void D3D9DeviceEx::BindInputLayout() {
     m_flags.clr(D3D9DeviceFlag::DirtyInputLayout);
@@ -4330,7 +4480,7 @@ namespace dxvk {
 
           if (elementSemantic == decl.semantic) {
             attrib.binding = uint32_t(element.Stream);
-            attrib.format  = LookupDecltype(D3DDECLTYPE(element.Type));
+            attrib.format  = DecodeDecltype(D3DDECLTYPE(element.Type));
             attrib.offset  = element.Offset;
 
             m_streamUsageMask |= 1u << attrib.binding;
@@ -4391,6 +4541,7 @@ namespace dxvk {
     }
   }
 
+
   void D3D9DeviceEx::BindVertexBuffer(
         UINT                              Slot,
         D3D9VertexBuffer*                 pBuffer,
@@ -4426,8 +4577,9 @@ namespace dxvk {
     });
   }
 
+
   void D3D9DeviceEx::Begin(D3D9Query* pQuery) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     Com<D3D9Query> queryPtr = pQuery;
 
@@ -4436,8 +4588,9 @@ namespace dxvk {
     });
   }
 
+
   void D3D9DeviceEx::End(D3D9Query* pQuery) {
-    auto lock = LockDevice();
+    D3D9DeviceLock lock = LockDevice();
 
     Com<D3D9Query> queryPtr = pQuery;
 
@@ -4453,6 +4606,7 @@ namespace dxvk {
     }
   }
 
+
   void D3D9DeviceEx::SetVertexBoolBitfield(uint32_t mask, uint32_t bits) {
     m_state.consts[DxsoProgramTypes::VertexShader].hardware.boolBitfield &= ~mask;
     m_state.consts[DxsoProgramTypes::VertexShader].hardware.boolBitfield |= bits & mask;
@@ -4460,12 +4614,14 @@ namespace dxvk {
     m_consts[DxsoProgramTypes::VertexShader].dirty = true;
   }
 
+
   void D3D9DeviceEx::SetPixelBoolBitfield(uint32_t mask, uint32_t bits) {
     m_state.consts[DxsoProgramTypes::PixelShader].hardware.boolBitfield &= ~mask;
     m_state.consts[DxsoProgramTypes::PixelShader].hardware.boolBitfield |= bits & mask;
 
     m_consts[DxsoProgramTypes::PixelShader].dirty = true;
   }
+
 
   HRESULT D3D9DeviceEx::CreateShaderModule(
         D3D9CommonShader*     pShaderModule,
@@ -4483,6 +4639,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
     }
   }
+
 
   template <
     DxsoProgramType  ProgramType,
@@ -4531,7 +4688,8 @@ namespace dxvk {
         Count);
 
       return D3D_OK;
-    }
+  }
+
 
   void D3D9DeviceEx::ResolveZ() {
     D3D9Surface*           src = static_cast<D3D9Surface*>(m_state.depthStencil);

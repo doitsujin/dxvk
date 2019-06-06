@@ -13,6 +13,7 @@ namespace dxvk {
         0, 0,
         nullptr) { }
 
+
   D3D9Volume::D3D9Volume(
           D3D9DeviceEx*             pDevice,
           D3D9CommonTexture*        pTexture,
@@ -25,6 +26,7 @@ namespace dxvk {
         Face, MipLevel,
         pContainer) { }
 
+
   void D3D9Volume::AddRefPrivate() {
     IDirect3DBaseTexture9* pContainer = this->m_container;
 
@@ -36,6 +38,7 @@ namespace dxvk {
     D3D9VolumeBase::AddRefPrivate();
   }
 
+
   void D3D9Volume::ReleasePrivate() {
     IDirect3DBaseTexture9* pContainer = this->m_container;
 
@@ -46,6 +49,7 @@ namespace dxvk {
 
     D3D9VolumeBase::ReleasePrivate();
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9Volume::QueryInterface(REFIID riid, void** ppvObject) {
     if (ppvObject == nullptr)
@@ -65,6 +69,7 @@ namespace dxvk {
     return E_NOINTERFACE;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9Volume::GetDesc(D3DVOLUME_DESC *pDesc) {
     if (pDesc == nullptr)
       return D3DERR_INVALIDCALL;
@@ -83,6 +88,7 @@ namespace dxvk {
     return D3D_OK;
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9Volume::LockBox(D3DLOCKED_BOX* pLockedBox, CONST D3DBOX* pBox, DWORD Flags) {
     return m_parent->LockImage(
       m_texture,
@@ -91,6 +97,7 @@ namespace dxvk {
       pBox,
       Flags);
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9Volume::UnlockBox() {
     return m_parent->UnlockImage(

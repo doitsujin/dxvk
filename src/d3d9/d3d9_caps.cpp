@@ -24,6 +24,7 @@ namespace dxvk::caps {
         || Format == D3D9Format::INTZ;
   }
 
+
   HRESULT CheckDeviceFormat(
           D3D9Format      AdapterFormat,
           DWORD           Usage,
@@ -72,6 +73,7 @@ namespace dxvk::caps {
     return D3D_OK;
   }
 
+
   HRESULT CheckDepthStencilMatch(
           D3D9Format AdapterFormat,
           D3D9Format RenderTargetFormat,
@@ -89,6 +91,7 @@ namespace dxvk::caps {
     return D3D_OK;
   }
 
+
   HRESULT CheckDeviceFormatConversion(
           D3D9Format SrcFormat,
           D3D9Format DstFormat) {
@@ -100,6 +103,7 @@ namespace dxvk::caps {
 
     return D3D_OK;
   }
+
 
   HRESULT CheckDeviceMultiSampleType(
         D3D9Format          SurfaceFormat,
@@ -135,6 +139,7 @@ namespace dxvk::caps {
     return D3D_OK;
   }
 
+
   HRESULT CheckDeviceType(
           D3D9Format AdapterFormat,
           D3D9Format BackBufferFormat,
@@ -145,6 +150,7 @@ namespace dxvk::caps {
 
     return D3D_OK;
   }
+
 
   HRESULT GetDeviceCaps(
     const dxvk::D3D9Options& Options,

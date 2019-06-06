@@ -45,6 +45,7 @@ namespace dxvk {
     }
   }
 
+
   HRESULT STDMETHODCALLTYPE D3D9Query::QueryInterface(REFIID riid, void** ppvObject) {
     if (ppvObject == nullptr)
       return E_POINTER;
@@ -62,9 +63,11 @@ namespace dxvk {
     return E_NOINTERFACE;
   }
 
+
   D3DQUERYTYPE STDMETHODCALLTYPE D3D9Query::GetType() {
     return m_queryType;
   }
+
 
   DWORD STDMETHODCALLTYPE D3D9Query::GetDataSize() {
     switch (m_queryType) {
@@ -85,6 +88,7 @@ namespace dxvk {
       default:                                return 0;
     }
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9Query::Issue(DWORD dwIssueFlags) {
     // Note: No need to submit to CS if we don't do anything!
@@ -112,6 +116,7 @@ namespace dxvk {
       
     return D3D_OK;
   }
+
 
   HRESULT STDMETHODCALLTYPE D3D9Query::GetData(void* pData, DWORD dwSize, DWORD dwGetDataFlags) {
     // Let the game know that calling end might be a good idea...
@@ -207,6 +212,7 @@ namespace dxvk {
     }
   }
 
+
   UINT64 D3D9Query::GetTimestampQueryFrequency() const {
     Rc<DxvkDevice>  device  = m_parent->GetDXVKDevice();
     Rc<DxvkAdapter> adapter = device->adapter();
@@ -214,6 +220,7 @@ namespace dxvk {
     VkPhysicalDeviceLimits limits = adapter->deviceProperties().limits;
     return uint64_t(1'000'000'000.0f / limits.timestampPeriod);
   }
+
 
   void D3D9Query::Begin(DxvkContext* ctx) {
     switch (m_queryType) {
@@ -225,6 +232,7 @@ namespace dxvk {
       default: break;
     }
   }
+
 
   void D3D9Query::End(DxvkContext* ctx) {
     switch (m_queryType) {
@@ -245,10 +253,12 @@ namespace dxvk {
     }
   }
 
+
   bool D3D9Query::QueryBeginnable(D3DQUERYTYPE QueryType) {
     return QueryType == D3DQUERYTYPE_OCCLUSION
         || QueryType == D3DQUERYTYPE_VERTEXSTATS;
   }
+
 
   bool D3D9Query::QueryEndable(D3DQUERYTYPE QueryType) {
     return QueryType == D3DQUERYTYPE_TIMESTAMP
@@ -256,6 +266,7 @@ namespace dxvk {
         || QueryType == D3DQUERYTYPE_EVENT
         || QueryType == D3DQUERYTYPE_VERTEXSTATS;
   }
+
 
   HRESULT D3D9Query::QuerySupported(D3DQUERYTYPE QueryType) {
     switch (QueryType) {
