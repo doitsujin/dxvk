@@ -60,4 +60,6 @@ namespace dxvk::caps {
   constexpr uint32_t MaxMipLevels = 15;
   constexpr uint32_t MaxSubresources = 15 * 6;
 
+  constexpr uint32_t MaxTransforms = 10 + 256;
+
 }

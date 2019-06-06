@@ -1214,20 +1214,32 @@ namespace dxvk {
   }
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetTransform(D3DTRANSFORMSTATETYPE State, const D3DMATRIX* pMatrix) {
-    static bool s_errorShown = false;
-
-    if (!std::exchange(s_errorShown, true))
-      Logger::warn("D3D9DeviceEx::SetTransform: Stub");
-    return D3D_OK;
+    return SetStateTransform(GetTransformIndex(State), pMatrix);
   }
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetTransform(D3DTRANSFORMSTATETYPE State, D3DMATRIX* pMatrix) {
-    Logger::warn("D3D9DeviceEx::GetTransform: Stub");
+    auto lock = LockDevice();
+
+    if (unlikely(pMatrix == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    *pMatrix = bit::cast<D3DMATRIX>(m_state.transforms[GetTransformIndex(State)]);
+
     return D3D_OK;
   }
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::MultiplyTransform(D3DTRANSFORMSTATETYPE TransformState, const D3DMATRIX* pMatrix) {
-    Logger::warn("D3D9DeviceEx::MultiplyTransform: Stub");
+    auto lock = LockDevice();
+
+    if (unlikely(ShouldRecord()))
+      return m_recorder->MultiplyStateTransform(TransformState, pMatrix);
+
+    uint32_t idx = GetTransformIndex(TransformState);
+
+    m_state.transforms[idx] = ConvertMatrix(pMatrix) * m_state.transforms[idx];
+
+    m_flags.set(D3D9DeviceFlag::DirtyTransforms);
+
     return D3D_OK;
   }
 
@@ -3037,6 +3049,19 @@ namespace dxvk {
     TextureChangePrivate(m_state.textures[StateSampler], pTexture);
 
     BindTexture(StateSampler);
+
+    return D3D_OK;
+  }
+
+  HRESULT D3D9DeviceEx::SetStateTransform(uint32_t idx, const D3DMATRIX* pMatrix) {
+    auto lock = LockDevice();
+
+    if (unlikely(ShouldRecord()))
+      return m_recorder->SetStateTransform(idx, pMatrix);
+
+    m_state.transforms[idx] = ConvertMatrix(pMatrix);
+
+    m_flags.set(D3D9DeviceFlag::DirtyTransforms);
 
     return D3D_OK;
   }

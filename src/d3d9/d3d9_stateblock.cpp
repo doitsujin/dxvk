@@ -126,6 +126,22 @@ namespace dxvk {
     return D3D_OK;
   }
 
+  HRESULT D3D9StateBlock::SetStateTransform(uint32_t idx, const D3DMATRIX* pMatrix) {
+    m_state.transforms[idx] = ConvertMatrix(pMatrix);
+
+    m_captures.flags.set(D3D9CapturedStateFlag::Transforms);
+    m_captures.transforms.set(idx);
+    return D3D_OK;
+  }
+
+  HRESULT D3D9StateBlock::MultiplyStateTransform(uint32_t idx, const D3DMATRIX* pMatrix) {
+    m_state.transforms[idx] = ConvertMatrix(pMatrix) * m_state.transforms[idx];
+
+    m_captures.flags.set(D3D9CapturedStateFlag::Transforms);
+    m_captures.transforms.set(idx);
+    return D3D_OK;
+  }
+
   HRESULT D3D9StateBlock::SetViewport(const D3DVIEWPORT9* pViewport) {
     m_state.viewport = *pViewport;
 
@@ -431,6 +447,9 @@ namespace dxvk {
 
       m_captures.flags.set(D3D9CapturedStateFlag::ClipPlanes);
       m_captures.clipPlanes.flip();
+
+      m_captures.flags.set(D3D9CapturedStateFlag::Transforms);
+      m_captures.transforms.flip();
     }
 
     if (Type != D3D9StateBlockType::None)

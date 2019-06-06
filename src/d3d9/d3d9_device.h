@@ -46,6 +46,7 @@ namespace dxvk {
     DirtyInputLayout,
     DirtyViewportScissor,
     DirtyMultiSampleState,
+    DirtyTransforms,
     UpDirtiedVertices,
     UpDirtiedIndices,
     ValidSampleMask,
@@ -609,6 +610,8 @@ namespace dxvk {
         DWORD               Value);
 
     HRESULT SetStateTexture(DWORD StateSampler, IDirect3DBaseTexture9* pTexture);
+
+    HRESULT SetStateTransform(uint32_t idx, const D3DMATRIX* pMatrix);
 
     VkPipelineStageFlags GetEnabledShaderStages() const {
       return m_dxvkDevice->getShaderPipelineStages();

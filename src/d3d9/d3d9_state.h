@@ -3,6 +3,7 @@
 #include "d3d9_caps.h"
 #include "d3d9_constant_set.h"
 #include "../dxso/dxso_common.h"
+#include "../util/util_matrix.h"
 
 #include <array>
 #include <bitset>
@@ -79,6 +80,8 @@ namespace dxvk {
     D3D9ShaderConstants                              consts[DxsoProgramTypes::Count];
 
     std::array<UINT, caps::MaxStreams>               streamFreq;
+
+    std::array<Matrix4, caps::MaxTransforms>         transforms;
   };
 
   template <
@@ -130,7 +133,8 @@ namespace dxvk {
     ClipPlanes,
     VsConstants,
     PsConstants,
-    StreamFreq
+    StreamFreq,
+    Transforms
   };
 
   using D3D9CapturedStateFlags = Flags<D3D9CapturedStateFlag>;
@@ -149,6 +153,7 @@ namespace dxvk {
     std::bitset<SamplerCount>                           textures;
     std::bitset<caps::MaxClipPlanes>                    clipPlanes;
     std::bitset<caps::MaxStreams>                       streamFreq;
+    std::bitset<caps::MaxTransforms>                    transforms;
 
     struct {
       std::bitset<caps::MaxFloatConstants>              fConsts;

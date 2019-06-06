@@ -7,6 +7,8 @@
 #include "../dxso/dxso_common.h"
 #include "../dxvk/dxvk_device.h"
 
+#include "../util/util_matrix.h"
+
 #include <d3dcommon.h>
 
 namespace dxvk {
@@ -99,6 +101,26 @@ namespace dxvk {
       case DxsoProgramTypes::PixelShader:   return VK_SHADER_STAGE_FRAGMENT_BIT;
       default:                              return VkShaderStageFlagBits(0);
     }
+  }
+
+  inline uint32_t GetTransformIndex(D3DTRANSFORMSTATETYPE Type) {
+    if (Type == D3DTS_VIEW)
+      return 0;
+
+    if (Type == D3DTS_PROJECTION)
+      return 1;
+
+    if (Type >= D3DTS_TEXTURE0 && Type <= D3DTS_TEXTURE7)
+      return 2 + (Type - D3DTS_TEXTURE0);
+
+    return 10 + (Type - D3DTS_WORLD);
+  }
+
+  inline Matrix4 ConvertMatrix(const D3DMATRIX* Matrix) {
+    if (Matrix == nullptr) // Identity.
+      return Matrix4();
+
+    return *(reinterpret_cast<const Matrix4*>(Matrix));
   }
 
   uint32_t VertexCount(D3DPRIMITIVETYPE type, UINT count);

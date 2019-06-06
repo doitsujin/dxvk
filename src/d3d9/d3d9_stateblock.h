@@ -60,6 +60,10 @@ namespace dxvk {
 
     HRESULT SetPixelShader(D3D9PixelShader* pShader);
 
+    HRESULT SetStateTransform(uint32_t idx, const D3DMATRIX* pMatrix);
+
+    HRESULT MultiplyStateTransform(uint32_t idx, const D3DMATRIX* pMatrix);
+
     HRESULT SetViewport(const D3DVIEWPORT9* pViewport);
 
     HRESULT SetScissorRect(const RECT* pRect);
@@ -161,6 +165,13 @@ namespace dxvk {
 
       if (m_captures.flags.test(D3D9CapturedStateFlag::PixelShader))
         dst->SetPixelShader(src->pixelShader);
+
+      if (m_captures.flags.test(D3D9CapturedStateFlag::Transforms)) {
+        for (uint32_t i = 0; i < m_captures.transforms.size(); i++) {
+          if (m_captures.transforms[i])
+            dst->SetStateTransform(i, reinterpret_cast<const D3DMATRIX*>(&src->transforms[i]));
+        }
+      }
 
       if (m_captures.flags.test(D3D9CapturedStateFlag::Viewport))
         dst->SetViewport(&src->viewport);
