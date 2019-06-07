@@ -11,7 +11,7 @@ namespace dxvk {
   D3D9InterfaceEx::D3D9InterfaceEx(bool bExtended)
     : m_instance    ( new DxvkInstance() )
     , m_extended    ( bExtended ) 
-    , m_d3d9Options ( m_instance->config() ){
+    , m_d3d9Options ( nullptr, m_instance->config() ){
     for (uint32_t i = 0; m_instance->enumAdapters(i) != nullptr; i++)
       m_instance->enumAdapters(i)->logAdapterInfo();
 

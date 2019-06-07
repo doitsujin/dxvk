@@ -25,7 +25,9 @@ namespace dxvk {
   }
 
 
-  D3D9Options::D3D9Options(const Config& config) {
+  D3D9Options::D3D9Options(const Rc<DxvkDevice>& device, const Config& config) {
+    const Rc<DxvkAdapter> adapter = device != nullptr ? device->adapter() : nullptr;
+
     // Fetch these as a string representing a hexadecimal number and parse it.
     this->customVendorId        = parsePciId(config.getOption<std::string>("d3d9.customVendorId"));
     this->customDeviceId        = parsePciId(config.getOption<std::string>("d3d9.customDeviceId"));
@@ -41,6 +43,11 @@ namespace dxvk {
     this->lenientClear          = config.getOption<bool>   ("d3d9.lenientClear",         false);
     this->numBackBuffers        = config.getOption<int32_t>("d3d9.numBackBuffers", 0);
     this->deferSurfaceCreation  = config.getOption<bool>   ("d3d9.deferSurfaceCreation", false);
+    this->hasHazards            = config.getOption<bool>   ("d3d9.hasHazards",           false);
+
+    // This is not necessary on Nvidia.
+    if (adapter != nullptr && adapter->matchesDriver(DxvkGpuVendor::Nvidia, VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0))
+      this->hasHazards          = false;
   }
 
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../util/config/config.h"
+#include "../dxvk/dxvk_device.h"
 
 #include "d3d9_include.h"
 
@@ -8,7 +9,7 @@ namespace dxvk {
 
   struct D3D9Options {
 
-    D3D9Options(const Config& config);
+    D3D9Options(const Rc<DxvkDevice>& device, const Config& config);
 
     /// Override PCI vendor and device IDs reported to the
     /// application. This may make apps think they are running
@@ -55,6 +56,9 @@ namespace dxvk {
 
     /// Defer surface creation
     bool deferSurfaceCreation;
+
+    /// R/W Framebuffer + Texture Hazards
+    bool hasHazards;
   };
 
 }

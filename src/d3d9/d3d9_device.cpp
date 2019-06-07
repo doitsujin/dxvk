@@ -51,7 +51,7 @@ namespace dxvk {
     , m_multithread    ( BehaviorFlags & D3DCREATE_MULTITHREADED )
     , m_shaderModules  ( new D3D9ShaderModuleSet )
     , m_d3d9Formats    ( dxvkAdapter )
-    , m_d3d9Options    ( dxvkAdapter->instance()->config() )
+    , m_d3d9Options    ( dxvkDevice, dxvkAdapter->instance()->config() )
     , m_dxsoOptions    ( m_dxvkDevice, m_d3d9Options ) {
     if (bExtended)
       m_flags.set(D3D9DeviceFlag::ExtendedDevice);
