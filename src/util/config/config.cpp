@@ -166,6 +166,17 @@ namespace dxvk {
     { "Risen.exe", {{
       { "d3d9.allowLockFlagReadonly",       "False" },
     }} },
+    /* Star Wars: The Force Unleashed 1 & 2       */
+    { "SWTFU.exe", {{
+      { "d3d9.hasHazards",                  "True" },
+    }} },
+    { "SWTFU2.exe", {{
+      { "d3d9.hasHazards",                  "True" },
+    }} },
+    /* Grand Theft Auto IV                        */
+    { "GTAIV.exe", {{
+      { "d3d9.hasHazards",                  "True" },
+    }} },
   }};
 
 
