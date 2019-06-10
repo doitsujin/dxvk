@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <numeric>
 
 #include <cstdlib>
 #include <cstring>
@@ -114,23 +115,46 @@ namespace dxvk {
 
     if (pModeToMatch->Format == DXGI_FORMAT_UNKNOWN && !pConcernedDevice)
       return DXGI_ERROR_INVALID_CALL;
-    
-    // If no format was specified, fall back to a standard
-    // SRGB format, which is supported on all devices.
+
+    // Both or neither must be zero
+    if ((pModeToMatch->Width == 0) ^ (pModeToMatch->Height == 0))
+      return DXGI_ERROR_INVALID_CALL;
+
+    DXGI_MODE_DESC activeMode = { };
+    GetMonitorDisplayMode(m_monitor, ENUM_CURRENT_SETTINGS, &activeMode);
+
+    DXGI_MODE_DESC1 defaultMode;
+    defaultMode.Width            = 0;
+    defaultMode.Height           = 0;
+    defaultMode.RefreshRate      = { 0, 0 };
+    defaultMode.Format           = DXGI_FORMAT_UNKNOWN;
+    defaultMode.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
+    defaultMode.Scaling          = DXGI_MODE_SCALING_UNSPECIFIED;
+    defaultMode.Stereo           = pModeToMatch->Stereo;
+
+    if (pModeToMatch->ScanlineOrdering == DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED)
+      defaultMode.ScanlineOrdering = activeMode.ScanlineOrdering;
+
+    if (pModeToMatch->Scaling == DXGI_MODE_SCALING_UNSPECIFIED)
+      defaultMode.Scaling = activeMode.Scaling;
+
     DXGI_FORMAT targetFormat = pModeToMatch->Format;
-    
-    if (targetFormat == DXGI_FORMAT_UNKNOWN)
-      targetFormat = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB;
-    
-    UINT targetRefreshRate = 0;
-    
-    if (pModeToMatch->RefreshRate.Denominator != 0) {
-      targetRefreshRate = pModeToMatch->RefreshRate.Numerator
-                        / pModeToMatch->RefreshRate.Denominator;
+
+    if (pModeToMatch->Format == DXGI_FORMAT_UNKNOWN) {
+      defaultMode.Format = activeMode.Format;
+      targetFormat       = activeMode.Format;
     }
-    
-    // List all supported modes and filter
-    // out those we don't actually need
+
+    if (!pModeToMatch->Width) {
+      defaultMode.Width  = activeMode.Width;
+      defaultMode.Height = activeMode.Height;
+    }
+
+    if (!pModeToMatch->RefreshRate.Numerator || !pModeToMatch->RefreshRate.Denominator) {
+      defaultMode.RefreshRate.Numerator   = activeMode.RefreshRate.Numerator;
+      defaultMode.RefreshRate.Denominator = activeMode.RefreshRate.Denominator;
+    }
+
     UINT modeCount = 0;
     GetDisplayModeList1(targetFormat, DXGI_ENUM_MODES_SCALING, &modeCount, nullptr);
     
@@ -141,58 +165,22 @@ namespace dxvk {
 
     std::vector<DXGI_MODE_DESC1> modes(modeCount);
     GetDisplayModeList1(targetFormat, DXGI_ENUM_MODES_SCALING, &modeCount, modes.data());
-    
-    for (auto it = modes.begin(); it != modes.end(); ) {
-      bool skipMode = false;
-      
-      // Remove modes with a different refresh rate
-      if (targetRefreshRate != 0) {
-        UINT modeRefreshRate = it->RefreshRate.Numerator
-                             / it->RefreshRate.Denominator;
-        skipMode |= modeRefreshRate != targetRefreshRate;
-      }
-      
-      // Remove modes with incorrect scaling
-      if (pModeToMatch->Scaling != DXGI_MODE_SCALING_UNSPECIFIED)
-        skipMode |= it->Scaling != pModeToMatch->Scaling;
-      
-      // Remove modes with incorrect stereo mode
-      skipMode |= it->Stereo != pModeToMatch->Stereo;
-      
-      it = skipMode ? modes.erase(it) : ++it;
-    }
-    
-    // No matching modes found
-    if (modes.size() == 0)
+
+    FilterModesByDesc(modes, *pModeToMatch);
+    FilterModesByDesc(modes, defaultMode);
+
+    if (modes.empty())
       return DXGI_ERROR_NOT_FOUND;
 
-    // If no valid resolution is specified, find the
-    // closest match for the current display resolution
-    UINT targetWidth  = pModeToMatch->Width;
-    UINT targetHeight = pModeToMatch->Height;
+    *pClosestMatch = modes[0];
 
-    if (targetWidth == 0 || targetHeight == 0) {
-      DXGI_MODE_DESC activeMode = { };
-      GetMonitorDisplayMode(m_monitor,
-        ENUM_CURRENT_SETTINGS, &activeMode);
-
-      targetWidth  = activeMode.Width;
-      targetHeight = activeMode.Height;
-    }
-
-    // Select mode with minimal height+width difference
-    UINT minDifference = std::numeric_limits<unsigned int>::max();
-    
-    for (auto mode : modes) {
-      UINT currDifference = std::abs(int(targetWidth  - mode.Width))
-                          + std::abs(int(targetHeight - mode.Height));
-
-      if (currDifference <= minDifference) {
-        minDifference = currDifference;
-        *pClosestMatch = mode;
-      }
-    }
-
+    Logger::debug(str::format(
+      "DXGI: For mode ",
+        pModeToMatch->Width, "x", pModeToMatch->Height, "@",
+        pModeToMatch->RefreshRate.Denominator ? (pModeToMatch->RefreshRate.Numerator / pModeToMatch->RefreshRate.Denominator) : 0,
+      " found closest mode ",
+        pClosestMatch->Width, "x", pClosestMatch->Height, "@",
+        pClosestMatch->RefreshRate.Denominator ? (pClosestMatch->RefreshRate.Numerator / pClosestMatch->RefreshRate.Denominator) : 0));
     return S_OK;
   }
 
@@ -460,4 +448,59 @@ namespace dxvk {
     return DXGI_ERROR_UNSUPPORTED;
   }
   
+
+  void DxgiOutput::FilterModesByDesc(
+          std::vector<DXGI_MODE_DESC1>& Modes,
+    const DXGI_MODE_DESC1&              TargetMode) {
+    uint32_t minDiffResolution  = 0;
+    uint32_t minDiffRefreshRate = 0;
+
+    if (TargetMode.Width) {
+      minDiffResolution = std::accumulate(
+        Modes.begin(), Modes.end(), std::numeric_limits<uint32_t>::max(),
+        [&TargetMode] (uint32_t current, const DXGI_MODE_DESC1& mode) {
+          uint32_t diff = std::abs(int32_t(TargetMode.Width  - mode.Width))
+                        + std::abs(int32_t(TargetMode.Height - mode.Height));
+          return std::min(current, diff);
+        });
+    }
+
+    if (TargetMode.RefreshRate.Numerator && TargetMode.RefreshRate.Denominator) {
+      minDiffRefreshRate = std::accumulate(
+        Modes.begin(), Modes.end(), std::numeric_limits<uint32_t>::max(),
+        [&TargetMode] (uint32_t current, const DXGI_MODE_DESC1& mode) {
+          uint32_t rate = mode.RefreshRate.Numerator * TargetMode.RefreshRate.Denominator / mode.RefreshRate.Denominator;
+          uint32_t diff = std::abs(int32_t(rate - TargetMode.RefreshRate.Numerator));
+          return std::min(current, diff);
+        });
+    }
+
+    for (auto it = Modes.begin(); it != Modes.end(); ) {
+      bool skipMode = it->Stereo != TargetMode.Stereo;
+
+      if (TargetMode.ScanlineOrdering != DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED)
+        skipMode |= it->ScanlineOrdering != TargetMode.ScanlineOrdering;
+
+      if (TargetMode.Scaling != DXGI_MODE_SCALING_UNSPECIFIED)
+        skipMode |= it->Scaling != TargetMode.Scaling;
+
+      if (TargetMode.Format != DXGI_FORMAT_UNKNOWN)
+        skipMode |= it->Scaling != TargetMode.Scaling;
+
+      if (TargetMode.Width) {
+        uint32_t diff = std::abs(int32_t(TargetMode.Width  - it->Width))
+                      + std::abs(int32_t(TargetMode.Height - it->Height));
+        skipMode |= diff != minDiffResolution;
+      }
+
+      if (TargetMode.RefreshRate.Numerator && TargetMode.RefreshRate.Denominator) {
+        uint32_t rate = it->RefreshRate.Numerator * TargetMode.RefreshRate.Denominator / it->RefreshRate.Denominator;
+        uint32_t diff = std::abs(int32_t(rate - TargetMode.RefreshRate.Numerator));
+        skipMode |= diff != minDiffRefreshRate;
+      }
+
+      it = skipMode ? Modes.erase(it) : ++it;
+    }
+  }
+
 }

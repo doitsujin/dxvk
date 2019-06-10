@@ -119,6 +119,10 @@ namespace dxvk {
     DxgiMonitorInfo* m_monitorInfo = nullptr;
     Com<DxgiAdapter> m_adapter = nullptr;
     HMONITOR         m_monitor = nullptr;
+
+    static void FilterModesByDesc(
+            std::vector<DXGI_MODE_DESC1>& Modes,
+      const DXGI_MODE_DESC1&              TargetMode);
     
   };
 
