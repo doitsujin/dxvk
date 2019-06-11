@@ -7,6 +7,15 @@
 namespace dxvk {
   
   /**
+   * \brief COM private data entry type
+   */
+  enum ComPrivateDataType {
+    None,
+    Data,
+    Iface,
+  };
+  
+  /**
    * \brief Data entry for private storage
    * Stores a single private storage item.
    */
@@ -58,10 +67,11 @@ namespace dxvk {
     
   private:
     
-    GUID      m_guid  = __uuidof(IUnknown);
-    UINT      m_size  = 0;
-    void*     m_data  = nullptr;
-    IUnknown* m_iface = nullptr;
+    GUID                m_guid  = __uuidof(IUnknown);
+    ComPrivateDataType  m_type  = ComPrivateDataType::None;
+    UINT                m_size  = 0;
+    void*               m_data  = nullptr;
+    IUnknown*           m_iface = nullptr;
     
     void destroy();
     
