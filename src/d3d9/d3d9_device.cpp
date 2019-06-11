@@ -3867,20 +3867,20 @@ namespace dxvk {
     std::memcpy(slice.mapPtr, constantData, D3D9ConstantSets::SetSize);
 
     if (constSet.shaderConstantCopies) {
-      D3D9ShaderConstants::vec4* data =
-        reinterpret_cast<D3D9ShaderConstants::vec4*>(slice.mapPtr);
+      Vector4* data =
+        reinterpret_cast<Vector4*>(slice.mapPtr);
 
       if (ShaderStage == DxsoProgramTypes::VertexShader) {
         auto& shaderConsts = GetCommonShader(m_state.vertexShader)->GetConstants();
 
         for (const auto& constant : shaderConsts)
-          std::memcpy(data + constant.uboIdx, constant.float32, sizeof(D3D9ShaderConstants::vec4));
+          data[constant.uboIdx] = *reinterpret_cast<const Vector4*>(constant.float32);
       }
       else {
         auto& shaderConsts = GetCommonShader(m_state.pixelShader)->GetConstants();
 
         for (const auto& constant : shaderConsts)
-          std::memcpy(data + constant.uboIdx, constant.float32, sizeof(D3D9ShaderConstants::vec4));
+          data[constant.uboIdx] = *reinterpret_cast<const Vector4*>(constant.float32);
       }
     }
   }

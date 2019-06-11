@@ -97,11 +97,19 @@ namespace dxvk {
 
     if constexpr (ConstantType == D3D9ConstantType::Float) {
       auto& consts = set.hardware.fConsts;
-      std::memcpy(consts.data() + StartRegister, pConstantData, Count * sizeof(*consts.data()));
+
+      auto begin = reinterpret_cast<const Vector4*>(pConstantData);
+      auto end   = begin + Count;
+
+      std::copy(begin, end, consts.begin() + StartRegister);
     }
     else if constexpr (ConstantType == D3D9ConstantType::Int) {
       auto& consts = set.hardware.iConsts;
-      std::memcpy(consts.data() + StartRegister, pConstantData, Count * sizeof(*consts.data()));
+
+      auto begin = reinterpret_cast<const Vector4i*>(pConstantData);
+      auto end   = begin + Count;
+
+      std::copy(begin, end, consts.begin() + StartRegister);
     }
     else {
       uint32_t& bitfield = set.hardware.boolBitfield;
