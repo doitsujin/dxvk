@@ -33,8 +33,8 @@ namespace dxvk {
     
     switch (device->config().useRawSsbo) {
       case Tristate::Auto:  minSsboAlignment = devInfo.core.properties.limits.minStorageBufferOffsetAlignment; break;
-      case Tristate::True:  minSsboAlignment = 4u;
-      case Tristate::False: minSsboAlignment = ~0u;
+      case Tristate::True:  minSsboAlignment =  4u; break;
+      case Tristate::False: minSsboAlignment = ~0u; break;
     }
     
     strictDivision           = options.strictDivision;
