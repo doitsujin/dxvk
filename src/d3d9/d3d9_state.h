@@ -101,7 +101,7 @@ namespace dxvk {
       auto begin = reinterpret_cast<const Vector4*>(pConstantData);
       auto end   = begin + Count;
 
-      std::copy(begin, end, consts.begin() + StartRegister);
+      std::transform(begin, end, consts.begin() + StartRegister, replaceNaN);
     }
     else if constexpr (ConstantType == D3D9ConstantType::Int) {
       auto& consts = set.hardware.iConsts;
