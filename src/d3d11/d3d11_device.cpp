@@ -2026,6 +2026,9 @@ namespace dxvk {
   
   HRESULT STDMETHODCALLTYPE D3D11DXGIDevice::GetMaximumFrameLatency(
           UINT*                 pMaxLatency) {
+    if (!pMaxLatency)
+      return DXGI_ERROR_INVALID_CALL;
+    
     *pMaxLatency = m_frameLatency;
     return S_OK;
   }
