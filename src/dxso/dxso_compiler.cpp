@@ -1509,8 +1509,9 @@ namespace dxvk {
           m_module.constfReplicant(1.0f, result.type.ccount),
           emitRegisterLoad(src[0], mask).id);
 
-        result.id = m_module.opNMin(typeId, result.id,
-          m_module.constfReplicant(FLT_MAX, result.type.ccount));
+        result.id = m_module.opNClamp(typeId, result.id,
+          m_module.constfReplicant(-FLT_MAX, result.type.ccount),
+          m_module.constfReplicant( FLT_MAX, result.type.ccount));
         break;
       case DxsoOpcode::Rsq: 
         result.id = m_module.opFAbs(typeId,
