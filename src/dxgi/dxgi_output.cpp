@@ -475,17 +475,30 @@ namespace dxvk {
         });
     }
 
+    bool testScanlineOrder = false;
+    bool testScaling       = false;
+    bool testFormat        = false;
+
+    for (const auto& mode : Modes) {
+      testScanlineOrder |= TargetMode.ScanlineOrdering != DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED
+                        && TargetMode.ScanlineOrdering == mode.ScanlineOrdering;
+      testScaling       |= TargetMode.Scaling != DXGI_MODE_SCALING_UNSPECIFIED
+                        && TargetMode.Scaling == mode.Scaling;
+      testFormat        |= TargetMode.Format != DXGI_FORMAT_UNKNOWN
+                        && TargetMode.Format == mode.Format;
+    }
+
     for (auto it = Modes.begin(); it != Modes.end(); ) {
       bool skipMode = it->Stereo != TargetMode.Stereo;
 
-      if (TargetMode.ScanlineOrdering != DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED)
+      if (testScanlineOrder)
         skipMode |= it->ScanlineOrdering != TargetMode.ScanlineOrdering;
 
-      if (TargetMode.Scaling != DXGI_MODE_SCALING_UNSPECIFIED)
+      if (testScaling)
         skipMode |= it->Scaling != TargetMode.Scaling;
 
-      if (TargetMode.Format != DXGI_FORMAT_UNKNOWN)
-        skipMode |= it->Scaling != TargetMode.Scaling;
+      if (testFormat)
+        skipMode |= it->Format != TargetMode.Format;
 
       if (TargetMode.Width) {
         uint32_t diff = std::abs(int32_t(TargetMode.Width  - it->Width))
