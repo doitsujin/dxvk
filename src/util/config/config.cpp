@@ -47,17 +47,17 @@ namespace dxvk {
     }} },
     /* Far Cry 3: Assumes clear(0.5) on an UNORM  *
      * format to result in 128 on AMD and 127 on  *
-     * Nvidia. Most Vulkan drivers clear to 127,  *
-     * assuming higher values causes artifacts.   */
+     * Nvidia. We assume that the Vulkan drivers  *
+     * match the clear behaviour of D3D11.        */
     { "farcry3_d3d11.exe", {{
-      { "dxgi.customVendorId",              "10de" },
+      { "dxgi.nvapiHack",                   "False" },
     }} },
     { "fc3_blooddragon_d3d11.exe", {{
-      { "dxgi.customVendorId",              "10de" },
+      { "dxgi.nvapiHack",                   "False" },
     }} },
     /* Far Cry 4: Same as Far Cry 3               */
     { "FarCry4.exe", {{
-      { "dxgi.customVendorId",              "10de" },
+      { "dxgi.nvapiHack",                   "False" },
     }} },
     /* Far Cry 5: Avoid CPU <-> GPU sync          */
     { "FarCry5.exe", {{
