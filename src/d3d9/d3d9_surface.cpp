@@ -136,7 +136,7 @@ namespace dxvk {
     const D3D9_COMMON_TEXTURE_DESC& desc = *m_texture->Desc();
 
     D3DLOCKED_RECT lockedRect;
-    HRESULT hr = LockRect(&lockedRect, nullptr, D3DLOCK_READONLY);
+    HRESULT hr = LockRect(&lockedRect, nullptr, 0);
     if (FAILED(hr))
       return hr;
 
