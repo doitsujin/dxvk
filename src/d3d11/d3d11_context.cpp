@@ -2781,6 +2781,9 @@ namespace dxvk {
           UINT                              NumViewports,
     const D3D11_VIEWPORT*                   pViewports) {
     D3D10DeviceLock lock = LockContext();
+
+    if (NumViewports > m_state.rs.viewports.size())
+      return;
     
     bool dirty = m_state.rs.numViewports != NumViewports;
     m_state.rs.numViewports = NumViewports;
