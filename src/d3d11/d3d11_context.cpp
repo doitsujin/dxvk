@@ -3129,7 +3129,17 @@ namespace dxvk {
     }
     
     for (uint32_t i = 0; i < m_state.rs.numViewports; i++) {
-      if (enableScissorTest && (i < m_state.rs.numScissors)) {
+      if (!enableScissorTest) {
+        scissors[i] = VkRect2D {
+          VkOffset2D { 0, 0 },
+          VkExtent2D {
+            D3D11_VIEWPORT_BOUNDS_MAX,
+            D3D11_VIEWPORT_BOUNDS_MAX } };
+      } else if (i >= m_state.rs.numScissors) {
+        scissors[i] = VkRect2D {
+          VkOffset2D { 0, 0 },
+          VkExtent2D { 0, 0 } };
+      } else {
         D3D11_RECT sr = m_state.rs.scissors[i];
         
         VkOffset2D srPosA;
@@ -3145,12 +3155,6 @@ namespace dxvk {
         srSize.height = uint32_t(srPosB.y - srPosA.y);
         
         scissors[i] = VkRect2D { srPosA, srSize };
-      } else {
-        scissors[i] = VkRect2D {
-          VkOffset2D { 0, 0 },
-          VkExtent2D {
-            D3D11_VIEWPORT_BOUNDS_MAX,
-            D3D11_VIEWPORT_BOUNDS_MAX } };
       }
     }
     
