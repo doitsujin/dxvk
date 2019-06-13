@@ -240,9 +240,9 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::Present(
-    const RECT* pSourceRect,
-    const RECT* pDestRect,
-          HWND hDestWindowOverride,
+    const RECT*    pSourceRect,
+    const RECT*    pDestRect,
+          HWND     hDestWindowOverride,
     const RGNDATA* pDirtyRegion) {
     return PresentEx(
       pSourceRect,
@@ -254,10 +254,10 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetBackBuffer(
-    UINT iSwapChain,
-    UINT iBackBuffer,
-    D3DBACKBUFFER_TYPE Type,
-    IDirect3DSurface9** ppBackBuffer) {
+          UINT                iSwapChain,
+          UINT                iBackBuffer,
+          D3DBACKBUFFER_TYPE  Type,
+          IDirect3DSurface9** ppBackBuffer) {
     D3D9DeviceLock lock = LockDevice();
 
     InitReturnPtr(ppBackBuffer);
