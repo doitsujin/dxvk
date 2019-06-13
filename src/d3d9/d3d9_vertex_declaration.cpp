@@ -10,7 +10,6 @@ namespace dxvk {
           D3D9DeviceEx*      pDevice,
           DWORD              FVF)
     : D3D9VertexDeclBase(pDevice) {
-    m_elements.reserve(16);
     this->SetFVF(FVF);
   }
 
@@ -22,7 +21,7 @@ namespace dxvk {
     : D3D9VertexDeclBase( pDevice )
     , m_elements        ( DeclCount )
     , m_fvf             ( 0 ) {
-    std::memcpy(m_elements.data(), pVertexElements, sizeof(D3DVERTEXELEMENT9) * DeclCount);
+    std::copy(pVertexElements, pVertexElements + DeclCount, m_elements.begin());
   }
 
 
@@ -201,7 +200,7 @@ namespace dxvk {
     }
 
     m_elements.resize(elemCount);
-    std::memcpy(m_elements.data(), elements.data(), sizeof(D3DVERTEXELEMENT9) * elemCount);
+    std::copy(elements.begin(), elements.begin() + elemCount, m_elements.data());
   }
 
 }
