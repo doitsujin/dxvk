@@ -934,7 +934,59 @@ namespace dxvk {
           IDirect3DSurface9* pSurface,
     const RECT*              pRect,
           D3DCOLOR           Color) {
-    Logger::warn("D3D9DeviceEx::ColorFill: Stub");
+    D3D9DeviceLock lock = LockDevice();
+
+    D3D9Surface* dst = static_cast<D3D9Surface*>(pSurface);
+
+    if (unlikely(dst == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    D3D9CommonTexture* dstTextureInfo = dst->GetCommonTexture();
+
+    VkOffset3D offset = VkOffset3D{ 0u, 0u, 0u };
+    VkExtent3D extent = dstTextureInfo->GetExtent();
+
+    bool fullExtent = true;
+    if (pRect != nullptr) {
+      ConvertRect(*pRect, offset, extent);
+
+      fullExtent = offset == VkOffset3D{ 0u, 0u, 0u }
+                && extent == dstTextureInfo->GetExtent();
+    }
+
+    Rc<DxvkImageView> imageView         = dstTextureInfo->GetViews().Sample.Color;
+    Rc<DxvkImageView> renderTargetView  = dstTextureInfo->GetViews().FaceRenderTarget[0].Color;
+
+    VkClearValue clearValue;
+    DecodeD3DCOLOR(Color, clearValue.color.float32);
+
+    // Fast path for games that may use this as an
+    // alternative to Clear on render targets.
+    if (fullExtent && renderTargetView != nullptr) {
+      EmitCs([
+        cImageView  = imageView,
+        cClearValue = clearValue
+      ] (DxvkContext* ctx) {
+        ctx->clearRenderTarget(
+          cImageView,
+          VK_IMAGE_ASPECT_COLOR_BIT,
+          cClearValue);
+      });
+    } else {
+      EmitCs([
+        cImageView  = imageView,
+        cOffset     = offset,
+        cExtent     = extent,
+        cClearValue = clearValue
+      ] (DxvkContext* ctx) {
+        ctx->clearImageView(
+          cImageView,
+          cOffset, cExtent,
+          VK_IMAGE_ASPECT_COLOR_BIT,
+          cClearValue);
+      });
+    }
+
     return D3D_OK;
   }
 
