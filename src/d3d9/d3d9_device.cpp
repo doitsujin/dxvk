@@ -964,7 +964,7 @@ namespace dxvk {
     // alternative to Clear on render targets.
     if (fullExtent && renderTargetView != nullptr) {
       EmitCs([
-        cImageView  = imageView,
+        cImageView  = renderTargetView,
         cClearValue = clearValue
       ] (DxvkContext* ctx) {
         ctx->clearRenderTarget(
