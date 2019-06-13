@@ -37,6 +37,12 @@ namespace dxvk {
       m_resource->GetType(&type);
       return type;
     }
+
+    D3D11_COMMON_RESOURCE_DESC GetResourceDesc() const {
+      D3D11_COMMON_RESOURCE_DESC desc;
+      GetCommonResourceDesc(m_resource, &desc);
+      return desc;
+    }
     
     Rc<DxvkBufferView> GetBufferView() const {
       return m_bufferView;

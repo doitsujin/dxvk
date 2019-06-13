@@ -1078,7 +1078,12 @@ namespace dxvk {
 
     if (!view || view->GetResourceType() == D3D11_RESOURCE_DIMENSION_BUFFER)
       return;
-      
+
+    D3D11_COMMON_RESOURCE_DESC resourceDesc = view->GetResourceDesc();
+
+    if (!(resourceDesc.MiscFlags & D3D11_RESOURCE_MISC_GENERATE_MIPS))
+      return;
+
     EmitCs([cDstImageView = view->GetImageView()]
     (DxvkContext* ctx) {
       ctx->generateMipmaps(cDstImageView);
