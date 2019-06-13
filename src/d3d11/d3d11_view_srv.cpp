@@ -371,6 +371,16 @@ namespace dxvk {
       pDesc->Format = format;
     
     switch (pDesc->ViewDimension) {
+      case D3D11_SRV_DIMENSION_BUFFER:
+        if (pDesc->Buffer.NumElements == 0)
+          return E_INVALIDARG;
+        break;
+
+      case D3D11_SRV_DIMENSION_BUFFEREX:
+        if (pDesc->BufferEx.NumElements == 0)
+          return E_INVALIDARG;
+        break;
+
       case D3D11_SRV_DIMENSION_TEXTURE1D:
         if (pDesc->Texture1D.MipLevels > mipLevels - pDesc->Texture1D.MostDetailedMip)
           pDesc->Texture1D.MipLevels = mipLevels - pDesc->Texture1D.MostDetailedMip;
