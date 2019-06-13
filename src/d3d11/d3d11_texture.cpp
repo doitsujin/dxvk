@@ -277,6 +277,11 @@ namespace dxvk {
     if (FAILED(DecodeSampleCount(pDesc->SampleDesc.Count, nullptr)))
       return E_INVALIDARG;
     
+    if ((pDesc->MiscFlags & D3D11_RESOURCE_MISC_GENERATE_MIPS)
+     && (pDesc->BindFlags & (D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET))
+                         != (D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET))
+      return E_INVALIDARG;
+
     // Use the maximum possible mip level count if the supplied
     // mip level count is either unspecified (0) or invalid
     const uint32_t maxMipLevelCount = pDesc->SampleDesc.Count <= 1
