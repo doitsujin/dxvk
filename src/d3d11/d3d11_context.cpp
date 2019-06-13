@@ -2827,7 +2827,7 @@ namespace dxvk {
         m_state.rs.scissors[i] = pRects[i];
       }
     }
-    
+
     if (m_state.rs.state != nullptr && dirty) {
       D3D11_RASTERIZER_DESC rsDesc;
       m_state.rs.state->GetDesc(&rsDesc);
@@ -3096,14 +3096,19 @@ namespace dxvk {
   
   
   void D3D11DeviceContext::ApplyViewportState() {
-    // We cannot set less than one viewport in Vulkan, and
-    // rendering with no active viewport is illegal anyway.
-    if (m_state.rs.numViewports == 0)
-      return;
-    
     std::array<VkViewport, D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> viewports;
     std::array<VkRect2D,   D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE> scissors;
-    
+
+    // The backend can't handle a viewport count of zero,
+    // so we should at least specify one empty viewport
+    uint32_t viewportCount = m_state.rs.numViewports;
+
+    if (unlikely(!viewportCount)) {
+      viewportCount = 1;
+      viewports[0] = VkViewport();
+      scissors [0] = VkRect2D();
+    }
+
     // D3D11's coordinate system has its origin in the bottom left,
     // but the viewport coordinates are aligned to the top-left
     // corner so we can get away with flipping the viewport.
@@ -3159,7 +3164,7 @@ namespace dxvk {
     }
     
     EmitCs([
-      cViewportCount = m_state.rs.numViewports,
+      cViewportCount = viewportCount,
       cViewports     = viewports,
       cScissors      = scissors
     ] (DxvkContext* ctx) {
