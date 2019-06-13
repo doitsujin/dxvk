@@ -80,6 +80,9 @@ namespace dxvk {
     
     if (pDesc == nullptr)
       return E_INVALIDARG;
+    
+    if (FAILED(D3D11Buffer::ValidateBufferProperties(pDesc)))
+      return E_INVALIDARG;
 
     if (ppBuffer == nullptr)
       return S_FALSE;

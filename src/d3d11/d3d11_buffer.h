@@ -112,6 +112,15 @@ namespace dxvk {
       return &m_d3d10;
     }
 
+    /**
+     * \brief Validates buffer description
+     * 
+     * \param [in] pDesc Buffer description
+     * \returns \c S_OK if the parameters are valid
+     */
+    static HRESULT ValidateBufferProperties(
+      const D3D11_BUFFER_DESC*      pDesc);
+
   private:
     
     const Com<D3D11Device>      m_device;

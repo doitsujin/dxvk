@@ -198,6 +198,22 @@ namespace dxvk {
   }
 
 
+  HRESULT D3D11Buffer::ValidateBufferProperties(
+    const D3D11_BUFFER_DESC*      pDesc) {
+    // Basic validation for structured buffers
+    if ((pDesc->MiscFlags & D3D11_RESOURCE_MISC_BUFFER_STRUCTURED)
+     && ((pDesc->StructureByteStride == 0)
+      || (pDesc->StructureByteStride & 0x3)))
+      return E_INVALIDARG;
+
+    // Mip generation obviously doesn't work for buffers
+    if (pDesc->MiscFlags & D3D11_RESOURCE_MISC_GENERATE_MIPS)
+      return E_INVALIDARG;
+    
+    return S_OK;
+  }
+
+
   BOOL D3D11Buffer::CheckFormatFeatureSupport(
           VkFormat              Format,
           VkFormatFeatureFlags  Features) const {
