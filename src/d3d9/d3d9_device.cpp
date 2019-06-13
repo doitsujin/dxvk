@@ -3331,7 +3331,7 @@ namespace dxvk {
 
 
   D3D9SwapChainEx* D3D9DeviceEx::GetInternalSwapchain(UINT index) {
-    if (index >= m_swapchains.size())
+    if (unlikely(index >= m_swapchains.size()))
       return nullptr;
 
     return static_cast<D3D9SwapChainEx*>(m_swapchains[index]);
