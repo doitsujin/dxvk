@@ -402,6 +402,7 @@ namespace dxvk {
     
     D3D11CommonTexture    m_texture;
     D3D11VkInteropSurface m_interop;
+    D3D11DXGISurface      m_surface;
     D3D11DXGIResource     m_resource;
     D3D10Texture1D        m_d3d10;
     

@@ -758,6 +758,7 @@ namespace dxvk {
     const D3D11_COMMON_TEXTURE_DESC*  pDesc)
   : m_texture (pDevice, pDesc, D3D11_RESOURCE_DIMENSION_TEXTURE1D),
     m_interop (this, &m_texture),
+    m_surface (this, &m_texture),
     m_resource(this),
     m_d3d10   (this, pDevice->GetD3D10Interface()) {
     
@@ -790,6 +791,14 @@ namespace dxvk {
       return S_OK;
     }
     
+    if (m_surface.isSurfaceCompatible()
+     && (riid == __uuidof(IDXGISurface)
+      || riid == __uuidof(IDXGISurface1)
+      || riid == __uuidof(IDXGISurface2))) {
+      *ppvObject = ref(&m_surface);
+      return S_OK;
+    }
+
     if (riid == __uuidof(IDXGIObject)
      || riid == __uuidof(IDXGIDeviceSubObject)
      || riid == __uuidof(IDXGIResource)
