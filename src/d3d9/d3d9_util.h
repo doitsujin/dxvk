@@ -154,6 +154,10 @@ namespace dxvk {
 
   uint32_t GetDecltypeSize(D3DDECLTYPE Type);
 
+  void ConvertRect(RECT rect, VkOffset3D& offset, VkExtent3D& extent);
+
+  void ConvertRect(RECT rect, VkOffset2D& offset, VkExtent2D& extent);
+
   template<typename T>
   UINT CompactSparseList(T* pData, UINT Mask) {
     uint32_t count = 0;

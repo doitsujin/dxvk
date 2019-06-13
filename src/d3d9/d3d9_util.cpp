@@ -321,6 +321,24 @@ namespace dxvk {
     }
   }
 
+  void ConvertRect(RECT rect, VkOffset3D& offset, VkExtent3D& extent) {
+    offset.x = rect.left;
+    offset.y = rect.top;
+    offset.z = 0;
+
+    extent.width  = rect.right  - rect.left;
+    extent.height = rect.bottom - rect.top;
+    extent.depth  = 1;
+  }
+
+  void ConvertRect(RECT rect, VkOffset2D& offset, VkExtent2D& extent) {
+    offset.x = rect.left;
+    offset.y = rect.top;
+
+    extent.width  = rect.right  - rect.left;
+    extent.height = rect.bottom - rect.top;
+  }
+
   uint32_t GetDecltypeSize(D3DDECLTYPE Type) {
     switch (Type) {
       case D3DDECLTYPE_FLOAT1:    return 1 * sizeof(float);
