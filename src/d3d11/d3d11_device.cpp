@@ -1131,12 +1131,10 @@ namespace dxvk {
     if (!pNumQualityLevels)
       return E_INVALIDARG;
     
-    *pNumQualityLevels = 0;
-    
     // For some reason, we can query DXGI_FORMAT_UNKNOWN
     if (Format == DXGI_FORMAT_UNKNOWN) {
       *pNumQualityLevels = SampleCount == 1 ? 1 : 0;
-      return SampleCount ? S_OK : E_INVALIDARG;
+      return SampleCount ? S_OK : E_FAIL;
     }
     
     // All other unknown formats should result in an error return.
@@ -1145,12 +1143,16 @@ namespace dxvk {
     if (format == VK_FORMAT_UNDEFINED)
       return E_INVALIDARG;
     
+    // Zero-init now, leave value undefined otherwise.
+    // This does actually match native D3D11 behaviour.
+    *pNumQualityLevels = 0;
+
     // Non-power of two sample counts are not supported, but querying
     // support for them is legal, so we return zero quality levels.
     VkSampleCountFlagBits sampleCountFlag = VK_SAMPLE_COUNT_1_BIT;
     
     if (FAILED(DecodeSampleCount(SampleCount, &sampleCountFlag)))
-      return SampleCount ? S_OK : E_INVALIDARG;
+      return SampleCount && SampleCount <= 32 ? S_OK : E_FAIL;
     
     // Check if the device supports the given combination of format
     // and sample count. D3D exposes the opaque concept of quality
