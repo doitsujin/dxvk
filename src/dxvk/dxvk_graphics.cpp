@@ -232,11 +232,21 @@ namespace dxvk {
     // Fix up color write masks using the component mappings
     std::array<VkPipelineColorBlendAttachmentState, MaxNumRenderTargets> omBlendAttachments;
 
+    const VkColorComponentFlags fullMask
+      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
+      | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       omBlendAttachments[i] = state.omBlendAttachments[i];
-      omBlendAttachments[i].colorWriteMask = util::remapComponentMask(
-        state.omBlendAttachments[i].colorWriteMask,
-        state.omComponentMapping[i]);
+
+      if (state.omBlendAttachments[i].colorWriteMask == fullMask) {
+        // Avoid unnecessary partial color write masks
+        omBlendAttachments[i].colorWriteMask = fullMask;
+      } else {
+        omBlendAttachments[i].colorWriteMask = util::remapComponentMask(
+          state.omBlendAttachments[i].colorWriteMask,
+          state.omComponentMapping[i]);
+      }
       
       if ((m_fsOut & (1 << i)) == 0)
         omBlendAttachments[i].colorWriteMask = 0;
