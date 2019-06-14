@@ -3669,16 +3669,13 @@ namespace dxvk {
 
     pResource->SetMapFlags(Flags);
 
+    DxvkBufferSliceHandle physSlice;
+
     if (Flags & D3DLOCK_DISCARD) {
       // Allocate a new backing slice for the buffer and set
       // it as the 'new' mapped slice. This assumes that the
       // only way to invalidate a buffer is by mapping it.
-
-      auto physSlice = pResource->DiscardMapSlice();
-      uint8_t* data =  reinterpret_cast<uint8_t*>(physSlice.mapPtr);
-               data += OffsetToLock;
-
-      *ppbData = reinterpret_cast<void*>(data);
+      physSlice = pResource->DiscardMapSlice();
 
       EmitCs([
         cBuffer      = pResource->GetBuffer<D3D9_COMMON_BUFFER_TYPE_MAPPING>(),
@@ -3686,8 +3683,6 @@ namespace dxvk {
       ] (DxvkContext* ctx) {
         ctx->invalidateBuffer(cBuffer, cBufferSlice);
       });
-
-      return D3D_OK;
     }
     else {
       // Wait until the resource is no longer in use
@@ -3699,15 +3694,15 @@ namespace dxvk {
       // Use map pointer from previous map operation. This
       // way we don't have to synchronize with the CS thread
       // if the map mode is D3DLOCK_NOOVERWRITE.
-      DxvkBufferSliceHandle physSlice = pResource->GetMappedSlice();
-
-      uint8_t* data =  reinterpret_cast<uint8_t*>(physSlice.mapPtr);
-               data += OffsetToLock;
-
-      *ppbData = reinterpret_cast<void*>(data);
-
-      return D3D_OK;
+      physSlice = pResource->GetMappedSlice();
     }
+
+    uint8_t* data  = reinterpret_cast<uint8_t*>(physSlice.mapPtr);
+             data += OffsetToLock;
+
+    *ppbData = reinterpret_cast<void*>(data);
+
+    return D3D_OK;
   }
 
 
