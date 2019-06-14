@@ -51,10 +51,10 @@ namespace dxvk {
     if (pNumElements == nullptr)
       return D3DERR_INVALIDCALL;
 
-    if (pElement == nullptr) {
-      *pNumElements = UINT(m_elements.size()) + 1u; // Account for D3DDECL_END
+    *pNumElements = UINT(m_elements.size()) + 1u; // Account for D3DDECL_END
+
+    if (pElement == nullptr)
       return D3D_OK;
-    }
 
     // The native runtime ignores pNumElements here...
     std::copy(m_elements.begin(), m_elements.end(), pElement);
