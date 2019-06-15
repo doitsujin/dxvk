@@ -4021,6 +4021,8 @@ namespace dxvk {
         if (tex == rt && tex->MarkHazardous()) {
           BindTexture(i);
           m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
+          // No need to search for more hazards for this texture.
+          break;
         }
       }
     }
