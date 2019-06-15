@@ -56,9 +56,12 @@ namespace dxvk {
     std::array<D3D9ColorView, 6>     FaceRenderTarget;
     std::array<Rc<DxvkImageView>, 6> FaceDepth;
 
+    bool                             Hazardous;
+
     VkImageLayout GetRTLayout() const {
       return FaceRenderTarget[0].Color != nullptr
           && FaceRenderTarget[0].Color->imageInfo().tiling == VK_IMAGE_TILING_OPTIMAL
+          && !Hazardous
         ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
         : VK_IMAGE_LAYOUT_GENERAL;
     }
@@ -327,6 +330,8 @@ namespace dxvk {
 
     bool                          m_shadow; //< Depth Compare-ness
 
+    bool                          m_hazard;
+
     int64_t                       m_size = 0;
 
     /**
@@ -340,6 +345,8 @@ namespace dxvk {
     Rc<DxvkImage> CreateResolveImage() const;
 
     BOOL DetermineShadowState() const;
+
+    BOOL DetermineRenderHazards() const;
 
     int64_t DetermineMemoryConsumption() const;
 

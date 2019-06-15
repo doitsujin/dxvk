@@ -18,6 +18,7 @@ namespace dxvk {
     m_format  = m_device->LookupFormat(m_desc.Format).FormatColor;
     m_mapMode = DetermineMapMode();
     m_shadow  = DetermineShadowState();
+    m_hazard  = DetermineRenderHazards();
 
     if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED) {
       m_image = CreatePrimaryImage(ResourceType);
@@ -125,8 +126,6 @@ namespace dxvk {
 
 
   Rc<DxvkImage> D3D9CommonTexture::CreatePrimaryImage(D3DRESOURCETYPE ResourceType) const {
-    auto* options = m_device->GetOptions();
-
     D3D9_VK_FORMAT_MAPPING formatInfo = m_device->LookupFormat(m_desc.Format);
 
     DxvkImageCreateInfo imageInfo;
@@ -193,14 +192,8 @@ namespace dxvk {
     // We must keep LINEAR images in GENERAL layout, but we
     // can choose a better layout for the image based on how
     // it is going to be used by the game.
-    if (imageInfo.tiling == VK_IMAGE_TILING_OPTIMAL)
+    if (imageInfo.tiling == VK_IMAGE_TILING_OPTIMAL && !m_hazard)
       imageInfo.layout = OptimizeLayout(imageInfo.usage);
-
-    if (options->hasHazards && (m_desc.Usage & D3DUSAGE_RENDERTARGET)) {
-      if (CheckImageSupport(&imageInfo, VK_IMAGE_TILING_LINEAR))
-        imageInfo.tiling = VK_IMAGE_TILING_LINEAR;
-    }
-
 
     // For some formats, we need to enable render target
     // capabilities if available, but these should
@@ -242,6 +235,14 @@ namespace dxvk {
 
     return caps::IsDepthFormat(m_desc.Format)
         && std::find(blacklist.begin(), blacklist.end(), m_desc.Format) == blacklist.end();
+  }
+
+
+  BOOL D3D9CommonTexture::DetermineRenderHazards() const {
+    auto* options = m_device->GetOptions();
+
+    // Force GENERAL if we have a possible render hazard in this game.
+    return options->hasHazards && (m_desc.Usage & D3DUSAGE_RENDERTARGET);
   }
 
 
@@ -421,6 +422,8 @@ namespace dxvk {
 
   void D3D9CommonTexture::CreateInitialViews() {
     const D3D9_VK_FORMAT_MAPPING formatInfo = m_device->LookupFormat(m_desc.Format);
+
+    m_views.Hazardous = m_hazard;
 
     m_views.Sample = CreateColorViewPair(formatInfo, AllLayers, VK_IMAGE_USAGE_SAMPLED_BIT, 0);
 
