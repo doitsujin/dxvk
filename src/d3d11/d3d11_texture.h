@@ -11,6 +11,7 @@
 namespace dxvk {
   
   class D3D11Device;
+  class D3D11GDISurface;
   
   /**
    * \brief Image memory mapping mode
@@ -318,6 +319,7 @@ namespace dxvk {
     
     ID3D11Resource*     m_resource;
     D3D11CommonTexture* m_texture;
+    D3D11GDISurface*    m_gdiSurface;
 
   };
   
