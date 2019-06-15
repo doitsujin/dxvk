@@ -54,6 +54,8 @@ namespace dxvk {
 
     uint32_t usedSamplers() { return m_usedSamplers; }
 
+    uint32_t usedRTs() { return m_usedRTs; }
+
   private:
 
     void runCompiler(
@@ -69,6 +71,7 @@ namespace dxvk {
 
     DxsoIsgn        m_isgn;
     uint32_t        m_usedSamplers;
+    uint32_t        m_usedRTs;
 
     DxsoShaderMetaInfo   m_meta;
     DxsoDefinedConstants m_constants;

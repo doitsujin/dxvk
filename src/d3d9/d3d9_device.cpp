@@ -4012,7 +4012,7 @@ namespace dxvk {
 
       // Skip this RT if it doesn't exist
       // or we aren't writing to it anyway.
-      if (rt == nullptr || m_state.renderStates[colorWriteIndices[j]] == 0)
+      if (rt == nullptr || m_state.renderStates[colorWriteIndices[j]] == 0 || !shader->IsRTUsed(j))
         continue;
 
       // Check all of the pixel shader textures 

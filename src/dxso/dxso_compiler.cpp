@@ -38,6 +38,7 @@ namespace dxvk {
       spv::MemoryModelGLSL450);
 
     m_usedSamplers = 0;
+    m_usedRTs      = 0;
 
     for (uint32_t i = 0; i < m_rRegs.size(); i++)
       m_rRegs.at(i)  = DxsoRegisterPointer{ };
@@ -952,6 +953,7 @@ namespace dxvk {
           m_module.decorateIndex(m_ps.oColor[idx].id, 0);
 
           m_entryPointInterfaces.push_back(m_ps.oColor[idx].id);
+          m_usedRTs |= (1u << idx);
         }
         return m_ps.oColor[idx];
       }
@@ -2673,7 +2675,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     
     m_module.setDebugName   (alphaFuncId, "alpha_func");
     m_module.decorateSpecId (alphaFuncId, getSpecId(D3D9SpecConstantId::AlphaCompareOp));
-    
+
     // Implement alpha test
     DxsoRegister color0;
     color0.id = DxsoRegisterId{ DxsoRegisterType::ColorOut, 0 };

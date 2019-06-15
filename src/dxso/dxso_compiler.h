@@ -215,6 +215,7 @@ namespace dxvk {
     const DxsoShaderMetaInfo& meta() { return m_meta; }
     const DxsoDefinedConstants& constants() { return m_constants; }
     const uint32_t usedSamplers() { return m_usedSamplers; }
+    const uint32_t usedRTs() { return m_usedRTs; }
 
   private:
 
@@ -314,9 +315,11 @@ namespace dxvk {
     DxsoCompilerVsPart m_vs;
     DxsoCompilerPsPart m_ps;
 
-    /////////////////////////////////////
-    // Bit mask containing used samplers
+    //////////////////////////////////////////
+    // Bit masks containing used samplers
+    // and render targets for hazard tracking
     uint32_t m_usedSamplers;
+    uint32_t m_usedRTs;
 
     //////////////////////////////////////
     // Common function definition methods

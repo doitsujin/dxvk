@@ -49,10 +49,15 @@ namespace dxvk {
       return m_usedSamplers & (1u << index);
     }
 
+    bool IsRTUsed(uint32_t index) const {
+      return m_usedRTs & (1u << index);
+    }
+
   private:
 
     DxsoIsgn              m_isgn;
     uint32_t              m_usedSamplers;
+    uint32_t              m_usedRTs;
 
     DxsoShaderMetaInfo    m_meta;
     DxsoDefinedConstants  m_constants;

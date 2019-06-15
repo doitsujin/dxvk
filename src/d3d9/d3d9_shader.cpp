@@ -53,6 +53,7 @@ namespace dxvk {
     m_shader       = pModule->compile(*pDxsoModuleInfo, name, AnalysisInfo);
     m_isgn         = pModule->isgn();
     m_usedSamplers = pModule->usedSamplers();
+    m_usedRTs      = pModule->usedRTs();
 
     m_meta      = pModule->meta();
     m_constants = pModule->constants();

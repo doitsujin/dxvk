@@ -33,6 +33,7 @@ namespace dxvk {
     m_meta         = compiler.meta();
     m_constants    = compiler.constants();
     m_usedSamplers = compiler.usedSamplers();
+    m_usedRTs      = compiler.usedRTs();
 
     return compiler.finalize();
   }
