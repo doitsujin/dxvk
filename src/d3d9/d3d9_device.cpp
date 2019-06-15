@@ -4025,11 +4025,11 @@ namespace dxvk {
           continue;
         
         if (tex == rt) {
-          // If we haven't marked this as a hazard before, transition and rebind the image everywhere.
+          // If we haven't marked this as a hazard before:
+          // - Transition the image's layout
+          // - Rebind the framebuffer for the new layout
           if (unlikely(!tex->MarkHazardous())) {
             TransitionImage(tex, VK_IMAGE_LAYOUT_GENERAL);
-
-            BindTexture(i);
             m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
           }
 
