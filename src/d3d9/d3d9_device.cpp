@@ -4025,7 +4025,9 @@ namespace dxvk {
           continue;
         
         if (tex == rt) {
-          if (tex->MarkHazardous()) {
+          if (tex->MarkHazardous() && tex->GetImage()->info().layout != VK_IMAGE_LAYOUT_GENERAL) {
+            TransitionImage(tex, tex->GetImage()->info().layout, VK_IMAGE_LAYOUT_GENERAL);
+
             BindTexture(i);
             m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
           }
@@ -4868,29 +4870,22 @@ namespace dxvk {
   }
 
 
-  void D3D9DeviceEx::CopyImage(Rc<DxvkImage> srcImage, Rc<DxvkImage> dstImage) {
-    const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(dstImage->info().format);
-    const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcImage->info().format);
+  void D3D9DeviceEx::TransitionImage(D3D9CommonTexture* pResource, VkImageLayout OldLayout, VkImageLayout NewLayout) {
+    Rc<DxvkImage> image = pResource->GetImage();
+    const DxvkFormatInfo* formatInfo = imageFormatInfo(image->info().format);
 
-    for (uint32_t i = 0; i < srcImage->info().mipLevels; i++) {
-      VkImageSubresourceLayers dstLayers = { dstFormatInfo->aspectMask, i, 0, dstImage->info().numLayers };
-      VkImageSubresourceLayers srcLayers = { srcFormatInfo->aspectMask, i, 0, srcImage->info().numLayers };
+    VkImageSubresourceRange range = { formatInfo->aspectMask, 0, image->info().mipLevels, 0, image->info().numLayers };
 
-      VkExtent3D extent = srcImage->mipLevelExtent(i);
-
-      EmitCs([
-          cDstImage  = dstImage,
-          cSrcImage  = srcImage,
-          cDstLayers = dstLayers,
-          cSrcLayers = srcLayers,
-          cExtent    = extent
-        ] (DxvkContext* ctx) {
-          ctx->copyImage(
-            cDstImage, cDstLayers, VkOffset3D { 0, 0, 0 },
-            cSrcImage, cSrcLayers, VkOffset3D { 0, 0, 0 },
-            cExtent);
-        });
-    }
+    EmitCs([
+      cImage        = image,
+      cSubresources = range,
+      cOldLayout    = OldLayout,
+      cNewLayout    = NewLayout
+    ] (DxvkContext* ctx) {
+      ctx->transformImage(
+        cImage, cSubresources,
+        cOldLayout, cNewLayout);
+    });
   }
 
 }

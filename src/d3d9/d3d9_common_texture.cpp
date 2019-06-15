@@ -104,15 +104,7 @@ namespace dxvk {
     if (likely(m_views.Hazardous))
       return true;
 
-    DxvkImageCreateInfo imageInfo = m_image->info();
-    imageInfo.layout = VK_IMAGE_LAYOUT_GENERAL;
-
-    Rc<DxvkImage> newImage = m_device->GetDXVKDevice()->createImage(imageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    m_device->CopyImage(m_image, newImage);
-    m_image = newImage;
-
     m_views.Hazardous = true;
-    
     return false;
   }
 

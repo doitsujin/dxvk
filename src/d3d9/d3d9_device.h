@@ -800,7 +800,7 @@ namespace dxvk {
 
     void ResolveZ();
 
-    void CopyImage(Rc<DxvkImage> srcImage, Rc<DxvkImage> dstImage);
+    void TransitionImage(D3D9CommonTexture* pResource, VkImageLayout OldLayout, VkImageLayout NewLayout);
 
   private:
 
