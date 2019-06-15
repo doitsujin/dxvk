@@ -224,6 +224,14 @@ namespace dxvk {
     }
 
     /**
+     * \brief Changes image layout
+     * \param [in] layout New layout
+     */
+    void setLayout(VkImageLayout layout) {
+      m_info.layout = layout;
+    }
+
+    /**
      * \brief Checks whether a subresource is entirely covered
      * 
      * This can be used to determine whether an image can or

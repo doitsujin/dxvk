@@ -330,6 +330,35 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::changeImageLayout(
+    const Rc<DxvkImage>&        image,
+          VkImageLayout         layout) {
+    if (image->info().layout != layout) {
+      this->spillRenderPass();
+
+      VkImageSubresourceRange subresources;
+      subresources.aspectMask     = image->formatInfo()->aspectMask;
+      subresources.baseArrayLayer = 0;
+      subresources.baseMipLevel   = 0;
+      subresources.layerCount     = image->info().numLayers;
+      subresources.levelCount     = image->info().mipLevels;
+
+      if (m_barriers.isImageDirty(image, subresources, DxvkAccess::Write))
+        m_barriers.recordCommands(m_cmd);
+
+      m_barriers.accessImage(image, subresources,
+        image->info().layout,
+        image->info().stages,
+        image->info().access,
+        layout,
+        image->info().layout,
+        image->info().stages);
+
+      image->setLayout(layout);
+    }
+  }
+
+
   void DxvkContext::clearBuffer(
     const Rc<DxvkBuffer>&       buffer,
           VkDeviceSize          offset,
