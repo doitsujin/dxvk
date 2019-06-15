@@ -4002,25 +4002,34 @@ namespace dxvk {
       D3DRS_COLORWRITEENABLE3
     };
 
-    // Check all of the pixel shader textures 
-    for (uint32_t i = 0; i < 16; i++) {
-      auto* tex = GetCommonTexture(m_state.textures[i]);
-      const auto* shader = GetCommonShader(m_state.pixelShader);
+    const auto* shader = GetCommonShader(m_state.pixelShader);
 
-      // We only care if there is a hazard in the current draw...
-      // Some games don't unbind their textures so we need to check the shaders.
-      if (tex == nullptr || shader == nullptr || !shader->IsSamplerUsed(i))
+    if (shader == nullptr)
+      return;
+
+    for (uint32_t j = 0; j < m_state.renderTargets.size(); j++) {
+      auto* rt = GetCommonTexture(m_state.renderTargets[j]);
+
+      // Skip this RT if it doesn't exist
+      // or we aren't writing to it anyway.
+      if (rt == nullptr || m_state.renderStates[colorWriteIndices[j]] == 0)
         continue;
 
-      for (uint32_t j = 0; j < m_state.renderTargets.size(); j++) {
-        // Skip this RT if we aren't writing to it anyway.
-        if (m_state.renderStates[colorWriteIndices[j]] == 0)
-          continue;
+      // Check all of the pixel shader textures 
+      for (uint32_t i = 0; i < 16; i++) {
+        auto* tex = GetCommonTexture(m_state.textures[i]);
 
-        auto* rt = GetCommonTexture(m_state.renderTargets[j]);
-        if (tex == rt && tex->MarkHazardous()) {
-          BindTexture(i);
-          m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
+        // We only care if there is a hazard in the current draw...
+        // Some games don't unbind their textures so we need to check the shaders.
+        if (tex == nullptr || !shader->IsSamplerUsed(i))
+          continue;
+        
+        if (tex == rt) {
+          if (tex->MarkHazardous()) {
+            BindTexture(i);
+            m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
+          }
+
           // No need to search for more hazards for this texture.
           break;
         }
