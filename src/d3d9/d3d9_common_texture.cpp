@@ -101,10 +101,8 @@ namespace dxvk {
 
 
   bool D3D9CommonTexture::MarkHazardous() {
-    if (likely(m_hazard))
+    if (likely(m_views.Hazardous))
       return true;
-
-    m_hazard = true;
 
     DxvkImageCreateInfo imageInfo = m_image->info();
     imageInfo.layout = VK_IMAGE_LAYOUT_GENERAL;
@@ -432,8 +430,6 @@ namespace dxvk {
 
   void D3D9CommonTexture::CreateInitialViews() {
     const D3D9_VK_FORMAT_MAPPING formatInfo = m_device->LookupFormat(m_desc.Format);
-
-    m_views.Hazardous = false;
 
     m_views.Sample = CreateColorViewPair(formatInfo, AllLayers, VK_IMAGE_USAGE_SAMPLED_BIT, 0);
 

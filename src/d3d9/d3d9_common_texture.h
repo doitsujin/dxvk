@@ -56,7 +56,7 @@ namespace dxvk {
     std::array<D3D9ColorView, 6>     FaceRenderTarget;
     std::array<Rc<DxvkImageView>, 6> FaceDepth;
 
-    bool                             Hazardous;
+    bool                             Hazardous = false;
 
     VkImageLayout GetRTLayout() const {
       return FaceRenderTarget[0].Color != nullptr
@@ -331,8 +331,6 @@ namespace dxvk {
     VkFormat                      m_format;
 
     bool                          m_shadow; //< Depth Compare-ness
-
-    bool                          m_hazard;
 
     int64_t                       m_size = 0;
 
