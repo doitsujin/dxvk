@@ -309,7 +309,9 @@ namespace dxvk {
       return util::computeMipLevelExtent(GetExtent(), MipLevel);
     }
 
-    bool MarkHazardous();
+    bool MarkHazardous() {
+      return std::exchange(m_views.Hazardous, true);
+    }
 
   private:
 

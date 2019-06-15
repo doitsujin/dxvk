@@ -4025,8 +4025,9 @@ namespace dxvk {
           continue;
         
         if (tex == rt) {
-          if (tex->MarkHazardous() && tex->GetImage()->info().layout != VK_IMAGE_LAYOUT_GENERAL) {
-            TransitionImage(tex, tex->GetImage()->info().layout, VK_IMAGE_LAYOUT_GENERAL);
+          // If we haven't marked this as a hazard before, transition and rebind the image everywhere.
+          if (!tex->MarkHazardous()) {
+            TransitionImage(tex, VK_IMAGE_LAYOUT_GENERAL);
 
             BindTexture(i);
             m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
@@ -4870,21 +4871,13 @@ namespace dxvk {
   }
 
 
-  void D3D9DeviceEx::TransitionImage(D3D9CommonTexture* pResource, VkImageLayout OldLayout, VkImageLayout NewLayout) {
-    Rc<DxvkImage> image = pResource->GetImage();
-    const DxvkFormatInfo* formatInfo = imageFormatInfo(image->info().format);
-
-    VkImageSubresourceRange range = { formatInfo->aspectMask, 0, image->info().mipLevels, 0, image->info().numLayers };
-
+  void D3D9DeviceEx::TransitionImage(D3D9CommonTexture* pResource, VkImageLayout NewLayout) {
     EmitCs([
-      cImage        = image,
-      cSubresources = range,
-      cOldLayout    = OldLayout,
+      cImage        = pResource->GetImage(),
       cNewLayout    = NewLayout
     ] (DxvkContext* ctx) {
-      ctx->transformImage(
-        cImage, cSubresources,
-        cOldLayout, cNewLayout);
+      ctx->changeImageLayout(
+        cImage, cNewLayout);
     });
   }
 

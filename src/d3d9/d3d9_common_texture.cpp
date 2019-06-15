@@ -100,15 +100,6 @@ namespace dxvk {
   }
 
 
-  bool D3D9CommonTexture::MarkHazardous() {
-    if (likely(m_views.Hazardous))
-      return true;
-
-    m_views.Hazardous = true;
-    return false;
-  }
-
-
   VkDeviceSize D3D9CommonTexture::GetMipSize(UINT Subresource, bool Fixup) const {
     const UINT MipLevel = Subresource % m_desc.MipLevels;
 
