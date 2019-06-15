@@ -4012,7 +4012,7 @@ namespace dxvk {
 
       // Skip this RT if it doesn't exist
       // or we aren't writing to it anyway.
-      if (rt == nullptr || m_state.renderStates[colorWriteIndices[j]] == 0 || !shader->IsRTUsed(j))
+      if (likely(rt == nullptr || m_state.renderStates[colorWriteIndices[j]] == 0 || !shader->IsRTUsed(j)))
         continue;
 
       // Check all of the pixel shader textures 
@@ -4021,12 +4021,12 @@ namespace dxvk {
 
         // We only care if there is a hazard in the current draw...
         // Some games don't unbind their textures so we need to check the shaders.
-        if (tex == nullptr || !shader->IsSamplerUsed(i))
+        if (likely(tex == nullptr || !shader->IsSamplerUsed(i)))
           continue;
         
         if (tex == rt) {
           // If we haven't marked this as a hazard before, transition and rebind the image everywhere.
-          if (!tex->MarkHazardous()) {
+          if (unlikely(!tex->MarkHazardous())) {
             TransitionImage(tex, VK_IMAGE_LAYOUT_GENERAL);
 
             BindTexture(i);
