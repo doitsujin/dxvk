@@ -214,8 +214,8 @@ namespace dxvk {
 
     const DxsoShaderMetaInfo& meta() { return m_meta; }
     const DxsoDefinedConstants& constants() { return m_constants; }
-    const uint32_t usedSamplers() { return m_usedSamplers; }
-    const uint32_t usedRTs() { return m_usedRTs; }
+    uint32_t usedSamplers() const { return m_usedSamplers; }
+    uint32_t usedRTs() const { return m_usedRTs; }
 
   private:
 
