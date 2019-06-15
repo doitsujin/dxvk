@@ -3994,6 +3994,28 @@ namespace dxvk {
   }
 
 
+  void D3D9DeviceEx::CheckForHazards() {
+    // Check all of the pixel shader textures 
+    for (uint32_t i = 0; i < 16; i++) {
+      auto* tex = GetCommonTexture(m_state.textures[i]);
+      const auto* shader = GetCommonShader(m_state.pixelShader);
+
+      // We only care if there is a hazard in the current draw...
+      // Some games don't unbind their textures so we need to check the shaders.
+      if (tex == nullptr || shader == nullptr || !shader->IsSamplerUsed(i))
+        continue;
+
+      for (uint32_t j = 0; j < m_state.renderTargets.size(); j++) {
+        auto* rt = GetCommonTexture(m_state.renderTargets[j]);
+        if (tex == rt && tex->MarkHazardous()) {
+          BindTexture(i);
+          m_flags.set(D3D9DeviceFlag::DirtyFramebuffer);
+        }
+      }
+    }
+  }
+
+
   void D3D9DeviceEx::BindFramebuffer() {
     m_flags.clr(D3D9DeviceFlag::DirtyFramebuffer);
 
@@ -4436,6 +4458,12 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::PrepareDraw(bool up) {
+    // This is fairly expensive to do!
+    // So we only enable it on games & vendors that actually need it (for now)
+    // This is not needed at all on NV either, etc...
+    if (m_d3d9Options.hasHazards)
+      CheckForHazards();
+
     if (m_flags.test(D3D9DeviceFlag::DirtyFramebuffer))
       BindFramebuffer();
 
@@ -4814,6 +4842,32 @@ namespace dxvk {
 
         ctx->resolveImage(cDstImage, cSrcImage, region, cDstImage->info().format);
       });
+    }
+  }
+
+
+  void D3D9DeviceEx::CopyImage(Rc<DxvkImage> srcImage, Rc<DxvkImage> dstImage) {
+    const DxvkFormatInfo* dstFormatInfo = imageFormatInfo(dstImage->info().format);
+    const DxvkFormatInfo* srcFormatInfo = imageFormatInfo(srcImage->info().format);
+
+    for (uint32_t i = 0; i < srcImage->info().mipLevels; i++) {
+      VkImageSubresourceLayers dstLayers = { dstFormatInfo->aspectMask, i, 0, dstImage->info().numLayers };
+      VkImageSubresourceLayers srcLayers = { srcFormatInfo->aspectMask, i, 0, srcImage->info().numLayers };
+
+      VkExtent3D extent = srcImage->mipLevelExtent(i);
+
+      EmitCs([
+          cDstImage  = dstImage,
+          cSrcImage  = srcImage,
+          cDstLayers = dstLayers,
+          cSrcLayers = srcLayers,
+          cExtent    = extent
+        ] (DxvkContext* ctx) {
+          ctx->copyImage(
+            cDstImage, cDstLayers, VkOffset3D { 0, 0, 0 },
+            cSrcImage, cSrcLayers, VkOffset3D { 0, 0, 0 },
+            cExtent);
+        });
     }
   }
 

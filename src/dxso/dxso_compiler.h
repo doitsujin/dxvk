@@ -214,6 +214,7 @@ namespace dxvk {
 
     const DxsoShaderMetaInfo& meta() { return m_meta; }
     const DxsoDefinedConstants& constants() { return m_constants; }
+    const uint32_t usedSamplers() { return m_usedSamplers; }
 
   private:
 
@@ -312,6 +313,10 @@ namespace dxvk {
     // Shader-specific data structures
     DxsoCompilerVsPart m_vs;
     DxsoCompilerPsPart m_ps;
+
+    /////////////////////////////////////
+    // Bit mask containing used samplers
+    uint32_t m_usedSamplers;
 
     //////////////////////////////////////
     // Common function definition methods

@@ -18,7 +18,6 @@ namespace dxvk {
     m_format  = m_device->LookupFormat(m_desc.Format).FormatColor;
     m_mapMode = DetermineMapMode();
     m_shadow  = DetermineShadowState();
-    m_hazard  = DetermineRenderHazards();
 
     if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED) {
       m_image = CreatePrimaryImage(ResourceType);
@@ -98,6 +97,25 @@ namespace dxvk {
     }
 
     return true;
+  }
+
+
+  bool D3D9CommonTexture::MarkHazardous() {
+    if (likely(m_hazard))
+      return true;
+
+    m_hazard = true;
+
+    DxvkImageCreateInfo imageInfo = m_image->info();
+    imageInfo.layout = VK_IMAGE_LAYOUT_GENERAL;
+
+    Rc<DxvkImage> newImage = m_device->GetDXVKDevice()->createImage(imageInfo, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    m_device->CopyImage(m_image, newImage);
+    m_image = newImage;
+
+    m_views.Hazardous = true;
+    
+    return false;
   }
 
 
@@ -192,7 +210,7 @@ namespace dxvk {
     // We must keep LINEAR images in GENERAL layout, but we
     // can choose a better layout for the image based on how
     // it is going to be used by the game.
-    if (imageInfo.tiling == VK_IMAGE_TILING_OPTIMAL && !m_hazard)
+    if (imageInfo.tiling == VK_IMAGE_TILING_OPTIMAL)
       imageInfo.layout = OptimizeLayout(imageInfo.usage);
 
     // For some formats, we need to enable render target
@@ -235,14 +253,6 @@ namespace dxvk {
 
     return caps::IsDepthFormat(m_desc.Format)
         && std::find(blacklist.begin(), blacklist.end(), m_desc.Format) == blacklist.end();
-  }
-
-
-  BOOL D3D9CommonTexture::DetermineRenderHazards() const {
-    auto* options = m_device->GetOptions();
-
-    // Force GENERAL if we have a possible render hazard in this game.
-    return options->hasHazards && (m_desc.Usage & D3DUSAGE_RENDERTARGET);
   }
 
 
@@ -423,7 +433,7 @@ namespace dxvk {
   void D3D9CommonTexture::CreateInitialViews() {
     const D3D9_VK_FORMAT_MAPPING formatInfo = m_device->LookupFormat(m_desc.Format);
 
-    m_views.Hazardous = m_hazard;
+    m_views.Hazardous = false;
 
     m_views.Sample = CreateColorViewPair(formatInfo, AllLayers, VK_IMAGE_USAGE_SAMPLED_BIT, 0);
 

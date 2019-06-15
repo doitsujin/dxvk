@@ -309,6 +309,8 @@ namespace dxvk {
       return util::computeMipLevelExtent(GetExtent(), MipLevel);
     }
 
+    bool MarkHazardous();
+
   private:
 
     D3D9DeviceEx*                 m_device;
@@ -345,8 +347,6 @@ namespace dxvk {
     Rc<DxvkImage> CreateResolveImage() const;
 
     BOOL DetermineShadowState() const;
-
-    BOOL DetermineRenderHazards() const;
 
     int64_t DetermineMemoryConsumption() const;
 

@@ -706,6 +706,8 @@ namespace dxvk {
 
     void Flush();
 
+    void CheckForHazards();
+
     void BindFramebuffer();
 
     void BindViewportAndScissor();
@@ -797,6 +799,8 @@ namespace dxvk {
     }
 
     void ResolveZ();
+
+    void CopyImage(Rc<DxvkImage> srcImage, Rc<DxvkImage> dstImage);
 
   private:
 

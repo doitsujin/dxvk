@@ -37,6 +37,8 @@ namespace dxvk {
       spv::AddressingModelLogical,
       spv::MemoryModelGLSL450);
 
+    m_usedSamplers = 0;
+
     for (uint32_t i = 0; i < m_rRegs.size(); i++)
       m_rRegs.at(i)  = DxsoRegisterPointer{ };
 
@@ -560,6 +562,7 @@ namespace dxvk {
   void DxsoCompiler::emitDclSampler(
           uint32_t        idx,
           DxsoTextureType type) {
+    m_usedSamplers |= (1u << idx);
 
     auto DclSampler = [this](
       uint32_t        idx,

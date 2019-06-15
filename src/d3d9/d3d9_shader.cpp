@@ -50,8 +50,9 @@ namespace dxvk {
     // Decide whether we need to create a pass-through
     // geometry shader for vertex shader stream output
 
-    m_shader = pModule->compile(*pDxsoModuleInfo, name, AnalysisInfo);
-    m_isgn   = pModule->isgn();
+    m_shader       = pModule->compile(*pDxsoModuleInfo, name, AnalysisInfo);
+    m_isgn         = pModule->isgn();
+    m_usedSamplers = pModule->usedSamplers();
 
     m_meta      = pModule->meta();
     m_constants = pModule->constants();
