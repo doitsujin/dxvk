@@ -3995,6 +3995,13 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::CheckForHazards() {
+    static const std::array<D3DRENDERSTATETYPE, 4> colorWriteIndices = {
+      D3DRS_COLORWRITEENABLE,
+      D3DRS_COLORWRITEENABLE1,
+      D3DRS_COLORWRITEENABLE2,
+      D3DRS_COLORWRITEENABLE3
+    };
+
     // Check all of the pixel shader textures 
     for (uint32_t i = 0; i < 16; i++) {
       auto* tex = GetCommonTexture(m_state.textures[i]);
@@ -4006,6 +4013,10 @@ namespace dxvk {
         continue;
 
       for (uint32_t j = 0; j < m_state.renderTargets.size(); j++) {
+        // Skip this RT if we aren't writing to it anyway.
+        if (m_state.renderStates[colorWriteIndices[j]] == 0)
+          continue;
+
         auto* rt = GetCommonTexture(m_state.renderTargets[j]);
         if (tex == rt && tex->MarkHazardous()) {
           BindTexture(i);
