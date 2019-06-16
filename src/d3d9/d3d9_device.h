@@ -42,7 +42,6 @@ namespace dxvk {
     DirtyBlendState,
     DirtyRasterizerState,
     DirtyAlphaTestState,
-    DirtyRenderStateBuffer,
     DirtyInputLayout,
     DirtyViewportScissor,
     DirtyMultiSampleState,
@@ -742,7 +741,11 @@ namespace dxvk {
     
     void UpdateClipPlanes();
     
-    void UpdateRenderStateBuffer();
+    template <uint32_t Offset, uint32_t Length>
+    void UpdatePushConstant(const void* pData);
+
+    template <D3D9RenderStateItem Item>
+    void UpdatePushConstant();
 
     void BindSampler(DWORD Sampler);
 
@@ -866,7 +869,6 @@ namespace dxvk {
     D3D9ConstantSets                m_consts[DxsoProgramTypes::Count];
 
     Rc<DxvkBuffer>                  m_vsClipPlanes;
-    Rc<DxvkBuffer>                  m_psRenderStates;
 
     Rc<DxvkBuffer>                  m_upBuffer;
 

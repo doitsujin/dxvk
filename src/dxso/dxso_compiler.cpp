@@ -2630,7 +2630,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
   void DxsoCompiler::emitPsProcessing() {
     uint32_t boolType  = m_module.defBoolType();
     uint32_t floatType = m_module.defFloatType(32);
-    uint32_t floatPtr  = m_module.defPointerType(floatType, spv::StorageClassUniform);
+    uint32_t floatPtr  = m_module.defPointerType(floatType, spv::StorageClassPushConstant);
     
     // Declare uniform buffer containing render states
     enum RenderStateMember : uint32_t {
@@ -2643,28 +2643,18 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     
     uint32_t rsStruct = m_module.defStructTypeUnique(rsMembers.size(), rsMembers.data());
     uint32_t rsBlock  = m_module.newVar(
-      m_module.defPointerType(rsStruct, spv::StorageClassUniform),
-      spv::StorageClassUniform);
+      m_module.defPointerType(rsStruct, spv::StorageClassPushConstant),
+      spv::StorageClassPushConstant);
     
     m_module.setDebugName         (rsStruct, "render_state_t");
     m_module.decorate             (rsStruct, spv::DecorationBlock);
     m_module.setDebugMemberName   (rsStruct, 0, "alpha_ref");
     m_module.memberDecorateOffset (rsStruct, 0, offsetof(D3D9RenderStateInfo, alphaRef));
     
-    uint32_t bindingId = computeResourceSlotId(
-      m_programInfo.type(), DxsoBindingType::ConstantBuffer,
-      DxsoConstantBuffers::PSRenderStates);
-    
     m_module.setDebugName         (rsBlock, "render_state");
-    m_module.decorateDescriptorSet(rsBlock, 0);
-    m_module.decorateBinding      (rsBlock, bindingId);
-    
-    DxvkResourceSlot resource;
-    resource.slot   = bindingId;
-    resource.type   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    resource.view   = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
-    resource.access = VK_ACCESS_UNIFORM_READ_BIT;
-    m_resourceSlots.push_back(resource);
+
+    m_interfaceSlots.pushConstOffset = 0;
+    m_interfaceSlots.pushConstSize   = sizeof(D3D9RenderStateInfo);
     
     // Declare spec constants for render states
     uint32_t alphaTestId = m_module.specConstBool(false);

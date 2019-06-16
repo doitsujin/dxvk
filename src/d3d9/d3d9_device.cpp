@@ -1571,7 +1571,7 @@ namespace dxvk {
           break;
 
         case D3DRS_ALPHAREF:
-          m_flags.set(D3D9DeviceFlag::DirtyRenderStateBuffer);
+          UpdatePushConstant<D3D9RenderStateItem::AlphaRef>();
           break;
 
         default:
@@ -2937,9 +2937,10 @@ namespace dxvk {
     rs[D3DRS_SCISSORTESTENABLE]   = FALSE;
 
     rs[D3DRS_ALPHATESTENABLE]     = FALSE;
-    rs[D3DRS_ALPHAREF]            = FALSE;
     rs[D3DRS_ALPHAFUNC]           = D3DCMP_ALWAYS;
     BindAlphaTestState();
+    rs[D3DRS_ALPHAREF]            = 0;
+    UpdatePushConstant<D3D9RenderStateItem::AlphaRef>();
 
     rs[D3DRS_MULTISAMPLEMASK]     = 0xffffffff;
     BindMultiSampleState();
@@ -3859,9 +3860,6 @@ namespace dxvk {
 
     info.size = caps::MaxClipPlanes * sizeof(D3D9ClipPlane);
     m_vsClipPlanes = m_dxvkDevice->createBuffer(info, memoryFlags);
-    
-    info.size = sizeof(D3D9RenderStateInfo);
-    m_psRenderStates = m_dxvkDevice->createBuffer(info, memoryFlags);
 
     auto BindConstantBuffer = [this](
       DxsoProgramType     shaderStage,
@@ -3883,11 +3881,9 @@ namespace dxvk {
     BindConstantBuffer(DxsoProgramTypes::VertexShader, m_consts[DxsoProgramTypes::VertexShader].buffer, DxsoConstantBuffers::VSConstantBuffer);
     BindConstantBuffer(DxsoProgramTypes::PixelShader,  m_consts[DxsoProgramTypes::PixelShader].buffer,  DxsoConstantBuffers::PSConstantBuffer);
     BindConstantBuffer(DxsoProgramTypes::VertexShader, m_vsClipPlanes,                                  DxsoConstantBuffers::VSClipPlanes);
-    BindConstantBuffer(DxsoProgramTypes::PixelShader,  m_psRenderStates,                                DxsoConstantBuffers::PSRenderStates);
     
     m_flags.set(
-      D3D9DeviceFlag::DirtyClipPlanes,
-      D3D9DeviceFlag::DirtyRenderStateBuffer);
+      D3D9DeviceFlag::DirtyClipPlanes);
   }
 
 
@@ -3954,23 +3950,30 @@ namespace dxvk {
   }
 
 
-  void D3D9DeviceEx::UpdateRenderStateBuffer() {
-    m_flags.clr(D3D9DeviceFlag::DirtyRenderStateBuffer);
-    
-    auto& rs = m_state.renderStates;
-    
-    auto slice = m_psRenderStates->allocSlice();
-    auto dst = reinterpret_cast<D3D9RenderStateInfo*>(slice.mapPtr);
-    
-    dst->alphaRef = float(rs[D3DRS_ALPHAREF]) / 255.0f;
-    
+  template <uint32_t Offset, uint32_t Length>
+  void D3D9DeviceEx::UpdatePushConstant(const void* pData) {
+    struct ConstantData { uint8_t Data[Length]; };
+
+    auto* constData = reinterpret_cast<const ConstantData*>(pData);
+
     EmitCs([
-      cBuffer = m_psRenderStates,
-      cSlice  = slice
-    ] (DxvkContext* ctx) {
-      ctx->invalidateBuffer(cBuffer, cSlice);
+      cData = *constData
+    ](DxvkContext* ctx) {
+      ctx->pushConstants(Offset, Length, &cData);
     });
   }
+
+
+  template <D3D9RenderStateItem Item>
+  void D3D9DeviceEx::UpdatePushConstant() {
+    auto& rs = m_state.renderStates;
+
+    if constexpr (Item == D3D9RenderStateItem::AlphaRef)
+      UpdatePushConstant<offsetof(D3D9RenderStateInfo, alphaRef), sizeof(float)>(&rs[D3DRS_ALPHAREF]);
+    else
+      Logger::warn("D3D9: Invalid push constant set to update.");
+  }
+  
 
 
   void D3D9DeviceEx::Flush() {
@@ -4514,9 +4517,6 @@ namespace dxvk {
     
     if (m_flags.test(D3D9DeviceFlag::DirtyClipPlanes))
       UpdateClipPlanes();
-
-    if (m_flags.test(D3D9DeviceFlag::DirtyRenderStateBuffer))
-      UpdateRenderStateBuffer();
 
     if (m_flags.test(D3D9DeviceFlag::DirtyInputLayout))
       BindInputLayout();
