@@ -11,7 +11,8 @@ namespace dxvk {
   };
 
   class D3D9Query : public D3D9DeviceChild<IDirect3DQuery9> {
-
+    constexpr static uint32_t MaxGpuQueries = 2;
+    constexpr static uint32_t MaxGpuEvents  = 1;
   public:
 
     D3D9Query(
@@ -59,8 +60,8 @@ namespace dxvk {
 
     D3D9_VK_QUERY_STATE m_state;
 
-    Rc<DxvkGpuQuery>  m_query;
-    Rc<DxvkGpuEvent>  m_event;
+    std::array<Rc<DxvkGpuQuery>, MaxGpuQueries> m_query;
+    std::array<Rc<DxvkGpuEvent>, MaxGpuEvents>  m_event;
 
     uint32_t m_stallMask = 0;
     bool     m_stallFlag = false;

@@ -15,17 +15,17 @@ namespace dxvk {
         break;
 
       case D3DQUERYTYPE_EVENT:
-        m_event = dxvkDevice->createGpuEvent();
+        m_event[0] = dxvkDevice->createGpuEvent();
         break;
 
       case D3DQUERYTYPE_OCCLUSION:
-        m_query = dxvkDevice->createGpuQuery(
+        m_query[0] = dxvkDevice->createGpuQuery(
           VK_QUERY_TYPE_OCCLUSION,
           VK_QUERY_CONTROL_PRECISE_BIT, 0);
         break;
 
       case D3DQUERYTYPE_TIMESTAMP:
-        m_query = dxvkDevice->createGpuQuery(
+        m_query[0] = dxvkDevice->createGpuQuery(
           VK_QUERY_TYPE_TIMESTAMP, 0, 0);
         break;
 
@@ -36,7 +36,7 @@ namespace dxvk {
         break;
 
       case D3DQUERYTYPE_VERTEXSTATS:
-        m_query = dxvkDevice->createGpuQuery(
+        m_query[0] = dxvkDevice->createGpuQuery(
           VK_QUERY_TYPE_PIPELINE_STATISTICS, 0, 0);
         break;
 
@@ -140,7 +140,7 @@ namespace dxvk {
     bool flush = dwGetDataFlags & D3DGETDATA_FLUSH;
 
     if (m_queryType == D3DQUERYTYPE_EVENT) {
-      DxvkGpuEventStatus status = m_event->test();
+      DxvkGpuEventStatus status = m_event[0]->test();
 
       if (status == DxvkGpuEventStatus::Invalid)
         return D3DERR_INVALIDCALL;
@@ -158,10 +158,10 @@ namespace dxvk {
       return signaled ? D3D_OK : S_FALSE;
     }
     else {
-      DxvkQueryData queryData = {};
+      std::array<DxvkQueryData, MaxGpuQueries> queryData = { };
 
-      if (m_query != nullptr) {
-        DxvkGpuQueryStatus status = m_query->getData(queryData);
+      for (uint32_t i = 0; i < MaxGpuQueries && m_query[i] != nullptr; i++) {
+        DxvkGpuQueryStatus status = m_query[i]->getData(queryData[i]);
 
         if (status == DxvkGpuQueryStatus::Invalid
           || status == DxvkGpuQueryStatus::Failed)
@@ -191,11 +191,11 @@ namespace dxvk {
         }
 
         case D3DQUERYTYPE_OCCLUSION:
-          *static_cast<DWORD*>(pData) = DWORD(queryData.occlusion.samplesPassed);
+          *static_cast<DWORD*>(pData) = DWORD(queryData[0].occlusion.samplesPassed);
           return D3D_OK;
 
         case D3DQUERYTYPE_TIMESTAMP:
-          *static_cast<UINT64*>(pData) = queryData.timestamp.time;
+          *static_cast<UINT64*>(pData) = queryData[0].timestamp.time;
           return D3D_OK;
 
         case D3DQUERYTYPE_TIMESTAMPDISJOINT:
@@ -208,8 +208,8 @@ namespace dxvk {
 
         case D3DQUERYTYPE_VERTEXSTATS: {
           auto data = static_cast<D3DDEVINFO_D3DVERTEXSTATS*>(pData);
-          data->NumRenderedTriangles = queryData.statistic.iaPrimitives;
-          data->NumRenderedTriangles = queryData.statistic.clipPrimitives;
+          data->NumRenderedTriangles = queryData[0].statistic.iaPrimitives;
+          data->NumRenderedTriangles = queryData[0].statistic.clipPrimitives;
         } return D3D_OK;
 
         default:
@@ -232,7 +232,7 @@ namespace dxvk {
     switch (m_queryType) {
       case D3DQUERYTYPE_OCCLUSION:
       case D3DQUERYTYPE_VERTEXSTATS:
-        ctx->beginQuery(m_query);
+        ctx->beginQuery(m_query[0]);
         break;
 
       default: break;
@@ -243,16 +243,16 @@ namespace dxvk {
   void D3D9Query::End(DxvkContext* ctx) {
     switch (m_queryType) {
       case D3DQUERYTYPE_TIMESTAMP:
-        ctx->writeTimestamp(m_query);
+        ctx->writeTimestamp(m_query[0]);
         break;
 
       case D3DQUERYTYPE_VERTEXSTATS:
       case D3DQUERYTYPE_OCCLUSION:
-        ctx->endQuery(m_query);
+        ctx->endQuery(m_query[0]);
         break;
 
       case D3DQUERYTYPE_EVENT:
-        ctx->signalGpuEvent(m_event);
+        ctx->signalGpuEvent(m_event[0]);
         break;
 
       default: break;
