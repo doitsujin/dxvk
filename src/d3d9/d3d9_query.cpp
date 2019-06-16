@@ -30,6 +30,10 @@ namespace dxvk {
         break;
 
       case D3DQUERYTYPE_TIMESTAMPDISJOINT:
+        for (uint32_t i = 0; i < 2; i++) {
+          m_query[i] = dxvkDevice->createGpuQuery(
+            VK_QUERY_TYPE_TIMESTAMP, 0, 0);
+        }
         break;
 
       case D3DQUERYTYPE_TIMESTAMPFREQ:
@@ -199,7 +203,7 @@ namespace dxvk {
           return D3D_OK;
 
         case D3DQUERYTYPE_TIMESTAMPDISJOINT:
-          *static_cast<BOOL*>(pData) = FALSE;
+          *static_cast<BOOL*>(pData) = queryData[0].timestamp.time < queryData[1].timestamp.time;
           return D3D_OK;
 
         case D3DQUERYTYPE_TIMESTAMPFREQ:
@@ -235,6 +239,10 @@ namespace dxvk {
         ctx->beginQuery(m_query[0]);
         break;
 
+      case D3DQUERYTYPE_TIMESTAMPDISJOINT:
+        ctx->writeTimestamp(m_query[1]);
+        break;
+
       default: break;
     }
   }
@@ -243,6 +251,7 @@ namespace dxvk {
   void D3D9Query::End(DxvkContext* ctx) {
     switch (m_queryType) {
       case D3DQUERYTYPE_TIMESTAMP:
+      case D3DQUERYTYPE_TIMESTAMPDISJOINT:
         ctx->writeTimestamp(m_query[0]);
         break;
 
@@ -262,7 +271,8 @@ namespace dxvk {
 
   bool D3D9Query::QueryBeginnable(D3DQUERYTYPE QueryType) {
     return QueryType == D3DQUERYTYPE_OCCLUSION
-        || QueryType == D3DQUERYTYPE_VERTEXSTATS;
+        || QueryType == D3DQUERYTYPE_VERTEXSTATS
+        || QueryType == D3DQUERYTYPE_TIMESTAMPDISJOINT;
   }
 
 
