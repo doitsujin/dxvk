@@ -1409,6 +1409,8 @@ namespace dxvk {
       dirty |= m_state.clipPlanes[Index].coeff[i] != pPlane[i];
       m_state.clipPlanes[Index].coeff[i] = pPlane[i];
     }
+
+    dirty &= m_state.renderStates[D3DRS_CLIPPLANEENABLE] & (1u << Index);
     
     if (dirty)
       m_flags.set(D3D9DeviceFlag::DirtyClipPlanes);
