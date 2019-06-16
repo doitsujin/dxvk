@@ -16,7 +16,8 @@ namespace dxvk {
   };
   
   class D3D11Query : public D3D11DeviceChild<ID3D11Predicate> {
-    
+    constexpr static uint32_t MaxGpuQueries = 2;
+    constexpr static uint32_t MaxGpuEvents  = 1;
   public:
     
     D3D11Query(
@@ -75,8 +76,8 @@ namespace dxvk {
 
     D3D11_VK_QUERY_STATE m_state;
     
-    Rc<DxvkGpuQuery>  m_query = nullptr;
-    Rc<DxvkGpuEvent>  m_event = nullptr;
+    std::array<Rc<DxvkGpuQuery>, MaxGpuQueries> m_query;
+    std::array<Rc<DxvkGpuEvent>, MaxGpuEvents>  m_event;
 
     sync::Spinlock  m_predicateLock;
     DxvkBufferSlice m_predicate;

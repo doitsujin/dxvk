@@ -13,22 +13,22 @@ namespace dxvk {
 
     switch (m_desc.Query) {
       case D3D11_QUERY_EVENT:
-        m_event = dxvkDevice->createGpuEvent();
+        m_event[0] = dxvkDevice->createGpuEvent();
         break;
         
       case D3D11_QUERY_OCCLUSION:
-        m_query = dxvkDevice->createGpuQuery(
+        m_query[0] = dxvkDevice->createGpuQuery(
           VK_QUERY_TYPE_OCCLUSION,
           VK_QUERY_CONTROL_PRECISE_BIT, 0);
         break;
       
       case D3D11_QUERY_OCCLUSION_PREDICATE:
-        m_query = dxvkDevice->createGpuQuery(
+        m_query[0] = dxvkDevice->createGpuQuery(
           VK_QUERY_TYPE_OCCLUSION, 0, 0);
         break;
         
       case D3D11_QUERY_TIMESTAMP:
-        m_query = dxvkDevice->createGpuQuery(
+        m_query[0] = dxvkDevice->createGpuQuery(
           VK_QUERY_TYPE_TIMESTAMP, 0, 0);
         break;
       
@@ -36,7 +36,7 @@ namespace dxvk {
         break;
       
       case D3D11_QUERY_PIPELINE_STATISTICS:
-        m_query = dxvkDevice->createGpuQuery(
+        m_query[0] = dxvkDevice->createGpuQuery(
           VK_QUERY_TYPE_PIPELINE_STATISTICS, 0, 0);
         break;
       
@@ -47,25 +47,25 @@ namespace dxvk {
         // FIXME it is technically incorrect to map
         // SO_OVERFLOW_PREDICATE to the first stream,
         // but this is good enough for D3D10 behaviour
-        m_query = dxvkDevice->createGpuQuery(
+        m_query[0] = dxvkDevice->createGpuQuery(
           VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT, 0, 0);
         break;
       
       case D3D11_QUERY_SO_STATISTICS_STREAM1:
       case D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM1:
-        m_query = dxvkDevice->createGpuQuery(
+        m_query[0] = dxvkDevice->createGpuQuery(
           VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT, 0, 1);
         break;
       
       case D3D11_QUERY_SO_STATISTICS_STREAM2:
       case D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM2:
-        m_query = dxvkDevice->createGpuQuery(
+        m_query[0] = dxvkDevice->createGpuQuery(
           VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT, 0, 2);
         break;
       
       case D3D11_QUERY_SO_STATISTICS_STREAM3:
       case D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM3:
-        m_query = dxvkDevice->createGpuQuery(
+        m_query[0] = dxvkDevice->createGpuQuery(
           VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT, 0, 3);
         break;
       
@@ -182,7 +182,7 @@ namespace dxvk {
         break;
       
       default:
-        ctx->beginQuery(m_query);
+        ctx->beginQuery(m_query[0]);
     }
 
     m_state = D3D11_VK_QUERY_BEGUN;
@@ -192,11 +192,11 @@ namespace dxvk {
   void D3D11Query::End(DxvkContext* ctx) {
     switch (m_desc.Query) {
       case D3D11_QUERY_EVENT:
-        ctx->signalGpuEvent(m_event);
+        ctx->signalGpuEvent(m_event[0]);
         break;
       
       case D3D11_QUERY_TIMESTAMP:
-        ctx->writeTimestamp(m_query);
+        ctx->writeTimestamp(m_query[0]);
         break;
       
       case D3D11_QUERY_TIMESTAMP_DISJOINT:
@@ -206,11 +206,11 @@ namespace dxvk {
         if (unlikely(m_state != D3D11_VK_QUERY_BEGUN))
           return;
         
-        ctx->endQuery(m_query);
+        ctx->endQuery(m_query[0]);
     }
 
     if (m_predicate.defined())
-      ctx->writePredicate(m_predicate, m_query);
+      ctx->writePredicate(m_predicate, m_query[0]);
     
     m_state = D3D11_VK_QUERY_ENDED;
   }
@@ -220,7 +220,7 @@ namespace dxvk {
           void*                             pData,
           UINT                              GetDataFlags) {
     if (m_desc.Query == D3D11_QUERY_EVENT) {
-      DxvkGpuEventStatus status = m_event->test();
+      DxvkGpuEventStatus status = m_event[0]->test();
 
       if (status == DxvkGpuEventStatus::Invalid)
         return DXGI_ERROR_INVALID_CALL;
@@ -232,10 +232,10 @@ namespace dxvk {
       
       return signaled ? S_OK : S_FALSE;
     } else {
-      DxvkQueryData queryData = {};
+      std::array<DxvkQueryData, MaxGpuQueries> queryData = { };
       
-      if (m_query != nullptr) {
-        DxvkGpuQueryStatus status = m_query->getData(queryData);
+      for (uint32_t i = 0; i < MaxGpuQueries && m_query[i] != nullptr; i++) {
+        DxvkGpuQueryStatus status = m_query[i]->getData(queryData[i]);
 
         if (status == DxvkGpuQueryStatus::Invalid
          || status == DxvkGpuQueryStatus::Failed)
@@ -250,15 +250,15 @@ namespace dxvk {
       
       switch (m_desc.Query) {
         case D3D11_QUERY_OCCLUSION:
-          *static_cast<UINT64*>(pData) = queryData.occlusion.samplesPassed;
+          *static_cast<UINT64*>(pData) = queryData[0].occlusion.samplesPassed;
           return S_OK;
         
         case D3D11_QUERY_OCCLUSION_PREDICATE:
-          *static_cast<BOOL*>(pData) = queryData.occlusion.samplesPassed != 0;
+          *static_cast<BOOL*>(pData) = queryData[0].occlusion.samplesPassed != 0;
           return S_OK;
         
         case D3D11_QUERY_TIMESTAMP:
-          *static_cast<UINT64*>(pData) = queryData.timestamp.time;
+          *static_cast<UINT64*>(pData) = queryData[0].timestamp.time;
           return S_OK;
         
         case D3D11_QUERY_TIMESTAMP_DISJOINT: {
@@ -269,17 +269,17 @@ namespace dxvk {
         
         case D3D11_QUERY_PIPELINE_STATISTICS: {
           auto data = static_cast<D3D11_QUERY_DATA_PIPELINE_STATISTICS*>(pData);
-          data->IAVertices    = queryData.statistic.iaVertices;
-          data->IAPrimitives  = queryData.statistic.iaPrimitives;
-          data->VSInvocations = queryData.statistic.vsInvocations;
-          data->GSInvocations = queryData.statistic.gsInvocations;
-          data->GSPrimitives  = queryData.statistic.gsPrimitives;
-          data->CInvocations  = queryData.statistic.clipInvocations;
-          data->CPrimitives   = queryData.statistic.clipPrimitives;
-          data->PSInvocations = queryData.statistic.fsInvocations;
-          data->HSInvocations = queryData.statistic.tcsPatches;
-          data->DSInvocations = queryData.statistic.tesInvocations;
-          data->CSInvocations = queryData.statistic.csInvocations;
+          data->IAVertices    = queryData[0].statistic.iaVertices;
+          data->IAPrimitives  = queryData[0].statistic.iaPrimitives;
+          data->VSInvocations = queryData[0].statistic.vsInvocations;
+          data->GSInvocations = queryData[0].statistic.gsInvocations;
+          data->GSPrimitives  = queryData[0].statistic.gsPrimitives;
+          data->CInvocations  = queryData[0].statistic.clipInvocations;
+          data->CPrimitives   = queryData[0].statistic.clipPrimitives;
+          data->PSInvocations = queryData[0].statistic.fsInvocations;
+          data->HSInvocations = queryData[0].statistic.tcsPatches;
+          data->DSInvocations = queryData[0].statistic.tesInvocations;
+          data->CSInvocations = queryData[0].statistic.csInvocations;
         } return S_OK;
 
         case D3D11_QUERY_SO_STATISTICS:
@@ -288,8 +288,8 @@ namespace dxvk {
         case D3D11_QUERY_SO_STATISTICS_STREAM2:
         case D3D11_QUERY_SO_STATISTICS_STREAM3: {
           auto data = static_cast<D3D11_QUERY_DATA_SO_STATISTICS*>(pData);
-          data->NumPrimitivesWritten    = queryData.xfbStream.primitivesWritten;
-          data->PrimitivesStorageNeeded = queryData.xfbStream.primitivesNeeded;
+          data->NumPrimitivesWritten    = queryData[0].xfbStream.primitivesWritten;
+          data->PrimitivesStorageNeeded = queryData[0].xfbStream.primitivesNeeded;
         } return S_OK;
           
         case D3D11_QUERY_SO_OVERFLOW_PREDICATE:
@@ -298,8 +298,8 @@ namespace dxvk {
         case D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM2:
         case D3D11_QUERY_SO_OVERFLOW_PREDICATE_STREAM3: {
           auto data = static_cast<BOOL*>(pData);
-          *data = queryData.xfbStream.primitivesNeeded
-                > queryData.xfbStream.primitivesWritten;
+          *data = queryData[0].xfbStream.primitivesNeeded
+                > queryData[0].xfbStream.primitivesWritten;
         } return S_OK;
 
         default:
@@ -321,7 +321,7 @@ namespace dxvk {
 
     if (unlikely(!m_predicate.defined())) {
       m_predicate = m_device->AllocPredicateSlice();
-      ctx->writePredicate(m_predicate, m_query);
+      ctx->writePredicate(m_predicate, m_query[0]);
     }
 
     return m_predicate;
