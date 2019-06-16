@@ -123,6 +123,12 @@ namespace dxvk {
     if (m_state == D3D9_VK_QUERY_BEGUN)
       return S_FALSE;
 
+    if (unlikely(!pData && dwSize))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(dwGetDataFlags != 0 && dwGetDataFlags != D3DGETDATA_FLUSH))
+      return D3DERR_INVALIDCALL;
+
     // The game forgot to even issue the query!
     // Let's do it for them...
     // This will issue both the begin, and the end.
