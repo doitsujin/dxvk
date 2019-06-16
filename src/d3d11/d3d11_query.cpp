@@ -33,6 +33,10 @@ namespace dxvk {
         break;
       
       case D3D11_QUERY_TIMESTAMP_DISJOINT:
+        for (uint32_t i = 0; i < 2; i++) {
+          m_query[i] = dxvkDevice->createGpuQuery(
+            VK_QUERY_TYPE_TIMESTAMP, 0, 0);
+        }
         break;
       
       case D3D11_QUERY_PIPELINE_STATISTICS:
@@ -178,7 +182,10 @@ namespace dxvk {
     switch (m_desc.Query) {
       case D3D11_QUERY_EVENT:
       case D3D11_QUERY_TIMESTAMP:
+        break;
+
       case D3D11_QUERY_TIMESTAMP_DISJOINT:
+        ctx->writeTimestamp(m_query[1]);
         break;
       
       default:
@@ -196,10 +203,8 @@ namespace dxvk {
         break;
       
       case D3D11_QUERY_TIMESTAMP:
-        ctx->writeTimestamp(m_query[0]);
-        break;
-      
       case D3D11_QUERY_TIMESTAMP_DISJOINT:
+        ctx->writeTimestamp(m_query[0]);
         break;
       
       default:
@@ -264,7 +269,7 @@ namespace dxvk {
         case D3D11_QUERY_TIMESTAMP_DISJOINT: {
           auto data = static_cast<D3D11_QUERY_DATA_TIMESTAMP_DISJOINT*>(pData);
           data->Frequency = GetTimestampQueryFrequency();
-          data->Disjoint = FALSE;
+          data->Disjoint  = queryData[0].timestamp.time < queryData[1].timestamp.time;
         } return S_OK;
         
         case D3D11_QUERY_PIPELINE_STATISTICS: {
