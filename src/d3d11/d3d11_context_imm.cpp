@@ -60,22 +60,17 @@ namespace dxvk {
           void*                             pData,
           UINT                              DataSize,
           UINT                              GetDataFlags) {
-    if (!pAsync)
+    if (!pAsync || (DataSize && !pData))
       return E_INVALIDARG;
     
-    // Make sure that we can safely write to the memory
-    // location pointed to by pData if it is specified.
-    if (DataSize == 0)
-      pData = nullptr;
-    
-    if (pData && pAsync->GetDataSize() != DataSize) {
-      Logger::err(str::format(
-        "D3D11: GetData: Data size mismatch",
-        "\n  Expected: ", pAsync->GetDataSize(),
-        "\n  Got:      ", DataSize));
+    // Check whether the data size is actually correct
+    if (DataSize && DataSize != pAsync->GetDataSize())
       return E_INVALIDARG;
-    }
     
+    // Passing a non-null pData is actually allowed if
+    // DataSize is 0, but we should ignore that pointer
+    pData = DataSize ? pData : nullptr;
+
     // Ensure that all query commands actually get
     // executed before trying to access the query
     SynchronizeCsThread();
