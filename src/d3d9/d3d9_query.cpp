@@ -212,8 +212,8 @@ namespace dxvk {
 
         case D3DQUERYTYPE_VERTEXSTATS: {
           auto data = static_cast<D3DDEVINFO_D3DVERTEXSTATS*>(pData);
-          data->NumRenderedTriangles = queryData[0].statistic.iaPrimitives;
-          data->NumRenderedTriangles = queryData[0].statistic.clipPrimitives;
+          data->NumRenderedTriangles      = queryData[0].statistic.iaPrimitives;
+          data->NumExtraClippingTriangles = queryData[0].statistic.clipPrimitives;
         } return D3D_OK;
 
         default:
