@@ -3970,8 +3970,10 @@ namespace dxvk {
   void D3D9DeviceEx::UpdatePushConstant() {
     auto& rs = m_state.renderStates;
 
-    if constexpr (Item == D3D9RenderStateItem::AlphaRef)
-      UpdatePushConstant<offsetof(D3D9RenderStateInfo, alphaRef), sizeof(float)>(&rs[D3DRS_ALPHAREF]);
+    if constexpr (Item == D3D9RenderStateItem::AlphaRef) {
+      float alpha = float(rs[D3DRS_ALPHAREF]) / 255.0f;
+      UpdatePushConstant<offsetof(D3D9RenderStateInfo, alphaRef), sizeof(float)>(&alpha);
+    }
     else
       Logger::warn("D3D9: Invalid push constant set to update.");
   }
