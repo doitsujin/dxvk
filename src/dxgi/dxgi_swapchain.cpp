@@ -567,7 +567,7 @@ namespace dxvk {
   
   HRESULT DxgiSwapChain::LeaveFullscreenMode() {
     if (!IsWindow(m_window))
-      return DXGI_ERROR_NOT_CURRENTLY_AVAILABLE;
+      return S_OK;
     
     if (FAILED(RestoreDisplayMode(m_monitor)))
       Logger::warn("DXGI: LeaveFullscreenMode: Failed to restore display mode");
