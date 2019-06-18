@@ -182,7 +182,7 @@ namespace dxvk {
       case DxsoOpcode::BreakP: {
         uint32_t sourceIdx = 0;
         for (uint32_t i = 0; i < tokenLength; i++) {
-          if (this->decodeSourceRegister(i, iter))
+          if (this->decodeSourceRegister(sourceIdx, iter))
             i++;
 
           sourceIdx++;
