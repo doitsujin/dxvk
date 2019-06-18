@@ -4,9 +4,12 @@
 #include "dxso_enums.h"
 #include "dxso_code.h"
 
-#include "dxso_util.h"
-
 namespace dxvk {
+
+  constexpr size_t DxsoMaxTempRegs      = 32;
+  constexpr size_t DxsoMaxTextureRegs   = 10;
+  constexpr size_t DxsoMaxInterfaceRegs = 16;
+  constexpr size_t DxsoMaxOperandCount  = 8;
 
   constexpr uint32_t DxsoRegModifierShift = 24;
 
