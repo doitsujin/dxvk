@@ -4868,15 +4868,15 @@ namespace dxvk {
   void D3D9DeviceEx::UpdateFixedFunctionVS() {
     // Spec Constants...
     if (m_state.vertexDecl != nullptr) {
-      const bool hasColor = m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor);
+      const bool hasColor     = m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor);
       const bool hasPositionT = m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPositionT);
       EmitCs([
-        cHasColor = hasColor,
-          cHasPositionT = hasPositionT
+        cHasColor     = hasColor,
+        cHasPositionT = hasPositionT
       ](DxvkContext* ctx) {
-          ctx->setSpecConstant(D3D9SpecConstantId::FFHasColor, cHasColor);
+          ctx->setSpecConstant(D3D9SpecConstantId::FFHasColor,     cHasColor);
           ctx->setSpecConstant(D3D9SpecConstantId::FFHasPositionT, cHasPositionT);
-        });
+      });
     }
 
     // Transforms...
