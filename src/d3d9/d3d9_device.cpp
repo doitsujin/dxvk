@@ -4404,7 +4404,7 @@ namespace dxvk {
       samplerInfo.second);
 
     EmitCs([
-      cDevice    = m_dxvkDevice,
+      &cDevice   = m_dxvkDevice,
       &cSamplers = m_samplers,
       cColorSlot = colorSlot,
       cDepthSlot = depthSlot,
