@@ -753,7 +753,10 @@ namespace dxvk {
 
     D3D9DrawInfo GenerateDrawInfo(
       D3DPRIMITIVETYPE PrimitiveType,
-      UINT             PrimitiveCount);
+      UINT             PrimitiveCount,
+      UINT             InstanceCount);
+    
+    uint32_t GetInstanceCount() const;
 
     void PrepareDraw(bool up = false);
 
@@ -896,7 +899,8 @@ namespace dxvk {
       DWORD,
       Com<D3D9VertexDecl>> m_fvfTable;
 
-    uint32_t                        m_streamUsageMask = 0;
+    D3D9InputAssemblyState          m_iaState;
+
     uint32_t                        m_instancedData   = 0;
 
     std::atomic<int64_t>            m_availableMemory = 0;
@@ -917,7 +921,7 @@ namespace dxvk {
       const DxsoModuleInfo*       pModuleInfo);
 
     template<typename T>
-    const D3D9CommonShader* GetCommonShader(T* pShader) const {
+    static const D3D9CommonShader* GetCommonShader(T* pShader) {
       return pShader != nullptr ? pShader->GetCommonShader() : nullptr;
     }
 
