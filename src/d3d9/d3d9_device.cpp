@@ -4558,20 +4558,8 @@ namespace dxvk {
 
     if (likely(UseProgrammableVS()))
       UploadConstants<DxsoProgramTypes::VertexShader>();
-    else {
-      if (m_state.vertexDecl != nullptr) {
-        const bool hasColor     = m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor);
-        const bool hasPositionT = m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPositionT);
-        EmitCs([
-          cHasColor     = hasColor,
-          cHasPositionT = hasPositionT
-        ](DxvkContext* ctx) {
-          ctx->setSpecConstant(D3D9SpecConstantId::FFHasColor,     cHasColor);
-          ctx->setSpecConstant(D3D9SpecConstantId::FFHasPositionT, cHasPositionT);
-        });
-      }
+    else
       UpdateFixedFunctionVS();
-    }
 
     if (likely(UseProgrammablePS()))
       UploadConstants<DxsoProgramTypes::PixelShader>();
@@ -4878,6 +4866,20 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::UpdateFixedFunctionVS() {
+    // Spec Constants...
+    if (m_state.vertexDecl != nullptr) {
+      const bool hasColor = m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor);
+      const bool hasPositionT = m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPositionT);
+      EmitCs([
+        cHasColor = hasColor,
+          cHasPositionT = hasPositionT
+      ](DxvkContext* ctx) {
+          ctx->setSpecConstant(D3D9SpecConstantId::FFHasColor, cHasColor);
+          ctx->setSpecConstant(D3D9SpecConstantId::FFHasPositionT, cHasPositionT);
+        });
+    }
+
+    // Transforms...
     DxvkBufferSliceHandle slice = m_vsFixedFunction->allocSlice();
 
     EmitCs([
