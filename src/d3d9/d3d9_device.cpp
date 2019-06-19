@@ -4880,19 +4880,23 @@ namespace dxvk {
     }
 
     // Transforms...
-    DxvkBufferSliceHandle slice = m_vsFixedFunction->allocSlice();
+    if (m_flags.test(D3D9DeviceFlag::DirtyTransforms)) {
+      m_flags.clr(D3D9DeviceFlag::DirtyTransforms);
 
-    EmitCs([
-      cBuffer = m_vsFixedFunction,
-      cSlice  = slice
-    ] (DxvkContext* ctx) {
-      ctx->invalidateBuffer(cBuffer, cSlice);
-    });
+      DxvkBufferSliceHandle slice = m_vsFixedFunction->allocSlice();
 
-    D3D9FixedFunctionVS* data = reinterpret_cast<D3D9FixedFunctionVS*>(slice.mapPtr);
-    data->World      = m_state.transforms[GetTransformIndex(D3DTS_WORLD)];
-    data->View       = m_state.transforms[GetTransformIndex(D3DTS_VIEW)];
-    data->Projection = m_state.transforms[GetTransformIndex(D3DTS_PROJECTION)];
+      EmitCs([
+        cBuffer = m_vsFixedFunction,
+        cSlice  = slice
+      ] (DxvkContext* ctx) {
+        ctx->invalidateBuffer(cBuffer, cSlice);
+      });
+
+      D3D9FixedFunctionVS* data = reinterpret_cast<D3D9FixedFunctionVS*>(slice.mapPtr);
+      data->World      = m_state.transforms[GetTransformIndex(D3DTS_WORLD)];
+      data->View       = m_state.transforms[GetTransformIndex(D3DTS_VIEW)];
+      data->Projection = m_state.transforms[GetTransformIndex(D3DTS_PROJECTION)];
+    }
   }
 
 
