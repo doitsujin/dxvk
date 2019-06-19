@@ -2293,11 +2293,19 @@ namespace dxvk {
         Stride);
 
     auto& vbo = m_state.vertexBuffers[StreamNumber];
-    changePrivate(vbo.vertexBuffer, buffer);
+    bool needsUpdate = vbo.vertexBuffer != buffer;
+
+    if (needsUpdate)
+      changePrivate(vbo.vertexBuffer, buffer);
+
+    needsUpdate |= vbo.offset != OffsetInBytes
+                || vbo.stride != Stride;
+
     vbo.offset = OffsetInBytes;
     vbo.stride = Stride;
 
-    BindVertexBuffer(StreamNumber, buffer, OffsetInBytes, Stride);
+    if (needsUpdate)
+      BindVertexBuffer(StreamNumber, buffer, OffsetInBytes, Stride);
 
     return D3D_OK;
   }
