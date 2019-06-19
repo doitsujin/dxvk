@@ -3871,10 +3871,10 @@ namespace dxvk {
     info.size = caps::MaxClipPlanes * sizeof(D3D9ClipPlane);
     m_vsClipPlanes = m_dxvkDevice->createBuffer(info, memoryFlags);
 
-    info.size = caps::MaxClipPlanes * sizeof(D3D9FixedFunctionVS);
+    info.size = sizeof(D3D9FixedFunctionVS);
     m_vsFixedFunction = m_dxvkDevice->createBuffer(info, memoryFlags);
 
-    info.size = caps::MaxClipPlanes * sizeof(D3D9FixedFunctionPS);
+    info.size = sizeof(D3D9FixedFunctionPS);
     m_psFixedFunction = m_dxvkDevice->createBuffer(info, memoryFlags);
 
     auto BindConstantBuffer = [this](
