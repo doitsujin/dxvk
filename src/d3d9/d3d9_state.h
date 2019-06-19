@@ -38,6 +38,16 @@ namespace dxvk {
     AlphaRef = 0,
     Count    = 1
   };
+
+  struct D3D9FixedFunctionVS {
+    Matrix4 World;
+    Matrix4 View;
+    Matrix4 Projection;
+  };
+
+  struct D3D9FixedFunctionPS {
+
+  };
   
   struct D3D9VBO {
     D3D9VertexBuffer* vertexBuffer = nullptr;

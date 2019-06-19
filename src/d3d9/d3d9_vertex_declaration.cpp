@@ -11,6 +11,7 @@ namespace dxvk {
           DWORD              FVF)
     : D3D9VertexDeclBase(pDevice) {
     this->SetFVF(FVF);
+    this->Classify();
   }
 
 
@@ -22,6 +23,7 @@ namespace dxvk {
     , m_elements        ( DeclCount )
     , m_fvf             ( 0 ) {
     std::copy(pVertexElements, pVertexElements + DeclCount, m_elements.begin());
+    this->Classify();
   }
 
 
@@ -201,6 +203,15 @@ namespace dxvk {
 
     m_elements.resize(elemCount);
     std::copy(elements.begin(), elements.begin() + elemCount, m_elements.data());
+  }
+
+  void D3D9VertexDecl::Classify() {
+    for (const auto& element : m_elements) {
+      if (element.Usage == D3DDECLUSAGE_COLOR)
+        m_flags.set(D3D9VertexDeclFlag::HasColor);
+      else if (element.Usage == D3DDECLUSAGE_POSITIONT)
+        m_flags.set(D3D9VertexDeclFlag::HasPositionT);
+    }
   }
 
 }

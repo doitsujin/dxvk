@@ -6,6 +6,12 @@
 
 namespace dxvk {
 
+  enum D3D9VertexDeclFlag {
+    HasColor,
+    HasPositionT
+  };
+  using D3D9VertexDeclFlags = Flags<D3D9VertexDeclFlag>;
+
   using D3D9VertexDeclBase = D3D9DeviceChild<IDirect3DVertexDeclaration9>;
   class D3D9VertexDecl final : public D3D9VertexDeclBase {
 
@@ -38,7 +44,15 @@ namespace dxvk {
       return m_elements;
     }
 
+    bool TestFlag(D3D9VertexDeclFlag flag) const {
+      return m_flags.test(flag);
+    }
+
   private:
+
+    void Classify();
+
+    D3D9VertexDeclFlags            m_flags;
 
     std::vector<D3DVERTEXELEMENT9> m_elements;
 

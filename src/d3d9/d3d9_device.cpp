@@ -20,6 +20,9 @@
 
 #include "d3d9_initializer.h"
 
+#include <d3d9_fixed_function_frag.h>
+#include <d3d9_fixed_function_vert.h>
+
 #include <algorithm>
 #include <cfloat>
 #ifdef MSC_VER
@@ -74,6 +77,11 @@ namespace dxvk {
     });
 
     CreateConstantBuffers();
+
+    CreateFixedFunctionShaders();
+
+    BindShader(DxsoProgramTypes::VertexShader, nullptr);
+    BindShader(DxsoProgramTypes::PixelShader,  nullptr);
 
     if (!(BehaviorFlags & D3DCREATE_FPU_PRESERVE))
       SetupFPU();
@@ -3863,6 +3871,12 @@ namespace dxvk {
     info.size = caps::MaxClipPlanes * sizeof(D3D9ClipPlane);
     m_vsClipPlanes = m_dxvkDevice->createBuffer(info, memoryFlags);
 
+    info.size = caps::MaxClipPlanes * sizeof(D3D9FixedFunctionVS);
+    m_vsFixedFunction = m_dxvkDevice->createBuffer(info, memoryFlags);
+
+    info.size = caps::MaxClipPlanes * sizeof(D3D9FixedFunctionPS);
+    m_psFixedFunction = m_dxvkDevice->createBuffer(info, memoryFlags);
+
     auto BindConstantBuffer = [this](
       DxsoProgramType     shaderStage,
       Rc<DxvkBuffer>      buffer,
@@ -3881,8 +3895,11 @@ namespace dxvk {
     };
 
     BindConstantBuffer(DxsoProgramTypes::VertexShader, m_consts[DxsoProgramTypes::VertexShader].buffer, DxsoConstantBuffers::VSConstantBuffer);
-    BindConstantBuffer(DxsoProgramTypes::PixelShader,  m_consts[DxsoProgramTypes::PixelShader].buffer,  DxsoConstantBuffers::PSConstantBuffer);
     BindConstantBuffer(DxsoProgramTypes::VertexShader, m_vsClipPlanes,                                  DxsoConstantBuffers::VSClipPlanes);
+    BindConstantBuffer(DxsoProgramTypes::VertexShader, m_vsFixedFunction,                               DxsoConstantBuffers::VSFixedFunction);
+
+    BindConstantBuffer(DxsoProgramTypes::PixelShader,  m_consts[DxsoProgramTypes::PixelShader].buffer,  DxsoConstantBuffers::PSConstantBuffer);
+    BindConstantBuffer(DxsoProgramTypes::PixelShader,  m_psFixedFunction,                               DxsoConstantBuffers::PSFixedFunction);
     
     m_flags.set(
       D3D9DeviceFlag::DirtyClipPlanes);
@@ -4539,7 +4556,27 @@ namespace dxvk {
       BindIndices();
     }
 
-    UpdateConstants();
+    if (likely(UseProgrammableVS()))
+      UploadConstants<DxsoProgramTypes::VertexShader>();
+    else {
+      if (m_state.vertexDecl != nullptr) {
+        const bool hasColor     = m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor);
+        const bool hasPositionT = m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPositionT);
+        EmitCs([
+          cHasColor     = hasColor,
+          cHasPositionT = hasPositionT
+        ](DxvkContext* ctx) {
+          ctx->setSpecConstant(D3D9SpecConstantId::FFHasColor,     cHasColor);
+          ctx->setSpecConstant(D3D9SpecConstantId::FFHasPositionT, cHasPositionT);
+        });
+      }
+      UpdateFixedFunctionVS();
+    }
+
+    if (likely(UseProgrammablePS()))
+      UploadConstants<DxsoProgramTypes::PixelShader>();
+    else
+      UpdateFixedFunctionPS();
   }
 
 
@@ -4550,7 +4587,7 @@ namespace dxvk {
       cStage  = GetShaderStage(ShaderStage),
       cShader = pShaderModule != nullptr
         ? pShaderModule->GetShader()
-        : nullptr
+        : m_ffShaders[ShaderStage]
     ] (DxvkContext* ctx) {
       ctx->bindShader(cStage, cShader);
     });
@@ -4562,7 +4599,7 @@ namespace dxvk {
 
     m_streamUsageMask = 0;
 
-    if (m_state.vertexShader == nullptr || m_state.vertexDecl == nullptr) {
+    if (m_state.vertexDecl == nullptr) {
       EmitCs([](DxvkContext* ctx) {
         ctx->setInputLayout(0, nullptr, 0, nullptr);
       });
@@ -4574,8 +4611,14 @@ namespace dxvk {
       uint32_t attrMask = 0;
       uint32_t bindMask = 0;
 
-      const auto* commonShader = m_state.vertexShader->GetCommonShader();
-      const auto& isgn         = commonShader->GetIsgn();
+      DxsoIsgn ffIsgn;
+      ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Position, 0 };
+      for (uint32_t i = 0; i < 8; i++)
+        ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Texcoord, i };
+      ffIsgn.elems[ffIsgn.elemCount++].semantic = DxsoSemantic{ DxsoUsage::Color, 0 };
+
+      const auto* commonShader = GetCommonShader(m_state.vertexShader);
+      const auto& isgn         = *(UseProgrammableVS() ? &commonShader->GetIsgn() : &ffIsgn);
       const auto& elements     = m_state.vertexDecl->GetElements();
 
       for (uint32_t i = 0; i < isgn.elemCount; i++) {
@@ -4589,6 +4632,8 @@ namespace dxvk {
 
         for (const auto& element : elements) {
           DxsoSemantic elementSemantic = { static_cast<DxsoUsage>(element.Usage), element.UsageIndex };
+          if (elementSemantic.usage == DxsoUsage::PositionT)
+            elementSemantic.usage = DxsoUsage::Position;
 
           if (elementSemantic == decl.semantic) {
             attrib.binding = uint32_t(element.Stream);
@@ -4800,6 +4845,69 @@ namespace dxvk {
         Count);
 
       return D3D_OK;
+  }
+
+
+  void D3D9DeviceEx::CreateFixedFunctionShaders() {
+    const SpirvCodeBuffer vsCode(d3d9_fixed_function_vert);
+    const SpirvCodeBuffer fsCode(d3d9_fixed_function_frag);
+
+    const std::array<DxvkResourceSlot, 1> vsResourceSlots = { {
+      { computeResourceSlotId(DxsoProgramType::VertexShader, DxsoBindingType::ConstantBuffer, VSFixedFunction), VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_IMAGE_VIEW_TYPE_MAX_ENUM, VK_ACCESS_UNIFORM_READ_BIT }
+    }};
+
+    const std::array<DxvkResourceSlot, 1> fsResourceSlots = { {
+      { computeResourceSlotId(DxsoProgramType::PixelShader, DxsoBindingType::ColorImage, 0), VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_IMAGE_VIEW_TYPE_2D }
+    }};
+
+    m_ffShaders[DxsoProgramType::VertexShader] = m_dxvkDevice->createShader(
+      VK_SHADER_STAGE_VERTEX_BIT,
+      vsResourceSlots.size(), vsResourceSlots.data(),
+      { 0b1111111111u, 0b111111111u }, vsCode);
+
+    m_ffShaders[DxsoProgramType::PixelShader] = m_dxvkDevice->createShader(
+      VK_SHADER_STAGE_FRAGMENT_BIT,
+      fsResourceSlots.size(), fsResourceSlots.data(),
+      { 0b111111111u, 0b1u }, fsCode);
+
+    for (uint32_t i = 0; i < 8; i++)
+      RegisterLinkerSlot(DxsoSemantic{ DxsoUsage::Texcoord, i });
+
+    RegisterLinkerSlot(DxsoSemantic{ DxsoUsage::Color, 0 });
+  }
+
+
+  void D3D9DeviceEx::UpdateFixedFunctionVS() {
+    DxvkBufferSliceHandle slice = m_vsFixedFunction->allocSlice();
+
+    EmitCs([
+      cBuffer = m_vsFixedFunction,
+      cSlice  = slice
+    ] (DxvkContext* ctx) {
+      ctx->invalidateBuffer(cBuffer, cSlice);
+    });
+
+    D3D9FixedFunctionVS* data = reinterpret_cast<D3D9FixedFunctionVS*>(slice.mapPtr);
+    data->World      = m_state.transforms[GetTransformIndex(D3DTS_WORLD)];
+    data->View       = m_state.transforms[GetTransformIndex(D3DTS_VIEW)];
+    data->Projection = m_state.transforms[GetTransformIndex(D3DTS_PROJECTION)];
+  }
+
+
+  void D3D9DeviceEx::UpdateFixedFunctionPS() {
+
+  }
+
+
+  bool D3D9DeviceEx::UseProgrammableVS() {
+    return m_state.vertexShader != nullptr
+      && m_state.vertexDecl != nullptr
+      && !m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPositionT);
+  }
+
+
+  bool D3D9DeviceEx::UseProgrammablePS() {
+    return m_state.pixelShader != nullptr;
   }
 
 

@@ -7,6 +7,8 @@ namespace dxvk {
   enum D3D9SpecConstantId : uint32_t {
     AlphaTestEnable = 0,
     AlphaCompareOp  = 1,
+    FFHasPositionT  = 2,
+    FFHasColor      = 3,
   };
 
 }

@@ -733,11 +733,6 @@ namespace dxvk {
     
     template <DxsoProgramType ShaderStage>
     void UploadConstants();
-
-    inline void UpdateConstants() {
-      UploadConstants<DxsoProgramTypes::VertexShader>();
-      UploadConstants<DxsoProgramTypes::PixelShader>();
-    }
     
     void UpdateClipPlanes();
     
@@ -870,6 +865,11 @@ namespace dxvk {
 
     Rc<DxvkBuffer>                  m_vsClipPlanes;
 
+    Rc<DxvkBuffer>                  m_vsFixedFunction;
+    Rc<DxvkBuffer>                  m_psFixedFunction;
+
+    Rc<DxvkShader>                  m_ffShaders[DxsoProgramTypes::Count];
+
     Rc<DxvkBuffer>                  m_upBuffer;
 
     const D3D9VkFormatTable         m_d3d9Formats;
@@ -997,6 +997,16 @@ namespace dxvk {
 
       return D3D_OK;
     }
+
+    void CreateFixedFunctionShaders();
+
+    void UpdateFixedFunctionVS();
+
+    void UpdateFixedFunctionPS();
+
+    bool UseProgrammableVS();
+
+    bool UseProgrammablePS();
 
   };
 
