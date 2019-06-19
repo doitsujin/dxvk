@@ -29,7 +29,7 @@ namespace dxvk::env {
   
   
   void setThreadName(const std::string& name) {
-    using SetThreadDescriptionProc = void (WINAPI *) (HANDLE, PCWSTR);
+    using SetThreadDescriptionProc = HRESULT (WINAPI *) (HANDLE, PCWSTR);
 
     HMODULE module = ::GetModuleHandleW(L"kernel32.dll");
 
