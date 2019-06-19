@@ -56,9 +56,8 @@ namespace dxvk {
   using D3D9DeviceFlags = Flags<D3D9DeviceFlag>;
 
   struct D3D9DrawInfo {
-    DxvkInputAssemblyState iaState;
-    uint32_t               vertexCount;
-    uint32_t               instanceCount;
+    uint32_t vertexCount;
+    uint32_t instanceCount;
   };
 
   struct D3D9SamplerPair {
@@ -1008,6 +1007,10 @@ namespace dxvk {
     void UpdateFixedFunctionVS();
 
     void UpdateFixedFunctionPS();
+
+    void ApplyPrimitiveType(
+      DxvkContext*      pContext,
+      D3DPRIMITIVETYPE  PrimType);
 
     bool UseProgrammableVS();
 

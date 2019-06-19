@@ -199,6 +199,7 @@ namespace dxvk {
 
 
   struct D3D9InputAssemblyState {
+    D3DPRIMITIVETYPE primitiveType = D3DPRIMITIVETYPE(0);
     uint32_t streamsInstanced = 0;
     uint32_t streamsUsed      = 0;
   };

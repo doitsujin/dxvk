@@ -1865,7 +1865,8 @@ namespace dxvk {
     ](DxvkContext* ctx) {
       auto drawInfo = GenerateDrawInfo(cPrimType, cPrimCount, cInstanceCount);
 
-      ctx->setInputAssemblyState(drawInfo.iaState);
+      ApplyPrimitiveType(ctx, cPrimType);
+
       ctx->draw(
         drawInfo.vertexCount, drawInfo.instanceCount,
         cStartVertex, 0);
@@ -1895,7 +1896,8 @@ namespace dxvk {
     ](DxvkContext* ctx) {
       auto drawInfo = GenerateDrawInfo(cPrimType, cPrimCount, cInstanceCount);
 
-      ctx->setInputAssemblyState(drawInfo.iaState);
+      ApplyPrimitiveType(ctx, cPrimType);
+
       ctx->drawIndexed(
         drawInfo.vertexCount, drawInfo.instanceCount,
         cStartIndex,
@@ -1935,9 +1937,10 @@ namespace dxvk {
     ](DxvkContext* ctx) {
       auto drawInfo = GenerateDrawInfo(cPrimType, cPrimCount, cInstanceCount);
 
+      ApplyPrimitiveType(ctx, cPrimType);
+
       ctx->invalidateBuffer(cBuffer, cBufferSlice);
       ctx->bindVertexBuffer(0, DxvkBufferSlice(cBuffer), cStride);
-      ctx->setInputAssemblyState(drawInfo.iaState);
       ctx->draw(
         drawInfo.vertexCount, drawInfo.instanceCount,
         0, 0);
@@ -1992,10 +1995,11 @@ namespace dxvk {
     ](DxvkContext* ctx) {
       auto drawInfo = GenerateDrawInfo(cPrimType, cPrimCount, cInstanceCount);
 
+      ApplyPrimitiveType(ctx, cPrimType);
+
       ctx->invalidateBuffer(cBuffer, cBufferSlice);
       ctx->bindVertexBuffer(0, DxvkBufferSlice(cBuffer, 0, cVertexSize), cStride);
       ctx->bindIndexBuffer(DxvkBufferSlice(cBuffer, cVertexSize, cBuffer->info().size - cVertexSize), cIndexType);
-      ctx->setInputAssemblyState(drawInfo.iaState);
       ctx->drawIndexed(
         drawInfo.vertexCount, drawInfo.instanceCount,
         0,
@@ -4516,7 +4520,6 @@ namespace dxvk {
           UINT             PrimitiveCount,
           UINT             InstanceCount) {
     D3D9DrawInfo drawInfo;
-    drawInfo.iaState     = DecodeInputAssemblyState(PrimitiveType);
     drawInfo.vertexCount = GetVertexCount(PrimitiveType, PrimitiveCount);
     drawInfo.instanceCount = m_iaState.streamsInstanced & m_iaState.streamsUsed
       ? InstanceCount
@@ -4958,6 +4961,18 @@ namespace dxvk {
 
   bool D3D9DeviceEx::UseProgrammablePS() {
     return m_state.pixelShader != nullptr;
+  }
+
+
+  void D3D9DeviceEx::ApplyPrimitiveType(
+    DxvkContext*      pContext,
+    D3DPRIMITIVETYPE  PrimType) {
+    if (m_iaState.primitiveType != PrimType) {
+      m_iaState.primitiveType = PrimType;
+
+      auto iaState = DecodeInputAssemblyState(PrimType);
+      pContext->setInputAssemblyState(iaState);
+    }
   }
 
 
