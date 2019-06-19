@@ -4878,7 +4878,7 @@ namespace dxvk {
         cHasPositionT = hasPositionT
       ](DxvkContext* ctx) {
         ctx->setSpecConstant(D3D9SpecConstantId::FFHasColor,     cHasColor);
-          ctx->setSpecConstant(D3D9SpecConstantId::FFHasPositionT, cHasPositionT);
+        ctx->setSpecConstant(D3D9SpecConstantId::FFHasPositionT, cHasPositionT);
       });
     }
 
