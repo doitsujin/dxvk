@@ -2049,6 +2049,7 @@ namespace dxvk {
     changePrivate(m_state.vertexDecl, decl);
 
     m_flags.set(D3D9DeviceFlag::DirtyInputLayout);
+    m_flags.set(D3D9DeviceFlag::DirtyFFDeclConstants);
 
     return D3D_OK;
   }
@@ -4867,7 +4868,9 @@ namespace dxvk {
 
   void D3D9DeviceEx::UpdateFixedFunctionVS() {
     // Spec Constants...
-    if (m_state.vertexDecl != nullptr) {
+    if (m_flags.test(D3D9DeviceFlag::DirtyFFDeclConstants) && m_state.vertexDecl != nullptr) {
+      m_flags.clr(D3D9DeviceFlag::DirtyFFDeclConstants);
+
       const bool hasColor     = m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor);
       const bool hasPositionT = m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPositionT);
       EmitCs([

@@ -46,6 +46,7 @@ namespace dxvk {
     DirtyViewportScissor,
     DirtyMultiSampleState,
     DirtyTransforms,
+    DirtyFFDeclConstants,
     UpDirtiedVertices,
     UpDirtiedIndices,
     ValidSampleMask,
