@@ -201,6 +201,14 @@ namespace dxvk {
         "\n  Alignment: ", req->alignment,
         "\n  Mem flags: ", "0x", std::hex, flags,
         "\n  Mem types: ", "0x", std::hex, req->memoryTypeBits));
+
+      for (uint32_t i = 0; i < m_memProps.memoryHeapCount; i++) {
+        Logger::err(str::format("Heap ", i, ": ",
+          (m_memHeaps[i].stats.memoryAllocated >> 20), " MB allocated, ",
+          (m_memHeaps[i].stats.memoryUsed      >> 20), " MB used, ",
+          (m_memHeaps[i].properties.size       >> 20), " MB available"));
+      }
+
       throw DxvkError("DxvkMemoryAllocator: Memory allocation failed");
     }
     
