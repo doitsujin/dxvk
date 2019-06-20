@@ -679,8 +679,8 @@ namespace dxvk {
     
     void ApplyViewportState();
 
+    template<DxbcProgramType ShaderStage>
     void BindShader(
-            DxbcProgramType                   ShaderStage,
       const D3D11CommonShader*                pShaderModule);
     
     void BindFramebuffer(
@@ -734,15 +734,15 @@ namespace dxvk {
             ID3D11Buffer*                     pBufferForArgs,
             ID3D11Buffer*                     pBufferForCount);
     
+    template<DxbcProgramType ShaderStage>
     void SetConstantBuffers(
-            DxbcProgramType                   ShaderStage,
             D3D11ConstantBufferBindings&      Bindings,
             UINT                              StartSlot,
             UINT                              NumBuffers,
             ID3D11Buffer* const*              ppConstantBuffers);
     
+    template<DxbcProgramType ShaderStage>
     void SetConstantBuffers1(
-            DxbcProgramType                   ShaderStage,
             D3D11ConstantBufferBindings&      Bindings,
             UINT                              StartSlot,
             UINT                              NumBuffers,
@@ -750,22 +750,22 @@ namespace dxvk {
       const UINT*                             pFirstConstant,
       const UINT*                             pNumConstants);
     
+    template<DxbcProgramType ShaderStage>
     void SetSamplers(
-            DxbcProgramType                   ShaderStage,
             D3D11SamplerBindings&             Bindings,
             UINT                              StartSlot,
             UINT                              NumSamplers,
             ID3D11SamplerState* const*        ppSamplers);
     
+    template<DxbcProgramType ShaderStage>
     void SetShaderResources(
-            DxbcProgramType                   ShaderStage,
             D3D11ShaderResourceBindings&      Bindings,
             UINT                              StartSlot,
             UINT                              NumResources,
             ID3D11ShaderResourceView* const*  ppResources);
     
+    template<DxbcProgramType ShaderStage>
     void SetUnorderedAccessViews(
-            DxbcProgramType                   ShaderStage,
             D3D11UnorderedAccessBindings&     Bindings,
             UINT                              StartSlot,
             UINT                              NumUAVs,
@@ -787,20 +787,20 @@ namespace dxvk {
     
     void RestoreState();
     
+    template<DxbcProgramType Stage>
     void RestoreConstantBuffers(
-            DxbcProgramType                   Stage,
             D3D11ConstantBufferBindings&      Bindings);
     
+    template<DxbcProgramType Stage>
     void RestoreSamplers(
-            DxbcProgramType                   Stage,
             D3D11SamplerBindings&             Bindings);
     
+    template<DxbcProgramType Stage>
     void RestoreShaderResources(
-            DxbcProgramType                   Stage,
             D3D11ShaderResourceBindings&      Bindings);
     
+    template<DxbcProgramType Stage>
     void RestoreUnorderedAccessViews(
-            DxbcProgramType                   Stage,
             D3D11UnorderedAccessBindings&     Bindings);
     
     void UpdateMappedBuffer(
