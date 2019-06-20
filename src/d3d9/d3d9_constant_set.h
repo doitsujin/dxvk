@@ -2,6 +2,8 @@
 
 #include "d3d9_caps.h"
 
+#include "../dxso/dxso_isgn.h"
+
 #include "../util/util_math.h"
 #include "../util/util_vector.h"
 
@@ -25,10 +27,10 @@ namespace dxvk {
   };
 
   struct D3D9ConstantSets {
-    constexpr static uint32_t SetSize    = sizeof(D3D9ShaderConstants);
-    Rc<DxvkBuffer> buffer;
-    bool           dirty = true;
-    bool           shaderConstantCopies = false;
+    constexpr static uint32_t SetSize = sizeof(D3D9ShaderConstants);
+    Rc<DxvkBuffer>            buffer;
+    const DxsoShaderMetaInfo* meta  = nullptr;
+    bool                      dirty = true;
   };
 
 }

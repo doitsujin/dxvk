@@ -2166,11 +2166,14 @@ namespace dxvk {
     bool oldCopies = oldShader && oldShader->GetMeta().needsConstantCopies;
     bool newCopies = newShader && newShader->GetMeta().needsConstantCopies;
 
-    bool dirtyConstants = oldCopies || newCopies;
+    m_consts[DxsoProgramTypes::VertexShader].dirty |= oldCopies || newCopies || !oldShader;
+    m_consts[DxsoProgramTypes::VertexShader].meta  = newShader ? &newShader->GetMeta() : nullptr;
 
-    if (dirtyConstants) {
-      m_consts[DxsoProgramTypes::VertexShader].dirty = true;
-      m_consts[DxsoProgramTypes::VertexShader].shaderConstantCopies = newCopies;
+    if (newShader && oldShader) {
+      m_consts[DxsoProgramTypes::VertexShader].dirty
+        |= newShader->GetMeta().maxConstIndexF != oldShader->GetMeta().maxConstIndexF
+        || newShader->GetMeta().maxConstIndexI != oldShader->GetMeta().maxConstIndexI
+        || newShader->GetMeta().maxConstIndexB != oldShader->GetMeta().maxConstIndexB;
     }
 
     changePrivate(m_state.vertexShader, shader);
@@ -2485,11 +2488,14 @@ namespace dxvk {
     bool oldCopies = oldShader && oldShader->GetMeta().needsConstantCopies;
     bool newCopies = newShader && newShader->GetMeta().needsConstantCopies;
 
-    bool dirtyConstants = oldCopies || newCopies;
+    m_consts[DxsoProgramTypes::PixelShader].dirty |= oldCopies || newCopies || !oldShader;
+    m_consts[DxsoProgramTypes::PixelShader].meta  = newShader ? &newShader->GetMeta() : nullptr;
 
-    if (dirtyConstants) {
-      m_consts[DxsoProgramTypes::PixelShader].dirty = true;
-      m_consts[DxsoProgramTypes::PixelShader].shaderConstantCopies = newCopies;
+    if (newShader && oldShader) {
+      m_consts[DxsoProgramTypes::PixelShader].dirty
+        |= newShader->GetMeta().maxConstIndexF != oldShader->GetMeta().maxConstIndexF
+        || newShader->GetMeta().maxConstIndexI != oldShader->GetMeta().maxConstIndexI
+        || newShader->GetMeta().maxConstIndexB != oldShader->GetMeta().maxConstIndexB;
     }
 
     changePrivate(m_state.pixelShader, shader);
@@ -3941,9 +3947,10 @@ namespace dxvk {
 
     constSet.dirty = false;
 
-    const void* constantData = &m_state.consts[ShaderStage].hardware;
-
     DxvkBufferSliceHandle slice = constSet.buffer->allocSlice();
+
+    auto dstData = reinterpret_cast<D3D9ShaderConstants*>(slice.mapPtr);
+    auto srcData = &m_state.consts[ShaderStage];
 
     EmitCs([
       cBuffer = constSet.buffer,
@@ -3952,9 +3959,18 @@ namespace dxvk {
       ctx->invalidateBuffer(cBuffer, cSlice);
     });
 
-    std::memcpy(slice.mapPtr, constantData, D3D9ConstantSets::SetSize);
+    if (constSet.meta->usesRelativeIndexing) {
+      std::memcpy(dstData, srcData, D3D9ConstantSets::SetSize);
+    } else {
+      if (constSet.meta->maxConstIndexF)
+        std::memcpy(&dstData->hardware.fConsts[0], &srcData->hardware.fConsts[0], sizeof(Vector4) * constSet.meta->maxConstIndexF);
+      if (constSet.meta->maxConstIndexI)
+        std::memcpy(&dstData->hardware.iConsts[0], &srcData->hardware.iConsts[0], sizeof(Vector4) * constSet.meta->maxConstIndexI);
+      if (constSet.meta->maxConstIndexB)
+        dstData->hardware.boolBitfield = srcData->hardware.boolBitfield;
+    }
 
-    if (constSet.shaderConstantCopies) {
+    if (constSet.meta->needsConstantCopies) {
       Vector4* data =
         reinterpret_cast<Vector4*>(slice.mapPtr);
 
