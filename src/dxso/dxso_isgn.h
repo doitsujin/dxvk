@@ -31,6 +31,7 @@ namespace dxvk {
 
   struct DxsoShaderMetaInfo {
     bool needsConstantCopies = false;
+    bool usesRelativeIndexing = false;
   };
 
 }
