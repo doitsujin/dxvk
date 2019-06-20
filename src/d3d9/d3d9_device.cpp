@@ -4918,7 +4918,7 @@ namespace dxvk {
     m_ffShaders[DxsoProgramType::PixelShader] = m_dxvkDevice->createShader(
       VK_SHADER_STAGE_FRAGMENT_BIT,
       fsResourceSlots.size(), fsResourceSlots.data(),
-      { 0b111111111u, 0b1u }, fsCode);
+      { 0b111111111u, 0b1u, 0, sizeof(D3D9RenderStateInfo) }, fsCode);
 
     for (uint32_t i = 0; i < 8; i++)
       RegisterLinkerSlot(DxsoSemantic{ DxsoUsage::Texcoord, i });
