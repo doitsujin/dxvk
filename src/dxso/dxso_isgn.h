@@ -32,6 +32,9 @@ namespace dxvk {
   struct DxsoShaderMetaInfo {
     bool needsConstantCopies = false;
     bool usesRelativeIndexing = false;
+    uint32_t maxConstIndexF = 0;
+    uint32_t maxConstIndexI = 0;
+    uint32_t maxConstIndexB = 0;
   };
 
 }

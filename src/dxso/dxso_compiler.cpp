@@ -710,12 +710,26 @@ namespace dxvk {
 
     // Return def if we have one.
     if (relative == nullptr) {
-      if (type == DxsoRegisterType::Const && m_cFloat.at(reg.id.num).id != 0)
-        return m_cFloat.at(reg.id.num);
-      else if (type == DxsoRegisterType::ConstInt && m_cInt.at(reg.id.num).id != 0)
-        return m_cInt.at(reg.id.num);
-      else if (type == DxsoRegisterType::ConstBool && m_cBool.at(reg.id.num).id != 0){ // Const Bool
-        return m_cBool.at(reg.id.num);
+      switch (type) {
+        case DxsoRegisterType::Const:
+          m_meta.maxConstIndexF = std::max(m_meta.maxConstIndexF, reg.id.num + 1);
+          if (m_cFloat.at(reg.id.num).id != 0)
+            return m_cFloat.at(reg.id.num);
+          break;
+        
+        case DxsoRegisterType::ConstInt:
+          m_meta.maxConstIndexI = std::max(m_meta.maxConstIndexI, reg.id.num + 1);
+          if (m_cInt.at(reg.id.num).id != 0)
+            return m_cInt.at(reg.id.num);
+          break;
+        
+        case DxsoRegisterType::ConstBool:
+          m_meta.maxConstIndexB = std::max(m_meta.maxConstIndexB, reg.id.num + 1);
+          if (m_cBool.at(reg.id.num).id != 0) // Const Bool
+            return m_cBool.at(reg.id.num);
+          break;
+        
+        default:;
       }
     }
 
