@@ -239,6 +239,7 @@ namespace dxvk {
      * \brief Allocates device memory
      * 
      * \param [in] req Memory requirements
+     * \param [in] dedAllocReq Dedicated allocation requirements
      * \param [in] dedAllocInfo Dedicated allocation info
      * \param [in] flags Memory type flags
      * \param [in] priority Device-local memory priority
@@ -246,7 +247,8 @@ namespace dxvk {
      */
     DxvkMemory alloc(
       const VkMemoryRequirements*             req,
-      const VkMemoryDedicatedAllocateInfoKHR* dedAllocInfo,
+      const VkMemoryDedicatedRequirements&    dedAllocReq,
+      const VkMemoryDedicatedAllocateInfoKHR& dedAllocInfo,
             VkMemoryPropertyFlags             flags,
             float                             priority);
     

@@ -181,18 +181,28 @@ namespace dxvk {
   
   DxvkMemory DxvkMemoryAllocator::alloc(
     const VkMemoryRequirements*             req,
-    const VkMemoryDedicatedAllocateInfoKHR* dedAllocInfo,
+    const VkMemoryDedicatedRequirements&    dedAllocReq,
+    const VkMemoryDedicatedAllocateInfoKHR& dedAllocInfo,
           VkMemoryPropertyFlags             flags,
           float                             priority) {
     std::lock_guard<std::mutex> lock(m_mutex);
 
+    // Try to allocate from a memory type which supports the given flags exactly
+    auto dedAllocPtr = dedAllocReq.prefersDedicatedAllocation ? &dedAllocInfo : nullptr;
+    DxvkMemory result = this->tryAlloc(req, dedAllocPtr, flags, priority);
+
+    // If the first attempt failed, try ignoring the dedicated allocation
+    if (!result && dedAllocPtr && !dedAllocReq.requiresDedicatedAllocation) {
+      result = this->tryAlloc(req, nullptr, flags, priority);
+      dedAllocPtr = nullptr;
+    }
+
+    // If that still didn't work, probe slower memory types as well
     VkMemoryPropertyFlags optFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
                                    | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
     
-    DxvkMemory result = this->tryAlloc(req, dedAllocInfo, flags, priority);
-
     if (!result && (flags & optFlags))
-      result = this->tryAlloc(req, dedAllocInfo, flags & ~optFlags, priority);
+      result = this->tryAlloc(req, dedAllocPtr, flags & ~optFlags, priority);
     
     if (!result) {
       Logger::err(str::format(

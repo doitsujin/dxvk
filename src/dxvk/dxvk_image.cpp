@@ -98,10 +98,8 @@ namespace dxvk {
     float priority = isGpuWritable ? 1.0f : 0.5f;
 
     // Ask driver whether we should be using a dedicated allocation
-    bool useDedicated = dedicatedRequirements.prefersDedicatedAllocation;
-
     m_memory = memAlloc.alloc(&memReq.memoryRequirements,
-      useDedicated ? &dedMemoryAllocInfo : nullptr, memFlags, priority);
+      dedicatedRequirements, dedMemoryAllocInfo, memFlags, priority);
     
     // Try to bind the allocated memory slice to the image
     if (m_vkd->vkBindImageMemory(m_vkd->device(),
