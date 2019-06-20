@@ -49,8 +49,22 @@ namespace dxvk {
       analyzer.processInstruction(
         decoder.getInstructionContext());
 
-    analyzer.finalize(
-      size_t(iter.ptrAt(0) - start.ptrAt(0)));
+    size_t tokenCount = size_t(iter.ptrAt(0) - start.ptrAt(0));
+
+    // We need to account for the header token in the bytecode size...
+
+    // At this point, start is offset by the header due to us this being
+    // a *code* iterator, and not the general reader class.
+    // [start token] ^(start caret)^ [frog rendering code] [end token] ^(end caret)^
+    // where the tokenCount above is inbetween the start and end carets.
+
+    // We need to account for this otherwise it will show up as us not
+    // accounting for the *end* token in GetFunction due to the total size being
+    // offset by -1.
+    // [start token] [frog rendering code] (end of tokenCount) [end token]
+    tokenCount += 1;
+
+    analyzer.finalize(tokenCount);
   }
 
   void DxsoModule::runCompiler(
