@@ -172,9 +172,10 @@ namespace dxvk {
           return D3DERR_INVALIDCALL;
 
         if (status == DxvkGpuQueryStatus::Pending) {
-          this->NotifyStall();
-          if (flush)
+          if (flush) {
+            this->NotifyStall();
             m_parent->FlushImplicit(FALSE);
+          }
           return S_FALSE;
         }
       }
