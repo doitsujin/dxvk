@@ -3286,14 +3286,24 @@ namespace dxvk {
 
   void D3D11DeviceContext::BindConstantBuffer(
           UINT                              Slot,
-    const D3D11ConstantBufferBinding*       pBufferBinding) {
+          D3D11Buffer*                      pBuffer) {
     EmitCs([
       cSlotId      = Slot,
-      cBufferSlice = pBufferBinding->constantBound
-        ? pBufferBinding->buffer->GetBufferSlice(
-            pBufferBinding->constantOffset * 16,
-            pBufferBinding->constantBound  * 16)
-        : DxvkBufferSlice()
+      cBufferSlice = pBuffer ? pBuffer->GetBufferSlice() : DxvkBufferSlice()
+    ] (DxvkContext* ctx) {
+      ctx->bindResourceBuffer(cSlotId, cBufferSlice);
+    });
+  }
+  
+  
+  void D3D11DeviceContext::BindConstantBuffer1(
+          UINT                              Slot,
+          D3D11Buffer*                      pBuffer,
+          UINT                              Offset,
+          UINT                              Length) {
+    EmitCs([
+      cSlotId      = Slot,
+      cBufferSlice = Length ? pBuffer->GetBufferSlice(16 * Offset, 16 * Length) : DxvkBufferSlice()
     ] (DxvkContext* ctx) {
       ctx->bindResourceBuffer(cSlotId, cBufferSlice);
     });
@@ -3399,9 +3409,10 @@ namespace dxvk {
     for (uint32_t i = 0; i < NumBuffers; i++) {
       auto newBuffer = static_cast<D3D11Buffer*>(ppConstantBuffers[i]);
       
-      UINT constantBound = newBuffer
-        ? newBuffer->Desc()->ByteWidth / 16
-        : 0;
+      UINT constantBound = 0;
+      
+      if (likely(newBuffer != nullptr))
+        constantBound = newBuffer->Desc()->ByteWidth / 16;
       
       if (Bindings[StartSlot + i].buffer         != newBuffer
        || Bindings[StartSlot + i].constantBound  != constantBound) {
@@ -3410,7 +3421,7 @@ namespace dxvk {
         Bindings[StartSlot + i].constantCount  = constantBound;
         Bindings[StartSlot + i].constantBound  = constantBound;
         
-        BindConstantBuffer(slotId + i, &Bindings[StartSlot + i]);
+        BindConstantBuffer(slotId + i, newBuffer);
       }
     }
   }
@@ -3466,7 +3477,7 @@ namespace dxvk {
         Bindings[StartSlot + i].constantCount  = constantCount;
         Bindings[StartSlot + i].constantBound  = constantBound;
         
-        BindConstantBuffer(slotId + i, &Bindings[StartSlot + i]);
+        BindConstantBuffer1(slotId + i, newBuffer, constantOffset, constantBound);
       }
     }
   }
@@ -3643,8 +3654,10 @@ namespace dxvk {
           D3D11ConstantBufferBindings&      Bindings) {
     uint32_t slotId = computeConstantBufferBinding(Stage, 0);
     
-    for (uint32_t i = 0; i < Bindings.size(); i++)
-      BindConstantBuffer(slotId + i, &Bindings[i]);
+    for (uint32_t i = 0; i < Bindings.size(); i++) {
+      BindConstantBuffer1(slotId + i, Bindings[i].buffer.ptr(),
+        Bindings[i].constantOffset, Bindings[i].constantBound);
+    }
   }
   
   

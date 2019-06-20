@@ -708,7 +708,13 @@ namespace dxvk {
     
     void BindConstantBuffer(
             UINT                              Slot,
-      const D3D11ConstantBufferBinding*       pBufferBinding);
+            D3D11Buffer*                      pBuffer);
+    
+    void BindConstantBuffer1(
+            UINT                              Slot,
+            D3D11Buffer*                      pBuffer,
+            UINT                              Offset,
+            UINT                              Length);
     
     void BindSampler(
             UINT                              Slot,
