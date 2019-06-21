@@ -73,50 +73,6 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkStagingBuffer> DxvkDevice::allocStagingBuffer(VkDeviceSize size) {
-    // In case we need a standard-size staging buffer, try
-    // to recycle an old one that has been returned earlier
-    if (size <= DefaultStagingBufferSize) {
-      const Rc<DxvkStagingBuffer> buffer
-        = m_recycledStagingBuffers.retrieveObject();
-      
-      if (buffer != nullptr)
-        return buffer;
-    }
-    
-    // Staging buffers only need to be able to handle transfer
-    // operations, and they need to be in host-visible memory.
-    DxvkBufferCreateInfo info;
-    info.size   = size;
-    info.usage  = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-    info.stages = VK_PIPELINE_STAGE_TRANSFER_BIT
-                | VK_PIPELINE_STAGE_HOST_BIT;
-    info.access = VK_ACCESS_TRANSFER_READ_BIT
-                | VK_ACCESS_HOST_WRITE_BIT;
-    
-    VkMemoryPropertyFlags memFlags
-      = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-      | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
-    
-    // Don't create buffers that are too small. A staging
-    // buffer should be able to serve multiple uploads.
-    if (info.size < DefaultStagingBufferSize)
-      info.size = DefaultStagingBufferSize;
-    
-    return new DxvkStagingBuffer(this->createBuffer(info, memFlags));
-  }
-  
-  
-  void DxvkDevice::recycleStagingBuffer(const Rc<DxvkStagingBuffer>& buffer) {
-    // Drop staging buffers that are bigger than the
-    // standard ones to save memory, recycle the rest
-    if (buffer->size() == DefaultStagingBufferSize) {
-      m_recycledStagingBuffers.returnObject(buffer);
-      buffer->reset();
-    }
-  }
-  
-  
   Rc<DxvkCommandList> DxvkDevice::createCommandList() {
     Rc<DxvkCommandList> cmdList = m_recycledCommandLists.retrieveObject();
     
