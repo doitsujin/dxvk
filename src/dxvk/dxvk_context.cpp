@@ -27,7 +27,8 @@ namespace dxvk {
     m_barriers    (DxvkCmdBuffer::ExecBuffer),
     m_transfers   (DxvkCmdBuffer::InitBuffer),
     m_transitions (DxvkCmdBuffer::ExecBuffer),
-    m_queryManager(gpuQueryPool) {
+    m_queryManager(gpuQueryPool),
+    m_staging     (device) {
 
   }
   
@@ -566,8 +567,10 @@ namespace dxvk {
       image->info().format,
       image->mipLevelExtent(subresources.baseMipLevel));
     
-    DxvkStagingBufferSlice slice = m_cmd->stagedAlloc(dataSize);
-    std::memset(slice.mapPtr, 0, dataSize);
+    auto stagingSlice = m_staging.alloc(CACHE_LINE_SIZE, dataSize);
+    auto stagingHandle = stagingSlice.getSliceHandle();
+
+    std::memset(stagingHandle.mapPtr, 0, dataSize);
 
     if (m_barriers.isImageDirty(image, subresources, DxvkAccess::Write))
       m_barriers.recordCommands(m_cmd);
@@ -587,7 +590,7 @@ namespace dxvk {
 
       for (uint32_t layer = 0; layer < subresources.layerCount; layer++) {
         VkBufferImageCopy region;
-        region.bufferOffset       = slice.offset;
+        region.bufferOffset       = stagingHandle.offset;
         region.bufferRowLength    = 0;
         region.bufferImageHeight  = 0;
         region.imageSubresource   = vk::makeSubresourceLayers(
@@ -596,7 +599,7 @@ namespace dxvk {
         region.imageExtent        = extent;
 
         m_cmd->cmdCopyBufferToImage(
-          slice.buffer, image->handle(),
+          stagingHandle.handle, image->handle(),
           image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
           1, &region);
       }
@@ -612,6 +615,7 @@ namespace dxvk {
       image->info().access);
     
     m_cmd->trackResource(image);
+    m_cmd->trackResource(stagingSlice.buffer());
   }
   
   
@@ -1877,15 +1881,22 @@ namespace dxvk {
         bufferSlice.length,
         data);
     } else {
-      auto slice = m_cmd->stagedAlloc(size);
-      std::memcpy(slice.mapPtr, data, size);
+      auto stagingSlice  = m_staging.alloc(CACHE_LINE_SIZE, size);
+      auto stagingHandle = stagingSlice.getSliceHandle();
 
-      m_cmd->stagedBufferCopy(
-        cmdBuffer,
+      std::memcpy(stagingHandle.mapPtr, data, size);
+
+      VkBufferCopy region;
+      region.srcOffset = stagingHandle.offset;
+      region.dstOffset = bufferSlice.offset;
+      region.size      = size;
+
+      m_cmd->cmdCopyBuffer(
+        stagingHandle.handle,
         bufferSlice.handle,
-        bufferSlice.offset,
-        bufferSlice.length,
-        slice);
+        1, &region);
+      
+      m_cmd->trackResource(stagingSlice.buffer());
     }
 
     auto& barriers = replaceBuffer
@@ -1926,10 +1937,11 @@ namespace dxvk {
     
     // Allocate staging buffer memory for the image data. The
     // pixels or blocks will be tightly packed within the buffer.
-    const DxvkStagingBufferSlice slice = m_cmd->stagedAlloc(
+    auto stagingSlice = m_staging.alloc(CACHE_LINE_SIZE,
       formatInfo->elementSize * util::flattenImageExtent(elementCount));
+    auto stagingHandle = stagingSlice.getSliceHandle();
     
-    auto dstData = reinterpret_cast<char*>(slice.mapPtr);
+    auto dstData = reinterpret_cast<char*>(stagingHandle.mapPtr);
     auto srcData = reinterpret_cast<const char*>(data);
     
     util::packImageData(dstData, srcData,
@@ -1964,15 +1976,15 @@ namespace dxvk {
     // Since our source data is tightly packed, we do not
     // need to specify any strides.
     VkBufferImageCopy region;
-    region.bufferOffset       = slice.offset;
+    region.bufferOffset       = stagingHandle.offset;
     region.bufferRowLength    = 0;
     region.bufferImageHeight  = 0;
     region.imageSubresource   = subresources;
     region.imageOffset        = imageOffset;
     region.imageExtent        = imageExtent;
     
-    m_cmd->stagedBufferImageCopy(image->handle(),
-      imageLayoutTransfer, region, slice);
+    m_cmd->cmdCopyBufferToImage(stagingHandle.handle,
+      image->handle(), imageLayoutTransfer, 1, &region);
     
     // Transition image back into its optimal layout
     m_barriers.accessImage(
@@ -1985,6 +1997,7 @@ namespace dxvk {
       image->info().access);
     
     m_cmd->trackResource(image);
+    m_cmd->trackResource(stagingSlice.buffer());
   }
   
   
