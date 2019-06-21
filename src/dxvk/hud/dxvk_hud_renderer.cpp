@@ -364,6 +364,8 @@ namespace dxvk::hud {
       context->endRecording(),
       VK_NULL_HANDLE,
       VK_NULL_HANDLE);
+    
+    context->trimStagingBuffers();
   }
   
   
