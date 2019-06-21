@@ -722,25 +722,6 @@ namespace dxvk {
         pipelineStage, queryPool, query);
     }
     
-    
-    DxvkStagingBufferSlice stagedAlloc(
-            VkDeviceSize            size);
-    
-    
-    void stagedBufferCopy(
-            DxvkCmdBuffer           cmdBuffer,
-            VkBuffer                dstBuffer,
-            VkDeviceSize            dstOffset,
-            VkDeviceSize            dataSize,
-      const DxvkStagingBufferSlice& dataSlice);
-    
-    
-    void stagedBufferImageCopy(
-            VkImage                 dstImage,
-            VkImageLayout           dstImageLayout,
-      const VkBufferImageCopy&      dstImageRegion,
-      const DxvkStagingBufferSlice& dataSlice);
-    
   private:
     
     Rc<vk::DeviceFn>    m_vkd;
@@ -754,7 +735,6 @@ namespace dxvk {
     DxvkCmdBufferFlags  m_cmdBuffersUsed;
     DxvkLifetimeTracker m_resources;
     DxvkDescriptorPoolTracker m_descriptorPoolTracker;
-    DxvkStagingAlloc    m_stagingAlloc;
     DxvkEventTracker    m_eventTracker;
     DxvkGpuEventTracker m_gpuEventTracker;
     DxvkGpuQueryTracker m_gpuQueryTracker;

@@ -8,8 +8,7 @@ namespace dxvk {
           uint32_t          queueFamily)
   : m_vkd           (device->vkd()),
     m_cmdBuffersUsed(0),
-    m_descriptorPoolTracker(device),
-    m_stagingAlloc  (device) {
+    m_descriptorPoolTracker(device) {
     VkFenceCreateInfo fenceInfo;
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fenceInfo.pNext = nullptr;
@@ -127,43 +126,8 @@ namespace dxvk {
     m_gpuQueryTracker.reset();
     m_gpuEventTracker.reset();
     m_eventTracker.reset();
-    m_stagingAlloc.reset();
     m_descriptorPoolTracker.reset();
     m_resources.reset();
-  }
-  
-  
-  DxvkStagingBufferSlice DxvkCommandList::stagedAlloc(VkDeviceSize size) {
-    return m_stagingAlloc.alloc(size);
-  }
-  
-  
-  void DxvkCommandList::stagedBufferCopy(
-          DxvkCmdBuffer           cmdBuffer,
-          VkBuffer                dstBuffer,
-          VkDeviceSize            dstOffset,
-          VkDeviceSize            dataSize,
-    const DxvkStagingBufferSlice& dataSlice) {
-    m_cmdBuffersUsed.set(cmdBuffer);
-    
-    VkBufferCopy region;
-    region.srcOffset = dataSlice.offset;
-    region.dstOffset = dstOffset;
-    region.size      = dataSize;
-    
-    m_vkd->vkCmdCopyBuffer(getCmdBuffer(cmdBuffer),
-      dataSlice.buffer, dstBuffer, 1, &region);
-  }
-  
-  
-  void DxvkCommandList::stagedBufferImageCopy(
-          VkImage                 dstImage,
-          VkImageLayout           dstImageLayout,
-    const VkBufferImageCopy&      dstImageRegion,
-    const DxvkStagingBufferSlice& dataSlice) {
-    m_vkd->vkCmdCopyBufferToImage(m_execBuffer,
-      dataSlice.buffer, dstImage, dstImageLayout,
-      1, &dstImageRegion);
   }
   
 }
