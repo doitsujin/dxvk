@@ -954,6 +954,15 @@ namespace dxvk {
     void writeTimestamp(
       const Rc<DxvkGpuQuery>&   query);
     
+    /**
+     * \brief Trims staging buffers
+     * 
+     * Releases staging buffer resources. Calling
+     * this may be useful if data updates on a
+     * given context are rare.
+     */
+    void trimStagingBuffers();
+    
   private:
     
     const Rc<DxvkDevice>              m_device;

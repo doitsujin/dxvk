@@ -46,6 +46,15 @@ namespace dxvk {
   }
 
 
+  void DxvkStagingDataAlloc::trim() {
+    m_buffer = nullptr;
+    m_offset = 0;
+
+    while (!m_buffers.empty())
+      m_buffers.pop();
+  }
+
+
   Rc<DxvkBuffer> DxvkStagingDataAlloc::createBuffer(VkDeviceSize size) {
     DxvkBufferCreateInfo info;
     info.size   = size;

@@ -33,6 +33,14 @@ namespace dxvk {
      */
     DxvkBufferSlice alloc(VkDeviceSize align, VkDeviceSize size);
 
+    /**
+     * \brief Deletes all staging buffers
+     * 
+     * Destroys allocated buffers and
+     * releases all buffer memory.
+     */
+    void trim();
+
   private:
 
     Rc<DxvkDevice>  m_device;

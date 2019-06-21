@@ -2284,6 +2284,11 @@ namespace dxvk {
   void DxvkContext::writeTimestamp(const Rc<DxvkGpuQuery>& query) {
     m_queryManager.writeTimestamp(m_cmd, query);
   }
+
+
+  void DxvkContext::trimStagingBuffers() {
+    m_staging.trim();
+  }
   
   
   void DxvkContext::clearImageViewFb(
