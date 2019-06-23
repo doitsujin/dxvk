@@ -81,18 +81,12 @@ namespace dxvk {
      * defined by another shader stage, this will extend
      * the stage mask by the given stage. Otherwise, an
      * entirely new binding is added.
-     * \param [in] slot Resource slot
-     * \param [in] type Resource type
-     * \param [in] view Image view type
      * \param [in] stage Shader stage
-     * \param [in] access Access flags
+     * \param [in] desc Slot description
      */
     void defineSlot(
-            uint32_t              slot,
-            VkDescriptorType      type,
-            VkImageViewType       view,
             VkShaderStageFlagBits stage,
-            VkAccessFlags         access);
+      const DxvkResourceSlot&     desc);
 
     /**
      * \brief Defines new push constant range

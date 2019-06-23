@@ -10,23 +10,20 @@ namespace dxvk {
   
   
   void DxvkDescriptorSlotMapping::defineSlot(
-          uint32_t              slot,
-          VkDescriptorType      type,
-          VkImageViewType       view,
           VkShaderStageFlagBits stage,
-          VkAccessFlags         access) {
-    uint32_t bindingId = this->getBindingId(slot);
+    const DxvkResourceSlot&     desc) {
+    uint32_t bindingId = this->getBindingId(desc.slot);
     
     if (bindingId != InvalidBinding) {
       m_descriptorSlots[bindingId].stages |= stage;
-      m_descriptorSlots[bindingId].access |= access;
+      m_descriptorSlots[bindingId].access |= desc.access;
     } else {
       DxvkDescriptorSlot slotInfo;
-      slotInfo.slot   = slot;
-      slotInfo.type   = type;
-      slotInfo.view   = view;
+      slotInfo.slot   = desc.slot;
+      slotInfo.type   = desc.type;
+      slotInfo.view   = desc.view;
       slotInfo.stages = stage;
-      slotInfo.access = access;
+      slotInfo.access = desc.access;
       m_descriptorSlots.push_back(slotInfo);
     }
   }
