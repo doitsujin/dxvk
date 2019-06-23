@@ -962,8 +962,8 @@ namespace dxvk {
                 && extent == dstTextureInfo->GetExtent();
     }
 
-    Rc<DxvkImageView> imageView         = dstTextureInfo->GetViews().Sample.Color;
-    Rc<DxvkImageView> renderTargetView  = dstTextureInfo->GetViews().FaceRenderTarget[0].Color;
+    Rc<DxvkImageView> imageView         = dst->GetImageView(false);
+    Rc<DxvkImageView> renderTargetView  = dst->GetRenderTargetView(false);
 
     VkClearValue clearValue;
     DecodeD3DCOLOR(Color, clearValue.color.float32);

@@ -66,11 +66,11 @@ namespace dxvk {
     }
 
     Rc<DxvkImageView> GetImageView(bool Srgb) {
-      return m_texture->GetViews().FaceSample[m_face].Pick(Srgb);
+      return m_texture->GetViews().SubresourceSample[m_face][m_mipLevel].Pick(Srgb);
     }
 
     Rc<DxvkImageView> GetRenderTargetView(bool Srgb) {
-      return m_texture->GetViews().FaceRenderTarget[m_face].Pick(Srgb);
+      return m_texture->GetViews().SubresourceRenderTarget[m_face][m_mipLevel].Pick(Srgb);
     }
 
     VkImageLayout GetRenderTargetLayout() {
@@ -78,7 +78,7 @@ namespace dxvk {
     }
 
     Rc<DxvkImageView> GetDepthStencilView() {
-      return m_texture->GetViews().FaceDepth[m_face];
+      return m_texture->GetViews().SubresourceDepth[m_face][m_mipLevel];
     }
 
     VkImageLayout GetDepthLayout() {

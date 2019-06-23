@@ -52,22 +52,26 @@ namespace dxvk {
     D3D9ColorView                    Sample;
     Rc<DxvkImageView>                MipGenRT;
 
-    std::array<D3D9ColorView, 6>     FaceSample;
-    std::array<D3D9ColorView, 6>     FaceRenderTarget;
-    std::array<Rc<DxvkImageView>, 6> FaceDepth;
+    std::array<
+      std::array<D3D9ColorView, 15>, 6>     SubresourceSample;
+    std::array<
+      std::array<D3D9ColorView, 15>, 6>     SubresourceRenderTarget;
+    std::array<
+      std::array<Rc<DxvkImageView>, 15>, 6> SubresourceDepth;
 
     bool                             Hazardous = false;
 
     VkImageLayout GetRTLayout() const {
-      return FaceRenderTarget[0].Color != nullptr
-          && FaceRenderTarget[0].Color->imageInfo().tiling == VK_IMAGE_TILING_OPTIMAL
+      return SubresourceRenderTarget[0][0].Color != nullptr
+          && SubresourceRenderTarget[0][0].Color->imageInfo().tiling == VK_IMAGE_TILING_OPTIMAL
           && !Hazardous
         ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
         : VK_IMAGE_LAYOUT_GENERAL;
     }
 
     VkImageLayout GetDepthLayout() const {
-      return FaceDepth[0] != nullptr && FaceDepth[0]->imageInfo().tiling == VK_IMAGE_TILING_OPTIMAL
+      return SubresourceDepth[0][0] != nullptr
+          && SubresourceDepth[0][0]->imageInfo().tiling == VK_IMAGE_TILING_OPTIMAL
         ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL
         : VK_IMAGE_LAYOUT_GENERAL;
     }

@@ -416,17 +416,23 @@ namespace dxvk {
 
     m_views.Sample = CreateColorViewPair(formatInfo, AllLayers, VK_IMAGE_USAGE_SAMPLED_BIT, 0);
 
-    for (uint32_t i = 0; i < m_desc.ArraySize; i++)
-      m_views.FaceSample[i] = CreateColorViewPair(formatInfo, i, VK_IMAGE_USAGE_SAMPLED_BIT, 0);
+    for (uint32_t i = 0; i < m_desc.ArraySize; i++) {
+      for (uint32_t j = 0; j < m_desc.MipLevels; j++)
+        m_views.SubresourceSample[i][j] = CreateColorViewPair(formatInfo, i, VK_IMAGE_USAGE_SAMPLED_BIT, j);
+    }
 
     if (m_desc.Usage & D3DUSAGE_RENDERTARGET) {
-      for (uint32_t i = 0; i < m_desc.ArraySize; i++)
-        m_views.FaceRenderTarget[i] = CreateColorViewPair(formatInfo, i, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, 0);
+      for (uint32_t i = 0; i < m_desc.ArraySize; i++) {
+        for (uint32_t j = 0; j < m_desc.MipLevels; j++)
+          m_views.SubresourceRenderTarget[i][j] = CreateColorViewPair(formatInfo, i, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, j);
+      }
     }
 
     if (m_desc.Usage & D3DUSAGE_DEPTHSTENCIL) {
-      for (uint32_t i = 0; i < m_desc.ArraySize; i++)
-        m_views.FaceDepth[i] = CreateView(formatInfo, i, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, 0, FALSE);
+      for (uint32_t i = 0; i < m_desc.ArraySize; i++) {
+        for (uint32_t j = 0; j < m_desc.MipLevels; j++)
+          m_views.SubresourceDepth[i][j] = CreateView(formatInfo, i, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, j, FALSE);
+      }
     }
 
     if (m_desc.Usage & D3DUSAGE_AUTOGENMIPMAP)
