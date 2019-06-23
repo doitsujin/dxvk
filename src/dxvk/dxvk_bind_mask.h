@@ -77,6 +77,28 @@ namespace dxvk {
       for (uint32_t i = 0; i < IntCount; i++)
         m_slots[i] = 0;
     }
+
+    /**
+     * \brief Enables multiple bindings
+     * \param [in] n Number of bindings
+     */
+    void setFirst(uint32_t n) {
+      for (uint32_t i = 0; i < IntCount; i++) {
+        m_slots[i] = n >= BitCount ? ~0u : ~(~0u << n);
+        n = n >= BitCount ? n - BitCount : 0;
+      }
+    }
+
+    bool operator == (const DxvkBindingSet& other) const {
+      bool eq = true;
+      for (uint32_t i = 0; i < IntCount; i++)
+        eq &= m_slots[i] == other.m_slots[i];
+      return eq;
+    }
+
+    bool operator != (const DxvkBindingSet& other) const {
+      return !this->operator == (other);
+    }
     
   private:
     
