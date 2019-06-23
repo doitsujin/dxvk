@@ -95,7 +95,7 @@ namespace dxvk {
     
     DxvkSpecConstants specData;
     for (uint32_t i = 0; i < m_layout->bindingCount(); i++)
-      specData.set(i, state.bsBindingMask.isBound(i), true);
+      specData.set(i, state.bsBindingMask.test(i), true);
     
     VkSpecializationInfo specInfo = specData.getSpecInfo();
     

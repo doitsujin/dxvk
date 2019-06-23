@@ -192,7 +192,7 @@ namespace dxvk {
     specData.set(uint32_t(DxvkSpecConstantId::RasterizerSampleCount), sampleCount, VK_SAMPLE_COUNT_1_BIT);
     
     for (uint32_t i = 0; i < m_layout->bindingCount(); i++)
-      specData.set(i, state.bsBindingMask.isBound(i), true);
+      specData.set(i, state.bsBindingMask.test(i), true);
     
     for (uint32_t i = 0; i < MaxNumRenderTargets; i++) {
       if ((m_fsOut & (1 << i)) != 0) {

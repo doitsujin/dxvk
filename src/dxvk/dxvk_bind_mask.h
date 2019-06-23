@@ -16,9 +16,10 @@ namespace dxvk {
    * binding-related specialization constants in shaders.
    * \tparam N Number of binding slots
    */
-  class DxvkBindingMask {
+  template<uint32_t BindingCount>
+  class DxvkBindingSet {
     constexpr static uint32_t BitCount = 32;
-    constexpr static uint32_t IntCount = (MaxNumActiveBindings + BitCount - 1) / BitCount;
+    constexpr static uint32_t IntCount = (BindingCount + BitCount - 1) / BitCount;
   public:
     
     /**
@@ -27,7 +28,7 @@ namespace dxvk {
      * \param [in] slot The binding ID
      * \returns \c true if the binding is active
      */
-    bool isBound(uint32_t slot) const {
+    bool test(uint32_t slot) const {
       const uint32_t intId = slot / BitCount;
       const uint32_t bitId = slot % BitCount;
       const uint32_t bitMask = 1u << bitId;
@@ -40,7 +41,7 @@ namespace dxvk {
      * \param [in] slot The binding ID
      * \returns \c true if the state has changed
      */
-    bool setBound(uint32_t slot) {
+    bool set(uint32_t slot) {
       const uint32_t intId = slot / BitCount;
       const uint32_t bitId = slot % BitCount;
       const uint32_t bitMask = 1u << bitId;
@@ -56,7 +57,7 @@ namespace dxvk {
      * \param [in] slot The binding ID
      * \returns \c true if the state has changed
      */
-    bool setUnbound(uint32_t slot) {
+    bool clr(uint32_t slot) {
       const uint32_t intId = slot / BitCount;
       const uint32_t bitId = slot % BitCount;
       const uint32_t bitMask = 1u << bitId;
@@ -82,6 +83,8 @@ namespace dxvk {
     uint32_t m_slots[IntCount];
     
   };
+
+  using DxvkBindingMask = DxvkBindingSet<MaxNumActiveBindings>;
   
   
   /**
