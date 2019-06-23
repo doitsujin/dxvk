@@ -3525,8 +3525,9 @@ namespace dxvk {
   bool DxvkContext::updateShaderResources(
           VkPipelineBindPoint     bindPoint,
     const DxvkPipelineLayout*     layout) {
-    bool updatePipelineState = false;
-    
+    DxvkBindingMask bindMask;
+    bindMask.setFirst(layout->bindingCount());
+
     // If the depth attachment is also bound as a shader
     // resource, we have to use the appropriate layout
     VkImage       depthImage  = VK_NULL_HANDLE;
@@ -3541,8 +3542,8 @@ namespace dxvk {
       }
     }
 
-    // Select the bound resource mask to update
-    auto& bindMask = bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
+    // Select the active binding mask to update
+    auto& refMask = bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
       ? m_state.gp.state.bsBindingMask
       : m_state.cp.state.bsBindingMask;
     
@@ -3553,8 +3554,6 @@ namespace dxvk {
       switch (binding.type) {
         case VK_DESCRIPTOR_TYPE_SAMPLER:
           if (res.sampler != nullptr) {
-            updatePipelineState |= bindMask.set(i);
-            
             m_descInfos[i].image.sampler     = res.sampler->handle();
             m_descInfos[i].image.imageView   = VK_NULL_HANDLE;
             m_descInfos[i].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -3562,15 +3561,13 @@ namespace dxvk {
             if (m_rcTracked.set(binding.slot))
               m_cmd->trackResource(res.sampler);
           } else {
-            updatePipelineState |= bindMask.clr(i);
+            bindMask.clr(i);
             m_descInfos[i].image = m_device->dummySamplerDescriptor();
           } break;
         
         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
           if (res.imageView != nullptr && res.imageView->handle(binding.view) != VK_NULL_HANDLE) {
-            updatePipelineState |= bindMask.set(i);
-            
             m_descInfos[i].image.sampler     = VK_NULL_HANDLE;
             m_descInfos[i].image.imageView   = res.imageView->handle(binding.view);
             m_descInfos[i].image.imageLayout = res.imageView->imageInfo().layout;
@@ -3583,15 +3580,13 @@ namespace dxvk {
               m_cmd->trackResource(res.imageView->image());
             }
           } else {
-            updatePipelineState |= bindMask.clr(i);
+            bindMask.clr(i);
             m_descInfos[i].image = m_device->dummyImageViewDescriptor(binding.view);
           } break;
         
         case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
           if (res.sampler != nullptr && res.imageView != nullptr
            && res.imageView->handle(binding.view) != VK_NULL_HANDLE) {
-            updatePipelineState |= bindMask.set(i);
-
             m_descInfos[i].image.sampler     = res.sampler->handle();
             m_descInfos[i].image.imageView   = res.imageView->handle(binding.view);
             m_descInfos[i].image.imageLayout = res.imageView->imageInfo().layout;
@@ -3605,15 +3600,13 @@ namespace dxvk {
               m_cmd->trackResource(res.imageView->image());
             }
           } else {
-            updatePipelineState |= bindMask.clr(i);
+            bindMask.clr(i);
             m_descInfos[i].image = m_device->dummyImageSamplerDescriptor(binding.view);
           } break;
         
         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
         case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
           if (res.bufferView != nullptr) {
-            updatePipelineState |= bindMask.set(i);
-            
             res.bufferView->updateView();
             m_descInfos[i].texelBuffer = res.bufferView->handle();
             
@@ -3622,34 +3615,32 @@ namespace dxvk {
               m_cmd->trackResource(res.bufferView->buffer());
             }
           } else {
-            updatePipelineState |= bindMask.clr(i);
+            bindMask.clr(i);
             m_descInfos[i].texelBuffer = m_device->dummyBufferViewDescriptor();
           } break;
         
         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
           if (res.bufferSlice.defined()) {
-            updatePipelineState |= bindMask.set(i);
             m_descInfos[i] = res.bufferSlice.getDescriptor();
             
             if (m_rcTracked.set(binding.slot))
               m_cmd->trackResource(res.bufferSlice.buffer());
           } else {
-            updatePipelineState |= bindMask.clr(i);
+            bindMask.clr(i);
             m_descInfos[i].buffer = m_device->dummyBufferDescriptor();
           } break;
         
         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
           if (res.bufferSlice.defined()) {
-            updatePipelineState |= bindMask.set(i);
             m_descInfos[i] = res.bufferSlice.getDescriptor();
             m_descInfos[i].buffer.offset = 0;
             
             if (m_rcTracked.set(binding.slot))
               m_cmd->trackResource(res.bufferSlice.buffer());
           } else {
-            updatePipelineState |= bindMask.clr(i);
+            bindMask.clr(i);
             m_descInfos[i].buffer = m_device->dummyBufferDescriptor();
           } break;
         
@@ -3657,6 +3648,13 @@ namespace dxvk {
           Logger::err(str::format("DxvkContext: Unhandled descriptor type: ", binding.type));
       }
     }
+
+    // If some resources are not bound, we may need to
+    // update spec constants and rebind the pipeline
+    bool updatePipelineState = refMask != bindMask;
+
+    if (updatePipelineState)
+      refMask = bindMask;
 
     return updatePipelineState;
   }
