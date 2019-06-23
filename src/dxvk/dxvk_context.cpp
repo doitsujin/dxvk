@@ -41,6 +41,9 @@ namespace dxvk {
   void DxvkContext::beginRecording(const Rc<DxvkCommandList>& cmdList) {
     m_cmd = cmdList;
     m_cmd->beginRecording();
+
+    // Mark all resources as untracked
+    m_rcTracked.clear();
     
     // The current state of the internal command buffer is
     // undefined, so we have to bind and set up everything
@@ -161,6 +164,7 @@ namespace dxvk {
     const DxvkBufferSlice&      buffer) {
     if (!m_rc[slot].bufferSlice.matches(buffer)) {
       m_rc[slot].bufferSlice = buffer;
+      m_rcTracked.clr(slot);
       
       m_flags.set(
         DxvkContextFlag::CpDirtyResources,
@@ -180,6 +184,7 @@ namespace dxvk {
       m_rc[slot].bufferSlice = bufferView != nullptr
         ? bufferView->slice()
         : DxvkBufferSlice();
+      m_rcTracked.clr(slot);
 
       m_flags.set(
         DxvkContextFlag::CpDirtyResources,
@@ -192,7 +197,8 @@ namespace dxvk {
           uint32_t              slot,
     const Rc<DxvkSampler>&      sampler) {
     if (m_rc[slot].sampler != sampler) {
-      m_rc[slot].sampler     = sampler;
+      m_rc[slot].sampler = sampler;
+      m_rcTracked.clr(slot);
       
       m_flags.set(
         DxvkContextFlag::CpDirtyResources,
@@ -3549,7 +3555,8 @@ namespace dxvk {
             m_descInfos[i].image.imageView   = VK_NULL_HANDLE;
             m_descInfos[i].image.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             
-            m_cmd->trackResource(res.sampler);
+            if (m_rcTracked.set(binding.slot))
+              m_cmd->trackResource(res.sampler);
           } else {
             updatePipelineState |= bindMask.clr(i);
             m_descInfos[i].image = m_device->dummySamplerDescriptor();
@@ -3567,8 +3574,10 @@ namespace dxvk {
             if (unlikely(res.imageView->imageHandle() == depthImage))
               m_descInfos[i].image.imageLayout = depthLayout;
             
-            m_cmd->trackResource(res.imageView);
-            m_cmd->trackResource(res.imageView->image());
+            if (m_rcTracked.set(binding.slot)) {
+              m_cmd->trackResource(res.imageView);
+              m_cmd->trackResource(res.imageView->image());
+            }
           } else {
             updatePipelineState |= bindMask.clr(i);
             m_descInfos[i].image = m_device->dummyImageViewDescriptor(binding.view);
@@ -3586,9 +3595,11 @@ namespace dxvk {
             if (unlikely(res.imageView->imageHandle() == depthImage))
               m_descInfos[i].image.imageLayout = depthLayout;
             
-            m_cmd->trackResource(res.sampler);
-            m_cmd->trackResource(res.imageView);
-            m_cmd->trackResource(res.imageView->image());
+            if (m_rcTracked.set(binding.slot)) {
+              m_cmd->trackResource(res.sampler);
+              m_cmd->trackResource(res.imageView);
+              m_cmd->trackResource(res.imageView->image());
+            }
           } else {
             updatePipelineState |= bindMask.clr(i);
             m_descInfos[i].image = m_device->dummyImageSamplerDescriptor(binding.view);
@@ -3602,8 +3613,10 @@ namespace dxvk {
             res.bufferView->updateView();
             m_descInfos[i].texelBuffer = res.bufferView->handle();
             
-            m_cmd->trackResource(res.bufferView);
-            m_cmd->trackResource(res.bufferView->buffer());
+            if (m_rcTracked.set(binding.slot)) {
+              m_cmd->trackResource(res.bufferView);
+              m_cmd->trackResource(res.bufferView->buffer());
+            }
           } else {
             updatePipelineState |= bindMask.clr(i);
             m_descInfos[i].texelBuffer = m_device->dummyBufferViewDescriptor();
@@ -3615,7 +3628,8 @@ namespace dxvk {
             updatePipelineState |= bindMask.set(i);
             m_descInfos[i] = res.bufferSlice.getDescriptor();
             
-            m_cmd->trackResource(res.bufferSlice.buffer());
+            if (m_rcTracked.set(binding.slot))
+              m_cmd->trackResource(res.bufferSlice.buffer());
           } else {
             updatePipelineState |= bindMask.clr(i);
             m_descInfos[i].buffer = m_device->dummyBufferDescriptor();
@@ -3628,7 +3642,8 @@ namespace dxvk {
             m_descInfos[i] = res.bufferSlice.getDescriptor();
             m_descInfos[i].buffer.offset = 0;
             
-            m_cmd->trackResource(res.bufferSlice.buffer());
+            if (m_rcTracked.set(binding.slot))
+              m_cmd->trackResource(res.bufferSlice.buffer());
           } else {
             updatePipelineState |= bindMask.clr(i);
             m_descInfos[i].buffer = m_device->dummyBufferDescriptor();

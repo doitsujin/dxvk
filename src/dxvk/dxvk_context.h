@@ -994,6 +994,8 @@ namespace dxvk {
     VkDescriptorSet m_gpSet = VK_NULL_HANDLE;
     VkDescriptorSet m_cpSet = VK_NULL_HANDLE;
 
+    DxvkBindingSet<MaxNumResourceSlots> m_rcTracked;
+
     std::array<DxvkShaderResourceSlot, MaxNumResourceSlots>  m_rc;
     std::array<DxvkDescriptorInfo,     MaxNumActiveBindings> m_descInfos;
     std::array<uint32_t,               MaxNumActiveBindings> m_descOffsets;
@@ -1086,6 +1088,9 @@ namespace dxvk {
     
     void updateGraphicsShaderResources();
     void updateGraphicsShaderDescriptors();
+
+    void updateShaderSamplers(
+      const DxvkPipelineLayout*     layout);
     
     void updateShaderResources(
             VkPipelineBindPoint     bindPoint,
