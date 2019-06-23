@@ -3445,10 +3445,10 @@ namespace dxvk {
       && m_state.cp.pipeline->layout()->hasStaticBufferBindings())) {
       m_flags.clr(DxvkContextFlag::CpDirtyResources);
 
-      this->updateShaderResources(
-        VK_PIPELINE_BIND_POINT_COMPUTE,
-        m_state.cp.state.bsBindingMask,
-        m_state.cp.pipeline->layout());
+      if (this->updateShaderResources(
+          VK_PIPELINE_BIND_POINT_COMPUTE,
+          m_state.cp.pipeline->layout()))
+        m_flags.set(DxvkContextFlag::CpDirtyPipelineState);
 
       m_flags.set(
         DxvkContextFlag::CpDirtyDescriptorSet,
@@ -3488,10 +3488,10 @@ namespace dxvk {
       && m_state.gp.pipeline->layout()->hasStaticBufferBindings())) {
       m_flags.clr(DxvkContextFlag::GpDirtyResources);
 
-      this->updateShaderResources(
-        VK_PIPELINE_BIND_POINT_GRAPHICS,
-        m_state.gp.state.bsBindingMask,
-        m_state.gp.pipeline->layout());
+      if (this->updateShaderResources(
+          VK_PIPELINE_BIND_POINT_GRAPHICS,
+          m_state.gp.pipeline->layout()))
+        m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
 
       m_flags.set(
         DxvkContextFlag::GpDirtyDescriptorSet,
@@ -3522,9 +3522,8 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::updateShaderResources(
+  bool DxvkContext::updateShaderResources(
           VkPipelineBindPoint     bindPoint,
-          DxvkBindingMask&        bindMask,
     const DxvkPipelineLayout*     layout) {
     bool updatePipelineState = false;
     
@@ -3541,6 +3540,11 @@ namespace dxvk {
         depthLayout = depthAttachment.layout;
       }
     }
+
+    // Select the bound resource mask to update
+    auto& bindMask = bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
+      ? m_state.gp.state.bsBindingMask
+      : m_state.cp.state.bsBindingMask;
     
     for (uint32_t i = 0; i < layout->bindingCount(); i++) {
       const auto& binding = layout->binding(i);
@@ -3654,11 +3658,7 @@ namespace dxvk {
       }
     }
 
-    if (updatePipelineState) {
-      m_flags.set(bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
-        ? DxvkContextFlag::GpDirtyPipelineState
-        : DxvkContextFlag::CpDirtyPipelineState);
-    }
+    return updatePipelineState;
   }
   
   
