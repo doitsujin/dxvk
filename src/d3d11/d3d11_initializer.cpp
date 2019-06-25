@@ -155,6 +155,12 @@ namespace dxvk {
               pInitialData[id].SysMemSlicePitch,
               packedFormat);
           }
+
+          if (pTexture->GetMapMode() == D3D11_COMMON_TEXTURE_MAP_MODE_BUFFER) {
+            util::packImageData(pTexture->GetMappedBuffer(id)->mapPtr(0), pInitialData[id].pSysMem,
+              util::computeBlockCount(image->mipLevelExtent(level), formatInfo->blockSize),
+              formatInfo->elementSize, pInitialData[id].SysMemPitch, pInitialData[id].SysMemSlicePitch);
+          }
         }
       }
     } else {
