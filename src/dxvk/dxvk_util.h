@@ -24,16 +24,16 @@ namespace dxvk::util {
   /**
    * \brief Writes tightly packed image data to a buffer
    * 
-   * \param [in] dstData Destination buffer pointer
-   * \param [in] srcData Pointer to source data
+   * \param [in] dstBytes Destination buffer pointer
+   * \param [in] srcBytes Pointer to source data
    * \param [in] blockCount Number of blocks to copy
    * \param [in] blockSize Number of bytes per block
    * \param [in] pitchPerRow Number of bytes between rows
    * \param [in] pitchPerLayer Number of bytes between layers
    */
   void packImageData(
-          char*             dstData,
-    const char*             srcData,
+          void*             dstBytes,
+    const void*             srcBytes,
           VkExtent3D        blockCount,
           VkDeviceSize      blockSize,
           VkDeviceSize      pitchPerRow,

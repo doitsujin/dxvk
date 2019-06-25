@@ -1217,9 +1217,7 @@ namespace dxvk {
       
       DxvkDataSlice imageDataBuffer = AllocUpdateBufferSlice(bytesTotal);
       
-      util::packImageData(
-        reinterpret_cast<char*>(imageDataBuffer.ptr()),
-        reinterpret_cast<const char*>(pSrcData),
+      util::packImageData(imageDataBuffer.ptr(), pSrcData,
         regionExtent, formatInfo->elementSize,
         SrcRowPitch, SrcDepthPitch);
       

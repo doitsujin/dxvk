@@ -39,12 +39,15 @@ namespace dxvk::util {
   
   
   void packImageData(
-          char*             dstData,
-    const char*             srcData,
+          void*             dstBytes,
+    const void*             srcBytes,
           VkExtent3D        blockCount,
           VkDeviceSize      blockSize,
           VkDeviceSize      pitchPerRow,
           VkDeviceSize      pitchPerLayer) {
+    auto dstData = reinterpret_cast<      char*>(dstBytes);
+    auto srcData = reinterpret_cast<const char*>(srcBytes);
+    
     const VkDeviceSize bytesPerRow   = blockCount.width  * blockSize;
     const VkDeviceSize bytesPerLayer = blockCount.height * bytesPerRow;
     const VkDeviceSize bytesTotal    = blockCount.depth  * bytesPerLayer;

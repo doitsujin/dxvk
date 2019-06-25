@@ -1947,10 +1947,7 @@ namespace dxvk {
       formatInfo->elementSize * util::flattenImageExtent(elementCount));
     auto stagingHandle = stagingSlice.getSliceHandle();
     
-    auto dstData = reinterpret_cast<char*>(stagingHandle.mapPtr);
-    auto srcData = reinterpret_cast<const char*>(data);
-    
-    util::packImageData(dstData, srcData,
+    util::packImageData(stagingHandle.mapPtr, data,
       elementCount, formatInfo->elementSize,
       pitchPerRow, pitchPerLayer);
     
@@ -2035,9 +2032,7 @@ namespace dxvk {
       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-    util::packImageData(
-      reinterpret_cast<char*>(tmpBuffer->mapPtr(0)),
-      reinterpret_cast<const char*>(data),
+    util::packImageData(tmpBuffer->mapPtr(0), data,
       extent3D, formatInfo->elementSize,
       pitchPerRow, pitchPerLayer);
     
