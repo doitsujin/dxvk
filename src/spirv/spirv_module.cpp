@@ -535,6 +535,18 @@ namespace dxvk {
     m_annotations.putWord (memberId);
     m_annotations.putWord (decoration);
   }
+
+
+  void SpirvModule::memberDecorateMatrixStride(
+          uint32_t                structId,
+          uint32_t                memberId,
+          uint32_t                stride) {
+    m_annotations.putIns  (spv::OpMemberDecorate, 5);
+    m_annotations.putWord (structId);
+    m_annotations.putWord (memberId);
+    m_annotations.putWord (spv::DecorationMatrixStride);
+    m_annotations.putWord (stride);
+  }
   
   
   void SpirvModule::memberDecorateOffset(
