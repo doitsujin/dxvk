@@ -224,6 +224,11 @@ namespace dxvk {
             uint32_t                structId,
             uint32_t                memberId,
             spv::BuiltIn            builtIn);
+
+    void memberDecorate(
+            uint32_t                structId,
+            uint32_t                memberId,
+            spv::Decoration         decoration);
     
     void memberDecorateOffset(
             uint32_t                structId,

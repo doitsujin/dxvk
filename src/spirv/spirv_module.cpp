@@ -524,6 +524,17 @@ namespace dxvk {
     m_annotations.putWord (spv::DecorationBuiltIn);
     m_annotations.putWord (builtIn);
   }
+
+
+  void SpirvModule::memberDecorate(
+          uint32_t                structId,
+          uint32_t                memberId,
+          spv::Decoration         decoration) {
+    m_annotations.putIns  (spv::OpMemberDecorate, 4);
+    m_annotations.putWord (structId);
+    m_annotations.putWord (memberId);
+    m_annotations.putWord (decoration);
+  }
   
   
   void SpirvModule::memberDecorateOffset(
