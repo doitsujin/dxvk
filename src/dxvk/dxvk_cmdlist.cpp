@@ -121,13 +121,23 @@ namespace dxvk {
   
   
   void DxvkCommandList::reset() {
-    m_statCounters.reset();
+    // Signal resources and events to
+    // avoid stalling main thread
+    m_eventTracker.reset();
+    m_resources.reset();
+
+    // Recycle heavy Vulkan objects
+    m_descriptorPoolTracker.reset();
+
+    // Return buffer memory slices
     m_bufferTracker.reset();
+
+    // Return query and event handles
     m_gpuQueryTracker.reset();
     m_gpuEventTracker.reset();
-    m_eventTracker.reset();
-    m_descriptorPoolTracker.reset();
-    m_resources.reset();
+
+    // Less important stuff
+    m_statCounters.reset();
   }
   
 }
