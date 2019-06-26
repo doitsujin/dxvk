@@ -43,6 +43,7 @@ namespace dxvk {
     m_cmd->beginRecording();
 
     // Mark all resources as untracked
+    m_vbTracked.clear();
     m_rcTracked.clear();
     
     // The current state of the internal command buffer is
@@ -149,8 +150,16 @@ namespace dxvk {
   void DxvkContext::bindIndexBuffer(
     const DxvkBufferSlice&      buffer,
           VkIndexType           indexType) {
-    if (!m_state.vi.indexBuffer.matches(buffer)
-     || (m_state.vi.indexType != indexType)) {
+    bool needsUpdate = !m_state.vi.indexBuffer.matchesBuffer(buffer);
+
+    if (likely(!needsUpdate)) {
+      needsUpdate = !m_state.vi.indexBuffer.matchesRange(buffer)
+                  || m_state.vi.indexType != indexType;
+    } else {
+      m_vbTracked.clr(MaxNumVertexBindings);
+    }
+
+    if (needsUpdate) {
       m_state.vi.indexBuffer = buffer;
       m_state.vi.indexType   = indexType;
       
@@ -244,7 +253,14 @@ namespace dxvk {
           uint32_t              binding,
     const DxvkBufferSlice&      buffer,
           uint32_t              stride) {
-    if (!m_state.vi.vertexBuffers[binding].matches(buffer)) {
+    bool needsUpdate = !m_state.vi.vertexBuffers[binding].matchesBuffer(buffer);
+
+    if (likely(!needsUpdate))
+      needsUpdate = !m_state.vi.vertexBuffers[binding].matchesRange(buffer);
+    else
+      m_vbTracked.clr(binding);
+
+    if (needsUpdate) {
       m_state.vi.vertexBuffers[binding] = buffer;
       m_flags.set(DxvkContextFlag::GpDirtyVertexBuffers);
     }
@@ -3730,8 +3746,9 @@ namespace dxvk {
           bufferInfo.buffer.buffer,
           bufferInfo.buffer.offset,
           m_state.vi.indexType);
-        m_cmd->trackResource(
-          m_state.vi.indexBuffer.buffer());
+
+        if (m_vbTracked.set(MaxNumVertexBindings))
+          m_cmd->trackResource(m_state.vi.indexBuffer.buffer());
       } else {
         m_cmd->cmdBindIndexBuffer(
           m_device->dummyBufferHandle(),
@@ -3761,7 +3778,8 @@ namespace dxvk {
           buffers[i] = vbo.buffer.buffer;
           offsets[i] = vbo.buffer.offset;
           
-          m_cmd->trackResource(m_state.vi.vertexBuffers[binding].buffer());
+          if (m_vbTracked.set(binding))
+            m_cmd->trackResource(m_state.vi.vertexBuffers[binding].buffer());
         } else {
           buffers[i] = m_device->dummyBufferHandle();
           offsets[i] = 0;

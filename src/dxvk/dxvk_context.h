@@ -994,7 +994,8 @@ namespace dxvk {
     VkDescriptorSet m_gpSet = VK_NULL_HANDLE;
     VkDescriptorSet m_cpSet = VK_NULL_HANDLE;
 
-    DxvkBindingSet<MaxNumResourceSlots> m_rcTracked;
+    DxvkBindingSet<MaxNumVertexBindings + 1>  m_vbTracked;
+    DxvkBindingSet<MaxNumResourceSlots>       m_rcTracked;
 
     std::array<DxvkShaderResourceSlot, MaxNumResourceSlots>  m_rc;
     std::array<DxvkDescriptorInfo,     MaxNumActiveBindings> m_descInfos;
