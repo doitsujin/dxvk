@@ -229,6 +229,11 @@ namespace dxvk {
             uint32_t                structId,
             uint32_t                memberId,
             spv::Decoration         decoration);
+
+    void memberDecorateMatrixStride(
+            uint32_t                structId,
+            uint32_t                memberId,
+            uint32_t                stride);
     
     void memberDecorateOffset(
             uint32_t                structId,
