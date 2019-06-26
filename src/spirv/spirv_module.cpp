@@ -1807,6 +1807,51 @@ namespace dxvk {
   }
 
 
+  uint32_t SpirvModule::opMatrixTimesMatrix(
+    uint32_t                resultType,
+    uint32_t                a,
+    uint32_t                b) {
+    uint32_t resultId = this->allocateId();
+
+    m_code.putIns(spv::OpMatrixTimesMatrix, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(a);
+    m_code.putWord(b);
+    return resultId;
+  }
+
+
+  uint32_t SpirvModule::opMatrixTimesVector(
+    uint32_t                resultType,
+    uint32_t                matrix,
+    uint32_t                vector) {
+    uint32_t resultId = this->allocateId();
+
+    m_code.putIns(spv::OpMatrixTimesVector, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(matrix);
+    m_code.putWord(vector);
+    return resultId;
+  }
+
+
+  uint32_t SpirvModule::opVectorTimesMatrix(
+    uint32_t                resultType,
+    uint32_t                vector,
+    uint32_t                matrix) {
+    uint32_t resultId = this->allocateId();
+
+    m_code.putIns(spv::OpVectorTimesMatrix, 5);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(vector);
+    m_code.putWord(matrix);
+    return resultId;
+  }
+
+
   uint32_t SpirvModule::opFFma(
           uint32_t                resultType,
           uint32_t                a,
