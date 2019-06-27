@@ -46,8 +46,8 @@ namespace dxvk::caps {
   constexpr uint32_t MaxClipPlanes                = 6;
   constexpr uint32_t MaxSamplers                  = 16;
   constexpr uint32_t MaxStreams                   = 16;
-  constexpr uint32_t MaxTextureBlendStages        = 8;
   constexpr uint32_t MaxSimultaneousTextures      = 8;
+  constexpr uint32_t MaxTextureBlendStages        = MaxSimultaneousTextures;
   constexpr uint32_t MaxSimultaneousRenderTargets = D3D_MAX_SIMULTANEOUS_RENDERTARGETS;
 
   constexpr uint32_t MaxFloatConstants            = 256;
@@ -62,5 +62,7 @@ namespace dxvk::caps {
   constexpr uint32_t MaxSubresources              = 15 * 6;
 
   constexpr uint32_t MaxTransforms                = 10 + 256;
+
+  constexpr uint32_t TextureStageCount           = MaxSimultaneousTextures;
 
 }

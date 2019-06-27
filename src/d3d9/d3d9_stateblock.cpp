@@ -148,6 +148,19 @@ namespace dxvk {
   }
 
 
+  HRESULT D3D9StateBlock::SetTextureStageState(
+          DWORD                    Stage,
+          D3DTEXTURESTAGESTATETYPE Type,
+          DWORD                    Value) {
+    m_state.textureStages[Stage][Type] = Value;
+
+    m_captures.flags.set(D3D9CapturedStateFlag::TextureStages);
+    m_captures.textureStages[Stage] = true;
+    m_captures.textureStageStates[Stage][Type] = true;
+    return D3D_OK;
+  }
+
+
   HRESULT D3D9StateBlock::MultiplyStateTransform(uint32_t idx, const D3DMATRIX* pMatrix) {
     m_state.transforms[idx] = ConvertMatrix(pMatrix) * m_state.transforms[idx];
 
@@ -450,6 +463,11 @@ namespace dxvk {
       CapturePixelRenderStates();
       CapturePixelSamplerStates();
       CapturePixelShaderStates();
+
+      m_captures.flags.set(D3D9CapturedStateFlag::TextureStages);
+      m_captures.textureStages.flip();
+      for (auto& stage : m_captures.textureStageStates)
+        stage.flip();
     }
 
     if (Type == D3D9StateBlockType::VertexState || Type == D3D9StateBlockType::All) {

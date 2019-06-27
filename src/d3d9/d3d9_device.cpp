@@ -1708,7 +1708,19 @@ namespace dxvk {
           DWORD                    Stage,
           D3DTEXTURESTAGESTATETYPE Type,
           DWORD*                   pValue) {
-    Logger::warn("D3D9DeviceEx::GetTextureStageState: Stub");
+    if (unlikely(pValue == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    *pValue = 0;
+
+    if (unlikely(Stage >= caps::TextureStageCount))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(Type >= D3DTSS_CONSTANT))
+      return D3DERR_INVALIDCALL;
+
+    *pValue = m_state.textureStages[Stage][Type];
+
     return D3D_OK;
   }
 
@@ -1716,10 +1728,19 @@ namespace dxvk {
           DWORD                    Stage,
           D3DTEXTURESTAGESTATETYPE Type,
           DWORD                    Value) {
-    static bool s_errorShown = false;
+    D3D9DeviceLock lock = LockDevice();
 
-    if (!std::exchange(s_errorShown, true))
-      Logger::warn("D3D9DeviceEx::SetTextureStageState: Stub");
+    if (unlikely(Stage >= caps::TextureStageCount))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(Type >= D3DTSS_CONSTANT))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(ShouldRecord()))
+      return m_recorder->SetTextureStageState(Stage, Type, Value);
+
+    m_state.textureStages[Stage][Type] = Value;
+
     return D3D_OK;
   }
 

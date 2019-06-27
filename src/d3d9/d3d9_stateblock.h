@@ -62,6 +62,11 @@ namespace dxvk {
 
     HRESULT SetStateTransform(uint32_t idx, const D3DMATRIX* pMatrix);
 
+    HRESULT SetTextureStageState(
+            DWORD                    Stage,
+            D3DTEXTURESTAGESTATETYPE Type,
+            DWORD                    Value);
+
     HRESULT MultiplyStateTransform(uint32_t idx, const D3DMATRIX* pMatrix);
 
     HRESULT SetViewport(const D3DVIEWPORT9* pViewport);
@@ -170,6 +175,17 @@ namespace dxvk {
         for (uint32_t i = 0; i < m_captures.transforms.size(); i++) {
           if (m_captures.transforms[i])
             dst->SetStateTransform(i, reinterpret_cast<const D3DMATRIX*>(&src->transforms[i]));
+        }
+      }
+
+      if (m_captures.flags.test(D3D9CapturedStateFlag::TextureStages)) {
+        for (uint32_t i = 0; i < m_captures.textureStages.size(); i++) {
+          if (m_captures.textureStages[i]) {
+            for (uint32_t j = 0; j < m_captures.textureStagesStates[i].size(); j++) {
+              if (m_captures.textureStagesStates[i][j])
+                dst->SetTextureStageState(i, j, src->textureStages[i][j]);
+            }
+          }
         }
       }
 

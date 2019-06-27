@@ -92,6 +92,10 @@ namespace dxvk {
       D3D9ClipPlane,
       caps::MaxClipPlanes>                           clipPlanes;
 
+    std::array<
+      std::array<DWORD, D3DTSS_CONSTANT>,
+      caps::TextureStageCount>                       textureStages;
+
     D3D9ShaderConstants                              consts[DxsoProgramTypes::Count];
 
     std::array<UINT, caps::MaxStreams>               streamFreq;
@@ -157,7 +161,8 @@ namespace dxvk {
     VsConstants,
     PsConstants,
     StreamFreq,
-    Transforms
+    Transforms,
+    TextureStages
   };
 
   using D3D9CapturedStateFlags = Flags<D3D9CapturedStateFlag>;
@@ -177,6 +182,10 @@ namespace dxvk {
     std::bitset<caps::MaxClipPlanes>                    clipPlanes;
     std::bitset<caps::MaxStreams>                       streamFreq;
     std::bitset<caps::MaxTransforms>                    transforms;
+    std::bitset<caps::TextureStageCount>                textureStages;
+    std::array<
+      std::bitset<D3DTSS_CONSTANT>,
+      caps::TextureStageCount>                          textureStageStates;
 
     struct {
       std::bitset<caps::MaxFloatConstants>              fConsts;
