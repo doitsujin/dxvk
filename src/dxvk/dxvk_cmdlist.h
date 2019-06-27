@@ -726,9 +726,11 @@ namespace dxvk {
     
     VkFence             m_fence;
     
-    VkCommandPool       m_pool;
-    VkCommandBuffer     m_execBuffer;
-    VkCommandBuffer     m_initBuffer;
+    VkCommandPool       m_graphicsPool = VK_NULL_HANDLE;
+    VkCommandPool       m_transferPool = VK_NULL_HANDLE;
+    
+    VkCommandBuffer     m_execBuffer = VK_NULL_HANDLE;
+    VkCommandBuffer     m_initBuffer = VK_NULL_HANDLE;
     
     DxvkCmdBufferFlags  m_cmdBuffersUsed;
     DxvkLifetimeTracker m_resources;

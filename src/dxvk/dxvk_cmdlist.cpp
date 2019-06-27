@@ -8,6 +8,9 @@ namespace dxvk {
     m_vkd           (device->vkd()),
     m_cmdBuffersUsed(0),
     m_descriptorPoolTracker(device) {
+    const auto& graphicsQueue = m_device->queues().graphics;
+    const auto& transferQueue = m_device->queues().transfer;
+
     VkFenceCreateInfo fenceInfo;
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fenceInfo.pNext = nullptr;
@@ -20,15 +23,22 @@ namespace dxvk {
     poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     poolInfo.pNext            = nullptr;
     poolInfo.flags            = 0;
-    poolInfo.queueFamilyIndex = device->queues().graphics.queueFamily;
+    poolInfo.queueFamilyIndex = graphicsQueue.queueFamily;
     
-    if (m_vkd->vkCreateCommandPool(m_vkd->device(), &poolInfo, nullptr, &m_pool) != VK_SUCCESS)
-      throw DxvkError("DxvkCommandList: Failed to create command pool");
+    if (m_vkd->vkCreateCommandPool(m_vkd->device(), &poolInfo, nullptr, &m_graphicsPool) != VK_SUCCESS)
+      throw DxvkError("DxvkCommandList: Failed to create graphics command pool");
+    
+    if (m_device->hasDedicatedTransferQueue()) {
+      poolInfo.queueFamilyIndex = transferQueue.queueFamily;
+
+      if (m_vkd->vkCreateCommandPool(m_vkd->device(), &poolInfo, nullptr, &m_transferPool) != VK_SUCCESS)
+        throw DxvkError("DxvkCommandList: Failed to create transfer command pool");
+    }
     
     VkCommandBufferAllocateInfo cmdInfo;
     cmdInfo.sType             = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     cmdInfo.pNext             = nullptr;
-    cmdInfo.commandPool       = m_pool;
+    cmdInfo.commandPool       = m_graphicsPool;
     cmdInfo.level             = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     cmdInfo.commandBufferCount = 1;
     
@@ -41,8 +51,10 @@ namespace dxvk {
   DxvkCommandList::~DxvkCommandList() {
     this->reset();
     
-    m_vkd->vkDestroyCommandPool(m_vkd->device(), m_pool,  nullptr);
-    m_vkd->vkDestroyFence      (m_vkd->device(), m_fence, nullptr);
+    m_vkd->vkDestroyCommandPool(m_vkd->device(), m_graphicsPool, nullptr);
+    m_vkd->vkDestroyCommandPool(m_vkd->device(), m_transferPool, nullptr);
+    
+    m_vkd->vkDestroyFence(m_vkd->device(), m_fence, nullptr);
   }
   
   
@@ -97,7 +109,8 @@ namespace dxvk {
     info.flags            = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     info.pInheritanceInfo = nullptr;
     
-    if (m_vkd->vkResetCommandPool(m_vkd->device(), m_pool, 0) != VK_SUCCESS)
+    if ((m_graphicsPool && m_vkd->vkResetCommandPool(m_vkd->device(), m_graphicsPool, 0) != VK_SUCCESS)
+     || (m_transferPool && m_vkd->vkResetCommandPool(m_vkd->device(), m_transferPool, 0) != VK_SUCCESS))
       Logger::err("DxvkCommandList: Failed to reset command buffer");
     
     if (m_vkd->vkBeginCommandBuffer(m_execBuffer, &info) != VK_SUCCESS
