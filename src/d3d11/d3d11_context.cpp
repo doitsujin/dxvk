@@ -215,6 +215,9 @@ namespace dxvk {
     
     m_state.om.sampleMask = D3D11_DEFAULT_SAMPLE_MASK;
     m_state.om.stencilRef = D3D11_DEFAULT_STENCIL_REFERENCE;
+
+    m_state.om.maxRtv = 0;
+    m_state.om.maxUav = 0;
     
     // Default RS state
     m_state.rs.state        = nullptr;
@@ -2566,10 +2569,9 @@ namespace dxvk {
           UINT                              NumViews,
           ID3D11RenderTargetView* const*    ppRenderTargetViews,
           ID3D11DepthStencilView*           pDepthStencilView) {
-    D3D10DeviceLock lock = LockContext();
-    
-    SetRenderTargets(NumViews, ppRenderTargetViews, pDepthStencilView);
-    BindFramebuffer(false);
+    OMSetRenderTargetsAndUnorderedAccessViews(
+      NumViews, ppRenderTargetViews, pDepthStencilView,
+      NumViews, 0, nullptr, nullptr);
   }
   
   
@@ -2583,27 +2585,54 @@ namespace dxvk {
     const UINT*                             pUAVInitialCounts) {
     D3D10DeviceLock lock = LockContext();
     
-    bool isUavRendering = false;
-    
-    if (NumRTVs != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL)
-      SetRenderTargets(NumRTVs, ppRenderTargetViews, pDepthStencilView);
-    
-    if (NumUAVs != D3D11_KEEP_UNORDERED_ACCESS_VIEWS) {
-      // Check whether there actually are any UAVs bound
-      for (uint32_t i = 0; i < NumUAVs && !isUavRendering; i++)
-        isUavRendering = ppUnorderedAccessViews[i] != nullptr;
-
-      // UAVs are made available to all shader stages in
-      // the graphics pipeline even though this code may
-      // suggest that they are limited to the pixel shader.
-      SetUnorderedAccessViews<DxbcProgramType::PixelShader>(
-        m_state.ps.unorderedAccessViews,
-        UAVStartSlot, NumUAVs,
-        ppUnorderedAccessViews,
-        pUAVInitialCounts);
+    if (likely(NumRTVs != D3D11_KEEP_RENDER_TARGETS_AND_DEPTH_STENCIL)) {
+      // Native D3D11 does not change the render targets if
+      // the parameters passed to this method are invalid.
+      if (!ValidateRenderTargets(NumRTVs, ppRenderTargetViews, pDepthStencilView))
+        return;
+      
+      for (uint32_t i = 0; i < m_state.om.renderTargetViews.size(); i++)
+        m_state.om.renderTargetViews[i] = i < NumRTVs
+          ? static_cast<D3D11RenderTargetView*>(ppRenderTargetViews[i])
+          : nullptr;
+      
+      m_state.om.depthStencilView = static_cast<D3D11DepthStencilView*>(pDepthStencilView);
+      m_state.om.maxRtv           = NumRTVs;
     }
 
-    BindFramebuffer(isUavRendering);
+    bool spillRenderPass = false;
+
+    if (unlikely(NumUAVs || m_state.om.maxUav)) {
+      uint32_t uavSlotId = computeUavBinding       (DxbcProgramType::PixelShader, 0);
+      uint32_t ctrSlotId = computeUavCounterBinding(DxbcProgramType::PixelShader, 0);
+
+      if (likely(NumUAVs != D3D11_KEEP_UNORDERED_ACCESS_VIEWS)) {
+        uint32_t newMaxUav = NumUAVs ? UAVStartSlot + NumUAVs : 0;
+        uint32_t oldMaxUav = std::exchange(m_state.om.maxUav, newMaxUav);
+
+        for (uint32_t i = 0; i < std::max(oldMaxUav, newMaxUav); i++) {
+          D3D11UnorderedAccessView* uav = nullptr;
+          uint32_t                  ctr = ~0u;
+
+          if (i >= UAVStartSlot && i < UAVStartSlot + NumUAVs) {
+            uav = static_cast<D3D11UnorderedAccessView*>(ppUnorderedAccessViews[i - UAVStartSlot]);
+            ctr = pUAVInitialCounts ? pUAVInitialCounts[i - UAVStartSlot] : ~0u;
+          }
+
+          if (m_state.ps.unorderedAccessViews[i] != uav || ctr != ~0u) {
+            m_state.ps.unorderedAccessViews[i] = uav;
+
+            BindUnorderedAccessView(
+              uavSlotId + i, uav,
+              ctrSlotId + i, ctr);
+
+            spillRenderPass = true;
+          }
+        }
+      }
+    }
+
+    BindFramebuffer(spillRenderPass);
   }
   
   
