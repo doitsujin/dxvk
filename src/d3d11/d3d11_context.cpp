@@ -3573,25 +3573,6 @@ namespace dxvk {
   }
 
 
-  void D3D11DeviceContext::SetRenderTargets(
-          UINT                              NumViews,
-          ID3D11RenderTargetView* const*    ppRenderTargetViews,
-          ID3D11DepthStencilView*           pDepthStencilView) {
-    // Native D3D11 does not change the render targets if
-    // the parameters passed to this method are invalid.
-    if (!ValidateRenderTargets(NumViews, ppRenderTargetViews, pDepthStencilView))
-      return;
-    
-    for (UINT i = 0; i < m_state.om.renderTargetViews.size(); i++) {
-      m_state.om.renderTargetViews[i] = i < NumViews
-        ? static_cast<D3D11RenderTargetView*>(ppRenderTargetViews[i])
-        : nullptr;
-    }
-    
-    m_state.om.depthStencilView = static_cast<D3D11DepthStencilView*>(pDepthStencilView);
-  }
-  
-  
   void D3D11DeviceContext::GetConstantBuffers(
     const D3D11ConstantBufferBindings&      Bindings,
           UINT                              StartSlot,

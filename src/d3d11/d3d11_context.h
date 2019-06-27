@@ -778,11 +778,6 @@ namespace dxvk {
             ID3D11UnorderedAccessView* const* ppUnorderedAccessViews,
       const UINT*                             pUAVInitialCounts);
     
-    void SetRenderTargets(
-            UINT                              NumViews,
-            ID3D11RenderTargetView* const*    ppRenderTargetViews,
-            ID3D11DepthStencilView*           pDepthStencilView);
-    
     void GetConstantBuffers(
       const D3D11ConstantBufferBindings&      Bindings,
             UINT                              StartSlot,
