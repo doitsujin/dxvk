@@ -19,6 +19,7 @@
 #include "../dxso/dxso_modinfo.h"
 
 #include "d3d9_sampler.h"
+#include "d3d9_fixed_function.h"
 
 #include <vector>
 #include <type_traits>
@@ -46,7 +47,8 @@ namespace dxvk {
     DirtyViewportScissor,
     DirtyMultiSampleState,
     DirtyTransforms,
-    DirtyFFDeclConstants,
+    DirtyFFVertexShader,
+    DirtyFFPixelShader,
     UpDirtiedVertices,
     UpDirtiedIndices,
     ValidSampleMask,
@@ -828,6 +830,11 @@ namespace dxvk {
 
     DxvkCsChunkRef                  m_csChunk;
 
+    D3D9FFShaderKeyVS               m_lastFFKeyVS;
+    D3D9FFShaderKeyFS               m_lastFFKeyFS;
+
+    D3D9FFShaderModuleSet           m_ffModules;
+
     DxvkCsChunkRef AllocCsChunk() {
       DxvkCsChunk* chunk = m_csChunkPool.allocChunk(DxvkCsChunkFlag::SingleUse);
       return DxvkCsChunkRef(chunk, &m_csChunkPool);
@@ -870,8 +877,6 @@ namespace dxvk {
 
     Rc<DxvkBuffer>                  m_vsFixedFunction;
     Rc<DxvkBuffer>                  m_psFixedFunction;
-
-    Rc<DxvkShader>                  m_ffShaders[DxsoProgramTypes::Count];
 
     Rc<DxvkBuffer>                  m_upBuffer;
 
@@ -1001,8 +1006,6 @@ namespace dxvk {
 
       return D3D_OK;
     }
-
-    void CreateFixedFunctionShaders();
 
     void UpdateFixedFunctionVS();
 
