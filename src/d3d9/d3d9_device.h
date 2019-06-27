@@ -830,9 +830,6 @@ namespace dxvk {
 
     DxvkCsChunkRef                  m_csChunk;
 
-    D3D9FFShaderKeyVS               m_lastFFKeyVS;
-    D3D9FFShaderKeyFS               m_lastFFKeyFS;
-
     D3D9FFShaderModuleSet           m_ffModules;
 
     DxvkCsChunkRef AllocCsChunk() {

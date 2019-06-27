@@ -1739,7 +1739,10 @@ namespace dxvk {
     if (unlikely(ShouldRecord()))
       return m_recorder->SetTextureStageState(Stage, Type, Value);
 
-    m_state.textureStages[Stage][Type] = Value;
+    if (likely(m_state.textureStages[Stage][Type] != Value)) {
+      m_flags.test(D3D9DeviceFlag::DirtyFFPixelShader);
+      m_state.textureStages[Stage][Type] = Value;
+    }
 
     return D3D_OK;
   }
@@ -2078,6 +2081,14 @@ namespace dxvk {
 
     if (decl == m_state.vertexDecl)
       return D3D_OK;
+
+    bool dirtyFFShader = !decl || !m_state.vertexDecl;
+    if (!dirtyFFShader)
+      dirtyFFShader |= decl->TestFlag(D3D9VertexDeclFlag::HasPositionT) != m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPositionT)
+                    || decl->TestFlag(D3D9VertexDeclFlag::HasColor)     != m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor);
+
+    if (dirtyFFShader)
+      m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
 
     changePrivate(m_state.vertexDecl, decl);
 
@@ -4929,9 +4940,8 @@ namespace dxvk {
     key.HasDiffuse   = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor)     : false;
     key.HasPositionT = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPositionT) : false;
 
-    if (m_flags.test(D3D9DeviceFlag::DirtyFFVertexShader) || m_lastFFKeyVS != key) {
+    if (m_flags.test(D3D9DeviceFlag::DirtyFFVertexShader)) {
       m_flags.clr(D3D9DeviceFlag::DirtyFFVertexShader);
-      m_lastFFKeyVS = key;
 
       EmitCs([
         this,
@@ -4968,9 +4978,8 @@ namespace dxvk {
     // Shader...
     D3D9FFShaderKeyFS key;
 
-    if (m_flags.test(D3D9DeviceFlag::DirtyFFPixelShader) || m_lastFFKeyFS != key) {
+    if (m_flags.test(D3D9DeviceFlag::DirtyFFPixelShader)) {
       m_flags.clr(D3D9DeviceFlag::DirtyFFPixelShader);
-      m_lastFFKeyFS = key;
 
       EmitCs([
         this,
