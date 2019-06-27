@@ -86,7 +86,6 @@ namespace dxvk {
       { std::lock_guard<std::mutex> lock(m_mutexQueue);
 
         status = submitInfo.cmdList->submit(
-          submitInfo.queue,
           submitInfo.waitSync,
           submitInfo.wakeSync);
       }

@@ -3,10 +3,9 @@
 
 namespace dxvk {
     
-  DxvkCommandList::DxvkCommandList(
-          DxvkDevice*       device,
-          uint32_t          queueFamily)
-  : m_vkd           (device->vkd()),
+  DxvkCommandList::DxvkCommandList(DxvkDevice* device)
+  : m_device        (device),
+    m_vkd           (device->vkd()),
     m_cmdBuffersUsed(0),
     m_descriptorPoolTracker(device) {
     VkFenceCreateInfo fenceInfo;
@@ -21,7 +20,7 @@ namespace dxvk {
     poolInfo.sType            = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
     poolInfo.pNext            = nullptr;
     poolInfo.flags            = 0;
-    poolInfo.queueFamilyIndex = queueFamily;
+    poolInfo.queueFamilyIndex = device->queues().graphics.queueFamily;
     
     if (m_vkd->vkCreateCommandPool(m_vkd->device(), &poolInfo, nullptr, &m_pool) != VK_SUCCESS)
       throw DxvkError("DxvkCommandList: Failed to create command pool");
@@ -48,9 +47,10 @@ namespace dxvk {
   
   
   VkResult DxvkCommandList::submit(
-          VkQueue         queue,
           VkSemaphore     waitSemaphore,
           VkSemaphore     wakeSemaphore) {
+    const auto& graphics = m_device->queues().graphics;
+
     std::array<VkCommandBuffer, 2> cmdBuffers;
     uint32_t cmdBufferCount = 0;
     
@@ -73,7 +73,7 @@ namespace dxvk {
     info.signalSemaphoreCount = wakeSemaphore == VK_NULL_HANDLE ? 0 : 1;
     info.pSignalSemaphores    = &wakeSemaphore;
     
-    return m_vkd->vkQueueSubmit(queue, 1, &info, m_fence);
+    return m_vkd->vkQueueSubmit(graphics.queueHandle, 1, &info, m_fence);
   }
   
   

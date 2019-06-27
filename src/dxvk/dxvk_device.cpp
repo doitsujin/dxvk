@@ -70,7 +70,7 @@ namespace dxvk {
     Rc<DxvkCommandList> cmdList = m_recycledCommandLists.retrieveObject();
     
     if (cmdList == nullptr)
-      cmdList = new DxvkCommandList(this, m_queues.graphics.queueFamily);
+      cmdList = new DxvkCommandList(this);
     
     return cmdList;
   }
@@ -229,7 +229,6 @@ namespace dxvk {
           VkSemaphore               wakeSync) {
     DxvkSubmitInfo submitInfo;
     submitInfo.cmdList  = commandList;
-    submitInfo.queue    = m_queues.graphics.queueHandle;
     submitInfo.waitSync = waitSync;
     submitInfo.wakeSync = wakeSync;
     m_submissionQueue.submit(submitInfo);

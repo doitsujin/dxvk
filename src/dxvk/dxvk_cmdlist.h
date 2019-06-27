@@ -42,9 +42,7 @@ namespace dxvk {
     
   public:
     
-    DxvkCommandList(
-            DxvkDevice*       device,
-            uint32_t          queueFamily);
+    DxvkCommandList(DxvkDevice* device);
     ~DxvkCommandList();
     
     /**
@@ -56,7 +54,6 @@ namespace dxvk {
      * \returns Submission status
      */
     VkResult submit(
-            VkQueue         queue,
             VkSemaphore     waitSemaphore,
             VkSemaphore     wakeSemaphore);
     
@@ -724,6 +721,7 @@ namespace dxvk {
     
   private:
     
+    DxvkDevice*         m_device;
     Rc<vk::DeviceFn>    m_vkd;
     
     VkFence             m_fence;
