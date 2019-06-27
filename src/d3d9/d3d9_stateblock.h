@@ -181,9 +181,9 @@ namespace dxvk {
       if (m_captures.flags.test(D3D9CapturedStateFlag::TextureStages)) {
         for (uint32_t i = 0; i < m_captures.textureStages.size(); i++) {
           if (m_captures.textureStages[i]) {
-            for (uint32_t j = 0; j < m_captures.textureStagesStates[i].size(); j++) {
-              if (m_captures.textureStagesStates[i][j])
-                dst->SetTextureStageState(i, j, src->textureStages[i][j]);
+            for (uint32_t j = 0; j < m_captures.textureStageStates[i].size(); j++) {
+              if (m_captures.textureStageStates[i][j])
+                dst->SetTextureStageState(i, (D3DTEXTURESTAGESTATETYPE)j, src->textureStages[i][j]);
             }
           }
         }
