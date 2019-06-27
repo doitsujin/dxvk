@@ -20,9 +20,6 @@
 
 #include "d3d9_initializer.h"
 
-#include <d3d9_fixed_function_frag.h>
-#include <d3d9_fixed_function_vert.h>
-
 #include <algorithm>
 #include <cfloat>
 #ifdef MSC_VER
