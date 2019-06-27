@@ -3613,7 +3613,7 @@ namespace dxvk {
   
   
   void D3D11DeviceContext::RestoreState() {
-    BindFramebuffer(false);
+    BindFramebuffer(m_state.om.maxUav > 0);
     
     BindShader<DxbcProgramType::VertexShader>   (GetCommonShader(m_state.vs.shader.ptr()));
     BindShader<DxbcProgramType::HullShader>     (GetCommonShader(m_state.hs.shader.ptr()));
