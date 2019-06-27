@@ -60,7 +60,7 @@ namespace dxvk {
           VkQueue*              pQueue,
           uint32_t*             pQueueFamilyIndex) {
     auto device = static_cast<D3D11Device*>(m_device)->GetDXVKDevice();
-    DxvkDeviceQueue queue = device->graphicsQueue();
+    DxvkDeviceQueue queue = device->queues().graphics;
     
     if (pQueue != nullptr)
       *pQueue = queue.queueHandle;

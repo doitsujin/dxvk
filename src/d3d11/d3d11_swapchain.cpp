@@ -330,7 +330,7 @@ namespace dxvk {
 
 
   void D3D11SwapChain::CreatePresenter() {
-    DxvkDeviceQueue graphicsQueue = m_device->graphicsQueue();
+    DxvkDeviceQueue graphicsQueue = m_device->queues().graphics;
 
     vk::PresenterDevice presenterDevice;
     presenterDevice.queueFamily   = graphicsQueue.queueFamily;

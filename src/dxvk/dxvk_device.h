@@ -111,14 +111,23 @@ namespace dxvk {
     }
     
     /**
-     * \brief Graphics queue properties
+     * \brief Queue handles
      * 
-     * Handle and queue family index of
-     * the queue used for rendering.
-     * \returns Graphics queue info
+     * Handles and queue family indices
+     * of all known device queues.
+     * \returns Device queue infos
      */
-    DxvkDeviceQueue graphicsQueue() const {
-      return m_queues.graphics;
+    const DxvkDeviceQueueSet& queues() const {
+      return m_queues;
+    }
+
+    /**
+     * \brief Tests whether a dedicated transfer queue is available
+     * \returns \c true if an SDMA queue is supported by the device
+     */
+    bool hasDedicatedTransferQueue() const {
+      return m_queues.transfer.queueHandle
+          != m_queues.graphics.queueHandle;
     }
     
     /**
