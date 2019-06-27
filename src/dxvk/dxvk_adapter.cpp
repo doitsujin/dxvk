@@ -1,4 +1,5 @@
 #include <cstring>
+#include <unordered_set>
 
 #include "dxvk_adapter.h"
 #include "dxvk_device.h"
@@ -88,22 +89,25 @@ namespace dxvk {
   }
   
     
-  uint32_t DxvkAdapter::graphicsQueueFamily() const {
-    for (uint32_t i = 0; i < m_queueFamilies.size(); i++) {
-      if (m_queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
-        return i;
-    }
+  DxvkAdapterQueueIndices DxvkAdapter::findQueueFamilies() const {
+    uint32_t graphicsQueue = findQueueFamily(
+      VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT,
+      VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT);
     
-    throw DxvkError("DxvkAdapter: No graphics queue found");
+    uint32_t transferQueue = findQueueFamily(
+      VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT,
+      VK_QUEUE_TRANSFER_BIT);
+    
+    if (transferQueue == VK_QUEUE_FAMILY_IGNORED)
+      transferQueue = graphicsQueue;
+    
+    DxvkAdapterQueueIndices queues;
+    queues.graphics = graphicsQueue;
+    queues.transfer = transferQueue;
+    return queues;
   }
-  
-  
-  uint32_t DxvkAdapter::presentQueueFamily() const {
-    // TODO Implement properly
-    return this->graphicsQueueFamily();
-  }
-  
-  
+
+
   bool DxvkAdapter::checkFeatureSupport(const DxvkDeviceFeatures& required) const {
     return (m_deviceFeatures.core.features.robustBufferAccess
                 || !required.core.features.robustBufferAccess)
@@ -324,26 +328,25 @@ namespace dxvk {
     overallocInfo.pNext = nullptr;
     overallocInfo.overallocationBehavior = VK_MEMORY_OVERALLOCATION_BEHAVIOR_ALLOWED_AMD;
     
-    // Create one single queue for graphics and present
+    // Create the requested queues
     float queuePriority = 1.0f;
     std::vector<VkDeviceQueueCreateInfo> queueInfos;
+
+    std::unordered_set<uint32_t> queueFamiliySet;
+
+    DxvkAdapterQueueIndices queueFamilies = findQueueFamilies();
+    queueFamiliySet.insert(queueFamilies.graphics);
+    queueFamiliySet.insert(queueFamilies.transfer);
     
-    uint32_t gIndex = this->graphicsQueueFamily();
-    uint32_t pIndex = this->presentQueueFamily();
-    
-    VkDeviceQueueCreateInfo graphicsQueue;
-    graphicsQueue.sType             = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-    graphicsQueue.pNext             = nullptr;
-    graphicsQueue.flags             = 0;
-    graphicsQueue.queueFamilyIndex  = gIndex;
-    graphicsQueue.queueCount        = 1;
-    graphicsQueue.pQueuePriorities  = &queuePriority;
-    queueInfos.push_back(graphicsQueue);
-    
-    if (pIndex != gIndex) {
-      VkDeviceQueueCreateInfo presentQueue = graphicsQueue;
-      presentQueue.queueFamilyIndex        = pIndex;
-      queueInfos.push_back(presentQueue);
+    for (uint32_t family : queueFamiliySet) {
+      VkDeviceQueueCreateInfo graphicsQueue;
+      graphicsQueue.sType             = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+      graphicsQueue.pNext             = nullptr;
+      graphicsQueue.flags             = 0;
+      graphicsQueue.queueFamilyIndex  = family;
+      graphicsQueue.queueCount        = 1;
+      graphicsQueue.pQueuePriorities  = &queuePriority;
+      queueInfos.push_back(graphicsQueue);
     }
 
     VkDeviceCreateInfo info;
@@ -540,6 +543,18 @@ namespace dxvk {
     m_queueFamilies.resize(numQueueFamilies);
     m_vki->vkGetPhysicalDeviceQueueFamilyProperties(
       m_handle, &numQueueFamilies, m_queueFamilies.data());
+  }
+
+
+  uint32_t DxvkAdapter::findQueueFamily(
+          VkQueueFlags          mask,
+          VkQueueFlags          flags) const {
+    for (uint32_t i = 0; i < m_queueFamilies.size(); i++) {
+      if ((m_queueFamilies[i].queueFlags & mask) == flags)
+        return i;
+    }
+
+    return VK_QUEUE_FAMILY_IGNORED;
   }
   
   

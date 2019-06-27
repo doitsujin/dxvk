@@ -42,8 +42,17 @@ namespace dxvk {
    * queue family that it belongs to.
    */
   struct DxvkDeviceQueue {
-    uint32_t  queueFamily = 0;
     VkQueue   queueHandle = VK_NULL_HANDLE;
+    uint32_t  queueFamily = 0;
+    uint32_t  queueIndex  = 0;
+  };
+
+  /**
+   * \brief Device queue infos
+   */
+  struct DxvkDeviceQueueSet {
+    DxvkDeviceQueue graphics;
+    DxvkDeviceQueue transfer;
   };
   
   /**
@@ -109,7 +118,7 @@ namespace dxvk {
      * \returns Graphics queue info
      */
     DxvkDeviceQueue graphicsQueue() const {
-      return m_graphicsQueue;
+      return m_queues.graphics;
     }
     
     /**
@@ -407,8 +416,7 @@ namespace dxvk {
     sync::Spinlock              m_statLock;
     DxvkStatCounters            m_statCounters;
     
-    DxvkDeviceQueue             m_graphicsQueue;
-    DxvkDeviceQueue             m_presentQueue;
+    DxvkDeviceQueueSet          m_queues;
     
     DxvkRecycler<DxvkCommandList,    16> m_recycledCommandLists;
     DxvkRecycler<DxvkDescriptorPool, 16> m_recycledDescriptorPools;
@@ -420,6 +428,10 @@ namespace dxvk {
     
     void recycleDescriptorPool(
       const Rc<DxvkDescriptorPool>& pool);
+    
+    DxvkDeviceQueue getQueue(
+            uint32_t                family,
+            uint32_t                index) const;
     
     /**
      * \brief Dummy buffer handle

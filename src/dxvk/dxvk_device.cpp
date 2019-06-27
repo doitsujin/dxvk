@@ -28,16 +28,9 @@ namespace dxvk {
     m_metaPackObjects   (new DxvkMetaPackObjects    (vkd)),
     m_unboundResources  (this),
     m_submissionQueue   (this) {
-    m_graphicsQueue.queueFamily = m_adapter->graphicsQueueFamily();
-    m_presentQueue.queueFamily  = m_adapter->presentQueueFamily();
-    
-    m_vkd->vkGetDeviceQueue(m_vkd->device(),
-      m_graphicsQueue.queueFamily, 0,
-      &m_graphicsQueue.queueHandle);
-    
-    m_vkd->vkGetDeviceQueue(m_vkd->device(),
-      m_presentQueue.queueFamily, 0,
-      &m_presentQueue.queueHandle);
+    auto queueFamilies = m_adapter->findQueueFamilies();
+    m_queues.graphics = getQueue(queueFamilies.graphics, 0);
+    m_queues.transfer = getQueue(queueFamilies.transfer, 0);
   }
   
   
@@ -76,10 +69,8 @@ namespace dxvk {
   Rc<DxvkCommandList> DxvkDevice::createCommandList() {
     Rc<DxvkCommandList> cmdList = m_recycledCommandLists.retrieveObject();
     
-    if (cmdList == nullptr) {
-      cmdList = new DxvkCommandList(this,
-        m_adapter->graphicsQueueFamily());
-    }
+    if (cmdList == nullptr)
+      cmdList = new DxvkCommandList(this, m_queues.graphics.queueFamily);
     
     return cmdList;
   }
@@ -238,7 +229,7 @@ namespace dxvk {
           VkSemaphore               wakeSync) {
     DxvkSubmitInfo submitInfo;
     submitInfo.cmdList  = commandList;
-    submitInfo.queue    = m_graphicsQueue.queueHandle;
+    submitInfo.queue    = m_queues.graphics.queueHandle;
     submitInfo.waitSync = waitSync;
     submitInfo.wakeSync = wakeSync;
     m_submissionQueue.submit(submitInfo);
@@ -264,6 +255,15 @@ namespace dxvk {
 
   void DxvkDevice::recycleDescriptorPool(const Rc<DxvkDescriptorPool>& pool) {
     m_recycledDescriptorPools.returnObject(pool);
+  }
+
+
+  DxvkDeviceQueue DxvkDevice::getQueue(
+          uint32_t                family,
+          uint32_t                index) const {
+    VkQueue queue = VK_NULL_HANDLE;
+    m_vkd->vkGetDeviceQueue(m_vkd->device(), family, index, &queue);
+    return DxvkDeviceQueue { queue, family, index };
   }
   
 }
