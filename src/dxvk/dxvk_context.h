@@ -980,9 +980,11 @@ namespace dxvk {
     DxvkContextFlags        m_flags;
     DxvkContextState        m_state;
 
-    DxvkBarrierSet          m_barriers;
-    DxvkBarrierSet          m_transfers;
-    DxvkBarrierSet          m_transitions;
+    DxvkBarrierSet          m_sdmaAcquires;
+    DxvkBarrierSet          m_sdmaBarriers;
+    DxvkBarrierSet          m_initBarriers;
+    DxvkBarrierSet          m_execAcquires;
+    DxvkBarrierSet          m_execBarriers;
     DxvkBarrierControlFlags m_barrierControl;
     
     DxvkGpuQueryManager     m_queryManager;

@@ -24,9 +24,11 @@ namespace dxvk {
     m_metaResolve (metaResolveObjects),
     m_metaMipGen  (metaMipGenObjects),
     m_metaPack    (metaPackObjects),
-    m_barriers    (DxvkCmdBuffer::ExecBuffer),
-    m_transfers   (DxvkCmdBuffer::InitBuffer),
-    m_transitions (DxvkCmdBuffer::ExecBuffer),
+    m_sdmaAcquires(DxvkCmdBuffer::SdmaBuffer),
+    m_sdmaBarriers(DxvkCmdBuffer::SdmaBuffer),
+    m_initBarriers(DxvkCmdBuffer::InitBuffer),
+    m_execAcquires(DxvkCmdBuffer::ExecBuffer),
+    m_execBarriers(DxvkCmdBuffer::ExecBuffer),
     m_queryManager(gpuQueryPool),
     m_staging     (device) {
 
@@ -76,8 +78,9 @@ namespace dxvk {
   Rc<DxvkCommandList> DxvkContext::endRecording() {
     this->spillRenderPass();
     
-    m_transfers.recordCommands(m_cmd);
-    m_barriers.recordCommands(m_cmd);
+    m_sdmaBarriers.recordCommands(m_cmd);
+    m_initBarriers.recordCommands(m_cmd);
+    m_execBarriers.recordCommands(m_cmd);
 
     m_cmd->endRecording();
     return std::exchange(m_cmd, nullptr);
@@ -298,16 +301,16 @@ namespace dxvk {
     auto dstSubresourceRange = vk::makeSubresourceRange(region.dstSubresource);
     auto srcSubresourceRange = vk::makeSubresourceRange(region.srcSubresource);
 
-    if (m_barriers.isImageDirty(dstImage, dstSubresourceRange, DxvkAccess::Write)
-     || m_barriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write))
-      m_barriers.recordCommands(m_cmd);
+    if (m_execBarriers.isImageDirty(dstImage, dstSubresourceRange, DxvkAccess::Write)
+     || m_execBarriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write))
+      m_execBarriers.recordCommands(m_cmd);
 
     // Prepare the two images for transfer ops if necessary
     auto dstLayout = dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     auto srcLayout = srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
     if (dstImage->info().layout != dstLayout) {
-      m_transitions.accessImage(
+      m_execAcquires.accessImage(
         dstImage, dstSubresourceRange,
         dstImage->info().layout, 0, 0,
         dstLayout,
@@ -316,7 +319,7 @@ namespace dxvk {
     }
 
     if (srcImage->info().layout != srcLayout) {
-      m_transitions.accessImage(
+      m_execAcquires.accessImage(
         srcImage, srcSubresourceRange,
         srcImage->info().layout, 0, 0,
         srcLayout,
@@ -324,7 +327,7 @@ namespace dxvk {
         VK_ACCESS_TRANSFER_READ_BIT);
     }
 
-    m_transitions.recordCommands(m_cmd);
+    m_execAcquires.recordCommands(m_cmd);
 
     // Perform the blit operation
     m_cmd->cmdBlitImage(
@@ -332,7 +335,7 @@ namespace dxvk {
       dstImage->handle(), dstLayout,
       1, &region, filter);
     
-    m_barriers.accessImage(
+    m_execBarriers.accessImage(
       dstImage, dstSubresourceRange, dstLayout,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT,
@@ -340,7 +343,7 @@ namespace dxvk {
       dstImage->info().stages,
       dstImage->info().access);
     
-    m_barriers.accessImage(
+    m_execBarriers.accessImage(
       srcImage, srcSubresourceRange, srcLayout,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_READ_BIT,
@@ -366,10 +369,10 @@ namespace dxvk {
       subresources.layerCount     = image->info().numLayers;
       subresources.levelCount     = image->info().mipLevels;
 
-      if (m_barriers.isImageDirty(image, subresources, DxvkAccess::Write))
-        m_barriers.recordCommands(m_cmd);
+      if (m_execBarriers.isImageDirty(image, subresources, DxvkAccess::Write))
+        m_execBarriers.recordCommands(m_cmd);
 
-      m_barriers.accessImage(image, subresources,
+      m_execBarriers.accessImage(image, subresources,
         image->info().layout,
         image->info().stages,
         image->info().access,
@@ -392,8 +395,8 @@ namespace dxvk {
     length = align(length, sizeof(uint32_t));
     auto slice = buffer->getSliceHandle(offset, length);
 
-    if (m_barriers.isBufferDirty(slice, DxvkAccess::Write))
-      m_barriers.recordCommands(m_cmd);
+    if (m_execBarriers.isBufferDirty(slice, DxvkAccess::Write))
+      m_execBarriers.recordCommands(m_cmd);
     
     constexpr VkDeviceSize updateThreshold = 256;
 
@@ -417,7 +420,7 @@ namespace dxvk {
         value);
     }
     
-    m_barriers.accessBuffer(slice,
+    m_execBarriers.accessBuffer(slice,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT,
       buffer->info().stages,
@@ -441,8 +444,8 @@ namespace dxvk {
 
     auto bufferSlice = bufferView->getSliceHandle();
 
-    if (m_barriers.isBufferDirty(bufferSlice, DxvkAccess::Write))
-      m_barriers.recordCommands(m_cmd);
+    if (m_execBarriers.isBufferDirty(bufferSlice, DxvkAccess::Write))
+      m_execBarriers.recordCommands(m_cmd);
     
     // Query pipeline objects to use for this clear operation
     DxvkMetaClearPipeline pipeInfo = m_metaClear->getClearBufferPipeline(
@@ -491,7 +494,7 @@ namespace dxvk {
       workgroups.height,
       workgroups.depth);
     
-    m_barriers.accessBuffer(bufferSlice,
+    m_execBarriers.accessBuffer(bufferSlice,
       VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
       VK_ACCESS_SHADER_WRITE_BIT,
       bufferView->bufferInfo().stages,
@@ -508,11 +511,11 @@ namespace dxvk {
     const VkImageSubresourceRange&  subresources) {
     this->spillRenderPass();
 
-    m_barriers.recordCommands(m_cmd);
+    m_execBarriers.recordCommands(m_cmd);
     
     VkImageLayout imageLayoutClear = image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-    m_barriers.accessImage(image, subresources,
+    m_execBarriers.accessImage(image, subresources,
       VK_IMAGE_LAYOUT_UNDEFINED,
       image->info().stages,
       image->info().access,
@@ -520,12 +523,12 @@ namespace dxvk {
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT);
 
-    m_barriers.recordCommands(m_cmd);
+    m_execBarriers.recordCommands(m_cmd);
     
     m_cmd->cmdClearColorImage(image->handle(),
       imageLayoutClear, &value, 1, &subresources);
     
-    m_barriers.accessImage(image, subresources,
+    m_execBarriers.accessImage(image, subresources,
       imageLayoutClear,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT,
@@ -543,7 +546,7 @@ namespace dxvk {
     const VkImageSubresourceRange&  subresources) {
     this->spillRenderPass();
     
-    m_barriers.recordCommands(m_cmd);
+    m_execBarriers.recordCommands(m_cmd);
 
     VkImageLayout imageLayoutInitial = image->info().layout;
     VkImageLayout imageLayoutClear   = image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
@@ -551,7 +554,7 @@ namespace dxvk {
     if (subresources.aspectMask == image->formatInfo()->aspectMask)
       imageLayoutInitial = VK_IMAGE_LAYOUT_UNDEFINED;
 
-    m_barriers.accessImage(
+    m_execBarriers.accessImage(
       image, subresources,
       imageLayoutInitial,
       image->info().stages,
@@ -560,12 +563,12 @@ namespace dxvk {
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT);
 
-    m_barriers.recordCommands(m_cmd);
+    m_execBarriers.recordCommands(m_cmd);
     
     m_cmd->cmdClearDepthStencilImage(image->handle(),
       imageLayoutClear, &value, 1, &subresources);
     
-    m_barriers.accessImage(
+    m_execBarriers.accessImage(
       image, subresources,
       imageLayoutClear,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -594,17 +597,17 @@ namespace dxvk {
 
     std::memset(stagingHandle.mapPtr, 0, dataSize);
 
-    if (m_barriers.isImageDirty(image, subresources, DxvkAccess::Write))
-      m_barriers.recordCommands(m_cmd);
+    if (m_execBarriers.isImageDirty(image, subresources, DxvkAccess::Write))
+      m_execBarriers.recordCommands(m_cmd);
     
-    m_transitions.accessImage(
+    m_execAcquires.accessImage(
       image, subresources,
       VK_IMAGE_LAYOUT_UNDEFINED, 0, 0,
       image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT);
     
-    m_transitions.recordCommands(m_cmd);
+    m_execAcquires.recordCommands(m_cmd);
 
     for (uint32_t level = 0; level < subresources.levelCount; level++) {
       VkOffset3D offset = VkOffset3D { 0, 0, 0 };
@@ -627,7 +630,7 @@ namespace dxvk {
       }
     }
 
-    m_barriers.accessImage(
+    m_execBarriers.accessImage(
       image, subresources,
       image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -695,11 +698,11 @@ namespace dxvk {
     if (attachmentIndex < 0) {
       this->spillRenderPass();
 
-      if (m_barriers.isImageDirty(
+      if (m_execBarriers.isImageDirty(
           imageView->image(),
           imageView->imageSubresources(),
           DxvkAccess::Write))
-        m_barriers.recordCommands(m_cmd);
+        m_execBarriers.recordCommands(m_cmd);
       
       // Set up and bind a temporary framebuffer
       DxvkRenderTargets attachments;
@@ -732,7 +735,7 @@ namespace dxvk {
         ops, 1, &clearValue);
       this->renderPassUnbindFramebuffer();
 
-      m_barriers.accessImage(
+      m_execBarriers.accessImage(
         imageView->image(),
         imageView->imageSubresources(),
         imageView->imageInfo().layout,
@@ -825,9 +828,9 @@ namespace dxvk {
     auto dstSlice = dstBuffer->getSliceHandle(dstOffset, numBytes);
     auto srcSlice = srcBuffer->getSliceHandle(srcOffset, numBytes);
 
-    if (m_barriers.isBufferDirty(srcSlice, DxvkAccess::Read)
-     || m_barriers.isBufferDirty(dstSlice, DxvkAccess::Write))
-      m_barriers.recordCommands(m_cmd);
+    if (m_execBarriers.isBufferDirty(srcSlice, DxvkAccess::Read)
+     || m_execBarriers.isBufferDirty(dstSlice, DxvkAccess::Write))
+      m_execBarriers.recordCommands(m_cmd);
 
     VkBufferCopy bufferRegion;
     bufferRegion.srcOffset = srcSlice.offset;
@@ -839,13 +842,13 @@ namespace dxvk {
       dstSlice.handle,
       1, &bufferRegion);
 
-    m_barriers.accessBuffer(srcSlice,
+    m_execBarriers.accessBuffer(srcSlice,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_READ_BIT,
       srcBuffer->info().stages,
       srcBuffer->info().access);
 
-    m_barriers.accessBuffer(dstSlice,
+    m_execBarriers.accessBuffer(dstSlice,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT,
       dstBuffer->info().stages,
@@ -905,9 +908,9 @@ namespace dxvk {
     auto dstSubresourceRange = vk::makeSubresourceRange(dstSubresource);
     dstSubresourceRange.aspectMask = dstFormatInfo->aspectMask;
     
-    if (m_barriers.isImageDirty(dstImage, dstSubresourceRange, DxvkAccess::Write)
-     || m_barriers.isBufferDirty(srcSlice, DxvkAccess::Read))
-      m_barriers.recordCommands(m_cmd);
+    if (m_execBarriers.isImageDirty(dstImage, dstSubresourceRange, DxvkAccess::Write)
+     || m_execBarriers.isBufferDirty(srcSlice, DxvkAccess::Read))
+      m_execBarriers.recordCommands(m_cmd);
 
     // Initialize the image if the entire subresource is covered
     VkImageLayout dstImageLayoutInitial  = dstImage->info().layout;
@@ -916,14 +919,14 @@ namespace dxvk {
     if (dstImage->isFullSubresource(dstSubresource, dstExtent))
       dstImageLayoutInitial = VK_IMAGE_LAYOUT_UNDEFINED;
 
-    m_transitions.accessImage(
+    m_execAcquires.accessImage(
       dstImage, dstSubresourceRange,
       dstImageLayoutInitial, 0, 0,
       dstImageLayoutTransfer,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT);
       
-    m_transitions.recordCommands(m_cmd);
+    m_execAcquires.recordCommands(m_cmd);
     
     VkBufferImageCopy copyRegion;
     copyRegion.bufferOffset       = srcSlice.offset;
@@ -939,7 +942,7 @@ namespace dxvk {
       dstImageLayoutTransfer,
       1, &copyRegion);
     
-    m_barriers.accessImage(
+    m_execBarriers.accessImage(
       dstImage, dstSubresourceRange,
       dstImageLayoutTransfer,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -948,7 +951,7 @@ namespace dxvk {
       dstImage->info().stages,
       dstImage->info().access);
 
-    m_barriers.accessBuffer(srcSlice,
+    m_execBarriers.accessBuffer(srcSlice,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_READ_BIT,
       srcBuffer->info().stages,
@@ -1068,21 +1071,21 @@ namespace dxvk {
     auto srcSubresourceRange = vk::makeSubresourceRange(srcSubresource);
     srcSubresourceRange.aspectMask = srcFormatInfo->aspectMask;
     
-    if (m_barriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write)
-     || m_barriers.isBufferDirty(dstSlice, DxvkAccess::Write))
-      m_barriers.recordCommands(m_cmd);
+    if (m_execBarriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write)
+     || m_execBarriers.isBufferDirty(dstSlice, DxvkAccess::Write))
+      m_execBarriers.recordCommands(m_cmd);
 
     // Select a suitable image layout for the transfer op
     VkImageLayout srcImageLayoutTransfer = srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
     
-    m_transitions.accessImage(
+    m_execAcquires.accessImage(
       srcImage, srcSubresourceRange,
       srcImage->info().layout, 0, 0,
       srcImageLayoutTransfer,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_READ_BIT);
 
-    m_transitions.recordCommands(m_cmd);
+    m_execAcquires.recordCommands(m_cmd);
     
     VkBufferImageCopy copyRegion;
     copyRegion.bufferOffset       = dstSlice.offset;
@@ -1098,7 +1101,7 @@ namespace dxvk {
       dstSlice.handle,
       1, &copyRegion);
     
-    m_barriers.accessImage(
+    m_execBarriers.accessImage(
       srcImage, srcSubresourceRange,
       srcImageLayoutTransfer,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -1107,7 +1110,7 @@ namespace dxvk {
       srcImage->info().stages,
       srcImage->info().access);
 
-    m_barriers.accessBuffer(dstSlice,
+    m_execBarriers.accessBuffer(dstSlice,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT,
       dstBuffer->info().stages,
@@ -1167,18 +1170,18 @@ namespace dxvk {
     // in a different layout and we have to transition it
     auto subresourceRange = vk::makeSubresourceRange(srcSubresource);
 
-    if (m_barriers.isImageDirty(srcImage, subresourceRange, DxvkAccess::Write))
-      m_barriers.recordCommands(m_cmd);
+    if (m_execBarriers.isImageDirty(srcImage, subresourceRange, DxvkAccess::Write))
+      m_execBarriers.recordCommands(m_cmd);
     
     if (srcImage->info().layout != layout) {
-      m_transitions.accessImage(
+      m_execAcquires.accessImage(
         srcImage, subresourceRange,
         srcImage->info().layout, 0, 0,
         layout,
         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
         VK_ACCESS_SHADER_READ_BIT);
       
-      m_transitions.recordCommands(m_cmd);
+      m_execAcquires.recordCommands(m_cmd);
     }
 
     // Execute the actual pack operation
@@ -1205,7 +1208,7 @@ namespace dxvk {
       (srcExtent.height + 7) / 8,
       srcSubresource.layerCount);
     
-    m_barriers.accessImage(
+    m_execBarriers.accessImage(
       srcImage, subresourceRange, layout,
       VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
       VK_ACCESS_SHADER_READ_BIT,
@@ -1213,7 +1216,7 @@ namespace dxvk {
       srcImage->info().stages,
       srcImage->info().access);
     
-    m_barriers.accessBuffer(
+    m_execBarriers.accessBuffer(
       dstBuffer->getSliceHandle(),
       VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
       VK_ACCESS_SHADER_WRITE_BIT,
@@ -1239,8 +1242,8 @@ namespace dxvk {
     this->spillRenderPass();
     this->unbindComputePipeline();
 
-    if (m_barriers.isBufferDirty(srcBuffer->getSliceHandle(), DxvkAccess::Read))
-      m_barriers.recordCommands(m_cmd);
+    if (m_execBarriers.isBufferDirty(srcBuffer->getSliceHandle(), DxvkAccess::Read))
+      m_execBarriers.recordCommands(m_cmd);
     
     // Retrieve compute pipeline for the given format
     auto pipeInfo = m_metaPack->getUnpackPipeline(
@@ -1333,14 +1336,14 @@ namespace dxvk {
       dstExtent.height,
       dstSubresource.layerCount);
     
-    m_barriers.accessBuffer(
+    m_execBarriers.accessBuffer(
       tmpBuffer->getSliceHandle(),
       VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
       VK_ACCESS_SHADER_WRITE_BIT,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_READ_BIT);
 
-    m_barriers.accessBuffer(
+    m_execBarriers.accessBuffer(
       srcBuffer->getSliceHandle(),
       VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
       VK_ACCESS_SHADER_READ_BIT,
@@ -1356,7 +1359,7 @@ namespace dxvk {
     if (dstImage->isFullSubresource(dstSubresource, dstExtent3D))
       initialImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-    m_barriers.accessImage(
+    m_execBarriers.accessImage(
       dstImage, vk::makeSubresourceRange(dstSubresource),
       initialImageLayout,
       dstImage->info().stages,
@@ -1365,7 +1368,7 @@ namespace dxvk {
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT);
 
-    m_barriers.recordCommands(m_cmd);
+    m_execBarriers.recordCommands(m_cmd);
 
     // Copy temporary buffer data to depth-stencil image
     VkImageSubresourceLayers dstSubresourceD = dstSubresource;
@@ -1386,7 +1389,7 @@ namespace dxvk {
       copyRegions.size(),
       copyRegions.data());
     
-    m_barriers.accessImage(
+    m_execBarriers.accessImage(
       dstImage, vk::makeSubresourceRange(dstSubresource),
       dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -1406,7 +1409,7 @@ namespace dxvk {
 
   void DxvkContext::discardBuffer(
     const Rc<DxvkBuffer>&       buffer) {
-    if (m_barriers.isBufferDirty(buffer->getSliceHandle(), DxvkAccess::Write))
+    if (m_execBarriers.isBufferDirty(buffer->getSliceHandle(), DxvkAccess::Write))
       this->invalidateBuffer(buffer, buffer->allocSlice());
   }
 
@@ -1416,10 +1419,10 @@ namespace dxvk {
           VkImageSubresourceRange subresources) {
     this->spillRenderPass();
 
-    if (m_barriers.isImageDirty(image, subresources, DxvkAccess::Write))
-      m_barriers.recordCommands(m_cmd);
+    if (m_execBarriers.isImageDirty(image, subresources, DxvkAccess::Write))
+      m_execBarriers.recordCommands(m_cmd);
     
-    m_barriers.accessImage(image, subresources,
+    m_execBarriers.accessImage(image, subresources,
       VK_IMAGE_LAYOUT_UNDEFINED, 0, 0,
       image->info().layout,
       image->info().stages,
@@ -1460,8 +1463,8 @@ namespace dxvk {
     auto bufferSlice = m_state.id.argBuffer.getSliceHandle(
       offset, sizeof(VkDispatchIndirectCommand));
 
-    if (m_barriers.isBufferDirty(bufferSlice, DxvkAccess::Read))
-      m_barriers.recordCommands(m_cmd);
+    if (m_execBarriers.isBufferDirty(bufferSlice, DxvkAccess::Read))
+      m_execBarriers.recordCommands(m_cmd);
     
     if (this->validateComputeState()) {
       this->commitComputeInitBarriers();
@@ -1478,7 +1481,7 @@ namespace dxvk {
       
       this->commitComputePostBarriers();
 
-      m_barriers.accessBuffer(bufferSlice,
+      m_execBarriers.accessBuffer(bufferSlice,
         VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
         VK_ACCESS_INDIRECT_COMMAND_READ_BIT,
         m_state.id.argBuffer.bufferInfo().stages,
@@ -1652,7 +1655,7 @@ namespace dxvk {
   void DxvkContext::initImage(
     const Rc<DxvkImage>&           image,
     const VkImageSubresourceRange& subresources) {
-    m_barriers.accessImage(image, subresources,
+    m_execBarriers.accessImage(image, subresources,
       VK_IMAGE_LAYOUT_UNDEFINED, 0, 0,
       image->info().layout,
       image->info().stages,
@@ -1669,7 +1672,7 @@ namespace dxvk {
     
     this->spillRenderPass();
 
-    m_barriers.recordCommands(m_cmd);
+    m_execBarriers.recordCommands(m_cmd);
     
     // Create the a set of framebuffers and image views
     const Rc<DxvkMetaMipGenRenderPass> mipGenerator
@@ -1844,9 +1847,9 @@ namespace dxvk {
     this->spillRenderPass();
     
     if (srcLayout != dstLayout) {
-      m_barriers.recordCommands(m_cmd);
+      m_execBarriers.recordCommands(m_cmd);
 
-      m_barriers.accessImage(
+      m_execBarriers.accessImage(
         dstImage, dstSubresources,
         srcLayout,
         dstImage->info().stages,
@@ -1886,8 +1889,8 @@ namespace dxvk {
       bufferSlice = buffer->getSliceHandle(offset, size);
       cmdBuffer   = DxvkCmdBuffer::ExecBuffer;
 
-      if (m_barriers.isBufferDirty(bufferSlice, DxvkAccess::Write))
-        m_barriers.recordCommands(m_cmd);
+      if (m_execBarriers.isBufferDirty(bufferSlice, DxvkAccess::Write))
+        m_execBarriers.recordCommands(m_cmd);
     }
 
     // Vulkan specifies that small amounts of data (up to 64kB) can
@@ -1922,8 +1925,8 @@ namespace dxvk {
     }
 
     auto& barriers = replaceBuffer
-      ? m_transfers
-      : m_barriers;
+      ? m_initBarriers
+      : m_execBarriers;
 
     barriers.accessBuffer(
       bufferSlice,
@@ -1972,8 +1975,8 @@ namespace dxvk {
     auto subresourceRange = vk::makeSubresourceRange(subresources);
     subresourceRange.aspectMask = formatInfo->aspectMask;
 
-    if (m_barriers.isImageDirty(image, subresourceRange, DxvkAccess::Write))
-      m_barriers.recordCommands(m_cmd);
+    if (m_execBarriers.isImageDirty(image, subresourceRange, DxvkAccess::Write))
+      m_execBarriers.recordCommands(m_cmd);
 
     // Initialize the image if the entire subresource is covered
     VkImageLayout imageLayoutInitial  = image->info().layout;
@@ -1982,14 +1985,14 @@ namespace dxvk {
     if (image->isFullSubresource(subresources, imageExtent))
       imageLayoutInitial = VK_IMAGE_LAYOUT_UNDEFINED;
 
-    m_transitions.accessImage(
+    m_execAcquires.accessImage(
       image, subresourceRange,
       imageLayoutInitial, 0, 0,
       imageLayoutTransfer,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT);
 
-    m_transitions.recordCommands(m_cmd);
+    m_execAcquires.recordCommands(m_cmd);
     
     // Copy contents of the staging buffer into the image.
     // Since our source data is tightly packed, we do not
@@ -2006,7 +2009,7 @@ namespace dxvk {
       image->handle(), imageLayoutTransfer, 1, &region);
     
     // Transition image back into its optimal layout
-    m_barriers.accessImage(
+    m_execBarriers.accessImage(
       image, subresourceRange,
       imageLayoutTransfer,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -2326,11 +2329,11 @@ namespace dxvk {
     if (attachmentIndex < 0) {
       this->spillRenderPass();
 
-      if (m_barriers.isImageDirty(
+      if (m_execBarriers.isImageDirty(
           imageView->image(),
           imageView->imageSubresources(),
           DxvkAccess::Write))
-        m_barriers.recordCommands(m_cmd);
+        m_execBarriers.recordCommands(m_cmd);
       
       // Set up a temporary framebuffer
       DxvkRenderTargets attachments;
@@ -2372,7 +2375,7 @@ namespace dxvk {
         m_device->createFramebuffer(attachments),
         ops, 0, nullptr);
       
-      m_barriers.accessImage(
+      m_execBarriers.accessImage(
         imageView->image(),
         imageView->imageSubresources(),
         imageView->imageInfo().layout,
@@ -2419,11 +2422,11 @@ namespace dxvk {
     this->spillRenderPass();
     this->unbindComputePipeline();
     
-    if (m_barriers.isImageDirty(
+    if (m_execBarriers.isImageDirty(
           imageView->image(),
           imageView->imageSubresources(),
           DxvkAccess::Write))
-      m_barriers.recordCommands(m_cmd);
+      m_execBarriers.recordCommands(m_cmd);
     
     // Query pipeline objects to use for this clear operation
     DxvkMetaClearPipeline pipeInfo = m_metaClear->getClearImagePipeline(
@@ -2480,7 +2483,7 @@ namespace dxvk {
       workgroups.height,
       workgroups.depth);
     
-    m_barriers.accessImage(
+    m_execBarriers.accessImage(
       imageView->image(),
       imageView->imageSubresources(),
       imageView->imageInfo().layout,
@@ -2506,9 +2509,9 @@ namespace dxvk {
     auto dstSubresourceRange = vk::makeSubresourceRange(dstSubresource);
     auto srcSubresourceRange = vk::makeSubresourceRange(srcSubresource);
     
-    if (m_barriers.isImageDirty(dstImage, dstSubresourceRange, DxvkAccess::Write)
-     || m_barriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write))
-      m_barriers.recordCommands(m_cmd);
+    if (m_execBarriers.isImageDirty(dstImage, dstSubresourceRange, DxvkAccess::Write)
+     || m_execBarriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write))
+      m_execBarriers.recordCommands(m_cmd);
 
     VkImageLayout dstImageLayout = dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     VkImageLayout srcImageLayout = srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
@@ -2518,21 +2521,21 @@ namespace dxvk {
     if (dstImage->isFullSubresource(dstSubresource, extent))
       dstInitImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-    m_transitions.accessImage(
+    m_execAcquires.accessImage(
       dstImage, dstSubresourceRange,
       dstInitImageLayout, 0, 0,
       dstImageLayout,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT);
 
-    m_transitions.accessImage(
+    m_execAcquires.accessImage(
       srcImage, srcSubresourceRange,
       srcImage->info().layout, 0, 0,
       srcImageLayout,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_READ_BIT);
 
-    m_transitions.recordCommands(m_cmd);
+    m_execAcquires.recordCommands(m_cmd);
     
     VkImageCopy imageRegion;
     imageRegion.srcSubresource = srcSubresource;
@@ -2546,7 +2549,7 @@ namespace dxvk {
       dstImage->handle(), dstImageLayout,
       1, &imageRegion);
     
-    m_barriers.accessImage(
+    m_execBarriers.accessImage(
       dstImage, dstSubresourceRange,
       dstImageLayout,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -2555,7 +2558,7 @@ namespace dxvk {
       dstImage->info().stages,
       dstImage->info().access);
 
-    m_barriers.accessImage(
+    m_execBarriers.accessImage(
       srcImage, srcSubresourceRange,
       srcImageLayout,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -2580,9 +2583,9 @@ namespace dxvk {
     auto dstSubresourceRange = vk::makeSubresourceRange(dstSubresource);
     auto srcSubresourceRange = vk::makeSubresourceRange(srcSubresource);
     
-    if (m_barriers.isImageDirty(dstImage, dstSubresourceRange, DxvkAccess::Write)
-     || m_barriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write))
-      m_barriers.recordCommands(m_cmd);
+    if (m_execBarriers.isImageDirty(dstImage, dstSubresourceRange, DxvkAccess::Write)
+     || m_execBarriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write))
+      m_execBarriers.recordCommands(m_cmd);
 
     // Source image needs to be readable
     if (!(srcImage->info().usage & VK_IMAGE_USAGE_SAMPLED_BIT)) {
@@ -2607,14 +2610,14 @@ namespace dxvk {
       : srcImage->pickLayout(VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
     
     if (srcImage->info().layout != srcLayout) {
-      m_transitions.accessImage(
+      m_execAcquires.accessImage(
         srcImage, srcSubresourceRange,
         srcImage->info().layout, 0, 0,
         srcLayout,
         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
         VK_ACCESS_SHADER_READ_BIT);
       
-      m_transitions.recordCommands(m_cmd);
+      m_execAcquires.recordCommands(m_cmd);
     }
 
     // In some cases, we may be able to render to the destination
@@ -2755,7 +2758,7 @@ namespace dxvk {
     m_cmd->cmdDraw(1, tgtSubresource.layerCount, 0, 0);
     m_cmd->cmdEndRenderPass();
 
-    m_barriers.accessImage(
+    m_execBarriers.accessImage(
       srcImage, srcSubresourceRange,
       srcLayout,
       VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
@@ -2764,7 +2767,7 @@ namespace dxvk {
       srcImage->info().stages,
       srcImage->info().access);
     
-    m_barriers.accessImage(
+    m_execBarriers.accessImage(
       dstImage, dstSubresourceRange,
       dstImage->info().layout,
       VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
@@ -2798,9 +2801,9 @@ namespace dxvk {
     auto dstSubresourceRange = vk::makeSubresourceRange(region.dstSubresource);
     auto srcSubresourceRange = vk::makeSubresourceRange(region.srcSubresource);
     
-    if (m_barriers.isImageDirty(dstImage, dstSubresourceRange, DxvkAccess::Write)
-     || m_barriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write))
-      m_barriers.recordCommands(m_cmd);
+    if (m_execBarriers.isImageDirty(dstImage, dstSubresourceRange, DxvkAccess::Write)
+     || m_execBarriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write))
+      m_execBarriers.recordCommands(m_cmd);
     
     // We only support resolving to the entire image
     // area, so we might as well discard its contents
@@ -2809,28 +2812,28 @@ namespace dxvk {
     if (dstImage->isFullSubresource(region.dstSubresource, region.extent))
       initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-    m_transitions.accessImage(
+    m_execAcquires.accessImage(
       dstImage, dstSubresourceRange,
       initialLayout, 0, 0,
       dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT);
 
-    m_transitions.accessImage(
+    m_execAcquires.accessImage(
       srcImage, srcSubresourceRange,
       srcImage->info().layout, 0, 0,
       srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_READ_BIT);
 
-    m_transitions.recordCommands(m_cmd);
+    m_execAcquires.recordCommands(m_cmd);
     
     m_cmd->cmdResolveImage(
       srcImage->handle(), srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
       dstImage->handle(), dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
       1, &region);
   
-    m_barriers.accessImage(
+    m_execBarriers.accessImage(
       dstImage, dstSubresourceRange,
       dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -2839,7 +2842,7 @@ namespace dxvk {
       dstImage->info().stages,
       dstImage->info().access);
 
-    m_barriers.accessImage(
+    m_execBarriers.accessImage(
       srcImage, srcSubresourceRange,
       srcImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL),
       VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -2861,22 +2864,22 @@ namespace dxvk {
     auto dstSubresourceRange = vk::makeSubresourceRange(region.dstSubresource);
     auto srcSubresourceRange = vk::makeSubresourceRange(region.srcSubresource);
     
-    if (m_barriers.isImageDirty(dstImage, dstSubresourceRange, DxvkAccess::Write)
-     || m_barriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write))
-      m_barriers.recordCommands(m_cmd);
+    if (m_execBarriers.isImageDirty(dstImage, dstSubresourceRange, DxvkAccess::Write)
+     || m_execBarriers.isImageDirty(srcImage, srcSubresourceRange, DxvkAccess::Write))
+      m_execBarriers.recordCommands(m_cmd);
 
     // We might have to transition the source image layout
     VkImageLayout srcLayout = srcImage->pickLayout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
     
     if (srcImage->info().layout != srcLayout) {
-      m_transitions.accessImage(
+      m_execAcquires.accessImage(
         srcImage, srcSubresourceRange,
         srcImage->info().layout, 0, 0,
         srcLayout,
         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
         VK_ACCESS_SHADER_READ_BIT);
       
-      m_transitions.recordCommands(m_cmd);
+      m_execAcquires.recordCommands(m_cmd);
     }
 
     // Create image views covering the requested subresourcs
@@ -2971,7 +2974,7 @@ namespace dxvk {
     m_cmd->cmdDraw(1, region.dstSubresource.layerCount, 0, 0);
     m_cmd->cmdEndRenderPass();
 
-    m_barriers.accessImage(
+    m_execBarriers.accessImage(
       dstImage, dstSubresourceRange,
       dstImage->info().layout,
       VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
@@ -2980,7 +2983,7 @@ namespace dxvk {
       dstImage->info().stages,
       dstImage->info().access);
 
-    m_barriers.accessImage(
+    m_execBarriers.accessImage(
       srcImage, srcSubresourceRange, srcLayout,
       VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
       srcImage->info().layout,
@@ -3001,7 +3004,7 @@ namespace dxvk {
       predicate.handle, predicate.offset, sizeof(uint32_t),
       VK_QUERY_RESULT_WAIT_BIT);
     
-    m_barriers.accessBuffer(predicate,
+    m_execBarriers.accessBuffer(predicate,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
       VK_ACCESS_TRANSFER_WRITE_BIT,
       VK_PIPELINE_STAGE_CONDITIONAL_RENDERING_BIT_EXT,
@@ -3023,7 +3026,7 @@ namespace dxvk {
       m_flags.set(DxvkContextFlag::GpRenderPassBound);
       m_flags.clr(DxvkContextFlag::GpClearRenderTargets);
 
-      m_barriers.recordCommands(m_cmd);
+      m_execBarriers.recordCommands(m_cmd);
 
       this->renderPassBindFramebuffer(
         m_state.om.framebuffer,
@@ -3074,14 +3077,14 @@ namespace dxvk {
       for (uint32_t i = 0; i < m_state.om.framebuffer->numAttachments(); i++) {
         const DxvkAttachment& attachment = m_state.om.framebuffer->getAttachment(i);
 
-        flushBarriers |= m_barriers.isImageDirty(
+        flushBarriers |= m_execBarriers.isImageDirty(
           attachment.view->image(),
           attachment.view->imageSubresources(),
           DxvkAccess::Write);
       }
 
       if (flushBarriers)
-        m_barriers.recordCommands(m_cmd);
+        m_execBarriers.recordCommands(m_cmd);
 
       this->renderPassBindFramebuffer(
         m_state.om.framebuffer,
@@ -3098,7 +3101,7 @@ namespace dxvk {
       for (uint32_t i = 0; i < m_state.om.framebuffer->numAttachments(); i++) {
         const DxvkAttachment& attachment = m_state.om.framebuffer->getAttachment(i);
 
-        m_barriers.accessImage(
+        m_execBarriers.accessImage(
           attachment.view->image(),
           attachment.view->imageSubresources(),
           attachment.view->imageInfo().layout,
@@ -4034,7 +4037,7 @@ namespace dxvk {
           
           case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
           case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-            srcAccess = m_barriers.getBufferAccess(
+            srcAccess = m_execBarriers.getBufferAccess(
               slot.bufferSlice.getSliceHandle());
             break;
         
@@ -4044,7 +4047,7 @@ namespace dxvk {
             /* fall through */
 
           case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-            srcAccess = m_barriers.getBufferAccess(
+            srcAccess = m_execBarriers.getBufferAccess(
               slot.bufferView->getSliceHandle());
             break;
           
@@ -4055,7 +4058,7 @@ namespace dxvk {
 
           case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
           case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-            srcAccess = m_barriers.getImageAccess(
+            srcAccess = m_execBarriers.getImageAccess(
               slot.imageView->image(),
               slot.imageView->imageSubresources());
             break;
@@ -4069,7 +4072,7 @@ namespace dxvk {
 
         // Skip write-after-write barriers if explicitly requested
         if ((m_barrierControl.test(DxvkBarrierControl::IgnoreWriteAfterWrite))
-         && (m_barriers.getSrcStages() == VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT)
+         && (m_execBarriers.getSrcStages() == VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT)
          && (srcAccess.test(DxvkAccess::Write))
          && (dstAccess.test(DxvkAccess::Write)))
           continue;
@@ -4079,7 +4082,7 @@ namespace dxvk {
     }
 
     if (requiresBarrier)
-      m_barriers.recordCommands(m_cmd);
+      m_execBarriers.recordCommands(m_cmd);
   }
   
 
@@ -4103,7 +4106,7 @@ namespace dxvk {
           
           case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
           case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-            m_barriers.accessBuffer(
+            m_execBarriers.accessBuffer(
               slot.bufferSlice.getSliceHandle(),
               stages, access,
               slot.bufferSlice.bufferInfo().stages,
@@ -4116,7 +4119,7 @@ namespace dxvk {
             /* fall through */
 
           case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-            m_barriers.accessBuffer(
+            m_execBarriers.accessBuffer(
               slot.bufferView->getSliceHandle(),
               stages, access,
               slot.bufferView->bufferInfo().stages,
@@ -4130,7 +4133,7 @@ namespace dxvk {
 
           case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
           case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-            m_barriers.accessImage(
+            m_execBarriers.accessImage(
               slot.imageView->image(),
               slot.imageView->imageSubresources(),
               slot.imageView->imageInfo().layout,
