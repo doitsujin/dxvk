@@ -2,6 +2,8 @@
 
 #include "d3d9_include.h"
 
+#include "d3d9_caps.h"
+
 #include "../dxvk/dxvk_shader.h"
 
 #include "../dxso/dxso_isgn.h"
@@ -17,8 +19,30 @@ namespace dxvk {
     bool HasDiffuse;
   };
 
-  struct D3D9FFShaderKeyFS {
+  constexpr uint32_t TextureArgCount = 3;
 
+  struct D3D9FFShaderStage {
+    union {
+      struct {
+        uint16_t     ColorOp : 5;
+        uint16_t     ColorArg0 : 6;
+        uint16_t     ColorArg1 : 6;
+        uint16_t     ColorArg2 : 6;
+
+        uint16_t     AlphaOp : 5;
+        uint16_t     AlphaArg0 : 6;
+        uint16_t     AlphaArg1 : 6;
+        uint16_t     AlphaArg2 : 6;
+
+        uint16_t     ResultIsTemp : 1;
+      } data;
+
+      uint64_t uint64[8];
+    };
+  };
+
+  struct D3D9FFShaderKeyFS {
+    D3D9FFShaderStage Stages[caps::TextureStageCount];
   };
 
   struct D3D9FFShaderKeyHash {

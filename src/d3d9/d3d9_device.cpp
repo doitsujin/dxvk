@@ -1740,7 +1740,7 @@ namespace dxvk {
       return m_recorder->SetTextureStageState(Stage, Type, Value);
 
     if (likely(m_state.textureStages[Stage][Type] != Value)) {
-      m_flags.test(D3D9DeviceFlag::DirtyFFPixelShader);
+      m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
       m_state.textureStages[Stage][Type] = Value;
     }
 
@@ -4936,12 +4936,12 @@ namespace dxvk {
 
   void D3D9DeviceEx::UpdateFixedFunctionVS() {
     // Shader...
-    D3D9FFShaderKeyVS key;
-    key.HasDiffuse   = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor)     : false;
-    key.HasPositionT = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPositionT) : false;
-
     if (m_flags.test(D3D9DeviceFlag::DirtyFFVertexShader)) {
       m_flags.clr(D3D9DeviceFlag::DirtyFFVertexShader);
+
+      D3D9FFShaderKeyVS key;
+      key.HasDiffuse   = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor)     : false;
+      key.HasPositionT = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPositionT) : false;
 
       EmitCs([
         this,
@@ -4976,10 +4976,26 @@ namespace dxvk {
 
   void D3D9DeviceEx::UpdateFixedFunctionPS() {
     // Shader...
-    D3D9FFShaderKeyFS key;
-
     if (m_flags.test(D3D9DeviceFlag::DirtyFFPixelShader)) {
       m_flags.clr(D3D9DeviceFlag::DirtyFFPixelShader);
+
+      D3D9FFShaderKeyFS key;
+      for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
+        auto& stage = key.Stages[i].data;
+
+        stage.ColorOp = m_state.textureStages[i][D3DTSS_COLOROP];
+        stage.AlphaOp = m_state.textureStages[i][D3DTSS_ALPHAOP];
+
+        stage.ColorArg0 = m_state.textureStages[i][D3DTSS_COLORARG0];
+        stage.ColorArg1 = m_state.textureStages[i][D3DTSS_COLORARG1];
+        stage.ColorArg2 = m_state.textureStages[i][D3DTSS_COLORARG2];
+
+        stage.AlphaArg0 = m_state.textureStages[i][D3DTSS_ALPHAARG0];
+        stage.AlphaArg1 = m_state.textureStages[i][D3DTSS_ALPHAARG1];
+        stage.AlphaArg2 = m_state.textureStages[i][D3DTSS_ALPHAARG2];
+
+        stage.ResultIsTemp = m_state.textureStages[i][D3DTSS_RESULTARG] == D3DTA_TEMP;
+      }
 
       EmitCs([
         this,

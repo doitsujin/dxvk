@@ -10,6 +10,52 @@
 
 namespace dxvk {
 
+  struct D3D9FFVertexData {
+    uint32_t constantBuffer = 0;
+
+    enum FFConstantMembersVS {
+      ConstWorldMatrix = 0,
+      ConstViewMatrix = 1,
+      ConstProjMatrix = 2,
+
+      ConstMemberCount
+    };
+
+    struct {
+      uint32_t world = { 0 };
+      uint32_t view = { 0 };
+      uint32_t proj = { 0 };
+    } constants;
+
+    struct {
+      uint32_t POSITION = { 0 };
+      uint32_t TEXCOORD[8] = { 0 };
+      uint32_t COLOR[2] = { 0 };
+    } in;
+
+    struct {
+      uint32_t POSITION = { 0 };
+      uint32_t TEXCOORD[8] = { 0 };
+      uint32_t COLOR[2] = { 0 };
+    } out;
+  };
+
+  struct D3D9FFPixelData {
+    struct {
+      uint32_t TEXCOORD[8] = { 0 };
+      uint32_t COLOR[2]    = { 0 };
+    } in;
+
+    struct {
+      uint32_t typeId = { 0 };
+      uint32_t varId  = { 0 };
+    } samplers[8];
+
+    struct {
+      uint32_t COLOR = { 0 };
+    } out;
+  };
+
   class D3D9FFShaderCompiler {
 
   public:
@@ -34,7 +80,13 @@ namespace dxvk {
 
     void compileVS();
 
+    void setupVS();
+
     void compilePS();
+
+    void setupPS();
+
+    void alphaTestPS();
 
     bool isVS() { return m_programType == DxsoProgramType::VertexShader; }
     bool isPS() { return !isVS(); }
@@ -50,6 +102,9 @@ namespace dxvk {
     DxsoProgramType       m_programType;
     D3D9FFShaderKeyVS     m_vsKey;
     D3D9FFShaderKeyFS     m_fsKey;
+
+    D3D9FFVertexData      m_vs;
+    D3D9FFPixelData       m_ps;
 
     DxsoIsgn              m_isgn;
     DxsoIsgn              m_osgn;
@@ -188,36 +243,30 @@ namespace dxvk {
 
 
   void D3D9FFShaderCompiler::compileVS() {
-    struct VertexData {
-      uint32_t constantBuffer = 0;
+    setupVS();
 
-      enum FFConstantMembersVS {
-        ConstWorldMatrix = 0,
-        ConstViewMatrix  = 1,
-        ConstProjMatrix  = 2,
+    // gl_Position = vec4(in_POSITION.xyz, 1);
 
-        ConstMemberCount
-      };
+    uint32_t gl_Position = m_vs.in.POSITION;
 
-      struct {
-        uint32_t world      = { 0 };
-        uint32_t view       = { 0 };
-        uint32_t proj       = { 0 };
-      } constants;
+    if (!m_vsKey.HasPositionT) {
+      uint32_t wvp = m_module.opMatrixTimesMatrix(m_mat4Type,  m_vs.constants.world, m_vs.constants.view);
+                wvp = m_module.opMatrixTimesMatrix(m_mat4Type, wvp,                  m_vs.constants.proj);
 
-      struct {
-        uint32_t POSITION    = { 0 };
-        uint32_t TEXCOORD[8] = { 0 };
-        uint32_t COLOR[2]    = { 0 };
-      } in;
+      gl_Position = m_module.opVectorTimesMatrix(m_vec4Type, gl_Position, wvp);
+    }
 
-      struct {
-        uint32_t POSITION    = { 0 };
-        uint32_t TEXCOORD[8] = { 0 };
-        uint32_t COLOR[2]    = { 0 };
-      } out;
-    } vs;
+    m_module.opStore(m_vs.out.POSITION, gl_Position);
 
+    for (uint32_t i = 0; i < caps::TextureStageCount; i++)
+      m_module.opStore(m_vs.out.TEXCOORD[i], m_vs.in.TEXCOORD[i]);
+
+    m_module.opStore(m_vs.out.COLOR[0], m_vs.in.COLOR[0]);
+    m_module.opStore(m_vs.out.COLOR[1], m_vs.in.COLOR[1]);
+  }
+
+
+  void D3D9FFShaderCompiler::setupVS() {
     // VS Caps
     m_module.enableCapability(spv::CapabilityClipDistance);
     m_module.enableCapability(spv::CapabilityDrawParameters);
@@ -225,7 +274,7 @@ namespace dxvk {
     m_module.enableExtension("SPV_KHR_shader_draw_parameters");
 
     // Constant Buffer for VS.
-    std::array<uint32_t, VertexData::ConstMemberCount> members = {
+    std::array<uint32_t, D3D9FFVertexData::ConstMemberCount> members = {
       m_mat4Type, // World
       m_mat4Type, // View
       m_mat4Type, // Proj
@@ -235,7 +284,7 @@ namespace dxvk {
       m_module.defStructType(members.size(), members.data());
 
     m_module.decorateBlock(structType);
-    for (uint32_t i = 0; i < VertexData::ConstMemberCount; i++) {
+    for (uint32_t i = 0; i < D3D9FFVertexData::ConstMemberCount; i++) {
       m_module.memberDecorateOffset(structType, i, i * sizeof(Matrix4));
       m_module.memberDecorateMatrixStride(structType, i, 16);
       m_module.memberDecorate(structType, i, spv::DecorationRowMajor);
@@ -246,18 +295,18 @@ namespace dxvk {
     m_module.setDebugMemberName(structType, 1, "view");
     m_module.setDebugMemberName(structType, 2, "proj");
 
-    vs.constantBuffer = m_module.newVar(
+    m_vs.constantBuffer = m_module.newVar(
       m_module.defPointerType(structType, spv::StorageClassUniform),
       spv::StorageClassUniform);
 
-    m_module.setDebugName(vs.constantBuffer, "consts");
+    m_module.setDebugName(m_vs.constantBuffer, "consts");
 
     const uint32_t bindingId = computeResourceSlotId(
       DxsoProgramType::VertexShader, DxsoBindingType::ConstantBuffer,
       DxsoConstantBuffers::VSFixedFunction);
 
-    m_module.decorateDescriptorSet(vs.constantBuffer, 0);
-    m_module.decorateBinding(vs.constantBuffer, bindingId);
+    m_module.decorateDescriptorSet(m_vs.constantBuffer, 0);
+    m_module.decorateBinding(m_vs.constantBuffer, bindingId);
 
     DxvkResourceSlot resource;
     resource.slot   = bindingId;
@@ -267,101 +316,306 @@ namespace dxvk {
     m_resourceSlots.push_back(resource);
 
     // Load constants
-    auto LoadMatrix = [&, this](uint32_t idx) {
+    auto LoadMatrix = [&](uint32_t idx) {
       uint32_t offset  = m_module.constu32(idx);
       uint32_t mat4Ptr = m_module.defPointerType(m_mat4Type, spv::StorageClassUniform);
 
       return m_module.opLoad(m_mat4Type,
-        m_module.opAccessChain(mat4Ptr, vs.constantBuffer, 1, &offset));
+        m_module.opAccessChain(mat4Ptr, m_vs.constantBuffer, 1, &offset));
     };
 
-    vs.constants.world = LoadMatrix(VertexData::ConstWorldMatrix);
-    vs.constants.view = LoadMatrix(VertexData::ConstViewMatrix);
-    vs.constants.proj = LoadMatrix(VertexData::ConstProjMatrix);
+    m_vs.constants.world = LoadMatrix(D3D9FFVertexData::ConstWorldMatrix);
+    m_vs.constants.view  = LoadMatrix(D3D9FFVertexData::ConstViewMatrix);
+    m_vs.constants.proj  = LoadMatrix(D3D9FFVertexData::ConstProjMatrix);
 
     // Do IO
-    vs.in.POSITION = declareIO(true, DxsoSemantic{ DxsoUsage::Position, 0 });
-    for (uint32_t i = 0; i < 8; i++)
-      vs.in.TEXCOORD[i] = declareIO(true, DxsoSemantic{ DxsoUsage::Texcoord, i });
+    m_vs.in.POSITION = declareIO(true, DxsoSemantic{ DxsoUsage::Position, 0 });
+    for (uint32_t i = 0; i < caps::TextureStageCount; i++)
+      m_vs.in.TEXCOORD[i] = declareIO(true, DxsoSemantic{ DxsoUsage::Texcoord, i });
 
     if (m_vsKey.HasDiffuse)
-      vs.in.COLOR[0] = declareIO(true, DxsoSemantic{ DxsoUsage::Color, 0 });
+      m_vs.in.COLOR[0] = declareIO(true, DxsoSemantic{ DxsoUsage::Color, 0 });
     else
-      vs.in.COLOR[0] = m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f);
+      m_vs.in.COLOR[0] = m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f);
 
-    vs.in.COLOR[1] = declareIO(true, DxsoSemantic{ DxsoUsage::Color, 1 });
+    m_vs.in.COLOR[1] = declareIO(true, DxsoSemantic{ DxsoUsage::Color, 1 });
 
     // Declare Outputs
-    vs.out.POSITION = declareIO(false, DxsoSemantic{ DxsoUsage::Position, 0 }, spv::BuiltInPosition);
+    m_vs.out.POSITION = declareIO(false, DxsoSemantic{ DxsoUsage::Position, 0 }, spv::BuiltInPosition);
 
-    for (uint32_t i = 0; i < 8; i++)
-      vs.out.TEXCOORD[i] = declareIO(false, DxsoSemantic{ DxsoUsage::Texcoord, i });
+    for (uint32_t i = 0; i < caps::TextureStageCount; i++)
+      m_vs.out.TEXCOORD[i] = declareIO(false, DxsoSemantic{ DxsoUsage::Texcoord, i });
 
-    vs.out.COLOR[0] = declareIO(false, DxsoSemantic{ DxsoUsage::Color, 0 });
-    vs.out.COLOR[1] = declareIO(false, DxsoSemantic{ DxsoUsage::Color, 1 });
-
-    ////////////////////////////////////////
-    // ACTUAL CODE
-
-    // gl_Position = vec4(in_POSITION.xyz, 1);
-
-    uint32_t gl_Position = vs.in.POSITION;
-
-    if (!m_vsKey.HasPositionT) {
-      uint32_t wvp = m_module.opMatrixTimesMatrix(m_mat4Type, vs.constants.world, vs.constants.view);
-                wvp = m_module.opMatrixTimesMatrix(m_mat4Type, wvp,                vs.constants.proj);
-
-      gl_Position = m_module.opVectorTimesMatrix(m_vec4Type, gl_Position, wvp);
-    }
-
-    m_module.opStore(vs.out.POSITION, gl_Position);
-
-    for (uint32_t i = 0; i < 8; i++)
-      m_module.opStore(vs.out.TEXCOORD[i], vs.in.TEXCOORD[i]);
-
-    m_module.opStore(vs.out.COLOR[0], vs.in.COLOR[0]);
-    m_module.opStore(vs.out.COLOR[1], vs.in.COLOR[1]);
-
-    ////////////////////////////////////////
-    // END OF ACTUAL CODE
+    m_vs.out.COLOR[0] = declareIO(false, DxsoSemantic{ DxsoUsage::Color, 0 });
+    m_vs.out.COLOR[1] = declareIO(false, DxsoSemantic{ DxsoUsage::Color, 1 });
   }
 
 
   void D3D9FFShaderCompiler::compilePS() {
-    struct PixelData {
-      struct {
-        uint32_t TEXCOORD[8] = { 0 };
-        uint32_t COLOR[2]    = { 0 };
-      } in;
+    setupPS();
 
-      struct {
-        uint32_t typeId = { 0 };
-        uint32_t varId  = { 0 };
-      } samplers[8];
+    uint32_t diffuse  = m_ps.in.COLOR[0];
+    uint32_t specular = m_ps.in.COLOR[1];
 
-      struct {
-        uint32_t COLOR = { 0 };
-      } out;
-    } ps;
+    // Current starts of as equal to diffuse.
+    uint32_t current = diffuse;
+    // Temp starts off as equal to vec4(0)
+    uint32_t temp  = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
+    
+    for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
+      const auto& stage = m_fsKey.Stages[i].data;
 
+      uint32_t textureCached = 0;
+
+      auto GetTexture = [&]() {
+        if (!textureCached) {
+          SpirvImageOperands imageOperands;
+          const uint32_t imageVarId = m_module.opLoad(m_ps.samplers[0].typeId, m_ps.samplers[0].varId);
+          textureCached = m_module.opImageSampleImplicitLod(m_vec4Type, imageVarId, m_ps.in.TEXCOORD[0], imageOperands);
+        }
+
+        return textureCached;
+      };
+
+      auto AlphaReplicate = [&](uint32_t reg) {
+        uint32_t alphaComponentId = 3;
+        uint32_t alpha = m_module.opCompositeExtract(m_floatType, reg, 1, &alphaComponentId);
+
+        std::array<uint32_t, 4> replicant = { alpha, alpha, alpha, alpha };
+        return m_module.opCompositeConstruct(m_vec4Type, replicant.size(), replicant.data());
+      };
+
+      auto Complement = [&](uint32_t reg) {
+        return m_module.opFSub(m_vec4Type,
+          m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f),
+          reg);
+      };
+
+      auto GetArg = [&] (uint32_t arg) {
+        uint32_t reg = m_module.constvec4f32(0,0,0,0);
+
+        switch (arg & D3DTA_SELECTMASK) {
+          case D3DTA_CONSTANT:
+            Logger::warn("D3DTA_CONSTANT: not supported right now.");
+            break;
+          case D3DTA_CURRENT:
+            reg = current;
+            break;
+          case D3DTA_DIFFUSE:
+            reg = diffuse;
+            break;
+          case D3DTA_SPECULAR:
+            reg = specular;
+            break;
+          case D3DTA_TEMP:
+            reg = temp;
+            break;
+          case D3DTA_TEXTURE:
+            reg = GetTexture();
+            break;
+          case D3DTA_TFACTOR:
+            Logger::warn("D3DTA_TFACTOR: not supported right now.");
+            break;
+          default:
+            break;
+        }
+
+        // reg = 1 - reg
+        if (arg & D3DTA_COMPLEMENT) {
+          m_module.opFSub(m_vec4Type,
+            m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f),
+            reg);
+        }
+
+        // reg = reg.wwww
+        if (arg & D3DTA_ALPHAREPLICATE)
+          AlphaReplicate(reg);
+
+        return reg;
+      };
+
+      auto DoOp = [&](D3DTEXTUREOP op, uint32_t dst, std::array<uint32_t, TextureArgCount> arg) {
+
+        // Dest should be self-saturated if it is used.
+        if (op != D3DTOP_SELECTARG1        && op != D3DTOP_SELECTARG2          &&
+            op != D3DTOP_MODULATE          && op != D3DTOP_PREMODULATE         &&
+            op != D3DTOP_BLENDDIFFUSEALPHA && op != D3DTOP_BLENDTEXTUREALPHA   &&
+            op != D3DTOP_BLENDFACTORALPHA  && op != D3DTOP_BLENDCURRENTALPHA   &&
+            op != D3DTOP_BUMPENVMAP        && op != D3DTOP_BUMPENVMAPLUMINANCE &&
+            op != D3DTOP_LERP)
+          dst = m_module.opFClamp(m_vec4Type, dst,
+            m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f),
+            m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f));
+
+        switch (op) {
+          case D3DTOP_SELECTARG1:
+            dst = arg[1];
+            break;
+          case D3DTOP_SELECTARG2:
+            dst = arg[2];
+            break;
+
+          case D3DTOP_MODULATE4X:
+          case D3DTOP_MODULATE2X:
+          case D3DTOP_MODULATE:
+            dst = m_module.opFMul(m_vec4Type, arg[1], arg[2]);
+            if (op == D3DTOP_MODULATE4X || op == D3DTOP_MODULATE2X) {
+              float m = op == D3DTOP_MODULATE4X ? 4.0f : 2.0f;
+              dst = m_module.opFMul(m_vec4Type, dst,
+                m_module.constvec4f32(m, m, m, m));
+            }
+            break;
+
+          // Fallthrough...
+          case D3DTOP_ADDSIGNED2X:
+          case D3DTOP_ADDSIGNED:
+            arg[2] = m_module.opFSub(m_vec4Type, arg[2],
+              m_module.constvec4f32(0.5f, 0.5f, 0.5f, 0.5f));
+          case D3DTOP_ADD:
+            dst = m_module.opFAdd(m_vec4Type, arg[1], arg[2]);
+            if (op == D3DTOP_ADDSIGNED2X)
+              dst = m_module.opFMul(m_vec4Type, dst, m_module.constvec4f32(2.0f, 2.0f, 2.0f, 2.0f));
+            break;
+
+          case D3DTOP_ADDSMOOTH: {
+            uint32_t comp = Complement(arg[1]);
+            dst = m_module.opFFma(m_vec4Type, comp, arg[2], arg[1]);
+            break;
+          }
+
+          case D3DTOP_BLENDDIFFUSEALPHA:
+            dst = m_module.opFMix(m_vec4Type, arg[1], arg[2], AlphaReplicate(diffuse));
+            break;
+
+          case D3DTOP_BLENDTEXTUREALPHA:
+            dst = m_module.opFMix(m_vec4Type, arg[1], arg[2], AlphaReplicate(GetTexture()));
+            break;
+
+          case D3DTOP_BLENDFACTORALPHA:
+            Logger::warn("D3DTOP_BLENDFACTORALPHA: not implemented");
+            break;
+
+          case D3DTOP_BLENDTEXTUREALPHAPM:
+            Logger::warn("D3DTOP_BLENDTEXTUREALPHAPM: not implemented");
+            break;
+
+          case D3DTOP_BLENDCURRENTALPHA:
+            dst = m_module.opFMix(m_vec4Type, arg[1], arg[2], AlphaReplicate(current));
+            break;
+
+          case D3DTOP_PREMODULATE:
+            Logger::warn("D3DTOP_PREMODULATE: not implemented");
+            break;
+
+          case D3DTOP_MODULATEALPHA_ADDCOLOR:
+            dst = m_module.opFFma(m_vec4Type, AlphaReplicate(arg[1]), arg[2], arg[1]);
+            break;
+
+          case D3DTOP_MODULATECOLOR_ADDALPHA:
+            dst = m_module.opFFma(m_vec4Type, arg[1], arg[2], AlphaReplicate(arg[1]));
+            break;
+
+          case D3DTOP_MODULATEINVALPHA_ADDCOLOR:
+            dst = m_module.opFFma(m_vec4Type, Complement(AlphaReplicate(arg[1])), arg[2], arg[1]);
+            break;
+
+          case D3DTOP_MODULATEINVCOLOR_ADDALPHA:
+            dst = m_module.opFFma(m_vec4Type, Complement(arg[1]), arg[2], AlphaReplicate(arg[1]));
+            break;
+
+          case D3DTOP_BUMPENVMAP:
+            Logger::warn("D3DTOP_BUMPENVMAP: not implemented");
+            break;
+
+          case D3DTOP_BUMPENVMAPLUMINANCE:
+            Logger::warn("D3DTOP_BUMPENVMAPLUMINANCE: not implemented");
+            break;
+
+          case D3DTOP_DOTPRODUCT3:
+            Logger::warn("D3DTOP_DOTPRODUCT3: not implemented");
+            break;
+
+          case D3DTOP_MULTIPLYADD:
+            dst = m_module.opFFma(m_vec4Type, arg[1], arg[2], arg[0]);
+            break;
+
+          case D3DTOP_LERP:
+            dst = m_module.opFMin(arg[2], arg[0], arg[1]);
+            break;
+
+          case D3DTOP_DISABLE:
+            Logger::warn("D3DTOP_DISABLE: this should be handled already!");
+            break;
+
+          default:
+            Logger::warn("Unhandled texture op!");
+            break;
+        }
+
+        return dst;
+      };
+
+      uint32_t& dst = stage.ResultIsTemp ? temp : current;
+
+      D3DTEXTUREOP colorOp = (D3DTEXTUREOP)stage.ColorOp;
+      std::array<uint32_t, TextureArgCount> colorArgs = {
+          GetArg(stage.ColorArg0),
+          GetArg(stage.ColorArg1),
+          GetArg(stage.ColorArg2)};
+
+      D3DTEXTUREOP alphaOp = (D3DTEXTUREOP)stage.AlphaOp;
+      std::array<uint32_t, TextureArgCount> alphaArgs = {
+          GetArg(stage.AlphaArg0),
+          GetArg(stage.AlphaArg1),
+          GetArg(stage.AlphaArg2) };
+
+      // Fast path if alpha/color path is identical.
+      if (colorOp == alphaOp && colorArgs == alphaArgs) {
+        if (colorOp != D3DTOP_DISABLE)
+          dst = DoOp(colorOp, dst, colorArgs);
+      }
+      else {
+        std::array<uint32_t, 4> indices = { 0, 1, 2, 4 + 3 };
+
+        if (colorOp != D3DTOP_DISABLE) {
+          uint32_t result = DoOp(colorOp, dst, colorArgs);
+          // src0.x, src0.y, src0.z src1.w
+          dst = m_module.opVectorShuffle(m_vec4Type, result, dst, indices.size(), indices.data());
+        }
+
+        if (alphaOp != D3DTOP_DISABLE) {
+          uint32_t result = DoOp(alphaOp, dst, alphaArgs);
+          // src0.x, src0.y, src0.z src1.w
+          // But we flip src0, src1 to be inverse of color.
+          dst = m_module.opVectorShuffle(m_vec4Type, dst, result, indices.size(), indices.data());
+        }
+      }
+    }
+
+    m_module.opStore(m_ps.out.COLOR, current);
+
+    alphaTestPS();
+  }
+
+  void D3D9FFShaderCompiler::setupPS() {
     // PS Caps
     m_module.enableCapability(spv::CapabilityDerivativeControl);
 
     m_module.setExecutionMode(m_entryPointId,
       spv::ExecutionModeOriginUpperLeft);
 
-    for (uint32_t i = 0; i < 8; i++)
-      ps.in.TEXCOORD[i] = declareIO(true, DxsoSemantic{ DxsoUsage::Texcoord, i });
+    for (uint32_t i = 0; i < caps::TextureStageCount; i++)
+      m_ps.in.TEXCOORD[i] = declareIO(true, DxsoSemantic{ DxsoUsage::Texcoord, i });
 
-    ps.in.COLOR[0] = declareIO(true, DxsoSemantic{ DxsoUsage::Color, 0 });
-    ps.in.COLOR[1] = declareIO(true, DxsoSemantic{ DxsoUsage::Color, 1 });
+    m_ps.in.COLOR[0] = declareIO(true, DxsoSemantic{ DxsoUsage::Color, 0 });
+    m_ps.in.COLOR[1] = declareIO(true, DxsoSemantic{ DxsoUsage::Color, 1 });
 
-    ps.out.COLOR = declareIO(false, DxsoSemantic{ DxsoUsage::Color, 0 });
+    m_ps.out.COLOR   = declareIO(false, DxsoSemantic{ DxsoUsage::Color, 0 });
 
     // Samplers
-    for (uint32_t i = 0; i < 8; i++) {
+    for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
       // Only 2D for now...
-      auto& sampler = ps.samplers[i];
+      auto& sampler = m_ps.samplers[i];
 
       sampler.typeId = m_module.defImageType(
         m_module.defFloatType(32),
@@ -393,24 +647,12 @@ namespace dxvk {
       m_resourceSlots.push_back(resource);
     }
 
-    ////////////////////////////////////////
-    // ACTUAL CODE
-    uint32_t color = ps.in.COLOR[0];
+  }
 
-    SpirvImageOperands imageOperands;
-    const uint32_t imageVarId = m_module.opLoad(ps.samplers[0].typeId, ps.samplers[0].varId);
-    uint32_t sample = m_module.opImageSampleImplicitLod(m_vec4Type, imageVarId, ps.in.TEXCOORD[0], imageOperands);
-    color = m_module.opFMul(m_vec4Type, color, sample);
-    /*for (uint32_t i = 0; i < 8; i++) {
-      
-    }*/
-    /////////////////////////////////////////
-    // END OF ACTUAL CODE
-
-    // ALPHA TESTING!
+  void D3D9FFShaderCompiler::alphaTestPS() {
+    // Alpha testing
     uint32_t boolType = m_module.defBoolType();
-    uint32_t floatType = m_module.defFloatType(32);
-    uint32_t floatPtr = m_module.defPointerType(floatType, spv::StorageClassPushConstant);
+    uint32_t floatPtr = m_module.defPointerType(m_floatType, spv::StorageClassPushConstant);
 
     // Declare uniform buffer containing render states
     enum RenderStateMember : uint32_t {
@@ -418,7 +660,7 @@ namespace dxvk {
     };
 
     std::array<uint32_t, 1> rsMembers = { {
-      floatType,
+      m_floatType,
     } };
 
     uint32_t rsStruct = m_module.defStructTypeUnique(rsMembers.size(), rsMembers.data());
@@ -446,10 +688,8 @@ namespace dxvk {
     m_module.setDebugName(alphaFuncId, "alpha_func");
     m_module.decorateSpecId(alphaFuncId, getSpecId(D3D9SpecConstantId::AlphaCompareOp));
 
-    m_module.opStore(ps.out.COLOR, color);
-
     // Implement alpha test
-    auto oC0 = ps.out.COLOR;
+    auto oC0 = m_ps.out.COLOR;
     // Labels for the alpha test
     std::array<SpirvSwitchCaseLabel, 8> atestCaseLabels = { {
       { uint32_t(VK_COMPARE_OP_NEVER),            m_module.allocateId() },
@@ -475,13 +715,13 @@ namespace dxvk {
 
     // Load alpha component
     uint32_t alphaComponentId = 3;
-    uint32_t alphaId = m_module.opCompositeExtract(floatType,
+    uint32_t alphaId = m_module.opCompositeExtract(m_floatType,
       m_module.opLoad(m_vec4Type, oC0),
       1, &alphaComponentId);
 
     // Load alpha reference
     uint32_t alphaRefMember = m_module.constu32(RsAlphaRef);
-    uint32_t alphaRefId = m_module.opLoad(floatType,
+    uint32_t alphaRefId = m_module.opLoad(m_floatType,
       m_module.opAccessChain(floatPtr, rsBlock, 1, &alphaRefMember));
 
     // switch (alpha_func) { ... }
@@ -636,6 +876,11 @@ namespace dxvk {
   size_t D3D9FFShaderKeyHash::operator () (const D3D9FFShaderKeyFS& key) const {
     DxvkHashState state;
 
+    std::hash<uint64_t> uint64hash;
+
+    for (uint32_t i = 0; i < caps::TextureStageCount; i++)
+      state.add(uint64hash(key.Stages->uint64[i]));
+
     return state;
   }
 
@@ -647,7 +892,7 @@ namespace dxvk {
 
 
   bool operator == (const D3D9FFShaderKeyFS& a, const D3D9FFShaderKeyFS& b) {
-    return true;
+    return std::memcmp(&a, &b, sizeof(D3D9FFShaderKeyFS));
   }
 
 
