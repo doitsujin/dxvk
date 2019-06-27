@@ -25,6 +25,7 @@ namespace dxvk {
   enum class DxvkCmdBuffer : uint32_t {
     InitBuffer = 0,
     ExecBuffer = 1,
+    SdmaBuffer = 2,
   };
   
   using DxvkCmdBufferFlags = Flags<DxvkCmdBuffer>;
@@ -748,6 +749,9 @@ namespace dxvk {
     
     VkCommandBuffer     m_execBuffer = VK_NULL_HANDLE;
     VkCommandBuffer     m_initBuffer = VK_NULL_HANDLE;
+    VkCommandBuffer     m_sdmaBuffer = VK_NULL_HANDLE;
+
+    VkSemaphore         m_sdmaSemaphore = VK_NULL_HANDLE;
     
     DxvkCmdBufferFlags  m_cmdBuffersUsed;
     DxvkLifetimeTracker m_resources;
@@ -759,7 +763,10 @@ namespace dxvk {
     DxvkStatCounters    m_statCounters;
 
     VkCommandBuffer getCmdBuffer(DxvkCmdBuffer cmdBuffer) const {
-      return cmdBuffer == DxvkCmdBuffer::ExecBuffer ? m_execBuffer : m_initBuffer;
+      if (cmdBuffer == DxvkCmdBuffer::ExecBuffer) return m_execBuffer;
+      if (cmdBuffer == DxvkCmdBuffer::InitBuffer) return m_initBuffer;
+      if (cmdBuffer == DxvkCmdBuffer::SdmaBuffer) return m_sdmaBuffer;
+      return VK_NULL_HANDLE;
     }
 
     VkResult submitToQueue(

@@ -35,21 +35,41 @@ namespace dxvk {
         throw DxvkError("DxvkCommandList: Failed to create transfer command pool");
     }
     
-    VkCommandBufferAllocateInfo cmdInfo;
-    cmdInfo.sType             = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    cmdInfo.pNext             = nullptr;
-    cmdInfo.commandPool       = m_graphicsPool;
-    cmdInfo.level             = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    cmdInfo.commandBufferCount = 1;
+    VkCommandBufferAllocateInfo cmdInfoGfx;
+    cmdInfoGfx.sType             = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    cmdInfoGfx.pNext             = nullptr;
+    cmdInfoGfx.commandPool       = m_graphicsPool;
+    cmdInfoGfx.level             = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    cmdInfoGfx.commandBufferCount = 1;
     
-    if (m_vkd->vkAllocateCommandBuffers(m_vkd->device(), &cmdInfo, &m_execBuffer) != VK_SUCCESS
-     || m_vkd->vkAllocateCommandBuffers(m_vkd->device(), &cmdInfo, &m_initBuffer) != VK_SUCCESS)
+    VkCommandBufferAllocateInfo cmdInfoDma;
+    cmdInfoDma.sType             = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    cmdInfoDma.pNext             = nullptr;
+    cmdInfoDma.commandPool       = m_transferPool ? m_transferPool : m_graphicsPool;
+    cmdInfoDma.level             = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    cmdInfoDma.commandBufferCount = 1;
+    
+    if (m_vkd->vkAllocateCommandBuffers(m_vkd->device(), &cmdInfoGfx, &m_execBuffer) != VK_SUCCESS
+     || m_vkd->vkAllocateCommandBuffers(m_vkd->device(), &cmdInfoGfx, &m_initBuffer) != VK_SUCCESS
+     || m_vkd->vkAllocateCommandBuffers(m_vkd->device(), &cmdInfoDma, &m_sdmaBuffer) != VK_SUCCESS)
       throw DxvkError("DxvkCommandList: Failed to allocate command buffer");
+    
+    if (m_device->hasDedicatedTransferQueue()) {
+      VkSemaphoreCreateInfo semInfo;
+      semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+      semInfo.pNext = nullptr;
+      semInfo.flags = 0;
+
+      if (m_vkd->vkCreateSemaphore(m_vkd->device(), &semInfo, nullptr, &m_sdmaSemaphore) != VK_SUCCESS)
+        throw DxvkError("DxvkCommandList: Failed to create semaphore");
+    }
   }
   
   
   DxvkCommandList::~DxvkCommandList() {
     this->reset();
+
+    m_vkd->vkDestroySemaphore(m_vkd->device(), m_sdmaSemaphore, nullptr);
     
     m_vkd->vkDestroyCommandPool(m_vkd->device(), m_graphicsPool, nullptr);
     m_vkd->vkDestroyCommandPool(m_vkd->device(), m_transferPool, nullptr);
@@ -62,8 +82,26 @@ namespace dxvk {
           VkSemaphore     waitSemaphore,
           VkSemaphore     wakeSemaphore) {
     const auto& graphics = m_device->queues().graphics;
+    const auto& transfer = m_device->queues().transfer;
 
-    DxvkQueueSubmission info = { };
+    DxvkQueueSubmission info = DxvkQueueSubmission();
+
+    if (m_cmdBuffersUsed.test(DxvkCmdBuffer::SdmaBuffer)) {
+      info.cmdBuffers[info.cmdBufferCount++] = m_sdmaBuffer;
+
+      if (m_device->hasDedicatedTransferQueue()) {
+        info.wakeSync[info.wakeCount++] = m_sdmaSemaphore;
+        VkResult status = submitToQueue(transfer.queueHandle, VK_NULL_HANDLE, info);
+
+        if (status != VK_SUCCESS)
+          return status;
+
+        info = DxvkQueueSubmission();
+        info.waitSync[info.waitCount] = m_sdmaSemaphore;
+        info.waitMask[info.waitCount] = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+        info.waitCount += 1;
+      }
+    }
 
     if (m_cmdBuffersUsed.test(DxvkCmdBuffer::InitBuffer))
       info.cmdBuffers[info.cmdBufferCount++] = m_initBuffer;
@@ -108,7 +146,8 @@ namespace dxvk {
       Logger::err("DxvkCommandList: Failed to reset command buffer");
     
     if (m_vkd->vkBeginCommandBuffer(m_execBuffer, &info) != VK_SUCCESS
-     || m_vkd->vkBeginCommandBuffer(m_initBuffer, &info) != VK_SUCCESS)
+     || m_vkd->vkBeginCommandBuffer(m_initBuffer, &info) != VK_SUCCESS
+     || m_vkd->vkBeginCommandBuffer(m_sdmaBuffer, &info) != VK_SUCCESS)
       Logger::err("DxvkCommandList: Failed to begin command buffer");
     
     if (m_vkd->vkResetFences(m_vkd->device(), 1, &m_fence) != VK_SUCCESS)
@@ -122,7 +161,8 @@ namespace dxvk {
   
   void DxvkCommandList::endRecording() {
     if (m_vkd->vkEndCommandBuffer(m_execBuffer) != VK_SUCCESS
-     || m_vkd->vkEndCommandBuffer(m_initBuffer) != VK_SUCCESS)
+     || m_vkd->vkEndCommandBuffer(m_initBuffer) != VK_SUCCESS
+     || m_vkd->vkEndCommandBuffer(m_sdmaBuffer) != VK_SUCCESS)
       Logger::err("DxvkCommandList::endRecording: Failed to record command buffer");
   }
   
