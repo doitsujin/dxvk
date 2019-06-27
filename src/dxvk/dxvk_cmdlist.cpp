@@ -63,29 +63,23 @@ namespace dxvk {
           VkSemaphore     wakeSemaphore) {
     const auto& graphics = m_device->queues().graphics;
 
-    std::array<VkCommandBuffer, 2> cmdBuffers;
-    uint32_t cmdBufferCount = 0;
-    
+    DxvkQueueSubmission info = { };
+
     if (m_cmdBuffersUsed.test(DxvkCmdBuffer::InitBuffer))
-      cmdBuffers[cmdBufferCount++] = m_initBuffer;
+      info.cmdBuffers[info.cmdBufferCount++] = m_initBuffer;
     if (m_cmdBuffersUsed.test(DxvkCmdBuffer::ExecBuffer))
-      cmdBuffers[cmdBufferCount++] = m_execBuffer;
+      info.cmdBuffers[info.cmdBufferCount++] = m_execBuffer;
     
-    const VkPipelineStageFlags waitStageMask
-      = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+    if (waitSemaphore) {
+      info.waitSync[info.waitCount] = waitSemaphore;
+      info.waitMask[info.waitCount] = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
+      info.waitCount += 1;
+    }
+
+    if (wakeSemaphore)
+      info.wakeSync[info.wakeCount++] = wakeSemaphore;
     
-    VkSubmitInfo info;
-    info.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    info.pNext                = nullptr;
-    info.waitSemaphoreCount   = waitSemaphore == VK_NULL_HANDLE ? 0 : 1;
-    info.pWaitSemaphores      = &waitSemaphore;
-    info.pWaitDstStageMask    = &waitStageMask;
-    info.commandBufferCount   = cmdBufferCount;
-    info.pCommandBuffers      = cmdBuffers.data();
-    info.signalSemaphoreCount = wakeSemaphore == VK_NULL_HANDLE ? 0 : 1;
-    info.pSignalSemaphores    = &wakeSemaphore;
-    
-    return m_vkd->vkQueueSubmit(graphics.queueHandle, 1, &info, m_fence);
+    return submitToQueue(graphics.queueHandle, m_fence, info);
   }
   
   
@@ -151,6 +145,25 @@ namespace dxvk {
 
     // Less important stuff
     m_statCounters.reset();
+  }
+
+
+  VkResult DxvkCommandList::submitToQueue(
+          VkQueue               queue,
+          VkFence               fence,
+    const DxvkQueueSubmission&  info) {
+    VkSubmitInfo submitInfo;
+    submitInfo.sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.pNext                = nullptr;
+    submitInfo.waitSemaphoreCount   = info.waitCount;
+    submitInfo.pWaitSemaphores      = info.waitSync;
+    submitInfo.pWaitDstStageMask    = info.waitMask;
+    submitInfo.commandBufferCount   = info.cmdBufferCount;
+    submitInfo.pCommandBuffers      = info.cmdBuffers;
+    submitInfo.signalSemaphoreCount = info.wakeCount;
+    submitInfo.pSignalSemaphores    = info.wakeSync;
+    
+    return m_vkd->vkQueueSubmit(queue, 1, &submitInfo, fence);
   }
   
 }

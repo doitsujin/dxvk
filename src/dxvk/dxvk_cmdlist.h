@@ -30,6 +30,23 @@ namespace dxvk {
   using DxvkCmdBufferFlags = Flags<DxvkCmdBuffer>;
   
   /**
+   * \brief Queue submission info
+   *
+   * Convenience struct that holds data for
+   * actual command submissions. Internal use
+   * only, array sizes are based on need.
+   */
+  struct DxvkQueueSubmission {
+    uint32_t              waitCount;
+    VkSemaphore           waitSync[2];
+    VkPipelineStageFlags  waitMask[2];
+    uint32_t              wakeCount;
+    VkSemaphore           wakeSync[2];
+    uint32_t              cmdBufferCount;
+    VkCommandBuffer       cmdBuffers[4];
+  };
+
+  /**
    * \brief DXVK command list
    * 
    * Stores a command buffer that a context can use to record Vulkan
@@ -744,6 +761,11 @@ namespace dxvk {
     VkCommandBuffer getCmdBuffer(DxvkCmdBuffer cmdBuffer) const {
       return cmdBuffer == DxvkCmdBuffer::ExecBuffer ? m_execBuffer : m_initBuffer;
     }
+
+    VkResult submitToQueue(
+            VkQueue               queue,
+            VkFence               fence,
+      const DxvkQueueSubmission&  info);
     
   };
   
