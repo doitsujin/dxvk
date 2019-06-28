@@ -345,17 +345,10 @@ namespace dxvk::hud {
     context->beginRecording(
       device->createCommandList());
     
-    context->initImage(m_fontImage,
-      VkImageSubresourceRange {
-        VK_IMAGE_ASPECT_COLOR_BIT,
-        0, 1, 0, 1 });
-    
-    context->updateImage(m_fontImage,
+    context->uploadImage(m_fontImage,
       VkImageSubresourceLayers {
         VK_IMAGE_ASPECT_COLOR_BIT,
         0, 0, 1 },
-      VkOffset3D { 0, 0, 0 },
-      VkExtent3D { g_hudFont.width, g_hudFont.height, 1 },
       g_hudFont.texture,
       g_hudFont.width,
       g_hudFont.width * g_hudFont.height);
