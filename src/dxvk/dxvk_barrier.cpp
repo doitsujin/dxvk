@@ -77,6 +77,86 @@ namespace dxvk {
   }
 
 
+  void DxvkBarrierSet::releaseBuffer(
+          DxvkBarrierSet&           acquire,
+    const DxvkBufferSliceHandle&    bufSlice,
+          uint32_t                  srcQueue,
+          VkPipelineStageFlags      srcStages,
+          VkAccessFlags             srcAccess,
+          uint32_t                  dstQueue,
+          VkPipelineStageFlags      dstStages,
+          VkAccessFlags             dstAccess) {
+    auto& release = *this;
+
+    release.m_srcStages |= srcStages;
+    acquire.m_dstStages |= dstStages;
+
+    VkBufferMemoryBarrier barrier;
+    barrier.sType                       = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+    barrier.pNext                       = nullptr;
+    barrier.srcAccessMask               = srcAccess;
+    barrier.dstAccessMask               = 0;
+    barrier.srcQueueFamilyIndex         = srcQueue;
+    barrier.dstQueueFamilyIndex         = dstQueue;
+    barrier.buffer                      = bufSlice.handle;
+    barrier.offset                      = bufSlice.offset;
+    barrier.size                        = bufSlice.length;
+    release.m_bufBarriers.push_back(barrier);
+
+    barrier.srcAccessMask               = 0;
+    barrier.dstAccessMask               = dstAccess;
+    acquire.m_bufBarriers.push_back(barrier);
+
+    DxvkAccessFlags access(DxvkAccess::Read, DxvkAccess::Write);
+    release.m_bufSlices.push_back({ bufSlice, access });
+    acquire.m_bufSlices.push_back({ bufSlice, access });
+  }
+
+
+  void DxvkBarrierSet::releaseImage(
+          DxvkBarrierSet&           acquire,
+    const Rc<DxvkImage>&            image,
+    const VkImageSubresourceRange&  subresources,
+          uint32_t                  srcQueue,
+          VkImageLayout             srcLayout,
+          VkPipelineStageFlags      srcStages,
+          VkAccessFlags             srcAccess,
+          uint32_t                  dstQueue,
+          VkImageLayout             dstLayout,
+          VkPipelineStageFlags      dstStages,
+          VkAccessFlags             dstAccess) {
+    auto& release = *this;
+
+    release.m_srcStages |= srcStages;
+    acquire.m_dstStages |= dstStages;
+
+    VkImageMemoryBarrier barrier;
+    barrier.sType                       = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.pNext                       = nullptr;
+    barrier.srcAccessMask               = srcAccess;
+    barrier.dstAccessMask               = 0;
+    barrier.oldLayout                   = srcLayout;
+    barrier.newLayout                   = dstLayout;
+    barrier.srcQueueFamilyIndex         = srcQueue;
+    barrier.dstQueueFamilyIndex         = dstQueue;
+    barrier.image                       = image->handle();
+    barrier.subresourceRange            = subresources;
+    barrier.subresourceRange.aspectMask = image->formatInfo()->aspectMask;
+    release.m_imgBarriers.push_back(barrier);
+
+    if (srcQueue == dstQueue)
+      barrier.oldLayout = dstLayout;
+
+    barrier.srcAccessMask               = 0;
+    barrier.dstAccessMask               = dstAccess;
+    acquire.m_imgBarriers.push_back(barrier);
+
+    DxvkAccessFlags access(DxvkAccess::Read, DxvkAccess::Write);
+    release.m_imgSlices.push_back({ image.ptr(), subresources, access });
+    acquire.m_imgSlices.push_back({ image.ptr(), subresources, access });
+  }
+
+
   bool DxvkBarrierSet::isBufferDirty(
     const DxvkBufferSliceHandle&    bufSlice,
           DxvkAccessFlags           bufAccess) {
@@ -172,7 +252,8 @@ namespace dxvk {
       commandList->cmdPipelineBarrier(
         m_cmdBuffer, srcFlags, dstFlags, 0,
         pMemBarrier ? 1 : 0, pMemBarrier,
-        0, nullptr,
+        m_bufBarriers.size(),
+        m_bufBarriers.data(),
         m_imgBarriers.size(),
         m_imgBarriers.data());
       
@@ -188,6 +269,7 @@ namespace dxvk {
     m_srcAccess = 0;
     m_dstAccess = 0;
     
+    m_bufBarriers.resize(0);
     m_imgBarriers.resize(0);
 
     m_bufSlices.resize(0);
