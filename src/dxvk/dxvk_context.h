@@ -784,6 +784,23 @@ namespace dxvk {
       const void*                     data);
     
     /**
+     * \brief Uses transfer queue to initialize image
+     * 
+     * Only safe to use if the image is not in use by the GPU.
+     * \param [in] image The image to initialize
+     * \param [in] subresources Subresources to initialize
+     * \param [in] data Source data
+     * \param [in] pitchPerRow Row pitch of the source data
+     * \param [in] pitchPerLayer Layer pitch of the source data
+     */
+    void uploadImage(
+      const Rc<DxvkImage>&            image,
+      const VkImageSubresourceLayers& subresources,
+      const void*                     data,
+            VkDeviceSize              pitchPerRow,
+            VkDeviceSize              pitchPerLayer);
+    
+    /**
      * \brief Sets viewports
      * 
      * \param [in] viewportCount Number of viewports

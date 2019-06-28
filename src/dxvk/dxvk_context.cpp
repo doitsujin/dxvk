@@ -2085,6 +2085,71 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::uploadImage(
+    const Rc<DxvkImage>&            image,
+    const VkImageSubresourceLayers& subresources,
+    const void*                     data,
+          VkDeviceSize              pitchPerRow,
+          VkDeviceSize              pitchPerLayer) {
+    const DxvkFormatInfo* formatInfo = image->formatInfo();
+
+    VkOffset3D imageOffset = { 0, 0, 0 };
+    VkExtent3D imageExtent = image->mipLevelExtent(subresources.mipLevel);
+    
+    // Allocate staging buffer slice and copy data to it
+    VkExtent3D elementCount = util::computeBlockCount(
+      imageExtent, formatInfo->blockSize);
+    elementCount.depth *= subresources.layerCount;
+    
+    auto stagingSlice = m_staging.alloc(CACHE_LINE_SIZE,
+      formatInfo->elementSize * util::flattenImageExtent(elementCount));
+    auto stagingHandle = stagingSlice.getSliceHandle();
+    
+    util::packImageData(stagingHandle.mapPtr, data,
+      elementCount, formatInfo->elementSize,
+      pitchPerRow, pitchPerLayer);
+
+    // Discard previous subresource contents
+    m_sdmaAcquires.accessImage(image,
+      vk::makeSubresourceRange(subresources),
+      VK_IMAGE_LAYOUT_UNDEFINED, 0, 0,
+      image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT);
+
+    m_sdmaAcquires.recordCommands(m_cmd);
+    
+    // Perform copy on the transfer queue
+    VkBufferImageCopy region;
+    region.bufferOffset       = stagingHandle.offset;
+    region.bufferRowLength    = 0;
+    region.bufferImageHeight  = 0;
+    region.imageSubresource   = subresources;
+    region.imageOffset        = imageOffset;
+    region.imageExtent        = imageExtent;
+    
+    m_cmd->cmdCopyBufferToImage(DxvkCmdBuffer::SdmaBuffer,
+      stagingHandle.handle, image->handle(),
+      image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+      1, &region);
+    
+    // Transfer ownership to graphics queue
+    m_sdmaBarriers.releaseImage(m_initBarriers,
+      image, vk::makeSubresourceRange(subresources),
+      m_device->queues().transfer.queueFamily,
+      image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT,
+      m_device->queues().graphics.queueFamily,
+      image->info().layout,
+      image->info().stages,
+      image->info().access);
+    
+    m_cmd->trackResource(image);
+    m_cmd->trackResource(stagingSlice.buffer());
+  }
+
+
   void DxvkContext::setViewports(
           uint32_t            viewportCount,
     const VkViewport*         viewports,
