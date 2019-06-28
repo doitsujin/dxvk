@@ -623,7 +623,7 @@ namespace dxvk {
         region.imageOffset        = offset;
         region.imageExtent        = extent;
 
-        m_cmd->cmdCopyBufferToImage(
+        m_cmd->cmdCopyBufferToImage(DxvkCmdBuffer::ExecBuffer,
           stagingHandle.handle, image->handle(),
           image->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
           1, &region);
@@ -837,10 +837,8 @@ namespace dxvk {
     bufferRegion.dstOffset = dstSlice.offset;
     bufferRegion.size      = dstSlice.length;
 
-    m_cmd->cmdCopyBuffer(
-      srcSlice.handle,
-      dstSlice.handle,
-      1, &bufferRegion);
+    m_cmd->cmdCopyBuffer(DxvkCmdBuffer::ExecBuffer,
+      srcSlice.handle, dstSlice.handle, 1, &bufferRegion);
 
     m_execBarriers.accessBuffer(srcSlice,
       VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -936,11 +934,9 @@ namespace dxvk {
     copyRegion.imageOffset        = dstOffset;
     copyRegion.imageExtent        = dstExtent;
     
-    m_cmd->cmdCopyBufferToImage(
-      srcSlice.handle,
-      dstImage->handle(),
-      dstImageLayoutTransfer,
-      1, &copyRegion);
+    m_cmd->cmdCopyBufferToImage(DxvkCmdBuffer::ExecBuffer,
+      srcSlice.handle, dstImage->handle(),
+      dstImageLayoutTransfer, 1, &copyRegion);
     
     m_execBarriers.accessImage(
       dstImage, dstSubresourceRange,
@@ -1095,11 +1091,9 @@ namespace dxvk {
     copyRegion.imageOffset        = srcOffset;
     copyRegion.imageExtent        = srcExtent;
     
-    m_cmd->cmdCopyImageToBuffer(
-      srcImage->handle(),
-      srcImageLayoutTransfer,
-      dstSlice.handle,
-      1, &copyRegion);
+    m_cmd->cmdCopyImageToBuffer(DxvkCmdBuffer::ExecBuffer,
+      srcImage->handle(), srcImageLayoutTransfer,
+      dstSlice.handle, 1, &copyRegion);
     
     m_execBarriers.accessImage(
       srcImage, srcSubresourceRange,
@@ -1382,7 +1376,7 @@ namespace dxvk {
       { tmpBufferViewS->info().rangeOffset, 0, 0, dstSubresourceS, dstOffset3D, dstExtent3D },
     }};
 
-    m_cmd->cmdCopyBufferToImage(
+    m_cmd->cmdCopyBufferToImage(DxvkCmdBuffer::ExecBuffer,
       tmpBuffer->getSliceHandle().handle,
       dstImage->handle(),
       dstImage->pickLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL),
@@ -1916,10 +1910,8 @@ namespace dxvk {
       region.dstOffset = bufferSlice.offset;
       region.size      = size;
 
-      m_cmd->cmdCopyBuffer(
-        stagingHandle.handle,
-        bufferSlice.handle,
-        1, &region);
+      m_cmd->cmdCopyBuffer(DxvkCmdBuffer::ExecBuffer,
+        stagingHandle.handle, bufferSlice.handle, 1, &region);
       
       m_cmd->trackResource(stagingSlice.buffer());
     }
@@ -2005,8 +1997,9 @@ namespace dxvk {
     region.imageOffset        = imageOffset;
     region.imageExtent        = imageExtent;
     
-    m_cmd->cmdCopyBufferToImage(stagingHandle.handle,
-      image->handle(), imageLayoutTransfer, 1, &region);
+    m_cmd->cmdCopyBufferToImage(DxvkCmdBuffer::ExecBuffer,
+      stagingHandle.handle, image->handle(),
+      imageLayoutTransfer, 1, &region);
     
     // Transition image back into its optimal layout
     m_execBarriers.accessImage(
@@ -2544,7 +2537,7 @@ namespace dxvk {
     imageRegion.dstOffset      = dstOffset;
     imageRegion.extent         = extent;
     
-    m_cmd->cmdCopyImage(
+    m_cmd->cmdCopyImage(DxvkCmdBuffer::ExecBuffer,
       srcImage->handle(), srcImageLayout,
       dstImage->handle(), dstImageLayout,
       1, &imageRegion);

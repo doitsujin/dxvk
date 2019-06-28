@@ -379,36 +379,45 @@ namespace dxvk {
     
     
     void cmdCopyBuffer(
+            DxvkCmdBuffer           cmdBuffer,
             VkBuffer                srcBuffer,
             VkBuffer                dstBuffer,
             uint32_t                regionCount,
       const VkBufferCopy*           pRegions) {
-      m_vkd->vkCmdCopyBuffer(m_execBuffer,
+      m_cmdBuffersUsed.set(cmdBuffer);
+
+      m_vkd->vkCmdCopyBuffer(getCmdBuffer(cmdBuffer),
         srcBuffer, dstBuffer,
         regionCount, pRegions);
     }
     
     
     void cmdCopyBufferToImage(
+            DxvkCmdBuffer           cmdBuffer,
             VkBuffer                srcBuffer,
             VkImage                 dstImage,
             VkImageLayout           dstImageLayout,
             uint32_t                regionCount,
       const VkBufferImageCopy*      pRegions) {
-      m_vkd->vkCmdCopyBufferToImage(m_execBuffer,
+      m_cmdBuffersUsed.set(cmdBuffer);
+
+      m_vkd->vkCmdCopyBufferToImage(getCmdBuffer(cmdBuffer),
         srcBuffer, dstImage, dstImageLayout,
         regionCount, pRegions);
     }
     
     
     void cmdCopyImage(
+            DxvkCmdBuffer           cmdBuffer,
             VkImage                 srcImage,
             VkImageLayout           srcImageLayout,
             VkImage                 dstImage,
             VkImageLayout           dstImageLayout,
             uint32_t                regionCount,
       const VkImageCopy*            pRegions) {
-      m_vkd->vkCmdCopyImage(m_execBuffer,
+      m_cmdBuffersUsed.set(cmdBuffer);
+
+      m_vkd->vkCmdCopyImage(getCmdBuffer(cmdBuffer),
         srcImage, srcImageLayout,
         dstImage, dstImageLayout,
         regionCount, pRegions);
@@ -416,12 +425,15 @@ namespace dxvk {
     
     
     void cmdCopyImageToBuffer(
+            DxvkCmdBuffer           cmdBuffer,
             VkImage                 srcImage,
             VkImageLayout           srcImageLayout,
             VkBuffer                dstBuffer,
             uint32_t                regionCount,
       const VkBufferImageCopy*      pRegions) {
-      m_vkd->vkCmdCopyImageToBuffer(m_execBuffer,
+      m_cmdBuffersUsed.set(cmdBuffer);
+
+      m_vkd->vkCmdCopyImageToBuffer(getCmdBuffer(cmdBuffer),
         srcImage, srcImageLayout, dstBuffer,
         regionCount, pRegions);
     }
