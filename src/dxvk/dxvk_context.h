@@ -773,6 +773,17 @@ namespace dxvk {
             VkFormat                  format);
     
     /**
+     * \brief Uses transfer queue to initialize buffer
+     * 
+     * Only safe to use if the buffer is not in use by the GPU.
+     * \param [in] buffer The buffer to initialize
+     * \param [in] data The data to copy to the buffer
+     */
+    void uploadBuffer(
+      const Rc<DxvkBuffer>&           buffer,
+      const void*                     data);
+    
+    /**
      * \brief Sets viewports
      * 
      * \param [in] viewportCount Number of viewports

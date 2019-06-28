@@ -2054,6 +2054,37 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::uploadBuffer(
+    const Rc<DxvkBuffer>&           buffer,
+    const void*                     data) {
+    auto bufferSlice = buffer->getSliceHandle();
+
+    auto stagingSlice = m_staging.alloc(CACHE_LINE_SIZE, bufferSlice.length);
+    auto stagingHandle = stagingSlice.getSliceHandle();
+    std::memcpy(stagingHandle.mapPtr, data, bufferSlice.length);
+
+    VkBufferCopy region;
+    region.srcOffset = stagingHandle.offset;
+    region.dstOffset = bufferSlice.offset;
+    region.size      = bufferSlice.length;
+
+    m_cmd->cmdCopyBuffer(DxvkCmdBuffer::SdmaBuffer,
+      stagingHandle.handle, bufferSlice.handle, 1, &region);
+
+    m_sdmaBarriers.releaseBuffer(
+      m_initBarriers, bufferSlice,
+      m_device->queues().transfer.queueFamily,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_WRITE_BIT,
+      m_device->queues().graphics.queueFamily,
+      buffer->info().stages,
+      buffer->info().access);
+    
+    m_cmd->trackResource(stagingSlice.buffer());
+    m_cmd->trackResource(buffer);
+  }
+
+
   void DxvkContext::setViewports(
           uint32_t            viewportCount,
     const VkViewport*         viewports,
