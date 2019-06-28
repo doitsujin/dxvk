@@ -136,10 +136,8 @@ namespace dxvk {
             image->info().format, mipLevelExtent);
           
           if (formatInfo->aspectMask != (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-            m_context->updateImage(
+            m_context->uploadImage(
               image, subresourceLayers,
-              mipLevelOffset,
-              mipLevelExtent,
               pInitialData[id].pSysMem,
               pInitialData[id].SysMemPitch,
               pInitialData[id].SysMemSlicePitch);
