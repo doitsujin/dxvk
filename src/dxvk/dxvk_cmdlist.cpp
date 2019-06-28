@@ -109,7 +109,7 @@ namespace dxvk {
     
     // Unconditionally mark the exec buffer as used. There
     // is virtually no use case where this isn't correct.
-    m_cmdBuffersUsed.set(DxvkCmdBuffer::ExecBuffer);
+    m_cmdBuffersUsed = DxvkCmdBuffer::ExecBuffer;
   }
   
   
