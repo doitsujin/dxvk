@@ -98,7 +98,8 @@ namespace dxvk {
       VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT,
       VK_QUEUE_TRANSFER_BIT);
     
-    if (transferQueue == VK_QUEUE_FAMILY_IGNORED)
+    if (transferQueue == VK_QUEUE_FAMILY_IGNORED
+     || !m_instance->options().enableTransferQueue)
       transferQueue = graphicsQueue;
     
     DxvkAdapterQueueIndices queues;
