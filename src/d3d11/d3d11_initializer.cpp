@@ -60,10 +60,8 @@ namespace dxvk {
       m_transferMemory   += bufferSlice.length();
       m_transferCommands += 1;
       
-      m_context->updateBuffer(
+      m_context->uploadBuffer(
         bufferSlice.buffer(),
-        bufferSlice.offset(),
-        bufferSlice.length(),
         pInitialData->pSysMem);
     } else {
       m_transferCommands += 1;
