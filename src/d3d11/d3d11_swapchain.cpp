@@ -290,7 +290,7 @@ namespace dxvk {
       m_context->bindResourceView(BindingIds::Image, m_swapImageView, nullptr);
       m_context->bindResourceView(BindingIds::Gamma, m_gammaTextureView, nullptr);
 
-      m_context->draw(4, 1, 0, 0);
+      m_context->draw(3, 1, 0, 0);
 
       if (m_hud != nullptr)
         m_hud->render(m_context, info.imageExtent);
