@@ -153,6 +153,10 @@ namespace dxvk {
     /* The Surge                                  */
     { "TheSurge.exe", {{
       { "d3d11.allowMapFlagNoWait",         "True" },
+    }} },
+    /* ELEX: Fix crashes on nvidia                */
+    { "ELEX.exe", {{
+      { "dxgi.deferSurfaceCreation",        "True" },
     }} }
   }};
 
