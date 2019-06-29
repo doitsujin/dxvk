@@ -1730,7 +1730,7 @@ namespace dxvk {
     if (unlikely(Stage >= caps::TextureStageCount))
       return D3DERR_INVALIDCALL;
 
-    if (unlikely(Type >= D3DTSS_CONSTANT))
+    if (unlikely(Type >= TextureStageStateCount))
       return D3DERR_INVALIDCALL;
 
     if (unlikely(ShouldRecord()))

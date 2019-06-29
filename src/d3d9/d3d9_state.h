@@ -13,6 +13,7 @@ namespace dxvk {
   static constexpr uint32_t RenderStateCount  = 256;
   static constexpr uint32_t SamplerStateCount = D3DSAMP_DMAPOFFSET + 1;
   static constexpr uint32_t SamplerCount      = 21;
+  static constexpr uint32_t TextureStageStateCount = D3DTSS_CONSTANT + 1;
 
   namespace hacks::PointSize {
     static constexpr DWORD AlphaToCoverageDisabled = MAKEFOURCC('A', '2', 'M', '0');
@@ -93,7 +94,7 @@ namespace dxvk {
       caps::MaxClipPlanes>                           clipPlanes;
 
     std::array<
-      std::array<DWORD, D3DTSS_CONSTANT>,
+      std::array<DWORD, TextureStageStateCount>,
       caps::TextureStageCount>                       textureStages;
 
     D3D9ShaderConstants                              consts[DxsoProgramTypes::Count];
