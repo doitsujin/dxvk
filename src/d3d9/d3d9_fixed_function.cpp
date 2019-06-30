@@ -514,6 +514,10 @@ namespace dxvk {
               dst = m_module.opFMul(m_vec4Type, dst, m_module.constvec4f32(2.0f, 2.0f, 2.0f, 2.0f));
             break;
 
+          case D3DTOP_SUBTRACT:
+            dst = m_module.opFSub(m_vec4Type, arg[1], arg[2]);
+            break;
+
           case D3DTOP_ADDSMOOTH: {
             uint32_t comp = Complement(arg[1]);
             dst = m_module.opFFma(m_vec4Type, comp, arg[2], arg[1]);
