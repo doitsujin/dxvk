@@ -623,15 +623,15 @@ namespace dxvk {
 
       D3DTEXTUREOP colorOp = (D3DTEXTUREOP)stage.ColorOp;
       std::array<uint32_t, TextureArgCount> colorArgs = {
-          GetArg(stage.ColorArg0),
-          GetArg(stage.ColorArg1),
-          GetArg(stage.ColorArg2)};
+          colorOp != D3DTOP_DISABLE ? GetArg(stage.ColorArg0) : 0,
+          colorOp != D3DTOP_DISABLE ? GetArg(stage.ColorArg1) : 0,
+          colorOp != D3DTOP_DISABLE ? GetArg(stage.ColorArg2) : 0};
 
       D3DTEXTUREOP alphaOp = (D3DTEXTUREOP)stage.AlphaOp;
       std::array<uint32_t, TextureArgCount> alphaArgs = {
-          GetArg(stage.AlphaArg0),
-          GetArg(stage.AlphaArg1),
-          GetArg(stage.AlphaArg2) };
+          alphaOp != D3DTOP_DISABLE ? GetArg(stage.AlphaArg0) : 0,
+          alphaOp != D3DTOP_DISABLE ? GetArg(stage.AlphaArg1) : 0,
+          alphaOp != D3DTOP_DISABLE ? GetArg(stage.AlphaArg2) : 0 };
 
       // Fast path if alpha/color path is identical.
       if (colorOp == alphaOp && colorArgs == alphaArgs) {
