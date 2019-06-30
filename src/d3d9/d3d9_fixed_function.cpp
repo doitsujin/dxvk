@@ -987,7 +987,7 @@ namespace dxvk {
 
 
   bool operator == (const D3D9FFShaderKeyFS& a, const D3D9FFShaderKeyFS& b) {
-    return std::memcmp(&a, &b, sizeof(D3D9FFShaderKeyFS));
+    return std::memcmp(&a, &b, sizeof(D3D9FFShaderKeyFS)) == 0;
   }
 
 
