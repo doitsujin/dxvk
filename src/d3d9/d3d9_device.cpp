@@ -4985,13 +4985,13 @@ namespace dxvk {
 
       float deltaZ = vp.MaxZ - vp.MinZ;
       data->ViewportInfo.inverseExtent = Vector4(
-         2.0f / vp.Width,
-        -2.0f / vp.Height,
+         2.0f / float(vp.Width),
+        -2.0f / float(vp.Height),
         deltaZ == 0.0f ? 0.0f : 1.0f / deltaZ,
         1.0f);
 
       data->ViewportInfo.inverseOffset = Vector4(
-        -vp.X, -vp.Y,
+        -float(vp.X), -float(vp.Y),
         -vp.MinZ,
         0.0f);
 
