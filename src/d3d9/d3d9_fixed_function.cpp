@@ -67,6 +67,7 @@ namespace dxvk {
     struct {
       uint32_t typeId = { 0 };
       uint32_t varId  = { 0 };
+      uint32_t bound  = { 0 };
     } samplers[8];
 
     struct {
@@ -402,19 +403,41 @@ namespace dxvk {
     // Temp starts off as equal to vec4(0)
     uint32_t temp  = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
     
+    uint32_t texture = m_module.newVarInit(
+      m_module.defPointerType(m_vec4Type, spv::StorageClassPrivate),
+      spv::StorageClassPrivate,
+      m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f));
+
     for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
       const auto& stage = m_fsKey.Stages[i].data;
 
-      uint32_t textureCached = 0;
+      bool processedTexture = false;
 
       auto GetTexture = [&]() {
-        if (!textureCached) {
+        if (!processedTexture) {
+          uint32_t newTextureLabel = m_module.allocateId();
+          uint32_t oldTextureLabel = m_module.allocateId();
+          uint32_t endLabel        = m_module.allocateId();
+
+          m_module.opSelectionMerge(endLabel, spv::SelectionControlMaskNone);
+          m_module.opBranchConditional(m_ps.samplers[i].bound, newTextureLabel, oldTextureLabel);
+
+          m_module.opLabel(newTextureLabel);
           SpirvImageOperands imageOperands;
-          const uint32_t imageVarId = m_module.opLoad(m_ps.samplers[i].typeId, m_ps.samplers[i].varId);
-          textureCached = m_module.opImageSampleImplicitLod(m_vec4Type, imageVarId, m_ps.in.TEXCOORD[i], imageOperands);
+          uint32_t imageVarId = m_module.opLoad(m_ps.samplers[i].typeId, m_ps.samplers[i].varId);
+          uint32_t sample     = m_module.opImageSampleImplicitLod(m_vec4Type, imageVarId, m_ps.in.TEXCOORD[i], imageOperands);
+          m_module.opStore(texture, sample);
+          m_module.opBranch(endLabel);
+
+          m_module.opLabel(oldTextureLabel);
+          m_module.opBranch(endLabel);
+
+          m_module.opLabel(endLabel);
         }
 
-        return textureCached;
+        processedTexture = true;
+
+        return m_module.opLoad(m_vec4Type, texture);
       };
 
       auto AlphaReplicate = [&](uint32_t reg) {
@@ -732,6 +755,15 @@ namespace dxvk {
 
       m_module.decorateDescriptorSet(sampler.varId, 0);
       m_module.decorateBinding(sampler.varId, bindingId);
+
+      // Declare a specialization constant which will
+      // store whether or not the resource is bound.
+      const uint32_t specConstId = m_module.specConstBool(true);
+      m_module.decorateSpecId(specConstId, bindingId);
+      m_module.setDebugName(specConstId,
+        str::format(name, "_bound").c_str());
+
+      sampler.bound = specConstId;
 
       // Store descriptor info for the shader interface
       DxvkResourceSlot resource;
