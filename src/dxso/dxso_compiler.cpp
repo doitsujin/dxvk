@@ -1669,10 +1669,12 @@ namespace dxvk {
 
         std::array<uint32_t, 4> resultIndices;
 
-        resultIndices[0] = m_module.constf32(1.0f);
-        resultIndices[1] = m_module.opFMax(scalarTypeId, srcX, m_module.constf32(0));
-        resultIndices[2] = m_module.opPow (scalarTypeId, srcY, power);
-        resultIndices[3] = m_module.constf32(1.0f);
+        uint32_t index = 0;
+
+        if (mask[0]) resultIndices[index++] = m_module.constf32(1.0f);
+        if (mask[1]) resultIndices[index++] = m_module.opFMax(scalarTypeId, srcX, m_module.constf32(0));
+        if (mask[2]) resultIndices[index++] = m_module.opPow (scalarTypeId, srcY, power);
+        if (mask[3]) resultIndices[index++] = m_module.constf32(1.0f);
 
         const uint32_t boolType = m_module.defBoolType();
         uint32_t zTestX = m_module.opFOrdGreaterThanEqual(boolType, srcX, m_module.constf32(0));
