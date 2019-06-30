@@ -398,8 +398,8 @@ namespace dxvk {
       auto GetTexture = [&]() {
         if (!textureCached) {
           SpirvImageOperands imageOperands;
-          const uint32_t imageVarId = m_module.opLoad(m_ps.samplers[0].typeId, m_ps.samplers[0].varId);
-          textureCached = m_module.opImageSampleImplicitLod(m_vec4Type, imageVarId, m_ps.in.TEXCOORD[0], imageOperands);
+          const uint32_t imageVarId = m_module.opLoad(m_ps.samplers[i].typeId, m_ps.samplers[i].varId);
+          textureCached = m_module.opImageSampleImplicitLod(m_vec4Type, imageVarId, m_ps.in.TEXCOORD[i], imageOperands);
         }
 
         return textureCached;
