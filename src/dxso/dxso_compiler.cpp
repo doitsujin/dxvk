@@ -1559,6 +1559,26 @@ namespace dxvk {
           emitRegisterLoad(src[1], mask).id);
         break;
       case DxsoOpcode::ExpP:
+        if (m_programInfo.majorVersion() < 2) {
+          DxsoRegMask srcMask(true, false, false, false);
+          uint32_t src0 = emitRegisterLoad(src[0], srcMask).id;
+
+          uint32_t index = 0;
+
+          std::array<uint32_t, 4> resultIndices;
+
+          if (mask[0]) resultIndices[index++] = m_module.opExp2(scalarTypeId, m_module.opFloor(scalarTypeId, src0));
+          if (mask[1]) resultIndices[index++] = m_module.opFSub(scalarTypeId, src0, m_module.opFloor(scalarTypeId, src0));
+          if (mask[2]) resultIndices[index++] = m_module.opExp2(scalarTypeId, src0);
+          if (mask[3]) resultIndices[index++] = m_module.constf32(1.0f);
+
+          if (result.type.ccount == 1)
+            result.id = resultIndices[0];
+          else
+            result.id = m_module.opCompositeConstruct(typeId, result.type.ccount, resultIndices.data());
+
+          break;
+        }
       case DxsoOpcode::Exp:
         result.id = m_module.opExp2(typeId,
           emitRegisterLoad(src[0], mask).id);
