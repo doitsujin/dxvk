@@ -1389,7 +1389,10 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetLight(DWORD Index, const D3DLIGHT9* pLight) {
-    Logger::warn("D3D9DeviceEx::SetLight: Stub");
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D9DeviceEx::SetLight: Stub");
     return D3D_OK;
   }
 
@@ -1401,7 +1404,10 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::LightEnable(DWORD Index, BOOL Enable) {
-    Logger::warn("D3D9DeviceEx::LightEnable: Stub");
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D9DeviceEx::LightEnable: Stub");
     return D3D_OK;
   }
 
