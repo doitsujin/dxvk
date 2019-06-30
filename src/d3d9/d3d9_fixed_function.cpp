@@ -449,15 +449,12 @@ namespace dxvk {
         }
 
         // reg = 1 - reg
-        if (arg & D3DTA_COMPLEMENT) {
-          m_module.opFSub(m_vec4Type,
-            m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f),
-            reg);
-        }
+        if (arg & D3DTA_COMPLEMENT)
+          reg = Complement(reg);
 
         // reg = reg.wwww
         if (arg & D3DTA_ALPHAREPLICATE)
-          AlphaReplicate(reg);
+          reg = AlphaReplicate(reg);
 
         return reg;
       };
