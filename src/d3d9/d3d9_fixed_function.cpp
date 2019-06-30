@@ -605,18 +605,22 @@ namespace dxvk {
       else {
         std::array<uint32_t, 4> indices = { 0, 1, 2, 4 + 3 };
 
-        if (colorOp != D3DTOP_DISABLE) {
-          uint32_t result = DoOp(colorOp, dst, colorArgs);
-          // src0.x, src0.y, src0.z src1.w
-          dst = m_module.opVectorShuffle(m_vec4Type, result, dst, indices.size(), indices.data());
-        }
+        uint32_t colorResult = dst;
+        uint32_t alphaResult = dst;
+        if (colorOp != D3DTOP_DISABLE)
+          colorResult = DoOp(colorOp, dst, colorArgs);
 
-        if (alphaOp != D3DTOP_DISABLE) {
-          uint32_t result = DoOp(alphaOp, dst, alphaArgs);
-          // src0.x, src0.y, src0.z src1.w
-          // But we flip src0, src1 to be inverse of color.
-          dst = m_module.opVectorShuffle(m_vec4Type, dst, result, indices.size(), indices.data());
-        }
+        if (alphaOp != D3DTOP_DISABLE)
+          alphaResult = DoOp(alphaOp, dst, alphaArgs);
+
+        // src0.x, src0.y, src0.z src1.w
+        if (colorResult != dst)
+          dst = m_module.opVectorShuffle(m_vec4Type, colorResult, dst, indices.size(), indices.data());
+
+        // src0.x, src0.y, src0.z src1.w
+        // But we flip src0, src1 to be inverse of color.
+        if (alphaResult != dst)
+          dst = m_module.opVectorShuffle(m_vec4Type, dst, alphaResult, indices.size(), indices.data());
       }
     }
 
