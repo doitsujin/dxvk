@@ -18,6 +18,14 @@ namespace dxvk {
       VSConstInverseOffset = 3,
       VSConstInverseExtent = 4,
 
+      VSConstGlobalAmbient = 5,
+
+      VSConstMaterialDiffuse  = 6,
+      VSConstMaterialAmbient  = 7,
+      VSConstMaterialSpecular = 8,
+      VSConstMaterialEmissive = 9,
+      VSConstMaterialPower    = 10,
+
       VSConstMemberCount
     };
 
@@ -31,6 +39,14 @@ namespace dxvk {
 
       uint32_t invOffset = { 0 };
       uint32_t invExtent = { 0 };
+
+      uint32_t globalAmbient = { 0 };
+
+      uint32_t materialDiffuse = { 0 };
+      uint32_t materialSpecular = { 0 };
+      uint32_t materialAmbient = { 0 };
+      uint32_t materialEmissive = { 0 };
+      uint32_t materialPower = { 0 };
     } constants;
 
     struct {
@@ -287,8 +303,45 @@ namespace dxvk {
     for (uint32_t i = 0; i < caps::TextureStageCount; i++)
       m_module.opStore(m_vs.out.TEXCOORD[i], m_vs.in.TEXCOORD[i]);
 
-    m_module.opStore(m_vs.out.COLOR[0], m_vs.in.COLOR[0]);
-    m_module.opStore(m_vs.out.COLOR[1], m_vs.in.COLOR[1]);
+    if (m_vsKey.UseLighting) {
+      auto PickSource = [&](D3DMATERIALCOLORSOURCE Source, uint32_t Material) {
+        if (Source == D3DMCS_MATERIAL)
+          return Material;
+        else if (Source == D3DMCS_COLOR1)
+          return m_vs.in.COLOR[0];
+        else
+          return m_vs.in.COLOR[1];
+      };
+
+      std::array<uint32_t, 4> indices = { 0, 1, 2, 4 + 3 };
+
+      uint32_t diffuse  = PickSource(m_vsKey.DiffuseSource,  m_vs.constants.materialDiffuse);
+      uint32_t ambient  = PickSource(m_vsKey.AmbientSource,  m_vs.constants.materialAmbient);
+      uint32_t emissive = PickSource(m_vsKey.EmissiveSource, m_vs.constants.materialEmissive);
+      uint32_t specular = PickSource(m_vsKey.SpecularSource, m_vs.constants.materialSpecular);
+
+      // Currently we do not handle real lighting... Just darkness.
+
+      // Handle ambient.
+      uint32_t finalColor = m_module.opFFma(m_vec4Type, ambient, m_vs.constants.globalAmbient, emissive);
+      // Set alpha to zero.
+      const uint32_t alphaIndex = 3;
+      finalColor = m_module.opCompositeInsert(m_vec4Type, m_module.constf32(0.0f), finalColor, 1, &alphaIndex);
+
+      // Add the diffuse
+      finalColor = m_module.opFAdd(m_vec4Type, finalColor, diffuse);
+      // Saturate
+      finalColor = m_module.opFClamp(m_vec4Type, finalColor,
+        m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f),
+        m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f));
+
+      m_module.opStore(m_vs.out.COLOR[0], finalColor);
+      m_module.opStore(m_vs.out.COLOR[1], specular);
+    }
+    else {
+      m_module.opStore(m_vs.out.COLOR[0], m_vs.in.COLOR[0]);
+      m_module.opStore(m_vs.out.COLOR[1], m_vs.in.COLOR[1]);
+    }
   }
 
 
@@ -306,7 +359,15 @@ namespace dxvk {
       m_mat4Type, // Proj
 
       m_vec4Type, // Inverse Offset
-      m_vec4Type  // Inverse Extent
+      m_vec4Type, // Inverse Extent
+
+      m_vec4Type, // Global Ambient
+
+      m_vec4Type,  // Material Diffuse
+      m_vec4Type,  // Material Ambient
+      m_vec4Type,  // Material Specular
+      m_vec4Type,  // Material Emissive
+      m_floatType, // Material Power
     };
 
     const uint32_t structType =
@@ -321,17 +382,19 @@ namespace dxvk {
       m_module.memberDecorate(structType, i, spv::DecorationRowMajor);
     }
 
-    for (uint32_t i = VSConstInverseOffset; i < VSConstMemberCount; i++) {
+    for (uint32_t i = VSConstInverseOffset; i < VSConstMaterialPower; i++) {
       m_module.memberDecorateOffset(structType, i, offset);
       offset += sizeof(Vector4);
     }
+
+    m_module.memberDecorateOffset(structType, VSConstMaterialPower, offset);
+    offset += sizeof(float);
 
     m_module.setDebugName(structType, "D3D9FixedFunctionVS");
     m_module.setDebugMemberName(structType, 0, "world");
     m_module.setDebugMemberName(structType, 1, "view");
     m_module.setDebugMemberName(structType, 2, "proj");
     m_module.setDebugMemberName(structType, 3, "inverseOffset");
-    m_module.setDebugMemberName(structType, 4, "inverseExtent");
 
     m_vs.constantBuffer = m_module.newVar(
       m_module.defPointerType(structType, spv::StorageClassUniform),
@@ -369,17 +432,28 @@ namespace dxvk {
     m_vs.constants.invOffset = LoadConstant(m_vec4Type, VSConstInverseOffset);
     m_vs.constants.invExtent = LoadConstant(m_vec4Type, VSConstInverseExtent);
 
+    m_vs.constants.globalAmbient = LoadConstant(m_vec4Type, VSConstGlobalAmbient);
+
+    m_vs.constants.materialDiffuse  = LoadConstant(m_vec4Type,  VSConstMaterialDiffuse);
+    m_vs.constants.materialAmbient  = LoadConstant(m_vec4Type,  VSConstMaterialAmbient);
+    m_vs.constants.materialSpecular = LoadConstant(m_vec4Type,  VSConstMaterialSpecular);
+    m_vs.constants.materialEmissive = LoadConstant(m_vec4Type,  VSConstMaterialEmissive);
+    m_vs.constants.materialPower    = LoadConstant(m_floatType, VSConstMaterialPower);
+
     // Do IO
     m_vs.in.POSITION = declareIO(true, DxsoSemantic{ DxsoUsage::Position, 0 });
     for (uint32_t i = 0; i < caps::TextureStageCount; i++)
       m_vs.in.TEXCOORD[i] = declareIO(true, DxsoSemantic{ DxsoUsage::Texcoord, i });
 
-    if (m_vsKey.HasDiffuse)
+    if (m_vsKey.HasColor0)
       m_vs.in.COLOR[0] = declareIO(true, DxsoSemantic{ DxsoUsage::Color, 0 });
     else
       m_vs.in.COLOR[0] = m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f);
 
-    m_vs.in.COLOR[1] = declareIO(true, DxsoSemantic{ DxsoUsage::Color, 1 });
+    if (m_vsKey.HasColor1)
+      m_vs.in.COLOR[1] = declareIO(true, DxsoSemantic{ DxsoUsage::Color, 1 });
+    else
+      m_vs.in.COLOR[1] = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
 
     // Declare Outputs
     m_vs.out.POSITION = declareIO(false, DxsoSemantic{ DxsoUsage::Position, 0 }, spv::BuiltInPosition);
@@ -991,10 +1065,18 @@ namespace dxvk {
   size_t D3D9FFShaderKeyHash::operator () (const D3D9FFShaderKeyVS& key) const {
     DxvkHashState state;
 
-    std::hash<bool> bhash;
+    std::hash<bool>                   bhash;
+    std::hash<D3DMATERIALCOLORSOURCE> colorSourceHash;
 
     state.add(bhash(key.HasPositionT));
-    state.add(bhash(key.HasDiffuse));
+    state.add(bhash(key.HasColor0));
+    state.add(bhash(key.HasColor1));
+    state.add(bhash(key.UseLighting));
+
+    state.add(colorSourceHash(key.DiffuseSource));
+    state.add(colorSourceHash(key.AmbientSource));
+    state.add(colorSourceHash(key.SpecularSource));
+    state.add(colorSourceHash(key.EmissiveSource));
 
     return state;
   }
@@ -1013,8 +1095,7 @@ namespace dxvk {
 
 
   bool operator == (const D3D9FFShaderKeyVS& a, const D3D9FFShaderKeyVS& b) {
-    return a.HasPositionT == b.HasPositionT
-        && a.HasDiffuse   == b.HasDiffuse;
+    return std::memcmp(&a, &b, sizeof(D3D9FFShaderKeyVS)) == 0;
   }
 
 

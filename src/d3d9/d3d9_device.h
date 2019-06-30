@@ -46,7 +46,7 @@ namespace dxvk {
     DirtyInputLayout,
     DirtyViewportScissor,
     DirtyMultiSampleState,
-    DirtyTransforms,
+    DirtyFFVertexData,
     DirtyFFVertexShader,
     DirtyFFPixelShader,
     DirtyFFViewport,

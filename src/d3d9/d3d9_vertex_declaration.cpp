@@ -207,8 +207,10 @@ namespace dxvk {
 
   void D3D9VertexDecl::Classify() {
     for (const auto& element : m_elements) {
-      if (element.Usage == D3DDECLUSAGE_COLOR)
-        m_flags.set(D3D9VertexDeclFlag::HasColor);
+      if (element.Usage == D3DDECLUSAGE_COLOR && element.UsageIndex == 0)
+        m_flags.set(D3D9VertexDeclFlag::HasColor0);
+      else if (element.Usage == D3DDECLUSAGE_COLOR && element.UsageIndex == 1)
+        m_flags.set(D3D9VertexDeclFlag::HasColor1);
       else if (element.Usage == D3DDECLUSAGE_POSITIONT)
         m_flags.set(D3D9VertexDeclFlag::HasPositionT);
     }

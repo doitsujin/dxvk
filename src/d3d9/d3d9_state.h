@@ -55,6 +55,9 @@ namespace dxvk {
     Matrix4 Projection;
 
     D3D9ViewportInfo ViewportInfo;
+
+    Vector4 GlobalAmbient;
+    D3DMATERIAL9 Material;
   };
 
 

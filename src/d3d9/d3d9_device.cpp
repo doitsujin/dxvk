@@ -1313,7 +1313,7 @@ namespace dxvk {
 
     m_state.transforms[idx] = ConvertMatrix(pMatrix) * m_state.transforms[idx];
 
-    m_flags.set(D3D9DeviceFlag::DirtyTransforms);
+    m_flags.set(D3D9DeviceFlag::DirtyFFVertexData);
 
     return D3D_OK;
   }
@@ -1370,6 +1370,7 @@ namespace dxvk {
       return m_recorder->SetMaterial(pMaterial);
 
     m_state.material = *pMaterial;
+    m_flags.set(D3D9DeviceFlag::DirtyFFVertexData);
 
     return D3D_OK;
   }
@@ -1597,6 +1598,14 @@ namespace dxvk {
         case D3DRS_TEXTUREFACTOR:
           m_flags.set(D3D9DeviceFlag::DirtyFFPixelData);
           break;
+
+        case D3DRS_DIFFUSEMATERIALSOURCE:
+        case D3DRS_AMBIENTMATERIALSOURCE:
+        case D3DRS_SPECULARMATERIALSOURCE:
+        case D3DRS_EMISSIVEMATERIALSOURCE:
+        case D3DRS_COLORVERTEX:
+        case D3DRS_LIGHTING:
+          m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
 
         default:
           static bool s_errorShown[256];
@@ -2102,8 +2111,9 @@ namespace dxvk {
 
     bool dirtyFFShader = !decl || !m_state.vertexDecl;
     if (!dirtyFFShader)
-      dirtyFFShader |= decl->TestFlag(D3D9VertexDeclFlag::HasPositionT) != m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPositionT)
-                    || decl->TestFlag(D3D9VertexDeclFlag::HasColor)     != m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor);
+      dirtyFFShader |= decl->TestFlag(D3D9VertexDeclFlag::HasPositionT)  != m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPositionT)
+                    || decl->TestFlag(D3D9VertexDeclFlag::HasColor0)     != m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor0)
+                    || decl->TestFlag(D3D9VertexDeclFlag::HasColor1)     != m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor1);
 
     if (dirtyFFShader)
       m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
@@ -3040,6 +3050,14 @@ namespace dxvk {
 
     rs[D3DRS_TEXTUREFACTOR]       = 0xffffffff;
     m_flags.set(D3D9DeviceFlag::DirtyFFPixelData);
+    
+    rs[D3DRS_DIFFUSEMATERIALSOURCE]  = D3DMCS_COLOR1;
+    rs[D3DRS_SPECULARMATERIALSOURCE] = D3DMCS_COLOR2;
+    rs[D3DRS_AMBIENTMATERIALSOURCE]  = D3DMCS_MATERIAL;
+    rs[D3DRS_EMISSIVEMATERIALSOURCE] = D3DMCS_MATERIAL;
+
+    rs[D3DRS_LIGHTING]               = TRUE;
+    rs[D3DRS_COLORVERTEX]            = TRUE;
 
     SetRenderState(D3DRS_SHADEMODE, D3DSHADE_GOURAUD);
     SetRenderState(D3DRS_LASTPIXEL, TRUE);
@@ -3062,16 +3080,10 @@ namespace dxvk {
     SetRenderState(D3DRS_WRAP6, 0);
     SetRenderState(D3DRS_WRAP7, 0);
     SetRenderState(D3DRS_CLIPPING, TRUE);
-    SetRenderState(D3DRS_LIGHTING, TRUE);
     SetRenderState(D3DRS_AMBIENT, 0);
     SetRenderState(D3DRS_FOGVERTEXMODE, D3DFOG_NONE);
-    SetRenderState(D3DRS_COLORVERTEX, TRUE);
     SetRenderState(D3DRS_LOCALVIEWER, TRUE);
     SetRenderState(D3DRS_NORMALIZENORMALS, FALSE);
-    SetRenderState(D3DRS_DIFFUSEMATERIALSOURCE, D3DMCS_COLOR1);
-    SetRenderState(D3DRS_SPECULARMATERIALSOURCE, D3DMCS_COLOR2);
-    SetRenderState(D3DRS_AMBIENTMATERIALSOURCE, D3DMCS_MATERIAL);
-    SetRenderState(D3DRS_EMISSIVEMATERIALSOURCE, D3DMCS_MATERIAL);
     SetRenderState(D3DRS_VERTEXBLEND, D3DVBF_DISABLE);
     SetRenderState(D3DRS_CLIPPLANEENABLE, 0);
     SetRenderState(D3DRS_POINTSIZE, bit::cast<DWORD>(1.0f));
@@ -3325,7 +3337,7 @@ namespace dxvk {
 
     m_state.transforms[idx] = ConvertMatrix(pMatrix);
 
-    m_flags.set(D3D9DeviceFlag::DirtyTransforms);
+    m_flags.set(D3D9DeviceFlag::DirtyFFVertexData);
 
     return D3D_OK;
   }
@@ -4962,8 +4974,23 @@ namespace dxvk {
       m_flags.clr(D3D9DeviceFlag::DirtyFFVertexShader);
 
       D3D9FFShaderKeyVS key;
-      key.HasDiffuse   = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor)     : false;
+      key.HasColor0    = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor0)   : false;
+      key.HasColor1    = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor1)   : false;
       key.HasPositionT = hasPositionT;
+
+      bool lighting    = m_state.renderStates[D3DRS_LIGHTING] != 0 && !key.HasPositionT;
+      bool colorVertex = m_state.renderStates[D3DRS_COLORVERTEX] != 0;
+      uint32_t mask    = (lighting && colorVertex)
+                       ? (key.HasColor0 ? D3DMCS_COLOR1 : D3DMCS_MATERIAL)
+                       | (key.HasColor1 ? D3DMCS_COLOR2 : D3DMCS_MATERIAL)
+                       : 0;
+
+      key.UseLighting  = lighting;
+
+      key.DiffuseSource  = D3DMATERIALCOLORSOURCE(m_state.renderStates[D3DRS_DIFFUSEMATERIALSOURCE]  & mask);
+      key.AmbientSource  = D3DMATERIALCOLORSOURCE(m_state.renderStates[D3DRS_AMBIENTMATERIALSOURCE]  & mask);
+      key.SpecularSource = D3DMATERIALCOLORSOURCE(m_state.renderStates[D3DRS_SPECULARMATERIALSOURCE] & mask);
+      key.EmissiveSource = D3DMATERIALCOLORSOURCE(m_state.renderStates[D3DRS_EMISSIVEMATERIALSOURCE] & mask);
 
       EmitCs([
         this,
@@ -4976,9 +5003,9 @@ namespace dxvk {
     }
 
     // Constants...
-    if (m_flags.test(D3D9DeviceFlag::DirtyTransforms) ||
+    if (m_flags.test(D3D9DeviceFlag::DirtyFFVertexData) ||
        (hasPositionT && m_flags.test(D3D9DeviceFlag::DirtyFFViewport))) {
-      m_flags.clr(D3D9DeviceFlag::DirtyTransforms);
+      m_flags.clr(D3D9DeviceFlag::DirtyFFVertexData);
       m_flags.clr(D3D9DeviceFlag::DirtyFFViewport);
 
       DxvkBufferSliceHandle slice = m_vsFixedFunction->allocSlice();
@@ -5019,6 +5046,9 @@ namespace dxvk {
       data->ViewportInfo.inverseOffset = data->ViewportInfo.inverseOffset * data->ViewportInfo.inverseExtent;
 
       data->ViewportInfo.inverseOffset = data->ViewportInfo.inverseOffset + Vector4(-1.0f, 1.0f, 0.0f, 0.0f);
+
+      DecodeD3DCOLOR(m_state.renderStates[D3DRS_AMBIENT], data->GlobalAmbient.data);
+      data->Material = m_state.material;
     }
   }
 

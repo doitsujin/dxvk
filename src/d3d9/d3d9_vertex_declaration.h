@@ -7,7 +7,8 @@
 namespace dxvk {
 
   enum D3D9VertexDeclFlag {
-    HasColor,
+    HasColor0,
+    HasColor1,
     HasPositionT
   };
   using D3D9VertexDeclFlags = Flags<D3D9VertexDeclFlag>;

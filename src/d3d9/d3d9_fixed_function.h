@@ -16,7 +16,16 @@ namespace dxvk {
 
   struct D3D9FFShaderKeyVS {
     bool HasPositionT;
-    bool HasDiffuse;
+
+    bool HasColor0; // Diffuse
+    bool HasColor1; // Specular
+
+    bool UseLighting;
+
+    D3DMATERIALCOLORSOURCE DiffuseSource;
+    D3DMATERIALCOLORSOURCE AmbientSource;
+    D3DMATERIALCOLORSOURCE SpecularSource;
+    D3DMATERIALCOLORSOURCE EmissiveSource;
   };
 
   constexpr uint32_t TextureArgCount = 3;
