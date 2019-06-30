@@ -136,7 +136,10 @@ namespace dxvk {
 
   public:
 
-    DxvkGraphicsPipelineInstance() { }
+    DxvkGraphicsPipelineInstance()
+    : m_stateVector (),
+      m_renderPass  (VK_NULL_HANDLE),
+      m_pipeline    (VK_NULL_HANDLE) { }
     DxvkGraphicsPipelineInstance(
       const DxvkGraphicsPipelineStateInfo&  state,
             VkRenderPass                    rp,
