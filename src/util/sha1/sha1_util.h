@@ -24,10 +24,10 @@ namespace dxvk {
     std::string toString() const;
     
     uint32_t dword(uint32_t id) const {
-      return uint32_t(m_digest[4 + id + 0]) <<  0
-           | uint32_t(m_digest[4 + id + 1]) <<  8
-           | uint32_t(m_digest[4 + id + 2]) << 16
-           | uint32_t(m_digest[4 + id + 3]) << 24;
+      return uint32_t(m_digest[4u + id + 0u]) <<  0u
+           | uint32_t(m_digest[4u + id + 1u]) <<  8u
+           | uint32_t(m_digest[4u + id + 2u]) << 16u
+           | uint32_t(m_digest[4u + id + 3u]) << 24u;
     }
     
     bool operator == (const Sha1Hash& other) const {
