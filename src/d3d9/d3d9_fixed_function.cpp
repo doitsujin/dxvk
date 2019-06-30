@@ -533,7 +533,7 @@ namespace dxvk {
             break;
 
           case D3DTOP_BLENDFACTORALPHA:
-            Logger::warn("D3DTOP_BLENDFACTORALPHA: not implemented");
+            dst = m_module.opFMix(m_vec4Type, arg[1], arg[2], AlphaReplicate(m_ps.constants.textureFactor));
             break;
 
           case D3DTOP_BLENDTEXTUREALPHAPM:
