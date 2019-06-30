@@ -1056,6 +1056,7 @@ namespace dxvk {
       m_state.scissorRect = scissorRect;
 
       m_flags.set(D3D9DeviceFlag::DirtyViewportScissor);
+      m_flags.set(D3D9DeviceFlag::DirtyFFViewport);
     }
 
     return D3D_OK;
@@ -1341,6 +1342,7 @@ namespace dxvk {
     m_state.viewport = viewport;
 
     m_flags.set(D3D9DeviceFlag::DirtyViewportScissor);
+    m_flags.set(D3D9DeviceFlag::DirtyFFViewport);
 
     return D3D_OK;
   }
@@ -4933,12 +4935,14 @@ namespace dxvk {
 
   void D3D9DeviceEx::UpdateFixedFunctionVS() {
     // Shader...
+    bool hasPositionT = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPositionT) : false;
+
     if (m_flags.test(D3D9DeviceFlag::DirtyFFVertexShader)) {
       m_flags.clr(D3D9DeviceFlag::DirtyFFVertexShader);
 
       D3D9FFShaderKeyVS key;
       key.HasDiffuse   = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasColor)     : false;
-      key.HasPositionT = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPositionT) : false;
+      key.HasPositionT = hasPositionT;
 
       EmitCs([
         this,
@@ -4950,9 +4954,11 @@ namespace dxvk {
       });
     }
 
-    // Transforms...
-    if (m_flags.test(D3D9DeviceFlag::DirtyTransforms)) {
+    // Constants...
+    if (m_flags.test(D3D9DeviceFlag::DirtyTransforms) ||
+       (hasPositionT && m_flags.test(D3D9DeviceFlag::DirtyFFViewport))) {
       m_flags.clr(D3D9DeviceFlag::DirtyTransforms);
+      m_flags.clr(D3D9DeviceFlag::DirtyFFViewport);
 
       DxvkBufferSliceHandle slice = m_vsFixedFunction->allocSlice();
 
@@ -4967,6 +4973,31 @@ namespace dxvk {
       data->World      = m_state.transforms[GetTransformIndex(D3DTS_WORLD)];
       data->View       = m_state.transforms[GetTransformIndex(D3DTS_VIEW)];
       data->Projection = m_state.transforms[GetTransformIndex(D3DTS_PROJECTION)];
+
+      const auto& vp = m_state.viewport;
+      // For us to account for the Vulkan viewport rules
+      // when translating Window Coords -> Real Coords:
+      // We need to negate the inverse extent we multiply by,
+      // this follows through to the offset when that gets
+      // timesed by it.
+      // The 1.0f additional offset however does not,
+      // so we account for that there manually.
+
+      float deltaZ = vp.MaxZ - vp.MinZ;
+      data->ViewportInfo.inverseExtent = Vector4(
+         2.0f / vp.Width,
+        -2.0f / vp.Height,
+        deltaZ == 0.0f ? 0.0f : 1.0f / deltaZ,
+        1.0f);
+
+      data->ViewportInfo.inverseOffset = Vector4(
+        -vp.X, -vp.Y,
+        -vp.MinZ,
+        0.0f);
+
+      data->ViewportInfo.inverseOffset = data->ViewportInfo.inverseOffset * data->ViewportInfo.inverseExtent;
+
+      data->ViewportInfo.inverseOffset = data->ViewportInfo.inverseOffset + Vector4(-1.0f, 1.0f, 0.0f, 0.0f);
     }
   }
 

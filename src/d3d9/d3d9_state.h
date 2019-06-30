@@ -30,7 +30,6 @@ namespace dxvk {
   struct D3D9ClipPlane {
     float coeff[4];
   };
-
   struct D3D9RenderStateInfo {
     float alphaRef = 0.0f;
   };
@@ -40,14 +39,26 @@ namespace dxvk {
     Count    = 1
   };
 
+
+  // This is needed in fixed function for POSITION_T support.
+  // These are constants we need to * and add to move
+  // Window Coords -> Real Coords w/ respect to the viewport.
+  struct D3D9ViewportInfo {
+    Vector4 inverseOffset;
+    Vector4 inverseExtent;
+  };
+
+
   struct D3D9FixedFunctionVS {
     Matrix4 World;
     Matrix4 View;
     Matrix4 Projection;
+
+    D3D9ViewportInfo ViewportInfo;
   };
 
-  struct D3D9FixedFunctionPS {
 
+  struct D3D9FixedFunctionPS {
   };
   
   struct D3D9VBO {

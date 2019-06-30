@@ -18,6 +18,9 @@ namespace dxvk {
       ConstViewMatrix = 1,
       ConstProjMatrix = 2,
 
+      ConstInverseOffset = 3,
+      ConstInverseExtent = 4,
+
       ConstMemberCount
     };
 
@@ -25,6 +28,9 @@ namespace dxvk {
       uint32_t world = { 0 };
       uint32_t view = { 0 };
       uint32_t proj = { 0 };
+
+      uint32_t invOffset = { 0 };
+      uint32_t invExtent = { 0 };
     } constants;
 
     struct {
@@ -245,8 +251,6 @@ namespace dxvk {
   void D3D9FFShaderCompiler::compileVS() {
     setupVS();
 
-    // gl_Position = vec4(in_POSITION.xyz, 1);
-
     uint32_t gl_Position = m_vs.in.POSITION;
 
     if (!m_vsKey.HasPositionT) {
@@ -254,6 +258,15 @@ namespace dxvk {
                 wvp = m_module.opMatrixTimesMatrix(m_mat4Type, wvp,                  m_vs.constants.proj);
 
       gl_Position = m_module.opVectorTimesMatrix(m_vec4Type, gl_Position, wvp);
+    } else {
+      gl_Position = m_module.opFMul(m_vec4Type, gl_Position, m_vs.constants.invExtent);
+      gl_Position = m_module.opFAdd(m_vec4Type, gl_Position, m_vs.constants.invOffset);
+
+      // Set W to 1.
+      // TODO: Is this the correct solution?
+      // other implementations do not do this...
+      const uint32_t wIndex = 3;
+      gl_Position  = m_module.opCompositeInsert(m_vec4Type, m_module.constf32(1.0f), gl_Position, 1, &wIndex);
     }
 
     m_module.opStore(m_vs.out.POSITION, gl_Position);
@@ -278,22 +291,34 @@ namespace dxvk {
       m_mat4Type, // World
       m_mat4Type, // View
       m_mat4Type, // Proj
+
+      m_vec4Type, // Inverse Offset
+      m_vec4Type  // Inverse Extent
     };
 
     const uint32_t structType =
       m_module.defStructType(members.size(), members.data());
 
     m_module.decorateBlock(structType);
-    for (uint32_t i = 0; i < D3D9FFVertexData::ConstMemberCount; i++) {
-      m_module.memberDecorateOffset(structType, i, i * sizeof(Matrix4));
+    uint32_t offset = 0;
+    for (uint32_t i = 0; i < D3D9FFVertexData::ConstInverseOffset; i++) {
+      m_module.memberDecorateOffset(structType, i, offset);
+      offset += sizeof(Matrix4);
       m_module.memberDecorateMatrixStride(structType, i, 16);
       m_module.memberDecorate(structType, i, spv::DecorationRowMajor);
+    }
+
+    for (uint32_t i = D3D9FFVertexData::ConstInverseOffset; i < D3D9FFVertexData::ConstMemberCount; i++) {
+      m_module.memberDecorateOffset(structType, i, offset);
+      offset += sizeof(Vector4);
     }
 
     m_module.setDebugName(structType, "D3D9FixedFunctionVS");
     m_module.setDebugMemberName(structType, 0, "world");
     m_module.setDebugMemberName(structType, 1, "view");
     m_module.setDebugMemberName(structType, 2, "proj");
+    m_module.setDebugMemberName(structType, 3, "inverseOffset");
+    m_module.setDebugMemberName(structType, 4, "inverseExtent");
 
     m_vs.constantBuffer = m_module.newVar(
       m_module.defPointerType(structType, spv::StorageClassUniform),
@@ -316,17 +341,20 @@ namespace dxvk {
     m_resourceSlots.push_back(resource);
 
     // Load constants
-    auto LoadMatrix = [&](uint32_t idx) {
+    auto LoadConstant = [&](uint32_t type, uint32_t idx) {
       uint32_t offset  = m_module.constu32(idx);
-      uint32_t mat4Ptr = m_module.defPointerType(m_mat4Type, spv::StorageClassUniform);
+      uint32_t typePtr = m_module.defPointerType(type, spv::StorageClassUniform);
 
-      return m_module.opLoad(m_mat4Type,
-        m_module.opAccessChain(mat4Ptr, m_vs.constantBuffer, 1, &offset));
+      return m_module.opLoad(type,
+        m_module.opAccessChain(typePtr, m_vs.constantBuffer, 1, &offset));
     };
 
-    m_vs.constants.world = LoadMatrix(D3D9FFVertexData::ConstWorldMatrix);
-    m_vs.constants.view  = LoadMatrix(D3D9FFVertexData::ConstViewMatrix);
-    m_vs.constants.proj  = LoadMatrix(D3D9FFVertexData::ConstProjMatrix);
+    m_vs.constants.world = LoadConstant(m_mat4Type, D3D9FFVertexData::ConstWorldMatrix);
+    m_vs.constants.view  = LoadConstant(m_mat4Type, D3D9FFVertexData::ConstViewMatrix);
+    m_vs.constants.proj  = LoadConstant(m_mat4Type, D3D9FFVertexData::ConstProjMatrix);
+
+    m_vs.constants.invOffset = LoadConstant(m_vec4Type, D3D9FFVertexData::ConstInverseOffset);
+    m_vs.constants.invExtent = LoadConstant(m_vec4Type, D3D9FFVertexData::ConstInverseExtent);
 
     // Do IO
     m_vs.in.POSITION = declareIO(true, DxsoSemantic{ DxsoUsage::Position, 0 });
