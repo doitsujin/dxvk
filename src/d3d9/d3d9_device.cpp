@@ -1361,13 +1361,28 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetMaterial(const D3DMATERIAL9* pMaterial) {
-    Logger::warn("D3D9DeviceEx::SetMaterial: Stub");
+    D3D9DeviceLock lock = LockDevice();
+
+    if (unlikely(pMaterial == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    if (unlikely(ShouldRecord()))
+      return m_recorder->SetMaterial(pMaterial);
+
+    m_state.material = *pMaterial;
+
     return D3D_OK;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetMaterial(D3DMATERIAL9* pMaterial) {
-    Logger::warn("D3D9DeviceEx::GetMaterial: Stub");
+    D3D9DeviceLock lock = LockDevice();
+
+    if (unlikely(pMaterial == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    *pMaterial = m_state.material;
+
     return D3D_OK;
   }
 

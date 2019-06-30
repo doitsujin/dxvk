@@ -114,6 +114,8 @@ namespace dxvk {
     std::array<UINT, caps::MaxStreams>               streamFreq;
 
     std::array<Matrix4, caps::MaxTransforms>         transforms;
+
+    D3DMATERIAL9                                     material = D3DMATERIAL9();
   };
 
   template <
@@ -175,7 +177,8 @@ namespace dxvk {
     PsConstants,
     StreamFreq,
     Transforms,
-    TextureStages
+    TextureStages,
+    Material
   };
 
   using D3D9CapturedStateFlags = Flags<D3D9CapturedStateFlag>;

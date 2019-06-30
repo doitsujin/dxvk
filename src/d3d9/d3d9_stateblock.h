@@ -60,6 +60,8 @@ namespace dxvk {
 
     HRESULT SetPixelShader(D3D9PixelShader* pShader);
 
+    HRESULT SetMaterial(const D3DMATERIAL9* pMaterial);
+
     HRESULT SetStateTransform(uint32_t idx, const D3DMATRIX* pMatrix);
 
     HRESULT SetTextureStageState(
@@ -157,6 +159,9 @@ namespace dxvk {
           }
         }
       }
+
+      if (m_captures.flags.test(D3D9CapturedStateFlag::Material))
+        dst->SetMaterial(&src->material);
 
       if (m_captures.flags.test(D3D9CapturedStateFlag::Textures)) {
         for (uint32_t i = 0; i < m_captures.textures.size(); i++) {

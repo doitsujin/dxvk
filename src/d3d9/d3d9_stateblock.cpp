@@ -139,6 +139,14 @@ namespace dxvk {
   }
 
 
+  HRESULT D3D9StateBlock::SetMaterial(const D3DMATERIAL9* pMaterial) {
+    m_state.material = *pMaterial;
+
+    m_captures.flags.set(D3D9CapturedStateFlag::Material);
+    return D3D_OK;
+  }
+
+
   HRESULT D3D9StateBlock::SetStateTransform(uint32_t idx, const D3DMATRIX* pMatrix) {
     m_state.transforms[idx] = ConvertMatrix(pMatrix);
 
@@ -498,6 +506,8 @@ namespace dxvk {
 
       m_captures.flags.set(D3D9CapturedStateFlag::Transforms);
       m_captures.transforms.flip();
+
+      m_captures.flags.set(D3D9CapturedStateFlag::Material);
     }
 
     if (Type != D3D9StateBlockType::None)
