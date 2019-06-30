@@ -1579,6 +1579,10 @@ namespace dxvk {
           UpdatePushConstant<D3D9RenderStateItem::AlphaRef>();
           break;
 
+        case D3DRS_TEXTUREFACTOR:
+          m_flags.set(D3D9DeviceFlag::DirtyFFPixelData);
+          break;
+
         default:
           static bool s_errorShown[256];
 
@@ -3019,6 +3023,9 @@ namespace dxvk {
     rs[D3DRS_MULTISAMPLEMASK]     = 0xffffffff;
     BindMultiSampleState();
 
+    rs[D3DRS_TEXTUREFACTOR]       = 0xffffffff;
+    m_flags.set(D3D9DeviceFlag::DirtyFFPixelData);
+
     SetRenderState(D3DRS_SHADEMODE, D3DSHADE_GOURAUD);
     SetRenderState(D3DRS_LASTPIXEL, TRUE);
     SetRenderState(D3DRS_DITHERENABLE, FALSE);
@@ -3031,7 +3038,6 @@ namespace dxvk {
     SetRenderState(D3DRS_FOGEND, bit::cast<DWORD>(1.0f));
     SetRenderState(D3DRS_FOGDENSITY, bit::cast<DWORD>(1.0f));
     SetRenderState(D3DRS_RANGEFOGENABLE, FALSE);
-    SetRenderState(D3DRS_TEXTUREFACTOR, 0xFFFFFFFF);
     SetRenderState(D3DRS_WRAP0, 0);
     SetRenderState(D3DRS_WRAP1, 0);
     SetRenderState(D3DRS_WRAP2, 0);
@@ -5033,6 +5039,26 @@ namespace dxvk {
         auto shader = cShaders.GetShaderModule(this, cKey);
         ctx->bindShader(VK_SHADER_STAGE_FRAGMENT_BIT, shader.GetShader());
       });
+    }
+
+    // Constants
+
+    if (m_flags.test(D3D9DeviceFlag::DirtyFFPixelData)) {
+      m_flags.clr(D3D9DeviceFlag::DirtyFFPixelData);
+
+      DxvkBufferSliceHandle slice = m_psFixedFunction->allocSlice();
+
+      EmitCs([
+        cBuffer = m_psFixedFunction,
+        cSlice  = slice
+      ] (DxvkContext* ctx) {
+        ctx->invalidateBuffer(cBuffer, cSlice);
+      });
+
+      auto& rs = m_state.renderStates;
+
+      D3D9FixedFunctionPS* data = reinterpret_cast<D3D9FixedFunctionPS*>(slice.mapPtr);
+      DecodeD3DCOLOR((D3DCOLOR)rs[D3DRS_TEXTUREFACTOR], data->textureFactor.data);
     }
   }
 

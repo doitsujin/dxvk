@@ -50,6 +50,7 @@ namespace dxvk {
     DirtyFFVertexShader,
     DirtyFFPixelShader,
     DirtyFFViewport,
+    DirtyFFPixelData,
     UpDirtiedVertices,
     UpDirtiedIndices,
     ValidSampleMask,

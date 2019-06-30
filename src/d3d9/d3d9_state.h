@@ -59,6 +59,7 @@ namespace dxvk {
 
 
   struct D3D9FixedFunctionPS {
+    Vector4 textureFactor;
   };
   
   struct D3D9VBO {

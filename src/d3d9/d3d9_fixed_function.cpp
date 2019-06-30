@@ -10,19 +10,19 @@
 
 namespace dxvk {
 
+    enum FFConstantMembersVS {
+      VSConstWorldMatrix   = 0,
+      VSConstViewMatrix    = 1,
+      VSConstProjMatrix    = 2,
+
+      VSConstInverseOffset = 3,
+      VSConstInverseExtent = 4,
+
+      VSConstMemberCount
+    };
+
   struct D3D9FFVertexData {
     uint32_t constantBuffer = 0;
-
-    enum FFConstantMembersVS {
-      ConstWorldMatrix = 0,
-      ConstViewMatrix = 1,
-      ConstProjMatrix = 2,
-
-      ConstInverseOffset = 3,
-      ConstInverseExtent = 4,
-
-      ConstMemberCount
-    };
 
     struct {
       uint32_t world = { 0 };
@@ -46,7 +46,19 @@ namespace dxvk {
     } out;
   };
 
+  enum FFConstantMembersPS {
+    PSConstTextureFactor = 0,
+
+    PSConstMemberCount
+  };
+
   struct D3D9FFPixelData {
+    uint32_t constantBuffer = 0;
+
+    struct {
+      uint32_t textureFactor = { 0 };
+    } constants;
+
     struct {
       uint32_t TEXCOORD[8] = { 0 };
       uint32_t COLOR[2]    = { 0 };
@@ -287,7 +299,7 @@ namespace dxvk {
     m_module.enableExtension("SPV_KHR_shader_draw_parameters");
 
     // Constant Buffer for VS.
-    std::array<uint32_t, D3D9FFVertexData::ConstMemberCount> members = {
+    std::array<uint32_t, VSConstMemberCount> members = {
       m_mat4Type, // World
       m_mat4Type, // View
       m_mat4Type, // Proj
@@ -301,14 +313,14 @@ namespace dxvk {
 
     m_module.decorateBlock(structType);
     uint32_t offset = 0;
-    for (uint32_t i = 0; i < D3D9FFVertexData::ConstInverseOffset; i++) {
+    for (uint32_t i = 0; i < VSConstInverseOffset; i++) {
       m_module.memberDecorateOffset(structType, i, offset);
       offset += sizeof(Matrix4);
       m_module.memberDecorateMatrixStride(structType, i, 16);
       m_module.memberDecorate(structType, i, spv::DecorationRowMajor);
     }
 
-    for (uint32_t i = D3D9FFVertexData::ConstInverseOffset; i < D3D9FFVertexData::ConstMemberCount; i++) {
+    for (uint32_t i = VSConstInverseOffset; i < VSConstMemberCount; i++) {
       m_module.memberDecorateOffset(structType, i, offset);
       offset += sizeof(Vector4);
     }
@@ -349,12 +361,12 @@ namespace dxvk {
         m_module.opAccessChain(typePtr, m_vs.constantBuffer, 1, &offset));
     };
 
-    m_vs.constants.world = LoadConstant(m_mat4Type, D3D9FFVertexData::ConstWorldMatrix);
-    m_vs.constants.view  = LoadConstant(m_mat4Type, D3D9FFVertexData::ConstViewMatrix);
-    m_vs.constants.proj  = LoadConstant(m_mat4Type, D3D9FFVertexData::ConstProjMatrix);
+    m_vs.constants.world = LoadConstant(m_mat4Type, VSConstWorldMatrix);
+    m_vs.constants.view  = LoadConstant(m_mat4Type, VSConstViewMatrix);
+    m_vs.constants.proj  = LoadConstant(m_mat4Type, VSConstProjMatrix);
 
-    m_vs.constants.invOffset = LoadConstant(m_vec4Type, D3D9FFVertexData::ConstInverseOffset);
-    m_vs.constants.invExtent = LoadConstant(m_vec4Type, D3D9FFVertexData::ConstInverseExtent);
+    m_vs.constants.invOffset = LoadConstant(m_vec4Type, VSConstInverseOffset);
+    m_vs.constants.invExtent = LoadConstant(m_vec4Type, VSConstInverseExtent);
 
     // Do IO
     m_vs.in.POSITION = declareIO(true, DxsoSemantic{ DxsoUsage::Position, 0 });
@@ -442,7 +454,7 @@ namespace dxvk {
             reg = GetTexture();
             break;
           case D3DTA_TFACTOR:
-            Logger::warn("D3DTA_TFACTOR: not supported right now.");
+            reg = m_ps.constants.textureFactor;
             break;
           default:
             break;
@@ -640,6 +652,56 @@ namespace dxvk {
     m_ps.in.COLOR[1] = declareIO(true, DxsoSemantic{ DxsoUsage::Color, 1 });
 
     m_ps.out.COLOR   = declareIO(false, DxsoSemantic{ DxsoUsage::Color, 0 });
+
+    // Constant Buffer for PS.
+    std::array<uint32_t, PSConstMemberCount> members = {
+      m_vec4Type // Texture Factor
+    };
+
+    const uint32_t structType =
+      m_module.defStructType(members.size(), members.data());
+
+    m_module.decorateBlock(structType);
+    uint32_t offset = 0;
+
+    for (uint32_t i = 0; i < PSConstMemberCount; i++) {
+      m_module.memberDecorateOffset(structType, i, offset);
+      offset += sizeof(Vector4);
+    }
+
+    m_module.setDebugName(structType, "D3D9FixedFunctionPS");
+    m_module.setDebugMemberName(structType, 0, "textureFactor");
+
+    m_ps.constantBuffer = m_module.newVar(
+      m_module.defPointerType(structType, spv::StorageClassUniform),
+      spv::StorageClassUniform);
+
+    m_module.setDebugName(m_ps.constantBuffer, "consts");
+
+    const uint32_t bindingId = computeResourceSlotId(
+      DxsoProgramType::PixelShader, DxsoBindingType::ConstantBuffer,
+      DxsoConstantBuffers::PSFixedFunction);
+
+    m_module.decorateDescriptorSet(m_ps.constantBuffer, 0);
+    m_module.decorateBinding(m_ps.constantBuffer, bindingId);
+
+    DxvkResourceSlot resource;
+    resource.slot   = bindingId;
+    resource.type   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    resource.view   = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    resource.access = VK_ACCESS_UNIFORM_READ_BIT;
+    m_resourceSlots.push_back(resource);
+
+    // Load constants
+    auto LoadConstant = [&](uint32_t type, uint32_t idx) {
+      uint32_t offset  = m_module.constu32(idx);
+      uint32_t typePtr = m_module.defPointerType(type, spv::StorageClassUniform);
+
+      return m_module.opLoad(type,
+        m_module.opAccessChain(typePtr, m_ps.constantBuffer, 1, &offset));
+    };
+
+    m_ps.constants.textureFactor = LoadConstant(m_vec4Type, PSConstTextureFactor);
 
     // Samplers
     for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
