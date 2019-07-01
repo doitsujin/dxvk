@@ -30,7 +30,10 @@ namespace dxvk::caps {
           DWORD           Usage,
           D3DRESOURCETYPE ResourceType,
           D3D9Format      CheckFormat) {
-    if (!IsSupportedMonitorFormat(AdapterFormat, FALSE))
+    if (!IsSupportedAdapterFormat(AdapterFormat))
+      return D3DERR_INVALIDCALL;
+
+    if (!IsSupportedDisplayFormat(AdapterFormat, false))
       return D3DERR_NOTAVAILABLE;
 
     const bool dmap = Usage & D3DUSAGE_DMAP;
@@ -78,7 +81,7 @@ namespace dxvk::caps {
           D3D9Format AdapterFormat,
           D3D9Format RenderTargetFormat,
           D3D9Format DepthStencilFormat) {
-    if (!IsSupportedMonitorFormat(AdapterFormat, FALSE))
+    if (!IsSupportedAdapterFormat(AdapterFormat))
       return D3DERR_NOTAVAILABLE;
 
     if (!IsDepthFormat(DepthStencilFormat))
@@ -95,13 +98,7 @@ namespace dxvk::caps {
   HRESULT CheckDeviceFormatConversion(
           D3D9Format SrcFormat,
           D3D9Format DstFormat) {
-    auto src = ConvertFormatUnfixed(SrcFormat);
-    auto dst = ConvertFormatUnfixed(DstFormat);
-    if (src.FormatColor == VK_FORMAT_UNDEFINED
-     || dst.FormatColor == VK_FORMAT_UNDEFINED)
-      return D3DERR_NOTAVAILABLE;
-
-    return D3D_OK;
+    return IsSupportedBackBufferFormat(DstFormat, SrcFormat, FALSE);
   }
 
 

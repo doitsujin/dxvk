@@ -22,16 +22,19 @@ namespace dxvk {
   * \param [in] Format The D3D9 format to query
   * \returns If it is supported as a swapchain/backbuffer format.
   */
-  bool IsSupportedMonitorFormat(
+  bool IsSupportedAdapterFormat(
+          D3D9Format Format);
+
+  bool IsSupportedDisplayFormat(
           D3D9Format Format,
           BOOL       Windowed);
 
   bool IsSupportedBackBufferFormat(
+          D3D9Format AdapterFormat,
           D3D9Format BackBufferFormat,
           BOOL       Windowed);
 
   bool IsSupportedBackBufferFormat(
-          D3D9Format AdapterFormat,
           D3D9Format BackBufferFormat,
           BOOL       Windowed);
 

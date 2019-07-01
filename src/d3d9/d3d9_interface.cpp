@@ -276,7 +276,7 @@ namespace dxvk {
     if (Adapter >= this->GetAdapterCount())
       return D3DERR_INVALIDCALL;
 
-    if (!IsSupportedMonitorFormat(format, FALSE))
+    if (FAILED(CheckDeviceFormat(Adapter, D3DDEVTYPE_HAL, pFilter->Format, D3DUSAGE_RENDERTARGET, D3DRTYPE_SURFACE, pFilter->Format)))
       return D3DERR_INVALIDCALL;
 
     CacheModes(format);
@@ -385,7 +385,7 @@ namespace dxvk {
     m_modeCacheFormat = Format;
 
     // Skip unsupported formats
-    if (!IsSupportedMonitorFormat(Format, FALSE))
+    if (!IsSupportedAdapterFormat(Format) || !IsSupportedDisplayFormat(Format, false))
       return;
 
     // Walk over all modes that the display supports and

@@ -25,49 +25,52 @@ namespace dxvk {
   }
 
 
+  bool IsSupportedAdapterFormat(
+          D3D9Format Format) {
+    return Format == D3D9Format::A2R10G10B10
+        || Format == D3D9Format::X8R8G8B8
+        || Format == D3D9Format::A8R8G8B8
+        || Format == D3D9Format::X1R5G5B5
+        || Format == D3D9Format::A1R5G5B5
+        || Format == D3D9Format::R5G6B5;
+  }
+
+
+  bool IsSupportedDisplayFormat(
+          D3D9Format Format,
+          BOOL       Windowed) {
+    return (Format == D3D9Format::A2R10G10B10 && !Windowed)
+         || Format == D3D9Format::X8R8G8B8
+         || Format == D3D9Format::X1R5G5B5
+         || Format == D3D9Format::R5G6B5;
+  }
+
+
   bool IsSupportedBackBufferFormat(
           D3D9Format AdapterFormat,
           D3D9Format BackBufferFormat,
           BOOL       Windowed) {
-    if (!IsSupportedMonitorFormat(AdapterFormat, Windowed))
+    if (!IsSupportedAdapterFormat(AdapterFormat))
       return false;
 
-    bool similar = AdapterFormat == BackBufferFormat;
-
-    similar |= AdapterFormat == D3D9Format::X8R8G8B8 && BackBufferFormat == D3D9Format::A8R8G8B8;
-    similar |= AdapterFormat == D3D9Format::X1R5G5B5 && BackBufferFormat == D3D9Format::A1R5G5B5;
-
-    return similar;
-  }
-
-
-  bool IsSupportedMonitorFormat(
-          D3D9Format Format,
-          BOOL       Windowed) {
-    if (Format == D3D9Format::A2R10G10B10 && Windowed)
+    if (AdapterFormat == D3D9Format::A2R10G10B10 && Windowed)
       return false;
 
-    if (Format == D3D9Format::A2R10G10B10
-     || Format == D3D9Format::X8R8G8B8
-     || Format == D3D9Format::X1R5G5B5
-     || Format == D3D9Format::R5G6B5)
-      return true;
-
-    return false;
+    return AdapterFormat == BackBufferFormat
+        || (AdapterFormat == D3D9Format::X8R8G8B8 && BackBufferFormat == D3D9Format::A8R8G8B8)
+        || (AdapterFormat == D3D9Format::X1R5G5B5 && BackBufferFormat == D3D9Format::A1R5G5B5);
   }
 
 
   bool IsSupportedBackBufferFormat(
           D3D9Format BackBufferFormat,
           BOOL       Windowed) {
-    if (IsSupportedMonitorFormat(BackBufferFormat, Windowed))
-      return true;
-
-    if (BackBufferFormat == D3D9Format::A8R8G8B8
-     || BackBufferFormat == D3D9Format::A1R5G5B5)
-      return true;
-
-    return false;
+    return (BackBufferFormat == D3D9Format::A2R10G10B10 && !Windowed)
+         || BackBufferFormat == D3D9Format::A8R8G8B8
+         || BackBufferFormat == D3D9Format::X8R8G8B8
+         || BackBufferFormat == D3D9Format::A1R5G5B5
+         || BackBufferFormat == D3D9Format::X1R5G5B5
+         || BackBufferFormat == D3D9Format::R5G6B5;
   }
 
 
