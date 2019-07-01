@@ -48,9 +48,14 @@ namespace dxvk {
       // Games also pass NAN/INF here, this accounts for that.
       if (unlikely(std::isnan(key.MipmapLodBias)))
         key.MipmapLodBias = 0.0f;
-      
+
       // Clamp between -15.0f and 15.0f, matching mip limits of d3d9.
       key.MipmapLodBias = std::clamp(key.MipmapLodBias, -15.0f, 15.0f);
+
+      // Round to the nearest .5
+      // Fixes sampler leaks in UE3 games w/ mip streaming
+      // eg. Borderlands 2
+      key.MipmapLodBias = std::round(key.MipmapLodBias * 2.0f) / 2.0f;
     }
 
     // This is not implemented in the backend
