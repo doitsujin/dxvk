@@ -862,7 +862,8 @@ namespace dxvk {
       uint32_t(blitInfo.dstOffsets[1].z - blitInfo.dstOffsets[0].z) };
 
     // Copies would only work if the extents match. (ie. no stretching)
-    fastPath &= srcCopyExtent == dstCopyExtent;
+    bool stretch = srcCopyExtent != dstCopyExtent;
+    fastPath &= !stretch;
 
     if (fastPath) {
       if (needsCopyResolve) {
@@ -927,7 +928,7 @@ namespace dxvk {
         cDstImage = dstImage,
         cSrcImage = srcImage,
         cBlitInfo = blitInfo,
-        cFilter = DecodeFilter(Filter)
+        cFilter   = stretch ? DecodeFilter(Filter) : VK_FILTER_NEAREST
       ] (DxvkContext* ctx) {
         ctx->blitImage(
           cDstImage,
