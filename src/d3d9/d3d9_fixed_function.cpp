@@ -696,6 +696,11 @@ namespace dxvk {
       uint32_t& dst = stage.ResultIsTemp ? temp : current;
 
       D3DTEXTUREOP colorOp = (D3DTEXTUREOP)stage.ColorOp;
+
+      // This cancels all subsequent stages.
+      if (colorOp == D3DTOP_DISABLE)
+        break;
+
       std::array<uint32_t, TextureArgCount> colorArgs = {
           colorOp != D3DTOP_DISABLE ? GetArg(stage.ColorArg0) : 0,
           colorOp != D3DTOP_DISABLE ? GetArg(stage.ColorArg1) : 0,
@@ -706,10 +711,6 @@ namespace dxvk {
           alphaOp != D3DTOP_DISABLE ? GetArg(stage.AlphaArg0) : 0,
           alphaOp != D3DTOP_DISABLE ? GetArg(stage.AlphaArg1) : 0,
           alphaOp != D3DTOP_DISABLE ? GetArg(stage.AlphaArg2) : 0 };
-
-      // This cancels all subsequent stages.
-      if (colorOp == D3DTOP_DISABLE)
-        break;
 
       // Fast path if alpha/color path is identical.
       if (colorOp == alphaOp && colorArgs == alphaArgs) {
