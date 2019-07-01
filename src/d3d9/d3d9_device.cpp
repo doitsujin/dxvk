@@ -3338,6 +3338,12 @@ namespace dxvk {
 
     if (m_state.textures[StateSampler] == pTexture)
       return D3D_OK;
+
+    // We need to check our ops and disable respective stages.
+    // Given we have transition from a null resource to
+    // a valid resource or vice versa.
+    if (pTexture == nullptr || m_state.textures[StateSampler] == nullptr)
+      m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
     
     TextureChangePrivate(m_state.textures[StateSampler], pTexture);
 
@@ -5081,22 +5087,57 @@ namespace dxvk {
     if (m_flags.test(D3D9DeviceFlag::DirtyFFPixelShader)) {
       m_flags.clr(D3D9DeviceFlag::DirtyFFPixelShader);
 
+      // Used args for a given operation.
+      auto ArgsMask = [](DWORD Op) {
+        switch (Op) {
+          case D3DTOP_DISABLE:
+            return 0b0u; // No Args
+          case D3DTOP_SELECTARG1:
+          case D3DTOP_PREMODULATE:
+            return 0b10u; // Arg 1
+          case D3DTOP_SELECTARG2:
+            return 0b100u; // Arg 2
+          case D3DTOP_MULTIPLYADD:
+          case D3DTOP_LERP:
+            return 0b111u; // Arg 0, 1, 2 
+          default:
+            return 0b110u; // Arg 1, 2
+        }
+      };
+
       D3D9FFShaderKeyFS key;
       for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
         auto& stage = key.Stages[i].data;
+        auto& data  = m_state.textureStages[i];
 
-        stage.ColorOp = m_state.textureStages[i][D3DTSS_COLOROP];
-        stage.AlphaOp = m_state.textureStages[i][D3DTSS_ALPHAOP];
+        stage.ColorOp = D3DTOP_DISABLE;
+        stage.AlphaOp = D3DTOP_DISABLE;
 
-        stage.ColorArg0 = m_state.textureStages[i][D3DTSS_COLORARG0];
-        stage.ColorArg1 = m_state.textureStages[i][D3DTSS_COLORARG1];
-        stage.ColorArg2 = m_state.textureStages[i][D3DTSS_COLORARG2];
+        // Subsequent stages do not occur if this is true.
+        if (data[D3DTSS_COLOROP] == D3DTOP_DISABLE)
+          break;
 
-        stage.AlphaArg0 = m_state.textureStages[i][D3DTSS_ALPHAARG0];
-        stage.AlphaArg1 = m_state.textureStages[i][D3DTSS_ALPHAARG1];
-        stage.AlphaArg2 = m_state.textureStages[i][D3DTSS_ALPHAARG2];
+        // If the stage is invalid (ie. no texture bound),
+        // this and all subsequent stages get disabled.
+        if (m_state.textures[i] == nullptr) {
+          if (((data[D3DTSS_COLORARG0] & D3DTA_SELECTMASK) == D3DTA_TEXTURE && (ArgsMask(data[D3DTSS_COLOROP]) & (1 << 0u)))
+           || ((data[D3DTSS_COLORARG1] & D3DTA_SELECTMASK) == D3DTA_TEXTURE && (ArgsMask(data[D3DTSS_COLOROP]) & (1 << 1u)))
+           || ((data[D3DTSS_COLORARG2] & D3DTA_SELECTMASK) == D3DTA_TEXTURE && (ArgsMask(data[D3DTSS_COLOROP]) & (1 << 2u))))
+            break;
+        }
 
-        stage.ResultIsTemp = m_state.textureStages[i][D3DTSS_RESULTARG] == D3DTA_TEMP;
+        stage.ColorOp = data[D3DTSS_COLOROP];
+        stage.AlphaOp = data[D3DTSS_ALPHAOP];
+
+        stage.ColorArg0 = data[D3DTSS_COLORARG0];
+        stage.ColorArg1 = data[D3DTSS_COLORARG1];
+        stage.ColorArg2 = data[D3DTSS_COLORARG2];
+
+        stage.AlphaArg0 = data[D3DTSS_ALPHAARG0];
+        stage.AlphaArg1 = data[D3DTSS_ALPHAARG1];
+        stage.AlphaArg2 = data[D3DTSS_ALPHAARG2];
+
+        stage.ResultIsTemp = data[D3DTSS_RESULTARG] == D3DTA_TEMP;
       }
 
       EmitCs([
