@@ -340,6 +340,7 @@ namespace dxvk {
 
       if (status != VK_SUCCESS) {
         Logger::err(str::format("DxvkMemoryAllocator: Mapping memory failed with ", status));
+        m_vkd->vkFreeMemory(m_vkd->device(), result.memHandle, nullptr);
         return DxvkDeviceMemory();
       }
     }
