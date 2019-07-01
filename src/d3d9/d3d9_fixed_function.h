@@ -15,6 +15,11 @@ namespace dxvk {
   class D3D9DeviceEx;
 
   struct D3D9FFShaderKeyVS {
+    D3D9FFShaderKeyVS() {
+      // memcmp safety
+      std::memset(this, 0, sizeof(*this));
+    }
+
     bool HasPositionT;
 
     bool HasColor0; // Diffuse
@@ -51,6 +56,11 @@ namespace dxvk {
   };
 
   struct D3D9FFShaderKeyFS {
+    D3D9FFShaderKeyFS() {
+      // memcmp safety
+      std::memset(this, 0, sizeof(*this));
+    }
+
     D3D9FFShaderStage Stages[caps::TextureStageCount];
   };
 
