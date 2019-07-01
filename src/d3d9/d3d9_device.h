@@ -906,6 +906,8 @@ namespace dxvk {
 
     uint32_t                        m_instancedData   = 0;
 
+    D3D9ViewportInfo                m_viewportInfo;
+
     std::atomic<int64_t>            m_availableMemory = 0;
 
     bool                            m_amdATOC         = false;

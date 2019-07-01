@@ -5020,9 +5020,37 @@ namespace dxvk {
       });
     }
 
+    if (hasPositionT && m_flags.test(D3D9DeviceFlag::DirtyFFViewport)) {
+      m_flags.set(D3D9DeviceFlag::DirtyFFVertexData);
+
+      const auto& vp = m_state.viewport;
+      // For us to account for the Vulkan viewport rules
+      // when translating Window Coords -> Real Coords:
+      // We need to negate the inverse extent we multiply by,
+      // this follows through to the offset when that gets
+      // timesed by it.
+      // The 1.0f additional offset however does not,
+      // so we account for that there manually.
+
+      float deltaZ = vp.MaxZ - vp.MinZ;
+      m_viewportInfo.inverseExtent = Vector4(
+        2.0f / float(vp.Width),
+        -2.0f / float(vp.Height),
+        deltaZ == 0.0f ? 0.0f : 1.0f / deltaZ,
+        1.0f);
+
+      m_viewportInfo.inverseOffset = Vector4(
+        -float(vp.X), -float(vp.Y),
+        -vp.MinZ,
+        0.0f);
+
+      m_viewportInfo.inverseOffset = m_viewportInfo.inverseOffset * m_viewportInfo.inverseExtent;
+
+      m_viewportInfo.inverseOffset = m_viewportInfo.inverseOffset + Vector4(-1.0f, 1.0f, 0.0f, 0.0f);
+    }
+
     // Constants...
-    if (m_flags.test(D3D9DeviceFlag::DirtyFFVertexData) ||
-       (hasPositionT && m_flags.test(D3D9DeviceFlag::DirtyFFViewport))) {
+    if (m_flags.test(D3D9DeviceFlag::DirtyFFVertexData)) {
       m_flags.clr(D3D9DeviceFlag::DirtyFFVertexData);
       m_flags.clr(D3D9DeviceFlag::DirtyFFViewport);
 
@@ -5040,31 +5068,8 @@ namespace dxvk {
       data->View       = m_state.transforms[GetTransformIndex(D3DTS_VIEW)];
       data->Projection = m_state.transforms[GetTransformIndex(D3DTS_PROJECTION)];
 
-      const auto& vp = m_state.viewport;
-      // For us to account for the Vulkan viewport rules
-      // when translating Window Coords -> Real Coords:
-      // We need to negate the inverse extent we multiply by,
-      // this follows through to the offset when that gets
-      // timesed by it.
-      // The 1.0f additional offset however does not,
-      // so we account for that there manually.
-
-      float deltaZ = vp.MaxZ - vp.MinZ;
-      data->ViewportInfo.inverseExtent = Vector4(
-         2.0f / float(vp.Width),
-        -2.0f / float(vp.Height),
-        deltaZ == 0.0f ? 0.0f : 1.0f / deltaZ,
-        1.0f);
-
-      data->ViewportInfo.inverseOffset = Vector4(
-        -float(vp.X), -float(vp.Y),
-        -vp.MinZ,
-        0.0f);
-
-      data->ViewportInfo.inverseOffset = data->ViewportInfo.inverseOffset * data->ViewportInfo.inverseExtent;
-
-      data->ViewportInfo.inverseOffset = data->ViewportInfo.inverseOffset + Vector4(-1.0f, 1.0f, 0.0f, 0.0f);
-
+      data->ViewportInfo = m_viewportInfo;
+      
       DecodeD3DCOLOR(m_state.renderStates[D3DRS_AMBIENT], data->GlobalAmbient.data);
       data->Material = m_state.material;
     }
