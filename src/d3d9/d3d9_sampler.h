@@ -50,9 +50,13 @@ namespace dxvk {
       key.MipmapLodBias = fclamp(key.MipmapLodBias, -15.0f, 15.0f);
     }
 
-    if ( key.AddressU != D3DTADDRESS_BORDER
-      && key.AddressV != D3DTADDRESS_BORDER
-      && key.AddressW != D3DTADDRESS_BORDER)
+    // This is not implemented in the backend
+    // in a way that makes this worthwhile
+    // given some games give us sampler
+    // leaks from this
+    ///if ( key.AddressU != D3DTADDRESS_BORDER
+    ///  && key.AddressV != D3DTADDRESS_BORDER
+    ///  && key.AddressW != D3DTADDRESS_BORDER)
       key.BorderColor = 0;
   }
 
