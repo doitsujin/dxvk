@@ -2289,9 +2289,9 @@ namespace dxvk {
 
     if (newShader && oldShader) {
       m_consts[DxsoProgramTypes::VertexShader].dirty
-        |= newShader->GetMeta().maxConstIndexF != oldShader->GetMeta().maxConstIndexF
-        || newShader->GetMeta().maxConstIndexI != oldShader->GetMeta().maxConstIndexI
-        || newShader->GetMeta().maxConstIndexB != oldShader->GetMeta().maxConstIndexB;
+        |=  newShader->GetMeta().maxConstIndexF  >  oldShader->GetMeta().maxConstIndexF
+        ||  newShader->GetMeta().maxConstIndexI  >  oldShader->GetMeta().maxConstIndexI
+        || (newShader->GetMeta().maxConstIndexB && !oldShader->GetMeta().maxConstIndexB);
     }
 
     changePrivate(m_state.vertexShader, shader);
@@ -2615,9 +2615,9 @@ namespace dxvk {
 
     if (newShader && oldShader) {
       m_consts[DxsoProgramTypes::PixelShader].dirty
-        |= newShader->GetMeta().maxConstIndexF != oldShader->GetMeta().maxConstIndexF
-        || newShader->GetMeta().maxConstIndexI != oldShader->GetMeta().maxConstIndexI
-        || newShader->GetMeta().maxConstIndexB != oldShader->GetMeta().maxConstIndexB;
+        |=  newShader->GetMeta().maxConstIndexF  >  oldShader->GetMeta().maxConstIndexF
+        ||  newShader->GetMeta().maxConstIndexI  >  oldShader->GetMeta().maxConstIndexI
+        || (newShader->GetMeta().maxConstIndexB != !oldShader->GetMeta().maxConstIndexB);
     }
 
     changePrivate(m_state.pixelShader, shader);
@@ -4103,16 +4103,12 @@ namespace dxvk {
       ctx->invalidateBuffer(cBuffer, cSlice);
     });
 
-    if (constSet.meta->usesRelativeIndexing) {
-      std::memcpy(dstData, srcData, D3D9ConstantSets::SetSize);
-    } else {
-      if (constSet.meta->maxConstIndexF)
-        std::memcpy(&dstData->hardware.fConsts[0], &srcData->hardware.fConsts[0], sizeof(Vector4) * constSet.meta->maxConstIndexF);
-      if (constSet.meta->maxConstIndexI)
-        std::memcpy(&dstData->hardware.iConsts[0], &srcData->hardware.iConsts[0], sizeof(Vector4) * constSet.meta->maxConstIndexI);
-      if (constSet.meta->maxConstIndexB)
-        dstData->hardware.boolBitfield = srcData->hardware.boolBitfield;
-    }
+    if (constSet.meta->maxConstIndexF)
+      std::memcpy(&dstData->hardware.fConsts[0], &srcData->hardware.fConsts[0], sizeof(Vector4) * constSet.meta->maxConstIndexF);
+    if (constSet.meta->maxConstIndexI)
+      std::memcpy(&dstData->hardware.iConsts[0], &srcData->hardware.iConsts[0], sizeof(Vector4) * constSet.meta->maxConstIndexI);
+    if (constSet.meta->maxConstIndexB)
+      dstData->hardware.boolBitfield = srcData->hardware.boolBitfield;
 
     if (constSet.meta->needsConstantCopies) {
       Vector4* data =

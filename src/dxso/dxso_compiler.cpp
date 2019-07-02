@@ -852,7 +852,8 @@ namespace dxvk {
       const DxsoBaseRegister* relative) {
     // Only float constants (+ io regs) may be indexed.
     if (relative != nullptr && reg.id.type == DxsoRegisterType::Const) {
-      m_meta.usesRelativeIndexing = true;
+      m_meta.maxConstIndexF  = 256;
+
       if (m_moduleInfo.options.strictConstantCopies || m_cFloat.at(reg.id.num).id != 0)
         m_meta.needsConstantCopies = true;
     }
