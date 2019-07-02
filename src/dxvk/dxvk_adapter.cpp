@@ -245,7 +245,7 @@ namespace dxvk {
   Rc<DxvkDevice> DxvkAdapter::createDevice(std::string clientApi, DxvkDeviceFeatures enabledFeatures) {
     DxvkDeviceExtensions devExtensions;
 
-    std::array<DxvkExt*, 21> devExtensionList = {{
+    std::array<DxvkExt*, 22> devExtensionList = {{
       &devExtensions.amdMemoryOverallocationBehaviour,
       &devExtensions.amdShaderFragmentMask,
       &devExtensions.extConditionalRendering,
@@ -253,6 +253,7 @@ namespace dxvk {
       &devExtensions.extHostQueryReset,
       &devExtensions.extMemoryBudget,
       &devExtensions.extMemoryPriority,
+      &devExtensions.extShaderDemoteToHelperInvocation,
       &devExtensions.extShaderViewportIndexLayer,
       &devExtensions.extTransformFeedback,
       &devExtensions.extVertexAttributeDivisor,
@@ -310,6 +311,12 @@ namespace dxvk {
       enabledFeatures.extMemoryPriority.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT;
       enabledFeatures.extMemoryPriority.pNext = enabledFeatures.core.pNext;
       enabledFeatures.core.pNext = &enabledFeatures.extMemoryPriority;
+    }
+
+    if (devExtensions.extShaderDemoteToHelperInvocation) {
+      enabledFeatures.extShaderDemoteToHelperInvocation.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES_EXT;
+      enabledFeatures.extShaderDemoteToHelperInvocation.pNext = enabledFeatures.core.pNext;
+      enabledFeatures.core.pNext = &enabledFeatures.extShaderDemoteToHelperInvocation;
     }
 
     if (devExtensions.extTransformFeedback) {
@@ -521,6 +528,11 @@ namespace dxvk {
     if (m_deviceExtensions.supports(VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME)) {
       m_deviceFeatures.extMemoryPriority.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PRIORITY_FEATURES_EXT;
       m_deviceFeatures.extMemoryPriority.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extMemoryPriority);
+    }
+
+    if (m_deviceExtensions.supports(VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME)) {
+      m_deviceFeatures.extShaderDemoteToHelperInvocation.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DEMOTE_TO_HELPER_INVOCATION_FEATURES_EXT;
+      m_deviceFeatures.extShaderDemoteToHelperInvocation.pNext = std::exchange(m_deviceFeatures.core.pNext, &m_deviceFeatures.extShaderDemoteToHelperInvocation);
     }
 
     if (m_deviceExtensions.supports(VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME)) {

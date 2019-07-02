@@ -258,27 +258,28 @@ namespace dxvk {
    * used by DXVK if supported by the implementation.
    */
   struct DxvkDeviceExtensions {
-    DxvkExt amdMemoryOverallocationBehaviour= { VK_AMD_MEMORY_OVERALLOCATION_BEHAVIOR_EXTENSION_NAME,   DxvkExtMode::Optional };
-    DxvkExt amdShaderFragmentMask           = { VK_AMD_SHADER_FRAGMENT_MASK_EXTENSION_NAME,             DxvkExtMode::Optional };
-    DxvkExt extConditionalRendering         = { VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME,            DxvkExtMode::Optional };
-    DxvkExt extDepthClipEnable              = { VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME,                DxvkExtMode::Optional };
-    DxvkExt extHostQueryReset               = { VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME,                 DxvkExtMode::Optional };
-    DxvkExt extMemoryBudget                 = { VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,                    DxvkExtMode::Passive  };
-    DxvkExt extMemoryPriority               = { VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME,                  DxvkExtMode::Optional };
-    DxvkExt extShaderViewportIndexLayer     = { VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME,      DxvkExtMode::Optional };
-    DxvkExt extTransformFeedback            = { VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME,               DxvkExtMode::Optional };
-    DxvkExt extVertexAttributeDivisor       = { VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME,         DxvkExtMode::Optional };
-    DxvkExt khrDedicatedAllocation          = { VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME,             DxvkExtMode::Required };
-    DxvkExt khrDescriptorUpdateTemplate     = { VK_KHR_DESCRIPTOR_UPDATE_TEMPLATE_EXTENSION_NAME,       DxvkExtMode::Required };
-    DxvkExt khrDrawIndirectCount            = { VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME,              DxvkExtMode::Optional };
-    DxvkExt khrDriverProperties             = { VK_KHR_DRIVER_PROPERTIES_EXTENSION_NAME,                DxvkExtMode::Optional };
-    DxvkExt khrGetMemoryRequirements2       = { VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME,        DxvkExtMode::Required };
-    DxvkExt khrImageFormatList              = { VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME,                DxvkExtMode::Required };
-    DxvkExt khrMaintenance1                 = { VK_KHR_MAINTENANCE1_EXTENSION_NAME,                     DxvkExtMode::Required };
-    DxvkExt khrMaintenance2                 = { VK_KHR_MAINTENANCE2_EXTENSION_NAME,                     DxvkExtMode::Required };
-    DxvkExt khrSamplerMirrorClampToEdge     = { VK_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE_EXTENSION_NAME,     DxvkExtMode::Optional };
-    DxvkExt khrShaderDrawParameters         = { VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME,           DxvkExtMode::Required };
-    DxvkExt khrSwapchain                    = { VK_KHR_SWAPCHAIN_EXTENSION_NAME,                        DxvkExtMode::Required };
+    DxvkExt amdMemoryOverallocationBehaviour  = { VK_AMD_MEMORY_OVERALLOCATION_BEHAVIOR_EXTENSION_NAME,     DxvkExtMode::Optional };
+    DxvkExt amdShaderFragmentMask             = { VK_AMD_SHADER_FRAGMENT_MASK_EXTENSION_NAME,               DxvkExtMode::Optional };
+    DxvkExt extConditionalRendering           = { VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME,              DxvkExtMode::Optional };
+    DxvkExt extDepthClipEnable                = { VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME,                  DxvkExtMode::Optional };
+    DxvkExt extHostQueryReset                 = { VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME,                   DxvkExtMode::Optional };
+    DxvkExt extMemoryBudget                   = { VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,                      DxvkExtMode::Passive  };
+    DxvkExt extMemoryPriority                 = { VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME,                    DxvkExtMode::Optional };
+    DxvkExt extShaderDemoteToHelperInvocation = { VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME, DxvkExtMode::Optional };
+    DxvkExt extShaderViewportIndexLayer       = { VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME,        DxvkExtMode::Optional };
+    DxvkExt extTransformFeedback              = { VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME,                 DxvkExtMode::Optional };
+    DxvkExt extVertexAttributeDivisor         = { VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME,           DxvkExtMode::Optional };
+    DxvkExt khrDedicatedAllocation            = { VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME,               DxvkExtMode::Required };
+    DxvkExt khrDescriptorUpdateTemplate       = { VK_KHR_DESCRIPTOR_UPDATE_TEMPLATE_EXTENSION_NAME,         DxvkExtMode::Required };
+    DxvkExt khrDrawIndirectCount              = { VK_KHR_DRAW_INDIRECT_COUNT_EXTENSION_NAME,                DxvkExtMode::Optional };
+    DxvkExt khrDriverProperties               = { VK_KHR_DRIVER_PROPERTIES_EXTENSION_NAME,                  DxvkExtMode::Optional };
+    DxvkExt khrGetMemoryRequirements2         = { VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME,          DxvkExtMode::Required };
+    DxvkExt khrImageFormatList                = { VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME,                  DxvkExtMode::Required };
+    DxvkExt khrMaintenance1                   = { VK_KHR_MAINTENANCE1_EXTENSION_NAME,                       DxvkExtMode::Required };
+    DxvkExt khrMaintenance2                   = { VK_KHR_MAINTENANCE2_EXTENSION_NAME,                       DxvkExtMode::Required };
+    DxvkExt khrSamplerMirrorClampToEdge       = { VK_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE_EXTENSION_NAME,       DxvkExtMode::Optional };
+    DxvkExt khrShaderDrawParameters           = { VK_KHR_SHADER_DRAW_PARAMETERS_EXTENSION_NAME,             DxvkExtMode::Required };
+    DxvkExt khrSwapchain                      = { VK_KHR_SWAPCHAIN_EXTENSION_NAME,                          DxvkExtMode::Required };
   };
   
   /**
