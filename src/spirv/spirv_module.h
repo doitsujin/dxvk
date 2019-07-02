@@ -1130,6 +1130,8 @@ namespace dxvk {
     void opReturn();
     
     void opKill();
+
+    void opDemoteToHelperInvocation();
     
     void opEmitVertex(
             uint32_t                streamId);

@@ -3265,6 +3265,11 @@ namespace dxvk {
   }
   
   
+  void SpirvModule::opDemoteToHelperInvocation() {
+    m_code.putIns (spv::OpDemoteToHelperInvocationEXT, 1);
+  }
+  
+  
   void SpirvModule::opEmitVertex(
           uint32_t                streamId) {
     if (streamId == 0) {
