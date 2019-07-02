@@ -24,6 +24,8 @@ namespace dxvk {
     useSubgroupOpsForAtomicCounters
       = (devInfo.coreSubgroup.supportedStages     & allShaderStages) == allShaderStages
      && (devInfo.coreSubgroup.supportedOperations & VK_SUBGROUP_FEATURE_BALLOT_BIT);
+    useDemoteToHelperInvocation
+      = (devFeatures.extShaderDemoteToHelperInvocation.shaderDemoteToHelperInvocation);
     useSubgroupOpsForEarlyDiscard
       = (devInfo.coreSubgroup.subgroupSize >= 4)
      && (devInfo.coreSubgroup.supportedStages     & VK_SHADER_STAGE_FRAGMENT_BIT)

@@ -4047,9 +4047,15 @@ namespace dxvk {
       m_module.opSelectionMerge(cond.labelEnd, spv::SelectionControlMaskNone);
       m_module.opBranchConditional(zeroTest.id, cond.labelIf, cond.labelEnd);
       
-      // OpKill terminates the block
       m_module.opLabel(cond.labelIf);
-      m_module.opKill();
+
+      if (m_moduleInfo.options.useDemoteToHelperInvocation) {
+        m_module.opDemoteToHelperInvocation();
+        m_module.opBranch(cond.labelEnd);
+      } else {
+        // OpKill terminates the block
+        m_module.opKill();
+      }
       
       m_module.opLabel(cond.labelEnd);
     } else {
@@ -6621,9 +6627,13 @@ namespace dxvk {
         m_module.defVoidType(), 0, nullptr));
     this->emitFunctionLabel();
 
-    // We may have to defer kill operations to the end of
-    // the shader in order to keep derivatives correct.
-    if (m_analysis->usesKill && m_analysis->usesDerivatives) {
+    if (m_analysis->usesKill && m_moduleInfo.options.useDemoteToHelperInvocation) {
+      // This extension basically implements D3D-style discard
+      m_module.enableExtension("SPV_EXT_demote_to_helper_invocation");
+      m_module.enableCapability(spv::CapabilityDemoteToHelperInvocationEXT);
+    } else if (m_analysis->usesKill && m_analysis->usesDerivatives) {
+      // We may have to defer kill operations to the end of
+      // the shader in order to keep derivatives correct.
       m_ps.killState = m_module.newVarInit(
         m_module.defPointerType(m_module.defBoolType(), spv::StorageClassPrivate),
         spv::StorageClassPrivate, m_module.constBool(false));
