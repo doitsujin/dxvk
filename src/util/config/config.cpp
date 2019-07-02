@@ -162,6 +162,10 @@ namespace dxvk {
       { "d3d9.strictPow",                   "False" },
       { "d3d9.lenientClear",                "True" },
     }} },
+    /* Gothic 3                                   */
+    { "Gothic3.exe", {{
+      { "d3d9.allowLockFlagReadonly",       "False" },
+    }} },
     /* Risen                                      */
     { "Risen.exe", {{
       { "d3d9.allowLockFlagReadonly",       "False" },
