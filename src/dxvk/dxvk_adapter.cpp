@@ -45,6 +45,7 @@ namespace dxvk {
     m_vki->vkGetPhysicalDeviceMemoryProperties2KHR(m_handle, &memProps);
     
     DxvkAdapterMemoryInfo info = { };
+    info.extMemoryBudget = m_hasMemoryBudget;
     info.heapCount = memProps.memoryProperties.memoryHeapCount;
 
     for (uint32_t i = 0; i < info.heapCount; i++) {

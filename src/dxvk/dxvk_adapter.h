@@ -38,6 +38,7 @@ namespace dxvk {
    * info of each available heap.
    */
   struct DxvkAdapterMemoryInfo {
+    bool                      extMemoryBudget;
     uint32_t                  heapCount;
     DxvkAdapterMemoryHeapInfo heaps[VK_MAX_MEMORY_HEAPS];
   };
