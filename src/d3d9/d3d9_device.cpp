@@ -2296,6 +2296,7 @@ namespace dxvk {
     changePrivate(m_state.vertexShader, shader);
 
     if (shader != nullptr) {
+      m_flags.clr(D3D9DeviceFlag::DirtyProgVertexShader);
       m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
 
       BindShader(
@@ -4722,9 +4723,6 @@ namespace dxvk {
     if (m_flags.test(D3D9DeviceFlag::DirtyClipPlanes))
       UpdateClipPlanes();
 
-    if (m_flags.test(D3D9DeviceFlag::DirtyInputLayout))
-      BindInputLayout();
-
     if (!up && m_flags.test(D3D9DeviceFlag::UpDirtiedVertices)) {
       m_flags.clr(D3D9DeviceFlag::UpDirtiedVertices);
       if (m_state.vertexBuffers[0].vertexBuffer != nullptr)
@@ -4739,10 +4737,18 @@ namespace dxvk {
       BindIndices();
     }
 
-    if (likely(UseProgrammableVS()))
+    if (likely(UseProgrammableVS())) {
+      if (unlikely(m_flags.test(D3D9DeviceFlag::DirtyProgVertexShader))) {
+        m_flags.set(D3D9DeviceFlag::DirtyInputLayout);
+        BindShader(DxsoProgramType::VertexShader, GetCommonShader(m_state.vertexShader));
+      }
       UploadConstants<DxsoProgramTypes::VertexShader>();
+    }
     else
       UpdateFixedFunctionVS();
+
+    if (m_flags.test(D3D9DeviceFlag::DirtyInputLayout))
+      BindInputLayout();
 
     if (likely(UseProgrammablePS()))
       UploadConstants<DxsoProgramTypes::PixelShader>();
@@ -5039,6 +5045,12 @@ namespace dxvk {
   void D3D9DeviceEx::UpdateFixedFunctionVS() {
     // Shader...
     bool hasPositionT = m_state.vertexDecl != nullptr ? m_state.vertexDecl->TestFlag(D3D9VertexDeclFlag::HasPositionT) : false;
+
+    if (unlikely(hasPositionT && m_state.vertexShader != nullptr && !m_flags.test(D3D9DeviceFlag::DirtyProgVertexShader))) {
+      m_flags.set(D3D9DeviceFlag::DirtyInputLayout);
+      m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
+      m_flags.set(D3D9DeviceFlag::DirtyProgVertexShader);
+    }
 
     if (m_flags.test(D3D9DeviceFlag::DirtyFFVertexShader)) {
       m_flags.clr(D3D9DeviceFlag::DirtyFFVertexShader);
