@@ -2289,9 +2289,9 @@ namespace dxvk {
 
     if (newShader && oldShader) {
       m_consts[DxsoProgramTypes::VertexShader].dirty
-        |=  newShader->GetMeta().maxConstIndexF  >  oldShader->GetMeta().maxConstIndexF
-        ||  newShader->GetMeta().maxConstIndexI  >  oldShader->GetMeta().maxConstIndexI
-        || (newShader->GetMeta().maxConstIndexB && !oldShader->GetMeta().maxConstIndexB);
+        |= newShader->GetMeta().maxConstIndexF > oldShader->GetMeta().maxConstIndexF
+        || newShader->GetMeta().maxConstIndexI > oldShader->GetMeta().maxConstIndexI
+        || newShader->GetMeta().maxConstIndexB > oldShader->GetMeta().maxConstIndexB;
     }
 
     changePrivate(m_state.vertexShader, shader);
@@ -2615,9 +2615,9 @@ namespace dxvk {
 
     if (newShader && oldShader) {
       m_consts[DxsoProgramTypes::PixelShader].dirty
-        |=  newShader->GetMeta().maxConstIndexF  >  oldShader->GetMeta().maxConstIndexF
-        ||  newShader->GetMeta().maxConstIndexI  >  oldShader->GetMeta().maxConstIndexI
-        || (newShader->GetMeta().maxConstIndexB != !oldShader->GetMeta().maxConstIndexB);
+        |= newShader->GetMeta().maxConstIndexF > oldShader->GetMeta().maxConstIndexF
+        || newShader->GetMeta().maxConstIndexI > oldShader->GetMeta().maxConstIndexI
+        || newShader->GetMeta().maxConstIndexB > oldShader->GetMeta().maxConstIndexB;
     }
 
     changePrivate(m_state.pixelShader, shader);
@@ -5061,7 +5061,7 @@ namespace dxvk {
       else if constexpr (ConstantType == D3D9ConstantType::Int)
         return meta.maxConstIndexI;
       else
-        return meta.maxConstIndexB ? caps::MaxOtherConstants : 0;
+        return meta.maxConstIndexB;
     };
 
     uint32_t maxCount = ProgramType == DxsoProgramTypes::VertexShader
