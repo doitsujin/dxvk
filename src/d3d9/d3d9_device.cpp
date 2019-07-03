@@ -1665,6 +1665,10 @@ namespace dxvk {
         case D3DRS_COLORVERTEX:
         case D3DRS_LIGHTING:
           m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
+          break;
+
+        case D3DRS_AMBIENT:
+          m_flags.set(D3D9DeviceFlag::DirtyFFVertexData);
 
         default:
           static bool s_errorShown[256];
@@ -3114,9 +3118,12 @@ namespace dxvk {
     rs[D3DRS_SPECULARMATERIALSOURCE] = D3DMCS_COLOR2;
     rs[D3DRS_AMBIENTMATERIALSOURCE]  = D3DMCS_MATERIAL;
     rs[D3DRS_EMISSIVEMATERIALSOURCE] = D3DMCS_MATERIAL;
-
     rs[D3DRS_LIGHTING]               = TRUE;
     rs[D3DRS_COLORVERTEX]            = TRUE;
+    m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
+
+    rs[D3DRS_AMBIENT]                = 0;
+    m_flags.set(D3D9DeviceFlag::DirtyFFVertexData);
 
     SetRenderState(D3DRS_SHADEMODE, D3DSHADE_GOURAUD);
     SetRenderState(D3DRS_LASTPIXEL, TRUE);
@@ -3139,7 +3146,6 @@ namespace dxvk {
     SetRenderState(D3DRS_WRAP6, 0);
     SetRenderState(D3DRS_WRAP7, 0);
     SetRenderState(D3DRS_CLIPPING, TRUE);
-    SetRenderState(D3DRS_AMBIENT, 0);
     SetRenderState(D3DRS_FOGVERTEXMODE, D3DFOG_NONE);
     SetRenderState(D3DRS_LOCALVIEWER, TRUE);
     SetRenderState(D3DRS_NORMALIZENORMALS, FALSE);
@@ -3178,27 +3184,29 @@ namespace dxvk {
     SetRenderState(D3DRS_WRAP14, 0);
     SetRenderState(D3DRS_WRAP15, 0);
 
-    for (uint32_t i = 0; i < caps::MaxTextureBlendStages; i++)
-    {
-      SetTextureStageState(i, D3DTSS_COLOROP, i == 0 ? D3DTOP_MODULATE : D3DTOP_DISABLE);
-      SetTextureStageState(i, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-      SetTextureStageState(i, D3DTSS_COLORARG2, D3DTA_CURRENT);
-      SetTextureStageState(i, D3DTSS_ALPHAOP, i == 0 ? D3DTOP_SELECTARG1 : D3DTOP_DISABLE);
-      SetTextureStageState(i, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-      SetTextureStageState(i, D3DTSS_ALPHAARG2, D3DTA_CURRENT);
-      SetTextureStageState(i, D3DTSS_BUMPENVMAT00, bit::cast<DWORD>(0.0f));
-      SetTextureStageState(i, D3DTSS_BUMPENVMAT01, bit::cast<DWORD>(0.0f));
-      SetTextureStageState(i, D3DTSS_BUMPENVMAT10, bit::cast<DWORD>(0.0f));
-      SetTextureStageState(i, D3DTSS_BUMPENVMAT11, bit::cast<DWORD>(0.0f));
-      SetTextureStageState(i, D3DTSS_TEXCOORDINDEX, i);
-      SetTextureStageState(i, D3DTSS_BUMPENVLSCALE, bit::cast<DWORD>(0.0f));
-      SetTextureStageState(i, D3DTSS_BUMPENVLOFFSET, bit::cast<DWORD>(0.0f));
-      SetTextureStageState(i, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);
-      SetTextureStageState(i, D3DTSS_COLORARG0, D3DTA_CURRENT);
-      SetTextureStageState(i, D3DTSS_ALPHAARG0, D3DTA_CURRENT);
-      SetTextureStageState(i, D3DTSS_RESULTARG, D3DTA_CURRENT);
-      SetTextureStageState(i, D3DTSS_CONSTANT, 0x00000000);
+    for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
+      auto& stage = m_state.textureStages[i];
+
+      stage[D3DTSS_COLOROP]               = i == 0 ? D3DTOP_MODULATE : D3DTOP_DISABLE;
+      stage[D3DTSS_COLORARG1]             = D3DTA_TEXTURE;
+      stage[D3DTSS_COLORARG2]             = D3DTA_CURRENT;
+      stage[D3DTSS_ALPHAOP]               = i == 0 ? D3DTOP_SELECTARG1 : D3DTOP_DISABLE;
+      stage[D3DTSS_ALPHAARG1]             = D3DTA_TEXTURE;
+      stage[D3DTSS_ALPHAARG2]             = D3DTA_CURRENT;
+      stage[D3DTSS_BUMPENVMAT00]          = bit::cast<DWORD>(0.0f);
+      stage[D3DTSS_BUMPENVMAT01]          = bit::cast<DWORD>(0.0f);
+      stage[D3DTSS_BUMPENVMAT10]          = bit::cast<DWORD>(0.0f);
+      stage[D3DTSS_BUMPENVMAT11]          = bit::cast<DWORD>(0.0f);
+      stage[D3DTSS_TEXCOORDINDEX]         = i;
+      stage[D3DTSS_BUMPENVLSCALE]         = bit::cast<DWORD>(0.0f);
+      stage[D3DTSS_BUMPENVLOFFSET]        = bit::cast<DWORD>(0.0f);
+      stage[D3DTSS_TEXTURETRANSFORMFLAGS] = D3DTTFF_DISABLE;
+      stage[D3DTSS_COLORARG0]             = D3DTA_CURRENT;
+      stage[D3DTSS_ALPHAARG0]             = D3DTA_CURRENT;
+      stage[D3DTSS_RESULTARG]             = D3DTA_CURRENT;
+      stage[D3DTSS_CONSTANT]              = 0x00000000;
     }
+    m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
 
     for (uint32_t i = 0; i < caps::MaxStreams; i++)
       m_state.streamFreq[i] = 1;
@@ -3287,14 +3295,11 @@ namespace dxvk {
       SetDepthStencilSurface(m_autoDepthStencil.ptr());
     }
 
-    ShowCursor(FALSE);
+    // We should do this...
+    m_flags.set(D3D9DeviceFlag::DirtyInputLayout);
 
     // Force this if we end up binding the same RT to make scissor change go into effect.
     BindViewportAndScissor();
-
-    // Mark these as dirty...
-    m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
-    m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
 
     return D3D_OK;
   }
