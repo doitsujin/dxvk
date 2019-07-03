@@ -112,7 +112,8 @@ namespace dxvk {
       std::array<DWORD, TextureStageStateCount>,
       caps::TextureStageCount>                       textureStages;
 
-    D3D9ShaderConstants                              consts[DxsoProgramTypes::Count];
+    D3D9ShaderConstantsVS                            vsConsts;
+    D3D9ShaderConstantsPS                            psConsts;
 
     std::array<UINT, caps::MaxStreams>               streamFreq;
 
@@ -130,38 +131,38 @@ namespace dxvk {
           UINT                 StartRegister,
     const T*                   pConstantData,
           UINT                 Count) {
-    auto& set = pState->consts[ProgramType];
+    auto UpdateHelper = [&] (auto& set) {
+      if constexpr (ConstantType == D3D9ConstantType::Float) {
+        auto begin = reinterpret_cast<const Vector4*>(pConstantData);
+        auto end   = begin + Count;
 
-    if constexpr (ConstantType == D3D9ConstantType::Float) {
-      auto& consts = set.hardware.fConsts;
-
-      auto begin = reinterpret_cast<const Vector4*>(pConstantData);
-      auto end   = begin + Count;
-
-      std::transform(begin, end, consts.begin() + StartRegister, replaceNaN);
-    }
-    else if constexpr (ConstantType == D3D9ConstantType::Int) {
-      auto& consts = set.hardware.iConsts;
-
-      auto begin = reinterpret_cast<const Vector4i*>(pConstantData);
-      auto end   = begin + Count;
-
-      std::copy(begin, end, consts.begin() + StartRegister);
-    }
-    else {
-      uint32_t& bitfield = set.hardware.boolBitfield;
-
-      for (uint32_t i = 0; i < Count; i++) {
-        const uint32_t idx    = StartRegister + i;
-        const uint32_t idxBit = 1u << idx;
-
-        bitfield &= ~idxBit;
-        if (pConstantData[i])
-          bitfield |= idxBit;
+        std::transform(begin, end, set.fConsts.begin() + StartRegister, replaceNaN);
       }
-    }
+      else if constexpr (ConstantType == D3D9ConstantType::Int) {
+        auto begin = reinterpret_cast<const Vector4i*>(pConstantData);
+        auto end   = begin + Count;
 
-    return D3D_OK;
+        std::copy(begin, end, set.iConsts.begin() + StartRegister);
+      }
+      else {
+        uint32_t& bitfield = set.boolBitfield;
+
+        for (uint32_t i = 0; i < Count; i++) {
+          const uint32_t idx    = StartRegister + i;
+          const uint32_t idxBit = 1u << idx;
+
+          bitfield &= ~idxBit;
+          if (pConstantData[i])
+            bitfield |= idxBit;
+        }
+      }
+
+      return D3D_OK;
+    };
+
+    return ProgramType == DxsoProgramTypes::VertexShader
+      ? UpdateHelper(pState->vsConsts)
+      : UpdateHelper(pState->psConsts);
   }
 
   enum class D3D9CapturedStateFlag : uint32_t {
@@ -207,10 +208,16 @@ namespace dxvk {
       caps::TextureStageCount>                          textureStageStates;
 
     struct {
-      std::bitset<caps::MaxFloatConstants>              fConsts;
+      std::bitset<caps::MaxFloatConstantsVS>            fConsts;
       std::bitset<caps::MaxOtherConstants>              iConsts;
       std::bitset<caps::MaxOtherConstants>              bConsts;
-    } vsConsts, psConsts;
+    } vsConsts;
+
+    struct {
+      std::bitset<caps::MaxFloatConstantsPS>            fConsts;
+      std::bitset<caps::MaxOtherConstants>              iConsts;
+      std::bitset<caps::MaxOtherConstants>              bConsts;
+    } psConsts;
   };
 
   struct Direct3DState9 : public D3D9CapturableState {

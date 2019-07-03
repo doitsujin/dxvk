@@ -219,10 +219,10 @@ namespace dxvk {
 
   void DxsoCompiler::emitDclConstantBuffer() {
     std::array<uint32_t, 3> members = {
-      // float f[256]
+      // float f[256 or 224]
       m_module.defArrayTypeUnique(
         getVectorTypeId({ DxsoScalarType::Float32, 4 }),
-        m_module.constu32(256)),
+        m_module.constu32(getFloatConstantCount())),
 
       // int i[16]
       m_module.defArrayTypeUnique(
@@ -243,7 +243,7 @@ namespace dxvk {
     m_module.decorateBlock(structType);
 
     size_t offset = 0;
-    m_module.memberDecorateOffset(structType, 0, offset); offset += 256 * 4 * sizeof(float);
+    m_module.memberDecorateOffset(structType, 0, offset); offset += getFloatConstantCount() * 4 * sizeof(float);
     m_module.memberDecorateOffset(structType, 1, offset); offset += 16  * 4 * sizeof(int32_t);
     m_module.memberDecorateOffset(structType, 2, offset);
 
@@ -730,7 +730,7 @@ namespace dxvk {
     //
     //   Type     Member        Index
     //
-    //   float    f[256];       0
+    //   float    f[256 or 224];       0
     //   int32_t  i[16];        1
     //   uint32_t boolBitmask;  2
     // }
@@ -852,7 +852,7 @@ namespace dxvk {
       const DxsoBaseRegister* relative) {
     // Only float constants (+ io regs) may be indexed.
     if (relative != nullptr && reg.id.type == DxsoRegisterType::Const) {
-      m_meta.maxConstIndexF  = 256;
+      m_meta.maxConstIndexF = getFloatConstantCount();
 
       if (m_moduleInfo.options.strictConstantCopies || m_cFloat.at(reg.id.num).id != 0)
         m_meta.needsConstantCopies = true;

@@ -5,6 +5,7 @@
 #include "dxso_modinfo.h"
 #include "dxso_isgn.h"
 
+#include "../d3d9/d3d9_caps.h"
 #include "../spirv/spirv_module.h"
 
 namespace dxvk {
@@ -451,6 +452,12 @@ namespace dxvk {
 
     DxsoRegisterValue emitValueLoad(
             DxsoRegisterPointer ptr);
+
+    uint32_t getFloatConstantCount() {
+      return m_programInfo.type() == DxsoProgramTypes::VertexShader
+             ? caps::MaxFloatConstantsVS
+             : caps::MaxFloatConstantsPS;
+    }
 
     void emitDstStore(
             DxsoRegisterPointer     ptr,

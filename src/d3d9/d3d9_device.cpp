@@ -4031,17 +4031,19 @@ namespace dxvk {
 
   void D3D9DeviceEx::CreateConstantBuffers() {
     DxvkBufferCreateInfo info;
-    info.size   = D3D9ConstantSets::SetSize;
     info.usage  = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
     info.access = VK_ACCESS_UNIFORM_READ_BIT;
-    info.stages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT
-                | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 
     VkMemoryPropertyFlags memoryFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
                                       | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
                                       | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
+    info.stages = VK_PIPELINE_STAGE_VERTEX_SHADER_BIT;
+    info.size   = sizeof(D3D9ShaderConstantsVS);
     m_consts[DxsoProgramTypes::VertexShader].buffer = m_dxvkDevice->createBuffer(info, memoryFlags);
+
+    info.stages = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    info.size   = sizeof(D3D9ShaderConstantsPS);
     m_consts[DxsoProgramTypes::PixelShader].buffer  = m_dxvkDevice->createBuffer(info, memoryFlags);
 
     info.size = caps::MaxClipPlanes * sizeof(D3D9ClipPlane);
@@ -4084,49 +4086,54 @@ namespace dxvk {
 
   template <DxsoProgramType ShaderStage>
   void D3D9DeviceEx::UploadConstants() {
-    D3D9ConstantSets& constSet = m_consts[ShaderStage];
+    auto UploadHelper = [&](auto& src) {
+      D3D9ConstantSets& constSet = m_consts[ShaderStage];
 
-    if (!constSet.dirty)
-      return;
+      if (!constSet.dirty)
+        return;
 
-    constSet.dirty = false;
+      constSet.dirty = false;
 
-    DxvkBufferSliceHandle slice = constSet.buffer->allocSlice();
+      DxvkBufferSliceHandle slice = constSet.buffer->allocSlice();
 
-    auto dstData = reinterpret_cast<D3D9ShaderConstants*>(slice.mapPtr);
-    auto srcData = &m_state.consts[ShaderStage];
+      auto dstData = reinterpret_cast<std::remove_reference_t<decltype(src)> *>(slice.mapPtr);
+      auto srcData = &src;
 
-    EmitCs([
-      cBuffer = constSet.buffer,
-      cSlice  = slice
-    ] (DxvkContext* ctx) {
-      ctx->invalidateBuffer(cBuffer, cSlice);
-    });
+      EmitCs([
+        cBuffer = constSet.buffer,
+        cSlice  = slice
+      ] (DxvkContext* ctx) {
+        ctx->invalidateBuffer(cBuffer, cSlice);
+      });
 
-    if (constSet.meta->maxConstIndexF)
-      std::memcpy(&dstData->hardware.fConsts[0], &srcData->hardware.fConsts[0], sizeof(Vector4) * constSet.meta->maxConstIndexF);
-    if (constSet.meta->maxConstIndexI)
-      std::memcpy(&dstData->hardware.iConsts[0], &srcData->hardware.iConsts[0], sizeof(Vector4) * constSet.meta->maxConstIndexI);
-    if (constSet.meta->maxConstIndexB)
-      dstData->hardware.boolBitfield = srcData->hardware.boolBitfield;
+      if (constSet.meta->maxConstIndexF)
+        std::memcpy(&dstData->fConsts[0], &srcData->fConsts[0], sizeof(Vector4)  * constSet.meta->maxConstIndexF);
+      if (constSet.meta->maxConstIndexI)
+        std::memcpy(&dstData->iConsts[0], &srcData->iConsts[0], sizeof(Vector4i) * constSet.meta->maxConstIndexI);
+      if (constSet.meta->maxConstIndexB)
+        dstData->boolBitfield = srcData->boolBitfield;
 
-    if (constSet.meta->needsConstantCopies) {
-      Vector4* data =
-        reinterpret_cast<Vector4*>(slice.mapPtr);
+      if (constSet.meta->needsConstantCopies) {
+        Vector4* data = reinterpret_cast<Vector4*>(slice.mapPtr);
 
-      if (ShaderStage == DxsoProgramTypes::VertexShader) {
-        auto& shaderConsts = GetCommonShader(m_state.vertexShader)->GetConstants();
+        if (ShaderStage == DxsoProgramTypes::VertexShader) {
+          auto& shaderConsts = GetCommonShader(m_state.vertexShader)->GetConstants();
 
-        for (const auto& constant : shaderConsts)
-          data[constant.uboIdx] = *reinterpret_cast<const Vector4*>(constant.float32);
+          for (const auto& constant : shaderConsts)
+            data[constant.uboIdx] = *reinterpret_cast<const Vector4*>(constant.float32);
+        }
+        else {
+          auto& shaderConsts = GetCommonShader(m_state.pixelShader)->GetConstants();
+
+          for (const auto& constant : shaderConsts)
+            data[constant.uboIdx] = *reinterpret_cast<const Vector4*>(constant.float32);
+        }
       }
-      else {
-        auto& shaderConsts = GetCommonShader(m_state.pixelShader)->GetConstants();
+    };
 
-        for (const auto& constant : shaderConsts)
-          data[constant.uboIdx] = *reinterpret_cast<const Vector4*>(constant.float32);
-      }
-    }
+    return ShaderStage == DxsoProgramTypes::VertexShader
+      ? UploadHelper(m_state.vsConsts)
+      : UploadHelper(m_state.psConsts);
   }
 
 
@@ -4979,16 +4986,16 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::SetVertexBoolBitfield(uint32_t mask, uint32_t bits) {
-    m_state.consts[DxsoProgramTypes::VertexShader].hardware.boolBitfield &= ~mask;
-    m_state.consts[DxsoProgramTypes::VertexShader].hardware.boolBitfield |= bits & mask;
+    m_state.vsConsts.boolBitfield &= ~mask;
+    m_state.vsConsts.boolBitfield |= bits & mask;
 
     m_consts[DxsoProgramTypes::VertexShader].dirty = true;
   }
 
 
   void D3D9DeviceEx::SetPixelBoolBitfield(uint32_t mask, uint32_t bits) {
-    m_state.consts[DxsoProgramTypes::PixelShader].hardware.boolBitfield &= ~mask;
-    m_state.consts[DxsoProgramTypes::PixelShader].hardware.boolBitfield |= bits & mask;
+    m_state.psConsts.boolBitfield &= ~mask;
+    m_state.psConsts.boolBitfield |= bits & mask;
 
     m_consts[DxsoProgramTypes::PixelShader].dirty = true;
   }
@@ -5017,48 +5024,41 @@ namespace dxvk {
     D3D9ConstantType ConstantType,
     typename         T>
     HRESULT D3D9DeviceEx::SetShaderConstants(
-      UINT  StartRegister,
-      const T* pConstantData,
-      UINT  Count)
-    {
-      constexpr uint32_t regCountHardware = DetermineRegCount(ConstantType, false);
-      constexpr uint32_t regCountSoftware = DetermineRegCount(ConstantType, true);
+            UINT  StartRegister,
+      const T*    pConstantData,
+            UINT  Count) {
+    constexpr uint32_t regCountHardware = DetermineRegCount(ProgramType, ConstantType, false);
+    constexpr uint32_t regCountSoftware = DetermineRegCount(ProgramType, ConstantType, true);
 
-      if (unlikely(StartRegister + Count > regCountSoftware))
-        return D3DERR_INVALIDCALL;
+    if (unlikely(StartRegister + Count > regCountSoftware))
+      return D3DERR_INVALIDCALL;
 
-      Count = UINT(
-        std::max<INT>(
-          std::clamp<INT>(Count + StartRegister, 0, regCountHardware) - INT(StartRegister),
-          0));
+    Count = UINT(
+      std::max<INT>(
+        std::clamp<INT>(Count + StartRegister, 0, regCountHardware) - INT(StartRegister),
+        0));
 
-      if (unlikely(Count == 0))
-        return D3D_OK;
+    if (unlikely(Count == 0))
+      return D3D_OK;
 
-      if (unlikely(pConstantData == nullptr))
-        return D3DERR_INVALIDCALL;
+    if (unlikely(pConstantData == nullptr))
+      return D3DERR_INVALIDCALL;
 
-      if (unlikely(ShouldRecord()))
-        return m_recorder->SetShaderConstants<
-          ProgramType,
-          ConstantType,
-          T>(
-            StartRegister,
-            pConstantData,
-            Count);
-
-      m_consts[ProgramType].dirty = true;
-
-      UpdateStateConstants<
-        ProgramType,
-        ConstantType,
-        T>(
-        &m_state,
+    if (unlikely(ShouldRecord()))
+      return m_recorder->SetShaderConstants<ProgramType, ConstantType, T>(
         StartRegister,
         pConstantData,
         Count);
 
-      return D3D_OK;
+    m_consts[ProgramType].dirty = true;
+
+    UpdateStateConstants<ProgramType, ConstantType, T>(
+      &m_state,
+      StartRegister,
+      pConstantData,
+      Count);
+
+    return D3D_OK;
   }
 
 

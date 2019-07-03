@@ -934,11 +934,18 @@ namespace dxvk {
     }
 
     inline static constexpr uint32_t DetermineRegCount(
+            DxsoProgramType  ProgramType,
             D3D9ConstantType ConstantType,
             bool             Software) {
       switch (ConstantType) {
         default:
-        case D3D9ConstantType::Float:  return Software ? 8192 : 256;
+        case D3D9ConstantType::Float:
+          if (Software)
+            return 8192;
+
+          return ProgramType == DxsoProgramType::VertexShader
+               ? caps::MaxFloatConstantsVS
+               : caps::MaxFloatConstantsPS;
         case D3D9ConstantType::Int:    return Software ? 256  : 16;
         case D3D9ConstantType::Bool:   return Software ? 256 : 16;
       }
@@ -949,9 +956,9 @@ namespace dxvk {
       D3D9ConstantType ConstantType,
       typename         T>
       HRESULT SetShaderConstants(
-        UINT  StartRegister,
-        const T* pConstantData,
-        UINT  Count);
+              UINT  StartRegister,
+        const T*    pConstantData,
+              UINT  Count);
 
     template <
       DxsoProgramType  ProgramType,
@@ -961,54 +968,54 @@ namespace dxvk {
             UINT StartRegister,
             T*   pConstantData,
             UINT Count) {
-      constexpr uint32_t regCountHardware = DetermineRegCount(ConstantType, false);
-      constexpr uint32_t regCountSoftware = DetermineRegCount(ConstantType, true);
+      auto GetHelper = [&] (const auto& set) {
+        constexpr uint32_t regCountHardware = DetermineRegCount(ProgramType, ConstantType, false);
+        constexpr uint32_t regCountSoftware = DetermineRegCount(ProgramType, ConstantType, true);
 
-      if (StartRegister + Count > regCountSoftware)
-        return D3DERR_INVALIDCALL;
+        if (StartRegister + Count > regCountSoftware)
+          return D3DERR_INVALIDCALL;
 
-      Count = UINT(
-        std::max<INT>(
-          std::clamp<INT>(Count + StartRegister, 0, regCountHardware) - INT(StartRegister),
-          0));
+        Count = UINT(
+          std::max<INT>(
+            std::clamp<INT>(Count + StartRegister, 0, regCountHardware) - INT(StartRegister),
+            0));
 
-      if (Count == 0)
-        return D3D_OK;
+        if (Count == 0)
+          return D3D_OK;
 
-      if (pConstantData == nullptr)
-        return D3DERR_INVALIDCALL;
+        if (pConstantData == nullptr)
+          return D3DERR_INVALIDCALL;
 
-      auto& set = m_state.consts[ProgramType];
+        if constexpr (ConstantType == D3D9ConstantType::Float) {
+          auto begin = set.fConsts.begin() + StartRegister;
+          auto end = begin + Count;
 
-      if constexpr (ConstantType == D3D9ConstantType::Float) {
-        auto& consts = set.hardware.fConsts;
-
-        auto begin = consts.begin() + StartRegister;
-        auto end   = begin + Count;
-
-        std::copy(begin, end, reinterpret_cast<Vector4*>(pConstantData));
-      }
-      else if constexpr (ConstantType == D3D9ConstantType::Int) {
-        auto& consts = set.hardware.iConsts;
-
-        auto begin = consts.begin() + StartRegister;
-        auto end   = begin + Count;
-
-        std::copy(begin, end, reinterpret_cast<Vector4i*>(pConstantData));
-      }
-      else {
-        uint32_t& bitfield = set.hardware.boolBitfield;
-
-        for (uint32_t i = 0; i < Count; i++) {
-          const uint32_t idx = StartRegister + i;
-          const uint32_t idxBit = 1u << idx;
-
-          bool constValue = bitfield & idxBit;
-          pConstantData[i] = constValue ? TRUE : FALSE;
+          std::copy(begin, end, reinterpret_cast<Vector4*>(pConstantData));
         }
-      }
+        else if constexpr (ConstantType == D3D9ConstantType::Int) {
+          auto begin = set.iConsts.begin() + StartRegister;
+          auto end = begin + Count;
 
-      return D3D_OK;
+          std::copy(begin, end, reinterpret_cast<Vector4i*>(pConstantData));
+        }
+        else {
+          const uint32_t& bitfield = set.boolBitfield;
+
+          for (uint32_t i = 0; i < Count; i++) {
+            const uint32_t idx = StartRegister + i;
+            const uint32_t idxBit = 1u << idx;
+
+            bool constValue = bitfield & idxBit;
+            pConstantData[i] = constValue ? TRUE : FALSE;
+          }
+        }
+
+        return D3D_OK;
+      };
+
+      return ProgramType == DxsoProgramTypes::VertexShader
+        ? GetHelper(m_state.vsConsts)
+        : GetHelper(m_state.psConsts);
     }
 
     void UpdateFixedFunctionVS();

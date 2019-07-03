@@ -210,12 +210,12 @@ namespace dxvk {
       if (m_captures.flags.test(D3D9CapturedStateFlag::VsConstants)) {
         for (uint32_t i = 0; i < m_captures.vsConsts.fConsts.size(); i++) {
           if (m_captures.vsConsts.fConsts[i])
-            dst->SetVertexShaderConstantF(i, (float*)&src->consts[DxsoProgramTypes::VertexShader].hardware.fConsts[i], 1);
+            dst->SetVertexShaderConstantF(i, (float*)&src->vsConsts.fConsts[i], 1);
         }
 
         for (uint32_t i = 0; i < m_captures.vsConsts.iConsts.size(); i++) {
           if (m_captures.vsConsts.iConsts[i])
-            dst->SetVertexShaderConstantI(i, (int*)&src->consts[DxsoProgramTypes::VertexShader].hardware.iConsts[i], 1);
+            dst->SetVertexShaderConstantI(i, (int*)&src->vsConsts.iConsts[i], 1);
         }
 
         uint32_t boolMask = 0;
@@ -224,18 +224,18 @@ namespace dxvk {
             boolMask |= 1u << i;
         }
 
-        dst->SetVertexBoolBitfield(boolMask, src->consts[DxsoProgramTypes::VertexShader].hardware.boolBitfield);
+        dst->SetVertexBoolBitfield(boolMask, src->vsConsts.boolBitfield);
       }
 
       if (m_captures.flags.test(D3D9CapturedStateFlag::PsConstants)) {
         for (uint32_t i = 0; i < m_captures.psConsts.fConsts.size(); i++) {
           if (m_captures.psConsts.fConsts[i])
-            dst->SetPixelShaderConstantF(i, (float*)&src->consts[DxsoProgramTypes::PixelShader].hardware.fConsts[i], 1);
+            dst->SetPixelShaderConstantF(i, (float*)&src->psConsts.fConsts[i], 1);
         }
 
         for (uint32_t i = 0; i < m_captures.psConsts.iConsts.size(); i++) {
           if (m_captures.psConsts.iConsts[i])
-            dst->SetPixelShaderConstantI(i, (int*)&src->consts[DxsoProgramTypes::PixelShader].hardware.iConsts[i], 1);
+            dst->SetPixelShaderConstantI(i, (int*)&src->psConsts.iConsts[i], 1);
         }
 
         uint32_t boolMask = 0;
@@ -244,7 +244,7 @@ namespace dxvk {
             boolMask |= 1u << i;
         }
 
-        dst->SetPixelBoolBitfield(boolMask, src->consts[DxsoProgramTypes::PixelShader].hardware.boolBitfield);
+        dst->SetPixelBoolBitfield(boolMask, src->psConsts.boolBitfield);
       }
     }
 
@@ -264,35 +264,37 @@ namespace dxvk {
             UINT  StartRegister,
       const T*    pConstantData,
             UINT  Count) {
-      if constexpr (ProgramType == DxsoProgramTypes::VertexShader)
-        m_captures.flags.set(D3D9CapturedStateFlag::VsConstants);
-      else
-        m_captures.flags.set(D3D9CapturedStateFlag::PsConstants);
+      auto SetHelper = [&](auto& setCaptures) {
+        if constexpr (ProgramType == DxsoProgramTypes::VertexShader)
+          m_captures.flags.set(D3D9CapturedStateFlag::VsConstants);
+        else
+          m_captures.flags.set(D3D9CapturedStateFlag::PsConstants);
 
-      auto& captureSet = ProgramType == DxsoProgramTypes::VertexShader
-        ? m_captures.vsConsts
-        : m_captures.psConsts;
+        for (uint32_t i = 0; i < Count; i++) {
+          uint32_t reg = StartRegister + i;
+          if      constexpr (ConstantType == D3D9ConstantType::Float)
+            setCaptures.fConsts[reg] = true;
+          else if constexpr (ConstantType == D3D9ConstantType::Int)
+            setCaptures.iConsts[reg] = true;
+          else if constexpr (ConstantType == D3D9ConstantType::Bool)
+            setCaptures.bConsts[reg] = true;
+        }
 
-      for (uint32_t i = 0; i < Count; i++) {
-        uint32_t reg = StartRegister + i;
-        if      constexpr (ConstantType == D3D9ConstantType::Float)
-          captureSet.fConsts[reg] = true;
-        else if constexpr (ConstantType == D3D9ConstantType::Int)
-          captureSet.iConsts[reg] = true;
-        else if constexpr (ConstantType == D3D9ConstantType::Bool)
-          captureSet.bConsts[reg] = true;
-      }
+        UpdateStateConstants<
+          ProgramType,
+          ConstantType,
+          T>(
+            &m_state,
+            StartRegister,
+            pConstantData,
+            Count);
 
-      UpdateStateConstants<
-        ProgramType,
-        ConstantType,
-        T>(
-        &m_state,
-        StartRegister,
-        pConstantData,
-        Count);
+        return D3D_OK;
+      };
 
-      return D3D_OK;
+      return ProgramType == DxsoProgramTypes::VertexShader
+        ? SetHelper(m_captures.vsConsts)
+        : SetHelper(m_captures.psConsts);
     }
 
     HRESULT SetVertexBoolBitfield(uint32_t mask, uint32_t bits);

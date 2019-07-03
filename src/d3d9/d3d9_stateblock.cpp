@@ -283,15 +283,15 @@ namespace dxvk {
 
 
   HRESULT D3D9StateBlock::SetVertexBoolBitfield(uint32_t mask, uint32_t bits) {
-    m_state.consts[DxsoProgramTypes::VertexShader].hardware.boolBitfield &= ~mask;
-    m_state.consts[DxsoProgramTypes::VertexShader].hardware.boolBitfield |= bits & mask;
+    m_state.vsConsts.boolBitfield &= ~mask;
+    m_state.vsConsts.boolBitfield |= bits & mask;
     return D3D_OK;
   }
 
 
   HRESULT D3D9StateBlock::SetPixelBoolBitfield(uint32_t mask, uint32_t bits) {
-    m_state.consts[DxsoProgramTypes::PixelShader].hardware.boolBitfield &= ~mask;
-    m_state.consts[DxsoProgramTypes::PixelShader].hardware.boolBitfield |= bits & mask;
+    m_state.psConsts.boolBitfield &= ~mask;
+    m_state.psConsts.boolBitfield |= bits & mask;
     return D3D_OK;
   }
 

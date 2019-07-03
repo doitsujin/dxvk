@@ -435,7 +435,7 @@ namespace dxvk::caps {
     pCaps->PixelShaderVersion  = D3DPS_VERSION(majorVersion, minorVersion);
 
     // Max Vertex Shader Const
-    pCaps->MaxVertexShaderConst       = MaxFloatConstants;
+    pCaps->MaxVertexShaderConst       = MaxFloatConstantsVS;
     // Max PS1 Value
     pCaps->PixelShader1xMaxValue      = FLT_MAX;
     // Dev Caps 2
