@@ -263,6 +263,7 @@ namespace dxvk {
     DxvkExt extConditionalRendering         = { VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME,            DxvkExtMode::Optional };
     DxvkExt extDepthClipEnable              = { VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME,                DxvkExtMode::Optional };
     DxvkExt extHostQueryReset               = { VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME,                 DxvkExtMode::Optional };
+    DxvkExt extMemoryBudget                 = { VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,                    DxvkExtMode::Passive  };
     DxvkExt extMemoryPriority               = { VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME,                  DxvkExtMode::Optional };
     DxvkExt extShaderViewportIndexLayer     = { VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME,      DxvkExtMode::Optional };
     DxvkExt extTransformFeedback            = { VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME,               DxvkExtMode::Optional };
