@@ -38,17 +38,20 @@ namespace dxvk {
     for (uint32_t i = 0; i < numExtensions; i++) {
       DxvkExt* ext = ppExtensions[i];
 
-      if (ext->mode() != DxvkExtMode::Disabled) {
-        uint32_t revision = supports(ext->name());
+      if (ext->mode() == DxvkExtMode::Disabled)
+        continue;
+      
+      uint32_t revision = supports(ext->name());
 
-        if (revision != 0) {
+      if (revision) {
+        if (ext->mode() != DxvkExtMode::Passive)
           nameSet.add(ext->name());
-          ext->enable(revision);
-        } else if (ext->mode() == DxvkExtMode::Required) {
-          Logger::info(str::format(
-            "Required Vulkan extension ", ext->name(), " not supported"));
-          allRequiredEnabled = false;
-        }
+
+        ext->enable(revision);
+      } else if (ext->mode() == DxvkExtMode::Required) {
+        Logger::info(str::format("Required Vulkan extension ", ext->name(), " not supported"));
+        allRequiredEnabled = false;
+        continue;
       }
     }
 

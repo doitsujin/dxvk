@@ -17,6 +17,7 @@ namespace dxvk {
     Disabled,
     Optional,
     Required,
+    Passive,
   };
 
 
