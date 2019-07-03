@@ -205,6 +205,8 @@ namespace dxvk {
       result = this->tryAlloc(req, dedAllocPtr, flags & ~optFlags, priority);
     
     if (!result) {
+      DxvkAdapterMemoryInfo memHeapInfo = m_device->adapter()->getMemoryHeapInfo();
+
       Logger::err(str::format(
         "DxvkMemoryAllocator: Memory allocation failed",
         "\n  Size:      ", req->size,
@@ -216,7 +218,13 @@ namespace dxvk {
         Logger::err(str::format("Heap ", i, ": ",
           (m_memHeaps[i].stats.memoryAllocated >> 20), " MB allocated, ",
           (m_memHeaps[i].stats.memoryUsed      >> 20), " MB used, ",
-          (m_memHeaps[i].properties.size       >> 20), " MB available"));
+          m_device->extensions().extMemoryBudget
+            ? str::format(
+                (memHeapInfo.heaps[i].memoryAllocated >> 20), " MB allocated (driver), ",
+                (memHeapInfo.heaps[i].memoryAvailable >> 20), " MB available (driver), ",
+                (m_memHeaps[i].properties.size        >> 20), " MB total")
+            : str::format(
+                (m_memHeaps[i].properties.size        >> 20), " MB total")));
       }
 
       throw DxvkError("DxvkMemoryAllocator: Memory allocation failed");
