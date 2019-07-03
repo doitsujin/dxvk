@@ -4,12 +4,6 @@
 
 namespace dxvk {
 
-  D3D9Cursor::D3D9Cursor()
-    : m_updatePending( false )
-    , m_pendingX     ( 0 )
-    , m_pendingY     ( 0 ) { }
-
-
   void D3D9Cursor::UpdateCursor(int x, int y, bool immediate) {
     m_updatePending = true;
     m_pendingX = x;
@@ -30,7 +24,33 @@ namespace dxvk {
 
 
   BOOL D3D9Cursor::ShowCursor(BOOL bShow) {
-    return std::exchange(m_updatePending, bShow);
+    ::SetCursor(bShow ? m_hCursor : nullptr);
+    return std::exchange(m_visible, bShow);
+  }
+
+
+  HRESULT D3D9Cursor::SetHardwareCursor(UINT XHotSpot, UINT YHotSpot, const CursorBitmap& bitmap) {
+    DWORD mask[32];
+    std::memset(mask, ~0, sizeof(mask));
+
+    ICONINFO info;
+    info.fIcon    = FALSE;
+    info.xHotspot = XHotSpot;
+    info.yHotspot = YHotSpot;
+    info.hbmMask  = ::CreateBitmap(HardwareCursorWidth, HardwareCursorHeight, 1, 1,  mask);
+    info.hbmColor = ::CreateBitmap(HardwareCursorWidth, HardwareCursorHeight, 1, 32, &bitmap[0]);
+
+    if (m_hCursor != nullptr)
+      ::DestroyCursor(m_hCursor);
+
+    m_hCursor = ::CreateIconIndirect(&info);
+
+    ::DeleteObject(info.hbmMask);
+    ::DeleteObject(info.hbmColor);
+
+    ShowCursor(m_visible);
+
+    return D3D_OK;
   }
 
 }

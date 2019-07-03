@@ -4,11 +4,17 @@
 
 namespace dxvk {
 
+  constexpr uint32_t HardwareCursorWidth     = 32u;
+  constexpr uint32_t HardwareCursorHeight    = 32u;
+  constexpr uint32_t HardwareCursorFormatSize = 4u;
+  constexpr uint32_t HardwareCursorPitch      = HardwareCursorWidth * HardwareCursorFormatSize;
+
+  // Format Size of 4 bytes (ARGB)
+  using CursorBitmap = uint8_t[HardwareCursorHeight * HardwareCursorPitch];
+
   class D3D9Cursor {
 
   public:
-
-    D3D9Cursor();
 
     void UpdateCursor(int x, int y, bool immediate);
 
@@ -16,13 +22,17 @@ namespace dxvk {
 
     BOOL ShowCursor(BOOL bShow);
 
+    HRESULT SetHardwareCursor(UINT XHotSpot, UINT YHotSpot, const CursorBitmap& bitmap);
+
   private:
 
-    bool m_updatePending;
-    int  m_pendingX;
-    int  m_pendingY;
+    bool    m_updatePending = false;
+    int     m_pendingX      = 0;
+    int     m_pendingY      = 0;
 
-    BOOL m_visible;
+    BOOL    m_visible       = FALSE;
+
+    HCURSOR m_hCursor       = nullptr;
 
   };
 

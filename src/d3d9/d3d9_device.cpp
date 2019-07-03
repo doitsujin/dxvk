@@ -182,7 +182,51 @@ namespace dxvk {
           UINT               XHotSpot,
           UINT               YHotSpot,
           IDirect3DSurface9* pCursorBitmap) {
-    Logger::warn("D3D9DeviceEx::SetCursorProperties: Stub");
+    D3D9DeviceLock lock = LockDevice();
+
+    if (unlikely(pCursorBitmap == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    auto* cursorTex = GetCommonTexture(pCursorBitmap);
+    if (unlikely(cursorTex->Desc()->Format != D3D9Format::A8R8G8B8))
+      return D3DERR_INVALIDCALL;
+
+    uint32_t inputWidth  = cursorTex->Desc()->Width;
+    uint32_t inputHeight = cursorTex->Desc()->Height;
+
+    // Always use a hardware cursor when windowed.
+    bool hwCursor  = m_presentParams.Windowed;
+
+    // Always use a hardware cursor w/h <= 32 px
+    hwCursor |= inputWidth  <= HardwareCursorWidth
+             || inputHeight <= HardwareCursorHeight;
+
+    if (hwCursor) {
+      D3DLOCKED_BOX lockedBox;
+      HRESULT hr = LockImage(cursorTex, 0, 0, &lockedBox, nullptr, D3DLOCK_READONLY);
+      if (FAILED(hr))
+        return hr;
+
+      const uint8_t* data  = reinterpret_cast<const uint8_t*>(lockedBox.pBits);
+
+      // Windows works with a stride of 128, lets respect that.
+      // Copy data to the bitmap...
+      CursorBitmap bitmap = { 0 };
+      size_t copyPitch = std::min<size_t>(
+        HardwareCursorPitch,
+        inputWidth * inputHeight * HardwareCursorFormatSize);
+
+      for (uint32_t h = 0; h < HardwareCursorHeight; h++)
+        std::memcpy(&bitmap[h * HardwareCursorPitch], &data[h * lockedBox.RowPitch], copyPitch);
+
+      UnlockImage(cursorTex, 0, 0);
+
+      // Set this as our cursor.
+      return m_cursor.SetHardwareCursor(XHotSpot, YHotSpot, bitmap);
+    }
+
+    // Software Cursor...
+    Logger::warn("D3D9DeviceEx::SetCursorProperties: Software cursor not implemented.");
     return D3D_OK;
   }
 
@@ -196,9 +240,6 @@ namespace dxvk {
 
   BOOL    STDMETHODCALLTYPE D3D9DeviceEx::ShowCursor(BOOL bShow) {
     D3D9DeviceLock lock = LockDevice();
-
-    // This should be a no-op until the application gives us a cursor to set.
-    // Which we currently do not support.
 
     return m_cursor.ShowCursor(bShow);
   }
