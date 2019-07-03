@@ -1669,6 +1669,7 @@ namespace dxvk {
 
         case D3DRS_AMBIENT:
           m_flags.set(D3D9DeviceFlag::DirtyFFVertexData);
+          break;
 
         default:
           static bool s_errorShown[256];
