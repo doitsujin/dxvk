@@ -447,13 +447,17 @@ namespace dxvk {
 
     if (m_vsKey.HasColor0)
       m_vs.in.COLOR[0] = declareIO(true, DxsoSemantic{ DxsoUsage::Color, 0 });
-    else
+    else {
       m_vs.in.COLOR[0] = m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f);
+      m_isgn.elemCount++;
+    }
 
     if (m_vsKey.HasColor1)
       m_vs.in.COLOR[1] = declareIO(true, DxsoSemantic{ DxsoUsage::Color, 1 });
-    else
+    else {
       m_vs.in.COLOR[1] = m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f);
+      m_isgn.elemCount++;
+    }
 
     // Declare Outputs
     m_vs.out.POSITION = declareIO(false, DxsoSemantic{ DxsoUsage::Position, 0 }, spv::BuiltInPosition);
