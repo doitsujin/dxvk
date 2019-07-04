@@ -407,6 +407,18 @@ namespace dxvk {
      */
     void synchronize();
     
+    /**
+     * \brief Checks whether the worker thread is busy
+     * 
+     * Note that this information is only reliable if
+     * only the calling thread dispatches jobs to the
+     * worker queue and if the result is \c false.
+     * \returns \c true if there is still work to do
+     */
+    bool isBusy() const {
+      return m_chunksPending.load() != 0;
+    }
+    
   private:
     
     const Rc<DxvkContext>       m_context;
@@ -416,9 +428,8 @@ namespace dxvk {
     std::condition_variable     m_condOnAdd;
     std::condition_variable     m_condOnSync;
     std::queue<DxvkCsChunkRef>  m_chunksQueued;
+    std::atomic<uint32_t>       m_chunksPending = { 0u };
     dxvk::thread                m_thread;
-    
-    uint32_t                    m_chunksPending = 0;
     
     void threadFunc();
     

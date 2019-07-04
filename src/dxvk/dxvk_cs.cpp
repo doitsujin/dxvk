@@ -127,7 +127,7 @@ namespace dxvk {
     std::unique_lock<std::mutex> lock(m_mutex);
     
     m_condOnSync.wait(lock, [this] {
-      return m_chunksPending == 0;
+      return !m_chunksPending.load();
     });
   }
   
