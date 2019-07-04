@@ -262,8 +262,8 @@ namespace dxvk {
         VK_IMAGE_ASPECT_COLOR_BIT };
 
       case D3D9Format::DXT2: return {
-        VK_FORMAT_BC1_RGBA_UNORM_BLOCK,
-        VK_FORMAT_BC1_RGBA_SRGB_BLOCK,
+        VK_FORMAT_BC2_UNORM_BLOCK,
+        VK_FORMAT_BC2_SRGB_BLOCK,
         VK_IMAGE_ASPECT_COLOR_BIT };
 
       case D3D9Format::DXT3: return {
