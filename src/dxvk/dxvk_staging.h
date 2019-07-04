@@ -16,7 +16,7 @@ namespace dxvk {
    * but also the amount of allocated memory low.
    */
   class DxvkStagingDataAlloc {
-    constexpr static VkDeviceSize MaxBufferSize  = 1 << 24; // 16 MiB
+    constexpr static VkDeviceSize MaxBufferSize  = 1 << 25; // 32 MiB
     constexpr static uint32_t     MaxBufferCount = 2;
   public:
 
