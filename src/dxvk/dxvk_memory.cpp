@@ -402,7 +402,7 @@ namespace dxvk {
     // Pick a reasonable chunk size depending on the memory
     // heap size. Small chunk sizes can reduce fragmentation
     // and are therefore preferred for small memory heaps.
-    constexpr VkDeviceSize MaxChunkSize  = 64 * 1024 * 1024;
+    constexpr VkDeviceSize MaxChunkSize  = 128 << 20;
     constexpr VkDeviceSize MinChunkCount = 16;
 
     return std::min(heapSize / MinChunkCount, MaxChunkSize);
