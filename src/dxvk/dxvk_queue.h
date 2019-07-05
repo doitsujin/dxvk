@@ -15,6 +15,17 @@ namespace dxvk {
   class DxvkDevice;
 
   /**
+   * \brief Submission status
+   * 
+   * Stores the result of a queue
+   * submission or a present call.
+   */
+  struct DxvkSubmitStatus {
+    std::atomic<VkResult> result = { VK_SUCCESS };
+  };
+
+
+  /**
    * \brief Queue submission info
    * 
    * Stores parameters used to submit
@@ -36,6 +47,16 @@ namespace dxvk {
   struct DxvkPresentInfo {
     Rc<vk::Presenter>   presenter;
     VkSemaphore         waitSync;
+  };
+
+
+  /**
+   * \brief Submission queue entry
+   */
+  struct DxvkSubmitEntry {
+    DxvkSubmitStatus*   status;
+    DxvkSubmitInfo      submit;
+    DxvkPresentInfo     present;
   };
 
 
@@ -69,7 +90,7 @@ namespace dxvk {
      * \param [in] submitInfo Submission parameters 
      */
     void submit(
-            DxvkSubmitInfo  submitInfo);
+            DxvkSubmitInfo      submitInfo);
     
     /**
      * \brief Presents an image synchronously
@@ -80,8 +101,19 @@ namespace dxvk {
      * \param [in] present Present parameters
      * \returns Status of the operation
      */
-    VkResult present(
-            DxvkPresentInfo present);
+    void present(
+            DxvkPresentInfo     presentInfo,
+            DxvkSubmitStatus*   status);
+    
+    /**
+     * \brief Synchronizes with one queue submission
+     * 
+     * Waits for the result of the given submission
+     * or present operation to become available.
+     * \param [in,out] status Submission status
+     */
+    void synchronizeSubmission(
+            DxvkSubmitStatus*   status);
     
     /**
      * \brief Synchronizes with queue submissions
@@ -123,8 +155,8 @@ namespace dxvk {
     std::condition_variable m_submitCond;
     std::condition_variable m_finishCond;
 
-    std::queue<DxvkSubmitInfo> m_submitQueue;
-    std::queue<DxvkSubmitInfo> m_finishQueue;
+    std::queue<DxvkSubmitEntry> m_submitQueue;
+    std::queue<DxvkSubmitEntry> m_finishQueue;
 
     dxvk::thread            m_submitThread;
     dxvk::thread            m_finishThread;

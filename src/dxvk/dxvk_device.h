@@ -328,15 +328,17 @@ namespace dxvk {
     /**
      * \brief Presents a swap chain image
      * 
-     * Locks the device queues and invokes the
-     * presenter's \c presentImage method.
+     * Invokes the presenter's \c presentImage method on
+     * the submission thread. The status of this operation
+     * can be retrieved with \ref waitForSubmission.
      * \param [in] presenter The presenter
      * \param [in] semaphore Sync semaphore
-     * \returns Status of the operation
+     * \param [out] status Present status
      */
-    VkResult presentImage(
+    void presentImage(
       const Rc<vk::Presenter>&        presenter,
-            VkSemaphore               semaphore);
+            VkSemaphore               semaphore,
+            DxvkSubmitStatus*         status);
     
     /**
      * \brief Submits a command list
@@ -384,6 +386,14 @@ namespace dxvk {
     uint32_t pendingSubmissions() const {
       return m_submissionQueue.pendingSubmissions();
     }
+
+    /**
+     * \brief Waits for a given submission
+     * 
+     * \param [in,out] status Submission status
+     * \returns Result of the submission
+     */
+    VkResult waitForSubmission(DxvkSubmitStatus* status);
     
     /**
      * \brief Waits until the device becomes idle

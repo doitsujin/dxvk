@@ -306,8 +306,10 @@ namespace dxvk {
         m_context->endRecording(),
         sync.acquire, sync.present);
       
-      status = m_device->presentImage(
-        m_presenter, sync.present);
+      m_device->presentImage(m_presenter,
+        sync.present, &m_presentStatus);
+      
+      status = m_device->waitForSubmission(&m_presentStatus);
       
       if (status != VK_SUCCESS)
         RecreateSwapChain(m_vsync);

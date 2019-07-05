@@ -113,6 +113,8 @@ namespace dxvk {
 
     D3D11Texture2D*         m_backBuffer = nullptr;
 
+    DxvkSubmitStatus        m_presentStatus;
+
     std::vector<Rc<DxvkImageView>> m_imageViews;
 
     bool                    m_dirty = true;

@@ -31,17 +31,34 @@ namespace dxvk {
       return m_submitQueue.size() + m_finishQueue.size() <= MaxNumQueuedCommandBuffers;
     });
 
+    DxvkSubmitEntry entry = { };
+    entry.submit = std::move(submitInfo);
+
     m_pending += 1;
-    m_submitQueue.push(std::move(submitInfo));
+    m_submitQueue.push(std::move(entry));
     m_appendCond.notify_all();
   }
 
 
-  VkResult DxvkSubmissionQueue::present(DxvkPresentInfo presentInfo) {
-    this->synchronize();
-    
-    std::unique_lock<std::mutex> lock(m_mutexQueue);
-    return presentInfo.presenter->presentImage(presentInfo.waitSync);
+  void DxvkSubmissionQueue::present(DxvkPresentInfo presentInfo, DxvkSubmitStatus* status) {
+    std::unique_lock<std::mutex> lock(m_mutex);
+
+    DxvkSubmitEntry entry = { };
+    entry.status  = status;
+    entry.present = std::move(presentInfo);
+
+    m_submitQueue.push(std::move(entry));
+    m_appendCond.notify_all();
+  }
+
+
+  void DxvkSubmissionQueue::synchronizeSubmission(
+          DxvkSubmitStatus*   status) {
+    std::unique_lock<std::mutex> lock(m_mutex);
+
+    m_submitCond.wait(lock, [status] {
+      return status->result.load() != VK_NOT_READY;
+    });
   }
 
 
@@ -77,32 +94,39 @@ namespace dxvk {
       if (m_stopped.load())
         return;
       
-      DxvkSubmitInfo submitInfo = std::move(m_submitQueue.front());
+      DxvkSubmitEntry entry = std::move(m_submitQueue.front());
       lock.unlock();
 
       // Submit command buffer to device
-      VkResult status;
+      VkResult status = VK_NOT_READY;
 
       { std::lock_guard<std::mutex> lock(m_mutexQueue);
 
-        status = submitInfo.cmdList->submit(
-          submitInfo.waitSync,
-          submitInfo.wakeSync);
+        if (entry.submit.cmdList != nullptr) {
+          status = entry.submit.cmdList->submit(
+            entry.submit.waitSync,
+            entry.submit.wakeSync);
+        } else if (entry.present.presenter != nullptr) {
+          status = entry.present.presenter->presentImage(
+            entry.present.waitSync);
+        }
       }
+
+      if (entry.status)
+        entry.status->result = status;
       
       // On success, pass it on to the queue thread
       lock = std::unique_lock<std::mutex>(m_mutex);
 
       if (status == VK_SUCCESS) {
-        m_finishQueue.push(std::move(submitInfo));
-        m_submitQueue.pop();
-        m_submitCond.notify_all();
+        if (entry.submit.cmdList != nullptr)
+          m_finishQueue.push(std::move(entry));
       } else {
-        Logger::err(str::format(
-          "DxvkSubmissionQueue: Command submission failed with ",
-          status));
-        m_pending -= 1;
+        Logger::err(str::format("DxvkSubmissionQueue: Command submission failed: ", status));
       }
+
+      m_submitQueue.pop();
+      m_submitCond.notify_all();
     }
   }
   
@@ -120,16 +144,16 @@ namespace dxvk {
       if (m_stopped.load())
         return;
       
-      DxvkSubmitInfo submitInfo = std::move(m_finishQueue.front());
+      DxvkSubmitEntry entry = std::move(m_finishQueue.front());
       lock.unlock();
       
-      VkResult status = submitInfo.cmdList->synchronize();
+      VkResult status = entry.submit.cmdList->synchronize();
       
       if (status == VK_SUCCESS) {
-        submitInfo.cmdList->signalEvents();
-        submitInfo.cmdList->reset();
+        entry.submit.cmdList->signalEvents();
+        entry.submit.cmdList->reset();
         
-        m_device->recycleCommandList(submitInfo.cmdList);
+        m_device->recycleCommandList(entry.submit.cmdList);
       } else {
         Logger::err(str::format(
           "DxvkSubmissionQueue: Failed to sync fence: ",

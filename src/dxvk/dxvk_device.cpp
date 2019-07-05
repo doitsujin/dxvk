@@ -206,20 +206,19 @@ namespace dxvk {
   }
   
   
-  VkResult DxvkDevice::presentImage(
+  void DxvkDevice::presentImage(
     const Rc<vk::Presenter>&        presenter,
-          VkSemaphore               semaphore) {
+          VkSemaphore               semaphore,
+          DxvkSubmitStatus*         status) {
+    status->result = VK_NOT_READY;
+
     DxvkPresentInfo presentInfo;
     presentInfo.presenter = presenter;
     presentInfo.waitSync  = semaphore;
-    VkResult status = m_submissionQueue.present(presentInfo);
-
-    if (status != VK_SUCCESS)
-      return status;
+    m_submissionQueue.present(presentInfo, status);
     
     std::lock_guard<sync::Spinlock> statLock(m_statLock);
     m_statCounters.addCtr(DxvkStatCounter::QueuePresentCount, 1);
-    return status;
   }
 
 
@@ -236,6 +235,18 @@ namespace dxvk {
     std::lock_guard<sync::Spinlock> statLock(m_statLock);
     m_statCounters.merge(commandList->statCounters());
     m_statCounters.addCtr(DxvkStatCounter::QueueSubmitCount, 1);
+  }
+  
+  
+  VkResult DxvkDevice::waitForSubmission(DxvkSubmitStatus* status) {
+    VkResult result = status->result.load();
+
+    if (result == VK_NOT_READY) {
+      m_submissionQueue.synchronizeSubmission(status);
+      result = status->result.load();
+    }
+
+    return result;
   }
   
   
