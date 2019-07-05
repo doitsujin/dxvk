@@ -334,6 +334,9 @@ namespace dxvk {
     if (unlikely(Subresource >= pResource->CountSubresources()))
       return E_INVALIDARG;
 
+    if (unlikely(pResource->GetMapType(Subresource) != D3D11_MAP(~0u)))
+      return E_OUTOFMEMORY;
+
     pResource->SetMapType(Subresource, MapType);
 
     VkFormat packedFormat = m_parent->LookupPackedFormat(
