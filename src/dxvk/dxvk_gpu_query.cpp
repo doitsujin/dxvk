@@ -112,7 +112,7 @@ namespace dxvk {
     if (result == VK_NOT_READY)
       return DxvkGpuQueryStatus::Pending;
     else if (result != VK_SUCCESS)
-      return DxvkGpuQueryStatus::Failed;;
+      return DxvkGpuQueryStatus::Failed;
     
     // Add numbers to the destination structure
     switch (m_type) {
