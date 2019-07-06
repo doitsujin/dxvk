@@ -552,7 +552,8 @@ namespace dxvk {
     auto DclSampler = [this](
       uint32_t        idx,
       DxsoSamplerType type,
-      bool            depth) {
+      bool            depth,
+      bool            implicit) {
       // Setup our combines sampler.
       DxsoSamplerInfo& sampler = !depth
         ? m_samplers[idx].color[type]
@@ -612,7 +613,7 @@ namespace dxvk {
       DxvkResourceSlot resource;
       resource.slot   = bindingId;
       resource.type   = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-      resource.view   = viewType;
+      resource.view   = implicit ? VK_IMAGE_VIEW_TYPE_MAX_ENUM : viewType;
       resource.access = VK_ACCESS_SHADER_READ_BIT;
       m_resourceSlots.push_back(resource);
     };
@@ -621,16 +622,16 @@ namespace dxvk {
       DxsoSamplerType samplerType = 
         SamplerTypeFromTextureType(type);
 
-      DclSampler(idx, samplerType, false);
+      DclSampler(idx, samplerType, false, false);
       // We could also be depth compared!
-      DclSampler(idx, samplerType, true);
+      DclSampler(idx, samplerType, true, false);
     }
     else {
       // Could be any of these!
       // We will check with the spec constant at sample time.
       for (uint32_t i = 0; i < SamplerTypeCount; i++) {
         for (uint32_t j = 0; j < 2; j++)
-          DclSampler(idx, (DxsoSamplerType)i, j == 1);
+          DclSampler(idx, (DxsoSamplerType)i, j == 1, true);
       }
     }
     

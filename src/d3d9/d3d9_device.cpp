@@ -4650,7 +4650,9 @@ namespace dxvk {
     // For all our pixel shader textures
     if (likely(StateSampler < 16)) {
       const uint32_t offset         = StateSampler * 2;
-      const uint32_t textureType    = uint32_t(commonTex->GetType() - D3DRTYPE_TEXTURE);
+      const uint32_t textureType    = commonTex != nullptr
+                                    ? uint32_t(commonTex->GetType() - D3DRTYPE_TEXTURE)
+                                    : 0;
       const uint32_t textureBitMask = 0b11u       << offset;
       const uint32_t textureBits    = textureType << offset;
 
