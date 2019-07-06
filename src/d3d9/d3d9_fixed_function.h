@@ -48,6 +48,7 @@ namespace dxvk {
         uint16_t     AlphaArg1 : 6;
         uint16_t     AlphaArg2 : 6;
 
+        uint16_t     Type : 2;
         uint16_t     ResultIsTemp : 1;
       } data;
 

@@ -4776,10 +4776,8 @@ namespace dxvk {
       // TODO: if (ps 1.x) ... dont need otherwise
       UpdateSamplerTypes();
     }
-    else {
-      UpdateSamplerTypes();
+    else
       UpdateFixedFunctionPS();
-    }
   }
 
 
@@ -5221,6 +5219,8 @@ namespace dxvk {
         stage.AlphaArg1 = data[D3DTSS_ALPHAARG1];
         stage.AlphaArg2 = data[D3DTSS_ALPHAARG2];
 
+        const uint32_t samplerOffset = i * 2;
+        stage.Type         = (m_samplerTypeBitfield >> samplerOffset) & 0xffu;
         stage.ResultIsTemp = data[D3DTSS_RESULTARG] == D3DTA_TEMP;
       }
 

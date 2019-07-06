@@ -797,12 +797,31 @@ namespace dxvk {
 
     // Samplers
     for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
-      // Only 2D for now...
       auto& sampler = m_ps.samplers[i];
+      D3DRESOURCETYPE type = D3DRESOURCETYPE(m_fsKey.Stages[i].data.Type + D3DRTYPE_TEXTURE);
+
+      spv::Dim dimensionality;
+      VkImageViewType viewType;
+
+      switch (type) {
+        default:
+        case D3DRTYPE_TEXTURE:
+          dimensionality = spv::Dim2D;
+          viewType       = VK_IMAGE_VIEW_TYPE_2D;
+          break;
+        case D3DRTYPE_CUBETEXTURE:
+          dimensionality = spv::DimCube;
+          viewType       = VK_IMAGE_VIEW_TYPE_CUBE;
+          break;
+        case D3DRTYPE_VOLUMETEXTURE:
+          dimensionality = spv::Dim3D;
+          viewType       = VK_IMAGE_VIEW_TYPE_3D;
+          break;
+      }
 
       sampler.typeId = m_module.defImageType(
         m_module.defFloatType(32),
-        spv::Dim2D, 0, 0, 0, 1,
+        dimensionality, 0, 0, 0, 1,
         spv::ImageFormatUnknown);
 
       sampler.typeId = m_module.defSampledImageType(sampler.typeId);
@@ -823,9 +842,9 @@ namespace dxvk {
 
       // Store descriptor info for the shader interface
       DxvkResourceSlot resource;
-      resource.slot = bindingId;
-      resource.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-      resource.view = VK_IMAGE_VIEW_TYPE_2D;
+      resource.slot   = bindingId;
+      resource.type   = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      resource.view   = viewType;
       resource.access = VK_ACCESS_SHADER_READ_BIT;
       m_resourceSlots.push_back(resource);
     }
