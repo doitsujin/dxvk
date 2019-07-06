@@ -4636,6 +4636,19 @@ namespace dxvk {
     D3D9CommonTexture* commonTex =
       GetCommonTexture(m_state.textures[StateSampler]);
 
+    // For all our pixel shader textures
+    if (likely(StateSampler < 16)) {
+      const uint32_t offset = StateSampler * 2;
+      const uint32_t textureType = commonTex != nullptr
+        ? uint32_t(commonTex->GetType() - D3DRTYPE_TEXTURE)
+        : 0;
+      const uint32_t textureBitMask = 0b11u << offset;
+      const uint32_t textureBits = textureType << offset;
+
+      m_samplerTypeBitfield &= ~textureBitMask;
+      m_samplerTypeBitfield |= textureBits;
+    }
+
     if (commonTex == nullptr) {
       EmitCs([
         cColorSlot = colorSlot,
@@ -4645,19 +4658,6 @@ namespace dxvk {
         ctx->bindResourceView(cDepthSlot, nullptr, nullptr);
       });
       return;
-    }
-
-    // For all our pixel shader textures
-    if (likely(StateSampler < 16)) {
-      const uint32_t offset         = StateSampler * 2;
-      const uint32_t textureType    = commonTex != nullptr
-                                    ? uint32_t(commonTex->GetType() - D3DRTYPE_TEXTURE)
-                                    : 0;
-      const uint32_t textureBitMask = 0b11u       << offset;
-      const uint32_t textureBits    = textureType << offset;
-
-      m_samplerTypeBitfield &= ~textureBitMask;
-      m_samplerTypeBitfield |=  textureBits;
     }
 
     const bool depth = commonTex ? commonTex->IsShadow() : false;
