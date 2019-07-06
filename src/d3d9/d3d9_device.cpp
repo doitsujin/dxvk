@@ -3952,7 +3952,8 @@ namespace dxvk {
     // recorded prior to this function will be run
     FlushCsChunk();
 
-    m_csThread.synchronize();
+    if (m_csThread.isBusy())
+      m_csThread.synchronize();
   }
 
 
