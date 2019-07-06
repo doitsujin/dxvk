@@ -4660,12 +4660,10 @@ namespace dxvk {
       return;
     }
 
-    const bool depth = commonTex ? commonTex->IsShadow() : false;
-
     EmitCs([
       cColorSlot = colorSlot,
       cDepthSlot = depthSlot,
-      cDepth     = depth,
+      cDepth     = commonTex->IsShadow(),
       cImageView = commonTex->GetViews().Sample.Pick(srgb)
     ](DxvkContext* ctx) {
       ctx->bindResourceView(cColorSlot, !cDepth ? cImageView : nullptr, nullptr);
