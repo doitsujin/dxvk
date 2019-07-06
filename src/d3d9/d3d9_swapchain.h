@@ -122,16 +122,23 @@ namespace dxvk {
     D3D9Surface*            m_backBuffer = nullptr;
     VkExtent2D              m_presentExtent;
 
+    DxvkSubmitStatus        m_presentStatus;
+
     std::vector<Rc<DxvkImageView>> m_imageViews;
 
     bool                    m_dirty    = true;
     bool                    m_vsync    = true;
+
+    bool                    m_asyncPresent = false;
+
     HWND                    m_window   = nullptr;
     HMONITOR                m_monitor  = nullptr;
 
     WindowState             m_windowState;
 
     void PresentImage(UINT PresentInterval);
+
+    void SynchronizePresent();
 
     void FlushDevice();
 
@@ -151,6 +158,8 @@ namespace dxvk {
     void DestroyGammaTexture();
 
     void CreateHud();
+
+    void InitOptions();
 
     void InitRenderState();
 

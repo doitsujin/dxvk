@@ -44,6 +44,7 @@ namespace dxvk {
     this->numBackBuffers        = config.getOption<int32_t>("d3d9.numBackBuffers", 0);
     this->deferSurfaceCreation  = config.getOption<bool>   ("d3d9.deferSurfaceCreation", false);
     this->hasHazards            = config.getOption<bool>   ("d3d9.hasHazards",           false);
+    this->asyncPresent          = config.getOption<Tristate>("d3d9.asyncPresent", Tristate::Auto);
 
     // This is not necessary on Nvidia.
     if (adapter != nullptr && adapter->matchesDriver(DxvkGpuVendor::Nvidia, VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0))
