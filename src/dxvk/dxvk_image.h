@@ -312,7 +312,9 @@ namespace dxvk {
      * \returns The image view handle
      */
     VkImageView handle(VkImageViewType viewType) const {
-      return m_views[viewType];
+      return viewType != VK_IMAGE_VIEW_TYPE_MAX_ENUM
+        ? m_views[viewType]
+        : m_views[m_info.type];
     }
     
     /**

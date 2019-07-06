@@ -163,6 +163,8 @@ namespace dxvk {
     switch (type) {
       case VK_IMAGE_VIEW_TYPE_1D:         return views->view1D.ptr();
       case VK_IMAGE_VIEW_TYPE_1D_ARRAY:   return views->view1DArr.ptr();
+      // When implicit samplers are unbound -- we assume 2D in the shader.
+      case VK_IMAGE_VIEW_TYPE_MAX_ENUM:
       case VK_IMAGE_VIEW_TYPE_2D:         return views->view2D.ptr();
       case VK_IMAGE_VIEW_TYPE_2D_ARRAY:   return views->view2DArr.ptr();
       case VK_IMAGE_VIEW_TYPE_CUBE:       return views->viewCube.ptr();
