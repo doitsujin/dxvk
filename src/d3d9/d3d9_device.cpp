@@ -3303,6 +3303,8 @@ namespace dxvk {
     // Force this if we end up binding the same RT to make scissor change go into effect.
     BindViewportAndScissor();
 
+    UpdateSamplerSpecConsant();
+
     return D3D_OK;
   }
 
@@ -4645,6 +4647,17 @@ namespace dxvk {
       return;
     }
 
+    // For all our pixel shader textures
+    if (likely(StateSampler < 16)) {
+      const uint32_t offset         = StateSampler * 2;
+      const uint32_t textureType    = uint32_t(commonTex->GetType() - D3DRTYPE_TEXTURE);
+      const uint32_t textureBitMask = 0b11u       << offset;
+      const uint32_t textureBits    = textureType << offset;
+
+      m_samplerTypeBitfield &= ~textureBitMask;
+      m_samplerTypeBitfield |=  textureBits;
+    }
+
     const bool depth = commonTex ? commonTex->IsShadow() : false;
 
     EmitCs([
@@ -4752,10 +4765,21 @@ namespace dxvk {
     if (m_flags.test(D3D9DeviceFlag::DirtyInputLayout))
       BindInputLayout();
 
-    if (likely(UseProgrammablePS()))
+    auto UpdateSamplerTypes = [&]() {
+      if (m_lastSamplerTypeBitfield != m_samplerTypeBitfield)
+        UpdateSamplerSpecConsant();
+    };
+
+    if (likely(UseProgrammablePS())) {
       UploadConstants<DxsoProgramTypes::PixelShader>();
-    else
+
+      // TODO: if (ps 1.x) ... dont need otherwise
+      UpdateSamplerTypes();
+    }
+    else {
+      UpdateSamplerTypes();
       UpdateFixedFunctionPS();
+    }
   }
 
 
@@ -5241,6 +5265,15 @@ namespace dxvk {
 
   bool D3D9DeviceEx::UseProgrammablePS() {
     return m_state.pixelShader != nullptr;
+  }
+
+
+  void D3D9DeviceEx::UpdateSamplerSpecConsant() {
+    EmitCs([cBitfield = m_samplerTypeBitfield](DxvkContext* ctx) {
+      ctx->setSpecConstant(D3D9SpecConstantId::SamplerType, cBitfield);
+    });
+
+    m_lastSamplerTypeBitfield = m_samplerTypeBitfield;
   }
 
 

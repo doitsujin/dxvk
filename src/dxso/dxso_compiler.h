@@ -103,11 +103,30 @@ namespace dxvk {
     uint32_t typeId = 0;
   };
 
+  enum DxsoSamplerType : uint32_t {
+    SamplerTypeTexture2D = 0,
+    SamplerTypeTexture3D = 1,
+    SamplerTypeTextureCube,
+
+    SamplerTypeCount
+  };
+
+  inline auto SamplerTypeFromTextureType(DxsoTextureType type) {
+    switch (type) {
+      default:
+      case DxsoTextureType::Texture2D:   return SamplerTypeTexture2D;   break;
+      case DxsoTextureType::Texture3D:   return SamplerTypeTexture3D;   break;
+      case DxsoTextureType::TextureCube: return SamplerTypeTextureCube; break;
+    }
+  }
+
   struct DxsoSampler {
-    DxsoSamplerInfo color;
-    DxsoSamplerInfo depth;
+    DxsoSamplerInfo color[SamplerTypeCount];
+    DxsoSamplerInfo depth[SamplerTypeCount];
 
     uint32_t depthSpecConst;
+
+    DxsoTextureType type;
   };
 
   struct DxsoAnalysisInfo;
@@ -134,6 +153,7 @@ namespace dxvk {
    */
   struct DxsoCompilerPsPart {
     uint32_t functionId         = 0;
+    uint32_t samplerTypeSpec    = 0;
 
     //////////////
     // Misc Types

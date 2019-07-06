@@ -906,6 +906,8 @@ namespace dxvk {
     D3D9InputAssemblyState          m_iaState;
 
     uint32_t                        m_instancedData   = 0;
+    uint32_t                        m_lastSamplerTypeBitfield = 0;
+    uint32_t                        m_samplerTypeBitfield = 0;
 
     D3D9ViewportInfo                m_viewportInfo;
 
@@ -1020,6 +1022,8 @@ namespace dxvk {
     bool UseProgrammableVS();
 
     bool UseProgrammablePS();
+
+    void UpdateSamplerSpecConsant();
 
   };
 

@@ -317,6 +317,10 @@ namespace dxvk {
       return std::exchange(m_views.Hazardous, true);
     }
 
+    D3DRESOURCETYPE GetType() {
+      return m_type;
+    }
+
   private:
 
     D3D9DeviceEx*                 m_device;

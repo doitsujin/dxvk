@@ -347,6 +347,12 @@ namespace dxvk {
     m_ps.functionId = m_module.allocateId();
     m_module.setDebugName(m_ps.functionId, "ps_main");
 
+    if (m_programInfo.majorVersion() < 2) {
+      m_ps.samplerTypeSpec = m_module.specConst32(m_module.defIntType(32, 0), 0);
+      m_module.decorateSpecId(m_ps.samplerTypeSpec, getSpecId(D3D9SpecConstantId::SamplerType));
+      m_module.setDebugName(m_ps.samplerTypeSpec, "s_sampler_types");
+    }
+
     this->emitFunctionBegin(
       m_ps.functionId,
       m_module.defVoidType(),
@@ -545,31 +551,35 @@ namespace dxvk {
 
     auto DclSampler = [this](
       uint32_t        idx,
-      DxsoTextureType type,
+      DxsoSamplerType type,
       bool            depth) {
       // Setup our combines sampler.
       DxsoSamplerInfo& sampler = !depth
-        ? m_samplers[idx].color
-        : m_samplers[idx].depth;
+        ? m_samplers[idx].color[type]
+        : m_samplers[idx].depth[type];
 
       spv::Dim dimensionality;
       VkImageViewType viewType;
 
+      const char* suffix = "2d";
+
       switch (type) {
         default:
-        case DxsoTextureType::Texture2D:
+        case SamplerTypeTexture2D:
           sampler.dimensions = 2;
           dimensionality = spv::Dim2D;
           viewType = VK_IMAGE_VIEW_TYPE_2D;
           break;
 
-        case DxsoTextureType::TextureCube:
+        case SamplerTypeTextureCube:
+          suffix = "cube";
           sampler.dimensions = 3;
           dimensionality = spv::DimCube;
           viewType = VK_IMAGE_VIEW_TYPE_CUBE;
           break;
 
-        case DxsoTextureType::Texture3D:
+        case SamplerTypeTexture3D:
+          suffix = "3d";
           sampler.dimensions = 3;
           dimensionality = spv::Dim3D;
           viewType = VK_IMAGE_VIEW_TYPE_3D;
@@ -588,7 +598,7 @@ namespace dxvk {
           sampler.typeId, spv::StorageClassUniformConstant),
         spv::StorageClassUniformConstant);
 
-      std::string name = str::format("s", idx, depth ? "_shadow" : "");
+      std::string name = str::format("s", idx, suffix, depth ? "_shadow" : "");
       m_module.setDebugName(sampler.varId, name.c_str());
 
       const uint32_t bindingId = computeResourceSlotId(m_programInfo.type(),
@@ -607,8 +617,23 @@ namespace dxvk {
       m_resourceSlots.push_back(resource);
     };
 
-    DclSampler(idx, type, false);
-    DclSampler(idx, type, true);
+    if (m_programInfo.majorVersion() >= 2) {
+      DxsoSamplerType samplerType = 
+        SamplerTypeFromTextureType(type);
+
+      DclSampler(idx, samplerType, false);
+      // We could also be depth compared!
+      DclSampler(idx, samplerType, true);
+    }
+    else {
+      // Could be any of these!
+      // We will check with the spec constant at sample time.
+      for (uint32_t i = 0; i < SamplerTypeCount; i++) {
+        for (uint32_t j = 0; j < 2; j++)
+          DclSampler(idx, (DxsoSamplerType)i, j == 1);
+      }
+    }
+    
 
     // Declare a specialization constant which will
     // store whether or not the depth view is bound.
@@ -618,6 +643,7 @@ namespace dxvk {
     DxsoSampler& sampler = m_samplers[idx];
 
     sampler.depthSpecConst = m_module.specConstBool(true);
+    sampler.type = type;
     m_module.decorateSpecId(sampler.depthSpecConst, depthBinding);
     m_module.setDebugName(sampler.depthSpecConst,
       str::format("s", idx, "_useShadow").c_str());
@@ -2190,13 +2216,11 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       samplerIdx  = ctx.dst.id.num;
     }
 
-    DxsoSampler sampler = m_samplers.at(samplerIdx);
-
-    if (sampler.color.varId == 0) {
-      Logger::warn("DxsoCompiler::emitTextureSample: Adding implicit 2D sampler");
+    // SM < 1.x does not have dcl sampler type.
+    if (m_programInfo.majorVersion() < 2 && m_samplers[samplerIdx].color[SamplerTypeTexture2D].varId == 0)
       emitDclSampler(samplerIdx, DxsoTextureType::Texture2D);
-      sampler = m_samplers.at(samplerIdx);
-    }
+
+    DxsoSampler sampler = m_samplers.at(samplerIdx);
 
     auto SampleImage = [this, opcode, dst, ctx](DxsoRegisterValue texcoordVar, DxsoSamplerInfo& sampler, bool depth) {
       DxsoRegisterValue result;
@@ -2274,22 +2298,65 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       this->emitDstStore(dst, result, ctx.dst.mask, ctx.dst.saturate, ctx.dst.shift);
     };
 
-    uint32_t colorLabel  = m_module.allocateId();
-    uint32_t depthLabel  = m_module.allocateId();
-    uint32_t endLabel    = m_module.allocateId();
+    auto SampleType = [&](DxsoSamplerType samplerType) {
+      uint32_t colorLabel  = m_module.allocateId();
+      uint32_t depthLabel  = m_module.allocateId();
+      uint32_t endLabel    = m_module.allocateId();
 
-    m_module.opSelectionMerge(endLabel, spv::SelectionControlMaskNone);
-    m_module.opBranchConditional(sampler.depthSpecConst, depthLabel, colorLabel);
+      m_module.opSelectionMerge(endLabel, spv::SelectionControlMaskNone);
+      m_module.opBranchConditional(sampler.depthSpecConst, depthLabel, colorLabel);
 
-    m_module.opLabel(colorLabel);
-    SampleImage(texcoordVar, sampler.color, false);
-    m_module.opBranch(endLabel);
+      m_module.opLabel(colorLabel);
+      SampleImage(texcoordVar, sampler.color[samplerType], false);
+      m_module.opBranch(endLabel);
 
-    m_module.opLabel(depthLabel);
-    SampleImage(texcoordVar, sampler.depth, true);
-    m_module.opBranch(endLabel);
+      m_module.opLabel(depthLabel);
+      SampleImage(texcoordVar, sampler.depth[samplerType], true);
+      m_module.opBranch(endLabel);
 
-    m_module.opLabel(endLabel);
+      m_module.opLabel(endLabel);
+    };
+
+    if (m_programInfo.majorVersion() >= 2) {
+      DxsoSamplerType samplerType =
+        SamplerTypeFromTextureType(sampler.type);
+
+      SampleType(samplerType);
+    }
+    else {
+      std::array<SpirvSwitchCaseLabel, 3> typeCaseLabels = {{
+        { uint32_t(SamplerTypeTexture2D),           m_module.allocateId() },
+        { uint32_t(SamplerTypeTexture3D),           m_module.allocateId() },
+        { uint32_t(SamplerTypeTextureCube),         m_module.allocateId() },
+      }};
+
+      uint32_t switchEndLabel = m_module.allocateId();
+
+      uint32_t typeId = m_module.defIntType(32, 0);
+
+      uint32_t offset  = m_module.constu32(samplerIdx * 2);
+      uint32_t bitCnt  = m_module.constu32(2);
+      uint32_t bits    = m_module.opBitFieldUExtract(typeId, m_ps.samplerTypeSpec, offset, bitCnt);
+      uint32_t type    = samplerIdx == 0
+                         ? bits
+                         : m_module.opShiftRightLogical(typeId, bits, offset);
+
+      m_module.opSelectionMerge(switchEndLabel, spv::SelectionControlMaskNone);
+      m_module.opSwitch(type,
+        typeCaseLabels[uint32_t(SamplerTypeTexture2D)].labelId,
+        typeCaseLabels.size(),
+        typeCaseLabels.data());
+
+      for (const auto& label : typeCaseLabels) {
+        m_module.opLabel(label.labelId);
+
+        SampleType(DxsoSamplerType(label.literal));
+
+        m_module.opBranch(switchEndLabel);
+      }
+
+      m_module.opLabel(switchEndLabel);
+    }
   }
 
   void DxsoCompiler::emitTextureKill(const DxsoInstructionContext& ctx) {
