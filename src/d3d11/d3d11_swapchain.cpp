@@ -196,7 +196,7 @@ namespace dxvk {
 
   void D3D11SwapChain::PresentImage(UINT SyncInterval) {
     // Wait for the sync event so that we respect the maximum frame latency
-    Rc<DxvkEvent> syncEvent = m_dxgiDevice->GetFrameSyncEvent(m_desc.BufferCount);
+    auto syncEvent = m_dxgiDevice->GetFrameSyncEvent(m_desc.BufferCount);
     syncEvent->wait();
     
     if (m_hud != nullptr)
@@ -298,12 +298,8 @@ namespace dxvk {
       if (m_hud != nullptr)
         m_hud->render(m_context, info.imageExtent);
       
-      if (i + 1 >= SyncInterval) {
-        DxvkEventRevision eventRev;
-        eventRev.event    = syncEvent;
-        eventRev.revision = syncEvent->reset();
-        m_context->signalEvent(eventRev);
-      }
+      if (i + 1 >= SyncInterval)
+        m_context->queueSignal(syncEvent);
 
       m_device->submitCommandList(
         m_context->endRecording(),

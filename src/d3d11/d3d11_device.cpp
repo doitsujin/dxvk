@@ -1909,7 +1909,7 @@ namespace dxvk {
     m_wineFactory   (this, &m_d3d11Device),
     m_frameLatencyCap(m_d3d11Device.GetOptions()->maxFrameLatency) {
     for (uint32_t i = 0; i < m_frameEvents.size(); i++)
-      m_frameEvents[i] = new DxvkEvent();
+      m_frameEvents[i] = new sync::Signal(true);
   }
   
   
@@ -2102,7 +2102,7 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkEvent> STDMETHODCALLTYPE D3D11DXGIDevice::GetFrameSyncEvent(UINT BufferCount) {
+  Rc<sync::Signal> STDMETHODCALLTYPE D3D11DXGIDevice::GetFrameSyncEvent(UINT BufferCount) {
     uint32_t frameLatency = m_frameLatency;
     
     if (BufferCount != 0

@@ -530,7 +530,7 @@ namespace dxvk {
     
     void STDMETHODCALLTYPE Trim() final;
     
-    Rc<DxvkEvent> STDMETHODCALLTYPE GetFrameSyncEvent(
+    Rc<sync::Signal> STDMETHODCALLTYPE GetFrameSyncEvent(
             UINT                  BufferCount);
 
     Rc<DxvkDevice> STDMETHODCALLTYPE GetDXVKDevice();
@@ -552,7 +552,7 @@ namespace dxvk {
     uint32_t m_frameLatency    = DefaultFrameLatency;
     uint32_t m_frameId         = 0;
 
-    std::array<Rc<DxvkEvent>, 16> m_frameEvents;
+    std::array<Rc<sync::Signal>, 16> m_frameEvents;
 
     Rc<DxvkDevice> CreateDevice(D3D_FEATURE_LEVEL FeatureLevel);
 
