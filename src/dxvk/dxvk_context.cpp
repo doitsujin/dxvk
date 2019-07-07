@@ -2395,6 +2395,11 @@ namespace dxvk {
   }
 
 
+  void DxvkContext::queueSignal(const Rc<sync::Signal>& signal) {
+    m_cmd->queueSignal(signal);
+  }
+
+
   void DxvkContext::trimStagingBuffers() {
     m_staging.trim();
   }

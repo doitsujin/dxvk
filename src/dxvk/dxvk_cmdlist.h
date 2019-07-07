@@ -11,6 +11,7 @@
 #include "dxvk_lifetime.h"
 #include "dxvk_limits.h"
 #include "dxvk_pipelayout.h"
+#include "dxvk_signal.h"
 #include "dxvk_staging.h"
 #include "dxvk_stats.h"
 
@@ -198,6 +199,23 @@ namespace dxvk {
      */
     void signalEvents() {
       m_eventTracker.signalEvents();
+    }
+
+    /**
+     * \brief Queues signal
+     * 
+     * The signal will be notified once the command
+     * buffer has finished executing on the GPU.
+     */
+    void queueSignal(const Rc<sync::Signal>& signal) {
+      m_signalTracker.add(signal);
+    }
+
+    /**
+     * \brief Notifies signals
+     */
+    void notifySignals() {
+      m_signalTracker.notify();
     }
     
     /**
@@ -769,6 +787,7 @@ namespace dxvk {
     DxvkLifetimeTracker m_resources;
     DxvkDescriptorPoolTracker m_descriptorPoolTracker;
     DxvkEventTracker    m_eventTracker;
+    DxvkSignalTracker   m_signalTracker;
     DxvkGpuEventTracker m_gpuEventTracker;
     DxvkGpuQueryTracker m_gpuQueryTracker;
     DxvkBufferTracker   m_bufferTracker;

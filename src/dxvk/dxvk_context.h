@@ -983,6 +983,17 @@ namespace dxvk {
       const Rc<DxvkGpuQuery>&   query);
     
     /**
+     * \brief Queues a signal
+     * 
+     * The signal will be notified after all
+     * previously submitted commands have
+     * finished execution on the GPU.
+     * \param [in] signal The signal
+     */
+    void queueSignal(
+      const Rc<sync::Signal>&   signal);
+    
+    /**
      * \brief Trims staging buffers
      * 
      * Releases staging buffer resources. Calling

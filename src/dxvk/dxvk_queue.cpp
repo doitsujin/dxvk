@@ -151,6 +151,7 @@ namespace dxvk {
       
       if (status == VK_SUCCESS) {
         entry.submit.cmdList->signalEvents();
+        entry.submit.cmdList->notifySignals();
         entry.submit.cmdList->reset();
         
         m_device->recycleCommandList(entry.submit.cmdList);
