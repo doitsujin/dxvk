@@ -170,7 +170,6 @@ namespace dxvk {
   void DxvkCommandList::reset() {
     // Signal resources and events to
     // avoid stalling main thread
-    m_eventTracker.reset();
     m_signalTracker.reset();
     m_resources.reset();
 

@@ -5,7 +5,6 @@
 #include "dxvk_bind_mask.h"
 #include "dxvk_buffer.h"
 #include "dxvk_descriptor.h"
-#include "dxvk_event.h"
 #include "dxvk_gpu_event.h"
 #include "dxvk_gpu_query.h"
 #include "dxvk_lifetime.h"
@@ -152,16 +151,6 @@ namespace dxvk {
     }
     
     /**
-     * \brief Adds an event revision to track
-     * 
-     * The event will be signaled after the command
-     * buffer has finished executing on the GPU.
-     */
-    void trackEvent(const DxvkEventRevision& event) {
-      m_eventTracker.trackEvent(event);
-    }
-
-    /**
      * \brief Tracks a descriptor pool
      * \param [in] pool The descriptor pool
      */
@@ -191,16 +180,6 @@ namespace dxvk {
       m_gpuQueryTracker.trackQuery(handle);
     }
     
-    /**
-     * \brief Signals tracked events
-     * 
-     * Marks all tracked events as signaled. Call this after
-     * synchronizing with a fence for this command list.
-     */
-    void signalEvents() {
-      m_eventTracker.signalEvents();
-    }
-
     /**
      * \brief Queues signal
      * 
@@ -786,7 +765,6 @@ namespace dxvk {
     DxvkCmdBufferFlags  m_cmdBuffersUsed;
     DxvkLifetimeTracker m_resources;
     DxvkDescriptorPoolTracker m_descriptorPoolTracker;
-    DxvkEventTracker    m_eventTracker;
     DxvkSignalTracker   m_signalTracker;
     DxvkGpuEventTracker m_gpuEventTracker;
     DxvkGpuQueryTracker m_gpuQueryTracker;

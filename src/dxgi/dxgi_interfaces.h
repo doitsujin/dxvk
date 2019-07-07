@@ -11,7 +11,6 @@ namespace dxvk {
   class DxvkAdapter;
   class DxvkBuffer;
   class DxvkDevice;
-  class DxvkEvent;
   class DxvkImage;
 }
 

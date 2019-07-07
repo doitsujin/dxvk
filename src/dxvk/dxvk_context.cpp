@@ -2357,11 +2357,6 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::signalEvent(const DxvkEventRevision& event) {
-    m_cmd->trackEvent(event);
-  }
-
-
   void DxvkContext::signalGpuEvent(const Rc<DxvkGpuEvent>& event) {
     this->spillRenderPass();
     

@@ -5,7 +5,6 @@
 #include "dxvk_cmdlist.h"
 #include "dxvk_context_state.h"
 #include "dxvk_data.h"
-#include "dxvk_event.h"
 #include "dxvk_gpu_event.h"
 #include "dxvk_gpu_query.h"
 #include "dxvk_meta_clear.h"
@@ -948,13 +947,6 @@ namespace dxvk {
      */
     void setBarrierControl(
             DxvkBarrierControlFlags control);
-    
-    /**
-     * \brief Signals an event
-     * \param [in] event The event
-     */
-    void signalEvent(
-      const DxvkEventRevision&  event);
     
     /**
      * \brief Signals a GPU event

@@ -150,7 +150,6 @@ namespace dxvk {
       VkResult status = entry.submit.cmdList->synchronize();
       
       if (status == VK_SUCCESS) {
-        entry.submit.cmdList->signalEvents();
         entry.submit.cmdList->notifySignals();
         entry.submit.cmdList->reset();
         
