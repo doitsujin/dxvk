@@ -2858,9 +2858,9 @@ namespace dxvk {
           pViewports[i].MaxDepth = 0.0f;
         }
       }
+    } else {
+      *pNumViewports = m_state.rs.numViewports;
     }
-    
-    *pNumViewports = m_state.rs.numViewports;
   }
   
   
@@ -2880,9 +2880,9 @@ namespace dxvk {
           pRects[i].bottom = 0;
         }
       }
+    } else {
+      *pNumRects = m_state.rs.numScissors;
     }
-    
-    *pNumRects = m_state.rs.numScissors;
   }
 
 
