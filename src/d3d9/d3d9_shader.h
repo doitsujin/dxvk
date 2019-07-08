@@ -53,12 +53,15 @@ namespace dxvk {
       return m_usedRTs & (1u << index);
     }
 
+    const DxsoProgramInfo& GetInfo() const { return m_info; }
+
   private:
 
     DxsoIsgn              m_isgn;
     uint32_t              m_usedSamplers;
     uint32_t              m_usedRTs;
 
+    DxsoProgramInfo       m_info;
     DxsoShaderMetaInfo    m_meta;
     DxsoDefinedConstants  m_constants;
 

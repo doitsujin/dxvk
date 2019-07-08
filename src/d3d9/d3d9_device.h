@@ -1030,7 +1030,7 @@ namespace dxvk {
 
     bool UseProgrammablePS();
 
-    void UpdateSamplerSpecConsant();
+    void UpdateSamplerSpecConsant(uint32_t value);
 
   };
 

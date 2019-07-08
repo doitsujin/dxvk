@@ -3303,7 +3303,7 @@ namespace dxvk {
     // Force this if we end up binding the same RT to make scissor change go into effect.
     BindViewportAndScissor();
 
-    UpdateSamplerSpecConsant();
+    UpdateSamplerSpecConsant(0u);
 
     return D3D_OK;
   }
@@ -4768,19 +4768,24 @@ namespace dxvk {
     if (m_flags.test(D3D9DeviceFlag::DirtyInputLayout))
       BindInputLayout();
 
-    auto UpdateSamplerTypes = [&]() {
-      if (m_lastSamplerTypeBitfield != m_samplerTypeBitfield)
-        UpdateSamplerSpecConsant();
+    auto UpdateSamplerTypes = [&](uint32_t value) {
+      if (m_lastSamplerTypeBitfield != value)
+        UpdateSamplerSpecConsant(value);
     };
 
     if (likely(UseProgrammablePS())) {
       UploadConstants<DxsoProgramTypes::PixelShader>();
 
-      // TODO: if (ps 1.x) ... dont need otherwise
-      UpdateSamplerTypes();
+      if (GetCommonShader(m_state.pixelShader)->GetInfo().majorVersion() >= 2)
+        UpdateSamplerTypes(0u);
+      else
+        UpdateSamplerTypes(m_samplerTypeBitfield); // For implicit samplers...
     }
-    else
+    else {
+      UpdateSamplerTypes(0u);
+
       UpdateFixedFunctionPS();
+    }
   }
 
 
@@ -5282,12 +5287,12 @@ namespace dxvk {
   }
 
 
-  void D3D9DeviceEx::UpdateSamplerSpecConsant() {
-    EmitCs([cBitfield = m_samplerTypeBitfield](DxvkContext* ctx) {
+  void D3D9DeviceEx::UpdateSamplerSpecConsant(uint32_t value) {
+    EmitCs([cBitfield = value](DxvkContext* ctx) {
       ctx->setSpecConstant(D3D9SpecConstantId::SamplerType, cBitfield);
     });
 
-    m_lastSamplerTypeBitfield = m_samplerTypeBitfield;
+    m_lastSamplerTypeBitfield = value;
   }
 
 

@@ -55,6 +55,7 @@ namespace dxvk {
     m_usedSamplers = pModule->usedSamplers();
     m_usedRTs      = pModule->usedRTs();
 
+    m_info      = pModule->info();
     m_meta      = pModule->meta();
     m_constants = pModule->constants();
 
