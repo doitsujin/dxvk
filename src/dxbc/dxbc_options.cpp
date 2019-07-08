@@ -43,10 +43,12 @@ namespace dxvk {
     if (DxvkGpuVendor(devInfo.core.properties.vendorID) != DxvkGpuVendor::Amd)
       constantBufferRangeCheck = options.constantBufferRangeCheck;
     
-    // Disable early discard on RADV due to GPU hangs
+    // Disable early discard on RADV (with LLVM) due to GPU hangs
     // Disable early discard on Nvidia because it may hurt performance
-    if (adapter->matchesDriver(DxvkGpuVendor::Amd,    VK_DRIVER_ID_MESA_RADV_KHR,          0, 0)
-     || adapter->matchesDriver(DxvkGpuVendor::Nvidia, VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0))
+    bool isRadvAco = std::string(devInfo.core.properties.deviceName).find("RADV/ACO") != std::string::npos;
+
+    if ((adapter->matchesDriver(DxvkGpuVendor::Amd,    VK_DRIVER_ID_MESA_RADV_KHR,          0, 0) && !isRadvAco)
+     || (adapter->matchesDriver(DxvkGpuVendor::Nvidia, VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0)))
       useSubgroupOpsForEarlyDiscard = false;
     
     // Disable atomic counters on older RADV versions
