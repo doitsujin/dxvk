@@ -2879,9 +2879,8 @@ namespace dxvk {
           pRects[i].bottom = 0;
         }
       }
-    }
-    
-    *pNumRects = m_state.rs.numScissors;
+    } else
+      *pNumRects = m_state.rs.numScissors;
   }
 
 
