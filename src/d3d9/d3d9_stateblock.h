@@ -319,7 +319,7 @@ namespace dxvk {
 
     D3D9CapturableState* m_deviceState;
 
-    bool                 m_applying;
+    bool                 m_applying = false;
 
   };
 
