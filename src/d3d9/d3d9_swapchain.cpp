@@ -368,7 +368,7 @@ namespace dxvk {
 
   void D3D9SwapChainEx::PresentImage(UINT SyncInterval) {
     // Wait for the sync event so that we respect the maximum frame latency
-    Rc<DxvkEvent> syncEvent = m_parent->GetFrameSyncEvent(m_presentParams.BackBufferCount);
+    auto syncEvent = m_parent->GetFrameSyncEvent(m_presentParams.BackBufferCount);
     syncEvent->wait();
     
     if (m_hud != nullptr)
@@ -467,12 +467,8 @@ namespace dxvk {
       if (m_hud != nullptr)
         m_hud->render(m_context, info.imageExtent);
       
-      if (i + 1 >= SyncInterval) {
-        DxvkEventRevision eventRev;
-        eventRev.event    = syncEvent;
-        eventRev.revision = syncEvent->reset();
-        m_context->signalEvent(eventRev);
-      }
+      if (i + 1 >= SyncInterval)
+        m_context->queueSignal(syncEvent);
 
       m_device->submitCommandList(
         m_context->endRecording(),

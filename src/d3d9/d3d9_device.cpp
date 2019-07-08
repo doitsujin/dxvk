@@ -60,7 +60,7 @@ namespace dxvk {
     m_frameLatencyCap  = m_d3d9Options.maxFrameLatency;
 
     for (uint32_t i = 0; i < m_frameEvents.size(); i++)
-      m_frameEvents[i] = new DxvkEvent();
+      m_frameEvents[i] = new sync::Signal(true);
 
     EmitCs([
       cDevice = m_dxvkDevice
@@ -3427,7 +3427,7 @@ namespace dxvk {
   }
 
 
-  Rc<DxvkEvent> D3D9DeviceEx::GetFrameSyncEvent(UINT BufferCount) {
+  Rc<sync::Signal> D3D9DeviceEx::GetFrameSyncEvent(UINT BufferCount) {
     uint32_t frameLatency = m_frameLatency;
 
     if (BufferCount != 0

@@ -635,7 +635,7 @@ namespace dxvk {
       return m_dxvkDevice;
     }
 
-    Rc<DxvkEvent> GetFrameSyncEvent(UINT BufferCount);
+    Rc<sync::Signal> GetFrameSyncEvent(UINT BufferCount);
 
     D3D9_VK_FORMAT_MAPPING LookupFormat(
       D3D9Format            Format) const;
@@ -826,7 +826,7 @@ namespace dxvk {
     uint32_t                        m_frameLatencyCap;
     uint32_t                        m_frameLatency;
     uint32_t                        m_frameId = 0;
-    std::array<Rc<DxvkEvent>,
+    std::array<Rc<sync::Signal>,
       MaxFrameLatency>              m_frameEvents;
 
     D3D9Initializer*                m_initializer = nullptr;
