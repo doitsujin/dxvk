@@ -280,15 +280,15 @@ namespace dxvk {
     // Constant buffer deffed mappings
     std::array<
       DxsoRegisterPointer,
-      256> m_cFloat;
+      caps::MaxFloatConstantsSoftware> m_cFloat;
 
     std::array<
       DxsoRegisterPointer,
-      16> m_cInt;
+      caps::MaxOtherConstantsSoftware> m_cInt;
 
     std::array<
       DxsoRegisterPointer,
-      16> m_cBool;
+      caps::MaxOtherConstantsSoftware> m_cBool;
 
     //////////////////////
     // Loop counter

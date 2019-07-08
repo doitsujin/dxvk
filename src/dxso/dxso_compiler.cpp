@@ -740,18 +740,22 @@ namespace dxvk {
       switch (type) {
         case DxsoRegisterType::Const:
           m_meta.maxConstIndexF = std::max(m_meta.maxConstIndexF, reg.id.num + 1);
+          // TODO: Remove me for proper SWVP impl.
+          m_meta.maxConstIndexF = std::min(m_meta.maxConstIndexF, getFloatConstantCount());
           if (m_cFloat.at(reg.id.num).id != 0)
             return m_cFloat.at(reg.id.num);
           break;
         
         case DxsoRegisterType::ConstInt:
           m_meta.maxConstIndexI = std::max(m_meta.maxConstIndexI, reg.id.num + 1);
+          m_meta.maxConstIndexI = std::min(m_meta.maxConstIndexI, caps::MaxOtherConstants);
           if (m_cInt.at(reg.id.num).id != 0)
             return m_cInt.at(reg.id.num);
           break;
         
         case DxsoRegisterType::ConstBool:
           m_meta.maxConstIndexB = std::max(m_meta.maxConstIndexB, reg.id.num + 1);
+          m_meta.maxConstIndexB = std::min(m_meta.maxConstIndexB, caps::MaxOtherConstants);
           if (m_cBool.at(reg.id.num).id != 0) // Const Bool
             return m_cBool.at(reg.id.num);
           break;
