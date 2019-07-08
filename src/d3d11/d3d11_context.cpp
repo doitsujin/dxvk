@@ -2858,9 +2858,8 @@ namespace dxvk {
           pViewports[i].MaxDepth = 0.0f;
         }
       }
-    }
-    
-    *pNumViewports = m_state.rs.numViewports;
+    } else
+      *pNumViewports = m_state.rs.numViewports;
   }
   
   
