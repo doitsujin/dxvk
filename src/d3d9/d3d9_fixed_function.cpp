@@ -515,7 +515,7 @@ namespace dxvk {
       };
 
       auto GetArg = [&] (uint32_t arg) {
-        uint32_t reg = m_module.constvec4f32(0,0,0,0);
+        uint32_t reg = m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f);
 
         switch (arg & D3DTA_SELECTMASK) {
           case D3DTA_CONSTANT:
