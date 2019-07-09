@@ -291,11 +291,17 @@ namespace dxvk {
       gl_Position = m_module.opFMul(m_vec4Type, gl_Position, m_vs.constants.invExtent);
       gl_Position = m_module.opFAdd(m_vec4Type, gl_Position, m_vs.constants.invOffset);
 
-      // Set W to 1.
-      // TODO: Is this the correct solution?
-      // other implementations do not do this...
+      // We still need to account for perspective correction here...
+
+      // gl_Position.w    = 1.0f / gl_Position.w
+      // gl_Position.xyz *= gl_Position.w;
+
       const uint32_t wIndex = 3;
-      gl_Position  = m_module.opCompositeInsert(m_vec4Type, m_module.constf32(1.0f), gl_Position, 1, &wIndex);
+
+      uint32_t w   = m_module.opCompositeExtract (m_floatType, gl_Position, 1, &wIndex);      // w = gl_Position.w
+      uint32_t rhw = m_module.opFDiv             (m_floatType, m_module.constf32(1.0f), w);   // rhw = 1.0f / w
+      gl_Position  = m_module.opVectorTimesScalar(m_vec4Type,  gl_Position, rhw);             // gl_Position.xyz *= rhw
+      gl_Position  = m_module.opCompositeInsert  (m_vec4Type,  rhw, gl_Position, 1, &wIndex); // gl_Position.w = rhw
     }
 
     m_module.opStore(m_vs.out.POSITION, gl_Position);
