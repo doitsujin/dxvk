@@ -306,8 +306,10 @@ namespace dxvk {
 
     m_module.opStore(m_vs.out.POSITION, gl_Position);
 
-    for (uint32_t i = 0; i < caps::TextureStageCount; i++)
-      m_module.opStore(m_vs.out.TEXCOORD[i], m_vs.in.TEXCOORD[i]);
+    for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
+      uint32_t inputIndex = m_vsKey.TexcoordIndices[i];
+      m_module.opStore(m_vs.out.TEXCOORD[i], m_vs.in.TEXCOORD[inputIndex]);
+    }
 
     if (m_vsKey.UseLighting) {
       auto PickSource = [&](D3DMATERIALCOLORSOURCE Source, uint32_t Material) {
@@ -1099,6 +1101,7 @@ namespace dxvk {
 
     std::hash<bool>                   bhash;
     std::hash<D3DMATERIALCOLORSOURCE> colorSourceHash;
+    std::hash<uint8_t>                uint8hash;
 
     state.add(bhash(key.HasPositionT));
     state.add(bhash(key.HasColor0));
@@ -1109,6 +1112,9 @@ namespace dxvk {
     state.add(colorSourceHash(key.AmbientSource));
     state.add(colorSourceHash(key.SpecularSource));
     state.add(colorSourceHash(key.EmissiveSource));
+
+    for (auto index : key.TexcoordIndices)
+      state.add(uint8hash(index));
 
     return state;
   }

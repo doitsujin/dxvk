@@ -1831,7 +1831,10 @@ namespace dxvk {
       return m_recorder->SetTextureStageState(Stage, Type, Value);
 
     if (likely(m_state.textureStages[Stage][Type] != Value)) {
-      m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
+      if (Stage != D3DTSS_TEXCOORDINDEX)
+        m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
+      else
+        m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
       m_state.textureStages[Stage][Type] = Value;
     }
 
@@ -5116,6 +5119,9 @@ namespace dxvk {
       key.AmbientSource  = D3DMATERIALCOLORSOURCE(m_state.renderStates[D3DRS_AMBIENTMATERIALSOURCE]  & mask);
       key.SpecularSource = D3DMATERIALCOLORSOURCE(m_state.renderStates[D3DRS_SPECULARMATERIALSOURCE] & mask);
       key.EmissiveSource = D3DMATERIALCOLORSOURCE(m_state.renderStates[D3DRS_EMISSIVEMATERIALSOURCE] & mask);
+
+      for (uint32_t i = 0; i < key.TexcoordIndices.size(); i++)
+        key.TexcoordIndices[i] = m_state.textureStages[i][D3DTSS_TEXCOORDINDEX];
 
       EmitCs([
         this,

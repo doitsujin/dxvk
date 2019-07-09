@@ -31,6 +31,8 @@ namespace dxvk {
     D3DMATERIALCOLORSOURCE AmbientSource;
     D3DMATERIALCOLORSOURCE SpecularSource;
     D3DMATERIALCOLORSOURCE EmissiveSource;
+
+    std::array<uint8_t, caps::TextureStageCount> TexcoordIndices;
   };
 
   constexpr uint32_t TextureArgCount = 3;
