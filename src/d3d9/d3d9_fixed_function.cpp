@@ -506,12 +506,16 @@ namespace dxvk {
         return texture;
       };
 
+      auto ScalarReplicate = [&](uint32_t reg) {
+        std::array<uint32_t, 4> replicant = { reg, reg, reg, reg };
+        return m_module.opCompositeConstruct(m_vec4Type, replicant.size(), replicant.data());
+      };
+
       auto AlphaReplicate = [&](uint32_t reg) {
         uint32_t alphaComponentId = 3;
         uint32_t alpha = m_module.opCompositeExtract(m_floatType, reg, 1, &alphaComponentId);
 
-        std::array<uint32_t, 4> replicant = { alpha, alpha, alpha, alpha };
-        return m_module.opCompositeConstruct(m_vec4Type, replicant.size(), replicant.data());
+        return ScalarReplicate(alpha);
       };
 
       auto Complement = [&](uint32_t reg) {
@@ -661,9 +665,30 @@ namespace dxvk {
             Logger::warn("D3DTOP_BUMPENVMAPLUMINANCE: not implemented");
             break;
 
-          case D3DTOP_DOTPRODUCT3:
-            Logger::warn("D3DTOP_DOTPRODUCT3: not implemented");
+          case D3DTOP_DOTPRODUCT3: {
+            // Get vec3 of arg1 & 2
+            uint32_t vec3Type = m_module.defVectorType(m_floatType, 3);
+            std::array<uint32_t, 3> indices = { 0, 1, 2 };
+            arg[1] = m_module.opCompositeExtract(vec3Type, arg[1], indices.size(), indices.data());
+            arg[2] = m_module.opCompositeExtract(vec3Type, arg[2], indices.size(), indices.data());
+
+            // Bias according to spec.
+            arg[1] = m_module.opFSub(vec3Type, arg[1], m_module.constvec3f32(-0.5f, -0.5f, -0.5f));
+            arg[2] = m_module.opFSub(vec3Type, arg[2], m_module.constvec3f32(-0.5f, -0.5f, -0.5f));
+
+            // Do the dotting!
+            dst = ScalarReplicate(m_module.opDot(m_floatType, arg[1], arg[2]));
+
+            // *= 4.0f
+            dst = m_module.opFMul(m_vec4Type, dst, m_module.constvec4f32(4.0f, 4.0f, 4.0f, 4.0f));
+
+            // Saturate
+            dst = m_module.opFClamp(m_vec4Type, dst,
+              m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f),
+              m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f));
+
             break;
+          }
 
           case D3DTOP_MULTIPLYADD:
             dst = m_module.opFFma(m_vec4Type, arg[1], arg[2], arg[0]);
