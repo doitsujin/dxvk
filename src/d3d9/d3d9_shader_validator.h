@@ -8,12 +8,22 @@ namespace dxvk {
 
   public:
 
-    virtual LONG STDMETHODCALLTYPE Begin(void* pCallback, void* pUnknown1, ULONG Unknown2) = 0;
-    virtual LONG STDMETHODCALLTYPE Instruction(const char* pUnknown1, UINT Unknown2, const UINT* Unknown3, UINT Unknown4) = 0;
-    virtual LONG STDMETHODCALLTYPE End() = 0;
+    virtual HRESULT STDMETHODCALLTYPE Begin(
+            void* pCallback,
+            void* pUserParam,
+            DWORD Unknown) = 0;
+
+    virtual HRESULT STDMETHODCALLTYPE Instruction(
+      const char*  pUnknown1,
+            UINT   Unknown2,
+      const DWORD* pInstruction,
+            DWORD  InstructionLength) = 0;
+
+    virtual HRESULT STDMETHODCALLTYPE End() = 0;
+
   };
 
-  class D3D9ShaderValidator : public ComObjectClamp<IDirect3DShaderValidator9> {
+  class D3D9ShaderValidator final : public ComObjectClamp<IDirect3DShaderValidator9> {
 
   public:
 
@@ -21,14 +31,37 @@ namespace dxvk {
       if (ppvObject == nullptr)
         return E_POINTER;
 
-      // I don't know the UUID of this... It's all undocumented. :P
       *ppvObject = ref(this);
       return S_OK;
     }
 
-    LONG STDMETHODCALLTYPE Begin(void* pCallback, void* pUnknown1, ULONG Unknown2) { return 1; }
-    LONG STDMETHODCALLTYPE Instruction(const char* pUnknown1, UINT Unknown2, const UINT* Unknown3, UINT Unknown4) { return 1; }
-    LONG STDMETHODCALLTYPE End() { return 1; }
+
+    HRESULT STDMETHODCALLTYPE Begin(
+            void* pCallback,
+            void* pUserParam,
+            DWORD Unknown) {
+      Logger::debug("D3D9ShaderValidator::Begin: Stub");
+
+      return D3D_OK;
+    }
+
+
+    HRESULT STDMETHODCALLTYPE Instruction(
+      const char*  pUnknown1,
+            UINT   Unknown2,
+      const DWORD* pInstruction,
+            DWORD  InstructionLength) {
+      Logger::debug("D3D9ShaderValidator::Instruction: Stub");
+
+      return D3D_OK;
+    }
+
+
+    HRESULT STDMETHODCALLTYPE End() {
+      Logger::debug("D3D9ShaderValidator::End: Stub");
+
+      return D3D_OK;
+    }
 
   };
 
