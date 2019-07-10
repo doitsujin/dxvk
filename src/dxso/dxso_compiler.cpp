@@ -1322,6 +1322,14 @@ namespace dxvk {
     // Load operand from the operand pointer
     DxsoRegisterValue result = emitRegisterLoadRaw(reg, relative);
 
+    // PS 1.x clamps float constants
+    if (m_programInfo.type() == DxsoProgramType::PixelShader && m_programInfo.majorVersion() == 1
+      && reg.id.type == DxsoRegisterType::Const) {
+      result.id = m_module.opFClamp(getVectorTypeId(result.type), result.id,
+        m_module.constvec4f32(-1.0f, -1.0f, -1.0f, -1.0f),
+        m_module.constvec4f32( 1.0f,  1.0f,  1.0f,  1.0f));
+    }
+
     // Apply operand swizzle to the operand value
     result = emitRegisterSwizzle(result, reg.swizzle, writeMask);
 
