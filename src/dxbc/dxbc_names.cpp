@@ -428,4 +428,18 @@ namespace dxvk {
     }
   }
 
+  std::ostream& operator << (std::ostream& os, dxvk::DxbcScalarType e) {
+    switch (e) {
+      ENUM_NAME(DxbcScalarType::Uint32);
+      ENUM_NAME(DxbcScalarType::Uint64);
+      ENUM_NAME(DxbcScalarType::Sint32);
+      ENUM_NAME(DxbcScalarType::Sint64);
+      ENUM_NAME(DxbcScalarType::Float32);
+      ENUM_NAME(DxbcScalarType::Float64);
+      ENUM_NAME(DxbcScalarType::Bool);
+      ENUM_DEFAULT(e);
+    }
+  }
+
+
 } //namespace dxvk

@@ -21,5 +21,6 @@ namespace dxvk {
   std::ostream& operator << (std::ostream& os, DxbcSystemValue e);
   std::ostream& operator << (std::ostream& os, DxbcProgramType e);
   std::ostream& operator << (std::ostream& os, DxbcCustomDataClass e);
+  std::ostream& operator << (std::ostream& os, DxbcScalarType e);
 
 } // namespace dxvk
