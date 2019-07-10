@@ -32,6 +32,21 @@ namespace dxvk {
       spv::SourceLanguageUnknown, 0,
       m_module.addDebugString(fileName.c_str()),
       nullptr);
+
+    if (Logger::logLevel() <= LogLevel::Debug) {
+      if (m_isgn != nullptr) {
+        Logger::debug(str::format("Input Signature for - ", fileName.c_str(), "\n"));
+        m_isgn->printEntries();
+      }
+      if (m_osgn != nullptr) {
+        Logger::debug(str::format("Output Signature for - ", fileName.c_str(), "\n"));
+        m_osgn->printEntries();
+      }
+      if (m_psgn != nullptr) {
+        Logger::debug(str::format("Patch Constant Signature for - ", fileName.c_str(), "\n"));
+        m_psgn->printEntries();
+      }
+    }
     
     // Set the memory model. This is the same for all shaders.
     m_module.setMemoryModel(
