@@ -515,7 +515,8 @@ namespace dxvk {
 
     DxsoRegisterValue emitSrcOperandModifiers(
             DxsoRegisterValue       value,
-            DxsoRegModifier         modifier);
+            DxsoRegModifier         modifier,
+            DxsoRegMask             writeMask);
 
     DxsoRegisterValue emitRegisterSwizzle(
             DxsoRegisterValue       value,

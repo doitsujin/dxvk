@@ -1250,7 +1250,8 @@ namespace dxvk {
 
   DxsoRegisterValue DxsoCompiler::emitSrcOperandModifiers(
             DxsoRegisterValue       value,
-            DxsoRegModifier         modifier) {
+            DxsoRegModifier         modifier,
+            DxsoRegMask             writeMask) {
     // r - 0.5
     if (modifier == DxsoRegModifier::Bias
      || modifier == DxsoRegModifier::BiasNeg) {
@@ -1310,15 +1311,25 @@ namespace dxvk {
     // r / r.w
     if (modifier == DxsoRegModifier::Dz
      || modifier == DxsoRegModifier::Dw) {
-      const uint32_t index = modifier == DxsoRegModifier::Dz ? 2 : 3;
+      const uint32_t baseIndex = modifier == DxsoRegModifier::Dz ? 2 : 3;
 
-      std::array<uint32_t, 4> indices = { index, index, index, index };
+      uint32_t index = baseIndex;
+      for (uint32_t i = 0; i < baseIndex; i++) {
+        if (!writeMask[i])
+          index--;
+      }
 
-      uint32_t component = m_module.opVectorShuffle(
-        getVectorTypeId(value.type), value.id, value.id, value.type.ccount, indices.data());
+      // Catch overflow which in our case
+      // means a no-op...
+      if (index <= baseIndex) {
+        std::array<uint32_t, 4> indices = { index, index, index, index };
 
-      value.id = m_module.opFDiv(
-        getVectorTypeId(value.type), value.id, component);
+        uint32_t component = m_module.opVectorShuffle(
+          getVectorTypeId(value.type), value.id, value.id, value.type.ccount, indices.data());
+
+        value.id = m_module.opFDiv(
+          getVectorTypeId(value.type), value.id, component);
+      }
     }
 
     // -r
@@ -1357,7 +1368,7 @@ namespace dxvk {
     result = emitRegisterSwizzle(result, reg.swizzle, writeMask);
 
     // Apply operand modifiers
-    result = emitSrcOperandModifiers(result, reg.modifier);
+    result = emitSrcOperandModifiers(result, reg.modifier, writeMask);
     return result;
   }
 
