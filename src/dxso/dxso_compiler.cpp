@@ -160,6 +160,11 @@ namespace dxvk {
     case DxsoOpcode::TexKill:
       return this->emitTextureKill(ctx);
 
+    case DxsoOpcode::TexM3x3Pad:
+    case DxsoOpcode::TexM3x2Pad:
+      // We don't need to do anything here, these are just padding instructions
+      break;
+
     case DxsoOpcode::End:
     case DxsoOpcode::Comment:
       break;
