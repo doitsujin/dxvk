@@ -2231,10 +2231,21 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     texcoord.id.type = DxsoRegisterType::PixelTexcoord;
     texcoord.id.num  = ctx.dst.id.num;
 
+    DxsoRegisterValue value = emitRegisterLoadRaw(texcoord, nullptr);
+    // Saturate
+    value.id = m_module.opFClamp(getVectorTypeId(value.type), value.id,
+      m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f),
+      m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f));
+    // w = 1.0f
+    uint32_t wIndex = 3;
+    value.id = m_module.opCompositeInsert(getVectorTypeId(value.type),
+      m_module.constf32(1.0f),
+      value.id,
+      1, &wIndex);
+
     DxsoRegisterPointer dst = emitGetOperandPtr(ctx.dst);
     m_module.opStore(
-      dst.id,
-      emitRegisterLoadRaw(texcoord, nullptr).id);
+      dst.id, value.id);
   }
 
   void DxsoCompiler::emitTextureSample(const DxsoInstructionContext& ctx) {
