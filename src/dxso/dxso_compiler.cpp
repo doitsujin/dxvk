@@ -1251,6 +1251,29 @@ namespace dxvk {
   DxsoRegisterValue DxsoCompiler::emitSrcOperandModifiers(
             DxsoRegisterValue       value,
             DxsoRegModifier         modifier) {
+    // r - 0.5
+    if (modifier == DxsoRegModifier::Bias
+     || modifier == DxsoRegModifier::BiasNeg) {
+      uint32_t halfVec = m_module.constfReplicant(
+        0.5f, value.type.ccount);
+
+      value.id = m_module.opFSub(
+        getVectorTypeId(value.type), value.id, halfVec);
+    }
+
+    // fma(r, 2.0f, -1.0f)
+    if (modifier == DxsoRegModifier::Sign
+     || modifier == DxsoRegModifier::SignNeg) {
+      uint32_t twoVec = m_module.constfReplicant(
+        2.0f, value.type.ccount);
+
+      uint32_t minusOneVec = m_module.constfReplicant(
+        -1.0f, value.type.ccount);
+
+      value.id = m_module.opFFma(
+        getVectorTypeId(value.type), value.id, twoVec, minusOneVec);
+    }
+
     // 1 - r
     if (modifier == DxsoRegModifier::Comp) {
       uint32_t oneVec = m_module.constfReplicant(
