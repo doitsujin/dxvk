@@ -513,10 +513,13 @@ namespace dxvk {
             DxsoRegisterValue       value,
             uint32_t size);
 
-    DxsoRegisterValue emitSrcOperandModifiers(
+    DxsoRegisterValue emitSrcOperandPreSwizzleModifiers(
             DxsoRegisterValue       value,
-            DxsoRegModifier         modifier,
-            DxsoRegMask             writeMask);
+            DxsoRegModifier         modifier);
+
+    DxsoRegisterValue emitSrcOperandPostSwizzleModifiers(
+            DxsoRegisterValue       value,
+            DxsoRegModifier         modifier);
 
     DxsoRegisterValue emitRegisterSwizzle(
             DxsoRegisterValue       value,

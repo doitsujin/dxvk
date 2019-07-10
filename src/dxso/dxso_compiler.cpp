@@ -1248,10 +1248,32 @@ namespace dxvk {
     return result;
   }
 
-  DxsoRegisterValue DxsoCompiler::emitSrcOperandModifiers(
+
+  DxsoRegisterValue DxsoCompiler::emitSrcOperandPreSwizzleModifiers(
             DxsoRegisterValue       value,
-            DxsoRegModifier         modifier,
-            DxsoRegMask             writeMask) {
+            DxsoRegModifier         modifier) {
+    // r / r.z
+    // r / r.w
+    if (modifier == DxsoRegModifier::Dz
+     || modifier == DxsoRegModifier::Dw) {
+      const uint32_t index = modifier == DxsoRegModifier::Dz ? 2 : 3;
+
+      std::array<uint32_t, 4> indices = { index, index, index, index };
+
+      uint32_t component = m_module.opVectorShuffle(
+        getVectorTypeId(value.type), value.id, value.id, value.type.ccount, indices.data());
+
+      value.id = m_module.opFDiv(
+        getVectorTypeId(value.type), value.id, component);
+    }
+
+    return value;
+  }
+
+
+  DxsoRegisterValue DxsoCompiler::emitSrcOperandPostSwizzleModifiers(
+            DxsoRegisterValue       value,
+            DxsoRegModifier         modifier) {
     // r - 0.5
     if (modifier == DxsoRegModifier::Bias
      || modifier == DxsoRegModifier::BiasNeg) {
@@ -1307,31 +1329,6 @@ namespace dxvk {
         m_module.opLogicalNot(getVectorTypeId(value.type), value.id);
     }
 
-    // r / r.z
-    // r / r.w
-    if (modifier == DxsoRegModifier::Dz
-     || modifier == DxsoRegModifier::Dw) {
-      const uint32_t baseIndex = modifier == DxsoRegModifier::Dz ? 2 : 3;
-
-      uint32_t index = baseIndex;
-      for (uint32_t i = 0; i < baseIndex; i++) {
-        if (!writeMask[i])
-          index--;
-      }
-
-      // Catch overflow which in our case
-      // means a no-op...
-      if (index <= baseIndex) {
-        std::array<uint32_t, 4> indices = { index, index, index, index };
-
-        uint32_t component = m_module.opVectorShuffle(
-          getVectorTypeId(value.type), value.id, value.id, value.type.ccount, indices.data());
-
-        value.id = m_module.opFDiv(
-          getVectorTypeId(value.type), value.id, component);
-      }
-    }
-
     // -r
     // Treating as -r
     // Treating as -r
@@ -1364,11 +1361,14 @@ namespace dxvk {
         m_module.constvec4f32( 1.0f,  1.0f,  1.0f,  1.0f));
     }
 
+    // Apply operand modifiers
+    result = emitSrcOperandPreSwizzleModifiers(result, reg.modifier);
+
     // Apply operand swizzle to the operand value
     result = emitRegisterSwizzle(result, reg.swizzle, writeMask);
 
     // Apply operand modifiers
-    result = emitSrcOperandModifiers(result, reg.modifier, writeMask);
+    result = emitSrcOperandPostSwizzleModifiers(result, reg.modifier);
     return result;
   }
 
