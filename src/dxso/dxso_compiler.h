@@ -508,6 +508,10 @@ namespace dxvk {
     DxsoRegisterValue emitSaturate(
             DxsoRegisterValue       srcValue);
 
+    DxsoRegisterValue emitDot(
+            DxsoRegisterValue       a,
+            DxsoRegisterValue       b);
+
     DxsoRegisterValue emitRegisterInsert(
             DxsoRegisterValue       dstValue,
             DxsoRegisterValue       srcValue,

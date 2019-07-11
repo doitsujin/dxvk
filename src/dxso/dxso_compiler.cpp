@@ -1154,6 +1154,19 @@ namespace dxvk {
   }
 
 
+  DxsoRegisterValue DxsoCompiler::emitDot(
+            DxsoRegisterValue       a,
+            DxsoRegisterValue       b) {
+    DxsoRegisterValue dot;
+    dot.type        = a.type;
+    dot.type.ccount = 1;
+
+    dot.id = m_module.opDot(getVectorTypeId(dot.type), a.id, b.id);
+
+    return dot;
+  }
+
+
   DxsoRegisterValue DxsoCompiler::emitRegisterInsert(
             DxsoRegisterValue       dstValue,
             DxsoRegisterValue       srcValue,
@@ -1616,17 +1629,15 @@ namespace dxvk {
         break;
       case DxsoOpcode::Dp3: {
         DxsoRegMask srcMask(true, true, true, false);
-        result.type = scalarType;
-        result.id = m_module.opDot(scalarTypeId,
-          emitRegisterLoad(src[0], srcMask).id,
-          emitRegisterLoad(src[1], srcMask).id);
+        result = emitDot(
+          emitRegisterLoad(src[0], srcMask),
+          emitRegisterLoad(src[1], srcMask));
         break;
       }
       case DxsoOpcode::Dp4:
-        result.type = scalarType;
-        result.id   = m_module.opDot(scalarTypeId,
-          emitRegisterLoad(src[0], IdentityWriteMask).id,
-          emitRegisterLoad(src[1], IdentityWriteMask).id);
+        result = emitDot(
+          emitRegisterLoad(src[0], IdentityWriteMask),
+          emitRegisterLoad(src[1], IdentityWriteMask));
         break;
       case DxsoOpcode::Slt:
       case DxsoOpcode::Sge: {
@@ -1703,12 +1714,9 @@ namespace dxvk {
       case DxsoOpcode::Nrm: {
         // Nrm is 3D...
         DxsoRegMask srcMask(true, true, true, false);
-        uint32_t vec3 = emitRegisterLoad(src[0], srcMask).id;
+        auto vec3 = emitRegisterLoad(src[0], srcMask);
 
-        DxsoRegisterValue dot;
-        dot.type.ctype  = result.type.ctype;
-        dot.type.ccount = 1;
-        dot.id = m_module.opDot         (scalarTypeId, vec3, vec3);
+        DxsoRegisterValue dot = emitDot(vec3, vec3);
         dot.id = m_module.opInverseSqrt (scalarTypeId, dot.id);
         dot.id = m_module.opNMin        (scalarTypeId, dot.id,
           m_module.constf32(FLT_MAX));
@@ -1871,12 +1879,9 @@ namespace dxvk {
         DxsoRegMask dotSrcMask(true, true, false, false);
         DxsoRegMask addSrcMask(true, false, false, false);
 
-        DxsoRegisterValue dot;
-        dot.type.ctype  = DxsoScalarType::Float32;
-        dot.type.ccount = 1;
-        dot.id = m_module.opDot(scalarTypeId,
-          emitRegisterLoad(src[0], dotSrcMask).id,
-          emitRegisterLoad(src[1], dotSrcMask).id);
+        DxsoRegisterValue dot = emitDot(
+          emitRegisterLoad(src[0], dotSrcMask),
+          emitRegisterLoad(src[1], dotSrcMask));
 
         dot.id = m_module.opFAdd(scalarTypeId,
           dot.id, emitRegisterLoad(src[2], addSrcMask).id);
@@ -2280,7 +2285,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       samplerIdx  = ctx.src[1].id.num;
     } else if (
       m_programInfo.majorVersion() == 1
-   && m_programInfo.minorVersion() == 4) { // SM 1.4
+    && m_programInfo.minorVersion() == 4) { // SM 1.4
       texcoordVar = emitRegisterLoad(ctx.src[0], srcMask);
       samplerIdx  = ctx.dst.id.num;
     }
