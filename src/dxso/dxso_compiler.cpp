@@ -2234,7 +2234,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
   void DxsoCompiler::emitTexCoord(const DxsoInstructionContext& ctx) {
     DxsoRegister texcoord;
     texcoord.id.type = DxsoRegisterType::PixelTexcoord;
-    texcoord.id.num  = ctx.dst.id.num;
+    texcoord.id.num  = ctx.src[0].id.num;
 
     DxsoRegisterValue value = emitRegisterLoadRaw(texcoord, nullptr);
     // Saturate
