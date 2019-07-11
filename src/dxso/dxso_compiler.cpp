@@ -2690,8 +2690,13 @@ void DxsoCompiler::emitControlFlowGenericLoop(
           workingReg.id, indexVal.id, 4, indices.data());
       }
 
+      // Ie. 0 or 1 for diffuse and specular color
+      // and for Shader Model 1 or 2
+      // (because those have dedicated color registers
+      // where this rule applies)
       if (elem.semantic.usage == DxsoUsage::Color &&
-          elem.semantic.usageIndex < 2) { // Ie. 0 or 1 for diffuse and specular color
+          elem.semantic.usageIndex < 2 &&
+          m_programInfo.majorVersion() < 3) {
         workingReg.id = m_module.opFClamp(getVectorTypeId(workingReg.type), workingReg.id,
           m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f),
           m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f));
