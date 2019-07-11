@@ -156,6 +156,7 @@ namespace dxvk {
     case DxsoOpcode::Tex:
     case DxsoOpcode::TexLdl:
     case DxsoOpcode::TexLdd:
+    case DxsoOpcode::TexDp3Tex:
       return this->emitTextureSample(ctx);
     case DxsoOpcode::TexKill:
       return this->emitTextureKill(ctx);
@@ -2279,23 +2280,47 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     DxsoRegisterValue texcoordVar;
     uint32_t samplerIdx;
 
-    DxsoRegMask srcMask(true, true, true, true);
-    if (m_programInfo.majorVersion() >= 2) { // SM 2.0+
-      texcoordVar = emitRegisterLoad(ctx.src[0], srcMask);
-      samplerIdx  = ctx.src[1].id.num;
-    } else if (
-      m_programInfo.majorVersion() == 1
-    && m_programInfo.minorVersion() == 4) { // SM 1.4
-      texcoordVar = emitRegisterLoad(ctx.src[0], srcMask);
-      samplerIdx  = ctx.dst.id.num;
-    }
-    else { // SM 1.0-1.3
+    DxsoRegMask srcMask (true, true, true, true);
+    DxsoRegMask vec3Mask(true, true, true, false);
+
+    if (opcode == DxsoOpcode::TexDp3Tex) {
       DxsoRegister texcoord;
       texcoord.id.type = DxsoRegisterType::PixelTexcoord;
       texcoord.id.num  = ctx.dst.id.num;
 
-      texcoordVar = emitRegisterLoadRaw(texcoord, nullptr);
+      auto m = emitRegisterLoadRaw(texcoord, nullptr);
+      m = emitRegisterSwizzle(m, IdentitySwizzle, vec3Mask);
+
+      auto n = emitRegisterLoad(ctx.src[0], vec3Mask);
+
+      auto dot = emitDot(m, n);
+
+      std::array<uint32_t, 4> indices = { dot.id, m_module.constf32(0.0f), m_module.constf32(0.0f), m_module.constf32(0.0f) };
+
+      texcoordVar.type = { DxsoScalarType::Float32, 4 };
+      texcoordVar.id   = m_module.opCompositeConstruct(getVectorTypeId(texcoordVar.type),
+        indices.size(), indices.data());
+
       samplerIdx  = ctx.dst.id.num;
+    }
+    else {
+      if (m_programInfo.majorVersion() >= 2) { // SM 2.0+
+        texcoordVar = emitRegisterLoad(ctx.src[0], srcMask);
+        samplerIdx  = ctx.src[1].id.num;
+      } else if (
+        m_programInfo.majorVersion() == 1
+     && m_programInfo.minorVersion() == 4) { // SM 1.4
+        texcoordVar = emitRegisterLoad(ctx.src[0], srcMask);
+        samplerIdx  = ctx.dst.id.num;
+      }
+      else { // SM 1.0-1.3
+        DxsoRegister texcoord;
+        texcoord.id.type = DxsoRegisterType::PixelTexcoord;
+        texcoord.id.num  = ctx.dst.id.num;
+
+        texcoordVar = emitRegisterLoadRaw(texcoord, nullptr);
+        samplerIdx  = ctx.dst.id.num;
+      }
     }
 
     // SM < 1.x does not have dcl sampler type.
