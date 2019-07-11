@@ -500,6 +500,14 @@ namespace dxvk {
             DxsoRegisterValue       value,
             DxsoRegMask             writeMask);
 
+    DxsoRegisterValue emitClampBoundReplicant(
+            DxsoRegisterValue       srcValue,
+            float                   lb,
+            float                   ub);
+
+    DxsoRegisterValue emitSaturate(
+            DxsoRegisterValue       srcValue);
+
     DxsoRegisterValue emitRegisterInsert(
             DxsoRegisterValue       dstValue,
             DxsoRegisterValue       srcValue,

@@ -1136,6 +1136,24 @@ namespace dxvk {
   }
 
 
+  DxsoRegisterValue DxsoCompiler::emitClampBoundReplicant(
+            DxsoRegisterValue       srcValue,
+            float                   lb,
+            float                   ub) {
+    srcValue.id = m_module.opFClamp(getVectorTypeId(srcValue.type), srcValue.id,
+      m_module.constfReplicant(lb, srcValue.type.ccount),
+      m_module.constfReplicant(ub, srcValue.type.ccount));
+
+    return srcValue;
+  }
+
+
+  DxsoRegisterValue DxsoCompiler::emitSaturate(
+            DxsoRegisterValue       srcValue) {
+    return emitClampBoundReplicant(srcValue, 0.0f, 1.0f);
+  }
+
+
   DxsoRegisterValue DxsoCompiler::emitRegisterInsert(
             DxsoRegisterValue       dstValue,
             DxsoRegisterValue       srcValue,
@@ -1360,11 +1378,8 @@ namespace dxvk {
 
     // PS 1.x clamps float constants
     if (m_programInfo.type() == DxsoProgramType::PixelShader && m_programInfo.majorVersion() == 1
-      && reg.id.type == DxsoRegisterType::Const) {
-      result.id = m_module.opFClamp(getVectorTypeId(result.type), result.id,
-        m_module.constvec4f32(-1.0f, -1.0f, -1.0f, -1.0f),
-        m_module.constvec4f32( 1.0f,  1.0f,  1.0f,  1.0f));
-    }
+      && reg.id.type == DxsoRegisterType::Const)
+      result = emitClampBoundReplicant(result, -1.0f, 1.0f);
 
     // Apply operand modifiers
     result = emitSrcOperandPreSwizzleModifiers(result, reg.modifier);
@@ -2238,9 +2253,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
     DxsoRegisterValue value = emitRegisterLoadRaw(texcoord, nullptr);
     // Saturate
-    value.id = m_module.opFClamp(getVectorTypeId(value.type), value.id,
-      m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f),
-      m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f));
+    value = emitSaturate(value);
     // w = 1.0f
     uint32_t wIndex = 3;
     value.id = m_module.opCompositeInsert(getVectorTypeId(value.type),
@@ -2696,11 +2709,8 @@ void DxsoCompiler::emitControlFlowGenericLoop(
       // where this rule applies)
       if (elem.semantic.usage == DxsoUsage::Color &&
           elem.semantic.usageIndex < 2 &&
-          m_programInfo.majorVersion() < 3) {
-        workingReg.id = m_module.opFClamp(getVectorTypeId(workingReg.type), workingReg.id,
-          m_module.constvec4f32(0.0f, 0.0f, 0.0f, 0.0f),
-          m_module.constvec4f32(1.0f, 1.0f, 1.0f, 1.0f));
-      }
+          m_programInfo.majorVersion() < 3)
+        workingReg = emitSaturate(workingReg);
 
       m_module.opStore(outputPtr.id, workingReg.id);
     }
@@ -2925,18 +2935,13 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     // to those. Clamp to [0..1] instead.
 
     if (m_ps.oDepth.id != 0) {
-      uint32_t typeId = getVectorTypeId(m_ps.oDepth.type);
+      auto result = emitValueLoad(m_ps.oDepth);
 
-      uint32_t result = emitValueLoad(m_ps.oDepth).id;
-
-      result = m_module.opFClamp(
-        typeId, result,
-        m_module.constf32(0.0f),
-        m_module.constf32(1.0f));
+      result = emitSaturate(result);
 
       m_module.opStore(
         m_ps.oDepth.id,
-        result);
+        result.id);
     }
 }
 
