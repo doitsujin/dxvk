@@ -637,6 +637,14 @@ namespace dxvk {
           DxbcRegMask             regMask,
           DxbcSystemValue         sv,
           DxbcInterpolationMode   im) {
+    // If no system value was found in the SHDR look for one in the ISGN
+    if (sv == DxbcSystemValue::None && m_isgn != nullptr) {
+      const DxbcSgnEntry *sgnEntry = m_isgn->findByRegister(regIdx);
+      if (sgnEntry) {
+        sv = sgnEntry->systemValue;
+      }
+    }
+
     // Avoid declaring the same variable multiple times.
     // This may happen when multiple system values are
     // mapped to different parts of the same register.
@@ -695,6 +703,14 @@ namespace dxvk {
           DxbcRegMask             regMask,
           DxbcSystemValue         sv,
           DxbcInterpolationMode   im) {
+    // If no system value was found in the SHDR look for one in the OSGN
+    if (sv == DxbcSystemValue::None && m_osgn != nullptr) {
+      const DxbcSgnEntry *sgnEntry = m_osgn->findByRegister(regIdx);
+      if (sgnEntry) {
+        sv = sgnEntry->systemValue;
+      }
+    }
+
     // Add a new system value mapping if needed. Clip
     // and cull distances are handled separately.
     if (sv != DxbcSystemValue::None
