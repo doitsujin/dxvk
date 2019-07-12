@@ -732,6 +732,8 @@ namespace dxvk {
 
     pDestinationTexture->GenerateMipSubLevels();
 
+    FlushImplicit(false);
+
     return D3D_OK;
   }
 
