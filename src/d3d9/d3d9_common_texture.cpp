@@ -91,16 +91,11 @@ namespace dxvk {
 
     m_buffers[Subresource] = m_device->GetDXVKDevice()->createBuffer(info, memType);
 
-    if (RequiresFixup()) {
-      info.size = GetMipSize(Subresource, true);
-      m_fixupBuffers[Subresource] = m_device->GetDXVKDevice()->createBuffer(info, memType);
-    }
-
     return true;
   }
 
 
-  VkDeviceSize D3D9CommonTexture::GetMipSize(UINT Subresource, bool Fixup) const {
+  VkDeviceSize D3D9CommonTexture::GetMipSize(UINT Subresource) const {
     const UINT MipLevel = Subresource % m_desc.MipLevels;
 
     const DxvkFormatInfo* formatInfo = imageFormatInfo(
@@ -113,11 +108,7 @@ namespace dxvk {
     const VkExtent3D blockCount = util::computeBlockCount(
       mipExtent, formatInfo->blockSize);
 
-    uint32_t elemSize = formatInfo->elementSize;
-    if (!Fixup && m_desc.Format == D3D9Format::R8G8B8)
-      elemSize = 3u;
-
-    return elemSize
+    return formatInfo->elementSize
          * blockCount.width
          * blockCount.height
          * blockCount.depth;

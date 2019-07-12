@@ -156,14 +156,7 @@ namespace dxvk {
       return m_resolveImage;
     }
 
-    Rc<DxvkBuffer> GetMappingBuffer(UINT Subresource) {
-      return m_buffers[Subresource];
-    }
-
-    Rc<DxvkBuffer> GetCopyBuffer(UINT Subresource) {
-      if (RequiresFixup())
-        return m_fixupBuffers[Subresource];
-
+    Rc<DxvkBuffer> GetBuffer(UINT Subresource) {
       return m_buffers[Subresource];
     }
 
@@ -217,15 +210,6 @@ namespace dxvk {
     }
 
     /**
-     * \brief Fixup
-     * \returns Whether we need to fixup the image to a proper VkFormat
-     */
-    bool RequiresFixup() const {
-      // There may be more, lets just do this one for now.
-      return m_desc.Format == D3D9Format::R8G8B8;
-    }
-
-    /**
      * \brief Subresource
      * \returns The subresource idx of a given face and mip level
      */
@@ -258,7 +242,6 @@ namespace dxvk {
      */
     void DestroyBufferSubresource(UINT Subresource) {
       m_buffers[Subresource] = nullptr;
-      m_fixupBuffers[Subresource] = nullptr;
     }
 
     /**
@@ -332,8 +315,6 @@ namespace dxvk {
     Rc<DxvkImage>                 m_resolveImage;
     D3D9SubresourceArray<
       Rc<DxvkBuffer>>             m_buffers;
-    D3D9SubresourceArray<
-      Rc<DxvkBuffer>>             m_fixupBuffers;
     D3D9SubresourceArray<DWORD>   m_lockFlags;
 
     D3D9ViewSet                   m_views;
@@ -348,7 +329,7 @@ namespace dxvk {
      * \brief Mip level
      * \returns Size of packed mip level in bytes
      */
-    VkDeviceSize GetMipSize(UINT Subresource, bool Fixup = false) const;
+    VkDeviceSize GetMipSize(UINT Subresource) const;
 
     Rc<DxvkImage> CreatePrimaryImage(D3DRESOURCETYPE ResourceType) const;
 
