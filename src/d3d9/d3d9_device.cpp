@@ -1958,14 +1958,12 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetNPatchMode(float nSegments) {
-    Logger::warn("D3D9DeviceEx::SetNPatchMode: Stub");
     return D3D_OK;
   }
 
 
   float   STDMETHODCALLTYPE D3D9DeviceEx::GetNPatchMode() {
-    Logger::warn("D3D9DeviceEx::GetNPatchMode: Stub");
-    return D3D_OK;
+    return 0.0f;
   }
 
 
