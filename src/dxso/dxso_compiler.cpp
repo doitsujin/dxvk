@@ -104,6 +104,7 @@ namespace dxvk {
     case DxsoOpcode::Exp:
     case DxsoOpcode::Max:
     case DxsoOpcode::Pow:
+    case DxsoOpcode::Crs:
     case DxsoOpcode::Abs:
     case DxsoOpcode::Nrm:
     case DxsoOpcode::SinCos:
@@ -1706,6 +1707,27 @@ namespace dxvk {
           result.id = m_module.opSelect(typeId, cmp.id,
             m_module.constfReplicant(1.0f, cmp.type.ccount), result.id);
         }
+        break;
+      }
+      case DxsoOpcode::Crs: {
+        DxsoRegMask vec3Mask(true, true, true, false);
+        
+        DxsoRegisterValue crossValue;
+        crossValue.type = { DxsoScalarType::Float32, 3 };
+        crossValue.id = m_module.opCross(getVectorTypeId(crossValue.type),
+          emitRegisterLoad(src[0], vec3Mask).id,
+          emitRegisterLoad(src[1], vec3Mask).id);
+
+        std::array<uint32_t, 3> indices = { 0, 0, 0 };
+
+        uint32_t index = 0;
+        for (uint32_t i = 0; i < indices.size(); i++) {
+          if (mask[i])
+            indices[index++] = m_module.opCompositeExtract(m_module.defFloatType(32), crossValue.id, 1, &i);
+        }
+
+        result.id = m_module.opCompositeConstruct(getVectorTypeId(result.type), result.type.ccount, indices.data());
+
         break;
       }
       case DxsoOpcode::Abs:
