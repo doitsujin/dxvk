@@ -718,6 +718,11 @@ namespace dxvk {
       info.type.alength = regDim;
       info.sclass = spv::StorageClassOutput;
 
+      // Don't reserve extra output locations for system
+      // values so that we don't exceed hardware limits
+      if (sv != DxbcSystemValue::None)
+        info.sclass = spv::StorageClassPrivate;
+
       // In xfb mode, we set up the actual
       // output vars when emitting a vertex
       if (m_moduleInfo.xfb != nullptr)
