@@ -614,6 +614,11 @@ namespace dxvk {
             uint32_t                x,
             uint32_t                y,
             uint32_t                a);
+
+  uint32_t opCross(
+            uint32_t                resultType,
+            uint32_t                x,
+            uint32_t                y);
     
     uint32_t opIAdd(
             uint32_t                resultType,
