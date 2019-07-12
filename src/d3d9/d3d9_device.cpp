@@ -1952,7 +1952,11 @@ namespace dxvk {
 
 
   BOOL    STDMETHODCALLTYPE D3D9DeviceEx::GetSoftwareVertexProcessing() {
-    Logger::warn("D3D9DeviceEx::GetSoftwareVertexProcessing: Stub");
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D9DeviceEx::GetSoftwareVertexProcessing: Stub");
+
     return FALSE;
   }
 
