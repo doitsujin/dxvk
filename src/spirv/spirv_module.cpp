@@ -1667,6 +1667,23 @@ namespace dxvk {
     m_code.putWord(a);
     return resultId;
   }
+
+
+  uint32_t SpirvModule::opCross(
+          uint32_t                resultType,
+          uint32_t                x,
+          uint32_t                y) {
+    uint32_t resultId = this->allocateId();
+    
+    m_code.putIns (spv::OpExtInst, 7);
+    m_code.putWord(resultType);
+    m_code.putWord(resultId);
+    m_code.putWord(m_instExtGlsl450);
+    m_code.putWord(spv::GLSLstd450Cross);
+    m_code.putWord(x);
+    m_code.putWord(y);
+    return resultId;
+  }
   
   
   uint32_t SpirvModule::opIAdd(
