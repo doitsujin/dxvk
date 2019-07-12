@@ -1799,6 +1799,8 @@ namespace dxvk {
           DWORD                    Stage,
           D3DTEXTURESTAGESTATETYPE Type,
           DWORD*                   pValue) {
+    D3D9DeviceLock lock = LockDevice();
+
     if (unlikely(pValue == nullptr))
       return D3DERR_INVALIDCALL;
 
@@ -1807,7 +1809,7 @@ namespace dxvk {
     if (unlikely(Stage >= caps::TextureStageCount))
       return D3DERR_INVALIDCALL;
 
-    if (unlikely(Type >= D3DTSS_CONSTANT))
+    if (unlikely(Type >= TextureStageStateCount))
       return D3DERR_INVALIDCALL;
 
     *pValue = m_state.textureStages[Stage][Type];
