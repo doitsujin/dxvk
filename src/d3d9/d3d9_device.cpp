@@ -2747,8 +2747,11 @@ namespace dxvk {
           UINT               Handle,
     const float*             pNumSegs,
     const D3DRECTPATCH_INFO* pRectPatchInfo) {
-    Logger::warn("D3D9DeviceEx::DrawRectPatch: Stub");
-    return D3D_OK;
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D9DeviceEx::DrawRectPatch: Stub");
+    return D3DERR_INVALIDCALL;
   }
 
 
@@ -2756,14 +2759,20 @@ namespace dxvk {
           UINT              Handle,
     const float*            pNumSegs,
     const D3DTRIPATCH_INFO* pTriPatchInfo) {
-    Logger::warn("D3D9DeviceEx::DrawTriPatch: Stub");
-    return D3D_OK;
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D9DeviceEx::DrawTriPatch: Stub");
+    return D3DERR_INVALIDCALL;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::DeletePatch(UINT Handle) {
-    Logger::warn("D3D9DeviceEx::DeletePatch: Stub");
-    return D3D_OK;
+    static bool s_errorShown = false;
+
+    if (!std::exchange(s_errorShown, true))
+      Logger::warn("D3D9DeviceEx::DeletePatch: Stub");
+    return D3DERR_INVALIDCALL;
   }
 
 
