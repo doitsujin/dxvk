@@ -1883,26 +1883,26 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetPaletteEntries(UINT PaletteNumber, const PALETTEENTRY* pEntries) {
-    Logger::warn("D3D9DeviceEx::SetPaletteEntries: Stub");
+    // This succeeds even though we don't advertise support.
     return D3D_OK;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetPaletteEntries(UINT PaletteNumber, PALETTEENTRY* pEntries) {
-    Logger::warn("D3D9DeviceEx::GetPaletteEntries: Stub");
-    return D3D_OK;
+    // Don't advertise support for this...
+    return D3DERR_INVALIDCALL;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::SetCurrentTexturePalette(UINT PaletteNumber) {
-    Logger::warn("D3D9DeviceEx::SetCurrentTexturePalette: Stub");
+    // This succeeds even though we don't advertise support.
     return D3D_OK;
   }
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetCurrentTexturePalette(UINT *PaletteNumber) {
-    Logger::warn("D3D9DeviceEx::GetCurrentTexturePalette: Stub");
-    return D3D_OK;
+    // Don't advertise support for this...
+    return D3DERR_INVALIDCALL;
   }
 
 
