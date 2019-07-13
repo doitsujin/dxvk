@@ -158,6 +158,9 @@ namespace dxvk {
     case DxsoOpcode::TexLdl:
     case DxsoOpcode::TexLdd:
     case DxsoOpcode::TexDp3Tex:
+    case DxsoOpcode::TexReg2Ar:
+    case DxsoOpcode::TexReg2Gb:
+    case DxsoOpcode::TexReg2Rgb:
       return this->emitTextureSample(ctx);
     case DxsoOpcode::TexKill:
       return this->emitTextureKill(ctx);
@@ -2322,7 +2325,37 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     DxsoRegMask srcMask (true, true, true, true);
     DxsoRegMask vec3Mask(true, true, true, false);
 
-    if (opcode == DxsoOpcode::TexDp3Tex) {
+    if (opcode == DxsoOpcode::TexReg2Ar) {
+      DxsoRegister texcoord;
+      texcoord.id.type = DxsoRegisterType::PixelTexcoord;
+      texcoord.id.num  = ctx.src[0].id.num;
+
+      texcoordVar = emitRegisterLoadRaw(texcoord, nullptr);
+      texcoordVar = emitRegisterSwizzle(texcoordVar, DxsoRegSwizzle(3, 0, 0, 0), srcMask);
+
+      samplerIdx = ctx.dst.id.num;
+    }
+    else if (opcode == DxsoOpcode::TexReg2Gb) {
+      DxsoRegister texcoord;
+      texcoord.id.type = DxsoRegisterType::PixelTexcoord;
+      texcoord.id.num  = ctx.src[0].id.num;
+
+      texcoordVar = emitRegisterLoadRaw(texcoord, nullptr);
+      texcoordVar = emitRegisterSwizzle(texcoordVar, DxsoRegSwizzle(1, 2, 2, 2), srcMask);
+
+      samplerIdx = ctx.dst.id.num;
+    }
+    else if (opcode == DxsoOpcode::TexReg2Rgb) {
+      DxsoRegister texcoord;
+      texcoord.id.type = DxsoRegisterType::PixelTexcoord;
+      texcoord.id.num  = ctx.src[0].id.num;
+
+      texcoordVar = emitRegisterLoadRaw(texcoord, nullptr);
+      texcoordVar = emitRegisterSwizzle(texcoordVar, DxsoRegSwizzle(0, 1, 2, 2), srcMask);
+
+      samplerIdx = ctx.dst.id.num;
+    }
+    else if (opcode == DxsoOpcode::TexDp3Tex) {
       DxsoRegister texcoord;
       texcoord.id.type = DxsoRegisterType::PixelTexcoord;
       texcoord.id.num  = ctx.dst.id.num;
