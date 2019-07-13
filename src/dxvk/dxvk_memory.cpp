@@ -221,7 +221,7 @@ namespace dxvk {
           m_device->extensions().extMemoryBudget
             ? str::format(
                 (memHeapInfo.heaps[i].memoryAllocated >> 20), " MB allocated (driver), ",
-                (memHeapInfo.heaps[i].memoryAvailable >> 20), " MB available (driver), ",
+                (memHeapInfo.heaps[i].memoryBudget    >> 20), " MB budget (driver), ",
                 (m_memHeaps[i].properties.size        >> 20), " MB total")
             : str::format(
                 (m_memHeaps[i].properties.size        >> 20), " MB total")));

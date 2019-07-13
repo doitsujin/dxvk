@@ -27,7 +27,7 @@ namespace dxvk {
    */
   struct DxvkAdapterMemoryHeapInfo {
     VkMemoryHeapFlags heapFlags;
-    VkDeviceSize memoryAvailable;
+    VkDeviceSize memoryBudget;
     VkDeviceSize memoryAllocated;
   };
 

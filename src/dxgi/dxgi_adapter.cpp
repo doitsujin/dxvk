@@ -248,7 +248,7 @@ namespace dxvk {
       if ((memInfo.heaps[i].heapFlags & heapFlagMask) != heapFlags)
         continue;
       
-      pVideoMemoryInfo->Budget       += memInfo.heaps[i].memoryAvailable;
+      pVideoMemoryInfo->Budget       += memInfo.heaps[i].memoryBudget;
       pVideoMemoryInfo->CurrentUsage += memInfo.heaps[i].memoryAllocated;
     }
 

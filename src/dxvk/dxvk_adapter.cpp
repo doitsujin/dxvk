@@ -51,10 +51,10 @@ namespace dxvk {
       info.heaps[i].heapFlags = memProps.memoryProperties.memoryHeaps[i].flags;
 
       if (m_hasMemoryBudget) {
-        info.heaps[i].memoryAvailable = memBudget.heapBudget[i];
+        info.heaps[i].memoryBudget    = memBudget.heapBudget[i];
         info.heaps[i].memoryAllocated = memBudget.heapUsage[i];
       } else {
-        info.heaps[i].memoryAvailable = memProps.memoryProperties.memoryHeaps[i].size;
+        info.heaps[i].memoryBudget    = memProps.memoryProperties.memoryHeaps[i].size;
         info.heaps[i].memoryAllocated = m_heapAlloc[i].load();
       }
     }
