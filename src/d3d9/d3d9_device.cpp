@@ -2803,8 +2803,8 @@ namespace dxvk {
           UINT   height,
           float* rows,
           float* columns) {
-    Logger::warn("D3D9DeviceEx::SetConvolutionMonoKernel: Stub");
-    return D3D_OK;
+    // We don't advertise support for this.
+    return D3DERR_INVALIDCALL;
   }
 
 
