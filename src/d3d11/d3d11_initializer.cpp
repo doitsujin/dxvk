@@ -114,16 +114,13 @@ namespace dxvk {
       // pInitialData is an array that stores an entry for
       // every single subresource. Since we will define all
       // subresources, this counts as initialization.
-      VkImageSubresourceLayers subresourceLayers;
-      subresourceLayers.aspectMask     = formatInfo->aspectMask;
-      subresourceLayers.mipLevel       = 0;
-      subresourceLayers.baseArrayLayer = 0;
-      subresourceLayers.layerCount     = 1;
-      
       for (uint32_t layer = 0; layer < image->info().numLayers; layer++) {
         for (uint32_t level = 0; level < image->info().mipLevels; level++) {
-          subresourceLayers.baseArrayLayer = layer;
+          VkImageSubresourceLayers subresourceLayers;
+          subresourceLayers.aspectMask     = formatInfo->aspectMask;
           subresourceLayers.mipLevel       = level;
+          subresourceLayers.baseArrayLayer = layer;
+          subresourceLayers.layerCount     = 1;
           
           const uint32_t id = D3D11CalcSubresource(
             level, layer, image->info().mipLevels);
