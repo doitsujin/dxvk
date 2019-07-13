@@ -34,7 +34,8 @@ namespace dxvk {
     : m_parent          (pParent)
     , m_adapter         (Adapter)
     , m_ordinal         (Ordinal)
-    , m_modeCacheFormat (D3D9Format::Unknown) {
+    , m_modeCacheFormat (D3D9Format::Unknown)
+    , m_d3d9Formats     (Adapter) {
     m_adapter->logAdapterInfo();
   }
 
@@ -126,7 +127,7 @@ namespace dxvk {
     if (dmap)
       return D3DERR_NOTAVAILABLE;
 
-    auto mapping = ConvertFormatUnfixed(CheckFormat);
+    auto mapping = m_d3d9Formats.GetFormatMapping(CheckFormat);
     if (mapping.FormatColor == VK_FORMAT_UNDEFINED)
       return D3DERR_NOTAVAILABLE;
 

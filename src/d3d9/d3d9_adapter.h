@@ -78,6 +78,11 @@ namespace dxvk {
 
     Rc<DxvkAdapter> GetDXVKAdapter() { return m_adapter; }
 
+    D3D9_VK_FORMAT_MAPPING GetFormatMapping(
+      D3D9Format            Format) const {
+      return m_d3d9Formats.GetFormatMapping(Format);
+    }
+
   private:
 
     HRESULT CheckDeviceVkFormat(
@@ -94,6 +99,8 @@ namespace dxvk {
 
     std::vector<D3DDISPLAYMODEEX> m_modes;
     D3D9Format                    m_modeCacheFormat;
+
+    const D3D9VkFormatTable       m_d3d9Formats;
 
   };
 

@@ -48,7 +48,6 @@ namespace dxvk {
     , m_behaviorFlags  ( BehaviorFlags )
     , m_multithread    ( BehaviorFlags & D3DCREATE_MULTITHREADED )
     , m_shaderModules  ( new D3D9ShaderModuleSet )
-    , m_d3d9Formats    ( pAdapter->GetDXVKAdapter() )
     , m_d3d9Options    ( dxvkDevice, pAdapter->GetDXVKAdapter()->instance()->config() )
     , m_dxsoOptions    ( m_dxvkDevice, m_d3d9Options ) {
     m_initializer      = new D3D9Initializer(m_dxvkDevice);
@@ -3537,7 +3536,7 @@ namespace dxvk {
 
   D3D9_VK_FORMAT_MAPPING D3D9DeviceEx::LookupFormat(
     D3D9Format            Format) const {
-    return m_d3d9Formats.GetFormatMapping(Format);
+    return m_adapter->GetFormatMapping(Format);
   }
 
   bool D3D9DeviceEx::WaitForResource(

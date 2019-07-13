@@ -874,7 +874,6 @@ namespace dxvk {
 
     Rc<DxvkBuffer>                  m_upBuffer;
 
-    const D3D9VkFormatTable         m_d3d9Formats;
     const D3D9Options               m_d3d9Options;
     const DxsoOptions               m_dxsoOptions;
 
