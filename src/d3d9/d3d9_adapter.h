@@ -68,10 +68,6 @@ namespace dxvk {
             UINT                  Mode,
             D3DDISPLAYMODEEX*     pMode);
 
-    HRESULT GetAdapterDisplayModeEx(
-            D3DDISPLAYMODEEX*   pMode,
-            D3DDISPLAYROTATION* pRotation);
-
     HRESULT GetAdapterLUID(LUID* pLUID);
 
     UINT GetOrdinal() { return m_ordinal; }
