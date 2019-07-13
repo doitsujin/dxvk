@@ -11,6 +11,9 @@ namespace dxvk {
     DxsoOptions();
     DxsoOptions(const Rc<DxvkDevice>& device, const D3D9Options& options);
 
+    /// Use a SPIR-V extension to implement D3D-style discards
+    bool useDemoteToHelperInvocation = false;
+
     /// Use subgroup operations to discard fragment
     /// shader invocations if derivatives remain valid.
     bool useSubgroupOpsForEarlyDiscard = false;

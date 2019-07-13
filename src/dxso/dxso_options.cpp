@@ -6,7 +6,12 @@ namespace dxvk {
 
   DxsoOptions::DxsoOptions(const Rc<DxvkDevice>& device, const D3D9Options& options) {
     const Rc<DxvkAdapter> adapter = device->adapter();
+
+    const DxvkDeviceFeatures& devFeatures = device->features();
     const DxvkDeviceInfo& devInfo = adapter->devicePropertiesExt();
+
+    useDemoteToHelperInvocation
+      = (devFeatures.extShaderDemoteToHelperInvocation.shaderDemoteToHelperInvocation);
 
     useSubgroupOpsForEarlyDiscard
        = (devInfo.coreSubgroup.subgroupSize >= 4)
