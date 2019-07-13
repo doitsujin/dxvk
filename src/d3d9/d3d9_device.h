@@ -7,6 +7,7 @@
 #include "d3d9_cursor.h"
 #include "d3d9_format.h"
 #include "d3d9_multithread.h"
+#include "d3d9_adapter.h"
 #include "d3d9_constant_set.h"
 
 #include "d3d9_state.h"
@@ -27,6 +28,7 @@
 
 namespace dxvk {
 
+  class D3D9InterfaceEx;
   class D3D9SwapChainEx;
   class D3D9CommonTexture;
   class D3D9CommonBuffer;
@@ -54,8 +56,7 @@ namespace dxvk {
     DirtyProgVertexShader,
     UpDirtiedVertices,
     UpDirtiedIndices,
-    ValidSampleMask,
-    ExtendedDevice
+    ValidSampleMask
   };
 
   using D3D9DeviceFlags = Flags<D3D9DeviceFlag>;
@@ -82,14 +83,12 @@ namespace dxvk {
   public:
 
     D3D9DeviceEx(
-            IDirect3D9Ex*     pParent,
-            UINT              Adapter,
+            D3D9InterfaceEx*  pParent,
+            D3D9Adapter*      pAdapter,
             D3DDEVTYPE        DeviceType,
             HWND              hFocusWindow,
             DWORD             BehaviorFlags,
             D3DDISPLAYMODEEX* pDisplayMode,
-            bool              bExtended,
-            Rc<DxvkAdapter>   dxvkAdapter,
             Rc<DxvkDevice>    dxvkDevice);
 
     ~D3D9DeviceEx();
@@ -809,7 +808,7 @@ namespace dxvk {
     D3D9DeviceFlags                 m_flags;
     uint32_t                        m_dirtySamplerStates = 0;
 
-    Rc<DxvkAdapter>                 m_dxvkAdapter;
+    D3D9Adapter*                    m_adapter;
     Rc<DxvkDevice>                  m_dxvkDevice;
 
     Rc<DxvkDataBuffer>              m_updateBuffer;
@@ -855,8 +854,7 @@ namespace dxvk {
       }
     }
 
-    Com<IDirect3D9Ex>               m_parent;
-    UINT                            m_adapter;
+    Com<D3D9InterfaceEx>            m_parent;
     D3DDEVTYPE                      m_deviceType;
     HWND                            m_window;
 

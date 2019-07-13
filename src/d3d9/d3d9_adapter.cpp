@@ -1,34 +1,94 @@
-#include "d3d9_caps.h"
+#include "d3d9_adapter.h"
 
+#include "d3d9_interface.h"
 #include "d3d9_monitor.h"
-#include "d3d9_format.h"
-#include "d3d9_options.h"
+#include "d3d9_caps.h"
+#include "d3d9_util.h"
+
+#include "../util/util_bit.h"
 
 #include <cfloat>
 
-namespace dxvk::caps {
+namespace dxvk {
 
-  bool IsDepthFormat(D3D9Format Format) {
-    return Format == D3D9Format::D16_LOCKABLE
-        || Format == D3D9Format::D32
-        || Format == D3D9Format::D15S1
-        || Format == D3D9Format::D24S8
-        || Format == D3D9Format::D24X8
-        || Format == D3D9Format::D24X4S4
-        || Format == D3D9Format::D16
-        || Format == D3D9Format::D32F_LOCKABLE
-        || Format == D3D9Format::D24FS8
-        || Format == D3D9Format::D32_LOCKABLE
-        || Format == D3D9Format::DF16
-        || Format == D3D9Format::DF24
-        || Format == D3D9Format::INTZ;
+  const char* GetDriverDLL(DxvkGpuVendor vendor) {
+    switch (vendor) {
+      default:
+      case DxvkGpuVendor::Nvidia: return "nvd3dum.dll";
+
+#if defined(__x86_64__) || defined(_M_X64)
+      case DxvkGpuVendor::Amd:    return "aticfx64.dll";
+      case DxvkGpuVendor::Intel:  return "igdumd64.dll";
+#else
+      case DxvkGpuVendor::Amd:    return "aticfx32.dll";
+      case DxvkGpuVendor::Intel:  return "igdumd32.dll";
+#endif
+    }
   }
 
 
-  HRESULT CheckDeviceFormat(
+  D3D9Adapter::D3D9Adapter(
+          D3D9InterfaceEx* pParent,
+          Rc<DxvkAdapter>  Adapter,
+          UINT             Ordinal)
+    : m_parent          (pParent)
+    , m_adapter         (Adapter)
+    , m_ordinal         (Ordinal)
+    , m_modeCacheFormat (D3D9Format::Unknown) {
+    m_adapter->logAdapterInfo();
+  }
+
+
+  HRESULT D3D9Adapter::GetAdapterIdentifier(
+          DWORD                   Flags,
+          D3DADAPTER_IDENTIFIER9* pIdentifier) {
+    if (unlikely(pIdentifier == nullptr))
+      return D3DERR_INVALIDCALL;
+
+    auto& options = m_parent->GetOptions();
+    
+    const auto& props = m_adapter->deviceProperties();
+
+    GUID guid          = bit::cast<GUID>(m_adapter->devicePropertiesExt().coreDeviceId.deviceUUID);
+
+    uint32_t vendorId  = options.customVendorId == -1 ? props.vendorID : uint32_t(options.customVendorId);
+    uint32_t deviceId  = options.customDeviceId == -1 ? props.deviceID : uint32_t(options.customDeviceId);
+    const char* driver = GetDriverDLL(DxvkGpuVendor(vendorId));
+
+    std::strncpy(pIdentifier->Description, props.deviceName,  ARRAYSIZE(pIdentifier->Description));
+    std::strncpy(pIdentifier->DeviceName,  R"(\\.\DISPLAY1)", ARRAYSIZE(pIdentifier->DeviceName)); // The GDI device name. Not the actual device name.
+    std::strncpy(pIdentifier->Driver,      driver,            ARRAYSIZE(pIdentifier->Driver));     // This is the driver's dll.
+
+    pIdentifier->DeviceIdentifier       = guid;
+    pIdentifier->DeviceId               = deviceId;
+    pIdentifier->VendorId               = vendorId;
+    pIdentifier->Revision               = 0;
+    pIdentifier->SubSysId               = 0;
+    pIdentifier->WHQLLevel              = m_parent->IsExtended() ? 1 : 0; // This doesn't check with the driver on Direct3D9Ex and is always 1.
+    pIdentifier->DriverVersion.QuadPart = props.driverVersion;
+
+    return D3D_OK;
+  }
+
+
+  HRESULT D3D9Adapter::CheckDeviceType(
+          D3DDEVTYPE DevType,
+          D3D9Format AdapterFormat,
+          D3D9Format BackBufferFormat,
+          BOOL       bWindowed) {
+    if (!IsSupportedBackBufferFormat(
+      AdapterFormat, BackBufferFormat, bWindowed))
+      return D3DERR_NOTAVAILABLE;
+
+    return D3D_OK;
+  }
+
+
+  HRESULT D3D9Adapter::CheckDeviceFormat(
+          D3DDEVTYPE      DeviceType,
           D3D9Format      AdapterFormat,
           DWORD           Usage,
-          D3DRESOURCETYPE ResourceType,
+          D3DRESOURCETYPE RType,
           D3D9Format      CheckFormat) {
     if (!IsSupportedAdapterFormat(AdapterFormat))
       return D3DERR_INVALIDCALL;
@@ -40,8 +100,8 @@ namespace dxvk::caps {
     const bool rt   = Usage & D3DUSAGE_RENDERTARGET;
     const bool ds   = Usage & D3DUSAGE_DEPTHSTENCIL;
 
-    const bool surface = ResourceType == D3DRTYPE_SURFACE;
-    const bool texture = ResourceType == D3DRTYPE_TEXTURE;
+    const bool surface = RType == D3DRTYPE_SURFACE;
+    const bool texture = RType == D3DRTYPE_TEXTURE;
 
     const bool twoDimensional = surface || texture;
 
@@ -77,32 +137,8 @@ namespace dxvk::caps {
   }
 
 
-  HRESULT CheckDepthStencilMatch(
-          D3D9Format AdapterFormat,
-          D3D9Format RenderTargetFormat,
-          D3D9Format DepthStencilFormat) {
-    if (!IsSupportedAdapterFormat(AdapterFormat))
-      return D3DERR_NOTAVAILABLE;
-
-    if (!IsDepthFormat(DepthStencilFormat))
-      return D3DERR_NOTAVAILABLE;
-
-    auto mapping = ConvertFormatUnfixed(RenderTargetFormat);
-    if (mapping.FormatColor == VK_FORMAT_UNDEFINED)
-      return D3DERR_NOTAVAILABLE;
-
-    return D3D_OK;
-  }
-
-
-  HRESULT CheckDeviceFormatConversion(
-          D3D9Format SrcFormat,
-          D3D9Format DstFormat) {
-    return IsSupportedBackBufferFormat(DstFormat, SrcFormat, FALSE);
-  }
-
-
-  HRESULT CheckDeviceMultiSampleType(
+  HRESULT D3D9Adapter::CheckDeviceMultiSampleType(
+        D3DDEVTYPE          DeviceType,
         D3D9Format          SurfaceFormat,
         BOOL                Windowed,
         D3DMULTISAMPLE_TYPE MultiSampleType,
@@ -137,33 +173,50 @@ namespace dxvk::caps {
   }
 
 
-  HRESULT CheckDeviceType(
+  HRESULT D3D9Adapter::CheckDepthStencilMatch(
+          D3DDEVTYPE DeviceType,
           D3D9Format AdapterFormat,
-          D3D9Format BackBufferFormat,
-          BOOL       Windowed) {
-    if (!IsSupportedBackBufferFormat(
-      AdapterFormat, BackBufferFormat, Windowed))
+          D3D9Format RenderTargetFormat,
+          D3D9Format DepthStencilFormat) {
+    if (!IsSupportedAdapterFormat(AdapterFormat))
+      return D3DERR_NOTAVAILABLE;
+
+    if (!IsDepthFormat(DepthStencilFormat))
+      return D3DERR_NOTAVAILABLE;
+
+    auto mapping = ConvertFormatUnfixed(RenderTargetFormat);
+    if (mapping.FormatColor == VK_FORMAT_UNDEFINED)
       return D3DERR_NOTAVAILABLE;
 
     return D3D_OK;
   }
 
 
-  HRESULT GetDeviceCaps(
-    const dxvk::D3D9Options& Options,
-          UINT               Adapter,
-          D3DDEVTYPE         Type,
-          D3DCAPS9*          pCaps) {
+  HRESULT D3D9Adapter::CheckDeviceFormatConversion(
+          D3DDEVTYPE DeviceType,
+          D3D9Format SourceFormat,
+          D3D9Format TargetFormat) {
+    return IsSupportedBackBufferFormat(TargetFormat, SourceFormat, FALSE);
+  }
+
+
+  HRESULT D3D9Adapter::GetDeviceCaps(
+          D3DDEVTYPE DeviceType,
+          D3DCAPS9*  pCaps) {
+    using namespace dxvk::caps;
+
     if (pCaps == nullptr)
       return D3DERR_INVALIDCALL;
+
+    auto& options = m_parent->GetOptions();
 
     // TODO: Actually care about what the adapter supports here.
     // ^ For Intel and older cards most likely here.
 
     // Device Type
-    pCaps->DeviceType               = Type;
+    pCaps->DeviceType               = DeviceType;
     // Adapter Id
-    pCaps->AdapterOrdinal           = Adapter;
+    pCaps->AdapterOrdinal           = m_ordinal;
     // Caps 1
     pCaps->Caps                     = D3DCAPS_READ_SCANLINE;
     // Caps 2
@@ -427,8 +480,8 @@ namespace dxvk::caps {
     // Max Stream Stride
     pCaps->MaxStreamStride           = 508; // bytes
 
-    const uint32_t majorVersion = Options.shaderModel;
-    const uint32_t minorVersion = Options.shaderModel != 1 ? 0 : 4;
+    const uint32_t majorVersion = options.shaderModel;
+    const uint32_t minorVersion = options.shaderModel != 1 ? 0 : 4;
 
     // Shader Versions
     pCaps->VertexShaderVersion = D3DVS_VERSION(majorVersion, minorVersion);
@@ -497,16 +550,137 @@ namespace dxvk::caps {
     pCaps->PS20Caps.NumTemps                 = 32;
     pCaps->PS20Caps.StaticFlowControlDepth   = 4;
 
-    pCaps->PS20Caps.NumInstructionSlots      = Options.shaderModel >= 2 ? 512 : 256;
+    pCaps->PS20Caps.NumInstructionSlots      = options.shaderModel >= 2 ? 512 : 256;
 
     pCaps->VertexTextureFilterCaps           = 50332416;
     pCaps->MaxVShaderInstructionsExecuted    = 4294967295;
     pCaps->MaxPShaderInstructionsExecuted    = 4294967295;
 
-    pCaps->MaxVertexShader30InstructionSlots = Options.shaderModel == 3 ? 32768 : 0;
-    pCaps->MaxPixelShader30InstructionSlots  = Options.shaderModel == 3 ? 32768 : 0;
+    pCaps->MaxVertexShader30InstructionSlots = options.shaderModel == 3 ? 32768 : 0;
+    pCaps->MaxPixelShader30InstructionSlots  = options.shaderModel == 3 ? 32768 : 0;
 
     return D3D_OK;
+  }
+
+
+  HMONITOR D3D9Adapter::GetMonitor() {
+    return GetDefaultMonitor();
+  }
+
+
+  UINT D3D9Adapter::GetAdapterModeCountEx(CONST D3DDISPLAYMODEFILTER* pFilter) {
+    if (pFilter == nullptr)
+      return 0;
+
+    // We don't offer any interlaced formats here so early out and avoid destroying mode cache.
+    if (pFilter->ScanLineOrdering == D3DSCANLINEORDERING_INTERLACED)
+      return 0;
+
+    CacheModes(EnumerateFormat(pFilter->Format));
+    return m_modes.size();
+  }
+
+
+  HRESULT D3D9Adapter::EnumAdapterModesEx(
+    const D3DDISPLAYMODEFILTER* pFilter,
+          UINT                  Mode,
+          D3DDISPLAYMODEEX*     pMode) {
+    if (pMode == nullptr || pFilter == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    const D3D9Format format =
+      EnumerateFormat(pFilter->Format);
+
+    if (FAILED(CheckDeviceFormat(
+      D3DDEVTYPE_HAL, EnumerateFormat(pFilter->Format),
+      D3DUSAGE_RENDERTARGET, D3DRTYPE_SURFACE,
+      EnumerateFormat(pFilter->Format))))
+      return D3DERR_INVALIDCALL;
+
+    CacheModes(format);
+
+    // We don't return any scanline orderings that aren't progressive,
+    // The format filtering is already handled for us by cache modes
+    // So we can early out here and then just index.
+    if (pFilter->ScanLineOrdering == D3DSCANLINEORDERING_INTERLACED)
+      return D3DERR_INVALIDCALL;
+
+    if (Mode >= m_modes.size())
+      return D3DERR_INVALIDCALL;
+
+    *pMode = m_modes[Mode];
+
+    return D3D_OK;
+  }
+
+
+  HRESULT D3D9Adapter::GetAdapterLUID(LUID* pLUID) {
+    if (pLUID == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    *pLUID = bit::cast<LUID>(m_adapter->devicePropertiesExt().coreDeviceId.deviceLUID);
+
+    return D3D_OK;
+  }
+
+
+  void D3D9Adapter::CacheModes(D3D9Format Format) {
+    if (!m_modes.empty() && m_modeCacheFormat == Format)
+      return; // We already cached the modes for this format. No need to do it again.
+
+    ::MONITORINFOEXW monInfo;
+    monInfo.cbSize = sizeof(monInfo);
+
+    if (!::GetMonitorInfoW(GetDefaultMonitor(), reinterpret_cast<MONITORINFO*>(&monInfo))) {
+      Logger::err("D3D9InterfaceEx::CacheModes: failed to query monitor info");
+      return;
+    }
+
+    m_modes.clear();
+    m_modeCacheFormat = Format;
+
+    // Skip unsupported formats
+    if (!IsSupportedAdapterFormat(Format) || !IsSupportedDisplayFormat(Format, false))
+      return;
+
+    // Walk over all modes that the display supports and
+    // return those that match the requested format etc.
+    DEVMODEW devMode;
+
+    uint32_t modeIndex = 0;
+
+    while (::EnumDisplaySettingsW(monInfo.szDevice, modeIndex++, &devMode)) {
+      // Skip interlaced modes altogether
+      if (devMode.dmDisplayFlags & DM_INTERLACED)
+        continue;
+
+      // Skip modes with incompatible formats
+      if (devMode.dmBitsPerPel != GetMonitorFormatBpp(Format))
+        continue;
+
+      D3DDISPLAYMODEEX mode;
+      mode.Size             = sizeof(D3DDISPLAYMODEEX);
+      mode.Width            = devMode.dmPelsWidth;
+      mode.Height           = devMode.dmPelsHeight;
+      mode.RefreshRate      = devMode.dmDisplayFrequency;
+      mode.Format           = static_cast<D3DFORMAT>(Format);
+      mode.ScanLineOrdering = D3DSCANLINEORDERING_PROGRESSIVE;
+
+      m_modes.push_back(mode);
+    }
+
+    // Sort display modes by width, height and refresh rate,
+    // in that order. Some games rely on correct ordering.
+    std::sort(m_modes.begin(), m_modes.end(),
+      [](const D3DDISPLAYMODEEX & a, const D3DDISPLAYMODEEX & b) {
+        if (a.Width < b.Width)   return true;
+        if (a.Width > b.Width)   return false;
+        
+        if (a.Height < b.Height) return true;
+        if (a.Height > b.Height) return false;
+        
+        return a.RefreshRate < b.RefreshRate;
+    });
   }
 
 }

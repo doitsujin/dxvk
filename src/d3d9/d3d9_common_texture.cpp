@@ -223,7 +223,7 @@ namespace dxvk {
       D3D9Format::INTZ, D3D9Format::DF16, D3D9Format::DF24
     };
 
-    return caps::IsDepthFormat(m_desc.Format)
+    return IsDepthFormat(m_desc.Format)
         && std::find(blacklist.begin(), blacklist.end(), m_desc.Format) == blacklist.end();
   }
 

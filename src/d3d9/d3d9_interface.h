@@ -1,8 +1,6 @@
 #pragma once
 
-#include "d3d9_include.h"
-#include "d3d9_format.h"
-#include "d3d9_options.h"
+#include "d3d9_adapter.h"
 
 #include "../dxvk/dxvk_instance.h"
 
@@ -119,20 +117,29 @@ namespace dxvk {
 
     HRESULT STDMETHODCALLTYPE GetAdapterLUID(UINT Adapter, LUID* pLUID);
 
+    const D3D9Options& GetOptions() { return m_d3d9Options; }
+
+    D3D9Adapter* GetAdapter(UINT Ordinal) {
+      return Ordinal < m_adapters.size()
+        ? &m_adapters[Ordinal]
+        : nullptr;
+    }
+
+    bool IsExtended() { return m_extended; }
+
   private:
 
     void CacheModes(D3D9Format Format);
 
     static const char* GetDriverDllName(DxvkGpuVendor vendor);
 
-    std::vector<D3DDISPLAYMODEEX> m_modes;
-    D3D9Format                    m_modeCacheFormat;
-
     Rc<DxvkInstance>              m_instance;
 
     bool                          m_extended;
 
     D3D9Options                   m_d3d9Options;
+
+    std::vector<D3D9Adapter>      m_adapters;
 
   };
 

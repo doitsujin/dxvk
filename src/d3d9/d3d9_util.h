@@ -171,4 +171,6 @@ namespace dxvk {
     return count;
   }
 
+  bool IsDepthFormat(D3D9Format Format);
+
 }

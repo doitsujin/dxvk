@@ -11,9 +11,10 @@ namespace dxvk {
   D3D9InterfaceEx::D3D9InterfaceEx(bool bExtended)
     : m_instance    ( new DxvkInstance() )
     , m_extended    ( bExtended ) 
-    , m_d3d9Options ( nullptr, m_instance->config() ){
-    for (uint32_t i = 0; m_instance->enumAdapters(i) != nullptr; i++)
-      m_instance->enumAdapters(i)->logAdapterInfo();
+    , m_d3d9Options ( nullptr, m_instance->config() ) {
+    m_adapters.reserve(m_instance->adapterCount());
+    for (uint32_t i = 0; i < m_instance->adapterCount(); i++)
+      m_adapters.emplace_back(this, m_instance->enumAdapters(i), i);
 
     if (m_d3d9Options.dpiAware) {
       Logger::info("Process set as DPI aware");
@@ -48,7 +49,7 @@ namespace dxvk {
 
 
   UINT STDMETHODCALLTYPE D3D9InterfaceEx::GetAdapterCount() {
-    return UINT(m_instance->adapterCount());
+    return UINT(m_adapters.size());
   }
 
 
@@ -56,27 +57,10 @@ namespace dxvk {
           UINT                    Adapter,
           DWORD                   Flags,
           D3DADAPTER_IDENTIFIER9* pIdentifier) {
-    auto dxvkAdapter = m_instance->enumAdapters(Adapter);
+    if (auto* adapter = GetAdapter(Adapter))
+      return adapter->GetAdapterIdentifier(Flags, pIdentifier);
 
-    if (dxvkAdapter == nullptr || pIdentifier == nullptr)
-      return D3DERR_INVALIDCALL;
-    
-    const auto& props = dxvkAdapter->deviceProperties();
-
-    uint32_t vendorId = m_d3d9Options.customVendorId == -1 ? props.vendorID : uint32_t(m_d3d9Options.customVendorId);
-
-    std::memcpy(pIdentifier->Description, props.deviceName, 256); // The description is actually the device name.
-    pIdentifier->DeviceId = m_d3d9Options.customDeviceId == -1 ? props.deviceID : uint32_t(m_d3d9Options.customDeviceId);
-    std::memcpy(&pIdentifier->DeviceIdentifier, dxvkAdapter->devicePropertiesExt().coreDeviceId.deviceUUID, sizeof(GUID));
-    std::strcpy(pIdentifier->DeviceName, R"(\\.\DISPLAY1)"); // The GDI device name. Not the actual device name.
-    std::strcpy(pIdentifier->Driver, this->GetDriverDllName(DxvkGpuVendor(vendorId))); // This is the driver's dll.
-    pIdentifier->DriverVersion.QuadPart = props.driverVersion;
-    pIdentifier->Revision = 0;
-    pIdentifier->SubSysId = 0;
-    pIdentifier->VendorId = vendorId;
-    pIdentifier->WHQLLevel = m_extended ? 1 : 0; // This doesn't check with the driver on Direct3D9Ex and is always 1.
-
-    return D3D_OK;
+    return D3DERR_INVALIDCALL;
   }
 
 
@@ -104,13 +88,12 @@ namespace dxvk {
           D3DFORMAT  AdapterFormat,
           D3DFORMAT  BackBufferFormat,
           BOOL       bWindowed) {
-    if (Adapter >= this->GetAdapterCount())
-      return D3DERR_INVALIDCALL;
+    if (auto* adapter = GetAdapter(Adapter))
+      return adapter->CheckDeviceType(
+        DevType, EnumerateFormat(AdapterFormat),
+        EnumerateFormat(BackBufferFormat), bWindowed);
 
-    return caps::CheckDeviceType(
-      EnumerateFormat(AdapterFormat),
-      EnumerateFormat(BackBufferFormat),
-      bWindowed);
+    return D3DERR_INVALIDCALL;
   }
 
 
@@ -121,13 +104,13 @@ namespace dxvk {
           DWORD           Usage,
           D3DRESOURCETYPE RType,
           D3DFORMAT       CheckFormat) {
-    if (Adapter >= this->GetAdapterCount())
-      return D3DERR_INVALIDCALL;
+    if (auto* adapter = GetAdapter(Adapter))
+      return adapter->CheckDeviceFormat(
+        DeviceType, EnumerateFormat(AdapterFormat),
+        Usage, RType,
+        EnumerateFormat(CheckFormat));
 
-    return caps::CheckDeviceFormat(
-      EnumerateFormat(AdapterFormat),
-      Usage, RType,
-      EnumerateFormat(CheckFormat));
+    return D3DERR_INVALIDCALL;
   }
 
 
@@ -138,13 +121,13 @@ namespace dxvk {
           BOOL                Windowed,
           D3DMULTISAMPLE_TYPE MultiSampleType,
           DWORD*              pQualityLevels) { 
-    if (Adapter >= this->GetAdapterCount())
-      return D3DERR_INVALIDCALL;
+    if (auto* adapter = GetAdapter(Adapter))
+      return adapter->CheckDeviceMultiSampleType(
+        DeviceType, EnumerateFormat(SurfaceFormat),
+        Windowed, MultiSampleType,
+        pQualityLevels);
 
-    return caps::CheckDeviceMultiSampleType(
-      EnumerateFormat(SurfaceFormat),
-      Windowed,
-      MultiSampleType, pQualityLevels);
+    return D3DERR_INVALIDCALL;
   }
 
 
@@ -154,13 +137,13 @@ namespace dxvk {
           D3DFORMAT  AdapterFormat,
           D3DFORMAT  RenderTargetFormat,
           D3DFORMAT  DepthStencilFormat) {
-    if (Adapter >= this->GetAdapterCount())
-      return D3DERR_INVALIDCALL;
+    if (auto* adapter = GetAdapter(Adapter))
+      return adapter->CheckDepthStencilMatch(
+        DeviceType, EnumerateFormat(AdapterFormat),
+        EnumerateFormat(RenderTargetFormat),
+        EnumerateFormat(DepthStencilFormat));
 
-    return caps::CheckDepthStencilMatch(
-      EnumerateFormat(AdapterFormat),
-      EnumerateFormat(RenderTargetFormat),
-      EnumerateFormat(DepthStencilFormat));
+    return D3DERR_INVALIDCALL;
   }
 
 
@@ -169,12 +152,12 @@ namespace dxvk {
           D3DDEVTYPE DeviceType,
           D3DFORMAT  SourceFormat,
           D3DFORMAT  TargetFormat) {
-    if (Adapter >= this->GetAdapterCount())
-      return D3DERR_INVALIDCALL;
+    if (auto* adapter = GetAdapter(Adapter))
+      return adapter->CheckDeviceFormatConversion(
+        DeviceType, EnumerateFormat(SourceFormat),
+        EnumerateFormat(TargetFormat));
 
-    return caps::CheckDeviceFormatConversion(
-      EnumerateFormat(SourceFormat),
-      EnumerateFormat(TargetFormat));
+    return D3DERR_INVALIDCALL;
   }
 
 
@@ -182,18 +165,19 @@ namespace dxvk {
           UINT       Adapter,
           D3DDEVTYPE DeviceType,
           D3DCAPS9*  pCaps) {
-    if (Adapter >= this->GetAdapterCount())
-      return D3DERR_INVALIDCALL;
+    if (auto* adapter = GetAdapter(Adapter))
+      return adapter->GetDeviceCaps(
+        DeviceType, pCaps);
 
-    return caps::GetDeviceCaps(m_d3d9Options, Adapter, DeviceType, pCaps);
+    return D3DERR_INVALIDCALL;
   }
 
 
   HMONITOR STDMETHODCALLTYPE D3D9InterfaceEx::GetAdapterMonitor(UINT Adapter) {
-    if (Adapter >= this->GetAdapterCount())
-      return nullptr;
+    if (auto* adapter = GetAdapter(Adapter))
+      return adapter->GetMonitor();
 
-    return GetDefaultMonitor();
+    return nullptr;
   }
 
 
@@ -247,18 +231,10 @@ namespace dxvk {
 
 
   UINT STDMETHODCALLTYPE D3D9InterfaceEx::GetAdapterModeCountEx(UINT Adapter, CONST D3DDISPLAYMODEFILTER* pFilter) {
-    if (pFilter == nullptr)
-      return 0;
+    if (auto* adapter = GetAdapter(Adapter))
+      return adapter->GetAdapterModeCountEx(pFilter);
 
-    if (Adapter >= this->GetAdapterCount())
-      return D3DERR_INVALIDCALL;
-
-    // We don't offer any interlaced formats here so early out and avoid destroying mode cache.
-    if (pFilter->ScanLineOrdering == D3DSCANLINEORDERING_INTERLACED)
-      return 0;
-
-    CacheModes(EnumerateFormat(pFilter->Format));
-    return m_modes.size();
+    return 0;
   }
 
 
@@ -267,32 +243,10 @@ namespace dxvk {
     const D3DDISPLAYMODEFILTER* pFilter,
           UINT                  Mode,
           D3DDISPLAYMODEEX*     pMode) {
-    if (pMode == nullptr || pFilter == nullptr)
-      return D3DERR_INVALIDCALL;
+    if (auto* adapter = GetAdapter(Adapter))
+      return adapter->EnumAdapterModesEx(pFilter, Mode, pMode);
 
-    const D3D9Format format =
-      EnumerateFormat(pFilter->Format);
-
-    if (Adapter >= this->GetAdapterCount())
-      return D3DERR_INVALIDCALL;
-
-    if (FAILED(CheckDeviceFormat(Adapter, D3DDEVTYPE_HAL, pFilter->Format, D3DUSAGE_RENDERTARGET, D3DRTYPE_SURFACE, pFilter->Format)))
-      return D3DERR_INVALIDCALL;
-
-    CacheModes(format);
-
-    // We don't return any scanline orderings that aren't progressive,
-    // The format filtering is already handled for us by cache modes
-    // So we can early out here and then just index.
-    if (pFilter->ScanLineOrdering == D3DSCANLINEORDERING_INTERLACED)
-      return D3DERR_INVALIDCALL;
-
-    if (Mode >= m_modes.size())
-      return D3DERR_INVALIDCALL;
-
-    *pMode = m_modes[Mode];
-
-    return D3D_OK;
+    return 0;
   }
 
 
@@ -323,23 +277,23 @@ namespace dxvk {
     || pPresentationParameters    == nullptr)
       return D3DERR_INVALIDCALL;
 
-    auto dxvkAdapter = m_instance->enumAdapters(Adapter);
+    auto* adapter = GetAdapter(Adapter);
 
-    if (dxvkAdapter == nullptr)
+    if (adapter == nullptr)
       return D3DERR_INVALIDCALL;
+
+    auto dxvkAdapter = adapter->GetDXVKAdapter();
 
     std::string clientApi = str::format("D3D9", m_extended ? "Ex" : "");
     auto dxvkDevice = dxvkAdapter->createDevice(clientApi, D3D9DeviceEx::GetDeviceFeatures(dxvkAdapter));
 
     *ppReturnedDeviceInterface = ref(new D3D9DeviceEx(
       this,
-      Adapter,
+      adapter,
       DeviceType,
       hFocusWindow,
       BehaviorFlags,
       pFullscreenDisplayMode,
-      m_extended,
-      dxvkAdapter,
       dxvkDevice));
 
     HRESULT hr = (*ppReturnedDeviceInterface)->Reset(pPresentationParameters);
@@ -355,93 +309,10 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9InterfaceEx::GetAdapterLUID(UINT Adapter, LUID* pLUID) {
-    if (pLUID == nullptr)
-      return D3DERR_INVALIDCALL;
+    if (auto* adapter = GetAdapter(Adapter))
+      return adapter->GetAdapterLUID(pLUID);
 
-    auto dxvkAdapter = m_instance->enumAdapters(Adapter);
-
-    if (dxvkAdapter == nullptr)
-      return D3DERR_INVALIDCALL;
-
-    std::memcpy(pLUID, &dxvkAdapter->devicePropertiesExt().coreDeviceId.deviceLUID, sizeof(LUID));
-
-    return D3D_OK;
-  }
-
-
-  void D3D9InterfaceEx::CacheModes(D3D9Format Format) {
-    if (!m_modes.empty() && m_modeCacheFormat == Format)
-      return; // We already cached the modes for this format. No need to do it again.
-
-    ::MONITORINFOEXW monInfo;
-    monInfo.cbSize = sizeof(monInfo);
-
-    if (!::GetMonitorInfoW(GetDefaultMonitor(), reinterpret_cast<MONITORINFO*>(&monInfo))) {
-      Logger::err("D3D9InterfaceEx::CacheModes: failed to query monitor info");
-      return;
-    }
-
-    m_modes.clear();
-    m_modeCacheFormat = Format;
-
-    // Skip unsupported formats
-    if (!IsSupportedAdapterFormat(Format) || !IsSupportedDisplayFormat(Format, false))
-      return;
-
-    // Walk over all modes that the display supports and
-    // return those that match the requested format etc.
-    DEVMODEW devMode;
-
-    uint32_t modeIndex = 0;
-
-    while (::EnumDisplaySettingsW(monInfo.szDevice, modeIndex++, &devMode)) {
-      // Skip interlaced modes altogether
-      if (devMode.dmDisplayFlags & DM_INTERLACED)
-        continue;
-
-      // Skip modes with incompatible formats
-      if (devMode.dmBitsPerPel != GetMonitorFormatBpp(Format))
-        continue;
-
-      D3DDISPLAYMODEEX mode;
-      mode.Size             = sizeof(D3DDISPLAYMODEEX);
-      mode.Width            = devMode.dmPelsWidth;
-      mode.Height           = devMode.dmPelsHeight;
-      mode.RefreshRate      = devMode.dmDisplayFrequency;
-      mode.Format           = static_cast<D3DFORMAT>(Format);
-      mode.ScanLineOrdering = D3DSCANLINEORDERING_PROGRESSIVE;
-
-      m_modes.push_back(mode);
-    }
-
-    // Sort display modes by width, height and refresh rate,
-    // in that order. Some games rely on correct ordering.
-    std::sort(m_modes.begin(), m_modes.end(),
-      [](const D3DDISPLAYMODEEX & a, const D3DDISPLAYMODEEX & b) {
-        if (a.Width < b.Width)   return true;
-        if (a.Width > b.Width)   return false;
-        
-        if (a.Height < b.Height) return true;
-        if (a.Height > b.Height) return false;
-        
-        return a.RefreshRate < b.RefreshRate;
-    });
-  }
-
-
-  const char* D3D9InterfaceEx::GetDriverDllName(DxvkGpuVendor vendor) {
-    switch (vendor) {
-      default:
-      case DxvkGpuVendor::Nvidia: return "nvd3dum.dll";
-
-#if defined(__x86_64__) || defined(_M_X64)
-      case DxvkGpuVendor::Amd:    return "aticfx64.dll";
-      case DxvkGpuVendor::Intel:  return "igdumd64.dll";
-#else
-      case DxvkGpuVendor::Amd:    return "aticfx32.dll";
-      case DxvkGpuVendor::Intel:  return "igdumd32.dll";
-#endif
-    }
+    return D3DERR_INVALIDCALL;
   }
 
 }

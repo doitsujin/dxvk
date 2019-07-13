@@ -362,4 +362,21 @@ namespace dxvk {
     }
   }
 
+
+  bool IsDepthFormat(D3D9Format Format) {
+    return Format == D3D9Format::D16_LOCKABLE
+        || Format == D3D9Format::D32
+        || Format == D3D9Format::D15S1
+        || Format == D3D9Format::D24S8
+        || Format == D3D9Format::D24X8
+        || Format == D3D9Format::D24X4S4
+        || Format == D3D9Format::D16
+        || Format == D3D9Format::D32F_LOCKABLE
+        || Format == D3D9Format::D24FS8
+        || Format == D3D9Format::D32_LOCKABLE
+        || Format == D3D9Format::DF16
+        || Format == D3D9Format::DF24
+        || Format == D3D9Format::INTZ;
+  }
+
 }

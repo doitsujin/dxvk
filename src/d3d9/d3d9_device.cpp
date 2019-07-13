@@ -1,5 +1,6 @@
 #include "d3d9_device.h"
 
+#include "d3d9_interface.h"
 #include "d3d9_swapchain.h"
 #include "d3d9_caps.h"
 #include "d3d9_util.h"
@@ -29,33 +30,27 @@
 namespace dxvk {
 
   D3D9DeviceEx::D3D9DeviceEx(
-          IDirect3D9Ex*     pParent,
-          UINT              Adapter,
+          D3D9InterfaceEx*  pParent,
+          D3D9Adapter*      pAdapter,
           D3DDEVTYPE        DeviceType,
           HWND              hFocusWindow,
           DWORD             BehaviorFlags,
           D3DDISPLAYMODEEX* pDisplayMode,
-          bool              bExtended,
-          Rc<DxvkAdapter>   dxvkAdapter,
           Rc<DxvkDevice>    dxvkDevice)
-    : m_dxvkAdapter    ( dxvkAdapter )
+    : m_adapter        ( pAdapter )
     , m_dxvkDevice     ( dxvkDevice )
     , m_csThread       ( dxvkDevice->createContext() )
     , m_frameLatency   ( DefaultFrameLatency )
     , m_csChunk        ( AllocCsChunk() )
     , m_parent         ( pParent )
-    , m_adapter        ( Adapter )
     , m_deviceType     ( DeviceType )
     , m_window         ( hFocusWindow )
     , m_behaviorFlags  ( BehaviorFlags )
     , m_multithread    ( BehaviorFlags & D3DCREATE_MULTITHREADED )
     , m_shaderModules  ( new D3D9ShaderModuleSet )
-    , m_d3d9Formats    ( dxvkAdapter )
-    , m_d3d9Options    ( dxvkDevice, dxvkAdapter->instance()->config() )
+    , m_d3d9Formats    ( pAdapter->GetDXVKAdapter() )
+    , m_d3d9Options    ( dxvkDevice, pAdapter->GetDXVKAdapter()->instance()->config() )
     , m_dxsoOptions    ( m_dxvkDevice, m_d3d9Options ) {
-    if (bExtended)
-      m_flags.set(D3D9DeviceFlag::ExtendedDevice);
-
     m_initializer      = new D3D9Initializer(m_dxvkDevice);
     m_frameLatencyCap  = m_d3d9Options.maxFrameLatency;
 
@@ -98,7 +93,7 @@ namespace dxvk {
 
     *ppvObject = nullptr;
 
-    bool extended = m_flags.test(D3D9DeviceFlag::ExtendedDevice)
+    bool extended = m_parent->IsExtended()
                  && riid == __uuidof(IDirect3DDevice9Ex);
 
     if (riid == __uuidof(IUnknown)
@@ -149,7 +144,7 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9DeviceEx::GetDeviceCaps(D3DCAPS9* pCaps) {
-    return caps::GetDeviceCaps(m_d3d9Options, m_adapter, m_deviceType, pCaps);
+    return m_adapter->GetDeviceCaps(m_deviceType, pCaps);
   }
 
 
@@ -169,7 +164,7 @@ namespace dxvk {
     if (pParameters == nullptr)
       return D3DERR_INVALIDCALL;
 
-    pParameters->AdapterOrdinal = m_adapter;
+    pParameters->AdapterOrdinal = m_adapter->GetOrdinal();
     pParameters->BehaviorFlags  = m_behaviorFlags;
     pParameters->DeviceType     = m_deviceType;
     pParameters->hFocusWindow   = m_window;
@@ -3429,7 +3424,7 @@ namespace dxvk {
 
 
   bool D3D9DeviceEx::IsExtended() {
-    return m_flags.test(D3D9DeviceFlag::ExtendedDevice);
+    return m_parent->IsExtended();
   }
 
 
@@ -3961,7 +3956,7 @@ namespace dxvk {
 
 
   int64_t D3D9DeviceEx::DetermineInitialTextureMemory() {
-    auto memoryProp = m_dxvkAdapter->memoryProperties();
+    auto memoryProp = m_adapter->GetDXVKAdapter()->memoryProperties();
 
     VkDeviceSize availableTextureMemory = 0;
 
