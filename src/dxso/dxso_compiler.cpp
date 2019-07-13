@@ -234,7 +234,7 @@ namespace dxvk {
       // int i[16]
       m_module.defArrayTypeUnique(
         getVectorTypeId({ DxsoScalarType::Sint32, 4 }),
-        m_module.constu32(16)),
+        m_module.constu32(caps::MaxOtherConstants)),
 
       // uint32_t boolBitmask
       getScalarTypeId(DxsoScalarType::Uint32)
