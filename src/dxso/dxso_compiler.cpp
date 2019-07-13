@@ -2280,23 +2280,35 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
 
   void DxsoCompiler::emitTexCoord(const DxsoInstructionContext& ctx) {
-    DxsoRegister texcoord;
-    texcoord.id.type = DxsoRegisterType::PixelTexcoord;
-    texcoord.id.num  = ctx.src[0].id.num;
+    DxsoRegisterValue result;
 
-    DxsoRegisterValue value = emitRegisterLoadRaw(texcoord, nullptr);
-    // Saturate
-    value = emitSaturate(value);
-    // w = 1.0f
-    uint32_t wIndex = 3;
-    value.id = m_module.opCompositeInsert(getVectorTypeId(value.type),
-      m_module.constf32(1.0f),
-      value.id,
-      1, &wIndex);
+    if (m_programInfo.majorVersion() == 1 && m_programInfo.minorVersion() == 4) {
+      // TexCrd Op (PS 1.4)
+      DxsoRegister texcoord;
+      texcoord.id.type = DxsoRegisterType::PixelTexcoord;
+      texcoord.id.num  = ctx.src[0].id.num;
+
+      result = emitRegisterLoadRaw(texcoord, nullptr);
+    } else {
+      // TexCoord Op (PS 1.0 - PS 1.3)
+      DxsoRegister texcoord;
+      texcoord.id.type = DxsoRegisterType::PixelTexcoord;
+      texcoord.id.num  = ctx.dst.id.num;
+
+      result = emitRegisterLoadRaw(texcoord, nullptr);
+      // Saturate
+      result = emitSaturate(result);
+      // w = 1.0f
+      uint32_t wIndex = 3;
+      result.id = m_module.opCompositeInsert(getVectorTypeId(result.type),
+        m_module.constf32(1.0f),
+        result.id,
+        1, &wIndex);
+    }
 
     DxsoRegisterPointer dst = emitGetOperandPtr(ctx.dst);
-    m_module.opStore(
-      dst.id, value.id);
+
+    this->emitDstStore(dst, result, ctx.dst.mask, ctx.dst.saturate, ctx.dst.shift);
   }
 
   void DxsoCompiler::emitTextureSample(const DxsoInstructionContext& ctx) {
