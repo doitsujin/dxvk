@@ -35,6 +35,7 @@
 #include "../util/util_likely.h"
 #include "../util/util_math.h"
 #include "../util/util_string.h"
+#include "../util/util_misc.h"
 
 // Missed definitions in Wine/MinGW.
 

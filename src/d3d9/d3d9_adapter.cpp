@@ -56,9 +56,9 @@ namespace dxvk {
     uint32_t deviceId  = options.customDeviceId == -1 ? props.deviceID : uint32_t(options.customDeviceId);
     const char* driver = GetDriverDLL(DxvkGpuVendor(vendorId));
 
-    std::strncpy(pIdentifier->Description, props.deviceName,  ARRAYSIZE(pIdentifier->Description));
-    std::strncpy(pIdentifier->DeviceName,  R"(\\.\DISPLAY1)", ARRAYSIZE(pIdentifier->DeviceName)); // The GDI device name. Not the actual device name.
-    std::strncpy(pIdentifier->Driver,      driver,            ARRAYSIZE(pIdentifier->Driver));     // This is the driver's dll.
+    std::strncpy(pIdentifier->Description, props.deviceName,  countof(pIdentifier->Description));
+    std::strncpy(pIdentifier->DeviceName,  R"(\\.\DISPLAY1)", countof(pIdentifier->DeviceName)); // The GDI device name. Not the actual device name.
+    std::strncpy(pIdentifier->Driver,      driver,            countof(pIdentifier->Driver));     // This is the driver's dll.
 
     pIdentifier->DeviceIdentifier       = guid;
     pIdentifier->DeviceId               = deviceId;
