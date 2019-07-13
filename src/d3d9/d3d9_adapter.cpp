@@ -133,7 +133,12 @@ namespace dxvk {
     if (mapping.FormatSrgb  == VK_FORMAT_UNDEFINED && srgb)
       return D3DERR_NOTAVAILABLE;
 
-    return D3D_OK;
+    if (RType == D3DRTYPE_VERTEXBUFFER || RType == D3DRTYPE_INDEXBUFFER)
+      return D3D_OK;
+
+    // Let's actually ask Vulkan now that we got some quirks out the way!
+
+    return CheckDeviceVkFormat(mapping.FormatColor, Usage, RType);
   }
 
 
@@ -621,6 +626,46 @@ namespace dxvk {
     *pLUID = bit::cast<LUID>(m_adapter->devicePropertiesExt().coreDeviceId.deviceLUID);
 
     return D3D_OK;
+  }
+
+
+  HRESULT D3D9Adapter::CheckDeviceVkFormat(
+          VkFormat        Format,
+          DWORD           Usage,
+          D3DRESOURCETYPE RType) {
+    VkFormatFeatureFlags checkFlags = 0;
+
+    if (RType != D3DRTYPE_SURFACE)
+      checkFlags |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
+
+    if (Usage & D3DUSAGE_RENDERTARGET) {
+      checkFlags |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+
+      if (Usage & D3DUSAGE_QUERY_POSTPIXELSHADER_BLENDING)
+        checkFlags |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT;
+    }
+
+    if (Usage & D3DUSAGE_DEPTHSTENCIL)
+      checkFlags |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    else
+      checkFlags |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
+
+    VkFormatFeatureFlags checkFlagsMipGen = checkFlags;
+
+    if (Usage & D3DUSAGE_AUTOGENMIPMAP) {
+      checkFlagsMipGen |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
+      checkFlagsMipGen |= VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
+    }
+
+    VkFormatProperties   fmtSupport  = m_adapter->formatProperties(Format);
+    VkFormatFeatureFlags imgFeatures = fmtSupport.optimalTilingFeatures | fmtSupport.linearTilingFeatures;
+
+    if ((imgFeatures & checkFlags) != checkFlags)
+      return D3DERR_NOTAVAILABLE;
+
+    return ((imgFeatures & checkFlagsMipGen) != checkFlagsMipGen)
+      ? D3DOK_NOAUTOGEN
+      : D3D_OK;
   }
 
 

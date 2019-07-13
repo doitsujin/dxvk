@@ -80,6 +80,11 @@ namespace dxvk {
 
   private:
 
+    HRESULT CheckDeviceVkFormat(
+          VkFormat        Format,
+          DWORD           Usage,
+          D3DRESOURCETYPE RType);
+
     void CacheModes(D3D9Format Format);
 
     D3D9InterfaceEx*              m_parent;
