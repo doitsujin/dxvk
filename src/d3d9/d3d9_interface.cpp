@@ -254,12 +254,10 @@ namespace dxvk {
           UINT                Adapter,
           D3DDISPLAYMODEEX*   pMode,
           D3DDISPLAYROTATION* pRotation) {
-    D3DDISPLAYMODEFILTER filter;
-    filter.Size             = sizeof(D3DDISPLAYMODEFILTER);
-    filter.ScanLineOrdering = D3DSCANLINEORDERING_PROGRESSIVE;
-    filter.Format           = D3DFMT_X8R8G8B8;
+    if (auto* adapter = GetAdapter(Adapter))
+      return adapter->GetAdapterDisplayModeEx(pMode, pRotation);
 
-    return this->EnumAdapterModesEx(Adapter, &filter, 0, pMode);
+    return D3DERR_INVALIDCALL;
   }
 
 
