@@ -1493,7 +1493,7 @@ namespace dxvk {
           uint32_t instanceCount,
           uint32_t firstVertex,
           uint32_t firstInstance) {
-    this->commitGraphicsState(false);
+    this->commitGraphicsState<false>();
     
     if (m_gpActivePipeline) {
       m_cmd->cmdDraw(
@@ -1511,7 +1511,7 @@ namespace dxvk {
           VkDeviceSize      offset,
           uint32_t          count,
           uint32_t          stride) {
-    this->commitGraphicsState(false);
+    this->commitGraphicsState<false>();
     
     if (m_gpActivePipeline) {
       auto descriptor = m_state.id.argBuffer.getDescriptor();
@@ -1534,7 +1534,7 @@ namespace dxvk {
           VkDeviceSize      countOffset,
           uint32_t          maxCount,
           uint32_t          stride) {
-    this->commitGraphicsState(false);
+    this->commitGraphicsState<false>();
     
     if (m_gpActivePipeline) {
       auto argDescriptor = m_state.id.argBuffer.getDescriptor();
@@ -1561,7 +1561,7 @@ namespace dxvk {
           uint32_t firstIndex,
           uint32_t vertexOffset,
           uint32_t firstInstance) {
-    this->commitGraphicsState(true);
+    this->commitGraphicsState<true>();
     
     if (m_gpActivePipeline) {
       m_cmd->cmdDrawIndexed(
@@ -1580,7 +1580,7 @@ namespace dxvk {
           VkDeviceSize      offset,
           uint32_t          count,
           uint32_t          stride) {
-    this->commitGraphicsState(true);
+    this->commitGraphicsState<true>();
     
     if (m_gpActivePipeline) {
       auto descriptor = m_state.id.argBuffer.getDescriptor();
@@ -1603,7 +1603,7 @@ namespace dxvk {
           VkDeviceSize      countOffset,
           uint32_t          maxCount,
           uint32_t          stride) {
-    this->commitGraphicsState(true);
+    this->commitGraphicsState<true>();
     
     if (m_gpActivePipeline) {
       auto argDescriptor = m_state.id.argBuffer.getDescriptor();
@@ -1628,7 +1628,7 @@ namespace dxvk {
     const DxvkBufferSlice&  counterBuffer,
           uint32_t          counterDivisor,
           uint32_t          counterBias) {
-    this->commitGraphicsState(false);
+    this->commitGraphicsState<false>();
 
     if (m_gpActivePipeline) {
       auto physSlice = counterBuffer.getSliceHandle();
@@ -4045,7 +4045,8 @@ namespace dxvk {
   }
   
   
-  void DxvkContext::commitGraphicsState(bool indexed) {
+  template<bool Indexed>
+  void DxvkContext::commitGraphicsState() {
     if (m_flags.test(DxvkContextFlag::GpDirtyFramebuffer))
       this->updateFramebuffer();
 
@@ -4055,7 +4056,7 @@ namespace dxvk {
     if (m_flags.test(DxvkContextFlag::GpDirtyPipeline))
       this->updateGraphicsPipeline();
     
-    if (m_flags.test(DxvkContextFlag::GpDirtyIndexBuffer) && indexed)
+    if (m_flags.test(DxvkContextFlag::GpDirtyIndexBuffer) && Indexed)
       this->updateIndexBufferBinding();
     
     if (m_flags.test(DxvkContextFlag::GpDirtyVertexBuffers))

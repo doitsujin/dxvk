@@ -1155,7 +1155,9 @@ namespace dxvk {
             VkPipelineBindPoint     bindPoint);
     
     void commitComputeState();
-    void commitGraphicsState(bool indexed);
+    
+    template<bool Indexed>
+    void commitGraphicsState();
     
     void commitComputeInitBarriers();
     void commitComputePostBarriers();
