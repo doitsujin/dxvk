@@ -246,7 +246,7 @@ namespace dxvk {
     if (auto* adapter = GetAdapter(Adapter))
       return adapter->EnumAdapterModesEx(pFilter, Mode, pMode);
 
-    return 0;
+    return D3DERR_INVALIDCALL;
   }
 
 
