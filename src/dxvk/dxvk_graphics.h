@@ -273,17 +273,13 @@ namespace dxvk {
     alignas(CACHE_LINE_SIZE) sync::Spinlock   m_mutex;
     std::vector<DxvkGraphicsPipelineInstance> m_pipelines;
     
-    // Pipeline handles used for derivative pipelines
-    VkPipeline m_basePipeline = VK_NULL_HANDLE;
-    
     const DxvkGraphicsPipelineInstance* findInstance(
       const DxvkGraphicsPipelineStateInfo& state,
             VkRenderPass                   renderPass) const;
     
     VkPipeline compilePipeline(
       const DxvkGraphicsPipelineStateInfo& state,
-      const DxvkRenderPass&                renderPass,
-            VkPipeline                     baseHandle) const;
+      const DxvkRenderPass&                renderPass) const;
     
     void destroyPipeline(
             VkPipeline                     pipeline) const;

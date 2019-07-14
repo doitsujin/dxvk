@@ -82,15 +82,12 @@ namespace dxvk {
     sync::Spinlock              m_mutex;
     std::vector<PipelineStruct> m_pipelines;
     
-    VkPipeline m_basePipeline = VK_NULL_HANDLE;
-    
     bool findPipeline(
       const DxvkComputePipelineStateInfo& state,
             VkPipeline&                   pipeline) const;
     
     VkPipeline compilePipeline(
-      const DxvkComputePipelineStateInfo& state,
-            VkPipeline                    baseHandle) const;
+      const DxvkComputePipelineStateInfo& state) const;
     
     void destroyPipeline(
             VkPipeline                    pipeline);

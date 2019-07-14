@@ -52,14 +52,11 @@ namespace dxvk {
     
       // If no pipeline instance exists with the given state
       // vector, create a new one and add it to the list.
-      newPipelineHandle = this->compilePipeline(state, m_basePipeline);
+      newPipelineHandle = this->compilePipeline(state);
       
       // Add new pipeline to the set
       m_pipelines.push_back({ state, newPipelineHandle });
       m_pipeMgr->m_numComputePipelines += 1;
-      
-      if (!m_basePipeline && newPipelineHandle)
-        m_basePipeline = newPipelineHandle;
     }
     
     if (newPipelineHandle != VK_NULL_HANDLE)
@@ -84,8 +81,7 @@ namespace dxvk {
   
   
   VkPipeline DxvkComputePipeline::compilePipeline(
-    const DxvkComputePipelineStateInfo& state,
-          VkPipeline                    baseHandle) const {
+    const DxvkComputePipelineStateInfo& state) const {
     std::vector<VkDescriptorSetLayoutBinding> bindings;
 
     if (Logger::logLevel() <= LogLevel::Debug) {
@@ -107,12 +103,10 @@ namespace dxvk {
     VkComputePipelineCreateInfo info;
     info.sType                = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
     info.pNext                = nullptr;
-    info.flags                = baseHandle == VK_NULL_HANDLE
-      ? VK_PIPELINE_CREATE_ALLOW_DERIVATIVES_BIT
-      : VK_PIPELINE_CREATE_DERIVATIVE_BIT;
+    info.flags                = 0;
     info.stage                = csm.stageInfo(&specInfo);
     info.layout               = m_layout->pipelineLayout();
-    info.basePipelineHandle   = baseHandle;
+    info.basePipelineHandle   = VK_NULL_HANDLE;
     info.basePipelineIndex    = -1;
     
     // Time pipeline compilation for debugging purposes

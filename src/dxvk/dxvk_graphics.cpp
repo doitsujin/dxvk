@@ -119,14 +119,11 @@ namespace dxvk {
       
       // If no pipeline instance exists with the given state
       // vector, create a new one and add it to the list.
-      newPipelineHandle = this->compilePipeline(state, renderPass, m_basePipeline);
+      newPipelineHandle = this->compilePipeline(state, renderPass);
 
       // Add new pipeline to the set
       m_pipelines.emplace_back(state, renderPassHandle, newPipelineHandle);
       m_pipeMgr->m_numGraphicsPipelines += 1;
-      
-      if (!m_basePipeline && newPipelineHandle)
-        m_basePipeline = newPipelineHandle;
     }
     
     if (newPipelineHandle != VK_NULL_HANDLE)
@@ -150,8 +147,7 @@ namespace dxvk {
   
   VkPipeline DxvkGraphicsPipeline::compilePipeline(
     const DxvkGraphicsPipelineStateInfo& state,
-    const DxvkRenderPass&                renderPass,
-          VkPipeline                     baseHandle) const {
+    const DxvkRenderPass&                renderPass) const {
     if (Logger::logLevel() <= LogLevel::Debug) {
       Logger::debug("Compiling graphics pipeline...");
       this->logPipelineState(LogLevel::Debug, state);
@@ -427,12 +423,8 @@ namespace dxvk {
     info.layout                   = m_layout->pipelineLayout();
     info.renderPass               = renderPass.getDefaultHandle();
     info.subpass                  = 0;
-    info.basePipelineHandle       = baseHandle;
+    info.basePipelineHandle       = VK_NULL_HANDLE;
     info.basePipelineIndex        = -1;
-    
-    info.flags |= baseHandle == VK_NULL_HANDLE
-      ? VK_PIPELINE_CREATE_ALLOW_DERIVATIVES_BIT
-      : VK_PIPELINE_CREATE_DERIVATIVE_BIT;
     
     if (tsInfo.patchControlPoints == 0)
       info.pTessellationState = nullptr;
