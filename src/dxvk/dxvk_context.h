@@ -1154,9 +1154,6 @@ namespace dxvk {
     void updatePushConstants(
             VkPipelineBindPoint     bindPoint);
     
-    bool validateComputeState();
-    bool validateGraphicsState();
-    
     void commitComputeState();
     void commitGraphicsState(bool indexed);
     

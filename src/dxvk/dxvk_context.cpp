@@ -1432,7 +1432,7 @@ namespace dxvk {
           uint32_t z) {
     this->commitComputeState();
     
-    if (this->validateComputeState()) {
+    if (m_cpActivePipeline) {
       this->commitComputeInitBarriers();
 
       m_queryManager.beginQueries(m_cmd,
@@ -1460,7 +1460,7 @@ namespace dxvk {
     if (m_execBarriers.isBufferDirty(bufferSlice, DxvkAccess::Read))
       m_execBarriers.recordCommands(m_cmd);
     
-    if (this->validateComputeState()) {
+    if (m_cpActivePipeline) {
       this->commitComputeInitBarriers();
 
       m_queryManager.beginQueries(m_cmd,
@@ -1495,7 +1495,7 @@ namespace dxvk {
           uint32_t firstInstance) {
     this->commitGraphicsState(false);
     
-    if (this->validateGraphicsState()) {
+    if (m_gpActivePipeline) {
       m_cmd->cmdDraw(
         vertexCount, instanceCount,
         firstVertex, firstInstance);
@@ -1513,7 +1513,7 @@ namespace dxvk {
           uint32_t          stride) {
     this->commitGraphicsState(false);
     
-    if (this->validateGraphicsState()) {
+    if (m_gpActivePipeline) {
       auto descriptor = m_state.id.argBuffer.getDescriptor();
       
       m_cmd->cmdDrawIndirect(
@@ -1536,7 +1536,7 @@ namespace dxvk {
           uint32_t          stride) {
     this->commitGraphicsState(false);
     
-    if (this->validateGraphicsState()) {
+    if (m_gpActivePipeline) {
       auto argDescriptor = m_state.id.argBuffer.getDescriptor();
       auto cntDescriptor = m_state.id.cntBuffer.getDescriptor();
       
@@ -1563,7 +1563,7 @@ namespace dxvk {
           uint32_t firstInstance) {
     this->commitGraphicsState(true);
     
-    if (this->validateGraphicsState()) {
+    if (m_gpActivePipeline) {
       m_cmd->cmdDrawIndexed(
         indexCount, instanceCount,
         firstIndex, vertexOffset,
@@ -1582,7 +1582,7 @@ namespace dxvk {
           uint32_t          stride) {
     this->commitGraphicsState(true);
     
-    if (this->validateGraphicsState()) {
+    if (m_gpActivePipeline) {
       auto descriptor = m_state.id.argBuffer.getDescriptor();
       
       m_cmd->cmdDrawIndexedIndirect(
@@ -1605,7 +1605,7 @@ namespace dxvk {
           uint32_t          stride) {
     this->commitGraphicsState(true);
     
-    if (this->validateGraphicsState()) {
+    if (m_gpActivePipeline) {
       auto argDescriptor = m_state.id.argBuffer.getDescriptor();
       auto cntDescriptor = m_state.id.cntBuffer.getDescriptor();
       
@@ -1630,7 +1630,7 @@ namespace dxvk {
           uint32_t          counterBias) {
     this->commitGraphicsState(false);
 
-    if (this->validateGraphicsState()) {
+    if (m_gpActivePipeline) {
       auto physSlice = counterBuffer.getSliceHandle();
 
       m_cmd->cmdDrawIndirectVertexCount(1, 0,
@@ -4014,17 +4014,6 @@ namespace dxvk {
         pushConstRange.size,
         &m_state.pc.data[pushConstRange.offset]);
     }
-  }
-  
-  
-  bool DxvkContext::validateComputeState() {
-    return m_cpActivePipeline != VK_NULL_HANDLE;
-  }
-  
-  
-  bool DxvkContext::validateGraphicsState() {
-    return m_gpActivePipeline != VK_NULL_HANDLE
-        && m_flags.test(DxvkContextFlag::GpRenderPassBound);
   }
   
   
