@@ -206,6 +206,9 @@ namespace dxvk {
   HRESULT STDMETHODCALLTYPE D3D9TextureCube::GetCubeMapSurface(D3DCUBEMAP_FACES Face, UINT Level, IDirect3DSurface9** ppSurfaceLevel) {
     InitReturnPtr(ppSurfaceLevel);
 
+    if (Level >= m_texture.Desc()->MipLevels)
+      return D3DERR_INVALIDCALL;
+
     auto* surface = GetSubresource(
       m_texture.CalcSubresource(UINT(Face), Level));
 
