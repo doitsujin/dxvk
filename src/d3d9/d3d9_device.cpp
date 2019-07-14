@@ -3629,7 +3629,7 @@ namespace dxvk {
     bool alloced = pResource->CreateBufferSubresource(Subresource);
 
     const Rc<DxvkBuffer> mappedBuffer = pResource->GetBuffer(Subresource);
-    
+
     auto formatInfo = imageFormatInfo(pResource->Format());
     auto subresource = pResource->GetSubresourceFromIndex(
         formatInfo->aspectMask, Subresource);
@@ -3644,8 +3644,8 @@ namespace dxvk {
     if (Flags & D3DLOCK_DISCARD) {
       // We do not have to preserve the contents of the
       // buffer if the entire image gets discarded.
-      physSlice = mappedBuffer->allocSlice();
-        
+      physSlice = pResource->DiscardMapSlice(Subresource);
+
       EmitCs([
         cImageBuffer = mappedBuffer,
         cBufferSlice = physSlice
@@ -3661,7 +3661,7 @@ namespace dxvk {
       // are meant to be able to provide readback without waiting.
       // We always keep a copy of them in system memory for this reason.
       // No need to wait as its not in use.
-      physSlice = mappedBuffer->getSliceHandle();
+      physSlice = pResource->GetMappedSlice(Subresource);
 
       // We do not need to wait for the resource in the event the
       // calling app promises not to overwrite data that is in use
@@ -3687,7 +3687,7 @@ namespace dxvk {
       // to be preserved, and if the GPU has write access to the
       // image, copy the current image contents into the buffer.
       auto subresourceLayers = vk::makeSubresourceLayers(subresource);
-          
+
       EmitCs([
         cImageBuffer  = mappedBuffer,
         cImage        = mappedImage,
@@ -3706,7 +3706,7 @@ namespace dxvk {
       }
       physSlice = mappedBuffer->getSliceHandle();
     }
-      
+
     const bool atiHack = desc.Format == D3D9Format::ATI1 || desc.Format == D3D9Format::ATI2;
     // Set up map pointer.
     if (atiHack) {

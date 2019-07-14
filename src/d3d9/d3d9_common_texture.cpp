@@ -102,6 +102,7 @@ namespace dxvk {
       memType |= VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
 
     m_buffers[Subresource] = m_device->GetDXVKDevice()->createBuffer(info, memType);
+    m_mappedSlices[Subresource] = m_buffers[Subresource]->getSliceHandle();
 
     return true;
   }

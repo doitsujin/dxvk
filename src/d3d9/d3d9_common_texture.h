@@ -160,6 +160,18 @@ namespace dxvk {
       return m_buffers[Subresource];
     }
 
+
+    DxvkBufferSliceHandle GetMappedSlice(UINT Subresource) {
+      return m_mappedSlices[Subresource];
+    }
+
+
+    DxvkBufferSliceHandle DiscardMapSlice(UINT Subresource) {
+      DxvkBufferSliceHandle handle = m_buffers[Subresource]->allocSlice();
+      m_mappedSlices[Subresource] = handle;
+      return handle;
+    }
+
     /**
      * \brief Computes subresource from the subresource index
      *
@@ -315,6 +327,8 @@ namespace dxvk {
     Rc<DxvkImage>                 m_resolveImage;
     D3D9SubresourceArray<
       Rc<DxvkBuffer>>             m_buffers;
+    D3D9SubresourceArray<
+      DxvkBufferSliceHandle>      m_mappedSlices;
     D3D9SubresourceArray<DWORD>   m_lockFlags;
 
     D3D9ViewSet                   m_views;
