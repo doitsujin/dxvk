@@ -20,7 +20,19 @@ namespace dxvk {
     m_shadow  = DetermineShadowState();
 
     if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_BACKED) {
-      m_image = CreatePrimaryImage(ResourceType);
+      try {
+        m_image = CreatePrimaryImage(ResourceType);
+      }
+      catch (const DxvkError& e) {
+        if (m_desc.Usage & D3DUSAGE_AUTOGENMIPMAP) {
+          m_desc.Usage &= ~D3DUSAGE_AUTOGENMIPMAP;
+          m_desc.MipLevels = 1;
+          m_image = CreatePrimaryImage(ResourceType);
+        }
+        else
+          throw e;
+      }
+
       CreateInitialViews();
 
       m_size = DetermineMemoryConsumption();

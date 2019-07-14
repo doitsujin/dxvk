@@ -393,7 +393,9 @@ namespace dxvk {
 
       m_initializer->InitTexture(texture->GetCommonTexture(), initialData);
       *ppTexture = texture.ref();
-      return D3D_OK;
+
+      bool mipSuccess = (Usage & D3DUSAGE_AUTOGENMIPMAP) == (texture->GetCommonTexture()->Desc()->Usage & D3DUSAGE_AUTOGENMIPMAP);
+      return mipSuccess ? D3D_OK : D3DOK_NOAUTOGEN;
     }
     catch (const DxvkError& e) {
       Logger::err(e.message());
@@ -438,7 +440,9 @@ namespace dxvk {
       const Com<D3D9Texture3D> texture = new D3D9Texture3D(this, &desc);
       m_initializer->InitTexture(texture->GetCommonTexture());
       *ppVolumeTexture = texture.ref();
-      return D3D_OK;
+
+      bool mipSuccess = (Usage & D3DUSAGE_AUTOGENMIPMAP) == (texture->GetCommonTexture()->Desc()->Usage & D3DUSAGE_AUTOGENMIPMAP);
+      return mipSuccess ? D3D_OK : D3DOK_NOAUTOGEN;
     }
     catch (const DxvkError& e) {
       Logger::err(e.message());
@@ -481,7 +485,9 @@ namespace dxvk {
       const Com<D3D9TextureCube> texture = new D3D9TextureCube(this, &desc);
       m_initializer->InitTexture(texture->GetCommonTexture());
       *ppCubeTexture = texture.ref();
-      return D3D_OK;
+
+      bool mipSuccess = (Usage & D3DUSAGE_AUTOGENMIPMAP) == (texture->GetCommonTexture()->Desc()->Usage & D3DUSAGE_AUTOGENMIPMAP);
+      return mipSuccess ? D3D_OK : D3DOK_NOAUTOGEN;
     }
     catch (const DxvkError& e) {
       Logger::err(e.message());
