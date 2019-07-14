@@ -1126,16 +1126,15 @@ namespace dxvk {
     void updateShaderSamplers(
       const DxvkPipelineLayout*     layout);
     
+    template<VkPipelineBindPoint BindPoint>
     bool updateShaderResources(
-            VkPipelineBindPoint     bindPoint,
       const DxvkPipelineLayout*     layout);
     
     VkDescriptorSet updateShaderDescriptors(
-            VkPipelineBindPoint     bindPoint,
       const DxvkPipelineLayout*     layout);
     
+    template<VkPipelineBindPoint BindPoint>
     void updateShaderDescriptorSetBinding(
-            VkPipelineBindPoint     bindPoint,
             VkDescriptorSet         set,
       const DxvkPipelineLayout*     layout);
 
@@ -1151,8 +1150,8 @@ namespace dxvk {
     
     void updateDynamicState();
 
-    void updatePushConstants(
-            VkPipelineBindPoint     bindPoint);
+    template<VkPipelineBindPoint BindPoint>
+    void updatePushConstants();
     
     void commitComputeState();
     

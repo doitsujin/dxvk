@@ -3548,9 +3548,7 @@ namespace dxvk {
       && m_state.cp.pipeline->layout()->hasStaticBufferBindings())) {
       m_flags.clr(DxvkContextFlag::CpDirtyResources);
 
-      if (this->updateShaderResources(
-          VK_PIPELINE_BIND_POINT_COMPUTE,
-          m_state.cp.pipeline->layout()))
+      if (this->updateShaderResources<VK_PIPELINE_BIND_POINT_COMPUTE>(m_state.cp.pipeline->layout()))
         m_flags.set(DxvkContextFlag::CpDirtyPipelineState);
 
       m_flags.set(
@@ -3566,14 +3564,12 @@ namespace dxvk {
 
     if (m_flags.test(DxvkContextFlag::CpDirtyDescriptorSet)) {
       m_cpSet = this->updateShaderDescriptors(
-        VK_PIPELINE_BIND_POINT_COMPUTE,
         m_state.cp.pipeline->layout());
     }
 
     if (m_flags.test(DxvkContextFlag::CpDirtyDescriptorOffsets)) {
-      this->updateShaderDescriptorSetBinding(
-        VK_PIPELINE_BIND_POINT_COMPUTE, m_cpSet,
-        m_state.cp.pipeline->layout());
+      this->updateShaderDescriptorSetBinding<VK_PIPELINE_BIND_POINT_COMPUTE>(
+        m_cpSet, m_state.cp.pipeline->layout());
     }
 
     m_flags.clr(
@@ -3591,9 +3587,7 @@ namespace dxvk {
       && m_state.gp.pipeline->layout()->hasStaticBufferBindings())) {
       m_flags.clr(DxvkContextFlag::GpDirtyResources);
 
-      if (this->updateShaderResources(
-          VK_PIPELINE_BIND_POINT_GRAPHICS,
-          m_state.gp.pipeline->layout()))
+      if (this->updateShaderResources<VK_PIPELINE_BIND_POINT_GRAPHICS>(m_state.gp.pipeline->layout()))
         m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
 
       m_flags.set(
@@ -3609,14 +3603,12 @@ namespace dxvk {
 
     if (m_flags.test(DxvkContextFlag::GpDirtyDescriptorSet)) {
       m_gpSet = this->updateShaderDescriptors(
-        VK_PIPELINE_BIND_POINT_GRAPHICS,
         m_state.gp.pipeline->layout());
     }
 
     if (m_flags.test(DxvkContextFlag::GpDirtyDescriptorOffsets)) {
-      this->updateShaderDescriptorSetBinding(
-        VK_PIPELINE_BIND_POINT_GRAPHICS, m_gpSet,
-        m_state.gp.pipeline->layout());
+      this->updateShaderDescriptorSetBinding<VK_PIPELINE_BIND_POINT_GRAPHICS>(
+        m_gpSet, m_state.gp.pipeline->layout());
     }
 
     m_flags.clr(
@@ -3625,9 +3617,9 @@ namespace dxvk {
   }
   
   
+  template<VkPipelineBindPoint BindPoint>
   bool DxvkContext::updateShaderResources(
-          VkPipelineBindPoint     bindPoint,
-    const DxvkPipelineLayout*     layout) {
+    const DxvkPipelineLayout* layout) {
     DxvkBindingMask bindMask;
     bindMask.setFirst(layout->bindingCount());
 
@@ -3636,7 +3628,7 @@ namespace dxvk {
     VkImage       depthImage  = VK_NULL_HANDLE;
     VkImageLayout depthLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     
-    if (bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS && m_state.om.framebuffer != nullptr) {
+    if (BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS && m_state.om.framebuffer != nullptr) {
       const auto& depthAttachment = m_state.om.framebuffer->getDepthTarget();
 
       if (depthAttachment.view != nullptr) {
@@ -3646,7 +3638,7 @@ namespace dxvk {
     }
 
     // Select the active binding mask to update
-    auto& refMask = bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
+    auto& refMask = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
       ? m_state.gp.state.bsBindingMask
       : m_state.cp.state.bsBindingMask;
     
@@ -3764,8 +3756,7 @@ namespace dxvk {
   
   
   VkDescriptorSet DxvkContext::updateShaderDescriptors(
-          VkPipelineBindPoint     bindPoint,
-    const DxvkPipelineLayout*     layout) {
+    const DxvkPipelineLayout* layout) {
     VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
 
     if (layout->bindingCount() != 0) {
@@ -3781,8 +3772,8 @@ namespace dxvk {
   }
 
 
+  template<VkPipelineBindPoint BindPoint>
   void DxvkContext::updateShaderDescriptorSetBinding(
-          VkPipelineBindPoint     bindPoint,
           VkDescriptorSet         set,
     const DxvkPipelineLayout*     layout) {
     if (set != VK_NULL_HANDLE) {
@@ -3795,7 +3786,7 @@ namespace dxvk {
           : 0;
       }
       
-      m_cmd->cmdBindDescriptorSet(bindPoint,
+      m_cmd->cmdBindDescriptorSet(BindPoint,
         layout->pipelineLayout(), set,
         layout->dynamicBindingCount(),
         m_descOffsets.data());
@@ -3992,11 +3983,12 @@ namespace dxvk {
   }
 
 
-  void DxvkContext::updatePushConstants(VkPipelineBindPoint bindPoint) {
+  template<VkPipelineBindPoint BindPoint>
+  void DxvkContext::updatePushConstants() {
     if (m_flags.test(DxvkContextFlag::DirtyPushConstants)) {
       m_flags.clr(DxvkContextFlag::DirtyPushConstants);
 
-      auto layout = bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
+      auto layout = BindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS
         ? (m_state.gp.pipeline != nullptr ? m_state.gp.pipeline->layout() : nullptr)
         : (m_state.cp.pipeline != nullptr ? m_state.cp.pipeline->layout() : nullptr);
       
@@ -4041,7 +4033,7 @@ namespace dxvk {
       this->updateComputeShaderDescriptors();
     
     if (m_flags.test(DxvkContextFlag::DirtyPushConstants))
-      this->updatePushConstants(VK_PIPELINE_BIND_POINT_COMPUTE);
+      this->updatePushConstants<VK_PIPELINE_BIND_POINT_COMPUTE>();
   }
   
   
@@ -4090,7 +4082,7 @@ namespace dxvk {
       this->updateDynamicState();
     
     if (m_flags.test(DxvkContextFlag::DirtyPushConstants))
-      this->updatePushConstants(VK_PIPELINE_BIND_POINT_GRAPHICS);
+      this->updatePushConstants<VK_PIPELINE_BIND_POINT_GRAPHICS>();
   }
   
   
