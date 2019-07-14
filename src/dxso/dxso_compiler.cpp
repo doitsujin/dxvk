@@ -2493,10 +2493,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
 
       uint32_t offset  = m_module.constu32(samplerIdx * 2);
       uint32_t bitCnt  = m_module.constu32(2);
-      uint32_t bits    = m_module.opBitFieldUExtract(typeId, m_ps.samplerTypeSpec, offset, bitCnt);
-      uint32_t type    = samplerIdx == 0
-                         ? bits
-                         : m_module.opShiftRightLogical(typeId, bits, offset);
+      uint32_t type    = m_module.opBitFieldUExtract(typeId, m_ps.samplerTypeSpec, offset, bitCnt);
 
       m_module.opSelectionMerge(switchEndLabel, spv::SelectionControlMaskNone);
       m_module.opSwitch(type,
