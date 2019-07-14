@@ -551,6 +551,16 @@ namespace dxvk {
         reg.hasRelative ? &reg.relative : nullptr);
     }
 
+    DxsoRegisterValue emitRegisterLoadTexcoord(
+      const DxsoRegister& reg,
+            DxsoRegMask   writeMask) {
+      DxsoRegister lookup = reg;
+      if (reg.id.type == DxsoRegisterType::Texture)
+        lookup.id.type = DxsoRegisterType::PixelTexcoord;
+
+      return this->emitRegisterLoad(lookup, writeMask);
+    }
+
     ///////////////////////////////
     // Handle shader ops
     void emitDcl(const DxsoInstructionContext& ctx);
