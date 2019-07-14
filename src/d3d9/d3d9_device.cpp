@@ -4514,7 +4514,7 @@ namespace dxvk {
     key.MaxAnisotropy = state[D3DSAMP_MAXANISOTROPY];
     key.MipmapLodBias = bit::cast<float>(state[D3DSAMP_MIPMAPLODBIAS]);
     key.MaxMipLevel   = state[D3DSAMP_MAXMIPLEVEL];
-    key.BorderColor   = D3DCOLOR(state[D3DSAMP_BORDERCOLOR]);
+    DecodeD3DCOLOR(D3DCOLOR(state[D3DSAMP_BORDERCOLOR]), key.BorderColor);
 
     NormalizeSamplerKey(key);
 
@@ -4560,7 +4560,8 @@ namespace dxvk {
       colorInfo.mipmapLodMin   = mipFilter.MipsEnabled ? float(cKey.MaxMipLevel) : 0;
       colorInfo.mipmapLodMax   = mipFilter.MipsEnabled ? FLT_MAX                 : 0;
       colorInfo.usePixelCoord  = VK_FALSE;
-      DecodeD3DCOLOR(cKey.BorderColor, colorInfo.borderColor.float32);
+      for (uint32_t i = 0; i < 4; i++)
+        colorInfo.borderColor.float32[i] = cKey.BorderColor[i];
 
       DxvkSamplerCreateInfo depthInfo = colorInfo;
       depthInfo.compareToDepth = VK_TRUE;

@@ -2,6 +2,8 @@
 
 #include "d3d9_include.h"
 
+#include "d3d9_util.h"
+
 #include "../dxvk/dxvk_hash.h"
 
 #include "../util/util_math.h"
@@ -18,7 +20,7 @@ namespace dxvk {
     DWORD MaxAnisotropy;
     float MipmapLodBias;
     DWORD MaxMipLevel;
-    D3DCOLOR BorderColor;
+    float BorderColor[4];
   };
 
   struct D3D9SamplerKeyHash {
@@ -58,14 +60,16 @@ namespace dxvk {
       key.MipmapLodBias = std::round(key.MipmapLodBias * 2.0f) / 2.0f;
     }
 
-    // This is not implemented in the backend
-    // in a way that makes this worthwhile
-    // given some games give us sampler
-    // leaks from this
-    ///if ( key.AddressU != D3DTADDRESS_BORDER
-    ///  && key.AddressV != D3DTADDRESS_BORDER
-    ///  && key.AddressW != D3DTADDRESS_BORDER)
-      key.BorderColor = 0;
+    if (key.AddressU != D3DTADDRESS_BORDER
+     && key.AddressV != D3DTADDRESS_BORDER
+     && key.AddressW != D3DTADDRESS_BORDER) {
+      for (auto& val : key.BorderColor)
+        val = 0.0f;
+    }
+    else {
+      for (auto& val : key.BorderColor)
+        val = val >= 0.5f ? 1.0f : 0.0f;
+    }
   }
 
 }
