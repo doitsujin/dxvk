@@ -80,9 +80,15 @@ namespace dxvk {
     HRESULT hr = query->GetData(pData, GetDataFlags);
     
     // If we're likely going to spin on the asynchronous object,
-    // flush the context so that we're keeping the GPU busy
+    // flush the context so that we're keeping the GPU busy.
     if (hr == S_FALSE) {
-      query->NotifyStall();
+      // Don't mark the event query as stalling if the app does
+      // not intend to spin on it. This reduces flushes on End.
+      if (!(GetDataFlags & D3D11_ASYNC_GETDATA_DONOTFLUSH))
+        query->NotifyStall();
+
+      // Ignore the DONOTFLUSH flag here as some games will spin
+      // on queries without ever flushing the context otherwise.
       FlushImplicit(FALSE);
     }
     
