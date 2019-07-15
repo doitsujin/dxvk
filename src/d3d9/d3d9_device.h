@@ -71,6 +71,11 @@ namespace dxvk {
     Rc<DxvkSampler> depth;
   };
 
+  struct D3D9UPBufferSlice {
+    DxvkBufferSlice slice;
+    void*           mapPtr;
+  };
+
   class D3D9DeviceEx final : public ComObjectClamp<IDirect3DDevice9Ex> {
     constexpr static uint32_t DefaultFrameLatency = 3;
     constexpr static uint32_t MaxFrameLatency     = 20;
@@ -872,7 +877,7 @@ namespace dxvk {
     Rc<DxvkBuffer>                  m_vsFixedFunction;
     Rc<DxvkBuffer>                  m_psFixedFunction;
 
-    Rc<DxvkBuffer>                  m_upBuffer;
+    D3D9UPBufferSlice               m_upBuffer;
 
     const D3D9Options               m_d3d9Options;
     const DxsoOptions               m_dxsoOptions;
@@ -909,7 +914,7 @@ namespace dxvk {
     bool                            m_amdATOC         = false;
     bool                            m_nvATOC          = false;
 
-    void AllocUpBuffer(uint32_t size);
+    D3D9UPBufferSlice AllocUpBuffer(VkDeviceSize size);
 
     D3D9SwapChainEx* GetInternalSwapchain(UINT index);
 

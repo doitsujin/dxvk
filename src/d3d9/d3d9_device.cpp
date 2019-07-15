@@ -2043,15 +2043,11 @@ namespace dxvk {
 
     const uint32_t upSize = drawInfo.vertexCount * VertexStreamZeroStride;
 
-    AllocUpBuffer(upSize);
-
-    DxvkBufferSliceHandle physSlice = m_upBuffer->allocSlice();
-
-    std::memcpy(physSlice.mapPtr, pVertexStreamZeroData, upSize);
+    auto upSlice = AllocUpBuffer(upSize);
+    std::memcpy(upSlice.mapPtr, pVertexStreamZeroData, upSize);
 
     EmitCs([this,
-      cBuffer       = m_upBuffer,
-      cBufferSlice  = physSlice,
+      cBufferSlice  = std::move(upSlice.slice),
       cPrimType     = PrimitiveType,
       cPrimCount    = PrimitiveCount,
       cInstanceCount = GetInstanceCount(),
@@ -2061,8 +2057,7 @@ namespace dxvk {
 
       ApplyPrimitiveType(ctx, cPrimType);
 
-      ctx->invalidateBuffer(cBuffer, cBufferSlice);
-      ctx->bindVertexBuffer(0, DxvkBufferSlice(cBuffer), cStride);
+      ctx->bindVertexBuffer(0, cBufferSlice, cStride);
       ctx->draw(
         drawInfo.vertexCount, drawInfo.instanceCount,
         0, 0);
@@ -2096,18 +2091,15 @@ namespace dxvk {
 
     const uint32_t upSize = vertexSize + indicesSize;
 
-    AllocUpBuffer(upSize);
-
-    DxvkBufferSliceHandle physSlice = m_upBuffer->allocSlice();
-    uint8_t* data = reinterpret_cast<uint8_t*>(physSlice.mapPtr);
+    auto upSlice = AllocUpBuffer(upSize);
+    uint8_t* data = reinterpret_cast<uint8_t*>(upSlice.mapPtr);
 
     std::memcpy(data, pVertexStreamZeroData, vertexSize);
     std::memcpy(data + vertexSize, pIndexData, indicesSize);
 
     EmitCs([this,
       cVertexSize   = vertexSize,
-      cBuffer       = m_upBuffer,
-      cBufferSlice  = physSlice,
+      cBufferSlice  = std::move(upSlice.slice),
       cPrimType     = PrimitiveType,
       cPrimCount    = PrimitiveCount,
       cStride       = VertexStreamZeroStride,
@@ -2119,9 +2111,8 @@ namespace dxvk {
 
       ApplyPrimitiveType(ctx, cPrimType);
 
-      ctx->invalidateBuffer(cBuffer, cBufferSlice);
-      ctx->bindVertexBuffer(0, DxvkBufferSlice(cBuffer, 0, cVertexSize), cStride);
-      ctx->bindIndexBuffer(DxvkBufferSlice(cBuffer, cVertexSize, cBuffer->info().size - cVertexSize), cIndexType);
+      ctx->bindVertexBuffer(0, cBufferSlice.subSlice(0, cVertexSize), cStride);
+      ctx->bindIndexBuffer(cBufferSlice.subSlice(cVertexSize, cBufferSlice.length() - cVertexSize), cIndexType);
       ctx->drawIndexed(
         drawInfo.vertexCount, drawInfo.instanceCount,
         0,
@@ -3514,27 +3505,62 @@ namespace dxvk {
   }
 
 
-  void D3D9DeviceEx::AllocUpBuffer(uint32_t size) {
-    const uint32_t currentSize = m_upBuffer != nullptr
-      ? m_upBuffer->info().size
-      : 0;
+  D3D9UPBufferSlice D3D9DeviceEx::AllocUpBuffer(VkDeviceSize size) {
+    constexpr VkDeviceSize DefaultSize = 1 << 20;
 
-    if (likely(currentSize >= size))
-      return;
+    constexpr VkMemoryPropertyFlags memoryFlags
+      = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+      | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+      | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
-    DxvkBufferCreateInfo  info;
-    info.size   = size;
-    info.usage  = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
-                | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
-    info.access = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT
-                | VK_ACCESS_INDEX_READ_BIT;
-    info.stages = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+    if (size <= DefaultSize) {
+      if (unlikely(!m_upBuffer.slice.defined())) {
+        DxvkBufferCreateInfo info;
+        info.size   = DefaultSize;
+        info.usage  = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+                    | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+        info.access = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT
+                    | VK_ACCESS_INDEX_READ_BIT;
+        info.stages = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
 
-    VkMemoryPropertyFlags memoryFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
-                                      | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-                                      | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+        m_upBuffer.slice  = DxvkBufferSlice(m_dxvkDevice->createBuffer(info, memoryFlags));
+        m_upBuffer.mapPtr = m_upBuffer.slice.mapPtr(0);
+      } else if (unlikely(m_upBuffer.slice.length() < size)) {
+        auto physSlice = m_upBuffer.slice.buffer()->allocSlice();
 
-    m_upBuffer = m_dxvkDevice->createBuffer(info, memoryFlags);
+        m_upBuffer.slice  = DxvkBufferSlice(m_upBuffer.slice.buffer());
+        m_upBuffer.mapPtr = physSlice.mapPtr;
+
+        EmitCs([
+          cBuffer = m_upBuffer.slice.buffer(),
+          cSlice  = physSlice
+        ] (DxvkContext* ctx) {
+          ctx->invalidateBuffer(cBuffer, cSlice);
+        });
+      }
+
+      D3D9UPBufferSlice result;
+      result.slice  = m_upBuffer.slice.subSlice(0, size);
+      result.mapPtr = reinterpret_cast<char*>(m_upBuffer.mapPtr) + m_upBuffer.slice.offset();
+
+      VkDeviceSize adjust = align(size, CACHE_LINE_SIZE);
+      m_upBuffer.slice = m_upBuffer.slice.subSlice(adjust, m_upBuffer.slice.length() - adjust);
+      return result;
+    } else {
+      // Create a temporary buffer for very large allocations
+      DxvkBufferCreateInfo info;
+      info.size   = size;
+      info.usage  = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT
+                  | VK_BUFFER_USAGE_INDEX_BUFFER_BIT;
+      info.access = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT
+                  | VK_ACCESS_INDEX_READ_BIT;
+      info.stages = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+
+      D3D9UPBufferSlice result;
+      result.slice  = DxvkBufferSlice(m_dxvkDevice->createBuffer(info, memoryFlags));
+      result.mapPtr = result.slice.mapPtr(0);
+      return result;
+    }
   }
 
 
