@@ -257,7 +257,7 @@ namespace dxvk {
         }
         
         m_buffers.push_back(std::move(handle));
-        m_physSliceCount *= 2;
+        m_physSliceCount = std::min(m_physSliceCount * 2, m_physSliceMaxCount);
       }
       
       // Take the first slice from the queue
@@ -299,9 +299,10 @@ namespace dxvk {
     std::vector<DxvkBufferSliceHandle>   m_freeSlices;
     std::vector<DxvkBufferSliceHandle>   m_nextSlices;
     
-    VkDeviceSize m_physSliceLength  = 0;
-    VkDeviceSize m_physSliceStride  = 0;
-    VkDeviceSize m_physSliceCount   = 2;
+    VkDeviceSize m_physSliceLength   = 0;
+    VkDeviceSize m_physSliceStride   = 0;
+    VkDeviceSize m_physSliceCount    = 1;
+    VkDeviceSize m_physSliceMaxCount = 1;
 
     DxvkBufferHandle allocBuffer(
             VkDeviceSize          sliceCount) const;

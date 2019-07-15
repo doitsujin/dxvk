@@ -16,6 +16,13 @@ namespace dxvk {
     // we don't violate any Vulkan alignment requirements
     m_physSliceLength = createInfo.size;
     m_physSliceStride = align(createInfo.size, 256);
+
+    // Limit size of multi-slice buffers to reduce fragmentation
+    constexpr VkDeviceSize MaxBufferSize = 4 << 20;
+
+    m_physSliceMaxCount = MaxBufferSize >= m_physSliceStride
+      ? MaxBufferSize / m_physSliceStride
+      : 1;
     
     // Allocate a single buffer slice
     m_buffer = allocBuffer(1);
