@@ -382,7 +382,7 @@ namespace dxvk {
      * \returns The sub slice object
      */
     DxvkBufferSlice subSlice(VkDeviceSize offset, VkDeviceSize length) const {
-      return DxvkBufferSlice(m_buffer, offset, length);
+      return DxvkBufferSlice(m_buffer, m_offset + offset, length);
     }
     
     /**
