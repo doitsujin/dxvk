@@ -295,16 +295,17 @@ namespace dxvk {
         memory = type->chunks[i]->alloc(flags, size, align, priority);
       
       if (!memory) {
-        DxvkDeviceMemory devMem = tryAllocDeviceMemory(
-          type, flags, type->heap->chunkSize, priority, nullptr);
-
-        if (devMem.memHandle == VK_NULL_HANDLE)
-          return DxvkMemory();
+        DxvkDeviceMemory devMem;
         
-        Rc<DxvkMemoryChunk> chunk = new DxvkMemoryChunk(this, type, devMem);
-        memory = chunk->alloc(flags, size, align, priority);
+        for (uint32_t i = 0; i < 6 && (type->heap->chunkSize >> i) >= size && !devMem.memHandle; i++)
+          devMem = tryAllocDeviceMemory(type, flags, type->heap->chunkSize >> i, priority, nullptr);
 
-        type->chunks.push_back(std::move(chunk));
+        if (devMem.memHandle) {
+          Rc<DxvkMemoryChunk> chunk = new DxvkMemoryChunk(this, type, devMem);
+          memory = chunk->alloc(flags, size, align, priority);
+
+          type->chunks.push_back(std::move(chunk));
+        }
       }
     }
 
