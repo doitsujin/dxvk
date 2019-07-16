@@ -72,8 +72,8 @@ namespace dxvk {
   };
 
   struct D3D9UPBufferSlice {
-    DxvkBufferSlice slice;
-    void*           mapPtr;
+    DxvkBufferSlice slice = {};
+    void*           mapPtr = nullptr;
   };
 
   class D3D9DeviceEx final : public ComObjectClamp<IDirect3DDevice9Ex> {
