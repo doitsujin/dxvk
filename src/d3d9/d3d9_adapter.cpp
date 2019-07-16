@@ -202,7 +202,9 @@ namespace dxvk {
           D3DDEVTYPE DeviceType,
           D3D9Format SourceFormat,
           D3D9Format TargetFormat) {
-    return IsSupportedBackBufferFormat(TargetFormat, SourceFormat, FALSE);
+    return IsSupportedBackBufferFormat(TargetFormat, SourceFormat, FALSE)
+      ? D3D_OK
+      : D3DERR_NOTAVAILABLE;
   }
 
 
