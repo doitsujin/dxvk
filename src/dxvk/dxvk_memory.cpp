@@ -284,7 +284,7 @@ namespace dxvk {
 
     DxvkMemory memory;
 
-    if ((size >= type->heap->chunkSize / 4) || dedAllocInfo) {
+    if (size >= type->heap->chunkSize || dedAllocInfo) {
       DxvkDeviceMemory devMem = this->tryAllocDeviceMemory(
         type, flags, size, priority, dedAllocInfo);
 
