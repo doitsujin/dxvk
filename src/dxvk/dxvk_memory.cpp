@@ -158,10 +158,7 @@ namespace dxvk {
     m_devProps        (device->adapter()->deviceProperties()),
     m_memProps        (device->adapter()->memoryProperties()) {
     for (uint32_t i = 0; i < m_memProps.memoryHeapCount; i++) {
-      VkDeviceSize heapSize = m_memProps.memoryHeaps[i].size;
-      
       m_memHeaps[i].properties = m_memProps.memoryHeaps[i];
-      m_memHeaps[i].chunkSize  = pickChunkSize(heapSize);
       m_memHeaps[i].stats      = DxvkMemoryStats { 0, 0 };
     }
     
@@ -170,6 +167,7 @@ namespace dxvk {
       m_memTypes[i].heapId     = m_memProps.memoryTypes[i].heapIndex;
       m_memTypes[i].memType    = m_memProps.memoryTypes[i];
       m_memTypes[i].memTypeId  = i;
+      m_memTypes[i].chunkSize  = pickChunkSize(i);
     }
   }
   
@@ -284,7 +282,7 @@ namespace dxvk {
 
     DxvkMemory memory;
 
-    if (size >= type->heap->chunkSize || dedAllocInfo) {
+    if (size >= type->chunkSize || dedAllocInfo) {
       DxvkDeviceMemory devMem = this->tryAllocDeviceMemory(
         type, flags, size, priority, dedAllocInfo);
 
@@ -297,8 +295,8 @@ namespace dxvk {
       if (!memory) {
         DxvkDeviceMemory devMem;
         
-        for (uint32_t i = 0; i < 6 && (type->heap->chunkSize >> i) >= size && !devMem.memHandle; i++)
-          devMem = tryAllocDeviceMemory(type, flags, type->heap->chunkSize >> i, priority, nullptr);
+        for (uint32_t i = 0; i < 6 && (type->chunkSize >> i) >= size && !devMem.memHandle; i++)
+          devMem = tryAllocDeviceMemory(type, flags, type->chunkSize >> i, priority, nullptr);
 
         if (devMem.memHandle) {
           Rc<DxvkMemoryChunk> chunk = new DxvkMemoryChunk(this, type, devMem);
@@ -399,14 +397,26 @@ namespace dxvk {
   }
 
 
-  VkDeviceSize DxvkMemoryAllocator::pickChunkSize(VkDeviceSize heapSize) const {
-    // Pick a reasonable chunk size depending on the memory
-    // heap size. Small chunk sizes can reduce fragmentation
-    // and are therefore preferred for small memory heaps.
-    constexpr VkDeviceSize MaxChunkSize  = 128 << 20;
-    constexpr VkDeviceSize MinChunkCount = 16;
+  VkDeviceSize DxvkMemoryAllocator::pickChunkSize(uint32_t memTypeId) const {
+    VkMemoryType type = m_memProps.memoryTypes[memTypeId];
+    VkMemoryHeap heap = m_memProps.memoryHeaps[type.heapIndex];
 
-    return std::min(heapSize / MinChunkCount, MaxChunkSize);
+    // Default to a chunk size of 128 MiB
+    VkDeviceSize chunkSize = 128 << 20;
+
+    // Try to waste a bit less system memory in 32-bit
+    // applications due to address space constraints
+    #ifndef _WIN64
+    if (type.propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+      chunkSize = 32 << 20;
+    #endif
+
+    // Reduce the chunk size on small heaps so
+    // we can at least fit in 15 allocations
+    while (chunkSize * 15 > heap.size)
+      chunkSize >>= 1;
+
+    return chunkSize;
   }
   
 }

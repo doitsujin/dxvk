@@ -43,7 +43,6 @@ namespace dxvk {
    */
   struct DxvkMemoryHeap {
     VkMemoryHeap      properties;
-    VkDeviceSize      chunkSize;
     DxvkMemoryStats   stats;
   };
 
@@ -61,6 +60,8 @@ namespace dxvk {
 
     VkMemoryType      memType;
     uint32_t          memTypeId;
+
+    VkDeviceSize      chunkSize;
 
     std::vector<Rc<DxvkMemoryChunk>> chunks;
   };
@@ -307,7 +308,7 @@ namespace dxvk {
             DxvkDeviceMemory      memory);
     
     VkDeviceSize pickChunkSize(
-            VkDeviceSize          heapSize) const;
+            uint32_t              memTypeId) const;
 
   };
   
