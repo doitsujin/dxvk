@@ -1910,7 +1910,7 @@ namespace dxvk {
       region.dstOffset = bufferSlice.offset;
       region.size      = size;
 
-      m_cmd->cmdCopyBuffer(DxvkCmdBuffer::ExecBuffer,
+      m_cmd->cmdCopyBuffer(cmdBuffer,
         stagingHandle.handle, bufferSlice.handle, 1, &region);
       
       m_cmd->trackResource(stagingSlice.buffer());
