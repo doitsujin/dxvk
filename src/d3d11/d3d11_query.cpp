@@ -214,7 +214,7 @@ namespace dxvk {
         ctx->endQuery(m_query[0]);
     }
 
-    if (m_predicate.defined())
+    if (unlikely(m_predicate.defined()))
       ctx->writePredicate(m_predicate, m_query[0]);
     
     m_state = D3D11_VK_QUERY_ENDED;

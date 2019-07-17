@@ -247,7 +247,7 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeviceContext::Begin(ID3D11Asynchronous *pAsync) {
     D3D10DeviceLock lock = LockContext();
 
-    if (!pAsync)
+    if (unlikely(!pAsync))
       return;
     
     Com<D3D11Query, false> query(static_cast<D3D11Query*>(pAsync));
@@ -262,7 +262,7 @@ namespace dxvk {
   void STDMETHODCALLTYPE D3D11DeviceContext::End(ID3D11Asynchronous *pAsync) {
     D3D10DeviceLock lock = LockContext();
 
-    if (!pAsync)
+    if (unlikely(!pAsync))
       return;
     
     Com<D3D11Query, false> query(static_cast<D3D11Query*>(pAsync));
