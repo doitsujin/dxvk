@@ -3705,11 +3705,11 @@ namespace dxvk {
       // that cannot get affected by GPU, therefore readonly is A-OK for NOT waiting.
       const bool noOverwrite  = Flags & D3DLOCK_NOOVERWRITE;
       const bool readOnly     = Flags & D3DLOCK_READONLY;
-      const bool gpuImmutable = (readOnly && managed) || scratch || (systemmem && !modified);
+      const bool skipWait = (readOnly && managed) || scratch || (readOnly && systemmem && !modified);
 
       if (alloced)
         std::memset(physSlice.mapPtr, 0, physSlice.length);
-      else if (!noOverwrite && !gpuImmutable) {
+      else if (!noOverwrite && !skipWait) {
         pResource->UnmarkSystemMemGPUModified();
         if (!WaitForResource(mappedBuffer, Flags))
           return D3DERR_WASSTILLDRAWING;
