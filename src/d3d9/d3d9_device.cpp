@@ -3730,10 +3730,11 @@ namespace dxvk {
           cLevelExtent);
       });
 
-      if (!(Flags & D3DLOCK_NOOVERWRITE)) {
-        if (!WaitForResource(mappedBuffer, Flags))
-          return D3DERR_WASSTILLDRAWING;
-      }
+      // We can't implement NOOVERWRITE for this path
+      // because of the copyImageToBuffer above,
+      // and the fact that we are a backed image.
+      if (!WaitForResource(mappedBuffer, Flags))
+        return D3DERR_WASSTILLDRAWING;
       physSlice = mappedBuffer->getSliceHandle();
     }
 
