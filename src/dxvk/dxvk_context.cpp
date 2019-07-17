@@ -140,48 +140,35 @@ namespace dxvk {
   void DxvkContext::bindDrawBuffers(
     const DxvkBufferSlice&      argBuffer,
     const DxvkBufferSlice&      cntBuffer) {
-    if (!m_state.id.argBuffer.matches(argBuffer)
-     || !m_state.id.argBuffer.matches(cntBuffer)) {
-      m_state.id.argBuffer = argBuffer;
-      m_state.id.cntBuffer = cntBuffer;
+    m_state.id.argBuffer = argBuffer;
+    m_state.id.cntBuffer = cntBuffer;
 
-      m_flags.set(DxvkContextFlag::DirtyDrawBuffer);
-    }
+    m_flags.set(DxvkContextFlag::DirtyDrawBuffer);
   }
 
 
   void DxvkContext::bindIndexBuffer(
     const DxvkBufferSlice&      buffer,
           VkIndexType           indexType) {
-    bool needsUpdate = !m_state.vi.indexBuffer.matchesBuffer(buffer);
-
-    if (likely(!needsUpdate)) {
-      needsUpdate = !m_state.vi.indexBuffer.matchesRange(buffer)
-                  || m_state.vi.indexType != indexType;
-    } else {
+    if (!m_state.vi.indexBuffer.matchesBuffer(buffer))
       m_vbTracked.clr(MaxNumVertexBindings);
-    }
 
-    if (needsUpdate) {
-      m_state.vi.indexBuffer = buffer;
-      m_state.vi.indexType   = indexType;
-      
-      m_flags.set(DxvkContextFlag::GpDirtyIndexBuffer);
-    }
+    m_state.vi.indexBuffer = buffer;
+    m_state.vi.indexType   = indexType;
+
+    m_flags.set(DxvkContextFlag::GpDirtyIndexBuffer);
   }
   
   
   void DxvkContext::bindResourceBuffer(
           uint32_t              slot,
     const DxvkBufferSlice&      buffer) {
-    if (!m_rc[slot].bufferSlice.matches(buffer)) {
-      m_rc[slot].bufferSlice = buffer;
-      m_rcTracked.clr(slot);
-      
-      m_flags.set(
-        DxvkContextFlag::CpDirtyResources,
-        DxvkContextFlag::GpDirtyResources);
-    }
+    m_rc[slot].bufferSlice = buffer;
+    m_rcTracked.clr(slot);
+
+    m_flags.set(
+      DxvkContextFlag::CpDirtyResources,
+      DxvkContextFlag::GpDirtyResources);
   }
   
   
@@ -189,33 +176,28 @@ namespace dxvk {
           uint32_t              slot,
     const Rc<DxvkImageView>&    imageView,
     const Rc<DxvkBufferView>&   bufferView) {
-    if (m_rc[slot].imageView  != imageView
-     || m_rc[slot].bufferView != bufferView) {
-      m_rc[slot].imageView   = imageView;
-      m_rc[slot].bufferView  = bufferView;
-      m_rc[slot].bufferSlice = bufferView != nullptr
-        ? bufferView->slice()
-        : DxvkBufferSlice();
-      m_rcTracked.clr(slot);
+    m_rc[slot].imageView   = imageView;
+    m_rc[slot].bufferView  = bufferView;
+    m_rc[slot].bufferSlice = bufferView != nullptr
+      ? bufferView->slice()
+      : DxvkBufferSlice();
+    m_rcTracked.clr(slot);
 
-      m_flags.set(
-        DxvkContextFlag::CpDirtyResources,
-        DxvkContextFlag::GpDirtyResources);
-    }
+    m_flags.set(
+      DxvkContextFlag::CpDirtyResources,
+      DxvkContextFlag::GpDirtyResources);
   }
   
   
   void DxvkContext::bindResourceSampler(
           uint32_t              slot,
     const Rc<DxvkSampler>&      sampler) {
-    if (m_rc[slot].sampler != sampler) {
-      m_rc[slot].sampler = sampler;
-      m_rcTracked.clr(slot);
-      
-      m_flags.set(
-        DxvkContextFlag::CpDirtyResources,
-        DxvkContextFlag::GpDirtyResources);
-    }
+    m_rc[slot].sampler = sampler;
+    m_rcTracked.clr(slot);
+
+    m_flags.set(
+      DxvkContextFlag::CpDirtyResources,
+      DxvkContextFlag::GpDirtyResources);
   }
   
   
@@ -234,20 +216,18 @@ namespace dxvk {
       default: return;
     }
     
-    if (shaderStage->shader != shader) {
-      shaderStage->shader = shader;
+    shaderStage->shader = shader;
       
-      if (stage == VK_SHADER_STAGE_COMPUTE_BIT) {
-        m_flags.set(
-          DxvkContextFlag::CpDirtyPipeline,
-          DxvkContextFlag::CpDirtyPipelineState,
-          DxvkContextFlag::CpDirtyResources);
-      } else {
-        m_flags.set(
-          DxvkContextFlag::GpDirtyPipeline,
-          DxvkContextFlag::GpDirtyPipelineState,
-          DxvkContextFlag::GpDirtyResources);
-      }
+    if (stage == VK_SHADER_STAGE_COMPUTE_BIT) {
+      m_flags.set(
+        DxvkContextFlag::CpDirtyPipeline,
+        DxvkContextFlag::CpDirtyPipelineState,
+        DxvkContextFlag::CpDirtyResources);
+    } else {
+      m_flags.set(
+        DxvkContextFlag::GpDirtyPipeline,
+        DxvkContextFlag::GpDirtyPipelineState,
+        DxvkContextFlag::GpDirtyResources);
     }
   }
   
@@ -256,22 +236,16 @@ namespace dxvk {
           uint32_t              binding,
     const DxvkBufferSlice&      buffer,
           uint32_t              stride) {
-    bool needsUpdate = !m_state.vi.vertexBuffers[binding].matchesBuffer(buffer);
-
-    if (likely(!needsUpdate))
-      needsUpdate = !m_state.vi.vertexBuffers[binding].matchesRange(buffer);
-    else
+    if (!m_state.vi.vertexBuffers[binding].matchesBuffer(buffer))
       m_vbTracked.clr(binding);
 
-    if (needsUpdate) {
-      m_state.vi.vertexBuffers[binding] = buffer;
-      m_flags.set(DxvkContextFlag::GpDirtyVertexBuffers);
-    }
+    m_state.vi.vertexBuffers[binding] = buffer;
+    m_flags.set(DxvkContextFlag::GpDirtyVertexBuffers);
     
     if (unlikely(!buffer.defined()))
       stride = 0;
     
-    if (m_state.vi.vertexStrides[binding] != stride) {
+    if (unlikely(m_state.vi.vertexStrides[binding] != stride)) {
       m_state.vi.vertexStrides[binding] = stride;
       m_flags.set(DxvkContextFlag::GpDirtyPipelineState);
     }
