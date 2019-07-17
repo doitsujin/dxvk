@@ -63,6 +63,12 @@ namespace dxvk {
     /// Whether to use the submission thread for presentation.
     /// May increase performance in some games with some drivers.
     Tristate asyncPresent;
+
+    /// Anisotropic filter override
+    ///
+    /// Enforces anisotropic filtering with the
+    /// given anisotropy value for all samplers.
+    int32_t samplerAnisotropy;
   };
 
 }

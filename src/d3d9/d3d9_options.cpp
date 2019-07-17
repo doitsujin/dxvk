@@ -45,6 +45,7 @@ namespace dxvk {
     this->deferSurfaceCreation  = config.getOption<bool>   ("d3d9.deferSurfaceCreation", false);
     this->hasHazards            = config.getOption<bool>   ("d3d9.hasHazards",           false);
     this->asyncPresent          = config.getOption<Tristate>("d3d9.asyncPresent", Tristate::Auto);
+    this->samplerAnisotropy     = config.getOption<int32_t>("d3d9.samplerAnisotropy", -1);
 
     // This is not necessary on Nvidia.
     if (adapter != nullptr && adapter->matchesDriver(DxvkGpuVendor::Nvidia, VK_DRIVER_ID_NVIDIA_PROPRIETARY_KHR, 0, 0))

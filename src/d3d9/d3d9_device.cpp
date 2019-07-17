@@ -4560,6 +4560,16 @@ namespace dxvk {
     key.MaxMipLevel   = state[D3DSAMP_MAXMIPLEVEL];
     DecodeD3DCOLOR(D3DCOLOR(state[D3DSAMP_BORDERCOLOR]), key.BorderColor);
 
+    if (m_d3d9Options.samplerAnisotropy != -1) {
+      if (key.MagFilter == D3DTEXF_LINEAR)
+        key.MagFilter = D3DTEXF_ANISOTROPIC;
+
+      if (key.MinFilter == D3DTEXF_LINEAR)
+        key.MinFilter = D3DTEXF_ANISOTROPIC;
+
+      key.MaxAnisotropy = m_d3d9Options.samplerAnisotropy;
+    }
+
     NormalizeSamplerKey(key);
 
     auto samplerInfo = RemapStateSamplerShader(Sampler);
