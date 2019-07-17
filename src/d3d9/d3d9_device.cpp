@@ -3658,6 +3658,9 @@ namespace dxvk {
     if (!m_d3d9Options.allowLockFlagReadonly)
       Flags &= ~D3DLOCK_READONLY;
 
+    if ((Flags & (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE)) == (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE))
+      Flags &= ~D3DLOCK_DISCARD;
+
     UINT Subresource = pResource->CalcSubresource(Face, MipLevel);
     auto& desc = *(pResource->Desc());
 
@@ -3876,6 +3879,9 @@ namespace dxvk {
 
     if (!m_d3d9Options.allowLockFlagReadonly)
       Flags &= ~D3DLOCK_READONLY;
+
+    if ((Flags & (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE)) == (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE))
+      Flags &= ~D3DLOCK_DISCARD;
 
     pResource->SetMapFlags(Flags);
     Rc<DxvkBuffer> mappingBuffer = pResource->GetBuffer<D3D9_COMMON_BUFFER_TYPE_MAPPING>();
