@@ -564,6 +564,14 @@ namespace dxvk {
     const DxvkBufferCreateInfo& bufferInfo() const {
       return m_buffer->info();
     }
+    
+    /**
+     * \brief View format info
+     * \returns View format info
+     */
+    const DxvkFormatInfo* formatInfo() const {
+      return imageFormatInfo(m_info.format);
+    }
 
     /**
      * \brief Retrieves buffer slice handle
