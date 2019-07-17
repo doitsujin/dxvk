@@ -351,8 +351,6 @@ namespace dxvk {
           return m_vs.in.COLOR[1];
       };
 
-      std::array<uint32_t, 4> indices = { 0, 1, 2, 4 + 3 };
-
       uint32_t diffuse  = PickSource(m_vsKey.DiffuseSource,  m_vs.constants.materialDiffuse);
       uint32_t ambient  = PickSource(m_vsKey.AmbientSource,  m_vs.constants.materialAmbient);
       uint32_t emissive = PickSource(m_vsKey.EmissiveSource, m_vs.constants.materialEmissive);

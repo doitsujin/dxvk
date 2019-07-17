@@ -212,7 +212,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     if (pRotation != nullptr)
-      * pRotation = D3DDISPLAYROTATION_IDENTITY;
+      *pRotation = D3DDISPLAYROTATION_IDENTITY;
 
     if (pMode != nullptr) {
       ::MONITORINFOEXW monInfo;
@@ -235,7 +235,7 @@ namespace dxvk {
       pMode->Width            = devMode.dmPelsWidth;
       pMode->Height           = devMode.dmPelsHeight;
       pMode->RefreshRate      = devMode.dmDisplayFrequency;
-      pMode->Format           = D3DFMT_X8R8G8B8; // Fix me
+      pMode->Format           = D3DFMT_X8R8G8B8;
       pMode->ScanLineOrdering = D3DSCANLINEORDERING_PROGRESSIVE;
     }
 
