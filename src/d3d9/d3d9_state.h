@@ -54,6 +54,8 @@ namespace dxvk {
     Matrix4 View;
     Matrix4 Projection;
 
+    std::array<Matrix4, 8> TexcoordMatrices;
+
     D3D9ViewportInfo ViewportInfo;
 
     Vector4 GlobalAmbient;

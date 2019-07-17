@@ -13,18 +13,27 @@ namespace dxvk {
     enum FFConstantMembersVS {
       VSConstWorldMatrix   = 0,
       VSConstViewMatrix    = 1,
-      VSConstProjMatrix    = 2,
+      VSConstProjMatrix,
+      
+      VsConstTexcoord0,
+      VsConstTexcoord1,
+      VsConstTexcoord2,
+      VsConstTexcoord3,
+      VsConstTexcoord4,
+      VsConstTexcoord5,
+      VsConstTexcoord6,
+      VsConstTexcoord7,
 
-      VSConstInverseOffset = 3,
-      VSConstInverseExtent = 4,
+      VSConstInverseOffset,
+      VSConstInverseExtent,
 
-      VSConstGlobalAmbient = 5,
+      VSConstGlobalAmbient,
 
-      VSConstMaterialDiffuse  = 6,
-      VSConstMaterialAmbient  = 7,
-      VSConstMaterialSpecular = 8,
-      VSConstMaterialEmissive = 9,
-      VSConstMaterialPower    = 10,
+      VSConstMaterialDiffuse,
+      VSConstMaterialAmbient,
+      VSConstMaterialSpecular,
+      VSConstMaterialEmissive,
+      VSConstMaterialPower,
 
       VSConstMemberCount
     };
@@ -36,6 +45,8 @@ namespace dxvk {
       uint32_t world = { 0 };
       uint32_t view = { 0 };
       uint32_t proj = { 0 };
+
+      uint32_t texcoord[8] = { 0 };
 
       uint32_t invOffset = { 0 };
       uint32_t invExtent = { 0 };
@@ -307,8 +318,27 @@ namespace dxvk {
     m_module.opStore(m_vs.out.POSITION, gl_Position);
 
     for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
-      uint32_t inputIndex = m_vsKey.TexcoordIndices[i];
-      m_module.opStore(m_vs.out.TEXCOORD[i], m_vs.in.TEXCOORD[inputIndex]);
+      uint32_t inputIndex  = m_vsKey.TexcoordIndices[i];
+
+      uint32_t transformed = m_vs.in.TEXCOORD[inputIndex];
+
+      uint32_t type = m_vsKey.TransformFlags[i];
+      if (type != D3DTTFF_DISABLE) {
+        // Project is already removed in the key.
+        uint32_t count = type;
+        transformed = m_module.opVectorTimesMatrix(m_vec4Type, m_vs.in.TEXCOORD[inputIndex], m_vs.constants.texcoord[i]);
+
+        uint32_t lastIdx = count - 1;
+        // Pad the values before the proj value with 1s
+        uint32_t one = m_module.constf32(1.0f);
+        // Pad the last of it with the count value for projection.
+        uint32_t projValue = m_module.opCompositeExtract(m_floatType, transformed, 1, &lastIdx);
+
+        for (uint32_t i = count; i < 4; i++)
+          transformed = m_module.opCompositeInsert(m_vec4Type, i == 3 ? projValue : one, transformed, 1, &i);
+      }
+
+      m_module.opStore(m_vs.out.TEXCOORD[i], transformed);
     }
 
     if (m_vsKey.UseLighting) {
@@ -365,6 +395,15 @@ namespace dxvk {
       m_mat4Type, // World
       m_mat4Type, // View
       m_mat4Type, // Proj
+
+      m_mat4Type, // Texture0
+      m_mat4Type, // Texture1
+      m_mat4Type, // Texture2
+      m_mat4Type, // Texture3
+      m_mat4Type, // Texture4
+      m_mat4Type, // Texture5
+      m_mat4Type, // Texture6
+      m_mat4Type, // Texture7
 
       m_vec4Type, // Inverse Offset
       m_vec4Type, // Inverse Extent
@@ -437,6 +476,9 @@ namespace dxvk {
     m_vs.constants.view  = LoadConstant(m_mat4Type, VSConstViewMatrix);
     m_vs.constants.proj  = LoadConstant(m_mat4Type, VSConstProjMatrix);
 
+    for (uint32_t i = 0; i < caps::TextureStageCount; i++)
+      m_vs.constants.texcoord[i] = LoadConstant(m_mat4Type, VsConstTexcoord0 + i);
+
     m_vs.constants.invOffset = LoadConstant(m_vec4Type, VSConstInverseOffset);
     m_vs.constants.invExtent = LoadConstant(m_vec4Type, VSConstInverseExtent);
 
@@ -500,7 +542,11 @@ namespace dxvk {
         if (!processedTexture) {
           SpirvImageOperands imageOperands;
           uint32_t imageVarId = m_module.opLoad(m_ps.samplers[i].typeId, m_ps.samplers[i].varId);
-          texture             = m_module.opImageSampleImplicitLod(m_vec4Type, imageVarId, m_ps.in.TEXCOORD[i], imageOperands);
+
+          if (m_fsKey.Stages[i].data.Projected)
+            texture = m_module.opImageSampleProjImplicitLod(m_vec4Type, imageVarId, m_ps.in.TEXCOORD[i], imageOperands);
+          else
+            texture = m_module.opImageSampleImplicitLod(m_vec4Type, imageVarId, m_ps.in.TEXCOORD[i], imageOperands);
         }
 
         processedTexture = true;
@@ -1102,6 +1148,7 @@ namespace dxvk {
     std::hash<bool>                   bhash;
     std::hash<D3DMATERIALCOLORSOURCE> colorSourceHash;
     std::hash<uint8_t>                uint8hash;
+    std::hash<uint32_t>               uint32hash;
 
     state.add(bhash(key.HasPositionT));
     state.add(bhash(key.HasColor0));
@@ -1115,6 +1162,9 @@ namespace dxvk {
 
     for (auto index : key.TexcoordIndices)
       state.add(uint8hash(index));
+
+    for (auto index : key.TransformFlags)
+      state.add(uint32hash(index));
 
     return state;
   }

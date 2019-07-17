@@ -9,6 +9,7 @@
 #include "../dxso/dxso_isgn.h"
 
 #include <unordered_map>
+#include <bitset>
 
 namespace dxvk {
 
@@ -32,7 +33,8 @@ namespace dxvk {
     D3DMATERIALCOLORSOURCE SpecularSource;
     D3DMATERIALCOLORSOURCE EmissiveSource;
 
-    std::array<uint8_t, caps::TextureStageCount> TexcoordIndices;
+    std::array<uint8_t,  caps::TextureStageCount> TexcoordIndices;
+    std::array<uint32_t, caps::TextureStageCount> TransformFlags;
   };
 
   constexpr uint32_t TextureArgCount = 3;
@@ -52,6 +54,7 @@ namespace dxvk {
 
         uint16_t     Type : 2;
         uint16_t     ResultIsTemp : 1;
+        uint16_t     Projected : 1;
       } data;
 
       uint64_t uint64[8];

@@ -1835,7 +1835,12 @@ namespace dxvk {
       return m_recorder->SetTextureStageState(Stage, Type, Value);
 
     if (likely(m_state.textureStages[Stage][Type] != Value)) {
-      if (Type != D3DTSS_TEXCOORDINDEX)
+      if (Type == D3DTSS_TEXTURETRANSFORMFLAGS) {
+        // This state affects both!
+        m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
+        m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
+      }
+      else if (Type != D3DTSS_TEXCOORDINDEX)
         m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
       else
         m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
@@ -5116,8 +5121,10 @@ namespace dxvk {
       key.SpecularSource = D3DMATERIALCOLORSOURCE(m_state.renderStates[D3DRS_SPECULARMATERIALSOURCE] & mask);
       key.EmissiveSource = D3DMATERIALCOLORSOURCE(m_state.renderStates[D3DRS_EMISSIVEMATERIALSOURCE] & mask);
 
-      for (uint32_t i = 0; i < key.TexcoordIndices.size(); i++)
-        key.TexcoordIndices[i] = m_state.textureStages[i][D3DTSS_TEXCOORDINDEX];
+      for (uint32_t i = 0; i < key.TexcoordIndices.size(); i++) {
+        key.TransformFlags[i] = m_state.textureStages[i][D3DTSS_TEXTURETRANSFORMFLAGS] & ~(D3DTTFF_PROJECTED);
+        key.TexcoordIndices[i]    = m_state.textureStages[i][D3DTSS_TEXCOORDINDEX];
+      }
 
       EmitCs([
         this,
@@ -5176,6 +5183,9 @@ namespace dxvk {
       data->World      = m_state.transforms[GetTransformIndex(D3DTS_WORLD)];
       data->View       = m_state.transforms[GetTransformIndex(D3DTS_VIEW)];
       data->Projection = m_state.transforms[GetTransformIndex(D3DTS_PROJECTION)];
+
+      for (uint32_t i = 0; i < data->TexcoordMatrices.size(); i++)
+        data->TexcoordMatrices[i] = m_state.transforms[GetTransformIndex(D3DTS_TEXTURE0) + i];
 
       data->ViewportInfo = m_viewportInfo;
       
@@ -5243,6 +5253,8 @@ namespace dxvk {
         const uint32_t samplerOffset = i * 2;
         stage.Type         = (m_samplerTypeBitfield >> samplerOffset) & 0xffu;
         stage.ResultIsTemp = data[D3DTSS_RESULTARG] == D3DTA_TEMP;
+
+        stage.Projected = data[D3DTSS_TEXTURETRANSFORMFLAGS] & D3DTTFF_PROJECTED;
       }
 
       EmitCs([
