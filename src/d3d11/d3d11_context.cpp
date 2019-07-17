@@ -250,10 +250,11 @@ namespace dxvk {
     if (!pAsync)
       return;
     
-    Com<D3D11Query> queryPtr = static_cast<D3D11Query*>(pAsync);
+    Com<D3D11Query, false> query(static_cast<D3D11Query*>(pAsync));
 
-    EmitCs([queryPtr] (DxvkContext* ctx) {
-      queryPtr->Begin(ctx);
+    EmitCs([cQuery = std::move(query)]
+    (DxvkContext* ctx) {
+      cQuery->Begin(ctx);
     });
   }
   
@@ -264,10 +265,11 @@ namespace dxvk {
     if (!pAsync)
       return;
     
-    Com<D3D11Query> queryPtr = static_cast<D3D11Query*>(pAsync);
-    
-    EmitCs([queryPtr] (DxvkContext* ctx) {
-      queryPtr->End(ctx);
+    Com<D3D11Query, false> query(static_cast<D3D11Query*>(pAsync));
+
+    EmitCs([cQuery = std::move(query)]
+    (DxvkContext* ctx) {
+      cQuery->End(ctx);
     });
   }
   
@@ -291,7 +293,7 @@ namespace dxvk {
     //   return;
 
     // EmitCs([
-    //   cPredicate = Com<D3D11Query>(predicate),
+    //   cPredicate = Com<D3D11Query, false>(predicate),
     //   cValue     = PredicateValue
     // ] (DxvkContext* ctx) {
     //   DxvkBufferSlice predSlice;
