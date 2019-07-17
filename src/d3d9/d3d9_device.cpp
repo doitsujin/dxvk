@@ -4226,7 +4226,7 @@ namespace dxvk {
 
     m_initializer->Flush();
 
-    if (m_csIsBusy || m_csChunk->commandCount() != 0) {
+    if (m_csIsBusy || m_csChunk->empty()) {
       // Add commands to flush the threaded
       // context, then flush the command list
       EmitCs([](DxvkContext* ctx) {

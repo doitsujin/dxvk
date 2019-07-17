@@ -853,7 +853,7 @@ namespace dxvk {
     void EmitCsChunk(DxvkCsChunkRef&& chunk);
 
     void FlushCsChunk() {
-      if (likely(m_csChunk->commandCount())) {
+      if (likely(!m_csChunk->empty())) {
         EmitCsChunk(std::move(m_csChunk));
         m_csChunk = AllocCsChunk();
       }
