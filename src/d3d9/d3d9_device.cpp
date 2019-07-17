@@ -3851,6 +3851,7 @@ namespace dxvk {
       Flags &= ~D3DLOCK_READONLY;
 
     pResource->SetMapFlags(Flags);
+    Rc<DxvkBuffer> mappingBuffer = pResource->GetBuffer<D3D9_COMMON_BUFFER_TYPE_MAPPING>();
 
     DxvkBufferSliceHandle physSlice;
 
@@ -3861,7 +3862,7 @@ namespace dxvk {
       physSlice = pResource->DiscardMapSlice();
 
       EmitCs([
-        cBuffer      = pResource->GetBuffer<D3D9_COMMON_BUFFER_TYPE_MAPPING>(),
+        cBuffer      = std::move(mappingBuffer),
         cBufferSlice = physSlice
       ] (DxvkContext* ctx) {
         ctx->invalidateBuffer(cBuffer, cBufferSlice);
@@ -3869,8 +3870,8 @@ namespace dxvk {
     }
     else {
       // Wait until the resource is no longer in use
-      if (!(Flags & D3DLOCK_NOOVERWRITE) && pResource->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_DIRECT) {
-        if (!WaitForResource(pResource->GetBuffer<D3D9_COMMON_BUFFER_TYPE_REAL>(), Flags))
+      if (!(Flags & D3DLOCK_NOOVERWRITE)) {
+        if (!WaitForResource(mappingBuffer, Flags))
           return D3DERR_WASSTILLDRAWING;
       }
 
