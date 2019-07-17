@@ -159,7 +159,36 @@ namespace dxvk {
 
 
   HRESULT STDMETHODCALLTYPE D3D9SwapChainEx::GetRasterStatus(D3DRASTER_STATUS* pRasterStatus) {
-    Logger::warn("D3D9SwapChainEx::GetRasterStatus: Stub");
+    // We could use D3DKMTGetScanLine but Wine doesn't implement that.
+    // So... we lie here and make some stuff up
+    // enough that it makes games work.
+
+    // Assume there's 20 lines in a vBlank.
+    constexpr uint32_t vBlankLineCount = 20;
+
+    if (pRasterStatus == nullptr)
+      return D3DERR_INVALIDCALL;
+
+    D3DDISPLAYMODEEX mode;
+    mode.Size = sizeof(D3DDISPLAYMODEEX);
+    if (FAILED(this->GetDisplayModeEx(&mode, nullptr)))
+      return D3DERR_INVALIDCALL;
+
+    uint32_t scanLineCount = mode.Height + vBlankLineCount;
+
+    auto nowUs = std::chrono::time_point_cast<std::chrono::microseconds>(
+      std::chrono::high_resolution_clock::now())
+      .time_since_epoch();
+
+    auto frametimeUs = std::chrono::microseconds(1000000u / mode.RefreshRate);
+    auto scanLineUs  = frametimeUs / scanLineCount;
+
+    pRasterStatus->ScanLine = (nowUs % frametimeUs) / scanLineUs;
+    pRasterStatus->InVBlank = pRasterStatus->ScanLine >= mode.Height;
+
+    if (pRasterStatus->InVBlank)
+      pRasterStatus->ScanLine = 0;
+
     return D3D_OK;
   }
 
