@@ -143,13 +143,11 @@ namespace dxvk {
     ~DxvkCsChunk();
     
     /**
-     * \brief Number of commands recorded to the chunk
-     * 
-     * Can be used to check whether the chunk needs to
-     * be dispatched or just to keep track of statistics.
+     * \brief Checks whether the chunk is empty
+     * \returns \c true if the chunk is empty
      */
-    size_t commandCount() const {
-      return m_commandCount;
+    bool empty() const {
+      return m_commandOffset == 0;
     }
 
     /**
@@ -179,7 +177,6 @@ namespace dxvk {
       else
         m_head = m_tail;
       
-      m_commandCount  += 1;
       m_commandOffset += sizeof(FuncType);
       return true;
     }
@@ -207,7 +204,6 @@ namespace dxvk {
         m_head = func;
       m_tail = func;
 
-      m_commandCount  += 1;
       m_commandOffset += sizeof(FuncType);
       return func->data();
     }
@@ -238,7 +234,6 @@ namespace dxvk {
     
   private:
     
-    size_t m_commandCount  = 0;
     size_t m_commandOffset = 0;
     
     DxvkCsCmd* m_head = nullptr;

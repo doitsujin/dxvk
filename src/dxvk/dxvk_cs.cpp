@@ -21,7 +21,6 @@ namespace dxvk {
     auto cmd = m_head;
     
     if (m_flags.test(DxvkCsChunkFlag::SingleUse)) {
-      m_commandCount  = 0;
       m_commandOffset = 0;
       
       while (cmd != nullptr) {
@@ -44,10 +43,7 @@ namespace dxvk {
   
   void DxvkCsChunk::reset() {
     auto cmd = m_head;
-    
-    m_commandCount  = 0;
-    m_commandOffset = 0;
-    
+
     while (cmd != nullptr) {
       auto next = cmd->next();
       cmd->~DxvkCsCmd();
@@ -56,6 +52,8 @@ namespace dxvk {
     
     m_head = nullptr;
     m_tail = nullptr;
+
+    m_commandOffset = 0;
   }
   
   
