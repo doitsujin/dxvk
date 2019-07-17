@@ -1835,7 +1835,7 @@ namespace dxvk {
       return m_recorder->SetTextureStageState(Stage, Type, Value);
 
     if (likely(m_state.textureStages[Stage][Type] != Value)) {
-      if (Stage != D3DTSS_TEXCOORDINDEX)
+      if (Type != D3DTSS_TEXCOORDINDEX)
         m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
       else
         m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
