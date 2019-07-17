@@ -121,6 +121,9 @@ namespace dxvk {
     T* ptr() const {
       return m_ptr;
     }
+
+    Com<T, true>  pubRef() const { return m_ptr; }
+    Com<T, false> prvRef() const { return m_ptr; }
     
   private:
     
