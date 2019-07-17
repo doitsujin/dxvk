@@ -3247,17 +3247,9 @@ namespace dxvk {
           D3D11Buffer*                      pBuffer,
           UINT                              Offset,
           DXGI_FORMAT                       Format) {
-    // As in Vulkan, the index format can be either a 32-bit
-    // or 16-bit unsigned integer, no other formats are allowed.
-    VkIndexType indexType = VK_INDEX_TYPE_UINT32;
-    
-    if (pBuffer != nullptr) {
-      switch (Format) {
-        case DXGI_FORMAT_R16_UINT: indexType = VK_INDEX_TYPE_UINT16; break;
-        case DXGI_FORMAT_R32_UINT: indexType = VK_INDEX_TYPE_UINT32; break;
-        default: Logger::err(str::format("D3D11: Invalid index format: ", Format));
-      }
-    }
+    VkIndexType indexType = Format == DXGI_FORMAT_R16_UINT
+      ? VK_INDEX_TYPE_UINT16
+      : VK_INDEX_TYPE_UINT32;
     
     EmitCs([
       cBufferSlice  = pBuffer != nullptr ? pBuffer->GetBufferSlice(Offset) : DxvkBufferSlice(),
