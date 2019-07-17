@@ -838,6 +838,16 @@ namespace dxvk {
     if (!uav)
       return;
     
+    auto imgView = uav->GetImageView();
+    auto bufView = uav->GetBufferView();
+
+    const DxvkFormatInfo* info = nullptr;
+    if (imgView != nullptr) info = imgView->formatInfo();
+    if (bufView != nullptr) info = bufView->formatInfo();
+
+    if (!info || info->flags.any(DxvkFormatFlag::SampledSInt, DxvkFormatFlag::SampledUInt))
+      return;
+    
     VkClearValue clearValue;
     clearValue.color.float32[0] = Values[0];
     clearValue.color.float32[1] = Values[1];
@@ -847,7 +857,7 @@ namespace dxvk {
     if (uav->GetResourceType() == D3D11_RESOURCE_DIMENSION_BUFFER) {
       EmitCs([
         cClearValue = clearValue,
-        cDstView    = uav->GetBufferView()
+        cDstView    = std::move(bufView)
       ] (DxvkContext* ctx) {
         ctx->clearBufferView(
           cDstView, 0,
@@ -857,7 +867,7 @@ namespace dxvk {
     } else {
       EmitCs([
         cClearValue = clearValue,
-        cDstView    = uav->GetImageView()
+        cDstView    = std::move(imgView)
       ] (DxvkContext* ctx) {
         ctx->clearImageView(cDstView,
           VkOffset3D { 0, 0, 0 },
