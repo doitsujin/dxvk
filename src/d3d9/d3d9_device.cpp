@@ -3902,8 +3902,13 @@ namespace dxvk {
       });
     }
     else {
+      // NOOVERWRITE promises that they will not write in a currently used area.
+      // READONLY promises they will only read -- and we never write to these buffers from the GPU
+      // Therefore we can skip waiting for these two cases.
+      bool skipWait = (Flags & D3DLOCK_NOOVERWRITE) || (Flags & D3DLOCK_READONLY);
+
       // Wait until the resource is no longer in use
-      if (!(Flags & D3DLOCK_NOOVERWRITE)) {
+      if (!skipWait) {
         if (!WaitForResource(mappingBuffer, Flags))
           return D3DERR_WASSTILLDRAWING;
       }
