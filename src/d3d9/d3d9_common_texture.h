@@ -316,6 +316,17 @@ namespace dxvk {
       return m_type;
     }
 
+    void MarkSystemMemGPUModified() {
+      m_systemmemModified = true;
+    }
+    void UnmarkSystemMemGPUModified() {
+      m_systemmemModified = false;
+    }
+
+    bool GetSystemMemGPUModified() {
+      return m_systemmemModified;
+    }
+
   private:
 
     D3D9DeviceEx*                 m_device;
@@ -338,6 +349,8 @@ namespace dxvk {
     bool                          m_shadow; //< Depth Compare-ness
 
     int64_t                       m_size = 0;
+
+    bool                          m_systemmemModified = false;
 
     /**
      * \brief Mip level

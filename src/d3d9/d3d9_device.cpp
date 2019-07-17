@@ -771,6 +771,8 @@ namespace dxvk {
 
     VkExtent3D levelExtent = image->mipLevelExtent(dstSubresource.mipLevel);
 
+    dstTexInfo->MarkSystemMemGPUModified();
+
     EmitCs([
       cBuffer       = buffer,
       cImage        = image,
@@ -3664,6 +3666,12 @@ namespace dxvk {
 
     VkExtent3D levelExtent = pResource->GetExtentMip(MipLevel);
     VkExtent3D blockCount  = util::computeBlockCount(levelExtent, formatInfo->blockSize);
+    
+    const bool systemmem = desc.Pool == D3DPOOL_SYSTEMMEM;
+    const bool managed   = desc.Pool == D3DPOOL_MANAGED;
+    const bool scratch   = desc.Pool == D3DPOOL_SCRATCH;
+
+    bool modified = pResource->GetSystemMemGPUModified();
       
     DxvkBufferSliceHandle physSlice;
       
@@ -3679,11 +3687,8 @@ namespace dxvk {
         ctx->invalidateBuffer(cImageBuffer, cBufferSlice);
       });
     }
-    else if (!alloced
-          || desc.Pool == D3DPOOL_MANAGED
-          || desc.Pool == D3DPOOL_SYSTEMMEM
-          || desc.Pool == D3DPOOL_SCRATCH) {
-      // Managed resources and ones we haven't newly allocated
+    else if (managed || scratch || systemmem) {
+      // Managed and scratch resources
       // are meant to be able to provide readback without waiting.
       // We always keep a copy of them in system memory for this reason.
       // No need to wait as its not in use.
@@ -3695,13 +3700,12 @@ namespace dxvk {
       // that cannot get affected by GPU, therefore readonly is A-OK for NOT waiting.
       const bool noOverwrite  = Flags & D3DLOCK_NOOVERWRITE;
       const bool readOnly     = Flags & D3DLOCK_READONLY;
-      const bool managed      = desc.Pool == D3DPOOL_MANAGED;
-      const bool scratch      = desc.Pool == D3DPOOL_SCRATCH;
-      const bool gpuImmutable = (readOnly && managed) || scratch;
+      const bool gpuImmutable = (readOnly && managed) || scratch || (systemmem && !modified);
 
       if (alloced)
         std::memset(physSlice.mapPtr, 0, physSlice.length);
       else if (!noOverwrite && !gpuImmutable) {
+        pResource->UnmarkSystemMemGPUModified();
         if (!WaitForResource(mappedBuffer, Flags))
           return D3DERR_WASSTILLDRAWING;
       }
