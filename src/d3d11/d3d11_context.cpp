@@ -2957,8 +2957,12 @@ namespace dxvk {
   
   
   void D3D11DeviceContext::ApplyInputLayout() {
-    if (m_state.ia.inputLayout != nullptr) {
-      EmitCs([cInputLayout = m_state.ia.inputLayout] (DxvkContext* ctx) {
+    auto inputLayout = m_state.ia.inputLayout.prvRef();
+
+    if (likely(inputLayout != nullptr)) {
+      EmitCs([
+        cInputLayout = std::move(inputLayout)
+      ] (DxvkContext* ctx) {
         cInputLayout->BindToContext(ctx);
       });
     } else {
@@ -3003,10 +3007,13 @@ namespace dxvk {
   
   
   void D3D11DeviceContext::ApplyBlendState() {
+    auto cbState = m_state.om.cbState.prvRef();
+
+    if (unlikely(cbState == nullptr))
+      cbState = m_defaultBlendState.prvRef();
+
     EmitCs([
-      cBlendState = m_state.om.cbState != nullptr
-        ? m_state.om.cbState
-        : m_defaultBlendState,
+      cBlendState = std::move(cbState),
       cSampleMask = m_state.om.sampleMask
     ] (DxvkContext* ctx) {
       cBlendState->BindToContext(ctx, cSampleMask);
@@ -3026,10 +3033,13 @@ namespace dxvk {
   
   
   void D3D11DeviceContext::ApplyDepthStencilState() {
+    auto dsState = m_state.om.dsState.prvRef();
+
+    if (unlikely(dsState == nullptr))
+      dsState = m_defaultDepthStencilState.prvRef();
+
     EmitCs([
-      cDepthStencilState = m_state.om.dsState != nullptr
-        ? m_state.om.dsState
-        : m_defaultDepthStencilState
+      cDepthStencilState = std::move(dsState)
     ] (DxvkContext* ctx) {
       cDepthStencilState->BindToContext(ctx);
     });
@@ -3046,10 +3056,13 @@ namespace dxvk {
   
   
   void D3D11DeviceContext::ApplyRasterizerState() {
+    auto rsState = m_state.rs.state.prvRef();
+
+    if (unlikely(rsState == nullptr))
+      rsState = m_defaultRasterizerState.prvRef();
+
     EmitCs([
-      cRasterizerState = m_state.rs.state != nullptr
-        ? m_state.rs.state
-        : m_defaultRasterizerState
+      cRasterizerState = std::move(rsState)
     ] (DxvkContext* ctx) {
       cRasterizerState->BindToContext(ctx);
     });
