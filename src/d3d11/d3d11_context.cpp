@@ -711,17 +711,12 @@ namespace dxvk {
     if (!rtv)
       return;
     
-    const Rc<DxvkImageView> view = rtv->GetImageView();
-    
-    VkClearValue clearValue;
-    clearValue.color.float32[0] = ColorRGBA[0];
-    clearValue.color.float32[1] = ColorRGBA[1];
-    clearValue.color.float32[2] = ColorRGBA[2];
-    clearValue.color.float32[3] = ColorRGBA[3];
+    auto view  = rtv->GetImageView();
+    auto color = ConvertColorValue(ColorRGBA, view->formatInfo());
     
     EmitCs([
-      cClearValue = clearValue,
-      cImageView  = view
+      cClearValue = color,
+      cImageView  = std::move(view)
     ] (DxvkContext* ctx) {
       ctx->clearRenderTarget(
         cImageView,
@@ -971,25 +966,8 @@ namespace dxvk {
     // Convert the clear color format. ClearView takes
     // the clear value for integer formats as a set of
     // integral floats, so we'll have to convert.
-    VkClearValue        clearValue;
-    VkImageAspectFlags  clearAspect;
-
-    if (imgView == nullptr || imgView->info().aspect & VK_IMAGE_ASPECT_COLOR_BIT) {
-      clearAspect = VK_IMAGE_ASPECT_COLOR_BIT;
-
-      for (uint32_t i = 0; i < 4; i++) {
-        if (formatInfo->flags.test(DxvkFormatFlag::SampledUInt))
-          clearValue.color.uint32[i] = uint32_t(Color[i]);
-        else if (formatInfo->flags.test(DxvkFormatFlag::SampledSInt))
-          clearValue.color.int32[i] = int32_t(Color[i]);
-        else
-          clearValue.color.float32[i] = Color[i];
-      }
-    } else {
-      clearAspect = VK_IMAGE_ASPECT_DEPTH_BIT;
-      clearValue.depthStencil.depth   = Color[0];
-      clearValue.depthStencil.stencil = 0;
-    }
+    VkClearValue        clearValue  = ConvertColorValue(Color, formatInfo);
+    VkImageAspectFlags  clearAspect = formatInfo->aspectMask & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_DEPTH_BIT);
 
     // Clear all the rectangles that are specified
     for (uint32_t i = 0; i < NumRects; i++) {
@@ -3780,6 +3758,29 @@ namespace dxvk {
   }
   
   
+  VkClearValue D3D11DeviceContext::ConvertColorValue(
+    const FLOAT                             Color[4],
+    const DxvkFormatInfo*                   pFormatInfo) {
+    VkClearValue result;
+
+    if (pFormatInfo->aspectMask & VK_IMAGE_ASPECT_COLOR_BIT) {
+      for (uint32_t i = 0; i < 4; i++) {
+        if (pFormatInfo->flags.test(DxvkFormatFlag::SampledUInt))
+          result.color.uint32[i] = uint32_t(std::max(0.0f, Color[i]));
+        else if (pFormatInfo->flags.test(DxvkFormatFlag::SampledSInt))
+          result.color.int32[i] = int32_t(Color[i]);
+        else
+          result.color.float32[i] = Color[i];
+      }
+    } else {
+      result.depthStencil.depth = Color[0];
+      result.depthStencil.stencil = 0;
+    }
+
+    return result;
+  }
+
+
   DxvkDataSlice D3D11DeviceContext::AllocUpdateBufferSlice(size_t Size) {
     constexpr size_t UpdateBufferSize = 16 * 1024 * 1024;
     

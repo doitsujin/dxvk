@@ -813,6 +813,10 @@ namespace dxvk {
             ID3D11RenderTargetView* const*    ppRenderTargetViews,
             ID3D11DepthStencilView*           pDepthStencilView);
     
+    VkClearValue ConvertColorValue(
+      const FLOAT                             Color[4],
+      const DxvkFormatInfo*                   pFormatInfo);
+    
     DxvkDataSlice AllocUpdateBufferSlice(size_t Size);
     
     DxvkCsChunkRef AllocCsChunk();
