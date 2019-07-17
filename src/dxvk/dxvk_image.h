@@ -348,19 +348,19 @@ namespace dxvk {
     }
     
     /**
-     * \brief Image format info
-     * \returns Image format info
-     */
-    const DxvkFormatInfo* formatInfo() const {
-      return m_image->formatInfo();
-    }
-    
-    /**
      * \brief Image object
      * \returns Image object
      */
     const Rc<DxvkImage>& image() const {
       return m_image;
+    }
+    
+    /**
+     * \brief View format info
+     * \returns View format info
+     */
+    const DxvkFormatInfo* formatInfo() const {
+      return imageFormatInfo(m_info.format);
     }
     
     /**
