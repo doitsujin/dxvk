@@ -170,7 +170,7 @@ namespace dxvk {
       return D3DERR_INVALIDCALL;
 
     D3DDISPLAYMODEEX mode;
-    mode.Size = sizeof(D3DDISPLAYMODEEX);
+    mode.Size = sizeof(mode);
     if (FAILED(this->GetDisplayModeEx(&mode, nullptr)))
       return D3DERR_INVALIDCALL;
 
@@ -200,6 +200,7 @@ namespace dxvk {
     *pMode = D3DDISPLAYMODE();
 
     D3DDISPLAYMODEEX mode;
+    mode.Size = sizeof(mode);
     HRESULT hr = this->GetDisplayModeEx(&mode, nullptr);
 
     if (FAILED(hr))
