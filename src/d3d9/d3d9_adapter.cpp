@@ -50,6 +50,14 @@ namespace dxvk {
     
     const auto& props = m_adapter->deviceProperties();
 
+    ::MONITORINFOEXA monInfo;
+    monInfo.cbSize = sizeof(monInfo);
+
+    if (!::GetMonitorInfoA(GetDefaultMonitor(), reinterpret_cast<MONITORINFO*>(&monInfo))) {
+      Logger::err("D3D9Adapter::GetAdapterIdentifier: Failed to query monitor info");
+      return D3DERR_INVALIDCALL;
+    }
+
     GUID guid          = bit::cast<GUID>(m_adapter->devicePropertiesExt().coreDeviceId.deviceUUID);
 
     uint32_t vendorId  = options.customVendorId == -1 ? props.vendorID : uint32_t(options.customVendorId);
@@ -57,7 +65,7 @@ namespace dxvk {
     const char* driver = GetDriverDLL(DxvkGpuVendor(vendorId));
 
     std::strncpy(pIdentifier->Description, props.deviceName,  countof(pIdentifier->Description));
-    std::strncpy(pIdentifier->DeviceName,  R"(\\.\DISPLAY1)", countof(pIdentifier->DeviceName)); // The GDI device name. Not the actual device name.
+    std::strncpy(pIdentifier->DeviceName,  monInfo.szDevice,  countof(pIdentifier->DeviceName)); // The GDI device name. Not the actual device name.
     std::strncpy(pIdentifier->Driver,      driver,            countof(pIdentifier->Driver));     // This is the driver's dll.
 
     pIdentifier->DeviceIdentifier       = guid;
