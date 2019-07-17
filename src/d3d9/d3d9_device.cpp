@@ -3647,7 +3647,7 @@ namespace dxvk {
 
 
   HRESULT D3D9DeviceEx::LockImage(
-            D3D9CommonTexture* pResource,
+            D3D9CommonTexture*      pResource,
             UINT                    Face,
             UINT                    MipLevel,
             D3DLOCKED_BOX*          pLockedBox,
