@@ -3679,10 +3679,29 @@ namespace dxvk {
     const bool scratch   = desc.Pool == D3DPOOL_SCRATCH;
 
     bool modified = pResource->GetSystemMemGPUModified();
+
+    bool fullResource = pBox == nullptr;
+    if (unlikely(!fullResource)) {
+      VkOffset3D lockOffset;
+      VkExtent3D lockExtent;
+
+      ConvertBox(*pBox, lockOffset, lockExtent);
+
+      fullResource = lockOffset == VkOffset3D{ 0, 0, 0 }
+                  && lockExtent.width  >= levelExtent.width
+                  && lockExtent.height >= levelExtent.height
+                  && lockExtent.depth  >= levelExtent.depth;
+    }
+
+    // If we are not locking the entire image
+    // a partial discard is meant to occur.
+    // We can't really implement that, so just ignore discard
+    // if we are not locking the full resource;
+    const bool discard = (Flags & D3DLOCK_DISCARD) && fullResource;
       
     DxvkBufferSliceHandle physSlice;
       
-    if (Flags & D3DLOCK_DISCARD) {
+    if (discard) {
       // We do not have to preserve the contents of the
       // buffer if the entire image gets discarded.
       physSlice = pResource->DiscardMapSlice(Subresource);

@@ -321,6 +321,16 @@ namespace dxvk {
     }
   }
 
+  void ConvertBox(D3DBOX box, VkOffset3D& offset, VkExtent3D& extent) {
+    offset.x = box.Left;
+    offset.y = box.Top;
+    offset.z = box.Front;
+
+    extent.width  = box.Right  - box.Left;
+    extent.height = box.Bottom - box.Top;
+    extent.depth  = box.Back   - box.Front;
+  }
+
   void ConvertRect(RECT rect, VkOffset3D& offset, VkExtent3D& extent) {
     offset.x = rect.left;
     offset.y = rect.top;
