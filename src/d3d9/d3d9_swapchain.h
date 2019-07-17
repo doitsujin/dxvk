@@ -134,6 +134,8 @@ namespace dxvk {
     HWND                    m_window   = nullptr;
     HMONITOR                m_monitor  = nullptr;
 
+    MONITORINFOEXW          m_monInfo;
+
     WindowState             m_windowState;
 
     void PresentImage(UINT PresentInterval);
@@ -193,6 +195,8 @@ namespace dxvk {
       const D3DDISPLAYMODEEX*       pFullscreenDisplayMode);
     
     HRESULT RestoreDisplayMode(HMONITOR hMonitor);
+
+    void    UpdateMonitorInfo();
 
     bool    UpdatePresentExtent(const RECT* pSourceRect);
 

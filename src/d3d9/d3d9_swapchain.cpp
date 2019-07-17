@@ -21,6 +21,8 @@ namespace dxvk {
     : D3D9SwapChainExBase(pDevice)
     , m_device           (pDevice->GetDXVKDevice())
     , m_context          (m_device->createContext()) {
+    UpdateMonitorInfo();
+
     this->NormalizePresentParameters(pPresentParams);
     m_presentParams = *pPresentParams;
     m_window = m_presentParams.hDeviceWindow;
@@ -245,18 +247,10 @@ namespace dxvk {
       *pRotation = D3DDISPLAYROTATION_IDENTITY;
 
     if (pMode != nullptr) {
-      ::MONITORINFOEXW monInfo;
-      monInfo.cbSize = sizeof(monInfo);
-
-      if (!::GetMonitorInfoW(GetDefaultMonitor(), reinterpret_cast<MONITORINFO*>(&monInfo))) {
-        Logger::err("D3D9SwapChainEx::GetDisplayModeEx: Failed to query monitor info");
-        return D3DERR_INVALIDCALL;
-      }
-
       DEVMODEW devMode = DEVMODEW();
       devMode.dmSize = sizeof(devMode);
 
-      if (!::EnumDisplaySettingsW(monInfo.szDevice, ENUM_CURRENT_SETTINGS, &devMode)) {
+      if (!::EnumDisplaySettingsW(m_monInfo.szDevice, ENUM_CURRENT_SETTINGS, &devMode)) {
         Logger::err("D3D9SwapChainEx::GetDisplayModeEx: Failed to enum display settings");
         return D3DERR_INVALIDCALL;
       }
@@ -1057,19 +1051,11 @@ namespace dxvk {
   HRESULT D3D9SwapChainEx::RestoreDisplayMode(HMONITOR hMonitor) {
     if (hMonitor == nullptr)
       return D3DERR_INVALIDCALL;
-
-    ::MONITORINFOEXW monInfo;
-    monInfo.cbSize = sizeof(monInfo);
-
-    if (!::GetMonitorInfoW(hMonitor, reinterpret_cast<MONITORINFO*>(&monInfo))) {
-      Logger::err("D3D9: Failed to query monitor info");
-      return E_FAIL;
-    }
     
     DEVMODEW devMode = { };
     devMode.dmSize = sizeof(devMode);
 
-    if (!::EnumDisplaySettingsW(monInfo.szDevice, ENUM_REGISTRY_SETTINGS, &devMode))
+    if (!::EnumDisplaySettingsW(m_monInfo.szDevice, ENUM_REGISTRY_SETTINGS, &devMode))
       return D3DERR_INVALIDCALL;
     
     Logger::info(str::format("D3D9: Setting display mode: ",
@@ -1098,6 +1084,13 @@ namespace dxvk {
     m_presentExtent   = VkExtent2D{ std::max(m_presentExtent.width, 1u), std::max(m_presentExtent.height, 1u) };
 
     return m_presentExtent != oldExtent;
+  }
+
+  void    D3D9SwapChainEx::UpdateMonitorInfo() {
+    m_monInfo.cbSize = sizeof(m_monInfo);
+
+    if (!::GetMonitorInfoW(GetDefaultMonitor(), reinterpret_cast<MONITORINFO*>(&m_monInfo)))
+      throw DxvkError("D3D9SwapChainEx::GetDisplayModeEx: Failed to query monitor info");
   }
 
 }
