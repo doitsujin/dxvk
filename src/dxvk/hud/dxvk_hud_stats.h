@@ -38,7 +38,15 @@ namespace dxvk::hud {
     DxvkStatCounters  m_prevCounters;
     DxvkStatCounters  m_diffCounters;
 
+    std::chrono::high_resolution_clock::time_point m_gpuLoadUpdateTime;
     std::chrono::high_resolution_clock::time_point m_compilerShowTime;
+
+    uint64_t m_prevGpuIdleTicks = 0;
+    uint64_t m_diffGpuIdleTicks = 0;
+    
+    std::string m_gpuLoadString = "GPU: ";
+
+    void updateGpuLoad();
     
     HudPos printDrawCallStats(
       const Rc<DxvkContext>&  context,
@@ -56,6 +64,11 @@ namespace dxvk::hud {
             HudPos            position);
     
     HudPos printMemoryStats(
+      const Rc<DxvkContext>&  context,
+            HudRenderer&      renderer,
+            HudPos            position);
+    
+    HudPos printGpuLoad(
       const Rc<DxvkContext>&  context,
             HudRenderer&      renderer,
             HudPos            position);

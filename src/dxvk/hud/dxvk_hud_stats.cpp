@@ -21,6 +21,11 @@ namespace dxvk::hud {
     DxvkStatCounters nextCounters = device->getStatCounters();
     m_diffCounters = nextCounters.diff(m_prevCounters);
     m_prevCounters = nextCounters;
+
+    // GPU load is a bit more complex than that since
+    // we don't want to update this every frame
+    if (m_elements.test(HudElement::StatGpuLoad))
+      this->updateGpuLoad();
   }
   
   
@@ -40,6 +45,9 @@ namespace dxvk::hud {
     if (m_elements.test(HudElement::StatMemory))
       position = this->printMemoryStats(context, renderer, position);
     
+    if (m_elements.test(HudElement::StatGpuLoad))
+      position = this->printGpuLoad(context, renderer, position);
+    
     if (m_elements.test(HudElement::CompilerActivity)) {
       this->printCompilerActivity(context, renderer,
         { position.x, float(renderer.surfaceSize().height) - 20.0f });
@@ -49,6 +57,25 @@ namespace dxvk::hud {
   }
   
   
+  void HudStats::updateGpuLoad() {
+    auto now = std::chrono::high_resolution_clock::now();
+    uint64_t ticks = std::chrono::duration_cast<std::chrono::microseconds>(now - m_gpuLoadUpdateTime).count();
+
+    if (ticks >= 500'000) {
+      m_gpuLoadUpdateTime = now;
+
+      m_diffGpuIdleTicks = m_prevCounters.getCtr(DxvkStatCounter::GpuIdleTicks) - m_prevGpuIdleTicks;
+      m_prevGpuIdleTicks = m_prevCounters.getCtr(DxvkStatCounter::GpuIdleTicks);
+
+      uint64_t busyTicks = ticks > m_diffGpuIdleTicks
+        ? uint64_t(ticks - m_diffGpuIdleTicks)
+        : uint64_t(0);
+
+      m_gpuLoadString = str::format("GPU: ", (100 * busyTicks) / ticks, "%");
+    }
+  }
+
+
   HudPos HudStats::printDrawCallStats(
     const Rc<DxvkContext>&  context,
           HudRenderer&      renderer,
@@ -150,6 +177,19 @@ namespace dxvk::hud {
   }
 
 
+  HudPos HudStats::printGpuLoad(
+    const Rc<DxvkContext>&  context,
+          HudRenderer&      renderer,
+          HudPos            position) {
+    renderer.drawText(context, 16.0f,
+      { position.x, position.y },
+      { 1.0f, 1.0f, 1.0f, 1.0f },
+      m_gpuLoadString);
+
+    return { position.x, position.y + 24.0f };
+  }
+
+
   HudPos HudStats::printCompilerActivity(
     const Rc<DxvkContext>&  context,
           HudRenderer&      renderer,
@@ -183,6 +223,7 @@ namespace dxvk::hud {
       HudElement::StatSubmissions,
       HudElement::StatPipelines,
       HudElement::StatMemory,
+      HudElement::StatGpuLoad,
       HudElement::CompilerActivity);
   }
   
