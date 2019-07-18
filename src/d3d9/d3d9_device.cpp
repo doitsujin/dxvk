@@ -5185,17 +5185,15 @@ namespace dxvk {
       // The 1.0f additional offset however does not,
       // so we account for that there manually.
 
-      float deltaZ = vp.MaxZ - vp.MinZ;
       m_viewportInfo.inverseExtent = Vector4(
-        2.0f / float(vp.Width),
+         2.0f / float(vp.Width),
         -2.0f / float(vp.Height),
-        deltaZ == 0.0f ? 0.0f : 1.0f / deltaZ,
+        1.0f,
         1.0f);
 
       m_viewportInfo.inverseOffset = Vector4(
         -float(vp.X), -float(vp.Y),
-        -vp.MinZ,
-        0.0f);
+         0.0f,         0.0f);
 
       m_viewportInfo.inverseOffset = m_viewportInfo.inverseOffset * m_viewportInfo.inverseExtent;
 
