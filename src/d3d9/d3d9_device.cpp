@@ -4053,13 +4053,8 @@ namespace dxvk {
     }
 
     // The value returned is a 32-bit value, so we need to clamp it.
-#ifndef _WIN64
-    VkDeviceSize maxMemory = 0xC0000000;
-    availableTextureMemory = std::min(availableTextureMemory, maxMemory);
-#else
     VkDeviceSize maxMemory = UINT32_MAX;
     availableTextureMemory = std::min(availableTextureMemory, maxMemory);
-#endif
 
     return int64_t(availableTextureMemory);
   }

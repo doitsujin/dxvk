@@ -35,7 +35,7 @@ namespace dxvk {
 
       CreateInitialViews();
 
-      m_size = DetermineMemoryConsumption();
+      m_size = m_image->memSize();
       if (!m_device->ChangeReportedMemory(-m_size))
         throw DxvkError("D3D9: Reporting out of memory from tracking.");
     }
@@ -46,7 +46,8 @@ namespace dxvk {
 
 
   D3D9CommonTexture::~D3D9CommonTexture() {
-    m_device->ChangeReportedMemory(m_size);
+    if (m_size != 0)
+      m_device->ChangeReportedMemory(m_size);
   }
 
 
@@ -238,19 +239,6 @@ namespace dxvk {
 
     return IsDepthFormat(m_desc.Format)
         && std::find(blacklist.begin(), blacklist.end(), m_desc.Format) == blacklist.end();
-  }
-
-
-  int64_t D3D9CommonTexture::DetermineMemoryConsumption() const {
-    // This is not accurate. It's not meant to be.
-    // We're just trying to persuade some applications
-    // to not infinitely allocate resources.
-    int64_t faceSize = 0;
-
-    for (uint32_t i = 0; i < m_desc.MipLevels; i++)
-      faceSize += int64_t(align(GetMipSize(i), 256));
-
-    return int64_t(m_desc.ArraySize) * faceSize;
   }
 
 

@@ -364,8 +364,6 @@ namespace dxvk {
 
     BOOL DetermineShadowState() const;
 
-    int64_t DetermineMemoryConsumption() const;
-
     BOOL CheckImageSupport(
       const DxvkImageCreateInfo*  pImageInfo,
             VkImageTiling         Tiling) const;
