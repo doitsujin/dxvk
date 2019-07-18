@@ -1,8 +1,10 @@
 #include "dxvk_device.h"
 #include "dxvk_meta_resolve.h"
 
-#include <dxvk_copy_vert.h>
-#include <dxvk_copy_geom.h>
+#include <dxvk_fullscreen_geom.h>
+#include <dxvk_fullscreen_vert.h>
+#include <dxvk_fullscreen_layer_vert.h>
+
 #include <dxvk_resolve_frag_f.h>
 #include <dxvk_resolve_frag_f_amd.h>
 #include <dxvk_resolve_frag_u.h>
@@ -103,17 +105,20 @@ namespace dxvk {
 
 
 
-  DxvkMetaResolveObjects::DxvkMetaResolveObjects(DxvkDevice* device)
+  DxvkMetaResolveObjects::DxvkMetaResolveObjects(const DxvkDevice* device)
   : m_vkd         (device->vkd()),
     m_sampler     (createSampler()),
-    m_shaderVert  (createShaderModule(dxvk_copy_vert)),
-    m_shaderGeom  (createShaderModule(dxvk_copy_geom)),
     m_shaderFragF (device->extensions().amdShaderFragmentMask
       ? createShaderModule(dxvk_resolve_frag_f_amd)
       : createShaderModule(dxvk_resolve_frag_f)),
     m_shaderFragU (createShaderModule(dxvk_resolve_frag_u)),
     m_shaderFragI (createShaderModule(dxvk_resolve_frag_i)) {
-
+    if (device->extensions().extShaderViewportIndexLayer) {
+      m_shaderVert = createShaderModule(dxvk_fullscreen_layer_vert);
+    } else {
+      m_shaderVert = createShaderModule(dxvk_fullscreen_vert);
+      m_shaderGeom = createShaderModule(dxvk_fullscreen_geom);
+    }
   }
 
 
@@ -308,6 +313,7 @@ namespace dxvk {
     auto formatInfo = imageFormatInfo(key.format);
 
     std::array<VkPipelineShaderStageCreateInfo, 3> stages;
+    uint32_t stageCount = 0;
 
     VkSpecializationMapEntry specEntry;
     specEntry.constantID        = 0;
@@ -320,7 +326,7 @@ namespace dxvk {
     specInfo.dataSize           = sizeof(VkSampleCountFlagBits);
     specInfo.pData              = &key.samples;
     
-    VkPipelineShaderStageCreateInfo& vsStage = stages[0];
+    VkPipelineShaderStageCreateInfo& vsStage = stages[stageCount++];
     vsStage.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     vsStage.pNext               = nullptr;
     vsStage.flags               = 0;
@@ -329,16 +335,18 @@ namespace dxvk {
     vsStage.pName               = "main";
     vsStage.pSpecializationInfo = nullptr;
     
-    VkPipelineShaderStageCreateInfo& gsStage = stages[1];
-    gsStage.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    gsStage.pNext               = nullptr;
-    gsStage.flags               = 0;
-    gsStage.stage               = VK_SHADER_STAGE_GEOMETRY_BIT;
-    gsStage.module              = m_shaderGeom;
-    gsStage.pName               = "main";
-    gsStage.pSpecializationInfo = nullptr;
+    if (m_shaderGeom) {
+      VkPipelineShaderStageCreateInfo& gsStage = stages[stageCount++];
+      gsStage.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+      gsStage.pNext               = nullptr;
+      gsStage.flags               = 0;
+      gsStage.stage               = VK_SHADER_STAGE_GEOMETRY_BIT;
+      gsStage.module              = m_shaderGeom;
+      gsStage.pName               = "main";
+      gsStage.pSpecializationInfo = nullptr;
+    }
     
-    VkPipelineShaderStageCreateInfo& psStage = stages[2];
+    VkPipelineShaderStageCreateInfo& psStage = stages[stageCount++];
     psStage.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     psStage.pNext               = nullptr;
     psStage.flags               = 0;
@@ -377,7 +385,7 @@ namespace dxvk {
     iaState.sType               = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
     iaState.pNext               = nullptr;
     iaState.flags               = 0;
-    iaState.topology            = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+    iaState.topology            = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     iaState.primitiveRestartEnable = VK_FALSE;
     
     VkPipelineViewportStateCreateInfo vpState;
@@ -444,7 +452,7 @@ namespace dxvk {
     info.sType                  = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     info.pNext                  = nullptr;
     info.flags                  = 0;
-    info.stageCount             = stages.size();
+    info.stageCount             = stageCount;
     info.pStages                = stages.data();
     info.pVertexInputState      = &viState;
     info.pInputAssemblyState    = &iaState;

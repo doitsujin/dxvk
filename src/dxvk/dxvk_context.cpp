@@ -3054,7 +3054,7 @@ namespace dxvk {
     m_cmd->cmdPushConstants(pipeInfo.pipeLayout,
       VK_SHADER_STAGE_FRAGMENT_BIT,
       0, sizeof(srcOffset), &srcOffset);
-    m_cmd->cmdDraw(1, region.dstSubresource.layerCount, 0, 0);
+    m_cmd->cmdDraw(3, region.dstSubresource.layerCount, 0, 0);
     m_cmd->cmdEndRenderPass();
 
     m_execBarriers.accessImage(
