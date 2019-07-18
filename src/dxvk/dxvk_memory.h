@@ -123,6 +123,15 @@ namespace dxvk {
     }
 
     /**
+     * \brief Returns length of memory allocated
+     * 
+     * \returns Memory size
+     */
+    VkDeviceSize length() const {
+      return m_length;
+    }
+
+    /**
      * \brief Checks whether the memory slice is defined
      * 
      * \returns \c true if this slice points to actual device
