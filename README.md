@@ -80,6 +80,7 @@ The `DXVK_HUD` environment variable controls a HUD which can display the framera
 - `drawcalls`: Shows the number of draw calls and render passes per frame.
 - `pipelines`: Shows the total number of graphics and compute pipelines.
 - `memory`: Shows the amount of device memory allocated and used.
+- `gpuload`: Shows estimated GPU load. May be inaccurate.
 - `version`: Shows DXVK version.
 - `api`: Shows the D3D feature level used by the application. Does not work correctly for D3D10 at the moment.
 
