@@ -35,9 +35,11 @@ namespace dxvk {
 
       CreateInitialViews();
 
-      m_size = m_image->memSize();
-      if (!m_device->ChangeReportedMemory(-m_size))
-        throw DxvkError("D3D9: Reporting out of memory from tracking.");
+      if (m_desc.Pool != D3DPOOL_MANAGED) {
+        m_size = m_image->memSize();
+        if (!m_device->ChangeReportedMemory(-m_size))
+          throw DxvkError("D3D9: Reporting out of memory from tracking.");
+      }
     }
 
     if (m_mapMode == D3D9_COMMON_TEXTURE_MAP_MODE_SYSTEMMEM)
