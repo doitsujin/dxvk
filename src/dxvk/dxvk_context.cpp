@@ -941,8 +941,16 @@ namespace dxvk {
           VkOffset3D            srcOffset,
           VkExtent3D            extent) {
     this->spillRenderPass();
-    
-    if (dstSubresource.aspectMask == srcSubresource.aspectMask) {
+
+    bool useFb = dstSubresource.aspectMask != srcSubresource.aspectMask;
+
+    if (m_device->perfHints().preferFbDepthStencilCopy) {
+      useFb |= (dstSubresource.aspectMask == (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
+            && (dstImage->info().usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
+            && (srcImage->info().usage & VK_IMAGE_USAGE_SAMPLED_BIT);
+    }
+
+    if (!useFb) {
       this->copyImageHw(
         dstImage, dstSubresource, dstOffset,
         srcImage, srcSubresource, srcOffset,
