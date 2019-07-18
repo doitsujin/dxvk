@@ -137,9 +137,16 @@ namespace dxvk {
     std::unique_lock<std::mutex> lock(m_mutex);
 
     while (!m_stopped.load()) {
-      m_submitCond.wait(lock, [this] {
-        return m_stopped.load() || !m_finishQueue.empty();
-      });
+      if (m_finishQueue.empty()) {
+        auto t0 = std::chrono::high_resolution_clock::now();
+
+        m_submitCond.wait(lock, [this] {
+          return m_stopped.load() || !m_finishQueue.empty();
+        });
+
+        auto t1 = std::chrono::high_resolution_clock::now();
+        m_gpuIdle += std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0).count();
+      }
 
       if (m_stopped.load())
         return;
