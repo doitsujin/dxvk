@@ -343,6 +343,9 @@ namespace dxvk {
                         |  VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT;
     }
 
+    if (Format == VK_FORMAT_D32_SFLOAT_S8_UINT || Format == VK_FORMAT_D24_UNORM_S8_UINT)
+      requestedFeatures |= VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT;
+
     if (requestedFeatures == 0)
       return 0;
 
