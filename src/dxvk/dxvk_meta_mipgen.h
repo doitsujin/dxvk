@@ -165,7 +165,7 @@ namespace dxvk {
     
   public:
     
-    DxvkMetaMipGenObjects(const Rc<vk::DeviceFn>& vkd);
+    DxvkMetaMipGenObjects(const DxvkDevice* device);
     ~DxvkMetaMipGenObjects();
     
     /**
@@ -185,11 +185,11 @@ namespace dxvk {
     
     VkSampler m_sampler;
     
-    VkShaderModule m_shaderVert;
-    VkShaderModule m_shaderGeom;
-    VkShaderModule m_shaderFrag1D;
-    VkShaderModule m_shaderFrag2D;
-    VkShaderModule m_shaderFrag3D;
+    VkShaderModule m_shaderVert   = VK_NULL_HANDLE;
+    VkShaderModule m_shaderGeom   = VK_NULL_HANDLE;
+    VkShaderModule m_shaderFrag1D = VK_NULL_HANDLE;
+    VkShaderModule m_shaderFrag2D = VK_NULL_HANDLE;
+    VkShaderModule m_shaderFrag3D = VK_NULL_HANDLE;
     
     std::mutex m_mutex;
     

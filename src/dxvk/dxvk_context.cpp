@@ -1733,7 +1733,7 @@ namespace dxvk {
         0, sizeof(pushConstants),
         &pushConstants);
       
-      m_cmd->cmdDraw(1, passExtent.depth, 0, 0);
+      m_cmd->cmdDraw(3, passExtent.depth, 0, 0);
       m_cmd->cmdEndRenderPass();
     }
     

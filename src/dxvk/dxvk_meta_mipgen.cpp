@@ -1,7 +1,10 @@
+#include "dxvk_device.h"
 #include "dxvk_meta_mipgen.h"
 
-#include <dxvk_mipgen_vert.h>
-#include <dxvk_mipgen_geom.h>
+#include <dxvk_fullscreen_geom.h>
+#include <dxvk_fullscreen_vert.h>
+#include <dxvk_fullscreen_layer_vert.h>
+
 #include <dxvk_mipgen_frag_1d.h>
 #include <dxvk_mipgen_frag_2d.h>
 #include <dxvk_mipgen_frag_3d.h>
@@ -184,15 +187,18 @@ namespace dxvk {
   }
   
   
-  DxvkMetaMipGenObjects::DxvkMetaMipGenObjects(const Rc<vk::DeviceFn>& vkd)
-  : m_vkd         (vkd),
+  DxvkMetaMipGenObjects::DxvkMetaMipGenObjects(const DxvkDevice* device)
+  : m_vkd         (device->vkd()),
     m_sampler     (createSampler()),
-    m_shaderVert  (createShaderModule(dxvk_mipgen_vert)),
-    m_shaderGeom  (createShaderModule(dxvk_mipgen_geom)),
     m_shaderFrag1D(createShaderModule(dxvk_mipgen_frag_1d)),
     m_shaderFrag2D(createShaderModule(dxvk_mipgen_frag_2d)),
     m_shaderFrag3D(createShaderModule(dxvk_mipgen_frag_3d)) {
-    
+    if (device->extensions().extShaderViewportIndexLayer) {
+      m_shaderVert = createShaderModule(dxvk_fullscreen_layer_vert);
+    } else {
+      m_shaderVert = createShaderModule(dxvk_fullscreen_vert);
+      m_shaderGeom = createShaderModule(dxvk_fullscreen_geom);
+    }
   }
   
   
@@ -398,8 +404,9 @@ namespace dxvk {
           VkPipelineLayout            pipelineLayout,
           VkRenderPass                renderPass) const {
     std::array<VkPipelineShaderStageCreateInfo, 3> stages;
+    uint32_t stageCount = 0;
     
-    VkPipelineShaderStageCreateInfo& vsStage = stages[0];
+    VkPipelineShaderStageCreateInfo& vsStage = stages[stageCount++];
     vsStage.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     vsStage.pNext               = nullptr;
     vsStage.flags               = 0;
@@ -408,16 +415,18 @@ namespace dxvk {
     vsStage.pName               = "main";
     vsStage.pSpecializationInfo = nullptr;
     
-    VkPipelineShaderStageCreateInfo& gsStage = stages[1];
-    gsStage.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    gsStage.pNext               = nullptr;
-    gsStage.flags               = 0;
-    gsStage.stage               = VK_SHADER_STAGE_GEOMETRY_BIT;
-    gsStage.module              = m_shaderGeom;
-    gsStage.pName               = "main";
-    gsStage.pSpecializationInfo = nullptr;
+    if (m_shaderGeom) {
+      VkPipelineShaderStageCreateInfo& gsStage = stages[stageCount++];
+      gsStage.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+      gsStage.pNext               = nullptr;
+      gsStage.flags               = 0;
+      gsStage.stage               = VK_SHADER_STAGE_GEOMETRY_BIT;
+      gsStage.module              = m_shaderGeom;
+      gsStage.pName               = "main";
+      gsStage.pSpecializationInfo = nullptr;
+    }
     
-    VkPipelineShaderStageCreateInfo& psStage = stages[2];
+    VkPipelineShaderStageCreateInfo& psStage = stages[stageCount++];
     psStage.sType               = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
     psStage.pNext               = nullptr;
     psStage.flags               = 0;
@@ -458,7 +467,7 @@ namespace dxvk {
     iaState.sType               = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
     iaState.pNext               = nullptr;
     iaState.flags               = 0;
-    iaState.topology            = VK_PRIMITIVE_TOPOLOGY_POINT_LIST;
+    iaState.topology            = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     iaState.primitiveRestartEnable = VK_FALSE;
     
     VkPipelineViewportStateCreateInfo vpState;
@@ -525,7 +534,7 @@ namespace dxvk {
     info.sType                  = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
     info.pNext                  = nullptr;
     info.flags                  = 0;
-    info.stageCount             = stages.size();
+    info.stageCount             = stageCount;
     info.pStages                = stages.data();
     info.pVertexInputState      = &viState;
     info.pInputAssemblyState    = &iaState;
