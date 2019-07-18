@@ -2815,8 +2815,8 @@ namespace dxvk {
     info.framebuffer        = fb->framebuffer();
     info.renderArea.offset  = { 0, 0 };
     info.renderArea.extent  = {
-      tgtImage->info().extent.width,
-      tgtImage->info().extent.height };
+      tgtImage->mipLevelExtent(tgtSubresource.mipLevel).width,
+      tgtImage->mipLevelExtent(tgtSubresource.mipLevel).height };
     info.clearValueCount    = 0;
     info.pClearValues       = nullptr;
 
