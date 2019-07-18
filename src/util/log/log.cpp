@@ -52,8 +52,14 @@ namespace dxvk {
         = {{ "trace: ", "debug: ", "info:  ", "warn:  ", "err:   " }};
       
       const char* prefix = s_prefixes.at(static_cast<uint32_t>(level));
-      std::cerr    << prefix << message << std::endl;
-      m_fileStream << prefix << message << std::endl;
+
+      std::stringstream stream(message);
+      std::string       line;
+
+      while (std::getline(stream, line, '\n')) {
+        std::cerr    << prefix << line << std::endl;
+        m_fileStream << prefix << line << std::endl;
+      }
     }
   }
   
