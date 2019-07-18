@@ -145,8 +145,8 @@ namespace dxvk {
 
     VkSampler m_sampler;
 
-    VkShaderModule m_shaderVert;
-    VkShaderModule m_shaderGeom;
+    VkShaderModule m_shaderVert = VK_NULL_HANDLE;
+    VkShaderModule m_shaderGeom = VK_NULL_HANDLE;
 
     FragShaders m_color;
     FragShaders m_depth;
