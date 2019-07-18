@@ -19,12 +19,14 @@ namespace dxvk {
     const Rc<vk::DeviceFn>&   vkd,
     const Rc<DxvkImageView>&  dstImageView,
     const Rc<DxvkImageView>&  srcImageView,
+    const Rc<DxvkImageView>&  srcStencilView,
           bool                discardDst)
-  : m_vkd         (vkd),
-    m_dstImageView(dstImageView),
-    m_srcImageView(srcImageView),
-    m_renderPass  (createRenderPass(discardDst)),
-    m_framebuffer (createFramebuffer()) {
+  : m_vkd           (vkd),
+    m_dstImageView  (dstImageView),
+    m_srcImageView  (srcImageView),
+    m_srcStencilView(srcStencilView),
+    m_renderPass    (createRenderPass(discardDst)),
+    m_framebuffer   (createFramebuffer()) {
 
   }
   

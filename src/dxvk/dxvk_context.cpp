@@ -2740,18 +2740,24 @@ namespace dxvk {
     srcViewInfo.type      = viewType;
     srcViewInfo.format    = srcImage->info().format;
     srcViewInfo.usage     = VK_IMAGE_USAGE_SAMPLED_BIT;
-    srcViewInfo.aspect    = srcSubresource.aspectMask;
+    srcViewInfo.aspect    = srcSubresource.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_COLOR_BIT);
     srcViewInfo.minLevel  = srcSubresource.mipLevel;
     srcViewInfo.numLevels = 1;
     srcViewInfo.minLayer  = srcSubresource.baseArrayLayer;
     srcViewInfo.numLayers = srcSubresource.layerCount;
 
-    auto tgtImageView = m_device->createImageView(tgtImage, tgtViewInfo);
-    auto srcImageView = m_device->createImageView(srcImage, srcViewInfo);
+    Rc<DxvkImageView> tgtImageView = m_device->createImageView(tgtImage, tgtViewInfo);
+    Rc<DxvkImageView> srcImageView = m_device->createImageView(srcImage, srcViewInfo);
+    Rc<DxvkImageView> srcStencilView;
+
+    if (srcSubresource.aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT) {
+      srcViewInfo.aspect = VK_IMAGE_ASPECT_STENCIL_BIT;
+      srcStencilView = m_device->createImageView(srcImage, srcViewInfo);
+    }
 
     // Create framebuffer and pipeline for the copy
     Rc<DxvkMetaCopyRenderPass> fb = new DxvkMetaCopyRenderPass(
-      m_device->vkd(), tgtImageView, srcImageView,
+      m_device->vkd(), tgtImageView, srcImageView, srcStencilView,
       tgtImage->isFullSubresource(tgtSubresource, extent));
     
     auto pipeInfo = m_metaCopy->getPipeline(
@@ -2775,6 +2781,12 @@ namespace dxvk {
     
     descriptorWrite.dstSet = allocateDescriptorSet(pipeInfo.dsetLayout);
     m_cmd->updateDescriptorSets(1, &descriptorWrite);
+
+    if (srcSubresource.aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT) {
+      descriptorImage.imageView  = srcStencilView->handle();
+      descriptorWrite.dstBinding = 1;
+      m_cmd->updateDescriptorSets(1, &descriptorWrite);
+    }
     
     VkViewport viewport;
     viewport.x        = float(tgtOffset.x);
