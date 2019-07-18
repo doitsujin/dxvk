@@ -282,8 +282,16 @@ namespace dxvk {
     extensionsEnabled.merge(m_extraExtensions);
     DxvkNameList extensionNameList = extensionsEnabled.toNameList();
     
+    Logger::info(str::format("Device properties:"
+      "\n  Device name:     : ", m_deviceInfo.core.properties.deviceName,
+      "\n  Driver version   : ",
+        VK_VERSION_MAJOR(m_deviceInfo.core.properties.driverVersion), ".",
+        VK_VERSION_MINOR(m_deviceInfo.core.properties.driverVersion), ".",
+        VK_VERSION_PATCH(m_deviceInfo.core.properties.driverVersion)));
+
     Logger::info("Enabled device extensions:");
     this->logNameList(extensionNameList);
+    this->logFeatures(enabledFeatures);
 
     // Create pNext chain for additional device features
     enabledFeatures.core.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
@@ -346,6 +354,7 @@ namespace dxvk {
     DxvkAdapterQueueIndices queueFamilies = findQueueFamilies();
     queueFamiliySet.insert(queueFamilies.graphics);
     queueFamiliySet.insert(queueFamilies.transfer);
+    this->logQueueFamilies(queueFamilies);
     
     for (uint32_t family : queueFamiliySet) {
       VkDeviceQueueCreateInfo graphicsQueue;
@@ -575,6 +584,65 @@ namespace dxvk {
   void DxvkAdapter::logNameList(const DxvkNameList& names) {
     for (uint32_t i = 0; i < names.count(); i++)
       Logger::info(str::format("  ", names.name(i)));
+  }
+
+
+  void DxvkAdapter::logFeatures(const DxvkDeviceFeatures& features) {
+    Logger::info(str::format("Device features:",
+      "\n  robustBufferAccess                     : ", features.core.features.robustBufferAccess ? "1" : "0",
+      "\n  fullDrawIndexUint32                    : ", features.core.features.fullDrawIndexUint32 ? "1" : "0",
+      "\n  imageCubeArray                         : ", features.core.features.imageCubeArray ? "1" : "0",
+      "\n  independentBlend                       : ", features.core.features.independentBlend ? "1" : "0",
+      "\n  geometryShader                         : ", features.core.features.geometryShader ? "1" : "0",
+      "\n  tessellationShader                     : ", features.core.features.tessellationShader ? "1" : "0",
+      "\n  sampleRateShading                      : ", features.core.features.sampleRateShading ? "1" : "0",
+      "\n  dualSrcBlend                           : ", features.core.features.dualSrcBlend ? "1" : "0",
+      "\n  logicOp                                : ", features.core.features.logicOp ? "1" : "0",
+      "\n  multiDrawIndirect                      : ", features.core.features.multiDrawIndirect ? "1" : "0",
+      "\n  drawIndirectFirstInstance              : ", features.core.features.drawIndirectFirstInstance ? "1" : "0",
+      "\n  depthClamp                             : ", features.core.features.depthClamp ? "1" : "0",
+      "\n  depthBiasClamp                         : ", features.core.features.depthBiasClamp ? "1" : "0",
+      "\n  fillModeNonSolid                       : ", features.core.features.fillModeNonSolid ? "1" : "0",
+      "\n  depthBounds                            : ", features.core.features.depthBounds ? "1" : "0",
+      "\n  multiViewport                          : ", features.core.features.multiViewport ? "1" : "0",
+      "\n  samplerAnisotropy                      : ", features.core.features.samplerAnisotropy ? "1" : "0",
+      "\n  textureCompressionBC                   : ", features.core.features.textureCompressionBC ? "1" : "0",
+      "\n  occlusionQueryPrecise                  : ", features.core.features.occlusionQueryPrecise ? "1" : "0",
+      "\n  pipelineStatisticsQuery                : ", features.core.features.pipelineStatisticsQuery ? "1" : "0",
+      "\n  vertexPipelineStoresAndAtomics         : ", features.core.features.vertexPipelineStoresAndAtomics ? "1" : "0",
+      "\n  fragmentStoresAndAtomics               : ", features.core.features.fragmentStoresAndAtomics ? "1" : "0",
+      "\n  shaderImageGatherExtended              : ", features.core.features.shaderImageGatherExtended ? "1" : "0",
+      "\n  shaderStorageImageExtendedFormats      : ", features.core.features.shaderStorageImageExtendedFormats ? "1" : "0",
+      "\n  shaderStorageImageReadWithoutFormat    : ", features.core.features.shaderStorageImageReadWithoutFormat ? "1" : "0",
+      "\n  shaderStorageImageWriteWithoutFormat   : ", features.core.features.shaderStorageImageWriteWithoutFormat ? "1" : "0",
+      "\n  shaderClipDistance                     : ", features.core.features.shaderClipDistance ? "1" : "0",
+      "\n  shaderCullDistance                     : ", features.core.features.shaderCullDistance ? "1" : "0",
+      "\n  shaderFloat64                          : ", features.core.features.shaderFloat64 ? "1" : "0",
+      "\n  shaderInt64                            : ", features.core.features.shaderInt64 ? "1" : "0",
+      "\n  variableMultisampleRate                : ", features.core.features.variableMultisampleRate ? "1" : "0",
+      "\n", VK_EXT_CONDITIONAL_RENDERING_EXTENSION_NAME,
+      "\n  conditionalRendering                   : ", features.extConditionalRendering.conditionalRendering ? "1" : "0",
+      "\n", VK_EXT_DEPTH_CLIP_ENABLE_EXTENSION_NAME,
+      "\n  depthClipEnable                        : ", features.extDepthClipEnable.depthClipEnable ? "1" : "0",
+      "\n", VK_EXT_HOST_QUERY_RESET_EXTENSION_NAME,
+      "\n  hostQueryReset                         : ", features.extHostQueryReset.hostQueryReset ? "1" : "0",
+      "\n", VK_EXT_MEMORY_PRIORITY_EXTENSION_NAME,
+      "\n  memoryPriority                         : ", features.extMemoryPriority.memoryPriority ? "1" : "0",
+      "\n", VK_EXT_SHADER_DEMOTE_TO_HELPER_INVOCATION_EXTENSION_NAME,
+      "\n  shaderDemoteToHelperInvocation         : ", features.extShaderDemoteToHelperInvocation.shaderDemoteToHelperInvocation ? "1" : "0",
+      "\n", VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME,
+      "\n  transformFeedback                      : ", features.extTransformFeedback.transformFeedback ? "1" : "0",
+      "\n  geometryStreams                        : ", features.extTransformFeedback.geometryStreams ? "1" : "0",
+      "\n", VK_EXT_VERTEX_ATTRIBUTE_DIVISOR_EXTENSION_NAME,
+      "\n  vertexAttributeInstanceRateDivisor     : ", features.extVertexAttributeDivisor.vertexAttributeInstanceRateDivisor ? "1" : "0",
+      "\n  vertexAttributeInstanceRateZeroDivisor : ", features.extVertexAttributeDivisor.vertexAttributeInstanceRateZeroDivisor ? "1" : "0"));
+  }
+
+
+  void DxvkAdapter::logQueueFamilies(const DxvkAdapterQueueIndices& queues) {
+    Logger::info(str::format("Queue families:",
+      "\n  Graphics : ", queues.graphics,
+      "\n  Transfer : ", queues.transfer));
   }
   
 }

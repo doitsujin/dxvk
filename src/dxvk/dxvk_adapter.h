@@ -281,6 +281,8 @@ namespace dxvk {
             VkQueueFlags          flags) const;
     
     static void logNameList(const DxvkNameList& names);
+    static void logFeatures(const DxvkDeviceFeatures& features);
+    static void logQueueFamilies(const DxvkAdapterQueueIndices& queues);
     
   };
   
