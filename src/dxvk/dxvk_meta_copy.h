@@ -101,7 +101,7 @@ namespace dxvk {
 
   public:
 
-    DxvkMetaCopyObjects(const Rc<vk::DeviceFn>& vkd);
+    DxvkMetaCopyObjects(const DxvkDevice* device);
     ~DxvkMetaCopyObjects();
 
     /**
@@ -134,9 +134,9 @@ namespace dxvk {
   private:
 
     struct FragShaders {
-      VkShaderModule frag1D;
-      VkShaderModule frag2D;
-      VkShaderModule fragMs;
+      VkShaderModule frag1D = VK_NULL_HANDLE;
+      VkShaderModule frag2D = VK_NULL_HANDLE;
+      VkShaderModule fragMs = VK_NULL_HANDLE;
     };
 
     Rc<vk::DeviceFn> m_vkd;
@@ -148,6 +148,7 @@ namespace dxvk {
 
     FragShaders m_color;
     FragShaders m_depth;
+    FragShaders m_depthStencil;
 
     std::mutex m_mutex;
 
@@ -167,7 +168,8 @@ namespace dxvk {
     VkRenderPass createRenderPass(
       const DxvkMetaCopyPipelineKey&  key) const;
     
-    VkDescriptorSetLayout createDescriptorSetLayout() const;
+    VkDescriptorSetLayout createDescriptorSetLayout(
+      const DxvkMetaCopyPipelineKey&  key) const;
     
     VkPipelineLayout createPipelineLayout(
             VkDescriptorSetLayout     descriptorSetLayout) const;

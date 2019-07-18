@@ -1,3 +1,4 @@
+#include "dxvk_device.h"
 #include "dxvk_meta_copy.h"
 
 #include <dxvk_copy_vert.h>
@@ -8,6 +9,9 @@
 #include <dxvk_copy_depth_1d.h>
 #include <dxvk_copy_depth_2d.h>
 #include <dxvk_copy_depth_ms.h>
+#include <dxvk_copy_depth_stencil_1d.h>
+#include <dxvk_copy_depth_stencil_2d.h>
+#include <dxvk_copy_depth_stencil_ms.h>
 
 namespace dxvk {
 
@@ -40,13 +44,14 @@ namespace dxvk {
     attachment.samples          = m_dstImageView->imageInfo().sampleCount;
     attachment.loadOp           = VK_ATTACHMENT_LOAD_OP_LOAD;
     attachment.storeOp          = VK_ATTACHMENT_STORE_OP_STORE;
-    attachment.stencilLoadOp    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    attachment.stencilStoreOp   = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachment.stencilLoadOp    = VK_ATTACHMENT_LOAD_OP_LOAD;
+    attachment.stencilStoreOp   = VK_ATTACHMENT_STORE_OP_STORE;
     attachment.initialLayout    = m_dstImageView->imageInfo().layout;
     attachment.finalLayout      = m_dstImageView->imageInfo().layout;
 
     if (discard) {
       attachment.loadOp         = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+      attachment.stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
       attachment.initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED;
     }
     
@@ -116,8 +121,8 @@ namespace dxvk {
   }
 
 
-  DxvkMetaCopyObjects::DxvkMetaCopyObjects(const Rc<vk::DeviceFn>& vkd)
-  : m_vkd         (vkd),
+  DxvkMetaCopyObjects::DxvkMetaCopyObjects(const DxvkDevice* device)
+  : m_vkd         (device->vkd()),
     m_sampler     (createSampler()),
     m_shaderVert  (createShaderModule(dxvk_copy_vert)),
     m_shaderGeom  (createShaderModule(dxvk_copy_geom)),
@@ -129,7 +134,12 @@ namespace dxvk {
       createShaderModule(dxvk_copy_depth_1d),
       createShaderModule(dxvk_copy_depth_2d),
       createShaderModule(dxvk_copy_depth_ms) } {
-    
+    if (device->extensions().extShaderStencilExport) {
+      m_depthStencil = {
+        createShaderModule(dxvk_copy_depth_stencil_1d),
+        createShaderModule(dxvk_copy_depth_stencil_2d),
+        createShaderModule(dxvk_copy_depth_stencil_ms) };
+    }
   }
 
 
@@ -141,6 +151,9 @@ namespace dxvk {
       m_vkd->vkDestroyRenderPass(m_vkd->device(), pair.second.renderPass, nullptr);
     }
 
+    m_vkd->vkDestroyShaderModule(m_vkd->device(), m_depthStencil.fragMs, nullptr);
+    m_vkd->vkDestroyShaderModule(m_vkd->device(), m_depthStencil.frag2D, nullptr);
+    m_vkd->vkDestroyShaderModule(m_vkd->device(), m_depthStencil.frag1D, nullptr);
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_depth.fragMs, nullptr);
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_depth.frag2D, nullptr);
     m_vkd->vkDestroyShaderModule(m_vkd->device(), m_depth.frag1D, nullptr);
@@ -252,7 +265,7 @@ namespace dxvk {
     const DxvkMetaCopyPipelineKey&  key) {
     DxvkMetaCopyPipeline pipeline;
     pipeline.renderPass = this->createRenderPass(key);
-    pipeline.dsetLayout = this->createDescriptorSetLayout();
+    pipeline.dsetLayout = this->createDescriptorSetLayout(key);
     pipeline.pipeLayout = this->createPipelineLayout(pipeline.dsetLayout);
     pipeline.pipeHandle = this->createPipelineObject(key, pipeline.pipeLayout, pipeline.renderPass);
     return pipeline;
@@ -269,8 +282,8 @@ namespace dxvk {
     attachment.samples          = key.samples;
     attachment.loadOp           = VK_ATTACHMENT_LOAD_OP_LOAD;
     attachment.storeOp          = VK_ATTACHMENT_STORE_OP_STORE;
-    attachment.stencilLoadOp    = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    attachment.stencilStoreOp   = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachment.stencilLoadOp    = VK_ATTACHMENT_LOAD_OP_LOAD;
+    attachment.stencilStoreOp   = VK_ATTACHMENT_STORE_OP_STORE;
     attachment.initialLayout    = VK_IMAGE_LAYOUT_GENERAL;
     attachment.finalLayout      = VK_IMAGE_LAYOUT_GENERAL;
     
@@ -317,20 +330,29 @@ namespace dxvk {
   }
 
   
-  VkDescriptorSetLayout DxvkMetaCopyObjects::createDescriptorSetLayout() const {
-    VkDescriptorSetLayoutBinding binding;
-    binding.binding             = 0;
-    binding.descriptorType      = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    binding.descriptorCount     = 1;
-    binding.stageFlags          = VK_SHADER_STAGE_FRAGMENT_BIT;
-    binding.pImmutableSamplers  = &m_sampler;
+  VkDescriptorSetLayout DxvkMetaCopyObjects::createDescriptorSetLayout(
+    const DxvkMetaCopyPipelineKey&  key) const {
+    std::array<VkDescriptorSetLayoutBinding, 2> bindings;
+
+    for (uint32_t i = 0; i < 2; i++) {
+      bindings[i].binding             = i;
+      bindings[i].descriptorType      = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+      bindings[i].descriptorCount     = 1;
+      bindings[i].stageFlags          = VK_SHADER_STAGE_FRAGMENT_BIT;
+      bindings[i].pImmutableSamplers  = &m_sampler;
+    }
     
     VkDescriptorSetLayoutCreateInfo info;
     info.sType                  = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     info.pNext                  = nullptr;
     info.flags                  = 0;
     info.bindingCount           = 1;
-    info.pBindings              = &binding;
+    info.pBindings              = bindings.data();
+
+    auto format = imageFormatInfo(key.format);
+
+    if (format->aspectMask == (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))
+      info.bindingCount = 2;
     
     VkDescriptorSetLayout result = VK_NULL_HANDLE;
     if (m_vkd->vkCreateDescriptorSetLayout(m_vkd->device(), &info, nullptr, &result) != VK_SUCCESS)
@@ -397,8 +419,22 @@ namespace dxvk {
     psStage.pName               = "main";
     psStage.pSpecializationInfo = nullptr;
 
-    auto shaderSet = (aspect & VK_IMAGE_ASPECT_COLOR_BIT) ? &m_color : &m_depth;
+    std::array<std::pair<const FragShaders*, VkImageAspectFlags>, 3> shaderSets = {{
+      { &m_color,        VK_IMAGE_ASPECT_COLOR_BIT },
+      { &m_depth,        VK_IMAGE_ASPECT_DEPTH_BIT },
+      { &m_depthStencil, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT },
+    }};
+
+    const FragShaders* shaderSet = nullptr;
     
+    for (const auto& pair : shaderSets) {
+      if (pair.second == aspect)
+        shaderSet = pair.first;
+    }
+
+    if (!shaderSet)
+      throw DxvkError("DxvkMetaCopyObjects: Unsupported aspect mask");
+
     if (key.viewType == VK_IMAGE_VIEW_TYPE_1D)
       psStage.module = shaderSet->frag1D;
     else if (key.samples == VK_SAMPLE_COUNT_1_BIT)
@@ -495,9 +531,9 @@ namespace dxvk {
       cbState.blendConstants[i] = 0.0f;
     
     VkStencilOpState stencilOp;
-    stencilOp.failOp            = VK_STENCIL_OP_KEEP;
-    stencilOp.passOp            = VK_STENCIL_OP_KEEP;
-    stencilOp.depthFailOp       = VK_STENCIL_OP_KEEP;
+    stencilOp.failOp            = VK_STENCIL_OP_REPLACE;
+    stencilOp.passOp            = VK_STENCIL_OP_REPLACE;
+    stencilOp.depthFailOp       = VK_STENCIL_OP_REPLACE;
     stencilOp.compareOp         = VK_COMPARE_OP_ALWAYS;
     stencilOp.compareMask       = 0xFFFFFFFF;
     stencilOp.writeMask         = 0xFFFFFFFF;
@@ -511,7 +547,7 @@ namespace dxvk {
     dsState.depthWriteEnable    = VK_TRUE;
     dsState.depthCompareOp      = VK_COMPARE_OP_ALWAYS;
     dsState.depthBoundsTestEnable = VK_FALSE;
-    dsState.stencilTestEnable   = VK_FALSE;
+    dsState.stencilTestEnable   = VK_TRUE;
     dsState.front               = stencilOp;
     dsState.back                = stencilOp;
     dsState.minDepthBounds      = 0.0f;
