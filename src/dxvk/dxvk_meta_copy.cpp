@@ -447,7 +447,7 @@ namespace dxvk {
     if (!shaderSet)
       throw DxvkError("DxvkMetaCopyObjects: Unsupported aspect mask");
 
-    if (key.viewType == VK_IMAGE_VIEW_TYPE_1D)
+    if (key.viewType == VK_IMAGE_VIEW_TYPE_1D_ARRAY)
       psStage.module = shaderSet->frag1D;
     else if (key.samples == VK_SAMPLE_COUNT_1_BIT)
       psStage.module = shaderSet->frag2D;
