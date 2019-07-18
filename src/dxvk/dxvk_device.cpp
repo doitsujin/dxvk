@@ -185,6 +185,7 @@ namespace dxvk {
     result.setCtr(DxvkStatCounter::PipeCountGraphics, pipe.numGraphicsPipelines);
     result.setCtr(DxvkStatCounter::PipeCountCompute,  pipe.numComputePipelines);
     result.setCtr(DxvkStatCounter::PipeCompilerBusy,  m_pipelineManager->isCompilingShaders());
+    result.setCtr(DxvkStatCounter::GpuIdleTicks,      m_submissionQueue.gpuIdleTicks());
 
     std::lock_guard<sync::Spinlock> lock(m_statLock);
     result.merge(m_statCounters);

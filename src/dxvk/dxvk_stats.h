@@ -22,6 +22,7 @@ namespace dxvk {
     PipeCompilerBusy,         ///< Boolean indicating compiler activity
     QueueSubmitCount,         ///< Number of command buffer submissions
     QueuePresentCount,        ///< Number of present calls / frames
+    GpuIdleTicks,             ///< GPU idle time in microseconds
     NumCounters,              ///< Number of counters available
   };
   
