@@ -1078,6 +1078,9 @@ namespace dxvk {
 
     D3D9Surface* rt = static_cast<D3D9Surface*>(pRenderTarget);
 
+    if (unlikely(rt && !(rt->GetCommonTexture()->Desc()->Usage & D3DUSAGE_RENDERTARGET)))
+      return D3DERR_INVALIDCALL;
+
     if (m_state.renderTargets[RenderTargetIndex] == rt)
       return D3D_OK;
 
@@ -1147,6 +1150,9 @@ namespace dxvk {
     D3D9DeviceLock lock = LockDevice();
 
     D3D9Surface* ds = static_cast<D3D9Surface*>(pNewZStencil);
+
+    if (unlikely(ds && !(ds->GetCommonTexture()->Desc()->Usage & D3DUSAGE_DEPTHSTENCIL)))
+      return D3DERR_INVALIDCALL;
 
     if (m_state.depthStencil == ds)
       return D3D_OK;
