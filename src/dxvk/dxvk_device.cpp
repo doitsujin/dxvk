@@ -16,6 +16,7 @@ namespace dxvk {
     m_extensions        (extensions),
     m_features          (features),
     m_properties        (adapter->deviceProperties()),
+    m_perfHints         (getPerfHints()),
     m_memory            (new DxvkMemoryAllocator    (this)),
     m_renderPassPool    (new DxvkRenderPassPool     (vkd)),
     m_pipelineManager   (new DxvkPipelineManager    (this, m_renderPassPool.ptr())),
@@ -258,6 +259,14 @@ namespace dxvk {
   }
   
   
+  DxvkDevicePerfHints DxvkDevice::getPerfHints() {
+    DxvkDevicePerfHints hints;
+    hints.preferFbDepthStencilCopy = m_extensions.extShaderStencilExport
+      && m_adapter->matchesDriver(DxvkGpuVendor::Amd, VK_DRIVER_ID_MESA_RADV_KHR, 0, 0);
+    return hints;
+  }
+
+
   void DxvkDevice::recycleCommandList(const Rc<DxvkCommandList>& cmdList) {
     m_recycledCommandLists.returnObject(cmdList);
   }

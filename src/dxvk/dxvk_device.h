@@ -34,6 +34,13 @@ namespace dxvk {
     uint32_t maxNumDynamicUniformBuffers = 0;
     uint32_t maxNumDynamicStorageBuffers = 0;
   };
+
+  /**
+   * \brief Device performance hints
+   */
+  struct DxvkDevicePerfHints {
+    VkBool32 preferFbDepthStencilCopy : 1;
+  };
   
   /**
    * \brief Device queue
@@ -168,6 +175,14 @@ namespace dxvk {
      * \returns Device options
      */
     DxvkDeviceOptions options() const;
+
+    /**
+     * \brief Retrieves performance hints
+     * \returns Device-specific perf hints
+     */
+    DxvkDevicePerfHints perfHints() const {
+      return m_perfHints;
+    }
     
     /**
      * \brief Creates a command list
@@ -417,6 +432,8 @@ namespace dxvk {
     DxvkDeviceFeatures          m_features;
     VkPhysicalDeviceProperties  m_properties;
     
+    DxvkDevicePerfHints         m_perfHints;
+    
     Rc<DxvkMemoryAllocator>     m_memory;
     Rc<DxvkRenderPassPool>      m_renderPassPool;
     Rc<DxvkPipelineManager>     m_pipelineManager;
@@ -441,6 +458,8 @@ namespace dxvk {
     DxvkRecycler<DxvkDescriptorPool, 16> m_recycledDescriptorPools;
     
     DxvkSubmissionQueue m_submissionQueue;
+
+    DxvkDevicePerfHints getPerfHints();
     
     void recycleCommandList(
       const Rc<DxvkCommandList>& cmdList);
