@@ -4717,11 +4717,9 @@ namespace dxvk {
 
 
   void D3D9DeviceEx::UndirtySamplers() {
-    for (uint32_t i = 0; i < 21; i++) {
-      if (m_dirtySamplerStates & (1u << i))
-        BindSampler(i);
-    }
-
+    for (uint32_t dirty = m_dirtySamplerStates; dirty; dirty &= dirty - 1)
+      BindSampler(bit::tzcnt(dirty));
+    
     m_dirtySamplerStates = 0;
   }
 
@@ -4762,7 +4760,8 @@ namespace dxvk {
     if (m_flags.test(D3D9DeviceFlag::DirtyViewportScissor))
       BindViewportAndScissor();
 
-    UndirtySamplers();
+    if (m_dirtySamplerStates)
+      UndirtySamplers();
 
     if (m_flags.test(D3D9DeviceFlag::DirtyBlendState))
       BindBlendState();
