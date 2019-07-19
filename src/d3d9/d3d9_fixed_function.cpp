@@ -436,10 +436,30 @@ namespace dxvk {
     offset += sizeof(float);
 
     m_module.setDebugName(structType, "D3D9FixedFunctionVS");
-    m_module.setDebugMemberName(structType, 0, "world");
-    m_module.setDebugMemberName(structType, 1, "view");
-    m_module.setDebugMemberName(structType, 2, "proj");
-    m_module.setDebugMemberName(structType, 3, "inverseOffset");
+    uint32_t member = 0;
+    m_module.setDebugMemberName(structType, member++, "World");
+    m_module.setDebugMemberName(structType, member++, "View");
+    m_module.setDebugMemberName(structType, member++, "Projection");
+
+    m_module.setDebugMemberName(structType, member++, "TexcoordTransform0");
+    m_module.setDebugMemberName(structType, member++, "TexcoordTransform1");
+    m_module.setDebugMemberName(structType, member++, "TexcoordTransform2");
+    m_module.setDebugMemberName(structType, member++, "TexcoordTransform3");
+    m_module.setDebugMemberName(structType, member++, "TexcoordTransform4");
+    m_module.setDebugMemberName(structType, member++, "TexcoordTransform5");
+    m_module.setDebugMemberName(structType, member++, "TexcoordTransform6");
+    m_module.setDebugMemberName(structType, member++, "TexcoordTransform7");
+
+    m_module.setDebugMemberName(structType, member++, "ViewportInfo_InverseOffset");
+    m_module.setDebugMemberName(structType, member++, "ViewportInfo_InverseExtent");
+
+    m_module.setDebugMemberName(structType, member++, "GlobalAmbient");
+
+    m_module.setDebugMemberName(structType, member++, "Material_Diffuse");
+    m_module.setDebugMemberName(structType, member++, "Material_Ambient");
+    m_module.setDebugMemberName(structType, member++, "Material_Specular");
+    m_module.setDebugMemberName(structType, member++, "Material_Emissive");
+    m_module.setDebugMemberName(structType, member++, "Material_Power");
 
     m_vs.constantBuffer = m_module.newVar(
       m_module.defPointerType(structType, spv::StorageClassUniform),
