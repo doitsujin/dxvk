@@ -121,7 +121,7 @@ namespace dxvk {
       if (status == VK_SUCCESS) {
         if (entry.submit.cmdList != nullptr)
           m_finishQueue.push(std::move(entry));
-      } else {
+      } else if (entry.submit.cmdList != nullptr) {
         Logger::err(str::format("DxvkSubmissionQueue: Command submission failed: ", status));
       }
 
