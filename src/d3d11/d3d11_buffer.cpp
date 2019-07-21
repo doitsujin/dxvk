@@ -200,6 +200,10 @@ namespace dxvk {
 
   HRESULT D3D11Buffer::ValidateBufferProperties(
     const D3D11_BUFFER_DESC*      pDesc) {
+    // Zero-sized buffers are illegal
+    if (!pDesc->ByteWidth)
+      return E_INVALIDARG;
+
     // Basic validation for structured buffers
     if ((pDesc->MiscFlags & D3D11_RESOURCE_MISC_BUFFER_STRUCTURED)
      && ((pDesc->StructureByteStride == 0)
