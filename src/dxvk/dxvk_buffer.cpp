@@ -20,7 +20,7 @@ namespace dxvk {
     // Limit size of multi-slice buffers to reduce fragmentation
     constexpr VkDeviceSize MaxBufferSize = 4 << 20;
 
-    m_physSliceMaxCount = MaxBufferSize >= m_physSliceStride
+    m_physSliceMaxCount = MaxBufferSize >= m_physSliceStride && m_physSliceStride != 0
       ? MaxBufferSize / m_physSliceStride
       : 1;
     
