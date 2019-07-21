@@ -124,8 +124,11 @@ namespace dxvk {
     // The values are also wildly incorrect in d3d9... But some games rely
     // on this inaccurate value...
 
-    int64_t memory = m_availableMemory.load();
-    return (UINT(memory) / 1024) * 1024; // As per the specification.
+    // Clamp to megabyte range, as per spec.
+    constexpr UINT range = 0xfff00000;
+
+    UINT memory = UINT(m_availableMemory.load());
+    return memory & range;
   }
 
 
