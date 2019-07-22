@@ -520,6 +520,9 @@ namespace dxvk {
     desc.Type   = D3DRTYPE_VERTEXBUFFER;
     desc.Usage  = Usage;
 
+    if (FAILED(D3D9CommonBuffer::ValidateBufferProperties(&desc)))
+      return D3DERR_INVALIDCALL;
+
     try {
       const Com<D3D9VertexBuffer> buffer = new D3D9VertexBuffer(this, &desc);
       m_initializer->InitBuffer(buffer->GetCommonBuffer());
@@ -551,6 +554,9 @@ namespace dxvk {
     desc.Size   = Length;
     desc.Type   = D3DRTYPE_INDEXBUFFER;
     desc.Usage  = Usage;
+
+    if (FAILED(D3D9CommonBuffer::ValidateBufferProperties(&desc)))
+      return D3DERR_INVALIDCALL;
 
     try {
       const Com<D3D9IndexBuffer> buffer = new D3D9IndexBuffer(this, &desc);

@@ -108,6 +108,8 @@ namespace dxvk {
       return &m_desc;
     }
 
+    static HRESULT ValidateBufferProperties(const D3D9_BUFFER_DESC* pDesc);
+
   private:
 
     Rc<DxvkBuffer> CreateBuffer() const;
