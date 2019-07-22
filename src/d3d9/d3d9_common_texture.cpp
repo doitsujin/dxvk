@@ -70,6 +70,10 @@ namespace dxvk {
     
     if (FAILED(DecodeMultiSampleType(pDesc->MultiSample, nullptr)))
       return D3DERR_INVALIDCALL;
+
+    // Using MANAGED pool with DYNAMIC usage is illegal
+    if (pDesc->Pool == D3DPOOL_MANAGED && (pDesc->Usage & D3DUSAGE_DYNAMIC))
+      return D3DERR_INVALIDCALL;
     
     // Use the maximum possible mip level count if the supplied
     // mip level count is either unspecified (0) or invalid
