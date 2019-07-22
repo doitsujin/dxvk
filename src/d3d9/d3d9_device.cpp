@@ -3900,9 +3900,11 @@ namespace dxvk {
     if (!m_d3d9Options.allowLockFlagReadonly)
       Flags &= ~D3DLOCK_READONLY;
 
+    auto& desc = *pResource->Desc();
+
     // Ignore DISCARD if NOOVERWRITE is set
     // Ignore DISCARD if the buffer is non-dynamic.
-    if ((Flags & (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE)) == (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE) || !(pResource->Desc()->Usage & D3DUSAGE_DYNAMIC))
+    if ((Flags & (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE)) == (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE) || !(desc.Usage & D3DUSAGE_DYNAMIC))
       Flags &= ~D3DLOCK_DISCARD;
 
     pResource->SetMapFlags(Flags);
@@ -3910,12 +3912,12 @@ namespace dxvk {
 
     DxvkBufferSliceHandle physSlice;
 
-    const UINT maxLockSize = pResource->Desc()->Size - OffsetToLock;
+    const UINT maxLockSize = desc.Size - OffsetToLock;
 
     // We can only respect this for these cases -- otherwise R/W OOB still get copied on native
     // and some stupid games depend on that.
-    const bool respectSize = (pResource->Desc()->Usage & D3DUSAGE_DYNAMIC) || pResource->Desc()->Pool == D3DPOOL_MANAGED;
-    SizeToLock = SizeToLock == 0 || !respectSize ? maxLockSize : std::min(SizeToLock, pResource->Desc()->Size - OffsetToLock);
+    const bool respectSize = (desc.Usage & D3DUSAGE_DYNAMIC) || desc.Pool == D3DPOOL_MANAGED;
+    SizeToLock = SizeToLock == 0 || !respectSize ? maxLockSize : std::min(SizeToLock, desc.Size - OffsetToLock);
 
     pResource->LockRange() = D3D9Range(OffsetToLock, OffsetToLock + SizeToLock);
 
