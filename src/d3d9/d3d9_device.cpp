@@ -3900,7 +3900,9 @@ namespace dxvk {
     if (!m_d3d9Options.allowLockFlagReadonly)
       Flags &= ~D3DLOCK_READONLY;
 
-    if ((Flags & (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE)) == (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE))
+    // Ignore DISCARD if NOOVERWRITE is set
+    // Ignore DISCARD if the buffer is non-dynamic.
+    if ((Flags & (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE)) == (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE) || !(pResource->Desc()->Usage & D3DUSAGE_DYNAMIC))
       Flags &= ~D3DLOCK_DISCARD;
 
     pResource->SetMapFlags(Flags);
