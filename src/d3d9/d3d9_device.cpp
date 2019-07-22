@@ -5321,7 +5321,7 @@ namespace dxvk {
         stage.Type         = (m_samplerTypeBitfield >> samplerOffset) & 0xffu;
         stage.ResultIsTemp = data[D3DTSS_RESULTARG] == D3DTA_TEMP;
 
-        stage.Projected = data[D3DTSS_TEXTURETRANSFORMFLAGS] & D3DTTFF_PROJECTED;
+        stage.Projected = data[D3DTSS_TEXTURETRANSFORMFLAGS] & D3DTTFF_PROJECTED ? 1 : 0;
       }
 
       EmitCs([
