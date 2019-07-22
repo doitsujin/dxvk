@@ -3712,15 +3712,19 @@ namespace dxvk {
                   && lockExtent.depth  >= levelExtent.depth;
     }
 
+    // Discard is ignored if the resource is not dynamic
+
     // If we are not locking the entire image
     // a partial discard is meant to occur.
     // We can't really implement that, so just ignore discard
-    // if we are not locking the full resource;
-    const bool discard = (Flags & D3DLOCK_DISCARD) && fullResource;
+    // if we are not locking the full resource
+
+    if (!(desc.Usage & D3DUSAGE_DYNAMIC) || !fullResource)
+      Flags &= ~D3DLOCK_DISCARD;
       
     DxvkBufferSliceHandle physSlice;
       
-    if (discard) {
+    if (Flags & D3DLOCK_DISCARD) {
       // We do not have to preserve the contents of the
       // buffer if the entire image gets discarded.
       physSlice = pResource->DiscardMapSlice(Subresource);
