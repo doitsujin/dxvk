@@ -3672,16 +3672,16 @@ namespace dxvk {
     D3D9DeviceLock lock = LockDevice();
 
     // Don't allow multiple lockings.
-    if (pResource->MarkLocked(true))
+    if (unlikely(pResource->MarkLocked(true)))
       return D3DERR_INVALIDCALL;
 
-    if ((Flags & D3DLOCK_DISCARD) && (Flags & D3DLOCK_READONLY))
+    if (unlikely((Flags & D3DLOCK_DISCARD) && (Flags & D3DLOCK_READONLY)))
       return D3DERR_INVALIDCALL;
 
-    if (!m_d3d9Options.allowLockFlagReadonly)
+    if (unlikely(!m_d3d9Options.allowLockFlagReadonly))
       Flags &= ~D3DLOCK_READONLY;
 
-    if ((Flags & (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE)) == (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE))
+    if (unlikely((Flags & (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE)) == (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE)))
       Flags &= ~D3DLOCK_DISCARD;
 
     UINT Subresource = pResource->CalcSubresource(Face, MipLevel);
@@ -3828,7 +3828,7 @@ namespace dxvk {
     D3D9DeviceLock lock = LockDevice();
 
     // We weren't locked anyway!
-    if (!pResource->MarkLocked(false))
+    if (unlikely(!pResource->MarkLocked(false)))
       return D3DERR_INVALIDCALL;
 
     UINT Subresource = pResource->CalcSubresource(Face, MipLevel);
