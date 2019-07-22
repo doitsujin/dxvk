@@ -3694,8 +3694,6 @@ namespace dxvk {
     auto formatInfo = imageFormatInfo(pResource->Format());
     auto subresource = pResource->GetSubresourceFromIndex(
         formatInfo->aspectMask, Subresource);
-    
-    pResource->SetLockFlags(Subresource, Flags);
 
     VkExtent3D levelExtent = pResource->GetExtentMip(MipLevel);
     VkExtent3D blockCount  = util::computeBlockCount(levelExtent, formatInfo->blockSize);
@@ -3728,6 +3726,8 @@ namespace dxvk {
 
     if (!(desc.Usage & D3DUSAGE_DYNAMIC) || !fullResource)
       Flags &= ~D3DLOCK_DISCARD;
+
+    pResource->SetLockFlags(Subresource, Flags);
       
     DxvkBufferSliceHandle physSlice;
       
