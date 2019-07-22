@@ -327,6 +327,8 @@ namespace dxvk {
       return m_systemmemModified;
     }
 
+    bool MarkLocked(bool value) { return std::exchange(m_locked, value); }
+
   private:
 
     D3D9DeviceEx*                 m_device;
@@ -351,6 +353,8 @@ namespace dxvk {
     int64_t                       m_size = 0;
 
     bool                          m_systemmemModified = false;
+
+    bool                          m_locked = false;
 
     /**
      * \brief Mip level

@@ -3671,6 +3671,10 @@ namespace dxvk {
             DWORD                   Flags) {
     D3D9DeviceLock lock = LockDevice();
 
+    // Don't allow multiple lockings.
+    if (pResource->MarkLocked(true))
+      return D3DERR_INVALIDCALL;
+
     if (!m_d3d9Options.allowLockFlagReadonly)
       Flags &= ~D3DLOCK_READONLY;
 
@@ -3819,6 +3823,10 @@ namespace dxvk {
         UINT                    Face,
         UINT                    MipLevel) {
     D3D9DeviceLock lock = LockDevice();
+
+    // We weren't locked anyway!
+    if (!pResource->MarkLocked(false))
+      return D3DERR_INVALIDCALL;
 
     UINT Subresource = pResource->CalcSubresource(Face, MipLevel);
 
