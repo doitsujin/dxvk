@@ -327,7 +327,7 @@ namespace dxvk {
       return m_systemmemModified;
     }
 
-    bool MarkLocked(bool value) { return std::exchange(m_locked, value); }
+    bool MarkLocked(UINT Subresource, bool value) { return std::exchange(m_locked[Subresource], value); }
 
   private:
 
@@ -354,7 +354,8 @@ namespace dxvk {
 
     bool                          m_systemmemModified = false;
 
-    bool                          m_locked = false;
+    D3D9SubresourceArray<
+      bool>                       m_locked = { };
 
     /**
      * \brief Mip level
