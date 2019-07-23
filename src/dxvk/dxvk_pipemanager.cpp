@@ -56,7 +56,7 @@ namespace dxvk {
   }
   
   
-  Rc<DxvkComputePipeline> DxvkPipelineManager::createComputePipeline(
+  DxvkComputePipeline* DxvkPipelineManager::createComputePipeline(
     const DxvkComputePipelineShaders& shaders) {
     if (shaders.cs == nullptr)
       return nullptr;
@@ -65,16 +65,17 @@ namespace dxvk {
     
     auto pair = m_computePipelines.find(shaders);
     if (pair != m_computePipelines.end())
-      return pair->second;
+      return &pair->second;
     
-    Rc<DxvkComputePipeline> pipeline = new DxvkComputePipeline(this, shaders);
-    
-    m_computePipelines.insert(std::make_pair(shaders, pipeline));
-    return pipeline;
+    auto iter = m_computePipelines.emplace(
+      std::piecewise_construct,
+      std::tuple(shaders),
+      std::tuple(this, shaders));
+    return &iter.first->second;
   }
   
   
-  Rc<DxvkGraphicsPipeline> DxvkPipelineManager::createGraphicsPipeline(
+  DxvkGraphicsPipeline* DxvkPipelineManager::createGraphicsPipeline(
     const DxvkGraphicsPipelineShaders& shaders) {
     if (shaders.vs == nullptr)
       return nullptr;
@@ -83,12 +84,13 @@ namespace dxvk {
     
     auto pair = m_graphicsPipelines.find(shaders);
     if (pair != m_graphicsPipelines.end())
-      return pair->second;
+      return &pair->second;
     
-    Rc<DxvkGraphicsPipeline> pipeline = new DxvkGraphicsPipeline(this, shaders);
-    
-    m_graphicsPipelines.insert(std::make_pair(shaders, pipeline));
-    return pipeline;
+    auto iter = m_graphicsPipelines.emplace(
+      std::piecewise_construct,
+      std::tuple(shaders),
+      std::tuple(this, shaders));
+    return &iter.first->second;
   }
 
   

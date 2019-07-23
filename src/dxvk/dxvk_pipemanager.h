@@ -63,7 +63,7 @@ namespace dxvk {
      * \param [in] shaders Shaders for the pipeline
      * \returns Compute pipeline object
      */
-    Rc<DxvkComputePipeline> createComputePipeline(
+    DxvkComputePipeline* createComputePipeline(
       const DxvkComputePipelineShaders& shaders);
     
     /**
@@ -75,7 +75,7 @@ namespace dxvk {
      * \param [in] shaders Shaders for the pipeline
      * \returns Graphics pipeline object
      */
-    Rc<DxvkGraphicsPipeline> createGraphicsPipeline(
+    DxvkGraphicsPipeline* createGraphicsPipeline(
       const DxvkGraphicsPipelineShaders& shaders);
     
     /*
@@ -114,13 +114,13 @@ namespace dxvk {
     
     std::unordered_map<
       DxvkComputePipelineShaders,
-      Rc<DxvkComputePipeline>,
+      DxvkComputePipeline,
       DxvkPipelineKeyHash,
       DxvkPipelineKeyEq> m_computePipelines;
     
     std::unordered_map<
       DxvkGraphicsPipelineShaders,
-      Rc<DxvkGraphicsPipeline>,
+      DxvkGraphicsPipeline,
       DxvkPipelineKeyHash,
       DxvkPipelineKeyEq> m_graphicsPipelines;
     

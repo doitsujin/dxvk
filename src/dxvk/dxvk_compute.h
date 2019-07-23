@@ -42,7 +42,7 @@ namespace dxvk {
    * pipelines do not need to be recompiled against any sort
    * of pipeline state.
    */
-  class DxvkComputePipeline : public RcObject {
+  class DxvkComputePipeline {
     
   public:
     

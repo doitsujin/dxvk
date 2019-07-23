@@ -117,14 +117,14 @@ namespace dxvk {
     DxvkGraphicsPipelineShaders   shaders;
     DxvkGraphicsPipelineStateInfo state;
     DxvkGraphicsPipelineFlags     flags;
-    Rc<DxvkGraphicsPipeline>      pipeline;
+    DxvkGraphicsPipeline*         pipeline = nullptr;
   };
   
   
   struct DxvkComputePipelineState {
     DxvkComputePipelineShaders    shaders;
     DxvkComputePipelineStateInfo  state;
-    Rc<DxvkComputePipeline>       pipeline;
+    DxvkComputePipeline*          pipeline = nullptr;
   };
 
 
