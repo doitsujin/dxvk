@@ -57,51 +57,37 @@ namespace dxvk {
   
   
   Rc<DxvkComputePipeline> DxvkPipelineManager::createComputePipeline(
-    const Rc<DxvkShader>&         cs) {
-    if (cs == nullptr)
+    const DxvkComputePipelineShaders& shaders) {
+    if (shaders.cs == nullptr)
       return nullptr;
     
     std::lock_guard<std::mutex> lock(m_mutex);
     
-    DxvkComputePipelineShaders key;
-    key.cs = cs;
-    
-    auto pair = m_computePipelines.find(key);
+    auto pair = m_computePipelines.find(shaders);
     if (pair != m_computePipelines.end())
       return pair->second;
     
-    Rc<DxvkComputePipeline> pipeline = new DxvkComputePipeline(this, key);
+    Rc<DxvkComputePipeline> pipeline = new DxvkComputePipeline(this, shaders);
     
-    m_computePipelines.insert(std::make_pair(key, pipeline));
+    m_computePipelines.insert(std::make_pair(shaders, pipeline));
     return pipeline;
   }
   
   
   Rc<DxvkGraphicsPipeline> DxvkPipelineManager::createGraphicsPipeline(
-    const Rc<DxvkShader>&         vs,
-    const Rc<DxvkShader>&         tcs,
-    const Rc<DxvkShader>&         tes,
-    const Rc<DxvkShader>&         gs,
-    const Rc<DxvkShader>&         fs) {
-    if (vs == nullptr)
+    const DxvkGraphicsPipelineShaders& shaders) {
+    if (shaders.vs == nullptr)
       return nullptr;
     
     std::lock_guard<std::mutex> lock(m_mutex);
     
-    DxvkGraphicsPipelineShaders key;
-    key.vs  = vs;
-    key.tcs = tcs;
-    key.tes = tes;
-    key.gs  = gs;
-    key.fs  = fs;
-    
-    auto pair = m_graphicsPipelines.find(key);
+    auto pair = m_graphicsPipelines.find(shaders);
     if (pair != m_graphicsPipelines.end())
       return pair->second;
     
-    Rc<DxvkGraphicsPipeline> pipeline = new DxvkGraphicsPipeline(this, key);
+    Rc<DxvkGraphicsPipeline> pipeline = new DxvkGraphicsPipeline(this, shaders);
     
-    m_graphicsPipelines.insert(std::make_pair(key, pipeline));
+    m_graphicsPipelines.insert(std::make_pair(shaders, pipeline));
     return pipeline;
   }
 

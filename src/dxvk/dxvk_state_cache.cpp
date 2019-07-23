@@ -191,12 +191,12 @@ namespace dxvk {
     for (auto p = pipelines.first; p != pipelines.second; p++) {
       WorkerItem item;
 
-      if (!getShaderByKey(p->second.vs,  item.vs)
-       || !getShaderByKey(p->second.tcs, item.tcs)
-       || !getShaderByKey(p->second.tes, item.tes)
-       || !getShaderByKey(p->second.gs,  item.gs)
-       || !getShaderByKey(p->second.fs,  item.fs)
-       || !getShaderByKey(p->second.cs,  item.cs))
+      if (!getShaderByKey(p->second.vs,  item.gp.vs)
+       || !getShaderByKey(p->second.tcs, item.gp.tcs)
+       || !getShaderByKey(p->second.tes, item.gp.tes)
+       || !getShaderByKey(p->second.gs,  item.gp.gs)
+       || !getShaderByKey(p->second.fs,  item.gp.fs)
+       || !getShaderByKey(p->second.cs,  item.cp.cs))
         continue;
       
       if (!workerLock)
@@ -247,16 +247,15 @@ namespace dxvk {
 
   void DxvkStateCache::compilePipelines(const WorkerItem& item) {
     DxvkStateCacheKey key;
-    key.vs  = getShaderKey(item.vs);
-    key.tcs = getShaderKey(item.tcs);
-    key.tes = getShaderKey(item.tes);
-    key.gs  = getShaderKey(item.gs);
-    key.fs  = getShaderKey(item.fs);
-    key.cs  = getShaderKey(item.cs);
+    key.vs  = getShaderKey(item.gp.vs);
+    key.tcs = getShaderKey(item.gp.tcs);
+    key.tes = getShaderKey(item.gp.tes);
+    key.gs  = getShaderKey(item.gp.gs);
+    key.fs  = getShaderKey(item.gp.fs);
+    key.cs  = getShaderKey(item.cp.cs);
 
-    if (item.cs == nullptr) {
-      auto pipeline = m_pipeManager->createGraphicsPipeline(
-        item.vs, item.tcs, item.tes, item.gs, item.fs);
+    if (item.cp.cs == nullptr) {
+      auto pipeline = m_pipeManager->createGraphicsPipeline(item.gp);
       auto entries = m_entryMap.equal_range(key);
 
       for (auto e = entries.first; e != entries.second; e++) {
@@ -266,7 +265,7 @@ namespace dxvk {
         pipeline->getPipelineHandle(entry.gpState, *rp);
       }
     } else {
-      auto pipeline = m_pipeManager->createComputePipeline(item.cs);
+      auto pipeline = m_pipeManager->createComputePipeline(item.cp);
       auto entries = m_entryMap.equal_range(key);
 
       for (auto e = entries.first; e != entries.second; e++) {

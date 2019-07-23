@@ -84,12 +84,8 @@ namespace dxvk {
     using WriterItem = DxvkStateCacheEntry;
 
     struct WorkerItem {
-      Rc<DxvkShader> vs;
-      Rc<DxvkShader> tcs;
-      Rc<DxvkShader> tes;
-      Rc<DxvkShader> gs;
-      Rc<DxvkShader> fs;
-      Rc<DxvkShader> cs;
+      DxvkGraphicsPipelineShaders gp;
+      DxvkComputePipelineShaders  cp;
     };
 
     DxvkPipelineManager*              m_pipeManager;

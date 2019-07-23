@@ -204,20 +204,20 @@ namespace dxvk {
   void DxvkContext::bindShader(
           VkShaderStageFlagBits stage,
     const Rc<DxvkShader>&       shader) {
-    DxvkShaderStage* shaderStage = nullptr;
+    Rc<DxvkShader>* shaderStage;
     
     switch (stage) {
-      case VK_SHADER_STAGE_VERTEX_BIT:                  shaderStage = &m_state.gp.vs;  break;
-      case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:    shaderStage = &m_state.gp.tcs; break;
-      case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT: shaderStage = &m_state.gp.tes; break;
-      case VK_SHADER_STAGE_GEOMETRY_BIT:                shaderStage = &m_state.gp.gs;  break;
-      case VK_SHADER_STAGE_FRAGMENT_BIT:                shaderStage = &m_state.gp.fs;  break;
-      case VK_SHADER_STAGE_COMPUTE_BIT:                 shaderStage = &m_state.cp.cs;  break;
+      case VK_SHADER_STAGE_VERTEX_BIT:                  shaderStage = &m_state.gp.shaders.vs;  break;
+      case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:    shaderStage = &m_state.gp.shaders.tcs; break;
+      case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT: shaderStage = &m_state.gp.shaders.tes; break;
+      case VK_SHADER_STAGE_GEOMETRY_BIT:                shaderStage = &m_state.gp.shaders.gs;  break;
+      case VK_SHADER_STAGE_FRAGMENT_BIT:                shaderStage = &m_state.gp.shaders.fs;  break;
+      case VK_SHADER_STAGE_COMPUTE_BIT:                 shaderStage = &m_state.cp.shaders.cs;  break;
       default: return;
     }
     
-    shaderStage->shader = shader;
-      
+    *shaderStage = shader;
+
     if (stage == VK_SHADER_STAGE_COMPUTE_BIT) {
       m_flags.set(
         DxvkContextFlag::CpDirtyPipeline,
@@ -3410,7 +3410,7 @@ namespace dxvk {
       m_flags.clr(DxvkContextFlag::CpDirtyPipeline);
       
       m_state.cp.state.bsBindingMask.clear();
-      m_state.cp.pipeline = m_pipeMgr->createComputePipeline(m_state.cp.cs.shader);
+      m_state.cp.pipeline = m_pipeMgr->createComputePipeline(m_state.cp.shaders);
       
       if (m_state.cp.pipeline != nullptr
        && m_state.cp.pipeline->layout()->pushConstRange().size)
@@ -3460,11 +3460,8 @@ namespace dxvk {
       m_flags.clr(DxvkContextFlag::GpDirtyPipeline);
       
       m_state.gp.state.bsBindingMask.clear();
-      m_state.gp.pipeline = m_pipeMgr->createGraphicsPipeline(
-        m_state.gp.vs.shader,
-        m_state.gp.tcs.shader, m_state.gp.tes.shader,
-        m_state.gp.gs.shader, m_state.gp.fs.shader);
-      m_state.gp.flags = DxvkGraphicsPipelineFlags();
+      m_state.gp.pipeline = m_pipeMgr->createGraphicsPipeline(m_state.gp.shaders);
+      m_state.gp.flags    = DxvkGraphicsPipelineFlags();
       
       if (m_state.gp.pipeline != nullptr) {
         m_state.gp.flags = m_state.gp.pipeline->flags();
@@ -3869,7 +3866,7 @@ namespace dxvk {
   
   
   void DxvkContext::updateTransformFeedbackBuffers() {
-    auto gsOptions = m_state.gp.gs.shader->shaderOptions();
+    auto gsOptions = m_state.gp.shaders.gs->shaderOptions();
 
     VkBuffer     xfbBuffers[MaxNumXfbBuffers];
     VkDeviceSize xfbOffsets[MaxNumXfbBuffers];

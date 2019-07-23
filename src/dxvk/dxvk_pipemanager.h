@@ -60,11 +60,11 @@ namespace dxvk {
      * If a pipeline for the given shader stage object
      * already exists, it will be returned. Otherwise,
      * a new pipeline will be created.
-     * \param [in] cs Compute shader
+     * \param [in] shaders Shaders for the pipeline
      * \returns Compute pipeline object
      */
     Rc<DxvkComputePipeline> createComputePipeline(
-      const Rc<DxvkShader>&         cs);
+      const DxvkComputePipelineShaders& shaders);
     
     /**
      * \brief Retrieves a graphics pipeline object
@@ -72,19 +72,11 @@ namespace dxvk {
      * If a pipeline for the given shader stage objects
      * already exists, it will be returned. Otherwise,
      * a new pipeline will be created.
-     * \param [in] vs Vertex shader
-     * \param [in] tcs Tessellation control shader
-     * \param [in] tes Tessellation evaluation shader
-     * \param [in] gs Geometry shader
-     * \param [in] fs Fragment shader
+     * \param [in] shaders Shaders for the pipeline
      * \returns Graphics pipeline object
      */
     Rc<DxvkGraphicsPipeline> createGraphicsPipeline(
-      const Rc<DxvkShader>&         vs,
-      const Rc<DxvkShader>&         tcs,
-      const Rc<DxvkShader>&         tes,
-      const Rc<DxvkShader>&         gs,
-      const Rc<DxvkShader>&         fs);
+      const DxvkGraphicsPipelineShaders& shaders);
     
     /*
      * \brief Registers a shader
