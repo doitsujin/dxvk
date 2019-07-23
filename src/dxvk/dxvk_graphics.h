@@ -186,7 +186,7 @@ namespace dxvk {
    * recompile the graphics pipeline against a given
    * pipeline state vector.
    */
-  class DxvkGraphicsPipeline : public DxvkResource {
+  class DxvkGraphicsPipeline : public RcObject {
     
   public:
     

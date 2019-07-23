@@ -3412,12 +3412,9 @@ namespace dxvk {
       m_state.cp.state.bsBindingMask.clear();
       m_state.cp.pipeline = m_pipeMgr->createComputePipeline(m_state.cp.cs.shader);
       
-      if (m_state.cp.pipeline != nullptr) {
-        m_cmd->trackResource(m_state.cp.pipeline);
-
-        if (m_state.cp.pipeline->layout()->pushConstRange().size)
-          m_flags.set(DxvkContextFlag::DirtyPushConstants);
-      }
+      if (m_state.cp.pipeline != nullptr
+       && m_state.cp.pipeline->layout()->pushConstRange().size)
+        m_flags.set(DxvkContextFlag::DirtyPushConstants);
     }
   }
   
@@ -3471,7 +3468,6 @@ namespace dxvk {
       
       if (m_state.gp.pipeline != nullptr) {
         m_state.gp.flags = m_state.gp.pipeline->flags();
-        m_cmd->trackResource(m_state.gp.pipeline);
 
         if (m_state.gp.pipeline->layout()->pushConstRange().size)
           m_flags.set(DxvkContextFlag::DirtyPushConstants);
