@@ -29,6 +29,18 @@ namespace dxvk {
 
 
   /**
+   * \brief Shaders used in graphics pipelines
+   */
+  struct DxvkGraphicsPipelineShaders {
+    Rc<DxvkShader> vs;
+    Rc<DxvkShader> tcs;
+    Rc<DxvkShader> tes;
+    Rc<DxvkShader> gs;
+    Rc<DxvkShader> fs;
+  };
+
+
+  /**
    * \brief Graphics pipeline state info
    * 
    * Stores all information that is required to create

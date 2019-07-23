@@ -21,41 +21,16 @@ namespace dxvk {
     uint32_t numComputePipelines;
   };
   
-  /**
-   * \brief Compute pipeline key
-   * 
-   * Identifier for a compute pipeline object.
-   * Consists of the compute shader itself.
-   */
-  struct DxvkComputePipelineKey {
-    Rc<DxvkShader> cs;
-  };
-  
-  
-  /**
-   * \brief Graphics pipeline key
-   * 
-   * Identifier for a graphics pipeline object.
-   * Consists of all graphics pipeline shaders.
-   */
-  struct DxvkGraphicsPipelineKey {
-    Rc<DxvkShader> vs;
-    Rc<DxvkShader> tcs;
-    Rc<DxvkShader> tes;
-    Rc<DxvkShader> gs;
-    Rc<DxvkShader> fs;
-  };
-  
   
   struct DxvkPipelineKeyHash {
-    size_t operator () (const DxvkComputePipelineKey& key) const;
-    size_t operator () (const DxvkGraphicsPipelineKey& key) const;
+    size_t operator () (const DxvkComputePipelineShaders& key) const;
+    size_t operator () (const DxvkGraphicsPipelineShaders& key) const;
   };
   
   
   struct DxvkPipelineKeyEq {
-    bool operator () (const DxvkComputePipelineKey& a, const DxvkComputePipelineKey& b) const;
-    bool operator () (const DxvkGraphicsPipelineKey& a, const DxvkGraphicsPipelineKey& b) const;
+    bool operator () (const DxvkComputePipelineShaders& a, const DxvkComputePipelineShaders& b) const;
+    bool operator () (const DxvkGraphicsPipelineShaders& a, const DxvkGraphicsPipelineShaders& b) const;
   };
   
   
@@ -146,13 +121,13 @@ namespace dxvk {
     std::mutex m_mutex;
     
     std::unordered_map<
-      DxvkComputePipelineKey,
+      DxvkComputePipelineShaders,
       Rc<DxvkComputePipeline>,
       DxvkPipelineKeyHash,
       DxvkPipelineKeyEq> m_computePipelines;
     
     std::unordered_map<
-      DxvkGraphicsPipelineKey,
+      DxvkGraphicsPipelineShaders,
       Rc<DxvkGraphicsPipeline>,
       DxvkPipelineKeyHash,
       DxvkPipelineKeyEq> m_graphicsPipelines;

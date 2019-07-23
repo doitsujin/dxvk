@@ -16,6 +16,14 @@ namespace dxvk {
   class DxvkPipelineManager;
   
   /**
+   * \brief Shaders used in compute pipelines
+   */
+  struct DxvkComputePipelineShaders {
+    Rc<DxvkShader> cs;
+  };
+
+
+  /**
    * \brief Compute pipeline state info
    */
   struct DxvkComputePipelineStateInfo {

@@ -4,13 +4,13 @@
 
 namespace dxvk {
   
-  size_t DxvkPipelineKeyHash::operator () (const DxvkComputePipelineKey& key) const {
+  size_t DxvkPipelineKeyHash::operator () (const DxvkComputePipelineShaders& key) const {
     std::hash<DxvkShader*> hash;
     return hash(key.cs.ptr());
   }
   
   
-  size_t DxvkPipelineKeyHash::operator () (const DxvkGraphicsPipelineKey& key) const {
+  size_t DxvkPipelineKeyHash::operator () (const DxvkGraphicsPipelineShaders& key) const {
     DxvkHashState state;
     
     std::hash<DxvkShader*> hash;
@@ -24,15 +24,15 @@ namespace dxvk {
   
   
   bool DxvkPipelineKeyEq::operator () (
-    const DxvkComputePipelineKey& a,
-    const DxvkComputePipelineKey& b) const {
+    const DxvkComputePipelineShaders& a,
+    const DxvkComputePipelineShaders& b) const {
     return a.cs == b.cs;
   }
   
   
   bool DxvkPipelineKeyEq::operator () (
-    const DxvkGraphicsPipelineKey& a,
-    const DxvkGraphicsPipelineKey& b) const {
+    const DxvkGraphicsPipelineShaders& a,
+    const DxvkGraphicsPipelineShaders& b) const {
     return a.vs == b.vs && a.tcs == b.tcs
         && a.tes == b.tes && a.gs == b.gs
         && a.fs == b.fs;
@@ -63,7 +63,7 @@ namespace dxvk {
     
     std::lock_guard<std::mutex> lock(m_mutex);
     
-    DxvkComputePipelineKey key;
+    DxvkComputePipelineShaders key;
     key.cs = cs;
     
     auto pair = m_computePipelines.find(key);
@@ -89,7 +89,7 @@ namespace dxvk {
     
     std::lock_guard<std::mutex> lock(m_mutex);
     
-    DxvkGraphicsPipelineKey key;
+    DxvkGraphicsPipelineShaders key;
     key.vs  = vs;
     key.tcs = tcs;
     key.tes = tes;
