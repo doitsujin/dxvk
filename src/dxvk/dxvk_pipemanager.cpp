@@ -70,8 +70,7 @@ namespace dxvk {
     if (pair != m_computePipelines.end())
       return pair->second;
     
-    const Rc<DxvkComputePipeline> pipeline
-      = new DxvkComputePipeline(this, cs);
+    Rc<DxvkComputePipeline> pipeline = new DxvkComputePipeline(this, key);
     
     m_computePipelines.insert(std::make_pair(key, pipeline));
     return pipeline;
@@ -100,8 +99,7 @@ namespace dxvk {
     if (pair != m_graphicsPipelines.end())
       return pair->second;
     
-    Rc<DxvkGraphicsPipeline> pipeline = new DxvkGraphicsPipeline(
-      this, vs, tcs, tes, gs, fs);
+    Rc<DxvkGraphicsPipeline> pipeline = new DxvkGraphicsPipeline(this, key);
     
     m_graphicsPipelines.insert(std::make_pair(key, pipeline));
     return pipeline;

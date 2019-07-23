@@ -20,11 +20,11 @@ namespace dxvk {
   
   
   DxvkComputePipeline::DxvkComputePipeline(
-          DxvkPipelineManager*    pipeMgr,
-    const Rc<DxvkShader>&         cs)
-  : m_vkd(pipeMgr->m_device->vkd()),
-    m_pipeMgr(pipeMgr), m_cs(cs) {
-    cs->defineResourceSlots(m_slotMapping);
+          DxvkPipelineManager*        pipeMgr,
+          DxvkComputePipelineShaders  shaders)
+  : m_vkd(pipeMgr->m_device->vkd()), m_pipeMgr(pipeMgr),
+    m_shaders(std::move(shaders)) {
+    m_shaders.cs->defineResourceSlots(m_slotMapping);
 
     m_slotMapping.makeDescriptorsDynamic(
       m_pipeMgr->m_device->options().maxNumDynamicUniformBuffers,
@@ -86,7 +86,7 @@ namespace dxvk {
 
     if (Logger::logLevel() <= LogLevel::Debug) {
       Logger::debug("Compiling compute pipeline..."); 
-      Logger::debug(str::format("  cs  : ", m_cs->debugName()));
+      Logger::debug(str::format("  cs  : ", m_shaders.cs->debugName()));
     }
     
     DxvkSpecConstants specData;
@@ -98,7 +98,7 @@ namespace dxvk {
     DxvkShaderModuleCreateInfo moduleInfo;
     moduleInfo.fsDualSrcBlend = false;
 
-    auto csm = m_cs->createShaderModule(m_vkd, m_slotMapping, moduleInfo);
+    auto csm = m_shaders.cs->createShaderModule(m_vkd, m_slotMapping, moduleInfo);
 
     VkComputePipelineCreateInfo info;
     info.sType                = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
@@ -116,7 +116,7 @@ namespace dxvk {
     if (m_vkd->vkCreateComputePipelines(m_vkd->device(),
           m_pipeMgr->m_cache->handle(), 1, &info, nullptr, &pipeline) != VK_SUCCESS) {
       Logger::err("DxvkComputePipeline: Failed to compile pipeline");
-      Logger::err(str::format("  cs  : ", m_cs->debugName()));
+      Logger::err(str::format("  cs  : ", m_shaders.cs->debugName()));
       return VK_NULL_HANDLE;
     }
     
@@ -139,8 +139,8 @@ namespace dxvk {
     
     DxvkStateCacheKey key;
 
-    if (m_cs != nullptr)
-      key.cs = m_cs->getShaderKey();
+    if (m_shaders.cs != nullptr)
+      key.cs = m_shaders.cs->getShaderKey();
 
     m_pipeMgr->m_stateCache->addComputePipeline(key, state);
   }

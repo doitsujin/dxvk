@@ -203,12 +203,9 @@ namespace dxvk {
   public:
     
     DxvkGraphicsPipeline(
-            DxvkPipelineManager*      pipeMgr,
-      const Rc<DxvkShader>&           vs,
-      const Rc<DxvkShader>&           tcs,
-      const Rc<DxvkShader>&           tes,
-      const Rc<DxvkShader>&           gs,
-      const Rc<DxvkShader>&           fs);
+            DxvkPipelineManager*        pipeMgr,
+            DxvkGraphicsPipelineShaders shaders);
+
     ~DxvkGraphicsPipeline();
     
     /**
@@ -263,17 +260,13 @@ namespace dxvk {
       VkPipeline                    pipeline;
     };
     
-    Rc<vk::DeviceFn>          m_vkd;
-    DxvkPipelineManager*      m_pipeMgr;
+    Rc<vk::DeviceFn>            m_vkd;
+    DxvkPipelineManager*        m_pipeMgr;
 
-    DxvkDescriptorSlotMapping m_slotMapping;
+    DxvkGraphicsPipelineShaders m_shaders;
+    DxvkDescriptorSlotMapping   m_slotMapping;
 
-    Rc<DxvkShader>            m_vs;
-    Rc<DxvkShader>            m_tcs;
-    Rc<DxvkShader>            m_tes;
-    Rc<DxvkShader>            m_gs;
-    Rc<DxvkShader>            m_fs;
-    Rc<DxvkPipelineLayout>    m_layout;
+    Rc<DxvkPipelineLayout>      m_layout;
     
     uint32_t m_vsIn  = 0;
     uint32_t m_fsOut = 0;

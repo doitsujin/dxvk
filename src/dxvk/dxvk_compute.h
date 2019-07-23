@@ -47,8 +47,9 @@ namespace dxvk {
   public:
     
     DxvkComputePipeline(
-            DxvkPipelineManager*    pipeMgr,
-      const Rc<DxvkShader>&         cs);
+            DxvkPipelineManager*        pipeMgr,
+            DxvkComputePipelineShaders  shaders);
+
     ~DxvkComputePipeline();
     
     /**
@@ -79,13 +80,13 @@ namespace dxvk {
       VkPipeline                   pipeline;
     };
     
-    Rc<vk::DeviceFn>          m_vkd;
-    DxvkPipelineManager*      m_pipeMgr;
+    Rc<vk::DeviceFn>            m_vkd;
+    DxvkPipelineManager*        m_pipeMgr;
 
-    DxvkDescriptorSlotMapping m_slotMapping;
+    DxvkComputePipelineShaders  m_shaders;
+    DxvkDescriptorSlotMapping   m_slotMapping;
     
-    Rc<DxvkShader>            m_cs;
-    Rc<DxvkPipelineLayout>    m_layout;
+    Rc<DxvkPipelineLayout>      m_layout;
     
     sync::Spinlock              m_mutex;
     std::vector<PipelineStruct> m_pipelines;
