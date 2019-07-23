@@ -38,12 +38,22 @@ namespace dxvk {
 
   HRESULT DecodeMultiSampleType(
           D3DMULTISAMPLE_TYPE       MultiSample,
+          DWORD                     MultisampleQuality,
           VkSampleCountFlagBits*    pCount) {
     VkSampleCountFlagBits flag;
 
     switch (MultiSample) {
-    case D3DMULTISAMPLE_NONE:
-    case D3DMULTISAMPLE_NONMASKABLE: flag = VK_SAMPLE_COUNT_1_BIT;  break;
+    case D3DMULTISAMPLE_NONE:        flag = VK_SAMPLE_COUNT_1_BIT;  break;
+    case D3DMULTISAMPLE_NONMASKABLE:
+      switch(MultisampleQuality) {
+        case 0:                      flag = VK_SAMPLE_COUNT_1_BIT; break;
+        case 1:                      flag = VK_SAMPLE_COUNT_2_BIT; break;
+        case 2:                      flag = VK_SAMPLE_COUNT_4_BIT; break;
+        case 3:                      flag = VK_SAMPLE_COUNT_8_BIT; break;
+        case 4:                      flag = VK_SAMPLE_COUNT_8_BIT; break;
+        default:                     return D3DERR_INVALIDCALL;
+      }
+      break;
     case D3DMULTISAMPLE_2_SAMPLES:   flag = VK_SAMPLE_COUNT_2_BIT;  break;
     case D3DMULTISAMPLE_4_SAMPLES:   flag = VK_SAMPLE_COUNT_4_BIT;  break;
     case D3DMULTISAMPLE_8_SAMPLES:   flag = VK_SAMPLE_COUNT_8_BIT;  break;

@@ -68,7 +68,7 @@ namespace dxvk {
     if (pDesc->Width == 0 || pDesc->Height == 0 || pDesc->Depth == 0)
       return D3DERR_INVALIDCALL;
     
-    if (FAILED(DecodeMultiSampleType(pDesc->MultiSample, nullptr)))
+    if (FAILED(DecodeMultiSampleType(pDesc->MultiSample, pDesc->MultisampleQuality, nullptr)))
       return D3DERR_INVALIDCALL;
 
     // Using MANAGED pool with DYNAMIC usage is illegal
@@ -159,7 +159,7 @@ namespace dxvk {
     imageInfo.tiling          = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.layout          = VK_IMAGE_LAYOUT_GENERAL;
 
-    DecodeMultiSampleType(m_desc.MultiSample, &imageInfo.sampleCount);
+    DecodeMultiSampleType(m_desc.MultiSample, m_desc.MultisampleQuality, &imageInfo.sampleCount);
 
     // The image must be marked as mutable if it can be reinterpreted
     // by a view with a different format. Depth-stencil formats cannot

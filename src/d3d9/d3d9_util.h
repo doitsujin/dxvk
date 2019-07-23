@@ -65,6 +65,7 @@ namespace dxvk {
 
   HRESULT DecodeMultiSampleType(
         D3DMULTISAMPLE_TYPE       MultiSample,
+        DWORD                     MultisampleQuality,
         VkSampleCountFlagBits*    pCount);
 
   VkFormat GetPackedDepthStencilFormat(D3D9Format Format);
