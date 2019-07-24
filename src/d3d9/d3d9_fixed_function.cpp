@@ -326,16 +326,21 @@ namespace dxvk {
       if (type != D3DTTFF_DISABLE) {
         // Project is already removed in the key.
         uint32_t count = type;
+
+        uint32_t zero = m_module.constf32(0.0f);
+        uint32_t one  = m_module.constf32(1.0f);
+
+        for (uint32_t i = count; i < 4; i++)
+          transformed = m_module.opCompositeInsert(m_vec4Type, zero, transformed, 1, &i);
+
         transformed = m_module.opVectorTimesMatrix(m_vec4Type, m_vs.in.TEXCOORD[inputIndex], m_vs.constants.texcoord[i]);
 
+        // Pad the unused section of it with the value for projection.
         uint32_t lastIdx = count - 1;
-        // Pad the values before the proj value with 1s
-        uint32_t one = m_module.constf32(1.0f);
-        // Pad the last of it with the count value for projection.
         uint32_t projValue = m_module.opCompositeExtract(m_floatType, transformed, 1, &lastIdx);
 
         for (uint32_t i = count; i < 4; i++)
-          transformed = m_module.opCompositeInsert(m_vec4Type, i == 3 ? projValue : one, transformed, 1, &i);
+          transformed = m_module.opCompositeInsert(m_vec4Type, projValue, transformed, 1, &i);
       }
 
       m_module.opStore(m_vs.out.TEXCOORD[i], transformed);
