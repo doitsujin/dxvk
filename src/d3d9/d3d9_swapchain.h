@@ -74,6 +74,8 @@ namespace dxvk {
 
     void    GetGammaRamp(D3DGAMMARAMP* pRamp);
 
+    void    Invalidate(HWND hWindow);
+
   private:
 
     enum BindingIds : uint32_t {

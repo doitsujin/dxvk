@@ -365,6 +365,15 @@ namespace dxvk {
   }
 
 
+  void    D3D9SwapChainEx::Invalidate(HWND hWindow) {
+    if (hWindow == nullptr)
+      hWindow = m_parent->GetWindow();
+
+    if (m_presentParams.hDeviceWindow == hWindow)
+      m_presenter = nullptr;
+  }
+
+
   void D3D9SwapChainEx::NormalizePresentParameters(D3DPRESENT_PARAMETERS* pPresentParams) {
     if (pPresentParams->hDeviceWindow == nullptr)
       pPresentParams->hDeviceWindow    = m_parent->GetWindow();

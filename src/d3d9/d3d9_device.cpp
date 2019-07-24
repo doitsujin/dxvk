@@ -3375,6 +3375,9 @@ namespace dxvk {
     if (ppSwapChain == nullptr || pPresentationParameters == nullptr)
       return D3DERR_INVALIDCALL;
 
+    for (uint32_t i = 0; i < m_swapchains.size(); i++)
+      GetInternalSwapchain(i)->Invalidate(pPresentationParameters->hDeviceWindow);
+
     auto* swapchain = new D3D9SwapChainEx(this, pPresentationParameters, pFullscreenDisplayMode);
     *ppSwapChain = ref(swapchain);
 
