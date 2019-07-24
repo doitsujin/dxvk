@@ -2430,7 +2430,7 @@ void DxsoCompiler::emitControlFlowGenericLoop(
                                                  m_ps.sharedState, 1, &offset);
                  bm     = m_module.opLoad(vec2_t, bm);
 
-        uint32_t t      = m_module.opCompositeExtract(vec2_t, n.id, 2, indices.data());
+        uint32_t t      = m_module.opVectorShuffle(vec2_t, n.id, n.id, 2, indices.data());
 
         uint32_t dot    = m_module.opDot(fl_t, bm, t);
 
