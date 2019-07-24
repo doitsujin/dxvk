@@ -2394,7 +2394,8 @@ namespace dxvk {
     // so that we can avoid spilling the render pass if it is.
     int32_t attachmentIndex = -1;
     
-    if (m_state.om.framebuffer != nullptr)
+    if (m_state.om.framebuffer != nullptr
+     && m_state.om.framebuffer->isFullSize(imageView))
       attachmentIndex = m_state.om.framebuffer->findAttachment(imageView);
 
     if (attachmentIndex < 0) {
