@@ -162,6 +162,14 @@ namespace dxvk {
       { "d3d9.strictPow",                   "False" },
       { "d3d9.lenientClear",                "True" },
     }} },
+    /* Borderlands: The Pre Sequel!               */
+    { "BorderlandsPreSequel.exe", {{
+      { "d3d9.lenientClear",                "True" },
+    }} },
+    /* Borderlands 2                              */
+    { "Borderlands2.exe", {{
+      { "d3d9.lenientClear",                "True" },
+    }} },
     /* Gothic 3                                   */
     { "Gothic3.exe", {{
       { "d3d9.allowLockFlagReadonly",       "False" },
