@@ -161,6 +161,7 @@ namespace dxvk {
     case DxsoOpcode::TexReg2Ar:
     case DxsoOpcode::TexReg2Gb:
     case DxsoOpcode::TexReg2Rgb:
+    case DxsoOpcode::TexBem:
       return this->emitTextureSample(ctx);
     case DxsoOpcode::TexKill:
       return this->emitTextureKill(ctx);
@@ -347,6 +348,61 @@ namespace dxvk {
     this->emitFunctionLabel();
   }
 
+
+  void DxsoCompiler::emitPsSharedConstants() {
+    std::array<uint32_t, 4> stageMembers = {
+      getVectorTypeId({DxsoScalarType::Float32, 2}),
+      getVectorTypeId({DxsoScalarType::Float32, 2}),
+
+      getScalarTypeId(DxsoScalarType::Float32),
+      getScalarTypeId(DxsoScalarType::Float32),
+    };
+
+    std::array<decltype(stageMembers), caps::TextureStageCount> members;
+
+    for (auto& member : members)
+      member = stageMembers;
+
+    constexpr uint32_t memberCount = members.size() * stageMembers.size();
+
+    const uint32_t structType =
+      m_module.defStructType(memberCount, members[0].data());
+
+    m_module.decorateBlock(structType);
+
+    uint32_t offset = 0;
+    for (uint32_t i = 0; i < memberCount; i++) {
+      m_module.memberDecorateOffset(structType, i, offset);
+
+      uint32_t size = sizeof(float);
+      if (i % stageMembers.size() < 2)
+        size *= 2;
+
+      offset += size;
+    }
+
+    m_ps.sharedState = m_module.newVar(
+      m_module.defPointerType(structType, spv::StorageClassUniform),
+      spv::StorageClassUniform);
+
+    m_module.setDebugName(m_ps.sharedState, "D3D9SharedPS");
+
+    const uint32_t bindingId = computeResourceSlotId(
+      m_programInfo.type(), DxsoBindingType::ConstantBuffer,
+      PSShared);
+
+    m_module.decorateDescriptorSet(m_ps.sharedState, 0);
+    m_module.decorateBinding(m_ps.sharedState, bindingId);
+
+    DxvkResourceSlot resource;
+    resource.slot   = bindingId;
+    resource.type   = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    resource.view   = VK_IMAGE_VIEW_TYPE_MAX_ENUM;
+    resource.access = VK_ACCESS_UNIFORM_READ_BIT;
+    m_resourceSlots.push_back(resource);
+  }
+
+
   void DxsoCompiler::emitPsInit() {
     m_module.enableCapability(spv::CapabilityDerivativeControl);
 
@@ -362,6 +418,8 @@ namespace dxvk {
       m_module.decorateSpecId(m_ps.samplerTypeSpec, getSpecId(D3D9SpecConstantId::SamplerType));
       m_module.setDebugName(m_ps.samplerTypeSpec, "s_sampler_types");
     }
+
+    this->emitPsSharedConstants();
 
     this->emitFunctionBegin(
       m_ps.functionId,
@@ -2325,7 +2383,43 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     DxsoRegMask srcMask (true, true, true, true);
     DxsoRegMask vec3Mask(true, true, true, false);
 
-    if (opcode == DxsoOpcode::TexReg2Ar) {
+    if (opcode == DxsoOpcode::TexBem) {
+      auto m = emitRegisterLoadTexcoord(ctx.dst, srcMask);
+      auto n = emitRegisterLoad(ctx.src[0], srcMask);
+
+      texcoordVar = m;
+
+      // u' = tc(m).x + [bm00(m) * t(n).x + bm10(m) * t(n).y]
+      // v' = tc(m).y + [bm01(m) * t(n).x + bm11(m) * t(n).y]
+
+      // But we flipped the bm indices so we can use dot here...
+
+      // u' = tc(m).x + dot(bm0, tn)
+      // v' = tc(m).y + dot(bm1, tn)
+
+      for (uint32_t i = 0; i < 2; i++) {
+        uint32_t fl_t   = getScalarTypeId(DxsoScalarType::Float32);
+        uint32_t vec2_t = getVectorTypeId({ DxsoScalarType::Float32, 2 });
+        std::array<uint32_t, 4> indices = { 0, 1, 2, 3 };
+
+        uint32_t tc_m_n = m_module.opCompositeExtract(fl_t, m.id, 1, &i);
+
+        uint32_t offset = m_module.constu32(4 * ctx.dst.id.num + i);
+        uint32_t bm     = m_module.opAccessChain(m_module.defPointerType(vec2_t, spv::StorageClassUniform),
+                                                 m_ps.sharedState, 1, &offset);
+                 bm     = m_module.opLoad(vec2_t, bm);
+
+        uint32_t t      = m_module.opCompositeExtract(vec2_t, n.id, 2, indices.data());
+
+        uint32_t dot    = m_module.opDot(fl_t, bm, t);
+
+        uint32_t result = m_module.opFAdd(fl_t, tc_m_n, dot);
+        texcoordVar.id  = m_module.opCompositeInsert(getVectorTypeId(texcoordVar.type), result, texcoordVar.id, 1, &i);
+      }
+
+      samplerIdx = ctx.dst.id.num;
+    }
+    else if (opcode == DxsoOpcode::TexReg2Ar) {
       texcoordVar = emitRegisterLoad(ctx.src[0], srcMask);
       texcoordVar = emitRegisterSwizzle(texcoordVar, DxsoRegSwizzle(3, 0, 0, 0), srcMask);
 

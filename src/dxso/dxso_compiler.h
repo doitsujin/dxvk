@@ -169,6 +169,10 @@ namespace dxvk {
     // Depth output
     DxsoRegisterPointer oDepth;
 
+    ////////////////
+    // Shared State
+    uint32_t sharedState        = 0;
+
     uint32_t killState          = 0;
     uint32_t builtinLaneId      = 0;
   };
@@ -356,6 +360,8 @@ namespace dxvk {
     /////////////////////////////////
     // Shader initialization methods
     void emitVsInit();
+
+    void emitPsSharedConstants();
     void emitPsInit();
 
     void emitFunctionBegin(
