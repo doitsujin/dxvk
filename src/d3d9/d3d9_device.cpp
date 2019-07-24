@@ -1317,15 +1317,15 @@ namespace dxvk {
       }
     };
 
-    int32_t heightDefect = int32_t(rt0Desc->Height) - int32_t(extent.height);
-
-    // A Hat in Time only gets partial clears here because of an oversized rt height.
+    // A Hat in Time and other UE3 games only gets partial clears here
+    // because of an oversized rt height due to their weird alignment...
     // This works around that.
-    bool heightMatches = (m_d3d9Options.lenientClear && heightDefect == 4) || heightDefect == 0;
+    uint32_t alignment = m_d3d9Options.lenientClear ? 8 : 1;
 
-    bool rtSizeMatchesClearSize =
-         offset.x     == 0              && offset.y      == 0
-      && extent.width == rt0Desc->Width && heightMatches;
+    bool extentMatches = align(extent.width,  alignment) == align(rt0Desc->Width,  alignment)
+                      && align(extent.height, alignment) == align(rt0Desc->Height, alignment);
+
+    bool rtSizeMatchesClearSize = offset.x == 0 && offset.y == 0 && extentMatches;
 
     if (likely(!Count && rtSizeMatchesClearSize)) {
       // Fast path w/ ClearRenderTarget for when
