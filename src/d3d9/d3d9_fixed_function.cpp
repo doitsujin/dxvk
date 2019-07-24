@@ -735,8 +735,8 @@ namespace dxvk {
             // Get vec3 of arg1 & 2
             uint32_t vec3Type = m_module.defVectorType(m_floatType, 3);
             std::array<uint32_t, 3> indices = { 0, 1, 2 };
-            arg[1] = m_module.opCompositeExtract(vec3Type, arg[1], indices.size(), indices.data());
-            arg[2] = m_module.opCompositeExtract(vec3Type, arg[2], indices.size(), indices.data());
+            arg[1] = m_module.opVectorShuffle(vec3Type, arg[1], arg[1], indices.size(), indices.data());
+            arg[2] = m_module.opVectorShuffle(vec3Type, arg[2], arg[2], indices.size(), indices.data());
 
             // Bias according to spec.
             arg[1] = m_module.opFSub(vec3Type, arg[1], m_module.constvec3f32(-0.5f, -0.5f, -0.5f));
