@@ -723,6 +723,12 @@ namespace dxvk {
       if (m_moduleInfo.xfb != nullptr)
         info.sclass = spv::StorageClassPrivate;
       
+      // In geometry shaders, don't duplicate system value outputs
+      // to stay within device limits. The pixel shader will read
+      // all GS system value outputs as system value inputs.
+      if (m_programInfo.type() == DxbcProgramType::GeometryShader && sv != DxbcSystemValue::None)
+        info.sclass = spv::StorageClassPrivate;
+
       const uint32_t varId = this->emitNewVariable(info);
       m_module.setDebugName(varId, str::format("o", regIdx).c_str());
       
