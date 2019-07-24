@@ -23,6 +23,11 @@ namespace dxvk {
     /// Why?:  In theory, FXC should never generate code where this would be an issue.
     bool strictConstantCopies;
 
+    /// Whether to emulate d3d9 float behaviour using clampps
+    /// True:  Perform emulation to emulate behaviour (ie. anything * 0 = 0)
+    /// False: Don't do anything.
+    bool d3d9FloatEmulation = true;
+
     /// Whether or not we should care about pow(0, 0) = 1
     bool strictPow;
   };
