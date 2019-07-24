@@ -54,6 +54,7 @@ namespace dxvk {
     DirtyFFViewport,
     DirtyFFPixelData,
     DirtyProgVertexShader,
+    DirtySharedPixelShaderData,
     UpDirtiedVertices,
     UpDirtiedIndices,
     ValidSampleMask
@@ -876,6 +877,7 @@ namespace dxvk {
 
     Rc<DxvkBuffer>                  m_vsFixedFunction;
     Rc<DxvkBuffer>                  m_psFixedFunction;
+    Rc<DxvkBuffer>                  m_psShared;
 
     D3D9UPBufferSlice               m_upBuffer;
 

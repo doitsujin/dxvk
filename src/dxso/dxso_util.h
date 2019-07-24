@@ -21,6 +21,7 @@ namespace dxvk {
 
     PSConstantBuffer = 0,
     PSFixedFunction  = 1,
+    PSShared         = 2,
     PSCount
   };
 

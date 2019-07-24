@@ -1851,7 +1851,10 @@ namespace dxvk {
       return m_recorder->SetTextureStageState(Stage, Type, Value);
 
     if (likely(m_state.textureStages[Stage][Type] != Value)) {
-      if (Type == D3DTSS_TEXTURETRANSFORMFLAGS) {
+      if ((Type >= D3DTSS_BUMPENVMAT00  && Type <= D3DTSS_BUMPENVMAT11)
+       || (Type == D3DTSS_BUMPENVLSCALE || Type == D3DTSS_BUMPENVLOFFSET))
+        m_flags.set(D3D9DeviceFlag::DirtySharedPixelShaderData);
+      else if (Type == D3DTSS_TEXTURETRANSFORMFLAGS) {
         // This state affects both!
         m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
         m_flags.set(D3D9DeviceFlag::DirtyFFVertexShader);
@@ -3244,6 +3247,7 @@ namespace dxvk {
       stage[D3DTSS_RESULTARG]             = D3DTA_CURRENT;
       stage[D3DTSS_CONSTANT]              = 0x00000000;
     }
+    m_flags.set(D3D9DeviceFlag::DirtySharedPixelShaderData);
     m_flags.set(D3D9DeviceFlag::DirtyFFPixelShader);
 
     for (uint32_t i = 0; i < caps::MaxStreams; i++)
@@ -4139,6 +4143,9 @@ namespace dxvk {
     info.size = sizeof(D3D9FixedFunctionPS);
     m_psFixedFunction = m_dxvkDevice->createBuffer(info, memoryFlags);
 
+    info.size = sizeof(D3D9SharedPS);
+    m_psShared = m_dxvkDevice->createBuffer(info, memoryFlags);
+
     auto BindConstantBuffer = [this](
       DxsoProgramType     shaderStage,
       Rc<DxvkBuffer>      buffer,
@@ -4162,6 +4169,7 @@ namespace dxvk {
 
     BindConstantBuffer(DxsoProgramTypes::PixelShader,  m_consts[DxsoProgramTypes::PixelShader].buffer,  DxsoConstantBuffers::PSConstantBuffer);
     BindConstantBuffer(DxsoProgramTypes::PixelShader,  m_psFixedFunction,                               DxsoConstantBuffers::PSFixedFunction);
+    BindConstantBuffer(DxsoProgramTypes::PixelShader,  m_psShared,                                      DxsoConstantBuffers::PSShared);
     
     m_flags.set(
       D3D9DeviceFlag::DirtyClipPlanes);
@@ -4879,6 +4887,33 @@ namespace dxvk {
       UpdateSamplerTypes(0u);
 
       UpdateFixedFunctionPS();
+    }
+
+    if (m_flags.test(D3D9DeviceFlag::DirtySharedPixelShaderData)) {
+      m_flags.clr(D3D9DeviceFlag::DirtySharedPixelShaderData);
+
+      DxvkBufferSliceHandle slice = m_psShared->allocSlice();
+
+      EmitCs([
+        cBuffer = m_psShared,
+        cSlice  = slice
+      ] (DxvkContext* ctx) {
+        ctx->invalidateBuffer(cBuffer, cSlice);
+      });
+
+      D3D9SharedPS* data = reinterpret_cast<D3D9SharedPS*>(slice.mapPtr);
+
+      for (uint32_t i = 0; i < caps::TextureStageCount; i++) {
+        // Flip major-ness so we can get away with a nice easy
+        // dot in the shader without complex access
+        data->Stages[i].BumpEnvMat[0][0] = bit::cast<float>(m_state.textureStages[i][D3DTSS_BUMPENVMAT00]);
+        data->Stages[i].BumpEnvMat[1][0] = bit::cast<float>(m_state.textureStages[i][D3DTSS_BUMPENVMAT01]);
+        data->Stages[i].BumpEnvMat[0][1] = bit::cast<float>(m_state.textureStages[i][D3DTSS_BUMPENVMAT10]);
+        data->Stages[i].BumpEnvMat[1][1] = bit::cast<float>(m_state.textureStages[i][D3DTSS_BUMPENVMAT11]);
+
+        data->Stages[i].BumpEnvLScale    = bit::cast<float>(m_state.textureStages[i][D3DTSS_BUMPENVLSCALE]);
+        data->Stages[i].BumpEnvLOffset   = bit::cast<float>(m_state.textureStages[i][D3DTSS_BUMPENVLOFFSET]);
+      }
     }
   }
 
