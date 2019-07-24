@@ -170,6 +170,10 @@ namespace dxvk {
     { "Borderlands2.exe", {{
       { "d3d9.lenientClear",                "True" },
     }} },
+    /* Borderlands                                */
+    { "Borderlands.exe", {{
+      { "d3d9.lenientClear",                "True" },
+    }} },
     /* Gothic 3                                   */
     { "Gothic3.exe", {{
       { "d3d9.allowLockFlagReadonly",       "False" },
