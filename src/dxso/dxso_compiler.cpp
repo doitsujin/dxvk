@@ -162,6 +162,8 @@ namespace dxvk {
     case DxsoOpcode::TexReg2Gb:
     case DxsoOpcode::TexReg2Rgb:
     case DxsoOpcode::TexBem:
+    case DxsoOpcode::TexM3x2Tex:
+    case DxsoOpcode::TexM3x3Tex:
       return this->emitTextureSample(ctx);
     case DxsoOpcode::TexKill:
       return this->emitTextureKill(ctx);
@@ -2380,10 +2382,29 @@ void DxsoCompiler::emitControlFlowGenericLoop(
     DxsoRegisterValue texcoordVar;
     uint32_t samplerIdx;
 
-    DxsoRegMask srcMask (true, true, true, true);
-    DxsoRegMask vec3Mask(true, true, true, false);
+    DxsoRegMask vec3Mask(true, true, true,  false);
+    DxsoRegMask srcMask (true, true, true,  true);
 
-    if (opcode == DxsoOpcode::TexBem) {
+    if (opcode == DxsoOpcode::TexM3x2Tex || opcode == DxsoOpcode::TexM3x3Tex) {
+      const uint32_t count = opcode == DxsoOpcode::TexM3x3Tex ? 3 : 2;
+
+      auto n = emitRegisterLoad(ctx.src[0], vec3Mask);
+
+      std::array<uint32_t, 4> indices = { 0, 0, m_module.constf32(0.0f), m_module.constf32(0.0f) };
+      for (uint32_t i = 0; i < count; i++) {
+        auto reg = ctx.dst;
+        reg.id.num -= (count - 1) - i;
+        auto m = emitRegisterLoadTexcoord(reg, vec3Mask);
+
+        indices[i] = m_module.opDot(getScalarTypeId(DxsoScalarType::Float32), m.id, n.id);
+      }
+
+      texcoordVar.type = { DxsoScalarType::Float32, 4 };
+      texcoordVar.id   = m_module.opCompositeConstruct(getVectorTypeId(texcoordVar.type), indices.size(), indices.data());
+      
+      samplerIdx = ctx.dst.id.num;
+    }
+    else if (opcode == DxsoOpcode::TexBem) {
       auto m = emitRegisterLoadTexcoord(ctx.dst, srcMask);
       auto n = emitRegisterLoad(ctx.src[0], srcMask);
 
