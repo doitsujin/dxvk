@@ -75,6 +75,26 @@ namespace dxvk::bit {
     #endif
   }
 
+  inline uint32_t lzcnt(uint32_t n) {
+    #if (defined(_MSC_VER) && !defined(__clang__)) || defined(__LZCNT__)
+    return _lzcnt_u32(n);
+    #elif defined(__GNUC__) || defined(__clang__)
+    return n != 0 ? __builtin_clz(n) : 32;
+    #else
+    uint32_t r = 0;
+
+    if (n == 0)	return 32;
+
+    if (n <= 0x0000FFFF) { r += 16; n <<= 16; }
+    if (n <= 0x00FFFFFF) { r += 8;  n <<= 8; }
+    if (n <= 0x0FFFFFFF) { r += 4;  n <<= 4; }
+    if (n <= 0x3FFFFFFF) { r += 2;  n <<= 2; }
+    if (n <= 0x7FFFFFFF) { r += 1;  n <<= 1; }
+
+    return r;
+    #endif
+  }
+
   template<typename T>
   uint32_t pack(T& dst, uint32_t& shift, T src, uint32_t count) {
     constexpr uint32_t Bits = 8 * sizeof(T);
