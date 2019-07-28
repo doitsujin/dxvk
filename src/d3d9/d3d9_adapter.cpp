@@ -164,9 +164,10 @@ namespace dxvk {
     if (dst.FormatColor == VK_FORMAT_UNDEFINED)
       return D3DERR_NOTAVAILABLE;
 
-    if (SurfaceFormat == D3D9Format::D32_LOCKABLE
-     || SurfaceFormat == D3D9Format::D32F_LOCKABLE
-     || SurfaceFormat == D3D9Format::D16_LOCKABLE)
+    if (MultiSampleType != D3DMULTISAMPLE_NONE
+     && (SurfaceFormat == D3D9Format::D32_LOCKABLE
+      || SurfaceFormat == D3D9Format::D32F_LOCKABLE
+      || SurfaceFormat == D3D9Format::D16_LOCKABLE))
       return D3DERR_NOTAVAILABLE;
 
     uint32_t sampleCount = std::max<uint32_t>(MultiSampleType, 1u);
