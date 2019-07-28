@@ -169,16 +169,25 @@ namespace dxvk {
      || SurfaceFormat == D3D9Format::D16_LOCKABLE)
       return D3DERR_NOTAVAILABLE;
 
-    // Not a multiple of 2
-    // Not nonmaskable
-    // Not greater than 8
-    if ((MultiSampleType % 2 != 0 && MultiSampleType != 1)
-      || MultiSampleType > 8)
+    uint32_t sampleCount = std::max<uint32_t>(MultiSampleType, 1u);
+
+    // Check if this is a power of two...
+    if (sampleCount & (sampleCount - 1))
       return D3DERR_NOTAVAILABLE;
+    
+    // Therefore...
+    VkSampleCountFlags sampleFlags = VkSampleCountFlags(sampleCount);
+
+    auto availableFlags = !IsDepthFormat(SurfaceFormat)
+      ? m_adapter->deviceProperties().limits.framebufferColorSampleCounts
+      : m_adapter->deviceProperties().limits.framebufferDepthSampleCounts;
+
+    if (!(availableFlags & sampleFlags))
+      return D3DERR_INVALIDCALL;
 
     if (pQualityLevels != nullptr) {
       if (MultiSampleType == D3DMULTISAMPLE_NONMASKABLE)
-        *pQualityLevels = 4;
+        *pQualityLevels = (32 - bit::lzcnt(availableFlags));
       else
         *pQualityLevels = 1;
     }

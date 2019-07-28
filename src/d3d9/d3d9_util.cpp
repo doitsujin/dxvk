@@ -40,29 +40,17 @@ namespace dxvk {
           D3DMULTISAMPLE_TYPE       MultiSample,
           DWORD                     MultisampleQuality,
           VkSampleCountFlagBits*    pCount) {
-    VkSampleCountFlagBits flag;
+    uint32_t sampleCount = std::max<uint32_t>(MultiSample, 1u);
 
-    switch (MultiSample) {
-    case D3DMULTISAMPLE_NONE:        flag = VK_SAMPLE_COUNT_1_BIT;  break;
-    case D3DMULTISAMPLE_NONMASKABLE:
-      switch(MultisampleQuality) {
-        case 0:                      flag = VK_SAMPLE_COUNT_1_BIT; break;
-        case 1:                      flag = VK_SAMPLE_COUNT_2_BIT; break;
-        case 2:                      flag = VK_SAMPLE_COUNT_4_BIT; break;
-        case 3:                      flag = VK_SAMPLE_COUNT_8_BIT; break;
-        case 4:                      flag = VK_SAMPLE_COUNT_8_BIT; break;
-        default:                     return D3DERR_INVALIDCALL;
-      }
-      break;
-    case D3DMULTISAMPLE_2_SAMPLES:   flag = VK_SAMPLE_COUNT_2_BIT;  break;
-    case D3DMULTISAMPLE_4_SAMPLES:   flag = VK_SAMPLE_COUNT_4_BIT;  break;
-    case D3DMULTISAMPLE_8_SAMPLES:   flag = VK_SAMPLE_COUNT_8_BIT;  break;
-    case D3DMULTISAMPLE_16_SAMPLES:  flag = VK_SAMPLE_COUNT_8_BIT; break;
-    default:                         return D3DERR_INVALIDCALL;
-    }
+    // Check if this is a power of two...
+    if (sampleCount & (sampleCount - 1))
+      return D3DERR_INVALIDCALL;
+
+    if (MultiSample == D3DMULTISAMPLE_NONMASKABLE)
+      sampleCount = 1u << MultisampleQuality;
 
     if (pCount != nullptr)
-      *pCount = flag;
+      *pCount = VkSampleCountFlagBits(sampleCount);
 
     return D3D_OK;
   }
