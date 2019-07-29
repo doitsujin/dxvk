@@ -3966,7 +3966,7 @@ namespace dxvk {
       // Therefore we can skip waiting for these two cases.
       bool dirtyRangeOverlap = true;
 
-      if (pResource->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_BUFFER && !(Flags & D3DLOCK_READONLY))
+      if (respectBounds && pResource->GetMapMode() == D3D9_COMMON_BUFFER_MAP_MODE_BUFFER && !(Flags & D3DLOCK_READONLY))
         dirtyRangeOverlap = pResource->DirtyRange().overlap(pResource->LockRange());
 
       bool skipWait = (Flags & D3DLOCK_NOOVERWRITE) || (Flags & D3DLOCK_READONLY) || !dirtyRangeOverlap;
