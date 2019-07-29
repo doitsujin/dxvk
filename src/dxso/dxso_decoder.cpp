@@ -20,7 +20,7 @@ namespace dxvk {
 
     // Comment ops have their own system for getting length.
     if (opcode == DxsoOpcode::Comment)
-      return (token & 0x7fff000) >> 16;
+      return (token & 0x7fff0000) >> 16;
 
     if (opcode == DxsoOpcode::End)
       return 0;
