@@ -3935,8 +3935,12 @@ namespace dxvk {
 
     // We can only respect this for these cases -- otherwise R/W OOB still get copied on native
     // and some stupid games depend on that.
-    const bool respectSize = (desc.Usage & D3DUSAGE_DYNAMIC) || desc.Pool == D3DPOOL_MANAGED;
-    SizeToLock = SizeToLock == 0 || !respectSize ? maxLockSize : std::min(SizeToLock, desc.Size - OffsetToLock);
+    bool respectBounds = (desc.Usage & D3DUSAGE_DYNAMIC) || desc.Pool == D3DPOOL_MANAGED;
+
+    if (SizeToLock == 0 || !respectBounds)
+      SizeToLock = maxLockSize;
+    else
+      SizeToLock = std::min(SizeToLock, maxLockSize);
 
     pResource->LockRange() = D3D9Range(OffsetToLock, OffsetToLock + SizeToLock);
 
