@@ -5272,6 +5272,7 @@ namespace dxvk {
     }
 
     if (hasPositionT && m_flags.test(D3D9DeviceFlag::DirtyFFViewport)) {
+      m_flags.clr(D3D9DeviceFlag::DirtyFFViewport);
       m_flags.set(D3D9DeviceFlag::DirtyFFVertexData);
 
       const auto& vp = m_state.viewport;
@@ -5301,7 +5302,6 @@ namespace dxvk {
     // Constants...
     if (m_flags.test(D3D9DeviceFlag::DirtyFFVertexData)) {
       m_flags.clr(D3D9DeviceFlag::DirtyFFVertexData);
-      m_flags.clr(D3D9DeviceFlag::DirtyFFViewport);
 
       DxvkBufferSliceHandle slice = m_vsFixedFunction->allocSlice();
 
