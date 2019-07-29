@@ -3922,9 +3922,12 @@ namespace dxvk {
     auto& desc = *pResource->Desc();
 
     // Ignore DISCARD if NOOVERWRITE is set
-    // Ignore DISCARD if the buffer is non-dynamic.
-    if ((Flags & (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE)) == (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE) || !(desc.Usage & D3DUSAGE_DYNAMIC))
+    if ((Flags & (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE)) == (D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE))
       Flags &= ~D3DLOCK_DISCARD;
+
+    // Ignore DISCARD/NOOVERWRITE if the buffer is non-dynamic.
+    if (!(desc.Usage & D3DUSAGE_DYNAMIC))
+      Flags &= ~(D3DLOCK_DISCARD | D3DLOCK_NOOVERWRITE);
 
     pResource->SetMapFlags(Flags);
     Rc<DxvkBuffer> mappingBuffer = pResource->GetBuffer<D3D9_COMMON_BUFFER_TYPE_MAPPING>();
