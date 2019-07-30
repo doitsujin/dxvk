@@ -12,6 +12,8 @@
 
 namespace dxvk {
 
+  class DxvkDevice;
+
   /**
    * \brief Copy pipeline
    * 

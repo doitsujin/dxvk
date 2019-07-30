@@ -76,7 +76,7 @@ namespace dxvk {
 
   public:
 
-    DxvkMetaPackObjects(const Rc<vk::DeviceFn>& vkd);
+    DxvkMetaPackObjects(const DxvkDevice* device);
     ~DxvkMetaPackObjects();
 
     /**

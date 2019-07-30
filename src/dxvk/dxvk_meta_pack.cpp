@@ -1,4 +1,5 @@
 #include "dxvk_meta_pack.h"
+#include "dxvk_device.h"
 
 #include <dxvk_pack_d24s8.h>
 #include <dxvk_pack_d32s8.h>
@@ -9,8 +10,8 @@
 
 namespace dxvk {
 
-  DxvkMetaPackObjects::DxvkMetaPackObjects(const Rc<vk::DeviceFn>& vkd)
-  : m_vkd             (vkd),
+  DxvkMetaPackObjects::DxvkMetaPackObjects(const DxvkDevice* device)
+  : m_vkd             (device->vkd()),
     m_sampler         (createSampler()),
     m_dsetLayoutPack  (createPackDescriptorSetLayout()),
     m_dsetLayoutUnpack(createUnpackDescriptorSetLayout()),
