@@ -95,7 +95,7 @@ namespace dxvk {
       const DxvkComputePipelineStateInfo& state,
             VkPipeline&                   pipeline) const;
     
-    VkPipeline compilePipeline(
+    VkPipeline createPipeline(
       const DxvkComputePipelineStateInfo& state) const;
     
     void destroyPipeline(

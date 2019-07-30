@@ -52,7 +52,7 @@ namespace dxvk {
     
       // If no pipeline instance exists with the given state
       // vector, create a new one and add it to the list.
-      newPipelineHandle = this->compilePipeline(state);
+      newPipelineHandle = this->createPipeline(state);
       
       // Add new pipeline to the set
       m_pipelines.push_back({ state, newPipelineHandle });
@@ -80,7 +80,7 @@ namespace dxvk {
   }
   
   
-  VkPipeline DxvkComputePipeline::compilePipeline(
+  VkPipeline DxvkComputePipeline::createPipeline(
     const DxvkComputePipelineStateInfo& state) const {
     std::vector<VkDescriptorSetLayoutBinding> bindings;
 

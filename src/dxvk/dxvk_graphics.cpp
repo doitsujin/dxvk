@@ -115,7 +115,7 @@ namespace dxvk {
       
       // If no pipeline instance exists with the given state
       // vector, create a new one and add it to the list.
-      newPipelineHandle = this->compilePipeline(state, renderPass);
+      newPipelineHandle = this->createPipeline(state, renderPass);
 
       // Add new pipeline to the set
       m_pipelines.emplace_back(state, renderPassHandle, newPipelineHandle);
@@ -141,7 +141,7 @@ namespace dxvk {
   }
   
   
-  VkPipeline DxvkGraphicsPipeline::compilePipeline(
+  VkPipeline DxvkGraphicsPipeline::createPipeline(
     const DxvkGraphicsPipelineStateInfo& state,
     const DxvkRenderPass&                renderPass) const {
     if (Logger::logLevel() <= LogLevel::Debug) {

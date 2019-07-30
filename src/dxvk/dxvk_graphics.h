@@ -152,6 +152,7 @@ namespace dxvk {
     : m_stateVector (),
       m_renderPass  (VK_NULL_HANDLE),
       m_pipeline    (VK_NULL_HANDLE) { }
+
     DxvkGraphicsPipelineInstance(
       const DxvkGraphicsPipelineStateInfo&  state,
             VkRenderPass                    rp,
@@ -254,12 +255,6 @@ namespace dxvk {
     
   private:
     
-    struct PipelineStruct {
-      DxvkGraphicsPipelineStateInfo stateVector;
-      VkRenderPass                  renderPass;
-      VkPipeline                    pipeline;
-    };
-    
     Rc<vk::DeviceFn>            m_vkd;
     DxvkPipelineManager*        m_pipeMgr;
 
@@ -282,7 +277,7 @@ namespace dxvk {
       const DxvkGraphicsPipelineStateInfo& state,
             VkRenderPass                   renderPass) const;
     
-    VkPipeline compilePipeline(
+    VkPipeline createPipeline(
       const DxvkGraphicsPipelineStateInfo& state,
       const DxvkRenderPass&                renderPass) const;
     
