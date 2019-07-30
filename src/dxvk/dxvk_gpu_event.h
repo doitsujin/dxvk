@@ -6,6 +6,7 @@
 
 namespace dxvk {
 
+  class DxvkDevice;
   class DxvkGpuEventPool;
 
   /**
@@ -87,7 +88,7 @@ namespace dxvk {
   
   public:
 
-    DxvkGpuEventPool(const Rc<vk::DeviceFn>& vkd);
+    DxvkGpuEventPool(const DxvkDevice* device);
     ~DxvkGpuEventPool();
 
     /**

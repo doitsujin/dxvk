@@ -1,4 +1,5 @@
 #include "dxvk_gpu_event.h"
+#include "dxvk_device.h"
 
 namespace dxvk {
 
@@ -35,8 +36,8 @@ namespace dxvk {
 
 
 
-  DxvkGpuEventPool::DxvkGpuEventPool(const Rc<vk::DeviceFn>& vkd)
-  : m_vkd(vkd) { }
+  DxvkGpuEventPool::DxvkGpuEventPool(const DxvkDevice* device)
+  : m_vkd(device->vkd()) { }
 
 
   DxvkGpuEventPool::~DxvkGpuEventPool() {
