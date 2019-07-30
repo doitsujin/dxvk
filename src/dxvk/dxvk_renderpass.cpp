@@ -1,5 +1,6 @@
 #include <algorithm>
 
+#include "dxvk_device.h"
 #include "dxvk_renderpass.h"
 
 namespace dxvk {
@@ -220,8 +221,8 @@ namespace dxvk {
   }
   
   
-  DxvkRenderPassPool::DxvkRenderPassPool(const Rc<vk::DeviceFn>& vkd)
-  : m_vkd(vkd) {
+  DxvkRenderPassPool::DxvkRenderPassPool(const DxvkDevice* device)
+  : m_vkd(device->vkd()) {
     
   }
   

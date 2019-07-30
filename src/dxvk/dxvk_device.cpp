@@ -18,7 +18,7 @@ namespace dxvk {
     m_properties        (adapter->deviceProperties()),
     m_perfHints         (getPerfHints()),
     m_memory            (new DxvkMemoryAllocator    (this)),
-    m_renderPassPool    (new DxvkRenderPassPool     (vkd)),
+    m_renderPassPool    (new DxvkRenderPassPool     (this)),
     m_pipelineManager   (new DxvkPipelineManager    (this, m_renderPassPool.ptr())),
     m_gpuEventPool      (new DxvkGpuEventPool       (this)),
     m_gpuQueryPool      (new DxvkGpuQueryPool       (this)),

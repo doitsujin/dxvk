@@ -8,6 +8,8 @@
 #include "dxvk_limits.h"
 
 namespace dxvk {
+
+  class DxvkDevice;
   
   /**
    * \brief Format and layout for a render target
@@ -203,8 +205,7 @@ namespace dxvk {
     
   public:
     
-    DxvkRenderPassPool(
-      const Rc<vk::DeviceFn>& vkd);
+    DxvkRenderPassPool(const DxvkDevice* device);
     ~DxvkRenderPassPool();
     
     /**
