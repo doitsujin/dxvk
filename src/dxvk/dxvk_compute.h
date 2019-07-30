@@ -32,6 +32,50 @@ namespace dxvk {
     
     DxvkBindingMask bsBindingMask;
   };
+
+
+  /**
+   * \brief Compute pipeline instance
+   */
+  class DxvkComputePipelineInstance {
+
+  public:
+
+    DxvkComputePipelineInstance()
+    : m_stateVector (),
+      m_pipeline    (VK_NULL_HANDLE) { }
+
+    DxvkComputePipelineInstance(
+      const DxvkComputePipelineStateInfo& state,
+            VkPipeline                    pipe)
+    : m_stateVector (state),
+      m_pipeline    (pipe) { }
+
+    /**
+     * \brief Checks for matching pipeline state
+     * 
+     * \param [in] stateVector Graphics pipeline state
+     * \param [in] renderPass Render pass handle
+     * \returns \c true if the specialization is compatible
+     */
+    bool isCompatible(const DxvkComputePipelineStateInfo& state) const {
+      return m_stateVector == state;
+    }
+
+    /**
+     * \brief Retrieves pipeline
+     * \returns The pipeline handle
+     */
+    VkPipeline pipeline() const {
+      return m_pipeline;
+    }
+
+  private:
+
+    DxvkComputePipelineStateInfo m_stateVector;
+    VkPipeline                   m_pipeline;
+
+  };
   
   
   /**
@@ -75,11 +119,6 @@ namespace dxvk {
     
   private:
     
-    struct PipelineStruct {
-      DxvkComputePipelineStateInfo stateVector;
-      VkPipeline                   pipeline;
-    };
-    
     Rc<vk::DeviceFn>            m_vkd;
     DxvkPipelineManager*        m_pipeMgr;
 
@@ -88,12 +127,11 @@ namespace dxvk {
     
     Rc<DxvkPipelineLayout>      m_layout;
     
-    sync::Spinlock              m_mutex;
-    std::vector<PipelineStruct> m_pipelines;
+    sync::Spinlock                           m_mutex;
+    std::vector<DxvkComputePipelineInstance> m_pipelines;
     
-    bool findPipeline(
-      const DxvkComputePipelineStateInfo& state,
-            VkPipeline&                   pipeline) const;
+    const DxvkComputePipelineInstance* findInstance(
+      const DxvkComputePipelineStateInfo& state) const;
     
     VkPipeline createPipeline(
       const DxvkComputePipelineStateInfo& state) const;

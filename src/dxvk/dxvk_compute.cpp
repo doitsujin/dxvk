@@ -37,7 +37,7 @@ namespace dxvk {
   
   DxvkComputePipeline::~DxvkComputePipeline() {
     for (const auto& instance : m_pipelines)
-      this->destroyPipeline(instance.pipeline);
+      this->destroyPipeline(instance.pipeline());
   }
   
   
@@ -47,15 +47,17 @@ namespace dxvk {
 
     { std::lock_guard<sync::Spinlock> lock(m_mutex);
 
-      if (this->findPipeline(state, newPipelineHandle))
-        return newPipelineHandle;
+      auto instance = this->findInstance(state);
+
+      if (instance)
+        return instance->pipeline();
     
       // If no pipeline instance exists with the given state
       // vector, create a new one and add it to the list.
       newPipelineHandle = this->createPipeline(state);
       
       // Add new pipeline to the set
-      m_pipelines.push_back({ state, newPipelineHandle });
+      m_pipelines.emplace_back(state, newPipelineHandle);
       m_pipeMgr->m_numComputePipelines += 1;
     }
     
@@ -66,17 +68,14 @@ namespace dxvk {
   }
   
   
-  bool DxvkComputePipeline::findPipeline(
-    const DxvkComputePipelineStateInfo& state,
-          VkPipeline&                   pipeline) const {
-    for (const PipelineStruct& pair : m_pipelines) {
-      if (pair.stateVector == state) {
-        pipeline = pair.pipeline;
-        return true;
-      }
+  const DxvkComputePipelineInstance* DxvkComputePipeline::findInstance(
+    const DxvkComputePipelineStateInfo& state) const {
+    for (const auto& instance : m_pipelines) {
+      if (instance.isCompatible(state))
+        return &instance;
     }
     
-    return false;
+    return nullptr;
   }
   
   
