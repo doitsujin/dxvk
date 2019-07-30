@@ -56,7 +56,7 @@ namespace dxvk {
     
     DxvkFramebuffer(
       const Rc<vk::DeviceFn>&       vkd,
-      const Rc<DxvkRenderPass>&     renderPass,
+            DxvkRenderPass*         renderPass,
       const DxvkRenderTargets&      renderTargets,
       const DxvkFramebufferSize&    defaultSize);
     
@@ -204,7 +204,7 @@ namespace dxvk {
   private:
     
     const Rc<vk::DeviceFn>    m_vkd;
-    const Rc<DxvkRenderPass>  m_renderPass;
+          DxvkRenderPass*     m_renderPass;
     const DxvkRenderTargets   m_renderTargets;
     const DxvkFramebufferSize m_renderSize;
     

@@ -135,7 +135,7 @@ namespace dxvk {
     for (auto e = entries.first; e != entries.second; e++) {
       const DxvkStateCacheEntry& entry = m_entries[e->second];
 
-      if (entry.format.matches(format) && entry.gpState == state)
+      if (entry.format.eq(format) && entry.gpState == state)
         return;
     }
 

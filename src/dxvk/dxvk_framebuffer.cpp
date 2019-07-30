@@ -4,7 +4,7 @@ namespace dxvk {
   
   DxvkFramebuffer::DxvkFramebuffer(
     const Rc<vk::DeviceFn>&       vkd,
-    const Rc<DxvkRenderPass>&     renderPass,
+          DxvkRenderPass*         renderPass,
     const DxvkRenderTargets&      renderTargets,
     const DxvkFramebufferSize&    defaultSize)
   : m_vkd           (vkd),
