@@ -287,9 +287,8 @@ namespace dxvk {
 
 
 
-  DxvkGpuQueryManager::DxvkGpuQueryManager(
-    const Rc<DxvkGpuQueryPool>& pool)
-  : m_pool(pool), m_activeTypes(0) {
+  DxvkGpuQueryManager::DxvkGpuQueryManager(DxvkGpuQueryPool& pool)
+  : m_pool(&pool), m_activeTypes(0) {
 
   }
 

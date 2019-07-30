@@ -6,30 +6,15 @@
 
 namespace dxvk {
   
-  DxvkContext::DxvkContext(
-    const Rc<DxvkDevice>&             device,
-    const Rc<DxvkPipelineManager>&    pipelineManager,
-    const Rc<DxvkGpuEventPool>&       gpuEventPool,
-    const Rc<DxvkGpuQueryPool>&       gpuQueryPool,
-    const Rc<DxvkMetaClearObjects>&   metaClearObjects,
-    const Rc<DxvkMetaCopyObjects>&    metaCopyObjects,
-    const Rc<DxvkMetaResolveObjects>& metaResolveObjects,
-    const Rc<DxvkMetaMipGenObjects>&  metaMipGenObjects,
-    const Rc<DxvkMetaPackObjects>&    metaPackObjects)
+  DxvkContext::DxvkContext(const Rc<DxvkDevice>& device)
   : m_device      (device),
-    m_pipeMgr     (pipelineManager),
-    m_gpuEvents   (gpuEventPool),
-    m_metaClear   (metaClearObjects),
-    m_metaCopy    (metaCopyObjects),
-    m_metaResolve (metaResolveObjects),
-    m_metaMipGen  (metaMipGenObjects),
-    m_metaPack    (metaPackObjects),
+    m_common      (&device->m_objects),
     m_sdmaAcquires(DxvkCmdBuffer::SdmaBuffer),
     m_sdmaBarriers(DxvkCmdBuffer::SdmaBuffer),
     m_initBarriers(DxvkCmdBuffer::InitBuffer),
     m_execAcquires(DxvkCmdBuffer::ExecBuffer),
     m_execBarriers(DxvkCmdBuffer::ExecBuffer),
-    m_queryManager(gpuQueryPool),
+    m_queryManager(m_common->queryPool()),
     m_staging     (device) {
 
   }
@@ -422,7 +407,7 @@ namespace dxvk {
       m_execBarriers.recordCommands(m_cmd);
     
     // Query pipeline objects to use for this clear operation
-    DxvkMetaClearPipeline pipeInfo = m_metaClear->getClearBufferPipeline(
+    DxvkMetaClearPipeline pipeInfo = m_common->metaClear().getClearBufferPipeline(
       imageFormatInfo(bufferView->info().format)->flags);
     
     // Create a descriptor set pointing to the view
@@ -1109,7 +1094,7 @@ namespace dxvk {
     this->unbindComputePipeline();
 
     // Retrieve compute pipeline for the given format
-    auto pipeInfo = m_metaPack->getPackPipeline(format);
+    auto pipeInfo = m_common->metaPack().getPackPipeline(format);
 
     if (!pipeInfo.pipeHandle)
       return;
@@ -1222,8 +1207,7 @@ namespace dxvk {
       m_execBarriers.recordCommands(m_cmd);
     
     // Retrieve compute pipeline for the given format
-    auto pipeInfo = m_metaPack->getUnpackPipeline(
-      dstImage->info().format, format);
+    auto pipeInfo = m_common->metaPack().getUnpackPipeline(dstImage->info().format, format);
 
     if (!pipeInfo.pipeHandle) {
       Logger::err(str::format(
@@ -1684,7 +1668,7 @@ namespace dxvk {
     passInfo.pClearValues     = nullptr;
     
     // Retrieve a compatible pipeline to use for rendering
-    DxvkMetaMipGenPipeline pipeInfo = m_metaMipGen->getPipeline(
+    DxvkMetaMipGenPipeline pipeInfo = m_common->metaMipGen().getPipeline(
       mipGenerator->viewType(), imageView->info().format);
     
     for (uint32_t i = 0; i < mipGenerator->passCount(); i++) {
@@ -2342,7 +2326,7 @@ namespace dxvk {
   void DxvkContext::signalGpuEvent(const Rc<DxvkGpuEvent>& event) {
     this->spillRenderPass();
     
-    DxvkGpuEventHandle handle = m_gpuEvents->allocEvent();
+    DxvkGpuEventHandle handle = m_common->eventPool().allocEvent();
 
     m_cmd->cmdSetEvent(handle.event,
       VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
@@ -2501,7 +2485,7 @@ namespace dxvk {
       m_execBarriers.recordCommands(m_cmd);
     
     // Query pipeline objects to use for this clear operation
-    DxvkMetaClearPipeline pipeInfo = m_metaClear->getClearImagePipeline(
+    DxvkMetaClearPipeline pipeInfo = m_common->metaClear().getClearImagePipeline(
       imageView->type(), imageFormatInfo(imageView->info().format)->flags);
     
     // Create a descriptor set pointing to the view
@@ -2666,7 +2650,7 @@ namespace dxvk {
     }
 
     // Render target format to use for this copy
-    VkFormat viewFormat = m_metaCopy->getCopyDestinationFormat(
+    VkFormat viewFormat = m_common->metaCopy().getCopyDestinationFormat(
       dstSubresource.aspectMask,
       srcSubresource.aspectMask,
       srcImage->info().format);
@@ -2769,7 +2753,7 @@ namespace dxvk {
       m_device->vkd(), tgtImageView, srcImageView, srcStencilView,
       tgtImage->isFullSubresource(tgtSubresource, extent));
     
-    auto pipeInfo = m_metaCopy->getPipeline(
+    auto pipeInfo = m_common->metaCopy().getPipeline(
       viewType, viewFormat, tgtImage->info().sampleCount);
     
     VkDescriptorImageInfo descriptorImage;
@@ -2997,7 +2981,7 @@ namespace dxvk {
       m_device->vkd(), dstImageView, srcImageView,
       dstImage->isFullSubresource(region.dstSubresource, region.extent));
 
-    auto pipeInfo = m_metaResolve->getPipeline(
+    auto pipeInfo = m_common->metaResolve().getPipeline(
       format, srcImage->info().sampleCount);
     
     VkDescriptorImageInfo descriptorImage;
@@ -3411,7 +3395,7 @@ namespace dxvk {
       m_flags.clr(DxvkContextFlag::CpDirtyPipeline);
       
       m_state.cp.state.bsBindingMask.clear();
-      m_state.cp.pipeline = m_pipeMgr->createComputePipeline(m_state.cp.shaders);
+      m_state.cp.pipeline = m_common->pipelineManager().createComputePipeline(m_state.cp.shaders);
       
       if (m_state.cp.pipeline != nullptr
        && m_state.cp.pipeline->layout()->pushConstRange().size)
@@ -3461,8 +3445,8 @@ namespace dxvk {
       m_flags.clr(DxvkContextFlag::GpDirtyPipeline);
       
       m_state.gp.state.bsBindingMask.clear();
-      m_state.gp.pipeline = m_pipeMgr->createGraphicsPipeline(m_state.gp.shaders);
-      m_state.gp.flags    = DxvkGraphicsPipelineFlags();
+      m_state.gp.pipeline = m_common->pipelineManager().createGraphicsPipeline(m_state.gp.shaders);
+      m_state.gp.flags = DxvkGraphicsPipelineFlags();
       
       if (m_state.gp.pipeline != nullptr) {
         m_state.gp.flags = m_state.gp.pipeline->flags();
@@ -3645,7 +3629,7 @@ namespace dxvk {
               m_cmd->trackResource(res.sampler);
           } else {
             bindMask.clr(i);
-            m_descInfos[i].image = m_device->dummySamplerDescriptor();
+            m_descInfos[i].image = m_common->dummyResources().samplerDescriptor();
           } break;
         
         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
@@ -3664,7 +3648,7 @@ namespace dxvk {
             }
           } else {
             bindMask.clr(i);
-            m_descInfos[i].image = m_device->dummyImageViewDescriptor(binding.view);
+            m_descInfos[i].image = m_common->dummyResources().imageViewDescriptor(binding.view);
           } break;
         
         case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
@@ -3684,7 +3668,7 @@ namespace dxvk {
             }
           } else {
             bindMask.clr(i);
-            m_descInfos[i].image = m_device->dummyImageSamplerDescriptor(binding.view);
+            m_descInfos[i].image = m_common->dummyResources().imageSamplerDescriptor(binding.view);
           } break;
         
         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
@@ -3699,7 +3683,7 @@ namespace dxvk {
             }
           } else {
             bindMask.clr(i);
-            m_descInfos[i].texelBuffer = m_device->dummyBufferViewDescriptor();
+            m_descInfos[i].texelBuffer = m_common->dummyResources().bufferViewDescriptor();
           } break;
         
         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
@@ -3711,7 +3695,7 @@ namespace dxvk {
               m_cmd->trackResource(res.bufferSlice.buffer());
           } else {
             bindMask.clr(i);
-            m_descInfos[i].buffer = m_device->dummyBufferDescriptor();
+            m_descInfos[i].buffer = m_common->dummyResources().bufferDescriptor();
           } break;
         
         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
@@ -3724,7 +3708,7 @@ namespace dxvk {
               m_cmd->trackResource(res.bufferSlice.buffer());
           } else {
             bindMask.clr(i);
-            m_descInfos[i].buffer = m_device->dummyBufferDescriptor();
+            m_descInfos[i].buffer = m_common->dummyResources().bufferDescriptor();
           } break;
         
         default:
@@ -3822,7 +3806,7 @@ namespace dxvk {
           m_cmd->trackResource(m_state.vi.indexBuffer.buffer());
       } else {
         m_cmd->cmdBindIndexBuffer(
-          m_device->dummyBufferHandle(),
+          m_common->dummyResources().bufferHandle(),
           0, VK_INDEX_TYPE_UINT32);
       }
     }
@@ -3852,7 +3836,7 @@ namespace dxvk {
           if (m_vbTracked.set(binding))
             m_cmd->trackResource(m_state.vi.vertexBuffers[binding].buffer());
         } else {
-          buffers[i] = m_device->dummyBufferHandle();
+          buffers[i] = m_common->dummyResources().bufferHandle();
           offsets[i] = 0;
         }
       }
@@ -3881,7 +3865,7 @@ namespace dxvk {
       xfbLengths[i] = physSlice.length;
 
       if (physSlice.handle == VK_NULL_HANDLE)
-        xfbBuffers[i] = m_device->dummyBufferHandle();
+        xfbBuffers[i] = m_common->dummyResources().bufferHandle();
       
       if (physSlice.handle != VK_NULL_HANDLE) {
         auto buffer = m_state.xfb.buffers[i].buffer();

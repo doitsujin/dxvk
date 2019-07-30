@@ -5,6 +5,8 @@
 #include "dxvk_sampler.h"
 
 namespace dxvk {
+
+  class DxvkContext;
   
   /**
    * \brief Unbound resources

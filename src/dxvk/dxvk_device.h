@@ -10,6 +10,7 @@
 #include "dxvk_image.h"
 #include "dxvk_memory.h"
 #include "dxvk_meta_clear.h"
+#include "dxvk_objects.h"
 #include "dxvk_options.h"
 #include "dxvk_pipecache.h"
 #include "dxvk_pipemanager.h"
@@ -433,22 +434,8 @@ namespace dxvk {
     VkPhysicalDeviceProperties  m_properties;
     
     DxvkDevicePerfHints         m_perfHints;
-    
-    Rc<DxvkMemoryAllocator>     m_memory;
-    Rc<DxvkRenderPassPool>      m_renderPassPool;
-    Rc<DxvkPipelineManager>     m_pipelineManager;
+    DxvkObjects                 m_objects;
 
-    Rc<DxvkGpuEventPool>        m_gpuEventPool;
-    Rc<DxvkGpuQueryPool>        m_gpuQueryPool;
-
-    Rc<DxvkMetaClearObjects>    m_metaClearObjects;
-    Rc<DxvkMetaCopyObjects>     m_metaCopyObjects;
-    Rc<DxvkMetaResolveObjects>  m_metaResolveObjects;
-    Rc<DxvkMetaMipGenObjects>   m_metaMipGenObjects;
-    Rc<DxvkMetaPackObjects>     m_metaPackObjects;
-    
-    DxvkUnboundResources        m_unboundResources;
-    
     sync::Spinlock              m_statLock;
     DxvkStatCounters            m_statCounters;
     
@@ -470,58 +457,6 @@ namespace dxvk {
     DxvkDeviceQueue getQueue(
             uint32_t                family,
             uint32_t                index) const;
-    
-    /**
-     * \brief Dummy buffer handle
-     * \returns Use for unbound vertex buffers.
-     */
-    VkBuffer dummyBufferHandle() const {
-      return m_unboundResources.bufferHandle();
-    }
-    
-    /**
-     * \brief Dummy buffer descriptor
-     * \returns Descriptor that points to a dummy buffer
-     */
-    VkDescriptorBufferInfo dummyBufferDescriptor() const {
-      return m_unboundResources.bufferDescriptor();
-    }
-    
-    /**
-     * \brief Dummy buffer view descriptor
-     * \returns Dummy buffer view handle
-     */
-    VkBufferView dummyBufferViewDescriptor() const {
-      return m_unboundResources.bufferViewDescriptor();
-    }
-    
-    /**
-     * \brief Dummy sampler descriptor
-     * \returns Descriptor that points to a dummy sampler
-     */
-    VkDescriptorImageInfo dummySamplerDescriptor() const {
-      return m_unboundResources.samplerDescriptor();
-    }
-    
-    /**
-     * \brief Dummy image view descriptor
-     * 
-     * \param [in] type Required view type
-     * \returns Descriptor that points to a dummy image
-     */
-    VkDescriptorImageInfo dummyImageViewDescriptor(VkImageViewType type) const {
-      return m_unboundResources.imageViewDescriptor(type);
-    }
-    
-    /**
-     * \brief Dummy combined image sampler descriptor
-     * 
-     * \param [in] type Required view type
-     * \returns Descriptor that points to a dummy image
-     */
-    VkDescriptorImageInfo dummyImageSamplerDescriptor(VkImageViewType type) const {
-      return m_unboundResources.imageSamplerDescriptor(type);
-    }
     
   };
   

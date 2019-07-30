@@ -331,8 +331,7 @@ namespace dxvk {
 
   public:
 
-    DxvkGpuQueryManager(
-      const Rc<DxvkGpuQueryPool>& pool);
+    DxvkGpuQueryManager(DxvkGpuQueryPool& pool);
     
     ~DxvkGpuQueryManager();
 
@@ -397,7 +396,7 @@ namespace dxvk {
 
   private:
 
-    Rc<DxvkGpuQueryPool>          m_pool;
+    DxvkGpuQueryPool*             m_pool;
     uint32_t                      m_activeTypes;
     std::vector<Rc<DxvkGpuQuery>> m_activeQueries;
 
