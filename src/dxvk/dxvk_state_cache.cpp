@@ -262,7 +262,7 @@ namespace dxvk {
         const auto& entry = m_entries[e->second];
 
         auto rp = m_passManager->getRenderPass(entry.format);
-        pipeline->getPipelineHandle(entry.gpState, *rp);
+        pipeline->compilePipeline(entry.gpState, *rp);
       }
     } else {
       auto pipeline = m_pipeManager->createComputePipeline(item.cp);
@@ -270,7 +270,7 @@ namespace dxvk {
 
       for (auto e = entries.first; e != entries.second; e++) {
         const auto& entry = m_entries[e->second];
-        pipeline->getPipelineHandle(entry.cpState);
+        pipeline->compilePipeline(entry.cpState);
       }
     }
   }

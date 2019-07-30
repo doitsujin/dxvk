@@ -109,12 +109,22 @@ namespace dxvk {
     }
     
     /**
-     * \brief Pipeline handle
+     * \brief Retrieves pipeline handle
      * 
      * \param [in] state Pipeline state
      * \returns Pipeline handle
      */
     VkPipeline getPipelineHandle(
+      const DxvkComputePipelineStateInfo& state);
+    
+    /**
+     * \brief Compiles a pipeline
+     * 
+     * Asynchronously compiles the given pipeline
+     * and stores the result for future use.
+     * \param [in] state Pipeline state
+     */
+    void compilePipeline(
       const DxvkComputePipelineStateInfo& state);
     
   private:
@@ -130,8 +140,11 @@ namespace dxvk {
     sync::Spinlock                           m_mutex;
     std::vector<DxvkComputePipelineInstance> m_pipelines;
     
-    const DxvkComputePipelineInstance* findInstance(
-      const DxvkComputePipelineStateInfo& state) const;
+    DxvkComputePipelineInstance* createInstance(
+      const DxvkComputePipelineStateInfo& state);
+    
+    DxvkComputePipelineInstance* findInstance(
+      const DxvkComputePipelineStateInfo& state);
     
     VkPipeline createPipeline(
       const DxvkComputePipelineStateInfo& state) const;

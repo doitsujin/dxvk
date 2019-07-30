@@ -43,34 +43,49 @@ namespace dxvk {
   
   VkPipeline DxvkComputePipeline::getPipelineHandle(
     const DxvkComputePipelineStateInfo& state) {
-    VkPipeline newPipelineHandle = VK_NULL_HANDLE;
+    DxvkComputePipelineInstance* instance = nullptr;
 
     { std::lock_guard<sync::Spinlock> lock(m_mutex);
 
-      auto instance = this->findInstance(state);
+      instance = this->findInstance(state);
 
       if (instance)
         return instance->pipeline();
     
       // If no pipeline instance exists with the given state
       // vector, create a new one and add it to the list.
-      newPipelineHandle = this->createPipeline(state);
-      
-      // Add new pipeline to the set
-      m_pipelines.emplace_back(state, newPipelineHandle);
-      m_pipeMgr->m_numComputePipelines += 1;
+      instance = this->createInstance(state);
     }
     
-    if (newPipelineHandle != VK_NULL_HANDLE)
-      this->writePipelineStateToCache(state);
-    
-    return newPipelineHandle;
+    if (!instance)
+      return VK_NULL_HANDLE;
+
+    this->writePipelineStateToCache(state);
+    return instance->pipeline();
+  }
+
+
+  void DxvkComputePipeline::compilePipeline(
+    const DxvkComputePipelineStateInfo& state) {
+    std::lock_guard<sync::Spinlock> lock(m_mutex);
+
+    if (!this->findInstance(state))
+      this->createInstance(state);
   }
   
   
-  const DxvkComputePipelineInstance* DxvkComputePipeline::findInstance(
-    const DxvkComputePipelineStateInfo& state) const {
-    for (const auto& instance : m_pipelines) {
+  DxvkComputePipelineInstance* DxvkComputePipeline::createInstance(
+    const DxvkComputePipelineStateInfo& state) {
+    VkPipeline newPipelineHandle = this->createPipeline(state);
+
+    m_pipeMgr->m_numComputePipelines += 1;
+    return &m_pipelines.emplace_back(state, newPipelineHandle);
+  }
+
+  
+  DxvkComputePipelineInstance* DxvkComputePipeline::findInstance(
+    const DxvkComputePipelineStateInfo& state) {
+    for (auto& instance : m_pipelines) {
       if (instance.isCompatible(state))
         return &instance;
     }

@@ -97,43 +97,58 @@ namespace dxvk {
   VkPipeline DxvkGraphicsPipeline::getPipelineHandle(
     const DxvkGraphicsPipelineStateInfo& state,
     const DxvkRenderPass&                renderPass) {
-    VkRenderPass renderPassHandle = renderPass.getDefaultHandle();
-    
-    VkPipeline newPipelineHandle = VK_NULL_HANDLE;
+    DxvkGraphicsPipelineInstance* instance = nullptr;
 
     { std::lock_guard<sync::Spinlock> lock(m_mutex);
     
-      auto instance = this->findInstance(state, renderPassHandle);
+      instance = this->findInstance(state, renderPass);
       
-      if (instance != nullptr)
+      if (instance)
         return instance->pipeline();
-    
-      // If the pipeline state vector is invalid, don't try
-      // to create a new pipeline, it won't work anyway.
-      if (!this->validatePipelineState(state))
-        return VK_NULL_HANDLE;
       
-      // If no pipeline instance exists with the given state
-      // vector, create a new one and add it to the list.
-      newPipelineHandle = this->createPipeline(state, renderPass);
-
-      // Add new pipeline to the set
-      m_pipelines.emplace_back(state, renderPassHandle, newPipelineHandle);
-      m_pipeMgr->m_numGraphicsPipelines += 1;
+      instance = this->createInstance(state, renderPass);
     }
     
-    if (newPipelineHandle != VK_NULL_HANDLE)
-      this->writePipelineStateToCache(state, renderPass.format());
-    
-    return newPipelineHandle;
+    if (!instance)
+      return VK_NULL_HANDLE;
+
+    this->writePipelineStateToCache(state, renderPass.format());
+    return instance->pipeline();
+  }
+
+
+  void DxvkGraphicsPipeline::compilePipeline(
+    const DxvkGraphicsPipelineStateInfo& state,
+    const DxvkRenderPass&                renderPass) {
+    std::lock_guard<sync::Spinlock> lock(m_mutex);
+
+    if (!this->findInstance(state, renderPass))
+      this->createInstance(state, renderPass);
+  }
+
+
+  DxvkGraphicsPipelineInstance* DxvkGraphicsPipeline::createInstance(
+    const DxvkGraphicsPipelineStateInfo& state,
+    const DxvkRenderPass&                renderPass) {
+    // If the pipeline state vector is invalid, don't try
+    // to create a new pipeline, it won't work anyway.
+    if (!this->validatePipelineState(state))
+      return nullptr;
+
+    VkPipeline newPipelineHandle = this->createPipeline(state, renderPass);
+
+    m_pipeMgr->m_numGraphicsPipelines += 1;
+    return &m_pipelines.emplace_back(state, renderPass.getDefaultHandle(), newPipelineHandle);
   }
   
   
-  const DxvkGraphicsPipelineInstance* DxvkGraphicsPipeline::findInstance(
+  DxvkGraphicsPipelineInstance* DxvkGraphicsPipeline::findInstance(
     const DxvkGraphicsPipelineStateInfo& state,
-          VkRenderPass                   renderPass) const {
-    for (const auto& instance : m_pipelines) {
-      if (instance.isCompatible(state, renderPass))
+    const DxvkRenderPass&                renderPass) {
+    VkRenderPass renderPassHandle = renderPass.getDefaultHandle();
+
+    for (auto& instance : m_pipelines) {
+      if (instance.isCompatible(state, renderPassHandle))
         return &instance;
     }
     

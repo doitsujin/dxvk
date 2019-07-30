@@ -253,6 +253,18 @@ namespace dxvk {
       const DxvkGraphicsPipelineStateInfo&    state,
       const DxvkRenderPass&                   renderPass);
     
+    /**
+     * \brief Compiles a pipeline
+     * 
+     * Asynchronously compiles the given pipeline
+     * and stores the result for future use.
+     * \param [in] state Pipeline state vector
+     * \param [in] renderPass The render pass
+     */
+    void compilePipeline(
+      const DxvkGraphicsPipelineStateInfo&    state,
+      const DxvkRenderPass&                   renderPass);
+    
   private:
     
     Rc<vk::DeviceFn>            m_vkd;
@@ -273,9 +285,13 @@ namespace dxvk {
     alignas(CACHE_LINE_SIZE) sync::Spinlock   m_mutex;
     std::vector<DxvkGraphicsPipelineInstance> m_pipelines;
     
-    const DxvkGraphicsPipelineInstance* findInstance(
+    DxvkGraphicsPipelineInstance* createInstance(
       const DxvkGraphicsPipelineStateInfo& state,
-            VkRenderPass                   renderPass) const;
+      const DxvkRenderPass&                renderPass);
+    
+    DxvkGraphicsPipelineInstance* findInstance(
+      const DxvkGraphicsPipelineStateInfo& state,
+      const DxvkRenderPass&                renderPass);
     
     VkPipeline createPipeline(
       const DxvkGraphicsPipelineStateInfo& state,
