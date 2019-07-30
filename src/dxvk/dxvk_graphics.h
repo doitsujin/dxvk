@@ -171,8 +171,8 @@ namespace dxvk {
     bool isCompatible(
       const DxvkGraphicsPipelineStateInfo&  state,
       const DxvkRenderPass*                 rp) {
-      return m_stateVector == state
-          && m_renderPass  == rp;
+      return m_renderPass  == rp
+          && m_stateVector == state;
     }
 
     /**
