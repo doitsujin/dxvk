@@ -295,7 +295,7 @@ namespace dxvk {
    * Small wrapper class that manages query
    * allocators for all supported query types,
    */
-  class DxvkGpuQueryPool : public RcObject {
+  class DxvkGpuQueryPool {
 
   public:
 

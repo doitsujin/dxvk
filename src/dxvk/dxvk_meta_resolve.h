@@ -94,7 +94,7 @@ namespace dxvk {
    * Implements resolve operations in fragment
    * shaders when using different formats.
    */
-  class DxvkMetaResolveObjects : public RcObject {
+  class DxvkMetaResolveObjects {
 
   public:
 

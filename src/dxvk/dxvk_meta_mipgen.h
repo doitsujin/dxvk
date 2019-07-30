@@ -161,7 +161,7 @@ namespace dxvk {
    * decisions, we have to create one render pass
    * and pipeline object per image format used.
    */
-  class DxvkMetaMipGenObjects : public RcObject {
+  class DxvkMetaMipGenObjects {
     
   public:
     

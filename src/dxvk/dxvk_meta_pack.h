@@ -72,7 +72,7 @@ namespace dxvk {
    * Stores compute shaders and related objects
    * for depth-stencil image packing operations.
    */
-  class DxvkMetaPackObjects : public RcObject {
+  class DxvkMetaPackObjects {
 
   public:
 

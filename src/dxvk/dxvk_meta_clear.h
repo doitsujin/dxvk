@@ -44,7 +44,7 @@ namespace dxvk {
    * compute pipelines that are going to be used
    * for clear operations.
    */
-  class DxvkMetaClearObjects : public RcObject {
+  class DxvkMetaClearObjects {
     
   public:
     

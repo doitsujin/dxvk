@@ -84,7 +84,7 @@ namespace dxvk {
    * Thread-safe event allocator that provides
    * a way to create and recycle Vulkan events.
    */
-  class DxvkGpuEventPool : public RcObject {
+  class DxvkGpuEventPool {
   
   public:
 

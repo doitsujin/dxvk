@@ -44,7 +44,7 @@ namespace dxvk {
    * because DXVK does not expose the concept of shader
    * pipeline objects to the client API.
    */
-  class DxvkPipelineManager : public RcObject {
+  class DxvkPipelineManager {
     friend class DxvkComputePipeline;
     friend class DxvkGraphicsPipeline;
   public:

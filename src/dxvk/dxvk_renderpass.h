@@ -201,7 +201,7 @@ namespace dxvk {
    * be created, but no two render pass objects
    * will have the same format.
    */
-  class DxvkRenderPassPool : public RcObject {
+  class DxvkRenderPassPool {
     
   public:
     

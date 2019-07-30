@@ -101,7 +101,7 @@ namespace dxvk {
    * Meta copy operations are necessary in order
    * to copy data between color and depth images.
    */
-  class DxvkMetaCopyObjects : public RcObject {
+  class DxvkMetaCopyObjects {
 
   public:
 
