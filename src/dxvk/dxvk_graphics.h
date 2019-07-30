@@ -155,7 +155,7 @@ namespace dxvk {
 
     DxvkGraphicsPipelineInstance(
       const DxvkGraphicsPipelineStateInfo&  state,
-            VkRenderPass                    rp,
+      const DxvkRenderPass*                 rp,
             VkPipeline                      pipe)
     : m_stateVector (state),
       m_renderPass  (rp),
@@ -170,7 +170,7 @@ namespace dxvk {
      */
     bool isCompatible(
       const DxvkGraphicsPipelineStateInfo&  state,
-            VkRenderPass                    rp) const {
+      const DxvkRenderPass*                 rp) {
       return m_stateVector == state
           && m_renderPass  == rp;
     }
@@ -186,7 +186,7 @@ namespace dxvk {
   private:
 
     DxvkGraphicsPipelineStateInfo m_stateVector;
-    VkRenderPass                  m_renderPass;
+    const DxvkRenderPass*         m_renderPass;
     VkPipeline                    m_pipeline;
 
   };
@@ -251,7 +251,7 @@ namespace dxvk {
      */
     VkPipeline getPipelineHandle(
       const DxvkGraphicsPipelineStateInfo&    state,
-      const DxvkRenderPass&                   renderPass);
+      const DxvkRenderPass*                   renderPass);
     
     /**
      * \brief Compiles a pipeline
@@ -263,7 +263,7 @@ namespace dxvk {
      */
     void compilePipeline(
       const DxvkGraphicsPipelineStateInfo&    state,
-      const DxvkRenderPass&                   renderPass);
+      const DxvkRenderPass*                   renderPass);
     
   private:
     
@@ -287,15 +287,15 @@ namespace dxvk {
     
     DxvkGraphicsPipelineInstance* createInstance(
       const DxvkGraphicsPipelineStateInfo& state,
-      const DxvkRenderPass&                renderPass);
+      const DxvkRenderPass*                renderPass);
     
     DxvkGraphicsPipelineInstance* findInstance(
       const DxvkGraphicsPipelineStateInfo& state,
-      const DxvkRenderPass&                renderPass);
+      const DxvkRenderPass*                renderPass);
     
     VkPipeline createPipeline(
       const DxvkGraphicsPipelineStateInfo& state,
-      const DxvkRenderPass&                renderPass) const;
+      const DxvkRenderPass*                renderPass) const;
     
     void destroyPipeline(
             VkPipeline                     pipeline) const;
