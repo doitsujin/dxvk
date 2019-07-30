@@ -6,6 +6,8 @@
 #include "../spirv/spirv_code_buffer.h"
 
 namespace dxvk {
+
+  class DxvkDevice;
   
   /**
    * \brief Clear args
@@ -46,7 +48,7 @@ namespace dxvk {
     
   public:
     
-    DxvkMetaClearObjects(const Rc<vk::DeviceFn>& vkd);
+    DxvkMetaClearObjects(const DxvkDevice* device);
     ~DxvkMetaClearObjects();
     
     /**

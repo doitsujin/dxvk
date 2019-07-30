@@ -1,4 +1,5 @@
 #include "dxvk_meta_clear.h"
+#include "dxvk_device.h"
 
 #include <dxvk_clear_buffer_f.h>
 #include <dxvk_clear_buffer_u.h>
@@ -15,8 +16,8 @@
 
 namespace dxvk {
   
-  DxvkMetaClearObjects::DxvkMetaClearObjects(const Rc<vk::DeviceFn>& vkd)
-  : m_vkd(vkd) {
+  DxvkMetaClearObjects::DxvkMetaClearObjects(const DxvkDevice* device)
+  : m_vkd(device->vkd()) {
     // Create descriptor set layouts
     m_clearBufDsetLayout = createDescriptorSetLayout(VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER);
     m_clearImgDsetLayout = createDescriptorSetLayout(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE);
