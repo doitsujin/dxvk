@@ -707,6 +707,10 @@ namespace dxvk {
             uint32_t                resultType,
             uint32_t                vector,
             uint32_t                matrix);
+
+    uint32_t opTranspose(
+            uint32_t                resultType,
+            uint32_t                matrix);
     
     uint32_t opFFma(
             uint32_t                resultType,
