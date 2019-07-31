@@ -341,22 +341,12 @@ namespace dxvk {
         uint32_t count = type;
 
         if (!m_vsKey.HasPositionT) {
-          uint32_t zero = m_module.constf32(0.0f);
           uint32_t one  = m_module.constf32(1.0f);
 
           for (uint32_t i = count; i < 4; i++)
-            transformed = m_module.opCompositeInsert(m_vec4Type, zero, transformed, 1, &i);
+            transformed = m_module.opCompositeInsert(m_vec4Type, one, transformed, 1, &i);
 
           transformed = m_module.opVectorTimesMatrix(m_vec4Type, transformed, m_vs.constants.texcoord[i]);
-
-          // Apply the offset on the next row. (why does this exist...)
-          std::array<uint32_t, 4> indices;
-          for (uint32_t j = 0; j < indices.size(); j++) {
-            uint32_t column = m_module.opCompositeExtract(m_vec4Type, m_vs.constants.texcoord[i], 1, &j);
-            indices[j]      = m_module.opCompositeExtract(m_floatType, column, 1, &count);
-          }
-          uint32_t offset = m_module.opCompositeConstruct(m_vec4Type, indices.size(), indices.data());
-          transformed = m_module.opFAdd(m_vec4Type, transformed, offset);
         }
 
         // Pad the unused section of it with the value for projection.
